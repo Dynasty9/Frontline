@@ -1,0 +1,620 @@
+class_name Projectile
+extends Entity
+## Frag grenades (bounce, can be picked up and thrown back), smoke grenades
+## (cloud blocks line of sight), rockets, mortar shells (high arc, whistle on
+## the way down), guided anti-tank missiles and recoilless rounds - and the
+## air support: bombing jets, A-10 gun runs, the AC-130 and its shells.
+
+const GRAVITY := 18.0
+
+var ptype := "frag"
+var vel := Vector3.ZERO
+var fuse := 3.4
+var thrower_id := 0
+var held_by: Soldier = null
+var flying := true
+var thrown_back := 0
+var smoke_r := 0.0
+var smoke_t := 0.0
+var life_t := 0.0
+var origin := Vector3.ZERO
+var target := Vector3.ZERO
+var shell_t := 3.0
+var tgt_id := 0
+var _whistled := false
+# aircraft
+var _fire_el := -1.0
+var _hits: Array = []  # A-10: [arrive_time, pos]
+var _next := {}  # AC-130: gun -> next shot time
+var _brrt_at := -1.0
+var _gun_smoke: GPUParticles3D
+var _drone: AudioStreamPlayer
+var _vm: VehicleModels
+
+var model: Node3D
+var smoke_fx: Node3D
+var trail: GPUParticles3D
+var _vis := true
+
+
+func ekind() -> String:
+	return "projectile"
+
+
+func apply_props(d: Dictionary) -> void:
+	if d.has("ptype"):
+		ptype = d.ptype
+	if d.has("team"):
+		team = d.team
+	if d.has("pos"):
+		position = d.pos
+		net_pos = d.pos
+	if d.has("vel"):
+		vel = d.vel
+	if d.has("thrower"):
+		thrower_id = d.thrower
+	if d.has("fuse"):
+		fuse = d.fuse
+	if d.has("origin"):
+		origin = d.origin
+	if d.has("target"):
+		target = d.target
+	if d.has("T"):
+		shell_t = d.T
+	if d.has("tgt"):
+		tgt_id = d.tgt
+
+
+func get_props() -> Dictionary:
+	return {"ptype": ptype, "team": team, "pos": position, "vel": vel, "thrower": thrower_id, "fuse": fuse,
+		"origin": origin, "target": target, "T": shell_t, "tgt": tgt_id}
+
+
+func on_spawned() -> void:
+	if ptype in ["grad", "arty", "ac105", "ac40", "ac25"]:
+		position = origin
+	net_pos = position
+	net_init = true
+	if world.has_view:
+		_build_model()
+		if ptype in ["rocket", "atgm", "recoilless"]:
+			Sfx.play("launch", position, -2.0)
+
+
+func sim(dt: float) -> void:
+	life_t += dt
+	match ptype:
+		"frag", "smoke":
+			_ballistic(dt)
+		"rocket", "recoilless":
+			_rocket(dt)
+		"atgm":
+			_atgm(dt)
+		"mortar", "mortar_smoke", "grad", "arty", "ac105", "ac40", "ac25":
+			_shell()
+		"jet":
+			_jet(dt)
+		"a10":
+			_a10(dt)
+		"ac130":
+			_ac130(dt)
+		"bomb":
+			_bomb(dt)
+
+
+## Ground-attack jet: flies straight over the target and releases a stick of
+## high-drag bombs timed so they land across it.
+func _jet(dt: float) -> void:
+	position += vel * dt
+	var dirn := Defs.flat(vel).normalized()
+	var along := Defs.flat(position - target).dot(dirn)
+	if fuse > 0.0:
+		var i := 4.0 - fuse
+		if along > -BOMB_THROW - 15.0 + i * 10.0:
+			fuse -= 1.0
+			world.spawn("projectile", {"ptype": "bomb", "team": team, "pos": position + Vector3(0, -1.4, 0), "vel": vel * 0.95, "thrower": thrower_id})
+	if along > 340.0:
+		world.despawn(self)
+
+
+const BOMB_DRAG := 1.25
+## Where a bomb released at the jet's speed and height ends up (metres ahead).
+const BOMB_THROW := 70.0
+
+
+func _bomb(dt: float) -> void:
+	vel = _bomb_step(vel, dt)
+	var np := position + vel * dt
+	if np.y <= 0.3:
+		var src: Entity = world.entity(thrower_id) if thrower_id != 0 else null
+		world.combat.explode(Vector3(np.x, 0.3, np.z), {"dmg": 220.0, "radius": 10.0, "fling": 15.0, "at": 300.0, "top": true, "src": src, "team": team, "size": 2.6, "track": 0.6, "struct_mult": 3.0})
+		world.despawn(self)
+		return
+	position = np
+
+
+static func _bomb_step(v: Vector3, dt: float) -> Vector3:
+	v.y -= 9.8 * dt
+	var k := exp(-BOMB_DRAG * dt)
+	v.x *= k
+	v.z *= k
+	return v
+
+
+func _ballistic(dt: float) -> void:
+	if held_by:
+		if held_by.gone or held_by.life != Soldier.Life.ALIVE:
+			held_by = null
+			flying = true
+			vel = Vector3.ZERO
+		else:
+			position = held_by.position + Vector3(0, 1.3, 0) + Defs.dir_of(held_by.rotation.y) * 0.3
+	elif flying:
+		var np := position + vel * dt
+		vel.y -= GRAVITY * dt
+		var r := world.combat.ray(position, np)
+		if not r.is_empty():
+			var n: Vector3 = r.normal
+			vel = vel.bounce(n) * 0.35
+			np = r.position + n * 0.06
+		if np.y <= 0.06:
+			np.y = 0.06
+			if vel.y < 0.0:
+				vel.y = -vel.y * 0.25
+				vel.x *= 0.5
+				vel.z *= 0.5
+			if absf(vel.y) < 1.2 and Vector2(vel.x, vel.z).length() < 0.7:
+				flying = false
+				vel = Vector3.ZERO
+		position = np
+	if ptype == "frag":
+		fuse -= dt
+		if fuse <= 0.0:
+			world.combat.explode(position, {"dmg": 150.0, "radius": 6.0, "fling": 9.0, "at": 0.0, "src": world.entity(thrower_id), "team": team, "size": 1.0})
+			world.despawn(self)
+	else:
+		if not flying or life_t > 1.6:
+			smoke_t += dt
+			if smoke_t < 22.0:
+				smoke_r = minf(6.5, smoke_t * 2.6)
+			else:
+				smoke_r = maxf(0.0, smoke_r - dt * 1.5)
+			if smoke_t > 27.0:
+				world.despawn(self)
+
+
+func _rocket(dt: float) -> void:
+	vel.y -= 1.5 * dt
+	var np := position + vel * dt
+	var src: Entity = world.entity(thrower_id)
+	var ex: Array = src.get_exclude() if src else []
+	var r := world.combat.ray(position, np, ex)
+	var boom := Vector3.INF
+	if not r.is_empty():
+		boom = r.position
+	elif np.y <= 0.05:
+		boom = Vector3(np.x, 0.1, np.z)
+	elif life_t > 2.5:
+		boom = np
+	if boom != Vector3.INF:
+		var at := 450.0 if ptype == "recoilless" else 380.0
+		world.combat.explode(boom, {"dmg": 110.0, "radius": 4.0, "fling": 8.0, "at": at, "dir": vel.normalized(), "track": 0.25 if ptype == "recoilless" else 0.2, "src": src, "team": team, "size": 1.0, "struct_mult": 2.0})
+		world.despawn(self)
+		return
+	position = np
+
+
+func shell_pos(k: float) -> Vector3:
+	if ptype in ["ac105", "ac40", "ac25"]:
+		return origin.lerp(target, k)  # straight down from the gunship
+	var apex := 10.0 + Defs.flat(target - origin).length() * (0.25 if ptype != "arty" else 0.32)
+	return origin.lerp(target, k) + Vector3(0, apex * 4.0 * k * (1.0 - k), 0)
+
+
+func is_shell() -> bool:
+	return ptype in ["mortar", "mortar_smoke", "grad", "arty", "ac105", "ac40", "ac25"]
+
+
+## Mortar shells follow a fixed high arc to their (already scattered) impact point.
+func _shell() -> void:
+	var k := life_t / maxf(0.1, shell_t)
+	if k < 1.0:
+		position = shell_pos(k)
+		return
+	var src: Entity = world.entity(thrower_id) if thrower_id != 0 else null
+	match ptype:
+		"grad":
+			world.combat.explode(target, {"dmg": 150.0, "radius": 7.0, "fling": 10.0, "at": 120.0, "top": true, "src": src, "team": team, "size": 1.6, "struct_mult": 2.0})
+			world.despawn(self)
+			return
+		"arty":
+			world.combat.explode(target, {"dmg": 230.0, "radius": 10.0, "fling": 14.0, "at": 220.0, "top": true, "src": src, "team": team, "size": 2.3, "struct_mult": 3.0})
+			world.despawn(self)
+			return
+		"ac105":
+			world.combat.explode(target, {"dmg": 220.0, "radius": 8.5, "fling": 13.0, "at": 300.0, "top": true, "src": src, "team": team, "size": 2.0, "struct_mult": 2.5})
+			world.despawn(self)
+			return
+		"ac40":
+			world.combat.explode(target, {"dmg": 95.0, "radius": 3.8, "fling": 6.0, "at": 140.0, "top": true, "src": src, "team": team, "size": 0.85, "struct_mult": 1.5})
+			world.despawn(self)
+			return
+		"ac25":
+			world.combat.explode(target, {"dmg": 50.0, "radius": 1.8, "fling": 0.0, "at": 70.0, "top": true, "src": src, "team": team, "size": 0.38, "struct_mult": 1.0})
+			world.despawn(self)
+			return
+	if ptype == "mortar":
+		world.combat.explode(target, {"dmg": 130.0, "radius": 6.5, "fling": 9.0, "at": 80.0, "top": true, "src": src, "team": team, "size": 1.2, "struct_mult": 2.0})
+	else:
+		world.spawn("projectile", {"ptype": "smoke", "team": team, "pos": target + Vector3(0, 0.2, 0), "vel": Vector3.ZERO, "thrower": thrower_id, "fuse": 0.0})
+	world.despawn(self)
+
+
+## Guided missile: lofts for a top attack and steers onto the target.
+func _atgm(dt: float) -> void:
+	var tgt: Entity = world.entity(tgt_id)
+	if tgt and not tgt.gone:
+		target = tgt.center_point()
+	var to := target - position
+	var aim := target
+	if Defs.flat(to).length() > 16.0:
+		aim += Vector3(0, minf(9.0, Defs.flat(to).length() * 0.18), 0)
+	var want := (aim - position).normalized()
+	var cur := vel.normalized()
+	var ang := cur.angle_to(want)
+	if ang > 0.001:
+		cur = cur.slerp(want, clampf(2.2 * dt / ang, 0.0, 1.0))
+	var spd := minf(48.0, vel.length() + 20.0 * dt)
+	vel = cur * spd
+	var np := position + vel * dt
+	var src: Entity = world.entity(thrower_id)
+	var r := world.combat.ray(position, np, src.get_exclude() if src else [])
+	var boom := Vector3.INF
+	if not r.is_empty():
+		boom = r.position
+	elif np.y <= 0.05:
+		boom = Vector3(np.x, 0.1, np.z)
+	elif life_t > 7.0 or position.distance_to(target) < 0.8:
+		boom = np
+	if boom != Vector3.INF:
+		world.combat.explode(boom, {"dmg": 90.0, "radius": 3.5, "fling": 7.0, "at": 520.0, "dir": vel.normalized(), "top": vel.y < -0.3, "track": 0.25, "src": src, "team": team, "size": 1.1, "struct_mult": 2.0})
+		world.despawn(self)
+		return
+	position = np
+
+
+func pick_up(s: Soldier) -> void:
+	held_by = s
+	flying = false
+	vel = Vector3.ZERO
+
+
+func release_throw(s: Soldier, pos: Vector3) -> void:
+	held_by = null
+	flying = true
+	team = s.team
+	thrower_id = s.eid
+	thrown_back += 1
+	var from := s.position + Vector3(0, 1.7, 0)
+	position = from
+	vel = world.combat.ballistic_vel(from, pos)
+
+
+func write_state(b: StreamPeerBuffer) -> void:
+	put_v3(b, position)
+	b.put_u8(int(clampf(smoke_r * 20.0, 0.0, 255.0)))
+	b.put_u8(1 if flying else 0)
+
+
+func read_state(b: StreamPeerBuffer) -> void:
+	net_pos = get_v3(b)
+	smoke_r = b.get_u8() / 20.0
+	flying = b.get_u8() == 1
+
+
+func _process(dt: float) -> void:
+	var _t0 := Time.get_ticks_usec()
+	_view_process(dt)
+	if world:
+		world.vp("projectiles", _t0)
+
+
+func _view_process(dt: float) -> void:
+	if not world.has_view or model == null:
+		return
+	if ptype == "jet" or ptype == "bomb":
+		if not srv:
+			if ptype == "bomb":
+				vel = _bomb_step(vel, dt)
+			net_pos += vel * dt
+			position = position.lerp(net_pos, 1.0 - exp(-dt * 10.0)) if position.distance_to(net_pos) < 25.0 else net_pos
+		var fw := vel.normalized()
+		if absf(fw.y) < 0.98:
+			model.look_at(model.global_position + fw, Vector3.UP)
+		return
+	if ptype == "a10":
+		_a10_view(dt)
+		return
+	if ptype == "ac130":
+		_ac130_view(dt)
+		return
+	if is_shell():
+		if not srv:
+			life_t += dt
+			position = shell_pos(clampf(life_t / maxf(0.1, shell_t), 0.0, 1.0))
+		if not _whistled and shell_t - life_t < (2.0 if ptype == "arty" else 1.4) and ptype in ["mortar", "grad", "arty"]:
+			_whistled = true
+			if ptype == "arty":
+				Sfx.play("arty_whistle", target, 6.0, 1.0)
+			else:
+				Sfx.play("whistle", target, 2.0 if ptype == "mortar" else 4.0, 1.0 if ptype == "mortar" else 0.8)
+		var k := clampf(life_t / maxf(0.1, shell_t), 0.0, 1.0)
+		var nxt := shell_pos(minf(1.0, k + 0.02))
+		if nxt.distance_to(position) > 0.01:
+			model.look_at(nxt, Vector3.UP if absf((nxt - position).normalized().y) < 0.98 else Vector3.RIGHT)
+		return
+	if not srv:
+		position = position.lerp(net_pos, 1.0 - exp(-dt * 20.0)) if position.distance_to(net_pos) < 15.0 else net_pos
+	if ptype in ["rocket", "atgm", "recoilless"] and vel.length() > 0.1:
+		var fwd := vel.normalized()
+		if absf(fwd.dot(Vector3.UP)) < 0.98:
+			model.look_at(model.global_position + fwd, Vector3.UP)
+		if not srv:
+			net_pos += vel * dt
+	if smoke_fx:
+		world.fx.vfx.set_smoke_screen(smoke_fx, smoke_r)
+
+
+func on_despawn() -> void:
+	if _gun_smoke and is_instance_valid(_gun_smoke):
+		_gun_smoke.emitting = false
+		var gs := _gun_smoke
+		get_tree().create_timer(3.0).timeout.connect(gs.queue_free)
+		_gun_smoke = null
+	# let the exhaust trail drift away instead of vanishing with the rocket
+	if trail and is_instance_valid(trail) and world.fx and world.fx.vfx:
+		var gp := trail.global_position
+		trail.reparent(world.fx.vfx)
+		trail.global_position = gp
+		trail.emitting = false
+		get_tree().create_timer(2.0).timeout.connect(trail.queue_free)
+		trail = null
+
+
+func _build_model() -> void:
+	model = Node3D.new()
+	add_child(model)
+	match ptype:
+		"frag":
+			Res.mi(model, Res.sphere(0.07, 8), Res.mat(Color(0.2, 0.25, 0.15)), Vector3.ZERO, Vector3.ZERO, false)
+		"smoke":
+			Res.mi(model, Res.cyl(0.05, 0.05, 0.16, 8), Res.mat(Color(0.5, 0.5, 0.45)), Vector3.ZERO, Vector3.ZERO, false)
+			if world.fx and world.fx.vfx:
+				smoke_fx = world.fx.vfx.make_smoke_screen()
+				smoke_fx.position = Vector3(0, 0.6, 0)
+				add_child(smoke_fx)
+		"jet":
+			var jm := VehicleModels.build("jet", team, eid)
+			model.add_child(jm.root)
+			Sfx.play("jet", position + vel.normalized() * 160.0, 6.0)
+		"bomb":
+			Res.mi(model, Res.cyl(0.16, 0.16, 1.5, 10), Mats.get_mat("gunmetal_w"), Vector3.ZERO, Vector3(PI / 2, 0, 0), false)
+			Res.mi(model, Res.box(Vector3(0.7, 0.05, 0.35)), Mats.get_mat("gunmetal_w"), Vector3(0, 0, 0.75), Vector3.ZERO, false)
+			Res.mi(model, Res.box(Vector3(0.05, 0.7, 0.35)), Mats.get_mat("gunmetal_w"), Vector3(0, 0, 0.75), Vector3.ZERO, false)
+		"grad":
+			Res.mi(model, Res.cyl(0.07, 0.07, 1.6, 8), Res.mat(Color(0.3, 0.32, 0.26)), Vector3.ZERO, Vector3(PI / 2, 0, 0), false)
+			Res.mi(model, Res.sphere(0.16, 6), Res.mat(Color(1.0, 0.7, 0.3), 0.5, 7.0, true), Vector3(0, 0, 0.85), Vector3.ZERO, false)
+			if world.fx and world.fx.vfx:
+				trail = world.fx.vfx.make_trail()
+				add_child(trail)
+		"mortar", "mortar_smoke", "arty":
+			# drawn a little larger than life, trailing wisps, so the arc reads from the air
+			var big := ptype == "arty"
+			Res.mi(model, Res.cyl(0.11 if big else 0.08, 0.06, 0.9 if big else 0.6, 8), Res.mat(Color(0.25, 0.27, 0.2) if ptype != "mortar_smoke" else Color(0.6, 0.6, 0.55)), Vector3.ZERO, Vector3(PI / 2, 0, 0), false)
+			Res.mi(model, Res.sphere(0.09 if big else 0.07, 6), Res.mat(Color(1.0, 0.75, 0.4), 0.5, 4.0, true), Vector3(0, 0, 0.4 if big else 0.3), Vector3.ZERO, false)
+			if world.fx and world.fx.vfx:
+				trail = world.fx.vfx.make_shell_trail(big)
+				add_child(trail)
+		"ac105":
+			Res.mi(model, Res.cyl(0.12, 0.09, 0.8, 8), Res.mat(Color(0.22, 0.22, 0.2)), Vector3.ZERO, Vector3(PI / 2, 0, 0), false)
+			if world.fx and world.fx.vfx:
+				trail = world.fx.vfx.make_shell_trail(true)
+				add_child(trail)
+		"ac40", "ac25":
+			# tracer: a glowing streak raining down from the orbit
+			var ln := 7.0 if ptype == "ac40" else 4.5
+			var tm := StandardMaterial3D.new()
+			tm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+			tm.albedo_color = Color(1.0, 0.45, 0.2) if ptype == "ac40" else Color(1.0, 0.75, 0.35)
+			tm.emission_enabled = true
+			tm.emission = tm.albedo_color
+			tm.emission_energy_multiplier = 9.0
+			Res.mi(model, Res.cyl(0.07 if ptype == "ac40" else 0.05, 0.07 if ptype == "ac40" else 0.05, ln, 6), tm, Vector3(0, 0, ln * 0.5), Vector3(PI / 2, 0, 0), false)
+		"a10":
+			_vm = VehicleModels.build("a10", team if team >= 0 else 0, eid)
+			model.add_child(_vm.root)
+			Sfx.play_far("jet", -2.0, 0.82)
+			if world.fx and world.fx.vfx:
+				_gun_smoke = world.fx.vfx.make_gun_smoke()
+				world.fx.vfx.add_child(_gun_smoke)
+		"ac130":
+			_vm = VehicleModels.build("ac130", team if team >= 0 else 0, eid)
+			model.add_child(_vm.root)
+			_drone = AudioStreamPlayer.new()
+			if Sfx.enabled:
+				_drone.stream = Sfx.streams["prop"]
+				_drone.volume_db = -30.0
+				_drone.autoplay = true
+			add_child(_drone)
+		"rocket", "atgm", "recoilless":
+			Res.mi(model, Res.cyl(0.06, 0.06, 0.8, 8), Res.mat(Color(0.3, 0.32, 0.25)), Vector3.ZERO, Vector3(PI / 2, 0, 0), false)
+			Res.mi(model, Res.sphere(0.12, 6), Res.mat(Color(1.0, 0.7, 0.3), 0.5, 6.0, true), Vector3(0, 0, 0.45), Vector3.ZERO, false)
+			if world.fx and world.fx.vfx:
+				trail = world.fx.vfx.make_trail()
+				add_child(trail)
+
+
+
+# --- A-10 gun run ----------------------------------------------------------------------
+
+const A10_SPEED := 58.0
+const A10_START := -420.0
+const A10_FIRE_AT := -50.0  # along-track distance from the target where the burst starts
+const A10_BURST := 1.0
+const A10_STRIP := 18.0  # the rounds walk +-18 m through the target, ahead of the diving jet
+
+
+static func a10_alt(along: float) -> float:
+	if along < -160.0:
+		return lerpf(62.0, 27.0, clampf((along - A10_START) / (-160.0 - A10_START), 0.0, 1.0))
+	if along < 0.0:
+		return lerpf(27.0, 21.0, (along + 160.0) / 160.0)
+	return 21.0 + along * 0.42
+
+
+## Comes in low along `vel`, nose down, and walks a two-second burst of 30 mm
+## through the target; the BRRRT reaches the ground after the shells do.
+func _a10(dt: float) -> void:
+	var dirn := Defs.flat(vel).normalized()
+	position += dirn * A10_SPEED * dt
+	var along := Defs.flat(position - target).dot(dirn)
+	position.y = a10_alt(along)
+	vel = dirn * A10_SPEED + Vector3(0, (a10_alt(along + 1.0) - a10_alt(along)) * A10_SPEED, 0)
+	if along >= A10_FIRE_AT and _fire_el < A10_BURST:
+		if _fire_el < 0.0:
+			_fire_el = 0.0
+			world.stat("a10_run")
+		var side := dirn.cross(Vector3.UP)
+		var n := int(round(30.0 * dt + world.rng.randf() * 0.5))
+		for i in n:
+			var k := clampf(_fire_el / A10_BURST, 0.0, 1.0)
+			var aim := target + dirn * lerpf(-A10_STRIP, A10_STRIP, k) + side * world.rng.randf_range(-3.0, 3.0) + dirn * world.rng.randf_range(-2.0, 2.0)
+			aim.y = 0.15
+			_hits.append([world.time + position.distance_to(aim) / 950.0, aim])
+		_fire_el += dt
+	for i in range(_hits.size() - 1, -1, -1):
+		var h: Array = _hits[i]
+		if world.time >= float(h[0]):
+			_hits.remove_at(i)
+			world.combat.explode(h[1], {"dmg": 75.0, "radius": 2.6, "fling": 5.0, "at": 170.0, "top": true, "src": null, "team": team, "size": 0.68, "struct_mult": 1.6})
+	if along > 420.0:
+		world.despawn(self)
+
+
+func _a10_view(dt: float) -> void:
+	var dirn := Defs.flat(vel).normalized()
+	if not srv:
+		net_pos += dirn * A10_SPEED * dt
+		position = position.lerp(net_pos, 1.0 - exp(-dt * 10.0)) if position.distance_to(net_pos) < 25.0 else net_pos
+	var along := Defs.flat(position - target).dot(dirn)
+	if not srv:
+		position.y = a10_alt(along)
+	var fw := (dirn * A10_SPEED + Vector3(0, (a10_alt(along + 1.0) - a10_alt(along)) * A10_SPEED, 0)).normalized()
+	if absf(fw.y) < 0.98:
+		model.look_at(model.global_position + fw, Vector3.UP)
+	var firing := along >= A10_FIRE_AT and along < A10_FIRE_AT + A10_BURST * A10_SPEED
+	var nose := position + fw * 7.6 + Vector3(0, -0.3, 0)
+	if _gun_smoke:
+		_gun_smoke.emitting = firing
+		_gun_smoke.global_position = nose
+	if firing:
+		if _brrt_at < 0.0:
+			# the shells (950 m/s) arrive well before the sound (343 m/s)
+			_brrt_at = Time.get_ticks_msec() / 1000.0 + 0.55
+		if randf() < 0.7 and world.fx:
+			var k := clampf((along - A10_FIRE_AT) / (A10_BURST * A10_SPEED), 0.0, 1.0)
+			var side := dirn.cross(Vector3.UP)
+			var aim := target + dirn * lerpf(-A10_STRIP, A10_STRIP, k) + side * randf_range(-3.0, 3.0)
+			world.fx._tracer(nose, aim, 3.5, 1.4)
+			world.fx._flash(nose, 0.04, 2.2)
+	if _brrt_at > 0.0 and Time.get_ticks_msec() / 1000.0 >= _brrt_at:
+		_brrt_at = 1e9
+		Sfx.play_far("brrt", 2.0, 1.0, maxf(0.0, (world.cam.focus_pos.distance_to(target) if world.cam else 0.0) - 40.0))
+
+
+# --- AC-130 ----------------------------------------------------------------------------
+
+const AC_R := 165.0
+const AC_ALT := 88.0
+const AC_SPEED := 52.0
+const AC_ON_STATION := 26.0
+const AC_GUNS := {
+	"ac105": {"every": 3.4, "burst": 1, "gap": 0.0, "T": 2.6, "spread": 2.5, "snd": "ac105", "vol": 5.0},
+	"ac40": {"every": 2.3, "burst": 3, "gap": 0.38, "T": 1.8, "spread": 2.2, "snd": "ac40", "vol": 0.0},
+	"ac25": {"every": 3.8, "burst": 14, "gap": 0.07, "T": 1.35, "spread": 3.2, "snd": "", "vol": 0.0},
+}
+
+
+func _ac_pos(t: float) -> Vector3:
+	var a := fuse + t * AC_SPEED / AC_R
+	return target + Vector3(cos(a) * AC_R, AC_ALT, sin(a) * AC_R)
+
+
+## Orbits the target in a slow pylon turn for AC_ON_STATION seconds. Every gun
+## fires on its own rhythm; the report is heard at once, the rounds take one to
+## three seconds to come down.
+func _ac130(dt: float) -> void:
+	position = _ac_pos(life_t)
+	vel = (_ac_pos(life_t + 0.1) - position) / 0.1
+	if life_t < 3.0 or life_t > AC_ON_STATION:
+		if life_t > AC_ON_STATION + 8.0:
+			world.despawn(self)
+		return
+	for g in AC_GUNS:
+		var gd: Dictionary = AC_GUNS[g]
+		if not _next.has(g):
+			_next[g] = [life_t + world.rng.randf_range(0.0, float(gd.every)), 0]
+		var nx: Array = _next[g]
+		if life_t < float(nx[0]):
+			continue
+		var aim := _ac_aim()
+		var spread: float = gd.spread
+		aim += Vector3(world.rng.randf_range(-spread, spread), 0, world.rng.randf_range(-spread, spread))
+		aim.y = 0.15
+		var muzzle := position + Vector3(0, -1.5, 0)
+		world.spawn("projectile", {"ptype": g, "team": team, "pos": muzzle, "origin": muzzle, "target": aim, "T": float(gd.T) * world.rng.randf_range(0.9, 1.1), "thrower": 0})
+		if String(gd.snd) != "":
+			world.fx_event([Fx.FAR_SOUND, String(gd.snd), float(gd.vol), target])
+		elif int(nx[1]) == 0:
+			world.fx_event([Fx.FAR_SOUND, "ac25", 0.0, target])
+		nx[1] = int(nx[1]) + 1
+		if int(nx[1]) >= int(gd.burst):
+			nx[1] = 0
+			nx[0] = life_t + float(gd.every) * world.rng.randf_range(0.8, 1.2)
+		else:
+			nx[0] = life_t + float(gd.gap)
+
+
+## Something worth shooting near the target: soldiers and vehicles of the other
+## side (any side, for an observer's demo), else the ground near the centre.
+func _ac_aim() -> Vector3:
+	var cands := []
+	for s in world.soldiers_near(target, 38.0):
+		if s.life == Soldier.Life.ALIVE and (team < 0 or s.team != team):
+			cands.append(s.position)
+	for v in world.vehicles_near(target, 40.0):
+		if team < 0 or v.team != team:
+			cands.append(v.position)
+			cands.append(v.position)
+	if not cands.is_empty():
+		return cands[world.rng.randi() % cands.size()]
+	var a := world.rng.randf() * TAU
+	var r := sqrt(world.rng.randf()) * 25.0
+	return target + Vector3(cos(a) * r, 0, sin(a) * r)
+
+
+func _ac130_view(dt: float) -> void:
+	if not srv:
+		life_t += dt
+		position = _ac_pos(life_t)
+	var fw := (_ac_pos(life_t + 0.1) - _ac_pos(life_t)).normalized()
+	if absf(fw.y) < 0.98:
+		model.look_at(model.global_position + fw, Vector3.UP)
+		model.rotate_object_local(Vector3(0, 0, 1), -0.42)  # banked into the turn, guns on the target
+	if _vm:
+		for w in _vm.wheels:
+			(w as Node3D).rotate_object_local(Vector3(0, 0, 1), dt * 40.0)
+	if _drone:
+		var d := world.cam.cam.global_position.distance_to(position) if world.cam else 200.0
+		var fade := clampf(minf(life_t / 3.0, (AC_ON_STATION + 8.0 - life_t) / 4.0), 0.0, 1.0)
+		_drone.volume_db = linear_to_db(maxf(0.0005, fade * clampf(1.0 - (d - 60.0) / 400.0, 0.15, 1.0) * 0.35))

@@ -1,0 +1,1797 @@
+class_name Structure
+extends Entity
+## Anything static: map cover (walls, houses, crates, cars, wrecks, trees) and
+## player buildings. Every structure is built from box "parts" which give it
+## collision (bullets/LOS), nav blocking and the cover points soldiers evaluate.
+
+const C_STONE := Color(0.56, 0.53, 0.48)
+const C_CONCRETE := Color(0.62, 0.61, 0.57)
+const C_SAND := Color(0.62, 0.55, 0.38)
+const C_WOOD := Color(0.5, 0.36, 0.22)
+const C_DIRT := Color(0.36, 0.29, 0.2)
+const C_STEEL := Color(0.25, 0.26, 0.27)
+const C_OLIVE := Color(0.3, 0.34, 0.22)
+const HOUSE_COLORS := [Color(0.72, 0.66, 0.55), Color(0.66, 0.6, 0.52), Color(0.62, 0.5, 0.4), Color(0.75, 0.72, 0.66), Color(0.55, 0.52, 0.47)]
+const CAR_COLORS := [Color(0.5, 0.15, 0.12), Color(0.2, 0.3, 0.45), Color(0.75, 0.72, 0.65), Color(0.3, 0.32, 0.28), Color(0.6, 0.5, 0.2)]
+
+var skind := ""
+var size := Vector3.ONE
+var yaw := 0.0
+var variant := 0
+var built := true
+var progress := 1.0
+var sname := ""
+var radius := 1.0
+var foot := Vector2.ONE  # half extents of the footprint
+var parts: Array = []
+var cover_pts := PackedVector3Array()
+var nav_cells: Array = []
+var hash_cells: Array = []
+var body: StaticBody3D
+var model: Node3D
+var smashable := true
+var indestructible := false
+
+# FOB / economy
+var supply := 0.0
+var wrecked := false
+var cap_prog := 0.0
+var cap_team := -1
+var completed_order := 0
+var supply_parent: Structure = null
+var road := PackedVector3Array()
+var truck: Vehicle = null
+var truck_t := 4.0
+var supply_status := "OK"
+var _alert_t := 0.0
+# production / research
+var queue: Array = []
+var queue_items: Array = []
+var queue_frac := 0.0
+var rally := Vector3.INF
+var prod_status := ""
+# special buildings
+var gunner: Soldier = null
+var inside: Array = []
+var inside_n := 0
+var bearers: Array = []
+var bearer_t := 0.0
+var _tick_t := 0.0
+var label_h := 0.0  # height of the name plate the HUD draws over FOBs and depots (0: none)
+var tilt := Vector2.ZERO  # wrecks and tossed cars can lie at an angle: (pitch, roll)
+var toss = null  # [from pos, from yaw, velocity, spin] while it's flying (clients animate it)
+var vk := ""  # what a wreck used to be
+var _flag: MeshInstance3D
+var _vis_cache := true
+
+
+func ekind() -> String:
+	return "structure"
+
+
+func is_static() -> bool:
+	return true
+
+
+func display_name() -> String:
+	if skind == "fob":
+		return "FOB " + sname
+	if skind == "depot":
+		return Defs.TEAM_NAMES[team] + " HQ"
+	if Defs.BUILDINGS.has(skind):
+		return Defs.BUILDINGS[skind].name
+	return skind.capitalize()
+
+
+func is_player_building() -> bool:
+	return Defs.BUILDINGS.has(skind) or skind == "depot"
+
+
+func apply_props(d: Dictionary) -> void:
+	if d.has("skind"):
+		skind = d.skind
+	if d.has("team"):
+		team = d.team
+	if d.has("owner"):
+		owner_peer = d.owner
+	if d.has("pos"):
+		position = d.pos
+	if d.has("yaw"):
+		yaw = d.yaw
+		rotation.y = yaw
+	if d.has("size"):
+		size = d.size
+	if d.has("variant"):
+		variant = d.variant
+	if d.has("built"):
+		built = d.built
+	if d.has("progress"):
+		progress = d.progress
+	if d.has("hp"):
+		hp = d.hp
+	if d.has("max_hp"):
+		max_hp = d.max_hp
+	if d.has("sname"):
+		sname = d.sname
+	if d.has("supply"):
+		supply = d.supply
+	if d.has("queue"):
+		queue_items = d.queue
+	if d.has("seen"):
+		seen_mask = d.seen
+	if d.has("vk"):
+		vk = d.vk
+	if d.has("tilt"):
+		tilt = d.tilt
+		if model:
+			_apply_tilt()
+	if d.has("toss"):
+		toss = d.toss
+		if toss != null and model:
+			_start_toss()
+
+
+func get_props() -> Dictionary:
+	return {"skind": skind, "team": team, "owner": owner_peer, "pos": position, "yaw": yaw, "size": size,
+		"variant": variant, "built": built, "progress": progress, "hp": hp, "max_hp": max_hp, "sname": sname,
+		"supply": supply, "queue": queue_items, "seen": seen_mask, "vk": vk, "tilt": tilt, "toss": toss}
+
+
+func on_spawned() -> void:
+	if size == Vector3.ONE:
+		if Defs.BUILDINGS.has(skind):
+			var s: Vector2 = Defs.BUILDINGS[skind].size
+			size = Vector3(s.x, 3.0, s.y)
+		else:
+			match skind:
+				"depot":
+					size = Vector3(17, 3, 11)
+				"wreck":
+					size = Vector3(3.4, 2.0, 6.2)
+				"car":
+					size = Vector3(1.8, 1.5, 4.2)
+				"crates":
+					size = Vector3(2.5 if variant == 1 else 1.2, 1.2, 1.25)
+				"tree":
+					size = Vector3(0.6, 5.0, 0.6)
+	_define_parts()
+	foot = Vector2(size.x * 0.5, size.z * 0.5)
+	if skind == "trench":
+		foot.x += TrenchNet.HALF_W  # the hole runs on past the segment's ends
+	radius = foot.length() + 0.5
+	indestructible = skind == "depot"
+	smashable = skind in ["low_wall", "tall_wall", "house_wall", "crates", "car", "tree", "sandbags", "concrete_wall", "wire", "rubble", "fence"]
+	if srv:
+		if max_hp <= 0.0 or (hp == 100.0 and max_hp == 100.0):
+			max_hp = _default_hp()
+			hp = max_hp if built else max_hp * 0.1
+		world.nav.add_structure(self)
+		_compute_cover_pts()
+		if built:
+			_make_body()
+	if not srv and world.has_view and built:
+		_make_body()  # so ragdolls and debris land on walls on every client
+	if world.has_view:
+		_build_model()
+		_update_visual()
+		_apply_tilt()
+		if toss != null:
+			_start_toss()
+		if team < 0 and built and not skind in SMOKE_KINDS and skind != "roof":
+			set_process(false)  # map scenery: nothing to update per frame
+
+
+func _default_hp() -> float:
+	if Defs.BUILDINGS.has(skind):
+		return Defs.BUILDINGS[skind].hp
+	match skind:
+		"low_wall":
+			return 260.0 * size.x / 4.0
+		"tall_wall", "house_wall":
+			return 600.0 * size.x / 4.0
+		"crates":
+			return 200.0
+		"car":
+			return 300.0
+		"wreck":
+			return 5000.0
+		"tree":
+			return 400.0
+		"rubble":
+			return 2000.0
+		"roof":
+			return 450.0
+		"depot":
+			return 99999.0
+	return 300.0
+
+
+func on_despawn() -> void:
+	if srv and world.nav:
+		world.nav.remove_structure(self)
+
+
+# --- parts ---------------------------------------------------------------------
+
+func _part(p: Vector3, s: Vector3, nav: int, veh: int, cover := true, col := true, color := C_STONE, r := 0.0) -> Dictionary:
+	return {"p": p, "s": s, "nav": nav, "veh": veh, "cover": cover, "col": col, "color": color, "r": r}
+
+
+func _define_parts() -> void:
+	parts = []
+	var L := size.x
+	match skind:
+		"low_wall":
+			var c: Color = [C_STONE, Color(0.28, 0.38, 0.18), Color(0.58, 0.37, 0.28)][variant % 3]
+			var h := 1.0 if variant % 3 != 1 else 1.15
+			parts = [_part(Vector3(0, h * 0.5, 0), Vector3(L, h, 0.5 if variant % 3 != 1 else 0.9), Nav.LOW, Nav.LOW, true, true, c)]
+		"tall_wall":
+			parts = [_part(Vector3(0, 1.3, 0), Vector3(L, 2.6, 0.5), Nav.SOLID, Nav.LOW, true, true, C_CONCRETE)]
+		"house_wall":
+			var c: Color = HOUSE_COLORS[int(size.y) % HOUSE_COLORS.size()]
+			var th := 0.4
+			match variant:
+				1:
+					var w := 1.3
+					var pier := (L - w) * 0.5
+					parts = [
+						_part(Vector3(-L * 0.5 + pier * 0.5, 1.5, 0), Vector3(pier, 3.0, th), Nav.SOLID, Nav.LOW, true, true, c),
+						_part(Vector3(L * 0.5 - pier * 0.5, 1.5, 0), Vector3(pier, 3.0, th), Nav.SOLID, Nav.LOW, true, true, c),
+						_part(Vector3(0, 0.5, 0), Vector3(w, 1.0, th), Nav.LOW, Nav.LOW, true, true, c),
+						_part(Vector3(0, 2.5, 0), Vector3(w, 1.0, th), Nav.FREE, Nav.FREE, false, true, c),
+					]
+				2:
+					var w := 1.9
+					var pier := (L - w) * 0.5
+					parts = [
+						_part(Vector3(-L * 0.5 + pier * 0.5, 1.5, 0), Vector3(pier, 3.0, th), Nav.SOLID, Nav.LOW, true, true, c),
+						_part(Vector3(L * 0.5 - pier * 0.5, 1.5, 0), Vector3(pier, 3.0, th), Nav.SOLID, Nav.LOW, true, true, c),
+						_part(Vector3(0, 2.6, 0), Vector3(w, 0.8, th), Nav.FREE, Nav.FREE, false, true, c),
+					]
+				_:
+					parts = [_part(Vector3(0, 1.5, 0), Vector3(L, 3.0, th), Nav.SOLID, Nav.LOW, true, true, c)]
+		"floor":
+			parts = [_part(Vector3(0, 0.03, 0), Vector3(size.x, 0.06, size.z), Nav.FREE, Nav.FREE, false, false, Color(0.45, 0.42, 0.38))]
+		"roof":
+			parts = []  # looks only: no cover, no obstacle (it's 3 m up)
+		"rubble":
+			parts = [
+				_part(Vector3(0, 0.35, 0), Vector3(L, 0.7, maxf(1.0, size.z)), Nav.LOW, Nav.FREE, true, true, Color(0.52, 0.49, 0.44)),
+				_part(Vector3(L * 0.15, 0.6, 0.1), Vector3(L * 0.45, 1.0, 0.8), Nav.LOW, Nav.FREE, true, true, Color(0.48, 0.45, 0.4), 0.3),
+			]
+		"crates":
+			if variant == 0:
+				parts = [_part(Vector3(0, 0.6, 0), Vector3(1.2, 1.2, 1.2), Nav.LOW, Nav.LOW, true, true, C_WOOD)]
+			else:
+				parts = [
+					_part(Vector3(0, 0.6, 0), Vector3(2.5, 1.2, 1.25), Nav.SOLID, Nav.LOW, true, true, C_WOOD),
+					_part(Vector3(-0.6, 1.8, 0), Vector3(1.2, 1.2, 1.2), Nav.FREE, Nav.FREE, false, true, C_WOOD.darkened(0.1), 0.15),
+				]
+		"car":
+			var c: Color = CAR_COLORS[variant % CAR_COLORS.size()]
+			parts = [
+				_part(Vector3(0, 0.55, 0), Vector3(1.8, 0.8, 4.2), Nav.SOLID, Nav.LOW, true, true, c),
+				_part(Vector3(0, 1.18, 0.25), Vector3(1.6, 0.5, 2.1), Nav.FREE, Nav.FREE, false, true, c.darkened(0.15)),
+			]
+		"wreck":
+			var ws := size if size != Vector3.ONE else Vector3(3.4, 2.0, 6.2)
+			parts = [
+				_part(Vector3(0, ws.y * 0.375, 0), Vector3(ws.x, ws.y * 0.75, ws.z), Nav.SOLID, Nav.SOLID, true, true, Color(0.18, 0.17, 0.16)),
+				_part(Vector3(0, ws.y * 0.92, ws.z * 0.05), Vector3(ws.x * 0.65, ws.y * 0.35, ws.z * 0.42), Nav.FREE, Nav.FREE, false, true, Color(0.2, 0.19, 0.17), 0.4),
+			]
+		"tree":
+			parts = [_part(Vector3(0, 2.5, 0), Vector3(0.5, 5.0, 0.5), Nav.SOLID, Nav.LOW, true, true, Color(0.32, 0.24, 0.16))]
+		"fob":
+			parts = [_part(Vector3(0, 1.2, 0), Vector3(4.6, 2.4, 4.6), Nav.SOLID, Nav.SOLID, true, true, C_SAND)]
+			for s in [-1.0, 1.0]:
+				for side in [-1.0, 1.0]:
+					parts.append(_part(Vector3(side * 4.0, 0.5, s * 6.3), Vector3(4.6, 1.0, 0.9), Nav.LOW, Nav.LOW, true, true, C_SAND))
+					parts.append(_part(Vector3(s * 6.3, 0.5, side * 4.0), Vector3(0.9, 1.0, 4.6), Nav.LOW, Nav.LOW, true, true, C_SAND))
+		"barracks":
+			parts = [_part(Vector3(0, 1.5, 0), Vector3(size.x, 3.0, size.z), Nav.SOLID, Nav.SOLID, true, true, C_OLIVE)]
+		"factory":
+			parts = [_part(Vector3(0, 2.5, 0), Vector3(size.x, 5.0, size.z), Nav.SOLID, Nav.SOLID, true, true, Color(0.45, 0.46, 0.44))]
+		"medic_tent":
+			parts = [_part(Vector3(0, 1.3, 0), Vector3(size.x, 2.6, size.z), Nav.SOLID, Nav.SOLID, true, true, Color(0.85, 0.84, 0.78))]
+		"research":
+			parts = [_part(Vector3(0, 1.6, 0), Vector3(size.x, 3.2, size.z), Nav.SOLID, Nav.SOLID, true, true, Color(0.5, 0.52, 0.5))]
+		"depot":
+			parts = [
+				_part(Vector3(-5, 1.3, 0), Vector3(6, 2.6, 2.5), Nav.SOLID, Nav.SOLID, true, true, Color(0.55, 0.3, 0.2)),
+				_part(Vector3(5, 1.3, -1), Vector3(6, 2.6, 2.5), Nav.SOLID, Nav.SOLID, true, true, Color(0.25, 0.4, 0.35)),
+				_part(Vector3(0, 1.5, 3.5), Vector3(5, 3.0, 4), Nav.SOLID, Nav.SOLID, true, true, C_CONCRETE),
+			]
+		"sandbags":
+			parts = [_part(Vector3(0, 0.5, 0), Vector3(L, 1.0, 0.9), Nav.LOW, Nav.LOW, true, true, C_SAND)]
+		"concrete_wall":
+			parts = [_part(Vector3(0, 1.3, 0), Vector3(L, 2.6, 0.6), Nav.SOLID, Nav.LOW, true, true, C_CONCRETE)]
+		"trench":
+			# the earth either side of the hole and the spoil heaped on its lips:
+			# from the duckboards up to the top of the parapet, that's what stops bullets
+			parts = [
+				_part(Vector3(0, -0.43, -1.2), Vector3(L, 1.54, 0.95), Nav.LOW, Nav.LOW, true, true, C_DIRT),
+				_part(Vector3(0, -0.43, 1.2), Vector3(L, 1.54, 0.95), Nav.LOW, Nav.LOW, true, true, C_DIRT),
+			]
+		"wire":
+			parts = [_part(Vector3(0, 0.45, 0), Vector3(L, 0.9, 1.2), Nav.SLOW, Nav.FREE, false, false, Color(0.4, 0.4, 0.4))]
+		"mines":
+			parts = []
+		"tank_trap":
+			parts = [_part(Vector3(0, 0.6, 0), Vector3(1.8, 1.2, 1.8), Nav.FREE, Nav.SOLID, false, false, C_STEEL)]
+		"mg_nest":
+			parts = [
+				_part(Vector3(0, 0.5, -1.7), Vector3(3.8, 1.0, 0.8), Nav.LOW, Nav.LOW, true, true, C_SAND),
+				_part(Vector3(-1.7, 0.5, -0.4), Vector3(0.8, 1.0, 2.0), Nav.LOW, Nav.LOW, true, true, C_SAND),
+				_part(Vector3(1.7, 0.5, -0.4), Vector3(0.8, 1.0, 2.0), Nav.LOW, Nav.LOW, true, true, C_SAND),
+			]
+		"watchtower":
+			for x in [-1.2, 1.2]:
+				for z in [-1.2, 1.2]:
+					parts.append(_part(Vector3(x, 2.1, z), Vector3(0.25, 4.2, 0.25), Nav.SOLID, Nav.LOW, false, false, C_WOOD))
+			parts.append(_part(Vector3(0, 4.1, 0), Vector3(3.0, 0.25, 3.0), Nav.FREE, Nav.FREE, false, true, C_WOOD))
+			parts.append(_part(Vector3(0, 4.7, -1.45), Vector3(3.0, 0.95, 0.15), Nav.FREE, Nav.FREE, false, true, C_WOOD))
+			parts.append(_part(Vector3(0, 4.7, 1.45), Vector3(3.0, 0.95, 0.15), Nav.FREE, Nav.FREE, false, true, C_WOOD))
+			parts.append(_part(Vector3(-1.45, 4.7, 0), Vector3(0.15, 0.95, 3.0), Nav.FREE, Nav.FREE, false, true, C_WOOD))
+			parts.append(_part(Vector3(1.45, 4.7, 0), Vector3(0.15, 0.95, 3.0), Nav.FREE, Nav.FREE, false, true, C_WOOD))
+		"hmg_nest":
+			parts = [
+				_part(Vector3(0, 0.55, -1.85), Vector3(4.2, 1.1, 0.9), Nav.LOW, Nav.LOW, true, true, C_SAND),
+				_part(Vector3(-1.85, 0.55, -0.5), Vector3(0.9, 1.1, 1.9), Nav.LOW, Nav.LOW, true, true, C_SAND),
+				_part(Vector3(1.85, 0.55, -0.5), Vector3(0.9, 1.1, 1.9), Nav.LOW, Nav.LOW, true, true, C_SAND),
+			]
+		"mortar_pit":
+			for i in 5:
+				var a := -PI * 0.75 + i * PI * 0.375
+				var c := Vector3(sin(a), 0, -cos(a)) * 2.0
+				parts.append(_part(Vector3(c.x, 0.4, c.z), Vector3(1.7, 0.8, 0.8), Nav.LOW, Nav.LOW, true, true, C_SAND, -a))
+		"at_post":
+			parts = [
+				_part(Vector3(0, 0.45, -1.5), Vector3(3.6, 0.9, 0.8), Nav.LOW, Nav.LOW, true, true, C_SAND),
+				_part(Vector3(-1.6, 0.45, -0.5), Vector3(0.7, 0.9, 1.4), Nav.LOW, Nav.LOW, true, true, C_SAND),
+			]
+		"bunker":
+			var wc: Color = C_CONCRETE if team != 1 else Color(0.42, 0.31, 0.2)
+			var h := 2.2
+			var t := 0.6
+			var hz := 2.8 - t * 0.5
+			# front wall with a wide firing slit (1.1 m - 1.65 m)
+			parts.append(_part(Vector3(-2.05, h * 0.5, -hz), Vector3(1.5, h, t), Nav.SOLID, Nav.SOLID, true, true, wc))
+			parts.append(_part(Vector3(2.05, h * 0.5, -hz), Vector3(1.5, h, t), Nav.SOLID, Nav.SOLID, true, true, wc))
+			parts.append(_part(Vector3(0, 0.55, -hz), Vector3(2.6, 1.1, t), Nav.SOLID, Nav.SOLID, true, true, wc))
+			parts.append(_part(Vector3(0, 1.925, -hz), Vector3(2.6, 0.55, t), Nav.FREE, Nav.FREE, false, true, wc))
+			# side walls with slits
+			for sx in [-1.0, 1.0]:
+				parts.append(_part(Vector3(sx * hz, h * 0.5, -1.55), Vector3(t, h, 1.3), Nav.SOLID, Nav.SOLID, true, true, wc))
+				parts.append(_part(Vector3(sx * hz, h * 0.5, 1.55), Vector3(t, h, 1.3), Nav.SOLID, Nav.SOLID, true, true, wc))
+				parts.append(_part(Vector3(sx * hz, 0.55, 0), Vector3(t, 1.1, 1.8), Nav.SOLID, Nav.SOLID, true, true, wc))
+				parts.append(_part(Vector3(sx * hz, 1.925, 0), Vector3(t, 0.55, 1.8), Nav.FREE, Nav.FREE, false, true, wc))
+			# back wall with a door
+			parts.append(_part(Vector3(-1.9, h * 0.5, hz), Vector3(1.8, h, t), Nav.SOLID, Nav.SOLID, true, true, wc))
+			parts.append(_part(Vector3(1.9, h * 0.5, hz), Vector3(1.8, h, t), Nav.SOLID, Nav.SOLID, true, true, wc))
+			parts.append(_part(Vector3(0, 2.05, hz), Vector3(2.0, 0.3, t), Nav.FREE, Nav.FREE, false, true, wc))
+			# roof: stops fragments from above
+			parts.append(_part(Vector3(0, h + 0.18, 0), Vector3(5.8, 0.36, 5.8), Nav.FREE, Nav.FREE, false, true, wc.darkened(0.12)))
+		"tunnel", "helipad":
+			parts = []
+
+
+func nav_parts() -> Array:
+	var out := []
+	var b := Basis(Vector3.UP, yaw)
+	for p in parts:
+		if p.nav == Nav.FREE and p.veh == Nav.FREE:
+			continue
+		var wc: Vector3 = position + b * p.p
+		out.append({"c": Vector2(wc.x, wc.z), "h": Vector2(p.s.x * 0.5, p.s.z * 0.5), "yaw": yaw + p.r, "i": p.nav, "v": p.veh})
+	return out
+
+
+func provides_cover() -> bool:
+	return built and not cover_pts.is_empty()
+
+
+func _compute_cover_pts() -> void:
+	cover_pts = PackedVector3Array()
+	var b := Basis(Vector3.UP, yaw)
+	if skind == "trench":
+		# fighting positions down in the trench, every metre and a half
+		var n := int(size.x / 1.5)
+		for k in n:
+			var x := (float(k) + 0.5) / n * size.x - size.x * 0.5
+			cover_pts.append(position + b * Vector3(x, 0, 0))
+		return
+	for p in parts:
+		if not p.cover or not p.col:
+			continue
+		if p.p.y - p.s.y * 0.5 > 0.5:
+			continue
+		var hx: float = p.s.x * 0.5 + 0.6
+		var hz: float = p.s.z * 0.5 + 0.6
+		var pr := Basis(Vector3.UP, p.r)
+		var base := Vector3(p.p.x, 0, p.p.z)
+		for side in 4:
+			var along: float = hx * 2.0 if side < 2 else hz * 2.0
+			var n := maxi(1, int(along / 1.3))
+			for k in n + 1:
+				var f := float(k) / n - 0.5
+				var lp: Vector3
+				match side:
+					0:
+						lp = Vector3(f * hx * 2.0, 0, -hz)
+					1:
+						lp = Vector3(f * hx * 2.0, 0, hz)
+					2:
+						lp = Vector3(-hx, 0, f * hz * 2.0)
+					_:
+						lp = Vector3(hx, 0, f * hz * 2.0)
+				var wp: Vector3 = position + b * (base + pr * lp)
+				if Defs.in_map(wp, 2.0) and not _inside_any_part(wp):
+					cover_pts.append(wp)
+			# corner spots just inside each end: the natural places to lean out from
+			var ex: float = (p.s.x * 0.5 - 0.35) if side < 2 else (p.s.z * 0.5 - 0.35)
+			if ex > 0.4:
+				for sg in [-1.0, 1.0]:
+					var cp: Vector3
+					match side:
+						0:
+							cp = Vector3(sg * ex, 0, -hz)
+						1:
+							cp = Vector3(sg * ex, 0, hz)
+						2:
+							cp = Vector3(-hx, 0, sg * ex)
+						_:
+							cp = Vector3(hx, 0, sg * ex)
+					var wcp: Vector3 = position + b * (base + pr * cp)
+					if Defs.in_map(wcp, 2.0) and not _inside_any_part(wcp):
+						cover_pts.append(wcp)
+
+
+func _inside_any_part(wp: Vector3) -> bool:
+	var b := Basis(Vector3.UP, yaw)
+	for p in parts:
+		if not p.col or p.nav == Nav.FREE:
+			continue
+		var wc: Vector3 = position + b * p.p
+		if Defs.point_in_obb(Vector2(wp.x, wp.z), Vector2(wc.x, wc.z), Vector2(p.s.x * 0.5 + 0.25, p.s.z * 0.5 + 0.25), yaw + p.r):
+			return true
+	return false
+
+
+func _make_body() -> void:
+	if body or parts.is_empty():
+		return
+	body = StaticBody3D.new()
+	body.collision_layer = Defs.L_COVER
+	body.collision_mask = 0
+	body.set_meta("eid", eid)
+	var any := false
+	for p in parts:
+		if not p.col:
+			continue
+		var cs := CollisionShape3D.new()
+		var bs := BoxShape3D.new()
+		bs.size = p.s
+		cs.shape = bs
+		cs.position = p.p
+		cs.rotation.y = p.r
+		body.add_child(cs)
+		any = true
+	if any:
+		add_child(body)
+	else:
+		body.free()
+		body = null
+
+
+func is_mount() -> bool:
+	return skind in ["mg_nest", "hmg_nest", "watchtower", "mortar_pit", "at_post"]
+
+
+func mount_pos() -> Vector3:
+	var b := Basis(Vector3.UP, yaw)
+	match skind:
+		"watchtower":
+			return position + Vector3(0, 4.25, 0)
+		"mortar_pit":
+			return position + b * Vector3(0, 0, 0.75)
+		"at_post":
+			return position + b * Vector3(0, 0, -0.4)
+		"hmg_nest":
+			return position + b * Vector3(0, 0, -0.65)
+	return position + b * Vector3(0, 0, -0.5)
+
+
+## Gun the crewman uses while manning this emplacement ({} = special behaviour).
+func mount_weapon() -> Dictionary:
+	match skind:
+		"mg_nest":
+			return Defs.WEAPONS.mmg
+		"hmg_nest":
+			return Defs.WEAPONS.m2
+	return {}
+
+
+## Which soldier types are best suited to crew it.
+func mount_pref() -> Array:
+	match skind:
+		"mg_nest", "hmg_nest":
+			return ["mg_gunner", "pkm"]
+		"mortar_pit":
+			return ["mortar_gunner", "r_mortar"]
+		"at_post":
+			return ["at_soldier", "rpg"]
+	return []
+
+
+var fire_queue: Array = []  # mortar pit fire mission: [[pos, kind], ...]
+
+
+func queue_fire(pos: Vector3, kind: String, peer: int) -> void:
+	if skind != "mortar_pit" or not built:
+		return
+	if gunner == null or gunner.gone or gunner.task != "man":
+		world.rules.notify(peer, team, "Nobody is crewing that mortar pit. Move a squad next to it.")
+		return
+	var d := Defs.flat(pos - position).length()
+	if d < 30.0 or d > 160.0:
+		world.rules.notify(peer, team, "Out of mortar range (30-160 m).")
+		return
+	fire_queue.clear()
+	for i in 6:
+		fire_queue.append([pos, kind])
+	gunner.say("Fire mission, %s! Rounds out!" % ("smoke" if kind == "smoke" else "HE"), true)
+
+
+func front_dir() -> Vector3:
+	return Defs.dir_of(yaw)
+
+
+func exit_pos() -> Vector3:
+	return position + front_dir() * (size.z * 0.5 + 3.0)
+
+
+# --- damage ----------------------------------------------------------------------
+
+func take_damage(amount: float, _source = null) -> void:
+	if indestructible or gone or not srv:
+		return
+	if skind == "fob" and wrecked:
+		return
+	hp -= amount
+	net_dirty = true
+	if team >= 0 and is_player_building() and world.time > _alert_t and amount > 5.0 and not skind in ["trench", "sandbags", "wire", "mines", "tank_trap", "concrete_wall"]:
+		_alert_t = world.time + 25.0
+		world.send_msg(team, "alert", "%s is under attack at %s!" % [display_name(), Defs.grid_ref(position)], position)
+	if hp <= 0.0:
+		hp = 0.0
+		_destroyed()
+
+
+func smash(_by) -> void:
+	if not smashable or gone:
+		return
+	world.fx_event([Fx.DEBRIS, position + Vector3(0, 0.8, 0), _main_color(), 8])
+	world.fx_event([Fx.SOUND, "thud", position])
+	if skind == "tree":
+		world.fx_event([Fx.TREE_FALL, position, Defs.yaw_of(Defs.flat(position - _by.position))])
+	world.despawn(self)
+
+
+func _main_color() -> Color:
+	if skind == "roof":
+		return Color(0.5, 0.24, 0.16) if variant % 2 == 0 else C_CONCRETE
+	return parts[0].color if not parts.is_empty() else C_STONE
+
+
+## A house roof: tiled and pitched (ridge along the long side, gable ends in
+## the walls' colour, eaves) or flat with a parapet and the clutter people put
+## on flat roofs. variant: colour index * 2 + style.
+func _roof_model(rng: RandomNumberGenerator) -> void:
+	var wall_col: Color = HOUSE_COLORS[(variant / 2) % HOUSE_COLORS.size()]
+	var h := size.y
+	var long_x := size.x >= size.z
+	var L := size.x if long_x else size.z
+	var W := size.z if long_x else size.x
+	var holder := Node3D.new()
+	model.add_child(holder)
+	if not long_x:
+		holder.rotation.y = PI * 0.5
+	var ov := 0.35
+	if variant % 2 == 0:
+		var rise := W * 0.5 * tan(deg_to_rad(28.0))
+		var slope := Vector2(W * 0.5 + ov, rise + ov * tan(deg_to_rad(28.0))).length()
+		var ang := atan2(rise, W * 0.5)
+		var tint := Res.vary(Color(0.5, 0.22, 0.14), 0.12, rng) if rng.randf() < 0.75 else Color(0.36, 0.34, 0.32)
+		for s in [-1.0, 1.0]:
+			var mi := MeshInstance3D.new()
+			mi.mesh = Res.box(Vector3(L + ov * 2.0, 0.09, slope))
+			mi.position = Vector3(0, h + rise * 0.5 - ov * 0.25, s * (W * 0.25 + ov * 0.1))
+			mi.rotation = Vector3(s * ang, 0, 0)
+			holder.add_child(mi)
+			Mats.apply(mi, "roof_tile", Mats.tint_for("roof_tile", tint))
+		# gable ends
+		for e in [-1.0, 1.0]:
+			var g := MeshInstance3D.new()
+			g.mesh = Res.prism(Vector3(W, rise, 0.25))
+			g.position = Vector3(e * (L * 0.5 - 0.12), h + rise * 0.5, 0)
+			g.rotation = Vector3(0, PI * 0.5, 0)
+			holder.add_child(g)
+			Mats.apply(g, "plaster", Mats.tint_for("plaster", wall_col))
+		var rd := MeshInstance3D.new()
+		rd.mesh = Res.box(Vector3(L + ov * 2.0, 0.12, 0.22))
+		rd.position = Vector3(0, h + rise + 0.03, 0)
+		holder.add_child(rd)
+		Mats.apply(rd, "roof_tile", Mats.tint_for("roof_tile", tint.darkened(0.2)))
+		if rng.randf() < 0.6:
+			var ch := MeshInstance3D.new()
+			ch.mesh = Res.box(Vector3(0.6, 1.2, 0.6))
+			ch.position = Vector3(rng.randf_range(-L * 0.3, L * 0.3), h + rise * 0.7, W * 0.18)
+			holder.add_child(ch)
+			Mats.apply(ch, "brick")
+	else:
+		var slab := MeshInstance3D.new()
+		slab.mesh = Res.box(Vector3(L + 0.1, 0.2, W + 0.1))
+		slab.position = Vector3(0, h + 0.1, 0)
+		holder.add_child(slab)
+		Mats.apply(slab, "concrete", Mats.tint_for("concrete", Color(0.52, 0.5, 0.47)))
+		for e in [-1.0, 1.0]:
+			for side in [0, 1]:
+				var p := MeshInstance3D.new()
+				p.mesh = Res.box(Vector3(L + 0.1, 0.55, 0.18) if side == 0 else Vector3(0.18, 0.55, W + 0.1))
+				p.position = Vector3(0, h + 0.47, e * (W * 0.5 - 0.04)) if side == 0 else Vector3(e * (L * 0.5 - 0.04), h + 0.47, 0)
+				holder.add_child(p)
+				Mats.apply(p, "plaster", Mats.tint_for("plaster", wall_col))
+		# what's up there: a water tank, an air conditioner, a dish, washing
+		if rng.randf() < 0.65:
+			var tank := MeshInstance3D.new()
+			tank.mesh = Res.cyl(0.45, 0.45, 1.0, 12)
+			tank.position = Vector3(rng.randf_range(-L * 0.3, L * 0.3), h + 0.75, rng.randf_range(-W * 0.25, W * 0.25))
+			holder.add_child(tank)
+			Mats.apply(tank, "paint", Mats.tint_for("paint", [Color(0.15, 0.17, 0.2), Color(0.75, 0.75, 0.72), Color(0.3, 0.42, 0.55)][rng.randi() % 3]))
+		if rng.randf() < 0.6:
+			var ac := MeshInstance3D.new()
+			ac.mesh = Res.box(Vector3(0.8, 0.55, 0.5))
+			ac.position = Vector3(rng.randf_range(-L * 0.35, L * 0.35), h + 0.47, rng.randf_range(-W * 0.3, W * 0.3))
+			holder.add_child(ac)
+			Mats.apply(ac, "paint", Mats.tint_for("paint", Color(0.78, 0.78, 0.75)))
+		if rng.randf() < 0.45:
+			var dish := MeshInstance3D.new()
+			dish.mesh = Res.cyl(0.38, 0.05, 0.12, 12)
+			dish.position = Vector3(L * 0.35, h + 0.75, -W * 0.3)
+			dish.rotation = Vector3(-0.9, 0.6, 0)
+			holder.add_child(dish)
+			Mats.apply(dish, "paint", Mats.tint_for("paint", Color(0.82, 0.82, 0.8)))
+
+
+var _roof_t := 0.0
+
+
+## A roof is hidden while anyone is inside (so you can see your men), and
+## comes back when they leave.
+func _roof_view(dt: float) -> void:
+	_roof_t -= dt
+	if _roof_t > 0.0:
+		return
+	_roof_t = 0.25
+	var inside := false
+	var half := Vector2(size.x * 0.5 + 0.3, size.z * 0.5 + 0.3)
+	for s in world.soldiers_near(position, half.length()):
+		if s.visible and s.life != Soldier.Life.HIDDEN and Defs.point_in_obb(Vector2(s.position.x, s.position.z), Vector2(position.x, position.z), half, yaw):
+			inside = true
+			break
+	if model.visible == inside:
+		model.visible = not inside
+
+
+## Lays the model at its tilt, resting on the ground (on its side, on its roof...).
+func _apply_tilt() -> void:
+	if model == null:
+		return
+	if tilt == Vector2.ZERO:
+		if skind in ["car", "crates", "wreck"]:
+			model.transform = Transform3D.IDENTITY
+		return
+	var b := Basis.from_euler(Vector3(tilt.x, 0, tilt.y))
+	var lo := INF
+	for cx in [-0.5, 0.5]:
+		for cy in [0.0, 1.0]:
+			for cz in [-0.5, 0.5]:
+				lo = minf(lo, (b * Vector3(cx * size.x, cy * size.y, cz * size.z)).y)
+	model.transform = Transform3D(b, Vector3(0, -lo, 0))
+
+
+## The clients fly the model from where it was to where it is now.
+func _start_toss() -> void:
+	if toss == null or model == null or world.phys == null:
+		return
+	var tz: Array = toss
+	var from_xf := Transform3D(Basis(Vector3.UP, float(tz[1])), tz[0])
+	var mass: float = {"tank": 45000.0, "old_tank": 38000.0, "ifv": 20000.0, "btr": 14000.0}.get(vk, 2500.0 if skind != "crates" else 300.0)
+	world.phys.toss(self, model, from_xf, tz[2], tz[3], Vector3(size.x, maxf(size.y, 0.8), size.z), mass)
+
+
+## A big blast close by throws a car or a stack of crates across the ground:
+## it lands somewhere else, maybe on its side or its roof, and the cover it gave
+## goes with it.
+func toss_from(bp: Vector3, bsize: float) -> void:
+	if gone or not srv or not skind in ["car", "crates"]:
+		return
+	var rng := world.rng
+	var away := Defs.flat(position - bp)
+	var dist := away.length()
+	away = away.normalized() if dist > 0.1 else Defs.dir_of(rng.randf() * TAU)
+	var pw := clampf(bsize * (1.0 - dist / (4.0 + bsize * 3.0)) / 2.6, 0.0, 1.0)
+	if pw < 0.15:
+		return
+	var light := skind == "crates"
+	var up := lerpf(3.0, 9.0 if light else 7.0, pw)
+	var out := lerpf(2.0, 7.0 if light else 5.0, pw)
+	var t_air := 2.0 * up / 19.6
+	var dest := position + away * out * t_air
+	if not Defs.in_map(dest, 4.0) or not world.nav.walkable(dest):
+		return
+	var old_p := position
+	var old_y := yaw
+	var pitch := rng.randf_range(-0.08, 0.08)
+	var roll := rng.randf_range(-0.08, 0.08)
+	var r := rng.randf()
+	if r < 0.35 * pw:
+		roll = PI
+	elif r < 0.7 * pw:
+		roll = PI * 0.5 * (1.0 if rng.randf() < 0.5 else -1.0)
+	var dyaw := rng.randf_range(-1.3, 1.3) * pw
+	world.nav.remove_structure(self)
+	world.terrain.structure_changed(self, false)
+	world._shash_remove(self)
+	position = Vector3(dest.x, 0.0, dest.z)
+	yaw = old_y + dyaw
+	rotation.y = yaw
+	tilt = Vector2(pitch, roll)
+	world._shash_add(self)
+	world.nav.add_structure(self)
+	world.terrain.structure_changed(self, true)
+	_compute_cover_pts()
+	var axis := away.cross(Vector3.UP).normalized()
+	var spin := -axis * (absf(roll) + 1.0) / maxf(t_air, 0.35) + Vector3.UP * dyaw / maxf(t_air, 0.35)
+	toss = [old_p, old_y, away * out + Vector3.UP * up, spin]
+	world.push_props(self, {"pos": position, "yaw": yaw, "tilt": tilt, "toss": toss})
+	if world.has_view:
+		_apply_tilt()
+		_start_toss()
+	var w := world
+	var me := self
+	w.get_tree().create_timer(3.0).timeout.connect(func():
+		if is_instance_valid(me) and not me.gone:
+			me.toss = null
+			w.push_props(me, {"toss": null}))
+
+
+func _destroyed() -> void:
+	match skind:
+		"fob":
+			wrecked = true
+			net_dirty = true
+			world.send_msg(team, "alert", "FOB %s has been wrecked! Repair it with engineers." % sname, position)
+			world.rules.on_fob_changed(team)
+			return
+		"tunnel":
+			for s in inside:
+				if is_instance_valid(s) and not s.gone:
+					s.unhide(position + Vector3(world.rng.randf_range(-2, 2), 0, world.rng.randf_range(-2, 2)))
+			inside.clear()
+		"mg_nest", "watchtower":
+			if gunner and not gunner.gone:
+				gunner.release_mount()
+	world.fx_event([Fx.DEBRIS, position + Vector3(0, 1.0, 0), _main_color(), 14])
+	if size.x > 3.0 and skind in ["house_wall", "tall_wall", "barracks", "factory", "research", "concrete_wall", "medic_tent"]:
+		world.fx_event([Fx.EXPLODE, position + Vector3(0, 0.5, 0), 0.6])
+		var rub := Vector3(size.x * 0.8, 0, 1.6 if size.z < 2.0 else size.z * 0.6)
+		world.call_deferred("spawn", "structure", {"skind": "rubble", "pos": position, "yaw": yaw, "size": rub})
+	if team >= 0 and is_player_building():
+		world.send_msg(team, "alert", "%s destroyed at %s." % [display_name(), Defs.grid_ref(position)], position)
+	world.despawn(self)
+
+
+## Builders and repairers call this. amount = work-seconds.
+func add_work(amount: float) -> bool:
+	if gone:
+		return false
+	if not built:
+		var t: float = Defs.BUILDINGS[skind].time if Defs.BUILDINGS.has(skind) else 10.0
+		progress = minf(1.0, progress + amount / t)
+		hp = maxf(hp, max_hp * progress)
+		net_dirty = true
+		if progress >= 1.0:
+			_complete()
+		return true
+	if hp < max_hp:
+		var t2: float = Defs.BUILDINGS[skind].time if Defs.BUILDINGS.has(skind) else 20.0
+		hp = minf(max_hp, hp + amount * max_hp / (t2 * 0.8))
+		net_dirty = true
+		if wrecked and hp >= max_hp * 0.5:
+			wrecked = false
+			world.send_msg(team, "info", "FOB %s is back in action." % sname, position)
+			world.rules.on_fob_changed(team)
+		return true
+	return false
+
+
+func needs_work() -> bool:
+	return not built or hp < max_hp - 1.0
+
+
+func _complete() -> void:
+	world.stat("built")
+	built = true
+	world.terrain.structure_changed(self, true)
+	progress = 1.0
+	hp = max_hp
+	net_dirty = true
+	_make_body()
+	world.push_props(self, {"built": true, "progress": 1.0})
+	world.rules.on_built(self)
+	if world.has_view:
+		_update_visual()
+
+
+# --- simulation --------------------------------------------------------------------
+
+func sim(dt: float) -> void:
+	if team < 0 or not built:
+		return
+	_tick_t -= dt
+	match skind:
+		"fob":
+			_fob_tick()
+		"barracks", "factory", "research", "helipad":
+			_prod_tick(dt)
+		"medic_tent":
+			_tent_tick()
+		"mg_nest", "watchtower", "hmg_nest", "mortar_pit", "at_post":
+			_mount_tick()
+		"mines":
+			_mine_tick()
+
+
+func _fob_tick() -> void:
+	if _tick_t > 0.0:
+		return
+	_tick_t = 0.5
+	var counts := [0, 0]
+	for s in world.soldiers_near(position, Defs.FOB_RADIUS):
+		if s.life == Soldier.Life.ALIVE and s.team >= 0 and s.team <= 1 and not s.is_bearer():
+			counts[s.team] += 1
+	var enemy := 1 - team
+	var old := cap_prog
+	if counts[enemy] > 0 and counts[team] == 0:
+		# a side's last FOB is its last stand: four times slower to take
+		var last := world.rules.fobs(team).size() <= 1
+		if cap_team != enemy:
+			cap_team = enemy
+			cap_prog = 0.0
+			world.send_msg(team, "alert", ("LAST STAND: FOB %s is being captured! Lose it and we lose the battle." if last else "FOB %s is being captured!") % sname, position)
+			if last:
+				world.fx_event([Fx.SUPPORT, position, 20.0])
+		cap_prog += (2.0 + minf(counts[enemy], 6)) * (0.25 if last else 1.0)
+		if cap_prog >= 100.0:
+			cap_prog = 0.0
+			cap_team = -1
+			world.rules.capture_fob(self, enemy)
+			return
+	elif counts[team] > 0:
+		cap_prog = maxf(0.0, cap_prog - 8.0)
+	else:
+		cap_prog = maxf(0.0, cap_prog - 3.0)
+	if cap_prog <= 0.0:
+		cap_team = -1
+	if cap_prog != old:
+		net_dirty = true
+	if not wrecked:
+		for s in world.soldiers_near(position, Defs.FOB_RADIUS + 2.0):
+			if s.team == team and s.life == Soldier.Life.ALIVE:
+				s.resupply(0.5)
+
+
+func queue_item(peer: int, item: String) -> void:
+	if not built or skind == "research":
+		return
+	var prods: Array = Defs.BUILDINGS[skind].produces[team]
+	if not item in prods or queue.size() >= 6:
+		return
+	var def: Dictionary = Defs.SQUADS[item] if Defs.SQUADS.has(item) else Defs.VEHICLES[item]
+	if not world.rules.spend(team, position, def.cost):
+		world.rules.notify(peer, team, "Not enough supply at a nearby FOB for %s (%d)." % [def.name, def.cost])
+		return
+	queue.append({"item": item, "t": float(def.time), "total": float(def.time), "owner": peer, "cost": def.cost})
+	_queue_changed()
+
+
+func queue_research(peer: int, item: String) -> void:
+	if not built or skind != "research" or not Defs.UPGRADES.has(item):
+		return
+	var def: Dictionary = Defs.UPGRADES[item]
+	if not team in def.teams or world.rules.has_upgrade(team, item) or queue.size() >= 4:
+		return
+	for q in queue:
+		if q.item == item:
+			return
+	if not world.rules.spend(team, position, def.cost):
+		world.rules.notify(peer, team, "Not enough supply for %s (%d)." % [def.name, def.cost])
+		return
+	queue.append({"item": item, "t": float(def.time), "total": float(def.time), "owner": peer, "cost": def.cost})
+	_queue_changed()
+
+
+func cancel_last(_peer: int) -> void:
+	if queue.is_empty():
+		return
+	var q: Dictionary = queue.pop_back()
+	world.rules.refund(team, position, int(q.cost))
+	_queue_changed()
+
+
+func _queue_changed() -> void:
+	queue_items = []
+	for q in queue:
+		queue_items.append(q.item)
+	net_dirty = true
+	world.push_props(self, {"queue": queue_items})
+
+
+func _prod_tick(dt: float) -> void:
+	if queue.is_empty():
+		if queue_frac != 0.0:
+			queue_frac = 0.0
+			net_dirty = true
+		return
+	var q: Dictionary = queue[0]
+	if skind != "research":
+		var capn := 0
+		if Defs.SQUADS.has(q.item):
+			capn = (Defs.SQUADS[q.item].members as Array).size()
+		else:
+			capn = int(Defs.VEHICLES[q.item].cap)
+		if not world.rules.has_cap(team, capn):
+			if prod_status != "cap":
+				prod_status = "cap"
+				world.rules.notify(int(q.owner), team, "Unit cap reached. Build another FOB to raise it.")
+			return
+	prod_status = ""
+	q.t -= dt
+	var f: float = 1.0 - q.t / q.total
+	if absf(f - queue_frac) > 0.02:
+		queue_frac = f
+		net_dirty = true
+	if q.t > 0.0:
+		return
+	queue.pop_front()
+	_queue_changed()
+	if skind == "research":
+		world.rules.apply_upgrade(team, String(q.item))
+		return
+	var dest := rally if rally != Vector3.INF else exit_pos() + front_dir() * 8.0
+	var owner := int(q.owner)
+	if owner > 0 and not Net.players.has(owner):
+		owner = -1 - team
+	if Defs.SQUADS.has(q.item):
+		world.rules.spawn_squad(String(q.item), team, owner, exit_pos(), dest)
+	else:
+		var heli: bool = q.item in ["heli", "gunship"]
+		var spawn_at: Vector3 = position if heli else world.nav.nearest_walkable(exit_pos() + front_dir() * 2.0, true)
+		var v = world.spawn("vehicle", {"vkind": q.item, "team": team, "owner": owner, "pos": spawn_at, "yaw": yaw})
+		if heli:
+			v.heli_home = self
+		else:
+			v.embark_new_squad()
+			v.order_move(dest)
+	world.send_msg(team, "info", "%s ready." % Defs.item_name(String(q.item)), null)
+
+
+func _tent_tick() -> void:
+	if _tick_t > 0.0:
+		return
+	_tick_t = 1.0
+	var keep := []
+	for b in bearers:
+		if is_instance_valid(b) and not b.gone and b.life != Soldier.Life.DEAD and b.team == team:
+			keep.append(b)
+	bearers = keep
+	if bearers.size() < 2:
+		bearer_t -= 1.0
+		if bearer_t <= 0.0:
+			bearer_t = 25.0
+			var s: Soldier = world.spawn("soldier", {"utype": "bearer", "team": team, "owner": -1 - team, "pos": exit_pos(), "name": world.rules.random_name(team)})
+			s.home = self
+			bearers.append(s)
+	var idle := []
+	for b in bearers:
+		if b.life == Soldier.Life.ALIVE and b.task == "":
+			idle.append(b)
+	if idle.size() >= 2 or (idle.size() == 1 and bearers.size() == 1):
+		var cas: Soldier = world.rules.find_casualty(team, position, 120.0)
+		if cas:
+			var partner: Soldier = idle[1] if idle.size() > 1 else null
+			idle[0].start_stretcher(cas, partner, self, true)
+			if partner:
+				partner.start_stretcher(cas, idle[0], self, false)
+			cas.stretcher_claimed = true
+
+
+func _mount_tick() -> void:
+	if _tick_t > 0.0:
+		return
+	_tick_t = 0.7
+	if gunner and (gunner.gone or gunner.life != Soldier.Life.ALIVE or gunner.task != "man" or gunner.task_ent != self):
+		gunner = null
+	if gunner == null:
+		var best: Soldier = null
+		var bd := 6.5
+		var pref := mount_pref()
+		for s in world.soldiers_near(position, 6.5):
+			if s.team != team or s.life != Soldier.Life.ALIVE or s.task != "" or s.is_bearer() or s.is_moving():
+				continue
+			var d: float = Defs.flat(s.position - position).length() - (4.0 if s.utype in pref else 0.0)
+			if d < bd:
+				bd = d
+				best = s
+		if best:
+			best.start_man(self)
+			gunner = best
+
+
+func _mine_tick() -> void:
+	if _tick_t > 0.0:
+		return
+	_tick_t = 0.2
+	for u in world.units_near(position, 2.6):
+		if u.team == team or u.team < 0:
+			continue
+		if u is Soldier and u.life != Soldier.Life.ALIVE:
+			continue
+		var at := u is Vehicle
+		world.combat.explode(position + Vector3(0, 0.2, 0), {"dmg": 150.0, "radius": 4.0, "fling": 9.0, "at": 520.0 if at else 0.0, "team": team, "src": null, "track": 0.85, "size": 1.0})
+		world.despawn(self)
+		return
+
+
+# --- replication ------------------------------------------------------------------
+
+func write_state(b: StreamPeerBuffer) -> void:
+	b.put_u16(int(clampf(hp / maxf(1.0, max_hp), 0.0, 1.0) * 65535.0))
+	b.put_u8(int(progress * 255.0))
+	b.put_8(team)
+	b.put_u8(int(clampf(cap_prog, 0.0, 100.0)))
+	b.put_8(cap_team)
+	var private: bool = world.writing_view >= 0 and world.writing_view != team and team >= 0
+	b.put_u16(0 if private else int(clampf(supply, 0.0, 65535.0)))
+	b.put_u8((1 if built else 0) | (2 if wrecked else 0) | (4 if prod_status == "cap" else 0))
+	b.put_u8(vis_mask)
+	b.put_u8(seen_mask)
+	b.put_u8(0 if private else int(clampf(queue_frac, 0.0, 1.0) * 255.0))
+	b.put_u8(0 if private else mini(255, inside.size()))
+
+
+func read_state(b: StreamPeerBuffer) -> void:
+	hp = b.get_u16() / 65535.0 * max_hp
+	progress = b.get_u8() / 255.0
+	var t := b.get_8()
+	cap_prog = b.get_u8()
+	cap_team = b.get_8()
+	supply = b.get_u16()
+	var f := b.get_u8()
+	vis_mask = b.get_u8()
+	seen_mask = b.get_u8()
+	queue_frac = b.get_u8() / 255.0
+	inside_n = b.get_u8()
+	var was_built := built
+	built = (f & 1) != 0
+	wrecked = (f & 2) != 0
+	prod_status = "cap" if (f & 4) != 0 else ""
+	if t != team:
+		team = t
+		_recolor()
+	if was_built != built or not built:
+		_update_visual()
+	if built and not was_built and not srv and world.has_view:
+		_make_body()
+	if built != was_built and world.terrain:
+		world.terrain.structure_changed(self, true)
+
+
+# --- visuals -----------------------------------------------------------------------
+
+func _process(_dt: float) -> void:
+	var _t0 := Time.get_ticks_usec()
+	_view_process(_dt)
+	if world:
+		world.vp("structures", _t0)
+
+
+func _view_process(_dt: float) -> void:
+	if not world.has_view or model == null:
+		return
+	if skind == "roof":
+		_roof_view(_dt)
+		return
+	var v := true
+	var lt := world.view_team
+	if team >= 0 and lt >= 0 and team != lt:
+		v = ((seen_mask >> lt) & 1) == 1
+		if skind == "mines":
+			v = false
+	if v != _vis_cache:
+		_vis_cache = v
+		visible = v
+	if not built:
+		_update_visual()
+	elif skind in SMOKE_KINDS:
+		_damage_view()
+
+
+var _scaffold: Node3D
+const SCAFFOLD_KINDS := ["barracks", "factory", "research", "medic_tent", "fob", "bunker", "helipad", "watchtower", "depot"]
+
+
+## Construction sites: the building rises out of the ground inside timber
+## scaffolding on a dirt foundation; small defences just rise into place.
+const SMOKE_KINDS := ["barracks", "factory", "research", "medic_tent", "fob", "bunker", "depot", "helipad", "watchtower"]
+var _damage_fx: Node3D
+var _dmg_state := 0
+
+
+## Damaged buildings smoke; badly damaged or wrecked ones burn.
+func _damage_view() -> void:
+	var f := hp / maxf(1.0, max_hp)
+	var st := 0 if f > 0.55 else (1 if f > 0.3 else 2)
+	if wrecked:
+		st = 2
+	if st == _dmg_state:
+		return
+	_dmg_state = st
+	if st > 0 and _damage_fx == null and world.fx and world.fx.vfx:
+		_damage_fx = world.fx.vfx.make_burner(1.2 if skind in ["factory", "barracks", "fob", "depot"] else 0.8)
+		_damage_fx.position = Vector3(foot.x * 0.3, minf(_vis_height() * 0.8, 4.5), -foot.y * 0.2)
+		add_child(_damage_fx)
+	if _damage_fx:
+		world.fx.vfx.set_burning(_damage_fx, [0.0, 0.0, 0.7][st], [0.0, 0.45, 1.0][st])
+
+
+func _update_visual() -> void:
+	if model == null:
+		return
+	if skind == "trench":
+		model.position.y = 0.0
+		var site := model.get_node_or_null("Site")
+		var done := model.get_node_or_null("Done")
+		if site:
+			site.visible = not built
+			for i in 3:
+				var pl := site.get_node_or_null("Pile%d" % i) as Node3D
+				if pl:
+					pl.scale = Vector3(1.4, 0.55, 0.9) * clampf(progress * 1.4, 0.15, 1.0)
+		if done:
+			done.visible = built
+		return
+	if built:
+		model.position.y = 0.0
+		model.scale = Vector3.ONE
+		if _scaffold:
+			_scaffold.queue_free()
+			_scaffold = null
+			if world.fx:
+				world.fx.play([Fx.MELEE, position + Vector3(0, 0.5, 0)])
+	else:
+		var h := _vis_height()
+		model.position.y = -(1.0 - clampf(progress, 0.0, 1.0)) * (h + 0.3)
+		if _scaffold == null and skind in SCAFFOLD_KINDS:
+			_build_scaffold(h)
+
+
+## Which local side (+-z) of a trench faces the enemy.
+func _enemy_side() -> float:
+	var enemy := Vector3(0, 0, -1) if team == 0 else Vector3(0, 0, 1)
+	var lz := Basis(Vector3.UP, yaw) * Vector3(0, 0, 1)
+	return 1.0 if lz.dot(enemy) > 0.0 else -1.0
+
+
+func _vis_height() -> float:
+	match skind:
+		"factory":
+			return 6.2
+		"watchtower":
+			return 7.0
+		"barracks", "research":
+			return 4.5
+		"fob":
+			return 3.5
+		"helipad":
+			return 0.3
+	return maxf(1.0, size.y)
+
+
+func _build_scaffold(h: float) -> void:
+	_scaffold = Node3D.new()
+	add_child(_scaffold)
+	var hx := foot.x + 0.45
+	var hz := foot.y + 0.45
+	var wood := Mats.get_mat("wood")
+	var dirt := MeshInstance3D.new()
+	dirt.mesh = Res.box(Vector3(hx * 2.0 + 0.6, 0.06, hz * 2.0 + 0.6))
+	dirt.material_override = Mats.get_mat("earth")
+	dirt.position.y = 0.03
+	dirt.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	_scaffold.add_child(dirt)
+	if skind == "helipad":
+		return
+	var ph := h + 0.7
+	var nx := maxi(1, int(ceil(hx * 2.0 / 2.6)))
+	var nz := maxi(1, int(ceil(hz * 2.0 / 2.6)))
+	var posts := []
+	for i in nx + 1:
+		var x := -hx + i * (hx * 2.0 / nx)
+		posts.append(Vector3(x, 0, -hz))
+		posts.append(Vector3(x, 0, hz))
+	for i in range(1, nz):
+		var z := -hz + i * (hz * 2.0 / nz)
+		posts.append(Vector3(-hx, 0, z))
+		posts.append(Vector3(hx, 0, z))
+	for p in posts:
+		var pole := MeshInstance3D.new()
+		pole.mesh = Res.cyl(0.05, 0.06, ph, 5)
+		pole.material_override = wood
+		pole.position = p + Vector3(0, ph * 0.5, 0)
+		_scaffold.add_child(pole)
+	var y := 1.3
+	while y < ph:
+		for sd in [-1.0, 1.0]:
+			var a := MeshInstance3D.new()
+			a.mesh = Res.box(Vector3(hx * 2.0, 0.05, 0.3))
+			a.material_override = wood
+			a.position = Vector3(0, y, sd * (hz + 0.12))
+			_scaffold.add_child(a)
+			var b := MeshInstance3D.new()
+			b.mesh = Res.box(Vector3(0.3, 0.05, hz * 2.0))
+			b.material_override = wood
+			b.position = Vector3(sd * (hx + 0.12), y, 0)
+			_scaffold.add_child(b)
+		y += 1.5
+	# a brace on each long side
+	for sd in [-1.0, 1.0]:
+		var br := MeshInstance3D.new()
+		br.mesh = Res.cyl(0.035, 0.035, sqrt(hx * hx * 4.0 + ph * ph), 4)
+		br.material_override = wood
+		br.position = Vector3(0, ph * 0.5, sd * (hz + 0.05))
+		br.rotation = Vector3(0, 0, atan2(hx * 2.0, ph))
+		_scaffold.add_child(br)
+
+
+func _recolor() -> void:
+	if _flag:
+		_flag.material_override = Res.mat(Defs.TEAM_COLORS[team] if team >= 0 else Color.WHITE, 0.8)
+
+
+func _box(p: Vector3, s: Vector3, c: Color, r := 0.0, shadow := true) -> MeshInstance3D:
+	return Res.mi(model, Res.box(s), Res.mat(c), p, Vector3(0, r, 0), shadow)
+
+
+## Model part with a procedural surface (kind from Mats) and optional colour tint.
+func _mk(mesh: Mesh, kind: String, p: Vector3, rot := Vector3.ZERO, col = null, shadow := true) -> MeshInstance3D:
+	var mi := MeshInstance3D.new()
+	mi.mesh = mesh
+	mi.position = p
+	mi.rotation = rot
+	if not shadow:
+		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	model.add_child(mi)
+	Mats.apply(mi, kind, Mats.tint_for(kind, col) if col is Color else Color(1, 1, 1))
+	return mi
+
+
+func _build_model() -> void:
+	model = Node3D.new()
+	add_child(model)
+	var rng := RandomNumberGenerator.new()
+	rng.seed = eid * 7919 + variant
+	var bags: Array = []
+	for p in parts:
+		if skind in ["wire", "tank_trap", "watchtower", "tree", "trench", "car", "wreck", "low_wall", "roof"]:
+			break
+		if p.color == C_SAND and p.s.y <= 1.3 and minf(p.s.x, p.s.z) <= 1.0:
+			bags.append(p)
+			continue
+		var col: Color = p.color
+		if skind in ["house_wall", "rubble", "crates"]:
+			col = Res.vary(col, 0.05, rng)
+		_box(p.p, p.s, col, p.r, skind != "floor")
+	var tc: Color = Defs.TEAM_COLORS[team] if team >= 0 else Color.WHITE
+	match skind:
+		"low_wall":
+			var p: Dictionary = parts[0]
+			if variant % 3 == 1:
+				var n := maxi(2, int(size.x / 1.1))
+				for i in n:
+					var x := (float(i) + 0.5) / n * size.x - size.x * 0.5
+					Res.mi(model, Res.sphere(0.62, 8), Res.mat(Res.vary(p.color, 0.12, rng)), Vector3(x, 0.55, rng.randf_range(-0.1, 0.1)))
+			else:
+				_box(p.p, p.s, p.color)
+				_box(Vector3(0, p.s.y + 0.04, 0), Vector3(p.s.x + 0.06, 0.08, p.s.z + 0.08), p.color.darkened(0.15))
+		"house_wall":
+			pass
+		"floor":
+			pass
+		"roof":
+			_roof_model(rng)
+		"crates":
+			for p in parts:
+				_box(p.p + Vector3(0, p.s.y * 0.5 + 0.01, 0), Vector3(p.s.x * 0.9, 0.04, p.s.z * 0.9), C_WOOD.darkened(0.3), p.r)
+		"car":
+			var ck := VehicleModels.build_car(variant % 5, parts[0].color, variant >= 6)
+			model.add_child(ck.root)
+		"wreck":
+			var wk := VehicleModels.build(vk if vk != "" else ("tank" if variant % 2 == 0 else "old_tank"), -1, eid, true)
+			model.add_child(wk.root)
+			if wk.turret:
+				wk.turret.rotation = Vector3(rng.randf_range(-0.12, 0.08), rng.randf_range(-1.4, 1.4), rng.randf_range(-0.08, 0.08))
+				if rng.randf() < 0.3:
+					wk.turret.position += Vector3(rng.randf_range(-3.0, 3.0), -1.0, rng.randf_range(1.0, 3.0))
+					wk.turret.rotation += Vector3(rng.randf_range(-0.5, 0.5), 0, rng.randf_range(-0.6, 0.6))
+			wk.root.rotation.z = rng.randf_range(-0.04, 0.04)
+		"tree" when variant != 1 and (eid * 2654435761) % 100 < 34:
+			# conifer: straight trunk, stacked drooping cones
+			var ph := rng.randf_range(7.0, 10.0)
+			var needles := Res.vary(Color(0.12, 0.22, 0.13), 0.15, rng)
+			Res.mi(model, Res.cyl(0.1, 0.26, ph, 8), Res.mat(Color(0.3, 0.22, 0.15)), Vector3(0, ph * 0.5, 0))
+			var tiers := rng.randi_range(4, 6)
+			for i in tiers:
+				var k := float(i) / tiers
+				var r := lerpf(2.3, 0.7, k) * rng.randf_range(0.9, 1.1)
+				var cone := Res.mi(model, Res.cyl(0.05, r, 2.2 - k * 0.6, 12), Res.mat(Res.vary(needles, 0.1, rng)), Vector3(0, 2.2 + k * (ph - 2.6), 0))
+				cone.rotation.y = rng.randf() * TAU
+		"tree":
+			var leaf := Res.vary(Color(0.2, 0.32, 0.14), 0.2, rng)
+			var lean := Vector3(rng.randf_range(-0.08, 0.08), 0, rng.randf_range(-0.08, 0.08))
+			Res.mi(model, Res.cyl(0.14, 0.3, 5.2, 8), Res.mat(Color(0.3, 0.22, 0.15)), Vector3(lean.x * 2.6, 2.6, lean.z * 2.6), Vector3(lean.z, 0, -lean.x))
+			var h := rng.randf_range(4.5, 6.0)
+			for i in 3:
+				var a := rng.randf() * TAU
+				var br := Res.mi(model, Res.cyl(0.04, 0.1, 2.2, 5), Res.mat(Color(0.3, 0.22, 0.15)), Vector3(cos(a) * 0.6, h - 1.4 + i * 0.4, sin(a) * 0.6))
+				br.rotation = Vector3(sin(a) * 0.8, 0, -cos(a) * 0.8)
+			var n := rng.randi_range(5, 8)
+			for i in n:
+				var r := rng.randf_range(1.0, 1.9) * (1.0 - float(i) / n * 0.35)
+				var a := rng.randf() * TAU
+				var d := rng.randf_range(0.3, 1.6) * (1.0 - float(i) / n * 0.6)
+				var lm := Res.mi(model, Res.sphere(r, 12), Res.mat(Res.vary(leaf, 0.14, rng)), Vector3(cos(a) * d + lean.x * h, h - 0.6 + float(i) / n * 2.4 + rng.randf_range(-0.3, 0.3), sin(a) * d + lean.z * h))
+				lm.scale = Vector3(1.0, rng.randf_range(0.7, 0.95), 1.0)
+		"fob":
+			# command post: HESCO block under camouflage netting, radio mast, ammo
+			for x in [-2.2, 2.2]:
+				for z in [-2.2, 2.2]:
+					_mk(Res.cyl(0.06, 0.06, 3.6, 6), "wood_dark", Vector3(x * 1.6, 1.8, z * 1.6))
+			var net := MeshInstance3D.new()
+			var nm := PlaneMesh.new()
+			nm.size = Vector2(8.6, 8.6)
+			nm.subdivide_width = 8
+			nm.subdivide_depth = 8
+			net.mesh = nm
+			net.material_override = Mats.netting()
+			net.set_instance_shader_parameter("tint", Color(0.3, 0.34, 0.2) if team != 1 else Color(0.44, 0.39, 0.27))
+			net.position = Vector3(0, 3.45, 0)
+			model.add_child(net)
+			_mk(Res.cyl(0.05, 0.07, 9.0, 6), "steel", Vector3(-1.8, 4.5, -1.8))
+			_mk(Res.cyl(0.015, 0.015, 3.0, 4), "steel", Vector3(-1.8, 8.6, -1.8), Vector3(0, 0, 0.5))
+			_mk(Res.cyl(0.015, 0.015, 3.0, 4), "steel", Vector3(-1.8, 8.6, -1.8), Vector3(0, 0, -0.5))
+			_flag = _box(Vector3(-1.1, 7.6, -1.8), Vector3(1.4, 0.8, 0.04), tc)
+			_mk(Res.cyl(0.03, 0.03, 4.0, 4), "steel", Vector3(1.8, 4.4, 1.6))
+			for i in 4:
+				_mk(Res.box(Vector3(0.8, 0.5, 0.5)), "paint", Vector3(-4.5 + i * 0.9, 0.25, 3.8), Vector3(0, rng.randf_range(-0.1, 0.1), 0), Color(0.3, 0.33, 0.2))
+				_mk(Res.box(Vector3(0.8, 0.4, 0.5)), "paint", Vector3(-4.5 + i * 0.9 + 0.1, 0.7, 3.8), Vector3(0, rng.randf_range(-0.15, 0.15), 0), Color(0.28, 0.31, 0.19))
+			for i in 3:
+				_mk(Res.cyl(0.3, 0.3, 0.9, 12), "steel", Vector3(3.6 + i * 0.65, 0.45, -3.9), Vector3.ZERO, Color(0.3, 0.33, 0.24))
+			_mk(Res.box(Vector3(1.2, 0.9, 0.8)), "paint", Vector3(4.0, 0.45, 3.6), Vector3(0, 0.3, 0), Color(0.33, 0.35, 0.28))
+			_add_label(display_name(), 8.0)
+		"barracks":
+			# plank walls, corrugated gable roof along the long side, windows, porch
+			var long_x := size.x >= size.z
+			var L := size.x if long_x else size.z
+			var W := size.z if long_x else size.x
+			_mk(Res.prism(Vector3(W + 0.7, 1.5, L + 0.6)), "corrugated", Vector3(0, 3.75, 0), Vector3(0, PI / 2 if long_x else 0.0, 0), Color(0.42, 0.44, 0.4))
+			_mk(Res.box(Vector3(size.x + 0.5, 0.25, size.z + 0.5)), "concrete", Vector3(0, 0.12, 0))
+			for side in [-1.0, 1.0]:
+				for i in 3:
+					var t := (float(i) - 1.0) * L * 0.3
+					var wp := Vector3(t, 1.75, side * (W * 0.5 + 0.02)) if long_x else Vector3(side * (W * 0.5 + 0.02), 1.75, t)
+					var ws := Vector3(1.15, 0.95, 0.06) if long_x else Vector3(0.06, 0.95, 1.15)
+					_mk(Res.box(ws), "wood_dark", wp)
+					_mk(Res.box(ws * Vector3(0.82, 0.78, 1.0) + (Vector3(0, 0, 0.02) if long_x else Vector3(0.02, 0, 0))), "glass", wp, Vector3.ZERO, null, false)
+			var front := Vector3(0, 0, -size.z * 0.5)
+			_mk(Res.box(Vector3(1.4, 2.1, 0.08)), "wood_dark", front + Vector3(L * 0.15 if long_x else 0.0, 1.15, -0.02))
+			_mk(Res.box(Vector3(2.4, 0.08, 1.3)), "corrugated", front + Vector3(L * 0.15 if long_x else 0.0, 2.55, -0.6), Vector3(0.2, 0, 0), Color(0.42, 0.44, 0.4))
+			_mk(Res.box(Vector3(2.0, 0.2, 0.9)), "concrete", front + Vector3(L * 0.15 if long_x else 0.0, 0.1, -0.5))
+			_mk(Res.cyl(0.12, 0.12, 1.6, 8), "gunmetal_w", Vector3(-L * 0.3 if long_x else 0.0, 4.6, 0.6))
+			for i in 2:
+				_mk(Res.cyl(0.3, 0.3, 0.9, 12), "steel", front + Vector3(-L * 0.38 + i * 0.66, 0.45, -0.8), Vector3.ZERO, Color(0.3, 0.33, 0.24))
+			_mk(Res.box(Vector3(0.9, 0.6, 0.6)), "paint", Vector3(size.x * 0.5 + 0.35, 0.6, -0.8), Vector3.ZERO, Color(0.55, 0.56, 0.52))
+			_flag = _box(Vector3(size.x * 0.4, 5.4, 0), Vector3(1.0, 0.6, 0.04), tc)
+			_mk(Res.cyl(0.03, 0.03, 2.2, 4), "steel", Vector3(size.x * 0.4 - 0.55, 4.6, 0))
+		"factory":
+			_mk(Res.box(Vector3(size.x + 0.4, 0.3, size.z + 0.4)), "concrete", Vector3(0, 5.15, 0), Vector3.ZERO, Color(0.48, 0.48, 0.46))
+			# sawtooth skylights
+			for i in 3:
+				var zx := -size.x * 0.3 + i * size.x * 0.3
+				_mk(Res.prism(Vector3(size.z * 0.8, 0.9, 1.4)), "corrugated", Vector3(zx, 5.75, 0), Vector3(0, PI / 2, 0), Color(0.45, 0.47, 0.45))
+				_mk(Res.box(Vector3(0.05, 0.75, size.z * 0.78)), "glass", Vector3(zx + 0.36, 5.68, 0), Vector3(0, 0, 0.45), null, false)
+			# roll-up door, loading apron, pipes, vents, stack
+			_mk(Res.box(Vector3(5.0, 4.0, 0.1)), "corrugated", Vector3(0, 2.0, -size.z * 0.5 - 0.03), Vector3(0, 0, PI / 2), Color(0.55, 0.5, 0.36))
+			_mk(Res.box(Vector3(6.4, 0.12, 3.4)), "concrete_floor", Vector3(0, 0.06, -size.z * 0.5 - 1.7))
+			_mk(Res.box(Vector3(5.6, 0.3, 0.4)), "steel", Vector3(0, 4.15, -size.z * 0.5 - 0.2), Vector3.ZERO, Color(0.4, 0.38, 0.33))
+			_mk(Res.cyl(0.18, 0.18, size.z * 0.9, 8), "steel", Vector3(size.x * 0.5 + 0.25, 3.2, 0), Vector3(PI / 2, 0, 0), Color(0.5, 0.42, 0.3))
+			_mk(Res.cyl(0.12, 0.12, size.z * 0.9, 8), "steel", Vector3(size.x * 0.5 + 0.25, 2.7, 0), Vector3(PI / 2, 0, 0), Color(0.35, 0.37, 0.33))
+			for i in 2:
+				_mk(Res.cyl(0.35, 0.35, 0.5, 12), "steel", Vector3(-size.x * 0.25 + i * 1.4, 5.55, size.z * 0.32))
+			_mk(Res.cyl(0.42, 0.55, 5.0, 12), "brick", Vector3(size.x * 0.35, 7.6, size.z * 0.3))
+			_mk(Res.cyl(0.46, 0.46, 0.25, 12), "concrete", Vector3(size.x * 0.35, 10.1, size.z * 0.3))
+			if world.fx and world.fx.vfx and built:
+				var stack := world.fx.vfx.make_burner(0.7)
+				stack.position = Vector3(size.x * 0.35, 10.4, size.z * 0.3)
+				model.add_child(stack)
+				world.fx.vfx.set_burning(stack, 0.0, 0.35)
+			_flag = _box(Vector3(-size.x * 0.4, 6.4, 0), Vector3(1.2, 0.7, 0.04), tc)
+		"medic_tent":
+			for c in model.get_children():
+				c.queue_free()
+			var hz := size.z * 0.5
+			_mk(Res.prism(Vector3(size.z, 2.8, size.x)), "canvas_white", Vector3(0, 1.4, 0), Vector3(0, PI / 2, 0))
+			var ang := atan2(2.8, hz)
+			for sd in [-1.0, 1.0]:
+				var nrm := Vector3(0, hz, sd * 2.8).normalized()
+				var cpos := Vector3(0, 1.4, sd * hz * 0.5) + nrm * 0.03
+				var rot := Vector3(sd * (PI * 0.5 - ang), 0, 0)
+				_mk(Res.box(Vector3(1.9, 0.02, 1.9)), "paint", cpos, rot, Color(0.9, 0.9, 0.88), false)
+				_mk(Res.box(Vector3(1.4, 0.03, 0.42)), "paint", cpos + nrm * 0.01, rot, Color(0.75, 0.08, 0.07), false)
+				_mk(Res.box(Vector3(0.42, 0.03, 1.4)), "paint", cpos + nrm * 0.01, rot, Color(0.75, 0.08, 0.07), false)
+				for x in [-size.x * 0.4, 0.0, size.x * 0.4]:
+					var rope := _mk(Res.cyl(0.01, 0.01, 2.1, 4), "canvas", Vector3(x, 0.75, sd * (hz + 0.75)), Vector3(sd * 0.8, 0, 0), Color(0.6, 0.58, 0.5), false)
+					rope.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+			_mk(Res.box(Vector3(0.06, 2.0, 1.5)), "canvas", Vector3(-size.x * 0.5 - 0.02, 1.0, 0), Vector3.ZERO, Color(0.25, 0.25, 0.22))
+			_mk(Res.box(Vector3(size.x + 0.6, 0.06, size.z + 0.6)), "canvas", Vector3(0, 0.03, 0), Vector3.ZERO, Color(0.3, 0.28, 0.24), false)
+			for i in 2:
+				var sp := Vector3(-size.x * 0.5 - 1.6, 0.35, -1.0 + i * 1.6)
+				_mk(Res.box(Vector3(2.0, 0.05, 0.6)), "canvas", sp, Vector3(0, 0.1, 0), Color(0.35, 0.38, 0.28))
+				_mk(Res.box(Vector3(2.4, 0.05, 0.05)), "wood", sp + Vector3(0, -0.02, 0.32), Vector3(0, 0.1, 0))
+				_mk(Res.box(Vector3(2.4, 0.05, 0.05)), "wood", sp + Vector3(0, -0.02, -0.32), Vector3(0, 0.1, 0))
+			_mk(Res.cyl(0.03, 0.03, 4.2, 4), "steel", Vector3(size.x * 0.5 + 0.8, 2.1, hz + 0.5))
+			_mk(Res.box(Vector3(1.0, 0.65, 0.03)), "paint", Vector3(size.x * 0.5 + 1.32, 3.85, hz + 0.5), Vector3.ZERO, Color(0.92, 0.92, 0.9), false)
+			_mk(Res.box(Vector3(0.6, 0.16, 0.04)), "paint", Vector3(size.x * 0.5 + 1.32, 3.85, hz + 0.5), Vector3.ZERO, Color(0.75, 0.08, 0.07), false)
+			_mk(Res.box(Vector3(0.16, 0.5, 0.04)), "paint", Vector3(size.x * 0.5 + 1.32, 3.85, hz + 0.5), Vector3.ZERO, Color(0.75, 0.08, 0.07), false)
+		"research":
+			_mk(Res.box(Vector3(size.x + 0.3, 0.2, size.z + 0.3)), "concrete", Vector3(0, 3.3, 0), Vector3.ZERO, Color(0.42, 0.42, 0.4))
+			for sd in [-1.0, 1.0]:
+				_mk(Res.box(Vector3(size.x * 0.8, 0.7, 0.05)), "glass", Vector3(0, 2.1, sd * (size.z * 0.5 + 0.02)), Vector3.ZERO, null, false)
+				_mk(Res.box(Vector3(0.05, 0.7, size.z * 0.8)), "glass", Vector3(sd * (size.x * 0.5 + 0.02), 2.1, 0), Vector3.ZERO, null, false)
+			_mk(Res.box(Vector3(1.3, 2.1, 0.08)), "metal_dark", Vector3(-1.5, 1.05, -size.z * 0.5 - 0.03))
+			_mk(Res.cyl(1.3, 0.2, 0.4, 18), "paint", Vector3(1.5, 4.5, 1.5), Vector3(0.6, 0, 0.3), Color(0.82, 0.82, 0.8))
+			_mk(Res.cyl(0.08, 0.08, 1.0, 6), "steel", Vector3(1.5, 3.85, 1.5))
+			_mk(Res.cyl(0.04, 0.04, 4.0, 4), "steel", Vector3(-2.2, 5.3, -2.2))
+			_mk(Res.cyl(0.02, 0.02, 1.6, 4), "steel", Vector3(-2.2, 6.6, -2.2), Vector3(0, 0, PI / 2))
+			_mk(Res.box(Vector3(1.0, 0.5, 0.7)), "paint", Vector3(-1.6, 3.65, 1.4), Vector3.ZERO, Color(0.6, 0.6, 0.58))
+			_mk(Res.box(Vector3(1.6, 1.0, 0.9)), "paint", Vector3(size.x * 0.5 + 1.0, 0.5, 1.5), Vector3.ZERO, Color(0.32, 0.36, 0.26))
+			_mk(Res.cyl(0.06, 0.06, 0.6, 6), "gunmetal_w", Vector3(size.x * 0.5 + 1.4, 1.2, 1.7))
+			_flag = _box(Vector3(-2.0, 6.7, -2.2), Vector3(0.8, 0.5, 0.04), tc)
+		"depot":
+			for i in 6:
+				Res.mi(model, Res.cyl(0.08, 0.08, 1.6, 6), Res.mat(C_WOOD), Vector3(-9 + i * 3.6, 0.8, -6))
+			Res.mi(model, Res.cyl(0.06, 0.06, 9.0, 6), Res.mat(Color(0.7, 0.7, 0.7)), Vector3(0, 4.5, 0))
+			_flag = _box(Vector3(0.9, 8.4, 0), Vector3(1.8, 1.0, 0.05), tc)
+			_add_label(display_name(), 10.0)
+		"sandbags":
+			pass
+		"concrete_wall":
+			_box(Vector3(0, 2.62, 0), Vector3(size.x, 0.05, 0.62), C_CONCRETE.darkened(0.15))
+		"trench":
+			# the hole itself is drawn by the TrenchNet; here: the dig site while it's
+			# being dug, and a little kit along the lip once it's done
+			var site := Node3D.new()
+			site.name = "Site"
+			model.add_child(site)
+			for sz in [-0.75, 0.75]:
+				var tape := Res.mi(site, Res.box(Vector3(size.x, 0.03, 0.05)), Res.mat(Color(0.85, 0.82, 0.7)), Vector3(0, 0.3, sz), Vector3.ZERO, false)
+				tape.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+				for x in [-size.x * 0.5, 0.0, size.x * 0.5]:
+					Res.mi(site, Res.box(Vector3(0.05, 0.4, 0.05)), Res.mat(C_WOOD), Vector3(x, 0.2, sz), Vector3.ZERO, false)
+			var scrape := Res.mi(site, Res.box(Vector3(size.x, 0.04, 1.4)), Res.mat(Color(0.16, 0.12, 0.08)), Vector3(0, 0.02, 0), Vector3.ZERO, false)
+			scrape.name = "Scrape"
+			for i in 3:
+				var pile := Res.mi(site, Res.sphere(0.55, 8), Res.mat(Res.vary(Color(0.24, 0.19, 0.13), 0.05, rng)), Vector3((i - 1) * size.x * 0.33, 0.0, 1.35 * (1.0 if i % 2 == 0 else -1.0)), Vector3.ZERO, false)
+				pile.scale = Vector3(1.4, 0.55, 0.9)
+				pile.name = "Pile%d" % i
+			var done := Node3D.new()
+			done.name = "Done"
+			model.add_child(done)
+			var fsgn := _enemy_side()
+			# kit only along fire bays, kept clear of the corners where the traverses join
+			var kx := size.x * 0.5 - 1.2
+			for i in (rng.randi_range(2, 4) if kx > 0.8 else 0):
+				var bx := rng.randf_range(-kx, kx)
+				Res.mi(done, Res.box(Vector3(0.55, 0.2, 0.32)), Res.mat(Res.vary(C_SAND, 0.05, rng)), Vector3(bx, 0.32, fsgn * 1.05), Vector3(0, rng.randf_range(-0.2, 0.2), 0), false)
+			if kx > 0.8 and rng.randf() < 0.35:
+				Res.mi(done, Res.box(Vector3(0.5, 0.3, 0.3)), Res.mat(Color(0.25, 0.28, 0.2)), Vector3(rng.randf_range(-kx, kx), -0.9, -fsgn * 0.45), Vector3(0, snappedf(rng.randf_range(-0.2, 0.2), 0.1), 0), false)
+		"wire":
+			var n := int(size.x / 1.0)
+			for i in n:
+				var x := (float(i) + 0.5) / n * size.x - size.x * 0.5
+				Res.mi(model, Res.torus(0.38, 0.45), Res.mat(Color(0.45, 0.45, 0.45), 0.4), Vector3(x, 0.45, 0), Vector3(0, PI / 2 + rng.randf_range(-0.3, 0.3), 0), false)
+			for x in [-size.x * 0.5, 0.0, size.x * 0.5]:
+				Res.mi(model, Res.cyl(0.04, 0.04, 1.1, 4), Res.mat(C_WOOD), Vector3(x, 0.55, 0))
+		"mines":
+			for i in 5:
+				Res.mi(model, Res.cyl(0.18, 0.2, 0.08, 8), Res.mat(Color(0.2, 0.22, 0.15)), Vector3(rng.randf_range(-1.2, 1.2), 0.04, rng.randf_range(-1.2, 1.2)), Vector3.ZERO, false)
+			Res.mi(model, Res.cyl(0.03, 0.03, 0.9, 4), Res.mat(C_WOOD), Vector3(1.4, 0.45, -1.4))
+			_box(Vector3(1.4, 0.9, -1.4), Vector3(0.4, 0.3, 0.03), Color(0.8, 0.15, 0.1))
+		"tank_trap":
+			for r in [0.0, PI / 3, -PI / 3]:
+				var b := _box(Vector3(0, 0.6, 0), Vector3(0.18, 0.18, 1.9), C_STEEL)
+				b.rotation = Vector3(0.6, r, 0.0)
+		"mg_nest":
+			var g := Node3D.new()
+			g.position = Vector3(0, 1.05, -1.0)
+			model.add_child(g)
+			Res.mi(g, Res.box(Vector3(0.14, 0.18, 1.3)), Res.mat(Color(0.12, 0.12, 0.12)), Vector3(0, 0, -0.3))
+			Res.mi(g, Res.box(Vector3(0.3, 0.06, 0.06)), Res.mat(Color(0.12, 0.12, 0.12)), Vector3(0, -0.1, 0.1))
+		"hmg_nest":
+			var m2 := Node3D.new()
+			m2.position = Vector3(0, 0.95, -1.1)
+			model.add_child(m2)
+			var dk := Color(0.1, 0.1, 0.1)
+			Res.mi(m2, Res.box(Vector3(0.22, 0.24, 0.65)), Res.mat(dk), Vector3(0, 0.2, 0.15))
+			Res.mi(m2, Res.cyl(0.05, 0.05, 1.3, 8), Res.mat(dk), Vector3(0, 0.22, -0.8), Vector3(PI / 2, 0, 0))
+			Res.mi(m2, Res.cyl(0.08, 0.08, 0.3, 8), Res.mat(dk), Vector3(0, 0.22, -0.3), Vector3(PI / 2, 0, 0))
+			Res.mi(m2, Res.box(Vector3(0.18, 0.16, 0.26)), Res.mat(Color(0.3, 0.33, 0.22)), Vector3(-0.22, 0.12, 0.2))
+			for a in [0.0, 2.1, -2.1]:
+				var leg := Res.mi(m2, Res.box(Vector3(0.04, 0.04, 0.8)), Res.mat(dk), Vector3(sin(a) * 0.3, -0.15, cos(a) * 0.3 + 0.1))
+				leg.rotation = Vector3(0.6, a, 0)
+		"mortar_pit":
+			_box(Vector3(0, 0.02, 0), Vector3(3.2, 0.04, 3.2), Color(0.18, 0.14, 0.1), 0.0, false)
+			var dk2 := Color(0.12, 0.13, 0.1)
+			Res.mi(model, Res.cyl(0.3, 0.3, 0.06, 10), Res.mat(dk2), Vector3(0, 0.06, 0.1))
+			var tubem := Res.mi(model, Res.cyl(0.07, 0.07, 1.25, 8), Res.mat(Color(0.2, 0.23, 0.17)), Vector3(0, 0.55, -0.15))
+			tubem.rotation = Vector3(-0.75, 0, 0)
+			for sx in [-0.25, 0.25]:
+				var bp := Res.mi(model, Res.box(Vector3(0.03, 0.75, 0.03)), Res.mat(dk2), Vector3(sx, 0.33, -0.45))
+				bp.rotation = Vector3(0.2, 0, sx * 0.8)
+			for i in 3:
+				_box(Vector3(1.0 + i * 0.35, 0.15, 1.0), Vector3(0.3, 0.3, 0.5), Color(0.28, 0.32, 0.2))
+		"at_post":
+			var lg := Node3D.new()
+			lg.position = Vector3(0, 0.9, -0.6)
+			model.add_child(lg)
+			var lc := Color(0.25, 0.28, 0.2) if team != 1 else Color(0.33, 0.3, 0.22)
+			var tube_len := 1.4 if team != 1 else 1.9
+			Res.mi(lg, Res.cyl(0.11, 0.11, tube_len, 10), Res.mat(lc), Vector3(0, 0.15, -0.2), Vector3(PI / 2, 0, 0))
+			Res.mi(lg, Res.box(Vector3(0.22, 0.2, 0.3)), Res.mat(Color(0.12, 0.12, 0.12)), Vector3(0.18, 0.2, 0.2))
+			for a in [0.0, 2.1, -2.1]:
+				var leg2 := Res.mi(lg, Res.box(Vector3(0.04, 0.04, 1.0)), Res.mat(Color(0.12, 0.12, 0.12)), Vector3(sin(a) * 0.3, -0.35, cos(a) * 0.3))
+				leg2.rotation = Vector3(0.75, a, 0)
+		"bunker":
+			if team == 1:
+				_box(Vector3(0, 2.75, 0), Vector3(6.2, 0.6, 6.2), Color(0.3, 0.29, 0.18))
+				for i in 5:
+					var lgg := Res.mi(model, Res.cyl(0.14, 0.14, 6.0, 6), Res.mat(C_WOOD.darkened(0.2)), Vector3(-2.4 + i * 1.2, 2.55, 0), Vector3(PI / 2, 0, 0))
+					lgg.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+			else:
+				_box(Vector3(0, 2.62, 0), Vector3(5.2, 0.12, 5.2), C_CONCRETE.darkened(0.2))
+				for sx in [-2.9, 2.9]:
+					bags.append({"p": Vector3(sx, 0.4, -2.0), "s": Vector3(0.9, 0.8, 1.5), "r": 0.0})
+			_box(Vector3(0, 0.02, 0), Vector3(4.4, 0.04, 4.4), Color(0.3, 0.29, 0.27), 0.0, false)
+		"watchtower":
+			for p in parts:
+				_box(p.p, p.s, C_WOOD if p.s.y > 1.0 else C_WOOD.lightened(0.05), p.r)
+			Res.mi(model, Res.prism(Vector3(3.6, 1.0, 3.6)), Res.mat(Color(0.3, 0.32, 0.22)), Vector3(0, 6.6, 0))
+			for x in [-1.3, 1.3]:
+				for z in [-1.3, 1.3]:
+					Res.mi(model, Res.cyl(0.05, 0.05, 1.9, 4), Res.mat(C_WOOD), Vector3(x, 5.9, z))
+		"helipad":
+			var white := Color(0.9, 0.9, 0.85)
+			_box(Vector3(0, 0.06, 0), Vector3(size.x, 0.12, size.z), Color(0.4, 0.4, 0.38), 0.0, false)
+			_box(Vector3(-1.2, 0.13, 0), Vector3(0.5, 0.02, 3.6), white, 0.0, false)
+			_box(Vector3(1.2, 0.13, 0), Vector3(0.5, 0.02, 3.6), white, 0.0, false)
+			_box(Vector3(0, 0.13, 0), Vector3(2.4, 0.02, 0.5), white, 0.0, false)
+			for x in [-4.6, 4.6]:
+				for z in [-4.6, 4.6]:
+					Res.mi(model, Res.sphere(0.12, 6), Res.mat(Color(1, 0.6, 0.2), 0.5, 3.0, true), Vector3(x, 0.2, z), Vector3.ZERO, false)
+			Res.mi(model, Res.cyl(0.04, 0.04, 3.0, 4), Res.mat(Color(0.7, 0.7, 0.7)), Vector3(4.8, 1.5, -4.8))
+			_box(Vector3(5.3, 2.85, -4.8), Vector3(1.0, 0.35, 0.3), Color(1.0, 0.5, 0.1))
+			_flag = _box(Vector3(-4.8, 0.5, 4.8), Vector3(0.6, 0.6, 0.6), tc)
+		"tunnel":
+			Res.mi(model, Res.cyl(1.0, 1.0, 0.04, 14), Res.mat(Color(0.03, 0.03, 0.03)), Vector3(0, 0.04, 0), Vector3.ZERO, false)
+			Res.mi(model, Res.torus(1.0, 1.6), Res.mat(C_DIRT), Vector3(0, 0.08, 0))
+			_box(Vector3(0, 0.25, -1.05), Vector3(2.0, 0.2, 0.2), C_WOOD)
+			_box(Vector3(0, 0.25, 1.05), Vector3(2.0, 0.2, 0.2), C_WOOD)
+			_box(Vector3(-0.9, 0.7, 0), Vector3(0.15, 1.4, 0.15), C_WOOD)
+			_box(Vector3(0.9, 0.7, 0), Vector3(0.15, 1.4, 0.15), C_WOOD)
+			_box(Vector3(0, 1.4, 0), Vector3(2.0, 0.15, 0.15), C_WOOD)
+			_flag = _box(Vector3(0, 1.75, 0), Vector3(0.5, 0.3, 0.03), tc)
+	if not bags.is_empty():
+		_bag_walls(bags, rng)
+	_skin(model)
+	var keep: Array = [_flag] if _flag else []
+	for nm in ["Site", "Done"]:
+		var sub := model.get_node_or_null(nm) as Node3D
+		if sub:
+			keep.append(sub)
+			Mats.merge_static(sub, [])
+	Mats.merge_static(model, keep)
+	# freshly killed vehicles burn, then smoulder
+	if variant >= 6 and skind in ["wreck", "car", "rubble"] and world.fx and world.fx.vfx:
+		var bn := world.fx.vfx.make_burner(1.4 if skind == "wreck" else 0.9)
+		bn.position = Vector3(0, 1.3 if skind == "wreck" else 0.8, 0)
+		add_child(bn)
+		world.fx.vfx.burn_for(bn, 35.0 if skind == "wreck" else 20.0, 45.0)
+
+
+static var _bag_mesh: ArrayMesh
+
+
+## A pillow: a sphere pushed out towards a box (superellipsoid), analytic normals.
+static func _pillow() -> ArrayMesh:
+	var segs := 12
+	var rings := 7
+	var k := 0.42
+	var e := 2.0 / k
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var grid := []
+	for r in rings + 1:
+		var row := []
+		var th := PI * float(r) / rings
+		for sg in segs + 1:
+			var ph := TAU * float(sg) / segs
+			var n := Vector3(sin(th) * cos(ph), cos(th), sin(th) * sin(ph))
+			var p := Vector3(signf(n.x) * pow(absf(n.x), k), signf(n.y) * pow(absf(n.y), k * 1.6), signf(n.z) * pow(absf(n.z), k)) * 0.5
+			var g := Vector3(signf(p.x) * pow(absf(p.x) * 2.0, e - 1.0), signf(p.y) * pow(absf(p.y) * 2.0, e / 1.6 - 1.0), signf(p.z) * pow(absf(p.z) * 2.0, e - 1.0))
+			row.append([p, g.normalized() if g.length() > 0.0001 else n])
+		grid.append(row)
+	for r in rings:
+		for sg in segs:
+			var q := [grid[r][sg], grid[r][sg + 1], grid[r + 1][sg + 1], grid[r + 1][sg]]
+			for idx in [0, 2, 1, 0, 3, 2]:
+				st.set_normal(q[idx][1])
+				st.add_vertex(q[idx][0])
+	return st.commit()
+
+
+## Stacks individual sandbags (running bond, slight jitter) to fill each part box.
+func _bag_walls(list: Array, rng: RandomNumberGenerator) -> void:
+	if _bag_mesh == null:
+		_bag_mesh = _pillow()
+	var xf: Array[Transform3D] = []
+	var cols: Array[Color] = []
+	for p in list:
+		var s: Vector3 = p.s
+		var along_x := s.x >= s.z
+		var length := s.x if along_x else s.z
+		var depth := s.z if along_x else s.x
+		var rows := maxi(1, int(round(s.y / 0.19)))
+		var rh := s.y / rows
+		var deep := maxi(1, int(round(depth / 0.42)))
+		var n := maxi(1, int(ceil(length / 0.5)))
+		var bl := length / n
+		var pb := Basis(Vector3.UP, float(p.r))
+		for row in rows:
+			var shift := 0.5 * bl if row % 2 == 1 else 0.0
+			var cnt := n if row % 2 == 0 else n - 1
+			if cnt <= 0:
+				continue
+			for d in deep:
+				var dz := (float(d) + 0.5) / deep * depth - depth * 0.5
+				for i in cnt:
+					var a := (float(i) + 0.5) * bl - length * 0.5 + shift
+					var lp := Vector3(a, -s.y * 0.5 + rh * (row + 0.5), dz) if along_x else Vector3(dz, -s.y * 0.5 + rh * (row + 0.5), a)
+					lp += Vector3(rng.randf_range(-0.03, 0.03), rng.randf_range(-0.015, 0.015), rng.randf_range(-0.03, 0.03))
+					var yaw := (0.0 if along_x else PI / 2) + rng.randf_range(-0.09, 0.09)
+					var b := pb * Basis(Vector3.UP, yaw) * Basis(Vector3.RIGHT, rng.randf_range(-0.05, 0.05))
+					b = b.scaled_local(Vector3(bl * 1.04, rh * 1.12, minf(0.42, depth / deep) * 1.05))
+					xf.append(Transform3D(b, p.p + pb * lp))
+					var k := rng.randf_range(0.8, 1.1)
+					var olive := rng.randf() < 0.18
+					cols.append(Color(k * (0.86 if olive else 1.0), k * rng.randf_range(0.97, 1.02), k * (0.78 if olive else rng.randf_range(0.92, 1.04))))
+	var mm := MultiMesh.new()
+	mm.transform_format = MultiMesh.TRANSFORM_3D
+	mm.use_colors = true
+	mm.mesh = _bag_mesh
+	mm.instance_count = xf.size()
+	for i in xf.size():
+		mm.set_instance_transform(i, xf[i])
+		mm.set_instance_color(i, cols[i])
+	var mmi := MultiMeshInstance3D.new()
+	mmi.multimesh = mm
+	mmi.material_override = Mats.get_mat("bag")
+	model.add_child(mmi)
+
+
+# --- surfaces --------------------------------------------------------------------
+
+const SURF_REFS := [
+	[C_STONE, "stone"], [C_CONCRETE, "concrete"], [C_SAND, "sandbag"], [C_WOOD, "wood"],
+	[C_DIRT, "earth"], [C_STEEL, "steel"], [C_OLIVE, "canvas"], [Color(0.86, 0.85, 0.8), "canvas_white"],
+	[Color(0.45, 0.46, 0.44), "corrugated"], [Color(0.42, 0.31, 0.2), "wood_dark"],
+	[Color(0.3, 0.33, 0.2), "paint"], [Color(0.58, 0.37, 0.28), "brick"], [Color(0.28, 0.38, 0.18), "foliage"],
+]
+
+
+## Swaps the flat colour materials of the model for procedural surfaces,
+## keeping each part's colour as a tint.
+func _skin(n: Node) -> void:
+	for c in n.get_children():
+		if c is MeshInstance3D and c != _flag:
+			var sm := (c as MeshInstance3D).material_override as StandardMaterial3D
+			if sm and not sm.emission_enabled and sm.shading_mode != BaseMaterial3D.SHADING_MODE_UNSHADED and sm.albedo_color.a > 0.99:
+				var col := sm.albedo_color
+				var kind := _surf_kind(col, c)
+				if kind == "foliage":
+					c.material_override = Mats.foliage()
+					c.set_instance_shader_parameter("tint", col)
+				else:
+					Mats.apply(c, kind, Mats.tint_for(kind, col))
+		_skin(c)
+
+
+func _surf_kind(c: Color, mi: MeshInstance3D) -> String:
+	var v := maxf(c.r, maxf(c.g, c.b))
+	var dark := v < 0.16
+	match skind:
+		"house_wall":
+			return "plaster"
+		"floor":
+			return "floor_tiles"
+		"rubble":
+			return "rubble"
+		"crates":
+			return "wood" if not dark else "metal_dark"
+		"car":
+			if c.b > c.r and v < 0.25:
+				return "glass"
+			return "rubber" if dark else "car_paint"
+		"wreck":
+			return "burnt"
+		"tree":
+			return "foliage" if c.g > c.r * 1.2 else "bark"
+		"factory", "depot":
+			if mi.mesh is BoxMesh and c.r > 0.2 and absf(c.r - c.g) > 0.05:
+				return "corrugated"
+		"fob":
+			if mi.mesh is BoxMesh and (mi.mesh as BoxMesh).size.y > 2.0:
+				return "hesco"
+		"helipad":
+			return "concrete" if not dark else "metal_dark"
+		"medic_tent":
+			if c.r > 0.7 and c.g < 0.2:
+				return "paint"
+		"barracks":
+			if mi.mesh is PrismMesh:
+				return "corrugated"
+			if mi.mesh is BoxMesh and (mi.mesh as BoxMesh).size.y > 2.5:
+				return "wood_painted"
+		"bunker":
+			if team == 1 and c.r > c.b * 1.6 and v < 0.5:
+				return "wood_dark"
+		"trench":
+			if mi.mesh is BoxMesh and (mi.mesh as BoxMesh).size.y > 0.5 and c.r < 0.4 and c.r > c.b * 1.5:
+				return "earth"
+	if dark:
+		return "gunmetal_w"
+	var best := "paint"
+	var bd := 1e9
+	var cn := Vector3(c.r, c.g, c.b) / v
+	for r in SURF_REFS:
+		var rc: Color = r[0]
+		var rv := maxf(rc.r, maxf(rc.g, rc.b))
+		var d := (Vector3(rc.r, rc.g, rc.b) / rv).distance_squared_to(cn) + 0.25 * (v - rv) * (v - rv)
+		if d < bd:
+			bd = d
+			best = r[1]
+	return best
+
+
+func _add_label(_text: String, h: float) -> void:
+	label_h = h
