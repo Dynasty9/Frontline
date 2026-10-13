@@ -582,6 +582,27 @@ func crew_aim(aim_yaw: float, firing: bool, dt: float) -> void:
 		el.rotation.x = lerpf(el.rotation.x, 0.0, 1.0 - exp(-dt * 10.0))
 
 
+## The gun's muzzle in world space right now (view), INF without a model.
+func crew_muzzle_world() -> Vector3:
+	if _mg.is_empty():
+		return Vector3.INF
+	return (_mg.body as Node3D).global_transform * (_mg.muzzle as Vector3)
+
+
+## Where the gunner's body goes (view): behind the grips wherever the gun is
+## laid, swinging round the pintle with it and riding its kick.
+func crew_stance(ground_y: float) -> Transform3D:
+	var g: Dictionary = WeaponModels.GUNS[mg_kind()]
+	var tr: Node3D = _mg.traverse
+	var body: Node3D = _mg.body
+	var gb := Basis(Vector3.UP, yaw + tr.rotation.y)
+	var piv := position + Basis(Vector3.UP, yaw) * mg_pivot_local()
+	var back := (g.grip_r as Vector3).z + (0.34 if variant == 1 else 0.5) + body.position.z * 0.8
+	var p := piv + gb * Vector3(0, 0, back)
+	p.y = ground_y
+	return Transform3D(gb, p)
+
+
 ## The gun's handles in world space: [right hand, left hand].
 func crew_grips() -> Array:
 	if _mg.is_empty():

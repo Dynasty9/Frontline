@@ -137,6 +137,7 @@ func _on_game_start(s: Dictionary) -> void:
 
 var _fx_next := 2.0
 var _trace_t := 0.0
+var _tf_t := 0.0
 var _trace_f: FileAccess = null
 var _fx_i := 0
 
@@ -487,6 +488,21 @@ func _process(_dt: float) -> void:
 		set_meta("manual_open", true)
 		var mq := String(args["manual"]).split(",")
 		world.hud.manual.open(mq[0], mq[1] if mq.size() > 1 else "", int(mq[2]) if mq.size() > 2 else -1)
+	# --test-fire: every armed man (and every gunner on a gun) fires straight
+	# ahead a few times a second through the real firing path (muzzle tests)
+	if args.has("test-fire") and world.srv and world.time > 2.0 and world.time >= _tf_t:
+		_tf_t = world.time + 0.09
+		for s in world.soldiers:
+			if s.life != Soldier.Life.ALIVE or s.cur_weapon().is_empty():
+				continue
+			s.mag = maxi(s.mag, 5)
+			s._shoot(s.eye_pos() + Defs.dir_of(s.rotation.y) * 40.0, null, false, false)
+		for v in world.vehicles:
+			var vmg: String = v.vdef.get("mg", "")
+			if v.gone or vmg == "":
+				continue
+			var vd := Defs.dir_of(v.rotation.y + v.turret_yaw)
+			world.combat.fire_bullet(v, v.turret_pos() + vd * 1.5, v.turret_pos() + vd * 40.0, null, Defs.WEAPONS[vmg], 1.0)
 	# --pan=vx,vz: drift the camera (metres per second) - shimmer tests
 	if args.has("pan") and world.cam and world.time > 1.5:
 		var pv := String(args["pan"]).split(",")

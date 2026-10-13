@@ -10,6 +10,8 @@ static var _cache := {}
 var root: Node3D
 var burnt := false
 var turret: Node3D
+var mg_tip: Node3D  # the machine gun's muzzle (shots start here)
+var gun_tip: Node3D  # the main gun's muzzle
 var rotor: Node3D
 var tail_rotor: Node3D
 var blur: MeshInstance3D
@@ -198,6 +200,14 @@ func _cyl(parent: Node3D, r0: float, r1: float, h: float, pos: Vector3, rot: Vec
 	return _add(parent, Res.cyl(r0, r1, h, segs), kind, col, pos, rot, Vector3.ONE, shadow)
 
 
+## An empty marker at a muzzle.
+func _tip(parent: Node3D, pos: Vector3) -> Node3D:
+	var n := Node3D.new()
+	n.position = pos
+	parent.add_child(n)
+	return n
+
+
 func _pivot(parent: Node3D, pos: Vector3) -> Node3D:
 	var n := Node3D.new()
 	n.position = pos
@@ -268,6 +278,10 @@ func _tank(team: int) -> void:
 	_cyl(turret, 0.1, 0.13, 3.9, Vector3(0, 0.38, -3.85), Vector3(PI / 2, 0, 0), "paint", Color(0.3, 0.33, 0.24), 12)
 	_cyl(turret, 0.17, 0.17, 0.75, Vector3(0, 0.38, -3.25), Vector3(PI / 2, 0, 0), "paint", Color(0.3, 0.33, 0.24), 12)
 	_cyl(turret, 0.13, 0.13, 0.18, Vector3(0, 0.38, -5.75), Vector3(PI / 2, 0, 0), "gunmetal_w", null, 10)
+	gun_tip = _tip(turret, Vector3(0, 0.38, -5.86))
+	# coaxial MG beside the main gun
+	_cyl(turret, 0.022, 0.022, 0.32, Vector3(0.34, 0.3, -2.28), Vector3(PI / 2, 0, 0), "gunmetal_w", null, 6, false)
+	mg_tip = _tip(turret, Vector3(0.34, 0.3, -2.45))
 	# commander cupola + MG, loader hatch, gunner sight
 	_cyl(turret, 0.36, 0.38, 0.26, Vector3(0.55, 0.86, 0.35), Vector3.ZERO, cam, null, 14)
 	_cyl(turret, 0.3, 0.3, 0.06, Vector3(0.55, 1.02, 0.35), Vector3(0.0, 0, -0.5), cam, null, 12)
@@ -311,6 +325,9 @@ func _old_tank(team: int) -> void:
 	_box(turret, Vector3(0.62, 0.48, 0.5), Vector3(0, 0.32, -1.18), cam)
 	_cyl(turret, 0.09, 0.11, 3.6, Vector3(0, 0.34, -3.15), Vector3(PI / 2, 0, 0), "paint", Color(0.44, 0.4, 0.29), 10)
 	_cyl(turret, 0.14, 0.14, 0.4, Vector3(0, 0.34, -4.1), Vector3(PI / 2, 0, 0), "paint", Color(0.44, 0.4, 0.29), 10)
+	gun_tip = _tip(turret, Vector3(0, 0.34, -4.32))
+	_cyl(turret, 0.02, 0.02, 0.28, Vector3(0.24, 0.28, -1.5), Vector3(PI / 2, 0, 0), "gunmetal_w", null, 6, false)
+	mg_tip = _tip(turret, Vector3(0.24, 0.28, -1.65))
 	_box(turret, Vector3(0.25, 0.25, 0.25), Vector3(-0.45, 0.62, -1.0), "gunmetal_w")
 	_cyl(turret, 0.3, 0.32, 0.18, Vector3(-0.45, 0.72, 0.35), Vector3.ZERO, cam, null, 12)
 	_cyl(turret, 0.28, 0.28, 0.16, Vector3(0.5, 0.72, 0.35), Vector3.ZERO, cam, null, 12)
@@ -366,6 +383,7 @@ func _technical(team: int, seed: int, aa := false) -> void:
 			_cyl(turret, 0.08, 0.08, 0.25, Vector3(sx, 0.78, -2.3), Vector3(PI / 2 + 0.15, 0, 0), "gunmetal_w", null, 8, false)
 		_box(turret, Vector3(0.5, 0.35, 0.03), Vector3(-0.45, 0.75, -0.3), "steel", Color(0.32, 0.3, 0.25))
 		_box(turret, Vector3(0.25, 0.3, 0.3), Vector3(0.45, 0.5, 0.3), "paint", Color(0.3, 0.33, 0.22))
+		mg_tip = _tip(turret, Vector3(0, 0.81, -2.44))
 		_team_mark(m, team, Vector3(0.93, 1.2, 1.35), Vector3(0.03, 0.2, 0.8))
 		return
 	# heavy MG on a pintle
@@ -374,6 +392,7 @@ func _technical(team: int, seed: int, aa := false) -> void:
 	_box(turret, Vector3(0.18, 0.2, 0.75), Vector3(0, 0.78, -0.05), "gunmetal_w")
 	_cyl(turret, 0.035, 0.035, 1.15, Vector3(0, 0.8, -0.95), Vector3(PI / 2, 0, 0), "gunmetal_w", null, 6)
 	_cyl(turret, 0.06, 0.06, 0.2, Vector3(0, 0.8, -1.45), Vector3(PI / 2, 0, 0), "gunmetal_w", null, 6)
+	mg_tip = _tip(turret, Vector3(0, 0.8, -1.56))
 	_box(turret, Vector3(0.75, 0.5, 0.04), Vector3(0, 0.92, -0.35), "steel", Color(0.32, 0.3, 0.25))
 	_box(turret, Vector3(0.12, 0.12, 0.25), Vector3(0.14, 0.7, 0.15), "paint", Color(0.3, 0.33, 0.22))
 	_team_mark(m, team, Vector3(0.93, 1.2, 1.35), Vector3(0.03, 0.2, 0.8))
@@ -473,6 +492,8 @@ func _humvee(team: int) -> void:
 		_box(turret, Vector3(0.05, 0.45, 0.5), Vector3(s * 0.55, 0.4, -0.3), cam, null, Vector3(0, s * 0.4, 0))
 	_box(turret, Vector3(0.18, 0.2, 0.75), Vector3(0, 0.45, -0.05), "gunmetal_w")
 	_cyl(turret, 0.035, 0.035, 1.15, Vector3(0, 0.47, -0.95), Vector3(PI / 2, 0, 0), "gunmetal_w", null, 6)
+	_cyl(turret, 0.05, 0.035, 0.1, Vector3(0, 0.47, -1.55), Vector3(PI / 2, 0, 0), "gunmetal_w", null, 6, false)
+	mg_tip = _tip(turret, Vector3(0, 0.47, -1.6))
 	_team_mark(m, team, Vector3(1.1, 1.0, 1.4), Vector3(0.03, 0.2, 0.8))
 
 
@@ -499,6 +520,7 @@ func _ifv(team: int) -> void:
 	_add(turret, loft("ifv_tur", [-0.85, -1.0, 0.85, -1.0, 0.95, 0.9, -0.95, 0.9], [-0.7, -0.75, 0.7, -0.75, 0.8, 0.8, -0.8, 0.8], 0.0, 0.62), cam, null, Vector3.ZERO)
 	_cyl(turret, 0.06, 0.07, 2.4, Vector3(0, 0.32, -2.1), Vector3(PI / 2, 0, 0), "gunmetal_w", null, 8)
 	_cyl(turret, 0.1, 0.1, 0.3, Vector3(0, 0.32, -3.25), Vector3(PI / 2, 0, 0), "gunmetal_w", null, 8)
+	mg_tip = _tip(turret, Vector3(0, 0.32, -3.42))
 	_box(turret, Vector3(0.36, 0.42, 1.3), Vector3(-1.08, 0.38, 0.1), cam)
 	_cyl(turret, 0.2, 0.2, 0.2, Vector3(0.45, 0.72, 0.35), Vector3.ZERO, cam, null, 10)
 	_box(turret, Vector3(0.3, 0.22, 0.35), Vector3(-0.45, 0.72, -0.4), cam)
@@ -525,6 +547,7 @@ func _apc(team: int) -> void:
 	_add(turret, loft("apc_tur", [-0.6, -0.7, 0.6, -0.7, 0.7, 0.6, -0.7, 0.6], [-0.45, -0.5, 0.45, -0.5, 0.55, 0.5, -0.55, 0.5], 0.0, 0.5), cam, null, Vector3.ZERO)
 	_cyl(turret, 0.06, 0.07, 2.2, Vector3(0, 0.28, -1.75), Vector3(PI / 2, 0, 0), "gunmetal_w", null, 8)
 	_cyl(turret, 0.09, 0.09, 0.3, Vector3(0, 0.28, -2.8), Vector3(PI / 2, 0, 0), "gunmetal_w", null, 8)
+	mg_tip = _tip(turret, Vector3(0, 0.28, -2.97))
 	_team_mark(m, team, Vector3(1.32, 1.6, 2.2), Vector3(0.03, 0.25, 0.8))
 
 
@@ -675,6 +698,7 @@ func _heli(team: int, attack: bool) -> void:
 		turret = _pivot(m, Vector3(0, 0.8, -2.25))
 		_cyl(turret, 0.13, 0.15, 0.4, Vector3.ZERO, Vector3.ZERO, "gunmetal_w", null, 10)
 		_cyl(turret, 0.035, 0.035, 1.3, Vector3(0, -0.1, -0.6), Vector3(PI / 2, 0, 0), "gunmetal_w", null, 6, false)
+		mg_tip = _tip(turret, Vector3(0, -0.1, -1.27))
 		_team_mark(m, team, Vector3(0, 1.98, 3.6), Vector3(0.3, 0.04, 1.2))
 		_cyl(m, 0.1, 0.1, 0.45, Vector3(0, 2.6, 0.0), Vector3.ZERO, "gunmetal_w", null, 10)
 		rotor = _pivot(m, Vector3(0, 2.9, 0.0))

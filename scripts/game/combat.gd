@@ -169,7 +169,7 @@ func fire_bullet(shooter: Entity, muzzle: Vector3, aim: Vector3, tgt: Entity, w:
 		for s in world.soldiers_near(shooter.position, 75.0):
 			if s.team != shooter.team and s.team >= 0 and s.squad and s.life == Soldier.Life.ALIVE:
 				s.squad.report(shooter)
-	world.fx_event([Fx.SHOT, muzzle, end, impact, String(w.snd)])
+	world.fx_event([Fx.SHOT, muzzle, end, impact, String(w.snd), shooter.eid])
 
 
 func _suppress(a: Vector3, b: Vector3, team: int, amount: float, hit_tgt: Entity) -> void:

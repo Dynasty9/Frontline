@@ -2967,6 +2967,20 @@ func read_state(b: StreamPeerBuffer) -> void:
 	doing_ent = b.get_u16()
 
 
+var _was_on_gun := false
+
+
+## Where his shots visibly leave his weapon (view): the crew-served gun's
+## muzzle when he's on one, otherwise the muzzle of the weapon in his hands.
+func muzzle_world() -> Vector3:
+	var cm := crew_mount()
+	if cm != null:
+		return cm.crew_muzzle_world()
+	if model == null or not is_visible_in_tree():
+		return Vector3.INF
+	return model.muzzle_world()
+
+
 ## The crew-served gun this man is working (server: his mount once he's on
 ## it; clients: what he's reported manning, once he's in place behind it).
 func crew_mount() -> Structure:
@@ -3040,7 +3054,8 @@ func _view_process(dt: float) -> void:
 	# off-screen men are posed a few times a second, distant ones every other
 	# or third frame, close ones every frame
 	_pose_dt += dt
-	if world.cam:
+	var cm := crew_mount() if life == Life.ALIVE else null
+	if world.cam and cm == null:
 		var every := 1
 		if not world.cam.cam.is_position_in_frustum(position + Vector3(0, 1.0, 0)):
 			every = 6
@@ -3061,21 +3076,26 @@ func _view_process(dt: float) -> void:
 		_view_speed = float(debug_pose[3])
 	var fwd := Defs.dir_of(rotation.y)
 	var back := sp > 0.3 and mv.normalized().dot(fwd) < -0.3
-	if srv:
-		# between simulation steps (see Entity.ip_offset)
-		var off := ip_offset()
-		if _ip_moving or not model.transform.is_equal_approx(off):
-			model.transform = off
 	model.over_wall = (flags & F_OVERWALL) != 0
-	var cm := crew_mount() if life == Life.ALIVE else null
+	var on_gun := false
 	if cm != null:
 		cm.crew_aim(rotation.y, (flags & F_SHOOTING) != 0, pdt)
 		var gr: Array = cm.crew_grips()
-		model.crew = not gr.is_empty() and posture != Post.PRONE and not (cm.variant == 1 and posture == Post.CROUCH)
-		if model.crew:
+		on_gun = not gr.is_empty() and posture != Post.PRONE and not (cm.variant == 1 and posture == Post.CROUCH)
+		if on_gun:
+			# he's on the gun: behind its grips wherever it's laid, hands on them
+			model.global_transform = cm.crew_stance(position.y)
 			model.crew_r = gr[0]
 			model.crew_l = gr[1]
-	else:
-		model.crew = false
+	model.crew = on_gun
+	if not on_gun:
+		if srv:
+			# between simulation steps (see Entity.ip_offset)
+			var off := ip_offset()
+			if _ip_moving or not model.transform.is_equal_approx(off):
+				model.transform = off
+		elif _was_on_gun:
+			model.transform = Transform3D.IDENTITY
+	_was_on_gun = on_gun
 	model.pose(pdt, life, posture, act, _view_speed, back, (flags & F_SHOOTING) != 0)
 	ring.visible = selected

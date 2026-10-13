@@ -158,6 +158,9 @@ func scenario(sname: String) -> void:
 					continue
 				var bay := _spawn(["mg_nest", "hmg_nest"][i % 2], sp.pos, float(sp.yaw), 0 if i < 2 else 1, {"built": true, "variant": 1})
 				_crew(bay, a if i < 2 else b)
+			# something for each side's guns to shoot at, out in front
+			r.spawn_squad("fighter_cell", 1, b, Vector3(-10, 0, 38), Vector3(-10, 0, 46))
+			r.spawn_squad("rifle_squad", 0, a, Vector3(10, 0, 38), Vector3(10, 0, 46))
 		"drone":
 			r.spawn_squad("fpv_team", 1, b, Vector3(0, 0, -105))
 			var tank: Vehicle = world.spawn("vehicle", {"vkind": "tank", "team": 0, "owner": a, "pos": Vector3(0, 0, 0), "yaw": 0.0})

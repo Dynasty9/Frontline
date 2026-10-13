@@ -559,7 +559,7 @@ func _fire_cannon() -> void:
 	var hit_pos: Vector3 = r.position if not r.is_empty() else aim
 	if hit_pos.y < 0.1:
 		hit_pos.y = 0.1
-	world.fx_event([Fx.CANNON, from, hit_pos])
+	world.fx_event([Fx.CANNON, from, hit_pos, eid])
 	world.stat("cannon")
 	last_fire_t = world.time
 	world.combat.explode(hit_pos, {"dmg": 160.0, "radius": 5.5, "fling": 10.0, "at": 320.0, "src": self, "team": team, "size": 1.4, "track": 0.3, "dir": dir, "struct_mult": 2.5})
@@ -1069,12 +1069,25 @@ func _view_process(dt: float) -> void:
 			ring.global_position = Vector3(position.x, 0.06, position.z)
 
 
+var _vm: VehicleModels = null
+
+
+## Where a shot leaves this vehicle's model right now (view): the tip of the
+## machine gun, or of the main gun. INF when there's no model to ask.
+func muzzle_world(main_gun := false) -> Vector3:
+	if _vm == null or model == null or not model.is_visible_in_tree():
+		return Vector3.INF
+	var tip: Node3D = _vm.gun_tip if main_gun else _vm.mg_tip
+	return tip.global_position if tip else Vector3.INF
+
+
 func _build_model() -> void:
 	var tc: Color = Defs.TEAM_COLORS[team] if team >= 0 else Color.WHITE
 	var k := VehicleModels.build(vkind, team, eid)
 	model = k.root
 	add_child(model)
 	turret = k.turret
+	_vm = k
 	rotor = k.rotor
 	tail_rotor = k.tail_rotor
 	blades = k.blades

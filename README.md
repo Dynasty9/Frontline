@@ -422,7 +422,8 @@ Pass these after `--` on the command line:
 --trace=path.csv                                      log every man twice a second (position, posture, phase) for plotting
 --manual=CATEGORY[,ENTRY[,SIDE]]                      open the field manual on a page (in a battle)
 --pan=VX,VZ / --set=key:value,...                     drift the camera (shimmer tests) / override single settings
---scenario=guns                                       every machine-gun emplacement and trench bay, crewed
+--scenario=guns                                       every machine-gun emplacement and trench bay, crewed, with targets
+--test-fire                                           every armed man, gunner and vehicle fires ahead (muzzle tests)
 --seed=N                                              (with --aivai) the same map every run
 --dump-structs                                        list every built structure when --quit-after fires
 FL_DEBUG_HPA=1 (env)                                  benchmark hierarchical vs flat paths at start-up

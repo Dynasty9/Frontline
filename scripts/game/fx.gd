@@ -152,7 +152,7 @@ func play(ev: Array) -> void:
 				world.director.note(ev[1], 1.0)
 	match int(ev[0]):
 		SHOT:
-			_shot(ev[1], ev[2], int(ev[3]), String(ev[4]))
+			_shot(_muzzle_of(ev, 5, ev[1], false), ev[2], int(ev[3]), String(ev[4]))
 		EXPLODE:
 			_explode(ev[1], float(ev[2]))
 		SAY:
@@ -166,7 +166,7 @@ func play(ev: Array) -> void:
 		DEBRIS:
 			_debris(ev[1], ev[2], int(ev[3]))
 		CANNON:
-			_cannon(ev[1], ev[2])
+			_cannon(_muzzle_of(ev, 3, ev[1], true), ev[2])
 		RICOCHET:
 			_ricochet(ev[1], ev[2])
 		SOUND:
@@ -192,6 +192,25 @@ func play(ev: Array) -> void:
 		FAR_SOUND:
 			var dist := world.cam.focus_pos.distance_to(ev[3]) if world.cam and ev.size() > 3 else 0.0
 			Sfx.play_far(String(ev[1]), float(ev[2]), 1.0, dist)
+
+
+## The muzzle as the shooter's model has it on this screen (the barrel tip of
+## the rifle in his hands, the mounted gun he's on, the vehicle's gun), falling
+## back to where the server fired from.
+func _muzzle_of(ev: Array, idx: int, fallback: Vector3, main_gun: bool) -> Vector3:
+	if ev.size() <= idx:
+		return fallback
+	var src = world.entity(int(ev[idx]))
+	if src == null:
+		return fallback
+	var mp := Vector3.INF
+	if src is Vehicle:
+		mp = src.muzzle_world(main_gun)
+	elif src is Soldier:
+		mp = src.muzzle_world()
+	if mp == Vector3.INF or mp.distance_to(fallback) > 4.0:
+		return fallback
+	return mp
 
 
 func _shot(from: Vector3, to: Vector3, impact: int, snd: String) -> void:

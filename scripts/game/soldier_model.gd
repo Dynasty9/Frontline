@@ -39,6 +39,7 @@ var _baked := false
 var ragdoll = null  # Ragdoll while the physics has the body
 var ragdoll_done := false  # the body lies where the physics left it
 var over_wall := false  # firing over low cover
+var muzzle_local := Vector3(0, 0.01, -0.8)  # the weapon's muzzle in gun space
 var crew := false  # working a mounted gun: his own slung, hands on its grips
 var crew_r := Vector3.ZERO  # world positions of the mounted gun's handles
 var crew_l := Vector3.ZERO
@@ -261,6 +262,8 @@ func build(utype: String, team: int, seed: int) -> void:
 	look = "rifle"
 	var w: String = Defs.UNITS[utype].weapon if Defs.UNITS.has(utype) else ""
 	fore_z = {"smg": -0.3, "lmg": -0.55, "pistol": -0.1}.get(w, -0.42)
+	muzzle_local = {"rifle": Vector3(0, 0.01, -0.81), "ak": Vector3(0, 0.015, -0.78), "smg": Vector3(0, 0.0, -0.29),
+		"lmg": Vector3(0, 0.0, -0.85) if team == 1 else Vector3(0, 0.0, -0.77)}.get(w, Vector3(0, 0, -0.6))
 	match w:
 		"rifle":
 			# carbine: receiver, rail with an optic, handguard, collapsible stock
@@ -953,6 +956,8 @@ func _apply(dt: float, k: float) -> void:
 		ik_r = true
 		t_torso.x = minf(t_torso.x, -0.32)
 		t_head.x = maxf(t_head.x, 0.22)
+		if last_act == Soldier.Act.SHOOT:
+			t_torso.x += randf_range(-0.035, 0.02)  # shoulders shaking with the gun
 	if ik_l or ik_r:
 		_solve_hands()
 	tumble = Vector3.ZERO
@@ -978,6 +983,16 @@ func _apply(dt: float, k: float) -> void:
 
 
 var _alive_pose := true
+
+
+## Where the shot leaves the weapon in his hands right now (world space), or
+## INF if he isn't visibly holding one.
+func muzzle_world() -> Vector3:
+	if pistol and pistol.is_visible_in_tree():
+		return pistol.global_transform * Vector3(0, 0.0, -0.16)
+	if gun and gun.is_visible_in_tree() and look != "op":
+		return gun.global_transform * muzzle_local
+	return Vector3.INF
 
 
 func life_alive_pose() -> bool:
