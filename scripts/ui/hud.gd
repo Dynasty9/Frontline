@@ -54,6 +54,7 @@ var over_panel: PanelContainer
 var help_panel: PanelContainer
 var menu_panel: PanelContainer
 var settings_panel: SettingsPanel
+var manual: FieldManual
 var support_box: VBoxContainer
 var _support_btns := {}  # kind -> Button
 var _support_key := ""
@@ -253,6 +254,16 @@ func _ready() -> void:
 	settings_panel.visible = false
 	settings_panel.closed.connect(func(): settings_panel.visible = false)
 	root.add_child(settings_panel)
+	# the field manual sits above everything (F2's hidden HUD included)
+	manual = FieldManual.new()
+	manual.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	manual.offset_left = 40
+	manual.offset_right = -40
+	manual.offset_top = 36
+	manual.offset_bottom = -36
+	manual.visible = false
+	manual.closed.connect(func(): manual.visible = false)
+	add_child(manual)
 	add_message("system", "Battle started. You command the %s. F1 for controls, Esc for the menu." % (Defs.TEAM_NAMES[world.local_team] if world.local_team >= 0 else "camera (observer)"))
 
 
@@ -354,6 +365,7 @@ func _build_menu() -> void:
 	vb.add_child(t)
 	for it in [["Resume", func(): menu_panel.visible = false],
 			["Settings", func(): menu_panel.visible = false; settings_panel.visible = true],
+			["Field Manual", func(): menu_panel.visible = false; manual.visible = true],
 			["Controls", func(): menu_panel.visible = false; toggle_help()],
 			["Leave Battle", _leave]]:
 		var b := Button.new()
@@ -370,7 +382,14 @@ func _leave() -> void:
 		main.return_to_menu("")
 
 
+func toggle_manual() -> void:
+	manual.visible = not manual.visible
+
+
 func toggle_menu() -> void:
+	if manual.visible:
+		manual.visible = false
+		return
 	if settings_panel.visible:
 		settings_panel.visible = false
 		return

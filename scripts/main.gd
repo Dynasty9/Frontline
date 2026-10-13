@@ -283,6 +283,11 @@ func return_to_menu(msg: String) -> void:
 
 func _process(_dt: float) -> void:
 	if world == null:
+		# --manual=category[,entry[,side]]: open the field manual on a page
+		if args.has("manual") and menu and menu.manual and not has_meta("manual_open") and Time.get_ticks_msec() > 800:
+			set_meta("manual_open", true)
+			var mp := String(args["manual"]).split(",")
+			menu.manual.open(mp[0], mp[1] if mp.size() > 1 else "", int(mp[2]) if mp.size() > 2 else -1)
 		if args.has("menu-shot") and Time.get_ticks_msec() > float(args.get("shot-at", 2.5)) * 1000.0 and not _shot_done:
 			_shot_done = true
 			get_viewport().get_texture().get_image().save_png(String(args["menu-shot"]))
@@ -477,6 +482,11 @@ func _process(_dt: float) -> void:
 					break
 				want -= 1
 		world.set_meta("decor_focused", true)
+	# --manual=category[,entry[,side]] in a battle: the field manual open on that page
+	if args.has("manual") and world.hud and world.hud.manual and world.time > 1.0 and not has_meta("manual_open"):
+		set_meta("manual_open", true)
+		var mq := String(args["manual"]).split(",")
+		world.hud.manual.open(mq[0], mq[1] if mq.size() > 1 else "", int(mq[2]) if mq.size() > 2 else -1)
 	# --pan=vx,vz: drift the camera (metres per second) - shimmer tests
 	if args.has("pan") and world.cam and world.time > 1.5:
 		var pv := String(args["pan"]).split(",")

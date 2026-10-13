@@ -748,6 +748,25 @@ func _house_wall_detail(rng: RandomNumberGenerator) -> void:
 				_mk(Res.box(Vector3(0.88, 2.06, 0.05)), "paint", hinge + out + Vector3(0, 1.05, 0), Vector3(0, a, 0), dc, false)
 
 
+## A building's model on its own, without a world (the field manual's preview).
+static func preview_model(kind: String, side: int, v := 0) -> Node3D:
+	var st := Structure.new()
+	st.skind = kind
+	st.team = side
+	st.variant = v
+	st.built = true
+	if Defs.BUILDINGS.has(kind):
+		var s: Vector2 = Defs.BUILDINGS[kind].size
+		st.size = Vector3(s.x, 3.0, s.y)
+	st._define_parts()
+	st._build_model()
+	st._update_visual()
+	var m := st.model
+	st.remove_child(m)
+	st.free()
+	return m
+
+
 ## A tree. Its id decides the look, so every peer builds the same one and
 ## the tree that falls when it is felled is the one that stood: broadleaf
 ## (a third are conifers); variant 1 is a small orchard tree.
@@ -1675,7 +1694,7 @@ func _build_model() -> void:
 				_mk(Res.cyl(0.35, 0.35, 0.5, 12), "steel", Vector3(-size.x * 0.25 + i * 1.4, 5.55, size.z * 0.32))
 			_mk(Res.cyl(0.42, 0.55, 5.0, 12), "brick", Vector3(size.x * 0.35, 7.6, size.z * 0.3))
 			_mk(Res.cyl(0.46, 0.46, 0.25, 12), "concrete", Vector3(size.x * 0.35, 10.1, size.z * 0.3))
-			if world.fx and world.fx.vfx and built:
+			if world != null and world.fx and world.fx.vfx and built:
 				var stack := world.fx.vfx.make_burner(0.7)
 				stack.position = Vector3(size.x * 0.35, 10.4, size.z * 0.3)
 				model.add_child(stack)
@@ -1855,7 +1874,7 @@ func _build_model() -> void:
 			Mats.merge_static(sub, [])
 	Mats.merge_static(model, keep)
 	# freshly killed vehicles burn, then smoulder
-	if variant >= 6 and skind in ["wreck", "car", "rubble"] and world.fx and world.fx.vfx:
+	if variant >= 6 and skind in ["wreck", "car", "rubble"] and world != null and world.fx and world.fx.vfx:
 		var bn := world.fx.vfx.make_burner(1.4 if skind == "wreck" else 0.9)
 		bn.position = Vector3(0, 1.3 if skind == "wreck" else 0.8, 0)
 		add_child(bn)

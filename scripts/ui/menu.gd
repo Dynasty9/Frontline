@@ -20,6 +20,7 @@ var chat_edit: LineEdit
 
 var join_row: HBoxContainer
 var settings_panel: SettingsPanel
+var manual: FieldManual
 var backdrop: MenuScene
 
 
@@ -95,6 +96,7 @@ func _ready() -> void:
 	join_row.add_child(port_spin)
 	join_row.add_child(_btn("Connect", _join))
 	main_box.add_child(join_row)
+	main_box.add_child(_big("Field Manual", "Every soldier, weapon, vehicle and work, with its numbers", func(): manual.visible = true))
 	main_box.add_child(_big("Settings", "Graphics, performance overlay, audio", func(): settings_panel.visible = true))
 	main_box.add_child(_big("Quit", "", func(): get_tree().quit()))
 	var gap2 := Control.new()
@@ -173,6 +175,15 @@ func _ready() -> void:
 	settings_panel.visible = false
 	settings_panel.closed.connect(func(): settings_panel.visible = false)
 	add_child(settings_panel)
+	manual = FieldManual.new()
+	manual.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	manual.offset_left = 40
+	manual.offset_right = -40
+	manual.offset_top = 36
+	manual.offset_bottom = -36
+	manual.visible = false
+	manual.closed.connect(func(): manual.visible = false)
+	add_child(manual)
 
 	Net.lobby_updated.connect(_refresh)
 	Net.lobby_chat.connect(func(t): chat_log.append_text(t + "\n"))

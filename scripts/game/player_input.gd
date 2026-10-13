@@ -253,6 +253,9 @@ func _key(k: InputEventKey) -> void:
 		KEY_F1:
 			if world.hud:
 				world.hud.toggle_help()
+		KEY_F4:
+			if world.hud:
+				world.hud.toggle_manual()
 		KEY_C:
 			if world.director:
 				world.director.active = not world.director.active
