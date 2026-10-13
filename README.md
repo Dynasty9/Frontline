@@ -183,6 +183,11 @@ Settings are saved to `user://settings.cfg`.
   mines, trucks on the road, production, attack plans), shown in the message log with a map ping.
 
 **Interface**
+- Boot splash and intro in Frontline's key art; the intro lifts once the menu's 3D backdrop has drawn.
+- Main menu: grouped entries that say what they do, and a New Operation panel to pick a side (Coalition, Rebels
+  or Observe, with each side's doctrine) and the time of day. The backdrop is a crewed .50 cal position at dusk.
+- Loading screen before each battle: the operation's name, mission, side, area and conditions, a field note and
+  the build's stages; it holds while the first frames compile behind it, then fades into the battlefield.
 - **Order of battle** (O): every unit down the left, grouped into infantry, support teams and vehicles, each
   with its symbol, callsign, a pip per man, what it has been told to do and where an attack has got to ("Base of
   fire on D3", "Assaulting D3"), and alerts for contact, pinned, casualties and low ammunition. Click to select
@@ -296,9 +301,18 @@ Settings are saved to `user://settings.cfg`.
   moving shadows. In the rain, streaks fall around the camera, splashes hit the ground, puddles reflect the sky and
   lightning flashes are followed by thunder.
 - Ambient sound: wind that grows as you zoom out, and a distant-battle rumble that swells with the fighting.
-- Soldiers: helmets cut above the brow (rim, rails, NVG mount, headset, eye protection), faces with a jaw, nose and
-  ears, shaped torsos, plate carriers with their cummerbund, straps and pouches, battle belts and knee pads; the
-  irregulars wear chest rigs, watch caps, berets, ball caps and shemaghs.
+- Art direction: minimal modern-military hard-surface. Every box is chamfered so its edges catch the light; the
+  palette is muted (low-contrast camo at a realistic scale, near-solid vehicle paint, parkerized gunmetal, faded
+  civilian paint, weathered concrete, subdued ID panels and faded flags).
+- Soldiers: the uniform in one colour and the kit over it in another (coyote or ranger green), as real units dress:
+  helmet with rails, NVG mount and headset, plate carrier with flapped mag pouches, admin pouch, radio and
+  tourniquet, battle belt, holster, knee pads, gloves, laced boots, a slim hydration carrier or an assault pack;
+  rebels in muted clothes with AK chest rigs and caps, berets or shemaghs. Weapons at real size: M4A1 with ACOG,
+  Mk18, AKM, M249, PKM, AT4, RPG-7 with its grenade, 60 mm mortar.
+- Carried kit sits in standard attachment sockets (forward -Z, top +Y, origin at the balance point): launchers
+  slung diagonally across the back, or level on the right shoulder with both hands on the grips to fire.
+- Vehicles: real tyres and hubs, segmented skirts, bins, sights, lights; the Humvee is an M1151, the BTR a
+  boat-hulled 8x8; each vehicle is merged per moving part (hull, turret, wheels, rotor).
 - Every surface is a procedural material: plaster with brick showing through, concrete panels, corrugated metal
   with rust streaks, plank walls, HESCO baskets, camouflage on uniforms and vehicles, canvas, bark. Sandbag walls are
   stacked from individual lumpy bags, FOBs sit under camouflage netting that throws dappled shadows, trees sway.
@@ -364,6 +378,9 @@ game/ragdoll.gd         the jointed ragdoll
 game/decor.gd           street furniture built on each client (merged per chunk, wires, street lights)
 game/weapon_models.gd   crew-served machine guns and their tripods (M240B, M2HB, PKM, DShKM)
 ui/field_manual.gd      the field manual: catalog of everything with stats and 3D previews
+ui/curtain.gd           the intro and loading screens
+game/bevel_mesh.gd      chamfered boxes (every Res.box thicker than a sheet)
+assets/                 splash.png and backdrop.png (made by a script from the emblem and a topographic map)
 game/fx.gd              tracers, impacts, who is saying what, debris; drives vfx.gd
 game/vfx.gd             GPU particle explosions, smoke, fire, decals, shockwaves (+ their shaders)
 game/atmosphere.gd      sky, sun, fog, ground shader, post effects, moods
@@ -423,6 +440,9 @@ Pass these after `--` on the command line:
 --manual=CATEGORY[,ENTRY[,SIDE]]                      open the field manual on a page (in a battle)
 --pan=VX,VZ / --set=key:value,...                     drift the camera (shimmer tests) / override single settings
 --scenario=guns                                       every machine-gun emplacement and trench bay, crewed, with targets
+--curtain                                             show the intro / loading screens in an automated run
+--menu-op=0|1|-1                                      open the New Operation panel on that side
+--startup-trace                                       print the first frames' timings
 --test-fire                                           every armed man, gunner and vehicle fires ahead (muzzle tests)
 --seed=N                                              (with --aivai) the same map every run
 --dump-structs                                        list every built structure when --quit-after fires
