@@ -11,15 +11,15 @@ const PRESETS := {
 		"upscaler": 1, "grass": 0, "effects": 0, "decals": false, "ragdolls": false, "post": false, "dof": false, "ssr": false, "lod": 0, "aniso": 1},
 	"medium": {"shadows": 2, "ssao": true, "ao_q": 1, "ssil": false, "gi": false, "vol_fog": false, "glow": true, "aa": 2, "scale": 1.0,
 		"upscaler": 1, "grass": 1, "effects": 1, "decals": true, "ragdolls": true, "post": true, "dof": false, "ssr": false, "lod": 1, "aniso": 2},
-	"high": {"shadows": 2, "ssao": true, "ao_q": 2, "ssil": true, "gi": false, "vol_fog": true, "glow": true, "aa": 4, "scale": 1.0,
+	"high": {"shadows": 2, "ssao": true, "ao_q": 2, "ssil": true, "gi": false, "vol_fog": true, "glow": true, "aa": 6, "scale": 1.0,
 		"upscaler": 1, "grass": 2, "effects": 2, "decals": true, "ragdolls": true, "post": true, "dof": false, "ssr": true, "lod": 2, "aniso": 3},
-	"ultra": {"shadows": 3, "ssao": true, "ao_q": 3, "ssil": true, "gi": true, "vol_fog": true, "glow": true, "aa": 4, "scale": 1.0,
-		"upscaler": 2, "grass": 2, "effects": 2, "decals": true, "ragdolls": true, "post": true, "dof": true, "ssr": true, "lod": 2, "aniso": 4},
+	"ultra": {"shadows": 3, "ssao": true, "ao_q": 3, "ssil": true, "gi": true, "vol_fog": true, "glow": true, "aa": 7, "scale": 1.0,
+		"upscaler": 1, "grass": 2, "effects": 2, "decals": true, "ragdolls": true, "post": true, "dof": true, "ssr": true, "lod": 2, "aniso": 4},
 }
 
 const LABELS := {
 	"shadows": ["Off", "Low", "High", "Ultra"],
-	"aa": ["Off", "FXAA", "MSAA 2x", "MSAA 4x", "TAA"],
+	"aa": ["Off", "FXAA", "MSAA 2x", "MSAA 4x", "TAA", "SMAA", "MSAA 2x + SMAA", "MSAA 4x + SMAA"],
 	"grass": ["Off", "Sparse", "Dense"],
 	"effects": ["Low", "Medium", "High"],
 	"fps_cap": ["Unlimited", "60", "120", "144", "240"],
@@ -47,7 +47,7 @@ const FPS_CAPS := [0, 60, 120, 144, 240]
 
 var preset := "high"
 var v := {
-	"shadows": 2, "ssao": true, "ssil": true, "gi": false, "vol_fog": true, "glow": true, "aa": 4, "scale": 1.0,
+	"shadows": 2, "ssao": true, "ssil": true, "gi": false, "vol_fog": true, "glow": true, "aa": 6, "scale": 1.0,
 	"grass": 2, "effects": 2, "decals": true, "ragdolls": true, "post": true, "dof": false,
 	"vsync": true, "fps_cap": 0, "perf": 1, "shake": true, "volume": 0.8, "ui_scale": 1.0, "mood": "random", "labels": true, "lyr_units": true, "lyr_orders": false, "lyr_intel": true, "lyr_ranges": false, "orbat": true,
 	"ao_q": 2, "upscaler": 1, "sharpen": 0.2, "ssr": true, "lod": 2, "aniso": 3,
@@ -95,8 +95,9 @@ func apply_global() -> void:
 	var vp := get_tree().root if get_tree() else null
 	if vp:
 		var aa := int(v.aa)
-		vp.msaa_3d = [Viewport.MSAA_DISABLED, Viewport.MSAA_DISABLED, Viewport.MSAA_2X, Viewport.MSAA_4X, Viewport.MSAA_DISABLED][aa]
-		vp.screen_space_aa = Viewport.SCREEN_SPACE_AA_FXAA if aa == 1 else Viewport.SCREEN_SPACE_AA_DISABLED
+		vp.msaa_3d = [Viewport.MSAA_DISABLED, Viewport.MSAA_DISABLED, Viewport.MSAA_2X, Viewport.MSAA_4X, Viewport.MSAA_DISABLED,
+			Viewport.MSAA_DISABLED, Viewport.MSAA_2X, Viewport.MSAA_4X][clampi(aa, 0, 7)]
+		vp.screen_space_aa = Viewport.SCREEN_SPACE_AA_FXAA if aa == 1 else (Viewport.SCREEN_SPACE_AA_SMAA if aa >= 5 else Viewport.SCREEN_SPACE_AA_DISABLED)
 		vp.use_taa = aa == 4
 		var sc: float = clampf(float(v.scale), 0.5, 1.0)
 		vp.scaling_3d_scale = sc
@@ -165,6 +166,7 @@ func save() -> void:
 		return
 	var cf := ConfigFile.new()
 	cf.set_value("main", "preset", preset)
+	cf.set_value("main", "cfg_version", 2)
 	for k in v:
 		cf.set_value("main", k, v[k])
 	cf.save(PATH)
@@ -177,3 +179,11 @@ func _load() -> void:
 	preset = String(cf.get_value("main", "preset", preset))
 	for k in v:
 		v[k] = cf.get_value("main", k, v[k])
+	# v2: temporal AA (and FSR 2 at native scale) smeared the procedural
+	# surfaces whenever the camera moved; move saved setups to MSAA + SMAA
+	if int(cf.get_value("main", "cfg_version", 1)) < 2:
+		if int(v.aa) == 4:
+			v.aa = 6 if preset != "ultra" else 7
+		if int(v.upscaler) == 2 and float(v.scale) >= 0.99:
+			v.upscaler = 1
+		save()

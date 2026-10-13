@@ -410,7 +410,9 @@ void vertex() {
 void fragment() {
 	// leafy, ragged edges where the surface turns away (inside shows dark through the gaps)
 	float rim = 1.0 - abs(dot(NORMAL, VIEW));
-	float hn = hash(floor(lp * 15.0 + rnd * 5.0)) * 0.6 + hash(floor(lp * 31.0)) * 0.4;
+	float bpx = max(length(fwidth(lp)), 1e-4);
+	float hn = mix(0.5, hash(floor(lp * 15.0 + rnd * 5.0)), smoothstep(1.5, 5.0, (1.0 / 15.0) / bpx)) * 0.6
+		+ mix(0.5, hash(floor(lp * 31.0)), smoothstep(1.5, 5.0, (1.0 / 31.0) / bpx)) * 0.4;
 	if (rim > 0.2 && hn < (rim - 0.2) * 1.25) {
 		discard;
 	}

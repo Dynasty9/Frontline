@@ -44,6 +44,14 @@ func _ready() -> void:
 		Settings.v["perf"] = int(args.perf)
 	if args.has("preset"):
 		Settings.apply_preset(String(args.preset), false)
+	# --set=key:value,key:value overrides single settings (render A/B tests)
+	if args.has("set"):
+		for kv in String(args["set"]).split(","):
+			var pair := kv.split(":")
+			if pair.size() == 2:
+				var cur = Settings.v.get(pair[0])
+				Settings.v[pair[0]] = (pair[1] == "true") if cur is bool else (float(pair[1]) if cur is float else int(pair[1]))
+		Settings.apply_global()
 	if args.has("novsync"):
 		Settings.v["vsync"] = false
 		Settings.apply_global()
@@ -469,6 +477,10 @@ func _process(_dt: float) -> void:
 					break
 				want -= 1
 		world.set_meta("decor_focused", true)
+	# --pan=vx,vz: drift the camera (metres per second) - shimmer tests
+	if args.has("pan") and world.cam and world.time > 1.5:
+		var pv := String(args["pan"]).split(",")
+		world.cam.focus(world.cam.focus_pos + Vector3(float(pv[0]), 0, float(pv[1])) * get_process_delta_time())
 	# --follow=team[,n]: keep the camera on that side's nth infantry squad (tactics review)
 	if args.has("follow") and world.cam and world.time > 0.5:
 		var fw := String(args["follow"]).split(",")

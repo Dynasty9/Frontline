@@ -951,7 +951,8 @@ void fragment() {
 	float paved = step(town.x, wpos.x) * step(wpos.x, town.z) * step(town.y, wpos.z) * step(wpos.z, town.w) * country;
 	if (paved > 0.5) {
 		vec3 asph = vec3(0.085, 0.085, 0.082) * (0.82 + 0.36 * n) * (0.9 + 0.2 * n2);
-		float crack = smoothstep(0.018, 0.0, abs(n3 - 0.5)) * smoothstep(0.45, 0.6, n2);
+		float rpx = max(length(fwidth(wpos.xz)), 1e-4);
+		float crack = smoothstep(0.018, 0.0, abs(n3 - 0.5)) * smoothstep(0.45, 0.6, n2) * smoothstep(1.5, 5.0, 0.3 / rpx);
 		asph = mix(asph, asph * 0.5, crack);
 		float patch = smoothstep(0.64, 0.67, texture(detail_tex, wpos.xz / 7.0 + 0.3).r);
 		asph = mix(asph, asph * 0.72 + vec3(0.004), patch * 0.7);

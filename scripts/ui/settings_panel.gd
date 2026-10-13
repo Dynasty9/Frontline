@@ -89,7 +89,7 @@ func _ready() -> void:
 		["check", "ssr", "Screen-space reflections", null, "Puddles and wet ground reflect fire, flares and the sky."],
 		["check", "vol_fog", "Volumetric fog & smoke", null, "Light shafts, haze and smoke screens you can't see through."],
 		["head", "", "Anti-aliasing & upscaling"],
-		["option", "aa", "Anti-aliasing", Settings.LABELS.aa, "TAA is smoothest; MSAA keeps the image sharpest."],
+		["option", "aa", "Anti-aliasing", Settings.LABELS.aa, "MSAA + SMAA keeps textures sharp and steady while the camera moves; TAA is smoother when still but smears in motion."],
 		["option", "upscaler", "Upscaler", Settings.LABELS.upscaler, "FSR 1 upscales when render scale is below 100%. FSR 2 is temporal: sharpest, with its own anti-aliasing."],
 		["slider", "scale", "Render scale", [0.5, 1.0, 0.05], "Below 100% renders fewer pixels and upscales them."],
 		["slider", "sharpen", "Sharpening", [0.0, 1.0, 0.05], "FSR sharpening strength."],
