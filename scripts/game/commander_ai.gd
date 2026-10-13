@@ -44,13 +44,7 @@ func tick(dt: float) -> void:
 ## Calls in the side's off-map support on the densest group of spotted
 ## enemies, never danger-close to our own troops.
 func _support() -> void:
-	var kind := ""
-	var opts := Defs.supports_for(team)
-	opts.shuffle()
-	for k in opts:
-		if world.rules.support_left(team, k) <= 0.0 and world.rules.supply_total(team) >= int(Defs.SUPPORT[k].cost) + 40:
-			kind = k
-			break
+	var kind := _support_kind()
 	if kind == "":
 		return
 	var best := Vector3.INF
@@ -81,6 +75,58 @@ func _support() -> void:
 		var hq: Structure = world.rules.depots[team]
 		var dir := Defs.flat(best - hq.position).normalized() if hq and not hq.gone else Vector3.ZERO
 		_cmd({"t": "support", "kind": kind, "pos": best, "dir": dir})
+
+
+## Any off-map support that is ready and affordable ("" if none).
+func _support_kind() -> String:
+	var opts := Defs.supports_for(team)
+	opts.shuffle()
+	for k in opts:
+		if world.rules.support_left(team, k) <= 0.0 and world.rules.supply_total(team) >= int(Defs.SUPPORT[k].cost) + 40:
+			return k
+	return ""
+
+
+var _helped := {}  # plan -> when we last answered its call for help
+
+
+## A planned attack that has gone firm against a stronger enemy calls for
+## help, and the company answers: fire onto the position (if our own men are
+## clear of it), and the nearest uncommitted squads go and join the attack.
+func _reinforce(fighters: Array) -> void:
+	var t := world.time
+	var plans := []
+	for sq in fighters:
+		if sq.plan != null and not sq.plan.done and sq.plan.phase == "fix" and not sq.plan in plans:
+			plans.append(sq.plan)
+	for p in plans:
+		var key: int = p.get_instance_id()
+		if t < float(_helped.get(key, -1e9)) + 40.0:
+			continue
+		_helped[key] = t
+		var tgt: Vector3 = p.fire_at
+		var clear := true
+		for o in world.soldiers_near(tgt, 22.0):
+			if o.team == team and o.life == Soldier.Life.ALIVE:
+				clear = false
+				break
+		if clear:
+			var kind := _support_kind()
+			if kind != "":
+				_cmd({"t": "support", "kind": kind, "pos": tgt, "dir": p.axis})
+		var sent := []
+		for sq in _by_distance(fighters, p.objective):
+			if sent.size() >= 2 or Defs.flat(sq.centroid() - p.objective).length() > 220.0:
+				break
+			if sq.plan != null or not roles.get(sq.sid, {}).get("role", "idle") in ["idle", "attack"]:
+				continue
+			roles[sq.sid] = {"role": "attack", "t": t}
+			p.join(sq)
+			sent.append(sq.sid)
+		if not sent.is_empty():
+			_radio({"t": "assault", "squads": sent, "pos": p.objective})
+	if _helped.size() > 32:
+		_helped.clear()
 
 
 var _radio_t := 0.0
@@ -512,13 +558,22 @@ func _military(sqs: Array) -> void:
 				var spot: Vector3 = f.position + _enemy_dir() * 9.0 + Vector3(rng.randf_range(-6, 6), 0, 0)
 				_cmd({"t": "defend", "squads": [sq.sid], "pos": spot, "face": _enemy_dir()})
 			break
+	_reinforce(fighters)
 	# pick a target
 	if attack_target == null or attack_target.gone or attack_target.team == team:
 		attack_target = _pick_target()
 	var attackers := []
 	for sq in fighters:
 		var role2: String = roles.get(sq.sid, {}).get("role", "idle")
-		if role2 == "idle" or role2 == "attack":
+		if role2 == "attack":
+			# an attack under way is left to run: re-sending the wave order used to
+			# restart every plan from scratch every 25 s, before it could go in
+			if sq.plan != null and not sq.plan.done:
+				continue
+			if sq.order == "assault" and t - float(roles[sq.sid].t) < 90.0:
+				continue
+			attackers.append(sq)
+		elif role2 == "idle":
 			attackers.append(sq)
 		elif role2 in ["defend", "retreat"] and t - float(roles[sq.sid].t) > 45.0:
 			roles[sq.sid] = {"role": "idle", "t": t}

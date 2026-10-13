@@ -385,6 +385,10 @@ func _set_phase(p: String) -> void:
 	phase = p
 	phase_t = world.time
 	world.stat("plan_" + p)
+	if p == "fix" and not _said.has("fix_msg"):
+		# the company net hears it: whoever commands this side can send help
+		_said["fix_msg"] = true
+		world.send_msg(team, "alert", "%s: outnumbered at %s, gone firm. Need fires or reinforcements!" % [_name(support + assault), Defs.grid_ref(objective)], objective)
 	if OS.has_environment("FL_DEBUG_PLAN"):
 		print("PLAN t=%.1f %s phase=%s sup=%d asl=%d obj=%s sbf=%s ap=%s side=%.0f" % [world.time, _name(support + assault), p, _members(support).size(), _members(assault).size(), str(objective.snapped(Vector3.ONE)), str(sbf.snapped(Vector3.ONE)), str(ap.snapped(Vector3.ONE)), side])
 
@@ -486,6 +490,26 @@ func _finish(won: bool) -> void:
 	else:
 		for sq in sqs:
 			sq.order_defend(sq.centroid(), axis)
+
+
+## A fresh squad sent to help: it joins the assault and moves up to the men
+## already in contact. With the odds evened the plan re-forms and goes in.
+func join(sq) -> void:
+	for e in support + assault:
+		if e.sq == sq:
+			return
+	sq.order_assault(objective, axis, false)
+	sq.plan = self
+	var el := {"sq": sq, "team": -1}
+	assault.append(el)
+	_start_n += sq.alive_members().size()
+	var ms := _members([el])
+	var at: Vector3 = ap
+	if phase == "fix":
+		at = _centroid(_members(support + assault)) - axis * 6.0
+	_place(ms, world.nav.nearest_walkable(at), axis, 1, true)
+	_say("join", ms, ["Moving up to support you!", "Reinforcements coming in!", "We're on our way, hold on!"])
+	world.stat("plan_reinforced")
 
 
 func _name(elems: Array) -> String:
