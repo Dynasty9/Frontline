@@ -109,7 +109,11 @@ func build(utype: String, team: int, seed: int) -> void:
 	hips = Node3D.new()
 	hips.position = Vector3(0, H0, 0)
 	root.add_child(hips)
-	Res.mi(hips, Res.box(Vector3(0.34, 0.18, 0.22)), Res.mat(pants), Vector3(0, -0.01, 0))
+	var pel := Res.mi(hips, Res.cyl(0.165, 0.155, 0.2, 10), Res.mat(pants), Vector3(0, -0.01, 0))
+	pel.scale = Vector3(1.0, 1.0, 0.68)
+	if team == 0 and not bearer:
+		var belt := Res.mi(hips, Res.cyl(0.175, 0.175, 0.06, 10), Res.mat(vest), Vector3(0, 0.06, 0), Vector3.ZERO, false)
+		belt.scale = Vector3(1.0, 1.0, 0.7)
 	# legs: rounded limbs, boots, knee pads on the regulars
 	for side in [-1.0, 1.0]:
 		var th := _joint(hips, Vector3(0.1 * side, -0.05, 0))
@@ -129,15 +133,24 @@ func build(utype: String, team: int, seed: int) -> void:
 	Res.mi(thigh_r, Res.box(Vector3(0.06, 0.14, 0.12)), Res.mat(pouch), Vector3(0.09, -0.12, 0.0), Vector3.ZERO, false)
 
 	torso = _joint(hips, Vector3(0, 0.05, 0))
-	Res.mi(torso, Res.box(Vector3(0.33, 0.3, 0.2)), Res.mat(shirt), Vector3(0, 0.16, 0))
-	Res.mi(torso, Res.box(Vector3(0.42, 0.3, 0.23)), Res.mat(shirt), Vector3(0, 0.42, 0))
+	# an oval waist widening into the chest, rounded shoulders
+	var waist := Res.mi(torso, Res.cyl(0.18, 0.163, 0.3, 10), Res.mat(shirt), Vector3(0, 0.16, 0))
+	waist.scale = Vector3(1.0, 1.0, 0.6)
+	var chest := Res.mi(torso, Res.cyl(0.205, 0.185, 0.3, 10), Res.mat(shirt), Vector3(0, 0.42, 0))
+	chest.scale = Vector3(1.0, 1.0, 0.58)
 	Res.mi(torso, Res.capsule(0.07, 0.48), Res.mat(shirt), Vector3(0, 0.53, 0), Vector3(0, 0, PI / 2), false)
 	if not bearer:
 		if team == 0:
 			# plate carrier: front and back plates, mag pouches, radio, assault pack
-			Res.mi(torso, Res.box(Vector3(0.4, 0.34, 0.29)), Res.mat(vest), Vector3(0, 0.38, 0))
+			for z in [-0.125, 0.125]:
+				Res.mi(torso, Res.box(Vector3(0.34, 0.31, 0.05)), Res.mat(vest), Vector3(0, 0.4, z))
+			var cb := Res.mi(torso, Res.cyl(0.208, 0.205, 0.15, 10), Res.mat(vest), Vector3(0, 0.3, 0))
+			cb.scale = Vector3(1.0, 1.0, 0.68)
+			for x in [-0.12, 0.12]:
+				Res.mi(torso, Res.box(Vector3(0.07, 0.035, 0.27)), Res.mat(vest), Vector3(x, 0.57, 0), Vector3.ZERO, false)
 			for x in [-0.11, 0.0, 0.11]:
-				Res.mi(torso, Res.box(Vector3(0.09, 0.12, 0.06)), Res.mat(pouch), Vector3(x, 0.31, -0.17), Vector3.ZERO, false)
+				Res.mi(torso, Res.box(Vector3(0.09, 0.12, 0.06)), Res.mat(pouch), Vector3(x, 0.33, -0.18), Vector3.ZERO, false)
+			Res.mi(torso, Res.box(Vector3(0.2, 0.06, 0.05)), Res.mat(pouch), Vector3(0, 0.47, -0.17), Vector3.ZERO, false)
 			Res.mi(torso, Res.box(Vector3(0.07, 0.16, 0.08)), Res.mat(pouch), Vector3(-0.22, 0.33, -0.02), Vector3.ZERO, false)
 			Res.mi(torso, Res.box(Vector3(0.31, 0.36, 0.15)), Res.mat(pack), Vector3(0, 0.36, 0.22), Vector3.ZERO, false)
 			Res.mi(torso, Res.box(Vector3(0.24, 0.1, 0.12)), Res.mat(pack), Vector3(0, 0.6, 0.2), Vector3.ZERO, false)
@@ -154,20 +167,39 @@ func build(utype: String, team: int, seed: int) -> void:
 	head = _joint(torso, Vector3(0, 0.62, 0))
 	Res.mi(head, Res.cyl(0.05, 0.055, 0.1, 8), Res.mat(skin), Vector3(0, -0.02, 0), Vector3.ZERO, false)
 	var face := Res.mi(head, Res.sphere(0.11, 12), Res.mat(skin), Vector3(0, 0.12, -0.005), Vector3.ZERO, false)
-	face.scale = Vector3(0.92, 1.05, 1.0)
+	face.scale = Vector3(0.9, 1.06, 1.0)
+	# jaw, nose, ears and a brow shading the eyes: enough to read a face and
+	# which way he is looking
+	var jaw := Res.mi(head, Res.sphere(0.08, 10), Res.mat(skin), Vector3(0, 0.07, -0.035), Vector3.ZERO, false)
+	jaw.scale = Vector3(1.0, 0.8, 1.0)
+	Res.mi(head, Res.box(Vector3(0.028, 0.045, 0.04)), Res.mat(skin), Vector3(0, 0.112, -0.113), Vector3(-0.3, 0, 0), false)
+	for sx in [-1.0, 1.0]:
+		var ear := Res.mi(head, Res.sphere(0.03, 6), Res.mat(skin), Vector3(sx * 0.098, 0.118, 0.005), Vector3.ZERO, false)
+		ear.scale = Vector3(0.5, 1.0, 0.8)
+	var brow := skin.darkened(0.3)
+	Res.mi(head, Res.box(Vector3(0.13, 0.014, 0.025)), Res.mat(brow), Vector3(0, 0.146, -0.099), Vector3.ZERO, false)
 	if team == 0:
-		# modern helmet: cover, NVG mount, headset, a band of goggles round the back
-		var hm := Res.mi(head, Res.sphere(0.138, 14), Res.mat(hat), Vector3(0, 0.165, 0.012), Vector3.ZERO, false)
-		hm.scale = Vector3(1.0, 0.74, 1.1)
+		# modern helmet: a cut-high dome with its rim and rails, NVG mount,
+		# headset over the ears, goggles strapped round the back; eye pro
+		var hm := Res.mi(head, Res.dome(0.146, 14), Res.mat(hat), Vector3(0, 0.13, 0.012), Vector3.ZERO, false)
+		hm.scale = Vector3(1.0, 0.92, 1.08)
+		var rim := Res.mi(head, Res.cyl(0.149, 0.153, 0.024, 14), Res.mat(hat), Vector3(0, 0.132, 0.012), Vector3.ZERO, false)
+		rim.scale = Vector3(1.0, 1.0, 1.08)
 		Res.mi(head, Res.box(Vector3(0.05, 0.04, 0.03)), Res.mat(steel), Vector3(0, 0.2, -0.13), Vector3.ZERO, false)
 		for sx in [-1.0, 1.0]:
+			Res.mi(head, Res.box(Vector3(0.014, 0.026, 0.12)), Res.mat(pouch), Vector3(sx * 0.147, 0.165, 0.01), Vector3.ZERO, false)
 			Res.mi(head, Res.cyl(0.045, 0.045, 0.04, 8), Res.mat(pouch), Vector3(sx * 0.115, 0.11, 0.0), Vector3(0, 0, PI / 2), false)
-		Res.mi(head, Res.box(Vector3(0.2, 0.035, 0.06)), Res.mat(steel), Vector3(0, 0.19, 0.12), Vector3.ZERO, false)
+		Res.mi(head, Res.box(Vector3(0.2, 0.035, 0.05)), Res.mat(steel), Vector3(0, 0.19, 0.14), Vector3.ZERO, false)
+		if rng.randf() < 0.6:
+			Res.mi(head, Res.box(Vector3(0.165, 0.032, 0.02)), Res.mat(dark), Vector3(0, 0.128, -0.106), Vector3.ZERO, false)
 	elif team == 1:
 		var style := rng.randi() % 4
 		if style == 0:
-			var w2 := Res.mi(head, Res.sphere(0.128, 10), Res.mat(hat), Vector3(0, 0.165, 0.01), Vector3.ZERO, false)
-			w2.scale = Vector3(1.0, 0.72, 1.0)
+			# watch cap, rolled up
+			var w2 := Res.mi(head, Res.dome(0.122, 10), Res.mat(hat), Vector3(0, 0.15, 0.008), Vector3.ZERO, false)
+			w2.scale = Vector3(1.0, 0.95, 1.05)
+			var roll := Res.mi(head, Res.cyl(0.124, 0.126, 0.04, 10), Res.mat(hat.darkened(0.1)), Vector3(0, 0.155, 0.008), Vector3.ZERO, false)
+			roll.scale = Vector3(1.0, 1.0, 1.05)
 		elif style == 1:
 			# shemagh wrapped over the head and face
 			var sh2 := Res.mi(head, Res.sphere(0.125, 10), Res.mat(scarf), Vector3(0, 0.15, 0.0), Vector3.ZERO, false)
@@ -180,15 +212,15 @@ func build(utype: String, team: int, seed: int) -> void:
 			Res.mi(head, Res.cyl(0.118, 0.118, 0.025, 12), Res.mat(hat.darkened(0.25)), Vector3(0, 0.178, 0.005), Vector3.ZERO, false)
 		else:
 			# ball cap: a rounded crown and a curved brim
-			var cap := Res.mi(head, Res.sphere(0.125, 10), Res.mat(hat), Vector3(0, 0.17, 0.005), Vector3.ZERO, false)
-			cap.scale = Vector3(1.0, 0.62, 1.0)
-			var brim := Res.mi(head, Res.cyl(0.075, 0.08, 0.015, 10), Res.mat(hat.darkened(0.15)), Vector3(0, 0.168, -0.125), Vector3(0.18, 0, 0), false)
+			var cap := Res.mi(head, Res.dome(0.12, 10), Res.mat(hat), Vector3(0, 0.158, 0.005), Vector3.ZERO, false)
+			cap.scale = Vector3(1.0, 0.8, 1.04)
+			var brim := Res.mi(head, Res.cyl(0.075, 0.08, 0.015, 10), Res.mat(hat.darkened(0.15)), Vector3(0, 0.16, -0.125), Vector3(0.18, 0, 0), false)
 			brim.scale = Vector3(1.0, 1.0, 0.75)
 		# scarf round the neck
 		Res.mi(head, Res.cyl(0.085, 0.09, 0.07, 10), Res.mat(scarf), Vector3(0, -0.02, 0), Vector3.ZERO, false)
 	else:
-		var hm2 := Res.mi(head, Res.sphere(0.13, 8), Res.mat(hat), Vector3(0, 0.17, 0), Vector3.ZERO, false)
-		hm2.scale = Vector3(1, 0.6, 1)
+		var hm2 := Res.mi(head, Res.dome(0.132, 10), Res.mat(hat), Vector3(0, 0.14, 0.01), Vector3.ZERO, false)
+		hm2.scale = Vector3(1.0, 0.8, 1.06)
 		Res.mi(head, Res.box(Vector3(0.1, 0.03, 0.06)), Res.mat(Color(0.8, 0.1, 0.1)), Vector3(0, 0.22, -0.06), Vector3.ZERO, false)
 
 	# canteen and, now and then, a radio antenna
@@ -200,6 +232,8 @@ func build(utype: String, team: int, seed: int) -> void:
 	for side in [-1.0, 1.0]:
 		var ua := _joint(torso, Vector3(0.27 * side, 0.52, 0))
 		Res.mi(ua, Res.capsule(0.058, 0.34), Res.mat(shirt), Vector3(0, -0.13, 0), Vector3.ZERO, false)
+		var delt := Res.mi(ua, Res.sphere(0.072, 8), Res.mat(shirt), Vector3(0.005 * side, -0.02, 0), Vector3.ZERO, false)
+		delt.scale = Vector3(1.0, 1.1, 1.0)
 		var fa := _joint(ua, Vector3(0, -0.28, 0))
 		Res.mi(fa, Res.capsule(0.05, 0.3), Res.mat(shirt), Vector3(0, -0.11, 0), Vector3.ZERO, false)
 		var hand := Res.mi(fa, Res.box(Vector3(0.075, 0.095, 0.09)), Res.mat(gloves), Vector3(0, -0.245, 0), Vector3.ZERO, false)

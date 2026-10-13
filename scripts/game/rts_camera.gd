@@ -5,6 +5,7 @@ extends Node3D
 var world: World
 var cam: Camera3D
 var yaw := 0.0
+var pitch_deg := NAN  # debug: a fixed pitch (model close-ups)
 var dist := 55.0
 var target_dist := 55.0
 var focus_pos := Vector3.ZERO
@@ -91,7 +92,7 @@ func _view_process(_scaled_dt: float) -> void:
 
 func _apply() -> void:
 	var k := clampf((dist - 12.0) / (130.0 - 12.0), 0.0, 1.0)
-	var pitch := deg_to_rad(lerpf(-38.0, -66.0, k))
+	var pitch := deg_to_rad(lerpf(-38.0, -66.0, k) if is_nan(pitch_deg) else pitch_deg)
 	position = focus_pos
 	rotation = Vector3(pitch, yaw, 0)
 	cam.position = Vector3(0, 0, dist)

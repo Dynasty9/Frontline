@@ -137,6 +137,21 @@ static func sphere(r: float, segs := 10) -> SphereMesh:
 	return m
 
 
+## A hemisphere standing on its base at the origin (helmets, caps).
+static func dome(r: float, segs := 12) -> SphereMesh:
+	var key := "d%.3f,%d" % [r, segs]
+	if _meshes.has(key):
+		return _meshes[key]
+	var m := SphereMesh.new()
+	m.radius = r
+	m.height = r
+	m.is_hemisphere = true
+	m.radial_segments = segs
+	m.rings = maxi(3, segs / 3)
+	_meshes[key] = m
+	return m
+
+
 static func capsule(r: float, h: float, segs := 10) -> CapsuleMesh:
 	var key := "c%.3f,%.3f,%d" % [r, h, segs]
 	if _meshes.has(key):

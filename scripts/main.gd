@@ -118,6 +118,10 @@ func _on_game_start(s: Dictionary) -> void:
 		world.focused = true
 		if world.director:
 			world.director.active = false
+	if args.has("pitch") and world.cam:
+		world.cam.pitch_deg = float(args["pitch"])
+	if args.has("cam-yaw") and world.cam:
+		world.cam.yaw = float(args["cam-yaw"])
 	if args.has("zoom") and world.cam:
 		world.cam.target_dist = float(args.zoom)
 		world.cam.dist = float(args.zoom)
