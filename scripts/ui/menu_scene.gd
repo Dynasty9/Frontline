@@ -395,7 +395,6 @@ func _process(dt: float) -> void:
 			_tracers.remove_at(i)
 			continue
 		mi.global_position = from.lerp(to, k)
-		mi.look_at(to, Vector3.UP)
 
 
 ## The gun traverses to where it's laid and bucks while firing; the gunner
@@ -426,5 +425,9 @@ func _tracer(from: Vector3, to: Vector3) -> void:
 	mi.material_override = vfx.tracer_mat
 	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	add_child(mi)
-	mi.global_position = from
+	# a round flies straight: aim it once, along its whole flight
+	if from.distance_squared_to(to) > 1.0:
+		mi.look_at_from_position(from, to, Vector3.UP)
+	else:
+		mi.global_position = from
 	_tracers.append([mi, from, to, 0.0])
