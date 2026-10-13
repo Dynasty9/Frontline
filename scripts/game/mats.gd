@@ -562,6 +562,13 @@ void vertex() {
 }
 
 void fragment() {
+	// ragged, leafy edges: holes open up where the surface turns away from
+	// the eye (and from the sun, so the shadows are dappled too)
+	float rim = 1.0 - abs(dot(NORMAL, VIEW));
+	float holes = n3(lpos * 6.0 + 11.0) * 0.6 + n3(lpos * 15.0) * 0.4;
+	if (rim > 0.12 && holes < (rim - 0.12) * 1.25) {
+		discard;
+	}
 	float leaves = n3(lpos * 9.0);
 	float gaps = n3(lpos * 4.2 + 7.0);
 	vec3 c = (use_vcolor ? COLOR.rgb : tint.rgb) * (0.7 + 0.5 * leaves);

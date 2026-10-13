@@ -178,7 +178,7 @@ func play(ev: Array) -> void:
 			Sfx.play("thud", ev[1])
 			_puff("dust", ev[1])
 		TREE_FALL:
-			_tree_fall(ev[1], float(ev[2]))
+			_tree_fall(ev[1], float(ev[2]), int(ev[3]) if ev.size() > 3 else 0, int(ev[4]) if ev.size() > 4 else 0)
 		MORTAR:
 			Sfx.play("mortar", ev[1], -2.0)
 			_flash(ev[1], 0.08, 1.8)
@@ -362,13 +362,19 @@ func _debris(p: Vector3, col: Color, n: int) -> void:
 	_puff("dust", p)
 
 
-func _tree_fall(p: Vector3, yaw: float) -> void:
+## A felled tree: the same tree, toppling away from what hit it and staying
+## where it falls (under physics when there is any).
+func _tree_fall(p: Vector3, yaw: float, id: int, v: int) -> void:
 	var n := Node3D.new()
 	add_child(n)
+	Structure.tree_model(n, id, v)
+	var dir := Defs.dir_of(yaw)
+	if world.phys:
+		var k := 0.62 if v == 1 else 1.0
+		world.phys.prop(n, Transform3D(Basis.IDENTITY, p), dir * 1.0, Vector3.UP.cross(dir) * 0.9, Vector3(1.6, 7.0, 1.6) * k, 900.0 * k)
+		return
 	n.global_position = p
 	n.rotation.y = yaw
-	Res.mi(n, Res.cyl(0.18, 0.28, 5.0, 7), Res.mat(Color(0.3, 0.22, 0.15)), Vector3(0, 2.5, 0))
-	Res.mi(n, Res.sphere(2.0, 8), Res.mat(Color(0.22, 0.33, 0.15)), Vector3(0, 5.5, 0))
 	_movers.append([n, Vector3.ZERO, Vector3(-1.2, 0, 0), 0.0, 12.0, false, "tree"])
 
 

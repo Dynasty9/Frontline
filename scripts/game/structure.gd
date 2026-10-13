@@ -573,7 +573,7 @@ func smash(_by) -> void:
 	world.fx_event([Fx.DEBRIS, position + Vector3(0, 0.8, 0), _main_color(), 8])
 	world.fx_event([Fx.SOUND, "thud", position])
 	if skind == "tree":
-		world.fx_event([Fx.TREE_FALL, position, Defs.yaw_of(Defs.flat(position - _by.position))])
+		world.fx_event([Fx.TREE_FALL, position, Defs.yaw_of(Defs.flat(position - _by.position)), eid, variant])
 	world.despawn(self)
 
 
@@ -581,6 +581,94 @@ func _main_color() -> Color:
 	if skind == "roof":
 		return Color(0.5, 0.24, 0.16) if variant % 2 == 0 else C_CONCRETE
 	return parts[0].color if not parts.is_empty() else C_STONE
+
+
+## A tree. Its id decides the look, so every peer builds the same one and
+## the tree that falls when it is felled is the one that stood: broadleaf
+## (a third are conifers); variant 1 is a small orchard tree.
+static func tree_model(root: Node3D, id: int, v: int) -> void:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = id * 7919 + v
+	if v != 1 and (id * 2654435761) % 100 < 34:
+		_conifer(root, rng)
+	else:
+		_broadleaf(root, rng, v == 1)
+	Mats.merge_static(root)
+
+
+## A flared trunk forking into three or four limbs, each carrying a clump of
+## leaf masses (lighter on top, darker underneath), twigs poking out of the
+## crown, which is wider than it is tall.
+static func _broadleaf(root: Node3D, rng: RandomNumberGenerator, small: bool) -> void:
+	var k := 0.62 if small else 1.0
+	var bark := Res.vary(Color(0.3, 0.24, 0.18), 0.08, rng)
+	var leaf: Color = [Color(0.17, 0.27, 0.11), Color(0.2, 0.29, 0.12), Color(0.15, 0.24, 0.12), Color(0.23, 0.29, 0.11)][rng.randi() % 4]
+	leaf = Res.vary(leaf, 0.06, rng)
+	var fork := rng.randf_range(1.9, 2.7) * k
+	var crown := rng.randf_range(4.6, 5.6) * k  # where the limbs end
+	var spread := rng.randf_range(1.3, 2.0) * k
+	var top := Vector3(rng.randf_range(-0.25, 0.25) * k, fork, rng.randf_range(-0.25, 0.25) * k)
+	_bark(root, Vector3.ZERO, top, 0.3 * k, 0.2 * k, bark)
+	Mats.apply(Res.mi(root, Res.cyl(0.26 * k, 0.46 * k, 0.45 * k, 8), null, Vector3(0, 0.22 * k, 0)), "bark", Mats.tint_for("bark", bark))
+	var limbs := rng.randi_range(3, 4)
+	var a0 := rng.randf() * TAU
+	for i in limbs:
+		var a := a0 + TAU * i / limbs + rng.randf_range(-0.35, 0.35)
+		var out := Vector3(cos(a), 0, sin(a))
+		var end := top + out * spread * rng.randf_range(0.7, 1.1)
+		end.y = crown + rng.randf_range(-0.6, 0.5) * k
+		var mid := top.lerp(end, 0.45) + out * 0.25 * k
+		_bark(root, top, mid, 0.17 * k, 0.12 * k, bark)
+		_bark(root, mid, end, 0.12 * k, 0.05 * k, bark)
+		_bark(root, end, end + (out + Vector3(0, 0.5, 0)).normalized() * 1.2 * k, 0.05 * k, 0.015, bark)
+		for j in rng.randi_range(3, 4):
+			var off := Vector3(rng.randf_range(-1.0, 1.0), rng.randf_range(-0.45, 0.75), rng.randf_range(-1.0, 1.0)) * k
+			var lc := Res.vary(leaf, 0.05, rng)
+			if off.y > 0.3 * k:
+				lc = lc.lightened(0.04)
+			elif off.y < 0.0:
+				lc = lc.darkened(0.14)
+			_leaves(root, end + off, rng.randf_range(0.95, 1.35) * k, rng.randf_range(0.72, 0.88), lc)
+	# the heart of the crown and its top
+	_leaves(root, Vector3(top.x, crown - 0.2 * k, top.z), 1.5 * k, 0.8, leaf.darkened(0.18))
+	_leaves(root, Vector3(top.x, crown + 0.9 * k, top.z), 1.35 * k, 0.8, leaf.lightened(0.05))
+
+
+## A spruce: a straight tapering stem and tiers of drooping boughs, wide and
+## dark at the bottom, a narrow spire at the top.
+static func _conifer(root: Node3D, rng: RandomNumberGenerator) -> void:
+	var ph := rng.randf_range(8.0, 11.0)
+	var needles := Res.vary(Color(0.13, 0.21, 0.14), 0.12, rng)
+	_bark(root, Vector3.ZERO, Vector3(0, ph, 0), 0.26, 0.04, Color(0.32, 0.24, 0.17))
+	# many overlapping tiers, each a little askew, so it reads as one ragged
+	# mass of boughs rather than a stack of plates
+	var tiers := rng.randi_range(9, 12)
+	var step := (ph - 2.2) / tiers
+	for i in tiers:
+		var t := float(i) / (tiers - 1)
+		var r := lerpf(2.3, 0.45, t) * rng.randf_range(0.9, 1.1)
+		var h := step * 2.6
+		var y := 1.2 + i * step
+		var c := Res.mi(root, Res.cyl(0.04, 1.0, 1.0, 9), Mats.foliage(), Vector3(rng.randf_range(-0.06, 0.06), y + h * 0.5, rng.randf_range(-0.06, 0.06)), Vector3(rng.randf_range(-0.07, 0.07), rng.randf() * TAU, rng.randf_range(-0.07, 0.07)))
+		c.scale = Vector3(r * rng.randf_range(0.9, 1.1), h, r * rng.randf_range(0.9, 1.1))
+		c.set_instance_shader_parameter("tint", Res.vary(needles, 0.05, rng).darkened(0.12 * (1.0 - t)))
+
+
+static func _bark(root: Node3D, a: Vector3, b: Vector3, r0: float, r1: float, col: Color) -> void:
+	var y := b - a
+	var L := y.length()
+	y /= L
+	var x := y.cross(Vector3.FORWARD if absf(y.dot(Vector3.FORWARD)) < 0.9 else Vector3.RIGHT).normalized()
+	var z := x.cross(y)
+	var mi := Res.mi(root, Res.cyl(r1, r0, 1.0, 7), null)
+	mi.transform = Transform3D(Basis(x, y * L, z), (a + b) * 0.5)
+	Mats.apply(mi, "bark", Mats.tint_for("bark", col))
+
+
+static func _leaves(root: Node3D, p: Vector3, r: float, squash: float, col: Color) -> void:
+	var mi := Res.mi(root, Res.sphere(1.0, 10), Mats.foliage(), p)
+	mi.scale = Vector3(r, r * squash, r)
+	mi.set_instance_shader_parameter("tint", col)
 
 
 ## A house roof: tiled and pitched (ridge along the long side, gable ends in
@@ -1308,10 +1396,18 @@ func _build_model() -> void:
 		"low_wall":
 			var p: Dictionary = parts[0]
 			if variant % 3 == 1:
-				var n := maxi(2, int(size.x / 1.1))
+				# a hedge: one continuous mass of overlapping leaf lumps, a little
+				# uneven along the top, the odd shoot sticking up
+				var n := maxi(3, int(size.x / 0.45))
+				var hc := Res.vary(p.color, 0.06, rng)
 				for i in n:
 					var x := (float(i) + 0.5) / n * size.x - size.x * 0.5
-					Res.mi(model, Res.sphere(0.62, 8), Res.mat(Res.vary(p.color, 0.12, rng)), Vector3(x, 0.55, rng.randf_range(-0.1, 0.1)))
+					var r := rng.randf_range(0.5, 0.6)
+					var lm := Res.mi(model, Res.sphere(0.55, 8), Res.mat(Res.vary(hc, 0.05, rng)), Vector3(x, 0.6 + rng.randf_range(-0.04, 0.07), rng.randf_range(-0.05, 0.05)))
+					lm.scale = Vector3(1.15, 1.12, 0.84) * (r / 0.55)
+					if rng.randf() < 0.18:
+						var sh := Res.mi(model, Res.sphere(0.3, 6), Res.mat(Res.vary(hc, 0.05, rng).lightened(0.06)), Vector3(x, 1.2, rng.randf_range(-0.15, 0.15)))
+						sh.scale = Vector3(0.8, 1.3, 0.8)
 			else:
 				_box(p.p, p.s, p.color)
 				_box(Vector3(0, p.s.y + 0.04, 0), Vector3(p.s.x + 0.06, 0.08, p.s.z + 0.08), p.color.darkened(0.15))
@@ -1336,33 +1432,8 @@ func _build_model() -> void:
 					wk.turret.position += Vector3(rng.randf_range(-3.0, 3.0), -1.0, rng.randf_range(1.0, 3.0))
 					wk.turret.rotation += Vector3(rng.randf_range(-0.5, 0.5), 0, rng.randf_range(-0.6, 0.6))
 			wk.root.rotation.z = rng.randf_range(-0.04, 0.04)
-		"tree" when variant != 1 and (eid * 2654435761) % 100 < 34:
-			# conifer: straight trunk, stacked drooping cones
-			var ph := rng.randf_range(7.0, 10.0)
-			var needles := Res.vary(Color(0.12, 0.22, 0.13), 0.15, rng)
-			Res.mi(model, Res.cyl(0.1, 0.26, ph, 8), Res.mat(Color(0.3, 0.22, 0.15)), Vector3(0, ph * 0.5, 0))
-			var tiers := rng.randi_range(4, 6)
-			for i in tiers:
-				var k := float(i) / tiers
-				var r := lerpf(2.3, 0.7, k) * rng.randf_range(0.9, 1.1)
-				var cone := Res.mi(model, Res.cyl(0.05, r, 2.2 - k * 0.6, 12), Res.mat(Res.vary(needles, 0.1, rng)), Vector3(0, 2.2 + k * (ph - 2.6), 0))
-				cone.rotation.y = rng.randf() * TAU
 		"tree":
-			var leaf := Res.vary(Color(0.2, 0.32, 0.14), 0.2, rng)
-			var lean := Vector3(rng.randf_range(-0.08, 0.08), 0, rng.randf_range(-0.08, 0.08))
-			Res.mi(model, Res.cyl(0.14, 0.3, 5.2, 8), Res.mat(Color(0.3, 0.22, 0.15)), Vector3(lean.x * 2.6, 2.6, lean.z * 2.6), Vector3(lean.z, 0, -lean.x))
-			var h := rng.randf_range(4.5, 6.0)
-			for i in 3:
-				var a := rng.randf() * TAU
-				var br := Res.mi(model, Res.cyl(0.04, 0.1, 2.2, 5), Res.mat(Color(0.3, 0.22, 0.15)), Vector3(cos(a) * 0.6, h - 1.4 + i * 0.4, sin(a) * 0.6))
-				br.rotation = Vector3(sin(a) * 0.8, 0, -cos(a) * 0.8)
-			var n := rng.randi_range(5, 8)
-			for i in n:
-				var r := rng.randf_range(1.0, 1.9) * (1.0 - float(i) / n * 0.35)
-				var a := rng.randf() * TAU
-				var d := rng.randf_range(0.3, 1.6) * (1.0 - float(i) / n * 0.6)
-				var lm := Res.mi(model, Res.sphere(r, 12), Res.mat(Res.vary(leaf, 0.14, rng)), Vector3(cos(a) * d + lean.x * h, h - 0.6 + float(i) / n * 2.4 + rng.randf_range(-0.3, 0.3), sin(a) * d + lean.z * h))
-				lm.scale = Vector3(1.0, rng.randf_range(0.7, 0.95), 1.0)
+			tree_model(model, eid, variant)
 		"fob":
 			# command post: HESCO block under camouflage netting, radio mast, ammo
 			for x in [-2.2, 2.2]:
