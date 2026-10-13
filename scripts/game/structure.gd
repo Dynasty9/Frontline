@@ -292,7 +292,7 @@ func _define_parts() -> void:
 		"factory":
 			parts = [_part(Vector3(0, 2.5, 0), Vector3(size.x, 5.0, size.z), Nav.SOLID, Nav.SOLID, true, true, Color(0.45, 0.46, 0.44))]
 		"medic_tent":
-			parts = [_part(Vector3(0, 1.3, 0), Vector3(size.x, 2.6, size.z), Nav.SOLID, Nav.SOLID, true, true, Color(0.85, 0.84, 0.78))]
+			parts = [_part(Vector3(0, 1.3, 0), Vector3(size.x, 2.6, size.z), Nav.SOLID, Nav.SOLID, true, true, Color(0.4, 0.41, 0.31))]
 		"research":
 			parts = [_part(Vector3(0, 1.6, 0), Vector3(size.x, 3.2, size.z), Nav.SOLID, Nav.SOLID, true, true, Color(0.5, 0.52, 0.5))]
 		"depot":
@@ -1723,10 +1723,16 @@ func _build_model() -> void:
 				world.fx.vfx.set_burning(stack, 0.0, 0.35)
 			_flag = _box(Vector3(-size.x * 0.4, 6.4, 0), Vector3(1.2, 0.7, 0.04), tc)
 		"medic_tent":
+			# (the placeholder block goes now: a deferred free would still be
+			# baked into the merged model below)
 			for c in model.get_children():
+				model.remove_child(c)
 				c.queue_free()
 			var hz := size.z * 0.5
-			_mk(Res.prism(Vector3(size.z, 2.8, size.x)), "canvas_white", Vector3(0, 1.4, 0), Vector3(0, PI / 2, 0))
+			# an olive-drab ward tent with the red cross on white panels
+			_mk(Res.prism(Vector3(size.z, 2.8, size.x)), "canvas", Vector3(0, 1.4, 0), Vector3(0, PI / 2, 0), Color(0.4, 0.41, 0.31))
+			for sx in [-1.0, 1.0]:
+				_mk(Res.box(Vector3(0.05, 2.75, 0.05)), "wood_dark", Vector3(sx * (size.x * 0.5 - 0.1), 1.375, 0))
 			var ang := atan2(2.8, hz)
 			for sd in [-1.0, 1.0]:
 				var nrm := Vector3(0, hz, sd * 2.8).normalized()

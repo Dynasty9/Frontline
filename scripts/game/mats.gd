@@ -309,6 +309,9 @@ static func _preset(kind: String) -> Dictionary:
 			return {"pattern": BARK, "col_a": Color(0.32, 0.25, 0.18), "col_b": Color(0.18, 0.14, 0.1), "rough": 0.95, "bump": 2.0, "grime": 0.2}
 		"paint":
 			return {"pattern": PAINT, "col_a": Color(0.6, 0.6, 0.6), "col_b": Color(0.38, 0.37, 0.35), "rough": 0.45, "metal": 0.15, "bump": 0.6, "grime": 0.7}
+		"aircraft":
+			# clean matte low-visibility grey, the panel lines left to the light
+			return {"pattern": PAINT, "col_a": Color(0.5, 0.52, 0.54), "col_b": Color(0.44, 0.46, 0.48), "rough": 0.62, "metal": 0.2, "bump": 0.25, "grime": 0.0, "rust": 0.0}
 		"metal_dark":
 			return {"pattern": PAINT, "col_a": Color(0.17, 0.17, 0.17), "col_b": Color(0.35, 0.33, 0.3), "rough": 0.5, "metal": 0.6, "bump": 0.5, "grime": 0.3}
 		"burnt":
@@ -500,7 +503,7 @@ void fragment() {
 		float n = tfbm(uv * 1.7 + off);
 		col = mix(col_b, col_a, n) * (0.85 + 0.25 * tnoise(uv * 19.0));
 		float peb = smoothstep(0.86, 0.93, h12(floor(uv * 14.0) + off)) * keep(0.07, px);
-		col = mix(col, vec3(0.45, 0.42, 0.38), peb * 0.7);
+		col = mix(col, col * 1.45 + vec3(0.015), peb * 0.6);  // stones a shade lighter than the soil
 		h = n * 0.7 + peb * 0.4;
 	} else if (pattern == 9) {
 		float ridge = mix(0.5, 0.5 + 0.5 * sin(uv.x * 6.2831 / 0.09), keep(0.09, px));

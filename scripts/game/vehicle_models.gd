@@ -699,20 +699,21 @@ func _truck(team: int) -> void:
 func _jet(team: int) -> void:
 	var m := root
 	var paint := Color(0.44, 0.47, 0.5) if team != 1 else Color(0.5, 0.47, 0.4)
-	_add(m, _capsule(0.72, 13.0), "paint", paint, Vector3(0, 0, 0.3), Vector3(PI / 2, 0, 0), Vector3(1.0, 0.85, 1.0))
+	_add(m, _capsule(0.72, 13.0), "aircraft", paint, Vector3(0, 0, 0.3), Vector3(PI / 2, 0, 0), Vector3(1.0, 0.85, 1.0))
 	_add(m, Res.sphere(0.6, 14), "glass", null, Vector3(0, 0.55, -3.2), Vector3.ZERO, Vector3(0.75, 0.7, 2.0))
 	# swept wings, tailplanes and fin as thin lofted plates
-	_add(m, loft("jet_wing", [-0.6, -1.4, 0.6, -1.4, 6.2, 2.6, 6.2, 3.6, -6.2, 3.6, -6.2, 2.6], [-0.6, -1.3, 0.6, -1.3, 6.2, 2.65, 6.2, 3.55, -6.2, 3.55, -6.2, 2.65], -0.08, 0.08), "paint", paint, Vector3(0, -0.1, 0))
-	_add(m, loft("jet_tail", [-0.4, 5.0, 0.4, 5.0, 2.8, 6.6, 2.8, 7.2, -2.8, 7.2, -2.8, 6.6], [-0.4, 5.05, 0.4, 5.05, 2.8, 6.62, 2.8, 7.18, -2.8, 7.18, -2.8, 6.62], -0.06, 0.06), "paint", paint, Vector3(0, 0.1, 0))
-	_add(m, extrude_x("jet_fin", [4.6, 0.5, 6.9, 0.5, 7.4, 3.0, 6.6, 3.0], -0.07, 0.07), "paint", paint, Vector3.ZERO)
+	_add(m, loft("jet_wing", [-0.6, -1.4, 0.6, -1.4, 6.2, 2.6, 6.2, 3.6, -6.2, 3.6, -6.2, 2.6], [-0.6, -1.3, 0.6, -1.3, 6.2, 2.65, 6.2, 3.55, -6.2, 3.55, -6.2, 2.65], -0.08, 0.08), "aircraft", paint, Vector3(0, -0.1, 0))
+	_add(m, loft("jet_tail", [-0.4, 5.0, 0.4, 5.0, 2.8, 6.6, 2.8, 7.2, -2.8, 7.2, -2.8, 6.6], [-0.4, 5.05, 0.4, 5.05, 2.8, 6.62, 2.8, 7.18, -2.8, 7.18, -2.8, 6.62], -0.06, 0.06), "aircraft", paint, Vector3(0, 0.1, 0))
+	_add(m, extrude_x("jet_fin", [4.6, 0.5, 6.9, 0.5, 7.4, 3.0, 6.6, 3.0], -0.07, 0.07), "aircraft", paint, Vector3.ZERO)
 	_cyl(m, 0.55, 0.6, 0.8, Vector3(0, 0, 7.0), Vector3(PI / 2, 0, 0), "gunmetal_w", null, 12)
 	for s in [-1.0, 1.0]:
 		_cyl(m, 0.14, 0.14, 1.6, Vector3(s * 2.6, -0.45, 1.6), Vector3(PI / 2, 0, 0), "paint", Color(0.3, 0.32, 0.26), 8)
-		_cyl(m, 0.25, 0.25, 2.6, Vector3(s * 4.0, -0.5, 2.2), Vector3(PI / 2, 0, 0), "paint", paint.darkened(0.2), 8)
+		_cyl(m, 0.25, 0.25, 2.6, Vector3(s * 4.0, -0.5, 2.2), Vector3(PI / 2, 0, 0), "aircraft", paint.darkened(0.2), 8)
 	_team_mark(m, team, Vector3(3.6, 0.1, 3.0), Vector3(0.8, 0.03, 0.5))
 	_team_mark(m, team, Vector3(-3.6, 0.1, 3.0), Vector3(0.8, 0.03, 0.5))
 	if not burnt:
 		var glow := MeshInstance3D.new()
+		glow.name = "Afterburner"
 		var q := QuadMesh.new()
 		q.size = Vector2(1.6, 1.6)
 		glow.mesh = q
@@ -733,24 +734,24 @@ func _jet(team: int) -> void:
 func _a10(team: int) -> void:
 	var m := root
 	var paint := Color(0.42, 0.45, 0.47)
-	_add(m, _capsule(0.82, 14.5), "paint", paint, Vector3(0, 0, 0.2), Vector3(PI / 2, 0, 0), Vector3(1.0, 0.9, 1.0))
+	_add(m, _capsule(0.82, 14.5), "aircraft", paint, Vector3(0, 0, 0.2), Vector3(PI / 2, 0, 0), Vector3(1.0, 0.9, 1.0))
 	_add(m, Res.sphere(0.55, 14), "glass", null, Vector3(0, 0.62, -4.4), Vector3.ZERO, Vector3(0.85, 0.75, 1.7))
 	_cyl(m, 0.17, 0.17, 0.9, Vector3(0, -0.25, -7.55), Vector3(PI / 2, 0, 0), "gunmetal_w", null, 8)
 	# straight, thick wings with drooped tips
-	_add(m, loft("a10_wing", [-0.9, -0.9, 0.9, -0.9, 8.6, -0.3, 8.6, 1.3, -8.6, 1.3, -8.6, -0.3], [-0.9, -0.8, 0.9, -0.8, 8.6, -0.25, 8.6, 1.25, -8.6, 1.25, -8.6, -0.25], -0.12, 0.12), "paint", paint, Vector3(0, -0.35, 0.4))
+	_add(m, loft("a10_wing", [-0.9, -0.9, 0.9, -0.9, 8.6, -0.3, 8.6, 1.3, -8.6, 1.3, -8.6, -0.3], [-0.9, -0.8, 0.9, -0.8, 8.6, -0.25, 8.6, 1.25, -8.6, 1.25, -8.6, -0.25], -0.12, 0.12), "aircraft", paint, Vector3(0, -0.35, 0.4))
 	for s in [-1.0, 1.0]:
-		_box(m, Vector3(0.9, 0.06, 1.5), Vector3(s * 9.0, -0.5, 0.95), "paint", paint, Vector3(0, 0, s * 0.35))
+		_box(m, Vector3(0.9, 0.06, 1.5), Vector3(s * 9.0, -0.5, 0.95), "aircraft", paint, Vector3(0, 0, s * 0.35))
 		# engine pods high on the back, on short pylons
-		_cyl(m, 0.62, 0.55, 3.0, Vector3(s * 1.45, 1.05, 3.4), Vector3(PI / 2, 0, 0), "paint", paint.darkened(0.08), 14)
+		_cyl(m, 0.62, 0.55, 3.0, Vector3(s * 1.45, 1.05, 3.4), Vector3(PI / 2, 0, 0), "aircraft", paint.darkened(0.08), 14)
 		_cyl(m, 0.5, 0.5, 0.1, Vector3(s * 1.45, 1.05, 1.88), Vector3(PI / 2, 0, 0), "gunmetal_w", null, 12)
-		_box(m, Vector3(0.18, 0.55, 1.4), Vector3(s * 0.9, 0.7, 3.4), "paint", paint)
+		_box(m, Vector3(0.18, 0.55, 1.4), Vector3(s * 0.9, 0.7, 3.4), "aircraft", paint)
 		# underwing stores
 		for k in 3:
 			_cyl(m, 0.13, 0.13, 1.9, Vector3(s * (2.6 + k * 1.8), -0.7, 0.2), Vector3(PI / 2, 0, 0), "paint", Color(0.36, 0.38, 0.33), 8)
 	# tailplane with twin fins
-	_add(m, loft("a10_tail", [-2.9, 6.2, 2.9, 6.2, 2.9, 7.6, -2.9, 7.6], [-2.9, 6.25, 2.9, 6.25, 2.9, 7.55, -2.9, 7.55], -0.07, 0.07), "paint", paint, Vector3(0, 0.45, 0))
+	_add(m, loft("a10_tail", [-2.9, 6.2, 2.9, 6.2, 2.9, 7.6, -2.9, 7.6], [-2.9, 6.25, 2.9, 6.25, 2.9, 7.55, -2.9, 7.55], -0.07, 0.07), "aircraft", paint, Vector3(0, 0.45, 0))
 	for s in [-1.0, 1.0]:
-		_add(m, extrude_x("a10_fin", [6.0, -0.6, 7.7, -0.6, 7.6, 2.1, 6.6, 2.1], -0.06, 0.06), "paint", paint, Vector3(s * 2.9, 0.45, 0))
+		_add(m, extrude_x("a10_fin", [6.0, -0.6, 7.7, -0.6, 7.6, 2.1, 6.6, 2.1], -0.06, 0.06), "aircraft", paint, Vector3(s * 2.9, 0.45, 0))
 	_team_mark(m, team, Vector3(4.5, -0.22, 0.6), Vector3(0.8, 0.03, 0.8))
 	_team_mark(m, team, Vector3(-4.5, -0.22, 0.6), Vector3(0.8, 0.03, 0.8))
 
@@ -760,16 +761,16 @@ func _a10(team: int) -> void:
 func _ac130(team: int) -> void:
 	var m := root
 	var paint := Color(0.27, 0.29, 0.31)
-	_add(m, _capsule(2.0, 29.0), "paint", paint, Vector3(0, 0, 0), Vector3(PI / 2, 0, 0), Vector3(1.0, 1.05, 1.0))
+	_add(m, _capsule(2.0, 29.0), "aircraft", paint, Vector3(0, 0, 0), Vector3(PI / 2, 0, 0), Vector3(1.0, 1.05, 1.0))
 	_add(m, Res.sphere(1.5, 14), "glass", null, Vector3(0, 1.0, -12.4), Vector3.ZERO, Vector3(1.0, 0.45, 0.9))
 	# upswept rear fuselage and the tail
-	_add(m, loft("ac_tailcone", [-1.9, 9.0, 1.9, 9.0, 1.0, 15.5, -1.0, 15.5], [-1.9, 9.0, 1.9, 9.0, 1.0, 15.5, -1.0, 15.5], 0.2, 2.2), "paint", paint, Vector3(0, 0, 0))
-	_add(m, loft("ac_hstab", [-8.2, 13.6, 8.2, 13.6, 8.2, 16.2, -8.2, 16.2], [-8.2, 13.7, 8.2, 13.7, 8.2, 16.1, -8.2, 16.1], -0.12, 0.12), "paint", paint, Vector3(0, 2.4, 0))
-	_add(m, extrude_x("ac_fin", [11.5, 1.6, 16.4, 1.6, 16.6, 8.6, 14.6, 8.6], -0.14, 0.14), "paint", paint, Vector3.ZERO)
+	_add(m, loft("ac_tailcone", [-1.9, 9.0, 1.9, 9.0, 1.0, 15.5, -1.0, 15.5], [-1.9, 9.0, 1.9, 9.0, 1.0, 15.5, -1.0, 15.5], 0.2, 2.2), "aircraft", paint, Vector3(0, 0, 0))
+	_add(m, loft("ac_hstab", [-8.2, 13.6, 8.2, 13.6, 8.2, 16.2, -8.2, 16.2], [-8.2, 13.7, 8.2, 13.7, 8.2, 16.1, -8.2, 16.1], -0.12, 0.12), "aircraft", paint, Vector3(0, 2.4, 0))
+	_add(m, extrude_x("ac_fin", [11.5, 1.6, 16.4, 1.6, 16.6, 8.6, 14.6, 8.6], -0.14, 0.14), "aircraft", paint, Vector3.ZERO)
 	# high wing with four engines
-	_add(m, loft("ac_wing", [-20.0, -3.8, 20.0, -3.8, 20.0, -1.6, -20.0, -1.6], [-20.0, -3.7, 20.0, -3.7, 20.0, -1.7, -20.0, -1.7], -0.18, 0.18), "paint", paint, Vector3(0, 2.15, 0))
+	_add(m, loft("ac_wing", [-20.0, -3.8, 20.0, -3.8, 20.0, -1.6, -20.0, -1.6], [-20.0, -3.7, 20.0, -3.7, 20.0, -1.7, -20.0, -1.7], -0.18, 0.18), "aircraft", paint, Vector3(0, 2.15, 0))
 	for x in [-10.2, -5.3, 5.3, 10.2]:
-		_cyl(m, 0.62, 0.55, 4.2, Vector3(x, 1.55, -3.4), Vector3(PI / 2, 0, 0), "paint", paint.darkened(0.08), 12)
+		_cyl(m, 0.62, 0.55, 4.2, Vector3(x, 1.55, -3.4), Vector3(PI / 2, 0, 0), "aircraft", paint.darkened(0.08), 12)
 		var prop := _pivot(m, Vector3(x, 1.55, -5.65))
 		_cyl(prop, 0.25, 0.1, 0.5, Vector3.ZERO, Vector3(PI / 2, 0, 0), "gunmetal_w", null, 8)
 		if not burnt:

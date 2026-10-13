@@ -433,6 +433,11 @@ func _show_model(e: Dictionary) -> void:
 		first = false
 	if first:
 		ab = AABB(Vector3(-1, 0, -1), Vector3(2, 2, 2))
+	# stand it on the floor (aircraft are built round their fuselage, so they
+	# fly a little above it)
+	var lift := -ab.position.y + (1.2 if String(e.cat) == "support" and ab.size.x > 6.0 else 0.0)
+	m.position.y = lift
+	ab.position.y += lift
 	_focus = ab.get_center()
 	if OS.has_environment("FL_DEBUG_FM"):
 		print("FM ", e.key, " aabb=", ab, " vs=", _view.size)
@@ -497,7 +502,11 @@ func _make_model(e: Dictionary) -> Node3D:
 		"support":
 			match String(e.key):
 				"airstrike":
-					return VehicleModels.build("jet", 0, 3).root
+					var jm := VehicleModels.build("jet", 0, 3).root
+					var ab_node := jm.get_node_or_null("Afterburner")
+					if ab_node:
+						ab_node.visible = false  # the exhaust glow is for flight
+					return jm
 				"a10":
 					return VehicleModels.build("a10", 0, 3).root
 				"ac130":
