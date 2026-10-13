@@ -22,6 +22,19 @@ var join_row: HBoxContainer
 var settings_panel: SettingsPanel
 var manual: FieldManual
 var backdrop: MenuScene
+var op_panel: PanelContainer
+var _op_side := 0  # 0 Coalition, 1 Rebels, -1 observe
+var _side_cards := {}
+var _mood_chips := {}
+var _col: VBoxContainer
+var hint: Label  # the networking hint, shown in the lobby
+
+const SIDES := [
+	[0, "COALITION", "A regular army. Tanks, IFVs, Humvees, attack helicopters, air strikes and artillery. Fewer men, better kit, long supply lines."],
+	[1, "REBELS", "An insurgent militia. Technicals, BTRs, RPGs, FPV drones and tunnels under the town. Cheap, many and hard to pin down."],
+	[-1, "OBSERVE", "Two AI commanders fight it out. The director camera finds the action; take the camera any time."],
+]
+const MOODS := [["random", "Random"], ["dawn", "Dawn"], ["day", "Midday"], ["golden", "Golden hour"], ["dusk", "Dusk"], ["overcast", "Overcast"], ["hazy", "Hazy"], ["rain", "Rain"], ["night", "Night"]]
 
 
 func _ready() -> void:
@@ -48,7 +61,7 @@ func _ready() -> void:
 
 	var margin := MarginContainer.new()
 	margin.anchor_bottom = 1.0
-	margin.offset_right = 620
+	margin.offset_right = 600
 	margin.add_theme_constant_override("margin_left", 72)
 	margin.add_theme_constant_override("margin_top", 80)
 	margin.add_theme_constant_override("margin_bottom", 40)
@@ -56,32 +69,48 @@ func _ready() -> void:
 	var col := VBoxContainer.new()
 	col.add_theme_constant_override("separation", 14)
 	margin.add_child(col)
+	_col = col
+	# the emblem and the wordmark, as on the splash
+	var head := HBoxContainer.new()
+	head.add_theme_constant_override("separation", 18)
+	col.add_child(head)
+	var em := Emblem.new()
+	em.custom_minimum_size = Vector2(56, 56)
+	em.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	head.add_child(em)
 	var fv := FontVariation.new()
 	fv.base_font = UiKit.font(700)
-	fv.spacing_glyph = 7
+	fv.spacing_glyph = 9
 	var title := Label.new()
 	title.text = "FRONTLINE"
 	title.add_theme_font_override("font", fv)
-	title.add_theme_font_size_override("font_size", 78)
-	title.add_theme_color_override("font_color", Color(0.97, 0.93, 0.82))
+	title.add_theme_font_size_override("font_size", 64)
+	title.add_theme_color_override("font_color", Color(0.95, 0.92, 0.84))
 	title.add_theme_constant_override("shadow_offset_y", 3)
 	title.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0.5))
-	col.add_child(title)
-	var tag := UiKit.label("SQUAD TACTICS  -  SOLDIERS WHO THINK  -  SUPPLY LINES THAT BREAK", 13, UiKit.ACCENT, 600)
+	head.add_child(title)
+	var rule := ColorRect.new()
+	rule.color = Color(UiKit.ACCENT.r, UiKit.ACCENT.g, UiKit.ACCENT.b, 0.7)
+	rule.custom_minimum_size = Vector2(470, 2)
+	rule.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	col.add_child(rule)
+	var tag := UiKit.label("SQUAD TACTICS  \u00b7  COMBINED ARMS  \u00b7  COMMAND", 13, UiKit.ACCENT, 700)
 	col.add_child(tag)
 	var gap := Control.new()
-	gap.custom_minimum_size = Vector2(0, 26)
+	gap.custom_minimum_size = Vector2(0, 18)
 	col.add_child(gap)
 
-	# main screen
+	# main screen: grouped entries, each saying what it does
 	main_box = VBoxContainer.new()
-	main_box.add_theme_constant_override("separation", 6)
+	main_box.add_theme_constant_override("separation", 4)
 	main_box.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 	col.add_child(main_box)
-	main_box.add_child(_big("Play vs AI", "Command one side against the AI commander", _single_player))
-	main_box.add_child(_big("Watch AI Battle", "Sit back: two AI commanders fight it out and the camera finds the action", _observe))
-	main_box.add_child(_big("Host Multiplayer", "Co-op against the AI or player vs player", _host))
-	main_box.add_child(_big("Join Game", "Connect to a battle hosted by a friend", func(): join_row.visible = not join_row.visible))
+	main_box.add_child(_section("COMMAND"))
+	main_box.add_child(_big("Play vs AI", "Command one side against the AI commander", func(): _open_op(0)))
+	main_box.add_child(_big("Watch AI Battle", "Two AI commanders fight; the camera finds the action", func(): _open_op(-1)))
+	main_box.add_child(_section("MULTIPLAYER"))
+	main_box.add_child(_big("Host Multiplayer", "Co-op against the AI, or player against player", _host))
+	main_box.add_child(_big("Join Game", "Connect to a battle a friend is hosting", func(): join_row.visible = not join_row.visible))
 	join_row = HBoxContainer.new()
 	join_row.add_theme_constant_override("separation", 6)
 	join_row.visible = false
@@ -96,9 +125,10 @@ func _ready() -> void:
 	join_row.add_child(port_spin)
 	join_row.add_child(_btn("Connect", _join))
 	main_box.add_child(join_row)
+	main_box.add_child(_section("REFERENCE"))
 	main_box.add_child(_big("Field Manual", "Every soldier, weapon, vehicle and work, with its numbers", func(): manual.visible = true))
-	main_box.add_child(_big("Settings", "Graphics, performance overlay, audio", func(): settings_panel.visible = true))
-	main_box.add_child(_big("Quit", "", func(): get_tree().quit()))
+	main_box.add_child(_big("Settings", "Graphics, display, interface and sound", func(): settings_panel.visible = true))
+	main_box.add_child(_big("Quit", "Back to the desktop", func(): get_tree().quit()))
 	var gap2 := Control.new()
 	gap2.custom_minimum_size = Vector2(0, 14)
 	main_box.add_child(gap2)
@@ -161,9 +191,10 @@ func _ready() -> void:
 	var spacer := Control.new()
 	spacer.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	col.add_child(spacer)
-	var hint := UiKit.label("Multiplayer: the host forwards UDP port %d (or plays on a LAN / VPN). Co-op: everyone picks the same side." % Net.DEFAULT_PORT, 12, Color(0.75, 0.75, 0.7, 0.7))
+	hint = UiKit.label("Multiplayer: the host forwards UDP port %d (or plays on a LAN / VPN). Co-op: everyone picks the same side." % Net.DEFAULT_PORT, 12, Color(0.75, 0.75, 0.7, 0.7))
 	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	hint.custom_minimum_size = Vector2(460, 0)
+	hint.visible = false
 	col.add_child(hint)
 
 	settings_panel = SettingsPanel.new()
@@ -185,6 +216,19 @@ func _ready() -> void:
 	manual.closed.connect(func(): manual.visible = false)
 	add_child(manual)
 
+	_build_op_panel()
+	var foot := UiKit.label("ALPHA BUILD  \u00b7  GODOT %s  \u00b7  F4 FIELD MANUAL IN BATTLE" % Engine.get_version_info().string.to_upper(), 11, Color(0.75, 0.75, 0.7, 0.45), 600)
+	foot.anchor_left = 1.0
+	foot.anchor_right = 1.0
+	foot.anchor_top = 1.0
+	foot.anchor_bottom = 1.0
+	foot.offset_left = -560
+	foot.offset_right = -32
+	foot.offset_top = -40
+	foot.offset_bottom = -20
+	foot.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	add_child(foot)
+
 	Net.lobby_updated.connect(_refresh)
 	Net.lobby_chat.connect(func(t): chat_log.append_text(t + "\n"))
 	multiplayer.connected_to_server.connect(func(): _show_lobby())
@@ -200,30 +244,200 @@ func _on_visibility() -> void:
 		backdrop = null
 
 
-## Large left-aligned menu entry (its description is the tooltip).
+## A menu entry: the name and, under it, what it does. Hover slides in an
+## accent bar.
 func _big(text: String, sub: String, cb: Callable) -> Button:
 	var b := Button.new()
-	b.text = text
-	b.tooltip_text = sub
-	b.alignment = HORIZONTAL_ALIGNMENT_LEFT
-	b.custom_minimum_size = Vector2(360, 48)
-	b.add_theme_font_override("font", UiKit.font(600))
-	b.add_theme_font_size_override("font_size", 20)
-	var n := UiKit.box(Color(0, 0, 0, 0.22), 4, Color(0, 0, 0, 0), 0, 0.0)
-	n.content_margin_left = 20
-	var h := UiKit.box(Color(UiKit.ACCENT.r, UiKit.ACCENT.g, UiKit.ACCENT.b, 0.14), 4, UiKit.ACCENT, 0, 0.0)
+	b.text = ""
+	b.custom_minimum_size = Vector2(420, 58 if sub != "" else 44)
+	b.focus_mode = Control.FOCUS_NONE
+	var n := UiKit.box(Color(0, 0, 0, 0.0), 2, Color(0, 0, 0, 0), 0, 0.0)
+	var h := UiKit.box(Color(UiKit.ACCENT.r, UiKit.ACCENT.g, UiKit.ACCENT.b, 0.12), 2, UiKit.ACCENT, 0, 0.0)
 	h.border_width_left = 3
-	h.content_margin_left = 26
 	var pr := h.duplicate() as StyleBoxFlat
-	pr.bg_color = Color(UiKit.ACCENT.r, UiKit.ACCENT.g, UiKit.ACCENT.b, 0.25)
+	pr.bg_color = Color(UiKit.ACCENT.r, UiKit.ACCENT.g, UiKit.ACCENT.b, 0.22)
 	b.add_theme_stylebox_override("normal", n)
 	b.add_theme_stylebox_override("hover", h)
 	b.add_theme_stylebox_override("pressed", pr)
 	b.add_theme_stylebox_override("hover_pressed", pr)
-	b.add_theme_color_override("font_hover_color", UiKit.ACCENT)
-	b.focus_mode = Control.FOCUS_NONE
+	var v := VBoxContainer.new()
+	v.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	v.offset_left = 18
+	v.alignment = BoxContainer.ALIGNMENT_CENTER
+	v.add_theme_constant_override("separation", 0)
+	v.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	b.add_child(v)
+	var l := UiKit.label(text, 21, Color(0.94, 0.93, 0.88), 600)
+	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	v.add_child(l)
+	if sub != "":
+		var s := UiKit.label(sub, 12, Color(0.7, 0.71, 0.66), 400)
+		s.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		v.add_child(s)
+	b.mouse_entered.connect(func():
+		l.add_theme_color_override("font_color", UiKit.ACCENT)
+		create_tween().tween_property(v, "offset_left", 26.0, 0.12))
+	b.mouse_exited.connect(func():
+		l.add_theme_color_override("font_color", Color(0.94, 0.93, 0.88))
+		create_tween().tween_property(v, "offset_left", 18.0, 0.12))
 	b.pressed.connect(func(): Sfx.ui("click"); cb.call())
 	return b
+
+
+func _section(text: String) -> Control:
+	var h := HBoxContainer.new()
+	h.add_theme_constant_override("separation", 10)
+	h.custom_minimum_size = Vector2(0, 30)
+	var l := UiKit.label(text, 11, Color(UiKit.ACCENT.r, UiKit.ACCENT.g, UiKit.ACCENT.b, 0.8), 700)
+	l.size_flags_vertical = Control.SIZE_SHRINK_END
+	h.add_child(l)
+	var r := ColorRect.new()
+	r.color = Color(1, 1, 1, 0.08)
+	r.custom_minimum_size = Vector2(320, 1)
+	r.size_flags_vertical = Control.SIZE_SHRINK_END
+	h.add_child(r)
+	return h
+
+
+# --- new operation -----------------------------------------------------------------------
+
+## The operation panel: which side (or just watch) and the time of day.
+func _build_op_panel() -> void:
+	op_panel = PanelContainer.new()
+	op_panel.add_theme_stylebox_override("panel", UiKit.boxc(Color(0.035, 0.045, 0.045, 0.9), 6, UiKit.LINE, 1, 22.0, 10))
+	op_panel.anchor_top = 0.5
+	op_panel.anchor_bottom = 0.5
+	op_panel.offset_left = 640
+	op_panel.offset_right = 1180
+	op_panel.offset_top = -270
+	op_panel.offset_bottom = 290
+	op_panel.visible = false
+	add_child(op_panel)
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 12)
+	op_panel.add_child(v)
+	v.add_child(UiKit.label("NEW OPERATION", 13, UiKit.ACCENT, 700))
+	v.add_child(UiKit.label("Choose your side", 24, UiKit.TEXT, 600))
+	for sd in SIDES:
+		var card := Button.new()
+		card.toggle_mode = true
+		card.focus_mode = Control.FOCUS_NONE
+		card.custom_minimum_size = Vector2(0, 86)
+		var tc: Color = Defs.TEAM_COLORS[sd[0]] if int(sd[0]) >= 0 else UiKit.ACCENT
+		var cn := UiKit.box(Color(1, 1, 1, 0.03), 4, Color(1, 1, 1, 0.07), 1, 0.0)
+		var ch := UiKit.box(Color(tc.r, tc.g, tc.b, 0.08), 4, Color(tc.r, tc.g, tc.b, 0.5), 1, 0.0)
+		var cp := UiKit.box(Color(tc.r, tc.g, tc.b, 0.14), 4, tc, 2, 0.0)
+		cp.border_width_left = 4
+		card.add_theme_stylebox_override("normal", cn)
+		card.add_theme_stylebox_override("hover", ch)
+		card.add_theme_stylebox_override("pressed", cp)
+		card.add_theme_stylebox_override("hover_pressed", cp)
+		var cv := VBoxContainer.new()
+		cv.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		cv.offset_left = 18
+		cv.offset_right = -14
+		cv.offset_top = 10
+		cv.offset_bottom = -8
+		cv.add_theme_constant_override("separation", 3)
+		cv.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		card.add_child(cv)
+		var nm := UiKit.label(String(sd[1]), 17, tc.lightened(0.25), 700)
+		nm.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		cv.add_child(nm)
+		var ds := UiKit.label(String(sd[2]), 13, Color(0.82, 0.82, 0.78))
+		ds.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		ds.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		cv.add_child(ds)
+		var sv: int = sd[0]
+		card.pressed.connect(func(): _pick_side(sv))
+		v.add_child(card)
+		_side_cards[sv] = card
+	v.add_child(UiKit.label("Time of day", 15, UiKit.DIM, 600))
+	var flow := HFlowContainer.new()
+	flow.add_theme_constant_override("h_separation", 6)
+	flow.add_theme_constant_override("v_separation", 6)
+	v.add_child(flow)
+	for m in MOODS:
+		var c := Button.new()
+		c.text = String(m[1])
+		c.toggle_mode = true
+		c.focus_mode = Control.FOCUS_NONE
+		c.custom_minimum_size = Vector2(0, 30)
+		var mk: String = m[0]
+		c.pressed.connect(func(): _pick_mood(mk))
+		flow.add_child(c)
+		_mood_chips[mk] = c
+	var gap := Control.new()
+	gap.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	v.add_child(gap)
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 10)
+	v.add_child(row)
+	var go := Button.new()
+	go.text = "DEPLOY"
+	go.custom_minimum_size = Vector2(220, 44)
+	go.add_theme_font_override("font", UiKit.font(700))
+	go.add_theme_font_size_override("font_size", 17)
+	var gn := UiKit.box(Color(UiKit.ACCENT.r, UiKit.ACCENT.g, UiKit.ACCENT.b, 0.85), 4, UiKit.ACCENT, 0, 0.0)
+	var gh := UiKit.box(UiKit.ACCENT.lightened(0.15), 4, UiKit.ACCENT, 0, 0.0)
+	go.add_theme_stylebox_override("normal", gn)
+	go.add_theme_stylebox_override("hover", gh)
+	go.add_theme_stylebox_override("pressed", gh)
+	go.add_theme_color_override("font_color", Color(0.08, 0.07, 0.05))
+	go.add_theme_color_override("font_hover_color", Color(0.05, 0.04, 0.03))
+	go.focus_mode = Control.FOCUS_NONE
+	go.pressed.connect(func(): Sfx.ui("click"); _deploy())
+	row.add_child(go)
+	row.add_child(_btn("Back", func(): op_panel.visible = false))
+
+
+func _open_op(side: int) -> void:
+	_pick_side(side)
+	_pick_mood(String(Settings.get_v("mood")))
+	op_panel.visible = true
+	op_panel.modulate.a = 0.0
+	op_panel.offset_left = 670
+	var tw := create_tween().set_parallel(true)
+	tw.tween_property(op_panel, "modulate:a", 1.0, 0.18)
+	tw.tween_property(op_panel, "offset_left", 640.0, 0.18)
+
+
+func _pick_side(side: int) -> void:
+	_op_side = side
+	for k in _side_cards:
+		(_side_cards[k] as Button).set_pressed_no_signal(k == side)
+
+
+func _pick_mood(m: String) -> void:
+	if not _mood_chips.has(m):
+		m = "random"
+	Settings.set_v("mood", m)
+	for k in _mood_chips:
+		(_mood_chips[k] as Button).set_pressed_no_signal(k == m)
+
+
+func _deploy() -> void:
+	op_panel.visible = false
+	if _op_side < 0:
+		_observe()
+	else:
+		_single_player(_op_side)
+
+
+func _unhandled_input(ev: InputEvent) -> void:
+	if visible and op_panel and op_panel.visible and ev is InputEventKey and ev.pressed and (ev as InputEventKey).keycode == KEY_ESCAPE:
+		op_panel.visible = false
+		get_viewport().set_input_as_handled()
+
+
+## The emblem from the splash: the triangle with the red dot.
+class Emblem extends Control:
+	func _draw() -> void:
+		var s := minf(size.x, size.y) * 0.5
+		var c := size * 0.5
+		var pts := PackedVector2Array([c + Vector2(-s, s * 0.78), c + Vector2(0, -s * 0.82), c + Vector2(s, s * 0.78), c + Vector2(-s, s * 0.78)])
+		draw_polyline(pts, Color(0.87, 0.8, 0.63), maxf(2.5, s * 0.13), true)
+		draw_circle(c + Vector2(0, s * 0.2), s * 0.2, Color(0.84, 0.32, 0.24))
 
 
 func _make_name_edit() -> LineEdit:
@@ -257,21 +471,23 @@ func show_menu(msg: String) -> void:
 	visible = true
 	main_box.visible = true
 	lobby_box.visible = false
+	hint.visible = false
 	status.text = msg
 
 
 func _show_lobby() -> void:
 	main_box.visible = false
 	lobby_box.visible = true
+	hint.visible = true
 	status.text = ""
 	_refresh()
 
 
-func _single_player() -> void:
+func _single_player(side := 0) -> void:
 	var port := int(port_spin.value)
 	var err := ERR_CANT_CREATE
 	for i in 5:
-		err = Net.host_game(port + i)
+		err = Net.host_game(port + i, side)
 		if err == OK:
 			break
 	if err != OK:

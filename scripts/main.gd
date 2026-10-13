@@ -18,9 +18,13 @@ var _shot_done := false
 var _shot_i := 0
 var _perf_t0 := 0
 var _perf_frames := 0
+var _curtains := false  # intro and loading screens (normal launches; tests skip them)
+var _curtain_layer: CanvasLayer
 
 
 func _ready() -> void:
+	if "--startup-trace" in OS.get_cmdline_user_args():
+		print("STARTUP main._ready at %d ms" % Time.get_ticks_msec())
 	for a in OS.get_cmdline_user_args():
 		var s := String(a)
 		if s.begins_with("--"):
@@ -32,6 +36,12 @@ func _ready() -> void:
 	layer.layer = 10
 	add_child(layer)
 	layer.add_child(menu)
+	_curtains = args.is_empty() or args.has("curtain")
+	_curtain_layer = CanvasLayer.new()
+	_curtain_layer.layer = 120
+	add_child(_curtain_layer)
+	if _curtains:
+		_intro()
 	Net.game_start.connect(_on_game_start)
 	Net.net_error.connect(func(m): return_to_menu(m))
 	if args.has("name"):
@@ -110,7 +120,61 @@ func _maybe_autostart() -> void:
 			Net.start_game()
 
 
+func _curtain(mode: String) -> Curtain:
+	for c in _curtain_layer.get_children():
+		c.queue_free()
+	var cur := Curtain.new()
+	cur.mode = mode
+	_curtain_layer.add_child(cur)
+	return cur
+
+
+## The intro carries on from the boot splash (the same artwork) and lifts once
+## the menu's 3D backdrop has really drawn - no black frames, no pop-in.
+func _intro() -> void:
+	var cur := _curtain("intro")
+	var t0 := Time.get_ticks_msec()
+	while menu.backdrop == null or not menu.backdrop.is_inside_tree():
+		await get_tree().process_frame
+	var f0 := Engine.get_frames_drawn()
+	while Engine.get_frames_drawn() < f0 + 8 or Time.get_ticks_msec() - t0 < 900:
+		await get_tree().process_frame
+	if is_instance_valid(cur):
+		cur.finish(1.6)
+
+
+func _mission_text(s: Dictionary) -> Array:
+	var pl: Dictionary = s.get("players", {})
+	var me: int = multiplayer.get_unique_id()
+	var team := int(pl[me].team) if pl.has(me) else -1
+	var what := ""
+	var side := ""
+	if String(s.get("scenario", "")) != "":
+		what = "Scenario: %s" % String(s.scenario).capitalize()
+	elif team < 0:
+		what = "Observe: two AI commanders fight for the town"
+	else:
+		var humans := 0
+		for id in pl:
+			if int(pl[id].team) >= 0:
+				humans += 1
+		what = ("Command the %s against the AI" % Defs.TEAM_NAMES[team]) if humans <= 1 else ("%d commanders, %s" % [humans, "co-op" if s.get("ai_fill", true) else "head to head"])
+	side = Defs.TEAM_NAMES[team] if team >= 0 else "Observer"
+	return [what, [["SIDE", side], ["AREA", "A crossroads town and its farmland, 256 x 256 m"], ["CONDITIONS", "Assessing"]]]
+
+
 func _on_game_start(s: Dictionary) -> void:
+	var cur: Curtain = null
+	if _curtains:
+		cur = _curtain("loading")
+		var mt := _mission_text(s)
+		cur.brief(int(s.get("seed", 1)), String(mt[0]), mt[1])
+		cur.set_stage("Surveying the ground", 0.14)
+		if multiplayer.is_server():
+			# let it reach the screen before the long build (clients build at once:
+			# their world is small and the host's state is on its way)
+			await get_tree().process_frame
+			await get_tree().process_frame
 	menu.visible = false
 	if world:
 		world.name = "OldWorld"
@@ -120,6 +184,8 @@ func _on_game_start(s: Dictionary) -> void:
 	world.settings = s
 	add_child(world)
 	world.game_ended.connect(_on_game_ended)
+	if cur and is_instance_valid(cur):
+		_warm_up(cur)
 	if args.has("focus") and world.cam:
 		var f := String(args.focus).split(",")
 		world.cam.focus(Vector3(float(f[0]), 0, float(f[1])))
@@ -271,7 +337,28 @@ func _bot_cmds() -> void:
 		print("BOT: retreat sent")
 
 
+## After the build: hold the loading screen while the first frames render
+## (and compile their shaders) behind it, then fade into the battlefield.
+func _warm_up(cur: Curtain) -> void:
+	if world.atmo:
+		cur.add_line("CONDITIONS", String(Curtain.MOOD_TEXT.get(world.atmo.mood, world.atmo.mood.capitalize())))
+	cur.set_stage("Deploying forces", 0.72)
+	var f0 := Engine.get_frames_drawn()
+	var t0 := Time.get_ticks_msec()
+	while Engine.get_frames_drawn() < f0 + 24 or Time.get_ticks_msec() - t0 < 1100:
+		if not is_instance_valid(cur):
+			return
+		var k := clampf(float(Engine.get_frames_drawn() - f0) / 24.0, 0.0, 1.0)
+		cur.set_stage("Final checks" if k > 0.6 else "Deploying forces", 0.72 + 0.28 * k)
+		await get_tree().process_frame
+	if is_instance_valid(cur):
+		cur.set_stage("Ready", 1.0)
+		cur.finish(2.2)
+
+
 func return_to_menu(msg: String) -> void:
+	if _curtains:
+		_intro()
 	if not args.has("timescale"):
 		Engine.time_scale = 1.0
 	if world:
@@ -283,13 +370,19 @@ func return_to_menu(msg: String) -> void:
 
 
 func _process(_dt: float) -> void:
+	if args.has("startup-trace") and Time.get_ticks_msec() < 9000:
+		print("FRAME t=%d ms frames=%d dt=%.0f ms" % [Time.get_ticks_msec(), Engine.get_frames_drawn(), _dt * 1000.0])
 	if world == null:
 		# --manual=category[,entry[,side]]: open the field manual on a page
 		if args.has("manual") and menu and menu.manual and not has_meta("manual_open") and Time.get_ticks_msec() > 800:
 			set_meta("manual_open", true)
 			var mp := String(args["manual"]).split(",")
 			menu.manual.open(mp[0], mp[1] if mp.size() > 1 else "", int(mp[2]) if mp.size() > 2 else -1)
-		if args.has("menu-shot") and Time.get_ticks_msec() > float(args.get("shot-at", 2.5)) * 1000.0 and not _shot_done:
+		if args.has("menu-op") and menu and menu.op_panel and not has_meta("op_open") and Engine.get_frames_drawn() > 5:
+			set_meta("op_open", true)
+			menu._open_op(int(args["menu-op"]))
+		# (the first frame can take seconds to arrive: count frames drawn, not time)
+		if args.has("menu-shot") and Engine.get_frames_drawn() > 30 and Time.get_ticks_msec() > float(args.get("shot-at", 2.5)) * 1000.0 and not _shot_done:
 			_shot_done = true
 			get_viewport().get_texture().get_image().save_png(String(args["menu-shot"]))
 			get_tree().quit()

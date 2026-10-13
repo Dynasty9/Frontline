@@ -18,6 +18,9 @@ var _flash_t := 0.0
 var _light: OmniLight3D
 var _rng := RandomNumberGenerator.new()
 var _soldiers: Array = []
+var _mg := {}
+var _gunner: SoldierModel
+var _aim := 0.0  # where the gun is being laid (relative to its mount)
 
 
 func _ready() -> void:
@@ -219,39 +222,60 @@ func _props() -> void:
 	mmi.multimesh = mm
 	mmi.material_override = Mats.get_mat("bag")
 	add_child(mmi)
-	gun = Node3D.new()
-	gun.position = Vector3(0.2, 1.05, -1.4)
-	add_child(gun)
-	var dk := Mats.get_mat("gunmetal_w")
-	_part(gun, Res.box(Vector3(0.24, 0.26, 0.7)), dk, Vector3(0, 0.2, 0.15))
-	_part(gun, Res.cyl(0.05, 0.05, 1.4, 8), dk, Vector3(0, 0.22, -0.85), Vector3(PI / 2, 0, 0))
-	_part(gun, Res.cyl(0.09, 0.09, 0.32, 8), dk, Vector3(0, 0.22, -0.32), Vector3(PI / 2, 0, 0))
-	for a in [0.0, 2.1, -2.1]:
-		var leg := _part(gun, Res.box(Vector3(0.04, 0.04, 0.85)), dk, Vector3(sin(a) * 0.3, -0.18, cos(a) * 0.3 + 0.1))
-		leg.rotation = Vector3(0.6, a, 0)
+	# the .50 cal: an M2HB on its M3 tripod, on a platform of bags behind the
+	# wall, crewed by a gunner kneeling behind the grips
+	_mg = WeaponModels.build("m2")
+	gun = _mg.root
+	gun.position = Vector3(0.2, 0.45 + float(_mg.h), -1.4)
 	gun.rotation.y = 0.5
+	add_child(gun)
+	Mats.merge_static(_mg.root, [_mg.traverse], false, false, true)
+	for n in [_mg.traverse, _mg.elev, _mg.body]:
+		Mats.merge_static(n, [], false, false, true)
+	var pxf: Array[Transform3D] = []
+	var pcol: Array[Color] = []
+	for i in 6:
+		var pp := gun.position + Basis(Vector3.UP, 0.5) * Vector3((i % 3 - 1) * 0.42, -float(_mg.h) - 0.32 + (i / 3) * 0.21, 0.05)
+		pxf.append(Transform3D(Basis(Vector3.UP, 0.5).scaled(Vector3(0.44, 0.22, 0.6)), pp))
+		pcol.append(Color(0.95, 0.95, 0.9))
+	var pmm := MultiMesh.new()
+	pmm.transform_format = MultiMesh.TRANSFORM_3D
+	pmm.use_colors = true
+	pmm.mesh = Structure._pillow()
+	pmm.instance_count = pxf.size()
+	for i in pxf.size():
+		pmm.set_instance_transform(i, pxf[i])
+		pmm.set_instance_color(i, pcol[i])
+	var pmi := MultiMeshInstance3D.new()
+	pmi.multimesh = pmm
+	pmi.material_override = Mats.get_mat("bag")
+	add_child(pmi)
+	var body: Node3D = _mg.body
 	_flash = MeshInstance3D.new()
 	_flash.mesh = vfx.quad
 	_flash.material_override = vfx.flash_mat
-	_flash.position = Vector3(0, 0.22, -1.65)
+	_flash.position = _mg.muzzle
 	_flash.scale = Vector3.ONE * 0.9
 	_flash.visible = false
 	_flash.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	gun.add_child(_flash)
+	body.add_child(_flash)
 	_light = OmniLight3D.new()
 	_light.light_color = Color(1.0, 0.7, 0.35)
 	_light.omni_range = 7.0
 	_light.light_energy = 0.0
-	_light.position = Vector3(0, 0.3, -1.6)
-	gun.add_child(_light)
-	# crew
-	for i in 3:
+	_light.position = _mg.muzzle
+	body.add_child(_light)
+	# the crew: the gunner on the gun, a rifleman either side
+	_gunner = SoldierModel.new()
+	_gunner.build("mg_gunner", 0, 41)
+	add_child(_gunner)
+	for i in 2:
 		var sm := SoldierModel.new()
-		sm.build(["rifleman", "mg_gunner", "rifleman"][i] if Defs.UNITS.has("mg_gunner") else "rifleman", 0, 40 + i)
+		sm.build("rifleman", 0, 40 + i * 2)
 		add_child(sm)
-		sm.position = [Vector3(0.3, 0, 0.2), Vector3(-1.4, 0, -0.6), Vector3(1.6, 0, -0.4)][i]
-		sm.rotation.y = [0.5, 0.2, 0.8][i]
-		_soldiers.append([sm, [Soldier.Post.CROUCH, Soldier.Post.CROUCH, Soldier.Post.STAND][i], [Soldier.Act.SHOOT, Soldier.Act.SHOOT, Soldier.Act.IDLE][i]])
+		sm.position = [Vector3(-1.4, 0, -0.6), Vector3(1.6, 0, -0.4)][i]
+		sm.rotation.y = [0.2, 0.8][i]
+		_soldiers.append([sm, [Soldier.Post.CROUCH, Soldier.Post.STAND][i], [Soldier.Act.SHOOT, Soldier.Act.IDLE][i]])
 	# a burning wreck and a tank holding the line
 	var wreck := VehicleModels.build("old_tank", -1, 3, true)
 	add_child(wreck.root)
@@ -325,6 +349,7 @@ func _process(dt: float) -> void:
 	_place_cam()
 	for s in _soldiers:
 		(s[0] as SoldierModel).pose(dt, Soldier.Life.ALIVE, s[1], s[2], 0.0, false, s[2] == Soldier.Act.SHOOT and _burst_left > 0)
+	_crew_gun(dt)
 	# distant shelling
 	_next_boom -= dt
 	if _next_boom <= 0.0:
@@ -339,7 +364,7 @@ func _process(dt: float) -> void:
 	if _next_burst <= 0.0 and _burst_left <= 0:
 		_burst_left = _rng.randi_range(5, 10)
 		_next_burst = _rng.randf_range(2.0, 4.0)
-		gun.rotation.y = _rng.randf_range(0.3, 0.8)
+		_aim = _rng.randf_range(-0.35, 0.35)
 	if _burst_left > 0:
 		_shot_t -= dt
 		if _shot_t <= 0.0:
@@ -352,7 +377,7 @@ func _process(dt: float) -> void:
 			Sfx.play("hmg", _flash.global_position, -10.0)
 			if _burst_left % 2 == 0:
 				var from := _flash.global_position
-				var dir := -gun.global_basis.z
+				var dir := -(_mg.body as Node3D).global_basis.z
 				_tracer(from, from + dir * 120.0 + Vector3(_rng.randf_range(-2, 2), _rng.randf_range(-1, 3), _rng.randf_range(-2, 2)))
 	_flash_t -= dt
 	if _flash_t <= 0.0:
@@ -371,6 +396,28 @@ func _process(dt: float) -> void:
 			continue
 		mi.global_position = from.lerp(to, k)
 		mi.look_at(to, Vector3.UP)
+
+
+## The gun traverses to where it's laid and bucks while firing; the gunner
+## kneels behind its grips and moves round with it, hands on the spades.
+func _crew_gun(dt: float) -> void:
+	if _mg.is_empty():
+		return
+	var tr: Node3D = _mg.traverse
+	var body: Node3D = _mg.body
+	tr.rotation.y = lerp_angle(tr.rotation.y, _aim, 1.0 - exp(-dt * 3.0))
+	if _burst_left > 0:
+		body.position.z = _rng.randf_range(0.01, 0.03)
+	else:
+		body.position.z = lerpf(body.position.z, 0.0, 1.0 - exp(-dt * 15.0))
+	var gb := Basis(Vector3.UP, gun.rotation.y + tr.rotation.y)
+	var gpos := gun.position + gb * Vector3(0, 0, (_mg.grip_r as Vector3).z + 0.5 + body.position.z * 0.8)
+	gpos.y = 0.0
+	_gunner.transform = Transform3D(gb, gpos)
+	_gunner.crew = true
+	_gunner.crew_r = body.global_transform * (_mg.grip_r as Vector3)
+	_gunner.crew_l = body.global_transform * (_mg.grip_l as Vector3)
+	_gunner.pose(dt, Soldier.Life.ALIVE, Soldier.Post.CROUCH, Soldier.Act.SHOOT if _burst_left > 0 else Soldier.Act.IDLE, 0.0, false, _burst_left > 0)
 
 
 func _tracer(from: Vector3, to: Vector3) -> void:

@@ -331,9 +331,9 @@ uniform vec3 mid_col : source_color = vec3(0.24, 0.31, 0.1);
 uniform vec3 tip_col : source_color = vec3(0.47, 0.5, 0.2);
 uniform vec3 dry_col : source_color = vec3(0.5, 0.45, 0.24);
 uniform float wind = 0.11;
-uniform sampler2D scar : filter_linear, repeat_disable;
-uniform sampler2D trench_mask : filter_linear, repeat_disable;
-uniform sampler2D deform_tex : filter_linear, repeat_disable;
+uniform sampler2D scar : hint_default_black, filter_linear, repeat_disable;
+uniform sampler2D trench_mask : hint_default_black, filter_linear, repeat_disable;
+uniform sampler2D deform_tex : hint_default_black, filter_linear, repeat_disable;
 
 varying float h;
 varying float g;
@@ -388,8 +388,8 @@ render_mode specular_disabled, cull_disabled;
 varying vec3 lp;
 varying float rnd;
 float hash(vec3 p) { return fract(sin(dot(p, vec3(127.1, 311.7, 74.7))) * 43758.5453); }
-uniform sampler2D trench_mask : filter_linear, repeat_disable;
-uniform sampler2D deform_tex : filter_linear, repeat_disable;
+uniform sampler2D trench_mask : hint_default_black, filter_linear, repeat_disable;
+uniform sampler2D deform_tex : hint_default_black, filter_linear, repeat_disable;
 void vertex() {
 	if (textureLod(trench_mask, (MODEL_MATRIX[3].xz + 128.0) / 256.0, 0.0).r > 0.3) {
 		VERTEX *= 0.0;

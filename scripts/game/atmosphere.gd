@@ -813,8 +813,8 @@ uniform vec3 sun_tint : source_color = vec3(1.0);
 uniform float cloud_strength = 0.3;
 uniform float bump = 1.4;
 uniform float wet = 0.0;
-uniform sampler2D trench_mask : filter_linear, repeat_disable;
-uniform sampler2D deform_tex : filter_linear, repeat_disable;
+uniform sampler2D trench_mask : hint_default_black, filter_linear, repeat_disable;
+uniform sampler2D deform_tex : hint_default_black, filter_linear, repeat_disable;
 
 varying vec3 wpos;
 varying float puddle;
@@ -908,9 +908,9 @@ shader_type spatial;
 render_mode blend_mix, depth_draw_opaque, specular_schlick_ggx;
 uniform sampler2D detail_tex : filter_linear_mipmap, repeat_enable;
 uniform float wet = 0.0;
-uniform sampler2D trench_mask : filter_linear, repeat_disable;
+uniform sampler2D trench_mask : hint_default_black, filter_linear, repeat_disable;
 uniform vec4 town = vec4(0.0);  // min x, min z, max x, max z: streets here are asphalt
-uniform sampler2D deform_tex : filter_linear, repeat_disable;
+uniform sampler2D deform_tex : hint_default_black, filter_linear, repeat_disable;
 instance uniform float country = 0.0;
 varying vec3 wpos;
 void vertex() { wpos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz; }
