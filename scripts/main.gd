@@ -128,6 +128,8 @@ func _on_game_start(s: Dictionary) -> void:
 
 
 var _fx_next := 2.0
+var _trace_t := 0.0
+var _trace_f: FileAccess = null
 var _fx_i := 0
 
 
@@ -278,6 +280,32 @@ func _process(_dt: float) -> void:
 			get_viewport().get_texture().get_image().save_png(String(args["menu-shot"]))
 			get_tree().quit()
 		return
+	# --trace=path.csv: every half second, where each man is and what he's doing
+	# (for plotting squad movement and posture over a fight)
+	if args.has("trace") and world.srv and world.time >= _trace_t:
+		_trace_t = world.time + 0.5
+		if _trace_f == null:
+			_trace_f = FileAccess.open(String(args["trace"]), FileAccess.WRITE)
+			_trace_f.store_line("t,eid,team,sid,x,z,yaw,life,posture,act,task,goal,cover,supp,phase,role")
+			var sf := FileAccess.open(String(args["trace"]) + ".structs", FileAccess.WRITE)
+			for st in world.structures:
+				if not st.gone:
+					sf.store_line("%s,%.2f,%.2f,%.2f,%.2f,%.2f" % [st.skind, st.position.x, st.position.z, st.yaw, st.size.x, st.size.z])
+			sf.close()
+		for s in world.soldiers:
+			if s.gone:
+				continue
+			var ph := ""
+			var role := ""
+			if s.squad and s.squad.plan:
+				var inf: Array = s.squad.plan.info()
+				ph = str(inf[0])
+				role = "asl"
+				for el in s.squad.plan.support:
+					if el.sq == s.squad:
+						role = "sup"
+			_trace_f.store_line("%.1f,%d,%d,%d,%.2f,%.2f,%.2f,%d,%d,%d,%s,%s,%d,%d,%s,%s" % [world.time, s.eid, s.team, s.squad.sid if s.squad else -1, s.position.x, s.position.z, s.rotation.y, s.life, s.posture, s.act, s.task, s.goal_kind, (s.cover_type if s.at_cover else -1), int(s.suppression), ph, role])
+		_trace_f.flush()
 	if _stats_every > 0.0 and world.srv and world.time >= _stats_t:
 		_stats_t = world.time + _stats_every
 		print(world.debug_stats())
@@ -441,6 +469,31 @@ func _process(_dt: float) -> void:
 					break
 				want -= 1
 		world.set_meta("decor_focused", true)
+	# --follow=team[,n]: keep the camera on that side's nth infantry squad (tactics review)
+	if args.has("follow") and world.cam and world.time > 0.5:
+		var fw := String(args["follow"]).split(",")
+		var want3 := int(fw[1]) if fw.size() > 1 else 0
+		var sids := world.squads.keys()
+		sids.sort()
+		for sid in sids:
+			var sq = world.squads[sid]
+			if sq.team != int(fw[0]) or sq.members.is_empty():
+				continue
+			if want3 > 0:
+				want3 -= 1
+				continue
+			var c := Vector3.ZERO
+			var n := 0
+			for m in sq.members:
+				if is_instance_valid(m) and m.life == Soldier.Life.ALIVE:
+					c += m.position
+					n += 1
+			if n > 0:
+				world.cam.focus(world.cam.focus_pos.lerp(c / n, 0.08) if world.time > 1.0 else c / n)
+				world.focused = true
+				if world.director:
+					world.director.active = false
+			break
 	# --focus-fob=team: keep the camera on that side's first FOB (base screenshots)
 	if args.has("focus-fob") and world.cam and world.time > 1.0 and not world.has_meta("fob_focused"):
 		for st in world.structures:

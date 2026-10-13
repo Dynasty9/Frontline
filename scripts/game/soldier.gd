@@ -179,6 +179,7 @@ var fling_v := Vector3.ZERO
 var _hit_dir := Vector3.ZERO  # the last thing that hit him, for how he falls
 var _hit_kind := ""
 var flinging := false
+var _sector := Vector3.ZERO  # where he watches at a halt (zero: not on a war footing)
 var seen_grenades := {}
 var heard_drones := {}
 var low_ammo_said := false
@@ -716,6 +717,20 @@ func _think() -> void:
 	_scavenge()
 	if task == "":
 		_fight_think()
+		_sector = _sector_dir() if squad and squad.tactical() and not is_moving() else Vector3.ZERO
+
+
+## Where a man at a halt keeps watch: towards the threat, spread across the
+## squad's frontage by where he stands in it (the flanks look out to the
+## flanks); in a big squad the last man covers the rear.
+func _sector_dir() -> Vector3:
+	var f := _threat_dir(_threats())
+	var right := Vector3(-f.z, 0, f.x)
+	var mems: Array = squad.members
+	if mems.size() >= 6 and mems.back() == self and not vis_targets.size():
+		return -f
+	var side := clampf((position - squad.centroid()).dot(right) / 5.0, -1.0, 1.0)
+	return (f + right * side * 0.85).normalized()
 
 
 # --- perception --------------------------------------------------------------------
@@ -1038,6 +1053,8 @@ func _fight_tick(dt: float) -> void:
 	if not moving:
 		_apply_sep(dt)
 		_settle_y(dt)
+		if _sector != Vector3.ZERO and world.time - last_shot_t > 1.2 and not (at_cover and cover_type != Cov.NONE) and not _target_valid(target):
+			_face(_sector, dt, 3.0)
 	else:
 		_shuffle = false
 	_weapon_tick(dt, moving, "normal")
@@ -1051,7 +1068,7 @@ func _fight_tick(dt: float) -> void:
 ## other, smoke, sit down, stretch, check their kit. Anything at all - an order,
 ## a shot, an enemy seen - and it's over.
 func _idle_tick(dt: float, moving: bool) -> void:
-	var calm := not moving and not _danger() and reload_t <= 0.0 and world.time - last_shot_t > 12.0 and mounted == null and not _target_valid(target)
+	var calm := not moving and not _danger() and _sector == Vector3.ZERO and reload_t <= 0.0 and world.time - last_shot_t > 12.0 and mounted == null and not _target_valid(target)
 	if not calm:
 		calm_t = 0.0
 		if idle_act != 0:
@@ -1223,6 +1240,9 @@ func _weapon_tick(dt: float, moving: bool, mode: String) -> void:
 			want = Post.PRONE
 		elif danger:
 			want = Post.PRONE if suppression > 35.0 else Post.CROUCH
+		elif _sector != Vector3.ZERO:
+			# out in the open at a halt: take a knee; the gun goes down on its bipod
+			want = Post.PRONE if utype in ["mg_gunner", "pkm"] else Post.CROUCH
 		else:
 			want = Post.STAND
 		shoot_ok = true

@@ -411,7 +411,9 @@ func _house(c: Vector3, w: float, d: float, axis: float, street_side: float, yar
 			var local_off := (k + 0.5) * seg_len - L * 0.5
 			var lp: Vector3 = s[0] + (Vector3(local_off, 0, 0) if s[2] == 0.0 else Vector3(0, 0, local_off))
 			var wp: Vector3 = c + b * lp
-			var yaw: float = axis + s[2]
+			# turned so the wall's local +z faces out of the house (the model
+			# dresses that face: sills, frames, shutters, the door step)
+			var yaw: float = axis + s[2] + (PI if si == 0 or si == 2 else 0.0)
 			if ruined and rng.randf() < 0.3:
 				if rng.randf() < 0.6:
 					world.spawn("structure", {"skind": "rubble", "pos": wp, "yaw": yaw + rng.randf_range(-0.2, 0.2), "size": Vector3(seg_len * 0.9, 0, 1.2)})

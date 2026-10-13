@@ -154,10 +154,13 @@ func _choose_ground(start: Vector3) -> void:
 		back = dist
 	var lat := axis.cross(Vector3.UP)
 	var best := -1e9
+	# which side each element already stands on: the assault flanks on its own
+	# side and the base of fire sets up on the other, so their routes don't cross
+	var spread := (_centroid(_members(assault)) - _centroid(_members(support))).dot(lat)
 	for s in [-1.0, 1.0]:
 		var cand: Vector3 = objective - axis * 16.0 + lat * float(s) * 22.0
 		cand = world.nav.nearest_walkable(cand)
-		var sc := 0.0
+		var sc := clampf(spread * float(s) / 6.0, -3.0, 3.0)
 		if not Defs.in_map(cand, 8.0):
 			sc -= 100.0
 		sc += float(world.terrain.cover_vs(cand, objective)) * 2.0

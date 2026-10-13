@@ -222,7 +222,7 @@ func _define_parts() -> void:
 	var L := size.x
 	match skind:
 		"low_wall":
-			var c: Color = [C_STONE, Color(0.28, 0.38, 0.18), Color(0.58, 0.37, 0.28)][variant % 3]
+			var c: Color = [C_STONE, Color(0.2, 0.29, 0.13), Color(0.58, 0.37, 0.28)][variant % 3]
 			var h := 1.0 if variant % 3 != 1 else 1.15
 			parts = [_part(Vector3(0, h * 0.5, 0), Vector3(L, h, 0.5 if variant % 3 != 1 else 0.9), Nav.LOW, Nav.LOW, true, true, c)]
 		"tall_wall":
@@ -584,6 +584,57 @@ func _main_color() -> Color:
 	if skind == "roof":
 		return Color(0.5, 0.24, 0.16) if variant % 2 == 0 else C_CONCRETE
 	return parts[0].color if not parts.is_empty() else C_STONE
+
+
+## The outside face of a house wall (local +z faces out): a darker plinth
+## along the bottom; windows get a sill and lintel, a painted frame with a
+## mullion and transom, panes (often shot out) and sometimes shutters;
+## doorways a frame, a step and the doors hanging open. Plaster details share
+## the wall's own surface and the woodwork shares one painted surface, so a
+## wall stays two or three draw calls.
+func _house_wall_detail(rng: RandomNumberGenerator) -> void:
+	var L := size.x
+	var ci := int(size.y)
+	var wall: Color = HOUSE_COLORS[ci % HOUSE_COLORS.size()]
+	var trim: Color = [Color(0.86, 0.85, 0.8), Color(0.32, 0.23, 0.16), Color(0.23, 0.34, 0.28), Color(0.84, 0.83, 0.78), Color(0.36, 0.38, 0.43)][ci % 5]
+	var zo := 0.2
+	_mk(Res.box(Vector3(L, 0.34, 0.04)), "plaster", Vector3(0, 0.17, zo + 0.02), Vector3.ZERO, wall.darkened(0.3))
+	match variant:
+		1:
+			var w := 1.3
+			_mk(Res.box(Vector3(w + 0.24, 0.07, 0.16)), "plaster", Vector3(0, 0.965, zo + 0.06), Vector3.ZERO, wall.lightened(0.25))
+			_mk(Res.box(Vector3(w + 0.16, 0.13, 0.03)), "plaster", Vector3(0, 2.07, zo + 0.015), Vector3.ZERO, wall.darkened(0.1))
+			var fz := zo - 0.1
+			for x in [-w * 0.5 + 0.035, w * 0.5 - 0.035]:
+				_mk(Res.box(Vector3(0.07, 1.0, 0.07)), "paint", Vector3(x, 1.5, fz), Vector3.ZERO, trim, false)
+			for y in [1.035, 1.965]:
+				_mk(Res.box(Vector3(w, 0.07, 0.07)), "paint", Vector3(0, y, fz), Vector3.ZERO, trim, false)
+			_mk(Res.box(Vector3(0.05, 0.9, 0.05)), "paint", Vector3(0, 1.5, fz), Vector3.ZERO, trim, false)
+			_mk(Res.box(Vector3(w - 0.1, 0.05, 0.05)), "paint", Vector3(0, 1.7, fz), Vector3.ZERO, trim, false)
+			for x in [-0.31, 0.31]:
+				if rng.randf() < 0.4:
+					_mk(Res.box(Vector3(0.56, 0.86, 0.012)), "glass", Vector3(x, 1.5, fz), Vector3.ZERO, null, false)
+			if rng.randf() < 0.45:
+				var shc: Color = [Color(0.24, 0.36, 0.27), Color(0.31, 0.39, 0.46), Color(0.36, 0.25, 0.16), Color(0.5, 0.22, 0.17)][(ci + 1) % 4]
+				for sx in [-1.0, 1.0]:
+					if rng.randf() < 0.85:
+						_mk(Res.box(Vector3(0.6, 1.04, 0.035)), "paint", Vector3(sx * (w * 0.5 + 0.33), 1.5, zo + 0.03), Vector3(0, sx * rng.randf_range(0.0, 0.2), 0), shc, false)
+		2:
+			var w := 1.9
+			var fz := zo - 0.08
+			for x in [-w * 0.5 + 0.04, w * 0.5 - 0.04]:
+				_mk(Res.box(Vector3(0.08, 2.2, 0.1)), "paint", Vector3(x, 1.1, fz), Vector3.ZERO, trim, false)
+			_mk(Res.box(Vector3(w, 0.09, 0.1)), "paint", Vector3(0, 2.16, fz), Vector3.ZERO, trim, false)
+			_mk(Res.box(Vector3(w + 0.4, 0.14, 0.6)), "plaster", Vector3(0, 0.07, zo + 0.3), Vector3.ZERO, Color(0.62, 0.6, 0.56))
+			# double doors, swung in (one may be gone)
+			var dc: Color = [Color(0.3, 0.2, 0.13), Color(0.22, 0.32, 0.26), Color(0.26, 0.31, 0.4), Color(0.42, 0.2, 0.15)][(ci + 2) % 4]
+			for sx in [-1.0, 1.0]:
+				if rng.randf() < 0.25:
+					continue
+				var a: float = -sx * rng.randf_range(1.0, 1.8)
+				var hinge := Vector3(sx * (w * 0.5 - 0.09), 0, fz - 0.04)
+				var out := Basis(Vector3.UP, a) * Vector3(-sx * 0.44, 0, 0)
+				_mk(Res.box(Vector3(0.88, 2.06, 0.05)), "paint", hinge + out + Vector3(0, 1.05, 0), Vector3(0, a, 0), dc, false)
 
 
 ## A tree. Its id decides the look, so every peer builds the same one and
@@ -1423,7 +1474,7 @@ func _build_model() -> void:
 				_box(p.p, p.s, p.color)
 				_box(Vector3(0, p.s.y + 0.04, 0), Vector3(p.s.x + 0.06, 0.08, p.s.z + 0.08), p.color.darkened(0.15))
 		"house_wall":
-			pass
+			_house_wall_detail(rng)
 		"floor":
 			pass
 		"roof":

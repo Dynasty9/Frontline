@@ -299,7 +299,7 @@ func _make(h: Node3D, kind: String, ex) -> void:
 			_m(h, Res.box(s), "concrete", Vector3(0, s.y * 0.5, 0), Color(0.72, 0.71, 0.67), Vector3.ZERO, false)
 		"junction":
 			var s: Vector3 = ex
-			_m(h, Res.box(Vector3(s.x, 0.02, s.z)), "concrete_floor", Vector3(0, 0.032, 0), Color(0.1, 0.1, 0.098), Vector3.ZERO, false)
+			_m(h, Res.box(Vector3(s.x, 0.02, s.z)), "concrete_floor", Vector3(0, 0.032, 0), Color(0.31, 0.31, 0.3), Vector3.ZERO, false)
 		"zebra":
 			var wd := float(ex)
 			var n := 6

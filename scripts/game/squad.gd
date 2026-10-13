@@ -26,6 +26,7 @@ var fire_queue: Array = []  # mortar team fire mission: [[pos, kind], ...]
 var bound_team := 0  # attack-move: which fire team is bounding forward
 var bound_t := 0.0
 var contact_t := -99.0
+var alert_t := -99.0  # the last time the squad knew of (or heard) an enemy
 # command and cohesion
 var leader = null  # untyped: the man may be freed
 var travel := false  # long move: the leader leads, the rest keep their place in the wedge
@@ -129,6 +130,13 @@ func in_combat() -> bool:
 		if world.time - float(k.t) < 8.0:
 			return true
 	return not heard.is_empty() and world.time - float(heard.back()[1]) < 6.0
+
+
+## On a war footing: part of a planned attack, assaulting or defending, or
+## enemies about lately. Men at a halt take a knee and watch their sectors
+## instead of standing about.
+func tactical() -> bool:
+	return plan != null or order in ["assault", "attack", "defend"] or world.time - alert_t < 60.0
 
 
 func threat_points(origin: Vector3, n: int) -> Array:
@@ -281,12 +289,18 @@ func _follow_tick() -> void:
 	if head.length() < 0.1:
 		head = facing
 	var side := head.cross(Vector3.UP)
+	# in town the wedge folds into two staggered files, one along each side of
+	# the street, each man watching the windows across from him
+	var urban: bool = world.town_rect.grow(-4.0).has_point(Vector2(ld.position.x, ld.position.z))
 	var lag_sum := 0.0
 	var n := 0
 	for m in members:
 		if m == ld or not m.can_take_orders() or m.detached or not _offsets.has(m.eid):
 			continue
 		var o: Vector2 = _offsets[m.eid]
+		if urban:
+			var row := roundf(o.y / 3.4)
+			o = Vector2(signf(o.x) * 3.2, row * 4.4 + (2.2 if o.x > 0.0 else 0.0) - 2.2)
 		var tgt := world.nav.nearest_walkable(ld.position + side * o.x - head * o.y)
 		var lag := Defs.flat(tgt - m.position).length()
 		lag_sum += lag
@@ -599,6 +613,8 @@ func tick(dt: float) -> void:
 		var k: Dictionary = known[id]
 		if world.time - float(k.t) > 20.0 or k.e.gone:
 			known.erase(id)
+	if not known.is_empty() or (not heard.is_empty() and world.time - float(heard.back()[1]) < 10.0):
+		alert_t = world.time
 	get_leader()
 	if travel and order == "move":
 		_follow_tick()

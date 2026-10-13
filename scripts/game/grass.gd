@@ -326,7 +326,7 @@ const GRASS_SHADER := """
 shader_type spatial;
 render_mode cull_disabled, specular_disabled;
 
-uniform vec3 base_col : source_color = vec3(0.12, 0.17, 0.06);
+uniform vec3 base_col : source_color = vec3(0.14, 0.19, 0.07);
 uniform vec3 mid_col : source_color = vec3(0.24, 0.31, 0.1);
 uniform vec3 tip_col : source_color = vec3(0.47, 0.5, 0.2);
 uniform vec3 dry_col : source_color = vec3(0.5, 0.45, 0.24);
@@ -364,6 +364,11 @@ void vertex() {
 }
 
 void fragment() {
+	// blades are lit as if they faced the sky from both sides: the engine flips
+	// back faces' normals, which turned half of every blade black
+	if (!FRONT_FACING) {
+		NORMAL = -NORMAL;
+	}
 	vec3 col = mix(base_col, mid_col, smoothstep(0.0, 0.5, h));
 	col = mix(col, tip_col, smoothstep(0.45, 1.0, h));
 	col = mix(col, dry_col, clamp((1.0 - g) * 0.8 + (rnd - 0.7) * 0.6, 0.0, 0.85) * smoothstep(0.2, 1.0, h));
@@ -372,7 +377,7 @@ void fragment() {
 	ALBEDO = col;
 	ROUGHNESS = 0.85;
 	BACKLIGHT = vec3(0.35, 0.4, 0.15) * h * (1.0 - burnt);
-	AO = mix(0.6, 1.0, h);
+	AO = mix(0.78, 1.0, h);
 	AO_LIGHT_AFFECT = 0.6;
 }
 """
