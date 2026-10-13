@@ -72,6 +72,7 @@ func _draw() -> void:
 		_interactions(cam, men, a_close)
 	if a_close + a_mid > 0.0:
 		_leader_marks(men, maxf(a_close, a_mid))
+		_sectors(cam, maxf(a_close, a_mid))
 	_mark("interactions")
 	if Settings.get_v("bubbles"):
 		_speech(cam, vs, a_close, a_mid)
@@ -1157,6 +1158,37 @@ func _intel(cam: Camera3D, vs: Vector2, lt: int) -> void:
 			if age > 10.0:
 				var at := "%ds" % int(age)
 				UiKit.text(self, sp + Vector2(hs + 3, 4), at, 9, Color(1, 1, 1, 0.6 * a), 600)
+
+
+## What each man of a selected squad is watching while it holds: a faint
+## wedge on the ground from where he kneels, so you can see the squad's
+## all-round cover (and the gap if a man goes down).
+func _sectors(cam: Camera3D, a: float) -> void:
+	for sid in _sel_sids:
+		var g: Dictionary = _groups.get(sid, {})
+		if g.is_empty():
+			continue
+		for s in g["mem"]:
+			if s.life != Soldier.Life.ALIVE or not s.visible or s._view_speed > 0.4:
+				continue
+			var p: Vector3 = s.position + Vector3(0, 0.08, 0)
+			if cam.is_position_behind(p):
+				continue
+			var yaw: float = s.rotation.y
+			var pts := PackedVector2Array([cam.unproject_position(p)])
+			var ok := true
+			for i in 7:
+				var q := p + Defs.dir_of(yaw + deg_to_rad(-24.0 + i * 8.0)) * 10.0
+				if cam.is_position_behind(q):
+					ok = false
+					break
+				pts.append(cam.unproject_position(q))
+			if not ok:
+				continue
+			var col: Color = Defs.TEAM_COLORS[s.team].lightened(0.35) if s.team >= 0 else UiKit.ACCENT
+			MapSymbols.poly(self, pts, Color(col.r, col.g, col.b, 0.07 * a))
+			pts.append(pts[0])
+			draw_polyline(pts, Color(col.r, col.g, col.b, 0.28 * a), 1.0, true)
 
 
 ## How far the selected units can reach.
