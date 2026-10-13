@@ -79,6 +79,18 @@ func build(w, entries: Array) -> void:
 		_build_chunk(key)
 	_build_wires()
 	_apply_mood()
+	if OS.has_environment("FL_DEBUG_DECOR"):
+		var mis := 0
+		var surfs := 0
+		var counts := {}
+		for e in _entries:
+			counts[e[0]] = counts.get(e[0], 0) + 1
+		for c in _chunks.values():
+			for m in (c as Node).get_children():
+				if m is MeshInstance3D and (m as MeshInstance3D).mesh:
+					mis += 1
+					surfs += (m as MeshInstance3D).mesh.get_surface_count()
+		print("DECOR chunks=%d mis=%d surfaces=%d entries=%d %s" % [_chunks.size(), mis, surfs, _entries.size(), counts])
 
 
 ## (Re)builds one chunk: every piece still standing, merged per material.

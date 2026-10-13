@@ -145,7 +145,12 @@ Settings are saved to `user://settings.cfg`.
   cross road; farmsteads (farmhouse and barn round a yard, hay bales, a fenced road frontage, an orchard) and
   hedged fields lie along the roads; abandoned cars on the verges, burnt-out armour off the road.
 - Walls, hedges, trees, cars and crates are all real cover. Street furniture is set dressing generated on the
-  server and built on each client.
+  server and built on each client, and it breaks: a blast or a vehicle driving through knocks lamps, utility poles
+  (their wires come down with them), signs, benches, bins, fences and playground kit over, and the pieces fall and
+  lie where they land. Broken street lights stay dark at night.
+- Trees are broadleaves (a flared trunk forking into limbs that carry clumps of leaves, darker underneath),
+  spruces (many overlapping tiers of boughs) and small orchard trees; foliage has ragged, leafy edges and throws
+  dappled shadows. A tree that is shelled or run over falls away from what hit it and stays down.
 
 **Terrain** (`terrain.gd`, `mapgen.gd`)
 - Country roads wind from HQ to HQ through the town, with a crossroad through the middle. On a road you're
@@ -272,6 +277,9 @@ Settings are saved to `user://settings.cfg`.
   moving shadows. In the rain, streaks fall around the camera, splashes hit the ground, puddles reflect the sky and
   lightning flashes are followed by thunder.
 - Ambient sound: wind that grows as you zoom out, and a distant-battle rumble that swells with the fighting.
+- Soldiers: helmets cut above the brow (rim, rails, NVG mount, headset, eye protection), faces with a jaw, nose and
+  ears, shaped torsos, plate carriers with their cummerbund, straps and pouches, battle belts and knee pads; the
+  irregulars wear chest rigs, watch caps, berets, ball caps and shemaghs.
 - Every surface is a procedural material: plaster with brick showing through, concrete panels, corrugated metal
   with rust streaks, plank walls, HESCO baskets, camouflage on uniforms and vehicles, canvas, bark. Sandbag walls are
   stacked from individual lumpy bags, FOBs sit under camouflage netting that throws dappled shadows, trees sway.
@@ -381,10 +389,13 @@ Pass these after `--` on the command line:
 --scenario=... --play                                 command the Coalition side of a scenario instead of watching
 --focus-fob=0|1                                       keep the camera on that side's first FOB
 --focus-town[=dx,dz] / --focus-decor=kind[,n]         camera on the town, or on a piece of street furniture
---blast-at=X,Z,SIZE,TIME                              a real explosion at that spot and time (physics tests)
+--blast-at=X,Z,SIZE,TIME                              a real explosion at that spot and time (physics tests);
+                                                      X,Z of "f,DX" is DX metres beside the camera's focus
+--pitch=-14 --cam-yaw=-0.84                           fixed camera pitch (degrees) and heading (model close-ups)
 --seed=N                                              (with --aivai) the same map every run
 --dump-structs                                        list every built structure when --quit-after fires
 FL_DEBUG_HPA=1 (env)                                  benchmark hierarchical vs flat paths at start-up
+FL_DEBUG_DECOR=1 (env)                                print the street-furniture chunk and mesh counts
 --menu-shot=menu.png --shot-at=6                      screenshot of the main menu
 ```
 
