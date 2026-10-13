@@ -174,11 +174,16 @@ func build(utype: String, team: int, seed: int) -> void:
 			sh2.scale = Vector3(1.05, 0.95, 1.05)
 			Res.mi(head, Res.box(Vector3(0.2, 0.08, 0.05)), Res.mat(scarf), Vector3(0, 0.07, -0.1), Vector3.ZERO, false)
 		elif style == 2:
-			Res.mi(head, Res.box(Vector3(0.23, 0.06, 0.23)), Res.mat(hat), Vector3(0, 0.2, 0), Vector3.ZERO, false)
-			Res.mi(head, Res.box(Vector3(0.21, 0.06, 0.06)), Res.mat(hat.darkened(0.2)), Vector3(0, 0.17, -0.13), Vector3.ZERO, false)
+			# beret, pulled down to one side
+			var br := Res.mi(head, Res.sphere(0.135, 12), Res.mat(hat), Vector3(0.025, 0.205, 0.01), Vector3(0, 0, 0.28), false)
+			br.scale = Vector3(1.12, 0.36, 1.08)
+			Res.mi(head, Res.cyl(0.118, 0.118, 0.025, 12), Res.mat(hat.darkened(0.25)), Vector3(0, 0.178, 0.005), Vector3.ZERO, false)
 		else:
+			# ball cap: a rounded crown and a curved brim
 			var cap := Res.mi(head, Res.sphere(0.125, 10), Res.mat(hat), Vector3(0, 0.17, 0.005), Vector3.ZERO, false)
 			cap.scale = Vector3(1.0, 0.62, 1.0)
+			var brim := Res.mi(head, Res.cyl(0.075, 0.08, 0.015, 10), Res.mat(hat.darkened(0.15)), Vector3(0, 0.168, -0.125), Vector3(0.18, 0, 0), false)
+			brim.scale = Vector3(1.0, 1.0, 0.75)
 		# scarf round the neck
 		Res.mi(head, Res.cyl(0.085, 0.09, 0.07, 10), Res.mat(scarf), Vector3(0, -0.02, 0), Vector3.ZERO, false)
 	else:

@@ -346,7 +346,7 @@ func _process(_dt: float) -> void:
 						why[k] = int(why.get(k, 0)) + 1
 				print("UNBAKED ", why)
 				print("BY OWNER ", owners)
-			get_viewport().get_texture().get_image().save_png("../shots/perf.png")
+			get_viewport().get_texture().get_image().save_png(String(args.get("perf-shot", "user://perf.png")))
 			get_tree().quit()
 	if args.has("fx-demo"):
 		_fx_demo()

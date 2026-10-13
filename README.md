@@ -372,7 +372,7 @@ Pass these after `--` on the command line:
 --host --players=2 / --join=127.0.0.1 --team=0        two-process multiplayer test (--bot-cmds issues real commands,
                                                       --ai-allies adds AI commanders to both sides)
 --quit-on-win                                         stop and print the winner when the game ends
---perf-at=480                                         fast-forward, then measure real FPS and server tick cost
+--perf-at=480 [--perf-shot=path.png]                  fast-forward, then measure real FPS and server tick cost
 --screenshot=out.png --shot-at=30 --focus=X,Z --zoom=40 [--shots=N --shot-every=0.5]
 --mood=golden --perf=3 --preset=ultra                 lighting, overlay level and graphics preset for screenshots
 --fx-demo=1.4 --fx-every=3                            set off explosions near the camera (visual test, no damage)

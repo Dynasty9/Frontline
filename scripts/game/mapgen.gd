@@ -255,12 +255,16 @@ func scenario(sname: String) -> void:
 				[[P.STAND, A.IDLE, 0, 0.0], [P.STAND, A.SHOOT, 0, 0.0], [P.STAND, A.RELOAD, 0, 0.0], [P.STAND, A.WALK, 0, 1.6], [P.STAND, A.RUN, 0, 4.8], [P.STAND, A.THROW, 0, 0.0]],
 				[[P.CROUCH, A.IDLE, 0, 0.0], [P.CROUCH, A.SHOOT, 0, 0.0], [P.CROUCH, A.WALK, 0, 1.5], [P.LEAN_L, A.SHOOT, 0, 0.0], [P.LEAN_R, A.SHOOT, 0, 0.0], [P.CROUCH, A.RELOAD, 0, 0.0]],
 				[[P.PRONE, A.IDLE, 0, 0.0], [P.PRONE, A.SHOOT, 0, 0.0], [P.PRONE, A.CRAWL, 0, 1.0], [P.STAND, A.IDLE, 2, 0.0], [P.STAND, A.IDLE, 2, 0.0], [P.STAND, A.IDLE, 2, 0.0]],
+				[[P.STAND, A.SHOOT, 0, 0.0, Soldier.F_OVERWALL], [P.STAND, A.IDLE, 0, 0.0, Soldier.F_OVERWALL], [P.PRONE, A.CRAWL, 0, 0.75], [P.CROUCH, A.IDLE, 0, 0.0], [P.STAND, A.SHOOT, 0, 0.0, Soldier.F_OVERWALL], [P.PRONE, A.CRAWL, 0, 0.75]],
 			]
+			# a low wall in front of the over-the-wall men
+			for wx in [-7.5, -4.5, 4.5]:
+				_spawn("low_wall", Vector3(wx, 0, 8.0 - 0.75), 0.0, -1, {"size": Vector3(2.6, 1, 0.5)})
 			for ri in rows.size():
 				var row: Array = rows[ri]
 				for ci in row.size():
 					var ut := "rifleman" if ri != 1 or ci != 2 else "mg_gunner"
-					world.spawn("soldier", {"utype": ut, "team": 0 if ci % 2 == 0 else 1, "owner": a, "pos": Vector3(-7.5 + ci * 3.0, 0, -4.0 + ri * 4.0), "yaw": 2.3, "name": "P%d%d" % [ri, ci], "dpose": row[ci]})
+					world.spawn("soldier", {"utype": ut, "team": 0 if ci % 2 == 0 else 1, "owner": a, "pos": Vector3(-7.5 + ci * 3.0, 0, -4.0 + ri * 4.0), "yaw": 2.3 if ri < 3 else 0.35, "name": "P%d%d" % [ri, ci], "dpose": row[ci]})
 		"lean":
 			for i in 3:
 				_spawn("tall_wall", Vector3(-14 + i * 14.0, 0, -10), 0.0, -1, {"size": Vector3(6, 2.6, 0.5)})

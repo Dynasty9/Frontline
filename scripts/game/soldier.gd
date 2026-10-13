@@ -553,6 +553,7 @@ func sim(dt: float) -> void:
 		posture = int(debug_pose[0])
 		act = int(debug_pose[1])
 		life = int(debug_pose[2])
+		flags = int(debug_pose[4]) if debug_pose.size() > 4 else 0
 		return
 	_doing_t -= dt
 	if _doing_t <= 0.0:
