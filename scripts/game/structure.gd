@@ -319,11 +319,14 @@ func _define_parts() -> void:
 		"tank_trap":
 			parts = [_part(Vector3(0, 0.6, 0), Vector3(1.8, 1.2, 1.8), Nav.FREE, Nav.SOLID, false, false, C_STEEL)]
 		"mg_nest":
-			parts = [
-				_part(Vector3(0, 0.5, -1.7), Vector3(3.8, 1.0, 0.8), Nav.LOW, Nav.LOW, true, true, C_SAND),
-				_part(Vector3(-1.7, 0.5, -0.4), Vector3(0.8, 1.0, 2.0), Nav.LOW, Nav.LOW, true, true, C_SAND),
-				_part(Vector3(1.7, 0.5, -0.4), Vector3(0.8, 1.0, 2.0), Nav.LOW, Nav.LOW, true, true, C_SAND),
-			]
+			if variant == 1:
+				parts = _trench_bay_parts()
+			else:
+				parts = [
+					_part(Vector3(0, 0.43, -1.7), Vector3(3.8, 0.86, 0.8), Nav.LOW, Nav.LOW, true, true, C_SAND),
+					_part(Vector3(-1.7, 0.5, -0.4), Vector3(0.8, 1.0, 2.0), Nav.LOW, Nav.LOW, true, true, C_SAND),
+					_part(Vector3(1.7, 0.5, -0.4), Vector3(0.8, 1.0, 2.0), Nav.LOW, Nav.LOW, true, true, C_SAND),
+				]
 		"watchtower":
 			for x in [-1.2, 1.2]:
 				for z in [-1.2, 1.2]:
@@ -334,11 +337,14 @@ func _define_parts() -> void:
 			parts.append(_part(Vector3(-1.45, 4.7, 0), Vector3(0.15, 0.95, 3.0), Nav.FREE, Nav.FREE, false, true, C_WOOD))
 			parts.append(_part(Vector3(1.45, 4.7, 0), Vector3(0.15, 0.95, 3.0), Nav.FREE, Nav.FREE, false, true, C_WOOD))
 		"hmg_nest":
-			parts = [
-				_part(Vector3(0, 0.55, -1.85), Vector3(4.2, 1.1, 0.9), Nav.LOW, Nav.LOW, true, true, C_SAND),
-				_part(Vector3(-1.85, 0.55, -0.5), Vector3(0.9, 1.1, 1.9), Nav.LOW, Nav.LOW, true, true, C_SAND),
-				_part(Vector3(1.85, 0.55, -0.5), Vector3(0.9, 1.1, 1.9), Nav.LOW, Nav.LOW, true, true, C_SAND),
-			]
+			if variant == 1:
+				parts = _trench_bay_parts()
+			else:
+				parts = [
+					_part(Vector3(0, 0.44, -1.85), Vector3(4.2, 0.88, 0.9), Nav.LOW, Nav.LOW, true, true, C_SAND),
+					_part(Vector3(-1.85, 0.55, -0.5), Vector3(0.9, 1.1, 1.9), Nav.LOW, Nav.LOW, true, true, C_SAND),
+					_part(Vector3(1.85, 0.55, -0.5), Vector3(0.9, 1.1, 1.9), Nav.LOW, Nav.LOW, true, true, C_SAND),
+				]
 		"mortar_pit":
 			for i in 5:
 				var a := -PI * 0.75 + i * PI * 0.375
@@ -496,9 +502,114 @@ func mount_pos() -> Vector3:
 			return position + b * Vector3(0, 0, 0.75)
 		"at_post":
 			return position + b * Vector3(0, 0, -0.4)
-		"hmg_nest":
-			return position + b * Vector3(0, 0, -0.65)
+		"mg_nest", "hmg_nest":
+			var g: Dictionary = WeaponModels.GUNS[mg_kind()]
+			var lp := mg_pivot_local() + Vector3(0, 0, (g.grip_r as Vector3).z + (0.34 if variant == 1 else 0.5))
+			var mp := position + b * Vector3(lp.x, 0, lp.z)
+			if variant == 1:
+				mp.y = TrenchNet.FLOOR_Y + 0.15
+			return mp
 	return position + b * Vector3(0, 0, -0.5)
+
+
+## A machine-gun bay cut into a trench: just a low wall of bags on the lip in
+## front of the gun (the trench itself is the cover), so the trench stays open.
+func _trench_bay_parts() -> Array:
+	var z := -(TrenchNet.HALF_W + 1.0)
+	return [
+		_part(Vector3(0, 0.15, z), Vector3(2.2, 0.3, 0.6), Nav.LOW, Nav.LOW, true, true, C_SAND),
+		_part(Vector3(-0.95, 0.15, z + 0.55), Vector3(0.5, 0.3, 0.6), Nav.LOW, Nav.LOW, true, true, C_SAND),
+		_part(Vector3(0.95, 0.15, z + 0.55), Vector3(0.5, 0.3, 0.6), Nav.LOW, Nav.LOW, true, true, C_SAND),
+	]
+
+
+# --- crew-served machine guns -------------------------------------------------------
+
+var _mg := {}  # the gun's moving parts (view only, see WeaponModels.build)
+
+
+## Which gun: M240B / M2HB for the Coalition, PKM / DShKM for the Rebels.
+func mg_kind() -> String:
+	if skind == "hmg_nest":
+		return "dshk" if team == 1 else "m2"
+	return "pkm" if team == 1 else "m240"
+
+
+## Where the pintle sits (model space): on a platform of bags behind the front
+## wall in a nest, on the front lip of the trench in a trench bay.
+func mg_pivot_local() -> Vector3:
+	var g: Dictionary = WeaponModels.GUNS[mg_kind()]
+	if variant == 1:
+		# far enough out that the tripod's rear feet are on the lip, not over the trench
+		return Vector3(0, float(g.trench_h), -(TrenchNet.HALF_W + (0.55 if skind == "hmg_nest" else 0.5)))
+	if skind == "hmg_nest":
+		return Vector3(0, 0.45 + float(g.nest_h), -1.1)
+	return Vector3(0, 0.5 + float(g.nest_h), -0.95)
+
+
+## The gun's arc either side of the way the emplacement faces.
+const MG_ARC := 1.2
+
+
+## Where the rounds leave the barrel with the gun laid on `aim_yaw`.
+func mg_muzzle(aim_yaw: float) -> Vector3:
+	var g: Dictionary = WeaponModels.GUNS[mg_kind()]
+	var rel := clampf(wrapf(aim_yaw - yaw, -PI, PI), -MG_ARC, MG_ARC)
+	var piv := position + Basis(Vector3.UP, yaw) * mg_pivot_local()
+	return piv + Vector3(0, float(g.bore), 0) + Defs.dir_of(yaw + rel) * float(g.muzzle)
+
+
+## Can the gun be laid that way at all?
+func mg_covers(dir: Vector3) -> bool:
+	return Defs.flat(dir).normalized().dot(front_dir()) > cos(MG_ARC + 0.1)
+
+
+## The gunner lays the gun (view): it swings to where he aims, within its arc,
+## and bucks on the mount while he fires.
+func crew_aim(aim_yaw: float, firing: bool, dt: float) -> void:
+	if _mg.is_empty():
+		return
+	var rel := clampf(wrapf(aim_yaw - yaw, -PI, PI), -MG_ARC, MG_ARC)
+	var tr: Node3D = _mg.traverse
+	tr.rotation.y = lerp_angle(tr.rotation.y, rel, 1.0 - exp(-dt * 7.0))
+	var body: Node3D = _mg.body
+	var el: Node3D = _mg.elev
+	if firing:
+		body.position.z = randf_range(0.008, 0.03)
+		el.rotation.x = randf_range(-0.004, 0.012)
+	else:
+		body.position.z = lerpf(body.position.z, 0.0, 1.0 - exp(-dt * 18.0))
+		el.rotation.x = lerpf(el.rotation.x, 0.0, 1.0 - exp(-dt * 10.0))
+
+
+## The gun's handles in world space: [right hand, left hand].
+func crew_grips() -> Array:
+	if _mg.is_empty():
+		return []
+	var xf: Transform3D = (_mg.body as Node3D).global_transform
+	return [xf * (_mg.grip_r as Vector3), xf * (_mg.grip_l as Vector3)]
+
+
+func _mg_model(rng: RandomNumberGenerator, bags: Array) -> void:
+	var heavy := skind == "hmg_nest"
+	_mg = WeaponModels.build(mg_kind(), variant == 1)
+	var root: Node3D = _mg.root
+	root.position = mg_pivot_local()
+	model.add_child(root)
+	var pz: float = root.position.z
+	if variant == 1:
+		# dug into the trench's front lip: tripod feet on the parapet, ammo
+		# at the gunner's elbow
+		WeaponModels.ammo_dump(model, Vector3(0.8, 0.0, -(TrenchNet.HALF_W + 0.3)), heavy, rng)
+	else:
+		# the gun sits on a platform of filled bags behind the front wall
+		var ph := 0.45 if heavy else 0.5
+		bags.append({"p": Vector3(0, ph * 0.5, pz + 0.05), "s": Vector3(1.2, ph, 0.9), "r": 0.0})
+		WeaponModels.ammo_dump(model, Vector3(1.0, 0.0, 0.25), heavy, rng)
+		# spent brass and links round the platform
+		for i in 18:
+			var bp := Vector3(rng.randf_range(-0.6, 0.6), 0.02, pz + rng.randf_range(0.35, 1.2))
+			_mk(Res.cyl(0.007, 0.007, 0.05 if not heavy else 0.09, 5), "paint", bp, Vector3(PI / 2, rng.randf() * TAU, 0), WeaponModels.BRASS, false)
 
 
 ## Gun the crewman uses while manning this emplacement ({} = special behaviour).
@@ -1665,24 +1776,8 @@ func _build_model() -> void:
 			for r in [0.0, PI / 3, -PI / 3]:
 				var b := _box(Vector3(0, 0.6, 0), Vector3(0.18, 0.18, 1.9), C_STEEL)
 				b.rotation = Vector3(0.6, r, 0.0)
-		"mg_nest":
-			var g := Node3D.new()
-			g.position = Vector3(0, 1.05, -1.0)
-			model.add_child(g)
-			Res.mi(g, Res.box(Vector3(0.14, 0.18, 1.3)), Res.mat(Color(0.12, 0.12, 0.12)), Vector3(0, 0, -0.3))
-			Res.mi(g, Res.box(Vector3(0.3, 0.06, 0.06)), Res.mat(Color(0.12, 0.12, 0.12)), Vector3(0, -0.1, 0.1))
-		"hmg_nest":
-			var m2 := Node3D.new()
-			m2.position = Vector3(0, 0.95, -1.1)
-			model.add_child(m2)
-			var dk := Color(0.1, 0.1, 0.1)
-			Res.mi(m2, Res.box(Vector3(0.22, 0.24, 0.65)), Res.mat(dk), Vector3(0, 0.2, 0.15))
-			Res.mi(m2, Res.cyl(0.05, 0.05, 1.3, 8), Res.mat(dk), Vector3(0, 0.22, -0.8), Vector3(PI / 2, 0, 0))
-			Res.mi(m2, Res.cyl(0.08, 0.08, 0.3, 8), Res.mat(dk), Vector3(0, 0.22, -0.3), Vector3(PI / 2, 0, 0))
-			Res.mi(m2, Res.box(Vector3(0.18, 0.16, 0.26)), Res.mat(Color(0.3, 0.33, 0.22)), Vector3(-0.22, 0.12, 0.2))
-			for a in [0.0, 2.1, -2.1]:
-				var leg := Res.mi(m2, Res.box(Vector3(0.04, 0.04, 0.8)), Res.mat(dk), Vector3(sin(a) * 0.3, -0.15, cos(a) * 0.3 + 0.1))
-				leg.rotation = Vector3(0.6, a, 0)
+		"mg_nest", "hmg_nest":
+			_mg_model(rng, bags)
 		"mortar_pit":
 			_box(Vector3(0, 0.02, 0), Vector3(3.2, 0.04, 3.2), Color(0.18, 0.14, 0.1), 0.0, false)
 			var dk2 := Color(0.12, 0.13, 0.1)
@@ -1748,6 +1843,11 @@ func _build_model() -> void:
 		_bag_walls(bags, rng)
 	_skin(model)
 	var keep: Array = [_flag] if _flag else []
+	if not _mg.is_empty():
+		# the gun turns and kicks: each moving piece is its own single mesh
+		keep.append(_mg.root)
+		for n in [_mg.root, _mg.traverse, _mg.elev, _mg.body]:
+			Mats.merge_static(n, [], false, false, true)
 	for nm in ["Site", "Done"]:
 		var sub := model.get_node_or_null(nm) as Node3D
 		if sub:

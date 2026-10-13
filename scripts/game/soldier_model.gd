@@ -39,6 +39,9 @@ var _baked := false
 var ragdoll = null  # Ragdoll while the physics has the body
 var ragdoll_done := false  # the body lies where the physics left it
 var over_wall := false  # firing over low cover
+var crew := false  # working a mounted gun: his own slung, hands on its grips
+var crew_r := Vector3.ZERO  # world positions of the mounted gun's handles
+var crew_l := Vector3.ZERO
 # two-hand weapon hold: the arms are solved from where the weapon is
 var ik_l := false
 var ik_r := false
@@ -358,6 +361,7 @@ func _joint(parent: Node3D, p: Vector3) -> Node3D:
 func pose(dt: float, life: int, posture: int, act: int, speed: float, backwards: bool, lean_shoot: bool) -> void:
 	if ragdoll != null:
 		return  # the physics owns the body
+	_alive_pose = life == 0
 	if ragdoll_done:
 		if life == 2 and not act in [Soldier.Act.CARRIED, Soldier.Act.DRAGGED]:
 			if not _baked:
@@ -704,7 +708,7 @@ func pose(dt: float, life: int, posture: int, act: int, speed: float, backwards:
 		else:
 			tube.position = tube.position.lerp(Vector3(0.18, 0.45, 0.18), 0.2)
 			tube.rotation = tube.rotation.lerp(Vector3(0.3, 0, 0.2), 0.2)
-	gun.visible = show_gun
+	gun.visible = show_gun and not (crew and life == 0)
 	pistol.visible = show_pistol
 	stretcher.visible = show_stretcher
 	_apply(dt, k)
@@ -920,6 +924,12 @@ func _flung(dt: float) -> void:
 
 
 func _apply(dt: float, k: float) -> void:
+	if crew and life_alive_pose():
+		# his own weapon laid by (hidden in pose()), leaning into the gun, both hands on it
+		ik_l = true
+		ik_r = true
+		t_torso.x = minf(t_torso.x, -0.32)
+		t_head.x = maxf(t_head.x, 0.22)
 	if ik_l or ik_r:
 		_solve_hands()
 	tumble = Vector3.ZERO
@@ -942,6 +952,13 @@ func _apply(dt: float, k: float) -> void:
 	if gun.visible:
 		_mv(gun, t_gun_p, f)
 		_rot(gun, t_gun_r, f)
+
+
+var _alive_pose := true
+
+
+func life_alive_pose() -> bool:
+	return _alive_pose
 
 
 func _rot(n: Node3D, target: Vector3, f: float) -> void:
@@ -971,6 +988,12 @@ func _solve_hands() -> void:
 	var gb := Basis.from_euler(t_gun_r)
 	var grip := t_gun_p + gb * Vector3(0.0, -0.08, 0.04)
 	var fore := t_gun_p + gb * Vector3(0.0, -0.06, fore_z)
+	if crew and life_alive_pose():
+		# the mounted gun's handles, brought into torso space
+		var inv := torso.global_transform.affine_inverse()
+		grip = inv * crew_r
+		fore = inv * crew_l
+		ik_l_target = Vector3.INF
 	if ik_r:
 		var r := _ik(SH_R, grip, Vector3(0.75, -0.65, 0.25))
 		t_arr = r[0]

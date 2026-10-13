@@ -358,6 +358,24 @@ func _place(kind: String, pos: Vector3, yaw: float, engs: Array) -> void:
 
 func _find_spot(kind: String, center: Vector3, rmin: float, rmax: float) -> Vector3:
 	var fwd := _enemy_dir()
+	# machine guns go into the trench line when there is one: a bay facing the enemy
+	if kind in ["mg_nest", "hmg_nest"]:
+		var cands := []
+		for st in world.structures_near(center, rmax + 6.0):
+			if st.skind == "trench" and st.team == team and st.built and absf(Defs.dir_of(st.yaw).dot(fwd)) < 0.5:
+				cands.append(st)
+		cands.shuffle()
+		for st in cands:
+			var spot: Dictionary = world.trench_mount_spot(st.position, Defs.yaw_of(fwd))
+			if spot.is_empty():
+				continue
+			var taken := false
+			for o in world.structures_near(spot.pos, 9.0):
+				if o.skind in ["mg_nest", "hmg_nest"]:
+					taken = true
+					break
+			if not taken and world.placement_error(team, kind, spot.pos, float(spot.yaw)) == "":
+				return spot.pos
 	for i in 20:
 		var a := rng.randf_range(-PI, PI)
 		if kind in ["sandbags", "mg_nest", "hmg_nest", "wire", "mines", "tank_trap", "watchtower", "trench", "bunker", "at_post"] or rmin >= 40.0:

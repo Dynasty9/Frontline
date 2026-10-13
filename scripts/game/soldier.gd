@@ -441,6 +441,8 @@ func _pick(arr: Array) -> String:
 # --- geometry helpers ------------------------------------------------------------
 
 func eye_pos() -> Vector3:
+	if posture == Post.STAND and mounted and mounted.variant == 1 and mounted.skind in ["mg_nest", "hmg_nest"]:
+		return position + Vector3(0, 1.62, 0)  # on the fire step, sighting along the gun
 	match posture:
 		Post.CROUCH:
 			return position + Vector3(0, 1.25 if (mounted and mounted.skind in ["mg_nest", "hmg_nest"]) else 0.95, 0)
@@ -1206,6 +1208,16 @@ func _weapon_tick(dt: float, moving: bool, mode: String) -> void:
 	if mode == "escort":
 		want = Post.STAND
 		shoot_ok = true
+	elif mode == "crew":
+		# behind the gun: kneeling in a nest, standing on the fire step of a
+		# trench bay; under fire too heavy to work the gun he gets down
+		var bay: bool = mounted != null and mounted.variant == 1
+		var down := suppression >= 88.0
+		want = (Post.CROUCH if bay else Post.PRONE) if down else (Post.STAND if bay else Post.CROUCH)
+		shoot_ok = not down
+		peek_up = false
+		if not have_target and not cf:
+			_face(cover_threat, dt, 3.0)
 	elif moving:
 		if _crawling():
 			want = Post.PRONE
@@ -1246,7 +1258,7 @@ func _weapon_tick(dt: float, moving: bool, mode: String) -> void:
 		else:
 			want = Post.STAND
 		shoot_ok = true
-	if pinned and want == Post.STAND and mode != "escort":
+	if pinned and want == Post.STAND and mode != "escort" and mode != "crew":
 		want = Post.CROUCH
 	if hit_dirt_t > 0.0 and mode != "escort" and not moving:
 		want = Post.PRONE
@@ -1270,6 +1282,8 @@ func _weapon_tick(dt: float, moving: bool, mode: String) -> void:
 	if aim_pt == Vector3.INF:
 		return
 	var aim_dir := Defs.flat(aim_pt - position).normalized()
+	if mode == "crew" and mounted and not mounted.mg_covers(aim_dir):
+		return  # outside the gun's arc
 	if mode != "escort" and not (posture == Post.LEAN_L or posture == Post.LEAN_R):
 		_face_now(aim_dir)
 	_shoot(aim_pt, aim_ent, moving, cf)
@@ -1295,6 +1309,8 @@ func _shoot(aim_pt: Vector3, aim_ent: Entity, moving: bool, cover_fire: bool) ->
 	last_shot_t = world.time
 	act = Act.SHOOT
 	var muzzle := eye_pos() + Defs.dir_of(rotation.y) * 0.55 - Vector3(0, 0.08, 0)
+	if crew_mount() != null:
+		muzzle = mounted.mg_muzzle(rotation.y)
 	var accm := 1.0
 	if moving:
 		accm *= 0.55
@@ -2756,6 +2772,13 @@ func _man_tick(dt: float) -> void:
 		"at_post":
 			_at_post_tick(dt, st)
 			return
+		"mg_nest", "hmg_nest":
+			at_cover = true
+			cover_type = Cov.LOW
+			cover_threat = _threat_dir(_threats())
+			_weapon_tick(dt, false, "crew")
+			_choose_act(false)
+			return
 	at_cover = true
 	cover_type = Cov.LOW
 	cover_threat = _threat_dir(_threats())
@@ -2944,6 +2967,15 @@ func read_state(b: StreamPeerBuffer) -> void:
 	doing_ent = b.get_u16()
 
 
+## The crew-served gun this man is working (server: his mount once he's on
+## it; clients: what he's reported manning, once he's in place behind it).
+func crew_mount() -> Structure:
+	var st = mounted if srv else world.entity(doing_ent)
+	if st is Structure and st.skind in ["mg_nest", "hmg_nest"] and not st.gone and Defs.flat(position - st.mount_pos()).length() < 0.8:
+		return st
+	return null
+
+
 ## A body lying still is sent like a building: when it changes, and now and then.
 func is_static() -> bool:
 	return life == Life.DEAD and not flinging and act != Act.CARRIED and act != Act.DRAGGED
@@ -3035,5 +3067,15 @@ func _view_process(dt: float) -> void:
 		if _ip_moving or not model.transform.is_equal_approx(off):
 			model.transform = off
 	model.over_wall = (flags & F_OVERWALL) != 0
+	var cm := crew_mount() if life == Life.ALIVE else null
+	if cm != null:
+		cm.crew_aim(rotation.y, (flags & F_SHOOTING) != 0, pdt)
+		var gr: Array = cm.crew_grips()
+		model.crew = not gr.is_empty() and posture != Post.PRONE and not (cm.variant == 1 and posture == Post.CROUCH)
+		if model.crew:
+			model.crew_r = gr[0]
+			model.crew_l = gr[1]
+	else:
+		model.crew = false
 	model.pose(pdt, life, posture, act, _view_speed, back, (flags & F_SHOOTING) != 0)
 	ring.visible = selected

@@ -264,6 +264,34 @@ func ground_y(p: Vector3) -> float:
 	return terrain.deform_at(p) if terrain else 0.0
 
 
+## A machine gun placed on a trench goes into the trench as a gun bay: the spot
+## on the trench line nearest `pos` (not right at its ends) and the heading
+## square to the trench closest to the one asked for. {} if no trench is close.
+func trench_mount_spot(pos: Vector3, yaw: float) -> Dictionary:
+	var best := {}
+	var bd := 1.7
+	for st in structures_near(pos, 8.0):
+		if st.skind != "trench" or st.gone:
+			continue
+		var sg := TrenchNet.seg_of(st)
+		var a: Vector3 = Defs.flat(sg[0])
+		var b: Vector3 = Defs.flat(sg[1])
+		var ab := b - a
+		var L := ab.length()
+		if L < 2.0:
+			continue
+		var t := clampf((Defs.flat(pos) - a).dot(ab) / (L * L), 1.2 / L, 1.0 - 1.2 / L)
+		var q := a + ab * t
+		var d := Defs.flat(pos - q).length()
+		if d < bd:
+			bd = d
+			var n := Vector3(-ab.z, 0, ab.x).normalized()
+			if n.dot(Defs.dir_of(yaw)) < 0.0:
+				n = -n
+			best = {"pos": q, "yaw": Defs.yaw_of(n)}
+	return best
+
+
 func in_trench(p: Vector3) -> bool:
 	for st in structures_near(p, 4.0):
 		if st.skind == "trench" and st.built and TrenchNet.inside(st, p, 0.05):
@@ -300,7 +328,7 @@ func placement_error(team: int, kind: String, pos: Vector3, yaw: float) -> Strin
 		half.x += TrenchNet.HALF_W
 	var c := Vector2(pos.x, pos.z)
 	for st in structures_near(pos, 16.0):
-		if st.skind == "floor" or (kind == "trench" and st.skind == "trench"):
+		if st.skind == "floor" or (kind == "trench" and st.skind == "trench") or (st.skind == "trench" and kind in ["mg_nest", "hmg_nest"]):
 			continue
 		if Defs.obb_overlap(c, half - Vector2(0.12, 0.12), yaw, Vector2(st.position.x, st.position.z), st.foot - Vector2(0.12, 0.12), st.yaw):
 			return "Blocked by %s." % st.display_name()

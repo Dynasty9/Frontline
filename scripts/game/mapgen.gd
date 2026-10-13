@@ -144,6 +144,20 @@ func scenario(sname: String) -> void:
 			_spawn("low_wall", Vector3(-30, 0, 30), 0.0, -1, {"size": Vector3(4, 1, 0.5), "variant": 2})
 			_spawn("low_wall", Vector3(-30, 0, 24), 0.0, -1, {"size": Vector3(4, 1, 0.5), "variant": 0})
 			_spawn("car", Vector3(-30, 0, 8), 0.5, -1, {"variant": 1})
+		"guns":
+			# the crew-served guns side by side, each crewed: M240B and M2HB nests,
+			# PKM and DShKM nests, and a machine-gun bay of each side in a trench
+			var row := [["mg_nest", 0], ["hmg_nest", 0], ["mg_nest", 1], ["hmg_nest", 1]]
+			for i in row.size():
+				var st := _spawn(String(row[i][0]), Vector3(-16 + i * 10.0, 0, 0), PI, int(row[i][1]), {"built": true})
+				_crew(st, a if int(row[i][1]) == 0 else b)
+			_trench_line(Vector3(-18, 0, 16), Vector3(18, 0, 16), 0, false)
+			for i in 4:
+				var sp := world.trench_mount_spot(Vector3(-13.5 + i * 9.0, 0, 16), PI)
+				if sp.is_empty():
+					continue
+				var bay := _spawn(["mg_nest", "hmg_nest"][i % 2], sp.pos, float(sp.yaw), 0 if i < 2 else 1, {"built": true, "variant": 1})
+				_crew(bay, a if i < 2 else b)
 		"drone":
 			r.spawn_squad("fpv_team", 1, b, Vector3(0, 0, -105))
 			var tank: Vehicle = world.spawn("vehicle", {"vkind": "tank", "team": 0, "owner": a, "pos": Vector3(0, 0, 0), "yaw": 0.0})
@@ -190,7 +204,10 @@ func scenario(sname: String) -> void:
 			_trench_line(Vector3(-24, 0, -52), Vector3(24, 0, -52), 1)
 			_trench_line(Vector3(-12, 0, -28), Vector3(-12, 0, -52), 1, false)
 			_trench_line(Vector3(12, 0, -28), Vector3(12, 0, -52), 1, false)
-			_spawn("mg_nest", Vector3(-22, 0, -32), PI, 1)
+			# a gun bay in the front line, and a sandbagged .50 behind it
+			var bay2 := world.trench_mount_spot(Vector3(-22, 0, -28), PI)
+			if not bay2.is_empty():
+				_spawn("mg_nest", bay2.pos, float(bay2.yaw), 1, {"variant": 1})
 			_spawn("hmg_nest", Vector3(24, 0, -33), PI, 1)
 			_spawn("bunker", Vector3(0, 0, -58), PI, 1)
 			_spawn("wire", Vector3(-15, 0, -16), 0.0, 1)
@@ -290,6 +307,13 @@ func scenario(sname: String) -> void:
 			r.spawn_squad("fighter_cell", 1, b, Vector3(0, 0, -40), Vector3(0, 0, -20))
 	r.rebuild_network(0)
 	r.rebuild_network(1)
+
+
+## A machine gunner for a scenario's emplacement, already on the gun.
+func _crew(st: Structure, owner: int) -> void:
+	var ut := "pkm" if st.team == 1 else "mg_gunner"
+	var s: Soldier = world.spawn("soldier", {"utype": ut, "team": st.team, "owner": owner, "pos": st.mount_pos() * Vector3(1, 0, 1), "yaw": st.yaw})
+	s.start_man(st)
 
 
 func _trench_line(a: Vector3, b: Vector3, team: int, zig := true) -> void:

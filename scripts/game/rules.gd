@@ -261,6 +261,13 @@ func try_place(peer: int, team: int, kind: String, pos: Vector3, yaw: float, sqs
 	var def: Dictionary = Defs.BUILDINGS[kind]
 	if not team in def.teams:
 		return null
+	var bay := 0
+	if kind in ["mg_nest", "hmg_nest"]:
+		var spot := world.trench_mount_spot(pos, yaw)
+		if not spot.is_empty():
+			pos = spot.pos
+			yaw = float(spot.yaw)
+			bay = 1
 	var err := world.placement_error(team, kind, pos, yaw)
 	if err != "":
 		notify(peer, team, err)
@@ -273,6 +280,8 @@ func try_place(peer: int, team: int, kind: String, pos: Vector3, yaw: float, sqs
 		props["size"] = size
 	if kind == "fob":
 		props["sname"] = next_fob_name(team)
+	if bay == 1:
+		props["variant"] = 1
 	var st: Structure = world.spawn("structure", props)
 	if not assign:
 		return st

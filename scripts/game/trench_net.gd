@@ -493,9 +493,10 @@ void fragment() {
 	float row = fract(v * 6.5);
 	float seam = smoothstep(0.0, 0.08, row) * smoothstep(1.0, 0.92, row);
 	float post = smoothstep(0.08, 0.0, abs(fract(u * 0.62) - 0.5) - 0.04);
-	vec3 wood = mix(vec3(0.22, 0.17, 0.11), vec3(0.34, 0.27, 0.18), n) * (0.75 + 0.25 * seam);
-	wood = mix(wood, vec3(0.15, 0.11, 0.075), post);
-	vec3 earth = mix(vec3(0.18, 0.14, 0.1), vec3(0.26, 0.2, 0.15), n2);
+	// (linear colours)
+	vec3 wood = mix(vec3(0.06, 0.042, 0.026), vec3(0.11, 0.08, 0.05), n) * (0.75 + 0.25 * seam);
+	wood = mix(wood, vec3(0.03, 0.022, 0.015), post);
+	vec3 earth = mix(vec3(0.045, 0.034, 0.024), vec3(0.08, 0.06, 0.042), n2);
 	vec3 col = mix(earth, wood, plank_zone * 0.92);
 	col *= mix(0.7, 1.0, smoothstep(1.0, 0.25, v));
 	ALBEDO = col;
@@ -512,12 +513,12 @@ void vertex() { wpos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz; }
 void fragment() {
 	float n = texture(detail_tex, wpos.xz / 2.6).r;
 	float n2 = texture(detail_tex, wpos.xz / 4.1 + 0.3).r;
-	float clods = smoothstep(0.6, 0.72, texture(detail_tex, wpos.xz * 1.1).r) * 0.6;
-	vec3 fresh = mix(vec3(0.1, 0.072, 0.05), vec3(0.155, 0.115, 0.08), n);
-	vec3 grassy = mix(vec3(0.1, 0.13, 0.045), vec3(0.16, 0.19, 0.075), n2);
+	float clods = smoothstep(0.62, 0.74, texture(detail_tex, wpos.xz * 2.2).r) * 0.45;
+	vec3 fresh = mix(vec3(0.045, 0.033, 0.022), vec3(0.08, 0.058, 0.04), n);
+	vec3 grassy = mix(vec3(0.05, 0.068, 0.022), vec3(0.09, 0.11, 0.038), n2);
 	float g = smoothstep(0.45, 0.95, UV.x + (n2 - 0.5) * 0.5);
 	vec3 col = mix(fresh, grassy, g * 0.85);
-	col = mix(col, col * 0.75, clods * (1.0 - g));
+	col = mix(col, col * 0.8, clods * (1.0 - g));
 	ALBEDO = col;
 	ROUGHNESS = 0.95;
 	NORMAL_MAP = vec3(0.5 + (n - 0.5) * 0.6, 0.5 + (clods - 0.5) * 0.3, 1.0);
@@ -533,8 +534,8 @@ void fragment() {
 	float n = texture(detail_tex, wpos.xz / 1.1).r;
 	float n2 = texture(detail_tex, wpos.xz / 3.3 + 0.5).r;
 	float pud = smoothstep(0.62, 0.7, n2);
-	vec3 col = mix(vec3(0.11, 0.085, 0.06), vec3(0.17, 0.13, 0.09), n);
-	col = mix(col, vec3(0.05, 0.045, 0.04), pud);
+	vec3 col = mix(vec3(0.04, 0.03, 0.021), vec3(0.07, 0.052, 0.036), n);
+	col = mix(col, vec3(0.012, 0.011, 0.01), pud);
 	ALBEDO = col;
 	ROUGHNESS = mix(0.9, 0.15, pud);
 	SPECULAR = mix(0.2, 0.5, pud);
@@ -549,8 +550,8 @@ void fragment() {
 	float gap = smoothstep(0.0, 0.12, slat) * smoothstep(1.0, 0.88, slat);
 	float rail = smoothstep(0.1, 0.0, abs(UV.y - 0.12)) + smoothstep(0.1, 0.0, abs(UV.y - 0.88));
 	float n = texture(detail_tex, vec2(UV.x * 0.4, UV.y)).r;
-	vec3 wood = mix(vec3(0.16, 0.12, 0.08), vec3(0.24, 0.18, 0.12), n);
-	vec3 col = mix(vec3(0.05, 0.04, 0.03), wood, max(gap, rail));
+	vec3 wood = mix(vec3(0.05, 0.036, 0.022), vec3(0.09, 0.066, 0.042), n);
+	vec3 col = mix(vec3(0.012, 0.009, 0.007), wood, max(gap, rail));
 	ALBEDO = col;
 	ROUGHNESS = 0.85;
 }
