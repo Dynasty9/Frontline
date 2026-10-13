@@ -471,6 +471,8 @@ func _make_model(e: Dictionary) -> Node3D:
 		"infantry":
 			# armed men stand to, weapon up; the rest at ease
 			var armed: bool = String(Defs.UNITS[e.key].weapon) in ["rifle", "ak", "smg", "lmg"]
+			if int(Defs.UNITS[e.key].get("rockets", 0)) > 0:
+				return _soldier(String(e.key), side, Soldier.Act.LAUNCH)  # launcher shouldered
 			return _soldier(String(e.key), side, Soldier.Act.SHOOT if armed else Soldier.Act.IDLE)
 		"squads":
 			var g := Node3D.new()

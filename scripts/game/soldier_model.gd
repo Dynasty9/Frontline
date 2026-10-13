@@ -41,6 +41,12 @@ var ragdoll_done := false  # the body lies where the physics left it
 var over_wall := false  # firing over low cover
 var muzzle_local := Vector3(0, 0.01, -0.8)  # the weapon's muzzle in gun space
 var crew := false  # working a mounted gun: his own slung, hands on its grips
+## Attachment sockets (torso space). Carried kit is built to one convention -
+## forward along -Z, top along +Y, origin at its balance point - and sits in a
+## socket: stowed across the back, or shouldered to fire.
+const SOCK_BACK := Transform3D(Basis(Vector3(0.83, 0.55, 0.0), Vector3(0.0, 0.0, 1.0), Vector3(0.55, -0.83, 0.0)), Vector3(0.0, 0.42, 0.29))
+const SOCK_SHOULDER := Transform3D(Basis.IDENTITY, Vector3(0.14, 0.665, -0.2))
+var _launch_grips := false
 var crew_r := Vector3.ZERO  # world positions of the mounted gun's handles
 var crew_l := Vector3.ZERO
 # two-hand weapon hold: the arms are solved from where the weapon is
@@ -359,7 +365,7 @@ func build(utype: String, team: int, seed: int) -> void:
 	pistol.visible = false
 	is_mortar = Defs.UNITS.has(utype) and int(Defs.UNITS[utype].get("mortar", 0)) > 0
 	if Defs.UNITS.has(utype) and (int(Defs.UNITS[utype].get("rockets", 0)) > 0 or is_mortar):
-		tube = _joint(torso, Vector3(0.18, 0.45, 0.22))
+		tube = _joint(torso, Vector3.ZERO)
 		var tcol := Color(0.29, 0.31, 0.22) if team == 0 else Color(0.27, 0.27, 0.22)
 		if is_mortar:
 			# a 60 mm mortar tube with its base cap and carrying handle
@@ -384,7 +390,7 @@ func build(utype: String, team: int, seed: int) -> void:
 			Res.mi(tube, Res.box(Vector3(0.025, 0.04, 0.08)), Res.mat(dark), Vector3(-0.04, 0.04, -0.06), Vector3.ZERO, false)
 			Res.mi(tube, Res.cyl(0.042, 0.042, 0.12, 10), Res.mat(Color(0.3, 0.33, 0.24)), Vector3(0, 0, -0.54), Vector3(PI / 2, 0, 0), false)
 			Res.mi(tube, Res.cyl(0.042, 0.004, 0.17, 10), Res.mat(Color(0.3, 0.33, 0.24)), Vector3(0, 0, -0.68), Vector3(PI / 2, 0, 0), false)
-		tube.rotation = Vector3(0.3, 0, 0.2)
+		tube.transform = SOCK_BACK
 	if Defs.UNITS.has(utype) and Defs.UNITS[utype].get("engineer", false):
 		back_item = _joint(torso, Vector3(-0.1, 0.35, 0.28))
 		Res.mi(back_item, Res.box(Vector3(0.05, 0.75, 0.05)), Res.mat(wood), Vector3.ZERO, Vector3(0, 0, 0.5), false)
@@ -840,14 +846,17 @@ func pose(dt: float, life: int, posture: int, act: int, speed: float, backwards:
 				k = 6.0
 			_:
 				_posture_pose(posture, act, moving, sp, cp, speed, lean_shoot)
+	_launch_grips = false
 	if tube:
-		if act == Soldier.Act.LAUNCH and look != "op" and not is_mortar:
-			tube.position = tube.position.lerp(Vector3(0.18, 0.62, -0.1), 0.3)
-			tube.rotation = tube.rotation.lerp(Vector3(0, 0, 0), 0.3)
+		# from the back socket to the shoulder and back again, turning as one
+		# rigid piece (no per-axis angle blending)
+		var shouldered := act == Soldier.Act.LAUNCH and look != "op" and not is_mortar and life == 0
+		tube.transform = tube.transform.interpolate_with(SOCK_SHOULDER if shouldered else SOCK_BACK, 0.3 if shouldered else 0.2)
+		if shouldered:
 			show_gun = false
-		else:
-			tube.position = tube.position.lerp(Vector3(0.18, 0.45, 0.18), 0.2)
-			tube.rotation = tube.rotation.lerp(Vector3(0.3, 0, 0.2), 0.2)
+			_launch_grips = true
+			ik_l = true
+			ik_r = true
 	gun.visible = show_gun and not (crew and life == 0)
 	pistol.visible = show_pistol
 	stretcher.visible = show_stretcher
@@ -1140,6 +1149,11 @@ func _solve_hands() -> void:
 	var gb := Basis.from_euler(t_gun_r)
 	var grip := t_gun_p + gb * Vector3(0.0, -0.08, 0.04)
 	var fore := t_gun_p + gb * Vector3(0.0, -0.06, fore_z)
+	if _launch_grips:
+		# the launcher's trigger grip and its fore grip
+		grip = SOCK_SHOULDER * Vector3(0.0, -0.075, 0.1)
+		fore = SOCK_SHOULDER * Vector3(0.0, -0.07, -0.16)
+		ik_l_target = Vector3.INF
 	if crew and life_alive_pose():
 		# the mounted gun's handles, brought into torso space
 		var inv := torso.global_transform.affine_inverse()

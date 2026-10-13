@@ -125,7 +125,6 @@ static func merge_static(root: Node3D, keep: Array = [], deep := true, remerge :
 			arrays2[Mesh.ARRAY_VERTEX] = g2.v
 			arrays2[Mesh.ARRAY_NORMAL] = g2.n
 			arrays2[Mesh.ARRAY_COLOR] = g2.c
-			arrays2[Mesh.ARRAY_INDEX] = g2.i
 			am2.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays2)
 			am2.surface_set_material(am2.get_surface_count() - 1, g2.mat if g2.mat.get_shader_parameter("use_vcolor") == true else vc_variant(g2.mat))
 			if int(g2.shadow) != GeometryInstance3D.SHADOW_CASTING_SETTING_OFF:
@@ -145,7 +144,6 @@ static func merge_static(root: Node3D, keep: Array = [], deep := true, remerge :
 		arrays[Mesh.ARRAY_VERTEX] = g.v
 		arrays[Mesh.ARRAY_NORMAL] = g.n
 		arrays[Mesh.ARRAY_COLOR] = g.c
-		arrays[Mesh.ARRAY_INDEX] = g.i
 		var am := ArrayMesh.new()
 		am.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
 		var mi := MeshInstance3D.new()
@@ -156,6 +154,47 @@ static func merge_static(root: Node3D, keep: Array = [], deep := true, remerge :
 	for v in victims:
 		v.get_parent().remove_child(v)
 		v.queue_free()
+
+
+static var _flat_cache := {}
+
+
+## A surface as an unindexed triangle list [verts, normals, colours or null].
+## The shared primitives (boxes, cylinders, spheres) are flattened once and
+## kept, so building a soldier or a house only appends arrays.
+static func _flat(mesh: Mesh, si: int) -> Array:
+	var cacheable := mesh is PrimitiveMesh or mesh is BevelMesh
+	var key := mesh.get_instance_id() * 8 + si
+	if cacheable and _flat_cache.has(key):
+		return _flat_cache[key]
+	var arr := mesh.surface_get_arrays(si)
+	var v: PackedVector3Array = arr[Mesh.ARRAY_VERTEX]
+	var n: PackedVector3Array = arr[Mesh.ARRAY_NORMAL]
+	var c = arr[Mesh.ARRAY_COLOR]
+	var hasc: bool = c != null and (c as PackedColorArray).size() == v.size()
+	var idx = arr[Mesh.ARRAY_INDEX]
+	if idx != null and not (idx as PackedInt32Array).is_empty():
+		var ii: PackedInt32Array = idx
+		var v2 := PackedVector3Array()
+		var n2 := PackedVector3Array()
+		var c2 := PackedColorArray()
+		v2.resize(ii.size())
+		n2.resize(ii.size())
+		if hasc:
+			c2.resize(ii.size())
+		for k in ii.size():
+			var j := ii[k]
+			v2[k] = v[j]
+			n2[k] = n[j]
+			if hasc:
+				c2[k] = (c as PackedColorArray)[j]
+		v = v2
+		n = n2
+		c = c2
+	var out := [v, n, c if hasc else null]
+	if cacheable:
+		_flat_cache[key] = out
+	return out
 
 
 static func _collect(node: Node, xf: Transform3D, groups: Dictionary, victims: Array, keep: Array, deep := true, remerge := false, single := false) -> void:
@@ -190,30 +229,23 @@ static func _collect(node: Node, xf: Transform3D, groups: Dictionary, victims: A
 					var vc: bool = sm.get_shader_parameter("use_vcolor") == true
 					var key := str(sm.get_instance_id()) if single else "%d|%d" % [sm.get_instance_id(), mi.cast_shadow]
 					if not groups.has(key):
-						groups[key] = {"mat": sm, "shadow": mi.cast_shadow, "v": PackedVector3Array(), "n": PackedVector3Array(), "c": PackedColorArray(), "i": PackedInt32Array()}
+						groups[key] = {"mat": sm, "shadow": mi.cast_shadow, "v": PackedVector3Array(), "n": PackedVector3Array(), "c": PackedColorArray()}
 					var g: Dictionary = groups[key]
 					if mi.cast_shadow != GeometryInstance3D.SHADOW_CASTING_SETTING_OFF:
 						g.shadow = mi.cast_shadow
-					var arr := mi.mesh.surface_get_arrays(si)
-					var verts: PackedVector3Array = arr[Mesh.ARRAY_VERTEX]
-					var norms: PackedVector3Array = arr[Mesh.ARRAY_NORMAL]
-					var base: int = g.v.size()
+					# plain triangle lists, so parts are appended with native array
+					# ops (no index offsetting loop in script)
+					var fa := _flat(mi.mesh, si)
+					var verts: PackedVector3Array = fa[0]
 					g.v.append_array(cx * verts)
-					g.n.append_array(nb * norms)
-					var cols := PackedColorArray()
-					if vc and arr[Mesh.ARRAY_COLOR] != null and (arr[Mesh.ARRAY_COLOR] as PackedColorArray).size() == verts.size():
-						cols = arr[Mesh.ARRAY_COLOR]
+					g.n.append_array(nb * (fa[1] as PackedVector3Array))
+					if vc and fa[2] != null and (fa[2] as PackedColorArray).size() == verts.size():
+						g.c.append_array(fa[2])
 					else:
+						var cols := PackedColorArray()
 						cols.resize(verts.size())
 						cols.fill(col)
-					g.c.append_array(cols)
-					var idx = arr[Mesh.ARRAY_INDEX]
-					if idx == null or (idx as PackedInt32Array).is_empty():
-						idx = PackedInt32Array(range(verts.size()))
-					var ii := (idx as PackedInt32Array).duplicate()
-					for k in ii.size():
-						ii[k] += base
-					g.i.append_array(ii)
+						g.c.append_array(cols)
 				victims.append(mi)
 				continue
 		if deep:
