@@ -97,6 +97,10 @@ func fire_bullet(shooter: Entity, muzzle: Vector3, aim: Vector3, tgt: Entity, w:
 			p *= 1.15
 		if tgt is Soldier:
 			p *= world.terrain.hit_mul(tgt.position, muzzle)
+			# a man in a trench is only really exposed to fire from along his bay
+			# (enfilade); from the front the parapet takes most of it
+			if tgt._gy < -0.6 and not world.trench_enfiladed(tgt.position, muzzle):
+				p *= 0.45
 		if tgt is Vehicle and tgt.is_air() and not w.get("aa", false):
 			p *= 0.4
 		if tgt is Drone:

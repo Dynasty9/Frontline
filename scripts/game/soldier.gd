@@ -506,10 +506,8 @@ func hit_factor() -> float:
 	elif is_moving():
 		# a man dashing from cover to cover is a hard target ("I'm up, he sees me, I'm down")
 		f *= 0.5 if move_mode >= 2 else (0.65 if move_mode == 1 else 0.85)
-	if _gy < -0.1 and life == Life.ALIVE:
-		f *= 0.65  # dug into a trench
-	if is_moving() and move_mode >= 2:
-		f *= 0.85
+	if _gy < -0.6 and life == Life.ALIVE:
+		f *= 0.55  # dug into a trench: a head and a rifle over the parapet
 	return f
 
 
@@ -1204,7 +1202,7 @@ func _weapon_tick(dt: float, moving: bool, mode: String) -> void:
 			if peek_t <= 0.0 or pinned or reload_t > 0.0 or not want_fire:
 				peek_up = false
 				peek_t = world.rng.randf_range(0.5, 1.3) * (1.8 if suppression > 30.0 else 1.0)
-		elif peek_t <= 0.0 and reload_t <= 0.0 and want_fire and (not pinned or world.rng.randf() < 0.18):
+		elif peek_t <= 0.0 and reload_t <= 0.0 and want_fire and (not pinned or world.rng.randf() < (0.32 if _gy < -0.6 else 0.18)):
 			# pinned men still snap off the odd shot - briefly
 			peek_up = true
 			peek_t = world.rng.randf_range(2.2, 4.0) * (0.4 if pinned else 1.0)
@@ -1430,6 +1428,16 @@ func _try_rocket() -> bool:
 		if e is Vehicle and Defs.flat(e.position - position).length() < 75.0:
 			tgt = e
 			break
+	if tgt == null and squad:
+		# down in a trench or behind a wall he can't see it himself, but his mates
+		# have called it: he pops up, takes aim and fires
+		var eye := position + Vector3(0, 1.6 + _ground(), 0)
+		for k in squad.known.values():
+			var ke = k.e
+			if ke is Vehicle and not ke.gone and world.time - float(k.t) < 6.0 and Defs.flat(ke.position - position).length() < 70.0:
+				if world.combat.clear_line(eye, ke.center_point(), get_exclude() + ke.get_exclude()):
+					tgt = ke
+					break
 	if tgt == null and forced_target is Structure and not forced_target.gone and Defs.flat(forced_target.position - position).length() < 60.0:
 		tgt = forced_target
 	if tgt == null:
@@ -1844,8 +1852,8 @@ func add_suppression(amount: float, from_pos: Vector3) -> void:
 		m = 0.5
 	elif at_cover and cover_type != Cov.NONE:
 		m = 0.62
-	if _gy < -0.1:
-		m *= 0.6  # dug into a trench: the parapet takes it
+	if _gy < -0.6:
+		m *= 0.5  # dug into a trench: the parapet takes it
 	suppression = minf(100.0, suppression + amount * m)
 	_supp_t = world.time
 	if squad and world.time > reveal_t:
