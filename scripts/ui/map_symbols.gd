@@ -19,7 +19,7 @@ const ORDER_COLORS := {"assault": Color(1.0, 0.56, 0.44), "attack": Color(1.0, 0
 ## Draws a unit symbol centred on c: friendly = rectangle, hostile = diamond,
 ## the glyph inside says what it is (X infantry, oval armour, both mechanised,
 ## bow-tie rotary wing), a short tag above for teams (MG, AT, MORT, ENG).
-static func nato(ci: CanvasItem, c: Vector2, w: float, friendly: bool, team: int, glyph: String, tag := "", alpha := 1.0) -> void:
+static func nato_vec(ci: CanvasItem, c: Vector2, w: float, friendly: bool, team: int, glyph: String, tag := "", alpha := 1.0) -> void:
 	var col: Color = Defs.TEAM_COLORS[team] if team >= 0 else Color(0.8, 0.8, 0.8)
 	var fill := Color(col.r, col.g, col.b, 0.82 * alpha)
 	var ink := Color(0.02, 0.03, 0.03, 0.95 * alpha)
@@ -91,7 +91,7 @@ static func vehicle_symbol(vk: String) -> Array:
 
 
 ## A small status icon, by default on a round dark badge.
-static func glyph(ci: CanvasItem, kind: String, c: Vector2, r: float, col: Color, a := 1.0, badge := true) -> void:
+static func glyph_vec(ci: CanvasItem, kind: String, c: Vector2, r: float, col: Color, a := 1.0, badge := true) -> void:
 	if a <= 0.01:
 		return
 	if badge:
@@ -243,3 +243,97 @@ static func wrap(t: String, fs: int, weight: int, wmax: float) -> Array:
 	if cur != "":
 		out.append(cur)
 	return out
+
+
+
+# --- the atlas: every symbol drawn once, then stamped as a sprite ---------------------
+# Drawing a symbol from vector primitives every frame is a dozen canvas calls in
+# GDScript; the HUD draws hundreds a frame. They're rendered once into a texture
+# (an offscreen viewport) and each is then a single textured quad.
+
+const CELL := 64.0
+const NATO_W := 46.0  # symbol width inside its cell
+const GLYPH_R := 24.0  # badge radius inside its cell
+const NATO_GLYPHS := ["inf", "armor", "mech", "motor", "air"]
+const GLYPH_KINDS := ["fire", "supp", "pinned", "reload", "noammo", "ammo", "grenade", "medic", "wounded", "drag",
+	"build", "gun", "retreat", "move", "assault", "defend", "cover", "hold", "flag", "drone", "melee", "chat",
+	"radio", "eye", "smoke", "tunnel"]
+const COLS := 16
+
+static var atlas: Texture2D
+static var _cells := {}  # key -> Rect2 in the atlas
+
+
+static func _nato_key(friendly: bool, team: int, glyph: String) -> String:
+	return "n%d%d%s" % [1 if friendly else 0, team + 1, glyph]
+
+
+static func _glyph_key(kind: String, badge: bool) -> String:
+	return "g%d%s" % [1 if badge else 0, kind]
+
+
+## Builds the atlas under `parent` (a SubViewport that renders once).
+static func build_atlas(parent: Node) -> void:
+	var keys := []
+	for f in [true, false]:
+		for t in [0, 1, -1]:
+			for g in NATO_GLYPHS:
+				keys.append(["n", f, t, g])
+	for k in GLYPH_KINDS:
+		for b in [true, false]:
+			keys.append(["g", k, b])
+	var rows := ceili(keys.size() / float(COLS))
+	var vp := SubViewport.new()
+	vp.size = Vector2i(int(CELL) * COLS, int(CELL) * rows)
+	vp.transparent_bg = true
+	vp.render_target_update_mode = SubViewport.UPDATE_ONCE
+	vp.disable_3d = true
+	parent.add_child(vp)
+	var painter := AtlasPainter.new()
+	painter.keys = keys
+	painter.size = Vector2(vp.size)
+	vp.add_child(painter)
+	for i in keys.size():
+		var it: Array = keys[i]
+		var r := Rect2((i % COLS) * CELL, (i / COLS) * CELL, CELL, CELL)
+		if it[0] == "n":
+			_cells[_nato_key(it[1], it[2], it[3])] = r
+		else:
+			_cells[_glyph_key(it[1], it[2])] = r
+	# the texture is ready once the viewport has drawn
+	parent.get_tree().process_frame.connect(func(): atlas = vp.get_texture(), CONNECT_ONE_SHOT)
+
+
+class AtlasPainter extends Control:
+	var keys: Array = []
+
+	func _draw() -> void:
+		for i in keys.size():
+			var it: Array = keys[i]
+			var c := Vector2((i % COLS) * CELL + CELL * 0.5, (i / COLS) * CELL + CELL * 0.5)
+			if it[0] == "n":
+				MapSymbols.nato_vec(self, c, NATO_W, it[1], it[2], it[3], "", 1.0)
+			else:
+				MapSymbols.glyph_vec(self, it[1], c, GLYPH_R, Color(1, 1, 1), 1.0, it[2])
+
+
+static func nato(ci: CanvasItem, c: Vector2, w: float, friendly: bool, team: int, glyph: String, tag := "", alpha := 1.0) -> void:
+	var r = _cells.get(_nato_key(friendly, team, glyph)) if atlas else null
+	if r == null:
+		nato_vec(ci, c, w, friendly, team, glyph, tag, alpha)
+		return
+	var sz := CELL * w / NATO_W
+	ci.draw_texture_rect_region(atlas, Rect2(c - Vector2(sz, sz) * 0.5, Vector2(sz, sz)), r, Color(1, 1, 1, alpha))
+	if tag != "":
+		UiKit.text(ci, c + Vector2(-UiKit.text_width(tag, 9, 600) * 0.5, -w * 0.34 - 3.0), tag, 9, Color(1, 1, 1, 0.9 * alpha), 600)
+
+
+static func glyph(ci: CanvasItem, kind: String, c: Vector2, r: float, col: Color, a := 1.0, badge := true) -> void:
+	if a <= 0.01:
+		return
+	var cell = _cells.get(_glyph_key(kind, badge)) if atlas and kind != "dazed" else null
+	if cell == null:
+		glyph_vec(ci, kind, c, r, col, a, badge)
+		return
+	var sz := CELL * r / GLYPH_R
+	ci.draw_texture_rect_region(atlas, Rect2(c - Vector2(sz, sz) * 0.5, Vector2(sz, sz)), cell, Color(col.r, col.g, col.b, a))

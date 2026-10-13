@@ -65,6 +65,7 @@ var _msgs: Array = []
 
 func _ready() -> void:
 	layer = 5
+	MapSymbols.build_atlas(self)
 	root = Control.new()
 	root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
