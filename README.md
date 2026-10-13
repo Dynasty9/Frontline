@@ -111,7 +111,14 @@ Settings are saved to `user://settings.cfg`.
   one pair dashing while the other fires, smoke thrown across open ground first and grenades at the last bound;
   support shifts its fire beyond the objective as they close, then lifts. On the objective everyone takes up
   all-round defence. Cut up or pinned, the assault falls back to the assault position and goes again when the
-  fire slackens. Outnumbered, a squad goes firm and fixes the enemy instead, waiting for support.
+  fire slackens. Outnumbered, a squad goes firm and fixes the enemy instead and calls for help over the net:
+  the AI commander answers with fire on the position (when its own men are clear) and sends up to two
+  uncommitted squads to join; with the odds evened the plan re-forms and goes in. The assault flanks on the side
+  it already stands, the base of fire sets up on the other, so their routes never cross.
+- At a halt on a war footing (in an attack, defending, or with enemies about in the last minute) men in the
+  open take a knee and machine gunners go down on the bipod; each watches his own sector, the flanks looking
+  out and the last man of a big squad covering the rear. In town a moving squad folds into two staggered files
+  along the street.
 - Pinned men low-crawl the last metres to cover; men firing over a low wall half-crouch with the weapon rested
   on it; nobody glides across the ground.
 - Suppression lingers a moment after the last near miss, cover keeps out bullets better than it keeps out fear,
@@ -144,6 +151,8 @@ Settings are saved to `user://settings.cfg`.
 - Country roads come in from both HQs and both edges of the map and join the main streets. A hamlet sits on the
   cross road; farmsteads (farmhouse and barn round a yard, hay bales, a fenced road frontage, an orchard) and
   hedged fields lie along the roads; abandoned cars on the verges, burnt-out armour off the road.
+- Houses have dressed facades: sills and lintels, painted window frames with mullion and transom, panes (many
+  shot out), shutters, door frames, steps and double doors hanging open.
 - Walls, hedges, trees, cars and crates are all real cover. Street furniture is set dressing generated on the
   server and built on each client, and it breaks: a blast or a vehicle driving through knocks lamps, utility poles
   (their wires come down with them), signs, benches, bins, fences and playground kit over, and the pieces fall and
@@ -180,6 +189,9 @@ Settings are saved to `user://settings.cfg`.
   units, intelligence (where the enemy was last seen and how long ago), weapon ranges of the selection, soldier
   labels. **Tactical map** (Tab): the battlefield dims under the symbols, every order, plan and contact, and the
   A-H / 1-8 grid on the ground.
+- A selected squad shows each man's watch sector as a faint wedge on the ground, so you can see its all-round
+  cover and any gap. An attack that goes firm against a stronger enemy raises an alert with its grid reference
+  so you can send fires or reinforcements.
 - Attack plans are drawn on the map: the objective with the current phase, the support-by-fire position with
   its fire converging on the objective, the assault route out to the flank and in. The squad card shows the
   phase as a PLAN > MOVE > ASSAULT > SECURE stepper.
@@ -392,6 +404,8 @@ Pass these after `--` on the command line:
 --blast-at=X,Z,SIZE,TIME                              a real explosion at that spot and time (physics tests);
                                                       X,Z of "f,DX" is DX metres beside the camera's focus
 --pitch=-14 --cam-yaw=-0.84                           fixed camera pitch (degrees) and heading (model close-ups)
+--follow=TEAM[,N]                                     keep the camera on that side's Nth squad (tactics review)
+--trace=path.csv                                      log every man twice a second (position, posture, phase) for plotting
 --seed=N                                              (with --aivai) the same map every run
 --dump-structs                                        list every built structure when --quit-after fires
 FL_DEBUG_HPA=1 (env)                                  benchmark hierarchical vs flat paths at start-up
