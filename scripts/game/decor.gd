@@ -10,52 +10,234 @@ extends Node3D
 ## wires are drawn as lines and the lamp lenses glow; at dusk and at night the
 ## street lights cast real light.
 
-const CHUNK := 64.0
+const CHUNK := 32.0
 const PAINT := [Color(0.78, 0.2, 0.14), Color(0.2, 0.42, 0.75), Color(0.92, 0.72, 0.18), Color(0.25, 0.6, 0.3), Color(0.85, 0.42, 0.12)]
 const CANVAS := [Color(0.62, 0.2, 0.16), Color(0.2, 0.36, 0.55), Color(0.28, 0.46, 0.3), Color(0.8, 0.7, 0.42), Color(0.36, 0.34, 0.3)]
+## What a blast or a vehicle can knock down, with the box it falls as
+## (size, and how heavy it is).
+const BREAKABLE := {
+	"lamp": [Vector3(0.35, 6.3, 0.35), 160.0], "lamp_deco": [Vector3(0.4, 4.8, 0.4), 120.0],
+	"pole": [Vector3(0.35, 8.4, 0.35), 400.0], "sign_stop": [Vector3(0.8, 2.4, 0.15), 25.0],
+	"sign_town": [Vector3(2.0, 2.3, 0.15), 40.0], "bench": [Vector3(1.9, 0.9, 0.6), 60.0],
+	"bin": [Vector3(0.5, 0.9, 0.5), 20.0], "hydrant": [Vector3(0.35, 0.7, 0.35), 90.0],
+	"mailbox": [Vector3(0.3, 1.25, 0.45), 15.0], "bus_stop": [Vector3(3.3, 2.4, 1.6), 300.0],
+	"planter": [Vector3(1.2, 1.1, 1.2), 400.0], "bollard": [Vector3(0.2, 0.85, 0.2), 60.0],
+	"stall": [Vector3(2.6, 2.3, 1.5), 80.0], "fence": [Vector3(2.0, 1.1, 0.15), 40.0],
+	"clothesline": [Vector3(4.0, 1.9, 0.9), 20.0], "flagpole": [Vector3(0.2, 8.0, 0.2), 60.0],
+	"transformer": [Vector3(1.2, 1.45, 0.7), 400.0], "hay": [Vector3(2.7, 1.3, 1.3), 200.0],
+	"swing": [Vector3(3.5, 2.5, 1.6), 150.0], "slide": [Vector3(3.2, 1.9, 0.8), 120.0],
+	"climber": [Vector3(2.0, 1.9, 2.0), 120.0], "seesaw": [Vector3(3.4, 0.7, 0.4), 60.0],
+	"roundabout": [Vector3(2.2, 1.0, 2.2), 150.0], "statue": [Vector3(1.8, 4.5, 1.8), 2000.0],
+}
 
 var world
-var _chunks := {}
+var _entries: Array = []  # [kind, pos, yaw, extra, chunk key, broken]
+var _chunks := {}  # key -> Node3D
+var _chunk_items := {}  # key -> [entry index]
+var _hash := {}  # 8 m cell -> [entry index] of breakable pieces
+var _dirty := {}  # chunks to rebuild
+var _wire_items: Array = []  # [a pole pos, b pole pos (or a house), kind, args]
+var _wire_mi: MeshInstance3D
 var _wires := PackedVector3Array()  # line pairs
-var _glow := SurfaceTool.new()
+var _glow: SurfaceTool  # the chunk being built
 var _glow_n := 0
 var _lights: Array = []
+var _chunk_lights := {}  # key -> [positions]
+var _veh_t := 0.0
+var _vpos := {}  # vehicle -> where it was at the last check
 var rng := RandomNumberGenerator.new()
 
 
 func build(w, entries: Array) -> void:
 	world = w
-	rng.seed = 90210
-	_glow.begin(Mesh.PRIMITIVE_TRIANGLES)
-	for e in entries:
+	_glow_mat = StandardMaterial3D.new()
+	_glow_mat.albedo_color = Color(1.0, 0.92, 0.75)
+	_glow_mat.emission_enabled = true
+	_glow_mat.emission = Color(1.0, 0.82, 0.55)
+	for i in entries.size():
+		var e: Array = entries[i]
 		var kind: String = e[0]
 		var pos: Vector3 = e[1]
-		var yaw := float(e[2])
+		var key := Vector2i(floori(pos.x / CHUNK), floori(pos.z / CHUNK))
+		_entries.append([kind, pos, float(e[2]), e[3], key, false])
 		match kind:
 			"wire":
-				_wire(pos, yaw, e[3])
+				_wire_items.append([pos, (e[3] as Array)[0], "wire", [pos, float(e[2]), e[3]]])
 				continue
 			"drop":
-				_sag(pos, e[3], 0.35)
+				_wire_items.append([pos - Vector3(0, 7.0, 0), e[3], "drop", [pos, e[3]]])
 				continue
+		if not _chunk_items.has(key):
+			_chunk_items[key] = []
+		_chunk_items[key].append(i)
+		if BREAKABLE.has(kind):
+			var hk := Vector2i(floori(pos.x / 8.0), floori(pos.z / 8.0))
+			if not _hash.has(hk):
+				_hash[hk] = []
+			_hash[hk].append(i)
+	for key in _chunk_items:
+		_build_chunk(key)
+	_build_wires()
+	_apply_mood()
+
+
+## (Re)builds one chunk: every piece still standing, merged per material.
+func _build_chunk(key: Vector2i) -> void:
+	if _chunks.has(key):
+		(_chunks[key] as Node3D).queue_free()
+	var n := Node3D.new()
+	add_child(n)
+	_chunks[key] = n
+	_glow = SurfaceTool.new()
+	_glow.begin(Mesh.PRIMITIVE_TRIANGLES)
+	_glow_n = 0
+	_lights = []
+	var keep := _wires
+	_wires = PackedVector3Array()  # clotheslines belong to the chunk
+	for i in _chunk_items[key]:
+		var e: Array = _entries[i]
+		if e[5]:
+			continue
 		var h := Node3D.new()
-		h.position = pos
-		h.rotation.y = yaw
-		_chunk(pos).add_child(h)
+		h.position = e[1]
+		h.rotation.y = e[2]
+		n.add_child(h)
+		rng.seed = 90210 + i * 7919  # the same look every rebuild
+		_make(h, e[0], e[3])
+	Mats.merge_static(n)
+	if not _wires.is_empty():
+		n.add_child(_lines_mi(_wires))
+	_wires = keep
+	if _glow_n > 0:
+		var gm := MeshInstance3D.new()
+		gm.mesh = _glow.commit()
+		gm.material_override = _glow_mat
+		gm.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		n.add_child(gm)
+	_chunk_lights[key] = _lights
+
+
+func _lens(h: Node3D, size: Vector3, p: Vector3) -> void:
+	var xf: Transform3D = h.transform * Transform3D(Basis.IDENTITY, p)
+	_glow.append_from(Res.box(size), 0, xf)
+	_glow_n += 1
+	_lights.append(xf.origin + Vector3(0, -0.25, 0))
+
+
+# --- knocking things down ---------------------------------------------------------------
+
+## A blast throws down whatever stands close: lamps and poles topple away from
+## it (taking their wires down), benches and bins tumble.
+func blast(p: Vector3, size: float) -> void:
+	var r := 1.5 + size * 2.6
+	for i in _near(p, r):
+		var e: Array = _entries[i]
+		var d := Defs.flat((e[1] as Vector3) - p)
+		var dist := d.length()
+		if dist > r:
+			continue
+		var away := d.normalized() if dist > 0.1 else Vector3(randf_range(-1, 1), 0, randf_range(-1, 1)).normalized()
+		var pw := (1.0 - dist / r) * size
+		_knock(i, away * (2.0 + pw * 6.0) + Vector3.UP * (1.5 + pw * 5.0), away)
+
+
+func _near(p: Vector3, r: float) -> Array:
+	var out := []
+	for cx in range(floori((p.x - r) / 8.0), floori((p.x + r) / 8.0) + 1):
+		for cz in range(floori((p.z - r) / 8.0), floori((p.z + r) / 8.0) + 1):
+			var a = _hash.get(Vector2i(cx, cz))
+			if a == null:
+				continue
+			for i in a:
+				if not _entries[i][5]:
+					out.append(i)
+	return out
+
+
+func _knock(i: int, vel: Vector3, dir: Vector3) -> void:
+	var e: Array = _entries[i]
+	if e[5]:
+		return
+	e[5] = true
+	_dirty[e[4]] = true
+	var kind: String = e[0]
+	world.stat("decor_down")
+	# the piece itself falls under physics
+	if world.phys:
+		var h := Node3D.new()
+		add_child(h)
+		rng.seed = 90210 + i * 7919
+		_glow = SurfaceTool.new()  # a fallen lamp is dark
+		_glow.begin(Mesh.PRIMITIVE_TRIANGLES)
+		_lights = []
+		var keep := _wires
+		_wires = PackedVector3Array()
 		_make(h, kind, e[3])
-	for k in _chunks:
-		Mats.merge_static(_chunks[k])
-	_finish_wires()
-	_finish_glow()
+		Mats.merge_static(h, [], true, false, true)
+		if not _wires.is_empty():
+			h.add_child(_lines_mi(_wires))  # built at the origin, like the piece
+		_wires = keep
+		var xf := Transform3D(Basis(Vector3.UP, float(e[2])), e[1])
+		var spec: Array = BREAKABLE[kind]
+		var sz: Vector3 = spec[0]
+		if kind == "fence" and e[3] is Vector3:
+			sz = Vector3((e[3] as Vector3).x, (e[3] as Vector3).y, 0.15)
+		# tall things topple over from the base rather than fly
+		var tall := sz.y > 3.0
+		var spin := dir.cross(Vector3.UP) * (-1.6 if tall else randf_range(-6.0, 6.0))
+		if tall:
+			vel = dir * 1.5 + Vector3.UP * 0.5
+		world.phys.prop(h, xf, vel, spin, sz, float(spec[1]))
+	# poles take their wires with them
+	if kind == "pole":
+		var pp: Vector3 = e[1]
+		var changed := false
+		for wi in _wire_items:
+			if wi.size() > 4:
+				continue
+			if Defs.flat((wi[0] as Vector3) - pp).length() < 0.6 or Defs.flat((wi[1] as Vector3) - pp).length() < 0.6:
+				wi.append(true)
+				changed = true
+		if changed:
+			_build_wires()
 
 
-func _chunk(p: Vector3) -> Node3D:
-	var key := Vector2i(floori(p.x / CHUNK), floori(p.z / CHUNK))
-	if not _chunks.has(key):
-		var n := Node3D.new()
-		add_child(n)
-		_chunks[key] = n
-	return _chunks[key]
+func _process(dt: float) -> void:
+	_mood_t -= dt
+	if _mood_t <= 0.0:
+		_mood_t = 1.0
+		if world and world.atmo and world.atmo.mood != _mood:
+			_apply_mood()
+	# rebuild a couple of damaged chunks a frame
+	var n := 0
+	for key in _dirty.keys():
+		if n >= 2:
+			break
+		_dirty.erase(key)
+		_build_chunk(key)
+		_apply_mood_chunk(key)
+		n += 1
+	# vehicles flatten what they drive over
+	_veh_t -= dt
+	if _veh_t <= 0.0 and world:
+		_veh_t = 0.1
+		if _vpos.size() > 64:
+			_vpos.clear()
+		for v in world.vehicles:
+			if v.gone or v.is_air() or not v.model:
+				continue
+			var was: Vector3 = _vpos.get(v, v.position)
+			_vpos[v] = v.position
+			if Defs.flat(v.position - was).length() < 0.05:
+				continue
+			var hs: Vector3 = v._hull_size()
+			var fwd := Defs.dir_of(v.rotation.y)
+			for i in _near(v.position, maxf(hs.x, hs.z) * 0.6):
+				var e: Array = _entries[i]
+				var rel := Defs.flat((e[1] as Vector3) - v.position)
+				if absf(rel.dot(fwd)) < hs.z * 0.55 and absf(rel.dot(fwd.cross(Vector3.UP))) < hs.x * 0.55 + 0.2:
+					_knock(i, fwd * 2.0 + Vector3.UP * 0.6, fwd)
+					world.stat("decor_crushed")
 
 
 ## One part with a procedural surface, optionally tinted to a colour.
@@ -93,13 +275,6 @@ func _beam(h: Node3D, a: Vector3, b: Vector3, t: float, kind: String, col = null
 	var z := x.cross(y)
 	var mi := _m(h, Res.box(Vector3(t, L, t)), kind, Vector3.ZERO, col, Vector3.ZERO, shadow)
 	mi.transform = Transform3D(Basis(x, y, z), (a + b) * 0.5)
-
-
-func _lens(h: Node3D, size: Vector3, p: Vector3) -> void:
-	var xf: Transform3D = h.transform * Transform3D(Basis.IDENTITY, p)
-	_glow.append_from(Res.box(size), 0, xf)
-	_glow_n += 1
-	_lights.append(xf.origin + Vector3(0, -0.25, 0))
 
 
 func _make(h: Node3D, kind: String, ex) -> void:
@@ -401,6 +576,45 @@ func _fence(h: Node3D, ex) -> void:
 
 # --- wires ----------------------------------------------------------------------------
 
+func _build_wires() -> void:
+	_wires = PackedVector3Array()
+	for wi in _wire_items:
+		if wi.size() > 4:
+			continue  # its pole is down
+		var args: Array = wi[3]
+		if wi[2] == "wire":
+			_wire(args[0], args[1], args[2])
+		else:
+			_sag(args[0], args[1], 0.35)
+	if _wire_mi:
+		_wire_mi.queue_free()
+		_wire_mi = null
+	if _wires.is_empty():
+		return
+	_wire_mi = _lines_mi(_wires)
+	add_child(_wire_mi)
+
+
+var _line_mat: StandardMaterial3D
+
+
+func _lines_mi(v: PackedVector3Array) -> MeshInstance3D:
+	var arrays := []
+	arrays.resize(Mesh.ARRAY_MAX)
+	arrays[Mesh.ARRAY_VERTEX] = v
+	var am := ArrayMesh.new()
+	am.add_surface_from_arrays(Mesh.PRIMITIVE_LINES, arrays)
+	var mi := MeshInstance3D.new()
+	mi.mesh = am
+	if not _line_mat:
+		_line_mat = StandardMaterial3D.new()
+		_line_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		_line_mat.albedo_color = Color(0.03, 0.03, 0.03)
+	mi.material_override = _line_mat
+	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	return mi
+
+
 func _wire(a: Vector3, yaw_a: float, ex) -> void:
 	var b: Vector3 = ex[0]
 	var yaw_b := float(ex[1])
@@ -422,66 +636,29 @@ func _sag(a: Vector3, b: Vector3, sag: float) -> void:
 		prev = p
 
 
-func _finish_wires() -> void:
-	if _wires.is_empty():
-		return
-	var arrays := []
-	arrays.resize(Mesh.ARRAY_MAX)
-	arrays[Mesh.ARRAY_VERTEX] = _wires
-	var am := ArrayMesh.new()
-	am.add_surface_from_arrays(Mesh.PRIMITIVE_LINES, arrays)
-	var mi := MeshInstance3D.new()
-	mi.mesh = am
-	var m := StandardMaterial3D.new()
-	m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	m.albedo_color = Color(0.03, 0.03, 0.03)
-	mi.material_override = m
-	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	add_child(mi)
-
-
-## Lamp lenses in one mesh; they glow, and at dusk, dawn and night the street
-## lights cast real light (shadowless, so cheap). Follows changes of mood.
+## Lamp lenses glow (each chunk has its own glow mesh); at dusk, dawn and
+## night the street lights cast real light (shadowless, so cheap). Follows
+## changes of mood.
 var _glow_mat: StandardMaterial3D
-var _light_nodes: Array = []
+var _light_nodes := {}  # chunk key -> [OmniLight3D]
 var _mood := ""
 var _mood_t := 0.0
 
 
-func _finish_glow() -> void:
-	if _glow_n == 0:
-		return
-	_glow_mat = StandardMaterial3D.new()
-	_glow_mat.albedo_color = Color(1.0, 0.92, 0.75)
-	_glow_mat.emission_enabled = true
-	_glow_mat.emission = Color(1.0, 0.82, 0.55)
-	var mi := MeshInstance3D.new()
-	mi.mesh = _glow.commit()
-	mi.material_override = _glow_mat
-	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	add_child(mi)
-	_apply_mood()
-
-
-func _process(dt: float) -> void:
-	_mood_t -= dt
-	if _mood_t > 0.0 or _glow_mat == null:
-		return
-	_mood_t = 1.0
-	if world.atmo and world.atmo.mood != _mood:
-		_apply_mood()
-
-
 func _apply_mood() -> void:
 	_mood = world.atmo.mood if world.atmo else "day"
-	var dark := _mood in ["night", "dusk", "dawn"]
-	_glow_mat.emission_energy_multiplier = 6.0 if _mood == "night" else (3.0 if dark else 0.25)
-	for l in _light_nodes:
-		l.queue_free()
-	_light_nodes.clear()
-	if not dark:
+	_glow_mat.emission_energy_multiplier = 6.0 if _mood == "night" else (3.0 if _mood in ["dusk", "dawn"] else 0.25)
+	for key in _chunk_lights:
+		_apply_mood_chunk(key)
+
+
+func _apply_mood_chunk(key: Vector2i) -> void:
+	for l in _light_nodes.get(key, []):
+		(l as Node).queue_free()
+	_light_nodes[key] = []
+	if not _mood in ["night", "dusk", "dawn"]:
 		return
-	for p in _lights:
+	for p in _chunk_lights.get(key, []):
 		var l := OmniLight3D.new()
 		l.light_color = Color(1.0, 0.8, 0.55)
 		l.light_energy = 5.0 if _mood == "night" else 2.2
@@ -490,4 +667,4 @@ func _apply_mood() -> void:
 		l.shadow_enabled = false
 		l.position = p
 		add_child(l)
-		_light_nodes.append(l)
+		_light_nodes[key].append(l)

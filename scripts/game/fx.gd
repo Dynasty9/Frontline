@@ -255,6 +255,8 @@ func _explode(p: Vector3, size: float) -> void:
 		vfx.explode(p, size)
 		if world.phys and p.y < 1.6 and size >= 1.2:
 			world.phys.blast_chunks(p, size)
+	if world._decor_node and p.y < 3.0 and size >= 0.8:
+		world._decor_node.blast(p, size)
 	# the blast rocks vehicles on their suspension
 	for v in world.vehicles:
 		if v.model and Defs.flat(v.position - p).length() < 5.0 + size * 5.0:

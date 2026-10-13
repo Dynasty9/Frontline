@@ -213,6 +213,41 @@ func toss(who: Node3D, model: Node3D, from_xf: Transform3D, vel: Vector3, spin: 
 	_tosses.append([b, model, who, final_local, b.global_transform, b.global_transform, 0.0, off, Transform3D()])
 
 
+## A loose prop (a lamp post, a bench) thrown or toppled: it falls under
+## physics and stays where it ends up (the oldest go after a while).
+var _props: Array = []  # [body, model, prev, curr, t, offset]
+const MAX_PROPS := 40
+
+
+func prop(model: Node3D, from_xf: Transform3D, vel: Vector3, spin: Vector3, size: Vector3, mass: float) -> void:
+	while _props.size() >= MAX_PROPS:
+		var old: Array = _props.pop_front()
+		(old[0] as Node).queue_free()
+		(old[1] as Node).queue_free()
+	var b := RigidBody3D.new()
+	b.mass = mass
+	b.physics_material_override = _mat
+	b.collision_layer = L_RAGDOLL
+	b.collision_mask = _mask_all()
+	b.gravity_scale = 2.0
+	b.continuous_cd = true
+	b.angular_damp = 0.6
+	var cs := CollisionShape3D.new()
+	var bs := BoxShape3D.new()
+	bs.size = size
+	cs.shape = bs
+	b.add_child(cs)
+	add_child(b)
+	var off := Transform3D(Basis.IDENTITY, Vector3(0, size.y * 0.5, 0))
+	b.global_transform = from_xf * off
+	b.linear_velocity = vel
+	b.angular_velocity = spin
+	if model.get_parent() != self:
+		model.reparent(self)
+	model.global_transform = from_xf
+	_props.append([b, model, b.global_transform, b.global_transform, 0.0, off])
+
+
 # --- stepping --------------------------------------------------------------------------
 
 func _physics_process(_dt: float) -> void:
@@ -227,6 +262,11 @@ func _physics_process(_dt: float) -> void:
 		var b2: RigidBody3D = e[0]
 		e[4] = e[5]
 		e[5] = b2.global_transform
+	for pr in _props:
+		var b3: RigidBody3D = pr[0]
+		if not b3.freeze:
+			pr[2] = pr[3]
+			pr[3] = b3.global_transform
 
 
 func _process(dt: float) -> void:
@@ -255,6 +295,15 @@ func _process(dt: float) -> void:
 				b.queue_free()
 				vis.queue_free()
 				_chunks.remove_at(i)
+	for pr in _props:
+		var b4: RigidBody3D = pr[0]
+		if b4.freeze:
+			continue
+		pr[4] = float(pr[4]) + dt
+		(pr[1] as Node3D).global_transform = (pr[2] as Transform3D).interpolate_with(pr[3], a) * (pr[5] as Transform3D).affine_inverse()
+		if float(pr[4]) > 1.0 and (b4.sleeping or b4.linear_velocity.length() < 0.05) or float(pr[4]) > 8.0:
+			b4.freeze = true
+			(pr[1] as Node3D).global_transform = b4.global_transform * (pr[5] as Transform3D).affine_inverse()
 	for i in range(_tosses.size() - 1, -1, -1):
 		var e: Array = _tosses[i]
 		var b2: RigidBody3D = e[0]

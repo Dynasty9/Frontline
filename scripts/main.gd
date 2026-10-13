@@ -386,13 +386,17 @@ func _process(_dt: float) -> void:
 				var pf := String(args["place-from"]).split(",")
 				world.input.place_a = TrenchNet.snap_pos(Vector3(float(pf[0]), 0, float(pf[1])))
 				world.input.place_drag = true
-	# --blast-at=x,z,size,time: a real explosion there (physics / ragdoll tests)
+	# --blast-at=x,z,size,time: a real explosion there (physics / ragdoll tests);
+	# x,z of "f,dx" means dx metres beside the camera's focus
 	if args.has("blast-at") and world.srv and not has_meta("blasted"):
 		var ba := String(args["blast-at"]).split(",")
 		if world.time >= float(ba[3]):
 			set_meta("blasted", true)
 			var bsz := float(ba[2])
-			world.combat.explode(Vector3(float(ba[0]), 0.3, float(ba[1])), {"dmg": 160.0 * bsz, "radius": 4.0 + bsz * 3.0, "fling": 8.0 + bsz * 4.0, "at": 300.0, "top": true, "src": null, "team": -1, "size": bsz})
+			var bp := Vector3(float(ba[0]), 0.3, float(ba[1]))
+			if ba[0] == "f" and world.cam:
+				bp = world.cam.focus_pos + Vector3(float(ba[1]), 0.3, 0)
+			world.combat.explode(bp, {"dmg": 160.0 * bsz, "radius": 4.0 + bsz * 3.0, "fling": 8.0 + bsz * 4.0, "at": 300.0, "top": true, "src": null, "team": -1, "size": bsz})
 	# --focus-town[=dx,dz]: the camera on the middle of town (offset in metres)
 	if args.has("focus-town") and world.cam and world.time > 1.0 and not world.has_meta("town_focused") and world.town_rect.size.x > 0.0:
 		var off := Vector3.ZERO
