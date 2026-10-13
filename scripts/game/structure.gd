@@ -5,7 +5,7 @@ extends Entity
 ## collision (bullets/LOS), nav blocking and the cover points soldiers evaluate.
 
 const C_STONE := Color(0.56, 0.53, 0.48)
-const C_CONCRETE := Color(0.62, 0.61, 0.57)
+const C_CONCRETE := Color(0.5, 0.49, 0.46)  # weathered, not new-white
 const C_SAND := Color(0.62, 0.55, 0.38)
 const C_WOOD := Color(0.5, 0.36, 0.22)
 const C_DIRT := Color(0.36, 0.29, 0.2)
@@ -356,7 +356,7 @@ func _define_parts() -> void:
 				_part(Vector3(-1.6, 0.45, -0.5), Vector3(0.7, 0.9, 1.4), Nav.LOW, Nav.LOW, true, true, C_SAND),
 			]
 		"bunker":
-			var wc: Color = C_CONCRETE if team != 1 else Color(0.42, 0.31, 0.2)
+			var wc: Color = C_CONCRETE.darkened(0.22) if team != 1 else Color(0.42, 0.31, 0.2)  # weathered, stained
 			var h := 2.2
 			var t := 0.6
 			var hz := 2.8 - t * 0.5
@@ -1568,7 +1568,7 @@ func _build_scaffold(h: float) -> void:
 
 func _recolor() -> void:
 	if _flag:
-		_flag.material_override = Res.mat(Defs.TEAM_COLORS[team] if team >= 0 else Color.WHITE, 0.8)
+		_flag.material_override = Res.mat(Defs.TEAM_COLORS[team].lerp(Color(0.45, 0.45, 0.42), 0.35).darkened(0.12) if team >= 0 else Color.WHITE, 0.8)
 
 
 func _box(p: Vector3, s: Vector3, c: Color, r := 0.0, shadow := true) -> MeshInstance3D:
@@ -1604,7 +1604,8 @@ func _build_model() -> void:
 		if skind in ["house_wall", "rubble", "crates"]:
 			col = Res.vary(col, 0.05, rng)
 		_box(p.p, p.s, col, p.r, skind != "floor")
-	var tc: Color = Defs.TEAM_COLORS[team] if team >= 0 else Color.WHITE
+	# flags and markings in the side's colour, but faded cloth, not plastic
+	var tc: Color = Defs.TEAM_COLORS[team].lerp(Color(0.45, 0.45, 0.42), 0.35).darkened(0.12) if team >= 0 else Color.WHITE
 	match skind:
 		"low_wall":
 			var p: Dictionary = parts[0]
@@ -1842,14 +1843,28 @@ func _build_model() -> void:
 				leg2.rotation = Vector3(0.75, a, 0)
 		"bunker":
 			if team == 1:
-				_box(Vector3(0, 2.75, 0), Vector3(6.2, 0.6, 6.2), Color(0.3, 0.29, 0.18))
-				for i in 5:
-					var lgg := Res.mi(model, Res.cyl(0.14, 0.14, 6.0, 6), Res.mat(C_WOOD.darkened(0.2)), Vector3(-2.4 + i * 1.2, 2.55, 0), Vector3(PI / 2, 0, 0))
+				# a log-and-earth dugout: earth banked against the walls up to the
+				# firing slits, a roof of logs under a mound of earth and bags
+				for i in 9:
+					var lgg := Res.mi(model, Res.cyl(0.15, 0.16, 6.3, 7), Res.mat(C_WOOD.darkened(0.25)), Vector3(-2.8 + i * 0.7, 2.5, 0), Vector3(PI / 2, 0, 0))
 					lgg.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+				var mound := Res.mi(model, Res.dome(3.4, 16), Res.mat(C_DIRT), Vector3(0, 2.6, 0))
+				mound.scale = Vector3(1.0, 0.22, 1.0)
+				for a in 4:
+					var ber := Res.mi(model, Res.prism(Vector3(6.4, 1.05, 2.6)), Res.mat(C_DIRT.darkened(0.05)), Basis(Vector3.UP, a * PI / 2) * Vector3(0, 0.52, 2.95))
+					ber.rotation.y = a * PI / 2
+				for i in 6:
+					bags.append({"p": Vector3(-2.0 + i * 0.8, 3.15, -2.2), "s": Vector3(0.75, 0.2, 0.45), "r": 0.0})
 			else:
-				_box(Vector3(0, 2.62, 0), Vector3(5.2, 0.12, 5.2), C_CONCRETE.darkened(0.2))
+				# reinforced concrete: a thick roof slab with an overhang under a
+				# layer of bags, and a sandbag apron below the firing slit
+				_box(Vector3(0, 2.62, 0), Vector3(6.3, 0.16, 6.3), C_CONCRETE.darkened(0.28))
+				for row in 2:
+					bags.append({"p": Vector3(0, 2.82, -2.6 + row * 0.5), "s": Vector3(5.2, 0.24, 0.48), "r": 0.0})
+				bags.append({"p": Vector3(0, 2.82, 2.6), "s": Vector3(5.2, 0.24, 0.48), "r": 0.0})
 				for sx in [-2.9, 2.9]:
 					bags.append({"p": Vector3(sx, 0.4, -2.0), "s": Vector3(0.9, 0.8, 1.5), "r": 0.0})
+				bags.append({"p": Vector3(0, 0.3, -3.3), "s": Vector3(3.0, 0.6, 0.6), "r": 0.0})
 			_box(Vector3(0, 0.02, 0), Vector3(4.4, 0.04, 4.4), Color(0.3, 0.29, 0.27), 0.0, false)
 		"watchtower":
 			for p in parts:
@@ -2030,10 +2045,10 @@ func _surf_kind(c: Color, mi: MeshInstance3D) -> String:
 		"tree":
 			return "foliage" if c.g > c.r * 1.2 else "bark"
 		"factory", "depot":
-			if mi.mesh is BoxMesh and c.r > 0.2 and absf(c.r - c.g) > 0.05:
+			if Res.box_size(mi.mesh) != Vector3.ZERO and c.r > 0.2 and absf(c.r - c.g) > 0.05:
 				return "corrugated"
 		"fob":
-			if mi.mesh is BoxMesh and (mi.mesh as BoxMesh).size.y > 2.0:
+			if Res.box_size(mi.mesh).y > 2.0:
 				return "hesco"
 		"helipad":
 			return "concrete" if not dark else "metal_dark"
@@ -2043,13 +2058,17 @@ func _surf_kind(c: Color, mi: MeshInstance3D) -> String:
 		"barracks":
 			if mi.mesh is PrismMesh:
 				return "corrugated"
-			if mi.mesh is BoxMesh and (mi.mesh as BoxMesh).size.y > 2.5:
+			if Res.box_size(mi.mesh).y > 2.5:
 				return "wood_painted"
 		"bunker":
+			if team != 1:
+				return "concrete"
+			if mi.mesh is SphereMesh or mi.mesh is PrismMesh:
+				return "earth"  # the dugout's mound and banked earth
 			if team == 1 and c.r > c.b * 1.6 and v < 0.5:
 				return "wood_dark"
 		"trench":
-			if mi.mesh is BoxMesh and (mi.mesh as BoxMesh).size.y > 0.5 and c.r < 0.4 and c.r > c.b * 1.5:
+			if Res.box_size(mi.mesh).y > 0.5 and c.r < 0.4 and c.r > c.b * 1.5:
 				return "earth"
 	if dark:
 		return "gunmetal_w"

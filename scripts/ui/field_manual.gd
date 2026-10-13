@@ -55,6 +55,8 @@ var _stage: Node3D
 var _turn: Node3D
 var _cam: Camera3D
 var _model: Node3D
+var _floor: MeshInstance3D
+var _floor_mat: ShaderMaterial
 var _focus := Vector3.ZERO
 var _dist := 6.0
 var _yaw := 0.6
@@ -206,6 +208,7 @@ func _fill_list() -> void:
 	if _list == null:
 		return
 	for c in _list.get_children():
+		_list.remove_child(c)
 		c.queue_free()
 	var vis := _visible_entries()
 	for e in vis:
@@ -240,6 +243,7 @@ func _fill_list() -> void:
 		s2.clip_text = true
 		col.add_child(s2)
 		var k: String = e.key
+		b.set_meta("key", k)
 		b.pressed.connect(func(): _select(k))
 		_list.add_child(b)
 	if _sel == "" and not vis.is_empty():
@@ -250,15 +254,11 @@ func _select(key: String) -> void:
 	_sel = key
 	for b in _list.get_children():
 		if b is Button:
-			b.button_pressed = false
+			b.set_pressed_no_signal(String(b.get_meta("key", "")) == key)
 	var e: Dictionary = {}
-	var i := 0
 	for x in _visible_entries():
 		if x.key == key:
 			e = x
-			if i < _list.get_child_count():
-				(_list.get_child(i) as Button).button_pressed = true
-		i += 1
 	if e.is_empty():
 		return
 	_title.text = String(e.name)
@@ -325,46 +325,61 @@ func _make_view() -> Control:
 	svc.add_child(_view)
 	_stage = Node3D.new()
 	_view.add_child(_stage)
+	# a dark studio: warm key light, a cold rim from behind that outlines the
+	# silhouette, a faint fill, and a matte floor with a tactical grid that
+	# fades into the dark
 	var env := Environment.new()
 	env.background_mode = Environment.BG_COLOR
-	env.background_color = Color(0.11, 0.13, 0.13)
+	env.background_color = Color(0.028, 0.032, 0.036)
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
-	env.ambient_light_color = Color(0.62, 0.66, 0.72)
-	env.ambient_light_energy = 0.55
-	env.tonemap_mode = Environment.TONE_MAPPER_FILMIC
-	env.tonemap_exposure = 1.05
+	env.ambient_light_color = Color(0.66, 0.65, 0.62)
+	env.ambient_light_energy = 0.16
+	env.tonemap_mode = Environment.TONE_MAPPER_AGX  # as in the game
+	env.tonemap_exposure = 0.85
 	env.ssao_enabled = true
+	env.ssao_radius = 0.6
+	env.ssao_intensity = 2.2
 	env.glow_enabled = true
-	env.glow_intensity = 0.3
+	env.glow_intensity = 0.25
+	env.glow_bloom = 0.04
+	env.adjustment_enabled = true
+	env.adjustment_saturation = 0.86
+	env.adjustment_contrast = 1.06
 	var we := WorldEnvironment.new()
 	we.environment = env
 	_stage.add_child(we)
-	var sun := DirectionalLight3D.new()
-	sun.rotation = Vector3(deg_to_rad(-48), deg_to_rad(-40), 0)
-	sun.light_energy = 1.8
-	sun.light_color = Color(1.0, 0.95, 0.86)
-	sun.shadow_enabled = true
-	sun.directional_shadow_max_distance = 60.0
-	_stage.add_child(sun)
+	var key := DirectionalLight3D.new()
+	key.rotation = Vector3(deg_to_rad(-52), deg_to_rad(-38), 0)
+	key.light_energy = 1.4
+	key.light_color = Color(1.0, 0.93, 0.82)
+	key.shadow_enabled = true
+	key.shadow_blur = 1.5
+	key.directional_shadow_max_distance = 40.0
+	_stage.add_child(key)
+	var rim := DirectionalLight3D.new()
+	rim.rotation = Vector3(deg_to_rad(-14), deg_to_rad(165), 0)
+	rim.light_energy = 1.1
+	rim.light_color = Color(0.78, 0.86, 1.0)
+	_stage.add_child(rim)
 	var fill := DirectionalLight3D.new()
-	fill.rotation = Vector3(deg_to_rad(-20), deg_to_rad(140), 0)
-	fill.light_energy = 0.45
-	fill.light_color = Color(0.7, 0.8, 1.0)
+	fill.rotation = Vector3(deg_to_rad(-10), deg_to_rad(70), 0)
+	fill.light_energy = 0.35
+	fill.light_color = Color(0.85, 0.88, 0.95)
 	_stage.add_child(fill)
-	var floor_mi := MeshInstance3D.new()
-	var fm := CylinderMesh.new()
-	fm.top_radius = 30.0
-	fm.bottom_radius = 30.0
-	fm.height = 0.04
-	fm.radial_segments = 64
-	floor_mi.mesh = fm
-	floor_mi.position.y = -0.02
-	Mats.apply(floor_mi, "concrete_floor", Color(0.62, 0.64, 0.6))
-	_stage.add_child(floor_mi)
+	_floor = MeshInstance3D.new()
+	var fm := PlaneMesh.new()
+	fm.size = Vector2(80, 80)
+	_floor.mesh = fm
+	var fsh := Shader.new()
+	fsh.code = FLOOR_SHADER
+	_floor_mat = ShaderMaterial.new()
+	_floor_mat.shader = fsh
+	_floor.material_override = _floor_mat
+	_stage.add_child(_floor)
 	_turn = Node3D.new()
 	_stage.add_child(_turn)
 	_cam = Camera3D.new()
-	_cam.fov = 38.0
+	_cam.fov = 28.0  # a longer lens: less of the toy-like close-up distortion
 	_stage.add_child(_cam)
 	return svc
 
@@ -419,17 +434,26 @@ func _show_model(e: Dictionary) -> void:
 	if first:
 		ab = AABB(Vector3(-1, 0, -1), Vector3(2, 2, 2))
 	_focus = ab.get_center()
-	# fit the height and the width (whichever way it turns) into the view
+	if OS.has_environment("FL_DEBUG_FM"):
+		print("FM ", e.key, " aabb=", ab, " vs=", _view.size)
+	# fit it whichever way the turntable has it: a cylinder round its footprint,
+	# seen from the camera's pitch, inside the vertical and horizontal field
 	var vs: Vector2 = _view.size
 	# (before the first layout the view has no size yet)
-	var aspect := clampf(vs.x / vs.y, 1.2, 4.0) if vs.x > 16.0 and vs.y > 16.0 else 2.8
-	var tv := tan(deg_to_rad(_cam.fov * 0.5))
+	var aspect := clampf(vs.x / vs.y, 1.2, 4.0) if vs.x > 16.0 and vs.y > 16.0 else 2.4
 	var wide := maxf(ab.size.x, ab.size.z)
-	var d_h := (ab.size.y * 0.62) / tv
-	var d_w := (wide * 0.62) / (tv * aspect)
-	_dist = maxf(maxf(d_h, d_w) + wide * 0.45, 0.8)
-	_pitch = -0.28 if ab.size.y > wide * 0.5 else -0.45
-	_yaw = 0.25 if String(e.cat) == "squads" else 0.7
+	var rxz := Vector2(ab.size.x, ab.size.z).length() * 0.5
+	_pitch = -0.28 if ab.size.y > wide * 0.5 else -0.42
+	var half_v := ab.size.y * 0.5 * cos(_pitch) + rxz * sin(absf(_pitch))
+	var tv := tan(deg_to_rad(_cam.fov * 0.5))
+	_dist = maxf(half_v / tv, rxz / (tv * aspect)) * 1.0 + rxz * 0.35
+	var span := maxf(wide, ab.size.y)
+	_floor_mat.set_shader_parameter("radius", maxf(1.6, span * 1.3))
+	_floor_mat.set_shader_parameter("cell", 1.0 if span > 3.0 else (0.5 if span > 1.2 else 0.25))
+	# a front three-quarter view (models face -z)
+	# (soldiers more side-on, so a raised rifle isn't pointing at the lens)
+	_yaw = PI - (1.05 if String(e.cat) in ["infantry", "squads"] else 0.62)
+	_idle_t = 4.0  # hold the opening view a moment before the turntable starts
 
 
 func _all_visuals(n: Node) -> Array:
@@ -445,12 +469,15 @@ func _make_model(e: Dictionary) -> Node3D:
 	var side: int = int(e.team) if int(e.team) >= 0 else (_side if _side >= 0 else 0)
 	match String(e.cat):
 		"infantry":
-			return _soldier(String(e.key), side, Soldier.Act.IDLE)
+			# armed men stand to, weapon up; the rest at ease
+			var armed: bool = String(Defs.UNITS[e.key].weapon) in ["rifle", "ak", "smg", "lmg"]
+			return _soldier(String(e.key), side, Soldier.Act.SHOOT if armed else Soldier.Act.IDLE)
 		"squads":
 			var g := Node3D.new()
 			var mem: Array = Defs.SQUADS[e.key].members
 			for i in mem.size():
-				var s := _soldier(String(mem[i]), side, Soldier.Act.IDLE, 11 + i * 7)
+				var armed2: bool = String(Defs.UNITS[mem[i]].weapon) in ["rifle", "ak", "smg", "lmg"]
+				var s := _soldier(String(mem[i]), side, Soldier.Act.SHOOT if armed2 and i % 2 == 0 else Soldier.Act.IDLE, 11 + i * 7)
 				s.position = Vector3((i - (mem.size() - 1) * 0.5) * 0.95, 0, absf(i - (mem.size() - 1) * 0.5) * 0.35)
 				g.add_child(s)
 			return g
@@ -594,6 +621,31 @@ func _trench_diorama() -> Node3D:
 	g.add_child(gr)
 	g.position.y = d
 	return g
+
+
+const FLOOR_SHADER := """
+shader_type spatial;
+render_mode specular_schlick_ggx;
+uniform float radius = 6.0;
+uniform float cell = 1.0;
+varying vec3 wp;
+void vertex() { wp = VERTEX; }
+void fragment() {
+	float r = length(wp.xz);
+	vec2 q = wp.xz / cell;
+	vec2 g = abs(fract(q) - 0.5);
+	float w = fwidth(q.x) * 1.2;
+	float ln = 1.0 - smoothstep(0.0, w, 0.5 - max(g.x, g.y));
+	vec2 g10 = abs(fract(q / 5.0) - 0.5);
+	float ln2 = 1.0 - smoothstep(0.0, w * 0.2, 0.5 - max(g10.x, g10.y));
+	vec3 c = vec3(0.034, 0.037, 0.04);
+	c = mix(c, vec3(0.06, 0.075, 0.08), max(ln * 0.5, ln2 * 0.8));
+	float fade = 1.0 - smoothstep(radius * 0.3, radius, r);
+	ALBEDO = c * fade;
+	ROUGHNESS = 0.62;
+	SPECULAR = 0.35;
+}
+"""
 
 
 # --- the entries -----------------------------------------------------------------------

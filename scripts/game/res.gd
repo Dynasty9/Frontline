@@ -114,14 +114,31 @@ void fragment() {
 	return m
 
 
-static func box(s: Vector3) -> BoxMesh:
+## A box. Anything thicker than a sheet gets chamfered edges (BevelMesh), so
+## every edge catches a highlight; very thin plates stay plain boxes.
+static func box(s: Vector3) -> Mesh:
 	var key := "b%.3f,%.3f,%.3f" % [s.x, s.y, s.z]
 	if _meshes.has(key):
 		return _meshes[key]
-	var m := BoxMesh.new()
-	m.size = s
+	var mn := minf(s.x, minf(s.y, s.z))
+	var m: Mesh
+	if mn < 0.012:
+		var bm := BoxMesh.new()
+		bm.size = s
+		m = bm
+	else:
+		m = BevelMesh.make(s, clampf(mn * 0.16, 0.0025, 0.035))
 	_meshes[key] = m
 	return m
+
+
+## The size of a box made by box() (ZERO for anything else).
+static func box_size(m: Mesh) -> Vector3:
+	if m is BoxMesh:
+		return (m as BoxMesh).size
+	if m is BevelMesh:
+		return (m as BevelMesh).size
+	return Vector3.ZERO
 
 
 static func sphere(r: float, segs := 10) -> SphereMesh:

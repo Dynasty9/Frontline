@@ -59,7 +59,23 @@ static func build(kind: String, team: int, seed: int, is_burnt := false) -> Vehi
 			k._technical(team, seed, true)
 		_:
 			k._truck(team)
+	k._merge_parts(k.root, Vector3.ZERO)
 	return k
+
+
+## Each moving part (hull, turret, every wheel, rotor) becomes one mesh with a
+## surface per material: the detail costs vertices, not draw calls. The
+## camouflage stays continuous across the parts.
+func _merge_parts(n: Node3D, off: Vector3) -> void:
+	for c in n.get_children():
+		if c is Node3D and not (c is MeshInstance3D):
+			_merge_parts(c, off + (c as Node3D).position)
+	var before := n.get_child_count()
+	Mats.merge_static(n, [blur] if blur else [], false, false, true)
+	for i in range(before, n.get_child_count()):
+		var mi := n.get_child(i) as MeshInstance3D
+		if mi and off != Vector3.ZERO:
+			mi.set_instance_shader_parameter("pofs", off)
 
 
 # --- mesh helpers ----------------------------------------------------------------
@@ -218,9 +234,16 @@ func _pivot(parent: Node3D, pos: Vector3) -> Node3D:
 ## Wheel with tyre and hub on a spinning pivot (axis X).
 func _wheel(parent: Node3D, pos: Vector3, r: float, w: float, hub_kind := "gunmetal_w", hub_col = null) -> Node3D:
 	var pv := _pivot(parent, pos)
-	_cyl(pv, r, r, w, Vector3.ZERO, Vector3(0, 0, PI / 2), "rubber", null, 14)
-	_cyl(pv, r * 0.55, r * 0.55, w + 0.04, Vector3.ZERO, Vector3(0, 0, PI / 2), hub_kind, hub_col, 10, false)
-	_cyl(pv, r * 0.18, r * 0.18, w + 0.08, Vector3.ZERO, Vector3(0, 0, PI / 2), "gunmetal_w", null, 6, false)
+	# the tyre: a tread band with rounded shoulders, the sidewalls set in a little
+	_cyl(pv, r * 0.93, r * 0.93, w, Vector3.ZERO, Vector3(0, 0, PI / 2), "rubber", null, 20)
+	_cyl(pv, r, r, w * 0.8, Vector3.ZERO, Vector3(0, 0, PI / 2), "rubber", null, 20)
+	# the rim set into it, a ring of wheel nuts and the hub
+	_cyl(pv, r * 0.58, r * 0.58, w + 0.02, Vector3.ZERO, Vector3(0, 0, PI / 2), hub_kind, hub_col, 14, false)
+	_cyl(pv, r * 0.3, r * 0.34, w + 0.07, Vector3.ZERO, Vector3(0, 0, PI / 2), hub_kind, hub_col, 10, false)
+	_cyl(pv, r * 0.13, r * 0.13, w + 0.11, Vector3.ZERO, Vector3(0, 0, PI / 2), "gunmetal_w", null, 8, false)
+	for i in 8:
+		var a := TAU * i / 8.0
+		_cyl(pv, r * 0.035, r * 0.035, w + 0.09, Vector3(0, sin(a) * r * 0.42, cos(a) * r * 0.42), Vector3(0, 0, PI / 2), "gunmetal_w", null, 6, false)
 	wheels.append(pv)
 	return pv
 
@@ -231,7 +254,9 @@ func _team_mark(parent: Node3D, team: int, pos: Vector3, s: Vector3) -> void:
 	var mi := MeshInstance3D.new()
 	mi.mesh = Res.box(s)
 	mi.position = pos
-	mi.material_override = Res.mat(Defs.TEAM_COLORS[team].darkened(0.15), 0.7)
+	# a subdued identification panel, not a toy's coloured sticker
+	var tc: Color = Defs.TEAM_COLORS[team]
+	mi.material_override = Res.mat(tc.lerp(Color(0.25, 0.25, 0.25), 0.62).darkened(0.5), 0.85)
 	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	parent.add_child(mi)
 
@@ -253,9 +278,12 @@ func _tank(team: int) -> void:
 			_wheel(m, Vector3(s * 1.45, 0.38, -2.45 + i * 0.8), 0.33, 0.5)
 		_wheel(m, Vector3(s * 1.45, 0.56, -3.05), 0.3, 0.45)
 		_wheel(m, Vector3(s * 1.45, 0.6, 2.95), 0.34, 0.45)
-		# side skirts
-		_box(m, Vector3(0.07, 0.62, 5.5), Vector3(s * 1.78, 0.74, 0.25), cam)
+		# side skirts: bolted panels with gaps between them, the front one angled
+		for i in 6:
+			_box(m, Vector3(0.07, 0.62, 0.9), Vector3(s * 1.78, 0.74, -2.0 + i * 0.92), cam)
+			_box(m, Vector3(0.09, 0.05, 0.06), Vector3(s * 1.8, 1.0, -2.0 + i * 0.92), "gunmetal_w", null, Vector3.ZERO, false)
 		_box(m, Vector3(0.07, 0.5, 0.9), Vector3(s * 1.78, 0.8, -2.95), cam, null, Vector3(0.35, 0, 0))
+		_box(m, Vector3(0.22, 0.05, 6.4), Vector3(s * 1.66, 1.06, 0.1), cam)
 		# headlights and tow hooks
 		_box(m, Vector3(0.22, 0.12, 0.1), Vector3(s * 1.2, 1.12, -3.36), "gunmetal_w")
 		_box(m, Vector3(0.12, 0.16, 0.2), Vector3(s * 0.7, 0.62, -3.42), "gunmetal_w")
@@ -271,6 +299,12 @@ func _tank(team: int) -> void:
 	# bustle rack with stowage
 	_box(turret, Vector3(2.2, 0.05, 0.6), Vector3(0, 0.25, 2.15), "gunmetal_w")
 	_box(turret, Vector3(2.2, 0.35, 0.04), Vector3(0, 0.45, 2.45), "gunmetal_w")
+	# stowage bins along the turret sides, the commander's independent sight
+	for s in [-1.0, 1.0]:
+		_box(turret, Vector3(0.3, 0.4, 1.0), Vector3(s * 1.35, 0.36, 1.0), cam, null, Vector3(0, s * -0.12, 0))
+	_box(turret, Vector3(0.3, 0.32, 0.32), Vector3(-0.25, 0.92, -0.15), cam)
+	_box(turret, Vector3(0.24, 0.16, 0.02), Vector3(-0.25, 0.95, -0.32), "glass")
+	_box(turret, Vector3(0.6, 0.06, 0.5), Vector3(-0.55, 0.77, 0.5), cam)
 	_box(turret, Vector3(0.8, 0.4, 0.45), Vector3(-0.55, 0.5, 2.15), "canvas", Color(0.33, 0.35, 0.24), Vector3(0, 0.1, 0))
 	_box(turret, Vector3(0.6, 0.32, 0.42), Vector3(0.45, 0.46, 2.18), "canvas", Color(0.4, 0.38, 0.28), Vector3(0, -0.15, 0))
 	# mantlet, barrel, fume extractor, muzzle
@@ -342,7 +376,8 @@ func _old_tank(team: int) -> void:
 # --- wheeled ---------------------------------------------------------------------
 
 func _technical(team: int, seed: int, aa := false) -> void:
-	var paint: Color = [Color(0.85, 0.83, 0.78), Color(0.6, 0.52, 0.38), Color(0.35, 0.38, 0.3), Color(0.5, 0.18, 0.13)][seed % 4]
+	# sun-faded civilian paint, the way these trucks actually look
+	var paint: Color = [Color(0.66, 0.64, 0.58), Color(0.55, 0.48, 0.36), Color(0.36, 0.37, 0.3), Color(0.34, 0.17, 0.14)][seed % 4]
 	var m := root
 	_box(m, Vector3(1.3, 0.22, 4.5), Vector3(0, 0.55, 0.1), "gunmetal_w")
 	# body sides, hood and cab
@@ -369,6 +404,20 @@ func _technical(team: int, seed: int, aa := false) -> void:
 	for s in [-1.0, 1.0]:
 		for z in [-1.55, 1.5]:
 			_wheel(m, Vector3(s * 0.84, 0.4, z), 0.4, 0.28)
+	# bull bar, mirrors, a roll bar behind the cab with lights, door seams,
+	# wheel-arch flares
+	for s in [-1.0, 1.0]:
+		_cyl(m, 0.03, 0.03, 0.55, Vector3(s * 0.55, 1.0, -2.55), Vector3.ZERO, "gunmetal_w", null, 6)
+		_box(m, Vector3(0.12, 0.14, 0.03), Vector3(s * 1.02, 1.42, -0.85), "gunmetal_w")
+		_cyl(m, 0.035, 0.035, 0.75, Vector3(s * 0.75, 1.55, 0.42), Vector3.ZERO, "gunmetal_w", null, 6)
+		_box(m, Vector3(0.02, 0.4, 0.03), Vector3(s * 0.925, 1.2, -0.15), "gunmetal_w", null, Vector3.ZERO, false)
+		for z in [-1.55, 1.5]:
+			_box(m, Vector3(0.12, 0.05, 1.0), Vector3(s * 0.94, 1.02, z), "car_paint", paint.darkened(0.15))
+	_cyl(m, 0.03, 0.03, 1.15, Vector3(0, 0.82, -2.6), Vector3(0, 0, PI / 2), "gunmetal_w", null, 6)
+	_cyl(m, 0.03, 0.03, 1.1, Vector3(0, 1.27, -2.55), Vector3(0, 0, PI / 2), "gunmetal_w", null, 6)
+	_cyl(m, 0.035, 0.035, 1.55, Vector3(0, 1.93, 0.42), Vector3(0, 0, PI / 2), "gunmetal_w", null, 6)
+	for x in [-0.3, 0.3]:
+		_box(m, Vector3(0.18, 0.12, 0.1), Vector3(x, 2.0, 0.4), "gunmetal_w")
 	# spare tyre and ammo cans in the bed
 	_cyl(m, 0.36, 0.36, 0.24, Vector3(-0.42, 1.22, 0.75), Vector3(0, 0, 0), "rubber", null, 12)
 	_box(m, Vector3(0.3, 0.2, 0.18), Vector3(0.5, 1.19, 2.0), "paint", Color(0.3, 0.33, 0.22))
@@ -469,32 +518,58 @@ func _car(v: int, col: Color) -> void:
 			_wheel(m, Vector3(s * (w - 0.1), 0.33, z), 0.33, 0.22, "steel", Color(0.62, 0.63, 0.62))
 
 
+## M1151 Humvee: wide and low, a long sloping bonnet over the grille, the
+## armoured crew cab with its thick little windows and four heavy doors, the
+## rear cargo shell, fender flares over big tyres, and the gunner's
+## protection kit with an M2 on the roof.
 func _humvee(team: int) -> void:
 	var cam := "camo_tank" if team == 0 else "camo_tank_rebel"
 	var m := root
 	_box(m, Vector3(1.5, 0.25, 4.4), Vector3(0, 0.6, 0), "gunmetal_w")
-	_add(m, loft("hv_body", [-1.1, -2.35, 1.1, -2.35, 1.1, 2.3, -1.1, 2.3], [-1.08, -2.25, 1.08, -2.25, 1.08, 2.3, -1.08, 2.3], 0.7, 1.25), cam, null, Vector3.ZERO)
-	_add(m, loft("hv_hood", [-1.05, -2.25, 1.05, -2.25, 1.05, -0.75, -1.05, -0.75], [-0.95, -2.05, 0.95, -2.05, 0.95, -0.75, -0.95, -0.75], 1.24, 1.42), cam, null, Vector3.ZERO)
-	_add(m, loft("hv_cab", [-1.08, -0.78, 1.08, -0.78, 1.08, 2.0, -1.08, 2.0], [-0.98, -0.45, 0.98, -0.45, 0.98, 1.85, -0.98, 1.85], 1.24, 2.0), cam, null, Vector3.ZERO)
-	_box(m, Vector3(1.7, 0.5, 0.03), Vector3(0, 1.66, -0.63), "glass", null, Vector3(-0.42, 0, 0), false)
+	_add(m, loft("hv2_low", [-1.08, -2.42, 1.08, -2.42, 1.1, 2.45, -1.1, 2.45], [-1.1, -2.42, 1.1, -2.42, 1.1, 2.45, -1.1, 2.45], 0.62, 1.12), cam, null, Vector3.ZERO)
+	_add(m, loft("hv2_hood", [-1.05, -2.42, 1.05, -2.42, 1.05, -0.85, -1.05, -0.85], [-0.95, -2.22, 0.95, -2.22, 1.0, -0.85, -1.0, -0.85], 1.11, 1.3), cam, null, Vector3.ZERO)
+	_add(m, loft("hv2_cab", [-1.1, -0.9, 1.1, -0.9, 1.1, 1.3, -1.1, 1.3], [-1.02, -0.62, 1.02, -0.62, 1.02, 1.22, -1.02, 1.22], 1.11, 1.92), cam, null, Vector3.ZERO)
+	_add(m, loft("hv2_rear", [-1.1, 1.28, 1.1, 1.28, 1.1, 2.45, -1.1, 2.45], [-1.06, 1.28, 1.06, 1.28, 1.06, 2.4, -1.06, 2.4], 1.11, 1.5), cam, null, Vector3.ZERO)
+	# grille with its slats, headlights in their guards, bumper and winch
+	_box(m, Vector3(1.1, 0.42, 0.04), Vector3(0, 0.92, -2.43), "gunmetal_w")
+	for i in 7:
+		_box(m, Vector3(0.05, 0.38, 0.03), Vector3(-0.45 + i * 0.15, 0.92, -2.455), cam, null, Vector3.ZERO, false)
 	for s in [-1.0, 1.0]:
-		_box(m, Vector3(0.03, 0.4, 0.55), Vector3(s * 1.04, 1.68, -0.15), "glass", null, Vector3(0, 0, s * 0.1), false)
-		_box(m, Vector3(0.03, 0.4, 0.55), Vector3(s * 1.04, 1.68, 0.75), "glass", null, Vector3(0, 0, s * 0.1), false)
-		for z in [-1.5, 1.45]:
-			_wheel(m, Vector3(s * 0.95, 0.47, z), 0.47, 0.38)
-	_box(m, Vector3(2.0, 0.2, 0.2), Vector3(0, 0.85, -2.4), "steel")
-	_box(m, Vector3(1.0, 0.25, 0.03), Vector3(0, 1.05, -2.36), "gunmetal_w")
-	# roof gun ring with shield and M2
-	turret = _pivot(m, Vector3(0, 2.0, 0.6))
-	_cyl(turret, 0.55, 0.55, 0.1, Vector3(0, 0.05, 0), Vector3.ZERO, cam, null, 14)
-	_box(turret, Vector3(1.1, 0.55, 0.05), Vector3(0, 0.45, -0.5), cam, null, Vector3(0.12, 0, 0))
+		_box(m, Vector3(0.24, 0.16, 0.06), Vector3(s * 0.78, 1.02, -2.43), "gunmetal_w")
+		_box(m, Vector3(0.16, 0.1, 0.02), Vector3(s * 0.78, 1.02, -2.465), "glass")
+	_box(m, Vector3(2.05, 0.2, 0.22), Vector3(0, 0.68, -2.55), "steel")
+	_box(m, Vector3(0.5, 0.18, 0.2), Vector3(0, 0.7, -2.68), "gunmetal_w")
+	# split windscreen, armoured door windows, door seams, mirrors
 	for s in [-1.0, 1.0]:
-		_box(turret, Vector3(0.05, 0.45, 0.5), Vector3(s * 0.55, 0.4, -0.3), cam, null, Vector3(0, s * 0.4, 0))
+		_box(m, Vector3(0.82, 0.5, 0.05), Vector3(s * 0.46, 1.62, -0.78), "glass", null, Vector3(-0.38, 0, 0), false)
+		_box(m, Vector3(0.05, 0.62, 0.06), Vector3(s * 1.0, 1.62, -0.75), cam, null, Vector3(-0.38, 0, 0), false)
+		for dz in [-0.32, 0.72]:
+			_box(m, Vector3(0.04, 0.34, 0.52), Vector3(s * 1.07, 1.62, dz), "glass", null, Vector3(0, 0, s * 0.06), false)
+		for dz in [-0.88, 0.2, 1.28]:
+			_box(m, Vector3(0.02, 0.8, 0.03), Vector3(s * 1.105, 1.35, dz), "gunmetal_w", null, Vector3.ZERO, false)
+		_box(m, Vector3(0.03, 0.04, 0.12), Vector3(s * 1.11, 1.32, -0.15), "gunmetal_w", null, Vector3.ZERO, false)
+		_box(m, Vector3(0.16, 0.2, 0.04), Vector3(s * 1.25, 1.65, -0.9), "gunmetal_w")
+		# fender flares over the wheels
+		for z in [-1.62, 1.62]:
+			_box(m, Vector3(0.18, 0.06, 1.15), Vector3(s * 1.08, 1.13, z), cam)
+			_wheel(m, Vector3(s * 0.95, 0.48, z), 0.48, 0.4)
+	_box(m, Vector3(2.0, 0.42, 0.05), Vector3(0, 1.3, 2.47), cam)
+	_box(m, Vector3(0.5, 0.35, 0.4), Vector3(0.6, 1.72, 1.85), "canvas", Color(0.32, 0.33, 0.25))
+	_cyl(m, 0.012, 0.012, 2.4, Vector3(-0.95, 2.6, 1.9), Vector3.ZERO, "gunmetal_w", null, 4, false)
+	# the gunner's turret: armoured shields with ballistic windows, the M2
+	turret = _pivot(m, Vector3(0, 1.93, 0.45))
+	_cyl(turret, 0.58, 0.58, 0.12, Vector3(0, 0.06, 0), Vector3.ZERO, cam, null, 18)
+	_box(turret, Vector3(1.15, 0.6, 0.06), Vector3(0, 0.45, -0.55), cam, null, Vector3(0.1, 0, 0))
+	_box(turret, Vector3(0.4, 0.22, 0.03), Vector3(0, 0.6, -0.6), "glass", null, Vector3(0.1, 0, 0), false)
+	for s in [-1.0, 1.0]:
+		_box(turret, Vector3(0.06, 0.55, 0.62), Vector3(s * 0.6, 0.42, -0.28), cam, null, Vector3(0, s * 0.45, 0))
+		_box(turret, Vector3(0.03, 0.2, 0.3), Vector3(s * 0.64, 0.55, -0.3), "glass", null, Vector3(0, s * 0.45, 0), false)
 	_box(turret, Vector3(0.18, 0.2, 0.75), Vector3(0, 0.45, -0.05), "gunmetal_w")
 	_cyl(turret, 0.035, 0.035, 1.15, Vector3(0, 0.47, -0.95), Vector3(PI / 2, 0, 0), "gunmetal_w", null, 6)
 	_cyl(turret, 0.05, 0.035, 0.1, Vector3(0, 0.47, -1.55), Vector3(PI / 2, 0, 0), "gunmetal_w", null, 6, false)
 	mg_tip = _tip(turret, Vector3(0, 0.47, -1.6))
-	_team_mark(m, team, Vector3(1.1, 1.0, 1.4), Vector3(0.03, 0.2, 0.8))
+	_box(turret, Vector3(0.16, 0.14, 0.28), Vector3(-0.2, 0.38, 0.0), "paint", Color(0.3, 0.33, 0.22))
+	_team_mark(m, team, Vector3(1.11, 1.0, 1.9), Vector3(0.03, 0.18, 0.6))
 
 
 ## Tracked IFV: a tall slab-sided hull, rear ramp, small two-man turret with
@@ -509,12 +584,20 @@ func _ifv(team: int) -> void:
 		_add(m, extrude_x("ifv_trk", tp, -0.3, 0.3), "track", null, Vector3(s * 1.33, 0, 0))
 		for i in 6:
 			_wheel(m, Vector3(s * 1.35, 0.36, -2.25 + i * 0.88), 0.31, 0.46)
-		_box(m, Vector3(0.06, 0.6, 5.6), Vector3(s * 1.66, 0.72, 0.1), cam)
+		for i in 6:
+			_box(m, Vector3(0.06, 0.6, 0.9), Vector3(s * 1.66, 0.72, -2.3 + i * 0.93), cam)
+		_box(m, Vector3(0.24, 0.12, 0.1), Vector3(s * 1.1, 1.15, -3.2), "gunmetal_w")
+		_box(m, Vector3(0.18, 0.08, 0.02), Vector3(s * 1.1, 1.15, -3.26), "glass")
 		# appliqué armour tiles
 		for i in 4:
 			_box(m, Vector3(0.08, 0.5, 1.1), Vector3(s * 1.68, 1.45, -1.6 + i * 1.2), cam)
 	_box(m, Vector3(2.2, 1.0, 0.08), Vector3(0, 1.45, 3.22), cam)
 	_box(m, Vector3(0.9, 0.8, 0.05), Vector3(0, 1.4, 3.27), "gunmetal_w")
+	# trim vane folded on the glacis, the ramp's hinges, tow points
+	_box(m, Vector3(2.4, 0.05, 0.7), Vector3(0, 1.32, -2.75), cam, null, Vector3(-0.5, 0, 0))
+	for s in [-1.0, 1.0]:
+		_cyl(m, 0.06, 0.06, 0.3, Vector3(s * 0.75, 0.55, 3.25), Vector3(0, 0, PI / 2), "gunmetal_w", null, 8)
+		_box(m, Vector3(0.12, 0.14, 0.18), Vector3(s * 0.75, 0.55, -3.35), "gunmetal_w")
 	_box(m, Vector3(2.0, 0.05, 1.2), Vector3(0, 1.96, 2.2), "gunmetal_w")
 	turret = _pivot(m, Vector3(0.25, 1.95, -0.4))
 	_add(turret, loft("ifv_tur", [-0.85, -1.0, 0.85, -1.0, 0.95, 0.9, -0.95, 0.9], [-0.7, -0.75, 0.7, -0.75, 0.8, 0.8, -0.8, 0.8], 0.0, 0.62), cam, null, Vector3.ZERO)
@@ -531,24 +614,57 @@ func _ifv(team: int) -> void:
 	_team_mark(m, team, Vector3(-1.66, 1.5, 2.3), Vector3(0.04, 0.3, 0.7))
 
 
+## BTR-80: a long boat-shaped hull (it swims), the bow sloping back over a
+## trim vane, sides angled in above the wheels, eight wheels with the gap for
+## the side doors between the second and third axles, firing ports, hatches,
+## and the small conical turret with its 14.5 mm KPVT and smoke dischargers.
 func _apc(team: int) -> void:
 	var cam := "camo_tank" if team == 0 else "camo_tank_rebel"
 	var m := root
-	var hb := [-1.25, -3.2, 1.25, -3.2, 1.35, 3.3, -1.35, 3.3]
-	var ht := [-1.05, -2.2, 1.05, -2.2, 1.12, 3.25, -1.12, 3.25]
-	_add(m, loft("apc_low", [-1.0, -3.0, 1.0, -3.0, 1.1, 3.3, -1.1, 3.3], hb, 0.55, 1.2), cam, null, Vector3.ZERO)
-	_add(m, loft("apc_up", hb, ht, 1.2, 2.1), cam, null, Vector3.ZERO)
+	var lo := [-0.85, -3.1, 0.85, -3.1, 1.15, -2.3, 1.15, 3.55, -1.15, 3.55, -1.15, -2.3]
+	var mid := [-1.0, -3.8, 1.0, -3.8, 1.42, -2.95, 1.42, 3.75, -1.42, 3.75, -1.42, -2.95]
+	var hi := [-0.62, -2.65, 0.62, -2.65, 1.1, -2.2, 1.1, 3.6, -1.1, 3.6, -1.1, -2.2]
+	_add(m, loft("btr_lo", lo, mid, 0.5, 1.28), cam, null, Vector3.ZERO)
+	_add(m, loft("btr_hi", mid, hi, 1.28, 2.05), cam, null, Vector3.ZERO)
+	# trim vane on the bow, the driver's and commander's vision blocks, lights
+	_box(m, Vector3(1.8, 0.05, 0.55), Vector3(0, 1.35, -3.55), cam, null, Vector3(-0.9, 0, 0))
 	for s in [-1.0, 1.0]:
-		for i in 4:
-			_wheel(m, Vector3(s * 1.22, 0.55, -2.3 + i * 1.45), 0.55, 0.42)
-		_box(m, Vector3(0.05, 0.4, 1.2), Vector3(s * 1.33, 1.6, 0.6), "steel")
-	_box(m, Vector3(0.5, 0.05, 0.6), Vector3(-0.6, 2.12, -1.6), "gunmetal_w")
-	turret = _pivot(m, Vector3(0, 2.1, -0.4))
-	_add(turret, loft("apc_tur", [-0.6, -0.7, 0.6, -0.7, 0.7, 0.6, -0.7, 0.6], [-0.45, -0.5, 0.45, -0.5, 0.55, 0.5, -0.55, 0.5], 0.0, 0.5), cam, null, Vector3.ZERO)
-	_cyl(turret, 0.06, 0.07, 2.2, Vector3(0, 0.28, -1.75), Vector3(PI / 2, 0, 0), "gunmetal_w", null, 8)
-	_cyl(turret, 0.09, 0.09, 0.3, Vector3(0, 0.28, -2.8), Vector3(PI / 2, 0, 0), "gunmetal_w", null, 8)
-	mg_tip = _tip(turret, Vector3(0, 0.28, -2.97))
-	_team_mark(m, team, Vector3(1.32, 1.6, 2.2), Vector3(0.03, 0.25, 0.8))
+		_box(m, Vector3(0.5, 0.12, 0.05), Vector3(s * 0.32, 1.92, -2.58), "glass", null, Vector3(-0.6, 0, 0), false)
+		_box(m, Vector3(0.18, 0.1, 0.1), Vector3(s * 0.7, 1.5, -3.3), "gunmetal_w")
+		_box(m, Vector3(0.14, 0.07, 0.02), Vector3(s * 0.7, 1.5, -3.36), "glass")
+		# wheels: two pairs forward, two aft
+		for z in [-2.45, -1.1, 0.75, 2.1]:
+			_wheel(m, Vector3(s * 1.28, 0.55, z), 0.55, 0.4)
+		# the side door between the axle pairs, firing ports along the flank
+		_box(m, Vector3(0.05, 0.62, 0.62), Vector3(s * 1.3, 1.62, -0.18), cam, null, Vector3(0, 0, s * 0.38))
+		for z in [-1.6, 1.3, 2.5]:
+			_cyl(m, 0.06, 0.08, 0.06, Vector3(s * 1.26, 1.68, z), Vector3(0, 0, s * (PI / 2 - 0.38)), "gunmetal_w", null, 8, false)
+		# stowage boxes and a tow cable over the rear wheels
+		_box(m, Vector3(0.32, 0.22, 0.9), Vector3(s * 1.05, 2.12, 2.4), "steel", Color(0.32, 0.31, 0.24))
+		_box(m, Vector3(0.05, 0.05, 2.4), Vector3(s * 1.36, 1.3, 1.4), "gunmetal_w", null, Vector3.ZERO, false)
+	# roof hatches, engine grilles, exhaust
+	for z in [-1.7, 0.3]:
+		for s2 in [-1.0, 1.0]:
+			_cyl(m, 0.27, 0.27, 0.06, Vector3(s2 * 0.55, 2.08, z), Vector3.ZERO, cam, null, 14)
+	_box(m, Vector3(1.6, 0.04, 1.2), Vector3(0, 2.07, 2.7), "gunmetal_w")
+	_box(m, Vector3(1.4, 0.18, 0.12), Vector3(0, 1.5, 3.75), "gunmetal_w")
+	_cyl(m, 0.012, 0.012, 2.2, Vector3(0.9, 3.1, 1.6), Vector3.ZERO, "gunmetal_w", null, 4, false)
+	# the turret: a low cone with the KPVT and coax in its mantlet
+	turret = _pivot(m, Vector3(0, 2.05, -1.0))
+	_cyl(turret, 0.66, 0.68, 0.1, Vector3(0, 0.05, 0), Vector3.ZERO, cam, null, 20)
+	_cyl(turret, 0.42, 0.62, 0.42, Vector3(0, 0.31, 0), Vector3.ZERO, cam, null, 20)
+	_cyl(turret, 0.24, 0.24, 0.06, Vector3(0.12, 0.55, 0.12), Vector3.ZERO, cam, null, 12)
+	_box(turret, Vector3(0.36, 0.28, 0.3), Vector3(0, 0.3, -0.58), cam)
+	_cyl(turret, 0.05, 0.05, 1.8, Vector3(0, 0.3, -1.6), Vector3(PI / 2, 0, 0), "gunmetal_w", null, 8)
+	_cyl(turret, 0.075, 0.075, 0.5, Vector3(0, 0.3, -0.95), Vector3(PI / 2, 0, 0), "gunmetal_w", null, 10)
+	_cyl(turret, 0.07, 0.07, 0.16, Vector3(0, 0.3, -2.55), Vector3(PI / 2, 0, 0), "gunmetal_w", null, 8)
+	_cyl(turret, 0.02, 0.02, 0.4, Vector3(0.14, 0.25, -0.85), Vector3(PI / 2, 0, 0), "gunmetal_w", null, 6, false)
+	mg_tip = _tip(turret, Vector3(0, 0.3, -2.65))
+	_box(turret, Vector3(0.12, 0.14, 0.14), Vector3(-0.2, 0.55, -0.35), "gunmetal_w")
+	for s in [-1.0, 1.0]:
+		for i in 3:
+			_cyl(turret, 0.045, 0.045, 0.2, Vector3(s * 0.55, 0.32 + i * 0.07, 0.25 - i * 0.05), Vector3(-0.7, 0, s * 0.6), "gunmetal_w", null, 6, false)
+	_team_mark(m, team, Vector3(1.3, 1.7, 2.4), Vector3(0.03, 0.22, 0.7))
 
 
 func _truck(team: int) -> void:

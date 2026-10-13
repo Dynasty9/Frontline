@@ -484,8 +484,8 @@ func _process(_dt: float) -> void:
 				want -= 1
 		world.set_meta("decor_focused", true)
 	# --manual=category[,entry[,side]] in a battle: the field manual open on that page
-	if args.has("manual") and world.hud and world.hud.manual and world.time > 1.0 and not has_meta("manual_open"):
-		set_meta("manual_open", true)
+	if args.has("manual") and world.hud and world.hud.manual and world.time > 1.0 and not has_meta("manual_open_battle"):
+		set_meta("manual_open_battle", true)
 		var mq := String(args["manual"]).split(",")
 		world.hud.manual.open(mq[0], mq[1] if mq.size() > 1 else "", int(mq[2]) if mq.size() > 2 else -1)
 	# --test-fire: every armed man (and every gunner on a gun) fires straight

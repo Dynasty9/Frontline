@@ -830,7 +830,7 @@ func _view_process(dt: float) -> void:
 		gp = TrenchNet.snap_pos(gp) if place_drag else TrenchNet.snap_foot(gp, place_kind, place_yaw)
 		if build_grid:
 			build_grid.position = Vector3(round(gp.x), 0.04, round(gp.z))
-		var h: float = (ghost.mesh as BoxMesh).size.y
+		var h: float = Res.box_size(ghost.mesh).y
 		ghost.position = gp + Vector3(0, h * 0.5, 0)
 		ghost.rotation.y = place_yaw
 		ghost_err = world.placement_error(world.local_team, place_kind, gp, place_yaw)

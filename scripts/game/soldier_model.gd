@@ -81,31 +81,36 @@ func build(utype: String, team: int, seed: int) -> void:
 	var pants: Color
 	var vest: Color
 	var hat: Color
+	# the uniform in one colour, the kit over it in another (coyote or ranger
+	# green), the way real units are dressed - muted, nothing toy-bright
 	if team == 0:
-		shirt = Res.vary(Color(0.38, 0.41, 0.29), 0.04, rng)
-		pants = Res.vary(Color(0.34, 0.37, 0.26), 0.04, rng)
-		vest = Color(0.42, 0.4, 0.29)
-		hat = Color(0.31, 0.34, 0.23)
+		shirt = Res.vary(Color(0.4, 0.4, 0.3), 0.03, rng)
+		pants = Res.vary(Color(0.38, 0.38, 0.29), 0.03, rng)
+		vest = [Color(0.46, 0.39, 0.28), Color(0.3, 0.32, 0.24)][rng.randi() % 2]
+		hat = Color(0.36, 0.35, 0.27)
 	elif team == 1:
-		shirt = Res.vary([Color(0.55, 0.47, 0.35), Color(0.35, 0.33, 0.3), Color(0.26, 0.29, 0.22), Color(0.5, 0.5, 0.47), Color(0.42, 0.3, 0.22)][rng.randi() % 5], 0.06, rng)
-		pants = Res.vary([Color(0.25, 0.24, 0.22), Color(0.32, 0.29, 0.21), Color(0.22, 0.25, 0.2)][rng.randi() % 3], 0.05, rng)
-		vest = Res.vary(Color(0.3, 0.27, 0.2), 0.08, rng)
-		hat = [Color(0.6, 0.12, 0.1), Color(0.12, 0.12, 0.12), Color(0.3, 0.32, 0.22), Color(0.55, 0.5, 0.4)][rng.randi() % 4]
+		shirt = Res.vary([Color(0.5, 0.43, 0.32), Color(0.24, 0.24, 0.23), Color(0.3, 0.31, 0.24), Color(0.45, 0.42, 0.34), Color(0.36, 0.27, 0.2)][rng.randi() % 5], 0.05, rng)
+		pants = Res.vary([Color(0.2, 0.2, 0.19), Color(0.27, 0.27, 0.21), Color(0.38, 0.34, 0.26), Color(0.21, 0.22, 0.24)][rng.randi() % 4], 0.04, rng)
+		vest = Res.vary([Color(0.32, 0.31, 0.23), Color(0.42, 0.37, 0.27)][rng.randi() % 2], 0.05, rng)
+		hat = [Color(0.4, 0.1, 0.08), Color(0.1, 0.1, 0.1), Color(0.3, 0.31, 0.23), Color(0.48, 0.43, 0.34)][rng.randi() % 4]
 	else:
-		shirt = Color(0.85, 0.85, 0.82)
+		shirt = Color(0.78, 0.78, 0.75)
 		pants = Color(0.3, 0.32, 0.3)
-		vest = Color(0.9, 0.9, 0.9)
-		hat = Color(0.9, 0.9, 0.9)
-	var boots := Color(0.12, 0.1, 0.08)
+		vest = Color(0.8, 0.8, 0.78)
+		hat = Color(0.8, 0.8, 0.78)
+	var boots := Color(0.36, 0.29, 0.2) if team == 0 else Color(0.12, 0.1, 0.08)
+	var sole := Color(0.06, 0.055, 0.05)
 	var dark := Color(0.1, 0.1, 0.1)
-
-	var pouch := vest.darkened(0.15)
-	var pack := vest.darkened(0.2)
-	var gloves := Color(0.17, 0.155, 0.13) if team == 0 else skin
-	var pads := Color(0.22, 0.22, 0.19)
+	var pouch := vest.darkened(0.08)
+	var flap := vest.darkened(0.18)
+	var pack := vest.lerp(Color(0.3, 0.32, 0.24), 0.6) if team == 0 else vest.darkened(0.12)
+	var gloves := Color(0.33, 0.29, 0.22) if team == 0 else skin
+	var pads := Color(0.2, 0.2, 0.18)
 	var wood := Color(0.3, 0.2, 0.12)
 	var steel := Color(0.15, 0.15, 0.15)
-	var scarf: Color = [Color(0.55, 0.5, 0.42), Color(0.2, 0.22, 0.2), Color(0.45, 0.15, 0.12), Color(0.85, 0.84, 0.8)][rng.randi() % 4]
+	var fde := Color(0.45, 0.38, 0.27)  # flat dark earth rifle furniture
+	var pocket := pants.darkened(0.07)
+	var scarf: Color = [Color(0.52, 0.47, 0.38), Color(0.28, 0.28, 0.26), Color(0.4, 0.17, 0.14), Color(0.34, 0.35, 0.27)][rng.randi() % 4]
 	var bearer := utype == "bearer"
 
 	root = Node3D.new()
@@ -113,28 +118,45 @@ func build(utype: String, team: int, seed: int) -> void:
 	hips = Node3D.new()
 	hips.position = Vector3(0, H0, 0)
 	root.add_child(hips)
-	var pel := Res.mi(hips, Res.cyl(0.165, 0.155, 0.2, 10), Res.mat(pants), Vector3(0, -0.01, 0))
-	pel.scale = Vector3(1.0, 1.0, 0.68)
-	if team == 0 and not bearer:
-		var belt := Res.mi(hips, Res.cyl(0.175, 0.175, 0.06, 10), Res.mat(vest), Vector3(0, 0.06, 0), Vector3.ZERO, false)
-		belt.scale = Vector3(1.0, 1.0, 0.7)
-	# legs: rounded limbs, boots, knee pads on the regulars
+	var pel := Res.mi(hips, Res.cyl(0.165, 0.155, 0.2, 12), Res.mat(pants), Vector3(0, -0.01, 0))
+	pel.scale = Vector3(1.0, 1.0, 0.7)
+	if not bearer:
+		# battle belt (or a plain belt) with pouches round it
+		var belt := Res.mi(hips, Res.cyl(0.178, 0.178, 0.055, 12), Res.mat(vest if team == 0 else pouch), Vector3(0, 0.065, 0), Vector3.ZERO, false)
+		belt.scale = Vector3(1.0, 1.0, 0.72)
+		for a in ([-1.15, 1.15, 2.5, -2.5] if team == 0 else [2.4]):
+			Res.mi(hips, Res.box(Vector3(0.07, 0.09, 0.045)), Res.mat(pouch), Vector3(sin(a) * 0.17, 0.04, cos(a) * 0.122), Vector3(0, a, 0), false)
+	# legs: a full thigh tapering to the knee, a cargo pocket, the shin into a
+	# laced boot with a thick sole; knee pads on the regulars
 	for side in [-1.0, 1.0]:
 		var th := _joint(hips, Vector3(0.1 * side, -0.05, 0))
-		Res.mi(th, Res.capsule(0.085, 0.5), Res.mat(pants), Vector3(0, -0.22, 0))
+		Res.mi(th, Res.sphere(0.09, 10), Res.mat(pants), Vector3.ZERO)
+		Res.mi(th, Res.cyl(0.092, 0.072, 0.44, 10), Res.mat(pants), Vector3(0, -0.21, 0))
+		if not bearer and (team == 0 or rng.randf() < 0.5):
+			Res.mi(th, Res.box(Vector3(0.035, 0.13, 0.12)), Res.mat(pocket), Vector3(side * 0.083, -0.22, 0.0), Vector3(0, 0, side * 0.06), false)
 		var sh := _joint(th, Vector3(0, -0.45, 0))
-		Res.mi(sh, Res.capsule(0.07, 0.46), Res.mat(pants), Vector3(0, -0.21, 0))
-		Res.mi(sh, Res.box(Vector3(0.13, 0.11, 0.27)), Res.mat(boots), Vector3(0, -0.44, -0.045), Vector3.ZERO, false)
+		Res.mi(sh, Res.sphere(0.072, 10), Res.mat(pants), Vector3.ZERO)
+		Res.mi(sh, Res.cyl(0.07, 0.058, 0.3, 10), Res.mat(pants), Vector3(0, -0.15, 0))
+		Res.mi(sh, Res.cyl(0.064, 0.066, 0.15, 10), Res.mat(boots), Vector3(0, -0.345, 0), Vector3.ZERO, false)
+		Res.mi(sh, Res.box(Vector3(0.105, 0.085, 0.24)), Res.mat(boots), Vector3(0, -0.39, -0.055), Vector3.ZERO, false)
+		var toe := Res.mi(sh, Res.sphere(0.054, 8), Res.mat(boots), Vector3(0, -0.4, -0.165), Vector3.ZERO, false)
+		toe.scale = Vector3(1.0, 0.72, 1.0)
+		Res.mi(sh, Res.box(Vector3(0.115, 0.03, 0.29)), Res.mat(sole), Vector3(0, -0.445, -0.06), Vector3.ZERO, false)
 		if team == 0 and not bearer:
-			Res.mi(sh, Res.box(Vector3(0.12, 0.13, 0.05)), Res.mat(pads), Vector3(0, -0.02, -0.075), Vector3.ZERO, false)
+			Res.mi(sh, Res.box(Vector3(0.1, 0.12, 0.045)), Res.mat(pads), Vector3(0, -0.03, -0.066), Vector3(-0.08, 0, 0), false)
+			Res.mi(sh, Res.cyl(0.074, 0.074, 0.02, 10), Res.mat(pads), Vector3(0, -0.08, 0), Vector3.ZERO, false)
 		if side < 0.0:
 			thigh_l = th
 			shin_l = sh
 		else:
 			thigh_r = th
 			shin_r = sh
-	# thigh rig / dump pouch
-	Res.mi(thigh_r, Res.box(Vector3(0.06, 0.14, 0.12)), Res.mat(pouch), Vector3(0.09, -0.12, 0.0), Vector3.ZERO, false)
+	if team == 0 and not bearer:
+		# drop-leg holster on the right thigh
+		Res.mi(thigh_r, Res.box(Vector3(0.05, 0.15, 0.1)), Res.mat(pouch), Vector3(0.1, -0.15, 0.01), Vector3.ZERO, false)
+		Res.mi(thigh_r, Res.box(Vector3(0.032, 0.06, 0.04)), Res.mat(dark), Vector3(0.1, -0.05, 0.035), Vector3(0.3, 0, 0), false)
+	elif not bearer and rng.randf() < 0.5:
+		Res.mi(thigh_r, Res.box(Vector3(0.06, 0.14, 0.12)), Res.mat(pouch), Vector3(0.09, -0.12, 0.0), Vector3.ZERO, false)
 
 	torso = _joint(hips, Vector3(0, 0.05, 0))
 	# an oval waist widening into the chest, rounded shoulders
@@ -143,30 +165,53 @@ func build(utype: String, team: int, seed: int) -> void:
 	var chest := Res.mi(torso, Res.cyl(0.205, 0.185, 0.3, 10), Res.mat(shirt), Vector3(0, 0.42, 0))
 	chest.scale = Vector3(1.0, 1.0, 0.58)
 	Res.mi(torso, Res.capsule(0.07, 0.48), Res.mat(shirt), Vector3(0, 0.53, 0), Vector3(0, 0, PI / 2), false)
+	var medic: bool = Defs.UNITS.has(utype) and Defs.UNITS[utype].get("medic", false)
 	if not bearer:
 		if team == 0:
-			# plate carrier: front and back plates, mag pouches, radio, assault pack
-			for z in [-0.125, 0.125]:
-				Res.mi(torso, Res.box(Vector3(0.34, 0.31, 0.05)), Res.mat(vest), Vector3(0, 0.4, z))
-			var cb := Res.mi(torso, Res.cyl(0.208, 0.205, 0.15, 10), Res.mat(vest), Vector3(0, 0.3, 0))
-			cb.scale = Vector3(1.0, 1.0, 0.68)
-			for x in [-0.12, 0.12]:
-				Res.mi(torso, Res.box(Vector3(0.07, 0.035, 0.27)), Res.mat(vest), Vector3(x, 0.57, 0), Vector3.ZERO, false)
-			for x in [-0.11, 0.0, 0.11]:
-				Res.mi(torso, Res.box(Vector3(0.09, 0.12, 0.06)), Res.mat(pouch), Vector3(x, 0.33, -0.18), Vector3.ZERO, false)
-			Res.mi(torso, Res.box(Vector3(0.2, 0.06, 0.05)), Res.mat(pouch), Vector3(0, 0.47, -0.17), Vector3.ZERO, false)
-			Res.mi(torso, Res.box(Vector3(0.07, 0.16, 0.08)), Res.mat(pouch), Vector3(-0.22, 0.33, -0.02), Vector3.ZERO, false)
-			Res.mi(torso, Res.box(Vector3(0.31, 0.36, 0.15)), Res.mat(pack), Vector3(0, 0.36, 0.22), Vector3.ZERO, false)
-			Res.mi(torso, Res.box(Vector3(0.24, 0.1, 0.12)), Res.mat(pack), Vector3(0, 0.6, 0.2), Vector3.ZERO, false)
+			# plate carrier: front and back plates in a cut carrier, cummerbund,
+			# padded shoulder straps; three rifle-mag pouches with flaps, an admin
+			# pouch, a tourniquet, a radio on the left
+			Res.mi(torso, Res.box(Vector3(0.33, 0.33, 0.06)), Res.mat(vest), Vector3(0, 0.41, -0.13), Vector3(0.05, 0, 0))
+			Res.mi(torso, Res.box(Vector3(0.33, 0.35, 0.06)), Res.mat(vest), Vector3(0, 0.41, 0.13), Vector3(-0.04, 0, 0))
+			var cb := Res.mi(torso, Res.cyl(0.208, 0.205, 0.15, 12), Res.mat(vest), Vector3(0, 0.3, 0))
+			cb.scale = Vector3(1.0, 1.0, 0.7)
+			for x in [-0.115, 0.115]:
+				Res.mi(torso, Res.box(Vector3(0.075, 0.04, 0.28)), Res.mat(vest), Vector3(x, 0.585, 0), Vector3.ZERO, false)
+			for x in [-0.1, 0.0, 0.1]:
+				Res.mi(torso, Res.box(Vector3(0.086, 0.13, 0.055)), Res.mat(pouch), Vector3(x, 0.31, -0.186), Vector3.ZERO, false)
+				Res.mi(torso, Res.box(Vector3(0.09, 0.028, 0.06)), Res.mat(flap), Vector3(x, 0.375, -0.188), Vector3.ZERO, false)
+			Res.mi(torso, Res.box(Vector3(0.19, 0.08, 0.04)), Res.mat(pouch), Vector3(0, 0.48, -0.18), Vector3(0.05, 0, 0), false)
+			Res.mi(torso, Res.box(Vector3(0.03, 0.09, 0.03)), Res.mat(dark), Vector3(-0.115, 0.53, -0.16), Vector3.ZERO, false)
+			Res.mi(torso, Res.box(Vector3(0.07, 0.15, 0.06)), Res.mat(pouch), Vector3(-0.215, 0.36, -0.02), Vector3.ZERO, false)
+			if rng.randf() < 0.4:
+				Res.mi(torso, Res.cyl(0.005, 0.005, 0.4, 4), Res.mat(dark), Vector3(-0.22, 0.62, 0.0), Vector3(0.08, 0, 0.08), false)
+			# on the back: an assault pack (medics, some riflemen) or a slim hydration carrier
+			if medic or rng.randf() < 0.4:
+				Res.mi(torso, Res.box(Vector3(0.28, 0.32, 0.12)), Res.mat(pack), Vector3(0, 0.37, 0.225), Vector3.ZERO, false)
+				Res.mi(torso, Res.box(Vector3(0.27, 0.06, 0.13)), Res.mat(pack.darkened(0.08)), Vector3(0, 0.545, 0.225), Vector3(-0.08, 0, 0), false)
+				for sx in [-1.0, 1.0]:
+					Res.mi(torso, Res.box(Vector3(0.04, 0.16, 0.08)), Res.mat(pack.darkened(0.08)), Vector3(sx * 0.16, 0.32, 0.23), Vector3.ZERO, false)
+			else:
+				Res.mi(torso, Res.box(Vector3(0.22, 0.3, 0.05)), Res.mat(pouch), Vector3(0, 0.43, 0.185), Vector3(-0.04, 0, 0), false)
 		else:
-			# a chest rig over whatever he's wearing, sometimes a bag on his back
-			Res.mi(torso, Res.box(Vector3(0.36, 0.17, 0.08)), Res.mat(vest), Vector3(0, 0.3, -0.135))
+			# a chest rig of AK mag pouches over whatever he's wearing, straps over
+			# the shoulders crossing at the back, sometimes a bag
+			Res.mi(torso, Res.box(Vector3(0.34, 0.15, 0.07)), Res.mat(vest), Vector3(0, 0.31, -0.14))
 			for x in [-0.12, -0.04, 0.04, 0.12]:
-				Res.mi(torso, Res.box(Vector3(0.07, 0.13, 0.05)), Res.mat(pouch), Vector3(x, 0.3, -0.18), Vector3.ZERO, false)
-			Res.mi(torso, Res.box(Vector3(0.04, 0.32, 0.25)), Res.mat(vest), Vector3(-0.17, 0.48, 0), Vector3(0, 0, 0.3), false)
-			Res.mi(torso, Res.box(Vector3(0.04, 0.32, 0.25)), Res.mat(vest), Vector3(0.17, 0.48, 0), Vector3(0, 0, -0.3), false)
-			if rng.randf() < 0.55:
-				Res.mi(torso, Res.box(Vector3(0.28, 0.3, 0.13)), Res.mat(pack), Vector3(0, 0.36, 0.19), Vector3.ZERO, false)
+				Res.mi(torso, Res.box(Vector3(0.07, 0.14, 0.05)), Res.mat(pouch), Vector3(x, 0.32, -0.19), Vector3.ZERO, false)
+				Res.mi(torso, Res.box(Vector3(0.074, 0.028, 0.055)), Res.mat(flap), Vector3(x, 0.39, -0.19), Vector3.ZERO, false)
+			for x in [-0.11, 0.11]:
+				Res.mi(torso, Res.box(Vector3(0.05, 0.025, 0.28)), Res.mat(vest), Vector3(x, 0.585, 0), Vector3.ZERO, false)
+			for sx in [-1.0, 1.0]:
+				Res.mi(torso, Res.box(Vector3(0.04, 0.42, 0.02)), Res.mat(vest), Vector3(0, 0.43, 0.15), Vector3(0, 0, sx * 0.6), false)
+			if medic or rng.randf() < 0.5:
+				Res.mi(torso, Res.box(Vector3(0.26, 0.3, 0.12)), Res.mat(pack), Vector3(0, 0.36, 0.2), Vector3.ZERO, false)
+				Res.mi(torso, Res.box(Vector3(0.25, 0.05, 0.13)), Res.mat(pack.darkened(0.08)), Vector3(0, 0.525, 0.2), Vector3(-0.08, 0, 0), false)
+		if medic:
+			# a red cross on white on the pack
+			Res.mi(torso, Res.box(Vector3(0.1, 0.1, 0.012)), Res.mat(Color(0.75, 0.74, 0.7)), Vector3(0, 0.38, 0.29), Vector3.ZERO, false)
+			Res.mi(torso, Res.box(Vector3(0.07, 0.022, 0.016)), Res.mat(Color(0.6, 0.1, 0.08)), Vector3(0, 0.38, 0.29), Vector3.ZERO, false)
+			Res.mi(torso, Res.box(Vector3(0.022, 0.07, 0.016)), Res.mat(Color(0.6, 0.1, 0.08)), Vector3(0, 0.38, 0.29), Vector3.ZERO, false)
 
 	head = _joint(torso, Vector3(0, 0.62, 0))
 	Res.mi(head, Res.cyl(0.05, 0.055, 0.1, 8), Res.mat(skin), Vector3(0, -0.02, 0), Vector3.ZERO, false)
@@ -227,21 +272,21 @@ func build(utype: String, team: int, seed: int) -> void:
 		hm2.scale = Vector3(1.0, 0.8, 1.06)
 		Res.mi(head, Res.box(Vector3(0.1, 0.03, 0.06)), Res.mat(Color(0.8, 0.1, 0.1)), Vector3(0, 0.22, -0.06), Vector3.ZERO, false)
 
-	# canteen and, now and then, a radio antenna
-	Res.mi(hips, Res.cyl(0.045, 0.045, 0.13, 8), Res.mat(vest), Vector3(-0.19, -0.04, 0.08), Vector3.ZERO, false)
-	if team == 0 and rng.randf() < 0.2 and not bearer:
-		Res.mi(torso, Res.cyl(0.008, 0.008, 0.75, 4), Res.mat(dark), Vector3(-0.1, 0.85, 0.26), Vector3(0.15, 0, 0.1), false)
+	if team == 1 and not bearer:
+		Res.mi(hips, Res.cyl(0.045, 0.045, 0.13, 8), Res.mat(pouch), Vector3(-0.19, -0.04, 0.08), Vector3.ZERO, false)
 
 	# arms: rounded, gloved
 	for side in [-1.0, 1.0]:
 		var ua := _joint(torso, Vector3(0.27 * side, 0.52, 0))
 		Res.mi(ua, Res.capsule(0.058, 0.34), Res.mat(shirt), Vector3(0, -0.13, 0), Vector3.ZERO, false)
-		var delt := Res.mi(ua, Res.sphere(0.072, 8), Res.mat(shirt), Vector3(0.005 * side, -0.02, 0), Vector3.ZERO, false)
+		var delt := Res.mi(ua, Res.sphere(0.066, 8), Res.mat(shirt), Vector3(0.0, -0.025, 0), Vector3.ZERO, false)
 		delt.scale = Vector3(1.0, 1.1, 1.0)
 		var fa := _joint(ua, Vector3(0, -0.28, 0))
 		Res.mi(fa, Res.capsule(0.05, 0.3), Res.mat(shirt), Vector3(0, -0.11, 0), Vector3.ZERO, false)
-		var hand := Res.mi(fa, Res.box(Vector3(0.075, 0.095, 0.09)), Res.mat(gloves), Vector3(0, -0.245, 0), Vector3.ZERO, false)
-		hand.rotation = Vector3(0.15, 0, 0)
+		Res.mi(fa, Res.cyl(0.054, 0.052, 0.05, 10), Res.mat(gloves), Vector3(0, -0.2, 0), Vector3.ZERO, false)
+		Res.mi(fa, Res.box(Vector3(0.062, 0.075, 0.082)), Res.mat(gloves), Vector3(0, -0.245, 0), Vector3(0.15, 0, 0), false)
+		Res.mi(fa, Res.box(Vector3(0.058, 0.05, 0.07)), Res.mat(gloves), Vector3(0, -0.29, -0.018), Vector3(0.55, 0, 0), false)
+		Res.mi(fa, Res.box(Vector3(0.022, 0.05, 0.024)), Res.mat(gloves), Vector3(-side * 0.026, -0.25, -0.042), Vector3(0.3, 0, 0), false)
 		if side < 0.0:
 			arm_l = ua
 			forearm_l = fa
@@ -249,11 +294,11 @@ func build(utype: String, team: int, seed: int) -> void:
 			arm_r = ua
 			forearm_r = fa
 	if team == 0 and not bearer:
-		Res.mi(arm_l, Res.box(Vector3(0.012, 0.06, 0.08)), Res.mat(Defs.TEAM_COLORS[0].darkened(0.25)), Vector3(-0.058, -0.06, 0), Vector3.ZERO, false)
+		# a subdued flag patch on the sleeve
+		Res.mi(arm_l, Res.box(Vector3(0.012, 0.05, 0.075)), Res.mat(Defs.TEAM_COLORS[0].lerp(Color(0.3, 0.3, 0.3), 0.72).darkened(0.4)), Vector3(-0.06, -0.06, 0), Vector3.ZERO, false)
 	if Defs.UNITS.has(utype) and Defs.UNITS[utype].get("medic", false):
-		Res.mi(arm_l, Res.cyl(0.064, 0.064, 0.08, 10), Res.mat(Color(0.92, 0.92, 0.9)), Vector3(0, -0.12, 0), Vector3.ZERO, false)
-		Res.mi(arm_l, Res.box(Vector3(0.13, 0.04, 0.05)), Res.mat(Color(0.8, 0.1, 0.1)), Vector3(0, -0.12, 0), Vector3.ZERO, false)
-		Res.mi(torso, Res.box(Vector3(0.3, 0.28, 0.14)), Res.mat(Color(0.85, 0.85, 0.8)), Vector3(0, 0.3, 0.25), Vector3.ZERO, false)
+		Res.mi(arm_l, Res.cyl(0.064, 0.064, 0.08, 10), Res.mat(Color(0.75, 0.74, 0.7)), Vector3(0, -0.12, 0), Vector3.ZERO, false)
+		Res.mi(arm_l, Res.box(Vector3(0.13, 0.04, 0.05)), Res.mat(Color(0.6, 0.1, 0.08)), Vector3(0, -0.12, 0), Vector3.ZERO, false)
 	if bearer:
 		Res.mi(arm_l, Res.cyl(0.064, 0.064, 0.08, 10), Res.mat(Color(0.8, 0.1, 0.1)), Vector3(0, -0.12, 0), Vector3.ZERO, false)
 
@@ -261,33 +306,16 @@ func build(utype: String, team: int, seed: int) -> void:
 	gun = _joint(torso, Vector3(0.1, 0.32, -0.3))
 	look = "rifle"
 	var w: String = Defs.UNITS[utype].weapon if Defs.UNITS.has(utype) else ""
-	fore_z = {"smg": -0.3, "lmg": -0.55, "pistol": -0.1}.get(w, -0.42)
-	muzzle_local = {"rifle": Vector3(0, 0.01, -0.81), "ak": Vector3(0, 0.015, -0.78), "smg": Vector3(0, 0.0, -0.29),
+	fore_z = {"smg": -0.24, "lmg": -0.55, "pistol": -0.1, "ak": -0.27}.get(w, -0.3)
+	muzzle_local = {"rifle": Vector3(0, 0.02, -0.52), "ak": Vector3(0, 0.0, -0.565), "smg": Vector3(0, 0.02, -0.4),
 		"lmg": Vector3(0, 0.0, -0.85) if team == 1 else Vector3(0, 0.0, -0.77)}.get(w, Vector3(0, 0, -0.6))
 	match w:
 		"rifle":
-			# carbine: receiver, rail with an optic, handguard, collapsible stock
-			Res.mi(gun, Res.box(Vector3(0.055, 0.09, 0.36)), Res.mat(dark), Vector3(0, 0, -0.1), Vector3.ZERO, false)
-			Res.mi(gun, Res.box(Vector3(0.06, 0.07, 0.3)), Res.mat(dark), Vector3(0, 0.005, -0.42), Vector3.ZERO, false)
-			Res.mi(gun, Res.cyl(0.014, 0.014, 0.24, 6), Res.mat(dark), Vector3(0, 0.01, -0.68), Vector3(PI / 2, 0, 0), false)
-			Res.mi(gun, Res.box(Vector3(0.045, 0.085, 0.24)), Res.mat(dark), Vector3(0, -0.025, 0.2), Vector3(0.12, 0, 0), false)
-			Res.mi(gun, Res.box(Vector3(0.035, 0.1, 0.045)), Res.mat(dark), Vector3(0, -0.085, 0.03), Vector3(-0.3, 0, 0), false)
-			Res.mi(gun, Res.box(Vector3(0.035, 0.14, 0.065)), Res.mat(dark), Vector3(0, -0.1, -0.13), Vector3(0.15, 0, 0), false)
-			Res.mi(gun, Res.cyl(0.024, 0.024, 0.12, 8), Res.mat(steel), Vector3(0, 0.075, -0.12), Vector3(PI / 2, 0, 0), false)
+			_m4(gun, dark, fde if rng.randf() < 0.35 else dark, steel, false)
 		"ak":
-			# AK: wooden furniture, curved magazine
-			Res.mi(gun, Res.box(Vector3(0.055, 0.09, 0.36)), Res.mat(dark), Vector3(0, 0, -0.1), Vector3.ZERO, false)
-			Res.mi(gun, Res.box(Vector3(0.065, 0.075, 0.22)), Res.mat(wood), Vector3(0, 0.0, -0.38), Vector3.ZERO, false)
-			Res.mi(gun, Res.cyl(0.014, 0.014, 0.3, 6), Res.mat(dark), Vector3(0, 0.015, -0.62), Vector3(PI / 2, 0, 0), false)
-			Res.mi(gun, Res.box(Vector3(0.05, 0.1, 0.26)), Res.mat(wood), Vector3(0, -0.04, 0.2), Vector3(0.2, 0, 0), false)
-			Res.mi(gun, Res.box(Vector3(0.035, 0.1, 0.045)), Res.mat(wood), Vector3(0, -0.085, 0.03), Vector3(-0.3, 0, 0), false)
-			Res.mi(gun, Res.box(Vector3(0.035, 0.09, 0.06)), Res.mat(dark), Vector3(0, -0.08, -0.15), Vector3(0.2, 0, 0), false)
-			Res.mi(gun, Res.box(Vector3(0.035, 0.09, 0.06)), Res.mat(dark), Vector3(0, -0.15, -0.12), Vector3(0.55, 0, 0), false)
+			_akm(gun, dark, wood, steel)
 		"smg":
-			Res.mi(gun, Res.box(Vector3(0.055, 0.09, 0.36)), Res.mat(dark), Vector3(0, 0, -0.1), Vector3.ZERO, false)
-			Res.mi(gun, Res.box(Vector3(0.04, 0.08, 0.16)), Res.mat(dark), Vector3(0, -0.02, 0.15), Vector3.ZERO, false)
-			Res.mi(gun, Res.box(Vector3(0.035, 0.14, 0.05)), Res.mat(dark), Vector3(0, -0.1, -0.12), Vector3.ZERO, false)
-			Res.mi(gun, Res.cyl(0.02, 0.02, 0.1, 8), Res.mat(steel), Vector3(0, 0.07, -0.1), Vector3(PI / 2, 0, 0), false)
+			_m4(gun, dark, dark, steel, true)
 		"lmg":
 			look = "lmg"
 			if team == 1:
@@ -332,9 +360,30 @@ func build(utype: String, team: int, seed: int) -> void:
 	is_mortar = Defs.UNITS.has(utype) and int(Defs.UNITS[utype].get("mortar", 0)) > 0
 	if Defs.UNITS.has(utype) and (int(Defs.UNITS[utype].get("rockets", 0)) > 0 or is_mortar):
 		tube = _joint(torso, Vector3(0.18, 0.45, 0.22))
-		Res.mi(tube, Res.cyl(0.07, 0.07, 1.1, 10), Res.mat(Color(0.25, 0.28, 0.2) if team == 0 else Color(0.32, 0.3, 0.22)), Vector3.ZERO, Vector3(PI / 2, 0, 0), false)
-		if not is_mortar:
-			Res.mi(tube, Res.cyl(0.11, 0.07, 0.24, 10), Res.mat(Color(0.25, 0.28, 0.2) if team == 0 else Color(0.32, 0.3, 0.22)), Vector3(0, 0, -0.62), Vector3(PI / 2, 0, 0), false)
+		var tcol := Color(0.29, 0.31, 0.22) if team == 0 else Color(0.27, 0.27, 0.22)
+		if is_mortar:
+			# a 60 mm mortar tube with its base cap and carrying handle
+			Res.mi(tube, Res.cyl(0.042, 0.042, 0.95, 12), Res.mat(tcol), Vector3.ZERO, Vector3(PI / 2, 0, 0), false)
+			Res.mi(tube, Res.cyl(0.055, 0.055, 0.06, 12), Res.mat(dark), Vector3(0, 0, 0.47), Vector3(PI / 2, 0, 0), false)
+			Res.mi(tube, Res.box(Vector3(0.02, 0.05, 0.12)), Res.mat(dark), Vector3(0, 0.06, -0.1), Vector3.ZERO, false)
+		elif team == 0:
+			# AT4: the fibreglass tube, its shock-absorbing end caps, sight and trigger
+			Res.mi(tube, Res.cyl(0.042, 0.042, 1.0, 12), Res.mat(tcol), Vector3.ZERO, Vector3(PI / 2, 0, 0), false)
+			for z in [-0.48, 0.48]:
+				Res.mi(tube, Res.cyl(0.05, 0.05, 0.07, 12), Res.mat(tcol.darkened(0.25)), Vector3(0, 0, z), Vector3(PI / 2, 0, 0), false)
+			Res.mi(tube, Res.box(Vector3(0.025, 0.05, 0.06)), Res.mat(dark), Vector3(0, 0.06, -0.12), Vector3.ZERO, false)
+			Res.mi(tube, Res.box(Vector3(0.03, 0.06, 0.04)), Res.mat(dark), Vector3(0, -0.065, 0.02), Vector3.ZERO, false)
+		else:
+			# RPG-7: the tube with its wooden heat guard, grips, optic and flared
+			# venturi; a PG-7 grenade loaded up front, warhead and all
+			Res.mi(tube, Res.cyl(0.026, 0.026, 0.95, 10), Res.mat(dark), Vector3.ZERO, Vector3(PI / 2, 0, 0), false)
+			Res.mi(tube, Res.cyl(0.036, 0.036, 0.24, 10), Res.mat(wood), Vector3(0, 0, -0.04), Vector3(PI / 2, 0, 0), false)
+			Res.mi(tube, Res.cyl(0.05, 0.03, 0.14, 10), Res.mat(dark), Vector3(0, 0, 0.5), Vector3(PI / 2, 0, 0), false)
+			for z in [-0.12, 0.08]:
+				Res.mi(tube, Res.box(Vector3(0.025, 0.08, 0.035)), Res.mat(wood), Vector3(0, -0.06, z), Vector3(-0.2, 0, 0), false)
+			Res.mi(tube, Res.box(Vector3(0.025, 0.04, 0.08)), Res.mat(dark), Vector3(-0.04, 0.04, -0.06), Vector3.ZERO, false)
+			Res.mi(tube, Res.cyl(0.042, 0.042, 0.12, 10), Res.mat(Color(0.3, 0.33, 0.24)), Vector3(0, 0, -0.54), Vector3(PI / 2, 0, 0), false)
+			Res.mi(tube, Res.cyl(0.042, 0.004, 0.17, 10), Res.mat(Color(0.3, 0.33, 0.24)), Vector3(0, 0, -0.68), Vector3(PI / 2, 0, 0), false)
 		tube.rotation = Vector3(0.3, 0, 0.2)
 	if Defs.UNITS.has(utype) and Defs.UNITS[utype].get("engineer", false):
 		back_item = _joint(torso, Vector3(-0.1, 0.35, 0.28))
@@ -349,16 +398,81 @@ func build(utype: String, team: int, seed: int) -> void:
 	stretcher.visible = false
 	var cloth := "camo_army" if team == 0 else "fabric"
 	var map := {skin: "skin", shirt: cloth, pants: cloth, hat: cloth if team == 0 else "fabric",
-		vest: "canvas_l", pouch: "canvas_l", pack: "canvas_l", boots: "boot", dark: "gunmetal",
+		vest: "canvas_l", pouch: "canvas_l", pack: "canvas_l", flap: "canvas_l", pack.darkened(0.08): "canvas_l", boots: "boot", dark: "gunmetal",
+		sole: "rubber", fde: "plain", pocket: cloth,
 		wood: "wood_l", steel: "gunmetal", Color(0.12, 0.12, 0.12): "gunmetal", pads: "canvas_l", scarf: "fabric"}
 	if team == 0:
-		map[gloves] = "boot"
+		map[gloves] = "canvas_l"
 	_skin(self, map)
 	# one mesh per joint (a surface per material): animation is untouched and
 	# each body part is a single render instance to move
 	for j in [root, hips, torso, head, thigh_l, shin_l, thigh_r, shin_r, arm_l, arm_r, forearm_l, forearm_r, gun, pistol, tube, back_item, stretcher]:
 		if j:
 			Mats.merge_static(j, [], false, false, true)
+
+
+## An M4A1 (or, short, a Mk18 CQB carbine) at its real size: lower receiver and
+## magwell, curved STANAG magazine, flat-top upper with a rail, ACOG (or a red
+## dot on the short one), quad-rail handguard with a vertical grip, A-frame
+## front sight, barrel and flash hider, buffer tube and collapsible stock.
+## Gun space: forward -z, the bore 2 cm above the receiver's centreline.
+func _m4(g: Node3D, poly: Color, furn: Color, steel: Color, short: bool) -> void:
+	var hg := 0.16 if short else 0.22  # handguard length
+	var bz := -0.4 if short else -0.52  # muzzle
+	Res.mi(g, Res.box(Vector3(0.032, 0.07, 0.2)), Res.mat(poly), Vector3(0, -0.02, -0.03), Vector3.ZERO, false)
+	Res.mi(g, Res.box(Vector3(0.036, 0.06, 0.075)), Res.mat(poly), Vector3(0, -0.075, -0.075), Vector3.ZERO, false)
+	Res.mi(g, Res.box(Vector3(0.026, 0.12, 0.066)), Res.mat(poly), Vector3(0, -0.165, -0.082), Vector3(0.12, 0, 0), false)
+	Res.mi(g, Res.box(Vector3(0.026, 0.08, 0.064)), Res.mat(poly), Vector3(0, -0.262, -0.101), Vector3(0.3, 0, 0), false)
+	Res.mi(g, Res.box(Vector3(0.034, 0.055, 0.22)), Res.mat(poly), Vector3(0, 0.04, -0.04), Vector3.ZERO, false)
+	Res.mi(g, Res.box(Vector3(0.022, 0.012, 0.2)), Res.mat(steel), Vector3(0, 0.073, -0.04), Vector3.ZERO, false)
+	Res.mi(g, Res.box(Vector3(0.04, 0.012, 0.03)), Res.mat(steel), Vector3(0, 0.072, 0.08), Vector3.ZERO, false)
+	if short:
+		# red dot: a hooded box with its window
+		Res.mi(g, Res.box(Vector3(0.036, 0.045, 0.07)), Res.mat(poly), Vector3(0, 0.1, -0.03), Vector3.ZERO, false)
+	else:
+		# ACOG: body, objective bell and eyepiece on its mount
+		Res.mi(g, Res.box(Vector3(0.02, 0.025, 0.05)), Res.mat(poly), Vector3(0, 0.088, -0.04), Vector3.ZERO, false)
+		Res.mi(g, Res.box(Vector3(0.034, 0.038, 0.12)), Res.mat(poly), Vector3(0, 0.115, -0.04), Vector3.ZERO, false)
+		Res.mi(g, Res.cyl(0.024, 0.024, 0.03, 10), Res.mat(poly), Vector3(0, 0.115, -0.115), Vector3(PI / 2, 0, 0), false)
+		Res.mi(g, Res.cyl(0.018, 0.018, 0.03, 10), Res.mat(poly), Vector3(0, 0.115, 0.03), Vector3(PI / 2, 0, 0), false)
+	# handguard: the tube and its four rails, a vertical grip under it
+	var hz := -0.15 - hg * 0.5
+	Res.mi(g, Res.box(Vector3(0.046, 0.046, hg)), Res.mat(furn), Vector3(0, 0.02, hz), Vector3.ZERO, false)
+	Res.mi(g, Res.box(Vector3(0.02, 0.012, hg)), Res.mat(steel), Vector3(0, 0.049, hz), Vector3.ZERO, false)
+	for sx in [-1.0, 1.0]:
+		Res.mi(g, Res.box(Vector3(0.012, 0.02, hg * 0.8)), Res.mat(steel), Vector3(sx * 0.028, 0.02, hz), Vector3.ZERO, false)
+	Res.mi(g, Res.box(Vector3(0.026, 0.075, 0.03)), Res.mat(furn), Vector3(0, -0.04, fore_z), Vector3(0.1, 0, 0), false)
+	if not short:
+		Res.mi(g, Res.box(Vector3(0.012, 0.055, 0.02)), Res.mat(poly), Vector3(0, 0.06, -0.39), Vector3.ZERO, false)
+	Res.mi(g, Res.cyl(0.009, 0.009, absf(bz) - 0.15 - hg, 6), Res.mat(steel), Vector3(0, 0.02, (bz + 0.02 - 0.15 - hg) * 0.5), Vector3(PI / 2, 0, 0), false)
+	Res.mi(g, Res.cyl(0.012, 0.012, 0.05, 8), Res.mat(steel), Vector3(0, 0.02, bz + 0.025), Vector3(PI / 2, 0, 0), false)
+	# pistol grip and trigger guard, buffer tube and stock
+	Res.mi(g, Res.box(Vector3(0.03, 0.09, 0.04)), Res.mat(furn), Vector3(0, -0.085, 0.05), Vector3(-0.35, 0, 0), false)
+	Res.mi(g, Res.box(Vector3(0.01, 0.008, 0.05)), Res.mat(poly), Vector3(0, -0.065, 0.0), Vector3.ZERO, false)
+	Res.mi(g, Res.cyl(0.015, 0.015, 0.16, 8), Res.mat(poly), Vector3(0, 0.03, 0.15), Vector3(PI / 2, 0, 0), false)
+	Res.mi(g, Res.box(Vector3(0.04, 0.07, 0.12)), Res.mat(furn), Vector3(0, 0.0, 0.24), Vector3(0.06, 0, 0), false)
+	Res.mi(g, Res.box(Vector3(0.042, 0.11, 0.02)), Res.mat(poly), Vector3(0, -0.01, 0.305), Vector3.ZERO, false)
+
+
+## An AKM: stamped receiver with its ribbed dust cover and rear sight block,
+## wooden handguards round the barrel and gas tube, front sight block and
+## slant brake, a curved 30-round steel magazine, wooden grip and stock.
+func _akm(g: Node3D, steel_dark: Color, wood: Color, steel: Color) -> void:
+	Res.mi(g, Res.box(Vector3(0.04, 0.075, 0.25)), Res.mat(steel_dark), Vector3(0, 0.0, -0.02), Vector3.ZERO, false)
+	Res.mi(g, Res.box(Vector3(0.042, 0.022, 0.23)), Res.mat(steel_dark), Vector3(0, 0.045, -0.01), Vector3.ZERO, false)
+	Res.mi(g, Res.box(Vector3(0.03, 0.025, 0.05)), Res.mat(steel_dark), Vector3(0, 0.048, -0.16), Vector3.ZERO, false)
+	Res.mi(g, Res.box(Vector3(0.04, 0.03, 0.17)), Res.mat(wood), Vector3(0, 0.045, -0.25), Vector3.ZERO, false)
+	Res.mi(g, Res.box(Vector3(0.046, 0.045, 0.18)), Res.mat(wood), Vector3(0, -0.005, -0.25), Vector3.ZERO, false)
+	Res.mi(g, Res.cyl(0.009, 0.009, 0.2, 6), Res.mat(steel), Vector3(0, 0.0, -0.44), Vector3(PI / 2, 0, 0), false)
+	Res.mi(g, Res.box(Vector3(0.022, 0.05, 0.03)), Res.mat(steel_dark), Vector3(0, 0.025, -0.48), Vector3.ZERO, false)
+	Res.mi(g, Res.cyl(0.013, 0.013, 0.045, 8), Res.mat(steel_dark), Vector3(0, 0.0, -0.543), Vector3(PI / 2, 0, 0), false)
+	Res.mi(g, Res.box(Vector3(0.03, 0.09, 0.07)), Res.mat(steel_dark), Vector3(0, -0.08, -0.09), Vector3(0.15, 0, 0), false)
+	Res.mi(g, Res.box(Vector3(0.03, 0.09, 0.068)), Res.mat(steel_dark), Vector3(0, -0.16, -0.118), Vector3(0.42, 0, 0), false)
+	Res.mi(g, Res.box(Vector3(0.03, 0.06, 0.065)), Res.mat(steel_dark), Vector3(0, -0.22, -0.155), Vector3(0.68, 0, 0), false)
+	Res.mi(g, Res.box(Vector3(0.03, 0.09, 0.04)), Res.mat(wood), Vector3(0, -0.075, 0.06), Vector3(-0.3, 0, 0), false)
+	Res.mi(g, Res.box(Vector3(0.01, 0.008, 0.06)), Res.mat(steel_dark), Vector3(0, -0.045, 0.0), Vector3.ZERO, false)
+	Res.mi(g, Res.box(Vector3(0.04, 0.085, 0.24)), Res.mat(wood), Vector3(0, -0.04, 0.21), Vector3(0.15, 0, 0), false)
+	Res.mi(g, Res.box(Vector3(0.042, 0.115, 0.016)), Res.mat(steel_dark), Vector3(0, -0.075, 0.33), Vector3.ZERO, false)
 
 
 ## Swaps flat colours for cloth / camo / skin surfaces (tint keeps the colour).
