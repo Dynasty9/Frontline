@@ -29,6 +29,7 @@ var floor_mi: MeshInstance3D
 var _dirty := true
 var _cool := 0.0
 var _sig := ""
+var _seg_keys := {}  # what was cut last time, so only the changed ground is redone
 
 
 func _init(w) -> void:
@@ -195,6 +196,27 @@ static func seg_of(st) -> Array:
 	return [st.position - d, st.position + d]
 
 
+## The ground (in metres) touched by trench segments added or filled in
+## since the last rebuild; empty the first time (everything is redone).
+func _changed_area(segs: Array) -> Rect2:
+	var keys := {}
+	for s in segs:
+		keys["%d,%d,%d,%d" % [roundi(s[0].x * 10), roundi(s[0].z * 10), roundi(s[1].x * 10), roundi(s[1].z * 10)]] = s
+	var first := _seg_keys.is_empty()
+	var area := Rect2()
+	var any := false
+	for pair in [[keys, _seg_keys], [_seg_keys, keys]]:
+		for k in pair[0]:
+			if pair[1].has(k):
+				continue
+			var s: Array = pair[0][k]
+			var r := Rect2(Vector2(s[0].x, s[0].z), Vector2.ZERO).expand(Vector2(s[1].x, s[1].z)).grow(3.0)
+			area = r if not any else area.merge(r)
+			any = true
+	_seg_keys = keys
+	return Rect2() if first else area
+
+
 func rebuild() -> void:
 	var segs := segments()
 	var sig := str(segs.size())
@@ -209,7 +231,7 @@ func rebuild() -> void:
 		_raster(s[0], s[1], tiles)
 	img.set_data(N, N, false, Image.FORMAT_R8, mask)
 	if world and world.phys:
-		world.phys.update_ground(mask)
+		world.phys.update_ground(mask, _changed_area(segs))
 	tex.update(img)
 	floor_mi.visible = not segs.is_empty()
 	_build_meshes(tiles, segs)

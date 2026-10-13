@@ -1489,6 +1489,8 @@ func _react_grenade(dive_only: bool) -> bool:
 			continue
 		if g.flying and g.fuse > 2.2 and d > 4.0:
 			continue
+		if seen_grenades.size() > 24:
+			seen_grenades.clear()  # old rounds are long gone
 		seen_grenades[g.eid] = true
 		say(_pick(["GRENADE!", "Grenade! Get down!", "Frag!"]), true)
 		if not dive_only and d < 3.8 and g.fuse > 1.8 and g.thrown_back < 1 and suppression < 75.0 and world.rng.randf() < 0.25 and not wdef.is_empty():
@@ -1522,6 +1524,8 @@ func _react_drones() -> void:
 		if dist > 45.0:
 			continue
 		if not heard_drones.has(d.eid):
+			if heard_drones.size() > 16:
+				heard_drones.clear()
 			heard_drones[d.eid] = true
 			say(_pick(["Drone! Drone!", "I hear a drone!", "FPV inbound!"]), true)
 		if d.diving and dist < 9.0 and Defs.flat(d.target_pos - position).length() < 5.5 and world.rng.randf() < 0.8:
@@ -2950,6 +2954,9 @@ func supp_value() -> float:
 
 # --- view ----------------------------------------------------------------------------------
 
+var _corpse_t := 0.0
+
+
 func _process(dt: float) -> void:
 	var _t0 := Time.get_ticks_usec()
 	_view_process(dt)
@@ -2960,6 +2967,12 @@ func _process(dt: float) -> void:
 func _view_process(dt: float) -> void:
 	if not world.has_view or model == null:
 		return
+	# a body that has come to rest only needs a look now and then
+	if life == Life.DEAD and model._baked and is_static():
+		_corpse_t -= dt
+		if _corpse_t > 0.0:
+			return
+		_corpse_t = 0.4
 	if not srv:
 		if absf(net_pos.y - position.y) > 0.01 or position.distance_to(net_pos) > 0.01:
 			net_smooth(dt)

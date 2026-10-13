@@ -299,6 +299,7 @@ func explode(pos: Vector3, d: Dictionary) -> void:
 			var mult := 1.0
 			if st.skind in ["wire", "mines"]:
 				mult = 6.0
+			st.hit_from = pos
 			st.take_damage(dmg * f2 * mult * float(d.get("struct_mult", 1.0)), src)
 	for dr in world.drones.duplicate():
 		if dr.position.distance_to(pos) < r and not dr.dead:

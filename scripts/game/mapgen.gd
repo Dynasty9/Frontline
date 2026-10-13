@@ -279,7 +279,10 @@ func scenario(sname: String) -> void:
 			var t2 := _spawn("tunnel", Vector3(30, 0, 10), 0.0, 1, {"built": true})
 			var sq := r.spawn_squad("fighter_cell", 1, b, Vector3(-20, 0, -50))
 			sq.order_enter(t1)
-			world.get_tree().create_timer(12.0, true, true).timeout.connect(func(): r.tunnel_exit(t1, t2, b))
+			# the scenario may be torn down before it fires
+			world.get_tree().create_timer(12.0, true, true).timeout.connect(func():
+				if is_instance_valid(r) and is_instance_valid(t1) and is_instance_valid(t2) and not t1.gone and not t2.gone:
+					r.tunnel_exit(t1, t2, b))
 		"grenade":
 			for i in 2:
 				_spawn("low_wall", Vector3(-2 + i * 4.2, 0, -16), 0.0, -1, {"size": Vector3(4, 1, 0.5)})

@@ -552,6 +552,9 @@ func exit_pos() -> Vector3:
 
 # --- damage ----------------------------------------------------------------------
 
+var hit_from := Vector3.INF  # the last blast that reached it (a tree falls away from it)
+
+
 func take_damage(amount: float, _source = null) -> void:
 	if indestructible or gone or not srv:
 		return
@@ -870,6 +873,14 @@ func _destroyed() -> void:
 		"mg_nest", "watchtower":
 			if gunner and not gunner.gone:
 				gunner.release_mount()
+	if skind == "tree":
+		# blown over, away from the blast
+		var away := Defs.flat(position - hit_from) if hit_from != Vector3.INF else Vector3.ZERO
+		var fy := Defs.yaw_of(away) if away.length() > 0.2 else world.rng.randf() * TAU
+		world.fx_event([Fx.DEBRIS, position + Vector3(0, 1.0, 0), _main_color(), 8])
+		world.fx_event([Fx.TREE_FALL, position, fy, eid, variant])
+		world.despawn(self)
+		return
 	world.fx_event([Fx.DEBRIS, position + Vector3(0, 1.0, 0), _main_color(), 14])
 	if size.x > 3.0 and skind in ["house_wall", "tall_wall", "barracks", "factory", "research", "concrete_wall", "medic_tent"]:
 		world.fx_event([Fx.EXPLODE, position + Vector3(0, 0.5, 0), 0.6])

@@ -59,12 +59,24 @@ var _hdata := PackedFloat32Array()
 var _mask := PackedByteArray()
 
 
-## Cuts the trench network into the ground (called when the network changes).
-func update_ground(mask: PackedByteArray) -> void:
+## Cuts the trench network into the ground (called when the network changes);
+## only the area that changed (metres) is redone, all of it when that is empty.
+func update_ground(mask: PackedByteArray, area := Rect2()) -> void:
 	_mask = mask
+	var full := _hdata.size() != GROUND_N * GROUND_N or not area.has_area()
 	_hdata.resize(GROUND_N * GROUND_N)
-	for z in GROUND_N:
-		for x in GROUND_N:
+	var x0 := 0
+	var x1 := GROUND_N - 1
+	var z0 := 0
+	var z1 := GROUND_N - 1
+	if not full:
+		var h := (GROUND_N - 1) * 0.5
+		x0 = clampi(floori(area.position.x + h), 0, GROUND_N - 1)
+		x1 = clampi(ceili(area.end.x + h), 0, GROUND_N - 1)
+		z0 = clampi(floori(area.position.y + h), 0, GROUND_N - 1)
+		z1 = clampi(ceili(area.end.y + h), 0, GROUND_N - 1)
+	for z in range(z0, z1 + 1):
+		for x in range(x0, x1 + 1):
 			_hdata[z * GROUND_N + x] = _height(x, z)
 	_hm.map_data = _hdata
 
