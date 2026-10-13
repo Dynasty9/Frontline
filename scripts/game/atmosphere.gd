@@ -862,9 +862,11 @@ void fragment() {
 	float hd = dfm(p);
 	float bowl = smoothstep(-0.03, -0.35, hd);
 	float lip = smoothstep(0.02, 0.12, hd);
-	vec3 churn = mix(vec3(0.11, 0.085, 0.06), vec3(0.17, 0.13, 0.09), d3) * (0.85 + 0.3 * d2);
+	// (linear colours: freshly turned earth is dark, the bottom blackened)
+	vec3 churn = mix(vec3(0.042, 0.032, 0.023), vec3(0.075, 0.056, 0.038), d3) * (0.85 + 0.3 * d2);
 	col = mix(col, churn, clamp(bowl * 1.1, 0.0, 1.0));
-	col = mix(col, mix(dirt, vec3(0.2, 0.165, 0.12), 0.55) * (0.85 + 0.3 * d3), lip * 0.7);
+	col = mix(col, vec3(0.018, 0.016, 0.014), smoothstep(-0.3, -0.75, hd) * 0.55);
+	col = mix(col, mix(dirt, vec3(0.085, 0.066, 0.047), 0.6) * (0.85 + 0.3 * d3), lip * 0.75);
 	ALBEDO = col;
 	ROUGHNESS = mix(mix(0.96, 0.82, dirt_m), 0.55, wet * 0.5);
 	ROUGHNESS = mix(ROUGHNESS, 0.16, puddle);

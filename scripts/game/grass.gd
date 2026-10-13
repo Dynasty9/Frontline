@@ -384,7 +384,7 @@ void fragment() {
 
 const BUSH_SHADER := """
 shader_type spatial;
-render_mode specular_disabled;
+render_mode specular_disabled, cull_disabled;
 varying vec3 lp;
 varying float rnd;
 float hash(vec3 p) { return fract(sin(dot(p, vec3(127.1, 311.7, 74.7))) * 43758.5453); }
@@ -408,8 +408,14 @@ void vertex() {
 	lp = VERTEX;
 }
 void fragment() {
+	// leafy, ragged edges where the surface turns away (inside shows dark through the gaps)
+	float rim = 1.0 - abs(dot(NORMAL, VIEW));
+	float hn = hash(floor(lp * 15.0 + rnd * 5.0)) * 0.6 + hash(floor(lp * 31.0)) * 0.4;
+	if (rim > 0.2 && hn < (rim - 0.2) * 1.25) {
+		discard;
+	}
 	float leaf = 0.5 + 0.5 * sin(lp.x * 23.0 + sin(lp.y * 19.0) * 2.0) * sin(lp.z * 21.0 + sin(lp.x * 17.0) * 2.0);
-	vec3 col = mix(vec3(0.045, 0.075, 0.03), vec3(0.12, 0.16, 0.055), leaf * 0.7 + rnd * 0.3);
+	vec3 col = mix(vec3(0.04, 0.078, 0.024), vec3(0.11, 0.17, 0.045), leaf * 0.7 + rnd * 0.3);
 	col = mix(col, col * vec3(1.25, 1.05, 0.7), step(0.6, rnd) * 0.6);
 	float up = smoothstep(-0.2, 0.9, lp.y);
 	col *= 0.55 + 0.55 * up;
