@@ -287,12 +287,35 @@ func build(utype: String, team: int, seed: int) -> void:
 			Res.mi(gun, Res.cyl(0.02, 0.02, 0.1, 8), Res.mat(steel), Vector3(0, 0.07, -0.1), Vector3(PI / 2, 0, 0), false)
 		"lmg":
 			look = "lmg"
-			Res.mi(gun, Res.box(Vector3(0.08, 0.11, 0.5)), Res.mat(dark), Vector3(0, 0, -0.1), Vector3.ZERO, false)
-			Res.mi(gun, Res.cyl(0.02, 0.02, 0.5, 6), Res.mat(dark), Vector3(0, 0.01, -0.6), Vector3(PI / 2, 0, 0), false)
-			Res.mi(gun, Res.box(Vector3(0.05, 0.1, 0.26)), Res.mat(dark), Vector3(0, -0.03, 0.24), Vector3(0.1, 0, 0), false)
-			Res.mi(gun, Res.box(Vector3(0.12, 0.13, 0.14)), Res.mat(pack), Vector3(-0.07, -0.09, -0.1), Vector3.ZERO, false)
-			Res.mi(gun, Res.box(Vector3(0.012, 0.18, 0.012)), Res.mat(dark), Vector3(-0.03, -0.09, -0.7), Vector3(0.4, 0, 0.25), false)
-			Res.mi(gun, Res.box(Vector3(0.012, 0.18, 0.012)), Res.mat(dark), Vector3(0.03, -0.09, -0.7), Vector3(0.4, 0, -0.25), false)
+			if team == 1:
+				# PKM: slim receiver, skeleton stock and grip in laminated wood,
+				# fluted barrel with a slotted flash hider, 100-round box under the right side
+				Res.mi(gun, Res.box(Vector3(0.055, 0.095, 0.32)), Res.mat(dark), Vector3(0, 0, -0.06), Vector3.ZERO, false)
+				Res.mi(gun, Res.box(Vector3(0.06, 0.022, 0.24)), Res.mat(dark), Vector3(0, 0.058, -0.08), Vector3.ZERO, false)
+				Res.mi(gun, Res.box(Vector3(0.032, 0.034, 0.28)), Res.mat(wood), Vector3(0, 0.0, 0.24), Vector3.ZERO, false)
+				Res.mi(gun, Res.box(Vector3(0.032, 0.028, 0.29)), Res.mat(wood), Vector3(0, -0.075, 0.23), Vector3(0.22, 0, 0), false)
+				Res.mi(gun, Res.box(Vector3(0.038, 0.13, 0.028)), Res.mat(wood), Vector3(0, -0.035, 0.37), Vector3.ZERO, false)
+				Res.mi(gun, Res.box(Vector3(0.032, 0.095, 0.042)), Res.mat(wood), Vector3(0, -0.09, 0.04), Vector3(-0.3, 0, 0), false)
+				Res.mi(gun, Res.cyl(0.012, 0.012, 0.56, 6), Res.mat(dark), Vector3(0, 0.0, -0.5), Vector3(PI / 2, 0, 0), false)
+				Res.mi(gun, Res.cyl(0.009, 0.009, 0.32, 5), Res.mat(dark), Vector3(0, -0.03, -0.36), Vector3(PI / 2, 0, 0), false)
+				Res.mi(gun, Res.cyl(0.016, 0.016, 0.07, 6), Res.mat(dark), Vector3(0, 0.0, -0.81), Vector3(PI / 2, 0, 0), false)
+				Res.mi(gun, Res.box(Vector3(0.06, 0.11, 0.11)), Res.mat(Color(0.27, 0.3, 0.2)), Vector3(0.045, -0.1, -0.08), Vector3.ZERO, false)
+				Res.mi(gun, Res.box(Vector3(0.015, 0.045, 0.1)), Res.mat(wood), Vector3(0.035, 0.04, -0.3), Vector3.ZERO, false)
+			else:
+				# M249: receiver with the feed cover and rail, heat shield over the
+				# barrel, folded bipod, collapsible stock, 200-round soft pouch underneath
+				Res.mi(gun, Res.box(Vector3(0.07, 0.1, 0.34)), Res.mat(dark), Vector3(0, 0, -0.08), Vector3.ZERO, false)
+				Res.mi(gun, Res.box(Vector3(0.074, 0.028, 0.2)), Res.mat(dark), Vector3(0, 0.062, -0.1), Vector3.ZERO, false)
+				Res.mi(gun, Res.box(Vector3(0.022, 0.03, 0.06)), Res.mat(dark), Vector3(0, 0.09, -0.08), Vector3.ZERO, false)
+				Res.mi(gun, Res.box(Vector3(0.055, 0.045, 0.14)), Res.mat(dark), Vector3(0, 0.01, -0.3), Vector3.ZERO, false)
+				Res.mi(gun, Res.cyl(0.013, 0.013, 0.4, 6), Res.mat(dark), Vector3(0, 0.0, -0.52), Vector3(PI / 2, 0, 0), false)
+				Res.mi(gun, Res.cyl(0.017, 0.015, 0.05, 6), Res.mat(dark), Vector3(0, 0.0, -0.74), Vector3(PI / 2, 0, 0), false)
+				Res.mi(gun, Res.box(Vector3(0.045, 0.085, 0.24)), Res.mat(dark), Vector3(0, -0.02, 0.22), Vector3(0.08, 0, 0), false)
+				Res.mi(gun, Res.box(Vector3(0.035, 0.1, 0.045)), Res.mat(dark), Vector3(0, -0.085, 0.04), Vector3(-0.3, 0, 0), false)
+				Res.mi(gun, Res.box(Vector3(0.1, 0.11, 0.13)), Res.mat(pack), Vector3(-0.02, -0.11, -0.1), Vector3.ZERO, false)
+				Res.mi(gun, Res.box(Vector3(0.025, 0.06, 0.12)), Res.mat(dark), Vector3(0.04, 0.04, -0.3), Vector3.ZERO, false)
+			for sx in [-0.02, 0.02]:  # bipod, folded under the barrel
+				Res.mi(gun, Res.box(Vector3(0.011, 0.011, 0.3)), Res.mat(dark), Vector3(sx, -0.04, -0.5), Vector3.ZERO, false)
 		"pistol":
 			look = "op"
 			Res.mi(gun, Res.box(Vector3(0.22, 0.05, 0.14)), Res.mat(steel), Vector3(-0.1, 0, 0.05), Vector3.ZERO, false)

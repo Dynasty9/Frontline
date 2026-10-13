@@ -24,7 +24,9 @@ option on its own, laid out like a PC game's options screen:
 - **Graphics:** shadow quality, texture filtering (anisotropic), view distance / detail (LOD), vegetation,
   effects quality, scorch marks and craters, ambient occlusion and its quality, screen-space indirect light,
   SDFGI global illumination, screen-space reflections (wet ground), volumetric fog and smoke,
-  anti-aliasing (FXAA / MSAA / TAA), upscaler (bilinear / AMD FSR 1 / AMD FSR 2), render scale, sharpening.
+  anti-aliasing (FXAA / SMAA / MSAA / MSAA + SMAA / TAA; High and Ultra use MSAA + SMAA, which keeps the
+  procedural surfaces sharp and steady while the camera moves - TAA smears them in motion), upscaler
+  (bilinear / AMD FSR 1 / AMD FSR 2), render scale, sharpening.
 - **Lighting & Look:** time of day and weather (midday, golden hour, dawn, dusk, overcast, hazy, night with
   flares, rain and thunder; applies live), colour grading (natural, cinematic, vivid, warm film, cold steel,
   bleached war film, black & white), tonemapper (AgX / ACES / Filmic / Reinhard), brightness, contrast, bloom,
@@ -73,7 +75,7 @@ Settings are saved to `user://settings.cfg`.
 | Support | The buttons above the minimap (Z arms the first one ready): click the target, **drag** to set the run-in direction for gun runs and bombing runs |
 | Observer | C director camera, V whose eyes to watch through, P pause, [ ] speed, F2 hide the interface. **Fire support** (observer bar) launches any air or artillery support anywhere to watch it |
 | Command view | Tab tactical map, O order of battle (click a unit to select it and look at it, double-click to zoom in), the buttons beside the minimap turn map layers on and off (unit symbols, orders and attack plans, intelligence, weapon ranges, soldier labels) |
-| Other | Home cycles FOBs, Space jumps to the last alert, Enter chats (Shift+Enter: team), L message history, F1 help, F3 performance overlay, Esc menu |
+| Other | Home cycles FOBs, Space jumps to the last alert, Enter chats (Shift+Enter: team), L message history, F1 help, F3 performance overlay, **F4 field manual**, Esc menu |
 
 ## What's in it
 
@@ -267,8 +269,13 @@ Settings are saved to `user://settings.cfg`.
   - The IFV's 25 mm airburst rounds burst right over the trench. Mortars, artillery and grenades that drop into it
     are deadly. That's how trenches are cleared.
   - Tracks claw across a trench slowly; wheels drop in and stick, so vehicles path around trench lines.
-- **MG nest**: a sandbagged GPMG for pinning infantry.
-- **.50 cal nest**: 100 m range and crushing suppression. Its armour-piercing rounds shred trucks, technicals,
+- **MG nest**: a sandbagged GPMG for pinning infantry - an M240B on the M192 mount for the Coalition, a PKM on
+  its tripod for the Rebels, on a platform of bags behind a front wall low enough to fire over. The gunner kneels
+  behind it with both hands on it; it traverses to where he aims within its arc, bucks as it fires and the
+  tracers leave its muzzle. **Placed on a trench it becomes a gun bay**: the tripod on the front lip behind a low
+  wall of bags, the gunner standing on the fire step, the trench left open. The AI sites its guns in its trench
+  lines.
+- **.50 cal nest** (M2HB on the M3 tripod / DShKM with a gun shield; also as a trench bay): 100 m range and crushing suppression. Its armour-piercing rounds shred trucks, technicals,
   helicopters and drones (they still bounce off tanks).
 - **Mortar pit**: crewed automatically and fires on enemies your side has spotted, behind cover too, at 30–160 m.
   It holds fire when your own troops are within 8 m of the target. Select it to call 6-round HE or smoke fire missions.
@@ -321,6 +328,11 @@ Settings are saved to `user://settings.cfg`.
   "Pinned down", "Manning the .50 Cal Nest", "Dragging Hakim to safety"); hover one for a small card.
 - The main menu sits over a live 3D scene: a .50 cal crew at golden hour with a burning wreck and shelling on the horizon.
 
+**Field Manual** (`ui/field_manual.gd`; main menu, Esc menu or F4): every soldier, squad, weapon, vehicle, building,
+defence, fire mission and upgrade, with what it is modelled on (M4A1, PKM, M2HB, Bradley, BTR-80, AC-130J...), its
+numbers read live from the game's tables with bars against the rest of its kind, derived figures (rate of fire,
+sustained damage, squad firepower, km/h), what carries or trains it, and a 3D model to turn over and zoom.
+
 **AI commander** (`commander_ai.gd`) plays through the same command interface as a human. It places
 buildings that its engineers must build, trains a mix of squads, saves for vehicles, expands with new FOBs,
 garrisons, answers attacks on its bases, sends waves at your FOBs and ambushes your supply roads. The Rebel AI
@@ -350,6 +362,8 @@ game/towngen.gd         the town's street plan and lots, hamlet, farms, fields, 
 game/physics_fx.gd      client physics: ground with the trenches cut in, ragdolls, chunks, tossed props
 game/ragdoll.gd         the jointed ragdoll
 game/decor.gd           street furniture built on each client (merged per chunk, wires, street lights)
+game/weapon_models.gd   crew-served machine guns and their tripods (M240B, M2HB, PKM, DShKM)
+ui/field_manual.gd      the field manual: catalog of everything with stats and 3D previews
 game/fx.gd              tracers, impacts, who is saying what, debris; drives vfx.gd
 game/vfx.gd             GPU particle explosions, smoke, fire, decals, shockwaves (+ their shaders)
 game/atmosphere.gd      sky, sun, fog, ground shader, post effects, moods
@@ -406,6 +420,9 @@ Pass these after `--` on the command line:
 --pitch=-14 --cam-yaw=-0.84                           fixed camera pitch (degrees) and heading (model close-ups)
 --follow=TEAM[,N]                                     keep the camera on that side's Nth squad (tactics review)
 --trace=path.csv                                      log every man twice a second (position, posture, phase) for plotting
+--manual=CATEGORY[,ENTRY[,SIDE]]                      open the field manual on a page (in a battle)
+--pan=VX,VZ / --set=key:value,...                     drift the camera (shimmer tests) / override single settings
+--scenario=guns                                       every machine-gun emplacement and trench bay, crewed
 --seed=N                                              (with --aivai) the same map every run
 --dump-structs                                        list every built structure when --quit-after fires
 FL_DEBUG_HPA=1 (env)                                  benchmark hierarchical vs flat paths at start-up
