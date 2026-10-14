@@ -59,19 +59,28 @@ func _launch(kind: String, team: int, pos: Vector3, dir: Vector3) -> void:
 	world.stat("support_" + kind)
 	var gr := Defs.grid_ref(pos)
 	var foe := 1 - team if team >= 0 else -1
-	match kind:
-		"airstrike":
+	var sd: Dictionary = Defs.SUPPORT[kind]
+	var mk := String(sd.get("model", ""))
+	var air_name := String(sd.name).get_slice(" ", 0) + " " + String(sd.name).get_slice(" ", 1)
+	var warn: bool = not sd.get("quiet", false)
+	match String(sd.get("fly", kind)):
+		"jet":
 			var start := pos - dir * 330.0 + Vector3(0, 34.0, 0)
-			world.spawn("projectile", {"ptype": "jet", "team": team, "pos": start, "vel": dir * 95.0, "target": pos, "fuse": 4.0, "thrower": 0})
-			_sup_msg(team, foe, "Air strike inbound on %s." % gr, "Enemy jet inbound!", pos)
+			world.spawn("projectile", {"ptype": "jet", "team": team, "pos": start, "vel": dir * 95.0, "target": pos, "fuse": float(sd.get("bombs", 4)), "thrower": 0, "mk": mk})
+			_sup_msg(team, foe, "%s inbound on %s." % [air_name, gr], "Enemy jet inbound!" if warn else "", pos)
+			return
 		"a10":
 			var st := pos + dir * Projectile.A10_START
 			st.y = Projectile.a10_alt(Projectile.A10_START)
-			world.spawn("projectile", {"ptype": "a10", "team": team, "pos": st, "vel": dir * Projectile.A10_SPEED, "target": pos, "fuse": 0.0, "thrower": 0})
-			_sup_msg(team, foe, "Hog inbound, gun run on %s. Danger close!" % gr, "Enemy jet, low! Get down!", pos)
-		"ac130":
-			world.spawn("projectile", {"ptype": "ac130", "team": team, "pos": pos + Vector3(Projectile.AC_R, Projectile.AC_ALT, 0), "vel": Vector3.ZERO, "target": pos, "fuse": world.rng.randf() * TAU, "thrower": 0})
-			_sup_msg(team, foe, "Spectre on station over %s. Thirty seconds of fire." % gr, "Gunship overhead!", pos)
+			world.spawn("projectile", {"ptype": "a10", "team": team, "pos": st, "vel": dir * Projectile.A10_SPEED, "target": pos, "fuse": 0.0, "thrower": 0, "mk": mk})
+			_sup_msg(team, foe, "%s inbound, gun run on %s. Danger close!" % [air_name, gr], "Enemy jet, low! Get down!", pos)
+			return
+		"orbit":
+			world.spawn("projectile", {"ptype": "ac130", "team": team, "pos": pos + Vector3(Projectile.AC_R, Projectile.AC_ALT, 0), "vel": Vector3.ZERO, "target": pos, "fuse": world.rng.randf() * TAU,
+				"thrower": 0, "mk": mk, "guns": String(sd.get("guns", "ac130"))})
+			_sup_msg(team, foe, "%s on station over %s. Thirty seconds of fire." % [air_name, gr], "Enemy aircraft overhead!", pos)
+			return
+	match kind:
 		"artillery":
 			var back := Vector3(0, 0, 1) if team == 0 else (Vector3(0, 0, -1) if team == 1 else -dir)
 			for i in 8:
@@ -95,7 +104,7 @@ func _sup_msg(team: int, foe: int, mine: String, theirs: String, pos: Vector3) -
 		world.send_msg(team, "info", mine, pos)
 	else:
 		world.send_msg(-1, "info", mine, pos)
-	if foe >= 0:
+	if foe >= 0 and theirs != "":
 		world.send_msg(foe, "alert", theirs, pos)
 
 

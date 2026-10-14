@@ -175,6 +175,8 @@ func _draw() -> void:
 				lbl = "Throw smoke here"
 			"mortar_he", "pit_he":
 				lbl = "Mortar HE on this spot"
+			"arty_he":
+				lbl = "Artillery salvo on this spot"
 			"mortar_smoke", "pit_smoke":
 				lbl = "Mortar smoke on this spot"
 		UiKit.text(self, mp + Vector2(18, 26), lbl, 13, UiKit.WARN)

@@ -17,6 +17,7 @@ var ambush_t := 160.0
 var defense_t := 0.0
 var obstacle_t := 240.0
 var next_vehicle := ""
+var _back_t := 0.0
 
 
 func _init(w: World, t: int) -> void:
@@ -250,7 +251,7 @@ func _economy(sqs: Array) -> void:
 		plan.append(["tunnel", front, 10.0, 30.0])
 	elif _my_structs("research").is_empty() and t > 330.0 and sup > 300:
 		plan.append(["research", main, 12.0, 34.0])
-	elif team == Defs.ARMY and _my_structs("helipad").is_empty() and not _my_structs("factory").is_empty() and t > 450.0 and sup > 350:
+	elif _my_structs("helipad").is_empty() and not _my_structs("factory").is_empty() and t > 450.0 and sup > 350:
 		plan.append(["helipad", main, 14.0, 36.0])
 	var enemy_armor := false
 	for v in world.vehicles:
@@ -453,6 +454,19 @@ func _pick_vehicle(enemy_armor: int) -> String:
 	return String(picks.back()[0])
 
 
+## An unlocked helipad item of a kind: "supply", "attack_heli", "lift_heli", "uav".
+func _air_pick(kind: String) -> String:
+	var opts := []
+	for k in Defs.BUILDINGS.helipad.produces[team]:
+		var d: Dictionary = Defs.VEHICLES[k]
+		if world.rules.tier_needed(team, k) != "":
+			continue
+		var is_kind: bool = d.get("supply", false) if kind == "supply" else (String(d.base) == kind and not d.get("supply", false))
+		if is_kind:
+			opts.append(k)
+	return String(opts[rng.randi() % opts.size()]) if not opts.is_empty() else ""
+
+
 func _enemy_air() -> bool:
 	for v in world.vehicles:
 		if v.team != team and v.team >= 0 and v.is_heli() and v.visible_to_team(team):
@@ -504,26 +518,44 @@ func _production(sqs: Array) -> void:
 			sup -= int(def.cost)
 			counts[key] = int(counts.get(key, 0)) + 1
 	for hp in _my_structs("helipad", true):
-		var helis := 0
+		if not hp.queue.is_empty():
+			continue
+		var n := {"supply": 0, "attack_heli": 0, "lift": 0, "uav": 0}
 		for v in world.vehicles:
-			if v.team == team and v.vkind == "heli":
-				helis += 1
-		if helis < 1 and hp.queue.is_empty() and sup >= 220:
-			_cmd({"t": "train", "building": hp.eid, "item": "heli"})
-			sup -= 150
-		var gunships := 0
-		for v in world.vehicles:
-			if v.team == team and v.vkind == "gunship":
-				gunships += 1
-		if helis >= 1 and gunships < 1 + int(world.time / 900.0) and hp.queue.is_empty() and sup >= 480:
-			_cmd({"t": "train", "building": hp.eid, "item": "gunship"})
-			sup -= 380
+			if v.team != team or v.gone:
+				continue
+			if v.vdef.get("supply", false):
+				n.supply += 1
+			elif v.base() == "attack_heli":
+				n.attack_heli += 1
+			elif v.base() == "lift_heli":
+				n.lift += 1
+			elif v.base() == "uav":
+				n.uav += 1
+		var want := ""
+		if n.supply < 1:
+			want = _air_pick("supply")
+		elif n.attack_heli < 1 + int(world.time / 900.0):
+			want = _air_pick("attack_heli")
+		elif n.uav < 1 and world.time > 600.0:
+			want = _air_pick("uav")
+		elif n.lift < 1 and world.time > 500.0:
+			want = _air_pick("lift_heli")
+		if want != "" and sup >= int(Defs.VEHICLES[want].cost) + 80 + saving:
+			_cmd({"t": "train", "building": hp.eid, "item": want})
+			sup -= int(Defs.VEHICLES[want].cost)
 	for rs in _my_structs("research", true):
 		if not rs.queue.is_empty():
 			continue
 		for k in Defs.UPGRADES:
 			var u: Dictionary = Defs.UPGRADES[k]
-			if team in u.teams and not r.has_upgrade(team, k) and sup > int(u.cost) + 200:
+			if not team in u.teams or r.has_upgrade(team, k):
+				continue
+			if u.has("requires") and not r.has_upgrade(team, String(u.requires)):
+				continue
+			if u.has("tier") and world.time < 300.0 * float(u.tier):
+				continue
+			if sup > int(u.cost) + 200:
 				_cmd({"t": "research", "building": rs.eid, "item": k})
 				break
 
@@ -641,9 +673,35 @@ func _military(sqs: Array) -> void:
 		elif role2 in ["defend", "retreat"] and t - float(roles[sq.sid].t) > 45.0:
 			roles[sq.sid] = {"role": "idle", "t": t}
 	var vehs := []
+	var back := []
+	var drones := []
+	var fbase := _front_fob()
 	for v in world.vehicles:
-		if v.team == team and v.owner_peer == peer and v.vkind != "truck":
+		if v.team != team or v.owner_peer != peer or v.is_auto() or v.gone:
+			continue
+		var vb: String = v.base()
+		if vb == "uav":
+			drones.append(v)
+		elif vb == "arty" or v.vdef.has("service"):
+			back.append(v)
+		elif vb == "lift_heli" and v.passengers.is_empty():
+			continue  # an empty troop helicopter waits at the pad
+		else:
 			vehs.append(v)
+	# guns and support vehicles keep station behind the front
+	if fbase and t > _back_t:
+		_back_t = t + 30.0
+		var ed := _enemy_dir()
+		for i in back.size():
+			var bv: Vehicle = back[i]
+			var spot: Vector3 = fbase.position - ed * (24.0 if bv.base() == "arty" else 10.0) + ed.cross(Vector3.UP) * (i - back.size() * 0.5) * 9.0
+			if Defs.flat(bv.position - spot).length() > 14.0 and bv.path_i >= bv.path.size():
+				_cmd({"t": "move", "vehicles": [bv.eid], "pos": spot})
+	# drones circle over whatever we're attacking, or ahead of the front
+	for dv in drones:
+		var over: Vector3 = attack_target.position if attack_target else (fbase.position + _enemy_dir() * 45.0 if fbase else dv.position)
+		if Defs.flat(dv.uav_dest - over).length() > 25.0:
+			_cmd({"t": "move", "vehicles": [dv.eid], "pos": over})
 	var wave := 3 if t < 600.0 else 4
 	if attack_target and (attackers.size() >= wave or (attackers.size() >= 2 and t - last_wave_t > 200.0)):
 		if t - last_wave_t > 25.0:

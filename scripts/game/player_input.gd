@@ -225,6 +225,8 @@ func _key(k: InputEventKey) -> void:
 		KEY_F:
 			if selection_has_mortar():
 				ability = "mortar_he"
+			elif selection_has_arty():
+				ability = "arty_he"
 		KEY_R:
 			if place_kind != "":
 				place_yaw += PI * 0.5
@@ -579,6 +581,12 @@ func _order(screen: Vector2, shift: bool, face_in := Vector3.ZERO, kind := "") -
 			_marker(tgt.position, Color(0.6, 0.9, 1.0))
 			Sfx.ui("click")
 			return
+	if tgt is Vehicle and tgt.team == lt and not sel_squads.is_empty() and tgt.seats() > 0 and tgt.health_frac() > 0.3 \
+			and not (tgt.is_heli() and tgt.position.y > 1.0) and not _has_engineers():
+		world.send_cmd({"t": "board", "squads": sel_squads, "target": tgt.eid})
+		_marker(tgt.position, Color(0.6, 0.9, 1.0))
+		Sfx.ui("click")
+		return
 	if tgt is Vehicle and tgt.team == lt and not sel_squads.is_empty() and (tgt.health_frac() < 0.99 or (tgt.flags & Vehicle.F_TRACK) != 0):
 		world.send_cmd({"t": "work", "squads": sel_squads, "target": tgt.eid})
 		_marker(tgt.position, Color(1.0, 0.85, 0.3))
@@ -628,6 +636,22 @@ func order_at(gp: Vector3) -> void:
 	_marker(gp, Color(0.5, 1.0, 0.5))
 
 
+## Engineers in the selection (they'd rather repair a damaged vehicle than ride in it).
+func _has_engineers() -> bool:
+	for s in selected_soldiers():
+		if s.udef.get("engineer", false):
+			return true
+	return false
+
+
+func selection_has_arty() -> bool:
+	for id in sel_vehicles:
+		var v = world.entity(id)
+		if v is Vehicle and v.vdef.has("art"):
+			return true
+	return false
+
+
 func _use_ability() -> void:
 	var gp := world.cam.ground_point(_mouse())
 	var smoke := ability.ends_with("smoke")
@@ -636,6 +660,8 @@ func _use_ability() -> void:
 			world.send_cmd({"t": "fire_mission", "squads": sel_squads, "pos": gp, "kind": "smoke" if smoke else "he"})
 		"pit_he", "pit_smoke":
 			world.send_cmd({"t": "fire_mission", "building": sel_structure, "pos": gp, "kind": "smoke" if smoke else "he"})
+		"arty_he":
+			world.send_cmd({"t": "fire_mission", "vehicles": sel_vehicles, "pos": gp, "kind": "he"})
 		"support":
 			pass
 		_:

@@ -544,6 +544,13 @@ func _make_model(e: Dictionary) -> Node3D:
 		"model":
 			return VehicleModels.build(String(e.key), side if side >= 0 else 0, 7).root
 		"support":
+			var smk := String(Defs.SUPPORT.get(e.key, {}).get("model", ""))
+			if smk != "":
+				var sm := VehicleModels.build(smk, 0 if int(e.team) != 1 else 1, 3).root
+				var glow := sm.get_node_or_null("Afterburner")
+				if glow:
+					glow.visible = false  # the exhaust glow is for flight
+				return sm
 			match String(e.key):
 				"airstrike":
 					var jm := VehicleModels.build("jet", 0, 3).root
@@ -1010,7 +1017,7 @@ func _build_entries() -> Array:
 			continue
 		var shape: String = {"line": "a line, dragged to set the run-in", "strafe": "a strafing line, dragged", "orbit": "an orbit over a circle", "circle": "a circle"}.get(String(s2.shape), String(s2.shape))
 		out.append({"cat": "support", "key": k, "name": String(s2.name), "team": int(s2.team),
-			"sub": "%d supply · every %d s" % [int(s2.cost), int(s2.cooldown)], "pattern": PATTERN.get(k, ""),
+			"sub": "%d supply · every %d s" % [int(s2.cost), int(s2.cooldown)], "pattern": String(s2.get("pattern", PATTERN.get(k, ""))),
 			"desc": String(s2.desc), "stats": [
 				["Cost", "%d supply" % int(s2.cost), float(s2.cost) / sco],
 				["Cooldown", "%d s" % int(s2.cooldown), float(s2.cooldown) / scd],

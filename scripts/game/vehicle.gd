@@ -269,6 +269,36 @@ func is_tracked() -> bool:
 	return vdef.get("tracked", false)
 
 
+## How many men it can carry besides its crew (its own section's size unless
+## the definition says otherwise).
+func seats() -> int:
+	if vdef.has("seats"):
+		return int(vdef.seats)
+	var key := String(vdef.get("carry", ""))
+	if key != "" and Defs.SQUADS.has(key):
+		return maxi(4, (Defs.SQUADS[key].members as Array).size())
+	return 0
+
+
+func seats_free() -> int:
+	var n := 0
+	for s in passengers:
+		if is_instance_valid(s) and not s.gone:
+			n += 1
+	return seats() - n
+
+
+## A soldier climbs in (he's hidden inside until it dismounts him).
+func board(s: Soldier) -> bool:
+	if seats_free() <= 0 or (is_heli() and position.y > 1.0) or gone:
+		return false
+	passengers.append(s)
+	s.riding = self
+	s.hide_in("vehicle", 9999.0, null)
+	world.stat("boarded")
+	return true
+
+
 ## Fill the troop compartment with a fresh squad (IFVs and APCs come with one).
 func embark_new_squad() -> void:
 	var key := String(vdef.get("carry", ""))

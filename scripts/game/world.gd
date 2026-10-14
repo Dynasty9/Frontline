@@ -1109,6 +1109,16 @@ func execute_cmd(peer: int, d: Dictionary) -> void:
 			var pit = entities.get(int(d.get("building", 0)))
 			if pit is Structure and pit.team == team:
 				pit.queue_fire(d.pos, kind, peer)
+			for vid in d.get("vehicles", []):
+				var av = entities.get(int(vid))
+				if av is Vehicle and av.team == team and av.vdef.has("art") and av.fire_queue.size() < 3:
+					var ad: Dictionary = av.vdef.art
+					var dist: float = Defs.flat((d.pos as Vector3) - av.position).length()
+					if dist < float(ad.get("min", 40.0)) or dist > float(ad.get("max", 240.0)):
+						send_msg(team, "info", "%s: out of range (%d-%d m)." % [av.display_name(), int(ad.get("min", 40.0)), int(ad.get("max", 240.0))], av.position)
+						continue
+					av.fire_queue.append(d.pos)
+					av.arty_t = minf(av.arty_t, time)
 			for sq in sqs:
 				sq.order_fire_mission(d.pos, kind)
 		"work":
@@ -1121,6 +1131,11 @@ func execute_cmd(peer: int, d: Dictionary) -> void:
 			if st is Structure and st.team == team:
 				for sq in sqs:
 					sq.order_enter(st)
+		"board":
+			var bv = entities.get(int(d.get("target", 0)))
+			if bv is Vehicle and bv.team == team:
+				for sq in sqs:
+					sq.order_board(bv)
 		"throw":
 			for sq in sqs:
 				sq.order_throw(d.pos, String(d.get("kind", "frag")))

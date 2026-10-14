@@ -30,6 +30,9 @@ var _brrt_at := -1.0
 var _gun_smoke: GPUParticles3D
 var _drone: AudioStreamPlayer
 var _vm: VehicleModels
+var mk := ""  # support aircraft: which model flies it
+var _bombs0 := -1.0  # a bomb run: how many it started with
+var guns := ""  # an orbiting gunship's weapons (GUNSETS)
 
 var model: Node3D
 var smoke_fx: Node3D
@@ -63,11 +66,15 @@ func apply_props(d: Dictionary) -> void:
 		shell_t = d.T
 	if d.has("tgt"):
 		tgt_id = d.tgt
+	if d.has("mk"):
+		mk = d.mk
+	if d.has("guns"):
+		guns = d.guns
 
 
 func get_props() -> Dictionary:
 	return {"ptype": ptype, "team": team, "pos": position, "vel": vel, "thrower": thrower_id, "fuse": fuse,
-		"origin": origin, "target": target, "T": shell_t, "tgt": tgt_id}
+		"origin": origin, "target": target, "T": shell_t, "tgt": tgt_id, "mk": mk, "guns": guns}
 
 
 func on_spawned() -> void:
@@ -110,9 +117,12 @@ func _jet(dt: float) -> void:
 	position += vel * dt
 	var dirn := Defs.flat(vel).normalized()
 	var along := Defs.flat(position - target).dot(dirn)
+	if _bombs0 < 0.0:
+		_bombs0 = fuse
 	if fuse > 0.0:
-		var i := 4.0 - fuse
-		if along > -BOMB_THROW - 15.0 + i * 10.0:
+		# a stick 10 m apart, centred on the target
+		var i := _bombs0 - fuse
+		if along > -BOMB_THROW - 5.0 * (_bombs0 - 1.0) + i * 10.0:
 			fuse -= 1.0
 			world.spawn("projectile", {"ptype": "bomb", "team": team, "pos": position + Vector3(0, -1.4, 0), "vel": vel * 0.95, "thrower": thrower_id})
 	if along > 340.0:
@@ -419,7 +429,7 @@ func _build_model() -> void:
 				smoke_fx.position = Vector3(0, 0.6, 0)
 				add_child(smoke_fx)
 		"jet":
-			var jm := VehicleModels.build("jet", team, eid)
+			var jm := VehicleModels.build(mk if mk != "" else "jet", team, eid)
 			model.add_child(jm.root)
 			Sfx.play("jet", position + vel.normalized() * 160.0, 6.0)
 		"bomb":
@@ -456,14 +466,14 @@ func _build_model() -> void:
 			tm.emission_energy_multiplier = 9.0
 			Res.mi(model, Res.cyl(0.07 if ptype == "ac40" else 0.05, 0.07 if ptype == "ac40" else 0.05, ln, 6), tm, Vector3(0, 0, ln * 0.5), Vector3(PI / 2, 0, 0), false)
 		"a10":
-			_vm = VehicleModels.build("a10", team if team >= 0 else 0, eid)
+			_vm = VehicleModels.build(mk if mk != "" else "a10", team if team >= 0 else 0, eid)
 			model.add_child(_vm.root)
 			Sfx.play_far("jet", -2.0, 0.82)
 			if world.fx and world.fx.vfx:
 				_gun_smoke = world.fx.vfx.make_gun_smoke()
 				world.fx.vfx.add_child(_gun_smoke)
 		"ac130":
-			_vm = VehicleModels.build("ac130", team if team >= 0 else 0, eid)
+			_vm = VehicleModels.build(mk if mk != "" else "ac130", team if team >= 0 else 0, eid)
 			model.add_child(_vm.root)
 			_drone = AudioStreamPlayer.new()
 			if Sfx.enabled:
@@ -575,6 +585,19 @@ func _ac_pos(t: float) -> Vector3:
 	return target + Vector3(cos(a) * AC_R, AC_ALT, sin(a) * AC_R)
 
 
+## Other orbiting aircraft's weapons: a VTOL gunship's 30 mm and rockets, an
+## armed drone's guided missiles (they come down like shells, steeply).
+const GUNSETS := {
+	"xian": {
+		"ac25": {"every": 2.6, "burst": 10, "gap": 0.09, "T": 1.3, "spread": 3.0, "snd": "", "vol": 0.0},
+		"grad": {"every": 5.0, "burst": 4, "gap": 0.25, "T": 1.6, "spread": 4.5, "snd": "", "vol": 0.0},
+	},
+	"greyhawk": {
+		"ac40": {"every": 4.2, "burst": 1, "gap": 0.0, "T": 2.0, "spread": 1.2, "snd": "", "vol": 0.0},
+	},
+}
+
+
 ## Orbits the target in a slow pylon turn for AC_ON_STATION seconds. Every gun
 ## fires on its own rhythm; the report is heard at once, the rounds take one to
 ## three seconds to come down.
@@ -585,8 +608,9 @@ func _ac130(dt: float) -> void:
 		if life_t > AC_ON_STATION + 8.0:
 			world.despawn(self)
 		return
-	for g in AC_GUNS:
-		var gd: Dictionary = AC_GUNS[g]
+	var gset: Dictionary = GUNSETS.get(guns, AC_GUNS)
+	for g in gset:
+		var gd: Dictionary = gset[g]
 		if not _next.has(g):
 			_next[g] = [life_t + world.rng.randf_range(0.0, float(gd.every)), 0]
 		var nx: Array = _next[g]

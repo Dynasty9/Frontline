@@ -124,13 +124,33 @@ var VEHICLES := {
 ## Off-map support, called on a spot (Z). One per side, with a cooldown.
 ## Off-map support. shape: how the call is aimed (line / strafe runs take a
 ## direction, dragged out when calling it in), r: radius drawn on the map.
+## fly: how it's flown - "jet" (a bomb run), "a10" (a strafing run), "orbit"
+## (circles the spot firing its guns); model: the aircraft; bombs: how many;
+## guns: an orbit's weapons (Projectile.GUNSETS); quiet: no warning to the enemy.
 var SUPPORT := {
-	"airstrike": {"name": "Air Strike", "team": 0, "cost": 220, "cooldown": 120.0, "shape": "line", "r": 4.0,
-		"desc": "A jet runs in and drops a stick of four bombs across the spot. Devastating in the open. Drag to set the run-in direction."},
-	"a10": {"name": "A-10 Gun Run", "team": 0, "cost": 260, "cooldown": 150.0, "shape": "strafe", "r": 20.0,
-		"desc": "A Warthog walks a burst of 30 mm through the spot. You'll see it, and the impacts, before you hear it. Drag to set the strafing line."},
-	"ac130": {"name": "AC-130 Gunship", "team": 0, "cost": 420, "cooldown": 240.0, "shape": "orbit", "r": 38.0,
-		"desc": "Spectre orbits overhead for 25 seconds hunting anything in the circle with 105 mm, 40 mm and 25 mm. You hear the guns, then the rounds arrive."},
+	"airstrike": {"name": "F/A-181 Black Wasp II Strike", "team": 0, "cost": 220, "cooldown": 120.0, "shape": "line", "r": 4.0, "fly": "jet", "model": "blackwasp", "bombs": 4,
+		"pattern": "F/A-181 Black Wasp II (Super Hornet / F-22 hybrid), four 500 lb bombs",
+		"desc": "A stealth fighter runs in and drops a stick of four bombs across the spot. Devastating in the open. Drag to set the run-in direction."},
+	"a10": {"name": "A-164 Wipeout Gun Run", "team": 0, "cost": 260, "cooldown": 150.0, "shape": "strafe", "r": 20.0, "fly": "a10", "model": "wipeout",
+		"pattern": "A-164 Wipeout (A-10 Thunderbolt II), 30 mm GAU-8 Avenger",
+		"desc": "The Wipeout walks a burst of 30 mm through the spot. You'll see it, and the impacts, before you hear it. Drag to set the strafing line."},
+	"ac130": {"name": "V-44X Blackfish Gunship", "team": 0, "cost": 420, "cooldown": 240.0, "shape": "orbit", "r": 38.0, "fly": "orbit", "model": "blackfish_armed", "guns": "ac130",
+		"pattern": "V-44X Blackfish (enlarged V-22 / V-280 tiltrotor), 105 mm howitzer, 40 mm and 20 mm cannon",
+		"desc": "The tiltrotor gunship orbits overhead for 25 seconds hunting anything in the circle with 105 mm, 40 mm and 20 mm. You hear the guns, then the rounds arrive."},
+	"buzzard": {"name": "A-143 Buzzard Strafe", "team": 0, "cost": 170, "cooldown": 110.0, "shape": "strafe", "r": 16.0, "fly": "a10", "model": "buzzard",
+		"pattern": "A-143 Buzzard (Aero L-159 ALCA), twin 20 mm gun pod", "desc": "The allied light attack jet strafes the line with its 20 mm gun pod. Cheaper and lighter than the Wipeout. Drag to set the strafing line."},
+	"gryphon": {"name": "A-149 Gryphon Precision Strike", "team": 0, "cost": 200, "cooldown": 130.0, "shape": "line", "r": 4.0, "fly": "jet", "model": "gryphon", "bombs": 2,
+		"pattern": "A-149 Gryphon (Saab JAS 39 Gripen), two laser-guided bombs", "desc": "Two guided bombs, close together, exactly on the spot. Drag to set the run-in direction."},
+	"greyhawk": {"name": "MQ-4A Greyhawk Drone", "team": 0, "cost": 240, "cooldown": 160.0, "shape": "orbit", "r": 30.0, "fly": "orbit", "model": "greyhawk", "guns": "greyhawk",
+		"pattern": "MQ-4A Greyhawk (MQ-9 Reaper layout), six Skalpel missiles", "desc": "An armed drone circles the spot for 25 seconds firing guided missiles at whatever it finds there."},
+	"sentinel": {"name": "UCAV Sentinel Strike", "team": 0, "cost": 260, "cooldown": 170.0, "shape": "line", "r": 4.0, "fly": "jet", "model": "sentinel", "bombs": 2, "quiet": true,
+		"pattern": "UCAV Sentinel (Northrop Grumman X-47B), two GBU-12", "desc": "A stealth drone drops two bombs on the spot. The enemy gets no warning. Drag to set the run-in direction."},
+	"neophron": {"name": "To-199 Neophron Strafe", "team": 1, "cost": 190, "cooldown": 120.0, "shape": "strafe", "r": 18.0, "fly": "a10", "model": "neophron",
+		"pattern": "To-199 Neophron (Yakovlev Yak-130), 30 mm cannon", "desc": "CSAT's light attack jet walks its 30 mm cannon along the line. Drag to set the strafing line."},
+	"shikra": {"name": "To-201 Shikra Bomb Run", "team": 1, "cost": 250, "cooldown": 150.0, "shape": "line", "r": 4.0, "fly": "jet", "model": "shikra", "bombs": 3,
+		"pattern": "To-201 Shikra (Sukhoi Su-57 / Su-35), three KAB-250 bombs", "desc": "A CSAT stealth fighter drops three bombs across the spot. Drag to set the run-in direction."},
+	"xian": {"name": "Y-32 Xi'an Gunship", "team": 1, "cost": 360, "cooldown": 220.0, "shape": "orbit", "r": 32.0, "fly": "orbit", "model": "xian", "guns": "xian",
+		"pattern": "Y-32 Xi'an VTOL gunship, 30 mm cannon and Skyfire rockets", "desc": "A CSAT VTOL gunship circles the spot for 25 seconds raking it with 30 mm and rockets."},
 	"artillery": {"name": "155 mm Artillery", "team": 0, "cost": 300, "cooldown": 180.0, "shape": "circle", "r": 22.0,
 		"desc": "Eight heavy howitzer shells. Brings down buildings and digs out trenches."},
 	"barrage": {"name": "Rocket Barrage", "team": 1, "cost": 180, "cooldown": 90.0, "shape": "circle", "r": 20.0,
@@ -140,7 +160,7 @@ var SUPPORT := {
 	"smoke": {"name": "Smoke Screen", "team": -1, "cost": 0, "cooldown": 0.0, "shape": "circle", "r": 14.0,
 		"desc": "Mortar smoke rounds screen the area (observer demo)."},
 }
-const DEMO_SUPPORT := ["a10", "ac130", "airstrike", "artillery", "barrage", "mortars", "smoke"]
+const DEMO_SUPPORT := ["a10", "ac130", "airstrike", "buzzard", "gryphon", "greyhawk", "sentinel", "neophron", "shikra", "xian", "artillery", "barrage", "mortars", "smoke"]
 
 
 ## The Arma 3 roster joins the original vehicles; the Factory and the Helipad

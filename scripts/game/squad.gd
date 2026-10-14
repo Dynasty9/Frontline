@@ -374,6 +374,24 @@ func order_work(t: Entity) -> void:
 		members[0].say(_pick(["On it.", "Get building!", "Let's get this up."]), true)
 
 
+## Everyone who fits climbs into a friendly vehicle; it carries them until
+## it's told to dismount (or arrives where it's sent).
+func order_board(v: Vehicle) -> void:
+	_regroup()
+	order = "move"
+	order_pos = v.position
+	var free := v.seats_free()
+	var n := 0
+	for m in alive_members():
+		if n >= free:
+			break
+		if m.can_take_orders():
+			m.order_board(v)
+			n += 1
+	if n > 0:
+		members[0].say(_pick(["Mount up!", "Everybody in!", "Load up, let's go!"]), true)
+
+
 func order_enter(st: Structure) -> void:
 	_regroup()
 	if st.skind == "tunnel":

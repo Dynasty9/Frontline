@@ -812,6 +812,8 @@ func mode_text() -> String:
 				return "Left-click to throw smoke"
 			"mortar_he", "pit_he":
 				return "Left-click: mortar fire mission (HE)"
+			"arty_he":
+				return "Left-click: artillery fire mission"
 			_:
 				return "Left-click: mortar fire mission (smoke)"
 	return ""
@@ -890,6 +892,8 @@ func _update_card() -> void:
 		card_title.text = "VEHICLE ORDERS"
 		_button("Attack-move", "X", "Drive to a spot, halting for a steady shot at anything in range on the way. Troops inside dismount when the enemy is close.", func(): inp.cancel_modes(); inp.order_mode = "assault")
 		_button("Dismount", "", "Drop the ramp: the troops inside get out and dig in.", func(): world.send_cmd({"t": "dismount", "vehicles": inp.sel_vehicles}))
+		if inp.selection_has_arty():
+			_button("Fire mission", "F", "Artillery: click a spot in range for a salvo there (they also fire on their own at anything your side has spotted).", func(): inp.ability = "arty_he")
 		_button("Hold", "H", "Stop moving.", func(): inp.hold())
 		_button("Retreat", "R", "Drive back to the nearest FOB.", func(): inp.retreat())
 	elif st and st.team == lt and st.built:

@@ -846,6 +846,8 @@ func _alive(dt: float) -> void:
 			_man_tick(dt)
 		"tunnel":
 			_tunnel_tick(dt)
+		"board":
+			_board_tick(dt)
 		"resupply":
 			_resupply_tick(dt)
 		"grenade_pickup":
@@ -3180,6 +3182,32 @@ func cmd_garrison(st: Structure) -> void:
 		return
 	cmd_move(st.position, 1, st.front_dir())
 	leash = 2.6
+
+
+## Go and climb into a friendly vehicle.
+func order_board(v: Vehicle) -> void:
+	if not can_take_orders():
+		return
+	_clear_task()
+	task = "board"
+	task_ent = v
+	go_to(v.position, "task", 1)
+
+
+func _board_tick(dt: float) -> void:
+	var v := task_ent as Vehicle
+	if v == null or v.gone or v.seats_free() <= 0 or (v.is_heli() and v.position.y > 1.0):
+		task = ""
+		return
+	var d := Defs.flat(v.position - position).length()
+	if d < 3.6:
+		task = ""
+		if not v.board(self):
+			return
+		return
+	if not _move_tick(dt, _speed()) or Defs.flat(goal - v.position).length() > 3.0:
+		go_to(v.position, "task", 1)
+	_choose_act(true)
 
 
 func order_tunnel(st: Structure) -> void:
