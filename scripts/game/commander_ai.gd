@@ -133,6 +133,73 @@ func _reinforce(fighters: Array) -> void:
 var _radio_t := 0.0
 
 
+var _outpost_t := 0.0
+
+
+## Spare squads go forward to hold the villages, the town and the woods
+## between our front and theirs, lying in wait - so the fighting is over the
+## ground in between, not a march on the enemy's base.
+func _outposts(fighters: Array) -> void:
+	var t := world.time
+	if t < _outpost_t or world.key_points.is_empty():
+		return
+	_outpost_t = t + 15.0
+	var front := _front_fob()
+	if front == null:
+		return
+	var ed := _enemy_dir()
+	var held := []
+	var idle := 0
+	for sq in fighters:
+		var r: Dictionary = roles.get(sq.sid, {})
+		var role := String(r.get("role", "idle"))
+		if role == "outpost":
+			# relieved when it's been there a while, or it's been knocked about
+			if t - float(r.t) > 300.0 or sq.alive_members().size() * 2 < sq.members.size() or sq.drill in ["rout", "withdraw"]:
+				roles[sq.sid] = {"role": "idle", "t": t}
+			else:
+				held.append(r.pos)
+		elif role == "idle" and sq.plan == null:
+			idle += 1
+	var wave := 3 if t < 600.0 else 4
+	var want := clampi(idle - wave, 0, 1 + world.rules.fobs(team).size() / 2)
+	if held.is_empty() and idle >= 2 and t > 90.0:
+		want = maxi(want, 1)
+	if held.size() >= want:
+		return
+	var best: Dictionary = {}
+	var bs := -1e9
+	for kp in world.key_points:
+		var p: Vector3 = kp.pos
+		var ahead := Defs.flat(p - front.position).dot(ed)
+		if ahead < 25.0 or ahead > 190.0:
+			continue
+		var taken := false
+		for h in held:
+			if Defs.flat(h - p).length() < 40.0:
+				taken = true
+		for f in world.rules.fobs(1 - team):
+			if Defs.flat(f.position - p).length() < 90.0:
+				taken = true  # right under their base
+		if taken:
+			continue
+		var side := absf(Defs.flat(p - front.position).dot(ed.cross(Vector3.UP)))
+		var s := -ahead * 0.5 - side * 0.3 + float({"town": 40.0, "village": 30.0, "woods": 10.0}.get(kp.kind, 0.0))
+		if s > bs:
+			bs = s
+			best = kp
+	if best.is_empty():
+		return
+	for sq in _by_distance(fighters, best.pos):
+		var role2 := String(roles.get(sq.sid, {}).get("role", "idle"))
+		if role2 != "idle" or sq.plan != null or sq.drill != "" or sq.alive_members().size() < 2:
+			continue
+		roles[sq.sid] = {"role": "outpost", "t": t, "pos": best.pos}
+		_cmd({"t": "defend", "squads": [sq.sid], "pos": world.nav.nearest_walkable(best.pos), "face": ed})
+		world.stat("ai_outpost_%s" % best.kind)
+		break
+
+
 func _cmd(d: Dictionary) -> void:
 	world.execute_cmd(peer, d)
 	_radio(d)
@@ -183,6 +250,19 @@ func _is_engineer_squad(sq: Squad) -> bool:
 		if m.udef.get("engineer", false) and m.life == Soldier.Life.ALIVE:
 			return true
 	return false
+
+
+## What's held back for the next FOB while one is due (more bases mean more
+## supply trucks: whoever expands first pulls ahead).
+func _fob_reserve() -> int:
+	return 260 if _expansion_due() else 0
+
+
+## Time for another FOB: one more every five minutes or so, up to what the
+## map has room for.
+func _expansion_due() -> bool:
+	var n: int = world.rules.fobs(team).size()
+	return world.time > expand_t and n < 3 + int(MapDims.HALF / 64.0) and n < 2 + int(world.time / 360.0)
 
 
 func _enemy_dir() -> Vector3:
@@ -279,7 +359,7 @@ func _economy(sqs: Array) -> void:
 	if t > obstacle_t and front:
 		obstacle_t = t + rng.randf_range(80.0, 140.0)
 		plan.append([["wire", "mines", "tank_trap"][rng.randi() % 3], front, 18.0, 34.0])
-	if t > expand_t and sup > 380 and fobs.size() < 3 + int(MapDims.HALF / 64.0):  # (more ground, more bases)
+	if t > expand_t and sup > 300 and fobs.size() < 3 + int(MapDims.HALF / 64.0):  # (more ground, more bases)
 		var spot := _expansion_spot()
 		if spot != Vector3.INF:
 			expand_t = t + rng.randf_range(120.0, 200.0)
@@ -288,11 +368,11 @@ func _economy(sqs: Array) -> void:
 		expand_t = t + 30.0
 	for p in plan:
 		if p[0] == "trench_line":
-			if sup > 150 and _dig_line(p[1], float(p[2]), engs):
+			if sup > 150 + _fob_reserve() and _dig_line(p[1], float(p[2]), engs):
 				return
 			continue
 		var def: Dictionary = Defs.BUILDINGS[p[0]]
-		if not team in def.teams or sup < int(def.cost) + 40:
+		if not team in def.teams or sup < int(def.cost) + 40 + _fob_reserve():
 			continue
 		var anchor: Structure = p[1]
 		if anchor == null:
@@ -502,12 +582,14 @@ func _production(sqs: Array) -> void:
 			next_vehicle = _pick_vehicle(enemy_armor)
 		saving = int(Defs.VEHICLES[next_vehicle].cost)
 		room = int(Defs.VEHICLES[next_vehicle].cap)
-		if sup >= saving and r.has_cap(team, room):
+		if sup >= saving + _fob_reserve() and r.has_cap(team, room):
 			_cmd({"t": "train", "building": factories[0].eid, "item": next_vehicle})
 			sup -= saving
 			saving = 0
 			room = 0
 			next_vehicle = ""
+	# a FOB further forward comes before more men, once one's due
+	saving += _fob_reserve()
 	if sqs.size() < 3:
 		saving = 0
 		room = 0
@@ -657,6 +739,7 @@ func _military(sqs: Array) -> void:
 				_cmd({"t": "defend", "squads": [sq.sid], "pos": spot, "face": _enemy_dir()})
 			break
 	_reinforce(fighters)
+	_outposts(fighters)
 	# pick a target
 	if attack_target == null or attack_target.gone or attack_target.team == team:
 		attack_target = _pick_target()

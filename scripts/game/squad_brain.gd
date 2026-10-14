@@ -162,7 +162,7 @@ static func morale_tick(q: Squad, dt: float) -> void:
 	var contact := q.in_combat()
 	var drain := 0.0
 	if supp > 30.0:
-		drain += (supp - 30.0) / 70.0 * 1.8
+		drain += (supp - 30.0) / 70.0 * 1.4
 	if _armour_threat(q, alive):
 		drain += 0.9
 	var ld = q.leader
@@ -171,6 +171,8 @@ static func morale_tick(q: Squad, dt: float) -> void:
 		drain += 0.2
 	if dug * 2 >= alive.size():
 		drain *= 0.5
+	elif q.plan != null and q.plan.support_set:
+		drain *= 0.7  # going in under covering fire: the guns on their side steady them
 	var friends := _friends_near(q, 45.0)
 	if friends == 0 and contact:
 		drain += 0.15
@@ -195,11 +197,11 @@ static func morale_tick(q: Squad, dt: float) -> void:
 static func casualty(q: Squad, s: Soldier) -> void:
 	var hit := 0.0
 	if s.life == Soldier.Life.DOWNED:
-		hit = 8.0
+		hit = 7.0
 	elif s.life == Soldier.Life.DEAD:
-		hit = 5.0 if s.times_downed > 0 or s.downed_t > 0.0 else 12.0
+		hit = 4.0 if s.times_downed > 0 or s.downed_t > 0.0 else 10.0
 	if q.leader == s or (q.leader == null and q.members.find(s) == 0):
-		hit += 7.0
+		hit += 6.0
 	q.morale = maxf(0.0, q.morale - hit)
 	q.last_cas_t = q.world.time
 

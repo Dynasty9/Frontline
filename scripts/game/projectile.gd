@@ -84,6 +84,8 @@ func on_spawned() -> void:
 		position = origin
 	net_pos = position
 	net_init = true
+	if srv and ptype in ["rocket", "atgm", "recoilless"]:
+		_warn_target()
 	if world.has_view:
 		_build_model()
 		if ptype in ["rocket", "atgm", "recoilless", "sam"]:
@@ -269,7 +271,15 @@ func _shell() -> void:
 func _atgm(dt: float) -> void:
 	var tgt: Entity = world.entity(tgt_id)
 	if tgt and not tgt.gone:
-		target = tgt.center_point()
+		# the operator steers it onto what he can see: smoke in between and it
+		# flies on blind to where he last had it
+		if fmod(life_t, 0.25) < dt:
+			var op: Entity = world.entity(thrower_id)
+			if op != null and not op.gone and world.combat.smoke_blocks(op.position + Vector3(0, 1.5, 0), tgt.center_point()):
+				tgt_id = 0
+				world.stat("atgm_lost_in_smoke")
+		if tgt_id != 0:
+			target = tgt.center_point()
 	var to := target - position
 	var aim := target
 	if Defs.flat(to).length() > 16.0:
@@ -319,6 +329,22 @@ func _sam(dt: float) -> void:
 		world.despawn(self)
 		return
 	position = np
+
+
+## Whatever armour it's coming at sees the launch (and pops smoke).
+func _warn_target() -> void:
+	var tgt: Entity = world.entity(tgt_id) if tgt_id != 0 else null
+	if tgt is Vehicle:
+		tgt.threatened(position)
+		return
+	var dir := vel.normalized()
+	for v in world.vehicles_near(position + dir * 40.0, 45.0):
+		if v.team == team or v.gone:
+			continue
+		var to: Vector3 = v.position - position
+		if to.length() < 100.0 and to.normalized().dot(dir) > 0.97:
+			v.threatened(position)
+			return
 
 
 func pick_up(s: Soldier) -> void:

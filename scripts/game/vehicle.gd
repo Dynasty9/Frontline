@@ -30,6 +30,8 @@ var flags := 0
 var hp_frac := 1.0
 var last_fire_t := -9.0
 var _alert_t := 0.0
+var smoke_cd := 0.0
+var smoke_left := 2  # salvoes in the dischargers
 # trucks
 var route := PackedVector3Array()
 var route_i := 0
@@ -965,6 +967,25 @@ func explosion_hit(pos: Vector3, d: Dictionary) -> void:
 		dmg = float(d.get("dmg", 100.0)) * maxf(0.0, 1.0 - dist / r) * (0.12 if armor >= 2 else 0.8) * float(d.get("veh_mult", 1.0))
 	if dmg > 0.0:
 		take_damage(dmg, d.get("src"))
+
+
+## A missile or rocket coming at it: armour fires its smoke dischargers - a
+## wall of smoke between it and the shooter - and the crew calls it.
+func threatened(from: Vector3) -> void:
+	if not srv or gone or int(vdef.get("armor", 0)) < 1 or is_air() or smoke_left <= 0 or world.time < smoke_cd:
+		return
+	smoke_cd = world.time + 25.0
+	smoke_left -= 1
+	var to := Defs.flat(from - position).normalized()
+	var top := position + Vector3(0, float(vdef.get("gun_h", 2.0)) + 0.3, 0)
+	for i in 4:
+		var dir := to.rotated(Vector3.UP, (i - 1.5) * 0.32)
+		var land := position + dir * world.rng.randf_range(11.0, 16.0)
+		world.spawn("projectile", {"ptype": "smoke", "team": team, "pos": top, "vel": world.combat.ballistic_vel(top, land), "thrower": eid, "fuse": 0.0})
+	world.fx_event([Fx.SOUND, "launch", position])
+	world.stat("veh_smoke")
+	if not is_auto():
+		world.send_msg(team, "info", "%s popped smoke - missile inbound!" % display_name(), position)
 
 
 func take_damage(amount: float, _src) -> void:

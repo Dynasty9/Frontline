@@ -46,6 +46,7 @@ var team_info: Array = [{}, {}]
 var roads: Array = [[], [], []]  # team 0 / team 1 supply tracks, [2] the map's own roads
 var decor: Array = []  # street furniture and set dressing: [kind, pos, yaw, extra] (see Decor)
 var town_rect := Rect2()  # where the streets are paved
+var key_points: Array = []  # ground worth holding: [{"pos", "kind" ("town", "village", "woods")}] (server)
 var _decor_node: Node3D
 var terrain: TerrainMap
 var _painted_roads := -1

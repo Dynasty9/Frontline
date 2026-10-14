@@ -57,6 +57,10 @@ func generate() -> void:
 	tg.fields(int(rng.randi_range(7, 10) * area * 0.6))
 	tg.roadside(int(rng.randi_range(3, 5) * k), int(rng.randi_range(2, 3) * k))
 	tg.finish()
+	# the ground worth fighting for, for the AI commanders
+	world.key_points.append({"pos": tg.center, "kind": "town"})
+	for hm in tg.hamlets:
+		world.key_points.append({"pos": hm.c, "kind": "village"})
 	for i in int(rng.randi_range(3, 4) * area * 0.6):
 		_hedgerow()
 	for i in int(rng.randi_range(1, 2) * k):
@@ -618,6 +622,8 @@ func _old_position(c: Vector3) -> void:
 
 
 func _woods(c: Vector3, n: int) -> void:
+	if n >= 9:
+		world.key_points.append({"pos": c, "kind": "woods"})
 	for i in n:
 		var p := c + Vector3(rng.randf_range(-11, 11), 0, rng.randf_range(-11, 11))
 		_try("tree", p, 0.0, -1)
