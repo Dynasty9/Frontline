@@ -21,6 +21,7 @@ const DOING := [
 	["Leaning out to fire", "fight"], ["Diving for cover", "stress"],
 	["Chatting with %s", "idle"], ["Having a laugh", "idle"], ["Having a smoke", "idle"], ["Taking a load off", "idle"],
 	["Stretching his legs", "idle"], ["Checking his rifle", "idle"], ["Keeping an eye out", "idle"],
+	["Firing over cover", "fight"], ["Blind firing", "stress"], ["Moving along the wall", "move"],
 ]
 ## Downtime chatter: each exchange alternates speakers; %s is the other man's name.
 const BANTER := [[
@@ -119,6 +120,18 @@ var at_cover := false
 var lean_dir := Vector3.ZERO
 var cover_threat := Vector3.FORWARD
 var next_cover_eval := 0.0
+# the fighting position he's at or going to (see Cover)
+var cover_n := Vector3.ZERO  # which way he faces across the barrier (zero: no barrier)
+var cover_h := 0.0  # how high the barrier is there (0: ground cover or none)
+var cover_mat := -1  # Cover.SOFT / MEDIUM / HARD / FORT, -1 none
+var cover_st: Structure = null
+var cover_ai := -1
+var blind := false  # firing blind over the top, head down
+var cov_net := 0  # clients: the cover byte (see cov_code)
+var _peek_from := 0.0  # when he came up: a moment to find his target first
+var _up_supp := 0.0  # suppression when he came up (drew fire: move along before coming up again)
+var _stayed := false  # stayed up a little longer because nobody else was firing
+var _shifting := false  # moving along the barrier to a new spot
 var _stuck_p := Vector3.ZERO
 var _stuck_t := 0.0
 var _pose_dt := 0.0
@@ -282,7 +295,16 @@ func _update_doing() -> void:
 			if d == 0 or d == 13:
 				match act:
 					Act.SHOOT:
-						d = 33 if posture in [Post.LEAN_L, Post.LEAN_R] and d == 0 else (d if d == 13 else 3)
+						if d == 13:
+							pass
+						elif posture in [Post.LEAN_L, Post.LEAN_R]:
+							d = 33
+						elif blind:
+							d = 43
+						elif _over():
+							d = 42
+						else:
+							d = 3
 					Act.RELOAD:
 						d = 6
 					Act.THROW:
@@ -309,6 +331,8 @@ func _update_doing() -> void:
 					d = 25
 				elif (flags & F_SUPP) != 0:
 					d = 4
+				elif goal_kind == "cover" and is_moving() and _shifting:
+					d = 44
 				elif act == Act.RUN:
 					d = 2
 				elif act == Act.WALK:
@@ -443,6 +467,8 @@ func _pick(arr: Array) -> String:
 func eye_pos() -> Vector3:
 	if posture == Post.STAND and mounted and mounted.variant == 1 and mounted.skind in ["mg_nest", "hmg_nest"]:
 		return position + Vector3(0, 1.62, 0)  # on the fire step, sighting along the gun
+	if _over() and peek_up and not blind:
+		return position + cover_n * 0.12 + Vector3(0, cover_h + 0.13, 0)  # just over the top
 	match posture:
 		Post.CROUCH:
 			return position + Vector3(0, 1.25 if (mounted and mounted.skind in ["mg_nest", "hmg_nest"]) else 0.95, 0)
@@ -459,8 +485,10 @@ func eye_pos() -> Vector3:
 func scan_eye() -> Vector3:
 	if life == Life.DOWNED:
 		return position + Vector3(0, 0.4, 0)
+	if _over():
+		return position + cover_n * 0.12 + Vector3(0, cover_h + 0.13, 0)
 	if at_cover and cover_type == Cov.LOW:
-		return position + Vector3(0, 1.5, 0)
+		return position + Vector3(0, 1.5 if cover_h <= 0.0 and posture == Post.STAND else 1.0, 0)
 	if at_cover and cover_type == Cov.LEAN:
 		return position + lean_dir * 0.75 + Vector3(0, 1.45, 0)
 	return eye_pos()
@@ -469,6 +497,15 @@ func scan_eye() -> Vector3:
 func exposed_points() -> Array:
 	if life == Life.DOWNED or life == Life.DEAD:
 		return [position + Vector3(0, 0.22, 0)]
+	if _over():
+		if peek_up and not blind:
+			# only his head and shoulders show over the top
+			var up := position + cover_n * 0.1
+			return [up + Vector3(0, cover_h + 0.1, 0), up + Vector3(0, cover_h + 0.26, 0)]
+		if posture == Post.PRONE:
+			return [position + Vector3(0, 0.22, 0)]
+		if Cover.stance(cover_h) == Cover.KNEEL:
+			return [position + Vector3(0, cover_h - 0.34, 0), position + Vector3(0, cover_h - 0.16, 0)]
 	match posture:
 		Post.CROUCH:
 			if mounted and mounted.skind in ["mg_nest", "hmg_nest"]:
@@ -500,10 +537,12 @@ func hit_factor() -> float:
 		Post.PRONE:
 			f = 0.45
 		Post.LEAN_L, Post.LEAN_R:
-			f = 0.4
+			f = 0.26  # half his head, a shoulder and the rifle round the corner
 		Post.STAND:
 			if at_cover and cover_type == Cov.LOW and not is_moving():
 				f = 0.45  # popped up over cover: only head and shoulders show
+	if _over() and peek_up and not blind:
+		f = 0.3  # head and shoulders over the top, the weapon rested on it
 	if life == Life.DOWNED:
 		f = 0.5
 	elif is_moving():
@@ -512,6 +551,125 @@ func hit_factor() -> float:
 	if _gy < -0.6 and life == Life.ALIVE:
 		f *= 0.55  # dug into a trench: a head and a rifle over the parapet
 	return f
+
+
+## At a fighting position on a barrier he fights over (not just ground cover).
+func _over() -> bool:
+	return at_cover and cover_type == Cov.LOW and cover_h > 0.0 and mounted == null
+
+
+## The posture for fighting over a barrier this high: lying behind a low lip,
+## kneeling behind sandbags or a car, standing behind a chest-high wall - and
+## when he ducks, low enough that it covers him.
+func _over_post(up: bool) -> int:
+	match Cover.stance(cover_h):
+		Cover.PRONE:
+			return Post.PRONE
+		Cover.KNEEL:
+			return Post.CROUCH if up or cover_h >= 0.8 else Post.PRONE
+	return Post.STAND if up else Post.CROUCH
+
+
+func _clear_cover() -> void:
+	cover_n = Vector3.ZERO
+	cover_h = 0.0
+	cover_mat = -1
+	cover_st = null
+	cover_ai = -1
+	blind = false
+	_shifting = false
+
+
+## Sent to clients for the pose: the barrier's height in 4 cm steps (bits
+## 0-5) and how he's using it (bits 6-7: 1 behind it, 2 firing blind over it).
+func cov_code() -> int:
+	if not at_cover or cover_h <= 0.0 or mounted != null or is_moving():
+		return 0
+	var c := clampi(int(round(cover_h / 0.04)), 1, 63)
+	return c | ((2 if blind else 1) << 6)
+
+
+func _cov_seen() -> int:
+	if debug_pose.size() > 5:
+		return int(debug_pose[5])  # test gallery
+	return cov_code() if srv else cov_net
+
+
+func cover_h_view() -> float:
+	var c := _cov_seen()
+	return float(c & 63) * 0.04 if (c >> 6) != 0 else 0.0
+
+
+func blind_view() -> bool:
+	return (_cov_seen() >> 6) == 2
+
+
+## "Cover me!": the nearest man down behind the same stretch of cover comes
+## up to keep the fire going while this one changes magazines.
+func _call_cover() -> void:
+	if squad == null or vis_targets.is_empty():
+		return
+	for m in squad.members:
+		if m == self or m.life != Life.ALIVE or not m.at_cover or m.peek_up or m.reload_t > 0.0 or m.task != "":
+			continue
+		if Defs.flat(m.position - position).length() > 10.0:
+			continue
+		m.peek_t = minf(m.peek_t, 0.2)
+		if world.rng.randf() < 0.45:
+			m.say(_pick(["Covering!", "Got you covered!", "I'm up!"]))
+		return
+
+
+## Is a squad mate near him up and firing? (Then he can afford to duck, reload
+## or move; if nobody is, he stays up a little longer to keep the fire going.)
+func _buddy_up() -> bool:
+	if squad == null:
+		return false
+	for m in squad.members:
+		if m == self or m.life != Life.ALIVE or Defs.flat(m.position - position).length() > 14.0:
+			continue
+		if (m.at_cover and m.peek_up) or world.time - m.last_shot_t < 0.6:
+			return true
+	return false
+
+
+## Duck down, then come up somewhere else along the same barrier: a man who
+## pops up in the same spot twice gets shot. At the corner of a tall wall,
+## that's the other corner, behind the wall all the way.
+func _shift_along() -> bool:
+	var st := cover_st
+	if st == null or st.gone or cover_ai < 0:
+		return false
+	var edge := cover_type == Cov.LEAN
+	var best := -1
+	var bd := 9.0
+	for j in st.anc_p.size():
+		if j == cover_ai or st.anc_n[j].dot(cover_n) < 0.9:
+			continue
+		var k: int = st.anc_k[j]
+		if (k == Cover.OVER) == edge or (edge and k == Cover.SHELTER):
+			continue
+		var q: Vector3 = st.anc_p[j]
+		var d := Defs.flat(q - position).length()
+		if d < 0.8 or d > (8.5 if edge else 3.0) or not Cover.reachable(world, q) or world.combat._claimed(q, self):
+			continue
+		if d < bd:
+			bd = d
+			best = j
+	if best < 0:
+		return false
+	cover_ai = best
+	cover_pos = st.anc_p[best]
+	cover_h = st.anc_h[best]
+	if edge:
+		var kb: int = st.anc_k[best]
+		lean_dir = cover_n.cross(Vector3.UP) * (1.0 if kb == Cover.EDGE_R else -1.0)
+	at_cover = false
+	peek_up = false
+	_shifting = true
+	go_to(cover_pos, "cover", 0)
+	world.stat("shift_along")
+	return true
 
 
 func _face(dir: Vector3, dt: float, rate := 9.0) -> void:
@@ -565,6 +723,8 @@ func sim(dt: float) -> void:
 		if at_cover and cover_type != Cov.NONE:
 			rec *= 1.15
 		suppression = maxf(0.0, suppression - dt * rec)
+	if at_cover and cover_mat >= 0 and not peek_up and suppression > Cover.SUPP_CAP[cover_mat]:
+		suppression = move_toward(suppression, Cover.SUPP_CAP[cover_mat], dt * 16.0)
 	say_cd -= dt
 	if hit_dirt_t > 0.0:
 		hit_dirt_t -= dt
@@ -625,7 +785,7 @@ func _update_flags() -> void:
 		f |= F_MEDIC
 	if squad and squad.leader == self:
 		f |= F_LEADER
-	if at_cover and cover_type == Cov.LOW and posture == Post.STAND and peek_up:
+	if at_cover and cover_type == Cov.LOW and peek_up and not blind and (cover_h > 0.0 or posture == Post.STAND):
 		f |= F_OVERWALL
 	flags = f
 
@@ -830,6 +990,9 @@ func _has_los_now(e: Entity) -> bool:
 
 
 func _aim_point(e: Entity) -> Vector3:
+	if e is Soldier and e._over() and world.rng.randf() < 0.35:
+		# at the middle of him, through whatever he's behind
+		return e.position + Vector3(0, minf(e.cover_h - 0.12, 1.0), 0)
 	if e is Soldier:
 		var pts: Array = e.exposed_points()
 		return pts[world.rng.randi() % pts.size()]
@@ -859,6 +1022,10 @@ func _fight_think() -> void:
 	var need := false
 	if not at_cover:
 		need = world.time > next_cover_eval
+	elif cover_st != null and (not is_instance_valid(cover_st) or cover_st.gone or cover_ai >= cover_st.anc_p.size() 			or Defs.flat(cover_st.anc_p[cover_ai] - cover_pos).length() > 0.3):
+		# the wall he was behind came down, or the car was blown across the road
+		cover_st = null
+		need = true
 	elif world.time > next_cover_eval:
 		var threats := _threats()
 		var td := _threat_dir(threats)
@@ -876,8 +1043,10 @@ func _seek_cover(anchor: Vector3, radius: float, threats: Array) -> void:
 	next_cover_eval = world.time + world.rng.randf_range(3.5, 6.0)
 	var res: Dictionary = world.combat.find_cover(self, anchor, radius, threats, false)
 	peek_up = false
+	blind = false
 	if res.is_empty():
 		cover_type = Cov.NONE
+		_clear_cover()
 		cover_threat = _threat_dir(threats)
 		if Defs.flat(position - anchor).length() > radius:
 			go_to(anchor, "slot", 0)
@@ -889,11 +1058,17 @@ func _seek_cover(anchor: Vector3, radius: float, threats: Array) -> void:
 	cover_type = res.type
 	lean_dir = res.lean
 	cover_threat = res.tdir
+	cover_n = res.get("n", Vector3.ZERO)
+	cover_h = float(res.get("h", 0.0))
+	cover_mat = int(res.get("mat", -1))
+	cover_st = res.get("st")
+	cover_ai = int(res.get("ai", -1))
+	_shifting = false
 	if Defs.flat(position - cover_pos).length() < 0.6:
 		at_cover = true
 		return
 	at_cover = false
-	go_to(cover_pos, "cover", 1 if _danger() else 0)
+	go_to(cover_pos, "cover", (2 if suppression > 35.0 else 1) if _danger() else 0)
 
 
 func go_to(p: Vector3, kind: String, mode: int) -> void:
@@ -932,18 +1107,27 @@ func _arrived() -> void:
 			next_cover_eval = 0.0
 		"cover":
 			at_cover = true
+			_shifting = false
 			peek_t = world.rng.randf_range(0.3, 1.0)
+			if cover_n != Vector3.ZERO and world.time - last_shot_t > 0.5:
+				_face_now(cover_n)
 		"prison":
 			world.rules.prisoner_arrived(self)
 
 
+## Under heavy fire a man rushes for cover and only crawls the last couple
+## of metres; a long crawl in the open just gets him shot.
 func _crawling() -> bool:
-	return goal_kind == "cover" and suppression >= 60.0 and path_i < path.size() and Defs.flat(goal - position).length() < 7.0
+	if goal_kind != "cover" or path_i >= path.size():
+		return false
+	if _shifting and cover_h > 0.0 and cover_h < Cover.KNEEL_MAX and _danger():
+		return true  # along a low wall under fire: on his belly, below the top
+	return suppression >= 70.0 and Defs.flat(goal - position).length() < 2.6
 
 
 func _speed() -> float:
 	if _crawling():
-		return 0.75
+		return 0.95
 	var s: float = SPEEDS[clampi(move_mode, 0, 2)]
 	if utype in ["mg_gunner", "pkm"]:
 		s *= 0.9
@@ -982,7 +1166,7 @@ func _move_tick(dt: float, speed: float) -> bool:
 		if d < 0.001:
 			return true
 	var k := world.nav.kind_at(position)
-	vaulting = k == Nav.LOW and life == Life.ALIVE
+	vaulting = k == Nav.LOW and life == Life.ALIVE and _barrier_ahead(to / d)
 	var mul := 1.0
 	if k == Nav.SLOW:
 		mul = 0.3
@@ -1008,6 +1192,20 @@ func _move_tick(dt: float, speed: float) -> bool:
 			world.stat("slide")
 			slide_cd = world.time + 4.0
 	return true
+
+
+var _bar_t := 0.0
+var _bar := false
+
+
+## Is there something knee-high right in front of him to get over? (A man
+## walking along a wall in its padded nav cells isn't climbing it.)
+func _barrier_ahead(dir: Vector3) -> bool:
+	if world.time > _bar_t:
+		_bar_t = world.time + 0.2
+		var a := position + Vector3(0, 0.45, 0)
+		_bar = not world.combat.ray(a, a + dir * 0.9).is_empty()
+	return _bar
 
 
 func _compute_sep() -> void:
@@ -1055,7 +1253,14 @@ func _fight_tick(dt: float) -> void:
 	if not moving:
 		_apply_sep(dt)
 		_settle_y(dt)
-		if _sector != Vector3.ZERO and world.time - last_shot_t > 1.2 and not (at_cover and cover_type != Cov.NONE) and not _target_valid(target):
+		if at_cover and cover_n != Vector3.ZERO:
+			# tight to the barrier on his spot, watching across it
+			var off := Defs.flat(cover_pos - position)
+			if off.length() > 0.02 and off.length() < 0.9:
+				position += off.limit_length(dt * 1.4)
+			if world.time - last_shot_t > 1.0 and not (peek_up and _target_valid(target)) and cover_type != Cov.LEAN:
+				_face(cover_n, dt, 5.0)
+		elif _sector != Vector3.ZERO and world.time - last_shot_t > 1.2 and not (at_cover and cover_type != Cov.NONE) and not _target_valid(target):
 			_face(_sector, dt, 3.0)
 	else:
 		_shuffle = false
@@ -1189,6 +1394,61 @@ func _lean_post() -> int:
 	return Post.LEAN_R if lean_dir.dot(right) > 0.0 else Post.LEAN_L
 
 
+## Fighting from a barrier: come up, find the target, fire a few bursts, get
+## back down - reload only while down - and every so often move along the
+## wall before coming up again, especially if they had him spotted. If no-one
+## else near him is firing he stays up a little longer; pinned, a regular
+## waits for the fire to slacken, a fighter may hold his rifle up over the
+## wall and fire blind.
+func _cover_cycle(dt: float, w: Dictionary, want_fire: bool, pinned: bool) -> void:
+	peek_t -= dt
+	if peek_up:
+		# drew fire: once he's got a burst off, rounds start cracking round his head
+		var drew := suppression - _up_supp > 28.0 and world.time - _peek_from > 1.1
+		# (a pinned man's snap shot is short already: it's peek_t that ends it)
+		var done := peek_t <= 0.0 or reload_t > 0.0 or not want_fire or drew or suppression >= 88.0
+		if done and peek_t <= 0.0 and not drew and not pinned and want_fire and reload_t <= 0.0 and not _stayed and not _buddy_up():
+			_stayed = true
+			peek_t = world.rng.randf_range(0.8, 1.6)
+			done = false
+		if done:
+			if drew and world.settings.get("debug", false):
+				world.stat("t%d_drew" % team)
+			peek_up = false
+			blind = false
+			# they had him zeroed: give it a moment before trying again
+			peek_t = world.rng.randf_range(0.6, 1.4) * (1.8 if suppression > 30.0 else 1.0) * (2.2 if drew else 1.0)
+			# a fresh magazine while he's down - and someone else up meanwhile
+			if not w.is_empty() and int(w.ammo) < 9000 and mag < int(w.get("mag", 30)) * 0.5 and reserve > 0:
+				_start_reload()
+				_call_cover()
+			elif drew or (cover_type == Cov.LOW and world.rng.randf() < 0.2):
+				_shift_along()
+		return
+	if peek_t > 0.0 or reload_t > 0.0 or not want_fire:
+		return
+	if pinned:
+		if team == 1 and cover_type == Cov.LOW and cover_h >= Cover.PRONE_MAX and _target_valid(target) and world.rng.randf() < 0.4:
+			blind = true
+			peek_up = true
+			peek_t = world.rng.randf_range(1.0, 2.0)
+			world.stat("blind_fire")
+		elif world.rng.randf() < 0.22 + (0.15 if cover_mat >= Cover.HARD else 0.0) + (0.1 if _gy < -0.6 else 0.0):
+			peek_up = true  # pinned men still snap off the odd shot - briefly (more often behind something solid)
+			peek_t = world.rng.randf_range(0.9, 1.6)
+		else:
+			peek_t = world.rng.randf_range(0.5, 1.1)
+			return
+	else:
+		peek_up = true
+		peek_t = world.rng.randf_range(2.2, 4.0)
+	_peek_from = world.time
+	_up_supp = suppression
+	_stayed = false
+	if world.settings.get("debug", false):
+		world.stat("t%d_peek" % team)
+
+
 func _weapon_tick(dt: float, moving: bool, mode: String) -> void:
 	fire_t -= dt
 	if reload_t > 0.0:
@@ -1221,29 +1481,30 @@ func _weapon_tick(dt: float, moving: bool, mode: String) -> void:
 	elif moving:
 		if _crawling():
 			want = Post.PRONE
+		elif goal_kind == "cover" and danger and Defs.flat(goal - position).length() < 4.0:
+			want = Post.CROUCH  # the last few metres to the wall, or along it: bent double
 		else:
 			want = Post.CROUCH if (move_mode == 0 and danger and suppression > 20.0) else Post.STAND
-		shoot_ok = move_mode == 0 and want != Post.PRONE
+		shoot_ok = move_mode == 0 and want != Post.PRONE and not _shifting
+		peek_up = false
+		blind = false
+	elif at_cover and cover_type == Cov.LOW and cover_h <= 0.0 and mounted == null:
+		# in the trees or a fold of ground with nothing to get behind: down on a knee and fight
+		want = Post.PRONE if pinned else Post.CROUCH
+		shoot_ok = true
 		peek_up = false
 	elif at_cover and (cover_type == Cov.LOW or cover_type == Cov.LEAN):
-		peek_t -= dt
-		if peek_up:
-			if peek_t <= 0.0 or pinned or reload_t > 0.0 or not want_fire:
-				peek_up = false
-				peek_t = world.rng.randf_range(0.5, 1.3) * (1.8 if suppression > 30.0 else 1.0)
-		elif peek_t <= 0.0 and reload_t <= 0.0 and want_fire and (not pinned or world.rng.randf() < (0.32 if _gy < -0.6 else 0.18)):
-			# pinned men still snap off the odd shot - briefly
-			peek_up = true
-			peek_t = world.rng.randf_range(2.2, 4.0) * (0.4 if pinned else 1.0)
+		_cover_cycle(dt, w, want_fire, pinned)
 		if cover_type == Cov.LOW:
-			want = Post.STAND if peek_up else Post.CROUCH
+			want = _over_post(peek_up) if cover_h > 0.0 else (Post.STAND if peek_up else Post.CROUCH)
 		else:
 			if peek_up:
 				_face_now(cover_threat)
 				want = _lean_post()
 			else:
 				want = Post.STAND
-		shoot_ok = peek_up
+		# coming up takes a moment: find the target, settle the weapon on the wall
+		shoot_ok = peek_up and (blind or world.time - _peek_from > 0.35)
 	elif at_cover and cover_type == Cov.HIDE:
 		want = Post.CROUCH
 		shoot_ok = true
@@ -1257,7 +1518,9 @@ func _weapon_tick(dt: float, moving: bool, mode: String) -> void:
 			want = Post.PRONE if utype in ["mg_gunner", "pkm"] else Post.CROUCH
 		else:
 			want = Post.STAND
-		shoot_ok = true
+		# pinned flat in the open he mostly hugs the ground: now and then he
+		# lifts his head and fires a burst
+		shoot_ok = not pinned or fmod(world.time + float(eid % 13) * 0.37, 4.0) < 1.3
 	if pinned and want == Post.STAND and mode != "escort" and mode != "crew":
 		want = Post.CROUCH
 	if hit_dirt_t > 0.0 and mode != "escort" and not moving:
@@ -1270,7 +1533,10 @@ func _weapon_tick(dt: float, moving: bool, mode: String) -> void:
 		return
 	var aim_ent: Entity = null
 	var aim_pt := Vector3.INF
-	if have_target and _has_los_now(target):
+	if blind and have_target:
+		aim_ent = target  # roughly where he last saw him, head down
+		aim_pt = target.position + Vector3(world.rng.randf_range(-1.5, 1.5), world.rng.randf_range(0.5, 1.8), world.rng.randf_range(-1.5, 1.5))
+	elif have_target and _has_los_now(target):
 		aim_ent = target
 		aim_pt = _aim_point(target)
 	elif cf and Defs.flat(cfp - position).length() < float(w.range) * 1.1:
@@ -1285,6 +1551,8 @@ func _weapon_tick(dt: float, moving: bool, mode: String) -> void:
 	if mode == "crew" and mounted and not mounted.mg_covers(aim_dir):
 		return  # outside the gun's arc
 	if mode != "escort" and not (posture == Post.LEAN_L or posture == Post.LEAN_R):
+		if blind and cover_n != Vector3.ZERO and aim_dir.dot(cover_n) < 0.5:
+			return  # he can't hold it over the wall that far round
 		_face_now(aim_dir)
 	_shoot(aim_pt, aim_ent, moving, cf)
 
@@ -1312,13 +1580,20 @@ func _shoot(aim_pt: Vector3, aim_ent: Entity, moving: bool, cover_fire: bool) ->
 	if crew_mount() != null:
 		muzzle = mounted.mg_muzzle(rotation.y)
 	var accm := 1.0
+	if blind:
+		# the weapon held up over the top, nobody looking down the sights
+		muzzle = position + cover_n * 0.55 + Vector3(0, cover_h + 0.12, 0)
+		accm *= 0.12
 	if moving:
 		accm *= 0.55
 	if not gun_override.is_empty():
 		accm *= 1.15
 	world.combat.fire_bullet(self, muzzle, aim_pt, aim_ent, w, accm)
 	if burst_left <= 0:
-		fire_t = world.rng.randf_range(0.5, 1.2) * (2.4 if low else 1.0) * (0.65 if cover_fire else 1.0)
+		# a man under fire shoots less: longer between bursts the more rounds
+		# are cracking past him (that's what winning the firefight means)
+		var supp_k := 1.0 + clampf(suppression - 20.0, 0.0, 80.0) / 40.0
+		fire_t = world.rng.randf_range(0.5, 1.2) * (2.4 if low else 1.0) * (0.65 if cover_fire else 1.0) * supp_k
 	else:
 		fire_t = float(w.interval) * world.rng.randf_range(0.9, 1.25)
 	if mag <= 0 and reserve > 0 and not infinite:
@@ -1438,6 +1713,8 @@ func _try_grenade() -> bool:
 		if not hidden:
 			continue
 		var n := 1
+		if e.at_cover and e.cover_mat >= Cover.HARD:
+			n += 1  # behind sandbags or stone a rifle won't shift him: a grenade will
 		for o in world.soldiers_near(e.position, 4.0):
 			if o != e and o.team == e.team and o.life == Life.ALIVE:
 				n += 1
@@ -1716,6 +1993,7 @@ func cmd_move(slot: Vector3, mode: int, face: Vector3) -> void:
 	leash = 9.0
 	at_cover = false
 	cover_type = Cov.NONE
+	_clear_cover()
 	peek_up = false
 	forced_target = null
 	go_to(slot, "slot", mode)
@@ -1888,13 +2166,18 @@ func add_suppression(amount: float, from_pos: Vector3) -> void:
 	# cover stops the bullets, not the fear: rounds cracking overhead and
 	# smacking into the wall in front of you still keep your head down
 	var m := 1.0
+	var cap := 100.0
 	if mounted and mounted.skind != "watchtower":
 		m = 0.5
 	elif at_cover and cover_type != Cov.NONE:
-		m = 0.62
+		# rounds cracking overhead rattle anyone; rounds thumping into sandbags
+		# a foot from your face rattle you less than ones coming through a hedge
+		m = Cover.SUPP[cover_mat] if cover_mat >= 0 else 0.62
+		if cover_mat >= 0 and not peek_up:
+			cap = Cover.SUPP_CAP[cover_mat]
 	if _gy < -0.6:
 		m *= 0.5  # dug into a trench: the parapet takes it
-	suppression = minf(100.0, suppression + amount * m)
+	suppression = minf(maxf(cap, suppression), suppression + amount * m)
 	_supp_t = world.time
 	if squad and world.time > reveal_t:
 		reveal_t = world.time + 1.0
@@ -1919,6 +2202,10 @@ func take_damage(amount: float, src, _dir: Vector3, kind := "bullet") -> void:
 		squad.report(src)
 	if hp <= 0.0 and OS.has_environment("FL_DEBUG_DEATH"):
 		print("DEATH %s team=%d kind=%s src=%s pos=%s in_trench=%s terrain_trench=%s posture=%d cover=%d at_cover=%s" % [sname, team, kind, (src.ekind() if src is Entity else "?"), str(position.snapped(Vector3.ONE * 0.1)), str(world.in_trench(position)), str(world.terrain.in_trench(position)), posture, cover_type, str(at_cover)])
+	if world.settings.get("debug", false) and life == Life.ALIVE:
+		# what he was doing when it hit him (tuning the cover game)
+		var st := "moving" if is_moving() else ("up" if peek_up else ("cover" if at_cover and cover_type != Cov.NONE else "open"))
+		world.stat("t%d_hitwhile_%s%s_%s" % [team, st, ("_" + task) if task != "" else "", Post.keys()[posture]])
 	if hp <= 0.0 and world.settings.get("debug", false):
 		var who := "unknown"
 		if src is Vehicle:
@@ -1950,6 +2237,8 @@ func _go_down() -> void:
 	bleed_max = [50.0, 38.0, 26.0, 16.0][mini(times_downed, 3)]
 	bleed = bleed_max
 	posture = Post.PRONE
+	peek_up = false
+	blind = false
 	_release_all()
 	stop_moving()
 	scream_t = 0.4
@@ -2187,8 +2476,7 @@ func _downed(dt: float) -> void:
 		crawl_t = 3.0
 		if bleed > bleed_max * 0.5:
 			var threats := _threats()
-			var ev: Dictionary = world.combat.eval_point(position, threats, 0.3)
-			if float(ev.prot) < 0.99:
+			if world.combat.prot_at(position, threats, 0.3) < 0.99:
 				var res: Dictionary = world.combat.find_cover(self, position, 8.0, threats, true)
 				if not res.is_empty() and Defs.flat(res.pos - position).length() > 0.8:
 					go_to(res.pos, "crawl", 0)
@@ -2725,6 +3013,7 @@ func release_mount() -> void:
 	task_ent = null
 	at_cover = false
 	cover_type = Cov.NONE
+	_clear_cover()
 	next_cover_eval = 0.0
 
 
@@ -2948,6 +3237,7 @@ func write_state(b: StreamPeerBuffer) -> void:
 	b.put_8(team)
 	b.put_u8(doing)
 	b.put_u16(doing_ent)
+	b.put_u8(cov_code())
 
 
 func read_state(b: StreamPeerBuffer) -> void:
@@ -2965,6 +3255,7 @@ func read_state(b: StreamPeerBuffer) -> void:
 	team = b.get_8()
 	doing = b.get_u8()
 	doing_ent = b.get_u16()
+	cov_net = b.get_u8()
 
 
 var _was_on_gun := false
@@ -3077,6 +3368,8 @@ func _view_process(dt: float) -> void:
 	var fwd := Defs.dir_of(rotation.y)
 	var back := sp > 0.3 and mv.normalized().dot(fwd) < -0.3
 	model.over_wall = (flags & F_OVERWALL) != 0
+	model.cover_h = cover_h_view() if life == Life.ALIVE else 0.0
+	model.blind = blind_view()
 	var on_gun := false
 	if cm != null:
 		cm.crew_aim(rotation.y, (flags & F_SHOOTING) != 0, pdt)

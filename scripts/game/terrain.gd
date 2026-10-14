@@ -480,6 +480,13 @@ func _stamp_crater(p: Vector3, size: float) -> void:
 ## heavy cover beats light beats open ground beats being caught in the open,
 ## then the closer the better. `taken` keeps squad mates from stacking up.
 func best_cover_near(p: Vector3, r: float, from: Vector3, taken: Array) -> Vector3:
+	return best_spot_near(p, r, from, taken)[0]
+
+
+## The same as [pos, cover level, fighting position or {}]: a fighting
+## position on a wall, the sandbags or a car (see Cover) beats the bare cells
+## beside it, since that's exactly where a man would kneel or stand to fire.
+func best_spot_near(p: Vector3, r: float, from: Vector3, taken: Array) -> Array:
 	var best := p
 	var bs := -1e9
 	var c := idx_of(p)
@@ -502,7 +509,10 @@ func best_cover_near(p: Vector3, r: float, from: Vector3, taken: Array) -> Vecto
 			if sc > bs:
 				bs = sc
 				best = q
-	return best
+	var an := Cover.best_near(world, p, r + 0.8, from, taken)
+	if not an.is_empty() and float(an[1]) + 0.5 >= bs:
+		return [an[0], Cover.level_of(int(an[2].mat)), an[2]]
+	return [best, cover_vs(best, from), {}]
 
 
 ## The closest trench cell to p within r that nobody has taken (INF if none).
@@ -546,14 +556,17 @@ func slots(c: Vector3, face: Vector3, n: int, wide := false) -> Array:
 		var col := float(i) - (n - 1) * 0.5
 		var depth := -absf(col) * 0.7 if wide else (-1.2 if i % 2 == 0 else 1.0)
 		var p := c + side * col * spacing + face * depth
-		var q := best_cover_near(p, 3.4 if wide else 2.6, threat, taken)
+		var sp := best_spot_near(p, 3.4 if wide else 2.6, threat, taken)
+		var q: Vector3 = sp[0]
 		if wide and trench[idx_of(q)] == 0:
 			# a defensive line mans the trench if there's one in reach
 			var tq := nearest_trench(p, 7.0, taken)
 			if tq != Vector3.INF:
-				q = tq
+				var ts := best_spot_near(tq, 1.6, threat, taken)
+				sp = ts if trench[idx_of(ts[0])] > 0 else [tq, cover_vs(tq, threat), {}]
+				q = sp[0]
 		taken.append(q)
-		out.append([q, cover_vs(q, threat)])
+		out.append(sp)
 	return out
 
 

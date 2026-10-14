@@ -228,7 +228,8 @@ func _place(ms: Array, at: Vector3, face: Vector3, mode: int, wide := true) -> v
 	var slots: Array = world.terrain.slots(at, face, ms.size(), wide)
 	var free := []
 	for sl in slots:
-		free.append(world.nav.nearest_walkable(sl[0]))
+		var fp: bool = sl.size() > 2 and not (sl[2] as Dictionary).is_empty()
+		free.append(sl[0] if fp else world.nav.nearest_walkable(sl[0]))
 	for m in ms:
 		var bi := 0
 		var bd := 1e9

@@ -66,7 +66,7 @@ Settings are saved to `user://settings.cfg`.
 | Camera | WASD / arrows / screen edge pan, mouse wheel zoom, Q/E or middle-drag rotate |
 | Select | Left-click a soldier to select his squad, drag a box, double-click for all of that type on screen. **Alt+click** a soldier (or click his name in the squad panel) to command just him |
 | Groups | Ctrl+1..9 set, 1..9 recall (double-tap to jump there) |
-| Orders | Right-click: move (Shift = fast run; **drag** to set which way they face), attack enemy, build/repair your structure, enter tunnel / MG nest / watchtower. The **cover pips** under the cursor show where each man will end up: green shield heavy cover, yellow light, grey dot none, red caught in the open |
+| Orders | Right-click: move (Shift = fast run; **drag** to set which way they face), attack enemy, build/repair your structure, enter tunnel / MG nest / watchtower. The **cover pips** under the cursor show where each man will end up: green hard cover, lime medium, yellow soft (hides, doesn't stop bullets), grey dot none, red caught in the open; a tick on a pip points the way he'll fire over the barrier, and the label says how (prone, kneeling, standing, round the edges) |
 | High-level | **X attack-move** (or Ctrl+right-click): the squad bounds forward by fire teams, cover to cover, fights whatever it meets, then digs in at the objective. **B defend**: click the area (drag to face) and the squad spreads into the best cover there and holds. **R retreat** to the nearest FOB (routes around known enemy fire, suppression halved). **H hold** |
 | One soldier | With a single man picked out: right-click to move him into the best cover at that spot, right-click an enemy to engage, a nest or mortar pit to man it; G / T throw, H hold, R fall back. Any squad order brings him back into the squad |
 | Squad | G grenade, T smoke, F mortar fire mission (mortar teams) |
@@ -80,11 +80,29 @@ Settings are saved to `user://settings.cfg`.
 ## What's in it
 
 **Soldier AI** (`scripts/game/soldier.gd`, `combat.gd`)
-- Cover comes from raycasting real shapes: walls, crates, cars, wrecks, trenches, window sills
-  (ruined houses have windows you can shoot through), sandbags and tanks. At low cover soldiers crouch and
-  pop up to shoot. At tall cover they move to a corner and lean out. If nothing works they hide.
-- Near misses add suppression, which pins soldiers in place (no peeking, they go prone) and ruins their
-  accuracy. Nearby explosions make them flinch.
+- **Fighting positions** (`scripts/game/cover.gd`): every wall, sandbag line, car, crate stack, wreck, rubble
+  heap, window sill, nest and trench generates anchors along its faces - where a man stands, which way he
+  faces, how high the barrier is there and what it's made of. How he fights from it follows from the height:
+  prone behind a low lip (under 0.6 m), kneeling behind sandbags, a car or a garden wall (to 1.1 m),
+  standing behind a chest-high wall or on a trench's fire step (to 1.55 m), and round the ends of anything
+  taller, leaning out. His weapon rests on the top; when he ducks his head really is below it. Formation
+  slots, the move preview and each man's own choice of cover all use the same positions, so a squad told to
+  hold by a wall lines it.
+- **What it's made of matters.** Hedges, tents and single crates are *soft*: they hide you, but rounds go
+  through (a burst into a hedge finds whoever is behind it). Cars, house walls and stacked crates are *medium*:
+  they stop a rifle, not a machine gun. Stone, brick, concrete, sandbags, earth and wrecks are *hard*: only a
+  heavy machine gun or cannon gets through, slowly. Trenches, bunkers and HESCO walls are *fortified*. The same
+  classes decide how much of a blast gets round them and how much near misses rattle the man behind.
+- **The fight at a wall.** Come up, take a moment to find the target, fire a few bursts, get back down -
+  reload only while down, calling for cover so the next man comes up. A man who drew fire stays down longer
+  and comes up somewhere else: one position along the wall (crawling below the top of a low one), or the
+  other corner of a tall one. If nobody near him is firing he stays up a little longer. Pinned, a regular
+  waits for the fire to slacken; a fighter may hold his rifle up over the wall and fire blind. A machine gun
+  can still pin men behind sandbags - that's what it's for - but they recover there, and shooters aim at the
+  middle of a man behind cover as often as at his head, so what the cover is made of decides what gets through.
+- Near misses add suppression, which pins soldiers in place (no peeking, they go prone), ruins their
+  accuracy and slows their fire: whoever suppresses the other side more fires more (fire superiority).
+  Pinned flat in the open a man only lifts his head for the odd burst. Nearby explosions make them flinch.
 - Ammo runs out. When low they switch to single shots, then stop. They grab ammo off bodies they pass and run back to a FOB.
 - Grenades get thrown at enemies hiding in cover. Soldiers dive away from incoming ones, and sometimes pick one up and throw it back.
 - Explosions fling bodies. Some survivors get up dazed and stumble around. Soldiers vault low walls,
@@ -121,8 +139,8 @@ Settings are saved to `user://settings.cfg`.
   open take a knee and machine gunners go down on the bipod; each watches his own sector, the flanks looking
   out and the last man of a big squad covering the rear. In town a moving squad folds into two staggered files
   along the street.
-- Pinned men low-crawl the last metres to cover; men firing over a low wall half-crouch with the weapon rested
-  on it; nobody glides across the ground.
+- Under fire men rush for cover and only crawl the last couple of metres; nobody glides across the ground,
+  and nobody "vaults" a wall he's only walking along.
 - Suppression lingers a moment after the last near miss, cover keeps out bullets better than it keeps out fear,
   and a man dashing between cover is much harder to hit than one walking; small arms aren't wasted on tanks.
 
@@ -346,6 +364,9 @@ Settings are saved to `user://settings.cfg`.
 defence, fire mission and upgrade, with what it is modelled on (M4A1, PKM, M2HB, Bradley, BTR-80, AC-130J...), its
 numbers read live from the game's tables with bars against the rest of its kind, derived figures (rate of fire,
 sustained damage, squad firepower, km/h), what carries or trains it, and a 3D model to turn over and zoom.
+A **Cover** chapter covers every kind of battlefield cover - stone and brick walls, hedges, sandbags, cars,
+crates, wrecks, rubble, tall walls, windows, trenches, craters and woods - with what it stops, how much blast
+gets through, how a man fights from it, and a diorama of a soldier doing so.
 
 **AI commander** (`commander_ai.gd`) plays through the same command interface as a human. It places
 buildings that its engineers must build, trains a mix of squads, saves for vehicles, expands with new FOBs,
@@ -365,7 +386,8 @@ game/world.gd           entity registry, replication (spawn / snapshot / props /
 game/entity.gd          base class: props on spawn, packed state in snapshots
 game/soldier*.gd        brain + procedural articulated model
 game/squad.gd           shared knowledge, rescues, smoke, surrender, auto-engineering
-game/combat.gd          LOS, bullets, suppression, explosions, cover evaluation
+game/combat.gd          LOS, bullets (penetrating soft cover), suppression, explosions, choosing cover
+game/cover.gd           fighting positions on everything solid, what each material stops, stances by height
 game/rules.gd           supply network, trucks, cap, placement, capture, prisoners/intel, fog, victory
 game/nav.gd             two AStarGrid2D layers (infantry: vaultable/slow cells; vehicles: smashable cells)
 game/hnav.gd            hierarchical A* (clusters, entrances, danger-weighted abstract graphs)

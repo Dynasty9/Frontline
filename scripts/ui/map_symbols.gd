@@ -8,7 +8,8 @@ const DOING_GLYPH := ["", "", "", "fire", "supp", "pinned", "reload", "grenade",
 	"medic", "drag", "medic", "build", "gun", "retreat", "ammo", "eye",
 	"wounded", "wounded", "flag", "flag", "wounded", "", "drone", "melee",
 	"noammo", "fire", "wounded", "dazed", "fire", "", "grenade", "supp",
-	"fire", "supp", "chat", "chat", "smoke", "", "", "", "eye"]
+	"fire", "supp", "chat", "chat", "smoke", "", "", "", "eye",
+	"fire", "supp", ""]
 ## The badge next to a squad's symbol for its orders (holding: none), and its colour.
 const ORDER_GLYPH := {"move": "move", "assault": "assault", "defend": "defend", "retreat": "retreat", "attack": "fire", "build": "build", "tunnel": "tunnel"}
 const ORDER_COLORS := {"assault": Color(1.0, 0.56, 0.44), "attack": Color(1.0, 0.5, 0.4), "defend": Color(0.55, 0.85, 1.0), "retreat": Color(1.0, 0.8, 0.4), "build": Color(1.0, 0.84, 0.45)}

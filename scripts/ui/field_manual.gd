@@ -9,7 +9,37 @@ signal closed
 
 const CATS := [
 	["infantry", "Infantry"], ["squads", "Squads & teams"], ["weapons", "Weapons"], ["vehicles", "Vehicles"],
-	["bases", "Base buildings"], ["defences", "Field defences"], ["support", "Fire support"], ["upgrades", "Upgrades"],
+	["bases", "Base buildings"], ["defences", "Field defences"], ["cover", "Cover"], ["support", "Fire support"], ["upgrades", "Upgrades"],
+]
+## Battlefield cover, and how a man fights from each: [key, name, structure
+## kind, variant, size, barrier height, where it's found, what it is].
+const COVER := [
+	["c_stone", "Stone wall", "low_wall", 0, Vector3(4, 1, 0.5), 1.08, "Field and garden walls round the farms and the town",
+		"Dry stone or rubble masonry, waist high. Stops everything short of a heavy machine gun; kneel behind it and rest the rifle on the coping."],
+	["c_brick", "Brick wall", "low_wall", 2, Vector3(4, 1, 0.5), 1.08, "Garden walls in the town",
+		"A brick garden wall, waist high: as good as stone against small arms."],
+	["c_hedge", "Hedge", "low_wall", 1, Vector3(4, 1, 0.9), 1.15, "Field boundaries and gardens",
+		"Thick enough to hide a man, not to stop a bullet: rounds go straight through and find whoever is behind it. Good for moving unseen, poor for a firefight."],
+	["c_sandbags", "Sandbag wall", "sandbags", 0, Vector3(4, 3, 0.9), 1.0, "Built by engineers and diggers; around checkpoints",
+		"Filled bags stacked a metre high and nearly as thick. Kneel behind and fire over; only a .50 cal works through it, slowly."],
+	["c_car", "Car", "car", 1, Vector3.ZERO, 0.95, "Parked along the streets and lanes",
+		"The engine block and wheels stop rifle rounds; the doors and panels don't stop a machine gun. A big blast throws it across the road, and the cover goes with it."],
+	["c_crates", "Supply crates", "crates", 1, Vector3.ZERO, 1.2, "Yards, depots and roadsides",
+		"Stacked crates of stores, chest high: stand and fire over them. They stop a rifle, not a machine gun - a lone crate stops neither."],
+	["c_wreck", "Burnt-out tank", "wreck", 0, Vector3.ZERO, 1.5, "Left from earlier fighting; every knocked-out tank",
+		"Tons of steel: nothing a soldier carries goes through it. High enough to stand behind, and a blast doesn't move it."],
+	["c_rubble", "Rubble heap", "rubble", 0, Vector3(4, 1, 1.4), 0.75, "Wherever a building or a wall came down",
+		"Broken masonry, knee to waist high. Kneel down behind it, low; it stops what a stone wall does."],
+	["c_tall", "Tall wall", "tall_wall", 0, Vector3(4, 2.6, 0.5), 2.6, "Compounds, yards and the town",
+		"Too tall to see over: complete protection behind it, but you can only fight from its ends, leaning out round the corner - and the enemy knows where those are."],
+	["c_window", "House wall, window", "house_wall", 1, Vector3(4, 0, 0.4), 1.0, "Every house",
+		"Brick and plaster: it stops a rifle, a machine gun chews through it. Kneel at the window sill and fire out; the walls either side cover you from the flanks."],
+	["c_trench", "Fire trench", "trench", 0, Vector3.ZERO, 1.39, "Dug by engineers and diggers; old lines across the fields",
+		"Stand on the fire step with the rifle over the parapet; duck and you're a metre and a half underground. Only fire straight down the bay or a shell in the trench reaches you."],
+	["c_crater", "Shell crater", "", 0, Vector3.ZERO, 0.45, "Wherever shells, bombs and rockets have landed",
+		"A dip in the ground with a lip of thrown-up earth. Lie in it and fire over the lip; it hides you better than open ground and takes the edge off blast."],
+	["c_woods", "Woods", "", 0, Vector3.ZERO, 0.0, "Copses and the edges of the fields",
+		"Concealment, not cover: the enemy sees you at barely half the range and hits you less, but a round that's aimed true goes straight through the leaves."],
 ]
 const BASES := ["fob", "barracks", "factory", "helipad", "medic_tent", "research", "tunnel"]
 
@@ -458,6 +488,8 @@ func _show_model(e: Dictionary) -> void:
 	# a front three-quarter view (models face -z)
 	# (soldiers more side-on, so a raised rifle isn't pointing at the lens)
 	_yaw = PI - (1.05 if String(e.cat) in ["infantry", "squads"] else 0.62)
+	if String(e.cat) == "cover":
+		_yaw = 0.75  # over his shoulder: the man, his weapon on the top, and what he's looking at
 	_idle_t = 4.0  # hold the opening view a moment before the turntable starts
 
 
@@ -499,6 +531,8 @@ func _make_model(e: Dictionary) -> Node3D:
 			var bteams: Array = Defs.BUILDINGS[e.key].teams
 			var bs: int = side if side in bteams else int(bteams[0])
 			return Structure.preview_model(String(e.key), bs)
+		"cover":
+			return _cover_diorama(String(e.key), side if side >= 0 else 0)
 		"support":
 			match String(e.key):
 				"airstrike":
@@ -581,6 +615,95 @@ func _shells(key: String) -> Node3D:
 			WeaponModels._tube(g, 0.08, 0.18, 0.21, 0.082, "paint", -1.0, x, Color(0.72, 0.45, 0.25))
 			WeaponModels._tube(g, 0.08, -0.58, -0.66, 0.02, "paint", 0.012, x, Color(0.75, 0.62, 0.3))
 	g.rotation.x = 0.0
+	return g
+
+
+## A piece of cover with a man fighting from it the way he would in battle:
+## kneeling with his rifle on the wall, standing at a chest-high one, lying
+## at the lip of a crater, leaning round the end of a tall wall.
+func _cover_diorama(key: String, side: int) -> Node3D:
+	var c: Array = []
+	for x in COVER:
+		if x[0] == key:
+			c = x
+	if c.is_empty():
+		return null
+	var g := Node3D.new()
+	var h: float = c[5]
+	var ut := "rifleman" if side != 1 else "fighter"
+	var man_z := 0.0
+	var man_x := 0.0
+	var man_y := 0.0
+	match String(c[2]):
+		"":
+			if key == "c_crater":
+				# a shallow bowl: a ring of thrown-up earth
+				for i in 18:
+					var a := TAU * i / 18.0
+					var lump := MeshInstance3D.new()
+					lump.mesh = Res.sphere(0.5, 8)
+					lump.scale = Vector3(1.25, 0.42 + 0.08 * sin(i * 2.3), 1.0)
+					lump.position = Vector3(cos(a) * 1.75, 0.0, sin(a) * 1.75)
+					lump.rotation.y = -a
+					Mats.apply(lump, "earth")
+					g.add_child(lump)
+				man_z = 0.55
+			else:
+				for i in 3:
+					var tr := Node3D.new()
+					Structure.tree_model(tr, 11 + i * 5, 0)
+					tr.position = Vector3(-1.6 + i * 1.9, 0, -1.2 - (i % 2) * 1.3)
+					g.add_child(tr)
+				man_z = 0.4
+		"trench":
+			g.add_child(_trench_diorama())
+			man_z = TrenchNet.HALF_W - 0.34
+			h = 1.52  # the diorama's sandbags sit a little higher than the game's parapet
+		_:
+			var st := Structure.preview_model(String(c[2]), -1, int(c[3]), c[4] as Vector3)
+			if c[2] in ["car", "wreck"]:
+				st.rotation.y = PI * 0.5  # broadside on
+			g.add_child(st)
+			var half := 0.25
+			match String(c[2]):
+				"sandbags":
+					half = 0.45
+				"car":
+					half = 0.9
+				"crates":
+					half = 0.62
+				"wreck":
+					half = 1.7
+				"rubble":
+					half = 0.7
+				"house_wall":
+					half = 0.2
+				"low_wall":
+					half = float((c[4] as Vector3).z) * 0.5
+			man_z = half + Cover.offset(h)
+			if h >= Cover.STAND_MAX:
+				man_z = half + 0.5
+				man_x = float((c[4] as Vector3).x) * 0.5 - 0.35
+	var sm := SoldierModel.new()
+	sm.build(ut, side, 17)
+	var post := Soldier.Post.CROUCH
+	if h <= 0.0:
+		sm.cover_h = 0.0
+	elif h >= Cover.STAND_MAX:
+		post = Soldier.Post.LEAN_R
+	else:
+		sm.cover_h = h
+		sm.over_wall = true
+		post = [Soldier.Post.PRONE, Soldier.Post.CROUCH, Soldier.Post.STAND][Cover.stance(h)]
+	for i in 8:
+		sm.pose(0.5, 0, post, Soldier.Act.SHOOT, 0.0, false, false)
+	if key == "c_trench":
+		var hold := g.get_child(0) as Node3D
+		sm.position = Vector3(0.6, TrenchNet.FLOOR_Y + 0.025, -man_z)
+		hold.add_child(sm)
+		return g
+	sm.position = Vector3(man_x, man_y, man_z)
+	g.add_child(sm)
 	return g
 
 
@@ -884,6 +1007,25 @@ func _build_entries() -> Array:
 				["Area", "%d m radius" % int(s2.r), float(s2.r) / srr],
 				["Aimed as", shape, -1.0],
 			], "rel": ["Called from the support panel or Z, from minute five"]})
+
+	# battlefield cover
+	for c in COVER:
+		var m := Cover.FORT if c[2] == "trench" else (Cover.mat_of({"skind": c[2], "variant": c[3]}) if c[2] != "" else (Cover.HARD if c[0] == "c_crater" else -1))
+		var h: float = c[5]
+		var how: String = "fire round its ends" if h >= Cover.STAND_MAX else (["lie behind it and fire over the lip", "kneel and fire over it", "stand and fire over it", ""][Cover.stance(h)] if h > 0.0 else "kneel among the trees")
+		var stops: String = Cover.MAT_STOPS[m] if m >= 0 else "Nothing - but it hides you"
+		var cst := [
+			["Protection", (Cover.MAT_NAMES[m] if m >= 0 else "Concealment"), (float(m) + 1.0) / 4.0 if m >= 0 else 0.08],
+			["Stops", stops, -1.0],
+			["Height", ("%.2f m" % h) if h > 0.0 else "-", clampf(h / 2.6, 0.0, 1.0) if h > 0.0 else -1.0],
+			["Fight from it", how, -1.0],
+		]
+		if m >= 0 and c[0] != "c_crater":
+			cst.append(["Rifle / MG / .50 through it", "%d%% / %d%% / %d%%" % [int(Cover.PASS[m][1] * 100.0), int(Cover.PASS[m][2] * 100.0), int(Cover.PASS[m][3] * 100.0)], -1.0])
+			cst.append(["Blast behind it", "%d%%" % int(Cover.BLAST[m] * 100.0), Cover.BLAST[m]])
+		out.append({"cat": "cover", "key": c[0], "name": c[1], "team": -1, "both": true,
+			"sub": "%s · %s" % [(Cover.MAT_NAMES[m] if m >= 0 else "Concealment"), how], "desc": c[7], "stats": cst,
+			"rel": ["Found: " + c[6]]})
 
 	# upgrades
 	for k in Defs.UPGRADES:

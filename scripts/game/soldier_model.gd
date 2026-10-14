@@ -38,7 +38,9 @@ var _still := 0
 var _baked := false
 var ragdoll = null  # Ragdoll while the physics has the body
 var ragdoll_done := false  # the body lies where the physics left it
-var over_wall := false  # firing over low cover
+var over_wall := false  # up over the barrier he's behind, weapon on the top
+var cover_h := 0.0  # height of the barrier he's at (0: none)
+var blind := false  # holding the weapon up over the top, head down
 var muzzle_local := Vector3(0, 0.01, -0.8)  # the weapon's muzzle in gun space
 var crew := false  # working a mounted gun: his own slung, hands on its grips
 ## Attachment sockets (torso space). Carried kit is built to one convention -
@@ -903,11 +905,13 @@ func _posture_pose(posture: int, act: int, moving: bool, sp: float, cp: float, s
 				t_shl = Vector3(-1.0 - maxf(0.0, -sp) * 0.4, 0, 0)
 				t_shr = Vector3(-1.0 - maxf(0.0, sp) * 0.4, 0, 0)
 			else:
-				_kneel()
+				_crouch_still(act, lean_shoot)
 		Soldier.Post.PRONE:
 			_prone()
 			if moving or act == Soldier.Act.CRAWL:
 				_crawl(sp, cp)
+			elif over_wall and cover_h > 0.0:
+				_prone_over(cover_h)
 		Soldier.Post.LEAN_L, Soldier.Post.LEAN_R:
 			var s := 1.0 if posture == Soldier.Post.LEAN_L else -1.0
 			if lean_shoot or aiming:
@@ -926,7 +930,7 @@ func _posture_pose(posture: int, act: int, moving: bool, sp: float, cp: float, s
 				_walk(sp, cp, 0.45)
 		_:
 			if over_wall and not moving:
-				overwall()
+				_stand_over(cover_h if cover_h > 0.0 else 1.05, act == Soldier.Act.SHOOT and lean_shoot)
 			elif not moving and not aiming:
 				var tt := Time.get_ticks_msec() * 0.001
 				t_torso.x += sin(tt * 1.7 + seedf) * 0.02
@@ -1023,17 +1027,112 @@ func _crawl(sp: float, cp: float) -> void:
 	ik_r = false
 
 
-## Firing over a low wall: knees bent, leaning into the wall, the weapon
-## rested on top of it.
-func overwall() -> void:
-	t_hips_p = Vector3(0, 0.78, 0.06)
-	t_thl = Vector3(0.55, 0, -0.08)
-	t_shl = Vector3(-0.8, 0, 0)
-	t_thr = Vector3(0.2, 0, 0.1)
-	t_shr = Vector3(-0.55, 0, 0)
-	t_torso = Vector3(-0.32, 0, 0)
-	t_gun_p = Vector3(0.12, 0.47, -0.2)
-	t_gun_r = Vector3(0.05, 0.0, 0.0)
+## Kneeling or crouched at a halt: behind a barrier he's either up over it
+## or down behind it.
+func _crouch_still(act: int, lean_shoot: bool) -> void:
+	var shooting := act == Soldier.Act.SHOOT and lean_shoot
+	if cover_h <= 0.0 or cover_h >= Cover.STAND_MAX:
+		_kneel()
+	elif blind:
+		_blind_fire(cover_h, shooting)
+	elif over_wall:
+		_kneel_over(cover_h, shooting)
+	else:
+		_hunker(cover_h, act == Soldier.Act.RELOAD)
+
+
+## The weapon in the shoulder and level, whatever the lean of the body; the
+## cheek on the stock.
+func _shoulder(shooting: bool) -> void:
+	t_gun_p = Vector3(0.13, 0.47, -0.18)
+	t_gun_r = Vector3(0.02 - t_torso.x, 0.0, 0.0)
+	t_head = Vector3(-0.14 - t_torso.x * 0.85, 0.12, 0.1)
+	if shooting:
+		# recoil: the muzzle climbs and the shoulder rocks with each shot
+		var kick := maxf(0.0, sin(act_time * 38.0 + seedf)) * 0.03
+		t_gun_p.z += kick
+		t_gun_r.x += kick * 2.0
+		t_torso.x += kick * 0.4
+
+
+## Knees bent so the hips sit at hy with the feet flat under him, one foot
+## a little ahead of the other.
+func _bend(hy: float) -> void:
+	var a := acos(clampf((hy - 0.05) / 0.9, 0.35, 1.0))
+	t_thl = Vector3(a + 0.2, 0, -0.06)
+	t_shl = Vector3(-2.0 * a - 0.15, 0, 0)
+	t_thr = Vector3(a - 0.14, 0, 0.08)
+	t_shr = Vector3(-2.0 * a + 0.1, 0, 0)
+
+
+## Kneeling with the hips at hy: the back knee on the ground, the front foot
+## flat - up on the knee, or sat back on the heel.
+func _kneel_legs(hy: float) -> void:
+	var tr := acos(clampf((hy - 0.12) / 0.45, 0.0, 1.0))
+	t_thr = Vector3(tr, 0, 0.05)
+	t_shr = Vector3(-PI * 0.5 - tr + 0.02, 0, 0)
+	var v := clampf((hy - 0.56) * 1.5, -0.35, 0.1)
+	var u := acos(clampf((hy - 0.1) / 0.45 - cos(v), -1.0, 1.0))
+	t_thl = Vector3(u, 0, -0.06)
+	t_shl = Vector3(v - u, 0, 0)
+
+
+## Standing behind a chest-high wall or on a trench's fire step: knees bent
+## as far as the height asks so the weapon rests on the top, leaning into it.
+func _stand_over(h: float, shooting: bool) -> void:
+	var hy := clampf(h - 0.47, 0.6, H0)
+	t_hips_p = Vector3(0, hy, 0.04)
+	_bend(hy)
+	t_torso = Vector3(-0.12, 0, 0)
+	_shoulder(shooting)
+	t_gun_p.y += clampf(h + 0.05 - (hy + 0.5), 0.0, 0.12)  # a tall one: arms up a little more
+
+
+## Kneeling behind sandbags or a car: up on the knee for a high one, sat back
+## on the heel and bent over it for a low one, the weapon on the top.
+func _kneel_over(h: float, shooting: bool) -> void:
+	var hy := clampf(h - 0.47, 0.42, 0.7)
+	_kneel_legs(hy)
+	t_hips_p = Vector3(0, hy, 0.02)
+	t_torso = Vector3(-0.06 - clampf((hy + 0.52 - h - 0.05) * 2.4, 0.0, 0.65), 0, 0)
+	_shoulder(shooting)
+
+
+## Down behind it: sat back on his heels, curled forward with his chin down
+## and his head below the top, the weapon upright against his chest.
+func _hunker(h: float, reloading: bool) -> void:
+	var hy := 0.36
+	_kneel_legs(hy)
+	t_hips_p = Vector3(0, hy, 0.08)
+	t_torso = Vector3(-0.55 - clampf((1.12 - h) * 1.2, 0.0, 0.4), 0, 0)
+	t_head = Vector3(0.3, 0.1, 0)
+	if not reloading:
+		t_gun_p = Vector3(0.06, 0.34, -0.2)
+		t_gun_r = Vector3(1.25, 0.15, 0.1)
+
+
+## Firing blind: head down behind the barrier, the weapon held up over the
+## top in both hands and pointed roughly at the enemy.
+func _blind_fire(h: float, shooting: bool) -> void:
+	_hunker(h, true)
+	t_torso = Vector3(-0.3, 0, 0)
+	t_head = Vector3(0.5, 0.15, 0)
+	var y := (h + 0.12 - 0.41 + 0.124) / 0.955  # torso space, through the lean
+	t_gun_p = Vector3(0.04, clampf(y, 0.45, 1.0), -0.4)
+	t_gun_r = Vector3(0.3, 0.0, 0.0)
+	if shooting:
+		var kick := sin(act_time * 41.0 + seedf) * 0.06
+		t_gun_r.x += absf(kick)
+		t_gun_r.y += kick
+		t_gun_p.z += absf(kick) * 0.5
+
+
+## Up on his elbows behind a low lip so the weapon clears it.
+func _prone_over(h: float) -> void:
+	var lift := clampf((h - 0.25) * 0.9, 0.0, 0.35)
+	t_root_r.x += lift
+	t_gun_r.x -= lift
+	t_head.x -= lift * 0.8
 
 
 func _kneel() -> void:

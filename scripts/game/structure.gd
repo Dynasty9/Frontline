@@ -25,6 +25,12 @@ var radius := 1.0
 var foot := Vector2.ONE  # half extents of the footprint
 var parts: Array = []
 var cover_pts := PackedVector3Array()
+# fighting positions round it (see Cover): where a man stands, which way he
+# faces (across the barrier), how high it is there, and how he uses it
+var anc_p := PackedVector3Array()
+var anc_n := PackedVector3Array()
+var anc_h := PackedFloat32Array()
+var anc_k := PackedByteArray()
 var nav_cells: Array = []
 var hash_cells: Array = []
 var body: StaticBody3D
@@ -129,6 +135,8 @@ func apply_props(d: Dictionary) -> void:
 		toss = d.toss
 		if toss != null and model:
 			_start_toss()
+	if not srv and not parts.is_empty() and (d.has("toss") or d.has("built")):
+		_compute_cover_pts()  # thrown somewhere else, or finished: its fighting positions moved
 
 
 func get_props() -> Dictionary:
@@ -166,9 +174,9 @@ func on_spawned() -> void:
 			max_hp = _default_hp()
 			hp = max_hp if built else max_hp * 0.1
 		world.nav.add_structure(self)
-		_compute_cover_pts()
 		if built:
 			_make_body()
+	_compute_cover_pts()  # every peer: the move preview shows the same spots
 	if not srv and world.has_view and built:
 		_make_body()  # so ragdolls and debris land on walls on every client
 	if world.has_view:
@@ -223,7 +231,7 @@ func _define_parts() -> void:
 	match skind:
 		"low_wall":
 			var c: Color = [C_STONE, Color(0.2, 0.29, 0.13), Color(0.58, 0.37, 0.28)][variant % 3]
-			var h := 1.0 if variant % 3 != 1 else 1.15
+			var h := (size.y if size.y > 0.2 else 1.0) if variant % 3 != 1 else 1.15
 			parts = [_part(Vector3(0, h * 0.5, 0), Vector3(L, h, 0.5 if variant % 3 != 1 else 0.9), Nav.LOW, Nav.LOW, true, true, c)]
 		"tall_wall":
 			parts = [_part(Vector3(0, 1.3, 0), Vector3(L, 2.6, 0.5), Nav.SOLID, Nav.LOW, true, true, C_CONCRETE)]
@@ -397,59 +405,8 @@ func provides_cover() -> bool:
 
 
 func _compute_cover_pts() -> void:
-	cover_pts = PackedVector3Array()
-	var b := Basis(Vector3.UP, yaw)
-	if skind == "trench":
-		# fighting positions down in the trench, every metre and a half
-		var n := int(size.x / 1.5)
-		for k in n:
-			var x := (float(k) + 0.5) / n * size.x - size.x * 0.5
-			cover_pts.append(position + b * Vector3(x, 0, 0))
-		return
-	for p in parts:
-		if not p.cover or not p.col:
-			continue
-		if p.p.y - p.s.y * 0.5 > 0.5:
-			continue
-		var hx: float = p.s.x * 0.5 + 0.6
-		var hz: float = p.s.z * 0.5 + 0.6
-		var pr := Basis(Vector3.UP, p.r)
-		var base := Vector3(p.p.x, 0, p.p.z)
-		for side in 4:
-			var along: float = hx * 2.0 if side < 2 else hz * 2.0
-			var n := maxi(1, int(along / 1.3))
-			for k in n + 1:
-				var f := float(k) / n - 0.5
-				var lp: Vector3
-				match side:
-					0:
-						lp = Vector3(f * hx * 2.0, 0, -hz)
-					1:
-						lp = Vector3(f * hx * 2.0, 0, hz)
-					2:
-						lp = Vector3(-hx, 0, f * hz * 2.0)
-					_:
-						lp = Vector3(hx, 0, f * hz * 2.0)
-				var wp: Vector3 = position + b * (base + pr * lp)
-				if Defs.in_map(wp, 2.0) and not _inside_any_part(wp):
-					cover_pts.append(wp)
-			# corner spots just inside each end: the natural places to lean out from
-			var ex: float = (p.s.x * 0.5 - 0.35) if side < 2 else (p.s.z * 0.5 - 0.35)
-			if ex > 0.4:
-				for sg in [-1.0, 1.0]:
-					var cp: Vector3
-					match side:
-						0:
-							cp = Vector3(sg * ex, 0, -hz)
-						1:
-							cp = Vector3(sg * ex, 0, hz)
-						2:
-							cp = Vector3(-hx, 0, sg * ex)
-						_:
-							cp = Vector3(hx, 0, sg * ex)
-					var wcp: Vector3 = position + b * (base + pr * cp)
-					if Defs.in_map(wcp, 2.0) and not _inside_any_part(wcp):
-						cover_pts.append(wcp)
+	Cover.build(self)
+	cover_pts = anc_p
 
 
 func _inside_any_part(wp: Vector3) -> bool:
@@ -770,13 +727,15 @@ func _house_wall_detail(rng: RandomNumberGenerator) -> void:
 
 
 ## A building's model on its own, without a world (the field manual's preview).
-static func preview_model(kind: String, side: int, v := 0) -> Node3D:
+static func preview_model(kind: String, side: int, v := 0, sz := Vector3.ZERO) -> Node3D:
 	var st := Structure.new()
 	st.skind = kind
 	st.team = side
 	st.variant = v
 	st.built = true
-	if Defs.BUILDINGS.has(kind):
+	if sz != Vector3.ZERO:
+		st.size = sz
+	elif Defs.BUILDINGS.has(kind):
 		var s: Vector2 = Defs.BUILDINGS[kind].size
 		st.size = Vector3(s.x, 3.0, s.y)
 	st._define_parts()

@@ -172,8 +172,8 @@ func scenario(sname: String) -> void:
 			_spawn("tall_wall", Vector3(14, 0, -12), 0.0, -1, {"size": Vector3(4, 2.6, 0.5)})
 			_spawn("crates", Vector3(-14, 0, -12), 0.0, -1, {"variant": 1})
 			_spawn("car", Vector3(-20, 0, -12), PI * 0.5, -1, {"variant": 1})
-			r.spawn_squad("rifle_squad", 0, a, Vector3(0, 0, 0), Vector3(0, 0, -8))
-			r.spawn_squad("fighter_cell", 1, b, Vector3(0, 0, -60), Vector3(0, 0, -50))
+			r.spawn_squad("rifle_squad", 0, a, Vector3(0, 0, -6), Vector3(0, 0, -10))
+			r.spawn_squad("fighter_cell", 1, b, Vector3(0, 0, -60), Vector3(0, 0, -52))
 		"tank":
 			_spawn("low_wall", Vector3(0, 0, -20), 0.0, -1, {"size": Vector3(4, 1, 0.5)})
 			_spawn("tall_wall", Vector3(4.2, 0, -20), 0.0, -1, {"size": Vector3(4, 2.6, 0.5)})
@@ -280,6 +280,20 @@ func scenario(sname: String) -> void:
 			# a low wall in front of the over-the-wall men
 			for wx in [-7.5, -4.5, 4.5]:
 				_spawn("low_wall", Vector3(wx, 0, 8.0 - 0.75), 0.0, -1, {"size": Vector3(2.6, 1, 0.5)})
+			# fighting from cover, each man behind a wall of the height he's posed
+			# for: kneeling over it, ducked behind it, standing over a chest-high
+			# one, prone behind a low one, firing blind, reloading down behind it
+			var F := Soldier.F_OVERWALL
+			var cov := [[P.CROUCH, A.SHOOT, 0, 0.0, F, 0.92, 1], [P.CROUCH, A.IDLE, 0, 0.0, 0, 0.92, 1], [P.STAND, A.SHOOT, 0, 0.0, F, 1.32, 1],
+				[P.PRONE, A.SHOOT, 0, 0.0, F, 0.48, 1], [P.CROUCH, A.SHOOT, 0, 0.0, 0, 1.0, 2], [P.CROUCH, A.RELOAD, 0, 0.0, 0, 1.0, 1]]
+			for ci in cov.size():
+				var c: Array = cov[ci]
+				var h: float = c[5]
+				var z := 16.0
+				_spawn("low_wall", Vector3(-7.5 + ci * 3.0, 0, z - Cover.offset(h) - 0.25), 0.0, -1, {"size": Vector3(2.4, h - 0.08, 0.5)})
+				var code := clampi(int(round(h / 0.04)), 1, 63) | (int(c[6]) << 6)
+				world.spawn("soldier", {"utype": "rifleman", "team": 0 if ci % 2 == 0 else 1, "owner": a, "pos": Vector3(-7.5 + ci * 3.0, 0, z), "yaw": 0.0,
+					"name": "C%d" % ci, "dpose": [c[0], c[1], c[2], c[3], c[4], code]})
 			for ri in rows.size():
 				var row: Array = rows[ri]
 				for ci in row.size():

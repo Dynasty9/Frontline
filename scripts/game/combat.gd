@@ -118,12 +118,28 @@ func fire_bullet(shooter: Entity, muzzle: Vector3, aim: Vector3, tgt: Entity, w:
 	var r := ray(muzzle, end, shooter.get_exclude())
 	var impact := 0
 	var soft_tgt := tgt is Soldier or tgt is Drone
+	var dmg_k := 1.0
 	if not r.is_empty():
 		var hp: Vector3 = r.position
 		var ent := ent_of(r.collider)
-		if hit and soft_tgt and muzzle.distance_to(hp) < dist - 0.35:
+		# what's in the way may not stop it: a hedge, a car door, a plaster wall
+		var through := false
+		var in_way := muzzle.distance_to(hp) < dist - 0.35
+		if ent is Structure and (soft_tgt or tgt == null) and (in_way or not hit):
+			var m := Cover.mat_of(ent)
+			if world.rng.randf() < Cover.PASS[m][Cover.pen_class(w)]:
+				through = true
+				dmg_k = Cover.PASS_DMG[m]
+				ent.take_damage(float(w.dmg) * 0.05, shooter)
+				if world.settings.get("debug", false):
+					world.stat("t%d_pen" % shooter.team)
+				if not hit:
+					_through_hits(shooter, hp, end, w, dmg_k)
+		if hit and soft_tgt and in_way and not through:
 			hit = false
-		if not hit or not soft_tgt:
+		if through and hit:
+			pass  # it carries on into the man behind it
+		elif not hit or not soft_tgt:
 			end = hp
 			impact = 1
 			hit = false
@@ -140,7 +156,7 @@ func fire_bullet(shooter: Entity, muzzle: Vector3, aim: Vector3, tgt: Entity, w:
 			impact = 1
 	if hit:
 		if tgt is Soldier:
-			var dmg := float(w.dmg) * world.rng.randf_range(0.8, 1.2)
+			var dmg := float(w.dmg) * world.rng.randf_range(0.8, 1.2) * dmg_k
 			if world.rng.randf() < 0.08:
 				dmg *= 2.5
 			tgt.take_damage(dmg, shooter, dir, "bullet")
@@ -170,6 +186,23 @@ func fire_bullet(shooter: Entity, muzzle: Vector3, aim: Vector3, tgt: Entity, w:
 			if s.team != shooter.team and s.team >= 0 and s.squad and s.life == Soldier.Life.ALIVE:
 				s.squad.report(shooter)
 	world.fx_event([Fx.SHOT, muzzle, end, impact, String(w.snd), shooter.eid])
+
+
+## A round that went through soft cover can still find someone sheltering
+## behind it (a burst into a hedge, through a car, a wall a machine gun is
+## chewing up).
+func _through_hits(shooter: Entity, hp: Vector3, end: Vector3, w: Dictionary, dmg_k: float) -> void:
+	var dir := (end - hp).normalized()
+	var far := hp + dir * 3.0
+	for s in world.soldiers_near((hp + far) * 0.5, 2.0):
+		if s.team == shooter.team or s.life != Soldier.Life.ALIVE:
+			continue
+		if Defs.dist_point_segment(s.center_point(), hp, far) > 0.45:
+			continue
+		if world.rng.randf() < 0.35:
+			s.take_damage(float(w.dmg) * dmg_k * world.rng.randf_range(0.8, 1.2), shooter, dir, "bullet")
+			world.stat("through_hit")
+		return
 
 
 func _suppress(a: Vector3, b: Vector3, team: int, amount: float, hit_tgt: Entity) -> void:
@@ -271,13 +304,17 @@ func explode(pos: Vector3, d: Dictionary) -> void:
 		var c: Vector3 = s.center_point()
 		var dist := pos.distance_to(c)
 		if dist < r:
-			var blocked := not ray(pos + Vector3(0, 0.35, 0), c).is_empty()
+			var rb := ray(pos + Vector3(0, 0.35, 0), c)
+			var blocked := not rb.is_empty()
+			var bk := 0.25
+			if blocked and ent_of(rb.collider) is Structure:
+				bk = Cover.BLAST[Cover.mat_of(ent_of(rb.collider))]
 			# dug in: only a round that lands in the trench itself really hurts
 			var sheltered: bool = world.terrain.in_trench(s.position) and not (blast_in_trench and dist < r * 0.6)
 			if sheltered:
 				blocked = true
 			var f := pow(1.0 - dist / r, 1.2)
-			var dd := dmg * f * (0.25 if blocked else 1.0) * (0.5 if sheltered else 1.0) * world.terrain.blast_mul(s.position)
+			var dd := dmg * f * ((0.25 if sheltered else bk) if blocked else 1.0) * (0.5 if sheltered else 1.0) * world.terrain.blast_mul(s.position)
 			if OS.has_environment("FL_DEBUG_BLAST") and world.terrain.in_trench(s.position):
 				print("BLAST on %s dist=%.1f pos=%s blast_in_trench=%s blocked=%s sheltered=%s dd=%.0f hp=%.0f" % [s.sname, dist, str(pos.snapped(Vector3.ONE * 0.1)), str(blast_in_trench), str(blocked), str(sheltered), dd, s.hp])
 			if s.posture == Soldier.Post.PRONE and s.life == Soldier.Life.ALIVE:
@@ -316,62 +353,22 @@ func explode(pos: Vector3, d: Dictionary) -> void:
 
 # --- cover ----------------------------------------------------------------------------
 
-func _blocked_near(from: Vector3, to: Vector3) -> bool:
-	var r := ray(from, to)
-	if r.is_empty():
-		return false
-	return from.distance_to(r.position) < 3.5
-
-
-## How well does point p protect against the threat eyes? Checks a crouched
-## (or prone) head and a standing head; if both are covered, looks for a corner
-## to lean out of.
-func eval_point(p: Vector3, threats: Array, low_h := 0.75) -> Dictionary:
-	var n := threats.size()
-	if n == 0:
-		return {"type": Soldier.Cov.NONE, "prot": 0.0, "lean": Vector3.ZERO, "tdir": Vector3.FORWARD, "pos": p}
-	var lowb := 0
-	var highb := 0
-	var td := Vector3.ZERO
-	var g := world.ground_y(p)
-	for th in threats:
-		td += Defs.flat(th - p).normalized()
-		if _blocked_near(p + Vector3(0, g + low_h, 0), th):
-			lowb += 1
-			if _blocked_near(p + Vector3(0, g + 1.5, 0), th):
-				highb += 1
-	td = td.normalized() if td.length() > 0.01 else Vector3.FORWARD
-	var typ: int = Soldier.Cov.NONE
-	var lean := Vector3.ZERO
-	if lowb == n and highb == 0:
-		typ = Soldier.Cov.LOW
-	elif lowb == n and highb == n:
-		var th0: Vector3 = threats[0]
-		var side := Defs.flat(th0 - p).normalized().cross(Vector3.UP)
-		for sgn in [1.0, -1.0]:
-			var lp: Vector3 = p + side * sgn * 0.8 + Vector3(0, g + 1.45, 0)
-			if not _blocked_near(lp, th0):
-				lean = side * sgn
-				typ = Soldier.Cov.LEAN
-				break
-		if typ == Soldier.Cov.NONE:
-			typ = Soldier.Cov.HIDE
-	elif lowb > 0:
-		typ = Soldier.Cov.LOW if highb < lowb else Soldier.Cov.HIDE
-	return {"type": typ, "prot": float(lowb) / n, "lean": lean, "tdir": td, "pos": p}
-
-
+## The best place within `radius` of `anchor` for s to fight from against the
+## threats: a fighting position on something solid (see Cover) - preferring
+## what stops the most, where he can shoot back, close by and not taken - or
+## a fold in the ground (a crater, a rubble heap, the woods).
 func find_cover(s: Soldier, anchor: Vector3, radius: float, threats: Array, prone: bool) -> Dictionary:
 	var cands := []
 	var r2 := radius * radius
 	for st in world.structures_near(anchor, radius + 4.0):
 		if not st.provides_cover():
 			continue
-		for p in st.cover_pts:
+		for i in st.anc_p.size():
+			var p: Vector3 = st.anc_p[i]
 			var d2 := Defs.flat(p - anchor).length_squared()
 			if d2 <= r2:
-				cands.append([d2 + Defs.flat(p - s.position).length_squared() * 0.3, p])
-	# ground cover too: craters, rubble heaps, woods, the lip of a trench line
+				cands.append([d2 + Defs.flat(p - s.position).length_squared() * 0.3, st, i])
+	# ground cover too: craters, rubble heaps, woods
 	var tm: TerrainMap = world.terrain
 	var ri := int(radius)
 	var ac := tm.idx_of(anchor)
@@ -381,38 +378,60 @@ func find_cover(s: Soldier, anchor: Vector3, radius: float, threats: Array, pron
 		for z in range(maxi(0, az - ri), mini(TerrainMap.N, az + ri + 1), 2):
 			for x in range(maxi(0, ax - ri), mini(TerrainMap.N, ax + ri + 1), 2):
 				var i := z * TerrainMap.N + x
-				if tm.cov[i] < 2 or tm.solid[i] > 0:
+				if tm.cov[i] < 2 or tm.solid[i] > 0 or tm.trench[i] > 0:
 					continue
+				if tm.crater[i] == 0 and tm.rubble[i] == 0 and tm.woods[i] == 0:
+					continue  # cells beside walls: the wall's own positions are better
 				var p2 := tm.center(i)
 				var d3 := Defs.flat(p2 - anchor).length_squared()
 				if d3 <= r2 and world.nav.walkable(p2):
-					cands.append([d3 + Defs.flat(p2 - s.position).length_squared() * 0.3 + 4.0, p2])
+					cands.append([d3 + Defs.flat(p2 - s.position).length_squared() * 0.3 + 4.0, null, p2])
 	if cands.is_empty():
 		return {}
 	cands.sort_custom(func(a, b): return a[0] < b[0])
 	var best := {}
 	var best_s := -1e9
-	var low_h := 0.3 if prone else 0.75
 	var w := s.cur_weapon()
 	var rng_w: float = float(w.get("range", 50.0)) if not w.is_empty() else 50.0
-	var unarmed := w.is_empty()
-	for i in mini(cands.size(), 18):
-		var p: Vector3 = cands[i][1]
-		var ev := eval_point(p, threats, low_h)
-		var tl := tm.cover_vs(p, threats[0]) if not threats.is_empty() else tm.cover_at(p)
-		if float(ev.prot) <= 0.0 and tl >= TerrainMap.LIGHT and not threats.is_empty():
-			# nothing a bullet would hit, but a dip / heap / undergrowth still helps
-			ev = {"type": Soldier.Cov.LOW, "prot": 0.45 if tl == TerrainMap.LIGHT else 0.8, "lean": Vector3.ZERO, "tdir": ev.tdir, "pos": p}
-		var sc: float = float(ev.prot) * 10.0 + tl * 1.5
+	var unarmed := w.is_empty() or s.is_bearer()
+	var evals := 0
+	for c in cands:
+		if evals >= 20:
+			break
+		var ev: Dictionary
+		var st = c[1]
+		if st != null:
+			var ai: int = c[2]
+			if not Cover.reachable(world, st.anc_p[ai]):
+				continue
+			evals += 1
+			ev = Cover.evaluate(world, st, ai, threats, prone) if not threats.is_empty() else {}
+			if ev.is_empty():
+				continue
+		else:
+			var p2: Vector3 = c[2]
+			var ti := tm.idx_of(p2)
+			# a crater's lip, a heap of rubble or the trees: lie or kneel in it
+			var gh := 0.45 if tm.crater[ti] > 0 else (0.75 if tm.rubble[ti] > 0 else 0.0)
+			var tdir := Defs.flat(threats[0] - p2).normalized()
+			ev = {"type": Soldier.Cov.LOW, "prot": 0.45 if gh == 0.0 else 0.7, "fire": true, "lean": Vector3.ZERO,
+				"tdir": tdir, "pos": p2, "n": tdir if gh > 0.0 else Vector3.ZERO,
+				"h": gh, "mat": Cover.SOFT if gh == 0.0 else Cover.HARD, "st": null, "ai": -1}
+		var p: Vector3 = ev.pos
+		var sc: float = float(ev.prot) * 10.0 + [0.0, 1.8, 3.4, 4.2][int(ev.mat)]
 		match int(ev.type):
 			Soldier.Cov.LOW:
-				sc += 2.0 if prone else 4.0
+				sc += 1.0 if prone else (4.0 if ev.fire else 1.5)
 			Soldier.Cov.LEAN:
-				sc += 3.0
+				sc += 3.5
 			Soldier.Cov.HIDE:
-				sc += 3.0 if (prone or unarmed) else 0.5
+				sc += 4.0 if (prone or unarmed) else 0.0
+		if prone and float(ev.h) > 0.0 and Cover.stance(float(ev.h)) == Cover.PRONE:
+			sc += 1.5  # crawling: a low lip is just the thing
 		sc -= Defs.flat(p - anchor).length() * 0.35
 		sc -= Defs.flat(p - s.position).length() * 0.12
+		if st != null and st == s.cover_st and int(ev.ai) == s.cover_ai:
+			sc += 2.5  # where he already is: no shuffling about
 		if not prone and not threats.is_empty() and Defs.flat(threats[0] - p).length() > rng_w:
 			sc -= 3.0
 		if _claimed(p, s):
@@ -423,20 +442,33 @@ func find_cover(s: Soldier, anchor: Vector3, radius: float, threats: Array, pron
 			best_s = sc
 			best = ev
 	if world.settings.get("debug_cover", false):
-		var dbg := []
-		for i in mini(cands.size(), 18):
-			var p: Vector3 = cands[i][1]
-			var ev2 := eval_point(p, threats, low_h)
-			dbg.append("%s w=%s t=%d pr=%.1f" % [str(p.snapped(Vector3.ONE * 0.1)), str(world.nav.walkable(p)), int(ev2.type), float(ev2.prot)])
-		print("COVER %s anchor=%s threats=%s cands=%d best=%s
-   %s" % [s.sname, str(anchor.round()), str(threats), cands.size(), str(best.get("type", -1)), "
-   ".join(dbg)])
+		print("COVER %s anchor=%s threats=%d cands=%d best=%s mat=%s h=%s" % [s.sname, str(anchor.round()), threats.size(), cands.size(),
+			str(best.get("type", -1)), str(best.get("mat", -1)), str(best.get("h", -1))])
 	if best.is_empty() or float(best.prot) <= 0.0:
 		return {}
 	return best
 
 
+## Share of the threats (enemy eye points) a spot is hidden from, at height h.
+func prot_at(p: Vector3, threats: Array, h: float) -> float:
+	if threats.is_empty():
+		return 0.0
+	var g := world.ground_y(p)
+	var n := 0
+	for th in threats:
+		var r := ray(p + Vector3(0, g + h, 0), th)
+		if not r.is_empty() and p.distance_to(r.position) < 3.5:
+			n += 1
+	return float(n) / threats.size()
+
+
+## Is that spot someone else's - a man standing on it, or one already on
+## his way there (his squad mates are checked wherever they are)?
 func _claimed(p: Vector3, s: Soldier) -> bool:
+	if s.squad:
+		for o in s.squad.members:
+			if o != s and o.life == Soldier.Life.ALIVE and Defs.flat(o.cover_pos - p).length() < 1.0 and (o.at_cover or o.goal_kind == "cover"):
+				return true
 	for o in world.soldiers_near(p, 1.3):
 		if o == s or o.team != s.team or o.life != Soldier.Life.ALIVE:
 			continue

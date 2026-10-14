@@ -1265,7 +1265,8 @@ func debug_stats() -> String:
 			if v.vkind != "truck":
 				out += "\n   %s%d t%d pos=%s hp=%d track=%s tgt=%s path=%d/%d" % [v.vkind, v.eid, v.team, str(v.position.round()), int(v.hp), str(v.track_broken), v.target.display_name() if v.target and not v.target.gone else "-", v.path_i, v.path.size()]
 		for s in soldiers:
-			out += "\n   %s %s t%d %s pos=%s post=%s cov=%s at=%s task=%s supp=%d ammo=%d hp=%d tgt=%s" % [s.utype, s.sname, s.team, Soldier.Life.keys()[s.life], str(s.position.snapped(Vector3.ONE * 0.1)), Soldier.Post.keys()[s.posture], Soldier.Cov.keys()[s.cover_type], str(s.at_cover), s.task, int(s.suppression), s.total_ammo(), int(s.hp), s.target.display_name() if s.target and not s.target.gone else "-"]
+			out += "
+   %s %s t%d %s pos=%s post=%s cov=%s at=%s h=%.2f m=%d up=%s bl=%s task=%s goal=%s supp=%d ammo=%d hp=%d tgt=%s vis=%d" % [s.utype, s.sname, s.team, Soldier.Life.keys()[s.life], str(s.position.snapped(Vector3.ONE * 0.1)), Soldier.Post.keys()[s.posture], Soldier.Cov.keys()[s.cover_type], str(s.at_cover), s.cover_h, s.cover_mat, str(s.peek_up), str(s.blind), s.task, s.goal_kind, int(s.suppression), s.total_ammo(), int(s.hp), s.target.display_name() if s.target and not s.target.gone else "-", s.vis_targets.size()]
 	if settings.get("debug_trucks", false):
 		for v in vehicles:
 			if v.vkind == "truck":

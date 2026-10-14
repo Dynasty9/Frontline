@@ -894,8 +894,7 @@ func _update_preview() -> void:
 	preview_face = face
 	if sel_unit != 0:
 		var thr := gp + face * 40.0
-		var q := world.terrain.best_cover_near(gp, 2.0, thr, [])
-		preview.append([q, world.terrain.cover_vs(q, thr)])
+		preview.append(world.terrain.best_spot_near(gp, 2.0, thr, []))
 		return
 	var side := face.cross(Vector3.UP).normalized()
 	var n := sel_squads.size()

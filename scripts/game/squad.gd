@@ -201,7 +201,10 @@ func _nearest_threat(p: Vector3, r: float) -> Dictionary:
 func formation(center: Vector3, face: Vector3, n: int, wide := false) -> Array:
 	var out := []
 	for sl in world.terrain.slots(center, face, n, wide):
-		out.append(world.nav.nearest_walkable(sl[0]))
+		# a fighting position stays exactly where it is (it's beside a wall
+		# by design); anything else is nudged onto open ground
+		var fp: bool = sl.size() > 2 and not (sl[2] as Dictionary).is_empty()
+		out.append(sl[0] if fp else world.nav.nearest_walkable(sl[0]))
 	return out
 
 

@@ -196,15 +196,32 @@ func _draw() -> void:
 ## arrow while dragging, and what the ground under the cursor is worth.
 func _cover_preview(inp, cam: Camera3D, mp: Vector2) -> void:
 	var cols := [Color(1.0, 0.36, 0.3), Color(0.82, 0.82, 0.8), Color(1.0, 0.8, 0.28), Color(0.42, 0.95, 0.45)]
+	# fighting positions by what they're made of: soft (hides you), medium, hard, fortified
+	var mat_cols := [Color(1.0, 0.8, 0.28), Color(0.74, 0.92, 0.36), Color(0.42, 0.95, 0.45), Color(0.42, 0.95, 0.45)]
+	var w := hud.world
+	var gp: Vector3 = w.cam.ground_point(inp.rmb_start if inp.rmb else mp)
+	var near_info := {}
+	var near_d := 3.0
 	for sl in inp.preview:
 		var p: Vector3 = sl[0] + Vector3(0, 0.12, 0)
 		if cam.is_position_behind(p):
 			continue
 		var sp := cam.unproject_position(p)
 		var lvl: int = int(sl[1])
-		_shield(sp, cols[clampi(lvl + 1, 0, 3)], lvl)
-	var w := hud.world
-	var gp: Vector3 = w.cam.ground_point(inp.rmb_start if inp.rmb else mp)
+		var info: Dictionary = sl[2] if sl.size() > 2 else {}
+		var col: Color = cols[clampi(lvl + 1, 0, 3)]
+		if not info.is_empty():
+			col = mat_cols[int(info.mat)]
+			# a tick towards the barrier: the way he'll face and fire over it
+			var tip := cam.unproject_position(p + (info.n as Vector3) * 0.8)
+			var tv := (tip - sp).limit_length(17.0)
+			draw_line(sp, sp + tv, Color(0, 0, 0, 0.6), 4.5, true)
+			draw_line(sp, sp + tv, col, 2.2, true)
+			var d := Defs.flat((sl[0] as Vector3) - gp).length()
+			if d < near_d:
+				near_d = d
+				near_info = info
+		_shield(sp, col, lvl)
 	var face: Vector3 = inp.drag_face()
 	if face.length() > 0.1:
 		var a := cam.unproject_position(gp + Vector3(0, 0.1, 0))
@@ -221,6 +238,8 @@ func _cover_preview(inp, cam: Camera3D, mp: Vector2) -> void:
 			"defend":
 				lbl = "Defend  ·  "
 		var cs: String = w.terrain.describe(gp, gp + inp.preview_face * 40.0) if w.terrain else ""
+		if not near_info.is_empty():
+			cs = Cover.describe(near_info)
 		var pos: Vector2 = (inp.rmb_start if inp.rmb else mp) + Vector2(18, 44)
 		var tw := UiKit.text_width(lbl + cs, 12) + 14.0
 		draw_style_box(UiKit.boxc(Color(0.03, 0.035, 0.03, 0.7), 4, Color(0, 0, 0, 0), 0, 0.0), Rect2(pos + Vector2(-7, -14), Vector2(tw, 19)))
@@ -587,7 +606,7 @@ static func _talk_kind(e: Entity, t: String) -> String:
 		return "medic"
 	if e is Soldier:
 		var s: Soldier = e
-		if s.doing >= 35 or (s.doing in [0, 8] and not t.ends_with("!")):
+		if (s.doing >= 35 and s.doing <= 41) or (s.doing in [0, 8] and not t.ends_with("!")):
 			return "chat"
 		if (s.flags & Soldier.F_LEADER) != 0 and (t.begins_with("Copy") or t.begins_with("Roger") or t.begins_with("Moving to") or t.begins_with("Wilco")):
 			return "radio"
