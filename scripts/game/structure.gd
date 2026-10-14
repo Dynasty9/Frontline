@@ -1605,8 +1605,13 @@ func _build_model() -> void:
 			for p in parts:
 				_box(p.p + Vector3(0, p.s.y * 0.5 + 0.01, 0), Vector3(p.s.x * 0.9, 0.04, p.s.z * 0.9), C_WOOD.darkened(0.3), p.r)
 		"car":
-			var ck := VehicleModels.build_car(variant % 5, parts[0].color, variant >= 6)
-			model.add_child(ck.root)
+			# parked cars: the island's own (hatchbacks, SUVs, pickups, 4x4s)
+			var civ_key: String = ["hatchback", "suv", "offroad", "mb4wd", "hatchback_sport"][variant % 5]
+			if civ_key in VmCiv.KEYS:
+				model.add_child(VehicleModels.build(civ_key, -1, eid, variant >= 6).root)
+			else:
+				var ck := VehicleModels.build_car(variant % 5, parts[0].color, variant >= 6)
+				model.add_child(ck.root)
 		"wreck":
 			var wk := VehicleModels.build(vk if vk != "" else ("tank" if variant % 2 == 0 else "old_tank"), -1, eid, true)
 			model.add_child(wk.root)

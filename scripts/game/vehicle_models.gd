@@ -67,7 +67,9 @@ static func build(kind: String, team: int, seed: int, is_burnt := false) -> Vehi
 		"aa_tech":
 			k._technical(team, seed, true)
 		"truck":
-			k._truck(team)
+			# the supply convoy: a HEMTT for the Coalition, a Zamak for the Rebels
+			if not ((team == 0 and VmNato.build(k, "hemtt_cargo", team, seed)) or (team == 1 and VmIndep.build(k, "zamak_cargo", team, seed))):
+				k._truck(team)
 		_:
 			# the rest of the roster lives in scripts/game/vehicles/, by family
 			if not (VmNato.build(k, mk, team, seed) or VmCsat.build(k, mk, team, seed) or VmIndep.build(k, mk, team, seed)
