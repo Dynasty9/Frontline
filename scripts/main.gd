@@ -30,6 +30,14 @@ func _ready() -> void:
 		if s.begins_with("--"):
 			var kv := s.substr(2).split("=", true, 1)
 			args[kv[0]] = kv[1] if kv.size() > 1 else "1"
+	if args.has("offscreen") and DisplayServer.get_name() != "headless":
+		# renders for tooling (model sheets): the window starts minimized (the
+		# render copy's override.cfg) and is moved far off-screen before it's
+		# restored, so it never appears over the desktop or takes the focus
+		DisplayServer.window_set_flag(DisplayServer.WINDOW_FLAG_NO_FOCUS, true)
+		DisplayServer.window_set_position(Vector2i(-12000, -12000))
+		DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_WINDOWED)
+		DisplayServer.window_set_position(Vector2i(-12000, -12000))
 	add_child(preload("res://scripts/ui/perf_overlay.gd").new())
 	menu = preload("res://scripts/ui/menu.gd").new()
 	var layer := CanvasLayer.new()
@@ -401,8 +409,6 @@ func _model_sheet_tick() -> void:
 			for k in spec.split(","):
 				keys.append(k)
 	var now := Time.get_ticks_msec() / 1000.0
-	if _ms_i < 0:
-		print("MODEL SHEET window at %s size %s focused %s" % [str(get_window().position), str(get_window().size), str(get_window().has_focus())])
 	if _ms_i >= 0 and now < _ms_t:
 		return
 	if _ms_i >= 0 and _ms_i < keys.size():
