@@ -401,6 +401,8 @@ func _model_sheet_tick() -> void:
 			for k in spec.split(","):
 				keys.append(k)
 	var now := Time.get_ticks_msec() / 1000.0
+	if _ms_i < 0:
+		print("MODEL SHEET window at %s size %s focused %s" % [str(get_window().position), str(get_window().size), str(get_window().has_focus())])
 	if _ms_i >= 0 and now < _ms_t:
 		return
 	if _ms_i >= 0 and _ms_i < keys.size():

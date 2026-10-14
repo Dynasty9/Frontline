@@ -94,6 +94,11 @@ static func foliage() -> ShaderMaterial:
 
 
 static var _vc_cache := {}
+## Merged parts carry their tint as vertex colour, which is stored 8 bits per
+## channel and clamps at 1: a tint brighter than the material's base (a sand
+## paint over an olive preset) would be lost. So it's stored at a quarter and
+## the shader multiplies it back up.
+const VC_K := 4.0
 
 
 ## Same material, but reading the part colour from vertex colours (for merged meshes).
@@ -103,6 +108,8 @@ static func vc_variant(m: ShaderMaterial) -> ShaderMaterial:
 		return _vc_cache[id]
 	var v := m.duplicate() as ShaderMaterial
 	v.set_shader_parameter("use_vcolor", true)
+	if v.shader == shader():
+		v.set_shader_parameter("vcolor_k", VC_K)
 	_vc_cache[id] = v
 	return v
 
@@ -242,9 +249,16 @@ static func _collect(node: Node, xf: Transform3D, groups: Dictionary, victims: A
 					if vc and fa[2] != null and (fa[2] as PackedColorArray).size() == verts.size():
 						g.c.append_array(fa[2])
 					else:
+						# in the scale the merged material reads it back at (see VC_K)
+						var fk := 1.0
+						if vc:
+							var kp = sm.get_shader_parameter("vcolor_k")
+							fk = 1.0 / float(kp) if kp != null else 1.0
+						elif sm.shader == shader():
+							fk = 1.0 / VC_K
 						var cols := PackedColorArray()
 						cols.resize(verts.size())
-						cols.fill(col)
+						cols.fill(Color(col.r * fk, col.g * fk, col.b * fk, col.a))
 						g.c.append_array(cols)
 				victims.append(mi)
 				continue
@@ -370,6 +384,7 @@ uniform float grime = 0.5;
 uniform float rust = 0.0;
 uniform bool local_space = false;
 uniform bool use_vcolor = false;
+uniform float vcolor_k = 1.0;  // merged parts: the vertex colour is stored scaled down (Mats.VC_K)
 uniform sampler2D noise_tex : filter_linear_mipmap_anisotropic, repeat_enable;
 instance uniform vec4 tint : source_color = vec4(1.0);
 instance uniform vec3 pofs = vec3(0.0);
@@ -573,7 +588,7 @@ void fragment() {
 		h = 0.5 + tnoise(uv * 20.0) * 0.1;
 	}
 	col *= tint.rgb;
-	if (use_vcolor) { col *= COLOR.rgb; }
+	if (use_vcolor) { col *= COLOR.rgb * vcolor_k; }
 	// broad, soft variation across a surface (sun-bleached, weathered, damp
 	// patches): large enough never to alias, it keeps big walls from looking flat
 	float macro = tfbm(wpos.xz * 0.11 + wpos.y * 0.07 + off * 0.2);
