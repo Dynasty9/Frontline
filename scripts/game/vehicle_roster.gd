@@ -221,7 +221,64 @@ static func table() -> Dictionary:
 	t["fenghuang_uav"] = _v("KH-3A Fenghuang", 1, 3, "air", "CSAT", "Armed drone", "CASC CH-3A Rainbow", 220, 22.0, 260.0, 0, 18.0, 2.0, "uav",
 		Vector3(5.5, 1.2, 8.0), 0, {"mg": "", "cap": 1, "air": true, "atgm": [4, 10.0], "sight": 75.0, "alt": 26.0, "orbit": 26.0, "model": "fenghuang", "symbol": ["air", "UAV"],
 		"desc": "Canard-winged drone: circles where it's sent, spotting, and fires small anti-tank missiles."})
+	# ---------------------------------------------------------------- more variants
+	t["offroad_hmg"] = _v("Offroad HMG", 1, 1, "light", "FIA", "Technical", "Pickup with an M2 .50 in the bed", 125, 15.0, 340.0, 0, 11.5, 1.8, "car",
+		Vector3(1.9, 1.9, 5.1), 0, {"mg": "m2", "gun_h": 2.1, "cap": 2, "desc": "The guerrilla's workhorse: a .50 cal on a pedestal in a pickup bed."})
+	t["zamak"] = _v("Zamak Transport", 1, 1, "logistics", "FIA", "Utility truck", "KamAZ-4310 6x6", 170, 14.0, 340.0, 0, 8.5, 1.6, "util",
+		Vector3(2.5, 2.9, 7.7), 1, {"mg": "", "carry": "fighter_cell", "cap": 3, "desc": "Six-wheeled army truck under a canvas tilt: a whole fighter cell rides in the back."})
+	t["zamak_medical"] = _v("Zamak Medical", 0, 1, "logistics", "AAF", "Field ambulance", "KamAZ-4310 6x6", 130, 14.0, 340.0, 0, 8.5, 1.6, "util",
+		Vector3(2.5, 2.9, 7.7), 1, {"mg": "", "service": "medical", "cap": 2, "desc": "Allied ambulance truck: treats the wounded within 11 m."})
+	t["tempest_repair"] = _v("Tempest Repair", 1, 1, "logistics", "CSAT", "Armoured repair truck", "KamAZ-63968 Typhoon-K", 140, 15.0, 480.0, 1, 9.0, 1.6, "util",
+		Vector3(2.55, 3.3, 9.0), 1, {"mg": "", "service": "repair", "cap": 2, "desc": "Armoured workshop: repairs vehicles within 13 m."})
+	t["ghosthawk_stub"] = _v("UH-80 Ghost Hawk (Stub Wings)", 0, 2, "air", "NATO", "Armed utility helicopter", "Black Hawk with ESSS stub wings", 330, 32.0, 640.0, 1, 21.0, 2.3, "attack_heli",
+		Vector3(2.4, 3.2, 15.3), 0, {"mg": "minigun", "cap": 3, "air": true, "rockets": 6, "gun_h": 0.9,
+		"desc": "Ghost Hawk with stub wings and rocket pods: a gunship that can still take a door gunner's view."})
 	return t
+
+
+## Arma 3 vehicles that aren't units here: the fixed-wing aircraft (they fly
+## the air-support missions), the boats (there's no water to put them on yet),
+## and the civilians' cars and the like (they're the scenery). For the Field
+## Manual: [key, name, page, faction, role, pattern, crew, km/h, armament, description].
+static func garage() -> Array:
+	return [
+		["buzzard", "A-143 Buzzard", "aircraft", "AAF", "Light attack jet", "Aero L-159 ALCA", "1", 805, "Twin 20 mm gun pod, 7 pylons", "The allied air force's light attack jet: strafes with its gun pod (A-143 Buzzard Strafe)."],
+		["gryphon", "A-149 Gryphon", "aircraft", "AAF", "Multirole fighter", "Saab JAS 39 Gripen", "1", 1015, "20 mm cannon, 6 pylons", "Delta-winged fighter with canards: drops guided bombs on call (A-149 Gryphon Precision Strike)."],
+		["wipeout", "A-164 Wipeout", "aircraft", "NATO", "Close air support", "A-10 Thunderbolt II", "1", 730, "30 mm GAU-8, 12 pylons", "The flying gun: walks 30 mm along a line (A-164 Wipeout Gun Run)."],
+		["blackwasp", "F/A-181 Black Wasp II", "aircraft", "NATO", "Stealth fighter", "Super Hornet / F-22 hybrid", "1", 1213, "20 mm cannon, internal and external pylons", "Stealth strike fighter: a stick of four bombs across a spot (Air Strike)."],
+		["sentinel", "UCAV Sentinel", "aircraft", "NATO", "Stealth combat drone", "Northrop Grumman X-47B", "-", 890, "2 internal GBU-12", "Tailless flying wing: two bombs, no warning (UCAV Sentinel Strike)."],
+		["greyhawk", "MQ-4A Greyhawk", "aircraft", "NATO", "Armed drone", "MQ-9 Reaper layout with canards", "-", 382, "6 Skalpel missiles", "Circles a spot firing guided missiles at whatever it finds (MQ-4A Greyhawk Drone)."],
+		["blackfish", "V-44X Blackfish", "aircraft", "NATO", "Tiltrotor transport", "Enlarged V-22 Osprey / V-280", "4 + 32", 538, "None", "The tiltrotor that carries a platoon - or, armed, the gunship that orbits on call."],
+		["blackfish_armed", "V-44X Blackfish (Armed)", "aircraft", "NATO", "Tiltrotor gunship", "V-22 / AC-130 concept", "4", 538, "105 mm, 40 mm and 20 mm, left side", "Thirty seconds of fire from overhead (V-44X Blackfish Gunship)."],
+		["neophron", "To-199 Neophron", "aircraft", "CSAT", "Light attack jet", "Yakovlev Yak-130", "1", 835, "30 mm cannon, 8 hardpoints", "CSAT's light attack jet: strafes with its 30 mm (To-199 Neophron Strafe)."],
+		["shikra", "To-201 Shikra", "aircraft", "CSAT", "Stealth fighter", "Sukhoi Su-57 / Su-35", "1", 1508, "30 mm cannon, KAB-250 bombs", "The fastest fighter in the sky: three bombs across a spot (To-201 Shikra Bomb Run)."],
+		["xian", "Y-32 Xi'an", "aircraft", "CSAT", "VTOL gunship", "Fictional lift-fan VTOL", "2 + 16", 720, "30 mm cannon, rockets, missiles", "Lift fans in the wings, jets between twin tails: circles a spot raking it (Y-32 Xi'an Gunship)."],
+		["fenghuang", "KH-3A Fenghuang", "aircraft", "CSAT", "Armed drone", "CASC CH-3A Rainbow", "-", 350, "4 Jian missiles", "Small canard-winged drone: the Rebels build it at the Helipad once CSAT's corps arrives."],
+		["caesar", "Caesar BTT", "aircraft", "Civilian", "Light aircraft", "Cessna TTx", "1 + 3", 423, "None", "A civilian tourer: smugglers fly them in at night."],
+		["assault_boat", "Assault Boat", "boats", "NATO / FIA / CSAT", "Inflatable raiding craft", "Zodiac F470 CRRC", "1 + 4", 28, "None", "Black inflatable with an outboard: how special forces and smugglers come ashore."],
+		["motorboat", "Motorboat", "boats", "Civilian", "Speedboat", "Open runabout", "1 + 2", 69, "None", "A pleasure boat from the marinas."],
+		["rhib", "RHIB", "boats", "Syndikat", "Rigid-hulled inflatable", "Centre-console RHIB", "1 + 6", 90, "None", "The fastest thing on the water."],
+		["sdv", "SDV", "boats", "NATO", "Swimmer delivery vehicle", "Mk 8 Mod 1 SEAL Delivery Vehicle", "2 + 2", 23, "Laser designator", "A free-flooding mini-submarine: divers ride it under the water."],
+		["speedboat_minigun", "Speedboat Minigun", "boats", "NATO", "Armed patrol boat", "Small Unit Riverine Craft", "3 + 8", 74, "40 mm GMG (bow), minigun (stern)", "Armoured riverine patrol craft."],
+		["speedboat_hmg", "Speedboat HMG", "boats", "CSAT", "Armed patrol boat", "Small Unit Riverine Craft", "3 + 8", 74, "40 mm GMG (bow), 12.7 mm HMG (stern)", "CSAT's riverine patrol craft."],
+		["water_scooter", "Water Scooter", "boats", "Civilian", "Personal watercraft", "Jet ski", "1 + 2", 84, "None", "A jet ski from the beach resorts."],
+		["hatchback", "Hatchback", "civilian", "Civilian", "Hatchback", "Hyundai i-Blue concept", "1 + 3", 191, "None", "The commonest car on the island's roads."],
+		["hatchback_sport", "Hatchback (Sport)", "civilian", "Civilian", "Hot hatch", "Hyundai i-Blue concept, sport", "1 + 3", 298, "None", "Lowered, spoilered and loud."],
+		["suv", "SUV", "civilian", "Civilian", "Luxury SUV", "BMW X6", "1 + 3", 250, "None", "The rich man's car."],
+		["mb4wd", "MB 4WD", "civilian", "Civilian / Syndikat", "Compact 4x4", "Jeep Wrangler", "1 + 3", 196, "None", "A little go-anywhere 4x4; Syndikat bolt guns onto them."],
+		["van_services", "Van Services", "civilian", "Civilian / FIA", "Utility van", "Mercedes-Benz Sprinter", "1 + 1", 158, "None", "A tradesman's van with a roof rack."],
+		["fia_truck_box", "Truck Boxer", "civilian", "Civilian / FIA", "Box truck", "Iveco Daily 4x4", "1 + 2", 118, "None", "A light truck with a box body."],
+		["kart", "Kart", "civilian", "Civilian", "Go-kart", "Racing kart", "1", 101, "None", "Somebody's weekend hobby."],
+		["tractor", "Tractor", "civilian", "Civilian (LDF)", "Farm tractor", "Zetor 8811", "1", 36, "None", "Works the fields round the farms."],
+		["hemtt_fuel", "HEMTT Fuel", "civilian", "NATO", "Tanker", "Oshkosh M978 HEMTT tanker", "2", 83, "None", "Refuels vehicles (there's no fuel to run out of here)."],
+		["hemtt_cargo", "HEMTT Cargo", "civilian", "NATO", "Supply truck", "Oshkosh M977 HEMTT", "2", 83, "None", "The Coalition's supply convoy truck."],
+		["zamak_cargo", "Zamak Cargo", "civilian", "FIA / AAF", "Supply truck", "KamAZ-4310", "3", 82, "None", "The Rebels' supply convoy truck."],
+		["zamak_fuel", "Zamak Fuel", "civilian", "AAF", "Tanker", "KamAZ-4310 tanker", "3", 82, "None", "Refuels vehicles."],
+		["tempest_fuel", "Tempest Fuel", "civilian", "CSAT", "Tanker", "KamAZ-63968 Typhoon-K", "2", 93, "None", "Armoured tanker."],
+		["utility_drone", "Utility Drone", "civilian", "IDAP / all", "Hexacopter", "Six-rotor drone", "-", 100, "None", "Drops leaflets or medical supplies."],
+		["demining_drone", "Demining Drone", "civilian", "IDAP", "Demining hexacopter", "TU Delft concept", "-", 100, "4 demining charges", "Finds and blows mines from the air."],
+		["ed1", "ED-1 Mini UGV", "civilian", "NATO / CSAT / AAF", "Mini robot", "PackBot / Talon-class EOD robot", "-", 12, "Disruptor", "The bomb-disposal robot that rides in a backpack."],
+	]
 
 
 ## One roster entry.

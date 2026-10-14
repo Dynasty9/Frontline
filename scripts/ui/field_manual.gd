@@ -8,8 +8,10 @@ extends PanelContainer
 signal closed
 
 const CATS := [
-	["infantry", "Infantry"], ["squads", "Squads & teams"], ["weapons", "Weapons"], ["vehicles", "Vehicles"],
-	["bases", "Base buildings"], ["defences", "Field defences"], ["cover", "Cover"], ["support", "Fire support"], ["upgrades", "Upgrades"],
+	["infantry", "Infantry"], ["squads", "Squads & teams"], ["weapons", "Weapons"],
+	["veh_light", "Light vehicles"], ["veh_armour", "Armour"], ["veh_support", "Support & logistics"], ["veh_air", "Helicopters & drones"],
+	["bases", "Base buildings"], ["defences", "Field defences"], ["cover", "Cover"], ["support", "Fire support"],
+	["aircraft", "Aircraft"], ["boats", "Boats"], ["civilian", "Civilian & other"], ["upgrades", "Upgrades"],
 ]
 ## Battlefield cover, and how a man fights from each: [key, name, structure
 ## kind, variant, size, barrier height, where it's found, what it is].
@@ -135,16 +137,20 @@ func _ready() -> void:
 	body.add_theme_constant_override("separation", 12)
 	body.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	vb.add_child(body)
+	var csc := ScrollContainer.new()
+	csc.custom_minimum_size = Vector2(170, 0)
+	csc.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	body.add_child(csc)
 	var cats := VBoxContainer.new()
-	cats.custom_minimum_size = Vector2(170, 0)
-	cats.add_theme_constant_override("separation", 4)
-	body.add_child(cats)
+	cats.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	cats.add_theme_constant_override("separation", 3)
+	csc.add_child(cats)
 	for c in CATS:
 		var b2 := Button.new()
 		b2.text = c[1]
 		b2.toggle_mode = true
 		b2.alignment = HORIZONTAL_ALIGNMENT_LEFT
-		b2.custom_minimum_size = Vector2(0, 36)
+		b2.custom_minimum_size = Vector2(0, 31)
 		var ck: String = c[0]
 		b2.pressed.connect(func(): _set_cat(ck))
 		cats.add_child(b2)
@@ -200,6 +206,12 @@ func _ready() -> void:
 ## Opens on a page: a category, optionally an entry, optionally one side.
 func open(cat: String, key := "", side := -1) -> void:
 	visible = true
+	if cat == "vehicles":
+		# (the old single vehicles page): whichever page that vehicle is on now
+		cat = "veh_armour"
+		for e in _entries:
+			if String(e.cat).begins_with("veh_") and e.key == key:
+				cat = e.cat
 	if cat == "model" and key != "":
 		# a bare model on the turntable (checking a model being built)
 		var have := false
@@ -530,7 +542,7 @@ func _make_model(e: Dictionary) -> Node3D:
 			return g
 		"weapons":
 			return _weapon_model(String(e.key), side)
-		"vehicles":
+		"veh_light", "veh_armour", "veh_support", "veh_air", "aircraft", "boats", "civilian":
 			var vm := VehicleModels.build(String(e.key), side if int(e.team) >= 0 else 0, 7)
 			return vm.root
 		"bases", "defences":
@@ -948,6 +960,14 @@ func _build_entries() -> Array:
 			guns.append("main gun")
 		if String(v.get("mg", "")) != "":
 			guns.append(String(Defs.WEAPONS[v.mg].name))
+		if v.has("atgm"):
+			guns.append("%d anti-tank missiles" % int(v.atgm[0]))
+		if v.has("sam"):
+			guns.append("%d anti-aircraft missiles" % int(v.sam[0]))
+		if int(v.get("rockets", 0)) > 0 and String(v.get("base", "")) == "attack_heli":
+			guns.append("rocket pods")
+		if v.has("art"):
+			guns.append(("%s, %d-%d m" % ["rocket artillery" if String(v.art.shell) == "grad" else "howitzer", int(v.art.min), int(v.art.max)]))
 		var where := "the Factory"
 		for b in Defs.BUILDINGS:
 			var pr: Array = Defs.BUILDINGS[b].get("produces", [[], []])
@@ -964,10 +984,37 @@ func _build_entries() -> Array:
 		]
 		if v.has("carry"):
 			st2.append(["Carries", "%s (%d men)" % [String(Defs.SQUADS[v.carry].name), Defs.SQUADS[v.carry].members.size()], -1.0])
-		out.append({"cat": "vehicles", "key": k, "name": String(v.name), "team": int(v.team),
-			"role": "aircraft" if v.get("air", false) or k == "heli" else ("tracked" if v.get("tracked", false) or k in ["tank", "old_tank"] else "wheeled"),
-			"sub": "%d hp · %s" % [int(v.hp), ", ".join(guns) if not guns.is_empty() else "unarmed"], "pattern": PATTERN.get(k, ""),
-			"desc": String(v.desc), "stats": st2, "rel": (["Built at " + where] if int(v.cost) > 0 else ["Drives supply from your depot to the FOBs"])})
+		if v.has("service"):
+			st2.append(["Service", {"repair": "repairs vehicles within 13 m", "ammo": "rearms men and vehicles within 13 m", "medical": "treats the wounded within 11 m"}.get(String(v.service), String(v.service)), -1.0])
+		if v.has("sight"):
+			st2.append(["Sees", "%d m" % int(v.sight), -1.0])
+		if int(v.get("tier", 1)) > 1:
+			var tier_r := ""
+			for uk in Defs.UPGRADES:
+				if int(Defs.UPGRADES[uk].get("tier", 0)) == int(v.tier) and int(v.team) in Defs.UPGRADES[uk].teams:
+					tier_r = String(Defs.UPGRADES[uk].name)
+			st2.append(["Unlocked by", "%s (tier %d)" % [tier_r, int(v.tier)], -1.0])
+		var vpage: String = "veh_air" if v.get("air", false) else {"light": "veh_light", "armour": "veh_armour", "support": "veh_support", "logistics": "veh_support", "air": "veh_air"}.get(
+			String(v.get("cat", "")), "veh_armour" if String(v.get("base", "")) in ["tank", "afv"] else ("veh_support" if String(v.get("base", "")) in ["spaa", "supply", "util", "arty"] else "veh_light"))
+		var rel := ["Built at " + where] if int(v.cost) > 0 else ["Drives supply from your depot to the FOBs"]
+		if v.has("faction"):
+			rel.append("%s - %s" % [String(v.faction), String(v.get("role", ""))])
+		out.append({"cat": vpage, "key": k, "name": String(v.name), "team": int(v.team),
+			"role": String(v.get("faction", "aircraft" if v.get("air", false) else ("tracked" if v.get("tracked", false) else "wheeled"))),
+			"sub": "%d hp · %s" % [int(v.hp), ", ".join(guns) if not guns.is_empty() else "unarmed"], "pattern": String(v.get("pattern", PATTERN.get(k, ""))),
+			"desc": String(v.desc), "stats": st2, "rel": rel})
+	# the rest of the Arma 3 garage: aircraft, boats, civilian vehicles
+	for g in VehicleRoster.garage():
+		var gteam := -1
+		var gf: String = g[3]
+		if gf.begins_with("NATO") or gf.begins_with("AAF"):
+			gteam = 0
+		elif gf.begins_with("CSAT") or gf.begins_with("FIA") or gf.begins_with("Syndikat"):
+			gteam = 1
+		out.append({"cat": g[2], "key": g[0], "name": g[1], "team": gteam, "both": gteam < 0, "role": gf,
+			"sub": "%s · %s" % [g[4], gf], "pattern": g[5], "desc": g[9],
+			"stats": [["Role", g[4], -1.0], ["Crew / passengers", g[6], -1.0], ["Top speed", "%d km/h" % int(g[7]), clampf(float(g[7]) / 1500.0, 0.0, 1.0)], ["Armament", g[8], -1.0]],
+			"rel": ["Faction: " + gf]})
 
 	# buildings and defences
 	var bhp: float = mx.call(Defs.BUILDINGS, func(b): return b.hp)
