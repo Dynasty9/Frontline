@@ -445,7 +445,14 @@ crates, wrecks, rubble, tall walls, windows, trenches, craters and woods - with 
 gets through, how a man fights from it, and a diorama of a soldier doing so. **Drills & reflexes** shows what a
 soldier does without being told: the grenade reflexes, cooking a grenade and clearing a house, each posed.
 
-**AI commander** (`commander_ai.gd`) plays through the same command interface as a human. It places
+**AI commander** (`commander_ai.gd`): spare squads go forward to hold the town, the villages and the larger
+woods between its front and the enemy's, lying in wait, so the fighting is over the ground in between; a
+forward FOB falls due every few minutes and supply is held back for it (each FOB runs its own supply truck,
+so whoever expands first pulls ahead). Armoured vehicles fire their smoke dischargers when a missile, rocket
+or recoilless round is launched at them, and a guided missile whose operator loses sight of its target in the
+smoke flies on blind.
+
+The AI commander plays through the same command interface as a human. It places
 buildings that its engineers must build, trains a mix of squads, saves for vehicles, expands with new FOBs,
 garrisons, answers attacks on its bases, sends waves at your FOBs and ambushes your supply roads. The Rebel AI
 digs forward tunnel entrances and moves its attack waves through them. AI-vs-AI results swing a lot between
