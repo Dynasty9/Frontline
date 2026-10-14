@@ -240,7 +240,36 @@ Settings are saved to `user://settings.cfg`.
 - The squad panel shows each selected squad's symbol, callsign, type and strength; the minimap carries the same
   symbols and the A-H / 1-8 grid the radio uses. FOB and HQ names are drawn over everything.
 
-**Vehicles** (`vehicle.gd`, `drone.gd`, `projectile.gd`)
+**Vehicles** (`vehicle.gd`, `vehicle_roster.gd`, `drone.gd`, `projectile.gd`)
+- **The Arma 3 garage.** Alongside the original vehicles, both sides field Arma 3's (`vehicle_roster.gd`), each
+  modelled on the real vehicle Arma's is based on:
+  - Coalition, NATO: Hunter (M-ATV, unarmed / HMG / GMG), Prowler (DAGOR, unarmed / HMG / AT), AMV-7 Marshall
+    (Patria AMV, 40 mm), Rhino MGS and MGS UP (Rooikat, 120 mm), M2A1 Slammer and M2A4 Slammer UP (Merkava IV,
+    carries a fire team), IFV-6c Panther (Namer), CRV-6e Bobcat (repair), IFV-6a Cheetah (twin 35 mm + missiles),
+    M4 Scorcher (155 mm), M5 Sandstorm (rockets), HEMTT transport / ammo / repair / medical, UGV Stomper, and the
+    AH-9 Pawnee, MH-9 Hummingbird, UH-80 Ghost Hawk (and stub wings), CH-67 Huron, AH-99 Blackfoot, MQ-12 Falcon and
+    AR-2 Darter at the Helipad.
+  - Coalition, AAF (the allied army): Strider (Fennek), AFV-4 Gorgon (Pandur II), FV-720 Mora (Warrior), MBT-52
+    Kuma (Leopard 2), AWC Nyx autocannon / AT / AA / recon (Wiesel), Zamak ammo and medical trucks, CH-49 Mohawk
+    and WY-55 Hellcat.
+  - Rebels, FIA and Syndikat: Offroad (unarmed / HMG / AT / repair), MB 4WD LMG and AT, Quadbike, Truck, Van
+    transport and ambulance, Zamak transport / repair / MRL, and a stolen M900.
+  - Rebels, CSAT-supplied: Ifrit (Karatel, unarmed / HMG / GMG), Qilin (LSV, unarmed / minigun / AT), MSE-3 Marid,
+    BTR-K Kamysh, T-100 Varsuk, T-100X Futura (railgun), T-140 Angara and T-140K, ZSU-39 Tigris, 2S9 Sochor,
+    Tempest transport / ammo / medical / repair, Mi-48 Kajman, PO-30 Orca (and armed), Mi-290 Taru, KH-3A Fenghuang.
+- **Tiers.** Light vehicles, trucks and transport helicopters from the start; tanks, IFVs, anti-aircraft
+  vehicles and attack helicopters after Armoured Warfare (Coalition) or Foreign Advisers (Rebels); artillery, the
+  heaviest tanks and drones after Combined Arms / Expeditionary Corps. The Factory and Helipad pages long lists
+  by category (Light, Armour, Fire support, Logistics, Air) and show what's still locked.
+- **What they do:** ATGMs at armour and bunkers, homing SAMs at anything flying; self-propelled guns and rocket
+  launchers halt, lay the barrel or raise the launcher and fire salvos at spotted enemies (or on a fire mission:
+  F); repair, ammunition and medical vehicles look after everything parked near them; troop helicopters fly
+  their squad in, find clear ground, land, unload and fly home; drones circle where they're sent spotting for
+  their side (the armed ones fire missiles); recon vehicles see further. New weapons: 40 mm grenade machine
+  guns, 20/30/40 mm cannon, twin 35 mm, miniguns, each with its own sound; main guns by the vehicle (125 mm,
+  120 mm, a railgun, recoilless rifles).
+- **Boarding:** select infantry and right-click your truck, APC, Slammer or a landed helicopter: they climb in
+  (as many as fit) and ride until they dismount or it arrives.
 - Tanks smash through walls, trees and cars. Small arms ricochet off them. Frontal rockets can bounce,
   and a blown track leaves the tank stranded until engineers repair it. Destroyed vehicles become wrecks you can use as cover.
 - Coalition: battle tank, **IFV** (tracked, 25 mm with airburst rounds, carries a four-man fire team), **Humvee**
@@ -254,12 +283,14 @@ Settings are saved to `user://settings.cfg`.
 - Armour classes: soft-skinned pickups and trucks bleed from rifle fire; light armour (Humvee, helicopters) shrugs
   it off and needs .50 cals, cannons, AA or rockets; tanks only fear anti-tank weapons.
 - **Off-map support**, from minute five, each on its own cooldown:
-  - Coalition: **air strike** (a jet drops a stick of four high-drag bombs across the spot), **A-10 gun run** (the
-    Warthog comes in low and visible, nose down, and walks a burst of 30 mm through the target: the impacts land
-    first, the BRRRT arrives after), **AC-130** (Spectre orbits for 25 seconds hunting anything in the circle:
-    you hear the 105, 40 and 25 mm fire from overhead, then a second or two later the rounds rain down as tracer
-    streaks), **155 mm artillery** (eight heavy shells, visible arcs and a tearing whistle).
-  - Rebels: **rocket barrage** (sixteen rockets) and **mortar barrage** (twelve rounds).
+  - Coalition: **F/A-181 Black Wasp II strike** (a stick of four high-drag bombs across the spot), **A-164
+    Wipeout gun run** (comes in low and visible, nose down, and walks a burst of 30 mm through the target: the
+    impacts land first, the BRRRT arrives after), **V-44X Blackfish gunship** (orbits for 25 seconds hunting
+    anything in the circle with 105, 40 and 20 mm), **A-143 Buzzard** strafe, **A-149 Gryphon** precision strike,
+    **MQ-4A Greyhawk** drone (circles firing guided missiles), **UCAV Sentinel** (two bombs, no warning to the
+    enemy), **155 mm artillery** (eight heavy shells, visible arcs and a tearing whistle).
+  - Rebels: **To-199 Neophron** strafe, **To-201 Shikra** bomb run, **Y-32 Xi'an** gunship orbit, **rocket barrage**
+    (sixteen rockets) and **mortar barrage** (twelve rounds).
   - Mortar and artillery shells are drawn a little larger than life with a smoke trail, so you can follow the arcs.
   - The AI calls them on dense groups of spotted enemies, never danger-close to its own troops, running gun runs
     in from its own lines.
@@ -408,7 +439,10 @@ game/vfx.gd             GPU particle explosions, smoke, fire, decals, shockwaves
 game/atmosphere.gd      sky, sun, fog, ground shader, post effects, moods
 game/grass.gd           instanced grass, bushes and stones
 game/mats.gd            procedural surface uber-shader, foliage, camouflage netting
-game/vehicle_models.gd  lofted procedural vehicle models (also used for wrecks and the menu)
+game/vehicle_models.gd  lofted procedural vehicle models (also used for wrecks and the menu); dispatches to
+game/vehicles/          the Arma 3 models by family: vm_nato, vm_csat, vm_indep (AAF), vm_civ (FIA, Syndikat,
+                        civilian), vm_heli, vm_plane, vm_boat
+game/vehicle_roster.gd  the Arma 3 roster (stats, behaviour, tiers, patterns) and the Field Manual's garage
 game/director.gd        observer camera and time controls
 ui/hud.gd, menu.gd      interface; ui/settings_panel.gd, ui/perf_overlay.gd, ui/ui_kit.gd (shared style),
 ui/hud_overlay.gd       everything drawn over the battlefield (labels, speech, symbols, orders, plans, intel)
@@ -462,6 +496,9 @@ Pass these after `--` on the command line:
 --manual=CATEGORY[,ENTRY[,SIDE]]                      open the field manual on a page (in a battle)
 --pan=VX,VZ / --set=key:value,...                     drift the camera (shimmer tests) / override single settings
 --scenario=guns                                       every machine-gun emplacement and trench bay, crewed, with targets
+--scenario=roster                                     every vehicle both sides can field, facing off across the map
+--model-sheet=KEYS|FAMILY --sheet-dir=DIR [--side=1] [--sheet-yaw=R]   turntable shots of models (nato, csat, indep, civ, heli, plane, boat, all)
+--manual=model,KEY,SIDE                               a bare model in the Field Manual
 --curtain                                             show the intro / loading screens in an automated run
 --menu-op=0|1|-1                                      open the New Operation panel on that side
 --startup-trace                                       print the first frames' timings
