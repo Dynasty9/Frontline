@@ -207,8 +207,10 @@ func center_point() -> Vector3:
 	return position + Vector3(0, 1.1, 0)
 
 
+## How easy it is to hit, against a man's 1.0: a truck or a tank is a barn
+## door, a quad bike a man, a quadcopter drone a bird.
 func hit_factor() -> float:
-	return 2.0
+	return float(vdef.get("hit", 2.0))
 
 
 func needs_repair() -> bool:

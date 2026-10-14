@@ -49,7 +49,7 @@ static func table() -> Dictionary:
 	t["hemtt_medical"] = _v("HEMTT Medical", 0, 1, "logistics", "NATO", "Field ambulance", "Oshkosh M977 HEMTT, medical body", 140, 15.0, 400.0, 0, 9.0, 1.6, "util",
 		Vector3(2.5, 3.0, 10.0), 1, {"mg": "", "service": "medical", "cap": 2, "desc": "Treats the wounded within 11 m: patches men up and gets the downed back on their feet."})
 	t["stomper"] = _v("UGV Stomper RCWS", 0, 3, "logistics", "NATO", "Unmanned ground combat vehicle", "NREC Crusher UGCV", 170, 18.0, 420.0, 1, 4.5, 1.6, "car",
-		Vector3(2.6, 1.6, 5.1), 0, {"mg": "m2", "gun_h": 1.9, "cap": 1, "symbol": ["motor", "UGV"],
+		Vector3(2.6, 1.6, 5.1), 0, {"hit": 1.4, "mg": "m2", "gun_h": 1.9, "cap": 1, "symbol": ["motor", "UGV"],
 		"desc": "Six-wheeled robot with a .50 cal and a grenade launcher. Slow, tough, nobody inside to lose."})
 	# ---------------------------------------------------------------- NATO: tracked
 	t["slammer"] = _v("M2A1 Slammer", 0, 2, "armour", "NATO", "Main battle tank", "Merkava Mk IV", 340, 32.0, 1550.0, 2, 6.5, 1.1, "tank",
@@ -93,23 +93,23 @@ static func table() -> Dictionary:
 		Vector3(3.75, 2.6, 7.7), 2, {"cannon": true, "mg": "coax", "cap": 4, "tracked": true, "gun": {"dmg": 165.0, "at": 335.0, "radius": 5.5, "cd": 5.5},
 		"desc": "Leopard 2 with slat and appliqué armour: the fastest tank on the field and a long 120 mm."})
 	t["nyx_ac"] = _v("AWC 304 Nyx (Autocannon)", 0, 2, "armour", "AAF", "Light tank / tankette", "Rheinmetall Wiesel AWC, 20 mm", 170, 18.0, 520.0, 1, 9.5, 2.0, "afv",
-		Vector3(1.85, 1.9, 3.6), 0, {"mg": "ac20", "cap": 2, "tracked": true, "desc": "Tiny tracked carrier with a 20 mm cannon: quick, hard to spot, hits light vehicles hard."})
+		Vector3(1.85, 1.9, 3.6), 0, {"hit": 1.4, "mg": "ac20", "cap": 2, "tracked": true, "desc": "Tiny tracked carrier with a 20 mm cannon: quick, hard to spot, hits light vehicles hard."})
 	t["nyx_at"] = _v("AWC 301 Nyx (AT)", 0, 2, "armour", "AAF", "Light tank / tankette", "Rheinmetall Wiesel AWC with missiles", 210, 20.0, 520.0, 1, 9.5, 2.0, "afv",
-		Vector3(1.85, 1.9, 3.6), 0, {"mg": "m2", "cap": 2, "tracked": true, "atgm": [6, 8.0], "desc": "Wiesel with six fire-and-forget anti-tank missiles and a .50 cal."})
+		Vector3(1.85, 1.9, 3.6), 0, {"hit": 1.4, "mg": "m2", "cap": 2, "tracked": true, "atgm": [6, 8.0], "desc": "Wiesel with six fire-and-forget anti-tank missiles and a .50 cal."})
 	t["nyx_aa"] = _v("AWC 302 Nyx (AA)", 0, 2, "support", "AAF", "Light anti-aircraft vehicle", "Rheinmetall Wiesel AWC with Stinger-class missiles", 200, 20.0, 520.0, 1, 9.5, 2.0, "spaa",
-		Vector3(1.85, 1.9, 3.6), 0, {"mg": "m2", "cap": 2, "tracked": true, "aa": true, "sam": [8, 5.0], "sight": 70.0,
+		Vector3(1.85, 1.9, 3.6), 0, {"hit": 1.4, "mg": "m2", "cap": 2, "tracked": true, "aa": true, "sam": [8, 5.0], "sight": 70.0,
 		"desc": "Two four-round missile pods: a cheap, quick answer to enemy helicopters."})
 	t["nyx_recon"] = _v("AWC 303 Nyx (Recon)", 0, 2, "light", "AAF", "Reconnaissance vehicle", "Rheinmetall Wiesel AWC with radar and periscope", 150, 16.0, 500.0, 1, 9.5, 2.0, "car",
-		Vector3(1.85, 2.4, 3.6), 0, {"mg": "", "cap": 1, "tracked": true, "sight": 110.0, "symbol": ["armor", "RECCE"],
+		Vector3(1.85, 2.4, 3.6), 0, {"hit": 1.4, "mg": "", "cap": 1, "tracked": true, "sight": 110.0, "symbol": ["armor", "RECCE"],
 		"desc": "Unarmed: a compact radar and an extending periscope see 110 m, for your artillery and your tanks."})
 	t["zamak_ammo"] = _v("Zamak Ammo", 0, 1, "logistics", "AAF", "Ammunition truck", "KamAZ-4310", 120, 14.0, 340.0, 0, 8.5, 1.6, "util",
 		Vector3(2.5, 2.9, 7.7), 1, {"mg": "", "service": "ammo", "cap": 2, "desc": "Allied ammunition truck: rearms troops and vehicles within 13 m."})
 	# ---------------------------------------------------------------- NATO / AAF air
 	t["pawnee"] = _v("AH-9 Pawnee", 0, 2, "air", "NATO", "Light attack helicopter", "MD 500 / AH-6 Little Bird", 260, 26.0, 420.0, 0, 24.0, 2.8, "attack_heli",
-		Vector3(1.9, 2.4, 7.0), 0, {"mg": "minigun", "cap": 3, "air": true, "rockets": 2, "gun_h": 0.9,
+		Vector3(1.9, 2.4, 7.0), 0, {"hit": 1.3, "mg": "minigun", "cap": 3, "air": true, "rockets": 2, "gun_h": 0.9,
 		"desc": "Little Bird with two miniguns and rocket pods: fast, nimble and fragile."})
 	t["hummingbird"] = _v("MH-9 Hummingbird", 0, 1, "air", "NATO", "Light transport helicopter", "MD 500 / MH-6 Little Bird", 200, 22.0, 380.0, 0, 24.0, 2.8, "lift_heli",
-		Vector3(1.9, 2.4, 7.0), 0, {"mg": "", "cap": 2, "air": true, "carry": "mech_team",
+		Vector3(1.9, 2.4, 7.0), 0, {"hit": 1.3, "mg": "", "cap": 2, "air": true, "carry": "mech_team",
 		"desc": "Little Bird with outboard benches: drops a fire team anywhere on the map in seconds, then flies home."})
 	t["ghosthawk"] = _v("UH-80 Ghost Hawk", 0, 2, "air", "NATO", "Utility helicopter", "Stealth UH-60 Black Hawk", 300, 30.0, 620.0, 1, 21.0, 2.3, "lift_heli",
 		Vector3(2.4, 3.2, 15.3), 0, {"mg": "minigun", "cap": 3, "air": true, "carry": "rifle_squad",
@@ -121,10 +121,10 @@ static func table() -> Dictionary:
 		Vector3(2.0, 3.4, 14.3), 0, {"mg": "m197", "cap": 4, "air": true, "rockets": 4, "atgm": [4, 10.0], "gun_h": 0.7,
 		"desc": "Stealthy attack helicopter: chin 20 mm, rockets and anti-tank missiles."})
 	t["falcon"] = _v("MQ-12 Falcon", 0, 3, "air", "NATO", "Armed rotary drone", "MQ-8 Fire Scout", 230, 22.0, 300.0, 0, 16.0, 2.0, "uav",
-		Vector3(1.6, 1.8, 7.0), 0, {"mg": "", "cap": 1, "air": true, "atgm": [6, 9.0], "sight": 75.0, "alt": 24.0, "orbit": 22.0, "symbol": ["air", "UAV"],
+		Vector3(1.6, 1.8, 7.0), 0, {"hit": 0.7, "mg": "", "cap": 1, "air": true, "atgm": [6, 9.0], "sight": 75.0, "alt": 24.0, "orbit": 22.0, "symbol": ["air", "UAV"],
 		"desc": "Unmanned helicopter: circles where you send it, spotting, and puts anti-tank missiles into armour."})
 	t["darter"] = _v("AR-2 Darter", 0, 1, "air", "NATO", "Small reconnaissance drone", "Parrot-style quadcopter", 70, 10.0, 60.0, 0, 11.0, 3.0, "uav",
-		Vector3(0.9, 0.4, 0.9), 0, {"mg": "", "cap": 1, "air": true, "sight": 70.0, "alt": 18.0, "orbit": 12.0, "symbol": ["air", "UAV"],
+		Vector3(0.9, 0.4, 0.9), 0, {"hit": 0.15, "mg": "", "cap": 1, "air": true, "sight": 70.0, "alt": 18.0, "orbit": 12.0, "symbol": ["air", "UAV"],
 		"desc": "Quadcopter: circles a spot and shows everything within 70 m to your side. Cheap, quiet, easy to shoot down."})
 	t["mohawk"] = _v("CH-49 Mohawk", 0, 1, "air", "AAF", "Medium transport helicopter", "AgustaWestland AW101 Merlin", 280, 30.0, 680.0, 1, 19.0, 1.9, "lift_heli",
 		Vector3(3.0, 3.6, 19.5), 0, {"mg": "", "cap": 3, "air": true, "carry": "rifle_squad",
@@ -146,7 +146,7 @@ static func table() -> Dictionary:
 		Vector3(1.9, 1.9, 4.2), 0, {"cannon": true, "mg": "", "cap": 1, "gun_h": 2.2, "gun": {"dmg": 110.0, "at": 270.0, "radius": 4.0, "cd": 7.5, "size": 1.0},
 		"desc": "Open jeep with a recoilless rifle: shoot and scoot."})
 	t["quadbike"] = _v("Quadbike", 1, 1, "light", "FIA", "All-terrain vehicle", "Yamaha Grizzly ATV", 35, 6.0, 140.0, 0, 10.0, 2.6, "car",
-		Vector3(1.2, 1.2, 2.0), 0, {"mg": "", "cap": 1, "sight": 65.0, "desc": "A scout on a quad: quick and quiet, gone at the first burst."})
+		Vector3(1.2, 1.2, 2.0), 0, {"hit": 1.0, "mg": "", "cap": 1, "sight": 65.0, "desc": "A scout on a quad: quick and quiet, gone at the first burst."})
 	t["fia_truck"] = _v("Truck", 1, 1, "logistics", "FIA", "Light truck", "Iveco Daily 4x4", 160, 12.0, 300.0, 0, 9.5, 1.8, "util",
 		Vector3(2.1, 2.7, 5.6), 1, {"mg": "", "carry": "fighter_cell", "cap": 2, "desc": "Dropside truck: brings a whole fighter cell up the road."})
 	t["van_ambulance"] = _v("Van Ambulance", 1, 1, "logistics", "FIA", "Ambulance", "Mercedes-Benz Sprinter", 100, 13.0, 260.0, 0, 10.5, 1.9, "util",
@@ -216,10 +216,10 @@ static func table() -> Dictionary:
 		Vector3(3.0, 4.2, 18.0), 0, {"mg": "", "cap": 0, "air": true, "auto": true, "supply": true, "load": 140,
 		"desc": "Sky-crane with a cargo pod: flies supply straight to your neediest FOB over cut roads."})
 	t["m900"] = _v("M900", 1, 1, "air", "Syndikat", "Light civilian helicopter", "MD 500D", 150, 18.0, 300.0, 0, 23.0, 2.8, "lift_heli",
-		Vector3(1.9, 2.4, 7.0), 0, {"mg": "", "cap": 1, "air": true, "carry": "mech_cell",
+		Vector3(1.9, 2.4, 7.0), 0, {"hit": 1.3, "mg": "", "cap": 1, "air": true, "carry": "mech_cell",
 		"desc": "A stolen civilian helicopter: four fighters, anywhere, once."})
 	t["fenghuang_uav"] = _v("KH-3A Fenghuang", 1, 3, "air", "CSAT", "Armed drone", "CASC CH-3A Rainbow", 220, 22.0, 260.0, 0, 18.0, 2.0, "uav",
-		Vector3(5.5, 1.2, 8.0), 0, {"mg": "", "cap": 1, "air": true, "atgm": [4, 10.0], "sight": 75.0, "alt": 26.0, "orbit": 26.0, "model": "fenghuang", "symbol": ["air", "UAV"],
+		Vector3(5.5, 1.2, 8.0), 0, {"hit": 0.6, "mg": "", "cap": 1, "air": true, "atgm": [4, 10.0], "sight": 75.0, "alt": 26.0, "orbit": 26.0, "model": "fenghuang", "symbol": ["air", "UAV"],
 		"desc": "Canard-winged drone: circles where it's sent, spotting, and fires small anti-tank missiles."})
 	# ---------------------------------------------------------------- more variants
 	t["offroad_hmg"] = _v("Offroad HMG", 1, 1, "light", "FIA", "Technical", "Pickup with an M2 .50 in the bed", 125, 15.0, 340.0, 0, 11.5, 1.8, "car",
