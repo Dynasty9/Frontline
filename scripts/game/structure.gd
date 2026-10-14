@@ -1159,6 +1159,10 @@ func queue_item(peer: int, item: String) -> void:
 	if not item in prods or queue.size() >= 6:
 		return
 	var def: Dictionary = Defs.SQUADS[item] if Defs.SQUADS.has(item) else Defs.VEHICLES[item]
+	var need := world.rules.tier_needed(team, item)
+	if need != "":
+		world.rules.notify(peer, team, "%s needs research first: %s." % [def.name, need])
+		return
 	if not world.rules.spend(team, position, def.cost):
 		world.rules.notify(peer, team, "Not enough supply at a nearby FOB for %s (%d)." % [def.name, def.cost])
 		return
@@ -1171,6 +1175,9 @@ func queue_research(peer: int, item: String) -> void:
 		return
 	var def: Dictionary = Defs.UPGRADES[item]
 	if not team in def.teams or world.rules.has_upgrade(team, item) or queue.size() >= 4:
+		return
+	if def.has("requires") and not world.rules.has_upgrade(team, String(def.requires)):
+		world.rules.notify(peer, team, "%s needs %s first." % [def.name, Defs.item_name(String(def.requires))])
 		return
 	for q in queue:
 		if q.item == item:
@@ -1241,6 +1248,10 @@ func _prod_tick(dt: float) -> void:
 		var v = world.spawn("vehicle", {"vkind": q.item, "team": team, "owner": owner, "pos": spawn_at, "yaw": yaw})
 		if heli:
 			v.heli_home = self
+			if not v.vdef.get("supply", false):
+				v.embark_new_squad()  # a troop helicopter comes with its section aboard
+			if v.base() == "uav":
+				v.order_move(dest)
 		else:
 			v.embark_new_squad()
 			v.order_move(dest)

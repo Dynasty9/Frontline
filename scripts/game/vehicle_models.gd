@@ -17,6 +17,11 @@ var tail_rotor: Node3D
 var blur: MeshInstance3D
 var blades: Node3D
 var wheels: Array = []
+var elev: Node3D  # an artillery barrel or rocket launcher that rises to fire (rotation.x)
+## More rotors (a tandem's rear one, a coaxial's second, a drone's four or
+## six): pivots spinning about Y. Each may hold a "Blades" node (shown slow)
+## and a "Blur" disc (shown fast), like the main rotor.
+var rotors: Array = []
 
 
 ## A civilian car: 0 saloon, 1 hatchback, 2 pickup, 3 van, 4 estate.
@@ -32,7 +37,11 @@ static func build(kind: String, team: int, seed: int, is_burnt := false) -> Vehi
 	var k := VehicleModels.new()
 	k.root = Node3D.new()
 	k.burnt = is_burnt
-	match kind:
+	# a vehicle may share another's model (a variant), named in its definition
+	var mk := kind
+	if Defs.VEHICLES.has(kind):
+		mk = String(Defs.VEHICLES[kind].get("model", kind))
+	match mk:
 		"tank":
 			k._tank(team)
 		"old_tank":
@@ -57,10 +66,24 @@ static func build(kind: String, team: int, seed: int, is_burnt := false) -> Vehi
 			k._ifv(team)
 		"aa_tech":
 			k._technical(team, seed, true)
-		_:
+		"truck":
 			k._truck(team)
+		_:
+			# the rest of the roster lives in scripts/game/vehicles/, by family
+			if not (VmNato.build(k, mk, team, seed) or VmCsat.build(k, mk, team, seed) or VmIndep.build(k, mk, team, seed)
+					or VmCiv.build(k, mk, team, seed) or VmHeli.build(k, mk, team, seed) or VmPlane.build(k, mk, team, seed)
+					or VmBoat.build(k, mk, team, seed)):
+				k._truck(team)
 	k._merge_parts(k.root, Vector3.ZERO)
 	return k
+
+
+## Every model key the families build (for the Field Manual's model pages).
+static func family_keys() -> Array[String]:
+	var out: Array[String] = []
+	for ks in [VmNato.KEYS, VmCsat.KEYS, VmIndep.KEYS, VmCiv.KEYS, VmHeli.KEYS, VmPlane.KEYS, VmBoat.KEYS]:
+		out.append_array(ks)
+	return out
 
 
 ## Each moving part (hull, turret, every wheel, rotor) becomes one mesh with a

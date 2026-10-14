@@ -200,6 +200,14 @@ func _ready() -> void:
 ## Opens on a page: a category, optionally an entry, optionally one side.
 func open(cat: String, key := "", side := -1) -> void:
 	visible = true
+	if cat == "model" and key != "":
+		# a bare model on the turntable (checking a model being built)
+		var have := false
+		for e in _entries:
+			if e.cat == "model" and e.key == key:
+				have = true
+		if not have:
+			_entries.append({"cat": "model", "key": key, "name": key, "team": side, "both": side < 0, "sub": "", "desc": "", "stats": [], "rel": []})
 	_set_side(side)
 	_set_cat(cat)
 	if key != "":
@@ -533,6 +541,8 @@ func _make_model(e: Dictionary) -> Node3D:
 			return Structure.preview_model(String(e.key), bs)
 		"cover":
 			return _cover_diorama(String(e.key), side if side >= 0 else 0)
+		"model":
+			return VehicleModels.build(String(e.key), side if side >= 0 else 0, 7).root
 		"support":
 			match String(e.key):
 				"airstrike":

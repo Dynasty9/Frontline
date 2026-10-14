@@ -49,6 +49,13 @@ var WEAPONS := {
 	"bushmaster": {"name": "25 mm Bushmaster", "dmg": 32.0, "range": 115.0, "interval": 0.28, "burst": Vector2i(3, 6), "acc": 0.6, "mag": 300, "ammo": 99999, "reload": 4.0, "supp": 42.0, "snd": "hmg", "ap": true, "he": 1.9, "airburst": true},
 	"kpvt": {"name": "14.5 mm KPVT", "dmg": 62.0, "range": 105.0, "interval": 0.14, "burst": Vector2i(4, 8), "acc": 0.5, "mag": 100, "ammo": 99999, "reload": 4.0, "supp": 40.0, "snd": "hmg", "ap": true},
 	"coax": {"name": "Coax MG", "dmg": 26.0, "range": 70.0, "interval": 0.08, "burst": Vector2i(5, 10), "acc": 0.45, "mag": 200, "ammo": 99999, "reload": 3.0, "supp": 22.0, "snd": "mg"},
+	"gmg": {"name": "40 mm GMG", "dmg": 20.0, "range": 95.0, "interval": 0.17, "burst": Vector2i(3, 6), "acc": 0.42, "mag": 96, "ammo": 99999, "reload": 4.0, "supp": 34.0, "snd": "gmg", "he": 1.7},
+	"ac20": {"name": "20 mm autocannon", "dmg": 24.0, "range": 105.0, "interval": 0.12, "burst": Vector2i(3, 6), "acc": 0.55, "mag": 160, "ammo": 99999, "reload": 4.0, "supp": 34.0, "snd": "ac", "ap": true, "he": 1.2},
+	"ac30": {"name": "30 mm CTWS", "dmg": 30.0, "range": 115.0, "interval": 0.22, "burst": Vector2i(3, 5), "acc": 0.58, "mag": 140, "ammo": 99999, "reload": 4.0, "supp": 42.0, "snd": "ac", "ap": true, "he": 2.0},
+	"ac40": {"name": "40 mm cannon", "dmg": 38.0, "range": 120.0, "interval": 0.3, "burst": Vector2i(2, 4), "acc": 0.6, "mag": 100, "ammo": 99999, "reload": 4.0, "supp": 46.0, "snd": "ac", "ap": true, "he": 2.4},
+	"twin35": {"name": "Twin 35 mm", "dmg": 20.0, "range": 130.0, "interval": 0.06, "burst": Vector2i(8, 14), "acc": 0.5, "mag": 300, "ammo": 99999, "reload": 4.0, "supp": 40.0, "snd": "ac", "ap": true, "he": 1.2, "aa": true},
+	"minigun": {"name": "Minigun", "dmg": 19.0, "range": 85.0, "interval": 0.035, "burst": Vector2i(14, 26), "acc": 0.3, "mag": 2000, "ammo": 99999, "reload": 3.0, "supp": 30.0, "snd": "minigun"},
+	"m197": {"name": "20 mm chin gun", "dmg": 26.0, "range": 110.0, "interval": 0.1, "burst": Vector2i(5, 9), "acc": 0.52, "mag": 400, "ammo": 99999, "reload": 4.0, "supp": 40.0, "snd": "ac", "ap": true, "he": 1.3},
 }
 
 # hp, weapon and kit per soldier type
@@ -136,6 +143,20 @@ var SUPPORT := {
 const DEMO_SUPPORT := ["a10", "ac130", "airstrike", "artillery", "barrage", "mortars", "smoke"]
 
 
+## The Arma 3 roster joins the original vehicles; the Factory and the Helipad
+## build them (air at the Helipad, everything else at the Factory).
+func _init() -> void:
+	var roster := VehicleRoster.table()
+	VEHICLES.merge(roster)
+	for k in roster:
+		var d: Dictionary = roster[k]
+		var team := int(d.team)
+		if team < 0 or team > 1:
+			continue
+		var b := "helipad" if d.get("air", false) else "factory"
+		(BUILDINGS[b].produces[team] as Array).append(k)
+
+
 func supports_for(team: int) -> Array:
 	var out := []
 	for k in SUPPORT:
@@ -148,7 +169,7 @@ var BUILDINGS := {
 	"fob": {"name": "FOB", "cost": 250, "time": 70.0, "hp": 2500.0, "size": Vector2(14, 14), "teams": [0, 1], "desc": "Forward base: +20 unit cap, ammo, lays a supply road."},
 	"barracks": {"name": "Barracks", "cost": 150, "time": 35.0, "hp": 1500.0, "size": Vector2(9, 6), "teams": [0, 1], "desc": "Trains infantry squads.", "produces": [["rifle_squad", "engineer_team", "mg_team", "at_team", "mortar_team"], ["fighter_cell", "digger_team", "pkm_team", "rpg_team", "fpv_team", "r_mortar_team"]]},
 	"factory": {"name": "Factory", "cost": 250, "time": 45.0, "hp": 2200.0, "size": Vector2(11, 10), "teams": [0, 1], "desc": "Builds vehicles.", "produces": [["tank", "ifv", "humvee"], ["technical", "btr", "old_tank", "aa_tech"]]},
-	"helipad": {"name": "Helipad", "cost": 180, "time": 30.0, "hp": 1000.0, "size": Vector2(10, 10), "teams": [0], "desc": "Supply helicopters fly over cut roads straight to your FOBs.", "produces": [["heli", "gunship"], []]},
+	"helipad": {"name": "Helipad", "cost": 180, "time": 30.0, "hp": 1000.0, "size": Vector2(10, 10), "teams": [0, 1], "desc": "Builds helicopters and drones. Supply helicopters fly over cut roads straight to your FOBs.", "produces": [["heli", "gunship"], []]},
 	"medic_tent": {"name": "Medic Tent", "cost": 120, "time": 25.0, "hp": 900.0, "size": Vector2(7, 5), "teams": [0, 1], "desc": "Stretcher bearers bring back the wounded and the dead."},
 	"research": {"name": "Research Post", "cost": 200, "time": 40.0, "hp": 1200.0, "size": Vector2(7, 7), "teams": [0, 1], "desc": "Unlocks upgrades."},
 	"sandbags": {"name": "Sandbags", "cost": 15, "time": 5.0, "hp": 450.0, "size": Vector2(4, 0.9), "teams": [0, 1], "desc": "Low cover. Crouch and pop up to shoot."},
@@ -168,7 +189,7 @@ var BUILDINGS := {
 
 const BUILD_MENU := [
 	["fob", "barracks", "factory", "medic_tent", "research", "helipad", "sandbags", "concrete_wall", "trench", "wire", "mines", "tank_trap", "mg_nest", "hmg_nest", "mortar_pit", "bunker", "at_post", "watchtower"],
-	["fob", "barracks", "factory", "medic_tent", "research", "tunnel", "sandbags", "trench", "wire", "mines", "tank_trap", "mg_nest", "hmg_nest", "mortar_pit", "bunker", "at_post", "watchtower"],
+	["fob", "barracks", "factory", "medic_tent", "research", "helipad", "tunnel", "sandbags", "trench", "wire", "mines", "tank_trap", "mg_nest", "hmg_nest", "mortar_pit", "bunker", "at_post", "watchtower"],
 ]
 
 var UPGRADES := {
@@ -178,6 +199,15 @@ var UPGRADES := {
 	"optics": {"name": "Optics", "cost": 150, "time": 40.0, "teams": [0, 1], "desc": "+15% accuracy."},
 	"warheads": {"name": "FPV Warheads", "cost": 150, "time": 35.0, "teams": [1], "desc": "+50% drone damage."},
 	"deep_tunnels": {"name": "Deep Tunnels", "cost": 100, "time": 30.0, "teams": [1], "desc": "Tunnel travel twice as fast."},
+	# vehicle tiers: what the Factory and the Helipad can build
+	"armour_doctrine": {"name": "Armoured Warfare", "cost": 220, "time": 50.0, "teams": [0], "tier": 2,
+		"desc": "Unlocks tier 2: main battle tanks, infantry fighting vehicles, anti-aircraft vehicles and attack helicopters."},
+	"combined_arms": {"name": "Combined Arms", "cost": 320, "time": 70.0, "teams": [0], "tier": 3, "requires": "armour_doctrine",
+		"desc": "Unlocks tier 3: self-propelled artillery, the heaviest tanks, drones and the UGV."},
+	"csat_advisers": {"name": "Foreign Advisers", "cost": 200, "time": 50.0, "teams": [1], "tier": 2,
+		"desc": "CSAT advisers bring tier 2: tanks, IFVs, anti-aircraft vehicles and attack helicopters."},
+	"csat_corps": {"name": "Expeditionary Corps", "cost": 300, "time": 70.0, "teams": [1], "tier": 3, "requires": "csat_advisers",
+		"desc": "A CSAT expeditionary corps brings tier 3: artillery, the T-140 and the Futura, drones."},
 }
 
 

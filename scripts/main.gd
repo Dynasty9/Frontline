@@ -369,6 +369,57 @@ func return_to_menu(msg: String) -> void:
 	menu.show_menu(msg)
 
 
+var _ms_i := -1
+var _ms_t := 0.0
+
+
+## --model-sheet=key1,key2,... (or a family: nato, csat, indep, civ, heli,
+## plane, boat, all) --sheet-dir=DIR [--side=0|1] [--sheet-yaw=radians]:
+## puts each model on the Field Manual's turntable in turn and saves the
+## preview as DIR/KEY.png, then quits. For checking models as they're built.
+func _model_sheet_tick() -> void:
+	var spec := String(args["model-sheet"])
+	var keys: Array[String] = []
+	match spec:
+		"nato":
+			keys.assign(VmNato.KEYS)
+		"csat":
+			keys.assign(VmCsat.KEYS)
+		"indep":
+			keys.assign(VmIndep.KEYS)
+		"civ":
+			keys.assign(VmCiv.KEYS)
+		"heli":
+			keys.assign(VmHeli.KEYS)
+		"plane":
+			keys.assign(VmPlane.KEYS)
+		"boat":
+			keys.assign(VmBoat.KEYS)
+		"all":
+			keys = VehicleModels.family_keys()
+		_:
+			for k in spec.split(","):
+				keys.append(k)
+	var now := Time.get_ticks_msec() / 1000.0
+	if _ms_i >= 0 and now < _ms_t:
+		return
+	if _ms_i >= 0 and _ms_i < keys.size():
+		var img := get_viewport().get_texture().get_image()
+		var w := img.get_width()
+		var h := img.get_height()
+		var r := Rect2i(int(w * 0.3425), int(h * 0.102), int(w * 0.6235), int(h * 0.467))
+		img.get_region(r).save_png(String(args.get("sheet-dir", "user://")).path_join(keys[_ms_i] + ".png"))
+	_ms_i += 1
+	if _ms_i >= keys.size():
+		get_tree().quit()
+		return
+	menu.manual.open("model", keys[_ms_i], int(args.get("side", 0)))
+	if args.has("sheet-yaw"):
+		menu.manual._yaw = float(args["sheet-yaw"])
+		menu.manual._idle_t = 99.0
+	_ms_t = now + 1.4
+
+
 func _process(_dt: float) -> void:
 	if args.has("startup-trace") and Time.get_ticks_msec() < 9000:
 		print("FRAME t=%d ms frames=%d dt=%.0f ms" % [Time.get_ticks_msec(), Engine.get_frames_drawn(), _dt * 1000.0])
@@ -378,6 +429,8 @@ func _process(_dt: float) -> void:
 			set_meta("manual_open", true)
 			var mp := String(args["manual"]).split(",")
 			menu.manual.open(mp[0], mp[1] if mp.size() > 1 else "", int(mp[2]) if mp.size() > 2 else -1)
+		if args.has("model-sheet") and menu and menu.manual and Engine.get_frames_drawn() > 20:
+			_model_sheet_tick()
 		if args.has("menu-op") and menu and menu.op_panel and not has_meta("op_open") and Engine.get_frames_drawn() > 5:
 			set_meta("op_open", true)
 			menu._open_op(int(args["menu-op"]))

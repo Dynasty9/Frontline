@@ -44,6 +44,16 @@ var card: GridContainer
 var card_title: Label
 var _card_key := ""
 var _card_page := "main"
+var _page_base := ""  # the card a production page was opened on
+## Production categories: [label, tooltip].
+const PROD_CATS := {
+	"inf": ["Infantry", "Squads and teams."],
+	"light": ["Light", "MRAPs, scout cars, light strike vehicles, technicals."],
+	"armour": ["Armour", "Tanks, infantry fighting vehicles and APCs."],
+	"support": ["Fire support", "Self-propelled artillery, rocket launchers, anti-aircraft vehicles."],
+	"logistics": ["Logistics", "Trucks: transport, ammunition, repair, medical; engineering vehicles; the UGV."],
+	"air": ["Air", "Helicopters and drones."],
+}
 var sel_panel: PanelContainer
 var sel_info: HudSelInfo
 var minimap: HudMinimap
@@ -827,8 +837,11 @@ func _update_card() -> void:
 				for t in world.structures:
 					if t.skind == "tunnel" and t.team == st.team and t.built:
 						key += ":%d" % t.eid
-	if not key.begins_with("units:inf"):
+	if st and Defs.BUILDINGS.get(st.skind, {}).has("produces") and world.local_team >= 0:
+		key += str(world.team_info[world.local_team].get("up", []))  # research unlocks vehicle tiers
+	if not key.begins_with("units:inf") and not (_card_page.begins_with("prod:") and key == _page_base):
 		_card_page = "main"
+	_page_base = key
 	key += "|" + _card_page
 	if key == _card_key:
 		return
@@ -882,11 +895,46 @@ func _update_card() -> void:
 	elif st and st.team == lt and st.built:
 		var def: Dictionary = Defs.BUILDINGS.get(st.skind, {})
 		if def.has("produces"):
-			card_title.text = "TRAIN  -  right-click the ground to set a rally point"
-			for item in def.produces[lt]:
-				var d2: Dictionary = Defs.SQUADS[item] if Defs.SQUADS.has(item) else Defs.VEHICLES[item]
-				var sid := st.eid
-				_button(d2.name, str(d2.cost), "%s\nCost %d, %ds." % [d2.desc, d2.cost, int(d2.time)], func(): world.send_cmd({"t": "train", "building": sid, "item": item}))
+			var items: Array = def.produces[lt]
+			var tier := 1
+			for k in world.team_info[lt].get("up", []):
+				if Defs.UPGRADES.has(k):
+					tier = maxi(tier, int(Defs.UPGRADES[k].get("tier", 1)))
+			var cats := []
+			for item in items:
+				var c := _prod_cat(item)
+				if not c in cats:
+					cats.append(c)
+			var page := _card_page.trim_prefix("prod:") if _card_page.begins_with("prod:") else ""
+			if cats.size() > 1 and items.size() > 9 and page == "":
+				# a long list: pick a category first
+				card_title.text = "BUILD  -  pick a category (right-click the ground to set a rally point)"
+				for c in cats:
+					var n := 0
+					for item in items:
+						if _prod_cat(item) == c:
+							n += 1
+					var cc: String = c
+					_button(PROD_CATS[cc][0], "%d types" % n, PROD_CATS[cc][1], func(): _card_page = "prod:" + cc)
+			else:
+				card_title.text = ("%s  -  right-click the ground to set a rally point" % String(PROD_CATS[page][0]).to_upper()) if page != "" else "TRAIN  -  right-click the ground to set a rally point"
+				if page != "":
+					_button("Back", "", "Back to the categories.", func(): _card_page = "main")
+				for item in items:
+					if page != "" and _prod_cat(item) != page:
+						continue
+					var d2: Dictionary = Defs.SQUADS[item] if Defs.SQUADS.has(item) else Defs.VEHICLES[item]
+					var sid := st.eid
+					var need_t := int(d2.get("tier", 1))
+					if need_t > tier:
+						var research := ""
+						for uk in Defs.UPGRADES:
+							if int(Defs.UPGRADES[uk].get("tier", 0)) == need_t and lt in Defs.UPGRADES[uk].teams:
+								research = String(Defs.UPGRADES[uk].name)
+						var lb := _button(d2.name, "tier %d" % need_t, "%s\nLocked: research %s at a Research Post." % [d2.desc, research], func(): pass)
+						lb.disabled = true
+					else:
+						_button(d2.name, str(d2.cost), "%s\nCost %d, %ds." % [d2.desc, d2.cost, int(d2.time)], func(): world.send_cmd({"t": "train", "building": sid, "item": item}))
 			_button("Cancel", "", "Cancel the last item in the queue (refunded).", func(): world.send_cmd({"t": "cancel", "building": st.eid}))
 		elif st.skind == "research":
 			card_title.text = "RESEARCH"
@@ -910,7 +958,26 @@ func _update_card() -> void:
 					_button("Exit " + Defs.grid_ref(t.position), "", "Move everyone inside to the entrance at %s." % Defs.grid_ref(t.position), func(): world.send_cmd({"t": "tunnel_exit", "building": st.eid, "exit": ex}))
 
 
-func _button(text: String, sub: String, tip: String, cb: Callable) -> void:
+## Which production page an item is on.
+func _prod_cat(item: String) -> String:
+	if Defs.SQUADS.has(item):
+		return "inf"
+	var d: Dictionary = Defs.VEHICLES.get(item, {})
+	if d.has("cat"):
+		return String(d.cat)
+	match String(d.get("base", "")):
+		"tank", "afv":
+			return "armour"
+		"spaa", "arty":
+			return "support"
+		"supply", "util", "ugv":
+			return "logistics"
+		"attack_heli", "lift_heli", "uav":
+			return "air"
+	return "light"
+
+
+func _button(text: String, sub: String, tip: String, cb: Callable) -> Button:
 	var b := Button.new()
 	b.text = text if sub == "" else "%s\n%s" % [text, sub]
 	b.tooltip_text = tip
@@ -920,6 +987,7 @@ func _button(text: String, sub: String, tip: String, cb: Callable) -> void:
 	b.focus_mode = Control.FOCUS_NONE
 	b.pressed.connect(func(): Sfx.ui("click"); cb.call(); _card_key = "")
 	card.add_child(b)
+	return b
 
 
 

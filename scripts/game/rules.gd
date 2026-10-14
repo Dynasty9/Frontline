@@ -152,6 +152,31 @@ func next_fob_name(team: int) -> String:
 	return n
 
 
+## The vehicle tier a side has unlocked: 1 to start with, then each tier
+## research raises it.
+func tier(team: int) -> int:
+	var t := 1
+	for k in Defs.UPGRADES:
+		var u: Dictionary = Defs.UPGRADES[k]
+		if u.has("tier") and has_upgrade(team, k):
+			t = maxi(t, int(u.tier))
+	return t
+
+
+## "" if the side may build `item` now, else the name of the research it needs.
+func tier_needed(team: int, item: String) -> String:
+	if not Defs.VEHICLES.has(item):
+		return ""
+	var want := int(Defs.VEHICLES[item].get("tier", 1))
+	if want <= tier(team):
+		return ""
+	for k in Defs.UPGRADES:
+		var u: Dictionary = Defs.UPGRADES[k]
+		if int(u.get("tier", 0)) == want and team in u.teams:
+			return String(u.name)
+	return "tier %d" % want
+
+
 func has_upgrade(team: int, key: String) -> bool:
 	return team >= 0 and team <= 1 and upgrades[team].has(key)
 
@@ -922,7 +947,7 @@ func _visibility() -> void:
 			_add_obs(cells[s.team], s.position, 22.0)
 	for v in world.vehicles:
 		if v.team >= 0 and v.team <= 1:
-			_add_obs(cells[v.team], v.position, 50.0)
+			_add_obs(cells[v.team], v.position, float(v.vdef.get("sight", 50.0)))
 	for st in world.structures:
 		if st.team < 0 or st.team > 1 or not st.built:
 			continue

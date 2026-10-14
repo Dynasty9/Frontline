@@ -299,6 +299,31 @@ func scenario(sname: String) -> void:
 				for ci in row.size():
 					var ut := "rifleman" if ri != 1 or ci != 2 else "mg_gunner"
 					world.spawn("soldier", {"utype": ut, "team": 0 if ci % 2 == 0 else 1, "owner": a, "pos": Vector3(-7.5 + ci * 3.0, 0, -4.0 + ri * 4.0), "yaw": 2.3 if ri < 3 else 0.35, "name": "P%d%d" % [ri, ci], "dpose": row[ci]})
+		"roster":
+			# every vehicle both sides can field, facing each other across the
+			# middle: ground vehicles push in, artillery stays back and shoots,
+			# helicopters and drones fly over (a test of every behaviour)
+			var cols := [0, 0]
+			for k in Defs.VEHICLES:
+				var d: Dictionary = Defs.VEHICLES[k]
+				var tm := int(d.team)
+				if tm < 0 or tm > 1 or d.get("auto", false):
+					continue
+				var side := 1.0 if tm == 0 else -1.0
+				var i: int = cols[tm]
+				cols[tm] = i + 1
+				var x := -96.0 + float(i % 17) * 12.0
+				var z := side * (40.0 + float(i / 17) * 14.0)
+				var owner := a if tm == 0 else b
+				var v: Vehicle = world.spawn("vehicle", {"vkind": k, "team": tm, "owner": owner, "pos": Vector3(x, 0, z), "yaw": 0.0 if tm == 0 else PI})
+				v.heli_home = f0 if tm == 0 else f1
+				v.embark_new_squad()
+				if String(d.base) == "arty":
+					continue
+				if d.get("air", false):
+					v.order_move(Vector3(x * 0.5, 0, -side * 30.0))
+				else:
+					v.order_assault(Vector3(x * 0.6, 0, side * 6.0))
 		"lean":
 			for i in 3:
 				_spawn("tall_wall", Vector3(-14 + i * 14.0, 0, -10), 0.0, -1, {"size": Vector3(6, 2.6, 0.5)})

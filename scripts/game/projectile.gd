@@ -77,7 +77,7 @@ func on_spawned() -> void:
 	net_init = true
 	if world.has_view:
 		_build_model()
-		if ptype in ["rocket", "atgm", "recoilless"]:
+		if ptype in ["rocket", "atgm", "recoilless", "sam"]:
 			Sfx.play("launch", position, -2.0)
 
 
@@ -90,6 +90,8 @@ func sim(dt: float) -> void:
 			_rocket(dt)
 		"atgm":
 			_atgm(dt)
+		"sam":
+			_sam(dt)
 		"mortar", "mortar_smoke", "grad", "arty", "ac105", "ac40", "ac25":
 			_shell()
 		"jet":
@@ -283,6 +285,29 @@ func _atgm(dt: float) -> void:
 	position = np
 
 
+## Surface-to-air missile: fast, it turns hard onto the aircraft and bursts
+## beside it on a proximity fuse.
+func _sam(dt: float) -> void:
+	var tgt: Entity = world.entity(tgt_id)
+	if tgt and not tgt.gone:
+		target = tgt.center_point()
+	var want := (target - position).normalized()
+	var cur := vel.normalized()
+	var ang := cur.angle_to(want)
+	if ang > 0.001:
+		cur = cur.slerp(want, clampf(4.2 * dt / ang, 0.0, 1.0))
+	var spd := minf(95.0, vel.length() + 50.0 * dt)
+	vel = cur * spd
+	var np := position + vel * dt
+	var src: Entity = world.entity(thrower_id)
+	var near := tgt != null and not tgt.gone and np.distance_to(target) < 3.2
+	if near or life_t > 6.0 or np.y < 0.1:
+		world.combat.explode(target if near else np, {"dmg": 60.0, "radius": 4.0, "fling": 2.0, "at": 620.0 if near else 0.0, "src": src, "team": team, "size": 0.9, "struct_mult": 0.5})
+		world.despawn(self)
+		return
+	position = np
+
+
 func pick_up(s: Soldier) -> void:
 	held_by = s
 	flying = false
@@ -355,7 +380,7 @@ func _view_process(dt: float) -> void:
 		return
 	if not srv:
 		position = position.lerp(net_pos, 1.0 - exp(-dt * 20.0)) if position.distance_to(net_pos) < 15.0 else net_pos
-	if ptype in ["rocket", "atgm", "recoilless"] and vel.length() > 0.1:
+	if ptype in ["rocket", "atgm", "recoilless", "sam"] and vel.length() > 0.1:
 		var fwd := vel.normalized()
 		if absf(fwd.dot(Vector3.UP)) < 0.98:
 			model.look_at(model.global_position + fwd, Vector3.UP)
@@ -446,7 +471,7 @@ func _build_model() -> void:
 				_drone.volume_db = -30.0
 				_drone.autoplay = true
 			add_child(_drone)
-		"rocket", "atgm", "recoilless":
+		"rocket", "atgm", "recoilless", "sam":
 			Res.mi(model, Res.cyl(0.06, 0.06, 0.8, 8), Res.mat(Color(0.3, 0.32, 0.25)), Vector3.ZERO, Vector3(PI / 2, 0, 0), false)
 			Res.mi(model, Res.sphere(0.12, 6), Res.mat(Color(1.0, 0.7, 0.3), 0.5, 6.0, true), Vector3(0, 0, 0.45), Vector3.ZERO, false)
 			if world.fx and world.fx.vfx:

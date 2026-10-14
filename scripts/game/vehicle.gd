@@ -6,6 +6,8 @@ extends Entity
 const F_TRACK := 1
 const F_FIRE := 2
 const F_BLOCKED := 4
+const F_ELEV := 8  # gun laid up for indirect fire / launcher raised
+const F_GROUND := 16  # a helicopter sitting on the ground (rotor idling)
 
 var vkind := "tank"
 var vdef: Dictionary = {}
@@ -50,6 +52,26 @@ var heli_t := 0.0
 var rotor: Node3D
 
 # view
+# missiles: ATGMs at armour, SAMs at aircraft (counts refilled by ammo trucks)
+var atgm_left := 0
+var atgm_t := 0.0
+var sam_left := 0
+var sam_t := 0.0
+# artillery: fire missions queued by the player, the salvo in progress
+var fire_queue: Array = []
+var arty_t := 4.0
+var _salvo := 0
+var _salvo_t := 0.0
+var _salvo_at := Vector3.INF
+var _lay_yaw := INF  # where the gun is laid (turret yaw), INF: on the target
+var _svc_t := 0.0
+# troop-carrying helicopters and drones: where they've been sent
+var lift_dest := Vector3.INF
+var lift_phase := 0  # 0 on the ground, 1 climbing, 2 cruising, 3 landing, 4 unloading
+var lift_t := 0.0
+var uav_dest := Vector3.INF
+var _orbit := 0.0
+var _elev_v := 0.0  # (view) barrel / launcher elevation
 var model: Node3D
 var knock_v := Vector3.ZERO  # shoved by a blast: slides it across the ground (server)
 var _last_blast: Array = []  # [pos, size, time] of the last explosion that hit it
@@ -120,6 +142,9 @@ func on_spawned() -> void:
 	net_pos = position
 	net_yaw = rotation.y
 	net_init = true
+	rearm()
+	if base() in ["lift_heli", "uav"]:
+		uav_dest = Vector3(position.x, 0.0, position.z)
 	if world.has_view:
 		_build_model()
 
@@ -156,6 +181,18 @@ func is_auto() -> bool:
 
 func is_air() -> bool:
 	return is_heli() and position.y > 3.0
+
+
+func is_moving() -> bool:
+	return path_i < path.size() or (is_heli() and velocity.length() > 0.5)
+
+
+## Missiles back to a full load (built with them; an ammo truck refills them).
+func rearm() -> void:
+	var a: Array = vdef.get("atgm", [0, 0.0])
+	atgm_left = int(a[0])
+	var s: Array = vdef.get("sam", [0, 0.0])
+	sam_left = int(s[0])
 
 
 func get_exclude() -> Array:
@@ -207,6 +244,12 @@ func order_move(p: Vector3) -> void:
 	if base() == "attack_heli":
 		forced_target = null
 		gs_dest = Vector3(p.x, 0.0, p.z)
+		return
+	if base() == "lift_heli":
+		lift_dest = _landing_spot(p)
+		return
+	if base() == "uav":
+		uav_dest = Vector3(p.x, 0.0, p.z)
 		return
 	forced_target = null
 	path = world.nav.find_path(position, p, true, team, 0.5)
@@ -267,7 +310,7 @@ func dismount() -> void:
 
 
 func _dismount_check(dt: float) -> void:
-	if passengers.is_empty():
+	if passengers.is_empty() or base() == "lift_heli":
 		return
 	_dis_t -= dt
 	if _dis_t > 0.0:
@@ -296,6 +339,8 @@ func order_attack(t: Entity) -> void:
 
 
 func order_stop() -> void:
+	if base() == "uav":
+		uav_dest = Vector3(position.x, 0.0, position.z)
 	if base() == "attack_heli":
 		gs_dest = Vector3(position.x, 0.0, position.z)
 	path = PackedVector3Array()
@@ -319,9 +364,14 @@ func sim(dt: float) -> void:
 	if b == "supply":
 		_truck_tick(dt)
 	elif b == "lift_heli":
-		_heli_tick(dt)
+		if vdef.get("supply", false):
+			_heli_tick(dt)
+		else:
+			_lift_tick(dt)
 	elif b == "attack_heli":
 		_gunship_tick(dt)
+	elif b == "uav":
+		_uav_tick(dt)
 	else:
 		scan_t -= dt
 		if scan_t <= 0.0:
@@ -329,13 +379,21 @@ func sim(dt: float) -> void:
 			_scan()
 		_drive(dt)
 		_dismount_check(dt)
-		_turret_tick(dt)
+		if vdef.has("art"):
+			_arty_tick(dt)
+		if _lay_yaw == INF or not vdef.has("art"):
+			_turret_tick(dt)
 		_fire_tick()
+		if vdef.has("service"):
+			_service_tick(dt)
 		smash_t -= dt
 		if smash_t <= 0.0:
 			smash_t = 0.15
 			_smash()
-	flags = (F_TRACK if track_broken else 0) | (F_FIRE if world.time - last_fire_t < 0.3 else 0) | (F_BLOCKED if blocked_t > 2.0 else 0)
+	var laid := _salvo > 0 or (vdef.has("art") and world.time - last_fire_t < 4.0)
+	var grounded := is_heli() and position.y < 0.6
+	flags = (F_TRACK if track_broken else 0) | (F_FIRE if world.time - last_fire_t < 0.3 else 0) | (F_BLOCKED if blocked_t > 2.0 else 0) \
+		| (F_ELEV if laid else 0) | (F_GROUND if grounded else 0)
 
 
 func _steer(tgt: Vector3, dt: float, max_speed: float) -> bool:
@@ -451,7 +509,7 @@ func _scan() -> void:
 	var bs := -1e9
 	var eye := turret_pos()
 	var ex := get_exclude()
-	for e in world.units_near(position, 72.0):
+	for e in world.units_near(position, maxf(72.0, float(vdef.get("sight", 50.0)) + 20.0)):
 		if e.team == team or e.team < 0:
 			continue
 		if e is Soldier and e.life != Soldier.Life.ALIVE:
@@ -459,7 +517,7 @@ func _scan() -> void:
 		var d: float = Defs.flat(e.position - position).length()
 		var sc := 0.0
 		if e is Vehicle and e.is_air():
-			if vdef.get("aa", false):
+			if vdef.get("aa", false) or sam_left > 0:
 				sc = 160.0 - d
 			elif Defs.WEAPONS.get(String(vdef.mg), {}).get("ap", false):
 				sc = 20.0 - d  # a heavy MG or a cannon will have a go at a helicopter
@@ -529,6 +587,8 @@ func _fire_tick() -> void:
 		return
 	var err := _aim_err()
 	var dist := Defs.flat(target.position - position).length()
+	if _try_missiles(err, dist):
+		return
 	if vdef.cannon and cannon_t <= 0.0 and err < 0.05:
 		var worth := target is Vehicle or target is Structure
 		if target is Soldier:
@@ -539,7 +599,7 @@ func _fire_tick() -> void:
 			worth = n >= 2 or target.rockets > 0 or target.mounted != null or world.rng.randf() < 0.25
 		if worth:
 			_fire_cannon()
-			cannon_t = 5.5
+			cannon_t = float(vdef.get("gun", {}).get("cd", 5.5))
 			return
 	var mg: String = vdef.mg
 	var gs := base() == "attack_heli"
@@ -555,6 +615,226 @@ func _fire_tick() -> void:
 		world.combat.fire_bullet(self, muzzle, aim, target, w, 1.0)
 		last_fire_t = world.time
 		mg_t = float(w.interval) if mg_burst > 0 else world.rng.randf_range(0.6, 1.3)
+
+
+## Guided missiles: an ATGM at armour or a bunker, a SAM at anything flying.
+func _try_missiles(err: float, dist: float) -> bool:
+	if target is Vehicle and target.is_air():
+		if sam_left > 0 and world.time > sam_t and dist < float(vdef.get("sam_range", 160.0)):
+			_launch("sam", target)
+			sam_left -= 1
+			sam_t = world.time + float((vdef.sam as Array)[1])
+			return true
+		return false
+	if atgm_left > 0 and world.time > atgm_t and err < 0.4 and dist > 22.0 and dist < float(vdef.get("atgm_range", 125.0)):
+		var worth: bool = target is Vehicle or (target is Structure and target.skind in ["bunker", "mg_nest", "hmg_nest", "at_post", "watchtower"])
+		if worth:
+			_launch("atgm", target)
+			atgm_left -= 1
+			atgm_t = world.time + float((vdef.atgm as Array)[1])
+			return true
+	return false
+
+
+func _launch(kind: String, t: Entity) -> void:
+	var fwd := Defs.dir_of(rotation.y + turret_yaw)
+	var from := turret_pos() + fwd * 1.0 + Vector3(0, 0.45, 0)
+	var aim := t.center_point()
+	var v := ((aim - from).normalized() + Vector3(0, 0.3 if kind == "atgm" else 0.5, 0)).normalized() * (26.0 if kind == "atgm" else 38.0)
+	world.spawn("projectile", {"ptype": kind, "team": team, "pos": from, "vel": v, "thrower": eid, "tgt": t.eid, "target": aim})
+	world.fx_event([Fx.LAUNCH, from, v.normalized()])
+	world.stat("veh_" + kind)
+	last_fire_t = world.time
+
+
+# --- self-propelled artillery ---------------------------------------------------------
+
+## Halted, it lays its gun (or raises its launcher) on spotted enemies in
+## range - or on the player's fire missions - and fires a salvo, then reloads.
+func _arty_tick(dt: float) -> void:
+	var a: Dictionary = vdef.art
+	if _salvo > 0:
+		var want := Defs.yaw_of(Defs.flat(_salvo_at - position)) - rotation.y
+		turret_yaw += clampf(wrapf(want - turret_yaw, -PI, PI), -dt * 0.9, dt * 0.9)
+		_lay_yaw = want
+		_salvo_t -= dt
+		if _salvo_t <= 0.0 and absf(wrapf(want - turret_yaw, -PI, PI)) < 0.06:
+			_fire_shell(a)
+			_salvo -= 1
+			_salvo_t = float(a.get("gap", 0.8))
+			if _salvo <= 0:
+				_lay_yaw = INF
+		return
+	if path_i < path.size() or world.time < arty_t:
+		return
+	var tp := Vector3.INF
+	if not fire_queue.is_empty():
+		tp = fire_queue.pop_front()
+	else:
+		tp = world.rules.mortar_target(team, position, float(a.get("min", 40.0)), float(a.get("max", 230.0)))
+	if tp == Vector3.INF:
+		arty_t = world.time + 2.0
+		return
+	_salvo_at = tp
+	_salvo = int(a.get("salvo", 3))
+	_salvo_t = float(a.get("lay", 2.0))
+	arty_t = world.time + float(a.get("cd", 18.0))
+	world.stat("arty_mission")
+
+
+func _fire_shell(a: Dictionary) -> void:
+	var fwd := Defs.dir_of(rotation.y + turret_yaw)
+	var from := position + Vector3(0, float(vdef.get("gun_h", 2.2)) + 1.2, 0) + fwd * float(a.get("muzzle", 4.0))
+	var d := Defs.flat(_salvo_at - from).length()
+	var scatter := float(a.get("scatter", 3.0)) + d * 0.025
+	var ang := world.rng.randf() * TAU
+	var r := sqrt(world.rng.randf()) * scatter
+	var tp := Vector3(_salvo_at.x + cos(ang) * r, 0.05, _salvo_at.z + sin(ang) * r)
+	var shell := String(a.get("shell", "arty"))
+	world.spawn("projectile", {"ptype": shell, "team": team, "pos": from, "origin": from, "target": tp, "T": 2.6 + d / 45.0, "thrower": eid})
+	if shell == "grad":
+		world.fx_event([Fx.LAUNCH, from, (fwd + Vector3(0, 1.2, 0)).normalized()])
+	else:
+		world.fx_event([Fx.MORTAR, from])
+		recoil(-fwd)
+	last_fire_t = world.time
+	world.stat("arty_round")
+
+
+# --- support vehicles -----------------------------------------------------------------
+
+## Repair, ammunition and medical vehicles look after everything near them.
+func _service_tick(dt: float) -> void:
+	_svc_t -= dt
+	if _svc_t > 0.0 or speed > 1.0:
+		return
+	_svc_t = 1.0
+	match String(vdef.service):
+		"repair":
+			for v in world.vehicles_near(position, 13.0):
+				if v != self and v.team == team and v.needs_repair():
+					v.repair(1.4)
+					world.stat("veh_repaired")
+		"ammo":
+			for s in world.soldiers_near(position, 13.0):
+				if s.team == team and s.life == Soldier.Life.ALIVE:
+					s.resupply(1.0)
+			for v in world.vehicles_near(position, 13.0):
+				if v != self and v.team == team:
+					v.rearm()
+		"medical":
+			for s in world.soldiers_near(position, 11.0):
+				if s.team != team:
+					continue
+				if s.life == Soldier.Life.DOWNED and s.dragged_by == null and s.carried_by.is_empty() and world.rng.randf() < 0.22:
+					s.revive()
+					world.stat("veh_medevac_revive")
+				elif s.life == Soldier.Life.ALIVE and s.hp < s.max_hp:
+					s.hp = minf(s.max_hp, s.hp + 5.0)
+
+
+# --- troop-carrying helicopters -------------------------------------------------------
+
+const LIFT_ALT := 16.0
+
+
+## Somewhere to put down near p: open ground, nothing built on it.
+func _landing_spot(p: Vector3) -> Vector3:
+	for ring in [0.0, 6.0, 11.0, 16.0]:
+		var n := 1 if ring == 0.0 else 8
+		for i in n:
+			var q: Vector3 = Vector3(p.x, 0.0, p.z) + Vector3(cos(i * TAU / n), 0, sin(i * TAU / n)) * ring
+			if not Defs.in_map(q, 8.0) or world.nav.vkind_at(q) != Nav.FREE:
+				continue
+			var clear := true
+			for st in world.structures_near(q, 6.0):
+				if not st.gone and st.skind != "floor" and Defs.flat(st.position - q).length() < st.radius + 4.0:
+					clear = false
+					break
+			if clear:
+				return q
+	return Vector3(p.x, 0.0, p.z)
+
+
+## Lifts off when sent somewhere, flies there, puts down on clear ground and
+## the troops pile out; then it flies home to the pad. Door gunners fire at
+## whatever they can see on the way.
+func _lift_tick(dt: float) -> void:
+	scan_t -= dt
+	if scan_t <= 0.0:
+		scan_t = 0.5
+		_scan()
+	if _target_ok() and position.y > 3.0:
+		turret_yaw = Defs.yaw_of(Defs.flat(target.position - position)) - rotation.y  # door guns cover all round
+		_fire_tick()
+	match lift_phase:
+		0:
+			position.y = maxf(0.15, position.y - 5.0 * dt)
+			if lift_dest != Vector3.INF and Defs.flat(lift_dest - position).length() > 6.0:
+				lift_phase = 1
+		1:
+			position.y = minf(LIFT_ALT, position.y + 6.0 * dt)
+			if position.y >= LIFT_ALT - 0.1:
+				lift_phase = 2
+		2:
+			var to := Defs.flat(lift_dest - position)
+			var want := Defs.yaw_of(to)
+			rotation.y += clampf(wrapf(want - rotation.y, -PI, PI), -float(vdef.turn) * dt, float(vdef.turn) * dt)
+			speed = move_toward(speed, float(vdef.speed) if to.length() > 25.0 else maxf(3.0, to.length() * 0.6), 6.0 * dt)
+			velocity = to.normalized() * speed
+			position += velocity * dt
+			if to.length() < 1.5:
+				speed = 0.0
+				velocity = Vector3.ZERO
+				lift_phase = 3
+		3:
+			position.y = maxf(0.15, position.y - 5.0 * dt)
+			if position.y <= 0.16:
+				lift_dest = Vector3.INF
+				if not passengers.is_empty():
+					dismount()
+					lift_t = 3.0
+					lift_phase = 4
+				else:
+					lift_phase = 0
+		4:
+			lift_t -= dt
+			if lift_t <= 0.0:
+				lift_phase = 0
+				var home := heli_home if heli_home and not heli_home.gone and heli_home.team == team else null
+				if home and Defs.flat(home.position - position).length() > 20.0:
+					lift_dest = _landing_spot(home.position + Vector3(0, 0, 0))
+
+
+# --- drones -----------------------------------------------------------------------------
+
+## A drone circles the spot it's sent to, high up, spotting for its side (and
+## the armed ones fire missiles at what they find).
+func _uav_tick(dt: float) -> void:
+	scan_t -= dt
+	if scan_t <= 0.0:
+		scan_t = 0.5
+		_scan()
+	var alt := float(vdef.get("alt", 20.0))
+	var c := uav_dest if uav_dest != Vector3.INF else Vector3(position.x, 0, position.z)
+	var rad := float(vdef.get("orbit", 16.0))
+	var spd := float(vdef.speed)
+	var to_c := Defs.flat(c - position)
+	var want: Vector3
+	if to_c.length() > rad * 1.6:
+		want = c
+	else:
+		_orbit += dt * spd / maxf(rad, 4.0)
+		want = c + Vector3(cos(_orbit), 0, sin(_orbit)) * rad
+	var fl := Defs.flat(want - position)
+	velocity = velocity.move_toward(fl.normalized() * minf(spd, fl.length() * 1.5), 6.0 * dt)
+	position += velocity * dt
+	position.y = move_toward(position.y, alt, 4.0 * dt)
+	if velocity.length() > 0.3:
+		rotation.y = lerp_angle(rotation.y, Defs.yaw_of(velocity), minf(1.0, 3.0 * dt))
+	if _target_ok():
+		turret_yaw = Defs.yaw_of(Defs.flat(target.position - position)) - rotation.y
+		_fire_tick()
 
 
 func _fire_cannon() -> void:
@@ -578,7 +858,9 @@ func _fire_cannon() -> void:
 	world.fx_event([Fx.CANNON, from, hit_pos, eid])
 	world.stat("cannon")
 	last_fire_t = world.time
-	world.combat.explode(hit_pos, {"dmg": 160.0, "radius": 5.5, "fling": 10.0, "at": 320.0, "src": self, "team": team, "size": 1.4, "track": 0.3, "dir": dir, "struct_mult": 2.5})
+	var g: Dictionary = vdef.get("gun", {})
+	world.combat.explode(hit_pos, {"dmg": float(g.get("dmg", 160.0)), "radius": float(g.get("radius", 5.5)), "fling": 10.0, "at": float(g.get("at", 320.0)), "src": self, "team": team,
+		"size": float(g.get("size", 1.4)), "track": 0.3, "dir": dir, "struct_mult": 2.5})
 
 
 # --- damage --------------------------------------------------------------------------
@@ -866,7 +1148,7 @@ func _gunship_tick(dt: float) -> void:
 				if o.team == target.team and o.life == Soldier.Life.ALIVE:
 					n += 1
 			worth = n >= 3
-		if worth and dist < 100.0:
+		if worth and dist < 100.0 and int(vdef.get("rockets", 4)) > 0:
 			rocket_t = 9.0
 			_rocket_salvo()
 
@@ -874,7 +1156,7 @@ func _gunship_tick(dt: float) -> void:
 func _rocket_salvo() -> void:
 	var fwd := Defs.dir_of(rotation.y)
 	var side := fwd.cross(Vector3.UP)
-	for i in 4:
+	for i in int(vdef.get("rockets", 4)):
 		var from := position + Vector3(0, 1.2, 0) + side * (1.0 if i % 2 == 0 else -1.0) * 1.1 + fwd * 1.0
 		var aim: Vector3 = target.center_point() + Vector3(world.rng.randf_range(-2.5, 2.5), 0, world.rng.randf_range(-2.5, 2.5))
 		var v := (aim - from).normalized() * 75.0
@@ -942,9 +1224,10 @@ func _heli_tick(dt: float) -> void:
 			heli_t -= dt
 			if heli_t <= 0.0:
 				if heli_dest and not heli_dest.gone and heli_dest.team == team:
-					heli_dest.supply += 80
+					var load := int(vdef.get("load", 80))
+					heli_dest.supply += load
 					heli_dest.net_dirty = true
-					world.fx_event([Fx.DELIVER, heli_dest.position + Vector3(0, 4, 0), 80, team])
+					world.fx_event([Fx.DELIVER, heli_dest.position + Vector3(0, 4, 0), load, team])
 					world.stat("heli_delivered")
 				heli_phase = 4
 
@@ -1036,16 +1319,33 @@ func _view_process(dt: float) -> void:
 		_vis = v
 	if turret:
 		turret.rotation.y = turret_yaw
+	if _vm and _vm.elev:
+		# laid for indirect fire: the barrel (or the launcher) goes up
+		var want_e := float(vdef.get("elev", 0.6)) if (flags & F_ELEV) != 0 else 0.0
+		_elev_v = move_toward(_elev_v, want_e, dt * 0.5)
+		_vm.elev.rotation.x = _elev_v
 	if rotor:
-		var want := 30.0 if position.y > 0.3 or (flags & F_FIRE) != 0 else 9.0
+		var want := 30.0 if position.y > 0.3 or (flags & F_FIRE) != 0 else (9.0 if (flags & F_GROUND) == 0 or base() != "lift_heli" else 14.0)
 		_rotor_spd = move_toward(_rotor_spd, want, dt * 12.0)
 		rotor.rotation.y += dt * _rotor_spd
 		if tail_rotor:
 			tail_rotor.rotation.x += dt * _rotor_spd * 2.6
+		for i in _vm.rotors.size():
+			var xr: Node3D = _vm.rotors[i]
+			xr.rotation.y += dt * _rotor_spd * (-1.0 if i % 2 == 0 else 1.0)
+			var xb := xr.get_node_or_null("Blur")
+			if xb:
+				xb.visible = _rotor_spd > 18.0
+				var xbl := xr.get_node_or_null("Blades")
+				if xbl:
+					xbl.visible = not xb.visible
 		if blur:
 			var fast := _rotor_spd > 18.0
 			blur.visible = fast
 			blades.visible = not fast
+	if not rotor and _vm and not _vm.rotors.is_empty():
+		for i in _vm.rotors.size():
+			(_vm.rotors[i] as Node3D).rotation.y += dt * 30.0 * (-1.0 if i % 2 == 0 else 1.0)
 	if rotor and model and dt > 0.0:
 		var mv2 := position - _last_pos
 		var fs := mv2.dot(Defs.dir_of(rotation.y)) / dt

@@ -66,7 +66,7 @@ static func pen_class(w: Dictionary) -> int:
 	var snd := String(w.get("snd", "rifle"))
 	if w.get("ap", false) or snd == "hmg":
 		return 3
-	if snd == "mg":
+	if snd in ["mg", "minigun"]:
 		return 2
 	if snd == "rifle":
 		return 1

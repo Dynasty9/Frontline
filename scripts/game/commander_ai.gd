@@ -414,6 +414,52 @@ func _expansion_spot() -> Vector3:
 
 # --- production --------------------------------------------------------------------
 
+## What to build at the Factory next: something unlocked, weighted by what
+## the fight needs - anti-armour when there is armour about, more armour as
+## the game goes on, a support or logistics vehicle now and then.
+func _pick_vehicle(enemy_armor: int) -> String:
+	var r := world.rules
+	var opts: Array = Defs.BUILDINGS.factory.produces[team]
+	var picks := []
+	var total := 0.0
+	for k in opts:
+		if r.tier_needed(team, k) != "":
+			continue
+		var d: Dictionary = Defs.VEHICLES[k]
+		var w := 1.0
+		match String(d.get("base", "")):
+			"tank":
+				w = 2.2 + enemy_armor * 0.6
+			"afv":
+				w = 2.4
+			"car":
+				w = 1.6 + (1.2 if int(d.get("atgm", [0])[0]) > 0 and enemy_armor > 0 else 0.0)
+			"spaa":
+				w = 0.3 + (3.0 if _enemy_air() else 0.0)
+			"arty":
+				w = 0.8
+			"util":
+				w = 0.5 if d.has("service") else 0.8
+		w *= 1.0 + 0.25 * (int(d.get("tier", 1)) - 1)
+		picks.append([k, w])
+		total += w
+	if picks.is_empty():
+		return String(opts[0])
+	var x := rng.randf() * total
+	for p in picks:
+		x -= float(p[1])
+		if x <= 0.0:
+			return String(p[0])
+	return String(picks.back()[0])
+
+
+func _enemy_air() -> bool:
+	for v in world.vehicles:
+		if v.team != team and v.team >= 0 and v.is_heli() and v.visible_to_team(team):
+			return true
+	return false
+
+
 func _production(sqs: Array) -> void:
 	var r := world.rules
 	var sup: int = r.max_fob_supply(team)
@@ -436,8 +482,7 @@ func _production(sqs: Array) -> void:
 	var saving := 0
 	if not factories.is_empty() and my_veh < 1 + int(world.time / 420.0) and factories[0].queue.is_empty():
 		if next_vehicle == "":
-			var opts: Array = Defs.BUILDINGS.factory.produces[team]
-			next_vehicle = opts[rng.randi() % opts.size()]
+			next_vehicle = _pick_vehicle(enemy_armor)
 		saving = int(Defs.VEHICLES[next_vehicle].cost)
 		if sup >= saving and r.has_cap(team, 4):
 			_cmd({"t": "train", "building": factories[0].eid, "item": next_vehicle})

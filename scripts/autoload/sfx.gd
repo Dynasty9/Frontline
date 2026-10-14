@@ -22,6 +22,9 @@ func _ready() -> void:
 	streams["mg"] = _gun(0.14, 0.95, 1100.0, 0.6)
 	streams["pistol"] = _gun(0.11, 0.6, 2200.0, 0.35)
 	streams["hmg"] = _gun(0.26, 1.0, 650.0, 1.1)
+	streams["gmg"] = _gun(0.22, 0.85, 420.0, 1.3)  # a deep thump per grenade
+	streams["ac"] = _gun(0.3, 1.0, 520.0, 1.35)  # autocannon bark
+	streams["minigun"] = _gun(0.07, 0.75, 1600.0, 0.35)
 	streams["mortar"] = _boom(0.45, 0.55, 130.0)
 	streams["whistle"] = _whistle()
 	streams["cannon"] = _boom(1.4, 0.8, 70.0)
