@@ -75,18 +75,23 @@ static func squad_symbol(mem: Array) -> Array:
 
 
 static func vehicle_symbol(vk: String) -> Array:
-	match vk:
-		"tank", "old_tank":
+	var d: Dictionary = Defs.VEHICLES.get(vk, {})
+	if d.has("symbol"):
+		return d.symbol
+	match String(d.get("base", "")):
+		"tank":
 			return ["armor", ""]
-		"ifv", "btr":
+		"afv":
 			return ["mech", ""]
-		"humvee", "technical":
+		"car", "ugv":
 			return ["motor", ""]
-		"aa_tech":
-			return ["motor", "AA"]
-		"heli", "gunship":
+		"spaa":
+			return ["armor" if d.get("tracked", false) else "motor", "AA"]
+		"arty":
+			return ["arty", "SP"]
+		"attack_heli", "lift_heli":
 			return ["air", ""]
-		"truck":
+		"supply", "util":
 			return ["motor", "LOG"]
 	return ["motor", ""]
 

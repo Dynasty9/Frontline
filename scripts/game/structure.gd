@@ -958,7 +958,7 @@ func _start_toss() -> void:
 		return
 	var tz: Array = toss
 	var from_xf := Transform3D(Basis(Vector3.UP, float(tz[1])), tz[0])
-	var mass: float = {"tank": 45000.0, "old_tank": 38000.0, "ifv": 20000.0, "btr": 14000.0}.get(vk, 2500.0 if skind != "crates" else 300.0)
+	var mass: float = (float(Defs.VEHICLES[vk].get("mass", [2500.0, 16000.0, 42000.0][int(Defs.VEHICLES[vk].get("weight", 1))])) if Defs.VEHICLES.has(vk) else 2500.0) if skind != "crates" else 300.0
 	world.phys.toss(self, model, from_xf, tz[2], tz[3], Vector3(size.x, maxf(size.y, 0.8), size.z), mass)
 
 
@@ -1236,7 +1236,7 @@ func _prod_tick(dt: float) -> void:
 	if Defs.SQUADS.has(q.item):
 		world.rules.spawn_squad(String(q.item), team, owner, exit_pos(), dest)
 	else:
-		var heli: bool = q.item in ["heli", "gunship"]
+		var heli: bool = Defs.VEHICLES.has(q.item) and Defs.VEHICLES[q.item].get("air", false)
 		var spawn_at: Vector3 = position if heli else world.nav.nearest_walkable(exit_pos() + front_dir() * 2.0, true)
 		var v = world.spawn("vehicle", {"vkind": q.item, "team": team, "owner": owner, "pos": spawn_at, "yaw": yaw})
 		if heli:

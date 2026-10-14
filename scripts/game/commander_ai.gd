@@ -425,12 +425,12 @@ func _production(sqs: Array) -> void:
 			eng_n += 1
 	var enemy_armor := 0
 	for v in world.vehicles:
-		if v.team != team and v.team >= 0 and v.vkind != "truck" and v.visible_to_team(team):
+		if v.team != team and v.team >= 0 and not v.is_auto() and v.visible_to_team(team):
 			enemy_armor += 1
 	# save up for a vehicle once we have a factory and few vehicles
 	var my_veh := 0
 	for v in world.vehicles:
-		if v.team == team and v.owner_peer == peer and v.vkind != "truck":
+		if v.team == team and v.owner_peer == peer and not v.is_auto():
 			my_veh += 1
 	var factories := _my_structs("factory", true)
 	var saving := 0

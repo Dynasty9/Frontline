@@ -497,7 +497,7 @@ func _box_select(a: Vector2, b: Vector2, add: bool) -> void:
 		if r.has_point(cam.unproject_position(s.position + Vector3(0, 0.8, 0))) and not s.sid in sel_squads:
 			sel_squads.append(s.sid)
 	for v in world.vehicles:
-		if not is_mine(v) or v.vkind == "truck" or v.vkind == "heli":
+		if not is_mine(v) or v.is_auto():
 			continue
 		if not cam.is_position_behind(v.position) and r.has_point(cam.unproject_position(v.position + Vector3(0, 1, 0))) and not v.eid in sel_vehicles:
 			sel_vehicles.append(v.eid)

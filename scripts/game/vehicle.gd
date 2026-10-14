@@ -125,24 +125,37 @@ func on_spawned() -> void:
 
 
 func _hull_size() -> Vector3:
-	match vkind:
-		"tank", "old_tank":
-			return Vector3(3.4, 2.2, 6.4)
-		"technical":
-			return Vector3(2.0, 1.8, 4.6)
-		"heli":
-			return Vector3(2.2, 2.0, 6.0)
-		"gunship":
-			return Vector3(2.0, 2.2, 6.5)
-		"humvee":
-			return Vector3(2.2, 2.0, 4.8)
-		"aa_tech":
-			return Vector3(2.0, 1.9, 4.6)
-	return Vector3(2.3, 2.6, 6.0)
+	return vdef.get("size", Vector3(2.3, 2.6, 6.0))
+
+
+## What it is (see Defs.VEHICLES): "tank", "afv", "car", "spaa", "attack_heli",
+## "lift_heli", "supply", ...
+func base() -> String:
+	return String(vdef.get("base", "tank"))
+
+
+## 0 light (a pickup, a jeep), 1 medium (an APC, a truck), 2 heavy (a tank).
+func weight() -> int:
+	return int(vdef.get("weight", 1))
+
+
+## A light vehicle with a roof gun: it can't push through a house wall.
+func is_light() -> bool:
+	return base() in ["car", "spaa", "ugv"] and weight() == 0
+
+
+## A helicopter (flying or not).
+func is_heli() -> bool:
+	return vdef.get("air", false)
+
+
+## Runs itself (the supply convoy and supply helicopters): not yours to command.
+func is_auto() -> bool:
+	return vdef.get("auto", false)
 
 
 func is_air() -> bool:
-	return vkind in ["heli", "gunship"] and position.y > 3.0
+	return is_heli() and position.y > 3.0
 
 
 func get_exclude() -> Array:
@@ -176,9 +189,9 @@ func repair(amount: float) -> void:
 
 
 func turret_pos() -> Vector3:
-	if vkind == "gunship":
-		return position + Vector3(0, 0.8, 0) + Defs.dir_of(rotation.y) * 2.3
-	return position + Vector3(0, 2.0 if vkind in ["technical", "aa_tech", "humvee"] else 2.2, 0)
+	if base() == "attack_heli":
+		return position + Vector3(0, float(vdef.get("gun_h", 0.8)), 0) + Defs.dir_of(rotation.y) * 2.3
+	return position + Vector3(0, float(vdef.get("gun_h", 2.2)), 0)
 
 
 func barrel_tip() -> Vector3:
@@ -189,9 +202,9 @@ func barrel_tip() -> Vector3:
 
 func order_move(p: Vector3) -> void:
 	assault = false
-	if vkind == "truck":
+	if base() == "supply":
 		return
-	if vkind == "gunship":
+	if base() == "attack_heli":
 		forced_target = null
 		gs_dest = Vector3(p.x, 0.0, p.z)
 		return
@@ -210,7 +223,7 @@ func order_assault(p: Vector3) -> void:
 
 
 func is_tracked() -> bool:
-	return vkind in ["tank", "old_tank"] or vdef.get("tracked", false)
+	return vdef.get("tracked", false)
 
 
 ## Fill the troop compartment with a fresh squad (IFVs and APCs come with one).
@@ -273,7 +286,7 @@ func _dismount_check(dt: float) -> void:
 
 func order_attack(t: Entity) -> void:
 	forced_target = t
-	if vkind == "gunship":
+	if base() == "attack_heli":
 		gs_dest = Vector3(t.position.x, 0.0, t.position.z)
 		return
 	var d := Defs.flat(t.position - position)
@@ -283,7 +296,7 @@ func order_attack(t: Entity) -> void:
 
 
 func order_stop() -> void:
-	if vkind == "gunship":
+	if base() == "attack_heli":
 		gs_dest = Vector3(position.x, 0.0, position.z)
 	path = PackedVector3Array()
 	path_i = 0
@@ -302,11 +315,12 @@ func sim(dt: float) -> void:
 		else:
 			knock_v = Vector3.ZERO
 		knock_v = knock_v.move_toward(Vector3.ZERO, 7.0 * dt)
-	if vkind == "truck":
+	var b := base()
+	if b == "supply":
 		_truck_tick(dt)
-	elif vkind == "heli":
+	elif b == "lift_heli":
 		_heli_tick(dt)
-	elif vkind == "gunship":
+	elif b == "attack_heli":
 		_gunship_tick(dt)
 	else:
 		scan_t -= dt
@@ -341,7 +355,7 @@ func _steer(tgt: Vector3, dt: float, max_speed: float) -> bool:
 	var fwd := Defs.dir_of(rotation.y)
 	velocity = fwd * speed
 	var np := position + velocity * dt
-	if vkind == "truck" or world.nav.vkind_at(np) != Nav.SOLID:
+	if base() == "supply" or world.nav.vkind_at(np) != Nav.SOLID:
 		position = np
 	else:
 		# scrape along whatever we hit instead of stopping dead
@@ -413,7 +427,7 @@ func _drive(dt: float) -> void:
 
 
 func _smash() -> void:
-	if speed < 0.5 and vkind != "tank" and vkind != "old_tank":
+	if speed < 0.5 and weight() < 2:
 		return
 	var hs := _hull_size()
 	var half := Vector2(hs.x * 0.5, hs.z * 0.5 + 0.3)
@@ -424,12 +438,12 @@ func _smash() -> void:
 		if st.team == team and st.is_player_building():
 			continue
 		if Defs.obb_overlap(c, half, rotation.y, Vector2(st.position.x, st.position.z), st.foot, st.yaw):
-			if vkind in ["technical", "aa_tech", "humvee"] and st.skind in ["tall_wall", "house_wall", "concrete_wall"]:
+			if is_light() and st.skind in ["tall_wall", "house_wall", "concrete_wall"]:
 				continue
 			st.smash(self)
 			world.stat("smash")
-			if vkind == "technical":
-				take_damage(15.0, null)
+			if is_light() and int(vdef.armor) == 0:
+				take_damage(15.0, null)  # a pickup doesn't ram walls for free
 
 
 func _scan() -> void:
@@ -447,12 +461,12 @@ func _scan() -> void:
 		if e is Vehicle and e.is_air():
 			if vdef.get("aa", false):
 				sc = 160.0 - d
-			elif String(vdef.mg) in ["m2", "chaingun"]:
-				sc = 20.0 - d
+			elif Defs.WEAPONS.get(String(vdef.mg), {}).get("ap", false):
+				sc = 20.0 - d  # a heavy MG or a cannon will have a go at a helicopter
 			else:
 				continue
 		elif e is Vehicle:
-			sc = (110.0 if vdef.cannon else (70.0 if vkind == "gunship" else 40.0)) - d
+			sc = (110.0 if vdef.cannon else (70.0 if base() == "attack_heli" else 40.0)) - d
 		else:
 			sc = 50.0 - d
 			if e.rockets > 0:
@@ -528,13 +542,15 @@ func _fire_tick() -> void:
 			cannon_t = 5.5
 			return
 	var mg: String = vdef.mg
-	var mg_range := 70.0 if not (vkind in ["gunship", "aa_tech"] or (target is Vehicle and target.is_air())) else 105.0
-	if mg != "" and mg_t <= 0.0 and err < 0.15 and dist < mg_range and not (target is Structure and vkind != "gunship") and not (target is Vehicle and vdef.armor >= 2 and target.vdef.armor >= 2 and mg != "chaingun"):
+	var gs := base() == "attack_heli"
+	var mg_range := 70.0 if not (gs or base() == "spaa" or (target is Vehicle and target.is_air())) else 105.0
+	if mg != "" and mg_t <= 0.0 and err < 0.15 and dist < mg_range and not (target is Structure and not gs) and not (target is Vehicle and vdef.armor >= 2 and target.vdef.armor >= 2 and mg != "chaingun"):
 		var w: Dictionary = Defs.WEAPONS[mg]
 		if mg_burst <= 0:
 			mg_burst = world.rng.randi_range(w.burst.x, w.burst.y)
 		mg_burst -= 1
-		var muzzle := turret_pos() + Defs.dir_of(rotation.y + turret_yaw) * (0.8 if vkind in ["technical", "aa_tech", "humvee", "gunship"] else 2.0) + Vector3(0, 0.2 if vkind in ["technical", "aa_tech", "humvee"] else (-0.3 if vkind != "gunship" else -0.1), 0)
+		var roof := is_light() or gs
+		var muzzle := turret_pos() + Defs.dir_of(rotation.y + turret_yaw) * (0.8 if roof else 2.0) + Vector3(0, (-0.1 if gs else 0.2) if roof else -0.3, 0)
 		var aim: Vector3 = target.exposed_points()[0] if target is Soldier else target.center_point()
 		world.combat.fire_bullet(self, muzzle, aim, target, w, 1.0)
 		last_fire_t = world.time
@@ -625,7 +641,7 @@ func explosion_hit(pos: Vector3, d: Dictionary) -> void:
 			mult = 1.5
 		dmg = at * mult
 		var side_hit := absf(facing) < 0.6
-		if vkind != "truck" and not track_broken and world.rng.randf() < float(d.get("track", 0.3)) * (1.5 if side_hit else 1.0):
+		if base() != "supply" and not is_heli() and not track_broken and world.rng.randf() < float(d.get("track", 0.3)) * (1.5 if side_hit else 1.0):
 			track_broken = true
 			world.stat("track_broken")
 			world.fx_event([Fx.DEBRIS, position + Vector3(0, 0.5, 0), Color(0.1, 0.1, 0.1), 8])
@@ -643,7 +659,7 @@ func take_damage(amount: float, _src) -> void:
 	if OS.has_environment("FL_DEBUG_DMG"):
 		print("DMG %s hp=%.0f -%.1f from %s t=%.1f" % [vkind, hp, amount, _src.display_name() if _src else "?", world.time])
 	hp -= amount
-	if world.time > _alert_t and vkind != "truck" and amount > 50.0:
+	if world.time > _alert_t and not is_auto() and amount > 50.0:
 		_alert_t = world.time + 20.0
 		world.send_msg(team, "alert", "%s under fire at %s!" % [display_name(), Defs.grid_ref(position)], position)
 	if hp <= 0.0:
@@ -663,17 +679,17 @@ func _destroyed() -> void:
 	world.fx_event([Fx.DEBRIS, position + Vector3(0, 1.5, 0), Color(0.15, 0.15, 0.14), 16])
 	for s in world.soldiers_near(position, 7.0):
 		s.flinch_from(position, Defs.flat(s.position - position).length(), 7.0)
-	if vkind == "truck":
+	if base() == "supply":
 		world.rules.truck_lost(self)
 	else:
 		world.send_msg(team, "alert", "%s destroyed at %s." % [display_name(), Defs.grid_ref(position)], position)
-	var wreck_kind := "rubble" if vkind in ["heli", "gunship"] else "wreck"
-	if vkind in ["heli", "gunship"]:
+	var wreck_kind := "rubble" if is_heli() else "wreck"
+	if is_heli():
 		world.send_msg(team, "alert", "%s shot down at %s!" % [display_name(), Defs.grid_ref(position)], position)
 		world.send_msg(1 - team, "info", "Enemy %s shot down!" % display_name().to_lower(), position)
 	var p := Vector3(position.x, 0.0, position.z)
 	var y := rotation.y
-	var props := {"skind": wreck_kind, "pos": p, "yaw": y, "variant": {"tank": 6, "old_tank": 7, "heli": 9, "gunship": 9}.get(vkind, 8)}
+	var props := {"skind": wreck_kind, "pos": p, "yaw": y, "variant": 9 if is_heli() else (6 if weight() >= 2 else 8)}
 	if wreck_kind == "wreck":
 		var hs := _hull_size()
 		var plan := _toss_plan(p, y)
@@ -697,10 +713,10 @@ func _destroyed() -> void:
 ## How a blast moves this kind of vehicle: [shove (m/s per unit of blast),
 ## launch speed range, throw speed range, chance of landing on its side or roof].
 func _toss_class() -> Array:
-	match vkind:
-		"tank", "old_tank":
+	match weight():
+		2:
 			return [0.3, Vector2(0.8, 2.2), Vector2(0.2, 0.8), 0.0]
-		"ifv", "btr", "apc":
+		1:
 			return [0.9, Vector2(1.5, 4.5), Vector2(0.5, 2.5), 0.15]
 	return [2.2, Vector2(3.0, 9.0), Vector2(2.0, 6.0), 0.45]
 
@@ -743,7 +759,7 @@ func _toss_plan(p: Vector3, y: float) -> Array:
 func blast_jolt(p: Vector3, bsize: float) -> void:
 	var away := Defs.flat(position - p)
 	var dist := away.length()
-	var pw := bsize * clampf(1.0 - dist / (5.0 + bsize * 5.0), 0.0, 1.0) * (0.45 if vkind in ["tank", "old_tank"] else 1.0)
+	var pw := bsize * clampf(1.0 - dist / (5.0 + bsize * 5.0), 0.0, 1.0) * (0.45 if weight() >= 2 else 1.0)
 	if pw <= 0.0:
 		return
 	away = away.normalized() if dist > 0.1 else Vector3.FORWARD
@@ -756,7 +772,7 @@ func blast_jolt(p: Vector3, bsize: float) -> void:
 func recoil(dir: Vector3) -> void:
 	var fwd := Defs.dir_of(rotation.y)
 	var side := fwd.cross(Vector3.UP)
-	var k := 0.9 if vkind in ["tank", "old_tank"] else 0.5
+	var k := 0.9 if weight() >= 2 else 0.5
 	_sus_v += Vector3(dir.dot(fwd), dir.dot(side), 0.0) * k
 
 
@@ -773,7 +789,7 @@ func _suspension(dt: float) -> void:
 	_vel_s = _vel_s.lerp(vel, 1.0 - exp(-dt * 6.0))
 	var acc := (_vel_s - _vel_prev) / dt
 	_vel_prev = _vel_s
-	var heavy := vkind in ["tank", "old_tank", "ifv"]
+	var heavy := weight() >= 2 or (weight() == 1 and is_tracked())
 	var kp := 0.011 if heavy else 0.02
 	var tgt := Vector3(clampf(acc.dot(fwd) * kp, -0.08, 0.08), clampf(acc.dot(side) * kp * 0.9, -0.07, 0.07), 0.0)
 	var hs := _hull_size()
@@ -1094,14 +1110,14 @@ func _build_model() -> void:
 	blur = k.blur
 	wheels = k.wheels
 	if rotor:
-		add_child(Sfx.make_loop_player("rotor", 18.0, 0.0 if vkind == "gunship" else -3.0))
+		add_child(Sfx.make_loop_player("rotor", 18.0, 0.0 if base() == "attack_heli" else -3.0))
 	elif world.fx and world.fx.vfx:
-		dust = world.fx.vfx.make_dust(1.3 if vkind in ["tank", "old_tank"] else 1.0)
+		dust = world.fx.vfx.make_dust(1.3 if weight() >= 2 else 1.0)
 		dust.position = Vector3(0, 0.2, _hull_size().z * 0.5)
 		add_child(dust)
 	if world.fx and world.fx.vfx:
-		burner = world.fx.vfx.make_burner(1.0 if vkind in ["tank", "old_tank"] else 0.7)
-		burner.position = Vector3(0, 1.6, 1.2) if vkind != "heli" else Vector3(0, 2.3, 0.6)
+		burner = world.fx.vfx.make_burner(1.0 if weight() >= 2 else 0.7)
+		burner.position = Vector3(0, 1.6, 1.2) if base() != "lift_heli" else Vector3(0, 2.3, 0.6)
 		add_child(burner)
 	var hs := _hull_size()
 	ring = Res.mi(self, Res.plane(maxf(hs.x, hs.z) * 1.22), Res.ring_mat(tc), Vector3(0, 0.06, 0), Vector3.ZERO, false)

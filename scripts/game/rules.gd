@@ -881,7 +881,7 @@ func _danger_maps() -> void:
 			var w := 2.0 if s.utype in ["mg_gunner", "pkm"] else 1.0
 			_threat(dm, s.position, 42.0, w)
 		for v in world.vehicles:
-			if v.team == t or v.team < 0 or v.vkind in ["truck", "heli"] or not v.visible_to_team(t):
+			if v.team == t or v.team < 0 or v.is_auto() or not v.visible_to_team(t):
 				continue
 			_threat(dm, v.position, 60.0, 3.0 if v.vdef.get("cannon", false) else 2.0)
 		for st in world.structures:

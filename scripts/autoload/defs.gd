@@ -85,17 +85,33 @@ var SQUADS := {
 	"fpv_team": {"name": "FPV Team", "team": 1, "cost": 100, "time": 12.0, "members": ["fpv_op", "fighter"], "desc": "Flies kamikaze drones into soldiers and tanks."},
 }
 
+## Every vehicle says what it is as well as what it's called. base: how it
+## behaves - "tank" (main gun), "afv" (autocannon / heavy MG, may carry troops),
+## "car" (light vehicle with a roof gun), "spaa", "attack_heli", "lift_heli",
+## "supply" (the road convoy). size: the hull's box (collision, selection);
+## weight: 0 light, 1 medium, 2 heavy (how blasts move it, how it rides);
+## gun_h: where its guns sit; auto: runs itself (supply), not commanded.
 var VEHICLES := {
-	"tank": {"name": "Battle Tank", "team": 0, "cost": 300, "time": 30.0, "hp": 1400.0, "armor": 2, "speed": 6.5, "turn": 1.1, "cannon": true, "mg": "coax", "cap": 4, "desc": "Smashes walls. Small arms bounce off."},
-	"old_tank": {"name": "Old Tank", "team": 1, "cost": 240, "time": 28.0, "hp": 1000.0, "armor": 2, "speed": 5.5, "turn": 0.9, "cannon": true, "mg": "coax", "cap": 4, "desc": "Smashes walls. Small arms bounce off."},
-	"technical": {"name": "Technical", "team": 1, "cost": 130, "time": 16.0, "hp": 360.0, "armor": 0, "speed": 11.0, "turn": 1.8, "cannon": false, "mg": "m2", "cap": 2, "desc": "Fast pickup with a heavy machine gun."},
-	"ifv": {"name": "IFV", "team": 0, "cost": 230, "time": 26.0, "hp": 820.0, "armor": 1, "speed": 8.5, "turn": 1.4, "cannon": false, "mg": "bushmaster", "cap": 3, "carry": "mech_team", "tracked": true, "desc": "Tracked infantry fighting vehicle. Carries a fire team into the fight; its 25 mm airburst rounds burst right over trenches."},
-	"btr": {"name": "BTR", "team": 1, "cost": 170, "time": 20.0, "hp": 620.0, "armor": 1, "speed": 10.5, "turn": 1.6, "cannon": false, "mg": "kpvt", "cap": 3, "carry": "mech_cell", "desc": "Eight-wheeled APC with a 14.5 mm gun. Carries a fighter cell."},
-	"humvee": {"name": "Humvee", "team": 0, "cost": 120, "time": 15.0, "hp": 460.0, "armor": 1, "speed": 12.0, "turn": 1.9, "cannon": false, "mg": "m2", "cap": 2, "desc": "Fast armoured car with a roof .50 cal. Scouts, hunts technicals, shreds soft targets."},
-	"gunship": {"name": "Attack Helicopter", "team": 0, "cost": 380, "time": 35.0, "hp": 1100.0, "armor": 1, "speed": 22.0, "turn": 2.2, "cannon": false, "mg": "chaingun", "cap": 4, "air": true, "desc": "Circles its target firing a 30 mm chain gun and rocket salvos. Dreads .50 cals and AA technicals."},
-	"aa_tech": {"name": "AA Technical", "team": 1, "cost": 150, "time": 18.0, "hp": 380.0, "armor": 0, "speed": 10.5, "turn": 1.8, "cannon": false, "mg": "zu23", "cap": 2, "aa": true, "desc": "Twin 23 mm cannon on a pickup. Tears helicopters, drones and anything soft apart."},
-	"heli": {"name": "Supply Helicopter", "team": 0, "cost": 150, "time": 20.0, "hp": 320.0, "armor": 1, "speed": 20.0, "turn": 2.5, "cannon": false, "mg": "", "cap": 0, "desc": "Keeps flying supply straight to your neediest FOB, ignoring roads. Can be shot down."},
-	"truck": {"name": "Supply Truck", "team": -1, "cost": 0, "time": 0.0, "hp": 240.0, "armor": 0, "speed": 9.0, "turn": 2.0, "cannon": false, "mg": "", "cap": 0, "desc": "Drives supply down the road."},
+	"tank": {"name": "Battle Tank", "team": 0, "cost": 300, "time": 30.0, "hp": 1400.0, "armor": 2, "speed": 6.5, "turn": 1.1, "cannon": true, "mg": "coax", "cap": 4, "tracked": true,
+		"base": "tank", "size": Vector3(3.4, 2.2, 6.4), "weight": 2, "gun_h": 2.2, "desc": "Smashes walls. Small arms bounce off."},
+	"old_tank": {"name": "Old Tank", "team": 1, "cost": 240, "time": 28.0, "hp": 1000.0, "armor": 2, "speed": 5.5, "turn": 0.9, "cannon": true, "mg": "coax", "cap": 4, "tracked": true,
+		"base": "tank", "size": Vector3(3.4, 2.2, 6.4), "weight": 2, "gun_h": 2.2, "desc": "Smashes walls. Small arms bounce off."},
+	"technical": {"name": "Technical", "team": 1, "cost": 130, "time": 16.0, "hp": 360.0, "armor": 0, "speed": 11.0, "turn": 1.8, "cannon": false, "mg": "m2", "cap": 2,
+		"base": "car", "size": Vector3(2.0, 1.8, 4.6), "weight": 0, "gun_h": 2.0, "desc": "Fast pickup with a heavy machine gun."},
+	"ifv": {"name": "IFV", "team": 0, "cost": 230, "time": 26.0, "hp": 820.0, "armor": 1, "speed": 8.5, "turn": 1.4, "cannon": false, "mg": "bushmaster", "cap": 3, "carry": "mech_team", "tracked": true,
+		"base": "afv", "size": Vector3(2.3, 2.6, 6.0), "weight": 1, "gun_h": 2.2, "desc": "Tracked infantry fighting vehicle. Carries a fire team into the fight; its 25 mm airburst rounds burst right over trenches."},
+	"btr": {"name": "BTR", "team": 1, "cost": 170, "time": 20.0, "hp": 620.0, "armor": 1, "speed": 10.5, "turn": 1.6, "cannon": false, "mg": "kpvt", "cap": 3, "carry": "mech_cell",
+		"base": "afv", "size": Vector3(2.3, 2.6, 6.0), "weight": 1, "gun_h": 2.2, "desc": "Eight-wheeled APC with a 14.5 mm gun. Carries a fighter cell."},
+	"humvee": {"name": "Humvee", "team": 0, "cost": 120, "time": 15.0, "hp": 460.0, "armor": 1, "speed": 12.0, "turn": 1.9, "cannon": false, "mg": "m2", "cap": 2,
+		"base": "car", "size": Vector3(2.2, 2.0, 4.8), "weight": 0, "gun_h": 2.0, "desc": "Fast armoured car with a roof .50 cal. Scouts, hunts technicals, shreds soft targets."},
+	"gunship": {"name": "Attack Helicopter", "team": 0, "cost": 380, "time": 35.0, "hp": 1100.0, "armor": 1, "speed": 22.0, "turn": 2.2, "cannon": false, "mg": "chaingun", "cap": 4, "air": true,
+		"base": "attack_heli", "size": Vector3(2.0, 2.2, 6.5), "weight": 0, "gun_h": 0.8, "desc": "Circles its target firing a 30 mm chain gun and rocket salvos. Dreads .50 cals and AA technicals."},
+	"aa_tech": {"name": "AA Technical", "team": 1, "cost": 150, "time": 18.0, "hp": 380.0, "armor": 0, "speed": 10.5, "turn": 1.8, "cannon": false, "mg": "zu23", "cap": 2, "aa": true,
+		"base": "spaa", "size": Vector3(2.0, 1.9, 4.6), "weight": 0, "gun_h": 2.0, "desc": "Twin 23 mm cannon on a pickup. Tears helicopters, drones and anything soft apart."},
+	"heli": {"name": "Supply Helicopter", "team": 0, "cost": 150, "time": 20.0, "hp": 320.0, "armor": 1, "speed": 20.0, "turn": 2.5, "cannon": false, "mg": "", "cap": 0, "air": true, "auto": true, "supply": true,
+		"base": "lift_heli", "size": Vector3(2.2, 2.0, 6.0), "weight": 0, "gun_h": 1.0, "desc": "Keeps flying supply straight to your neediest FOB, ignoring roads. Can be shot down."},
+	"truck": {"name": "Supply Truck", "team": -1, "cost": 0, "time": 0.0, "hp": 240.0, "armor": 0, "speed": 9.0, "turn": 2.0, "cannon": false, "mg": "", "cap": 0, "auto": true,
+		"base": "supply", "size": Vector3(2.3, 2.6, 6.0), "weight": 1, "gun_h": 2.2, "desc": "Drives supply down the road."},
 }
 
 ## Off-map support, called on a spot (Z). One per side, with a cooldown.
