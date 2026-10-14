@@ -168,7 +168,7 @@ func _mission_text(s: Dictionary) -> Array:
 				humans += 1
 		what = ("Command the %s against the AI" % Defs.TEAM_NAMES[team]) if humans <= 1 else ("%d commanders, %s" % [humans, "co-op" if s.get("ai_fill", true) else "head to head"])
 	side = Defs.TEAM_NAMES[team] if team >= 0 else "Observer"
-	return [what, [["SIDE", side], ["AREA", "A crossroads town and its farmland, 256 x 256 m"], ["CONDITIONS", "Assessing"]]]
+	return [what, [["SIDE", side], ["AREA", "A crossroads town and its farmland, %d x %d m" % [int(MapDims.SIZE), int(MapDims.SIZE)]], ["CONDITIONS", "Assessing"]]]
 
 
 func _on_game_start(s: Dictionary) -> void:

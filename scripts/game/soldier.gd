@@ -6,7 +6,7 @@ extends Entity
 enum Life {ALIVE, DOWNED, DEAD, SURRENDER, CAPTIVE, HIDDEN}
 enum Post {STAND, CROUCH, PRONE, LEAN_L, LEAN_R}
 enum Act {IDLE, WALK, RUN, SHOOT, RELOAD, THROW, MELEE, BUILD, HEAL, DRAG, CARRY, CRAWL, DRAGGED, CARRIED, VAULT, DIVE, SLIDE, FLUNG, DAZED, FLINCH, HANDSUP, PICKUP, LIMP, PISTOL, LAUNCH, CLIMB,
-	IDLE_CHAT, IDLE_LAUGH, IDLE_SMOKE, IDLE_SIT, IDLE_STRETCH, IDLE_CHECK, IDLE_LOOK, KICK, SMOTHER, COOK}
+	IDLE_CHAT, IDLE_LAUGH, IDLE_SMOKE, IDLE_SIT, IDLE_STRETCH, IDLE_CHECK, IDLE_LOOK, KICK, SMOTHER, COOK, WINDED}
 enum Cov {NONE, LOW, LEAN, HIDE}
 ## Player-facing activity labels: [text, category]. %s = the related entity's name.
 const DOING := [
@@ -24,6 +24,7 @@ const DOING := [
 	["Firing over cover", "fight"], ["Blind firing", "stress"], ["Moving along the wall", "move"],
 	["Throwing himself on a grenade!", "stress"], ["Kicking the grenade away", "fight"], ["Clearing the house", "fight"],
 	["Stacking on the door", "fight"], ["Cooking a grenade", "fight"], ["Hitting the dirt", "stress"],
+	["Catching his breath", "idle"], ["Holding fire", "fight"],
 ]
 ## Downtime chatter: each exchange alternates speakers; %s is the other man's name.
 const BANTER := [[
@@ -221,6 +222,7 @@ var bt_breach_g: Projectile = null
 var bt_wait := 0.0
 var task_pos2 := Vector3.ZERO
 var bt_reordered := false  # given a new order mid-breach: rejoin rather than go in
+var stamina := 1.0  # sprinting, rushing and dragging men wear it down; rest brings it back
 
 # tasks
 var task := ""
@@ -350,6 +352,8 @@ func _update_doing() -> void:
 						d = 46
 					Act.COOK:
 						d = 49
+					Act.WINDED:
+						d = 51
 			if d == 0:
 				if hit_dirt_t > 0.0 and act != Act.DIVE:
 					d = 50
@@ -361,6 +365,8 @@ func _update_doing() -> void:
 					d = 4
 				elif goal_kind == "cover" and is_moving() and _shifting:
 					d = 44
+				elif squad and squad.ambush and _target_valid(target):
+					d = 52
 				elif act == Act.RUN:
 					d = 2
 				elif act == Act.WALK:
@@ -818,7 +824,26 @@ func _update_flags() -> void:
 	flags = f
 
 
+## Out of breath: rushes, sprints and dragging a man wear him down; a breather
+## (lower down, sooner) brings it back.
+func _fatigue_tick(dt: float) -> void:
+	var drain := 0.0
+	if is_moving() or dive_t > 0.0:
+		drain = [0.0, 0.022, 0.045][clampi(move_mode, 0, 2)]
+		if act == Act.CRAWL:
+			drain = 0.012
+		if task in ["rescue", "stretcher", "smother"]:
+			drain += 0.025
+	elif task == "stretcher" or act in [Act.DRAG, Act.CARRY]:
+		drain = 0.025
+	if drain > 0.0:
+		stamina = maxf(0.0, stamina - drain * dt)
+	else:
+		stamina = minf(1.0, stamina + (0.06 if posture != Post.STAND else 0.045) * dt)
+
+
 func _alive(dt: float) -> void:
+	_fatigue_tick(dt)
 	if dazed_t > 0.0:
 		_dazed_tick(dt)
 		return
@@ -938,6 +963,8 @@ func _scan() -> void:
 			if e.life == Life.DOWNED and world.time - e.last_shot_t > 2.0:
 				continue  # leave the wounded alone unless they're shooting
 			var rr := r * world.terrain.concealment(e.position)
+			if world.time - e.last_shot_t > 8.0 and not e.is_moving() and (e.at_cover or e.posture == Post.PRONE):
+				rr *= 0.7  # still, low and silent: it's movement and muzzle flash that give men away
 			if d2 > rr * rr:
 				continue
 		arr.append([d2, e])
@@ -1157,6 +1184,8 @@ func _speed() -> float:
 		s *= 0.9
 	if move_mode == 0 and posture == Post.CROUCH:
 		s *= 0.8
+	if stamina < 0.35:
+		s *= 0.65 + stamina  # blown: the sprint becomes a stagger
 	return s
 
 
@@ -1411,6 +1440,9 @@ func _choose_act(moving: bool) -> void:
 			act = Act.RUN if _speed() > 3.2 else Act.WALK
 	else:
 		act = Act.IDLE
+		# blown after a long rush: bent over, hands on his knees
+		if stamina < 0.3 and posture == Post.STAND and world.time - last_shot_t > 1.5 and not _target_valid(target):
+			act = Act.WINDED
 
 
 func _lean_post() -> int:
@@ -1504,7 +1536,7 @@ func _weapon_tick(dt: float, moving: bool, mode: String) -> void:
 		if reload_t <= 0.0:
 			_finish_reload()
 	var w := cur_weapon()
-	var pinned := suppression >= 60.0
+	var pinned := suppression >= (squad.pin_at() if squad else 60.0)  # a shaken squad is pinned sooner
 	var danger := _danger()
 	var have_target := _target_valid(target)
 	var own_cf := cf_until > world.time
@@ -1579,6 +1611,8 @@ func _weapon_tick(dt: float, moving: bool, mode: String) -> void:
 		return
 	if suppression >= 88.0 and mode != "escort":
 		return
+	if squad and squad.ambush and mode == "normal" and forced_target == null:
+		return  # holding fire till the leader springs it
 	var aim_ent: Entity = null
 	var aim_pt := Vector3.INF
 	if blind and have_target:
@@ -1636,6 +1670,11 @@ func _shoot(aim_pt: Vector3, aim_ent: Entity, moving: bool, cover_fire: bool) ->
 		accm *= 0.55
 	if not gun_override.is_empty():
 		accm *= 1.15
+	if squad:
+		accm *= squad.acc_mult()  # shaken men snatch their shots
+		if squad.ambush_t > world.time:
+			accm *= 1.3  # the first volley of an ambush, at men who didn't know they were there
+	accm *= 0.75 + 0.25 * clampf(stamina / 0.5, 0.0, 1.0)  # the muzzle heaving with his breathing
 	world.combat.fire_bullet(self, muzzle, aim_pt, aim_ent, w, accm)
 	if burst_left <= 0:
 		# a man under fire shoots less: longer between bursts the more rounds
@@ -1764,7 +1803,7 @@ func _rethrow_target(g: Projectile) -> Vector3:
 
 
 func _try_grenade() -> bool:
-	if frags <= 0 or world.time < grenade_cd or suppression > 70.0 or squad == null:
+	if frags <= 0 or world.time < grenade_cd or suppression > 70.0 or squad == null or squad.ambush:
 		return false
 	if is_moving():
 		return false
@@ -1818,6 +1857,8 @@ var _queued_throw: Dictionary = {}  # the throw that follows cooking it
 
 func _try_rocket() -> bool:
 	if rockets <= 0 or world.time < rocket_cd:
+		return false
+	if squad and squad.ambush:
 		return false
 	var tgt: Entity = null
 	for e in vis_targets:
@@ -2090,6 +2131,22 @@ func cmd_move(slot: Vector3, mode: int, face: Vector3) -> void:
 	go_to(slot, "slot", mode)
 
 
+## Contact: down where he is - the best cover a few metres round him - facing
+## the enemy, and return fire; the squad moves on when it has the upper hand.
+func cmd_halt(face: Vector3) -> void:
+	if not can_take_orders() or task != "":
+		return
+	stop_moving()
+	hold_pos = world.nav.nearest_walkable(position)
+	hold_face = face if face.length() > 0.1 else hold_face
+	leash = 8.0
+	at_cover = false
+	cover_type = Cov.NONE
+	_clear_cover()
+	peek_up = false
+	next_cover_eval = 0.0
+
+
 ## Keep station in the squad's formation (no change of task, no fuss).
 func follow_to(p: Vector3, mode: int, face: Vector3) -> void:
 	if not can_take_orders() or task != "":
@@ -2307,6 +2364,8 @@ func take_damage(amount: float, src, _dir: Vector3, kind := "bullet") -> void:
 		elif src is Soldier:
 			who = src.utype + ("@" + src.mounted.skind if src.mounted else "")
 		world.stat("t%d_hit_by_%s_%s" % [team, who, kind])
+	if hp <= 0.0 and src is Soldier and src.squad and src.team != team and life == Life.ALIVE:
+		src.squad.morale = minf(100.0, src.squad.morale + 3.0)  # winning the firefight
 	if hp <= 0.0:
 		if life == Life.SURRENDER or life == Life.CAPTIVE or is_bearer() and world.rng.randf() < 0.3:
 			_die()
@@ -3359,7 +3418,7 @@ func write_state(b: StreamPeerBuffer) -> void:
 	b.put_u8(255 if w.is_empty() or int(w.ammo) >= 9000 else int(clampf(float(total_ammo()) / float(w.ammo), 0.0, 1.0) * 255.0))
 	b.put_8(team)
 	b.put_u8(doing)
-	b.put_u16(doing_ent)
+	b.put_u32(doing_ent)
 	b.put_u8(cov_code())
 
 
@@ -3377,7 +3436,7 @@ func read_state(b: StreamPeerBuffer) -> void:
 	ammo_frac = b.get_u8() / 255.0
 	team = b.get_8()
 	doing = b.get_u8()
-	doing_ent = b.get_u16()
+	doing_ent = b.get_u32()
 	cov_net = b.get_u8()
 
 

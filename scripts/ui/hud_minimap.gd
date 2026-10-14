@@ -24,10 +24,10 @@ func _gui_input(ev: InputEvent) -> void:
 		hud.world.cam.focus(_to_world((ev as InputEventMouseMotion).position))
 
 func _to_world(p: Vector2) -> Vector3:
-	return Vector3(p.x / size.x * 256.0 - 128.0, 0, p.y / size.y * 256.0 - 128.0)
+	return Vector3(p.x / size.x * MapDims.SIZE - MapDims.HALF, 0, p.y / size.y * MapDims.SIZE - MapDims.HALF)
 
 func _to_map(p: Vector3) -> Vector2:
-	return Vector2((p.x + 128.0) / 256.0 * size.x, (p.z + 128.0) / 256.0 * size.y)
+	return Vector2((p.x + MapDims.HALF) / MapDims.SIZE * size.x, (p.z + MapDims.HALF) / MapDims.SIZE * size.y)
 
 ## Terrain backdrop from the same noise the ground shader uses.
 func _make_bg() -> void:
@@ -35,10 +35,11 @@ func _make_bg() -> void:
 	if at == null or at.biome_img == null:
 		return
 	var n := 128
+	var mpp := MapDims.SIZE / n  # metres per pixel
 	var img := Image.create(n, n, false, Image.FORMAT_RGB8)
 	for y in n:
 		for x in n:
-			var wp := Vector3(x * 2.0 - 128.0, 0, y * 2.0 - 128.0)
+			var wp := Vector3((x + 0.5) * mpp - MapDims.HALF, 0, (y + 0.5) * mpp - MapDims.HALF)
 			var g := at.grass_amount(wp)
 			var b := at.biome_at(wp)
 			var c := Color(0.36, 0.31, 0.22).lerp(Color(0.24, 0.32, 0.15), g)
@@ -53,10 +54,10 @@ func _bake_static() -> void:
 		_make_bg()
 	if _bg == null:
 		return
-	var n := 256
+	var n := 512
 	var img: Image = _bg.get_image()
 	img.resize(n, n, Image.INTERPOLATE_BILINEAR)
-	var k := n / 256.0
+	var k := n / MapDims.SIZE  # pixels per metre
 	for t in 3:
 		for poly in w.roads[t]:
 			var pts: PackedVector3Array = poly
@@ -66,8 +67,8 @@ func _bake_static() -> void:
 				var steps := int(a.distance_to(b) * k * 1.5) + 1
 				for j in steps + 1:
 					var p := a.lerp(b, float(j) / steps)
-					var px := int((p.x + 128.0) * k)
-					var pz := int((p.z + 128.0) * k)
+					var px := int((p.x + MapDims.HALF) * k)
+					var pz := int((p.z + MapDims.HALF) * k)
 					for dx in 2:
 						for dz in 2:
 							if px + dx >= 0 and pz + dz >= 0 and px + dx < n and pz + dz < n:
@@ -82,8 +83,8 @@ func _bake_static() -> void:
 			col = Color(0.1, 0.17, 0.08)
 		if col.r < 0.0:
 			continue
-		var px2 := int((st.position.x + 128.0) * k)
-		var pz2 := int((st.position.z + 128.0) * k)
+		var px2 := int((st.position.x + MapDims.HALF) * k)
+		var pz2 := int((st.position.z + MapDims.HALF) * k)
 		if px2 >= 0 and pz2 >= 0 and px2 < n - 1 and pz2 < n - 1:
 			img.set_pixel(px2, pz2, col)
 			img.set_pixel(px2 + 1, pz2, col)
@@ -107,15 +108,16 @@ func _draw() -> void:
 		draw_texture_rect(_static, Rect2(Vector2.ZERO, size), false)
 	else:
 		draw_rect(Rect2(Vector2.ZERO, size), Color(0.2, 0.25, 0.15))
-	# the same 32 m grid the radio calls use (A-H across, 1-8 down)
-	for i in range(1, 8):
-		var gx := size.x * i / 8.0
-		var gy := size.y * i / 8.0
+	# the same grid the radio calls use (A-H across, 1-8 down)
+	var gn := float(MapDims.GRID)
+	for i in range(1, MapDims.GRID):
+		var gx := size.x * i / gn
+		var gy := size.y * i / gn
 		draw_line(Vector2(gx, 0), Vector2(gx, size.y), Color(1, 1, 1, 0.08), 1.0)
 		draw_line(Vector2(0, gy), Vector2(size.x, gy), Color(1, 1, 1, 0.08), 1.0)
-	for i in 8:
-		UiKit.text(self, Vector2(size.x * (i + 0.5) / 8.0 - 3.0, 10), "ABCDEFGH"[i], 9, Color(1, 1, 1, 0.45), 600)
-		UiKit.text(self, Vector2(2, size.y * (i + 0.5) / 8.0 + 4.0), str(i + 1), 9, Color(1, 1, 1, 0.45), 600)
+	for i in MapDims.GRID:
+		UiKit.text(self, Vector2(size.x * (i + 0.5) / gn - 3.0, 10), "ABCDEFGHIJKLMNOP"[i], 9, Color(1, 1, 1, 0.45), 600)
+		UiKit.text(self, Vector2(2, size.y * (i + 0.5) / gn + 4.0), str(i + 1), 9, Color(1, 1, 1, 0.45), 600)
 	for st in w.structures:
 		if not st.visible or st.team < 0:
 			continue

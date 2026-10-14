@@ -303,6 +303,8 @@ func launch_drone(s: Soldier, t: Entity) -> Drone:
 func explode(pos: Vector3, d: Dictionary) -> void:
 	var dmg: float = d.get("dmg", 120.0)
 	var r: float = d.get("radius", 5.0)
+	if d.get("top", false) and r >= 3.5:
+		world.note_heavy_impact(pos)
 	var fling: float = d.get("fling", 8.0)
 	var src = d.get("src")
 	var fr := r * 2.4

@@ -31,6 +31,19 @@ const DRILLS := [
 		"Holding a live grenade", "Against men behind something solid at close range, the thrower lets the spoon fly and holds it a second or so before he throws, so it goes off as it lands - too late to throw back. It's the throw-back's answer, and the reason men sometimes have to lie on one."],
 	["d_house", "Clearing a house", Soldier.Post.CROUCH, Soldier.Act.COOK, "door", "Enemy seen inside a building near the squad",
 		"The doorway is a fatal funnel", "The man best placed stacks beside the doorway, back to the wall. Pin out, he steps into the doorway and throws it in low under the lintel (or lobs it through a window), steps back against the wall for the bang - and then he's in, a mate right behind him, before they recover. A man already stacked finishes the job before he follows a new order."],
+	# squad drills (SquadBrain): what the whole squad does
+	["s_contact", "React to contact", Soldier.Post.PRONE, Soldier.Act.SHOOT, "", "Fired on, or a new enemy in sight, while the squad is moving",
+		"Caught in the open", "Everyone gets down where he is - the nearest cover a few metres round him - and returns fire, while the leader calls it: direction and range (\"Contact! North-east, 150 metres!\"). Once the enemy's fire slackens the squad carries on, by bounds while they're still about. A squad ordered to move fast keeps running."],
+	["s_indirect", "React to indirect fire", Soldier.Post.STAND, Soldier.Act.DIVE, "", "Shells or bombs landing among a squad that isn't dug in",
+		"The next round", "Down at the first one; at the second, out of the impact area at a run - sideways or back from the enemy, never towards him - to the best cover 50-odd metres off. When it lifts they go back to what they were doing. Men in trenches stay down in them: a hole is the best place to be."],
+	["s_break", "Break contact", Soldier.Post.STAND, Soldier.Act.THROW, "", "A squad losing its nerve, or (the AI's) cut up and outnumbered",
+		"Turning your back on them", "Smoke between them and us, then back by bounds - one team firing while the other moves - to a rally point, usually the nearest FOB behind. There it turns, counts off and checks its ammunition. Squads holding their own base, and crews on their guns, don't pull out."],
+	["s_ambush", "Lying in wait", Soldier.Post.PRONE, Soldier.Act.IDLE, "wall", "A squad set to defend somewhere the enemy doesn't know about",
+		"Sprung too early, it gives the position away", "It holds its fire and lets them come on: men who lie still, low and silent are hard to see (it's movement and muzzle flash that give men away). When they're close, or several are in the open, the leader springs it and everyone fires at once - the first volley is the deadliest. Fired on first, it fires back at once."],
+	["s_morale", "Morale", Soldier.Post.STAND, Soldier.Act.RUN, "", "All the time: shown on the squad card",
+		"A routed squad can't be ordered", "Casualties, fire it can't answer, tanks it can't fight and losing its leader wear a squad down; quiet, a leader, friends close by, a tank alongside and a hole in the ground build it back. Steady: it fights as it should. Shaken: it shoots worse and is pinned sooner. Breaking: it breaks contact. Routed: it runs for the rear and won't take orders until it has pulled itself together."],
+	["s_winded", "Out of breath", Soldier.Post.STAND, Soldier.Act.WINDED, "", "After sprinting, rushing or dragging a man",
+		"Slow and shaky when it matters", "A sprint or a long rush leaves a man blown - slower on his feet, the muzzle heaving with his breathing - until he gets a breather, quicker lying or kneeling than standing. Long moves at a run arrive winded; a walk keeps men fresh."],
 ]
 ## Battlefield cover, and how a man fights from each: [key, name, structure
 ## kind, variant, size, barrier height, where it's found, what it is].
@@ -793,8 +806,9 @@ func _drill_diorama(key: String, side: int) -> Node3D:
 			hw.position = Vector3(-1.55, 0, -0.55)
 			g.add_child(hw)
 			sm.rotation.y = PI * 0.5
+	var spd := 5.3 if key == "s_morale" else 0.0  # running for it
 	for i in 12:
-		sm.pose(0.3, 0, d[2], d[3], 0.0, false, false)
+		sm.pose(0.3 if spd == 0.0 else 0.07, 0, d[2], d[3], spd, false, d[3] == Soldier.Act.SHOOT)
 	g.add_child(sm)
 	if nade_at != Vector3.INF:
 		var nd := MeshInstance3D.new()
@@ -1167,7 +1181,7 @@ func _build_entries() -> Array:
 		out.append({"cat": "drills", "key": dr[0], "name": dr[1], "team": -1, "both": true,
 			"sub": String(dr[5]), "desc": String(dr[7]), "stats": [
 				["When", String(dr[5]), -1.0], ["The risk", String(dr[6]), -1.0]],
-			"rel": ["Every soldier, both sides", "A behaviour tree decides it (see README)"]})
+			"rel": ["Every squad, both sides" if String(dr[0]).begins_with("s_") else "Every soldier, both sides", "A behaviour tree decides it (see README)"]})
 
 	# upgrades
 	for k in Defs.UPGRADES:

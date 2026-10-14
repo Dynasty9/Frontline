@@ -137,7 +137,7 @@ func _ground() -> void:
 	g.mesh = pm
 	var gm := ShaderMaterial.new()
 	var sh := Shader.new()
-	sh.code = Atmosphere.GROUND_SHADER
+	sh.code = MapDims.shader(Atmosphere.GROUND_SHADER, 128.0)  # (the backdrop keeps its own size)
 	gm.shader = sh
 	gm.set_shader_parameter("biome_tex", ImageTexture.create_from_image(bimg))
 	gm.set_shader_parameter("detail_tex", ImageTexture.create_from_image(dimg))
@@ -151,11 +151,11 @@ func _ground() -> void:
 	var bush := gr._make_bush()
 	var gmat := ShaderMaterial.new()
 	var gs := Shader.new()
-	gs.code = Grass.GRASS_SHADER
+	gs.code = MapDims.shader(Grass.GRASS_SHADER, 128.0)
 	gmat.shader = gs
 	var bmat := ShaderMaterial.new()
 	var bs := Shader.new()
-	bs.code = Grass.BUSH_SHADER
+	bs.code = MapDims.shader(Grass.BUSH_SHADER, 128.0)
 	bmat.shader = bs
 	gr.free()
 	var xf := []

@@ -29,7 +29,8 @@ var node_dirs := {}  # Vector2i (rounded node) -> {Vector2i direction: true}
 var rect := Rect2()
 var main_road := PackedVector3Array()  # HQ to HQ through the town
 var cross_road := PackedVector3Array()  # edge to edge through the town
-var hamlet := {}  # "c": centre, "d": road direction
+var hamlet := {}  # the first of the hamlets
+var hamlets: Array = []  # {"c": centre, "d": road direction} of every village on the country roads
 var poles: Array = []  # [base, yaw] of every utility pole (town and country)
 var _fronts: Array = []  # front wall tops of houses, for the service drops
 var _fence_keys := {}
@@ -118,33 +119,49 @@ func plan_town(c: Vector3) -> void:
 
 
 ## Country roads in from both HQs and both map edges, joining the main streets
-## where they leave town; a hamlet sits on the longer side of the cross road.
+## where they leave town; a hamlet sits on the longer side of the cross road -
+## on a big map one on each side, and a village on the road between each HQ
+## and the town as well.
 func build_roads(hq0: Vector3, hq1: Vector3) -> Array:
 	var c := center
+	var edge := MapDims.HALF + 4.0
+	var big := MapDims.HALF > 200.0
 	var s_end := c + Vector3(0, 0, REACH)
 	var n_end := c - Vector3(0, 0, REACH)
 	var w_end := c - Vector3(REACH, 0, 0)
 	var e_end := c + Vector3(REACH, 0, 0)
-	var south := [Vector3(hq0.x + 14.0, 0, 132.0), hq0 + Vector3(14.0, 0, -12.0)]
+	var south := [Vector3(hq0.x + 14.0, 0, edge), hq0 + Vector3(14.0, 0, -12.0)]
+	if big:
+		var vs := TrenchNet.snap_pos((south.back() as Vector3).lerp(s_end + Vector3(0, 0, 14), 0.5))
+		hamlets.append({"c": vs, "d": Vector3.FORWARD})
+		mg._wobble(south, south.back(), vs + Vector3(0, 0, 20))
+		for o in [20.0, 7.0, -7.0, -20.0]:
+			south.append(vs + Vector3(0, 0, o))
 	mg._wobble(south, south.back(), s_end + Vector3(0, 0, 14))
 	south.append(s_end + Vector3(0, 0, 14))
 	south.append(s_end)
 	var north := [n_end, n_end - Vector3(0, 0, 14)]
+	if big:
+		var vn := TrenchNet.snap_pos((north.back() as Vector3).lerp(hq1 + Vector3(-14.0, 0, 12.0), 0.5))
+		hamlets.append({"c": vn, "d": Vector3.FORWARD})
+		mg._wobble(north, north.back(), vn + Vector3(0, 0, 20))
+		for o in [20.0, 7.0, -7.0, -20.0]:
+			north.append(vn + Vector3(0, 0, o))
 	mg._wobble(north, north.back(), hq1 + Vector3(-14.0, 0, 12.0))
 	north.append(hq1 + Vector3(-14.0, 0, 12.0))
-	north.append(Vector3(hq1.x - 14.0, 0, -132.0))
+	north.append(Vector3(hq1.x - 14.0, 0, -edge))
 	main_road = mg._smooth(south)
 	main_road.append_array(_straight(s_end, n_end).slice(1))
 	main_road.append_array(mg._smooth(north).slice(1))
 	# the cross road, with a straight run through a hamlet on its longer side
-	var west := [Vector3(-132.0, 0, c.z + rng.randf_range(-22, 22))]
+	var west := [Vector3(-edge, 0, c.z + rng.randf_range(-22, 22))]
 	var east := [e_end, e_end + Vector3(14, 0, 0)]
-	var east_far := Vector3(132.0, 0, c.z + rng.randf_range(-22, 22))
-	var on_west := (w_end.x + 132.0) > (132.0 - e_end.x)
-	if on_west:
-		var hx := (-132.0 + w_end.x) * 0.5
+	var east_far := Vector3(edge, 0, c.z + rng.randf_range(-22, 22))
+	var on_west := (w_end.x + edge) > (edge - e_end.x)
+	if on_west or big:
+		var hx := (-edge + w_end.x) * 0.5
 		var h := TrenchNet.snap_pos(Vector3(hx, 0, lerpf((west[0] as Vector3).z, c.z, 0.55)))
-		hamlet = {"c": h, "d": Vector3.RIGHT}
+		hamlets.append({"c": h, "d": Vector3.RIGHT})
 		mg._wobble(west, west[0], h - Vector3(20, 0, 0))
 		for o in [-20.0, -7.0, 7.0, 20.0]:
 			west.append(h + Vector3(o, 0, 0))
@@ -153,10 +170,10 @@ func build_roads(hq0: Vector3, hq1: Vector3) -> Array:
 		mg._wobble(west, west[0], w_end - Vector3(14, 0, 0))
 	west.append(w_end - Vector3(14, 0, 0))
 	west.append(w_end)
-	if not on_west:
-		var hx2 := (e_end.x + 132.0) * 0.5
+	if not on_west or big:
+		var hx2 := (e_end.x + edge) * 0.5
 		var h2 := TrenchNet.snap_pos(Vector3(hx2, 0, lerpf(c.z, east_far.z, 0.45)))
-		hamlet = {"c": h2, "d": Vector3.RIGHT}
+		hamlets.append({"c": h2, "d": Vector3.RIGHT})
 		mg._wobble(east, east.back(), h2 - Vector3(20, 0, 0))
 		for o in [-20.0, -7.0, 7.0, 20.0]:
 			east.append(h2 + Vector3(o, 0, 0))
@@ -164,6 +181,8 @@ func build_roads(hq0: Vector3, hq1: Vector3) -> Array:
 	else:
 		mg._wobble(east, east.back(), east_far)
 	east.append(east_far)
+	if not hamlets.is_empty():
+		hamlet = hamlets[0]
 	cross_road = mg._smooth(west)
 	cross_road.append_array(_straight(w_end, e_end).slice(1))
 	cross_road.append_array(mg._smooth(east).slice(1))
@@ -628,12 +647,16 @@ func _road_dist(p: Vector3) -> float:
 	return best
 
 
-## A handful of houses either side of the straight run of the cross road.
+## A handful of houses either side of the straight run of the road through
+## each village.
 func hamlet_houses() -> void:
-	if hamlet.is_empty():
-		return
-	var h: Vector3 = hamlet.c
-	var d: Vector3 = hamlet.d
+	for hm in hamlets:
+		_hamlet(hm)
+
+
+func _hamlet(hm: Dictionary) -> void:
+	var h: Vector3 = hm.c
+	var d: Vector3 = hm.d
 	for s: float in [-1.0, 1.0]:
 		var n := _perp(d) * s
 		var t := -19.0
@@ -653,7 +676,7 @@ func hamlet_houses() -> void:
 ## a fenced road frontage and an orchard behind.
 func farms(k: int) -> void:
 	var made := 0
-	for attempt in 40:
+	for attempt in 40 + k * 12:
 		if made >= k:
 			return
 		var poly: PackedVector3Array = main_road if rng.randf() < 0.5 else cross_road
@@ -661,7 +684,11 @@ func farms(k: int) -> void:
 		var p := poly[i]
 		if rect.grow(16.0).has_point(Vector2(p.x, p.z)) or not Defs.in_map(p, 22.0):
 			continue
-		if not hamlet.is_empty() and p.distance_to(hamlet.c) < 45.0:
+		var by_village := false
+		for hm in hamlets:
+			if p.distance_to(hm.c) < 45.0:
+				by_village = true
+		if by_village:
 			continue
 		var t := TrenchNet.snap_dir(poly[i + 2] - poly[i - 2])
 		var n := _perp(t) * (1.0 if rng.randf() < 0.5 else -1.0)
@@ -727,7 +754,7 @@ func country_power() -> void:
 ## off, and one running away from it, both square to the road.
 func fields(k: int) -> void:
 	var made := 0
-	for attempt in 60:
+	for attempt in 60 + k * 6:
 		if made >= k:
 			return
 		var poly: PackedVector3Array = main_road if rng.randf() < 0.5 else cross_road
@@ -761,7 +788,7 @@ func fields(k: int) -> void:
 
 ## Abandoned cars on the verges and burnt-out armour off the road.
 func roadside(cars: int, wrecks: int) -> void:
-	for attempt in 30:
+	for attempt in 30 + (cars + wrecks) * 4:
 		if cars <= 0 and wrecks <= 0:
 			return
 		var poly: PackedVector3Array = main_road if rng.randf() < 0.5 else cross_road
@@ -783,8 +810,8 @@ func roadside(cars: int, wrecks: int) -> void:
 ## furniture to the world.
 func finish() -> void:
 	mg.clear.append([rect.get_center(), REACH + 4.0])
-	if not hamlet.is_empty():
-		mg.clear.append([Vector2(hamlet.c.x, hamlet.c.z), 24.0])
+	for hm in hamlets:
+		mg.clear.append([Vector2(hm.c.x, hm.c.z), 24.0])
 	for poly in world.roads[2]:
 		var arr: PackedVector3Array = poly
 		for k in range(0, arr.size(), 2):

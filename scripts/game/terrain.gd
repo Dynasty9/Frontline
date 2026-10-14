@@ -1,6 +1,6 @@
 class_name TerrainMap
 extends RefCounted
-## What the ground itself does for you, cell by cell (1 m, 256 x 256):
+## What the ground itself does for you, cell by cell (1 m, over the whole map):
 ## roads (fast, exposed), mud (slow, exposed), woods (concealment, light
 ## cover), craters (dug-in light cover, slow for vehicles) and rubble. On top
 ## of that, a cover map: every cell next to something solid knows how good the
@@ -8,8 +8,8 @@ extends RefCounted
 ## the same data (map seed, roads, structures, explosions) and patched as
 ## things are built, destroyed or blown into craters.
 
-const N := 256
-const H := 128.0
+const N := MapDims.N
+const H := MapDims.HALF
 
 enum {GROUND, ROAD, WOODS, MUD, CRATER, RUBBLE, TRENCH}
 const KIND_NAMES := ["Open ground", "Road", "Woods", "Mud", "Crater", "Rubble", "Trench"]
@@ -41,8 +41,8 @@ var version := 0  # bumps whenever cover / kinds change (UI caches)
 ## rims. The same craters are stamped on the server and every client, so the
 ## men lie in the same holes everywhere. Clients draw it (the ground mesh is
 ## displaced by it) and the physics ground follows it.
-const DRES := 4
-const DN := 256 * DRES
+const DRES := 2  # 50 cm, like the ground mesh (a 512 m map at 25 cm would be 16 MB per upload)
+const DN := N * DRES
 var dh := PackedFloat32Array()
 var deform_dirty := Rect2i()  # samples changed since the view last looked
 var deform_img: Image  # (view only) the same heights as a texture
@@ -72,10 +72,11 @@ func _make_biome() -> void:
 	n.frequency = 0.012
 	n.fractal_type = FastNoiseLite.FRACTAL_FBM
 	n.fractal_octaves = 4
-	biome_img = n.get_seamless_image(512, 512, false, false, 0.1, true)
+	biome_img = n.get_seamless_image(MapDims.BIOME, MapDims.BIOME, false, false, 0.1, true)
+	var bo := MapDims.BIOME / 2 - N / 2
 	for z in N:
 		for x in N:
-			var b := biome_img.get_pixel(x + 128, z + 128).r
+			var b := biome_img.get_pixel(x + bo, z + bo).r
 			if b > 0.725:
 				base[z * N + x] = MUD
 

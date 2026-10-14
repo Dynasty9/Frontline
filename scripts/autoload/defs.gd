@@ -5,7 +5,7 @@ const ARMY := 0
 const REBELS := 1
 const TEAM_NAMES := ["Coalition", "Rebels"]
 const TEAM_COLORS := [Color(0.35, 0.62, 1.0), Color(1.0, 0.36, 0.28)]
-const MAP_HALF := 128.0
+const MAP_HALF := MapDims.HALF
 const GRID_N := 256
 
 # physics layers (bit values)
@@ -244,9 +244,9 @@ func flat(v: Vector3) -> Vector3:
 
 
 func grid_ref(p: Vector3) -> String:
-	var col := clampi(int((p.x + MAP_HALF) / 32.0), 0, 7)
-	var row := clampi(int((p.z + MAP_HALF) / 32.0), 0, 7)
-	return "%s%d" % ["ABCDEFGH"[col], row + 1]
+	var col := clampi(int((p.x + MAP_HALF) / MapDims.CELL), 0, MapDims.GRID - 1)
+	var row := clampi(int((p.z + MAP_HALF) / MapDims.CELL), 0, MapDims.GRID - 1)
+	return "%s%d" % ["ABCDEFGHIJKLMNOP"[col], row + 1]
 
 
 func compass(from: Vector3, to: Vector3) -> String:

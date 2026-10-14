@@ -47,7 +47,7 @@ func _ready() -> void:
 	_make_textures()
 	_make_materials()
 	var col := GPUParticlesCollisionBox3D.new()
-	col.size = Vector3(520, 20, 520)
+	col.size = Vector3((MapDims.HALF + 132.0) * 2.0, 20, (MapDims.HALF + 132.0) * 2.0)
 	col.position = Vector3(0, -10.0, 0)
 	add_child(col)
 	for kind in SMALL_KINDS:

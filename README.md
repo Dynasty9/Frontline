@@ -139,7 +139,27 @@ Settings are saved to `user://settings.cfg`.
 - Kit: Coalition soldiers wear helmets with NVG mounts and headsets, plate carriers with mag pouches, assault packs
   and knee pads, and carry carbines with optics; Rebels wear shemaghs, mismatched chest rigs and carry AKs.
 
-**Command and squad cohesion** (`squad.gd`, `commander_ai.gd`)
+**Command and squad cohesion** (`squad.gd`, `squad_brain.gd`, `commander_ai.gd`)
+- **Battle drills** (`squad_brain.gd`): each squad has its own behaviour tree, walked twice a second, most
+  urgent first. *React to contact*: fired on (or a new enemy in sight) while moving, everyone gets down where he
+  is and returns fire while the leader calls it - "Contact! North-east, 150 metres!" - and once the enemy's fire
+  slackens the squad carries on, by bounds while they're still about (a squad told to move fast keeps running).
+  *React to indirect fire*: at the second shell or bomb among a squad that isn't dug in, it runs out of the
+  impact area - sideways or back from the enemy, never towards him - and goes back to what it was doing when it
+  lifts; men in trenches stay down in them. *Break contact*: a squad losing its nerve (or, for the AI, cut up and
+  outnumbered) throws smoke and pulls back by bounds to a rally point, one team firing while the other moves,
+  then counts off and checks its ammunition; crews on their guns and squads holding their own base don't.
+  *Lying in wait*: a squad set to defend somewhere the enemy doesn't know about holds its fire until they're
+  close, then the leader springs it and everyone fires at once.
+- **Morale.** Casualties, fire it can't answer, tanks it can't fight and losing its leader wear a squad down;
+  quiet, a leader, friends close by, a tank alongside and a hole in the ground build it back; dropping enemies
+  lifts it. Steady, it fights as it should; shaken, it shoots worse and is pinned sooner; breaking, it breaks
+  contact; routed, it runs for the rear and won't take orders until it has rallied. The squad card shows it.
+- **Spotting.** It's movement and muzzle flash that give men away: a man lying still or in cover who hasn't
+  fired for a while is seen at little more than two-thirds the range.
+- **Fatigue.** Sprints, rushes and dragging a man wear soldiers down: blown, they're slower and their aim
+  heaves with their breathing, and a man catching his breath stands bent over, hands on his knees. A long move
+  at a run arrives winded; a walk keeps men fresh. Men short of ammunition get a magazine from a mate beside them.
 - Every squad has a callsign (Alpha 1, Bravo 2 / Lion 1, Hawk 2...) and a squad leader who takes the orders. On a
   long move he leads and the men keep their place in a wedge on him, laggards running to catch up, the leader
   easing off so nobody is left behind. When he goes down, the next man steps up and says so.
@@ -190,8 +210,11 @@ Settings are saved to `user://settings.cfg`.
 - Street lights down every street (they light up at dusk and at night), wooden utility poles carrying sagging
   power lines with a drop to each house, fire hydrants, stop signs where side streets meet the main road, the
   town's name on the way in and a bus stop. Power lines also run along the country roads.
-- Country roads come in from both HQs and both edges of the map and join the main streets. A hamlet sits on the
-  cross road; farmsteads (farmhouse and barn round a yard, hay bales, a fenced road frontage, an orchard) and
+- **512 x 512 m** (`map_dims.gd`: every size, grid, mask and texture derives from one constant). The HQs sit
+  at the north and south edges, their starting FOBs some 430 m apart, so a battle has room to move: fights for
+  the villages and farms on the way in, then the town.
+- Country roads come in from both HQs and both edges of the map and join the main streets. Villages sit on the
+  cross road either side of town and on the road between each HQ and the town; farmsteads (farmhouse and barn round a yard, hay bales, a fenced road frontage, an orchard) and
   hedged fields lie along the roads; abandoned cars on the verges, burnt-out armour off the road.
 - Houses have dressed facades: sills and lintels, painted window frames with mullion and transom, panes (many
   shot out), shutters, door frames, steps and double doors hanging open.
@@ -442,6 +465,8 @@ game/soldier*.gd        brain + procedural articulated model
 game/soldier_brain.gd   the soldier's behaviour tree: reflexes (grenades, shells, drones, melee), clearing houses, the fight
 game/bt.gd              a small behaviour tree (selector, sequence, condition, action, cooldown)
 game/squad.gd           shared knowledge, rescues, smoke, surrender, auto-engineering
+game/squad_brain.gd     the squad's behaviour tree: battle drills, morale, fire discipline, ammo sharing
+game/map_dims.gd        the map's size, which everything sized to the map derives from
 game/combat.gd          LOS, bullets (penetrating soft cover), suppression, explosions, choosing cover
 game/cover.gd           fighting positions on everything solid, what each material stops, stances by height
 game/rules.gd           supply network, trucks, cap, placement, capture, prisoners/intel, fog, victory

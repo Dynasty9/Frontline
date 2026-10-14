@@ -2,6 +2,9 @@ class_name RtsCamera
 extends Node3D
 ## Pan (WASD / arrows / screen edge), zoom (wheel), rotate (Q/E or middle drag).
 
+## How far out the camera pulls back (a bigger map wants a wider view).
+const MAX_DIST := 160.0
+
 var world: World
 var cam: Camera3D
 var yaw := 0.0
@@ -91,7 +94,7 @@ func _view_process(_scaled_dt: float) -> void:
 
 
 func _apply() -> void:
-	var k := clampf((dist - 12.0) / (130.0 - 12.0), 0.0, 1.0)
+	var k := clampf((dist - 12.0) / (MAX_DIST - 12.0), 0.0, 1.0)
 	var pitch := deg_to_rad(lerpf(-38.0, -66.0, k) if is_nan(pitch_deg) else pitch_deg)
 	position = focus_pos
 	rotation = Vector3(pitch, yaw, 0)
@@ -108,10 +111,10 @@ func _unhandled_input(ev: InputEvent) -> void:
 	if ev is InputEventMouseButton:
 		var mb := ev as InputEventMouseButton
 		if mb.pressed and mb.button_index == MOUSE_BUTTON_WHEEL_UP and not mb.shift_pressed:
-			target_dist = clampf(target_dist * 0.88, 12.0, 130.0)
+			target_dist = clampf(target_dist * 0.88, 12.0, MAX_DIST)
 			user_moved = true
 		elif mb.pressed and mb.button_index == MOUSE_BUTTON_WHEEL_DOWN and not mb.shift_pressed:
-			target_dist = clampf(target_dist * 1.14, 12.0, 130.0)
+			target_dist = clampf(target_dist * 1.14, 12.0, MAX_DIST)
 			user_moved = true
 		elif mb.button_index == MOUSE_BUTTON_MIDDLE:
 			_rot_drag = mb.pressed

@@ -2,11 +2,11 @@ class_name HNav
 extends RefCounted
 ## Hierarchical A* (HPA*) over one of Nav's 1 m grids.
 ##
-## The 256 x 256 grid is cut into 16 x 16 clusters. Wherever two neighbouring
+## The 1 m grid is cut into 16 m clusters (32 x 32 of them on a 512 m map). Wherever two neighbouring
 ## clusters share an open stretch of border there is an entrance (a pair of
 ## abstract nodes). Inside each cluster the true cost between its entrances is
 ## precomputed on a small local grid. Long paths are planned on this abstract
-## graph (a couple of thousand nodes instead of 65 000 cells) and then refined
+## graph (a few thousand nodes instead of a quarter of a million cells) and then refined
 ## cell by cell between consecutive waypoints.
 ##
 ## When walls go up or come down only the touched clusters are rebuilt.
@@ -18,7 +18,7 @@ extends RefCounted
 ## spotted enemies cover), so careful moves route around known fire.
 
 const C := 16
-const NC := 16
+const NC := MapDims.N / C
 const PLAIN := 0
 
 var grid: AStarGrid2D
@@ -63,7 +63,7 @@ func cluster_of(c: Vector2i) -> int:
 
 
 static func _key(a: int, b: int) -> int:
-	return mini(a, b) * 4194304 + maxi(a, b)
+	return mini(a, b) * 2147483648 + maxi(a, b)  # (ids stay well under 2^31)
 
 
 ## Nav changed a cell's solidity / weight: mirror it and queue the cluster.

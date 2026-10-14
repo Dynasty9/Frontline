@@ -1,8 +1,9 @@
 class_name MapGen
 extends RefCounted
 ## Builds the battlefield on the server: HQs and starting FOBs at the north
-## and south edges; between them a town, a hamlet and farms on the country
-## roads (TownGen), hedged fields, old trenches and woods.
+## and south edges; between them a town, villages and farms on the country
+## roads (TownGen), hedged fields, old trenches and woods - as much of each as
+## the map's size has room for (MapDims).
 
 var world: World
 var rng: RandomNumberGenerator
@@ -17,13 +18,16 @@ func _init(w: World) -> void:
 
 func generate() -> void:
 	var r := world.rules
-	var d0 := _spawn("depot", Vector3(0, 0, 116), 0.0, 0)
-	var d1 := _spawn("depot", Vector3(0, 0, -116), PI, 1)
+	var H := MapDims.HALF
+	var k := H / 128.0  # how much bigger than the original 256 m field each way
+	var area := k * k
+	var d0 := _spawn("depot", Vector3(0, 0, H - 12.0), 0.0, 0)
+	var d1 := _spawn("depot", Vector3(0, 0, -(H - 12.0)), PI, 1)
 	r.depots = [d0, d1]
-	var fx0 := roundf(rng.randf_range(-40.0, 40.0))
-	var fx1 := roundf(rng.randf_range(-40.0, 40.0))
-	var f0 := _spawn("fob", Vector3(fx0, 0, 86), 0.0, 0, {"sname": r.next_fob_name(0), "supply": float(Defs.START_SUPPLY)})
-	var f1 := _spawn("fob", Vector3(fx1, 0, -86), PI, 1, {"sname": r.next_fob_name(1), "supply": float(Defs.START_SUPPLY)})
+	var fx0 := roundf(rng.randf_range(-40.0, 40.0) * k)
+	var fx1 := roundf(rng.randf_range(-40.0, 40.0) * k)
+	var f0 := _spawn("fob", Vector3(fx0, 0, H - 42.0), 0.0, 0, {"sname": r.next_fob_name(0), "supply": float(Defs.START_SUPPLY)})
+	var f1 := _spawn("fob", Vector3(fx1, 0, -(H - 42.0)), PI, 1, {"sname": r.next_fob_name(1), "supply": float(Defs.START_SUPPLY)})
 	r.register_start_fob(f0)
 	r.register_start_fob(f1)
 	for st in [d0, d1, f0, f1]:
@@ -48,23 +52,24 @@ func generate() -> void:
 	tg.streetscape()
 	tg.lots()
 	tg.hamlet_houses()
-	tg.farms(rng.randi_range(2, 3))
+	tg.farms(int(rng.randi_range(2, 3) * area * 0.6))
 	tg.country_power()
-	tg.fields(rng.randi_range(7, 10))
-	tg.roadside(rng.randi_range(3, 5), rng.randi_range(2, 3))
+	tg.fields(int(rng.randi_range(7, 10) * area * 0.6))
+	tg.roadside(int(rng.randi_range(3, 5) * k), int(rng.randi_range(2, 3) * k))
 	tg.finish()
-	for i in rng.randi_range(3, 4):
+	for i in int(rng.randi_range(3, 4) * area * 0.6):
 		_hedgerow()
-	for i in rng.randi_range(1, 2):
-		_try("wreck", Vector3(rng.randf_range(-100, 100), 0, rng.randf_range(-60, 60)), rng.randf() * TAU, -1)
-	for i in rng.randi_range(2, 3):
-		_crate_cluster(Vector3(rng.randf_range(-105, 105), 0, rng.randf_range(-70, 70)))
-	for i in rng.randi_range(3, 5):
-		_old_position(Vector3(rng.randf_range(-90, 90), 0, rng.randf_range(-35, 35)))
-	for i in rng.randi_range(7, 10):
-		_woods(Vector3(rng.randf_range(-115, 115), 0, rng.randf_range(-100, 100)), rng.randi_range(6, 14))
-	for i in 40:
-		_try("tree", Vector3(rng.randf_range(-120, 120), 0, rng.randf_range(-118, 118)), 0.0, -1)
+	for i in int(rng.randi_range(1, 2) * k):
+		_try("wreck", Vector3(rng.randf_range(-(H - 28.0), H - 28.0), 0, rng.randf_range(-(H - 68.0), H - 68.0)), rng.randf() * TAU, -1)
+	for i in int(rng.randi_range(2, 3) * k):
+		_crate_cluster(Vector3(rng.randf_range(-(H - 23.0), H - 23.0), 0, rng.randf_range(-(H - 58.0), H - 58.0)))
+	# old fighting positions across the middle, where the line has run before
+	for i in int(rng.randi_range(3, 5) * k):
+		_old_position(Vector3(rng.randf_range(-(H - 38.0), H - 38.0), 0, rng.randf_range(-35.0, 35.0) * k))
+	for i in int(rng.randi_range(7, 10) * area * 0.6):
+		_woods(Vector3(rng.randf_range(-(H - 13.0), H - 13.0), 0, rng.randf_range(-(H - 28.0), H - 28.0)), rng.randi_range(6, 14))
+	for i in int(40 * area * 0.75):
+		_try("tree", Vector3(rng.randf_range(-(H - 8.0), H - 8.0), 0, rng.randf_range(-(H - 10.0), H - 10.0)), 0.0, -1)
 
 	# starting forces
 	var owners := [[], []]
@@ -498,8 +503,8 @@ func _smooth(pts: Array) -> PackedVector3Array:
 			var t2 := t * t
 			var t3 := t2 * t
 			var p := 0.5 * ((2.0 * p1) + (-p0 + p2) * t + (2.0 * p0 - 5.0 * p1 + 4.0 * p2 - p3) * t2 + (-p0 + 3.0 * p1 - 3.0 * p2 + p3) * t3)
-			p.x = clampf(p.x, -127.0, 127.0)
-			p.z = clampf(p.z, -134.0, 134.0)
+			p.x = clampf(p.x, -(MapDims.HALF - 1.0), MapDims.HALF - 1.0)
+			p.z = clampf(p.z, -(MapDims.HALF + 6.0), MapDims.HALF + 6.0)
 			out.append(Vector3(p.x, 0, p.z))
 	out.append(pts[n - 1])
 	return out
@@ -574,7 +579,7 @@ func _house(c: Vector3, w: float, d: float, axis: float, street_side: float, yar
 
 func _hedgerow() -> void:
 	# field walls run on the same 1 m / 45 degree grid as everything built
-	var p := TrenchNet.snap_pos(Vector3(rng.randf_range(-110, 110), 0, rng.randf_range(-75, 75)))
+	var p := TrenchNet.snap_pos(Vector3(rng.randf_range(-(MapDims.HALF - 18.0), MapDims.HALF - 18.0), 0, rng.randf_range(-(MapDims.HALF - 53.0), MapDims.HALF - 53.0)))
 	var yaw := TrenchNet.snap_yaw(rng.randf() * PI)
 	if rng.randf() < 0.6:
 		yaw = 0.0 if rng.randf() < 0.5 else PI * 0.5

@@ -279,7 +279,7 @@ func _economy(sqs: Array) -> void:
 	if t > obstacle_t and front:
 		obstacle_t = t + rng.randf_range(80.0, 140.0)
 		plan.append([["wire", "mines", "tank_trap"][rng.randi() % 3], front, 18.0, 34.0])
-	if t > expand_t and sup > 380 and fobs.size() < 5:
+	if t > expand_t and sup > 380 and fobs.size() < 3 + int(MapDims.HALF / 64.0):  # (more ground, more bases)
 		var spot := _expansion_spot()
 		if spot != Vector3.INF:
 			expand_t = t + rng.randf_range(120.0, 200.0)
@@ -400,7 +400,7 @@ func _expansion_spot() -> Vector3:
 	for i in 24:
 		var dir := fwd.rotated(Vector3.UP, rng.randf_range(-0.9, 0.9))
 		var p := front.position + dir * rng.randf_range(60.0, 105.0)
-		p.x = clampf(p.x, -105.0, 105.0)
+		p.x = clampf(p.x, -MapDims.HALF + 23.0, MapDims.HALF - 23.0)
 		p = Vector3(snappedf(p.x, 0.5), 0, snappedf(p.z, 0.5))
 		if world.placement_error(team, "fob", p, Defs.yaw_of(fwd)) == "":
 			var danger := false

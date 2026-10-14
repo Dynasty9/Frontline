@@ -15,7 +15,7 @@ const L_RAGDOLL := 16
 const L_GROUND := 32
 const MAX_RAGDOLLS := 16
 const MAX_CHUNKS := 90
-const GROUND_N := 257
+const GROUND_N := MapDims.N + 1
 
 var world
 var ground: StaticBody3D
@@ -103,7 +103,7 @@ func _height(x: int, z: int) -> float:
 		var px := clampi(x * TrenchNet.RES, 0, n - 1)
 		if _mask[pz * n + px] > 150:
 			return TrenchNet.FLOOR_Y
-	return world.terrain.deform_at(Vector3(x - 128.0, 0, z - 128.0)) if world.terrain else 0.0
+	return world.terrain.deform_at(Vector3(x - MapDims.HALF, 0, z - MapDims.HALF)) if world.terrain else 0.0
 
 
 func _mask_all() -> int:

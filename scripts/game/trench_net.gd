@@ -9,7 +9,7 @@ extends Node3D
 ## duckboards, and the spoil heaped along the lips as a parapet.
 
 const RES := 4  # mask texels per metre
-const N := 256 * RES
+const N := MapDims.N * RES
 const HALF_W := 0.72  # half the trench width (m)
 const FLOOR_Y := -1.2
 const TILE := 16
@@ -51,7 +51,7 @@ func _ready() -> void:
 	boards = _mi(board_mat)
 	floor_mi = _mi(floor_mat)
 	var pm := PlaneMesh.new()
-	pm.size = Vector2(270, 270)
+	pm.size = Vector2(MapDims.SIZE + 14.0, MapDims.SIZE + 14.0)
 	floor_mi.mesh = pm
 	floor_mi.position = Vector3(0, FLOOR_Y, 0)
 	floor_mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
@@ -241,14 +241,14 @@ func rebuild() -> void:
 
 func _raster(a: Vector3, b: Vector3, tiles: Dictionary) -> void:
 	var r := HALF_W * 2.0 + 0.5
-	var x0 := clampi(floori((minf(a.x, b.x) - r + 128.0) * RES), 0, N - 1)
-	var x1 := clampi(ceili((maxf(a.x, b.x) + r + 128.0) * RES), 0, N - 1)
-	var z0 := clampi(floori((minf(a.z, b.z) - r + 128.0) * RES), 0, N - 1)
-	var z1 := clampi(ceili((maxf(a.z, b.z) + r + 128.0) * RES), 0, N - 1)
+	var x0 := clampi(floori((minf(a.x, b.x) - r + MapDims.HALF) * RES), 0, N - 1)
+	var x1 := clampi(ceili((maxf(a.x, b.x) + r + MapDims.HALF) * RES), 0, N - 1)
+	var z0 := clampi(floori((minf(a.z, b.z) - r + MapDims.HALF) * RES), 0, N - 1)
+	var z1 := clampi(ceili((maxf(a.z, b.z) + r + MapDims.HALF) * RES), 0, N - 1)
 	for z in range(z0, z1 + 1):
-		var wz := (z + 0.5) / RES - 128.0
+		var wz := (z + 0.5) / RES - MapDims.HALF
 		for x in range(x0, x1 + 1):
-			var wx := (x + 0.5) / RES - 128.0
+			var wx := (x + 0.5) / RES - MapDims.HALF
 			var d := sd_seg(a, b, Vector3(wx, 0, wz))
 			# soft edge so the filtered mask gives a clean rim
 			var v := clampi(int(-d * RES * 0.5 * 255.0 + 127.5), 0, 255)
@@ -279,12 +279,12 @@ static func _cross(a: float, b: float) -> float:
 
 
 func _inside_w(p: Vector3) -> bool:
-	return _inside(int(floor((p.x + 128.0) * RES - 0.5 + 0.5)), int(floor((p.z + 128.0) * RES - 0.5 + 0.5)))
+	return _inside(int(floor((p.x + MapDims.HALF) * RES)), int(floor((p.z + MapDims.HALF) * RES)))
 
 
 ## World position of mask corner (x, z): texel centres.
 func _wp(x: float, z: float) -> Vector3:
-	return Vector3((x + 0.5) / RES - 128.0, 0.0, (z + 0.5) / RES - 128.0)
+	return Vector3((x + 0.5) / RES - MapDims.HALF, 0.0, (z + 0.5) / RES - MapDims.HALF)
 
 
 func _build_meshes(tiles: Dictionary, segs: Array) -> void:

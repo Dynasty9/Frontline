@@ -974,6 +974,29 @@ func remove_squad(sq: Squad) -> void:
 	squads.erase(sq.sid)
 
 
+var recent_impacts: Array = []  # [pos, time] of shells and bombs, the last 40 s
+
+
+## How many shells or bombs have landed within r of p in the last `secs`.
+func impacts_near(p: Vector3, r: float, secs: float) -> int:
+	var n := 0
+	for im in recent_impacts:
+		if time - float(im[1]) < secs and Defs.flat(im[0] - p).length() < r:
+			n += 1
+	return n
+
+
+## A shell or bomb landing: squads near it note it (they get out of the
+## impact area rather than sit in it - see SquadBrain).
+func note_heavy_impact(p: Vector3) -> void:
+	recent_impacts.append([p, time])
+	while not recent_impacts.is_empty() and time - float(recent_impacts[0][1]) > 40.0:
+		recent_impacts.pop_front()
+	for sq in squads.values():
+		if not sq.members.is_empty() and Defs.flat(sq.centroid() - p).length() < 45.0:
+			sq.impacts.append([p, time])
+
+
 # --- commands ------------------------------------------------------------------------------
 
 func team_of_peer(peer: int) -> int:
@@ -1026,6 +1049,12 @@ func execute_cmd(peer: int, d: Dictionary) -> void:
 	var t: String = d.get("t", "")
 	var sqs := _own_squads(peer, d.get("squads", []))
 	var vehs := _own_vehicles(peer, d.get("vehicles", []))
+	# a routed squad runs whatever it's told, until it has rallied
+	for sq in sqs.duplicate():
+		if sq.drill == "rout" and t != "retreat" and t != "unit":
+			sqs.erase(sq)
+			if peer > 0:
+				send_msg_to(peer, "alert", "%s is routing - it won't take orders until it rallies." % sq.display_name())
 	if not t in ["unit", "dismount"]:
 		for sq in sqs:
 			sq.order_n += 1
@@ -1272,6 +1301,12 @@ func debug_stats() -> String:
 				var key: String = st.skind + ("" if st.built else "*")
 				bl[key] = int(bl.get(key, 0)) + 1
 		out += " bld=%s" % str(bl)
+		# each squad's nerve (and the drill it's in)
+		var mor := []
+		for sq in squads.values():
+			if sq.team == t and not sq.alive_members().is_empty():
+				mor.append("%d%s" % [int(sq.morale), ("/" + sq.drill) if sq.drill != "" else ""])
+		out += " mor=%s" % ",".join(mor)
 	out += "\n   events=%s" % str(stats)
 	if settings.get("debug", false):
 		for d in drones:

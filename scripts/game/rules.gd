@@ -931,13 +931,14 @@ func _danger_maps() -> void:
 
 func _threat(dm: PackedFloat32Array, p: Vector3, r: float, w: float) -> void:
 	var cs := float(HNav.C)
-	var x0 := clampi(floori((p.x + 128.0 - r) / cs), 0, HNav.NC - 1)
-	var x1 := clampi(floori((p.x + 128.0 + r) / cs), 0, HNav.NC - 1)
-	var z0 := clampi(floori((p.z + 128.0 - r) / cs), 0, HNav.NC - 1)
-	var z1 := clampi(floori((p.z + 128.0 + r) / cs), 0, HNav.NC - 1)
+	var hh := MapDims.HALF
+	var x0 := clampi(floori((p.x + hh - r) / cs), 0, HNav.NC - 1)
+	var x1 := clampi(floori((p.x + hh + r) / cs), 0, HNav.NC - 1)
+	var z0 := clampi(floori((p.z + hh - r) / cs), 0, HNav.NC - 1)
+	var z1 := clampi(floori((p.z + hh + r) / cs), 0, HNav.NC - 1)
 	for cz in range(z0, z1 + 1):
 		for cx in range(x0, x1 + 1):
-			var c := Vector3(cx * cs - 128.0 + cs * 0.5, 0, cz * cs - 128.0 + cs * 0.5)
+			var c := Vector3(cx * cs - hh + cs * 0.5, 0, cz * cs - hh + cs * 0.5)
 			var d := Defs.flat(c - p).length()
 			if d < r:
 				dm[cz * HNav.NC + cx] += w * (1.0 - 0.5 * d / r)
@@ -1046,7 +1047,7 @@ func team_summary() -> Array:
 					if e.sq == s and int(e.team) < 0:
 						role = "support"
 				pl = s.plan.info() + [role]
-			sq[s.sid] = [s.shown_order if s.shown_order != "" else s.order, s.order_pos, s.facing, s.order_n, pl]
+			sq[s.sid] = [s.shown_order if s.shown_order != "" else s.order, s.order_pos, s.facing, s.order_n, pl, int(maxf(s.morale, 0.0)), s.drill]
 		# intelligence: every enemy the team knows about, freshest report each
 		var intel := {}
 		for s in world.squads.values():

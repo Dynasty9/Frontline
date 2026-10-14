@@ -600,7 +600,7 @@ func pose(dt: float, life: int, posture: int, act: int, speed: float, backwards:
 			Soldier.Act.CRAWL, Soldier.Act.CLIMB, Soldier.Act.DIVE, Soldier.Act.FLINCH, Soldier.Act.PICKUP, Soldier.Act.LIMP,
 			Soldier.Act.VAULT, Soldier.Act.DAZED, Soldier.Act.MELEE, Soldier.Act.HANDSUP, Soldier.Act.LAUNCH,
 			Soldier.Act.IDLE_CHAT, Soldier.Act.IDLE_LAUGH, Soldier.Act.IDLE_SMOKE, Soldier.Act.IDLE_SIT, Soldier.Act.IDLE_STRETCH, Soldier.Act.IDLE_LOOK,
-			Soldier.Act.SMOTHER, Soldier.Act.COOK]:
+			Soldier.Act.SMOTHER, Soldier.Act.COOK, Soldier.Act.WINDED]:
 		ik_l = false
 		ik_r = false
 	if act == Soldier.Act.IDLE_CHECK:
@@ -742,6 +742,21 @@ func pose(dt: float, life: int, posture: int, act: int, speed: float, backwards:
 				t_head = Vector3(-0.15, 0, 0)
 				show_nade = true
 				k = 12.0
+			Soldier.Act.WINDED:
+				# blown: bent over, hands on his knees, his back heaving; the rifle
+				# hangs from its sling
+				var heave := sin(act_time * 6.5 + seedf) * 0.04
+				t_hips_p = Vector3(0, H0 - 0.08, 0.06)
+				_bend(H0 - 0.08)
+				t_torso = Vector3(-0.85 + heave, 0, 0)
+				t_head = Vector3(0.6, 0.1, 0)
+				t_arl = Vector3(0.45, 0, 0.12)
+				t_fal = Vector3(0.35, 0, 0)
+				t_arr = Vector3(0.45, 0, -0.12)
+				t_far = Vector3(0.35, 0, 0)
+				t_gun_p = Vector3(0.14, 0.1, -0.24)
+				t_gun_r = Vector3(1.3, 0.2, 0.25)
+				k = 8.0
 			Soldier.Act.KICK:
 				# the right foot swings through it, leaning back for the kick
 				var ka := clampf(act_time / 0.3, 0.0, 1.0)

@@ -1234,15 +1234,16 @@ func _ranges(cam: Camera3D) -> void:
 			_dashed_ring(v.position, vr, Color(1.0, 0.85, 0.5), 0.55)
 
 
-## The 32 m map grid the radio uses (A-H across, 1-8 down), drawn on the ground.
+## The map grid the radio uses (A-H across, 1-8 down), drawn on the ground.
 func _map_grid(cam: Camera3D, vs: Vector2) -> void:
 	var col := Color(0.75, 0.9, 1.0, 0.16)
-	for i in 9:
-		var x := -128.0 + i * 32.0
+	var cell := MapDims.CELL
+	for i in MapDims.GRID + 1:
+		var x := -MapDims.HALF + i * cell
 		var pts := PackedVector2Array()
 		var pts2 := PackedVector2Array()
-		for k in 17:
-			var z := -128.0 + k * 16.0
+		for k in MapDims.GRID * 4 + 1:
+			var z := -MapDims.HALF + k * cell * 0.25
 			var p1 := Vector3(x, 0.2, z)
 			var p2 := Vector3(z, 0.2, x)
 			if cam.is_position_behind(p1) or cam.is_position_behind(p2):
@@ -1254,15 +1255,15 @@ func _map_grid(cam: Camera3D, vs: Vector2) -> void:
 		if pts.size() > 1:
 			draw_polyline(pts, col, 1.0, true)
 			draw_polyline(pts2, col, 1.0, true)
-	for cx in 8:
-		for cz in 8:
-			var c := Vector3(-128.0 + cx * 32.0 + 3.0, 0.2, -128.0 + cz * 32.0 + 5.0)
+	for cx in MapDims.GRID:
+		for cz in MapDims.GRID:
+			var c := Vector3(-MapDims.HALF + cx * cell + 3.0, 0.2, -MapDims.HALF + cz * cell + 5.0)
 			if cam.is_position_behind(c):
 				continue
 			var sp := cam.unproject_position(c)
 			if sp.x < 0 or sp.y < 0 or sp.x > vs.x or sp.y > vs.y:
 				continue
-			UiKit.text(self, sp, "%s%d" % ["ABCDEFGH"[cx], cz + 1], 10, Color(0.75, 0.9, 1.0, 0.4), 700)
+			UiKit.text(self, sp, "%s%d" % ["ABCDEFGHIJKLMNOP"[cx], cz + 1], 10, Color(0.75, 0.9, 1.0, 0.4), 700)
 
 
 func _mark(name: String) -> void:

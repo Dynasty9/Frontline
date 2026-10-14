@@ -137,13 +137,13 @@ func _ready() -> void:
 	mp.anchor_top = 1.0
 	mp.anchor_bottom = 1.0
 	mp.offset_left = 14
-	mp.offset_top = -224
-	mp.offset_right = 224
+	mp.offset_top = -264
+	mp.offset_right = 264
 	mp.offset_bottom = -14
 	root.add_child(mp)
 	minimap = HudMinimap.new()
 	minimap.hud = self
-	minimap.custom_minimum_size = Vector2(200, 200)
+	minimap.custom_minimum_size = Vector2(240, 240)
 	mp.add_child(minimap)
 
 	# map layers: a column of toggles beside the minimap
@@ -459,7 +459,7 @@ func _track_orders() -> void:
 				came = int(prev[5])
 				if int(prev[3]) != int(o[3]):
 					came = now
-			orders[id] = [String(o[0]), o[1], o[2], int(o[3]), t, came, o[4] if o.size() > 4 else null]
+			orders[id] = [String(o[0]), o[1], o[2], int(o[3]), t, came, o[4] if o.size() > 4 else null, int(o[5]) if o.size() > 5 else -1, String(o[6]) if o.size() > 6 else ""]
 	for id in orders.keys():
 		if not seen.has(id):
 			orders.erase(id)
@@ -468,7 +468,7 @@ func _track_orders() -> void:
 ## What a squad is doing, in a few words, for the order of battle and the
 ## squad card: {text, col, glyph, contact, pinned, wounded, low_ammo}.
 func squad_state(sid: int, mem: Array) -> Dictionary:
-	var out := {"text": "Holding", "col": UiKit.DIM, "glyph": "", "contact": false, "pinned": false, "wounded": 0, "low_ammo": false}
+	var out := {"text": "Holding", "col": UiKit.DIM, "glyph": "", "contact": false, "pinned": false, "wounded": 0, "low_ammo": false, "morale": -1, "mstate": 0}
 	var alive := 0
 	var pinned := 0
 	var low := 0
@@ -520,9 +520,25 @@ func squad_state(sid: int, mem: Array) -> Dictionary:
 			"tunnel":
 				out.text = "In the tunnels"
 				out.glyph = "tunnel"
+			"contact":
+				out.text = "Contact! Returning fire"
+				out.glyph = "fire"
+				out.col = Color(1.0, 0.72, 0.42)
+			"displace":
+				out.text = "Moving out of the shellfire"
+				out.glyph = "move"
+				out.col = Color(1.0, 0.72, 0.42)
+			"rout":
+				out.text = "ROUTING"
+				out.glyph = "retreat"
+				out.col = UiKit.BAD
+		if String(o[8]) == "withdraw":
+			out.text = "Breaking contact"
 		var pl = o[6]
 		if pl != null:
 			out.text = plan_text(pl)
+		out.morale = int(o[7])
+		out.mstate = SquadBrain.state(float(o[7]), String(o[8]) == "rout") if int(o[7]) >= 0 else 0
 	if riding:
 		out.text = "Mounted  ·  " + out.text
 	if out.pinned:

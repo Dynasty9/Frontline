@@ -105,8 +105,8 @@ func _make_noise() -> void:
 
 ## 0..1 biome value at a world position (same data the ground shader uses).
 func biome_at(p: Vector3) -> float:
-	var u := int(floor(p.x + 256.0)) % 512
-	var v := int(floor(p.z + 256.0)) % 512
+	var u := int(floor(p.x + MapDims.BIOME * 0.5)) % MapDims.BIOME
+	var v := int(floor(p.z + MapDims.BIOME * 0.5)) % MapDims.BIOME
 	return biome_img.get_pixel(posmod(u, 512), posmod(v, 512)).r
 
 
@@ -231,17 +231,18 @@ func set_trench_mask(t: Texture2D) -> void:
 
 var deform_tex: ImageTexture
 var _deform_t := 0.0
-const GROUND_HALF := 136.0  # the fine, deformable ground covers the map; a ring of plain ground beyond
-const GROUND_CHUNKS := 8
+const GROUND_HALF := MapDims.HALF + 8.0  # the fine, deformable ground covers the map; a ring of plain ground beyond
+const GROUND_CHUNKS := int(GROUND_HALF * 2.0 / 33.0)  # about 33 m chunks, culled one by one
+const GROUND_LOD := 170.0  # beyond this from the camera a chunk is drawn on a coarser grid
 
 
 func _build_ground() -> void:
 	_blank_mask = ImageTexture.create_from_image(Image.create(4, 4, false, Image.FORMAT_R8))
 	ground = MeshInstance3D.new()
-	ground.mesh = _ground_ring(GROUND_HALF, 260.0)
+	ground.mesh = _ground_ring(GROUND_HALF, MapDims.HALF + 132.0)
 	ground_mat = ShaderMaterial.new()
 	var sh := Shader.new()
-	sh.code = GROUND_SHADER
+	sh.code = MapDims.shader(GROUND_SHADER)
 	ground_mat.shader = sh
 	ground_mat.set_shader_parameter("biome_tex", biome_tex)
 	ground_mat.set_shader_parameter("detail_tex", detail_tex)
@@ -262,22 +263,31 @@ func _build_ground() -> void:
 	var step := 0.5 if int(Settings.get_v("lod")) >= 1 else 1.0
 	var cs := GROUND_HALF * 2.0 / GROUND_CHUNKS
 	var cm := _grid_mesh(cs, step)
+	# far off, a chunk is drawn on a 2 m grid (the craters there are specks)
+	var cm_far := _grid_mesh(cs, maxf(step, 2.0))
 	for cx in GROUND_CHUNKS:
 		for cz in GROUND_CHUNKS:
-			var mi := MeshInstance3D.new()
-			mi.mesh = cm
-			mi.material_override = ground_mat
-			mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-			mi.position = Vector3(-GROUND_HALF + (cx + 0.5) * cs, 0, -GROUND_HALF + (cz + 0.5) * cs)
-			# room for the displacement in the culling box
-			mi.extra_cull_margin = 2.0
-			add_child(mi)
+			for far in [false, true]:
+				var mi := MeshInstance3D.new()
+				mi.mesh = cm_far if far else cm
+				mi.material_override = ground_mat
+				mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+				mi.position = Vector3(-GROUND_HALF + (cx + 0.5) * cs, 0, -GROUND_HALF + (cz + 0.5) * cs)
+				# room for the displacement in the culling box
+				mi.extra_cull_margin = 2.0
+				if far:
+					mi.visibility_range_begin = GROUND_LOD
+					mi.visibility_range_begin_margin = 8.0
+				else:
+					mi.visibility_range_end = GROUND_LOD
+					mi.visibility_range_end_margin = 8.0
+				add_child(mi)
 	trench_net = TrenchNet.new(world)
 	add_child(trench_net)
 	trench_net.set_detail(detail_tex)
 	road_mat = ShaderMaterial.new()
 	var rs := Shader.new()
-	rs.code = ROAD_SHADER
+	rs.code = MapDims.shader(ROAD_SHADER)
 	road_mat.shader = rs
 	road_mat.set_shader_parameter("detail_tex", detail_tex)
 	road_mat.render_priority = 1
@@ -820,12 +830,12 @@ varying vec3 wpos;
 varying float puddle;
 
 float dfm(vec2 p) {
-	return textureLod(deform_tex, (p + 128.0) / 256.0, 0.0).r;
+	return textureLod(deform_tex, (p + __MAP_HALF__) / __MAP_SIZE__, 0.0).r;
 }
 
 void vertex() {
 	wpos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
-	if (abs(wpos.x) < 128.0 && abs(wpos.z) < 128.0) {
+	if (abs(wpos.x) < __MAP_HALF__ && abs(wpos.z) < __MAP_HALF__) {
 		float d = dfm(wpos.xz);
 		VERTEX.y += d;
 		wpos.y += d;
@@ -838,10 +848,10 @@ float hgt(vec2 p) {
 
 void fragment() {
 	vec2 p = wpos.xz;
-	if (texture(trench_mask, (p + 128.0) / 256.0).r > 0.5) {
+	if (texture(trench_mask, (p + __MAP_HALF__) / __MAP_SIZE__).r > 0.5) {
 		discard;
 	}
-	float b = texture(biome_tex, (p + 256.0) / 512.0).r;
+	float b = texture(biome_tex, (p + __BIOME_HALF__) / __BIOME__).r;
 	float d1 = texture(detail_tex, p / 41.0).r;
 	float d2 = texture(detail_tex, p / 7.0 + 0.37).r;
 	float d3 = texture(detail_tex, p / 1.7 + 0.71).r;
@@ -854,7 +864,7 @@ void fragment() {
 	col = mix(col, soil, dirt_m);
 	col *= 0.9 + 0.2 * d3;
 	float edge = max(abs(p.x), abs(p.y));
-	col *= mix(1.0, 0.45, smoothstep(128.0, 150.0, edge));
+	col *= mix(1.0, 0.45, smoothstep(__MAP_HALF__, __MAP_HALF__ + 22.0, edge));
 	puddle = wet * smoothstep(0.6, 0.66, d1 * 0.7 + d2 * 0.3 + dirt_m * 0.12);
 	col *= 1.0 - wet * 0.3;
 	col = mix(col, col * 0.35 + vec3(0.01, 0.012, 0.015), puddle);
@@ -915,11 +925,11 @@ instance uniform float country = 0.0;
 varying vec3 wpos;
 void vertex() { wpos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz; }
 void fragment() {
-	if (texture(trench_mask, (wpos.xz + 128.0) / 256.0).r > 0.5) {
+	if (texture(trench_mask, (wpos.xz + __MAP_HALF__) / __MAP_SIZE__).r > 0.5) {
 		discard;
 	}
 	// a shell hole punches through the road surface
-	if (texture(deform_tex, (wpos.xz + 128.0) / 256.0).r < -0.07) {
+	if (texture(deform_tex, (wpos.xz + __MAP_HALF__) / __MAP_SIZE__).r < -0.07) {
 		discard;
 	}
 	float x = UV.x;

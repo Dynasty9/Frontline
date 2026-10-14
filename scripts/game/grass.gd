@@ -5,7 +5,7 @@ extends Node3D
 ## progressively (a few chunks per frame) when the map or settings change.
 
 const CHUNK := 32.0
-const HALF := 128.0
+const HALF := MapDims.HALF
 
 var atmo: Atmosphere
 var mat: ShaderMaterial
@@ -28,16 +28,16 @@ func _ready() -> void:
 	clump = _make_clump()
 	bush = _make_bush()
 	stone = _make_stone()
-	scar_img = Image.create(256, 256, false, Image.FORMAT_L8)
+	scar_img = Image.create(MapDims.N, MapDims.N, false, Image.FORMAT_L8)
 	scar_tex = ImageTexture.create_from_image(scar_img)
 	mat = ShaderMaterial.new()
 	var sh := Shader.new()
-	sh.code = GRASS_SHADER
+	sh.code = MapDims.shader(GRASS_SHADER)
 	mat.shader = sh
 	mat.set_shader_parameter("scar", scar_tex)
 	bush_mat = ShaderMaterial.new()
 	var bs := Shader.new()
-	bs.code = BUSH_SHADER
+	bs.code = MapDims.shader(BUSH_SHADER)
 	bush_mat.shader = bs
 	stone_mat = StandardMaterial3D.new()
 	stone_mat.albedo_color = Color(0.42, 0.4, 0.37)
@@ -58,11 +58,11 @@ func set_trench_mask(t: Texture2D) -> void:
 ## Marks a blast scar on the grass (craters: full, near misses: lighter).
 func scar(p: Vector3, r: float, strength := 1.0) -> void:
 	var ri := int(ceil(r)) + 1
-	var cx := floori(p.x + 128.0)
-	var cz := floori(p.z + 128.0)
-	for z in range(maxi(0, cz - ri), mini(256, cz + ri + 1)):
-		for x in range(maxi(0, cx - ri), mini(256, cx + ri + 1)):
-			var d := Vector2(x + 0.5 - 128.0 - p.x, z + 0.5 - 128.0 - p.z).length()
+	var cx := floori(p.x + HALF)
+	var cz := floori(p.z + HALF)
+	for z in range(maxi(0, cz - ri), mini(MapDims.N, cz + ri + 1)):
+		for x in range(maxi(0, cx - ri), mini(MapDims.N, cx + ri + 1)):
+			var d := Vector2(x + 0.5 - HALF - p.x, z + 0.5 - HALF - p.z).length()
 			if d > r:
 				continue
 			var v := strength * clampf(1.2 - d / r, 0.0, 1.0)
@@ -126,7 +126,7 @@ func _start_rebuild() -> void:
 ## 1 m grid of places grass must not grow: building floors, walls, roads.
 func _make_blocked() -> void:
 	_blocked = PackedByteArray()
-	_blocked.resize(256 * 256)
+	_blocked.resize(MapDims.N * MapDims.N)
 	var w := atmo.world
 	for st in w.structures:
 		if st.gone:
@@ -168,18 +168,18 @@ func _make_blocked() -> void:
 
 
 func _mark(x: int, z: int) -> void:
-	var ix := x + 128
-	var iz := z + 128
-	if ix >= 0 and iz >= 0 and ix < 256 and iz < 256:
-		_blocked[iz * 256 + ix] = 1
+	var ix := x + MapDims.N / 2
+	var iz := z + MapDims.N / 2
+	if ix >= 0 and iz >= 0 and ix < MapDims.N and iz < MapDims.N:
+		_blocked[iz * MapDims.N + ix] = 1
 
 
 func _is_blocked(p: Vector3) -> bool:
-	var ix := floori(p.x) + 128
-	var iz := floori(p.z) + 128
-	if ix < 0 or iz < 0 or ix >= 256 or iz >= 256:
+	var ix := floori(p.x) + MapDims.N / 2
+	var iz := floori(p.z) + MapDims.N / 2
+	if ix < 0 or iz < 0 or ix >= MapDims.N or iz >= MapDims.N:
 		return false
-	return _blocked[iz * 256 + ix] == 1
+	return _blocked[iz * MapDims.N + ix] == 1
 
 
 func _build_chunk(c: Vector2i) -> void:
@@ -346,15 +346,15 @@ void vertex() {
 	rnd = INSTANCE_CUSTOM.g;
 	vec3 o = MODEL_MATRIX[3].xyz;
 	// shell holes and blast scars flatten and scorch the grass
-	burnt = texture(scar, (o.xz + 128.0) / 256.0).r;
+	burnt = texture(scar, (o.xz + __MAP_HALF__) / __MAP_SIZE__).r;
 	// nothing grows in a trench
-	if (textureLod(trench_mask, (o.xz + 128.0) / 256.0, 0.0).r > 0.3) {
+	if (textureLod(trench_mask, (o.xz + __MAP_HALF__) / __MAP_SIZE__, 0.0).r > 0.3) {
 		VERTEX *= 0.0;
 	}
 	VERTEX.y *= 1.0 - burnt * 0.85;
 	VERTEX.xz *= 1.0 + burnt * 0.4;
 	// stand on the ground as it is now (shell holes, rims)
-	VERTEX.y += textureLod(deform_tex, (o.xz + 128.0) / 256.0, 0.0).r / max(0.05, length(MODEL_MATRIX[1].xyz));
+	VERTEX.y += textureLod(deform_tex, (o.xz + __MAP_HALF__) / __MAP_SIZE__, 0.0).r / max(0.05, length(MODEL_MATRIX[1].xyz));
 	float t = TIME * 1.7 + o.x * 0.21 + o.z * 0.13;
 	float gust = 0.6 + 0.4 * sin(TIME * 0.35 + o.x * 0.02 + o.z * 0.015);
 	float sway = (sin(t) + 0.45 * sin(t * 2.7 + 1.3)) * wind * gust * h * h;
@@ -391,10 +391,10 @@ float hash(vec3 p) { return fract(sin(dot(p, vec3(127.1, 311.7, 74.7))) * 43758.
 uniform sampler2D trench_mask : hint_default_black, filter_linear, repeat_disable;
 uniform sampler2D deform_tex : hint_default_black, filter_linear, repeat_disable;
 void vertex() {
-	if (textureLod(trench_mask, (MODEL_MATRIX[3].xz + 128.0) / 256.0, 0.0).r > 0.3) {
+	if (textureLod(trench_mask, (MODEL_MATRIX[3].xz + __MAP_HALF__) / __MAP_SIZE__, 0.0).r > 0.3) {
 		VERTEX *= 0.0;
 	}
-	float gd = textureLod(deform_tex, (MODEL_MATRIX[3].xz + 128.0) / 256.0, 0.0).r;
+	float gd = textureLod(deform_tex, (MODEL_MATRIX[3].xz + __MAP_HALF__) / __MAP_SIZE__, 0.0).r;
 	if (gd < -0.12) {
 		VERTEX *= 0.0;  // blown away
 	}

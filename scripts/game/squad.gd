@@ -34,6 +34,25 @@ var travel_mode := 0
 var final_slots := {}  # eid -> where each man ends up
 var plan = null  # AttackPlan this squad is part of (untyped: shared between squads)
 var breach_by: Soldier = null  # the man clearing a house for the squad (see SoldierBrain)
+# battle drills and morale (see SquadBrain)
+var morale := -1.0  # 0-100 (set from the side's base on the first tick)
+var drill := ""  # under way: "contact", "displace", "withdraw", "rout" (or "")
+var drill_t := 0.0
+var drill_pos := Vector3.ZERO
+var halt_dest := Vector3.ZERO  # where a move was going when contact stopped it
+var halt_face := Vector3.FORWARD
+var halt_mode := 0
+var move_mode_ord := 0  # the pace of the last move order
+var known_at_order := {}  # enemies already known when the move began
+var impacts: Array = []  # [pos, time]: shells and bombs landing near us
+var last_cas_t := -99.0
+var displace_cd := 0.0
+var pre_order: Array = []  # what it was doing before it displaced: [order, pos, facing, mode]
+var ammo_t := 0.0
+var bt_path := ""
+var bt_cd := {}
+var ambush := false  # defending and not yet seen: holding fire till they're close
+var ambush_t := 0.0  # the first volley (until then)
 var _offsets := {}  # eid -> Vector2(side, back) behind the leader
 
 const CALLSIGNS := [["Alpha", "Bravo", "Charlie", "Delta", "Echo", "Foxtrot", "Golf", "Hotel"],
@@ -214,6 +233,8 @@ func _regroup() -> void:
 	plan = null
 	shown_order = ""
 	travel = false
+	drill = ""
+	ambush = false
 	for m in members:
 		m.detached = false
 
@@ -242,6 +263,8 @@ func order_move(pos: Vector3, face: Vector3, mode := 0) -> void:
 	if facing.length() < 0.1:
 		facing = Vector3.FORWARD
 	build_target = null
+	move_mode_ord = mode
+	known_at_order = known.duplicate()
 	var mems := []
 	for m in members:
 		if m.can_take_orders():
@@ -452,6 +475,8 @@ func order_defend(pos: Vector3, face: Vector3) -> void:
 	for i in mems.size():
 		mems[i].cmd_move(slots[i], 0, facing)
 		mems[i].leash = 7.0
+	# a fresh position the enemy doesn't know about: let them come close
+	ambush = not in_combat()
 	mems[0].say(_pick(["Dig in here!", "Hold this line!", "Find cover, watch your front!", "We hold here.", "Nobody gets past us."]), true)
 
 
@@ -591,6 +616,7 @@ func order_throw(p: Vector3, kind: String) -> void:
 
 
 func on_member_down(s: Soldier) -> void:
+	SquadBrain.casualty(self, s)
 	if s.life == Soldier.Life.DOWNED:
 		for m in alive_members():
 			if Defs.flat(m.position - s.position).length() < 30.0:
@@ -638,6 +664,14 @@ func tick(dt: float) -> void:
 	if not known.is_empty() or (not heard.is_empty() and world.time - float(heard.back()[1]) < 10.0):
 		alert_t = world.time
 	get_leader()
+	if morale < 0.0:
+		morale = SquadBrain.base_morale(self)
+	SquadBrain.morale_tick(self, 0.5)
+	SquadBrain.ambush_tick(self)
+	SquadBrain.think(self)
+	if drill == "rout":
+		_surrender_logic()
+		return
 	if travel and order == "move":
 		_follow_tick()
 	_rescue_logic()
@@ -645,6 +679,22 @@ func tick(dt: float) -> void:
 	_medic_logic()
 	_engineer_logic()
 	_assault_logic()
+	SquadBrain.share_ammo(self)
+
+
+## Morale as it shows: 0 steady, 1 shaken, 2 breaking, 3 routed.
+func morale_state() -> int:
+	return SquadBrain.state(morale if morale >= 0.0 else 75.0, drill == "rout")
+
+
+## How well a squad in that state shoots.
+func acc_mult() -> float:
+	return [1.0, 0.85, 0.7, 0.45][morale_state()]
+
+
+## How much fire it takes to pin a man of it.
+func pin_at() -> float:
+	return [60.0, 52.0, 44.0, 30.0][morale_state()]
 
 
 func _pick(arr: Array) -> String:

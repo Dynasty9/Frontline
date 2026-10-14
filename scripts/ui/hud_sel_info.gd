@@ -100,6 +100,11 @@ func _squad_detail(mem: Array) -> void:
 	UiKit.text(self, Vector2(size.x - 120, 16), "%d / %d fighting" % [alive, mem.size()], 12, UiKit.DIM)
 	# what it's doing, and where an attack has got to
 	var st: Dictionary = hud.squad_state(mem[0].sid, mem)
+	if int(st.morale) >= 0:
+		# its nerve: steady, shaken, breaking, routed
+		var mcol: Color = [Color(0.6, 0.85, 0.5), Color(1.0, 0.8, 0.35), Color(1.0, 0.52, 0.3), UiKit.BAD][int(st.mstate)]
+		var mtxt: String = SquadBrain.STATE_NAMES[int(st.mstate)].to_upper()
+		UiKit.text(self, Vector2(size.x - 132 - UiKit.text_width(mtxt, 11, 700), 16), mtxt, 11, mcol, 700)
 	var ox := 4.0
 	if String(st.glyph) != "":
 		MapSymbols.glyph(self, st.glyph, Vector2(10, 35), 6.0, st.col, 1.0, false)

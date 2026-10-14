@@ -1,10 +1,10 @@
 class_name Nav
 extends RefCounted
-## Two 1 m grids over the 256 m map: one for infantry (low walls are vaultable,
+## Two 1 m grids over the whole map (MapDims): one for infantry (low walls are vaultable,
 ## wire is slow), one for vehicles (walls are smashable, tank traps solid).
 
-const N := 256
-const H := 128.0
+const N := MapDims.N
+const H := MapDims.HALF
 const FREE := 0
 const LOW := 1
 const SLOW := 2
