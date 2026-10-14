@@ -544,6 +544,9 @@ func _make_model(e: Dictionary) -> Node3D:
 			return _weapon_model(String(e.key), side)
 		"veh_light", "veh_armour", "veh_support", "veh_air", "aircraft", "boats", "civilian":
 			var vm := VehicleModels.build(String(e.key), side if int(e.team) >= 0 else 0, 7)
+			var eg := vm.root.get_node_or_null("Afterburner")
+			if eg:
+				eg.visible = false  # the exhaust glow is for flight
 			return vm.root
 		"bases", "defences":
 			if e.key == "trench":
