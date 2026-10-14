@@ -79,7 +79,25 @@ Settings are saved to `user://settings.cfg`.
 
 ## What's in it
 
-**Soldier AI** (`scripts/game/soldier.gd`, `combat.gd`)
+**Soldier AI** (`scripts/game/soldier.gd`, `soldier_brain.gd`, `bt.gd`, `combat.gd`)
+- **A behaviour tree decides what each man does** (`bt.gd`, `soldier_brain.gd`): one tree, shared by every
+  soldier and walked each time he thinks. Reflexes come first, most urgent first; then, if he's free, the
+  fight. The leaf that acted is kept on the soldier (`bt_path`) for debugging and the stats.
+- **"Grenade!"** The first man to see it yells, and everyone near it picks one of, in order: *smother it* -
+  when it's too late to throw and it's among men who can't get away (a wounded man being treated, a crowded
+  bay), the man beside it may throw himself on it: it kills him and barely reaches anyone else; *throw it
+  back* - two seconds or more on the fuse, within four metres, about one man in four has the nerve; *kick it
+  away* - at his feet with a second to go, kicked off away from his mates and back towards the thrower; *get
+  down behind the wall* if there's one between him and it; or *dive clear*. One man deals with a grenade;
+  the others get out of the way.
+- **Cooking grenades.** Against men in hard cover close by, a thrower often holds it a second or so after the
+  spoon flies (you see him counting, grenade in hand) so it goes off as it lands - too late to throw back.
+- **Clearing a house.** When a squad has seen an enemy inside a building, the man best placed stacks beside
+  the doorway, back to the wall; pin out, he steps into the doorway and throws it in low under the lintel (or
+  through a window), steps back against the wall for the bang, then goes in with a mate right behind him.
+  A new order waits until the grenade is in.
+- **Behind cover with nothing happening** a man is up over the top keeping watch, weapon on the wall - not
+  curled up behind it. The first round that cracks past and he's down.
 - **Fighting positions** (`scripts/game/cover.gd`): every wall, sandbag line, car, crate stack, wreck, rubble
   heap, window sill, nest and trench generates anchors along its faces - where a man stands, which way he
   faces, how high the barrier is there and what it's made of. How he fights from it follows from the height:
@@ -104,16 +122,20 @@ Settings are saved to `user://settings.cfg`.
   accuracy and slows their fire: whoever suppresses the other side more fires more (fire superiority).
   Pinned flat in the open a man only lifts his head for the odd burst. Nearby explosions make them flinch.
 - Ammo runs out. When low they switch to single shots, then stop. They grab ammo off bodies they pass and run back to a FOB.
-- Grenades get thrown at enemies hiding in cover. Soldiers dive away from incoming ones, and sometimes pick one up and throw it back.
+- Grenades get thrown at enemies hiding in cover (see "Grenade!" above for what the other side does about it).
 - Explosions fling bodies. Some survivors get up dazed and stumble around. Soldiers vault low walls,
   slide into cover under fire, and fight hand to hand up close.
 - FPV drones: soldiers hear them coming, shout, try to shoot them down, and dive at the last second.
 - Downtime: after a quiet spell men get bored. They chat in pairs and rib each other (two-way banter, then a
   laugh), have a smoke, sit down, stretch, check their rifles or scan the horizon. Anything at all ends it.
 - Animation: two-bone arm IK puts both hands on the weapon whatever it's doing: low ready, shouldered with a
-  cheek weld and recoil, port arms at the run, compressed ready when crouch-walking, kneeling and prone aim,
-  stepping out and tilting round a corner to lean and fire, a magazine change from the chest pouch. Walk/run
-  cycles with torso twist, breathing at rest, a knee-buckle before the fall, three ways to lie dead.
+  cheek weld and recoil, port arms at the sprint, the weapon at the ready at a jog, compressed ready when
+  crouch-walking, kneeling and prone aim, stepping out and tilting round a corner to lean and fire, a magazine
+  change from the chest pouch. The stride is driven by ground speed (the planted foot doesn't skate) and the
+  knee folds as the leg swings through; walking bent at the waist, or a low rush for cover under fire. A man
+  moving one way while he aims another turns his hips and legs towards where he's going and his shoulders
+  back to the target. Kicking, lying on a grenade, cooking one (grenade in hand), breathing at rest, a
+  knee-buckle before the fall, three ways to lie dead.
 - Kit: Coalition soldiers wear helmets with NVG mounts and headsets, plate carriers with mag pouches, assault packs
   and knee pads, and carry carbines with optics; Rebels wear shemaghs, mismatched chest rigs and carry AKs.
 
@@ -397,7 +419,8 @@ numbers read live from the game's tables with bars against the rest of its kind,
 sustained damage, squad firepower, km/h), what carries or trains it, and a 3D model to turn over and zoom.
 A **Cover** chapter covers every kind of battlefield cover - stone and brick walls, hedges, sandbags, cars,
 crates, wrecks, rubble, tall walls, windows, trenches, craters and woods - with what it stops, how much blast
-gets through, how a man fights from it, and a diorama of a soldier doing so.
+gets through, how a man fights from it, and a diorama of a soldier doing so. **Drills & reflexes** shows what a
+soldier does without being told: the grenade reflexes, cooking a grenade and clearing a house, each posed.
 
 **AI commander** (`commander_ai.gd`) plays through the same command interface as a human. It places
 buildings that its engineers must build, trains a mix of squads, saves for vehicles, expands with new FOBs,
@@ -416,6 +439,8 @@ autoload/sfx.gd         procedurally synthesised sounds
 game/world.gd           entity registry, replication (spawn / snapshot / props / fx RPCs), commands, queries
 game/entity.gd          base class: props on spawn, packed state in snapshots
 game/soldier*.gd        brain + procedural articulated model
+game/soldier_brain.gd   the soldier's behaviour tree: reflexes (grenades, shells, drones, melee), clearing houses, the fight
+game/bt.gd              a small behaviour tree (selector, sequence, condition, action, cooldown)
 game/squad.gd           shared knowledge, rescues, smoke, surrender, auto-engineering
 game/combat.gd          LOS, bullets (penetrating soft cover), suppression, explosions, choosing cover
 game/cover.gd           fighting positions on everything solid, what each material stops, stances by height
@@ -497,6 +522,8 @@ Pass these after `--` on the command line:
 --pan=VX,VZ / --set=key:value,...                     drift the camera (shimmer tests) / override single settings
 --scenario=guns                                       every machine-gun emplacement and trench bay, crewed, with targets
 --scenario=roster                                     every vehicle both sides can field, facing off across the map
+--scenario=breach                                     a fighter cell holed up in a house; two rifle squads and a gun team clear it
+--scenario=gdrill                                     grenade drill: frags with all sorts of fuses land among a squad round its wounded
 --model-sheet=KEYS|FAMILY --sheet-dir=DIR [--side=1] [--sheet-yaw=R]   turntable shots of models (nato, csat, indep, civ, heli, plane, boat, all)
 --manual=model,KEY,SIDE                               a bare model in the Field Manual
 --curtain                                             show the intro / loading screens in an automated run

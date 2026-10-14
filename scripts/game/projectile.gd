@@ -12,6 +12,8 @@ var vel := Vector3.ZERO
 var fuse := 3.4
 var thrower_id := 0
 var held_by: Soldier = null
+var smothered_by: Soldier = null  # a man lying on it (see SoldierBrain)
+var handler: Soldier = null  # the one man dealing with it (throwing it back, kicking it, lying on it)
 var flying := true
 var thrown_back := 0
 var smoke_r := 0.0
@@ -182,7 +184,8 @@ func _ballistic(dt: float) -> void:
 	if ptype == "frag":
 		fuse -= dt
 		if fuse <= 0.0:
-			world.combat.explode(position, {"dmg": 150.0, "radius": 6.0, "fling": 9.0, "at": 0.0, "src": world.entity(thrower_id), "team": team, "size": 1.0})
+			if not SoldierBrain.smothered(self):
+				world.combat.explode(position, {"dmg": 150.0, "radius": 6.0, "fling": 9.0, "at": 0.0, "src": world.entity(thrower_id), "team": team, "size": 1.0})
 			world.despawn(self)
 	else:
 		if not flying or life_t > 1.6:
@@ -322,6 +325,15 @@ func pick_up(s: Soldier) -> void:
 	held_by = s
 	flying = false
 	vel = Vector3.ZERO
+
+
+## Kicked away along the ground.
+func kick(s: Soldier, v: Vector3) -> void:
+	flying = true
+	vel = v
+	thrown_back += 1
+	position.y = maxf(position.y, 0.15)
+	smothered_by = null
 
 
 func release_throw(s: Soldier, pos: Vector3) -> void:

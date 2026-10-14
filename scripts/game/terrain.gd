@@ -448,6 +448,8 @@ func _stamp_crater(p: Vector3, size: float) -> void:
 	var x1 := mini(DN - 1, ceili(cx + ext * DRES))
 	var z0 := maxi(0, floori(cz - ext * DRES))
 	var z1 := mini(DN - 1, ceili(cz + ext * DRES))
+	if x1 < x0 or z1 < z0:
+		return  # off the edge of the map
 	for z in range(z0, z1 + 1):
 		var wz := (z + 0.5) / DRES - H
 		for x in range(x0, x1 + 1):

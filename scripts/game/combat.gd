@@ -226,9 +226,18 @@ func melee_hit(a: Soldier, b) -> void:
 	world.fx_event([Fx.MELEE, b.position + Vector3(0, 1.2, 0)])
 
 
-func throw_grenade(s: Soldier, pos: Vector3, kind: String) -> void:
+func throw_grenade(s: Soldier, pos: Vector3, kind: String, fuse := 3.4) -> Projectile:
 	var from := s.position + Vector3(0, 1.7, 0) + Defs.dir_of(s.rotation.y) * 0.3
-	world.spawn("projectile", {"ptype": kind, "team": s.team, "pos": from, "vel": ballistic_vel(from, pos), "thrower": s.eid, "fuse": 3.4 if kind == "frag" else 1.0})
+	return world.spawn("projectile", {"ptype": kind, "team": s.team, "pos": from, "vel": ballistic_vel(from, pos), "thrower": s.eid, "fuse": fuse if kind == "frag" else 1.0})
+
+
+## A short, flat throw from the shoulder: in through a doorway or a window,
+## under the lintel, rather than lobbed high over a wall.
+func throw_grenade_low(s: Soldier, pos: Vector3, fuse := 3.4) -> Projectile:
+	var from := s.position + Vector3(0, 1.45, 0) + Defs.dir_of(s.rotation.y) * 0.35
+	var t := clampf(Defs.flat(pos - from).length() / 11.0, 0.3, 0.75)
+	var v := (pos - from) / t + Vector3(0, 0.5 * Projectile.GRAVITY * t, 0)
+	return world.spawn("projectile", {"ptype": "frag", "team": s.team, "pos": from, "vel": v, "thrower": s.eid, "fuse": fuse})
 
 
 func ballistic_vel(from: Vector3, to: Vector3) -> Vector3:

@@ -167,7 +167,7 @@ func on_spawned() -> void:
 	if skind == "trench":
 		foot.x += TrenchNet.HALF_W  # the hole runs on past the segment's ends
 	radius = foot.length() + 0.5
-	indestructible = skind == "depot"
+	indestructible = skind in ["depot", "floor"]  # (a house's floor slab outlasts its walls)
 	smashable = skind in ["low_wall", "tall_wall", "house_wall", "crates", "car", "tree", "sandbags", "concrete_wall", "wire", "rubble", "fence"]
 	if srv:
 		if max_hp <= 0.0 or (hp == 100.0 and max_hp == 100.0):

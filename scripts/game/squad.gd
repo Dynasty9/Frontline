@@ -33,6 +33,7 @@ var travel := false  # long move: the leader leads, the rest keep their place in
 var travel_mode := 0
 var final_slots := {}  # eid -> where each man ends up
 var plan = null  # AttackPlan this squad is part of (untyped: shared between squads)
+var breach_by: Soldier = null  # the man clearing a house for the squad (see SoldierBrain)
 var _offsets := {}  # eid -> Vector2(side, back) behind the leader
 
 const CALLSIGNS := [["Alpha", "Bravo", "Charlie", "Delta", "Echo", "Foxtrot", "Golf", "Hotel"],
@@ -294,7 +295,7 @@ func _follow_tick() -> void:
 	var side := head.cross(Vector3.UP)
 	# in town the wedge folds into two staggered files, one along each side of
 	# the street, each man watching the windows across from him
-	var urban: bool = world.town_rect.grow(-4.0).has_point(Vector2(ld.position.x, ld.position.z))
+	var urban: bool = world.town_rect.size.x > 8.0 and world.town_rect.grow(-4.0).has_point(Vector2(ld.position.x, ld.position.z))
 	var lag_sum := 0.0
 	var n := 0
 	for m in members:

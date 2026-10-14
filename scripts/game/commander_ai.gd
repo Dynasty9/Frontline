@@ -494,22 +494,25 @@ func _production(sqs: Array) -> void:
 			my_veh += 1
 	var factories := _my_structs("factory", true)
 	var saving := 0
+	# unit cap held back for the vehicle being saved for: otherwise the
+	# barracks fill every free slot with infantry and it never rolls out
+	var room := 0
 	if not factories.is_empty() and my_veh < 1 + int(world.time / 420.0) and factories[0].queue.is_empty():
 		if next_vehicle == "":
 			next_vehicle = _pick_vehicle(enemy_armor)
 		saving = int(Defs.VEHICLES[next_vehicle].cost)
-		if sup >= saving and r.has_cap(team, 4):
+		room = int(Defs.VEHICLES[next_vehicle].cap)
+		if sup >= saving and r.has_cap(team, room):
 			_cmd({"t": "train", "building": factories[0].eid, "item": next_vehicle})
 			sup -= saving
 			saving = 0
+			room = 0
 			next_vehicle = ""
-	var squads_alive := 0
-	for sq in sqs:
-		squads_alive += 1
-	if squads_alive < 3:
+	if sqs.size() < 3:
 		saving = 0
+		room = 0
 	for b in _my_structs("barracks", true):
-		if b.queue.size() >= 2 or not r.has_cap(team, 6):
+		if b.queue.size() >= 2 or not r.has_cap(team, 6 + room):
 			continue
 		var key := _pick_squad(counts, eng_n, enemy_armor)
 		var def: Dictionary = Defs.SQUADS[key]

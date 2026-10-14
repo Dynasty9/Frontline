@@ -10,8 +10,27 @@ signal closed
 const CATS := [
 	["infantry", "Infantry"], ["squads", "Squads & teams"], ["weapons", "Weapons"],
 	["veh_light", "Light vehicles"], ["veh_armour", "Armour"], ["veh_support", "Support & logistics"], ["veh_air", "Helicopters & drones"],
-	["bases", "Base buildings"], ["defences", "Field defences"], ["cover", "Cover"], ["support", "Fire support"],
+	["bases", "Base buildings"], ["defences", "Field defences"], ["cover", "Cover"], ["drills", "Drills & reflexes"], ["support", "Fire support"],
 	["aircraft", "Aircraft"], ["boats", "Boats"], ["civilian", "Civilian & other"], ["upgrades", "Upgrades"],
+]
+## What a soldier does without being told (SoldierBrain): [key, name, posture,
+## act, what's built round him, when, the risk, what it is]. In the order he
+## weighs them when a grenade lands by him.
+const DRILLS := [
+	["d_smother", "Smother it", Soldier.Post.PRONE, Soldier.Act.SMOTHER, "nade", "Too late to throw it, among men who can't get away",
+		"He dies; they live", "When it's too late to throw it and it has landed among men who can't get clear - a wounded man being treated, a crowded trench bay - the man beside it may throw himself on it, arms and knees drawn in round it. His body takes the blast: he is killed outright, and what's left of it barely reaches the men around him. Very few do it."],
+	["d_back", "Throw it back", Soldier.Post.STAND, Soldier.Act.PICKUP, "nade", "Two seconds or more on the fuse, within four metres, not pinned",
+		"If it's been cooked, it goes off in his hand", "He runs to it, snatches it up and throws it back where it came from. About one man in four has the nerve, and only while there's time on the fuse; a grenade only comes back once."],
+	["d_kick", "Kick it away", Soldier.Post.STAND, Soldier.Act.KICK, "nade_kick", "Lying at his feet, a second or more to go",
+		"Three or four metres isn't far", "A hard kick sends it skittering off - away from his mates and back towards whoever threw it - and he hits the dirt as it goes off."],
+	["d_duck", "Get down behind it", Soldier.Post.PRONE, Soldier.Act.IDLE, "wall", "A wall between him and the grenade",
+		"Little: the wall takes it", "If there's a wall between him and it he doesn't run across the open: he gets down flat behind it and lets the masonry take the blast."],
+	["d_dive", "Dive clear", Soldier.Post.STAND, Soldier.Act.DIVE, "nade", "Everything else",
+		"Caught in the open, still close", "The first man to see it yells and everyone near it throws himself flat, away from it. Lying down, most of the fragments fly over him: a prone man takes about half the blast."],
+	["d_cook", "Cooking a grenade", Soldier.Post.STAND, Soldier.Act.COOK, "", "Men in hard cover close by",
+		"Holding a live grenade", "Against men behind something solid at close range, the thrower lets the spoon fly and holds it a second or so before he throws, so it goes off as it lands - too late to throw back. It's the throw-back's answer, and the reason men sometimes have to lie on one."],
+	["d_house", "Clearing a house", Soldier.Post.CROUCH, Soldier.Act.COOK, "door", "Enemy seen inside a building near the squad",
+		"The doorway is a fatal funnel", "The man best placed stacks beside the doorway, back to the wall. Pin out, he steps into the doorway and throws it in low under the lintel (or lobs it through a window), steps back against the wall for the bang - and then he's in, a mate right behind him, before they recover. A man already stacked finishes the job before he follows a new order."],
 ]
 ## Battlefield cover, and how a man fights from each: [key, name, structure
 ## kind, variant, size, barrier height, where it's found, what it is].
@@ -510,6 +529,8 @@ func _show_model(e: Dictionary) -> void:
 	_yaw = PI - (1.05 if String(e.cat) in ["infantry", "squads"] else 0.62)
 	if String(e.cat) == "cover":
 		_yaw = 0.75  # over his shoulder: the man, his weapon on the top, and what he's looking at
+	elif String(e.cat) == "drills":
+		_yaw = 0.55 if e.key == "d_house" else PI - 1.25  # the doorway from outside, or the man side-on
 	_idle_t = 4.0  # hold the opening view a moment before the turntable starts
 
 
@@ -556,6 +577,8 @@ func _make_model(e: Dictionary) -> Node3D:
 			return Structure.preview_model(String(e.key), bs)
 		"cover":
 			return _cover_diorama(String(e.key), side if side >= 0 else 0)
+		"drills":
+			return _drill_diorama(String(e.key), side if side >= 0 else 0)
 		"model":
 			return VehicleModels.build(String(e.key), side if side >= 0 else 0, 7).root
 		"support":
@@ -736,6 +759,50 @@ func _cover_diorama(key: String, side: int) -> Node3D:
 		return g
 	sm.position = Vector3(man_x, man_y, man_z)
 	g.add_child(sm)
+	return g
+
+
+## A soldier mid-drill, with what it's about: a grenade on the ground, the
+## wall he's behind, the doorway he's stacked beside.
+func _drill_diorama(key: String, side: int) -> Node3D:
+	var d: Array = []
+	for x in DRILLS:
+		if x[0] == key:
+			d = x
+	if d.is_empty():
+		return null
+	var g := Node3D.new()
+	var sm := SoldierModel.new()
+	sm.build("rifleman" if side != 1 else "fighter", side, 23)
+	var nade_at := Vector3.INF
+	match String(d[4]):
+		"nade":
+			nade_at = Vector3(0.0, 0.05, -1.1 if key != "d_smother" else -0.78)
+		"nade_kick":
+			nade_at = Vector3(0.12, 0.05, -1.35)
+		"wall":
+			var wall := Structure.preview_model("low_wall", -1, 0, Vector3(3.0, 1.0, 0.5))
+			wall.position = Vector3(0, 0, -1.4)
+			g.add_child(wall)
+			sm.position.z = 0.55  # flat out behind it, head to the wall
+			nade_at = Vector3(0.3, 0.05, -2.4)
+		"door":
+			# a house wall with its doorway; he's outside, back to the wall,
+			# facing along it towards the door
+			var hw := Structure.preview_model("house_wall", -1, 2, Vector3(4.6, 2.0, 0.4))
+			hw.position = Vector3(-1.55, 0, -0.55)
+			g.add_child(hw)
+			sm.rotation.y = PI * 0.5
+	for i in 12:
+		sm.pose(0.3, 0, d[2], d[3], 0.0, false, false)
+	g.add_child(sm)
+	if nade_at != Vector3.INF:
+		var nd := MeshInstance3D.new()
+		nd.mesh = Res.sphere(0.05, 8)
+		nd.scale = Vector3(1.0, 1.25, 1.0)
+		nd.position = nade_at
+		nd.material_override = Res.mat(Color(0.25, 0.28, 0.2))
+		g.add_child(nd)
 	return g
 
 
@@ -1093,6 +1160,14 @@ func _build_entries() -> Array:
 		out.append({"cat": "cover", "key": c[0], "name": c[1], "team": -1, "both": true,
 			"sub": "%s · %s" % [(Cover.MAT_NAMES[m] if m >= 0 else "Concealment"), how], "desc": c[7], "stats": cst,
 			"rel": ["Found: " + c[6]]})
+
+	# drills and reflexes
+	for di in DRILLS.size():
+		var dr: Array = DRILLS[di]
+		out.append({"cat": "drills", "key": dr[0], "name": dr[1], "team": -1, "both": true,
+			"sub": String(dr[5]), "desc": String(dr[7]), "stats": [
+				["When", String(dr[5]), -1.0], ["The risk", String(dr[6]), -1.0]],
+			"rel": ["Every soldier, both sides", "A behaviour tree decides it (see README)"]})
 
 	# upgrades
 	for k in Defs.UPGRADES:

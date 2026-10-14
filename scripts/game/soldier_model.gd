@@ -43,6 +43,10 @@ var cover_h := 0.0  # height of the barrier he's at (0: none)
 var blind := false  # holding the weapon up over the top, head down
 var muzzle_local := Vector3(0, 0.01, -0.8)  # the weapon's muzzle in gun space
 var crew := false  # working a mounted gun: his own slung, hands on its grips
+var move_yaw := 0.0  # which way he's moving, relative to where he faces (+ to his left)
+var gait_amp := 0.3  # how far the thighs swing at this speed (see pose())
+var nade: Node3D  # a grenade in his right hand (cooking it, throwing it)
+var _back := false
 ## Attachment sockets (torso space). Carried kit is built to one convention -
 ## forward along -Z, top along +Y, origin at its balance point - and sits in a
 ## socket: stowed across the back, or shouldered to fire.
@@ -65,6 +69,7 @@ const LOWER := 0.25
 var t_root_p := Vector3.ZERO
 var t_root_r := Vector3.ZERO
 var t_hips_p := Vector3(0, H0, 0)
+var t_hips_r := Vector3.ZERO
 var t_torso := Vector3.ZERO
 var t_head := Vector3.ZERO
 var t_thl := Vector3.ZERO
@@ -365,6 +370,11 @@ func build(utype: String, team: int, seed: int) -> void:
 	pistol = _joint(forearm_r, Vector3(0, -0.28, -0.06))
 	Res.mi(pistol, Res.box(Vector3(0.04, 0.1, 0.18)), Res.mat(dark), Vector3(0, 0, -0.06), Vector3.ZERO, false)
 	pistol.visible = false
+	nade = _joint(forearm_r, Vector3(0, -0.3, -0.03))
+	var nb := Res.mi(nade, Res.sphere(0.045, 8), Res.mat(Color(0.25, 0.28, 0.2)), Vector3.ZERO, Vector3.ZERO, false)
+	nb.scale = Vector3(1.0, 1.25, 1.0)
+	Res.mi(nade, Res.box(Vector3(0.018, 0.06, 0.03)), Res.mat(Color(0.35, 0.35, 0.33)), Vector3(0.03, 0.05, 0), Vector3(0, 0, -0.3), false)
+	nade.visible = false
 	is_mortar = Defs.UNITS.has(utype) and int(Defs.UNITS[utype].get("mortar", 0)) > 0
 	if Defs.UNITS.has(utype) and (int(Defs.UNITS[utype].get("rockets", 0)) > 0 or is_mortar):
 		tube = _joint(torso, Vector3.ZERO)
@@ -541,13 +551,24 @@ func pose(dt: float, life: int, posture: int, act: int, speed: float, backwards:
 				Mats.merge_static(root, [stretcher], true, true, true)
 			return
 	var moving := speed > 0.25
-	phase += dt * (speed * 3.2 + (0.0 if moving else 0.0)) * (-1.0 if backwards else 1.0)
+	# one stride (two steps) covers more ground the faster he goes, and the
+	# thighs sweep back as fast as the ground goes by under the planted foot,
+	# so the feet don't skate
+	var stride := 0.95 + 0.37 * speed
+	if posture == Soldier.Post.CROUCH:
+		stride = 0.8 + 0.3 * speed
+	elif posture == Soldier.Post.PRONE:
+		stride = 1.6
+	gait_amp = clampf(stride / 5.2, 0.16, 0.62)
+	phase += dt * TAU * speed / stride * (-1.0 if backwards else 1.0)
+	_back = backwards
 	var sp := sin(phase)
 	var cp := cos(phase)
 	# defaults: standing, rifle at low ready
 	t_root_p = Vector3.ZERO
 	t_root_r = Vector3.ZERO
 	t_hips_p = Vector3(0, H0, 0)
+	t_hips_r = Vector3.ZERO
 	t_torso = Vector3.ZERO
 	t_head = Vector3.ZERO
 	t_thl = Vector3.ZERO
@@ -571,13 +592,15 @@ func pose(dt: float, life: int, posture: int, act: int, speed: float, backwards:
 	ik_l_target = Vector3.INF
 	var show_gun := has_gun
 	var show_pistol := false
+	var show_nade := false
 	var show_stretcher := false
 	var k := 12.0
 
 	if life != 0 or act in [Soldier.Act.THROW, Soldier.Act.BUILD, Soldier.Act.HEAL, Soldier.Act.DRAG, Soldier.Act.CARRY,
 			Soldier.Act.CRAWL, Soldier.Act.CLIMB, Soldier.Act.DIVE, Soldier.Act.FLINCH, Soldier.Act.PICKUP, Soldier.Act.LIMP,
 			Soldier.Act.VAULT, Soldier.Act.DAZED, Soldier.Act.MELEE, Soldier.Act.HANDSUP, Soldier.Act.LAUNCH,
-			Soldier.Act.IDLE_CHAT, Soldier.Act.IDLE_LAUGH, Soldier.Act.IDLE_SMOKE, Soldier.Act.IDLE_SIT, Soldier.Act.IDLE_STRETCH, Soldier.Act.IDLE_LOOK]:
+			Soldier.Act.IDLE_CHAT, Soldier.Act.IDLE_LAUGH, Soldier.Act.IDLE_SMOKE, Soldier.Act.IDLE_SIT, Soldier.Act.IDLE_STRETCH, Soldier.Act.IDLE_LOOK,
+			Soldier.Act.SMOTHER, Soldier.Act.COOK]:
 		ik_l = false
 		ik_r = false
 	if act == Soldier.Act.IDLE_CHECK:
@@ -703,7 +726,47 @@ func pose(dt: float, life: int, posture: int, act: int, speed: float, backwards:
 				t_torso = Vector3(0.1 if a < 0.55 else -0.35, 0.4 if a < 0.55 else -0.3, 0)
 				t_gun_p = Vector3(-0.15, 0.2, -0.25)
 				t_gun_r = Vector3(0.8, 0, 0.6)
+				show_nade = a < 0.6
 				k = 16.0
+			Soldier.Act.COOK:
+				# pin out, spoon gone, counting: the grenade held in close, the
+				# rifle hanging on its sling
+				if posture == Soldier.Post.CROUCH:
+					_kneel()
+				t_arr = Vector3(0.75, 0, 0.35)
+				t_far = Vector3(1.75, 0, 0)
+				t_arl = Vector3(0.55, 0, -0.35)
+				t_fal = Vector3(1.4, 0, 0)
+				t_gun_p = Vector3(0.12, 0.05, -0.2)
+				t_gun_r = Vector3(1.25, 0, 0.3)
+				t_head = Vector3(-0.15, 0, 0)
+				show_nade = true
+				k = 12.0
+			Soldier.Act.KICK:
+				# the right foot swings through it, leaning back for the kick
+				var ka := clampf(act_time / 0.3, 0.0, 1.0)
+				t_thr = Vector3(-0.45 + 1.75 * ka, 0, 0.04)
+				t_shr = Vector3(-1.3 * (1.0 - ka) - 0.1, 0, 0)
+				t_thl = Vector3(0.1, 0, -0.04)
+				t_shl = Vector3(-0.15, 0, 0)
+				t_hips_p = Vector3(0, H0 - 0.05, 0.05)
+				t_torso = Vector3(0.22 * ka, 0, 0)
+				k = 22.0
+			Soldier.Act.SMOTHER:
+				# face down on it: arms and knees drawn in round it, the body over it
+				_prone()
+				t_root_p.y = 0.24
+				t_arl = Vector3(1.0, 0, 0.75)
+				t_fal = Vector3(1.9, 0, 0)
+				t_arr = Vector3(1.0, 0, -0.75)
+				t_far = Vector3(1.9, 0, 0)
+				t_head = Vector3(0.15, 0.3, 0)
+				t_thl = Vector3(0.55, 0, -0.15)
+				t_shl = Vector3(-1.0, 0, 0)
+				t_thr = Vector3(0.6, 0, 0.15)
+				t_shr = Vector3(-1.1, 0, 0)
+				show_gun = false
+				k = 14.0
 			Soldier.Act.MELEE:
 				var lunge := act_time < 0.3
 				t_torso = Vector3(-0.35 if lunge else 0.0, 0, 0)
@@ -861,6 +924,7 @@ func pose(dt: float, life: int, posture: int, act: int, speed: float, backwards:
 			ik_r = true
 	gun.visible = show_gun and not (crew and life == 0)
 	pistol.visible = show_pistol
+	nade.visible = show_nade and life == 0
 	stretcher.visible = show_stretcher
 	_apply(dt, k)
 
@@ -894,16 +958,17 @@ func _posture_pose(posture: int, act: int, moving: bool, sp: float, cp: float, s
 	match posture:
 		Soldier.Post.CROUCH:
 			if moving:
-				t_hips_p = Vector3(0, 0.72, 0)
-				t_torso = Vector3(-0.35, 0, 0)
+				# bent at the waist and the knees, weapon up, short quick steps
+				# - or, dashing for cover under fire, a low sprint
+				var rush := speed > 2.3
+				t_hips_p = Vector3(0, 0.84 if rush else 0.8, 0.03)
+				t_torso = Vector3(-0.5 if rush else -0.3, 0, 0)
 				if not aiming:
 					# compressed ready: weapon high, muzzle just below the eyeline
 					t_gun_p = Vector3(0.1, 0.4, -0.28)
-					t_gun_r = Vector3(-0.15, 0.0, 0.0)
-				t_thl = Vector3(0.7 + sp * 0.45, 0, 0)
-				t_thr = Vector3(0.7 - sp * 0.45, 0, 0)
-				t_shl = Vector3(-1.0 - maxf(0.0, -sp) * 0.4, 0, 0)
-				t_shr = Vector3(-1.0 - maxf(0.0, sp) * 0.4, 0, 0)
+					t_gun_r = Vector3(0.1 if rush else -0.15, 0.0, 0.0)
+				_walk(sp, cp, gait_amp * (1.05 if rush else 0.95), 0.28 if rush else 0.3, 0.5 if rush else 0.75)
+				_strafe()
 			else:
 				_crouch_still(act, lean_shoot)
 		Soldier.Post.PRONE:
@@ -927,7 +992,8 @@ func _posture_pose(posture: int, act: int, moving: bool, sp: float, cp: float, s
 				t_gun_p = Vector3(0.1, 0.4, -0.26)
 				t_gun_r = Vector3(0.9, 0.0, 0.1)
 			if moving:
-				_walk(sp, cp, 0.45)
+				_walk(sp, cp, gait_amp)
+				_strafe()
 		_:
 			if over_wall and not moving:
 				_stand_over(cover_h if cover_h > 0.0 else 1.05, act == Soldier.Act.SHOOT and lean_shoot)
@@ -943,23 +1009,50 @@ func _posture_pose(posture: int, act: int, moving: bool, sp: float, cp: float, s
 				t_fal = Vector3(0.35 + maxf(0.0, -sp) * amp * 0.9, 0, 0)
 				t_far = Vector3(0.35 + maxf(0.0, sp) * amp * 0.9, 0, 0)
 			if moving:
-				var run := speed > 3.2
-				_walk(sp, cp, 0.85 if run else 0.45)
+				# walking, jogging with the weapon at the ready, or sprinting
+				# with it across the chest
+				var run := speed > 4.1
+				var jog := speed > 2.6
+				_walk(sp, cp, gait_amp, 0.0, 0.18 if run else (0.14 if jog else 0.1))
 				if run:
-					t_torso = Vector3(-0.28, 0, 0)
+					t_torso = Vector3(-0.28, t_torso.y, 0)
 					if not aiming:
 						# port arms, bouncing with the stride
 						t_gun_p = Vector3(0.0, 0.34 + absf(sp) * 0.03, -0.24)
 						t_gun_r = Vector3(0.35, 0.75, 0.35 + cp * 0.06)
+				elif jog:
+					t_torso.x = -0.12
+					if not aiming:
+						t_gun_p = Vector3(0.1, 0.38 + absf(sp) * 0.02, -0.28)
+						t_gun_r = Vector3(-0.2, 0.0, 0.0)
+				_strafe()
 
 
-func _walk(sp: float, cp: float, amp: float) -> void:
-	t_thl = Vector3(sp * amp, 0, 0)
-	t_thr = Vector3(-sp * amp, 0, 0)
+## A stride: each thigh swings about `base` (forward +); the knee folds as
+## the leg comes through and is all but straight while the foot is planted
+## (a little bent - `knee` - for a soldier's soft-kneed walk or a crouch).
+## The left leg comes forward while cp > 0, the right while cp < 0.
+func _walk(sp: float, cp: float, amp: float, base := 0.0, knee := 0.1) -> void:
+	t_thl = Vector3(base + sp * amp, 0, -0.03)
+	t_thr = Vector3(base - sp * amp, 0, 0.03)
+	var lift := 0.45 + amp * 1.6
+	t_shl = Vector3(-knee - pow(maxf(0.0, cp), 1.5) * lift, 0, 0)
+	t_shr = Vector3(-knee - pow(maxf(0.0, -cp), 1.5) * lift, 0, 0)
 	t_torso.y += sp * 0.07 * amp
-	t_shl = Vector3(-maxf(0.0, -cp) * amp * 1.4, 0, 0)
-	t_shr = Vector3(-maxf(0.0, cp) * amp * 1.4, 0, 0)
-	t_hips_p.y = t_hips_p.y - absf(sp) * 0.04 * amp
+	t_hips_p.y = t_hips_p.y - absf(sp) * 0.05 * amp
+
+
+## Moving one way and facing another (walking while he fires, backing off,
+## edging along a wall): the hips and legs turn towards where he's going - up
+## to about 60 degrees - and the upper body turns back to keep the weapon on
+## the target.
+func _strafe() -> void:
+	var a := move_yaw
+	if _back:
+		a -= signf(a) * PI  # backing away: the hips turn towards the way he's backing
+	var hy := clampf(a, -1.05, 1.05)
+	t_hips_r = Vector3(0, hy, 0)
+	t_torso.y -= hy
 
 
 ## Rifle slung across the back, both hands free.
@@ -1189,6 +1282,7 @@ func _apply(dt: float, k: float) -> void:
 	_mv(root, t_root_p, f)
 	_rot(root, t_root_r, f)
 	_mv(hips, t_hips_p, f)
+	_rot(hips, t_hips_r, f)
 	_rot(torso, t_torso, f)
 	_rot(head, t_head, f)
 	_rot(thigh_l, t_thl, f)

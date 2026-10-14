@@ -294,6 +294,16 @@ func scenario(sname: String) -> void:
 				var code := clampi(int(round(h / 0.04)), 1, 63) | (int(c[6]) << 6)
 				world.spawn("soldier", {"utype": "rifleman", "team": 0 if ci % 2 == 0 else 1, "owner": a, "pos": Vector3(-7.5 + ci * 3.0, 0, z), "yaw": 0.0,
 					"name": "C%d" % ci, "dpose": [c[0], c[1], c[2], c[3], c[4], code]})
+			# gaits (walk, jog, sprint, crouched walk, low rush, walking while
+			# firing off to the side) and the grenade reflexes (kick, lying on
+			# it, cooking it standing and kneeling, the throw)
+			var gaits := [
+				[[P.STAND, A.WALK, 0, 1.5], [P.STAND, A.RUN, 0, 3.4], [P.STAND, A.RUN, 0, 5.3], [P.CROUCH, A.WALK, 0, 1.6], [P.CROUCH, A.RUN, 0, 3.6], [P.STAND, A.SHOOT, 0, 1.5, Soldier.F_SHOOTING, 0, 1.4]],
+				[[P.STAND, A.KICK, 0, 0.0], [P.PRONE, A.SMOTHER, 0, 0.0], [P.STAND, A.COOK, 0, 0.0], [P.CROUCH, A.COOK, 0, 0.0], [P.STAND, A.THROW, 0, 0.0], [P.CROUCH, A.SHOOT, 0, 1.2, Soldier.F_SHOOTING, 0, -1.4]],
+			]
+			for gi in gaits.size():
+				for ci in gaits[gi].size():
+					world.spawn("soldier", {"utype": "rifleman", "team": 0 if ci % 2 == 0 else 1, "owner": a, "pos": Vector3(-7.5 + ci * 3.0, 0, -8.0 - gi * 4.0), "yaw": 2.3, "name": "G%d%d" % [gi, ci], "dpose": gaits[gi][ci]})
 			for ri in rows.size():
 				var row: Array = rows[ri]
 				for ci in row.size():
@@ -347,6 +357,56 @@ func scenario(sname: String) -> void:
 				_spawn("low_wall", Vector3(-2 + i * 4.2, 0, -16), 0.0, -1, {"size": Vector3(4, 1, 0.5)})
 			r.spawn_squad("rifle_squad", 0, a, Vector3(0, 0, 0), Vector3(0, 0, -6))
 			r.spawn_squad("fighter_cell", 1, b, Vector3(0, 0, -40), Vector3(0, 0, -20))
+		"breach":
+			# a fighter cell holed up in a house; a rifle squad sent to clear it
+			_house(Vector3(0, 0, -30), 8.0, 6.0, 0.0, 1.0, false, 0.0)
+			_house(Vector3(14, 0, -32), 7.0, 6.0, 0.0, 1.0, false, 0.0)
+			var hq := r.spawn_squad("fighter_cell", 1, b, Vector3(0, 0, -30))
+			hq.order_defend(Vector3(0, 0, -30), Vector3(0, 0, 1))
+			for i in 3:
+				_spawn("low_wall", Vector3(-8 + i * 4.2, 0, -8), 0.0, -1, {"size": Vector3(4, 1, 0.5)})
+			for i in 4:
+				_try("tree", Vector3(-16 + i * 1.5, 0, -14 - i * 3.0), 0.0, -1)
+			var sqb := []
+			for i in 2:
+				sqb.append(r.spawn_squad("rifle_squad", 0, a, Vector3(-8 + i * 16, 0, 2)))
+			sqb.append(r.spawn_squad("mg_team", 0, a, Vector3(0, 0, 4)))
+			if not world.settings.get("static", false):
+				var ids2 := []
+				for sq in sqb:
+					ids2.append(sq.sid)
+				world.execute_cmd(a, {"t": "assault", "squads": ids2, "pos": Vector3(0, 0, -30), "face": Vector3(0, 0, -1)})
+		"gdrill":
+			# grenade drill: frags with all sorts of fuses land among a squad
+			# crowded round a wounded man (the reflexes, over and over)
+			_spawn("low_wall", Vector3(8, 0, -2), 0.0, -1, {"size": Vector3(4, 1, 0.5)})
+			var gq := r.spawn_squad("rifle_squad", 0, a, Vector3(0, 0, 0))
+			gq.order_defend(Vector3(0, 0, 0), Vector3(0, 0, -1))
+			for di in 2:
+				var tm: Soldier = world.spawn("soldier", {"utype": "rifleman", "team": 0, "owner": a, "pos": Vector3(1.2 - di * 2.4, 0, 0.6), "yaw": 0.0, "name": "W%d" % di})
+				tm.call_deferred("_go_down")
+			for gi in 14:
+				world.get_tree().create_timer(4.0 + gi * 4.5, true, true).timeout.connect(func():
+					if not is_instance_valid(world) or world.winner >= 0:
+						return
+					# by one of the wounded if any are still lying there, else among the squad
+					var c := Vector3.INF
+					var hurt := []
+					var up := []
+					for s in world.soldiers:
+						if s.team == 0 and s.life == Soldier.Life.DOWNED:
+							hurt.append(s)
+						elif s.team == 0 and s.life == Soldier.Life.ALIVE:
+							up.append(s)
+					if not hurt.is_empty():
+						c = hurt[world.rng.randi() % hurt.size()].position
+					elif not up.is_empty():
+						c = up[world.rng.randi() % up.size()].position
+					else:
+						return
+					var off := Vector3(world.rng.randf_range(-1.5, 1.5), 0, world.rng.randf_range(-1.5, 1.5))
+					world.spawn("projectile", {"ptype": "frag", "team": 1, "pos": c + off + Vector3(0, 0.3, 0), "vel": Vector3(0, 0.5, 0), "thrower": 0,
+						"fuse": world.rng.randf_range(1.2, 3.4)}))
 	r.rebuild_network(0)
 	r.rebuild_network(1)
 

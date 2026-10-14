@@ -6,7 +6,7 @@ extends Entity
 enum Life {ALIVE, DOWNED, DEAD, SURRENDER, CAPTIVE, HIDDEN}
 enum Post {STAND, CROUCH, PRONE, LEAN_L, LEAN_R}
 enum Act {IDLE, WALK, RUN, SHOOT, RELOAD, THROW, MELEE, BUILD, HEAL, DRAG, CARRY, CRAWL, DRAGGED, CARRIED, VAULT, DIVE, SLIDE, FLUNG, DAZED, FLINCH, HANDSUP, PICKUP, LIMP, PISTOL, LAUNCH, CLIMB,
-	IDLE_CHAT, IDLE_LAUGH, IDLE_SMOKE, IDLE_SIT, IDLE_STRETCH, IDLE_CHECK, IDLE_LOOK}
+	IDLE_CHAT, IDLE_LAUGH, IDLE_SMOKE, IDLE_SIT, IDLE_STRETCH, IDLE_CHECK, IDLE_LOOK, KICK, SMOTHER, COOK}
 enum Cov {NONE, LOW, LEAN, HIDE}
 ## Player-facing activity labels: [text, category]. %s = the related entity's name.
 const DOING := [
@@ -22,6 +22,8 @@ const DOING := [
 	["Chatting with %s", "idle"], ["Having a laugh", "idle"], ["Having a smoke", "idle"], ["Taking a load off", "idle"],
 	["Stretching his legs", "idle"], ["Checking his rifle", "idle"], ["Keeping an eye out", "idle"],
 	["Firing over cover", "fight"], ["Blind firing", "stress"], ["Moving along the wall", "move"],
+	["Throwing himself on a grenade!", "stress"], ["Kicking the grenade away", "fight"], ["Clearing the house", "fight"],
+	["Stacking on the door", "fight"], ["Cooking a grenade", "fight"], ["Hitting the dirt", "stress"],
 ]
 ## Downtime chatter: each exchange alternates speakers; %s is the other man's name.
 const BANTER := [[
@@ -131,6 +133,7 @@ var cov_net := 0  # clients: the cover byte (see cov_code)
 var _peek_from := 0.0  # when he came up: a moment to find his target first
 var _up_supp := 0.0  # suppression when he came up (drew fire: move along before coming up again)
 var _stayed := false  # stayed up a little longer because nobody else was firing
+var _watching := false  # up over the top keeping watch: nothing to shoot, nobody shooting at him
 var _shifting := false  # moving along the barrier to a new spot
 var _stuck_p := Vector3.ZERO
 var _stuck_t := 0.0
@@ -205,6 +208,19 @@ var mortar_cd := 0.0
 var hit_dirt_t := 0.0
 var _gy := 0.0
 var _gy_t := -1.0
+# the behaviour tree (see SoldierBrain)
+var bt_path := ""  # the leaf that last acted
+var bt_cd := {}
+var bt_g: Projectile = null  # the grenade he's reacting to
+var bt_breach: Array = []  # [house, opening, enemy] he could clear
+var bt_house: Structure = null
+var bt_door: Array = []  # [wall, centre, outward normal, is a door]
+var bt_next_breach := 0.0
+var bt_cook_t0 := -1.0
+var bt_breach_g: Projectile = null
+var bt_wait := 0.0
+var task_pos2 := Vector3.ZERO
+var bt_reordered := false  # given a new order mid-breach: rejoin rather than go in
 
 # tasks
 var task := ""
@@ -288,6 +304,12 @@ func _update_doing() -> void:
 					d = 23
 				"grenade_pickup":
 					d = 31
+				"smother":
+					d = 45
+				"gkick":
+					d = 46
+				"breach":
+					d = 48 if task_phase <= 1 else 47
 			if d in [9, 10, 16]:
 				doing_ent = task_ent.eid if task_ent and not task_ent.gone else 0
 			elif d == 13:
@@ -324,8 +346,14 @@ func _update_doing() -> void:
 						doing_ent = chat_with.eid if chat_with != null and is_instance_valid(chat_with) else 0
 					Act.IDLE_LAUGH, Act.IDLE_SMOKE, Act.IDLE_SIT, Act.IDLE_STRETCH, Act.IDLE_CHECK, Act.IDLE_LOOK:
 						d = 36 + (act - Act.IDLE_LAUGH)
+					Act.KICK:
+						d = 46
+					Act.COOK:
+						d = 49
 			if d == 0:
-				if (flags & F_PINNED) != 0:
+				if hit_dirt_t > 0.0 and act != Act.DIVE:
+					d = 50
+				elif (flags & F_PINNED) != 0:
 					d = 5
 				elif (flags & F_NOAMMO) != 0:
 					d = 25
@@ -754,7 +782,7 @@ func _posture_sanity(dt: float) -> void:
 		return
 	var sp := Defs.flat(position - _sim_prev).length() / dt
 	_sim_prev = position
-	if sp < 0.3 or act in [Act.CRAWL, Act.DIVE, Act.FLUNG, Act.SLIDE, Act.DRAGGED, Act.CARRIED, Act.VAULT]:
+	if sp < 0.3 or act in [Act.CRAWL, Act.DIVE, Act.FLUNG, Act.SLIDE, Act.DRAGGED, Act.CARRIED, Act.VAULT, Act.SMOTHER]:
 		return
 	var fixed := ""
 	if posture == Post.PRONE:
@@ -852,6 +880,12 @@ func _alive(dt: float) -> void:
 			_resupply_tick(dt)
 		"grenade_pickup":
 			_gpick_tick(dt)
+		"smother":
+			SoldierBrain.smother_tick(self, dt)
+		"gkick":
+			SoldierBrain.gkick_tick(self, dt)
+		"breach":
+			SoldierBrain.breach_tick(self, dt)
 		"retreat":
 			_retreat_tick(dt)
 		"throw":
@@ -862,26 +896,14 @@ func _alive(dt: float) -> void:
 			task = ""
 
 
+## What he sees, then what he does about it: the reflexes and the fight are
+## a behaviour tree (SoldierBrain).
 func _think() -> void:
 	scan_n += 1
 	if scan_n % 2 == 0 or target == null:
 		_scan()
 	_compute_sep()
-	if is_bearer() or task in ["stretcher", "limp", "tunnel", "retreat", "captor"] or (task == "rescue" and task_phase >= 1):
-		_react_shells(true)
-		_react_grenade(true)
-		return
-	if _react_shells(false) or _react_grenade(false):
-		return
-	_react_drones()
-	if dive_t > 0.0:
-		return
-	if task != "man" and task != "pilot" and _try_melee():
-		return
-	_scavenge()
-	if task == "":
-		_fight_think()
-		_sector = _sector_dir() if squad and squad.tactical() and not is_moving() else Vector3.ZERO
+	SoldierBrain.think(self)
 
 
 ## Where a man at a halt keeps watch: towards the threat, spread across the
@@ -1005,9 +1027,9 @@ func _aim_point(e: Entity) -> Vector3:
 
 # --- fighting ----------------------------------------------------------------------
 
+## His place in the fight: in cover where his squad is holding, out of ammo
+## and looking for more. (The special weapons come first: see SoldierBrain.)
 func _fight_think() -> void:
-	if _try_mortar() or _try_rocket() or _try_drone() or _try_grenade():
-		return
 	var w := cur_weapon()
 	if w.is_empty():
 		return
@@ -1404,6 +1426,30 @@ func _lean_post() -> int:
 ## wall and fire blind.
 func _cover_cycle(dt: float, w: Dictionary, want_fire: bool, pinned: bool) -> void:
 	peek_t -= dt
+	# nothing to shoot at and nobody shooting at him: up over the top keeping
+	# watch, the weapon on the wall - not curled up behind it. The first round
+	# that cracks past and he's down.
+	var calm := not want_fire and not pinned and suppression < 12.0 and world.time - _supp_t > 4.0 and reload_t <= 0.0 and hit_dirt_t <= 0.0
+	if calm:
+		if not peek_up:
+			peek_up = true
+			_peek_from = world.time
+			_up_supp = suppression
+		blind = false
+		_watching = true
+		return
+	if _watching:
+		_watching = false
+		if want_fire and peek_up:
+			# already up and looking: he opens fire from there
+			peek_t = world.rng.randf_range(2.2, 4.0)
+			_peek_from = world.time - 0.4
+			_up_supp = suppression
+			_stayed = false
+		else:
+			peek_up = false
+			peek_t = world.rng.randf_range(0.6, 1.4)
+		return
 	if peek_up:
 		# drew fire: once he's got a burst off, rounds start cracking round his head
 		var drew := suppression - _up_supp > 28.0 and world.time - _peek_from > 1.1
@@ -1625,8 +1671,12 @@ func _begin_action(kind: String, dur: float, data: Dictionary) -> void:
 	act_data = data
 	stop_moving()
 	match kind:
-		"throw", "rethrow":
+		"throw", "rethrow", "throw_in":
 			act = Act.THROW
+		"kick":
+			act = Act.KICK
+		"cook":
+			act = Act.COOK
 		"melee":
 			act = Act.MELEE
 		"pickup":
@@ -1643,7 +1693,12 @@ func _action_tick(_dt: float) -> void:
 	if act_kind == "mortar":
 		posture = Post.CROUCH
 		return
-	if act_kind == "launch" or act_kind == "throw" or act_kind == "rethrow":
+	if act_kind == "cook":
+		return  # holding it in whatever stance he's in
+	if act_kind == "kick":
+		posture = Post.STAND
+		return
+	if act_kind == "launch" or act_kind == "throw" or act_kind == "rethrow" or act_kind == "throw_in":
 		posture = Post.STAND if act_kind != "launch" else Post.CROUCH
 		if act_data.has("target") and act_data.target is Entity and not act_data.target.gone:
 			_face_now(Defs.flat(act_data.target.position - position))
@@ -1653,9 +1708,23 @@ func _action_done() -> void:
 	var k := act_kind
 	act_kind = ""
 	act = Act.IDLE
+	if k == "cook" and not _queued_throw.is_empty():
+		var qt := _queued_throw
+		_queued_throw = {}
+		_begin_action("throw", 0.6, qt)
+		say(_pick(["Frag out!", "Grenade out!", "Fire in the hole!"]), true)
+		return
 	match k:
 		"throw":
-			world.combat.throw_grenade(self, act_data.pos, String(act_data.kind))
+			world.combat.throw_grenade(self, act_data.pos, String(act_data.kind), float(act_data.get("fuse", 3.4)))
+		"throw_in":
+			bt_breach_g = world.combat.throw_grenade_low(self, act_data.pos, float(act_data.get("fuse", 3.4)))
+		"kick":
+			var kg: Projectile = act_data.get("g")
+			if kg and not kg.gone and kg.held_by == null and Defs.flat(kg.position - position).length() < 1.4:
+				kg.kick(self, act_data.v)
+				world.stat("kicked")
+			hit_dirt_t = maxf(hit_dirt_t, 1.6)  # and down
 		"pickup":
 			var g: Projectile = act_data.get("g")
 			if g and not g.gone and g.held_by == self:
@@ -1730,9 +1799,21 @@ func _try_grenade() -> bool:
 	frags -= 1
 	grenade_cd = world.time + world.rng.randf_range(12.0, 20.0)
 	world.stat("frag_auto")
+	var ck := SoldierBrain.cook_time(self, best, d2)
+	if ck > 0.0:
+		# held after the spoon flies, so it goes off before they can throw it back
+		world.stat("frag_cooked")
+		_begin_action("cook", ck, {})
+		_queued_throw = {"pos": tp, "kind": "frag", "fuse": 3.4 - ck - 0.6}
+		if world.rng.randf() < 0.4:
+			say(_pick(["Cooking one!", "Two... three...", "Hold it, hold it..."]), true)
+		return true
 	_begin_action("throw", 0.6, {"pos": tp, "kind": "frag"})
 	say(_pick(["Frag out!", "Grenade out!", "Fire in the hole!"]), true)
 	return true
+
+
+var _queued_throw: Dictionary = {}  # the throw that follows cooking it
 
 
 func _try_rocket() -> bool:
@@ -1989,6 +2070,14 @@ func can_take_orders() -> bool:
 func cmd_move(slot: Vector3, mode: int, face: Vector3) -> void:
 	if not can_take_orders():
 		return
+	if task == "breach" and task_phase >= 1:
+		# stacked on the door with the pin out: the grenade goes in first, then
+		# he comes on to wherever the squad is going (see SoldierBrain)
+		hold_pos = slot
+		hold_face = face if face.length() > 0.1 else hold_face
+		leash = 9.0
+		bt_reordered = true
+		return
 	_clear_task()
 	hold_pos = slot
 	hold_face = face if face.length() > 0.1 else hold_face
@@ -2120,6 +2209,9 @@ func _clear_task() -> void:
 			pass
 		"build":
 			pass
+		"breach":
+			if squad and squad.breach_by == self:
+				squad.breach_by = null
 	task = ""
 	task_ent = null
 	task_ent2 = null
@@ -2313,6 +2405,9 @@ func _release_all() -> void:
 	if drone_ctrl and not drone_ctrl.gone:
 		drone_ctrl.lose_control()
 	drone_ctrl = null
+	if task == "breach" and squad and squad.breach_by == self:
+		squad.breach_by = null
+	_queued_throw = {}
 	task = ""
 	task_ent = null
 	task_ent2 = null
@@ -3393,8 +3488,13 @@ func _view_process(dt: float) -> void:
 	_view_speed = lerpf(_view_speed, sp, 1.0 - exp(-pdt * 8.0))
 	if debug_pose.size() > 3:
 		_view_speed = float(debug_pose[3])
+	if debug_pose.size() > 6:
+		model.move_yaw = float(debug_pose[6])  # test gallery: walking one way, facing another
 	var fwd := Defs.dir_of(rotation.y)
 	var back := sp > 0.3 and mv.normalized().dot(fwd) < -0.3
+	if sp > 0.3:
+		# which way he's going relative to where he faces: the legs follow it
+		model.move_yaw = lerp_angle(model.move_yaw, fwd.signed_angle_to(mv.normalized(), Vector3.UP), 1.0 - exp(-pdt * 10.0))
 	model.over_wall = (flags & F_OVERWALL) != 0
 	model.cover_h = cover_h_view() if life == Life.ALIVE else 0.0
 	model.blind = blind_view()
