@@ -11,8 +11,8 @@ extends RefCounted
 const N := MapDims.N
 const H := MapDims.HALF
 
-enum {GROUND, ROAD, WOODS, MUD, CRATER, RUBBLE, TRENCH}
-const KIND_NAMES := ["Open ground", "Road", "Woods", "Mud", "Crater", "Rubble", "Trench"]
+enum {GROUND, ROAD, WOODS, MUD, CRATER, RUBBLE, TRENCH, WATER, SHALLOW}
+const KIND_NAMES := ["Open ground", "Road", "Woods", "Mud", "Crater", "Rubble", "Trench", "Deep water", "Shallows"]
 
 # cover levels as stored (+1 so they fit a byte): 0 exposed, 1 none, 2 light, 3 heavy
 const EXPOSED := -1
@@ -60,7 +60,7 @@ func _init(w) -> void:
 		_dirs.append(Vector2(cos(ang), sin(ang)))
 	dh.resize(DN * DN)
 	if w.has_view:
-		deform_img = Image.create(DN, DN, false, Image.FORMAT_RF)
+		deform_img = Image.create(DN, DN, false, Image.FORMAT_RH)  # half floats: half the upload of a 1 km map at 50 cm
 	_make_biome()
 
 
@@ -93,6 +93,8 @@ func center(idx: int) -> Vector3:
 
 func kind_at(p: Vector3) -> int:
 	var i := idx_of(p)
+	if base[i] >= WATER:
+		return base[i]
 	if trench[i] > 0:
 		return TRENCH
 	if crater[i] > 0:
@@ -148,6 +150,8 @@ func speed_mul(p: Vector3, vehicle: bool, tracked := true) -> float:
 			return 0.65 if vehicle else 0.85
 		RUBBLE:
 			return 0.8 if vehicle else 0.85
+		SHALLOW:
+			return 0.45 if vehicle else 0.5  # wading: slow going for men and machines
 	return 1.0
 
 
@@ -167,6 +171,8 @@ func hit_mul(target: Vector3, shooter: Vector3) -> float:
 			return 1.12 if cover_vs(target, shooter) <= NONE else 1.0
 		MUD:
 			return 1.15 if cover_vs(target, shooter) <= NONE else 1.0
+		SHALLOW:
+			return 1.2  # out in the open, floundering
 	return 1.0
 
 
@@ -198,6 +204,8 @@ func nav_weight(idx: int, vehicle: bool) -> float:
 			return 0.6 if vehicle else 0.85
 		MUD:
 			return 2.8 if vehicle else 1.25
+		SHALLOW:
+			return 4.0 if vehicle else 2.4  # a ford is a way across, not a way to go
 	if woods[idx] > 0:
 		return 2.6 if vehicle else 1.05
 	# wheels and tracks keep to the roads where they can: cross-country is slow and rough
@@ -219,7 +227,7 @@ func paint_roads(polys: Array, half_w := 2.2) -> void:
 			for z in range(maxi(0, z0), mini(N - 1, z1) + 1):
 				for x in range(maxi(0, x0), mini(N - 1, x1) + 1):
 					var c := Vector3(x - H + 0.5, 0, z - H + 0.5)
-					if Defs.dist_point_segment(c, Vector3(a.x, 0, a.z), Vector3(b.x, 0, b.z)) <= half_w:
+					if Defs.dist_point_segment(c, Vector3(a.x, 0, a.z), Vector3(b.x, 0, b.z)) <= half_w and base[z * N + x] < WATER:
 						base[z * N + x] = ROAD
 						_refresh_cell(z * N + x)
 	version += 1

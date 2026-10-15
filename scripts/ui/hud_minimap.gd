@@ -58,6 +58,17 @@ func _bake_static() -> void:
 	var img: Image = _bg.get_image()
 	img.resize(n, n, Image.INTERPOLATE_BILINEAR)
 	var k := n / MapDims.SIZE  # pixels per metre
+	if w.water and w.water.mask:
+		# the sea, the river and the ponds; sand and mud along their shores
+		var wm: Image = w.water.mask.duplicate()
+		wm.resize(n, n, Image.INTERPOLATE_BILINEAR)
+		for y in n:
+			for x in n:
+				var c := wm.get_pixel(x, y)
+				if c.a > 0.5:
+					img.set_pixel(x, y, Color(0.12, 0.2, 0.22).lerp(Color(0.05, 0.11, 0.16), c.r).lerp(Color(0.1, 0.22, 0.27), c.b * 0.5))
+				elif c.g > 0.3:
+					img.set_pixel(x, y, img.get_pixel(x, y).lerp(Color(0.5, 0.45, 0.32) if c.b > 0.5 else Color(0.3, 0.26, 0.18), 0.6))
 	for t in 3:
 		for poly in w.roads[t]:
 			var pts: PackedVector3Array = poly

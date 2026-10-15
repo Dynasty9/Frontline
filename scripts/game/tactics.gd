@@ -412,7 +412,8 @@ static func crew_tick(q: Squad) -> void:
 		q.world.send_msg(q.team, "info", "%s is back at %s - they'll crew the next one." % [q.display_name(), f.display_name()], f.position)
 		q.world.stat("crew_home")
 		for m in q.members.duplicate():
-			if not m.gone and m.life == Soldier.Life.ALIVE:
+			if is_instance_valid(m) and not m.gone and m.life == Soldier.Life.ALIVE:
+				q.remove(m)
 				q.world.despawn(m)
 		return
 	if own and q.drill == "" and (q.order != "move" or Defs.flat(q.order_pos - f.position).length() > 20.0):

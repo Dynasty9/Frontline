@@ -45,10 +45,12 @@ func generate() -> void:
 			var p := a.lerp(b, i / 4.0)
 			clear.append([Vector2(p.x, p.z), 10.0])
 
+	_lay_water()
 	# the town, its roads and everything that hangs off them (see TownGen)
 	var tg := TownGen.new(self)
 	tg.plan_town(TrenchNet.snap_pos(Vector3(rng.randf_range(-26, 26), 0, rng.randf_range(-8, 8))))
 	world.roads[2] = tg.build_roads(d0.position, d1.position)
+	_roads_meet_water(tg)
 	world._rebuild_roads()
 	tg.streetscape()
 	tg.lots()
@@ -96,6 +98,103 @@ func generate() -> void:
 			i += 1
 	r.rebuild_network(0)
 	r.rebuild_network(1)
+
+
+# --- water ---------------------------------------------------------------------------
+
+## The sea along the east edge (a beach; a harbour where the cross road meets
+## it), a river down the west flank (a bridge where the road crosses, a ford
+## in each half) and a pond in each half. Symmetric enough between the sides
+## that neither starts behind a moat. (The small map stays dry.)
+func _lay_water() -> void:
+	var w: WaterMap = world.water
+	var H := MapDims.HALF
+	if H < 300.0 or world.settings.get("dry", false):
+		return
+	w.coast = {"x": H - rng.randf_range(150.0, 172.0), "s": rng.randf() * 100.0}
+	var x0 := -H * rng.randf_range(0.44, 0.52)
+	var ph := rng.randf() * TAU
+	var amp := rng.randf_range(24.0, 36.0)
+	var pts := PackedVector3Array()
+	var z := -H - 24.0
+	while z <= H + 24.0:
+		pts.append(Vector3(x0 + amp * sin(z * 0.0125 + ph) + 11.0 * sin(z * 0.033 + ph * 2.0), 0, z))
+		z += 10.0
+	w.rivers = [{"pts": pts, "w": rng.randf_range(18.0, 24.0)}]
+	for s in [-1.0, 1.0]:
+		var fz: float = s * H * rng.randf_range(0.32, 0.55)
+		var best := pts[0]
+		for p in pts:
+			if absf(p.z - fz) < absf(best.z - fz):
+				best = p
+		w.fords.append(best)
+	for s in [-1.0, 1.0]:
+		var side := 1.0 if rng.randf() < 0.5 else -1.0
+		var px := rng.randf_range(90.0, 190.0) * side
+		if side < 0.0:
+			px = maxf(px, x0 + 80.0)
+		w.ponds.append({"c": Vector3(px, 0, s * rng.randf_range(H * 0.32, H * 0.55)), "r": rng.randf_range(15.0, 24.0), "s": rng.randf() * 50.0})
+	w.paint_kinds()
+
+
+## The roads stop at the sea (with a harbour quay out into it) and cross the
+## river on bridges.
+func _roads_meet_water(tg) -> void:
+	var w: WaterMap = world.water
+	if w.is_empty():
+		return
+	var roads: Array = world.roads[2]
+	for ri in roads.size():
+		var pl: PackedVector3Array = roads[ri]
+		var keep := PackedVector3Array()
+		var cut := false
+		for p in pl:
+			if p.x > w.coast_x(p.z) - 24.0:
+				cut = true
+				continue
+			keep.append(p)
+		if cut and keep.size() >= 2:
+			roads[ri] = keep
+			if pl == tg.cross_road:
+				tg.cross_road = keep
+			# the harbour: a concrete quay out into the sea at the road's end
+			var end: Vector3 = keep[keep.size() - 1]
+			var shore := w.coast_x(end.z)
+			var a := Vector3(shore - 8.0, 0, end.z)
+			var b := Vector3(shore + 26.0, 0, end.z)
+			w.bridges.append([a, b, 4.5, "quay"])
+			world.key_points.append({"pos": a, "kind": "harbour"})
+	# bridges: where a road runs over water, a deck from bank to bank
+	for pl in roads:
+		var pts: PackedVector3Array = pl
+		var run_a := Vector3.INF
+		var last := Vector3.INF
+		for i in pts.size() - 1:
+			var a: Vector3 = pts[i]
+			var b: Vector3 = pts[i + 1]
+			var steps := maxi(1, int(Defs.flat(b - a).length()))
+			for k in steps:
+				var p := a.lerp(b, float(k) / steps)
+				if w.wet_at(p):
+					if run_a == Vector3.INF:
+						run_a = p
+					last = p
+				elif run_a != Vector3.INF and Defs.flat(p - last).length() > 3.0:
+					var d := Defs.flat(last - run_a).normalized()
+					w.bridges.append([run_a - d * 4.0, last + d * 4.0, 3.9, "bridge"])
+					world.key_points.append({"pos": (run_a + last) * 0.5, "kind": "bridge"})
+					run_a = Vector3.INF
+	w.paint_kinds()
+	for br in w.bridges:
+		var a: Vector3 = br[0]
+		var b: Vector3 = br[1]
+		var d := Defs.flat(b - a)
+		_spawn("bridge", (a + b) * 0.5, Defs.yaw_of(d), -1, {"size": Vector3(float(br[2]) * 2.0, 0, d.length()), "variant": 1 if br.size() > 3 and br[3] == "quay" else 0})
+		placed.append([Vector2((a.x + b.x) * 0.5, (a.z + b.z) * 0.5), Vector2(float(br[2]) + 1.0, d.length() * 0.5 + 1.0), Defs.yaw_of(d)])
+	w.carve()
+	if OS.has_environment("FL_DEBUG_WATER"):
+		print("WATER coast x=%.0f river x0=%.0f fords=%s ponds=%s bridges=%s" % [float(w.coast.x), (w.rivers[0].pts as PackedVector3Array)[60].x,
+			str(w.fords), str(w.ponds.map(func(p): return p.c)), str(w.bridges.map(func(b): return [(b[0] + b[1]) * 0.5, b[3]]))])
 
 
 ## Small hand-built test setups used by automated checks (--scenario=NAME).
@@ -486,6 +585,13 @@ func _foot_of(kind: String, extra: Dictionary) -> Vector2:
 func _is_free(pos: Vector3, half: Vector2, yaw: float, margin := 0.6, use_clear := true) -> bool:
 	if not Defs.in_map(pos, 6.0):
 		return false
+	if not world.water.is_empty():
+		# not in the water, nor on a bridge
+		var b := Basis(Vector3.UP, yaw)
+		for o in [Vector3.ZERO, Vector3(half.x, 0, half.y), Vector3(-half.x, 0, half.y), Vector3(half.x, 0, -half.y), Vector3(-half.x, 0, -half.y)]:
+			var q: Vector3 = pos + b * o
+			if world.water.wet_at(q) or world.water.on_deck(q) or world.terrain.deform_at(q) < -0.3:
+				return false
 	var c := Vector2(pos.x, pos.z)
 	if use_clear:
 		for cl in clear:

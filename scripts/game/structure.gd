@@ -172,7 +172,7 @@ func on_spawned() -> void:
 	if skind == "trench":
 		foot.x += TrenchNet.HALF_W  # the hole runs on past the segment's ends
 	radius = foot.length() + 0.5
-	indestructible = skind in ["depot", "floor"]  # (a house's floor slab outlasts its walls)
+	indestructible = skind in ["depot", "floor", "bridge"]  # (a house's floor slab outlasts its walls)
 	smashable = skind in ["low_wall", "tall_wall", "house_wall", "crates", "car", "tree", "sandbags", "concrete_wall", "wire", "rubble", "fence"]
 	if srv:
 		if max_hp <= 0.0 or (hp == 100.0 and max_hp == 100.0):
@@ -204,6 +204,8 @@ func _default_hp() -> float:
 			return 260.0 * size.x / 4.0
 		"tall_wall", "house_wall":
 			return 600.0 * size.x / 4.0
+		"bridge":
+			return 99999.0
 		"crates":
 			return 200.0
 		"car":
@@ -275,6 +277,15 @@ func _define_parts() -> void:
 					parts = [_part(Vector3(0, 1.5, 0), Vector3(L, 3.0, th), Nav.SOLID, Nav.LOW, true, true, c)]
 		"floor":
 			parts = [_part(Vector3(0, 0.03, 0), Vector3(size.x, 0.06, size.z), Nav.FREE, Nav.FREE, false, false, Color(0.45, 0.42, 0.38))]
+		"bridge":
+			# a road bridge (a deck between parapet walls) or a harbour quay
+			# (an open concrete deck); size.x wide, size.z long
+			var W := size.x
+			var Lz := size.z
+			parts = [_part(Vector3(0, -0.25, 0), Vector3(W, 0.5, Lz), Nav.FREE, Nav.FREE, false, true, C_CONCRETE)]
+			if variant == 0:
+				for sx in [-1.0, 1.0]:
+					parts.append(_part(Vector3(sx * (W * 0.5 - 0.18), 0.45, 0), Vector3(0.36, 0.9, Lz - 1.0), Nav.SOLID, Nav.SOLID, true, true, C_CONCRETE))
 		"roof":
 			parts = []  # looks only: no cover, no obstacle (it's 3 m up)
 		"rubble":
@@ -761,6 +772,73 @@ func _house_wall_detail(rng: RandomNumberGenerator) -> void:
 					pv.add_child(mi)
 					mi.position = piece[1]
 				_door_leaves.append([pv, a])
+
+
+## A concrete road bridge on piers - deck, kerbed footways, parapet walls,
+## the girders and pier heads under it, abutments into the banks, a lamp at
+## each end - or (variant 1) a harbour quay: a massive concrete wall down to
+## the seabed with bollards, fenders and a ladder.
+func _bridge_model(rng: RandomNumberGenerator) -> void:
+	var W := size.x
+	var L := size.z
+	var conc := Color(0.6, 0.58, 0.54)
+	var dark := Color(0.42, 0.41, 0.39)
+	var asphalt := Color(0.16, 0.16, 0.16)
+	if variant == 1:
+		# the quay: a block of concrete from the seabed up, a lip round the top
+		_mk(Res.box(Vector3(W, 3.5, L)), "concrete", Vector3(0, -1.72, 0), Vector3.ZERO, conc)
+		_mk(Res.box(Vector3(W + 0.3, 0.25, L + 0.3)), "concrete", Vector3(0, -0.02, 0), Vector3.ZERO, conc.lightened(0.06))
+		_mk(Res.box(Vector3(W - 1.2, 0.02, L - 1.2)), "concrete_floor", Vector3(0, 0.115, 0), Vector3.ZERO, Color(0.5, 0.49, 0.46), false)
+		for sx in [-1.0, 1.0]:
+			var n := int(L / 5.0)
+			for i in n:
+				var z := -L * 0.5 + (i + 0.5) * L / n
+				# bollards on the edge, tyre fenders on the wall
+				_mk(Res.cyl(0.16, 0.2, 0.42, 10), "metal_dark", Vector3(sx * (W * 0.5 - 0.45), 0.31, z), Vector3.ZERO, Color(0.12, 0.12, 0.12))
+				_mk(Res.cyl(0.22, 0.22, 0.06, 10), "metal_dark", Vector3(sx * (W * 0.5 - 0.45), 0.53, z), Vector3.ZERO, Color(0.12, 0.12, 0.12))
+				var ty := Res.mi(model, Res.torus(0.18, 0.42), Res.mat(Color(0.05, 0.05, 0.05)), Vector3(sx * (W * 0.5 + 0.22), -0.55, z + 1.2), Vector3(0, 0, PI * 0.5), false)
+				ty.scale = Vector3(1.0, 1.0, 1.0)
+		# a ladder down the far end, a lamp and a mooring post at the head
+		for i in 9:
+			_mk(Res.box(Vector3(0.5, 0.04, 0.05)), "metal", Vector3(0, -0.2 - i * 0.32, -L * 0.5 - 0.06), Vector3.ZERO, Color(0.3, 0.3, 0.3), false)
+		for sx in [-0.28, 0.28]:
+			_mk(Res.box(Vector3(0.05, 3.0, 0.05)), "metal", Vector3(sx, -1.4, -L * 0.5 - 0.06), Vector3.ZERO, Color(0.3, 0.3, 0.3), false)
+		_lamp(Vector3(W * 0.5 - 0.6, 0.1, L * 0.5 - 2.0))
+		return
+	# the deck: a thick slab, asphalt down the middle between kerbed footways
+	_mk(Res.box(Vector3(W, 0.55, L)), "concrete", Vector3(0, -0.25, 0), Vector3.ZERO, conc)
+	_mk(Res.box(Vector3(W - 2.0, 0.02, L)), "concrete_floor", Vector3(0, 0.035, 0), Vector3.ZERO, asphalt, false)
+	for sx in [-1.0, 1.0]:
+		_mk(Res.box(Vector3(0.62, 0.16, L)), "concrete", Vector3(sx * (W * 0.5 - 0.67), 0.08, 0), Vector3.ZERO, conc.lightened(0.05), false)
+		# parapet wall with its coping, drain holes along the foot
+		_mk(Res.box(Vector3(0.36, 0.9, L - 1.0)), "concrete", Vector3(sx * (W * 0.5 - 0.18), 0.45, 0), Vector3.ZERO, conc)
+		_mk(Res.box(Vector3(0.46, 0.08, L - 0.9)), "concrete", Vector3(sx * (W * 0.5 - 0.18), 0.93, 0), Vector3.ZERO, conc.lightened(0.08))
+		# the girder under the edge, stained by the weather
+		_mk(Res.box(Vector3(0.5, 0.75, L)), "concrete", Vector3(sx * (W * 0.5 - 0.9), -0.88, 0), Vector3.ZERO, dark)
+		# a white line along the edge of the carriageway
+		_mk(Res.box(Vector3(0.12, 0.01, L)), "paint", Vector3(sx * (W * 0.5 - 1.15), 0.048, 0), Vector3.ZERO, Color(0.8, 0.79, 0.74), false)
+	# the piers: a wall of concrete under the deck, a cutwater upstream and down
+	var spans := maxi(2, int(round(L / 9.0)))
+	for i in range(1, spans):
+		var z := -L * 0.5 + i * L / spans
+		_mk(Res.box(Vector3(W * 0.82, 2.6, 1.1)), "concrete", Vector3(0, -2.0, z), Vector3.ZERO, dark)
+		_mk(Res.box(Vector3(W * 0.9, 0.35, 1.4)), "concrete", Vector3(0, -0.68, z), Vector3.ZERO, conc)
+		for sx in [-1.0, 1.0]:
+			_mk(Res.cyl(0.55, 0.55, 2.6, 8), "concrete", Vector3(sx * W * 0.41, -2.0, z), Vector3.ZERO, dark)
+	# the abutments, into the banks at either end
+	for sz in [-1.0, 1.0]:
+		_mk(Res.box(Vector3(W + 0.8, 1.6, 1.4)), "concrete", Vector3(0, -0.85, sz * (L * 0.5 - 0.6)), Vector3.ZERO, dark)
+		for sx in [-1.0, 1.0]:
+			_mk(Res.box(Vector3(0.5, 1.1, 0.5)), "concrete", Vector3(sx * (W * 0.5 - 0.18), 0.55, sz * (L * 0.5 - 0.25)), Vector3.ZERO, conc.lightened(0.04))
+	_lamp(Vector3(W * 0.5 - 0.2, 0.95, L * 0.5 - 1.2))
+	_lamp(Vector3(-(W * 0.5 - 0.2), 0.95, -(L * 0.5 - 1.2)))
+
+
+func _lamp(p: Vector3) -> void:
+	var pole := Color(0.22, 0.23, 0.24)
+	_mk(Res.cyl(0.06, 0.08, 4.6, 8), "metal", p + Vector3(0, 2.3, 0), Vector3.ZERO, pole)
+	_mk(Res.box(Vector3(0.9, 0.06, 0.08)), "metal", p + Vector3(-signf(p.x) * 0.42, 4.55, 0), Vector3.ZERO, pole, false)
+	_mk(Res.box(Vector3(0.36, 0.1, 0.2)), "metal", p + Vector3(-signf(p.x) * 0.86, 4.5, 0), Vector3.ZERO, Color(0.3, 0.3, 0.3), false)
 
 
 ## Where the doors hang in a doorway wall (local z: just inside its outer face).
@@ -1663,7 +1741,7 @@ func _build_model() -> void:
 	rng.seed = eid * 7919 + variant
 	var bags: Array = []
 	for p in parts:
-		if skind in ["wire", "tank_trap", "watchtower", "tree", "trench", "car", "wreck", "low_wall", "roof"]:
+		if skind in ["wire", "tank_trap", "watchtower", "tree", "trench", "car", "wreck", "low_wall", "roof", "bridge"]:
 			break
 		if p.color == C_SAND and p.s.y <= 1.3 and minf(p.s.x, p.s.z) <= 1.0:
 			bags.append(p)
@@ -1699,6 +1777,8 @@ func _build_model() -> void:
 			_house_wall_detail(rng)
 		"floor":
 			pass
+		"bridge":
+			_bridge_model(rng)
 		"roof":
 			_roof_model(rng)
 		"crates":

@@ -145,6 +145,9 @@ func _recompute(idx: int) -> void:
 	for o in cell_objs.get(idx, []):
 		ik = maxi(ik, o[1])
 		vk = maxi(vk, o[2])
+	if terrain and terrain.base[idx] == TerrainMap.WATER and not terrain.world.water.on_deck_i(idx):
+		ik = SOLID  # deep water: nobody walks or drives through it (boats have their own grid)
+		vk = SOLID
 	ikind[idx] = ik
 	vkind[idx] = vk
 	var c := Vector2i(idx % N, idx / N)

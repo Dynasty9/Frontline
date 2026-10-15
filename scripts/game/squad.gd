@@ -125,7 +125,7 @@ func remove(s: Soldier) -> void:
 func alive_members() -> Array:
 	var out := []
 	for m in members:
-		if not m.gone and m.life == Soldier.Life.ALIVE:
+		if is_instance_valid(m) and not m.gone and m.life == Soldier.Life.ALIVE:
 			out.append(m)
 	return out
 
@@ -134,7 +134,7 @@ func centroid() -> Vector3:
 	var c := Vector3.ZERO
 	var n := 0
 	for m in members:
-		if not m.gone and m.life != Soldier.Life.DEAD and m.life != Soldier.Life.HIDDEN:
+		if is_instance_valid(m) and not m.gone and m.life != Soldier.Life.DEAD and m.life != Soldier.Life.HIDDEN:
 			c += m.position
 			n += 1
 	if n == 0:
@@ -669,7 +669,7 @@ func tick(dt: float) -> void:
 	think_t = 0.5
 	var keep := []
 	for m in members:
-		if not m.gone and m.squad == self:
+		if is_instance_valid(m) and not m.gone and m.squad == self:
 			keep.append(m)
 	members = keep
 	var any := false

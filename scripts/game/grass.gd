@@ -131,7 +131,7 @@ func _make_blocked() -> void:
 	for st in w.structures:
 		if st.gone:
 			continue
-		var big: bool = st.skind in ["floor", "fob", "barracks", "factory", "medic_tent", "research", "depot", "helipad", "bunker", "mortar_pit", "hmg_nest", "mg_nest", "at_post", "tunnel", "house_wall", "tall_wall", "concrete_wall", "wreck", "car", "crates"]
+		var big: bool = st.skind in ["floor", "fob", "barracks", "factory", "medic_tent", "research", "depot", "helipad", "bunker", "mortar_pit", "hmg_nest", "mg_nest", "at_post", "tunnel", "house_wall", "tall_wall", "concrete_wall", "wreck", "car", "crates", "bridge"]
 		if not big:
 			continue
 		var h: Vector2 = st.foot + Vector2(0.4, 0.4)
@@ -152,6 +152,12 @@ func _make_blocked() -> void:
 			for z in range(floori(c3.z - r3), floori(c3.z + r3) + 1):
 				if Defs.point_in_obb(Vector2(x + 0.5, z + 0.5), Vector2(c3.x, c3.z), h3, float(e[2])):
 					_mark(x, z)
+	# the water, and the sand and mud along its shores
+	if w.water and w.water.mask:
+		var md: PackedByteArray = w.water.mask.get_data()
+		for i in MapDims.N * MapDims.N:
+			if md[i * 4 + 3] > 0 or md[i * 4 + 1] > 110:
+				_blocked[i] = 1
 	for t in 3:
 		for poly in w.roads[t]:
 			var pts: PackedVector3Array = poly
@@ -196,6 +202,8 @@ func _build_chunk(c: Vector2i) -> void:
 		var p := origin + Vector3(rng.randf() * CHUNK, 0, rng.randf() * CHUNK)
 		if absf(p.x) > HALF + 14.0 or absf(p.z) > HALF + 14.0 or _is_blocked(p):
 			continue
+		if p.x > HALF - 1.0 and atmo.world.water and not atmo.world.water.coast.is_empty():
+			continue  # the sea, past the edge
 		var g := atmo.grass_amount(p)
 		if rng.randf() > g * 0.92 + 0.04:
 			if rng.randf() < 0.004:

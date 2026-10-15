@@ -4,12 +4,12 @@ extends RefCounted
 ## terrain grids, the deformation and trench masks, the ground, the grass, the
 ## physics ground, the minimap, the grid references - derives from here.
 
-const HALF := 256.0  # metres from the centre to each edge
-const N := 512  # 1 m cells across
+const HALF := 512.0  # metres from the centre to each edge
+const N := 1024  # 1 m cells across
 const SIZE := HALF * 2.0
 ## The biome noise (mud, grass, bare earth) is a seamless square this many
 ## pixels (metres) across, centred on the map; it must cover the map.
-const BIOME := 512
+const BIOME := 1024
 ## Grid references: GRID x GRID squares (A-H, 1-8) of CELL metres.
 const GRID := 8
 const CELL := SIZE / GRID

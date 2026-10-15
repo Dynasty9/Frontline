@@ -228,9 +228,18 @@ Settings are saved to `user://settings.cfg`.
 - Street lights down every street (they light up at dusk and at night), wooden utility poles carrying sagging
   power lines with a drop to each house, fire hydrants, stop signs where side streets meet the main road, the
   town's name on the way in and a bus stop. Power lines also run along the country roads.
-- **512 x 512 m** (`map_dims.gd`: every size, grid, mask and texture derives from one constant). The HQs sit
-  at the north and south edges, their starting FOBs some 430 m apart, so a battle has room to move: fights for
-  the villages and farms on the way in, then the town.
+- **1 x 1 km** (`map_dims.gd`: every size, grid, mask and texture derives from one constant). The HQs sit
+  at the north and south edges, their starting FOBs some 940 m apart, so a battle has room to move: fights for
+  the villages, farms, woods and river line on the way in, then the town.
+- **Water** (`water.gd`). The sea runs down the east side - a sandy beach, surf breaking along it, a concrete
+  harbour quay where the cross road meets it, and the sea on out to the horizon. A river winds down the west
+  flank from edge to edge: a concrete road bridge where the cross road crosses it, a ford in each half, muddy
+  banks. A pond lies in each half. Deep water is impassable on foot or in a vehicle; men and vehicles can wade
+  the shallows (fords, the edge of the beach) - slowly, and exposed. The beds are carved into the ground, so a
+  man wading sinks to his knees, and the water is drawn with depth-tinted colour (turquoise shallows, deep
+  blue sea, murky green ponds), soft ripples flowing downstream, foam along every shore and a swell on the sea.
+  Bridges and the harbour are key points the AI fights over. The water is laid out on the server as a few
+  shapes and rasterized identically on every client.
 - Country roads come in from both HQs and both edges of the map and join the main streets. Villages sit on the
   cross road either side of town and on the road between each HQ and the town; farmsteads (farmhouse and barn round a yard, hay bales, a fenced road frontage, an orchard) and
   hedged fields lie along the roads; abandoned cars on the verges, burnt-out armour off the road.

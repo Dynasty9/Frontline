@@ -13,6 +13,12 @@ const CAT_COLORS := {"fight": Color(1.0, 0.82, 0.52), "stress": Color(1.0, 0.58,
 	"hurt": Color(1.0, 0.42, 0.4), "work": Color(0.62, 0.84, 1.0), "move": Color(0.86, 0.9, 0.84), "idle": Color(0.8, 0.8, 0.75)}
 
 
+## The minimap's backdrop needs baking again (the water has arrived, say).
+func refresh_minimap() -> void:
+	if minimap:
+		minimap._static = null
+
+
 ## How the map is drawn (each toggled from the layer column by the minimap).
 const LAYER_KEYS := {"units": "lyr_units", "orders": "lyr_orders", "intel": "lyr_intel", "ranges": "lyr_ranges", "labels": "labels"}
 const PHASE_NAMES := {"plan": "Planning", "move": "Moving into position", "fix": "Fixing the enemy", "assault": "Assault", "fallback": "Falling back"}

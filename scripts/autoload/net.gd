@@ -65,8 +65,21 @@ func _sender() -> int:
 
 # --- connection callbacks ---------------------------------------------------
 
-func _on_peer_connected(_id: int) -> void:
-	pass  # the client registers itself with _register once connected
+func _on_peer_connected(id: int) -> void:
+	# (the client registers itself with _register once connected) - and the
+	# link survives the host going quiet for a while: laying out a 1 km map
+	# and its nav takes it several seconds
+	_long_timeout(id)
+
+
+## Don't drop a peer for going silent for under a minute (map generation on
+## the host, a big first snapshot on the client).
+func _long_timeout(id: int) -> void:
+	var mp := multiplayer.multiplayer_peer
+	if mp is ENetMultiplayerPeer:
+		var pp: ENetPacketPeer = (mp as ENetMultiplayerPeer).get_peer(id)
+		if pp:
+			pp.set_timeout(64, 45000, 90000)
 
 
 func _on_peer_disconnected(id: int) -> void:

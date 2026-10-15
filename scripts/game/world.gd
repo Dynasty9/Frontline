@@ -49,6 +49,7 @@ var town_rect := Rect2()  # where the streets are paved
 var key_points: Array = []  # ground worth holding: [{"pos", "kind" ("town", "village", "woods")}] (server)
 var _decor_node: Node3D
 var terrain: TerrainMap
+var water: WaterMap
 var _painted_roads := -1
 var _road_meshes: Array = [null, null, null]
 var pings: Array = []  # [pos, expire, kind]
@@ -80,6 +81,7 @@ func _ready() -> void:
 	view_team = local_team
 	rng.seed = int(settings.get("seed", 1))
 	terrain = TerrainMap.new(self)
+	water = WaterMap.new(self)
 	if has_view:
 		_build_environment()
 	fx = Fx.new()
@@ -100,6 +102,7 @@ func _ready() -> void:
 		else:
 			MapGen.new(self).generate()
 		terrain.tick(1 << 30)
+		_water_view()
 		var tn := Time.get_ticks_msec()
 		nav.finalize()
 		print("Hierarchical nav: %s infantry, %s vehicles (%d ms)" % [nav.hnav_i.stats(), nav.hnav_v.stats(), Time.get_ticks_msec() - tn])
@@ -259,6 +262,8 @@ func entity(id: int) -> Entity:
 
 ## Ground height at p: the duckboards, a metre down, inside a finished trench.
 func ground_y(p: Vector3) -> float:
+	if water and not water.deck.is_empty() and water.on_deck(p):
+		return 0.06  # on a bridge deck, over the water
 	for st in structures_near(p, 4.0):
 		if st.skind == "trench" and st.built and TrenchNet.inside(st, p, 0.05):
 			return TrenchNet.FLOOR_Y + 0.15
@@ -656,6 +661,7 @@ func _client_ready() -> void:
 			arr = []
 	if not arr.is_empty():
 		rpc_id(p, "_rpc_spawn", arr)
+	rpc_id(p, "_rpc_water", water.to_dict())
 	rpc_id(p, "_rpc_roads", roads)
 	rpc_id(p, "_rpc_decor", decor, town_rect)
 	ready_peers.append(p)
@@ -739,6 +745,23 @@ func _rpc_team(d: Array) -> void:
 @rpc("authority", "call_remote", "reliable")
 func _rpc_msg(m: Array) -> void:
 	_show_msg(m)
+
+
+@rpc("authority", "call_remote", "reliable")
+func _rpc_water(d: Dictionary) -> void:
+	water.from_dict(d)
+	water.paint_kinds()
+	water.carve()
+	_water_view()
+
+
+## (view) The water's surface, and everything that draws differently by it.
+func _water_view() -> void:
+	if not has_view or water.is_empty() or atmo == null:
+		return
+	atmo.build_water(water)
+	if hud and hud.has_method("refresh_minimap"):
+		hud.refresh_minimap()
 
 
 @rpc("authority", "call_remote", "reliable")

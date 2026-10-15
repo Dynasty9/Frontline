@@ -701,13 +701,138 @@ func _ground_ring(inner: float, outer: float) -> ArrayMesh:
 	return st.commit()
 
 
+# --- water ---------------------------------------------------------------------------
+
+var water_mi: MeshInstance3D
+var water_mat: ShaderMaterial
+var water_tex: ImageTexture
+
+
+## The surface of the rivers, ponds and sea (see WaterMap), and the shores on
+## the ground.
+func build_water(w: WaterMap) -> void:
+	if w.mask == null:
+		return
+	water_tex = ImageTexture.create_from_image(w.mask)
+	var sea_x: float = (float(w.coast.x) + 30.0) if not w.coast.is_empty() else 1e9
+	ground_mat.set_shader_parameter("water_mask", water_tex)
+	ground_mat.set_shader_parameter("sea_x", sea_x)
+	if water_mi == null:
+		water_mat = ShaderMaterial.new()
+		var sh := Shader.new()
+		sh.code = MapDims.shader(WATER_SHADER)
+		water_mat.shader = sh
+		water_mat.set_shader_parameter("detail_tex", detail_tex)
+		water_mi = MeshInstance3D.new()
+		var pm := PlaneMesh.new()
+		var ext := (MapDims.HALF + 132.0) * 2.0
+		pm.size = Vector2(ext, ext)
+		pm.subdivide_width = 255
+		pm.subdivide_depth = 255
+		water_mi.mesh = pm
+		water_mi.material_override = water_mat
+		water_mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		water_mi.position = Vector3(0, WaterMap.LEVEL, 0)
+		add_child(water_mi)
+	water_mat.set_shader_parameter("water_mask", water_tex)
+	water_mat.set_shader_parameter("sea_x", sea_x)
+	water_mat.set_shader_parameter("sun_tint", _d.sun)
+	if grass:
+		grass.request_rebuild(0.5)
+
+
+const WATER_SHADER := """
+shader_type spatial;
+render_mode blend_mix, depth_draw_always, cull_back, specular_schlick_ggx;
+
+uniform sampler2D water_mask : hint_default_black, filter_linear, repeat_disable;
+uniform sampler2D detail_tex : filter_linear_mipmap, repeat_enable;
+uniform sampler2D depth_tex : hint_depth_texture, filter_nearest;
+uniform float sea_x = 1e9;
+uniform vec3 sun_tint : source_color = vec3(1.0);
+uniform vec3 fresh_shallow : source_color = vec3(0.3, 0.33, 0.2);
+uniform vec3 fresh_deep : source_color = vec3(0.07, 0.13, 0.11);
+uniform vec3 sea_shallow : source_color = vec3(0.25, 0.52, 0.5);
+uniform vec3 sea_deep : source_color = vec3(0.04, 0.17, 0.24);
+uniform vec3 sky_col : source_color = vec3(0.62, 0.72, 0.82);
+
+varying vec3 wpos;
+varying float swell;
+
+vec4 wmask(vec2 p) {
+	if (abs(p.x) >= __MAP_HALF__ || abs(p.y) >= __MAP_HALF__) {
+		return p.x > sea_x ? vec4(1.0, 0.0, 1.0, 1.0) : vec4(0.0);
+	}
+	return textureLod(water_mask, (p + __MAP_HALF__) / __MAP_SIZE__, 0.0);
+}
+
+void vertex() {
+	wpos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
+	// a slow swell rolling in off the sea (still on the river and the ponds)
+	vec4 m = wmask(wpos.xz);
+	float s = sin(wpos.x * 0.21 + wpos.z * 0.05 + TIME * 1.1) * 0.6 + sin(wpos.x * 0.37 - wpos.z * 0.19 + TIME * 1.7) * 0.4;
+	swell = s;
+	VERTEX.y += s * 0.09 * m.b * smoothstep(0.05, 0.5, m.r);
+	wpos.y += s * 0.09 * m.b;
+}
+
+float rip(vec2 p) {
+	return texture(detail_tex, p).r;
+}
+
+void fragment() {
+	vec2 p = wpos.xz;
+	vec4 m = wmask(p);
+	if (m.a < 0.5) {
+		discard;
+	}
+	float sea = m.b;
+	// how much water there is between the surface and the bed, along the view
+	float zd = texture(depth_tex, SCREEN_UV).r;
+	vec4 vp = INV_PROJECTION_MATRIX * vec4(SCREEN_UV * 2.0 - 1.0, zd, 1.0);
+	vp.xyz /= vp.w;
+	float thick = max(0.0, length(vp.xyz) - length(VERTEX));
+	float dw = clamp(thick / mix(2.2, 3.2, sea), 0.0, 1.0);
+	// ripples: rivers run south, the sea's chop runs in toward the shore
+	vec2 flow = mix(vec2(0.0, 0.055), vec2(-0.03, 0.012), sea);
+	vec2 u1 = p / 11.0 + flow * TIME * 0.5;
+	vec2 u2 = p / 4.3 + vec2(0.37, 0.11) - flow * TIME * 0.8 + vec2(TIME * 0.007, 0.0);
+	float e = 0.03;
+	float h1 = rip(u1), h2 = rip(u2);
+	float gx = (rip(u1 + vec2(e, 0.0)) - h1) + (rip(u2 + vec2(e, 0.0)) - h2) * 0.6;
+	float gz = (rip(u1 + vec2(0.0, e)) - h1) + (rip(u2 + vec2(0.0, e)) - h2) * 0.6;
+	float amp = mix(0.35, 0.7, sea);
+	vec3 n = normalize(vec3(-gx * amp * 4.0, 1.0, -gz * amp * 4.0));
+	vec3 shallow = mix(fresh_shallow, sea_shallow, sea);
+	vec3 deep = mix(fresh_deep, sea_deep, sea);
+	vec3 col = mix(shallow, deep, smoothstep(0.0, 1.0, dw));
+	// foam: a lace along the waterline, and on the sea, the breakers
+	float fz = 1.0 - smoothstep(0.0, mix(0.18, 0.5, sea), thick);
+	float lace = smoothstep(0.45, 0.75, rip(p / 1.3 + vec2(TIME * 0.04, 0.0)) * 0.6 + rip(p / 3.7 - vec2(0.0, TIME * 0.03)) * 0.6);
+	float breakers = sea * (1.0 - smoothstep(0.0, 1.1, thick)) * smoothstep(0.55, 0.95, sin(m.r * 40.0 - TIME * 1.4 + swell) * 0.5 + 0.5);
+	float foam = clamp(fz * (0.35 + 0.65 * lace) + breakers * lace, 0.0, 1.0);
+	col = mix(col, vec3(0.78, 0.8, 0.78), foam * 0.85);
+	// the sky in it, more the flatter you look across it
+	float fres = pow(1.0 - clamp(dot(normalize(VIEW), NORMAL), 0.0, 1.0), 4.0);
+	EMISSION = sky_col * fres * 0.12 * (1.0 - foam) * sun_tint;
+	ALBEDO = col * sun_tint;
+	ALPHA = clamp(mix(0.42, 0.96, smoothstep(0.0, 0.85, dw)) + foam * 0.5, 0.0, 1.0);
+	// soft at the very edge, where it laps the bank
+	ALPHA *= smoothstep(0.0, 0.06, thick + 0.02);
+	ROUGHNESS = mix(0.09, 0.45, foam);
+	SPECULAR = 0.28;
+	NORMAL = normalize((VIEW_MATRIX * vec4(n, 0.0)).xyz);
+}
+"""
+
+
 ## New shell holes go up to the GPU (a few times a second at most).
 func _update_deform(dt: float) -> void:
 	_deform_t -= dt
 	var tm = world.terrain
 	if tm == null or tm.deform_img == null or tm.deform_dirty.size == Vector2i.ZERO or _deform_t > 0.0:
 		return
-	_deform_t = 0.12
+	_deform_t = 0.22
 	deform_tex.update(tm.deform_img)
 	if world.phys:
 		world.phys.update_deform(tm.deform_dirty)
@@ -827,6 +952,8 @@ uniform float bump = 1.4;
 uniform float wet = 0.0;
 uniform sampler2D trench_mask : hint_default_black, filter_linear, repeat_disable;
 uniform sampler2D deform_tex : hint_default_black, filter_linear, repeat_disable;
+uniform sampler2D water_mask : hint_default_black, filter_linear, repeat_disable;
+uniform float sea_x = 1e9;
 
 varying vec3 wpos;
 varying float puddle;
@@ -839,6 +966,11 @@ void vertex() {
 	wpos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
 	if (abs(wpos.x) < __MAP_HALF__ && abs(wpos.z) < __MAP_HALF__) {
 		float d = dfm(wpos.xz);
+		VERTEX.y += d;
+		wpos.y += d;
+	} else if (wpos.x > sea_x) {
+		// past the edge of the map the sea runs on to the horizon
+		float d = -3.2 * smoothstep(sea_x, sea_x + 30.0, wpos.x);
 		VERTEX.y += d;
 		wpos.y += d;
 	}
@@ -870,10 +1002,22 @@ void fragment() {
 	puddle = wet * smoothstep(0.6, 0.66, d1 * 0.7 + d2 * 0.3 + dirt_m * 0.12);
 	col *= 1.0 - wet * 0.3;
 	col = mix(col, col * 0.35 + vec3(0.01, 0.012, 0.015), puddle);
+	// the shore: sand along the sea, a muddy bank along fresh water, the
+	// bed darker and wet under the water
+	vec4 wm = texture(water_mask, (p + __MAP_HALF__) / __MAP_SIZE__);
+	if (abs(p.x) >= __MAP_HALF__ || abs(p.y) >= __MAP_HALF__) {
+		wm = p.x > sea_x ? vec4(1.0, 1.0, 1.0, 1.0) : vec4(0.0);
+	}
+	// (linear colours, like the rest: pale sand, dark wet mud)
+	vec3 sand = vec3(0.38, 0.31, 0.19) * (0.88 + 0.24 * d2) * (0.92 + 0.16 * d3);
+	vec3 bank = mix(vec3(0.032, 0.025, 0.016), vec3(0.06, 0.047, 0.03), d3) * (0.9 + 0.2 * d2);
+	vec3 shore_col = mix(bank, sand, wm.b);
+	col = mix(col, shore_col, smoothstep(0.0, 0.7, wm.g));
+	col = mix(col, shore_col * mix(0.5, 0.62, wm.b), wm.a);
 	// shell holes: churned dark earth in the bowl, dry thrown soil on the rim
 	float hd = dfm(p);
-	float bowl = smoothstep(-0.03, -0.35, hd);
-	float lip = smoothstep(0.02, 0.12, hd);
+	float bowl = smoothstep(-0.03, -0.35, hd) * (1.0 - wm.g);
+	float lip = smoothstep(0.02, 0.12, hd) * (1.0 - wm.g);
 	// (linear colours: freshly turned earth is dark, the bottom blackened)
 	vec3 churn = mix(vec3(0.042, 0.032, 0.023), vec3(0.075, 0.056, 0.038), d3) * (0.85 + 0.3 * d2);
 	col = mix(col, churn, clamp(bowl * 1.1, 0.0, 1.0));
@@ -881,6 +1025,7 @@ void fragment() {
 	col = mix(col, mix(dirt, vec3(0.085, 0.066, 0.047), 0.6) * (0.85 + 0.3 * d3), lip * 0.75);
 	ALBEDO = col;
 	ROUGHNESS = mix(mix(0.96, 0.82, dirt_m), 0.55, wet * 0.5);
+	ROUGHNESS = mix(ROUGHNESS, 0.45, wm.a * 0.8);
 	ROUGHNESS = mix(ROUGHNESS, 0.16, puddle);
 	SPECULAR = mix(0.25, 0.38, wet);
 	float e = 0.12;

@@ -1412,6 +1412,8 @@ func _suspension(dt: float) -> void:
 
 ## How far the ground drops under a point: into a trench, or a crater.
 func _ground_h(p: Vector3) -> float:
+	if world.water and world.water.on_deck(p):
+		return 0.06
 	if world.in_trench(p):
 		return -0.3 if is_tracked() else -0.55
 	return world.terrain.deform_at(p) * 0.85 if world.terrain else 0.0
