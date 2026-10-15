@@ -102,7 +102,7 @@ const COVER := [
 	["c_woods", "Woods", "", 0, Vector3.ZERO, 0.0, "Copses and the edges of the fields",
 		"Concealment, not cover: the enemy sees you at barely half the range and hits you less, but a round that's aimed true goes straight through the leaves."],
 ]
-const BASES := ["fob", "barracks", "factory", "helipad", "medic_tent", "research", "tunnel"]
+const BASES := ["fob", "barracks", "factory", "helipad", "dock", "medic_tent", "research", "tunnel"]
 
 ## What each thing is modelled on.
 const PATTERN := {

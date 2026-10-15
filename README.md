@@ -240,6 +240,9 @@ Settings are saved to `user://settings.cfg`.
   blue sea, murky green ponds), soft ripples flowing downstream, foam along every shore and a swell on the sea.
   Bridges and the harbour are key points the AI fights over. The water is laid out on the server as a few
   shapes and rasterized identically on every client.
+- On the 1 km map, country lanes branch off the main road to a village in each quarter (mirrored between the
+  sides), and on the west the lanes run on over the river - each on its own bridge - to farming villages on
+  the far bank: three bridges and two fords across the river in all.
 - Country roads come in from both HQs and both edges of the map and join the main streets. Villages sit on the
   cross road either side of town and on the road between each HQ and the town; farmsteads (farmhouse and barn round a yard, hay bales, a fenced road frontage, an orchard) and
   hedged fields lie along the roads; abandoned cars on the verges, burnt-out armour off the road.

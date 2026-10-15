@@ -50,6 +50,7 @@ func generate() -> void:
 	var tg := TownGen.new(self)
 	tg.plan_town(TrenchNet.snap_pos(Vector3(rng.randf_range(-26, 26), 0, rng.randf_range(-8, 8))))
 	world.roads[2] = tg.build_roads(d0.position, d1.position)
+	_lanes(tg)
 	_roads_meet_water(tg)
 	world._rebuild_roads()
 	tg.streetscape()
@@ -73,7 +74,7 @@ func generate() -> void:
 	# old fighting positions across the middle, where the line has run before
 	for i in int(rng.randi_range(3, 5) * k):
 		_old_position(Vector3(rng.randf_range(-(H - 38.0), H - 38.0), 0, rng.randf_range(-35.0, 35.0) * k))
-	for i in int(rng.randi_range(7, 10) * area * 0.6):
+	for i in int(rng.randi_range(7, 10) * area * 0.85):
 		_woods(Vector3(rng.randf_range(-(H - 13.0), H - 13.0), 0, rng.randf_range(-(H - 28.0), H - 28.0)), rng.randi_range(6, 14))
 	for i in int(40 * area * 0.75):
 		_try("tree", Vector3(rng.randf_range(-(H - 8.0), H - 8.0), 0, rng.randf_range(-(H - 10.0), H - 10.0)), 0.0, -1)
@@ -98,6 +99,54 @@ func generate() -> void:
 			i += 1
 	r.rebuild_network(0)
 	r.rebuild_network(1)
+
+
+# --- country lanes and villages ----------------------------------------------------------
+
+## On a big map, lanes branch off the main road to a village in each quarter
+## (mirrored between the sides, so neither gets more cover to fight from);
+## on the west side the lane runs on over the river to a farming village on
+## the far bank (the bridge comes with it - see _roads_meet_water).
+func _lanes(tg) -> void:
+	var H := MapDims.HALF
+	if H < 300.0:
+		return
+	var w: WaterMap = world.water
+	var main: PackedVector3Array = tg.main_road
+	var river_x := -H * 0.48
+	if not w.rivers.is_empty():
+		var pts: PackedVector3Array = w.rivers[0].pts
+		river_x = pts[pts.size() / 2].x
+	var east_x := (w.coast_x(0.0) - 70.0) if not w.coast.is_empty() else H - 90.0
+	var zs := rng.randf_range(H * 0.36, H * 0.58)
+	for side in [-1.0, 1.0]:
+		for sz in [-1.0, 1.0]:
+			var z: float = sz * (zs + rng.randf_range(-25.0, 25.0))
+			# where the lane leaves the main road
+			var j := main[0]
+			for p in main:
+				if absf(p.z - z) < absf(j.z - z):
+					j = p
+			var vx: float = lerpf(j.x, east_x if side > 0.0 else river_x, rng.randf_range(0.5, 0.62))
+			var v := TrenchNet.snap_pos(Vector3(vx, 0, z + rng.randf_range(-20.0, 20.0)))
+			# not in a pond
+			for pd in w.ponds:
+				if Defs.flat(v - pd.c).length() < float(pd.r) + 45.0:
+					v.z += signf(v.z - pd.c.z) * (float(pd.r) + 50.0 - absf(v.z - pd.c.z))
+			var d := Vector3(side, 0, 0)
+			var pts := [j + d * 4.0]
+			_wobble(pts, pts[0], v - d * 30.0)
+			for o in [-30.0, -20.0, -7.0, 7.0, 20.0, 30.0]:
+				pts.append(v + d * o)
+			if side < 0.0 and not w.rivers.is_empty():
+				# on across the river to a farming village on the far bank
+				var v2 := TrenchNet.snap_pos(Vector3(lerpf(river_x, -H, 0.5), 0, v.z + rng.randf_range(-30.0, 30.0)))
+				_wobble(pts, pts.back(), v2 - d * 30.0)
+				for o in [-30.0, -20.0, -7.0, 7.0, 20.0, 34.0]:
+					pts.append(v2 + d * o)
+				tg.hamlets.append({"c": v2, "d": d})
+			world.roads[2].append(_smooth(pts))
+			tg.hamlets.append({"c": v, "d": d})
 
 
 # --- water ---------------------------------------------------------------------------

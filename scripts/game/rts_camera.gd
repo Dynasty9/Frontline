@@ -3,7 +3,7 @@ extends Node3D
 ## Pan (WASD / arrows / screen edge), zoom (wheel), rotate (Q/E or middle drag).
 
 ## How far out the camera pulls back (a bigger map wants a wider view).
-const MAX_DIST := 160.0
+const MAX_DIST := 210.0
 
 var world: World
 var cam: Camera3D
