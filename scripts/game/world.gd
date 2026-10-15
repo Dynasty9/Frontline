@@ -1253,6 +1253,13 @@ func execute_cmd(peer: int, d: Dictionary) -> void:
 			if st is Structure and st.team == team:
 				for sq in sqs:
 					sq.order_enter(st)
+		"sling":
+			var sv = entities.get(int(d.get("target", 0)))
+			if sv is Vehicle and sv.team == team:
+				for v in vehs:
+					if v.can_sling(sv):
+						v.order_sling(sv)
+						break
 		"board":
 			var bv = entities.get(int(d.get("target", 0)))
 			if bv is Vehicle and bv.team == team:

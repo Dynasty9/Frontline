@@ -112,10 +112,10 @@ static func table() -> Dictionary:
 		Vector3(1.9, 2.4, 7.0), 0, {"hit": 1.3, "mg": "", "cap": 2, "air": true, "carry": "mech_team",
 		"desc": "Little Bird with outboard benches: drops a fire team anywhere on the map in seconds, then flies home."})
 	t["ghosthawk"] = _v("UH-80 Ghost Hawk", 0, 2, "air", "NATO", "Utility helicopter", "Stealth UH-60 Black Hawk", 300, 30.0, 620.0, 1, 21.0, 2.3, "lift_heli",
-		Vector3(2.4, 3.2, 15.3), 0, {"mg": "minigun", "cap": 3, "air": true, "carry": "rifle_squad",
+		Vector3(2.4, 3.2, 15.3), 0, {"sling": 0, "mg": "minigun", "cap": 3, "air": true, "carry": "rifle_squad",
 		"desc": "Air assault: flies a rifle squad in, door gunners firing, lands, they pile out, it flies home."})
 	t["huron"] = _v("CH-67 Huron", 0, 1, "air", "NATO", "Heavy transport helicopter", "Stealth CH-47 Chinook", 220, 26.0, 700.0, 1, 18.0, 1.8, "lift_heli",
-		Vector3(3.8, 3.6, 15.9), 0, {"mg": "", "cap": 0, "air": true, "auto": true, "supply": true, "load": 160,
+		Vector3(3.8, 3.6, 15.9), 0, {"sling": 1, "mg": "", "cap": 0, "air": true, "auto": true, "supply": true, "load": 160,
 		"desc": "Twin-rotor heavy lifter: flies twice the supply of the light helicopter to your neediest FOB, ignoring roads."})
 	t["blackfoot"] = _v("AH-99 Blackfoot", 0, 2, "air", "NATO", "Attack helicopter", "RAH-66 Comanche", 400, 36.0, 1000.0, 1, 23.0, 2.3, "attack_heli",
 		Vector3(2.0, 3.4, 14.3), 0, {"mg": "m197", "cap": 4, "air": true, "rockets": 4, "atgm": [4, 10.0], "gun_h": 0.7,
@@ -127,8 +127,8 @@ static func table() -> Dictionary:
 		Vector3(0.9, 0.4, 0.9), 0, {"hit": 0.15, "mg": "", "cap": 1, "air": true, "sight": 70.0, "alt": 18.0, "orbit": 12.0, "symbol": ["air", "UAV"],
 		"desc": "Quadcopter: circles a spot and shows everything within 70 m to your side. Cheap, quiet, easy to shoot down."})
 	t["mohawk"] = _v("CH-49 Mohawk", 0, 1, "air", "AAF", "Medium transport helicopter", "AgustaWestland AW101 Merlin", 280, 30.0, 680.0, 1, 19.0, 1.9, "lift_heli",
-		Vector3(3.0, 3.6, 19.5), 0, {"mg": "", "cap": 3, "air": true, "carry": "rifle_squad",
-		"desc": "Three-engined transport: flies a rifle squad in, lands, drops them, flies home."})
+		Vector3(3.0, 3.6, 19.5), 0, {"sling": 1, "mg": "", "cap": 3, "air": true, "carry": "rifle_squad",
+		"desc": "Three-engined transport: flies a rifle squad in, lands, drops them, flies home - or carries a Humvee, a technical or an APC on its sling."})
 	t["hellcat"] = _v("WY-55 Hellcat", 0, 2, "air", "AAF", "Armed utility helicopter", "AgustaWestland AW159 Wildcat", 320, 30.0, 620.0, 1, 22.0, 2.3, "attack_heli",
 		Vector3(2.0, 3.0, 13.0), 0, {"mg": "minigun", "cap": 3, "air": true, "rockets": 4, "gun_h": 0.9,
 		"desc": "Wildcat with miniguns and rocket pods: a light gunship for the allied army."})
@@ -207,14 +207,17 @@ static func table() -> Dictionary:
 		Vector3(2.4, 4.0, 16.0), 0, {"mg": "chaingun", "cap": 4, "air": true, "rockets": 6, "atgm": [8, 9.0], "gun_h": 0.8,
 		"desc": "Flying tank: coaxial rotors, a 30 mm chin gun, rocket pods and anti-tank missiles."})
 	t["orca"] = _v("PO-30 Orca", 1, 1, "air", "CSAT", "Light utility helicopter", "Kamov Ka-60 Kasatka", 260, 26.0, 520.0, 0, 22.0, 2.4, "lift_heli",
-		Vector3(2.2, 3.4, 13.5), 0, {"mg": "", "cap": 2, "air": true, "carry": "fighter_cell",
+		Vector3(2.2, 3.4, 13.5), 0, {"sling": 0, "mg": "", "cap": 2, "air": true, "carry": "fighter_cell",
 		"desc": "Fast utility helicopter: flies a fighter cell anywhere on the map and drops them."})
 	t["orca_armed"] = _v("PO-30 Orca (Armed)", 1, 2, "air", "CSAT", "Armed utility helicopter", "Kamov Ka-60 with a minigun and rockets", 320, 30.0, 560.0, 0, 22.0, 2.4, "attack_heli",
 		Vector3(2.2, 3.4, 13.5), 0, {"mg": "minigun", "cap": 3, "air": true, "rockets": 4, "gun_h": 0.9,
 		"desc": "Ka-60 with a minigun and rocket pods: a light gunship."})
 	t["taru"] = _v("Mi-290 Taru", 1, 1, "air", "CSAT", "Heavy-lift helicopter", "CH-54 Tarhe sky-crane with Ka-226 rotors", 200, 24.0, 620.0, 0, 18.0, 1.8, "lift_heli",
-		Vector3(3.0, 4.2, 18.0), 0, {"mg": "", "cap": 0, "air": true, "auto": true, "supply": true, "load": 140,
+		Vector3(3.0, 4.2, 18.0), 0, {"sling": 1, "mg": "", "cap": 0, "air": true, "auto": true, "supply": true, "load": 140,
 		"desc": "Sky-crane with a cargo pod: flies supply straight to your neediest FOB over cut roads."})
+	t["taru_lift"] = _v("Mi-290 Taru (Lift)", 1, 1, "air", "CSAT", "Heavy-lift helicopter", "CH-54 Tarhe sky-crane with Ka-226 rotors", 230, 26.0, 620.0, 0, 18.0, 1.8, "lift_heli",
+		Vector3(3.0, 4.2, 18.0), 0, {"sling": 1, "model": "taru", "mg": "", "cap": 1, "air": true,
+		"desc": "The sky-crane without its pod: picks up a technical, a BTR or an AA truck on its sling and sets it down across the river or behind the enemy's line."})
 	t["m900"] = _v("M900", 1, 1, "air", "Syndikat", "Light civilian helicopter", "MD 500D", 150, 18.0, 300.0, 0, 23.0, 2.8, "lift_heli",
 		Vector3(1.9, 2.4, 7.0), 0, {"hit": 1.3, "mg": "", "cap": 1, "air": true, "carry": "mech_cell",
 		"desc": "A stolen civilian helicopter: four fighters, anywhere, once."})

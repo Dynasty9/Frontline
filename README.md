@@ -316,6 +316,12 @@ Settings are saved to `user://settings.cfg`.
 - **The core vehicles rebuilt** (`vehicles/vm_core.gd`): the M1A2 SEP Abrams, a worn T-55A, Hilux technicals (DShK
   or ZU-23-2 in the bed), the M1151 Humvee, the M2A3 Bradley, the BTR-80, the AH-64D Apache and the UH-60 Black
   Hawk - sloped armour, skirts, sights, stowage, rust and dents, each in its side's camouflage.
+- **Sling loads.** Select a lift helicopter and right-click one of your vehicles: it flies over, hovers, hooks
+  it on four strops and a cable, and climbs out with it swinging underneath - then flies it wherever you send
+  it (slower with a load on), lowers it until it touches and lets go. The CH-49 Mohawk and the Rebels' Mi-290
+  Taru (Lift) carry anything up to an APC (Humvees, technicals, BTRs, AA trucks); the Ghost Hawk and the Orca
+  light vehicles only; nothing lifts a tank. A helicopter shot down drops its load - from height, it's
+  wrecked. The AI uses its lift helicopters to ferry vehicles sitting idle far behind the lines up to its front.
 - **Boats and ships** (built at the **Boat Dock**, which goes on the shore of the sea or the river facing open
   water, on your own half of the map). Coalition: the RHIB (six men, fast, unarmed), the Speedboat Minigun
   (armoured riverine craft, 40 mm GMG, a squad aboard) and the **Patrol Ship** (`vehicles/vm_ships.gd`, a Mk VI
@@ -630,6 +636,7 @@ Pass these after `--` on the command line:
 --pan=VX,VZ / --set=key:value,...                     drift the camera (shimmer tests) / override single settings
 --scenario=guns                                       every machine-gun emplacement and trench bay, crewed, with targets
 --scenario=roster                                     every vehicle both sides can field, facing off across the map
+--scenario=sling                                      a Mohawk carries a Humvee and a Taru a BTR on their slings
 --scenario=naval                                      boats on the sea: an RHIB lands a squad under a patrol ship's guns, Rebel boats come out to fight
 --scenario=tactics                                    a rifle squad and an MG team sent 120 m up to hold a hamlet with the
                                                       enemy about: they bound there by teams and clear the houses

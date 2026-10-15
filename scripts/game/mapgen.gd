@@ -467,6 +467,24 @@ func scenario(sname: String) -> void:
 				_spawn("low_wall", Vector3(-2 + i * 4.2, 0, -16), 0.0, -1, {"size": Vector3(4, 1, 0.5)})
 			r.spawn_squad("rifle_squad", 0, a, Vector3(0, 0, 0), Vector3(0, 0, -6))
 			r.spawn_squad("fighter_cell", 1, b, Vector3(0, 0, -40), Vector3(0, 0, -20))
+		"sling":
+			# sling loads: a Mohawk picks up a Humvee and carries it 150 m; a
+			# Taru does the same with a BTR
+			var mh = world.spawn("vehicle", {"vkind": "mohawk", "team": 0, "owner": a, "pos": Vector3(-20, 0, 40), "yaw": PI})
+			var hv = world.spawn("vehicle", {"vkind": "humvee", "team": 0, "owner": a, "pos": Vector3(-20, 0, 10), "yaw": PI})
+			var tr = world.spawn("vehicle", {"vkind": "taru_lift", "team": 1, "owner": b, "pos": Vector3(170, 0, -60), "yaw": 0.0})
+			var bt = world.spawn("vehicle", {"vkind": "btr", "team": 1, "owner": b, "pos": Vector3(170, 0, -30), "yaw": 0.0})
+			if not world.settings.get("static", false):
+				world.get_tree().create_timer(1.0, true, true).timeout.connect(func():
+					mh.order_sling(hv)
+					tr.order_sling(bt))
+				world.get_tree().create_timer(16.0, true, true).timeout.connect(func():
+					mh.order_move(Vector3(-60, 0, -120))
+					tr.order_move(Vector3(220, 0, 60)))
+				for k in 10:
+					world.get_tree().create_timer(4.0 + k * 5.0, true, true).timeout.connect(func():
+						if OS.has_environment("FL_DEBUG_SLING"):
+							print("SLING t=%.0f mohawk=%s ph=%d humvee=%s btr=%s" % [world.time, mh.position.snapped(Vector3.ONE * 0.1), mh.lift_phase, hv.position.snapped(Vector3.ONE * 0.1), bt.position.snapped(Vector3.ONE * 0.1)]))
 		"naval":
 			# boats on the sea: a Coalition RHIB lands a squad on a beach the
 			# Rebels hold, its patrol ship covering it; Rebel boats come out to fight

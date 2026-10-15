@@ -417,6 +417,40 @@ func _dig_line(f: Structure, dist: float, engs: Array) -> bool:
 	return true
 
 
+## Sling loads: an idle lift helicopter picks up a vehicle that's sitting
+## about far behind the front and sets it down at the front FOB - across the
+## river, over the roads the enemy has cut - then flies home.
+func _sling_ops(lifters: Array, front: Structure) -> void:
+	if front == null or world.time < float(get_meta("sling_t", 0.0)):
+		return
+	set_meta("sling_t", world.time + 6.0)
+	for h in lifters:
+		if h.sling_cargo != null:
+			if h.lift_phase == 1 and h.lift_dest == Vector3.INF and h.position.y > 10.0:
+				h.order_move(front.position - _enemy_dir() * 14.0 + Vector3(rng.randf_range(-12, 12), 0, 0))
+				world.stat("ai_sling_carry")
+			continue
+		if h.sling_target == null and h.lift_phase == 1 and h.lift_dest == Vector3.INF and h.position.y > 10.0:
+			# load delivered: home to the pad
+			var home: Structure = h.heli_home if h.heli_home and not h.heli_home.gone else front
+			h.order_move(home.position)
+			continue
+		if h.sling_target != null or h.lift_phase != 0:
+			continue
+		var best: Vehicle = null
+		var bd := 220.0
+		for v in world.vehicles:
+			if v.team != team or v.owner_peer != peer or v.gone or not h.can_sling(v) or v.path_i < v.path.size():
+				continue
+			var d := Defs.flat(v.position - front.position).length()
+			if d > bd:
+				bd = d
+				best = v
+		if best:
+			h.order_sling(best)
+			world.stat("ai_sling_pickup")
+
+
 func _count_near(f: Structure, kind: String, r: float) -> int:
 	if f == null:
 		return 0
@@ -777,6 +811,7 @@ func _military(sqs: Array) -> void:
 	var back := []
 	var drones := []
 	var boats := []
+	var lifters := []
 	var fbase := _front_fob()
 	for v in world.vehicles:
 		if v.team != team or v.owner_peer != peer or v.is_auto() or v.gone:
@@ -789,10 +824,13 @@ func _military(sqs: Array) -> void:
 		elif vb == "arty" or v.vdef.has("service"):
 			back.append(v)
 		elif vb == "lift_heli" and v.passengers.is_empty():
-			continue  # an empty troop helicopter waits at the pad
+			if int(v.vdef.get("sling", -1)) >= 0:
+				lifters.append(v)
+			continue  # an empty troop helicopter waits at the pad (or ferries vehicles on its sling)
 		else:
 			vehs.append(v)
 	NavalAI.tick(self, boats)
+	_sling_ops(lifters, fbase)
 	# guns and support vehicles keep station behind the front
 	if fbase and t > _back_t:
 		_back_t = t + 30.0

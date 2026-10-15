@@ -78,6 +78,13 @@ var _elev_v := 0.0  # (view) barrel / launcher elevation
 var model: Node3D
 var knock_v := Vector3.ZERO  # shoved by a blast: slides it across the ground (server)
 var _last_blast: Array = []  # [pos, size, time] of the last explosion that hit it
+# sling loads (see _sling_tick): a lift helicopter carrying a vehicle on a cable
+var sling_cargo: Vehicle = null  # (heli) what's hanging under it
+var sling_target: Vehicle = null  # (heli) what it's going to pick up
+var slung_by: Vehicle = null  # (cargo) the helicopter carrying it
+var sling_eid := 0  # (heli, replicated) the load's entity, for the cables
+var _sling_t := 0.0
+var _swing := Vector3.ZERO
 # suspension (view): pitch, roll, heave and how fast each is changing
 var _sus := Vector3.ZERO
 var _sus_v := Vector3.ZERO
@@ -426,6 +433,24 @@ func _dismount_check(dt: float) -> void:
 		dismount()
 
 
+## Can this helicopter lift that vehicle on its sling?
+func can_sling(v: Vehicle) -> bool:
+	return base() == "lift_heli" and int(vdef.get("sling", -1)) >= 0 and v != null and v != self and not v.gone and v.team == team \
+		and not v.is_heli() and not v.is_boat() and not v.is_auto() and v.weight() <= int(vdef.sling) and v.slung_by == null and sling_cargo == null
+
+
+## Go and pick that vehicle up on the sling (it's hooked from the hover, then
+## waits, hanging, for the order to take it somewhere).
+func order_sling(v: Vehicle) -> void:
+	if not can_sling(v):
+		return
+	sling_target = v
+	lift_dest = Vector3.INF
+	_sling_t = 0.0
+	lift_phase = 5 if position.y > 3.0 else 1
+	world.stat("sling_order")
+
+
 func order_attack(t: Entity) -> void:
 	forced_target = t
 	if base() == "attack_heli":
@@ -453,6 +478,10 @@ func order_stop() -> void:
 # --- simulation ----------------------------------------------------------------------
 
 func sim(dt: float) -> void:
+	if slung_by != null:
+		if not is_instance_valid(slung_by) or slung_by.gone or slung_by.sling_cargo != self:
+			_drop_from_sling()
+		return  # hanging under a helicopter: it does nothing of its own
 	cannon_t -= dt
 	mg_t -= dt
 	if knock_v.length_squared() > 0.0025:
@@ -1073,10 +1102,82 @@ func _landing_spot(p: Vector3) -> Vector3:
 	return Vector3(p.x, 0.0, p.z)
 
 
+const SLING_ROPE := 7.0  # from the hook under the helicopter to the top of the load
+
+
+## Height of the ground under the load (where it would sit if let go).
+func _cargo_h() -> float:
+	return 0.0 if sling_cargo == null else sling_cargo._hull_size().y
+
+
+func _hook(v: Vehicle) -> void:
+	sling_target = null
+	sling_cargo = v
+	sling_eid = v.eid
+	v.slung_by = self
+	v.path = PackedVector3Array()
+	v.path_i = 0
+	v.speed = 0.0
+	v.velocity = Vector3.ZERO
+	v.assault = false
+	_swing = Vector3.ZERO
+	lift_phase = 1
+	world.stat("sling_hooked")
+	if not is_auto():
+		world.send_msg(team, "info", "%s has %s on the sling." % [display_name(), v.display_name()], position)
+
+
+## Set the load down where it hangs (on the ground under it).
+func _release_sling() -> void:
+	var v := sling_cargo
+	sling_cargo = null
+	sling_eid = 0
+	if v == null or v.gone:
+		return
+	v.slung_by = null
+	v.position = world.nav.nearest_walkable(Vector3(v.position.x, 0, v.position.z), true)
+	v.velocity = Vector3.ZERO
+	world.stat("sling_delivered")
+	if not is_auto():
+		world.send_msg(team, "info", "%s set down at %s." % [v.display_name(), Defs.grid_ref(v.position)], v.position)
+
+
+## (cargo) The helicopter's gone (shot down, say): it falls.
+func _drop_from_sling() -> void:
+	var h := position.y
+	slung_by = null
+	position = world.nav.nearest_walkable(Vector3(position.x, 0, position.z), true)
+	velocity = Vector3.ZERO
+	if h > 3.0:
+		take_damage(max_hp * clampf(h / 30.0, 0.15, 0.9), null)
+		world.fx_event([Fx.DEBRIS, position + Vector3(0, 0.5, 0), Color(0.3, 0.28, 0.24), 10])
+		world.fx_event([Fx.SOUND, "thud", position])
+	world.stat("sling_dropped")
+
+
+## (heli) The load hangs under the hook, trailing a little behind as it flies
+## and swinging when it turns or stops.
+func _sling_tick(dt: float) -> void:
+	var v := sling_cargo
+	if v == null:
+		return
+	if v.gone:
+		sling_cargo = null
+		sling_eid = 0
+		return
+	var trail := -velocity * 0.09
+	_swing = _swing.lerp(trail, 1.0 - exp(-dt * 1.6))
+	var hang := position + Vector3(_swing.x, -SLING_ROPE - v._hull_size().y, _swing.z)
+	v.position = hang
+	v.rotation.y = lerp_angle(v.rotation.y, rotation.y, 1.0 - exp(-dt * 0.8))
+	v.velocity = velocity
+
+
 ## Lifts off when sent somewhere, flies there, puts down on clear ground and
 ## the troops pile out; then it flies home to the pad. Door gunners fire at
 ## whatever they can see on the way.
 func _lift_tick(dt: float) -> void:
+	_sling_tick(dt)
 	scan_t -= dt
 	if scan_t <= 0.0:
 		scan_t = 0.5
@@ -1092,12 +1193,16 @@ func _lift_tick(dt: float) -> void:
 		1:
 			position.y = minf(LIFT_ALT, position.y + 6.0 * dt)
 			if position.y >= LIFT_ALT - 0.1:
-				lift_phase = 2
+				if sling_target != null:
+					lift_phase = 5
+				elif lift_dest != Vector3.INF:
+					lift_phase = 2
 		2:
 			var to := Defs.flat(lift_dest - position)
 			var want := Defs.yaw_of(to)
 			rotation.y += clampf(wrapf(want - rotation.y, -PI, PI), -float(vdef.turn) * dt, float(vdef.turn) * dt)
-			speed = move_toward(speed, float(vdef.speed) if to.length() > 25.0 else maxf(3.0, to.length() * 0.6), 6.0 * dt)
+			var vmax := float(vdef.speed) * (0.65 if sling_cargo != null else 1.0)  # (a load underneath slows it)
+			speed = move_toward(speed, vmax if to.length() > 25.0 else maxf(3.0, to.length() * 0.6), (3.0 if sling_cargo != null else 6.0) * dt)
 			velocity = to.normalized() * speed
 			position += velocity * dt
 			if to.length() < 1.5:
@@ -1105,6 +1210,17 @@ func _lift_tick(dt: float) -> void:
 				velocity = Vector3.ZERO
 				lift_phase = 3
 		3:
+			if sling_cargo != null:
+				# down until the load touches, let go, and away
+				var floor_y := _cargo_h() + SLING_ROPE
+				position.y = maxf(floor_y, position.y - 4.0 * dt)
+				if position.y <= floor_y + 0.05:
+					_sling_t += dt
+					if _sling_t > 1.2:
+						_release_sling()
+						lift_dest = Vector3.INF
+						lift_phase = 1
+				return
 			position.y = maxf(0.15, position.y - 5.0 * dt)
 			if position.y <= 0.16:
 				lift_dest = Vector3.INF
@@ -1114,6 +1230,39 @@ func _lift_tick(dt: float) -> void:
 					lift_phase = 4
 				else:
 					lift_phase = 0
+		5:
+			# to the vehicle, at height
+			var tv := sling_target
+			if tv == null or tv.gone or not can_sling(tv):
+				sling_target = null
+				lift_phase = 1
+				return
+			var to := Defs.flat(tv.position - position)
+			rotation.y += clampf(wrapf(Defs.yaw_of(to) - rotation.y, -PI, PI), -float(vdef.turn) * dt, float(vdef.turn) * dt) if to.length() > 4.0 else 0.0
+			speed = move_toward(speed, float(vdef.speed) if to.length() > 25.0 else maxf(1.5, to.length() * 0.5), 6.0 * dt)
+			velocity = to.normalized() * speed if to.length() > 0.3 else Vector3.ZERO
+			position += velocity * dt
+			position.y = move_toward(position.y, LIFT_ALT, 6.0 * dt)
+			if to.length() < 1.2:
+				speed = 0.0
+				velocity = Vector3.ZERO
+				_sling_t = 0.0
+				lift_phase = 6
+		6:
+			# the hover: down over it, the hook on, then up with it
+			var tv2 := sling_target
+			if tv2 == null or tv2.gone or not can_sling(tv2):
+				sling_target = null
+				lift_phase = 1
+				return
+			var hover := tv2.position.y + tv2._hull_size().y + SLING_ROPE
+			position.x = move_toward(position.x, tv2.position.x, 2.0 * dt)
+			position.z = move_toward(position.z, tv2.position.z, 2.0 * dt)
+			position.y = move_toward(position.y, hover, 4.0 * dt)
+			if absf(position.y - hover) < 0.1:
+				_sling_t += dt
+				if _sling_t > 1.5:
+					_hook(tv2)
 		4:
 			lift_t -= dt
 			if lift_t <= 0.0:
@@ -1287,6 +1436,13 @@ func take_damage(amount: float, _src) -> void:
 
 func _destroyed() -> void:
 	world.stat("vehicle_destroyed")
+	if sling_cargo != null and is_instance_valid(sling_cargo) and not sling_cargo.gone:
+		var load := sling_cargo
+		sling_cargo = null
+		load._drop_from_sling()
+	if slung_by != null and is_instance_valid(slung_by):
+		slung_by.sling_cargo = null
+		slung_by.sling_eid = 0
 	if is_boat():
 		_sink()
 		return
@@ -1712,6 +1868,7 @@ func write_state(b: StreamPeerBuffer) -> void:
 	b.put_u8(flags)
 	b.put_u8(vis_mask)
 	b.put_8(team)
+	b.put_u32(sling_eid)
 
 
 func read_state(b: StreamPeerBuffer) -> void:
@@ -1722,6 +1879,7 @@ func read_state(b: StreamPeerBuffer) -> void:
 	flags = b.get_u8()
 	vis_mask = b.get_u8()
 	team = b.get_8()
+	sling_eid = b.get_u32()
 
 
 func health_frac() -> float:
@@ -1811,10 +1969,50 @@ func _view_process(dt: float) -> void:
 		if st != _burn_state:
 			_burn_state = st
 			world.fx.vfx.set_burning(burner, [0.0, 0.0, 0.0, 0.8][st], [0.0, 0.25, 0.6, 1.0][st])
+	_sling_view()
 	if ring:
 		ring.visible = selected
 		if selected and position.y > 0.5:
 			ring.global_position = Vector3(position.x, 0.06, position.z)
+
+
+var _cables: MeshInstance3D
+
+
+## (view) Four strops from the load's corners up to a hook, a cable from the
+## hook to the belly of the helicopter.
+func _sling_view() -> void:
+	var v = world.entity(sling_eid) if sling_eid != 0 else null
+	if v == null or not (v is Vehicle) or not visible:
+		if _cables:
+			_cables.visible = false
+		return
+	if _cables == null:
+		_cables = MeshInstance3D.new()
+		_cables.mesh = ImmediateMesh.new()
+		_cables.top_level = true
+		_cables.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		var m := StandardMaterial3D.new()
+		m.albedo_color = Color(0.08, 0.08, 0.08)
+		m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		_cables.material_override = m
+		add_child(_cables)
+	_cables.visible = true
+	_cables.global_transform = Transform3D.IDENTITY
+	var im: ImmediateMesh = _cables.mesh
+	im.clear_surfaces()
+	im.surface_begin(Mesh.PRIMITIVE_LINES)
+	var belly: Vector3 = global_position + Vector3(0, -0.6, 0)
+	var hs: Vector3 = v._hull_size()
+	var top: Vector3 = v.global_position + Vector3(0, hs.y, 0)
+	var hook: Vector3 = top + Vector3(0, 2.4, 0)
+	im.surface_add_vertex(belly)
+	im.surface_add_vertex(hook)
+	var b := Basis(Vector3.UP, v.rotation.y)
+	for c in [Vector3(hs.x * 0.4, 0, hs.z * 0.38), Vector3(-hs.x * 0.4, 0, hs.z * 0.38), Vector3(hs.x * 0.4, 0, -hs.z * 0.38), Vector3(-hs.x * 0.4, 0, -hs.z * 0.38)]:
+		im.surface_add_vertex(hook)
+		im.surface_add_vertex(top + b * c)
+	im.surface_end()
 
 
 var wake: GPUParticles3D

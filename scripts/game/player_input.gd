@@ -581,6 +581,15 @@ func _order(screen: Vector2, shift: bool, face_in := Vector3.ZERO, kind := "") -
 			_marker(tgt.position, Color(0.6, 0.9, 1.0))
 			Sfx.ui("click")
 			return
+	if tgt is Vehicle and tgt.team == lt and not sel_vehicles.is_empty() and sel_squads.is_empty():
+		# a lift helicopter picks up one of our vehicles on its sling
+		for id in sel_vehicles:
+			var hv = world.entity(id)
+			if hv is Vehicle and hv.base() == "lift_heli" and int(hv.vdef.get("sling", -1)) >= tgt.weight() and not tgt.is_heli() and not tgt.is_boat() and tgt != hv:
+				world.send_cmd({"t": "sling", "vehicles": [hv.eid], "target": tgt.eid})
+				_marker(tgt.position, Color(0.6, 0.9, 1.0))
+				Sfx.ui("click")
+				return
 	if tgt is Vehicle and tgt.team == lt and not sel_squads.is_empty() and tgt.seats() > 0 and tgt.health_frac() > 0.3 \
 			and not (tgt.is_heli() and tgt.position.y > 1.0) and not _has_engineers():
 		world.send_cmd({"t": "board", "squads": sel_squads, "target": tgt.eid})
