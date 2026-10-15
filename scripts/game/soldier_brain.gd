@@ -512,11 +512,13 @@ static func breach_tick(s: Soldier, dt: float) -> void:
 				return
 			s.task_phase = 2
 			var e := _anyone_inside(s, h)
-			var ck := cook_time(s, e, 3.0)
+			# (nobody cooks a grenade with a shut door still to kick in)
+			var shut := wall.door_shut
+			var ck := 0.0 if shut else cook_time(s, e, 3.0)
 			if ck > 0.0:
 				s.bt_cook_t0 = s.world.time
 				s._begin_action("cook", ck, {})
-			s.task_pos2 = s.world.nav.nearest_walkable(c + n * 1.25)
+			s.task_pos2 = s.world.nav.nearest_walkable(c + n * (0.8 if shut else 1.25))
 			s.go_to(s.task_pos2, "task", 1)
 		2:
 			# step into the doorway and throw it in
@@ -525,6 +527,11 @@ static func breach_tick(s: Soldier, dt: float) -> void:
 			s._choose_act(moving2)
 			if not moving2 or Defs.flat(s.task_pos2 - s.position).length() < 0.5:
 				s.stop_moving()
+				if wall.door_shut:
+					# kick the door in, then the frag
+					s._begin_action("door_kick", 0.45, {"door": wall, "pos": c})
+					s.world.stat("breach_door_kick")
+					return
 				var fuse := 3.4
 				if s.bt_cook_t0 >= 0.0:
 					fuse = maxf(1.3, 3.4 - (s.world.time - s.bt_cook_t0))

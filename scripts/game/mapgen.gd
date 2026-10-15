@@ -8,6 +8,7 @@ extends RefCounted
 var world: World
 var rng: RandomNumberGenerator
 var placed: Array = []  # [Vector2 center, Vector2 half, yaw]
+var doors_shut := -1  # houses' doors: -1 some shut (most), 1 all shut, 0 all open
 var clear: Array = []  # [Vector2 center, radius]
 
 
@@ -367,9 +368,11 @@ func scenario(sname: String) -> void:
 			r.spawn_squad("rifle_squad", 0, a, Vector3(0, 0, 0), Vector3(0, 0, -6))
 			r.spawn_squad("fighter_cell", 1, b, Vector3(0, 0, -40), Vector3(0, 0, -20))
 		"breach":
-			# a fighter cell holed up in a house; a rifle squad sent to clear it
+			# a fighter cell holed up in a house (doors shut); a rifle squad sent to clear it
+			doors_shut = 1
 			_house(Vector3(0, 0, -30), 8.0, 6.0, 0.0, 1.0, false, 0.0)
 			_house(Vector3(14, 0, -32), 7.0, 6.0, 0.0, 1.0, false, 0.0)
+			doors_shut = -1
 			var hq := r.spawn_squad("fighter_cell", 1, b, Vector3(0, 0, -30))
 			hq.order_defend(Vector3(0, 0, -30), Vector3(0, 0, 1))
 			for i in 3:
@@ -558,7 +561,10 @@ func _house(c: Vector3, w: float, d: float, axis: float, street_side: float, yar
 				variant = 2
 			elif seg_len > 2.0 and rng.randf() < 0.5:
 				variant = 1
-			world.spawn("structure", {"skind": "house_wall", "pos": wp, "yaw": yaw, "variant": variant, "size": Vector3(seg_len, float(color), 0.4)})
+			# most front doors are shut (decided from where it stands: the map's
+			# random numbers stay as they were)
+			var shut := variant == 2 and (doors_shut == 1 or (doors_shut < 0 and posmod(int(absf(wp.x) * 7.3 + absf(wp.z) * 13.1), 10) < 7))
+			world.spawn("structure", {"skind": "house_wall", "pos": wp, "yaw": yaw, "variant": variant, "size": Vector3(seg_len, float(color), 0.4), "door": shut})
 	# a roof on every house still standing: tiled and pitched, or flat
 	if not ruined:
 		world.spawn("structure", {"skind": "roof", "pos": c, "yaw": axis, "size": Vector3(w, 3.0, d), "variant": color * 2 + (1 if rng.randf() < 0.4 else 0)})

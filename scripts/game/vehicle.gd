@@ -40,6 +40,7 @@ var returning := false
 var blocked_t := 0.0
 var _stuck_p := Vector3.ZERO
 var _stuck_t := 0.0
+var _stuck_yaw := 0.0
 var _unstick_t := 0.0
 var _unstick_dir := 1.0
 var assault := false  # attack-move: halt to shoot whenever there's a target
@@ -94,6 +95,16 @@ var dust: GPUParticles3D
 var _burn_state := -1
 var ring: MeshInstance3D
 var _vis := true
+# the crew's behaviour tree (see VehicleBrain)
+var bt_path := ""
+var bt_cd := {}
+var brain_state := ""  # "", "withdraw", "evade", "wait"
+var brain_t := 0.0
+var brain_resume: Dictionary = {}
+var brain_hold := false  # waiting for the infantry: stop where it is
+var face_yaw := INF  # at a halt: the way to turn the hull (front armour to the threat)
+var brain_overruled := false  # told to fight on though badly damaged
+var _brain_order := false
 
 
 func ekind() -> String:
@@ -241,7 +252,22 @@ func barrel_tip() -> Vector3:
 
 # --- orders --------------------------------------------------------------------------
 
+## The crew's own move (see VehicleBrain): doesn't count as a new order.
+func drive_to(p: Vector3) -> void:
+	_brain_order = true
+	order_move(p)
+	_brain_order = false
+
+
+## An AI commander's orders wait while the crew takes a wreck back for repairs
+## (a player's go through: it's their call).
+func _crew_busy() -> bool:
+	return brain_state == "withdraw" and owner_peer < 0 and not _brain_order
+
+
 func order_move(p: Vector3) -> void:
+	if _crew_busy():
+		return
 	assault = false
 	if base() == "supply":
 		return
@@ -260,10 +286,18 @@ func order_move(p: Vector3) -> void:
 	path_i = 0
 	_stuck_t = 0.0
 	_stuck_p = position
+	if not _brain_order:
+		if brain_state == "withdraw":
+			brain_overruled = true  # sent back in damaged: the crew does as it's told
+		brain_state = ""
+		brain_hold = false
+		brain_resume = {}
 
 
 ## Attack-move: drive on, but halt for a steady shot whenever there's something in range.
 func order_assault(p: Vector3) -> void:
+	if _crew_busy():
+		return
 	order_move(p)
 	assault = true
 	assault_dest = p
@@ -411,6 +445,8 @@ func sim(dt: float) -> void:
 		if scan_t <= 0.0:
 			scan_t = 0.5
 			_scan()
+			if VehicleBrain.applies(self):
+				VehicleBrain.think(self)
 		_drive(dt)
 		_dismount_check(dt)
 		if vdef.has("art"):
@@ -430,22 +466,204 @@ func sim(dt: float) -> void:
 		| (F_ELEV if laid else 0) | (F_GROUND if grounded else 0)
 
 
-func _steer(tgt: Vector3, dt: float, max_speed: float) -> bool:
-	max_speed *= world.terrain.speed_mul(position, true, is_tracked())
-	var to := Defs.flat(tgt - position)
-	var d := to.length()
-	if d < 1.5:
-		return true
-	var want := Defs.yaw_of(to)
-	var err := wrapf(want - rotation.y, -PI, PI)
-	var turn: float = float(vdef.turn) * dt
-	rotation.y += clampf(err, -turn, turn)
-	var target_speed := 0.0 if absf(err) > 0.7 else max_speed * cos(err)
-	if d < 6.0:
-		target_speed = minf(target_speed, max_speed * 0.5)
-	speed = move_toward(speed, target_speed, 4.0 * dt)
-	var fwd := Defs.dir_of(rotation.y)
-	velocity = fwd * speed
+# --- driving ----------------------------------------------------------------------------
+#
+# A vehicle follows its route the way a driver does: it steers for a point some
+# way down the road (further the faster it goes), slows for the bends ahead and
+# brakes to stop where it's going. Wheeled vehicles steer like cars - a real
+# turning circle from their wheelbase and steering lock, no turning on the spot;
+# tracked ones skid-steer - they can pivot where they stand, but turn wider the
+# faster they go. Weight decides how hard they accelerate and brake and how
+# fast they can take a bend. A spot close behind is backed into rather than
+# reached by driving round in a circle, and a vehicle keeps its distance behind
+# another on its line rather than driving into it.
+
+var yaw_rate := 0.0  # how fast it's turning (rad/s, + to the left)
+var _rev := false  # backing up to where it's going
+
+
+## [acceleration, braking (m/s²), cornering grip (m/s² sideways), reverse speed (fraction)]
+func _handling() -> Array:
+	match weight():
+		0:
+			return [3.0, 6.5, 4.0, 0.4]
+		1:
+			return [1.9, 5.0, 3.0, 0.35]
+	return [1.2, 4.0, 2.2, 0.32]
+
+
+func _wheelbase() -> float:
+	return maxf(2.2, _hull_size().z * 0.58)
+
+
+## The front wheels' full lock (wheeled vehicles).
+func _max_steer() -> float:
+	return 0.62 if weight() == 0 else 0.5
+
+
+## The point `ld` metres from the vehicle along pts (from index i on), or the last point.
+func _lookahead(pts: PackedVector3Array, i: int, ld: float) -> Vector3:
+	var prev := Defs.flat(position)
+	for j in range(i, pts.size()):
+		var q := Defs.flat(pts[j])
+		var dq := q.distance_to(Defs.flat(position))
+		if dq >= ld:
+			var dp := prev.distance_to(Defs.flat(position))
+			var k := clampf((ld - dp) / maxf(dq - dp, 0.001), 0.0, 1.0)
+			return prev.lerp(q, k)
+		prev = q
+	return Defs.flat(pts[pts.size() - 1])
+
+
+## How fast it may close on a vehicle ahead going the same way (m/s): it
+## follows at a gap rather than run into the back of it.
+func _traffic_limit(fwd: Vector3, vmax: float) -> float:
+	var lim := vmax
+	var look := 6.0 + absf(speed) * 1.8
+	var side := fwd.cross(Vector3.UP)
+	var me := _hull_size()
+	for v in world.vehicles_near(position + fwd * look * 0.5, look):
+		if v == self or v.gone or v.is_air() or v.position.y > 1.0:
+			continue
+		if Defs.dir_of(v.rotation.y).dot(fwd) < 0.3 or absf(v.speed) < 0.8:
+			continue  # oncoming, or standing: steered round (see _avoid)
+		var rel := Defs.flat(v.position - position)
+		var ahead := rel.dot(fwd)
+		if ahead <= 0.0:
+			continue
+		var oh: Vector3 = v._hull_size()
+		if absf(rel.dot(side)) > (me.x + oh.x) * 0.5 + 0.8:
+			continue
+		var gap := ahead - (me.z + oh.z) * 0.5
+		lim = minf(lim, maxf(absf(v.speed) * 0.9, (gap - 2.5) * 0.9))
+	return lim
+
+
+var _avoid_cap := INF
+
+
+## A vehicle standing in the way, or coming the other way, is driven round:
+## the point it steers for moves off to the side - right of an oncoming one,
+## the roomier side of a standing one - far enough to clear it, and it slows
+## while it passes.
+func _avoid(la: Vector3, fwd: Vector3) -> Vector3:
+	_avoid_cap = INF
+	var side := fwd.cross(Vector3.UP)  # (to the right)
+	var me := _hull_size()
+	var look := 8.0 + absf(speed) * 1.5
+	var best := INF
+	var out := la
+	for v in world.vehicles_near(position + fwd * look * 0.5, look):
+		if v == self or v.gone or v.is_air() or v.position.y > 1.0:
+			continue
+		var rel := Defs.flat(v.position - position)
+		var ahead := rel.dot(fwd)
+		if ahead <= 0.5 or ahead > look or ahead > best:
+			continue
+		var standing: bool = absf(v.speed) < 0.8
+		if not standing and Defs.dir_of(v.rotation.y).dot(fwd) > 0.3:
+			continue  # going our way: followed instead
+		var lat := rel.dot(side)
+		var clear: float = (me.x + v._hull_size().x) * 0.5 + 1.0
+		if absf(lat) > clear:
+			continue
+		var go := 1.0
+		if standing:
+			go = -signf(lat) if absf(lat) > 0.3 else 1.0
+			if world.nav.vkind_at(position + fwd * ahead + side * go * clear) == Nav.SOLID:
+				go = -go
+			_avoid_cap = 3.0
+		best = ahead
+		out = Defs.flat(position) + fwd * maxf(ahead, 4.0) + side * (lat + go * clear)
+	return out
+
+
+## Drives along pts from index i (see above); returns the index it has got to,
+## pts.size() once it's there.
+func _follow(pts: PackedVector3Array, i: int, dt: float, vmax: float, may_reverse := true, lane := 0.0) -> int:
+	var n := pts.size()
+	var h: Array = _handling()
+	if i >= n:
+		_coast(dt)
+		return i
+	# past the points it has reached (or driven by)
+	while i < n - 1:
+		var pi := Defs.flat(pts[i])
+		var seg := Defs.flat(pts[i + 1]) - pi
+		if Defs.flat(position).distance_to(pi) < 2.5 or (seg.length() > 0.01 and (Defs.flat(position) - pi).dot(seg) > 0.0):
+			i += 1
+		else:
+			break
+	var to_end := Defs.flat(pts[n - 1] - position).length()
+	if i >= n - 1 and to_end < 1.8:
+		_coast(dt)
+		return n if absf(speed) < 0.4 else i
+	vmax *= world.terrain.speed_mul(position, true, is_tracked())
+	# a long vehicle looks further down the road (and doesn't weave at a crawl)
+	var ld0 := maxf(4.0, _wheelbase() * 1.4)
+	var ld := clampf(ld0 + absf(speed) * 0.9, ld0, 16.0)
+	var la := _lookahead(pts, i, ld)
+	if lane != 0.0:
+		# keep to the right-hand side of the road
+		var rd := _lookahead(pts, i, ld + 2.5) - la
+		if rd.length() > 0.1:
+			la += rd.normalized().cross(Vector3.UP) * lane
+	if not _rev:
+		la = _avoid(la, Defs.dir_of(rotation.y))
+	var to := la - Defs.flat(position)
+	var err := wrapf(Defs.yaw_of(to) - rotation.y, -PI, PI)
+	# close behind: back into it (tracks or wheels) rather than drive round in a loop
+	if may_reverse:
+		if not _rev and absf(err) > 2.1 and to_end < 30.0:
+			_rev = true
+		elif _rev and (absf(err) < 1.2 or to_end > 40.0):
+			_rev = false
+	else:
+		_rev = false
+	var e := wrapf(err - PI, -PI, PI) if _rev else err  # measured from the way it's travelling
+	var kappa := 2.0 * sin(e) / maxf(to.length(), 1.0)
+	var v_t: float = vmax * (float(h[3]) if _rev else 1.0)
+	# slow for the bend ahead, and to stop where it's going
+	var far := _lookahead(pts, i, 18.0) - Defs.flat(position)
+	var bend := absf(wrapf(Defs.yaw_of(far) - rotation.y - (PI if _rev else 0.0), -PI, PI))
+	var k_ahead := maxf(absf(kappa), 2.0 * sin(minf(bend, PI * 0.5)) / 18.0)
+	v_t = minf(v_t, sqrt(float(h[2]) / maxf(k_ahead, 0.0005)))
+	v_t = minf(v_t, sqrt(2.0 * float(h[1]) * maxf(0.0, to_end - 1.5)) + 0.3)
+	var pivot := false
+	if is_tracked():
+		# skid steer: pivot on the spot for a sharp turn, wider turns at speed
+		if absf(e) > 0.9:
+			pivot = true
+			v_t = minf(v_t, 0.8)
+		var ymax: float = float(vdef.turn) * (1.0 - 0.45 * clampf(absf(speed) / maxf(vmax, 0.1), 0.0, 1.0))
+		yaw_rate = clampf(signf(e) * float(vdef.turn) * 0.75 if pivot else kappa * absf(speed), -ymax, ymax)
+	else:
+		# steered wheels: no tighter than full lock; slow right down for a hairpin
+		var wb := _wheelbase()
+		var kmax := tan(_max_steer()) / wb
+		if absf(e) > 1.0:
+			# the road doubles back: round on full lock, as fast as the tyres hold it
+			v_t = minf(v_t, sqrt(float(h[2]) / kmax))
+		yaw_rate = clampf(kappa, -kmax, kmax) * absf(speed)
+	if not _rev:
+		v_t = minf(minf(v_t, _avoid_cap), _traffic_limit(Defs.dir_of(rotation.y), v_t))
+	var want := -v_t if _rev else v_t
+	var rate: float = float(h[0]) if absf(want) > absf(speed) and signf(want) == signf(speed + want * 0.001) else float(h[1])
+	speed = move_toward(speed, want, rate * dt)
+	rotation.y += yaw_rate * dt
+	_move_by(Defs.dir_of(rotation.y) * speed, dt)
+	return i
+
+
+## Rolling to a stop where it is.
+func _coast(dt: float) -> void:
+	speed = move_toward(speed, 0.0, float(_handling()[1]) * dt)
+	yaw_rate = move_toward(yaw_rate, 0.0, 2.0 * dt)
+	_move_by(Defs.dir_of(rotation.y) * speed, dt)
+
+
+func _move_by(v: Vector3, dt: float) -> void:
+	velocity = v
 	var np := position + velocity * dt
 	if base() == "supply" or world.nav.vkind_at(np) != Nav.SOLID:
 		position = np
@@ -460,14 +678,13 @@ func _steer(tgt: Vector3, dt: float, max_speed: float) -> bool:
 		elif world.nav.vkind_at(sx) != Nav.SOLID:
 			position = sx
 		speed *= 0.6
-	return false
 
 
 func _drive(dt: float) -> void:
-	if track_broken or path_i >= path.size():
-		speed = move_toward(speed, 0.0, 6.0 * dt)
-		velocity = Defs.dir_of(rotation.y) * speed
-		position += velocity * dt
+	if track_broken or path_i >= path.size() or brain_hold:
+		_coast(dt)
+		_stuck_t = 0.0
+		_face(dt)
 		return
 	# attack-move: halt for steady shots - but close in on men dug into a trench,
 	# whom a round from range just bursts over
@@ -475,10 +692,9 @@ func _drive(dt: float) -> void:
 	if _target_ok() and target is Soldier and world.terrain.in_trench(target.position) and hp > max_hp * 0.45:
 		halt = 32.0
 	if assault and _target_ok() and Defs.flat(target.position - position).length() < halt:
-		speed = move_toward(speed, 0.0, 6.0 * dt)
-		velocity = Defs.dir_of(rotation.y) * speed
-		position += velocity * dt
+		_coast(dt)
 		_stuck_t = 0.0
+		_face(dt)
 		return
 	# watchdog: hung up on something -> back off, turn, and plan again
 	_stuck_t += dt
@@ -497,14 +713,15 @@ func _drive(dt: float) -> void:
 			_stuck_p = position
 		return
 	if _stuck_t > 3.0:
-		if Defs.flat(position - _stuck_p).length() < 1.2:
+		# (a tank pivoting on the spot is going somewhere, if not anywhere yet)
+		if Defs.flat(position - _stuck_p).length() < 1.2 and absf(wrapf(rotation.y - _stuck_yaw, -PI, PI)) < 0.5:
 			world.stat("veh_unstick")
 			_unstick_t = 1.6
 			_unstick_dir = 1.0 if world.rng.randf() < 0.5 else -1.0
 		_stuck_t = 0.0
 		_stuck_p = position
-	if _steer(path[path_i], dt, float(vdef.speed)):
-		path_i += 1
+		_stuck_yaw = rotation.y
+	path_i = _follow(path, path_i, dt, float(vdef.speed))
 	# shove soldiers out of the way
 	var front := position + Defs.dir_of(rotation.y) * 2.5
 	for s in world.soldiers_near(front, 2.6):
@@ -516,6 +733,19 @@ func _drive(dt: float) -> void:
 		var np: Vector3 = s.position + dir * 3.0 * dt
 		if world.nav.walkable(np):
 			s.position = np
+
+
+## Standing still: a tracked hull turns on the spot to put its front plate
+## (the thickest armour) towards the threat the crew's watching (see VehicleBrain).
+func _face(dt: float) -> void:
+	if face_yaw == INF or track_broken or not is_tracked() or absf(speed) > 0.5:
+		return
+	var e := wrapf(face_yaw - rotation.y, -PI, PI)
+	if absf(e) < 0.12:
+		return
+	var step := clampf(e, -float(vdef.turn) * 0.6 * dt, float(vdef.turn) * 0.6 * dt)
+	rotation.y += step
+	turret_yaw -= step  # the gun stays on its target while the hull swings under it
 
 
 func _smash() -> void:
@@ -986,6 +1216,7 @@ func threatened(from: Vector3) -> void:
 	world.stat("veh_smoke")
 	if not is_auto():
 		world.send_msg(team, "info", "%s popped smoke - missile inbound!" % display_name(), position)
+	VehicleBrain.on_threat(self, from)
 
 
 func take_damage(amount: float, _src) -> void:
@@ -1307,17 +1538,22 @@ func _truck_tick(dt: float) -> void:
 			world.rules.truck_blocked(self)
 		return
 	blocked_t = 0.0
-	if Defs.flat(tgt - position).length() < 2.0:
-		route_i += 1
-		return
-	_steer(tgt, dt, float(vdef.speed))
+	route_i = _follow(route, route_i, dt, float(vdef.speed), false, 1.6)
 
 
 func _road_blocked() -> bool:
-	var ahead := position + Defs.dir_of(rotation.y) * 4.0
+	if route.size() < 2:
+		return false
+	# down the road, not out of the windscreen (it may be swinging round to
+	# turn back), and not among its own base's buildings at either end
+	var nxt := route[clampi(route_i, 0, route.size() - 1)]
+	if Defs.flat(route[route.size() - 1] - position).length() < 14.0 or Defs.flat(route[0] - position).length() < 14.0:
+		return false
+	var dir := Defs.flat(nxt - position)
+	var ahead := position + (dir.normalized() if dir.length() > 0.5 else Defs.dir_of(rotation.y)) * 4.0
 	for st in world.structures_near(ahead, 3.0):
-		if st.team < 0 or st.gone:
-			continue
+		if st.team < 0 or st.gone or st.team == team:
+			continue  # (its own side's buildings by the road don't stop it: the enemy's roadblocks do)
 		if st.skind in ["tank_trap", "concrete_wall", "barracks", "factory", "research", "medic_tent"] and Defs.flat(st.position - ahead).length() < st.radius + 1.5:
 			return true
 	for v in world.vehicles_near(ahead, 3.0):
@@ -1419,6 +1655,7 @@ func _view_process(dt: float) -> void:
 		if absf(spd) < 2.0:
 			for w in wheels:
 				w.rotation.x -= spd / 0.42
+		_steer_wheels(dt, spd)
 	_last_pos = position
 	if burner:
 		var hf := health_frac()
@@ -1439,6 +1676,34 @@ func _view_process(dt: float) -> void:
 
 
 var _vm: VehicleModels = null
+var _steer_k: Array = []  # per wheel: how much of the steering it takes (front axles)
+var _steer_v := 0.0
+var _last_yaw := 0.0
+
+
+## Front wheels turn into the bend (wheeled vehicles), from how fast it's
+## turning for how fast it's going.
+func _steer_wheels(dt: float, step: float) -> void:
+	if is_tracked() or is_air() or dt <= 0.0:
+		return
+	if _steer_k.size() != wheels.size():
+		_steer_k.clear()
+		var wb := _wheelbase()
+		var inv := global_transform.affine_inverse()
+		for w in wheels:
+			var lz: float = (inv * (w as Node3D).global_position).z if (w as Node3D).is_inside_tree() else 0.0
+			_steer_k.append(clampf((-lz - wb * 0.1) / (wb * 0.4), 0.0, 1.0))
+	var yr := wrapf(rotation.y - _last_yaw, -PI, PI) / dt
+	_last_yaw = rotation.y
+	var v := absf(step) / dt
+	var want := 0.0
+	if v > 0.4:
+		want = clampf(atan(yr * _wheelbase() / v) * signf(step), -_max_steer(), _max_steer())
+	_steer_v = lerpf(_steer_v, want, 1.0 - exp(-dt * 8.0))
+	for i in wheels.size():
+		var k: float = _steer_k[i]
+		if k > 0.0:
+			(wheels[i] as Node3D).rotation.y = _steer_v * k
 
 
 ## Where a shot leaves this vehicle's model right now (view): the tip of the

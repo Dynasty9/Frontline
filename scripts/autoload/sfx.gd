@@ -36,6 +36,8 @@ func _ready() -> void:
 	streams["thud"] = _thud()
 	streams["click"] = _click()
 	streams["build"] = _knock()
+	streams["door_kick"] = _door_kick()
+	streams["door"] = _creak()
 	streams["jet"] = _jet()
 	streams["big_boom"] = _boom(2.6, 1.0, 38.0)
 	streams["rotor"] = _rotor_loop()
@@ -377,6 +379,42 @@ func _click() -> AudioStreamWAV:
 	for i in n:
 		var t := float(i) / RATE
 		s[i] = sin(TAU * 1600.0 * t) * exp(-t * 120.0) * 0.5
+	return _wav(s)
+
+
+## A boot through a door: the crack of the lock giving, a deep boom from
+## the panel, and the slam of it hitting the wall inside.
+func _door_kick() -> AudioStreamWAV:
+	var n := int(0.5 * RATE)
+	var s := PackedFloat32Array()
+	s.resize(n)
+	var lp := 0.0
+	for i in n:
+		var t := float(i) / RATE
+		var crack := (randf() - 0.5) * exp(-t * 90.0) * 1.1
+		var boom := sin(TAU * 85.0 * t + sin(TAU * 31.0 * t)) * exp(-t * 16.0) * 0.9
+		var t2 := t - 0.21
+		var slam := 0.0
+		if t2 > 0.0:
+			lp += ((randf() - 0.5) - lp) * 0.35
+			slam = (sin(TAU * 140.0 * t2) * 0.6 + lp * 1.4) * exp(-t2 * 26.0) * 0.8
+		s[i] = clampf(crack + boom + slam, -1.0, 1.0)
+	return _wav(s)
+
+
+## Old hinges: a door pushed open.
+func _creak() -> AudioStreamWAV:
+	var n := int(0.7 * RATE)
+	var s := PackedFloat32Array()
+	s.resize(n)
+	var ph := 0.0
+	for i in n:
+		var t := float(i) / RATE
+		var f := 420.0 + 160.0 * sin(TAU * 2.3 * t) + 60.0 * sin(TAU * 7.0 * t)
+		ph += f / RATE
+		var saw := fmod(ph, 1.0) * 2.0 - 1.0
+		var env := sin(PI * clampf(t / 0.7, 0.0, 1.0)) * (0.7 + 0.3 * sin(TAU * 31.0 * t))
+		s[i] = saw * env * 0.22
 	return _wav(s)
 
 

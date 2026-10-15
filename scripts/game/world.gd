@@ -905,6 +905,46 @@ func soldiers_near(p: Vector3, r: float) -> Array:
 	return out
 
 
+# shut doors (server): 1.5 m cells round each doorway -> the doors there
+var door_cells := {}
+
+
+func _door_keys(st: Structure) -> Array:
+	var out := []
+	var cx := floori(st.position.x / 1.5)
+	var cz := floori(st.position.z / 1.5)
+	for dx in range(-1, 2):
+		for dz in range(-1, 2):
+			out.append(Vector2i(cx + dx, cz + dz))
+	return out
+
+
+func add_door(st: Structure) -> void:
+	for k in _door_keys(st):
+		if not door_cells.has(k):
+			door_cells[k] = []
+		door_cells[k].append(st)
+
+
+func remove_door(st: Structure) -> void:
+	for k in _door_keys(st):
+		var l: Array = door_cells.get(k, [])
+		l.erase(st)
+		if l.is_empty():
+			door_cells.erase(k)
+
+
+## The shut door a man at p heading dir is about to walk into, or null.
+func door_in_way(p: Vector3, dir: Vector3) -> Structure:
+	var l = door_cells.get(Vector2i(floori(p.x / 1.5), floori(p.z / 1.5)))
+	if l == null:
+		return null
+	for st in l:
+		if not st.gone and st.door_blocks(p, dir):
+			return st
+	return null
+
+
 func vehicles_near(p: Vector3, r: float) -> Array:
 	var out := []
 	for v in vehicles:

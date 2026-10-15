@@ -18,7 +18,7 @@ const FOB_RADIUS := 16.0
 const BUILD_RADIUS := 70.0
 const FOB_EXPAND_RADIUS := 130.0
 const FOB_MIN_SPACING := 45.0
-const SUPPLY_PER_TRUCK := [90, 100]  # Rebels run bigger loads to make up for having no helicopters
+const SUPPLY_PER_TRUCK := [115, 130]  # Rebels run bigger loads to make up for having no helicopters (trucks drive like trucks: fewer runs, bigger loads)
 const START_SUPPLY := 500
 
 const FOB_NAMES := [

@@ -67,6 +67,9 @@ var label_h := 0.0  # height of the name plate the HUD draws over FOBs and depot
 var tilt := Vector2.ZERO  # wrecks and tossed cars can lie at an angle: (pitch, roll)
 var toss = null  # [from pos, from yaw, velocity, spin] while it's flying (clients animate it)
 var vk := ""  # what a wreck used to be
+var door_shut := false  # (a house's doorway) its doors are shut: the first man through kicks them in, or just opens them
+var _door_kicked := false
+var _door_leaves: Array = []  # (view) the door leaves: [hinge pivot, how far it swings open]
 var _flag: MeshInstance3D
 var _vis_cache := true
 
@@ -127,6 +130,8 @@ func apply_props(d: Dictionary) -> void:
 		seen_mask = d.seen
 	if d.has("vk"):
 		vk = d.vk
+	if d.has("door"):
+		door_shut = d.door
 	if d.has("tilt"):
 		tilt = d.tilt
 		if model:
@@ -142,7 +147,7 @@ func apply_props(d: Dictionary) -> void:
 func get_props() -> Dictionary:
 	return {"skind": skind, "team": team, "owner": owner_peer, "pos": position, "yaw": yaw, "size": size,
 		"variant": variant, "built": built, "progress": progress, "hp": hp, "max_hp": max_hp, "sname": sname,
-		"supply": supply, "queue": queue_items, "seen": seen_mask, "vk": vk, "tilt": tilt, "toss": toss}
+		"supply": supply, "queue": queue_items, "seen": seen_mask, "vk": vk, "tilt": tilt, "toss": toss, "door": door_shut}
 
 
 func on_spawned() -> void:
@@ -176,6 +181,8 @@ func on_spawned() -> void:
 		world.nav.add_structure(self)
 		if built:
 			_make_body()
+		if door_shut:
+			world.add_door(self)
 	_compute_cover_pts()  # every peer: the move preview shows the same spots
 	if not srv and world.has_view and built:
 		_make_body()  # so ragdolls and debris land on walls on every client
@@ -217,6 +224,8 @@ func _default_hp() -> float:
 func on_despawn() -> void:
 	if srv and world.nav:
 		world.nav.remove_structure(self)
+	if srv and door_shut:
+		world.remove_door(self)
 
 
 # --- parts ---------------------------------------------------------------------
@@ -256,6 +265,12 @@ func _define_parts() -> void:
 						_part(Vector3(L * 0.5 - pier * 0.5, 1.5, 0), Vector3(pier, 3.0, th), Nav.SOLID, Nav.LOW, true, true, c),
 						_part(Vector3(0, 2.6, 0), Vector3(w, 0.8, th), Nav.FREE, Nav.FREE, false, true, c),
 					]
+					if door_shut:
+						# the shut doors: no-one sees or shoots through them (men still
+						# path through the doorway - see open_door)
+						var dp := _part(Vector3(0, 1.05, DOOR_Z), Vector3(w, 2.1, 0.08), Nav.FREE, Nav.FREE, false, true, c)
+						dp["door"] = true
+						parts.append(dp)
 				_:
 					parts = [_part(Vector3(0, 1.5, 0), Vector3(L, 3.0, th), Nav.SOLID, Nav.LOW, true, true, c)]
 		"floor":
@@ -437,6 +452,8 @@ func _make_body() -> void:
 		cs.shape = bs
 		cs.position = p.p
 		cs.rotation.y = p.r
+		if p.get("door", false):
+			cs.name = "Door"
 		body.add_child(cs)
 		any = true
 	if any:
@@ -651,6 +668,8 @@ func take_damage(amount: float, _source = null) -> void:
 		return
 	hp -= amount
 	net_dirty = true
+	if door_shut and amount >= 20.0:
+		open_door(null, true)
 	if team >= 0 and is_player_building() and world.time > _alert_t and amount > 5.0 and not skind in ["trench", "sandbags", "wire", "mines", "tank_trap", "concrete_wall"]:
 		_alert_t = world.time + 25.0
 		world.send_msg(team, "alert", "%s is under attack at %s!" % [display_name(), Defs.grid_ref(position)], position)
@@ -715,24 +734,101 @@ func _house_wall_detail(rng: RandomNumberGenerator) -> void:
 				_mk(Res.box(Vector3(0.08, 2.2, 0.1)), "paint", Vector3(x, 1.1, fz), Vector3.ZERO, trim, false)
 			_mk(Res.box(Vector3(w, 0.09, 0.1)), "paint", Vector3(0, 2.16, fz), Vector3.ZERO, trim, false)
 			_mk(Res.box(Vector3(w + 0.4, 0.14, 0.6)), "plaster", Vector3(0, 0.07, zo + 0.3), Vector3.ZERO, Color(0.62, 0.6, 0.56))
-			# double doors, swung in (one may be gone)
+			# double doors: shut (till someone comes through), or swung in -
+			# one may be gone. Each leaf hangs on its own hinge so it can swing.
 			var dc: Color = [Color(0.3, 0.2, 0.13), Color(0.22, 0.32, 0.26), Color(0.26, 0.31, 0.4), Color(0.42, 0.2, 0.15)][(ci + 2) % 4]
+			_door_leaves = []
 			for sx in [-1.0, 1.0]:
-				if rng.randf() < 0.25:
+				var lost := rng.randf() < 0.25
+				var a: float = -sx * rng.randf_range(1.0, 1.55)
+				if lost and not door_shut:
 					continue
-				var a: float = -sx * rng.randf_range(1.0, 1.8)
-				var hinge := Vector3(sx * (w * 0.5 - 0.09), 0, fz - 0.04)
-				var out := Basis(Vector3.UP, a) * Vector3(-sx * 0.44, 0, 0)
-				_mk(Res.box(Vector3(0.88, 2.06, 0.05)), "paint", hinge + out + Vector3(0, 1.05, 0), Vector3(0, a, 0), dc, false)
+				var pv := Node3D.new()
+				pv.position = Vector3(sx * (w * 0.5 - 0.09), 0, DOOR_Z)
+				pv.rotation.y = 0.0 if door_shut else a
+				model.add_child(pv)
+				var lx: float = -sx * 0.44
+				for piece in [
+						[Vector3(0.88, 2.06, 0.05), Vector3(lx, 1.05, 0), dc],
+						# panels, a rail and the handle
+						[Vector3(0.62, 0.78, 0.02), Vector3(lx, 1.55, 0.03), dc.darkened(0.18)],
+						[Vector3(0.62, 0.62, 0.02), Vector3(lx, 0.5, 0.03), dc.darkened(0.18)],
+						[Vector3(0.62, 0.62, 0.02), Vector3(lx, 0.5, -0.03), dc.darkened(0.18)],
+						[Vector3(0.62, 0.78, 0.02), Vector3(lx, 1.55, -0.03), dc.darkened(0.18)],
+						[Vector3(0.05, 0.05, 0.16), Vector3(-sx * 0.8, 1.0, 0), Color(0.18, 0.17, 0.15)]]:
+					var mi := _mk(Res.box(piece[0]), "paint", Vector3.ZERO, Vector3.ZERO, piece[2], false)
+					model.remove_child(mi)
+					pv.add_child(mi)
+					mi.position = piece[1]
+				_door_leaves.append([pv, a])
+
+
+## Where the doors hang in a doorway wall (local z: just inside its outer face).
+const DOOR_Z := 0.08
+
+
+## The doors flung open - kicked in, blown in, or pushed open by a man who
+## isn't expecting trouble. They stop hiding the room and stopping rounds.
+func open_door(by: Entity, kicked: bool) -> void:
+	if not door_shut:
+		return
+	door_shut = false
+	_door_kicked = kicked
+	net_dirty = true
+	for i in range(parts.size() - 1, -1, -1):
+		if parts[i].get("door", false):
+			parts.remove_at(i)
+	if body:
+		var dn := body.get_node_or_null("Door")
+		if dn:
+			body.remove_child(dn)
+			dn.queue_free()
+	_swing_leaves(kicked)
+	if srv:
+		world.remove_door(self)
+		world.fx_event([Fx.SOUND, "door_kick" if kicked else "door", position + Vector3(0, 1.0, 0)])
+		world.stat("door_kicked" if kicked else "door_opened")
+		if kicked and by is Soldier:
+			# a door kicked in is loud: whoever's in there hears where they're coming from
+			for s in world.soldiers_near(position, 16.0):
+				if s.team != by.team and s.team >= 0 and s.squad and s.life == Soldier.Life.ALIVE:
+					s.squad.report_pos(by.position)
+
+
+## Is he walking into the shut doors? (He's within a stride of them, on his
+## way through.)
+func door_blocks(p: Vector3, dir: Vector3) -> bool:
+	var ib := Basis(Vector3.UP, -yaw)
+	var lp: Vector3 = ib * (p - position)
+	var ld: Vector3 = ib * dir
+	var z := lp.z - DOOR_Z
+	return absf(lp.x) < 1.05 and absf(z) < 0.9 and absf(ld.z) > 0.3 and z * ld.z < 0.0
+
+
+func _swing_leaves(kicked: bool) -> void:
+	for lf in _door_leaves:
+		var pv: Node3D = lf[0]
+		if not is_instance_valid(pv):
+			continue
+		var a: float = lf[1]
+		var tw := pv.create_tween()
+		if kicked:
+			# slammed back against the wall, and a little bounce off it
+			var to := signf(a) * minf(absf(a) * 1.15, 1.6)
+			tw.tween_property(pv, "rotation:y", to, 0.17).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+			tw.tween_property(pv, "rotation:y", to * 0.86, 0.25).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+		else:
+			tw.tween_property(pv, "rotation:y", a * 0.8, 0.9).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 
 
 ## A building's model on its own, without a world (the field manual's preview).
-static func preview_model(kind: String, side: int, v := 0, sz := Vector3.ZERO) -> Node3D:
+static func preview_model(kind: String, side: int, v := 0, sz := Vector3.ZERO, shut := false) -> Node3D:
 	var st := Structure.new()
 	st.skind = kind
 	st.team = side
 	st.variant = v
 	st.built = true
+	st.door_shut = shut
 	if sz != Vector3.ZERO:
 		st.size = sz
 	elif Defs.BUILDINGS.has(kind):
@@ -1335,7 +1431,7 @@ func write_state(b: StreamPeerBuffer) -> void:
 	b.put_8(cap_team)
 	var private: bool = world.writing_view >= 0 and world.writing_view != team and team >= 0
 	b.put_u16(0 if private else int(clampf(supply, 0.0, 65535.0)))
-	b.put_u8((1 if built else 0) | (2 if wrecked else 0) | (4 if prod_status == "cap" else 0))
+	b.put_u8((1 if built else 0) | (2 if wrecked else 0) | (4 if prod_status == "cap" else 0) | (8 if door_shut else 0) | (16 if _door_kicked else 0))
 	b.put_u8(vis_mask)
 	b.put_u8(seen_mask)
 	b.put_u8(0 if private else int(clampf(queue_frac, 0.0, 1.0) * 255.0))
@@ -1358,6 +1454,8 @@ func read_state(b: StreamPeerBuffer) -> void:
 	built = (f & 1) != 0
 	wrecked = (f & 2) != 0
 	prod_status = "cap" if (f & 4) != 0 else ""
+	if door_shut and (f & 8) == 0:
+		open_door(null, (f & 16) != 0)
 	if t != team:
 		team = t
 		_recolor()
@@ -1570,6 +1668,8 @@ func _build_model() -> void:
 		if p.color == C_SAND and p.s.y <= 1.3 and minf(p.s.x, p.s.z) <= 1.0:
 			bags.append(p)
 			continue
+		if p.get("door", false):
+			continue  # (the leaves are their own pieces: they swing open)
 		var col: Color = p.color
 		if skind in ["house_wall", "rubble", "crates"]:
 			col = Res.vary(col, 0.05, rng)
@@ -1879,6 +1979,8 @@ func _build_model() -> void:
 		_bag_walls(bags, rng)
 	_skin(model)
 	var keep: Array = [_flag] if _flag else []
+	for lf in _door_leaves:
+		keep.append(lf[0])
 	if not _mg.is_empty():
 		# the gun turns and kicks: each moving piece is its own single mesh
 		keep.append(_mg.root)

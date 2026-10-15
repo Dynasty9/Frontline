@@ -30,7 +30,9 @@ const DRILLS := [
 	["d_cook", "Cooking a grenade", Soldier.Post.STAND, Soldier.Act.COOK, "", "Men in hard cover close by",
 		"Holding a live grenade", "Against men behind something solid at close range, the thrower lets the spoon fly and holds it a second or so before he throws, so it goes off as it lands - too late to throw back. It's the throw-back's answer, and the reason men sometimes have to lie on one."],
 	["d_house", "Clearing a house", Soldier.Post.CROUCH, Soldier.Act.COOK, "door", "Enemy seen inside a building near the squad",
-		"The doorway is a fatal funnel", "The man best placed stacks beside the doorway, back to the wall. Pin out, he steps into the doorway and throws it in low under the lintel (or lobs it through a window), steps back against the wall for the bang - and then he's in, a mate right behind him, before they recover. A man already stacked finishes the job before he follows a new order."],
+		"The doorway is a fatal funnel", "The man best placed stacks beside the doorway, back to the wall. Pin out, he steps into the doorway and throws it in low under the lintel (or lobs it through a window), steps back against the wall for the bang - and then he's in, a mate right behind him, before they recover. If the door's shut he kicks it in first, and only then pulls the pin - nobody cooks a grenade with a door still to get through. A man already stacked finishes the job before he follows a new order."],
+	["d_door", "Kicking a door in", Soldier.Post.STAND, Soldier.Act.KICK, "shut_door", "A shut door in his way",
+		"Loud: whoever's inside knows they're coming", "Most front doors are shut. A man who comes to one in a fight puts his boot in beside the lock and the doors slam back against the wall inside; with no enemy about he just opens it. Shut, a door hides the room - nobody sees or shoots through it - and keeps a grenade out. A blast next to it blows it in."],
 	# squad drills (SquadBrain): what the whole squad does
 	["s_contact", "React to contact", Soldier.Post.PRONE, Soldier.Act.SHOOT, "", "Fired on, or a new enemy in sight, while the squad is moving",
 		"Caught in the open", "Everyone gets down where he is - the nearest cover a few metres round him - and returns fire, while the leader calls it: direction and range (\"Contact! North-east, 150 metres!\"). Once the enemy's fire slackens the squad carries on, by bounds while they're still about. A squad ordered to move fast keeps running."],
@@ -42,6 +44,17 @@ const DRILLS := [
 		"Sprung too early, it gives the position away", "It holds its fire and lets them come on: men who lie still, low and silent are hard to see (it's movement and muzzle flash that give men away). When they're close, or several are in the open, the leader springs it and everyone fires at once - the first volley is the deadliest. Fired on first, it fires back at once."],
 	["s_morale", "Morale", Soldier.Post.STAND, Soldier.Act.RUN, "", "All the time: shown on the squad card",
 		"A routed squad can't be ordered", "Casualties, fire it can't answer, tanks it can't fight and losing its leader wear a squad down; quiet, a leader, friends close by, a tank alongside and a hole in the ground build it back. Steady: it fights as it should. Shaken: it shoots worse and is pinned sooner. Breaking: it breaks contact. Routed: it runs for the rear and won't take orders until it has pulled itself together."],
+	# vehicle crews (VehicleBrain): tanks, IFVs, APCs and armed cars
+	["v_drive", "Driving", Soldier.Post.STAND, Soldier.Act.IDLE, "humvee", "Always",
+		"Too fast into a bend", "A driver steers for a point some way down the road - further the faster he's going - slows for the bends he can see coming and brakes to stop where he's sent. Wheels turn no tighter than full lock (a truck needs room to turn round); tracks skid-steer, pivoting where they stand but turning wider at speed. Heavy vehicles are slow off the mark and slow to stop. A spot just behind is backed into, not reached by a loop; it keeps its distance behind a vehicle going its way, drives round one standing in the road and keeps to the right of oncoming traffic."],
+	["v_smoke", "Smoke and back out", Soldier.Post.STAND, Soldier.Act.IDLE, "tank_smoke", "A missile or rocket launched at it",
+		"Two salvoes in the dischargers", "The crew fires its smoke dischargers - a wall of smoke between it and the shooter that breaks a guided missile's lock - and reverses out of the line of fire, front armour still towards him, before carrying on with the job."],
+	["v_front", "Front armour to the threat", Soldier.Post.STAND, Soldier.Act.IDLE, "tank", "Halted, with enemy armour or anti-tank weapons in sight",
+		"The sides and rear are thin", "A tank's armour is thickest at the front. Stopped, the driver swings the hull to face the nearest tank or anti-tank team he can see - the gun stays on its target while the hull turns under it."],
+	["v_infantry", "Wait for the infantry", Soldier.Post.STAND, Soldier.Act.IDLE, "tank_inf", "(The AI's) anti-tank teams ahead and no infantry of its own about",
+		"Alone, it's a target", "A tank driving into a town or a wood on its own is a dead tank: it halts and shoots from where it is until its infantry catch up and deal with the rocket teams - or, after a while, pushes on regardless."],
+	["v_withdraw", "Pull back for repairs", Soldier.Post.STAND, Soldier.Act.IDLE, "tank", "Badly damaged (a third of its strength left)",
+		"Out of the fight while it's patched up", "The crew takes it back to the nearest FOB, where the mechanics patch it up (engineers and a repair truck do it faster), and it's ready for work again. A player can send it straight back in; the AI's waits until it's fixed."],
 	["s_winded", "Out of breath", Soldier.Post.STAND, Soldier.Act.WINDED, "", "After sprinting, rushing or dragging a man",
 		"Slow and shaky when it matters", "A sprint or a long rush leaves a man blown - slower on his feet, the muzzle heaving with his breathing - until he gets a breather, quicker lying or kneeling than standing. Long moves at a run arrive winded; a walk keeps men fresh."],
 ]
@@ -543,7 +556,7 @@ func _show_model(e: Dictionary) -> void:
 	if String(e.cat) == "cover":
 		_yaw = 0.75  # over his shoulder: the man, his weapon on the top, and what he's looking at
 	elif String(e.cat) == "drills":
-		_yaw = 0.55 if e.key == "d_house" else PI - 1.25  # the doorway from outside, or the man side-on
+		_yaw = 0.55 if e.key in ["d_house", "d_door"] else (PI - 0.62 if String(e.key).begins_with("v_") else PI - 1.25)  # the doorway from outside, the vehicle three-quarter, or the man side-on
 	_idle_t = 4.0  # hold the opening view a moment before the turntable starts
 
 
@@ -792,6 +805,8 @@ func _drill_diorama(key: String, side: int) -> Node3D:
 			d = x
 	if d.is_empty():
 		return null
+	if key.begins_with("v_"):
+		return _crew_diorama(String(d[4]), side)
 	var g := Node3D.new()
 	var sm := SoldierModel.new()
 	sm.build("rifleman" if side != 1 else "fighter", side, 23)
@@ -814,6 +829,11 @@ func _drill_diorama(key: String, side: int) -> Node3D:
 			hw.position = Vector3(-1.55, 0, -0.55)
 			g.add_child(hw)
 			sm.rotation.y = PI * 0.5
+		"shut_door":
+			# the doors shut in front of him, his boot going in
+			var sw := Structure.preview_model("house_wall", -1, 2, Vector3(4.6, 2.0, 0.4), true)
+			sw.position = Vector3(0, 0, -0.95)
+			g.add_child(sw)
 	var spd := 5.3 if key == "s_morale" else 0.0  # running for it
 	for i in 12:
 		sm.pose(0.3 if spd == 0.0 else 0.07, 0, d[2], d[3], spd, false, d[3] == Soldier.Act.SHOOT)
@@ -825,6 +845,42 @@ func _drill_diorama(key: String, side: int) -> Node3D:
 		nd.position = nade_at
 		nd.material_override = Res.mat(Color(0.25, 0.28, 0.2))
 		g.add_child(nd)
+	return g
+
+
+## A vehicle crew's drill: the vehicle, and what it's about (its smoke, the
+## infantry it waits for).
+func _crew_diorama(what: String, side: int) -> Node3D:
+	var g := Node3D.new()
+	var vk := "humvee" if what == "humvee" else ("tank" if side != 1 else "old_tank")
+	g.add_child(_on_the_ground(VehicleModels.build(vk, side, 7).root))
+	if what == "tank_smoke":
+		var rng := RandomNumberGenerator.new()
+		rng.seed = 5
+		# a wall of it across the front: soft, see-through at the edges
+		for i in 4:
+			var dir := Vector3(0, 0, -1).rotated(Vector3.UP, (i - 1.5) * 0.32)
+			for j in 6:
+				var puff := MeshInstance3D.new()
+				puff.mesh = Res.sphere(1.0, 12)
+				var r := rng.randf_range(0.8, 1.5)
+				puff.scale = Vector3(r, r * 0.75, r)
+				puff.position = dir * rng.randf_range(8.5, 11.0) + Vector3(rng.randf_range(-1.2, 1.2), 0.5 + j * 0.45, rng.randf_range(-1.0, 1.0))
+				var sm2 := StandardMaterial3D.new()
+				sm2.albedo_color = Color(0.74, 0.74, 0.72, rng.randf_range(0.28, 0.45))
+				sm2.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+				sm2.roughness = 1.0
+				puff.material_override = sm2
+				puff.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+				g.add_child(puff)
+	elif what == "tank_inf":
+		for i in 3:
+			var sm := SoldierModel.new()
+			sm.build("rifleman" if side != 1 else "fighter", side, 31 + i)
+			for k in 12:
+				sm.pose(0.3, 0, Soldier.Post.CROUCH if i != 1 else Soldier.Post.STAND, Soldier.Act.IDLE, 0.0, false, false)
+			sm.position = Vector3(2.8 + (i % 2) * 0.9, 0, -1.5 + i * 1.6)
+			g.add_child(sm)
 	return g
 
 
@@ -1189,7 +1245,7 @@ func _build_entries() -> Array:
 		out.append({"cat": "drills", "key": dr[0], "name": dr[1], "team": -1, "both": true,
 			"sub": String(dr[5]), "desc": String(dr[7]), "stats": [
 				["When", String(dr[5]), -1.0], ["The risk", String(dr[6]), -1.0]],
-			"rel": ["Every squad, both sides" if String(dr[0]).begins_with("s_") else "Every soldier, both sides", "A behaviour tree decides it (see README)"]})
+			"rel": ["Every squad, both sides" if String(dr[0]).begins_with("s_") else ("Every tank, IFV, APC and armed car" if String(dr[0]).begins_with("v_") else "Every soldier, both sides"), "A behaviour tree decides it (see README)"]})
 
 	# upgrades
 	for k in Defs.UPGRADES:

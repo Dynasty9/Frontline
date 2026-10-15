@@ -95,7 +95,11 @@ Settings are saved to `user://settings.cfg`.
 - **Clearing a house.** When a squad has seen an enemy inside a building, the man best placed stacks beside
   the doorway, back to the wall; pin out, he steps into the doorway and throws it in low under the lintel (or
   through a window), steps back against the wall for the bang, then goes in with a mate right behind him.
-  A new order waits until the grenade is in.
+  If the door's shut he kicks it in first and only then pulls the pin. A new order waits until the grenade is in.
+- **Doors.** Most houses' front doors are shut (double doors with panels and handles). Shut, they hide the room
+  - nobody sees or shoots through them - and keep a grenade out. A man who walks into one in a fight kicks it
+  in (a boot by the lock, the doors slam back against the wall inside, and whoever's in there hears it); with
+  no enemy about he just opens it. A blast next to it blows it in. Door state is replicated to every client.
 - **Behind cover with nothing happening** a man is up over the top keeping watch, weapon on the wall - not
   curled up behind it. The first round that cracks past and he's down.
 - **Fighting positions** (`scripts/game/cover.gd`): every wall, sandbag line, car, crate stack, wreck, rubble
@@ -285,7 +289,24 @@ Settings are saved to `user://settings.cfg`.
 - The squad panel shows each selected squad's symbol, callsign, type and strength; the minimap carries the same
   symbols and the A-H / 1-8 grid the radio uses. FOB and HQ names are drawn over everything.
 
-**Vehicles** (`vehicle.gd`, `vehicle_roster.gd`, `drone.gd`, `projectile.gd`)
+**Vehicles** (`vehicle.gd`, `vehicle_brain.gd`, `vehicle_roster.gd`, `drone.gd`, `projectile.gd`)
+- **Driving.** A driver steers for a point some way down the road (pure pursuit: further ahead the faster he
+  goes), slows for the bends he can see coming - as fast as the tyres or tracks hold the curve - and brakes to
+  stop where he's sent. Wheeled vehicles steer like cars: a real turning circle from their wheelbase and
+  steering lock, no turning on the spot, so a truck needs room to turn round. Tracked vehicles skid-steer:
+  they pivot where they stand for a sharp turn but turn wider the faster they go. Weight sets how hard they
+  accelerate and brake. A spot close behind is backed into rather than reached by a loop; a vehicle keeps its
+  distance behind one going its way, drives round one standing in the road and passes oncoming traffic on
+  the right; supply trucks keep to the right-hand side of the road. Hung up on something, it backs off, turns
+  and plans again. (Trucks are slower on the road than they were, so each load carries more.)
+- **Crews think for themselves** (`vehicle_brain.gd`): tanks, IFVs, APCs and armed cars have a behaviour tree,
+  walked twice a second. *Smoke and back out*: a missile or rocket launched at it, the crew fires its smoke
+  dischargers and reverses out of the line of fire, front armour still towards the shooter, then carries on
+  with what it was doing. *Front armour to the threat*: halted with enemy armour or anti-tank teams in sight,
+  a tracked vehicle swings its hull to face them while the gun stays on target. *Wait for the infantry*: an
+  AI tank on an attack that sees rocket teams ahead with none of its own infantry about halts and shoots
+  from where it is until they catch up (or pushes on after a while). *Pull back for repairs*: badly damaged,
+  the crew takes it back to the nearest FOB to be patched up; a player can send it straight back in.
 - **The Arma 3 garage.** Alongside the original vehicles, both sides field Arma 3's (`vehicle_roster.gd`), each
   modelled on the real vehicle Arma's is based on:
   - Coalition, NATO: Hunter (M-ATV, unarmed / HMG / GMG), Prowler (DAGOR, unarmed / HMG / AT), AMV-7 Marshall
@@ -444,7 +465,8 @@ sustained damage, squad firepower, km/h), what carries or trains it, and a 3D mo
 A **Cover** chapter covers every kind of battlefield cover - stone and brick walls, hedges, sandbags, cars,
 crates, wrecks, rubble, tall walls, windows, trenches, craters and woods - with what it stops, how much blast
 gets through, how a man fights from it, and a diorama of a soldier doing so. **Drills & reflexes** shows what a
-soldier does without being told: the grenade reflexes, cooking a grenade and clearing a house, each posed.
+soldier does without being told: the grenade reflexes, cooking a grenade, clearing a house and kicking a door in,
+each posed - and what squads and vehicle crews do (battle drills, morale, driving, smoke, waiting for the infantry).
 
 **AI commander** (`commander_ai.gd`): spare squads go forward to hold the town, the villages and the larger
 woods between its front and the enemy's, lying in wait, so the fighting is over the ground in between; a
@@ -474,6 +496,7 @@ game/soldier_brain.gd   the soldier's behaviour tree: reflexes (grenades, shells
 game/bt.gd              a small behaviour tree (selector, sequence, condition, action, cooldown)
 game/squad.gd           shared knowledge, rescues, smoke, surrender, auto-engineering
 game/squad_brain.gd     the squad's behaviour tree: battle drills, morale, fire discipline, ammo sharing
+game/vehicle_brain.gd   the vehicle crew's behaviour tree: smoke and back out, front armour on, wait for infantry, repairs
 game/map_dims.gd        the map's size, which everything sized to the map derives from
 game/combat.gd          LOS, bullets (penetrating soft cover), suppression, explosions, choosing cover
 game/cover.gd           fighting positions on everything solid, what each material stops, stances by height

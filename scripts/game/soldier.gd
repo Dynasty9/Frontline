@@ -102,6 +102,10 @@ var loot := 0
 # movement
 var path := PackedVector3Array()
 var path_i := 0
+var door_wait := 0.0  # stopped at a shut door: kicking it in, or opening it
+var door_kick := false
+var door_st: Structure = null
+var _door_t := 0.0
 var goal := Vector3.ZERO
 var goal_kind := ""
 var move_mode := 0
@@ -1231,6 +1235,8 @@ func _move_tick(dt: float, speed: float) -> bool:
 	mul *= world.terrain.speed_mul(position, false)
 	var step := minf(d, speed * mul * dt)
 	var dir := to / d
+	if (door_wait > 0.0 or (not world.door_cells.is_empty() and world.time > _door_t)) and _door_tick(dt, dir):
+		return true
 	_last_dir = dir
 	position += dir * step
 	var ty := base_y + (0.5 if vaulting else 0.0) + (_ground() if base_y == 0.0 else 0.0)
@@ -1244,6 +1250,31 @@ func _move_tick(dt: float, speed: float) -> bool:
 			slide_t = 0.45
 			world.stat("slide")
 			slide_cd = world.time + 4.0
+	return true
+
+
+## A shut door in his way: in a fight he kicks it in, otherwise he just opens
+## it. He stops there while he does (true).
+func _door_tick(dt: float, dir: Vector3) -> bool:
+	if door_wait > 0.0:
+		door_wait -= dt
+		_stuck_t = 0.0
+		if door_wait > 0.0:
+			return true
+		if door_st and not door_st.gone and door_st.door_shut:
+			door_st.open_door(self, door_kick)
+		door_st = null
+		return false
+	_door_t = world.time + 0.12
+	var ds: Structure = world.door_in_way(position, dir)
+	if ds == null or life != Life.ALIVE:
+		return false
+	door_st = ds
+	door_kick = _danger()
+	door_wait = 0.5 if door_kick else 0.8
+	_face_now(dir)
+	if door_kick and world.rng.randf() < 0.4:
+		say(_pick(["Breaching!", "Door!", "Kicking it in!"]), true)
 	return true
 
 
@@ -1425,7 +1456,9 @@ func _end_idle() -> void:
 
 
 func _choose_act(moving: bool) -> void:
-	if reload_t > 0.0:
+	if door_wait > 0.0:
+		act = Act.KICK if door_kick else Act.IDLE
+	elif reload_t > 0.0:
 		act = Act.RELOAD
 	elif world.time - last_shot_t < 0.35:
 		act = Act.SHOOT
@@ -1712,7 +1745,7 @@ func _begin_action(kind: String, dur: float, data: Dictionary) -> void:
 	match kind:
 		"throw", "rethrow", "throw_in":
 			act = Act.THROW
-		"kick":
+		"kick", "door_kick":
 			act = Act.KICK
 		"cook":
 			act = Act.COOK
@@ -1734,7 +1767,7 @@ func _action_tick(_dt: float) -> void:
 		return
 	if act_kind == "cook":
 		return  # holding it in whatever stance he's in
-	if act_kind == "kick":
+	if act_kind == "kick" or act_kind == "door_kick":
 		posture = Post.STAND
 		return
 	if act_kind == "launch" or act_kind == "throw" or act_kind == "rethrow" or act_kind == "throw_in":
@@ -1775,6 +1808,10 @@ func _action_done() -> void:
 				g.release_throw(self, act_data.pos)
 				world.stat("throwback")
 				say("Throwing it back!", true)
+		"door_kick":
+			var dr: Structure = act_data.get("door")
+			if dr and not dr.gone:
+				dr.open_door(self, true)
 		"melee":
 			world.combat.melee_hit(self, act_data.get("target"))
 		"launch":
