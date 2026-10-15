@@ -253,7 +253,8 @@ func _process(dt: float) -> void:
 
 
 ## One part with a procedural surface, optionally tinted to a colour.
-func _m(h: Node3D, mesh: Mesh, kind: String, p: Vector3, col = null, rot := Vector3.ZERO, shadow := true) -> MeshInstance3D:
+## cut: paving, holed where the ground under it is cratered or dug out.
+func _m(h: Node3D, mesh: Mesh, kind: String, p: Vector3, col = null, rot := Vector3.ZERO, shadow := true, cut := false) -> MeshInstance3D:
 	var mi := MeshInstance3D.new()
 	mi.mesh = mesh
 	mi.position = p
@@ -261,7 +262,13 @@ func _m(h: Node3D, mesh: Mesh, kind: String, p: Vector3, col = null, rot := Vect
 	if not shadow:
 		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	h.add_child(mi)
-	Mats.apply(mi, kind, Mats.tint_for(kind, col) if col is Color else Color(1, 1, 1))
+	var tn: Color = Mats.tint_for(kind, col) if col is Color else Color(1, 1, 1)
+	if cut:
+		mi.material_override = Mats.paving(kind)
+		if tn != Color(1, 1, 1):
+			mi.set_instance_shader_parameter("tint", tn)
+	else:
+		Mats.apply(mi, kind, tn)
 	return mi
 
 
@@ -293,19 +300,19 @@ func _make(h: Node3D, kind: String, ex) -> void:
 	match kind:
 		"walk":
 			var s: Vector3 = ex
-			_m(h, Res.box(s), "concrete", Vector3(0, s.y * 0.5, 0), Color(0.6, 0.58, 0.54), Vector3.ZERO, false)
+			_m(h, Res.box(s), "concrete", Vector3(0, s.y * 0.5, 0), Color(0.6, 0.58, 0.54), Vector3.ZERO, false, true)
 		"curb":
 			var s: Vector3 = ex
-			_m(h, Res.box(s), "concrete", Vector3(0, s.y * 0.5, 0), Color(0.72, 0.71, 0.67), Vector3.ZERO, false)
+			_m(h, Res.box(s), "concrete", Vector3(0, s.y * 0.5, 0), Color(0.72, 0.71, 0.67), Vector3.ZERO, false, true)
 		"junction":
 			var s: Vector3 = ex
-			_m(h, Res.box(Vector3(s.x, 0.02, s.z)), "concrete_floor", Vector3(0, 0.032, 0), Color(0.31, 0.31, 0.3), Vector3.ZERO, false)
+			_m(h, Res.box(Vector3(s.x, 0.02, s.z)), "concrete_floor", Vector3(0, 0.032, 0), Color(0.31, 0.31, 0.3), Vector3.ZERO, false, true)
 		"zebra":
 			var wd := float(ex)
 			var n := 6
 			for i in n:
 				var z := -wd * 0.5 + (i + 0.5) * wd / n
-				_m(h, Res.box(Vector3(2.6, 0.01, wd / n * 0.5)), "paint", Vector3(0, 0.044, z), Color(0.86, 0.86, 0.82), Vector3.ZERO, false)
+				_m(h, Res.box(Vector3(2.6, 0.01, wd / n * 0.5)), "paint", Vector3(0, 0.044, z), Color(0.86, 0.86, 0.82), Vector3.ZERO, false, true)
 		"lamp":
 			if ex == 1:
 				_m(h, Res.cyl(0.08, 0.12, 6.0, 8), "wood_dark", Vector3(0, 3.0, 0))
@@ -527,20 +534,20 @@ func _make(h: Node3D, kind: String, ex) -> void:
 				_m(h, Res.cyl(0.65, 0.65, 1.2, 14), "fabric", Vector3(0, 1.85, 0), Color(0.72, 0.62, 0.3), Vector3(0, 0, PI * 0.5))
 		"drive":
 			var d2: Vector3 = ex
-			_m(h, Res.box(Vector3(d2.x, 0.03, d2.z)), "concrete_floor", Vector3(0, 0.015, 0), Color(0.36, 0.33, 0.29), Vector3.ZERO, false)
+			_m(h, Res.box(Vector3(d2.x, 0.03, d2.z)), "concrete_floor", Vector3(0, 0.015, 0), Color(0.36, 0.33, 0.29), Vector3.ZERO, false, true)
 		"path":
 			var p2: Vector3 = ex
-			_m(h, Res.box(Vector3(p2.x, 0.03, p2.z)), "earth", Vector3(0, 0.02, 0), Color(0.58, 0.52, 0.42), Vector3.ZERO, false)
+			_m(h, Res.box(Vector3(p2.x, 0.03, p2.z)), "earth", Vector3(0, 0.02, 0), Color(0.58, 0.52, 0.42), Vector3.ZERO, false, true)
 		"pave":
 			var pv: Vector3 = ex
-			_m(h, Res.box(Vector3(pv.x, 0.1, pv.z)), "floor_tiles", Vector3(0, 0.05, 0), Color(0.62, 0.58, 0.52), Vector3.ZERO, false)
+			_m(h, Res.box(Vector3(pv.x, 0.1, pv.z)), "floor_tiles", Vector3(0, 0.05, 0), Color(0.62, 0.58, 0.52), Vector3.ZERO, false, true)
 		"lot_pave":
 			var lp: Vector3 = ex
-			_m(h, Res.box(Vector3(lp.x, 0.04, lp.z)), "concrete_floor", Vector3(0, 0.025, 0), Color(0.13, 0.13, 0.13), Vector3.ZERO, false)
+			_m(h, Res.box(Vector3(lp.x, 0.04, lp.z)), "concrete_floor", Vector3(0, 0.025, 0), Color(0.13, 0.13, 0.13), Vector3.ZERO, false, true)
 			var slots := int(lp.x / 2.6)
 			for i in slots + 1:
 				var x := -lp.x * 0.5 + i * 2.6 + (lp.x - slots * 2.6) * 0.5
-				_m(h, Res.box(Vector3(0.08, 0.005, 4.6)), "paint", Vector3(x, 0.05, lp.y * 2.6), Color(0.85, 0.85, 0.8), Vector3.ZERO, false)
+				_m(h, Res.box(Vector3(0.08, 0.005, 4.6)), "paint", Vector3(x, 0.05, lp.y * 2.6), Color(0.85, 0.85, 0.8), Vector3.ZERO, false, true)
 
 
 func _bench(h: Node3D, o: Vector3) -> void:

@@ -225,6 +225,7 @@ func set_trench_mask(t: Texture2D) -> void:
 	for m in [ground_mat, road_mat]:
 		if m:
 			m.set_shader_parameter("trench_mask", t)
+	Mats.set_ground_maps(null, t)
 	if grass:
 		grass.set_trench_mask(t)
 
@@ -260,6 +261,7 @@ func _build_ground() -> void:
 	else:
 		deform_tex = ImageTexture.create_from_image(Image.create(4, 4, false, Image.FORMAT_RF))
 	ground_mat.set_shader_parameter("deform_tex", deform_tex)
+	Mats.set_ground_maps(deform_tex, null)
 	var step := 0.5 if int(Settings.get_v("lod")) >= 1 else 1.0
 	var cs := GROUND_HALF * 2.0 / GROUND_CHUNKS
 	var cm := _grid_mesh(cs, step)

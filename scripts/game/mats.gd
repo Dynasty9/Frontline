@@ -49,6 +49,47 @@ static func get_mat(kind: String) -> ShaderMaterial:
 	return m
 
 
+## Paving - sidewalks, kerbs, the square, crossings, car parks: the material
+## with holes where the ground under it has been cratered or dug out, so a
+## shell hole in the square is a hole (and a man lying in it can be seen).
+static var _paving := {}
+static var _crater_tex: Texture2D = null
+static var _trench_tex: Texture2D = null
+
+
+static func paving(kind: String) -> ShaderMaterial:
+	if _paving.has(kind):
+		return _paving[kind]
+	var m := get_mat(kind).duplicate() as ShaderMaterial
+	m.set_shader_parameter("crater_cut", true)
+	m.set_shader_parameter("crater_half", MapDims.HALF)
+	if _crater_tex:
+		m.set_shader_parameter("crater_tex", _crater_tex)
+	if _trench_tex:
+		m.set_shader_parameter("trench_tex", _trench_tex)
+	_paving[kind] = m
+	return m
+
+
+## The ground's deformation and trench masks (the atmosphere hands them over
+## as they're made and remade); paving materials, and merged copies of them,
+## cut their holes from these.
+static func set_ground_maps(crater: Texture2D, trench: Texture2D) -> void:
+	if crater:
+		_crater_tex = crater
+	if trench:
+		_trench_tex = trench
+	var mats: Array = _paving.values()
+	for v in _vc_cache.values():
+		if v.get_shader_parameter("crater_cut") == true:
+			mats.append(v)
+	for m in mats:
+		if crater:
+			m.set_shader_parameter("crater_tex", crater)
+		if trench:
+			m.set_shader_parameter("trench_tex", trench)
+
+
 ## Applies a material to a mesh instance with an optional per-instance tint.
 static func apply(mi: GeometryInstance3D, kind: String, tint := Color(1, 1, 1)) -> GeometryInstance3D:
 	mi.material_override = get_mat(kind)
@@ -385,6 +426,11 @@ uniform float rust = 0.0;
 uniform bool local_space = false;
 uniform bool use_vcolor = false;
 uniform float vcolor_k = 1.0;  // merged parts: the vertex colour is stored scaled down (Mats.VC_K)
+// paving (Mats.paving): a shell hole or a trench punches through it, as through the roads
+uniform bool crater_cut = false;
+uniform sampler2D crater_tex : hint_default_black, filter_linear, repeat_disable;
+uniform sampler2D trench_tex : hint_default_black, filter_linear, repeat_disable;
+uniform float crater_half = 256.0;
 uniform sampler2D noise_tex : filter_linear_mipmap_anisotropic, repeat_enable;
 instance uniform vec4 tint : source_color = vec4(1.0);
 instance uniform vec3 pofs = vec3(0.0);
@@ -417,6 +463,12 @@ void vertex() {
 }
 
 void fragment() {
+	if (crater_cut) {
+		vec2 cuv = (wpos.xz + crater_half) / (crater_half * 2.0);
+		if (texture(crater_tex, cuv).r < -0.07 || texture(trench_tex, cuv).r > 0.5) {
+			discard;
+		}
+	}
 	vec3 an = abs(tn);
 	vec2 uv;
 	if (an.y > an.x && an.y > an.z) { uv = tp.xz; }
