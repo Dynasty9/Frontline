@@ -123,7 +123,7 @@ func scenario(sname: String) -> void:
 			for i in 3:
 				r.spawn_squad("fighter_cell", 1, b, Vector3(-12 + i * 12, 0, -30))
 			r.spawn_squad("rifle_squad", 0, a, Vector3(0, 0, 40))
-			r.support_ready = [{"airstrike": 0.0, "a10": 0.0, "ac130": 0.0, "artillery": 0.0}, {"barrage": 0.0, "mortars": 0.0}]
+			r.support_ready = [{"airstrike": 0.0, "a10": 0.0, "wipeout": 0.0, "ac130": 0.0, "blackfish": 0.0, "artillery": 0.0}, {"barrage": 0.0, "mortars": 0.0}]
 			r.call_support(-1, 0, "airstrike", Vector3(0, 0, -30))
 			r.call_support(-2, 1, "barrage", Vector3(30, 0, 30))
 		"showroom":

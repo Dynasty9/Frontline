@@ -332,7 +332,7 @@ func _call_support() -> void:
 	if ability.begins_with("demo:"):
 		world.send_cmd({"t": "demo_support", "kind": k, "pos": ab_gp, "dir": dir})
 		# frame the show: aircraft need room to be seen coming in
-		var want: float = float({"a10": 80.0, "airstrike": 80.0, "ac130": 105.0}.get(k, 0.0))
+		var want: float = float({"a10": 80.0, "wipeout": 80.0, "airstrike": 80.0, "ac130": 105.0, "blackfish": 100.0}.get(k, 0.0))
 		if world.cam and float(want) > world.cam.target_dist:
 			world.cam.target_dist = float(want)
 			world.cam.focus(ab_gp)

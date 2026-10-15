@@ -619,13 +619,18 @@ const AC_GUNS := {
 
 
 func _ac_pos(t: float) -> Vector3:
-	var a := fuse + t * AC_SPEED / AC_R
+	var a := fuse - t * AC_SPEED / AC_R  # a left-hand orbit: the target off the port wing, where the guns are
 	return target + Vector3(cos(a) * AC_R, AC_ALT, sin(a) * AC_R)
 
 
 ## Other orbiting aircraft's weapons: a VTOL gunship's 30 mm and rockets, an
 ## armed drone's guided missiles (they come down like shells, steeply).
 const GUNSETS := {
+	"blackfish": {
+		"ac105": {"every": 5.2, "burst": 1, "gap": 0.0, "T": 2.4, "spread": 2.8, "snd": "ac105", "vol": 4.0},
+		"ac40": {"every": 2.6, "burst": 3, "gap": 0.4, "T": 1.7, "spread": 2.4, "snd": "ac40", "vol": 0.0},
+		"ac25": {"every": 3.2, "burst": 16, "gap": 0.06, "T": 1.3, "spread": 3.4, "snd": "", "vol": 0.0},
+	},
 	"xian": {
 		"ac25": {"every": 2.6, "burst": 10, "gap": 0.09, "T": 1.3, "spread": 3.0, "snd": "", "vol": 0.0},
 		"grad": {"every": 5.0, "burst": 4, "gap": 0.25, "T": 1.6, "spread": 4.5, "snd": "", "vol": 0.0},
@@ -697,7 +702,7 @@ func _ac130_view(dt: float) -> void:
 	var fw := (_ac_pos(life_t + 0.1) - _ac_pos(life_t)).normalized()
 	if absf(fw.y) < 0.98:
 		model.look_at(model.global_position + fw, Vector3.UP)
-		model.rotate_object_local(Vector3(0, 0, 1), -0.42)  # banked into the turn, guns on the target
+		model.rotate_object_local(Vector3(0, 0, 1), 0.42)  # banked left into the turn, the guns on the target
 	if _vm:
 		for w in _vm.wheels:
 			(w as Node3D).rotate_object_local(Vector3(0, 0, 1), dt * 40.0)

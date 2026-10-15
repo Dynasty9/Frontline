@@ -131,12 +131,18 @@ var SUPPORT := {
 	"airstrike": {"name": "F/A-181 Black Wasp II Strike", "team": 0, "cost": 220, "cooldown": 120.0, "shape": "line", "r": 4.0, "fly": "jet", "model": "blackwasp", "bombs": 4,
 		"pattern": "F/A-181 Black Wasp II (Super Hornet / F-22 hybrid), four 500 lb bombs",
 		"desc": "A stealth fighter runs in and drops a stick of four bombs across the spot. Devastating in the open. Drag to set the run-in direction."},
-	"a10": {"name": "A-164 Wipeout Gun Run", "team": 0, "cost": 260, "cooldown": 150.0, "shape": "strafe", "r": 20.0, "fly": "a10", "model": "wipeout",
-		"pattern": "A-164 Wipeout (A-10 Thunderbolt II), 30 mm GAU-8 Avenger",
+	"a10": {"name": "A-10C Thunderbolt II Gun Run", "team": 0, "cost": 260, "cooldown": 150.0, "shape": "strafe", "r": 20.0, "fly": "a10", "model": "a10",
+		"pattern": "Fairchild Republic A-10C Thunderbolt II, 30 mm GAU-8/A Avenger",
+		"desc": "The Warthog comes in low and walks a burst of 30 mm through the spot: the impacts first, then the BRRRT. Drag to set the strafing line."},
+	"wipeout": {"name": "A-164 Wipeout Gun Run", "team": 0, "cost": 250, "cooldown": 140.0, "shape": "strafe", "r": 20.0, "fly": "a10", "model": "wipeout",
+		"pattern": "A-164 Wipeout (Arma's A-10 successor), 30 mm GAU-8 Avenger",
 		"desc": "The Wipeout walks a burst of 30 mm through the spot. You'll see it, and the impacts, before you hear it. Drag to set the strafing line."},
-	"ac130": {"name": "V-44X Blackfish Gunship", "team": 0, "cost": 420, "cooldown": 240.0, "shape": "orbit", "r": 38.0, "fly": "orbit", "model": "blackfish_armed", "guns": "ac130",
+	"ac130": {"name": "AC-130U Spooky Gunship", "team": 0, "cost": 420, "cooldown": 240.0, "shape": "orbit", "r": 38.0, "fly": "orbit", "model": "ac130", "guns": "ac130",
+		"pattern": "Lockheed AC-130U Spooky II: 105 mm M102 howitzer, 40 mm Bofors, 25 mm GAU-12 Equalizer",
+		"desc": "Spooky orbits overhead for 25 seconds, port wing down, hunting anything in the circle with its side-firing 105, 40 and 25 mm. You hear the guns, then the rounds arrive."},
+	"blackfish": {"name": "V-44X Blackfish Gunship", "team": 0, "cost": 380, "cooldown": 220.0, "shape": "orbit", "r": 34.0, "fly": "orbit", "model": "blackfish_armed", "guns": "blackfish",
 		"pattern": "V-44X Blackfish (enlarged V-22 / V-280 tiltrotor), 105 mm howitzer, 40 mm and 20 mm cannon",
-		"desc": "The tiltrotor gunship orbits overhead for 25 seconds hunting anything in the circle with 105 mm, 40 mm and 20 mm. You hear the guns, then the rounds arrive."},
+		"desc": "The tiltrotor gunship orbits overhead for 25 seconds hunting anything in the circle with 105 mm, 40 mm and 20 mm - fewer heavy rounds than Spooky, and cheaper."},
 	"buzzard": {"name": "A-143 Buzzard Strafe", "team": 0, "cost": 170, "cooldown": 110.0, "shape": "strafe", "r": 16.0, "fly": "a10", "model": "buzzard",
 		"pattern": "A-143 Buzzard (Aero L-159 ALCA), twin 20 mm gun pod", "desc": "The allied light attack jet strafes the line with its 20 mm gun pod. Cheaper and lighter than the Wipeout. Drag to set the strafing line."},
 	"gryphon": {"name": "A-149 Gryphon Precision Strike", "team": 0, "cost": 200, "cooldown": 130.0, "shape": "line", "r": 4.0, "fly": "jet", "model": "gryphon", "bombs": 2,
@@ -160,7 +166,7 @@ var SUPPORT := {
 	"smoke": {"name": "Smoke Screen", "team": -1, "cost": 0, "cooldown": 0.0, "shape": "circle", "r": 14.0,
 		"desc": "Mortar smoke rounds screen the area (observer demo)."},
 }
-const DEMO_SUPPORT := ["a10", "ac130", "airstrike", "buzzard", "gryphon", "greyhawk", "sentinel", "neophron", "shikra", "xian", "artillery", "barrage", "mortars", "smoke"]
+const DEMO_SUPPORT := ["a10", "wipeout", "ac130", "blackfish", "airstrike", "buzzard", "gryphon", "greyhawk", "sentinel", "neophron", "shikra", "xian", "artillery", "barrage", "mortars", "smoke"]
 
 
 ## The Arma 3 roster joins the original vehicles; the Factory and the Helipad

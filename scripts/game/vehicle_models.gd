@@ -41,6 +41,11 @@ static func build(kind: String, team: int, seed: int, is_burnt := false) -> Vehi
 	var mk := kind
 	if Defs.VEHICLES.has(kind):
 		mk = String(Defs.VEHICLES[kind].get("model", kind))
+	# the aircraft builders in scripts/game/vehicles/ come first: until one of
+	# them builds a key, the older model below stands
+	if VmGunship.build(k, mk, team, seed) or VmAttack.build(k, mk, team, seed) or VmFighter.build(k, mk, team, seed):
+		k._merge_parts(k.root, Vector3.ZERO)
+		return k
 	match mk:
 		"tank":
 			k._tank(team)
@@ -55,7 +60,7 @@ static func build(kind: String, team: int, seed: int, is_burnt := false) -> Vehi
 		"humvee":
 			k._humvee(team)
 		"jet":
-			k._jet(team)
+			k._jet(team)  # (superseded by VmFighter once it builds one)
 		"a10":
 			k._a10(team)
 		"ac130":

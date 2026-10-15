@@ -92,7 +92,7 @@ const PATTERN := {
 	"gunship": "AH-64 Apache class attack helicopter", "aa_tech": "pickup carrying a ZU-23-2",
 	"heli": "UH-60 Black Hawk class utility helicopter", "truck": "4x4 cargo truck",
 	"airstrike": "F-16 class strike jet, four 500 lb bombs", "a10": "A-10C Thunderbolt II, GAU-8 Avenger 30 mm",
-	"ac130": "AC-130J Ghostrider: 105 mm howitzer, 30 mm and 25 mm cannon", "artillery": "M777 155 mm howitzers, off-map",
+	"ac130": "AC-130U Spooky II: 105 mm M102 howitzer, 40 mm Bofors, 25 mm GAU-12", "artillery": "M777 155 mm howitzers, off-map",
 	"barrage": "BM-21 Grad, 122 mm rockets", "mortars": "82 mm mortar battery",
 	"mg_nest": "M240B on M192 (Coalition) / PKM on tripod (Rebels); placed on a trench it becomes a gun bay",
 	"hmg_nest": "M2HB on the M3 tripod (Coalition) / DShKM with a gun shield (Rebels); placed on a trench it becomes a gun bay",
@@ -517,7 +517,7 @@ func _show_model(e: Dictionary) -> void:
 		ab = AABB(Vector3(-1, 0, -1), Vector3(2, 2, 2))
 	# stand it on the floor (aircraft are built round their fuselage, so they
 	# fly a little above it)
-	var lift := -ab.position.y + (1.2 if String(e.cat) == "support" and ab.size.x > 6.0 else 0.0)
+	var lift := -ab.position.y + (1.2 if String(e.cat) == "support" and ab.size.x > 6.0 and not m.has_meta("on_gear") else 0.0)
 	m.position.y = lift
 	ab.position.y += lift
 	_focus = ab.get_center()
@@ -593,15 +593,11 @@ func _make_model(e: Dictionary) -> Node3D:
 		"drills":
 			return _drill_diorama(String(e.key), side if side >= 0 else 0)
 		"model":
-			return VehicleModels.build(String(e.key), side if side >= 0 else 0, 7).root
+			return _on_the_ground(VehicleModels.build(String(e.key), side if side >= 0 else 0, 7).root)
 		"support":
 			var smk := String(Defs.SUPPORT.get(e.key, {}).get("model", ""))
 			if smk != "":
-				var sm := VehicleModels.build(smk, 0 if int(e.team) != 1 else 1, 3).root
-				var glow := sm.get_node_or_null("Afterburner")
-				if glow:
-					glow.visible = false  # the exhaust glow is for flight
-				return sm
+				return _on_the_ground(VehicleModels.build(smk, 0 if int(e.team) != 1 else 1, 3).root)
 			match String(e.key):
 				"airstrike":
 					var jm := VehicleModels.build("jet", 0, 3).root
@@ -610,14 +606,26 @@ func _make_model(e: Dictionary) -> Node3D:
 						ab_node.visible = false  # the exhaust glow is for flight
 					return jm
 				"a10":
-					return VehicleModels.build("a10", 0, 3).root
+					return _on_the_ground(VehicleModels.build("a10", 0, 3).root)
 				"ac130":
-					return VehicleModels.build("ac130", 0, 3).root
+					return _on_the_ground(VehicleModels.build("ac130", 0, 3).root)
 				"mortars":
 					return Structure.preview_model("mortar_pit", 1)
 				_:
 					return _shells(String(e.key))
 	return null
+
+
+## An aircraft on display: gear down if it has any, the exhaust glow off.
+func _on_the_ground(root: Node3D) -> Node3D:
+	var gear := root.find_child("Gear", true, false)
+	if gear:
+		(gear as Node3D).visible = true
+		root.set_meta("on_gear", true)
+	var glow := root.get_node_or_null("Afterburner")
+	if glow:
+		glow.visible = false  # the exhaust glow is for flight
+	return root
 
 
 func _soldier(ut: String, side: int, act: int, sd := 7) -> Node3D:
