@@ -587,6 +587,8 @@ func _a10_view(dt: float) -> void:
 		model.look_at(model.global_position + fw, Vector3.UP)
 	var firing := along >= A10_FIRE_AT and along < A10_FIRE_AT + A10_BURST * A10_SPEED
 	var nose := position + fw * 7.6 + Vector3(0, -0.3, 0)
+	if _vm and _vm.mg_tip and is_instance_valid(_vm.mg_tip) and _vm.mg_tip.is_inside_tree():
+		nose = _vm.mg_tip.global_position  # the model's own gun muzzle
 	if _gun_smoke:
 		_gun_smoke.emitting = firing
 		_gun_smoke.global_position = nose

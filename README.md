@@ -328,10 +328,11 @@ Settings are saved to `user://settings.cfg`.
 - Armour classes: soft-skinned pickups and trucks bleed from rifle fire; light armour (Humvee, helicopters) shrugs
   it off and needs .50 cals, cannons, AA or rockets; tanks only fear anti-tank weapons.
 - **Off-map support**, from minute five, each on its own cooldown:
-  - Coalition: **F/A-181 Black Wasp II strike** (a stick of four high-drag bombs across the spot), **A-164
-    Wipeout gun run** (comes in low and visible, nose down, and walks a burst of 30 mm through the target: the
-    impacts land first, the BRRRT arrives after), **V-44X Blackfish gunship** (orbits for 25 seconds hunting
-    anything in the circle with 105, 40 and 20 mm), **A-143 Buzzard** strafe, **A-149 Gryphon** precision strike,
+  - Coalition: **F/A-181 Black Wasp II strike** (a stick of four high-drag bombs across the spot), **A-10C
+    Thunderbolt II** and **A-164 Wipeout gun runs** (in low and visible, nose down, walking a burst of 30 mm
+    through the target: the impacts land first, the BRRRT arrives after), **AC-130U Spooky** and the cheaper
+    **V-44X Blackfish** gunships (a left-hand orbit, port wing down, for 25 seconds, hunting anything in the
+    circle with the side-firing 105, 40 and 25/20 mm), **A-143 Buzzard** strafe, **A-149 Gryphon** precision strike,
     **MQ-4A Greyhawk** drone (circles firing guided missiles), **UCAV Sentinel** (two bombs, no warning to the
     enemy), **155 mm artillery** (eight heavy shells, visible arcs and a tearing whistle).
   - Rebels: **To-199 Neophron** strafe, **To-201 Shikra** bomb run, **Y-32 Xi'an** gunship orbit, **rocket barrage**
@@ -498,7 +499,8 @@ game/grass.gd           instanced grass, bushes and stones
 game/mats.gd            procedural surface uber-shader, foliage, camouflage netting
 game/vehicle_models.gd  lofted procedural vehicle models (also used for wrecks and the menu); dispatches to
 game/vehicles/          the Arma 3 models by family: vm_nato, vm_csat, vm_indep (AAF), vm_civ (FIA, Syndikat,
-                        civilian), vm_heli, vm_plane, vm_boat
+                        civilian), vm_heli, vm_plane, vm_boat; the support aircraft in vm_gunship (AC-130U,
+                        V-44X Blackfish), vm_attack (A-10C, A-164 Wipeout) and vm_fighter (F/A-181, F-16C)
 game/vehicle_roster.gd  the Arma 3 roster (stats, behaviour, tiers, patterns) and the Field Manual's garage
 game/director.gd        observer camera and time controls
 ui/hud.gd, menu.gd      interface; ui/settings_panel.gd, ui/perf_overlay.gd, ui/ui_kit.gd (shared style),
