@@ -1047,7 +1047,8 @@ func team_summary() -> Array:
 					if e.sq == s and int(e.team) < 0:
 						role = "support"
 				pl = s.plan.info() + [role]
-			sq[s.sid] = [s.shown_order if s.shown_order != "" else s.order, s.order_pos, s.facing, s.order_n, pl, int(maxf(s.morale, 0.0)), s.drill]
+			var shown: String = s.shown_order if s.shown_order != "" else ("defend" if not s.then_defend.is_empty() and s.order == "move" else ("bound" if s.technique == "bound" else s.order))
+			sq[s.sid] = [shown, s.order_pos, s.facing, s.order_n, pl, int(maxf(s.morale, 0.0)), s.drill]
 		# intelligence: every enemy the team knows about, freshest report each
 		var intel := {}
 		for s in world.squads.values():

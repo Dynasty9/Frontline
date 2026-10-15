@@ -55,6 +55,20 @@ const DRILLS := [
 		"Alone, it's a target", "A tank driving into a town or a wood on its own is a dead tank: it halts and shoots from where it is until its infantry catch up and deal with the rocket teams - or, after a while, pushes on regardless."],
 	["v_withdraw", "Pull back for repairs", Soldier.Post.STAND, Soldier.Act.IDLE, "tank", "Badly damaged (a third of its strength left)",
 		"Out of the fight while it's patched up", "The crew takes it back to the nearest FOB, where the mechanics patch it up (engineers and a repair truck do it faster), and it's ready for work again. A player can send it straight back in; the AI's waits until it's fixed."],
+	["s_bound", "Bounding overwatch", Soldier.Post.CROUCH, Soldier.Act.RUN, "", "Moving where contact is likely (the enemy about, or seen near where it's going)",
+		"Slower: half the squad is always down", "The squad splits into its two fire teams. One goes firm - down, spread out, each man watching his sector - while the other dashes 30-odd metres to the next cover; then it goes firm and the first team bounds through, past it. Nobody is ever caught in the open without a team covering him. Out of contact it travels in its wedge instead; ordered to run (Shift) it just runs."],
+	["s_recon", "Recon by fire", Soldier.Post.CROUCH, Soldier.Act.SHOOT, "", "Bounding past where the enemy was last heard or seen",
+		"Gives your own position away", "The covering team's gunner puts a burst or two into the treeline, hedge or house where the enemy was last heard: anyone lying in wait there either fires back - and shows himself - or keeps his head down while the others move."],
+	["s_occupy", "Moving in, clearing", Soldier.Post.STAND, Soldier.Act.IDLE, "door", "Sent to hold ground a way off, with the enemy about",
+		"A room nobody checked", "It gets there as a squad first - in its wedge, or by bounds - and only then spreads into its positions. Any house on the ground it's taking is cleared first: two men stack on the door, kick it in and go through, room by room - a grenade first only if someone's known to be in there - and call it: \"Clear!\""],
+	["s_road_ambush", "Laying an ambush", Soldier.Post.PRONE, Soldier.Act.IDLE, "wall", "(The AI) a road the enemy uses - his supply trucks, his squads",
+		"Found before it's sprung", "The squad moves to a rally point back from the road, then into position: the assault line 20-odd metres off the road in cover, the gun at one end firing down the killing zone (an L), a man out on the flank watching the way they'll come. Nobody fires until they're in the killing zone - then everyone at once, rockets at the vehicles. After a short, violent burst: smoke, and away before the enemy recovers (insurgents just melt away). Nobody comes, and after a few minutes it's given up."],
+	["s_near", "Near ambush", Soldier.Post.STAND, Soldier.Act.RUN, "", "Ambushed at close range, steady, not hopelessly outnumbered",
+		"Charging guns", "Lying down in the killing zone is death. A squad hit from 30 metres or less that still has its nerve assaults straight into the ambush - fire and movement, through and out the other side. Further off, or too many of them, it goes to ground and fights it out."],
+	["s_straggler", "Stragglers", Soldier.Post.STAND, Soldier.Act.WALK, "", "The last man of a squad, nobody left to look after",
+		"Alone he's no use to anyone", "The last man standing of a squad doesn't fight on alone: he attaches himself to the nearest friendly squad and fights as one of them."],
+	["v_bail", "Bail out", Soldier.Post.STAND, Soldier.Act.RUN, "bail", "A vehicle knocked out",
+		"Few get out when the ammunition goes up", "The crew - those who live through it - bail out of the hatches, burnt and shaken, and run for the nearest FOB: a trained crew is worth more than the tank. Back there they crew the next one (a little of the vehicle's cost comes back). Running across the battlefield with only their carbines, they're easy meat."],
 	["s_winded", "Out of breath", Soldier.Post.STAND, Soldier.Act.WINDED, "", "After sprinting, rushing or dragging a man",
 		"Slow and shaky when it matters", "A sprint or a long rush leaves a man blown - slower on his feet, the muzzle heaving with his breathing - until he gets a breather, quicker lying or kneeling than standing. Long moves at a run arrive winded; a walk keeps men fresh."],
 ]
@@ -834,7 +848,7 @@ func _drill_diorama(key: String, side: int) -> Node3D:
 			var sw := Structure.preview_model("house_wall", -1, 2, Vector3(4.6, 2.0, 0.4), true)
 			sw.position = Vector3(0, 0, -0.95)
 			g.add_child(sw)
-	var spd := 5.3 if key == "s_morale" else 0.0  # running for it
+	var spd: float = {"s_morale": 5.3, "s_near": 5.3, "s_bound": 4.6, "s_straggler": 1.6}.get(key, 0.0)  # running for it, or walking
 	for i in 12:
 		sm.pose(0.3 if spd == 0.0 else 0.07, 0, d[2], d[3], spd, false, d[3] == Soldier.Act.SHOOT)
 	g.add_child(sm)
@@ -873,6 +887,16 @@ func _crew_diorama(what: String, side: int) -> Node3D:
 				puff.material_override = sm2
 				puff.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 				g.add_child(puff)
+	elif what == "bail":
+		# the crew scrambling away from it
+		for i in 2:
+			var cm := SoldierModel.new()
+			cm.build("crewman" if side != 1 else "r_crewman", side, 41 + i)
+			for k in 12:
+				cm.pose(0.07, 0, Soldier.Post.STAND, Soldier.Act.RUN, 5.0, false, false)
+			cm.position = Vector3(3.2 + i * 1.1, 0, 1.0 + i * 1.8)
+			cm.rotation.y = PI * 0.8
+			g.add_child(cm)
 	elif what == "tank_inf":
 		for i in 3:
 			var sm := SoldierModel.new()
@@ -1050,7 +1074,9 @@ func _build_entries() -> Array:
 		if int(u.get("drones", 0)) > 0:
 			kit.append("%d FPV drones" % int(u.drones))
 		var role := "rifleman"
-		if u.get("medic", false):
+		if u.get("crew", false):
+			role = "vehicle crew"
+		elif u.get("medic", false):
 			role = "medic"
 		elif u.get("engineer", false):
 			role = "engineer"

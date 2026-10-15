@@ -159,6 +159,20 @@ Settings are saved to `user://settings.cfg`.
   quiet, a leader, friends close by, a tank alongside and a hole in the ground build it back; dropping enemies
   lifts it. Steady, it fights as it should; shaken, it shoots worse and is pinned sooner; breaking, it breaks
   contact; routed, it runs for the rear and won't take orders until it has rallied. The squad card shows it.
+- **Moving tactically** (`tactics.gd`). Out of contact a squad travels in its wedge; where contact is likely
+  (the enemy about lately, or seen near where it's going) it moves by *bounding overwatch*: one fire team goes
+  firm - down, spread out, watching its sectors - while the other dashes 30-odd metres to the next cover, then
+  they leapfrog, so nobody is ever in the open without a team covering him. The covering team's gunner puts a
+  burst into the hedge or house where the enemy was last heard (*recon by fire*). Ordered to run (Shift) it
+  just runs. A squad sent to hold somewhere a long way off gets there as a squad, then spreads into its
+  positions - and *clears* any house on that ground first: two men stack on the door, kick it in, go through
+  (a grenade first only if someone's known to be inside) and call "Clear!".
+- **Near ambush.** Hit at 30 metres or less, a steady squad that isn't hopelessly outnumbered assaults straight
+  into the ambush instead of lying in the killing zone.
+- **Stragglers and crews.** The last man of a squad attaches himself to the nearest friendly squad. A knocked-out
+  vehicle's crew - those who live through it (few, if the ammunition goes up) - bail out in their coveralls and
+  crew helmets and run for the nearest FOB to crew the next one; a little of the vehicle's cost comes back if
+  they make it.
 - **Spotting.** It's movement and muzzle flash that give men away: a man lying still or in cover who hasn't
   fired for a while is seen at little more than two-thirds the range.
 - **Fatigue.** Sprints, rushes and dragging a man wear soldiers down: blown, they're slower and their aim
@@ -471,7 +485,12 @@ each posed - and what squads and vehicle crews do (battle drills, morale, drivin
 **AI commander** (`commander_ai.gd`): spare squads go forward to hold the town, the villages and the larger
 woods between its front and the enemy's, lying in wait, so the fighting is over the ground in between; a
 forward FOB falls due every few minutes and supply is held back for it (each FOB runs its own supply truck,
-so whoever expands first pulls ahead). Armoured vehicles fire their smoke dischargers when a missile, rocket
+so whoever expands first pulls ahead). It lays **ambushes** (`ambush_plan.gd`) on straight stretches of the
+roads the enemy uses - his supply track above all - where there's cover to lie in: the squad moves to a rally
+point back from the road, then into an L - the assault line 20-odd metres off the road, the gun at one end
+firing down the killing zone, a man watching the flank - and holds its fire until they're in it. A short,
+violent burst, then smoke and away (the Rebels, more often ambushers, simply melt away); an ambush nobody
+walks into is given up after a few minutes, and one bumped on the way is called off. Armoured vehicles fire their smoke dischargers when a missile, rocket
 or recoilless round is launched at them, and a guided missile whose operator loses sight of its target in the
 smoke flies on blind.
 
@@ -496,6 +515,8 @@ game/soldier_brain.gd   the soldier's behaviour tree: reflexes (grenades, shells
 game/bt.gd              a small behaviour tree (selector, sequence, condition, action, cooldown)
 game/squad.gd           shared knowledge, rescues, smoke, surrender, auto-engineering
 game/squad_brain.gd     the squad's behaviour tree: battle drills, morale, fire discipline, ammo sharing
+game/tactics.gd         moving tactically (bounding overwatch, recon by fire), clearing houses, near ambush, stragglers, crews
+game/ambush_plan.gd     a deliberate road ambush: rally point, the L, the killing zone, spring, withdraw
 game/vehicle_brain.gd   the vehicle crew's behaviour tree: smoke and back out, front armour on, wait for infantry, repairs
 game/map_dims.gd        the map's size, which everything sized to the map derives from
 game/combat.gd          LOS, bullets (penetrating soft cover), suppression, explosions, choosing cover
@@ -579,6 +600,8 @@ Pass these after `--` on the command line:
 --pan=VX,VZ / --set=key:value,...                     drift the camera (shimmer tests) / override single settings
 --scenario=guns                                       every machine-gun emplacement and trench bay, crewed, with targets
 --scenario=roster                                     every vehicle both sides can field, facing off across the map
+--scenario=tactics                                    a rifle squad and an MG team sent 120 m up to hold a hamlet with the
+                                                      enemy about: they bound there by teams and clear the houses
 --scenario=breach                                     a fighter cell holed up in a house; two rifle squads and a gun team clear it
 --scenario=gdrill                                     grenade drill: frags with all sorts of fuses land among a squad round its wounded
 --model-sheet=KEYS|FAMILY --sheet-dir=DIR [--side=1] [--sheet-yaw=R]   turntable shots of models (nato, csat, indep, civ, heli, plane, boat, all)

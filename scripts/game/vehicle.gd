@@ -1266,6 +1266,7 @@ func _destroyed() -> void:
 		props["tilt"] = plan[2]
 		if (plan[3] as Vector3).length() > 0.3:
 			props["toss"] = [p, y, plan[3], plan[4]]
+	_bail_out(-hp)
 	var w := world
 	world.despawn(self)
 	var wst = w.spawn("structure", props)
@@ -1274,6 +1275,39 @@ func _destroyed() -> void:
 			if is_instance_valid(wst) and not wst.gone:
 				wst.toss = null
 				w.push_props(wst, {"toss": null}))
+
+
+## The crew - those who live through it - bail out of the hatches, burnt and
+## shaken, and run for the nearest FOB to crew another (Tactics.crew_tick).
+## A catastrophic kill (ammunition going up) leaves few.
+func _bail_out(overkill: float) -> void:
+	if is_heli() or is_auto() or base() in ["supply", "uav", "ugv", "attack_heli", "lift_heli"]:
+		return
+	var n: int = int(vdef.get("crew", {"tank": 3, "afv": 3, "car": 2, "spaa": 2}.get(base(), 2)))
+	var p_live := 0.2 if overkill > max_hp * 0.35 else 0.6
+	var sq: Squad = null
+	for i in n:
+		if world.rng.randf() > p_live:
+			continue
+		if sq == null:
+			sq = world.new_squad(team, owner_peer, "crew" if team == 0 else "r_crew")
+		var off := Defs.dir_of(rotation.y + PI * 0.5) * (1.7 if i % 2 == 0 else -1.7) + Defs.dir_of(rotation.y) * (i - 1) * 1.3
+		var sp := world.nav.nearest_walkable(position + off)
+		var s: Soldier = world.spawn("soldier", {"utype": "crewman" if team == 0 else "r_crewman", "team": team, "owner": owner_peer, "pos": sp,
+			"yaw": rotation.y, "squad": sq.sid, "name": world.rules.random_name(team)})
+		sq.add(s)
+		s.hp = s.max_hp * world.rng.randf_range(0.35, 0.85)  # burnt, cut, concussed
+	if sq == null:
+		world.stat("crew_lost")
+		return
+	sq.order_pos = position
+	sq.bt_cd["refund"] = int(float(vdef.get("cost", 0)) * 0.12 * sq.members.size() / maxf(1.0, n))
+	sq.bt_cd["crew_n"] = sq.order_n
+	(sq.members[0] as Soldier).say("Bail out! Bail out!" if team == 0 else "Out! Get out, it's burning!", true)
+	if not is_auto():
+		world.send_msg(team, "alert", "%s crew bailed out - %d of %d made it." % [display_name(), sq.members.size(), n], position)
+	world.stat("crew_bailout")
+	Tactics.crew_tick(sq)
 
 
 ## How a blast moves this kind of vehicle: [shove (m/s per unit of blast),

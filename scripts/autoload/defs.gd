@@ -73,6 +73,8 @@ var UNITS := {
 	"fpv_op": {"name": "FPV Operator", "team": 1, "weapon": "pistol", "hp": 90.0, "frags": 0, "smokes": 1, "build": 1.0, "heal": 1.0, "drones": 4},
 	"mortar_gunner": {"name": "Mortarman", "team": 0, "weapon": "rifle", "hp": 100.0, "frags": 1, "smokes": 1, "build": 1.0, "heal": 1.0, "mortar": 16},
 	"r_mortar": {"name": "Mortarman", "team": 1, "weapon": "ak", "hp": 100.0, "frags": 1, "smokes": 1, "build": 1.0, "heal": 1.0, "mortar": 16},
+	"crewman": {"name": "Crewman", "team": 0, "weapon": "smg", "hp": 90.0, "frags": 0, "smokes": 1, "build": 1.0, "heal": 1.0, "crew": true},
+	"r_crewman": {"name": "Crewman", "team": 1, "weapon": "smg", "hp": 90.0, "frags": 0, "smokes": 0, "build": 1.0, "heal": 1.0, "crew": true},
 	"bearer": {"name": "Stretcher Bearer", "team": -1, "weapon": "", "hp": 100.0, "frags": 0, "smokes": 0, "build": 0.0, "heal": 1.5, "bearer": true},
 }
 
@@ -89,6 +91,8 @@ var SQUADS := {
 	"r_mortar_team": {"name": "Mortar Team", "team": 1, "cost": 90, "time": 11.0, "members": ["r_mortar", "fighter"], "desc": "Mobile mortar. Shells enemies your side has spotted, even behind cover. F = fire mission."},
 	"mech_team": {"name": "Mech Infantry", "team": 0, "cost": 0, "time": 0.0, "members": ["rifleman", "rifleman", "mg_gunner", "at_soldier"], "desc": "Rides in an IFV."},
 	"mech_cell": {"name": "Mech Cell", "team": 1, "cost": 0, "time": 0.0, "members": ["fighter", "fighter", "pkm", "rpg"], "desc": "Rides in a BTR."},
+	"crew": {"name": "Tank Crew", "team": 0, "cost": 0, "time": 0.0, "members": ["crewman", "crewman", "crewman"], "desc": "Bailed out of a knocked-out vehicle: they make for the nearest FOB, to crew another."},
+	"r_crew": {"name": "Tank Crew", "team": 1, "cost": 0, "time": 0.0, "members": ["r_crewman", "r_crewman", "r_crewman"], "desc": "Bailed out of a knocked-out vehicle: they make for the nearest FOB, to crew another."},
 	"fpv_team": {"name": "FPV Team", "team": 1, "cost": 100, "time": 12.0, "members": ["fpv_op", "fighter"], "desc": "Flies kamikaze drones into soldiers and tanks."},
 }
 

@@ -46,6 +46,7 @@ static func _build() -> BT.Branch:
 		BT.seq("withdrawing", [BT.cond("withdrawing", func(q): return q.drill == "withdraw"), BT.act("back by bounds", func(q): return withdraw_tick(q))]),
 		BT.seq("react to contact", [BT.cond("contact on the move", func(q): return contact_on_the_move(q)), BT.act("down, return fire, call it", func(q): return react_to_contact(q))]),
 		BT.seq("carry on", [BT.cond("the upper hand", func(q): return can_resume(q)), BT.act("move on", func(q): return resume(q))]),
+		BT.seq("clear the houses", [BT.cond("houses on our ground", func(q): return Tactics.can_clear(q)), BT.act("stack, kick, clear", func(q): return Tactics.start_clear(q))]),
 	])
 
 
@@ -452,6 +453,10 @@ static func contact_on_the_move(q: Squad) -> bool:
 static func react_to_contact(q: Squad) -> int:
 	var c := q.centroid()
 	var ed := enemy_dir(q)
+	q.halt_then = q.then_defend
+	if Tactics.near_ambush(q, q._nearest_threat(c, 40.0)):
+		return BT.OK
+	q.technique = ""
 	q.halt_dest = q.order_pos
 	q.halt_face = q.facing
 	q.halt_mode = q.move_mode_ord
@@ -502,6 +507,7 @@ static func resume(q: Squad) -> int:
 		q.order_assault(dest, q.halt_face, false)
 	else:
 		q.order_move(dest, q.halt_face, q.halt_mode)
+		q.then_defend = q.halt_then
 	q.world.stat("contact_resume")
 	return BT.OK
 

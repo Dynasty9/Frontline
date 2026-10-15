@@ -438,7 +438,7 @@ func _order_graphics(lt: int, a_far: float) -> void:
 			to = from + dd.normalized() * reach
 		var far := reach > 9.0
 		match String(o[0]):
-			"move":
+			"move", "bound":
 				if far:
 					_ground_path(from, to, tc.lightened(0.35), a * 0.8, grow, true, 2.0)
 			"retreat":
@@ -452,7 +452,7 @@ func _order_graphics(lt: int, a_far: float) -> void:
 			"attack":
 				if far:
 					_ground_path(from, to, Color(1.0, 0.45, 0.35), a, grow, false, 2.5)
-			"defend":
+			"defend", "ambush":
 				if far:
 					_ground_path(from, to, tc.lightened(0.35), a * 0.55, grow, true, 1.5)
 				if whole or dd.length() < 25.0:
@@ -623,6 +623,10 @@ static func _order_words(o: Array) -> String:
 			return "assault %s." % g
 		"defend":
 			return "dig in at %s." % g
+		"bound":
+			return "bound forward to %s." % g
+		"ambush":
+			return "lay an ambush at %s." % g
 		"retreat":
 			return "fall back."
 		"attack":
@@ -637,7 +641,7 @@ static func _order_words(o: Array) -> String:
 
 static func _order_tag(o: Array) -> String:
 	var k := String(o[0])
-	var words := {"move": "MOVE", "assault": "ASSAULT", "defend": "DEFEND", "retreat": "FALL BACK", "attack": "ENGAGE", "build": "BUILD", "hold": "HOLD", "tunnel": "TUNNELS"}
+	var words := {"move": "MOVE", "assault": "ASSAULT", "defend": "DEFEND", "retreat": "FALL BACK", "attack": "ENGAGE", "build": "BUILD", "hold": "HOLD", "tunnel": "TUNNELS", "bound": "BOUND", "ambush": "AMBUSH"}
 	return String(words.get(k, k.to_upper())) + ("" if k in ["retreat", "hold", "tunnel"] else "  " + Defs.grid_ref(o[1]))
 
 ## Speech: comic bubbles close up (light for banter, dark for shouts, red for

@@ -367,6 +367,27 @@ func scenario(sname: String) -> void:
 				_spawn("low_wall", Vector3(-2 + i * 4.2, 0, -16), 0.0, -1, {"size": Vector3(4, 1, 0.5)})
 			r.spawn_squad("rifle_squad", 0, a, Vector3(0, 0, 0), Vector3(0, 0, -6))
 			r.spawn_squad("fighter_cell", 1, b, Vector3(0, 0, -40), Vector3(0, 0, -20))
+		"tactics":
+			# a rifle squad sent 120 m up to hold a hamlet, with the enemy
+			# reported about: it bounds there by teams and clears the houses
+			doors_shut = 1
+			_house(Vector3(-6, 0, -82), 8.0, 6.0, 0.0, 1.0, false, 0.0)
+			_house(Vector3(9, 0, -84), 7.0, 6.0, 0.0, 1.0, false, 0.0)
+			doors_shut = -1
+			for i in 4:
+				_try("tree", Vector3(-30 + i * 2.5, 0, -40 - i * 4.0), 0.0, -1)
+			_spawn("low_wall", Vector3(14, 0, -45), 0.0, -1, {"size": Vector3(4, 1, 0.5)})
+			var tq := r.spawn_squad("rifle_squad", 0, a, Vector3(0, 0, -2))
+			var tm := r.spawn_squad("mg_team", 0, a, Vector3(6, 0, 0))
+			for q2 in [tq, tm]:
+				q2.alert_t = 1.0  # shots heard up ahead
+				q2.heard.append([Vector3(-20, 0, -110), 1.0])
+			if not world.settings.get("static", false):
+				world.get_tree().create_timer(1.5, true, true).timeout.connect(func():
+					tq.alert_t = world.time
+					tm.alert_t = world.time
+					tq.order_defend(Vector3(0, 0, -80), Vector3(0, 0, -1))
+					tm.order_defend(Vector3(14, 0, -76), Vector3(0, 0, -1)))
 		"breach":
 			# a fighter cell holed up in a house (doors shut); a rifle squad sent to clear it
 			doors_shut = 1

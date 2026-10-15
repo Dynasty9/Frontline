@@ -125,6 +125,13 @@ func build(utype: String, team: int, seed: int) -> void:
 	var pocket := pants.darkened(0.07)
 	var scarf: Color = [Color(0.52, 0.47, 0.38), Color(0.28, 0.28, 0.26), Color(0.4, 0.17, 0.14), Color(0.34, 0.35, 0.27)][rng.randi() % 4]
 	var bearer := utype == "bearer"
+	var crew: bool = Defs.UNITS.has(utype) and Defs.UNITS[utype].get("crew", false)
+	if crew:
+		# a vehicle crewman: one-piece coveralls, a light vest
+		shirt = Res.vary(Color(0.36, 0.36, 0.28) if team == 0 else Color(0.2, 0.2, 0.19), 0.02, rng)
+		pants = shirt
+		vest = vest.darkened(0.1)
+		pocket = pants.darkened(0.07)
 
 	root = Node3D.new()
 	add_child(root)
@@ -240,7 +247,20 @@ func build(utype: String, team: int, seed: int) -> void:
 		ear.scale = Vector3(0.5, 1.0, 0.8)
 	var brow := skin.darkened(0.3)
 	Res.mi(head, Res.box(Vector3(0.13, 0.014, 0.025)), Res.mat(brow), Vector3(0, 0.146, -0.099), Vector3.ZERO, false)
-	if team == 0:
+	if crew:
+		# a padded crew helmet (CVC): a soft dome, thick ear cups for the
+		# intercom, the boom mike in front of his mouth
+		var cvc: Color = Color(0.28, 0.29, 0.23) if team == 0 else Color(0.14, 0.14, 0.13)
+		var ch := Res.mi(head, Res.dome(0.14, 12), Res.mat(cvc), Vector3(0, 0.135, 0.01), Vector3.ZERO, false)
+		ch.scale = Vector3(1.0, 0.95, 1.1)
+		# the padded brow roll
+		var roll := Res.mi(head, Res.cyl(0.146, 0.15, 0.03, 12), Res.mat(cvc.darkened(0.2)), Vector3(0, 0.15, 0.01), Vector3.ZERO, false)
+		roll.scale = Vector3(1.0, 1.0, 1.1)
+		for sx in [-1.0, 1.0]:
+			Res.mi(head, Res.cyl(0.055, 0.055, 0.055, 10), Res.mat(cvc.darkened(0.15)), Vector3(sx * 0.12, 0.11, 0.0), Vector3(0, 0, PI / 2), false)
+		Res.mi(head, Res.box(Vector3(0.012, 0.012, 0.11)), Res.mat(dark), Vector3(-0.1, 0.07, -0.07), Vector3(0, 0.6, 0), false)
+		Res.mi(head, Res.sphere(0.016, 6), Res.mat(dark), Vector3(-0.055, 0.065, -0.115), Vector3.ZERO, false)
+	elif team == 0:
 		# modern helmet: a cut-high dome with its rim and rails, NVG mount,
 		# headset over the ears, goggles strapped round the back; eye pro
 		var hm := Res.mi(head, Res.dome(0.146, 14), Res.mat(hat), Vector3(0, 0.13, 0.012), Vector3.ZERO, false)

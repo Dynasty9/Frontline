@@ -497,6 +497,14 @@ func squad_state(sid: int, mem: Array) -> Dictionary:
 				out.text = "Moving to " + g
 				out.glyph = "move"
 				out.col = UiKit.TEXT
+			"bound":
+				out.text = "Bounding to " + g
+				out.glyph = "move"
+				out.col = UiKit.TEXT
+			"ambush":
+				out.text = "Ambush at " + g
+				out.glyph = "defend"
+				out.col = MapSymbols.ORDER_COLORS["defend"]
 			"assault":
 				out.text = "Attacking " + g
 				out.glyph = "assault"

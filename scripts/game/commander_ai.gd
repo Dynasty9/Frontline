@@ -690,8 +690,8 @@ func _military(sqs: Array) -> void:
 	for sq in sqs:
 		if _is_engineer_squad(sq) and sq.kind in ["engineer_team", "digger_team"]:
 			continue
-		if sq.alive_members().is_empty():
-			continue
+		if sq.alive_members().is_empty() or sq.kind in ["crew", "r_crew"]:
+			continue  # (a crew that bailed out is on its way back to the vehicle park)
 		fighters.append(sq)
 	# retreat battered squads
 	for sq in fighters:
@@ -815,19 +815,45 @@ func _military(sqs: Array) -> void:
 					vids2.append(v.eid)
 			if not vids2.is_empty():
 				_cmd({"t": "move", "vehicles": vids2, "pos": f2.position + _enemy_dir() * 15.0})
-	# ambush enemy supply trucks
-	if t > ambush_t:
-		ambush_t = t + rng.randf_range(120.0, 200.0)
-		var spot2 := _ambush_spot()
-		if spot2 != Vector3.INF:
-			for sq in attackers:
-				if roles.get(sq.sid, {}).get("role", "idle") == "idle":
-					roles[sq.sid] = {"role": "ambush", "t": t}
-					_cmd({"t": "defend", "squads": [sq.sid], "pos": spot2})
-					break
+	# lay an ambush on a road they use (their supply trucks, their squads)
+	var lying := 0
 	for sid in roles.keys():
-		if roles[sid].role == "ambush" and t - float(roles[sid].t) > 90.0:
-			roles[sid] = {"role": "idle", "t": t}
+		if roles[sid].role != "ambush":
+			continue
+		var asq: Squad = world.squads.get(sid)
+		if asq == null or asq.ambush_plan == null or asq.ambush_plan.done:
+			if asq == null or asq.drill != "withdraw":
+				roles[sid] = {"role": "idle", "t": t}
+				# (the next one a while after this one's over)
+				ambush_t = maxf(ambush_t, t + (rng.randf_range(90.0, 150.0) if team == Defs.REBELS else rng.randf_range(160.0, 240.0)))
+		else:
+			lying += 1
+	if t > ambush_t and lying == 0:
+		ambush_t = t + 40.0
+		var site := _ambush_site()
+		if not site.is_empty():
+			var free := []
+			for sq in attackers:
+				if roles.get(sq.sid, {}).get("role", "idle") == "idle" and sq.plan == null and sq.drill == "" and sq.alive_members().size() >= 3:
+					free.append(sq)
+			if free.size() >= 2 or (free.size() == 1 and fighters.size() >= 4):
+				# the squad with a gun or rockets, nearest the site
+				var best: Squad = null
+				var bs := -1e9
+				for sq in free:
+					var s := -Defs.flat(sq.centroid() - site[0]).length() * 0.05
+					for m in sq.alive_members():
+						if m.utype in ["mg_gunner", "pkm"]:
+							s += 6.0
+						elif m.rockets > 0:
+							s += 3.0
+					if s > bs:
+						bs = s
+						best = sq
+				if best:
+					roles[best.sid] = {"role": "ambush", "t": t}
+					AmbushPlan.make(world, best, site[0], site[1], site[2])
+					world.stat("ai_ambush")
 	_tunnel_progress()
 
 
@@ -923,6 +949,85 @@ func _pick_target() -> Structure:
 			bd = d
 			best = st
 	return best
+
+
+## Where to lay an ambush: a straight stretch of a road the enemy uses (his
+## supply track, or the map's roads), between the fronts, with cover or
+## concealment to lie in on one side, well clear of his bases and ours.
+## [killing zone centre, along the road, towards the ambush line] or [].
+func _ambush_site() -> Array:
+	var enemy := 1 - team
+	var front := _front_fob()
+	if front == null:
+		return []
+	var ed := _enemy_dir()
+	var best := []
+	var bs := -1e9
+	var polys: Array = (world.roads[enemy] as Array) + (world.roads[2] as Array)
+	var supply_n := (world.roads[enemy] as Array).size()
+	for pi in polys.size():
+		var pl: PackedVector3Array = polys[pi]
+		if pl.size() < 3:
+			continue
+		var walked := 0.0
+		for i in range(1, pl.size() - 1):
+			walked += Defs.flat(pl[i] - pl[i - 1]).length()
+			if walked < 8.0:
+				continue  # a candidate every 8 m or so
+			walked = 0.0
+			var p: Vector3 = pl[i]
+			var ahead := Defs.flat(p - front.position).dot(ed)
+			if ahead < 30.0 or ahead > 230.0:
+				continue
+			var a := _along_road(pl, i, -1, 18.0)
+			var b := _along_road(pl, i, 1, 18.0)
+			var along := Defs.flat(b - a)
+			if along.length() < 30.0:
+				continue
+			along = along.normalized()
+			# straight enough to see down: no sharp bend through the killing zone
+			if Defs.flat(p - a).normalized().dot(Defs.flat(b - p).normalized()) < 0.9:
+				continue
+			var clear := true
+			for f in world.rules.fobs(enemy) + world.rules.fobs(team):
+				if Defs.flat(f.position - p).length() < 70.0:
+					clear = false
+					break
+			for d in world.rules.depots:
+				if d and Defs.flat(d.position - p).length() < 120.0:
+					clear = false
+			if not clear:
+				continue
+			var n := along.cross(Vector3.UP)
+			for sgn in [-1.0, 1.0]:
+				var side: Vector3 = n * sgn
+				var lp: Vector3 = p + side * AmbushPlan.STANDOFF
+				if not world.nav.walkable(lp):
+					continue
+				# concealment and cover along the line; our side of the road preferred
+				var s := 0.0
+				for k in [-12.0, 0.0, 12.0]:
+					var q: Vector3 = lp + along * k
+					s += (1.0 - world.terrain.concealment(q)) * 3.0 + float(world.terrain.cov[world.terrain.idx_of(q)]) * 0.6
+				s += 2.0 if side.dot(-ed) > 0.0 else 0.0
+				s += 3.0 if pi < supply_n else 0.0  # their trucks are sure to come down it
+				s -= ahead * 0.01 + rng.randf() * 0.8
+				if s > bs:
+					bs = s
+					best = [p, along, side]
+	return best
+
+
+## The point `dist` metres along the polyline from point i (dir -1 back, 1 on).
+static func _along_road(pl: PackedVector3Array, i: int, dir: int, dist: float) -> Vector3:
+	var d := 0.0
+	var j := i
+	while j + dir >= 0 and j + dir < pl.size():
+		d += Defs.flat(pl[j + dir] - pl[j]).length()
+		j += dir
+		if d >= dist:
+			break
+	return pl[j]
 
 
 func _ambush_spot() -> Vector3:

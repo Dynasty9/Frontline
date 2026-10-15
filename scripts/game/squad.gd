@@ -54,6 +54,17 @@ var bt_cd := {}
 var ambush := false  # defending and not yet seen: holding fire till they're close
 var ambush_t := 0.0  # the first volley (until then)
 var _offsets := {}  # eid -> Vector2(side, back) behind the leader
+# how it moves and makes ground its own (see Tactics)
+var technique := ""  # "" travelling, "bound" bounding overwatch
+var ow_team := 0  # bounding: which fire team is moving (the other covers it)
+var ow_t := 0.0
+var ow_rbf_t := 0.0  # recon by fire: not before
+var then_defend: Array = []  # [pos, face]: a hold order, once it's got there as a squad
+var cleared := {}  # house (floor) eid -> when it was cleared
+var bt_clear: Array = []
+var clear_call: Array = []  # [man, time]: he calls "Clear!" once he's had a look
+var ambush_plan = null  # AmbushPlan it's carrying out (untyped: may be dropped)
+var halt_then: Array = []
 
 const CALLSIGNS := [["Alpha", "Bravo", "Charlie", "Delta", "Echo", "Foxtrot", "Golf", "Hotel"],
 	["Lion", "Hawk", "Wolf", "Viper", "Scorpion", "Falcon", "Jackal", "Cobra"]]
@@ -235,6 +246,11 @@ func _regroup() -> void:
 	travel = false
 	drill = ""
 	ambush = false
+	technique = ""
+	then_defend = []
+	if ambush_plan != null:
+		ambush_plan.done = true
+		ambush_plan = null
 	for m in members:
 		m.detached = false
 
@@ -255,7 +271,8 @@ func _assign(slots: Array, mems: Array) -> Array:
 	return out
 
 
-func order_move(pos: Vector3, face: Vector3, mode := 0) -> void:
+## tactical: it may choose to bound (see Tactics) rather than travel.
+func order_move(pos: Vector3, face: Vector3, mode := 0, tactical := true) -> void:
 	_regroup()
 	order = "move"
 	order_pos = pos
@@ -275,6 +292,9 @@ func order_move(pos: Vector3, face: Vector3, mode := 0) -> void:
 	final_slots.clear()
 	for i in mems.size():
 		final_slots[mems[i].eid] = slots[i]
+	if tactical and Tactics.bounding_wanted(self, pos, mode):
+		Tactics.start_bounding(self)
+		return
 	var ld := get_leader()
 	travel = ld != null and ld in mems and mems.size() > 1 and Defs.flat(pos - centroid()).length() > 26.0
 	travel_mode = mode
@@ -457,7 +477,12 @@ func order_enter(st: Structure) -> void:
 
 ## Hold an area: spread out along a shallow arc facing `face`, every man in the
 ## best cover he can find there, and stay put instead of chasing.
-func order_defend(pos: Vector3, face: Vector3) -> void:
+func order_defend(pos: Vector3, face: Vector3, direct := false) -> void:
+	if not direct and Defs.flat(pos - centroid()).length() > 45.0 and drill == "":
+		# a long way off: get there as a squad first, then spread out
+		order_move(pos, face, 0)
+		then_defend = [pos, face]
+		return
 	_regroup()
 	order = "defend"
 	order_pos = pos
@@ -667,8 +692,18 @@ func tick(dt: float) -> void:
 	if morale < 0.0:
 		morale = SquadBrain.base_morale(self)
 	SquadBrain.morale_tick(self, 0.5)
-	SquadBrain.ambush_tick(self)
+	if ambush_plan != null:
+		ambush_plan.tick()
+		if ambush_plan != null and ambush_plan.done:
+			ambush_plan = null
+	else:
+		SquadBrain.ambush_tick(self)
 	SquadBrain.think(self)
+	Tactics.crew_tick(self)
+	Tactics.straggler_tick(self)
+	Tactics.overwatch_tick(self)
+	Tactics.then_defend_tick(self)
+	Tactics.clear_call_tick(self)
 	if drill == "rout":
 		_surrender_logic()
 		return

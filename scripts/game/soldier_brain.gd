@@ -424,10 +424,12 @@ static func can_breach(s: Soldier) -> bool:
 	return false
 
 
-static func breach(s: Soldier) -> int:
+static func breach(s: Soldier, clear := false) -> int:
 	var h: Structure = s.bt_breach[0]
 	var o: Array = s.bt_breach[1]
 	s._clear_task()
+	s.bt_clear = clear
+	s.bt_nofrag = false
 	s.task = "breach"
 	s.task_ent = o[0]
 	s.task_ent2 = s.bt_breach[2]
@@ -443,9 +445,30 @@ static func breach(s: Soldier) -> int:
 	s.at_cover = false
 	s.peek_up = false
 	s.go_to(s.task_pos, "task", 2 if s._danger() else 1)
+	if clear:
+		return BT.OK
 	s.say(_pick(s, ["They're in the house! Stacking on the door!", "Enemy inside! I'll frag the room!", "Cover me, grenade through the door!", "Got one in the building! Moving to the door!"]), true)
 	s.world.stat("breach")
 	return BT.OK
+
+
+## Clearing a house the squad is moving into: the same stack and entry, but
+## the grenade only goes in if someone's known to be inside.
+static func start_clearing(s: Soldier, h: Structure, o: Array, buddy: Soldier) -> void:
+	s.bt_breach = [h, o, null]
+	breach(s, true)
+	s.say(_pick(s, ["Clearing that house!", "I'll take the door - on me!", "Stack up, we clear it!", "Checking the building!"]), true)
+	if buddy and buddy != s and buddy.can_take_orders() and buddy.task == "":
+		# his buddy stacks behind him
+		var c: Vector3 = o[1]
+		var n: Vector3 = o[2]
+		var along := Vector3(n.z, 0, -n.x)
+		var side := 1.0 if (s.task_pos - c).dot(along) >= 0.0 else -1.0
+		buddy.hold_pos = s.world.nav.nearest_walkable(s.task_pos + along * side * 0.9 + n * 0.3)
+		buddy.hold_face = -n
+		buddy.leash = 2.0
+		buddy.at_cover = false
+		buddy.go_to(buddy.hold_pos, "slot", 1)
 
 
 static func end_breach(s: Soldier) -> void:
@@ -488,7 +511,7 @@ static func breach_tick(s: Soldier, dt: float) -> void:
 			if Defs.flat(s.task_pos - s.position).length() < 5.0:
 				s.posture = Soldier.Post.CROUCH
 			s._choose_act(moving)
-			if _anyone_inside(s, h) == null:
+			if _anyone_inside(s, h) == null and not s.bt_clear:
 				end_breach(s)  # they've gone, or they're dead
 				return
 			# (right up against the wall the last few centimetres don't matter)
@@ -514,7 +537,9 @@ static func breach_tick(s: Soldier, dt: float) -> void:
 			var e := _anyone_inside(s, h)
 			# (nobody cooks a grenade with a shut door still to kick in)
 			var shut := wall.door_shut
-			var ck := 0.0 if shut else cook_time(s, e, 3.0)
+			if s.bt_clear and (e == null or s.frags <= 0):
+				s.bt_nofrag = true  # nobody known to be in there: in with the rifle up
+			var ck := 0.0 if shut or s.bt_nofrag else cook_time(s, e, 3.0)
 			if ck > 0.0:
 				s.bt_cook_t0 = s.world.time
 				s._begin_action("cook", ck, {})
@@ -531,6 +556,10 @@ static func breach_tick(s: Soldier, dt: float) -> void:
 					# kick the door in, then the frag
 					s._begin_action("door_kick", 0.45, {"door": wall, "pos": c})
 					s.world.stat("breach_door_kick")
+					return
+				if s.bt_nofrag:
+					s.task_phase = 4
+					s.bt_wait = s.world.time + s.world.rng.randf_range(0.2, 0.5)
 					return
 				var fuse := 3.4
 				if s.bt_cook_t0 >= 0.0:
@@ -568,6 +597,8 @@ static func breach_tick(s: Soldier, dt: float) -> void:
 				return
 			var inside := s.world.nav.nearest_walkable(c - n * 2.2)
 			s.say(_pick(s, ["Go! Go! Go!", "Moving in!", "In! In!", "Clear the room!"]), true)
+			if s.bt_clear and s.squad:
+				s.squad.clear_call = [s, s.world.time + 2.5]
 			end_breach(s)
 			s.hold_pos = inside
 			s.hold_face = -n
