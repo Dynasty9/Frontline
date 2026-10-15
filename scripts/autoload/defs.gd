@@ -183,7 +183,7 @@ func _init() -> void:
 		var team := int(d.team)
 		if team < 0 or team > 1:
 			continue
-		var b := "helipad" if d.get("air", false) else "factory"
+		var b := "helipad" if d.get("air", false) else ("dock" if String(d.get("base", "")) == "boat" else "factory")
 		(BUILDINGS[b].produces[team] as Array).append(k)
 
 
@@ -200,6 +200,7 @@ var BUILDINGS := {
 	"barracks": {"name": "Barracks", "cost": 150, "time": 35.0, "hp": 1500.0, "size": Vector2(9, 6), "teams": [0, 1], "desc": "Trains infantry squads.", "produces": [["rifle_squad", "engineer_team", "mg_team", "at_team", "mortar_team"], ["fighter_cell", "digger_team", "pkm_team", "rpg_team", "fpv_team", "r_mortar_team"]]},
 	"factory": {"name": "Factory", "cost": 250, "time": 45.0, "hp": 2200.0, "size": Vector2(11, 10), "teams": [0, 1], "desc": "Builds vehicles.", "produces": [["tank", "ifv", "humvee"], ["technical", "btr", "old_tank", "aa_tech"]]},
 	"helipad": {"name": "Helipad", "cost": 180, "time": 30.0, "hp": 1000.0, "size": Vector2(10, 10), "teams": [0, 1], "desc": "Builds helicopters and drones. Supply helicopters fly over cut roads straight to your FOBs.", "produces": [["heli", "gunship"], []]},
+	"dock": {"name": "Boat Dock", "cost": 170, "time": 32.0, "hp": 1300.0, "size": Vector2(14, 12), "teams": [0, 1], "desc": "Builds boats. On the shore of the sea or the river, facing open water, on your own half of the map.", "produces": [[], []]},
 	"medic_tent": {"name": "Medic Tent", "cost": 120, "time": 25.0, "hp": 900.0, "size": Vector2(7, 5), "teams": [0, 1], "desc": "Stretcher bearers bring back the wounded and the dead."},
 	"research": {"name": "Research Post", "cost": 200, "time": 40.0, "hp": 1200.0, "size": Vector2(7, 7), "teams": [0, 1], "desc": "Unlocks upgrades."},
 	"sandbags": {"name": "Sandbags", "cost": 15, "time": 5.0, "hp": 450.0, "size": Vector2(4, 0.9), "teams": [0, 1], "desc": "Low cover. Crouch and pop up to shoot."},
@@ -218,8 +219,8 @@ var BUILDINGS := {
 }
 
 const BUILD_MENU := [
-	["fob", "barracks", "factory", "medic_tent", "research", "helipad", "sandbags", "concrete_wall", "trench", "wire", "mines", "tank_trap", "mg_nest", "hmg_nest", "mortar_pit", "bunker", "at_post", "watchtower"],
-	["fob", "barracks", "factory", "medic_tent", "research", "helipad", "tunnel", "sandbags", "trench", "wire", "mines", "tank_trap", "mg_nest", "hmg_nest", "mortar_pit", "bunker", "at_post", "watchtower"],
+	["fob", "barracks", "factory", "medic_tent", "research", "helipad", "dock", "sandbags", "concrete_wall", "trench", "wire", "mines", "tank_trap", "mg_nest", "hmg_nest", "mortar_pit", "bunker", "at_post", "watchtower"],
+	["fob", "barracks", "factory", "medic_tent", "research", "helipad", "dock", "tunnel", "sandbags", "trench", "wire", "mines", "tank_trap", "mg_nest", "hmg_nest", "mortar_pit", "bunker", "at_post", "watchtower"],
 ]
 
 var UPGRADES := {

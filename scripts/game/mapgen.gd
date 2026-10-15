@@ -192,6 +192,7 @@ func _roads_meet_water(tg) -> void:
 		_spawn("bridge", (a + b) * 0.5, Defs.yaw_of(d), -1, {"size": Vector3(float(br[2]) * 2.0, 0, d.length()), "variant": 1 if br.size() > 3 and br[3] == "quay" else 0})
 		placed.append([Vector2((a.x + b.x) * 0.5, (a.z + b.z) * 0.5), Vector2(float(br[2]) + 1.0, d.length() * 0.5 + 1.0), Defs.yaw_of(d)])
 	w.carve()
+	world.nav.build_boat_grid(w)
 	if OS.has_environment("FL_DEBUG_WATER"):
 		print("WATER coast x=%.0f river x0=%.0f fords=%s ponds=%s bridges=%s" % [float(w.coast.x), (w.rivers[0].pts as PackedVector3Array)[60].x,
 			str(w.fords), str(w.ponds.map(func(p): return p.c)), str(w.bridges.map(func(b): return [(b[0] + b[1]) * 0.5, b[3]]))])
@@ -466,6 +467,32 @@ func scenario(sname: String) -> void:
 				_spawn("low_wall", Vector3(-2 + i * 4.2, 0, -16), 0.0, -1, {"size": Vector3(4, 1, 0.5)})
 			r.spawn_squad("rifle_squad", 0, a, Vector3(0, 0, 0), Vector3(0, 0, -6))
 			r.spawn_squad("fighter_cell", 1, b, Vector3(0, 0, -40), Vector3(0, 0, -20))
+		"naval":
+			# boats on the sea: a Coalition RHIB lands a squad on a beach the
+			# Rebels hold, its patrol ship covering it; Rebel boats come out to fight
+			_lay_water()
+			var w: WaterMap = world.water
+			w.carve()
+			world.nav.build_boat_grid(w)
+			var dz := 70.0
+			var dk := _spawn("dock", Vector3(w.coast_x(dz) - 9.0, 0, dz), -PI * 0.5, 0, {"built": true})
+			if OS.has_environment("FL_DEBUG_WATER"):
+				print("NAVALSC dock=%s rhib_at=%s" % [dk.position, Vector3(w.coast_x(dz) + 30.0, 0, dz - 10.0)])
+			dk.built = true
+			var rh = world.spawn("vehicle", {"vkind": "rhib", "team": 0, "owner": a, "pos": world.nav.nearest_boat(Vector3(w.coast_x(dz) + 30.0, 0, dz - 10.0)), "yaw": PI})
+			var rq := r.spawn_squad("rifle_squad", 0, a, Vector3(w.coast_x(dz) - 20.0, 0, dz))
+			for m in rq.members:
+				rh.board(m)
+			world.spawn("vehicle", {"vkind": "patrol_ship", "team": 0, "owner": a, "pos": world.nav.nearest_boat(Vector3(w.coast_x(30.0) + 60.0, 0, 30.0)), "yaw": PI})
+			var sb = world.spawn("vehicle", {"vkind": "speedboat_hmg", "team": 1, "owner": b, "pos": world.nav.nearest_boat(Vector3(w.coast_x(-90.0) + 50.0, 0, -90.0)), "yaw": 0.0})
+			var mb = world.spawn("vehicle", {"vkind": "motorboat", "team": 1, "owner": b, "pos": world.nav.nearest_boat(Vector3(w.coast_x(-110.0) + 30.0, 0, -110.0)), "yaw": 0.0})
+			var bq := r.spawn_squad("fighter_cell", 1, b, Vector3(w.coast_x(-30.0) - 18.0, 0, -30.0))
+			bq.order_defend(Vector3(w.coast_x(-30.0) - 18.0, 0, -30.0), Vector3(1, 0, 0))
+			if not world.settings.get("static", false):
+				world.get_tree().create_timer(2.0, true, true).timeout.connect(func():
+					rh.order_move(Vector3(w.coast_x(-5.0) - 4.0, 0, -5.0))
+					sb.order_assault(Vector3(w.coast_x(40.0) + 40.0, 0, 40.0))
+					mb.order_assault(Vector3(w.coast_x(20.0) + 25.0, 0, 20.0)))
 		"tactics":
 			# a rifle squad sent 120 m up to hold a hamlet, with the enemy
 			# reported about: it bounds there by teams and clears the houses

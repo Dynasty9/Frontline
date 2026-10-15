@@ -268,6 +268,13 @@ func _light(p: Vector3, energy: float, rng_m: float) -> void:
 func _explode(p: Vector3, size: float) -> void:
 	if not world.srv and world.terrain:
 		world.terrain.add_crater(p, size)
+	if world.water and not world.water.is_empty() and p.y < 1.2 and world.water.wet_at(p):
+		# in the water: a column of spray, a ring of foam, no crater
+		Sfx.play("explosion" if size >= 0.8 else "small_boom", p, 0.0)
+		_light(p, 3.0 * size, 10.0 + 6.0 * size)
+		if _visible_at(p):
+			vfx.splash(Vector3(p.x, WaterMap.LEVEL, p.z), size)
+		return
 	Sfx.play("big_boom" if size >= 2.2 else ("explosion" if size >= 0.8 else "small_boom"), p, 4.0 if size >= 2.2 else (2.0 if size >= 1.3 else 0.0))
 	_light(p, 4.5 * size, 12.0 + 9.0 * size)
 	if _visible_at(p):

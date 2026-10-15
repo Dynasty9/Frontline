@@ -3393,12 +3393,18 @@ func _board_tick(dt: float) -> void:
 		task = ""
 		return
 	var d := Defs.flat(v.position - position).length()
-	if d < 3.6:
+	var boat := v.is_boat()
+	if d < 3.6 or (boat and (d < 8.0 or (d < 18.0 and not is_moving()))):
 		task = ""
-		if not v.board(self):
-			return
+		v.board(self)
 		return
-	if not _move_tick(dt, _speed()) or Defs.flat(goal - v.position).length() > 3.0:
+	var moving := _move_tick(dt, _speed())
+	if boat and not moving and Defs.flat(v.position - position).length() < 18.0:
+		# waded out as far as he can: hauled over the side
+		task = ""
+		v.board(self)
+		return
+	if not moving or Defs.flat(goal - v.position).length() > 3.0:
 		go_to(v.position, "task", 1)
 	_choose_act(true)
 

@@ -41,6 +41,142 @@ func _init() -> void:
 	hnav_v = HNav.new(veh, true)
 
 
+# --- boats --------------------------------------------------------------------------
+
+const BR := 2  # metres per boat cell
+var boat := AStarGrid2D.new()
+var boat_n := 0
+var has_boats := false
+var boat_body := PackedInt32Array()  # which stretch of water each cell is (-1 land): the sea, the river, each pond
+
+
+## Open water for boats, 2 m cells (built once the water's laid): deep water
+## is open; shallows are open but dear (a boat only noses in to put men
+## ashore); land and bridges (too low to pass under) are not.
+func build_boat_grid(w) -> void:
+	if w == null or w.is_empty():
+		return
+	boat_n = N / BR
+	boat.region = Rect2i(0, 0, boat_n, boat_n)
+	boat.cell_size = Vector2(BR, BR)
+	boat.diagonal_mode = AStarGrid2D.DIAGONAL_MODE_ONLY_IF_NO_OBSTACLES
+	boat.default_compute_heuristic = AStarGrid2D.HEURISTIC_OCTILE
+	boat.default_estimate_heuristic = AStarGrid2D.HEURISTIC_OCTILE
+	boat.update()
+	boat.fill_solid_region(boat.region, true)
+	var tb: PackedByteArray = terrain.base
+	for bz in boat_n:
+		var row := bz * BR * N
+		for bx in boat_n:
+			var i0 := row + bx * BR
+			if tb[i0] < TerrainMap.WATER:
+				continue
+			var deep := 0
+			var wet := 0
+			for dz in BR:
+				for dx in BR:
+					var i := i0 + dz * N + dx
+					var k: int = tb[i]
+					if k == TerrainMap.WATER and not w.on_deck_i(i):
+						deep += 1
+						wet += 1
+					elif k == TerrainMap.SHALLOW:
+						wet += 1
+			if wet == BR * BR:
+				boat.set_point_solid(Vector2i(bx, bz), false)
+				if deep < BR * BR:
+					boat.set_point_weight_scale(Vector2i(bx, bz), 5.0)
+	has_boats = true
+	# label the separate bodies of water (a boat can't get from one to another)
+	boat_body.resize(boat_n * boat_n)
+	boat_body.fill(-1)
+	var label := 0
+	for i in boat_n * boat_n:
+		if boat_body[i] >= 0 or boat.is_point_solid(Vector2i(i % boat_n, i / boat_n)):
+			continue
+		var stack := [i]
+		boat_body[i] = label
+		while not stack.is_empty():
+			var j: int = stack.pop_back()
+			var jx := j % boat_n
+			var jz := j / boat_n
+			for d in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
+				var q: Vector2i = Vector2i(jx, jz) + d
+				if q.x < 0 or q.y < 0 or q.x >= boat_n or q.y >= boat_n:
+					continue
+				var k: int = q.y * boat_n + q.x
+				if boat_body[k] < 0 and not boat.is_point_solid(q):
+					boat_body[k] = label
+					stack.append(k)
+		label += 1
+
+
+## Which body of water p is in (-1: none).
+func water_body(p: Vector3) -> int:
+	if not has_boats:
+		return -1
+	var c := boat_cell(p)
+	return boat_body[c.y * boat_n + c.x]
+
+
+func boat_cell(p: Vector3) -> Vector2i:
+	return Vector2i(clampi(floori((p.x + H) / BR), 0, boat_n - 1), clampi(floori((p.z + H) / BR), 0, boat_n - 1))
+
+
+func boat_center(c: Vector2i) -> Vector3:
+	return Vector3((c.x + 0.5) * BR - H, WaterMap.LEVEL, (c.y + 0.5) * BR - H)
+
+
+## Can a boat be here?
+func boat_ok(p: Vector3) -> bool:
+	return has_boats and not boat.is_point_solid(boat_cell(p))
+
+
+## The nearest water a boat can reach to p (within r metres) - in that body
+## of water, if one is given - or INF.
+func nearest_boat(p: Vector3, r := 60.0, body := -1) -> Vector3:
+	if not has_boats:
+		return Vector3.INF
+	var c := boat_cell(p)
+	if not boat.is_point_solid(c) and (body < 0 or boat_body[c.y * boat_n + c.x] == body):
+		return boat_center(c)
+	for k in range(1, int(r / BR) + 1):
+		var best := Vector2i(-1, -1)
+		var bd := 1e9
+		for dz in range(-k, k + 1):
+			for dx in [-k, k] if absi(dz) != k else range(-k, k + 1):
+				var q := c + Vector2i(dx, dz)
+				if q.x < 0 or q.y < 0 or q.x >= boat_n or q.y >= boat_n or boat.is_point_solid(q):
+					continue
+				if body >= 0 and boat_body[q.y * boat_n + q.x] != body:
+					continue
+				var d := float(dx * dx + dz * dz)
+				if d < bd:
+					bd = d
+					best = q
+		if best.x >= 0:
+			return boat_center(best)
+	return Vector3.INF
+
+
+## A boat's way across the water to (the water nearest) `to`; empty if
+## there's none (another river, a lake, a bridge in the way).
+func find_boat_path(from: Vector3, to: Vector3) -> PackedVector3Array:
+	var out := PackedVector3Array()
+	var a := nearest_boat(from, 30.0)
+	if a == Vector3.INF:
+		return out
+	var b := nearest_boat(to, 160.0, water_body(a))  # (on the water it's on)
+	if a == Vector3.INF or b == Vector3.INF:
+		return out
+	var pts := boat.get_point_path(boat_cell(a), boat_cell(b))
+	for i in pts.size():
+		if i % 3 != 0 and i != pts.size() - 1:
+			continue  # (every 6 m is plenty to steer by)
+		out.append(Vector3(pts[i].x + BR * 0.5 - H, WaterMap.LEVEL, pts[i].y + BR * 0.5 - H))
+	return out
+
+
 ## Builds the abstract graphs once the map is laid out.
 func finalize() -> void:
 	hnav_i.build()

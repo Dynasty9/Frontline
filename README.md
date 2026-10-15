@@ -313,6 +313,19 @@ Settings are saved to `user://settings.cfg`.
   symbols and the A-H / 1-8 grid the radio uses. FOB and HQ names are drawn over everything.
 
 **Vehicles** (`vehicle.gd`, `vehicle_brain.gd`, `vehicle_roster.gd`, `drone.gd`, `projectile.gd`)
+- **The core vehicles rebuilt** (`vehicles/vm_core.gd`): the M1A2 SEP Abrams, a worn T-55A, Hilux technicals (DShK
+  or ZU-23-2 in the bed), the M1151 Humvee, the M2A3 Bradley, the BTR-80, the AH-64D Apache and the UH-60 Black
+  Hawk - sloped armour, skirts, sights, stowage, rust and dents, each in its side's camouflage.
+- **Boats and ships** (built at the **Boat Dock**, which goes on the shore of the sea or the river facing open
+  water, on your own half of the map). Coalition: the RHIB (six men, fast, unarmed), the Speedboat Minigun
+  (armoured riverine craft, 40 mm GMG, a squad aboard) and the **Patrol Ship** (`vehicles/vm_ships.gd`, a Mk VI
+  with a stabilised 25 mm). Rebels: an armed motorboat (PKM, four men), the Speedboat HMG and the **Gun
+  Trawler** (a converted steel fishing boat with a ZU-23-2 on the foredeck). Boats find their way on their own
+  grid of open water (shallows only to nose in to a beach; the low bridge stops them), sit in the water at
+  their draft, pitch up as they get on the plane, heel into turns and leave a wake. Men board a boat lying off
+  a beach or bank by wading out to it, and go ashore over the side wherever it stops by land at the end of a
+  trip. A boat that's sunk goes down in a blast; whoever's aboard swims for the nearest bank. Shells landing in
+  the water throw up a column of spray instead of digging a crater.
 - **Driving.** A driver steers for a point some way down the road (pure pursuit: further ahead the faster he
   goes), slows for the bends he can see coming - as fast as the tyres or tracks hold the curve - and brakes to
   stop where he's sent. Wheeled vehicles steer like cars: a real turning circle from their wheelbase and
@@ -499,7 +512,13 @@ roads the enemy uses - his supply track above all - where there's cover to lie i
 point back from the road, then into an L - the assault line 20-odd metres off the road, the gun at one end
 firing down the killing zone, a man watching the flank - and holds its fire until they're in it. A short,
 violent burst, then smoke and away (the Rebels, more often ambushers, simply melt away); an ambush nobody
-walks into is given up after a few minutes, and one bumped on the way is called off. Armoured vehicles fire their smoke dischargers when a missile, rocket
+walks into is given up after a few minutes, and one bumped on the way is called off. Its **navy**
+(`naval_ai.gd`): once it has a factory it builds a dock on its stretch of coast and keeps a gunboat or two -
+going after whatever of the enemy it can see near the water, else patrolling off the front - and a ferry that
+runs raids, picking up a reserve squad at the shore and landing it on a beach near an enemy FOB or whatever's
+being attacked. Spending draws on all of a side's FOBs (nearest first), so a big purchase - a tank, a dock -
+isn't stuck waiting for one FOB to fill up; the AI saves for its factory and its first boat rather than
+spending every round of supply on infantry. Armoured vehicles fire their smoke dischargers when a missile, rocket
 or recoilless round is launched at them, and a guided missile whose operator loses sight of its target in the
 smoke flies on blind.
 
@@ -524,6 +543,8 @@ game/soldier_brain.gd   the soldier's behaviour tree: reflexes (grenades, shells
 game/bt.gd              a small behaviour tree (selector, sequence, condition, action, cooldown)
 game/squad.gd           shared knowledge, rescues, smoke, surrender, auto-engineering
 game/squad_brain.gd     the squad's behaviour tree: battle drills, morale, fire discipline, ammo sharing
+game/water.gd           rivers, ponds, the sea: laid out as shapes, rasterized into ground kinds and heights
+game/naval_ai.gd        the AI's navy: docks, gunboat patrols, amphibious raids
 game/tactics.gd         moving tactically (bounding overwatch, recon by fire), clearing houses, near ambush, stragglers, crews
 game/ambush_plan.gd     a deliberate road ambush: rally point, the L, the killing zone, spring, withdraw
 game/vehicle_brain.gd   the vehicle crew's behaviour tree: smoke and back out, front armour on, wait for infantry, repairs
@@ -609,6 +630,7 @@ Pass these after `--` on the command line:
 --pan=VX,VZ / --set=key:value,...                     drift the camera (shimmer tests) / override single settings
 --scenario=guns                                       every machine-gun emplacement and trench bay, crewed, with targets
 --scenario=roster                                     every vehicle both sides can field, facing off across the map
+--scenario=naval                                      boats on the sea: an RHIB lands a squad under a patrol ship's guns, Rebel boats come out to fight
 --scenario=tactics                                    a rifle squad and an MG team sent 120 m up to hold a hamlet with the
                                                       enemy about: they bound there by teams and clear the houses
 --scenario=breach                                     a fighter cell holed up in a house; two rifle squads and a gun team clear it

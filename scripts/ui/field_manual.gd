@@ -1168,7 +1168,7 @@ func _build_entries() -> Array:
 				if int(Defs.UPGRADES[uk].get("tier", 0)) == int(v.tier) and int(v.team) in Defs.UPGRADES[uk].teams:
 					tier_r = String(Defs.UPGRADES[uk].name)
 			st2.append(["Unlocked by", "%s (tier %d)" % [tier_r, int(v.tier)], -1.0])
-		var vpage: String = "veh_air" if v.get("air", false) else {"light": "veh_light", "armour": "veh_armour", "support": "veh_support", "logistics": "veh_support", "air": "veh_air"}.get(
+		var vpage: String = "veh_air" if v.get("air", false) else {"light": "veh_light", "armour": "veh_armour", "support": "veh_support", "logistics": "veh_support", "air": "veh_air", "naval": "boats"}.get(
 			String(v.get("cat", "")), "veh_armour" if String(v.get("base", "")) in ["tank", "afv"] else ("veh_support" if String(v.get("base", "")) in ["spaa", "supply", "util", "arty"] else "veh_light"))
 		var rel := ["Built at " + where] if int(v.cost) > 0 else ["Drives supply from your depot to the FOBs"]
 		if v.has("faction"):

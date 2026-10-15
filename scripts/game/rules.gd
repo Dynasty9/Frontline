@@ -246,17 +246,33 @@ func supply_total(team: int) -> int:
 	return n
 
 
+## Pays for something built at pos: out of the nearest FOB that can cover it,
+## or - the supply network moving stock about - out of several, nearest first.
 func spend(team: int, pos: Vector3, amount: int) -> bool:
 	var arr := []
+	var total := 0
 	for f in fobs(team, false):
 		arr.append([Defs.flat(f.position - pos).length(), f])
+		total += int(f.supply)
+	if total < amount:
+		return false
 	arr.sort_custom(func(a, b): return a[0] < b[0])
 	for it in arr:
 		if it[1].supply >= amount:
 			it[1].supply -= amount
 			it[1].net_dirty = true
 			return true
-	return false
+	var left := amount
+	for it in arr:
+		var take := mini(left, int(it[1].supply))
+		if take <= 0:
+			continue
+		it[1].supply -= take
+		it[1].net_dirty = true
+		left -= take
+		if left <= 0:
+			break
+	return true
 
 
 func refund(team: int, pos: Vector3, amount: int) -> void:

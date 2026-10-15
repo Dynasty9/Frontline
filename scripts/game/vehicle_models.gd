@@ -43,7 +43,7 @@ static func build(kind: String, team: int, seed: int, is_burnt := false) -> Vehi
 		mk = String(Defs.VEHICLES[kind].get("model", kind))
 	# the aircraft builders in scripts/game/vehicles/ come first: until one of
 	# them builds a key, the older model below stands
-	if VmGunship.build(k, mk, team, seed) or VmAttack.build(k, mk, team, seed) or VmFighter.build(k, mk, team, seed):
+	if VmCore.build(k, mk, team, seed) or VmGunship.build(k, mk, team, seed) or VmAttack.build(k, mk, team, seed) or VmFighter.build(k, mk, team, seed):
 		k._merge_parts(k.root, Vector3.ZERO)
 		return k
 	match mk:
@@ -79,7 +79,7 @@ static func build(kind: String, team: int, seed: int, is_burnt := false) -> Vehi
 			# the rest of the roster lives in scripts/game/vehicles/, by family
 			if not (VmNato.build(k, mk, team, seed) or VmCsat.build(k, mk, team, seed) or VmIndep.build(k, mk, team, seed)
 					or VmCiv.build(k, mk, team, seed) or VmHeli.build(k, mk, team, seed) or VmPlane.build(k, mk, team, seed)
-					or VmBoat.build(k, mk, team, seed)):
+					or VmBoat.build(k, mk, team, seed) or VmShips.build(k, mk, team, seed)):
 				k._truck(team)
 	k._merge_parts(k.root, Vector3.ZERO)
 	return k
@@ -88,7 +88,7 @@ static func build(kind: String, team: int, seed: int, is_burnt := false) -> Vehi
 ## Every model key the families build (for the Field Manual's model pages).
 static func family_keys() -> Array[String]:
 	var out: Array[String] = []
-	for ks in [VmNato.KEYS, VmCsat.KEYS, VmIndep.KEYS, VmCiv.KEYS, VmHeli.KEYS, VmPlane.KEYS, VmBoat.KEYS]:
+	for ks in [VmNato.KEYS, VmCsat.KEYS, VmIndep.KEYS, VmCiv.KEYS, VmHeli.KEYS, VmPlane.KEYS, VmBoat.KEYS, VmShips.KEYS]:
 		out.append_array(ks)
 	return out
 

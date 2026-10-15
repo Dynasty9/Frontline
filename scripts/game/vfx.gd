@@ -877,6 +877,47 @@ func set_burning(h: Node3D, fire: float, smoke: float) -> void:
 
 
 ## Dust kicked up behind a moving vehicle (continuous; emitting follows speed).
+## A shell in the water: a white column thrown up and falling back, spray
+## blown out low, a ring of foam spreading on the surface.
+func splash(p: Vector3, size: float) -> void:
+	var k := clampf(size, 0.4, 2.6)
+	var col := _pm(Vector3.UP, 12.0, 6.0 * k, 11.0 * k, Vector3(0, -9.8, 0), 0.9 * k, 1.8 * k)
+	col.scale_curve = _curve([Vector2(0, 0.4), Vector2(0.4, 1.0), Vector2(1, 1.3)])
+	col.color_ramp = _ramp([0.0, 0.1, 0.7, 1.0], [Color(0.95, 0.97, 0.98, 0.0), Color(0.95, 0.97, 0.98, 0.95), Color(0.85, 0.88, 0.9, 0.5), Color(0.85, 0.88, 0.9, 0.0)])
+	var c := _sys(int(34 * k), 1.6 + 0.4 * k, col, smoke_mat)
+	var sp := _pm(Vector3.UP, 75.0, 3.0 * k, 6.0 * k, Vector3(0, -6.0, 0), 0.6 * k, 1.2 * k)
+	sp.color_ramp = _ramp([0.0, 0.1, 1.0], [Color(0.92, 0.95, 0.96, 0.0), Color(0.92, 0.95, 0.96, 0.7), Color(0.9, 0.93, 0.94, 0.0)])
+	var s := _sys(int(26 * k), 1.2, sp, smoke_mat)
+	var ring := _pm(Vector3.UP, 90.0, 2.0 * k, 4.0 * k, Vector3.ZERO, 1.2 * k, 2.4 * k)
+	ring.damping_min = 2.0
+	ring.damping_max = 3.0
+	ring.color_ramp = _ramp([0.0, 0.1, 1.0], [Color(0.9, 0.93, 0.92, 0.0), Color(0.9, 0.93, 0.92, 0.6), Color(0.88, 0.9, 0.9, 0.0)])
+	var r := _sys(int(18 * k), 3.0, ring, smoke_mat)
+	for ps in [c, s, r]:
+		add_child(ps)
+		ps.global_position = p + Vector3(0, 0.1, 0)
+		ps.emitting = true
+		get_tree().create_timer(4.0).timeout.connect(ps.queue_free)
+
+
+## Foam churned up behind a boat under way.
+func make_wake(size: float) -> GPUParticles3D:
+	var pm := _pm(Vector3.BACK, 30.0, 0.5, 1.6, Vector3.ZERO, 0.8 * size, 1.6 * size)
+	pm.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_BOX
+	pm.emission_box_extents = Vector3(0.7 * size, 0.05, 0.5)
+	pm.damping_min = 0.5
+	pm.damping_max = 1.2
+	pm.scale_curve = _curve([Vector2(0, 0.4), Vector2(1, 1.6)])
+	pm.color_ramp = _ramp([0.0, 0.1, 1.0], [Color(0.93, 0.95, 0.95, 0.0), Color(0.93, 0.95, 0.95, 0.75), Color(0.9, 0.92, 0.93, 0.0)])
+	var d := _sys(int(40 * size), 3.5, pm, smoke_mat)
+	d.one_shot = false
+	d.explosiveness = 0.0
+	d.emitting = false
+	d.set_instance_shader_parameter("density", 0.6)
+	d.visibility_aabb = AABB(Vector3(-30, -2, -30), Vector3(60, 8, 60))
+	return d
+
+
 func make_dust(size: float) -> GPUParticles3D:
 	var pm := _pm(Vector3.UP, 50.0, 0.4, 1.4, Vector3(0.3, 0.35, 0.1), 0.9 * size, 1.8 * size)
 	pm.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_BOX

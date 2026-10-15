@@ -743,7 +743,7 @@ func build_water(w: WaterMap) -> void:
 
 const WATER_SHADER := """
 shader_type spatial;
-render_mode blend_mix, depth_draw_always, cull_back, specular_schlick_ggx;
+render_mode blend_mix, depth_draw_always, cull_back, specular_schlick_ggx, ambient_light_disabled;
 
 uniform sampler2D water_mask : hint_default_black, filter_linear, repeat_disable;
 uniform sampler2D detail_tex : filter_linear_mipmap, repeat_enable;
@@ -814,7 +814,9 @@ void fragment() {
 	col = mix(col, vec3(0.78, 0.8, 0.78), foam * 0.85);
 	// the sky in it, more the flatter you look across it
 	float fres = pow(1.0 - clamp(dot(normalize(VIEW), NORMAL), 0.0, 1.0), 4.0);
-	EMISSION = sky_col * fres * 0.12 * (1.0 - foam) * sun_tint;
+	// (the engine's own reflections off a rippled surface pick up the sky's
+	// brown underside: the sky is put in here instead, and some daylight)
+	EMISSION = (sky_col * (0.05 + fres * 0.3) + col * 0.35) * (1.0 - foam * 0.5) * sun_tint;
 	ALBEDO = col * sun_tint;
 	ALPHA = clamp(mix(0.42, 0.96, smoothstep(0.0, 0.85, dw)) + foam * 0.5, 0.0, 1.0);
 	// soft at the very edge, where it laps the bank

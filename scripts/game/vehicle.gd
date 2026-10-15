@@ -196,6 +196,10 @@ func is_air() -> bool:
 	return is_heli() and position.y > 3.0
 
 
+func is_boat() -> bool:
+	return vdef.get("base", "") == "boat"
+
+
 func is_moving() -> bool:
 	return path_i < path.size() or (is_heli() and velocity.length() > 0.5)
 
@@ -282,7 +286,10 @@ func order_move(p: Vector3) -> void:
 		uav_dest = Vector3(p.x, 0.0, p.z)
 		return
 	forced_target = null
-	path = world.nav.find_path(position, p, true, team, 0.5)
+	if is_boat():
+		path = world.nav.find_boat_path(position, p)
+	else:
+		path = world.nav.find_path(position, p, true, team, 0.5)
 	path_i = 0
 	_stuck_t = 0.0
 	_stuck_p = position
@@ -349,19 +356,36 @@ func embark_new_squad() -> void:
 		s.hide_in("vehicle", 9999.0, null)
 
 
+## The bank or beach a boat is lying off (within reach of wading), or INF.
+func _shore() -> Vector3:
+	var s := world.nav.nearest_walkable(position)
+	return s if Defs.flat(s - position).length() < 15.0 else Vector3.INF
+
+
 ## Ramp down: the section piles out behind the vehicle and goes to work.
 func dismount() -> void:
 	if passengers.is_empty():
 		return
 	var back := -Defs.dir_of(rotation.y)
 	var side := back.cross(Vector3.UP)
+	if is_boat():
+		# over the side and up the beach
+		var shore := _shore()
+		if shore == Vector3.INF:
+			return
+		var up := Defs.flat(shore - position).normalized()
+		back = up
+		side = up.cross(Vector3.UP)
 	var sq: Squad = null
 	var i := 0
 	for s in passengers:
 		if not is_instance_valid(s) or s.gone or s.life != Soldier.Life.HIDDEN:
 			continue
 		s.riding = null
-		s.unhide(position + back * 3.6 + side * (i - 1.5) * 1.3)
+		var at := position + back * 3.6 + side * (i - 1.5) * 1.3
+		if is_boat():
+			at = world.nav.nearest_walkable(_shore() + side * (i - 1.5) * 1.3)
+		s.unhide(at)
 		sq = s.squad
 		i += 1
 	passengers.clear()
@@ -371,7 +395,7 @@ func dismount() -> void:
 		var lead := sq.get_leader()
 		if lead:
 			lead.say("Dismount! Go, go, go!" if team == 0 else "Out! Everybody out!", true)
-		if assault and assault_dest != Vector3.INF:
+		if (assault or is_boat()) and assault_dest != Vector3.INF:
 			sq.order_assault(assault_dest, fwd)
 		else:
 			sq.order_defend(position + fwd * 8.0, fwd)
@@ -384,6 +408,13 @@ func _dismount_check(dt: float) -> void:
 	if _dis_t > 0.0:
 		return
 	_dis_t = 0.5
+	if is_boat():
+		# boats put their men ashore where they stop by a bank or a beach -
+		# at the end of a trip, not the moment they've climbed aboard
+		if _landing and path_i >= path.size() and absf(speed) < 0.8 and _shore() != Vector3.INF:
+			_landing = false
+			dismount()
+		return
 	var arrived := path_i >= path.size() and speed < 0.6
 	var close := false
 	if assault:
@@ -402,7 +433,10 @@ func order_attack(t: Entity) -> void:
 		return
 	var d := Defs.flat(t.position - position)
 	if d.length() > 45.0:
-		path = world.nav.find_path(position, t.position - d.normalized() * 40.0, true, team, 0.2)
+		if is_boat():
+			path = world.nav.find_boat_path(position, t.position - d.normalized() * 40.0)
+		else:
+			path = world.nav.find_path(position, t.position - d.normalized() * 40.0, true, team, 0.2)
 		path_i = 0
 
 
@@ -440,6 +474,15 @@ func sim(dt: float) -> void:
 		_gunship_tick(dt)
 	elif b == "uav":
 		_uav_tick(dt)
+	elif b == "boat":
+		scan_t -= dt
+		if scan_t <= 0.0:
+			scan_t = 0.5
+			_scan()
+		_boat_drive(dt)
+		_dismount_check(dt)
+		_turret_tick(dt)
+		_fire_tick()
 	else:
 		scan_t -= dt
 		if scan_t <= 0.0:
@@ -484,6 +527,9 @@ var _rev := false  # backing up to where it's going
 
 ## [acceleration, braking (m/s²), cornering grip (m/s² sideways), reverse speed (fraction)]
 func _handling() -> Array:
+	if is_boat():
+		# a hull in the water: quick off the mark if it's light, no brakes but the drag
+		return [[2.8, 2.2, 3.2, 0.3], [2.0, 1.7, 2.6, 0.3], [0.85, 0.75, 1.7, 0.25]][clampi(weight(), 0, 2)]
 	match weight():
 		0:
 			return [3.0, 6.5, 4.0, 0.4]
@@ -665,6 +711,13 @@ func _coast(dt: float) -> void:
 func _move_by(v: Vector3, dt: float) -> void:
 	velocity = v
 	var np := position + velocity * dt
+	if is_boat():
+		np.y = WaterMap.LEVEL
+		if world.nav.boat_ok(np):
+			position = np
+		else:
+			speed *= 0.4  # aground / against the bank
+		return
 	if base() == "supply" or world.nav.vkind_at(np) != Nav.SOLID:
 		position = np
 	else:
@@ -1234,6 +1287,9 @@ func take_damage(amount: float, _src) -> void:
 
 func _destroyed() -> void:
 	world.stat("vehicle_destroyed")
+	if is_boat():
+		_sink()
+		return
 	# whoever was inside scrambles out of the burning wreck - not all of them
 	for s in passengers:
 		if is_instance_valid(s) and not s.gone and s.life == Soldier.Life.HIDDEN:
@@ -1277,11 +1333,59 @@ func _destroyed() -> void:
 				w.push_props(wst, {"toss": null}))
 
 
+## A boat going down: a blast, debris, and she's gone; whoever's aboard swims
+## for the nearest bank (if it's near enough to make).
+func _sink() -> void:
+	var shore := world.nav.nearest_walkable(position)
+	var near := Defs.flat(shore - position).length() < 60.0
+	for s in passengers:
+		if is_instance_valid(s) and not s.gone and s.life == Soldier.Life.HIDDEN:
+			s.riding = null
+			s.unhide(world.nav.nearest_walkable(shore + Vector3(world.rng.randf_range(-3, 3), 0, world.rng.randf_range(-3, 3))))
+			s.take_damage(world.rng.randf_range(30.0, 110.0) if near else 999.0, null, Vector3.UP, "explosion")
+	passengers.clear()
+	world.fx_event([Fx.EXPLODE, position + Vector3(0, 0.8, 0), 1.6 if weight() >= 2 else 1.1])
+	world.fx_event([Fx.DEBRIS, position + Vector3(0, 1.0, 0), Color(0.3, 0.3, 0.3), 12])
+	world.send_msg(team, "alert", "%s sunk at %s!" % [display_name(), Defs.grid_ref(position)], position)
+	world.stat("boat_sunk")
+	world.despawn(self)
+
+
+## Under way on the water: the same driving as on land (see _follow) with a
+## hull's handling, a watchdog for running aground, and - on an attack - a
+## halt to fire when there's something in range.
+var _landing := false  # under way with men aboard: they go ashore where it stops
+
+
+func _boat_drive(dt: float) -> void:
+	position.y = WaterMap.LEVEL
+	if path_i >= path.size():
+		_coast(dt)
+		return
+	if not passengers.is_empty():
+		_landing = true
+	var halt := 70.0 if vdef.cannon else 58.0
+	if assault and _target_ok() and Defs.flat(target.position - position).length() < halt:
+		_coast(dt)
+		_stuck_t = 0.0
+		return
+	_stuck_t += dt
+	if _stuck_t > 4.0:
+		if Defs.flat(position - _stuck_p).length() < 1.5:
+			speed = -2.0
+			path = world.nav.find_boat_path(position, path[path.size() - 1])
+			path_i = 0
+			world.stat("boat_unstick")
+		_stuck_t = 0.0
+		_stuck_p = position
+	path_i = _follow(path, path_i, dt, float(vdef.speed))
+
+
 ## The crew - those who live through it - bail out of the hatches, burnt and
 ## shaken, and run for the nearest FOB to crew another (Tactics.crew_tick).
 ## A catastrophic kill (ammunition going up) leaves few.
 func _bail_out(overkill: float) -> void:
-	if is_heli() or is_auto() or base() in ["supply", "uav", "ugv", "attack_heli", "lift_heli"]:
+	if is_heli() or is_auto() or base() in ["supply", "uav", "ugv", "attack_heli", "lift_heli", "boat"]:
 		return
 	var n: int = int(vdef.get("crew", {"tank": 3, "afv": 3, "car": 2, "spaa": 2}.get(base(), 2)))
 	var p_live := 0.2 if overkill > max_hp * 0.35 else 0.6
@@ -1682,7 +1786,9 @@ func _view_process(dt: float) -> void:
 		var want_dust := spd2 > 2.0
 		if want_dust != dust.emitting:
 			dust.emitting = want_dust
-	if not rotor and model:
+	if is_boat() and model:
+		_boat_view(dt)
+	elif not rotor and model:
 		_suspension(dt)
 	if not wheels.is_empty():
 		var mv := position - _last_pos
@@ -1709,6 +1815,32 @@ func _view_process(dt: float) -> void:
 		ring.visible = selected
 		if selected and position.y > 0.5:
 			ring.global_position = Vector3(position.x, 0.06, position.z)
+
+
+var wake: GPUParticles3D
+
+
+## (view) Afloat: sitting at its draft, rising and rolling on the water, the bow
+## lifting as it gets up on the plane, heeling into its turns; a wake behind.
+func _boat_view(dt: float) -> void:
+	var t := world.time + float(eid % 23) * 0.7
+	var vmax := maxf(1.0, float(vdef.speed))
+	var sp := velocity.length() if srv else (Defs.flat(position - _last_pos).length() / maxf(dt, 0.001))
+	var k := clampf(sp / vmax, 0.0, 1.0)
+	var light := 1.0 if weight() == 0 else (0.6 if weight() == 1 else 0.25)
+	model.position.y = -float(vdef.get("draft", 0.4)) + 0.07 * sin(t * 1.25) * (1.6 - light * 0.6) + k * 0.12 * light
+	model.rotation.x = lerpf(model.rotation.x, -k * 0.11 * light + 0.025 * sin(t * 0.9), 1.0 - exp(-dt * 2.5))
+	var yr := wrapf(rotation.y - _last_yaw, -PI, PI) / maxf(dt, 0.001)
+	_last_yaw = rotation.y
+	model.rotation.z = lerpf(model.rotation.z, clampf(yr * k * 0.35 * light, -0.25, 0.25) + 0.03 * sin(t * 0.7), 1.0 - exp(-dt * 2.0))
+	if wake == null and world.fx and world.fx.vfx:
+		wake = world.fx.vfx.make_wake(clampf(_hull_size().x / 2.6, 0.8, 2.2))
+		wake.position = Vector3(0, -position.y + WaterMap.LEVEL + 0.08, _hull_size().z * 0.45)
+		add_child(wake)
+	if wake:
+		var on := sp > 1.2 and visible
+		if on != wake.emitting:
+			wake.emitting = on
 
 
 var _vm: VehicleModels = null
@@ -1765,6 +1897,8 @@ func _build_model() -> void:
 	wheels = k.wheels
 	if rotor:
 		add_child(Sfx.make_loop_player("rotor", 18.0, 0.0 if base() == "attack_heli" else -3.0))
+	elif is_boat():
+		pass  # (a wake, not dust: see _boat_view)
 	elif world.fx and world.fx.vfx:
 		dust = world.fx.vfx.make_dust(1.3 if weight() >= 2 else 1.0)
 		dust.position = Vector3(0, 0.2, _hull_size().z * 0.5)

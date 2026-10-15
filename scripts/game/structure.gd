@@ -277,6 +277,10 @@ func _define_parts() -> void:
 					parts = [_part(Vector3(0, 1.5, 0), Vector3(L, 3.0, th), Nav.SOLID, Nav.LOW, true, true, c)]
 		"floor":
 			parts = [_part(Vector3(0, 0.03, 0), Vector3(size.x, 0.06, size.z), Nav.FREE, Nav.FREE, false, false, Color(0.45, 0.42, 0.38))]
+		"dock":
+			# the boat shed over the slipway on the left (see DockModel); the
+			# jetty runs out over the water in front
+			parts = [_part(Vector3(-size.x * 0.5 + 2.9, 1.85, 0.35), Vector3(4.9, 3.7, size.z - 1.3), Nav.SOLID, Nav.SOLID, true, true, C_STEEL)]
 		"bridge":
 			# a road bridge (a deck between parapet walls) or a harbour quay
 			# (an open concrete deck); size.x wide, size.z long
@@ -1277,7 +1281,7 @@ func sim(dt: float) -> void:
 	match skind:
 		"fob":
 			_fob_tick()
-		"barracks", "factory", "research", "helipad":
+		"barracks", "factory", "research", "helipad", "dock":
 			_prod_tick(dt)
 		"medic_tent":
 			_tent_tick()
@@ -1419,6 +1423,12 @@ func _prod_tick(dt: float) -> void:
 	else:
 		var heli: bool = Defs.VEHICLES.has(q.item) and Defs.VEHICLES[q.item].get("air", false)
 		var spawn_at: Vector3 = position if heli else world.nav.nearest_walkable(exit_pos() + front_dir() * 2.0, true)
+		if String(Defs.VEHICLES.get(q.item, {}).get("base", "")) == "boat":
+			# off the end of the jetty
+			spawn_at = world.nav.nearest_boat(position + front_dir() * (size.z * 0.5 + 16.0), 50.0)
+			if spawn_at == Vector3.INF:
+				spawn_at = position + front_dir() * (size.z * 0.5 + 16.0)
+			dest = rally if rally != Vector3.INF else spawn_at + front_dir() * 14.0
 		var v = world.spawn("vehicle", {"vkind": q.item, "team": team, "owner": owner, "pos": spawn_at, "yaw": yaw})
 		if heli:
 			v.heli_home = self
@@ -1741,7 +1751,7 @@ func _build_model() -> void:
 	rng.seed = eid * 7919 + variant
 	var bags: Array = []
 	for p in parts:
-		if skind in ["wire", "tank_trap", "watchtower", "tree", "trench", "car", "wreck", "low_wall", "roof", "bridge"]:
+		if skind in ["wire", "tank_trap", "watchtower", "tree", "trench", "car", "wreck", "low_wall", "roof", "bridge", "dock"]:
 			break
 		if p.color == C_SAND and p.s.y <= 1.3 and minf(p.s.x, p.s.z) <= 1.0:
 			bags.append(p)
@@ -1779,6 +1789,8 @@ func _build_model() -> void:
 			pass
 		"bridge":
 			_bridge_model(rng)
+		"dock":
+			DockModel.build(model, team, size)
 		"roof":
 			_roof_model(rng)
 		"crates":

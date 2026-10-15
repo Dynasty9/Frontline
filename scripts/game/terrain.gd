@@ -402,6 +402,8 @@ func _contribution(st, c: Vector3) -> Array:
 
 ## Explosions dig craters: light cover for infantry, rough going for vehicles.
 func add_crater(p: Vector3, size: float) -> void:
+	if base[idx_of(p)] >= WATER:
+		return  # a fountain of water, not a hole
 	if p.y > 1.6:
 		return
 	if size >= 0.55:

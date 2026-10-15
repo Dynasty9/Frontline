@@ -262,7 +262,7 @@ func _fob_reserve() -> int:
 ## map has room for.
 func _expansion_due() -> bool:
 	var n: int = world.rules.fobs(team).size()
-	return world.time > expand_t and n < 3 + int(MapDims.HALF / 64.0) and n < 2 + int(world.time / 360.0)
+	return world.time > expand_t and n < 3 + int(MapDims.HALF / 128.0) and n < 2 + int(world.time / 360.0)
 
 
 func _enemy_dir() -> Vector3:
@@ -316,7 +316,7 @@ func _economy(sqs: Array) -> void:
 			_cmd({"t": "work", "squads": [best.sid], "target": st.eid})
 	if engs.is_empty() or unfinished.size() >= 2:
 		return
-	var sup: int = r.max_fob_supply(team)
+	var sup: int = r.supply_total(team)  # (spending draws on every FOB: see Rules.spend)
 	var main: Structure = fobs[0]
 	var front := _front_fob()
 	var t := world.time
@@ -359,13 +359,18 @@ func _economy(sqs: Array) -> void:
 	if t > obstacle_t and front:
 		obstacle_t = t + rng.randf_range(80.0, 140.0)
 		plan.append([["wire", "mines", "tank_trap"][rng.randi() % 3], front, 18.0, 34.0])
-	if t > expand_t and sup > 300 and fobs.size() < 3 + int(MapDims.HALF / 64.0):  # (more ground, more bases)
+	if t > expand_t and sup > 300 and fobs.size() < 3 + int(MapDims.HALF / 128.0):  # (more ground, more bases)
 		var spot := _expansion_spot()
 		if spot != Vector3.INF:
 			expand_t = t + rng.randf_range(120.0, 200.0)
 			_place("fob", spot, Defs.yaw_of(_enemy_dir()), engs)
 			return
 		expand_t = t + 30.0
+	if NavalAI.dock_wanted(self, sup):
+		var ds := NavalAI.dock_spot(self)
+		if not ds.is_empty():
+			_place("dock", ds[0], ds[1], engs)
+			return
 	for p in plan:
 		if p[0] == "trench_line":
 			if sup > 150 + _fob_reserve() and _dig_line(p[1], float(p[2]), engs):
@@ -556,7 +561,10 @@ func _enemy_air() -> bool:
 
 func _production(sqs: Array) -> void:
 	var r := world.rules
-	var sup: int = r.max_fob_supply(team)
+	var sup: int = r.supply_total(team)  # (spending draws on every FOB: see Rules.spend)
+	# the dock's first boats come before anything else (they're cheap, and the
+	# defences and the next FOB would otherwise eat every round of supply)
+	sup -= NavalAI.produce(self, sup, 0)
 	var eng_n := 0
 	var counts := {}
 	for sq in sqs:
@@ -588,8 +596,15 @@ func _production(sqs: Array) -> void:
 			saving = 0
 			room = 0
 			next_vehicle = ""
-	# a FOB further forward comes before more men, once one's due
+	# a FOB further forward comes before more men, once one's due - and so
+	# does the factory (on a big map the barracks would otherwise spend every
+	# last round of supply on infantry, and no armour would ever roll out)
 	saving += _fob_reserve()
+	if factories.is_empty() and _my_structs("factory").is_empty() and world.time > 200.0:
+		saving += int(Defs.BUILDINGS.factory.cost)
+	elif NavalAI.dock_wanted(self, 9999) and world.time > 600.0:
+		saving += int(Defs.BUILDINGS.dock.cost) / 2
+	var boat_save := NavalAI.saving(self)
 	if sqs.size() < 3:
 		saving = 0
 		room = 0
@@ -598,7 +613,7 @@ func _production(sqs: Array) -> void:
 			continue
 		var key := _pick_squad(counts, eng_n, enemy_armor)
 		var def: Dictionary = Defs.SQUADS[key]
-		if sup >= int(def.cost) + 30 + saving:
+		if sup >= int(def.cost) + 30 + saving + boat_save:
 			_cmd({"t": "train", "building": b.eid, "item": key})
 			sup -= int(def.cost)
 			counts[key] = int(counts.get(key, 0)) + 1
@@ -761,12 +776,15 @@ func _military(sqs: Array) -> void:
 	var vehs := []
 	var back := []
 	var drones := []
+	var boats := []
 	var fbase := _front_fob()
 	for v in world.vehicles:
 		if v.team != team or v.owner_peer != peer or v.is_auto() or v.gone:
 			continue
 		var vb: String = v.base()
-		if vb == "uav":
+		if vb == "boat":
+			boats.append(v)  # (the navy has its own orders: see NavalAI)
+		elif vb == "uav":
 			drones.append(v)
 		elif vb == "arty" or v.vdef.has("service"):
 			back.append(v)
@@ -774,6 +792,7 @@ func _military(sqs: Array) -> void:
 			continue  # an empty troop helicopter waits at the pad
 		else:
 			vehs.append(v)
+	NavalAI.tick(self, boats)
 	# guns and support vehicles keep station behind the front
 	if fbase and t > _back_t:
 		_back_t = t + 30.0

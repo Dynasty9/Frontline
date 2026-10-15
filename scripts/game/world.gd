@@ -213,6 +213,9 @@ func despawn(e: Entity) -> void:
 	entities.erase(e.eid)
 	if e is Soldier:
 		soldiers.erase(e)
+		# out of his squad now: nothing may touch him once he's freed
+		if e.squad and is_instance_valid(e.squad):
+			e.squad.members.erase(e)
 	elif e is Vehicle:
 		vehicles.erase(e)
 	elif e is Structure:
@@ -333,6 +336,30 @@ func placement_error(team: int, kind: String, pos: Vector3, yaw: float) -> Strin
 	if kind == "trench":
 		half.x += TrenchNet.HALF_W
 	var c := Vector2(pos.x, pos.z)
+	if not water.is_empty():
+		var b := Basis(Vector3.UP, yaw)
+		for o in [Vector3.ZERO, Vector3(half.x, 0, half.y), Vector3(-half.x, 0, half.y), Vector3(half.x, 0, -half.y), Vector3(-half.x, 0, -half.y)]:
+			var q: Vector3 = pos + b * o
+			if water.wet_at(q) or water.on_deck(q):
+				return "Can't build in the water." if kind != "dock" else "A dock stands on the shore, its jetty out over the water."
+		if kind == "dock":
+			# its jetty runs out over open water in front of it
+			var f := Defs.dir_of(yaw)
+			var wet_near := false
+			var deep := false
+			for k in range(int(half.y) + 1, int(half.y) + 28, 3):
+				var q: Vector3 = pos + f * float(k)
+				if float(k) <= half.y + 12.0 and water.wet_at(q):
+					wet_near = true
+				if water.deep_at(q):
+					deep = true
+					break
+			if not (wet_near and deep):
+				return "A dock must face open water: put it on the shore with its front to the sea or the river."
+			if (team == 0 and pos.z < -40.0) or (team == 1 and pos.z > 40.0):
+				return "Build docks on your own half of the map."
+	elif kind == "dock":
+		return "There's no water on this map."
 	for st in structures_near(pos, 16.0):
 		if st.skind == "floor" or (kind == "trench" and st.skind == "trench") or (st.skind == "trench" and kind in ["mg_nest", "hmg_nest"]):
 			continue
@@ -345,7 +372,9 @@ func placement_error(team: int, kind: String, pos: Vector3, yaw: float) -> Strin
 			for i in range(pts.size() - 1):
 				if Defs.dist_point_segment(fp, Defs.flat(pts[i]), Defs.flat(pts[i + 1])) < half.length() + 3.0:
 					return "That would block your own supply road."
-	if kind == "fob":
+	if kind == "dock":
+		pass  # (see above: the shore, our half)
+	elif kind == "fob":
 		var near_own := false
 		for st in structures:
 			if st.skind != "fob" and st.skind != "depot":
