@@ -142,6 +142,8 @@ var _pattern: Label
 var _stats: GridContainer
 var _rel: Label
 var _view: SubViewport
+var _svc: SubViewportContainer
+var _list_sc: ScrollContainer
 var _stage: Node3D
 var _turn: Node3D
 var _cam: Camera3D
@@ -171,6 +173,8 @@ func _ready() -> void:
 	top.add_child(tl)
 	var sub := UiKit.label("  every unit, weapon, vehicle and work in the field, with its numbers", 13, UiKit.DIM)
 	sub.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	sub.clip_text = true  # gives way first when the interface is scaled up
+	sub.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	top.add_child(sub)
 	for s in [[-1, "Both sides"], [0, "Coalition"], [1, "Rebels"]]:
 		var b := Button.new()
@@ -215,6 +219,7 @@ func _ready() -> void:
 		cats.add_child(b2)
 		_cat_btns[ck] = b2
 	var sc := ScrollContainer.new()
+	_list_sc = sc
 	sc.custom_minimum_size = Vector2(300, 0)
 	sc.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	body.add_child(sc)
@@ -260,6 +265,11 @@ func _ready() -> void:
 	_set_side(-1)
 	_set_cat("infantry")
 	visibility_changed.connect(func(): set_process(is_visible_in_tree()))
+	# the model view and the list take what the page can spare (a small screen,
+	# or a big interface scale, keeps room for the text)
+	resized.connect(func():
+		_svc.custom_minimum_size.y = clampf(size.y * 0.5, 180.0, 420.0)
+		_list_sc.custom_minimum_size.x = clampf(size.x * 0.25, 220.0, 300.0))
 
 
 ## Opens on a page: a category, optionally an entry, optionally one side.
@@ -393,6 +403,7 @@ func _select(key: String) -> void:
 		_stats.add_child(bar)
 		var val := UiKit.label(String(s[1]), 13, UiKit.TEXT, 600)
 		val.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		val.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART  # wraps rather than widening the page
 		_stats.add_child(val)
 	_rel.text = "\n".join(e.get("rel", []))
 	_show_model(e)
@@ -423,6 +434,7 @@ func _side_name(t: int, both: bool) -> String:
 
 func _make_view() -> Control:
 	var svc := SubViewportContainer.new()
+	_svc = svc
 	svc.stretch = true
 	svc.custom_minimum_size = Vector2(0, 420)
 	svc.mouse_filter = Control.MOUSE_FILTER_STOP
@@ -1231,20 +1243,22 @@ func _build_entries() -> Array:
 	# fire support
 	var sco: float = mx.call(Defs.SUPPORT, func(s): return s.cost)
 	var scd: float = mx.call(Defs.SUPPORT, func(s): return s.cooldown)
-	var srr: float = mx.call(Defs.SUPPORT, func(s): return s.r)
+	var srr: float = mx.call(Defs.SUPPORT, func(s): return 0.0 if s.get("recon", false) else s.r)  # (a recon flight's sight is on another scale)
 	for k in Defs.SUPPORT:
 		var s2: Dictionary = Defs.SUPPORT[k]
 		if int(s2.team) < 0:
 			continue
-		var shape: String = {"line": "a line, dragged to set the run-in", "strafe": "a strafing line, dragged", "orbit": "an orbit over a circle", "circle": "a circle"}.get(String(s2.shape), String(s2.shape))
+		var shape: String = {"line": "a line, dragged to set the run-in", "strafe": "a strafing line, dragged", "orbit": "an orbit over a circle", "circle": "a circle",
+			"sweep": "a line it flies along, dragged", "watch": "an orbit over a circle"}.get(String(s2.shape), String(s2.shape))
+		var from_min := int(Defs.support_from(k) / 60.0)
 		out.append({"cat": "support", "key": k, "name": String(s2.name), "team": int(s2.team),
 			"sub": "%d supply · every %d s" % [int(s2.cost), int(s2.cooldown)], "pattern": String(s2.get("pattern", PATTERN.get(k, ""))),
 			"desc": String(s2.desc), "stats": [
 				["Cost", "%d supply" % int(s2.cost), float(s2.cost) / sco],
 				["Cooldown", "%d s" % int(s2.cooldown), float(s2.cooldown) / scd],
-				["Area", "%d m radius" % int(s2.r), float(s2.r) / srr],
+				["Sees" if s2.get("recon", false) else "Area", ("%d m either side" if String(s2.shape) == "sweep" else "%d m radius") % int(s2.r), minf(1.0, float(s2.r) / srr)],
 				["Aimed as", shape, -1.0],
-			], "rel": ["Called from the support panel or Z, from minute five"]})
+			], "rel": ["Called from the support panel or Z, from minute %s" % ["one", "two", "three", "four", "five", "six"][clampi(from_min - 1, 0, 5)]]})
 
 	# battlefield cover
 	for c in COVER:

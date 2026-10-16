@@ -242,7 +242,7 @@ func _key(k: InputEventKey) -> void:
 			if world.local_team >= 0:
 				var sup: Dictionary = world.team_info[world.local_team].get("sup", {})
 				for sk in Defs.supports_for(world.local_team):
-					if float(sup.get(sk, 300.0)) <= world.time:
+					if float(sup.get(sk, Defs.support_from(sk))) <= world.time:
 						cancel_modes()
 						ability = "support:" + String(sk)
 						break

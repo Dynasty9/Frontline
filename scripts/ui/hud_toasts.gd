@@ -30,6 +30,8 @@ func _draw() -> void:
 		var txt: String = it[1]
 		var lines := _wrap(txt, size.x - 34.0)
 		var h := 12.0 + lines.size() * 17.0
+		if y > 0.0 and y + h > size.y:
+			break  # out of room (the command card is below): the older ones wait in the log (L)
 		var slide := (1.0 - clampf(age * 5.0, 0.0, 1.0)) * 24.0
 		var r := Rect2(slide, y, size.x, h)
 		draw_style_box(UiKit.boxc(Color(0.05, 0.06, 0.055, 0.72 * a), 6, Color(1, 1, 1, 0.06 * a), 1, 0.0), r)

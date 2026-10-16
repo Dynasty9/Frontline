@@ -51,18 +51,23 @@ var preset := "high"
 var v := {
 	"shadows": 2, "ssao": true, "ssil": true, "gi": false, "vol_fog": true, "glow": true, "aa": 6, "scale": 1.0,
 	"grass": 2, "effects": 2, "decals": true, "ragdolls": true, "post": true, "dof": false,
-	"vsync": true, "fps_cap": 0, "perf": 1, "shake": true, "volume": 0.8, "ui_scale": 1.0, "mood": "random", "labels": true, "lyr_units": true, "lyr_orders": false, "lyr_intel": true, "lyr_ranges": false, "orbat": true,
+	"vsync": true, "fps_cap": 0, "perf": 1, "shake": true, "ui_scale": 1.0, "mood": "random", "labels": true, "lyr_units": true, "lyr_orders": false, "lyr_intel": true, "lyr_vision": true, "lyr_ranges": false, "orbat": true,
 	"ao_q": 2, "upscaler": 1, "sharpen": 0.2, "ssr": true, "lod": 2, "aniso": 3,
 	"window": 0, "resolution": 2, "brightness": 1.0, "contrast": 1.0, "look": 0, "tonemap": 0, "fov": 48.0,
 	"bubbles": true, "cover_preview": true, "edge_pan": true, "cam_speed": 1.0,
 	"zoom_cursor": true, "mmb_mode": 0, "minimap_size": 1, "minimap_rotate": false,
 	"coop_show": true,
+	"volume": 0.8, "vol_music": 0.6, "vol_effects": 1.0, "vol_ambience": 0.8, "vol_ui": 0.8, "battle_music": true, "mute_bg": false,
 }
+## Volume sliders -> the mixer bus each one sets.
+const VOLUME_BUS := {"volume": "Master", "vol_music": "Music", "vol_effects": "Effects", "vol_ambience": "Ambience", "vol_ui": "Interface"}
 
 
 func _ready() -> void:
 	_load()
 	apply_global()
+	# the interface follows the window: resizing it or going fullscreen rescales it
+	get_tree().root.size_changed.connect(apply_ui_scale)
 
 
 func get_v(key: String):
@@ -126,10 +131,85 @@ func apply_global() -> void:
 		DisplayServer.window_set_vsync_mode(DisplayServer.VSYNC_ENABLED if v.vsync else DisplayServer.VSYNC_DISABLED)
 		_apply_window()
 	Engine.max_fps = FPS_CAPS[clampi(int(v.fps_cap), 0, FPS_CAPS.size() - 1)]
+	apply_ui_scale()
+	_apply_audio()
+
+
+var _focused := true
+
+
+## Each volume slider sets its bus. The slider is squared on the way to
+## decibels, so its travel feels even: halfway sounds about half as loud
+## (a straight line would stay loud until the very end).
+func _apply_audio() -> void:
+	for k in VOLUME_BUS:
+		var bi := AudioServer.get_bus_index(VOLUME_BUS[k])
+		if bi < 0:
+			continue
+		var lv := clampf(float(v[k]), 0.0, 1.0)
+		AudioServer.set_bus_volume_db(bi, linear_to_db(maxf(0.00001, lv * lv)))
+		AudioServer.set_bus_mute(bi, lv <= 0.001 or (k == "volume" and v.mute_bg and not _focused))
+
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_APPLICATION_FOCUS_OUT or what == NOTIFICATION_APPLICATION_FOCUS_IN:
+		_focused = what == NOTIFICATION_APPLICATION_FOCUS_IN
+		_apply_audio()
+
+
+## The interface's size. At 100% it grows with the window, taking the same
+## share of it at any resolution (a 1600 x 900 window draws it at 1.125x,
+## 1080p at 1.35x, 1440p at 1.8x, 4K at 2.7x), and the player's scale goes on
+## top. It stops growing once it would no longer fit: the battle interface
+## still works on a 960 x 540 screen's worth of room, but the menus need a
+## full 1280 x 900, so they only grow until they fill the window.
+const UI_REF_H := 800.0
+const UI_MIN_BATTLE := Vector2(960, 540)
+const UI_MIN_MENU := Vector2(1280, 900)
+const UI_SCALE_MIN := 0.6
+
+var ui_menu := true  # main.gd: false while a battle is on
+
+
+func set_ui_menu(on: bool) -> void:
+	ui_menu = on
+	apply_ui_scale()
+
+
+## What 100% comes to for this window.
+func ui_base() -> float:
+	return _win_px().y / UI_REF_H
+
+
+## The largest scale the player can pick that still fits a battle in this window.
+func ui_scale_max() -> float:
+	var px := _win_px()
+	var fit := minf(px.x / UI_MIN_BATTLE.x, px.y / UI_MIN_BATTLE.y)
+	return maxf(1.0, snappedf(fit / ui_base() - 0.025, 0.05))
+
+
+## The factor the window's 2D content is drawn at.
+func ui_factor() -> float:
+	if DisplayServer.get_name() == "headless":
+		return 1.0  # no window to fit (and the tests lay out as they always have)
+	var px := _win_px()
+	var lim: Vector2 = UI_MIN_MENU if ui_menu else UI_MIN_BATTLE
+	var fit := minf(px.x / lim.x, px.y / lim.y)
+	return minf(maxf(ui_base() * clampf(float(v.ui_scale), UI_SCALE_MIN, 4.0), 0.5), fit)
+
+
+func apply_ui_scale() -> void:
+	var vp := get_tree().root if get_tree() else null
 	if vp:
-		vp.content_scale_factor = clampf(float(v.ui_scale), 0.6, 2.0)
-	var bus := AudioServer.get_bus_index("Master")
-	AudioServer.set_bus_volume_db(bus, linear_to_db(maxf(0.001, float(v.volume))))
+		var f := ui_factor()
+		if absf(vp.content_scale_factor - f) > 0.001:
+			vp.content_scale_factor = f
+
+
+func _win_px() -> Vector2:
+	var vp := get_tree().root if get_tree() else null
+	var s := Vector2(vp.size) if vp else Vector2(1600, 900)
+	return Vector2(maxf(s.x, 320.0), maxf(s.y, 180.0))
 
 
 var _win_applied := [-1, -1]

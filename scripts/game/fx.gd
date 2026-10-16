@@ -19,6 +19,8 @@ const MORTAR := 12
 const SUPPORT := 13
 const FAR_SOUND := 14
 const DIE := 15
+const FIRE := 16  # a grass fire: [FIRE, pos, radius, seconds]
+const BURNT_OUT := 17  # something burnt through falls in: [BURNT_OUT, pos, half extents, yaw]
 
 const TRACER_SPEED := 380.0
 
@@ -192,6 +194,12 @@ func play(ev: Array) -> void:
 		FAR_SOUND:
 			var dist := world.cam.focus_pos.distance_to(ev[3]) if world.cam and ev.size() > 3 else 0.0
 			Sfx.play_far(String(ev[1]), float(ev[2]), 1.0, dist)
+		FIRE:
+			vfx.ground_fire(ev[1], float(ev[2]), float(ev[3]))
+		BURNT_OUT:
+			Sfx.play("thud", ev[1], -2.0, 0.7)
+			if _visible_at(ev[1]):
+				vfx.collapse(ev[1], ev[2])
 
 
 ## The muzzle as the shooter's model has it on this screen (the barrel tip of
@@ -396,7 +404,7 @@ func _tree_fall(p: Vector3, yaw: float, id: int, v: int) -> void:
 	Structure.tree_model(n, id, v)
 	var dir := Defs.dir_of(yaw)
 	if world.phys:
-		var k := 0.62 if v == 1 else 1.0
+		var k := 0.62 if (v & 15) == 1 else 1.0
 		world.phys.prop(n, Transform3D(Basis.IDENTITY, p), dir * 1.0, Vector3.UP.cross(dir) * 0.9, Vector3(1.6, 7.0, 1.6) * k, 900.0 * k)
 		return
 	n.global_position = p

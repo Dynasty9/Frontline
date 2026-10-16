@@ -35,6 +35,9 @@ var _vm: VehicleModels
 var mk := ""  # support aircraft: which model flies it
 var _bombs0 := -1.0  # a bomb run: how many it started with
 var guns := ""  # an orbiting gunship's weapons (GUNSETS)
+var sight := 0.0  # a recon flight: how far either side of its track its camera sees (0: an ordinary sortie)
+var stay := 0.0  # a recon pass: how far on it flies; an orbit: how long it stays on station (0: the default)
+var _mark_t := 0.0
 
 var model: Node3D
 var smoke_fx: Node3D
@@ -72,11 +75,15 @@ func apply_props(d: Dictionary) -> void:
 		mk = d.mk
 	if d.has("guns"):
 		guns = d.guns
+	if d.has("sight"):
+		sight = d.sight
+	if d.has("stay"):
+		stay = d.stay
 
 
 func get_props() -> Dictionary:
 	return {"ptype": ptype, "team": team, "pos": position, "vel": vel, "thrower": thrower_id, "fuse": fuse,
-		"origin": origin, "target": target, "T": shell_t, "tgt": tgt_id, "mk": mk, "guns": guns}
+		"origin": origin, "target": target, "T": shell_t, "tgt": tgt_id, "mk": mk, "guns": guns, "sight": sight, "stay": stay}
 
 
 func on_spawned() -> void:
@@ -129,7 +136,9 @@ func _jet(dt: float) -> void:
 		if along > -BOMB_THROW - 5.0 * (_bombs0 - 1.0) + i * 10.0:
 			fuse -= 1.0
 			world.spawn("projectile", {"ptype": "bomb", "team": team, "pos": position + Vector3(0, -1.4, 0), "vel": vel * 0.95, "thrower": thrower_id})
-	if along > 340.0:
+	if sight > 0.0:
+		_photograph(dt)
+	if along > (stay if stay > 0.0 else 340.0):
 		world.despawn(self)
 
 
@@ -404,6 +413,9 @@ func _view_process(dt: float) -> void:
 		var fw := vel.normalized()
 		if absf(fw.y) < 0.98:
 			model.look_at(model.global_position + fw, Vector3.UP)
+		if _vm:
+			for pv in _vm.wheels:
+				(pv as Node3D).rotate_object_local(Vector3(0, 0, 1), dt * 40.0)  # the propeller
 		return
 	if ptype == "a10":
 		_a10_view(dt)
@@ -467,9 +479,12 @@ func _build_model() -> void:
 				smoke_fx.position = Vector3(0, 0.6, 0)
 				add_child(smoke_fx)
 		"jet":
-			var jm := VehicleModels.build(mk if mk != "" else "jet", team, eid)
-			model.add_child(jm.root)
-			Sfx.play("jet", position + vel.normalized() * 160.0, 6.0)
+			_vm = VehicleModels.build(mk if mk != "" else "jet", team if team >= 0 else 0, eid)
+			model.add_child(_vm.root)
+			if _vm.wheels.is_empty():
+				Sfx.play("jet", position + vel.normalized() * 160.0, 6.0)
+			else:
+				add_child(Sfx.make_loop_player("prop", 30.0, 2.0))  # a light plane droning over
 		"bomb":
 			Res.mi(model, Res.cyl(0.16, 0.16, 1.5, 10), Mats.get_mat("gunmetal_w"), Vector3.ZERO, Vector3(PI / 2, 0, 0), false)
 			Res.mi(model, Res.box(Vector3(0.7, 0.05, 0.35)), Mats.get_mat("gunmetal_w"), Vector3(0, 0, 0.75), Vector3.ZERO, false)
@@ -514,6 +529,7 @@ func _build_model() -> void:
 			_vm = VehicleModels.build(mk if mk != "" else "ac130", team if team >= 0 else 0, eid)
 			model.add_child(_vm.root)
 			_drone = AudioStreamPlayer.new()
+			_drone.bus = &"Effects"
 			if Sfx.enabled:
 				_drone.stream = Sfx.streams["prop"]
 				_drone.volume_db = -30.0
@@ -526,6 +542,52 @@ func _build_model() -> void:
 				trail = world.fx.vfx.make_trail()
 				add_child(trail)
 
+
+
+# --- eyes in the sky -------------------------------------------------------------------
+
+const JET_SIGHT := 70.0  # a strike jet: the pilot and his targeting pod, a broad swath under him
+const GUNRUN_SIGHT := 55.0  # low and busy on a gun run, he sees less of it
+const ORBIT_SIGHT := 70.0  # an orbiting gunship or drone: its sensor turret, staring at the circle
+const BELOW_SIGHT := 40.0  # and the ground it's flying over
+const PHOTO_EVERY := 0.45
+const PHOTO_LINGER := 6.0  # how long a recon pass's pictures go on showing what was there
+
+
+## Support aircraft spot for their side as they fly (see Vision): a fast jet
+## the ground round it, a gun run less, an orbiting gunship the circle its
+## sensor turret watches while it's on station, and the ground below it. A
+## recon flight's camera sees a broad strip either side of its track.
+func add_eyes(out: PackedVector3Array) -> void:
+	match ptype:
+		"jet":
+			if Defs.in_map(position, -40.0):
+				out.append(Vector3(position.x, position.z, sight if sight > 0.0 else JET_SIGHT))
+		"a10":
+			if Defs.in_map(position, -40.0):
+				out.append(Vector3(position.x, position.z, GUNRUN_SIGHT))
+		"ac130":
+			if life_t > 2.0 and life_t < on_station():
+				out.append(Vector3(target.x, target.z, sight if sight > 0.0 else ORBIT_SIGHT))
+			out.append(Vector3(position.x, position.z, BELOW_SIGHT))
+
+
+## Which way an aircraft is flying, on the ground (an orbit's comes from its
+## circle: clients aren't sent its velocity).
+func heading() -> Vector3:
+	if ptype == "ac130":
+		return Defs.flat(_ac_pos(life_t + 0.1) - _ac_pos(life_t)).normalized()
+	return Defs.flat(vel).normalized()
+
+
+## A recon pass leaves its pictures behind: the strip it has flown over goes
+## on showing for a few seconds while they're read (Rules.add_mark).
+func _photograph(dt: float) -> void:
+	_mark_t -= dt
+	if _mark_t > 0.0 or team < 0 or not Defs.in_map(position, -sight):
+		return
+	_mark_t = PHOTO_EVERY
+	world.rules.add_mark(team, position, sight, PHOTO_LINGER)
 
 
 # --- A-10 gun run ----------------------------------------------------------------------
@@ -620,6 +682,11 @@ const AC_GUNS := {
 }
 
 
+## How long an orbit stays over the target (a drone keeping watch, longer).
+func on_station() -> float:
+	return stay if stay > 0.0 else AC_ON_STATION
+
+
 func _ac_pos(t: float) -> Vector3:
 	var a := fuse - t * AC_SPEED / AC_R  # a left-hand orbit: the target off the port wing, where the guns are
 	return target + Vector3(cos(a) * AC_R, AC_ALT, sin(a) * AC_R)
@@ -640,6 +707,7 @@ const GUNSETS := {
 	"greyhawk": {
 		"ac40": {"every": 4.2, "burst": 1, "gap": 0.0, "T": 2.0, "spread": 1.2, "snd": "", "vol": 0.0},
 	},
+	"none": {},  # an unarmed drone keeping watch
 }
 
 
@@ -649,8 +717,8 @@ const GUNSETS := {
 func _ac130(dt: float) -> void:
 	position = _ac_pos(life_t)
 	vel = (_ac_pos(life_t + 0.1) - position) / 0.1
-	if life_t < 3.0 or life_t > AC_ON_STATION:
-		if life_t > AC_ON_STATION + 8.0:
+	if life_t < 3.0 or life_t > on_station():
+		if life_t > on_station() + 8.0:
 			world.despawn(self)
 		return
 	var gset: Dictionary = GUNSETS.get(guns, AC_GUNS)
@@ -710,5 +778,5 @@ func _ac130_view(dt: float) -> void:
 			(w as Node3D).rotate_object_local(Vector3(0, 0, 1), dt * 40.0)
 	if _drone:
 		var d := world.cam.cam.global_position.distance_to(position) if world.cam else 200.0
-		var fade := clampf(minf(life_t / 3.0, (AC_ON_STATION + 8.0 - life_t) / 4.0), 0.0, 1.0)
+		var fade := clampf(minf(life_t / 3.0, (on_station() + 8.0 - life_t) / 4.0), 0.0, 1.0)
 		_drone.volume_db = linear_to_db(maxf(0.0005, fade * clampf(1.0 - (d - 60.0) / 400.0, 0.15, 1.0) * 0.35))

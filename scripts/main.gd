@@ -11,6 +11,7 @@ extends Node
 ##   (and Online's own: --matchmaker=URL --account=PATH --no-stun)
 ##   --timescale=X --quit-after=SECONDS --stats=SECONDS --verbose
 ##   --screenshot=PATH --shot-at=SECONDS --focus=X,Z --zoom=D
+##   --sound-dump=DIR      write every synthesised sound and music sample to DIR as WAVs, then quit
 
 var menu: Control
 var world: World
@@ -42,6 +43,11 @@ func _ready() -> void:
 		DisplayServer.window_set_position(Vector2i(-12000, -12000))
 		DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_WINDOWED)
 		DisplayServer.window_set_position(Vector2i(-12000, -12000))
+	if args.has("sound-dump"):
+		Sfx.dump(String(args["sound-dump"]))
+		await Music.dump(String(args["sound-dump"]))
+		get_tree().quit()
+		return
 	if args.has("soldier-sheet"):
 		# a lineup of every kind of soldier, saved as an image (no menu, no game)
 		var sheet: Node3D = preload("res://scripts/ui/soldier_sheet.gd").new()
@@ -230,6 +236,7 @@ func _on_game_start(s: Dictionary) -> void:
 			await get_tree().process_frame
 			await get_tree().process_frame
 	menu.visible = false
+	Settings.set_ui_menu(false)
 	if world:
 		world.name = "OldWorld"
 		world.queue_free()
@@ -431,6 +438,7 @@ func return_to_menu(msg: String) -> void:
 		world.queue_free()
 		world = null
 	Net.leave()
+	Settings.set_ui_menu(true)
 	menu.show_menu(msg)
 
 
@@ -499,11 +507,21 @@ func _process(_dt: float) -> void:
 		if args.has("menu-op") and menu and menu.op_panel and not has_meta("op_open") and Engine.get_frames_drawn() > 5:
 			set_meta("op_open", true)
 			menu._open_op(int(args["menu-op"]))
-		# --menu-panel=browse|account: the list of online battles, or the sign-in panel
+		# --menu-update=X.Y.Z[,available|downloading|ready|failed]: the update
+		# notice, as if GitHub had that release (screenshots)
+		if args.has("menu-update") and not has_meta("update_shown") and Engine.get_frames_drawn() > 5:
+			set_meta("update_shown", true)
+			var mu := String(args["menu-update"]).split(",")
+			var st: int = ["available", "downloading", "ready", "failed"].find(mu[1] if mu.size() > 1 else "available") + 1
+			Updater.pretend(mu[0], st)
+		# --menu-panel=browse|account|settings: the list of online battles, the sign-in panel, the settings
 		if args.has("menu-panel") and menu and menu.browse_panel and not has_meta("panel_open") and Engine.get_frames_drawn() > 5:
 			set_meta("panel_open", true)
 			if String(args["menu-panel"]) == "account":
 				menu._open_account()
+			elif String(args["menu-panel"]) == "settings":
+				menu.settings_panel.visible = true
+				menu.settings_panel._show_tab(String(args.get("settings-tab", "interface")))
 			else:
 				menu._open_browser()
 		# --menu-missions[=KEY]: open the Missions panel (on that mission)
@@ -788,6 +806,14 @@ func _process(_dt: float) -> void:
 		if world.coop.peers.has(wid):
 			set_meta("coop_watched", true)
 			world.cam.toggle_shadow(wid)
+	# --hud-panel=settings|help|menu|log: open one of the battle's panels (layout checks)
+	if args.has("hud-panel") and world.hud and world.time > 1.0 and not has_meta("hud_panel"):
+		set_meta("hud_panel", true)
+		var hp: Control = {"settings": world.hud.settings_panel, "help": world.hud.help_panel, "menu": world.hud.menu_panel, "log": world.hud.log_panel}.get(String(args["hud-panel"]))
+		if hp:
+			hp.visible = true
+			if hp is SettingsPanel:
+				(hp as SettingsPanel)._show_tab(String(args.get("settings-tab", "interface")))
 	if args.has("select-all") and world.input and world.time > float(args.get("shot-at", 8.0)) - 1.5 and world.input.sel_squads.is_empty():
 		for s in world.soldiers:
 			if s.owner_peer == world.local_peer and s.sid != 0 and not s.sid in world.input.sel_squads:

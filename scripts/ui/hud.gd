@@ -26,7 +26,9 @@ const MINIMAP_PAD := 5.0
 
 
 func minimap_side() -> float:
-	return MINIMAP_PX[clampi(int(Settings.get_v("minimap_size")), 0, MINIMAP_PX.size() - 1)]
+	var s: float = MINIMAP_PX[clampi(int(Settings.get_v("minimap_size")), 0, MINIMAP_PX.size() - 1)]
+	# a short screen (a big interface scale) keeps room above it for the support buttons
+	return minf(s, maxf(160.0, root.size.y * 0.4)) if root and root.size.y > 0.0 else s
 
 
 ## Lays out the bottom-left corner round the minimap's size: the map, its
@@ -52,13 +54,18 @@ func layout_minimap() -> void:
 	chat_edit.offset_top = above - 34
 
 
+## The narrowest the selection panel gets, and a command card button.
+const SEL_MIN_W := 300.0
+const CARD_BTN := Vector2(92, 46)
+
+
 ## Where the bottom-left cluster (minimap and layer column) ends on the right.
 func minimap_right() -> float:
 	return 14 + minimap_side() + MINIMAP_PAD * 2.0 + 6 + HudLayers.S
 
 
 ## How the map is drawn (each toggled from the layer column by the minimap).
-const LAYER_KEYS := {"units": "lyr_units", "orders": "lyr_orders", "intel": "lyr_intel", "ranges": "lyr_ranges", "labels": "labels"}
+const LAYER_KEYS := {"units": "lyr_units", "orders": "lyr_orders", "intel": "lyr_intel", "vision": "lyr_vision", "ranges": "lyr_ranges", "labels": "labels"}
 const PHASE_NAMES := {"plan": "Planning", "move": "Moving into position", "fix": "Fixing the enemy", "assault": "Assault", "fallback": "Falling back"}
 
 var world: World
@@ -124,7 +131,7 @@ var _msgs: Array = []
 
 func _ready() -> void:
 	layer = 5
-	MapSymbols.build_atlas(self)
+	MapSymbols.build_atlas(self, MapSymbols.atlas_k_for(Settings.ui_factor()))
 	root = Control.new()
 	root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -245,6 +252,11 @@ func _ready() -> void:
 	root.add_child(chat_edit)
 	layout_minimap()
 	Settings.changed.connect(layout_minimap)
+	root.resized.connect(layout_minimap)  # the window, or the interface scale, changed
+	root.resized.connect(func():
+		var k := MapSymbols.atlas_k_for(Settings.ui_factor())
+		if k != MapSymbols.atlas_k:
+			MapSymbols.build_atlas(self, k))
 
 	# selection details, bottom-centre (hidden when nothing is selected)
 	sel_panel = PanelContainer.new()
@@ -281,6 +293,7 @@ func _ready() -> void:
 	cv.add_theme_constant_override("separation", 6)
 	card_panel.add_child(cv)
 	card_title = UiKit.label("", 12, UiKit.DIM)
+	card_title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART  # the buttons set the card's width, not the title
 	cv.add_child(card_title)
 	card = GridContainer.new()
 	card.columns = 5
@@ -314,14 +327,10 @@ func _ready() -> void:
 	_build_help()
 	_build_menu()
 	settings_panel = SettingsPanel.new()
-	settings_panel.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
-	settings_panel.offset_left = -330
-	settings_panel.offset_right = 330
-	settings_panel.offset_top = -300
-	settings_panel.offset_bottom = 300
 	settings_panel.visible = false
 	settings_panel.closed.connect(func(): settings_panel.visible = false)
 	root.add_child(settings_panel)
+	UiKit.fit_center(settings_panel, Vector2(700, 600))
 	# the field manual sits above everything (F2's hidden HUD included)
 	manual = FieldManual.new()
 	manual.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -381,6 +390,47 @@ func _build_observer_bar() -> void:
 	_build_demo_panel()
 
 
+var _obs_place := Vector2(-1, -1)  # (bottom?, slide right) as last laid out
+var _obs_low := false
+
+
+## The observer bar: top centre, slid right if it would cover the balance of
+## forces top left. A narrow screen (a big interface scale) has no room for it
+## between that and a mission's objectives, so there it goes bottom right
+## (nothing else is there for an observer), the fire support list above it.
+func _place_obs_bar() -> void:
+	var bw := obs_bar.size.x
+	var vw := root.size.x
+	var x0 := maxf((vw - bw) * 0.5, top.position.x + HudTopInfo.OBS_W + 12.0)
+	var right := vw - 14.0 - (HudObjectives.W + 12.0 if objectives.visible else 0.0)
+	_obs_low = x0 + bw > right
+	var dx := 0.0 if _obs_low else x0 - (vw - bw) * 0.5
+	var key := Vector2(1.0 if _obs_low else 0.0, dx)
+	if key == _obs_place:
+		return
+	_obs_place = key
+	for p in [obs_bar, demo_panel]:
+		var c: Control = p
+		c.anchor_left = 1.0 if _obs_low else 0.5
+		c.anchor_right = c.anchor_left
+		c.anchor_top = 1.0 if _obs_low else 0.0
+		c.anchor_bottom = c.anchor_top
+		c.grow_horizontal = Control.GROW_DIRECTION_BEGIN if _obs_low else Control.GROW_DIRECTION_BOTH
+		c.grow_vertical = Control.GROW_DIRECTION_BEGIN if _obs_low else Control.GROW_DIRECTION_END
+		c.offset_left = -14.0 if _obs_low else dx
+		c.offset_right = c.offset_left
+	if _obs_low:
+		obs_bar.offset_top = -14.0
+		obs_bar.offset_bottom = -14.0
+		demo_panel.offset_top = -14.0 - obs_bar.size.y - 8.0
+		demo_panel.offset_bottom = demo_panel.offset_top
+	else:
+		obs_bar.offset_top = 12.0
+		obs_bar.offset_bottom = 12.0
+		demo_panel.offset_top = 62.0
+		demo_panel.offset_bottom = 62.0
+
+
 func _small_button(text: String, tip: String, cb: Callable) -> Button:
 	var b := Button.new()
 	b.text = text
@@ -395,13 +445,9 @@ func _small_button(text: String, tip: String, cb: Callable) -> Button:
 func _center_panel(sz: Vector2) -> PanelContainer:
 	var p := PanelContainer.new()
 	p.add_theme_stylebox_override("panel", UiKit.box(Color(0.05, 0.06, 0.055, 0.94), 10, UiKit.LINE, 1, 18.0, 18))
-	p.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
-	p.offset_left = -sz.x * 0.5
-	p.offset_right = sz.x * 0.5
-	p.offset_top = -sz.y * 0.5
-	p.offset_bottom = sz.y * 0.5
 	p.visible = false
 	root.add_child(p)
+	UiKit.fit_center(p, sz)
 	return p
 
 
@@ -491,7 +537,7 @@ func set_map_layer(key: String, on: bool) -> void:
 	Settings.v[LAYER_KEYS[key]] = on
 	layers_ui.queue_redraw()
 	Sfx.ui("click")
-	flash("%s %s" % [{"units": "Unit symbols", "orders": "Orders", "intel": "Intelligence", "ranges": "Weapon ranges", "labels": "Soldier labels"}[key], "on" if on else "off"])
+	flash("%s %s" % [{"units": "Unit symbols", "orders": "Orders", "intel": "Intelligence", "vision": "Fog of war", "ranges": "Weapon ranges", "labels": "Soldier labels"}[key], "on" if on else "off"])
 
 
 func toggle_tactical() -> void:
@@ -697,6 +743,7 @@ func show_game_over(w: int) -> void:
 	if not world.mission_info.is_empty():
 		_mission_over()
 		return
+	Music.sting("defeat" if world.local_team >= 0 and w != world.local_team else "victory")
 	var vb := VBoxContainer.new()
 	vb.add_theme_constant_override("separation", 14)
 	over_panel.add_child(vb)
@@ -727,10 +774,8 @@ func show_game_over(w: int) -> void:
 func _mission_over() -> void:
 	var info: Dictionary = world.mission_info
 	var ok := int(info.get("over", 0)) == 1
-	over_panel.offset_left = -280
-	over_panel.offset_right = 280
-	over_panel.offset_top = -170
-	over_panel.offset_bottom = 170
+	Music.sting("victory" if ok else "defeat")
+	UiKit.fit_center(over_panel, Vector2(560, 340))
 	var vb := VBoxContainer.new()
 	vb.add_theme_constant_override("separation", 10)
 	over_panel.add_child(vb)
@@ -803,16 +848,22 @@ func _view_process(dt: float) -> void:
 		obs_pause.disabled = not d.can_control_time()
 		obs_dir.set_pressed_no_signal(d.active)
 		obs_view.text = "View: " + (["Both sides", Defs.TEAM_NAMES[0], Defs.TEAM_NAMES[1]][world.view_team + 1])
+		_place_obs_bar()
 	_track_orders()
 	_update_support()
 	_update_card()
 	# the order of battle fits its contents, down to the support buttons at most
-	var vh := root.size.y
-	var limit := vh - 240.0
+	var limit := minimap_panel.position.y - 10.0
 	if support_box.get_child_count() > 0:
 		limit = support_box.global_position.y - 10.0
 	var want := HudOrbat.HEAD_H if not orbat.open else orbat.content_h()
 	orbat.size = Vector2(HudOrbat.W, clampf(want, HudOrbat.HEAD_H, maxf(HudOrbat.HEAD_H, limit - orbat.position.y)))
+	# on a narrow screen (a big interface scale) the command card gives up
+	# columns before the selection panel beside it is squeezed
+	var room := root.size.x - minimap_right() - 10.0 - SEL_MIN_W - 12.0 - 14.0
+	var cols := clampi(int((room - 15.0) / (CARD_BTN.x + 5.0)), 3, 5)
+	if card.columns != cols:
+		card.columns = cols
 	var has_sel := world.input != null and (world.input.has_units() or world.input.sel_structure != 0 or (_inspect_t > 0.0 and _inspect != null and not _inspect.gone))
 	sel_panel.visible = has_sel
 	_slow_t -= rdt
@@ -822,12 +873,15 @@ func _view_process(dt: float) -> void:
 	if has_sel and slow:
 		sel_info.queue_redraw()
 		sel_info.custom_minimum_size.y = sel_info.need_h
-		sel_panel.offset_top = -14.0 - sel_info.need_h - 22.0
+		# (above the observer bar when that's down here)
+		var sb := 14.0 + (obs_bar.size.y + 8.0 if obs_bar.visible and _obs_low else 0.0)
+		sel_panel.offset_bottom = -sb
+		sel_panel.offset_top = -sb - sel_info.need_h - 22.0
 		# fit between the minimap and the command card, centred in the free space
 		var vw := root.size.x
 		var left := minimap_right() + 10.0
 		var right := vw - 14.0 - (card_panel.size.x + 12.0 if card_panel.visible else 0.0)
-		var w := clampf(right - left, 300.0, 580.0)
+		var w := clampf(right - left, SEL_MIN_W, 580.0)
 		var x0 := left + maxf(0.0, (right - left - w) * 0.5)
 		sel_panel.anchor_left = 0.0
 		sel_panel.anchor_right = 0.0
@@ -868,12 +922,16 @@ func _view_process(dt: float) -> void:
 	coop_roster.position = Vector2(root.size.x - 14.0 - HudCoopRoster.W, ry)
 	coop_roster.size = Vector2(HudCoopRoster.W, coop_roster.need_h)
 	if not perf_big:
+		# under the objectives, and above the command card on a short screen
 		var ty := 36.0 if objectives.need_h <= 0.0 else 12.0 + objectives.need_h + 10.0
 		if coop_roster.need_h > 0.0:
 			ty = ry + coop_roster.need_h + 10.0
-		if toasts.offset_top != ty:
+		var tb := ty + 254.0
+		if card_panel.visible:
+			tb = clampf(card_panel.position.y - 10.0, ty + 40.0, tb)
+		if toasts.offset_top != ty or toasts.offset_bottom != tb:
 			toasts.offset_top = ty
-			toasts.offset_bottom = ty + 254.0
+			toasts.offset_bottom = tb
 	toasts.tick(rdt)
 	_map_t -= rdt
 	if _map_t <= 0.0:
@@ -920,7 +978,7 @@ func _update_support() -> void:
 		if b == null:
 			continue
 		var sd: Dictionary = Defs.SUPPORT[k]
-		var left := float(sup.get(k, 300.0)) - world.time
+		var left := float(sup.get(k, Defs.support_from(k))) - world.time
 		b.disabled = left > 0.0
 		var hot := "  [Z]" if first and left <= 0.0 else ""
 		if left <= 0.0:
@@ -968,7 +1026,7 @@ func mode_text() -> String:
 	if inp.ability.begins_with("support:") or inp.ability.begins_with("demo:"):
 		var k := inp.ability.get_slice(":", 1)
 		var shp := String(Defs.SUPPORT.get(k, {}).get("shape", "circle"))
-		return "%s: click the target%s  -  right-click cancels" % [String(Defs.SUPPORT.get(k, {}).get("name", k)), " and drag to set the direction it runs in" if shp in ["line", "strafe"] else ""]
+		return "%s: click the target%s  -  right-click cancels" % [String(Defs.SUPPORT.get(k, {}).get("name", k)), " and drag to set the direction it runs in" if shp in ["line", "strafe", "sweep"] else ""]
 	if inp.place_kind != "":
 		return "Placing %s  -  left-click to build, drag for a line, R / Shift+wheel rotates, right-click cancels" % Defs.BUILDINGS[inp.place_kind].name
 	if inp.order_mode == "assault":
@@ -1156,7 +1214,7 @@ func _button(text: String, sub: String, tip: String, cb: Callable) -> Button:
 	var b := Button.new()
 	b.text = text if sub == "" else "%s\n%s" % [text, sub]
 	b.tooltip_text = tip
-	b.custom_minimum_size = Vector2(92, 46)
+	b.custom_minimum_size = CARD_BTN
 	b.clip_text = true
 	b.add_theme_font_size_override("font_size", 12)
 	b.focus_mode = Control.FOCUS_NONE

@@ -12,11 +12,11 @@
 
 Frontline is a real-time strategy game about modern infantry combat. You command squads, not individual soldiers: you decide where they go, and they decide how to get there and how to fight.
 
-Your soldiers take cover behind real walls and wrecks, keep their heads down under fire, drag their wounded to safety and throw enemy grenades back. Squads leapfrog forward one team at a time, clear houses room by room, set ambushes on the roads, and break and run when a fight goes badly. Tanks pop smoke when a missile is fired at them. Boats land raiding parties on the beach, and helicopters carry vehicles to the front on a cable.
+Your soldiers take cover behind real walls and wrecks, keep their heads down under fire, drag their wounded to safety and throw enemy grenades back. Squads leapfrog forward one team at a time, clear houses room by room, set ambushes on the roads, and break and run when a fight goes badly. Tanks pop smoke when a missile is fired at them. Shellfire sets woods, hedgerows, roofs and cars alight, and the fire spreads with the wind and drives men out of their cover. Boats land raiding parties on the beach, and helicopters carry vehicles to the front on a cable.
 
 You can play alone against the computer, team up with friends against it, or fight each other online. The battlefield is a square kilometre of countryside with a town, villages, a river and the sea.
 
-Everything you see and hear is made in code. There are no imported 3D models, textures or sound files.
+Everything you see and hear is made in code, the music included. There are no imported 3D models, textures or sound files.
 
 ## Screenshots
 
@@ -31,7 +31,7 @@ Everything you see and hear is made in code. There are no imported 3D models, te
 
 ## Quick start
 
-The easiest way: download the latest build for Windows or Linux from **[the Frontline website](https://web-production-5a4c1.up.railway.app)** (or the [releases page](https://github.com/Dynasty9/Frontline/releases)), unzip it and run it. The website also lists the battles being hosted right now, with a **Join** button on each that opens the game and connects you.
+The easiest way: download the latest build for Windows or Linux from **[the Frontline website](https://web-production-5a4c1.up.railway.app)** (or the [releases page](https://github.com/Dynasty9/Frontline/releases)), unzip it and run it. It updates itself when a new version comes out. The website also lists the battles being hosted right now, with a **Join** button on each that opens the game and connects you.
 
 To run it from source instead:
 
@@ -52,6 +52,7 @@ When you're ready, choose **Play vs AI** and pick a side. You start at your base
 4. **Hold ground.** Press **B** and click an area. The squad spreads into the best cover there and stays put.
 5. **Build.** Select your engineers and use the build menu at the bottom of the screen. Barracks train more squads, a factory builds vehicles, and new FOBs extend your reach.
 6. **Call support.** The buttons above the minimap call in mortars, artillery and air strikes.
+7. **Get eyes on.** Ground your side can't see right now is drawn darker, on the battlefield and the minimap. Watchtowers, drones from the helipad and recon flights (on the support panel) see further, and every aircraft you call in spots for you as it flies over. Whatever they spot stays on the map as a last-known position.
 
 Press **F1** at any time for help, and **F4** for the Field Manual.
 

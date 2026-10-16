@@ -280,6 +280,22 @@ func scenario(sname: String) -> void:
 			r.support_ready = [{"airstrike": 0.0, "a10": 0.0, "wipeout": 0.0, "ac130": 0.0, "blackfish": 0.0, "artillery": 0.0}, {"barrage": 0.0, "mortars": 0.0}]
 			r.call_support(-1, 0, "airstrike", Vector3(0, 0, -30))
 			r.call_support(-2, 1, "barrage", Vector3(30, 0, 30))
+		"recon":
+			# getting eyes on: a Coalition squad at a manned watchtower, three
+			# Rebel cells out beyond its sight (the west one inside the tower's
+			# reach only with a lookout up it), a recon pass across them, and a
+			# Rebel spotter plane and drone over the Coalition; FL_DEBUG_VISION=1
+			# prints what each side sees as it goes
+			_spawn("watchtower", Vector3(-40, 0, 64), 0.0, 0, {"built": true})
+			r.spawn_squad("rifle_squad", 0, a, Vector3(-36, 0, 60))
+			r.spawn_squad("rifle_squad", 0, a, Vector3(10, 0, 70))
+			for p in [Vector3(-60, 0, -40), Vector3(0, 0, -50), Vector3(60, 0, -40)]:
+				r.spawn_squad("fighter_cell", 1, b, p)
+			world.spawn("vehicle", {"vkind": "technical", "team": 1, "owner": b, "pos": Vector3(30, 0, -70), "yaw": PI}).order_stop()
+			r.support_ready = [{"gryphon_recon": 0.0, "greyhawk_watch": 0.0}, {"caesar_spotter": 0.0, "fenghuang_watch": 0.0}]
+			r.call_support(-1, 0, "gryphon_recon", Vector3(0, 0, -45), Vector3(1, 0, 0))
+			r.call_support(-2, 1, "fenghuang_watch", Vector3(0, 0, 60))
+			r.call_support(-2, 1, "caesar_spotter", Vector3(0, 0, 40))
 		"showroom":
 			var kinds := ["tank", "old_tank", "technical", "truck"]
 			for i in kinds.size():
@@ -585,6 +601,35 @@ func scenario(sname: String) -> void:
 					tm.alert_t = world.time
 					tq.order_defend(Vector3(0, 0, -80), Vector3(0, 0, -1))
 					tm.order_defend(Vector3(14, 0, -76), Vector3(0, 0, -1)))
+		"fire":
+			# what burns and how it spreads: a wood, a hedgerow, a crate dump, parked
+			# cars, a watchtower and a house, a fighter cell dug in among them. The
+			# edge of the wood, the hedge and the crates are alight from the start,
+			# and a rifle squad comes up to find the cell burnt out of its cover.
+			_woods(Vector3(-22, 0, -30), 12)
+			for i in 6:
+				_spawn("low_wall", Vector3(-4 + i * 4.1, 0, -18), 0.0, -1, {"size": Vector3(4, 1, 0.9), "variant": 1})
+			var cr := _spawn("crates", Vector3(12, 0, -26), 0.3, -1, {"variant": 1})
+			_spawn("crates", Vector3(15, 0, -23.5), -0.2, -1, {"variant": 0})
+			_spawn("car", Vector3(20, 0, -29), PI * 0.5, -1, {"variant": 1})
+			_spawn("car", Vector3(24, 0, -29.5), PI * 0.5, -1, {"variant": 3})
+			_spawn("watchtower", Vector3(5, 0, -33), 0.0, 1)
+			_house(Vector3(32, 0, -44), 8.0, 6.0, 0.0, 1.0, false, 0.0)
+			var cell := r.spawn_squad("fighter_cell", 1, b, Vector3(-14, 0, -26))
+			cell.order_defend(Vector3(-14, 0, -24), Vector3(0, 0, 1))
+			r.spawn_squad("rifle_squad", 0, a, Vector3(0, 0, 30), Vector3(0, 0, 0))
+			# the upwind edge of the wood: the wind carries it through the trees
+			var trees: Array = world.structures.filter(func(st): return st.skind == "tree")
+			trees.sort_custom(func(p, q): return p.position.dot(Fires.WIND) < q.position.dot(Fires.WIND))
+			for i in mini(2, trees.size()):
+				world.fires.ignite(trees[i], 0.6)
+			for st in world.structures:
+				if st.skind == "low_wall" and st.position.x < 0.0:
+					world.fires.ignite(st, 0.5)
+				if st.skind == "roof":
+					world.fires.ignite(st, 0.4)
+			world.fires.ignite(cr, 0.8)
+			world.fires.start_patch(Vector3(2, 0, -24), 2.5, 22.0, 0)
 		"breach":
 			# a fighter cell holed up in a house (doors shut); a rifle squad sent to clear it
 			doors_shut = 1

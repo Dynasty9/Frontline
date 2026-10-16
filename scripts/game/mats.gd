@@ -686,6 +686,10 @@ render_mode cull_disabled;
 instance uniform vec4 tint : source_color = vec4(0.2, 0.32, 0.14, 1.0);
 uniform float wind = 1.0;
 uniform bool use_vcolor = false;
+// on fire (a burning tree's own copy, see Structure._apply_char): the leaves
+// shrivel brown, blacken and burn away, glowing at the edges while it burns
+uniform float scorch = 0.0;
+uniform float embers = 0.0;
 
 varying vec3 lpos;
 varying float shade;
@@ -722,14 +726,26 @@ void fragment() {
 	if (rim > 0.12 && holes < (rim - 0.12) * 1.25) {
 		discard;
 	}
+	float burnt = holes - scorch * 1.15 + 0.3;
+	if (scorch > 0.0 && burnt < 0.0) {
+		discard;
+	}
 	float leaves = mix(0.5, n3(lpos * 9.0), smoothstep(1.5, 5.0, (1.0 / 9.0) / px));
 	float gaps = mix(0.5, n3(lpos * 4.2 + 7.0), smoothstep(1.5, 5.0, (1.0 / 4.2) / px));
 	vec3 c = (use_vcolor ? COLOR.rgb : tint.rgb) * (0.7 + 0.5 * leaves);
 	c = mix(c, c * vec3(1.15, 1.1, 0.7), smoothstep(0.55, 0.8, gaps) * 0.5);
+	if (scorch > 0.0) {
+		// (linear colours: a withered brown, then soot)
+		vec3 dry = vec3(0.06, 0.03, 0.01) * (0.7 + 0.5 * leaves);
+		c = mix(c, dry, smoothstep(0.0, 0.3, scorch + (gaps - 0.5) * 0.3));
+		c = mix(c, vec3(0.006, 0.005, 0.004), smoothstep(0.25, 0.7, scorch + (leaves - 0.5) * 0.4));
+		float edge = 1.0 - smoothstep(0.0, 0.05, burnt);
+		EMISSION = vec3(1.0, 0.32, 0.05) * embers * edge * (0.9 + 0.6 * sin(TIME * 7.0 + lpos.x * 3.0 + lpos.y * 5.0));
+	}
 	ALBEDO = c * (0.55 + 0.45 * shade);
 	ROUGHNESS = 0.85;
 	SPECULAR = 0.25;
-	BACKLIGHT = vec3(0.35, 0.42, 0.18);
+	BACKLIGHT = vec3(0.35, 0.42, 0.18) * (1.0 - scorch);
 	AO = 0.55 + 0.45 * shade;
 	AO_LIGHT_AFFECT = 0.6;
 	float bh = leaves * 0.6 + gaps * 0.4;
