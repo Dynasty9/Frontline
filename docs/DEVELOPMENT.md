@@ -438,6 +438,14 @@ to what that renderer can do:
 - An unset `hint_default_black` texture reads alpha 1 there and 0 under Forward+: use `hint_default_transparent`
   where the alpha matters.
 
+**Shader compiling is the browser build's weak spot.** Browsers on Windows run WebGL through ANGLE on Direct3D 11,
+whose compiler takes 0.2 to 5 s for each of Godot's Compatibility shaders (vs milliseconds natively), and a battle
+needs many shaders in several variants each (shadow passes, extra lights). With nothing cached, the first frames of
+the first battle can hold the page for a minute or more, and new effects stall it again when they first appear. The
+browser caches the compiled shaders, so later visits start in about 25 s. To reproduce it on the desktop, run with
+`--rendering-method gl_compatibility --rendering-driver opengl3_angle` (Godot's own ANGLE, on Direct3D 11). Fewer
+shader variants (positional-light shadows, for one) or warming the shaders up behind the loading screen would help.
+
 ### Off-screen screenshots
 
 `--screenshot=FILE.png --shot-at=SECONDS` (with `--shots=N --shot-every=S` for a series) saves frames and quits. Frame the shot with `--focus=X,Z --zoom=M --pitch=DEG --cam-yaw=RAD`, and hide the interface with `--nohud`. `--manual=category,key,side` opens a Field Manual page.

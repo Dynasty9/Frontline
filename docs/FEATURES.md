@@ -194,7 +194,8 @@ a service record. Multiplayer needs the desktop game, since a browser can't make
 between players runs over; the menu links to the downloads instead. It looks a little different (no screen-space
 lighting, volumetric fog or particle trails, which the browser's renderer doesn't have) and, with no threads to
 spread the work over, the page stops for the 20 seconds or so it takes to lay out the map. The simulation runs
-about as fast as on the desktop.
+about as fast as on the desktop. On Windows the first battle also waits while the browser compiles the game's
+shaders (it keeps them, so only the first time).
 
 ## Missions
 
