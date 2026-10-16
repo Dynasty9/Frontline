@@ -182,7 +182,12 @@ const withAccounts = await start({ AUTH_BACKEND: 'memory' });
 {
 	const s = withAccounts;
 	const battle = (over = {}) => ({
-		game_version: '0.4.0', mode: 'skirmish', title: 'Skirmish vs AI', side: 0, result: 'victory', duration: 412.6,
+		game_version: '0.4.0',
+		mode: 'skirmish',
+		title: 'Skirmish vs AI',
+		side: 0,
+		result: 'victory',
+		duration: 412.6,
 		me: { name: 'Hawk', kills: 12, lost: 3, captured: 1, veh_kills: 2, veh_lost: 0, shots: 900, hits: 120, rating: 71.26, score: 640, bogus: 5 },
 		report: { t: 412.6, over: true, winner: 0, players: [{ id: 1, name: 'Hawk', team: 0 }], sides: [{}, {}], tl: [[0, 8, 9]] },
 		...over,
@@ -206,7 +211,12 @@ const withAccounts = await start({ AUTH_BACKEND: 'memory' });
 		const saved = await s.call('POST', '/me/battles', battle(), auth);
 		assert.equal(saved.status, 200);
 		assert.ok(saved.data.id);
-		await s.call('POST', '/me/battles', battle({ result: 'defeat', side: 1, mode: 'mission', mission: 'bridgehead', title: 'Bridgehead', me: { kills: 4, lost: 6, rating: 31, score: 90 } }), auth);
+		await s.call(
+			'POST',
+			'/me/battles',
+			battle({ result: 'defeat', side: 1, mode: 'mission', mission: 'bridgehead', title: 'Bridgehead', me: { kills: 4, lost: 6, rating: 31, score: 90 } }),
+			auth,
+		);
 		await s.call('POST', '/me/battles', battle({ mode: 'coop', me: { kills: 20, lost: 2, rating: 88, score: 1200 } }), auth);
 		await s.call('POST', '/me/battles', battle(), auth2);
 

@@ -172,15 +172,20 @@ class SupabaseAuth {
 
 	static noTable(r) {
 		// the table isn't there: schema.sql hasn't been run on this project
-		if (r.status === 404 || r.data?.code === 'PGRST205' || r.data?.code === '42P01') throw new AuthError(503, 'Battle records are not set up on this server yet.');
+		if (r.status === 404 || r.data?.code === 'PGRST205' || r.data?.code === '42P01')
+			throw new AuthError(503, 'Battle records are not set up on this server yet.');
 	}
 
 	async saveBattle(token, user, rec) {
 		const r = await this.call('/rest/v1/battle_records?select=id,played_at', {
-			method: 'POST', token, body: { ...rec, user_id: user.id }, headers: { Prefer: 'return=representation' },
+			method: 'POST',
+			token,
+			body: { ...rec, user_id: user.id },
+			headers: { Prefer: 'return=representation' },
 		});
 		SupabaseAuth.noTable(r);
-		if (!r.ok || !Array.isArray(r.data) || !r.data[0]) throw new AuthError(r.status >= 500 ? 503 : 400, SupabaseAuth.message(r.data, 'Could not record the battle.'));
+		if (!r.ok || !Array.isArray(r.data) || !r.data[0])
+			throw new AuthError(r.status >= 500 ? 503 : 400, SupabaseAuth.message(r.data, 'Could not record the battle.'));
 		return { id: r.data[0].id, played_at: r.data[0].played_at };
 	}
 
@@ -287,7 +292,10 @@ class MemoryAuth {
 
 	async listBattles(token, user, { limit = 20, before = '' } = {}) {
 		const rows = this.battles(user).filter((r) => !before || r.played_at < before);
-		return rows.slice(-limit).reverse().map((r) => Object.fromEntries(HEAD.map((k) => [k, r[k]])));
+		return rows
+			.slice(-limit)
+			.reverse()
+			.map((r) => Object.fromEntries(HEAD.map((k) => [k, r[k]])));
 	}
 
 	async getBattle(token, user, id) {

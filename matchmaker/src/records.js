@@ -12,16 +12,57 @@ import { cleanText } from './lobbies.js';
 export const MODES = ['skirmish', 'coop', 'pvp', 'mission'];
 export const RESULTS = ['victory', 'defeat'];
 // what a commander's record counts (BattleStats.FIELDS in the game)
-export const FIELDS = ['kills', 'downs', 'veh_kills', 'bld_kills', 'lost', 'wounded', 'captured', 'veh_lost', 'bld_lost',
-	'shots', 'hits', 'dmg', 'val_killed', 'val_lost', 'spent', 'squads', 'vehicles', 'built', 'research', 'support',
-	'captures', 'towns', 'prisoners', 'revived', 'delivered'];
+export const FIELDS = [
+	'kills',
+	'downs',
+	'veh_kills',
+	'bld_kills',
+	'lost',
+	'wounded',
+	'captured',
+	'veh_lost',
+	'bld_lost',
+	'shots',
+	'hits',
+	'dmg',
+	'val_killed',
+	'val_lost',
+	'spent',
+	'squads',
+	'vehicles',
+	'built',
+	'research',
+	'support',
+	'captures',
+	'towns',
+	'prisoners',
+	'revived',
+	'delivered',
+];
 // the report the game sends back can be opened again, so it's kept whole -
 // but not without limit
 export const MAX_REPORT = 96 * 1024;
 export const MAX_BODY = MAX_REPORT + 8 * 1024;
 // the columns a list of battles needs (the report stays behind)
-export const HEAD = ['id', 'played_at', 'game_version', 'mode', 'mission', 'title', 'side', 'result', 'duration_s',
-	'rating', 'score', 'kills', 'lost', 'veh_kills', 'veh_lost', 'shots', 'hits'];
+export const HEAD = [
+	'id',
+	'played_at',
+	'game_version',
+	'mode',
+	'mission',
+	'title',
+	'side',
+	'result',
+	'duration_s',
+	'rating',
+	'score',
+	'kills',
+	'lost',
+	'veh_kills',
+	'veh_lost',
+	'shots',
+	'hits',
+];
 
 export class RecordError extends Error {
 	constructor(message) {
@@ -77,8 +118,23 @@ export function cleanRecord(b) {
 // A whole career from its battles' headline numbers.
 export function careerOf(rows) {
 	const c = {
-		battles: rows.length, victories: 0, defeats: 0, kills: 0, lost: 0, veh_kills: 0, veh_lost: 0, shots: 0, hits: 0,
-		seconds: 0, score: 0, rating: 0, best: null, sides: [0, 0], modes: {}, first: null, last: null,
+		battles: rows.length,
+		victories: 0,
+		defeats: 0,
+		kills: 0,
+		lost: 0,
+		veh_kills: 0,
+		veh_lost: 0,
+		shots: 0,
+		hits: 0,
+		seconds: 0,
+		score: 0,
+		rating: 0,
+		best: null,
+		sides: [0, 0],
+		modes: {},
+		first: null,
+		last: null,
 	};
 	let ratings = 0;
 	for (const r of rows) {
