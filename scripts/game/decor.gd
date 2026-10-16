@@ -266,7 +266,7 @@ func _m(h: Node3D, mesh: Mesh, kind: String, p: Vector3, col = null, rot := Vect
 	if cut:
 		mi.material_override = Mats.paving(kind)
 		if tn != Color(1, 1, 1):
-			mi.set_instance_shader_parameter("tint", tn)
+			Mats.set_inst(mi, &"tint", tn)
 	else:
 		Mats.apply(mi, kind, tn)
 	return mi
@@ -277,7 +277,7 @@ func _leaf(h: Node3D, r: float, p: Vector3, col: Color, shadow := true) -> void:
 	mi.mesh = Res.sphere(r, 8)
 	mi.position = p
 	mi.material_override = Mats.foliage()
-	mi.set_instance_shader_parameter("tint", col)
+	Mats.set_inst(mi, &"tint", col)
 	if not shadow:
 		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	h.add_child(mi)

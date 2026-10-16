@@ -226,7 +226,7 @@ var _blank_mask: ImageTexture
 func set_trench_mask(t: Texture2D) -> void:
 	for m in [ground_mat, road_mat]:
 		if m:
-			m.set_shader_parameter("trench_mask", t)
+			Mats.set_shared(m, &"trench_mask", t)
 	Mats.set_ground_maps(null, t)
 	if grass:
 		grass.set_trench_mask(t)
@@ -291,7 +291,7 @@ func _build_ground() -> void:
 	trench_net.set_detail(detail_tex)
 	road_mat = ShaderMaterial.new()
 	var rs := Shader.new()
-	rs.code = MapDims.shader(ROAD_SHADER)
+	rs.code = Mats.code(MapDims.shader(ROAD_SHADER))
 	road_mat.shader = rs
 	road_mat.set_shader_parameter("detail_tex", detail_tex)
 	road_mat.render_priority = 1
@@ -317,8 +317,8 @@ func _build_post() -> void:
 
 # --- rain: streaks around the camera, splashes, lightning and thunder ---------
 
-var _rain: GPUParticles3D
-var _splash: GPUParticles3D
+var _rain: GeometryInstance3D  # (GPU or CPU particles: see Vfx.part)
+var _splash: GeometryInstance3D
 var _rain_snd: AudioStreamPlayer
 var _bolt_t := 12.0
 var _flash := 0.0
@@ -348,23 +348,26 @@ func _setup_rain() -> void:
 	pm.initial_velocity_max = 32.0
 	pm.gravity = Vector3.ZERO
 	pm.collision_mode = ParticleProcessMaterial.COLLISION_HIDE_ON_CONTACT
-	_rain = GPUParticles3D.new()
-	_rain.amount = int(14000 * Settings.fx_mult())
-	_rain.lifetime = 1.6
-	_rain.preprocess = 1.6
-	_rain.process_material = pm
+	var rain := GPUParticles3D.new()
+	rain.amount = int(14000 * Settings.fx_mult())
+	rain.lifetime = 1.6
+	rain.preprocess = 1.6
+	rain.process_material = pm
 	var q := QuadMesh.new()
 	q.size = Vector2(0.06, 1.2)
-	_rain.draw_pass_1 = q
+	rain.draw_pass_1 = q
 	var rm := ShaderMaterial.new()
 	var sh := Shader.new()
 	sh.code = RAIN_SHADER
 	rm.shader = sh
-	_rain.material_override = rm
-	_rain.transform_align = GPUParticles3D.TRANSFORM_ALIGN_Z_BILLBOARD_Y_TO_VELOCITY
-	_rain.local_coords = false
-	_rain.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	_rain.visibility_aabb = AABB(Vector3(-70, -60, -70), Vector3(140, 80, 140))
+	rain.material_override = rm
+	rain.transform_align = GPUParticles3D.TRANSFORM_ALIGN_Z_BILLBOARD_Y_TO_VELOCITY
+	rain.local_coords = false
+	rain.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	rain.visibility_aabb = AABB(Vector3(-70, -60, -70), Vector3(140, 80, 140))
+	if Vfx.gl:
+		rain.amount = int(rain.amount * 0.35)  # (CPU particles in the browser: see Vfx.part)
+	_rain = Vfx.part(rain)
 	add_child(_rain)
 	var sp := ParticleProcessMaterial.new()
 	sp.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_BOX
@@ -376,22 +379,25 @@ func _setup_rain() -> void:
 	sp.gravity = Vector3(0, -9.8, 0)
 	sp.scale_min = 0.6
 	sp.scale_max = 1.2
-	_splash = GPUParticles3D.new()
-	_splash.amount = int(2500 * Settings.fx_mult())
-	_splash.lifetime = 0.25
-	_splash.process_material = sp
+	var splash := GPUParticles3D.new()
+	splash.amount = int(2500 * Settings.fx_mult())
+	splash.lifetime = 0.25
+	splash.process_material = sp
 	var sq := QuadMesh.new()
 	sq.size = Vector2(0.08, 0.08)
-	_splash.draw_pass_1 = sq
+	splash.draw_pass_1 = sq
 	var smat := StandardMaterial3D.new()
 	smat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	smat.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED
 	smat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	smat.albedo_color = Color(0.8, 0.85, 0.9, 0.45)
-	_splash.material_override = smat
-	_splash.local_coords = false
-	_splash.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	_splash.visibility_aabb = AABB(Vector3(-50, -2, -50), Vector3(100, 6, 100))
+	splash.material_override = smat
+	splash.local_coords = false
+	splash.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	splash.visibility_aabb = AABB(Vector3(-50, -2, -50), Vector3(100, 6, 100))
+	if Vfx.gl:
+		splash.amount = int(splash.amount * 0.35)
+	_splash = Vfx.part(splash)
 	add_child(_splash)
 	if Sfx.enabled:
 		_rain_snd = Sfx.make_ambience("rain", -11.0)
@@ -486,7 +492,7 @@ func _spawn_flare(p: Vector3) -> void:
 	var glow := MeshInstance3D.new()
 	glow.mesh = world.fx.vfx.quad if world.fx and world.fx.vfx else QuadMesh.new()
 	glow.material_override = world.fx.vfx.flash_mat if world.fx and world.fx.vfx else null
-	glow.set_instance_shader_parameter("rays", 0.5)
+	Mats.set_inst(glow, &"rays", 0.5)
 	glow.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	root.add_child(glow)
 	var chute := MeshInstance3D.new()
@@ -497,7 +503,7 @@ func _spawn_flare(p: Vector3) -> void:
 	root.add_child(chute)
 	if world.fx and world.fx.vfx:
 		var tr := world.fx.vfx.make_trail()
-		tr.amount_ratio = 0.5
+		Vfx.set_ratio(tr, 0.5)
 		root.add_child(tr)
 	_flares.append([root, l, 0.0, randf_range(20.0, 26.0), glow])
 
@@ -515,7 +521,7 @@ func apply_mood(m: String) -> void:
 	sky_mat.set_shader_parameter("stars", 1.0 if mood == "night" else 0.0)
 	env.ambient_light_energy = float(_d.ambient)
 	ground_mat.set_shader_parameter("wet", 1.0 if mood == "rain" else 0.0)
-	road_mat.set_shader_parameter("wet", 1.0 if mood == "rain" else 0.0)
+	Mats.set_shared(road_mat, &"wet", 1.0 if mood == "rain" else 0.0)
 	_setup_rain()
 	env.tonemap_exposure = float(_d.exposure) * float(Settings.get_v("brightness"))
 	env.fog_light_color = _d.fog
@@ -655,7 +661,7 @@ func _view_process(_dt: float) -> void:
 
 ## Builds the road strip mesh for a team (called by World when roads change).
 func set_town(r: Rect2) -> void:
-	road_mat.set_shader_parameter("town", Vector4(r.position.x, r.position.y, r.end.x, r.end.y))
+	Mats.set_shared(road_mat, &"town", Vector4(r.position.x, r.position.y, r.end.x, r.end.y))
 
 
 ## A square of ground `size` across in quads of `step` metres, centred on its origin.
@@ -791,7 +797,7 @@ func make_road_mesh(polys: Array, team: int) -> MeshInstance3D:
 	var mi := MeshInstance3D.new()
 	mi.mesh = st.commit()
 	mi.material_override = road_mat
-	mi.set_instance_shader_parameter("country", 1.0 if team == 2 else 0.0)
+	Mats.set_inst(mi, &"country", 1.0 if team == 2 else 0.0)
 	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	return mi
 
@@ -862,7 +868,7 @@ uniform float bump = 1.4;
 uniform float wet = 0.0;
 uniform sampler2D trench_mask : hint_default_black, filter_linear, repeat_disable;
 uniform sampler2D deform_tex : hint_default_black, filter_linear, repeat_disable;
-uniform sampler2D water_mask : hint_default_black, filter_linear, repeat_disable;
+uniform sampler2D water_mask : hint_default_transparent, filter_linear, repeat_disable;
 uniform float sea_x = 1e9;
 
 varying vec3 wpos;

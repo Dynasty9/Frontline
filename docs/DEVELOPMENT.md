@@ -485,12 +485,12 @@ ships everything merged since the last release: the version is the newest `vX.Y.
 (`.github/scripts/next-version.sh`), and the build stamps it into `project.godot` (`application/config/version`); from
 source the game reads `0.0.0-dev`.
 
-`export_presets.cfg` has a Windows and a Linux preset (one executable each, the game packed inside). The run exports
-both from `main` as it stands, then `.github/scripts/bake-release.sh` makes the release's own commit on a branch,
+`export_presets.cfg` has a Windows and a Linux preset (one executable each, the game packed inside) and a Web one
+(see [The browser build](#the-browser-build)). The run exports all three from `main` as it stands, then `.github/scripts/bake-release.sh` makes the release's own commit on a branch,
 `release/vX.Y.Z`: it files every entry waiting in `changelog/unreleased/` under `changelog/vX.Y.Z/` (`changelog.py
 release`), regenerates `CHANGELOG.md` and `web/src/changelog.json`, and writes `release.json` into `web/src/` and
 `matchmaker/` (`release_json.py`). The workflow tags that commit, publishes the GitHub release
-(`Frontline-windows.zip`, `Frontline-linux.zip`, the changelog as its notes) and opens a pull request from the
+(`Frontline-windows.zip`, `Frontline-linux.zip`, `Frontline-web.zip`, the changelog as its notes) and opens a pull request from the
 branch. Merge it: that's what puts the release on the website and the matchmaker (Railway redeploys both), and the
 matchmaker is where the game hears about updates. The next release won't start until it's merged. Opening that pull
 request needs Settings > Actions > General > "Allow GitHub Actions to create and approve pull requests"; without
@@ -506,6 +506,74 @@ touching Godot itself: `--game-version=0.0.1` pretends to be an old release, `--
 file instead of the running executable, and `--update-api=URL` reads the release from elsewhere (a local JSON file
 with a higher `tag_name`). `--menu-update=0.1.2,ready` shows the notice for screenshots (`available`, `downloading`,
 `ready` or `failed`).
+
+### The browser build
+
+The Web preset exports the game to WebAssembly: `index.html` with the engine (`index.wasm`, about 40 MB) and the
+game (`index.pck`) beside it. It's the build without threads, so any static host serves it as it is, with no
+cross-origin isolation headers. To try it, export it and serve the folder:
+
+```
+godot --headless --path . --export-release "Web" build/web/index.html
+python -m http.server 8000 --directory build/web
+```
+
+then open `http://localhost:8000`. Exporting needs Godot's `web_nothreads_release.zip` template. Every release
+attaches the export as `Frontline-web.zip`, and puts it up on GitHub Pages once Pages is switched on for the
+repository with GitHub Actions as its source (the `pages` job in `release.yml` skips until then).
+
+What's different in a browser (`OS.has_feature("web")`):
+
+- **Alone only.** A browser can't open a port or send the UDP that ENet and the hole punching need, so a solo battle
+  runs on an `OfflineMultiplayerPeer` (still as its own host), and the menu's multiplayer entries become a link to the
+  desktop downloads. Accounts and the service record work: they're plain HTTPS to the matchmaker, which allows any
+  origin.
+- **No updater and no `frontline://` links** (the page always serves the latest release).
+- **No worker threads:** the music renders a sample a frame instead of on a thread, and map generation blocks the
+  page while it runs (about 20 s, as long as on the desktop).
+- **Settings** a browser can't use (the screen-space effects, the upscalers, window size, VSync) are hidden.
+
+It draws with the Compatibility renderer (OpenGL ES 3 / WebGL 2) instead of Forward+. Run the desktop build with
+`--rendering-method gl_compatibility` (before the `--`) to see what the browser will. Code that draws has to keep
+to what that renderer can do:
+
+- **Per-object shader values** (`instance uniform`) share a buffer with room for 4096 there, far fewer than a town
+  needs. Set them with `Mats.set_inst(node, &"param", value)`, never `set_instance_shader_parameter`, and compile a
+  shader that declares them from `Mats.code(source)`: under Compatibility its instance uniforms become material
+  uniforms, and a node given values gets a shared copy of its material carrying them. A later change to such a
+  material goes through `Mats.set_shared`, so the copies follow it.
+- **Depth reads:** OpenGL's clip-space depth runs -1..1, Vulkan's 0..1. Shaders that read `hint_depth_texture`
+  define `NDC_Z` with `#if CURRENT_RENDERER == RENDERER_COMPATIBILITY` and rebuild positions with it.
+- **No multiply blending:** Compatibility tonemaps each draw as it goes, so a `blend_mul` pass darkens everything
+  (the fog of war lays black over instead there).
+- **No particle trails, fog volumes or view-depth particle sorting** (the last reads every particle back from the
+  GPU each frame, which stalls WebGL). `Vfx.gl` says which renderer is drawing.
+- An unset `hint_default_black` texture reads alpha 1 there and 0 under Forward+: use `hint_default_transparent`
+  where the alpha matters.
+
+**Shader compiling is what the browser build is shaped around.** Browsers on Windows run WebGL through ANGLE on
+Direct3D 11, whose compiler is slow on Godot's Compatibility shaders, and a browser compiles each one the first time
+it's drawn, inside that frame. Untreated, a first battle froze the page for five minutes and Chrome killed it. So,
+for the browser:
+
+- **Lighting is per vertex** (`shading/overrides/force_vertex_shading.web` in `project.godot`): per-pixel lighting
+  is what Direct3D's compiler chokes on (0.2 to 4 s a program instead of a tenth of that). From above, the battle
+  looks nearly the same; the Field Manual's close-up gets extra fill and a painted floor sheen to make up for it.
+- **Particles are CPU particles** (`Vfx.part`): every GPU particle effect brings a simulation shader of its own,
+  and those took up to 30 s each to compile. Effects are built as GPU particles as everywhere else and converted as
+  they go into the scene; code that touches an emitter afterwards goes through `Vfx.set_emitting`, `set_ratio`,
+  `restart_particles` and `pm_set` / `pm_get`, which work on either kind.
+- **No light from effects** (explosion and muzzle flashes, fires): the first time a light falls on something, its
+  shaders compile again with lights on.
+- **The battlefield misses the frame it's built in** (`main.gd` `_reveal_next_frame`), so building the map (about
+  25 s) and compiling for it (about 20 s) are two waits, not one long enough for Chrome to call the page
+  unresponsive. The loading screen's field note says to choose Wait if it does.
+
+With nothing cached, a first battle now starts after about a minute, then plays without long hitches; the browser
+keeps the compiled shaders, so later battles wait only for the map. To see where the time goes, run the desktop
+build with `--rendering-method gl_compatibility --rendering-driver opengl3_angle` (Godot's own ANGLE on Direct3D 11),
+or time `WebGL2RenderingContext`'s `linkProgram` / `getProgramParameter` in the page. A battle holds about 1.5 GB of
+the 2 GB the web build can have; the hierarchical pathfinding is the biggest single part (about 370 MB).
 
 ### Error reports
 

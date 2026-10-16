@@ -4,6 +4,96 @@ Every release of Frontline, newest first. The game updates itself; downloads, an
 are on [the website](https://web-production-5a4c1.up.railway.app/changelog/). Each change is written up in [`changelog/`](changelog/) as part of
 the pull request that makes it.
 
+## v1.0.1: Tons of stuff 2
+
+*16 October 2026* · [Release on GitHub](https://github.com/Dynasty9/Frontline/releases/tag/v1.0.1)
+
+### New
+
+#### Ranks and insignia
+
+Sign in and every battle you fight earns XP. Climb 50 ranks from Recruit to General of the Army, and each one unlocks a military patch to wear beside your callsign.
+
+![Your insignia: the patches you've unlocked, and the ones still to come](changelog/v1.0.1/ranks-and-insignia/collection.jpg)
+
+![A promotion in the after-action report, and the patch that comes with it](changelog/v1.0.1/ranks-and-insignia/promotion.jpg)
+
+![All 160: starter and rank patches, then the awards and unit patches still locked](changelog/v1.0.1/ranks-and-insignia/all-insignia.jpg)
+
+- **XP:** every battle you fight while signed in counts, the longer the better, and a win is worth half as much again. Leaving early still earns half. Battles under two minutes, and battles you only watch, don't count.
+- **50 ranks:** Private, Corporal, Sergeant, Staff Sergeant, Master Sergeant, Lieutenant, Captain, Major and Colonel, five grades each, then the five grades of general. The first comes in a battle or two.
+- **Insignia:** you start with ten patches, one for each branch of the army, and every rank adds its own, from subdued training patches up to the generals' gold stars. Another 100 are on show but locked for now: medals, badges, ribbons, and company patches in the style of the Vietnam war.
+- **Wear one:** click the patch on the account card at the top right of the main menu to open your collection and pick one. Players in the lobby see it beside your name, and the after-action report shows what each battle earned.
+- **On the website:** the Insignia section shows the same collection, and lets you pick your insignia there too.
+
+#### Error reports
+
+When something goes wrong in the game, or it crashes, it now tells the developers what failed and where, so it can be fixed. Nothing about you is sent, and Settings turns it off.
+
+![The switch, at the bottom of Settings > Interface](changelog/v1.0.1/error-reports/send-error-reports.jpg)
+
+- **What's sent:** what went wrong and where in the game's code, the game's version, your operating system and
+  graphics card, and whether you were in the menus or a battle.
+- **What isn't:** your name, callsign, account, files or address. Paths on your computer are taken out before
+  anything is sent.
+- **Crashes** are sent the next time you start the game.
+- **To turn it off:** Settings > Interface > Send error reports.
+
+#### Rejoin a battle you dropped out of
+
+Lost your connection, crashed or left by mistake? The main menu now offers Rejoin for as long as the battle lasts, and you're back on your side with whatever of your force is still fighting.
+
+![Back on the main menu after dropping out: Rejoin gets you back into the battle](changelog/v1.0.1/rejoin-a-battle/rejoin-card.jpg)
+
+- **Rejoin from the main menu:** after a lost connection, a crash or Leave Battle, a card in the corner says whose battle you left and when, with **Rejoin**. It's still there after you restart the game, and **Forget** clears it.
+- **Your own place back:** the same side and colour, and your squads and vehicles that are still fighting, including units you'd queued that came out while you were gone.
+- **While you're away** your teammates command your forces, or the AI if nobody is left on your side. When you come back, an AI that was only standing in for you hands everything back.
+- **Closed battles too:** a battle closed to new players, behind a password or with every seat taken still lets its own players back in, without asking for the password again.
+- **In missions** you get your share of the force back.
+- **One record for the whole battle:** the after-action report and your service record count what you did before and after you dropped out as one, and if the battle ended while you were away, you get its report when you rejoin.
+- **After a crash** you can rejoin straight away: the host lets your old connection go as soon as you're back, instead of waiting a minute or more for it to time out.
+- **HQ reserves** go to a commander who is still in the battle, not to one who has left.
+- Playing online needs this version on every computer in the battle.
+
+#### A server browser, and a lobby that shows who's coming
+
+Find any battle being hosted, online or on your own network, in a proper server browser. Hosting sets up co-op, versus or a mission (with a password if you like), and the lobby shows who's on which side, the seats left, who's connecting and who's ready.
+
+![Joining a battle and the lobby, before and after](changelog/v1.0.1/server-browser/before-and-after.jpg)
+
+![The server browser: every battle being hosted, with its mode, players, status and connection](changelog/v1.0.1/server-browser/browser.jpg)
+
+![Hosting: co-op against the AI, versus or a mission, and who can join](changelog/v1.0.1/server-browser/host.jpg)
+
+![The lobby: both sides, the seats still open, who's ready, and an invite link](changelog/v1.0.1/server-browser/lobby.jpg)
+
+- **Server Browser** (it replaces Join Game) lists every battle being hosted: its name, host, mode (and side or
+  mission), players and seats, whether it's waiting in the lobby or already running, and how good the connection
+  should be. Search it, filter it, sort it by any column; it keeps itself up to date. Double-click a battle to join.
+- **Battles on your own network** show up there too, marked LAN, even with no internet.
+- **Host a Battle** (it replaces Host Multiplayer): pick co-op against the AI, versus, or a mission; your side; how
+  many seats; the time of day; and who can join: anyone, friends with a password, or only your network.
+- **Host Co-op on a mission** now lists it in the server browser, so friends can find it without your IP address.
+- **The lobby** shows both sides with every player, where the AI will play, the open seats, anyone still connecting,
+  and who's ready. Players press Ready; the host can change the settings, remove a player and start when they like.
+  You hear a chime when someone arrives, and the taskbar flashes if the game is in the background.
+- **Copy invite link** in the lobby gives a link to send a friend: it opens the battle on the website, and Join
+  there starts the game and brings them in.
+- **Joining shows each step** as it happens, asks for the password if there is one, and says plainly what went wrong
+  if it can't get in.
+- Players with the same name get a number, so two "Commander"s can tell themselves apart.
+
+### Improved
+
+#### Battles and the game start sooner
+
+The host lays out a new battle about a second faster, and the game is ready about half a second sooner after you launch it.
+
+- **New battles:** the routes soldiers and vehicles plan across the map are now worked out on all of your
+  processor's cores at once, instead of one.
+- **Launching the game:** its sounds are made in the background while the menu comes up, instead of holding it up.
+  Each sound is now the same every time you play.
+
 ## v1.0.0: Tons of stuff
 
 *16 October 2026* · [Release on GitHub](https://github.com/Dynasty9/Frontline/releases/tag/v1.0.0)
