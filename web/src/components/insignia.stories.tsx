@@ -7,19 +7,20 @@ const meta = {
   title: "Site/Insignia",
   component: InsigniaSection,
   parameters: { layout: "fullscreen" },
-  args: { accounts: "supabase" },
+  args: { accounts: "supabase", emailSignIn: false },
 } satisfies Meta<typeof InsigniaSection>
 
 export default meta
 type Story = StoryObj<typeof meta>
 
-/** The collection as a new account sees it, and the sign-in form beside it. */
+/** The collection as a new account sees it, and signing in with GitHub beside it. */
 export const SignedOut: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await expect(canvas.getByRole("heading", { name: "Earn your insignia" })).toBeVisible()
-    // the Sign in tab and the form's button
-    await expect(canvas.getAllByRole("button", { name: "Sign in" })).toHaveLength(2)
+    await expect(canvas.getByRole("button", { name: "Sign in with GitHub" })).toBeEnabled()
+    // email and password are for testing, not the live site
+    await expect(canvas.queryByLabelText("Password")).toBeNull()
     // all 160, none of them wearable until you sign in
     const tiles = canvas.getAllByRole("listitem")
     await expect(tiles).toHaveLength(160)
@@ -34,12 +35,24 @@ export const SignedOut: Story = {
   },
 }
 
+/** A test build (the dev server, or a local matchmaker): email and password under GitHub. */
+export const Testing: Story = {
+  args: { emailSignIn: true },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await expect(canvas.getByRole("button", { name: "Sign in with GitHub" })).toBeEnabled()
+    // the Sign in tab and the form's button
+    await expect(canvas.getAllByRole("button", { name: "Sign in" })).toHaveLength(2)
+    await expect(canvas.getByLabelText("Password")).toBeVisible()
+  },
+}
+
 /** A matchmaker without accounts: the collection, and no way to sign in. */
 export const AccountsOff: Story = {
   args: { accounts: "off" },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(canvas.queryAllByRole("button", { name: "Sign in" })).toHaveLength(0)
+    await expect(canvas.queryAllByRole("button", { name: "Sign in with GitHub" })).toHaveLength(0)
     await expect(canvas.getAllByRole("listitem")).toHaveLength(160)
   },
 }

@@ -3,6 +3,11 @@
 // listed as theirs (verified), and the battles they play earn XP towards a rank
 // and the insignia that come with it (ranks.js).
 //
+// Players sign in with GitHub, on the website (which signs the game in too).
+// The page keeps a PKCE verifier and sends only its challenge (oauthUrl), so
+// the code GitHub's sign-in comes back with is no use to anyone else
+// (exchange). Email and password are for testing.
+//
 // Two backends with the same interface:
 //   supabase  Supabase Auth for the users, and a `profiles` table for the
 //             callsign, insignia and record (supabase/migrations/). Needs only
@@ -13,7 +18,7 @@
 //   memory    in-process, for local testing only (AUTH_BACKEND=memory).
 // With neither configured, accounts are switched off.
 
-import { randomBytes, randomUUID, scryptSync, timingSafeEqual } from 'node:crypto';
+import { createHash, randomBytes, randomUUID, scryptSync, timingSafeEqual } from 'node:crypto';
 import { battleXp, insignia, isResult, lockedMessage, progress, rankOf, STARTER_ICON, unlocked } from './ranks.js';
 import { HEAD } from './records.js';
 
@@ -36,6 +41,28 @@ function checkCredentials(email, password) {
 	if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(email ?? ''))) throw new AuthError(400, 'That email address does not look right.');
 	if (String(password ?? '').length < 8) throw new AuthError(400, 'Passwords need at least 8 characters.');
 }
+
+// The sign-in providers players may use, and what a page asking for one sends:
+// where to come back to, and its PKCE challenge (base64url SHA-256, 43 chars).
+const PROVIDERS = new Set(['github']);
+
+function checkOAuth(provider, redirectTo, challenge) {
+	if (!PROVIDERS.has(provider)) throw new AuthError(400, 'Sign in with GitHub.');
+	let u;
+	try {
+		u = new URL(String(redirectTo ?? ''));
+	} catch {
+		u = null;
+	}
+	if (!u || (u.protocol !== 'https:' && u.protocol !== 'http:')) throw new AuthError(400, 'Say which page to come back to.');
+	if (!/^[A-Za-z0-9_-]{43,128}$/.test(String(challenge ?? ''))) throw new AuthError(400, 'A sign-in needs its PKCE challenge.');
+	return u;
+}
+
+const s256 = (verifier) =>
+	createHash('sha256')
+		.update(String(verifier ?? ''))
+		.digest('base64url');
 
 // A known insignia (whether this player may wear it is another matter).
 export function checkIcon(id) {
@@ -186,15 +213,39 @@ class SupabaseAuth {
 		return this.session(r.data);
 	}
 
+	// Where to send the player to sign in with GitHub: Supabase's page, which
+	// comes back to `redirectTo` with ?code= (if Supabase's Redirect URLs allow
+	// it; otherwise to its Site URL).
+	oauthUrl(provider, redirectTo, challenge) {
+		const back = checkOAuth(provider, redirectTo, challenge);
+		const q = new URLSearchParams({ provider, redirect_to: back.href, code_challenge: challenge, code_challenge_method: 's256' });
+		return `${this.url}/auth/v1/authorize?${q}`;
+	}
+
+	// The code GitHub's sign-in came back with, and the verifier only the page
+	// that asked for it has: a session. A player new to Frontline gets their
+	// profile from the database, named after their GitHub account.
+	async exchange(code, verifier) {
+		const r = await this.call('/auth/v1/token?grant_type=pkce', {
+			method: 'POST',
+			body: { auth_code: String(code ?? ''), code_verifier: String(verifier ?? '') },
+		});
+		if (!r.ok) throw new AuthError(r.status === 429 ? 429 : 401, SupabaseAuth.message(r.data, 'That sign-in ran out: try again.'));
+		return this.session(r.data);
+	}
+
 	async refresh(refreshToken) {
 		const r = await this.call('/auth/v1/token?grant_type=refresh_token', { method: 'POST', body: { refresh_token: String(refreshToken ?? '') } });
 		if (!r.ok) throw new AuthError(401, 'Signed out: please sign in again.');
 		return this.session(r.data);
 	}
 
+	// This session only: the game and the website each hold one of their own
+	// (the website signs the game in), and signing out of one leaves the
+	// other. Supabase's default would end every session the account has.
 	async logout(token) {
 		this.cache.drop(token);
-		await this.call('/auth/v1/logout', { method: 'POST', token });
+		await this.call('/auth/v1/logout?scope=local', { method: 'POST', token });
 	}
 
 	async user(token) {
@@ -294,6 +345,7 @@ class MemoryAuth {
 		this.users = new Map(); // email -> {id, email, callsign, salt, hash, icon, xp, battles, wins, battleStarted}
 		this.access = new Map(); // token -> {user, until}
 		this.refreshTokens = new Map(); // token -> email
+		this.codes = new Map(); // a GitHub sign-in on its way: code -> {challenge, until}
 	}
 
 	static hash(password, salt) {
@@ -338,8 +390,32 @@ class MemoryAuth {
 
 	async login(email, password) {
 		const u = this.users.get(String(email ?? '').toLowerCase());
-		if (!u || !timingSafeEqual(u.hash, MemoryAuth.hash(password, u.salt))) throw new AuthError(401, 'Invalid login credentials');
+		// a GitHub player has no password
+		if (!u?.hash || !timingSafeEqual(u.hash, MemoryAuth.hash(password, u.salt))) throw new AuthError(401, 'Invalid login credentials');
 		return this.issue(u);
+	}
+
+	// A stand-in for GitHub: back at once, signed in as the one local GitHub
+	// player, so the website's whole round trip runs without the real thing.
+	oauthUrl(provider, redirectTo, challenge) {
+		const back = checkOAuth(provider, redirectTo, challenge);
+		const code = randomBytes(16).toString('base64url');
+		this.codes.set(code, { challenge, until: Date.now() + 300_000 });
+		back.searchParams.set('code', code);
+		return back.href;
+	}
+
+	async exchange(code, verifier) {
+		const c = this.codes.get(String(code ?? ''));
+		this.codes.delete(String(code ?? ''));
+		if (!c || c.until < Date.now() || s256(verifier) !== c.challenge) throw new AuthError(401, 'That sign-in ran out: try again.');
+		const email = 'github-player@users.test';
+		if (!this.users.has(email)) {
+			let callsign = 'GitHub Player';
+			for (let n = 2; this.taken(callsign); n++) callsign = `GitHub Player ${n}`;
+			this.users.set(email, { id: randomUUID(), email, callsign, icon: STARTER_ICON, xp: 0, battles: 0, wins: 0, battleStarted: null });
+		}
+		return this.issue(this.users.get(email));
 	}
 
 	async refresh(refreshToken) {

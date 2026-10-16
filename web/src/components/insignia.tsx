@@ -1,13 +1,13 @@
 import { CheckIcon, LockSimpleIcon, SignOutIcon, WarningIcon } from "@phosphor-icons/react"
-import { memo, useId, useRef, useState } from "react"
+import { memo, useRef, useState } from "react"
+import { SignInChoices } from "@/components/account-form"
 import { SectionLabel } from "@/components/battles"
 import { InsigniaImg } from "@/components/insignia-img"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { type User, useAccount } from "@/lib/account"
+import { EMAIL_SIGN_IN } from "@/lib/config"
 import {
   GROUPS,
   INSIGNIA,
@@ -22,7 +22,18 @@ import {
 } from "@/lib/insignia"
 import { cn } from "@/lib/utils"
 
-export function InsigniaSection({ accounts }: { accounts: string | undefined }) {
+/**
+ * Ranks and the insignia collection; signed in, the player's profile beside
+ * it. `accounts` is the matchmaker's /health answer ("off": no signing in);
+ * `emailSignIn` offers email and password too (for testing: EMAIL_SIGN_IN).
+ */
+export function InsigniaSection({
+  accounts,
+  emailSignIn = EMAIL_SIGN_IN,
+}: {
+  accounts: string | undefined
+  emailSignIn?: boolean
+}) {
   const account = useAccount()
   const off = accounts === "off"
   const user = off ? null : account.user
@@ -40,7 +51,7 @@ export function InsigniaSection({ accounts }: { accounts: string | undefined }) 
 
         <div className="mt-8 grid items-start gap-8 lg:grid-cols-[19rem_1fr]">
           <div className="lg:sticky lg:top-20">
-            {user ? <Profile user={user} /> : off ? <AccountsOff /> : <SignIn />}
+            {user ? <Profile user={user} /> : off ? <AccountsOff /> : <SignIn email={emailSignIn} />}
           </div>
           <Collection user={user} onPick={account.setIcon} />
         </div>
@@ -152,114 +163,21 @@ function Corners() {
   )
 }
 
-function SignIn() {
-  const { busy, error, notice, signIn, signUp, clearError } = useAccount()
-  const [creating, setCreating] = useState(false)
-  const [email, setEmail] = useState("")
-  const [password, setPassword] = useState("")
-  const [callsign, setCallsign] = useState("")
-  const id = useId()
-
-  const switchTo = (c: boolean) => {
-    setCreating(c)
-    clearError()
-  }
-
-  const submit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault()
-    if (busy) return
-    if (!creating) {
-      if (await signIn(email, password)) setPassword("")
-      return
-    }
-    const r = await signUp(email, password, callsign)
-    if (r) setPassword("")
-    if (r === "confirm") setCreating(false)
-  }
-
+function SignIn({ email }: { email: boolean }) {
+  const { signIn, signUp, signInWithGitHub } = useAccount()
   return (
     <Card className="gap-0 py-0 text-sm">
-      <fieldset className="grid min-w-0 grid-cols-2 border-b" aria-label="Sign in or create an account">
-        {[false, true].map((c) => (
-          <button
-            key={String(c)}
-            type="button"
-            aria-pressed={creating === c}
-            onClick={() => switchTo(c)}
-            className={cn(
-              "h-10 border-b-2 text-xs font-semibold tracking-[0.12em] uppercase transition-colors outline-none focus-visible:bg-muted",
-              creating === c
-                ? "border-primary text-foreground"
-                : "border-transparent text-muted-foreground hover:text-foreground"
-            )}
-          >
-            {c ? "Create account" : "Sign in"}
-          </button>
-        ))}
-      </fieldset>
-
-      <form onSubmit={submit} className="space-y-3 p-4">
-        <p className="text-xs leading-relaxed text-muted-foreground">
-          {creating
-            ? "The account works here and in the game. It keeps your callsign yours, and every battle you play signed in counts towards your rank."
-            : "The same account you sign in with in the game. You don't need one to play online."}
-        </p>
-        <div className="space-y-1.5">
-          <Label htmlFor={`${id}-email`}>Email</Label>
-          <Input
-            id={`${id}-email`}
-            type="email"
-            autoComplete="email"
-            required
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-          />
-        </div>
-        <div className="space-y-1.5">
-          <Label htmlFor={`${id}-password`}>Password</Label>
-          <Input
-            id={`${id}-password`}
-            type="password"
-            autoComplete={creating ? "new-password" : "current-password"}
-            required
-            minLength={creating ? 8 : undefined}
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-          />
-        </div>
-        {creating && (
-          <div className="space-y-1.5">
-            <Label htmlFor={`${id}-callsign`}>Callsign</Label>
-            <Input
-              id={`${id}-callsign`}
-              autoComplete="nickname"
-              required
-              minLength={3}
-              maxLength={20}
-              pattern="[A-Za-z0-9 _.\-]{3,20}"
-              title="3 to 20 letters, digits, spaces, _ . or -"
-              aria-describedby={`${id}-callsign-hint`}
-              value={callsign}
-              onChange={(e) => setCallsign(e.target.value)}
-            />
-            <p id={`${id}-callsign-hint`} className="text-xs text-muted-foreground">
-              3 to 20 letters, digits, spaces, _ . or -. Shown beside the battles you host.
-            </p>
-          </div>
-        )}
-
-        {error && (
-          <p role="alert" className="flex items-start gap-2 text-xs text-destructive">
-            <WarningIcon className="mt-px size-4 shrink-0" />
-            {error}
-          </p>
-        )}
-        {notice && !error && <output className="block text-xs text-good">{notice}</output>}
-
-        <Button type="submit" disabled={busy} className="h-9 w-full text-sm font-semibold">
-          {busy ? (creating ? "Creating your account…" : "Signing in…") : creating ? "Create account" : "Sign in"}
-        </Button>
-      </form>
+      <SignInChoices
+        blurb="The same account you play with in the game. It keeps your callsign yours, and every battle you play signed in counts towards your rank. You don't need one to play online."
+        onGitHub={() => void signInWithGitHub()}
+        email={email}
+        form={{
+          intro: (creating) =>
+            creating ? "A test account, for the game and this site." : "A test account's email and password.",
+          onSubmit: async (address, password, callsign) =>
+            callsign === null ? ((await signIn(address, password)) ? "in" : null) : signUp(address, password, callsign),
+        }}
+      />
     </Card>
   )
 }

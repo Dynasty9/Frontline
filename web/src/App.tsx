@@ -6,6 +6,7 @@ import { Emblem } from "@/components/emblem"
 import { Features } from "@/components/features"
 import { Finale } from "@/components/finale"
 import { Gallery } from "@/components/gallery"
+import { GameSignIn } from "@/components/game-sign-in"
 import { Hero } from "@/components/hero"
 import { InsigniaSection } from "@/components/insignia"
 import { TickerBands } from "@/components/marquee"
@@ -15,7 +16,9 @@ import { SiteHeader } from "@/components/site-header"
 import { Stats } from "@/components/stats"
 import { TooltipProvider } from "@/components/ui/tooltip"
 import { usePoll } from "@/hooks/use-poll"
+import { finishGitHub, takeGitHubReturn } from "@/lib/account"
 import { GITHUB_URL } from "@/lib/config"
+import { readSignInRequest, withoutSignInRequest } from "@/lib/game-sign-in"
 import { fetchHealth, fetchLobbies } from "@/lib/matchmaker"
 import { guessPlatform } from "@/lib/releases"
 
@@ -35,6 +38,23 @@ export default function App() {
     window.history.replaceState(null, "", window.location.pathname + window.location.hash)
   }
   const [watching, setWatching] = useState(false)
+  // back from signing in with GitHub (?code=): the game's sign-in (its dialog
+  // finishes it), or the site's (finished here, then the profile)
+  const [github] = useState(() => takeGitHubReturn())
+  useEffect(() => {
+    if (!github) return
+    window.history.replaceState(null, "", github.clean)
+    if (github.back.game) return
+    void finishGitHub(github.back).then(() => document.getElementById("insignia")?.scrollIntoView())
+  }, [github])
+  // the game sent the player here to sign in (?sign-in=STATE)
+  const [gameSignIn, setGameSignIn] = useState(
+    () => readSignInRequest(window.location.search) ?? github?.back.game ?? null
+  )
+  const closeGameSignIn = () => {
+    setGameSignIn(null)
+    window.history.replaceState(null, "", withoutSignInRequest(window.location.href))
+  }
 
   return (
     <TooltipProvider delayDuration={150}>
@@ -68,6 +88,14 @@ export default function App() {
         <Finale platform={platform} onLaunch={() => setLaunched(true)} />
       </main>
       <ReelDialog open={watching} onClose={() => setWatching(false)} />
+      {gameSignIn && (
+        <GameSignIn
+          request={gameSignIn}
+          accounts={health.data?.accounts}
+          onClose={closeGameSignIn}
+          returned={github?.back.game ? github.back : undefined}
+        />
+      )}
       <footer className="border-t">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-6 gap-y-3 px-4 py-8 text-xs text-muted-foreground sm:px-6">
           <span className="flex items-center gap-2">

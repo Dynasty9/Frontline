@@ -3,9 +3,18 @@ extends PanelContainer
 ## Signing in, or making an account (Online), from the main menu or at the end
 ## of a battle. None of it is needed to play; an account keeps your callsign
 ## yours and every battle you fight on your service record.
+##
+## A player's game sends them to the website to sign in with GitHub
+## (Online.web_sign_in), which makes the account the first time, and waits
+## here until the website hands the sign-in back. The email and password form
+## is for testing: running from source, or against a matchmaker of your own.
 
 signal closed
 signal signed_in
+
+## Its size on the screen (UiKit.fit_center): the form's. Sending the player to
+## the website, it's only as tall as its words and buttons.
+const SIZE := Vector2(500, 440)
 
 var email: LineEdit
 var password: LineEdit
@@ -14,8 +23,11 @@ var msg: Label
 var _title: Label
 var _go: Button
 var _switch: Button
+var _row: HBoxContainer
 var _create := false
 var _busy := false
+var _web := false  # signing in on the website, not in the form
+var _suggest := ""
 
 
 func _ready() -> void:
@@ -51,22 +63,24 @@ func _ready() -> void:
 	for e: LineEdit in [email, password, callsign]:
 		e.custom_minimum_size = Vector2(0, 36)
 		v.add_child(e)
-	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 8)
-	v.add_child(row)
+	_row = HBoxContainer.new()
+	_row.add_theme_constant_override("separation", 8)
+	v.add_child(_row)
 	_go = _button("Sign in", _submit)
 	_go.custom_minimum_size = Vector2(150, 38)
-	row.add_child(_go)
+	_row.add_child(_go)
 	_switch = _button("New here? Create an account", func(): _set_mode(not _create))
 	_switch.flat = true
 	_switch.add_theme_color_override("font_color", UiKit.ACCENT)
 	_switch.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_switch.alignment = HORIZONTAL_ALIGNMENT_LEFT
-	row.add_child(_switch)
-	row.add_child(_button("Close", func(): visible = false; closed.emit()))
+	_row.add_child(_switch)
+	_row.add_child(_button("Close", func(): visible = false; closed.emit()))
 	msg = UiKit.label("", 13, UiKit.DIM)
 	msg.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	v.add_child(msg)
+	Online.account_changed.connect(_on_account_changed)
+	Online.web_sign_in_failed.connect(_on_web_failed)
 
 
 func _button(text: String, cb: Callable) -> Button:
@@ -81,15 +95,25 @@ func _button(text: String, cb: Callable) -> Button:
 ## Opens on the sign-in form, or the new-account one (with a callsign to
 ## suggest). Says up front if this matchmaker has no accounts, or can't be reached.
 func open(create := false, suggest := "") -> void:
+	_web = Online.web_sign_in
+	# under the buttons, but for the website what to do comes before them
+	msg.get_parent().move_child(msg, -1)
+	if _web:
+		msg.get_parent().move_child(msg, _row.get_index())
+	UiKit.fit_center(self, Vector2(SIZE.x, 0.0) if _web else SIZE)
 	visible = true
 	UiFx.pop(self)
 	Sfx.ui("ui_whoosh", -18.0, 1.15)
 	msg.text = ""
 	_busy = false
-	if callsign.text == "" and suggest != "Commander":
-		callsign.text = suggest
+	_suggest = suggest if suggest != "Commander" else ""
+	if callsign.text == "":
+		callsign.text = _suggest
 	_set_mode(create)
-	email.grab_focus.call_deferred()
+	if _web:
+		_open_website()
+	else:
+		email.grab_focus.call_deferred()
 	var r: Dictionary = await Online.check()
 	if not visible:
 		return
@@ -102,15 +126,41 @@ func open(create := false, suggest := "") -> void:
 
 func _set_mode(create: bool) -> void:
 	_create = create
-	_title.text = "CREATE AN ACCOUNT" if create else "SIGN IN"
-	_go.text = "Create account" if create else "Sign in"
+	_title.text = "CREATE AN ACCOUNT" if create and not _web else "SIGN IN"
+	_go.text = "Open the website" if _web else "Create account" if create else "Sign in"
 	_switch.text = "I already have an account" if create else "New here? Create an account"
-	callsign.visible = create
+	email.visible = not _web
+	password.visible = not _web
+	callsign.visible = create and not _web
+	_switch.visible = not _web
 	_go.disabled = false
 	msg.text = ""
 
 
+## Off to the website, in the browser: the game waits here for it.
+func _open_website() -> void:
+	Online.open_web_sign_in(_create, _suggest if _create else "")
+	msg.add_theme_color_override("font_color", UiKit.DIM)
+	msg.text = "Sign in with GitHub on the Frontline website, in your browser (the first time makes your account). The game signs in as soon as you have. Closed the page? Open it again."
+
+
+func _on_account_changed() -> void:
+	if visible and _web and Online.signed_in():
+		visible = false
+		signed_in.emit()
+
+
+func _on_web_failed(error: String) -> void:
+	if not visible or not _web:
+		return
+	msg.add_theme_color_override("font_color", UiKit.BAD)
+	msg.text = error
+
+
 func _submit() -> void:
+	if _web:
+		_open_website()
+		return
 	if _busy:
 		return
 	_busy = true

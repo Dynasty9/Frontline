@@ -1,10 +1,12 @@
 import { useSyncExternalStore } from "react"
 import { MATCHMAKER_URL } from "@/lib/config"
+import type { SignInRequest } from "@/lib/game-sign-in"
 import { findInsignia, isUnlocked, RANKS } from "@/lib/insignia"
 
-// A player's account, the same one they sign in with in the game. The
-// matchmaker fronts it (matchmaker/src/auth.js): the site never talks to the
-// account service directly. The session lives in localStorage so a reload
+// A player's account, the same one they sign in with in the game. Players
+// sign in with GitHub; email and password are for testing (EMAIL_SIGN_IN).
+// The matchmaker fronts it (matchmaker/src/auth.js): the site never talks to
+// the account service directly. The session lives in localStorage so a reload
 // keeps you signed in, and the access token is refreshed a minute before it
 // runs out, or once when the matchmaker turns it down.
 
@@ -303,6 +305,170 @@ async function signUp(email: string, password: string, callsign: string): Promis
   }
 }
 
+/**
+ * Signs in the game that sent the player here (src/lib/game-sign-in.ts) with
+ * an email and password (for testing: players sign in with GitHub): the
+ * refresh token of a session of the game's own, for its link; "confirm" when
+ * a new account's email needs confirming first; null when it failed (the
+ * error is in the state). Never the site's own session: a refresh token works
+ * once, so two holders of one would sign each other out. With a callsign it
+ * makes the account first.
+ */
+async function signInGame(
+  email: string,
+  password: string,
+  callsign: string | null
+): Promise<{ token: string } | "confirm" | null> {
+  set({ busy: true, error: null, notice: null })
+  email = email.trim()
+  try {
+    if (callsign !== null) {
+      const r = await call<{ session?: WireSession | null; confirm?: boolean }>("POST", "/auth/signup", {
+        email,
+        password,
+        callsign: callsign.trim(),
+      })
+      if (!r.session) {
+        set({ notice: "Check your email for the confirmation link, then sign in here." })
+        return "confirm"
+      }
+    }
+    const game = await call<{ session: WireSession }>("POST", "/auth/login", { email, password })
+    return { token: game.session.refresh_token }
+  } catch (e) {
+    set({ error: message(e) })
+    return null
+  } finally {
+    set({ busy: false })
+  }
+}
+
+// --- signing in with GitHub: OAuth with PKCE, through the matchmaker
+// (matchmaker/src/auth.js). The page makes a random verifier and sends only
+// its hash; the code GitHub's sign-in comes back with is no use without the
+// verifier, which this tab keeps (with the game's request, if a game sent the
+// player) in sessionStorage while it's away at GitHub.
+
+const GITHUB_KEY = "frontline.github"
+
+type Away = { verifier: string; game: SignInRequest | null }
+
+/** What came back from GitHub to this page: a code to swap for a session, or why not. */
+export type GitHubReturn = { game: SignInRequest | null } & ({ code: string; verifier: string } | { error: string })
+
+const base64url = (b: Uint8Array) =>
+  btoa(String.fromCharCode(...b))
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=+$/, "")
+
+/** The verifier's PKCE challenge: its SHA-256, base64url. */
+export async function pkceChallenge(verifier: string): Promise<string> {
+  return base64url(new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(verifier))))
+}
+
+const leave = (url: string) => window.location.assign(url)
+
+/**
+ * Off to GitHub to sign in: for the site, or for the game that sent the
+ * player here. Comes back to this page with ?code= (takeGitHubReturn). `go`
+ * leaves the page (the stories only record where to).
+ */
+async function signInWithGitHub(game: SignInRequest | null = null, go = leave) {
+  set({ busy: true, error: null, notice: null })
+  try {
+    const verifier = base64url(crypto.getRandomValues(new Uint8Array(32)))
+    const r = await call<{ url: string }>("POST", "/auth/oauth", {
+      provider: "github",
+      redirect_to: window.location.origin + "/",
+      code_challenge: await pkceChallenge(verifier),
+    })
+    try {
+      sessionStorage.setItem(GITHUB_KEY, JSON.stringify({ verifier, game } satisfies Away))
+    } catch {
+      throw new Error("This browser is blocking the storage a sign-in needs while it's away at GitHub.")
+    }
+    // off the page: busy until it goes
+    go(r.url)
+  } catch (e) {
+    set({ busy: false, error: message(e) })
+  }
+}
+
+let taken: { href: string; back: { back: GitHubReturn; clean: string } | null } | null = null
+
+/**
+ * Back from GitHub: what this tab went for, from the address (?code=, or
+ * ?error= when GitHub or the player said no) and what the tab kept. Null if
+ * this page isn't a return from GitHub. It's taken once (a reload doesn't try
+ * the code again); `clean` is the address without it.
+ */
+export function takeGitHubReturn(href = window.location.href): { back: GitHubReturn; clean: string } | null {
+  if (taken?.href === href) return taken.back
+  const u = new URL(href)
+  const hash = new URLSearchParams(u.hash.slice(1))
+  const pick = (k: string) => u.searchParams.get(k) ?? hash.get(k)
+  const code = u.searchParams.get("code")
+  const error = pick("error_description") ?? pick("error")
+  let away: Away | null = null
+  if (code || error) {
+    try {
+      away = JSON.parse(sessionStorage.getItem(GITHUB_KEY) ?? "null")
+      sessionStorage.removeItem(GITHUB_KEY)
+    } catch {
+      away = null
+    }
+  }
+  let result: { back: GitHubReturn; clean: string } | null = null
+  // a ?code= this tab didn't go to GitHub for isn't ours
+  if (away && typeof away.verifier === "string") {
+    for (const k of ["code", "error", "error_code", "error_description"]) u.searchParams.delete(k)
+    const clean = u.pathname + u.search + (hash.has("error") ? "" : u.hash)
+    result = {
+      back: code ? { game: away.game, code, verifier: away.verifier } : { game: away.game, error: error ?? "" },
+      clean,
+    }
+  }
+  taken = { href, back: result }
+  return result
+}
+
+const finishing = new Map<string, Promise<{ token: string } | "in" | null>>()
+
+/**
+ * Swaps the code GitHub came back with for a session: the site's own (kept,
+ * "in"), or the game's ({token}, for its link). Null when it didn't work (the
+ * error is in the state). Once per code, however often it's asked.
+ */
+export function finishGitHub(back: GitHubReturn): Promise<{ token: string } | "in" | null> {
+  if ("error" in back) {
+    set({ error: `GitHub didn't sign you in${back.error ? ` (${back.error})` : ""}. Try again.` })
+    return Promise.resolve(null)
+  }
+  let p = finishing.get(back.code)
+  if (!p) {
+    p = (async () => {
+      set({ busy: true, error: null, notice: null })
+      try {
+        const r = await call<{ session: WireSession }>("POST", "/auth/exchange", {
+          code: back.code,
+          code_verifier: back.verifier,
+        })
+        if (back.game) return { token: r.session.refresh_token }
+        await begin(r.session)
+        return "in" as const
+      } catch (e) {
+        set({ error: message(e) })
+        return null
+      } finally {
+        set({ busy: false })
+      }
+    })()
+    finishing.set(back.code, p)
+  }
+  return p
+}
+
 function signOut() {
   const s = session
   window.clearTimeout(iconTimer)
@@ -369,7 +535,7 @@ const subscribe = (l: () => void) => {
 }
 const snapshot = () => state
 
-const actions = { signIn, signUp, signOut, setIcon, clearError }
+const actions = { signIn, signUp, signInGame, signInWithGitHub, signOut, setIcon, clearError }
 
 /** The signed-in player (or null) and what can be done about it. */
 export function useAccount() {
