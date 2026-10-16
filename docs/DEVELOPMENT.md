@@ -40,6 +40,9 @@ Settings are saved to `user://settings.cfg`, key bindings to `user://keybinds.cf
 
 ```
 main.gd                 menu <-> World, command-line test modes
+test/test_run.gd        how a test run ends: exit code 1 on a script error or a failed check
+test/test_port.gd       the test port: a test drives the game over a local socket (see "The test port")
+test/cam_test.gd, keys_test.gd   the camera and key bindings driven end to end (--cam-test, --keys-test)
 autoload/defs.gd        all data tables (units, weapons, squads, vehicles, buildings, upgrades)
 autoload/net.gd         ENet host/join, lobby, teams, start
 autoload/online.gd      the matchmaker client: listing, Find Match, STUN + hole punching, optional account
@@ -117,10 +120,24 @@ to that team.
 
 ## Automated test modes
 
-Pass these after `--` on the command line:
+Pass these after `--` on the command line. Every run given switches is a test run: it exits with code 1 if a
+script error happened anywhere in it (or one of its own checks failed: `--cam-test`, `--keys-test`) and prints
+`TESTRUN failed`, 0 if it ran clean (`scripts/test/test_run.gd`).
+
+Pass the engine switch `--fixed-fps 30` before the `--` to step the game exactly as it plays: every frame is then
+one 1/30 s tick, however long it really takes, so a run goes as fast as the computer can and, with `--seed`,
+replays the same battle every time. `--timescale=N` is coarser: each tick covers N/30 s.
+
+Scenarios, AI-vs-AI battles and missions run offline: they take no port, so any number can run at once.
 
 ```
---aivai --timescale=8 --quit-after=900 --stats=60     AI vs AI, prints a state summary + behaviour counters
+--aivai --seed=3 --quit-after=900 --stats=60          AI vs AI, prints a state summary + behaviour counters
+--seed=N                                              the same map and the same fight every run (scenarios, --aivai,
+                                                      missions; a scenario without one gets a random seed)
+--listen [--port=N]                                   (scenarios, --aivai, missions) open the port as a host, for a
+                                                      client to join
+--test-port=N                                         (with --fixed-fps 30) take orders over a local socket: see
+                                                      "The test port"; 0 takes any free port
 --scenario=cover|lean|grenade|tank|drone|tunnel|heli|defense|air|support|showroom|trenches|poses|attack|solo
                                                       (attack: two squads and a gun team attack a walled yard;
                                                       solo: one squad against a stronger position)
@@ -235,7 +252,6 @@ FL_DEBUG_MISSION=1 (env)                              print the map's features (
 --test-fire[=ground]                                  every armed man, gunner and vehicle fires ahead (muzzle tests);
                                                       =ground puts the men's rounds into the ground 25 m out (impacts);
                                                       --test-fire-every=0.3 fires that often (default 0.09 s)
---seed=N                                              (with --aivai) the same map every run
 --dump-structs                                        list every built structure when --quit-after fires
 FL_DEBUG_TOWNS=1 (env)                                print each town and village: name, dump and the ground that takes it
 FL_DEBUG_HPA=1 (env)                                  benchmark hierarchical vs flat paths at start-up
@@ -256,7 +272,42 @@ the video, e.g. `godot --path . --write-movie out.avi --resolution 320x180 --qui
 (an MJPEG AVI with PCM sound; it runs at a fixed 60 fps, and the music keeps time with it).
 
 Example:
-`godot --headless --path . -- --aivai --timescale=8 --quit-after=600 --stats=120`
+`godot --headless --fixed-fps 30 --path . -- --aivai --seed=3 --quit-after=600 --stats=120`
+
+### The test port
+
+`--test-port=N` lets a test drive the game from outside: it listens on 127.0.0.1 (only, and only when asked;
+exported builds leave it out), one JSON object per line each way. Game time moves only when the test steps it,
+so the game must run with `--fixed-fps 30`; between commands it holds still. `--test-port=0` takes any free port
+and prints `TESTPORT listening 127.0.0.1:PORT`. The game quits when the test hangs up.
+
+The tests live in `tests/` (Node, no dependencies): `tests/lib/game.mjs` starts a headless game, connects and
+wraps the commands, and each `*.test.mjs` is a `node:test` file. Run them with `npm test` in `tests/`, with
+`GODOT` set to your Godot executable (`FL_TEST_VERBOSE=1` echoes the games' output). A test looks like this:
+
+```js
+const game = await Game.start();
+await game.load({ scenario: "attack", seed: 3, static: true });
+const { squads } = await game.query("squads", { team: 0 });
+await game.order(0, "assault", { squads: squads.map((s) => s.id), pos: v3(-2, -42) });
+await game.step(60);
+assert.ok((await game.stats()).counters.plan_assault >= 1);
+assert.equal(await game.close(), 0);
+```
+
+| command | fields | answers |
+| --- | --- | --- |
+| `hello` | | `version`, `net` (NET_VERSION), `tps`, `headless` |
+| `load` | one of `scenario`, `mission`, `battle: true` (AI vs AI); `seed`, `play`, `autoplay`, `static`, `verbose` | `t` (0), `seed`, and how many `soldiers`, `vehicles`, `structures`, `squads`; a fresh battle each time |
+| `step` | `seconds`, or `ticks` | `t`, `ticks` run, `winner` (-1 while it goes on) |
+| `order` | `team` (0 or 1: that side's AI, which owns a scenario's squads too) or `peer` (1: you, loaded with `play`); `t` and the order's fields as `World.execute_cmd` takes them, positions as `{"v3": [x, z]}` | `squads`, `vehicles`: how many of those listed the order reached |
+| `query` | `what`: `world`, `squads`, `soldiers`, `vehicles`, `structures`; `team`, `kind`, `ids` | the list (positions as `[x, z]`); structures leave out trees and floors unless asked for by `kind` |
+| `stats` | | `counters` (every `world.stat`), `report` (the after-action summary) |
+| `hash` | | `hash`: a fingerprint of the whole simulation; two runs from one seed agree on it tick for tick |
+| `errors` | | `count` and the `recent` script errors |
+| `quit` | | the game quits with its exit code |
+
+Every reply has `ok` (with `error` when false) and `errors`, the script errors counted so far.
 
 ### Host / client
 

@@ -24,6 +24,7 @@ func _check(what: String, ok: bool, detail := "") -> void:
 	_n += 1
 	if not ok:
 		_fails += 1
+		TestRun.fail()
 	print("KEYTEST %s %s  %s" % ["ok  " if ok else "FAIL", what, detail])
 
 
@@ -175,4 +176,4 @@ func _run() -> void:
 	_check("reset all puts every default back", Keys.is_default("hold") and Keys.is_default("cam_fast"))
 	sp.visible = false
 	print("KEYTEST %d/%d passed" % [_n - _fails, _n])
-	get_tree().quit()
+	TestRun.quit(get_tree())

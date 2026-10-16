@@ -828,6 +828,8 @@ func scenario(sname: String) -> void:
 					var off := Vector3(world.rng.randf_range(-1.5, 1.5), 0, world.rng.randf_range(-1.5, 1.5))
 					world.spawn("projectile", {"ptype": "frag", "team": 1, "pos": c + off + Vector3(0, 0.3, 0), "vel": Vector3(0, 0.5, 0), "thrower": 0,
 						"fuse": world.rng.randf_range(1.2, 3.4)}))
+		_:
+			push_error("Unknown scenario: %s" % sname)
 	r.rebuild_network(0)
 	r.rebuild_network(1)
 

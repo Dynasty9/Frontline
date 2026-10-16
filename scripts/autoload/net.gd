@@ -109,11 +109,30 @@ func host_game(port := DEFAULT_PORT, team := 0) -> int:
 	if err != OK:
 		return err
 	multiplayer.multiplayer_peer = peer
+	_hosting(team)
+	lobby_updated.emit()
+	return OK
+
+
+## A game on this machine alone (the test runs: scenarios, AI-vs-AI battles,
+## missions playing themselves, the test port). Godot's offline peer makes this
+## the server, peer 1, with nobody to talk to, so it takes no port and two runs
+## at once can't collide.
+func host_offline(team := 0) -> void:
+	if multiplayer.multiplayer_peer and not (multiplayer.multiplayer_peer is OfflineMultiplayerPeer):
+		multiplayer.multiplayer_peer.close()
+	multiplayer.multiplayer_peer = OfflineMultiplayerPeer.new()
+	_hosting(team)
+	lobby_updated.emit()
+
+
+## A fresh game hosted here: nothing carried over from the last one (a
+## mission, a password, a name; a test port loading one game after another
+## mustn't carry the last one's seed or scenario either).
+func _hosting(team: int) -> void:
 	players.clear()
 	players[1] = {"name": my_name, "team": team, "ready": true, "col": 0, "icon": my_icon, "rank": my_rank}
 	in_game = false
-	# a fresh game: nothing carried over from the last one (a mission, a
-	# password, a name)
 	settings = DEFAULT_SETTINGS.duplicate()
 	password = ""
 	_turned_away.clear()
@@ -121,8 +140,6 @@ func host_game(port := DEFAULT_PORT, team := 0) -> int:
 	arriving = 0
 	_tokens.clear()
 	away.clear()
-	lobby_updated.emit()
-	return OK
 
 
 ## `local_port`: the UDP port to connect from (0 for any). The matchmaker's

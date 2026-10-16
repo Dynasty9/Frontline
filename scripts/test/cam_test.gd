@@ -18,6 +18,7 @@ func _check(what: String, ok: bool, detail := "") -> void:
 	_n += 1
 	if not ok:
 		_fails += 1
+		TestRun.fail()
 	print("CAMTEST %s %s  %s" % ["ok  " if ok else "FAIL", what, detail])
 
 
@@ -175,4 +176,4 @@ func _run() -> void:
 	Settings.v["minimap_rotate"] = false
 
 	print("CAMTEST %d/%d passed (%d fps)" % [_n - _fails, _n, Engine.get_frames_per_second()])
-	get_tree().quit()
+	TestRun.quit(get_tree())
