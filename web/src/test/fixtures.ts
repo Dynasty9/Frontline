@@ -17,13 +17,17 @@ const lobby = (l: Partial<Lobby> & Pick<Lobby, "id" | "name" | "host">): Lobby =
   ...l,
 })
 
-/** Waiting in the lobby, hosted from a signed-in account. */
+/** Waiting in the lobby, hosted from a signed-in account: a mission, played co-op. */
 export const lobbyOpen = lobby({
   id: "a1f0c2d3e4b5",
   name: "Bridgehead at dawn",
   host: "Raven",
   verified: true,
   players: 3,
+  mode: "mission",
+  mission: "Bridgehead",
+  side: 0,
+  teams: [3, 0],
 })
 
 /** Already fighting, but players may drop in. */
@@ -35,9 +39,12 @@ export const lobbyDropIn = lobby({
   in_game: true,
   nat: "open",
   age: 900,
+  mode: "versus",
+  side: -1,
+  teams: [3, 2],
 })
 
-/** Behind a router that can't be punched through. */
+/** Behind a router that can't be punched through, and wanting a password. */
 export const lobbyStrict = lobby({
   id: "c3d2e4f5a6b7",
   name: "Night raid",
@@ -45,6 +52,10 @@ export const lobbyStrict = lobby({
   players: 1,
   max_players: 4,
   nat: "strict",
+  mode: "coop",
+  side: 1,
+  teams: [0, 1],
+  locked: true,
 })
 
 /** Fighting, and not letting anyone else in. */

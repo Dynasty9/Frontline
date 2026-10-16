@@ -169,7 +169,7 @@ var _idle_t := 0.0
 
 func _ready() -> void:
 	theme = UiKit.theme()
-	add_theme_stylebox_override("panel", UiKit.boxc(Color(0.04, 0.05, 0.045, 0.97), 10, UiKit.LINE, 1, 14.0, 8))
+	add_theme_stylebox_override("panel", UiKit.frame(Color(-1, 0, 0), 14.0, 1.0, 16.0, 0.97))
 	_entries = _build_entries()
 	var vb := VBoxContainer.new()
 	vb.add_theme_constant_override("separation", 10)

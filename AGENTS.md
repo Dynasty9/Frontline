@@ -22,14 +22,15 @@ scripts/game/missions.gd       the missions (content); mission_director.gd runs 
 scripts/game/co_command.gd     co-commanders: each player's view, cursor and plans, pings, sketches (relayed to their side only)
 scripts/game/terrain.gd, nav.gd, hnav.gd   ground kinds, cover map, pathfinding grids (HPA*)
 scripts/ui/                    HUD, minimap, Field Manual, menus
-scripts/autoload/online.gd     the matchmaker client: battle list, Find Match, hole punching, optional account
+scripts/autoload/online.gd     the matchmaker client: battle list, Find Match, hole punching, LAN beacons, optional account
 scripts/autoload/links.gd      frontline:// links from the website: registering the scheme, handing a link to a running copy
 scripts/autoload/updater.gd    the game's version, and updating itself to the latest release
 changelog/                     one entry per change, filed under its version at release; CHANGELOG.md is generated
 matchmaker/                    the matchmaking service (Node, no runtime dependencies; deployed on Railway, accounts via Supabase)
+matchmaker/supabase/migrations/   the accounts database's schema, one migration per change; database.yml applies new ones as they merge
 web/                           the website (React + Vite + shadcn, on Railway): live battles with Join links, downloads;
                                Storybook for its components (*.stories.tsx next to each)
-export_presets.cfg, .github/workflows/release.yml   Windows, Linux and browser builds: every merge that changes the game is released
+export_presets.cfg, .github/workflows/release.yml   Windows, Linux and browser builds: a release is a button (Actions > Release), never a merge
 docs/                          FEATURES.md (design), DEVELOPMENT.md (code layout, test flags)
 design/                        logo and artwork used outside the game (not imported by Godot)
 ```
@@ -53,7 +54,7 @@ Run every command from the repository root. `godot` means your Godot 4.7.x execu
 3. **Multiplayer**, if you touched anything replicated: run a host and a client (see "Host / client" in DEVELOPMENT.md). The client prints `CLIENT entities=...` when it quits. If you touched matchmaking, run `npm test` in `matchmaker/` and the Find Match pair under "Matchmaker" in DEVELOPMENT.md. Bump `Net.NET_VERSION` when host and client stop understanding each other, so the matchmaker won't pair old and new builds.
 4. **Visuals**: render off-screen and look at the image rather than guessing. Use `--screenshot=out.png --shot-at=SECONDS`, frame the shot with `--focus=X,Z --zoom=M --pitch=DEG --cam-yaw=RAD`, and add `--nohud` to hide the interface. `--manual=category,key,side` opens a Field Manual page.
 
-CI (`.github/workflows/check.yml`) runs steps 1 and 2 on every push and pull request. `web.yml` and `matchmaker.yml` check the website and the matchmaker when they change: lint (oxlint), formatting (Prettier), tests, and for the website types, the build and the Storybook stories. Before pushing a change there, run `npm run lint`, `npm run format:check` and `npm test` in that directory (`npm run format` fixes the formatting). `.github/workflows/release.yml` publishes a new version on every merge to `main` that changes the game (a `minor` or `major` label on the pull request bumps further, `skip release` skips it), and test-exports pull requests that change the export setup.
+CI (`.github/workflows/check.yml`) runs steps 1 and 2 on every push and pull request. `web.yml` and `matchmaker.yml` check the website and the matchmaker when they change: lint (oxlint), formatting (Prettier), tests, and for the website types, the build and the Storybook stories. Before pushing a change there, run `npm run lint`, `npm run format:check` and `npm test` in that directory (`npm run format` fixes the formatting). Merging never releases: `.github/workflows/release.yml` publishes a version when someone runs it (Actions > Release > Run workflow), shipping everything merged since the last one, and test-exports pull requests that change the export setup.
 
 ## How the code is written
 
@@ -66,6 +67,7 @@ CI (`.github/workflows/check.yml`) runs steps 1 and 2 on every push and pull req
 
 ## Gotchas
 
+- **The database changes only by new migrations** (`supabase migration new <name>` in `matchmaker/`, see its README's "The database"). Never edit or remove one that's on `main`: the live database has already run it. Keep each one compatible with the matchmaker that's running (add, don't take away), since Railway's deploy and the release's migration can land in either order. `npm test` in `matchmaker/` runs them all on PGlite; add a test for any new rule.
 - **A new `class_name`** isn't visible to other scripts until the project is re-imported (`godot --headless --path . --import`). Other scripts referencing it will show bogus errors until then.
 - **Packed arrays are value types.** A `PackedFloat32Array` passed into a function is copied, so mutate member arrays in place instead.
 - **Entities get freed.** Soldiers and vehicles can be despawned at any time. Check `is_instance_valid()` before touching a stored reference. `world.despawn` removes a soldier from his squad.
@@ -79,12 +81,12 @@ CI (`.github/workflows/check.yml`) runs steps 1 and 2 on every push and pull req
 - **Shader instance uniforms** come from a fixed buffer (`rendering/limits/global_shader_variables/buffer_size` in `project.godot`). If a bigger map spawns many more objects, raise it.
 - **The host is busy for several seconds** generating the map, so ENet peers are given long timeouts (`net.gd`). Don't shorten them.
 - **Headless test runs** each need a distinct `--port`. A running game holds the default port.
-- **Test runs use the live matchmaker** unless given `--matchmaker=URL`, and only the menu's Host Multiplayer and Find Match (or `--host --list`) list a battle there. Single-player and scenario games never do.
+- **Test runs use the live matchmaker** unless given `--matchmaker=URL`, and only the menu's Host a Battle (unless Unlisted) and Find Match (or `--host --list`) list a battle there. Single-player and scenario games never do.
 - **The matchmaker keeps everything in memory**, so it runs as a single instance; the game re-lists its battle if the service restarts.
 
 ## Commits and pull requests
 
 - Keep each change coherent and tested (see above). Commit messages: a short summary line, then what changed and why.
-- **Every change to the game adds a changelog entry** for players: `changelog/unreleased/<what-changed>.md`, with its screenshots in `changelog/unreleased/<what-changed>/` ([changelog/README.md](changelog/README.md) shows the format). Merging it releases a new version, and the entry becomes that version's changelog on the website and GitHub. CI fails a pull request that changes the game without one; label it `skip release` if it shouldn't ship a version. Check it with `python .github/scripts/changelog.py check`.
+- **Every change to the game adds a changelog entry** for players: `changelog/unreleased/<what-changed>.md`, with its screenshots in `changelog/unreleased/<what-changed>/` ([changelog/README.md](changelog/README.md) shows the format). It waits there until the next release, which files it under that version's changelog on the website and GitHub. Never edit a version number, `CHANGELOG.md`, `web/src/changelog.json` or a `release.json`: the release writes those. CI fails a pull request that changes the game without an entry; label it `no changelog` if players needn't hear about it. Check it with `python .github/scripts/changelog.py check`.
 - If you add a unit, behaviour or system, update the matching section of [docs/FEATURES.md](docs/FEATURES.md), and the README if players would notice it.
 - For visual changes, include before and after screenshots, rendered off-screen. Put the ones players should see in the changelog entry's folder; the pull request can show them from the branch (`https://github.com/Dynasty9/Frontline/blob/<branch>/changelog/unreleased/<entry>/<file>.jpg?raw=true`), so there's no need for a separate assets branch.

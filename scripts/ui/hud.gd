@@ -119,7 +119,11 @@ var coop_roster: HudCoopRoster  # ...and listed top right
 var alert_label: Label
 var _alert_t := 0.0
 var over_panel: PanelContainer
+var _xp_box: VBoxContainer  # in the report's header: what the battle was worth to the rank
 var help_panel: PanelContainer
+var veil: TopoBackdrop  # the living map, see-through, behind the menus and the end of the battle
+var _veil_wave := -1.0  # seconds since the battle ended (its wave wakes the map from the middle)
+var _theme_rev := 0
 var menu_panel: PanelContainer
 var settings_panel: SettingsPanel
 var manual: FieldManual
@@ -142,6 +146,7 @@ var _msgs: Array = []
 
 func _ready() -> void:
 	layer = 5
+	Online.battle_reported.connect(_on_battle_reported)
 	MapSymbols.build_atlas(self, MapSymbols.atlas_k_for(Settings.ui_factor()))
 	root = Control.new()
 	root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -220,7 +225,7 @@ func _ready() -> void:
 
 	# minimap, bottom-left (sized by the settings: see layout_minimap)
 	minimap_panel = PanelContainer.new()
-	minimap_panel.add_theme_stylebox_override("panel", UiKit.box(UiKit.PANEL, 8, UiKit.LINE, 1, MINIMAP_PAD, 10))
+	minimap_panel.add_theme_stylebox_override("panel", UiKit.frame(Color(-1, 0, 0), MINIMAP_PAD, 0.8))
 	minimap_panel.anchor_top = 1.0
 	minimap_panel.anchor_bottom = 1.0
 	root.add_child(minimap_panel)
@@ -263,6 +268,11 @@ func _ready() -> void:
 	root.add_child(chat_edit)
 	layout_minimap()
 	Settings.changed.connect(layout_minimap)
+	_theme_rev = UiKit.theme_rev
+	Settings.changed.connect(func():
+		if _theme_rev != UiKit.theme_rev:
+			_theme_rev = UiKit.theme_rev
+			_build_help())  # its headings are in the theme's accent
 	root.resized.connect(layout_minimap)  # the window, or the interface scale, changed
 	root.resized.connect(func():
 		var k := MapSymbols.atlas_k_for(Settings.ui_factor())
@@ -333,6 +343,10 @@ func _ready() -> void:
 	log_box.add_theme_font_size_override("normal_font_size", 13)
 	lv.add_child(log_box)
 
+	veil = TopoBackdrop.new()
+	veil.see_through = 0.5
+	veil.visible = false
+	root.add_child(veil)
 	over_panel = _center_panel(Vector2(440, 220))
 	help_panel = _center_panel(Vector2(720, 620))
 	menu_panel = _center_panel(Vector2(320, 350))
@@ -373,7 +387,7 @@ func _ready() -> void:
 
 func _build_observer_bar() -> void:
 	obs_bar = PanelContainer.new()
-	obs_bar.add_theme_stylebox_override("panel", UiKit.box(UiKit.PANEL, 8, UiKit.LINE, 1, 6.0, 10))
+	obs_bar.add_theme_stylebox_override("panel", UiKit.frame(Color(-1, 0, 0), 6.0, 0.6, 8.0))
 	obs_bar.anchor_left = 0.5
 	obs_bar.anchor_right = 0.5
 	obs_bar.grow_horizontal = Control.GROW_DIRECTION_BOTH
@@ -470,7 +484,7 @@ func _small_button(text: String, tip: String, cb: Callable) -> Button:
 
 func _center_panel(sz: Vector2) -> PanelContainer:
 	var p := PanelContainer.new()
-	p.add_theme_stylebox_override("panel", UiKit.box(Color(0.05, 0.06, 0.055, 0.94), 10, UiKit.LINE, 1, 18.0, 18))
+	p.add_theme_stylebox_override("panel", UiKit.frame(Color(-1, 0, 0), 18.0, 1.3, 16.0, 0.95))
 	p.visible = false
 	root.add_child(p)
 	UiKit.fit_center(p, sz)
@@ -513,7 +527,7 @@ func _build_help() -> void:
 	t += "[color=#f5c96e]Win[/color]  Take or destroy every enemy FOB.\n\n"
 	t += "[color=#f5c96e]Observer[/color]  %s director camera, %s switch whose eyes you watch through, %s pause, %s and %s change speed.\n" % [_k("director"), _k("view_side"), _k("pause"), _k("slower"), _k("faster")]
 	t += "[color=#f5c96e]Other[/color]  %s chat (%s team), %s message history, %s hide the interface, %s performance overlay, %s Field Manual, Esc menu & settings." % [_k("chat"), _k("chat_team"), _k("log"), _k("hide_hud"), _k("perf"), _k("manual")]
-	l.text = t
+	l.text = t.replace("#f5c96e", "#" + UiKit.ACCENT.to_html(false))
 	help_panel.add_child(l)
 
 
@@ -803,10 +817,27 @@ func _on_chat(text: String) -> void:
 	_close_chat()
 
 
+## The living map fades in, see-through, under the Esc menu, the help and the
+## settings, and under the end of the battle, where a wave from the middle of
+## the screen wakes it.
+func _update_veil(rdt: float) -> void:
+	var on := menu_panel.visible or help_panel.visible or settings_panel.visible or over_panel.visible
+	veil.modulate.a = move_toward(veil.modulate.a, 1.0 if on else 0.0, rdt * 4.0)
+	veil.visible = veil.modulate.a > 0.0
+	if _veil_wave >= 0.0 and over_panel.visible:
+		_veil_wave += rdt
+		veil.wake_t = _veil_wave - 0.15
+	else:
+		_veil_wave = -1.0
+		veil.wake_t = 1000.0
+
+
 ## The end of the battle: who won, and the after-action report - the whole
 ## battle's figures, both sides', in the stats tabs.
 func show_game_over(w: int) -> void:
 	close_stats()
+	_veil_wave = 0.0
+	veil.wake_at = Vector2(0.5, 0.5)
 	for c in over_panel.get_children():
 		c.queue_free()
 	UiKit.fit_center(over_panel, Vector2(1180, 840), 30.0)
@@ -846,6 +877,8 @@ func show_game_over(w: int) -> void:
 		hv.add_child(UiKit.label("%s have taken the battlefield." % Defs.TEAM_NAMES[w], 14, UiKit.DIM))
 		facts = "Battle lasted %s" % StatsPanel.fmt_time(world.time)
 		Music.sting("defeat" if world.local_team >= 0 and w != world.local_team else "victory")
+	if world.local_team >= 0 and Online.signed_in():
+		_xp_row(head)
 	var fl := UiKit.label(facts, 13, UiKit.DIM)
 	fl.size_flags_vertical = Control.SIZE_SHRINK_END
 	fl.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
@@ -1013,7 +1046,7 @@ func _update_record_note() -> void:
 				_rec_note.text = "Couldn't reach the matchmaker: this battle goes on your service record next time it can."
 				_rec_note.add_theme_color_override("font_color", UiKit.WARN)
 			else:
-				_rec_note.text = "Sign in to keep this battle, and every one after it, on a service record."
+				_rec_note.text = "Sign in to keep this battle, and every one after it, on a service record, and to earn ranks and insignia."
 				_rec_btn.visible = true
 		_:
 			_rec_note.text = ""
@@ -1025,6 +1058,65 @@ func _sign_in_for_record() -> void:
 		root.add_child(account_panel)
 		UiKit.fit_center(account_panel, Vector2(500, 440))
 	account_panel.open(false, Net.my_name)
+
+
+## The rank's corner of the report's header. It waits for the matchmaker to
+## say what the battle was worth (Online.battle_reported): the XP, how far
+## through the rank, and a promotion with the patch that comes with it.
+func _xp_row(parent: Control) -> void:
+	_xp_box = VBoxContainer.new()
+	_xp_box.add_theme_constant_override("separation", 4)
+	_xp_box.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	_xp_box.custom_minimum_size = Vector2(320, 0)
+	parent.add_child(_xp_box)
+	_xp_box.add_child(UiKit.label("Counting your XP...", 13, UiKit.DIM))
+
+
+func _on_battle_reported(rep: Dictionary) -> void:
+	if not is_instance_valid(_xp_box):
+		return
+	for c in _xp_box.get_children():
+		c.queue_free()
+	if rep.has("error"):
+		var e := UiKit.label("Couldn't count this battle towards your rank: %s" % String(rep.error), 13, UiKit.BAD)
+		e.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		e.custom_minimum_size = Vector2(320, 0)
+		_xp_box.add_child(e)
+		return
+	var gained: int = int(rep.get("gained", 0))
+	var before: int = int(rep.get("rank_before", Online.rank))
+	var promoted: bool = Online.rank > before
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 12)
+	_xp_box.add_child(row)
+	# promoted: the new rank's patch is theirs to wear
+	var id: String = ("r%02d" % Online.rank) if promoted else Online.icon
+	var pic := TextureRect.new()
+	pic.texture = Insignia.texture(id, 128)
+	pic.custom_minimum_size = Vector2(52, 52)
+	pic.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	pic.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	pic.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+	row.add_child(pic)
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 1)
+	v.alignment = BoxContainer.ALIGNMENT_CENTER
+	row.add_child(v)
+	var rname := Insignia.rank_name(Online.rank).to_upper()
+	v.add_child(_spaced_label(("PROMOTED: " + rname) if promoted else rname, 12, UiKit.GOOD if promoted else UiKit.ACCENT, 2))
+	var nxt := ("%s / %s XP" % [Insignia.thousands(Online.xp - Online.rank_xp), Insignia.thousands(Online.next_xp - Online.rank_xp)]) if Online.next_xp > 0 else "Top rank"
+	v.add_child(UiKit.label(("+%d XP  \u00b7  %s" % [gained, nxt]) if gained > 0 else "No XP: battles under two minutes don't count", 14, UiKit.TEXT, 600))
+	if promoted:
+		var more: int = Online.rank - before - 1
+		v.add_child(UiKit.label("New insignia: %s%s" % [String(Insignia.find(id).get("n", "")), (" and %d more" % more) if more > 0 else ""], 12, UiKit.DIM))
+	var bar := ProgressBar.new()
+	bar.show_percentage = false
+	bar.custom_minimum_size = Vector2(320, 4)
+	bar.max_value = maxf(1.0, Online.next_xp - Online.rank_xp) if Online.next_xp > 0 else 1.0
+	bar.value = (Online.xp - Online.rank_xp) if Online.next_xp > 0 else 1.0
+	bar.add_theme_stylebox_override("background", UiKit.box(Color(1, 1, 1, 0.08), 2, Color(0, 0, 0, 0), 0, 0.0))
+	bar.add_theme_stylebox_override("fill", UiKit.box(UiKit.ACCENT, 2, Color(0, 0, 0, 0), 0, 0.0))
+	_xp_box.add_child(bar)
 
 
 ## The end of a mission: accomplished or failed and why, the headline of the
@@ -1124,6 +1216,7 @@ func _view_process(dt: float) -> void:
 	_track_orders()
 	_update_support()
 	_update_card()
+	_update_veil(rdt)
 	# the battle statistics stay current while they're up
 	if stats_panel.visible:
 		_stats_t += rdt
@@ -1270,7 +1363,7 @@ func _update_support() -> void:
 ## Observer: every kind of support, free, anywhere - to see the effects.
 func _build_demo_panel() -> void:
 	demo_panel = PanelContainer.new()
-	demo_panel.add_theme_stylebox_override("panel", UiKit.box(UiKit.PANEL, 8, UiKit.LINE, 1, 6.0, 10))
+	demo_panel.add_theme_stylebox_override("panel", UiKit.frame(Color(-1, 0, 0), 6.0, 0.6, 8.0))
 	demo_panel.anchor_left = 0.5
 	demo_panel.anchor_right = 0.5
 	demo_panel.grow_horizontal = Control.GROW_DIRECTION_BOTH

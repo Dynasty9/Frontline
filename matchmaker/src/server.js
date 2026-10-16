@@ -8,7 +8,7 @@
 import { readFileSync } from 'node:fs';
 import http from 'node:http';
 import { pathToFileURL } from 'node:url';
-import { AuthError, createAuth } from './auth.js';
+import { AuthError, createAuth, toUser } from './auth.js';
 import { HEARTBEAT_S, Lobbies, POLL_S } from './lobbies.js';
 import { careerOf, cleanRecord, isUuid, MAX_BODY as MAX_RECORD, RecordError } from './records.js';
 
@@ -17,8 +17,9 @@ const MAX_BODY = 8 * 1024;
 const BODY_LIMITS = { 'POST /me/battles': MAX_RECORD };
 
 // The latest release of the game, baked in by the release workflow
-// (.github/workflows/release.yml writes it, and the commit redeploys us): the
-// game's updater asks here which version is current and where to get it.
+// (.github/workflows/release.yml writes it in the release's pull request, and
+// merging that redeploys us): the game's updater asks here which version is
+// current and where to get it.
 export function loadRelease(file = new URL('../release.json', import.meta.url)) {
 	try {
 		return JSON.parse(readFileSync(file, 'utf8'));
@@ -217,16 +218,36 @@ export function createServer({ env = process.env, auth = createAuth(env), lobbie
 			return { ok: true };
 		},
 
-		'GET /me': async ({ req }) => {
+		'GET /me': async ({ req }) => ({ user: toUser(await account(req, true)) }),
+
+		// {callsign, icon}, either or both. Renaming counts against the sign-in
+		// limit as it always has; a player trying on insignia gets more goes.
+		'PATCH /me': async ({ req, ip, body }) => {
+			if (body.callsign !== undefined) limits.hit('auth', ip, 10);
+			else limits.hit('icon', ip, 30);
 			const a = await account(req, true);
-			return { user: { id: a.id, email: a.email, callsign: a.callsign } };
+			if (body.callsign === undefined && body.icon === undefined) throw new HttpError(400, 'Nothing to change.');
+			return { user: await auth.updateProfile(a.token, a, { callsign: body.callsign, icon: body.icon }) };
 		},
 
-		'PATCH /me': async ({ req, ip, body }) => {
-			limits.hit('auth', ip, 10);
+		// The battle clock, started when a signed-in player's battle begins.
+		// There's no game server to referee a battle (players host them), so
+		// the game reports its own result. The time it's worth is measured here,
+		// on our clock, from this call to the end: a modified game can't claim
+		// hours of play in seconds, so XP is bounded by real time played.
+		// Calling it again starts over, forfeiting a battle left open.
+		'POST /me/battle': async ({ req, ip }) => {
+			limits.hit('battle', ip, 20);
 			const a = await account(req, true);
-			const u = await auth.setCallsign(a.token, a, body.callsign);
-			return { user: { id: u.id, email: u.email, callsign: u.callsign } };
+			await auth.beginBattle(a.token, a);
+			return { ok: true };
+		},
+
+		// {result: "win" | "loss" | "left", seconds}: {gained, rank_before, user}
+		'POST /me/battle/end': async ({ req, ip, body }) => {
+			limits.hit('battle', ip, 20);
+			const a = await account(req, true);
+			return auth.endBattle(a.token, a, body.result, body.seconds);
 		},
 
 		// the player's service record: every battle they fought signed in

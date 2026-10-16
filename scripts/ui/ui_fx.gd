@@ -98,7 +98,7 @@ static func grain() -> Texture2D:
 
 ## Glass: darker at the foot, a hairline edge, the weave, and accent brackets
 ## at the two square corners. a fades all of it.
-static func panel(ci: CanvasItem, r: Rect2, a := 1.0, cut := 16.0, top := Color(0.06, 0.075, 0.07, 0.95), bot := Color(0.025, 0.03, 0.03, 0.97), accent := UiKit.ACCENT) -> void:
+static func panel(ci: CanvasItem, r: Rect2, a := 1.0, cut := 16.0, top := UiKit.panel_shade(1.12, 0.95), bot := UiKit.panel_shade(0.48, 0.97), accent := UiKit.ACCENT) -> void:
 	if r.size.x < cut * 2.0 or r.size.y < cut * 2.0 or a <= 0.0:
 		return
 	var pts := chamfer(r, cut)

@@ -2,9 +2,12 @@ extends Node
 ## Root: owns the menu and the World. Also understands a few command-line
 ## switches (after `--`) used for automated testing:
 ##   --aivai               host as spectator, both sides AI
-##   --host [--players=N]  host and start (when N players have joined)
-##   --join=IP             join a host
+##   --host [--players=N]  host and start (when N players have joined; the
+##                         lobby shows meanwhile)
+##     --battle-name=NAME --coop --max-players=N --password=PW   the lobby's settings
+##   --join=IP [--password=PW]   join a host
 ##   --team=N              the side to play (-1 spectator); a client registers with it
+##   --ready [--say=TEXT]  once in the lobby: press Ready (and say something)
 ##   --list                with --host: list the battle on the matchmaker
 ##   --find-match          press Find Match (joins a listed battle, or hosts one)
 ##   --login=EMAIL:PASSWORD [--signup=CALLSIGN]   sign in (or create the account) first
@@ -12,6 +15,8 @@ extends Node
 ##   --timescale=X --quit-after=SECONDS --stats=SECONDS --verbose
 ##   --screenshot=PATH --shot-at=SECONDS --focus=X,Z --zoom=D
 ##   --sound-dump=DIR      write every synthesised sound and music sample to DIR as WAVs, then quit
+##   --insignia-dump=DIR   write the insignia art and catalog for the website (DIR = web), then quit
+##   --insignia-sheet=PATH the whole collection of insignia on one image, then quit
 
 var menu: Control
 var world: World
@@ -26,6 +31,7 @@ var _shot_done := false
 var _shot_i := 0
 var _perf_t0 := 0
 var _perf_frames := 0
+var _battle_pending := false  # the rank's battle clock starts once the world is running
 var _curtains := false  # intro and loading screens (normal launches; tests skip them)
 var _curtain_layer: CanvasLayer
 
@@ -49,6 +55,14 @@ func _ready() -> void:
 	if args.has("sound-dump"):
 		Sfx.dump(String(args["sound-dump"]))
 		await Music.dump(String(args["sound-dump"]))
+		get_tree().quit()
+		return
+	if args.has("insignia-dump") or args.has("insignia-sheet"):
+		if args.has("insignia-dump"):
+			Insignia.dump(String(args["insignia-dump"]))
+		if args.has("insignia-sheet"):
+			var only := PackedStringArray() if not args.has("only") else String(args.only).split(",")
+			Insignia.sheet(String(args["insignia-sheet"]), int(args.get("px", 96)), 16, only)
 		get_tree().quit()
 		return
 	if args.has("soldier-sheet"):
@@ -94,7 +108,7 @@ func _ready() -> void:
 			var pair := kv.split(":")
 			if pair.size() == 2:
 				var cur = Settings.v.get(pair[0])
-				Settings.v[pair[0]] = (pair[1] == "true") if cur is bool else (float(pair[1]) if cur is float else int(pair[1]))
+				Settings.v[pair[0]] = (pair[1] == "true") if cur is bool else (float(pair[1]) if cur is float else (pair[1] if cur is String else int(pair[1])))
 		Settings.apply_global()
 	if args.has("novsync"):
 		Settings.v["vsync"] = false
@@ -140,36 +154,59 @@ func _ready() -> void:
 		Net.start_game()
 	elif args.has("host"):
 		if args.has("list"):
-			await Online.host(port, int(args.get("team", 0)))
+			await Online.host(port, int(args.get("team", 0)), false)
 		else:
 			Net.host_game(port, int(args.get("team", 0)))
+		var cfg := {"ai_allies": args.has("ai-allies"), "verbose": args.has("verbose"), "debug_trucks": args.has("debug-trucks")}
 		if args.has("mission"):
-			Net.set_setting("mission", String(args.mission))
-			Net.set_setting("mission_autoplay", args.has("autoplay"))
-		Net.set_setting("ai_allies", args.has("ai-allies"))
-		Net.set_setting("verbose", args.has("verbose"))
-		Net.set_setting("debug_trucks", args.has("debug-trucks"))
+			cfg["mission"] = String(args.mission)
+			cfg["mission_autoplay"] = args.has("autoplay")
+		if args.has("battle-name"):
+			cfg["name"] = String(args["battle-name"])
+		if args.has("coop"):
+			cfg["mode"] = "coop"
+			cfg["coop_side"] = maxi(0, int(args.get("team", 0)))
+		if args.has("max-players"):
+			cfg["max_players"] = int(args["max-players"])
+		if args.has("password"):
+			Net.password = String(args.password)
+			cfg["locked"] = true
+		Net.configure(cfg)
+		if args.has("list"):
+			Online.list_game()
 		if not args.has("players"):
 			Net.start_game()
 		else:
+			menu._show_lobby()
 			Net.lobby_updated.connect(_maybe_autostart)
 	elif args.has("join") or args.has("find-match"):
 		if args.has("team"):
 			Net.join_team = int(args.team)
 		if args.has("join"):
-			Net.join_game(String(args.join), port)
+			menu._join_direct(String(args.join), port, String(args.get("password", "")))
 		else:
 			menu._find_match()
+		if args.has("ready") or args.has("say"):
+			Net.lobby_updated.connect(_lobby_test_actions)
 
 
 ## --login=EMAIL:PASSWORD (with --signup=CALLSIGN to create the account first).
 func _test_login() -> void:
 	var cred := String(args.login).split(":", true, 1)
 	var r: Dictionary
-	if args.has("signup"):
-		r = await Online.sign_up(cred[0], cred[1] if cred.size() > 1 else "", String(args.signup))
-	else:
-		r = await Online.sign_in(cred[0], cred[1] if cred.size() > 1 else "")
+	# the first frames can hold the main thread for seconds (the menu's backdrop
+	# building) and a request times out under them: try again a moment later
+	for attempt in 3:
+		if args.has("signup"):
+			r = await Online.sign_up(cred[0], cred[1] if cred.size() > 1 else "", String(args.signup))
+			if not r.ok and int(r.code) != 0:
+				# the account is there already (a second run): sign in to it
+				r = await Online.sign_in(cred[0], cred[1] if cred.size() > 1 else "")
+		else:
+			r = await Online.sign_in(cred[0], cred[1] if cred.size() > 1 else "")
+		if r.ok or int(r.code) != 0:
+			break
+		await get_tree().create_timer(2.0).timeout
 	print("LOGIN ok=%s callsign=%s %s" % [str(r.ok), Online.callsign, String(r.error)])
 
 
@@ -177,6 +214,18 @@ func _dump_structs() -> void:
 	for st in world.structures:
 		if not st.skind in ["floor", "tree"]:
 			print("STRUCT %s t%d pos=%s yaw=%.2f size=%s built=%s wrecked=%s" % [st.skind, st.team, str(st.position.snapped(Vector3.ONE * 0.1)), st.yaw, str(st.size), str(st.built), str(st.wrecked)])
+
+
+## --ready / --say: once we're in the lobby, press Ready and say something.
+func _lobby_test_actions() -> void:
+	if has_meta("lobby_acted") or Net.in_game or not Net.players.has(multiplayer.get_unique_id()):
+		return
+	set_meta("lobby_acted", true)
+	await get_tree().create_timer(0.6).timeout
+	if args.has("say"):
+		Net.send_lobby_chat(String(args.say))
+	if args.has("ready"):
+		Net.set_ready.rpc_id(1, true)
 
 
 func _maybe_autostart() -> void:
@@ -266,6 +315,10 @@ func _on_game_start(s: Dictionary) -> void:
 			print("CLIENT report t=%.0f full=%s commanders=%d units=%d samples=%d enemy_known=%s" % [float(r.get("t", 0.0)), str(r.get("full", false)),
 				(r.get("players", []) as Array).size(), (r.get("units", []) as Array).size(), (r.get("tl", []) as Array).size(),
 				str(not (sd[1 - maxi(0, world.local_team)] as Dictionary).is_empty())]))
+	# a battle the player fights in (not one they watch, nor a test setup, nor
+	# a test run unless it asks with --record-battles, like the service record)
+	# counts towards their rank, from when it's under way (_process)
+	_battle_pending = world.local_team >= 0 and not s.has("scenario") and Online.record_battles
 	if cur and is_instance_valid(cur):
 		_warm_up(cur)
 	if args.has("focus") and world.cam:
@@ -352,11 +405,18 @@ func _fx_demo() -> void:
 func _on_game_ended(w: int) -> void:
 	if world == null:
 		return
+	var reporting := world.local_team >= 0 and Online.battle_open()
+	if world.local_team >= 0:
+		Online.battle_end("win" if w == world.local_team else "loss", world.time)
 	if world.srv and (args.has("stats") or args.has("quit-on-win")):
 		print("WINNER %s at t=%.0f" % [Defs.TEAM_NAMES[w], world.time])
 		print("FINAL ", world.debug_stats())
 		print("REPORT ", world.battle.summary())
 	if args.has("quit-on-win"):
+		if reporting:
+			# what the battle was worth to the account (tests of the rank)
+			var rep: Dictionary = await Online.battle_reported
+			print("BATTLE %s rank=%d xp=%d icon=%s" % [JSON.stringify(rep), Online.rank, Online.xp, Online.icon])
 		get_tree().quit()
 
 
@@ -490,6 +550,8 @@ func return_to_menu(msg: String) -> void:
 		_intro()
 	if not args.has("timescale"):
 		Engine.time_scale = 1.0
+	if world and Online.battle_open():
+		Online.battle_end("left", world.time)
 	if world:
 		world.name = "OldWorld"
 		world.queue_free()
@@ -571,19 +633,29 @@ func _process(_dt: float) -> void:
 			var mu := String(args["menu-update"]).split(",")
 			var st: int = ["available", "downloading", "ready", "failed"].find(mu[1] if mu.size() > 1 else "available") + 1
 			Updater.pretend(mu[0], st)
-		# --menu-panel=browse|account|record|settings: the list of online battles, the sign-in panel,
-		# the service record (signed in), the settings
-		if args.has("menu-panel") and menu and menu.browse_panel and not has_meta("panel_open") and Engine.get_frames_drawn() > 5:
+		# --menu-panel=browse|host|account|record|settings|insignia: the server browser,
+		# the host setup, the sign-in panel, the service record (signed in), the settings,
+		# the insignia
+		if args.has("menu-panel") and menu and menu.browser and not has_meta("panel_open") and Engine.get_frames_drawn() > 5:
 			set_meta("panel_open", true)
-			if String(args["menu-panel"]) == "account":
-				menu._open_account()
-			elif String(args["menu-panel"]) == "record":
-				menu._open_record()
-			elif String(args["menu-panel"]) == "settings":
-				menu.settings_panel.visible = true
-				menu.settings_panel._show_tab(String(args.get("settings-tab", "interface")))
-			else:
-				menu._open_browser()
+			match String(args["menu-panel"]):
+				"account":
+					menu._open_account()
+				"record":
+					menu._open_record()
+				"settings":
+					menu.settings_panel.visible = true
+					menu.settings_panel._show_tab(String(args.get("settings-tab", "interface")))
+				"host":
+					menu._open_host({"mode": String(args.get("host-mode", "coop"))})
+				"insignia":
+					menu._open_insignia()
+				_:
+					menu._open_browser()
+		# --browse-pick=TEXT: choose that battle in the server browser once it's listed
+		if args.has("browse-pick") and menu and menu.browser and menu.browser.visible and not has_meta("browse_picked"):
+			if menu.browser.pick(String(args["browse-pick"])):
+				set_meta("browse_picked", true)
 		# --open-battle (with --menu-panel=record): open the newest battle's after-action report
 		if args.has("open-battle") and menu and menu.rec_list and menu.rec_list.get_child_count() > 0 and not has_meta("battle_open"):
 			set_meta("battle_open", true)
@@ -600,6 +672,11 @@ func _process(_dt: float) -> void:
 			get_viewport().get_texture().get_image().save_png(String(args["menu-shot"]))
 			get_tree().quit()
 		return
+	# the map is built and the battle under way: start the clock on it (not
+	# before: building the map holds up everything, a request included)
+	if _battle_pending and world.time > 1.0:
+		_battle_pending = false
+		Online.battle_begin()
 	# --trace=path.csv: every half second, where each man is and what he's doing
 	# (for plotting squad movement and posture over a fight)
 	if args.has("trace") and world.srv and world.time >= _trace_t:
@@ -907,9 +984,12 @@ func _process(_dt: float) -> void:
 		if world.coop.peers.has(wid):
 			set_meta("coop_watched", true)
 			world.cam.toggle_shadow(wid)
-	# --hud-panel=settings|help|menu|log: open one of the battle's panels (layout checks)
+	# --hud-panel=settings|help|menu|log|over: open one of the battle's panels (layout
+	# checks; "over" is the end of the battle, won by your side)
 	if args.has("hud-panel") and world.hud and world.time > 1.0 and not has_meta("hud_panel"):
 		set_meta("hud_panel", true)
+		if String(args["hud-panel"]) == "over":
+			world.hud.show_game_over(maxi(world.local_team, 0))
 		var hp: Control = {"settings": world.hud.settings_panel, "help": world.hud.help_panel, "menu": world.hud.menu_panel, "log": world.hud.log_panel}.get(String(args["hud-panel"]))
 		if hp:
 			hp.visible = true

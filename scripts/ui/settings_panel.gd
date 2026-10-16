@@ -114,6 +114,7 @@ func _ready() -> void:
 		["option", "perf", "Performance overlay", Settings.LABELS.perf, "From a simple FPS counter to a full breakdown of the frame. Its key (F3 to begin with) cycles it."],
 	])
 	_pages["interface"] = _page(stack, [
+		["option", "ui_theme", "Theme", UiKit.theme_names(), "The interface's colours, and the colours the living map behind the menus turns through. Field Brass is the original; Night Vision, Thermal, Arctic and Dusk look at the war through other eyes."],
 		["slider", "ui_scale", "Interface scale", [Settings.UI_SCALE_MIN, 2.0, 0.05], "How big the interface is drawn. At 100% it grows with the window, so it looks the same at any resolution; text and symbols stay sharp at any size. The top of the slider is the largest that still fits this window: a bigger window, or fullscreen, goes further."],
 		["note", "ui_note", "", null, ""],
 		["check", "labels", "Unit activity labels", null, "Close up: each soldier's name and what he's doing. Further out: a status icon per man."],
@@ -219,7 +220,7 @@ func _page(parent: Control, rows: Array) -> Control:
 				for item in r[3]:
 					ob.add_item(item)
 				ob.custom_minimum_size = Vector2(220, 30)
-				ob.item_selected.connect(func(i): _apply(key, MOODS[i] if key == "mood" else i))
+				ob.item_selected.connect(func(i): _apply(key, MOODS[i] if key == "mood" else (UiKit.THEME_KEYS[i] if key == "ui_theme" else i)))
 				c = ob
 			"check":
 				var cb := CheckButton.new()
@@ -285,6 +286,8 @@ func _sync() -> void:
 		if c is OptionButton:
 			if key == "mood":
 				(c as OptionButton).select(maxi(0, MOODS.find(String(v))))
+			elif key == "ui_theme":
+				(c as OptionButton).select(maxi(0, UiKit.THEME_KEYS.find(String(v))))
 			else:
 				(c as OptionButton).select(int(v))
 		elif c is CheckButton:

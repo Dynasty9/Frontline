@@ -6,11 +6,23 @@ export type Lobby = {
   name: string
   host: string
   verified: boolean
+  /** the insignia and rank of a signed-in host (null for anyone else) */
+  icon?: string | null
+  rank?: number | null
   players: number
   max_players: number
   in_game: boolean
   drop_in: boolean
   nat: "open" | "cone" | "strict" | "unknown"
+  // what kind of battle: everyone on `side` against the AI, sides against
+  // each other, or a mission (named in `mission`) played together
+  mode?: "coop" | "versus" | "mission" | ""
+  mission?: string
+  side?: number
+  teams?: [number, number]
+  spectators?: number
+  // the host has set a password (players type it in the game)
+  locked?: boolean
   version: string
   age: number
 }

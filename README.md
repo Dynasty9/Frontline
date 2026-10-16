@@ -16,7 +16,7 @@ Your soldiers take cover behind real walls and wrecks, keep their heads down und
 
 You can play alone against the computer, team up with friends against it, or fight each other online. The battlefield is a square kilometre of countryside with a town, villages, a river and the sea.
 
-Everything you see and hear is made in code, the music included. There are no imported 3D models, textures or sound files.
+Everything you see and hear is made in code, the music included. There are no imported 3D models, textures or sound files. Even the menus sit on a living topographic map, in your choice of five themes (Settings > Interface): Field Brass, Night Vision, Thermal, Arctic or Dusk.
 
 ## Screenshots
 
@@ -67,7 +67,7 @@ Want something shorter, with a story? **Missions** on the main menu has five-min
 - **Ambush Alley**: play the Rebels, ambush a Coalition convoy and vanish before the reaction force arrives.
 - **Kingpin**: a night raid into the town to take down a Rebel commander.
 
-Each has objectives on screen and marked on the map. Choose **Host Co-op** to play one with friends.
+Each has objectives on screen and marked on the map. Choose **Host Co-op** to play one with friends: it's listed in the server browser for them to join.
 
 | | |
 |---|---|
@@ -153,11 +153,14 @@ The quickest way in is **Find Match**: it drops you into an open battle someone 
 
 To play with particular people:
 
-1. One player chooses **Host Multiplayer**. The battle is listed online, so everyone else chooses **Join Game** and picks it from the list. (Untick "List online" in the lobby to keep it private: then friends type in the host's IP address under **Join Game** instead.)
-2. In the lobby, choose sides:
-   - **Co-op:** everyone picks the same side, and the computer plays the other.
-   - **Versus:** pick opposite sides. You can still add a computer commander to help either side.
-3. The host clicks **Start Battle**.
+1. One player chooses **Host a Battle** and picks what kind:
+   - **Co-op vs AI:** everyone on one side, and the computer commands the other.
+   - **Versus:** players pick sides; the computer can take a side nobody plays, or help either side.
+   - **Mission:** one of the missions, played together.
+
+   They also choose how many seats there are, the time of day, and who can join: **Public** (anyone, from the server browser), **Password** (listed with a padlock; only friends with the password get in) or **Unlisted** (players on your network, or with your address).
+2. Everyone else opens the **Server Browser** and joins it: search for its name, or double-click it. Battles on your own network show up there too, marked **LAN**, with no internet needed. The host can also press **Copy invite link** in the lobby and paste it to a friend; the link opens the battle's page on the website, whose **Join** button starts the game and brings them in.
+3. The lobby shows who's on which side, the seats still open, anyone connecting, and who's ready. Players press **Ready**; the host clicks **Start Battle** (and can change the settings, or remove a player, until then).
 
 **Seeing your co-commanders.** Every commander has a colour (shown next to your name in the lobby). On your side you can see what the others are doing as they do it: where each one is looking (a viewfinder on the ground and a wedge on the minimap), their cursor with their name and what they're up to, a ring round what they've selected, and the trench line, fire mission or attack they're lining up before they commit it. Their units carry their initials, and the **Command Net** (top right) lists everyone with what they're doing right now and what they've just built, called in or set training, so you know where the supply went. The enemy never sees any of it.
 
@@ -171,9 +174,11 @@ To play with particular people:
 | Look where a teammate is looking | Click their name in the Command Net, or their marker at the screen edge |
 | Watch a teammate's screen live | The screen button in the Command Net, or double-click their name |
 
-The game connects players straight to the host, through most home routers, without anyone opening ports. A few networks (some mobile and campus ones) are too strict for that; the lobby says so, and then the host needs UDP port **7777** open, or you can play over a LAN or a VPN such as Tailscale, ZeroTier or Hamachi. Friends can also join a battle that's already running.
+The game connects players straight to the host, through most home routers, without anyone opening ports. A few networks (some mobile and campus ones) are too strict for that; the server browser and the lobby say so, and then the host needs UDP port **7777** open, or you can play over a LAN or a VPN such as Tailscale, ZeroTier or Hamachi (**Direct connect** in the server browser takes an address). Friends can also join a battle that's already running.
 
 You can sign in with an account (top right of the main menu). You don't need one to play. It keeps your callsign yours (no one else can register it, and battles you host show a tick), and it keeps a **service record**: every battle you fight goes on it, with your rating, kills and losses, and you can open any battle's after-action report again from **Service Record**. Battles fought before you sign in wait on your computer and go on the record when you do.
+
+Signed in, every battle you fight earns XP (a win more), and you climb 50 ranks from Recruit to General of the Army. Every rank unlocks a new insignia, a military patch you wear beside your callsign: click it on the main menu to see your collection and pick one. You start with ten, and there are 160 in all, from rank patches to medals and Vietnam-era company patches still to be unlocked. The website shows the same collection, and you can pick your insignia there too.
 
 ## Learn more
 

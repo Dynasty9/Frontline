@@ -1,58 +1,70 @@
 name: Release
 
-# Every merge to main that changes the game publishes a new numbered release
-# (v0.1.4, v0.1.5, ...) with Windows and Linux builds, Frontline-windows.zip
-# and Frontline-linux.zip, and the browser build, Frontline-web.zip (put up on
-# GitHub Pages too, once Pages is switched on: see the pages job). First it
-# files the changelog entries the release was built with under
-# changelog/vX.Y.Z/ (the release is named after its headline change) and bakes
-# the changelog and the release (version, download links, checksums) into the
-# website and the matchmaker, committing that to main, which redeploys both.
-# The GitHub release's notes are the changelog.
+# Releasing is a button: Actions > Release > Run workflow, on main, choosing
+# how big a step it is (patch, minor or major) and, if you like, a name.
+# Merging a pull request never releases anything: its changelog entry waits in
+# changelog/unreleased/ until the next release, which ships everything that
+# has merged since the last one.
 #
-#   - The bump is a patch unless the merged pull request has a "minor" or
-#     "major" label. A "skip release" label skips it.
-#   - Merges that only touch docs, the website, the matchmaker or CI don't
-#     release (those deploy on their own: Railway builds web/ and matchmaker/).
-#   - Run it by hand (Actions > Release > Run workflow) to release now, with
-#     the bump of your choice.
+# The run builds Windows, Linux and the browser from main as it stands
+# (Frontline-windows.zip, Frontline-linux.zip and Frontline-web.zip, which goes
+# up on GitHub Pages too once Pages is switched on: see the pages job), files
+# every waiting entry under changelog/vX.Y.Z/,
+# and bakes the changelog and the release (version, download links, checksums)
+# into the website and the matchmaker, as one commit on a branch of its own,
+# release/vX.Y.Z. It tags that commit, publishes the GitHub release with the
+# changelog as its notes, and opens a pull request from the branch. Merging
+# that pull request puts the release on the website and tells the matchmaker,
+# and through it every copy of the game, that it's out. (main only takes pull
+# requests, so the workflow can't commit there itself.)
+#
+#   - The version is the newest vX.Y.Z tag plus the step you chose.
+#   - It won't release while the last release's pull request is still open
+#     (its entries would ship twice), or when no entries are waiting.
+#   - Opening the pull request needs Settings > Actions > General > "Allow
+#     GitHub Actions to create and approve pull requests". Without it, the run
+#     ends with a link to open it yourself.
 #   - Pull requests that change the build itself export without releasing, and
 #     keep the zips as workflow artifacts.
+#   - First it applies any database migrations the live Supabase project
+#     hasn't had (database.yml, which also runs as they merge): the release's
+#     matchmaker and game may need them, and a failed migration stops it.
 #
 # The version is stamped into project.godot (application/config/version) before
 # export, so a build knows what it is; from source it reads 0.0.0-dev.
 
 on:
-  push:
-    branches: [main]
+  workflow_dispatch:
+    inputs:
+      bump:
+        description: How big a step (patch for fixes, minor for new features, major for a milestone)
+        type: choice
+        options: [patch, minor, major]
+        default: patch
+      name:
+        description: What to call the release (leave empty to name it after its headline change)
+        type: string
+        required: false
   pull_request:
     paths:
       - export_presets.cfg
       - .github/workflows/release.yml
       - .github/scripts/**
-  workflow_dispatch:
-    inputs:
-      bump:
-        description: Version bump
-        type: choice
-        options: [patch, minor, major]
-        default: patch
 
-# releases from main go one at a time, in order, so each numbers itself after
-# the last; a newer push to a pull request replaces its older run
+# releases go one at a time, so each numbers itself after the last; a newer
+# push to a pull request replaces its older run
 concurrency:
   group: release-${{ github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 permissions:
   contents: write
-  pull-requests: read
+  pull-requests: write
 
 jobs:
   plan:
     runs-on: ubuntu-latest
     outputs:
-      build: ${{ steps.plan.outputs.build }}
       release: ${{ steps.plan.outputs.release }}
       version: ${{ steps.plan.outputs.version }}
     steps:
@@ -60,48 +72,61 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Decide whether to release, and the version
+      - name: Decide the version, and check there's something to release
         id: plan
         env:
-          GH_TOKEN: ${{ github.token }}
           EVENT: ${{ github.event_name }}
-          BEFORE: ${{ github.event.before }}
           INPUT_BUMP: ${{ inputs.bump }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
           release=false
-          bump=patch
-          if [ "$EVENT" = push ]; then
-            # what the game is made of: a change anywhere else doesn't need a new build
-            game='^(scripts/|assets/|project\.godot$|main\.tscn$|export_presets\.cfg$|icon\.svg$)'
-            if [ -z "$BEFORE" ] || [ "$BEFORE" = 0000000000000000000000000000000000000000 ] \
-               || ! git cat-file -e "$BEFORE^{commit}" 2>/dev/null \
-               || git diff --name-only "$BEFORE" "$GITHUB_SHA" | grep -qE "$game"; then
-              release=true
+          if [ "$EVENT" = workflow_dispatch ]; then
+            if [ "$GITHUB_REF" != refs/heads/main ]; then
+              echo "::error::Release from main (this run is on $GITHUB_REF_NAME)."
+              exit 1
             fi
-            # the labels on the pull request this push merged, if any
-            labels=$(gh api "repos/$GITHUB_REPOSITORY/commits/$GITHUB_SHA/pulls" --jq '.[].labels[].name' 2>/dev/null || true)
-            echo "labels: ${labels:-none}"
-            if grep -qx 'skip release' <<< "$labels"; then release=false; fi
-            if grep -qx 'major' <<< "$labels"; then bump=major; elif grep -qx 'minor' <<< "$labels"; then bump=minor; fi
-          elif [ "$EVENT" = workflow_dispatch ] && [ "$GITHUB_REF" = refs/heads/main ]; then
+            # the last release's entries reach main with its pull request
+            last=$(git tag --list 'v[0-9]*.[0-9]*.[0-9]*' --sort=-v:refname | head -n 1)
+            if [ -n "$last" ] && [ ! -d "changelog/$last" ]; then
+              echo "::error::$last's pull request (release/$last) isn't merged yet. Merge it first, or its changes would ship again."
+              exit 1
+            fi
+            pending=$(python3 .github/scripts/changelog.py pending)
+            if [ -z "$pending" ]; then
+              echo "::error::Nothing to release: no changelog entries are waiting in changelog/unreleased/."
+              exit 1
+            fi
             release=true
-            bump="${INPUT_BUMP:-patch}"
           fi
-          version=$(.github/scripts/next-version.sh "$bump")
+          version=$(.github/scripts/next-version.sh "${INPUT_BUMP:-patch}")
           if [ "$EVENT" = pull_request ]; then version="$version-pr.$PR_NUMBER"; fi
-          build=true
-          if [ "$EVENT" = push ] && [ "$release" = false ]; then build=false; fi
-          echo "build=$build release=$release bump=$bump version=$version"
+          echo "release=$release version=$version"
           {
-            echo "build=$build"
             echo "release=$release"
             echo "version=$version"
           } >> "$GITHUB_OUTPUT"
+          if [ "$release" = true ]; then
+            {
+              echo "## Releasing v$version"
+              echo
+              echo '```'
+              echo "$pending"
+              echo '```'
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+  # the schema the release needs, before anything is built (usually there
+  # already: database.yml applies migrations as they merge)
+  database:
+    needs: plan
+    if: needs.plan.outputs.release == 'true'
+    uses: ./.github/workflows/database.yml
+    secrets: inherit
 
   build:
-    needs: plan
-    if: needs.plan.outputs.build == 'true'
+    needs: [plan, database]
+    # after the database, or without it for a pull request's trial export
+    if: ${{ !cancelled() && needs.plan.result == 'success' && contains(fromJSON('["success", "skipped"]'), needs.database.result) }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
@@ -109,6 +134,9 @@ jobs:
       VERSION: ${{ needs.plan.outputs.version }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          # the changelog looks up which pull request added each entry
+          fetch-depth: 0
 
       - name: Cache Godot and export templates
         id: cache-godot
@@ -166,36 +194,61 @@ jobs:
           path: build/Frontline-*.zip
           retention-days: 14
 
-      # File the release's changelog (changelog/vX.Y.Z/) and bake it, with the
-      # release's download links and checksums, into the website and the
-      # matchmaker; committing that to main redeploys both on Railway. Before
-      # publishing, so the release notes' screenshots are already on main.
-      - name: File the changelog and bake the release into the website and the matchmaker
+      # The release's own commit, on release/vX.Y.Z: its changelog filed, and the
+      # release baked into the website and the matchmaker. Tagging it (rather
+      # than main) keeps the release notes' screenshots where the tag says.
+      - name: File the changelog and bake the release on its branch
+        id: bake
         if: needs.plan.outputs.release == 'true'
         env:
-          GH_TOKEN: ${{ github.token }}
+          NAME: ${{ inputs.name }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          # the pull request this release came from, for a release with no changelog entry
-          pr=$(gh api "repos/$GITHUB_REPOSITORY/commits/$GITHUB_SHA/pulls" --jq '.[0] // empty' 2>/dev/null || true)
-          [ -n "$pr" ] || pr='{}'
-          export PR_NUMBER=$(jq -r '.number // empty' <<< "$pr")
-          export PR_TITLE=$(jq -r '.title // empty' <<< "$pr")
-          export PR_BODY=$(jq -r '.body // empty' <<< "$pr")
-          bash .github/scripts/bake-release.sh "$VERSION" "$GITHUB_SHA" build
+          echo "sha=$(bash .github/scripts/bake-release.sh "$VERSION" build "$NAME")" >> "$GITHUB_OUTPUT"
 
       - name: Publish the release
         if: needs.plan.outputs.release == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
+          BAKED: ${{ steps.bake.outputs.sha }}
+          # the screenshots, from the release's own tag: they reach main only with its pull request
+          CHANGELOG_IMAGE_REF: v${{ env.VERSION }}
         run: |
           name=$(python3 .github/scripts/changelog.py name "$VERSION")
           python3 .github/scripts/changelog.py notes "$VERSION" > "$RUNNER_TEMP/notes.md"
           cat "$RUNNER_TEMP/notes.md"
-          gh release create "v$VERSION" build/Frontline-windows.zip build/Frontline-linux.zip build/Frontline-web.zip             --target "$GITHUB_SHA" --title "Frontline v$VERSION: $name" --notes-file "$RUNNER_TEMP/notes.md" --latest
+          gh release create "v$VERSION" build/Frontline-windows.zip build/Frontline-linux.zip build/Frontline-web.zip \
+            --target "$BAKED" --title "Frontline v$VERSION: $name" --notes-file "$RUNNER_TEMP/notes.md" --latest
           # numbered releases replace the old rolling "nightly" pre-release
           gh release delete nightly --yes --cleanup-tag 2>/dev/null || true
+          echo "Published [v$VERSION: $name](https://github.com/$GITHUB_REPOSITORY/releases/tag/v$VERSION)." >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Open the pull request that brings the release into main
+        if: needs.plan.outputs.release == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          name=$(python3 .github/scripts/changelog.py name "$VERSION")
+          branch="release/v$VERSION"
+          {
+            echo "v$VERSION is published: https://github.com/$GITHUB_REPOSITORY/releases/tag/v$VERSION"
+            echo
+            echo "Merging this files its changelog under \`changelog/v$VERSION/\` and puts the release on the website"
+            echo "(download links, the changelog page) and the matchmaker, which is what tells every copy of the game"
+            echo "that there's an update. Railway redeploys both when it merges."
+            echo
+            echo "Merge it before the next release: that one won't start while this is open."
+          } > "$RUNNER_TEMP/pr.md"
+          if url=$(gh pr create --base main --head "$branch" --title "Release v$VERSION: $name" --body-file "$RUNNER_TEMP/pr.md" 2>&1); then
+            echo "$url"
+            echo "Merge [the release's pull request]($url) to put it on the website and the matchmaker." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "$url"
+            compare="https://github.com/$GITHUB_REPOSITORY/compare/main...$branch?expand=1"
+            echo "::warning title=Open the release's pull request::GitHub Actions may not open pull requests here (Settings > Actions > General > Allow GitHub Actions to create and approve pull requests). Open it yourself and merge it: $compare"
+            echo "**Open [the release's pull request]($compare) and merge it** to put the release on the website and the matchmaker." >> "$GITHUB_STEP_SUMMARY"
+          fi
 
   # The browser build on GitHub Pages (https://OWNER.github.io/REPO/), for
   # every release. Pages has to be switched on first, with GitHub Actions as

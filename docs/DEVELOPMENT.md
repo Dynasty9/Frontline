@@ -99,7 +99,9 @@ ui/stats_panel.gd       the battle statistics / after-action report (Summary, Co
 game/co_command.gd      co-commanders: each player's presence (view, cursor, selection, what's being lined up),
                         pings, sketches and committed actions, relayed by the host to that side only
 ui/hud_coop.gd          co-commanders drawn over the battlefield; ui/hud_coop_roster.gd the Command Net
-ui/hud.gd, menu.gd      interface; ui/settings_panel.gd, ui/perf_overlay.gd, ui/ui_kit.gd (shared style),
+ui/hud.gd, menu.gd      interface; ui/settings_panel.gd, ui/perf_overlay.gd, ui/ui_kit.gd (shared style and the
+                        interface themes: read UiKit.ACCENT and friends when drawing, so a new theme shows at once),
+ui/ui_frame.gd          the panels' tactical frame (a StyleBox: glass fill, hairline, accent corner brackets, glow),
 ui/hud_overlay.gd       everything drawn over the battlefield (labels, speech, symbols, orders, plans, intel)
 ui/hud_orbat.gd, hud_layers.gd, hud_sel_info.gd, hud_minimap.gd, hud_top_info.gd, hud_toasts.gd   HUD widgets
 ui/map_symbols.gd       NATO symbols and status icons
@@ -177,9 +179,11 @@ Pass these after `--` on the command line:
 --follow=TEAM[,N]                                     keep the camera on that side's Nth squad (tactics review)
 --trace=path.csv                                      log every man twice a second (position, posture, phase) for plotting
 --manual=CATEGORY[,ENTRY[,SIDE]]                      open the field manual on a page (in a battle)
---hud-panel=settings|help|menu|log [--settings-tab=T] open one of the battle's panels (layout checks; add
+--hud-panel=settings|help|menu|log|over [--settings-tab=T]   open one of the battle's panels (over: the end of
+                                                      the battle, won; layout checks; add
                                                       --set=ui_scale:3 for the largest scale the window allows)
 --pan=VX,VZ / --set=key:value,...                     drift the camera (shimmer tests) / override single settings
+                                                      (--set=ui_theme:night for a theme: brass, night, thermal, arctic, dusk)
 --scenario=guns                                       every machine-gun emplacement and trench bay, crewed, with targets
 --scenario=works --static                             every defensive work both sides can build, finished, in two rows (model checks;
                                                       frame them with --focus/--zoom/--pitch, see the layout in mapgen.gd)
@@ -241,6 +245,9 @@ FL_DEBUG_DECOR=1 (env)                                print the street-furniture
                                                       whenever the title or the map changes)
 --sound-dump=DIR                                      every synthesised sound and music sample as a WAV in DIR, then quit
                                                       (works --headless)
+--insignia-dump=web                                   every insignia as web/public/insignia/<id>.svg, and the catalog the
+                                                      website reads as web/src/lib/insignia.json, then quit (--headless)
+--insignia-sheet=PATH [--px=96] [--only=r01,u07]      the whole collection of insignia (or those) on one image, then quit
 FL_DEBUG_MUSIC=1 (env)                                print the music's cue, battle heat and layer levels every 5 s
 ```
 
@@ -264,6 +271,13 @@ The client prints a `CLIENT entities=...` summary when it quits. Check both outp
 `--quit-after` counts from when the host's world reaches it: the host answers only once it has laid out the map and,
 with a window, drawn its first frame, which takes a minute or more off-screen. `waited=` in the summary is how long
 the client sat in an empty world first (-1: nothing came, and it gave up 5 minutes past `--quit-after`).
+
+The host's lobby takes `--battle-name=NAME`, `--coop` (everyone on `--team`'s side), `--max-players=N` and
+`--password=PW`; a joiner gives `--password=PW`, and `--ready` / `--say=TEXT` press Ready and chat once it's in the
+lobby. With `--players=N` the host shows its lobby while it waits, so a windowed host can be screenshotted there. On
+a busy machine a host can take ten seconds or more to start listening: start the clients once its port is bound
+(`netstat -ano -p UDP`), or ENet gives up connecting first. `FL_DEBUG_NET=1` prints each side of the lobby handshake
+(connecting, registering, a password asked for, turned away, the battle starting).
 
 Co-commanders: bot clients make up their presence, pings and sketches and really send them. Start the one on
 the other side first, so its team request lands before the game starts:
@@ -289,6 +303,11 @@ cd matchmaker && npm test
 cd matchmaker && npm install && npm run lint && npm run format:check
 ```
 
+Without `npm install` the tests run as the service does, with no dependencies; the database's migrations
+(`supabase/migrations/`) are then skipped, and after it they run on PGlite too. A change to the database is a new
+migration (`supabase migration new <name>`, from `matchmaker/`); the README's "The database" has the rules, and how
+the Database workflow applies new ones to the live project (as they merge, and before every release).
+
 To try the game against it, run one locally (`AUTH_BACKEND=memory` adds throwaway accounts) and point both games at
 it with `--matchmaker=URL`. The host lists its battle with `--list`; the second game presses Find Match:
 
@@ -303,15 +322,31 @@ Set `FL_DEBUG_ONLINE=1` to print what STUN saw, who the host punches towards, an
 exercise the hole-punching path, give the joiner the matchmaker's LAN address instead of `127.0.0.1` (it then only
 connects if your router loops traffic back in, "hairpinning", which many don't). `--no-stun` skips STUN for offline
 runs, `--login=EMAIL:PASSWORD` (plus `--signup=CALLSIGN` to create the account) signs in first, `--account=PATH`
-keeps that sign-in out of your real one, and `--menu-panel=browse|account|record|settings` opens those panels for
-screenshots (`--open-battle` then opens the newest battle on the service record). Test runs keep no service record;
-`--record-battles` turns it on (with `--pending=PATH` for the battles waiting to go up, out of your real ones):
+keeps that sign-in out of your real one, and `--menu-panel=browse|host|account|record|settings|insignia` opens those panels
+for screenshots (`--host-mode=coop|versus|mission` for the host setup, `--browse-pick=TEXT` to choose a battle in the
+browser, `--open-battle` to open the newest battle on the service record). `--host --list` also beacons on the LAN
+(UDP 7787), so a second copy's server browser lists it even with a dead `--matchmaker`. Test runs keep no service
+record and earn no rank; `--record-battles` turns both on (with `--pending=PATH` for the battles waiting to go up, out of your real ones):
 
 ```
 godot --headless --path . -- --scenario=attack --play --end-at=40 --quit-after=55 --record-battles --no-stun \
   --matchmaker=http://127.0.0.1:8787 --login=me@test.dev:password1 --signup=Me --account=/tmp/a.cfg --pending=/tmp/p.json
 ```
 Without `--matchmaker` the game uses the live service on Railway.
+
+Ranks: a battle a signed-in player fights in counts once it's under way (so not `--scenario` setups, nor watching,
+nor a test run without `--record-battles`). With `--quit-on-win` the game waits for the matchmaker's answer and prints
+`BATTLE {"gained": ...} rank=... xp=...`; `FL_DEBUG_ONLINE=1` also prints the battle clock starting and stopping. XP is
+timed on the matchmaker's clock, so a battle has to run two real minutes to earn any (a `--timescale` run counts the
+real time, not the game's):
+
+```
+godot --headless --path . -- --mission=bridgehead --play --autoplay --quit-on-win --record-battles --port=7943 --no-stun \
+  --matchmaker=http://127.0.0.1:8787 --account=user://test_account.cfg --login=a@example.test:password1 --signup=Tester
+```
+
+After changing the insignia (`scripts/ui/insignia.gd` for the catalog, `insignia_art.gd` for the drawing), run
+`--insignia-dump=web` and commit what it writes: the website and the matchmaker's tests read it.
 
 ### Join links
 
@@ -331,24 +366,23 @@ renders every story in headless Chromium as a test (its play function and an acc
 
 ### Builds, releases and updates
 
-Each release files its changelog, bakes itself into the website and the matchmaker, then publishes. The changelog is
-written as part of each pull request (`changelog/unreleased/`, see [changelog/README.md](../changelog/README.md)); at
-release, `.github/scripts/bake-release.sh` moves the entries the version was built with into `changelog/vX.Y.Z/`
-(`changelog.py release`), regenerates `CHANGELOG.md` and `web/src/changelog.json`, writes `release.json` into
-`web/src/` and `matchmaker/` (`release_json.py`), and commits all of it to `main`, which redeploys the website and the
-matchmaker. The GitHub release follows, named after the release's headline change, with the changelog as its notes.
+Merging a pull request never releases. Releasing is a button: **Actions > Release > Run workflow** on `main`, choosing
+`patch`, `minor` or `major` (and, if you like, a name; otherwise the release is named after its headline change). It
+ships everything merged since the last release: the version is the newest `vX.Y.Z` tag plus that step
+(`.github/scripts/next-version.sh`), and the build stamps it into `project.godot` (`application/config/version`); from
+source the game reads `0.0.0-dev`.
 
 `export_presets.cfg` has a Windows and a Linux preset (one executable each, the game packed inside) and a Web one
-(see [The browser build](#the-browser-build)).
-`.github/workflows/release.yml` releases automatically: every merge to `main` that changes the game (`scripts/`,
-`assets/`, `project.godot`, `main.tscn`, the export presets or the icon) publishes the next version, `v0.1.4` after
-`v0.1.3`, with `Frontline-windows.zip`, `Frontline-linux.zip`, `Frontline-web.zip` and notes listing the merged pull
-requests. Label a
-pull request `minor` or `major` for a bigger bump, or `skip release` to leave it out. Merges that only touch docs,
-the website or the matchmaker don't release (Railway redeploys those itself, watching `web/` and `matchmaker/`).
-Actions > Release > Run workflow releases by hand. The next number comes from the newest `vX.Y.Z` tag
-(`.github/scripts/next-version.sh`), and the build stamps it into `project.godot` (`application/config/version`);
-from source the game reads `0.0.0-dev`.
+(see [The browser build](#the-browser-build)). The run exports all three from `main` as it stands, then `.github/scripts/bake-release.sh` makes the release's own commit on a branch,
+`release/vX.Y.Z`: it files every entry waiting in `changelog/unreleased/` under `changelog/vX.Y.Z/` (`changelog.py
+release`), regenerates `CHANGELOG.md` and `web/src/changelog.json`, and writes `release.json` into `web/src/` and
+`matchmaker/` (`release_json.py`). The workflow tags that commit, publishes the GitHub release
+(`Frontline-windows.zip`, `Frontline-linux.zip`, `Frontline-web.zip`, the changelog as its notes) and opens a pull request from the
+branch. Merge it: that's what puts the release on the website and the matchmaker (Railway redeploys both), and the
+matchmaker is where the game hears about updates. The next release won't start until it's merged. Opening that pull
+request needs Settings > Actions > General > "Allow GitHub Actions to create and approve pull requests"; without
+it, the run ends with a link to open it yourself. `python .github/scripts/changelog.py pending` lists what the next
+release would ship. Pull requests that change the export setup test-export without releasing.
 
 A release build updates itself (`scripts/autoload/updater.gd`): at start it asks the matchmaker (`GET /release`,
 falling back to GitHub's API) for the latest release,
