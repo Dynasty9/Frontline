@@ -117,9 +117,15 @@ func _ready() -> void:
 		["check", "labels", "Unit activity labels", null, "Close up: each soldier's name and what he's doing. Further out: a status icon per man."],
 		["check", "bubbles", "Speech bubbles", null, "Shouts, radio calls and the men's banter."],
 		["check", "cover_preview", "Cover preview", null, "Pips under the cursor showing the cover each man will take (green heavy, yellow light, red exposed)."],
+		["head", "", "Camera"],
+		["option", "mmb_mode", "Middle mouse drag", Settings.LABELS.mmb_mode, "What dragging with the middle mouse button does. Holding Alt does the other."],
+		["check", "zoom_cursor", "Zoom toward the cursor", null, "The mouse wheel zooms in on whatever is under the cursor. Off: on the middle of the screen."],
 		["check", "edge_pan", "Edge scrolling", null, "Pan the camera with the mouse at the screen edge."],
-		["slider", "cam_speed", "Camera speed", [0.5, 2.0, 0.05], ""],
+		["slider", "cam_speed", "Camera speed", [0.5, 2.0, 0.05], "Hold Shift to pan faster."],
 		["check", "shake", "Camera shake", null, "Explosions shake the camera."],
+		["head", "", "Minimap"],
+		["option", "minimap_size", "Minimap size", Settings.LABELS.minimap_size, ""],
+		["check", "minimap_rotate", "Turn with the camera", null, "The minimap turns so that the way the camera faces is always up. Off: north is always up."],
 	])
 	_pages["audio"] = _page(stack, [
 		["slider", "volume", "Master volume", [0.0, 1.0, 0.05], ""],

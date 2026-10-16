@@ -16,7 +16,44 @@ const CAT_COLORS := {"fight": Color(1.0, 0.82, 0.52), "stress": Color(1.0, 0.58,
 ## The minimap's backdrop needs baking again (the water has arrived, say).
 func refresh_minimap() -> void:
 	if minimap:
-		minimap._static = null
+		minimap.rebake(true)
+
+
+## The minimap's side in pixels for each size setting, and the panel's margin round it.
+const MINIMAP_PX := [200.0, 250.0, 320.0]
+const MINIMAP_PAD := 5.0
+
+
+func minimap_side() -> float:
+	return MINIMAP_PX[clampi(int(Settings.get_v("minimap_size")), 0, MINIMAP_PX.size() - 1)]
+
+
+## Lays out the bottom-left corner round the minimap's size: the map, its
+## layer column to the right, the support buttons and the chat line above.
+func layout_minimap() -> void:
+	var s := minimap_side()
+	var outer := s + MINIMAP_PAD * 2.0
+	minimap.custom_minimum_size = Vector2(s, s)
+	minimap_panel.offset_left = 14
+	minimap_panel.offset_right = 14 + outer
+	minimap_panel.offset_bottom = -14
+	minimap_panel.offset_top = -14 - outer
+	minimap_panel.size = Vector2(outer, outer)
+	var lh := HudLayers.S * HudLayers.ITEMS.size() + 4.0 * (HudLayers.ITEMS.size() - 1)
+	layers_ui.offset_left = 14 + outer + 6
+	layers_ui.offset_right = layers_ui.offset_left + HudLayers.S
+	layers_ui.offset_bottom = -14
+	layers_ui.offset_top = -14 - lh
+	var above := -14 - outer - 6
+	support_box.offset_bottom = above
+	support_box.offset_top = above
+	chat_edit.offset_bottom = above
+	chat_edit.offset_top = above - 34
+
+
+## Where the bottom-left cluster (minimap and layer column) ends on the right.
+func minimap_right() -> float:
+	return 14 + minimap_side() + MINIMAP_PAD * 2.0 + 6 + HudLayers.S
 
 
 ## How the map is drawn (each toggled from the layer column by the minimap).
@@ -64,6 +101,7 @@ const PROD_CATS := {
 var sel_panel: PanelContainer
 var sel_info: HudSelInfo
 var minimap: HudMinimap
+var minimap_panel: PanelContainer
 var overlay: HudOverlay
 var alert_label: Label
 var _alert_t := 0.0
@@ -146,30 +184,21 @@ func _ready() -> void:
 	alert_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	root.add_child(alert_label)
 
-	# minimap, bottom-left
-	var mp := PanelContainer.new()
-	mp.add_theme_stylebox_override("panel", UiKit.box(UiKit.PANEL, 8, UiKit.LINE, 1, 5.0, 10))
-	mp.anchor_top = 1.0
-	mp.anchor_bottom = 1.0
-	mp.offset_left = 14
-	mp.offset_top = -264
-	mp.offset_right = 264
-	mp.offset_bottom = -14
-	root.add_child(mp)
+	# minimap, bottom-left (sized by the settings: see layout_minimap)
+	minimap_panel = PanelContainer.new()
+	minimap_panel.add_theme_stylebox_override("panel", UiKit.box(UiKit.PANEL, 8, UiKit.LINE, 1, MINIMAP_PAD, 10))
+	minimap_panel.anchor_top = 1.0
+	minimap_panel.anchor_bottom = 1.0
+	root.add_child(minimap_panel)
 	minimap = HudMinimap.new()
 	minimap.hud = self
-	minimap.custom_minimum_size = Vector2(240, 240)
-	mp.add_child(minimap)
+	minimap_panel.add_child(minimap)
 
 	# map layers: a column of toggles beside the minimap
 	layers_ui = HudLayers.new()
 	layers_ui.hud = self
 	layers_ui.anchor_top = 1.0
 	layers_ui.anchor_bottom = 1.0
-	layers_ui.offset_left = 232
-	layers_ui.offset_right = 232 + HudLayers.S
-	layers_ui.offset_bottom = -14
-	layers_ui.offset_top = -14 - (HudLayers.S * 6 + 20)
 	root.add_child(layers_ui)
 
 	# order of battle, down the left
@@ -185,10 +214,8 @@ func _ready() -> void:
 	support_box.anchor_bottom = 1.0
 	support_box.offset_left = 14
 	support_box.offset_right = 224
-	support_box.offset_bottom = -232
-	support_box.offset_top = -232
 	support_box.grow_vertical = Control.GROW_DIRECTION_BEGIN
-	support_box.add_theme_constant_override("separation", 4)
+	support_box.add_theme_constant_override("separation", 3)
 	root.add_child(support_box)
 
 	chat_edit = LineEdit.new()
@@ -196,12 +223,12 @@ func _ready() -> void:
 	chat_edit.anchor_bottom = 1.0
 	chat_edit.offset_left = 14
 	chat_edit.offset_right = 430
-	chat_edit.offset_top = -268
-	chat_edit.offset_bottom = -234
 	chat_edit.visible = false
 	chat_edit.text_submitted.connect(_on_chat)
 	chat_edit.focus_exited.connect(func(): _close_chat())
 	root.add_child(chat_edit)
+	layout_minimap()
+	Settings.changed.connect(layout_minimap)
 
 	# selection details, bottom-centre (hidden when nothing is selected)
 	sel_panel = PanelContainer.new()
@@ -266,7 +293,7 @@ func _ready() -> void:
 	lv.add_child(log_box)
 
 	over_panel = _center_panel(Vector2(440, 220))
-	help_panel = _center_panel(Vector2(680, 560))
+	help_panel = _center_panel(Vector2(720, 620))
 	menu_panel = _center_panel(Vector2(320, 300))
 	_build_help()
 	_build_menu()
@@ -369,7 +396,8 @@ func _build_help() -> void:
 	l.add_theme_font_override("bold_font", UiKit.font(600))
 	l.text = """[font_size=20][b]Controls[/b][/font_size]
 
-[color=#f5c96e]Camera[/color]  WASD / arrows / screen edge to pan, wheel to zoom, Q/E or middle-drag to rotate. Zoom in close to see what every soldier is doing. Home cycles your FOBs, Space jumps to the last alert.
+[color=#f5c96e]Camera[/color]  WASD / arrows / screen edge to pan (Shift: faster), wheel to zoom toward the cursor (or + / -), Q/E to turn, Page Up / Page Down to tilt. Middle-drag turns and tilts; Alt+middle-drag grabs the map (swap them in Settings > Interface). Backspace squares the view up again. Ctrl+F follows the selection. Ctrl+F5..F8 save a view, F5..F8 go back to it. Home cycles your FOBs, Space jumps to the last alert. Zoom in close to see what every soldier is doing.
+[color=#f5c96e]Minimap[/color]  Click or drag to look there, right-click to send the selection, wheel to zoom. The white wedge is the camera's view, orange rings are firefights, the needle points north (click it to square up). Size and turning with the camera: Settings > Interface.
 [color=#f5c96e]Command view[/color]  Tab switches to the tactical map. O opens the order of battle (click a unit to select it and look at it). The buttons beside the minimap turn map layers on and off: unit symbols, orders and attack plans, intelligence (last known enemy positions), weapon ranges, soldier labels.
 [color=#f5c96e]Select[/color]  Click a soldier to select his squad, drag a box, double-click for every squad of that type on screen. Ctrl+1..9 sets a group, 1..9 recalls it. Alt+click a soldier (or click his name in the squad panel) to command just him.
 [color=#f5c96e]Orders[/color]  Right-click ground to move (Shift = run; drag to set the facing), an enemy to attack, an unfinished or damaged building to build or repair, a tunnel / nest / bunker to enter it, a boat to board it (they wade out to it). With a lift helicopter selected, right-click one of your vehicles to sling it underneath, then right-click where to set it down. The pips show where each man will fight from: green hard cover (sandbags, stone, earth), lime medium (cars, house walls - a machine gun goes through), yellow soft (a hedge hides you, bullets don't care), red caught in the open; the tick points the way he'll fire over it. Low cover is fought from prone, waist-high kneeling, chest-high standing; tall walls from their edges.
@@ -778,7 +806,7 @@ func _view_process(dt: float) -> void:
 		sel_panel.offset_top = -14.0 - sel_info.need_h - 22.0
 		# fit between the minimap and the command card, centred in the free space
 		var vw := root.size.x
-		var left := 238.0
+		var left := minimap_right() + 10.0
 		var right := vw - 14.0 - (card_panel.size.x + 12.0 if card_panel.visible else 0.0)
 		var w := clampf(right - left, 300.0, 580.0)
 		var x0 := left + maxf(0.0, (right - left - w) * 0.5)
@@ -838,7 +866,7 @@ func _update_support() -> void:
 		for k in kinds:
 			var b := Button.new()
 			b.focus_mode = Control.FOCUS_NONE
-			b.custom_minimum_size = Vector2(210, 32)
+			b.custom_minimum_size = Vector2(210, 28)
 			b.add_theme_font_size_override("font_size", 13)
 			b.alignment = HORIZONTAL_ALIGNMENT_LEFT
 			b.tooltip_text = String(Defs.SUPPORT[k].desc)

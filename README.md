@@ -78,11 +78,19 @@ Each has objectives on screen and marked on the map. Choose **Host Co-op** to pl
 
 | Action | Keys |
 |---|---|
-| Move the camera | WASD, arrow keys, or push the mouse to the screen edge |
-| Zoom | Mouse wheel |
-| Rotate | Q / E, or hold the middle mouse button |
+| Move the camera | WASD, arrow keys, or push the mouse to the screen edge (hold Shift to go faster) |
+| Grab and drag the map | Alt + drag with the middle mouse button |
+| Zoom | Mouse wheel (zooms toward the cursor), or + / - |
+| Turn | Q / E, or drag with the middle mouse button |
+| Tilt | Page Up / Page Down, or drag the middle mouse button up and down |
+| Square the view up again | Backspace, or click the compass on the minimap |
+| Follow the selected units | Ctrl + F |
+| Save a view / go back to it | Ctrl + F5 to F8 / F5 to F8 |
+| Look somewhere else | Click or drag on the minimap |
 | Jump to your bases | Home |
 | Jump to the latest alert | Space |
+
+Prefer the middle mouse to pan rather than turn? Swap them in **Settings → Interface**, where you'll also find the minimap's size and an option to turn it with the camera.
 
 **Selecting**
 

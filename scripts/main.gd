@@ -253,6 +253,11 @@ func _on_game_start(s: Dictionary) -> void:
 	if args.has("zoom") and world.cam:
 		world.cam.target_dist = float(args.zoom)
 		world.cam.dist = float(args.zoom)
+	# --cam-test: drive the camera through its controls and check each one
+	if args.has("cam-test") and world.cam:
+		var ct: Node = preload("res://scripts/game/cam_test.gd").new()
+		ct.set("world", world)
+		world.add_child(ct)
 
 
 var _fx_next := 2.0

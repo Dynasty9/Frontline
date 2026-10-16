@@ -12,7 +12,8 @@ The long version: how each system works and why. For the short version, see the 
 
 | | |
 |---|---|
-| Camera | WASD / arrows / screen edge pan, mouse wheel zoom, Q/E or middle-drag rotate |
+| Camera | WASD / arrows / screen edge pan (Shift: faster), mouse wheel zoom toward the cursor (or + / -), Q/E turn, Page Up / Page Down tilt. Middle-drag turns and tilts; **Alt+middle-drag grabs the map** and pans (Settings swaps the two). **Backspace** squares the view up again, **Ctrl+F** follows the selection, **Ctrl+F5..F8** save a view and **F5..F8** go back to it |
+| Minimap | Click or drag to look there, right-click to send the selection, wheel to zoom. Click the compass needle to square the view up |
 | Select | Left-click a soldier to select his squad, drag a box, double-click for all of that type on screen. **Alt+click** a soldier (or click his name in the squad panel) to command just him |
 | Groups | Ctrl+1..9 set, 1..9 recall (double-tap to jump there) |
 | Orders | Right-click: move (Shift = fast run; **drag** to set which way they face), attack enemy, build/repair your structure, enter tunnel / MG nest / watchtower. The **cover pips** under the cursor show where each man will end up: green hard cover, lime medium, yellow soft (hides, doesn't stop bullets), grey dot none, red caught in the open; a tick on a pip points the way he'll fire over the barrier, and the label says how (prone, kneeling, standing, round the edges) |
@@ -24,7 +25,7 @@ The long version: how each system works and why. For the short version, see the 
 | Support | The buttons above the minimap (Z arms the first one ready): click the target, **drag** to set the run-in direction for gun runs and bombing runs |
 | Observer | C director camera, V whose eyes to watch through, P pause, [ ] speed, F2 hide the interface. **Fire support** (observer bar) launches any air or artillery support anywhere to watch it |
 | Command view | Tab tactical map, O order of battle (click a unit to select it and look at it, double-click to zoom in), the buttons beside the minimap turn map layers on and off (unit symbols, orders and attack plans, intelligence, weapon ranges, soldier labels) |
-| Other | Home cycles FOBs, Space jumps to the last alert, Enter chats (Shift+Enter: team), L message history, F1 help, F3 performance overlay, **F4 field manual**, Esc menu |
+| Other | Home cycles FOBs, Space jumps to the last alert (both glide there), Enter chats (Shift+Enter: team), L message history, F1 help, F3 performance overlay, **F4 field manual**, Esc menu |
 
 ## Watching the AI
 
@@ -335,6 +336,21 @@ function and an autopilot function.
     acknowledges. Squads that bunch up spread their symbols out with a leader line to where they really are.
 - The squad panel shows each selected squad's symbol, callsign, type and strength; the minimap carries the same
   symbols and the A-H / 1-8 grid the radio uses. FOB and HQ names are drawn over everything.
+- **The camera** (`rts_camera.gd`) orbits a point on the ground and takes the controls players bring from other
+  RTS games. The wheel zooms toward whatever is under the cursor and keeps it there. Middle-drag turns and tilts,
+  Alt+middle-drag grabs the map like a sheet of paper (a setting swaps them), Page Up / Down tilt. The pitch comes
+  from the zoom, low and level close in and steep from high up, and the player's tilt is added to it; close in it
+  stops before the lens goes into the hedges. Keyboard and edge panning ease in and out, and Shift pans faster.
+  Jumps (the last alert, a base, a group, a unit in the order of battle, a saved view) glide rather than cut.
+  Backspace turns back to the heading the battle started on, Ctrl+F follows the selection until you pan away,
+  and Ctrl+F5..F8 save views that F5..F8 glide back to.
+- **The minimap** (`hud_minimap.gd`): the ground, water, roads (main roads light with a dark edge, supply
+  tracks thinner), woods and every house's footprint (light while its roof stands, dark once it's a ruin) are
+  baked into a texture. Over it go every man you can see as a dot (yours brightest, the selection white),
+  vehicles by their map symbols, bases, objectives and alerts, and an orange ring pulsing wherever men are
+  firing. The camera's view is a lit wedge with a line back to where the camera stands, and a compass needle
+  shows where north lies in the view (click it to square up). Hovering gives the grid square under the cursor.
+  Three sizes, and it can turn with the camera so the way you face is always up (Settings > Interface).
 
 **Vehicles** (`vehicle.gd`, `vehicle_brain.gd`, `vehicle_roster.gd`, `drone.gd`, `projectile.gd`)
 - **The core vehicles rebuilt** (`vehicles/vm_core.gd`): the M1A2 SEP Abrams, a worn T-55A, Hilux technicals (DShK
