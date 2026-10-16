@@ -11,6 +11,7 @@ extends Node
 ##   (and Online's own: --matchmaker=URL --account=PATH --no-stun)
 ##   --timescale=X --quit-after=SECONDS --stats=SECONDS --verbose
 ##   --screenshot=PATH --shot-at=SECONDS --focus=X,Z --zoom=D
+##   --sound-dump=DIR      write every synthesised sound and music sample to DIR as WAVs, then quit
 
 var menu: Control
 var world: World
@@ -42,6 +43,11 @@ func _ready() -> void:
 		DisplayServer.window_set_position(Vector2i(-12000, -12000))
 		DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_WINDOWED)
 		DisplayServer.window_set_position(Vector2i(-12000, -12000))
+	if args.has("sound-dump"):
+		Sfx.dump(String(args["sound-dump"]))
+		await Music.dump(String(args["sound-dump"]))
+		get_tree().quit()
+		return
 	if args.has("soldier-sheet"):
 		# a lineup of every kind of soldier, saved as an image (no menu, no game)
 		var sheet: Node3D = preload("res://scripts/ui/soldier_sheet.gd").new()

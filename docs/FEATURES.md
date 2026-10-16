@@ -498,7 +498,15 @@ function and an autopilot function.
   At night the sky fills with stars and illumination flares drift down on parachutes over the fighting, throwing
   moving shadows. In the rain, streaks fall around the camera, splashes hit the ground, puddles reflect the sky and
   lightning flashes are followed by thunder.
-- Ambient sound: wind that grows as you zoom out, and a distant-battle rumble that swells with the fighting.
+- Ambient sound: wind that grows as you zoom out (air rushing past and a hollow howl, in irregular gusts), and
+  a distant battle (far-off artillery thumps, machine-gun bursts) that swells with the fighting.
+- Music (`music.gd`), synthesised like everything else: a small orchestra (strings, low strings, horns, a wordless
+  choir, piano, timpani, a war drum, a snare) rendered into samples at start-up and played by a sequencer through a
+  hall reverb. The menu has a theme in D minor (piano, then the horn's tune over a parade snare, then the strings).
+  In battle the score is in layers that follow the fighting: a quiet bed of strings and a few piano notes while
+  it's calm, then low strings driving eighths, drums, and horns as it heats up; in a long lull it rests and
+  leaves the battlefield to the wind. Victory and defeat each get a short sting.
+- Separate volumes for music, effects, ambience and the interface (Settings > Audio).
 - Art direction: minimal modern-military hard-surface. Every box is chamfered so its edges catch the light; the
   palette is muted (low-contrast camo at a realistic scale, near-solid vehicle paint, parkerized gunmetal, faded
   civilian paint, weathered concrete, subdued ID panels and faded flags).

@@ -51,12 +51,15 @@ var preset := "high"
 var v := {
 	"shadows": 2, "ssao": true, "ssil": true, "gi": false, "vol_fog": true, "glow": true, "aa": 6, "scale": 1.0,
 	"grass": 2, "effects": 2, "decals": true, "ragdolls": true, "post": true, "dof": false,
-	"vsync": true, "fps_cap": 0, "perf": 1, "shake": true, "volume": 0.8, "ui_scale": 1.0, "mood": "random", "labels": true, "lyr_units": true, "lyr_orders": false, "lyr_intel": true, "lyr_ranges": false, "orbat": true,
+	"vsync": true, "fps_cap": 0, "perf": 1, "shake": true, "ui_scale": 1.0, "mood": "random", "labels": true, "lyr_units": true, "lyr_orders": false, "lyr_intel": true, "lyr_ranges": false, "orbat": true,
 	"ao_q": 2, "upscaler": 1, "sharpen": 0.2, "ssr": true, "lod": 2, "aniso": 3,
 	"window": 0, "resolution": 2, "brightness": 1.0, "contrast": 1.0, "look": 0, "tonemap": 0, "fov": 48.0,
 	"bubbles": true, "cover_preview": true, "edge_pan": true, "cam_speed": 1.0,
 	"zoom_cursor": true, "mmb_mode": 0, "minimap_size": 1, "minimap_rotate": false,
+	"volume": 0.8, "vol_music": 0.6, "vol_effects": 1.0, "vol_ambience": 0.8, "vol_ui": 0.8, "battle_music": true, "mute_bg": false,
 }
+## Volume sliders -> the mixer bus each one sets.
+const VOLUME_BUS := {"volume": "Master", "vol_music": "Music", "vol_effects": "Effects", "vol_ambience": "Ambience", "vol_ui": "Interface"}
 
 
 func _ready() -> void:
@@ -127,8 +130,29 @@ func apply_global() -> void:
 	Engine.max_fps = FPS_CAPS[clampi(int(v.fps_cap), 0, FPS_CAPS.size() - 1)]
 	if vp:
 		vp.content_scale_factor = clampf(float(v.ui_scale), 0.6, 2.0)
-	var bus := AudioServer.get_bus_index("Master")
-	AudioServer.set_bus_volume_db(bus, linear_to_db(maxf(0.001, float(v.volume))))
+	_apply_audio()
+
+
+var _focused := true
+
+
+## Each volume slider sets its bus. The slider is squared on the way to
+## decibels, so its travel feels even: halfway sounds about half as loud
+## (a straight line would stay loud until the very end).
+func _apply_audio() -> void:
+	for k in VOLUME_BUS:
+		var bi := AudioServer.get_bus_index(VOLUME_BUS[k])
+		if bi < 0:
+			continue
+		var lv := clampf(float(v[k]), 0.0, 1.0)
+		AudioServer.set_bus_volume_db(bi, linear_to_db(maxf(0.00001, lv * lv)))
+		AudioServer.set_bus_mute(bi, lv <= 0.001 or (k == "volume" and v.mute_bg and not _focused))
+
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_APPLICATION_FOCUS_OUT or what == NOTIFICATION_APPLICATION_FOCUS_IN:
+		_focused = what == NOTIFICATION_APPLICATION_FOCUS_IN
+		_apply_audio()
 
 
 var _win_applied := [-1, -1]

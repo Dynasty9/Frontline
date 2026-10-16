@@ -128,7 +128,15 @@ func _ready() -> void:
 		["check", "minimap_rotate", "Turn with the camera", null, "The minimap turns so that the way the camera faces is always up. Off: north is always up."],
 	])
 	_pages["audio"] = _page(stack, [
-		["slider", "volume", "Master volume", [0.0, 1.0, 0.05], ""],
+		["head", "", "Volume"],
+		["slider", "volume", "Master", [0.0, 1.0, 0.05], "Everything at once."],
+		["slider", "vol_music", "Music", [0.0, 1.0, 0.05], "The theme in the menus and the score under the fighting."],
+		["slider", "vol_effects", "Effects", [0.0, 1.0, 0.05], "Gunfire, explosions, engines and aircraft."],
+		["slider", "vol_ambience", "Ambience", [0.0, 1.0, 0.05], "Wind, rain and thunder, and the distant battle."],
+		["slider", "vol_ui", "Interface", [0.0, 1.0, 0.05], "Clicks, and the radio chimes when objectives change."],
+		["head", "", "Options"],
+		["check", "battle_music", "Music in battle", null, "Off: music only in the menus."],
+		["check", "mute_bg", "Mute in the background", null, "Silence the game while another window has the focus."],
 	])
 	_show_tab("graphics")
 	_sync()
