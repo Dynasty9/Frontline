@@ -1,0 +1,5 @@
+version = "0.1.5"
+name = "Roaring Fires"
+date = "2026-10-16"
+summary = "Fires roar and crackle instead of surging like surf, and many explosions at once no longer distort."
+pull_requests = [10]

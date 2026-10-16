@@ -1,5 +1,6 @@
 import { useState } from "react"
 import { Battles } from "@/components/battles"
+import { WhatsNew } from "@/components/changelog"
 import { Downloads } from "@/components/downloads"
 import { Emblem } from "@/components/emblem"
 import { Gallery } from "@/components/gallery"
@@ -31,6 +32,7 @@ export default function App() {
           onLaunch={() => setLaunched(true)}
           onDismissLaunch={() => setLaunched(false)}
         />
+        <WhatsNew />
         <Downloads platform={platform} />
         <Gallery />
       </main>
