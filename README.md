@@ -51,8 +51,9 @@ When you're ready, choose **Play vs AI** and pick a side. You start at your base
 3. **Attack.** Press **X** and click a spot. The squad advances in bounds, one team covering the other, and fights whatever it meets.
 4. **Hold ground.** Press **B** and click an area. The squad spreads into the best cover there and stays put.
 5. **Build.** Select your engineers and use the build menu at the bottom of the screen. Barracks train more squads, a factory builds vehicles, and new FOBs extend your reach.
-6. **Call support.** The buttons above the minimap call in mortars, artillery and air strikes.
-7. **Get eyes on.** Ground your side can't see right now is drawn darker, on the battlefield and the minimap. Watchtowers, drones from the helipad and recon flights (on the support panel) see further, and every aircraft you call in spots for you as it flies over. Whatever they spot stays on the map as a last-known position.
+6. **Take the towns.** The town and every village fly a flag by their supply dump. Right-click one with a squad selected: hold its ground with no enemy there and it's yours, and its trucks start bringing supply to your nearest FOB. The more you hold, the more you can build.
+7. **Call support.** The buttons above the minimap call in mortars, artillery and air strikes.
+8. **Get eyes on.** Ground your side can't see right now is drawn darker, on the battlefield and the minimap. Watchtowers, drones from the helipad and recon flights (on the support panel) see further, and every aircraft you call in spots for you as it flies over. Whatever they spot stays on the map as a last-known position.
 
 Press **F1** at any time for help, and **F4** for the Field Manual.
 

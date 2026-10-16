@@ -433,7 +433,7 @@ func pick(screen: Vector2) -> Entity:
 		return best
 	var gp := world.cam.ground_point(screen)
 	for st in world.structures_near(gp, 12.0):
-		if not st.visible or st.team < 0 or st.gone:
+		if not st.visible or (st.team < 0 and st.skind != "town") or st.gone:
 			continue
 		if Defs.point_in_obb(Vector2(gp.x, gp.z), Vector2(st.position.x, st.position.z), st.foot + Vector2(0.6, 0.6), st.yaw):
 			return st
@@ -467,7 +467,7 @@ func _click_select(screen: Vector2, add: bool, dbl: bool) -> void:
 			sel_vehicles.append(e.eid)
 		sel_structure = 0
 		Sfx.ui("click")
-	elif e is Structure and (e.team == world.local_team or world.local_team < 0):
+	elif e is Structure and (e.team == world.local_team or world.local_team < 0 or e.skind == "town"):
 		sel_squads.clear()
 		sel_vehicles.clear()
 		sel_structure = e.eid
@@ -573,6 +573,13 @@ func _order(screen: Vector2, shift: bool, face_in := Vector3.ZERO, kind := "") -
 		return
 	var tgt := pick(screen)
 	var lt := world.local_team
+	if tgt is Structure and tgt.skind == "town" and tgt.team != lt:
+		# a town that isn't ours: go and take it - fight in if the enemy holds
+		# it, then hold its ground until the flag is ours
+		world.send_cmd({"t": "assault" if tgt.team >= 0 else "defend", "squads": sel_squads, "vehicles": sel_vehicles, "pos": tgt.zone_c})
+		_marker(tgt.zone_c, Color(1.0, 0.85, 0.3))
+		Sfx.ui("click")
+		return
 	if tgt and tgt.is_hostile_to(lt) and tgt.seen_by_local():
 		var ok := true
 		if tgt is Soldier and tgt.life != Soldier.Life.ALIVE and tgt.life != Soldier.Life.DOWNED:

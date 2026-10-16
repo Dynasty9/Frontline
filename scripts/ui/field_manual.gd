@@ -624,6 +624,8 @@ func _make_model(e: Dictionary) -> Node3D:
 		"bases", "defences":
 			if e.key == "trench":
 				return _trench_diorama()
+			if e.key == "town":
+				return Structure.preview_model("town", side, 0, Vector3(3.6, 2.0, 2.4))
 			var bteams: Array = Defs.BUILDINGS[e.key].teams
 			var bs: int = side if side in bteams else int(bteams[0])
 			return Structure.preview_model(String(e.key), bs)
@@ -1239,6 +1241,18 @@ func _build_entries() -> Array:
 			"team": int(tms[0]) if tms.size() == 1 else -1, "both": tms.size() > 1,
 			"sub": "%d supply · %d hp" % [int(b.cost), int(b.hp)], "pattern": PATTERN.get(k, ""),
 			"desc": String(b.desc), "stats": st3, "rel": rel})
+
+	# the towns: taken, not built
+	out.append({"cat": "bases", "key": "town", "name": "Town supply dump", "team": -1, "both": true,
+		"sub": "taken, not built · %d-%d supply a minute" % [int(Defs.TOWN_YIELD[0]), int(Defs.TOWN_YIELD[1])],
+		"pattern": "a town's stores: crated goods on pallets, fuel drums, the flag of whoever holds it",
+		"desc": "The town and every village have one, by the main street. Whoever holds the place draws on it - food, fuel, lorries, labour - and its own lorry trucks the stock to their nearest FOB along a road you can ambush like any supply road. To take one, get men inside its ring with none of the other side's there: a squad takes a village in about half a minute, the town in nearer a minute; both sides there and nobody gains; the holder's men push it back. A town shelled to ruins gives about a third of what it did. A FOB can go up near a town you hold, and your men round the dump fill their pouches from it.",
+		"stats": [
+			["Supply a minute", "%d (village) / %d (town)" % [int(Defs.TOWN_YIELD[0]), int(Defs.TOWN_YIELD[1])], -1.0],
+			["Dump holds", "%d / %d" % [int(Defs.TOWN_STOCK[0]), int(Defs.TOWN_STOCK[1])], -1.0],
+			["Truck leaves at", "%d / %d supply" % [int(Defs.TOWN_LOAD[0]), int(Defs.TOWN_LOAD[1])], -1.0],
+			["Ground to hold", "%d m / %d m ring" % [int(Defs.TOWN_RADIUS[0]), int(Defs.TOWN_RADIUS[1])], -1.0],
+		], "rel": ["On every map: the town in the middle, a village on each country road", "Trucks to the holder's nearest FOB"]})
 
 	# fire support
 	var sco: float = mx.call(Defs.SUPPORT, func(s): return s.cost)

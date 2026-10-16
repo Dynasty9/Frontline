@@ -113,7 +113,7 @@ Pass these after `--` on the command line:
                                                       solo: one squad against a stronger position)
 --play --select-first --tactical --nohud              command a scenario's Coalition side / select a squad /
                                                       open the tactical map / hide the HUD (perf tests)
---focus-struct=kind[,n]                               camera on a structure of a kind
+--focus-struct=kind[,n] [--select-struct]            camera on a structure of a kind (and select it: its info panel)
                                                       (trenches: a Rebel trench system vs tanks + IFVs;
                                                       poses: every stance frozen for inspection; add --static
                                                       to leave the attackers out)
@@ -154,6 +154,9 @@ Pass these after `--` on the command line:
                                                       enemy about: they bound there by teams and clear the houses
 --scenario=breach                                     a fighter cell holed up in a house; two rifle squads and a gun team clear it
 --scenario=gdrill                                     grenade drill: frags with all sorts of fuses land among a squad round its wounded
+--scenario=town                                       a rifle squad takes a village's supply dump, its lorry runs the stock to
+                                                      FOB Alpha, then a Rebel cell comes to take it back (town_captured,
+                                                      town_truck_delivered in the counters; --debug-trucks lists each town)
 --scenario=fire                                       a wood, a hedgerow, crates, cars, a watchtower and a house, some of it alight
                                                       from the start, a fighter cell dug in among it (fire spread, burns, fleeing)
 FL_DEBUG_FIRE=1 (env)                                 print who the fires burn, and (on a client) what it hears catching or going out
@@ -177,6 +180,7 @@ FL_DEBUG_MISSION=1 (env)                              print the map's features (
 --test-fire                                           every armed man, gunner and vehicle fires ahead (muzzle tests)
 --seed=N                                              (with --aivai) the same map every run
 --dump-structs                                        list every built structure when --quit-after fires
+FL_DEBUG_TOWNS=1 (env)                                print each town and village: name, dump and the ground that takes it
 FL_DEBUG_HPA=1 (env)                                  benchmark hierarchical vs flat paths at start-up
 FL_DEBUG_DECOR=1 (env)                                print the street-furniture chunk and mesh counts
 --menu-shot=menu.png --shot-at=6                      screenshot of the main menu

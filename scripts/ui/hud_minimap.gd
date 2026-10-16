@@ -385,10 +385,16 @@ func _draw_objectives(w: World) -> void:
 		HudObjectives.diamond(self, op, 7.0, String(o[0]), UiKit.ACCENT, 1.0)
 
 
-## What the sides have built: FOBs and depots as squares, the rest as small marks.
+## What the sides have built: FOBs and depots as squares, the rest as small
+## marks; and the towns, whoever holds them.
 func _draw_structures(w: World, sc: float) -> void:
 	for st in w.structures:
-		if not st.visible or st.team < 0 or st.gone:
+		if st.gone:
+			continue
+		if st.skind == "town":
+			_draw_town(st, sc)
+			continue
+		if not st.visible or st.team < 0:
 			continue
 		var p := _pt(st.position)
 		var c: Color = Defs.TEAM_COLORS[st.team]
@@ -400,6 +406,26 @@ func _draw_structures(w: World, sc: float) -> void:
 				draw_rect(Rect2(p - Vector2(hs * 0.4, hs * 0.4), Vector2(hs * 0.8, hs * 0.8)), Color(0, 0, 0, 0.55))
 		else:
 			draw_rect(Rect2(p - Vector2(1.5, 1.5), Vector2(3, 3)), Color(c.r, c.g, c.b, 0.7).darkened(0.2))
+
+
+## A town or village: its ground as a faint ring in its holder's colour (the
+## town's own while nobody holds it), the flag on its dump, and how far
+## whoever is taking it has got, round the ring.
+func _draw_town(st: Structure, sc: float) -> void:
+	var c := _pt(st.zone_c if st.zone_c != Vector3.INF else st.position)
+	var r := maxf(3.0, st.zone_r * size.x / MapDims.SIZE)
+	var col: Color = Defs.TEAM_COLORS[st.team] if st.team >= 0 else Structure.C_TOWN_FLAG
+	draw_circle(c, r, Color(col.r, col.g, col.b, 0.1))
+	draw_arc(c, r, 0, TAU, 28, Color(col.r, col.g, col.b, 0.55), 1.0, true)
+	if st.cap_team >= 0 and st.cap_prog > 0.0:
+		draw_arc(c, r + 1.6, -PI * 0.5, -PI * 0.5 + TAU * st.cap_prog / 100.0, 28, Defs.TEAM_COLORS[st.cap_team], 2.2, true)
+	var p := _pt(st.position)
+	var h := (8.0 if st.variant == 1 else 6.5) * sc
+	draw_line(p + Vector2(0, h * 0.35), p - Vector2(0, h), Color(0, 0, 0, 0.8), 2.6)
+	draw_line(p + Vector2(0, h * 0.35), p - Vector2(0, h), Color(0.92, 0.92, 0.88), 1.2)
+	var fr := Rect2(p + Vector2(0.6, -h), Vector2(h * 0.85, h * 0.55))
+	draw_rect(fr.grow(0.8), Color(0, 0, 0, 0.8))
+	draw_rect(fr, col)
 
 
 ## Where men are firing: a ring pulses over each patch of the fight, so a

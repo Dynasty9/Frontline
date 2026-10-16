@@ -60,6 +60,8 @@ func generate() -> void:
 	tg.country_power()
 	tg.fields(int(rng.randi_range(7, 10) * area * 0.6))
 	tg.roadside(int(rng.randi_range(3, 5) * k), int(rng.randi_range(2, 3) * k))
+	if String(world.settings.get("mission", "")) == "":
+		_towns(tg)  # (a mission's ground is fought for on the mission's terms)
 	tg.finish()
 	# the ground worth fighting for, for the AI commanders
 	world.key_points.append({"pos": tg.center, "kind": "town"})
@@ -151,6 +153,69 @@ func _lanes(tg) -> void:
 				tg.hamlets.append({"c": v2, "d": d})
 			world.roads[2].append(_smooth(pts))
 			tg.hamlets.append({"c": v, "d": d})
+
+
+# --- towns -----------------------------------------------------------------------------
+
+## The town and every village are worth holding: each gets a supply dump by
+## its main street, flying the colours of whoever holds it - nobody, to begin
+## with - and a name. (Their own random numbers: the rest of the map comes out
+## the same with them or without.)
+func _towns(tg) -> void:
+	var nr := RandomNumberGenerator.new()
+	nr.seed = int(world.settings.get("seed", 1)) * 7919 + 101
+	var names := []
+	for k in 2:
+		var l: Array = (Defs.TOWN_NAMES[k] as Array).duplicate()
+		for i in range(l.size() - 1, 0, -1):
+			var j := nr.randi() % (i + 1)
+			var t = l[i]
+			l[i] = l[j]
+			l[j] = t
+		names.append(l)
+	# the town's on its square where the flagpole stood, facing the main street;
+	# its ground is the crossroads and the blocks round it
+	if tg.square != Vector3.INF:
+		var q: Vector3 = tg.square_q
+		tg.decor.erase(tg.square_flag)
+		_town_dump(tg.square + Vector3(-q.x * 7.4, 0, q.z * 2.6), Defs.yaw_of(Vector3(-q.x, 0, 0)), 1, String(names[1][0]), tg.center + q * 6.0)
+	var vi := 0
+	for hm in tg.hamlets:
+		var spot := _dump_spot(tg, hm.c, hm.d)
+		_town_dump(spot[0], float(spot[1]), 0, String(names[0][vi % names[0].size()]), hm.c)
+		vi += 1
+
+
+func _town_dump(p: Vector3, yaw: float, k: int, nm: String, zc: Vector3) -> Structure:
+	var st := _spawn("town", p, yaw, -1, {"variant": k, "sname": nm, "zc": zc, "zr": float(Defs.TOWN_RADIUS[k])})
+	st.seen_mask = 3  # everyone knows where the towns are, and who holds them
+	world.rules.town_list.append(st)
+	if OS.has_environment("FL_DEBUG_TOWNS"):
+		print("TOWN %s %s dump=%s zone=%s r=%d" % [nm, Defs.TOWN_KINDS[k], str(p.round()), str(zc.round()), int(Defs.TOWN_RADIUS[k])])
+	return st
+
+
+## Where a village's dump goes: on the verge of its street, as near the
+## middle as there's room, clear of the lamps and the bench, its front to the
+## road (where the lorry pulls up). [pos, yaw]
+func _dump_spot(tg, c: Vector3, d: Vector3) -> Array:
+	var n := Vector3(-d.z, 0, d.x)
+	var half := Vector2(1.8, 1.2)
+	for off in [4.7, 6.6, 8.4]:
+		for t in [-7.0, 7.0, 0.0, -11.0, 11.0, -24.0, 24.0, -30.0, 30.0]:
+			for s in [1.0, -1.0]:
+				var p: Vector3 = c + d * t + n * (s * off)
+				var yaw := Defs.yaw_of(-n * s)
+				if not _is_free(p, half, yaw, 0.3, false) or tg._road_dist(p) < off - 0.6:
+					continue
+				var crowded := false
+				for e in tg.decor:
+					if String(e[0]) in ["lamp", "bench", "pole", "bus_stop", "hydrant", "mailbox", "bin", "sign_town", "sign_stop"] and Defs.flat((e[1] as Vector3) - p).length() < 2.8:
+						crowded = true
+						break
+				if not crowded:
+					return [p, yaw]
+	return [c + n * 4.7, Defs.yaw_of(-n)]
 
 
 # --- water ---------------------------------------------------------------------------
@@ -601,6 +666,28 @@ func scenario(sname: String) -> void:
 					tm.alert_t = world.time
 					tq.order_defend(Vector3(0, 0, -80), Vector3(0, 0, -1))
 					tm.order_defend(Vector3(14, 0, -76), Vector3(0, 0, -1)))
+		"town":
+			# a village between the lines, nobody's yet, its dump half full: a rifle
+			# squad goes up and takes it, then the village lorry runs the supply to
+			# FOB Alpha - until a Rebel cell comes to take it back
+			for i in 3:
+				_house(Vector3(-24 + i * 13.0, 0, -32), 8.0, 6.0, 0.0, -1.0, false, 0.0)
+			_house(Vector3(-16, 0, -6), 8.0, 6.0, 0.0, 1.0, false, 0.0)
+			var tn := _town_dump(Vector3(4.7, 0, -19), Defs.yaw_of(Vector3(-1, 0, 0)), 0, "Testvale", Vector3(0, 0, -19))
+			tn.supply = 100.0
+			var road := PackedVector3Array()
+			for i in 26:
+				road.append(Vector3(0, 0, 100 - i * 9.0))
+			world.roads[2] = [road]
+			world._rebuild_roads()
+			var tq := r.spawn_squad("rifle_squad", 0, a, Vector3(-6, 0, 40))
+			var rq := r.spawn_squad("fighter_cell", 1, b, Vector3(10, 0, -150))
+			if not world.settings.get("static", false):
+				world.get_tree().create_timer(1.0, true, true).timeout.connect(func():
+					tq.order_defend(Vector3(0, 0, -19), Vector3(0, 0, -1)))
+				world.get_tree().create_timer(75.0, true, true).timeout.connect(func():
+					if is_instance_valid(r) and is_instance_valid(world) and world.winner < 0:
+						world.execute_cmd(b, {"t": "assault", "squads": [rq.sid], "pos": Vector3(0, 0, -19), "face": Vector3(0, 0, 1)}))
 		"fire":
 			# what burns and how it spreads: a wood, a hedgerow, a crate dump, parked
 			# cars, a watchtower and a house, a fighter cell dug in among them. The

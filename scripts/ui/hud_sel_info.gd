@@ -82,7 +82,7 @@ func _draw() -> void:
 	var st: Structure = w.entity(inp.sel_structure) as Structure
 	if st:
 		_structure_info(st)
-		need_h = 110.0
+		need_h = 140.0 if st.skind == "town" else 110.0
 		return
 	need_h = 30.0
 	var e: Entity = hud._inspect if hud._inspect_t > 0.0 and hud._inspect and not hud._inspect.gone else null
@@ -239,12 +239,44 @@ func _bar(p: Vector2, sz: Vector2, f: float, col: Color) -> void:
 	draw_rect(Rect2(p, sz), Color(0, 0, 0, 0.55))
 	draw_rect(Rect2(p, Vector2(sz.x * clampf(f, 0.0, 1.0), sz.y)), col)
 
+## A town or village: who holds it, what it gives (and how much of it still
+## stands to give it), what's in its dump and where its trucks go - or how to
+## take it, and how far along whoever's taking it is.
+func _town_info(st: Structure, y: float) -> void:
+	var w := hud.world
+	var lt := w.local_team
+	var k := clampi(st.variant, 0, 1)
+	var holder: String = ("Held by the " + Defs.TEAM_NAMES[st.team]) if st.team >= 0 else "Nobody holds it yet"
+	UiKit.text(self, Vector2(4, y), "%s  ·  %s  ·  %d%% of its houses stand" % [Defs.TOWN_KINDS[k], holder, int(round(st.intact * 100.0))], 13, UiKit.TEXT)
+	y += 19.0
+	UiKit.text(self, Vector2(4, y), "Gives %d supply a minute (%d at full strength), trucked to the holder's nearest FOB." % [int(round(st.town_rate())), int(Defs.TOWN_YIELD[k])], 13, UiKit.DIM)
+	y += 19.0
+	if st.team == lt and lt >= 0:
+		var to := ""
+		for tn in (w.team_info[lt] as Dictionary).get("towns", []):
+			if int(tn[0]) == st.eid:
+				to = ("Trucks run to FOB " + String(tn[5])) if String(tn[5]) != "" else "No FOB to truck it to: build one within reach"
+		UiKit.text(self, Vector2(4, y), "In the dump: %d / %d.  %s" % [int(st.supply), int(Defs.TOWN_STOCK[k]), to], 13, UiKit.TEXT)
+	else:
+		UiKit.text(self, Vector2(4, y), "To take it: men inside the ring (%d m) with none of the other side's there." % int(st.zone_r), 13, UiKit.DIM)
+	y += 19.0
+	if st.cap_prog > 0.0 and st.cap_team >= 0:
+		var who: String = "us" if st.cap_team == lt else ("the " + Defs.TEAM_NAMES[st.cap_team])
+		UiKit.text(self, Vector2(4, y), "Being taken by %s: %d%%" % [who, int(st.cap_prog)], 13, UiKit.GOOD if st.cap_team == lt else UiKit.BAD)
+		_bar(Vector2(4, y + 8), Vector2(260, 5), st.cap_prog / 100.0, Defs.TEAM_COLORS[st.cap_team])
+
+
 func _structure_info(st: Structure) -> void:
 	var y := 18.0
 	UiKit.text(self, Vector2(4, y), st.display_name(), 17, UiKit.TEXT, 600)
 	if st.team >= 0:
 		UiKit.text(self, Vector2(10 + UiKit.text_width(st.display_name(), 17, 600), y), Defs.TEAM_NAMES[st.team], 12, Defs.TEAM_COLORS[st.team].lightened(0.3))
 	y += 12.0
+	if st.skind == "town":
+		# a town can't be knocked down, only its houses: how much of it stands
+		_bar(Vector2(4, y), Vector2(260, 6), st.intact, Color(0.85, 0.75, 0.5))
+		_town_info(st, y + 26.0)
+		return
 	_bar(Vector2(4, y), Vector2(260, 6), st.hp / maxf(1.0, st.max_hp), UiKit.GOOD)
 	y += 26.0
 	if not st.built:
