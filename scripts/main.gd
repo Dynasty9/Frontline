@@ -85,7 +85,7 @@ func _ready() -> void:
 	layer.layer = 10
 	add_child(layer)
 	layer.add_child(menu)
-	# --menu-cursor=X,Y: hold the map's cursor hill there (fractions of the screen; screenshots)
+	# --menu-cursor=X,Y: hold the cursor there, the map leaning after it (fractions of the screen; screenshots)
 	if args.has("menu-cursor"):
 		var mc := String(args["menu-cursor"]).split(",")
 		TopoBackdrop.pin_cursor(Vector2(float(mc[0]), float(mc[1])))

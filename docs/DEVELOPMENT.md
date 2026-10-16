@@ -111,6 +111,7 @@ ui/map_symbols.gd       NATO symbols and status icons
 game/attack_plan.gd     the deliberate attack (plan, support by fire, flank, assault, consolidate)
 ui/topo_backdrop.gd     the living topographic map behind the title, the menu and the loading screen (one
                         shader; every copy shares one clock and cursor, so screens hand over without a seam)
+ui/topo_survey.gd       the same map's ground worked out on the CPU, to letter its contours and summits
 ```
 
 Networking is server-authoritative. Clients send command dictionaries (`World.send_cmd`). The host simulates at 30 Hz and
@@ -245,7 +246,7 @@ FL_DEBUG_MISSION=1 (env)                              print the map's features (
 --curtain                                             show the title / loading screens in an automated run
 --intro-at=SECONDS                                    (with --curtain) hold the title at that moment of its animation
 --menu-clock=SECONDS                                  start the menu's map that far into its drift and colours
---menu-cursor=X,Y                                     hold the map's cursor hill there (fractions of the screen)
+--menu-cursor=X,Y                                     hold the cursor there, the map leaning after it (fractions of the screen)
 --menu-op=0|1|-1                                      open the New Operation panel on that side
 --menu-missions[=KEY]                                 open the Missions panel (on that mission)
 --startup-trace                                       print the first frames' timings
