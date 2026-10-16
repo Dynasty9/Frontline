@@ -403,7 +403,8 @@ static func part(p: GPUParticles3D) -> GeometryInstance3D:
 		return p
 	var c := CPUParticles3D.new()
 	c.convert_from_particles(p)
-	c.name = p.name
+	if p.name != &"":
+		c.name = p.name  # (one the effect looks it up by; most have none until they're in the tree)
 	c.transform = p.transform
 	c.visible = p.visible
 	c.emitting = p.emitting
