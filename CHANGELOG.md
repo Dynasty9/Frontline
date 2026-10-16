@@ -4,6 +4,198 @@ Every release of Frontline, newest first. The game updates itself; downloads, an
 are on [the website](https://web-production-5a4c1.up.railway.app/changelog/). Each change is written up in [`changelog/`](changelog/) as part of
 the pull request that makes it.
 
+## v1.0.0: Tons of stuff
+
+*16 October 2026* · [Release on GitHub](https://github.com/Dynasty9/Frontline/releases/tag/v1.0.0)
+
+### New
+
+#### Battle statistics and the after-action report
+
+Hold Tab for your side's figures as the battle goes. When it ends, the result slams onto the screen, your rating fills its bar, and the after-action report shows the whole battle: both sides head to head, every commander rated, every unit, and how the fight swung.
+
+![The end of a battle: the result, and your rating](changelog/v1.0.0/after-action-report/victory.jpg)
+
+![The after-action report: head to head, honours and the soldiers who stood out](changelog/v1.0.0/after-action-report/report-summary.jpg)
+
+![Every commander rated, and what the rating is made of](changelog/v1.0.0/after-action-report/report-commanders.jpg)
+
+![How the battle swung](changelog/v1.0.0/after-action-report/report-timeline.jpg)
+
+![Hold Tab in a battle for your side's figures so far](changelog/v1.0.0/after-action-report/battle-statistics.jpg)
+
+- **Hold Tab** for the battle statistics; a tap still opens the tactical map. **Esc > Battle Statistics** keeps them open. Until the battle is over, the enemy's figures are classified.
+- **The end of a battle** greys out the battlefield behind a banner: VICTORY or DEFEAT lands with a hit, your rating fills its bar, and the report rises into place. Click to skip.
+- **Summary:** the two sides head to head on kills, losses, vehicles, buildings, the value of what each destroyed, accuracy, prisoners, FOBs and towns taken, wounded saved and supply; honours such as Most valuable, Marksman and Tank hunter; and the soldiers with the most kills.
+- **Commanders:** every player and AI gets a rating out of 100, mostly what they destroyed against what they lost, then their marksmanship and their share of the fight. Click one to see how it was made, and everything they did.
+- **Units:** every squad and vehicle with its kills, losses, men still standing, time in action and fate.
+- **Timeline:** men, vehicles, kills and supply over the whole battle, with FOBs, towns, vehicles lost and fire missions marked. Hover for the figures at any moment.
+- Every tab comes in row by row: numbers count up, bars and dials fill, honours land one at a time, and the lines draw themselves.
+- Kills go to whoever did them, fire support and mines included, even when a wounded man bleeds out later.
+
+#### A changelog for every release
+
+Every release now comes with a changelog: what changed and why it matters, with screenshots. It's on the website, and the game's update notice links straight to it.
+
+![An update downloaded and ready, with a link to what's in it](changelog/v1.0.0/changelog/whats-new.jpg)
+
+- **The website's new Changelog page** lists every release, newest first: its name, the date, a summary, and each change with its screenshots. The front page shows what's new in the latest.
+- **What's new in the game:** the update notice has a button that opens the changelog for the version it's installing.
+- **The release notes on GitHub** are the same changelog.
+- **Updates check the Frontline server first** for the latest version, so the game, the website and the server always agree on what's current.
+
+#### Field defences rebuilt, and four new ones
+
+Sandbags, wire, tank traps, minefields, walls, nests, pits, bunkers and towers all look like the real thing now. New: HESCO walls, Rebel barricades, camouflage nets and ammo caches.
+
+![Wire, tank traps, minefields and concrete walls, before and after](changelog/v1.0.0/field-defences/before-and-after.jpg)
+
+![Two new chest-high walls: the Coalition's HESCO barrier and the Rebels' barricade](changelog/v1.0.0/field-defences/hesco-and-barricade.jpg)
+
+![A camouflage net over a parked car](changelog/v1.0.0/field-defences/camouflage-net.jpg)
+
+![An ammo cache behind a minefield's marker tape, beside an MG nest](changelog/v1.0.0/field-defences/ammo-cache.jpg)
+
+![MG and .50 cal nests](changelog/v1.0.0/field-defences/gun-nests.jpg)
+
+- **Sandbags** are stacked the way soldiers really lay them, and each side fills its own: tan and olive bags for the Coalition, hessian and white feed sacks for the Rebels.
+- **Barbed wire** is now three coils of razor wire on steel pickets (wooden stakes for the Rebels). **Tank traps** are steel hedgehogs standing on three legs.
+- **Minefields** are buried under loosened earth inside a taped cordon with red warning triangles. Only your own side ever sees them.
+- **Concrete walls** are now rows of T-wall slabs. Mortar pits, AT posts, bunkers and watchtowers get proper weapons, bracing, ladders, roofs and earth banked against their walls.
+- **New: HESCO barrier** (Coalition): earth-filled cells, chest high. Stand and fire over it. It stops even a .50 cal, and vehicles can't get through.
+- **New: Barricade** (Rebels): drums, tyres, rubble and scrap, chest high. Stand and fire over it. A tank shoves it aside, and the tyres burn with thick black smoke.
+- **New: Camouflage net** (both sides): put it over a gun pit, a mortar or a parked vehicle. Enemies on the ground or in the air have to come twice as close to spot what's under it. It doesn't stop bullets.
+- **New: Ammo cache** (both sides): men within 7 m top up their rounds, grenades and rockets until it runs dry, and soldiers out of ammo head for it before the FOB. If it's destroyed, it explodes, and rounds keep going off for a few seconds.
+- The computer opponent builds all four.
+
+#### Change any key
+
+Every key the game uses can now be changed in Settings > Controls: grouped by category, two keys per action, with a search box and a reset for each.
+
+![Settings > Controls: every action by category, with two keys each](changelog/v1.0.0/rebindable-controls/controls.jpg)
+
+- **Every action, by category:** camera, saved views, orders, abilities and fire support, building, control groups, co-commanders, interface, and the observer's controls. The mouse's own controls are listed at the end.
+- **Two keys for each**, including combinations with Ctrl, Shift or Alt, a modifier on its own, and the mouse's side buttons. Click a key and press the new one; Esc cancels, right-click clears it.
+- **A key that's already taken** moves to the new action, the page says which action lost it, and Undo puts it back.
+- **Search** for an action or a key, reset one action, or reset everything.
+- **The hints follow your keys:** the command card, the controls help (F1), tooltips and the loading screen's tips all show the keys as you've set them.
+- **Two new optional keys:** one to ping at the cursor (hold it for the ping wheel), and one to step through your co-commanders' views.
+
+#### Interface themes, and the living map in battle
+
+Pick a theme for the whole interface in Settings > Interface: Field Brass, Night Vision, Thermal, Arctic or Dusk. Panels get a new tactical frame, and the living map now shows through behind the menus in a battle.
+
+![Night Vision, Thermal, Arctic and Dusk](changelog/v1.0.0/interface-themes/themes.jpg)
+
+![The Esc menu in a battle, over the map (Night Vision)](changelog/v1.0.0/interface-themes/battle-menu.jpg)
+
+![The end of a battle (Thermal)](changelog/v1.0.0/interface-themes/victory.jpg)
+
+![Choosing a theme in Settings > Interface (Dusk)](changelog/v1.0.0/interface-themes/settings.jpg)
+
+- **Five themes:** Field Brass (the original), Night Vision, Thermal, Arctic and Dusk. Each recolours the interface and the living map's contour lines; green, red and yellow still mean what they always did.
+- **Changes live:** the interface recolours as soon as you pick a theme, and the map's colours flow into the new ones.
+- **A tactical frame:** panels have accent brackets on their corners, like the crosses on the map's grid, and a faint glow. The button under the cursor glows too.
+- **The map in battle:** the Esc menu, the help, the settings and the end of the battle sit over a see-through version of the living map, with the battlefield showing through. At the end of a battle a wave wakes it from the middle of the screen.
+
+#### A living map behind the title and menu
+
+The title screen, the main menu and the loading screen now sit on a living topographic map: its ground slowly shifts, its contour lines glow in changing colours, and it reacts to your cursor.
+
+![The title, just after the wave has woken the map](changelog/v1.0.0/living-map/title.jpg)
+
+![The main menu, with a hill rising under the cursor](changelog/v1.0.0/living-map/menu.jpg)
+
+![The loading screen, closing in on the ground](changelog/v1.0.0/living-map/loading.jpg)
+
+- **The map moves:** hills slowly drift, merge and part, and the contour lines slide up and down the slopes.
+- **The colours change:** the lines turn through brass, ember, rose, violet, blue and jade over a minute and a half, blending across the screen.
+- **It follows you:** the ground rises in a hill under your cursor, and a click sends a ripple across the map.
+- **The title comes alive:** it starts exactly as the splash screen looks, then a wave runs out of the emblem and wakes the map. The title lifts away and the menu glides in. Click or press a key to skip it.
+- **The loading screen:** a survey beam sweeps the map and the view closes in on the ground, then dives into it as the battle fades in.
+- The menu's 3D gun position is gone; the map replaces it.
+
+#### A service record, and a sign-in you can find
+
+Sign in from the account card at the top right of the main menu. Signed in, every battle you fight goes on your service record, and you can open any of their after-action reports again.
+
+![The account card on the main menu](changelog/v1.0.0/service-record/account-card.jpg)
+
+![Your service record: your career, and every battle](changelog/v1.0.0/service-record/service-record.jpg)
+
+![Any battle's after-action report, opened again](changelog/v1.0.0/service-record/past-report.jpg)
+
+- **Signing in** is now at the top right of the main menu, with **Create account** beside it. The end of a battle offers it too. You still don't need an account to play.
+- **Your service record** keeps every battle you fight as a commander: what it was, your side, the result and length, your rating, kills and losses.
+- **Service Record** on the main menu shows your career (battles, wins, kills, K/D, average rating and time in battle) and every battle, newest first. Click one for its after-action report.
+- **Battles fought signed out** or offline wait on your computer (the last ten) and go on your record when you sign in.
+
+### Improved
+
+#### Gunfire that hits hard
+
+Muzzle flashes, tracers, recoil and bullet impacts are rebuilt from scratch: every shot flashes and kicks, tracers glow in each side's colour, and what a round hits decides what flies off it.
+
+![A tank and an IFV firing at night: the flashes light up the vehicles and the ground, and the shell's tracer streaks to its target](changelog/v1.0.0/gunfire-effects/night-armour.jpg)
+
+![A tank's main gun by day](changelog/v1.0.0/gunfire-effects/tank-gun.jpg)
+
+![Rounds landing in a field: earth spurting up, grit flying, dust hanging](changelog/v1.0.0/gunfire-effects/rounds-landing.jpg)
+
+![The same moment before and after](changelog/v1.0.0/gunfire-effects/before-after-night.jpg)
+
+- **Muzzle flashes:** a white-hot burst with a tongue of flame thrown out ahead, bigger for a machine gun and bigger
+  again for a .50 or an autocannon. Each one lights up its surroundings for a moment, which is striking at night,
+  and leaves a breath of smoke. Spent cases spin out of the rifle and pile up round a machine gun.
+- **Recoil on every shot:** rifles kick back into the shoulder and the muzzle climbs, mounted guns jump on their
+  mounts, and a tank's turret jolts back when the main gun fires.
+- **Tracers** glow red for the Coalition and green for the Rebels, and stay visible however far out you zoom.
+- **Impacts depend on what's hit:** earth spurts up with clods raining down, stone walls throw grit and chips,
+  sandbags burst into dust, wood splinters, hedges and trees shed leaves, steel throws sparks, and water throws up
+  a white splash. The impact shows when the round arrives, and now and then a round ricochets off and goes
+  whining away.
+- **Tank guns** fire with a blinding flash, a fireball, burning flecks, a rolling cloud of smoke and dust blasted
+  off the ground. **Rockets** kick up a back-blast behind the launcher.
+- Heavy firefights run about as fast as they did before.
+
+#### Water that looks like water, and sea battles to match
+
+The sea rolls in and breaks on the beach, you can see the sand through the shallows, and boats leave real wakes. A boat that's sunk now goes down burning and leaves an oil slick, instead of just vanishing.
+
+![Gunboats off the beach: their wakes, the swell, and the shallows going from turquoise to deep blue](changelog/v1.0.0/water-and-sea-battles/sea-battle.jpg)
+
+![A boat going down burning, her hull still showing under the water](changelog/v1.0.0/water-and-sea-battles/sinking.jpg)
+
+![The patrol ship lying off the beach while a boat burns in the surf](changelog/v1.0.0/water-and-sea-battles/patrol-ship.jpg)
+
+![The harbour: clear shallows over the sand, surf running up the beach](changelog/v1.0.0/water-and-sea-battles/harbour.jpg)
+
+![Before and after: the harbour and the river](changelog/v1.0.0/water-and-sea-battles/before-after.jpg)
+
+- **The sea:** a swell rolls in off the open sea, and boats rise and roll on the waves you see. Breakers spill along the beach, run up the sand and drain back, leaving it dark and wet.
+- **See into the water:** sand shows through the shallows and the sea turns turquoise, then deep blue farther out. Rivers and ponds are murky.
+- **Light on the water:** the sky and clouds reflect in it, the sun glitters off the ripples (a moon path at night, only a sheen under cloud), and rain dimples it with rings.
+- **Wakes:** boats churn up white water astern and push a bow wave out in a V; fast boats throw spray. A boat hidden in the fog of war hides her wake too.
+- **Sinking:** a boat that's sunk blows up, lists over and goes down by the bow or the stern, burning until the water closes over the fire. Foam boils up where she went, and an oil slick spreads with wreckage drifting in it.
+- **Fire on the water:** shells throw up a column of spray and leave a ring of foam, bullets kick up white spouts, and a shell that hits a boat bursts in flame instead of a splash.
+
+#### Towns in the help and loading tips
+
+The in-game help (F1) now explains towns: how to take one, what holding it gives you, and that you can click a dump for its details.
+
+- **F1 help:** a new Towns line covers taking a town, what it gives you, and clicking its dump. The Supply line points at the income shown in the top bar.
+- **Loading screen:** two new tips point new players at the villages, and warn that a town shelled to ruins gives far less.
+
+### Fixed
+
+#### No network error when more players join
+
+In a battle with three or more players, everyone else's game reported a network error each time another player joined. It no longer does.
+
+- **More players:** a third or later player joining no longer sets off an error on the other players' games.
+- **Long map builds:** every player's connection to the host still waits patiently while the host lays out the map,
+  so nobody is dropped before the battle starts.
+
 ## v0.1.8: Co-commanders
 
 *16 October 2026* · [Release on GitHub](https://github.com/Dynasty9/Frontline/releases/tag/v0.1.8)
