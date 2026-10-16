@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import { existsSync, readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import { createAuth } from '../src/auth.js';
+import { ErrorLog, MAX_ENTRIES } from '../src/errors.js';
 import { Lobbies } from '../src/lobbies.js';
 import { battleXp, insignia, MAX_RANK, progress, rankOf, xpFor } from '../src/ranks.js';
 import { createServer } from '../src/server.js';
@@ -27,6 +28,7 @@ async function start(env, authOptions) {
 
 const open = await start({});
 const withAccounts = await start({ AUTH_BACKEND: 'memory' });
+const reporting = await start({ ERRORS_TOKEN: 'tally-token' });
 // For the ranks: the battle clock is ours to wind on, and each player calls
 // from an address of their own (X-Forwarded-For) so the rate limits don't mix.
 let clock = 1_000_000;
@@ -607,5 +609,81 @@ const battle = (over = {}) => ({
 		assert.ok(reg.create('5.5.5.5', { port: 7001, lan: '8.8.8.8' }).lobby.lan === '');
 		assert.ok(reg.create('5.5.5.5', { port: 7002, lan: '10.1.2.3' }).lobby.lan === '10.1.2.3');
 		assert.ok(reg.create('5.5.5.5', { port: 7003 }).error);
+	});
+}
+
+// --- error reports
+const nodeMissing = (n) => ({
+	kind: 'error',
+	message: `Node not found: "Squad${n}" (relative to "/root/Main").`,
+	condition: 'Method/function failed. Returning: nullptr',
+	where: 'get_node (scene/main/node.cpp:1976)',
+	context: 'battle',
+	backtrace: ['_on_order (res://scripts/game/squad.gd:120)', '_tick (res://scripts/game/world.gd:500)'],
+	count: 3,
+});
+
+{
+	const s = reporting;
+	const meta = { game_version: '0.4.0', os: 'Windows 11', gpu: 'Radeon RX 7800', driver: 'vulkan', session: 'a1b2c3d4' };
+
+	test('error reports are tallied, the same error together', async () => {
+		const r = await s.call('POST', '/errors', { ...meta, reports: [nodeMissing(4), { kind: 'shader', message: 'Unknown identifier', where: 'water' }] });
+		assert.equal(r.status, 200);
+		assert.equal(r.data.accepted, 2);
+		// the same error with other numbers in it, from another launch on another version
+		await s.call('POST', '/errors', { ...meta, game_version: '0.4.1', session: 'e5f6', reports: [nodeMissing(12)] });
+		const t = await s.call('GET', '/errors', undefined, { Authorization: 'Bearer tally-token' });
+		assert.equal(t.status, 200);
+		assert.equal(t.data.received, 2);
+		const [top, shader] = t.data.errors;
+		assert.equal(top.count, 6);
+		assert.equal(top.sessions, 2);
+		assert.deepEqual(top.versions, { '0.4.0': 1, '0.4.1': 1 });
+		assert.equal(top.gpus['Radeon RX 7800'], 2);
+		assert.equal(top.backtrace[0], '_on_order (res://scripts/game/squad.gd:120)');
+		assert.equal(top.context, 'battle');
+		assert.equal(shader.kind, 'shader');
+		assert.equal(shader.count, 1);
+	});
+
+	test('only whoever holds the token reads the tally', async () => {
+		assert.equal((await s.call('GET', '/errors')).status, 401);
+		assert.equal((await s.call('GET', '/errors', undefined, { Authorization: 'Bearer nope' })).status, 401);
+		// and without a token configured there is nothing to read
+		assert.equal((await open.call('GET', '/errors', undefined, { Authorization: 'Bearer tally-token' })).status, 404);
+	});
+
+	test('error reports that are not reports are refused', async () => {
+		assert.equal((await s.call('POST', '/errors', { ...meta })).status, 400);
+		assert.equal((await s.call('POST', '/errors', { ...meta, reports: [{ kind: 'gossip', message: 'x' }] })).status, 400);
+		assert.equal((await s.call('POST', '/errors', { ...meta, reports: [{ kind: 'error' }] })).status, 400);
+		const big = { ...meta, reports: [{ kind: 'error', message: 'x'.repeat(60 * 1024) }] };
+		assert.equal((await s.call('POST', '/errors', big)).status, 413);
+	});
+
+	test('a new error is logged in full once, then as it grows', () => {
+		const lines = [];
+		const log = new ErrorLog({ log: (l) => lines.push(l) });
+		const crash = { kind: 'crash', message: 'Program crashed with signal 11', backtrace: ['_draw (res://scripts/ui/hud.gd:88)'], log: ['ERROR: Invalid mesh'] };
+		log.add({ ...meta, reports: [crash] });
+		assert.equal(lines.length, 1);
+		assert.match(lines[0], /^crash [0-9a-f]{12} \(0\.4\.0, Windows 11, Radeon RX 7800\): Program crashed with signal 11/);
+		assert.match(lines[0], /_draw \(res:\/\/scripts\/ui\/hud\.gd:88\)/);
+		assert.match(lines[0], /\| ERROR: Invalid mesh/);
+		log.add({ ...meta, reports: [{ ...crash, count: 8 }] });
+		assert.equal(lines.length, 1);
+		log.add({ ...meta, reports: [{ ...crash, count: 150 }] });
+		assert.equal(lines.length, 2);
+		assert.match(lines[1], /seen 159 times in 1 sessions/);
+	});
+
+	test('the tally keeps the errors seen most recently', () => {
+		const log = new ErrorLog({ log: () => {} });
+		for (let i = 0; i < MAX_ENTRIES + 5; i++) log.add({ reports: [{ kind: 'error', message: 'boom', where: `site ${i}` }] });
+		const { errors } = log.summary();
+		assert.equal(errors.length, MAX_ENTRIES);
+		assert.ok(!errors.some((e) => e.where === 'site 0'));
+		assert.ok(errors.some((e) => e.where === `site ${MAX_ENTRIES + 4}`));
 	});
 }

@@ -160,4 +160,4 @@ func _process(_dt: float) -> void:
 		var path := String(args["soldier-sheet"])
 		get_viewport().get_texture().get_image().save_png(path)
 		print("soldier sheet saved ", path)
-		get_tree().quit()
+		TestRun.quit(get_tree())

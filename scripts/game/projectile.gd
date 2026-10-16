@@ -534,7 +534,7 @@ func _build_model() -> void:
 			_drone = AudioStreamPlayer.new()
 			_drone.bus = &"Effects"
 			if Sfx.enabled:
-				_drone.stream = Sfx.streams["prop"]
+				_drone.stream = Sfx.stream("prop")
 				_drone.volume_db = -30.0
 				_drone.autoplay = true
 			add_child(_drone)

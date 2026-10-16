@@ -57,6 +57,8 @@ var _ins_pending := ""  # an insignia being put on, until the matchmaker answers
 var _mm_busy := false  # Find Match is working through battles
 var _mm_tries: Array = []  # lobby ids it has tried this time
 var _attempt := 0  # bumps with every join (or host) attempt, so stale answers and timeouts do nothing
+var notices: VBoxContainer  # the cards in the top right, under the account: a newer release, a battle to rejoin
+var rejoin_card: PanelContainer  # back into the battle we dropped out of (while there is one)
 
 const SIDES := [
 	[0, "COALITION", "A regular army. Tanks, IFVs, Humvees, attack helicopters, air strikes and artillery. Fewer men, better kit, long supply lines."],
@@ -194,11 +196,22 @@ func _ready() -> void:
 
 	Online.account_changed.connect(_on_account)
 	Online.record_changed.connect(_on_account)
+	notices = VBoxContainer.new()
+	notices.add_theme_constant_override("separation", 10)
+	notices.anchor_left = 1.0
+	notices.anchor_right = 1.0
+	notices.offset_left = -540
+	notices.offset_right = -32
+	notices.offset_top = 196  # under the account card
+	add_child(notices)
 	for p: Control in [op_panel, ms_panel, host_panel, rec_panel, ins_panel]:
 		p.visibility_changed.connect(_side_panels_changed)
 	Updater.changed.connect(_update_notice)
 	_update_notice()
 	_on_account()
+	# (the server browser and the lobby take the menu's place, and the corner)
+	main_box.visibility_changed.connect(_refresh_rejoin)
+	_refresh_rejoin()
 	# a Join or Find Match link from the website: the one we were started with,
 	# and any a second copy hands on while we run
 	Links.link_opened.connect(open_link)
@@ -892,6 +905,74 @@ func _on_dialog_cancel() -> void:
 		Net.leave()
 
 
+# --- rejoining ---------------------------------------------------------------------------
+
+## While the battle we were last in may still be going (Net.rejoin), a card
+## in the corner says whose it was and how long ago we left, with Rejoin (and
+## Forget, for a battle we don't mean to go back to).
+func _refresh_rejoin() -> void:
+	if notices == null:
+		return
+	if rejoin_card:
+		rejoin_card.queue_free()
+		rejoin_card = null
+	if not Net.can_rejoin() or not main_box.visible:
+		return
+	var host := String(Net.rejoin.get("host", ""))
+	var mins := int((Time.get_unix_time_from_system() - float(Net.rejoin.get("at", 0.0))) / 60.0)
+	var when := "just now" if mins < 1 else ((("%d min" % mins) if mins < 90 else ("%d h" % int(mins / 60.0))) + " ago")
+	rejoin_card = _notice("BATTLE IN PROGRESS", "You left %s %s." % [("%s's battle" % host) if host != "" else "a battle", when], false)
+	var h: HBoxContainer = rejoin_card.get_child(0)
+	h.add_child(_btn("Forget", func(): Net.forget_rejoin(); _refresh_rejoin()))
+	var go := _btn("Rejoin", _rejoin)
+	go.add_theme_color_override("font_color", UiKit.ACCENT)
+	h.add_child(go)
+	for b in h.get_children():
+		if b is Button:
+			(b as Button).size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	notices.add_child(rejoin_card)
+
+
+## Back into that battle as the player we were there: the host gives us our
+## side, colour and surviving force back (no password: we were let in
+## before). A listed battle goes through the matchmaker again (the host's
+## router may need punching through afresh), else, or if it's no longer
+## listed, straight to the address we had.
+func _rejoin() -> void:
+	if not Net.can_rejoin():
+		_refresh_rejoin()
+		return
+	_close_panels()
+	_mm_busy = false
+	var r: Dictionary = Net.rejoin
+	var host := String(r.get("host", ""))
+	if host == "":
+		host = "the host"
+	var lobby_id := String(r.get("lobby", ""))
+	_join_target = {"name": "%s's battle" % host, "host": host, "rejoin": true}
+	Net.join_password = ""
+	Net.begin_rejoin()
+	_attempt += 1
+	var attempt := _attempt
+	dialog.begin("Rejoining", "%s's battle" % host)
+	var err := FAILED
+	if lobby_id != "":
+		var j: Dictionary = await Online.join_listed(lobby_id, func(): return attempt == _attempt)
+		if attempt != _attempt:
+			return
+		err = int(j.err)
+	if err != OK:
+		dialog.step("Connecting to %s" % String(r.ip))
+		err = Net.join_game(String(r.ip), int(r.port), 0, lobby_id)
+	if err != OK:
+		Net.forget_rejoin()
+		_refresh_rejoin()
+		dialog.fail("Couldn't rejoin", "Couldn't start connecting to %s (error %d)." % [String(r.ip), err])
+		_join_target = {}
+		return
+	_watch_connect(attempt, host)
+
+
 # --- Find Match -----------------------------------------------------------------------
 
 ## Join the best open battle online, or if there is none, host one for others
@@ -955,7 +1036,12 @@ func _watch_connect(attempt: int, host_name: String) -> void:
 	var direct := bool(_join_target.get("direct", false))
 	var port := int(_join_target.get("port", Net.DEFAULT_PORT))
 	Net.leave()
-	if _mm_busy:
+	if bool(_join_target.get("rejoin", false)):
+		# Rejoin: that battle is taken to be gone
+		Net.forget_rejoin()
+		_refresh_rejoin()
+		dialog.fail("Couldn't rejoin", "Nobody answered at %s's battle. It may have ended." % host_name)
+	elif _mm_busy:
 		_mm_next()
 	elif direct:
 		dialog.fail("Couldn't join", "Nothing answered at %s. Check the address, and that the host has forwarded UDP port %d (or that you're both on the same network)." % [String(_join_target.get("name", "")), port])
@@ -971,33 +1057,21 @@ func _watch_connect(attempt: int, host_name: String) -> void:
 ## to the downloads. Playing online needs the same version as everyone else,
 ## so it's worth the space.
 func _update_notice() -> void:
-	var old := get_node_or_null("UpdateNotice")
+	var old := notices.get_node_or_null("UpdateNotice")
 	if old:
+		old.name = "OldNotice"
 		old.queue_free()
 	if Updater.state == Updater.State.NONE:
 		return
-	var p := PanelContainer.new()
-	p.name = "UpdateNotice"
 	var bad: bool = Updater.state == Updater.State.FAILED
-	p.add_theme_stylebox_override("panel", UiKit.box(Color(0.035, 0.045, 0.045, 0.92), 4, UiKit.BAD if bad else UiKit.ACCENT, 1, 12.0))
-	p.anchor_left = 1.0
-	p.anchor_right = 1.0
-	p.offset_left = -540
-	p.offset_right = -32
-	p.offset_top = 196  # under the account card
-	add_child(p)
-	var h := HBoxContainer.new()
-	h.add_theme_constant_override("separation", 12)
-	p.add_child(h)
-	var v := VBoxContainer.new()
-	v.add_theme_constant_override("separation", 1)
-	v.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	h.add_child(v)
-	var head := UiKit.label("", 11, UiKit.BAD if bad else UiKit.ACCENT, 700)
-	v.add_child(head)
-	var line := UiKit.label("", 14, UiKit.TEXT, 600)
-	line.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	v.add_child(line)
+	var p := _notice("", "", bad)
+	p.name = "UpdateNotice"
+	notices.add_child(p)
+	notices.move_child(p, 0)  # (above a battle to rejoin)
+	var h: HBoxContainer = p.get_child(0)
+	var v: VBoxContainer = h.get_child(0)
+	var head: Label = v.get_child(0)
+	var line: Label = v.get_child(1)
 	var website := func(): OS.shell_open(Updater.WEBSITE_URL + "/#download")
 	# that version's changelog on the website: what the update brings
 	var whats_new := func(): OS.shell_open(Updater.WEBSITE_URL + "/changelog/#v" + Updater.latest)
@@ -1030,6 +1104,25 @@ func _update_notice() -> void:
 			(b as Button).size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	if acct_card:
 		_side_panels_changed()
+
+
+## A card for the top right: a small heading over a line of text, with room
+## on its right (the HBox, its first child) for buttons.
+func _notice(head_text: String, text: String, bad: bool) -> PanelContainer:
+	var p := PanelContainer.new()
+	p.add_theme_stylebox_override("panel", UiKit.box(Color(0.035, 0.045, 0.045, 0.92), 4, UiKit.BAD if bad else UiKit.ACCENT, 1, 12.0))
+	var h := HBoxContainer.new()
+	h.add_theme_constant_override("separation", 12)
+	p.add_child(h)
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 1)
+	v.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	h.add_child(v)
+	v.add_child(UiKit.label(head_text, 11, UiKit.BAD if bad else UiKit.ACCENT, 700))
+	var line := UiKit.label(text, 14, UiKit.TEXT, 600)
+	line.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	v.add_child(line)
+	return p
 
 
 # --- links from the website -------------------------------------------------------------
@@ -1180,8 +1273,8 @@ func _card_in() -> void:
 		UiFx.slide_in(acct_card, 70.0, 0.5, 0.35)
 
 
-## The account card (and an update notice) give way to the panels that open
-## on the right, which reach up into that corner.
+## The account card (and the notices under it) give way to the panels that
+## open on the right, which reach up into that corner.
 func _side_panels_changed() -> void:
 	var busy := false
 	for p: Control in [op_panel, ms_panel, host_panel, rec_panel, ins_panel]:
@@ -1189,9 +1282,8 @@ func _side_panels_changed() -> void:
 			busy = true
 	if acct_card:
 		acct_card.visible = not busy
-	var n := get_node_or_null("UpdateNotice")
-	if n:
-		n.visible = not busy
+	if notices:
+		notices.visible = not busy
 
 
 func _spaced(text: String, fs: int, col: Color, spacing: int) -> Label:

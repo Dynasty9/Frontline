@@ -40,6 +40,9 @@ Settings are saved to `user://settings.cfg`, key bindings to `user://keybinds.cf
 
 ```
 main.gd                 menu <-> World, command-line test modes
+test/test_run.gd        how a test run ends: exit code 1 on a script error or a failed check
+test/test_port.gd       the test port: a test drives the game over a local socket (see "The test port")
+test/cam_test.gd, keys_test.gd   the camera and key bindings driven end to end (--cam-test, --keys-test)
 autoload/defs.gd        all data tables (units, weapons, squads, vehicles, buildings, upgrades)
 autoload/net.gd         ENet host/join, lobby, teams, start
 autoload/online.gd      the matchmaker client: listing, Find Match, STUN + hole punching, optional account
@@ -117,10 +120,24 @@ to that team.
 
 ## Automated test modes
 
-Pass these after `--` on the command line:
+Pass these after `--` on the command line. Every run given switches is a test run: it exits with code 1 if a
+script error happened anywhere in it (or one of its own checks failed: `--cam-test`, `--keys-test`) and prints
+`TESTRUN failed`, 0 if it ran clean (`scripts/test/test_run.gd`).
+
+Pass the engine switch `--fixed-fps 30` before the `--` to step the game exactly as it plays: every frame is then
+one 1/30 s tick, however long it really takes, so a run goes as fast as the computer can and, with `--seed`,
+replays the same battle every time. `--timescale=N` is coarser: each tick covers N/30 s.
+
+Scenarios, AI-vs-AI battles and missions run offline: they take no port, so any number can run at once.
 
 ```
---aivai --timescale=8 --quit-after=900 --stats=60     AI vs AI, prints a state summary + behaviour counters
+--aivai --seed=3 --quit-after=900 --stats=60          AI vs AI, prints a state summary + behaviour counters
+--seed=N                                              the same map and the same fight every run (scenarios, --aivai,
+                                                      missions; a scenario without one gets a random seed)
+--listen [--port=N]                                   (scenarios, --aivai, missions) open the port as a host, for a
+                                                      client to join
+--test-port=N                                         (with --fixed-fps 30) take orders over a local socket: see
+                                                      "The test port"; 0 takes any free port
 --scenario=cover|lean|grenade|tank|drone|tunnel|heli|defense|air|support|showroom|trenches|poses|attack|solo
                                                       (attack: two squads and a gun team attack a walled yard;
                                                       solo: one squad against a stronger position)
@@ -235,7 +252,6 @@ FL_DEBUG_MISSION=1 (env)                              print the map's features (
 --test-fire[=ground]                                  every armed man, gunner and vehicle fires ahead (muzzle tests);
                                                       =ground puts the men's rounds into the ground 25 m out (impacts);
                                                       --test-fire-every=0.3 fires that often (default 0.09 s)
---seed=N                                              (with --aivai) the same map every run
 --dump-structs                                        list every built structure when --quit-after fires
 FL_DEBUG_TOWNS=1 (env)                                print each town and village: name, dump and the ground that takes it
 FL_DEBUG_HPA=1 (env)                                  benchmark hierarchical vs flat paths at start-up
@@ -256,7 +272,42 @@ the video, e.g. `godot --path . --write-movie out.avi --resolution 320x180 --qui
 (an MJPEG AVI with PCM sound; it runs at a fixed 60 fps, and the music keeps time with it).
 
 Example:
-`godot --headless --path . -- --aivai --timescale=8 --quit-after=600 --stats=120`
+`godot --headless --fixed-fps 30 --path . -- --aivai --seed=3 --quit-after=600 --stats=120`
+
+### The test port
+
+`--test-port=N` lets a test drive the game from outside: it listens on 127.0.0.1 (only, and only when asked;
+exported builds leave it out), one JSON object per line each way. Game time moves only when the test steps it,
+so the game must run with `--fixed-fps 30`; between commands it holds still. `--test-port=0` takes any free port
+and prints `TESTPORT listening 127.0.0.1:PORT`. The game quits when the test hangs up.
+
+The tests live in `tests/` (Node, no dependencies): `tests/lib/game.mjs` starts a headless game, connects and
+wraps the commands, and each `*.test.mjs` is a `node:test` file. Run them with `npm test` in `tests/`, with
+`GODOT` set to your Godot executable (`FL_TEST_VERBOSE=1` echoes the games' output). A test looks like this:
+
+```js
+const game = await Game.start();
+await game.load({ scenario: "attack", seed: 3, static: true });
+const { squads } = await game.query("squads", { team: 0 });
+await game.order(0, "assault", { squads: squads.map((s) => s.id), pos: v3(-2, -42) });
+await game.step(60);
+assert.ok((await game.stats()).counters.plan_assault >= 1);
+assert.equal(await game.close(), 0);
+```
+
+| command | fields | answers |
+| --- | --- | --- |
+| `hello` | | `version`, `net` (NET_VERSION), `tps`, `headless` |
+| `load` | one of `scenario`, `mission`, `battle: true` (AI vs AI); `seed`, `play`, `autoplay`, `static`, `verbose` | `t` (0), `seed`, and how many `soldiers`, `vehicles`, `structures`, `squads`; a fresh battle each time |
+| `step` | `seconds`, or `ticks` | `t`, `ticks` run, `winner` (-1 while it goes on) |
+| `order` | `team` (0 or 1: that side's AI, which owns a scenario's squads too) or `peer` (1: you, loaded with `play`); `t` and the order's fields as `World.execute_cmd` takes them, positions as `{"v3": [x, z]}` | `squads`, `vehicles`: how many of those listed the order reached |
+| `query` | `what`: `world`, `squads`, `soldiers`, `vehicles`, `structures`; `team`, `kind`, `ids` | the list (positions as `[x, z]`); structures leave out trees and floors unless asked for by `kind` |
+| `stats` | | `counters` (every `world.stat`), `report` (the after-action summary) |
+| `hash` | | `hash`: a fingerprint of the whole simulation; two runs from one seed agree on it tick for tick |
+| `errors` | | `count` and the `recent` script errors |
+| `quit` | | the game quits with its exit code |
+
+Every reply has `ok` (with `error` when false) and `errors`, the script errors counted so far.
 
 ### Host / client
 
@@ -278,6 +329,21 @@ lobby. With `--players=N` the host shows its lobby while it waits, so a windowed
 a busy machine a host can take ten seconds or more to start listening: start the clients once its port is bound
 (`netstat -ano -p UDP`), or ENet gives up connecting first. `FL_DEBUG_NET=1` prints each side of the lobby handshake
 (connecting, registering, a password asked for, turned away, the battle starting).
+
+Rejoining: `--drop-at=S` makes a client leave the battle S seconds in (as Leave Battle does) and press Rejoin
+`--rejoin-after` seconds later (default 5). Put the client alone on the other side to see the AI stand in and step
+down. The host's `--stats` shows the force's owner change (`own=`) and the counters `rejoined`, `rejoin_returned`
+(squads and vehicles handed back) and `rejoin_ai_stood_down`; the client's summary ends `team=... mine=N`, the men
+and vehicles it commands. `--no-drop-in` closes the battle to newcomers (a returning player still gets in):
+
+```
+godot --headless --path . -- --host --team=0 --players=2 --verbose --stats=15 --quit-after=110 --port=7936
+godot --headless --path . -- --join=127.0.0.1 --team=1 --drop-at=20 --rejoin-after=5 --quit-after=30 --port=7936
+```
+
+A crash and restart: test runs leave the player's `user://rejoin.cfg` alone, so give the client its own with
+`--rejoin-file=PATH`, kill it mid-battle, then start another with `--rejoin --rejoin-file=PATH`. The host still holds
+the dead link (ENet takes 45-90 s to notice) and lets it go when the new one registers.
 
 Co-commanders: bot clients make up their presence, pings and sketches and really send them. Start the one on
 the other side first, so its team request lands before the game starts:
@@ -461,6 +527,31 @@ keeps the compiled shaders, so later battles wait only for the map. To see where
 build with `--rendering-method gl_compatibility --rendering-driver opengl3_angle` (Godot's own ANGLE on Direct3D 11),
 or time `WebGL2RenderingContext`'s `linkProgram` / `getProgramParameter` in the page. A battle holds about 1.5 GB of
 the 2 GB the web build can have; the hierarchical pathfinding is the biggest single part (about 370 MB).
+
+### Error reports
+
+A release build reports its errors to the matchmaker (`scripts/autoload/errors.gd`, `matchmaker/src/errors.js`): a
+custom `Logger` catches every error the engine reports, with the GDScript call stack that led to it, and sends each
+distinct one (with a count) a few seconds later. A crash can't report itself, so the next launch reads the last
+run's log (`user://logs/`, rotated at every start) and sends the crash from there: the signal, the GDScript calls it
+died in, and the lines before it. The call stacks in a release build come from
+`debug/settings/gdscript/always_track_call_stacks` in `project.godot` (a few nanoseconds a call). A release build
+reports engine errors and `push_error()`; GDScript's own runtime errors (a null dereferenced, an index out of range)
+are silent there, the call just returning null, so they only show in development runs and CI.
+
+Only exported builds report (not `0.0.0-dev` ones). To try it from source, against a local matchmaker:
+
+```
+cd matchmaker && ERRORS_TOKEN=local PORT=8787 npm start
+godot --headless --path . -- --scenario=attack --quit-after=20 --report-errors --matchmaker=http://127.0.0.1:8787 --test-error=1
+godot --headless --path . -- --scenario=attack --report-errors --test-crash=1      # crashes; the next launch reports it
+curl -H "Authorization: Bearer local" http://127.0.0.1:8787/errors
+```
+
+`--test-error=S` causes an engine error and a `push_error` S seconds after start; `--test-crash=S` crashes the game.
+The matchmaker writes each new error to its log in full, then a line each time one passes another power of ten;
+`GET /errors` (with `ERRORS_TOKEN` as the bearer token) is the tally since it started, most common first. On the live
+service that's `railway logs --service matchmaker | grep -E "^(error|script|shader|crash) "`.
 
 ### Off-screen screenshots
 

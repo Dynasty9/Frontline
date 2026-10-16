@@ -8,7 +8,12 @@ extends Node
 ##   --join=IP [--password=PW]   join a host
 ##   --team=N              the side to play (-1 spectator); a client registers with it
 ##   --ready [--say=TEXT]  once in the lobby: press Ready (and say something)
+##   --drop-at=S [--rejoin-after=S2]   a client leaves the battle S seconds in, then
+##                         presses Rejoin Battle S2 (default 5) seconds later
+##   --rejoin              press Rejoin Battle (with --rejoin-file=PATH: the record a
+##                         run with the same --rejoin-file left, as after a crash)
 ##   --list                with --host: list the battle on the matchmaker
+##   --no-drop-in          with --host: nobody new may join once the battle runs
 ##   --find-match          press Find Match (joins a listed battle, or hosts one)
 ##   --login=EMAIL:PASSWORD [--signup=CALLSIGN]   sign in (or create the account) first
 ##   (and Online's own: --matchmaker=URL --account=PATH --no-stun)
@@ -44,6 +49,9 @@ func _ready() -> void:
 		if s.begins_with("--"):
 			var kv := s.substr(2).split("=", true, 1)
 			args[kv[0]] = kv[1] if kv.size() > 1 else "1"
+	if not args.is_empty():
+		# a test run: script errors fail it (its exit code; see TestRun)
+		TestRun.watch()
 	if args.has("offscreen") and DisplayServer.get_name() != "headless":
 		# renders for tooling (model sheets): the window starts minimized (the
 		# render copy's override.cfg) and is moved far off-screen before it's
@@ -55,7 +63,7 @@ func _ready() -> void:
 	if args.has("sound-dump"):
 		Sfx.dump(String(args["sound-dump"]))
 		await Music.dump(String(args["sound-dump"]))
-		get_tree().quit()
+		TestRun.quit(get_tree())
 		return
 	if args.has("insignia-dump") or args.has("insignia-sheet"):
 		if args.has("insignia-dump"):
@@ -63,7 +71,7 @@ func _ready() -> void:
 		if args.has("insignia-sheet"):
 			var only := PackedStringArray() if not args.has("only") else String(args.only).split(",")
 			Insignia.sheet(String(args["insignia-sheet"]), int(args.get("px", 96)), 16, only)
-		get_tree().quit()
+		TestRun.quit(get_tree())
 		return
 	if args.has("soldier-sheet"):
 		# a lineup of every kind of soldier, saved as an image (no menu, no game)
@@ -124,40 +132,27 @@ func _ready() -> void:
 	var port := int(args.get("port", Net.DEFAULT_PORT))
 	if args.has("login"):
 		await _test_login()
-	if args.has("scenario"):
-		# --play: command the Coalition side yourself instead of watching
-		Net.host_game(port, 0 if args.has("play") else -1)
-		Net.set_setting("scenario", String(args.scenario))
-		Net.set_setting("scenario_player", args.has("play"))
-		Net.set_setting("ai_fill", false)
-		Net.set_setting("debug_trucks", args.has("debug-trucks"))
-		Net.set_setting("debug", true)
-		Net.set_setting("debug_cover", args.has("debug-cover"))
-		Net.set_setting("static", args.has("static"))
-		Net.start_game()
-	elif args.has("aivai"):
-		Net.host_game(port, -1)
-		if args.has("seed"):
-			Net.set_setting("fixed_seed", int(args.seed))
-		Net.set_setting("verbose", args.has("verbose"))
-		Net.set_setting("debug_trucks", args.has("debug-trucks"))
-		Net.start_game()
-	elif args.has("mission") and not args.has("host"):
-		# --play: command the force yourself; otherwise the mission plays itself
-		var md := Missions.find(String(args.mission))
-		Net.host_game(port, int(md.get("side", 0)) if args.has("play") else -1)
-		Net.set_setting("mission", String(args.mission))
-		Net.set_setting("mission_autoplay", args.has("autoplay") or not args.has("play"))
-		if args.has("seed"):
-			Net.set_setting("fixed_seed", int(args.seed))
-		Net.set_setting("verbose", args.has("verbose"))
-		Net.start_game()
+	# --test-port=N: a test drives the game over a local socket (0: any free port)
+	if args.has("test-port"):
+		# (exported builds leave it out: export_presets.cfg)
+		var tps: Script = load("res://scripts/test/test_port.gd") if ResourceLoader.exists("res://scripts/test/test_port.gd") else null
+		if tps == null:
+			print("TESTPORT isn't in this build: run the game from source")
+			TestRun.fail()
+			TestRun.quit(get_tree())
+			return
+		var tp: Node = tps.new()
+		tp.set("main", self)
+		add_child(tp)
+	if args.has("scenario") or args.has("aivai") or (args.has("mission") and not args.has("host")):
+		start_local(args)
 	elif args.has("host"):
 		if args.has("list"):
 			await Online.host(port, int(args.get("team", 0)), false)
 		else:
 			Net.host_game(port, int(args.get("team", 0)))
-		var cfg := {"ai_allies": args.has("ai-allies"), "verbose": args.has("verbose"), "debug_trucks": args.has("debug-trucks")}
+		var cfg := {"ai_allies": args.has("ai-allies"), "verbose": args.has("verbose"), "debug_trucks": args.has("debug-trucks"),
+			"drop_in": not args.has("no-drop-in")}
 		if args.has("mission"):
 			cfg["mission"] = String(args.mission)
 			cfg["mission_autoplay"] = args.has("autoplay")
@@ -179,6 +174,8 @@ func _ready() -> void:
 		else:
 			menu._show_lobby()
 			Net.lobby_updated.connect(_maybe_autostart)
+	elif args.has("rejoin"):
+		menu._rejoin()
 	elif args.has("join") or args.has("find-match"):
 		if args.has("team"):
 			Net.join_team = int(args.team)
@@ -188,6 +185,39 @@ func _ready() -> void:
 			menu._find_match()
 		if args.has("ready") or args.has("say"):
 			Net.lobby_updated.connect(_lobby_test_actions)
+
+
+## A game on this machine alone, as tests run one: a --scenario, an AI-vs-AI
+## battle (--aivai) or a mission (--mission; on its own it plays itself, --play
+## to command it). `a` holds the switches without their dashes; the test port
+## passes its own. No network: it hosts offline, so it takes no port (--listen
+## opens --port as before, for a client to join). --seed fixes the map and the
+## fight, for a scenario as for the rest.
+func start_local(a: Dictionary) -> void:
+	var team := -1
+	if a.has("play"):
+		team = int(Missions.find(String(a.mission)).get("side", 0)) if a.has("mission") else 0
+	if a.has("listen"):
+		Net.host_game(int(a.get("port", Net.DEFAULT_PORT)), team)
+	else:
+		Net.host_offline(team)
+	if a.has("seed"):
+		Net.set_setting("fixed_seed", int(a.seed))
+	Net.set_setting("verbose", a.has("verbose"))
+	Net.set_setting("debug_trucks", a.has("debug-trucks"))
+	if a.has("scenario"):
+		# --play: command the Coalition side yourself instead of watching
+		Net.set_setting("scenario", String(a.scenario))
+		Net.set_setting("scenario_player", a.has("play"))
+		Net.set_setting("ai_fill", false)
+		Net.set_setting("debug", true)
+		Net.set_setting("debug_cover", a.has("debug-cover"))
+		Net.set_setting("static", a.has("static"))
+	elif a.has("mission"):
+		# --play: command the force yourself (--autoplay: the autopilot still gives orders)
+		Net.set_setting("mission", String(a.mission))
+		Net.set_setting("mission_autoplay", a.has("autoplay") or not a.has("play"))
+	Net.start_game()
 
 
 ## --login=EMAIL:PASSWORD (with --signup=CALLSIGN to create the account first).
@@ -344,14 +374,26 @@ func _on_game_start(s: Dictionary) -> void:
 		world.coop.start_bot()
 	# --keys-test: the key bindings end to end (matching, rebinding, the Controls page)
 	if args.has("keys-test") and world.cam:
-		var kt: Node = preload("res://scripts/game/keys_test.gd").new()
+		var kt: Node = preload("res://scripts/test/keys_test.gd").new()
 		kt.set("world", world)
 		world.add_child(kt)
 	# --cam-test: drive the camera through its controls and check each one
 	if args.has("cam-test") and world.cam:
-		var ct: Node = preload("res://scripts/game/cam_test.gd").new()
+		var ct: Node = preload("res://scripts/test/cam_test.gd").new()
 		ct.set("world", world)
 		world.add_child(ct)
+
+
+## (tests) How many men and vehicles we command.
+func _mine() -> int:
+	var n := 0
+	for s in world.soldiers:
+		if s.owner_peer == world.local_peer and s.life != Soldier.Life.DEAD:
+			n += 1
+	for v in world.vehicles:
+		if v.owner_peer == world.local_peer and not v.gone:
+			n += 1
+	return n
 
 
 var _fx_next := 2.0
@@ -407,6 +449,8 @@ func _fx_demo() -> void:
 func _on_game_ended(w: int) -> void:
 	if world == null:
 		return
+	if not world.srv:
+		Net.forget_rejoin()  # nothing to go back to
 	var reporting := world.local_team >= 0 and Online.battle_open()
 	if world.local_team >= 0:
 		Online.battle_end("win" if w == world.local_team else "loss", world.time)
@@ -419,7 +463,7 @@ func _on_game_ended(w: int) -> void:
 			# what the battle was worth to the account (tests of the rank)
 			var rep: Dictionary = await Online.battle_reported
 			print("BATTLE %s rank=%d xp=%d icon=%s" % [JSON.stringify(rep), Online.rank, Online.xp, Online.icon])
-		get_tree().quit()
+		TestRun.quit(get_tree())
 
 
 var _def_step := 0
@@ -616,7 +660,7 @@ func _model_sheet_tick() -> void:
 		img.get_region(r).save_png(String(args.get("sheet-dir", "user://")).path_join(keys[_ms_i] + ".png"))
 	_ms_i += 1
 	if _ms_i >= keys.size():
-		get_tree().quit()
+		TestRun.quit(get_tree())
 		return
 	menu.manual.open("model", keys[_ms_i], int(args.get("side", 0)))
 	if args.has("sheet-yaw"):
@@ -683,7 +727,7 @@ func _process(_dt: float) -> void:
 		if args.has("menu-shot") and Engine.get_frames_drawn() > 30 and Time.get_ticks_msec() > float(args.get("shot-at", 2.5)) * 1000.0 and not _shot_done:
 			_shot_done = true
 			get_viewport().get_texture().get_image().save_png(String(args["menu-shot"]))
-			get_tree().quit()
+			TestRun.quit(get_tree())
 		return
 	# the map is built and the battle under way: start the clock on it (not
 	# before: building the map holds up everything, a request included)
@@ -739,7 +783,7 @@ func _process(_dt: float) -> void:
 		if _shot_i >= count:
 			_shot_done = true
 			if not args.has("quit-after"):
-				get_tree().quit()
+				TestRun.quit(get_tree())
 	if args.has("perf-at"):
 		var pt := float(args["perf-at"])
 		if world.time >= pt and Engine.time_scale != 1.0:
@@ -802,7 +846,7 @@ func _process(_dt: float) -> void:
 			var img: Image = get_viewport().get_texture().get_image() if DisplayServer.get_name() != "headless" else null
 			if img:
 				img.save_png(String(args.get("perf-shot", "user://perf.png")))
-			get_tree().quit()
+			TestRun.quit(get_tree())
 	if args.has("fx-demo"):
 		_fx_demo()
 	if args.has("shot-demo"):
@@ -1041,6 +1085,12 @@ func _process(_dt: float) -> void:
 	var run_t := world.time
 	if not world.srv:
 		run_t = world.time - float(world.get_meta("world_at", CLIENT_WAIT))
+	if args.has("drop-at") and not world.srv and world.has_meta("world_at") and not has_meta("dropped") and run_t >= float(args["drop-at"]):
+		set_meta("dropped", true)
+		print("DROP at t=%.1f mine=%d" % [world.time, _mine()])
+		return_to_menu("")
+		get_tree().create_timer(float(args.get("rejoin-after", 5.0)), true, false, true).timeout.connect(menu._rejoin)
+		return
 	if _quit_at > 0.0 and run_t >= _quit_at:
 		_quit_at = -1.0
 		if args.has("dump-structs"):
@@ -1056,7 +1106,7 @@ func _process(_dt: float) -> void:
 				if e.team >= 0 and e.team != world.local_team:
 					enemy += 1
 			counts["ENEMY_KNOWN"] = enemy
-			print("CLIENT entities=%d %s time=%.1f team_info=%s waited=%.1f" % [world.entities.size(), str(counts), world.time, str(world.team_info[0].get("supply", -1)), float(world.get_meta("world_at", -1.0))])
+			print("CLIENT entities=%d %s time=%.1f team_info=%s waited=%.1f team=%d mine=%d" % [world.entities.size(), str(counts), world.time, str(world.team_info[0].get("supply", -1)), float(world.get_meta("world_at", -1.0)), world.local_team, _mine()])
 		if not world.coop.peers.is_empty() or int(world.coop.stats.get("sent", 0)) > 0:
 			print("COOP ", world.coop.summary())
-		get_tree().quit()
+		TestRun.quit(get_tree())

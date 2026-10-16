@@ -151,6 +151,7 @@ func _ready() -> void:
 	Net.game_start.connect(func(_s): _changed())
 	Net.player_left.connect(func(_i, _t, _n): _changed())
 	Net.player_joined.connect(func(_i, _t, _n): _changed())
+	Net.player_rejoined.connect(func(_i, _o, _t, _n): _changed())
 
 
 ## The battle we host changed: tell the matchmaker and the LAN soon.
@@ -878,7 +879,7 @@ func join_listed(id: String, still_wanted := Callable()) -> Dictionary:
 	await get_tree().create_timer(0.3, true, false, true).timeout
 	if still_wanted.is_valid() and not still_wanted.call():
 		return gave_up
-	var err := Net.join_game(String(c.get("address", "")), int(c.get("port", 0)), local)
+	var err := Net.join_game(String(c.get("address", "")), int(c.get("port", 0)), local, id)
 	if OS.has_environment("FL_DEBUG_ONLINE"):
 		print("ONLINE joining %s:%d from port %d (stun %s:%d) via %s" % [String(c.get("address", "")), int(c.get("port", 0)), local, me.get("ip", ""), int(me.get("port", 0)), String(c.get("via", ""))])
 	return {"err": err, "error": "" if err == OK else "Could not connect (error %d)." % err, "via": String(c.get("via", ""))}

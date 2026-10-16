@@ -62,6 +62,8 @@ JSON in, JSON out. Errors are `{"error": "..."}` with a 4xx/5xx status.
 | `GET /me/battles?limit=20&before=TIME` | Your battles, newest first, headline numbers only: `{battles, more}`. `before` is the last one's `played_at`. |
 | `GET /me/battles/:id` | One battle, with your figures (`me`) and its after-action report (`report`). |
 | `GET /me/career` | The totals of every battle on your record: battles, victories, kills, losses, average and best rating, time. |
+| `POST /errors` `{game_version, os, gpu, driver, session, reports: [{kind, message, condition, where, context, backtrace, log, count}]}` | Error reports from a player's game (`kind`: `error`, `script`, `shader` or `crash`; up to 24 at once). `{ok, accepted}`. |
+| `GET /errors` | The error tally since the service started, most common first: each error once, with its count, sessions, and the versions, systems, GPUs and drivers it was seen on. Needs `Authorization: Bearer <ERRORS_TOKEN>`; without `ERRORS_TOKEN` set it doesn't exist. |
 
 A user, wherever one is returned (the session's `user`, `/me`, a battle's end), is
 `{id, email, callsign, icon, xp, rank, rank_xp, next_xp, battles, wins}`: the insignia worn (`s01` to begin with),
@@ -84,6 +86,21 @@ The battle calls are limited to 20 a minute per address, sign-in and renaming to
 A lobby whose host stops checking in for 45 s is dropped, and an unknown lobby id on any host call returns 404,
 which the game answers by listing again (so a restart of this service costs nothing but a few seconds).
 Everything is in memory, so the service must run as a single instance.
+
+## Error reports
+
+Release builds of the game send their errors here (`scripts/autoload/errors.gd`): engine errors with the GDScript
+call stack that led to them, shader errors, and crashes (sent by the next launch, from the engine's log). The
+service keeps a tally in memory, one entry per distinct error (the same place, the same call, the same message with
+its numbers taken out), and writes each new one to the log in full, then a line each time its count passes another
+power of ten; the log is what outlives a redeploy. Reports carry no account and the game strips paths, addresses and
+emails before sending; the service doesn't record where one came from. To read the tally, give the service a secret
+and ask with it:
+
+```bash
+railway variable set --service matchmaker ERRORS_TOKEN=$(openssl rand -hex 24)
+curl -H "Authorization: Bearer $ERRORS_TOKEN" https://matchmaker-production-a53e.up.railway.app/errors
+```
 
 ## Running it locally
 

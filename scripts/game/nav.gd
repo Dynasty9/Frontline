@@ -181,24 +181,23 @@ func find_boat_path(from: Vector3, to: Vector3) -> PackedVector3Array:
 
 ## Builds the abstract graphs once the map is laid out.
 func finalize() -> void:
-	hnav_i.build()
-	hnav_v.build()
+	HNav.build_all([hnav_i, hnav_v])
 
 
-## Re-links clusters whose walls changed, within a small time budget per tick
-## (a road being laid or a village flattened dirties dozens at once).
-func update_hier(budget_usec := 1200) -> void:
-	var t0 := Time.get_ticks_usec()
-	var turn := 0
-	while Time.get_ticks_usec() - t0 < budget_usec:
-		var h: HNav = hnav_i if turn % 2 == 0 else hnav_v
-		var other: HNav = hnav_v if turn % 2 == 0 else hnav_i
-		if h.dirty.is_empty():
-			if other.dirty.is_empty():
-				return
+## Re-links clusters whose walls changed, a few a tick, infantry's first (a road
+## being laid or a village flattened dirties dozens at once). Counted, not
+## timed: if how much gets re-linked each tick hung on how fast this computer
+## is, one seed would route men differently from one run to the next. (It was
+## a 1.2 ms budget, but one cluster takes several ms in GDScript, so in effect
+## it was one a tick, now and then two.)
+func update_hier(clusters := 1) -> void:
+	for i in clusters:
+		if not hnav_i.dirty.is_empty():
+			hnav_i.update(1)
+		elif not hnav_v.dirty.is_empty():
+			hnav_v.update(1)
 		else:
-			h.update(1)
-		turn += 1
+			return
 
 
 func cell_of(p: Vector3) -> Vector2i:

@@ -22,9 +22,12 @@ scripts/game/missions.gd       the missions (content); mission_director.gd runs 
 scripts/game/co_command.gd     co-commanders: each player's view, cursor and plans, pings, sketches (relayed to their side only)
 scripts/game/terrain.gd, nav.gd, hnav.gd   ground kinds, cover map, pathfinding grids (HPA*)
 scripts/ui/                    HUD, minimap, Field Manual, menus
+scripts/test/                  test runs: their exit code (test_run.gd), the test port (test_port.gd), the camera and key tests
+tests/                         tests that drive the game through its test port (Node, no dependencies; lib/game.mjs the client)
 scripts/autoload/online.gd     the matchmaker client: battle list, Find Match, hole punching, LAN beacons, optional account
 scripts/autoload/links.gd      frontline:// links from the website: registering the scheme, handing a link to a running copy
 scripts/autoload/updater.gd    the game's version, and updating itself to the latest release
+scripts/autoload/errors.gd     error reports from release builds (and crashes, at the next launch) to the matchmaker
 changelog/                     one entry per change, filed under its version at release; CHANGELOG.md is generated
 matchmaker/                    the matchmaking service (Node, no runtime dependencies; deployed on Railway, accounts via Supabase)
 matchmaker/supabase/migrations/   the accounts database's schema, one migration per change; database.yml applies new ones as they merge
@@ -45,23 +48,24 @@ Run every command from the repository root. `godot` means your Godot 4.7.x execu
    ```
    godot --headless --path . --import 2>&1 | grep -E "SCRIPT ERROR|Parse Error"
    ```
-2. **The game runs.** Run the scenarios near your change and look for `SCRIPT ERROR` in the output. Every run needs its own `--port`:
+2. **The game runs.** Run the scenarios near your change. A test run exits with code 1 if a script error happened anywhere in it (it prints `TESTRUN failed` and the errors are in the output as `SCRIPT ERROR`), 0 if it ran clean. `--fixed-fps 30` (an engine switch, before the `--`) steps the game exactly as it plays, one 1/30 s tick a frame, as fast as the computer goes; `--seed` makes the run repeat itself exactly. Runs on their own take no port, so any number can run at once:
    ```
-   godot --headless --path . -- --scenario=attack --stats=60 --quit-after=60 --port=7901
-   godot --headless --path . -- --aivai --seed=3 --timescale=5 --stats=300 --quit-after=1200 --port=7902
+   godot --headless --fixed-fps 30 --path . -- --scenario=attack --seed=3 --stats=60 --quit-after=60
+   godot --headless --fixed-fps 30 --path . -- --aivai --seed=3 --stats=300 --quit-after=600
    ```
-   Scenarios include `attack`, `breach`, `trenches`, `tank`, `tactics`, `naval`, `sling`, `roster`, `gdrill` and `fire`; [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) has the full list. Missions play themselves headless: `--mission=bridgehead --verbose --quit-on-win --timescale=4` prints the radio traffic and objectives as they happen, and ends with `Mission accomplished` or `Mission failed`. `--stats=N` prints a state summary every N seconds and, at the end, the behaviour counters (`world.stat("key")`). Those counters are the cheapest way to confirm a behaviour actually fired: add one, run, grep for it.
-3. **Multiplayer**, if you touched anything replicated: run a host and a client (see "Host / client" in DEVELOPMENT.md). The client prints `CLIENT entities=...` when it quits. If you touched matchmaking, run `npm test` in `matchmaker/` and the Find Match pair under "Matchmaker" in DEVELOPMENT.md. Bump `Net.NET_VERSION` when host and client stop understanding each other, so the matchmaker won't pair old and new builds.
-4. **Visuals**: render off-screen and look at the image rather than guessing. Use `--screenshot=out.png --shot-at=SECONDS`, frame the shot with `--focus=X,Z --zoom=M --pitch=DEG --cam-yaw=RAD`, and add `--nohud` to hide the interface. `--manual=category,key,side` opens a Field Manual page.
+   A small scenario runs several times faster than real time; a full AI-vs-AI battle about at real time. `--timescale=N` gets through a battle faster, but coarser: every tick covers N/30 s instead of 1/30, so it isn't the game as played (fine for a look at the late game, not for judging behaviour). Scenarios include `attack`, `breach`, `trenches`, `tank`, `tactics`, `naval`, `sling`, `roster`, `gdrill` and `fire`; [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) has the full list. Missions play themselves headless: `--mission=bridgehead --verbose --quit-on-win --timescale=4` prints the radio traffic and objectives as they happen, and ends with `Mission accomplished` or `Mission failed`. `--stats=N` prints a state summary every N seconds and, at the end, the behaviour counters (`world.stat("key")`). Those counters are the cheapest way to confirm a behaviour actually fired: add one, run, grep for it.
+3. **Tests.** `tests/` drives the game through its test port (`--test-port`): load a scenario, mission or battle with a seed, give orders as a commander would, step time, ask what happened. Run them with `npm test` in `tests/` (set `GODOT` to your Godot executable). When you add or fix a behaviour, add a test that shows it: [tests/attack.test.mjs](tests/attack.test.mjs) is the pattern, and "The test port" in DEVELOPMENT.md lists the commands. `tests/determinism.test.mjs` catches gameplay that has escaped the seed.
+4. **Multiplayer**, if you touched anything replicated: run a host and a client (see "Host / client" in DEVELOPMENT.md). The client prints `CLIENT entities=...` when it quits. If you touched matchmaking, run `npm test` in `matchmaker/` and the Find Match pair under "Matchmaker" in DEVELOPMENT.md. Bump `Net.NET_VERSION` when host and client stop understanding each other, so the matchmaker won't pair old and new builds.
+5. **Visuals**: render off-screen and look at the image rather than guessing. Use `--screenshot=out.png --shot-at=SECONDS`, frame the shot with `--focus=X,Z --zoom=M --pitch=DEG --cam-yaw=RAD`, and add `--nohud` to hide the interface. `--manual=category,key,side` opens a Field Manual page.
 
-CI (`.github/workflows/check.yml`) runs steps 1 and 2 on every push and pull request. `web.yml` and `matchmaker.yml` check the website and the matchmaker when they change: lint (oxlint), formatting (Prettier), tests, and for the website types, the build and the Storybook stories. Before pushing a change there, run `npm run lint`, `npm run format:check` and `npm test` in that directory (`npm run format` fixes the formatting). Merging never releases: `.github/workflows/release.yml` publishes a version when someone runs it (Actions > Release > Run workflow), shipping everything merged since the last one, and test-exports pull requests that change the export setup.
+CI (`.github/workflows/check.yml`) runs steps 1 to 3 on every push and pull request. `web.yml` and `matchmaker.yml` check the website and the matchmaker when they change: lint (oxlint), formatting (Prettier), tests, and for the website types, the build and the Storybook stories. Before pushing a change there, run `npm run lint`, `npm run format:check` and `npm test` in that directory (`npm run format` fixes the formatting). Merging never releases: `.github/workflows/release.yml` publishes a version when someone runs it (Actions > Release > Run workflow), shipping everything merged since the last one, and test-exports pull requests that change the export setup.
 
 ## How the code is written
 
 - **Tabs**, and explicit types wherever the type isn't obvious from the right-hand side. GDScript can't infer through untyped values (`var x := some_dict.get(k)` and `var y := untyped_call()` are parse errors), so write `var x: float = ...`.
 - **Comments explain why, in plain language**: what a real soldier, crew or commander does, and how the code models it. Match the voice and density of the code around you. Don't leave debug prints behind; gate optional diagnostics behind an environment variable (`if OS.has_environment("FL_DEBUG_X"):`).
 - **The server is authoritative.** Gameplay runs only on the host (`world.srv`). Anything clients must see has to be replicated: per-tick state through each entity's `write_state` / `read_state`, one-off property changes through `world.push_props`, effects through `world.fx_event`, and static map data (roads, water) through RPCs from `world._client_ready`.
-- **Determinism.** Use `world.rng` for gameplay randomness, so a seed reproduces a map and a fight. Map data is either replicated as entities or sent as a few shapes that every peer rasterizes identically (see `water.gd`).
+- **Determinism.** Use `world.rng` (or a generator seeded from it) for gameplay randomness, so a seed reproduces a map and a fight. `randf()`, `Array.shuffle()` and `pick_random()` draw on Godot's global generator, which no seed reaches, and gameplay must never hang on the wall clock (`Time.*`) or the frame rate. Map data is either replicated as entities or sent as a few shapes that every peer rasterizes identically (see `water.gd`).
 - **Map size comes from `MapDims`** (`scripts/game/map_dims.gd`). Never hard-code the map's dimensions.
 - **Performance matters.** Soldiers and vehicles are ticked in GDScript: avoid per-frame allocations in hot paths, use the spatial queries (`world.units_near`, `soldiers_near`, `structures_near`) rather than scanning every entity, and throttle expensive decisions with timers.
 
@@ -71,6 +75,8 @@ CI (`.github/workflows/check.yml`) runs steps 1 and 2 on every push and pull req
 - **A new `class_name`** isn't visible to other scripts until the project is re-imported (`godot --headless --path . --import`). Other scripts referencing it will show bogus errors until then.
 - **Packed arrays are value types.** A `PackedFloat32Array` passed into a function is copied, so mutate member arrays in place instead.
 - **Entities get freed.** Soldiers and vehicles can be despawned at any time. Check `is_instance_valid()` before touching a stored reference. `world.despawn` removes a soldier from his squad.
+- **Release builds swallow GDScript's own runtime errors.** In an exported build a null dereference or an out-of-range index prints nothing: the call just returns null and play goes on. Only engine errors and `push_error` reach the players' error reports (`autoload/errors.gd`), so script bugs have to be caught in dev runs and CI.
+- **Worker threads** (`WorkerThreadPool`) pay off when each task works on objects of its own: many threads calling into one shared object (all reading the same `AStarGrid2D`, say) ran slower than a single thread. Never resize an Array or add to a Dictionary from a worker (filling pre-sized slots is fine), and give each worker its own `RandomNumberGenerator`, since the global `randf()` isn't thread-safe. Put anything gameplay depends on back together in a fixed order, so a seed still gives the same result (see `HNav.build_all`).
 - **Ground and water shader colours are linear**, not sRGB. A colour that looks right in a picker comes out far too bright on the ground.
 - **The terrain is flat** (y = 0, plus a deformation height field for craters, trenches and riverbeds). Buildings, trenches and line of sight all assume it, so adding hills is a large change, not a tweak.
 - **The browser build draws with the Compatibility renderer** (WebGL 2), not Forward+. Per-object shader values go
@@ -81,7 +87,7 @@ CI (`.github/workflows/check.yml`) runs steps 1 and 2 on every push and pull req
 - **Water** has two ground kinds: `TerrainMap.WATER` (deep: impassable on foot) and `SHALLOW` (wadable). Boats path on their own grid (`Nav.find_boat_path`), and separate bodies of water are labelled (`Nav.water_body`).
 - **Shader instance uniforms** come from a fixed buffer (`rendering/limits/global_shader_variables/buffer_size` in `project.godot`). If a bigger map spawns many more objects, raise it.
 - **The host is busy for several seconds** generating the map, so ENet peers are given long timeouts (`net.gd`). Don't shorten them.
-- **Headless test runs** each need a distinct `--port`. A running game holds the default port.
+- **Ports**: scenarios, `--aivai` and missions run offline and take none (`--listen` opens `--port` as before). Each `--host` and `--join` pair needs its own `--port`; a running game holds the default one.
 - **Test runs use the live matchmaker** unless given `--matchmaker=URL`, and only the menu's Host a Battle (unless Unlisted) and Find Match (or `--host --list`) list a battle there. Single-player and scenario games never do.
 - **The matchmaker keeps everything in memory**, so it runs as a single instance; the game re-lists its battle if the service restarts.
 
