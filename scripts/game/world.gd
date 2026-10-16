@@ -60,6 +60,7 @@ var winner := -1
 var rng := RandomNumberGenerator.new()
 var focused := false
 var director: Director
+var fog: FogView  # the fog of war drawn over the ground and the minimap (clients and a host with a view)
 var atmo: Atmosphere
 var view_team := -1  # whose fog of war we render (spectators can switch)
 
@@ -130,6 +131,10 @@ func _ready() -> void:
 		director.name = "Director"
 		director.world = self
 		add_child(director)
+		fog = FogView.new()
+		fog.name = "FogView"
+		fog.world = self
+		add_child(fog)
 		input = PlayerInput.new()
 		input.name = "Input"
 		input.world = self

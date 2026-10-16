@@ -52,6 +52,7 @@ When you're ready, choose **Play vs AI** and pick a side. You start at your base
 4. **Hold ground.** Press **B** and click an area. The squad spreads into the best cover there and stays put.
 5. **Build.** Select your engineers and use the build menu at the bottom of the screen. Barracks train more squads, a factory builds vehicles, and new FOBs extend your reach.
 6. **Call support.** The buttons above the minimap call in mortars, artillery and air strikes.
+7. **Get eyes on.** Ground your side can't see right now is drawn darker, on the battlefield and the minimap. Watchtowers, drones from the helipad and recon flights (on the support panel) see further, and every aircraft you call in spots for you as it flies over. Whatever they spot stays on the map as a last-known position.
 
 Press **F1** at any time for help, and **F4** for the Field Manual.
 

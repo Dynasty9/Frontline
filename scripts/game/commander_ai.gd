@@ -18,6 +18,7 @@ var defense_t := 0.0
 var obstacle_t := 240.0
 var next_vehicle := ""
 var _back_t := 0.0
+var _recon_t := 150.0
 
 
 func _init(w: World, t: int) -> void:
@@ -37,6 +38,7 @@ func tick(dt: float) -> void:
 		return
 	var sqs := _my_squads()
 	_support()
+	_recon()
 	_economy(sqs)
 	_production(sqs)
 	_military(sqs)
@@ -78,14 +80,65 @@ func _support() -> void:
 		_cmd({"t": "support", "kind": kind, "pos": best, "dir": dir})
 
 
-## Any off-map support that is ready and affordable ("" if none).
+## Any off-map fire support that is ready and affordable ("" if none).
 func _support_kind() -> String:
 	var opts := Defs.supports_for(team)
 	opts.shuffle()
 	for k in opts:
+		if Defs.SUPPORT[k].get("recon", false):
+			continue  # (recon flights are for finding the enemy: see _recon)
 		if world.rules.support_left(team, k) <= 0.0 and world.rules.supply_total(team) >= int(Defs.SUPPORT[k].cost) + 40:
 			return k
 	return ""
+
+
+## When the picture is thin - an attack about to go in on ground it can't see,
+## or next to nothing of the enemy in sight - the AI sends a recon flight over:
+## a pass along its axis of advance, or a drone to watch the objective. What
+## it sees goes on the danger maps and to the guns like anything else spotted.
+## Sparingly: at most one every two and a half minutes, and only with supply to
+## spare (the men and the next FOB come first).
+func _recon() -> void:
+	var t := world.time
+	if t < _recon_t:
+		return
+	_recon_t = t + 20.0
+	var kinds := []
+	for k in Defs.supports_for(team):
+		if Defs.SUPPORT[k].get("recon", false) and world.rules.support_left(team, k) <= 0.0 and world.rules.supply_total(team) >= int(Defs.SUPPORT[k].cost) + 200 + _fob_reserve():
+			kinds.append(k)
+	var front := _front_fob()
+	if kinds.is_empty() or front == null:
+		return
+	var tgt := front.position + _enemy_dir() * 170.0
+	var seen := 0
+	if attack_target and not attack_target.gone:
+		if world.time - last_wave_t > 60.0 and _idle_count() < 2:
+			return  # no attack in hand: no need to look yet
+		tgt = attack_target.position
+		for s in world.soldiers_near(tgt, 70.0):
+			if s.team != team and s.team >= 0 and s.life == Soldier.Life.ALIVE and s.visible_to_team(team):
+				seen += 1
+	else:
+		for s in world.soldiers:
+			if s.team != team and s.team >= 0 and s.life == Soldier.Life.ALIVE and s.visible_to_team(team):
+				seen += 1
+				if seen >= 6:
+					break
+	if seen >= (4 if attack_target else 6):
+		return  # it can see well enough
+	var k: String = kinds[rng.randi() % kinds.size()]
+	_cmd({"t": "support", "kind": k, "pos": tgt, "dir": Defs.flat(tgt - front.position).normalized()})
+	world.stat("ai_recon")
+	_recon_t = t + 150.0
+
+
+func _idle_count() -> int:
+	var n := 0
+	for sid in roles:
+		if String(roles[sid].get("role", "")) in ["idle", "attack"]:
+			n += 1
+	return n
 
 
 var _helped := {}  # plan -> when we last answered its call for help
@@ -671,7 +724,7 @@ func _production(sqs: Array) -> void:
 			want = _air_pick("supply")
 		elif n.attack_heli < 1 + int(world.time / 900.0):
 			want = _air_pick("attack_heli")
-		elif n.uav < 1 and world.time > 600.0:
+		elif n.uav < 1 and world.time > 360.0:
 			want = _air_pick("uav")
 		elif n.lift < 1 and world.time > 500.0:
 			want = _air_pick("lift_heli")

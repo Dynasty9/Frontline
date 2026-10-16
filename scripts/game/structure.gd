@@ -58,6 +58,7 @@ var rally := Vector3.INF
 var prod_status := ""
 # special buildings
 var gunner: Soldier = null
+var manned := false  # a watchtower with a lookout up it (sees further: Vision)
 var inside: Array = []
 var inside_n := 0
 var bearers: Array = []
@@ -1492,6 +1493,12 @@ func _mount_tick() -> void:
 		if best:
 			best.start_man(self)
 			gunner = best
+	var up: bool = skind == "watchtower" and gunner != null and gunner.task_phase == 2
+	if up != manned:
+		manned = up
+		net_dirty = true
+		if up:
+			world.stat("tower_manned")
 
 
 func _mine_tick() -> void:
@@ -1519,7 +1526,7 @@ func write_state(b: StreamPeerBuffer) -> void:
 	b.put_8(cap_team)
 	var private: bool = world.writing_view >= 0 and world.writing_view != team and team >= 0
 	b.put_u16(0 if private else int(clampf(supply, 0.0, 65535.0)))
-	b.put_u8((1 if built else 0) | (2 if wrecked else 0) | (4 if prod_status == "cap" else 0) | (8 if door_shut else 0) | (16 if _door_kicked else 0))
+	b.put_u8((1 if built else 0) | (2 if wrecked else 0) | (4 if prod_status == "cap" else 0) | (8 if door_shut else 0) | (16 if _door_kicked else 0) | (32 if manned else 0))
 	b.put_u8(vis_mask)
 	b.put_u8(seen_mask)
 	b.put_u8(0 if private else int(clampf(queue_frac, 0.0, 1.0) * 255.0))
@@ -1542,6 +1549,7 @@ func read_state(b: StreamPeerBuffer) -> void:
 	built = (f & 1) != 0
 	wrecked = (f & 2) != 0
 	prod_status = "cap" if (f & 4) != 0 else ""
+	manned = (f & 32) != 0
 	if door_shut and (f & 8) == 0:
 		open_door(null, (f & 16) != 0)
 	if t != team:

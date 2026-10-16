@@ -57,7 +57,7 @@ func minimap_right() -> float:
 
 
 ## How the map is drawn (each toggled from the layer column by the minimap).
-const LAYER_KEYS := {"units": "lyr_units", "orders": "lyr_orders", "intel": "lyr_intel", "ranges": "lyr_ranges", "labels": "labels"}
+const LAYER_KEYS := {"units": "lyr_units", "orders": "lyr_orders", "intel": "lyr_intel", "vision": "lyr_vision", "ranges": "lyr_ranges", "labels": "labels"}
 const PHASE_NAMES := {"plan": "Planning", "move": "Moving into position", "fix": "Fixing the enemy", "assault": "Assault", "fallback": "Falling back"}
 
 var world: World
@@ -474,7 +474,7 @@ func set_map_layer(key: String, on: bool) -> void:
 	Settings.v[LAYER_KEYS[key]] = on
 	layers_ui.queue_redraw()
 	Sfx.ui("click")
-	flash("%s %s" % [{"units": "Unit symbols", "orders": "Orders", "intel": "Intelligence", "ranges": "Weapon ranges", "labels": "Soldier labels"}[key], "on" if on else "off"])
+	flash("%s %s" % [{"units": "Unit symbols", "orders": "Orders", "intel": "Intelligence", "vision": "Fog of war", "ranges": "Weapon ranges", "labels": "Soldier labels"}[key], "on" if on else "off"])
 
 
 func toggle_tactical() -> void:
@@ -887,7 +887,7 @@ func _update_support() -> void:
 		if b == null:
 			continue
 		var sd: Dictionary = Defs.SUPPORT[k]
-		var left := float(sup.get(k, 300.0)) - world.time
+		var left := float(sup.get(k, Defs.support_from(k))) - world.time
 		b.disabled = left > 0.0
 		var hot := "  [Z]" if first and left <= 0.0 else ""
 		if left <= 0.0:
@@ -935,7 +935,7 @@ func mode_text() -> String:
 	if inp.ability.begins_with("support:") or inp.ability.begins_with("demo:"):
 		var k := inp.ability.get_slice(":", 1)
 		var shp := String(Defs.SUPPORT.get(k, {}).get("shape", "circle"))
-		return "%s: click the target%s  -  right-click cancels" % [String(Defs.SUPPORT.get(k, {}).get("name", k)), " and drag to set the direction it runs in" if shp in ["line", "strafe"] else ""]
+		return "%s: click the target%s  -  right-click cancels" % [String(Defs.SUPPORT.get(k, {}).get("name", k)), " and drag to set the direction it runs in" if shp in ["line", "strafe", "sweep"] else ""]
 	if inp.place_kind != "":
 		return "Placing %s  -  left-click to build, drag for a line, R / Shift+wheel rotates, right-click cancels" % Defs.BUILDINGS[inp.place_kind].name
 	if inp.order_mode == "assault":

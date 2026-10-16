@@ -280,6 +280,22 @@ func scenario(sname: String) -> void:
 			r.support_ready = [{"airstrike": 0.0, "a10": 0.0, "wipeout": 0.0, "ac130": 0.0, "blackfish": 0.0, "artillery": 0.0}, {"barrage": 0.0, "mortars": 0.0}]
 			r.call_support(-1, 0, "airstrike", Vector3(0, 0, -30))
 			r.call_support(-2, 1, "barrage", Vector3(30, 0, 30))
+		"recon":
+			# getting eyes on: a Coalition squad at a manned watchtower, three
+			# Rebel cells out beyond its sight (the west one inside the tower's
+			# reach only with a lookout up it), a recon pass across them, and a
+			# Rebel spotter plane and drone over the Coalition; FL_DEBUG_VISION=1
+			# prints what each side sees as it goes
+			_spawn("watchtower", Vector3(-40, 0, 64), 0.0, 0, {"built": true})
+			r.spawn_squad("rifle_squad", 0, a, Vector3(-36, 0, 60))
+			r.spawn_squad("rifle_squad", 0, a, Vector3(10, 0, 70))
+			for p in [Vector3(-60, 0, -40), Vector3(0, 0, -50), Vector3(60, 0, -40)]:
+				r.spawn_squad("fighter_cell", 1, b, p)
+			world.spawn("vehicle", {"vkind": "technical", "team": 1, "owner": b, "pos": Vector3(30, 0, -70), "yaw": PI}).order_stop()
+			r.support_ready = [{"gryphon_recon": 0.0, "greyhawk_watch": 0.0}, {"caesar_spotter": 0.0, "fenghuang_watch": 0.0}]
+			r.call_support(-1, 0, "gryphon_recon", Vector3(0, 0, -45), Vector3(1, 0, 0))
+			r.call_support(-2, 1, "fenghuang_watch", Vector3(0, 0, 60))
+			r.call_support(-2, 1, "caesar_spotter", Vector3(0, 0, 40))
 		"showroom":
 			var kinds := ["tank", "old_tank", "technical", "truck"]
 			for i in kinds.size():
