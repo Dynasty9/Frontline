@@ -19,7 +19,6 @@ var _tab_btns := {}
 
 func _ready() -> void:
 	theme = UiKit.theme()
-	custom_minimum_size = Vector2(700, 600)
 	var vb := VBoxContainer.new()
 	vb.add_theme_constant_override("separation", 10)
 	add_child(vb)
@@ -70,7 +69,7 @@ func _ready() -> void:
 	vb.add_child(sep)
 	var stack := Control.new()
 	stack.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	stack.custom_minimum_size = Vector2(0, 420)
+	stack.custom_minimum_size = Vector2(0, 200)  # the pages scroll when the window is short
 	vb.add_child(stack)
 	_pages["graphics"] = _page(stack, [
 		["head", "", "Detail"],
@@ -113,7 +112,8 @@ func _ready() -> void:
 		["option", "perf", "Performance overlay (F3)", Settings.LABELS.perf, "From a simple FPS counter to a full breakdown of the frame."],
 	])
 	_pages["interface"] = _page(stack, [
-		["slider", "ui_scale", "Interface scale", [0.8, 1.5, 0.05], ""],
+		["slider", "ui_scale", "Interface scale", [Settings.UI_SCALE_MIN, 2.0, 0.05], "How big the interface is drawn. At 100% it grows with the window, so it looks the same at any resolution; text and symbols stay sharp at any size. The top of the slider is the largest that still fits this window: a bigger window, or fullscreen, goes further."],
+		["note", "ui_note", "", null, ""],
 		["check", "labels", "Unit activity labels", null, "Close up: each soldier's name and what he's doing. Further out: a status icon per man."],
 		["check", "bubbles", "Speech bubbles", null, "Shouts, radio calls and the men's banter."],
 		["check", "cover_preview", "Cover preview", null, "Pips under the cursor showing the cover each man will take (green heavy, yellow light, red exposed)."],
@@ -133,6 +133,9 @@ func _ready() -> void:
 	_show_tab("graphics")
 	_sync()
 	Settings.changed.connect(_sync)
+	# a new window size changes how far the interface can grow
+	get_viewport().size_changed.connect(_sync)
+	visibility_changed.connect(func(): if visible: _sync())
 
 
 func _page(parent: Control, rows: Array) -> Control:
@@ -155,6 +158,17 @@ func _page(parent: Control, rows: Array) -> Control:
 			hl.vertical_alignment = VERTICAL_ALIGNMENT_BOTTOM
 			g.add_child(hl)
 			g.add_child(Control.new())
+			continue
+		if kind == "note":
+			# a quiet line under the setting above it (shown when it has something to say)
+			var gap := Control.new()
+			g.add_child(gap)
+			var nl := UiKit.label("", 12, UiKit.DIM)
+			nl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+			nl.custom_minimum_size = Vector2(220, 0)
+			nl.set_meta("gap", gap)
+			g.add_child(nl)
+			_rows[key] = nl
 			continue
 		var lbl := UiKit.label(r[2], 14)
 		lbl.custom_minimum_size = Vector2(250, 0)
@@ -186,7 +200,15 @@ func _page(parent: Control, rows: Array) -> Control:
 				vl.custom_minimum_size = Vector2(46, 0)
 				var deg: bool = r.size() > 5 and r[5] == "deg"
 				hb.set_meta("deg", deg)
-				sl.value_changed.connect(func(v): vl.text = ("%d°" % int(v)) if deg else "%d%%" % int(round(v * 100.0)); _apply(key, v))
+				sl.value_changed.connect(func(v):
+					vl.text = ("%d°" % int(v)) if deg else "%d%%" % int(round(v * 100.0))
+					if not sl.has_meta("held"):
+						_apply(key, v))
+				if key == "ui_scale":
+					# this panel is redrawn at the new scale too: apply it when the
+					# slider is let go, or it would slide out from under the mouse
+					sl.drag_started.connect(func(): sl.set_meta("held", true))
+					sl.drag_ended.connect(func(_changed: bool): sl.remove_meta("held"); _apply(key, sl.value))
 				hb.add_child(sl)
 				hb.add_child(vl)
 				hb.set_meta("slider", sl)
@@ -230,6 +252,15 @@ func _sync() -> void:
 			(c as CheckButton).button_pressed = bool(v)
 		elif c.has_meta("slider"):
 			var sl: HSlider = c.get_meta("slider")
+			if key == "ui_scale":
+				sl.max_value = Settings.ui_scale_max()  # as far as this window allows
 			sl.value = float(v)
-			(c.get_meta("val") as Label).text = ("%d°" % int(v)) if c.get_meta("deg", false) else "%d%%" % int(round(float(v) * 100.0))
+			(c.get_meta("val") as Label).text = ("%d°" % int(v)) if c.get_meta("deg", false) else "%d%%" % int(round(sl.value * 100.0))
+		elif key == "ui_note":
+			# in the menus a big scale stops where they fill the window: say so,
+			# or the slider looks as if it does nothing
+			var big: bool = Settings.ui_menu and Settings.ui_factor() < Settings.ui_base() * float(Settings.get_v("ui_scale")) - 0.01
+			c.text = "The menus already fill the window. The battle interface is drawn at this size." if big else ""
+			c.visible = big
+			(c.get_meta("gap") as Control).visible = big
 	_syncing = false

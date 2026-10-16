@@ -26,7 +26,9 @@ static func font(weight := 400) -> Font:
 	f.antialiasing = TextServer.FONT_ANTIALIASING_GRAY
 	f.hinting = TextServer.HINTING_LIGHT
 	f.subpixel_positioning = TextServer.SUBPIXEL_POSITIONING_AUTO
-	f.oversampling = 1.0
+	# glyphs are rasterised at the size they reach the screen (0: the window's
+	# interface scale), so text stays sharp when the interface is scaled up
+	f.oversampling = 0.0
 	_fonts[weight] = f
 	return f
 
@@ -156,6 +158,37 @@ static func text_width(s: String, size := 13, weight := 400) -> float:
 		w = font(weight).get_string_size(s, HORIZONTAL_ALIGNMENT_LEFT, -1, size).x
 		d[s] = w
 	return w
+
+
+## Centres a panel on its parent at the size it wants, or as much of that as
+## the parent has room for (a big interface scale in a small window), and
+## keeps it so as the window changes. Call again to change the size it wants.
+static func fit_center(c: Control, want: Vector2, margin := 16.0) -> void:
+	c.set_meta("fit_want", want)
+	c.set_meta("fit_margin", margin)
+	c.set_anchors_preset(Control.PRESET_CENTER)
+	c.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	c.grow_vertical = Control.GROW_DIRECTION_BOTH
+	var p := c.get_parent_control()
+	if p and not c.has_meta("fit_hooked"):
+		c.set_meta("fit_hooked", true)
+		p.resized.connect(func(): _fit(c))
+	_fit(c)
+
+
+static func _fit(c) -> void:
+	if not is_instance_valid(c):
+		return
+	var p: Control = c.get_parent_control()
+	var room: Vector2 = (p.size if p else c.get_viewport_rect().size) - Vector2.ONE * float(c.get_meta("fit_margin")) * 2.0
+	var want: Vector2 = c.get_meta("fit_want")
+	if room.x <= 0.0 or room.y <= 0.0:
+		room = want  # not laid out yet: it fits again when it is
+	var s := Vector2(minf(want.x, room.x), minf(want.y, room.y))
+	c.offset_left = -s.x * 0.5
+	c.offset_right = s.x * 0.5
+	c.offset_top = -s.y * 0.5
+	c.offset_bottom = s.y * 0.5
 
 
 static func pill(ci: CanvasItem, r: Rect2, bg := PANEL, border := LINE) -> void:

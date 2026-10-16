@@ -28,7 +28,7 @@ export function Downloads({ stable, nightly, loading, error, platform }: Props) 
         <h2 className="mt-2 text-3xl font-semibold">Get the game</h2>
         <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
           Free and open source. Unzip it anywhere and run Frontline; there's nothing to install. The first time it starts,
-          it also sets up the Join links on this page.
+          it also sets up the Join links on this page, and from then on it updates itself whenever a new version comes out.
         </p>
 
         <div className="mt-8 grid gap-4 md:grid-cols-2">
