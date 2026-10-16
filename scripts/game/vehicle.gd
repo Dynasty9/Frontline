@@ -90,6 +90,8 @@ var _swing := Vector3.ZERO
 # suspension (view): pitch, roll, heave and how fast each is changing
 var _sus := Vector3.ZERO
 var _sus_v := Vector3.ZERO
+var _gun_kick := 0.0  # (view) how far the turret is jolted back by its own gun
+var _turret_rest := Vector3.INF
 var _vel_s := Vector3.ZERO
 var _vel_prev := Vector3.ZERO
 var turret: Node3D
@@ -1426,6 +1428,8 @@ func threatened(from: Vector3) -> void:
 func take_damage(amount: float, _src) -> void:
 	if gone or not srv or hp <= 0.0:
 		return
+	if world.battle:
+		world.battle.vehicle_hit(self, amount, _src)
 	if OS.has_environment("FL_DEBUG_DMG"):
 		print("DMG %s hp=%.0f -%.1f from %s t=%.1f" % [vkind, hp, amount, _src.display_name() if _src else "?", world.time])
 	hp -= amount
@@ -1438,6 +1442,8 @@ func take_damage(amount: float, _src) -> void:
 
 func _destroyed() -> void:
 	world.stat("vehicle_destroyed")
+	if world.battle:
+		world.battle.vehicle_destroyed(self)
 	if sling_cargo != null and is_instance_valid(sling_cargo) and not sling_cargo.gone:
 		var load := sling_cargo
 		sling_cargo = null
@@ -1449,11 +1455,15 @@ func _destroyed() -> void:
 		_sink()
 		return
 	# whoever was inside scrambles out of the burning wreck - not all of them
+	# (the men who knocked it out get the ones who don't)
+	var was: Array = world.battle.blame_hit(hit_by) if world.battle else []
 	for s in passengers:
 		if is_instance_valid(s) and not s.gone and s.life == Soldier.Life.HIDDEN:
 			s.riding = null
 			s.unhide(position + Vector3(world.rng.randf_range(-2.5, 2.5), 0, world.rng.randf_range(-2.5, 2.5)))
 			s.take_damage(world.rng.randf_range(30.0, 150.0), null, Vector3.UP, "explosion")
+	if world.battle:
+		world.battle.end_blame(was)
 	passengers.clear()
 	world.fx_event([Fx.EXPLODE, position + Vector3(0, 1.0, 0), 2.0])
 	world.fx_event([Fx.DEBRIS, position + Vector3(0, 1.5, 0), Color(0.15, 0.15, 0.14), 16])
@@ -1629,6 +1639,13 @@ func blast_jolt(p: Vector3, bsize: float) -> void:
 	var fwd := Defs.dir_of(rotation.y)
 	var side := fwd.cross(Vector3.UP)
 	_sus_v += Vector3(-away.dot(fwd), -away.dot(side), 0.6) * pw * 1.6
+
+
+## A gun on the turret fired (view): the turret jolts back on its ring, `k`
+## metres, and settles.
+func gun_kick(k: float) -> void:
+	if turret:
+		_gun_kick = minf(_gun_kick + k, 0.32)
 
 
 ## The main gun's kick rocks the hull back from the shot.
@@ -1910,6 +1927,12 @@ func _view_process(dt: float) -> void:
 		_vis = v
 	if turret:
 		turret.rotation.y = turret_yaw
+		if _gun_kick > 0.0:
+			if _turret_rest == Vector3.INF:
+				_turret_rest = turret.position
+			# slammed back by the shot, then run out again over half a second
+			_gun_kick = maxf(0.0, _gun_kick * exp(-dt * 7.0) - dt * 0.01)
+			turret.position = _turret_rest + Basis(Vector3.UP, turret_yaw) * Vector3(0, 0, _gun_kick)
 	if _vm and _vm.elev:
 		# laid for indirect fire: the barrel (or the launcher) goes up
 		var want_e := float(vdef.get("elev", 0.6)) if (flags & F_ELEV) != 0 else 0.0

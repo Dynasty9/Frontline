@@ -61,6 +61,11 @@ var ab_gp := Vector3.ZERO
 var preview: Array = []  # [[pos, cover level], ...] where the selection would end up
 var preview_face := Vector3.FORWARD
 var _prev_t := 0.0
+## The tactical map's key (Tab unless rebound): a tap switches to the map,
+## holding it shows the battle statistics until it's let go.
+const TAB_HOLD_MS := 220
+var _tab_down := -1  # msec Tab went down (-1: it's up)
+var _tab_peek := false
 ## Alt and the left button held: a ping (a tap) or the ping wheel (held, or dragged).
 var pinging := false
 var ping_at := Vector2.ZERO
@@ -224,6 +229,8 @@ func _unhandled_input(ev: InputEvent) -> void:
 		var k := ev as InputEventKey
 		if k.pressed and not k.echo:
 			_key(k)
+		elif not k.pressed and _tab_down >= 0 and not Keys.held("tactical"):
+			_tab_up()
 
 
 ## The actions a key press can mean in a battle, most particular first (a tie
@@ -327,8 +334,8 @@ func _key(ev: InputEvent) -> void:
 			if has_units():
 				hold()
 		"tactical":
-			if world.hud:
-				world.hud.toggle_tactical()
+			_tab_down = Time.get_ticks_msec()
+			_tab_peek = false
 		"cycle_fob":
 			_cycle_fob()
 		"orbat":
@@ -1017,7 +1024,25 @@ func _process(dt: float) -> void:
 		world.vp("input", _t0)
 
 
+func _tab_up() -> void:
+	if _tab_down < 0:
+		return
+	_tab_down = -1
+	if not world.hud:
+		return
+	if _tab_peek:
+		world.hud.peek_stats(false)
+	else:
+		world.hud.toggle_tactical()
+
+
 func _view_process(dt: float) -> void:
+	if _tab_down >= 0:
+		if not Keys.held("tactical"):
+			_tab_up()  # let go while we weren't looking (the window lost focus)
+		elif not _tab_peek and Time.get_ticks_msec() - _tab_down >= TAB_HOLD_MS and world.hud:
+			_tab_peek = true
+			world.hud.peek_stats(true)
 	# a ping or a sketch let go of over a panel: the release never reached us
 	if debug_mouse.x < 0.0:
 		if pinging and _ping_by_key:

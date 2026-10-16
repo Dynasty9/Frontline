@@ -117,6 +117,12 @@ static func _swap(c: Color, pairs: Array) -> Color:
 	return c
 
 
+## The theme's panel colour lightened or darkened by k (the glass of the big
+## screens: k 1.12 at its head, 0.48 at its foot, as Field Brass had them).
+static func panel_shade(k: float, alpha: float) -> Color:
+	return Color(PANEL.r * k, PANEL.g * k, PANEL.b * k, alpha)
+
+
 ## A dark colour washed with the accent (pressed buttons, hovered menu rows).
 static func tint(k: float, alpha := 0.95) -> Color:
 	var c := Color(0.07, 0.075, 0.07).lerp(ACCENT, k)

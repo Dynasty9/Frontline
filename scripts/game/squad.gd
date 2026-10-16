@@ -111,6 +111,8 @@ func add(s: Soldier) -> void:
 	members.append(s)
 	s.squad = self
 	s.sid = sid
+	if world.battle:
+		world.battle.squad_grew(self)
 	if order_pos == Vector3.ZERO:
 		order_pos = s.position
 

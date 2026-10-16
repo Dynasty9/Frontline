@@ -55,7 +55,7 @@ When you're ready, choose **Play vs AI** and pick a side. You start at your base
 7. **Call support.** The buttons above the minimap call in mortars, artillery and air strikes.
 8. **Get eyes on.** Ground your side can't see right now is drawn darker, on the battlefield and the minimap. Watchtowers, drones from the helipad and recon flights (on the support panel) see further, and every aircraft you call in spots for you as it flies over. Whatever they spot stays on the map as a last-known position.
 
-Press **F1** at any time for help, and **F4** for the Field Manual.
+Press **F1** at any time for help, and **F4** for the Field Manual. Hold **Tab** to see how the battle is going: kills, losses, supply and how well each commander is doing. When it's over, the **after-action report** shows both sides' figures, who fought best and why, every squad's record and how the battle swung.
 
 ## Missions
 
@@ -135,6 +135,7 @@ Prefer the middle mouse to pan rather than turn? Swap them in **Settings → Int
 | Action | Keys |
 |---|---|
 | Tactical map | Tab |
+| Battle statistics (your side's so far) | Hold Tab |
 | Order of battle (all your units) | O |
 | Help | F1 |
 | Hide the interface | F2 |
@@ -172,7 +173,7 @@ To play with particular people:
 
 The game connects players straight to the host, through most home routers, without anyone opening ports. A few networks (some mobile and campus ones) are too strict for that; the lobby says so, and then the host needs UDP port **7777** open, or you can play over a LAN or a VPN such as Tailscale, ZeroTier or Hamachi. Friends can also join a battle that's already running.
 
-You can sign in with an account (next to your callsign on the main menu). It keeps your callsign yours: no one else can register it, and battles you host show a tick. You don't need one to play.
+You can sign in with an account (top right of the main menu). You don't need one to play. It keeps your callsign yours (no one else can register it, and battles you host show a tick), and it keeps a **service record**: every battle you fight goes on it, with your rating, kills and losses, and you can open any battle's after-action report again from **Service Record**. Battles fought before you sign in wait on your computer and go on the record when you do.
 
 ## Learn more
 
