@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { Battles } from "@/components/battles"
 import { WhatsNew } from "@/components/changelog"
 import { Downloads } from "@/components/downloads"

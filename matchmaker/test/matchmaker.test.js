@@ -204,7 +204,15 @@ const withAccounts = await start({ AUTH_BACKEND: 'memory' });
 	test('a battle says what it is, and one with a password is never matched', () => {
 		const reg = new Lobbies();
 		const coop = reg.create('10.0.0.1', { port: 7001, version: 'v', players: 2, mode: 'coop', side: 1, teams: [0, 2], locked: true }).lobby;
-		const mission = reg.create('10.0.0.2', { port: 7002, version: 'v', mode: 'mission', mission: 'Bridgehead\u0007', side: 0, teams: [1, 0], spectators: 1 }).lobby;
+		const mission = reg.create('10.0.0.2', {
+			port: 7002,
+			version: 'v',
+			mode: 'mission',
+			mission: 'Bridgehead\u0007',
+			side: 0,
+			teams: [1, 0],
+			spectators: 1,
+		}).lobby;
 		const v = reg.list('v');
 		const c = v.find((l) => l.id === coop.id);
 		assert.equal(c.mode, 'coop');

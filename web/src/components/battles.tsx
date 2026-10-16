@@ -1,4 +1,12 @@
-import { CrosshairIcon, EnvelopeSimpleOpenIcon, InfoIcon, LockSimpleIcon, SealCheckIcon, WarningIcon, XIcon } from "@phosphor-icons/react"
+import {
+  CrosshairIcon,
+  EnvelopeSimpleOpenIcon,
+  InfoIcon,
+  LockSimpleIcon,
+  SealCheckIcon,
+  WarningIcon,
+  XIcon,
+} from "@phosphor-icons/react"
 import { useEffect, useState } from "react"
 import { Emblem } from "@/components/emblem"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
@@ -26,7 +34,16 @@ type Props = {
   onDismissInvite: () => void
 }
 
-export function Battles({ lobbies, error, updatedAt, launched, onLaunch, onDismissLaunch, invite, onDismissInvite }: Props) {
+export function Battles({
+  lobbies,
+  error,
+  updatedAt,
+  launched,
+  onLaunch,
+  onDismissLaunch,
+  invite,
+  onDismissInvite,
+}: Props) {
   return (
     <section id="battles" className="mx-auto max-w-6xl scroll-mt-16 px-4 py-20 sm:px-6">
       <SectionLabel>Online</SectionLabel>
@@ -42,7 +59,12 @@ export function Battles({ lobbies, error, updatedAt, launched, onLaunch, onDismi
       </div>
 
       {invite && !launched && (
-        <Invite lobby={lobbies?.find((l) => l.id === invite)} loaded={!!lobbies} onLaunch={onLaunch} onDismiss={onDismissInvite} />
+        <Invite
+          lobby={lobbies?.find((l) => l.id === invite)}
+          loaded={!!lobbies}
+          onLaunch={onLaunch}
+          onDismiss={onDismissInvite}
+        />
       )}
 
       {launched && (
@@ -87,7 +109,17 @@ export function SectionLabel({ children }: { children: React.ReactNode }) {
 }
 
 // A friend sent a link to their battle: say what it is, with a Join button.
-function Invite({ lobby, loaded, onLaunch, onDismiss }: { lobby: Lobby | undefined; loaded: boolean; onLaunch: () => void; onDismiss: () => void }) {
+function Invite({
+  lobby,
+  loaded,
+  onLaunch,
+  onDismiss,
+}: {
+  lobby: Lobby | undefined
+  loaded: boolean
+  onLaunch: () => void
+  onDismiss: () => void
+}) {
   if (!loaded) return null
   return (
     <Alert className={`mt-6 ${lobby ? "border-primary/40 bg-primary/5" : ""}`}>
