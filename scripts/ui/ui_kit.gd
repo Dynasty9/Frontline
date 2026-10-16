@@ -239,7 +239,7 @@ static func _style(t: Theme) -> void:
 	t.set_color("font_hover_color", "CheckButton", Color(1, 1, 1))
 	t.set_color("font_pressed_color", "CheckButton", TEXT)
 	t.set_color("font_hover_pressed_color", "CheckButton", Color(1, 1, 1))
-	for st in ["normal", "hover", "pressed", "hover_pressed", "focus"]:
+	for st in ["normal", "hover", "pressed", "hover_pressed", "focus", "disabled"]:
 		t.set_stylebox(st, "CheckButton", StyleBoxEmpty.new())
 		t.set_stylebox(st, "CheckBox", StyleBoxEmpty.new())
 	t.set_stylebox("normal", "RichTextLabel", StyleBoxEmpty.new())
@@ -254,6 +254,43 @@ static func label(text: String, size := 14, col := TEXT, weight := 400) -> Label
 	if weight != 400:
 		l.add_theme_font_override("font", font(weight))
 	return l
+
+
+## The accent-filled button for a panel's main action (Deploy, Join, Host).
+static func primary_button(text: String, w := 150.0, h := 40.0, size := 15) -> Button:
+	var b := Button.new()
+	b.text = text
+	b.custom_minimum_size = Vector2(w, h)
+	b.focus_mode = Control.FOCUS_NONE
+	b.add_theme_font_override("font", font(700))
+	b.add_theme_font_size_override("font_size", size)
+	var hi := box(ACCENT.lightened(0.15), 4, ACCENT, 0, 6.0)
+	b.add_theme_stylebox_override("normal", box(Color(ACCENT.r, ACCENT.g, ACCENT.b, 0.85), 4, ACCENT, 0, 6.0))
+	b.add_theme_stylebox_override("hover", hi)
+	b.add_theme_stylebox_override("pressed", hi)
+	b.add_theme_stylebox_override("hover_pressed", hi)
+	b.add_theme_stylebox_override("disabled", box(Color(0.22, 0.21, 0.17, 0.7), 4, Color(0, 0, 0, 0), 0, 6.0))
+	b.add_theme_color_override("font_color", Color(0.08, 0.07, 0.05))
+	b.add_theme_color_override("font_hover_color", Color(0.05, 0.04, 0.03))
+	b.add_theme_color_override("font_pressed_color", Color(0.05, 0.04, 0.03))
+	b.add_theme_color_override("font_hover_pressed_color", Color(0.05, 0.04, 0.03))
+	b.add_theme_color_override("font_disabled_color", Color(0.55, 0.53, 0.47))
+	return b
+
+
+## A small rounded tag (LISTED, IN LOBBY, 3 / 8 PLAYERS) in a colour.
+static func chip(text: String, col: Color) -> PanelContainer:
+	var p := PanelContainer.new()
+	var sb := box(Color(col.r, col.g, col.b, 0.1), 3, Color(col.r, col.g, col.b, 0.45), 1, 0.0)
+	sb.content_margin_left = 9
+	sb.content_margin_right = 9
+	sb.content_margin_top = 3
+	sb.content_margin_bottom = 3
+	p.add_theme_stylebox_override("panel", sb)
+	var l := label(text, 11, col, 700)
+	l.name = "Text"
+	p.add_child(l)
+	return p
 
 
 ## Small caps header used above groups of controls.

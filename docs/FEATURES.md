@@ -60,10 +60,34 @@ they're doing). The observer bar at the top has pause, speed (0.25x to 4x), dire
 ## Multiplayer in detail
 
 - The host is the authoritative server and runs the entire simulation, including the AI.
-- **Matchmaking.** Hosted battles are listed on the matchmaker (`matchmaker/`, a small Node service on Railway) unless
-  the host unticks "List online". **Find Match** joins the best open battle (ones still in the lobby first, then the
-  fullest) or, if there is none, hosts one for the next player to find; **Join Game** shows the list. The matchmaker
-  only introduces players: game traffic goes straight between them.
+- **Hosting.** **Host a Battle** sets up the lobby: a name, the mode (**Co-op vs AI**: every player on one side and
+  the AI commanding the other; **Versus**: players pick sides, and the AI can take an empty one; or a **Mission**
+  played together), the seats (2 to 8), the time of day, drop-in, an AI commander alongside the players, and who
+  can join: **Public** (listed), **Password** (listed with a padlock; the password never leaves the host, which
+  checks what joiners send and asks again when it's wrong) or **Unlisted**. Missions' **Host Co-op** opens the same
+  setup on that mission, so a co-op mission is listed like any other battle.
+- **The server browser** lists every battle being hosted, online (from the matchmaker) and on the local network:
+  name, host, mode (and side or mission), players and seats, whether it's in the lobby or running (open to drop-in or
+  closed), and how good the connection should be (LAN, direct, hole punching, or a strict router). It can be searched,
+  filtered (mode, full, running, passworded) and sorted by any column, refreshes itself every 10 seconds, and shows
+  the chosen battle's sides and seats beside the list. Double-click (or **Join**) to join; a battle with a password
+  asks for it first. **Direct connect** takes an address (and a port and password). A dialog ticks off each step of a
+  join (checking the connection, asking the host to open the way in, connecting, joining the lobby) and says plainly
+  what went wrong if it fails.
+- **LAN discovery.** A host broadcasts a small beacon (UDP port 7787) every second with what the server browser
+  needs; the browser listens while it's open, so battles on the same network show up with no internet. A battle that
+  is listed online and also heard on the LAN is joined over the LAN.
+- **The lobby** shows the two sides as columns: each player with their ready state (and HOST and YOU tags), the AI
+  commander where the AI will play, the open seats, players still connecting, and anyone watching. Players switch
+  sides (where the mode allows), watch instead, press **Ready**, and chat; the host changes the settings, removes
+  players and starts when they like (it says who it's still waiting on). A player arriving gets a chime and their row
+  lights up, and the host's taskbar flashes if the game isn't in front. Names are made unique (a second "Commander"
+  becomes "Commander 2"). **Copy invite link** gives the website's page for a listed battle (`/?join=<id>`), which
+  any player in the lobby can send a friend. Closing the lobby tells everyone in it why.
+- **Matchmaking.** Listed battles are on the matchmaker (`matchmaker/`, a small Node service on Railway), which also
+  hears each battle's mode, sides and whether it's locked. **Find Match** joins the best open battle (ones still in
+  the lobby first, then the fullest; never one with a password) or, if there is none, hosts one for the next player
+  to find. The matchmaker only introduces players: game traffic goes straight between them.
 - **Getting through routers.** Before hosting, the game asks two public STUN servers what address and port its
   router shows the internet for the game port. A joiner does the same from a fresh port; the matchmaker swaps the
   two (the host hears about the joiner on a long poll), both send packets at each other so each router lets the
@@ -77,8 +101,8 @@ they're doing). The observer bar at the top has pause, speed (0.25x to 4x), dire
   game with the link. If the game is already running, the new copy hands the link to it over a localhost socket
   and quits. A link is ignored in a battle or a lobby, so a stray click never pulls anyone out of a game, and a
   battle listed for another version of the game reads as not found.
-- **Joining by address** still works without the matchmaker: the host's IP on UDP port **7777**, forwarded or over a
-  LAN/VPN (Tailscale, ZeroTier, Hamachi).
+- **Joining by address** (Direct connect) still works without the matchmaker: the host's IP on UDP port **7777**,
+  forwarded or over a LAN/VPN (Tailscale, ZeroTier, Hamachi).
 - **Accounts** are optional (Supabase, through the matchmaker). Signed in, your callsign is yours: no other account can register it, and
   battles you host are listed under it with a tick. The account card top right of the main menu signs you in or
   makes an account (the end-of-battle screen offers it too); the session is remembered in `user://account.cfg`.
@@ -89,8 +113,8 @@ they're doing). The observer bar at the top has pause, speed (0.25x to 4x), dire
   battle newest first; open one for its after-action report. A battle fought signed out or offline waits in
   `user://pending_battles.json` (the last ten) and goes up at the next sign-in. The figures are your own game's
   account of the battle, so the record is only ever shown to you.
-- **Co-op:** everyone picks the same side, and the AI takes the empty side.
-  **PvP:** pick opposite sides. "Add an AI commander to sides that have players" gives you an AI teammate.
+- **Co-op:** everyone on the battle's side, and the AI takes the other. **Versus:** players pick sides ("The AI
+  takes a side nobody plays" fills an empty one). "AI commands alongside players" gives either an AI teammate.
 - If a player leaves, a teammate inherits their squads, or the AI takes over if nobody is left on that side.
 - **Co-commanders** (`co_command.gd`, `ui/hud_coop.gd`, `ui/hud_coop_roster.gd`): you see what the other
   commanders on your side are doing, as they do it, the way officers in one command post see each other's
@@ -143,7 +167,7 @@ they're doing). The observer bar at the top has pause, speed (0.25x to 4x), dire
 ## Missions
 
 Short operations, about five minutes each, played alone or in co-op (**Missions** on the main menu; **Host Co-op**
-opens a lobby, and friends join with Join Game). Each is built around something the game does well:
+sets one up as a listed battle, and friends join it from the server browser). Each is built around something the game does well:
 
 | Mission | Side | What it shows off |
 |---|---|---|

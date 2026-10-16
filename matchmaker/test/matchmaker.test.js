@@ -288,6 +288,38 @@ const battle = (over = {}) => ({
 		assert.equal(reg.match('other'), null);
 	});
 
+	test('a battle says what it is, and one with a password is never matched', () => {
+		const reg = new Lobbies();
+		const coop = reg.create('10.0.0.1', { port: 7001, version: 'v', players: 2, mode: 'coop', side: 1, teams: [0, 2], locked: true }).lobby;
+		const mission = reg.create('10.0.0.2', {
+			port: 7002,
+			version: 'v',
+			mode: 'mission',
+			mission: 'Bridgehead\u0007',
+			side: 0,
+			teams: [1, 0],
+			spectators: 1,
+		}).lobby;
+		const v = reg.list('v');
+		const c = v.find((l) => l.id === coop.id);
+		assert.equal(c.mode, 'coop');
+		assert.equal(c.side, 1);
+		assert.deepEqual(c.teams, [0, 2]);
+		assert.equal(c.locked, true);
+		const m = v.find((l) => l.id === mission.id);
+		assert.equal(m.mission, 'Bridgehead');
+		assert.equal(m.spectators, 1);
+		// nonsense is cleaned up rather than passed on
+		reg.update(mission, { mode: 'deathmatch', side: 7, teams: ['x', 99], locked: 0 });
+		assert.equal(mission.mode, '');
+		assert.equal(mission.side, 1);
+		assert.deepEqual(mission.teams, [0, 64]);
+		assert.equal(mission.locked, false);
+		// the fuller battle wants a password: Find Match only offers the other
+		assert.equal(reg.match('v').id, mission.id);
+		assert.equal(reg.match('v', [mission.id]), null);
+	});
+
 	test('a STUN endpoint must come from the address that reports it', async () => {
 		const { stunEndpoint } = await import('../src/lobbies.js');
 		assert.deepEqual(stunEndpoint({ ip: '5.6.7.8', port: 4000 }, '5.6.7.8'), { ip: '5.6.7.8', port: 4000 });

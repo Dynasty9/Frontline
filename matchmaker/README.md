@@ -43,10 +43,10 @@ JSON in, JSON out. Errors are `{"error": "..."}` with a 4xx/5xx status.
 |---|---|
 | `GET /health` | `{ok, accounts: "off" \| "supabase" \| "memory", release, lobbies, players}` |
 | `GET /release` | The latest release of the game: `{version, tag, name, published, url, assets: {windows, linux}}`, each asset with its `url`, `size` and `sha256`. The release workflow writes it into `release.json` and commits it, which redeploys this service; the game's updater reads it. |
-| `GET /lobbies?version=N` | The battles being hosted, fullest first. No addresses. |
-| `POST /match` `{version, exclude: [ids]}` | Quick match: `{lobby}`, or `{lobby: null}` (then host one). Holds a seat for 20 s. |
+| `GET /lobbies?version=N` | The battles being hosted, fullest first. No addresses. Each says what it is: `mode` (`coop`, `versus` or `mission`), `mission`, `side`, `teams` (players per side), `spectators` and `locked` (wants a password). |
+| `POST /match` `{version, exclude: [ids]}` | Quick match: `{lobby}`, or `{lobby: null}` (then host one). Holds a seat for 20 s. Never offers a battle with a password. |
 | `POST /lobbies` `{port, host, version, players, max_players, in_game, drop_in, nat, lan, punch: {ip, port}}` | List a battle. Returns `{id, token}`. With a signed-in `Authorization: Bearer`, it's listed under the account's callsign, and replaces that account's earlier listing. |
-| `POST /lobbies/:id/heartbeat` | The host's state (players, in_game...). Needs `X-Lobby-Token`. |
+| `POST /lobbies/:id/heartbeat` | The host's state (`name`, `players`, `max_players`, `in_game`, `drop_in`, `mode`, `mission`, `side`, `teams`, `spectators`, `locked`). Needs `X-Lobby-Token`. |
 | `POST /lobbies/:id/poll?wait=20` | The host's long poll: `{joins: [{ip, port}]}`, the players to punch towards. If the host drops this connection the listing comes down at once. |
 | `POST /lobbies/:id/join` `{ip, port}` | Ask to join, with your STUN endpoint. Returns `{connect: {address, port, via: "lan" \| "punch" \| "direct"}}`. |
 | `DELETE /lobbies/:id` | Unlist (`X-Lobby-Token`). |
