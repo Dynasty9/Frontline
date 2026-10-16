@@ -24,6 +24,9 @@ name: Release
 #     ends with a link to open it yourself.
 #   - Pull requests that change the build itself export without releasing, and
 #     keep the zips as workflow artifacts.
+#   - First it applies any database migrations the live Supabase project
+#     hasn't had (database.yml, which also runs as they merge): the release's
+#     matchmaker and game may need them, and a failed migration stops it.
 #
 # The version is stamped into project.godot (application/config/version) before
 # export, so a build knows what it is; from source it reads 0.0.0-dev.
@@ -110,8 +113,18 @@ jobs:
             } >> "$GITHUB_STEP_SUMMARY"
           fi
 
-  build:
+  # the schema the release needs, before anything is built (usually there
+  # already: database.yml applies migrations as they merge)
+  database:
     needs: plan
+    if: needs.plan.outputs.release == 'true'
+    uses: ./.github/workflows/database.yml
+    secrets: inherit
+
+  build:
+    needs: [plan, database]
+    # after the database, or without it for a pull request's trial export
+    if: ${{ !cancelled() && needs.plan.result == 'success' && contains(fromJSON('["success", "skipped"]'), needs.database.result) }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:

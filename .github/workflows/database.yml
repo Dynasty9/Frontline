@@ -1,0 +1,62 @@
+name: Database
+
+# The accounts database's schema is the migrations in
+# matchmaker/supabase/migrations/ (see the matchmaker README's "The database").
+# This applies the ones the live Supabase project hasn't had yet:
+#
+#   - when a merge to main adds migrations, since Railway deploys the merged
+#     matchmaker at the same time and it needs them (it copes for the minute
+#     the two are out of step, either way round);
+#   - at the start of every release (release.yml calls it), so a release never
+#     ships ahead of the schema it needs, and a failed migration stops it;
+#   - by hand: Actions > Database > Run workflow.
+#
+# It lists what the live database has, shows what's to apply (a dry run), then
+# applies it. Runs in the "production" environment, limited to main, with
+# SUPABASE_DB_URL: the project's session-pooler connection string (GitHub's
+# runners have no IPv6, which the direct connection needs).
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - matchmaker/supabase/migrations/**
+  workflow_dispatch:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  migrate:
+    name: Migrate the database
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: production
+    # one at a time: a merge's run and a release's never push at once
+    concurrency:
+      group: database-production
+      cancel-in-progress: false
+    defaults:
+      run:
+        working-directory: matchmaker
+    env:
+      SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: supabase/setup-cli@v1
+        with:
+          version: 2.119.0
+
+      - name: What the live database has, and what's to apply
+        run: |
+          if [ -z "$SUPABASE_DB_URL" ]; then
+            echo "::error::No SUPABASE_DB_URL secret: the project's session-pooler connection string (matchmaker/README.md, The database)."
+            exit 1
+          fi
+          supabase migration list --db-url "$SUPABASE_DB_URL"
+          supabase db push --dry-run --db-url "$SUPABASE_DB_URL"
+
+      - name: Apply them
+        run: supabase db push --db-url "$SUPABASE_DB_URL"

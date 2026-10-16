@@ -1,0 +1,1403 @@
+{
+  "ranks": [
+    {
+      "rank": 0,
+      "name": "Recruit",
+      "xp": 0
+    },
+    {
+      "rank": 1,
+      "name": "Private I",
+      "xp": 150
+    },
+    {
+      "rank": 2,
+      "name": "Private II",
+      "xp": 320
+    },
+    {
+      "rank": 3,
+      "name": "Private III",
+      "xp": 510
+    },
+    {
+      "rank": 4,
+      "name": "Private IV",
+      "xp": 720
+    },
+    {
+      "rank": 5,
+      "name": "Private V",
+      "xp": 950
+    },
+    {
+      "rank": 6,
+      "name": "Corporal I",
+      "xp": 1200
+    },
+    {
+      "rank": 7,
+      "name": "Corporal II",
+      "xp": 1470
+    },
+    {
+      "rank": 8,
+      "name": "Corporal III",
+      "xp": 1760
+    },
+    {
+      "rank": 9,
+      "name": "Corporal IV",
+      "xp": 2070
+    },
+    {
+      "rank": 10,
+      "name": "Corporal V",
+      "xp": 2400
+    },
+    {
+      "rank": 11,
+      "name": "Sergeant I",
+      "xp": 2750
+    },
+    {
+      "rank": 12,
+      "name": "Sergeant II",
+      "xp": 3120
+    },
+    {
+      "rank": 13,
+      "name": "Sergeant III",
+      "xp": 3510
+    },
+    {
+      "rank": 14,
+      "name": "Sergeant IV",
+      "xp": 3920
+    },
+    {
+      "rank": 15,
+      "name": "Sergeant V",
+      "xp": 4350
+    },
+    {
+      "rank": 16,
+      "name": "Staff Sergeant I",
+      "xp": 4800
+    },
+    {
+      "rank": 17,
+      "name": "Staff Sergeant II",
+      "xp": 5270
+    },
+    {
+      "rank": 18,
+      "name": "Staff Sergeant III",
+      "xp": 5760
+    },
+    {
+      "rank": 19,
+      "name": "Staff Sergeant IV",
+      "xp": 6270
+    },
+    {
+      "rank": 20,
+      "name": "Staff Sergeant V",
+      "xp": 6800
+    },
+    {
+      "rank": 21,
+      "name": "Master Sergeant I",
+      "xp": 7350
+    },
+    {
+      "rank": 22,
+      "name": "Master Sergeant II",
+      "xp": 7920
+    },
+    {
+      "rank": 23,
+      "name": "Master Sergeant III",
+      "xp": 8510
+    },
+    {
+      "rank": 24,
+      "name": "Master Sergeant IV",
+      "xp": 9120
+    },
+    {
+      "rank": 25,
+      "name": "Master Sergeant V",
+      "xp": 9750
+    },
+    {
+      "rank": 26,
+      "name": "Lieutenant I",
+      "xp": 10400
+    },
+    {
+      "rank": 27,
+      "name": "Lieutenant II",
+      "xp": 11070
+    },
+    {
+      "rank": 28,
+      "name": "Lieutenant III",
+      "xp": 11760
+    },
+    {
+      "rank": 29,
+      "name": "Lieutenant IV",
+      "xp": 12470
+    },
+    {
+      "rank": 30,
+      "name": "Lieutenant V",
+      "xp": 13200
+    },
+    {
+      "rank": 31,
+      "name": "Captain I",
+      "xp": 13950
+    },
+    {
+      "rank": 32,
+      "name": "Captain II",
+      "xp": 14720
+    },
+    {
+      "rank": 33,
+      "name": "Captain III",
+      "xp": 15510
+    },
+    {
+      "rank": 34,
+      "name": "Captain IV",
+      "xp": 16320
+    },
+    {
+      "rank": 35,
+      "name": "Captain V",
+      "xp": 17150
+    },
+    {
+      "rank": 36,
+      "name": "Major I",
+      "xp": 18000
+    },
+    {
+      "rank": 37,
+      "name": "Major II",
+      "xp": 18870
+    },
+    {
+      "rank": 38,
+      "name": "Major III",
+      "xp": 19760
+    },
+    {
+      "rank": 39,
+      "name": "Major IV",
+      "xp": 20670
+    },
+    {
+      "rank": 40,
+      "name": "Major V",
+      "xp": 21600
+    },
+    {
+      "rank": 41,
+      "name": "Colonel I",
+      "xp": 22550
+    },
+    {
+      "rank": 42,
+      "name": "Colonel II",
+      "xp": 23520
+    },
+    {
+      "rank": 43,
+      "name": "Colonel III",
+      "xp": 24510
+    },
+    {
+      "rank": 44,
+      "name": "Colonel IV",
+      "xp": 25520
+    },
+    {
+      "rank": 45,
+      "name": "Colonel V",
+      "xp": 26550
+    },
+    {
+      "rank": 46,
+      "name": "Brigadier General",
+      "xp": 27600
+    },
+    {
+      "rank": 47,
+      "name": "Major General",
+      "xp": 28670
+    },
+    {
+      "rank": 48,
+      "name": "Lieutenant General",
+      "xp": 29760
+    },
+    {
+      "rank": 49,
+      "name": "General",
+      "xp": 30870
+    },
+    {
+      "rank": 50,
+      "name": "General of the Army",
+      "xp": 32000
+    }
+  ],
+  "groups": [
+    {
+      "key": "starter",
+      "title": "Starter patches",
+      "blurb": "Every account has these ten from the start: the branches of the army."
+    },
+    {
+      "key": "rank",
+      "title": "Rank patches",
+      "blurb": "One for every rank. Earn XP in battle, win for more, and climb from Recruit to General of the Army."
+    },
+    {
+      "key": "award",
+      "title": "Awards and decorations",
+      "blurb": "Medals, badges and ribbons. Locked for now."
+    },
+    {
+      "key": "unit",
+      "title": "Unit patches",
+      "blurb": "Company and squadron patches in the style of the Vietnam war, and the battlefield's own units. Locked for now."
+    }
+  ],
+  "insignia": [
+    {
+      "id": "s01",
+      "name": "Infantry",
+      "group": "starter",
+      "unlock": 0,
+      "blurb": "Crossed rifles on infantry blue: the queen of battle."
+    },
+    {
+      "id": "s02",
+      "name": "Armour",
+      "group": "starter",
+      "unlock": 0,
+      "blurb": "The three-coloured triangle of the tank arm."
+    },
+    {
+      "id": "s03",
+      "name": "Artillery",
+      "group": "starter",
+      "unlock": 0,
+      "blurb": "Crossed cannons in gold on red: the king of battle."
+    },
+    {
+      "id": "s04",
+      "name": "Combat Engineers",
+      "group": "starter",
+      "unlock": 0,
+      "blurb": "The castle: they build it, and they blow it up."
+    },
+    {
+      "id": "s05",
+      "name": "Signal Corps",
+      "group": "starter",
+      "unlock": 0,
+      "blurb": "Crossed lightning on orange: the voice of command."
+    },
+    {
+      "id": "s06",
+      "name": "Combat Medic",
+      "group": "starter",
+      "unlock": 0,
+      "blurb": "A white cross on maroon. Doc, the most welcome man on any battlefield."
+    },
+    {
+      "id": "s07",
+      "name": "Scouts",
+      "group": "starter",
+      "unlock": 0,
+      "blurb": "The open eye of reconnaissance."
+    },
+    {
+      "id": "s08",
+      "name": "Paratrooper",
+      "group": "starter",
+      "unlock": 0,
+      "blurb": "Canopy and wings: the ones who go in first, from the sky."
+    },
+    {
+      "id": "s09",
+      "name": "Mountain Troops",
+      "group": "starter",
+      "unlock": 0,
+      "blurb": "Snow-capped peaks on sky blue, for those who fight uphill."
+    },
+    {
+      "id": "s10",
+      "name": "Naval Infantry",
+      "group": "starter",
+      "unlock": 0,
+      "blurb": "The fouled anchor: soldiers of the sea."
+    },
+    {
+      "id": "r01",
+      "name": "Recruit Depot",
+      "group": "rank",
+      "unlock": 1,
+      "blurb": "Your first patch. Everyone starts somewhere."
+    },
+    {
+      "id": "r02",
+      "name": "Rifle Range",
+      "group": "rank",
+      "unlock": 2,
+      "blurb": "Front sight, squeeze, follow through."
+    },
+    {
+      "id": "r03",
+      "name": "Point Man",
+      "group": "rank",
+      "unlock": 3,
+      "blurb": "First in the column, eyes on everything."
+    },
+    {
+      "id": "r04",
+      "name": "Night Watch",
+      "group": "rank",
+      "unlock": 4,
+      "blurb": "Two hours on, four off, until dawn."
+    },
+    {
+      "id": "r05",
+      "name": "Fire Team",
+      "group": "rank",
+      "unlock": 5,
+      "blurb": "Four men, one team. Bounding overwatch."
+    },
+    {
+      "id": "r06",
+      "name": "Iron Fist",
+      "group": "rank",
+      "unlock": 6,
+      "blurb": "Hit hard, hit first."
+    },
+    {
+      "id": "r07",
+      "name": "Bolt Battalion",
+      "group": "rank",
+      "unlock": 7,
+      "blurb": "Fast enough to arrive before the thunder."
+    },
+    {
+      "id": "r08",
+      "name": "Grey Wolves",
+      "group": "rank",
+      "unlock": 8,
+      "blurb": "They hunt in packs."
+    },
+    {
+      "id": "r09",
+      "name": "River Guard",
+      "group": "rank",
+      "unlock": 9,
+      "blurb": "Holding the crossings since the first bridge."
+    },
+    {
+      "id": "r10",
+      "name": "Thunder Company",
+      "group": "rank",
+      "unlock": 10,
+      "blurb": "You'll hear them coming. Too late."
+    },
+    {
+      "id": "r11",
+      "name": "Mustangs",
+      "group": "rank",
+      "unlock": 11,
+      "blurb": "A Troop rides again."
+    },
+    {
+      "id": "r12",
+      "name": "Sand Vipers",
+      "group": "rank",
+      "unlock": 12,
+      "blurb": "Desert patrol. Mind where you step."
+    },
+    {
+      "id": "r13",
+      "name": "Iron Dragoons",
+      "group": "rank",
+      "unlock": 13,
+      "blurb": "Mounted infantry: they ride to the fight and fight on foot."
+    },
+    {
+      "id": "r14",
+      "name": "Pathfinders",
+      "group": "rank",
+      "unlock": 14,
+      "blurb": "They light the way for everyone else."
+    },
+    {
+      "id": "r15",
+      "name": "Hellcats",
+      "group": "rank",
+      "unlock": 15,
+      "blurb": "C Company, and proud of the claw marks."
+    },
+    {
+      "id": "r16",
+      "name": "Mountain Raiders",
+      "group": "rank",
+      "unlock": 16,
+      "blurb": "The tab says it all."
+    },
+    {
+      "id": "r17",
+      "name": "Air Assault",
+      "group": "rank",
+      "unlock": 17,
+      "blurb": "Forty men down in a hot landing zone in forty seconds."
+    },
+    {
+      "id": "r18",
+      "name": "Night Owls",
+      "group": "rank",
+      "unlock": 18,
+      "blurb": "They own the dark."
+    },
+    {
+      "id": "r19",
+      "name": "Black Scorpions",
+      "group": "rank",
+      "unlock": 19,
+      "blurb": "Desert warfare school graduates."
+    },
+    {
+      "id": "r20",
+      "name": "Storm Riders",
+      "group": "rank",
+      "unlock": 20,
+      "blurb": "Jump into the storm, land in the fight."
+    },
+    {
+      "id": "r21",
+      "name": "Dawn Eagles",
+      "group": "rank",
+      "unlock": 21,
+      "blurb": "First light, first strike."
+    },
+    {
+      "id": "r22",
+      "name": "Checkmate",
+      "group": "rank",
+      "unlock": 22,
+      "blurb": "Every move planned, every piece in play."
+    },
+    {
+      "id": "r23",
+      "name": "Four Winds",
+      "group": "rank",
+      "unlock": 23,
+      "blurb": "Any direction, any distance."
+    },
+    {
+      "id": "r24",
+      "name": "Iron Bears",
+      "group": "rank",
+      "unlock": 24,
+      "blurb": "Slow to anger. Impossible to stop."
+    },
+    {
+      "id": "r25",
+      "name": "Firebrands",
+      "group": "rank",
+      "unlock": 25,
+      "blurb": "Assault pioneers with a flamethrower habit."
+    },
+    {
+      "id": "r26",
+      "name": "Sky Cavalry",
+      "group": "rank",
+      "unlock": 26,
+      "blurb": "The horses have rotors now."
+    },
+    {
+      "id": "r27",
+      "name": "Hunter Killers",
+      "group": "rank",
+      "unlock": 27,
+      "blurb": "One finds, the other fixes. Both kill."
+    },
+    {
+      "id": "r28",
+      "name": "Jet Wing",
+      "group": "rank",
+      "unlock": 28,
+      "blurb": "Fast movers, on call."
+    },
+    {
+      "id": "r29",
+      "name": "Thunderbolts",
+      "group": "rank",
+      "unlock": 29,
+      "blurb": "Close air support with a temper."
+    },
+    {
+      "id": "r30",
+      "name": "Eagle Flight",
+      "group": "rank",
+      "unlock": 30,
+      "blurb": "Three stars over the eagle: the flight that leads."
+    },
+    {
+      "id": "r31",
+      "name": "Commandos",
+      "group": "rank",
+      "unlock": 31,
+      "blurb": "The arrowhead and the fighting knife."
+    },
+    {
+      "id": "r32",
+      "name": "Shadow Company",
+      "group": "rank",
+      "unlock": 32,
+      "blurb": "Officially, they were never there."
+    },
+    {
+      "id": "r33",
+      "name": "Black Arrows",
+      "group": "rank",
+      "unlock": 33,
+      "blurb": "Deep strike, no warning."
+    },
+    {
+      "id": "r34",
+      "name": "Frogmen",
+      "group": "rank",
+      "unlock": 34,
+      "blurb": "In from the sea, under it."
+    },
+    {
+      "id": "r35",
+      "name": "Snake Eaters",
+      "group": "rank",
+      "unlock": 35,
+      "blurb": "Long range recon. They live off the jungle."
+    },
+    {
+      "id": "r36",
+      "name": "Thunder Run",
+      "group": "rank",
+      "unlock": 36,
+      "blurb": "Straight down the highway at forty miles an hour."
+    },
+    {
+      "id": "r37",
+      "name": "Steel Rain",
+      "group": "rank",
+      "unlock": 37,
+      "blurb": "The guns that answer every call for fire."
+    },
+    {
+      "id": "r38",
+      "name": "Juggernaut",
+      "group": "rank",
+      "unlock": 38,
+      "blurb": "Nothing on the field can stop it."
+    },
+    {
+      "id": "r39",
+      "name": "The Dukes",
+      "group": "rank",
+      "unlock": 39,
+      "blurb": "Old regiment, older traditions."
+    },
+    {
+      "id": "r40",
+      "name": "Line Breakers",
+      "group": "rank",
+      "unlock": 40,
+      "blurb": "When the line won't move, they move it."
+    },
+    {
+      "id": "r41",
+      "name": "Laurel Guard",
+      "group": "rank",
+      "unlock": 41,
+      "blurb": "Gold bullion on navy: honour earned."
+    },
+    {
+      "id": "r42",
+      "name": "Crown Command",
+      "group": "rank",
+      "unlock": 42,
+      "blurb": "The regiment's colours, and its crown."
+    },
+    {
+      "id": "r43",
+      "name": "Order of the Sword",
+      "group": "rank",
+      "unlock": 43,
+      "blurb": "Silver blade, golden laurel."
+    },
+    {
+      "id": "r44",
+      "name": "Silver Eagle",
+      "group": "rank",
+      "unlock": 44,
+      "blurb": "The colonel's eagle, spread in silver."
+    },
+    {
+      "id": "r45",
+      "name": "Phoenix Brigade",
+      "group": "rank",
+      "unlock": 45,
+      "blurb": "Rebuilt from the ashes, twice."
+    },
+    {
+      "id": "r46",
+      "name": "Brigade Command",
+      "group": "rank",
+      "unlock": 46,
+      "blurb": "One star. A brigade answers to you."
+    },
+    {
+      "id": "r47",
+      "name": "Division Command",
+      "group": "rank",
+      "unlock": 47,
+      "blurb": "Two stars and the laurel."
+    },
+    {
+      "id": "r48",
+      "name": "Corps Command",
+      "group": "rank",
+      "unlock": 48,
+      "blurb": "Three stars. Divisions move when you speak."
+    },
+    {
+      "id": "r49",
+      "name": "Army Command",
+      "group": "rank",
+      "unlock": 49,
+      "blurb": "Four stars over the golden eagle."
+    },
+    {
+      "id": "r50",
+      "name": "Supreme Command",
+      "group": "rank",
+      "unlock": 50,
+      "blurb": "Five stars in a ring. General of the Army: there is no higher rank."
+    },
+    {
+      "id": "m01",
+      "name": "Valor Cross",
+      "group": "award",
+      "unlock": -1,
+      "blurb": "For extraordinary heroism in combat."
+    },
+    {
+      "id": "m02",
+      "name": "Star of Gallantry",
+      "group": "award",
+      "unlock": -1,
+      "blurb": "For gallantry in action against an enemy."
+    },
+    {
+      "id": "m03",
+      "name": "Silver Valor Star",
+      "group": "award",
+      "unlock": -1,
+      "blurb": "Third highest for valour, and worn proudly."
+    },
+    {
+      "id": "m04",
+      "name": "Bronze Service Star",
+      "group": "award",
+      "unlock": -1,
+      "blurb": "For meritorious service in a combat zone."
+    },
+    {
+      "id": "m05",
+      "name": "Wounded in Action",
+      "group": "award",
+      "unlock": -1,
+      "blurb": "Bled for it. Nobody wants this one."
+    },
+    {
+      "id": "m06",
+      "name": "Distinguished Service",
+      "group": "award",
+      "unlock": -1,
+      "blurb": "For exceptional service in a position of great responsibility."
+    },
+    {
+      "id": "m07",
+      "name": "Air Valor Medal",
+      "group": "award",
+      "unlock": -1,
+      "blurb": "For valour in aerial flight."
+    },
+    {
+      "id": "m08",
+      "name": "Steadfast Service",
+      "group": "award",
+      "unlock": -1,
+      "blurb": "Three years of exemplary conduct. Allegedly."
+    },
+    {
+      "id": "m09",
+      "name": "Jungle Campaign",
+      "group": "award",
+      "unlock": -1,
+      "blurb": "Served in the jungle war."
+    },
+    {
+      "id": "m10",
+      "name": "Desert Campaign",
+      "group": "award",
+      "unlock": -1,
+      "blurb": "Served in the desert war."
+    },
+    {
+      "id": "m11",
+      "name": "Arctic Service",
+      "group": "award",
+      "unlock": -1,
+      "blurb": "Cold enough to freeze the oil in the guns."
+    },
+    {
+      "id": "m12",
+      "name": "River Patrol",
+      "group": "award",
+      "unlock": -1,
+      "blurb": "Brown water navy: the boats on the rivers."
+    },
+    {
+      "id": "m13",
+      "name": "Delta Campaign",
+      "group": "award",
+      "unlock": -1,
+      "blurb": "The paddies and canals of the delta."
+    },
+    {
+      "id": "m14",
+      "name": "Mountain Campaign",
+      "group": "award",
+      "unlock": -1,
+      "blurb": "Fought along the ridgelines."
+    },
+    {
+      "id": "m15",
+      "name": "Order of the Iron Wolf",
+      "group": "award",
+      "unlock": -1,
+      "blurb": "For leading from the front."
+    },
+    {
+      "id": "m16",
+      "name": "Legion of the Laurel",
+      "group": "award",
+      "unlock": -1,
+      "blurb": "For a career of outstanding service."
+    },
+    {
+      "id": "m17",
+      "name": "Lifesaving Medal",
+      "group": "award",
+      "unlock": -1,
+      "blurb": "For saving a life at the risk of one's own."
+    },
+    {
+      "id": "m18",
+      "name": "Airborne Assault",
+      "group": "award",
+      "unlock": -1,
+      "blurb": "For a combat jump."
+    },
+    {
+      "id": "m19",
+      "name": "Combat Aviation Cross",
+      "group": "award",
+      "unlock": -1,
+      "blurb": "For heroism while flying."
+    },
+    {
+      "id": "m20",
+      "name": "Long Service",
+      "group": "award",
+      "unlock": -1,
+      "blurb": "Twenty years in uniform."
+    },
+    {
+      "id": "m21",
+      "name": "Supreme Valor Medal",
+      "group": "award",
+      "unlock": -1,
+      "blurb": "The highest award for valour. Few live to wear it."
+    },
+    {
+      "id": "m22",
+      "name": "Sea Valor Cross",
+      "group": "award",
+      "unlock": -1,
+      "blurb": "For heroism at sea."
+    },
+    {
+      "id": "m23",
+      "name": "Prisoner of War",
+      "group": "award",
+      "unlock": -1,
+      "blurb": "For those who were held, and came home."
+    },
+    {
+      "id": "m24",
+      "name": "Expeditionary Medal",
+      "group": "award",
+      "unlock": -1,
+      "blurb": "Wherever they were sent."
+    },
+    {
+      "id": "m25",
+      "name": "Coalition Service",
+      "group": "award",
+      "unlock": -1,
+      "blurb": "Served with the Coalition."
+    },
+    {
+      "id": "m26",
+      "name": "Jump Wings",
+      "group": "award",
+      "unlock": -1,
+      "blurb": "Five jumps from a perfectly good aircraft."
+    },
+    {
+      "id": "m27",
+      "name": "Senior Jump Wings",
+      "group": "award",
+      "unlock": -1,
+      "blurb": "Thirty jumps, and a star for the trouble."
+    },
+    {
+      "id": "m28",
+      "name": "Master Jump Wings",
+      "group": "award",
+      "unlock": -1,
+      "blurb": "Sixty-five jumps. The wreath says master."
+    },
+    {
+      "id": "m29",
+      "name": "Aviator Wings",
+      "group": "award",
+      "unlock": -1,
+      "blurb": "Rated to fly."
+    },
+    {
+      "id": "m30",
+      "name": "Combat Rifleman",
+      "group": "award",
+      "unlock": -1,
+      "blurb": "The rifle on blue, in the laurel: under fire as an infantryman."
+    },
+    {
+      "id": "m31",
+      "name": "Combat Medic Badge",
+      "group": "award",
+      "unlock": -1,
+      "blurb": "Treated the wounded under fire."
+    },
+    {
+      "id": "m32",
+      "name": "Expert Marksman",
+      "group": "award",
+      "unlock": -1,
+      "blurb": "Forty of forty at the range."
+    },
+    {
+      "id": "m33",
+      "name": "Scout Sniper",
+      "group": "award",
+      "unlock": -1,
+      "blurb": "One shot."
+    },
+    {
+      "id": "m34",
+      "name": "Bomb Disposal",
+      "group": "award",
+      "unlock": -1,
+      "blurb": "Initial success or total failure."
+    },
+    {
+      "id": "m35",
+      "name": "Air Assault Badge",
+      "group": "award",
+      "unlock": -1,
+      "blurb": "Rappel, sling load, repeat."
+    },
+    {
+      "id": "m36",
+      "name": "Pathfinder Badge",
+      "group": "award",
+      "unlock": -1,
+      "blurb": "The torch and the wings: first on the drop zone."
+    },
+    {
+      "id": "m37",
+      "name": "Combat Diver",
+      "group": "award",
+      "unlock": -1,
+      "blurb": "Qualified to go in under water."
+    },
+    {
+      "id": "m38",
+      "name": "Mountain Warfare",
+      "group": "award",
+      "unlock": -1,
+      "blurb": "Qualified on rock, ice and snow."
+    },
+    {
+      "id": "m39",
+      "name": "Raider Tab",
+      "group": "award",
+      "unlock": -1,
+      "blurb": "Sixty days of the hardest course in the army."
+    },
+    {
+      "id": "m40",
+      "name": "Sapper Tab",
+      "group": "award",
+      "unlock": -1,
+      "blurb": "Combat engineers who lead the way."
+    },
+    {
+      "id": "m41",
+      "name": "Commando Badge",
+      "group": "award",
+      "unlock": -1,
+      "blurb": "The winged dagger."
+    },
+    {
+      "id": "m42",
+      "name": "Tanker Badge",
+      "group": "award",
+      "unlock": -1,
+      "blurb": "Qualified in armour, and under fire in it."
+    },
+    {
+      "id": "m43",
+      "name": "Gunnery Badge",
+      "group": "award",
+      "unlock": -1,
+      "blurb": "Master of the guns."
+    },
+    {
+      "id": "m44",
+      "name": "Signal Badge",
+      "group": "award",
+      "unlock": -1,
+      "blurb": "Kept the net up when it mattered."
+    },
+    {
+      "id": "m45",
+      "name": "Driver and Mechanic",
+      "group": "award",
+      "unlock": -1,
+      "blurb": "Ten thousand miles without an accident."
+    },
+    {
+      "id": "m46",
+      "name": "Campaign Ribbons",
+      "group": "award",
+      "unlock": -1,
+      "blurb": "Six campaigns, worn on the chest."
+    },
+    {
+      "id": "m47",
+      "name": "Unit Citation",
+      "group": "award",
+      "unlock": -1,
+      "blurb": "For the unit, not the man: everyone who was there."
+    },
+    {
+      "id": "m48",
+      "name": "Service Ribbons",
+      "group": "award",
+      "unlock": -1,
+      "blurb": "A career's worth of service."
+    },
+    {
+      "id": "m49",
+      "name": "Veteran's Rack",
+      "group": "award",
+      "unlock": -1,
+      "blurb": "Stars on the ribbons: more than one tour."
+    },
+    {
+      "id": "m50",
+      "name": "Hero's Rack",
+      "group": "award",
+      "unlock": -1,
+      "blurb": "Twelve ribbons, top row first. You'd want to hear the stories."
+    },
+    {
+      "id": "u01",
+      "name": "Snake Pit",
+      "group": "unit",
+      "unlock": -1,
+      "blurb": "First Platoon's hootch, and its pet."
+    },
+    {
+      "id": "u02",
+      "name": "Gunslingers",
+      "group": "unit",
+      "unlock": -1,
+      "blurb": "Gunship platoon. Rockets and miniguns on call."
+    },
+    {
+      "id": "u03",
+      "name": "Dustoff",
+      "group": "unit",
+      "unlock": -1,
+      "blurb": "Medevac. They come in under fire for you."
+    },
+    {
+      "id": "u04",
+      "name": "Night Hawks",
+      "group": "unit",
+      "unlock": -1,
+      "blurb": "Searchlight and minigun, hunting after dark."
+    },
+    {
+      "id": "u05",
+      "name": "River Rats",
+      "group": "unit",
+      "unlock": -1,
+      "blurb": "Patrol boats on the brown water."
+    },
+    {
+      "id": "u06",
+      "name": "Jungle Kings",
+      "group": "unit",
+      "unlock": -1,
+      "blurb": "Crowned by the jungle, and they earned it."
+    },
+    {
+      "id": "u07",
+      "name": "Death Dealers",
+      "group": "unit",
+      "unlock": -1,
+      "blurb": "Ace of spades, left on the trail."
+    },
+    {
+      "id": "u08",
+      "name": "Magic Dragon",
+      "group": "unit",
+      "unlock": -1,
+      "blurb": "The gunship that breathes fire from the night sky."
+    },
+    {
+      "id": "u09",
+      "name": "Wolfpack",
+      "group": "unit",
+      "unlock": -1,
+      "blurb": "B Company runs together."
+    },
+    {
+      "id": "u10",
+      "name": "Bat Company",
+      "group": "unit",
+      "unlock": -1,
+      "blurb": "Night ambushes, every night."
+    },
+    {
+      "id": "u11",
+      "name": "Tunnel Rats",
+      "group": "unit",
+      "unlock": -1,
+      "blurb": "A torch, a pistol, and a hole in the ground."
+    },
+    {
+      "id": "u12",
+      "name": "Sky Raiders",
+      "group": "unit",
+      "unlock": -1,
+      "blurb": "They drop in uninvited."
+    },
+    {
+      "id": "u13",
+      "name": "Delta Devils",
+      "group": "unit",
+      "unlock": -1,
+      "blurb": "Fire and the fork, in the paddies."
+    },
+    {
+      "id": "u14",
+      "name": "Mud Bulls",
+      "group": "unit",
+      "unlock": -1,
+      "blurb": "Mechanized infantry, up to the axles."
+    },
+    {
+      "id": "u15",
+      "name": "Paddy Raiders",
+      "group": "unit",
+      "unlock": -1,
+      "blurb": "Wet feet, every day."
+    },
+    {
+      "id": "u16",
+      "name": "Hill Fighters",
+      "group": "unit",
+      "unlock": -1,
+      "blurb": "Took the hill. Took it again."
+    },
+    {
+      "id": "u17",
+      "name": "Firebase",
+      "group": "unit",
+      "unlock": -1,
+      "blurb": "Sandbags, guns, and a long night."
+    },
+    {
+      "id": "u18",
+      "name": "Phantoms",
+      "group": "unit",
+      "unlock": -1,
+      "blurb": "Recon you never see."
+    },
+    {
+      "id": "u19",
+      "name": "Reapers",
+      "group": "unit",
+      "unlock": -1,
+      "blurb": "Assault company. Harvest season."
+    },
+    {
+      "id": "u20",
+      "name": "Lucky Aces",
+      "group": "unit",
+      "unlock": -1,
+      "blurb": "Dealt from the top of the deck."
+    },
+    {
+      "id": "u21",
+      "name": "Blue Thunder",
+      "group": "unit",
+      "unlock": -1,
+      "blurb": "Lift company: they carry everyone else."
+    },
+    {
+      "id": "u22",
+      "name": "Warlords",
+      "group": "unit",
+      "unlock": -1,
+      "blurb": "The crown and the swords: command of the field."
+    },
+    {
+      "id": "u23",
+      "name": "Sharks",
+      "group": "unit",
+      "unlock": -1,
+      "blurb": "Painted teeth on the nose of every gunship."
+    },
+    {
+      "id": "u24",
+      "name": "Sidewinders",
+      "group": "unit",
+      "unlock": -1,
+      "blurb": "Strike fast, strike from the side."
+    },
+    {
+      "id": "u25",
+      "name": "Firestorm",
+      "group": "unit",
+      "unlock": -1,
+      "blurb": "When they call in the big stuff."
+    },
+    {
+      "id": "u26",
+      "name": "Black Cats",
+      "group": "unit",
+      "unlock": -1,
+      "blurb": "Bad luck, for somebody."
+    },
+    {
+      "id": "u27",
+      "name": "Mad Bulls",
+      "group": "unit",
+      "unlock": -1,
+      "blurb": "Charge first, ask later."
+    },
+    {
+      "id": "u28",
+      "name": "Iron Eagles",
+      "group": "unit",
+      "unlock": -1,
+      "blurb": "Steel-grey and sharp-eyed."
+    },
+    {
+      "id": "u29",
+      "name": "Bandits",
+      "group": "unit",
+      "unlock": -1,
+      "blurb": "Recon team. They steal the enemy's secrets."
+    },
+    {
+      "id": "u30",
+      "name": "Sea Wolves",
+      "group": "unit",
+      "unlock": -1,
+      "blurb": "Helicopters over the river mouths."
+    },
+    {
+      "id": "u31",
+      "name": "Swamp Foxes",
+      "group": "unit",
+      "unlock": -1,
+      "blurb": "Scouts. Cunning, quick, and wet."
+    },
+    {
+      "id": "u32",
+      "name": "Monsoon",
+      "group": "unit",
+      "unlock": -1,
+      "blurb": "They fight in the rain, because it always rains."
+    },
+    {
+      "id": "u33",
+      "name": "Hurricane Battery",
+      "group": "unit",
+      "unlock": -1,
+      "blurb": "Six guns, one storm."
+    },
+    {
+      "id": "u34",
+      "name": "Road Runners",
+      "group": "unit",
+      "unlock": -1,
+      "blurb": "Armoured cavalry: the convoys get through."
+    },
+    {
+      "id": "u35",
+      "name": "Tomahawks",
+      "group": "unit",
+      "unlock": -1,
+      "blurb": "Strike company. Close and personal."
+    },
+    {
+      "id": "u36",
+      "name": "Diamondbacks",
+      "group": "unit",
+      "unlock": -1,
+      "blurb": "Rattle before they strike. Sometimes."
+    },
+    {
+      "id": "u37",
+      "name": "Scorpions",
+      "group": "unit",
+      "unlock": -1,
+      "blurb": "Desert squadron, sting in the tail."
+    },
+    {
+      "id": "u38",
+      "name": "Bomb Squad",
+      "group": "unit",
+      "unlock": -1,
+      "blurb": "If you see them running, keep up."
+    },
+    {
+      "id": "u39",
+      "name": "Eyes Forward",
+      "group": "unit",
+      "unlock": -1,
+      "blurb": "Forward observers: the artillery's eyes."
+    },
+    {
+      "id": "u40",
+      "name": "Coalition Armour",
+      "group": "unit",
+      "unlock": -1,
+      "blurb": "The Coalition's tank battalions."
+    },
+    {
+      "id": "u41",
+      "name": "Coalition Air Wing",
+      "group": "unit",
+      "unlock": -1,
+      "blurb": "The Coalition's helicopters: lift, attack, rescue."
+    },
+    {
+      "id": "u42",
+      "name": "Rebel Militia",
+      "group": "unit",
+      "unlock": -1,
+      "blurb": "Farmers by day."
+    },
+    {
+      "id": "u43",
+      "name": "Technicals",
+      "group": "unit",
+      "unlock": -1,
+      "blurb": "A pickup truck and a heavy machine gun."
+    },
+    {
+      "id": "u44",
+      "name": "Drone Hunters",
+      "group": "unit",
+      "unlock": -1,
+      "blurb": "Every FPV drone has a hunter."
+    },
+    {
+      "id": "u45",
+      "name": "Rebel Sappers",
+      "group": "unit",
+      "unlock": -1,
+      "blurb": "They dig under the town, and leave surprises."
+    },
+    {
+      "id": "u46",
+      "name": "Harbor Patrol",
+      "group": "unit",
+      "unlock": -1,
+      "blurb": "Keeping the port open."
+    },
+    {
+      "id": "u47",
+      "name": "Bridgehead",
+      "group": "unit",
+      "unlock": -1,
+      "blurb": "Operation Broken Crossing: take the bridge and hold it."
+    },
+    {
+      "id": "u48",
+      "name": "Kingpin",
+      "group": "unit",
+      "unlock": -1,
+      "blurb": "Operation Silent Gate: one night, one target."
+    },
+    {
+      "id": "u49",
+      "name": "Night Raiders",
+      "group": "unit",
+      "unlock": -1,
+      "blurb": "In under the moon, out before dawn."
+    },
+    {
+      "id": "u50",
+      "name": "Last Stand",
+      "group": "unit",
+      "unlock": -1,
+      "blurb": "Surrounded. Still here."
+    }
+  ]
+}
