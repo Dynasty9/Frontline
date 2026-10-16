@@ -258,6 +258,14 @@ func _on_game_start(s: Dictionary) -> void:
 	world.settings = s
 	add_child(world)
 	world.game_ended.connect(_on_game_ended)
+	# a headless client says which after-action report it was sent (multiplayer tests)
+	if not world.srv and DisplayServer.get_name() == "headless":
+		world.report_updated.connect(func():
+			var r: Dictionary = world.report
+			var sd: Array = r.get("sides", [{}, {}])
+			print("CLIENT report t=%.0f full=%s commanders=%d units=%d samples=%d enemy_known=%s" % [float(r.get("t", 0.0)), str(r.get("full", false)),
+				(r.get("players", []) as Array).size(), (r.get("units", []) as Array).size(), (r.get("tl", []) as Array).size(),
+				str(not (sd[1 - maxi(0, world.local_team)] as Dictionary).is_empty())]))
 	if cur and is_instance_valid(cur):
 		_warm_up(cur)
 	if args.has("focus") and world.cam:
@@ -347,6 +355,7 @@ func _on_game_ended(w: int) -> void:
 	if world.srv and (args.has("stats") or args.has("quit-on-win")):
 		print("WINNER %s at t=%.0f" % [Defs.TEAM_NAMES[w], world.time])
 		print("FINAL ", world.debug_stats())
+		print("REPORT ", world.battle.summary())
 	if args.has("quit-on-win"):
 		get_tree().quit()
 
@@ -562,16 +571,23 @@ func _process(_dt: float) -> void:
 			var mu := String(args["menu-update"]).split(",")
 			var st: int = ["available", "downloading", "ready", "failed"].find(mu[1] if mu.size() > 1 else "available") + 1
 			Updater.pretend(mu[0], st)
-		# --menu-panel=browse|account|settings: the list of online battles, the sign-in panel, the settings
+		# --menu-panel=browse|account|record|settings: the list of online battles, the sign-in panel,
+		# the service record (signed in), the settings
 		if args.has("menu-panel") and menu and menu.browse_panel and not has_meta("panel_open") and Engine.get_frames_drawn() > 5:
 			set_meta("panel_open", true)
 			if String(args["menu-panel"]) == "account":
 				menu._open_account()
+			elif String(args["menu-panel"]) == "record":
+				menu._open_record()
 			elif String(args["menu-panel"]) == "settings":
 				menu.settings_panel.visible = true
 				menu.settings_panel._show_tab(String(args.get("settings-tab", "interface")))
 			else:
 				menu._open_browser()
+		# --open-battle (with --menu-panel=record): open the newest battle's after-action report
+		if args.has("open-battle") and menu and menu.rec_list and menu.rec_list.get_child_count() > 0 and not has_meta("battle_open"):
+			set_meta("battle_open", true)
+			(menu.rec_list.get_child(0) as Button).pressed.emit()
 		# --menu-missions[=KEY]: open the Missions panel (on that mission)
 		if args.has("menu-missions") and menu and menu.ms_panel and not has_meta("ms_open") and Engine.get_frames_drawn() > 5:
 			set_meta("ms_open", true)
@@ -624,6 +640,12 @@ func _process(_dt: float) -> void:
 		if args.has("dump-structs"):
 			_dump_structs()
 		_shot_i += 1
+		# --stats-tab=all: the next shot is of the next tab
+		if String(args.get("stats-tab", "")) == "all" and world.hud:
+			var key: String = StatsPanel.TABS[_shot_i % StatsPanel.TABS.size()][0]
+			for sp in [world.hud.stats_panel, world.hud.aar_panel]:
+				if sp != null and is_instance_valid(sp) and sp.is_visible_in_tree():
+					sp.show_tab(key)
 		if _shot_i >= count:
 			_shot_done = true
 			if not args.has("quit-after"):
@@ -893,6 +915,23 @@ func _process(_dt: float) -> void:
 		for v in world.vehicles:
 			if v.owner_peer == world.local_peer and not v.eid in world.input.sel_vehicles:
 				world.input.sel_vehicles.append(v.eid)
+	# --report-at=SECONDS: ask the host for the battle statistics then (a client's view of them)
+	if args.has("report-at") and not has_meta("report_asked") and world.time >= float(args["report-at"]):
+		set_meta("report_asked", true)
+		world.request_report()
+	# --end-at=SECONDS: call the battle there (for the side ahead on what it has
+	# destroyed), back at normal speed; --stats-tab=summary|commanders|units|timeline opens the
+	# battle statistics a second before the screenshot (after-action report tests)
+	if args.has("end-at") and world.srv and world.winner < 0 and world.time >= float(args["end-at"]):
+		var sd: Array = world.battle.sides
+		world.declare_winner(0 if float(sd[0].val_killed) >= float(sd[1].val_killed) else 1)
+		Engine.time_scale = 1.0  # the end screens run in real time: shoot them at a real pace
+	if args.has("stats-tab") and world.hud and world.winner < 0 and not has_meta("stats_open") and world.time > float(args.get("shot-at", 8.0)) - 1.0:
+		set_meta("stats_open", true)
+		world.hud.open_stats(String(args["stats-tab"]))
+	if args.has("stats-tab") and world.hud and world.winner >= 0 and not has_meta("aar_tab") and world.hud.aar_panel != null:
+		set_meta("aar_tab", true)
+		world.hud.aar_panel.show_tab(String(args["stats-tab"]))
 	# a client's --quit-after counts from when the host's world reached it: the
 	# host only answers once it has laid out the map (and, with a window, drawn
 	# its first frame - a minute or more off-screen), and a client counting from
@@ -908,6 +947,7 @@ func _process(_dt: float) -> void:
 			_dump_structs()
 		if world.srv:
 			print("FINAL ", world.debug_stats())
+			print("REPORT ", world.battle.summary())
 		else:
 			var counts := {}
 			var enemy := 0

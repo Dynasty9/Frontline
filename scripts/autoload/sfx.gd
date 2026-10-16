@@ -11,6 +11,8 @@ var streams := {}
 var pool: Array = []
 var pool_i := 0
 var ui_player: AudioStreamPlayer
+var ui_pool: Array = []  # interface sounds overlap (a whoosh under an impact, ticks over both)
+var ui_i := 0
 var enabled := true
 var _last := {}  # name -> msec, throttles very frequent sounds
 var far_pool: Array = []  # non-positional players for things heard from far away (aircraft, gunship fire)
@@ -63,6 +65,12 @@ func _ready() -> void:
 	streams["prop"] = _prop_loop()
 	streams["arty_whistle"] = _incoming()
 	streams["fire"] = _fire_loop()
+	# the stats screens and the end of a battle
+	streams["ui_whoosh"] = _ui_whoosh()
+	streams["ui_tick"] = _ui_tick()
+	streams["ui_slam"] = _ui_slam(false)
+	streams["ui_slam_low"] = _ui_slam(true)
+	streams["ui_medal"] = _ui_medal()
 	for i in 32:
 		var p := AudioStreamPlayer3D.new()
 		p.unit_size = 14.0
@@ -72,9 +80,12 @@ func _ready() -> void:
 		p.bus = &"Effects"
 		add_child(p)
 		pool.append(p)
-	ui_player = AudioStreamPlayer.new()
-	ui_player.bus = &"Interface"
-	add_child(ui_player)
+	for i in 5:
+		var up := AudioStreamPlayer.new()
+		up.bus = &"Interface"
+		add_child(up)
+		ui_pool.append(up)
+	ui_player = ui_pool[0]
 	for i in 6:
 		var fp := AudioStreamPlayer.new()
 		fp.bus = &"Effects"
@@ -141,12 +152,15 @@ func play_far(sname: String, vol_db := 0.0, pitch := 1.0, dist := 0.0) -> void:
 	p.play()
 
 
-func ui(sname: String) -> void:
+func ui(sname: String, vol_db := -8.0, pitch := 1.0) -> void:
 	if not enabled or not streams.has(sname):
 		return
-	ui_player.stream = streams[sname]
-	ui_player.volume_db = -8.0
-	ui_player.play()
+	var p: AudioStreamPlayer = ui_pool[ui_i % ui_pool.size()]
+	ui_i += 1
+	p.stream = streams[sname]
+	p.volume_db = vol_db
+	p.pitch_scale = pitch
+	p.play()
 
 
 func make_drone_player() -> AudioStreamPlayer3D:
@@ -537,6 +551,84 @@ func _click() -> AudioStreamWAV:
 	for i in n:
 		var t := float(i) / RATE
 		s[i] = sin(TAU * 1600.0 * t) * exp(-t * 120.0) * 0.5
+	return _wav(s)
+
+
+## A panel sliding in: a short breath of air, rising then gone.
+func _ui_whoosh() -> AudioStreamWAV:
+	var dur := 0.34
+	var n := int(dur * RATE)
+	var s := PackedFloat32Array()
+	s.resize(n)
+	var lp := 0.0
+	var lp2 := 0.0
+	for i in n:
+		var t := float(i) / RATE
+		var k := t / dur
+		var cut := 0.04 + 0.32 * sin(k * PI)
+		lp += ((randf() * 2.0 - 1.0) - lp) * cut
+		lp2 += (lp - lp2) * 0.5
+		s[i] = (lp - lp2 * 0.6) * pow(sin(k * PI), 1.6) * 1.5
+	return _wav(s)
+
+
+## One tick of a number counting up.
+func _ui_tick() -> AudioStreamWAV:
+	var n := int(0.022 * RATE)
+	var s := PackedFloat32Array()
+	s.resize(n)
+	for i in n:
+		var t := float(i) / RATE
+		s[i] = (sin(TAU * 2700.0 * t) * 0.6 + sin(TAU * 5400.0 * t) * 0.15 + (randf() - 0.5) * 0.12) * exp(-t * 260.0) * 0.55
+	return _wav(s)
+
+
+## The end-of-battle banner landing: a sub drop under a hard transient, a
+## metal ring, and a long dark tail. low: the defeat's, heavier and duller.
+func _ui_slam(low: bool) -> AudioStreamWAV:
+	var dur := 1.8
+	var n := int(dur * RATE)
+	var s := PackedFloat32Array()
+	s.resize(n)
+	var ph := 0.0
+	var lp := 0.0
+	var tail := 0.0
+	var f0 := 70.0 if low else 95.0
+	var f1 := 30.0 if low else 40.0
+	for i in n:
+		var t := float(i) / RATE
+		var f := f1 + (f0 - f1) * exp(-t * 6.0)
+		ph += TAU * f / RATE
+		var sub := sin(ph) * exp(-t * (2.6 if low else 3.4)) * 0.95
+		lp += ((randf() * 2.0 - 1.0) - lp) * (0.35 if low else 0.55)
+		var hit := lp * exp(-t * 22.0) * 0.9
+		var ring := 0.0
+		if not low:
+			ring = (sin(TAU * 1830.0 * t) * 0.5 + sin(TAU * 2750.0 * t) * 0.35 + sin(TAU * 4120.0 * t) * 0.15) * exp(-t * 9.0) * 0.16
+		tail += ((randf() * 2.0 - 1.0) - tail) * 0.06
+		var verb := tail * exp(-t * 2.2) * (1.0 - exp(-t * 30.0)) * 0.55
+		s[i] = (sub + hit + ring + verb) * 0.64
+	return _wav(s)
+
+
+## An honour landing: a bright little chord and a sparkle over it.
+func _ui_medal() -> AudioStreamWAV:
+	var dur := 1.1
+	var n := int(dur * RATE)
+	var s := PackedFloat32Array()
+	s.resize(n)
+	var notes := [1046.5, 1568.0, 2093.0]
+	for i in n:
+		var t := float(i) / RATE
+		var v := 0.0
+		for j in notes.size():
+			var lt := t - j * 0.045
+			if lt < 0.0:
+				continue
+			var f: float = notes[j] * (1.0 + 0.003 * sin(TAU * 5.5 * lt))
+			v += (sin(TAU * f * lt) * 0.7 + sin(TAU * f * 2.0 * lt) * 0.12) * minf(1.0, lt * 300.0) * exp(-lt * 4.2) * 0.22
+		var sp := (randf() - 0.5) * exp(-t * 14.0) * 0.12 * sin(TAU * 7300.0 * t)
+		s[i] = v + sp
 	return _wav(s)
 
 

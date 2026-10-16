@@ -11,6 +11,7 @@
 // With neither configured, accounts are switched off.
 
 import { randomBytes, randomUUID, scryptSync, timingSafeEqual } from 'node:crypto';
+import { HEAD } from './records.js';
 
 export class AuthError extends Error {
 	constructor(status, message) {
@@ -165,6 +166,44 @@ class SupabaseAuth {
 		this.cache.set(token, user);
 		return user;
 	}
+
+	// --- service records (battle_records in schema.sql; row-level security keeps
+	// each player to their own)
+
+	static noTable(r) {
+		// the table isn't there: schema.sql hasn't been run on this project
+		if (r.status === 404 || r.data?.code === 'PGRST205' || r.data?.code === '42P01')
+			throw new AuthError(503, 'Battle records are not set up on this server yet.');
+	}
+
+	async saveBattle(token, user, rec) {
+		const r = await this.call('/rest/v1/battle_records?select=id,played_at', {
+			method: 'POST',
+			token,
+			body: { ...rec, user_id: user.id },
+			headers: { Prefer: 'return=representation' },
+		});
+		SupabaseAuth.noTable(r);
+		if (!r.ok || !Array.isArray(r.data) || !r.data[0])
+			throw new AuthError(r.status >= 500 ? 503 : 400, SupabaseAuth.message(r.data, 'Could not record the battle.'));
+		return { id: r.data[0].id, played_at: r.data[0].played_at };
+	}
+
+	async listBattles(token, user, { limit = 20, before = '' } = {}) {
+		let q = `/rest/v1/battle_records?select=${HEAD.join(',')}&user_id=eq.${encodeURIComponent(user.id)}&order=played_at.desc&limit=${limit}`;
+		if (before) q += `&played_at=lt.${encodeURIComponent(before)}`;
+		const r = await this.call(q, { token });
+		SupabaseAuth.noTable(r);
+		if (!r.ok || !Array.isArray(r.data)) throw new AuthError(503, SupabaseAuth.message(r.data, 'Could not read your battles.'));
+		return r.data;
+	}
+
+	async getBattle(token, user, id) {
+		const r = await this.call(`/rest/v1/battle_records?select=*&id=eq.${encodeURIComponent(id)}&user_id=eq.${encodeURIComponent(user.id)}`, { token });
+		SupabaseAuth.noTable(r);
+		if (!r.ok || !Array.isArray(r.data)) throw new AuthError(503, SupabaseAuth.message(r.data, 'Could not read that battle.'));
+		return r.data[0] || null;
+	}
 }
 
 // Local testing only: forgets everything on restart.
@@ -233,5 +272,35 @@ class MemoryAuth {
 		if (this.taken(callsign, user.id)) throw new AuthError(409, 'That callsign is taken.');
 		this.users.get(user.email).callsign = callsign;
 		return { ...user, callsign };
+	}
+
+	// service records: user id -> rows, oldest first
+	battles(user) {
+		if (!this.records) this.records = new Map();
+		if (!this.records.has(user.id)) this.records.set(user.id, []);
+		return this.records.get(user.id);
+	}
+
+	async saveBattle(token, user, rec) {
+		const rows = this.battles(user);
+		// the clock may not have moved since the last one: keep them in order
+		const last = rows.length ? Date.parse(rows[rows.length - 1].played_at) : 0;
+		const row = { id: randomUUID(), user_id: user.id, played_at: new Date(Math.max(Date.now(), last + 1)).toISOString(), ...rec };
+		rows.push(row);
+		return { id: row.id, played_at: row.played_at };
+	}
+
+	async listBattles(token, user, { limit = 20, before = '' } = {}) {
+		const rows = this.battles(user).filter((r) => !before || r.played_at < before);
+		// newest first
+		const out = [];
+		for (let i = rows.length - 1; i >= Math.max(0, rows.length - limit); i--) {
+			out.push(Object.fromEntries(HEAD.map((k) => [k, rows[i][k]])));
+		}
+		return out;
+	}
+
+	async getBattle(token, user, id) {
+		return this.battles(user).find((r) => r.id === id) || null;
 	}
 }

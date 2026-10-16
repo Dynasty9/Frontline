@@ -25,7 +25,7 @@ var support_ready := [{}, {}]  # per side: kind -> world time it is available ag
 
 func support_left(team: int, kind: String) -> float:
 	return float((support_ready[team] as Dictionary).get(kind, Defs.support_from(kind))) - world.time
-var _support_q: Array = []  # [time, kind, team, data]
+var _support_q: Array = []  # [time, kind, team, pos, spread, back, called by]
 
 
 func call_support(peer: int, team: int, kind: String, pos: Vector3, dir := Vector3.ZERO) -> bool:
@@ -40,9 +40,11 @@ func call_support(peer: int, team: int, kind: String, pos: Vector3, dir := Vecto
 		notify(peer, team, "Not enough supply for the %s (%d)." % [String(d.name).to_lower(), int(d.cost)])
 		return false
 	support_ready[team][kind] = world.time + float(d.cooldown)
+	world.battle.spent(peer, team, int(d.cost))
+	world.battle.support_called(peer, team, kind)
 	if dir.length() < 0.1:
 		dir = Vector3(0, 0, -1) if team == 0 else Vector3(0, 0, 1)
-	_launch(kind, team, pos, Defs.flat(dir).normalized())
+	_launch(kind, team, pos, Defs.flat(dir).normalized(), peer)
 	return true
 
 
@@ -55,7 +57,8 @@ func demo_support(kind: String, pos: Vector3, dir: Vector3) -> void:
 	_launch(kind, -1, pos, Defs.flat(dir).normalized())
 
 
-func _launch(kind: String, team: int, pos: Vector3, dir: Vector3) -> void:
+## by: who called it (whose the kills are).
+func _launch(kind: String, team: int, pos: Vector3, dir: Vector3, by := 0) -> void:
 	pos.y = 0.0
 	world.fx_event([Fx.SUPPORT, pos, float(Defs.SUPPORT[kind].get("r", 14.0))])
 	world.stat("support_" + kind)
@@ -83,36 +86,36 @@ func _launch(kind: String, team: int, pos: Vector3, dir: Vector3) -> void:
 			return
 		"jet":
 			var start := pos - dir * 330.0 + Vector3(0, 34.0, 0)
-			world.spawn("projectile", {"ptype": "jet", "team": team, "pos": start, "vel": dir * 95.0, "target": pos, "fuse": float(sd.get("bombs", 4)), "thrower": 0, "mk": mk})
+			world.spawn("projectile", {"ptype": "jet", "team": team, "pos": start, "vel": dir * 95.0, "target": pos, "fuse": float(sd.get("bombs", 4)), "thrower": 0, "by": by, "mk": mk})
 			_sup_msg(team, foe, "%s inbound on %s." % [air_name, gr], "Enemy jet inbound!" if warn else "", pos)
 			return
 		"a10":
 			var st := pos + dir * Projectile.A10_START
 			st.y = Projectile.a10_alt(Projectile.A10_START)
-			world.spawn("projectile", {"ptype": "a10", "team": team, "pos": st, "vel": dir * Projectile.A10_SPEED, "target": pos, "fuse": 0.0, "thrower": 0, "mk": mk})
+			world.spawn("projectile", {"ptype": "a10", "team": team, "pos": st, "vel": dir * Projectile.A10_SPEED, "target": pos, "fuse": 0.0, "thrower": 0, "by": by, "mk": mk})
 			_sup_msg(team, foe, "%s inbound, gun run on %s. Danger close!" % [air_name, gr], "Enemy jet, low! Get down!", pos)
 			return
 		"orbit":
 			world.spawn("projectile", {"ptype": "ac130", "team": team, "pos": pos + Vector3(Projectile.AC_R, Projectile.AC_ALT, 0), "vel": Vector3.ZERO, "target": pos, "fuse": world.rng.randf() * TAU,
-				"thrower": 0, "mk": mk, "guns": String(sd.get("guns", "ac130"))})
+				"thrower": 0, "by": by, "mk": mk, "guns": String(sd.get("guns", "ac130"))})
 			_sup_msg(team, foe, "%s on station over %s. Thirty seconds of fire." % [air_name, gr], "Enemy aircraft overhead!", pos)
 			return
 	match kind:
 		"artillery":
 			var back := Vector3(0, 0, 1) if team == 0 else (Vector3(0, 0, -1) if team == 1 else -dir)
 			for i in 8:
-				_support_q.append([world.time + 2.0 + i * 0.7, "arty", team, pos, 22.0, back * 380.0])
+				_support_q.append([world.time + 2.0 + i * 0.7, "arty", team, pos, 22.0, back * 380.0, by])
 			_sup_msg(team, foe, "Shot, over. 155 on %s, eight rounds." % gr, "Incoming artillery!", pos)
 		"barrage":
 			var back2 := Vector3(0, 0, -1) if team == 1 else (Vector3(0, 0, 1) if team == 0 else -dir)
 			for i in 16:
-				_support_q.append([world.time + 1.5 + i * 0.28, "grad", team, pos, 20.0, back2 * 300.0])
+				_support_q.append([world.time + 1.5 + i * 0.28, "grad", team, pos, 20.0, back2 * 300.0, by])
 			_sup_msg(team, foe, "Rocket barrage on %s. Keep your heads down." % gr, "Incoming rockets!", pos)
 		"mortars", "smoke":
 			var back3 := (Vector3(0, 0, -1) if team == 1 else Vector3(0, 0, 1)) if team >= 0 else -dir
 			var n := 12 if kind == "mortars" else 6
 			for i in n:
-				_support_q.append([world.time + 1.0 + i * 0.45, "mortar" if kind == "mortars" else "mortar_smoke", team, pos, 15.0 if kind == "mortars" else 10.0, back3 * 130.0])
+				_support_q.append([world.time + 1.0 + i * 0.45, "mortar" if kind == "mortars" else "mortar_smoke", team, pos, 15.0 if kind == "mortars" else 10.0, back3 * 130.0, by])
 			_sup_msg(team, foe, ("Mortars firing on %s." if kind == "mortars" else "Smoke going down on %s.") % gr, "Incoming mortars!", pos)
 
 
@@ -144,7 +147,7 @@ func _support_tick() -> void:
 		origin.y = 3.0
 		var speed: float = float({"grad": 140.0, "arty": 110.0}.get(pt, 60.0))
 		var T: float = (4.5 if pt != "arty" else 6.0) + Defs.flat(tgt - origin).length() / float(speed)
-		world.spawn("projectile", {"ptype": pt, "team": team, "pos": origin, "origin": origin, "target": tgt, "T": T, "thrower": 0})
+		world.spawn("projectile", {"ptype": pt, "team": team, "pos": origin, "origin": origin, "target": tgt, "T": T, "thrower": 0, "by": int(q[6])})
 		if pt in ["mortar", "mortar_smoke", "arty"] and world.rng.randf() < 0.5:
 			world.fx_event([Fx.FAR_SOUND, "mortar" if pt != "arty" else "cannon", -14.0, pos])
 
@@ -371,6 +374,7 @@ func try_place(peer: int, team: int, kind: String, pos: Vector3, yaw: float, sqs
 	if not spend(team, pos, int(def.cost)):
 		notify(peer, team, "Not enough supply at a nearby FOB for %s (%d)." % [def.name, def.cost])
 		return null
+	world.battle.spent(peer, team, int(def.cost))
 	var props := {"skind": kind, "team": team, "owner": peer, "pos": pos, "yaw": yaw, "built": false, "progress": 0.0}
 	if size != Vector3.ZERO:
 		props["size"] = size
@@ -449,6 +453,7 @@ func mortar_target(team: int, from: Vector3, rmin: float, rmax: float) -> Vector
 # --- buildings / network ------------------------------------------------------------
 
 func on_built(st: Structure) -> void:
+	world.battle.built(st)
 	match st.skind:
 		"fob":
 			fob_order += 1
@@ -631,6 +636,7 @@ func truck_arrived(v: Vehicle) -> void:
 	if f and not f.gone and f.team == v.team:
 		f.supply += load
 		world.stat("town_truck_delivered" if v.src_town else "truck_delivered")
+		world.battle.delivered(v.team, load)
 		f.net_dirty = true
 		if v.src_town:
 			if not v.src_town.gone and v.src_town.truck == v:
@@ -692,6 +698,7 @@ func truck_blocked(v: Vehicle) -> void:
 func capture_fob(f: Structure, new_team: int) -> void:
 	var old := f.team
 	world.stat("fob_captured")
+	world.battle.fob_captured(f, new_team)
 	f.team = new_team
 	f.owner_peer = -1 - new_team
 	f.supply_parent = null
@@ -714,6 +721,7 @@ func capture_fob(f: Structure, new_team: int) -> void:
 func capture_town(tn: Structure, new_team: int) -> void:
 	var old := tn.team
 	world.stat("town_captured")
+	world.battle.town_captured(tn, new_team)
 	tn.team = new_team
 	tn.owner_peer = -1 - new_team
 	tn.supply_parent = null
@@ -994,6 +1002,7 @@ func _prison_dest(team: int, pos: Vector3) -> Structure:
 
 
 func take_prisoner(p: Soldier, c: Soldier) -> void:
+	world.battle.prisoner(p, c)
 	p.life = Soldier.Life.CAPTIVE
 	world.stat("prisoner_taken")
 	p.captor = c

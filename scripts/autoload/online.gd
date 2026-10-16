@@ -14,14 +14,24 @@ extends Node
 ## ("symmetric NAT": some mobile and campus networks) can't be punched through,
 ## and a host behind one needs a forwarded port.
 ##
+## With an account, every battle fought goes on the player's service record
+## at the end (its after-action report, kept by the matchmaker); one fought
+## signed out or offline waits on this machine and goes up at the next sign-in.
+##
 ## Command line: --matchmaker=URL (or FL_MATCHMAKER), --account=PATH for the
-## saved sign-in, --no-stun to skip the STUN check (offline tests).
+## saved sign-in, --no-stun to skip the STUN check (offline tests). Test runs
+## (any --flag) keep no service record unless given --record-battles.
 
 signal account_changed
 signal listing_changed  # listed, unlisted, or failed to list
+signal record_changed  # the latest battle saved, or battles waiting to be
 
 const DEFAULT_URL := "https://matchmaker-production-a53e.up.railway.app"
 const ACCOUNT_PATH := "user://account.cfg"
+## Battles fought signed out (or when the matchmaker couldn't be reached),
+## waiting to go on the record.
+const PENDING_PATH := "user://pending_battles.json"
+const MAX_PENDING := 10
 const STUN_SERVERS := [["stun.cloudflare.com", 3478], ["stun.l.google.com", 19302]]
 const HEARTBEAT_S := 15.0
 ## Routers forget an idle UDP mapping after 30 s or more; a byte every 15 s
@@ -33,6 +43,13 @@ const PUNCH_EVERY_S := 0.15
 var base_url := DEFAULT_URL
 var account_path := ACCOUNT_PATH
 var stun_enabled := true
+var record_battles := true  # off for automated test runs (see _ready)
+var pending_path := PENDING_PATH
+var pending: Array = []  # service records not yet on the matchmaker
+## The battle that just ended: state "saving", "saved", "waiting" (kept here
+## until it can go up) or "" (nothing to record), and why it's waiting.
+var last_record := {"state": "", "error": ""}
+var _flushing := false
 
 # the account (callsign "" when signed out)
 var callsign := ""
@@ -67,16 +84,26 @@ func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	if OS.has_environment("FL_MATCHMAKER"):
 		base_url = OS.get_environment("FL_MATCHMAKER")
+	var flags := false
 	for a in OS.get_cmdline_user_args():
 		var s := String(a)
+		if s.begins_with("--"):
+			flags = true
 		if s.begins_with("--matchmaker="):
 			base_url = s.substr(13)
 		elif s.begins_with("--account="):
 			account_path = s.substr(10)
+		elif s.begins_with("--pending="):
+			pending_path = s.substr(10)
 		elif s == "--no-stun":
 			stun_enabled = false
+	# a test run's battles aren't anybody's service record
+	record_battles = not flags or "--record-battles" in OS.get_cmdline_user_args()
 	base_url = base_url.rstrip("/")
 	_load_account()
+	_load_pending()
+	if signed_in() and not pending.is_empty() and record_battles:
+		flush_pending.call_deferred()
 	Net.session_closed.connect(_on_session_closed)
 	Net.lobby_updated.connect(func(): _dirty = true)
 	Net.game_start.connect(func(_s): _dirty = true)
@@ -200,6 +227,8 @@ func _take_session(s: Dictionary) -> void:
 		Net.my_name = callsign
 	_save_account()
 	account_changed.emit()
+	if not pending.is_empty() and not _refreshing:
+		flush_pending.call_deferred()
 
 
 func _refresh_session() -> bool:
@@ -237,6 +266,99 @@ func _save_account() -> void:
 		cf.set_value("account", "email", email)
 		cf.set_value("account", "callsign", callsign)
 	cf.save(account_path)
+
+
+# --- the service record ---------------------------------------------------------------------
+
+## The battle just fought, for the player's service record (see
+## BattleStats.service_record): straight onto the matchmaker when signed in,
+## otherwise kept here until they are.
+func record_battle(rec: Dictionary) -> void:
+	if rec.is_empty() or not record_battles:
+		last_record = {"state": "", "error": ""}
+		record_changed.emit()
+		return
+	if not signed_in():
+		_wait(rec, "")
+		return
+	last_record = {"state": "saving", "error": ""}
+	record_changed.emit()
+	var r: Dictionary = await save_battle(rec)
+	if r.ok:
+		last_record = {"state": "saved", "error": "", "id": String(r.data.get("id", ""))}
+		record_changed.emit()
+	else:
+		_wait(rec, String(r.error))
+
+
+func _wait(rec: Dictionary, why: String) -> void:
+	pending.append(rec)
+	while pending.size() > MAX_PENDING:
+		pending.pop_front()
+	_save_pending()
+	last_record = {"state": "waiting", "error": why}
+	record_changed.emit()
+
+
+func save_battle(rec: Dictionary) -> Dictionary:
+	return await api(HTTPClient.METHOD_POST, "/me/battles", rec, PackedStringArray(), 20.0, true)
+
+
+## Puts the battles waiting here on the record, oldest first; stops at the
+## first the matchmaker won't take (the rest wait for next time). A battle it
+## refuses outright (a bad record, 400) is dropped rather than retried forever.
+func flush_pending() -> void:
+	if _flushing or not signed_in() or not record_battles:
+		return
+	_flushing = true
+	while not pending.is_empty() and signed_in():
+		var r: Dictionary = await save_battle(pending[0])
+		if not r.ok and int(r.code) != 400:
+			break
+		pending.pop_front()
+		_save_pending()
+		if last_record.state == "waiting" and pending.is_empty():
+			last_record = {"state": "saved", "error": "", "id": String(r.data.get("id", ""))}
+	_flushing = false
+	record_changed.emit()
+
+
+## Newest first: {data: {battles: [...], more}}. before: the played_at of the
+## last one already shown.
+func battles(before := "", limit := 20) -> Dictionary:
+	var q := "/me/battles?limit=%d" % limit
+	if before != "":
+		q += "&before=" + before.uri_encode()
+	return await api(HTTPClient.METHOD_GET, q, null, PackedStringArray(), 10.0, true)
+
+
+## One battle with its after-action report: {data: {battle}}.
+func battle(id: String) -> Dictionary:
+	return await api(HTTPClient.METHOD_GET, "/me/battles/" + id.uri_encode(), null, PackedStringArray(), 15.0, true)
+
+
+## The whole service record's totals: {data: {career}}.
+func career() -> Dictionary:
+	return await api(HTTPClient.METHOD_GET, "/me/career", null, PackedStringArray(), 15.0, true)
+
+
+func _load_pending() -> void:
+	var f := FileAccess.open(pending_path, FileAccess.READ)
+	if f == null:
+		return
+	var v: Variant = JSON.parse_string(f.get_as_text())
+	if v is Array:
+		pending = v
+
+
+func _save_pending() -> void:
+	if pending.is_empty():
+		if FileAccess.file_exists(pending_path):
+			DirAccess.remove_absolute(ProjectSettings.globalize_path(pending_path))
+		return
+	var f := FileAccess.open(pending_path, FileAccess.WRITE)
+	if f:
+		f.store_string(JSON.stringify(pending))
 
 
 # --- STUN -------------------------------------------------------------------------------
