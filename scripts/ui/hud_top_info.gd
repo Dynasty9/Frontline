@@ -78,41 +78,47 @@ func _draw() -> void:
 			x += UiKit.text_width(it[1], 15, 600) + 22.0
 		# FOB lines: quiet unless something is wrong
 		var y := 52.0
+		var fw := 0.0  # the widest FOB line (the towns go in a column beside them)
 		for f in ti.get("fobs", []):
 			var stx: String = f[3]
 			var ok := stx == "OK" or stx == "Truck en route"
 			var c := UiKit.GOOD if stx == "OK" else (UiKit.WARN if ok else UiKit.BAD)
 			draw_circle(Vector2(8, y - 4), 3.5, c)
 			UiKit.text(self, Vector2(18, y), "%s  %d" % [f[1], int(f[2])], 12, UiKit.TEXT if ok else UiKit.BAD)
+			var lw := 18.0 + UiKit.text_width("%s  %d" % [f[1], int(f[2])], 12)
 			if not ok or stx == "Truck en route":
-				UiKit.text(self, Vector2(26 + UiKit.text_width("%s  %d" % [f[1], int(f[2])], 12), y), stx, 12, c)
+				UiKit.text(self, Vector2(lw + 8.0, y), stx, 12, c)
+				lw += 8.0 + UiKit.text_width(stx, 12)
+			fw = maxf(fw, lw)
 			y += 17.0
+		var fob_y := y
 		# the towns we hold: what each gives, what's waiting in its dump, and
-		# whether its trucks are getting through (or the enemy's moving in) -
-		# the ones in trouble first, the quiet ones summed up past a few
+		# whether its trucks are getting through, in a column beside the FOBs. One
+		# the enemy is moving into, or whose trucks aren't getting through, gets a
+		# line of its own; the quiet ones are summed up in one line once there are
+		# more than a couple, so the order of battle below keeps its room.
+		var tx := fw + 26.0 if fw > 0.0 else 0.0
+		y = 52.0
 		var rows := []
+		var summed := []
 		for tn in tl:
 			var st0 = w.entity(int(tn[0]))
 			var bad: bool = (st0 is Structure and st0.cap_team >= 0 and st0.cap_team != lt and st0.cap_prog > 0.0) or not String(tn[3]) in ["OK", "Truck en route"]
-			if bad:
-				rows.insert(0, tn)
-			else:
+			if bad and rows.size() < 3:
 				rows.append(tn)
-		var rest := 0
-		var rest_inc := 0
-		for i in rows.size():
-			var tn: Array = rows[i]
-			if i >= 4 and rows.size() > 5:
-				rest += 1
-				rest_inc += int(tn[4])
-				continue
+			else:
+				summed.append(tn)
+		if rows.size() + summed.size() <= 2:
+			rows.append_array(summed)
+			summed.clear()
+		for tn: Array in rows:
 			var tst: String = tn[3]
 			var tok := tst == "OK" or tst == "Truck en route"
 			var st = w.entity(int(tn[0]))
 			var taking: bool = st is Structure and st.cap_team >= 0 and st.cap_team != lt and st.cap_prog > 0.0
-			_flag_mark(Vector2(5, y - 10), Defs.TEAM_COLORS[lt])
+			_flag_mark(Vector2(tx + 5, y - 10), Defs.TEAM_COLORS[lt])
 			var line := "%s  %d  +%d/min" % [tn[1], int(tn[2]), int(tn[4])]
-			UiKit.text(self, Vector2(18, y), line, 12, UiKit.TEXT if tok and not taking else UiKit.BAD)
+			UiKit.text(self, Vector2(tx + 18, y), line, 12, UiKit.TEXT if tok and not taking else UiKit.BAD)
 			var note := ""
 			var nc := UiKit.DIM
 			if taking:
@@ -123,13 +129,19 @@ func _draw() -> void:
 			else:
 				note = _town_status(tst)
 				nc = UiKit.WARN if tok else UiKit.BAD
-			UiKit.text(self, Vector2(26 + UiKit.text_width(line, 12), y), note, 12, nc)
+			UiKit.text(self, Vector2(tx + 26 + UiKit.text_width(line, 12), y), note, 12, nc)
 			y += 17.0
-		if rest > 0:
-			_flag_mark(Vector2(5, y - 10), Defs.TEAM_COLORS[lt])
-			UiKit.text(self, Vector2(18, y), "%d more towns  +%d/min" % [rest, rest_inc], 12, UiKit.DIM)
+		if not summed.is_empty():
+			var s_inc := 0
+			var s_stock := 0
+			for tn in summed:
+				s_inc += int(tn[4])
+				s_stock += int(tn[2])
+			_flag_mark(Vector2(tx + 5, y - 10), Defs.TEAM_COLORS[lt])
+			var more := "more " if not rows.is_empty() else ""
+			UiKit.text(self, Vector2(tx + 18, y), "%d %stowns  %d  +%d/min" % [summed.size(), more, s_stock, s_inc], 12, UiKit.TEXT)
 			y += 17.0
-		content_h = y - 12.0
+		content_h = maxf(y, fob_y) - 12.0
 		var mt := hud.mode_text()
 		if mt != "":
 			var mw := UiKit.text_width(mt, 13) + 28.0

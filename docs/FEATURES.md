@@ -502,9 +502,9 @@ function and an autopilot function.
   - Right-click a town that isn't yours with squads selected to send them to take it; select a dump to see who
     holds it, what it gives and how much of it stands, its stock and where its trucks run.
 - **Supply on the HUD**: the top bar shows your supply and what's coming in a minute (truck and helicopter loads
-  over the last two minutes) and how many towns you hold; under the FOB lines, each town you hold with its stock,
-  its rate and where its trucks go - the ones being taken or cut off first, the quiet ones summed up past a few.
-  The order of battle moves down to make room.
+  over the last two minutes) and how many towns you hold; beside the FOB lines, a line of its own (stock, rate,
+  where its trucks go) for each town being taken or whose trucks aren't getting through, and the quiet ones in
+  one line once there are more than a couple. The order of battle moves down to make room.
 - Buildings: FOB, barracks, factory, medic tent, research post, helipad (supply helicopters fly over cut
   roads), sandbags, concrete walls, barbed wire, minefields, tank traps, watchtowers (long sight, shoots over
   walls), and Rebel tunnel entrances (move squads through the network or bring them back out with "Exit here").
