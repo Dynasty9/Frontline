@@ -17,6 +17,9 @@ var menu: Control
 var world: World
 var args := {}
 var _quit_at := -1.0
+## How much longer than --quit-after a test client waits for the host's world
+## before it gives up and quits anyway (its summary then says waited=-1).
+const CLIENT_WAIT := 300.0
 var _stats_every := 0.0
 var _stats_t := 0.0
 var _shot_done := false
@@ -850,7 +853,16 @@ func _process(_dt: float) -> void:
 		for v in world.vehicles:
 			if v.owner_peer == world.local_peer and not v.eid in world.input.sel_vehicles:
 				world.input.sel_vehicles.append(v.eid)
-	if _quit_at > 0.0 and world.time >= _quit_at:
+	# a client's --quit-after counts from when the host's world reached it: the
+	# host only answers once it has laid out the map (and, with a window, drawn
+	# its first frame - a minute or more off-screen), and a client counting from
+	# its own empty world can give up before it has been sent anything
+	if not world.srv and not world.has_meta("world_at") and not world.entities.is_empty():
+		world.set_meta("world_at", world.time)
+	var run_t := world.time
+	if not world.srv:
+		run_t = world.time - float(world.get_meta("world_at", CLIENT_WAIT))
+	if _quit_at > 0.0 and run_t >= _quit_at:
 		_quit_at = -1.0
 		if args.has("dump-structs"):
 			_dump_structs()
@@ -864,7 +876,7 @@ func _process(_dt: float) -> void:
 				if e.team >= 0 and e.team != world.local_team:
 					enemy += 1
 			counts["ENEMY_KNOWN"] = enemy
-			print("CLIENT entities=%d %s time=%.1f team_info=%s" % [world.entities.size(), str(counts), world.time, str(world.team_info[0].get("supply", -1))])
+			print("CLIENT entities=%d %s time=%.1f team_info=%s waited=%.1f" % [world.entities.size(), str(counts), world.time, str(world.team_info[0].get("supply", -1)), float(world.get_meta("world_at", -1.0))])
 		if not world.coop.peers.is_empty() or int(world.coop.stats.get("sent", 0)) > 0:
 			print("COOP ", world.coop.summary())
 		get_tree().quit()
