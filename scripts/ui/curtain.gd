@@ -22,6 +22,8 @@ const TIPS := [
 	"Trenches stop almost everything but a shell that lands in them or fire straight down the bay.",
 	"Medics and stretcher bearers bring the wounded back. Keep your medic tent close to the fighting.",
 	"Supply runs down the road. Cut the enemy's road and their FOBs starve.",
+	"Every village is supply. Hold its ground with no enemy on it and its trucks start running to your nearest FOB.",
+	"A town shelled to ruins gives a third of what it did. Take it, don't flatten it.",
 	"Tanks shrug off rifles. Rockets from the side or the rear, mines and AT posts are what stop them.",
 	"An outnumbered attack goes firm and calls for help. Answer it with fires or another squad.",
 	"Tab opens the tactical map: every order, plan and contact on a dimmed battlefield.",
