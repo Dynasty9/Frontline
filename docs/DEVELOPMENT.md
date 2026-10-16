@@ -22,8 +22,10 @@ option on its own, laid out like a PC game's options screen:
   drawn at), unit activity labels, speech bubbles, cover preview, edge scrolling, camera speed, camera shake.
 - **Audio:** master, music, effects, ambience and interface volumes (each its own mixer bus, set up in
   `sfx.gd`), music in battle on or off, mute while the window is in the background.
+- **Controls:** every key, by category, rebindable (`keys.gd` holds the actions and their defaults; the
+  game asks it `Keys.action_for(event, ids)` for presses and `Keys.held(id)` for held keys, never a keycode).
 
-Settings are saved to `user://settings.cfg`.
+Settings are saved to `user://settings.cfg`, key bindings to `user://keybinds.cfg` (test runs save neither).
 
 **F3** cycles the performance overlay: off, FPS, compact (CPU / GPU / draw calls) and a full breakdown:
 - a frame bar split into game logic, view scripts, render CPU and engine/idle time, with GPU time on a second bar
@@ -139,6 +141,13 @@ Pass these after `--` on the command line:
 --blast-at=X,Z,SIZE,TIME                              a real explosion at that spot and time (physics tests);
                                                       X,Z of "f,DX" is DX metres beside the camera's focus
 --pitch=-14 --cam-yaw=-0.84                           fixed camera pitch (degrees) and heading (model close-ups)
+--keys-test                                           the key bindings end to end: names and matching, clashes, rebound
+                                                      keys reaching the game, a held key panning the camera, the Controls
+                                                      page (rebind, move a key off another action, Undo, a modifier alone,
+                                                      search, reset); prints KEYTEST ok / FAIL; needs a window
+                                                      (e.g. --host --team=0 --keys-test --offscreen)
+--bind=ACTION:KEY[,ACTION:KEY]                        rebind keys for this run only (ids in keys.gd, e.g. --bind=attack_move:K)
+--hud-panel=settings --settings-tab=controls          the Controls page open (layout shots)
 --cam-test                                            drive the camera through its controls (zoom to cursor, grab-pan,
                                                       turn and tilt, reset, saved views, follow, turning minimap) and
                                                       print CAMTEST ok / FAIL for each; needs a window, not --headless

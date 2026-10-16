@@ -266,6 +266,11 @@ func _on_game_start(s: Dictionary) -> void:
 		world.coop.start_demo(int(args["coop-demo"]))
 	if args.has("bot-presence"):
 		world.coop.start_bot()
+	# --keys-test: the key bindings end to end (matching, rebinding, the Controls page)
+	if args.has("keys-test") and world.cam:
+		var kt: Node = preload("res://scripts/game/keys_test.gd").new()
+		kt.set("world", world)
+		world.add_child(kt)
 	# --cam-test: drive the camera through its controls and check each one
 	if args.has("cam-test") and world.cam:
 		var ct: Node = preload("res://scripts/game/cam_test.gd").new()

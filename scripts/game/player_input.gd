@@ -134,6 +134,11 @@ func _unhandled_input(ev: InputEvent) -> void:
 		return
 	if ev is InputEventMouseButton:
 		var mb := ev as InputEventMouseButton
+		if mb.button_index == MOUSE_BUTTON_XBUTTON1 or mb.button_index == MOUSE_BUTTON_XBUTTON2:
+			# the side buttons do whatever they've been bound to
+			if mb.pressed:
+				_key(mb)
+			return
 		if mb.button_index == MOUSE_BUTTON_LEFT:
 			if mb.pressed:
 				# a co-commander's marker at the screen's edge: look where he's looking
@@ -162,6 +167,7 @@ func _unhandled_input(ev: InputEvent) -> void:
 				if mb.alt_pressed and not _alt_picks(mb.position):
 					pinging = true
 					ping_at = mb.position
+					_ping_by_key = false
 					_ping_ms = Time.get_ticks_msec()
 					return
 				lmb = true
@@ -220,25 +226,68 @@ func _unhandled_input(ev: InputEvent) -> void:
 			_key(k)
 
 
-func _key(k: InputEventKey) -> void:
-	if world.hud and world.hud.typing:
+## The actions a key press can mean in a battle, most particular first (a tie
+## goes to the earlier). Placing a building puts its own keys in front.
+const KEY_ACTIONS := ["chat_team", "chat", "support", "grenade", "smoke", "attack_move", "defend", "cam_follow",
+	"fire_mission", "cam_reset", "view_save_1", "view_save_2", "view_save_3", "view_save_4", "view_go_1", "view_go_2",
+	"view_go_3", "view_go_4", "retreat", "hold", "tactical", "cycle_fob", "orbat", "jump_alert", "log", "hide_hud",
+	"help", "manual", "director", "pause", "slower", "faster", "view_side", "ping", "coop_next",
+	"group_set_1", "group_set_2", "group_set_3", "group_set_4", "group_set_5", "group_set_6", "group_set_7",
+	"group_set_8", "group_set_9", "group_set_0", "group_1", "group_2", "group_3", "group_4", "group_5", "group_6",
+	"group_7", "group_8", "group_9", "group_0"]
+const PLACE_ACTIONS := ["rotate_build"]
+
+var _ping_by_key := false  # the ping (or its wheel) was started by the ping key, not Alt+click
+var _coop_i := -1
+
+
+## A key press (or an extra mouse button) in a battle: Esc always backs out;
+## everything else is whatever it's bound to (Settings > Controls).
+func _key(ev: InputEvent) -> void:
+	if (world.hud and world.hud.typing) or Keys.capturing:
 		return
-	match k.keycode:
-		KEY_ESCAPE:
-			if pinging or sketching:
-				pinging = false
-				sketching = false
-				sketch_pts = PackedVector3Array()
-			elif place_kind != "" or ability != "" or order_mode != "":
-				cancel_modes()
-			elif has_units() or sel_structure != 0:
-				clear_selection()
-			elif world.hud:
-				world.hud.toggle_menu()
-		KEY_ENTER, KEY_KP_ENTER:
+	if ev is InputEventKey and (ev as InputEventKey).keycode == KEY_ESCAPE:
+		if pinging or sketching:
+			pinging = false
+			sketching = false
+			sketch_pts = PackedVector3Array()
+		elif place_kind != "" or ability != "" or order_mode != "":
+			cancel_modes()
+		elif has_units() or sel_structure != 0:
+			clear_selection()
+		elif world.hud:
+			world.hud.toggle_menu()
+		return
+	var act := Keys.action_for(ev, (PLACE_ACTIONS + KEY_ACTIONS) if place_kind != "" else KEY_ACTIONS)
+	if act == "":
+		return
+	if act.begins_with("group_set_"):
+		var n := int(act.right(1))
+		groups[n] = {"s": sel_squads.duplicate(), "v": sel_vehicles.duplicate()}
+		if world.hud:
+			world.hud.flash("Group %d set." % n)
+		return
+	if act.begins_with("group_"):
+		var g := int(act.right(1))
+		if groups.has(g):
+			sel_squads = groups[g].s.duplicate()
+			sel_vehicles = groups[g].v.duplicate()
+			sel_structure = 0
+			var now := Time.get_ticks_msec() / 1000.0
+			if _last_group == g and now - _last_group_t < 0.4:
+				_focus_selection()
+			_last_group = g
+			_last_group_t = now
+		return
+	if act.begins_with("view_save_") or act.begins_with("view_go_"):
+		# saved views 1-4 are the camera's slots 5-8 (they were F5-F8 to begin with)
+		world.cam.bookmark(int(act.right(1)) + 4, act.begins_with("view_save_"))
+		return
+	match act:
+		"chat", "chat_team":
 			if world.hud:
-				world.hud.open_chat(k.shift_pressed)
-		KEY_Z:
+				world.hud.open_chat(act == "chat_team")
+		"support":
 			if world.local_team >= 0:
 				var sup: Dictionary = world.team_info[world.local_team].get("sup", {})
 				for sk in Defs.supports_for(world.local_team):
@@ -246,48 +295,46 @@ func _key(k: InputEventKey) -> void:
 						cancel_modes()
 						ability = "support:" + String(sk)
 						break
-		KEY_G:
+		"grenade":
 			if has_infantry():
 				ability = "frag"
-		KEY_T:
+		"smoke":
 			if has_infantry():
 				ability = "smoke"
-		KEY_X:
+		"attack_move":
 			if has_units():
 				cancel_modes()
 				order_mode = "assault"
-		KEY_B:
+		"defend":
 			if has_units():
 				cancel_modes()
 				order_mode = "defend"
-		KEY_F:
-			if k.ctrl_pressed:
-				world.cam.toggle_follow()
-			elif selection_has_mortar():
+		"cam_follow":
+			world.cam.toggle_follow()
+		"fire_mission":
+			if selection_has_mortar():
 				ability = "mortar_he"
 			elif selection_has_arty():
 				ability = "arty_he"
-		KEY_BACKSPACE:
+		"cam_reset":
 			world.cam.reset_view()
-		KEY_F5, KEY_F6, KEY_F7, KEY_F8:
-			world.cam.bookmark(int(k.keycode - KEY_F5) + 5, k.ctrl_pressed)
-		KEY_R:
-			if place_kind != "":
-				place_yaw += PI * 0.5
-			elif has_units():
+		"rotate_build":
+			place_yaw += PI * 0.5
+		"retreat":
+			if has_units():
 				retreat()
-		KEY_H:
+		"hold":
 			if has_units():
 				hold()
-		KEY_TAB:
+		"tactical":
 			if world.hud:
 				world.hud.toggle_tactical()
-		KEY_HOME:
+		"cycle_fob":
 			_cycle_fob()
-		KEY_O:
+		"orbat":
 			if world.hud:
 				world.hud.toggle_orbat()
-		KEY_SPACE:
+		"jump_alert":
 			# the newest of the alerts and the co-commanders' pings
 			var at := Vector3.INF
 			var came := -INF
@@ -298,55 +345,55 @@ func _key(k: InputEventKey) -> void:
 				at = world.coop.last_ping_pos
 			if at != Vector3.INF:
 				world.cam.glide_to(at)
-		KEY_L:
+		"log":
 			if world.hud:
 				world.hud.toggle_log()
-		KEY_F2:
+		"hide_hud":
 			if world.hud:
 				world.hud.root.visible = not world.hud.root.visible
-		KEY_F1:
+		"help":
 			if world.hud:
 				world.hud.toggle_help()
-		KEY_F4:
+		"manual":
 			if world.hud:
 				world.hud.toggle_manual()
-		KEY_C:
+		"director":
 			if world.director:
 				world.director.active = not world.director.active
 				if world.hud:
 					world.hud.flash("Director camera ON" if world.director.active else "Director camera OFF")
-		KEY_P:
+		"pause":
 			if world.director:
 				world.director.toggle_pause()
-		KEY_BRACKETLEFT:
+		"slower":
 			if world.director:
 				world.director.set_speed_index(world.director.speed_i - 1)
-		KEY_BRACKETRIGHT:
+		"faster":
 			if world.director:
 				world.director.set_speed_index(world.director.speed_i + 1)
-		KEY_V:
+		"view_side":
 			if world.director:
 				world.director.cycle_view()
 				if world.hud:
 					world.hud.flash("Viewing: %s" % ("everything" if world.view_team < 0 else Defs.TEAM_NAMES[world.view_team] + " fog of war"))
-		KEY_DELETE:
-			pass
-		_:
-			if k.keycode >= KEY_0 and k.keycode <= KEY_9:
-				var n := int(k.keycode - KEY_0)
-				if k.ctrl_pressed:
-					groups[n] = {"s": sel_squads.duplicate(), "v": sel_vehicles.duplicate()}
-					if world.hud:
-						world.hud.flash("Group %d set." % n)
-				elif groups.has(n):
-					sel_squads = groups[n].s.duplicate()
-					sel_vehicles = groups[n].v.duplicate()
-					sel_structure = 0
-					var now := Time.get_ticks_msec() / 1000.0
-					if _last_group == n and now - _last_group_t < 0.4:
-						_focus_selection()
-					_last_group = n
-					_last_group_t = now
+		"ping":
+			# a tap pings what's under the cursor; held, it opens the wheel there
+			if not pinging and place_kind == "" and ability == "":
+				pinging = true
+				_ping_by_key = true
+				ping_at = _mouse()
+				_ping_ms = Time.get_ticks_msec()
+		"coop_next":
+			var all: Array = world.coop.list() if world.coop else []
+			if all.is_empty():
+				if world.hud:
+					world.hud.flash("No other commanders on your side")
+			else:
+				_coop_i = (_coop_i + 1) % all.size()
+				var p = all[_coop_i]
+				world.cam.glide_to(p.focus, p.dist, p.yaw, p.tilt)
+				if world.hud:
+					world.hud.flash("%s's view" % Net.player_name(p.peer))
 
 
 ## Alt+click on one of your own men picks him out of his squad (rather than pinging).
@@ -374,6 +421,7 @@ func ping_wheel_pick() -> String:
 func _end_ping() -> void:
 	var wheel := ping_wheel_open()
 	pinging = false
+	_ping_by_key = false
 	if world.coop == null or world.cam == null:
 		return
 	var tgt := pick(ping_at)
@@ -963,7 +1011,11 @@ func _process(dt: float) -> void:
 func _view_process(dt: float) -> void:
 	# a ping or a sketch let go of over a panel: the release never reached us
 	if debug_mouse.x < 0.0:
-		if pinging and not Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT):
+		if pinging and _ping_by_key:
+			# started by the ping key: let go of it to send
+			if not Keys.held("ping"):
+				_end_ping()
+		elif pinging and not Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT):
 			_end_ping()
 		if sketching and not Input.is_mouse_button_pressed(MOUSE_BUTTON_RIGHT):
 			_end_sketch()

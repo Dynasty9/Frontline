@@ -137,7 +137,7 @@ func _ready() -> void:
 	main_box.add_child(_big("Join Game", "Browse the battles being hosted, or connect by address", _open_browser))
 	main_box.add_child(_section("REFERENCE"))
 	main_box.add_child(_big("Field Manual", "Every soldier, weapon, vehicle and work, with its numbers", func(): manual.visible = true))
-	main_box.add_child(_big("Settings", "Graphics, display, interface and sound", func(): settings_panel.visible = true))
+	main_box.add_child(_big("Settings", "Graphics, display, interface, controls and sound", func(): settings_panel.visible = true))
 	main_box.add_child(_big("Quit", "Back to the desktop", func(): get_tree().quit()))
 	var gap2 := Control.new()
 	gap2.custom_minimum_size = Vector2(0, 14)

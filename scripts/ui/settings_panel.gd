@@ -1,6 +1,6 @@
 class_name SettingsPanel
 extends PanelContainer
-## Graphics / display / audio settings. Every change applies live and is saved.
+## Graphics, display, interface, controls and audio settings. Every change applies live and is saved.
 ## Used by the main menu and the in-game Esc menu.
 
 signal closed
@@ -15,6 +15,7 @@ var _syncing := false
 var _tab := "graphics"
 var _pages := {}
 var _tab_btns := {}
+var _presets_row: Control  # the quality presets (not on the Controls page, where they mean nothing)
 
 
 func _ready() -> void:
@@ -34,6 +35,7 @@ func _ready() -> void:
 	title.add_child(close)
 	# quality presets
 	var pr := HBoxContainer.new()
+	_presets_row = pr
 	pr.add_theme_constant_override("separation", 6)
 	vb.add_child(pr)
 	pr.add_child(UiKit.label("Quality", 14, UiKit.DIM))
@@ -55,7 +57,7 @@ func _ready() -> void:
 	var tabs := HBoxContainer.new()
 	tabs.add_theme_constant_override("separation", 4)
 	vb.add_child(tabs)
-	for t in [["graphics", "Graphics"], ["lighting", "Lighting & Look"], ["display", "Display"], ["interface", "Interface"], ["audio", "Audio"]]:
+	for t in [["graphics", "Graphics"], ["lighting", "Lighting & Look"], ["display", "Display"], ["interface", "Interface"], ["controls", "Controls"], ["audio", "Audio"]]:
 		var b2 := Button.new()
 		b2.text = t[1]
 		b2.toggle_mode = true
@@ -109,7 +111,7 @@ func _ready() -> void:
 		["check", "vsync", "VSync", null, "Locks the frame rate to the monitor to avoid tearing."],
 		["option", "fps_cap", "Frame rate limit", Settings.LABELS.fps_cap, ""],
 		["slider", "fov", "Field of view", [35.0, 75.0, 1.0], "Camera lens angle.", "deg"],
-		["option", "perf", "Performance overlay (F3)", Settings.LABELS.perf, "From a simple FPS counter to a full breakdown of the frame."],
+		["option", "perf", "Performance overlay", Settings.LABELS.perf, "From a simple FPS counter to a full breakdown of the frame. Its key (F3 to begin with) cycles it."],
 	])
 	_pages["interface"] = _page(stack, [
 		["slider", "ui_scale", "Interface scale", [Settings.UI_SCALE_MIN, 2.0, 0.05], "How big the interface is drawn. At 100% it grows with the window, so it looks the same at any resolution; text and symbols stay sharp at any size. The top of the slider is the largest that still fits this window: a bigger window, or fullscreen, goes further."],
@@ -122,12 +124,17 @@ func _ready() -> void:
 		["option", "mmb_mode", "Middle mouse drag", Settings.LABELS.mmb_mode, "What dragging with the middle mouse button does. Holding Alt does the other."],
 		["check", "zoom_cursor", "Zoom toward the cursor", null, "The mouse wheel zooms in on whatever is under the cursor. Off: on the middle of the screen."],
 		["check", "edge_pan", "Edge scrolling", null, "Pan the camera with the mouse at the screen edge."],
-		["slider", "cam_speed", "Camera speed", [0.5, 2.0, 0.05], "Hold Shift to pan faster."],
+		["slider", "cam_speed", "Camera speed", [0.5, 2.0, 0.05], "Hold the pan-faster key (Shift to begin with, see Controls) to go two and a half times as fast."],
 		["check", "shake", "Camera shake", null, "Explosions shake the camera."],
 		["head", "", "Minimap"],
 		["option", "minimap_size", "Minimap size", Settings.LABELS.minimap_size, ""],
 		["check", "minimap_rotate", "Turn with the camera", null, "The minimap turns so that the way the camera faces is always up. Off: north is always up."],
 	])
+	# every key, by category, rebindable (scripts/ui/controls_page.gd)
+	var cp := ControlsPage.new()
+	cp.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	stack.add_child(cp)
+	_pages["controls"] = cp
 	_pages["audio"] = _page(stack, [
 		["head", "", "Volume"],
 		["slider", "volume", "Master", [0.0, 1.0, 0.05], "Everything at once."],
@@ -234,6 +241,8 @@ func _show_tab(key: String) -> void:
 	for k in _pages:
 		_pages[k].visible = k == key
 		_tab_btns[k].button_pressed = k == key
+	if _presets_row:
+		_presets_row.visible = key != "controls"
 
 
 func _apply(key: String, v) -> void:

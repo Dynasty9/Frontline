@@ -12,16 +12,16 @@ signal gone
 const TIPS := [
 	"Pin them first. A suppressed man barely shoots back - put the machine gun on them, then move.",
 	"Place a machine gun on a trench and it becomes a gun bay: tripod on the lip, gunner on the fire step.",
-	"Attack-move (X) makes a squad bound by fire teams from cover to cover instead of walking in the open.",
+	"Attack-move ({attack_move}) makes a squad bound by fire teams from cover to cover instead of walking in the open.",
 	"A deliberate attack fixes the enemy with one element and flanks with the other. Give it time to set up.",
-	"Smoke (T) across open ground before an assault. Nobody can hit what they can't see.",
+	"Smoke ({smoke}) across open ground before an assault. Nobody can hit what they can't see.",
 	"Trenches stop almost everything but a shell that lands in them or fire straight down the bay.",
 	"Medics and stretcher bearers bring the wounded back. Keep your medic tent close to the fighting.",
 	"Supply runs down the road. Cut the enemy's road and their FOBs starve.",
 	"Tanks shrug off rifles. Rockets from the side or the rear, mines and AT posts are what stop them.",
 	"An outnumbered attack goes firm and calls for help. Answer it with fires or another squad.",
-	"Tab opens the tactical map: every order, plan and contact on a dimmed battlefield.",
-	"F4 opens the Field Manual: every unit, weapon and vehicle with its numbers.",
+	"{tactical} opens the tactical map: every order, plan and contact on a dimmed battlefield.",
+	"{manual} opens the Field Manual: every unit, weapon and vehicle with its numbers.",
 	"Men at a halt take a knee and watch their sectors. Select a squad to see its arcs of fire.",
 	"Rebels can dig tunnels between entrances and move whole cells under the enemy's guns.",
 	"Night battles are lit by street lamps and flares. Muzzle flashes give positions away.",
@@ -66,9 +66,17 @@ func brief(seed: int, what: String, lines: Array, op := "", story := "") -> void
 	if op != "":
 		_title = op.to_upper()
 	_lines = [["MISSION", what]] + lines
-	_tip = TIPS[r.randi() % TIPS.size()]
+	_tip = _with_keys(TIPS[r.randi() % TIPS.size()])
 	_story = story
 	queue_redraw()
+
+
+## A tip with {action} put back as the key it's bound to now.
+static func _with_keys(t: String) -> String:
+	for id in ["attack_move", "smoke", "tactical", "manual"]:
+		var k := Keys.label(id)
+		t = t.replace("{%s}" % id, k if k != "" else "Its key")
+	return t
 
 
 func add_line(label: String, value: String) -> void:
