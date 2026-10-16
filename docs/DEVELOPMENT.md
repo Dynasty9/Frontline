@@ -16,8 +16,9 @@ option on its own, laid out like a PC game's options screen:
   flares, rain and thunder; applies live), colour grading (natural, cinematic, vivid, warm film, cold steel,
   bleached war film, black & white), tonemapper (AgX / ACES / Filmic / Reinhard), brightness, contrast, bloom,
   film grain, tilt-shift depth of field.
-- **Display:** window mode (windowed / borderless / exclusive fullscreen), window size, VSync, frame-rate cap,
-  field of view, performance overlay.
+- **Display:** window mode (windowed / borderless / exclusive fullscreen), window size (applied at launch; a
+  size too big for the screen maximises the window instead; test runs keep the project's window or the size
+  `--resolution` asks for), VSync, frame-rate cap, field of view, performance overlay.
 - **Interface:** interface scale (relative to the window: `Settings.ui_factor()` is what the window's 2D is
   drawn at), unit activity labels, speech bubbles, cover preview, edge scrolling, camera speed, camera shake.
 - **Audio:** master, music, effects, ambience and interface volumes (each its own mixer bus, set up in
@@ -118,7 +119,7 @@ Pass these after `--` on the command line:
                                                       solo: one squad against a stronger position)
 --play --select-first --tactical --nohud              command a scenario's Coalition side / select a squad /
                                                       open the tactical map / hide the HUD (perf tests)
---focus-struct=kind[,n]                               camera on a structure of a kind
+--focus-struct=kind[,n] [--select-struct]            camera on a structure of a kind (and select it: its info panel)
                                                       (trenches: a Rebel trench system vs tanks + IFVs;
                                                       poses: every stance frozen for inspection; add --static
                                                       to leave the attackers out)
@@ -166,6 +167,9 @@ Pass these after `--` on the command line:
                                                       enemy about: they bound there by teams and clear the houses
 --scenario=breach                                     a fighter cell holed up in a house; two rifle squads and a gun team clear it
 --scenario=gdrill                                     grenade drill: frags with all sorts of fuses land among a squad round its wounded
+--scenario=town                                       a rifle squad takes a village's supply dump, its lorry runs the stock to
+                                                      FOB Alpha, then a Rebel cell comes to take it back (town_captured,
+                                                      town_truck_delivered in the counters; --debug-trucks lists each town)
 --scenario=fire                                       a wood, a hedgerow, crates, cars, a watchtower and a house, some of it alight
                                                       from the start, a fighter cell dug in among it (fire spread, burns, fleeing)
 FL_DEBUG_FIRE=1 (env)                                 print who the fires burn, and (on a client) what it hears catching or going out
@@ -198,6 +202,7 @@ FL_DEBUG_MISSION=1 (env)                              print the map's features (
 --test-fire                                           every armed man, gunner and vehicle fires ahead (muzzle tests)
 --seed=N                                              (with --aivai) the same map every run
 --dump-structs                                        list every built structure when --quit-after fires
+FL_DEBUG_TOWNS=1 (env)                                print each town and village: name, dump and the ground that takes it
 FL_DEBUG_HPA=1 (env)                                  benchmark hierarchical vs flat paths at start-up
 FL_DEBUG_DECOR=1 (env)                                print the street-furniture chunk and mesh counts
 --menu-shot=menu.png --shot-at=6                      screenshot of the main menu
@@ -278,6 +283,13 @@ one joins. Only exported builds register the scheme with the OS (`Links._registe
 
 ### Builds, releases and updates
 
+Each release files its changelog, bakes itself into the website and the matchmaker, then publishes. The changelog is
+written as part of each pull request (`changelog/unreleased/`, see [changelog/README.md](../changelog/README.md)); at
+release, `.github/scripts/bake-release.sh` moves the entries the version was built with into `changelog/vX.Y.Z/`
+(`changelog.py release`), regenerates `CHANGELOG.md` and `web/src/changelog.json`, writes `release.json` into
+`web/src/` and `matchmaker/` (`release_json.py`), and commits all of it to `main`, which redeploys the website and the
+matchmaker. The GitHub release follows, named after the release's headline change, with the changelog as its notes.
+
 `export_presets.cfg` has a Windows and a Linux preset (one executable each, the game packed inside).
 `.github/workflows/release.yml` releases automatically: every merge to `main` that changes the game (`scripts/`,
 `assets/`, `project.godot`, `main.tscn`, the export presets or the icon) publishes the next version, `v0.1.4` after
@@ -288,7 +300,8 @@ Actions > Release > Run workflow releases by hand. The next number comes from th
 (`.github/scripts/next-version.sh`), and the build stamps it into `project.godot` (`application/config/version`);
 from source the game reads `0.0.0-dev`.
 
-A release build updates itself (`scripts/autoload/updater.gd`): at start it asks GitHub for the latest release,
+A release build updates itself (`scripts/autoload/updater.gd`): at start it asks the matchmaker (`GET /release`,
+falling back to GitHub's API) for the latest release,
 downloads the zip for its platform, checks it against the SHA-256 GitHub publishes, renames the running executable
 aside and puts the new one in its place, then offers a restart (the old file is deleted on the next launch). Where it
 can't (a folder it can't write to), the menu links to the website instead. To try an update from source without

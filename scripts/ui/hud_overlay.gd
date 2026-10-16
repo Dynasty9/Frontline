@@ -58,6 +58,7 @@ func _draw() -> void:
 	_clear_placed()
 	_build_groups(inp)
 	_mark("groups")
+	_town_marks()
 	_structure_labels(cam, vs, zoom)
 	_mark("structure labels")
 	if hud.map_layer("intel"):
@@ -121,18 +122,19 @@ func _draw() -> void:
 		if (v.flags & Vehicle.F_TRACK) != 0:
 			UiKit.text(self, sp2 + Vector2(-26, -5), "TRACK HIT", 11, UiKit.BAD, 600)
 	for st in _team_structs:
-		if st.gone or st.team < 0 or not st.visible:
+		if st.gone or (st.team < 0 and st.skind != "town") or not st.visible:
 			continue
-		var need: bool = (not st.built) or (st.skind == "fob" and st.cap_prog > 0.0) or (st.team == lt and st.hp < st.max_hp * 0.98 and st.is_player_building())
+		var capturable: bool = st.skind == "fob" or st.skind == "town"
+		var need: bool = (not st.built) or (capturable and st.cap_prog > 0.0) or (st.team == lt and st.hp < st.max_hp * 0.98 and st.is_player_building())
 		if not need:
 			continue
-		var p3: Vector3 = st.position + Vector3(0, 4.5, 0)
-		if cam.is_position_behind(p3) or cpos.distance_to(p3) > 170.0:
+		var p3: Vector3 = st.position + Vector3(0, 4.5 if st.skind != "town" else st.label_h - 2.4, 0)
+		if cam.is_position_behind(p3) or cpos.distance_to(p3) > (170.0 if st.skind != "town" else 320.0):
 			continue
 		var sp3 := cam.unproject_position(p3)
 		if not st.built:
 			_bar(sp3 + Vector2(-30, 0), Vector2(60, 4), st.progress, UiKit.WARN)
-		elif st.skind == "fob" and st.cap_prog > 0.0 and st.cap_team >= 0:
+		elif capturable and st.cap_prog > 0.0 and st.cap_team >= 0:
 			_bar(sp3 + Vector2(-40, 0), Vector2(80, 6), st.cap_prog / 100.0, Defs.TEAM_COLORS[st.cap_team])
 			UiKit.text(self, sp3 + Vector2(-34, -5), "CAPTURING", 11, Color(1, 1, 1), 600)
 		else:
@@ -410,11 +412,15 @@ func _structure_labels(cam: Camera3D, vs: Vector2, zoom: float) -> void:
 		if sp.x < -120 or sp.x > vs.x + 120 or sp.y < -30 or sp.y > vs.y + 30:
 			continue
 		var txt: String = st.display_name() + ("  (WRECKED)" if st.wrecked else "")
+		if st.skind == "town":
+			txt += "  ·  " + ("town" if st.variant == 1 else "village")
 		var tw := UiKit.text_width(txt, fs, 600)
 		var r := Rect2(sp.x - tw * 0.5 - 10, sp.y - fs - 5, tw + 20, fs + 10)
 		draw_style_box(UiKit.boxc(Color(0.03, 0.035, 0.03, 0.66), 4, Color(1, 1, 1, 0.08), 1, 0.0), r)
 		if st.team >= 0:
 			draw_rect(Rect2(r.position + Vector2(1, 1), Vector2(3, r.size.y - 2)), Defs.TEAM_COLORS[st.team])
+		elif st.skind == "town":
+			draw_rect(Rect2(r.position + Vector2(1, 1), Vector2(3, r.size.y - 2)), Structure.C_TOWN_FLAG)
 		UiKit.text(self, Vector2(r.position.x + 11, r.position.y + fs + 2), txt, fs, Color(1, 1, 1, 0.94), 600)
 		_place_rect(r)
 
@@ -532,6 +538,25 @@ func _dashed_ring(c3: Vector3, r: float, col: Color, alpha: float) -> void:
 	for i in range(0, pts.size() - 1, 2):
 		draw_line(pts[i], pts[i + 1], Color(0, 0, 0, alpha * 0.4), 4.0, true)
 		draw_line(pts[i], pts[i + 1], c, 2.0, true)
+
+## Each town's ground as a ring in its holder's colours (the town's own while
+## nobody holds it) when the camera is over it, and whenever someone is
+## taking it - then pulsing in the taker's colour.
+func _town_marks() -> void:
+	var w := hud.world
+	var f: Vector3 = w.cam.focus_pos
+	var pulse := 0.5 + 0.5 * sin(Time.get_ticks_msec() / 220.0)
+	for st in _team_structs:
+		if st.gone or st.skind != "town" or st.zone_r <= 0.0:
+			continue
+		var taking: bool = st.cap_team >= 0 and st.cap_prog > 0.0
+		var a := clampf((st.zone_r + 90.0 - Defs.flat(st.zone_c - f).length()) / 60.0, 0.0, 1.0) * 0.4
+		var col: Color = Defs.TEAM_COLORS[st.team] if st.team >= 0 else Structure.C_TOWN_FLAG
+		if taking:
+			a = maxf(a, 0.75)
+			col = (Defs.TEAM_COLORS[st.cap_team] as Color).lerp(col, pulse * 0.6)
+		_dashed_ring(st.zone_c, st.zone_r, col, a)
+
 
 ## A mission's objectives where they are: the area as a ring on the ground, and
 ## over it a diamond with its letter and how far it is from the camera's

@@ -107,7 +107,7 @@ func _ready() -> void:
 	])
 	_pages["display"] = _page(stack, [
 		["option", "window", "Window mode", Settings.LABELS.window, ""],
-		["option", "resolution", "Window size", RES_NAMES, "Size of the window in windowed mode."],
+		["option", "resolution", "Window size", RES_NAMES, "Size of the window in windowed mode, kept from one launch to the next. A size too big for the screen fills it instead. The interface grows with the window."],
 		["check", "vsync", "VSync", null, "Locks the frame rate to the monitor to avoid tearing."],
 		["option", "fps_cap", "Frame rate limit", Settings.LABELS.fps_cap, ""],
 		["slider", "fov", "Field of view", [35.0, 75.0, 1.0], "Camera lens angle.", "deg"],

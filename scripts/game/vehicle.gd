@@ -36,6 +36,8 @@ var smoke_left := 2  # salvoes in the dischargers
 var route := PackedVector3Array()
 var route_i := 0
 var dest_fob: Structure = null
+var src_town: Structure = null  # a town's truck: the town it carries supply from (else it runs from HQ)
+var cargo := 0  # what it's carrying
 var returning := false
 var blocked_t := 0.0
 var _stuck_p := Vector3.ZERO
@@ -1809,6 +1811,7 @@ func _heli_tick(dt: float) -> void:
 					heli_dest.net_dirty = true
 					world.fx_event([Fx.DELIVER, heli_dest.position + Vector3(0, 4, 0), load, team])
 					world.stat("heli_delivered")
+					world.rules.note_income(team, load)
 				heli_phase = 4
 
 

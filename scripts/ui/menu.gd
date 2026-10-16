@@ -858,7 +858,7 @@ func _update_notice() -> void:
 	p.add_theme_stylebox_override("panel", UiKit.box(Color(0.035, 0.045, 0.045, 0.92), 4, UiKit.BAD if bad else UiKit.ACCENT, 1, 12.0))
 	p.anchor_left = 1.0
 	p.anchor_right = 1.0
-	p.offset_left = -440
+	p.offset_left = -540
 	p.offset_right = -32
 	p.offset_top = 44
 	add_child(p)
@@ -875,10 +875,13 @@ func _update_notice() -> void:
 	line.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	v.add_child(line)
 	var website := func(): OS.shell_open(Updater.WEBSITE_URL + "/#download")
+	# that version's changelog on the website: what the update brings
+	var whats_new := func(): OS.shell_open(Updater.WEBSITE_URL + "/changelog/#v" + Updater.latest)
 	match Updater.state:
 		Updater.State.AVAILABLE:
 			head.text = "NEW VERSION"
 			line.text = "Frontline v%s is out (you have v%s)." % [Updater.latest, Updater.version]
+			h.add_child(_btn("What's new", whats_new))
 			h.add_child(_btn("Download", website))
 		Updater.State.DOWNLOADING:
 			head.text = "UPDATING"
@@ -892,6 +895,7 @@ func _update_notice() -> void:
 		Updater.State.READY:
 			head.text = "UPDATE READY"
 			line.text = "Frontline v%s is installed. Restart to play it." % Updater.latest
+			h.add_child(_btn("What's new", whats_new))
 			h.add_child(_btn("Restart", func(): Updater.restart()))
 		Updater.State.FAILED:
 			head.text = "UPDATE FAILED"

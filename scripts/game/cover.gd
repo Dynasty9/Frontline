@@ -81,7 +81,7 @@ static func mat_of(st) -> int:
 			return SOFT if st.variant == 0 else MEDIUM
 		"medic_tent", "watchtower":
 			return SOFT
-		"car", "house_wall", "barracks", "research", "depot", "factory", "tree":
+		"car", "house_wall", "barracks", "research", "depot", "factory", "tree", "town":
 			return MEDIUM
 		"trench", "bunker", "fob":
 			return FORT
