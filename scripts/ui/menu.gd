@@ -270,6 +270,12 @@ func _ready() -> void:
 	Online.listing_changed.connect(_refresh)
 	Online.account_changed.connect(_on_account)
 	_on_account()
+	# a Join or Find Match link from the website: the one we were started with,
+	# and any a second copy hands on while we run
+	Links.link_opened.connect(open_link)
+	if Links.pending != "":
+		open_link.call_deferred(Links.pending)
+		Links.pending = ""
 	_on_visibility()
 
 
@@ -832,6 +838,43 @@ func _watch_connect(attempt: int, host_name: String) -> void:
 		_mm_next()
 	else:
 		_say("Couldn't get through to %s's router. Try another battle." % host_name, true)
+
+
+# --- links from the website -------------------------------------------------------------
+
+## A frontline:// link (Links): join that battle, or press Find Match. Ignored
+## in a battle, a lobby or while connecting, so a stray click never pulls
+## anyone out of a game (or a host away from the one they're hosting).
+func open_link(url: String) -> void:
+	if not visible or Net.in_game:
+		return
+	var mp := multiplayer.multiplayer_peer
+	if lobby_box.visible or (mp is ENetMultiplayerPeer and mp.get_connection_status() != MultiplayerPeer.CONNECTION_DISCONNECTED):
+		_say("You're already in a lobby: leave it first to join another battle.", true)
+		return
+	var what: Array = Links.parse(url)
+	match String(what[0]):
+		"find-match":
+			if not _mm_busy:
+				_find_match()
+		"join":
+			_join_by_id(String(what[1]))
+
+
+## Join a listed battle by its id. The list asked for is this build's version
+## only, so a battle running another version reads as not found.
+func _join_by_id(id: String) -> void:
+	_close_panels()
+	_say("Finding the battle...")
+	var r: Dictionary = await Online.browse()
+	if not r.ok:
+		_say(String(r.error), true)
+		return
+	for l in r.data.get("lobbies", []):
+		if l is Dictionary and String(l.get("id", "")) == id:
+			_join_listed(l)
+			return
+	_say("That battle isn't listed any more, or it runs a different version of Frontline.", true)
 
 
 # --- the list of battles --------------------------------------------------------------

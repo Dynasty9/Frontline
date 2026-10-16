@@ -47,6 +47,12 @@ they're doing). The observer bar at the top has pause, speed (0.25x to 4x), dire
   address. If the two STUN servers see different ports the router is "symmetric" and can't be punched; the lobby
   says so, and that host needs UDP port **7777** forwarded. If a joiner isn't through in 12 seconds, Find Match
   moves on to the next battle.
+- **The website** (`web/`) lists the battles being hosted, each with a **Join** link, `frontline://join/<id>`
+  (and a Find Match one, `frontline://find-match`). An exported build registers the `frontline://` scheme the
+  first time it runs (per user: HKCU on Windows, a hidden `.desktop` handler on Linux), so the browser starts the
+  game with the link. If the game is already running, the new copy hands the link to it over a localhost socket
+  and quits. A link is ignored in a battle or a lobby, so a stray click never pulls anyone out of a game, and a
+  battle listed for another version of the game reads as not found.
 - **Joining by address** still works without the matchmaker: the host's IP on UDP port **7777**, forwarded or over a
   LAN/VPN (Tailscale, ZeroTier, Hamachi).
 - **Accounts** are optional (Supabase, through the matchmaker). Signed in, your callsign is yours: no other account can register it, and

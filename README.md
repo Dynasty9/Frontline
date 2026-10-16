@@ -31,6 +31,10 @@ Everything you see and hear is made in code. There are no imported 3D models, te
 
 ## Quick start
 
+The easiest way: download the latest build for Windows or Linux from **[the Frontline website](https://web-production-5a4c1.up.railway.app)** (or the [releases page](https://github.com/Dynasty9/Frontline/releases)), unzip it and run it. The website also lists the battles being hosted right now, with a **Join** button on each that opens the game and connects you.
+
+To run it from source instead:
+
 1. Download **Godot 4.7** (the standard version, not .NET) from [godotengine.org](https://godotengine.org/download).
 2. Download this project: click **Code > Download ZIP** above, or run
    `git clone https://github.com/Dynasty9/Frontline.git`
