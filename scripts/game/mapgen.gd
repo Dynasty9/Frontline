@@ -45,17 +45,22 @@ func generate() -> void:
 			var p := a.lerp(b, i / 4.0)
 			clear.append([Vector2(p.x, p.z), 10.0])
 
+	await world._breathe("Surveying the rivers", 0.18)
 	_lay_water()
+	await world._breathe("Laying out the town", 0.26)
 	# the town, its roads and everything that hangs off them (see TownGen)
 	var tg := TownGen.new(self)
 	tg.plan_town(TrenchNet.snap_pos(Vector3(rng.randf_range(-26, 26), 0, rng.randf_range(-8, 8))))
 	world.roads[2] = tg.build_roads(d0.position, d1.position)
 	_lanes(tg)
+	await world._breathe("Laying out the town", 0.32)
 	_roads_meet_water(tg)
 	world._rebuild_roads()
+	await world._breathe("Laying out the town", 0.38)
 	tg.streetscape()
 	tg.lots()
 	tg.hamlet_houses()
+	await world._breathe("Farms and fields", 0.44)
 	tg.farms(int(rng.randi_range(2, 3) * area * 0.6))
 	tg.country_power()
 	tg.fields(int(rng.randi_range(7, 10) * area * 0.6))
@@ -67,6 +72,7 @@ func generate() -> void:
 	world.key_points.append({"pos": tg.center, "kind": "town"})
 	for hm in tg.hamlets:
 		world.key_points.append({"pos": hm.c, "kind": "village"})
+	await world._breathe("Hedges, woods and old trenches", 0.48)
 	for i in int(rng.randi_range(3, 4) * area * 0.6):
 		_hedgerow()
 	for i in int(rng.randi_range(1, 2) * k):
@@ -81,6 +87,7 @@ func generate() -> void:
 	for i in int(40 * area * 0.75):
 		_try("tree", Vector3(rng.randf_range(-(H - 8.0), H - 8.0), 0, rng.randf_range(-(H - 10.0), H - 10.0)), 0.0, -1)
 
+	await world._breathe("Mustering the forces", 0.53)
 	# starting forces (a mission brings its own: see MissionDirector)
 	if String(world.settings.get("mission", "")) != "":
 		r.rebuild_network(0)

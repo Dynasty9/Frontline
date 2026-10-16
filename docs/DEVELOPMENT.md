@@ -518,9 +518,13 @@ for the browser:
   `restart_particles` and `pm_set` / `pm_get`, which work on either kind.
 - **No light from effects** (explosion and muzzle flashes, fires): the first time a light falls on something, its
   shaders compile again with lights on.
-- **The battlefield misses the frame it's built in** (`main.gd` `_reveal_next_frame`), so building the map (about
-  25 s) and compiling for it (about 20 s) are two waits, not one long enough for Chrome to call the page
-  unresponsive. The loading screen's field note says to choose Wait if it does.
+- **The battle is built a stage at a time** (`World.build`, `MapGen.generate`): between stages `World._breathe`
+  tells the loading screen and, in a browser, waits a frame, with the half-built world neither ticking nor drawn.
+  Built in one go it held the page for about 30 s, long enough for Chrome to call it unresponsive; now no stage
+  takes more than about 7 s. Everywhere else `_breathe` returns at once, so the build is one piece, in one frame,
+  as it always was. The battlefield then stays out of sight for a frame (`main.gd` `_reveal_next_frame`), so
+  compiling its shaders (about 17 s the first time) is a wait of its own. The loading screen's field note says to
+  choose Wait if the browser asks anyway.
 
 With nothing cached, a first battle now starts after about a minute, then plays without long hitches; the browser
 keeps the compiled shaders, so later battles wait only for the map. To see where the time goes, run the desktop
