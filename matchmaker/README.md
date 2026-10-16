@@ -9,7 +9,7 @@ as with **Join Game** by address. The live instance runs on Railway at
 `https://matchmaker-production-a53e.up.railway.app`, which is the game's default (`Online.DEFAULT_URL` in
 `scripts/autoload/online.gd`).
 
-No dependencies beyond Node 20 or newer.
+No dependencies beyond Node 20 or newer (the lint and formatting tools are development-only).
 
 ## How players get through routers
 
@@ -76,6 +76,16 @@ npm start
 That serves on port 8080 (`PORT` to change it) with accounts off. `AUTH_BACKEND=memory npm start` adds throwaway
 in-memory accounts for testing. Point the game at it with `--matchmaker=http://127.0.0.1:8080` (or the
 `FL_MATCHMAKER` environment variable); `docs/DEVELOPMENT.md` has the headless host / Find Match test.
+
+The tests and the service need nothing installed. The lint and formatting tools do (`npm install` first):
+
+```bash
+npm run lint           # oxlint
+npm run format:check   # Prettier; npm run format fixes it
+```
+
+CI (`.github/workflows/matchmaker.yml`) runs both, and the tests on Node 20, 22 and 24 without installing anything,
+on every push and pull request that touches `matchmaker/`.
 
 ## Deploying on Railway
 

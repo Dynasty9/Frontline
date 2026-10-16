@@ -25,6 +25,7 @@ Defs="*res://scripts/autoload/defs.gd"
 Net="*res://scripts/autoload/net.gd"
 Sfx="*res://scripts/autoload/sfx.gd"
 Settings="*res://scripts/autoload/settings.gd"
+Keys="*res://scripts/autoload/keys.gd"
 Music="*res://scripts/autoload/music.gd"
 Online="*res://scripts/autoload/online.gd"
 Updater="*res://scripts/autoload/updater.gd"
@@ -45,3 +46,10 @@ common/max_physics_steps_per_frame=6
 limits/global_shader_variables/buffer_size=2097152
 anti_aliasing/quality/msaa_3d=2
 lights_and_shadows/directional_shadow/size=4096
+
+[shader_globals]
+
+water_time={
+"type": "float",
+"value": 0.0
+}

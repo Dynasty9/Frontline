@@ -5,7 +5,7 @@ extends Control
 ## of war, weapon ranges, soldier labels, and the tactical map (Tab).
 
 const ITEMS := [
-	["tactical", "Tactical map  (Tab)\nDims the battlefield and shows it as a map: every unit, order and contact.", "map"],
+	["tactical", "Tactical map\nDims the battlefield and shows it as a map: every unit, order and contact.", "map"],
 	["units", "Unit symbols\nA symbol for every squad and vehicle at any zoom.", "units"],
 	["orders", "Orders\nRoutes, objectives and attack plans for all your units, not just the selected ones.", "orders"],
 	["intel", "Intelligence\nWhere the enemy was last seen, and how long ago.", "intel"],
@@ -26,7 +26,13 @@ func _ready() -> void:
 
 func _get_tooltip(at: Vector2) -> String:
 	var i := _index(at)
-	return ITEMS[i][1] if i >= 0 else ""
+	if i < 0:
+		return ""
+	var tip: String = ITEMS[i][1]
+	if ITEMS[i][0] == "tactical" and Keys.label("tactical") != "":
+		# its key, as bound now, on the first line
+		tip = tip.replace("Tactical map", "Tactical map  (%s)" % Keys.label("tactical"))
+	return tip
 
 
 func _index(p: Vector2) -> int:

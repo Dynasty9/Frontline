@@ -21,7 +21,7 @@ const LIGHT := 1
 const HEAVY := 2
 const OMNI := 8  # direction index meaning "protects from every side"
 
-const HEAVY_KINDS := ["tall_wall", "house_wall", "concrete_wall", "sandbags", "mg_nest", "hmg_nest", "mortar_pit",
+const HEAVY_KINDS := ["tall_wall", "house_wall", "concrete_wall", "sandbags", "hesco", "barricade", "mg_nest", "hmg_nest", "mortar_pit",
 	"at_post", "bunker", "wreck", "fob", "barracks", "factory", "research", "depot", "medic_tent"]
 
 var world
@@ -33,6 +33,7 @@ var cov := PackedByteArray()  # cover level + 1
 var cdir := PackedByteArray()  # direction the cover faces (0..7) or OMNI
 var solid := PackedByteArray()  # inside a wall or building (nowhere to stand)
 var trench := PackedByteArray()  # inside a dug trench
+var netted := PackedByteArray()  # under a camouflage net
 var _inside_hit := false
 var biome_img: Image
 var _dirs: Array[Vector2] = []
@@ -50,7 +51,7 @@ var deform_img: Image  # (view only) the same heights as a texture
 
 func _init(w) -> void:
 	world = w
-	for a in [base, crater, rubble, woods, cdir, solid, trench]:
+	for a in [base, crater, rubble, woods, cdir, solid, trench, netted]:
 		a.resize(N * N)
 	cov.resize(N * N)
 	cov.fill(1)
@@ -186,10 +187,16 @@ func in_trench(p: Vector3) -> bool:
 
 
 func concealment(p: Vector3) -> float:
+	var c := net_cover(p)
 	if in_trench(p):
-		return 0.7
+		return 0.7 * c
 	var k := kind_at(p)
-	return 0.6 if k == WOODS else (0.85 if k == CRATER else 1.0)
+	return (0.6 if k == WOODS else (0.85 if k == CRATER else 1.0)) * c
+
+
+## Under a camouflage net: whatever's there is seen at half the range.
+func net_cover(p: Vector3) -> float:
+	return 0.5 if netted[idx_of(p)] > 0 else 1.0
 
 
 func nav_weight(idx: int, vehicle: bool) -> float:
@@ -256,6 +263,9 @@ func structure_changed(st, added := true) -> void:
 		return
 	if st.skind == "trench" and world.atmo and world.atmo.trench_net:
 		world.atmo.trench_net.mark_dirty()
+	if st.skind == "camo_net":
+		_nets_changed(st, added)
+		return
 	var r: float = st.radius + 1.6
 	var x0 := maxi(0, floori(st.position.x - r + H))
 	var x1 := mini(N - 1, floori(st.position.x + r + H))
@@ -280,6 +290,27 @@ func _tree_woods(p: Vector3, delta: int) -> void:
 				woods[i] = clampi(int(woods[i]) + delta, 0, 255)
 				_refresh_cell(i)
 	version += 1
+
+
+## A net went up, came down or was finished: the ground under every net round
+## it is worked out again from the nets that stand there now.
+func _nets_changed(st, added: bool) -> void:
+	var r: float = st.radius + 0.5
+	var nets: Array = []
+	for o in world.structures_near(st.position, r + 8.0):
+		if o.skind == "camo_net" and o.built and not o.gone and (o != st or added):
+			nets.append(o)
+	if added and st.built and not st in nets:
+		nets.append(st)
+	for z in range(maxi(0, floori(st.position.z - r + H)), mini(N - 1, floori(st.position.z + r + H)) + 1):
+		for x in range(maxi(0, floori(st.position.x - r + H)), mini(N - 1, floori(st.position.x + r + H)) + 1):
+			var c := Vector2(x - H + 0.5, z - H + 0.5)
+			var on := 0
+			for o in nets:
+				if Defs.point_in_obb(c, Vector2(o.position.x, o.position.z), o.foot - Vector2(0.3, 0.3), o.yaw):
+					on = 1
+					break
+			netted[z * N + x] = on
 
 
 ## Processes queued cells; call every frame / tick.
@@ -349,7 +380,7 @@ func _nav_refresh(i: int) -> void:
 
 ## [level, dir] this structure gives the cell at `c`, or [] if none.
 func _contribution(st, c: Vector3) -> Array:
-	if not st.built or st.skind in ["floor", "wire", "mines", "tank_trap", "tunnel", "helipad", "tree"]:
+	if not st.built or st.skind in ["floor", "wire", "mines", "tank_trap", "tunnel", "helipad", "tree", "camo_net"]:
 		return []
 	var b := Basis(Vector3.UP, st.yaw)
 	var best := []

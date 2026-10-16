@@ -23,8 +23,10 @@ option on its own, laid out like a PC game's options screen:
   drawn at), unit activity labels, speech bubbles, cover preview, edge scrolling, camera speed, camera shake.
 - **Audio:** master, music, effects, ambience and interface volumes (each its own mixer bus, set up in
   `sfx.gd`), music in battle on or off, mute while the window is in the background.
+- **Controls:** every key, by category, rebindable (`keys.gd` holds the actions and their defaults; the
+  game asks it `Keys.action_for(event, ids)` for presses and `Keys.held(id)` for held keys, never a keycode).
 
-Settings are saved to `user://settings.cfg`.
+Settings are saved to `user://settings.cfg`, key bindings to `user://keybinds.cfg` (test runs save neither).
 
 **F3** cycles the performance overlay: off, FPS, compact (CPU / GPU / draw calls) and a full breakdown:
 - a frame bar split into game logic, view scripts, render CPU and engine/idle time, with GPU time on a second bar
@@ -51,6 +53,7 @@ game/bt.gd              a small behaviour tree (selector, sequence, condition, a
 game/squad.gd           shared knowledge, rescues, smoke, surrender, auto-engineering
 game/squad_brain.gd     the squad's behaviour tree: battle drills, morale, fire discipline, ammo sharing
 game/water.gd           rivers, ponds, the sea: laid out as shapes, rasterized into ground kinds and heights
+game/water_view.gd      (view) the water surface: swell, surf, reflections, wakes, foam and oil on the water
 game/naval_ai.gd        the AI's navy: docks, gunboat patrols, amphibious raids
 game/tactics.gd         moving tactically (bounding overwatch, recon by fire), clearing houses, near ambush, stragglers, crews
 game/ambush_plan.gd     a deliberate road ambush: rally point, the L, the killing zone, spring, withdraw
@@ -76,9 +79,9 @@ game/ragdoll.gd         the jointed ragdoll
 game/decor.gd           street furniture built on each client (merged per chunk, wires, street lights)
 game/weapon_models.gd   crew-served machine guns and their tripods (M240B, M2HB, PKM, DShKM)
 ui/field_manual.gd      the field manual: catalog of everything with stats and 3D previews
-ui/curtain.gd           the intro and loading screens
+ui/curtain.gd           the title and loading screens
 game/bevel_mesh.gd      chamfered boxes (every Res.box thicker than a sheet)
-assets/                 splash.png and backdrop.png (made by a script from the emblem and a topographic map)
+assets/                 splash.png: the boot splash, which is the title's first frame (see "Off-screen screenshots")
 game/fx.gd              tracers, impacts, who is saying what, debris; drives vfx.gd
 game/vfx.gd             GPU particle explosions, smoke, flames, char, grass fires, decals, shockwaves (+ their shaders)
 game/atmosphere.gd      sky, sun, fog, ground shader, post effects, moods
@@ -100,7 +103,8 @@ ui/hud_overlay.gd       everything drawn over the battlefield (labels, speech, s
 ui/hud_orbat.gd, hud_layers.gd, hud_sel_info.gd, hud_minimap.gd, hud_top_info.gd, hud_toasts.gd   HUD widgets
 ui/map_symbols.gd       NATO symbols and status icons
 game/attack_plan.gd     the deliberate attack (plan, support by fire, flank, assault, consolidate)
-ui/menu_scene.gd        live 3D menu backdrop
+ui/topo_backdrop.gd     the living topographic map behind the title, the menu and the loading screen (one
+                        shader; every copy shares one clock and cursor, so screens hand over without a seam)
 ```
 
 Networking is server-authoritative. Clients send command dictionaries (`World.send_cmd`). The host simulates at 30 Hz and
@@ -148,9 +152,18 @@ Pass these after `--` on the command line:
 --scenario=... --play                                 command the Coalition side of a scenario instead of watching
 --focus-fob=0|1                                       keep the camera on that side's first FOB
 --focus-town[=dx,dz] / --focus-decor=kind[,n]         camera on the town, or on a piece of street furniture
+--focus-vehicle=kind                                  camera on the first vehicle of a kind (--blast-at=f,0,SIZE,T blows it up)
 --blast-at=X,Z,SIZE,TIME                              a real explosion at that spot and time (physics tests);
-                                                      X,Z of "f,DX" is DX metres beside the camera's focus
+                                                      X,Z of "f,DX" is DX metres beside the camera's focus (or "v:KIND,DX"
+                                                      beside the first vehicle of that kind)
 --pitch=-14 --cam-yaw=-0.84                           fixed camera pitch (degrees) and heading (model close-ups)
+--keys-test                                           the key bindings end to end: names and matching, clashes, rebound
+                                                      keys reaching the game, a held key panning the camera, the Controls
+                                                      page (rebind, move a key off another action, Undo, a modifier alone,
+                                                      search, reset); prints KEYTEST ok / FAIL; needs a window
+                                                      (e.g. --host --team=0 --keys-test --offscreen)
+--bind=ACTION:KEY[,ACTION:KEY]                        rebind keys for this run only (ids in keys.gd, e.g. --bind=attack_move:K)
+--hud-panel=settings --settings-tab=controls          the Controls page open (layout shots)
 --cam-test                                            drive the camera through its controls (zoom to cursor, grab-pan,
                                                       turn and tilt, reset, saved views, follow, turning minimap) and
                                                       print CAMTEST ok / FAIL for each; needs a window, not --headless
@@ -162,6 +175,11 @@ Pass these after `--` on the command line:
                                                       --set=ui_scale:3 for the largest scale the window allows)
 --pan=VX,VZ / --set=key:value,...                     drift the camera (shimmer tests) / override single settings
 --scenario=guns                                       every machine-gun emplacement and trench bay, crewed, with targets
+--scenario=works --static                             every defensive work both sides can build, finished, in two rows (model checks;
+                                                      frame them with --focus/--zoom/--pitch, see the layout in mapgen.gd)
+--scenario=cache                                      an ammo cache filling an empty-handed squad, then blown up (cache_draw,
+                                                      cache_cook_off); a Rebel cell half under a camouflage net, half in the open
+FL_DEBUG_WORKS=1 (env)                                with --scenario=cache: who's under the net and seen, who's filled up
 --scenario=roster                                     every vehicle both sides can field, facing off across the map
 --scenario=sling                                      a Mohawk carries a Humvee and a Taru a BTR on their slings
 --scenario=naval                                      boats on the sea: an RHIB lands a squad under a patrol ship's guns, Rebel boats come out to fight
@@ -197,7 +215,10 @@ FL_DEBUG_MISSION=1 (env)                              print the map's features (
   [--sheet-unit=TYPE --sheet-seed=N | --sheet-seeds=N] [--sheet-stats]   one man turned four ways (or N men of
                                                       a type) close up; triangles, instances and build time per man
 --manual=model,KEY,SIDE                               a bare model in the Field Manual
---curtain                                             show the intro / loading screens in an automated run
+--curtain                                             show the title / loading screens in an automated run
+--intro-at=SECONDS                                    (with --curtain) hold the title at that moment of its animation
+--menu-clock=SECONDS                                  start the menu's map that far into its drift and colours
+--menu-cursor=X,Y                                     hold the map's cursor hill there (fractions of the screen)
 --menu-op=0|1|-1                                      open the New Operation panel on that side
 --menu-missions[=KEY]                                 open the Missions panel (on that mission)
 --startup-trace                                       print the first frames' timings
@@ -207,7 +228,9 @@ FL_DEBUG_MISSION=1 (env)                              print the map's features (
 FL_DEBUG_TOWNS=1 (env)                                print each town and village: name, dump and the ground that takes it
 FL_DEBUG_HPA=1 (env)                                  benchmark hierarchical vs flat paths at start-up
 FL_DEBUG_DECOR=1 (env)                                print the street-furniture chunk and mesh counts
---menu-shot=menu.png --shot-at=6                      screenshot of the main menu
+--menu-shot=menu.png --shot-at=6                      screenshot of the main menu (with --curtain --intro-at=0 at
+                                                      1920x1080 it is the boot splash: save it as assets/splash.png
+                                                      whenever the title or the map changes)
 --sound-dump=DIR                                      every synthesised sound and music sample as a WAV in DIR, then quit
                                                       (works --headless)
 FL_DEBUG_MUSIC=1 (env)                                print the music's cue, battle heat and layer levels every 5 s
@@ -229,7 +252,10 @@ godot --headless --path . -- --host --team=0 --players=2 --ai-allies --stats=100
 godot --headless --path . -- --join=127.0.0.1 --team=1 --quit-after=200 --port=7935
 ```
 
-The client prints a `CLIENT entities=...` summary when it quits. Check both outputs for `SCRIPT ERROR`.
+The client prints a `CLIENT entities=...` summary when it quits. Check both outputs for `SCRIPT ERROR`. A client's
+`--quit-after` counts from when the host's world reaches it: the host answers only once it has laid out the map and,
+with a window, drawn its first frame, which takes a minute or more off-screen. `waited=` in the summary is how long
+the client sat in an empty world first (-1: nothing came, and it gave up 5 minutes past `--quit-after`).
 
 Co-commanders: bot clients make up their presence, pings and sketches and really send them. Start the one on
 the other side first, so its team request lands before the game starts:
@@ -247,10 +273,12 @@ team 0 clients a normal (windowed) game, or run `--coop-demo` on its own.
 
 ### Matchmaker
 
-The matchmaker (`matchmaker/`, see its README) is a small Node service with its own tests:
+The matchmaker (`matchmaker/`, see its README) is a small Node service with its own tests, lint (oxlint) and
+formatting (Prettier); `.github/workflows/matchmaker.yml` runs them whenever it changes:
 
 ```
 cd matchmaker && npm test
+cd matchmaker && npm install && npm run lint && npm run format:check
 ```
 
 To try the game against it, run one locally (`AUTH_BACKEND=memory` adds throwaway accounts) and point both games at
@@ -288,7 +316,10 @@ one joins. Only exported builds register the scheme with the OS (`Links._registe
 ### Website
 
 `web/` is the website (React, Vite, Tailwind, shadcn/ui; see its README): `npm install && npm run dev`, with
-`VITE_MATCHMAKER_URL` pointing at a local matchmaker if you like. CI builds and lints it.
+`VITE_MATCHMAKER_URL` pointing at a local matchmaker if you like. `npm run storybook` shows every component and
+section of the page on its own, in each of its states (loading, offline, nobody hosting...), without the live
+matchmaker. `.github/workflows/web.yml` lints it, checks formatting and types, runs the unit tests, builds it, and
+renders every story in headless Chromium as a test (its play function and an accessibility check).
 
 ### Builds, releases and updates
 
@@ -322,4 +353,9 @@ with a higher `tag_name`). `--menu-update=0.1.2,ready` shows the notice for scre
 ### Off-screen screenshots
 
 `--screenshot=FILE.png --shot-at=SECONDS` (with `--shots=N --shot-every=S` for a series) saves frames and quits. Frame the shot with `--focus=X,Z --zoom=M --pitch=DEG --cam-yaw=RAD`, and hide the interface with `--nohud`. `--manual=category,key,side` opens a Field Manual page.
+
+The menu and the title are screenshot with `--menu-shot=FILE.png`. The boot splash is the title's first frame,
+so remake it whenever the title or the map shader changes, so that the splash hands over to the title without a
+jump: run at 1920x1080 with `--curtain --intro-at=0 --menu-shot=assets/splash.png` (a held frame has no grain,
+which keeps the PNG small).
 

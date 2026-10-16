@@ -464,7 +464,7 @@ func on_built(st: Structure) -> void:
 		"medic_tent":
 			st.bearer_t = 0.0
 			world.send_msg(st.team, "info", "Medic tent ready. Stretcher bearers are standing by.")
-		"sandbags", "wire", "mines", "tank_trap", "trench", "concrete_wall":
+		_ when st.skind in Structure.LINE_WORKS:
 			pass
 		_:
 			world.send_msg(st.team, "info", "%s completed." % st.display_name())
@@ -1237,6 +1237,8 @@ func _add_obs(cells: Dictionary, p: Vector3, r: float) -> void:
 func _vis_ent(e: Entity, cells: Array) -> void:
 	var m := 0
 	var k := Vector2i(floori(e.position.x / VC), floori(e.position.z / VC))
+	# under a camouflage net it takes a closer look (half the range) to make it out
+	var hide := 1.0 if (e is Vehicle and e.is_air()) else world.terrain.net_cover(e.position)
 	for t in 2:
 		if e.team == t:
 			m |= 1 << t
@@ -1245,7 +1247,7 @@ func _vis_ent(e: Entity, cells: Array) -> void:
 		if obs == null:
 			continue
 		for o in obs:
-			if Defs.flat(o[0] - e.position).length_squared() <= o[1]:
+			if Defs.flat(o[0] - e.position).length_squared() <= o[1] * hide * hide:
 				m |= 1 << t
 				break
 	if e is Structure and e.skind == "mines":

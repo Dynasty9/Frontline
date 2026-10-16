@@ -26,8 +26,8 @@ Everything you see and hear is made in code, the music included. There are no im
 | A patrol ship off the coast | A bridge over the river, by a village |
 | ![A Humvee on a helicopter's sling](docs/screenshots/sling_load.jpg) | ![Armour fighting it out](docs/screenshots/armour.jpg) |
 | A helicopter carrying a Humvee | A tank battle |
-| ![The Field Manual](docs/screenshots/field_manual.jpg) | |
-| The Field Manual: every unit, with its stats | |
+| ![The Field Manual](docs/screenshots/field_manual.jpg) | ![The main menu on its living map](docs/screenshots/main_menu.jpg) |
+| The Field Manual: every unit, with its stats | The main menu, on a living map that shifts colour and follows your cursor |
 
 ## Quick start
 
@@ -50,7 +50,7 @@ When you're ready, choose **Play vs AI** and pick a side. You start at your base
 2. **Move it.** Right-click the ground. Coloured dots show where each man will stand: green is good cover, yellow only hides him, red means he's out in the open.
 3. **Attack.** Press **X** and click a spot. The squad advances in bounds, one team covering the other, and fights whatever it meets.
 4. **Hold ground.** Press **B** and click an area. The squad spreads into the best cover there and stays put.
-5. **Build.** Select your engineers and use the build menu at the bottom of the screen. Barracks train more squads, a factory builds vehicles, and new FOBs extend your reach.
+5. **Build.** Select your engineers and use the build menu at the bottom of the screen. Barracks train more squads, a factory builds vehicles, and new FOBs extend your reach. Dig in with trenches, sandbags, HESCO walls or barricades, wire, mines and tank traps; throw camouflage nets over your guns and push an ammo cache up behind the line.
 6. **Take the towns.** The town and every village fly a flag by their supply dump. Right-click one with a squad selected: hold its ground with no enemy there and it's yours, and its trucks start bringing supply to your nearest FOB. The more you hold, the more you can build.
 7. **Call support.** The buttons above the minimap call in mortars, artillery and air strikes.
 8. **Get eyes on.** Ground your side can't see right now is drawn darker, on the battlefield and the minimap. Watchtowers, drones from the helipad and recon flights (on the support panel) see further, and every aircraft you call in spots for you as it flies over. Whatever they spot stays on the map as a last-known position.
@@ -75,6 +75,8 @@ Each has objectives on screen and marked on the map. Choose **Host Co-op** to pl
 | Sky Hook: the Nyx on its way to Outpost Kilo | Kingpin: the checkpoint, at night |
 
 ## Controls
+
+Every key below is a default: change any of them in **Settings → Controls**. Actions are grouped by category, each takes two keys (Ctrl, Shift and Alt combinations and the mouse side buttons work too), and a key another action already has is moved over with a note and an Undo. There's a search box, a reset per action and a reset for everything. The hints on the command card, in the F1 help and on the loading screen follow your keys.
 
 **Camera**
 
@@ -125,7 +127,7 @@ Prefer the middle mouse to pan rather than turn? Swap them in **Settings → Int
 |---|---|
 | Place a building | Select engineers, pick from the build menu, left-click |
 | Rotate it | R (90 degrees) or Shift + mouse wheel (45 degrees) |
-| Lay a line of trenches, sandbags or wire | Click and drag |
+| Lay a line of trenches, sandbags, walls or wire | Click and drag |
 | Garrison a bunker | Right-click it with a squad |
 
 **Screens**

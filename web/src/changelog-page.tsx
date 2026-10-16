@@ -35,7 +35,10 @@ export default function ChangelogPage() {
               <ol className="sticky top-24 space-y-1 border-l">
                 {releases.map((r) => (
                   <li key={r.tag}>
-                    <a href={`#${r.tag}`} className="-ml-px block border-l border-transparent py-1 pl-4 text-sm text-muted-foreground hover:border-primary hover:text-foreground">
+                    <a
+                      href={`#${r.tag}`}
+                      className="-ml-px block border-l border-transparent py-1 pl-4 text-sm text-muted-foreground hover:border-primary hover:text-foreground"
+                    >
                       <span className="font-mono text-xs text-primary">{r.tag}</span>
                       <span className="block truncate">{r.name}</span>
                       <span className="block text-xs opacity-70">{formatDate(r.date)}</span>

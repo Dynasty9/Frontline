@@ -155,7 +155,8 @@ func toggle_follow() -> void:
 	user_moved = true
 	stop_shadow()
 	if world.hud:
-		world.hud.flash("Camera following the selection  (Ctrl+F or pan to stop)")
+		var fk := Keys.label("cam_follow")
+		world.hud.flash("Camera following the selection  (%span to stop)" % (("%s or " % fk) if fk != "" else ""))
 
 
 func stop_follow() -> void:
@@ -193,17 +194,20 @@ func stop_shadow() -> void:
 		world.hud.flash("Back to your own view (%s's view released)" % who)
 
 
-## Saves the view on a function key, or goes back to it.
+## Saves the view in a slot (5-8: saved views 1-4, on F5-F8 to begin with), or goes back to it.
 func bookmark(slot: int, save: bool) -> void:
+	var n := slot - 4
 	if save:
 		bookmarks[slot] = [focus_pos, target_dist, yaw, tilt]
 		if world.hud:
-			world.hud.flash("View saved to F%d" % slot)
+			var go := Keys.label("view_go_%d" % n)
+			world.hud.flash("View %d saved%s" % [n, ("  (%s goes back to it)" % go) if go != "" else ""])
 		return
 	var b: Array = bookmarks.get(slot, [])
 	if b.is_empty():
 		if world.hud:
-			world.hud.flash("No view saved on F%d  (Ctrl+F%d saves one)" % [slot, slot])
+			var sv := Keys.label("view_save_%d" % n)
+			world.hud.flash("No view %d saved yet%s" % [n, ("  (%s saves one)" % sv) if sv != "" else ""])
 		return
 	stop_follow()
 	glide_to(b[0], float(b[1]), float(b[2]), float(b[3]))
@@ -211,7 +215,8 @@ func bookmark(slot: int, save: bool) -> void:
 
 ## Keys are going into the chat, or any text box (signing in at the end of a battle).
 func _typing() -> bool:
-	return (world.hud != null and world.hud.typing) or get_viewport().gui_get_focus_owner() is LineEdit
+	# (or a key is being rebound in Settings: it isn't for the camera)
+	return (world.hud != null and world.hud.typing) or Keys.capturing or get_viewport().gui_get_focus_owner() is LineEdit
 
 
 func _clamp_map(p: Vector3) -> Vector3:
@@ -236,27 +241,28 @@ func _view_process(_scaled_dt: float) -> void:
 	var zoom := 0.0
 	var fast := false
 	if not _typing():
-		if Input.is_key_pressed(KEY_W) or Input.is_key_pressed(KEY_UP):
+		# held keys, as bound in Settings > Controls
+		if Keys.held("cam_up"):
 			move.y -= 1.0
-		if Input.is_key_pressed(KEY_S) or Input.is_key_pressed(KEY_DOWN):
+		if Keys.held("cam_down"):
 			move.y += 1.0
-		if Input.is_key_pressed(KEY_A) or Input.is_key_pressed(KEY_LEFT):
+		if Keys.held("cam_left"):
 			move.x -= 1.0
-		if Input.is_key_pressed(KEY_D) or Input.is_key_pressed(KEY_RIGHT):
+		if Keys.held("cam_right"):
 			move.x += 1.0
-		if Input.is_key_pressed(KEY_Q):
+		if Keys.held("cam_turn_left"):
 			turn += 1.0
-		if Input.is_key_pressed(KEY_E):
+		if Keys.held("cam_turn_right"):
 			turn -= 1.0
-		if Input.is_key_pressed(KEY_PAGEUP):
+		if Keys.held("cam_tilt_up"):
 			lift += 1.0
-		if Input.is_key_pressed(KEY_PAGEDOWN):
+		if Keys.held("cam_tilt_down"):
 			lift -= 1.0
-		if Input.is_key_pressed(KEY_EQUAL) or Input.is_key_pressed(KEY_KP_ADD):
+		if Keys.held("cam_zoom_in"):
 			zoom -= 1.0
-		if Input.is_key_pressed(KEY_MINUS) or Input.is_key_pressed(KEY_KP_SUBTRACT):
+		if Keys.held("cam_zoom_out"):
 			zoom += 1.0
-		fast = Input.is_key_pressed(KEY_SHIFT)
+		fast = Keys.held("cam_fast")
 	if edge_pan and not _mmb and get_window().has_focus():
 		var mp := get_viewport().get_mouse_position()
 		var vs := get_viewport().get_visible_rect().size

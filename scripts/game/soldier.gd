@@ -973,6 +973,10 @@ func _scan() -> void:
 				rr *= 0.7  # still, low and silent: it's movement and muzzle flash that give men away
 			if d2 > rr * rr:
 				continue
+		elif e is Vehicle and not e.is_air() and world.terrain.netted[world.terrain.idx_of(e.position)] > 0:
+			var rv := maxf(r, 85.0) * 0.5  # a vehicle parked under a net
+			if d2 > rv * rv:
+				continue
 		arr.append([d2, e])
 	arr.sort_custom(func(a, b): return a[0] < b[0])
 	var best: Entity = null
@@ -2100,7 +2104,23 @@ func _seek_resupply() -> bool:
 		go_to(best.position, "task", 1)
 		return true
 	var f: Structure = world.rules.nearest_fob(team, position)
-	if f and Defs.flat(f.position - position).length() < 90.0:
+	var fd := Defs.flat(f.position - position).length() if f else INF
+	# a forward ammo cache, if there's one nearer than the FOB
+	var cache: Structure = null
+	for st in world.structures_near(position, minf(fd, 70.0)):
+		if st.skind == "ammo_cache" and st.team == team and st.built and not st.gone:
+			var d := Defs.flat(st.position - position).length()
+			if d < fd:
+				fd = d
+				cache = st
+	if cache:
+		task = "resupply"
+		task_ent = cache
+		go_to(cache.position + Defs.flat(position - cache.position).normalized() * 2.2 + Vector3(world.rng.randf_range(-1, 1), 0, world.rng.randf_range(-1, 1)), "task", 1)
+		say("Back to the ammo cache!", true)
+		world.stat("resupply_cache")
+		return true
+	if f and fd < 90.0:
 		task = "resupply"
 		task_ent = f
 		go_to(f.position + Vector3(world.rng.randf_range(-4, 4), 0, world.rng.randf_range(-4, 4)), "task", 1)

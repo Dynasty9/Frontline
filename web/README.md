@@ -17,7 +17,42 @@ It reads the live matchmaker by default. To use a local one, put `VITE_MATCHMAKE
 in: the release workflow rewrites both and commits them, and Railway redeploys the site. Don't edit them by hand;
 the changelog comes from `changelog/` at the top of the repo.
 
-`npm run build` type-checks and builds to `dist/`; CI runs it with `npm run lint` on every push.
+## Storybook
+
+```bash
+npm run storybook
+```
+
+opens [Storybook](https://storybook.js.org) on port 6006: every component and section of the page on its own, in
+each state it can be in (loading, the matchmaker down, nobody hosting, a full or closed battle...), the changelog
+and its page, and the whole front page against a stand-in matchmaker (`Site/Page`). Nothing in it talks to the live
+matchmaker, and Join links only report the click instead of opening the game.
+
+Stories sit next to their components (`battles.stories.tsx` by `battles.tsx`), and the made-up lobbies and release
+they show are in `src/test/fixtures.ts`. A new component should come with stories for its states. Many have a
+`play` function that clicks through the story and checks the result.
+
+## Checks
+
+| Command                   | What it does                                                                            |
+| ------------------------- | --------------------------------------------------------------------------------------- |
+| `npm run lint`            | [oxlint](https://oxc.rs), including Storybook's rules for the stories                   |
+| `npm run format:check`    | [Prettier](https://prettier.io) (`npm run format` fixes it), Tailwind classes in order  |
+| `npm run typecheck`       | TypeScript                                                                              |
+| `npm run test:unit`       | the data code in `src/lib` (`*.test.ts`), in Node                                       |
+| `npm run test:stories`    | every story in headless Chromium: its `play` function, and an accessibility check (axe) |
+| `npm test`                | both kinds of test                                                                      |
+| `npm run build`           | type-checks and builds the site to `dist/`                                              |
+| `npm run build-storybook` | builds the Storybook to `storybook-static/`                                             |
+
+The story tests need Playwright's Chromium once: `npx playwright install chromium`.
+
+CI (`.github/workflows/web.yml`) runs all of these on every push and pull request that touches `web/`, and keeps the
+built Storybook as a workflow artifact (`storybook`) you can download and open. When a story test fails there, the
+screenshots of the failing stories are kept too (`story-failures`).
+
+The files under `src/components/ui/` come from shadcn (`npx shadcn add ...`) and are formatted the way it writes them
+(80 columns); the rest of the code is 120.
 
 ## Deploying
 

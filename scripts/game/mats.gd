@@ -320,6 +320,18 @@ static func netting() -> ShaderMaterial:
 	return _netting
 
 
+static var _netting_tent: ShaderMaterial
+
+
+## The same netting for a net whose mesh is already shaped (pitched over a
+## pole, draped to the ground): no sag of its own.
+static func netting_tent() -> ShaderMaterial:
+	if _netting_tent == null:
+		_netting_tent = netting().duplicate() as ShaderMaterial
+		_netting_tent.set_shader_parameter("sag", 0.0)
+	return _netting_tent
+
+
 static func _preset(kind: String) -> Dictionary:
 	match kind:
 		"steel":
@@ -346,6 +358,10 @@ static func _preset(kind: String) -> Dictionary:
 			return {"pattern": WOOD, "col_a": Color(0.5, 0.37, 0.23), "col_b": Color(0.34, 0.24, 0.14), "rough": 0.85, "bump": 1.2, "grime": 0.5}
 		"wood_dark":
 			return {"pattern": WOOD, "col_a": Color(0.33, 0.25, 0.17), "col_b": Color(0.22, 0.16, 0.1), "rough": 0.88, "bump": 1.2, "grime": 0.5}
+		"bank":
+			# earth thrown up and left a season: settled smooth, gone over with
+			# moss and thin grass (berms, the mound over a dugout)
+			return {"pattern": EARTH, "col_a": Color(0.3, 0.28, 0.18), "col_b": Color(0.2, 0.19, 0.12), "rough": 0.97, "bump": 0.45, "grime": 0.0, "scale": 0.6}
 		"earth":
 			return {"pattern": EARTH, "col_a": Color(0.33, 0.26, 0.17), "col_b": Color(0.22, 0.17, 0.11), "rough": 0.97, "bump": 1.6, "grime": 0.0}
 		"stone":
@@ -393,6 +409,19 @@ static func _preset(kind: String) -> Dictionary:
 			return {"pattern": CANVAS, "col_a": Color(0.6, 0.6, 0.6), "col_b": Color(0.48, 0.48, 0.48), "scale": 3.0, "rough": 0.95, "bump": 0.4, "grime": 0.2, "local_space": true}
 		"hesco":
 			return {"pattern": HESCO, "col_a": Color(0.6, 0.55, 0.42), "col_b": Color(0.4, 0.35, 0.26), "col_c": Color(0.22, 0.21, 0.2), "rough": 0.95, "bump": 1.6, "grime": 0.8}
+		"hesco_cell":
+			# one filled HESCO cell (a mesh of its own): the geotextile behind the
+			# welded mesh, no cell seams (the cell's own edges are the seams)
+			return {"pattern": HESCO, "col_a": Color(0.6, 0.55, 0.42), "col_b": Color(0.42, 0.37, 0.27), "col_c": Color(0.24, 0.23, 0.21), "rough": 0.95, "bump": 1.4, "grime": 1.0, "cell_w": 0.0}
+		"precast":
+			# precast and cast-in-place defence concrete: smooth formwork faces,
+			# weathered and rain-streaked, none of the pitting of old walls
+			return {"pattern": CONCRETE, "col_a": Color(0.56, 0.55, 0.52), "col_b": Color(0.38, 0.37, 0.34), "rough": 0.88, "bump": 0.7, "grime": 0.85, "pitting": 0.15, "seams": 0.0}
+		"rust_steel":
+			return {"pattern": PAINT, "col_a": Color(0.32, 0.2, 0.12), "col_b": Color(0.22, 0.2, 0.18), "rough": 0.85, "metal": 0.35, "bump": 1.0, "grime": 0.5, "rust": 1.0}
+		"wire":
+			# galvanised barbed and razor wire, dulled and spotted with rust
+			return {"pattern": PAINT, "col_a": Color(0.44, 0.44, 0.42), "col_b": Color(0.56, 0.55, 0.52), "rough": 0.42, "metal": 0.75, "bump": 0.0, "grime": 0.2, "rust": 0.35, "scale": 4.0}
 		"bag":
 			return {"pattern": CANVAS, "col_a": Color(0.5, 0.45, 0.33), "col_b": Color(0.4, 0.36, 0.26), "scale": 1.6, "rough": 0.97, "bump": 0.8, "grime": 0.7, "local_space": true, "use_vcolor": true}
 		"canvas_l":
@@ -432,6 +461,9 @@ uniform float metal = 0.0;
 uniform float bump = 1.0;
 uniform float grime = 0.5;
 uniform float rust = 0.0;
+uniform float pitting = 1.0;  // concrete: how much of the old pitting shows
+uniform float seams = 1.0;  // concrete: the formwork joints
+uniform float cell_w = 1.05;  // HESCO: the width of a cell
 uniform bool local_space = false;
 uniform bool use_vcolor = false;
 uniform float vcolor_k = 1.0;  // merged parts: the vertex colour is stored scaled down (Mats.VC_K)
@@ -531,8 +563,8 @@ void fragment() {
 		float rs3 = tfbm(vec2(uv.x * 4.0, uv.y * 0.3) + off * 0.5);
 		col = mix(col, col_b * 0.85, smoothstep(0.55, 0.8, rs3) * 0.35);
 		vec2 g = abs(fract(uv / vec2(2.0, 1.25)) - 0.5);
-		float seam = smoothstep(0.485, 0.497, max(g.x, g.y)) * keep(0.1, px);
-		float pits = smoothstep(0.93, 0.97, h12(floor(uv * 60.0) + off)) * keep(0.05, px);
+		float seam = smoothstep(0.485, 0.497, max(g.x, g.y)) * keep(0.1, px) * seams;
+		float pits = smoothstep(0.93, 0.97, h12(floor(uv * 60.0) + off)) * keep(0.05, px) * pitting;
 		col *= 1.0 - seam * 0.35 - pits * 0.1;
 		h = 1.0 - seam * 0.6 - pits * 0.5 + tnoise(uv * 25.0) * 0.08;
 	} else if (pattern == 4) {
@@ -628,16 +660,18 @@ void fragment() {
 		h = e * 0.8 + tnoise(uv * 40.0) * 0.05;
 		r = mix(0.95, rough - dirt * 0.2, e);
 	} else if (pattern == 16) {
-		vec2 q = uv / 1.05;
-		vec2 cell = floor(q);
+		// (cell 0: a single cell modelled on its own - no seams, no bulge drawn in)
+		float has_cell = step(0.01, cell_w);
+		vec2 q = uv / max(cell_w, 0.01);
+		vec2 hcell = floor(q) * has_cell;
 		vec2 f = fract(q);
 		vec2 c2 = f - 0.5;
-		float bulge = clamp(1.0 - dot(c2, c2) * 2.2, 0.0, 1.0);
-		float seam = (1.0 - smoothstep(0.0, 0.035, min(min(f.x, 1.0 - f.x), min(f.y, 1.0 - f.y)))) * keep(0.1, px);
+		float bulge = mix(0.5, clamp(1.0 - dot(c2, c2) * 2.2, 0.0, 1.0), has_cell);
+		float seam = (1.0 - smoothstep(0.0, 0.035, min(min(f.x, 1.0 - f.x), min(f.y, 1.0 - f.y)))) * keep(0.1, px) * has_cell;
 		vec2 wq = fract(uv / 0.075);
 		float wire = (1.0 - smoothstep(0.0, 0.12, min(min(wq.x, 1.0 - wq.x), min(wq.y, 1.0 - wq.y)))) * keep(0.04, px) + 0.15 * (1.0 - keep(0.04, px));
 		float stain = tfbm(uv * 1.3 + off);
-		vec3 fab = mix(col_a, col_b, smoothstep(0.35, 0.8, stain) * 0.8) * (0.85 + 0.25 * mix(0.5, h12(cell + off), keep(1.05, px)));
+		vec3 fab = mix(col_a, col_b, smoothstep(0.35, 0.8, stain) * 0.8) * (0.85 + 0.25 * mix(0.5, h12(hcell + off), keep(max(cell_w, 0.01), px) * has_cell));
 		col = mix(fab, col_c, max(wire * 0.55, seam * 0.8));
 		h = bulge * 0.8 - wire * 0.1 - seam * 0.5;
 		m = mix(0.0, 0.6, wire * 0.6);
@@ -763,6 +797,7 @@ const NETTING_SHADER := """
 shader_type spatial;
 render_mode cull_disabled;
 instance uniform vec4 tint : source_color = vec4(0.3, 0.34, 0.2, 1.0);
+uniform float sag = 0.45;  // a flat net slung between poles sags in the middle
 varying vec3 wp;
 float h12(vec2 p) { vec3 p3 = fract(vec3(p.xyx) * 0.1031); p3 += dot(p3, p3.yzx + 33.33); return fract((p3.x + p3.y) * p3.z); }
 float vn(vec2 p) {
@@ -771,7 +806,7 @@ float vn(vec2 p) {
 }
 void vertex() {
 	vec2 u = UV * 2.0 - 1.0;
-	VERTEX.y -= (1.0 - u.x * u.x) * (1.0 - u.y * u.y) * 0.45;
+	VERTEX.y -= (1.0 - u.x * u.x) * (1.0 - u.y * u.y) * sag;
 	VERTEX.y += sin(VERTEX.x * 0.9 + TIME * 0.7) * 0.03;
 	wp = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
 }
@@ -784,6 +819,9 @@ void fragment() {
 	if (n + g * 0.3 < 0.47 + smoothstep(0.8, 1.0, edge) * 0.3) { discard; }
 	vec3 c = tint.rgb * (0.65 + 0.55 * g);
 	c = mix(c, c * vec3(1.25, 1.05, 0.7), step(0.62, vn(p * 3.1 + 9.0)) * 0.6);
+	// the garnish: darker brown and near-black scraps knotted in, breaking it up
+	c = mix(c, c * vec3(0.62, 0.5, 0.38), step(0.6, vn(p * 2.3 + 31.0)) * 0.75);
+	c = mix(c, c * 0.35, step(0.7, vn(p * 4.1 + 57.0)) * 0.6);
 	ALBEDO = c;
 	ROUGHNESS = 0.95;
 	BACKLIGHT = c * 0.5;

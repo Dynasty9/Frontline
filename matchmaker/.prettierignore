@@ -1,0 +1,6 @@
+node_modules
+package-lock.json
+# markdown tables come out padded to the widest row
+*.md
+# written by the release workflow (.github/scripts/release_json.py)
+release.json

@@ -21,16 +21,18 @@ var chat_edit: LineEdit
 var join_row: HBoxContainer
 var settings_panel: SettingsPanel
 var manual: FieldManual
-var backdrop: MenuScene
+var backdrop: TopoBackdrop
 var op_panel: PanelContainer
 var ms_panel: PanelContainer  # the missions
 var _ms_key := ""
 var _ms_cards := {}
 var _ms_detail: VBoxContainer
+var _music_on := false
 var _op_side := 0  # 0 Coalition, 1 Rebels, -1 observe
 var _side_cards := {}
 var _mood_chips := {}
 var _col: VBoxContainer
+var _margin: MarginContainer
 var hint: Label  # the networking hint, shown in the lobby
 # online: the list of battles, the account, and the lobby's listing
 var browse_panel: PanelContainer
@@ -71,25 +73,13 @@ func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	theme = UiKit.theme()
 	visibility_changed.connect(_on_visibility)
-	# darkening on the left so the menu reads over the 3D backdrop
-	var shade := TextureRect.new()
-	var gt := GradientTexture2D.new()
-	var g := Gradient.new()
-	g.offsets = PackedFloat32Array([0.0, 0.55, 1.0])
-	g.colors = PackedColorArray([Color(0.02, 0.025, 0.02, 0.88), Color(0.02, 0.025, 0.02, 0.55), Color(0.02, 0.025, 0.02, 0.0)])
-	gt.gradient = g
-	gt.fill_from = Vector2(0, 0)
-	gt.fill_to = Vector2(1, 0)
-	gt.width = 256
-	gt.height = 4
-	shade.texture = gt
-	shade.stretch_mode = TextureRect.STRETCH_SCALE
-	shade.anchor_bottom = 1.0
-	shade.offset_right = 760
-	shade.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(shade)
+	# the living map behind it all, darkened down the left so the menu reads
+	backdrop = TopoBackdrop.new()
+	backdrop.shade = 1.0
+	add_child(backdrop)
 
 	var margin := MarginContainer.new()
+	_margin = margin
 	margin.anchor_bottom = 1.0
 	margin.offset_right = 600
 	margin.add_theme_constant_override("margin_left", 72)
@@ -145,7 +135,7 @@ func _ready() -> void:
 	main_box.add_child(_big("Join Game", "Browse the battles being hosted, or connect by address", _open_browser))
 	main_box.add_child(_section("REFERENCE"))
 	main_box.add_child(_big("Field Manual", "Every soldier, weapon, vehicle and work, with its numbers", func(): manual.visible = true))
-	main_box.add_child(_big("Settings", "Graphics, display, interface and sound", func(): settings_panel.visible = true))
+	main_box.add_child(_big("Settings", "Graphics, display, interface, controls and sound", func(): settings_panel.visible = true))
 	main_box.add_child(_big("Quit", "Back to the desktop", func(): get_tree().quit()))
 	var gap2 := Control.new()
 	gap2.custom_minimum_size = Vector2(0, 14)
@@ -278,16 +268,28 @@ func _ready() -> void:
 	_on_visibility()
 
 
+## The menu comes in as the title lifts away: the column glides in from the
+## left and its entries follow one after another.
+func arrive() -> void:
+	var tw := create_tween().set_parallel(true).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_CUBIC)
+	_margin.position.x = -40.0
+	tw.tween_property(_margin, "position:x", 0.0, 0.8)
+	var items: Array = _col.get_children().slice(0, 3) + main_box.get_children()
+	for i in items.size():
+		var c: CanvasItem = items[i]
+		c.modulate.a = 0.0
+		tw.tween_property(c, "modulate:a", 1.0, 0.5).set_delay(0.12 + 0.035 * i)
+
+
+## The menu's music starts again each time it comes back.
 func _on_visibility() -> void:
 	if is_visible_in_tree() and acct_card:
 		_card_in.call_deferred()
-	if is_visible_in_tree() and backdrop == null:
-		backdrop = MenuScene.new()
-		get_tree().root.add_child.call_deferred(backdrop)
+	if is_visible_in_tree() and not _music_on:
+		_music_on = true
 		Music.play_cue("menu")
-	elif not is_visible_in_tree() and backdrop != null:
-		backdrop.queue_free()
-		backdrop = null
+	elif not is_visible_in_tree():
+		_music_on = false
 
 
 ## A menu entry: the name and, under it, what it does. Hover slides in an
