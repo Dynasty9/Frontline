@@ -14,6 +14,15 @@ export type Lobby = {
   in_game: boolean
   drop_in: boolean
   nat: "open" | "cone" | "strict" | "unknown"
+  // what kind of battle: everyone on `side` against the AI, sides against
+  // each other, or a mission (named in `mission`) played together
+  mode?: "coop" | "versus" | "mission" | ""
+  mission?: string
+  side?: number
+  teams?: [number, number]
+  spectators?: number
+  // the host has set a password (players type it in the game)
+  locked?: boolean
   version: string
   age: number
 }

@@ -725,7 +725,8 @@ func _client_ready() -> void:
 	if not srv:
 		return
 	var p := multiplayer.get_remote_sender_id()
-	if p in ready_peers:
+	# only players the lobby let in (not a peer that never said who it was)
+	if p in ready_peers or not Net.players.has(p):
 		return
 	var view := view_of(p)
 	var kn := {}

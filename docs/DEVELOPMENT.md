@@ -272,6 +272,13 @@ The client prints a `CLIENT entities=...` summary when it quits. Check both outp
 with a window, drawn its first frame, which takes a minute or more off-screen. `waited=` in the summary is how long
 the client sat in an empty world first (-1: nothing came, and it gave up 5 minutes past `--quit-after`).
 
+The host's lobby takes `--battle-name=NAME`, `--coop` (everyone on `--team`'s side), `--max-players=N` and
+`--password=PW`; a joiner gives `--password=PW`, and `--ready` / `--say=TEXT` press Ready and chat once it's in the
+lobby. With `--players=N` the host shows its lobby while it waits, so a windowed host can be screenshotted there. On
+a busy machine a host can take ten seconds or more to start listening: start the clients once its port is bound
+(`netstat -ano -p UDP`), or ENet gives up connecting first. `FL_DEBUG_NET=1` prints each side of the lobby handshake
+(connecting, registering, a password asked for, turned away, the battle starting).
+
 Co-commanders: bot clients make up their presence, pings and sketches and really send them. Start the one on
 the other side first, so its team request lands before the game starts:
 
@@ -315,10 +322,11 @@ Set `FL_DEBUG_ONLINE=1` to print what STUN saw, who the host punches towards, an
 exercise the hole-punching path, give the joiner the matchmaker's LAN address instead of `127.0.0.1` (it then only
 connects if your router loops traffic back in, "hairpinning", which many don't). `--no-stun` skips STUN for offline
 runs, `--login=EMAIL:PASSWORD` (plus `--signup=CALLSIGN` to create the account) signs in first, `--account=PATH`
-keeps that sign-in out of your real one, and `--menu-panel=browse|account|record|settings|insignia` opens those panels
-for screenshots (`--open-battle` then opens the newest battle on the service record). Test runs keep no service record
-and earn no rank; `--record-battles` turns both on (with `--pending=PATH` for the battles waiting to go up, out of your
-real ones):
+keeps that sign-in out of your real one, and `--menu-panel=browse|host|account|record|settings|insignia` opens those panels
+for screenshots (`--host-mode=coop|versus|mission` for the host setup, `--browse-pick=TEXT` to choose a battle in the
+browser, `--open-battle` to open the newest battle on the service record). `--host --list` also beacons on the LAN
+(UDP 7787), so a second copy's server browser lists it even with a dead `--matchmaker`. Test runs keep no service
+record and earn no rank; `--record-battles` turns both on (with `--pending=PATH` for the battles waiting to go up, out of your real ones):
 
 ```
 godot --headless --path . -- --scenario=attack --play --end-at=40 --quit-after=55 --record-battles --no-stun \

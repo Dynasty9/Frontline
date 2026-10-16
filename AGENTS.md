@@ -22,7 +22,7 @@ scripts/game/missions.gd       the missions (content); mission_director.gd runs 
 scripts/game/co_command.gd     co-commanders: each player's view, cursor and plans, pings, sketches (relayed to their side only)
 scripts/game/terrain.gd, nav.gd, hnav.gd   ground kinds, cover map, pathfinding grids (HPA*)
 scripts/ui/                    HUD, minimap, Field Manual, menus
-scripts/autoload/online.gd     the matchmaker client: battle list, Find Match, hole punching, optional account
+scripts/autoload/online.gd     the matchmaker client: battle list, Find Match, hole punching, LAN beacons, optional account
 scripts/autoload/links.gd      frontline:// links from the website: registering the scheme, handing a link to a running copy
 scripts/autoload/updater.gd    the game's version, and updating itself to the latest release
 changelog/                     one entry per change, filed under its version at release; CHANGELOG.md is generated
@@ -77,7 +77,7 @@ CI (`.github/workflows/check.yml`) runs steps 1 and 2 on every push and pull req
 - **Shader instance uniforms** come from a fixed buffer (`rendering/limits/global_shader_variables/buffer_size` in `project.godot`). If a bigger map spawns many more objects, raise it.
 - **The host is busy for several seconds** generating the map, so ENet peers are given long timeouts (`net.gd`). Don't shorten them.
 - **Headless test runs** each need a distinct `--port`. A running game holds the default port.
-- **Test runs use the live matchmaker** unless given `--matchmaker=URL`, and only the menu's Host Multiplayer and Find Match (or `--host --list`) list a battle there. Single-player and scenario games never do.
+- **Test runs use the live matchmaker** unless given `--matchmaker=URL`, and only the menu's Host a Battle (unless Unlisted) and Find Match (or `--host --list`) list a battle there. Single-player and scenario games never do.
 - **The matchmaker keeps everything in memory**, so it runs as a single instance; the game re-lists its battle if the service restarts.
 
 ## Commits and pull requests
