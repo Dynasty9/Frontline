@@ -37,6 +37,7 @@ Settings are saved to `user://settings.cfg`.
 main.gd                 menu <-> World, command-line test modes
 autoload/defs.gd        all data tables (units, weapons, squads, vehicles, buildings, upgrades)
 autoload/net.gd         ENet host/join, lobby, teams, start
+autoload/online.gd      the matchmaker client: listing, Find Match, STUN + hole punching, optional account
 autoload/sfx.gd         procedurally synthesised sounds
 game/world.gd           entity registry, replication (spawn / snapshot / props / fx RPCs), commands, queries
 game/entity.gd          base class: props on spawn, packed state in snapshots
@@ -164,6 +165,31 @@ godot --headless --path . -- --join=127.0.0.1 --team=1 --quit-after=200 --port=7
 ```
 
 The client prints a `CLIENT entities=...` summary when it quits. Check both outputs for `SCRIPT ERROR`.
+
+### Matchmaker
+
+The matchmaker (`matchmaker/`, see its README) is a small Node service with its own tests:
+
+```
+cd matchmaker && npm test
+```
+
+To try the game against it, run one locally (`AUTH_BACKEND=memory` adds throwaway accounts) and point both games at
+it with `--matchmaker=URL`. The host lists its battle with `--list`; the second game presses Find Match:
+
+```
+cd matchmaker && AUTH_BACKEND=memory PORT=8787 npm start
+godot --headless --path . -- --host --list --players=2 --quit-after=60 --port=7941 --matchmaker=http://127.0.0.1:8787
+godot --headless --path . -- --find-match --team=1 --quit-after=60 --port=7942 --matchmaker=http://127.0.0.1:8787
+```
+
+Set `FL_DEBUG_ONLINE=1` to print what STUN saw, who the host punches towards, and how the joiner connects (`via lan`,
+`punch` or `direct`). On one machine both games share a public address, so the joiner takes the LAN path; to
+exercise the hole-punching path, give the joiner the matchmaker's LAN address instead of `127.0.0.1` (it then only
+connects if your router loops traffic back in, "hairpinning", which many don't). `--no-stun` skips STUN for offline
+runs, `--login=EMAIL:PASSWORD` (plus `--signup=CALLSIGN` to create the account) signs in first, `--account=PATH`
+keeps that sign-in out of your real one, and `--menu-panel=browse|account` opens those panels for screenshots.
+Without `--matchmaker` the game uses the live service on Railway.
 
 ### Off-screen screenshots
 

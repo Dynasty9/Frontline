@@ -19,6 +19,8 @@ scripts/game/commander_ai.gd   the AI commander; naval_ai.gd its navy; attack_pl
 scripts/game/mapgen.gd         map generation and the --scenario test setups; towngen.gd the town; water.gd the water
 scripts/game/terrain.gd, nav.gd, hnav.gd   ground kinds, cover map, pathfinding grids (HPA*)
 scripts/ui/                    HUD, minimap, Field Manual, menus
+scripts/autoload/online.gd     the matchmaker client: battle list, Find Match, hole punching, optional account
+matchmaker/                    the matchmaking service (Node, no dependencies; deployed on Railway, accounts via Supabase)
 docs/                          FEATURES.md (design), DEVELOPMENT.md (code layout, test flags)
 ```
 
@@ -38,10 +40,10 @@ Run every command from the repository root. `godot` means your Godot 4.7.x execu
    godot --headless --path . -- --aivai --seed=3 --timescale=5 --stats=300 --quit-after=1200 --port=7902
    ```
    Scenarios include `attack`, `breach`, `trenches`, `tank`, `tactics`, `naval`, `sling`, `roster` and `gdrill`; [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) has the full list. `--stats=N` prints a state summary every N seconds and, at the end, the behaviour counters (`world.stat("key")`). Those counters are the cheapest way to confirm a behaviour actually fired: add one, run, grep for it.
-3. **Multiplayer**, if you touched anything replicated: run a host and a client (see "Host / client" in DEVELOPMENT.md). The client prints `CLIENT entities=...` when it quits.
+3. **Multiplayer**, if you touched anything replicated: run a host and a client (see "Host / client" in DEVELOPMENT.md). The client prints `CLIENT entities=...` when it quits. If you touched matchmaking, run `npm test` in `matchmaker/` and the Find Match pair under "Matchmaker" in DEVELOPMENT.md. Bump `Net.NET_VERSION` when host and client stop understanding each other, so the matchmaker won't pair old and new builds.
 4. **Visuals**: render off-screen and look at the image rather than guessing. Use `--screenshot=out.png --shot-at=SECONDS`, frame the shot with `--focus=X,Z --zoom=M --pitch=DEG --cam-yaw=RAD`, and add `--nohud` to hide the interface. `--manual=category,key,side` opens a Field Manual page.
 
-CI (`.github/workflows/check.yml`) runs steps 1 and 2 on every push and pull request.
+CI (`.github/workflows/check.yml`) runs steps 1 and 2, and the matchmaker's tests, on every push and pull request.
 
 ## How the code is written
 
@@ -63,6 +65,8 @@ CI (`.github/workflows/check.yml`) runs steps 1 and 2 on every push and pull req
 - **Shader instance uniforms** come from a fixed buffer (`rendering/limits/global_shader_variables/buffer_size` in `project.godot`). If a bigger map spawns many more objects, raise it.
 - **The host is busy for several seconds** generating the map, so ENet peers are given long timeouts (`net.gd`). Don't shorten them.
 - **Headless test runs** each need a distinct `--port`. A running game holds the default port.
+- **Test runs use the live matchmaker** unless given `--matchmaker=URL`, and only the menu's Host Multiplayer and Find Match (or `--host --list`) list a battle there. Single-player and scenario games never do.
+- **The matchmaker keeps everything in memory**, so it runs as a single instance; the game re-lists its battle if the service restarts.
 
 ## Commits and pull requests
 

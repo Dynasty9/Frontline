@@ -115,13 +115,19 @@ When watching an AI battle: **C** hands the camera back to the director, **V** p
 
 ## Playing with friends
 
-1. One player chooses **Host Multiplayer**. Everyone else chooses **Join Game** and types in the host's IP address.
+The quickest way in is **Find Match**: it drops you into an open battle someone is hosting, or, if there isn't one, hosts a battle that the next player to press it will join.
+
+To play with particular people:
+
+1. One player chooses **Host Multiplayer**. The battle is listed online, so everyone else chooses **Join Game** and picks it from the list. (Untick "List online" in the lobby to keep it private: then friends type in the host's IP address under **Join Game** instead.)
 2. In the lobby, choose sides:
    - **Co-op:** everyone picks the same side, and the computer plays the other.
    - **Versus:** pick opposite sides. You can still add a computer commander to help either side.
 3. The host clicks **Start Battle**.
 
-The host needs UDP port **7777** open. If that's awkward, play over a LAN, or a VPN such as Tailscale, ZeroTier or Hamachi. Friends can also join a battle that's already running.
+The game connects players straight to the host, through most home routers, without anyone opening ports. A few networks (some mobile and campus ones) are too strict for that; the lobby says so, and then the host needs UDP port **7777** open, or you can play over a LAN or a VPN such as Tailscale, ZeroTier or Hamachi. Friends can also join a battle that's already running.
+
+You can sign in with an account (next to your callsign on the main menu). It keeps your callsign yours: no one else can register it, and battles you host show a tick. You don't need one to play.
 
 ## Learn more
 

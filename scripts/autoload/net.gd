@@ -8,9 +8,13 @@ signal net_error(msg: String)
 signal lobby_chat(text: String)
 signal player_left(id: int, team: int, pname: String)
 signal player_joined(id: int, team: int, pname: String)
+signal session_closed  # left a lobby or a battle, or stopped hosting
 
 const DEFAULT_PORT := 7777
 const MAX_PLAYERS := 8
+## Bump when what host and client send each other changes, so the matchmaker
+## only pairs players who can understand each other.
+const NET_VERSION := 1
 
 var players := {}  # peer_id -> {"name": String, "team": int}
 var settings := {"ai_fill": true, "ai_allies": false, "drop_in": true}
@@ -39,9 +43,12 @@ func host_game(port := DEFAULT_PORT, team := 0) -> int:
 	return OK
 
 
-func join_game(ip: String, port := DEFAULT_PORT) -> int:
+## `local_port`: the UDP port to connect from (0 for any). The matchmaker's
+## hole punching needs a known one: the port the router has already been
+## shown, and the host told to expect.
+func join_game(ip: String, port := DEFAULT_PORT, local_port := 0) -> int:
 	var peer := ENetMultiplayerPeer.new()
-	var err := peer.create_client(ip, port)
+	var err := peer.create_client(ip, port, 0, 0, 0, local_port)
 	if err != OK:
 		return err
 	multiplayer.multiplayer_peer = peer
@@ -56,6 +63,7 @@ func leave() -> void:
 	multiplayer.multiplayer_peer = OfflineMultiplayerPeer.new()
 	players.clear()
 	in_game = false
+	session_closed.emit()
 
 
 func _sender() -> int:
