@@ -820,6 +820,9 @@ func show_game_over(w: int) -> void:
 	_rec_note.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_rec_note.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	_rec_note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	# a width to wrap at from the start: laid out while the report is still
+	# hidden, a wrapping label with none breaks at every letter and stretches it
+	_rec_note.custom_minimum_size = Vector2(380, 0)
 	row.add_child(_rec_note)
 	_rec_btn = _cta("Sign in", false, _sign_in_for_record)
 	_rec_btn.custom_minimum_size = Vector2(130, 42)
@@ -843,25 +846,34 @@ func _cta(text: String, primary: bool, cb: Callable) -> Button:
 	b.focus_mode = Control.FOCUS_NONE
 	b.add_theme_font_override("font", UiFx.spaced(700, 2))
 	b.add_theme_font_size_override("font_size", 13)
-	for st in ["normal", "hover", "pressed", "hover_pressed", "disabled"]:
-		b.add_theme_stylebox_override(st, StyleBoxEmpty.new())
+	# cut corners: a flat box whose two corners are single straight segments
+	var cut := func(bg: Color, edge: Color) -> StyleBoxFlat:
+		var sb := StyleBoxFlat.new()
+		sb.bg_color = bg
+		sb.border_color = edge
+		sb.set_border_width_all(0 if primary else 1)
+		sb.corner_radius_top_left = 9
+		sb.corner_radius_bottom_right = 9
+		sb.corner_detail = 1
+		sb.anti_aliasing = true
+		sb.set_content_margin_all(8.0)
+		return sb
+	if primary:
+		b.add_theme_stylebox_override("normal", cut.call(UiFx.fade(UiKit.ACCENT, 0.92), Color.TRANSPARENT))
+		b.add_theme_stylebox_override("hover", cut.call(UiKit.ACCENT.lightened(0.14), Color.TRANSPARENT))
+		b.add_theme_stylebox_override("pressed", cut.call(UiKit.ACCENT.darkened(0.08), Color.TRANSPARENT))
+	else:
+		b.add_theme_stylebox_override("normal", cut.call(Color(1, 1, 1, 0.03), Color(1, 1, 1, 0.2)))
+		b.add_theme_stylebox_override("hover", cut.call(Color(1, 1, 1, 0.07), UiKit.ACCENT))
+		b.add_theme_stylebox_override("pressed", cut.call(UiFx.fade(UiKit.ACCENT, 0.18), UiKit.ACCENT))
+	b.add_theme_stylebox_override("hover_pressed", b.get_theme_stylebox("pressed"))
+	b.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
 	var ink := Color(0.08, 0.07, 0.05) if primary else UiKit.TEXT
 	b.add_theme_color_override("font_color", ink)
 	b.add_theme_color_override("font_hover_color", ink if primary else UiKit.ACCENT)
 	b.add_theme_color_override("font_pressed_color", ink)
-	b.draw.connect(func():
-		var r := Rect2(Vector2.ZERO, b.size)
-		var hot := b.is_hovered()
-		var pts := UiFx.chamfer(r, 8.0)
-		if primary:
-			b.draw_colored_polygon(pts, UiKit.ACCENT.lightened(0.12) if hot else UiFx.fade(UiKit.ACCENT, 0.9))
-		else:
-			b.draw_colored_polygon(pts, Color(1, 1, 1, 0.07 if hot else 0.03))
-			var e := pts.duplicate()
-			e.append(pts[0])
-			b.draw_polyline(e, UiKit.ACCENT if hot else Color(1, 1, 1, 0.2), 1.0, true))
-	b.mouse_entered.connect(func(): b.queue_redraw(); Sfx.ui("ui_tick", -26.0, 1.4))
-	b.mouse_exited.connect(b.queue_redraw)
+	b.add_theme_color_override("font_hover_pressed_color", ink)
+	b.mouse_entered.connect(func(): Sfx.ui("ui_tick", -26.0, 1.4))
 	b.pressed.connect(func(): Sfx.ui("click"); cb.call())
 	return b
 
@@ -924,6 +936,7 @@ func _end_sequence(w: int) -> void:
 ## The report rises into place under where the banner was.
 func _reveal_report() -> void:
 	over_panel.visible = true
+	UiKit.fit_center(over_panel, Vector2(1180, 840), 30.0)
 	over_panel.modulate.a = 0.0
 	var y := over_panel.position.y
 	over_panel.position.y = y + 56.0
