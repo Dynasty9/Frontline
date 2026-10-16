@@ -6,6 +6,20 @@ on:
   pull_request:
 
 jobs:
+  matchmaker:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    defaults:
+      run:
+        working-directory: matchmaker
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Matchmaker tests
+        run: npm test
+
   check:
     runs-on: ubuntu-latest
     timeout-minutes: 20

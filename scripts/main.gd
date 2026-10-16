@@ -5,6 +5,10 @@ extends Node
 ##   --host [--players=N]  host and start (when N players have joined)
 ##   --join=IP             join a host
 ##   --team=N              team to request after joining (-1 spectator)
+##   --list                with --host: list the battle on the matchmaker
+##   --find-match          press Find Match (joins a listed battle, or hosts one)
+##   --login=EMAIL:PASSWORD [--signup=CALLSIGN]   sign in (or create the account) first
+##   (and Online's own: --matchmaker=URL --account=PATH --no-stun)
 ##   --timescale=X --quit-after=SECONDS --stats=SECONDS --verbose
 ##   --screenshot=PATH --shot-at=SECONDS --focus=X,Z --zoom=D
 
@@ -88,6 +92,8 @@ func _ready() -> void:
 	if args.has("stats"):
 		_stats_every = float(args.stats)
 	var port := int(args.get("port", Net.DEFAULT_PORT))
+	if args.has("login"):
+		await _test_login()
 	if args.has("scenario"):
 		# --play: command the Coalition side yourself instead of watching
 		Net.host_game(port, 0 if args.has("play") else -1)
@@ -117,7 +123,10 @@ func _ready() -> void:
 		Net.set_setting("verbose", args.has("verbose"))
 		Net.start_game()
 	elif args.has("host"):
-		Net.host_game(port, int(args.get("team", 0)))
+		if args.has("list"):
+			await Online.host(port, int(args.get("team", 0)))
+		else:
+			Net.host_game(port, int(args.get("team", 0)))
 		if args.has("mission"):
 			Net.set_setting("mission", String(args.mission))
 			Net.set_setting("mission_autoplay", args.has("autoplay"))
@@ -128,10 +137,24 @@ func _ready() -> void:
 			Net.start_game()
 		else:
 			Net.lobby_updated.connect(_maybe_autostart)
-	elif args.has("join"):
-		Net.join_game(String(args.join), port)
+	elif args.has("join") or args.has("find-match"):
+		if args.has("join"):
+			Net.join_game(String(args.join), port)
+		else:
+			menu._find_match()
 		if args.has("team"):
 			multiplayer.connected_to_server.connect(func(): await get_tree().create_timer(0.3).timeout; Net.request_team.rpc_id(1, int(args.team)))
+
+
+## --login=EMAIL:PASSWORD (with --signup=CALLSIGN to create the account first).
+func _test_login() -> void:
+	var cred := String(args.login).split(":", true, 1)
+	var r: Dictionary
+	if args.has("signup"):
+		r = await Online.sign_up(cred[0], cred[1] if cred.size() > 1 else "", String(args.signup))
+	else:
+		r = await Online.sign_in(cred[0], cred[1] if cred.size() > 1 else "")
+	print("LOGIN ok=%s callsign=%s %s" % [str(r.ok), Online.callsign, String(r.error)])
 
 
 func _dump_structs() -> void:
@@ -465,6 +488,13 @@ func _process(_dt: float) -> void:
 		if args.has("menu-op") and menu and menu.op_panel and not has_meta("op_open") and Engine.get_frames_drawn() > 5:
 			set_meta("op_open", true)
 			menu._open_op(int(args["menu-op"]))
+		# --menu-panel=browse|account: the list of online battles, or the sign-in panel
+		if args.has("menu-panel") and menu and menu.browse_panel and not has_meta("panel_open") and Engine.get_frames_drawn() > 5:
+			set_meta("panel_open", true)
+			if String(args["menu-panel"]) == "account":
+				menu._open_account()
+			else:
+				menu._open_browser()
 		# --menu-missions[=KEY]: open the Missions panel (on that mission)
 		if args.has("menu-missions") and menu and menu.ms_panel and not has_meta("ms_open") and Engine.get_frames_drawn() > 5:
 			set_meta("ms_open", true)

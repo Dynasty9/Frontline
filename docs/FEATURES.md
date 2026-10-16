@@ -36,8 +36,22 @@ they're doing). The observer bar at the top has pause, speed (0.25x to 4x), dire
 ## Multiplayer in detail
 
 - The host is the authoritative server and runs the entire simulation, including the AI.
-- Everyone else joins with the host's IP on UDP port **7777**. Forward that port or use a LAN/VPN
-  (Tailscale, ZeroTier, Hamachi).
+- **Matchmaking.** Hosted battles are listed on the matchmaker (`matchmaker/`, a small Node service on Railway) unless
+  the host unticks "List online". **Find Match** joins the best open battle (ones still in the lobby first, then the
+  fullest) or, if there is none, hosts one for the next player to find; **Join Game** shows the list. The matchmaker
+  only introduces players: game traffic goes straight between them.
+- **Getting through routers.** Before hosting, the game asks two public STUN servers what address and port its
+  router shows the internet for the game port. A joiner does the same from a fresh port; the matchmaker swaps the
+  two (the host hears about the joiner on a long poll), both send packets at each other so each router lets the
+  other in, and ENet connects directly ("UDP hole punching"). Players behind the same router get the host's LAN
+  address. If the two STUN servers see different ports the router is "symmetric" and can't be punched; the lobby
+  says so, and that host needs UDP port **7777** forwarded. If a joiner isn't through in 12 seconds, Find Match
+  moves on to the next battle.
+- **Joining by address** still works without the matchmaker: the host's IP on UDP port **7777**, forwarded or over a
+  LAN/VPN (Tailscale, ZeroTier, Hamachi).
+- **Accounts** are optional (Supabase, through the matchmaker). Signed in, your callsign is yours: no other account can register it, and
+  battles you host are listed under it with a tick. Sign in next to the callsign on the main menu;
+  the session is remembered in `user://account.cfg`.
 - **Co-op:** everyone picks the same side, and the AI takes the empty side.
   **PvP:** pick opposite sides. "Add an AI commander to sides that have players" gives you an AI teammate.
 - If a player leaves, a teammate inherits their squads, or the AI takes over if nobody is left on that side.
