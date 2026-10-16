@@ -2,6 +2,10 @@ class_name HudTopInfo
 extends Control
 ## Resources (player) or the balance of forces (observer), top-left.
 
+## The observer's balance-of-forces box.
+const OBS_W := 420.0  # (wide enough for the towns each side holds)
+const OBS_H := 76.0
+
 var hud: Hud
 var content_h := 80.0  # how far down the FOB and town lines reach (the order of battle goes below)
 var _towns_n := 0
@@ -131,6 +135,11 @@ func _draw() -> void:
 			var mw := UiKit.text_width(mt, 13) + 28.0
 			var vs := get_viewport_rect().size
 			var r := Rect2(vs.x * 0.5 - mw * 0.5 - position.x, 0, mw, 32)
+			if r.position.x < wtot + 10.0:
+				# a narrow screen: under the bar, or under the objectives if it would cover them
+				r.position.y = 42.0
+				if hud.objectives.visible and r.end.x > vs.x - HudObjectives.W - 24.0 - position.x:
+					r.position.y = hud.objectives.need_h + 22.0 - position.y
 			UiKit.pill(self, r, Color(0.2, 0.17, 0.08, 0.9), Color(UiKit.ACCENT.r, UiKit.ACCENT.g, UiKit.ACCENT.b, 0.6))
 			UiKit.text(self, r.position + Vector2(14, 21), mt, 13, UiKit.ACCENT)
 	else:
@@ -143,7 +152,7 @@ func _draw() -> void:
 		for v in w.vehicles:
 			if v.team >= 0 and v.team < 2:
 				veh[v.team] += 1
-		UiKit.pill(self, Rect2(0, 0, 420, 76))
+		UiKit.pill(self, Rect2(0, 0, OBS_W, OBS_H))
 		UiKit.text(self, Vector2(14, 22), "%d:%02d" % [mins, secs], 15, UiKit.TEXT, 600)
 		UiKit.text(self, Vector2(66, 22), "BATTLE", 11, UiKit.DIM, 600)
 		for t in 2:
