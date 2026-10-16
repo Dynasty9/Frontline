@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite"
-import { expect, fn, screen, userEvent } from "storybook/test"
+import { expect, fn, screen, userEvent, waitFor } from "storybook/test"
 import { ReelDialog } from "@/components/reel-dialog"
 
 // The reel, with sound, over the page; the dialog renders outside the story's
@@ -15,7 +15,8 @@ type Story = StoryObj<typeof meta>
 
 export const Open: Story = {
   play: async ({ args }) => {
-    await expect(await screen.findByRole("dialog", { name: "Frontline gameplay footage" })).toBeVisible()
+    // it fades in: keep looking until it has
+    await waitFor(() => expect(screen.getByRole("dialog", { name: "Frontline gameplay footage" })).toBeVisible())
     await userEvent.click(screen.getByRole("button", { name: "Close" }))
     await expect(args.onClose).toHaveBeenCalledOnce()
   },
