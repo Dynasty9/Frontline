@@ -154,7 +154,11 @@ export function WhatsNew() {
         {shot && (
           <a href={`/changelog/#${pictured?.tag ?? latest.tag}`} className="block">
             <img src={shot.url} alt={shot.caption} loading="lazy" className="aspect-video w-full object-cover ring-1 ring-white/10" />
-            <span className="mt-1.5 block text-xs text-muted-foreground">{shot.caption}</span>
+            <span className="mt-1.5 block text-xs text-muted-foreground">
+              {/* from an earlier release when the latest has no pictures: say which */}
+              {pictured && pictured !== latest && `${pictured.tag} ${pictured.name}: `}
+              {shot.caption}
+            </span>
           </a>
         )}
       </div>

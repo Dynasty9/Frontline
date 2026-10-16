@@ -12,7 +12,7 @@ export default function ChangelogPage() {
   // the page is built before the browser scrolls to #v0.1.4: do it once it's there
   useEffect(() => {
     const id = decodeURIComponent(location.hash.slice(1))
-    if (id) document.getElementById(id)?.scrollIntoView()
+    if (id) document.getElementById(id)?.scrollIntoView({ behavior: "instant" })
   }, [])
 
   return (
