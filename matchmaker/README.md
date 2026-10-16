@@ -123,10 +123,10 @@ The live service uses the Supabase project `frontline` (ref `ufmgcpjgtlykcqgtcvx
 us-west2), with email confirmation switched off. To set up another one:
 
 1. Create a Supabase project.
-2. In its SQL editor, run [`supabase/schema.sql`](supabase/schema.sql). It adds a `profiles` table (one callsign
-   per user, unique regardless of case, plus the insignia, XP and record), the row-level security that keeps
-   players to their own profile, a trigger that creates the profile at sign-up, `callsign_taken()` for the sign-up
-   form, and the rank functions below.
+2. Apply the migrations (see [The database](#the-database)): from this directory,
+   `supabase db push --db-url "postgresql://postgres.REF:PASSWORD@aws-0-REGION.pooler.supabase.com:5432/postgres"`
+   with the project's session-pooler connection string. Or paste each file in `supabase/migrations/` into its SQL
+   editor, in order.
 3. Give the matchmaker the project URL and its public key (the publishable key, or the legacy anon key). No secret
    key is needed: the service acts as the signed-in player, and row-level security does the rest.
 
@@ -142,13 +142,19 @@ us-west2), with email confirmation switched off. To set up another one:
 `GET /health` then reports `"accounts": "supabase"`, and `GET https://YOUR-PROJECT.supabase.co/auth/v1/settings`
 (with the key as `apikey`) shows `"mailer_autoconfirm": true` once confirmation is off.
 
-### The ranks migration
+## The database
 
-A database set up before ranks needs `schema.sql` run again (it's safe to run any number of times: it only adds
-what's missing and replaces the functions). Do it **before** the matchmaker that uses it is deployed, since Railway
-redeploys on every merge that touches `matchmaker/`. It adds to `profiles` the insignia worn (`icon`, `s01` for
-everyone to begin with), `xp`, `battles`, `wins` and `battle_started_at` (when the open battle began), and four
-functions, which only signed-in players may run:
+Its schema is the migrations in [`supabase/migrations/`](supabase/migrations/), one file per change, in the
+Supabase CLI's layout (`<UTC timestamp>_<name>.sql`, applied in that order, each once). The database records which
+it has applied in `supabase_migrations.schema_migrations`, so `supabase db push` applies only the new ones. Together
+they add:
+
+- `profiles`: one per player, made by a trigger at sign-up from the callsign they gave. The callsign (unique
+  regardless of case) is the one column a player may change; the insignia worn (`icon`), `xp`, `battles`, `wins`
+  and `battle_started_at` (when the open battle began) change only through the functions below.
+- `battle_records`: each player's service record. They can add battles and read their own, nothing else.
+- `callsign_taken(name)` for the sign-up form (signed-out callers only), and the rank functions, which only
+  signed-in players may run:
 
 | Function | What it does |
 |---|---|
@@ -163,3 +169,59 @@ callsign stays the only column a player may update; the functions run as the tab
 touch nothing but the caller's own row (`auth.uid()`), and apply the same rules as the matchmaker, with the
 battle timed on the database's clock. Going round the matchmaker gets a player nothing the game wouldn't. The
 linter's warning that signed-in users can run `SECURITY DEFINER` functions is expected for the last three.
+
+### Changing it
+
+Every change to the schema is a new migration. From this directory, with the
+[Supabase CLI](https://supabase.com/docs/guides/local-development/cli/getting-started):
+
+```bash
+supabase migration new add_something
+```
+
+That makes `supabase/migrations/<now>_add_something.sql` for the SQL. Then:
+
+- **Never edit or remove a migration that's on `main`.** The live database has run it; changing the file changes
+  nothing there, and only makes a fresh database differ from the live one. Fix a mistake with another migration.
+- **Keep it compatible with the matchmaker that's running.** Railway deploys the matchmaker and the release
+  migrates the database independently, so for a minute either can be ahead of the other. Add tables, columns
+  (with defaults) and functions freely; to take something away, stop the code using it first, release that, and
+  remove it in a later migration. The matchmaker reads a profile's every column (`select=*`) rather than a list, so
+  one it knows that isn't there yet reads as its default, and a missing function answers 503 ("try again in a
+  minute"), which the game treats as a battle that didn't count.
+- **Test it:** `npm ci && npm test` runs every migration in order on PGlite (`test/migrations.test.js`: Postgres in
+  WebAssembly, with what Supabase provides around it faked) and checks the rules they enforce: add to it for
+  anything new. `supabase db start` (with Docker) applies them all on Supabase's own Postgres.
+- If another pull request's migration lands on `main` first with a later timestamp than yours, give yours a new one
+  (rename the file with a timestamp from now): `supabase db push` won't apply a migration older than the newest it
+  has.
+
+CI (`.github/workflows/matchmaker.yml`, "Database migrations") checks all of that on every pull request that touches
+the matchmaker: nothing on the base branch changed or removed, new migrations after the newest there, the PGlite
+tests, and every migration applied from scratch on Supabase's image.
+
+### How a migration reaches the live database
+
+The release workflow (`.github/workflows/release.yml`) does it. When a merge to `main` adds migrations, its first job
+after planning, "Migrate the database", lists the live database's migrations, shows what's to apply
+(`supabase db push --dry-run`), then applies them (`supabase db push`). The game's build waits for it, so a release
+never ships ahead of the schema it needs, and a failed migration stops the release. Running the workflow by hand
+(Actions > Release > Run workflow) applies any still pending.
+
+It runs in the GitHub environment `production`, whose secret `SUPABASE_DB_URL` is the project's **session pooler**
+connection string (Supabase Dashboard > Connect > Session pooler, port 5432, with the database password filled in):
+GitHub's runners have no IPv6, which the direct connection needs. To set it up once:
+
+```bash
+gh secret set SUPABASE_DB_URL --env production --repo Dynasty9/Frontline
+```
+
+(it asks for the value). In the repository's Settings > Environments > production, limit deployments to `main`, so
+only merged code ever reaches the database with it.
+
+To apply them by hand instead, or check what the live database has:
+
+```bash
+supabase migration list --db-url "$SUPABASE_DB_URL"
+supabase db push --db-url "$SUPABASE_DB_URL"
+```

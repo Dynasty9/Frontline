@@ -1,6 +1,6 @@
 // Ranks, XP and insignia: the rules every account follows, in one place. The
 // memory backend applies them itself; with Supabase the same rules run in SQL
-// (supabase/schema.sql), and this only turns the XP the database returns into
+// (supabase/migrations/), and this only turns the XP the database returns into
 // the rank a player sees. Keep the two in step.
 //
 // A signed-in player earns XP from the battles they play and climbs from

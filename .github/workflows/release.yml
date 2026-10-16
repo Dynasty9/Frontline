@@ -16,6 +16,12 @@ name: Release
 #     the bump of your choice.
 #   - Pull requests that change the build itself export without releasing, and
 #     keep the zips as workflow artifacts.
+#   - A merge that adds database migrations (matchmaker/supabase/migrations/)
+#     applies them to the live Supabase project first, and the build waits for
+#     that: a release never ships ahead of the schema it needs. It runs in the
+#     "production" environment, whose SUPABASE_DB_URL secret is the project's
+#     session-pooler connection string (see the matchmaker README's "The
+#     database"). A manual run applies any still pending.
 #
 # The version is stamped into project.godot (application/config/version) before
 # export, so a build knows what it is; from source it reads 0.0.0-dev.
@@ -51,6 +57,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       build: ${{ steps.plan.outputs.build }}
+      migrate: ${{ steps.plan.outputs.migrate }}
       release: ${{ steps.plan.outputs.release }}
       version: ${{ steps.plan.outputs.version }}
     steps:
@@ -68,6 +75,7 @@ jobs:
           PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
           release=false
+          migrate=false
           bump=patch
           if [ "$EVENT" = push ]; then
             # what the game is made of: a change anywhere else doesn't need a new build
@@ -77,6 +85,13 @@ jobs:
                || git diff --name-only "$BEFORE" "$GITHUB_SHA" | grep -qE "$game"; then
               release=true
             fi
+            # new migrations for the live database (with no earlier commit to
+            # compare with, check: the push applies only what's pending)
+            if [ -z "$BEFORE" ] || [ "$BEFORE" = 0000000000000000000000000000000000000000 ] \
+               || ! git cat-file -e "$BEFORE^{commit}" 2>/dev/null \
+               || git diff --name-only "$BEFORE" "$GITHUB_SHA" | grep -q '^matchmaker/supabase/migrations/'; then
+              migrate=true
+            fi
             # the labels on the pull request this push merged, if any
             labels=$(gh api "repos/$GITHUB_REPOSITORY/commits/$GITHUB_SHA/pulls" --jq '.[].labels[].name' 2>/dev/null || true)
             echo "labels: ${labels:-none}"
@@ -84,22 +99,60 @@ jobs:
             if grep -qx 'major' <<< "$labels"; then bump=major; elif grep -qx 'minor' <<< "$labels"; then bump=minor; fi
           elif [ "$EVENT" = workflow_dispatch ] && [ "$GITHUB_REF" = refs/heads/main ]; then
             release=true
+            migrate=true
             bump="${INPUT_BUMP:-patch}"
           fi
           version=$(.github/scripts/next-version.sh "$bump")
           if [ "$EVENT" = pull_request ]; then version="$version-pr.$PR_NUMBER"; fi
           build=true
           if [ "$EVENT" = push ] && [ "$release" = false ]; then build=false; fi
-          echo "build=$build release=$release bump=$bump version=$version"
+          echo "build=$build release=$release migrate=$migrate bump=$bump version=$version"
           {
+            echo "migrate=$migrate"
             echo "build=$build"
             echo "release=$release"
             echo "version=$version"
           } >> "$GITHUB_OUTPUT"
 
-  build:
+  # New migrations to the live database, before anything is built: the
+  # release (and the matchmaker it bakes) may need them. The matchmaker copes
+  # for the minute Railway's deploy and this can be out of step, either way
+  # round, so migrations only ever add what the running one can live with.
+  database:
+    name: Migrate the database
     needs: plan
-    if: needs.plan.outputs.build == 'true'
+    if: needs.plan.outputs.migrate == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: production
+    defaults:
+      run:
+        working-directory: matchmaker
+    env:
+      SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: supabase/setup-cli@v1
+        with:
+          version: 2.119.0
+
+      - name: What the live database has, and what's to apply
+        run: |
+          if [ -z "$SUPABASE_DB_URL" ]; then
+            echo "::error::The production environment has no SUPABASE_DB_URL secret: the project's session-pooler connection string (matchmaker/README.md, The database)."
+            exit 1
+          fi
+          supabase migration list --db-url "$SUPABASE_DB_URL"
+          supabase db push --dry-run --db-url "$SUPABASE_DB_URL"
+
+      - name: Apply them
+        run: supabase db push --db-url "$SUPABASE_DB_URL"
+
+  build:
+    needs: [plan, database]
+    # after the database, or without it when there was nothing to migrate
+    if: ${{ !cancelled() && needs.plan.outputs.build == 'true' && contains(fromJSON('["success", "skipped"]'), needs.database.result) }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:

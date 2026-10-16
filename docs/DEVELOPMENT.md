@@ -281,6 +281,11 @@ cd matchmaker && npm test
 cd matchmaker && npm install && npm run lint && npm run format:check
 ```
 
+Without `npm install` the tests run as the service does, with no dependencies; the database's migrations
+(`supabase/migrations/`) are then skipped, and after it they run on PGlite too. A change to the database is a new
+migration (`supabase migration new <name>`, from `matchmaker/`); the README's "The database" has the rules, and how
+the release workflow applies new ones to the live project.
+
 To try the game against it, run one locally (`AUTH_BACKEND=memory` adds throwaway accounts) and point both games at
 it with `--matchmaker=URL`. The host lists its battle with `--list`; the second game presses Find Match:
 

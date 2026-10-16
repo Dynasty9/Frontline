@@ -91,7 +91,7 @@ they're doing). The observer bar at the top has pause, speed (0.25x to 4x), dire
     scenario) doesn't count. There's no game server to referee (players host), so each game reports its own
     battle, but the matchmaker times it on its own clock, from the battle getting under way to its end: a
     modified game can't claim more time than really passed. Players can't write their XP to the database
-    directly; it changes only through functions that act on the caller's own row (`supabase/schema.sql`).
+    directly; it changes only through functions that act on the caller's own row (`supabase/migrations/`).
   - **Insignia.** 160 of them, all drawn as SVG by the game from short descriptions: ten starter patches every
     account has (the branches: infantry, armour, artillery...), a patch for each rank (subdued training patches
     at the bottom, lettered company patches, tabbed patches, special forces arrowheads, then bullion and the

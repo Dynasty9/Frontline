@@ -27,6 +27,7 @@ scripts/autoload/links.gd      frontline:// links from the website: registering 
 scripts/autoload/updater.gd    the game's version, and updating itself to the latest release
 changelog/                     one entry per change, filed under its version at release; CHANGELOG.md is generated
 matchmaker/                    the matchmaking service (Node, no runtime dependencies; deployed on Railway, accounts via Supabase)
+matchmaker/supabase/migrations/   the accounts database's schema, one migration per change; the release applies new ones
 web/                           the website (React + Vite + shadcn, on Railway): live battles with Join links, downloads;
                                Storybook for its components (*.stories.tsx next to each)
 export_presets.cfg, .github/workflows/release.yml   Windows and Linux builds: every merge that changes the game is released
@@ -66,6 +67,7 @@ CI (`.github/workflows/check.yml`) runs steps 1 and 2 on every push and pull req
 
 ## Gotchas
 
+- **The database changes only by new migrations** (`supabase migration new <name>` in `matchmaker/`, see its README's "The database"). Never edit or remove one that's on `main`: the live database has already run it. Keep each one compatible with the matchmaker that's running (add, don't take away), since Railway's deploy and the release's migration can land in either order. `npm test` in `matchmaker/` runs them all on PGlite; add a test for any new rule.
 - **A new `class_name`** isn't visible to other scripts until the project is re-imported (`godot --headless --path . --import`). Other scripts referencing it will show bogus errors until then.
 - **Packed arrays are value types.** A `PackedFloat32Array` passed into a function is copied, so mutate member arrays in place instead.
 - **Entities get freed.** Soldiers and vehicles can be despawned at any time. Check `is_instance_valid()` before touching a stored reference. `world.despawn` removes a soldier from his squad.

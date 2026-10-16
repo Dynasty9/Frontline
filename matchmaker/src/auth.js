@@ -5,7 +5,7 @@
 //
 // Two backends with the same interface:
 //   supabase  Supabase Auth for the users, and a `profiles` table for the
-//             callsign, insignia and record (supabase/schema.sql). Needs only
+//             callsign, insignia and record (supabase/migrations/). Needs only
 //             the project URL and its public (anon / publishable) key:
 //             row-level security lets each user read and rename only their own
 //             profile, and XP is only ever written by the database's own
@@ -133,13 +133,16 @@ class SupabaseAuth {
 		return (data && (data.msg || data.error_description || data.message || data.error)) || fallback;
 	}
 
-	// One of our database functions (schema.sql), run as the player.
+	// One of our database functions (supabase/migrations/), run as the player.
 	rpc(fn, token, body = {}) {
 		return this.call(`/rest/v1/rpc/${fn}`, { method: 'POST', token, body });
 	}
 
 	static failed(r, fallback) {
 		if (r.status === 401) return new AuthError(401, 'Your sign-in has expired.');
+		// a function this matchmaker expects isn't in the database yet: it was
+		// deployed a moment before its migration (see profile())
+		if (r.status === 404 || r.data?.code === 'PGRST202') return new AuthError(503, 'The account service is being updated: try again in a minute.');
 		return new AuthError(r.status >= 500 ? 503 : 400, SupabaseAuth.message(r.data, fallback));
 	}
 
@@ -154,8 +157,12 @@ class SupabaseAuth {
 		return { access_token: data.access_token, refresh_token: data.refresh_token, expires_in: data.expires_in, user };
 	}
 
+	// Every column there is, not a list: Railway deploys the matchmaker and the
+	// release migrates the database independently, so for a minute either can
+	// be ahead. A column this code knows and the database doesn't have yet
+	// reads as its default (toUser) instead of failing the whole profile.
 	async profile(id, token) {
-		const r = await this.call(`/rest/v1/profiles?id=eq.${encodeURIComponent(id)}&select=callsign,icon,xp,battles,wins`, { token });
+		const r = await this.call(`/rest/v1/profiles?id=eq.${encodeURIComponent(id)}&select=*`, { token });
 		return r.ok && Array.isArray(r.data) && r.data[0] ? r.data[0] : {};
 	}
 
@@ -164,7 +171,7 @@ class SupabaseAuth {
 		callsign = checkCallsign(callsign);
 		const taken = await this.call('/rest/v1/rpc/callsign_taken', { method: 'POST', body: { name: callsign } });
 		if (taken.ok && taken.data === true) throw new AuthError(409, 'That callsign is taken.');
-		// the profile row is made by a trigger from this metadata (schema.sql)
+		// the profile row is made by a trigger from this metadata (supabase/migrations/)
 		const r = await this.call('/auth/v1/signup', { method: 'POST', body: { email, password, data: { callsign } } });
 		if (!r.ok) throw new AuthError(r.status === 429 ? 429 : 400, SupabaseAuth.message(r.data, 'Could not create the account.'));
 		// with "Confirm email" on, Supabase sends a link and there's no session yet
@@ -240,7 +247,7 @@ class SupabaseAuth {
 }
 
 // Local testing only: forgets everything on restart. Ranks follow the same
-// rules as the SQL in schema.sql.
+// rules as the SQL in supabase/migrations/.
 class MemoryAuth {
 	constructor({ now = Date.now } = {}) {
 		this.name = 'memory';
