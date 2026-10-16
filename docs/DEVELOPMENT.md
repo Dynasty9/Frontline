@@ -90,6 +90,9 @@ game/vehicles/          the Arma 3 models by family: vm_nato, vm_csat, vm_indep 
                         V-44X Blackfish), vm_attack (A-10C, A-164 Wipeout) and vm_fighter (F/A-181, F-16C)
 game/vehicle_roster.gd  the Arma 3 roster (stats, behaviour, tiers, patterns) and the Field Manual's garage
 game/director.gd        observer camera and time controls
+game/co_command.gd      co-commanders: each player's presence (view, cursor, selection, what's being lined up),
+                        pings, sketches and committed actions, relayed by the host to that side only
+ui/hud_coop.gd          co-commanders drawn over the battlefield; ui/hud_coop_roster.gd the Command Net
 ui/hud.gd, menu.gd      interface; ui/settings_panel.gd, ui/perf_overlay.gd, ui/ui_kit.gd (shared style),
 ui/hud_overlay.gd       everything drawn over the battlefield (labels, speech, symbols, orders, plans, intel)
 ui/hud_orbat.gd, hud_layers.gd, hud_sel_info.gd, hud_minimap.gd, hud_top_info.gd, hud_toasts.gd   HUD widgets
@@ -167,6 +170,15 @@ FL_DEBUG_VISION=1 (env)                               every 2 s, what each side 
 --mission=KEY --play [--autoplay]                     command the mission's force yourself (--autoplay: the autopilot still gives orders)
 --mission=KEY --seed=N                                the mission on another map (checks it still places itself sensibly)
 --host --mission=KEY --players=2                      a co-op mission lobby that starts when the second player joins
+--coop-demo[=N]                                       N made-up co-commanders on your side (host only: each gets a real
+                                                      squad), looking about near you, lining up trenches, fire missions and
+                                                      assaults, pinging and sketching (co-commander interface shots)
+  --coop-watch[=I]                                    watch the Ith one's view live
+--bot-presence                                        (a client, headless) this game's presence is made up the same way and
+                                                      really sent, with its pings and sketches; COOP {...} at --quit-after
+                                                      shows what each game sent and took in
+--cursor=X,Y --ping-wheel                             hold the ping wheel open by the faked cursor (screenshots)
+FL_DEBUG_COOP=1 (env)                                 the co-commander layer's cost by part, in the performance overlay
 FL_DEBUG_MISSION=1 (env)                              print the map's features (bridges, villages, harbour) and the mission's setup
 --model-sheet=KEYS|FAMILY --sheet-dir=DIR [--side=1] [--sheet-yaw=R]   turntable shots of models (nato, csat, indep, civ, heli, plane, boat, all)
 --soldier-sheet=PATH [--sheet-team=0|1] [--sheet-view=front|back|rts] [--sheet-pose=idle|shoot|run|mix]
@@ -211,6 +223,20 @@ The client prints a `CLIENT entities=...` summary when it quits. Check both outp
 with a window, drawn its first frame, which takes a minute or more off-screen. `waited=` in the summary is how long
 the client sat in an empty world first (-1: nothing came, and it gave up 5 minutes past `--quit-after`).
 
+Co-commanders: bot clients make up their presence, pings and sketches and really send them. Start the one on
+the other side first, so its team request lands before the game starts:
+
+```
+godot --headless --path . -- --host --team=0 --players=4 --quit-after=60 --port=7975
+godot --headless --path . -- --join=127.0.0.1 --team=1 --bot-presence --quit-after=55 --port=7975
+godot --headless --path . -- --join=127.0.0.1 --team=0 --bot-presence --quit-after=55 --port=7975
+godot --headless --path . -- --join=127.0.0.1 --team=0 --bot-presence --quit-after=55 --port=7975
+```
+
+Each client prints `COOP {"sent": ..., "taken": ..., "pings_in": ...}` when it quits: the two on team 0 take
+each other's presence and pings, the one on team 1 takes nothing of theirs. To see it drawn, make one of the
+team 0 clients a normal (windowed) game, or run `--coop-demo` on its own.
+
 ### Matchmaker
 
 The matchmaker (`matchmaker/`, see its README) is a small Node service with its own tests:
@@ -251,6 +277,13 @@ one joins. Only exported builds register the scheme with the OS (`Links._registe
 
 ### Builds, releases and updates
 
+Each release files its changelog, bakes itself into the website and the matchmaker, then publishes. The changelog is
+written as part of each pull request (`changelog/unreleased/`, see [changelog/README.md](../changelog/README.md)); at
+release, `.github/scripts/bake-release.sh` moves the entries the version was built with into `changelog/vX.Y.Z/`
+(`changelog.py release`), regenerates `CHANGELOG.md` and `web/src/changelog.json`, writes `release.json` into
+`web/src/` and `matchmaker/` (`release_json.py`), and commits all of it to `main`, which redeploys the website and the
+matchmaker. The GitHub release follows, named after the release's headline change, with the changelog as its notes.
+
 `export_presets.cfg` has a Windows and a Linux preset (one executable each, the game packed inside).
 `.github/workflows/release.yml` releases automatically: every merge to `main` that changes the game (`scripts/`,
 `assets/`, `project.godot`, `main.tscn`, the export presets or the icon) publishes the next version, `v0.1.4` after
@@ -261,7 +294,8 @@ Actions > Release > Run workflow releases by hand. The next number comes from th
 (`.github/scripts/next-version.sh`), and the build stamps it into `project.godot` (`application/config/version`);
 from source the game reads `0.0.0-dev`.
 
-A release build updates itself (`scripts/autoload/updater.gd`): at start it asks GitHub for the latest release,
+A release build updates itself (`scripts/autoload/updater.gd`): at start it asks the matchmaker (`GET /release`,
+falling back to GitHub's API) for the latest release,
 downloads the zip for its platform, checks it against the SHA-256 GitHub publishes, renames the running executable
 aside and puts the new one in its place, then offers a restart (the old file is deleted on the next launch). Where it
 can't (a folder it can't write to), the menu links to the website instead. To try an update from source without
