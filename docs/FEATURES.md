@@ -2,6 +2,52 @@
 
 The long version: how each system works and why. For the short version, see the [README](../README.md).
 
+- [Full controls reference](#full-controls-reference)
+- [Watching the AI](#watching-the-ai)
+- [Multiplayer in detail](#multiplayer-in-detail)
+- [The systems](#the-systems)
+
+## Full controls reference
+
+| | |
+|---|---|
+| Camera | WASD / arrows / screen edge pan, mouse wheel zoom, Q/E or middle-drag rotate |
+| Select | Left-click a soldier to select his squad, drag a box, double-click for all of that type on screen. **Alt+click** a soldier (or click his name in the squad panel) to command just him |
+| Groups | Ctrl+1..9 set, 1..9 recall (double-tap to jump there) |
+| Orders | Right-click: move (Shift = fast run; **drag** to set which way they face), attack enemy, build/repair your structure, enter tunnel / MG nest / watchtower. The **cover pips** under the cursor show where each man will end up: green hard cover, lime medium, yellow soft (hides, doesn't stop bullets), grey dot none, red caught in the open; a tick on a pip points the way he'll fire over the barrier, and the label says how (prone, kneeling, standing, round the edges) |
+| High-level | **X attack-move** (or Ctrl+right-click): the squad bounds forward by fire teams, cover to cover, fights whatever it meets, then digs in at the objective. **B defend**: click the area (drag to face) and the squad spreads into the best cover there and holds. **R retreat** to the nearest FOB (routes around known enemy fire, suppression halved). **H hold** |
+| One soldier | With a single man picked out: right-click to move him into the best cover at that spot, right-click an enemy to engage, a nest or mortar pit to man it; G / T throw, H hold, R fall back. Any squad order brings him back into the squad |
+| Squad | G grenade, T smoke, F mortar fire mission (mortar teams) |
+| Build | Select infantry, click a building in the command card, left-click to place (R turns 90 degrees, Shift+wheel 45). Everything snaps to a 1 m build grid, shown round the cursor while you place. **Click and drag** to lay a whole line of trenches, sandbags, wire, walls or tank traps (lines run at 45 degree headings) |
+| Defenses | Emplacements are crewed by any idle soldier standing next to them. Right-click a bunker with a squad to garrison it. Select a mortar pit for HE / smoke fire missions |
+| Support | The buttons above the minimap (Z arms the first one ready): click the target, **drag** to set the run-in direction for gun runs and bombing runs |
+| Observer | C director camera, V whose eyes to watch through, P pause, [ ] speed, F2 hide the interface. **Fire support** (observer bar) launches any air or artillery support anywhere to watch it |
+| Command view | Tab tactical map, O order of battle (click a unit to select it and look at it, double-click to zoom in), the buttons beside the minimap turn map layers on and off (unit symbols, orders and attack plans, intelligence, weapon ranges, soldier labels) |
+| Other | Home cycles FOBs, Space jumps to the last alert, Enter chats (Shift+Enter: team), L message history, F1 help, F3 performance overlay, **F4 field manual**, Esc menu |
+
+## Watching the AI
+
+**Watch AI Battle** puts you behind the camera while two AI commanders fight. A director camera cuts
+between the hottest fighting and follows individual soldiers (the caption at the bottom says who and what
+they're doing). The observer bar at the top has pause, speed (0.25x to 4x), director on/off and
+"View": both sides, or one side's fog of war. Move the camera yourself and the director lets go; press **C** to hand it back.
+
+## Multiplayer in detail
+
+- The host is the authoritative server and runs the entire simulation, including the AI.
+- Everyone else joins with the host's IP on UDP port **7777**. Forward that port or use a LAN/VPN
+  (Tailscale, ZeroTier, Hamachi).
+- **Co-op:** everyone picks the same side, and the AI takes the empty side.
+  **PvP:** pick opposite sides. "Add an AI commander to sides that have players" gives you an AI teammate.
+- If a player leaves, a teammate inherits their squads, or the AI takes over if nobody is left on that side.
+- **Drop-in:** friends can join a battle that's already running (lobby option, on by default). They join the
+  side with human players (the smaller side in PvP), get the current world, and receive a rifle squad and engineers at their FOB.
+- **Fog of war is enforced by the host.** A client is only told about enemy units and buildings its side has spotted,
+  gets a "hidden" marker instead of positions once they're out of sight, and never receives enemy supply, production
+  or team stats. Enemy HQs and starting FOBs are revealed to everyone, like start locations in most RTS games.
+
+## The systems
+
 **Soldier AI** (`scripts/game/soldier.gd`, `soldier_brain.gd`, `bt.gd`, `combat.gd`)
 - **A behaviour tree decides what each man does** (`bt.gd`, `soldier_brain.gd`): one tree, shared by every
   soldier and walked each time he thinks. Reflexes come first, most urgent first; then, if he's free, the
