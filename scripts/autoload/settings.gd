@@ -106,7 +106,8 @@ func apply_global() -> void:
 		var aa := int(v.aa)
 		vp.msaa_3d = [Viewport.MSAA_DISABLED, Viewport.MSAA_DISABLED, Viewport.MSAA_2X, Viewport.MSAA_4X, Viewport.MSAA_DISABLED,
 			Viewport.MSAA_DISABLED, Viewport.MSAA_2X, Viewport.MSAA_4X][clampi(aa, 0, 7)]
-		vp.screen_space_aa = Viewport.SCREEN_SPACE_AA_FXAA if aa == 1 else (Viewport.SCREEN_SPACE_AA_SMAA if aa >= 5 else Viewport.SCREEN_SPACE_AA_DISABLED)
+		if not Vfx.gl:  # (OpenGL, the browser build's renderer, has no screen-space AA, and says so)
+			vp.screen_space_aa = Viewport.SCREEN_SPACE_AA_FXAA if aa == 1 else (Viewport.SCREEN_SPACE_AA_SMAA if aa >= 5 else Viewport.SCREEN_SPACE_AA_DISABLED)
 		vp.use_taa = aa == 4
 		var sc: float = clampf(float(v.scale), 0.5, 1.0)
 		vp.scaling_3d_scale = sc
