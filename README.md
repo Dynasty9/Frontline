@@ -172,6 +172,8 @@ To play with particular people:
 
 The game connects players straight to the host, through most home routers, without anyone opening ports. A few networks (some mobile and campus ones) are too strict for that; the lobby says so, and then the host needs UDP port **7777** open, or you can play over a LAN or a VPN such as Tailscale, ZeroTier or Hamachi. Friends can also join a battle that's already running.
 
+Dropped out of a battle (a lost connection, a crash, or you left by mistake)? The main menu offers **Rejoin** for as long as it lasts, even after a restart: you're back on your side with whatever of your force is still fighting. Your teammates, or the AI, command it while you're gone.
+
 You can sign in with an account (next to your callsign on the main menu). It keeps your callsign yours: no one else can register it, and battles you host show a tick. You don't need one to play.
 
 ## Learn more

@@ -52,6 +52,8 @@ var online_label: Label
 var _mm_busy := false  # Find Match is working through battles
 var _mm_tries: Array = []  # lobby ids it has tried this time
 var _mm_attempt := 0  # bumps with every join attempt, so stale timeouts do nothing
+var notices: VBoxContainer  # the cards in the top right: a newer release, a battle to rejoin
+var rejoin_card: PanelContainer  # back into the battle we dropped out of (while there is one)
 
 const SIDES := [
 	[0, "COALITION", "A regular army. Tanks, IFVs, Humvees, attack helicopters, air strikes and artillery. Fewer men, better kit, long supply lines."],
@@ -256,9 +258,18 @@ func _ready() -> void:
 	multiplayer.connected_to_server.connect(func(): _show_lobby())
 	Online.listing_changed.connect(_refresh)
 	Online.account_changed.connect(_on_account)
+	notices = VBoxContainer.new()
+	notices.add_theme_constant_override("separation", 10)
+	notices.anchor_left = 1.0
+	notices.anchor_right = 1.0
+	notices.offset_left = -540
+	notices.offset_right = -32
+	notices.offset_top = 44
+	add_child(notices)
 	Updater.changed.connect(_update_notice)
 	_update_notice()
 	_on_account()
+	_refresh_rejoin()
 	# a Join or Find Match link from the website: the one we were started with,
 	# and any a second copy hands on while we run
 	Links.link_opened.connect(open_link)
@@ -696,6 +707,7 @@ func show_menu(msg: String) -> void:
 	main_box.visible = true
 	lobby_box.visible = false
 	hint.visible = false
+	_refresh_rejoin()
 	if _mm_busy and msg != "":
 		# that battle wouldn't take us: Find Match tries the next
 		_mm_next.call_deferred()
@@ -717,6 +729,7 @@ func _show_lobby() -> void:
 	hint.visible = true
 	browse_panel.visible = false
 	status.text = ""
+	_refresh_rejoin()
 	_refresh()
 
 
@@ -777,6 +790,68 @@ func _on_list_toggled(on: bool) -> void:
 		Online.unlist()
 
 
+# --- rejoining ---------------------------------------------------------------------------
+
+## While the battle we were last in may still be going (Net.rejoin), a card
+## in the corner says whose it was and how long ago we left, with Rejoin (and
+## Forget, for a battle we don't mean to go back to).
+func _refresh_rejoin() -> void:
+	if notices == null:
+		return
+	if rejoin_card:
+		rejoin_card.queue_free()
+		rejoin_card = null
+	if not Net.can_rejoin() or not main_box.visible:
+		return
+	var host := String(Net.rejoin.get("host", ""))
+	var mins := int((Time.get_unix_time_from_system() - float(Net.rejoin.get("at", 0.0))) / 60.0)
+	var when := "just now" if mins < 1 else ((("%d min" % mins) if mins < 90 else ("%d h" % int(mins / 60.0))) + " ago")
+	rejoin_card = _notice("BATTLE IN PROGRESS", "You left %s %s." % [("%s's battle" % host) if host != "" else "a battle", when], false)
+	var h: HBoxContainer = rejoin_card.get_child(0)
+	h.add_child(_btn("Forget", func(): Net.forget_rejoin(); _refresh_rejoin()))
+	var go := _btn("Rejoin", _rejoin)
+	go.add_theme_color_override("font_color", UiKit.ACCENT)
+	h.add_child(go)
+	for b in h.get_children():
+		if b is Button:
+			(b as Button).size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	notices.add_child(rejoin_card)
+
+
+## Back into that battle as the player we were there: the host gives us our
+## side, colour and surviving force back. A listed battle goes through the
+## matchmaker again (the host's router may need punching through afresh),
+## else, or if it's no longer listed, straight to the address we had.
+func _rejoin() -> void:
+	if not Net.can_rejoin():
+		_refresh_rejoin()
+		return
+	_close_panels()
+	_mm_busy = false
+	_mm_attempt += 1
+	var attempt := _mm_attempt
+	var r: Dictionary = Net.rejoin
+	var host := String(r.get("host", ""))
+	if host == "":
+		host = "the host"
+	_say("Rejoining %s's battle..." % host)
+	Net.begin_rejoin()
+	var err := FAILED
+	if String(r.get("lobby", "")) != "":
+		var j: Dictionary = await Online.join_listed(String(r.lobby))
+		if attempt != _mm_attempt:
+			return
+		err = int(j.err)
+	if err != OK:
+		err = Net.join_game(String(r.ip), int(r.port), 0, String(r.get("lobby", "")))
+	if err != OK:
+		Net.forget_rejoin()
+		_refresh_rejoin()
+		_say("Couldn't get back into %s's battle (error %d)." % [host, err], true)
+		return
+	_watch_connect(attempt, host, true)
+
+
 # --- Find Match -----------------------------------------------------------------------
 
 ## Join the best open battle online, or if there is none, host one for others
@@ -828,7 +903,8 @@ func _mm_next() -> void:
 
 ## ENet takes a long while to give up on a host it can't reach. If we're not
 ## through in a few seconds, punching didn't work: drop it and move on.
-func _watch_connect(attempt: int, host_name: String) -> void:
+## `rejoining`: it was Rejoin Battle, and that battle is taken to be gone.
+func _watch_connect(attempt: int, host_name: String, rejoining := false) -> void:
 	await get_tree().create_timer(12.0, true, false, true).timeout
 	if attempt != _mm_attempt or lobby_box.visible or Net.in_game:
 		return
@@ -836,7 +912,11 @@ func _watch_connect(attempt: int, host_name: String) -> void:
 	if mp is ENetMultiplayerPeer and mp.get_connection_status() == MultiplayerPeer.CONNECTION_CONNECTED:
 		return
 	Net.leave()
-	if _mm_busy:
+	if rejoining:
+		Net.forget_rejoin()
+		_refresh_rejoin()
+		_say("Couldn't get back into %s's battle: nobody answered. It may have ended." % host_name, true)
+	elif _mm_busy:
 		_mm_next()
 	else:
 		_say("Couldn't get through to %s's router. Try another battle." % host_name, true)
@@ -849,33 +929,21 @@ func _watch_connect(attempt: int, host_name: String) -> void:
 ## to the downloads. Playing online needs the same version as everyone else,
 ## so it's worth the space.
 func _update_notice() -> void:
-	var old := get_node_or_null("UpdateNotice")
+	var old := notices.get_node_or_null("UpdateNotice")
 	if old:
+		old.name = "OldNotice"
 		old.queue_free()
 	if Updater.state == Updater.State.NONE:
 		return
-	var p := PanelContainer.new()
-	p.name = "UpdateNotice"
 	var bad: bool = Updater.state == Updater.State.FAILED
-	p.add_theme_stylebox_override("panel", UiKit.box(Color(0.035, 0.045, 0.045, 0.92), 4, UiKit.BAD if bad else UiKit.ACCENT, 1, 12.0))
-	p.anchor_left = 1.0
-	p.anchor_right = 1.0
-	p.offset_left = -540
-	p.offset_right = -32
-	p.offset_top = 44
-	add_child(p)
-	var h := HBoxContainer.new()
-	h.add_theme_constant_override("separation", 12)
-	p.add_child(h)
-	var v := VBoxContainer.new()
-	v.add_theme_constant_override("separation", 1)
-	v.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	h.add_child(v)
-	var head := UiKit.label("", 11, UiKit.BAD if bad else UiKit.ACCENT, 700)
-	v.add_child(head)
-	var line := UiKit.label("", 14, UiKit.TEXT, 600)
-	line.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	v.add_child(line)
+	var p := _notice("", "", bad)
+	p.name = "UpdateNotice"
+	notices.add_child(p)
+	notices.move_child(p, 0)  # (above a battle to rejoin)
+	var h: HBoxContainer = p.get_child(0)
+	var v: VBoxContainer = h.get_child(0)
+	var head: Label = v.get_child(0)
+	var line: Label = v.get_child(1)
 	var website := func(): OS.shell_open(Updater.WEBSITE_URL + "/#download")
 	# that version's changelog on the website: what the update brings
 	var whats_new := func(): OS.shell_open(Updater.WEBSITE_URL + "/changelog/#v" + Updater.latest)
@@ -906,6 +974,25 @@ func _update_notice() -> void:
 	for b in h.get_children():
 		if b is Button:
 			(b as Button).size_flags_vertical = Control.SIZE_SHRINK_CENTER
+
+
+## A card for the top right: a small heading over a line of text, with room
+## on its right (the HBox, its first child) for buttons.
+func _notice(head_text: String, text: String, bad: bool) -> PanelContainer:
+	var p := PanelContainer.new()
+	p.add_theme_stylebox_override("panel", UiKit.box(Color(0.035, 0.045, 0.045, 0.92), 4, UiKit.BAD if bad else UiKit.ACCENT, 1, 12.0))
+	var h := HBoxContainer.new()
+	h.add_theme_constant_override("separation", 12)
+	p.add_child(h)
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 1)
+	v.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	h.add_child(v)
+	v.add_child(UiKit.label(head_text, 11, UiKit.BAD if bad else UiKit.ACCENT, 700))
+	var line := UiKit.label(text, 14, UiKit.TEXT, 600)
+	line.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	v.add_child(line)
+	return p
 
 
 # --- links from the website -------------------------------------------------------------

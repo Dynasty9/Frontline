@@ -82,6 +82,7 @@ func _ready() -> void:
 	Net.game_start.connect(func(_s): _dirty = true)
 	Net.player_left.connect(func(_i, _t, _n): _dirty = true)
 	Net.player_joined.connect(func(_i, _t, _n): _dirty = true)
+	Net.player_rejoined.connect(func(_i, _o, _t, _n): _dirty = true)
 
 
 func _now() -> float:
@@ -544,7 +545,7 @@ func join_listed(id: String) -> Dictionary:
 	var c: Dictionary = r.data.get("connect", {})
 	# a moment for the host's first punches to leave its router
 	await get_tree().create_timer(0.3, true, false, true).timeout
-	var err := Net.join_game(String(c.get("address", "")), int(c.get("port", 0)), local)
+	var err := Net.join_game(String(c.get("address", "")), int(c.get("port", 0)), local, id)
 	if OS.has_environment("FL_DEBUG_ONLINE"):
 		print("ONLINE joining %s:%d from port %d (stun %s:%d) via %s" % [String(c.get("address", "")), int(c.get("port", 0)), local, me.get("ip", ""), int(me.get("port", 0)), String(c.get("via", ""))])
 	return {"err": err, "error": "" if err == OK else "Could not connect (error %d)." % err, "via": String(c.get("via", ""))}

@@ -775,7 +775,7 @@ func spawn_squad(key: String, team: int, owner: int, pos: Vector3, dest := Vecto
 func rejoin_squad(s: Soldier) -> void:
 	var owner := s.owner_peer
 	if owner > 0 and not Net.players.has(owner):
-		owner = -1 - s.team
+		owner = world.acting_owner(owner, s.team)
 		s.owner_peer = owner
 		world.push_props(s, {"owner": owner})
 	var best: Squad = null
@@ -890,10 +890,10 @@ func _reserves() -> void:
 		if alive >= 6:
 			continue
 		_reserve_t[t] = world.time + 75.0
+		# to the side's first commander still in the battle (or the AI)
 		var owner := -1 - t
-		var pl: Dictionary = world.settings.get("players", {})
-		for id in pl:
-			if int(pl[id].team) == t:
+		for id in Net.players:
+			if int(Net.players[id].team) == t:
 				owner = int(id)
 				break
 		var hq: Structure = depots[t]

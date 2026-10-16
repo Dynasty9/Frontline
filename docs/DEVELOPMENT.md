@@ -246,6 +246,21 @@ The client prints a `CLIENT entities=...` summary when it quits. Check both outp
 with a window, drawn its first frame, which takes a minute or more off-screen. `waited=` in the summary is how long
 the client sat in an empty world first (-1: nothing came, and it gave up 5 minutes past `--quit-after`).
 
+Rejoining: `--drop-at=S` makes a client leave the battle S seconds in (as Leave Battle does) and press Rejoin
+`--rejoin-after` seconds later (default 5). Put the client alone on the other side to see the AI stand in and step
+down. The host's `--stats` shows the force's owner change (`own=`) and the counters `rejoined`, `rejoin_returned`
+(squads and vehicles handed back) and `rejoin_ai_stood_down`; the client's summary ends `team=... mine=N`, the men
+and vehicles it commands. `--no-drop-in` closes the battle to newcomers (a returning player still gets in):
+
+```
+godot --headless --path . -- --host --team=0 --players=2 --verbose --stats=15 --quit-after=110 --port=7936
+godot --headless --path . -- --join=127.0.0.1 --team=1 --drop-at=20 --rejoin-after=5 --quit-after=30 --port=7936
+```
+
+A crash and restart: test runs leave the player's `user://rejoin.cfg` alone, so give the client its own with
+`--rejoin-file=PATH`, kill it mid-battle, then start another with `--rejoin --rejoin-file=PATH`. The host still holds
+the dead link (ENet takes 45-90 s to notice) and lets it go when the new one registers.
+
 Co-commanders: bot clients make up their presence, pings and sketches and really send them. Start the one on
 the other side first, so its team request lands before the game starts:
 

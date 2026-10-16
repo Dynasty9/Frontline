@@ -1608,11 +1608,12 @@ func _prod_tick(dt: float) -> void:
 		world.rules.apply_upgrade(team, String(q.item))
 		return
 	var dest := rally if rally != Vector3.INF else exit_pos() + front_dir() * 8.0
-	var owner := int(q.owner)
-	if owner > 0 and not Net.players.has(owner):
-		owner = -1 - team
+	# (ordered by someone who has since left: whoever took over their forces
+	# gets it, and it goes back to them if they rejoin)
+	var by := int(q.owner)
+	var owner := world.acting_owner(by, team)
 	if Defs.SQUADS.has(q.item):
-		world.rules.spawn_squad(String(q.item), team, owner, exit_pos(), dest)
+		world.hold_for(by, world.rules.spawn_squad(String(q.item), team, owner, exit_pos(), dest))
 	else:
 		var heli: bool = Defs.VEHICLES.has(q.item) and Defs.VEHICLES[q.item].get("air", false)
 		var spawn_at: Vector3 = position if heli else world.nav.nearest_walkable(exit_pos() + front_dir() * 2.0, true)
@@ -1632,6 +1633,7 @@ func _prod_tick(dt: float) -> void:
 		else:
 			v.embark_new_squad()
 			v.order_move(dest)
+		world.hold_for(by, v)
 	world.send_msg(team, "info", "%s ready." % Defs.item_name(String(q.item)), null)
 
 
