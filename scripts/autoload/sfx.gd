@@ -44,6 +44,8 @@ func _ready() -> void:
 	streams["objective"] = _chime([660.0, 880.0])
 	streams["objective_done"] = _chime([660.0, 880.0, 1320.0])
 	streams["objective_failed"] = _chime([520.0, 390.0])
+	streams["ping"] = _pip([1320.0, 1760.0], 0.065)
+	streams["ping_alert"] = _pip([1560.0, 1170.0, 1560.0], 0.06)
 	streams["build"] = _knock()
 	streams["door_kick"] = _door_kick()
 	streams["door"] = _creak()
@@ -535,6 +537,22 @@ func _click() -> AudioStreamWAV:
 	for i in n:
 		var t := float(i) / RATE
 		s[i] = sin(TAU * 1600.0 * t) * exp(-t * 120.0) * 0.5
+	return _wav(s)
+
+
+## A co-commander's ping: a few short, bright pips, clear of the radio chimes
+## so it never reads as an objective.
+func _pip(notes: Array, step: float) -> AudioStreamWAV:
+	var n := int((step * notes.size() + 0.16) * RATE)
+	var s := PackedFloat32Array()
+	s.resize(n)
+	for i in n:
+		var t := float(i) / RATE
+		var k := mini(int(t / step), notes.size() - 1)
+		var lt := t - k * step
+		var f: float = notes[k]
+		var env := minf(1.0, lt * 500.0) * exp(-lt * (16.0 if k == notes.size() - 1 else 34.0))
+		s[i] = (sin(TAU * f * t) * 0.85 + sin(TAU * f * 3.0 * t) * 0.07) * env * 0.3
 	return _wav(s)
 
 

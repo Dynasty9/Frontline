@@ -191,7 +191,7 @@ func _draw() -> void:
 			if it[2]:
 				ok += 1
 		UiKit.text(self, mp + Vector2(18, 26), "%d x %s  (%d supply)" % [ok, Defs.BUILDINGS[inp.place_kind].name, ok * int(Defs.BUILDINGS[inp.place_kind].cost)], 13, UiKit.GOOD)
-	elif inp.hover and inp.hover.visible:
+	elif inp.hover and inp.hover.visible and not inp.pinging:
 		if inp.has_units() and inp.hover.is_hostile_to(lt):
 			UiKit.text(self, mp + Vector2(18, 26), "Attack", 13, UiKit.BAD, 600)
 		elif inp.hover is Soldier:
@@ -970,6 +970,13 @@ func _nato_markers(cam: Camera3D, lt: int, a: float) -> void:
 		MapSymbols.nato(self, sp, sz, mine, tm, sym[0], sym[1], a)
 		if sel:
 			draw_arc(sp, hw + 7.0, 0.0, TAU, 28, Color(1, 1, 1, 0.55 * a), 1.5, true)
+		# another commander's squad: his initials on it, and his colour round it while he has it selected
+		var own := _co_owner(mem[0])
+		if own != 0:
+			_owner_tab(sp + Vector2(hw + 1.0, -sz * 0.34 - 12.0), own, a)
+		var by := int(w.coop.sel_sq.get(sid, 0)) if w.coop else 0
+		if by != 0:
+			draw_arc(sp, hw + 7.0, 0.0, TAU, 28, HudCoop._a(Net.player_color(by), 0.95 * a), 2.0, true)
 		if firing > 0:
 			_contact_burst(sp + Vector2(-hw - 3.0, -hw * 0.62), a)
 		if supp * 2 >= maxi(1, alive) and alive > 0:
@@ -998,7 +1005,12 @@ func _nato_markers(cam: Camera3D, lt: int, a: float) -> void:
 		if age < 6.0:
 			var tag := _order_tag(o)
 			var ta := clampf((6.0 - age) * 1.5, 0.0, 1.0) * a
-			UiKit.text(self, Vector2(sp.x - UiKit.text_width(tag, 10, 600) * 0.5, ty), tag, 10, Color(UiKit.ACCENT.r, UiKit.ACCENT.g, UiKit.ACCENT.b, ta), 600)
+			var tcol := UiKit.ACCENT
+			if own != 0:
+				# who sent it, in his colour
+				tag = "%s  %s" % [w.coop.initials(own), tag]
+				tcol = Net.player_color(own)
+			UiKit.text(self, Vector2(sp.x - UiKit.text_width(tag, 10, 600) * 0.5, ty), tag, 10, Color(tcol.r, tcol.g, tcol.b, ta), 600)
 	for v in w.vehicles:
 		if not v.visible or v.team < 0 or v.vkind == "truck":
 			continue
@@ -1022,9 +1034,31 @@ func _nato_markers(cam: Camera3D, lt: int, a: float) -> void:
 		MapSymbols.nato(self, vp, 28.0, v.team == lt or lt < 0, v.team, vs3[0], vs3[1], a)
 		if v.selected:
 			draw_arc(vp, 21.0, 0.0, TAU, 28, Color(1, 1, 1, 0.55 * a), 1.5, true)
+		var vo := _co_owner(v)
+		if vo != 0:
+			_owner_tab(vp + Vector2(6.0, -22.5), vo, a)
+		var vby := int(w.coop.sel_veh.get(v.eid, 0)) if w.coop else 0
+		if vby != 0:
+			draw_arc(vp, 21.0, 0.0, TAU, 28, HudCoop._a(Net.player_color(vby), 0.95 * a), 2.0, true)
+
+## The other human commander a unit belongs to (0: yours, the AI's or nobody's).
+func _co_owner(e: Entity) -> int:
+	var own: int = e.owner_peer
+	return own if own > 0 and own != hud.world.local_peer and Net.players.has(own) else 0
+
+
+## Another commander's unit: his initials on a small tab in his colour.
+func _owner_tab(at: Vector2, peer: int, a: float) -> void:
+	var ini := hud.world.coop.initials(peer) if hud.world.coop else "?"
+	var tw := UiKit.text_width(ini, 8, 700)
+	var r := Rect2(at, Vector2(tw + 7.0, 11.0))
+	draw_style_box(UiKit.boxc(HudCoop._a(Net.player_color(peer), 0.95 * a), 3, Color(0, 0, 0, 0.5 * a), 1, 0.0), r)
+	draw_string(UiKit.font(700), r.position + Vector2(3.5, 8.8), ini, HORIZONTAL_ALIGNMENT_LEFT, -1, 8, Color(0.03, 0.04, 0.04, a))
+
 
 ## Zoomed out: each order is seen leaving HQ - a link from the commander's
-## headquarters to the squad, with the message running down it.
+## headquarters to the squad, with the message running down it (in the
+## colour of whoever sent it, when that's another commander on your side).
 func _command_links(cam: Camera3D, a: float) -> void:
 	if a <= 0.0:
 		return
@@ -1050,6 +1084,9 @@ func _command_links(cam: Camera3D, a: float) -> void:
 		var s0 := cam.unproject_position(p0)
 		var s1 := cam.unproject_position(p1)
 		var tc: Color = Defs.TEAM_COLORS[int(o[4])].lightened(0.4)
+		var own := _co_owner((g["mem"] as Array)[0])
+		if own != 0:
+			tc = Net.player_color(own)
 		var fade := clampf((2.2 - age) * 2.0, 0.0, 1.0) * a
 		var mid := (s0 + s1) * 0.5 + Vector2(0, -minf(90.0, s0.distance_to(s1) * 0.18))
 		var pts := PackedVector2Array()
@@ -1077,6 +1114,9 @@ func _contact_burst(c: Vector2, a: float) -> void:
 func _hover_card(s: Soldier, mp: Vector2) -> void:
 	var nm := s.display_name()
 	var sub: String = Defs.TEAM_NAMES[s.team] if s.team >= 0 else ""
+	var own := _co_owner(s)
+	if own != 0:
+		sub = "%s's" % Net.player_name(own)
 	var act := s.doing_text()
 	match s.life:
 		Soldier.Life.DOWNED:
@@ -1089,7 +1129,7 @@ func _hover_card(s: Soldier, mp: Vector2) -> void:
 	draw_style_box(UiKit.boxc(Color(0.03, 0.035, 0.03, 0.88), 6, Color(1, 1, 1, 0.1), 1, 0.0, 6), r)
 	UiKit.text(self, r.position + Vector2(12, 19), nm, 14, UiKit.TEXT, 600)
 	if s.team >= 0:
-		UiKit.text(self, r.position + Vector2(20 + UiKit.text_width(nm, 14, 600), 19), sub, 12, Defs.TEAM_COLORS[s.team].lightened(0.35))
+		UiKit.text(self, r.position + Vector2(20 + UiKit.text_width(nm, 14, 600), 19), sub, 12, Net.player_color(own) if own != 0 else Defs.TEAM_COLORS[s.team].lightened(0.35))
 	_bar(r.position + Vector2(12, 28), Vector2(wd * 0.5 - 18, 4), s.health_frac(), Color(1.0, 0.3, 0.25).lerp(UiKit.GOOD, s.health_frac()))
 	_bar(r.position + Vector2(wd * 0.5, 28), Vector2(wd * 0.5 - 12, 4), s.ammo_fraction(), Color(0.45, 0.7, 1.0))
 	if act != "":
@@ -1109,6 +1149,9 @@ func _ground_ring(c: Vector3, r: float, col: Color) -> void:
 func _vehicle_card(v: Vehicle, mp: Vector2) -> void:
 	var nm := v.display_name()
 	var sub: String = Defs.TEAM_NAMES[v.team] if v.team >= 0 else ""
+	var own := _co_owner(v)
+	if own != 0:
+		sub = "%s's" % Net.player_name(own)
 	var hf := v.health_frac()
 	var st := "Track broken" if (v.flags & Vehicle.F_TRACK) != 0 else ("Burning" if hf < 0.2 else ("Smoking" if hf < 0.4 else ""))
 	var wd := maxf(UiKit.text_width(nm, 14, 600) + UiKit.text_width(sub, 12) + 40.0, 180.0)
@@ -1116,7 +1159,7 @@ func _vehicle_card(v: Vehicle, mp: Vector2) -> void:
 	draw_style_box(UiKit.boxc(Color(0.03, 0.035, 0.03, 0.88), 6, Color(1, 1, 1, 0.1), 1, 0.0, 6), r)
 	UiKit.text(self, r.position + Vector2(12, 19), nm, 14, UiKit.TEXT, 600)
 	if v.team >= 0:
-		UiKit.text(self, r.position + Vector2(20 + UiKit.text_width(nm, 14, 600), 19), sub, 12, Defs.TEAM_COLORS[v.team].lightened(0.35))
+		UiKit.text(self, r.position + Vector2(20 + UiKit.text_width(nm, 14, 600), 19), sub, 12, Net.player_color(own) if own != 0 else Defs.TEAM_COLORS[v.team].lightened(0.35))
 	_bar(r.position + Vector2(12, 28), Vector2(wd - 24, 4), hf, Color(1.0, 0.3, 0.25).lerp(UiKit.GOOD, hf))
 	if st != "":
 		UiKit.text(self, r.position + Vector2(12, 50), st, 12, UiKit.BAD)
