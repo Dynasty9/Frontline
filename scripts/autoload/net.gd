@@ -14,9 +14,14 @@ const DEFAULT_PORT := 7777
 const MAX_PLAYERS := 8
 ## Bump when what host and client send each other changes, so the matchmaker
 ## only pairs players who can understand each other.
-const NET_VERSION := 2
+const NET_VERSION := 3
+## Each commander's colour: his cursor, his view and his pings on his
+## teammates' screens. Handed out in the lobby so it stays the same all battle
+## (and "I'm the pink one" works over voice). Clear of the sides' blue and red.
+const PLAYER_COLORS := [Color(0.38, 0.95, 0.72), Color(1.0, 0.5, 0.82), Color(0.74, 0.62, 1.0), Color(0.8, 0.98, 0.38),
+	Color(0.4, 0.9, 1.0), Color(1.0, 0.86, 0.46), Color(1.0, 0.64, 0.5), Color(0.62, 0.78, 1.0)]
 
-var players := {}  # peer_id -> {"name": String, "team": int}
+var players := {}  # peer_id -> {"name": String, "team": int, "col": int (into PLAYER_COLORS)}
 var settings := {"ai_fill": true, "ai_allies": false, "drop_in": true}
 var my_name := "Commander"
 var in_game := false
@@ -41,7 +46,7 @@ func host_game(port := DEFAULT_PORT, team := 0) -> int:
 		return err
 	multiplayer.multiplayer_peer = peer
 	players.clear()
-	players[1] = {"name": my_name, "team": team}
+	players[1] = {"name": my_name, "team": team, "col": 0}
 	in_game = false
 	# a fresh game: not the mission the last one was (if it was one)
 	settings.erase("mission")
@@ -71,6 +76,31 @@ func leave() -> void:
 	players.clear()
 	in_game = false
 	session_closed.emit()
+
+
+## A player's colour (see PLAYER_COLORS).
+func player_color(id: int) -> Color:
+	var p: Dictionary = players.get(id, {})
+	var i := int(p.get("col", -1))
+	if i < 0:
+		i = posmod(id, PLAYER_COLORS.size())
+	return PLAYER_COLORS[i % PLAYER_COLORS.size()]
+
+
+func player_name(id: int) -> String:
+	var p: Dictionary = players.get(id, {})
+	return String(p.get("name", "Commander"))
+
+
+## The first colour nobody has yet.
+func _free_color() -> int:
+	var used := {}
+	for id in players:
+		used[int(players[id].get("col", -1))] = true
+	for i in PLAYER_COLORS.size():
+		if not used.has(i):
+			return i
+	return players.size() % PLAYER_COLORS.size()
 
 
 func _sender() -> int:
@@ -143,14 +173,14 @@ func _register(pname: String, team := -2) -> void:
 			return
 		# drop-in: put them on a side and hand them the running game
 		var side := _pick_join_team()
-		players[id] = {"name": clean, "team": side}
+		players[id] = {"name": clean, "team": side, "col": _free_color()}
 		_sync_lobby.rpc(players, settings)
 		var s: Dictionary = settings.duplicate(true)
 		s["players"] = players.duplicate(true)
 		_start.rpc_id(id, s)
 		player_joined.emit(id, side, clean)
 		return
-	players[id] = {"name": clean, "team": mission_side() if mission_side() >= 0 else 0}
+	players[id] = {"name": clean, "team": mission_side() if mission_side() >= 0 else 0, "col": _free_color()}
 	if team >= -1:
 		_put_on_team(id, team)
 	_broadcast_lobby()

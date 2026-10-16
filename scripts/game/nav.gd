@@ -17,6 +17,7 @@ var veh := AStarGrid2D.new()
 var ikind := PackedByteArray()
 var vkind := PackedByteArray()
 var cell_objs := {}  # idx -> Array of [eid, ikind, vkind]
+var heat := PackedByteArray()  # per cell: how many fires burn close enough to hurt (see Fires); routes go round
 var terrain: TerrainMap
 var hnav_i = null  # hierarchical graphs over the two grids (see hnav.gd)
 var hnav_v = null
@@ -32,6 +33,7 @@ func _init() -> void:
 		g.update()
 	ikind.resize(N * N)
 	vkind.resize(N * N)
+	heat.resize(N * N)
 	# keep vehicles off the outer rim
 	for i in N:
 		for j in [0, 1, 2, N - 3, N - 2, N - 1]:
@@ -289,6 +291,11 @@ func _recompute(idx: int) -> void:
 	var c := Vector2i(idx % N, idx / N)
 	var ti := terrain.nav_weight(idx, false) if terrain else 1.0
 	var tv := terrain.nav_weight(idx, true) if terrain else 1.0
+	if heat[idx] > 0:
+		# a fire: men go well round it if there's any way round at all, and
+		# drivers would rather not
+		ti *= 8.0
+		tv *= 2.5
 	inf.set_point_solid(c, ik == SOLID)
 	inf.set_point_weight_scale(c, [1.0, 4.0, 7.0, 1.0][ik] * ti)
 	var rim := c.x < 3 or c.y < 3 or c.x >= N - 3 or c.y >= N - 3
@@ -302,6 +309,22 @@ func _recompute(idx: int) -> void:
 
 func terrain_changed(idx: int) -> void:
 	_recompute(idx)
+
+
+## A fire takes hold (d = 1) or goes out (d = -1) over the ground within r
+## of p: routes planned from now on go round it.
+func stamp_heat(p: Vector3, r: float, d: int) -> void:
+	var c := cell_of(p)
+	var ri := int(ceil(r))
+	for z in range(maxi(0, c.y - ri), mini(N, c.y + ri + 1)):
+		for x in range(maxi(0, c.x - ri), mini(N, c.x + ri + 1)):
+			if Vector2(x + 0.5 - H - p.x, z + 0.5 - H - p.z).length() > r:
+				continue
+			var idx := z * N + x
+			var was := heat[idx] > 0
+			heat[idx] = clampi(heat[idx] + d, 0, 255)
+			if (heat[idx] > 0) != was:
+				_recompute(idx)
 
 
 func _nearest_free(g: AStarGrid2D, c: Vector2i) -> Vector2i:
@@ -403,10 +426,16 @@ func _line_free(a: Vector3, b: Vector3, vehicle: bool) -> bool:
 	var d := b - a
 	var steps := int(d.length() / 0.5) + 1
 	var arr := vkind if vehicle else ikind
+	# (smoothing mustn't cut back through a fire the route went round - unless
+	# it starts in one, when the way out is the way out)
+	var ca := cell_of(a)
+	var mind_fire := not vehicle and heat[ca.y * N + ca.x] == 0
 	for s in range(1, steps):
 		var p := a + d * (float(s) / steps)
 		var c := cell_of(p)
 		if arr[c.y * N + c.x] != FREE:
+			return false
+		if mind_fire and heat[c.y * N + c.x] > 0:
 			return false
 	return true
 

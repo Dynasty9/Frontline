@@ -7,7 +7,8 @@ extends CanvasLayer
 ## (pause, speed, director camera, whose eyes to watch through).
 
 const MSG_COLORS := {"chat": Color(0.95, 0.95, 0.92), "info": Color(0.62, 0.92, 0.6), "alert": Color(1.0, 0.55, 0.43),
-	"warn": Color(1.0, 0.84, 0.45), "intel": Color(0.5, 0.88, 1.0), "system": Color(0.75, 0.76, 0.7), "radio": Color(0.72, 0.84, 0.95)}
+	"warn": Color(1.0, 0.84, 0.45), "intel": Color(0.5, 0.88, 1.0), "system": Color(0.75, 0.76, 0.7), "radio": Color(0.72, 0.84, 0.95),
+	"ping": Color(0.7, 0.96, 0.86)}
 const BASE_KINDS := ["fob", "barracks", "factory", "medic_tent", "research", "helipad", "tunnel"]
 const CAT_COLORS := {"fight": Color(1.0, 0.82, 0.52), "stress": Color(1.0, 0.58, 0.42), "medic": Color(1.0, 0.62, 0.66),
 	"hurt": Color(1.0, 0.42, 0.4), "work": Color(0.62, 0.84, 1.0), "move": Color(0.86, 0.9, 0.84), "idle": Color(0.8, 0.8, 0.75)}
@@ -110,6 +111,8 @@ var sel_info: HudSelInfo
 var minimap: HudMinimap
 var minimap_panel: PanelContainer
 var overlay: HudOverlay
+var coop: HudCoop  # the other commanders on our side, over the battlefield
+var coop_roster: HudCoopRoster  # ...and listed top right
 var alert_label: Label
 var _alert_t := 0.0
 var over_panel: PanelContainer
@@ -149,6 +152,13 @@ func _ready() -> void:
 	overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	root.add_child(overlay)
 
+	# co-commanders: their views, cursors, selections, plans and pings
+	coop = HudCoop.new()
+	coop.hud = self
+	coop.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	coop.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	root.add_child(coop)
+
 	top = HudTopInfo.new()
 	top.hud = self
 	top.position = Vector2(14, 12)
@@ -176,6 +186,12 @@ func _ready() -> void:
 	objectives.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	objectives.visible = false
 	root.add_child(objectives)
+
+	# the command net: the other commanders on our side, under the objectives
+	coop_roster = HudCoopRoster.new()
+	coop_roster.hud = self
+	coop_roster.size = Vector2(HudCoopRoster.W, 40)
+	root.add_child(coop_roster)
 
 	alert_label = Label.new()
 	alert_label.set_anchors_and_offsets_preset(Control.PRESET_CENTER_TOP)
@@ -442,7 +458,7 @@ func _build_help() -> void:
 	l.add_theme_font_override("bold_font", UiKit.font(600))
 	l.text = """[font_size=20][b]Controls[/b][/font_size]
 
-[color=#f5c96e]Camera[/color]  WASD / arrows / screen edge to pan (Shift: faster), wheel to zoom toward the cursor (or + / -), Q/E to turn, Page Up / Page Down to tilt. Middle-drag turns and tilts; Alt+middle-drag grabs the map (swap them in Settings > Interface). Backspace squares the view up again. Ctrl+F follows the selection. Ctrl+F5..F8 save a view, F5..F8 go back to it. Home cycles your FOBs, Space jumps to the last alert. Zoom in close to see what every soldier is doing.
+[color=#f5c96e]Camera[/color]  WASD / arrows / screen edge to pan (Shift: faster), wheel to zoom toward the cursor (or + / -), Q/E to turn, Page Up / Page Down to tilt. Middle-drag turns and tilts; Alt+middle-drag grabs the map (swap them in Settings > Interface). Backspace squares the view up again. Ctrl+F follows the selection. Ctrl+F5..F8 save a view, F5..F8 go back to it. Home cycles your FOBs, Space jumps to the last alert or ping. Zoom in close to see what every soldier is doing.
 [color=#f5c96e]Minimap[/color]  Click or drag to look there, right-click to send the selection, wheel to zoom. The white wedge is the camera's view, orange rings are firefights, the needle points north (click it to square up). Size and turning with the camera: Settings > Interface.
 [color=#f5c96e]Command view[/color]  Tab switches to the tactical map. O opens the order of battle (click a unit to select it and look at it). The buttons beside the minimap turn map layers on and off: unit symbols, orders and attack plans, intelligence (last known enemy positions), weapon ranges, soldier labels.
 [color=#f5c96e]Select[/color]  Click a soldier to select his squad, drag a box, double-click for every squad of that type on screen. Ctrl+1..9 sets a group, 1..9 recalls it. Alt+click a soldier (or click his name in the squad panel) to command just him.
@@ -450,6 +466,7 @@ func _build_help() -> void:
 [color=#f5c96e]Squad[/color]  X attack-move (or Ctrl+right-click), B defend an area, R retreat, H hold, G grenade, T smoke, F mortar fire mission.
 [color=#f5c96e]Build[/color]  Select infantry, open Base or Defenses on the command card and click to place (R turns 90 degrees, Shift+wheel 45; everything snaps to the 1 m build grid). Drag to lay a whole line of trenches (fire bays and traverses; hold Alt for straight), sandbags, wire or walls.
 [color=#f5c96e]Support[/color]  The buttons above the minimap: click the target and drag to set the run-in direction. Observers can launch any of them from Fire support.
+[color=#f5c96e]Co-commanders[/color]  Every commander has a colour. On your side, theirs show as viewfinders on the ground and the minimap (where they're looking), cursors with their names and what they're doing, rings round what they've selected, and the building, fire mission or order they're lining up before they commit it. The Command Net (top right) lists them: click a name to look where they're looking, the screen button (or a double-click) to watch their view live. Alt+click to ping: an enemy (enemy spotted), one of ours (watch this) or the ground (look here), on the minimap too. Hold Alt and the left button for the ping wheel: attack, on my way, need support, danger, defend, look.
 [color=#f5c96e]Supply[/color]  Each FOB lays a road back to your lines. Trucks drive supply down it; lose the road and the FOBs beyond it starve.
 [color=#f5c96e]Win[/color]  Take or destroy every enemy FOB.
 
@@ -683,7 +700,8 @@ func inspect(e: Entity) -> void:
 	_inspect_t = 4.0
 
 
-func add_message(kind: String, text: String) -> void:
+## A line in the message log (L), and (`toast`) a notification top right.
+func add_message(kind: String, text: String, toast := true) -> void:
 	var col: Color = MSG_COLORS.get(kind, Color.WHITE)
 	var mins := int(world.time / 60.0)
 	var secs := int(world.time) % 60
@@ -693,7 +711,8 @@ func add_message(kind: String, text: String) -> void:
 	if _msgs.size() > 120:
 		_msgs.pop_front()
 	log_box.append_text(line + "\n")
-	toasts.push(kind, text)
+	if toast:
+		toasts.push(kind, text)
 	if kind == "alert":
 		Sfx.ui("click")
 
@@ -876,6 +895,7 @@ func _view_process(dt: float) -> void:
 		top.queue_redraw()
 		orbat.queue_redraw()
 		layers_ui.queue_redraw()
+		coop_roster.queue_redraw()
 	# keep notifications clear of the performance overlay
 	var perf_big := int(Settings.get_v("perf")) >= 2
 	if perf_big != (toasts.anchor_left == 0.0):
@@ -893,9 +913,21 @@ func _view_process(dt: float) -> void:
 			toasts.offset_right = -14
 			toasts.offset_top = 36
 			toasts.offset_bottom = 290
+	# the command net goes under the objectives (or the frame-rate readout),
+	# and the notifications under that
+	var perf_lvl := int(Settings.get_v("perf"))
+	var ry := 12.0 if perf_lvl < 1 else 34.0
+	if objectives.need_h > 0.0:
+		ry = 12.0 + objectives.need_h + 10.0
+	elif perf_big:
+		ry = 22.0 + (150.0 if perf_lvl == 2 else 590.0) + 8.0
+	coop_roster.position = Vector2(root.size.x - 14.0 - HudCoopRoster.W, ry)
+	coop_roster.size = Vector2(HudCoopRoster.W, coop_roster.need_h)
 	if not perf_big:
 		# under the objectives, and above the command card on a short screen
 		var ty := 36.0 if objectives.need_h <= 0.0 else 12.0 + objectives.need_h + 10.0
+		if coop_roster.need_h > 0.0:
+			ty = ry + coop_roster.need_h + 10.0
 		var tb := ty + 254.0
 		if card_panel.visible:
 			tb = clampf(card_panel.position.y - 10.0, ty + 40.0, tb)
@@ -908,6 +940,7 @@ func _view_process(dt: float) -> void:
 		_map_t = 1.0 / 15.0
 		minimap.queue_redraw()
 	overlay.queue_redraw()
+	coop.queue_redraw()
 
 
 func _update_support() -> void:
