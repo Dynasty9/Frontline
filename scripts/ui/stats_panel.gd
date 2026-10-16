@@ -5,13 +5,17 @@ extends PanelContainer
 ## effectiveness, and what it is made of), Units (every squad and vehicle) and
 ## Timeline (strength, kills and supply over the battle). Hold Tab in a battle
 ## for your own side's so far (the enemy's figures are classified until it's
-## over); the end-of-battle screen carries the whole after-action report.
+## over); the end-of-battle screen carries the whole after-action report, and
+## the menu's Service Record opens it again for any battle on the record.
 
 signal closed
 
 const TABS := [["summary", "Summary"], ["commanders", "Commanders"], ["units", "Units"], ["timeline", "Timeline"]]
 
-var world: World
+var me_id := 0  # whose report it is: their commander id in that battle, and side
+var me_team := -1
+var title := "BATTLE STATISTICS"
+var fixed_sub := ""  # a battle from the record says when it was, not how long it's been going
 var embedded := false  # part of the end-of-battle screen: no frame, title or close button
 var report: Dictionary = {}
 var tab := "summary"
@@ -41,7 +45,7 @@ func _ready() -> void:
 		tv.add_theme_constant_override("separation", 0)
 		tv.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		top.add_child(tv)
-		_title = UiKit.label("BATTLE STATISTICS", 22, UiKit.TEXT, 700)
+		_title = UiKit.label(title, 22, UiKit.TEXT, 700)
 		tv.add_child(_title)
 		_sub = UiKit.label("", 13, UiKit.DIM)
 		tv.add_child(_sub)
@@ -131,6 +135,12 @@ func show_tab(key: String) -> void:
 
 func set_report(r: Dictionary) -> void:
 	report = r
+	# a report from the service record says whose it was
+	if r.has("me"):
+		me_id = int(r.me)
+		me_team = int(r.get("me_team", me_team))
+	if _title:
+		_title.text = title
 	names.clear()
 	for c in r.get("players", []):
 		names[int(c.id)] = String(c.name)
@@ -138,9 +148,11 @@ func set_report(r: Dictionary) -> void:
 	for u in r.get("units", []):
 		unit_names[String(u.key)] = String(u.name)
 	if pick == 0 or not names.has(pick):
-		pick = world.local_peer if names.has(world.local_peer) else _top_scorer()
+		pick = me_id if names.has(me_id) else _top_scorer()
 	if _sub:
-		if r.is_empty():
+		if fixed_sub != "":
+			_sub.text = fixed_sub
+		elif r.is_empty():
 			_sub.text = "Gathering reports from the field..."
 		else:
 			var whose: String = "Both sides" if bool(r.get("full", false)) else (String(Defs.TEAM_NAMES[int(r.get("view", 0))]) + " figures")
@@ -167,7 +179,7 @@ func _top_scorer() -> int:
 
 ## The side shown first (on the left): your own, or the Coalition for observers.
 func first_side() -> int:
-	return world.local_team if world.local_team >= 0 else 0
+	return me_team if me_team >= 0 else 0
 
 
 func sides_in_order() -> Array:
@@ -260,7 +272,7 @@ static func side_col(t: int) -> Color:
 ## A commander's name and what kind of commander they are.
 func who_tag(c: Dictionary) -> String:
 	var bits := []
-	if int(c.id) == world.local_peer:
+	if int(c.id) == me_id:
 		bits.append("You")
 	if bool(c.get("ai", false)):
 		bits.append("AI")
@@ -589,7 +601,7 @@ class _Commanders extends _Page:
 	func _row(c: Dictionary, side: Dictionary, y: float, w: float, name_w: float, cols: Array, total: bool) -> float:
 		var id := int(c.get("id", 0))
 		var r := Rect2(0, y, w, ROW_H - 4.0)
-		var me := id == p.world.local_peer
+		var me := id == p.me_id
 		if id == p.pick and not total:
 			draw_style_box(UiKit.boxc(Color(UiKit.ACCENT.r, UiKit.ACCENT.g, UiKit.ACCENT.b, 0.1), 6, Color(UiKit.ACCENT.r, UiKit.ACCENT.g, UiKit.ACCENT.b, 0.4), 1, 0.0), r)
 		elif total:
@@ -788,7 +800,7 @@ class _Units extends _Page:
 				if i % 2 == 0:
 					draw_style_box(UiKit.boxc(Color(1, 1, 1, 0.03), 5, Color(0, 0, 0, 0), 0, 0.0), r)
 				var veh := String(u.kind) == "vehicle"
-				var mine := int(u.owner) == p.world.local_peer
+				var mine := int(u.owner) == p.me_id
 				draw_rect(Rect2(0, y + 9, 3, 18), StatsPanel.side_col(t))
 				var nm := String(u.name) + ((" %d" % int(vno.get(String(u.key), 1))) if veh and int(seq.get(String(u.name), 0)) > 1 else "")
 				txt(12, y + 16, nm, 13, UiKit.ACCENT if mine else UiKit.TEXT, 700, HORIZONTAL_ALIGNMENT_LEFT, name_w - 16.0)

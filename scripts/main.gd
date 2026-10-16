@@ -517,16 +517,23 @@ func _process(_dt: float) -> void:
 			var mu := String(args["menu-update"]).split(",")
 			var st: int = ["available", "downloading", "ready", "failed"].find(mu[1] if mu.size() > 1 else "available") + 1
 			Updater.pretend(mu[0], st)
-		# --menu-panel=browse|account|settings: the list of online battles, the sign-in panel, the settings
+		# --menu-panel=browse|account|record|settings: the list of online battles, the sign-in panel,
+		# the service record (signed in), the settings
 		if args.has("menu-panel") and menu and menu.browse_panel and not has_meta("panel_open") and Engine.get_frames_drawn() > 5:
 			set_meta("panel_open", true)
 			if String(args["menu-panel"]) == "account":
 				menu._open_account()
+			elif String(args["menu-panel"]) == "record":
+				menu._open_record()
 			elif String(args["menu-panel"]) == "settings":
 				menu.settings_panel.visible = true
 				menu.settings_panel._show_tab(String(args.get("settings-tab", "interface")))
 			else:
 				menu._open_browser()
+		# --open-battle (with --menu-panel=record): open the newest battle's after-action report
+		if args.has("open-battle") and menu and menu.rec_list and menu.rec_list.get_child_count() > 0 and not has_meta("battle_open"):
+			set_meta("battle_open", true)
+			(menu.rec_list.get_child(0) as Button).pressed.emit()
 		# --menu-missions[=KEY]: open the Missions panel (on that mission)
 		if args.has("menu-missions") and menu and menu.ms_panel and not has_meta("ms_open") and Engine.get_frames_drawn() > 5:
 			set_meta("ms_open", true)

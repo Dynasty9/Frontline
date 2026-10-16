@@ -483,6 +483,102 @@ func summary() -> String:
 	return "\n   ".join(out)
 
 
+# --- the service record --------------------------------------------------------------------------
+
+## The battle as this player's service record keeps it (Online.record_battle):
+## what kind of battle, which side, how it ended, their own figures and the
+## after-action report, trimmed, so it can be opened again from the menu.
+## {} for an observer, or before the end.
+static func service_record(w: World) -> Dictionary:
+	var r: Dictionary = w.report
+	if r.is_empty() or not bool(r.get("full", false)) or w.local_team < 0 or w.winner < 0:
+		return {}
+	var me: Dictionary = {}
+	for c in r.get("players", []):
+		if int(c.id) == w.local_peer:
+			me = c
+	if me.is_empty():
+		return {}
+	var mine := me.duplicate()
+	mine["rating"] = snappedf(rating(me, (r.sides as Array)[w.local_team]), 0.1)
+	mine["score"] = score(me)
+	var humans := 0
+	var sides_manned := {}
+	var pl: Dictionary = w.settings.get("players", {})
+	for id in pl:
+		var t := int(pl[id].team)
+		if t >= 0:
+			humans += 1
+			sides_manned[t] = true
+	var mode := "skirmish"
+	var title := "Battle vs the AI"
+	if not w.mission_info.is_empty():
+		mode = "mission"
+		title = String(w.mission_info.get("title", "Mission"))
+	elif sides_manned.size() >= 2:
+		mode = "pvp"
+		title = "Player vs player"
+	elif humans >= 2:
+		mode = "coop"
+		title = "Co-op vs the AI"
+	var rep := trim_report(r)
+	rep["me"] = w.local_peer
+	rep["me_team"] = w.local_team
+	return {"game_version": Updater.version, "mode": mode, "mission": String(w.settings.get("mission", "")), "title": title,
+		"side": w.local_team, "result": "victory" if w.winner == w.local_team else "defeat", "duration": snappedf(float(r.get("t", 0.0)), 0.1),
+		"me": compact(mine), "report": rep}
+
+
+## The after-action report cut down for keeping: every commander and both
+## sides, the units that did the most on each side, the timeline thinned to
+## 80 samples and the last 60 events, numbers rounded.
+static func trim_report(r: Dictionary) -> Dictionary:
+	var out := {}
+	for k in ["t", "over", "winner", "full", "view", "every", "mission"]:
+		if r.has(k):
+			out[k] = r[k]
+	out["players"] = compact(r.get("players", []))
+	out["sides"] = compact(r.get("sides", [{}, {}]))
+	out["heroes"] = compact(r.get("heroes", []))
+	var keep := []
+	for t in 2:
+		var us := []
+		for u in r.get("units", []):
+			if int(u.team) == t:
+				us.append(u)
+		us.sort_custom(func(a, b): return int(a.kills) + int(a.veh_kills) * 3 > int(b.kills) + int(b.veh_kills) * 3)
+		keep.append_array(us.slice(0, 30))
+	out["units"] = compact(keep)
+	var tl: Array = r.get("tl", [])
+	if tl.size() > 80:
+		var step := int(ceil(tl.size() / 80.0))
+		var thin := []
+		for i in tl.size():
+			if i % step == 0 or i == tl.size() - 1:
+				thin.append(tl[i])
+		tl = thin
+	out["tl"] = compact(tl)
+	out["ev"] = compact((r.get("ev", []) as Array).slice(-60))
+	return out
+
+
+## Whole numbers as ints, the rest to a decimal place (a smaller report).
+static func compact(v: Variant) -> Variant:
+	if v is float:
+		return int(round(v)) if absf(v - round(v)) < 0.001 else snappedf(v, 0.1)
+	if v is Array:
+		var a := []
+		for x in v:
+			a.append(compact(x))
+		return a
+	if v is Dictionary:
+		var d := {}
+		for k in v:
+			d[k] = compact(v[k])
+		return d
+	return v
+
+
 # --- what the numbers mean (shared with the stats screen) ---------------------------------------
 
 ## How well a commander fought, 0-100: mostly what they destroyed against what

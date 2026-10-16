@@ -53,6 +53,10 @@ JSON in, JSON out. Errors are `{"error": "..."}` with a 4xx/5xx status.
 | `POST /auth/login` `{email, password}` | `{session: {access_token, refresh_token, expires_in, user}}` |
 | `POST /auth/refresh` `{refresh_token}` | A new session. |
 | `POST /auth/logout`, `GET /me`, `PATCH /me` `{callsign}` | Sign out, who am I, rename. Need the bearer token. |
+| `POST /me/battles` `{mode, mission, title, side, result, duration, game_version, me, report}` | Put a battle on your service record (up to ~100 KB with its report). `{id, played_at}`. |
+| `GET /me/battles?limit=20&before=TIME` | Your battles, newest first, headline numbers only: `{battles, more}`. `before` is the last one's `played_at`. |
+| `GET /me/battles/:id` | One battle, with your figures (`me`) and its after-action report (`report`). |
+| `GET /me/career` | The totals of every battle on your record: battles, victories, kills, losses, average and best rating, time. |
 
 A lobby whose host stops checking in for 45 s is dropped, and an unknown lobby id on any host call returns 404,
 which the game answers by listing again (so a restart of this service costs nothing but a few seconds).
@@ -92,7 +96,8 @@ us-west2), with email confirmation switched off. To set up another one:
 1. Create a Supabase project.
 2. In its SQL editor, run [`supabase/schema.sql`](supabase/schema.sql). It adds a `profiles` table (one callsign
    per user, unique regardless of case), the row-level security that keeps players to their own profile, a trigger
-   that creates the profile at sign-up, and `callsign_taken()` for the sign-up form.
+   that creates the profile at sign-up, `callsign_taken()` for the sign-up form, and `battle_records` (each
+   player's service record: they can add battles and read their own, nothing else).
 3. Give the matchmaker the project URL and its public key (the publishable key, or the legacy anon key). No secret
    key is needed: the service acts as the signed-in player, and row-level security does the rest.
 

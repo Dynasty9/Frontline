@@ -57,8 +57,15 @@ they're doing). The observer bar at the top has pause, speed (0.25x to 4x), dire
 - **Joining by address** still works without the matchmaker: the host's IP on UDP port **7777**, forwarded or over a
   LAN/VPN (Tailscale, ZeroTier, Hamachi).
 - **Accounts** are optional (Supabase, through the matchmaker). Signed in, your callsign is yours: no other account can register it, and
-  battles you host are listed under it with a tick. Sign in next to the callsign on the main menu;
-  the session is remembered in `user://account.cfg`.
+  battles you host are listed under it with a tick. The account card top right of the main menu signs you in or
+  makes an account (the end-of-battle screen offers it too); the session is remembered in `user://account.cfg`.
+- **Service record.** Signed in, every battle you fight (as a commander, not watching) goes on your record when it
+  ends: what kind of battle, your side, the result and length, your rating, score, kills and losses, and the
+  after-action report itself, trimmed (every commander, both sides, the units that did most, the timeline). The
+  menu's **Service Record** shows your career (battles, wins, kills, K/D, average rating, time in battle) and every
+  battle newest first; open one for its after-action report. A battle fought signed out or offline waits in
+  `user://pending_battles.json` (the last ten) and goes up at the next sign-in. The figures are your own game's
+  account of the battle, so the record is only ever shown to you.
 - **Co-op:** everyone picks the same side, and the AI takes the empty side.
   **PvP:** pick opposite sides. "Add an AI commander to sides that have players" gives you an AI teammate.
 - If a player leaves, a teammate inherits their squads, or the AI takes over if nobody is left on that side.

@@ -869,6 +869,7 @@ func set_decor(d: Array, r: Rect2) -> void:
 func _rpc_over(w: int) -> void:
 	winner = w
 	game_ended.emit(w)
+	_record()
 	if hud:
 		hud.show_game_over(w)
 
@@ -955,10 +956,17 @@ func declare_winner(t: int) -> void:
 	for p in ready_peers:
 		rpc_id(p, "_rpc_report", report)
 	game_ended.emit(t)
+	_record()
 	if hud:
 		hud.show_game_over(t)
 	for p in ready_peers:
 		rpc_id(p, "_rpc_over", t)
+
+
+## The battle goes on this player's service record (if they keep one; nothing
+## for an observer).
+func _record() -> void:
+	Online.record_battle(BattleStats.service_record(self))
 
 
 ## Asks the host for the after-action report as it stands (it answers with

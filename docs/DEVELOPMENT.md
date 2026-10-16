@@ -231,7 +231,14 @@ Set `FL_DEBUG_ONLINE=1` to print what STUN saw, who the host punches towards, an
 exercise the hole-punching path, give the joiner the matchmaker's LAN address instead of `127.0.0.1` (it then only
 connects if your router loops traffic back in, "hairpinning", which many don't). `--no-stun` skips STUN for offline
 runs, `--login=EMAIL:PASSWORD` (plus `--signup=CALLSIGN` to create the account) signs in first, `--account=PATH`
-keeps that sign-in out of your real one, and `--menu-panel=browse|account|settings` opens those panels for screenshots.
+keeps that sign-in out of your real one, and `--menu-panel=browse|account|record|settings` opens those panels for
+screenshots (`--open-battle` then opens the newest battle on the service record). Test runs keep no service record;
+`--record-battles` turns it on (with `--pending=PATH` for the battles waiting to go up, out of your real ones):
+
+```
+godot --headless --path . -- --scenario=attack --play --end-at=40 --quit-after=55 --record-battles --no-stun \
+  --matchmaker=http://127.0.0.1:8787 --login=me@test.dev:password1 --signup=Me --account=/tmp/a.cfg --pending=/tmp/p.json
+```
 Without `--matchmaker` the game uses the live service on Railway.
 
 ### Join links

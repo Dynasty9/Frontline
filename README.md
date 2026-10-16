@@ -157,7 +157,7 @@ To play with particular people:
 
 The game connects players straight to the host, through most home routers, without anyone opening ports. A few networks (some mobile and campus ones) are too strict for that; the lobby says so, and then the host needs UDP port **7777** open, or you can play over a LAN or a VPN such as Tailscale, ZeroTier or Hamachi. Friends can also join a battle that's already running.
 
-You can sign in with an account (next to your callsign on the main menu). It keeps your callsign yours: no one else can register it, and battles you host show a tick. You don't need one to play.
+You can sign in with an account (top right of the main menu). You don't need one to play. It keeps your callsign yours (no one else can register it, and battles you host show a tick), and it keeps a **service record**: every battle you fight goes on it, with your rating, kills and losses, and you can open any battle's after-action report again from **Service Record**. Battles fought before you sign in wait on your computer and go on the record when you do.
 
 ## Learn more
 

@@ -120,6 +120,9 @@ var manual: FieldManual
 var stats_panel: StatsPanel  # the battle statistics (hold Tab, or Esc > Battle Statistics)
 var aar_panel: StatsPanel  # the after-action report on the end-of-battle screen
 var _stats_pinned := false  # opened from the menu (stays until closed), not just peeked at
+var account_panel: AccountPanel  # signing in at the end of a battle, to keep it on the record
+var _rec_note: Label  # the end screen: whether this battle went on the service record
+var _rec_btn: Button
 var _stats_t := 0.0
 var support_box: VBoxContainer
 var _support_btns := {}  # kind -> Button
@@ -320,7 +323,8 @@ func _ready() -> void:
 	root.add_child(settings_panel)
 	UiKit.fit_center(settings_panel, Vector2(700, 600))
 	stats_panel = StatsPanel.new()
-	stats_panel.world = world
+	stats_panel.me_id = world.local_peer
+	stats_panel.me_team = world.local_team
 	stats_panel.visible = false
 	stats_panel.closed.connect(close_stats)
 	root.add_child(stats_panel)
@@ -784,14 +788,28 @@ func show_game_over(w: int) -> void:
 	head.add_child(fl)
 	aar_panel = StatsPanel.new()
 	aar_panel.embedded = true
-	aar_panel.world = world
+	aar_panel.me_id = world.local_peer
+	aar_panel.me_team = world.local_team
 	aar_panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	vb.add_child(aar_panel)
 	aar_panel.set_report(world.report)
 	var row := HBoxContainer.new()
-	row.alignment = BoxContainer.ALIGNMENT_END
 	row.add_theme_constant_override("separation", 10)
 	vb.add_child(row)
+	# the service record: saved, or sign in to keep it
+	_rec_note = UiKit.label("", 13, UiKit.DIM)
+	_rec_note.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_rec_note.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	_rec_note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	row.add_child(_rec_note)
+	_rec_btn = Button.new()
+	_rec_btn.text = "Sign in"
+	_rec_btn.custom_minimum_size = Vector2(120, 40)
+	_rec_btn.pressed.connect(_sign_in_for_record)
+	row.add_child(_rec_btn)
+	if not Online.record_changed.is_connected(_update_record_note):
+		Online.record_changed.connect(_update_record_note)
+	_update_record_note()
 	if not world.mission_info.is_empty() and multiplayer.is_server():
 		var again := Button.new()
 		again.text = "Play Again" if int(world.mission_info.get("over", 0)) == 1 else "Try Again"
@@ -804,6 +822,39 @@ func show_game_over(w: int) -> void:
 	b.pressed.connect(_leave)
 	row.add_child(b)
 	over_panel.visible = true
+
+
+## Under the after-action report: whether this battle went on the player's
+## service record, and if they're signed out, a way to sign in and keep it.
+func _update_record_note() -> void:
+	if _rec_note == null or not is_instance_valid(_rec_note):
+		return
+	var st := String(Online.last_record.get("state", ""))
+	_rec_btn.visible = false
+	_rec_note.add_theme_color_override("font_color", UiKit.DIM)
+	match st:
+		"saving":
+			_rec_note.text = "Saving this battle to your service record..."
+		"saved":
+			_rec_note.text = "This battle is on your service record (main menu > Service Record)."
+			_rec_note.add_theme_color_override("font_color", UiKit.GOOD)
+		"waiting":
+			if Online.signed_in():
+				_rec_note.text = "Couldn't reach the matchmaker: this battle goes on your service record next time it can."
+				_rec_note.add_theme_color_override("font_color", UiKit.WARN)
+			else:
+				_rec_note.text = "Sign in to keep this battle, and every one after it, on a service record."
+				_rec_btn.visible = true
+		_:
+			_rec_note.text = ""
+
+
+func _sign_in_for_record() -> void:
+	if account_panel == null:
+		account_panel = AccountPanel.new()
+		root.add_child(account_panel)
+		UiKit.fit_center(account_panel, Vector2(500, 440))
+	account_panel.open(false, Net.my_name)
 
 
 ## The end of a mission: accomplished or failed and why, the headline of the
