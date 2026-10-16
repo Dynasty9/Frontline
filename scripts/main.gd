@@ -268,6 +268,12 @@ func _on_game_start(s: Dictionary) -> void:
 	if args.has("zoom") and world.cam:
 		world.cam.target_dist = float(args.zoom)
 		world.cam.dist = float(args.zoom)
+	# --coop-demo[=N]: N made-up co-commanders on your side, at work beside you;
+	# --bot-presence: this (test) client's presence is made up and really sent
+	if args.has("coop-demo"):
+		world.coop.start_demo(int(args["coop-demo"]))
+	if args.has("bot-presence"):
+		world.coop.start_bot()
 	# --cam-test: drive the camera through its controls and check each one
 	if args.has("cam-test") and world.cam:
 		var ct: Node = preload("res://scripts/game/cam_test.gd").new()
@@ -683,6 +689,11 @@ func _process(_dt: float) -> void:
 		world.input.debug_mouse = Vector2(float(cv[0]) * vsz.x, float(cv[1]) * vsz.y)
 		if args.has("order-mode"):
 			world.input.order_mode = String(args["order-mode"])
+		# --ping-wheel: hold the ping wheel open, the cursor on one of its spokes
+		if args.has("ping-wheel") and not world.input.pinging:
+			world.input.pinging = true
+			world.input.ping_at = world.input.debug_mouse + Vector2(-48, 46)
+			world.input._ping_ms = 0
 		# --place=trench [--place-from=x,z]: preview building (a line) at the cursor
 		if args.has("place") and world.input.place_kind == "" and not world.input.sel_squads.is_empty():
 			world.input.start_place(String(args.place))
@@ -713,7 +724,7 @@ func _process(_dt: float) -> void:
 		if world.director:
 			world.director.active = false
 		world.set_meta("town_focused", true)
-	# --focus-struct=kind[,n]: the camera on the nth structure of a kind
+	# --focus-struct=kind[,n]: the camera on the nth structure of a kind (--select-struct: selected too)
 	if args.has("focus-struct") and world.cam and world.time > 1.0 and not world.has_meta("struct_focused"):
 		var fs := String(args["focus-struct"]).split(",")
 		var want2 := int(fs[1]) if fs.size() > 1 else 0
@@ -724,6 +735,8 @@ func _process(_dt: float) -> void:
 					world.focused = true
 					if world.director:
 						world.director.active = false
+					if args.has("select-struct") and world.input:
+						world.input.sel_structure = st.eid
 					break
 				want2 -= 1
 		world.set_meta("struct_focused", true)
@@ -811,6 +824,12 @@ func _process(_dt: float) -> void:
 	if args.has("tactical") and world.hud and not world.hud.tactical and not has_meta("tac"):
 		set_meta("tac", true)
 		world.hud.toggle_tactical()
+	# --coop-watch[=N]: watch the Nth --coop-demo commander's view live
+	if args.has("coop-watch") and world.cam and world.time > 1.0 and not has_meta("coop_watched"):
+		var wid := 9001 + int(args["coop-watch"])
+		if world.coop.peers.has(wid):
+			set_meta("coop_watched", true)
+			world.cam.toggle_shadow(wid)
 	# --hud-panel=settings|help|menu|log: open one of the battle's panels (layout checks)
 	if args.has("hud-panel") and world.hud and world.time > 1.0 and not has_meta("hud_panel"):
 		set_meta("hud_panel", true)
@@ -858,4 +877,6 @@ func _process(_dt: float) -> void:
 					enemy += 1
 			counts["ENEMY_KNOWN"] = enemy
 			print("CLIENT entities=%d %s time=%.1f team_info=%s" % [world.entities.size(), str(counts), world.time, str(world.team_info[0].get("supply", -1))])
+		if not world.coop.peers.is_empty() or int(world.coop.stats.get("sent", 0)) > 0:
+			print("COOP ", world.coop.summary())
 		get_tree().quit()

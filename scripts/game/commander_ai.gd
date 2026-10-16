@@ -18,6 +18,7 @@ var defense_t := 0.0
 var obstacle_t := 240.0
 var next_vehicle := ""
 var _back_t := 0.0
+var _recon_t := 150.0
 
 
 func _init(w: World, t: int) -> void:
@@ -37,6 +38,7 @@ func tick(dt: float) -> void:
 		return
 	var sqs := _my_squads()
 	_support()
+	_recon()
 	_economy(sqs)
 	_production(sqs)
 	_military(sqs)
@@ -78,14 +80,65 @@ func _support() -> void:
 		_cmd({"t": "support", "kind": kind, "pos": best, "dir": dir})
 
 
-## Any off-map support that is ready and affordable ("" if none).
+## Any off-map fire support that is ready and affordable ("" if none).
 func _support_kind() -> String:
 	var opts := Defs.supports_for(team)
 	opts.shuffle()
 	for k in opts:
+		if Defs.SUPPORT[k].get("recon", false):
+			continue  # (recon flights are for finding the enemy: see _recon)
 		if world.rules.support_left(team, k) <= 0.0 and world.rules.supply_total(team) >= int(Defs.SUPPORT[k].cost) + 40:
 			return k
 	return ""
+
+
+## When the picture is thin - an attack about to go in on ground it can't see,
+## or next to nothing of the enemy in sight - the AI sends a recon flight over:
+## a pass along its axis of advance, or a drone to watch the objective. What
+## it sees goes on the danger maps and to the guns like anything else spotted.
+## Sparingly: at most one every two and a half minutes, and only with supply to
+## spare (the men and the next FOB come first).
+func _recon() -> void:
+	var t := world.time
+	if t < _recon_t:
+		return
+	_recon_t = t + 20.0
+	var kinds := []
+	for k in Defs.supports_for(team):
+		if Defs.SUPPORT[k].get("recon", false) and world.rules.support_left(team, k) <= 0.0 and world.rules.supply_total(team) >= int(Defs.SUPPORT[k].cost) + 200 + _fob_reserve():
+			kinds.append(k)
+	var front := _front_fob()
+	if kinds.is_empty() or front == null:
+		return
+	var tgt := front.position + _enemy_dir() * 170.0
+	var seen := 0
+	if attack_target and not attack_target.gone:
+		if world.time - last_wave_t > 60.0 and _idle_count() < 2:
+			return  # no attack in hand: no need to look yet
+		tgt = attack_target.position
+		for s in world.soldiers_near(tgt, 70.0):
+			if s.team != team and s.team >= 0 and s.life == Soldier.Life.ALIVE and s.visible_to_team(team):
+				seen += 1
+	else:
+		for s in world.soldiers:
+			if s.team != team and s.team >= 0 and s.life == Soldier.Life.ALIVE and s.visible_to_team(team):
+				seen += 1
+				if seen >= 6:
+					break
+	if seen >= (4 if attack_target else 6):
+		return  # it can see well enough
+	var k: String = kinds[rng.randi() % kinds.size()]
+	_cmd({"t": "support", "kind": k, "pos": tgt, "dir": Defs.flat(tgt - front.position).normalized()})
+	world.stat("ai_recon")
+	_recon_t = t + 150.0
+
+
+func _idle_count() -> int:
+	var n := 0
+	for sid in roles:
+		if String(roles[sid].get("role", "")) in ["idle", "attack"]:
+			n += 1
+	return n
 
 
 var _helped := {}  # plan -> when we last answered its call for help
@@ -159,6 +212,8 @@ func _outposts(fighters: Array) -> void:
 				roles[sq.sid] = {"role": "idle", "t": t}
 			else:
 				held.append(r.pos)
+		elif role == "town":
+			held.append(r.pos)
 		elif role == "idle" and sq.plan == null:
 			idle += 1
 	var wave := 3 if t < 600.0 else 4
@@ -198,6 +253,85 @@ func _outposts(fighters: Array) -> void:
 		_cmd({"t": "defend", "squads": [sq.sid], "pos": world.nav.nearest_walkable(best.pos), "face": ed})
 		world.stat("ai_outpost_%s" % best.kind)
 		break
+
+
+var _town_t := 0.0
+
+
+## Towns and villages are supply: squads go out to take the ones within reach
+## of our lines that nobody holds (or the enemy does) - the near villages
+## first - stay a while to hold them, and go back to throw the enemy out of
+## one of ours he's moving into.
+func _towns(fighters: Array) -> void:
+	var t := world.time
+	var all: Array = world.rules.towns()
+	if t < _town_t or all.is_empty():
+		return
+	_town_t = t + 6.0
+	var enemy := 1 - team
+	var on := {}  # town eid -> squads sent to it
+	var busy := 0
+	for sq in fighters:
+		var r: Dictionary = roles.get(sq.sid, {})
+		if String(r.get("role", "")) != "town":
+			continue
+		var tn := world.entity(int(r.town)) as Structure
+		var done: bool = tn == null or sq.alive_members().size() * 2 < sq.members.size() or sq.drill in ["rout", "withdraw"]
+		if not done and tn.team == team:
+			if not r.has("held"):
+				r["held"] = t
+			# held a good while and quiet: back to the company
+			done = tn.cap_team < 0 and t - float(r.held) > 180.0
+		elif not done:
+			done = t - float(r.t) > 300.0  # it isn't getting in: give it up for now
+		if done:
+			roles[sq.sid] = {"role": "idle", "t": t}
+			continue
+		if not on.has(tn.eid):
+			on[tn.eid] = []
+		on[tn.eid].append(sq)
+		busy += 1
+	var best: Structure = null
+	var bs := -1e9
+	for tn in all:
+		var ours: bool = tn.team == team
+		var threatened: bool = ours and tn.cap_team == enemy and tn.cap_prog > 0.0
+		if ours and not threatened:
+			continue
+		if (on.get(tn.eid, []) as Array).size() >= (2 if tn.team == enemy else 1):
+			continue
+		var d := _dist_from(team, tn.zone_c)
+		var de := _dist_from(enemy, tn.zone_c)
+		if de < 90.0 or (d > 340.0 and not ours):
+			continue  # right under their base, or a long way past our own
+		var s := -d + (150.0 if threatened else 0.0) + (60.0 if tn.variant == 1 else 0.0) - (40.0 if tn.team == enemy else 0.0)
+		if d > de + 60.0:
+			s -= 150.0  # nearer theirs than ours
+		if s > bs:
+			bs = s
+			best = tn
+	if best == null or (busy >= 1 + fighters.size() / 3 and best.team != team):
+		return
+	for sq in _by_distance(fighters, best.zone_c):
+		var role := String(roles.get(sq.sid, {}).get("role", "idle"))
+		if not role in ["idle", "outpost"] or sq.plan != null or sq.drill != "" or sq.alive_members().size() < 2:
+			continue
+		roles[sq.sid] = {"role": "town", "t": t, "town": best.eid, "pos": best.zone_c}
+		var face := Defs.flat(best.zone_c - sq.centroid()).normalized()
+		_cmd({"t": "assault" if best.team == enemy else "defend", "squads": [sq.sid], "pos": world.nav.nearest_walkable(best.zone_c), "face": face if face.length() > 0.5 else _enemy_dir()})
+		world.stat("ai_town_" + ("defend" if best.team == team else ("retake" if best.team == enemy else "take")))
+		break
+
+
+## How far p is from a side's nearest FOB or its HQ.
+func _dist_from(side: int, p: Vector3) -> float:
+	var best := 1e9
+	for f in world.rules.fobs(side):
+		best = minf(best, Defs.flat(f.position - p).length())
+	var hq: Structure = world.rules.depots[side]
+	if hq and not hq.gone:
+		best = minf(best, Defs.flat(hq.position - p).length())
+	return best
 
 
 func _cmd(d: Dictionary) -> void:
@@ -516,20 +650,33 @@ func _expansion_spot() -> Vector3:
 	if front == null:
 		return Vector3.INF
 	var fwd := _enemy_dir()
+	# a town we hold out beyond our bases gets a FOB beside it, on our side of
+	# it: its lorry has a short run, and the men holding it a base at their backs
+	for tn in world.rules.towns(team):
+		if _dist_from(team, tn.zone_c) < 110.0 or Defs.flat(tn.zone_c - front.position).dot(fwd) > 60.0:
+			continue
+		for i in 10:
+			var bdir := (-fwd).rotated(Vector3.UP, rng.randf_range(-1.2, 1.2))
+			var bp: Vector3 = tn.zone_c + bdir * rng.randf_range(tn.zone_r * 0.6, tn.zone_r + 25.0)
+			bp = Vector3(snappedf(bp.x, 0.5), 0, snappedf(bp.z, 0.5))
+			if world.placement_error(team, "fob", bp, Defs.yaw_of(fwd)) == "" and not _enemy_near(bp, 40.0):
+				world.stat("ai_town_fob")
+				return bp
 	for i in 24:
 		var dir := fwd.rotated(Vector3.UP, rng.randf_range(-0.9, 0.9))
 		var p := front.position + dir * rng.randf_range(60.0, 105.0)
 		p.x = clampf(p.x, -MapDims.HALF + 23.0, MapDims.HALF - 23.0)
 		p = Vector3(snappedf(p.x, 0.5), 0, snappedf(p.z, 0.5))
-		if world.placement_error(team, "fob", p, Defs.yaw_of(fwd)) == "":
-			var danger := false
-			for s in world.soldiers_near(p, 40.0):
-				if s.team != team and s.team >= 0 and s.life == Soldier.Life.ALIVE:
-					danger = true
-					break
-			if not danger:
-				return p
+		if world.placement_error(team, "fob", p, Defs.yaw_of(fwd)) == "" and not _enemy_near(p, 40.0):
+			return p
 	return Vector3.INF
+
+
+func _enemy_near(p: Vector3, r: float) -> bool:
+	for s in world.soldiers_near(p, r):
+		if s.team != team and s.team >= 0 and s.life == Soldier.Life.ALIVE:
+			return true
+	return false
 
 
 # --- production --------------------------------------------------------------------
@@ -671,7 +818,7 @@ func _production(sqs: Array) -> void:
 			want = _air_pick("supply")
 		elif n.attack_heli < 1 + int(world.time / 900.0):
 			want = _air_pick("attack_heli")
-		elif n.uav < 1 and world.time > 600.0:
+		elif n.uav < 1 and world.time > 360.0:
 			want = _air_pick("uav")
 		elif n.lift < 1 and world.time > 500.0:
 			want = _air_pick("lift_heli")
@@ -788,6 +935,7 @@ func _military(sqs: Array) -> void:
 				_cmd({"t": "defend", "squads": [sq.sid], "pos": spot, "face": _enemy_dir()})
 			break
 	_reinforce(fighters)
+	_towns(fighters)
 	_outposts(fighters)
 	# pick a target
 	if attack_target == null or attack_target.gone or attack_target.team == team:
@@ -1005,6 +1153,12 @@ func _pick_target() -> Structure:
 		if d < bd:
 			bd = d
 			best = st
+	# a town of theirs is a softer target than a base, and worth as much to us
+	for tn in world.rules.towns(1 - team):
+		var d2: float = Defs.flat(tn.zone_c - from).length() * 0.8
+		if d2 < bd:
+			bd = d2
+			best = tn
 	return best
 
 

@@ -14,7 +14,7 @@ export const RESULTS = ['victory', 'defeat'];
 // what a commander's record counts (BattleStats.FIELDS in the game)
 export const FIELDS = ['kills', 'downs', 'veh_kills', 'bld_kills', 'lost', 'wounded', 'captured', 'veh_lost', 'bld_lost',
 	'shots', 'hits', 'dmg', 'val_killed', 'val_lost', 'spent', 'squads', 'vehicles', 'built', 'research', 'support',
-	'captures', 'prisoners', 'revived', 'delivered'];
+	'captures', 'towns', 'prisoners', 'revived', 'delivered'];
 // the report the game sends back can be opened again, so it's kept whole -
 // but not without limit
 export const MAX_REPORT = 96 * 1024;

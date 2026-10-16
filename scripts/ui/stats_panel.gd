@@ -357,6 +357,7 @@ class _Summary extends _Page:
 		["acc", "Accuracy", 1, "Rounds that hit what they were aimed at."],
 		["prisoners", "Prisoners taken", 1, "Enemy soldiers who surrendered and were taken."],
 		["captures", "FOBs captured", 1, "Enemy FOBs taken over."],
+		["towns", "Towns taken", 1, "Towns and villages taken (each one's supply dump and trucks come with it)."],
 		["revived", "Wounded saved", 1, "Times a medic or a medevac brought a wounded man back."],
 		["delivered", "Supply delivered", 1, "Supply the trucks and helicopters brought to the FOBs."],
 		["spent", "Supply spent", 0, "Supply spent on troops, vehicles, buildings, research and fire support."],
@@ -487,7 +488,7 @@ class _Summary extends _Page:
 		var out := []
 		var b := _best(pl, func(c): return float(BattleStats.score(c)), 1.0)
 		if not b.is_empty():
-			out.append(["Most valuable", b, "%s points" % StatsPanel.fmt_num(BattleStats.score(b)), "The highest score: value destroyed, plus 100 a FOB taken, 15 a prisoner, 5 a man saved, 2 a structure built."])
+			out.append(["Most valuable", b, "%s points" % StatsPanel.fmt_num(BattleStats.score(b)), "The highest score: value destroyed, plus 100 a FOB taken, 50 a town, 15 a prisoner, 5 a man saved, 2 a structure built."])
 		if pl.size() >= 2:
 			var sds: Array = p.report.sides
 			var e := _best(pl, func(c): return BattleStats.rating(c, sds[int(c.team)]) if float(c.val_killed) + float(c.val_lost) >= 60.0 else -1.0, 0.0)
@@ -500,9 +501,14 @@ class _Summary extends _Page:
 		var t := _best(pl, func(c): return float(c.veh_kills), 1.0)
 		if not t.is_empty():
 			out.append(["Tank hunter", t, StatsPanel.plural(float(t.veh_kills), "vehicle") + " destroyed", "The most enemy vehicles knocked out."])
-		var g := _best(pl, func(c): return float(c.captures), 1.0)
+		var g := _best(pl, func(c): return float(c.captures) + float(c.get("towns", 0)), 1.0)
 		if not g.is_empty():
-			out.append(["Ground taken", g, StatsPanel.plural(float(g.captures), "FOB") + " captured", "The most enemy FOBs taken."])
+			var gt := []
+			if float(g.captures) > 0.0:
+				gt.append(StatsPanel.plural(float(g.captures), "FOB"))
+			if float(g.get("towns", 0)) > 0.0:
+				gt.append(StatsPanel.plural(float(g.towns), "town"))
+			out.append(["Ground taken", g, " and ".join(gt) + " taken", "The most FOBs and towns taken."])
 		var l := _best(pl, func(c): return float(c.revived), 1.0)
 		if not l.is_empty():
 			out.append(["Lifesaver", l, StatsPanel.plural(float(l.revived), "wounded man", "wounded men") + " saved", "The most wounded brought back by medics and medevacs."])
@@ -531,7 +537,7 @@ class _Commanders extends _Page:
 	## [key, header, width, tooltip]
 	const COLS := [
 		["rating", "RATING", 150, "How well they fought, 0-100: mostly what they destroyed against what they lost (by supply value), then marksmanship and their share of their side's fight."],
-		["score", "SCORE", 66, "Value destroyed, plus 100 a FOB taken, 15 a prisoner, 5 a man saved, 2 a structure built."],
+		["score", "SCORE", 66, "Value destroyed, plus 100 a FOB taken, 50 a town, 15 a prisoner, 5 a man saved, 2 a structure built."],
 		["kills", "KILLS", 54, "Enemy soldiers killed."],
 		["lost", "LOSSES", 62, "Own soldiers killed or captured."],
 		["kd", "K/D", 48, "Kills for every man lost."],
@@ -704,7 +710,7 @@ class _Commanders extends _Page:
 		var gx := mx + mw + 34.0
 		var gw := (w - gx - 14.0) / 3.0
 		var groups := [
-			["Combat", [["Killed", c.kills], ["Wounded", c.downs], ["Vehicles", c.veh_kills], ["Buildings", c.bld_kills], ["Prisoners", c.prisoners], ["FOBs taken", c.captures]]],
+			["Combat", [["Killed", c.kills], ["Wounded", c.downs], ["Vehicles", c.veh_kills], ["Buildings", c.bld_kills], ["Prisoners", c.prisoners], ["FOBs / towns", "%d / %d" % [int(c.captures), int(c.get("towns", 0))]]]],
 			["Losses", [["Killed", c.lost], ["Wounded", c.wounded], ["Captured", c.captured], ["Vehicles", c.veh_lost], ["Buildings", c.bld_lost], ["Saved", c.revived]]],
 			["Logistics", [["Spent", c.spent], ["Squads", c.squads], ["Vehicles", c.vehicles], ["Research", c.research], ["Built", c.built], ["Fire missions", c.support]]],
 		]
@@ -715,7 +721,7 @@ class _Commanders extends _Page:
 				var ly := y + 52.0
 				for kv in groups[gi][1]:
 					txt(gxi, ly, String(kv[0]), 12, UiKit.DIM)
-					txt(gxi, ly, StatsPanel.fmt_num(float(kv[1])), 13, UiKit.TEXT, 600, HORIZONTAL_ALIGNMENT_RIGHT, gw - 16.0)
+					txt(gxi, ly, String(kv[1]) if kv[1] is String else StatsPanel.fmt_num(float(kv[1])), 13, UiKit.TEXT, 600, HORIZONTAL_ALIGNMENT_RIGHT, gw - 16.0)
 					ly += 22.0
 		return y + box.size.y
 
@@ -1011,9 +1017,9 @@ class _Timeline extends _Page:
 			var t := int(e[1])
 			var c := StatsPanel.side_col(t)
 			var kind := String(e[2])
-			var cy := ly + (-7.0 if kind == "fob" else (7.0 if kind == "sup" else 0.0))
+			var cy := ly + (-7.0 if kind == "fob" or kind == "town" else (7.0 if kind == "sup" else 0.0))
 			match kind:
-				"fob":
+				"fob", "town":
 					MapSymbols.poly(self, PackedVector2Array([Vector2(ex, cy - 5), Vector2(ex + 5, cy), Vector2(ex, cy + 5), Vector2(ex - 5, cy)]), c)
 				"sup":
 					MapSymbols.poly(self, PackedVector2Array([Vector2(ex, cy - 4), Vector2(ex + 4, cy + 3), Vector2(ex - 4, cy + 3)]), c.lightened(0.2))
@@ -1034,8 +1040,8 @@ class _Timeline extends _Page:
 			var ky := ly + 22.0
 			var kc := Color(0.75, 0.76, 0.72)
 			MapSymbols.poly(self, PackedVector2Array([Vector2(kx, ky - 5), Vector2(kx + 5, ky), Vector2(kx, ky + 5), Vector2(kx - 5, ky)]), kc)
-			txt(kx + 10, ky + 4, "FOBs", 12, UiKit.DIM)
-			kx += 24.0 + UiKit.text_width("FOBs", 12)
+			txt(kx + 10, ky + 4, "FOBs and towns", 12, UiKit.DIM)
+			kx += 24.0 + UiKit.text_width("FOBs and towns", 12)
 			draw_rect(Rect2(kx - 3, ky - 3, 6, 6), kc)
 			txt(kx + 10, ky + 4, "Vehicles lost", 12, UiKit.DIM)
 			kx += 24.0 + UiKit.text_width("Vehicles lost", 12)

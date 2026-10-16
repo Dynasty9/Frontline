@@ -10,7 +10,7 @@ extends RefCounted
 ## What every commander's (and each side's) record counts.
 const FIELDS := ["kills", "downs", "veh_kills", "bld_kills", "lost", "wounded", "captured", "veh_lost", "bld_lost",
 	"shots", "hits", "dmg", "val_killed", "val_lost", "spent", "squads", "vehicles", "built", "research", "support",
-	"captures", "prisoners", "revived", "delivered"]
+	"captures", "towns", "prisoners", "revived", "delivered"]
 ## Strength over time: a sample this often (doubling, and thinning the old
 ## samples, whenever a long battle fills the record).
 const SAMPLE_EVERY := 10.0
@@ -26,7 +26,7 @@ var sides: Array = []  # per side: FIELDS
 var units := {}  # "s<sid>" / "v<eid>" -> {name, kind, team, owner, t0, t1, men, alive, kills, downs, veh_kills, lost}
 var heroes := {}  # soldier eid -> {name, role, team, owner, unit, kills, veh, alive}
 var timeline: Array = []  # [t, men0, men1, veh0, veh1, kills0, kills1, supply0, supply1]
-var events: Array = []  # [t, team, kind, text]: FOBs, vehicles lost, fire support
+var events: Array = []  # [t, team, kind, text]: FOBs and towns, vehicles lost, fire support
 var every := SAMPLE_EVERY
 var _sample_t := 0.0
 var _blame: Array = []  # [owner, team] while a blast nobody fired goes off (fire support, a mine)
@@ -287,18 +287,27 @@ func built(st: Structure) -> void:
 		_event(st.team, "fob", "FOB %s established" % st.sname)
 
 
-## The men standing on it took it: the credit goes to whoever commands most of them.
 func fob_captured(f: Structure, new_team: int) -> void:
+	add(_taker(f.position, Defs.FOB_RADIUS, new_team), new_team, "captures")
+	_event(new_team, "fob", "%s captured FOB %s" % [Defs.TEAM_NAMES[new_team], f.sname])
+
+
+func town_captured(tn: Structure, new_team: int) -> void:
+	add(_taker(tn.zone_c, tn.zone_r, new_team), new_team, "towns")
+	_event(new_team, "town", "%s took %s" % [Defs.TEAM_NAMES[new_team], tn.sname])
+
+
+## The men standing on it took it: the credit goes to whoever commands most of them.
+func _taker(p: Vector3, r: float, team: int) -> int:
 	var count := {}
-	for s in world.soldiers_near(f.position, Defs.FOB_RADIUS):
-		if s.team == new_team and s.life == Soldier.Life.ALIVE:
+	for s in world.soldiers_near(p, r):
+		if s.team == team and s.life == Soldier.Life.ALIVE:
 			count[s.owner_peer] = int(count.get(s.owner_peer, 0)) + 1
 	var by := 0
 	for o in count:
 		if by == 0 or int(count[o]) > int(count[by]):
 			by = int(o)
-	add(by, new_team, "captures")
-	_event(new_team, "fob", "%s captured FOB %s" % [Defs.TEAM_NAMES[new_team], f.sname])
+	return by
 
 
 # --- supply and production ------------------------------------------------------------------
@@ -348,7 +357,7 @@ func delivered(team: int, amount: float) -> void:
 
 
 func _event(team: int, kind: String, text: String) -> void:
-	if events.size() >= MAX_EVENTS and kind != "fob":
+	if events.size() >= MAX_EVENTS and kind != "fob" and kind != "town":
 		return
 	events.append([world.time, team, kind, text])
 
@@ -472,9 +481,9 @@ func summary() -> String:
 	var out := []
 	for o in players:
 		var r: Dictionary = players[o]
-		out.append("%s(%s) kills=%d downs=%d veh=%d/%d lost=%d shots=%d hits=%d val=%d/%d spent=%d fielded=%d built=%d caps=%d pris=%d rating=%d" % [
+		out.append("%s(%s) kills=%d downs=%d veh=%d/%d lost=%d shots=%d hits=%d val=%d/%d spent=%d fielded=%d built=%d caps=%d towns=%d pris=%d rating=%d" % [
 			r.name, Defs.TEAM_NAMES[int(r.team)], int(r.kills), int(r.downs), int(r.veh_kills), int(r.veh_lost), int(r.lost), int(r.shots), int(r.hits),
-			int(r.val_killed), int(r.val_lost), int(r.spent), int(r.squads) + int(r.vehicles), int(r.built), int(r.captures), int(r.prisoners),
+			int(r.val_killed), int(r.val_lost), int(r.spent), int(r.squads) + int(r.vehicles), int(r.built), int(r.captures), int(r.towns), int(r.prisoners),
 			int(round(rating(r, sides[int(r.team)])))])
 	for t in 2:
 		var s: Dictionary = sides[t]
@@ -619,8 +628,8 @@ static func rating_word(v: float) -> String:
 	return "Ineffective"
 
 
-## Points: what they destroyed, plus ground taken, prisoners, saving men and
-## building (a little: a line of sandbags is not a battle won).
+## Points: what they destroyed, plus ground taken (FOBs and towns), prisoners,
+## saving men and building (a little: a line of sandbags is not a battle won).
 static func score(r: Dictionary) -> int:
-	return int(round(float(r.get("val_killed", 0.0)) + 100.0 * float(r.get("captures", 0.0)) + 15.0 * float(r.get("prisoners", 0.0))
+	return int(round(float(r.get("val_killed", 0.0)) + 100.0 * float(r.get("captures", 0.0)) + 50.0 * float(r.get("towns", 0.0)) + 15.0 * float(r.get("prisoners", 0.0))
 		+ 5.0 * float(r.get("revived", 0.0)) + 2.0 * float(r.get("built", 0.0))))

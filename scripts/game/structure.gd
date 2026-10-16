@@ -12,6 +12,7 @@ const C_DIRT := Color(0.36, 0.29, 0.2)
 const C_STEEL := Color(0.25, 0.26, 0.27)
 const C_OLIVE := Color(0.3, 0.34, 0.22)
 const HOUSE_COLORS := [Color(0.72, 0.66, 0.55), Color(0.66, 0.6, 0.52), Color(0.62, 0.5, 0.4), Color(0.75, 0.72, 0.66), Color(0.55, 0.52, 0.47)]
+const C_TOWN_FLAG := Color(0.86, 0.8, 0.56)  # a town's own colours, flown while nobody holds it
 const CAR_COLORS := [Color(0.5, 0.15, 0.12), Color(0.2, 0.3, 0.45), Color(0.75, 0.72, 0.65), Color(0.3, 0.32, 0.28), Color(0.6, 0.5, 0.2)]
 
 var skind := ""
@@ -50,6 +51,14 @@ var truck: Vehicle = null
 var truck_t := 4.0
 var supply_status := "OK"
 var _alert_t := 0.0
+# a town or village's supply dump ("town"; variant 1 is the town, 0 a village):
+# the ground that has to be held to take the place, and how much of it still
+# stands (its houses' roofs, against how many there were)
+var zone_c := Vector3.INF
+var zone_r := 0.0
+var houses0 := -1
+var intact := 1.0
+var _house_t := 0.0
 # production / research
 var queue: Array = []
 var queue_items: Array = []
@@ -58,6 +67,7 @@ var rally := Vector3.INF
 var prod_status := ""
 # special buildings
 var gunner: Soldier = null
+var manned := false  # a watchtower with a lookout up it (sees further: Vision)
 var inside: Array = []
 var inside_n := 0
 var bearers: Array = []
@@ -96,6 +106,8 @@ func display_name() -> String:
 		return "FOB " + sname
 	if skind == "depot":
 		return Defs.TEAM_NAMES[team] + " HQ"
+	if skind == "town":
+		return sname
 	if Defs.BUILDINGS.has(skind):
 		return Defs.BUILDINGS[skind].name
 	return skind.capitalize()
@@ -109,7 +121,10 @@ func apply_props(d: Dictionary) -> void:
 	if d.has("skind"):
 		skind = d.skind
 	if d.has("team"):
+		var was: int = team
 		team = d.team
+		if team != was and model:
+			_recolor()  # (captured: the flag comes down)
 	if d.has("owner"):
 		owner_peer = d.owner
 	if d.has("pos"):
@@ -141,6 +156,9 @@ func apply_props(d: Dictionary) -> void:
 		vk = d.vk
 	if d.has("door"):
 		door_shut = d.door
+	if d.has("zc"):
+		zone_c = d.zc
+		zone_r = d.zr
 	if d.has("tilt"):
 		tilt = d.tilt
 		if model:
@@ -159,10 +177,14 @@ func apply_props(d: Dictionary) -> void:
 
 
 func get_props() -> Dictionary:
-	return {"skind": skind, "team": team, "owner": owner_peer, "pos": position, "yaw": yaw, "size": size,
+	var d := {"skind": skind, "team": team, "owner": owner_peer, "pos": position, "yaw": yaw, "size": size,
 		"variant": variant, "built": built, "progress": progress, "hp": hp, "max_hp": max_hp, "sname": sname,
 		"supply": supply, "queue": queue_items, "seen": seen_mask, "vk": vk, "tilt": tilt, "toss": toss, "door": door_shut,
 		"burnt": burnt}
+	if skind == "town":
+		d["zc"] = zone_c
+		d["zr"] = zone_r
+	return d
 
 
 func on_spawned() -> void:
@@ -182,12 +204,14 @@ func on_spawned() -> void:
 					size = Vector3(2.5 if variant == 1 else 1.2, 1.2, 1.25)
 				"tree":
 					size = Vector3(0.6, 5.0, 0.6)
+				"town":
+					size = Vector3(3.6, 2.0, 2.4)
 	_define_parts()
 	foot = Vector2(size.x * 0.5, size.z * 0.5)
 	if skind == "trench":
 		foot.x += TrenchNet.HALF_W  # the hole runs on past the segment's ends
 	radius = foot.length() + 0.5
-	indestructible = skind in ["depot", "floor", "bridge"]  # (a house's floor slab outlasts its walls)
+	indestructible = skind in ["depot", "floor", "bridge", "town"]  # (a house's floor slab outlasts its walls)
 	smashable = skind in ["low_wall", "tall_wall", "house_wall", "crates", "car", "tree", "sandbags", "concrete_wall", "wire", "rubble", "fence"]
 	if srv:
 		if max_hp <= 0.0 or (hp == 100.0 and max_hp == 100.0):
@@ -347,6 +371,14 @@ func _define_parts() -> void:
 				for side in [-1.0, 1.0]:
 					parts.append(_part(Vector3(side * 4.0, 0.5, s * 6.3), Vector3(4.6, 1.0, 0.9), Nav.LOW, Nav.LOW, true, true, C_SAND))
 					parts.append(_part(Vector3(s * 6.3, 0.5, side * 4.0), Vector3(0.9, 1.0, 4.6), Nav.LOW, Nav.LOW, true, true, C_SAND))
+		"town":
+			# the supply dump by the street: stores stacked on pallets, a row of
+			# fuel drums (chest-high cover both); the front (-z) faces the road
+			parts = [
+				_part(Vector3(0.55, 0.62, 0.35), Vector3(2.3, 1.24, 1.4), Nav.SOLID, Nav.SOLID, true, true, C_WOOD),
+				_part(Vector3(0.85, 1.7, 0.4), Vector3(1.3, 0.9, 1.1), Nav.FREE, Nav.FREE, false, true, C_WOOD),
+				_part(Vector3(-1.15, 0.45, 0.2), Vector3(1.2, 0.9, 1.7), Nav.SOLID, Nav.SOLID, true, true, C_STEEL),
+			]
 		"barracks":
 			parts = [_part(Vector3(0, 1.5, 0), Vector3(size.x, 3.0, size.z), Nav.SOLID, Nav.SOLID, true, true, C_OLIVE)]
 		"factory":
@@ -1330,12 +1362,14 @@ func _complete() -> void:
 # --- simulation --------------------------------------------------------------------
 
 func sim(dt: float) -> void:
-	if team < 0 or not built:
+	if (team < 0 and skind != "town") or not built:
 		return
 	_tick_t -= dt
 	match skind:
 		"fob":
 			_fob_tick()
+		"town":
+			_town_tick(dt)
 		"barracks", "factory", "research", "helipad", "dock":
 			_prod_tick(dt)
 		"medic_tent":
@@ -1383,6 +1417,86 @@ func _fob_tick() -> void:
 		for s in world.soldiers_near(position, Defs.FOB_RADIUS + 2.0):
 			if s.team == team and s.life == Soldier.Life.ALIVE:
 				s.resupply(0.5)
+
+
+## A town or village. Whoever has men on its ground while the other side has
+## none takes it - a squad holding a village for half a minute, the town for
+## nearer a minute; both there, nobody gains; the holder's men there win it
+## back. Whoever holds it draws supply from it into the dump for the trucks
+## to take away - less the more of it lies in ruins - and their men round the
+## dump fill their pouches from it.
+func _town_tick(dt: float) -> void:
+	var k := clampi(variant, 0, 1)
+	if team >= 0:
+		var full := float(Defs.TOWN_STOCK[k])
+		if supply < full:
+			var was := int(supply)
+			supply = minf(full, supply + float(Defs.TOWN_YIELD[k]) / 60.0 * dt * town_yield_factor())
+			if int(supply) != was:
+				net_dirty = true
+	if _tick_t > 0.0:
+		return
+	_tick_t = 0.5
+	_house_t -= 0.5
+	if _house_t <= 0.0:
+		_house_t = 10.0
+		_count_houses()
+	var counts := [0, 0]
+	for s in world.soldiers_near(zone_c, zone_r):
+		if s.life == Soldier.Life.ALIVE and s.team >= 0 and s.team <= 1 and not s.is_bearer():
+			counts[s.team] += 1
+	var old := cap_prog
+	var taker := -1
+	for t in 2:
+		if counts[t] > 0 and counts[1 - t] == 0 and team != t:
+			taker = t
+	if taker >= 0:
+		if cap_team != taker:
+			cap_team = taker
+			cap_prog = 0.0
+			if team >= 0 and world.time > _alert_t:
+				_alert_t = world.time + 30.0
+				world.send_msg(team, "alert", "%s is being taken! The enemy is in the %s." % [sname, "town" if k == 1 else "village"], zone_c)
+		cap_prog += (0.8 + minf(counts[taker], 8) * 0.45) * float(Defs.TOWN_PACE[k]) * 0.5
+		if cap_prog >= 100.0:
+			cap_prog = 0.0
+			cap_team = -1
+			world.rules.capture_town(self, taker)
+			return
+	elif counts[0] == 0 or counts[1] == 0:
+		cap_prog = maxf(0.0, cap_prog - (4.0 if team >= 0 and counts[team] > 0 else 1.5))
+	if cap_prog <= 0.0:
+		cap_team = -1
+	if cap_prog != old:
+		net_dirty = true
+	if team >= 0:
+		for s in world.soldiers_near(position, 9.0):
+			if s.team == team and s.life == Soldier.Life.ALIVE:
+				s.resupply(0.5)
+
+
+## How much a town gives for what's left of it: a third of its worth from the
+## ruins alone, the rest from the houses still standing.
+func town_yield_factor() -> float:
+	return 0.35 + 0.65 * intact
+
+
+## Supply a minute the place gives its holder now.
+func town_rate() -> float:
+	return float(Defs.TOWN_YIELD[clampi(variant, 0, 1)]) * town_yield_factor()
+
+
+func _count_houses() -> void:
+	var n := 0
+	for st in world.structures_near(zone_c, zone_r):
+		if st.skind == "roof" and Defs.flat(st.position - zone_c).length() <= zone_r:
+			n += 1
+	if houses0 < 0:
+		houses0 = n
+	var f := clampf(float(n) / float(houses0), 0.0, 1.0) if houses0 > 0 else 1.0
+	if absf(f - intact) > 0.003:
+		intact = f
+		net_dirty = true
 
 
 func queue_item(peer: int, item: String) -> void:
@@ -1551,6 +1665,12 @@ func _mount_tick() -> void:
 		if best:
 			best.start_man(self)
 			gunner = best
+	var up: bool = skind == "watchtower" and gunner != null and gunner.task_phase == 2
+	if up != manned:
+		manned = up
+		net_dirty = true
+		if up:
+			world.stat("tower_manned")
 
 
 func _mine_tick() -> void:
@@ -1578,12 +1698,14 @@ func write_state(b: StreamPeerBuffer) -> void:
 	b.put_8(cap_team)
 	var private: bool = world.writing_view >= 0 and world.writing_view != team and team >= 0
 	b.put_u16(0 if private else int(clampf(supply, 0.0, 65535.0)))
-	b.put_u8((1 if built else 0) | (2 if wrecked else 0) | (4 if prod_status == "cap" else 0) | (8 if door_shut else 0) | (16 if _door_kicked else 0))
+	b.put_u8((1 if built else 0) | (2 if wrecked else 0) | (4 if prod_status == "cap" else 0) | (8 if door_shut else 0) | (16 if _door_kicked else 0) | (32 if manned else 0))
 	b.put_u8(vis_mask)
 	b.put_u8(seen_mask)
 	b.put_u8(0 if private else int(clampf(queue_frac, 0.0, 1.0) * 255.0))
 	b.put_u8(0 if private else mini(255, inside.size()))
 	b.put_u8(int(clampf(burn, 0.0, 1.0) * 255.0))
+	if skind == "town":
+		b.put_u8(int(clampf(intact, 0.0, 1.0) * 255.0))
 
 
 func read_state(b: StreamPeerBuffer) -> void:
@@ -1604,10 +1726,13 @@ func read_state(b: StreamPeerBuffer) -> void:
 			print("FIRE client %s %d %s" % [skind, eid, "alight" if nb > 0.0 else "out"])
 		burn = nb
 		_burn_view()
+	if skind == "town":
+		intact = b.get_u8() / 255.0
 	var was_built := built
 	built = (f & 1) != 0
 	wrecked = (f & 2) != 0
 	prod_status = "cap" if (f & 4) != 0 else ""
+	manned = (f & 32) != 0
 	if door_shut and (f & 8) == 0:
 		open_door(null, (f & 16) != 0)
 	if t != team:
@@ -1964,7 +2089,15 @@ func _build_scaffold(h: float) -> void:
 
 func _recolor() -> void:
 	if _flag:
-		_flag.material_override = Res.mat(Defs.TEAM_COLORS[team].lerp(Color(0.45, 0.45, 0.42), 0.35).darkened(0.12) if team >= 0 else Color.WHITE, 0.8)
+		_flag.material_override = Res.mat(_flag_color(), 0.8)
+
+
+## Flags and markings in the side's colour, but faded cloth, not plastic; a
+## town nobody holds flies its own colours.
+func _flag_color() -> Color:
+	if team >= 0:
+		return Defs.TEAM_COLORS[team].lerp(Color(0.45, 0.45, 0.42), 0.35).darkened(0.12)
+	return C_TOWN_FLAG if skind == "town" else Color.WHITE
 
 
 func _box(p: Vector3, s: Vector3, c: Color, r := 0.0, shadow := true) -> MeshInstance3D:
@@ -1991,7 +2124,7 @@ func _build_model() -> void:
 	rng.seed = eid * 7919 + variant
 	var bags: Array = []
 	for p in parts:
-		if skind in ["wire", "tank_trap", "watchtower", "tree", "trench", "car", "wreck", "low_wall", "roof", "bridge", "dock"]:
+		if skind in ["wire", "tank_trap", "watchtower", "tree", "trench", "car", "wreck", "low_wall", "roof", "bridge", "dock", "town"]:
 			break
 		if p.color == C_SAND and p.s.y <= 1.3 and minf(p.s.x, p.s.z) <= 1.0:
 			bags.append(p)
@@ -2002,8 +2135,7 @@ func _build_model() -> void:
 		if skind in ["house_wall", "rubble", "crates"]:
 			col = Res.vary(col, 0.05, rng)
 		_box(p.p, p.s, col, p.r, skind != "floor")
-	# flags and markings in the side's colour, but faded cloth, not plastic
-	var tc: Color = Defs.TEAM_COLORS[team].lerp(Color(0.45, 0.45, 0.42), 0.35).darkened(0.12) if team >= 0 else Color.WHITE
+	var tc := _flag_color()
 	match skind:
 		"low_wall":
 			var p: Dictionary = parts[0]
@@ -2082,6 +2214,30 @@ func _build_model() -> void:
 				_mk(Res.cyl(0.3, 0.3, 0.9, 12), "steel", Vector3(3.6 + i * 0.65, 0.45, -3.9), Vector3.ZERO, Color(0.3, 0.33, 0.24))
 			_mk(Res.box(Vector3(1.2, 0.9, 0.8)), "paint", Vector3(4.0, 0.45, 3.6), Vector3(0, 0.3, 0), Color(0.33, 0.35, 0.28))
 			_add_label(display_name(), 8.0)
+		"town":
+			# the town's supply dump: stores crated on a pallet with more under a
+			# tarp, fuel drums, and a flagpole flying the colours of whoever holds
+			# the place (the town's own while nobody does)
+			_mk(Res.box(Vector3(2.4, 0.14, 1.5)), "wood", Vector3(0.55, 0.07, 0.35), Vector3.ZERO, null, false)
+			for ix in 2:
+				for iz in 2:
+					for iy in 2:
+						var cp := Vector3(0.55 + (ix - 0.5) * 1.14, 0.14 + 0.275 + iy * 0.55, 0.35 + (iz - 0.5) * 0.69)
+						_mk(Res.box(Vector3(1.08, 0.53, 0.64)), "wood", cp, Vector3(0, rng.randf_range(-0.05, 0.05), 0), Res.vary(C_WOOD, 0.06, rng))
+			_mk(Res.box(Vector3(1.32, 0.86, 1.12)), "canvas", Vector3(0.85, 1.67, 0.4), Vector3(0, 0.06, 0), Color(0.33, 0.36, 0.25))
+			_mk(Res.prism(Vector3(1.12, 0.18, 1.34)), "canvas", Vector3(0.85, 2.19, 0.4), Vector3(0, PI * 0.5 + 0.06, 0), Color(0.31, 0.34, 0.23))
+			var drum_cols := [Color(0.45, 0.17, 0.12), Color(0.2, 0.3, 0.42), Color(0.3, 0.33, 0.2), Color(0.62, 0.5, 0.18)]
+			for ix in 2:
+				for iz in 3:
+					if ix == 0 and iz == 0 and rng.randf() < 0.5:
+						continue
+					var dp := Vector3(-1.45 + ix * 0.6 + rng.randf_range(-0.04, 0.04), 0.44, -0.4 + iz * 0.6)
+					_mk(Res.cyl(0.28, 0.28, 0.88, 12), "paint", dp, Vector3.ZERO, drum_cols[rng.randi() % drum_cols.size()])
+			_mk(Res.cyl(0.24, 0.3, 0.3, 10), "concrete", Vector3(-0.2, 0.15, -0.85))
+			_mk(Res.cyl(0.045, 0.065, 7.2, 6), "steel", Vector3(-0.2, 3.6, -0.85), Vector3.ZERO, Color(0.8, 0.8, 0.78))
+			_mk(Res.sphere(0.09, 6), "paint", Vector3(-0.2, 7.25, -0.85), Vector3.ZERO, Color(0.75, 0.62, 0.25))
+			_flag = _box(Vector3(0.52, 6.62, -0.85), Vector3(1.4, 0.86, 0.04), tc)
+			_add_label(display_name(), 8.4)
 		"barracks":
 			# plank walls, corrugated gable roof along the long side, windows, porch
 			var long_x := size.x >= size.z

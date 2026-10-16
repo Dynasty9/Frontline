@@ -221,6 +221,9 @@ static func table() -> Dictionary:
 	t["m900"] = _v("M900", 1, 1, "air", "Syndikat", "Light civilian helicopter", "MD 500D", 150, 18.0, 300.0, 0, 23.0, 2.8, "lift_heli",
 		Vector3(1.9, 2.4, 7.0), 0, {"hit": 1.3, "mg": "", "cap": 1, "air": true, "carry": "mech_cell",
 		"desc": "A stolen civilian helicopter: four fighters, anywhere, once."})
+	t["tayran"] = _v("AR-2 Tayran", 1, 1, "air", "CSAT", "Small reconnaissance drone", "Parrot-style quadcopter", 60, 9.0, 60.0, 0, 11.0, 3.0, "uav",
+		Vector3(0.9, 0.4, 0.9), 0, {"hit": 0.15, "mg": "", "cap": 1, "air": true, "sight": 70.0, "alt": 18.0, "orbit": 12.0, "model": "darter", "symbol": ["air", "UAV"],
+		"desc": "CSAT's quadcopter: circles a spot and shows everything within 70 m to your side. Cheap, quiet, easy to shoot down."})
 	t["fenghuang_uav"] = _v("KH-3A Fenghuang", 1, 3, "air", "CSAT", "Armed drone", "CASC CH-3A Rainbow", 220, 22.0, 260.0, 0, 18.0, 2.0, "uav",
 		Vector3(5.5, 1.2, 8.0), 0, {"hit": 0.6, "mg": "", "cap": 1, "air": true, "atgm": [4, 10.0], "sight": 75.0, "alt": 26.0, "orbit": 26.0, "model": "fenghuang", "symbol": ["air", "UAV"],
 		"desc": "Canard-winged drone: circles where it's sent, spotting, and fires small anti-tank missiles."})

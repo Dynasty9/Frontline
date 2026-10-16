@@ -58,12 +58,14 @@ func _draw() -> void:
 	_clear_placed()
 	_build_groups(inp)
 	_mark("groups")
+	_town_marks()
 	_structure_labels(cam, vs, zoom)
 	_mark("structure labels")
 	if hud.map_layer("intel"):
 		_intel(cam, vs, lt)
 	if hud.map_layer("ranges"):
 		_ranges(cam)
+	_sight_rings()
 	_order_graphics(lt, maxf(a_far, a_units * 0.9))
 	_mark("orders")
 	if not w.mission_info.is_empty() and int(w.mission_info.get("over", 0)) == 0:
@@ -120,18 +122,19 @@ func _draw() -> void:
 		if (v.flags & Vehicle.F_TRACK) != 0:
 			UiKit.text(self, sp2 + Vector2(-26, -5), "TRACK HIT", 11, UiKit.BAD, 600)
 	for st in _team_structs:
-		if st.gone or st.team < 0 or not st.visible:
+		if st.gone or (st.team < 0 and st.skind != "town") or not st.visible:
 			continue
-		var need: bool = (not st.built) or (st.skind == "fob" and st.cap_prog > 0.0) or (st.team == lt and st.hp < st.max_hp * 0.98 and st.is_player_building())
+		var capturable: bool = st.skind == "fob" or st.skind == "town"
+		var need: bool = (not st.built) or (capturable and st.cap_prog > 0.0) or (st.team == lt and st.hp < st.max_hp * 0.98 and st.is_player_building())
 		if not need:
 			continue
-		var p3: Vector3 = st.position + Vector3(0, 4.5, 0)
-		if cam.is_position_behind(p3) or cpos.distance_to(p3) > 170.0:
+		var p3: Vector3 = st.position + Vector3(0, 4.5 if st.skind != "town" else st.label_h - 2.4, 0)
+		if cam.is_position_behind(p3) or cpos.distance_to(p3) > (170.0 if st.skind != "town" else 320.0):
 			continue
 		var sp3 := cam.unproject_position(p3)
 		if not st.built:
 			_bar(sp3 + Vector2(-30, 0), Vector2(60, 4), st.progress, UiKit.WARN)
-		elif st.skind == "fob" and st.cap_prog > 0.0 and st.cap_team >= 0:
+		elif capturable and st.cap_prog > 0.0 and st.cap_team >= 0:
 			_bar(sp3 + Vector2(-40, 0), Vector2(80, 6), st.cap_prog / 100.0, Defs.TEAM_COLORS[st.cap_team])
 			UiKit.text(self, sp3 + Vector2(-34, -5), "CAPTURING", 11, Color(1, 1, 1), 600)
 		else:
@@ -188,7 +191,7 @@ func _draw() -> void:
 			if it[2]:
 				ok += 1
 		UiKit.text(self, mp + Vector2(18, 26), "%d x %s  (%d supply)" % [ok, Defs.BUILDINGS[inp.place_kind].name, ok * int(Defs.BUILDINGS[inp.place_kind].cost)], 13, UiKit.GOOD)
-	elif inp.hover and inp.hover.visible:
+	elif inp.hover and inp.hover.visible and not inp.pinging:
 		if inp.has_units() and inp.hover.is_hostile_to(lt):
 			UiKit.text(self, mp + Vector2(18, 26), "Attack", 13, UiKit.BAD, 600)
 		elif inp.hover is Soldier:
@@ -268,8 +271,12 @@ func _shield(c: Vector2, col: Color, lvl: int) -> void:
 		draw_line(c + Vector2(0, -5), c + Vector2(0, 0), Color(1, 1, 1, 0.9), 2.0)
 		draw_circle(c + Vector2(0, 3), 1.2, Color(1, 1, 1, 0.9))
 
+const RECON_COL := Color(0.5, 0.88, 1.0, 0.9)  # what recon will see (sight rings, recon calls)
+
+
 ## Where the support will land: rings, the strafing strip or the bombing line,
-## the gunship's orbit, and an arrow for the run-in direction.
+## the gunship's orbit, and an arrow for the run-in direction; for a recon
+## flight, the ground it will see.
 func _support_preview(inp, mp: Vector2) -> void:
 	var w := hud.world
 	var k: String = inp.ability.get_slice(":", 1)
@@ -290,6 +297,18 @@ func _support_preview(inp, mp: Vector2) -> void:
 			_ground_arrow(gp - dir * 32.0, gp - dir * 20.0, red)
 		"orbit":
 			_ground_ring(gp, float(sd.get("r", 38.0)), red)
+			_ground_ring(gp, Projectile.AC_R * 0.45, Color(1, 1, 1, 0.25))
+		"sweep":
+			# the strip a recon pass's camera sees, along its track and on past
+			# the spot both ways (as much of it as is in front of the camera)
+			var rr := float(sd.get("r", 80.0))
+			var ln := 200.0
+			while ln > 25.0 and (w.cam.cam.is_position_behind(gp - dir * ln) or w.cam.cam.is_position_behind(gp + dir * ln)):
+				ln *= 0.6
+			_ground_poly([gp - dir * ln + side * rr, gp + dir * ln + side * rr, gp + dir * ln - side * rr, gp - dir * ln - side * rr], RECON_COL)
+			_ground_arrow(gp - dir * 30.0, gp + dir * 12.0, RECON_COL)
+		"watch":
+			_ground_ring(gp, float(sd.get("r", 80.0)), RECON_COL)
 			_ground_ring(gp, Projectile.AC_R * 0.45, Color(1, 1, 1, 0.25))
 		_:
 			_ground_ring(gp, float(sd.get("r", 14.0)), red)
@@ -393,11 +412,15 @@ func _structure_labels(cam: Camera3D, vs: Vector2, zoom: float) -> void:
 		if sp.x < -120 or sp.x > vs.x + 120 or sp.y < -30 or sp.y > vs.y + 30:
 			continue
 		var txt: String = st.display_name() + ("  (WRECKED)" if st.wrecked else "")
+		if st.skind == "town":
+			txt += "  ·  " + ("town" if st.variant == 1 else "village")
 		var tw := UiKit.text_width(txt, fs, 600)
 		var r := Rect2(sp.x - tw * 0.5 - 10, sp.y - fs - 5, tw + 20, fs + 10)
 		draw_style_box(UiKit.boxc(Color(0.03, 0.035, 0.03, 0.66), 4, Color(1, 1, 1, 0.08), 1, 0.0), r)
 		if st.team >= 0:
 			draw_rect(Rect2(r.position + Vector2(1, 1), Vector2(3, r.size.y - 2)), Defs.TEAM_COLORS[st.team])
+		elif st.skind == "town":
+			draw_rect(Rect2(r.position + Vector2(1, 1), Vector2(3, r.size.y - 2)), Structure.C_TOWN_FLAG)
 		UiKit.text(self, Vector2(r.position.x + 11, r.position.y + fs + 2), txt, fs, Color(1, 1, 1, 0.94), 600)
 		_place_rect(r)
 
@@ -515,6 +538,25 @@ func _dashed_ring(c3: Vector3, r: float, col: Color, alpha: float) -> void:
 	for i in range(0, pts.size() - 1, 2):
 		draw_line(pts[i], pts[i + 1], Color(0, 0, 0, alpha * 0.4), 4.0, true)
 		draw_line(pts[i], pts[i + 1], c, 2.0, true)
+
+## Each town's ground as a ring in its holder's colours (the town's own while
+## nobody holds it) when the camera is over it, and whenever someone is
+## taking it - then pulsing in the taker's colour.
+func _town_marks() -> void:
+	var w := hud.world
+	var f: Vector3 = w.cam.focus_pos
+	var pulse := 0.5 + 0.5 * sin(Time.get_ticks_msec() / 220.0)
+	for st in _team_structs:
+		if st.gone or st.skind != "town" or st.zone_r <= 0.0:
+			continue
+		var taking: bool = st.cap_team >= 0 and st.cap_prog > 0.0
+		var a := clampf((st.zone_r + 90.0 - Defs.flat(st.zone_c - f).length()) / 60.0, 0.0, 1.0) * 0.4
+		var col: Color = Defs.TEAM_COLORS[st.team] if st.team >= 0 else Structure.C_TOWN_FLAG
+		if taking:
+			a = maxf(a, 0.75)
+			col = (Defs.TEAM_COLORS[st.cap_team] as Color).lerp(col, pulse * 0.6)
+		_dashed_ring(st.zone_c, st.zone_r, col, a)
+
 
 ## A mission's objectives where they are: the area as a ring on the ground, and
 ## over it a diamond with its letter and how far it is from the camera's
@@ -928,6 +970,13 @@ func _nato_markers(cam: Camera3D, lt: int, a: float) -> void:
 		MapSymbols.nato(self, sp, sz, mine, tm, sym[0], sym[1], a)
 		if sel:
 			draw_arc(sp, hw + 7.0, 0.0, TAU, 28, Color(1, 1, 1, 0.55 * a), 1.5, true)
+		# another commander's squad: his initials on it, and his colour round it while he has it selected
+		var own := _co_owner(mem[0])
+		if own != 0:
+			_owner_tab(sp + Vector2(hw + 1.0, -sz * 0.34 - 12.0), own, a)
+		var by := int(w.coop.sel_sq.get(sid, 0)) if w.coop else 0
+		if by != 0:
+			draw_arc(sp, hw + 7.0, 0.0, TAU, 28, HudCoop._a(Net.player_color(by), 0.95 * a), 2.0, true)
 		if firing > 0:
 			_contact_burst(sp + Vector2(-hw - 3.0, -hw * 0.62), a)
 		if supp * 2 >= maxi(1, alive) and alive > 0:
@@ -956,7 +1005,12 @@ func _nato_markers(cam: Camera3D, lt: int, a: float) -> void:
 		if age < 6.0:
 			var tag := _order_tag(o)
 			var ta := clampf((6.0 - age) * 1.5, 0.0, 1.0) * a
-			UiKit.text(self, Vector2(sp.x - UiKit.text_width(tag, 10, 600) * 0.5, ty), tag, 10, Color(UiKit.ACCENT.r, UiKit.ACCENT.g, UiKit.ACCENT.b, ta), 600)
+			var tcol := UiKit.ACCENT
+			if own != 0:
+				# who sent it, in his colour
+				tag = "%s  %s" % [w.coop.initials(own), tag]
+				tcol = Net.player_color(own)
+			UiKit.text(self, Vector2(sp.x - UiKit.text_width(tag, 10, 600) * 0.5, ty), tag, 10, Color(tcol.r, tcol.g, tcol.b, ta), 600)
 	for v in w.vehicles:
 		if not v.visible or v.team < 0 or v.vkind == "truck":
 			continue
@@ -980,9 +1034,31 @@ func _nato_markers(cam: Camera3D, lt: int, a: float) -> void:
 		MapSymbols.nato(self, vp, 28.0, v.team == lt or lt < 0, v.team, vs3[0], vs3[1], a)
 		if v.selected:
 			draw_arc(vp, 21.0, 0.0, TAU, 28, Color(1, 1, 1, 0.55 * a), 1.5, true)
+		var vo := _co_owner(v)
+		if vo != 0:
+			_owner_tab(vp + Vector2(6.0, -22.5), vo, a)
+		var vby := int(w.coop.sel_veh.get(v.eid, 0)) if w.coop else 0
+		if vby != 0:
+			draw_arc(vp, 21.0, 0.0, TAU, 28, HudCoop._a(Net.player_color(vby), 0.95 * a), 2.0, true)
+
+## The other human commander a unit belongs to (0: yours, the AI's or nobody's).
+func _co_owner(e: Entity) -> int:
+	var own: int = e.owner_peer
+	return own if own > 0 and own != hud.world.local_peer and Net.players.has(own) else 0
+
+
+## Another commander's unit: his initials on a small tab in his colour.
+func _owner_tab(at: Vector2, peer: int, a: float) -> void:
+	var ini := hud.world.coop.initials(peer) if hud.world.coop else "?"
+	var tw := UiKit.text_width(ini, 8, 700)
+	var r := Rect2(at, Vector2(tw + 7.0, 11.0))
+	draw_style_box(UiKit.boxc(HudCoop._a(Net.player_color(peer), 0.95 * a), 3, Color(0, 0, 0, 0.5 * a), 1, 0.0), r)
+	draw_string(UiKit.font(700), r.position + Vector2(3.5, 8.8), ini, HORIZONTAL_ALIGNMENT_LEFT, -1, 8, Color(0.03, 0.04, 0.04, a))
+
 
 ## Zoomed out: each order is seen leaving HQ - a link from the commander's
-## headquarters to the squad, with the message running down it.
+## headquarters to the squad, with the message running down it (in the
+## colour of whoever sent it, when that's another commander on your side).
 func _command_links(cam: Camera3D, a: float) -> void:
 	if a <= 0.0:
 		return
@@ -1008,6 +1084,9 @@ func _command_links(cam: Camera3D, a: float) -> void:
 		var s0 := cam.unproject_position(p0)
 		var s1 := cam.unproject_position(p1)
 		var tc: Color = Defs.TEAM_COLORS[int(o[4])].lightened(0.4)
+		var own := _co_owner((g["mem"] as Array)[0])
+		if own != 0:
+			tc = Net.player_color(own)
 		var fade := clampf((2.2 - age) * 2.0, 0.0, 1.0) * a
 		var mid := (s0 + s1) * 0.5 + Vector2(0, -minf(90.0, s0.distance_to(s1) * 0.18))
 		var pts := PackedVector2Array()
@@ -1035,6 +1114,9 @@ func _contact_burst(c: Vector2, a: float) -> void:
 func _hover_card(s: Soldier, mp: Vector2) -> void:
 	var nm := s.display_name()
 	var sub: String = Defs.TEAM_NAMES[s.team] if s.team >= 0 else ""
+	var own := _co_owner(s)
+	if own != 0:
+		sub = "%s's" % Net.player_name(own)
 	var act := s.doing_text()
 	match s.life:
 		Soldier.Life.DOWNED:
@@ -1047,7 +1129,7 @@ func _hover_card(s: Soldier, mp: Vector2) -> void:
 	draw_style_box(UiKit.boxc(Color(0.03, 0.035, 0.03, 0.88), 6, Color(1, 1, 1, 0.1), 1, 0.0, 6), r)
 	UiKit.text(self, r.position + Vector2(12, 19), nm, 14, UiKit.TEXT, 600)
 	if s.team >= 0:
-		UiKit.text(self, r.position + Vector2(20 + UiKit.text_width(nm, 14, 600), 19), sub, 12, Defs.TEAM_COLORS[s.team].lightened(0.35))
+		UiKit.text(self, r.position + Vector2(20 + UiKit.text_width(nm, 14, 600), 19), sub, 12, Net.player_color(own) if own != 0 else Defs.TEAM_COLORS[s.team].lightened(0.35))
 	_bar(r.position + Vector2(12, 28), Vector2(wd * 0.5 - 18, 4), s.health_frac(), Color(1.0, 0.3, 0.25).lerp(UiKit.GOOD, s.health_frac()))
 	_bar(r.position + Vector2(wd * 0.5, 28), Vector2(wd * 0.5 - 12, 4), s.ammo_fraction(), Color(0.45, 0.7, 1.0))
 	if act != "":
@@ -1067,6 +1149,9 @@ func _ground_ring(c: Vector3, r: float, col: Color) -> void:
 func _vehicle_card(v: Vehicle, mp: Vector2) -> void:
 	var nm := v.display_name()
 	var sub: String = Defs.TEAM_NAMES[v.team] if v.team >= 0 else ""
+	var own := _co_owner(v)
+	if own != 0:
+		sub = "%s's" % Net.player_name(own)
 	var hf := v.health_frac()
 	var st := "Track broken" if (v.flags & Vehicle.F_TRACK) != 0 else ("Burning" if hf < 0.2 else ("Smoking" if hf < 0.4 else ""))
 	var wd := maxf(UiKit.text_width(nm, 14, 600) + UiKit.text_width(sub, 12) + 40.0, 180.0)
@@ -1074,7 +1159,7 @@ func _vehicle_card(v: Vehicle, mp: Vector2) -> void:
 	draw_style_box(UiKit.boxc(Color(0.03, 0.035, 0.03, 0.88), 6, Color(1, 1, 1, 0.1), 1, 0.0, 6), r)
 	UiKit.text(self, r.position + Vector2(12, 19), nm, 14, UiKit.TEXT, 600)
 	if v.team >= 0:
-		UiKit.text(self, r.position + Vector2(20 + UiKit.text_width(nm, 14, 600), 19), sub, 12, Defs.TEAM_COLORS[v.team].lightened(0.35))
+		UiKit.text(self, r.position + Vector2(20 + UiKit.text_width(nm, 14, 600), 19), sub, 12, Net.player_color(own) if own != 0 else Defs.TEAM_COLORS[v.team].lightened(0.35))
 	_bar(r.position + Vector2(12, 28), Vector2(wd - 24, 4), hf, Color(1.0, 0.3, 0.25).lerp(UiKit.GOOD, hf))
 	if st != "":
 		UiKit.text(self, r.position + Vector2(12, 50), st, 12, UiKit.BAD)
@@ -1282,6 +1367,29 @@ func _ranges(cam: Camera3D) -> void:
 		if v and not v.gone:
 			var vr := 95.0 if v.vdef.get("cannon", false) else 80.0
 			_dashed_ring(v.position, vr, Color(1.0, 0.85, 0.5), 0.55)
+
+
+## How far your eyes see, in pale blue: a watchtower being placed (and with a
+## lookout up it) or picked out, a drone or a recon vehicle selected - the
+## weapon ranges layer adds every selected vehicle's.
+func _sight_rings() -> void:
+	var w := hud.world
+	var inp = w.input
+	if inp.place_kind == "watchtower" and inp.ghost:
+		var gp: Vector3 = inp.ghost.position
+		gp.y = 0.0
+		_dashed_ring(gp, Vision.TOWER, RECON_COL, 0.6)
+		_dashed_ring(gp, Vision.TOWER_MANNED, RECON_COL, 0.3)
+	if inp.sel_structure != 0:
+		var st = w.entity(inp.sel_structure)
+		if st is Structure and not st.gone and st.built and st.team >= 0 and (st.skind == "watchtower" or hud.map_layer("ranges")):
+			var r := Vision.structure_sight(st)
+			if r > 0.0:
+				_dashed_ring(st.position, r, RECON_COL, 0.6)
+	for id in inp.sel_vehicles:
+		var v = w.entity(id)
+		if v is Vehicle and not v.gone and (v.base() == "uav" or (v.vdef.has("sight") and (hud.map_layer("ranges") or float(v.vdef.sight) >= 75.0))):
+			_dashed_ring(v.position, float(v.vdef.get("sight", Vision.VEHICLE)), RECON_COL, 0.55)
 
 
 ## The map grid the radio uses (A-H across, 1-8 down), drawn on the ground.

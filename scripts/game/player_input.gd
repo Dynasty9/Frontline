@@ -66,6 +66,15 @@ var _prev_t := 0.0
 const TAB_HOLD_MS := 220
 var _tab_down := -1  # msec Tab went down (-1: it's up)
 var _tab_peek := false
+## Alt and the left button held: a ping (a tap) or the ping wheel (held, or dragged).
+var pinging := false
+var ping_at := Vector2.ZERO
+var _ping_ms := 0
+const PING_WHEEL_R := 34.0  # let go inside this and the wheel is called off
+## Alt and the right button held: drawing on the map for your side.
+var sketching := false
+var sketch_pts := PackedVector3Array()
+var _sk_last := Vector2.ZERO
 
 
 func _ready() -> void:
@@ -132,6 +141,9 @@ func _unhandled_input(ev: InputEvent) -> void:
 		var mb := ev as InputEventMouseButton
 		if mb.button_index == MOUSE_BUTTON_LEFT:
 			if mb.pressed:
+				# a co-commander's marker at the screen's edge: look where he's looking
+				if world.hud and world.hud.coop.click(mb.position):
+					return
 				if place_kind != "":
 					if place_kind in LINE_KINDS:
 						place_drag = true
@@ -151,9 +163,17 @@ func _unhandled_input(ev: InputEvent) -> void:
 				if order_mode != "":
 					_begin_order(mb, true)
 					return
+				# Alt+click pings (Alt+click on one of your own men still picks him out)
+				if mb.alt_pressed and not _alt_picks(mb.position):
+					pinging = true
+					ping_at = mb.position
+					_ping_ms = Time.get_ticks_msec()
+					return
 				lmb = true
 				drag_start = mb.position
 				dragging = false
+			elif pinging:
+				_end_ping()
 			elif ab_drag:
 				ab_drag = false
 				_call_support()
@@ -174,17 +194,31 @@ func _unhandled_input(ev: InputEvent) -> void:
 					_click_select(mb.position, mb.shift_pressed, mb.double_click)
 				dragging = false
 		elif mb.button_index == MOUSE_BUTTON_RIGHT and mb.pressed:
+			if pinging:
+				pinging = false
+				return
+			if mb.alt_pressed and place_kind == "" and ability == "" and order_mode == "":
+				sketching = true
+				sketch_pts = PackedVector3Array([world.cam.ground_point(mb.position)])
+				_sk_last = mb.position
+				return
 			if place_kind != "" or ability != "" or order_mode != "":
 				cancel_modes()
 				return
 			_begin_order(mb, false)
+		elif mb.button_index == MOUSE_BUTTON_RIGHT and not mb.pressed and sketching:
+			_end_sketch()
 		elif mb.button_index == MOUSE_BUTTON_RIGHT and not mb.pressed and rmb and not rmb_left:
 			_end_order(mb.position)
 		elif place_kind != "" and mb.pressed and mb.shift_pressed and (mb.button_index == MOUSE_BUTTON_WHEEL_UP or mb.button_index == MOUSE_BUTTON_WHEEL_DOWN):
 			place_yaw = TrenchNet.snap_yaw(place_yaw + (TrenchNet.BUILD_ANGLE if mb.button_index == MOUSE_BUTTON_WHEEL_UP else -TrenchNet.BUILD_ANGLE))
 	elif ev is InputEventMouseMotion:
-		if lmb and (ev as InputEventMouseMotion).position.distance_to(drag_start) > 8.0:
+		var mpos := (ev as InputEventMouseMotion).position
+		if lmb and mpos.distance_to(drag_start) > 8.0:
 			dragging = true
+		if sketching and mpos.distance_to(_sk_last) > 7.0 and sketch_pts.size() < 256:
+			sketch_pts.append(world.cam.ground_point(mpos))
+			_sk_last = mpos
 	elif ev is InputEventKey:
 		var k := ev as InputEventKey
 		if k.pressed and not k.echo:
@@ -198,7 +232,11 @@ func _key(k: InputEventKey) -> void:
 		return
 	match k.keycode:
 		KEY_ESCAPE:
-			if place_kind != "" or ability != "" or order_mode != "":
+			if pinging or sketching:
+				pinging = false
+				sketching = false
+				sketch_pts = PackedVector3Array()
+			elif place_kind != "" or ability != "" or order_mode != "":
 				cancel_modes()
 			elif has_units() or sel_structure != 0:
 				clear_selection()
@@ -211,7 +249,7 @@ func _key(k: InputEventKey) -> void:
 			if world.local_team >= 0:
 				var sup: Dictionary = world.team_info[world.local_team].get("sup", {})
 				for sk in Defs.supports_for(world.local_team):
-					if float(sup.get(sk, 300.0)) <= world.time:
+					if float(sup.get(sk, Defs.support_from(sk))) <= world.time:
 						cancel_modes()
 						ability = "support:" + String(sk)
 						break
@@ -257,8 +295,16 @@ func _key(k: InputEventKey) -> void:
 			if world.hud:
 				world.hud.toggle_orbat()
 		KEY_SPACE:
+			# the newest of the alerts and the co-commanders' pings
+			var at := Vector3.INF
+			var came := -INF
 			if not world.pings.is_empty():
-				world.cam.glide_to(world.pings.back()[0])
+				at = world.pings.back()[0]
+				came = float(world.pings.back()[1]) - 30.0
+			if world.coop and world.coop.last_ping_pos != Vector3.INF and world.coop.last_ping_t > came:
+				at = world.coop.last_ping_pos
+			if at != Vector3.INF:
+				world.cam.glide_to(at)
 		KEY_L:
 			if world.hud:
 				world.hud.toggle_log()
@@ -308,6 +354,72 @@ func _key(k: InputEventKey) -> void:
 						_focus_selection()
 					_last_group = n
 					_last_group_t = now
+
+
+## Alt+click on one of your own men picks him out of his squad (rather than pinging).
+func _alt_picks(at: Vector2) -> bool:
+	var e := pick(at)
+	return e is Soldier and is_mine(e) and e.life == Soldier.Life.ALIVE
+
+
+## The ping wheel shows once the button has been held a moment, or dragged.
+func ping_wheel_open() -> bool:
+	return pinging and (Time.get_ticks_msec() - _ping_ms > 220 or _mouse().distance_to(ping_at) > 14.0)
+
+
+## The wheel's spoke under the cursor ("" in the middle: called off).
+func ping_wheel_pick() -> String:
+	var d := _mouse() - ping_at
+	if d.length() < PING_WHEEL_R:
+		return ""
+	var n := CoCommand.WHEEL.size()
+	return CoCommand.WHEEL[posmod(int(round(atan2(d.x, -d.y) / (TAU / n))), n)]
+
+
+## Let go: a tap pings whatever is under the cursor (an enemy, one of ours, the
+## ground); off the wheel it's the spoke picked, at the spot first pressed.
+func _end_ping() -> void:
+	var wheel := ping_wheel_open()
+	pinging = false
+	if world.coop == null or world.cam == null:
+		return
+	var tgt := pick(ping_at)
+	var kind: String = ping_wheel_pick() if wheel else world.coop.context_ping(tgt)
+	if kind == "":
+		return
+	var gp := world.cam.ground_point(ping_at)
+	var eid := 0
+	if (tgt is Soldier or tgt is Vehicle) and tgt.visible and tgt.seen_by_local():
+		eid = tgt.eid
+		gp = Defs.flat(tgt.position)
+	world.coop.ping(kind, gp, eid)
+
+
+## Let go of a sketch: it goes to your side, thinned out to as many points as a sketch may have.
+func _end_sketch() -> void:
+	sketching = false
+	var pts := sketch_pts
+	sketch_pts = PackedVector3Array()
+	if world.coop == null:
+		return
+	var L := 0.0
+	for i in range(1, pts.size()):
+		L += Defs.flat(pts[i] - pts[i - 1]).length()
+	if pts.size() < 2 or L < 3.0:
+		if world.hud:
+			world.hud.flash("Hold Alt and drag with the right button to draw for your side")
+		return
+	world.coop.sketch(thin_line(pts, CoCommand.SKETCH_PTS))
+
+
+## The same line in at most n points, evenly along it.
+static func thin_line(pts: PackedVector3Array, n: int) -> PackedVector3Array:
+	if pts.size() <= n:
+		return pts
+	var out := PackedVector3Array()
+	for i in n:
+		out.append(pts[int(round(float(i) * (pts.size() - 1) / (n - 1)))])
+	return out
 
 
 func retreat() -> void:
@@ -440,7 +552,7 @@ func pick(screen: Vector2) -> Entity:
 		return best
 	var gp := world.cam.ground_point(screen)
 	for st in world.structures_near(gp, 12.0):
-		if not st.visible or st.team < 0 or st.gone:
+		if not st.visible or (st.team < 0 and st.skind != "town") or st.gone:
 			continue
 		if Defs.point_in_obb(Vector2(gp.x, gp.z), Vector2(st.position.x, st.position.z), st.foot + Vector2(0.6, 0.6), st.yaw):
 			return st
@@ -474,7 +586,7 @@ func _click_select(screen: Vector2, add: bool, dbl: bool) -> void:
 			sel_vehicles.append(e.eid)
 		sel_structure = 0
 		Sfx.ui("click")
-	elif e is Structure and (e.team == world.local_team or world.local_team < 0):
+	elif e is Structure and (e.team == world.local_team or world.local_team < 0 or e.skind == "town"):
 		sel_squads.clear()
 		sel_vehicles.clear()
 		sel_structure = e.eid
@@ -580,6 +692,13 @@ func _order(screen: Vector2, shift: bool, face_in := Vector3.ZERO, kind := "") -
 		return
 	var tgt := pick(screen)
 	var lt := world.local_team
+	if tgt is Structure and tgt.skind == "town" and tgt.team != lt:
+		# a town that isn't ours: go and take it - fight in if the enemy holds
+		# it, then hold its ground until the flag is ours
+		world.send_cmd({"t": "assault" if tgt.team >= 0 else "defend", "squads": sel_squads, "vehicles": sel_vehicles, "pos": tgt.zone_c})
+		_marker(tgt.zone_c, Color(1.0, 0.85, 0.3))
+		Sfx.ui("click")
+		return
 	if tgt and tgt.is_hostile_to(lt) and tgt.seen_by_local():
 		var ok := true
 		if tgt is Soldier and tgt.life != Soldier.Life.ALIVE and tgt.life != Soldier.Life.DOWNED:
@@ -874,6 +993,12 @@ func _view_process(dt: float) -> void:
 		elif not _tab_peek and Time.get_ticks_msec() - _tab_down >= TAB_HOLD_MS and world.hud:
 			_tab_peek = true
 			world.hud.peek_stats(true)
+	# a ping or a sketch let go of over a panel: the release never reached us
+	if debug_mouse.x < 0.0:
+		if pinging and not Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT):
+			_end_ping()
+		if sketching and not Input.is_mouse_button_pressed(MOUSE_BUTTON_RIGHT):
+			_end_sketch()
 	# keep selection valid
 	var live := {}
 	for s in world.soldiers:
@@ -935,7 +1060,7 @@ func _view_process(dt: float) -> void:
 ## to cover the way the server will do it. The HUD draws these as cover pips.
 func _update_preview() -> void:
 	preview.clear()
-	if not can_command() or place_kind != "" or ability != "" or world.terrain == null or world.cam == null:
+	if not can_command() or place_kind != "" or ability != "" or pinging or sketching or world.terrain == null or world.cam == null:
 		return
 	if not Settings.get_v("cover_preview") and not rmb:
 		return

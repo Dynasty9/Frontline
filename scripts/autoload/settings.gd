@@ -51,11 +51,12 @@ var preset := "high"
 var v := {
 	"shadows": 2, "ssao": true, "ssil": true, "gi": false, "vol_fog": true, "glow": true, "aa": 6, "scale": 1.0,
 	"grass": 2, "effects": 2, "decals": true, "ragdolls": true, "post": true, "dof": false,
-	"vsync": true, "fps_cap": 0, "perf": 1, "shake": true, "ui_scale": 1.0, "mood": "random", "labels": true, "lyr_units": true, "lyr_orders": false, "lyr_intel": true, "lyr_ranges": false, "orbat": true,
+	"vsync": true, "fps_cap": 0, "perf": 1, "shake": true, "ui_scale": 1.0, "mood": "random", "labels": true, "lyr_units": true, "lyr_orders": false, "lyr_intel": true, "lyr_vision": true, "lyr_ranges": false, "orbat": true,
 	"ao_q": 2, "upscaler": 1, "sharpen": 0.2, "ssr": true, "lod": 2, "aniso": 3,
 	"window": 0, "resolution": 2, "brightness": 1.0, "contrast": 1.0, "look": 0, "tonemap": 0, "fov": 48.0,
 	"bubbles": true, "cover_preview": true, "edge_pan": true, "cam_speed": 1.0,
 	"zoom_cursor": true, "mmb_mode": 0, "minimap_size": 1, "minimap_rotate": false,
+	"coop_show": true,
 	"volume": 0.8, "vol_music": 0.6, "vol_effects": 1.0, "vol_ambience": 0.8, "vol_ui": 0.8, "battle_music": true, "mute_bg": false,
 }
 ## Volume sliders -> the mixer bus each one sets.
@@ -214,8 +215,13 @@ func _win_px() -> Vector2:
 var _win_applied := [-1, -1]
 
 
-## Window mode and windowed resolution (only touched when they change, so
-## dragging the window around isn't undone by every other setting).
+## Room left over the window for its title bar, when deciding whether a size fits.
+const TITLE_BAR := 40
+
+
+## Window mode and windowed size: the player's choice from the moment the game
+## opens, then only touched again when one of them changes, so resizing or
+## dragging the window isn't undone by every other setting.
 func _apply_window() -> void:
 	var wm := clampi(int(v.window), 0, 2)
 	var ri := clampi(int(v.resolution), 0, RESOLUTIONS.size() - 1)
@@ -223,22 +229,35 @@ func _apply_window() -> void:
 		return
 	var first: bool = _win_applied[0] < 0
 	_win_applied = [wm, ri]
-	if first and wm == 0 and no_save:
-		return  # test runs keep the project's own window
+	if first and _test_launch():
+		return  # test runs keep the project's own window (or the size --resolution asks for)
 	match wm:
 		1:
 			DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_FULLSCREEN)
 		2:
 			DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_EXCLUSIVE_FULLSCREEN)
 		_:
-			if DisplayServer.window_get_mode() != DisplayServer.WINDOW_MODE_WINDOWED:
-				DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_WINDOWED)
-			if not first:
-				var sz: Vector2i = RESOLUTIONS[ri]
-				var scr := DisplayServer.screen_get_usable_rect()
-				sz = Vector2i(mini(sz.x, scr.size.x), mini(sz.y, scr.size.y))
+			var sz: Vector2i = RESOLUTIONS[ri]
+			var scr := DisplayServer.screen_get_usable_rect()
+			if sz.x >= scr.size.x or sz.y + TITLE_BAR >= scr.size.y:
+				# too big for the screen with its title bar (1920 x 1080 on a 1080p
+				# screen): fill the screen instead, title bar and all
+				DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_MAXIMIZED)
+			else:
+				if DisplayServer.window_get_mode() != DisplayServer.WINDOW_MODE_WINDOWED:
+					DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_WINDOWED)
 				DisplayServer.window_set_size(sz)
 				DisplayServer.window_set_position(scr.position + (scr.size - sz) / 2)
+
+
+## Started for a test (main.gd reads any `--` switch after `--` as one; a
+## frontline:// link from the website isn't). Checked here because this runs
+## before main.gd has looked at the command line.
+func _test_launch() -> bool:
+	for a in OS.get_cmdline_user_args():
+		if String(a).begins_with("--"):
+			return true
+	return false
 
 
 var no_save := false  # set by automated test runs so they never overwrite the player's settings

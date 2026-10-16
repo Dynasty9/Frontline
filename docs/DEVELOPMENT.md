@@ -16,8 +16,9 @@ option on its own, laid out like a PC game's options screen:
   flares, rain and thunder; applies live), colour grading (natural, cinematic, vivid, warm film, cold steel,
   bleached war film, black & white), tonemapper (AgX / ACES / Filmic / Reinhard), brightness, contrast, bloom,
   film grain, tilt-shift depth of field.
-- **Display:** window mode (windowed / borderless / exclusive fullscreen), window size, VSync, frame-rate cap,
-  field of view, performance overlay.
+- **Display:** window mode (windowed / borderless / exclusive fullscreen), window size (applied at launch; a
+  size too big for the screen maximises the window instead; test runs keep the project's window or the size
+  `--resolution` asks for), VSync, frame-rate cap, field of view, performance overlay.
 - **Interface:** interface scale (relative to the window: `Settings.ui_factor()` is what the window's 2D is
   drawn at), unit activity labels, speech bubbles, cover preview, edge scrolling, camera speed, camera shake.
 - **Audio:** master, music, effects, ambience and interface volumes (each its own mixer bus, set up in
@@ -59,6 +60,8 @@ game/combat.gd          LOS, bullets (penetrating soft cover), suppression, expl
 game/fires.gd           what burns, catching alight, spreading downwind, burning down (server; drawn by vfx.gd)
 game/cover.gd           fighting positions on everything solid, what each material stops, stances by height
 game/rules.gd           supply network, trucks, cap, placement, capture, prisoners/intel, fog, victory
+game/vision.gd          every eye a side has (men, vehicles, towers, drones, aircraft) as circles of sight
+game/fog_view.gd        the fog of war drawn on the battlefield and the minimap (a sight map + a full-screen pass)
 game/nav.gd             two AStarGrid2D layers (infantry: vaultable/slow cells; vehicles: smashable cells)
 game/hnav.gd            hierarchical A* (clusters, entrances, danger-weighted abstract graphs)
 game/terrain.gd         ground types, cover map, craters, speed / hit / concealment modifiers
@@ -89,6 +92,9 @@ game/vehicle_roster.gd  the Arma 3 roster (stats, behaviour, tiers, patterns) an
 game/director.gd        observer camera and time controls
 game/battle_stats.gd    the after-action record: kills, losses, supply and production credited to each commander
 ui/stats_panel.gd       the battle statistics / after-action report (Summary, Commanders, Units, Timeline tabs)
+game/co_command.gd      co-commanders: each player's presence (view, cursor, selection, what's being lined up),
+                        pings, sketches and committed actions, relayed by the host to that side only
+ui/hud_coop.gd          co-commanders drawn over the battlefield; ui/hud_coop_roster.gd the Command Net
 ui/hud.gd, menu.gd      interface; ui/settings_panel.gd, ui/perf_overlay.gd, ui/ui_kit.gd (shared style),
 ui/hud_overlay.gd       everything drawn over the battlefield (labels, speech, symbols, orders, plans, intel)
 ui/hud_orbat.gd, hud_layers.gd, hud_sel_info.gd, hud_minimap.gd, hud_top_info.gd, hud_toasts.gd   HUD widgets
@@ -113,7 +119,7 @@ Pass these after `--` on the command line:
                                                       solo: one squad against a stronger position)
 --play --select-first --tactical --nohud              command a scenario's Coalition side / select a squad /
                                                       open the tactical map / hide the HUD (perf tests)
---focus-struct=kind[,n]                               camera on a structure of a kind
+--focus-struct=kind[,n] [--select-struct]            camera on a structure of a kind (and select it: its info panel)
                                                       (trenches: a Rebel trench system vs tanks + IFVs;
                                                       poses: every stance frozen for inspection; add --static
                                                       to leave the attackers out)
@@ -162,13 +168,27 @@ Pass these after `--` on the command line:
                                                       enemy about: they bound there by teams and clear the houses
 --scenario=breach                                     a fighter cell holed up in a house; two rifle squads and a gun team clear it
 --scenario=gdrill                                     grenade drill: frags with all sorts of fuses land among a squad round its wounded
+--scenario=town                                       a rifle squad takes a village's supply dump, its lorry runs the stock to
+                                                      FOB Alpha, then a Rebel cell comes to take it back (town_captured,
+                                                      town_truck_delivered in the counters; --debug-trucks lists each town)
 --scenario=fire                                       a wood, a hedgerow, crates, cars, a watchtower and a house, some of it alight
                                                       from the start, a fighter cell dug in among it (fire spread, burns, fleeing)
 FL_DEBUG_FIRE=1 (env)                                 print who the fires burn, and (on a client) what it hears catching or going out
+--scenario=recon                                      a manned watchtower, a recon pass over Rebel cells, a Rebel spotter plane and drone over the Coalition
+FL_DEBUG_VISION=1 (env)                               every 2 s, what each side has eyes on (eyes, aircraft, recon photos, manned towers, enemies seen, intel)
 --mission=bridgehead|beachhead|skyhook|ambush|kingpin  play a mission; on its own it plays itself (the autopilot in missions.gd)
 --mission=KEY --play [--autoplay]                     command the mission's force yourself (--autoplay: the autopilot still gives orders)
 --mission=KEY --seed=N                                the mission on another map (checks it still places itself sensibly)
 --host --mission=KEY --players=2                      a co-op mission lobby that starts when the second player joins
+--coop-demo[=N]                                       N made-up co-commanders on your side (host only: each gets a real
+                                                      squad), looking about near you, lining up trenches, fire missions and
+                                                      assaults, pinging and sketching (co-commander interface shots)
+  --coop-watch[=I]                                    watch the Ith one's view live
+--bot-presence                                        (a client, headless) this game's presence is made up the same way and
+                                                      really sent, with its pings and sketches; COOP {...} at --quit-after
+                                                      shows what each game sent and took in
+--cursor=X,Y --ping-wheel                             hold the ping wheel open by the faked cursor (screenshots)
+FL_DEBUG_COOP=1 (env)                                 the co-commander layer's cost by part, in the performance overlay
 FL_DEBUG_MISSION=1 (env)                              print the map's features (bridges, villages, harbour) and the mission's setup
 --model-sheet=KEYS|FAMILY --sheet-dir=DIR [--side=1] [--sheet-yaw=R]   turntable shots of models (nato, csat, indep, civ, heli, plane, boat, all)
 --soldier-sheet=PATH [--sheet-team=0|1] [--sheet-view=front|back|rts] [--sheet-pose=idle|shoot|run|mix]
@@ -183,6 +203,7 @@ FL_DEBUG_MISSION=1 (env)                              print the map's features (
 --test-fire                                           every armed man, gunner and vehicle fires ahead (muzzle tests)
 --seed=N                                              (with --aivai) the same map every run
 --dump-structs                                        list every built structure when --quit-after fires
+FL_DEBUG_TOWNS=1 (env)                                print each town and village: name, dump and the ground that takes it
 FL_DEBUG_HPA=1 (env)                                  benchmark hierarchical vs flat paths at start-up
 FL_DEBUG_DECOR=1 (env)                                print the street-furniture chunk and mesh counts
 --menu-shot=menu.png --shot-at=6                      screenshot of the main menu
@@ -208,6 +229,20 @@ godot --headless --path . -- --join=127.0.0.1 --team=1 --quit-after=200 --port=7
 ```
 
 The client prints a `CLIENT entities=...` summary when it quits. Check both outputs for `SCRIPT ERROR`.
+
+Co-commanders: bot clients make up their presence, pings and sketches and really send them. Start the one on
+the other side first, so its team request lands before the game starts:
+
+```
+godot --headless --path . -- --host --team=0 --players=4 --quit-after=60 --port=7975
+godot --headless --path . -- --join=127.0.0.1 --team=1 --bot-presence --quit-after=55 --port=7975
+godot --headless --path . -- --join=127.0.0.1 --team=0 --bot-presence --quit-after=55 --port=7975
+godot --headless --path . -- --join=127.0.0.1 --team=0 --bot-presence --quit-after=55 --port=7975
+```
+
+Each client prints `COOP {"sent": ..., "taken": ..., "pings_in": ...}` when it quits: the two on team 0 take
+each other's presence and pings, the one on team 1 takes nothing of theirs. To see it drawn, make one of the
+team 0 clients a normal (windowed) game, or run `--coop-demo` on its own.
 
 ### Matchmaker
 

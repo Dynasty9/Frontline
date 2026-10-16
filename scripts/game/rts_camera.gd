@@ -66,6 +66,10 @@ var _follow_t := 0.0
 ## Saved views (Ctrl+F5..F8 to save, F5..F8 to go back): key -> [focus, zoom, heading, tilt].
 var bookmarks := {}
 
+## Looking over a co-commander's shoulder: the camera keeps to his view (the
+## peer, 0 for none) until you move it yourself.
+var shadow := 0
+
 
 func _ready() -> void:
 	cam = Camera3D.new()
@@ -105,6 +109,7 @@ func glide_to(p: Vector3, zoom := -1.0, heading := NAN, to_tilt := NAN) -> void:
 	_g_moves = far > 0.5
 	if _g_moves:
 		stop_follow()
+		stop_shadow()
 	_zoom_anchor = Vector3.INF
 	if zoom > 0.0:
 		target_dist = clampf(zoom, MIN_DIST, MAX_DIST)
@@ -124,6 +129,7 @@ func shake(amount: float) -> void:
 func zoom_step(dir: int, at := Vector2(-1, -1)) -> void:
 	target_dist = clampf(target_dist * (0.87 if dir < 0 else 1.15), MIN_DIST, MAX_DIST)
 	user_moved = true
+	stop_shadow()
 	_zoom_anchor = Vector3.INF
 	# (mid-jump or following, the camera is already going somewhere: zoom on the middle)
 	if at.x >= 0.0 and bool(Settings.get_v("zoom_cursor")) and not _gliding and not follow:
@@ -147,6 +153,7 @@ func toggle_follow() -> void:
 	_follow_t = 0.0
 	_gliding = false
 	user_moved = true
+	stop_shadow()
 	if world.hud:
 		world.hud.flash("Camera following the selection  (Ctrl+F or pan to stop)")
 
@@ -157,6 +164,33 @@ func stop_follow() -> void:
 	follow = false
 	if world.hud:
 		world.hud.flash("Camera stopped following")
+
+
+## Looks through a co-commander's eyes: your camera glides to his view and
+## keeps to it as he moves, until you pan, turn or zoom (or press it again).
+func toggle_shadow(peer: int) -> void:
+	if shadow == peer:
+		stop_shadow()
+		return
+	var p = world.coop.peers.get(peer) if world.coop else null
+	if p == null:
+		return
+	stop_follow()
+	_gliding = false
+	_zoom_anchor = Vector3.INF
+	shadow = peer
+	user_moved = true
+	if world.hud:
+		world.hud.flash("Watching %s's view  (pan, turn or zoom to take the camera back)" % Net.player_name(peer))
+
+
+func stop_shadow() -> void:
+	if shadow == 0:
+		return
+	var who := Net.player_name(shadow)
+	shadow = 0
+	if world.hud:
+		world.hud.flash("Back to your own view (%s's view released)" % who)
 
 
 ## Saves the view on a function key, or goes back to it.
@@ -243,6 +277,7 @@ func _view_process(_scaled_dt: float) -> void:
 		stop_follow()
 	if move != Vector2.ZERO or turn != 0.0 or lift != 0.0 or zoom != 0.0:
 		user_moved = true
+		stop_shadow()
 	# ease in and out over a few frames: starts and stops read as a glide, not a jolt
 	_vel = _vel.lerp(move, 1.0 - exp(-dt * 14.0))
 	if move == Vector2.ZERO and _vel.length_squared() < 0.0001:
@@ -274,6 +309,17 @@ func _view_process(_scaled_dt: float) -> void:
 				stop_follow()
 		if follow:
 			focus_pos = focus_pos.lerp(_follow_at, 1.0 - exp(-dt * 3.5))
+	if shadow != 0:
+		var sp = world.coop.peers.get(shadow) if world.coop else null
+		if sp == null:
+			stop_shadow()
+		else:
+			# his view, eased so his own jumps read as a quick glide
+			var k := 1.0 - exp(-dt * 7.0)
+			focus_pos = focus_pos.lerp(sp.focus, k)
+			yaw = lerp_angle(yaw, sp.yaw, k)
+			tilt = lerpf(tilt, sp.tilt, k)
+			target_dist = sp.dist
 	focus_pos = _clamp_map(focus_pos)
 	dist = lerpf(dist, target_dist, 1.0 - exp(-dt * 10.0))
 	_shake = maxf(0.0, _shake - dt * 2.0)
@@ -291,9 +337,14 @@ func _view_process(_scaled_dt: float) -> void:
 func pitch() -> float:
 	if not is_nan(pitch_deg):
 		return pitch_deg
-	var k := clampf((dist - MIN_DIST) / (MAX_DIST - MIN_DIST), 0.0, 1.0)
-	var p := clampf(lerpf(-38.0, -66.0, k) + tilt, PITCH_MIN, PITCH_MAX)
-	return minf(p, -rad_to_deg(asin(clampf(MIN_HEIGHT / maxf(dist, 0.1), 0.0, 1.0))))
+	return pitch_for(dist, tilt)
+
+
+## The pitch a camera this far out and tilted this much looks down at.
+static func pitch_for(d: float, t: float) -> float:
+	var k := clampf((d - MIN_DIST) / (MAX_DIST - MIN_DIST), 0.0, 1.0)
+	var p := clampf(lerpf(-38.0, -66.0, k) + t, PITCH_MIN, PITCH_MAX)
+	return minf(p, -rad_to_deg(asin(clampf(MIN_HEIGHT / maxf(d, 0.1), 0.0, 1.0))))
 
 
 func _apply() -> void:
@@ -322,6 +373,7 @@ func _unhandled_input(ev: InputEvent) -> void:
 				_mmb_pan = (int(Settings.get_v("mmb_mode")) == 1) != mb.alt_pressed
 				_gliding = false
 				_zoom_anchor = Vector3.INF
+				stop_shadow()
 				if _mmb_pan:
 					_grab = ground_point(mb.position)
 					_grab_far = Defs.flat(_grab - focus_pos).length() > dist * 2.5
