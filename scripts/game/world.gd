@@ -263,6 +263,15 @@ var _graveyard: Array = []
 var _grave_t := 0.0
 
 
+## (view) An entity cleared away within the last few minutes, by its id (or null).
+func gone_entity(eid: int) -> Entity:
+	for i in range(_graveyard.size() - 1, -1, -1):
+		var e = _graveyard[i][0]
+		if is_instance_valid(e) and e.eid == eid:
+			return e
+	return null
+
+
 func _sweep_graveyard() -> void:
 	while not _graveyard.is_empty() and _graveyard[0][1] < time:
 		var e = _graveyard.pop_front()[0]

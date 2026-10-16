@@ -50,6 +50,7 @@ game/bt.gd              a small behaviour tree (selector, sequence, condition, a
 game/squad.gd           shared knowledge, rescues, smoke, surrender, auto-engineering
 game/squad_brain.gd     the squad's behaviour tree: battle drills, morale, fire discipline, ammo sharing
 game/water.gd           rivers, ponds, the sea: laid out as shapes, rasterized into ground kinds and heights
+game/water_view.gd      (view) the water surface: swell, surf, reflections, wakes, foam and oil on the water
 game/naval_ai.gd        the AI's navy: docks, gunboat patrols, amphibious raids
 game/tactics.gd         moving tactically (bounding overwatch, recon by fire), clearing houses, near ambush, stragglers, crews
 game/ambush_plan.gd     a deliberate road ambush: rally point, the L, the killing zone, spring, withdraw
@@ -133,8 +134,10 @@ Pass these after `--` on the command line:
 --scenario=... --play                                 command the Coalition side of a scenario instead of watching
 --focus-fob=0|1                                       keep the camera on that side's first FOB
 --focus-town[=dx,dz] / --focus-decor=kind[,n]         camera on the town, or on a piece of street furniture
+--focus-vehicle=kind                                  camera on the first vehicle of a kind (--blast-at=f,0,SIZE,T blows it up)
 --blast-at=X,Z,SIZE,TIME                              a real explosion at that spot and time (physics tests);
-                                                      X,Z of "f,DX" is DX metres beside the camera's focus
+                                                      X,Z of "f,DX" is DX metres beside the camera's focus (or "v:KIND,DX"
+                                                      beside the first vehicle of that kind)
 --pitch=-14 --cam-yaw=-0.84                           fixed camera pitch (degrees) and heading (model close-ups)
 --cam-test                                            drive the camera through its controls (zoom to cursor, grab-pan,
                                                       turn and tilt, reset, saved views, follow, turning minimap) and

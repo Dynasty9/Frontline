@@ -290,10 +290,17 @@ function and an autopilot function.
   flank from edge to edge: a concrete road bridge where the cross road crosses it, a ford in each half, muddy
   banks. A pond lies in each half. Deep water is impassable on foot or in a vehicle; men and vehicles can wade
   the shallows (fords, the edge of the beach) - slowly, and exposed. The beds are carved into the ground, so a
-  man wading sinks to his knees, and the water is drawn with depth-tinted colour (turquoise shallows, deep
-  blue sea, murky green ponds), soft ripples flowing downstream, foam along every shore and a swell on the sea.
-  Bridges and the harbour are key points the AI fights over. The water is laid out on the server as a few
-  shapes and rasterized identically on every client.
+  man wading sinks to his knees. Bridges and the harbour are key points the AI fights over. The water is laid
+  out on the server as a few shapes and rasterized identically on every client.
+- **How the water looks** (`water_view.gd`). The surface is drawn in tiles only where there's water. A swell
+  of a few long wave trains rolls in off the open sea in groups, dying away as the water shoals; breakers spill
+  unevenly along the beach and each one surges up the sand and drains back, leaving it dark and wet. The bed
+  shows through the water, bent by the ripples and dimmed with depth (red light dies first, so sand under the
+  sea turns turquoise and the open sea goes deep blue; fresh water is peaty green-brown), and the sky and its
+  clouds are reflected, more the flatter you look across it. The sun glitters off every ripple (a moon path at
+  night, only a sheen under cloud), rain dimples the water with rings, the wind's chop roughens in gusts, and
+  foam gathers wherever the water meets a bank, a hull or a pile, with whitecaps on the biggest waves. Boats
+  ride the same swell the player sees (the CPU samples the waves the shader draws).
 - On the 1 km map, country lanes branch off the main road to a village in each quarter (mirrored between the
   sides), and on the west the lanes run on over the river - each on its own bridge - to farming villages on
   the far bank: three bridges and two fords across the river in all.
@@ -434,10 +441,15 @@ function and an autopilot function.
   with a stabilised 25 mm). Rebels: an armed motorboat (PKM, four men), the Speedboat HMG and the **Gun
   Trawler** (a converted steel fishing boat with a ZU-23-2 on the foredeck). Boats find their way on their own
   grid of open water (shallows only to nose in to a beach; the low bridge stops them), sit in the water at
-  their draft, pitch up as they get on the plane, heel into turns and leave a wake. Men board a boat lying off
-  a beach or bank by wading out to it, and go ashore over the side wherever it stops by land at the end of a
-  trip. A boat that's sunk goes down in a blast; whoever's aboard swims for the nearest bank. Shells landing in
-  the water throw up a column of spray instead of digging a crater.
+  their draft, pitch and roll over the swell, lift their bows as they get on the plane, heel into turns and
+  throw spray off the bow going hard. Each leaves a wake on the water: white water churned up astern in streaks
+  that spread and fade into a smooth streak, and the bow wave running out in a V at the Kelvin angle (a wake
+  hides with a boat hidden in the fog of war). Men board a boat lying off a beach or bank by wading out to it,
+  and go ashore over the side wherever it stops by land at the end of a trip. A boat that's sunk blows up and
+  founders: she floods, lists over and goes down by the head or the stern, burning till the water closes over
+  the fire, foam boiling up along her as the air comes out, and leaves a rainbowed oil slick with wreckage
+  drifting in it; whoever's aboard swims for the nearest bank. Shells landing in the water throw up a column of
+  spray and leave a ring of foam spreading on the surface instead of a crater; bullets kick up white spouts.
 - **Driving.** A driver steers for a point some way down the road (pure pursuit: further ahead the faster he
   goes), slows for the bends he can see coming - as fast as the tyres or tracks hold the curve - and brakes to
   stop where he's sent. Wheeled vehicles steer like cars: a real turning circle from their wheelbase and
