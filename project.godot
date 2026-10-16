@@ -19,10 +19,12 @@ boot_splash/use_filter=true
 
 [autoload]
 
+Links="*res://scripts/autoload/links.gd"
 Defs="*res://scripts/autoload/defs.gd"
 Net="*res://scripts/autoload/net.gd"
 Sfx="*res://scripts/autoload/sfx.gd"
 Settings="*res://scripts/autoload/settings.gd"
+Online="*res://scripts/autoload/online.gd"
 
 [display]
 

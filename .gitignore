@@ -2,7 +2,7 @@
 .godot/
 .import/
 export/
-export_presets.cfg
+build/
 *.tmp
 # OS / editor clutter
 .DS_Store

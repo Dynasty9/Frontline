@@ -32,6 +32,24 @@ var _side_cards := {}
 var _mood_chips := {}
 var _col: VBoxContainer
 var hint: Label  # the networking hint, shown in the lobby
+# online: the list of battles, the account, and the lobby's listing
+var browse_panel: PanelContainer
+var browse_list: VBoxContainer
+var browse_msg: Label
+var _browse_n := 0  # the latest refresh (an older answer arriving late is dropped)
+var account_panel: PanelContainer
+var acct_email: LineEdit
+var acct_pass: LineEdit
+var acct_callsign: LineEdit
+var acct_msg: Label
+var acct_btns: Array[Button] = []
+var acct_btn: Button  # Sign in / Sign out, beside the callsign
+var acct_tag: Label
+var list_check: CheckBox
+var online_label: Label
+var _mm_busy := false  # Find Match is working through battles
+var _mm_tries: Array = []  # lobby ids it has tried this time
+var _mm_attempt := 0  # bumps with every join attempt, so stale timeouts do nothing
 
 const SIDES := [
 	[0, "COALITION", "A regular army. Tanks, IFVs, Humvees, attack helicopters, air strikes and artillery. Fewer men, better kit, long supply lines."],
@@ -67,7 +85,7 @@ func _ready() -> void:
 	margin.anchor_bottom = 1.0
 	margin.offset_right = 600
 	margin.add_theme_constant_override("margin_left", 72)
-	margin.add_theme_constant_override("margin_top", 80)
+	margin.add_theme_constant_override("margin_top", 60)
 	margin.add_theme_constant_override("margin_bottom", 40)
 	add_child(margin)
 	var col := VBoxContainer.new()
@@ -101,7 +119,7 @@ func _ready() -> void:
 	var tag := UiKit.label("SQUAD TACTICS  \u00b7  COMBINED ARMS  \u00b7  COMMAND", 13, UiKit.ACCENT, 700)
 	col.add_child(tag)
 	var gap := Control.new()
-	gap.custom_minimum_size = Vector2(0, 18)
+	gap.custom_minimum_size = Vector2(0, 4)
 	col.add_child(gap)
 
 	# main screen: grouped entries, each saying what it does
@@ -114,22 +132,9 @@ func _ready() -> void:
 	main_box.add_child(_big("Missions", "Short operations with objectives, alone or in co-op", _open_missions))
 	main_box.add_child(_big("Watch AI Battle", "Two AI commanders fight; the camera finds the action", func(): _open_op(-1)))
 	main_box.add_child(_section("MULTIPLAYER"))
+	main_box.add_child(_big("Find Match", "Join an open battle online, or host one for others to find", _find_match))
 	main_box.add_child(_big("Host Multiplayer", "Co-op against the AI, or player against player", _host))
-	main_box.add_child(_big("Join Game", "Connect to a battle a friend is hosting", func(): join_row.visible = not join_row.visible))
-	join_row = HBoxContainer.new()
-	join_row.add_theme_constant_override("separation", 6)
-	join_row.visible = false
-	ip_edit = LineEdit.new()
-	ip_edit.text = "127.0.0.1"
-	ip_edit.custom_minimum_size = Vector2(190, 36)
-	port_spin = SpinBox.new()
-	port_spin.min_value = 1024
-	port_spin.max_value = 65535
-	port_spin.value = Net.DEFAULT_PORT
-	join_row.add_child(ip_edit)
-	join_row.add_child(port_spin)
-	join_row.add_child(_btn("Connect", _join))
-	main_box.add_child(join_row)
+	main_box.add_child(_big("Join Game", "Browse the battles being hosted, or connect by address", _open_browser))
 	main_box.add_child(_section("REFERENCE"))
 	main_box.add_child(_big("Field Manual", "Every soldier, weapon, vehicle and work, with its numbers", func(): manual.visible = true))
 	main_box.add_child(_big("Settings", "Graphics, display, interface and sound", func(): settings_panel.visible = true))
@@ -137,7 +142,21 @@ func _ready() -> void:
 	var gap2 := Control.new()
 	gap2.custom_minimum_size = Vector2(0, 14)
 	main_box.add_child(gap2)
-	main_box.add_child(_row("Callsign", _make_name_edit()))
+	var who := HBoxContainer.new()
+	who.add_theme_constant_override("separation", 8)
+	who.add_child(_make_name_edit())
+	acct_btn = _btn("Sign in", func():
+		if Online.signed_in():
+			Online.sign_out()
+			_say("Signed out. You can still play online under any callsign.")
+		else:
+			_open_account())
+	acct_btn.custom_minimum_size = Vector2(96, 34)
+	who.add_child(acct_btn)
+	acct_tag = UiKit.label("ACCOUNT", 11, UiKit.GOOD, 700)
+	acct_tag.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	who.add_child(acct_tag)
+	main_box.add_child(_row("Callsign", who))
 
 	# lobby
 	lobby_box = VBoxContainer.new()
@@ -170,6 +189,14 @@ func _ready() -> void:
 	drop_check.button_pressed = true
 	drop_check.toggled.connect(func(v): Net.set_setting("drop_in", v))
 	lobby_box.add_child(drop_check)
+	list_check = CheckBox.new()
+	list_check.text = "List online, so Find Match can bring players here"
+	list_check.toggled.connect(_on_list_toggled)
+	lobby_box.add_child(list_check)
+	online_label = UiKit.label("", 12, UiKit.DIM)
+	online_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	online_label.custom_minimum_size = Vector2(460, 0)
+	lobby_box.add_child(online_label)
 	var chat_panel := PanelContainer.new()
 	chat_panel.add_theme_stylebox_override("panel", UiKit.box(Color(0, 0, 0, 0.35), 6, UiKit.LINE, 1, 8.0))
 	lobby_box.add_child(chat_panel)
@@ -196,7 +223,7 @@ func _ready() -> void:
 	var spacer := Control.new()
 	spacer.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	col.add_child(spacer)
-	hint = UiKit.label("Multiplayer: the host forwards UDP port %d (or plays on a LAN / VPN). Co-op: everyone picks the same side." % Net.DEFAULT_PORT, 12, Color(0.75, 0.75, 0.7, 0.7))
+	hint = UiKit.label("Co-op: everyone picks the same side. Friends can also join by your address: forward UDP port %d, or play on a LAN or VPN." % Net.DEFAULT_PORT, 12, Color(0.75, 0.75, 0.7, 0.7))
 	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	hint.custom_minimum_size = Vector2(460, 0)
 	hint.visible = false
@@ -223,6 +250,8 @@ func _ready() -> void:
 
 	_build_op_panel()
 	_build_mission_panel()
+	_build_browse_panel()
+	_build_account_panel()
 	var foot := UiKit.label("ALPHA BUILD  \u00b7  GODOT %s  \u00b7  F4 FIELD MANUAL IN BATTLE" % Engine.get_version_info().string.to_upper(), 11, Color(0.75, 0.75, 0.7, 0.45), 600)
 	foot.anchor_left = 1.0
 	foot.anchor_right = 1.0
@@ -238,6 +267,15 @@ func _ready() -> void:
 	Net.lobby_updated.connect(_refresh)
 	Net.lobby_chat.connect(func(t): chat_log.append_text(t + "\n"))
 	multiplayer.connected_to_server.connect(func(): _show_lobby())
+	Online.listing_changed.connect(_refresh)
+	Online.account_changed.connect(_on_account)
+	_on_account()
+	# a Join or Find Match link from the website: the one we were started with,
+	# and any a second copy hands on while we run
+	Links.link_opened.connect(open_link)
+	if Links.pending != "":
+		open_link.call_deferred(Links.pending)
+		Links.pending = ""
 	_on_visibility()
 
 
@@ -255,7 +293,7 @@ func _on_visibility() -> void:
 func _big(text: String, sub: String, cb: Callable) -> Button:
 	var b := Button.new()
 	b.text = ""
-	b.custom_minimum_size = Vector2(420, 58 if sub != "" else 44)
+	b.custom_minimum_size = Vector2(420, 54 if sub != "" else 44)
 	b.focus_mode = Control.FOCUS_NONE
 	var n := UiKit.box(Color(0, 0, 0, 0.0), 2, Color(0, 0, 0, 0), 0, 0.0)
 	var h := UiKit.box(Color(UiKit.ACCENT.r, UiKit.ACCENT.g, UiKit.ACCENT.b, 0.12), 2, UiKit.ACCENT, 0, 0.0)
@@ -309,16 +347,7 @@ func _section(text: String) -> Control:
 
 ## The operation panel: which side (or just watch) and the time of day.
 func _build_op_panel() -> void:
-	op_panel = PanelContainer.new()
-	op_panel.add_theme_stylebox_override("panel", UiKit.boxc(Color(0.035, 0.045, 0.045, 0.9), 6, UiKit.LINE, 1, 22.0, 10))
-	op_panel.anchor_top = 0.5
-	op_panel.anchor_bottom = 0.5
-	op_panel.offset_left = 640
-	op_panel.offset_right = 1180
-	op_panel.offset_top = -270
-	op_panel.offset_bottom = 290
-	op_panel.visible = false
-	add_child(op_panel)
+	op_panel = _side_panel()
 	var v := VBoxContainer.new()
 	v.add_theme_constant_override("separation", 12)
 	op_panel.add_child(v)
@@ -397,7 +426,15 @@ func _build_op_panel() -> void:
 	row.add_child(_btn("Back", func(): op_panel.visible = false))
 
 
+## The panels on the right of the menu take turns: opening one closes the rest.
+func _close_panels() -> void:
+	for p: Control in [op_panel, ms_panel, browse_panel, account_panel]:
+		if p:
+			p.visible = false
+
+
 func _open_op(side: int) -> void:
+	_close_panels()
 	_pick_side(side)
 	_pick_mood(String(Settings.get_v("mood")))
 	op_panel.visible = true
@@ -431,11 +468,13 @@ func _deploy() -> void:
 
 
 func _unhandled_input(ev: InputEvent) -> void:
-	if visible and ev is InputEventKey and ev.pressed and (ev as InputEventKey).keycode == KEY_ESCAPE:
-		for p in [op_panel, ms_panel]:
-			if p and p.visible:
-				p.visible = false
-				get_viewport().set_input_as_handled()
+	if not (visible and ev is InputEventKey and ev.pressed and (ev as InputEventKey).keycode == KEY_ESCAPE):
+		return
+	for p: Control in [account_panel, browse_panel, ms_panel, op_panel]:
+		if p and p.visible:
+			p.visible = false
+			get_viewport().set_input_as_handled()
+			return
 
 
 # --- missions ------------------------------------------------------------------------------
@@ -531,7 +570,7 @@ func _build_mission_panel() -> void:
 
 
 func _open_missions() -> void:
-	op_panel.visible = false
+	_close_panels()
 	if _ms_key == "":
 		_ms_key = String(Missions.playable()[0].key)
 	_pick_mission(_ms_key)
@@ -612,7 +651,24 @@ func _make_name_edit() -> LineEdit:
 	name_edit.max_length = 20
 	name_edit.custom_minimum_size = Vector2(240, 34)
 	name_edit.text_changed.connect(func(t): Net.my_name = t if t.strip_edges() != "" else "Commander")
+	# signed in, the callsign belongs to the account: changing it here renames it
+	name_edit.text_submitted.connect(func(_t): _rename())
+	name_edit.focus_exited.connect(_rename)
 	return name_edit
+
+
+func _rename() -> void:
+	var want := name_edit.text.strip_edges()
+	if not Online.signed_in() or want == Online.callsign or want == "":
+		return
+	_say("Renaming...")
+	var r: Dictionary = await Online.rename(want)
+	if r.ok:
+		_say("You are now %s." % Online.callsign)
+	else:
+		name_edit.text = Online.callsign
+		Net.my_name = Online.callsign
+		_say(String(r.error), true)
 
 
 func _row(label: String, w: Control) -> HBoxContainer:
@@ -638,13 +694,26 @@ func show_menu(msg: String) -> void:
 	main_box.visible = true
 	lobby_box.visible = false
 	hint.visible = false
+	if _mm_busy and msg != "":
+		# that battle wouldn't take us: Find Match tries the next
+		_mm_next.call_deferred()
+		return
+	_say(msg, true)
+
+
+## A line under the menu: progress in the normal colour, problems in red.
+func _say(msg: String, bad := false) -> void:
 	status.text = msg
+	status.add_theme_color_override("font_color", UiKit.BAD if bad else UiKit.DIM)
 
 
 func _show_lobby() -> void:
+	_mm_busy = false
+	_mm_attempt += 1
 	main_box.visible = false
 	lobby_box.visible = true
 	hint.visible = true
+	browse_panel.visible = false
 	status.text = ""
 	_refresh()
 
@@ -677,20 +746,358 @@ func _observe() -> void:
 	Net.start_game()
 
 
+## Host, listed online (untick it in the lobby to keep the battle to friends
+## who have your address).
 func _host() -> void:
-	var err := Net.host_game(int(port_spin.value))
+	var port := int(port_spin.value)
+	_say("Setting up the battle...")
+	var err: int = await Online.host(port)
 	if err != OK:
-		status.text = "Could not host on port %d (error %d). Is it already in use?" % [int(port_spin.value), err]
+		_say("Could not host on port %d (error %d). Is it already in use?" % [port, err], true)
 		return
 	_show_lobby()
 
 
 func _join() -> void:
+	_mm_busy = false
+	browse_panel.visible = false
 	var err := Net.join_game(ip_edit.text.strip_edges(), int(port_spin.value))
 	if err != OK:
-		status.text = "Could not connect (error %d)." % err
+		_say("Could not connect (error %d)." % err, true)
 		return
-	status.text = "Connecting to %s..." % ip_edit.text
+	_say("Connecting to %s..." % ip_edit.text)
+
+
+func _on_list_toggled(on: bool) -> void:
+	if on:
+		Online.list_game()
+	else:
+		Online.unlist()
+
+
+# --- Find Match -----------------------------------------------------------------------
+
+## Join the best open battle online, or if there is none, host one for others
+## to find. Pressed again while it's looking, it stops.
+func _find_match() -> void:
+	if _mm_busy:
+		_mm_busy = false
+		_mm_attempt += 1
+		Net.leave()
+		_say("Stopped looking.")
+		return
+	_mm_busy = true
+	_mm_tries.clear()
+	_mm_next()
+
+
+## One step of Find Match: ask the matchmaker for the best battle we haven't
+## tried and join it. When there's none left (or a few hosts' routers wouldn't
+## let us through) host one instead and wait to be found.
+func _mm_next() -> void:
+	if not _mm_busy:
+		return
+	_mm_attempt += 1
+	var attempt := _mm_attempt
+	_say("Looking for a battle...")
+	var r: Dictionary = await Online.find_match(_mm_tries)
+	if not _mm_busy or attempt != _mm_attempt:
+		return
+	if not r.ok:
+		_mm_busy = false
+		_say("%s Host a battle, or join one by address." % r.error, true)
+		return
+	var l: Variant = r.data.get("lobby")
+	if not (l is Dictionary) or _mm_tries.size() >= 4:
+		_mm_busy = false
+		_say("No open battles. Hosting one for others to find...")
+		_host()
+		return
+	_mm_tries.append(String(l.id))
+	_say("Joining %s..." % String(l.name))
+	var j: Dictionary = await Online.join_listed(String(l.id))
+	if not _mm_busy or attempt != _mm_attempt:
+		return
+	if int(j.err) != OK:
+		_mm_next()
+		return
+	_watch_connect(attempt, String(l.host))
+
+
+## ENet takes a long while to give up on a host it can't reach. If we're not
+## through in a few seconds, punching didn't work: drop it and move on.
+func _watch_connect(attempt: int, host_name: String) -> void:
+	await get_tree().create_timer(12.0, true, false, true).timeout
+	if attempt != _mm_attempt or lobby_box.visible or Net.in_game:
+		return
+	var mp := multiplayer.multiplayer_peer
+	if mp is ENetMultiplayerPeer and mp.get_connection_status() == MultiplayerPeer.CONNECTION_CONNECTED:
+		return
+	Net.leave()
+	if _mm_busy:
+		_mm_next()
+	else:
+		_say("Couldn't get through to %s's router. Try another battle." % host_name, true)
+
+
+# --- links from the website -------------------------------------------------------------
+
+## A frontline:// link (Links): join that battle, or press Find Match. Ignored
+## in a battle, a lobby or while connecting, so a stray click never pulls
+## anyone out of a game (or a host away from the one they're hosting).
+func open_link(url: String) -> void:
+	if not visible or Net.in_game:
+		return
+	var mp := multiplayer.multiplayer_peer
+	if lobby_box.visible or (mp is ENetMultiplayerPeer and mp.get_connection_status() != MultiplayerPeer.CONNECTION_DISCONNECTED):
+		_say("You're already in a lobby: leave it first to join another battle.", true)
+		return
+	var what: Array = Links.parse(url)
+	match String(what[0]):
+		"find-match":
+			if not _mm_busy:
+				_find_match()
+		"join":
+			_join_by_id(String(what[1]))
+
+
+## Join a listed battle by its id. The list asked for is this build's version
+## only, so a battle running another version reads as not found.
+func _join_by_id(id: String) -> void:
+	_close_panels()
+	_say("Finding the battle...")
+	var r: Dictionary = await Online.browse()
+	if not r.ok:
+		_say(String(r.error), true)
+		return
+	for l in r.data.get("lobbies", []):
+		if l is Dictionary and String(l.get("id", "")) == id:
+			_join_listed(l)
+			return
+	_say("That battle isn't listed any more, or it runs a different version of Frontline.", true)
+
+
+# --- the list of battles --------------------------------------------------------------
+
+func _build_browse_panel() -> void:
+	browse_panel = _side_panel()
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 10)
+	browse_panel.add_child(v)
+	v.add_child(UiKit.label("ONLINE", 13, UiKit.ACCENT, 700))
+	v.add_child(UiKit.label("Join a battle", 24, UiKit.TEXT, 600))
+	var scroll := ScrollContainer.new()
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	v.add_child(scroll)
+	browse_list = VBoxContainer.new()
+	browse_list.add_theme_constant_override("separation", 6)
+	browse_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.add_child(browse_list)
+	browse_msg = UiKit.label("", 13, UiKit.DIM)
+	browse_msg.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	browse_list.add_child(browse_msg)
+	v.add_child(UiKit.label("Or connect by address", 15, UiKit.DIM, 600))
+	join_row = HBoxContainer.new()
+	join_row.add_theme_constant_override("separation", 6)
+	ip_edit = LineEdit.new()
+	ip_edit.text = "127.0.0.1"
+	ip_edit.custom_minimum_size = Vector2(190, 36)
+	ip_edit.text_submitted.connect(func(_t): _join())
+	port_spin = SpinBox.new()
+	port_spin.min_value = 1024
+	port_spin.max_value = 65535
+	port_spin.value = Net.DEFAULT_PORT
+	join_row.add_child(ip_edit)
+	join_row.add_child(port_spin)
+	join_row.add_child(_btn("Connect", _join))
+	v.add_child(join_row)
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 10)
+	row.add_child(_btn("Refresh", _refresh_browser))
+	row.add_child(_btn("Back", func(): browse_panel.visible = false))
+	v.add_child(row)
+
+
+## A panel on the right of the menu, where the new-operation panel sits.
+func _side_panel() -> PanelContainer:
+	var p := PanelContainer.new()
+	p.add_theme_stylebox_override("panel", UiKit.boxc(Color(0.035, 0.045, 0.045, 0.9), 6, UiKit.LINE, 1, 22.0, 10))
+	p.anchor_top = 0.5
+	p.anchor_bottom = 0.5
+	p.offset_left = 640
+	p.offset_right = 1180
+	p.offset_top = -270
+	p.offset_bottom = 290
+	p.visible = false
+	add_child(p)
+	return p
+
+
+func _open_browser() -> void:
+	_close_panels()
+	browse_panel.visible = true
+	browse_panel.modulate.a = 0.0
+	create_tween().tween_property(browse_panel, "modulate:a", 1.0, 0.18)
+	_refresh_browser()
+
+
+func _refresh_browser() -> void:
+	_browse_n += 1
+	var n := _browse_n
+	for c in browse_list.get_children():
+		if c != browse_msg:
+			c.queue_free()
+	browse_msg.text = "Looking for battles..."
+	var r: Dictionary = await Online.browse()
+	if n != _browse_n:
+		return
+	if not r.ok:
+		browse_msg.text = "%s You can still connect by address." % r.error
+		return
+	var ls: Array = r.data.get("lobbies", [])
+	browse_msg.text = "Nobody is hosting right now. Find Match hosts a battle for others to find." if ls.is_empty() else ""
+	for l in ls:
+		if l is Dictionary:
+			browse_list.add_child(_battle_row(l))
+
+
+func _battle_row(l: Dictionary) -> Control:
+	var card := PanelContainer.new()
+	card.add_theme_stylebox_override("panel", UiKit.box(Color(1, 1, 1, 0.03), 4, Color(1, 1, 1, 0.07), 1, 10.0))
+	var h := HBoxContainer.new()
+	h.add_theme_constant_override("separation", 10)
+	card.add_child(h)
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 2)
+	v.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	h.add_child(v)
+	var nm := UiKit.label(String(l.get("name", "Battle")), 16, UiKit.TEXT, 600)
+	nm.clip_text = true
+	v.add_child(nm)
+	var full := int(l.get("players", 0)) >= int(l.get("max_players", 8))
+	var running := bool(l.get("in_game", false))
+	var closed := running and not bool(l.get("drop_in", true))
+	var where := ("in battle" + (", closed" if closed else "")) if running else "in the lobby"
+	var sub := "%s%s  ·  %d/%d players  ·  %s" % [String(l.get("host", "")), "  ✓" if bool(l.get("verified", false)) else "",
+		int(l.get("players", 0)), int(l.get("max_players", 8)), where]
+	if String(l.get("nat", "")) == "strict":
+		sub += "  ·  strict router"
+	v.add_child(UiKit.label(sub, 12, UiKit.DIM))
+	var b := _btn("Join", func(): _join_listed(l))
+	b.disabled = full or closed
+	b.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	h.add_child(b)
+	return card
+
+
+func _join_listed(l: Dictionary) -> void:
+	_mm_busy = false
+	_mm_attempt += 1
+	var attempt := _mm_attempt
+	browse_panel.visible = false
+	_say("Joining %s..." % String(l.get("name", "")))
+	var r: Dictionary = await Online.join_listed(String(l.id))
+	if attempt != _mm_attempt:
+		return
+	if int(r.err) != OK:
+		_say(String(r.error), true)
+		return
+	_watch_connect(attempt, String(l.get("host", "the host")))
+
+
+# --- the account ----------------------------------------------------------------------
+
+func _build_account_panel() -> void:
+	account_panel = PanelContainer.new()
+	account_panel.add_theme_stylebox_override("panel", UiKit.boxc(Color(0.035, 0.045, 0.045, 0.95), 6, UiKit.LINE, 1, 22.0, 10))
+	account_panel.set_anchors_preset(Control.PRESET_CENTER)
+	account_panel.offset_left = -240
+	account_panel.offset_right = 240
+	account_panel.offset_top = -185
+	account_panel.offset_bottom = 185
+	account_panel.visible = false
+	add_child(account_panel)
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 10)
+	account_panel.add_child(v)
+	v.add_child(UiKit.label("ACCOUNT", 13, UiKit.ACCENT, 700))
+	v.add_child(UiKit.label("Sign in", 24, UiKit.TEXT, 600))
+	var blurb := UiKit.label("You don't need an account to play online. One keeps your callsign yours: no one else can register it, and battles you host show a tick so players know it's you.", 13, UiKit.DIM)
+	blurb.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	v.add_child(blurb)
+	acct_email = LineEdit.new()
+	acct_email.placeholder_text = "Email"
+	acct_pass = LineEdit.new()
+	acct_pass.placeholder_text = "Password (8 characters or more)"
+	acct_pass.secret = true
+	acct_pass.text_submitted.connect(func(_t): _acct_go(false))
+	acct_callsign = LineEdit.new()
+	acct_callsign.placeholder_text = "Callsign (new accounts only)"
+	acct_callsign.max_length = 20
+	for e: LineEdit in [acct_email, acct_pass, acct_callsign]:
+		e.custom_minimum_size = Vector2(0, 36)
+		v.add_child(e)
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 8)
+	v.add_child(row)
+	acct_btns = [_btn("Sign in", func(): _acct_go(false)), _btn("Create account", func(): _acct_go(true))]
+	acct_btns[1].custom_minimum_size = Vector2(150, 36)
+	for b in acct_btns:
+		row.add_child(b)
+	row.add_child(_btn("Close", func(): account_panel.visible = false))
+	acct_msg = UiKit.label("", 13, UiKit.DIM)
+	acct_msg.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	v.add_child(acct_msg)
+
+
+func _open_account() -> void:
+	_close_panels()
+	account_panel.visible = true
+	acct_callsign.text = name_edit.text if name_edit.text != "Commander" else ""
+	acct_msg.text = ""
+	for b in acct_btns:
+		b.disabled = false
+	# say so up front if this matchmaker has no accounts (or can't be reached)
+	var r: Dictionary = await Online.check()
+	if not account_panel.visible:
+		return
+	if not r.ok:
+		acct_msg.text = String(r.error)
+	elif String(r.data.get("accounts", "off")) == "off":
+		acct_msg.text = "This matchmaker doesn't have accounts switched on. You can play online under any callsign."
+		for b in acct_btns:
+			b.disabled = true
+
+
+func _acct_go(create: bool) -> void:
+	for b in acct_btns:
+		b.disabled = true
+	acct_msg.text = "Creating the account..." if create else "Signing in..."
+	var r: Dictionary
+	if create:
+		r = await Online.sign_up(acct_email.text, acct_pass.text, acct_callsign.text)
+	else:
+		r = await Online.sign_in(acct_email.text, acct_pass.text)
+	for b in acct_btns:
+		b.disabled = false
+	if not r.ok:
+		acct_msg.text = String(r.error)
+	elif r.get("confirm", false):
+		acct_msg.text = "Check your email for the confirmation link, then sign in here."
+	else:
+		acct_pass.text = ""
+		account_panel.visible = false
+		_say("Signed in as %s." % Online.callsign)
+
+
+func _on_account() -> void:
+	var on := Online.signed_in()
+	acct_btn.text = "Sign out" if on else "Sign in"
+	acct_tag.visible = on
+	if on and Online.callsign != "":
+		name_edit.text = Online.callsign
+	name_edit.tooltip_text = ("Signed in as %s. Change it here to rename your account." % Online.email) if on else ""
 
 
 func _refresh() -> void:
@@ -726,6 +1133,13 @@ func _refresh() -> void:
 	drop_check.set_pressed_no_signal(bool(Net.settings.get("drop_in", true)))
 	ai_check.set_pressed_no_signal(bool(Net.settings.get("ai_fill", true)))
 	ally_check.set_pressed_no_signal(bool(Net.settings.get("ai_allies", false)))
+	# the online listing: only for a battle hosted from the menu (not a
+	# single-player one), and only the host sees it
+	var online := host and Online.hosting()
+	list_check.visible = online
+	list_check.set_pressed_no_signal(Online.want_listed)
+	online_label.visible = online
+	online_label.text = Online.listing_text() if online else ""
 	start_btn.disabled = not host
 	var mode := "Co-op vs AI" if (counts[0] == 0 or counts[1] == 0) else "Player vs Player"
 	start_btn.text = ("Start Battle (%s)" % mode if mk == "" else "Start Mission (%d players)" % (counts[0] + counts[1])) if host else "Waiting for host..."

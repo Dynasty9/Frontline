@@ -1,0 +1,16 @@
+{
+  "name": "frontline-matchmaker",
+  "version": "1.0.0",
+  "description": "Lobby list and quick match for Frontline, with optional Supabase accounts",
+  "private": true,
+  "type": "module",
+  "main": "src/server.js",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "node src/server.js",
+    "test": "node --test"
+  },
+  "license": "MIT"
+}
