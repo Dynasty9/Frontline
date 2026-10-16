@@ -18,8 +18,8 @@ option on its own, laid out like a PC game's options screen:
   film grain, tilt-shift depth of field.
 - **Display:** window mode (windowed / borderless / exclusive fullscreen), window size, VSync, frame-rate cap,
   field of view, performance overlay.
-- **Interface:** interface scale, unit activity labels, speech bubbles, cover preview, edge scrolling,
-  camera speed, camera shake.
+- **Interface:** interface scale (relative to the window: `Settings.ui_factor()` is what the window's 2D is
+  drawn at), unit activity labels, speech bubbles, cover preview, edge scrolling, camera speed, camera shake.
 
 Settings are saved to `user://settings.cfg`.
 
@@ -137,6 +137,8 @@ Pass these after `--` on the command line:
 --follow=TEAM[,N]                                     keep the camera on that side's Nth squad (tactics review)
 --trace=path.csv                                      log every man twice a second (position, posture, phase) for plotting
 --manual=CATEGORY[,ENTRY[,SIDE]]                      open the field manual on a page (in a battle)
+--hud-panel=settings|help|menu|log [--settings-tab=T] open one of the battle's panels (layout checks; add
+                                                      --set=ui_scale:3 for the largest scale the window allows)
 --pan=VX,VZ / --set=key:value,...                     drift the camera (shimmer tests) / override single settings
 --scenario=guns                                       every machine-gun emplacement and trench bay, crewed, with targets
 --scenario=roster                                     every vehicle both sides can field, facing off across the map
@@ -205,7 +207,7 @@ Set `FL_DEBUG_ONLINE=1` to print what STUN saw, who the host punches towards, an
 exercise the hole-punching path, give the joiner the matchmaker's LAN address instead of `127.0.0.1` (it then only
 connects if your router loops traffic back in, "hairpinning", which many don't). `--no-stun` skips STUN for offline
 runs, `--login=EMAIL:PASSWORD` (plus `--signup=CALLSIGN` to create the account) signs in first, `--account=PATH`
-keeps that sign-in out of your real one, and `--menu-panel=browse|account` opens those panels for screenshots.
+keeps that sign-in out of your real one, and `--menu-panel=browse|account|settings` opens those panels for screenshots.
 Without `--matchmaker` the game uses the live service on Railway.
 
 ### Join links
