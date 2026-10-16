@@ -25,6 +25,7 @@ Defs="*res://scripts/autoload/defs.gd"
 Net="*res://scripts/autoload/net.gd"
 Sfx="*res://scripts/autoload/sfx.gd"
 Settings="*res://scripts/autoload/settings.gd"
+Music="*res://scripts/autoload/music.gd"
 Online="*res://scripts/autoload/online.gd"
 Updater="*res://scripts/autoload/updater.gd"
 

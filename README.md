@@ -16,7 +16,7 @@ Your soldiers take cover behind real walls and wrecks, keep their heads down und
 
 You can play alone against the computer, team up with friends against it, or fight each other online. The battlefield is a square kilometre of countryside with a town, villages, a river and the sea.
 
-Everything you see and hear is made in code. There are no imported 3D models, textures or sound files.
+Everything you see and hear is made in code, the music included. There are no imported 3D models, textures or sound files.
 
 ## Screenshots
 
