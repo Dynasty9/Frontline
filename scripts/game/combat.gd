@@ -358,6 +358,8 @@ func explode(pos: Vector3, d: Dictionary) -> void:
 		for st in world.structures_near(pos, r + 6.0):
 			if not st.gone and st.skind in ["car", "crates"]:
 				st.toss_from(pos, bsize)
+	# the flash and the burning fragments may set what's close alight
+	world.fires.blast(pos, bsize, r)
 	world.fx_event([Fx.EXPLODE, pos, float(d.get("size", 1.0))])
 	world.terrain.add_crater(pos, float(d.get("size", 1.0)))
 
@@ -372,12 +374,12 @@ func find_cover(s: Soldier, anchor: Vector3, radius: float, threats: Array, pron
 	var cands := []
 	var r2 := radius * radius
 	for st in world.structures_near(anchor, radius + 4.0):
-		if not st.provides_cover():
-			continue
+		if not st.provides_cover() or st.burn > 0.0:
+			continue  # (nobody gets down behind something that's on fire)
 		for i in st.anc_p.size():
 			var p: Vector3 = st.anc_p[i]
 			var d2 := Defs.flat(p - anchor).length_squared()
-			if d2 <= r2:
+			if d2 <= r2 and not world.fires.hot_at(p):
 				cands.append([d2 + Defs.flat(p - s.position).length_squared() * 0.3, st, i])
 	# ground cover too: craters, rubble heaps, woods
 	var tm: TerrainMap = world.terrain
@@ -395,7 +397,7 @@ func find_cover(s: Soldier, anchor: Vector3, radius: float, threats: Array, pron
 					continue  # cells beside walls: the wall's own positions are better
 				var p2 := tm.center(i)
 				var d3 := Defs.flat(p2 - anchor).length_squared()
-				if d3 <= r2 and world.nav.walkable(p2):
+				if d3 <= r2 and world.nav.walkable(p2) and not world.fires.hot_at(p2):
 					cands.append([d3 + Defs.flat(p2 - s.position).length_squared() * 0.3 + 4.0, null, p2])
 	if cands.is_empty():
 		return {}

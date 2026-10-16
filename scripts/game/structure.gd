@@ -72,6 +72,15 @@ var _door_kicked := false
 var _door_leaves: Array = []  # (view) the door leaves: [hinge pivot, how far it swings open]
 var _flag: MeshInstance3D
 var _vis_cache := true
+var burn := 0.0  # how hard it's burning, 0..1 (every peer; see Fires)
+var burnt := false  # burnt out: a charred snag, a burnt-out car - it won't burn again
+var fire_k := ""  # (server) what it burns as, once lit (Fires.FUEL)
+var fuel := 0.0  # (server) seconds of full blaze left
+var fuel_max := 0.0
+var _fire_fx: Node3D  # (view) its flames, embers, smoke and glow
+var _fire_shown := -1  # (view) the burn level the effects were last set for
+var _char := 0.0  # (view) how charred it looks, 0..1
+var _char_mats: Array = []  # (view) its materials with the char on them
 
 
 func ekind() -> String:
@@ -142,12 +151,18 @@ func apply_props(d: Dictionary) -> void:
 			_start_toss()
 	if not srv and not parts.is_empty() and (d.has("toss") or d.has("built")):
 		_compute_cover_pts()  # thrown somewhere else, or finished: its fighting positions moved
+	if d.has("burnt"):
+		var was := burnt
+		burnt = d.burnt
+		if burnt and not was and model:
+			_rebuild_model()  # the snag or the shell the fire left
 
 
 func get_props() -> Dictionary:
 	return {"skind": skind, "team": team, "owner": owner_peer, "pos": position, "yaw": yaw, "size": size,
 		"variant": variant, "built": built, "progress": progress, "hp": hp, "max_hp": max_hp, "sname": sname,
-		"supply": supply, "queue": queue_items, "seen": seen_mask, "vk": vk, "tilt": tilt, "toss": toss, "door": door_shut}
+		"supply": supply, "queue": queue_items, "seen": seen_mask, "vk": vk, "tilt": tilt, "toss": toss, "door": door_shut,
+		"burnt": burnt}
 
 
 func on_spawned() -> void:
@@ -194,6 +209,9 @@ func on_spawned() -> void:
 			_start_toss()
 		if team < 0 and built and not skind in SMOKE_KINDS and skind != "roof":
 			set_process(false)  # map scenery: nothing to update per frame
+	# a vehicle that has just brewed up burns where it died
+	if srv and world.fires and variant >= 6 and skind in ["wreck", "rubble"]:
+		world.fires.ignite(self, 1.0)
 
 
 func _default_hp() -> float:
@@ -228,6 +246,10 @@ func on_despawn() -> void:
 		world.nav.remove_structure(self)
 	if srv and door_shut:
 		world.remove_door(self)
+	if _fire_fx:
+		# blown apart or burnt away: what was alight smoulders where it stood
+		world.fx.vfx.smoulder(_fire_fx, 25.0 if burn > 0.0 else 10.0)
+		_fire_fx = null
 
 
 # --- parts ---------------------------------------------------------------------
@@ -691,6 +713,8 @@ func take_damage(amount: float, _source = null) -> void:
 	if hp <= 0.0:
 		hp = 0.0
 		_destroyed()
+	elif skind == "car" and burn <= 0.0 and hp < max_hp * 0.5 and world.fires and world.rng.randf() < 0.35:
+		world.fires.ignite(self, 0.3)  # holed and leaking: the fuel goes up
 
 
 func smash(_by) -> void:
@@ -927,15 +951,23 @@ static func preview_model(kind: String, side: int, v := 0, sz := Vector3.ZERO, s
 
 ## A tree. Its id decides the look, so every peer builds the same one and
 ## the tree that falls when it is felled is the one that stood: broadleaf
-## (a third are conifers); variant 1 is a small orchard tree.
+## (a third are conifers); variant 1 is a small orchard tree. With 16 set the
+## fire has been through it: the same tree as a bare black snag.
 static func tree_model(root: Node3D, id: int, v: int) -> void:
+	_snag = (v & 16) != 0
+	v &= 15
 	var rng := RandomNumberGenerator.new()
 	rng.seed = id * 7919 + v
 	if v != 1 and (id * 2654435761) % 100 < 34:
 		_conifer(root, rng)
 	else:
 		_broadleaf(root, rng, v == 1)
+	_snag = false
 	Mats.merge_static(root)
+
+
+static var _snag := false  # building a burnt tree: charred limbs, no leaves
+const C_CHAR := Color(0.07, 0.06, 0.05)
 
 
 ## A flared trunk forking into three or four limbs, each carrying a clump of
@@ -944,6 +976,8 @@ static func tree_model(root: Node3D, id: int, v: int) -> void:
 static func _broadleaf(root: Node3D, rng: RandomNumberGenerator, small: bool) -> void:
 	var k := 0.62 if small else 1.0
 	var bark := Res.vary(Color(0.3, 0.24, 0.18), 0.08, rng)
+	if _snag:
+		bark = C_CHAR
 	var leaf: Color = [Color(0.17, 0.27, 0.11), Color(0.2, 0.29, 0.12), Color(0.15, 0.24, 0.12), Color(0.23, 0.29, 0.11)][rng.randi() % 4]
 	leaf = Res.vary(leaf, 0.06, rng)
 	var fork := rng.randf_range(1.9, 2.7) * k
@@ -991,12 +1025,22 @@ static func _conifer(root: Node3D, rng: RandomNumberGenerator) -> void:
 		var r := lerpf(2.3, 0.45, t) * rng.randf_range(0.9, 1.1)
 		var h := step * 2.6
 		var y := 1.2 + i * step
+		if _snag:
+			# the needles are gone: a few bare, drooping black stubs where each tier was
+			var a0 := rng.randf() * TAU
+			for j in 3:
+				var out := Vector3(cos(a0 + TAU * j / 3.0), 0, sin(a0 + TAU * j / 3.0))
+				var base := Vector3(0, y + h * 0.4, 0)
+				_bark(root, base, base + out * r * rng.randf_range(0.35, 0.6) + Vector3(0, -0.25, 0), 0.05, 0.012, C_CHAR)
+			continue
 		var c := Res.mi(root, Res.cyl(0.04, 1.0, 1.0, 9), Mats.foliage(), Vector3(rng.randf_range(-0.06, 0.06), y + h * 0.5, rng.randf_range(-0.06, 0.06)), Vector3(rng.randf_range(-0.07, 0.07), rng.randf() * TAU, rng.randf_range(-0.07, 0.07)))
 		c.scale = Vector3(r * rng.randf_range(0.9, 1.1), h, r * rng.randf_range(0.9, 1.1))
 		c.set_instance_shader_parameter("tint", Res.vary(needles, 0.05, rng).darkened(0.12 * (1.0 - t)))
 
 
 static func _bark(root: Node3D, a: Vector3, b: Vector3, r0: float, r1: float, col: Color) -> void:
+	if _snag:
+		col = C_CHAR
 	var y := b - a
 	var L := y.length()
 	y /= L
@@ -1008,6 +1052,8 @@ static func _bark(root: Node3D, a: Vector3, b: Vector3, r0: float, r1: float, co
 
 
 static func _leaves(root: Node3D, p: Vector3, r: float, squash: float, col: Color) -> void:
+	if _snag:
+		return
 	var mi := Res.mi(root, Res.sphere(1.0, 10), Mats.foliage(), p)
 	mi.scale = Vector3(r, r * squash, r)
 	mi.set_instance_shader_parameter("tint", col)
@@ -1196,7 +1242,9 @@ func toss_from(bp: Vector3, bsize: float) -> void:
 			w.push_props(me, {"toss": null}))
 
 
-func _destroyed() -> void:
+## Destroyed. quiet: it burnt away (the fire's own collapse is the effect, no
+## blast debris or rubble).
+func _destroyed(quiet := false) -> void:
 	match skind:
 		"fob":
 			wrecked = true
@@ -1220,8 +1268,9 @@ func _destroyed() -> void:
 		world.fx_event([Fx.TREE_FALL, position, fy, eid, variant])
 		world.despawn(self)
 		return
-	world.fx_event([Fx.DEBRIS, position + Vector3(0, 1.0, 0), _main_color(), 14])
-	if size.x > 3.0 and skind in ["house_wall", "tall_wall", "barracks", "factory", "research", "concrete_wall", "medic_tent"]:
+	if not quiet:
+		world.fx_event([Fx.DEBRIS, position + Vector3(0, 1.0, 0), _main_color(), 14])
+	if not quiet and size.x > 3.0 and skind in ["house_wall", "tall_wall", "barracks", "factory", "research", "concrete_wall", "medic_tent"]:
 		world.fx_event([Fx.EXPLODE, position + Vector3(0, 0.5, 0), 0.6])
 		var rub := Vector3(size.x * 0.8, 0, 1.6 if size.z < 2.0 else size.z * 0.6)
 		world.call_deferred("spawn", "structure", {"skind": "rubble", "pos": position, "yaw": yaw, "size": rub})
@@ -1242,6 +1291,8 @@ func add_work(amount: float) -> bool:
 		if progress >= 1.0:
 			_complete()
 		return true
+	if burn > 0.0:
+		fuel -= amount * 4.0  # engineers beat the flames out before they patch anything up
 	if hp < max_hp:
 		var t2: float = Defs.BUILDINGS[skind].time if Defs.BUILDINGS.has(skind) else 20.0
 		hp = minf(max_hp, hp + amount * max_hp / (t2 * 0.8))
@@ -1524,6 +1575,7 @@ func write_state(b: StreamPeerBuffer) -> void:
 	b.put_u8(seen_mask)
 	b.put_u8(0 if private else int(clampf(queue_frac, 0.0, 1.0) * 255.0))
 	b.put_u8(0 if private else mini(255, inside.size()))
+	b.put_u8(int(clampf(burn, 0.0, 1.0) * 255.0))
 
 
 func read_state(b: StreamPeerBuffer) -> void:
@@ -1538,6 +1590,12 @@ func read_state(b: StreamPeerBuffer) -> void:
 	seen_mask = b.get_u8()
 	queue_frac = b.get_u8() / 255.0
 	inside_n = b.get_u8()
+	var nb := b.get_u8() / 255.0
+	if nb != burn:
+		if OS.has_environment("FL_DEBUG_FIRE") and (nb <= 0.0) != (burn <= 0.0):
+			print("FIRE client %s %d %s" % [skind, eid, "alight" if nb > 0.0 else "out"])
+		burn = nb
+		_burn_view()
 	var was_built := built
 	built = (f & 1) != 0
 	wrecked = (f & 2) != 0
@@ -1567,6 +1625,8 @@ func _process(_dt: float) -> void:
 func _view_process(_dt: float) -> void:
 	if not world.has_view or model == null:
 		return
+	if burn > 0.0 or _fire_fx:
+		_fire_view(_dt)
 	if skind == "roof":
 		_roof_view(_dt)
 		return
@@ -1611,6 +1671,178 @@ func _damage_view() -> void:
 		add_child(_damage_fx)
 	if _damage_fx:
 		world.fx.vfx.set_burning(_damage_fx, [0.0, 0.0, 0.7][st], [0.0, 0.45, 1.0][st])
+
+
+# --- fire --------------------------------------------------------------------------
+
+## What it burns as (a key of Fires.FUEL), or "" if it won't burn: wood, cloth
+## and fuel do; stone, brick, concrete, earth, sandbags and steel don't.
+func fire_kind() -> String:
+	if burnt or not built or gone:
+		return ""
+	match skind:
+		"tree", "crates", "watchtower", "medic_tent", "barracks":
+			return skind
+		"car":
+			return "car" if variant < 6 else ""
+		"wreck", "rubble":
+			return "wreck" if variant >= 6 else ""
+		"low_wall":
+			return "hedge" if variant % 3 == 1 else ""
+		"roof":
+			return "roof" if variant % 2 == 0 else ""  # pitched roofs are tiles on timber; flat ones are concrete
+		"bunker":
+			return "log_bunker" if team == 1 else ""
+	return ""
+
+
+## (server) How hard it's burning now; clients hear of it in the snapshots.
+func set_burn(b: float) -> void:
+	if int(b * 24.0) != int(burn * 24.0) or (b <= 0.0) != (burn <= 0.0):
+		net_dirty = true
+	burn = b
+	if world.has_view:
+		_burn_view()
+
+
+## (server) The fire has taken it: it falls in, leaving ash and a scorch mark.
+func burned_down() -> void:
+	if gone:
+		return
+	var box := _fire_box()
+	world.fx_event([Fx.BURNT_OUT, to_global(box[0]), box[1], yaw])
+	world.stat("burnt_down")
+	_destroyed(true)
+
+
+## (server) Burnt out, and what's left still stands: a tree's bare black snag,
+## a car's burnt-out shell. It won't burn again.
+func char_out() -> void:
+	if burnt or gone:
+		return
+	burnt = true
+	match skind:
+		"tree":
+			variant |= 16
+		"car":
+			variant += 6
+	net_dirty = true
+	world.push_props(self, {"burnt": true, "variant": variant})
+	world.stat("burnt_out")
+	if world.has_view and model:
+		_rebuild_model()
+
+
+## (view) A tree or a car rebuilt as what the fire left of it.
+func _rebuild_model() -> void:
+	if not skind in ["tree", "car"]:
+		return
+	model.queue_free()
+	_char_mats.clear()
+	_build_model()
+	_apply_tilt()
+	_char = 0.0  # (built charred black already)
+	_char_set = -1.0
+
+
+## (view) Where the flames are: [centre (local), half extents].
+func _fire_box() -> Array:
+	match skind:
+		"tree":
+			if variant & 1:
+				return [Vector3(0, 2.6, 0), Vector3(1.1, 1.3, 1.1)]
+			return [Vector3(0, 3.8, 0), Vector3(1.4, 2.3, 1.4)]
+		"low_wall":
+			return [Vector3(0, 0.6, 0), Vector3(size.x * 0.48, 0.5, 0.35)]
+		"crates":
+			return [Vector3(0, 0.7 if variant == 0 else 1.1, 0), Vector3(foot.x * 0.8, 0.6 if variant == 0 else 1.0, foot.y * 0.8)]
+		"watchtower":
+			return [Vector3(0, 3.6, 0), Vector3(1.4, 3.0, 1.4)]
+		"roof":
+			return [Vector3(0, size.y + 1.0, 0), Vector3(size.x * 0.4, 0.9, size.z * 0.4)]
+		"car":
+			return [Vector3(0, 0.9, 0.3), Vector3(0.75, 0.45, 1.5)]
+		"wreck", "rubble":
+			var ws := size if size != Vector3.ONE else Vector3(3.4, 2.0, 6.2)
+			return [Vector3(0, ws.y * 0.6, 0), Vector3(ws.x * 0.32, ws.y * 0.35, ws.z * 0.3)]
+		"bunker":
+			return [Vector3(0, 2.7, 0), Vector3(2.4, 0.4, 2.4)]
+	return [Vector3(0, minf(_vis_height(), 3.0) * 0.5, 0), Vector3(foot.x * 0.8, minf(_vis_height(), 3.0) * 0.45, foot.y * 0.8)]
+
+
+## (view) The flames follow the burn: lit, roaring, dying down, then smoke
+## drifting off what's left.
+func _burn_view() -> void:
+	if not world.has_view or model == null or world.fx == null or world.fx.vfx == null:
+		return
+	var lvl := int(burn * 24.0)
+	if lvl == _fire_shown:
+		return
+	var was := _fire_shown
+	_fire_shown = lvl
+	if burn > 0.0:
+		set_process(true)
+		if _fire_fx == null:
+			var box := _fire_box()
+			var smoke := Vfx.SMOKE_FUEL if skind in ["car", "wreck", "rubble"] else (Vfx.SMOKE_LEAVES if skind == "tree" or (skind == "low_wall") else Vfx.SMOKE_WOOD)
+			_fire_fx = world.fx.vfx.make_fire(box[1], smoke)
+			world.fx.vfx.add_child(_fire_fx)
+			_fire_fx.global_transform = Transform3D(Basis(Vector3.UP, yaw), to_global(box[0]))
+		world.fx.vfx.set_fire(_fire_fx, burn)
+	elif _fire_fx and was > 0:
+		# out: it smoulders a while, then the smoke thins away
+		world.fx.vfx.smoulder(_fire_fx, 45.0 if skind in ["wreck", "rubble", "car"] else 30.0)
+		_fire_fx = null
+
+
+## (view) While it burns it chars, and the char glows with embers.
+func _fire_view(dt: float) -> void:
+	if burn > 0.0:
+		_char = minf(1.0, _char + dt * burn / 32.0)
+	if absf(_char - _char_set) > 0.02 or absf(burn - _glow_set) > 0.04:
+		_apply_char(burn)
+	if burn <= 0.0 and _fire_fx == null and team < 0 and not skind in SMOKE_KINDS and skind != "roof":
+		set_process(false)
+
+
+var _char_set := -1.0
+var _glow_set := -1.0
+
+
+## (view) Lays the char (and the glow of the embers in it) over the model:
+## leaves brown, blacken and burn away; wood, cloth and paint go black.
+func _apply_char(glow: float) -> void:
+	if model == null:
+		return
+	_char_set = _char
+	_glow_set = glow
+	if _char_mats.is_empty() and (_char > 0.0 or glow > 0.0):
+		var fol := Mats.foliage().shader
+		var stack: Array = [model]
+		while not stack.is_empty():
+			var n: Node = stack.pop_back()
+			for c in n.get_children():
+				stack.append(c)
+			var mi := n as MeshInstance3D
+			if mi == null or mi.mesh == null:
+				continue
+			var sm := mi.material_override as ShaderMaterial
+			if sm != null and sm.shader == fol:
+				var own := sm.duplicate() as ShaderMaterial
+				mi.material_override = own
+				_char_mats.append([own, true])
+			else:
+				var ov := world.fx.vfx.char_material()
+				mi.material_overlay = ov
+				_char_mats.append([ov, false])
+	for cm in _char_mats:
+		var m: ShaderMaterial = cm[0]
+		if cm[1]:
+			m.set_shader_parameter("scorch", minf(1.0, _char * 1.8))  # leaves go long before the wood
+			m.set_shader_parameter("embers", glow)
+		else:
+			m.set_shader_parameter("amount", _char)
+			m.set_shader_parameter("glow", glow * _char)
 
 
 func _update_visual() -> void:
@@ -2084,12 +2316,7 @@ func _build_model() -> void:
 			keep.append(sub)
 			Mats.merge_static(sub, [])
 	Mats.merge_static(model, keep)
-	# freshly killed vehicles burn, then smoulder
-	if variant >= 6 and skind in ["wreck", "car", "rubble"] and world != null and world.fx and world.fx.vfx:
-		var bn := world.fx.vfx.make_burner(1.4 if skind == "wreck" else 0.9)
-		bn.position = Vector3(0, 1.3 if skind == "wreck" else 0.8, 0)
-		add_child(bn)
-		world.fx.vfx.burn_for(bn, 35.0 if skind == "wreck" else 20.0, 45.0)
+	# (a freshly killed vehicle's fire is the server's: see Fires and _burn_view)
 
 
 static var _bag_mesh: ArrayMesh

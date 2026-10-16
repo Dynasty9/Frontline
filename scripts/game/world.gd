@@ -34,6 +34,7 @@ var _team_t := 0.0
 var nav: Nav
 var combat: Combat
 var rules: Rules
+var fires: Fires  # (server) what's burning
 var fx: Fx
 var phys: PhysicsFx  # ragdolls, thrown chunks, tossed props (clients only)
 var cam: RtsCamera
@@ -100,6 +101,7 @@ func _ready() -> void:
 		nav.terrain = terrain
 		combat = Combat.new(self)
 		rules = Rules.new(self)
+		fires = Fires.new(self)
 		if String(settings.get("scenario", "")) != "":
 			MapGen.new(self).scenario(String(settings.scenario))
 		elif String(settings.get("mission", "")) != "":
@@ -465,6 +467,7 @@ func _physics_process(dt: float) -> void:
 	for e in structures.duplicate():
 		if not e.gone:
 			e.sim(dt)
+	fires.tick(dt)
 	tp = _p("structures", tp)
 	for arr in [vehicles.duplicate(), projectiles.duplicate(), drones.duplicate()]:
 		for e in arr:
