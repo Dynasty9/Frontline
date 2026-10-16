@@ -43,7 +43,10 @@ func _ready() -> void:
 		if _server.listen(PORT, "127.0.0.1") != OK:
 			# another copy already listens: it gets the links
 			_server = null
-	_register()
+	# and only a player's game claims the scheme: a test run of an exported
+	# build (from a scratch folder, say) must not point the links at itself
+	if not testing:
+		_register()
 
 
 func _link_in(args: PackedStringArray) -> String:

@@ -221,12 +221,26 @@ one joins. Only exported builds register the scheme with the OS (`Links._registe
 `web/` is the website (React, Vite, Tailwind, shadcn/ui; see its README): `npm install && npm run dev`, with
 `VITE_MATCHMAKER_URL` pointing at a local matchmaker if you like. CI builds and lints it.
 
-### Builds and releases
+### Builds, releases and updates
 
 `export_presets.cfg` has a Windows and a Linux preset (one executable each, the game packed inside).
-`.github/workflows/release.yml` exports both on Linux and publishes `Frontline-windows.zip` and
-`Frontline-linux.zip`: every push to `main` refreshes the `nightly` pre-release, and pushing a tag like `v0.2.0`
-publishes a release. The website's download buttons pick the newest release, or the nightly if there's none.
+`.github/workflows/release.yml` releases automatically: every merge to `main` that changes the game (`scripts/`,
+`assets/`, `project.godot`, `main.tscn`, the export presets or the icon) publishes the next version, `v0.1.4` after
+`v0.1.3`, with `Frontline-windows.zip`, `Frontline-linux.zip` and notes listing the merged pull requests. Label a
+pull request `minor` or `major` for a bigger bump, or `skip release` to leave it out. Merges that only touch docs,
+the website or the matchmaker don't release (Railway redeploys those itself, watching `web/` and `matchmaker/`).
+Actions > Release > Run workflow releases by hand. The next number comes from the newest `vX.Y.Z` tag
+(`.github/scripts/next-version.sh`), and the build stamps it into `project.godot` (`application/config/version`);
+from source the game reads `0.0.0-dev`.
+
+A release build updates itself (`scripts/autoload/updater.gd`): at start it asks GitHub for the latest release,
+downloads the zip for its platform, checks it against the SHA-256 GitHub publishes, renames the running executable
+aside and puts the new one in its place, then offers a restart (the old file is deleted on the next launch). Where it
+can't (a folder it can't write to), the menu links to the website instead. To try an update from source without
+touching Godot itself: `--game-version=0.0.1` pretends to be an old release, `--update-target=PATH` swaps a stand-in
+file instead of the running executable, and `--update-api=URL` reads the release from elsewhere (a local JSON file
+with a higher `tag_name`). `--menu-update=0.1.2,ready` shows the notice for screenshots (`available`, `downloading`,
+`ready` or `failed`).
 
 ### Off-screen screenshots
 
