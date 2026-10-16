@@ -76,6 +76,8 @@ Each has objectives on screen and marked on the map. Choose **Host Co-op** to pl
 
 ## Controls
 
+Every key below is a default: change any of them in **Settings → Controls**. Actions are grouped by category, each takes two keys (Ctrl, Shift and Alt combinations and the mouse side buttons work too), and a key another action already has is moved over with a note and an Undo. There's a search box, a reset per action and a reset for everything. The hints on the command card, in the F1 help and on the loading screen follow your keys.
+
 **Camera**
 
 | Action | Keys |

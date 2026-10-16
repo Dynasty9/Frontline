@@ -90,6 +90,8 @@ var _swing := Vector3.ZERO
 # suspension (view): pitch, roll, heave and how fast each is changing
 var _sus := Vector3.ZERO
 var _sus_v := Vector3.ZERO
+var _gun_kick := 0.0  # (view) how far the turret is jolted back by its own gun
+var _turret_rest := Vector3.INF
 var _vel_s := Vector3.ZERO
 var _vel_prev := Vector3.ZERO
 var turret: Node3D
@@ -1631,6 +1633,13 @@ func blast_jolt(p: Vector3, bsize: float) -> void:
 	_sus_v += Vector3(-away.dot(fwd), -away.dot(side), 0.6) * pw * 1.6
 
 
+## A gun on the turret fired (view): the turret jolts back on its ring, `k`
+## metres, and settles.
+func gun_kick(k: float) -> void:
+	if turret:
+		_gun_kick = minf(_gun_kick + k, 0.32)
+
+
 ## The main gun's kick rocks the hull back from the shot.
 func recoil(dir: Vector3) -> void:
 	var fwd := Defs.dir_of(rotation.y)
@@ -1910,6 +1919,12 @@ func _view_process(dt: float) -> void:
 		_vis = v
 	if turret:
 		turret.rotation.y = turret_yaw
+		if _gun_kick > 0.0:
+			if _turret_rest == Vector3.INF:
+				_turret_rest = turret.position
+			# slammed back by the shot, then run out again over half a second
+			_gun_kick = maxf(0.0, _gun_kick * exp(-dt * 7.0) - dt * 0.01)
+			turret.position = _turret_rest + Basis(Vector3.UP, turret_yaw) * Vector3(0, 0, _gun_kick)
 	if _vm and _vm.elev:
 		# laid for indirect fire: the barrel (or the launcher) goes up
 		var want_e := float(vdef.get("elev", 0.6)) if (flags & F_ELEV) != 0 else 0.0

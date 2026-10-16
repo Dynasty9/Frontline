@@ -23,8 +23,10 @@ option on its own, laid out like a PC game's options screen:
   drawn at), unit activity labels, speech bubbles, cover preview, edge scrolling, camera speed, camera shake.
 - **Audio:** master, music, effects, ambience and interface volumes (each its own mixer bus, set up in
   `sfx.gd`), music in battle on or off, mute while the window is in the background.
+- **Controls:** every key, by category, rebindable (`keys.gd` holds the actions and their defaults; the
+  game asks it `Keys.action_for(event, ids)` for presses and `Keys.held(id)` for held keys, never a keycode).
 
-Settings are saved to `user://settings.cfg`.
+Settings are saved to `user://settings.cfg`, key bindings to `user://keybinds.cfg` (test runs save neither).
 
 **F3** cycles the performance overlay: off, FPS, compact (CPU / GPU / draw calls) and a full breakdown:
 - a frame bar split into game logic, view scripts, render CPU and engine/idle time, with GPU time on a second bar
@@ -80,8 +82,9 @@ ui/field_manual.gd      the field manual: catalog of everything with stats and 3
 ui/curtain.gd           the title and loading screens
 game/bevel_mesh.gd      chamfered boxes (every Res.box thicker than a sheet)
 assets/                 splash.png: the boot splash, which is the title's first frame (see "Off-screen screenshots")
-game/fx.gd              tracers, impacts, who is saying what, debris; drives vfx.gd
+game/fx.gd              plays the server's effect events: shots, explosions, who is saying what, debris; drives vfx.gd, gunfx.gd
 game/vfx.gd             GPU particle explosions, smoke, flames, char, grass fires, decals, shockwaves (+ their shaders)
+game/gunfx.gd           gunfire on the GPU: tracers, muzzle flashes, impacts, sparks, grit, brass (MultiMesh rings flown by their shaders)
 game/atmosphere.gd      sky, sun, fog, ground shader, post effects, moods
 game/grass.gd           instanced grass, bushes and stones
 game/mats.gd            procedural surface uber-shader, foliage, camouflage netting
@@ -134,6 +137,11 @@ Pass these after `--` on the command line:
 --screenshot=out.png --shot-at=30 --focus=X,Z --zoom=40 [--shots=N --shot-every=0.5]
 --mood=golden --perf=3 --preset=ultra                 lighting, overlay level and graphics preset for screenshots
 --fx-demo=1.4 --fx-every=3                            set off explosions near the camera (visual test, no damage)
+--shot-demo[=rifle|mg|hmg|...] [--shot-demo-every=1.5] [--shot-demo-cannon]
+                                                      rounds fired at earth, stone, sandbags, wood, leaves, steel and a man
+                                                      in a row across the camera's focus (visual test, no damage); a slow
+                                                      --shot-demo-every fires one volley at all of them; -cannon adds a tank
+                                                      gun and a rocket launch
 --cursor=0.5,0.4 --order-mode=defend --select-all     fake the mouse position / order mode (cover preview shots)
   --place=trench [--place-from=X,Z]                   with --cursor: show the placement ghost (or a dragged line)
 --scenario=... --play                                 command the Coalition side of a scenario instead of watching
@@ -144,6 +152,13 @@ Pass these after `--` on the command line:
                                                       X,Z of "f,DX" is DX metres beside the camera's focus (or "v:KIND,DX"
                                                       beside the first vehicle of that kind)
 --pitch=-14 --cam-yaw=-0.84                           fixed camera pitch (degrees) and heading (model close-ups)
+--keys-test                                           the key bindings end to end: names and matching, clashes, rebound
+                                                      keys reaching the game, a held key panning the camera, the Controls
+                                                      page (rebind, move a key off another action, Undo, a modifier alone,
+                                                      search, reset); prints KEYTEST ok / FAIL; needs a window
+                                                      (e.g. --host --team=0 --keys-test --offscreen)
+--bind=ACTION:KEY[,ACTION:KEY]                        rebind keys for this run only (ids in keys.gd, e.g. --bind=attack_move:K)
+--hud-panel=settings --settings-tab=controls          the Controls page open (layout shots)
 --cam-test                                            drive the camera through its controls (zoom to cursor, grab-pan,
                                                       turn and tilt, reset, saved views, follow, turning minimap) and
                                                       print CAMTEST ok / FAIL for each; needs a window, not --headless
@@ -202,7 +217,9 @@ FL_DEBUG_MISSION=1 (env)                              print the map's features (
 --menu-op=0|1|-1                                      open the New Operation panel on that side
 --menu-missions[=KEY]                                 open the Missions panel (on that mission)
 --startup-trace                                       print the first frames' timings
---test-fire                                           every armed man, gunner and vehicle fires ahead (muzzle tests)
+--test-fire[=ground]                                  every armed man, gunner and vehicle fires ahead (muzzle tests);
+                                                      =ground puts the men's rounds into the ground 25 m out (impacts);
+                                                      --test-fire-every=0.3 fires that often (default 0.09 s)
 --seed=N                                              (with --aivai) the same map every run
 --dump-structs                                        list every built structure when --quit-after fires
 FL_DEBUG_TOWNS=1 (env)                                print each town and village: name, dump and the ground that takes it
@@ -235,7 +252,10 @@ godot --headless --path . -- --host --team=0 --players=2 --ai-allies --stats=100
 godot --headless --path . -- --join=127.0.0.1 --team=1 --quit-after=200 --port=7935
 ```
 
-The client prints a `CLIENT entities=...` summary when it quits. Check both outputs for `SCRIPT ERROR`.
+The client prints a `CLIENT entities=...` summary when it quits. Check both outputs for `SCRIPT ERROR`. A client's
+`--quit-after` counts from when the host's world reaches it: the host answers only once it has laid out the map and,
+with a window, drawn its first frame, which takes a minute or more off-screen. `waited=` in the summary is how long
+the client sat in an empty world first (-1: nothing came, and it gave up 5 minutes past `--quit-after`).
 
 Co-commanders: bot clients make up their presence, pings and sketches and really send them. Start the one on
 the other side first, so its team request lands before the game starts:
