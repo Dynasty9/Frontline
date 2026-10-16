@@ -20,7 +20,9 @@ caption = "The menu in the browser: multiplayer points you to the desktop game"
   earth, which the browser's renderer can't draw. Settings it can't use are hidden.
 - The page pauses for about 20 seconds while the battlefield is laid out. After that the battle runs about as fast as
   it does on the desktop.
-- **The first battle takes a while:** on Windows the browser prepares the game's graphics the first time they're
-  drawn, which can hold the page for a minute or more (and again briefly as new things appear). Your browser keeps
-  them, so after that a battle only waits for its map.
+- **The first battle takes a while:** the first time, the browser also prepares the game's graphics, so the page
+  holds for about a minute before the battle appears (if the browser asks, choose Wait). It keeps them, so after that
+  a battle only waits for its map.
+- **Lighter on effects:** particles run on the processor, and explosions, muzzle flashes and fires don't light up
+  their surroundings, so nothing stalls the battle the first time it happens.
 - Each release comes with the browser build alongside the Windows and Linux downloads.

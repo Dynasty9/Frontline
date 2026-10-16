@@ -438,13 +438,29 @@ to what that renderer can do:
 - An unset `hint_default_black` texture reads alpha 1 there and 0 under Forward+: use `hint_default_transparent`
   where the alpha matters.
 
-**Shader compiling is the browser build's weak spot.** Browsers on Windows run WebGL through ANGLE on Direct3D 11,
-whose compiler takes 0.2 to 5 s for each of Godot's Compatibility shaders (vs milliseconds natively), and a battle
-needs many shaders in several variants each (shadow passes, extra lights). With nothing cached, the first frames of
-the first battle can hold the page for a minute or more, and new effects stall it again when they first appear. The
-browser caches the compiled shaders, so later visits start in about 25 s. To reproduce it on the desktop, run with
-`--rendering-method gl_compatibility --rendering-driver opengl3_angle` (Godot's own ANGLE, on Direct3D 11). Fewer
-shader variants (positional-light shadows, for one) or warming the shaders up behind the loading screen would help.
+**Shader compiling is what the browser build is shaped around.** Browsers on Windows run WebGL through ANGLE on
+Direct3D 11, whose compiler is slow on Godot's Compatibility shaders, and a browser compiles each one the first time
+it's drawn, inside that frame. Untreated, a first battle froze the page for five minutes and Chrome killed it. So,
+for the browser:
+
+- **Lighting is per vertex** (`shading/overrides/force_vertex_shading.web` in `project.godot`): per-pixel lighting
+  is what Direct3D's compiler chokes on (0.2 to 4 s a program instead of a tenth of that). From above, the battle
+  looks nearly the same; the Field Manual's close-up gets extra fill and a painted floor sheen to make up for it.
+- **Particles are CPU particles** (`Vfx.part`): every GPU particle effect brings a simulation shader of its own,
+  and those took up to 30 s each to compile. Effects are built as GPU particles as everywhere else and converted as
+  they go into the scene; code that touches an emitter afterwards goes through `Vfx.set_emitting`, `set_ratio`,
+  `restart_particles` and `pm_set` / `pm_get`, which work on either kind.
+- **No light from effects** (explosion and muzzle flashes, fires): the first time a light falls on something, its
+  shaders compile again with lights on.
+- **The battlefield misses the frame it's built in** (`main.gd` `_reveal_next_frame`), so building the map (about
+  25 s) and compiling for it (about 20 s) are two waits, not one long enough for Chrome to call the page
+  unresponsive. The loading screen's field note says to choose Wait if it does.
+
+With nothing cached, a first battle now starts after about a minute, then plays without long hitches; the browser
+keeps the compiled shaders, so later battles wait only for the map. To see where the time goes, run the desktop
+build with `--rendering-method gl_compatibility --rendering-driver opengl3_angle` (Godot's own ANGLE on Direct3D 11),
+or time `WebGL2RenderingContext`'s `linkProgram` / `getProgramParameter` in the page. A battle holds about 1.5 GB of
+the 2 GB the web build can have; the hierarchical pathfinding is the biggest single part (about 370 MB).
 
 ### Off-screen screenshots
 

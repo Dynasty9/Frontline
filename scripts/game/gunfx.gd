@@ -82,7 +82,7 @@ func _ready() -> void:
 	for m in [_fl, _pf]:
 		(m.mi.material_override as ShaderMaterial).set_shader_parameter("noise_tex", vfx.noise_tex)
 	copy_lighting()
-	for i in 10:
+	for i in (0 if Vfx.gl else 10):  # (no lights in the browser build: see Fx)
 		var l := OmniLight3D.new()
 		l.light_color = Color(1.0, 0.66, 0.34)
 		l.light_energy = 0.0
@@ -236,8 +236,8 @@ func chunk(p: Vector3, v: Vector3, ext: Vector3, life: float, col: Color, floor_
 ## A flash lighting up what's round it for a moment (the same gun firing
 ## again keeps its light).
 func light(p: Vector3, energy: float, rng_m: float) -> void:
-	if Settings.fx_mult() < 0.5:
-		return  # (low effects: no lights)
+	if Settings.fx_mult() < 0.5 or _lights.is_empty():
+		return  # (low effects, or the browser build: no lights)
 	var e: Array = []
 	for x in _lights:
 		if float(x[1]) > 0.0 and (x[0] as OmniLight3D).global_position.distance_squared_to(p) < 4.0:

@@ -105,16 +105,16 @@ func prewarm(at: Vector3) -> void:
 		for cls in ["s", "m", "l"]:
 			for r in _rigs[cls]:
 				for key in r.get_meta("layers"):
-					(r.get_meta("layers")[key] as GPUParticles3D).visible = false
+					(r.get_meta("layers")[key] as GeometryInstance3D).visible = false
 		for kind in SMALL_KINDS:
 			for e in _small[kind][0]:
-				(e as GPUParticles3D).visible = false
+				(e as GeometryInstance3D).visible = false
 		for cls in _plumes:
 			for e in _plumes[cls]:
 				e[1] = 9999.0
 				for key in ["col", "haze"]:
-					var ps: GPUParticles3D = (e[0] as Node3D).get_meta(key)
-					ps.emitting = false
+					var ps: GeometryInstance3D = (e[0] as Node3D).get_meta(key)
+					set_emitting(ps, false)
 					ps.visible = false
 		b.queue_free()
 		ss.queue_free()
@@ -388,6 +388,89 @@ func _sys(amount: int, life: float, pm: ParticleProcessMaterial, mat: Material, 
 	return p
 
 
+# --- GPU or CPU particles ------------------------------------------------------------
+# Every GPU particle effect brings a simulation shader of its own, and a browser
+# on Windows compiles those through Direct3D at up to half a minute apiece: the
+# set held the first battle for five minutes. So on OpenGL (the browser build)
+# each emitter, built as GPU particles like everywhere else, becomes CPU
+# particles made from the same settings before it goes into the scene. They
+# don't collide (a spent case or a raindrop falls on through the ground, out of
+# sight) and have no turbulence. These work on either kind.
+
+## The emitter to put in the scene: `p` itself, or on OpenGL a CPU copy of it.
+static func part(p: GPUParticles3D) -> GeometryInstance3D:
+	if not gl:
+		return p
+	var c := CPUParticles3D.new()
+	c.convert_from_particles(p)
+	c.name = p.name
+	c.transform = p.transform
+	c.visible = p.visible
+	c.emitting = p.emitting
+	c.material_override = p.material_override
+	c.cast_shadow = p.cast_shadow
+	c.visibility_aabb = p.visibility_aabb
+	if p.transform_align == GPUParticles3D.TRANSFORM_ALIGN_Z_BILLBOARD_Y_TO_VELOCITY:
+		c.particle_flag_align_y = true
+	for m in p.get_meta_list():
+		c.set_meta(m, p.get_meta(m))
+	c.set_meta(&"amount", c.amount)  # (amount_ratio is done with the count: see set_ratio)
+	p.free()  # (never in the scene)
+	return c
+
+
+static func is_emitting(p: GeometryInstance3D) -> bool:
+	return bool(p.get(&"emitting"))
+
+
+static func set_emitting(p: GeometryInstance3D, on: bool) -> void:
+	p.set(&"emitting", on)
+
+
+static func restart_particles(p: GeometryInstance3D) -> void:
+	p.call(&"restart")
+
+
+## The share of its particles an emitter puts out. CPU particles restart when
+## their count changes, so there it moves in quarter steps, and a fire that
+## flickers in strength doesn't keep snuffing out its flames.
+static func set_ratio(p: GeometryInstance3D, r: float) -> void:
+	if p is GPUParticles3D:
+		(p as GPUParticles3D).amount_ratio = r
+		return
+	var c := p as CPUParticles3D
+	var n := maxi(1, int(round(int(c.get_meta(&"amount", c.amount)) * maxf(0.25, snappedf(r, 0.25)))))
+	if n != c.amount:
+		c.amount = n
+
+
+## A ParticleProcessMaterial setting of an emitter, wherever its kind keeps it.
+static func pm_set(p: GeometryInstance3D, prop: StringName, value: Variant) -> void:
+	if p is GPUParticles3D:
+		((p as GPUParticles3D).process_material as ParticleProcessMaterial).set(prop, value)
+		return
+	match prop:
+		&"scale_min":
+			prop = &"scale_amount_min"
+		&"scale_max":
+			prop = &"scale_amount_max"
+		&"scale_curve":
+			prop = &"scale_amount_curve"
+			value = (value as CurveTexture).curve
+	p.set(prop, value)
+
+
+static func pm_get(p: GeometryInstance3D, prop: StringName) -> Variant:
+	if p is GPUParticles3D:
+		return ((p as GPUParticles3D).process_material as ParticleProcessMaterial).get(prop)
+	match prop:
+		&"scale_min":
+			prop = &"scale_amount_min"
+		&"scale_max":
+			prop = &"scale_amount_max"
+	return p.get(prop)
+
+
 func _pm(dir: Vector3, spread: float, v0: float, v1: float, grav: Vector3, s0: float, s1: float) -> ParticleProcessMaterial:
 	var pm := ParticleProcessMaterial.new()
 	pm.direction = dir
@@ -606,6 +689,7 @@ func _build_rig(cls: String) -> Node3D:
 	Mats.set_inst(rg, &"density", 0.9)
 	layers["ring"] = rg
 	for key in layers:
+		layers[key] = part(layers[key])
 		rig.add_child(layers[key])
 	rig.set_meta("layers", layers)
 	rig.set_meta("t", -1000.0)
@@ -629,12 +713,12 @@ func _get_rig(cls: String) -> Node3D:
 	return oldest
 
 
-func _fire_layer(p: GPUParticles3D, ratio: float, seed_v: float) -> void:
+func _fire_layer(p: GeometryInstance3D, ratio: float, seed_v: float) -> void:
 	p.visible = true
-	p.amount_ratio = clampf(ratio, 0.05, 1.0)
+	set_ratio(p, clampf(ratio, 0.05, 1.0))
 	Mats.set_inst(p, &"seed", seed_v)
-	p.restart()
-	p.emitting = true
+	restart_particles(p)
+	set_emitting(p, true)
 
 
 ## Full explosion at `p`. size: ~0.4 drone pop, 1 grenade/rocket, 1.4 tank shell, 2+ vehicle / bomb.
@@ -648,7 +732,7 @@ func explode(p: Vector3, size: float) -> void:
 	var fx := Settings.fx_mult()
 	var ground := p.y < 1.6
 	var sv := randf() * 100.0
-	(layers.flash as GPUParticles3D).position = Vector3(0, 0.9 * float(CLASSES[cls].k), 0)
+	(layers.flash as Node3D).position = Vector3(0, 0.9 * float(CLASSES[cls].k), 0)
 	_fire_layer(layers.flash, 1.0, sv)
 	_fire_layer(layers.fireball, fx, sv)
 	_fire_layer(layers.smoke, fx, sv + 1.0)
@@ -708,7 +792,7 @@ func scorch(p: Vector3, d: float) -> void:
 
 # --- small pooled emitters (impacts, launch smoke, muzzle smoke) ---------------
 
-func _build_small(kind: String) -> GPUParticles3D:
+func _build_small(kind: String) -> GeometryInstance3D:
 	var pm: ParticleProcessMaterial
 	var p: GPUParticles3D
 	match kind:
@@ -778,8 +862,9 @@ func _build_small(kind: String) -> GPUParticles3D:
 			p = _sys(10, 0.35, pm, spark_mat, spm)
 			p.transform_align = GPUParticles3D.TRANSFORM_ALIGN_Z_BILLBOARD_Y_TO_VELOCITY
 	p.visibility_aabb = AABB(Vector3(-8, -2, -8), Vector3(16, 14, 16))
-	add_child(p)
-	return p
+	var n := part(p)
+	add_child(n)
+	return n
 
 
 func puff(kind: String, pos: Vector3, dir := Vector3.UP) -> void:
@@ -788,7 +873,7 @@ func puff(kind: String, pos: Vector3, dir := Vector3.UP) -> void:
 		return
 	var arr: Array = entry[0]
 	var cap := 24 if kind in ["dust", "spark", "dirt_spurt", "brass", "water_spurt"] else 12
-	var p: GPUParticles3D
+	var p: GeometryInstance3D
 	if arr.size() < cap:
 		p = _build_small(kind)
 		arr.append(p)
@@ -862,7 +947,7 @@ func make_fire(ext: Vector3, smoke_kind := SMOKE_WOOD) -> Node3D:
 	fl.visibility_aabb = aabb
 	Mats.set_inst(fl, &"seed", randf() * 100.0)
 	fl.name = "Fire"
-	h.add_child(fl)
+	h.add_child(part(fl))
 	# sparks and burning flecks carried up and swirled about on the heat
 	pm = _pm(Vector3.UP, 30.0, 1.2, 3.4, Vector3(0, 0.9, 0) + WIND * 0.9, 0.5, 1.0)
 	pm.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_BOX
@@ -888,7 +973,7 @@ func make_fire(ext: Vector3, smoke_kind := SMOKE_WOOD) -> Node3D:
 	em.draw_order = GPUParticles3D.DRAW_ORDER_INDEX
 	em.visibility_aabb = aabb
 	em.name = "Embers"
-	h.add_child(em)
+	h.add_child(part(em))
 	# smoke: thick where it boils off the top of the flames, which light it from below
 	var sc: Array = SMOKE_COLS[smoke_kind]
 	var c0: Color = sc[0]
@@ -922,7 +1007,7 @@ func make_fire(ext: Vector3, smoke_kind := SMOKE_WOOD) -> Node3D:
 	Mats.set_inst(smk, &"heat", 0.55)
 	Mats.set_inst(smk, &"heat_fade", 0.1)
 	Mats.set_inst(smk, &"erode", 1.2)
-	h.add_child(smk)
+	h.add_child(part(smk))
 	var l := OmniLight3D.new()
 	l.light_color = Color(1.0, 0.52, 0.18)
 	l.omni_range = 5.0 + 2.5 * k + ext.y
@@ -984,24 +1069,23 @@ func ground_fire(p: Vector3, r: float, life: float) -> void:
 	var h := make_fire(Vector3(r * 0.5, 0.25, r * 0.5), SMOKE_LEAVES)
 	add_child(h)
 	h.global_position = Vector3(p.x, 0.25, p.z)
-	var fl := h.get_node("Fire") as GPUParticles3D
-	var pm := fl.process_material as ParticleProcessMaterial
-	pm.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_RING
-	pm.emission_ring_axis = Vector3.UP
-	pm.emission_ring_height = 0.1
-	pm.emission_ring_radius = r * 0.4
-	pm.emission_ring_inner_radius = r * 0.25
-	pm.scale_min = 0.45
-	pm.scale_max = 0.85
-	fl.amount = clampi(int(r * 12.0), 14, 48)
-	fl.lifetime = 0.7
-	var sm := h.get_node("Smoke") as GPUParticles3D
+	var fl := h.get_node("Fire") as GeometryInstance3D
+	pm_set(fl, &"emission_shape", ParticleProcessMaterial.EMISSION_SHAPE_RING)
+	pm_set(fl, &"emission_ring_axis", Vector3.UP)
+	pm_set(fl, &"emission_ring_height", 0.1)
+	pm_set(fl, &"emission_ring_radius", r * 0.4)
+	pm_set(fl, &"emission_ring_inner_radius", r * 0.25)
+	pm_set(fl, &"scale_min", 0.45)
+	pm_set(fl, &"scale_max", 0.85)
+	fl.set(&"amount", clampi(int(r * 12.0), 14, 48))
+	fl.set_meta(&"amount", fl.get(&"amount"))
+	fl.set(&"lifetime", 0.7)
+	var sm := h.get_node("Smoke") as GeometryInstance3D
 	sm.position = Vector3(0, 0.3, 0)
-	var spm := sm.process_material as ParticleProcessMaterial
-	spm.emission_sphere_radius = r * 0.6
-	spm.scale_min = 1.8
-	spm.scale_max = 3.0
-	spm.scale_curve = _curve([Vector2(0, 0.4), Vector2(0.3, 1.0), Vector2(1, 2.4)])
+	pm_set(sm, &"emission_sphere_radius", r * 0.6)
+	pm_set(sm, &"scale_min", 1.8)
+	pm_set(sm, &"scale_max", 3.0)
+	pm_set(sm, &"scale_curve", _curve([Vector2(0, 0.4), Vector2(0.3, 1.0), Vector2(1, 2.4)]))
 	Mats.set_inst(sm, &"density", 0.6)
 	set_fire(h, 1.0)
 	_ground_fires.append([h, 0.0, life, r, 0])
@@ -1037,10 +1121,10 @@ func collapse(p: Vector3, ext: Vector3) -> void:
 	var ash := _sys(int(14 * k) + 4, 4.5, pm, smoke_mat)
 	Mats.set_inst(ash, &"heat", 0.8)
 	Mats.set_inst(ash, &"heat_fade", 0.2)
-	for ps in [sp, ash]:
+	for ps: GeometryInstance3D in [part(sp), part(ash)]:
 		add_child(ps)
 		ps.global_position = p
-		ps.emitting = true
+		set_emitting(ps, true)
 		get_tree().create_timer(6.0).timeout.connect(ps.queue_free)
 	if Settings.get_v("decals"):
 		scorch(Vector3(p.x, 0.0, p.z), 1.0 + 2.2 * maxf(ext.x, ext.z))
@@ -1056,7 +1140,7 @@ func burn_for(h: Node3D, fire_s: float, smoke_s: float) -> void:
 
 
 ## Thin grey wisps behind a mortar or artillery shell so its arc can be followed.
-func make_shell_trail(heavy := false) -> GPUParticles3D:
+func make_shell_trail(heavy := false) -> GeometryInstance3D:
 	var pm := _pm(Vector3.UP, 30.0, 0.1, 0.4, Vector3(0.2, 0.25, 0.1), 0.35 if not heavy else 0.6, 0.6 if not heavy else 1.0)
 	pm.scale_curve = _curve([Vector2(0, 0.4), Vector2(1, 1.6)])
 	pm.color_ramp = _ramp([0.0, 0.1, 1.0], [Color(0.75, 0.74, 0.72, 0.0), Color(0.72, 0.71, 0.7, 0.42), Color(0.8, 0.8, 0.8, 0.0)])
@@ -1066,11 +1150,11 @@ func make_shell_trail(heavy := false) -> GPUParticles3D:
 	p.emitting = true
 	Mats.set_inst(p, &"density", 0.9)
 	p.visibility_aabb = AABB(Vector3(-200, -60, -200), Vector3(400, 260, 400))
-	return p
+	return part(p)
 
 
 ## Rolling cloud left by a gun firing from an aircraft (toggle `emitting`).
-func make_gun_smoke() -> GPUParticles3D:
+func make_gun_smoke() -> GeometryInstance3D:
 	var pm := _pm(Vector3.UP, 60.0, 0.5, 2.0, Vector3(0, 0.3, 0), 1.2, 2.2)
 	pm.damping_min = 1.0
 	pm.damping_max = 2.0
@@ -1081,11 +1165,11 @@ func make_gun_smoke() -> GPUParticles3D:
 	p.explosiveness = 0.0
 	p.emitting = false
 	p.visibility_aabb = AABB(Vector3(-300, -80, -300), Vector3(600, 260, 600))
-	return p
+	return part(p)
 
 
 ## Rocket / missile exhaust trail (continuous, world space).
-func make_trail() -> GPUParticles3D:
+func make_trail() -> GeometryInstance3D:
 	var pm := _pm(Vector3.UP, 180.0, 0.1, 0.5, Vector3(0.2, 0.5, 0.1), 0.35, 0.6)
 	pm.damping_min = 1.0
 	pm.damping_max = 2.0
@@ -1101,27 +1185,27 @@ func make_trail() -> GPUParticles3D:
 	Mats.set_inst(t, &"heat_fade", 0.06)
 	Mats.set_inst(t, &"density", 0.8)
 	t.emitting = true
-	return t
+	return part(t)
 
 
 func set_burning(h: Node3D, fire: float, smoke: float) -> void:
 	if h == null or not is_instance_valid(h):
 		return
-	var f := h.get_node("Fire") as GPUParticles3D
-	var e := h.get_node("Embers") as GPUParticles3D
-	var s := h.get_node("Smoke") as GPUParticles3D
+	var f := h.get_node("Fire") as GeometryInstance3D
+	var e := h.get_node("Embers") as GeometryInstance3D
+	var s := h.get_node("Smoke") as GeometryInstance3D
 	var fx := Settings.fx_mult()
-	f.emitting = fire > 0.02
-	if f.emitting:
-		f.amount_ratio = clampf((0.25 + 0.75 * fire) * fx, 0.05, 1.0)
+	set_emitting(f, fire > 0.02)
+	if is_emitting(f):
+		set_ratio(f, clampf((0.25 + 0.75 * fire) * fx, 0.05, 1.0))
 		# a fire dying down burns low
-		(f.process_material as ParticleProcessMaterial).scale_max = (f.process_material as ParticleProcessMaterial).scale_min * (1.15 + 0.6 * fire)
-	e.emitting = fire > 0.2
-	if e.emitting:
-		e.amount_ratio = clampf(fire * fx, 0.05, 1.0)
-	s.emitting = smoke > 0.02
-	if s.emitting:
-		s.amount_ratio = clampf(smoke * fx, 0.05, 1.0)
+		pm_set(f, &"scale_max", float(pm_get(f, &"scale_min")) * (1.15 + 0.6 * fire))
+	set_emitting(e, fire > 0.2)
+	if is_emitting(e):
+		set_ratio(e, clampf(fire * fx, 0.05, 1.0))
+	set_emitting(s, smoke > 0.02)
+	if is_emitting(s):
+		set_ratio(s, clampf(smoke * fx, 0.05, 1.0))
 	var snd := h.get_node_or_null("Snd") as AudioStreamPlayer3D
 	if snd and snd.stream:
 		snd.volume_db = linear_to_db(maxf(fire, 0.001)) - 6.0 + 3.0 * float(h.get_meta("k", 1.0))
@@ -1130,7 +1214,7 @@ func set_burning(h: Node3D, fire: float, smoke: float) -> void:
 		elif fire <= 0.02 and snd.playing:
 			snd.stop()
 	h.set_meta("fire", fire)
-	if f.emitting or s.emitting:
+	if is_emitting(f) or is_emitting(s):
 		f.visible = true
 		e.visible = true
 		s.visible = true
@@ -1138,7 +1222,7 @@ func set_burning(h: Node3D, fire: float, smoke: float) -> void:
 			h.remove_meta("off_at")
 	elif f.visible and not h.has_meta("off_at"):
 		# hide once the last of the smoke has drifted away
-		h.set_meta("off_at", Time.get_ticks_msec() / 1000.0 + s.lifetime + 1.0)
+		h.set_meta("off_at", Time.get_ticks_msec() / 1000.0 + float(s.get(&"lifetime")) + 1.0)
 
 
 ## A shell in the water: a white column thrown up and falling back, a crown
@@ -1161,10 +1245,10 @@ func splash(p: Vector3, size: float) -> void:
 	ring.damping_max = 3.0
 	ring.color_ramp = _ramp([0.0, 0.1, 1.0], [Color(0.9, 0.93, 0.92, 0.0), Color(0.9, 0.93, 0.92, 0.55), Color(0.88, 0.9, 0.9, 0.0)])
 	var r := _sys(int(16 * k), 2.6, ring, smoke_mat)
-	for ps in [c, s, r]:
+	for ps: GeometryInstance3D in [part(c), part(s), part(r)]:
 		add_child(ps)
 		ps.global_position = p + Vector3(0, 0.1, 0)
-		ps.emitting = true
+		set_emitting(ps, true)
 		get_tree().create_timer(4.5).timeout.connect(ps.queue_free)
 	var wv := water_view()
 	if wv:
@@ -1177,7 +1261,7 @@ func water_view() -> WaterView:
 
 
 ## Spray thrown off the bows of a boat going hard (continuous; emitting follows speed).
-func make_spray(size: float) -> GPUParticles3D:
+func make_spray(size: float) -> GeometryInstance3D:
 	var pm := _pm(Vector3.UP, 70.0, 1.5, 3.5, Vector3(0, -9.8, 0), 0.35 * size, 0.8 * size)
 	pm.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_BOX
 	pm.emission_box_extents = Vector3(0.9 * size, 0.05, 0.6)
@@ -1189,7 +1273,7 @@ func make_spray(size: float) -> GPUParticles3D:
 	d.emitting = false
 	d.local_coords = false
 	d.visibility_aabb = AABB(Vector3(-12, -2, -12), Vector3(24, 8, 24))
-	return d
+	return part(d)
 
 
 # --- a boat going down ---------------------------------------------------------------
@@ -1296,7 +1380,7 @@ func _wreckage(p: Vector3, hull: Vector3) -> void:
 
 
 ## Dust kicked up behind a moving vehicle (continuous; emitting follows speed).
-func make_dust(size: float) -> GPUParticles3D:
+func make_dust(size: float) -> GeometryInstance3D:
 	var pm := _pm(Vector3.UP, 50.0, 0.4, 1.4, Vector3(0.3, 0.35, 0.1), 0.9 * size, 1.8 * size)
 	pm.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_BOX
 	pm.emission_box_extents = Vector3(1.1 * size, 0.1, 0.4)
@@ -1312,7 +1396,7 @@ func make_dust(size: float) -> GPUParticles3D:
 	d.emitting = false
 	Mats.set_inst(d, &"density", 0.8)
 	d.visibility_aabb = AABB(Vector3(-20, -2, -20), Vector3(40, 12, 40))
-	return d
+	return part(d)
 
 
 ## Thick white smoke screen (grenade / mortar smoke); FogVolume adds real
@@ -1340,7 +1424,7 @@ func make_smoke_screen() -> Node3D:
 	s.visibility_aabb = AABB(Vector3(-15, -2, -15), Vector3(30, 20, 30))
 	Mats.set_inst(s, &"density", 1.0)
 	s.emitting = false
-	h.add_child(s)
+	h.add_child(part(s))
 	if gl:
 		return h  # (OpenGL has no volumetric fog: the particles alone)
 	var fv := FogVolume.new()
@@ -1358,12 +1442,12 @@ func make_smoke_screen() -> Node3D:
 
 
 func set_smoke_screen(h: Node3D, r: float) -> void:
-	var s := h.get_node("Smoke") as GPUParticles3D
+	var s := h.get_node("Smoke") as GeometryInstance3D
 	var fv := h.get_node_or_null("Fog") as FogVolume
-	s.emitting = r > 0.3
-	if s.emitting:
-		(s.process_material as ParticleProcessMaterial).emission_sphere_radius = maxf(0.6, r * 0.7)
-		s.amount_ratio = clampf(Settings.fx_mult() * 1.2, 0.3, 1.0)
+	set_emitting(s, r > 0.3)
+	if is_emitting(s):
+		pm_set(s, &"emission_sphere_radius", maxf(0.6, r * 0.7))
+		set_ratio(s, clampf(Settings.fx_mult() * 1.2, 0.3, 1.0))
 	if fv == null:
 		return
 	var vol: bool = Settings.get_v("vol_fog")
@@ -1437,11 +1521,11 @@ func _view_process(dt: float) -> void:
 		# fires flicker and gutter: a fast shimmer over slower surges
 		var kk := float(h.get_meta("k", 1.0))
 		l.light_energy = f * fire_light * (0.7 + 0.35 * kk) * (1.0 + 0.3 * sin(t * 17.0 + i * 1.7) + 0.2 * sin(t * 29.0 + i) + 0.25 * sin(t * 3.1 + i * 0.6)) if f > 0.02 else 0.0
-		l.visible = f > 0.02
+		l.visible = f > 0.02 and not gl  # (no fire light in the browser build: see Fx)
 		if h.has_meta("off_at") and t > float(h.get_meta("off_at")):
 			h.remove_meta("off_at")
 			for nm in ["Fire", "Embers", "Smoke"]:
-				(h.get_node(nm) as GPUParticles3D).visible = false
+				(h.get_node(nm) as GeometryInstance3D).visible = false
 	for i in range(_smoulders.size() - 1, -1, -1):
 		var sm: Array = _smoulders[i]
 		var hs: Node3D = sm[0]
@@ -1456,7 +1540,7 @@ func _view_process(dt: float) -> void:
 		elif float(sm[1]) > float(sm[2]) + 10.0:
 			hs.queue_free()
 			_smoulders.remove_at(i)
-		elif (hs.get_node("Smoke") as GPUParticles3D).emitting:
+		elif is_emitting(hs.get_node("Smoke") as GeometryInstance3D):
 			set_burning(hs, 0.0, 0.0)
 	for i in range(_ground_fires.size() - 1, -1, -1):
 		var gf: Array = _ground_fires[i]
@@ -1470,14 +1554,15 @@ func _view_process(dt: float) -> void:
 				smoulder(hg, 12.0)
 			continue
 		# the fire front creeps outward, leaving black ground and no grass
-		var pm := (hg.get_node("Fire") as GPUParticles3D).process_material as ParticleProcessMaterial
-		pm.emission_ring_radius = r * (0.4 + 0.6 * sqrt(u))
-		pm.emission_ring_inner_radius = pm.emission_ring_radius * 0.7
+		var gfl := hg.get_node("Fire") as GeometryInstance3D
+		var ring := r * (0.4 + 0.6 * sqrt(u))
+		pm_set(gfl, &"emission_ring_radius", ring)
+		pm_set(gfl, &"emission_ring_inner_radius", ring * 0.7)
 		if u > 0.8 and int(gf[4]) == 0:
 			gf[4] = 1
 			set_fire(hg, 0.4)
 		if world and world.atmo and world.atmo.grass and int(gf[1] / 3.0) != int((float(gf[1]) - dt) / 3.0):
-			world.atmo.grass.scar(hg.global_position, pm.emission_ring_radius + 0.4, 1.0)
+			world.atmo.grass.scar(hg.global_position, ring + 0.4, 1.0)
 	_rig_check_t -= dt
 	if _rig_check_t <= 0.0:
 		_rig_check_t = 0.5
@@ -1487,7 +1572,7 @@ func _view_process(dt: float) -> void:
 				if t - float(r.get_meta("t")) > life and r.has_meta("shown"):
 					r.remove_meta("shown")
 					for key in r.get_meta("layers"):
-						(r.get_meta("layers")[key] as GPUParticles3D).visible = false
+						(r.get_meta("layers")[key] as GeometryInstance3D).visible = false
 
 
 # --- shaders --------------------------------------------------------------------
@@ -1821,10 +1906,12 @@ func _build_plume(cls: String) -> Node3D:
 	Mats.set_inst(hz, &"density", 0.6)
 	Mats.set_inst(hz, &"erode", 0.8)
 	hz.position = Vector3(0, 0.6, 0)
-	h.add_child(col)
-	h.add_child(hz)
-	h.set_meta("col", col)
-	h.set_meta("haze", hz)
+	var cn := part(col)
+	var hn := part(hz)
+	h.add_child(cn)
+	h.add_child(hn)
+	h.set_meta("col", cn)
+	h.set_meta("haze", hn)
 	return h
 
 
@@ -1861,11 +1948,11 @@ func plume(p: Vector3, size: float) -> void:
 	pick[3] = life
 	var fx := Settings.fx_mult()
 	for key in ["col", "haze"]:
-		var ps: GPUParticles3D = node.get_meta(key)
+		var ps: GeometryInstance3D = node.get_meta(key)
 		ps.visible = true
-		ps.amount_ratio = clampf(fx, 0.1, 1.0)
+		set_ratio(ps, clampf(fx, 0.1, 1.0))
 		Mats.set_inst(ps, &"seed", randf() * 100.0)
-		ps.emitting = true
+		set_emitting(ps, true)
 
 
 func _tick_plumes(dt: float) -> void:
@@ -1876,15 +1963,15 @@ func _tick_plumes(dt: float) -> void:
 			var t: float = e[1]
 			var emit: float = e[2]
 			var node: Node3D = e[0]
-			var col: GPUParticles3D = node.get_meta("col")
-			var hz: GPUParticles3D = node.get_meta("haze")
+			var col: GeometryInstance3D = node.get_meta("col")
+			var hz: GeometryInstance3D = node.get_meta("haze")
 			if t < emit:
 				# thick at first, thinning to a wisp before it stops
-				col.amount_ratio = clampf(fx * maxf(0.12, exp(-t / (emit * 0.45))), 0.05, 1.0)
-				hz.emitting = t < emit * 0.4
-			elif col.emitting:
-				col.emitting = false
-				hz.emitting = false
+				set_ratio(col, clampf(fx * maxf(0.12, exp(-t / (emit * 0.45))), 0.05, 1.0))
+				set_emitting(hz, t < emit * 0.4)
+			elif is_emitting(col):
+				set_emitting(col, false)
+				set_emitting(hz, false)
 			elif t > emit + float(e[3]) + 1.0 and col.visible:
 				col.visible = false
 				hz.visible = false

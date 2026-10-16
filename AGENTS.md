@@ -74,8 +74,9 @@ CI (`.github/workflows/check.yml`) runs steps 1 and 2 on every push and pull req
 - **Ground and water shader colours are linear**, not sRGB. A colour that looks right in a picker comes out far too bright on the ground.
 - **The terrain is flat** (y = 0, plus a deformation height field for craters, trenches and riverbeds). Buildings, trenches and line of sight all assume it, so adding hills is a large change, not a tweak.
 - **The browser build draws with the Compatibility renderer** (WebGL 2), not Forward+. Per-object shader values go
-  through `Mats.set_inst`, never `set_instance_shader_parameter`, and depth reads, blending and particles have rules
-  of their own: see "The browser build" in DEVELOPMENT.md. Check a visual change with `--rendering-method
+  through `Mats.set_inst`, never `set_instance_shader_parameter`; a particle emitter goes into the scene through
+  `Vfx.part` (it becomes CPU particles there) and is handled with `Vfx`'s helpers, not as a `GPUParticles3D`; and
+  depth reads and blending have rules of their own: see "The browser build" in DEVELOPMENT.md. Check a visual change with `--rendering-method
   gl_compatibility` too. In a browser there are no threads, sockets or UDP (`OS.has_feature("web")`).
 - **Water** has two ground kinds: `TerrainMap.WATER` (deep: impassable on foot) and `SHALLOW` (wadable). Boats path on their own grid (`Nav.find_boat_path`), and separate bodies of water are labelled (`Nav.water_body`).
 - **Shader instance uniforms** come from a fixed buffer (`rendering/limits/global_shader_variables/buffer_size` in `project.godot`). If a bigger map spawns many more objects, raise it.
