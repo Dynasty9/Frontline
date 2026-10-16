@@ -206,7 +206,10 @@ godot --headless --path . -- --host --team=0 --players=2 --ai-allies --stats=100
 godot --headless --path . -- --join=127.0.0.1 --team=1 --quit-after=200 --port=7935
 ```
 
-The client prints a `CLIENT entities=...` summary when it quits. Check both outputs for `SCRIPT ERROR`.
+The client prints a `CLIENT entities=...` summary when it quits. Check both outputs for `SCRIPT ERROR`. A client's
+`--quit-after` counts from when the host's world reaches it: the host answers only once it has laid out the map and,
+with a window, drawn its first frame, which takes a minute or more off-screen. `waited=` in the summary is how long
+the client sat in an empty world first (-1: nothing came, and it gave up 5 minutes past `--quit-after`).
 
 ### Matchmaker
 
