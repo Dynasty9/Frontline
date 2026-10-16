@@ -1389,7 +1389,7 @@ func explosion_hit(pos: Vector3, d: Dictionary) -> void:
 			mult = 1.5
 		dmg = at * mult
 		var side_hit := absf(facing) < 0.6
-		if base() != "supply" and not is_heli() and not track_broken and world.rng.randf() < float(d.get("track", 0.3)) * (1.5 if side_hit else 1.0):
+		if base() != "supply" and not is_heli() and not is_boat() and not track_broken and world.rng.randf() < float(d.get("track", 0.3)) * (1.5 if side_hit else 1.0):
 			track_broken = true
 			world.stat("track_broken")
 			world.fx_event([Fx.DEBRIS, position + Vector3(0, 0.5, 0), Color(0.1, 0.1, 0.1), 8])

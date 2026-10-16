@@ -35,6 +35,9 @@ func _ready() -> void:
 	streams["launch"] = _whoosh()
 	streams["thud"] = _thud()
 	streams["click"] = _click()
+	streams["objective"] = _chime([660.0, 880.0])
+	streams["objective_done"] = _chime([660.0, 880.0, 1320.0])
+	streams["objective_failed"] = _chime([520.0, 390.0])
 	streams["build"] = _knock()
 	streams["door_kick"] = _door_kick()
 	streams["door"] = _creak()
@@ -379,6 +382,34 @@ func _click() -> AudioStreamWAV:
 	for i in n:
 		var t := float(i) / RATE
 		s[i] = sin(TAU * 1600.0 * t) * exp(-t * 120.0) * 0.5
+	return _wav(s)
+
+
+## A mission's radio chime: a burst of squelch, then a short run of tones
+## (rising for good news, falling for bad).
+func _chime(notes: Array) -> AudioStreamWAV:
+	var step := 0.13
+	var n := int((0.06 + step * notes.size() + 0.25) * RATE)
+	var s := PackedFloat32Array()
+	s.resize(n)
+	var seed_v := 12345
+	for i in n:
+		var t := float(i) / RATE
+		var v := 0.0
+		if t < 0.06:
+			seed_v = (seed_v * 1103515245 + 12345) & 0x7fffffff
+			v += (float(seed_v) / 0x7fffffff - 0.5) * 0.18 * (1.0 - t / 0.06)
+		var k := int((t - 0.06) / step)
+		if t >= 0.06 and k < notes.size():
+			var lt := t - 0.06 - k * step
+			var env := minf(1.0, lt * 200.0) * exp(-lt * (9.0 if k == notes.size() - 1 else 16.0))
+			var f: float = notes[k]
+			v += (sin(TAU * f * t) * 0.8 + sin(TAU * f * 2.0 * t) * 0.15) * env * 0.32
+		elif t >= 0.06:
+			var lt2 := t - 0.06 - (notes.size() - 1) * step
+			var f2: float = notes[notes.size() - 1]
+			v += sin(TAU * f2 * t) * exp(-lt2 * 9.0) * 0.32 * 0.8
+		s[i] = v
 	return _wav(s)
 
 

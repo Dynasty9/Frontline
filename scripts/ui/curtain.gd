@@ -45,6 +45,7 @@ var _stage := ""
 var _title := ""
 var _lines: Array = []  # [label, value]
 var _tip := ""
+var _story := ""  # a mission's briefing, under the lines
 
 
 static func _tex(path: String) -> Texture2D:
@@ -58,12 +59,15 @@ func _ready() -> void:
 
 
 ## The loading screen's briefing: who's fighting, where and when.
-func brief(seed: int, what: String, lines: Array) -> void:
+func brief(seed: int, what: String, lines: Array, op := "", story := "") -> void:
 	var r := RandomNumberGenerator.new()
 	r.seed = seed
 	_title = "OPERATION %s %s" % [OP_A[r.randi() % OP_A.size()], OP_B[r.randi() % OP_B.size()]]
+	if op != "":
+		_title = op.to_upper()
 	_lines = [["MISSION", what]] + lines
 	_tip = TIPS[r.randi() % TIPS.size()]
+	_story = story
 	queue_redraw()
 
 
@@ -150,13 +154,19 @@ func _draw_loading(vs: Vector2) -> void:
 		UiKit.text(self, Vector2(m.x, y), String(l[0]), 12, Color(acc.r, acc.g, acc.b, 0.85), 700)
 		UiKit.text(self, Vector2(m.x + 130, y), String(l[1]), 16, Color(0.9, 0.9, 0.86), 500)
 		y += 30.0
-	# the tip, in a panel at the bottom left
-	var tw := minf(640.0, vs.x * 0.45)
-	var tr := Rect2(Vector2(m.x, vs.y - m.y - 170), Vector2(tw, 74))
-	draw_rect(tr, Color(0, 0, 0, 0.42))
-	draw_rect(Rect2(tr.position, Vector2(3, tr.size.y)), acc)
-	UiKit.text(self, tr.position + Vector2(18, 24), "FIELD NOTE", 11, Color(acc.r, acc.g, acc.b, 0.9), 700)
-	_wrap(_tip, tr.position + Vector2(18, 46), tw - 36, 15, Color(0.88, 0.88, 0.84))
+	if _story != "":
+		# the briefing, as the commander reads it out
+		y += 10.0
+		UiKit.text(self, Vector2(m.x, y), "BRIEFING", 12, Color(acc.r, acc.g, acc.b, 0.85), 700)
+		_wrap(_story, Vector2(m.x + 130, y), minf(620.0, vs.x * 0.46), 15, Color(0.86, 0.86, 0.82))
+	# the tip, in a panel at the bottom left (a mission's briefing takes its place)
+	if _story == "":
+		var tw := minf(640.0, vs.x * 0.45)
+		var tr := Rect2(Vector2(m.x, vs.y - m.y - 170), Vector2(tw, 74))
+		draw_rect(tr, Color(0, 0, 0, 0.42))
+		draw_rect(Rect2(tr.position, Vector2(3, tr.size.y)), acc)
+		UiKit.text(self, tr.position + Vector2(18, 24), "FIELD NOTE", 11, Color(acc.r, acc.g, acc.b, 0.9), 700)
+		_wrap(_tip, tr.position + Vector2(18, 46), tw - 36, 15, Color(0.88, 0.88, 0.84))
 	# progress: the stage and a bar along the bottom
 	var by := vs.y - m.y - 40
 	var bw := vs.x - m.x * 2.0

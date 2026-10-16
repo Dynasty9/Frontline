@@ -59,6 +59,9 @@ game/hnav.gd            hierarchical A* (clusters, entrances, danger-weighted ab
 game/terrain.gd         ground types, cover map, craters, speed / hit / concealment modifiers
 game/trench_net.gd      the dug trench network (mask, walls, spoil, duckboards)
 game/mapgen.gd          procedural battlefield + test scenarios
+game/mission_director.gd   a mission on the server: objectives, scripted events, the end, co-op ownership
+game/missions.gd        the missions' content: the catalogue, placing each by the map's features, its objectives and events
+ui/hud_objectives.gd    a mission's objectives panel, clock and banners
 game/towngen.gd         the town's street plan and lots, hamlet, farms, fields, power lines
 game/physics_fx.gd      client physics: ground with the trenches cut in, ragdolls, chunks, tossed props
 game/ragdoll.gd         the jointed ragdoll
@@ -138,6 +141,11 @@ Pass these after `--` on the command line:
                                                       enemy about: they bound there by teams and clear the houses
 --scenario=breach                                     a fighter cell holed up in a house; two rifle squads and a gun team clear it
 --scenario=gdrill                                     grenade drill: frags with all sorts of fuses land among a squad round its wounded
+--mission=bridgehead|beachhead|skyhook|ambush|kingpin  play a mission; on its own it plays itself (the autopilot in missions.gd)
+--mission=KEY --play [--autoplay]                     command the mission's force yourself (--autoplay: the autopilot still gives orders)
+--mission=KEY --seed=N                                the mission on another map (checks it still places itself sensibly)
+--host --mission=KEY --players=2                      a co-op mission lobby that starts when the second player joins
+FL_DEBUG_MISSION=1 (env)                              print the map's features (bridges, villages, harbour) and the mission's setup
 --model-sheet=KEYS|FAMILY --sheet-dir=DIR [--side=1] [--sheet-yaw=R]   turntable shots of models (nato, csat, indep, civ, heli, plane, boat, all)
 --soldier-sheet=PATH [--sheet-team=0|1] [--sheet-view=front|back|rts] [--sheet-pose=idle|shoot|run|mix]
                                                       every kind of soldier lined up in daylight, saved as PATH
@@ -146,6 +154,7 @@ Pass these after `--` on the command line:
 --manual=model,KEY,SIDE                               a bare model in the Field Manual
 --curtain                                             show the intro / loading screens in an automated run
 --menu-op=0|1|-1                                      open the New Operation panel on that side
+--menu-missions[=KEY]                                 open the Missions panel (on that mission)
 --startup-trace                                       print the first frames' timings
 --test-fire                                           every armed man, gunner and vehicle fires ahead (muzzle tests)
 --seed=N                                              (with --aivai) the same map every run

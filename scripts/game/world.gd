@@ -42,6 +42,9 @@ var hud: Hud
 var squads := {}
 var next_sid := 1
 var commanders: Array = []
+var mission: MissionDirector = null  # (server) the mission being played, if it is one
+var mission_info: Dictionary = {}  # the mission's state as the HUD shows it (every peer)
+var mission_rx_t := 0.0  # world time mission_info arrived (its clocks run on from there)
 var team_info: Array = [{}, {}]
 var roads: Array = [[], [], []]  # team 0 / team 1 supply tracks, [2] the map's own roads
 var decor: Array = []  # street furniture and set dressing: [kind, pos, yaw, extra] (see Decor)
@@ -99,6 +102,12 @@ func _ready() -> void:
 		rules = Rules.new(self)
 		if String(settings.get("scenario", "")) != "":
 			MapGen.new(self).scenario(String(settings.scenario))
+		elif String(settings.get("mission", "")) != "":
+			var mgen := MapGen.new(self)
+			mgen.generate()
+			mission = MissionDirector.new(self, String(settings.mission), mgen)
+			mission.setup()
+			set_mission_info(mission.info())
 		else:
 			MapGen.new(self).generate()
 		terrain.tick(1 << 30)
@@ -145,6 +154,11 @@ func _build_environment() -> void:
 
 func _try_focus() -> void:
 	if focused or cam == null:
+		return
+	if not mission_info.is_empty() and mission_info.get("focus") != null and local_team >= 0:
+		cam.focus(mission_info.focus)
+		cam.yaw = float(mission_info.get("fyaw", 0.0))
+		focused = true
 		return
 	for st in structures:
 		if st.skind == "fob" and (st.team == local_team or local_team < 0):
@@ -466,6 +480,8 @@ func _physics_process(dt: float) -> void:
 	tp = _p("rules + fog", tp)
 	for c in commanders:
 		c.tick(dt)
+	if mission:
+		mission.tick(dt)
 	tp = _p("AI commanders", tp)
 	_snap_t -= dt
 	if _snap_t <= 0.0:
@@ -693,6 +709,8 @@ func _client_ready() -> void:
 	rpc_id(p, "_rpc_water", water.to_dict())
 	rpc_id(p, "_rpc_roads", roads)
 	rpc_id(p, "_rpc_decor", decor, town_rect)
+	if not mission_info.is_empty():
+		rpc_id(p, "_rpc_mission", mission_info)
 	ready_peers.append(p)
 	for e in entities.values():
 		e.net_dirty = true
@@ -774,6 +792,23 @@ func _rpc_team(d: Array) -> void:
 @rpc("authority", "call_remote", "reliable")
 func _rpc_msg(m: Array) -> void:
 	_show_msg(m)
+
+
+## The mission's state (objectives, clocks, the end), from the server.
+func set_mission_info(d: Dictionary) -> void:
+	mission_info = d
+	mission_rx_t = time
+	for p in ready_peers:
+		rpc_id(p, "_rpc_mission", d)
+
+
+@rpc("authority", "call_remote", "reliable")
+func _rpc_mission(d: Dictionary) -> void:
+	if OS.has_environment("FL_DEBUG_MISSION") and (d.get("objs", []) as Array).size() != (mission_info.get("objs", []) as Array).size():
+		print("CLIENT mission %s: %d objectives, over=%d" % [String(d.get("key", "")), (d.get("objs", []) as Array).size(), int(d.get("over", 0))])
+	mission_info = d
+	mission_rx_t = time
+	_try_focus()
 
 
 @rpc("authority", "call_remote", "reliable")
@@ -901,7 +936,10 @@ func declare_winner(t: int) -> void:
 	if winner >= 0:
 		return
 	winner = t
-	send_msg(-1, "system", "%s win the battle!" % Defs.TEAM_NAMES[t])
+	if mission:
+		send_msg(-1, "system", ("Mission accomplished. " if mission.over == 1 else "Mission failed. ") + mission.end_text)
+	else:
+		send_msg(-1, "system", "%s win the battle!" % Defs.TEAM_NAMES[t])
 	game_ended.emit(t)
 	if hud:
 		hud.show_game_over(t)
@@ -1326,6 +1364,11 @@ func _centroid(sqs: Array, vehs: Array) -> Vector3:
 
 
 func _on_player_joined(id: int, team: int, pname: String) -> void:
+	if mission:
+		if team == mission.side:
+			mission.player_joined(id)
+		send_msg(-1, "system", "%s joined the mission." % pname)
+		return
 	var f: Structure = null
 	for st in rules.fobs(team, false):
 		if f == null or st.completed_order < f.completed_order:
@@ -1363,6 +1406,10 @@ func _on_player_left(id: int, team: int, pname: String) -> void:
 		if v.owner_peer == id:
 			v.owner_peer = new_owner
 			push_props(v, {"owner": new_owner})
+	if mission:
+		mission.owner_changed(id, new_owner)
+		send_msg(-1, "system", "%s left the mission." % pname)
+		return
 	if heir == 0:
 		var has_ai := false
 		for c in commanders:

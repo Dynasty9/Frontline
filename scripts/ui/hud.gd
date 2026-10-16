@@ -41,6 +41,7 @@ var obs_pause: Button
 var obs_dir: Button
 var obs_view: Button
 var toasts: HudToasts
+var objectives: HudObjectives
 var log_panel: PanelContainer
 var log_box: RichTextLabel
 var chat_edit: LineEdit
@@ -122,6 +123,14 @@ func _ready() -> void:
 	toasts.offset_bottom = 290
 	toasts.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	root.add_child(toasts)
+
+	# a mission's objectives, top right (the notifications move down under them)
+	objectives = HudObjectives.new()
+	objectives.hud = self
+	objectives.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	objectives.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	objectives.visible = false
+	root.add_child(objectives)
 
 	alert_label = Label.new()
 	alert_label.set_anchors_and_offsets_preset(Control.PRESET_CENTER_TOP)
@@ -280,7 +289,10 @@ func _ready() -> void:
 	manual.visible = false
 	manual.closed.connect(func(): manual.visible = false)
 	add_child(manual)
-	add_message("system", "Battle started. You command the %s. F1 for controls, Esc for the menu." % (Defs.TEAM_NAMES[world.local_team] if world.local_team >= 0 else "camera (observer)"))
+	if String(world.settings.get("mission", "")) != "":
+		add_message("system", "Mission started. F1 for controls, Esc for the menu.")
+	else:
+		add_message("system", "Battle started. You command the %s. F1 for controls, Esc for the menu." % (Defs.TEAM_NAMES[world.local_team] if world.local_team >= 0 else "camera (observer)"))
 
 
 func _build_observer_bar() -> void:
@@ -635,6 +647,9 @@ func _on_chat(text: String) -> void:
 func show_game_over(w: int) -> void:
 	for c in over_panel.get_children():
 		c.queue_free()
+	if not world.mission_info.is_empty():
+		_mission_over()
+		return
 	var vb := VBoxContainer.new()
 	vb.add_theme_constant_override("separation", 14)
 	over_panel.add_child(vb)
@@ -658,6 +673,62 @@ func show_game_over(w: int) -> void:
 	b.custom_minimum_size = Vector2(0, 40)
 	b.pressed.connect(_leave)
 	vb.add_child(b)
+	over_panel.visible = true
+
+
+## The end of a mission: accomplished or failed, why, and what it cost.
+func _mission_over() -> void:
+	var info: Dictionary = world.mission_info
+	var ok := int(info.get("over", 0)) == 1
+	over_panel.offset_left = -280
+	over_panel.offset_right = 280
+	over_panel.offset_top = -170
+	over_panel.offset_bottom = 170
+	var vb := VBoxContainer.new()
+	vb.add_theme_constant_override("separation", 10)
+	over_panel.add_child(vb)
+	var op := UiKit.label(String(info.get("op", "")).to_upper(), 12, UiKit.ACCENT, 700)
+	op.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	vb.add_child(op)
+	var t := UiKit.label("MISSION ACCOMPLISHED" if ok else "MISSION FAILED", 34, UiKit.GOOD if ok else UiKit.BAD, 700)
+	t.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	vb.add_child(t)
+	var s := UiKit.label(String(info.get("end", "")), 15, UiKit.TEXT)
+	s.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	s.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	s.custom_minimum_size = Vector2(480, 0)
+	vb.add_child(s)
+	var done := 0
+	var all := 0
+	for o in info.get("objs", []):
+		if bool(o[7]):
+			continue
+		all += 1
+		if int(o[2]) == MissionDirector.DONE:
+			done += 1
+	var el := float(info.get("el", 0.0))
+	var lost: Array = info.get("lost", [0, 0])
+	var st := UiKit.label("Time %d:%02d    Objectives %d of %d    Men lost %d of %d    Enemy killed %d" % [int(el) / 60, int(el) % 60, done, all, int(lost[0]), int(lost[1]), int(info.get("kills", 0))], 13, UiKit.DIM)
+	st.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	vb.add_child(st)
+	var gap := Control.new()
+	gap.custom_minimum_size = Vector2(0, 6)
+	vb.add_child(gap)
+	var row := HBoxContainer.new()
+	row.alignment = BoxContainer.ALIGNMENT_CENTER
+	row.add_theme_constant_override("separation", 10)
+	vb.add_child(row)
+	if multiplayer.is_server():
+		var again := Button.new()
+		again.text = "Play Again" if ok else "Try Again"
+		again.custom_minimum_size = Vector2(170, 40)
+		again.pressed.connect(func(): over_panel.visible = false; Net.start_game())
+		row.add_child(again)
+	var b := Button.new()
+	b.text = "Return to Menu"
+	b.custom_minimum_size = Vector2(170, 40)
+	b.pressed.connect(_leave)
+	row.add_child(b)
 	over_panel.visible = true
 
 
@@ -738,6 +809,11 @@ func _view_process(dt: float) -> void:
 			toasts.offset_right = -14
 			toasts.offset_top = 36
 			toasts.offset_bottom = 290
+	if not perf_big:
+		var ty := 36.0 if objectives.need_h <= 0.0 else 12.0 + objectives.need_h + 10.0
+		if toasts.offset_top != ty:
+			toasts.offset_top = ty
+			toasts.offset_bottom = ty + 254.0
 	toasts.tick(rdt)
 	_map_t -= rdt
 	if _map_t <= 0.0:
@@ -748,6 +824,10 @@ func _view_process(dt: float) -> void:
 
 func _update_support() -> void:
 	var kinds: Array = Defs.supports_for(world.local_team) if world.local_team >= 0 else []
+	if not world.mission_info.is_empty():
+		# a mission has what's on call for it, and nothing else
+		var on_call: Array = world.mission_info.get("sup", [])
+		kinds = kinds.filter(func(k): return k in on_call)
 	var key := ",".join(kinds)
 	if key != _support_key:
 		_support_key = key

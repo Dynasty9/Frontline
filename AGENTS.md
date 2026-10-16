@@ -17,6 +17,7 @@ scripts/game/squad*.gd         squads, battle drills and morale (squad_brain.gd)
 scripts/game/vehicle*.gd       vehicles: driving, crews (vehicle_brain.gd), models (vehicle_models.gd + vehicles/vm_*.gd)
 scripts/game/commander_ai.gd   the AI commander; naval_ai.gd its navy; attack_plan.gd / ambush_plan.gd its plans
 scripts/game/mapgen.gd         map generation and the --scenario test setups; towngen.gd the town; water.gd the water
+scripts/game/missions.gd       the missions (content); mission_director.gd runs them (objectives, events, the end)
 scripts/game/terrain.gd, nav.gd, hnav.gd   ground kinds, cover map, pathfinding grids (HPA*)
 scripts/ui/                    HUD, minimap, Field Manual, menus
 docs/                          FEATURES.md (design), DEVELOPMENT.md (code layout, test flags)
@@ -37,7 +38,7 @@ Run every command from the repository root. `godot` means your Godot 4.7.x execu
    godot --headless --path . -- --scenario=attack --stats=60 --quit-after=60 --port=7901
    godot --headless --path . -- --aivai --seed=3 --timescale=5 --stats=300 --quit-after=1200 --port=7902
    ```
-   Scenarios include `attack`, `breach`, `trenches`, `tank`, `tactics`, `naval`, `sling`, `roster` and `gdrill`; [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) has the full list. `--stats=N` prints a state summary every N seconds and, at the end, the behaviour counters (`world.stat("key")`). Those counters are the cheapest way to confirm a behaviour actually fired: add one, run, grep for it.
+   Scenarios include `attack`, `breach`, `trenches`, `tank`, `tactics`, `naval`, `sling`, `roster` and `gdrill`; [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) has the full list. Missions play themselves headless: `--mission=bridgehead --verbose --quit-on-win --timescale=4` prints the radio traffic and objectives as they happen, and ends with `Mission accomplished` or `Mission failed`. `--stats=N` prints a state summary every N seconds and, at the end, the behaviour counters (`world.stat("key")`). Those counters are the cheapest way to confirm a behaviour actually fired: add one, run, grep for it.
 3. **Multiplayer**, if you touched anything replicated: run a host and a client (see "Host / client" in DEVELOPMENT.md). The client prints `CLIENT entities=...` when it quits.
 4. **Visuals**: render off-screen and look at the image rather than guessing. Use `--screenshot=out.png --shot-at=SECONDS`, frame the shot with `--focus=X,Z --zoom=M --pitch=DEG --cam-yaw=RAD`, and add `--nohud` to hide the interface. `--manual=category,key,side` opens a Field Manual page.
 

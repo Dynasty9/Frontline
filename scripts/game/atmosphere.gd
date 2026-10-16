@@ -40,6 +40,7 @@ var detail_tex: ImageTexture
 var road_mat: ShaderMaterial
 var grass: Grass
 var _d := {}
+var _mood_asked := ""  # the Time of day setting as the battle began: changing it mid-battle switches the mood live
 
 
 func setup(w: World) -> void:
@@ -56,6 +57,7 @@ func setup(w: World) -> void:
 			pick = keys[0]
 	mood = pick
 	_d = MOODS[mood]
+	_mood_asked = String(Settings.get_v("mood"))
 	_make_noise()
 	_build_env()
 	_build_ground()
@@ -536,9 +538,13 @@ func apply_mood(m: String) -> void:
 
 func apply_settings() -> void:
 	var s := Settings
+	# the battle's own mood stands (the host's choice, or a mission's) until
+	# the player changes the setting while it's on
 	var want := String(s.get_v("mood"))
-	if MOODS.has(want) and want != mood:
-		apply_mood(want)
+	if want != _mood_asked:
+		_mood_asked = want
+		if MOODS.has(want) and want != mood:
+			apply_mood(want)
 	env.ssao_enabled = s.get_v("ssao")
 	env.ssr_enabled = s.get_v("ssr")
 	env.ssr_max_steps = 48 if int(s.get_v("ao_q")) >= 2 else 24

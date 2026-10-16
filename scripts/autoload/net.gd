@@ -35,6 +35,9 @@ func host_game(port := DEFAULT_PORT, team := 0) -> int:
 	players.clear()
 	players[1] = {"name": my_name, "team": team}
 	in_game = false
+	# a fresh game: not the mission the last one was (if it was one)
+	settings.erase("mission")
+	settings.erase("mission_autoplay")
 	lobby_updated.emit()
 	return OK
 
@@ -130,12 +133,22 @@ func _register(pname: String) -> void:
 		_start.rpc_id(id, s)
 		player_joined.emit(id, team, clean)
 		return
-	players[id] = {"name": clean, "team": 0}
+	players[id] = {"name": clean, "team": mission_side() if mission_side() >= 0 else 0}
 	_broadcast_lobby()
 	_lobby_msg.rpc("%s joined." % clean)
 
 
+## The side a mission is played from (-1: not a mission).
+func mission_side() -> int:
+	var mk := String(settings.get("mission", ""))
+	if mk == "":
+		return -1
+	return int(Missions.find(mk).get("side", 0))
+
+
 func _pick_join_team() -> int:
+	if mission_side() >= 0:
+		return mission_side()
 	var n := [0, 0]
 	for pid in players:
 		var t := int(players[pid].team)
@@ -172,6 +185,8 @@ func request_team(team: int) -> void:
 	var id := _sender()
 	if players.has(id):
 		players[id].team = clampi(team, -1, 1)
+		if mission_side() >= 0 and players[id].team >= 0:
+			players[id].team = mission_side()  # a mission is co-op: everyone on its side
 		_broadcast_lobby()
 
 
@@ -211,6 +226,17 @@ func start_game() -> void:
 		elif humans[t] and bool(s.get("ai_allies", false)):
 			ai.append(t)
 	s["ai_teams"] = ai
+	var mk := String(s.get("mission", ""))
+	if mk != "":
+		# a mission: its own ground, weather and enemy (no AI commander), and
+		# every player on its side
+		var md := Missions.find(mk)
+		s["seed"] = int(s.fixed_seed) if s.has("fixed_seed") else int(md.get("seed", s.seed))
+		s["mood"] = String(md.get("mood", s.mood))
+		s["ai_teams"] = []
+		for id in players:
+			if int(players[id].team) >= 0:
+				players[id].team = int(md.get("side", 0))
 	s["players"] = players.duplicate(true)
 	_start.rpc(s)
 

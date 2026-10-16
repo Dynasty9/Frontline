@@ -66,6 +66,8 @@ func _draw() -> void:
 		_ranges(cam)
 	_order_graphics(lt, maxf(a_far, a_units * 0.9))
 	_mark("orders")
+	if not w.mission_info.is_empty() and int(w.mission_info.get("over", 0)) == 0:
+		_mission_marks(cam, vs)
 	var men := _men_on_screen(cam, vs)
 	_mark("men on screen")
 	if a_close > 0.0:
@@ -513,6 +515,50 @@ func _dashed_ring(c3: Vector3, r: float, col: Color, alpha: float) -> void:
 	for i in range(0, pts.size() - 1, 2):
 		draw_line(pts[i], pts[i + 1], Color(0, 0, 0, alpha * 0.4), 4.0, true)
 		draw_line(pts[i], pts[i + 1], c, 2.0, true)
+
+## A mission's objectives where they are: the area as a ring on the ground, and
+## over it a diamond with its letter and how far it is from the camera's
+## centre. One off the screen waits at the edge, pointing the way.
+func _mission_marks(cam: Camera3D, vs: Vector2) -> void:
+	var w := hud.world
+	var t := Time.get_ticks_msec() / 1000.0
+	for o in w.mission_info.get("objs", []):
+		if int(o[2]) != MissionDirector.ACTIVE or o[4] == null:
+			continue
+		var p: Vector3 = o[4]
+		var col: Color = UiKit.ACCENT if not bool(o[7]) else Color(0.75, 0.8, 0.85)
+		var r := float(o[5])
+		if String(o[3]) in ["reach", "clear", "hold", "extract", "deliver"] and r > 0.0:
+			_dashed_ring(p, r, col, 0.55)
+		var top := p + Vector3(0, 7.0, 0)
+		var sp := cam.unproject_position(top)
+		var behind := cam.is_position_behind(top)
+		var margin := 46.0
+		var inside := not behind and sp.x > margin and sp.x < vs.x - margin and sp.y > margin and sp.y < vs.y - margin
+		var dist := Defs.flat(p - w.cam.focus_pos).length()
+		if inside:
+			var bob := sin(t * 2.4) * 2.0
+			var c := sp + Vector2(0, bob)
+			draw_line(c + Vector2(0, 13), cam.unproject_position(p + Vector3(0, 0.3, 0)), Color(col.r, col.g, col.b, 0.35), 1.0, true)
+			HudObjectives.diamond(self, c, 15.0, String(o[0]), col, 1.0)
+			if dist > 25.0:
+				HudObjectives._at(self, c - Vector2(0, 22), "%d m" % int(dist), 12, Color(col.r, col.g, col.b, 0.95), 700, 0.5)
+		else:
+			# to the edge of the screen, along the line from its centre
+			var mid := vs * 0.5
+			var d := sp - mid
+			if behind:
+				d = -d
+			if d.length() < 1.0:
+				d = Vector2(0, 1)
+			var k := minf((mid.x - margin) / maxf(absf(d.x), 0.001), (mid.y - margin) / maxf(absf(d.y), 0.001))
+			var e := mid + d * k
+			var dn := d.normalized()
+			HudObjectives.diamond(self, e, 13.0, String(o[0]), col, 0.95)
+			var tip := e + dn * 23.0
+			draw_colored_polygon(PackedVector2Array([tip, e + dn * 15.0 + dn.orthogonal() * 6.0, e + dn * 15.0 - dn.orthogonal() * 6.0]), Color(col.r, col.g, col.b, 0.95))
+			HudObjectives._at(self, e - dn * 30.0 + Vector2(0, 4), "%d m" % int(dist), 11, Color(col.r, col.g, col.b, 0.9), 700, 0.5)
+
 
 ## The "defend" tactical sign: an arc across the front with ticks facing out.
 func _defend_arc(c3: Vector3, face: Vector3, col: Color, alpha: float) -> void:

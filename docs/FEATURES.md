@@ -5,6 +5,7 @@ The long version: how each system works and why. For the short version, see the 
 - [Full controls reference](#full-controls-reference)
 - [Watching the AI](#watching-the-ai)
 - [Multiplayer in detail](#multiplayer-in-detail)
+- [Missions](#missions)
 - [The systems](#the-systems)
 
 ## Full controls reference
@@ -45,6 +46,36 @@ they're doing). The observer bar at the top has pause, speed (0.25x to 4x), dire
 - **Fog of war is enforced by the host.** A client is only told about enemy units and buildings its side has spotted,
   gets a "hidden" marker instead of positions once they're out of sight, and never receives enemy supply, production
   or team stats. Enemy HQs and starting FOBs are revealed to everyone, like start locations in most RTS games.
+
+## Missions
+
+Short operations, about five minutes each, played alone or in co-op (**Missions** on the main menu; **Host Co-op**
+opens a lobby, and friends join with Join Game). Each is built around something the game does well:
+
+| Mission | Side | What it shows off |
+|---|---|---|
+| **Bridgehead** | Coalition | Clear a riverside village house by house, seize its bridge, hold it against infantry, a BTR and mortars coming over the bridge and the ford. 155 mm artillery on call. |
+| **Beachhead** | Coalition | RHIBs land a party on the beach under a patrol ship's guns while enemy boats come out; kill two AA trucks, then a Blackfoot and a Ghost Hawk full of reinforcements come in from the sea. |
+| **Sky Hook** | Coalition | Hook a Nyx tank destroyer under a Mohawk, fly it over the river to a cut-off outpost and stop the armoured column coming for it. |
+| **Ambush Alley** | Rebels | Get into the woods above a lane before a convoy leaves, let the IED open the ambush, destroy the convoy, then break contact before the QRF (and its helicopter) arrives. |
+| **Kingpin** | Coalition | A night raid: a checkpoint on the main street, a barred house, a Rebel commander to kill or capture, and a run back to the Hunters before the town cuts the road. |
+
+- **Objectives** sit top right with the mission clock: each has a letter, and the same letter marks it on the
+  ground (a ring round the area and a marker over it that waits at the screen edge when it's off screen) and on
+  the minimap. A banner and a radio chime announce each one set, met or lost. Kinds: reach an area, clear it,
+  hold it for a time, guard it, destroy targets, protect something, deliver a vehicle, extract, and timers.
+- **The mission runs the enemy.** There's no AI commander: the mission places the enemy, sends in
+  counterattacks and reinforcements, and calls their support; their own squad and crew drills do the rest.
+- **The ground is the ordinary battlefield** on a fixed seed, and each mission places itself by the map's
+  features (the lane bridges, the villages, the harbour, the main street), so it still works if map generation changes.
+- **What's on call** is what the mission gives you, paid from a fixed stock of supply (no trucks, no reserves).
+- **Co-op:** the force is shared out between the players in turn; a friend dropping in takes over half of
+  whoever has the most. If everyone leaves, the mission's autopilot (the same one the automated tests use) keeps playing.
+- The end screen says what happened and what it cost (time, objectives, men lost, enemy killed), with **Try Again**.
+
+The code: `scripts/game/mission_director.gd` (the machinery), `scripts/game/missions.gd` (the content),
+`scripts/ui/hud_objectives.gd` (the panel). Adding a mission is a catalogue entry in `Missions.LIST`, a setup
+function and an autopilot function.
 
 ## The systems
 
