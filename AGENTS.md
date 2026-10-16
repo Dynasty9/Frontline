@@ -18,6 +18,7 @@ scripts/game/vehicle*.gd       vehicles: driving, crews (vehicle_brain.gd), mode
 scripts/game/commander_ai.gd   the AI commander; naval_ai.gd its navy; attack_plan.gd / ambush_plan.gd its plans
 scripts/game/mapgen.gd         map generation and the --scenario test setups; towngen.gd the town; water.gd the water
 scripts/game/missions.gd       the missions (content); mission_director.gd runs them (objectives, events, the end)
+scripts/game/co_command.gd     co-commanders: each player's view, cursor and plans, pings, sketches (relayed to their side only)
 scripts/game/terrain.gd, nav.gd, hnav.gd   ground kinds, cover map, pathfinding grids (HPA*)
 scripts/ui/                    HUD, minimap, Field Manual, menus
 scripts/autoload/online.gd     the matchmaker client: battle list, Find Match, hole punching, optional account

@@ -90,7 +90,7 @@ Each has objectives on screen and marked on the map. Choose **Host Co-op** to pl
 | Save a view / go back to it | Ctrl + F5 to F8 / F5 to F8 |
 | Look somewhere else | Click or drag on the minimap |
 | Jump to your bases | Home |
-| Jump to the latest alert | Space |
+| Jump to the latest alert or ping | Space |
 
 Prefer the middle mouse to pan rather than turn? Swap them in **Settings → Interface**, where you'll also find the minimap's size and an option to turn it with the camera.
 
@@ -155,6 +155,18 @@ To play with particular people:
    - **Co-op:** everyone picks the same side, and the computer plays the other.
    - **Versus:** pick opposite sides. You can still add a computer commander to help either side.
 3. The host clicks **Start Battle**.
+
+**Seeing your co-commanders.** Every commander has a colour (shown next to your name in the lobby). On your side you can see what the others are doing as they do it: where each one is looking (a viewfinder on the ground and a wedge on the minimap), their cursor with their name and what they're up to, a ring round what they've selected, and the trench line, fire mission or attack they're lining up before they commit it. Their units carry their initials, and the **Command Net** (top right) lists everyone with what they're doing right now and what they've just built, called in or set training, so you know where the supply went. The enemy never sees any of it.
+
+![Two co-commanders at work: Viper aiming 155 mm artillery, Rook laying a trench line, their views, pings and the Command Net](docs/screenshots/co_commanders.jpg)
+
+| Action | Keys |
+|---|---|
+| Ping (enemy spotted, watch this unit, look here) | Alt + click on the battlefield or the minimap |
+| Ping wheel: attack, on my way, need support, danger, defend, look | Hold Alt + left button, let go on a choice |
+| Draw on the map for your side | Alt + right-drag (on the minimap too) |
+| Look where a teammate is looking | Click their name in the Command Net, or their marker at the screen edge |
+| Watch a teammate's screen live | The screen button in the Command Net, or double-click their name |
 
 The game connects players straight to the host, through most home routers, without anyone opening ports. A few networks (some mobile and campus ones) are too strict for that; the lobby says so, and then the host needs UDP port **7777** open, or you can play over a LAN or a VPN such as Tailscale, ZeroTier or Hamachi. Friends can also join a battle that's already running.
 
