@@ -1,9 +1,10 @@
 class_name TopoBackdrop
 extends ColorRect
 ## The living map behind every screen outside a battle: the title, the menu and
-## the loading screen. A topographic survey of ground that slowly folds and
-## drifts, its contour lines lit in colours that wander round a palette of
-## brass, ember, rose, violet, blue and jade. The ground rises in a hill under
+## the loading screen (and, see-through, behind the menus in a battle). A
+## topographic survey of ground that slowly folds and drifts, its contour lines
+## lit in colours that wander round the interface theme's six (brass, ember,
+## rose, violet, blue and jade in Field Brass). The ground rises in a hill under
 ## the cursor and ripples out from a click.
 ##
 ## Every copy draws the same picture at the same moment (one shared clock, one
@@ -25,18 +26,14 @@ uniform vec3 taps[4];  // recent clicks: x, y (fraction of the screen), seconds 
 uniform float shade = 0.0;  // darkening down the left, under a column of text
 uniform float scan = 0.0;  // the loading screen's survey sweep
 uniform float zoom = 1.0;  // closing in on the ground (the loading screen)
-uniform vec3 quiet = vec3(0.5, 0.5, 0.0);
-uniform float grain = 1.0;  // a calm patch behind a title: centre (fraction of the screen), strength
+uniform vec3 quiet = vec3(0.5, 0.5, 0.0);  // a calm patch behind a title: centre (fraction of the screen), strength
+uniform float grain = 1.0;
+uniform vec3 keys[6];  // the theme's colours the contours turn through
+uniform float see_through = 0.0;  // over a battle: a dark veil the lines stand out of
 
 const float LEVELS = 15.0;
 const vec3 BG = vec3(0.031, 0.039, 0.043);
 const vec3 SLEEP_LINE = vec3(0.105, 0.115, 0.115);
-const vec3 BRASS = vec3(0.96, 0.79, 0.43);
-const vec3 EMBER = vec3(1.0, 0.47, 0.27);
-const vec3 ROSE = vec3(0.95, 0.33, 0.52);
-const vec3 VIOLET = vec3(0.58, 0.45, 1.0);
-const vec3 INTEL = vec3(0.32, 0.74, 1.0);
-const vec3 JADE = vec3(0.35, 0.92, 0.68);
 
 vec2 hash2(vec2 p) {
 	p = vec2(dot(p, vec2(127.1, 311.7)), dot(p, vec2(269.5, 183.3)));
@@ -82,13 +79,13 @@ float fbm5(vec2 p) {
 // a slow wheel of colours (each one held a while, then eased into the next)
 vec3 wheel(float x) {
 	x = fract(x) * 6.0;
-	vec3 c = BRASS;
-	c = mix(c, EMBER, smoothstep(0.0, 1.0, x));
-	c = mix(c, ROSE, smoothstep(1.0, 2.0, x));
-	c = mix(c, VIOLET, smoothstep(2.0, 3.0, x));
-	c = mix(c, INTEL, smoothstep(3.0, 4.0, x));
-	c = mix(c, JADE, smoothstep(4.0, 5.0, x));
-	c = mix(c, BRASS, smoothstep(5.0, 6.0, x));
+	vec3 c = keys[0];
+	c = mix(c, keys[1], smoothstep(0.0, 1.0, x));
+	c = mix(c, keys[2], smoothstep(1.0, 2.0, x));
+	c = mix(c, keys[3], smoothstep(2.0, 3.0, x));
+	c = mix(c, keys[4], smoothstep(3.0, 4.0, x));
+	c = mix(c, keys[5], smoothstep(4.0, 5.0, x));
+	c = mix(c, keys[0], smoothstep(5.0, 6.0, x));
 	return c;
 }
 
@@ -185,7 +182,9 @@ void fragment() {
 	vec2 dq = (p - (quiet.xy - 0.5) * vec2(aspect, 1.0)) / vec2(0.6, 0.27);
 	col *= 1.0 - quiet.z * awake * exp(-dot(dq, dq));
 	col += (hash1(FRAGCOORD.xy + fract(t * 7.31) * 113.0) - 0.5) * 0.014 * grain;
-	COLOR = vec4(min(col, vec3(1.0)), 1.0);
+	// see-through, the dark ground lets a battle show through it and the lines don't
+	float ink = clamp((col.r + col.g + col.b - BG.r - BG.g - BG.b) * 2.2, 0.0, 1.0);
+	COLOR = vec4(min(col, vec3(1.0)), mix(1.0, clamp(see_through + ink, 0.0, 1.0), step(0.001, see_through)));
 }
 """
 
@@ -200,6 +199,9 @@ static var _pinned := false  # --menu-cursor: held still for screenshots
 static var _held := false  # --intro-at: the clock stopped for screenshots
 static var _taps: Array = []  # [Vector2 (fraction of the screen), clock when clicked]
 static var _tap_frame := -1
+static var _keys: Array = (UiKit.THEMES.brass.map as Array).duplicate()  # the colours drawn now
+static var _keys_to: Array = _keys.duplicate()  # and the theme's, which they ease toward
+static var _keys_packed := PackedVector3Array()
 
 var wake_at := Vector2(0.5, 0.5)
 var wake_t := 1000.0
@@ -207,6 +209,7 @@ var shade := 0.0
 var scan := 0.0
 var quiet := Vector3(0.5, 0.5, 0.0)
 var zoom := 1.0
+var see_through := 0.0
 var _mat: ShaderMaterial
 
 
@@ -240,6 +243,13 @@ static func _tick(vp: Viewport, delta: float) -> void:
 	var dt := 0.0 if _frame < 0 or _held else minf(delta / maxf(Engine.time_scale, 0.001), 0.1)
 	_frame = f
 	_clock += dt
+	# a new theme's colours flow into the map over a second or so
+	var k := 1.0 - exp(-dt * 2.5)
+	_keys_packed.resize(6)
+	for i in 6:
+		_keys[i] = (_keys[i] as Color).lerp(_keys_to[i], k)
+		var c: Color = _keys[i]
+		_keys_packed[i] = Vector3(c.r, c.g, c.b)
 	if vp and not _pinned:
 		var vs := vp.get_visible_rect().size
 		var m := vp.get_mouse_position()
@@ -251,6 +261,14 @@ static func _tick(vp: Viewport, delta: float) -> void:
 	for i in range(_taps.size() - 1, -1, -1):
 		if _clock - float(_taps[i][1]) > 4.0:
 			_taps.remove_at(i)
+
+
+## The theme's six colours for the contours. Before the first frame they're
+## taken at once (the boot splash must match); after it they ease in.
+static func set_palette(cols: Array) -> void:
+	_keys_to = cols.duplicate()
+	if _frame < 0:
+		_keys = cols.duplicate()
 
 
 ## Start the clock that far in (screenshots of later colours).
@@ -305,7 +323,14 @@ func _push() -> void:
 	_mat.set_shader_parameter("scan", scan)
 	_mat.set_shader_parameter("quiet", quiet)
 	_mat.set_shader_parameter("zoom", zoom)
-	_mat.set_shader_parameter("grain", 0.0 if _held else 1.0)  # a held frame is a still (the boot splash is one: no grain keeps it small)
+	_mat.set_shader_parameter("grain", 0.0 if _held else 1.0)
+	_mat.set_shader_parameter("see_through", see_through)
+	if _keys_packed.size() < 6:
+		_keys_packed.resize(6)
+		for i in 6:
+			var c: Color = _keys[i]
+			_keys_packed[i] = Vector3(c.r, c.g, c.b)
+	_mat.set_shader_parameter("keys", _keys_packed)  # a held frame is a still (the boot splash is one: no grain keeps it small)
 	var taps := PackedVector3Array()
 	for i in 4:
 		if i < _taps.size():

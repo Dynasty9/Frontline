@@ -468,6 +468,16 @@ function and an autopilot function.
   rose, violet, blue and jade over a minute and a half, a map grid with corner crosses. The ground rises in a hill
   under the cursor, and a click sends a ripple out across it. Every copy shares one clock and cursor, so the
   title, the menu and the loading screen hand over to each other without a seam.
+- **Themes** (Settings > Interface), each named for what a soldier looks at the war through: Field Brass (the
+  original), Night Vision (phosphor greens), Thermal (an ironbow of violet, red, orange and white-hot), Arctic
+  (ice and intelligence blues) and Dusk (violet and rose). A theme sets the accent, the text, the panels and the
+  six colours the map's contours turn through; the colours that mean something (good, bad, warning, intel) stay
+  the same in all of them. It changes live: the interface recolours at once and the map's colours flow into the
+  new ones over a second or so.
+- Panels wear a tactical frame in the map's language: dark glass, a hairline edge, accent brackets on the
+  corners like the crosses on the map's grid, and a faint glow in the accent. The button under the cursor glows.
+- In a battle, the map comes back see-through behind the Esc menu, the help, the settings and the end of the
+  battle (where a wave from the middle of the screen wakes it), with the battlefield showing through it.
 - Boot splash and title: the splash is the title's first frame (the map asleep under the emblem and the name).
   A wave runs out of the emblem's dot, wakes the map and lights the letters as it passes; then the title rises
   away and the menu glides in on the same map. A click or a key skips it.

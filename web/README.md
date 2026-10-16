@@ -1,8 +1,8 @@
 # Frontline website
 
-The game's front page: the battles being hosted right now (from the matchmaker), a **Join** button on each that
-opens the game and connects you (`frontline://join/<id>`, registered by the game on its first launch), and the
-latest downloads, and a Changelog page (`/changelog/`) with every release.
+The game's front page: footage recorded in the game, its missions, the battles being hosted right now (from the
+matchmaker), a **Join** button on each that opens the game and connects you (`frontline://join/<id>`, registered by
+the game on its first launch), the latest downloads, and a Changelog page (`/changelog/`) with every release.
 
 React 19, Vite, TypeScript, Tailwind 4 and [shadcn/ui](https://ui.shadcn.com) (the Lyra style, recoloured with the
 game's palette from `scripts/ui/ui_kit.gd`). Needs Node 22.12 or newer.
@@ -53,6 +53,22 @@ screenshots of the failing stories are kept too (`story-failures`).
 
 The files under `src/components/ui/` come from shadcn (`npx shadcn add ...`) and are formatted the way it writes them
 (80 columns); the rest of the code is 120.
+
+## Footage
+
+Every clip in `public/media/` was recorded in the game itself with Godot's movie writer, off-screen, then cut
+and encoded as H.264 MP4 (with each clip's first frame as its `.jpg` poster). The hero loop and the feature
+clips are silent; `reel.mp4`, behind "Watch the footage", keeps the game's own sound, with captions describing it.
+The page only loads a clip when it scrolls into view, and shows the still instead to people who prefer reduced
+motion or have Data Saver on.
+
+The text the page quotes (the counts, the missions, the radio traffic, the vehicle names) lives in
+`src/lib/intel.ts`, taken from the game's own tables.
+
+When the game changes, the `website-footage` skill (`.claude/skills/website-footage/`) brings both up to date:
+`check_intel.py` checks the copy against the game (and `--fix` updates the counts), `record.py` re-records the
+takes listed in its `shots.json`, and `build.py` cuts and encodes them into `public/media`. Its `SKILL.md` walks
+through it, with the flags that make good footage.
 
 ## Deploying
 

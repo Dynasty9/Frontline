@@ -398,7 +398,7 @@ func _unhandled_input(ev: InputEvent) -> void:
 ## alone or host it for friends.
 func _build_mission_panel() -> void:
 	ms_panel = PanelContainer.new()
-	ms_panel.add_theme_stylebox_override("panel", UiKit.boxc(Color(0.035, 0.045, 0.045, 0.92), 6, UiKit.LINE, 1, 22.0, 10))
+	ms_panel.add_theme_stylebox_override("panel", UiKit.frame(Color(-1, 0, 0), 22.0, 1.0, 14.0, 0.93))
 	ms_panel.anchor_top = 0.5
 	ms_panel.anchor_bottom = 0.5
 	ms_panel.offset_left = 640
@@ -1058,7 +1058,7 @@ func _join_by_id(id: String) -> void:
 ## A panel on the right of the menu, where the new-operation panel sits.
 func _side_panel() -> PanelContainer:
 	var p := PanelContainer.new()
-	p.add_theme_stylebox_override("panel", UiKit.boxc(Color(0.035, 0.045, 0.045, 0.9), 6, UiKit.LINE, 1, 22.0, 10))
+	p.add_theme_stylebox_override("panel", UiKit.frame(Color(-1, 0, 0), 22.0, 1.0, 14.0, 0.92))
 	p.anchor_top = 0.5
 	p.anchor_bottom = 0.5
 	p.offset_left = 640

@@ -99,7 +99,9 @@ ui/stats_panel.gd       the battle statistics / after-action report (Summary, Co
 game/co_command.gd      co-commanders: each player's presence (view, cursor, selection, what's being lined up),
                         pings, sketches and committed actions, relayed by the host to that side only
 ui/hud_coop.gd          co-commanders drawn over the battlefield; ui/hud_coop_roster.gd the Command Net
-ui/hud.gd, menu.gd      interface; ui/settings_panel.gd, ui/perf_overlay.gd, ui/ui_kit.gd (shared style),
+ui/hud.gd, menu.gd      interface; ui/settings_panel.gd, ui/perf_overlay.gd, ui/ui_kit.gd (shared style and the
+                        interface themes: read UiKit.ACCENT and friends when drawing, so a new theme shows at once),
+ui/ui_frame.gd          the panels' tactical frame (a StyleBox: glass fill, hairline, accent corner brackets, glow),
 ui/hud_overlay.gd       everything drawn over the battlefield (labels, speech, symbols, orders, plans, intel)
 ui/hud_orbat.gd, hud_layers.gd, hud_sel_info.gd, hud_minimap.gd, hud_top_info.gd, hud_toasts.gd   HUD widgets
 ui/map_symbols.gd       NATO symbols and status icons
@@ -177,9 +179,11 @@ Pass these after `--` on the command line:
 --follow=TEAM[,N]                                     keep the camera on that side's Nth squad (tactics review)
 --trace=path.csv                                      log every man twice a second (position, posture, phase) for plotting
 --manual=CATEGORY[,ENTRY[,SIDE]]                      open the field manual on a page (in a battle)
---hud-panel=settings|help|menu|log [--settings-tab=T] open one of the battle's panels (layout checks; add
+--hud-panel=settings|help|menu|log|over [--settings-tab=T]   open one of the battle's panels (over: the end of
+                                                      the battle, won; layout checks; add
                                                       --set=ui_scale:3 for the largest scale the window allows)
 --pan=VX,VZ / --set=key:value,...                     drift the camera (shimmer tests) / override single settings
+                                                      (--set=ui_theme:night for a theme: brass, night, thermal, arctic, dusk)
 --scenario=guns                                       every machine-gun emplacement and trench bay, crewed, with targets
 --scenario=works --static                             every defensive work both sides can build, finished, in two rows (model checks;
                                                       frame them with --focus/--zoom/--pitch, see the layout in mapgen.gd)

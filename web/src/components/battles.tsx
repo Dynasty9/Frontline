@@ -45,12 +45,14 @@ export function Battles({
   onDismissInvite,
 }: Props) {
   return (
-    <section id="battles" className="mx-auto max-w-6xl scroll-mt-16 px-4 py-20 sm:px-6">
+    <section id="battles" className="mx-auto max-w-6xl scroll-mt-16 px-4 py-24 sm:px-6">
       <SectionLabel>Online</SectionLabel>
       <div className="mt-2 flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h2 className="text-3xl font-semibold">Battles being hosted</h2>
-          <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
+          <h2 className="mt-1 font-display text-5xl leading-[0.95] font-extrabold uppercase sm:text-6xl">
+            Live battles. <span className="text-primary">Join in a click.</span>
+          </h2>
+          <p className="mt-4 max-w-2xl text-sm text-muted-foreground">
             Click Join and the game opens and connects you straight to the host. Most home routers need no setup: the
             matchmaker introduces you, and the game traffic goes directly between players.
           </p>
