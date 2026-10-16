@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json.schemastore.org/prettierrc",
+  "semi": false,
+  "printWidth": 120,
+  "trailingComma": "es5",
+  "plugins": ["prettier-plugin-tailwindcss"],
+  "tailwindStylesheet": "./src/index.css",
+  "tailwindFunctions": ["cva", "cn"],
+  "overrides": [
+    {
+      "files": "src/components/ui/**",
+      "options": {
+        "printWidth": 80
+      },
+      "excludeFiles": "src/components/ui/*.stories.tsx"
+    },
+    {
+      "files": "*.css",
+      "options": {
+        "tabWidth": 4
+      }
+    }
+  ]
+}

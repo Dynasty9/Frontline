@@ -32,10 +32,13 @@ const portIn = (v, lo = 1) => {
 
 // Printable text only, trimmed: names end up on other players' screens.
 export const cleanText = (v, max) =>
-	String(v ?? '').replace(/[\u0000-\u001f\u007f]/g, '').trim().slice(0, max);
+	String(v ?? '')
+		// oxlint-disable-next-line no-control-regex -- removing control characters is the point
+		.replace(/[\u0000-\u001f\u007f]/g, '')
+		.trim()
+		.slice(0, max);
 
-const isPrivateV4 = (ip) =>
-	isIP(ip) === 4 && /^(10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.)/.test(ip);
+const isPrivateV4 = (ip) => isIP(ip) === 4 && /^(10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.)/.test(ip);
 const isLocal = (ip) => ip === '127.0.0.1' || ip === '::1' || isPrivateV4(ip);
 
 // The endpoint a peer's STUN query reported. Its address has to be the one the
@@ -56,6 +59,7 @@ const MODES = new Set(['coop', 'versus', 'mission']);
 
 // Quick match order: games still in the lobby, then hosts whose router can be
 // reached, then the fullest, then the oldest.
+// prettier-ignore
 const better = (a, b) =>
 	a.inGame !== b.inGame ? !a.inGame :
 	(a.nat === 'strict') !== (b.nat === 'strict') ? b.nat === 'strict' :
@@ -136,7 +140,7 @@ export class Lobbies {
 		lobby.maxPlayers = clampInt(body.max_players, 1, 64, lobby.maxPlayers ?? 8);
 		lobby.players = clampInt(body.players, 0, 64, lobby.players ?? 1);
 		lobby.inGame = body.in_game !== undefined ? !!body.in_game : !!lobby.inGame;
-		lobby.dropIn = body.drop_in !== undefined ? !!body.drop_in : lobby.dropIn ?? true;
+		lobby.dropIn = body.drop_in !== undefined ? !!body.drop_in : (lobby.dropIn ?? true);
 		if (body.name !== undefined) lobby.name = cleanText(body.name, 40) || lobby.name;
 		// what the server browser shows: the kind of battle, who is on which
 		// side, and whether it wants a password (the password itself never

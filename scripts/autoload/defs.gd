@@ -21,6 +21,24 @@ const FOB_MIN_SPACING := 45.0
 const SUPPLY_PER_TRUCK := [115, 130]  # Rebels run bigger loads to make up for having no helicopters (trucks drive like trucks: fewer runs, bigger loads)
 const START_SUPPLY := 500
 
+## Towns and villages (index: 0 a village, 1 the town). Whoever holds one
+## draws on it - food, fuel, lorries, labour - and trucks it to their nearest
+## FOB: supply a minute with every house standing (a town shelled to ruins is
+## worth about a third of that), the most its dump holds, the load a truck
+## waits for, the ground you must hold to take it, and how quickly a squad
+## takes it (a village in about half a minute, the town in nearer a minute).
+const TOWN_YIELD := [24.0, 60.0]
+const TOWN_STOCK := [180, 420]
+const TOWN_LOAD := [60, 120]
+const TOWN_RADIUS := [30.0, 42.0]
+const TOWN_PACE := [1.0, 0.6]
+const TOWN_KINDS := ["Village", "Town"]
+const TOWN_NAMES := [
+	["Brask", "Ostel", "Kirnov", "Lesna", "Dunholt", "Pelka", "Vrany", "Tolsk", "Hadley Cross", "Sovka", "Garin", "Ruvel",
+	"Ilmen", "Zarech", "Kopane", "Belvar", "Strelna", "Morva", "Ashby", "Tervo", "Lusk", "Okrin", "Vesna", "Marrow End"],
+	["Velgrad", "Sarovo", "Kastelin", "Merith", "Dravik", "Halmen", "Port Ilan", "Ostrevo"],
+]
+
 const FOB_NAMES := [
 	["Alpha", "Bravo", "Charlie", "Delta", "Echo", "Foxtrot", "Golf", "Hotel", "India", "Juliet", "Kilo", "Lima"],
 	["Viper", "Cobra", "Jackal", "Falcon", "Wolf", "Hyena", "Scorpion", "Raven", "Mamba", "Lynx", "Kestrel", "Adder"],
@@ -230,11 +248,15 @@ var BUILDINGS := {
 	"medic_tent": {"name": "Medic Tent", "cost": 120, "time": 25.0, "hp": 900.0, "size": Vector2(7, 5), "teams": [0, 1], "desc": "Stretcher bearers bring back the wounded and the dead."},
 	"research": {"name": "Research Post", "cost": 200, "time": 40.0, "hp": 1200.0, "size": Vector2(7, 7), "teams": [0, 1], "desc": "Unlocks upgrades."},
 	"sandbags": {"name": "Sandbags", "cost": 15, "time": 5.0, "hp": 450.0, "size": Vector2(4, 0.9), "teams": [0, 1], "desc": "Low cover. Crouch and pop up to shoot."},
-	"concrete_wall": {"name": "Concrete Wall", "cost": 40, "time": 10.0, "hp": 1600.0, "size": Vector2(4, 0.6), "teams": [0], "desc": "Tall cover. Soldiers lean around the ends."},
+	"concrete_wall": {"name": "T-Wall", "cost": 40, "time": 10.0, "hp": 1600.0, "size": Vector2(4, 0.6), "teams": [0], "desc": "Precast concrete slabs, too tall to see over: complete protection behind them. Soldiers lean around the ends. Light vehicles can't push through."},
+	"hesco": {"name": "HESCO Barrier", "cost": 30, "time": 8.0, "hp": 2400.0, "size": Vector2(4.4, 1.1), "teams": [0], "desc": "Earth-filled cells, chest high and a metre thick: stand and fire over it. Stops even a .50 cal, and blocks vehicles."},
+	"barricade": {"name": "Barricade", "cost": 15, "time": 6.0, "hp": 700.0, "size": Vector2(4, 1.0), "teams": [1], "desc": "Oil drums, tyres, rubble and scrap, chest high: stand and fire over it. Tanks shove it aside, and the tyres burn."},
 	"trench": {"name": "Trench", "cost": 20, "time": 9.0, "hp": 3000.0, "size": Vector2(6, 3.2), "teams": [0, 1], "desc": "Soldiers stand half a metre below ground: only their heads show when they fire. Drag to dig a line."},
 	"wire": {"name": "Barbed Wire", "cost": 10, "time": 4.0, "hp": 160.0, "size": Vector2(5, 1.2), "teams": [0, 1], "desc": "Slows infantry to a crawl."},
 	"mines": {"name": "Minefield", "cost": 30, "time": 6.0, "hp": 60.0, "size": Vector2(3, 3), "teams": [0, 1], "desc": "Hidden. Blows up vehicles and infantry."},
-	"tank_trap": {"name": "Tank Trap", "cost": 20, "time": 5.0, "hp": 900.0, "size": Vector2(2, 2), "teams": [0, 1], "desc": "Blocks vehicles (and supply trucks)."},
+	"tank_trap": {"name": "Tank Trap", "cost": 20, "time": 5.0, "hp": 900.0, "size": Vector2(2, 2), "teams": [0, 1], "desc": "A Czech hedgehog of welded steel. Blocks vehicles (and supply trucks)."},
+	"camo_net": {"name": "Camouflage Net", "cost": 20, "time": 6.0, "hp": 120.0, "size": Vector2(7, 7), "teams": [0, 1], "desc": "Pitch it over a gun pit, a mortar or a parked vehicle: anything under it is spotted at half the range, from the ground or the air. It stops nothing."},
+	"ammo_cache": {"name": "Ammo Cache", "cost": 50, "time": 10.0, "hp": 400.0, "size": Vector2(3.2, 2.4), "teams": [0, 1], "desc": "Forward stores: men within 7 m top up their rounds, grenades and rockets till it runs dry, and men out of ammunition fall back to it. Cooks off if it's hit hard."},
 	"mg_nest": {"name": "MG Nest", "cost": 70, "time": 15.0, "hp": 900.0, "size": Vector2(4.2, 4.2), "teams": [0, 1], "desc": "Sandbagged GPMG. A nearby soldier crews it and pins down infantry."},
 	"hmg_nest": {"name": ".50 Cal Nest", "cost": 110, "time": 18.0, "hp": 1100.0, "size": Vector2(4.6, 4.6), "teams": [0, 1], "desc": "Heavy machine gun: 100 m range, crushing suppression, shreds trucks, technicals, helicopters and drones."},
 	"mortar_pit": {"name": "Mortar Pit", "cost": 130, "time": 22.0, "hp": 900.0, "size": Vector2(5, 5), "teams": [0, 1], "desc": "Crewed mortar. Shells enemies your side can see, even behind cover (30-160 m). Select it for fire missions."},
@@ -245,8 +267,8 @@ var BUILDINGS := {
 }
 
 const BUILD_MENU := [
-	["fob", "barracks", "factory", "medic_tent", "research", "helipad", "dock", "sandbags", "concrete_wall", "trench", "wire", "mines", "tank_trap", "mg_nest", "hmg_nest", "mortar_pit", "bunker", "at_post", "watchtower"],
-	["fob", "barracks", "factory", "medic_tent", "research", "helipad", "dock", "tunnel", "sandbags", "trench", "wire", "mines", "tank_trap", "mg_nest", "hmg_nest", "mortar_pit", "bunker", "at_post", "watchtower"],
+	["fob", "barracks", "factory", "medic_tent", "research", "helipad", "dock", "sandbags", "hesco", "concrete_wall", "trench", "wire", "mines", "tank_trap", "camo_net", "ammo_cache", "mg_nest", "hmg_nest", "mortar_pit", "bunker", "at_post", "watchtower"],
+	["fob", "barracks", "factory", "medic_tent", "research", "helipad", "dock", "tunnel", "sandbags", "barricade", "trench", "wire", "mines", "tank_trap", "camo_net", "ammo_cache", "mg_nest", "hmg_nest", "mortar_pit", "bunker", "at_post", "watchtower"],
 ]
 
 var UPGRADES := {

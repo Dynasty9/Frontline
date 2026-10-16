@@ -175,7 +175,7 @@ function LobbyTable({ lobbies, invite, onLaunch }: { lobbies: Lobby[]; invite: s
         </TableRow>
       </TableHeader>
       <TableBody>
-        {[...lobbies].sort(byJoinable).map((l) => (
+        {lobbies.toSorted(byJoinable).map((l) => (
           <TableRow key={l.id} className={l.id === invite ? "bg-primary/5" : undefined}>
             <TableCell className="py-3 pl-4">
               <div className="flex items-center gap-1.5 font-medium text-foreground">

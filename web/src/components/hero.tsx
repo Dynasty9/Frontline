@@ -3,17 +3,16 @@ import { Emblem, Wordmark } from "@/components/emblem"
 import { Button } from "@/components/ui/button"
 import { FIND_MATCH_LINK } from "@/lib/config"
 import type { Health } from "@/lib/matchmaker"
-import { type Build, type Platform, PLATFORM_NAMES } from "@/lib/releases"
+import { latest, type Platform, PLATFORM_NAMES } from "@/lib/releases"
 
 type Props = {
   health: Health | undefined
-  build: Build | null
   platform: Platform
   onLaunch: () => void
 }
 
-export function Hero({ health, build, platform, onLaunch }: Props) {
-  const asset = build?.assets[platform]
+export function Hero({ health, platform, onLaunch }: Props) {
+  const asset = latest.assets[platform]
   return (
     <section id="top" className="topo relative overflow-hidden border-b">
       <div className="mx-auto grid max-w-6xl items-center gap-12 px-4 pt-16 pb-20 sm:px-6 lg:grid-cols-[1fr_1.1fr] lg:pt-24 lg:pb-28">
@@ -30,13 +29,13 @@ export function Hero({ health, build, platform, onLaunch }: Props) {
             A squad-level strategy game where every soldier thinks for himself.
           </h1>
           <p className="mt-4 max-w-xl text-base leading-relaxed text-muted-foreground">
-            You decide where your squads go; they decide how to get there and how to fight. Take on the AI alone, team up with
-            friends against it, or fight each other online.
+            You decide where your squads go; they decide how to get there and how to fight. Take on the AI alone, team
+            up with friends against it, or fight each other online.
           </p>
 
           <div className="mt-8 flex flex-wrap items-center gap-3">
             <Button size="lg" asChild className="h-11 px-5 text-sm font-semibold">
-              <a href={asset?.url ?? "#download"}>
+              <a href={asset.url}>
                 <DownloadSimpleIcon weight="bold" />
                 Download for {PLATFORM_NAMES[platform]}
               </a>
@@ -49,19 +48,10 @@ export function Hero({ health, build, platform, onLaunch }: Props) {
             </Button>
           </div>
           <p className="mt-3 text-xs text-muted-foreground">
-            Free and open source.{" "}
-            {build ? (
-              <>
-                {build.prerelease ? "Latest build" : build.name} ·{" "}
-                <a href="#download" className="underline-offset-4 hover:text-foreground hover:underline">
-                  other platforms
-                </a>
-              </>
-            ) : (
-              <a href="#download" className="underline-offset-4 hover:text-foreground hover:underline">
-                All downloads
-              </a>
-            )}
+            Free and open source · {latest.name} ·{" "}
+            <a href="#download" className="underline-offset-4 hover:text-foreground hover:underline">
+              other platforms
+            </a>
           </p>
 
           <LiveLine health={health} />
@@ -78,7 +68,9 @@ export function Hero({ health, build, platform, onLaunch }: Props) {
               height={900}
             />
           </div>
-          <figcaption className="mt-2 text-xs text-muted-foreground">A firefight around a Coalition trench line</figcaption>
+          <figcaption className="mt-2 text-xs text-muted-foreground">
+            A firefight around a Coalition trench line
+          </figcaption>
         </figure>
       </div>
     </section>

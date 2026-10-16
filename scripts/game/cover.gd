@@ -81,10 +81,12 @@ static func mat_of(st) -> int:
 			return SOFT if st.variant == 0 else MEDIUM
 		"medic_tent", "watchtower":
 			return SOFT
-		"car", "house_wall", "barracks", "research", "depot", "factory", "tree":
+		"car", "house_wall", "barracks", "research", "depot", "factory", "tree", "town":
 			return MEDIUM
-		"trench", "bunker", "fob":
+		"trench", "bunker", "fob", "hesco":
 			return FORT
+		"ammo_cache":
+			return MEDIUM
 	return HARD
 
 
@@ -94,7 +96,7 @@ static func build(st) -> void:
 	st.anc_n = PackedVector3Array()
 	st.anc_h = PackedFloat32Array()
 	st.anc_k = PackedByteArray()
-	if st.skind in ["floor", "roof", "wire", "mines", "tank_trap", "tunnel", "helipad", "tree"]:
+	if st.skind in ["floor", "roof", "wire", "mines", "tank_trap", "tunnel", "helipad", "tree", "camo_net"]:
 		return
 	if st.skind == "trench":
 		_trench(st)

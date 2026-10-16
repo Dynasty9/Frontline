@@ -12,7 +12,14 @@ const C_DIRT := Color(0.36, 0.29, 0.2)
 const C_STEEL := Color(0.25, 0.26, 0.27)
 const C_OLIVE := Color(0.3, 0.34, 0.22)
 const HOUSE_COLORS := [Color(0.72, 0.66, 0.55), Color(0.66, 0.6, 0.52), Color(0.62, 0.5, 0.4), Color(0.75, 0.72, 0.66), Color(0.55, 0.52, 0.47)]
+const C_TOWN_FLAG := Color(0.86, 0.8, 0.56)  # a town's own colours, flown while nobody holds it
 const CAR_COLORS := [Color(0.5, 0.15, 0.12), Color(0.2, 0.3, 0.45), Color(0.75, 0.72, 0.65), Color(0.3, 0.32, 0.28), Color(0.6, 0.5, 0.2)]
+## The small works put up by the dozen: nobody reports them finished or under fire.
+const LINE_WORKS := ["trench", "sandbags", "wire", "mines", "tank_trap", "concrete_wall", "hesco", "barricade", "camo_net"]
+## How far round an ammo cache men fill their pouches from it, and how much
+## is in it (a man topping up draws one a second).
+const CACHE_REACH := 7.0
+const CACHE_STOCK := 160.0
 
 var skind := ""
 var size := Vector3.ONE
@@ -50,6 +57,14 @@ var truck: Vehicle = null
 var truck_t := 4.0
 var supply_status := "OK"
 var _alert_t := 0.0
+# a town or village's supply dump ("town"; variant 1 is the town, 0 a village):
+# the ground that has to be held to take the place, and how much of it still
+# stands (its houses' roofs, against how many there were)
+var zone_c := Vector3.INF
+var zone_r := 0.0
+var houses0 := -1
+var intact := 1.0
+var _house_t := 0.0
 # production / research
 var queue: Array = []
 var queue_items: Array = []
@@ -97,6 +112,8 @@ func display_name() -> String:
 		return "FOB " + sname
 	if skind == "depot":
 		return Defs.TEAM_NAMES[team] + " HQ"
+	if skind == "town":
+		return sname
 	if Defs.BUILDINGS.has(skind):
 		return Defs.BUILDINGS[skind].name
 	return skind.capitalize()
@@ -110,7 +127,10 @@ func apply_props(d: Dictionary) -> void:
 	if d.has("skind"):
 		skind = d.skind
 	if d.has("team"):
+		var was: int = team
 		team = d.team
+		if team != was and model:
+			_recolor()  # (captured: the flag comes down)
 	if d.has("owner"):
 		owner_peer = d.owner
 	if d.has("pos"):
@@ -142,6 +162,9 @@ func apply_props(d: Dictionary) -> void:
 		vk = d.vk
 	if d.has("door"):
 		door_shut = d.door
+	if d.has("zc"):
+		zone_c = d.zc
+		zone_r = d.zr
 	if d.has("tilt"):
 		tilt = d.tilt
 		if model:
@@ -160,10 +183,14 @@ func apply_props(d: Dictionary) -> void:
 
 
 func get_props() -> Dictionary:
-	return {"skind": skind, "team": team, "owner": owner_peer, "pos": position, "yaw": yaw, "size": size,
+	var d := {"skind": skind, "team": team, "owner": owner_peer, "pos": position, "yaw": yaw, "size": size,
 		"variant": variant, "built": built, "progress": progress, "hp": hp, "max_hp": max_hp, "sname": sname,
 		"supply": supply, "queue": queue_items, "seen": seen_mask, "vk": vk, "tilt": tilt, "toss": toss, "door": door_shut,
 		"burnt": burnt}
+	if skind == "town":
+		d["zc"] = zone_c
+		d["zr"] = zone_r
+	return d
 
 
 func on_spawned() -> void:
@@ -183,13 +210,15 @@ func on_spawned() -> void:
 					size = Vector3(2.5 if variant == 1 else 1.2, 1.2, 1.25)
 				"tree":
 					size = Vector3(0.6, 5.0, 0.6)
+				"town":
+					size = Vector3(3.6, 2.0, 2.4)
 	_define_parts()
 	foot = Vector2(size.x * 0.5, size.z * 0.5)
 	if skind == "trench":
 		foot.x += TrenchNet.HALF_W  # the hole runs on past the segment's ends
 	radius = foot.length() + 0.5
-	indestructible = skind in ["depot", "floor", "bridge"]  # (a house's floor slab outlasts its walls)
-	smashable = skind in ["low_wall", "tall_wall", "house_wall", "crates", "car", "tree", "sandbags", "concrete_wall", "wire", "rubble", "fence"]
+	indestructible = skind in ["depot", "floor", "bridge", "town"]  # (a house's floor slab outlasts its walls)
+	smashable = skind in ["low_wall", "tall_wall", "house_wall", "crates", "car", "tree", "sandbags", "concrete_wall", "wire", "rubble", "fence", "barricade"]
 	if srv:
 		if max_hp <= 0.0 or (hp == 100.0 and max_hp == 100.0):
 			max_hp = _default_hp()
@@ -199,6 +228,8 @@ func on_spawned() -> void:
 			_make_body()
 		if door_shut:
 			world.add_door(self)
+		if skind == "ammo_cache" and supply <= 0.0:
+			supply = CACHE_STOCK
 	_compute_cover_pts()  # every peer: the move preview shows the same spots
 	if not srv and world.has_view and built:
 		_make_body()  # so ragdolls and debris land on walls on every client
@@ -348,6 +379,14 @@ func _define_parts() -> void:
 				for side in [-1.0, 1.0]:
 					parts.append(_part(Vector3(side * 4.0, 0.5, s * 6.3), Vector3(4.6, 1.0, 0.9), Nav.LOW, Nav.LOW, true, true, C_SAND))
 					parts.append(_part(Vector3(s * 6.3, 0.5, side * 4.0), Vector3(0.9, 1.0, 4.6), Nav.LOW, Nav.LOW, true, true, C_SAND))
+		"town":
+			# the supply dump by the street: stores stacked on pallets, a row of
+			# fuel drums (chest-high cover both); the front (-z) faces the road
+			parts = [
+				_part(Vector3(0.55, 0.62, 0.35), Vector3(2.3, 1.24, 1.4), Nav.SOLID, Nav.SOLID, true, true, C_WOOD),
+				_part(Vector3(0.85, 1.7, 0.4), Vector3(1.3, 0.9, 1.1), Nav.FREE, Nav.FREE, false, true, C_WOOD),
+				_part(Vector3(-1.15, 0.45, 0.2), Vector3(1.2, 0.9, 1.7), Nav.SOLID, Nav.SOLID, true, true, C_STEEL),
+			]
 		"barracks":
 			parts = [_part(Vector3(0, 1.5, 0), Vector3(size.x, 3.0, size.z), Nav.SOLID, Nav.SOLID, true, true, C_OLIVE)]
 		"factory":
@@ -366,6 +405,21 @@ func _define_parts() -> void:
 			parts = [_part(Vector3(0, 0.5, 0), Vector3(L, 1.0, 0.9), Nav.LOW, Nav.LOW, true, true, C_SAND)]
 		"concrete_wall":
 			parts = [_part(Vector3(0, 1.3, 0), Vector3(L, 2.6, 0.6), Nav.SOLID, Nav.LOW, true, true, C_CONCRETE)]
+		"hesco":
+			# earth-filled cells, chest high and a metre thick: a man scrambles
+			# over, a vehicle doesn't
+			parts = [_part(Vector3(0, 0.685, 0), Vector3(L, 1.37, 1.06), Nav.LOW, Nav.SOLID, true, true, C_SAND)]
+		"barricade":
+			# drums, tyres and scrap, chest high; a tank shoves it aside
+			parts = [_part(Vector3(0, 0.6, 0), Vector3(L, 1.2, 0.9), Nav.LOW, Nav.LOW, true, true, C_STEEL)]
+		"ammo_cache":
+			# the stacks of stores on their pallets, the sacks along the front
+			parts = [
+				_part(Vector3(0, 0.6, 0.15), Vector3(2.5, 1.2, 1.1), Nav.SOLID, Nav.SOLID, true, true, C_WOOD),
+				_part(Vector3(0, 0.2, -0.95), Vector3(2.6, 0.4, 0.42), Nav.LOW, Nav.LOW, false, true, C_SAND),
+			]
+		"camo_net":
+			parts = []  # a net on poles: it hides what's under it, it stops nothing
 		"trench":
 			# the earth either side of the hole and the spoil heaped on its lips:
 			# from the duckboards up to the top of the parapet, that's what stops bullets
@@ -708,7 +762,7 @@ func take_damage(amount: float, _source = null) -> void:
 	net_dirty = true
 	if door_shut and amount >= 20.0:
 		open_door(null, true)
-	if team >= 0 and is_player_building() and world.time > _alert_t and amount > 5.0 and not skind in ["trench", "sandbags", "wire", "mines", "tank_trap", "concrete_wall"]:
+	if team >= 0 and is_player_building() and world.time > _alert_t and amount > 5.0 and not skind in LINE_WORKS:
 		_alert_t = world.time + 25.0
 		world.send_msg(team, "alert", "%s is under attack at %s!" % [display_name(), Defs.grid_ref(position)], position)
 	if hp <= 0.0:
@@ -1261,6 +1315,8 @@ func _destroyed(quiet := false) -> void:
 		"mg_nest", "watchtower":
 			if gunner and not gunner.gone:
 				gunner.release_mount()
+		"ammo_cache":
+			_cook_off()
 	if skind == "tree":
 		# blown over, away from the blast
 		var away := Defs.flat(position - hit_from) if hit_from != Vector3.INF else Vector3.ZERO
@@ -1312,6 +1368,7 @@ func needs_work() -> bool:
 
 func _complete() -> void:
 	world.stat("built")
+	world.stat("built_" + skind)
 	built = true
 	world.terrain.structure_changed(self, true)
 	progress = 1.0
@@ -1327,12 +1384,14 @@ func _complete() -> void:
 # --- simulation --------------------------------------------------------------------
 
 func sim(dt: float) -> void:
-	if team < 0 or not built:
+	if (team < 0 and skind != "town") or not built:
 		return
 	_tick_t -= dt
 	match skind:
 		"fob":
 			_fob_tick()
+		"town":
+			_town_tick(dt)
 		"barracks", "factory", "research", "helipad", "dock":
 			_prod_tick(dt)
 		"medic_tent":
@@ -1341,6 +1400,8 @@ func sim(dt: float) -> void:
 			_mount_tick()
 		"mines":
 			_mine_tick()
+		"ammo_cache":
+			_cache_tick()
 
 
 func _fob_tick() -> void:
@@ -1380,6 +1441,86 @@ func _fob_tick() -> void:
 		for s in world.soldiers_near(position, Defs.FOB_RADIUS + 2.0):
 			if s.team == team and s.life == Soldier.Life.ALIVE:
 				s.resupply(0.5)
+
+
+## A town or village. Whoever has men on its ground while the other side has
+## none takes it - a squad holding a village for half a minute, the town for
+## nearer a minute; both there, nobody gains; the holder's men there win it
+## back. Whoever holds it draws supply from it into the dump for the trucks
+## to take away - less the more of it lies in ruins - and their men round the
+## dump fill their pouches from it.
+func _town_tick(dt: float) -> void:
+	var k := clampi(variant, 0, 1)
+	if team >= 0:
+		var full := float(Defs.TOWN_STOCK[k])
+		if supply < full:
+			var was := int(supply)
+			supply = minf(full, supply + float(Defs.TOWN_YIELD[k]) / 60.0 * dt * town_yield_factor())
+			if int(supply) != was:
+				net_dirty = true
+	if _tick_t > 0.0:
+		return
+	_tick_t = 0.5
+	_house_t -= 0.5
+	if _house_t <= 0.0:
+		_house_t = 10.0
+		_count_houses()
+	var counts := [0, 0]
+	for s in world.soldiers_near(zone_c, zone_r):
+		if s.life == Soldier.Life.ALIVE and s.team >= 0 and s.team <= 1 and not s.is_bearer():
+			counts[s.team] += 1
+	var old := cap_prog
+	var taker := -1
+	for t in 2:
+		if counts[t] > 0 and counts[1 - t] == 0 and team != t:
+			taker = t
+	if taker >= 0:
+		if cap_team != taker:
+			cap_team = taker
+			cap_prog = 0.0
+			if team >= 0 and world.time > _alert_t:
+				_alert_t = world.time + 30.0
+				world.send_msg(team, "alert", "%s is being taken! The enemy is in the %s." % [sname, "town" if k == 1 else "village"], zone_c)
+		cap_prog += (0.8 + minf(counts[taker], 8) * 0.45) * float(Defs.TOWN_PACE[k]) * 0.5
+		if cap_prog >= 100.0:
+			cap_prog = 0.0
+			cap_team = -1
+			world.rules.capture_town(self, taker)
+			return
+	elif counts[0] == 0 or counts[1] == 0:
+		cap_prog = maxf(0.0, cap_prog - (4.0 if team >= 0 and counts[team] > 0 else 1.5))
+	if cap_prog <= 0.0:
+		cap_team = -1
+	if cap_prog != old:
+		net_dirty = true
+	if team >= 0:
+		for s in world.soldiers_near(position, 9.0):
+			if s.team == team and s.life == Soldier.Life.ALIVE:
+				s.resupply(0.5)
+
+
+## How much a town gives for what's left of it: a third of its worth from the
+## ruins alone, the rest from the houses still standing.
+func town_yield_factor() -> float:
+	return 0.35 + 0.65 * intact
+
+
+## Supply a minute the place gives its holder now.
+func town_rate() -> float:
+	return float(Defs.TOWN_YIELD[clampi(variant, 0, 1)]) * town_yield_factor()
+
+
+func _count_houses() -> void:
+	var n := 0
+	for st in world.structures_near(zone_c, zone_r):
+		if st.skind == "roof" and Defs.flat(st.position - zone_c).length() <= zone_r:
+			n += 1
+	if houses0 < 0:
+		houses0 = n
+	var f := clampf(float(n) / float(houses0), 0.0, 1.0) if houses0 > 0 else 1.0
+	if absf(f - intact) > 0.003:
+		intact = f
+		net_dirty = true
 
 
 func queue_item(peer: int, item: String) -> void:
@@ -1567,6 +1708,49 @@ func _mine_tick() -> void:
 		return
 
 
+## An ammo cache: every man of its side round it tops up his pouches -
+## magazines, grenades, rockets, mortar bombs - till it's empty, and then
+## there's nothing left of it but the pallets.
+func _cache_tick() -> void:
+	if _tick_t > 0.0:
+		return
+	_tick_t = 0.5
+	var was := int(supply)
+	for s in world.soldiers_near(position, CACHE_REACH):
+		if s.team != team or s.life != Soldier.Life.ALIVE or s.is_bearer():
+			continue
+		if s.ammo_fraction() >= 0.98 and s.frags >= int(s.udef.frags):
+			continue
+		s.resupply(0.5)
+		supply -= 0.5
+		world.stat("cache_draw")
+	if int(supply) != was:
+		net_dirty = true
+	if supply <= 0.0:
+		supply = 0.0
+		world.send_msg(team, "info", "The ammo cache at %s is empty." % Defs.grid_ref(position), position)
+		world.stat("cache_empty")
+		world.despawn(self)
+
+
+## Hit hard enough to wreck it, the stores go up: a blast, then rounds and
+## grenades cooking off in all directions for a while.
+func _cook_off() -> void:
+	var left := clampf(supply / CACHE_STOCK, 0.2, 1.0)
+	var at := position + Vector3(0, 0.6, 0)
+	world.stat("cache_cook_off")
+	var w := world
+	# (once it's gone: the blast mustn't find the cache it came from)
+	for i in int(4 + 5 * left):
+		var big := i == 0
+		var p := at if big else at + Vector3(w.rng.randf_range(-1.5, 1.5), 0.0, w.rng.randf_range(-1.5, 1.5))
+		var d := {"dmg": 90.0 * left + 40.0, "radius": 4.0 + 2.0 * left, "fling": 8.0, "at": 60.0, "src": null, "size": 1.2 + left} if big \
+			else {"dmg": 35.0, "radius": 2.5, "fling": 4.0, "src": null, "size": 0.5}
+		w.get_tree().create_timer(0.05 if big else 0.5 + i * w.rng.randf_range(0.35, 0.9), false).timeout.connect(func():
+			if is_instance_valid(w) and w.combat:
+				w.combat.explode(p, d))
+
+
 # --- replication ------------------------------------------------------------------
 
 func write_state(b: StreamPeerBuffer) -> void:
@@ -1583,6 +1767,8 @@ func write_state(b: StreamPeerBuffer) -> void:
 	b.put_u8(0 if private else int(clampf(queue_frac, 0.0, 1.0) * 255.0))
 	b.put_u8(0 if private else mini(255, inside.size()))
 	b.put_u8(int(clampf(burn, 0.0, 1.0) * 255.0))
+	if skind == "town":
+		b.put_u8(int(clampf(intact, 0.0, 1.0) * 255.0))
 
 
 func read_state(b: StreamPeerBuffer) -> void:
@@ -1603,6 +1789,8 @@ func read_state(b: StreamPeerBuffer) -> void:
 			print("FIRE client %s %d %s" % [skind, eid, "alight" if nb > 0.0 else "out"])
 		burn = nb
 		_burn_view()
+	if skind == "town":
+		intact = b.get_u8() / 255.0
 	var was_built := built
 	built = (f & 1) != 0
 	wrecked = (f & 2) != 0
@@ -1701,6 +1889,10 @@ func fire_kind() -> String:
 			return "roof" if variant % 2 == 0 else ""  # pitched roofs are tiles on timber; flat ones are concrete
 		"bunker":
 			return "log_bunker" if team == 1 else ""
+		"ammo_cache":
+			return "crates"  # (and when it's burnt through, it cooks off)
+		"camo_net", "barricade":
+			return skind
 	return ""
 
 
@@ -1775,6 +1967,12 @@ func _fire_box() -> Array:
 			return [Vector3(0, ws.y * 0.6, 0), Vector3(ws.x * 0.32, ws.y * 0.35, ws.z * 0.3)]
 		"bunker":
 			return [Vector3(0, 2.7, 0), Vector3(2.4, 0.4, 2.4)]
+		"camo_net":
+			return [Vector3(0, 2.0, 0), Vector3(2.6, 0.45, 2.6)]
+		"barricade":
+			return [Vector3(0, 0.7, 0), Vector3(size.x * 0.45, 0.45, 0.35)]
+		"ammo_cache":
+			return [Vector3(0, 0.8, 0.15), Vector3(1.1, 0.5, 0.5)]
 	return [Vector3(0, minf(_vis_height(), 3.0) * 0.5, 0), Vector3(foot.x * 0.8, minf(_vis_height(), 3.0) * 0.45, foot.y * 0.8)]
 
 
@@ -1792,7 +1990,7 @@ func _burn_view() -> void:
 		set_process(true)
 		if _fire_fx == null:
 			var box := _fire_box()
-			var smoke := Vfx.SMOKE_FUEL if skind in ["car", "wreck", "rubble"] else (Vfx.SMOKE_LEAVES if skind == "tree" or (skind == "low_wall") else Vfx.SMOKE_WOOD)
+			var smoke := Vfx.SMOKE_FUEL if skind in ["car", "wreck", "rubble", "barricade"] else (Vfx.SMOKE_LEAVES if skind == "tree" or (skind == "low_wall") else Vfx.SMOKE_WOOD)
 			_fire_fx = world.fx.vfx.make_fire(box[1], smoke)
 			world.fx.vfx.add_child(_fire_fx)
 			_fire_fx.global_transform = Transform3D(Basis(Vector3.UP, yaw), to_global(box[0]))
@@ -1964,7 +2162,15 @@ func _build_scaffold(h: float) -> void:
 
 func _recolor() -> void:
 	if _flag:
-		_flag.material_override = Res.mat(Defs.TEAM_COLORS[team].lerp(Color(0.45, 0.45, 0.42), 0.35).darkened(0.12) if team >= 0 else Color.WHITE, 0.8)
+		_flag.material_override = Res.mat(_flag_color(), 0.8)
+
+
+## Flags and markings in the side's colour, but faded cloth, not plastic; a
+## town nobody holds flies its own colours.
+func _flag_color() -> Color:
+	if team >= 0:
+		return Defs.TEAM_COLORS[team].lerp(Color(0.45, 0.45, 0.42), 0.35).darkened(0.12)
+	return C_TOWN_FLAG if skind == "town" else Color.WHITE
 
 
 func _box(p: Vector3, s: Vector3, c: Color, r := 0.0, shadow := true) -> MeshInstance3D:
@@ -1990,8 +2196,9 @@ func _build_model() -> void:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = eid * 7919 + variant
 	var bags: Array = []
+	var works_keep: Array = []
 	for p in parts:
-		if skind in ["wire", "tank_trap", "watchtower", "tree", "trench", "car", "wreck", "low_wall", "roof", "bridge", "dock"]:
+		if skind in ["watchtower", "tree", "trench", "car", "wreck", "low_wall", "roof", "bridge", "dock", "town"] or skind in WorksModels.OWN_KINDS:
 			break
 		if p.color == C_SAND and p.s.y <= 1.3 and minf(p.s.x, p.s.z) <= 1.0:
 			bags.append(p)
@@ -2002,8 +2209,7 @@ func _build_model() -> void:
 		if skind in ["house_wall", "rubble", "crates"]:
 			col = Res.vary(col, 0.05, rng)
 		_box(p.p, p.s, col, p.r, skind != "floor")
-	# flags and markings in the side's colour, but faded cloth, not plastic
-	var tc: Color = Defs.TEAM_COLORS[team].lerp(Color(0.45, 0.45, 0.42), 0.35).darkened(0.12) if team >= 0 else Color.WHITE
+	var tc := _flag_color()
 	match skind:
 		"low_wall":
 			var p: Dictionary = parts[0]
@@ -2082,6 +2288,30 @@ func _build_model() -> void:
 				_mk(Res.cyl(0.3, 0.3, 0.9, 12), "steel", Vector3(3.6 + i * 0.65, 0.45, -3.9), Vector3.ZERO, Color(0.3, 0.33, 0.24))
 			_mk(Res.box(Vector3(1.2, 0.9, 0.8)), "paint", Vector3(4.0, 0.45, 3.6), Vector3(0, 0.3, 0), Color(0.33, 0.35, 0.28))
 			_add_label(display_name(), 8.0)
+		"town":
+			# the town's supply dump: stores crated on a pallet with more under a
+			# tarp, fuel drums, and a flagpole flying the colours of whoever holds
+			# the place (the town's own while nobody does)
+			_mk(Res.box(Vector3(2.4, 0.14, 1.5)), "wood", Vector3(0.55, 0.07, 0.35), Vector3.ZERO, null, false)
+			for ix in 2:
+				for iz in 2:
+					for iy in 2:
+						var cp := Vector3(0.55 + (ix - 0.5) * 1.14, 0.14 + 0.275 + iy * 0.55, 0.35 + (iz - 0.5) * 0.69)
+						_mk(Res.box(Vector3(1.08, 0.53, 0.64)), "wood", cp, Vector3(0, rng.randf_range(-0.05, 0.05), 0), Res.vary(C_WOOD, 0.06, rng))
+			_mk(Res.box(Vector3(1.32, 0.86, 1.12)), "canvas", Vector3(0.85, 1.67, 0.4), Vector3(0, 0.06, 0), Color(0.33, 0.36, 0.25))
+			_mk(Res.prism(Vector3(1.12, 0.18, 1.34)), "canvas", Vector3(0.85, 2.19, 0.4), Vector3(0, PI * 0.5 + 0.06, 0), Color(0.31, 0.34, 0.23))
+			var drum_cols := [Color(0.45, 0.17, 0.12), Color(0.2, 0.3, 0.42), Color(0.3, 0.33, 0.2), Color(0.62, 0.5, 0.18)]
+			for ix in 2:
+				for iz in 3:
+					if ix == 0 and iz == 0 and rng.randf() < 0.5:
+						continue
+					var dp := Vector3(-1.45 + ix * 0.6 + rng.randf_range(-0.04, 0.04), 0.44, -0.4 + iz * 0.6)
+					_mk(Res.cyl(0.28, 0.28, 0.88, 12), "paint", dp, Vector3.ZERO, drum_cols[rng.randi() % drum_cols.size()])
+			_mk(Res.cyl(0.24, 0.3, 0.3, 10), "concrete", Vector3(-0.2, 0.15, -0.85))
+			_mk(Res.cyl(0.045, 0.065, 7.2, 6), "steel", Vector3(-0.2, 3.6, -0.85), Vector3.ZERO, Color(0.8, 0.8, 0.78))
+			_mk(Res.sphere(0.09, 6), "paint", Vector3(-0.2, 7.25, -0.85), Vector3.ZERO, Color(0.75, 0.62, 0.25))
+			_flag = _box(Vector3(0.52, 6.62, -0.85), Vector3(1.4, 0.86, 0.04), tc)
+			_add_label(display_name(), 8.4)
 		"barracks":
 			# plank walls, corrugated gable roof along the long side, windows, porch
 			var long_x := size.x >= size.z
@@ -2183,9 +2413,9 @@ func _build_model() -> void:
 			_flag = _box(Vector3(0.9, 8.4, 0), Vector3(1.8, 1.0, 0.05), tc)
 			_add_label(display_name(), 10.0)
 		"sandbags":
-			pass
-		"concrete_wall":
-			_box(Vector3(0, 2.62, 0), Vector3(size.x, 0.05, 0.62), C_CONCRETE.darkened(0.15))
+			WorksModels.apron(model, size.x * 0.5 + 0.25, 0.75)
+		"concrete_wall", "hesco", "barricade", "ammo_cache", "camo_net":
+			works_keep = WorksModels.build(self, model, rng, bags)
 		"trench":
 			# the hole itself is drawn by the TrenchNet; here: the dig site while it's
 			# being dug, and a little kit along the lip once it's done
@@ -2209,83 +2439,68 @@ func _build_model() -> void:
 			var fsgn := _enemy_side()
 			# kit only along fire bays, kept clear of the corners where the traverses join
 			var kx := size.x * 0.5 - 1.2
+			# a few filled bags along the parapet (rests for the rifles)
+			var kit_bags: Array = []
 			for i in (rng.randi_range(2, 4) if kx > 0.8 else 0):
 				var bx := rng.randf_range(-kx, kx)
-				Res.mi(done, Res.box(Vector3(0.55, 0.2, 0.32)), Res.mat(Res.vary(C_SAND, 0.05, rng)), Vector3(bx, 0.32, fsgn * 1.05), Vector3(0, rng.randf_range(-0.2, 0.2), 0), false)
+				kit_bags.append({"p": Vector3(bx, 0.32, fsgn * 1.05), "s": Vector3(0.55 * rng.randi_range(1, 2), 0.19, 0.36), "r": rng.randf_range(-0.2, 0.2)})
+			if not kit_bags.is_empty():
+				_bag_walls(kit_bags, rng, done)
 			if kx > 0.8 and rng.randf() < 0.35:
 				Res.mi(done, Res.box(Vector3(0.5, 0.3, 0.3)), Res.mat(Color(0.25, 0.28, 0.2)), Vector3(rng.randf_range(-kx, kx), -0.9, -fsgn * 0.45), Vector3(0, snappedf(rng.randf_range(-0.2, 0.2), 0.1), 0), false)
-		"wire":
-			var n := int(size.x / 1.0)
-			for i in n:
-				var x := (float(i) + 0.5) / n * size.x - size.x * 0.5
-				Res.mi(model, Res.torus(0.38, 0.45), Res.mat(Color(0.45, 0.45, 0.45), 0.4), Vector3(x, 0.45, 0), Vector3(0, PI / 2 + rng.randf_range(-0.3, 0.3), 0), false)
-			for x in [-size.x * 0.5, 0.0, size.x * 0.5]:
-				Res.mi(model, Res.cyl(0.04, 0.04, 1.1, 4), Res.mat(C_WOOD), Vector3(x, 0.55, 0))
-		"mines":
-			for i in 5:
-				Res.mi(model, Res.cyl(0.18, 0.2, 0.08, 8), Res.mat(Color(0.2, 0.22, 0.15)), Vector3(rng.randf_range(-1.2, 1.2), 0.04, rng.randf_range(-1.2, 1.2)), Vector3.ZERO, false)
-			Res.mi(model, Res.cyl(0.03, 0.03, 0.9, 4), Res.mat(C_WOOD), Vector3(1.4, 0.45, -1.4))
-			_box(Vector3(1.4, 0.9, -1.4), Vector3(0.4, 0.3, 0.03), Color(0.8, 0.15, 0.1))
-		"tank_trap":
-			for r in [0.0, PI / 3, -PI / 3]:
-				var b := _box(Vector3(0, 0.6, 0), Vector3(0.18, 0.18, 1.9), C_STEEL)
-				b.rotation = Vector3(0.6, r, 0.0)
+		"wire", "mines", "tank_trap":
+			works_keep = WorksModels.build(self, model, rng, bags)
 		"mg_nest", "hmg_nest":
 			_mg_model(rng, bags)
+			if variant != 1:
+				WorksModels.apron(model, foot.x + 0.3, foot.y + 0.3)
 		"mortar_pit":
-			_box(Vector3(0, 0.02, 0), Vector3(3.2, 0.04, 3.2), Color(0.18, 0.14, 0.1), 0.0, false)
-			var dk2 := Color(0.12, 0.13, 0.1)
-			Res.mi(model, Res.cyl(0.3, 0.3, 0.06, 10), Res.mat(dk2), Vector3(0, 0.06, 0.1))
-			var tubem := Res.mi(model, Res.cyl(0.07, 0.07, 1.25, 8), Res.mat(Color(0.2, 0.23, 0.17)), Vector3(0, 0.55, -0.15))
-			tubem.rotation = Vector3(-0.75, 0, 0)
-			for sx in [-0.25, 0.25]:
-				var bp := Res.mi(model, Res.box(Vector3(0.03, 0.75, 0.03)), Res.mat(dk2), Vector3(sx, 0.33, -0.45))
-				bp.rotation = Vector3(0.2, 0, sx * 0.8)
-			for i in 3:
-				_box(Vector3(1.0 + i * 0.35, 0.15, 1.0), Vector3(0.3, 0.3, 0.5), Color(0.28, 0.32, 0.2))
+			# the floor dug out and trodden flat inside the ring of bags
+			WorksModels.pit_floor(model, 1.7)
+			WorksModels.apron(model, 2.8, 2.8)
+			WorksModels.build(self, model, rng, bags)
 		"at_post":
-			var lg := Node3D.new()
-			lg.position = Vector3(0, 0.9, -0.6)
-			model.add_child(lg)
-			var lc := Color(0.25, 0.28, 0.2) if team != 1 else Color(0.33, 0.3, 0.22)
-			var tube_len := 1.4 if team != 1 else 1.9
-			Res.mi(lg, Res.cyl(0.11, 0.11, tube_len, 10), Res.mat(lc), Vector3(0, 0.15, -0.2), Vector3(PI / 2, 0, 0))
-			Res.mi(lg, Res.box(Vector3(0.22, 0.2, 0.3)), Res.mat(Color(0.12, 0.12, 0.12)), Vector3(0.18, 0.2, 0.2))
-			for a in [0.0, 2.1, -2.1]:
-				var leg2 := Res.mi(lg, Res.box(Vector3(0.04, 0.04, 1.0)), Res.mat(Color(0.12, 0.12, 0.12)), Vector3(sin(a) * 0.3, -0.35, cos(a) * 0.3))
-				leg2.rotation = Vector3(0.75, a, 0)
+			WorksModels.apron(model, foot.x + 0.3, foot.y + 0.3)
+			WorksModels.build(self, model, rng, bags)
 		"bunker":
 			if team == 1:
 				# a log-and-earth dugout: earth banked against the walls up to the
-				# firing slits, a roof of logs under a mound of earth and bags
+				# firing slits, a roof of logs under a mound of earth and bags,
+				# log posts at the corners and a lintel log over every slit
 				for i in 9:
 					var lgg := Res.mi(model, Res.cyl(0.15, 0.16, 6.3, 7), Res.mat(C_WOOD.darkened(0.25)), Vector3(-2.8 + i * 0.7, 2.5, 0), Vector3(PI / 2, 0, 0))
 					lgg.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-				var mound := Res.mi(model, Res.dome(3.4, 16), Res.mat(C_DIRT), Vector3(0, 2.6, 0))
+				var mound := _mk(Res.dome(3.4, 16), "bank", Vector3(0, 2.6, 0), Vector3.ZERO, Color(0.29, 0.27, 0.17))
 				mound.scale = Vector3(1.0, 0.22, 1.0)
-				for a in 4:
-					var ber := Res.mi(model, Res.prism(Vector3(6.4, 1.05, 2.6)), Res.mat(C_DIRT.darkened(0.05)), Basis(Vector3.UP, a * PI / 2) * Vector3(0, 0.52, 2.95))
-					ber.rotation.y = a * PI / 2
+				for x in [-2.85, 2.85]:
+					for z in [-2.85, 2.85]:
+						Res.mi(model, Res.cyl(0.16, 0.18, 2.5, 7), Res.mat(C_WOOD.darkened(0.3)), Vector3(x, 1.25, z))
+				Res.mi(model, Res.cyl(0.13, 0.13, 3.0, 7), Res.mat(C_WOOD.darkened(0.3)), Vector3(0, 1.72, -2.86), Vector3(0, 0, PI / 2))
+				for sx in [-1.0, 1.0]:
+					Res.mi(model, Res.cyl(0.13, 0.13, 2.2, 7), Res.mat(C_WOOD.darkened(0.3)), Vector3(sx * 2.86, 1.72, 0), Vector3(PI / 2, 0, 0))
+				WorksModels.berms(model, 2.8, 1.0, 2.0, true)
 				for i in 6:
 					bags.append({"p": Vector3(-2.0 + i * 0.8, 3.15, -2.2), "s": Vector3(0.75, 0.2, 0.45), "r": 0.0})
 			else:
 				# reinforced concrete: a thick roof slab with an overhang under a
-				# layer of bags, and a sandbag apron below the firing slit
+				# layer of bags, earth banked up to the slits, steel angle round
+				# the embrasure, a steel door, a vent and a whip aerial
 				_box(Vector3(0, 2.62, 0), Vector3(6.3, 0.16, 6.3), C_CONCRETE.darkened(0.28))
 				for row in 2:
 					bags.append({"p": Vector3(0, 2.82, -2.6 + row * 0.5), "s": Vector3(5.2, 0.24, 0.48), "r": 0.0})
 				bags.append({"p": Vector3(0, 2.82, 2.6), "s": Vector3(5.2, 0.24, 0.48), "r": 0.0})
-				for sx in [-2.9, 2.9]:
-					bags.append({"p": Vector3(sx, 0.4, -2.0), "s": Vector3(0.9, 0.8, 1.5), "r": 0.0})
-				bags.append({"p": Vector3(0, 0.3, -3.3), "s": Vector3(3.0, 0.6, 0.6), "r": 0.0})
+				WorksModels.berms(model, 2.8, 0.95, 2.0, false)
+				for y in [1.1, 1.66]:
+					_mk(Res.box(Vector3(2.7, 0.07, 0.1)), "metal_dark", Vector3(0, y, -2.82), Vector3.ZERO, Color(0.2, 0.2, 0.19))
+				_mk(Res.box(Vector3(1.0, 1.95, 0.06)), "paint", Vector3(0, 0.98, 2.62), Vector3.ZERO, Color(0.3, 0.32, 0.25))
+				_mk(Res.cyl(0.08, 0.08, 0.7, 8), "steel", Vector3(1.8, 3.15, 1.6))
+				_mk(Res.cyl(0.13, 0.13, 0.12, 8), "steel", Vector3(1.8, 3.5, 1.6), Vector3.ZERO, Color(0.2, 0.2, 0.2))
+				_mk(Res.cyl(0.008, 0.012, 2.4, 4), "metal_dark", Vector3(-2.3, 4.0, 2.3), Vector3(0.05, 0, 0.04), null, false)
 			_box(Vector3(0, 0.02, 0), Vector3(4.4, 0.04, 4.4), Color(0.3, 0.29, 0.27), 0.0, false)
 		"watchtower":
 			for p in parts:
 				_box(p.p, p.s, C_WOOD if p.s.y > 1.0 else C_WOOD.lightened(0.05), p.r)
-			Res.mi(model, Res.prism(Vector3(3.6, 1.0, 3.6)), Res.mat(Color(0.3, 0.32, 0.22)), Vector3(0, 6.6, 0))
-			for x in [-1.3, 1.3]:
-				for z in [-1.3, 1.3]:
-					Res.mi(model, Res.cyl(0.05, 0.05, 1.9, 4), Res.mat(C_WOOD), Vector3(x, 5.9, z))
+			WorksModels.tower(model, rng, bags)
 		"helipad":
 			var white := Color(0.9, 0.9, 0.85)
 			_box(Vector3(0, 0.06, 0), Vector3(size.x, 0.12, size.z), Color(0.4, 0.4, 0.38), 0.0, false)
@@ -2311,6 +2526,7 @@ func _build_model() -> void:
 		_bag_walls(bags, rng)
 	_skin(model)
 	var keep: Array = [_flag] if _flag else []
+	keep.append_array(works_keep)
 	for lf in _door_leaves:
 		keep.append(lf[0])
 	if not _mg.is_empty():
@@ -2330,12 +2546,13 @@ func _build_model() -> void:
 static var _bag_mesh: ArrayMesh
 
 
-## A pillow: a sphere pushed out towards a box (superellipsoid), analytic normals.
+## A filled sandbag in a unit box (its length along x): a pillow pressed flat
+## top and bottom by the bags above it, slumped along the middle, the tied
+## neck at +x narrower, lower and folded under.
 static func _pillow() -> ArrayMesh:
-	var segs := 12
-	var rings := 7
-	var k := 0.42
-	var e := 2.0 / k
+	var segs := 16
+	var rings := 9
+	var k := 0.4
 	var st := SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
 	var grid := []
@@ -2345,23 +2562,45 @@ static func _pillow() -> ArrayMesh:
 		for sg in segs + 1:
 			var ph := TAU * float(sg) / segs
 			var n := Vector3(sin(th) * cos(ph), cos(th), sin(th) * sin(ph))
-			var p := Vector3(signf(n.x) * pow(absf(n.x), k), signf(n.y) * pow(absf(n.y), k * 1.6), signf(n.z) * pow(absf(n.z), k)) * 0.5
-			var g := Vector3(signf(p.x) * pow(absf(p.x) * 2.0, e - 1.0), signf(p.y) * pow(absf(p.y) * 2.0, e / 1.6 - 1.0), signf(p.z) * pow(absf(p.z) * 2.0, e - 1.0))
-			row.append([p, g.normalized() if g.length() > 0.0001 else n])
+			var p := Vector3(signf(n.x) * pow(absf(n.x), k), signf(n.y) * pow(absf(n.y), k * 1.9), signf(n.z) * pow(absf(n.z), k * 1.1)) * 0.5
+			var e := smoothstep(0.2, 0.5, p.x)
+			p.y = p.y * (1.0 - 0.3 * e) - 0.07 * e
+			p.z *= 1.0 - 0.18 * e
+			if p.y > 0.0:
+				p.y -= 0.06 * (1.0 - 4.0 * p.x * p.x) * (p.y / 0.5)
+			row.append(p)
 		grid.append(row)
 	for r in rings:
 		for sg in segs:
 			var q := [grid[r][sg], grid[r][sg + 1], grid[r + 1][sg + 1], grid[r + 1][sg]]
 			for idx in [0, 2, 1, 0, 3, 2]:
-				st.set_normal(q[idx][1])
-				st.add_vertex(q[idx][0])
+				st.add_vertex(q[idx])
+	st.index()
+	st.generate_normals()
 	return st.commit()
 
 
-## Stacks individual sandbags (running bond, slight jitter) to fill each part box.
-func _bag_walls(list: Array, rng: RandomNumberGenerator) -> void:
+## The bags each side fills, as [colour (against the bag cloth), share]: the
+## Coalition's tan and coyote polypropylene with some olive; the Rebels'
+## hessian, white feed sacks and whatever else was going; a mix for the rest.
+const BAG_COLS := [
+	[[Color(1.0, 1.0, 1.0), 0.55], [Color(0.98, 0.9, 0.84), 0.25], [Color(0.84, 0.97, 0.84), 0.2]],
+	[[Color(0.92, 0.8, 0.66), 0.45], [Color(1.36, 1.44, 1.72), 0.3], [Color(0.9, 1.02, 0.95), 0.1], [Color(1.0, 1.0, 1.0), 0.15]],
+	[[Color(1.0, 1.0, 1.0), 0.5], [Color(0.92, 0.8, 0.66), 0.3], [Color(1.36, 1.44, 1.72), 0.2]],
+]
+const BAG_CLOTH := Color(0.5, 0.45, 0.33)  # the "bag" surface's own colour
+
+
+## Stacks individual sandbags to fill each part box the way they're laid in
+## the field: courses of stretchers (along the wall) and, in a thick wall,
+## headers (across it, ends to the face) between them, joints broken from one
+## course to the next, each course set back a little from the one below so the
+## face leans back; the odd bag a different colour, turned or askew.
+func _bag_walls(list: Array, rng: RandomNumberGenerator, parent: Node3D = null) -> void:
 	if _bag_mesh == null:
 		_bag_mesh = _pillow()
+	var pal: Array = BAG_COLS[team] if team >= 0 and team <= 1 else BAG_COLS[2]
+	var lot := rng.randi() % pal.size()  # most of a wall's bags come from one lot
 	var xf: Array[Transform3D] = []
 	var cols: Array[Color] = []
 	for p in list:
@@ -2371,28 +2610,34 @@ func _bag_walls(list: Array, rng: RandomNumberGenerator) -> void:
 		var depth := s.z if along_x else s.x
 		var rows := maxi(1, int(round(s.y / 0.19)))
 		var rh := s.y / rows
-		var deep := maxi(1, int(round(depth / 0.42)))
-		var n := maxi(1, int(ceil(length / 0.5)))
-		var bl := length / n
 		var pb := Basis(Vector3.UP, float(p.r))
+		var headers := depth >= 0.62 and length >= 0.9 and rows > 1
 		for row in rows:
-			var shift := 0.5 * bl if row % 2 == 1 else 0.0
-			var cnt := n if row % 2 == 0 else n - 1
-			if cnt <= 0:
+			var y := -s.y * 0.5 + rh * (row + 0.5)
+			var dr := depth * (1.0 - 0.16 * float(row) / float(rows - 1)) if depth > 0.5 and rows > 2 else depth
+			if headers and row % 2 == 1:
+				var hn := maxi(1, int(round(dr / 0.6)))
+				var cnt := maxi(1, int(floor(length / 0.3)))
+				var bw := length / cnt
+				for d in hn:
+					var dz := (float(d) + 0.5) / hn * dr - dr * 0.5
+					for i in cnt:
+						var a := (float(i) + 0.5) * bw - length * 0.5
+						_bag(xf, cols, p, pb, along_x, Vector3(a, y, dz), PI * 0.5, Vector3(dr / hn * 1.03, rh * 1.12, bw * 1.08), row == rows - 1, rng, pal, lot)
+				continue
+			var deep := maxi(1, int(round(dr / 0.42)))
+			var n := maxi(1, int(ceil(length / 0.5)))
+			var bl := length / n
+			var course := row / 2 if headers else row
+			var shifted := course % 2 == 1
+			var cnt2 := n - 1 if shifted else n
+			if cnt2 <= 0:
 				continue
 			for d in deep:
-				var dz := (float(d) + 0.5) / deep * depth - depth * 0.5
-				for i in cnt:
-					var a := (float(i) + 0.5) * bl - length * 0.5 + shift
-					var lp := Vector3(a, -s.y * 0.5 + rh * (row + 0.5), dz) if along_x else Vector3(dz, -s.y * 0.5 + rh * (row + 0.5), a)
-					lp += Vector3(rng.randf_range(-0.03, 0.03), rng.randf_range(-0.015, 0.015), rng.randf_range(-0.03, 0.03))
-					var yaw := (0.0 if along_x else PI / 2) + rng.randf_range(-0.09, 0.09)
-					var b := pb * Basis(Vector3.UP, yaw) * Basis(Vector3.RIGHT, rng.randf_range(-0.05, 0.05))
-					b = b.scaled_local(Vector3(bl * 1.04, rh * 1.12, minf(0.42, depth / deep) * 1.05))
-					xf.append(Transform3D(b, p.p + pb * lp))
-					var k := rng.randf_range(0.8, 1.1)
-					var olive := rng.randf() < 0.18
-					cols.append(Color(k * (0.86 if olive else 1.0), k * rng.randf_range(0.97, 1.02), k * (0.78 if olive else rng.randf_range(0.92, 1.04))))
+				var dz2 := (float(d) + 0.5) / deep * dr - dr * 0.5
+				for i in cnt2:
+					var a2 := (float(i) + 0.5) * bl - length * 0.5 + (0.5 * bl if shifted else 0.0)
+					_bag(xf, cols, p, pb, along_x, Vector3(a2, y, dz2), 0.0, Vector3(bl * 1.04, rh * 1.12, minf(0.42, dr / deep) * 1.05), row == rows - 1, rng, pal, lot)
 	var mm := MultiMesh.new()
 	mm.transform_format = MultiMesh.TRANSFORM_3D
 	mm.use_colors = true
@@ -2404,7 +2649,31 @@ func _bag_walls(list: Array, rng: RandomNumberGenerator) -> void:
 	var mmi := MultiMeshInstance3D.new()
 	mmi.multimesh = mm
 	mmi.material_override = Mats.get_mat("bag")
-	model.add_child(mmi)
+	(parent if parent else model).add_child(mmi)
+
+
+## One bag: `lp` in the wall's own frame (along it, up, across it), `turn`
+## more about the vertical (headers lie across), `sz` its size.
+func _bag(xf: Array[Transform3D], cols: Array[Color], p: Dictionary, pb: Basis, along_x: bool, lp: Vector3, turn: float, sz: Vector3, top: bool, rng: RandomNumberGenerator, pal: Array, lot: int) -> void:
+	lp += Vector3(rng.randf_range(-0.03, 0.03), rng.randf_range(-0.012, 0.012), rng.randf_range(-0.025, 0.025))
+	var q := lp if along_x else Vector3(lp.z, lp.y, lp.x)
+	var yaw := (0.0 if along_x else PI / 2) + turn + rng.randf_range(-0.09, 0.09) + (PI if rng.randf() < 0.5 else 0.0)
+	var b := pb * Basis(Vector3.UP, yaw) * Basis(Vector3.RIGHT, rng.randf_range(-0.05, 0.05)) * Basis(Vector3.FORWARD, rng.randf_range(-0.04, 0.04))
+	xf.append(Transform3D(b.scaled_local(sz), p.p + pb * q))
+	# the colour: mostly the wall's lot, bleached a little on top
+	var pick := lot
+	if rng.randf() < 0.45:
+		var r := rng.randf()
+		for i in pal.size():
+			r -= float(pal[i][1])
+			if r <= 0.0:
+				pick = i
+				break
+	var c: Color = pal[pick][0]
+	var k := rng.randf_range(0.86, 1.06) + (0.06 if top else 0.0)
+	var want := Color(clampf(BAG_CLOTH.r * c.r * k, 0.0, 1.0), clampf(BAG_CLOTH.g * c.g * k, 0.0, 1.0), clampf(BAG_CLOTH.b * c.b * k, 0.0, 1.0)).srgb_to_linear()
+	var base := BAG_CLOTH.srgb_to_linear()
+	cols.append(Color(want.r / base.r, want.g / base.g, want.b / base.b))
 
 
 # --- surfaces --------------------------------------------------------------------
@@ -2472,7 +2741,7 @@ func _surf_kind(c: Color, mi: MeshInstance3D) -> String:
 				return "wood_painted"
 		"bunker":
 			if team != 1:
-				return "concrete"
+				return "precast"
 			if mi.mesh is SphereMesh or mi.mesh is PrismMesh:
 				return "earth"  # the dugout's mound and banked earth
 			if team == 1 and c.r > c.b * 1.6 and v < 0.5:

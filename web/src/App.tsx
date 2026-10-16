@@ -1,5 +1,6 @@
-import { useEffect, useState } from "react"
+import { useState } from "react"
 import { Battles } from "@/components/battles"
+import { WhatsNew } from "@/components/changelog"
 import { Downloads } from "@/components/downloads"
 import { Emblem } from "@/components/emblem"
 import { Gallery } from "@/components/gallery"
@@ -9,12 +10,11 @@ import { TooltipProvider } from "@/components/ui/tooltip"
 import { usePoll } from "@/hooks/use-poll"
 import { GITHUB_URL } from "@/lib/config"
 import { fetchHealth, fetchLobbies } from "@/lib/matchmaker"
-import { type Build, fetchBuilds, guessPlatform } from "@/lib/releases"
+import { guessPlatform } from "@/lib/releases"
 
 export default function App() {
   const lobbies = usePoll(fetchLobbies, 5_000)
   const health = usePoll(fetchHealth, 15_000)
-  const builds = useBuilds()
   const [platform] = useState(guessPlatform)
   // after a Join or Find Match link: a note on what should happen next
   const [launched, setLaunched] = useState(false)
@@ -32,7 +32,7 @@ export default function App() {
     <TooltipProvider delayDuration={150}>
       <SiteHeader />
       <main>
-        <Hero health={health.data} build={builds.stable ?? builds.nightly} platform={platform} onLaunch={() => setLaunched(true)} />
+        <Hero health={health.data} platform={platform} onLaunch={() => setLaunched(true)} />
         <Battles
           lobbies={lobbies.data}
           error={lobbies.error}
@@ -43,7 +43,8 @@ export default function App() {
           invite={invite}
           onDismissInvite={dismissInvite}
         />
-        <Downloads {...builds} platform={platform} />
+        <WhatsNew />
+        <Downloads platform={platform} />
         <Gallery />
       </main>
       <footer className="border-t">
@@ -62,19 +63,4 @@ export default function App() {
       </footer>
     </TooltipProvider>
   )
-}
-
-function useBuilds() {
-  const [state, setState] = useState<{ stable: Build | null; nightly: Build | null; loading: boolean; error: Error | null }>({
-    stable: null,
-    nightly: null,
-    loading: true,
-    error: null,
-  })
-  useEffect(() => {
-    fetchBuilds()
-      .then((b) => setState({ ...b, loading: false, error: null }))
-      .catch((e: Error) => setState({ stable: null, nightly: null, loading: false, error: e }))
-  }, [])
-  return state
 }

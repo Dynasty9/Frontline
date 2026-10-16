@@ -17,6 +17,8 @@ const BASE := 50.0  # a FOB or the HQ: its perimeter
 const TOWER := 85.0  # a watchtower: the view over the hedges and roofs
 const TOWER_MANNED := 115.0  # with a lookout up it, binoculars
 const FPV := 40.0  # an FPV drone's camera on its way in
+# a town or village sees its own ground (Structure.zone_r): the townsfolk tell
+# whoever holds it who's about
 
 
 ## How far a side's building sees (0: it doesn't - wire, mines, sandbags).
@@ -26,7 +28,9 @@ static func structure_sight(st: Structure) -> float:
 			return BASE
 		"watchtower":
 			return TOWER_MANNED if st.manned else TOWER
-		"mines", "wire", "tank_trap", "sandbags", "trench":
+		"town":
+			return st.zone_r
+		"mines", "wire", "tank_trap", "sandbags", "trench", "hesco", "barricade", "concrete_wall", "camo_net", "ammo_cache":
 			return 0.0
 	return POST
 
@@ -52,7 +56,8 @@ static func eyes(w: World, team: int, marks: Array = [], structures = null) -> P
 			continue
 		var r := structure_sight(st)
 		if r > 0.0:
-			out.append(Vector3(st.position.x, st.position.z, r))
+			var c: Vector3 = st.zone_c if st.skind == "town" else st.position  # (a town: from the middle of its ground)
+			out.append(Vector3(c.x, c.z, r))
 	for d in w.drones:
 		if d.team == team and not d.gone:
 			out.append(Vector3(d.position.x, d.position.z, FPV))

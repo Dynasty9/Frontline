@@ -154,7 +154,10 @@ class SupabaseAuth {
 	async setCallsign(token, user, callsign) {
 		callsign = checkCallsign(callsign);
 		const r = await this.call(`/rest/v1/profiles?id=eq.${encodeURIComponent(user.id)}`, {
-			method: 'PATCH', token, body: { callsign }, headers: { Prefer: 'return=minimal' },
+			method: 'PATCH',
+			token,
+			body: { callsign },
+			headers: { Prefer: 'return=minimal' },
 		});
 		if (r.status === 409 || r.data?.code === '23505') throw new AuthError(409, 'That callsign is taken.');
 		if (!r.ok) throw new AuthError(400, SupabaseAuth.message(r.data, 'Could not change the callsign.'));

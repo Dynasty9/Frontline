@@ -26,12 +26,12 @@ Everything you see and hear is made in code, the music included. There are no im
 | A patrol ship off the coast | A bridge over the river, by a village |
 | ![A Humvee on a helicopter's sling](docs/screenshots/sling_load.jpg) | ![Armour fighting it out](docs/screenshots/armour.jpg) |
 | A helicopter carrying a Humvee | A tank battle |
-| ![The Field Manual](docs/screenshots/field_manual.jpg) | |
-| The Field Manual: every unit, with its stats | |
+| ![The Field Manual](docs/screenshots/field_manual.jpg) | ![The main menu on its living map](docs/screenshots/main_menu.jpg) |
+| The Field Manual: every unit, with its stats | The main menu, on a living map that shifts colour and follows your cursor |
 
 ## Quick start
 
-The easiest way: download the latest build for Windows or Linux from **[the Frontline website](https://web-production-5a4c1.up.railway.app)** (or the [releases page](https://github.com/Dynasty9/Frontline/releases)), unzip it and run it. It updates itself when a new version comes out. The website also lists the battles being hosted right now, with a **Join** button on each that opens the game and connects you.
+The easiest way: download the latest build for Windows or Linux from **[the Frontline website](https://web-production-5a4c1.up.railway.app)** (or the [releases page](https://github.com/Dynasty9/Frontline/releases)), unzip it and run it. It updates itself when a new version comes out; [the changelog](https://web-production-5a4c1.up.railway.app/changelog/) says what's in each. The website also lists the battles being hosted right now, with a **Join** button on each that opens the game and connects you.
 
 To run it from source instead:
 
@@ -50,9 +50,10 @@ When you're ready, choose **Play vs AI** and pick a side. You start at your base
 2. **Move it.** Right-click the ground. Coloured dots show where each man will stand: green is good cover, yellow only hides him, red means he's out in the open.
 3. **Attack.** Press **X** and click a spot. The squad advances in bounds, one team covering the other, and fights whatever it meets.
 4. **Hold ground.** Press **B** and click an area. The squad spreads into the best cover there and stays put.
-5. **Build.** Select your engineers and use the build menu at the bottom of the screen. Barracks train more squads, a factory builds vehicles, and new FOBs extend your reach.
-6. **Call support.** The buttons above the minimap call in mortars, artillery and air strikes.
-7. **Get eyes on.** Ground your side can't see right now is drawn darker, on the battlefield and the minimap. Watchtowers, drones from the helipad and recon flights (on the support panel) see further, and every aircraft you call in spots for you as it flies over. Whatever they spot stays on the map as a last-known position.
+5. **Build.** Select your engineers and use the build menu at the bottom of the screen. Barracks train more squads, a factory builds vehicles, and new FOBs extend your reach. Dig in with trenches, sandbags, HESCO walls or barricades, wire, mines and tank traps; throw camouflage nets over your guns and push an ammo cache up behind the line.
+6. **Take the towns.** The town and every village fly a flag by their supply dump. Right-click one with a squad selected: hold its ground with no enemy there and it's yours, and its trucks start bringing supply to your nearest FOB. The more you hold, the more you can build.
+7. **Call support.** The buttons above the minimap call in mortars, artillery and air strikes.
+8. **Get eyes on.** Ground your side can't see right now is drawn darker, on the battlefield and the minimap. Watchtowers, drones from the helipad and recon flights (on the support panel) see further, and every aircraft you call in spots for you as it flies over. Whatever they spot stays on the map as a last-known position.
 
 Press **F1** at any time for help, and **F4** for the Field Manual.
 
@@ -89,7 +90,7 @@ Each has objectives on screen and marked on the map. Choose **Host Co-op** to pl
 | Save a view / go back to it | Ctrl + F5 to F8 / F5 to F8 |
 | Look somewhere else | Click or drag on the minimap |
 | Jump to your bases | Home |
-| Jump to the latest alert | Space |
+| Jump to the latest alert or ping | Space |
 
 Prefer the middle mouse to pan rather than turn? Swap them in **Settings → Interface**, where you'll also find the minimap's size and an option to turn it with the camera.
 
@@ -124,7 +125,7 @@ Prefer the middle mouse to pan rather than turn? Swap them in **Settings → Int
 |---|---|
 | Place a building | Select engineers, pick from the build menu, left-click |
 | Rotate it | R (90 degrees) or Shift + mouse wheel (45 degrees) |
-| Lay a line of trenches, sandbags or wire | Click and drag |
+| Lay a line of trenches, sandbags, walls or wire | Click and drag |
 | Garrison a bunker | Right-click it with a squad |
 
 **Screens**
@@ -157,6 +158,18 @@ To play with particular people:
    They also choose how many seats there are, the time of day, and who can join: **Public** (anyone, from the server browser), **Password** (listed with a padlock; only friends with the password get in) or **Unlisted** (players on your network, or with your address).
 2. Everyone else opens the **Server Browser** and joins it: search for its name, or double-click it. Battles on your own network show up there too, marked **LAN**, with no internet needed. The host can also press **Copy invite link** in the lobby and paste it to a friend; the link opens the battle's page on the website, whose **Join** button starts the game and brings them in.
 3. The lobby shows who's on which side, the seats still open, anyone connecting, and who's ready. Players press **Ready**; the host clicks **Start Battle** (and can change the settings, or remove a player, until then).
+
+**Seeing your co-commanders.** Every commander has a colour (shown next to your name in the lobby). On your side you can see what the others are doing as they do it: where each one is looking (a viewfinder on the ground and a wedge on the minimap), their cursor with their name and what they're up to, a ring round what they've selected, and the trench line, fire mission or attack they're lining up before they commit it. Their units carry their initials, and the **Command Net** (top right) lists everyone with what they're doing right now and what they've just built, called in or set training, so you know where the supply went. The enemy never sees any of it.
+
+![Two co-commanders at work: Viper aiming 155 mm artillery, Rook laying a trench line, their views, pings and the Command Net](docs/screenshots/co_commanders.jpg)
+
+| Action | Keys |
+|---|---|
+| Ping (enemy spotted, watch this unit, look here) | Alt + click on the battlefield or the minimap |
+| Ping wheel: attack, on my way, need support, danger, defend, look | Hold Alt + left button, let go on a choice |
+| Draw on the map for your side | Alt + right-drag (on the minimap too) |
+| Look where a teammate is looking | Click their name in the Command Net, or their marker at the screen edge |
+| Watch a teammate's screen live | The screen button in the Command Net, or double-click their name |
 
 The game connects players straight to the host, through most home routers, without anyone opening ports. A few networks (some mobile and campus ones) are too strict for that; the server browser and the lobby say so, and then the host needs UDP port **7777** open, or you can play over a LAN or a VPN such as Tailscale, ZeroTier or Hamachi (**Direct connect** in the server browser takes an address). Friends can also join a battle that's already running.
 

@@ -6,7 +6,7 @@ extends Node
 ##                         lobby shows meanwhile)
 ##     --battle-name=NAME --coop --max-players=N --password=PW   the lobby's settings
 ##   --join=IP [--password=PW]   join a host
-##   --team=N              team to request after joining (-1 spectator)
+##   --team=N              the side to play (-1 spectator); a client registers with it
 ##   --ready [--say=TEXT]  once in the lobby: press Ready (and say something)
 ##   --list                with --host: list the battle on the matchmaker
 ##   --find-match          press Find Match (joins a listed battle, or hosts one)
@@ -63,6 +63,13 @@ func _ready() -> void:
 	layer.layer = 10
 	add_child(layer)
 	layer.add_child(menu)
+	# --menu-cursor=X,Y: hold the map's cursor hill there (fractions of the screen; screenshots)
+	if args.has("menu-cursor"):
+		var mc := String(args["menu-cursor"]).split(",")
+		TopoBackdrop.pin_cursor(Vector2(float(mc[0]), float(mc[1])))
+	# --menu-clock=SECONDS: start the map that far into its drift and its colours
+	if args.has("menu-clock"):
+		TopoBackdrop.start_at(float(args["menu-clock"]))
 	_curtains = args.is_empty() or args.has("curtain")
 	_curtain_layer = CanvasLayer.new()
 	_curtain_layer.layer = 120
@@ -159,12 +166,12 @@ func _ready() -> void:
 			menu._show_lobby()
 			Net.lobby_updated.connect(_maybe_autostart)
 	elif args.has("join") or args.has("find-match"):
+		if args.has("team"):
+			Net.join_team = int(args.team)
 		if args.has("join"):
 			menu._join_direct(String(args.join), port, String(args.get("password", "")))
 		else:
 			menu._find_match()
-		if args.has("team"):
-			multiplayer.connected_to_server.connect(func(): await get_tree().create_timer(0.3).timeout; Net.request_team.rpc_id(1, int(args.team)))
 		if args.has("ready") or args.has("say"):
 			Net.lobby_updated.connect(_lobby_test_actions)
 
@@ -214,18 +221,21 @@ func _curtain(mode: String) -> Curtain:
 	return cur
 
 
-## The intro carries on from the boot splash (the same artwork) and lifts once
-## the menu's 3D backdrop has really drawn - no black frames, no pop-in.
+## The title carries on from the boot splash (the same picture), wakes the
+## map and hands it to the menu, which lies on the same map: only the title
+## gives way to the menu.
 func _intro() -> void:
 	var cur := _curtain("intro")
-	var t0 := Time.get_ticks_msec()
-	while menu.backdrop == null or not menu.backdrop.is_inside_tree():
-		await get_tree().process_frame
-	var f0 := Engine.get_frames_drawn()
-	while Engine.get_frames_drawn() < f0 + 8 or Time.get_ticks_msec() - t0 < 900:
+	# --intro-at=SECONDS (with --curtain): hold the title at that moment (screenshots;
+	# 0 is the boot splash, which is rendered this way)
+	if args.has("intro-at"):
+		cur.hold_at = float(args["intro-at"])
+		TopoBackdrop.hold(cur.hold_at)
+	while is_instance_valid(cur) and not cur.title_done():
 		await get_tree().process_frame
 	if is_instance_valid(cur):
-		cur.finish(1.6)
+		menu.arrive()
+		cur.finish(1.8)
 
 
 func _mission_text(s: Dictionary) -> Array:
@@ -289,6 +299,12 @@ func _on_game_start(s: Dictionary) -> void:
 	if args.has("zoom") and world.cam:
 		world.cam.target_dist = float(args.zoom)
 		world.cam.dist = float(args.zoom)
+	# --coop-demo[=N]: N made-up co-commanders on your side, at work beside you;
+	# --bot-presence: this (test) client's presence is made up and really sent
+	if args.has("coop-demo"):
+		world.coop.start_demo(int(args["coop-demo"]))
+	if args.has("bot-presence"):
+		world.coop.start_bot()
 	# --cam-test: drive the camera through its controls and check each one
 	if args.has("cam-test") and world.cam:
 		var ct: Node = preload("res://scripts/game/cam_test.gd").new()
@@ -698,6 +714,11 @@ func _process(_dt: float) -> void:
 		world.input.debug_mouse = Vector2(float(cv[0]) * vsz.x, float(cv[1]) * vsz.y)
 		if args.has("order-mode"):
 			world.input.order_mode = String(args["order-mode"])
+		# --ping-wheel: hold the ping wheel open, the cursor on one of its spokes
+		if args.has("ping-wheel") and not world.input.pinging:
+			world.input.pinging = true
+			world.input.ping_at = world.input.debug_mouse + Vector2(-48, 46)
+			world.input._ping_ms = 0
 		# --place=trench [--place-from=x,z]: preview building (a line) at the cursor
 		if args.has("place") and world.input.place_kind == "" and not world.input.sel_squads.is_empty():
 			world.input.start_place(String(args.place))
@@ -706,7 +727,8 @@ func _process(_dt: float) -> void:
 				world.input.place_a = TrenchNet.snap_pos(Vector3(float(pf[0]), 0, float(pf[1])))
 				world.input.place_drag = true
 	# --blast-at=x,z,size,time: a real explosion there (physics / ragdoll tests);
-	# x,z of "f,dx" means dx metres beside the camera's focus
+	# x,z of "f,dx" means dx metres beside the camera's focus, "v:kind,dx" beside
+	# the first vehicle of that kind (sinking a boat on a headless host)
 	if args.has("blast-at") and world.srv and not has_meta("blasted"):
 		var ba := String(args["blast-at"]).split(",")
 		if world.time >= float(ba[3]):
@@ -715,6 +737,11 @@ func _process(_dt: float) -> void:
 			var bp := Vector3(float(ba[0]), 0.3, float(ba[1]))
 			if ba[0] == "f" and world.cam:
 				bp = world.cam.focus_pos + Vector3(float(ba[1]), 0.3, 0)
+			elif ba[0].begins_with("v:"):
+				for v in world.vehicles:
+					if v.vkind == ba[0].substr(2):
+						bp = Vector3(v.position.x + float(ba[1]), 0.3, v.position.z)
+						break
 			world.combat.explode(bp, {"dmg": 160.0 * bsz, "radius": 4.0 + bsz * 3.0, "fling": 8.0 + bsz * 4.0, "at": 300.0, "top": true, "src": null, "team": -1, "size": bsz})
 	# --focus-town[=dx,dz]: the camera on the middle of town (offset in metres)
 	if args.has("focus-town") and world.cam and world.time > 1.0 and not world.has_meta("town_focused") and world.town_rect.size.x > 0.0:
@@ -728,7 +755,7 @@ func _process(_dt: float) -> void:
 		if world.director:
 			world.director.active = false
 		world.set_meta("town_focused", true)
-	# --focus-struct=kind[,n]: the camera on the nth structure of a kind
+	# --focus-struct=kind[,n]: the camera on the nth structure of a kind (--select-struct: selected too)
 	if args.has("focus-struct") and world.cam and world.time > 1.0 and not world.has_meta("struct_focused"):
 		var fs := String(args["focus-struct"]).split(",")
 		var want2 := int(fs[1]) if fs.size() > 1 else 0
@@ -739,9 +766,22 @@ func _process(_dt: float) -> void:
 					world.focused = true
 					if world.director:
 						world.director.active = false
+					if args.has("select-struct") and world.input:
+						world.input.sel_structure = st.eid
 					break
 				want2 -= 1
 		world.set_meta("struct_focused", true)
+	# --focus-vehicle=kind: the camera on the first vehicle of a kind (and with
+	# it while it lives: a boat sinking, a convoy on the road)
+	if args.has("focus-vehicle") and world.cam and world.time > 1.0 and not world.has_meta("veh_focused"):
+		for v in world.vehicles:
+			if v.vkind == String(args["focus-vehicle"]):
+				world.cam.focus(v.position)
+				world.focused = true
+				if world.director:
+					world.director.active = false
+				world.set_meta("veh_focused", true)
+				break
 	# --focus-decor=kind[,n]: the camera on the nth piece of street furniture of a kind
 	if args.has("focus-decor") and world.cam and world.time > 1.0 and not world.has_meta("decor_focused") and not world.decor.is_empty():
 		var fd := String(args["focus-decor"]).split(",")
@@ -826,6 +866,12 @@ func _process(_dt: float) -> void:
 	if args.has("tactical") and world.hud and not world.hud.tactical and not has_meta("tac"):
 		set_meta("tac", true)
 		world.hud.toggle_tactical()
+	# --coop-watch[=N]: watch the Nth --coop-demo commander's view live
+	if args.has("coop-watch") and world.cam and world.time > 1.0 and not has_meta("coop_watched"):
+		var wid := 9001 + int(args["coop-watch"])
+		if world.coop.peers.has(wid):
+			set_meta("coop_watched", true)
+			world.cam.toggle_shadow(wid)
 	# --hud-panel=settings|help|menu|log: open one of the battle's panels (layout checks)
 	if args.has("hud-panel") and world.hud and world.time > 1.0 and not has_meta("hud_panel"):
 		set_meta("hud_panel", true)
@@ -856,4 +902,6 @@ func _process(_dt: float) -> void:
 					enemy += 1
 			counts["ENEMY_KNOWN"] = enemy
 			print("CLIENT entities=%d %s time=%.1f team_info=%s" % [world.entities.size(), str(counts), world.time, str(world.team_info[0].get("supply", -1))])
+		if not world.coop.peers.is_empty() or int(world.coop.stats.get("sent", 0)) > 0:
+			print("COOP ", world.coop.summary())
 		get_tree().quit()

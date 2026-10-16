@@ -474,7 +474,12 @@ func _player_row(id: int, p: Dictionary, host: bool, now: float) -> Control:
 	var bg := UiKit.box(Color(1, 1, 1, 0.04) if not me else Color(UiKit.ACCENT.r, UiKit.ACCENT.g, UiKit.ACCENT.b, 0.07), 3, Color(0, 0, 0, 0), 0, 6.0)
 	bg.content_margin_left = 10
 	bg.content_margin_right = 6
+	# their colour in the battle (cursor, view and pings on teammates'
+	# screens), down the edge of their row
+	bg.border_color = Net.player_color(id)
+	bg.border_width_left = 4
 	row.add_theme_stylebox_override("panel", bg)
+	row.tooltip_text = "%s's colour in the battle: their cursor, view and pings on teammates' screens." % String(p.name)
 	row.custom_minimum_size = Vector2(0, 36)
 	var h := HBoxContainer.new()
 	h.add_theme_constant_override("separation", 8)

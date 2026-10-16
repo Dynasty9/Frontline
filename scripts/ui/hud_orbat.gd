@@ -237,14 +237,20 @@ func _squad_row(y: float, sid: int, mem: Array, top: float, bottom: float) -> fl
 	var st: Dictionary = hud.squad_state(sid, mem)
 	var sym: Array = MapSymbols.squad_symbol(mem)
 	MapSymbols.nato(self, Vector2(r.position.x + 20, y + 19), 24.0, team == w.local_team or w.local_team < 0, team, sym[0], "", 1.0)
+	var by := int(w.coop.sel_sq.get(sid, 0)) if w.coop else 0
+	if by != 0:
+		# a co-commander has it selected: a ring in his colour
+		draw_arc(Vector2(r.position.x + 20, y + 19), 15.5, 0.0, TAU, 24, Net.player_color(by), 1.6, true)
 	var cs := Squad.callsign_of(team, sid)
 	var x0 := r.position.x + 40.0
 	UiKit.text(self, Vector2(x0, y + 15), cs.to_upper(), 12, UiKit.TEXT, 700)
 	var tag := String(sym[1])
+	var tx := x0 + UiKit.text_width(cs.to_upper(), 12, 700) + 6.0
 	if tag != "":
-		UiKit.text(self, Vector2(x0 + UiKit.text_width(cs.to_upper(), 12, 700) + 6, y + 15), tag, 10, UiKit.DIM, 700)
+		UiKit.text(self, Vector2(tx, y + 15), tag, 10, UiKit.DIM, 700)
+		tx += UiKit.text_width(tag, 10, 700) + 6.0
 	if not mine and w.local_team >= 0:
-		UiKit.text(self, Vector2(x0 + UiKit.text_width(cs.to_upper(), 12, 700) + 30, y + 15), "ALLY", 9, UiKit.DIM, 700)
+		_owner_tag(r, Vector2(tx, y + 15), int(mem[0].owner_peer), r.end.x - 10.0 - mem.size() * 6.0)
 	# strength: a pip per man
 	var px := r.end.x - 6.0 - mem.size() * 6.0
 	for s in mem:
@@ -294,8 +300,14 @@ func _vehicle_row(y: float, v, top: float, bottom: float) -> float:
 	_row_bg(r, v.eid in w.input.sel_vehicles, idx)
 	var vs: Array = MapSymbols.vehicle_symbol(v.vkind)
 	MapSymbols.nato(self, Vector2(r.position.x + 20, y + 19), 24.0, v.team == w.local_team or w.local_team < 0, v.team, vs[0], "", 1.0)
+	var by := int(w.coop.sel_veh.get(v.eid, 0)) if w.coop else 0
+	if by != 0:
+		draw_arc(Vector2(r.position.x + 20, y + 19), 15.5, 0.0, TAU, 24, Net.player_color(by), 1.6, true)
 	var x0 := r.position.x + 40.0
-	UiKit.text(self, Vector2(x0, y + 15), String(v.display_name()).to_upper(), 12, UiKit.TEXT, 700)
+	var vn := String(v.display_name()).to_upper()
+	UiKit.text(self, Vector2(x0, y + 15), vn, 12, UiKit.TEXT, 700)
+	if not mine and w.local_team >= 0:
+		_owner_tag(r, Vector2(x0 + UiKit.text_width(vn, 12, 700) + 6.0, y + 15), int(v.owner_peer), r.end.x - 72.0)
 	var hf: float = v.health_frac()
 	var bx := r.end.x - 66.0
 	draw_rect(Rect2(bx, y + 9, 58, 4), Color(0, 0, 0, 0.5))
@@ -316,6 +328,22 @@ func _vehicle_row(y: float, v, top: float, bottom: float) -> float:
 		col = UiKit.TEXT
 	UiKit.text(self, Vector2(x0, y + 32), txt, 11, col)
 	return y + ROW_H
+
+
+## Whose a unit is when it isn't yours: another commander's name in his colour
+## (with his colour down the row's edge), or the AI's.
+func _owner_tag(r: Rect2, at: Vector2, own: int, maxx := INF) -> void:
+	if own > 0 and Net.players.has(own):
+		var oc := Net.player_color(own)
+		draw_rect(Rect2(r.position + Vector2(0, 6), Vector2(2.5, r.size.y - 12)), oc)
+		var nm := Net.player_name(own).to_upper()
+		if nm.length() > 12:
+			nm = nm.substr(0, 11) + "…"
+		if at.x + UiKit.text_width(nm, 9, 700) > maxx:
+			nm = hud.world.coop.initials(own) if hud.world.coop else nm.substr(0, 2)
+		UiKit.text(self, at, nm, 9, oc, 700)
+	else:
+		UiKit.text(self, at, "AI" if own < 0 else "ALLY", 9, UiKit.DIM, 700)
 
 
 func _burst(c: Vector2) -> void:

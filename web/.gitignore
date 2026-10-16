@@ -22,3 +22,9 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Storybook and its tests
+storybook-static
+*storybook.log
+__screenshots__
+.vitest-attachments

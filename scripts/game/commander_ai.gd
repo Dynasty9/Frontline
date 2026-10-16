@@ -212,6 +212,8 @@ func _outposts(fighters: Array) -> void:
 				roles[sq.sid] = {"role": "idle", "t": t}
 			else:
 				held.append(r.pos)
+		elif role == "town":
+			held.append(r.pos)
 		elif role == "idle" and sq.plan == null:
 			idle += 1
 	var wave := 3 if t < 600.0 else 4
@@ -251,6 +253,85 @@ func _outposts(fighters: Array) -> void:
 		_cmd({"t": "defend", "squads": [sq.sid], "pos": world.nav.nearest_walkable(best.pos), "face": ed})
 		world.stat("ai_outpost_%s" % best.kind)
 		break
+
+
+var _town_t := 0.0
+
+
+## Towns and villages are supply: squads go out to take the ones within reach
+## of our lines that nobody holds (or the enemy does) - the near villages
+## first - stay a while to hold them, and go back to throw the enemy out of
+## one of ours he's moving into.
+func _towns(fighters: Array) -> void:
+	var t := world.time
+	var all: Array = world.rules.towns()
+	if t < _town_t or all.is_empty():
+		return
+	_town_t = t + 6.0
+	var enemy := 1 - team
+	var on := {}  # town eid -> squads sent to it
+	var busy := 0
+	for sq in fighters:
+		var r: Dictionary = roles.get(sq.sid, {})
+		if String(r.get("role", "")) != "town":
+			continue
+		var tn := world.entity(int(r.town)) as Structure
+		var done: bool = tn == null or sq.alive_members().size() * 2 < sq.members.size() or sq.drill in ["rout", "withdraw"]
+		if not done and tn.team == team:
+			if not r.has("held"):
+				r["held"] = t
+			# held a good while and quiet: back to the company
+			done = tn.cap_team < 0 and t - float(r.held) > 180.0
+		elif not done:
+			done = t - float(r.t) > 300.0  # it isn't getting in: give it up for now
+		if done:
+			roles[sq.sid] = {"role": "idle", "t": t}
+			continue
+		if not on.has(tn.eid):
+			on[tn.eid] = []
+		on[tn.eid].append(sq)
+		busy += 1
+	var best: Structure = null
+	var bs := -1e9
+	for tn in all:
+		var ours: bool = tn.team == team
+		var threatened: bool = ours and tn.cap_team == enemy and tn.cap_prog > 0.0
+		if ours and not threatened:
+			continue
+		if (on.get(tn.eid, []) as Array).size() >= (2 if tn.team == enemy else 1):
+			continue
+		var d := _dist_from(team, tn.zone_c)
+		var de := _dist_from(enemy, tn.zone_c)
+		if de < 90.0 or (d > 340.0 and not ours):
+			continue  # right under their base, or a long way past our own
+		var s := -d + (150.0 if threatened else 0.0) + (60.0 if tn.variant == 1 else 0.0) - (40.0 if tn.team == enemy else 0.0)
+		if d > de + 60.0:
+			s -= 150.0  # nearer theirs than ours
+		if s > bs:
+			bs = s
+			best = tn
+	if best == null or (busy >= 1 + fighters.size() / 3 and best.team != team):
+		return
+	for sq in _by_distance(fighters, best.zone_c):
+		var role := String(roles.get(sq.sid, {}).get("role", "idle"))
+		if not role in ["idle", "outpost"] or sq.plan != null or sq.drill != "" or sq.alive_members().size() < 2:
+			continue
+		roles[sq.sid] = {"role": "town", "t": t, "town": best.eid, "pos": best.zone_c}
+		var face := Defs.flat(best.zone_c - sq.centroid()).normalized()
+		_cmd({"t": "assault" if best.team == enemy else "defend", "squads": [sq.sid], "pos": world.nav.nearest_walkable(best.zone_c), "face": face if face.length() > 0.5 else _enemy_dir()})
+		world.stat("ai_town_" + ("defend" if best.team == team else ("retake" if best.team == enemy else "take")))
+		break
+
+
+## How far p is from a side's nearest FOB or its HQ.
+func _dist_from(side: int, p: Vector3) -> float:
+	var best := 1e9
+	for f in world.rules.fobs(side):
+		best = minf(best, Defs.flat(f.position - p).length())
+	var hq: Structure = world.rules.depots[side]
+	if hq and not hq.gone:
+		best = minf(best, Defs.flat(hq.position - p).length())
+	return best
 
 
 func _cmd(d: Dictionary) -> void:
@@ -393,6 +474,13 @@ func _economy(sqs: Array) -> void:
 	for f in fobs:
 		if _count_near(f, "sandbags", 24.0) < 4 and t > 40.0:
 			plan.append(["sandbags", f, 9.0, 20.0])
+		# chest-high walls across the front: HESCO for the Coalition, the Rebels
+		# whatever they can drag together
+		var wall := "hesco" if team == Defs.ARMY else "barricade"
+		if _count_near(f, wall, 26.0) < 3 and t > (140.0 if team == Defs.ARMY else 90.0):
+			plan.append([wall, f, 10.0, 20.0])
+		if f == front and _count_near(f, "ammo_cache", 45.0) < 1 and t > 200.0:
+			plan.append(["ammo_cache", f, 14.0, 26.0])
 		if _count_near(f, "mg_nest", 30.0) < 1 and t > 100.0:
 			plan.append(["mg_nest", f, 9.0, 18.0])
 		if _count_near(f, "trench", 34.0) < 6 and t > 110.0:
@@ -407,6 +495,13 @@ func _economy(sqs: Array) -> void:
 			plan.append(["at_post", f, 10.0, 22.0])
 		if _count_near(f, "watchtower", 30.0) < 1 and t > 260.0:
 			plan.append(["watchtower", f, 8.0, 18.0])
+	# nets over the heavy weapons, so the enemy's eyes and his aircraft have
+	# to come close to find them
+	if t > 260.0:
+		for st in _my_structs("mortar_pit", true) + _my_structs("at_post", true) + _my_structs("hmg_nest", true):
+			if _count_near(st, "camo_net", 2.5) == 0:
+				plan.append(["camo_net_over", st, 0.0, 0.0])
+				break
 	if team == Defs.REBELS and front and t > 200.0 and _my_structs("tunnel").size() < 2 + maxi(0, fobs.size() - 1) and _count_near(front, "tunnel", 30.0) > 0:
 		plan.append(["tunnel", front, 45.0, 66.0])
 	if t > obstacle_t and front:
@@ -427,6 +522,13 @@ func _economy(sqs: Array) -> void:
 	for p in plan:
 		if p[0] == "trench_line":
 			if sup > 150 + _fob_reserve() and _dig_line(p[1], float(p[2]), engs):
+				return
+			continue
+		if p[0] == "camo_net_over":
+			var under: Structure = p[1]
+			if sup > int(Defs.BUILDINGS.camo_net.cost) + 60 + _fob_reserve() and world.placement_error(team, "camo_net", under.position, under.yaw) == "":
+				world.stat("ai_camo_net")
+				_place("camo_net", under.position, under.yaw, engs)
 				return
 			continue
 		var def: Dictionary = Defs.BUILDINGS[p[0]]
@@ -551,7 +653,7 @@ func _find_spot(kind: String, center: Vector3, rmin: float, rmax: float) -> Vect
 				return spot.pos
 	for i in 20:
 		var a := rng.randf_range(-PI, PI)
-		if kind in ["sandbags", "mg_nest", "hmg_nest", "wire", "mines", "tank_trap", "watchtower", "trench", "bunker", "at_post"] or rmin >= 40.0:
+		if kind in ["sandbags", "hesco", "barricade", "ammo_cache", "mg_nest", "hmg_nest", "wire", "mines", "tank_trap", "watchtower", "trench", "bunker", "at_post"] or rmin >= 40.0:
 			a = rng.randf_range(-1.1, 1.1)
 		elif kind in ["barracks", "factory", "medic_tent", "research", "mortar_pit"]:
 			a = rng.randf_range(PI * 0.5, PI * 1.5)
@@ -569,20 +671,33 @@ func _expansion_spot() -> Vector3:
 	if front == null:
 		return Vector3.INF
 	var fwd := _enemy_dir()
+	# a town we hold out beyond our bases gets a FOB beside it, on our side of
+	# it: its lorry has a short run, and the men holding it a base at their backs
+	for tn in world.rules.towns(team):
+		if _dist_from(team, tn.zone_c) < 110.0 or Defs.flat(tn.zone_c - front.position).dot(fwd) > 60.0:
+			continue
+		for i in 10:
+			var bdir := (-fwd).rotated(Vector3.UP, rng.randf_range(-1.2, 1.2))
+			var bp: Vector3 = tn.zone_c + bdir * rng.randf_range(tn.zone_r * 0.6, tn.zone_r + 25.0)
+			bp = Vector3(snappedf(bp.x, 0.5), 0, snappedf(bp.z, 0.5))
+			if world.placement_error(team, "fob", bp, Defs.yaw_of(fwd)) == "" and not _enemy_near(bp, 40.0):
+				world.stat("ai_town_fob")
+				return bp
 	for i in 24:
 		var dir := fwd.rotated(Vector3.UP, rng.randf_range(-0.9, 0.9))
 		var p := front.position + dir * rng.randf_range(60.0, 105.0)
 		p.x = clampf(p.x, -MapDims.HALF + 23.0, MapDims.HALF - 23.0)
 		p = Vector3(snappedf(p.x, 0.5), 0, snappedf(p.z, 0.5))
-		if world.placement_error(team, "fob", p, Defs.yaw_of(fwd)) == "":
-			var danger := false
-			for s in world.soldiers_near(p, 40.0):
-				if s.team != team and s.team >= 0 and s.life == Soldier.Life.ALIVE:
-					danger = true
-					break
-			if not danger:
-				return p
+		if world.placement_error(team, "fob", p, Defs.yaw_of(fwd)) == "" and not _enemy_near(p, 40.0):
+			return p
 	return Vector3.INF
+
+
+func _enemy_near(p: Vector3, r: float) -> bool:
+	for s in world.soldiers_near(p, r):
+		if s.team != team and s.team >= 0 and s.life == Soldier.Life.ALIVE:
+			return true
+	return false
 
 
 # --- production --------------------------------------------------------------------
@@ -841,6 +956,7 @@ func _military(sqs: Array) -> void:
 				_cmd({"t": "defend", "squads": [sq.sid], "pos": spot, "face": _enemy_dir()})
 			break
 	_reinforce(fighters)
+	_towns(fighters)
 	_outposts(fighters)
 	# pick a target
 	if attack_target == null or attack_target.gone or attack_target.team == team:
@@ -1058,6 +1174,12 @@ func _pick_target() -> Structure:
 		if d < bd:
 			bd = d
 			best = st
+	# a town of theirs is a softer target than a base, and worth as much to us
+	for tn in world.rules.towns(1 - team):
+		var d2: float = Defs.flat(tn.zone_c - from).length() * 0.8
+		if d2 < bd:
+			bd = d2
+			best = tn
 	return best
 
 

@@ -83,6 +83,10 @@ const COVER := [
 		"Thick enough to hide a man, not to stop a bullet: rounds go straight through and find whoever is behind it. Good for moving unseen, poor for a firefight."],
 	["c_sandbags", "Sandbag wall", "sandbags", 0, Vector3(4, 3, 0.9), 1.0, "Built by engineers and diggers; around checkpoints",
 		"Filled bags stacked a metre high and nearly as thick. Kneel behind and fire over; only a .50 cal works through it, slowly."],
+	["c_hesco", "HESCO wall", "hesco", 0, Vector3(4.4, 3, 1.1), 1.37, "Put up by Coalition engineers round bases and across the front",
+		"Welded-mesh cells lined with geotextile and filled with earth, chest high and a metre thick. Stand and fire over it: nothing short of a shell gets through, not even a .50 cal."],
+	["c_barricade", "Barricade", "barricade", 0, Vector3(4, 3, 1.0), 1.2, "Thrown up by the Rebels across roads and round their positions",
+		"Oil drums filled with earth, stacked tyres, rubble, pallets and sacks, chest high. Stand and fire over it; it stops what sandbags do - but a tank shoves it aside, and the tyres burn."],
 	["c_car", "Car", "car", 1, Vector3.ZERO, 0.95, "Parked along the streets and lanes",
 		"The engine block and wheels stop rifle rounds; the doors and panels don't stop a machine gun. A big blast throws it across the road, and the cover goes with it."],
 	["c_crates", "Supply crates", "crates", 1, Vector3.ZERO, 1.2, "Yards, depots and roadsides",
@@ -124,7 +128,12 @@ const PATTERN := {
 	"mg_nest": "M240B on M192 (Coalition) / PKM on tripod (Rebels); placed on a trench it becomes a gun bay",
 	"hmg_nest": "M2HB on the M3 tripod (Coalition) / DShKM with a gun shield (Rebels); placed on a trench it becomes a gun bay",
 	"at_post": "Javelin class guided missile (Coalition) / SPG-9 recoilless rifle (Rebels)", "mortar_pit": "81 / 82 mm mortar",
-	"bunker": "concrete pillbox (Coalition) / log-and-earth dugout (Rebels)", "trench": "fire trench, revetted, with fire bays",
+	"bunker": "concrete pillbox (Coalition) / log-and-earth dugout (Rebels), earth banked to the slits", "trench": "fire trench, revetted, with fire bays",
+	"sandbags": "filled bags laid in header and stretcher courses, the face battered back", "hesco": "HESCO MIL1 Concertainer cells, 1.37 m",
+	"barricade": "improvised: oil drums, tyres, rubble, pallets, sacks", "concrete_wall": "precast T-walls (Bremer type), cut down to 2.6 m",
+	"wire": "triple-strand concertina on steel pickets (Rebels: wooden stakes)", "tank_trap": "Czech hedgehog: steel angle (Rebels: old rails)",
+	"mines": "M15 / TM-62 anti-tank and M14 / PMN anti-personnel mines, marked on the friendly side",
+	"camo_net": "a camouflage net on a centre pole and four corner poles, draped to the ground", "ammo_cache": "an ammunition point: stores on pallets under a fly sheet",
 }
 
 var _cat := "infantry"
@@ -624,6 +633,8 @@ func _make_model(e: Dictionary) -> Node3D:
 		"bases", "defences":
 			if e.key == "trench":
 				return _trench_diorama()
+			if e.key == "town":
+				return Structure.preview_model("town", side, 0, Vector3(3.6, 2.0, 2.4))
 			var bteams: Array = Defs.BUILDINGS[e.key].teams
 			var bs: int = side if side in bteams else int(bteams[0])
 			return Structure.preview_model(String(e.key), bs)
@@ -781,8 +792,10 @@ func _cover_diorama(key: String, side: int) -> Node3D:
 			g.add_child(st)
 			var half := 0.25
 			match String(c[2]):
-				"sandbags":
+				"sandbags", "barricade":
 					half = 0.45
+				"hesco":
+					half = 0.53
 				"car":
 					half = 0.9
 				"crates":
@@ -1239,6 +1252,18 @@ func _build_entries() -> Array:
 			"team": int(tms[0]) if tms.size() == 1 else -1, "both": tms.size() > 1,
 			"sub": "%d supply · %d hp" % [int(b.cost), int(b.hp)], "pattern": PATTERN.get(k, ""),
 			"desc": String(b.desc), "stats": st3, "rel": rel})
+
+	# the towns: taken, not built
+	out.append({"cat": "bases", "key": "town", "name": "Town supply dump", "team": -1, "both": true,
+		"sub": "taken, not built · %d-%d supply a minute" % [int(Defs.TOWN_YIELD[0]), int(Defs.TOWN_YIELD[1])],
+		"pattern": "a town's stores: crated goods on pallets, fuel drums, the flag of whoever holds it",
+		"desc": "The town and every village have one, by the main street. Whoever holds the place draws on it - food, fuel, lorries, labour - and its own lorry trucks the stock to their nearest FOB along a road you can ambush like any supply road. To take one, get men inside its ring with none of the other side's there: a squad takes a village in about half a minute, the town in nearer a minute; both sides there and nobody gains; the holder's men push it back. A town shelled to ruins gives about a third of what it did. A FOB can go up near a town you hold, and your men round the dump fill their pouches from it.",
+		"stats": [
+			["Supply a minute", "%d (village) / %d (town)" % [int(Defs.TOWN_YIELD[0]), int(Defs.TOWN_YIELD[1])], -1.0],
+			["Dump holds", "%d / %d" % [int(Defs.TOWN_STOCK[0]), int(Defs.TOWN_STOCK[1])], -1.0],
+			["Truck leaves at", "%d / %d supply" % [int(Defs.TOWN_LOAD[0]), int(Defs.TOWN_LOAD[1])], -1.0],
+			["Ground to hold", "%d m / %d m ring" % [int(Defs.TOWN_RADIUS[0]), int(Defs.TOWN_RADIUS[1])], -1.0],
+		], "rel": ["On every map: the town in the middle, a village on each country road", "Trucks to the holder's nearest FOB"]})
 
 	# fire support
 	var sco: float = mx.call(Defs.SUPPORT, func(s): return s.cost)

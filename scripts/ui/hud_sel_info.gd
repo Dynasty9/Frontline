@@ -36,8 +36,8 @@ func _draw() -> void:
 					by_sid[s.sid] = []
 				by_sid[s.sid].append(s)
 		if by_sid.size() == 1:
-			_squad_detail(by_sid.values()[0])
-			need_h = 66.0 + mini((by_sid.values()[0] as Array).size(), 6) * 21.0
+			var extra := _squad_detail(by_sid.values()[0])
+			need_h = 66.0 + extra + mini((by_sid.values()[0] as Array).size(), 6) * 21.0
 			return
 		var rows := 0
 		for sid in inp.sel_squads:
@@ -82,38 +82,53 @@ func _draw() -> void:
 	var st: Structure = w.entity(inp.sel_structure) as Structure
 	if st:
 		_structure_info(st)
-		need_h = 110.0
+		need_h = 140.0 if st.skind == "town" else 110.0
 		return
 	need_h = 30.0
 	var e: Entity = hud._inspect if hud._inspect_t > 0.0 and hud._inspect and not hud._inspect.gone else null
 	if e:
 		UiKit.text(self, Vector2(4, 20), _describe(e), 14, UiKit.TEXT)
 
-func _squad_detail(mem: Array) -> void:
+## One squad in full. Returns how much taller than usual it drew (a narrow
+## panel puts the attack's stepper on a line of its own).
+func _squad_detail(mem: Array) -> float:
 	var cs := Squad.callsign_of(mem[0].team, mem[0].sid) if not mem.is_empty() else ""
-	UiKit.text(self, Vector2(4, 16), cs.to_upper(), 13, UiKit.ACCENT, 600)
-	UiKit.text(self, Vector2(12 + UiKit.text_width(cs.to_upper(), 13, 600), 16), _squad_name(mem), 12, UiKit.DIM)
 	var alive := 0
 	for s in mem:
 		if _fit(s):
 			alive += 1
 	UiKit.text(self, Vector2(size.x - 120, 16), "%d / %d fighting" % [alive, mem.size()], 12, UiKit.DIM)
+	var head_end := size.x - 128.0  # where the callsign and type must stop
 	# what it's doing, and where an attack has got to
 	var st: Dictionary = hud.squad_state(mem[0].sid, mem)
 	if int(st.morale) >= 0:
 		# its nerve: steady, shaken, breaking, routed
 		var mcol: Color = [Color(0.6, 0.85, 0.5), Color(1.0, 0.8, 0.35), Color(1.0, 0.52, 0.3), UiKit.BAD][int(st.mstate)]
 		var mtxt: String = SquadBrain.STATE_NAMES[int(st.mstate)].to_upper()
-		UiKit.text(self, Vector2(size.x - 132 - UiKit.text_width(mtxt, 11, 700), 16), mtxt, 11, mcol, 700)
+		var mx := size.x - 132 - UiKit.text_width(mtxt, 11, 700)
+		UiKit.text(self, Vector2(mx, 16), mtxt, 11, mcol, 700)
+		head_end = mx - 8.0
+	UiKit.text(self, Vector2(4, 16), cs.to_upper(), 13, UiKit.ACCENT, 600)
+	var tx := 12 + UiKit.text_width(cs.to_upper(), 13, 600)
+	var tname := _squad_name(mem)
+	if tx + UiKit.text_width(tname, 12) <= head_end:
+		UiKit.text(self, Vector2(tx, 16), tname, 12, UiKit.DIM)  # (dropped when the panel is too narrow for it)
 	var ox := 4.0
 	if String(st.glyph) != "":
 		MapSymbols.glyph(self, st.glyph, Vector2(10, 35), 6.0, st.col, 1.0, false)
 		ox = 22.0
 	UiKit.text(self, Vector2(ox, 40), st.text, 12, st.col, 600)
+	var y := 60.0
 	var o: Array = hud.orders.get(mem[0].sid, [])
 	if not o.is_empty() and o[6] != null:
-		_stepper(Vector2(size.x - 236, 30), String(o[6][0]))
-	var y := 60.0
+		var sx := size.x - 236.0
+		if ox + UiKit.text_width(String(st.text), 12, 600) + 12.0 > sx:
+			# no room beside the orders: under them
+			_stepper(Vector2(ox, 50), String(o[6][0]))
+			y += 26.0
+		else:
+			_stepper(Vector2(sx, 30), String(o[6][0]))
+	var extra := y - 60.0
 	var col_w := size.x * 0.5
 	for i in mini(mem.size(), 12):
 		var s: Soldier = mem[i]
@@ -134,6 +149,7 @@ func _squad_detail(mem: Array) -> void:
 			dt = "KIA"
 		var cat: String = s.doing_cat() if s.life != Soldier.Life.DEAD else "idle"
 		UiKit.text(self, Vector2(x + 34 + UiKit.text_width(nm, 13), yy + 12), dt, 12, Hud.CAT_COLORS.get(cat, UiKit.DIM).darkened(0.05))
+	return extra
 
 ## PLAN > MOVE > ASSAULT > SECURE, the current step lit.
 func _stepper(at: Vector2, phase: String) -> void:
@@ -239,12 +255,44 @@ func _bar(p: Vector2, sz: Vector2, f: float, col: Color) -> void:
 	draw_rect(Rect2(p, sz), Color(0, 0, 0, 0.55))
 	draw_rect(Rect2(p, Vector2(sz.x * clampf(f, 0.0, 1.0), sz.y)), col)
 
+## A town or village: who holds it, what it gives (and how much of it still
+## stands to give it), what's in its dump and where its trucks go - or how to
+## take it, and how far along whoever's taking it is.
+func _town_info(st: Structure, y: float) -> void:
+	var w := hud.world
+	var lt := w.local_team
+	var k := clampi(st.variant, 0, 1)
+	var holder: String = ("Held by the " + Defs.TEAM_NAMES[st.team]) if st.team >= 0 else "Nobody holds it yet"
+	UiKit.text(self, Vector2(4, y), "%s  ·  %s  ·  %d%% of its houses stand" % [Defs.TOWN_KINDS[k], holder, int(round(st.intact * 100.0))], 13, UiKit.TEXT)
+	y += 19.0
+	UiKit.text(self, Vector2(4, y), "Gives %d supply a minute (%d at full strength), trucked to the holder's nearest FOB." % [int(round(st.town_rate())), int(Defs.TOWN_YIELD[k])], 13, UiKit.DIM)
+	y += 19.0
+	if st.team == lt and lt >= 0:
+		var to := ""
+		for tn in (w.team_info[lt] as Dictionary).get("towns", []):
+			if int(tn[0]) == st.eid:
+				to = ("Trucks run to FOB " + String(tn[5])) if String(tn[5]) != "" else "No FOB to truck it to: build one within reach"
+		UiKit.text(self, Vector2(4, y), "In the dump: %d / %d.  %s" % [int(st.supply), int(Defs.TOWN_STOCK[k]), to], 13, UiKit.TEXT)
+	else:
+		UiKit.text(self, Vector2(4, y), "To take it: men inside the ring (%d m) with none of the other side's there." % int(st.zone_r), 13, UiKit.DIM)
+	y += 19.0
+	if st.cap_prog > 0.0 and st.cap_team >= 0:
+		var who: String = "us" if st.cap_team == lt else ("the " + Defs.TEAM_NAMES[st.cap_team])
+		UiKit.text(self, Vector2(4, y), "Being taken by %s: %d%%" % [who, int(st.cap_prog)], 13, UiKit.GOOD if st.cap_team == lt else UiKit.BAD)
+		_bar(Vector2(4, y + 8), Vector2(260, 5), st.cap_prog / 100.0, Defs.TEAM_COLORS[st.cap_team])
+
+
 func _structure_info(st: Structure) -> void:
 	var y := 18.0
 	UiKit.text(self, Vector2(4, y), st.display_name(), 17, UiKit.TEXT, 600)
 	if st.team >= 0:
 		UiKit.text(self, Vector2(10 + UiKit.text_width(st.display_name(), 17, 600), y), Defs.TEAM_NAMES[st.team], 12, Defs.TEAM_COLORS[st.team].lightened(0.3))
 	y += 12.0
+	if st.skind == "town":
+		# a town can't be knocked down, only its houses: how much of it stands
+		_bar(Vector2(4, y), Vector2(260, 6), st.intact, Color(0.85, 0.75, 0.5))
+		_town_info(st, y + 26.0)
+		return
 	_bar(Vector2(4, y), Vector2(260, 6), st.hp / maxf(1.0, st.max_hp), UiKit.GOOD)
 	y += 26.0
 	if not st.built:
@@ -273,5 +321,9 @@ func _structure_info(st: Structure) -> void:
 			UiKit.text(self, Vector2(4, y + 32), "Paused: unit cap reached. Build another FOB.", 12, UiKit.BAD)
 	elif st.skind == "tunnel":
 		UiKit.text(self, Vector2(4, y), "%d soldiers inside. Right-click with a squad selected to send them in." % st.inside_n, 13, UiKit.TEXT)
+	elif st.skind == "ammo_cache" and st.team == hud.world.local_team:
+		var left := st.supply / Structure.CACHE_STOCK
+		UiKit.text(self, Vector2(4, y), "Stores left %d%%  -  men within %d m top up their ammunition, grenades and rockets" % [int(round(left * 100.0)), int(Structure.CACHE_REACH)], 13, UiKit.TEXT if left > 0.25 else UiKit.WARN)
+		_bar(Vector2(4, y + 8), Vector2(260, 5), left, Color(0.85, 0.7, 0.35))
 	elif Defs.BUILDINGS.has(st.skind):
 		UiKit.text(self, Vector2(4, y), Defs.BUILDINGS[st.skind].desc, 13, UiKit.DIM, 400, HORIZONTAL_ALIGNMENT_LEFT, size.x - 8)

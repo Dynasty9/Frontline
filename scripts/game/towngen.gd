@@ -36,6 +36,9 @@ var _fronts: Array = []  # front wall tops of houses, for the service drops
 var _fence_keys := {}
 var _depth := LOT_D  # depth of the lot being built (shallower where the block is crowded)
 var _special := {}
+var square := Vector3.INF  # the middle of the town square
+var square_q := Vector3.ZERO  # which corner of the central crossroads it fills
+var square_flag: Array = []  # the flagpole on it (decor; the town's supply dump takes its place)
 
 
 func _init(m) -> void:
@@ -510,6 +513,9 @@ func _square(c: Vector3, q: Vector3) -> void:
 		_d("planter", e2)
 	_d("bin", c + Vector3(-q.x * 6.0, 0, -q.z * 8.6))
 	_d("flagpole", c + Vector3(-q.x * 8.6, 0, q.z * 3.6))
+	square = c
+	square_q = q
+	square_flag = decor.back()
 	# market stalls along one side, bollards where it meets the streets
 	for i in 3:
 		_d("stall", c + Vector3(q.x * (1.8 - i * 3.0), 0, q.z * 7.6), PI if q.z > 0 else 0.0, rng.randi() % 4)

@@ -16,8 +16,9 @@ option on its own, laid out like a PC game's options screen:
   flares, rain and thunder; applies live), colour grading (natural, cinematic, vivid, warm film, cold steel,
   bleached war film, black & white), tonemapper (AgX / ACES / Filmic / Reinhard), brightness, contrast, bloom,
   film grain, tilt-shift depth of field.
-- **Display:** window mode (windowed / borderless / exclusive fullscreen), window size, VSync, frame-rate cap,
-  field of view, performance overlay.
+- **Display:** window mode (windowed / borderless / exclusive fullscreen), window size (applied at launch; a
+  size too big for the screen maximises the window instead; test runs keep the project's window or the size
+  `--resolution` asks for), VSync, frame-rate cap, field of view, performance overlay.
 - **Interface:** interface scale (relative to the window: `Settings.ui_factor()` is what the window's 2D is
   drawn at), unit activity labels, speech bubbles, cover preview, edge scrolling, camera speed, camera shake.
 - **Audio:** master, music, effects, ambience and interface volumes (each its own mixer bus, set up in
@@ -50,6 +51,7 @@ game/bt.gd              a small behaviour tree (selector, sequence, condition, a
 game/squad.gd           shared knowledge, rescues, smoke, surrender, auto-engineering
 game/squad_brain.gd     the squad's behaviour tree: battle drills, morale, fire discipline, ammo sharing
 game/water.gd           rivers, ponds, the sea: laid out as shapes, rasterized into ground kinds and heights
+game/water_view.gd      (view) the water surface: swell, surf, reflections, wakes, foam and oil on the water
 game/naval_ai.gd        the AI's navy: docks, gunboat patrols, amphibious raids
 game/tactics.gd         moving tactically (bounding overwatch, recon by fire), clearing houses, near ambush, stragglers, crews
 game/ambush_plan.gd     a deliberate road ambush: rally point, the L, the killing zone, spring, withdraw
@@ -75,9 +77,9 @@ game/ragdoll.gd         the jointed ragdoll
 game/decor.gd           street furniture built on each client (merged per chunk, wires, street lights)
 game/weapon_models.gd   crew-served machine guns and their tripods (M240B, M2HB, PKM, DShKM)
 ui/field_manual.gd      the field manual: catalog of everything with stats and 3D previews
-ui/curtain.gd           the intro and loading screens
+ui/curtain.gd           the title and loading screens
 game/bevel_mesh.gd      chamfered boxes (every Res.box thicker than a sheet)
-assets/                 splash.png and backdrop.png (made by a script from the emblem and a topographic map)
+assets/                 splash.png: the boot splash, which is the title's first frame (see "Off-screen screenshots")
 game/fx.gd              tracers, impacts, who is saying what, debris; drives vfx.gd
 game/vfx.gd             GPU particle explosions, smoke, flames, char, grass fires, decals, shockwaves (+ their shaders)
 game/atmosphere.gd      sky, sun, fog, ground shader, post effects, moods
@@ -89,12 +91,16 @@ game/vehicles/          the Arma 3 models by family: vm_nato, vm_csat, vm_indep 
                         V-44X Blackfish), vm_attack (A-10C, A-164 Wipeout) and vm_fighter (F/A-181, F-16C)
 game/vehicle_roster.gd  the Arma 3 roster (stats, behaviour, tiers, patterns) and the Field Manual's garage
 game/director.gd        observer camera and time controls
+game/co_command.gd      co-commanders: each player's presence (view, cursor, selection, what's being lined up),
+                        pings, sketches and committed actions, relayed by the host to that side only
+ui/hud_coop.gd          co-commanders drawn over the battlefield; ui/hud_coop_roster.gd the Command Net
 ui/hud.gd, menu.gd      interface; ui/settings_panel.gd, ui/perf_overlay.gd, ui/ui_kit.gd (shared style),
 ui/hud_overlay.gd       everything drawn over the battlefield (labels, speech, symbols, orders, plans, intel)
 ui/hud_orbat.gd, hud_layers.gd, hud_sel_info.gd, hud_minimap.gd, hud_top_info.gd, hud_toasts.gd   HUD widgets
 ui/map_symbols.gd       NATO symbols and status icons
 game/attack_plan.gd     the deliberate attack (plan, support by fire, flank, assault, consolidate)
-ui/menu_scene.gd        live 3D menu backdrop
+ui/topo_backdrop.gd     the living topographic map behind the title, the menu and the loading screen (one
+                        shader; every copy shares one clock and cursor, so screens hand over without a seam)
 ```
 
 Networking is server-authoritative. Clients send command dictionaries (`World.send_cmd`). The host simulates at 30 Hz and
@@ -113,7 +119,7 @@ Pass these after `--` on the command line:
                                                       solo: one squad against a stronger position)
 --play --select-first --tactical --nohud              command a scenario's Coalition side / select a squad /
                                                       open the tactical map / hide the HUD (perf tests)
---focus-struct=kind[,n]                               camera on a structure of a kind
+--focus-struct=kind[,n] [--select-struct]            camera on a structure of a kind (and select it: its info panel)
                                                       (trenches: a Rebel trench system vs tanks + IFVs;
                                                       poses: every stance frozen for inspection; add --static
                                                       to leave the attackers out)
@@ -133,8 +139,10 @@ Pass these after `--` on the command line:
 --scenario=... --play                                 command the Coalition side of a scenario instead of watching
 --focus-fob=0|1                                       keep the camera on that side's first FOB
 --focus-town[=dx,dz] / --focus-decor=kind[,n]         camera on the town, or on a piece of street furniture
+--focus-vehicle=kind                                  camera on the first vehicle of a kind (--blast-at=f,0,SIZE,T blows it up)
 --blast-at=X,Z,SIZE,TIME                              a real explosion at that spot and time (physics tests);
-                                                      X,Z of "f,DX" is DX metres beside the camera's focus
+                                                      X,Z of "f,DX" is DX metres beside the camera's focus (or "v:KIND,DX"
+                                                      beside the first vehicle of that kind)
 --pitch=-14 --cam-yaw=-0.84                           fixed camera pitch (degrees) and heading (model close-ups)
 --cam-test                                            drive the camera through its controls (zoom to cursor, grab-pan,
                                                       turn and tilt, reset, saved views, follow, turning minimap) and
@@ -147,6 +155,11 @@ Pass these after `--` on the command line:
                                                       --set=ui_scale:3 for the largest scale the window allows)
 --pan=VX,VZ / --set=key:value,...                     drift the camera (shimmer tests) / override single settings
 --scenario=guns                                       every machine-gun emplacement and trench bay, crewed, with targets
+--scenario=works --static                             every defensive work both sides can build, finished, in two rows (model checks;
+                                                      frame them with --focus/--zoom/--pitch, see the layout in mapgen.gd)
+--scenario=cache                                      an ammo cache filling an empty-handed squad, then blown up (cache_draw,
+                                                      cache_cook_off); a Rebel cell half under a camouflage net, half in the open
+FL_DEBUG_WORKS=1 (env)                                with --scenario=cache: who's under the net and seen, who's filled up
 --scenario=roster                                     every vehicle both sides can field, facing off across the map
 --scenario=sling                                      a Mohawk carries a Humvee and a Taru a BTR on their slings
 --scenario=naval                                      boats on the sea: an RHIB lands a squad under a patrol ship's guns, Rebel boats come out to fight
@@ -154,6 +167,9 @@ Pass these after `--` on the command line:
                                                       enemy about: they bound there by teams and clear the houses
 --scenario=breach                                     a fighter cell holed up in a house; two rifle squads and a gun team clear it
 --scenario=gdrill                                     grenade drill: frags with all sorts of fuses land among a squad round its wounded
+--scenario=town                                       a rifle squad takes a village's supply dump, its lorry runs the stock to
+                                                      FOB Alpha, then a Rebel cell comes to take it back (town_captured,
+                                                      town_truck_delivered in the counters; --debug-trucks lists each town)
 --scenario=fire                                       a wood, a hedgerow, crates, cars, a watchtower and a house, some of it alight
                                                       from the start, a fighter cell dug in among it (fire spread, burns, fleeing)
 FL_DEBUG_FIRE=1 (env)                                 print who the fires burn, and (on a client) what it hears catching or going out
@@ -163,6 +179,15 @@ FL_DEBUG_VISION=1 (env)                               every 2 s, what each side 
 --mission=KEY --play [--autoplay]                     command the mission's force yourself (--autoplay: the autopilot still gives orders)
 --mission=KEY --seed=N                                the mission on another map (checks it still places itself sensibly)
 --host --mission=KEY --players=2                      a co-op mission lobby that starts when the second player joins
+--coop-demo[=N]                                       N made-up co-commanders on your side (host only: each gets a real
+                                                      squad), looking about near you, lining up trenches, fire missions and
+                                                      assaults, pinging and sketching (co-commander interface shots)
+  --coop-watch[=I]                                    watch the Ith one's view live
+--bot-presence                                        (a client, headless) this game's presence is made up the same way and
+                                                      really sent, with its pings and sketches; COOP {...} at --quit-after
+                                                      shows what each game sent and took in
+--cursor=X,Y --ping-wheel                             hold the ping wheel open by the faked cursor (screenshots)
+FL_DEBUG_COOP=1 (env)                                 the co-commander layer's cost by part, in the performance overlay
 FL_DEBUG_MISSION=1 (env)                              print the map's features (bridges, villages, harbour) and the mission's setup
 --model-sheet=KEYS|FAMILY --sheet-dir=DIR [--side=1] [--sheet-yaw=R]   turntable shots of models (nato, csat, indep, civ, heli, plane, boat, all)
 --soldier-sheet=PATH [--sheet-team=0|1] [--sheet-view=front|back|rts] [--sheet-pose=idle|shoot|run|mix]
@@ -170,16 +195,22 @@ FL_DEBUG_MISSION=1 (env)                              print the map's features (
   [--sheet-unit=TYPE --sheet-seed=N | --sheet-seeds=N] [--sheet-stats]   one man turned four ways (or N men of
                                                       a type) close up; triangles, instances and build time per man
 --manual=model,KEY,SIDE                               a bare model in the Field Manual
---curtain                                             show the intro / loading screens in an automated run
+--curtain                                             show the title / loading screens in an automated run
+--intro-at=SECONDS                                    (with --curtain) hold the title at that moment of its animation
+--menu-clock=SECONDS                                  start the menu's map that far into its drift and colours
+--menu-cursor=X,Y                                     hold the map's cursor hill there (fractions of the screen)
 --menu-op=0|1|-1                                      open the New Operation panel on that side
 --menu-missions[=KEY]                                 open the Missions panel (on that mission)
 --startup-trace                                       print the first frames' timings
 --test-fire                                           every armed man, gunner and vehicle fires ahead (muzzle tests)
 --seed=N                                              (with --aivai) the same map every run
 --dump-structs                                        list every built structure when --quit-after fires
+FL_DEBUG_TOWNS=1 (env)                                print each town and village: name, dump and the ground that takes it
 FL_DEBUG_HPA=1 (env)                                  benchmark hierarchical vs flat paths at start-up
 FL_DEBUG_DECOR=1 (env)                                print the street-furniture chunk and mesh counts
---menu-shot=menu.png --shot-at=6                      screenshot of the main menu
+--menu-shot=menu.png --shot-at=6                      screenshot of the main menu (with --curtain --intro-at=0 at
+                                                      1920x1080 it is the boot splash: save it as assets/splash.png
+                                                      whenever the title or the map changes)
 --sound-dump=DIR                                      every synthesised sound and music sample as a WAV in DIR, then quit
                                                       (works --headless)
 FL_DEBUG_MUSIC=1 (env)                                print the music's cue, battle heat and layer levels every 5 s
@@ -210,12 +241,28 @@ a busy machine a host can take ten seconds or more to start listening: start the
 (`netstat -ano -p UDP`), or ENet gives up connecting first. `FL_DEBUG_NET=1` prints each side of the lobby handshake
 (connecting, registering, a password asked for, turned away, the battle starting).
 
+Co-commanders: bot clients make up their presence, pings and sketches and really send them. Start the one on
+the other side first, so its team request lands before the game starts:
+
+```
+godot --headless --path . -- --host --team=0 --players=4 --quit-after=60 --port=7975
+godot --headless --path . -- --join=127.0.0.1 --team=1 --bot-presence --quit-after=55 --port=7975
+godot --headless --path . -- --join=127.0.0.1 --team=0 --bot-presence --quit-after=55 --port=7975
+godot --headless --path . -- --join=127.0.0.1 --team=0 --bot-presence --quit-after=55 --port=7975
+```
+
+Each client prints `COOP {"sent": ..., "taken": ..., "pings_in": ...}` when it quits: the two on team 0 take
+each other's presence and pings, the one on team 1 takes nothing of theirs. To see it drawn, make one of the
+team 0 clients a normal (windowed) game, or run `--coop-demo` on its own.
+
 ### Matchmaker
 
-The matchmaker (`matchmaker/`, see its README) is a small Node service with its own tests:
+The matchmaker (`matchmaker/`, see its README) is a small Node service with its own tests, lint (oxlint) and
+formatting (Prettier); `.github/workflows/matchmaker.yml` runs them whenever it changes:
 
 ```
 cd matchmaker && npm test
+cd matchmaker && npm install && npm run lint && npm run format:check
 ```
 
 To try the game against it, run one locally (`AUTH_BACKEND=memory` adds throwaway accounts) and point both games at
@@ -249,9 +296,19 @@ one joins. Only exported builds register the scheme with the OS (`Links._registe
 ### Website
 
 `web/` is the website (React, Vite, Tailwind, shadcn/ui; see its README): `npm install && npm run dev`, with
-`VITE_MATCHMAKER_URL` pointing at a local matchmaker if you like. CI builds and lints it.
+`VITE_MATCHMAKER_URL` pointing at a local matchmaker if you like. `npm run storybook` shows every component and
+section of the page on its own, in each of its states (loading, offline, nobody hosting...), without the live
+matchmaker. `.github/workflows/web.yml` lints it, checks formatting and types, runs the unit tests, builds it, and
+renders every story in headless Chromium as a test (its play function and an accessibility check).
 
 ### Builds, releases and updates
+
+Each release files its changelog, bakes itself into the website and the matchmaker, then publishes. The changelog is
+written as part of each pull request (`changelog/unreleased/`, see [changelog/README.md](../changelog/README.md)); at
+release, `.github/scripts/bake-release.sh` moves the entries the version was built with into `changelog/vX.Y.Z/`
+(`changelog.py release`), regenerates `CHANGELOG.md` and `web/src/changelog.json`, writes `release.json` into
+`web/src/` and `matchmaker/` (`release_json.py`), and commits all of it to `main`, which redeploys the website and the
+matchmaker. The GitHub release follows, named after the release's headline change, with the changelog as its notes.
 
 `export_presets.cfg` has a Windows and a Linux preset (one executable each, the game packed inside).
 `.github/workflows/release.yml` releases automatically: every merge to `main` that changes the game (`scripts/`,
@@ -263,7 +320,8 @@ Actions > Release > Run workflow releases by hand. The next number comes from th
 (`.github/scripts/next-version.sh`), and the build stamps it into `project.godot` (`application/config/version`);
 from source the game reads `0.0.0-dev`.
 
-A release build updates itself (`scripts/autoload/updater.gd`): at start it asks GitHub for the latest release,
+A release build updates itself (`scripts/autoload/updater.gd`): at start it asks the matchmaker (`GET /release`,
+falling back to GitHub's API) for the latest release,
 downloads the zip for its platform, checks it against the SHA-256 GitHub publishes, renames the running executable
 aside and puts the new one in its place, then offers a restart (the old file is deleted on the next launch). Where it
 can't (a folder it can't write to), the menu links to the website instead. To try an update from source without
@@ -275,4 +333,9 @@ with a higher `tag_name`). `--menu-update=0.1.2,ready` shows the notice for scre
 ### Off-screen screenshots
 
 `--screenshot=FILE.png --shot-at=SECONDS` (with `--shots=N --shot-every=S` for a series) saves frames and quits. Frame the shot with `--focus=X,Z --zoom=M --pitch=DEG --cam-yaw=RAD`, and hide the interface with `--nohud`. `--manual=category,key,side` opens a Field Manual page.
+
+The menu and the title are screenshot with `--menu-shot=FILE.png`. The boot splash is the title's first frame,
+so remake it whenever the title or the map shader changes, so that the splash hands over to the title without a
+jump: run at 1920x1080 with `--curtain --intro-at=0 --menu-shot=assets/splash.png` (a held frame has no grain,
+which keeps the PNG small).
 

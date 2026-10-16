@@ -7,16 +7,18 @@ var status: Label
 var main_box: VBoxContainer
 var settings_panel: SettingsPanel
 var manual: FieldManual
-var backdrop: MenuScene
+var backdrop: TopoBackdrop
 var op_panel: PanelContainer
 var ms_panel: PanelContainer  # the missions
 var _ms_key := ""
 var _ms_cards := {}
 var _ms_detail: VBoxContainer
+var _music_on := false
 var _op_side := 0  # 0 Coalition, 1 Rebels, -1 observe
 var _side_cards := {}
 var _mood_chips := {}
 var _col: VBoxContainer
+var _margin: MarginContainer
 # multiplayer: the server browser and the lobby (screens that take the place
 # of the menu), setting up a battle to host, and the join dialog
 var browser: ServerBrowser
@@ -48,25 +50,13 @@ func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	theme = UiKit.theme()
 	visibility_changed.connect(_on_visibility)
-	# darkening on the left so the menu reads over the 3D backdrop
-	var shade := TextureRect.new()
-	var gt := GradientTexture2D.new()
-	var g := Gradient.new()
-	g.offsets = PackedFloat32Array([0.0, 0.55, 1.0])
-	g.colors = PackedColorArray([Color(0.02, 0.025, 0.02, 0.88), Color(0.02, 0.025, 0.02, 0.55), Color(0.02, 0.025, 0.02, 0.0)])
-	gt.gradient = g
-	gt.fill_from = Vector2(0, 0)
-	gt.fill_to = Vector2(1, 0)
-	gt.width = 256
-	gt.height = 4
-	shade.texture = gt
-	shade.stretch_mode = TextureRect.STRETCH_SCALE
-	shade.anchor_bottom = 1.0
-	shade.offset_right = 760
-	shade.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(shade)
+	# the living map behind it all, darkened down the left so the menu reads
+	backdrop = TopoBackdrop.new()
+	backdrop.shade = 1.0
+	add_child(backdrop)
 
 	var margin := MarginContainer.new()
+	_margin = margin
 	margin.anchor_bottom = 1.0
 	margin.offset_right = 600
 	margin.add_theme_constant_override("margin_left", 72)
@@ -196,14 +186,26 @@ func _ready() -> void:
 	_on_visibility()
 
 
+## The menu comes in as the title lifts away: the column glides in from the
+## left and its entries follow one after another.
+func arrive() -> void:
+	var tw := create_tween().set_parallel(true).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_CUBIC)
+	_margin.position.x = -40.0
+	tw.tween_property(_margin, "position:x", 0.0, 0.8)
+	var items: Array = _col.get_children().slice(0, 3) + main_box.get_children()
+	for i in items.size():
+		var c: CanvasItem = items[i]
+		c.modulate.a = 0.0
+		tw.tween_property(c, "modulate:a", 1.0, 0.5).set_delay(0.12 + 0.035 * i)
+
+
+## The menu's music starts again each time it comes back.
 func _on_visibility() -> void:
-	if is_visible_in_tree() and backdrop == null:
-		backdrop = MenuScene.new()
-		get_tree().root.add_child.call_deferred(backdrop)
+	if is_visible_in_tree() and not _music_on:
+		_music_on = true
 		Music.play_cue("menu")
-	elif not is_visible_in_tree() and backdrop != null:
-		backdrop.queue_free()
-		backdrop = null
+	elif not is_visible_in_tree():
+		_music_on = false
 
 
 ## A menu entry: the name and, under it, what it does. Hover slides in an
@@ -955,7 +957,7 @@ func _update_notice() -> void:
 	p.add_theme_stylebox_override("panel", UiKit.box(Color(0.035, 0.045, 0.045, 0.92), 4, UiKit.BAD if bad else UiKit.ACCENT, 1, 12.0))
 	p.anchor_left = 1.0
 	p.anchor_right = 1.0
-	p.offset_left = -440
+	p.offset_left = -540
 	p.offset_right = -32
 	p.offset_top = 44
 	add_child(p)
@@ -972,10 +974,13 @@ func _update_notice() -> void:
 	line.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	v.add_child(line)
 	var website := func(): OS.shell_open(Updater.WEBSITE_URL + "/#download")
+	# that version's changelog on the website: what the update brings
+	var whats_new := func(): OS.shell_open(Updater.WEBSITE_URL + "/changelog/#v" + Updater.latest)
 	match Updater.state:
 		Updater.State.AVAILABLE:
 			head.text = "NEW VERSION"
 			line.text = "Frontline v%s is out (you have v%s)." % [Updater.latest, Updater.version]
+			h.add_child(_btn("What's new", whats_new))
 			h.add_child(_btn("Download", website))
 		Updater.State.DOWNLOADING:
 			head.text = "UPDATING"
@@ -989,6 +994,7 @@ func _update_notice() -> void:
 		Updater.State.READY:
 			head.text = "UPDATE READY"
 			line.text = "Frontline v%s is installed. Restart to play it." % Updater.latest
+			h.add_child(_btn("What's new", whats_new))
 			h.add_child(_btn("Restart", func(): Updater.restart()))
 		Updater.State.FAILED:
 			head.text = "UPDATE FAILED"
