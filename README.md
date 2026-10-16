@@ -26,8 +26,8 @@ Everything you see and hear is made in code, the music included. There are no im
 | A patrol ship off the coast | A bridge over the river, by a village |
 | ![A Humvee on a helicopter's sling](docs/screenshots/sling_load.jpg) | ![Armour fighting it out](docs/screenshots/armour.jpg) |
 | A helicopter carrying a Humvee | A tank battle |
-| ![The Field Manual](docs/screenshots/field_manual.jpg) | |
-| The Field Manual: every unit, with its stats | |
+| ![The Field Manual](docs/screenshots/field_manual.jpg) | ![The main menu on its living map](docs/screenshots/main_menu.jpg) |
+| The Field Manual: every unit, with its stats | The main menu, on a living map that shifts colour and follows your cursor |
 
 ## Quick start
 

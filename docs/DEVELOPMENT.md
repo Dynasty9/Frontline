@@ -77,9 +77,9 @@ game/ragdoll.gd         the jointed ragdoll
 game/decor.gd           street furniture built on each client (merged per chunk, wires, street lights)
 game/weapon_models.gd   crew-served machine guns and their tripods (M240B, M2HB, PKM, DShKM)
 ui/field_manual.gd      the field manual: catalog of everything with stats and 3D previews
-ui/curtain.gd           the intro and loading screens
+ui/curtain.gd           the title and loading screens
 game/bevel_mesh.gd      chamfered boxes (every Res.box thicker than a sheet)
-assets/                 splash.png and backdrop.png (made by a script from the emblem and a topographic map)
+assets/                 splash.png: the boot splash, which is the title's first frame (see "Off-screen screenshots")
 game/fx.gd              tracers, impacts, who is saying what, debris; drives vfx.gd
 game/vfx.gd             GPU particle explosions, smoke, flames, char, grass fires, decals, shockwaves (+ their shaders)
 game/atmosphere.gd      sky, sun, fog, ground shader, post effects, moods
@@ -99,7 +99,8 @@ ui/hud_overlay.gd       everything drawn over the battlefield (labels, speech, s
 ui/hud_orbat.gd, hud_layers.gd, hud_sel_info.gd, hud_minimap.gd, hud_top_info.gd, hud_toasts.gd   HUD widgets
 ui/map_symbols.gd       NATO symbols and status icons
 game/attack_plan.gd     the deliberate attack (plan, support by fire, flank, assault, consolidate)
-ui/menu_scene.gd        live 3D menu backdrop
+ui/topo_backdrop.gd     the living topographic map behind the title, the menu and the loading screen (one
+                        shader; every copy shares one clock and cursor, so screens hand over without a seam)
 ```
 
 Networking is server-authoritative. Clients send command dictionaries (`World.send_cmd`). The host simulates at 30 Hz and
@@ -194,7 +195,10 @@ FL_DEBUG_MISSION=1 (env)                              print the map's features (
   [--sheet-unit=TYPE --sheet-seed=N | --sheet-seeds=N] [--sheet-stats]   one man turned four ways (or N men of
                                                       a type) close up; triangles, instances and build time per man
 --manual=model,KEY,SIDE                               a bare model in the Field Manual
---curtain                                             show the intro / loading screens in an automated run
+--curtain                                             show the title / loading screens in an automated run
+--intro-at=SECONDS                                    (with --curtain) hold the title at that moment of its animation
+--menu-clock=SECONDS                                  start the menu's map that far into its drift and colours
+--menu-cursor=X,Y                                     hold the map's cursor hill there (fractions of the screen)
 --menu-op=0|1|-1                                      open the New Operation panel on that side
 --menu-missions[=KEY]                                 open the Missions panel (on that mission)
 --startup-trace                                       print the first frames' timings
@@ -204,7 +208,9 @@ FL_DEBUG_MISSION=1 (env)                              print the map's features (
 FL_DEBUG_TOWNS=1 (env)                                print each town and village: name, dump and the ground that takes it
 FL_DEBUG_HPA=1 (env)                                  benchmark hierarchical vs flat paths at start-up
 FL_DEBUG_DECOR=1 (env)                                print the street-furniture chunk and mesh counts
---menu-shot=menu.png --shot-at=6                      screenshot of the main menu
+--menu-shot=menu.png --shot-at=6                      screenshot of the main menu (with --curtain --intro-at=0 at
+                                                      1920x1080 it is the boot splash: save it as assets/splash.png
+                                                      whenever the title or the map changes)
 --sound-dump=DIR                                      every synthesised sound and music sample as a WAV in DIR, then quit
                                                       (works --headless)
 FL_DEBUG_MUSIC=1 (env)                                print the music's cue, battle heat and layer levels every 5 s
@@ -312,4 +318,9 @@ with a higher `tag_name`). `--menu-update=0.1.2,ready` shows the notice for scre
 ### Off-screen screenshots
 
 `--screenshot=FILE.png --shot-at=SECONDS` (with `--shots=N --shot-every=S` for a series) saves frames and quits. Frame the shot with `--focus=X,Z --zoom=M --pitch=DEG --cam-yaw=RAD`, and hide the interface with `--nohud`. `--manual=category,key,side` opens a Field Manual page.
+
+The menu and the title are screenshot with `--menu-shot=FILE.png`. The boot splash is the title's first frame,
+so remake it whenever the title or the map shader changes, so that the splash hands over to the title without a
+jump: run at 1920x1080 with `--curtain --intro-at=0 --menu-shot=assets/splash.png` (a held frame has no grain,
+which keeps the PNG small).
 
