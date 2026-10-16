@@ -700,7 +700,7 @@ function and an autopilot function.
 - Everything can be shot up and repaired. Any FOB can be captured by whoever walks in and holds it. Lose your last FOB and you lose, but a side's last FOB is a last stand and takes four times as long to capture, and HQ sends a free reserve squad every 75 s to a side that is down to its last few soldiers.
 - Fog of war, drawn on the ground and the minimap, with intel pings and last-known enemy positions.
 
-**Look and feel** (`atmosphere.gd`, `mats.gd`, `vehicle_models.gd`, `vfx.gd`, `grass.gd`, `ui/`)
+**Look and feel** (`atmosphere.gd`, `mats.gd`, `vehicle_models.gd`, `vfx.gd`, `gunfx.gd`, `grass.gd`, `ui/`)
 - Eight lighting moods (midday, golden hour, dawn, dusk, overcast, hazy, **night**, **rain & thunder**) with a
   procedural sky, AgX tonemapping, cloud shadows drifting over the ground, volumetric haze and a subtle film look.
   At night the sky fills with stars and illumination flares drift down on parachutes over the fighting, throwing
@@ -746,6 +746,21 @@ function and an autopilot function.
   throw a fountain of earth high into the air that rains back down, fling burning fragments out in arcs that
   burn on where they land, leave flames licking about the crater for a moment, and clods land around the
   crater once the debris has fallen.
+- **Gunfire** (`gunfx.gd`): every round leaves the muzzle in a flash - a white-hot star, a tongue of flame thrown
+  out ahead and split sideways by the flash hider, bigger and longer for a .50 or an autocannon - with a moment's
+  light on everything round it (striking at night), a breath of smoke, and the case spinning out of the ejection
+  port to lie in the grass (brass piles up round a machine gun). The weapon kicks with each shot: the rifle back
+  into the shoulder and the muzzle up, the mounted gun on its pintle, the turret back on its ring when the main gun
+  fires. One round in so many is a tracer, red for the Coalition and green for the Rebels (Soviet-pattern
+  ammunition), never thinner than a pixel or two however far out the camera is. What a round hits decides what
+  flies: earth spurting up with clods raining out of it, grey grit and stone chips blown off a wall, a dry burst
+  of sand off sandbags, splinters, leaves fluttering down, sparks and a glint off steel, a dark mist off a man, a
+  white column and drops off water - shown when the round gets there, not when it's fired. Now and then one skips
+  off steel, stone or the ground and goes wailing away. A tank's gun fires with a blinding flash, a fireball
+  thrown out ahead, burning flecks, a cloud of smoke rolling out round the muzzle and the blast driving dust off
+  the ground; a rocket's back-blast kicks up the ground behind the launcher. All of it is drawn on the GPU, each
+  kind in a single draw call, with nothing moved from script once it's spawned, so a heavy firefight costs about
+  what a light one did.
 - **Physics** (`physics_fx.gd`, `ragdoll.gd`, Jolt): the dead become ragdolls - eleven jointed bodies with
   anatomical limits (knees and elbows bend one way). A bullet knocks a man back and he folds; a blast throws him
   limbs flailing and he tumbles to a stop, into a trench if that's where he lands. Later blasts throw the bodies

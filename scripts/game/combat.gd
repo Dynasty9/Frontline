@@ -145,14 +145,13 @@ func fire_bullet(shooter: Entity, muzzle: Vector3, aim: Vector3, tgt: Entity, w:
 			pass  # it carries on into the man behind it
 		elif not hit or not soft_tgt:
 			end = hp
-			impact = 1
+			impact = Fx.HIT_DIRT
 			hit = false
 			if ent is Vehicle:
 				impact = ent.bullet_hit(hp, dir, w, shooter)
 			elif ent is Structure:
 				ent.take_damage(float(w.dmg) * 0.05, shooter)
-				if ent.skind in ["crates", "tree", "watchtower"]:
-					impact = 4
+				impact = Fx.surface_of(ent, hp)
 	if end.y < 0.0:
 		var t := muzzle.y / maxf(0.001, muzzle.y - end.y)
 		end = muzzle.lerp(end, t)
@@ -259,7 +258,7 @@ func fire_rocket(s: Soldier, t: Entity) -> void:
 	aim += Vector3(world.rng.randf_range(-1, 1), world.rng.randf_range(-0.5, 0.5), world.rng.randf_range(-1, 1)) * dist * 0.025
 	var dir := (aim - from).normalized()
 	world.spawn("projectile", {"ptype": "rocket", "team": s.team, "pos": from, "vel": dir * 60.0, "thrower": s.eid})
-	world.fx_event([Fx.LAUNCH, from, dir])
+	world.fx_event([Fx.LAUNCH, from, dir, s.eid])
 
 
 ## Mortar round: lands on a high arc after a delay, scattered by range.

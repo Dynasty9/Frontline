@@ -296,6 +296,36 @@ var _trace_t := 0.0
 var _tf_t := 0.0
 var _trace_f: FileAccess = null
 var _fx_i := 0
+var _sd_next := 2.0
+var _sd_i := 0
+
+
+## Visual test: rounds fired at each kind of surface in a row across the
+## camera's focus - earth, stone, sandbags, wood, leaves, steel, a man - from
+## a little way off (no damage). --shot-demo=hmg fires that gun only;
+## --shot-demo-every=1.5 fires a volley at all of them at once that often;
+## --shot-demo-cannon also fires a tank gun now and then.
+func _shot_demo() -> void:
+	if world.time < _sd_next or world.cam == null:
+		return
+	var guns := ["rifle", "mg", "hmg", "smg"]
+	var snd: String = String(args["shot-demo"]) if String(args["shot-demo"]) != "1" else guns[(_sd_i / 21) % guns.size()]
+	var every := float(args.get("shot-demo-every", 0.09 if snd in ["mg", "hmg", "minigun", "ac"] else 0.13))
+	_sd_next = world.time + every
+	var kinds := [Fx.HIT_DIRT, Fx.HIT_STONE, Fx.HIT_SAND, Fx.HIT_WOOD, Fx.HIT_LEAVES, Fx.HIT_METAL, Fx.HIT_FLESH]
+	var c := world.cam.focus_pos
+	var pick: Array = range(kinds.size()) if every > 0.5 else [_sd_i % kinds.size(), (_sd_i + 3) % kinds.size()]
+	for i: int in pick:
+		var x := (i - 3) * 2.2
+		var to := c + Vector3(x + randf_range(-0.3, 0.3), 0.0 if i == 0 else randf_range(0.6, 1.2), -3.0 + randf_range(-0.3, 0.3))
+		var from := c + Vector3(x * 0.4 + (4.0 if i % 2 == 0 else -4.0), 1.3, 6.0)
+		world.fx.play([Fx.SHOT, from, to, kinds[i], snd, -1])
+	_sd_i += 1
+	if args.has("shot-demo-cannon") and (every > 0.5 or _sd_i % 40 == 0):
+		if _sd_i % 2 == 0:
+			world.fx.play([Fx.CANNON, c + Vector3(7, 2.3, 4), c + Vector3(-8, 0.5, -30)])
+		else:
+			world.fx.play([Fx.LAUNCH, c + Vector3(6, 1.5, 3), Vector3(-0.3, 0.05, -1).normalized()])
 
 
 ## Visual test: fires explosions of every size near the camera focus (no damage).
@@ -656,6 +686,8 @@ func _process(_dt: float) -> void:
 			get_tree().quit()
 	if args.has("fx-demo"):
 		_fx_demo()
+	if args.has("shot-demo"):
+		_shot_demo()
 	if args.has("open-settings") and world.hud and world.time > 1.0 and not world.hud.settings_panel.visible and not has_meta("opened"):
 		set_meta("opened", true)
 		world.hud.settings_panel.visible = true
@@ -773,14 +805,17 @@ func _process(_dt: float) -> void:
 		var mq := String(args["manual"]).split(",")
 		world.hud.manual.open(mq[0], mq[1] if mq.size() > 1 else "", int(mq[2]) if mq.size() > 2 else -1)
 	# --test-fire: every armed man (and every gunner on a gun) fires straight
-	# ahead a few times a second through the real firing path (muzzle tests)
+	# ahead a few times a second through the real firing path (muzzle tests);
+	# --test-fire=ground puts the rounds into the ground 25 m out (impacts);
+	# --test-fire-every=0.3 fires that often instead
 	if args.has("test-fire") and world.srv and world.time > 2.0 and world.time >= _tf_t:
-		_tf_t = world.time + 0.09
+		_tf_t = world.time + float(args.get("test-fire-every", 0.09))
+		var tf_drop := 2.4 if String(args["test-fire"]) == "ground" else 0.0
 		for s in world.soldiers:
 			if s.life != Soldier.Life.ALIVE or s.cur_weapon().is_empty():
 				continue
 			s.mag = maxi(s.mag, 5)
-			s._shoot(s.eye_pos() + Defs.dir_of(s.rotation.y) * 40.0, null, false, false)
+			s._shoot(s.eye_pos() + Defs.dir_of(s.rotation.y) * 40.0 + Vector3(0, -tf_drop, 0), null, false, false)
 		for v in world.vehicles:
 			var vmg: String = v.vdef.get("mg", "")
 			if v.gone or vmg == "":
