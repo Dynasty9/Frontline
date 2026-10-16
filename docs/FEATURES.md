@@ -303,9 +303,12 @@ function and an autopilot function.
   roof falls in as ash (a house is left a roofless shell), a tree is left a bare black snag, a car a
   burnt-out shell. Rain damps everything down: fires catch less, spread less and burn lower.
 - Men caught too close get burnt and get back out of the heat ("Fire! Get back!"); nobody takes cover behind
-  something that's burning or in a patch of burning grass, and a man whose cover catches fire moves. A roof
-  fire burns whoever's in the house under it. Your side is warned when one of its buildings catches fire, and
-  engineers repairing it beat the flames out first.
+  something that's burning or in a patch of burning grass, and a man whose cover catches fire moves. Routes
+  go round fires (men well round, drivers if it's not far out of their way). A roof fire burns whoever's in
+  the house under it. Your side is warned when one of its buildings catches fire, and engineers repairing it
+  beat the flames out first.
+- A fire that's well alight lays a pall of smoke across the ground downwind - a burning vehicle, a roof, a
+  grass fire most of all - and nobody sees or aims through it, just as with a smoke screen.
 - The look: tongues of flame that cool from yellow-white through orange to sooty red as they rise, sparks
   swirling up on the heat, a smoke column leaning off downwind (charcoal off fuel and rubber, brown-grey off
   wood, paler off green leaves) lit orange from below, and a flickering light that matters most at night.

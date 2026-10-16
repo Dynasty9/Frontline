@@ -53,6 +53,10 @@ func smoke_blocks(a: Vector3, b: Vector3) -> bool:
 		if p.ptype == "smoke" and p.smoke_r > 0.8:
 			if Defs.seg_sphere(a, b, p.position + Vector3(0, 1.4, 0), p.smoke_r):
 				return true
+	# the smoke rolling off a big fire is as good as a screen
+	for sm in world.fires.smokes:
+		if Defs.seg_sphere(a, b, sm[0], sm[1]):
+			return true
 	return false
 
 
