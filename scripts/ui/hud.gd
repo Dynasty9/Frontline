@@ -450,7 +450,8 @@ func _build_help() -> void:
 [color=#f5c96e]Squad[/color]  X attack-move (or Ctrl+right-click), B defend an area, R retreat, H hold, G grenade, T smoke, F mortar fire mission.
 [color=#f5c96e]Build[/color]  Select infantry, open Base or Defenses on the command card and click to place (R turns 90 degrees, Shift+wheel 45; everything snaps to the 1 m build grid). Drag to lay a whole line of trenches (fire bays and traverses; hold Alt for straight), sandbags, wire or walls.
 [color=#f5c96e]Support[/color]  The buttons above the minimap: click the target and drag to set the run-in direction. Observers can launch any of them from Fire support.
-[color=#f5c96e]Supply[/color]  Each FOB lays a road back to your lines. Trucks drive supply down it; lose the road and the FOBs beyond it starve.
+[color=#f5c96e]Supply[/color]  Each FOB lays a road back to your lines. Trucks drive supply down it; lose the road and the FOBs beyond it starve. The top bar shows what's coming in a minute.
+[color=#f5c96e]Towns[/color]  The town and every village have a supply dump flying the flag of whoever holds it. Get men inside its ring with no enemy there to take it (right-click a town that isn't yours with squads selected). A town you hold fills its dump and trucks it to your nearest FOB, refills your men's ammunition round the dump, and lets you build a FOB near it. Click a dump to see what it gives.
 [color=#f5c96e]Win[/color]  Take or destroy every enemy FOB.
 
 [color=#f5c96e]Observer[/color]  C director camera, V switch whose eyes you watch through, P pause, [ and ] change speed.
