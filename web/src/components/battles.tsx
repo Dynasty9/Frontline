@@ -9,6 +9,7 @@ import {
 } from "@phosphor-icons/react"
 import { useEffect, useState } from "react"
 import { Emblem } from "@/components/emblem"
+import { InsigniaImg } from "@/components/insignia-img"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -17,6 +18,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { FIND_MATCH_LINK, joinLink } from "@/lib/config"
+import { findInsignia, rankName } from "@/lib/insignia"
 import { joinable, type Lobby } from "@/lib/matchmaker"
 
 // Battles you can join first; within each, the matchmaker's order (fullest first).
@@ -262,9 +264,25 @@ function LobbyTable({ lobbies, invite, onLaunch }: { lobbies: Lobby[]; invite: s
 }
 
 function Host({ lobby }: { lobby: Lobby }) {
+  // only a signed-in host's insignia is theirs to show
+  const ins = lobby.verified ? findInsignia(lobby.icon) : undefined
+  const rank = typeof lobby.rank === "number" ? lobby.rank : null
   return (
     <span className="inline-flex items-center gap-1">
+      {ins && (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <span className="mr-0.5 inline-flex">
+              <InsigniaImg id={ins.id} className="size-5" />
+            </span>
+          </TooltipTrigger>
+          <TooltipContent>
+            {rank === null ? ins.name : `${rankName(rank)}, rank ${rank} · wearing ${ins.name}`}
+          </TooltipContent>
+        </Tooltip>
+      )}
       {lobby.host}
+      {ins && rank !== null && <span className="sr-only">, {rankName(rank)}</span>}
       {lobby.verified && (
         <Tooltip>
           <TooltipTrigger asChild>

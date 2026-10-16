@@ -1,1 +1,5 @@
 node_modules
+
+# the Supabase CLI's local state
+supabase/.temp/
+supabase/.branches/
