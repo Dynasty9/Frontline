@@ -23,7 +23,12 @@ export default function App() {
     <TooltipProvider delayDuration={150}>
       <SiteHeader />
       <main>
-        <Hero health={health.data} build={builds.stable ?? builds.nightly} platform={platform} onLaunch={() => setLaunched(true)} />
+        <Hero
+          health={health.data}
+          build={builds.stable ?? builds.nightly}
+          platform={platform}
+          onLaunch={() => setLaunched(true)}
+        />
         <Battles
           lobbies={lobbies.data}
           error={lobbies.error}
@@ -54,7 +59,12 @@ export default function App() {
 }
 
 function useBuilds() {
-  const [state, setState] = useState<{ stable: Build | null; nightly: Build | null; loading: boolean; error: Error | null }>({
+  const [state, setState] = useState<{
+    stable: Build | null
+    nightly: Build | null
+    loading: boolean
+    error: Error | null
+  }>({
     stable: null,
     nightly: null,
     loading: true,

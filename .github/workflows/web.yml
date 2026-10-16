@@ -1,0 +1,106 @@
+name: Website
+
+# The website (web/): lint, formatting, types, unit tests and the production
+# build in one job; every Storybook story rendered and tested in headless
+# Chromium (its play function, and an accessibility check) in another, which
+# also builds the Storybook and keeps it as an artifact to browse.
+#
+# Only runs when the website changes. Railway deploys it on its own.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - web/**
+      - .github/workflows/web.yml
+  pull_request:
+    paths:
+      - web/**
+      - .github/workflows/web.yml
+
+# a newer push to a pull request replaces its older run
+concurrency:
+  group: web-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    working-directory: web
+
+jobs:
+  check:
+    name: Lint, types, unit tests, build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: npm ci
+
+      - name: Lint (oxlint)
+        run: npm run lint
+      - name: Formatting (Prettier)
+        run: npm run format:check
+      - name: Type-check
+        run: npm run typecheck
+      - name: Unit tests
+        run: npm run test:unit
+      - name: Build the site
+        run: npm run build
+
+  storybook:
+    name: Storybook
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: npm ci
+
+      # the browser the story tests run in, cached per Playwright version
+      - name: Playwright version
+        id: playwright
+        run: echo "version=$(node -p "require('playwright/package.json').version")" >> "$GITHUB_OUTPUT"
+      - name: Cache Chromium
+        id: chromium
+        uses: actions/cache@v6
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ steps.playwright.outputs.version }}
+      - name: Install Chromium
+        if: steps.chromium.outputs.cache-hit != 'true'
+        run: npx playwright install --with-deps --only-shell chromium
+      - name: Install Chromium's system libraries
+        if: steps.chromium.outputs.cache-hit == 'true'
+        run: npx playwright install-deps chromium
+
+      - name: Test every story
+        run: npm run test:stories
+      - name: Screenshots of failing stories
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: story-failures
+          path: web/src/**/__screenshots__/
+          if-no-files-found: ignore
+          retention-days: 7
+
+      - name: Build the Storybook
+        run: npm run build-storybook
+      - name: Keep the Storybook
+        uses: actions/upload-artifact@v7
+        with:
+          name: storybook
+          path: web/storybook-static/
+          retention-days: 14

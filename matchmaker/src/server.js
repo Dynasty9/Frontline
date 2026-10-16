@@ -122,7 +122,9 @@ export function createServer({ env = process.env, auth = createAuth(env), lobbie
 			const r = lobbies.create(ip, body, await account(req, false));
 			if (r.error) throw new HttpError(400, r.error);
 			const l = r.lobby;
-			log(`lobby ${l.id} up: ${l.host} at ${ip}:${l.port}, stun ${l.punch ? `${l.punch.ip}:${l.punch.port}` : 'none'}, nat ${l.nat}, ${l.version || 'no version'}`);
+			log(
+				`lobby ${l.id} up: ${l.host} at ${ip}:${l.port}, stun ${l.punch ? `${l.punch.ip}:${l.punch.port}` : 'none'}, nat ${l.nat}, ${l.version || 'no version'}`,
+			);
 			return { id: l.id, token: l.token, address: ip, heartbeat: HEARTBEAT_S, poll: POLL_S, lobby: lobbies.view(l) };
 		},
 

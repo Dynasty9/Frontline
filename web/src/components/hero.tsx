@@ -30,8 +30,8 @@ export function Hero({ health, build, platform, onLaunch }: Props) {
             A squad-level strategy game where every soldier thinks for himself.
           </h1>
           <p className="mt-4 max-w-xl text-base leading-relaxed text-muted-foreground">
-            You decide where your squads go; they decide how to get there and how to fight. Take on the AI alone, team up with
-            friends against it, or fight each other online.
+            You decide where your squads go; they decide how to get there and how to fight. Take on the AI alone, team
+            up with friends against it, or fight each other online.
           </p>
 
           <div className="mt-8 flex flex-wrap items-center gap-3">
@@ -78,7 +78,9 @@ export function Hero({ health, build, platform, onLaunch }: Props) {
               height={900}
             />
           </div>
-          <figcaption className="mt-2 text-xs text-muted-foreground">A firefight around a Coalition trench line</figcaption>
+          <figcaption className="mt-2 text-xs text-muted-foreground">
+            A firefight around a Coalition trench line
+          </figcaption>
         </figure>
       </div>
     </section>

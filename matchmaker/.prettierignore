@@ -1,0 +1,4 @@
+node_modules
+package-lock.json
+# markdown tables come out padded to the widest row
+*.md

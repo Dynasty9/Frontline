@@ -9,9 +9,18 @@ const SHOTS = [
 ] as const
 
 const POINTS = [
-  ["Soldiers that think", "They take cover behind real walls and wrecks, keep their heads down under fire, drag the wounded to safety and throw grenades back."],
-  ["Squads that fight like squads", "Teams leapfrog forward under covering fire, clear houses room by room, set ambushes on the roads, and break when a fight goes badly."],
-  ["Combined arms", "Tanks, helicopters, boats, mortars, artillery and air strikes, on a square kilometre of countryside with a town, a river and the sea."],
+  [
+    "Soldiers that think",
+    "They take cover behind real walls and wrecks, keep their heads down under fire, drag the wounded to safety and throw grenades back.",
+  ],
+  [
+    "Squads that fight like squads",
+    "Teams leapfrog forward under covering fire, clear houses room by room, set ambushes on the roads, and break when a fight goes badly.",
+  ],
+  [
+    "Combined arms",
+    "Tanks, helicopters, boats, mortars, artillery and air strikes, on a square kilometre of countryside with a town, a river and the sea.",
+  ],
 ] as const
 
 export function Gallery() {

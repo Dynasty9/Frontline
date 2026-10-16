@@ -17,8 +17,8 @@ export type Build = {
   assets: Partial<Record<Platform, { url: string; size: number }>>
 }
 
-type GhAsset = { name: string; browser_download_url: string; size: number }
-type GhRelease = {
+export type GhAsset = { name: string; browser_download_url: string; size: number }
+export type GhRelease = {
   tag_name: string
   name: string | null
   html_url: string
@@ -35,7 +35,14 @@ function toBuild(r: GhRelease): Build {
     const p: Platform | null = n.includes("windows") ? "windows" : n.includes("linux") ? "linux" : null
     if (p && n.endsWith(".zip")) assets[p] = { url: a.browser_download_url, size: a.size }
   }
-  return { tag: r.tag_name, name: r.name || r.tag_name, url: r.html_url, published: r.published_at, prerelease: r.prerelease, assets }
+  return {
+    tag: r.tag_name,
+    name: r.name || r.tag_name,
+    url: r.html_url,
+    published: r.published_at,
+    prerelease: r.prerelease,
+    assets,
+  }
 }
 
 const CACHE_KEY = "frontline.releases"

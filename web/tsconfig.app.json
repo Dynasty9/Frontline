@@ -25,5 +25,5 @@
     /* the @/ alias (also in vite.config.ts) */
     "paths": { "@/*": ["./src/*"] }
   },
-  "include": ["src"]
+  "include": ["src", ".storybook"]
 }

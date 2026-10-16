@@ -19,7 +19,13 @@ export function SiteHeader() {
         </a>
         <nav className="ml-auto hidden items-center gap-1 sm:flex">
           {NAV.map(([label, href]) => (
-            <Button key={href} variant="ghost" size="sm" asChild className="text-sm text-muted-foreground hover:text-foreground">
+            <Button
+              key={href}
+              variant="ghost"
+              size="sm"
+              asChild
+              className="text-sm text-muted-foreground hover:text-foreground"
+            >
               <a href={href}>{label}</a>
             </Button>
           ))}

@@ -27,8 +27,9 @@ export function Downloads({ stable, nightly, loading, error, platform }: Props) 
         <SectionLabel>Download</SectionLabel>
         <h2 className="mt-2 text-3xl font-semibold">Get the game</h2>
         <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
-          Free and open source. Unzip it anywhere and run Frontline; there's nothing to install. The first time it starts,
-          it also sets up the Join links on this page, and from then on it updates itself whenever a new version comes out.
+          Free and open source. Unzip it anywhere and run Frontline; there's nothing to install. The first time it
+          starts, it also sets up the Join links on this page, and from then on it updates itself whenever a new version
+          comes out.
         </p>
 
         <div className="mt-8 grid gap-4 md:grid-cols-2">
@@ -44,14 +45,17 @@ export function Downloads({ stable, nightly, loading, error, platform }: Props) 
             <a href={`${GITHUB_URL}/releases`} className="text-foreground underline underline-offset-4">
               check the releases page
             </a>{" "}
-            or run it from source: open <code className="font-mono text-xs">project.godot</code> in Godot 4.7 and press F5.
+            or run it from source: open <code className="font-mono text-xs">project.godot</code> in Godot 4.7 and press
+            F5.
           </p>
         )}
 
         <div className="mt-6 flex flex-wrap gap-x-6 gap-y-2 text-sm text-muted-foreground">
           <ExtLink href={`${GITHUB_URL}/releases`}>All releases</ExtLink>
           {stable && nightly && <ExtLink href={nightly.url}>Latest build of main (nightly)</ExtLink>}
-          <ExtLink href={`${GITHUB_URL}/actions/workflows/release.yml`}>Build artifacts (needs a GitHub account)</ExtLink>
+          <ExtLink href={`${GITHUB_URL}/actions/workflows/release.yml`}>
+            Build artifacts (needs a GitHub account)
+          </ExtLink>
           <ExtLink href={`${GITHUB_URL}#quick-start`}>Run from source</ExtLink>
         </div>
       </div>
@@ -59,7 +63,17 @@ export function Downloads({ stable, nightly, loading, error, platform }: Props) 
   )
 }
 
-function PlatformCard({ platform, build, loading, primary }: { platform: Platform; build: Build | null; loading: boolean; primary: boolean }) {
+function PlatformCard({
+  platform,
+  build,
+  loading,
+  primary,
+}: {
+  platform: Platform
+  build: Build | null
+  loading: boolean
+  primary: boolean
+}) {
   const Icon = ICONS[platform]
   const asset = build?.assets[platform]
   return (
@@ -87,7 +101,11 @@ function PlatformCard({ platform, build, loading, primary }: { platform: Platfor
           <p className="text-muted-foreground">
             <span className="text-foreground">{build.prerelease ? "Latest build of main" : build.name}</span>
             {" · "}
-            {new Date(build.published).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" })}
+            {new Date(build.published).toLocaleDateString(undefined, {
+              day: "numeric",
+              month: "short",
+              year: "numeric",
+            })}
             {" · "}
             {formatSize(asset.size)}
           </p>
