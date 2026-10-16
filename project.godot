@@ -20,6 +20,7 @@ boot_splash/use_filter=true
 
 [autoload]
 
+Errors="*res://scripts/autoload/errors.gd"
 Links="*res://scripts/autoload/links.gd"
 Defs="*res://scripts/autoload/defs.gd"
 Net="*res://scripts/autoload/net.gd"
@@ -29,6 +30,10 @@ Keys="*res://scripts/autoload/keys.gd"
 Music="*res://scripts/autoload/music.gd"
 Online="*res://scripts/autoload/online.gd"
 Updater="*res://scripts/autoload/updater.gd"
+
+[debug]
+
+settings/gdscript/always_track_call_stacks=true
 
 [display]
 

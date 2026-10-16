@@ -372,6 +372,31 @@ file instead of the running executable, and `--update-api=URL` reads the release
 with a higher `tag_name`). `--menu-update=0.1.2,ready` shows the notice for screenshots (`available`, `downloading`,
 `ready` or `failed`).
 
+### Error reports
+
+A release build reports its errors to the matchmaker (`scripts/autoload/errors.gd`, `matchmaker/src/errors.js`): a
+custom `Logger` catches every error the engine reports, with the GDScript call stack that led to it, and sends each
+distinct one (with a count) a few seconds later. A crash can't report itself, so the next launch reads the last
+run's log (`user://logs/`, rotated at every start) and sends the crash from there: the signal, the GDScript calls it
+died in, and the lines before it. The call stacks in a release build come from
+`debug/settings/gdscript/always_track_call_stacks` in `project.godot` (a few nanoseconds a call). A release build
+reports engine errors and `push_error()`; GDScript's own runtime errors (a null dereferenced, an index out of range)
+are silent there, the call just returning null, so they only show in development runs and CI.
+
+Only exported builds report (not `0.0.0-dev` ones). To try it from source, against a local matchmaker:
+
+```
+cd matchmaker && ERRORS_TOKEN=local PORT=8787 npm start
+godot --headless --path . -- --scenario=attack --quit-after=20 --report-errors --matchmaker=http://127.0.0.1:8787 --test-error=1
+godot --headless --path . -- --scenario=attack --report-errors --test-crash=1      # crashes; the next launch reports it
+curl -H "Authorization: Bearer local" http://127.0.0.1:8787/errors
+```
+
+`--test-error=S` causes an engine error and a `push_error` S seconds after start; `--test-crash=S` crashes the game.
+The matchmaker writes each new error to its log in full, then a line each time one passes another power of ten;
+`GET /errors` (with `ERRORS_TOKEN` as the bearer token) is the tally since it started, most common first. On the live
+service that's `railway logs --service matchmaker | grep -E "^(error|script|shader|crash) "`.
+
 ### Off-screen screenshots
 
 `--screenshot=FILE.png --shot-at=SECONDS` (with `--shots=N --shot-every=S` for a series) saves frames and quits. Frame the shot with `--focus=X,Z --zoom=M --pitch=DEG --cam-yaw=RAD`, and hide the interface with `--nohud`. `--manual=category,key,side` opens a Field Manual page.

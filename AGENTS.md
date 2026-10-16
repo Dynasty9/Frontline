@@ -25,6 +25,7 @@ scripts/ui/                    HUD, minimap, Field Manual, menus
 scripts/autoload/online.gd     the matchmaker client: battle list, Find Match, hole punching, LAN beacons, optional account
 scripts/autoload/links.gd      frontline:// links from the website: registering the scheme, handing a link to a running copy
 scripts/autoload/updater.gd    the game's version, and updating itself to the latest release
+scripts/autoload/errors.gd     error reports from release builds (and crashes, at the next launch) to the matchmaker
 changelog/                     one entry per change, filed under its version at release; CHANGELOG.md is generated
 matchmaker/                    the matchmaking service (Node, no runtime dependencies; deployed on Railway, accounts via Supabase)
 web/                           the website (React + Vite + shadcn, on Railway): live battles with Join links, downloads;

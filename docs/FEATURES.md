@@ -113,6 +113,12 @@ they're doing). The observer bar at the top has pause, speed (0.25x to 4x), dire
   battle newest first; open one for its after-action report. A battle fought signed out or offline waits in
   `user://pending_battles.json` (the last ten) and goes up at the next sign-in. The figures are your own game's
   account of the battle, so the record is only ever shown to you.
+- **Error reports.** When something goes wrong in a release build (an engine error, a shader the graphics driver
+  rejects, a crash), the game tells the matchmaker what failed and where in its code, with the GDScript calls that
+  led there, so the developers hear about it without anyone writing in (`autoload/errors.gd`). A crash is sent by the
+  next launch, from the log the engine left. A report carries the game's version, the operating system, the graphics
+  card and driver, and whether it happened in the menus or a battle; paths on the player's machine, addresses and
+  emails are taken out, and nothing says who sent it. Settings > Interface > Send error reports switches it off.
 - **Co-op:** everyone on the battle's side, and the AI takes the other. **Versus:** players pick sides ("The AI
   takes a side nobody plays" fills an empty one). "AI commands alongside players" gives either an AI teammate.
 - If a player leaves, a teammate inherits their squads, or the AI takes over if nobody is left on that side.
