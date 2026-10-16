@@ -16,6 +16,10 @@ var time := 0.0
 var entities := {}
 var next_eid := 1
 var ready_peers: Array = []
+## (server) What each player who has left commanded, by the peer id they had:
+## {"squads": {sid: true}, "vehicles": {eid: true}}. Teammates or the AI
+## command it meanwhile; it goes back to them if they rejoin.
+var away_forces := {}
 var known := {}  # peer -> {eid: true}: what each client has been told exists
 var _reveal_t := 0.0
 var tick_ms := 0.0
@@ -133,6 +137,7 @@ func _ready() -> void:
 			commanders.append(CommanderAI.new(self, int(t)))
 		Net.player_left.connect(_on_player_left)
 		Net.player_joined.connect(_on_player_joined)
+		Net.player_rejoined.connect(_on_player_rejoined)
 	if has_view:
 		cam = RtsCamera.new()
 		cam.name = "Cam"
@@ -747,6 +752,11 @@ func _client_ready() -> void:
 	rpc_id(p, "_rpc_decor", decor, town_rect)
 	if not mission_info.is_empty():
 		rpc_id(p, "_rpc_mission", mission_info)
+	if winner >= 0:
+		# (joining, or back, after it was decided: the after-action report and
+		# the end screen)
+		rpc_id(p, "_rpc_report", battle.report(-1))
+		rpc_id(p, "_rpc_over", winner)
 	ready_peers.append(p)
 	for e in entities.values():
 		e.net_dirty = true
@@ -1476,27 +1486,69 @@ func world_rng_side() -> float:
 	return rng.randf_range(-12.0, 12.0)
 
 
+## Who takes over a side's forces when one of its commanders goes: another
+## player on that side, or else the AI.
+func heir_of(team: int) -> int:
+	var heir := 0
+	for pid in Net.players:
+		if int(Net.players[pid].team) == team:
+			heir = int(pid)
+	return heir if heir != 0 else -1 - team
+
+
+## Who commands for `peer`: the peer, while they're here; while they're away,
+## whoever took over their forces.
+func acting_owner(peer: int, team: int) -> int:
+	if peer <= 0 or Net.players.has(peer):
+		return peer
+	return heir_of(team)
+
+
+## A squad or vehicle that came for a player who has left (one they had
+## queued, say): it's theirs again if they come back.
+func hold_for(peer: int, e: Variant) -> void:
+	var keep: Dictionary = away_forces.get(peer, {})
+	if keep.is_empty():
+		return
+	if e is Squad:
+		keep.squads[(e as Squad).sid] = true
+	elif e is Vehicle:
+		keep.vehicles[(e as Vehicle).eid] = true
+		for m in (e as Vehicle).passengers:
+			if is_instance_valid(m) and m.squad:
+				keep.squads[m.squad.sid] = true
+
+
+func give_squad(sq: Squad, to: int) -> void:
+	sq.owner = to
+	for m in sq.members:
+		m.owner_peer = to
+		push_props(m, {"owner": to})
+
+
+func give_vehicle(v: Vehicle, to: int) -> void:
+	v.owner_peer = to
+	push_props(v, {"owner": to})
+
+
 func _on_player_left(id: int, team: int, pname: String) -> void:
 	ready_peers.erase(id)
 	known.erase(id)
 	if team < 0:
 		send_msg(-1, "system", "%s left the game." % pname)
 		return
-	var heir := 0
-	for pid in Net.players:
-		if int(Net.players[pid].team) == team:
-			heir = int(pid)
-	var new_owner := heir if heir != 0 else -1 - team
+	var new_owner := heir_of(team)
+	var heir := maxi(new_owner, 0)  # (0: nobody left, the AI takes over)
+	var keep := {"squads": {}, "vehicles": {}}
 	for sq in squads.values():
 		if sq.owner == id:
-			sq.owner = new_owner
-			for m in sq.members:
-				m.owner_peer = new_owner
-				push_props(m, {"owner": new_owner})
+			keep.squads[sq.sid] = true
+			give_squad(sq, new_owner)
 	for v in vehicles:
 		if v.owner_peer == id:
-			v.owner_peer = new_owner
-			push_props(v, {"owner": new_owner})
+			keep.vehicles[v.eid] = true
+			give_vehicle(v, new_owner)
+	away_forces[id] = keep
 	if mission:
 		mission.owner_changed(id, new_owner)
 		send_msg(-1, "system", "%s left the mission." % pname)
@@ -1511,6 +1563,62 @@ func _on_player_left(id: int, team: int, pname: String) -> void:
 		send_msg(-1, "system", "%s left. The AI takes over their forces." % pname)
 	else:
 		send_msg(-1, "system", "%s left. %s takes command of their forces." % [pname, String(Net.players[heir].name)])
+
+
+## A player back after a dropped connection, a crash or a restart. Whatever of
+## their force is still fighting comes back to them from whoever held it, and
+## an AI that only stood in for a side left without commanders hands back
+## command too (with all it was holding).
+func _on_player_rejoined(id: int, old_id: int, team: int, pname: String) -> void:
+	var keep: Dictionary = away_forces.get(old_id, {})
+	away_forces.erase(old_id)
+	battle.rejoined(old_id, id, team)
+	stat("rejoined")
+	if team < 0:
+		send_msg(-1, "system", "%s is back, watching." % pname)
+		return
+	var back := 0
+	for sid in keep.get("squads", {}):
+		var sq: Squad = squads.get(int(sid))
+		if sq and sq.team == team and not sq.alive_members().is_empty():
+			give_squad(sq, id)
+			back += 1
+	for eid in keep.get("vehicles", {}):
+		var v = entities.get(int(eid))
+		if v is Vehicle and not v.gone and v.team == team:
+			give_vehicle(v, id)
+			back += 1
+	for i in back:
+		stat("rejoin_returned")
+	# what they had queued is still on its way to them
+	for st in structures:
+		for q in st.queue:
+			if int(q.owner) == old_id:
+				q.owner = id
+	if mission:
+		mission.player_rejoined(id, back > 0)
+		send_msg(-1, "system", "%s is back in the mission." % pname)
+		return
+	var ai := -1 - team
+	var stood_down := false
+	if not team in settings.get("ai_teams", []):
+		for c in commanders.duplicate():
+			if c.team == team:
+				commanders.erase(c)
+				stood_down = true
+	if stood_down:
+		for sq in squads.values():
+			if sq.team == team and sq.owner == ai:
+				give_squad(sq, id)
+		for v in vehicles:
+			if v.team == team and v.owner_peer == ai and not v.is_auto():
+				give_vehicle(v, id)
+		stat("rejoin_ai_stood_down")
+		send_msg(-1, "system", "%s is back and takes command from the AI." % pname)
+	elif back > 0:
+		send_msg(-1, "system", "%s is back and takes command of their forces again." % pname)
+	else:
+		send_msg(-1, "system", "%s is back in the battle." % pname)
 
 
 # --- debugging -----------------------------------------------------------------------------

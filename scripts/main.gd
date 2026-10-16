@@ -8,7 +8,12 @@ extends Node
 ##   --join=IP [--password=PW]   join a host
 ##   --team=N              the side to play (-1 spectator); a client registers with it
 ##   --ready [--say=TEXT]  once in the lobby: press Ready (and say something)
+##   --drop-at=S [--rejoin-after=S2]   a client leaves the battle S seconds in, then
+##                         presses Rejoin Battle S2 (default 5) seconds later
+##   --rejoin              press Rejoin Battle (with --rejoin-file=PATH: the record a
+##                         run with the same --rejoin-file left, as after a crash)
 ##   --list                with --host: list the battle on the matchmaker
+##   --no-drop-in          with --host: nobody new may join once the battle runs
 ##   --find-match          press Find Match (joins a listed battle, or hosts one)
 ##   --login=EMAIL:PASSWORD [--signup=CALLSIGN]   sign in (or create the account) first
 ##   (and Online's own: --matchmaker=URL --account=PATH --no-stun)
@@ -157,7 +162,8 @@ func _ready() -> void:
 			await Online.host(port, int(args.get("team", 0)), false)
 		else:
 			Net.host_game(port, int(args.get("team", 0)))
-		var cfg := {"ai_allies": args.has("ai-allies"), "verbose": args.has("verbose"), "debug_trucks": args.has("debug-trucks")}
+		var cfg := {"ai_allies": args.has("ai-allies"), "verbose": args.has("verbose"), "debug_trucks": args.has("debug-trucks"),
+			"drop_in": not args.has("no-drop-in")}
 		if args.has("mission"):
 			cfg["mission"] = String(args.mission)
 			cfg["mission_autoplay"] = args.has("autoplay")
@@ -179,6 +185,8 @@ func _ready() -> void:
 		else:
 			menu._show_lobby()
 			Net.lobby_updated.connect(_maybe_autostart)
+	elif args.has("rejoin"):
+		menu._rejoin()
 	elif args.has("join") or args.has("find-match"):
 		if args.has("team"):
 			Net.join_team = int(args.team)
@@ -352,6 +360,18 @@ func _on_game_start(s: Dictionary) -> void:
 		world.add_child(ct)
 
 
+## (tests) How many men and vehicles we command.
+func _mine() -> int:
+	var n := 0
+	for s in world.soldiers:
+		if s.owner_peer == world.local_peer and s.life != Soldier.Life.DEAD:
+			n += 1
+	for v in world.vehicles:
+		if v.owner_peer == world.local_peer and not v.gone:
+			n += 1
+	return n
+
+
 var _fx_next := 2.0
 var _trace_t := 0.0
 var _tf_t := 0.0
@@ -405,6 +425,8 @@ func _fx_demo() -> void:
 func _on_game_ended(w: int) -> void:
 	if world == null:
 		return
+	if not world.srv:
+		Net.forget_rejoin()  # nothing to go back to
 	var reporting := world.local_team >= 0 and Online.battle_open()
 	if world.local_team >= 0:
 		Online.battle_end("win" if w == world.local_team else "loss", world.time)
@@ -1028,6 +1050,12 @@ func _process(_dt: float) -> void:
 	var run_t := world.time
 	if not world.srv:
 		run_t = world.time - float(world.get_meta("world_at", CLIENT_WAIT))
+	if args.has("drop-at") and not world.srv and world.has_meta("world_at") and not has_meta("dropped") and run_t >= float(args["drop-at"]):
+		set_meta("dropped", true)
+		print("DROP at t=%.1f mine=%d" % [world.time, _mine()])
+		return_to_menu("")
+		get_tree().create_timer(float(args.get("rejoin-after", 5.0)), true, false, true).timeout.connect(menu._rejoin)
+		return
 	if _quit_at > 0.0 and run_t >= _quit_at:
 		_quit_at = -1.0
 		if args.has("dump-structs"):
@@ -1043,7 +1071,7 @@ func _process(_dt: float) -> void:
 				if e.team >= 0 and e.team != world.local_team:
 					enemy += 1
 			counts["ENEMY_KNOWN"] = enemy
-			print("CLIENT entities=%d %s time=%.1f team_info=%s waited=%.1f" % [world.entities.size(), str(counts), world.time, str(world.team_info[0].get("supply", -1)), float(world.get_meta("world_at", -1.0))])
+			print("CLIENT entities=%d %s time=%.1f team_info=%s waited=%.1f team=%d mine=%d" % [world.entities.size(), str(counts), world.time, str(world.team_info[0].get("supply", -1)), float(world.get_meta("world_at", -1.0)), world.local_team, _mine()])
 		if not world.coop.peers.is_empty() or int(world.coop.stats.get("sent", 0)) > 0:
 			print("COOP ", world.coop.summary())
 		get_tree().quit()

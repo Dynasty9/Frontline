@@ -49,6 +49,29 @@ func joined(owner: int, team: int) -> void:
 		_rec(owner, team)
 
 
+## A commander back after dropping out comes back under a new peer id: their
+## record so far, their units and their men carry on under it, so the report
+## (and their service record) has one line for them, not a "left" one and a
+## fresh one.
+func rejoined(old: int, now: int, team: int) -> void:
+	var r: Dictionary = players.get(old, {})
+	players.erase(old)
+	if r.is_empty():
+		joined(now, team)
+		return
+	var cur: Dictionary = players.get(now, {})
+	for f in FIELDS:
+		r[f] = float(r[f]) + float(cur.get(f, 0.0))
+	r["name"] = _name_of(now, team)
+	players[now] = r
+	for k in units:
+		if int(units[k].owner) == old:
+			units[k].owner = now
+	for eid in heroes:
+		if int(heroes[eid].owner) == old:
+			heroes[eid].owner = now
+
+
 static func _blank() -> Dictionary:
 	var r := {}
 	for f in FIELDS:
