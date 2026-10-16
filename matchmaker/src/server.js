@@ -17,8 +17,9 @@ const MAX_BODY = 8 * 1024;
 const BODY_LIMITS = { 'POST /me/battles': MAX_RECORD };
 
 // The latest release of the game, baked in by the release workflow
-// (.github/workflows/release.yml writes it, and the commit redeploys us): the
-// game's updater asks here which version is current and where to get it.
+// (.github/workflows/release.yml writes it in the release's pull request, and
+// merging that redeploys us): the game's updater asks here which version is
+// current and where to get it.
 export function loadRelease(file = new URL('../release.json', import.meta.url)) {
 	try {
 		return JSON.parse(readFileSync(file, 'utf8'));
