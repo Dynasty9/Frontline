@@ -8,6 +8,8 @@ signal net_error(msg: String)
 signal lobby_chat(text: String, system: bool)  # system: joins, leaves and the like
 signal player_left(id: int, team: int, pname: String)
 signal player_joined(id: int, team: int, pname: String)
+## A player who left came back: `old_id` is the peer id they had before.
+signal player_rejoined(id: int, old_id: int, team: int, pname: String)
 signal session_closed  # left a lobby or a battle, or stopped hosting
 ## The host wants a password before letting us in (`wrong`: we offered one
 ## and it wasn't it). We've already been disconnected: set join_password and
@@ -18,7 +20,7 @@ const DEFAULT_PORT := 7777
 const MAX_PLAYERS := 8
 ## Bump when what host and client send each other changes, so the matchmaker
 ## only pairs players who can understand each other.
-const NET_VERSION := 6
+const NET_VERSION := 8
 ## Each commander's colour: his cursor, his view and his pings on his
 ## teammates' screens. Handed out in the lobby so it stays the same all battle
 ## (and "I'm the pink one" works over voice). Clear of the sides' blue and red.
@@ -30,10 +32,15 @@ const PLAYER_COLORS := [Color(0.38, 0.95, 0.72), Color(1.0, 0.5, 0.82), Color(0.
 ## shows ("" for "<host>'s battle").
 const DEFAULT_SETTINGS := {"ai_fill": true, "ai_allies": false, "drop_in": true, "mode": "versus", "coop_side": 0, "max_players": MAX_PLAYERS, "name": ""}
 
-## peer_id -> {"name": String, "team": int, "ready": bool, "col": int (into PLAYER_COLORS)}
+## peer_id -> {"name": String, "team": int, "ready": bool, "col": int (into PLAYER_COLORS),
+## "icon": String, "rank": int (the insignia worn and the rank: "" and -1 signed out)}
 var players := {}
 var settings := DEFAULT_SETTINGS.duplicate()
 var my_name := "Commander"
+# the insignia and rank of a signed-in player ("" and -1 signed out), shown
+# beside their name in the lobby (set by Online)
+var my_icon := ""
+var my_rank := -1
 var in_game := false
 ## The lobby's password while hosting ("" for none). It never leaves this
 ## machine: joiners send theirs and the host compares.
@@ -52,6 +59,31 @@ var _turned_away := {}  # host: peers refused (full, closed, kicked), whatever t
 var _closing := false  # the host is closing the lobby: no starting now
 var _debug := OS.has_environment("FL_DEBUG_NET")  # print the lobby handshake
 
+## Who we are to a host: a random token each copy of the game makes for
+## itself, sent when it registers. A player who drops out and comes back with
+## the same token gets their place back: their side, their colour and what's
+## left of their force. The host never passes it on, so nobody else can claim
+## a player's place.
+var token := ""
+var _tokens := {}  # (host) peer id -> token
+## (host) Players who have left the battle, by token, in case they come back:
+## {"peer": the id they had, "name", "team", "col"}.
+var away := {}
+
+## The battle we were last in as a client, to get back into it after a dropped
+## connection, a crash or a restart: {"ip", "port", "lobby" (its matchmaker
+## listing, "" if joined by address), "host" (its host's name), "token", "at"
+## (unix time we were last in it)}, or {}. Kept in user://rejoin.cfg so it
+## outlasts the game.
+var rejoin := {}
+const REJOIN_PATH := "user://rejoin.cfg"
+## A battle left longer ago than this is taken to be over.
+const REJOIN_FOR_S := 2 * 3600
+var _rejoin_path := REJOIN_PATH
+var _target := {}  # where the connection being made goes: {"ip", "port", "lobby"}
+var _rejoining := false  # that connection is a try at getting back into Net.rejoin's battle
+var _rejoin_t := 0  # (msec) when the record next says we're still in that battle
+
 
 func _ready() -> void:
 	multiplayer.peer_connected.connect(_on_peer_connected)
@@ -59,6 +91,16 @@ func _ready() -> void:
 	multiplayer.connected_to_server.connect(_on_connected)
 	multiplayer.connection_failed.connect(_on_conn_failed)
 	multiplayer.server_disconnected.connect(_on_server_disconnected)
+	token = Crypto.new().generate_random_bytes(16).hex_encode()
+	# automated test runs (started with --switches) leave the player's record
+	# alone, unless given one of their own with --rejoin-file=PATH
+	for a in OS.get_cmdline_user_args():
+		if a.begins_with("--rejoin-file="):
+			_rejoin_path = a.substr(14)
+			break
+		if a.begins_with("--"):
+			_rejoin_path = ""
+	_load_rejoin()
 
 
 func host_game(port := DEFAULT_PORT, team := 0) -> int:
@@ -89,19 +131,22 @@ func host_offline(team := 0) -> void:
 ## mustn't carry the last one's seed or scenario either).
 func _hosting(team: int) -> void:
 	players.clear()
-	players[1] = {"name": my_name, "team": team, "ready": true, "col": 0}
+	players[1] = {"name": my_name, "team": team, "ready": true, "col": 0, "icon": my_icon, "rank": my_rank}
 	in_game = false
 	settings = DEFAULT_SETTINGS.duplicate()
 	password = ""
 	_turned_away.clear()
 	_arriving.clear()
 	arriving = 0
+	_tokens.clear()
+	away.clear()
 
 
 ## `local_port`: the UDP port to connect from (0 for any). The matchmaker's
 ## hole punching needs a known one: the port the router has already been
-## shown, and the host told to expect.
-func join_game(ip: String, port := DEFAULT_PORT, local_port := 0) -> int:
+## shown, and the host told to expect. `lobby`: the matchmaker listing it came
+## from, if it did (remembered for rejoining).
+func join_game(ip: String, port := DEFAULT_PORT, local_port := 0, lobby := "") -> int:
 	var peer := ENetMultiplayerPeer.new()
 	var err := peer.create_client(ip, port, 0, 0, 0, local_port)
 	if err != OK:
@@ -109,10 +154,13 @@ func join_game(ip: String, port := DEFAULT_PORT, local_port := 0) -> int:
 	multiplayer.multiplayer_peer = peer
 	players.clear()
 	in_game = false
+	_target = {"ip": ip, "port": port, "lobby": lobby}
 	return OK
 
 
 func leave() -> void:
+	if in_game and not multiplayer.is_server() and not rejoin.is_empty():
+		_touch_rejoin()
 	if multiplayer.multiplayer_peer and not (multiplayer.multiplayer_peer is OfflineMultiplayerPeer):
 		multiplayer.multiplayer_peer.close()
 	multiplayer.multiplayer_peer = OfflineMultiplayerPeer.new()
@@ -121,7 +169,23 @@ func leave() -> void:
 	password = ""
 	_arriving.clear()
 	arriving = 0
+	_tokens.clear()
+	away.clear()
+	_rejoining = false
 	session_closed.emit()
+
+
+## Our insignia or rank changed (picked another, or the account caught up
+## with the matchmaker). Hosting a lobby, it shows the new one at once; a
+## client's goes with it when it joins.
+func set_insignia(icon: String, rank: int) -> void:
+	my_icon = icon
+	my_rank = rank
+	if multiplayer.multiplayer_peer is ENetMultiplayerPeer and multiplayer.is_server() and players.has(1) and not in_game:
+		if String(players[1].get("icon", "")) != icon or int(players[1].get("rank", -1)) != rank:
+			players[1].icon = icon
+			players[1].rank = rank
+			_broadcast_lobby()
 
 
 ## The host closes its lobby: everyone in it is told why before the line is
@@ -133,6 +197,63 @@ func close_lobby() -> void:
 		await get_tree().create_timer(0.3, true, false, true).timeout
 		_closing = false
 	leave()
+
+
+# --- rejoining ------------------------------------------------------------------
+
+## Whether there's a battle to get back into (see `rejoin`).
+func can_rejoin() -> bool:
+	return not rejoin.is_empty() and Time.get_unix_time_from_system() - float(rejoin.get("at", 0.0)) < REJOIN_FOR_S
+
+
+## The next connection is a try at getting back into the battle we were last
+## in: it goes as the player we were there, with that battle's token.
+func begin_rejoin() -> void:
+	if rejoin.is_empty():
+		return
+	token = String(rejoin.get("token", token))
+	_rejoining = true
+
+
+## That battle is over, or can't be reached: stop offering it.
+func forget_rejoin() -> void:
+	rejoin = {}
+	_rejoining = false
+	if _rejoin_path != "" and FileAccess.file_exists(_rejoin_path):
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(_rejoin_path))
+
+
+func _load_rejoin() -> void:
+	var cf := ConfigFile.new()
+	if _rejoin_path == "" or cf.load(_rejoin_path) != OK:
+		return
+	if not (cf.has_section_key("rejoin", "ip") and cf.has_section_key("rejoin", "port") and cf.has_section_key("rejoin", "token")):
+		return
+	rejoin = {"ip": String(cf.get_value("rejoin", "ip")), "port": int(cf.get_value("rejoin", "port")),
+		"lobby": String(cf.get_value("rejoin", "lobby", "")), "host": String(cf.get_value("rejoin", "host", "")),
+		"token": String(cf.get_value("rejoin", "token")), "at": float(cf.get_value("rejoin", "at", 0.0))}
+
+
+## The record says we were in that battle just now. Kept up while we play, so
+## a crash late in a long battle still leaves a fresh one.
+func _touch_rejoin() -> void:
+	rejoin["at"] = Time.get_unix_time_from_system()
+	_rejoin_t = Time.get_ticks_msec() + 60000
+	_save_rejoin()
+
+
+func _process(_dt: float) -> void:
+	if in_game and not rejoin.is_empty() and Time.get_ticks_msec() >= _rejoin_t and not multiplayer.is_server():
+		_touch_rejoin()
+
+
+func _save_rejoin() -> void:
+	if _rejoin_path == "":
+		return
+	var cf := ConfigFile.new()
+	for k in rejoin:
+		cf.set_value("rejoin", k, rejoin[k])
+	cf.save(_rejoin_path)
 
 
 ## A player's colour (see PLAYER_COLORS).
@@ -211,12 +332,18 @@ func _on_peer_disconnected(id: int) -> void:
 	if not multiplayer.is_server():
 		return
 	var was_arriving := _arriving.erase(id)
+	var tok := String(_tokens.get(id, ""))
+	_tokens.erase(id)
 	if players.has(id):
 		var p: Dictionary = players[id]
 		players.erase(id)
+		if in_game and tok != "":
+			# their place is kept for the rest of the battle
+			away[tok] = {"peer": id, "name": String(p.name), "team": int(p.team), "col": int(p.get("col", -1))}
 		player_left.emit(id, int(p.team), String(p.name))
+		# (everyone's list of who's in the battle loses them, in it too)
+		_broadcast_lobby()
 		if not in_game:
-			_broadcast_lobby()
 			_announce("%s left." % String(p.name), true)
 	elif was_arriving and not in_game:
 		_broadcast_lobby()
@@ -224,34 +351,78 @@ func _on_peer_disconnected(id: int) -> void:
 
 func _on_connected() -> void:
 	_dbg("connected to the host, registering as %s" % my_name)
-	# (players pick their side in the lobby; only a test client says one now)
-	_register.rpc_id(1, my_name, join_password, join_team)
+	# (players pick their side in the lobby; only a test client says one now.
+	# The token says who we are if we've been here before)
+	_register.rpc_id(1, my_name, join_password, join_team, my_icon, my_rank, token)
 
 
 func _on_conn_failed() -> void:
 	_dbg("connection failed")
+	var back := _rejoining
+	var host := _rejoin_host()
+	if back:
+		forget_rejoin()
 	leave()
-	net_error.emit("The host didn't answer. The battle may have closed, or their router is blocking the way in.")
+	net_error.emit(("Couldn't get back into %s's battle: nobody answered. It may have ended." % host) if back
+		else "The host didn't answer. The battle may have closed, or their router is blocking the way in.")
 
 
 func _on_server_disconnected() -> void:
+	var was := in_game and can_rejoin()
 	leave()
-	net_error.emit("Lost connection to host.")
+	net_error.emit("Lost connection to the host. You can rejoin while the battle lasts." if was else "Lost connection to host.")
+
+
+func _rejoin_host() -> String:
+	var h := String(rejoin.get("host", ""))
+	return h if h != "" else "the host"
 
 
 # --- lobby RPCs ---------------------------------------------------------------
 
-## `team`: the side a test client asked for (-2: none, the lobby decides).
 @rpc("any_peer", "call_remote", "reliable")
 ## `pw`: the password they offer; `team`: the side a test client asked for
-## (-2: none, the lobby decides).
-func _register(pname: String, pw: String, team := -2) -> void:
+## (-2: none, the lobby decides); `icon` and `rank`: the insignia they wear;
+## `tok`: who they are (see `token`).
+func _register(pname: String, pw: String, team := -2, icon := "", rank := -1, tok := "") -> void:
 	if not multiplayer.is_server():
 		return
 	var id := multiplayer.get_remote_sender_id()
 	_arriving.erase(id)
 	_dbg("%d registers as %s (in game: %s)" % [id, pname, in_game])
 	if players.has(id) or _turned_away.has(id):
+		return
+	# the insignia is only for show, but one they couldn't have earned isn't shown
+	rank = clampi(rank, -1, Insignia.MAX_RANK)
+	if not Insignia.unlocked(icon, rank):
+		icon = ""
+	tok = tok.substr(0, 64)
+	if tok != "":
+		# the same player connecting again while we still hold their old link:
+		# it died without a word (a crash, a pulled cable) and ENet won't notice
+		# for a minute or more, so let it go now
+		for pid in _tokens.keys():
+			if _tokens[pid] == tok and int(pid) != id:
+				_drop_stale(int(pid))
+		_tokens[id] = tok
+	if in_game and tok != "" and away.has(tok):
+		# a player back in the battle they left: their own place, even when
+		# the battle is closed to newcomers or its seats have filled, and no
+		# password asked (they were let in before)
+		var was: Dictionary = away[tok]
+		away.erase(tok)
+		var col := int(was.col)
+		for pid in players:
+			if col < 0 or int(players[pid].get("col", -1)) == col:
+				col = _free_color()
+				break
+		var back := _unique_name(pname)
+		players[id] = {"name": back, "team": int(was.team), "ready": true, "col": col, "icon": icon, "rank": rank}
+		_sync_to_players(id)
+		var rs: Dictionary = settings.duplicate(true)
+		rs["players"] = players.duplicate(true)
+		_start.rpc_id(id, rs)
+		player_rejoined.emit(id, int(was.peer), int(was.team), back)
 		return
 	# (spaces either end are a slip of the copy and paste, not the password)
 	if password != "" and pw.strip_edges() != password.strip_edges():
@@ -270,7 +441,7 @@ func _register(pname: String, pw: String, team := -2) -> void:
 	if in_game:
 		# drop-in: put them on a side and hand them the running game
 		var side := _pick_join_team()
-		players[id] = {"name": clean, "team": side, "ready": true, "col": _free_color()}
+		players[id] = {"name": clean, "team": side, "ready": true, "col": _free_color(), "icon": icon, "rank": rank}
 		# everyone else learns who they are; they get the whole game at once
 		_sync_to_players(id)
 		var s: Dictionary = settings.duplicate(true)
@@ -278,7 +449,7 @@ func _register(pname: String, pw: String, team := -2) -> void:
 		_start.rpc_id(id, s)
 		player_joined.emit(id, side, clean)
 		return
-	players[id] = {"name": clean, "team": _pick_join_team(), "ready": false, "col": _free_color()}
+	players[id] = {"name": clean, "team": _pick_join_team(), "ready": false, "col": _free_color(), "icon": icon, "rank": rank}
 	if team >= -1:
 		_put_on_team(id, team)
 	_broadcast_lobby()
@@ -324,6 +495,24 @@ func _turn_away(id: int, reason: String) -> void:
 		_broadcast_lobby()
 
 
+## A link the host still holds for a player who has connected again. Their
+## old place is given up (to a teammate or the AI, as if they'd left) so the
+## new link can take it back.
+func _drop_stale(pid: int) -> void:
+	_on_peer_disconnected(pid)
+	# and the link itself goes once this frame's messages are out: cut now,
+	# ENet would keep a peer it can't send to until its next poll
+	_cut.call_deferred(pid)
+
+
+func _cut(pid: int) -> void:
+	var mp := multiplayer.multiplayer_peer
+	if mp is ENetMultiplayerPeer and pid in multiplayer.get_peers():
+		var pp: ENetPacketPeer = (mp as ENetMultiplayerPeer).get_peer(pid)
+		if pp:
+			pp.peer_disconnect_now()
+
+
 func _drop_later(id: int) -> void:
 	await get_tree().create_timer(2.0, true, false, true).timeout
 	var mp := multiplayer.multiplayer_peer
@@ -367,6 +556,9 @@ func _pick_join_team() -> int:
 @rpc("authority", "call_remote", "reliable")
 func _kick(reason: String) -> void:
 	_dbg("turned away: %s" % reason)
+	if _rejoining:
+		reason = "Couldn't get back into %s's battle: %s" % [_rejoin_host(), reason]
+		forget_rejoin()
 	leave()
 	net_error.emit(reason)
 
@@ -388,15 +580,19 @@ func _sync_to_players(skip: int) -> void:
 	var n := _arriving.size()
 	for pid in players:
 		if pid != 1 and pid != skip:
-			_sync_lobby.rpc_id(pid, players, settings, n)
-	_sync_lobby(players, settings, n)
+			_sync_lobby.rpc_id(pid, players, settings, n, in_game)
+	_sync_lobby(players, settings, n, in_game)
 
 
+## `running`: the host's battle has started.
 @rpc("authority", "call_local", "reliable")
-func _sync_lobby(p: Dictionary, s: Dictionary, n_arriving: int) -> void:
+func _sync_lobby(p: Dictionary, s: Dictionary, n_arriving: int, running := false) -> void:
 	players = p
 	settings = s
 	arriving = n_arriving
+	if _rejoining and not running:
+		# we went back for a battle, but its host is in a lobby now: it's over
+		forget_rejoin()
 	lobby_updated.emit()
 
 
@@ -532,6 +728,7 @@ func start_game() -> void:
 			if int(players[id].team) >= 0:
 				players[id].team = int(md.get("side", 0))
 	s["players"] = players.duplicate(true)
+	away.clear()
 	# to the players: anyone still at the door gets the game when they're let in
 	for pid in players:
 		if pid != 1:
@@ -545,4 +742,11 @@ func _start(s: Dictionary) -> void:
 	in_game = true
 	settings = s
 	players = s.players
+	if not multiplayer.is_server() and not _target.is_empty():
+		# remembered, so we can get back in if we drop out
+		_rejoining = false
+		var hp: Dictionary = players.get(1, {})
+		rejoin = {"ip": String(_target.ip), "port": int(_target.port), "lobby": String(_target.lobby),
+			"host": String(hp.get("name", "")), "token": token}
+		_touch_rejoin()
 	game_start.emit(s)

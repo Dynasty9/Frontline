@@ -2,9 +2,10 @@ extends Node
 ## --keys-test: checks the key bindings end to end with made-up input. Reading
 ## and naming bindings, the closest match (exact modifiers before extra ones),
 ## clashes, presses reaching the game through PlayerInput (a rebound key works
-## and the old one doesn't, placing takes R before retreat, a mouse side
-## button), a held key driving the camera, and the Controls page rebinding a
-## key (moving it off another action, Undo, a modifier on its own). Prints
+## and the old one doesn't, placing takes R before retreat), a mouse side
+## button on the tactical map (tapped and held), a held key driving the
+## camera, and the Controls page rebinding a key (moving it off another
+## action, Undo, a modifier on its own). Prints
 ## KEYTEST ok / FAIL lines and a total, then quits. Needs a window (the camera
 ## and the HUD), so run it off-screen:
 ##   godot --path . -- --host --team=0 --keys-test --offscreen
@@ -44,6 +45,27 @@ static func _key(code: int, down := true) -> InputEventKey:
 func _press(code: int) -> void:
 	world.input._unhandled_input(_key(code))
 	world.input._unhandled_input(_key(code, false))
+
+
+## A side button pressed or let go, fed to the engine as a real mouse's would
+## be (mid-screen, over the battlefield), so Input knows whether it's held.
+func _side_button(down: bool) -> void:
+	var mb := InputEventMouseButton.new()
+	mb.button_index = MOUSE_BUTTON_XBUTTON1
+	mb.button_mask = MOUSE_BUTTON_MASK_MB_XBUTTON1 if down else 0
+	mb.pressed = down
+	mb.position = get_viewport().get_visible_rect().size * 0.5
+	mb.global_position = mb.position
+	Input.parse_input_event(mb)
+
+
+## Waits until it's so, or a few seconds: an event fed to the engine reaches
+## the game a frame later, and off-screen frames are slow.
+func _until(cond: Callable, limit := 3.0) -> void:
+	var t := 0.0
+	while not cond.call() and t < limit:
+		await _wait(0.1)
+		t += 0.1
 
 
 func _run() -> void:
@@ -89,14 +111,23 @@ func _run() -> void:
 	_press(KEY_R)
 	_check("placing, R turns the building", absf(inp.place_yaw - y0 - PI * 0.5) < 0.001 and inp.place_kind == "sandbags")
 	inp.cancel_modes()
-	var tac: bool = world.hud.tactical
+	# --- a mouse side button on the tactical map: a tap switches to the map when
+	# it's let go, held it shows the statistics. The release of a side button is
+	# noticed through Input's state, so the presses go through the engine
 	Keys.set_bind("tactical", 1, -MOUSE_BUTTON_XBUTTON1)
-	var mb := InputEventMouseButton.new()
-	mb.button_index = MOUSE_BUTTON_XBUTTON1
-	mb.pressed = true
-	inp._unhandled_input(mb)
+	var tac: bool = world.hud.tactical
+	_side_button(true)
+	_side_button(false)
+	await _until(func() -> bool: return world.hud.tactical != tac)
 	_check("a mouse side button can be bound", world.hud.tactical != tac)
-	world.hud.toggle_tactical()
+	if world.hud.tactical != tac:
+		world.hud.toggle_tactical()
+	_side_button(true)
+	await _until(func() -> bool: return inp._tab_peek)
+	_check("held, the side button shows the statistics", inp._tab_peek)
+	_side_button(false)
+	await _until(func() -> bool: return inp._tab_down < 0)
+	_check("let go, they go away and the map stays as it was", inp._tab_down < 0 and world.hud.tactical == tac)
 	Keys.reset("tactical")
 	# --- a held key driving the camera
 	var cam := world.cam

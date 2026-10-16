@@ -176,7 +176,11 @@ To play with particular people:
 
 The game connects players straight to the host, through most home routers, without anyone opening ports. A few networks (some mobile and campus ones) are too strict for that; the server browser and the lobby say so, and then the host needs UDP port **7777** open, or you can play over a LAN or a VPN such as Tailscale, ZeroTier or Hamachi (**Direct connect** in the server browser takes an address). Friends can also join a battle that's already running.
 
+Dropped out of a battle (a lost connection, a crash, or you left by mistake)? The main menu offers **Rejoin** for as long as it lasts, even after a restart: you're back on your side with whatever of your force is still fighting. Your teammates, or the AI, command it while you're gone.
+
 You can sign in with an account (top right of the main menu). You don't need one to play. It keeps your callsign yours (no one else can register it, and battles you host show a tick), and it keeps a **service record**: every battle you fight goes on it, with your rating, kills and losses, and you can open any battle's after-action report again from **Service Record**. Battles fought before you sign in wait on your computer and go on the record when you do.
+
+Signed in, every battle you fight earns XP (a win more), and you climb 50 ranks from Recruit to General of the Army. Every rank unlocks a new insignia, a military patch you wear beside your callsign: click it on the main menu to see your collection and pick one. You start with ten, and there are 160 in all, from rank patches to medals and Vietnam-era company patches still to be unlocked. The website shows the same collection, and you can pick your insignia there too.
 
 ## Learn more
 

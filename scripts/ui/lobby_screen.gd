@@ -490,6 +490,19 @@ func _player_row(id: int, p: Dictionary, host: bool, now: float) -> Control:
 	dot.custom_minimum_size = Vector2(10, 10)
 	dot.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	h.add_child(dot)
+	# the insignia they wear, and their rank (signed-in players)
+	var pic := String(p.get("icon", ""))
+	if pic != "":
+		var tr := TextureRect.new()
+		tr.texture = Insignia.texture(pic, 128)
+		tr.custom_minimum_size = Vector2(26, 26)
+		tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		tr.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+		tr.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		tr.mouse_filter = Control.MOUSE_FILTER_PASS
+		tr.tooltip_text = "%s, rank %d. Wearing %s." % [Insignia.rank_name(int(p.get("rank", 0))), int(p.get("rank", 0)), String(Insignia.find(pic).get("n", ""))]
+		h.add_child(tr)
 	var nm := UiKit.label(String(p.name), 15, UiKit.TEXT, 600)
 	nm.clip_text = true
 	nm.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS

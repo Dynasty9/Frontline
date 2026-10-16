@@ -119,6 +119,7 @@ var coop_roster: HudCoopRoster  # ...and listed top right
 var alert_label: Label
 var _alert_t := 0.0
 var over_panel: PanelContainer
+var _xp_box: VBoxContainer  # in the report's header: what the battle was worth to the rank
 var help_panel: PanelContainer
 var veil: TopoBackdrop  # the living map, see-through, behind the menus and the end of the battle
 var _veil_wave := -1.0  # seconds since the battle ended (its wave wakes the map from the middle)
@@ -145,6 +146,7 @@ var _msgs: Array = []
 
 func _ready() -> void:
 	layer = 5
+	Online.battle_reported.connect(_on_battle_reported)
 	MapSymbols.build_atlas(self, MapSymbols.atlas_k_for(Settings.ui_factor()))
 	root = Control.new()
 	root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -875,6 +877,8 @@ func show_game_over(w: int) -> void:
 		hv.add_child(UiKit.label("%s have taken the battlefield." % Defs.TEAM_NAMES[w], 14, UiKit.DIM))
 		facts = "Battle lasted %s" % StatsPanel.fmt_time(world.time)
 		Music.sting("defeat" if world.local_team >= 0 and w != world.local_team else "victory")
+	if world.local_team >= 0 and Online.signed_in():
+		_xp_row(head)
 	var fl := UiKit.label(facts, 13, UiKit.DIM)
 	fl.size_flags_vertical = Control.SIZE_SHRINK_END
 	fl.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
@@ -1042,7 +1046,7 @@ func _update_record_note() -> void:
 				_rec_note.text = "Couldn't reach the matchmaker: this battle goes on your service record next time it can."
 				_rec_note.add_theme_color_override("font_color", UiKit.WARN)
 			else:
-				_rec_note.text = "Sign in to keep this battle, and every one after it, on a service record."
+				_rec_note.text = "Sign in to keep this battle, and every one after it, on a service record, and to earn ranks and insignia."
 				_rec_btn.visible = true
 		_:
 			_rec_note.text = ""
@@ -1054,6 +1058,65 @@ func _sign_in_for_record() -> void:
 		root.add_child(account_panel)
 		UiKit.fit_center(account_panel, Vector2(500, 440))
 	account_panel.open(false, Net.my_name)
+
+
+## The rank's corner of the report's header. It waits for the matchmaker to
+## say what the battle was worth (Online.battle_reported): the XP, how far
+## through the rank, and a promotion with the patch that comes with it.
+func _xp_row(parent: Control) -> void:
+	_xp_box = VBoxContainer.new()
+	_xp_box.add_theme_constant_override("separation", 4)
+	_xp_box.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	_xp_box.custom_minimum_size = Vector2(320, 0)
+	parent.add_child(_xp_box)
+	_xp_box.add_child(UiKit.label("Counting your XP...", 13, UiKit.DIM))
+
+
+func _on_battle_reported(rep: Dictionary) -> void:
+	if not is_instance_valid(_xp_box):
+		return
+	for c in _xp_box.get_children():
+		c.queue_free()
+	if rep.has("error"):
+		var e := UiKit.label("Couldn't count this battle towards your rank: %s" % String(rep.error), 13, UiKit.BAD)
+		e.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		e.custom_minimum_size = Vector2(320, 0)
+		_xp_box.add_child(e)
+		return
+	var gained: int = int(rep.get("gained", 0))
+	var before: int = int(rep.get("rank_before", Online.rank))
+	var promoted: bool = Online.rank > before
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 12)
+	_xp_box.add_child(row)
+	# promoted: the new rank's patch is theirs to wear
+	var id: String = ("r%02d" % Online.rank) if promoted else Online.icon
+	var pic := TextureRect.new()
+	pic.texture = Insignia.texture(id, 128)
+	pic.custom_minimum_size = Vector2(52, 52)
+	pic.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	pic.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	pic.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+	row.add_child(pic)
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 1)
+	v.alignment = BoxContainer.ALIGNMENT_CENTER
+	row.add_child(v)
+	var rname := Insignia.rank_name(Online.rank).to_upper()
+	v.add_child(_spaced_label(("PROMOTED: " + rname) if promoted else rname, 12, UiKit.GOOD if promoted else UiKit.ACCENT, 2))
+	var nxt := ("%s / %s XP" % [Insignia.thousands(Online.xp - Online.rank_xp), Insignia.thousands(Online.next_xp - Online.rank_xp)]) if Online.next_xp > 0 else "Top rank"
+	v.add_child(UiKit.label(("+%d XP  \u00b7  %s" % [gained, nxt]) if gained > 0 else "No XP: battles under two minutes don't count", 14, UiKit.TEXT, 600))
+	if promoted:
+		var more: int = Online.rank - before - 1
+		v.add_child(UiKit.label("New insignia: %s%s" % [String(Insignia.find(id).get("n", "")), (" and %d more" % more) if more > 0 else ""], 12, UiKit.DIM))
+	var bar := ProgressBar.new()
+	bar.show_percentage = false
+	bar.custom_minimum_size = Vector2(320, 4)
+	bar.max_value = maxf(1.0, Online.next_xp - Online.rank_xp) if Online.next_xp > 0 else 1.0
+	bar.value = (Online.xp - Online.rank_xp) if Online.next_xp > 0 else 1.0
+	bar.add_theme_stylebox_override("background", UiKit.box(Color(1, 1, 1, 0.08), 2, Color(0, 0, 0, 0), 0, 0.0))
+	bar.add_theme_stylebox_override("fill", UiKit.box(UiKit.ACCENT, 2, Color(0, 0, 0, 0), 0, 0.0))
+	_xp_box.add_child(bar)
 
 
 ## The end of a mission: accomplished or failed and why, the headline of the
