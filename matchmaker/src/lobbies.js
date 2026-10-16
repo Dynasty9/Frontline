@@ -50,6 +50,9 @@ export function stunEndpoint(body, seenIp) {
 }
 
 const NAT_KINDS = new Set(['open', 'cone', 'strict', 'unknown']);
+// what kind of battle it is: everyone on one side against the AI, sides
+// against each other, or one of the game's missions (played co-op)
+const MODES = new Set(['coop', 'versus', 'mission']);
 
 // Quick match order: games still in the lobby, then hosts whose router can be
 // reached, then the fullest, then the oldest.
@@ -113,6 +116,12 @@ export class Lobbies {
 			version: cleanText(body.version, 16),
 			created: this.now(),
 			seen: this.now(),
+			mode: '',
+			mission: '',
+			side: -1,
+			teams: [0, 0],
+			spectators: 0,
+			locked: false,
 			reserved: [],
 			joins: [],
 			waiter: null,
@@ -129,6 +138,15 @@ export class Lobbies {
 		lobby.inGame = body.in_game !== undefined ? !!body.in_game : !!lobby.inGame;
 		lobby.dropIn = body.drop_in !== undefined ? !!body.drop_in : lobby.dropIn ?? true;
 		if (body.name !== undefined) lobby.name = cleanText(body.name, 40) || lobby.name;
+		// what the server browser shows: the kind of battle, who is on which
+		// side, and whether it wants a password (the password itself never
+		// leaves the host)
+		if (body.mode !== undefined) lobby.mode = MODES.has(body.mode) ? body.mode : '';
+		if (body.mission !== undefined) lobby.mission = cleanText(body.mission, 40);
+		if (body.side !== undefined) lobby.side = clampInt(body.side, -1, 1, -1);
+		if (Array.isArray(body.teams)) lobby.teams = [clampInt(body.teams[0], 0, 64, 0), clampInt(body.teams[1], 0, 64, 0)];
+		if (body.spectators !== undefined) lobby.spectators = clampInt(body.spectators, 0, 64, 0);
+		if (body.locked !== undefined) lobby.locked = !!body.locked;
 	}
 
 	owned(id, token) {
@@ -217,13 +235,14 @@ export class Lobbies {
 
 	// Quick match: the best open game, or null (then the player hosts one and
 	// waits to be found). Filling the fullest lobby first means people end up
-	// playing together rather than each waiting alone in an empty one.
+	// playing together rather than each waiting alone in an empty one. A
+	// battle with a password is for the host's friends: never matched.
 	match(version, exclude = []) {
 		this.sweep();
 		const skip = new Set(exclude.map(String));
 		let best = null;
 		for (const l of this.byId.values()) {
-			if (skip.has(l.id) || (version && l.version !== version) || !this.joinable(l)) continue;
+			if (skip.has(l.id) || (version && l.version !== version) || l.locked || !this.joinable(l)) continue;
 			if (!best || better(l, best)) best = l;
 		}
 		if (!best) return null;
@@ -243,6 +262,12 @@ export class Lobbies {
 			in_game: l.inGame,
 			drop_in: l.dropIn,
 			nat: l.nat,
+			mode: l.mode,
+			mission: l.mission,
+			side: l.side,
+			teams: l.teams,
+			spectators: l.spectators,
+			locked: l.locked,
 			version: l.version,
 			age: Math.round((this.now() - l.created) / 1000),
 		};

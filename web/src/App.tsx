@@ -18,6 +18,15 @@ export default function App() {
   const [platform] = useState(guessPlatform)
   // after a Join or Find Match link: a note on what should happen next
   const [launched, setLaunched] = useState(false)
+  // an invite from a friend's lobby (?join=ID): that battle, up top
+  const [invite, setInvite] = useState(() => new URLSearchParams(window.location.search).get("join"))
+  useEffect(() => {
+    if (invite) document.getElementById("battles")?.scrollIntoView()
+  }, [invite])
+  const dismissInvite = () => {
+    setInvite(null)
+    window.history.replaceState(null, "", window.location.pathname + window.location.hash)
+  }
 
   return (
     <TooltipProvider delayDuration={150}>
@@ -31,6 +40,8 @@ export default function App() {
           launched={launched}
           onLaunch={() => setLaunched(true)}
           onDismissLaunch={() => setLaunched(false)}
+          invite={invite}
+          onDismissInvite={dismissInvite}
         />
         <Downloads {...builds} platform={platform} />
         <Gallery />

@@ -1,4 +1,4 @@
-import { CrosshairIcon, InfoIcon, SealCheckIcon, WarningIcon, XIcon } from "@phosphor-icons/react"
+import { CrosshairIcon, EnvelopeSimpleOpenIcon, InfoIcon, LockSimpleIcon, SealCheckIcon, WarningIcon, XIcon } from "@phosphor-icons/react"
 import { useEffect, useState } from "react"
 import { Emblem } from "@/components/emblem"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
@@ -21,9 +21,12 @@ type Props = {
   launched: boolean
   onLaunch: () => void
   onDismissLaunch: () => void
+  // the battle an invite link (?join=ID) points at
+  invite: string | null
+  onDismissInvite: () => void
 }
 
-export function Battles({ lobbies, error, updatedAt, launched, onLaunch, onDismissLaunch }: Props) {
+export function Battles({ lobbies, error, updatedAt, launched, onLaunch, onDismissLaunch, invite, onDismissInvite }: Props) {
   return (
     <section id="battles" className="mx-auto max-w-6xl scroll-mt-16 px-4 py-20 sm:px-6">
       <SectionLabel>Online</SectionLabel>
@@ -37,6 +40,10 @@ export function Battles({ lobbies, error, updatedAt, launched, onLaunch, onDismi
         </div>
         <Updated at={updatedAt} failing={!!error && !!lobbies} />
       </div>
+
+      {invite && !launched && (
+        <Invite lobby={lobbies?.find((l) => l.id === invite)} loaded={!!lobbies} onLaunch={onLaunch} onDismiss={onDismissInvite} />
+      )}
 
       {launched && (
         <Alert className="mt-6 border-primary/40 bg-primary/5">
@@ -68,7 +75,7 @@ export function Battles({ lobbies, error, updatedAt, launched, onLaunch, onDismi
         ) : lobbies.length === 0 ? (
           <Empty onLaunch={onLaunch} />
         ) : (
-          <LobbyTable lobbies={lobbies} onLaunch={onLaunch} />
+          <LobbyTable lobbies={lobbies} invite={invite} onLaunch={onLaunch} />
         )}
       </Card>
     </section>
@@ -79,12 +86,86 @@ export function SectionLabel({ children }: { children: React.ReactNode }) {
   return <p className="text-xs font-bold tracking-[0.2em] text-primary uppercase">{children}</p>
 }
 
-function LobbyTable({ lobbies, onLaunch }: { lobbies: Lobby[]; onLaunch: () => void }) {
+// A friend sent a link to their battle: say what it is, with a Join button.
+function Invite({ lobby, loaded, onLaunch, onDismiss }: { lobby: Lobby | undefined; loaded: boolean; onLaunch: () => void; onDismiss: () => void }) {
+  if (!loaded) return null
+  return (
+    <Alert className={`mt-6 ${lobby ? "border-primary/40 bg-primary/5" : ""}`}>
+      <EnvelopeSimpleOpenIcon />
+      {lobby ? (
+        <>
+          <AlertTitle>
+            {lobby.host} invited you to {lobby.name}
+          </AlertTitle>
+          <AlertDescription>
+            <p>
+              {modeText(lobby)} · {lobby.players}/{lobby.max_players} players
+              {lobby.locked ? " · ask them for the password" : ""}. Join opens Frontline and takes you straight to their
+              lobby. No game yet?{" "}
+              <a href="#download" className="text-foreground underline underline-offset-4">
+                Download it
+              </a>{" "}
+              and start it once first.
+            </p>
+            <div className="mt-3">
+              {joinable(lobby) ? (
+                <Button asChild className="font-semibold">
+                  <a href={joinLink(lobby.id)} onClick={onLaunch}>
+                    Join {lobby.host}'s battle
+                  </a>
+                </Button>
+              ) : (
+                <Button variant="outline" disabled>
+                  {lobby.players >= lobby.max_players ? "It's full" : "It's under way, and closed to newcomers"}
+                </Button>
+              )}
+            </div>
+          </AlertDescription>
+        </>
+      ) : (
+        <>
+          <AlertTitle>That battle has ended</AlertTitle>
+          <AlertDescription>
+            The battle your invite points to isn't being hosted any more. Ask your friend to host again, or join another
+            one below.
+          </AlertDescription>
+        </>
+      )}
+      <button
+        type="button"
+        onClick={onDismiss}
+        className="absolute top-2.5 right-2.5 text-muted-foreground hover:text-foreground"
+        aria-label="Dismiss"
+      >
+        <XIcon className="size-4" />
+      </button>
+    </Alert>
+  )
+}
+
+const SIDES = ["Coalition", "Rebels"]
+
+/** "Co-op vs AI · Coalition", "Versus · 2 v 1", "Mission · Bridgehead" */
+function modeText(l: Lobby): string {
+  switch (l.mode) {
+    case "coop":
+      return `Co-op vs AI · ${SIDES[l.side === 1 ? 1 : 0]}`
+    case "versus":
+      return `Versus · ${l.teams?.[0] ?? 0} v ${l.teams?.[1] ?? 0}`
+    case "mission":
+      return l.mission ? `Mission · ${l.mission}` : "Mission"
+    default:
+      return "Battle"
+  }
+}
+
+function LobbyTable({ lobbies, invite, onLaunch }: { lobbies: Lobby[]; invite: string | null; onLaunch: () => void }) {
   return (
     <Table>
       <TableHeader>
         <TableRow className="hover:bg-transparent">
           <TableHead className="pl-4">Battle</TableHead>
+          <TableHead className="hidden lg:table-cell">Mode</TableHead>
           <TableHead className="hidden md:table-cell">Commander</TableHead>
           <TableHead>Players</TableHead>
           <TableHead className="hidden sm:table-cell">Status</TableHead>
@@ -95,13 +176,28 @@ function LobbyTable({ lobbies, onLaunch }: { lobbies: Lobby[]; onLaunch: () => v
       </TableHeader>
       <TableBody>
         {[...lobbies].sort(byJoinable).map((l) => (
-          <TableRow key={l.id}>
+          <TableRow key={l.id} className={l.id === invite ? "bg-primary/5" : undefined}>
             <TableCell className="py-3 pl-4">
-              <div className="font-medium text-foreground">{l.name}</div>
-              <div className="mt-0.5 flex items-center gap-1 text-xs text-muted-foreground md:hidden">
-                <Host lobby={l} />
+              <div className="flex items-center gap-1.5 font-medium text-foreground">
+                {l.locked && (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <LockSimpleIcon weight="fill" className="size-3.5 shrink-0 text-warn" aria-label="Password" />
+                    </TooltipTrigger>
+                    <TooltipContent>The host has set a password: the game asks for it when you join</TooltipContent>
+                  </Tooltip>
+                )}
+                {l.name}
+              </div>
+              <div className="mt-0.5 flex items-center gap-1 text-xs text-muted-foreground lg:hidden">
+                <span>{modeText(l)}</span>
+                <span className="md:hidden">
+                  {" · "}
+                  <Host lobby={l} />
+                </span>
               </div>
             </TableCell>
+            <TableCell className="hidden lg:table-cell">{modeText(l)}</TableCell>
             <TableCell className="hidden md:table-cell">
               <Host lobby={l} />
             </TableCell>
