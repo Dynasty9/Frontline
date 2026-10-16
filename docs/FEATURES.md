@@ -351,6 +351,15 @@ function and an autopilot function.
   firing. The camera's view is a lit wedge with a line back to where the camera stands, and a compass needle
   shows where north lies in the view (click it to square up). Hovering gives the grid square under the cursor.
   Three sizes, and it can turn with the camera so the way you face is always up (Settings > Interface).
+- **Interface scale** (Settings > Interface): the interface grows with the window, so at 100% it takes the same
+  share of the screen at any resolution (1.35x at 1080p, 1.8x at 1440p, 2.7x at 4K), and the slider scales it
+  from there up to the largest that still fits the window (2x in a 1080p window, 2.7x at 1440p). Text is
+  rasterised at the size it's drawn, and the map symbols are re-drawn at a higher resolution on a big scale, so
+  both stay sharp. On a narrow screen the command card drops to three columns, the minimap shrinks to leave room
+  for the support buttons, notifications stop above the command card, the observer bar moves to the bottom right,
+  and the settings, controls and Field Manual fit the screen and scroll. The menus (laid out for a full
+  1600 x 900) only grow until they fill the window. The scale applies when the slider is let go, so the panel
+  doesn't move under the mouse while it's being dragged.
 
 **Vehicles** (`vehicle.gd`, `vehicle_brain.gd`, `vehicle_roster.gd`, `drone.gd`, `projectile.gd`)
 - **The core vehicles rebuilt** (`vehicles/vm_core.gd`): the M1A2 SEP Abrams, a worn T-55A, Hilux technicals (DShK
