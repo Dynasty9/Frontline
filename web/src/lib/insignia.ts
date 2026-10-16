@@ -15,7 +15,7 @@ export type Insignia = {
   blurb: string
 }
 
-export const RANKS: Rank[] = [...catalog.ranks].sort((a, b) => a.rank - b.rank)
+export const RANKS: Rank[] = catalog.ranks.toSorted((a, b) => a.rank - b.rank)
 export const GROUPS: Group[] = catalog.groups
 export const INSIGNIA: Insignia[] = catalog.insignia
 
@@ -46,4 +46,4 @@ export function unlockText(i: Insignia) {
 
 /** The insignia unlocked by the rank after this one, if any. */
 export const nextUnlock = (rank: number) =>
-  INSIGNIA.filter((i) => i.unlock > rank).sort((a, b) => a.unlock - b.unlock)[0]
+  INSIGNIA.filter((i) => i.unlock > rank).toSorted((a, b) => a.unlock - b.unlock)[0]

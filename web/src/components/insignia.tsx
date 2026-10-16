@@ -33,9 +33,9 @@ export function InsigniaSection({ accounts }: { accounts: string | undefined }) 
         <SectionLabel>Ranks</SectionLabel>
         <h2 className="mt-2 text-3xl font-semibold">{user ? "Your insignia" : "Earn your insignia"}</h2>
         <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
-          Play battles while you're signed in to your account and you earn experience, more for a win. Fifty ranks
-          climb from Recruit to General of the Army, and each one you reach unlocks a patch you can wear as your
-          insignia, shown beside your callsign when you host. Every account starts with ten.
+          Play battles while you're signed in to your account and you earn experience, more for a win. Fifty ranks climb
+          from Recruit to General of the Army, and each one you reach unlocks a patch you can wear as your insignia,
+          shown beside your callsign when you host. Every account starts with ten.
         </p>
 
         <div className="mt-8 grid items-start gap-8 lg:grid-cols-[19rem_1fr]">
@@ -81,15 +81,18 @@ function Profile({ user }: { user: User }) {
             {top ? `${user.xp.toLocaleString()} XP` : `${into.toLocaleString()} / ${span.toLocaleString()} XP`}
           </span>
         </div>
-        <div
-          role="progressbar"
+        {/* a real <progress> for screen readers; the bar is drawn, so it animates */}
+        <progress
+          className="sr-only"
           aria-label={top ? "Max rank" : `Experience towards ${rankName(user.rank + 1)}`}
-          aria-valuemin={0}
-          aria-valuemax={span}
-          aria-valuenow={into}
-          className="mt-2 h-1.5 bg-muted"
-        >
-          <div className="h-full bg-primary transition-[width] duration-500" style={{ width: `${(into / span) * 100}%` }} />
+          max={span}
+          value={into}
+        />
+        <div aria-hidden="true" className="mt-2 h-1.5 bg-muted">
+          <div
+            className="h-full bg-primary transition-[width] duration-500"
+            style={{ width: `${(into / span) * 100}%` }}
+          />
         </div>
       </div>
 
@@ -176,7 +179,7 @@ function SignIn() {
 
   return (
     <Card className="gap-0 py-0 text-sm">
-      <div className="grid grid-cols-2 border-b" role="group" aria-label="Sign in or create an account">
+      <fieldset className="grid min-w-0 grid-cols-2 border-b" aria-label="Sign in or create an account">
         {[false, true].map((c) => (
           <button
             key={String(c)}
@@ -185,13 +188,15 @@ function SignIn() {
             onClick={() => switchTo(c)}
             className={cn(
               "h-10 border-b-2 text-xs font-semibold tracking-[0.12em] uppercase transition-colors outline-none focus-visible:bg-muted",
-              creating === c ? "border-primary text-foreground" : "border-transparent text-muted-foreground hover:text-foreground",
+              creating === c
+                ? "border-primary text-foreground"
+                : "border-transparent text-muted-foreground hover:text-foreground"
             )}
           >
             {c ? "Create account" : "Sign in"}
           </button>
         ))}
-      </div>
+      </fieldset>
 
       <form onSubmit={submit} className="space-y-3 p-4">
         <p className="text-xs leading-relaxed text-muted-foreground">
@@ -249,11 +254,7 @@ function SignIn() {
             {error}
           </p>
         )}
-        {notice && !error && (
-          <p role="status" className="text-xs text-good">
-            {notice}
-          </p>
-        )}
+        {notice && !error && <output className="block text-xs text-good">{notice}</output>}
 
         <Button type="submit" disabled={busy} className="h-9 w-full text-sm font-semibold">
           {busy ? (creating ? "Creating your account…" : "Signing in…") : creating ? "Create account" : "Sign in"}
@@ -367,7 +368,7 @@ const Tile = memo(function Tile({ ins, unlocked, selectable, selected, signedIn,
           className={cn(
             "group relative block aspect-square w-full overflow-hidden bg-muted/50 bg-[radial-gradient(circle_at_50%_38%,rgb(255_255_255/0.07),transparent_68%)] ring-1 ring-white/[0.07] transition-[background-color,box-shadow] ring-inset focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring",
             selectable ? "hover:bg-accent hover:ring-primary/50" : "cursor-default",
-            selected && "bg-primary/10 ring-2 ring-primary hover:ring-primary",
+            selected && "bg-primary/10 ring-2 ring-primary hover:ring-primary"
           )}
         >
           <img
@@ -379,7 +380,7 @@ const Tile = memo(function Tile({ ins, unlocked, selectable, selected, signedIn,
             draggable={false}
             className={cn(
               "size-full object-contain p-[12%] transition-[opacity,filter,transform] duration-200",
-              unlocked ? (selectable ? "group-hover:scale-105" : "") : "opacity-25 grayscale",
+              unlocked ? (selectable ? "group-hover:scale-105" : "") : "opacity-25 grayscale"
             )}
           />
           {selected && (
@@ -387,15 +388,22 @@ const Tile = memo(function Tile({ ins, unlocked, selectable, selected, signedIn,
               <CheckIcon weight="bold" className="size-3" />
             </span>
           )}
-          {!unlocked && <LockSimpleIcon weight="fill" className="absolute top-1 right-1 size-3 text-muted-foreground" />}
+          {!unlocked && (
+            <LockSimpleIcon weight="fill" className="absolute top-1 right-1 size-3 text-muted-foreground" />
+          )}
           {!unlocked && ins.unlock > 0 && (
-            <span className="absolute inset-x-0 bottom-0 bg-background/70 py-px text-center text-[10px] font-semibold tracking-wide text-muted-foreground tabular-nums uppercase">
+            <span className="absolute inset-x-0 bottom-0 bg-background/70 py-px text-center text-[10px] font-semibold tracking-wide text-muted-foreground uppercase tabular-nums">
               Rank {ins.unlock}
             </span>
           )}
         </button>
       </TooltipTrigger>
-      <TooltipContent side="top" sideOffset={4} collisionPadding={8} className="max-w-60 flex-col items-start gap-0.5 py-2">
+      <TooltipContent
+        side="top"
+        sideOffset={4}
+        collisionPadding={8}
+        className="max-w-60 flex-col items-start gap-0.5 py-2"
+      >
         <span className="text-[13px] font-semibold">{ins.name}</span>
         {ins.blurb && <span className="text-xs/snug opacity-75">{ins.blurb}</span>}
         <span className="mt-1 text-[11px] font-semibold tracking-wide uppercase">{status}</span>

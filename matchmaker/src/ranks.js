@@ -53,8 +53,7 @@ export function insignia(id) {
 
 export const unlocked = (ins, rank) => ins.unlock !== null && rank >= ins.unlock;
 
-export const lockedMessage = (ins) =>
-	ins.unlock === null ? 'That insignia is locked.' : `That insignia is locked. Reach rank ${ins.unlock} to unlock it.`;
+export const lockedMessage = (ins) => (ins.unlock === null ? 'That insignia is locked.' : `That insignia is locked. Reach rank ${ins.unlock} to unlock it.`);
 
 // How a battle can end: won, lost, or left before the end (worth half, so
 // sticking it out pays, but a player who has to go still gets something).

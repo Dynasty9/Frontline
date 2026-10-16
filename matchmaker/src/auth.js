@@ -212,7 +212,10 @@ class SupabaseAuth {
 		}
 		if (callsign !== undefined) {
 			const r = await this.call(`/rest/v1/profiles?id=eq.${encodeURIComponent(user.id)}`, {
-				method: 'PATCH', token, body: { callsign }, headers: { Prefer: 'return=minimal' },
+				method: 'PATCH',
+				token,
+				body: { callsign },
+				headers: { Prefer: 'return=minimal' },
 			});
 			if (r.status === 409 || r.data?.code === '23505') throw new AuthError(409, 'That callsign is taken.');
 			if (!r.ok) throw new AuthError(400, SupabaseAuth.message(r.data, 'Could not change the callsign.'));
@@ -271,7 +274,18 @@ class MemoryAuth {
 		if (this.users.has(email)) throw new AuthError(400, 'User already registered');
 		if (this.taken(callsign)) throw new AuthError(409, 'That callsign is taken.');
 		const salt = randomBytes(16);
-		const u = { id: randomUUID(), email, callsign, salt, hash: MemoryAuth.hash(password, salt), icon: STARTER_ICON, xp: 0, battles: 0, wins: 0, battleStarted: null };
+		const u = {
+			id: randomUUID(),
+			email,
+			callsign,
+			salt,
+			hash: MemoryAuth.hash(password, salt),
+			icon: STARTER_ICON,
+			xp: 0,
+			battles: 0,
+			wins: 0,
+			battleStarted: null,
+		};
 		this.users.set(email, u);
 		return { session: this.issue(u), confirm: false };
 	}

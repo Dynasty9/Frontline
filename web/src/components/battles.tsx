@@ -146,7 +146,9 @@ function Host({ lobby }: { lobby: Lobby }) {
               <InsigniaImg id={ins.id} className="size-5" />
             </span>
           </TooltipTrigger>
-          <TooltipContent>{rank === null ? ins.name : `${rankName(rank)}, rank ${rank} · wearing ${ins.name}`}</TooltipContent>
+          <TooltipContent>
+            {rank === null ? ins.name : `${rankName(rank)}, rank ${rank} · wearing ${ins.name}`}
+          </TooltipContent>
         </Tooltip>
       )}
       {lobby.host}

@@ -48,12 +48,20 @@ async function call<T>(method: string, path: string, body?: unknown, token?: str
   if (token) headers.Authorization = `Bearer ${token}`
   let res: Response
   try {
-    res = await fetch(MATCHMAKER_URL + path, { method, headers, body: body === undefined ? undefined : JSON.stringify(body) })
+    res = await fetch(MATCHMAKER_URL + path, {
+      method,
+      headers,
+      body: body === undefined ? undefined : JSON.stringify(body),
+    })
   } catch {
     throw new ApiError(0, "Can't reach the matchmaker. Try again in a moment.")
   }
   const data = await res.json().catch(() => null)
-  if (!res.ok) throw new ApiError(res.status, typeof data?.error === "string" ? data.error : `The matchmaker answered ${res.status}`)
+  if (!res.ok)
+    throw new ApiError(
+      res.status,
+      typeof data?.error === "string" ? data.error : `The matchmaker answered ${res.status}`
+    )
   return data as T
 }
 

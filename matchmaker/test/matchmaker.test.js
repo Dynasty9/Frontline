@@ -262,7 +262,7 @@ const ranked = await start({ AUTH_BACKEND: 'memory', TRUST_PROXY: '1' }, { now: 
 		const fresh = { icon: 's01', xp: 0, rank: 0, rank_xp: 0, next_xp: 150, battles: 0, wins: 0 };
 		const keys = ['battles', 'callsign', 'email', 'icon', 'id', 'next_xp', 'rank', 'rank_xp', 'wins', 'xp'];
 		const check = (u) => {
-			assert.deepEqual(Object.keys(u).sort(), keys);
+			assert.deepEqual(Object.keys(u).toSorted(), keys);
 			assert.equal(u.callsign, `Ranker ${n}`);
 			for (const [k, v] of Object.entries(fresh)) assert.equal(u[k], v, k);
 		};
@@ -325,7 +325,14 @@ const ranked = await start({ AUTH_BACKEND: 'memory', TRUST_PROXY: '1' }, { now: 
 		const p = await player();
 		await p.call('POST', '/me/battle');
 		minutes(10);
-		const bad = [{ result: 'draw', seconds: 600 }, { seconds: 600 }, { result: 'win' }, { result: 'win', seconds: '600' }, { result: 'win', seconds: -1 }, { result: 'constructor', seconds: 600 }];
+		const bad = [
+			{ result: 'draw', seconds: 600 },
+			{ seconds: 600 },
+			{ result: 'win' },
+			{ result: 'win', seconds: '600' },
+			{ result: 'win', seconds: -1 },
+			{ result: 'constructor', seconds: 600 },
+		];
 		for (const body of bad) assert.equal((await p.call('POST', '/me/battle/end', body)).status, 400, JSON.stringify(body));
 		const r = await p.call('POST', '/me/battle/end', { result: 'loss', seconds: 600 });
 		assert.equal(r.data.gained, 100);
@@ -400,7 +407,10 @@ const ranked = await start({ AUTH_BACKEND: 'memory', TRUST_PROXY: '1' }, { now: 
 	const table = new URL('../../web/src/lib/insignia.json', import.meta.url);
 	test("the website's insignia table agrees with ranks.js", { skip: !existsSync(table) && 'web/src/lib/insignia.json is not there' }, () => {
 		const t = JSON.parse(readFileSync(table, 'utf8'));
-		assert.deepEqual(t.ranks.map((r) => r.rank).sort((a, b) => a - b), Array.from({ length: MAX_RANK + 1 }, (_, i) => i));
+		assert.deepEqual(
+			t.ranks.map((r) => r.rank).toSorted((a, b) => a - b),
+			Array.from({ length: MAX_RANK + 1 }, (_, i) => i),
+		);
 		for (const r of t.ranks) assert.equal(r.xp, xpFor(r.rank), `rank ${r.rank}`);
 		const ids = new Set();
 		for (const i of t.insignia) {
@@ -415,7 +425,12 @@ const ranked = await start({ AUTH_BACKEND: 'memory', TRUST_PROXY: '1' }, { now: 
 			if (ours.unlock === null) assert.ok(!isRank, `${i.id} is locked for everyone`);
 			else assert.equal(i.unlock, ours.unlock, `${i.id} unlocks at rank ${ours.unlock}`);
 		}
-		for (const [g, count] of [['s', 10], ['r', MAX_RANK], ['m', 50], ['u', 50]]) {
+		for (const [g, count] of [
+			['s', 10],
+			['r', MAX_RANK],
+			['m', 50],
+			['u', 50],
+		]) {
 			for (let k = 1; k <= count; k++) assert.ok(ids.has(g + String(k).padStart(2, '0')), `${g}${String(k).padStart(2, '0')} is in the table`);
 		}
 	});

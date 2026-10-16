@@ -71,7 +71,9 @@ function AccountChip() {
         {worn && <InsigniaImg id={worn.id} />}
         {/* the callsign only where there's room for it beside the nav (it's in the profile anyway) */}
         <span className="hidden max-w-36 truncate sm:block md:hidden lg:block">{user.callsign}</span>
-        <span className="border border-primary/40 px-1 text-[10px] leading-4 font-bold text-primary tabular-nums">{user.rank}</span>
+        <span className="border border-primary/40 px-1 text-[10px] leading-4 font-bold text-primary tabular-nums">
+          {user.rank}
+        </span>
       </a>
     </Button>
   )
