@@ -673,7 +673,7 @@ func _process(_dt: float) -> void:
 		if world.director:
 			world.director.active = false
 		world.set_meta("town_focused", true)
-	# --focus-struct=kind[,n]: the camera on the nth structure of a kind
+	# --focus-struct=kind[,n]: the camera on the nth structure of a kind (--select-struct: selected too)
 	if args.has("focus-struct") and world.cam and world.time > 1.0 and not world.has_meta("struct_focused"):
 		var fs := String(args["focus-struct"]).split(",")
 		var want2 := int(fs[1]) if fs.size() > 1 else 0
@@ -684,6 +684,8 @@ func _process(_dt: float) -> void:
 					world.focused = true
 					if world.director:
 						world.director.active = false
+					if args.has("select-struct") and world.input:
+						world.input.sel_structure = st.eid
 					break
 				want2 -= 1
 		world.set_meta("struct_focused", true)

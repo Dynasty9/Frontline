@@ -14,7 +14,7 @@ const DEFAULT_PORT := 7777
 const MAX_PLAYERS := 8
 ## Bump when what host and client send each other changes, so the matchmaker
 ## only pairs players who can understand each other.
-const NET_VERSION := 1
+const NET_VERSION := 2
 
 var players := {}  # peer_id -> {"name": String, "team": int}
 var settings := {"ai_fill": true, "ai_allies": false, "drop_in": true}

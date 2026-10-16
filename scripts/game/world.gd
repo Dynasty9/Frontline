@@ -389,9 +389,10 @@ func placement_error(team: int, kind: String, pos: Vector3, yaw: float) -> Strin
 	if kind == "dock":
 		pass  # (see above: the shore, our half)
 	elif kind == "fob":
+		# a town you hold is a foothold too: a FOB can go up near it
 		var near_own := false
 		for st in structures:
-			if st.skind != "fob" and st.skind != "depot":
+			if st.skind != "fob" and st.skind != "depot" and st.skind != "town":
 				continue
 			var d := Defs.flat(st.position - pos).length()
 			if st.skind == "fob" and d < Defs.FOB_MIN_SPACING:
@@ -399,7 +400,7 @@ func placement_error(team: int, kind: String, pos: Vector3, yaw: float) -> Strin
 			if st.team == team and st.built and d < Defs.FOB_EXPAND_RADIUS:
 				near_own = true
 		if not near_own:
-			return "A new FOB must be within %d m of one of yours." % int(Defs.FOB_EXPAND_RADIUS)
+			return "A new FOB must be within %d m of one of yours, or of a town you hold." % int(Defs.FOB_EXPAND_RADIUS)
 	else:
 		var ok := false
 		for st in structures:
@@ -1441,10 +1442,11 @@ func debug_stats() -> String:
 	var out := "t=%.0f ents=%d" % [time, entities.size()]
 	for t in 2:
 		var ti: Dictionary = rules.team_summary()[t] if rules else {}
-		out += " | %s %s veh=%d sup=%d fobs=%d" % [Defs.TEAM_NAMES[t], str(c[t]), _count_veh(t), int(ti.get("supply", 0)), (ti.get("fobs", []) as Array).size()]
+		out += " | %s %s veh=%d sup=%d inc=%d/min fobs=%d towns=%d" % [Defs.TEAM_NAMES[t], str(c[t]), _count_veh(t), int(ti.get("supply", 0)), int(ti.get("inc", 0)),
+			(ti.get("fobs", []) as Array).size(), (ti.get("towns", []) as Array).size()]
 		var bl := {}
 		for st in structures:
-			if st.team == t and st.skind != "depot":
+			if st.team == t and st.skind != "depot" and st.skind != "town":
 				var key: String = st.skind + ("" if st.built else "*")
 				bl[key] = int(bl.get(key, 0)) + 1
 		out += " bld=%s" % str(bl)
@@ -1471,6 +1473,8 @@ func debug_stats() -> String:
 		for st in structures:
 			if st.skind == "fob":
 				out += "\n   fob %s t%d truck=%s truck_t=%.1f status=%s road=%d" % [st.sname, st.team, str(st.truck != null), st.truck_t, st.supply_status, st.road.size()]
+		for tn in rules.town_list:
+			out += "\n   town %s t%d stock=%d intact=%.2f cap=%d/%d truck=%s status=%s road=%d" % [tn.sname, tn.team, int(tn.supply), tn.intact, int(tn.cap_prog), tn.cap_team, str(tn.truck != null), tn.supply_status, tn.road.size()]
 	return out
 
 

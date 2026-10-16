@@ -21,6 +21,24 @@ const FOB_MIN_SPACING := 45.0
 const SUPPLY_PER_TRUCK := [115, 130]  # Rebels run bigger loads to make up for having no helicopters (trucks drive like trucks: fewer runs, bigger loads)
 const START_SUPPLY := 500
 
+## Towns and villages (index: 0 a village, 1 the town). Whoever holds one
+## draws on it - food, fuel, lorries, labour - and trucks it to their nearest
+## FOB: supply a minute with every house standing (a town shelled to ruins is
+## worth about a third of that), the most its dump holds, the load a truck
+## waits for, the ground you must hold to take it, and how quickly a squad
+## takes it (a village in about half a minute, the town in nearer a minute).
+const TOWN_YIELD := [24.0, 60.0]
+const TOWN_STOCK := [180, 420]
+const TOWN_LOAD := [60, 120]
+const TOWN_RADIUS := [30.0, 42.0]
+const TOWN_PACE := [1.0, 0.6]
+const TOWN_KINDS := ["Village", "Town"]
+const TOWN_NAMES := [
+	["Brask", "Ostel", "Kirnov", "Lesna", "Dunholt", "Pelka", "Vrany", "Tolsk", "Hadley Cross", "Sovka", "Garin", "Ruvel",
+	"Ilmen", "Zarech", "Kopane", "Belvar", "Strelna", "Morva", "Ashby", "Tervo", "Lusk", "Okrin", "Vesna", "Marrow End"],
+	["Velgrad", "Sarovo", "Kastelin", "Merith", "Dravik", "Halmen", "Port Ilan", "Ostrevo"],
+]
+
 const FOB_NAMES := [
 	["Alpha", "Bravo", "Charlie", "Delta", "Echo", "Foxtrot", "Golf", "Hotel", "India", "Juliet", "Kilo", "Lima"],
 	["Viper", "Cobra", "Jackal", "Falcon", "Wolf", "Hyena", "Scorpion", "Raven", "Mamba", "Lynx", "Kestrel", "Adder"],

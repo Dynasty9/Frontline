@@ -787,7 +787,9 @@ func _view_process(dt: float) -> void:
 	_track_orders()
 	_update_support()
 	_update_card()
-	# the order of battle fits its contents, down to the support buttons at most
+	# the order of battle fits its contents, down to the support buttons at
+	# most, below however many FOB and town lines there are
+	orbat.position.y = maxf(100.0, top.position.y + top.content_h + 8.0) if world.local_team >= 0 else 100.0
 	var vh := root.size.y
 	var limit := vh - 240.0
 	if support_box.get_child_count() > 0:

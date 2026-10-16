@@ -268,6 +268,11 @@ function and an autopilot function.
 - Country roads come in from both HQs and both edges of the map and join the main streets. Villages sit on the
   cross road either side of town and on the road between each HQ and the town; farmsteads (farmhouse and barn round a yard, hay bales, a fenced road frontage, an orchard) and
   hedged fields lie along the roads; abandoned cars on the verges, burnt-out armour off the road.
+- **The town and every village have a name and a supply dump** (crated stores on a pallet, fuel drums and a
+  flagpole): the town's on its square where the flagpole stood, a village's on the verge of its main street.
+  Nobody holds them at the start. They are the supply worth fighting over: see *Towns* under Base building and
+  supply. (Missions don't have them; the dumps use their own random numbers, so a seed's map is otherwise
+  unchanged.)
 - Houses have dressed facades: sills and lintels, painted window frames with mullion and transom, panes (many
   shot out), shutters, door frames, steps and double doors hanging open.
 - Walls, hedges, trees, cars and crates are all real cover. Street furniture is set dressing generated on the
@@ -347,8 +352,9 @@ function and an autopilot function.
 - **The minimap** (`hud_minimap.gd`): the ground, water, roads (main roads light with a dark edge, supply
   tracks thinner), woods and every house's footprint (light while its roof stands, dark once it's a ruin) are
   baked into a texture. Over it go every man you can see as a dot (yours brightest, the selection white),
-  vehicles by their map symbols, bases, objectives and alerts, and an orange ring pulsing wherever men are
-  firing. The camera's view is a lit wedge with a line back to where the camera stands, and a compass needle
+  vehicles by their map symbols, bases, objectives and alerts, each town as a flag in its holder's colour inside
+  the ring of ground that takes it (with how far a capture has got round the ring), and an orange ring pulsing
+  wherever men are firing. The camera's view is a lit wedge with a line back to where the camera stands, and a compass needle
   shows where north lies in the view (click it to square up). Hovering gives the grid square under the cursor.
   Three sizes, and it can turn with the camera so the way you face is always up (Settings > Interface).
 
@@ -449,6 +455,23 @@ function and an autopilot function.
 - Each finished FOB raises the unit cap by 20, resupplies nearby soldiers, and lays its own road back toward your HQ.
   Supply trucks drive those roads (Rebel trucks carry more, since the Rebels have no helicopters). If you ambush the trucks or block the road (tank traps, mines), every FOB past
   that point stops getting supply.
+- **Towns** (`structure.gd` `_town_tick`, `rules.gd`): the town in the middle and every village are supply. Whoever
+  holds one draws on it - food, fuel, lorries, labour - into its dump: 24 supply a minute from a village, 60 from
+  the town, less as its houses are knocked down (a place shelled to ruins gives about a third), up to what the dump
+  holds. Once there's a load, the town's own lorry drives it to the holder's nearest FOB along a supply road of its
+  own (drawn on the map like the others, and just as easy to ambush or block); the truck's loss costs its load.
+  - To take one, get men inside its ring (30 m round a village's middle, 42 m round the town's crossroads) with none
+    of the other side's there: a squad takes a village in about half a minute, the town in nearer a minute (more
+    men, faster). Both sides there and nobody gains; the holder's men push it back; whatever's in the dump changes
+    hands with it. The holder is warned as soon as the enemy starts.
+  - Holding a town also lets you put a FOB up near it (not just near your own bases), your men round the dump
+    refill their ammunition from it, and the townsfolk tell you who's about (it sees like a building).
+  - Right-click a town that isn't yours with squads selected to send them to take it; select a dump to see who
+    holds it, what it gives and how much of it stands, its stock and where its trucks run.
+- **Supply on the HUD**: the top bar shows your supply and what's coming in a minute (truck and helicopter loads
+  over the last two minutes) and how many towns you hold; under the FOB lines, each town you hold with its stock,
+  its rate and where its trucks go - the ones being taken or cut off first, the quiet ones summed up past a few.
+  The order of battle moves down to make room.
 - Buildings: FOB, barracks, factory, medic tent, research post, helipad (supply helicopters fly over cut
   roads), sandbags, concrete walls, barbed wire, minefields, tank traps, watchtowers (long sight, shoots over
   walls), and Rebel tunnel entrances (move squads through the network or bring them back out with "Exit here").
@@ -560,7 +583,12 @@ each posed - and what squads and vehicle crews do (battle drills, morale, drivin
 **AI commander** (`commander_ai.gd`): spare squads go forward to hold the town, the villages and the larger
 woods between its front and the enemy's, lying in wait, so the fighting is over the ground in between; a
 forward FOB falls due every few minutes and supply is held back for it (each FOB runs its own supply truck,
-so whoever expands first pulls ahead). It lays **ambushes** (`ambush_plan.gd`) on straight stretches of the
+so whoever expands first pulls ahead). **Towns** are supply, and it goes after them from the start: a squad at a
+time to each village or the town within reach that it doesn't hold (two to one the enemy holds), the near ones
+first; it stays a few minutes once the flag is up, sends the nearest squad back when the enemy starts taking
+one of its own, and gives up on one it can't get into. Its attack waves count an enemy-held town as a softer
+target than a base, and a town it holds out beyond its bases gets the next FOB beside it, on its own side.
+It lays **ambushes** (`ambush_plan.gd`) on straight stretches of the
 roads the enemy uses - his supply track above all - where there's cover to lie in: the squad moves to a rally
 point back from the road, then into an L - the assault line 20-odd metres off the road, the gun at one end
 firing down the killing zone, a man watching the flank - and holds its fire until they're in it. A short,
