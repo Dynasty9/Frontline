@@ -105,7 +105,7 @@ func _ready() -> void:
 	])
 	_pages["display"] = _page(stack, [
 		["option", "window", "Window mode", Settings.LABELS.window, ""],
-		["option", "resolution", "Window size", RES_NAMES, "Size of the window in windowed mode."],
+		["option", "resolution", "Window size", RES_NAMES, "Size of the window in windowed mode, kept from one launch to the next. A size too big for the screen fills it instead. The interface grows with the window."],
 		["check", "vsync", "VSync", null, "Locks the frame rate to the monitor to avoid tearing."],
 		["option", "fps_cap", "Frame rate limit", Settings.LABELS.fps_cap, ""],
 		["slider", "fov", "Field of view", [35.0, 75.0, 1.0], "Camera lens angle.", "deg"],
@@ -117,6 +117,7 @@ func _ready() -> void:
 		["check", "labels", "Unit activity labels", null, "Close up: each soldier's name and what he's doing. Further out: a status icon per man."],
 		["check", "bubbles", "Speech bubbles", null, "Shouts, radio calls and the men's banter."],
 		["check", "cover_preview", "Cover preview", null, "Pips under the cursor showing the cover each man will take (green heavy, yellow light, red exposed)."],
+		["check", "coop_show", "Co-commanders' views and cursors", null, "In co-op: where the other commanders on your side are looking, their cursors, what they've selected and what they're lining up, in their colours. (Pings and the Command Net show either way.)"],
 		["head", "", "Camera"],
 		["option", "mmb_mode", "Middle mouse drag", Settings.LABELS.mmb_mode, "What dragging with the middle mouse button does. Holding Alt does the other."],
 		["check", "zoom_cursor", "Zoom toward the cursor", null, "The mouse wheel zooms in on whatever is under the cursor. Off: on the middle of the screen."],

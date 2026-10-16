@@ -1,12 +1,14 @@
 class_name Rules
 extends RefCounted
-## Game rules on the server: supply network + trucks, unit cap, placement,
-## FOB capture, prisoners and intel, fog of war and victory.
+## Game rules on the server: supply network + trucks, towns, unit cap,
+## placement, FOB capture, prisoners and intel, fog of war and victory.
 
 const VC := 16.0
 
 var world: World
 var depots: Array = [null, null]
+var town_list: Array = []  # the supply dumps of the town and the villages (see MapGen._towns)
+var _income: Array = [[], []]  # per side: [time, amount] of every load delivered, the last two minutes
 var upgrades: Array = [{}, {}]
 var fob_names_used: Array = [0, 0]
 var fob_order := 0
@@ -22,7 +24,7 @@ var support_ready := [{}, {}]  # per side: kind -> world time it is available ag
 
 
 func support_left(team: int, kind: String) -> float:
-	return float((support_ready[team] as Dictionary).get(kind, 300.0)) - world.time
+	return float((support_ready[team] as Dictionary).get(kind, Defs.support_from(kind))) - world.time
 var _support_q: Array = []  # [time, kind, team, data]
 
 
@@ -64,6 +66,21 @@ func _launch(kind: String, team: int, pos: Vector3, dir: Vector3) -> void:
 	var air_name := String(sd.name).get_slice(" ", 0) + " " + String(sd.name).get_slice(" ", 1)
 	var warn: bool = not sd.get("quiet", false)
 	match String(sd.get("fly", kind)):
+		"recon":
+			# a reconnaissance pass: in along the line and out the other side,
+			# its camera (or the spotter's binoculars) sweeping a strip either side
+			var leg := float(sd.get("leg", 420.0))
+			var st0 := pos - dir * leg + Vector3(0, float(sd.get("alt", 60.0)), 0)
+			world.spawn("projectile", {"ptype": "jet", "team": team, "pos": st0, "vel": dir * float(sd.get("speed", 90.0)), "target": pos, "fuse": 0.0, "thrower": 0, "mk": mk,
+				"sight": float(sd.sight), "stay": leg})
+			_sup_msg(team, foe, "%s inbound on %s. Watch the map." % [air_name, gr], "Enemy recon plane overhead. They've seen us." if warn else "", pos)
+			return
+		"watch":
+			# an unarmed drone circling high over the spot, its camera on it
+			world.spawn("projectile", {"ptype": "ac130", "team": team, "pos": pos + Vector3(Projectile.AC_R, Projectile.AC_ALT, 0), "vel": Vector3.ZERO, "target": pos, "fuse": world.rng.randf() * TAU,
+				"thrower": 0, "mk": mk, "guns": "none", "sight": float(sd.sight), "stay": float(sd.stay)})
+			_sup_msg(team, foe, "%s on station over %s. Eyes on for %d seconds." % [air_name, gr, int(sd.stay)], "Enemy drone overhead!" if warn else "", pos)
+			return
 		"jet":
 			var start := pos - dir * 330.0 + Vector3(0, 34.0, 0)
 			world.spawn("projectile", {"ptype": "jet", "team": team, "pos": start, "vel": dir * 95.0, "target": pos, "fuse": float(sd.get("bombs", 4)), "thrower": 0, "mk": mk})
@@ -245,6 +262,34 @@ func supply_total(team: int) -> int:
 	for f in fobs(team):
 		n += int(f.supply)
 	return n
+
+
+## The towns and villages: all of them, or those a side holds.
+func towns(team := -2) -> Array:
+	if team == -2:
+		return town_list
+	var out := []
+	for tn in town_list:
+		if tn.team == team:
+			out.append(tn)
+	return out
+
+
+## A load of supply reaching a FOB, for the side's income.
+func note_income(team: int, amount: int) -> void:
+	if team >= 0 and team <= 1:
+		(_income[team] as Array).append([world.time, amount])
+
+
+## Supply a minute reaching a side's FOBs, over the last two minutes.
+func income(team: int) -> int:
+	var l: Array = _income[team]
+	while not l.is_empty() and world.time - float(l[0][0]) > 120.0:
+		l.pop_front()
+	var n := 0
+	for it in l:
+		n += int(it[1])
+	return int(n * 60.0 / clampf(world.time, 30.0, 120.0))
 
 
 ## Pays for something built at pos: out of the nearest FOB that can cover it,
@@ -455,7 +500,39 @@ func rebuild_network(team: int) -> void:
 		_bulldoze(poly)
 		polys.append(poly)
 		nodes.append(f)
+	for tn in town_list:
+		if tn.team == team:
+			_town_road(tn, polys)
 	world.set_roads(team, polys)
+
+
+## The road a town's lorry takes to its holder's nearest working FOB.
+func _town_road(tn: Structure, polys: Array) -> void:
+	var best: Structure = null
+	var bd := 1e9
+	for f in fobs(tn.team, false):
+		var d: float = Defs.flat(f.position - tn.position).length()
+		if d < bd:
+			bd = d
+			best = f
+	tn.supply_parent = best
+	tn.road = PackedVector3Array()
+	if best == null:
+		tn.supply_status = "No FOB"
+		return
+	var start := world.nav.nearest_walkable(tn.exit_pos(), true)
+	var path := world.nav.find_path(start, best.position, true)
+	if path.is_empty():
+		tn.supply_status = "No road"
+		return
+	var poly := PackedVector3Array()
+	poly.append(start)
+	poly.append_array(path)
+	tn.road = poly
+	_bulldoze(poly)
+	polys.append(poly)
+	if tn.supply_status in ["No FOB", "No road"]:
+		tn.supply_status = "OK"
 
 
 func _bulldoze(poly: PackedVector3Array) -> void:
@@ -486,6 +563,8 @@ func route_to(f: Structure) -> PackedVector3Array:
 
 
 func _trucks(dt: float) -> void:
+	for tn in town_list:
+		_town_truck(tn, dt)
 	for st in world.structures:
 		if st.skind != "fob" or not st.built or st.team < 0:
 			continue
@@ -504,21 +583,72 @@ func _trucks(dt: float) -> void:
 		v.route = route
 		v.route_i = 1
 		v.dest_fob = st
+		v.cargo = Defs.SUPPLY_PER_TRUCK[st.team]
 		st.truck = v
 		st.supply_status = "Truck en route"
 
 
+## A town's own lorry takes what's in its dump to the holder's nearest FOB
+## once there's a load worth the drive (or the dump is full), and comes back
+## for the next.
+func _town_truck(tn: Structure, dt: float) -> void:
+	if tn.team < 0:
+		return
+	if tn.truck and tn.truck.gone:
+		tn.truck = null
+	if tn.truck:
+		return
+	tn.truck_t -= dt
+	if tn.truck_t > 0.0:
+		return
+	var k := clampi(tn.variant, 0, 1)
+	var f := tn.supply_parent
+	if f == null or f.gone or f.team != tn.team or tn.road.size() < 2:
+		tn.truck_t = 8.0
+		return
+	if tn.supply < float(Defs.TOWN_LOAD[k]) and tn.supply < float(Defs.TOWN_STOCK[k]) - 1.0:
+		tn.truck_t = 3.0
+		return
+	var load := mini(int(tn.supply), int(Defs.TOWN_LOAD[k]) * 2)
+	tn.supply -= load
+	tn.net_dirty = true
+	var route := tn.road
+	var v: Vehicle = world.spawn("vehicle", {"vkind": "truck", "team": tn.team, "owner": -1 - tn.team, "pos": route[0], "yaw": Defs.yaw_of(route[1] - route[0])})
+	v.route = route
+	v.route_i = 1
+	v.dest_fob = f
+	v.src_town = tn
+	v.cargo = load
+	tn.truck = v
+	tn.supply_status = "Truck en route"
+	world.stat("town_truck_sent")
+
+
 func truck_arrived(v: Vehicle) -> void:
 	var f := v.dest_fob
+	var load: int = v.cargo if v.cargo > 0 else Defs.SUPPLY_PER_TRUCK[v.team]
+	v.cargo = 0
 	if f and not f.gone and f.team == v.team:
-		f.supply += Defs.SUPPLY_PER_TRUCK[v.team]
-		world.stat("truck_delivered")
+		f.supply += load
+		world.stat("town_truck_delivered" if v.src_town else "truck_delivered")
 		f.net_dirty = true
-		f.supply_status = "OK"
-		world.fx_event([Fx.DELIVER, f.position + Vector3(0, 4, 0), Defs.SUPPLY_PER_TRUCK[v.team], v.team])
+		if v.src_town:
+			if not v.src_town.gone and v.src_town.truck == v:
+				v.src_town.supply_status = "OK"
+		else:
+			f.supply_status = "OK"
+		note_income(v.team, load)
+		world.fx_event([Fx.DELIVER, f.position + Vector3(0, 4, 0), load, v.team])
 
 
 func truck_home(v: Vehicle) -> void:
+	if v.src_town:
+		var tn := v.src_town
+		if not tn.gone and tn.truck == v:
+			tn.truck = null
+			tn.truck_t = 4.0
+		world.despawn(v)
+		return
 	var f := v.dest_fob
 	if f and not f.gone:
 		f.truck = null
@@ -527,6 +657,16 @@ func truck_home(v: Vehicle) -> void:
 
 
 func truck_lost(v: Vehicle) -> void:
+	if v.src_town:
+		var tn := v.src_town
+		if not tn.gone and tn.truck == v:
+			tn.truck = null
+			tn.truck_t = 20.0
+			tn.supply_status = "Truck destroyed"
+		world.stat("truck_lost")
+		var lost := (" with %d supply aboard!" % v.cargo) if v.cargo > 0 else "."
+		world.send_msg(v.team, "alert", "The supply truck from %s was destroyed at %s%s" % [tn.sname, Defs.grid_ref(v.position), lost], v.position)
+		return
 	var f := v.dest_fob
 	if f and not f.gone:
 		f.truck = null
@@ -537,6 +677,12 @@ func truck_lost(v: Vehicle) -> void:
 
 
 func truck_blocked(v: Vehicle) -> void:
+	if v.src_town:
+		var tn := v.src_town
+		if not tn.gone and tn.truck == v and tn.supply_status != "Road blocked":
+			tn.supply_status = "Road blocked"
+			world.send_msg(v.team, "alert", "The road from %s is blocked at %s!" % [tn.sname, Defs.grid_ref(v.position)], v.position)
+		return
 	var f := v.dest_fob
 	if f and not f.gone and f.supply_status != "Road blocked":
 		f.supply_status = "Road blocked"
@@ -561,6 +707,38 @@ func capture_fob(f: Structure, new_team: int) -> void:
 	rebuild_network(old)
 	rebuild_network(new_team)
 	_check_victory()
+
+
+## A town or village changes hands: its flag comes down, whatever is in the
+## dump goes with it, and its lorry now drives for the new holder.
+func capture_town(tn: Structure, new_team: int) -> void:
+	var old := tn.team
+	world.stat("town_captured")
+	tn.team = new_team
+	tn.owner_peer = -1 - new_team
+	tn.supply_parent = null
+	tn.road = PackedVector3Array()
+	tn.truck = null
+	tn.truck_t = 6.0
+	tn.supply_status = "OK"
+	tn.net_dirty = true
+	world.push_props(tn, {"team": new_team, "owner": tn.owner_peer})
+	if old >= 0:
+		rebuild_network(old)
+	rebuild_network(new_team)
+	var what := "town" if tn.variant == 1 else "village"
+	var txt := "We hold %s." % tn.sname
+	if int(tn.supply) > 0:
+		txt += " %d supply in its dump is ours." % int(tn.supply)
+	if tn.supply_parent:
+		txt += " Its trucks will run to FOB %s." % tn.supply_parent.sname
+	else:
+		txt += " There's no FOB to truck its supply to."
+	world.send_msg(new_team, "info", txt, tn.zone_c)
+	if old >= 0:
+		world.send_msg(old, "alert", "We lost %s! The enemy holds the %s." % [tn.sname, what], tn.zone_c)
+	else:
+		world.send_msg(1 - new_team, "info", "The enemy has taken the %s of %s." % [what, tn.sname], tn.zone_c)
 
 
 func _check_victory() -> void:
@@ -891,6 +1069,10 @@ func _give_intel(p: Soldier, mode: String) -> void:
 	for f in fl:
 		if f.truck and not f.truck.gone:
 			facts.append(["tr%d" % f.truck.eid, "A supply truck is driving to %s right now. It's at %s." % [f.display_name(), Defs.grid_ref(f.truck.position)], f.truck.position])
+	for tn in towns(about):
+		facts.append(["tn%d" % tn.eid, "We hold %s. There's %d supply in the dump there." % [tn.sname, int(tn.supply)], tn.zone_c])
+		if tn.truck and not tn.truck.gone:
+			facts.append(["tt%d" % tn.truck.eid, "A truck is bringing supply from %s. It's at %s." % [tn.sname, Defs.grid_ref(tn.truck.position)], tn.truck.position])
 	var men := 0
 	var veh := 0
 	for s in world.soldiers:
@@ -967,33 +1149,31 @@ func _threat(dm: PackedFloat32Array, p: Vector3, r: float, w: float) -> void:
 
 # --- fog of war ------------------------------------------------------------------------
 
+var marks := [[], []]  # per side: what its recon flights photographed a moment ago, Vector4(x, z, r, until)
+var sighted := [{}, {}]  # per side: eid -> [entity, where, when] for every enemy it has seen (the intel picture)
+
+
+## A patch of ground a recon flight has just photographed: it goes on showing
+## for a few seconds after the aircraft has gone by.
+func add_mark(team: int, p: Vector3, r: float, linger: float) -> void:
+	if team >= 0 and team <= 1:
+		(marks[team] as Array).append(Vector4(p.x, p.z, r, world.time + linger))
+		world.stat("recon_photo")
+
+
 func _visibility() -> void:
 	var cells := [{}, {}]
-	for s in world.soldiers:
-		if s.team < 0 or s.team > 1:
-			continue
-		if s.life == Soldier.Life.ALIVE:
-			_add_obs(cells[s.team], s.position, s.sight_range())
-		elif s.life == Soldier.Life.DOWNED:
-			_add_obs(cells[s.team], s.position, 22.0)
-	for v in world.vehicles:
-		if v.team >= 0 and v.team <= 1:
-			_add_obs(cells[v.team], v.position, float(v.vdef.get("sight", 50.0)))
+	var own := [[], []]  # each side's buildings (the map's own - houses, trees, walls - see nothing)
 	for st in world.structures:
-		if st.team < 0 or st.team > 1 or not st.built:
-			continue
-		var r := 30.0
-		match st.skind:
-			"fob", "depot":
-				r = 50.0
-			"watchtower":
-				r = 80.0
-			"mines", "wire", "tank_trap", "sandbags", "trench":
-				continue
-		_add_obs(cells[st.team], st.position, r)
-	for d in world.drones:
-		if d.team >= 0 and d.team <= 1:
-			_add_obs(cells[d.team], d.position, 40.0)
+		if st.team == 0 or st.team == 1:
+			own[st.team].append(st)
+	for t in 2:
+		var mk: Array = marks[t]
+		for i in range(mk.size() - 1, -1, -1):
+			if (mk[i] as Vector4).w < world.time:
+				mk.remove_at(i)
+		for e in Vision.eyes(world, t, mk, own[t]):
+			_add_obs(cells[t], Vector3(e.x, 0, e.y), e.z)
 	for s in world.soldiers:
 		_vis_ent(s, cells)
 	for v in world.vehicles:
@@ -1003,6 +1183,34 @@ func _visibility() -> void:
 	for st in world.structures:
 		if st.team >= 0:
 			_vis_ent(st, cells)
+	if OS.has_environment("FL_DEBUG_VISION"):
+		_debug_vision()
+
+
+var _dbg_vis_t := 0.0
+
+
+## FL_DEBUG_VISION: every two seconds, what each side has eyes on.
+func _debug_vision() -> void:
+	if world.time < _dbg_vis_t:
+		return
+	_dbg_vis_t = world.time + 2.0
+	var line := "VISION t=%.0f" % world.time
+	for t in 2:
+		var air := 0
+		for p in world.projectiles:
+			if p.team == t and p.ptype in ["jet", "a10", "ac130"]:
+				air += 1
+		var sees := 0
+		for e in world.soldiers + world.vehicles:
+			if e.team >= 0 and e.team != t and ((e.vis_mask >> t) & 1) == 1 and (not (e is Soldier) or e.life == Soldier.Life.ALIVE):
+				sees += 1
+		var towers := 0
+		for st in world.structures:
+			if st.team == t and st.skind == "watchtower" and st.manned:
+				towers += 1
+		line += "  | %s: eyes=%d aircraft=%d photos=%d manned_towers=%d sees=%d intel=%d" % [Defs.TEAM_NAMES[t], Vision.eyes(world, t, marks[t]).size(), air, (marks[t] as Array).size(), towers, sees, (sighted[t] as Dictionary).size()]
+	print(line)
 
 
 func _add_obs(cells: Dictionary, p: Vector3, r: float) -> void:
@@ -1038,6 +1246,16 @@ func _vis_ent(e: Entity, cells: Array) -> void:
 	if m != e.vis_mask:
 		e.vis_mask = m
 		e.net_dirty = true
+	if e.team >= 0 and (e is Vehicle or (e is Soldier and e.life == Soldier.Life.ALIVE)):
+		# what each side has seen, and where: the intel picture it keeps
+		for t in 2:
+			if t != e.team and ((m >> t) & 1) == 1:
+				var sg = sighted[t].get(e.eid)
+				if sg == null:
+					sighted[t][e.eid] = [e, e.position, world.time]
+				else:
+					sg[1] = e.position
+					sg[2] = world.time
 	if e is Structure:
 		var sm: int = e.seen_mask | m
 		if sm != e.seen_mask:
@@ -1089,8 +1307,29 @@ func team_summary() -> Array:
 				elif e is Structure:
 					kind = "post"
 				intel[id] = [k.pos, kind, age]
+		# and everything the side's eyes have seen - its towers, drones and
+		# recon flights as much as its men - where it was last seen
+		var sg: Dictionary = sighted[t]
+		for id in sg.keys():
+			var it: Array = sg[id]
+			var e2 = it[0]
+			var age2: float = world.time - float(it[2])
+			if not is_instance_valid(e2) or e2.gone or (e2 is Soldier and e2.life != Soldier.Life.ALIVE) or age2 > 90.0:
+				sg.erase(id)
+				continue
+			if age2 < 2.0 or (intel.has(id) and float(intel[id][2]) <= age2):
+				continue  # in sight right now (drawn as itself), or a squad has a fresher report
+			intel[id] = [it[1], String(MapSymbols.vehicle_symbol(e2.vkind)[0]) if e2 is Vehicle else "inf", age2]
 		var il := intel.values()
 		if il.size() > 80:
+			il.sort_custom(func(a, b): return float(a[2]) < float(b[2]))
 			il = il.slice(0, 80)
-		out.append({"supply": sup, "units": used(t), "cap": cap(t), "fobs": fl, "up": upgrades[t].keys(), "sup": (support_ready[t] as Dictionary).duplicate(), "sq": sq, "intel": il})
+		# the towns held: [eid, name, in the dump, status, supply a minute, the FOB its trucks run to]
+		var tl := []
+		for tn in town_list:
+			if tn.team == t:
+				var to: String = tn.supply_parent.sname if tn.supply_parent and not tn.supply_parent.gone else ""
+				tl.append([tn.eid, tn.sname, int(tn.supply), tn.supply_status, int(round(tn.town_rate())), to])
+		out.append({"supply": sup, "units": used(t), "cap": cap(t), "fobs": fl, "up": upgrades[t].keys(), "sup": (support_ready[t] as Dictionary).duplicate(), "sq": sq, "intel": il,
+			"marks": (marks[t] as Array).duplicate(), "towns": tl, "inc": income(t)})
 	return out

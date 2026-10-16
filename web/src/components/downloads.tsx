@@ -3,24 +3,13 @@ import { SectionLabel } from "@/components/battles"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { Skeleton } from "@/components/ui/skeleton"
 import { GITHUB_URL } from "@/lib/config"
-import { type Build, formatSize, type Platform, PLATFORM_NAMES } from "@/lib/releases"
-
-type Props = {
-  stable: Build | null
-  nightly: Build | null
-  loading: boolean
-  error: Error | null
-  platform: Platform
-}
+import { type Build, formatSize, latest, type Platform, PLATFORM_NAMES } from "@/lib/releases"
 
 const ICONS = { windows: WindowsLogoIcon, linux: LinuxLogoIcon }
 const PLATFORMS: Platform[] = ["windows", "linux"]
 
-export function Downloads({ stable, nightly, loading, error, platform }: Props) {
-  // the newest tagged release if there is one, else the latest build of main
-  const build = stable ?? nightly
+export function Downloads({ platform }: { platform: Platform }) {
   return (
     <section id="download" className="scroll-mt-16 border-y bg-card/40">
       <div className="mx-auto max-w-6xl px-4 py-24 sm:px-6">
@@ -35,24 +24,13 @@ export function Downloads({ stable, nightly, loading, error, platform }: Props) 
 
         <div className="mt-8 grid gap-4 md:grid-cols-2">
           {PLATFORMS.map((p) => (
-            <PlatformCard key={p} platform={p} build={build} loading={loading} primary={p === platform} />
+            <PlatformCard key={p} platform={p} build={latest} primary={p === platform} />
           ))}
         </div>
 
-        {!loading && !build && (
-          <p className="mt-4 text-sm text-muted-foreground">
-            {error ? "Couldn't reach GitHub to find the latest build. " : "No builds have been published yet. "}
-            You can always{" "}
-            <a href={`${GITHUB_URL}/releases`} className="text-foreground underline underline-offset-4">
-              check the releases page
-            </a>{" "}
-            or run it from source: open <code className="font-mono text-xs">project.godot</code> in Godot 4.7 and press F5.
-          </p>
-        )}
-
         <div className="mt-6 flex flex-wrap gap-x-6 gap-y-2 text-sm text-muted-foreground">
+          <ExtLink href={latest.url}>What's new in {latest.tag}</ExtLink>
           <ExtLink href={`${GITHUB_URL}/releases`}>All releases</ExtLink>
-          {stable && nightly && <ExtLink href={nightly.url}>Latest build of main (nightly)</ExtLink>}
           <ExtLink href={`${GITHUB_URL}/actions/workflows/release.yml`}>Build artifacts (needs a GitHub account)</ExtLink>
           <ExtLink href={`${GITHUB_URL}#quick-start`}>Run from source</ExtLink>
         </div>
@@ -61,9 +39,9 @@ export function Downloads({ stable, nightly, loading, error, platform }: Props) 
   )
 }
 
-function PlatformCard({ platform, build, loading, primary }: { platform: Platform; build: Build | null; loading: boolean; primary: boolean }) {
+function PlatformCard({ platform, build, primary }: { platform: Platform; build: Build; primary: boolean }) {
   const Icon = ICONS[platform]
-  const asset = build?.assets[platform]
+  const asset = build.assets[platform]
   return (
     <Card className="gap-4 text-sm">
       <CardHeader>
@@ -83,34 +61,21 @@ function PlatformCard({ platform, build, loading, primary }: { platform: Platfor
         </CardDescription>
       </CardHeader>
       <CardContent>
-        {loading ? (
-          <Skeleton className="h-4 w-48" />
-        ) : asset && build ? (
-          <p className="text-muted-foreground">
-            <span className="text-foreground">{build.prerelease ? "Latest build of main" : build.name}</span>
-            {" · "}
-            {new Date(build.published).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" })}
-            {" · "}
-            {formatSize(asset.size)}
-          </p>
-        ) : (
-          <p className="text-muted-foreground">Not published yet.</p>
-        )}
+        <p className="text-muted-foreground">
+          <span className="text-foreground">{build.name}</span>
+          {" · "}
+          {new Date(build.published).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" })}
+          {" · "}
+          {formatSize(asset.size)}
+        </p>
       </CardContent>
       <CardFooter className="mt-auto bg-transparent">
-        {asset ? (
-          <Button asChild variant={primary ? "default" : "outline"} className="font-semibold">
-            <a href={asset.url}>
-              <DownloadSimpleIcon weight="bold" />
-              Download for {PLATFORM_NAMES[platform]}
-            </a>
-          </Button>
-        ) : (
-          <Button disabled variant="outline" className="font-semibold">
+        <Button asChild variant={primary ? "default" : "outline"} className="font-semibold">
+          <a href={asset.url}>
             <DownloadSimpleIcon weight="bold" />
             Download for {PLATFORM_NAMES[platform]}
-          </Button>
-        )}
+          </a>
+        </Button>
       </CardFooter>
     </Card>
   )

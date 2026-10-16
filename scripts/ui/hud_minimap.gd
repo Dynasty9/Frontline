@@ -1,12 +1,16 @@
 class_name HudMinimap
 extends Control
 ## The minimap. The ground, water, roads, woods and buildings are baked into a
-## texture; over it go every unit you can see, where men are fighting, the
-## objectives and alerts, and the camera's view as a lit wedge from where it
-## stands. North is up, or (a setting) the map turns so that the way the
-## camera faces is up, as in the view.
+## texture; over it go the fog of war (darker where your side can't see), every
+## unit you can see, where the enemy was last seen, where men are fighting, the
+## objectives and alerts, aircraft overhead, and the camera's view as a lit
+## wedge from where it stands. North is up, or (a setting) the map turns so
+## that the way the camera faces is up, as in the view.
 ## Left-click or drag: look there. Right-click: send the selection there.
-## Wheel: zoom the camera. The needle in the corner points north as the camera
+## Alt+click: ping the spot for your side; Alt+right-drag: draw on the map for
+## them (a route, a line to hold). Wheel: zoom the camera. The other
+## commanders on your side show in their colours: their views, cursors and
+## selections. The needle in the corner points north as the camera
 ## sees it; click it to turn back to the starting heading (Backspace).
 
 const N := 512  # the baked map's pixels across (2 m each)
@@ -22,6 +26,8 @@ const C_WALL := Color(0.64, 0.62, 0.56)
 const C_RUBBLE := Color(0.4, 0.38, 0.34)
 const C_WRECK := Color(0.28, 0.26, 0.24)
 const C_FIGHT := Color(1.0, 0.6, 0.24)
+const C_INTEL := Color(1.0, 0.42, 0.36)
+const C_RECON := Color(0.5, 0.88, 1.0)
 
 var hud: Hud
 var _drag := false
@@ -34,6 +40,8 @@ var _sig_t := 0.0
 var _hover := Vector2(-1, -1)
 var _xf := Transform2D.IDENTITY  # map pixels -> the control (turning with the camera when set to)
 var _fight := {}  # grid cell -> where men are firing in it, rebuilt each redraw
+var sketch := PackedVector3Array()  # a line being drawn on the minimap (Alt+right-drag)
+var _sk_last := Vector2.ZERO
 
 
 func _ready() -> void:
@@ -56,7 +64,12 @@ func _gui_input(ev: InputEvent) -> void:
 	var w := hud.world
 	if ev is InputEventMouseButton:
 		var mb := ev as InputEventMouseButton
-		if mb.button_index == MOUSE_BUTTON_LEFT:
+		if mb.button_index == MOUSE_BUTTON_LEFT and mb.pressed and mb.alt_pressed and _on_map(mb.position) and w.coop:
+			# Alt+click pings the spot for your side (an enemy in sight there: "enemy spotted")
+			var gp := _to_world(mb.position)
+			var e := _enemy_near(gp, 7.0 * MapDims.SIZE / maxf(1.0, size.x))
+			w.coop.ping("enemy" if e else "look", Defs.flat(e.position) if e else gp, e.eid if e else 0)
+		elif mb.button_index == MOUSE_BUTTON_LEFT:
 			if mb.pressed and _on_compass(mb.position):
 				if w.cam:
 					w.cam.reset_view()
@@ -65,6 +78,14 @@ func _gui_input(ev: InputEvent) -> void:
 				_drag = mb.pressed
 				if mb.pressed:
 					_look(mb.position)
+		elif mb.button_index == MOUSE_BUTTON_RIGHT and mb.pressed and mb.alt_pressed and _on_map(mb.position):
+			# Alt+right-drag draws on the map for your side
+			sketch = PackedVector3Array([_to_world(mb.position)])
+			_sk_last = mb.position
+		elif mb.button_index == MOUSE_BUTTON_RIGHT and not mb.pressed and not sketch.is_empty():
+			if sketch.size() >= 2 and w.coop:
+				w.coop.sketch(PlayerInput.thin_line(sketch, CoCommand.SKETCH_PTS))
+			sketch = PackedVector3Array()
 		elif mb.button_index == MOUSE_BUTTON_RIGHT and mb.pressed:
 			if _on_map(mb.position):
 				w.input.order_at(_to_world(mb.position))
@@ -74,6 +95,9 @@ func _gui_input(ev: InputEvent) -> void:
 	elif ev is InputEventMouseMotion:
 		var mm := ev as InputEventMouseMotion
 		_hover = mm.position
+		if not sketch.is_empty() and mm.position.distance_to(_sk_last) > 3.0 and sketch.size() < 256:
+			sketch.append(_to_world(mm.position))
+			_sk_last = mm.position
 		tooltip_text = "Compass: north as the camera sees it.\nClick (or Backspace) to turn back to the starting heading." if _on_compass(mm.position) else ""
 		if _drag:
 			_look(mm.position)
@@ -84,11 +108,30 @@ func _notification(what: int) -> void:
 		_hover = Vector2(-1, -1)
 
 
+## The enemy in sight nearest a spot, within r metres (null if none).
+func _enemy_near(p: Vector3, r: float) -> Entity:
+	var w := hud.world
+	var best: Entity = null
+	var bd := r
+	for arr in [w.soldiers, w.vehicles]:
+		for e in arr:
+			if e.gone or not e.visible or not e.is_hostile_to(w.local_team) or not e.seen_by_local():
+				continue
+			if e is Soldier and (e.life == Soldier.Life.DEAD or e.life == Soldier.Life.HIDDEN):
+				continue
+			var d := Defs.flat(e.position - p).length()
+			if d < bd:
+				bd = d
+				best = e
+	return best
+
+
 func _look(p: Vector2) -> void:
 	var w := hud.world
 	if w.cam == null:
 		return
 	w.cam.stop_follow()
+	w.cam.stop_shadow()
 	w.cam.focus(_to_world(p))
 	if w.director:
 		w.director.active = false
@@ -326,14 +369,21 @@ func _draw() -> void:
 	if _static:
 		draw_set_transform_matrix(_xf)
 		draw_texture_rect(_static, Rect2(Vector2.ZERO, size), false)
+		if w.fog and w.fog.active:
+			# the fog of war: darker wherever your side can't see right now
+			draw_texture_rect_region(w.fog.dark_tex, Rect2(Vector2.ZERO, size), w.fog.map_region(), Color(1, 1, 1, 0.55))
 		draw_set_transform_matrix(Transform2D.IDENTITY)
 	_draw_grid()
 	var sc := clampf(size.x / 240.0, 0.85, 1.35)
 	_draw_objectives(w)
 	_draw_structures(w, sc)
+	if hud.map_layer("intel"):
+		_draw_intel(w, sc)
 	_draw_fighting(w, sc)
 	_draw_units(w, sc)
+	_draw_aircraft(w, sc)
 	_draw_pings(w)
+	_draw_coop(w, sc)
 	_draw_view(w)
 	_draw_compass(w)
 	_draw_hover()
@@ -376,10 +426,16 @@ func _draw_objectives(w: World) -> void:
 		HudObjectives.diamond(self, op, 7.0, String(o[0]), UiKit.ACCENT, 1.0)
 
 
-## What the sides have built: FOBs and depots as squares, the rest as small marks.
+## What the sides have built: FOBs and depots as squares, the rest as small
+## marks; and the towns, whoever holds them.
 func _draw_structures(w: World, sc: float) -> void:
 	for st in w.structures:
-		if not st.visible or st.team < 0 or st.gone:
+		if st.gone:
+			continue
+		if st.skind == "town":
+			_draw_town(st, sc)
+			continue
+		if not st.visible or st.team < 0:
 			continue
 		var p := _pt(st.position)
 		var c: Color = Defs.TEAM_COLORS[st.team]
@@ -391,6 +447,26 @@ func _draw_structures(w: World, sc: float) -> void:
 				draw_rect(Rect2(p - Vector2(hs * 0.4, hs * 0.4), Vector2(hs * 0.8, hs * 0.8)), Color(0, 0, 0, 0.55))
 		else:
 			draw_rect(Rect2(p - Vector2(1.5, 1.5), Vector2(3, 3)), Color(c.r, c.g, c.b, 0.7).darkened(0.2))
+
+
+## A town or village: its ground as a faint ring in its holder's colour (the
+## town's own while nobody holds it), the flag on its dump, and how far
+## whoever is taking it has got, round the ring.
+func _draw_town(st: Structure, sc: float) -> void:
+	var c := _pt(st.zone_c if st.zone_c != Vector3.INF else st.position)
+	var r := maxf(3.0, st.zone_r * size.x / MapDims.SIZE)
+	var col: Color = Defs.TEAM_COLORS[st.team] if st.team >= 0 else Structure.C_TOWN_FLAG
+	draw_circle(c, r, Color(col.r, col.g, col.b, 0.1))
+	draw_arc(c, r, 0, TAU, 28, Color(col.r, col.g, col.b, 0.55), 1.0, true)
+	if st.cap_team >= 0 and st.cap_prog > 0.0:
+		draw_arc(c, r + 1.6, -PI * 0.5, -PI * 0.5 + TAU * st.cap_prog / 100.0, 28, Defs.TEAM_COLORS[st.cap_team], 2.2, true)
+	var p := _pt(st.position)
+	var h := (8.0 if st.variant == 1 else 6.5) * sc
+	draw_line(p + Vector2(0, h * 0.35), p - Vector2(0, h), Color(0, 0, 0, 0.8), 2.6)
+	draw_line(p + Vector2(0, h * 0.35), p - Vector2(0, h), Color(0.92, 0.92, 0.88), 1.2)
+	var fr := Rect2(p + Vector2(0.6, -h), Vector2(h * 0.85, h * 0.55))
+	draw_rect(fr.grow(0.8), Color(0, 0, 0, 0.8))
+	draw_rect(fr, col)
 
 
 ## Where men are firing: a ring pulses over each patch of the fight, so a
@@ -447,6 +523,50 @@ func _draw_units(w: World, sc: float) -> void:
 			draw_circle(_pt(d.position), 2.0, Color(1, 1, 0.3))
 
 
+## Where the enemy was last seen (by your men, towers, drones or a recon
+## flight), fading with age: a hollow red diamond, larger for vehicles.
+func _draw_intel(w: World, sc: float) -> void:
+	var t := w.view_team
+	if t < 0 or t >= w.team_info.size():
+		return
+	for it in (w.team_info[t] as Dictionary).get("intel", []):
+		var age := float(it[2])
+		if age < 3.0:
+			continue  # in sight: drawn as a unit
+		var a := clampf(1.0 - age / 90.0, 0.25, 0.85)
+		var p := _pt(it[0])
+		var hs := (2.6 if String(it[1]) == "inf" else 3.6) * sc
+		var d := PackedVector2Array([p + Vector2(0, -hs), p + Vector2(hs, 0), p + Vector2(0, hs), p + Vector2(-hs, 0), p + Vector2(0, -hs)])
+		draw_polyline(d, Color(0, 0, 0, 0.55 * a), 2.6, true)
+		draw_polyline(d, Color(C_INTEL.r, C_INTEL.g, C_INTEL.b, a), 1.2, true)
+
+
+## Aircraft over the battlefield (you hear and see them, whoever's they are): a
+## small arrowhead in the side's colour along its heading, and round your own
+## the ground its camera or crew can see.
+func _draw_aircraft(w: World, sc: float) -> void:
+	for p in w.projectiles:
+		if p.gone or not p.ptype in ["jet", "a10", "ac130"] or not Defs.in_map(p.position, -60.0):
+			continue
+		var pp := _pt(p.position)
+		var c: Color = Defs.TEAM_COLORS[p.team].lightened(0.3) if p.team >= 0 else Color(0.9, 0.9, 0.85)
+		if p.team >= 0 and p.team == w.view_team:
+			var eyes := PackedVector3Array()
+			p.add_eyes(eyes)
+			for e in eyes:
+				draw_arc(_pt(Vector3(e.x, 0, e.y)), e.z * size.x / MapDims.SIZE, 0, TAU, 28, Color(C_RECON.r, C_RECON.g, C_RECON.b, 0.45), 1.0, true)
+		var fw3: Vector3 = p.heading()
+		var fw := (_pt(p.position + fw3) - pp).normalized() if fw3.length() > 0.1 else Vector2(0, -1)
+		var sd := Vector2(-fw.y, fw.x)
+		var s := 4.5 * sc
+		var tri := PackedVector2Array([pp + fw * s, pp - fw * s * 0.6 + sd * s * 0.75, pp - fw * s * 0.25, pp - fw * s * 0.6 - sd * s * 0.75])
+		MapSymbols.poly(self, tri, Color(0, 0, 0, 0.6))
+		var tri2 := PackedVector2Array()
+		for q in tri:
+			tri2.append(pp + (q - pp) * 0.72)
+		MapSymbols.poly(self, tri2, c)
+
+
 ## Alerts and intelligence reports, pulsing until they expire.
 func _draw_pings(w: World) -> void:
 	var now := w.time
@@ -456,6 +576,87 @@ func _draw_pings(w: World) -> void:
 		var pp := _pt(pg[0])
 		var r := 4.0 + fmod(now * 2.0, 1.0) * 6.0
 		draw_arc(pp, r, 0, TAU, 16, Color(0.5, 0.9, 1.0) if pg[2] == "intel" else Color(1, 0.5, 0.3), 1.5, true)
+
+
+## The other commanders on our side: each one's view as a wedge in his colour
+## (yours is the white one) with his initials at his camera, his cursor, a ring
+## round each unit he has selected - and everyone's pings.
+func _draw_coop(w: World, sc: float) -> void:
+	var co := w.coop
+	if co == null:
+		return
+	if bool(Settings.get_v("coop_show")):
+		var groups: Dictionary = hud.overlay._groups
+		for p in co.list():
+			var col := co.color(p.peer)
+			var a := 1.0 if p.idle < 45 else 0.5
+			if p.s_quad.size() == 4:
+				var pts := PackedVector2Array()
+				for q in p.s_quad:
+					pts.append(_pt(q))
+				var eye := _pt(p.eye())
+				draw_line(eye, pts[3], Color(col.r, col.g, col.b, 0.32 * a), 1.0, true)
+				draw_line(eye, pts[2], Color(col.r, col.g, col.b, 0.32 * a), 1.0, true)
+				if absf((pts[2] - pts[0]).cross(pts[3] - pts[1])) > 8.0:
+					draw_colored_polygon(pts, Color(col.r, col.g, col.b, 0.09 * a))
+				pts.append(pts[0])
+				draw_polyline(pts, Color(col.r, col.g, col.b, 0.9 * a), 1.4, true)
+				draw_circle(eye, 5.5 * sc, Color(0, 0, 0, 0.6 * a))
+				draw_circle(eye, 4.6 * sc, Color(col.r, col.g, col.b, a))
+				var ini := co.initials(p.peer).substr(0, 1)
+				var fs := 8 if sc < 1.1 else 9
+				draw_string(UiKit.font(700), eye + Vector2(-UiKit.text_width(ini, fs, 700) * 0.5, fs * 0.36), ini, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, HudCoop.INK)
+			for sid in p.sq:
+				var g: Dictionary = groups.get(sid, {})
+				if not g.is_empty() and int(g["n"]) > 0:
+					draw_arc(_pt(g["c"]), 4.8 * sc, 0.0, TAU, 16, Color(col.r, col.g, col.b, 0.95), 1.4, true)
+			for id in p.veh:
+				var v = w.entity(id)
+				if v is Vehicle and v.visible:
+					draw_arc(_pt(v.position), 8.5 * sc, 0.0, TAU, 20, Color(col.r, col.g, col.b, 0.95), 1.4, true)
+			if p.cur_on:
+				var cp := _pt(p.s_cur)
+				var arrow := PackedVector2Array([cp, cp + Vector2(0, 9) * sc, cp + Vector2(2.5, 7) * sc, cp + Vector2(6.5, 6.5) * sc])
+				MapSymbols.poly(self, arrow, Color(col.r, col.g, col.b, a))
+				arrow.append(arrow[0])
+				draw_polyline(arrow, Color(0, 0, 0, 0.7 * a), 1.0, true)
+	var now := Time.get_ticks_msec()
+	for pg in co.pings:
+		var age := (now - int(pg.born)) / 1000.0
+		var fade := clampf((float(pg.life) - age) / 1.5, 0.0, 1.0)
+		var pp := _pt(co.ping_pos(pg))
+		var col: Color = co.color(pg.peer)
+		var mark: Color = CoCommand.PING_COLORS.get(pg.kind, Color(0.96, 0.97, 0.94))
+		var ph := fmod(age * 1.6, 1.0)
+		draw_arc(pp, (3.0 + ph * 8.0) * sc, 0.0, TAU, 18, Color(col.r, col.g, col.b, (1.0 - ph) * fade), 1.8, true)
+		draw_circle(pp, 3.4 * sc, Color(0, 0, 0, 0.7 * fade))
+		draw_circle(pp, 2.5 * sc, Color(mark.r, mark.g, mark.b, fade))
+	# lines drawn for the side, and the one being drawn now
+	for sk in co.sketches:
+		var sage := (now - int(sk.born)) / 1000.0
+		var grow := 1.0 if sk.peer == w.local_peer else clampf(sage / 0.6, 0.0, 1.0)
+		_sketch_line(sk.pts, co.color(sk.peer), clampf((CoCommand.SKETCH_LIFE - sage) / 2.5, 0.0, 1.0), grow)
+	if sketch.size() >= 2:
+		_sketch_line(sketch, co.color(w.local_peer), 0.9, 1.0)
+	if w.input and w.input.sketching:
+		_sketch_line(w.input.sketch_pts, co.color(w.local_peer), 0.9, 1.0)
+
+
+## A drawn line on the map, with an arrowhead where it ends.
+func _sketch_line(pts: PackedVector3Array, col: Color, a: float, grow: float) -> void:
+	if pts.size() < 2 or a <= 0.01:
+		return
+	var sp := PackedVector2Array()
+	for i in mini(pts.size(), maxi(2, ceili(pts.size() * grow))):
+		sp.append(_pt(pts[i]))
+	draw_polyline(sp, Color(0, 0, 0, 0.6 * a), 3.6, true)
+	draw_polyline(sp, Color(col.r, col.g, col.b, a), 1.9, true)
+	var tip := sp[sp.size() - 1]
+	var back := sp[maxi(0, sp.size() - 3)]
+	if grow >= 1.0 and tip.distance_to(back) > 2.0:
+		var dv := (tip - back).normalized()
+		var nv := Vector2(-dv.y, dv.x)
+		MapSymbols.poly(self, PackedVector2Array([tip + dv * 4.5, tip - dv * 2.5 + nv * 3.8, tip - dv * 2.5 - nv * 3.8]), Color(col.r, col.g, col.b, a))
 
 
 ## What the camera sees: the patch of ground on screen, lit, and faint lines

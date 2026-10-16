@@ -6,17 +6,16 @@ import { useInView } from "@/hooks/use-in-view"
 import { useReducedMotion } from "@/hooks/use-reduced-motion"
 import { FIND_MATCH_LINK } from "@/lib/config"
 import { media, saveData } from "@/lib/media"
-import { type Build, type Platform, PLATFORM_NAMES } from "@/lib/releases"
+import { latest, type Platform, PLATFORM_NAMES } from "@/lib/releases"
 
 type Props = {
-  build: Build | null
   platform: Platform
   onLaunch: () => void
 }
 
 /** The last word: footage behind a call to arms (the hero's own clip, which the browser already has). */
-export function Finale({ build, platform, onLaunch }: Props) {
-  const asset = build?.assets[platform]
+export function Finale({ platform, onLaunch }: Props) {
+  const asset = latest.assets[platform]
   const [ref, inView] = useInView<HTMLElement>({ margin: "200px" })
   const video = useRef<HTMLVideoElement>(null)
   const reduced = useReducedMotion()
@@ -57,7 +56,7 @@ export function Finale({ build, platform, onLaunch }: Props) {
         </p>
         <div className="mt-9 flex flex-wrap justify-center gap-3">
           <Button size="lg" asChild className="shine h-12 px-7 text-sm font-bold tracking-wider uppercase">
-            <a href={asset?.url ?? "#download"}>
+            <a href={asset.url}>
               <DownloadSimpleIcon weight="bold" />
               Download for {PLATFORM_NAMES[platform]}
             </a>

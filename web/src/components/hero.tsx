@@ -9,11 +9,10 @@ import { useReducedMotion } from "@/hooks/use-reduced-motion"
 import { FIND_MATCH_LINK } from "@/lib/config"
 import type { Health } from "@/lib/matchmaker"
 import { media, saveData } from "@/lib/media"
-import { type Build, type Platform, PLATFORM_NAMES } from "@/lib/releases"
+import { latest, type Platform, PLATFORM_NAMES } from "@/lib/releases"
 
 type Props = {
   health: Health | undefined
-  build: Build | null
   platform: Platform
   onLaunch: () => void
   onWatch: () => void
@@ -22,8 +21,8 @@ type Props = {
 /** What you command, typed into the headline one after another. */
 const COMMANDS = ["squads", "armour", "gunships", "artillery", "patrol boats", "A-10s"]
 
-export function Hero({ health, build, platform, onLaunch, onWatch }: Props) {
-  const asset = build?.assets[platform]
+export function Hero({ health, platform, onLaunch, onWatch }: Props) {
+  const asset = latest.assets[platform]
   const video = useRef<HTMLVideoElement>(null)
   const [ref, inView] = useInView<HTMLElement>()
   const reduced = useReducedMotion()
@@ -86,7 +85,7 @@ export function Hero({ health, build, platform, onLaunch, onWatch }: Props) {
 
         <div className="mt-9 flex flex-wrap items-center gap-3">
           <Button size="lg" asChild className="shine h-12 px-6 text-sm font-bold tracking-wider uppercase">
-            <a href={asset?.url ?? "#download"}>
+            <a href={asset.url}>
               <DownloadSimpleIcon weight="bold" />
               Download for {PLATFORM_NAMES[platform]}
             </a>
@@ -116,7 +115,10 @@ export function Hero({ health, build, platform, onLaunch, onWatch }: Props) {
         </div>
 
         <p className="mt-4 text-xs text-muted-foreground">
-          Free and open source · Windows and Linux{build && ` · ${build.prerelease ? "Latest build" : build.name}`}
+          Free and open source · {latest.name} ·{" "}
+          <a href="#download" className="underline-offset-4 hover:text-foreground hover:underline">
+            other platforms
+          </a>
         </p>
         <LiveLine health={health} />
       </div>

@@ -40,6 +40,7 @@ var phys: PhysicsFx  # ragdolls, thrown chunks, tossed props (clients only)
 var cam: RtsCamera
 var input: PlayerInput
 var hud: Hud
+var coop: CoCommand  # what the other commanders on our side are doing (every peer: it relays too)
 var squads := {}
 var next_sid := 1
 var commanders: Array = []
@@ -61,6 +62,7 @@ var winner := -1
 var rng := RandomNumberGenerator.new()
 var focused := false
 var director: Director
+var fog: FogView  # the fog of war drawn over the ground and the minimap (clients and a host with a view)
 var atmo: Atmosphere
 var view_team := -1  # whose fog of war we render (spectators can switch)
 
@@ -92,6 +94,10 @@ func _ready() -> void:
 	fx.name = "Fx"
 	fx.world = self
 	add_child(fx)
+	coop = CoCommand.new()
+	coop.name = "CoCommand"
+	coop.world = self
+	add_child(coop)
 	if has_view:
 		phys = PhysicsFx.new(self)
 		phys.name = "Phys"
@@ -132,6 +138,10 @@ func _ready() -> void:
 		director.name = "Director"
 		director.world = self
 		add_child(director)
+		fog = FogView.new()
+		fog.name = "FogView"
+		fog.world = self
+		add_child(fog)
 		input = PlayerInput.new()
 		input.name = "Input"
 		input.world = self
@@ -391,9 +401,10 @@ func placement_error(team: int, kind: String, pos: Vector3, yaw: float) -> Strin
 	if kind == "dock":
 		pass  # (see above: the shore, our half)
 	elif kind == "fob":
+		# a town you hold is a foothold too: a FOB can go up near it
 		var near_own := false
 		for st in structures:
-			if st.skind != "fob" and st.skind != "depot":
+			if st.skind != "fob" and st.skind != "depot" and st.skind != "town":
 				continue
 			var d := Defs.flat(st.position - pos).length()
 			if st.skind == "fob" and d < Defs.FOB_MIN_SPACING:
@@ -401,7 +412,7 @@ func placement_error(team: int, kind: String, pos: Vector3, yaw: float) -> Strin
 			if st.team == team and st.built and d < Defs.FOB_EXPAND_RADIUS:
 				near_own = true
 		if not near_own:
-			return "A new FOB must be within %d m of one of yours." % int(Defs.FOB_EXPAND_RADIUS)
+			return "A new FOB must be within %d m of one of yours, or of a town you hold." % int(Defs.FOB_EXPAND_RADIUS)
 	else:
 		var ok := false
 		for st in structures:
@@ -1258,15 +1269,22 @@ func execute_cmd(peer: int, d: Dictionary) -> void:
 				if f:
 					v.order_move(f.position + Vector3(rng.randf_range(-8, 8), 0, rng.randf_range(-8, 8)))
 		"build":
-			rules.try_place(peer, team, String(d.kind), d.pos, float(d.get("yaw", 0.0)), sqs)
+			if rules.try_place(peer, team, String(d.kind), d.pos, float(d.get("yaw", 0.0)), sqs) != null:
+				coop.deed(peer, "Placed %s" % String(Defs.BUILDINGS[String(d.kind)].name), d.pos)
 		"build_many":
 			var first := true
+			var laid := 0
+			var at := Vector3.ZERO
 			for it in d.get("items", []):
 				var sz := Vector3.ZERO
 				if it.size() > 2 and Defs.BUILDINGS.has(String(d.kind)):
 					sz = Vector3(clampf(float(it[2]), 1.5, 8.0), 3.0, (Defs.BUILDINGS[String(d.kind)].size as Vector2).y)
 				if rules.try_place(peer, team, String(d.kind), it[0], float(it[1]), sqs, first, sz) != null:
 					first = false
+					laid += 1
+					at = it[0]
+			if laid > 0:
+				coop.deed(peer, "Laid %d × %s" % [laid, String(Defs.BUILDINGS[String(d.kind)].name)], at)
 		"fire_mission":
 			var kind := String(d.get("kind", "he"))
 			var pit = entities.get(int(d.get("building", 0)))
@@ -1310,16 +1328,22 @@ func execute_cmd(peer: int, d: Dictionary) -> void:
 			for sq in sqs:
 				sq.order_throw(d.pos, String(d.get("kind", "frag")))
 		"support":
-			rules.call_support(peer, team, String(d.get("kind", "")), d.pos, d.get("dir", Vector3.ZERO))
+			if rules.call_support(peer, team, String(d.get("kind", "")), d.pos, d.get("dir", Vector3.ZERO)):
+				coop.deed(peer, "Called in %s" % String(Defs.SUPPORT[String(d.kind)].name), d.pos, true)
 		"train", "research", "cancel", "rally", "tunnel_exit":
 			var st = entities.get(int(d.get("building", 0)))
 			if not (st is Structure) or st.team != team:
 				return
+			var queued: int = st.queue.size()
 			match t:
 				"train":
 					st.queue_item(peer, String(d.item))
+					if st.queue.size() > queued:
+						coop.deed(peer, "Training %s at %s" % [Defs.item_name(String(d.item)), st.display_name()], st.position)
 				"research":
 					st.queue_research(peer, String(d.item))
+					if st.queue.size() > queued:
+						coop.deed(peer, "Researching %s" % Defs.item_name(String(d.item)), st.position, true)
 				"cancel":
 					st.cancel_last(peer)
 				"rally":
@@ -1444,10 +1468,11 @@ func debug_stats() -> String:
 	var out := "t=%.0f ents=%d" % [time, entities.size()]
 	for t in 2:
 		var ti: Dictionary = rules.team_summary()[t] if rules else {}
-		out += " | %s %s veh=%d sup=%d fobs=%d" % [Defs.TEAM_NAMES[t], str(c[t]), _count_veh(t), int(ti.get("supply", 0)), (ti.get("fobs", []) as Array).size()]
+		out += " | %s %s veh=%d sup=%d inc=%d/min fobs=%d towns=%d" % [Defs.TEAM_NAMES[t], str(c[t]), _count_veh(t), int(ti.get("supply", 0)), int(ti.get("inc", 0)),
+			(ti.get("fobs", []) as Array).size(), (ti.get("towns", []) as Array).size()]
 		var bl := {}
 		for st in structures:
-			if st.team == t and st.skind != "depot":
+			if st.team == t and st.skind != "depot" and st.skind != "town":
 				var key: String = st.skind + ("" if st.built else "*")
 				bl[key] = int(bl.get(key, 0)) + 1
 		out += " bld=%s" % str(bl)
@@ -1474,6 +1499,8 @@ func debug_stats() -> String:
 		for st in structures:
 			if st.skind == "fob":
 				out += "\n   fob %s t%d truck=%s truck_t=%.1f status=%s road=%d" % [st.sname, st.team, str(st.truck != null), st.truck_t, st.supply_status, st.road.size()]
+		for tn in rules.town_list:
+			out += "\n   town %s t%d stock=%d intact=%.2f cap=%d/%d truck=%s status=%s road=%d" % [tn.sname, tn.team, int(tn.supply), tn.intact, int(tn.cap_prog), tn.cap_team, str(tn.truck != null), tn.supply_status, tn.road.size()]
 	return out
 
 

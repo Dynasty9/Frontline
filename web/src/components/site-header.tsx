@@ -5,32 +5,40 @@ import { Button } from "@/components/ui/button"
 import { GITHUB_URL } from "@/lib/config"
 import { cn } from "@/lib/utils"
 
+// absolute, so they work from the changelog page too
 const NAV = [
-  ["The game", "#intel"],
-  ["Missions", "#missions"],
-  ["Battles", "#battles"],
-  ["Screenshots", "#screenshots"],
+  ["The game", "/#intel"],
+  ["Missions", "/#missions"],
+  ["Battles", "/#battles"],
+  ["What's new", "/changelog/"],
 ] as const
 
-/** Floats clear over the hero's footage, and takes on a backing once the page scrolls under it. */
-export function SiteHeader() {
+/**
+ * The site's header. With `overlay` (the front page) it floats clear over the
+ * hero's footage and takes on a backing once the page scrolls under it;
+ * otherwise it's a solid bar that sits above the page.
+ */
+export function SiteHeader({ overlay = false }: { overlay?: boolean }) {
   const [scrolled, setScrolled] = useState(false)
   useEffect(() => {
+    if (!overlay) return
     const on = () => setScrolled(window.scrollY > 24)
     on()
     window.addEventListener("scroll", on, { passive: true })
     return () => window.removeEventListener("scroll", on)
-  }, [])
+  }, [overlay])
 
+  const clear = overlay && !scrolled
   return (
     <header
       className={cn(
-        "fixed inset-x-0 top-0 z-40 border-b transition-[background-color,border-color,backdrop-filter] duration-300",
-        scrolled ? "border-white/10 bg-background/80 backdrop-blur-md" : "border-transparent bg-transparent",
+        "top-0 z-40 border-b transition-[background-color,border-color,backdrop-filter] duration-300",
+        overlay ? "fixed inset-x-0" : "sticky",
+        clear ? "border-transparent bg-transparent" : "border-white/10 bg-background/80 backdrop-blur-md",
       )}
     >
       <div className="mx-auto flex h-14 max-w-6xl items-center gap-6 px-4 sm:px-6">
-        <a href="#top" className="flex items-center gap-2.5" aria-label="Frontline, back to top">
+        <a href="/" className="flex items-center gap-2.5" aria-label="Frontline home">
           <Emblem className="size-7" />
           <Wordmark className="text-base" />
         </a>
@@ -49,7 +57,7 @@ export function SiteHeader() {
             </a>
           </Button>
           <Button size="sm" asChild className="text-sm font-bold">
-            <a href="#download">
+            <a href="/#download">
               <DownloadSimpleIcon weight="bold" />
               Download
             </a>

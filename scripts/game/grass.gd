@@ -131,7 +131,7 @@ func _make_blocked() -> void:
 	for st in w.structures:
 		if st.gone:
 			continue
-		var big: bool = st.skind in ["floor", "fob", "barracks", "factory", "medic_tent", "research", "depot", "helipad", "bunker", "mortar_pit", "hmg_nest", "mg_nest", "at_post", "tunnel", "house_wall", "tall_wall", "concrete_wall", "wreck", "car", "crates", "bridge"]
+		var big: bool = st.skind in ["floor", "fob", "barracks", "factory", "medic_tent", "research", "depot", "helipad", "bunker", "mortar_pit", "hmg_nest", "mg_nest", "at_post", "tunnel", "house_wall", "tall_wall", "concrete_wall", "wreck", "car", "crates", "bridge", "town"]
 		if not big:
 			continue
 		var h: Vector2 = st.foot + Vector2(0.4, 0.4)
