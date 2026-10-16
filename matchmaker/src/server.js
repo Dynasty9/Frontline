@@ -10,8 +10,11 @@ import http from 'node:http';
 import { pathToFileURL } from 'node:url';
 import { AuthError, createAuth, toUser } from './auth.js';
 import { HEARTBEAT_S, Lobbies, POLL_S } from './lobbies.js';
+import { careerOf, cleanRecord, isUuid, MAX_BODY as MAX_RECORD, RecordError } from './records.js';
 
 const MAX_BODY = 8 * 1024;
+// routes that take more than that: a battle's after-action report
+const BODY_LIMITS = { 'POST /me/battles': MAX_RECORD };
 
 // The latest release of the game, baked in by the release workflow
 // (.github/workflows/release.yml writes it, and the commit redeploys us): the
@@ -65,13 +68,13 @@ function clientIp(req, trustProxy) {
 	return ip.startsWith('::ffff:') ? ip.slice(7) : ip;
 }
 
-async function readJson(req) {
+async function readJson(req, max = MAX_BODY) {
 	if (req.method === 'GET' || req.method === 'HEAD') return {};
 	const chunks = [];
 	let size = 0;
 	for await (const c of req) {
 		size += c.length;
-		if (size > MAX_BODY) throw new HttpError(413, 'Request too large.');
+		if (size > max) throw new HttpError(413, 'Request too large.');
 		chunks.push(c);
 	}
 	if (size === 0) return {};
@@ -245,13 +248,55 @@ export function createServer({ env = process.env, auth = createAuth(env), lobbie
 			const a = await account(req, true);
 			return auth.endBattle(a.token, a, body.result, body.seconds);
 		},
+
+		// the player's service record: every battle they fought signed in
+		'POST /me/battles': async ({ req, ip, body }) => {
+			limits.hit('record', ip, 20);
+			const a = await account(req, true);
+			return auth.saveBattle(a.token, a, cleanRecord(body));
+		},
+
+		// newest first; ?before=<played_at of the last one you have> for more
+		'GET /me/battles': async ({ req, ip, url }) => {
+			limits.hit('records', ip, 60);
+			const a = await account(req, true);
+			const limit = Math.min(50, Math.max(1, Number(url.searchParams.get('limit')) || 20));
+			const before = String(url.searchParams.get('before') || '');
+			if (before && Number.isNaN(Date.parse(before))) throw new HttpError(400, 'before: a time, please.');
+			const rows = await auth.listBattles(a.token, a, { limit: limit + 1, before });
+			return { battles: rows.slice(0, limit), more: rows.length > limit };
+		},
+
+		'GET /me/battles/:id': async ({ req, ip, params }) => {
+			limits.hit('records', ip, 60);
+			const a = await account(req, true);
+			if (!isUuid(params.id)) throw new HttpError(404, 'No such battle.');
+			const b = await auth.getBattle(a.token, a, params.id);
+			if (!b) throw new HttpError(404, 'No such battle.');
+			return { battle: b };
+		},
+
+		// the totals of every battle on the record
+		'GET /me/career': async ({ req, ip }) => {
+			limits.hit('records', ip, 60);
+			const a = await account(req, true);
+			const rows = [];
+			let before = '';
+			for (let page = 0; page < 10; page++) {
+				const got = await auth.listBattles(a.token, a, { limit: 500, before });
+				rows.push(...got);
+				if (got.length < 500) break;
+				before = got[got.length - 1].played_at;
+			}
+			return { career: careerOf(rows) };
+		},
 	};
 
 	// "METHOD /path/:param" -> matcher
 	const table = Object.entries(routes).map(([key, fn]) => {
 		const [method, path] = key.split(' ');
 		const parts = path.split('/');
-		return { method, parts, fn };
+		return { method, parts, fn, max: BODY_LIMITS[key] || MAX_BODY };
 	});
 	const route = (method, pathname) => {
 		const segs = pathname.replace(/\/+$/, '').split('/');
@@ -262,7 +307,7 @@ export function createServer({ env = process.env, auth = createAuth(env), lobbie
 			const params = {};
 			if (!r.parts.every((p, i) => (p.startsWith(':') ? ((params[p.slice(1)] = decodeURIComponent(segs[i])), true) : p === segs[i]))) continue;
 			pathFound = true;
-			if (r.method === method) return { fn: r.fn, params };
+			if (r.method === method) return { fn: r.fn, params, max: r.max };
 		}
 		return pathFound ? 'method' : null;
 	};
@@ -283,10 +328,10 @@ export function createServer({ env = process.env, auth = createAuth(env), lobbie
 			if (r === null) throw new HttpError(404, 'Not found.');
 			if (r === 'method') throw new HttpError(405, 'Method not allowed.');
 			limits.hit('all', ip, 240);
-			const body = await readJson(req);
+			const body = await readJson(req, r.max);
 			send(res, 200, await r.fn({ req, res, ip, url, body, params: r.params }));
 		} catch (e) {
-			if (e instanceof HttpError || e instanceof AuthError) return send(res, e.status, { error: e.message });
+			if (e instanceof HttpError || e instanceof AuthError || e instanceof RecordError) return send(res, e.status, { error: e.message });
 			log(`error on ${req.method} ${req.url}: ${e && e.stack ? e.stack : e}`);
 			send(res, 500, { error: 'Server error.' });
 		}

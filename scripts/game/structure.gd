@@ -769,6 +769,8 @@ func take_damage(amount: float, _source = null) -> void:
 		return
 	if skind == "fob" and wrecked:
 		return
+	if world.battle and team >= 0 and is_player_building():
+		world.battle.structure_hit(self, _source)
 	hp -= amount
 	net_dirty = true
 	if door_shut and amount >= 20.0:
@@ -1311,6 +1313,8 @@ func toss_from(bp: Vector3, bsize: float) -> void:
 ## Destroyed. quiet: it burnt away (the fire's own collapse is the effect, no
 ## blast debris or rubble).
 func _destroyed(quiet := false) -> void:
+	if world.battle and team >= 0 and is_player_building():
+		world.battle.building_destroyed(self)
 	match skind:
 		"fob":
 			wrecked = true
@@ -1548,6 +1552,7 @@ func queue_item(peer: int, item: String) -> void:
 	if not world.rules.spend(team, position, def.cost):
 		world.rules.notify(peer, team, "Not enough supply at a nearby FOB for %s (%d)." % [def.name, def.cost])
 		return
+	world.battle.spent(peer, team, def.cost)
 	queue.append({"item": item, "t": float(def.time), "total": float(def.time), "owner": peer, "cost": def.cost})
 	_queue_changed()
 
@@ -1567,6 +1572,7 @@ func queue_research(peer: int, item: String) -> void:
 	if not world.rules.spend(team, position, def.cost):
 		world.rules.notify(peer, team, "Not enough supply for %s (%d)." % [def.name, def.cost])
 		return
+	world.battle.spent(peer, team, def.cost)
 	queue.append({"item": item, "t": float(def.time), "total": float(def.time), "owner": peer, "cost": def.cost})
 	_queue_changed()
 
@@ -1576,6 +1582,7 @@ func cancel_last(_peer: int) -> void:
 		return
 	var q: Dictionary = queue.pop_back()
 	world.rules.refund(team, position, int(q.cost))
+	world.battle.spent(int(q.owner), team, -int(q.cost))
 	_queue_changed()
 
 
@@ -1615,13 +1622,14 @@ func _prod_tick(dt: float) -> void:
 		return
 	queue.pop_front()
 	_queue_changed()
+	var owner := int(q.owner)
+	if owner > 0 and not Net.players.has(owner):
+		owner = -1 - team
+	world.battle.fielded(owner, team, String(q.item))
 	if skind == "research":
 		world.rules.apply_upgrade(team, String(q.item))
 		return
 	var dest := rally if rally != Vector3.INF else exit_pos() + front_dir() * 8.0
-	var owner := int(q.owner)
-	if owner > 0 and not Net.players.has(owner):
-		owner = -1 - team
 	if Defs.SQUADS.has(q.item):
 		world.rules.spawn_squad(String(q.item), team, owner, exit_pos(), dest)
 	else:
@@ -1714,7 +1722,7 @@ func _mine_tick() -> void:
 		if u is Soldier and u.life != Soldier.Life.ALIVE:
 			continue
 		var at := u is Vehicle
-		world.combat.explode(position + Vector3(0, 0.2, 0), {"dmg": 150.0, "radius": 4.0, "fling": 9.0, "at": 520.0 if at else 0.0, "team": team, "src": null, "track": 0.85, "size": 1.0})
+		world.combat.explode(position + Vector3(0, 0.2, 0), {"dmg": 150.0, "radius": 4.0, "fling": 9.0, "at": 520.0 if at else 0.0, "team": team, "src": null, "by": owner_peer, "track": 0.85, "size": 1.0})
 		world.despawn(self)
 		return
 

@@ -1,26 +1,51 @@
-import { GithubLogoIcon, UserCircleIcon } from "@phosphor-icons/react"
+import { DownloadSimpleIcon, GithubLogoIcon, UserCircleIcon } from "@phosphor-icons/react"
+import { useEffect, useState } from "react"
 import { Emblem, Wordmark } from "@/components/emblem"
 import { InsigniaImg } from "@/components/insignia-img"
 import { Button } from "@/components/ui/button"
 import { useAccount } from "@/lib/account"
 import { GITHUB_URL } from "@/lib/config"
 import { rankName, wornInsignia } from "@/lib/insignia"
+import { cn } from "@/lib/utils"
 
 // absolute, so they work from the changelog page too
 const NAV = [
+  ["The game", "/#intel"],
+  ["Missions", "/#missions"],
   ["Battles", "/#battles"],
   ["Insignia", "/#insignia"],
   ["What's new", "/changelog/"],
-  ["Download", "/#download"],
-  ["Screenshots", "/#screenshots"],
 ] as const
+// on a tablet there isn't room for every link beside the account chip
+const WIDE_ONLY = new Set<string>(["/#insignia"])
 
-// `accounts` is the matchmaker's /health answer: "off" hides signing in.
-export function SiteHeader({ accounts }: { accounts?: string }) {
+/**
+ * The site's header. With `overlay` (the front page) it floats clear over the
+ * hero's footage and takes on a backing once the page scrolls under it;
+ * otherwise it's a solid bar that sits above the page. `accounts` is the
+ * matchmaker's /health answer: "off" hides signing in.
+ */
+export function SiteHeader({ overlay = false, accounts }: { overlay?: boolean; accounts?: string }) {
+  const [scrolled, setScrolled] = useState(false)
+  useEffect(() => {
+    if (!overlay) return
+    const on = () => setScrolled(window.scrollY > 24)
+    on()
+    window.addEventListener("scroll", on, { passive: true })
+    return () => window.removeEventListener("scroll", on)
+  }, [overlay])
+
+  const clear = overlay && !scrolled
   return (
-    <header className="sticky top-0 z-40 border-b bg-background/80 backdrop-blur-md">
-      <div className="mx-auto flex h-14 max-w-6xl items-center gap-3 px-4 sm:gap-6 sm:px-6">
-        <a href="/" className="flex shrink-0 items-center gap-2.5" aria-label="Frontline home">
+    <header
+      className={cn(
+        "top-0 z-40 border-b transition-[background-color,border-color,backdrop-filter] duration-300",
+        overlay ? "fixed inset-x-0" : "sticky",
+        clear ? "border-transparent bg-transparent" : "border-white/10 bg-background/80 backdrop-blur-md"
+      )}
+    >
+      <div className="mx-auto flex h-14 max-w-6xl items-center gap-3 px-4 sm:px-6 lg:gap-6">
+        <a href="/" className="flex items-center gap-2.5" aria-label="Frontline home">
           <Emblem className="size-7" />
           <Wordmark className="text-base" />
         </a>
@@ -31,17 +56,27 @@ export function SiteHeader({ accounts }: { accounts?: string }) {
               variant="ghost"
               size="sm"
               asChild
-              className="text-sm text-muted-foreground hover:text-foreground"
+              className={cn(
+                "text-sm text-muted-foreground hover:text-foreground",
+                WIDE_ONLY.has(href) && "hidden lg:inline-flex"
+              )}
             >
               <a href={href}>{label}</a>
             </Button>
           ))}
         </nav>
         <div className="ml-auto flex items-center gap-2 md:ml-0">
-          <Button variant="outline" size="sm" asChild className="text-sm">
+          {/* on a phone it makes way for the account (the footer links the source too) */}
+          <Button variant="outline" size="sm" asChild className="hidden text-sm sm:inline-flex">
             <a href={GITHUB_URL} target="_blank" rel="noreferrer" aria-label="Frontline on GitHub">
               <GithubLogoIcon weight="fill" />
               <span className="hidden lg:inline">GitHub</span>
+            </a>
+          </Button>
+          <Button size="sm" asChild className="text-sm font-bold">
+            <a href="/#download">
+              <DownloadSimpleIcon weight="bold" />
+              Download
             </a>
           </Button>
           {accounts !== "off" && <AccountChip />}
@@ -57,9 +92,9 @@ function AccountChip() {
   if (!user) {
     return (
       <Button variant="ghost" size="sm" asChild className="text-sm text-muted-foreground hover:text-foreground">
-        <a href="/#insignia">
+        <a href="/#insignia" aria-label="Sign in">
           <UserCircleIcon />
-          Sign in
+          <span className="hidden lg:inline">Sign in</span>
         </a>
       </Button>
     )

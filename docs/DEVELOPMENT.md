@@ -94,10 +94,14 @@ game/vehicles/          the Arma 3 models by family: vm_nato, vm_csat, vm_indep 
                         V-44X Blackfish), vm_attack (A-10C, A-164 Wipeout) and vm_fighter (F/A-181, F-16C)
 game/vehicle_roster.gd  the Arma 3 roster (stats, behaviour, tiers, patterns) and the Field Manual's garage
 game/director.gd        observer camera and time controls
+game/battle_stats.gd    the after-action record: kills, losses, supply and production credited to each commander
+ui/stats_panel.gd       the battle statistics / after-action report (Summary, Commanders, Units, Timeline tabs)
 game/co_command.gd      co-commanders: each player's presence (view, cursor, selection, what's being lined up),
                         pings, sketches and committed actions, relayed by the host to that side only
 ui/hud_coop.gd          co-commanders drawn over the battlefield; ui/hud_coop_roster.gd the Command Net
-ui/hud.gd, menu.gd      interface; ui/settings_panel.gd, ui/perf_overlay.gd, ui/ui_kit.gd (shared style),
+ui/hud.gd, menu.gd      interface; ui/settings_panel.gd, ui/perf_overlay.gd, ui/ui_kit.gd (shared style and the
+                        interface themes: read UiKit.ACCENT and friends when drawing, so a new theme shows at once),
+ui/ui_frame.gd          the panels' tactical frame (a StyleBox: glass fill, hairline, accent corner brackets, glow),
 ui/hud_overlay.gd       everything drawn over the battlefield (labels, speech, symbols, orders, plans, intel)
 ui/hud_orbat.gd, hud_layers.gd, hud_sel_info.gd, hud_minimap.gd, hud_top_info.gd, hud_toasts.gd   HUD widgets
 ui/map_symbols.gd       NATO symbols and status icons
@@ -133,6 +137,15 @@ Pass these after `--` on the command line:
 --host --players=2 / --join=127.0.0.1 --team=0        two-process multiplayer test (--bot-cmds issues real commands,
                                                       --ai-allies adds AI commanders to both sides)
 --quit-on-win                                         stop and print the winner when the game ends
+                                                      (with --stats, or at --quit-after: a REPORT line per commander
+                                                      and side from the after-action record, battle_stats.gd)
+--end-at=SECONDS                                      call the battle at that time, for the side ahead, and drop back
+                                                      to normal speed so the end sequence plays in real time (report tests)
+--stats-tab=summary|commanders|units|timeline|all     open the battle statistics a second before --shot-at (after the
+                                                      end: that tab of the after-action report); "all" moves to the
+                                                      next tab after each of --shots
+--report-at=SECONDS                                   (client) ask the host for the statistics then; a headless client
+                                                      prints a CLIENT report line for each it gets
 --perf-at=480 [--perf-shot=path.png]                  fast-forward, then measure real FPS and server tick cost
 --screenshot=out.png --shot-at=30 --focus=X,Z --zoom=40 [--shots=N --shot-every=0.5]
 --mood=golden --perf=3 --preset=ultra                 lighting, overlay level and graphics preset for screenshots
@@ -166,9 +179,11 @@ Pass these after `--` on the command line:
 --follow=TEAM[,N]                                     keep the camera on that side's Nth squad (tactics review)
 --trace=path.csv                                      log every man twice a second (position, posture, phase) for plotting
 --manual=CATEGORY[,ENTRY[,SIDE]]                      open the field manual on a page (in a battle)
---hud-panel=settings|help|menu|log [--settings-tab=T] open one of the battle's panels (layout checks; add
+--hud-panel=settings|help|menu|log|over [--settings-tab=T]   open one of the battle's panels (over: the end of
+                                                      the battle, won; layout checks; add
                                                       --set=ui_scale:3 for the largest scale the window allows)
 --pan=VX,VZ / --set=key:value,...                     drift the camera (shimmer tests) / override single settings
+                                                      (--set=ui_theme:night for a theme: brass, night, thermal, arctic, dusk)
 --scenario=guns                                       every machine-gun emplacement and trench bay, crewed, with targets
 --scenario=works --static                             every defensive work both sides can build, finished, in two rows (model checks;
                                                       frame them with --focus/--zoom/--pitch, see the layout in mapgen.gd)
@@ -300,16 +315,25 @@ Set `FL_DEBUG_ONLINE=1` to print what STUN saw, who the host punches towards, an
 exercise the hole-punching path, give the joiner the matchmaker's LAN address instead of `127.0.0.1` (it then only
 connects if your router loops traffic back in, "hairpinning", which many don't). `--no-stun` skips STUN for offline
 runs, `--login=EMAIL:PASSWORD` (plus `--signup=CALLSIGN` to create the account) signs in first, `--account=PATH`
-keeps that sign-in out of your real one, and `--menu-panel=browse|account|settings|insignia` opens those panels for
-screenshots. Without `--matchmaker` the game uses the live service on Railway.
-
-Ranks: a battle a signed-in player fights in counts once it's under way (so not `--scenario` setups, nor watching).
-With `--quit-on-win` the game waits for the matchmaker's answer and prints `BATTLE {"gained": ...} rank=... xp=...`;
-`FL_DEBUG_ONLINE=1` also prints the battle clock starting and stopping. XP is timed on the matchmaker's clock, so a
-battle has to run two real minutes to earn any (a `--timescale` run counts the real time, not the game's):
+keeps that sign-in out of your real one, and `--menu-panel=browse|account|record|settings|insignia` opens those panels
+for screenshots (`--open-battle` then opens the newest battle on the service record). Test runs keep no service record
+and earn no rank; `--record-battles` turns both on (with `--pending=PATH` for the battles waiting to go up, out of your
+real ones):
 
 ```
-godot --headless --path . -- --mission=bridgehead --play --autoplay --quit-on-win --port=7943 --no-stun \
+godot --headless --path . -- --scenario=attack --play --end-at=40 --quit-after=55 --record-battles --no-stun \
+  --matchmaker=http://127.0.0.1:8787 --login=me@test.dev:password1 --signup=Me --account=/tmp/a.cfg --pending=/tmp/p.json
+```
+Without `--matchmaker` the game uses the live service on Railway.
+
+Ranks: a battle a signed-in player fights in counts once it's under way (so not `--scenario` setups, nor watching,
+nor a test run without `--record-battles`). With `--quit-on-win` the game waits for the matchmaker's answer and prints
+`BATTLE {"gained": ...} rank=... xp=...`; `FL_DEBUG_ONLINE=1` also prints the battle clock starting and stopping. XP is
+timed on the matchmaker's clock, so a battle has to run two real minutes to earn any (a `--timescale` run counts the
+real time, not the game's):
+
+```
+godot --headless --path . -- --mission=bridgehead --play --autoplay --quit-on-win --record-battles --port=7943 --no-stun \
   --matchmaker=http://127.0.0.1:8787 --account=user://test_account.cfg --login=a@example.test:password1 --signup=Tester
 ```
 

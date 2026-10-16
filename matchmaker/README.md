@@ -58,6 +58,10 @@ JSON in, JSON out. Errors are `{"error": "..."}` with a 4xx/5xx status.
 | `PATCH /me` `{callsign?, icon?}` | Rename, wear an insignia, or both: `{user}`. An unknown insignia is 400, one not unlocked yet 403 (and then nothing changes). |
 | `POST /me/battle` | A battle starts: `{ok: true}`. Starts this player's battle clock; calling it again starts over, and the battle left open earns nothing. |
 | `POST /me/battle/end` `{result: "win" \| "loss" \| "left", seconds}` | The battle ends: `{gained, rank_before, user}`. `seconds` is how long the game says it ran (game time, so pauses don't count). |
+| `POST /me/battles` `{mode, mission, title, side, result, duration, game_version, me, report}` | Put a battle on your service record (up to ~100 KB with its report). `{id, played_at}`. |
+| `GET /me/battles?limit=20&before=TIME` | Your battles, newest first, headline numbers only: `{battles, more}`. `before` is the last one's `played_at`. |
+| `GET /me/battles/:id` | One battle, with your figures (`me`) and its after-action report (`report`). |
+| `GET /me/career` | The totals of every battle on your record: battles, victories, kills, losses, average and best rating, time. |
 
 A user, wherever one is returned (the session's `user`, `/me`, a battle's end), is
 `{id, email, callsign, icon, xp, rank, rank_xp, next_xp, battles, wins}`: the insignia worn (`s01` to begin with),

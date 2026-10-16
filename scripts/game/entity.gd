@@ -19,6 +19,7 @@ var net_pos := Vector3.ZERO
 var net_yaw := 0.0
 var net_init := false
 var selected := false
+var hit_by: Array = []  # (server) the last enemy to hurt it: [owner, team, unit, soldier eid] (see BattleStats)
 
 
 func ekind() -> String:
