@@ -64,6 +64,7 @@ func _draw() -> void:
 		_intel(cam, vs, lt)
 	if hud.map_layer("ranges"):
 		_ranges(cam)
+	_sight_rings()
 	_order_graphics(lt, maxf(a_far, a_units * 0.9))
 	_mark("orders")
 	if not w.mission_info.is_empty() and int(w.mission_info.get("over", 0)) == 0:
@@ -268,8 +269,12 @@ func _shield(c: Vector2, col: Color, lvl: int) -> void:
 		draw_line(c + Vector2(0, -5), c + Vector2(0, 0), Color(1, 1, 1, 0.9), 2.0)
 		draw_circle(c + Vector2(0, 3), 1.2, Color(1, 1, 1, 0.9))
 
+const RECON_COL := Color(0.5, 0.88, 1.0, 0.9)  # what recon will see (sight rings, recon calls)
+
+
 ## Where the support will land: rings, the strafing strip or the bombing line,
-## the gunship's orbit, and an arrow for the run-in direction.
+## the gunship's orbit, and an arrow for the run-in direction; for a recon
+## flight, the ground it will see.
 func _support_preview(inp, mp: Vector2) -> void:
 	var w := hud.world
 	var k: String = inp.ability.get_slice(":", 1)
@@ -290,6 +295,18 @@ func _support_preview(inp, mp: Vector2) -> void:
 			_ground_arrow(gp - dir * 32.0, gp - dir * 20.0, red)
 		"orbit":
 			_ground_ring(gp, float(sd.get("r", 38.0)), red)
+			_ground_ring(gp, Projectile.AC_R * 0.45, Color(1, 1, 1, 0.25))
+		"sweep":
+			# the strip a recon pass's camera sees, along its track and on past
+			# the spot both ways (as much of it as is in front of the camera)
+			var rr := float(sd.get("r", 80.0))
+			var ln := 200.0
+			while ln > 25.0 and (w.cam.cam.is_position_behind(gp - dir * ln) or w.cam.cam.is_position_behind(gp + dir * ln)):
+				ln *= 0.6
+			_ground_poly([gp - dir * ln + side * rr, gp + dir * ln + side * rr, gp + dir * ln - side * rr, gp - dir * ln - side * rr], RECON_COL)
+			_ground_arrow(gp - dir * 30.0, gp + dir * 12.0, RECON_COL)
+		"watch":
+			_ground_ring(gp, float(sd.get("r", 80.0)), RECON_COL)
 			_ground_ring(gp, Projectile.AC_R * 0.45, Color(1, 1, 1, 0.25))
 		_:
 			_ground_ring(gp, float(sd.get("r", 14.0)), red)
@@ -1282,6 +1299,29 @@ func _ranges(cam: Camera3D) -> void:
 		if v and not v.gone:
 			var vr := 95.0 if v.vdef.get("cannon", false) else 80.0
 			_dashed_ring(v.position, vr, Color(1.0, 0.85, 0.5), 0.55)
+
+
+## How far your eyes see, in pale blue: a watchtower being placed (and with a
+## lookout up it) or picked out, a drone or a recon vehicle selected - the
+## weapon ranges layer adds every selected vehicle's.
+func _sight_rings() -> void:
+	var w := hud.world
+	var inp = w.input
+	if inp.place_kind == "watchtower" and inp.ghost:
+		var gp: Vector3 = inp.ghost.position
+		gp.y = 0.0
+		_dashed_ring(gp, Vision.TOWER, RECON_COL, 0.6)
+		_dashed_ring(gp, Vision.TOWER_MANNED, RECON_COL, 0.3)
+	if inp.sel_structure != 0:
+		var st = w.entity(inp.sel_structure)
+		if st is Structure and not st.gone and st.built and st.team >= 0 and (st.skind == "watchtower" or hud.map_layer("ranges")):
+			var r := Vision.structure_sight(st)
+			if r > 0.0:
+				_dashed_ring(st.position, r, RECON_COL, 0.6)
+	for id in inp.sel_vehicles:
+		var v = w.entity(id)
+		if v is Vehicle and not v.gone and (v.base() == "uav" or (v.vdef.has("sight") and (hud.map_layer("ranges") or float(v.vdef.sight) >= 75.0))):
+			_dashed_ring(v.position, float(v.vdef.get("sight", Vision.VEHICLE)), RECON_COL, 0.55)
 
 
 ## The map grid the radio uses (A-H across, 1-8 down), drawn on the ground.
