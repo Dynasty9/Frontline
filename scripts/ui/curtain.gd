@@ -95,6 +95,11 @@ func brief(seed: int, what: String, lines: Array, op := "", story := "") -> void
 		_title = op.to_upper()
 	_lines = [["MISSION", what]] + lines
 	_tip = _with_keys(TIPS[r.randi() % TIPS.size()])
+	if OS.has_feature("web"):
+		# the page can't answer while the battlefield is laid out and its
+		# graphics prepared (main.gd _reveal_next_frame): say so before the
+		# browser does
+		_tip = "In a browser the page stops while the battlefield is laid out and its graphics prepared, longest the first time. If the browser says the page isn't responding, choose Wait."
 	_story = story
 	queue_redraw()
 

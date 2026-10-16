@@ -31,8 +31,129 @@ static var _cache := {}
 static func shader() -> Shader:
 	if _shader == null:
 		_shader = Shader.new()
-		_shader.code = SURFACE_SHADER
+		_shader.code = code(SURFACE_SHADER)
 	return _shader
+
+
+# --- per-object values ------------------------------------------------------------------
+
+## The browser build draws with the Compatibility renderer (WebGL 2), where
+## every object's own shader values ("instance uniform": a part's tint, a
+## vehicle's camouflage offset, a smoke column's density) share one uniform
+## buffer with room for 4096 of them. A town, its trees and two armies need
+## far more, and past the limit objects draw with garbage. So there an
+## instance uniform becomes a plain material uniform, and an object given its
+## own values gets a copy of its material carrying them, shared by every
+## object given the same values (they're rounded so near-identical tints share).
+static var per_material := RenderingServer.get_current_rendering_method() == "gl_compatibility"
+static var _derived := {}  # "base id|values" -> WeakRef to the copy of the base material carrying them
+static var _prune_at := 1024
+
+
+## Shader source for this renderer: what every shader with instance uniforms
+## is compiled from (see per_material).
+static func code(src: String) -> String:
+	return src.replace("instance uniform ", "uniform ") if per_material else src
+
+
+## Sets an object's own value of a shader parameter (an instance uniform).
+## Give the object its material first: here the value may go into a copy of it.
+static func set_inst(gi: GeometryInstance3D, param: StringName, value: Variant) -> void:
+	if not per_material:
+		gi.set_instance_shader_parameter(param, value)
+		return
+	var vals: Dictionary = gi.get_meta(&"inst_vals", {})
+	vals[param] = _round(value)
+	gi.set_meta(&"inst_vals", vals)
+	_rederive(gi)
+
+
+## An object's own value of a shader parameter (null if it has none).
+static func get_inst(gi: GeometryInstance3D, param: StringName) -> Variant:
+	if not per_material:
+		return gi.get_instance_shader_parameter(param)
+	return (gi.get_meta(&"inst_vals", {}) as Dictionary).get(param)
+
+
+## Gives an object a new material, keeping its own values.
+static func set_material(gi: GeometryInstance3D, m: Material) -> void:
+	gi.material_override = m
+	if per_material and gi.has_meta(&"inst_vals"):
+		_rederive(gi)
+
+
+## The material a copy carrying per-object values was made from (or `m` itself).
+static func base_of(m: Material) -> Material:
+	if m == null:
+		return null
+	return m.get_meta(&"inst_base", m)
+
+
+static func _rederive(gi: GeometryInstance3D) -> void:
+	var vals: Dictionary = gi.get_meta(&"inst_vals", {})
+	if gi.material_override != null or not (gi is MeshInstance3D):
+		gi.material_override = _carrying(gi.material_override, vals)
+		return
+	# a merged mesh: a material per surface
+	var mi := gi as MeshInstance3D
+	for si in mi.get_surface_override_material_count():
+		var m := mi.get_active_material(si)
+		if m:
+			mi.set_surface_override_material(si, _carrying(m, vals))
+
+
+static func _carrying(m: Material, vals: Dictionary) -> Material:
+	var base := base_of(m)
+	if not (base is ShaderMaterial):
+		return m
+	var keys := vals.keys()
+	keys.sort()
+	var key := str(base.get_instance_id())
+	for k in keys:
+		key += "|%s=%s" % [k, vals[k]]
+	var w: WeakRef = _derived.get(key)
+	var d: ShaderMaterial = w.get_ref() if w else null
+	if d == null:
+		d = base.duplicate() as ShaderMaterial
+		for k in keys:
+			d.set_shader_parameter(k, vals[k])
+		d.set_meta(&"inst_base", base)
+		_derived[key] = weakref(d)
+		# a copy lives as long as something draws with it (smoke seeds and
+		# splash times are new every time): forget the ones nothing uses
+		if _derived.size() > _prune_at:
+			for k2 in _derived.keys():
+				if (_derived[k2] as WeakRef).get_ref() == null:
+					_derived.erase(k2)
+			_prune_at = maxi(1024, _derived.size() * 2)
+	return d
+
+
+## Sets a parameter of a shared material, and of every copy of it carrying
+## per-object values.
+static func set_shared(m: ShaderMaterial, param: StringName, value: Variant) -> void:
+	m.set_shader_parameter(param, value)
+	if not per_material:
+		return
+	for w in _derived.values():
+		var d: ShaderMaterial = (w as WeakRef).get_ref()
+		if d and d.get_meta(&"inst_base") == m:
+			d.set_shader_parameter(param, value)
+
+
+## Close enough to share a material: a 1/128 step of colour, a centimetre.
+static func _round(v: Variant) -> Variant:
+	match typeof(v):
+		TYPE_FLOAT:
+			return snappedf(v, 0.01)
+		TYPE_COLOR:
+			var c: Color = v
+			return Color(snappedf(c.r, 1.0 / 128.0), snappedf(c.g, 1.0 / 128.0), snappedf(c.b, 1.0 / 128.0), snappedf(c.a, 1.0 / 128.0))
+		TYPE_VECTOR3:
+			return (v as Vector3).snapped(Vector3.ONE * 0.01)
+		TYPE_VECTOR4:
+			return (v as Vector4).snapped(Vector4.ONE * 0.01)
+	return v
 
 
 ## kind: a preset name (see _preset). Returns a shared material.
@@ -85,16 +206,16 @@ static func set_ground_maps(crater: Texture2D, trench: Texture2D) -> void:
 			mats.append(v)
 	for m in mats:
 		if crater:
-			m.set_shader_parameter("crater_tex", crater)
+			set_shared(m, &"crater_tex", crater)
 		if trench:
-			m.set_shader_parameter("trench_tex", trench)
+			set_shared(m, &"trench_tex", trench)
 
 
 ## Applies a material to a mesh instance with an optional per-instance tint.
 static func apply(mi: GeometryInstance3D, kind: String, tint := Color(1, 1, 1)) -> GeometryInstance3D:
-	mi.material_override = get_mat(kind)
+	set_material(mi, get_mat(kind))
 	if tint != Color(1, 1, 1):
-		mi.set_instance_shader_parameter("tint", tint)
+		set_inst(mi, &"tint", tint)
 	return mi
 
 
@@ -128,7 +249,7 @@ static func noise_tex() -> ImageTexture:
 static func foliage() -> ShaderMaterial:
 	if _foliage == null:
 		var sh := Shader.new()
-		sh.code = FOLIAGE_SHADER
+		sh.code = code(FOLIAGE_SHADER)
 		_foliage = ShaderMaterial.new()
 		_foliage.shader = sh
 	return _foliage
@@ -260,15 +381,15 @@ static func _collect(node: Node, xf: Transform3D, groups: Dictionary, victims: A
 			var mats := []
 			var ok := true
 			for si0 in mi.mesh.get_surface_count():
-				var m0 = mi.material_override if mi.material_override else mi.mesh.surface_get_material(si0)
-				var sm0 := m0 as ShaderMaterial
+				var m0 = mi.material_override if mi.material_override else mi.get_active_material(si0)
+				var sm0 := base_of(m0) as ShaderMaterial
 				var vc0: bool = sm0 != null and sm0.get_shader_parameter("use_vcolor") == true
 				if sm0 == null or not (sm0.shader == shader() or sm0 == _foliage or (vc0 and sm0.shader == shader())) or (vc0 and not remerge):
 					ok = false
 					break
 				mats.append(sm0)
 			if ok and not mats.is_empty():
-				var tint = mi.get_instance_shader_parameter("tint")
+				var tint = get_inst(mi, &"tint")
 				# the tint uniform is sRGB (source_color); vertex colours are read as linear
 				var col: Color = (tint as Color).srgb_to_linear() if tint is Color else Color(1, 1, 1)
 				var nb := Transform3D(cx.basis.inverse().transposed(), Vector3.ZERO)
@@ -314,7 +435,7 @@ static var _netting: ShaderMaterial
 static func netting() -> ShaderMaterial:
 	if _netting == null:
 		var sh := Shader.new()
-		sh.code = NETTING_SHADER
+		sh.code = code(NETTING_SHADER)
 		_netting = ShaderMaterial.new()
 		_netting.shader = sh
 	return _netting

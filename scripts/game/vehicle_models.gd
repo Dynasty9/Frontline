@@ -105,7 +105,7 @@ func _merge_parts(n: Node3D, off: Vector3) -> void:
 	for i in range(before, n.get_child_count()):
 		var mi := n.get_child(i) as MeshInstance3D
 		if mi and off != Vector3.ZERO:
-			mi.set_instance_shader_parameter("pofs", off)
+			Mats.set_inst(mi, &"pofs", off)
 
 
 # --- mesh helpers ----------------------------------------------------------------
@@ -234,7 +234,7 @@ func _add(parent: Node3D, mesh: Mesh, kind: String, col, pos: Vector3, rot := Ve
 	while p and p != root:
 		off += p.position
 		p = p.get_parent() as Node3D
-	mi.set_instance_shader_parameter("pofs", off)
+	Mats.set_inst(mi, &"pofs", off)
 	return mi
 
 
