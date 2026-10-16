@@ -24,7 +24,7 @@ The long version: how each system works and why. For the short version, see the 
 | Defenses | Emplacements are crewed by any idle soldier standing next to them. Right-click a bunker with a squad to garrison it. Select a mortar pit for HE / smoke fire missions |
 | Support | The buttons above the minimap (Z arms the first one ready): click the target, **drag** to set the run-in direction for gun runs and bombing runs |
 | Observer | C director camera, V whose eyes to watch through, P pause, [ ] speed, F2 hide the interface. **Fire support** (observer bar) launches any air or artillery support anywhere to watch it |
-| Command view | Tab tactical map, O order of battle (click a unit to select it and look at it, double-click to zoom in), the buttons beside the minimap turn map layers on and off (unit symbols, orders and attack plans, intelligence, weapon ranges, soldier labels) |
+| Command view | Tab tactical map (**hold Tab**: battle statistics), O order of battle (click a unit to select it and look at it, double-click to zoom in), the buttons beside the minimap turn map layers on and off (unit symbols, orders and attack plans, intelligence, weapon ranges, soldier labels) |
 | Other | Home cycles FOBs, Space jumps to the last alert (both glide there), Enter chats (Shift+Enter: team), L message history, F1 help, F3 performance overlay, **F4 field manual**, Esc menu |
 
 ## Watching the AI
@@ -311,6 +311,22 @@ function and an autopilot function.
   units, intelligence (where the enemy was last seen and how long ago), weapon ranges of the selection, soldier
   labels. **Tactical map** (Tab): the battlefield dims under the symbols, every order, plan and contact, and the
   A-H / 1-8 grid on the ground.
+- **Battle statistics and the after-action report** (`battle_stats.gd`, `stats_panel.gd`). The host keeps a record of
+  the battle and credits everything to the commander whose unit did it (a player, or a side's AI): the man who last
+  hurt a soldier gets the kill even if he bleeds out later, fire support and mines count for whoever called or laid
+  them, and the men killed in a burning vehicle for whoever knocked it out. Hold **Tab** (or Esc > Battle
+  Statistics) for your side's figures so far; the enemy's are classified until the end, when the after-action
+  report shows everything, in four tabs:
+  - **Summary**: the two sides head to head (killed, wounded, lost, captured, vehicles, buildings, the supply value
+    destroyed, accuracy, prisoners, FOBs taken, wounded saved, supply delivered and spent, units fielded, fire
+    missions), honours (most valuable, most effective, marksman, tank hunter...) and the soldiers who stood out.
+  - **Commanders**: every player and AI with a **rating** out of 100 - 60% the exchange (supply value destroyed
+    against lost, on a log scale: 4:1 is as good as it gets), 20% marksmanship and 20% their share of their side's
+    fight - and a score, kills, losses, vehicles, accuracy, supply spent and units fielded. Click one for the
+    breakdown: how the rating was made, and everything they did in combat, lost and spent.
+  - **Units**: every squad and vehicle, with its commander, kills, losses, strength, time in action and fate.
+  - **Timeline**: men in the field, vehicles, enemy killed and supply in hand over the battle, with FOBs built,
+    taken and wrecked, vehicles lost and fire missions marked along the bottom; hover for the figures at any moment.
 - A selected squad shows each man's watch sector as a faint wedge on the ground, so you can see its all-round
   cover and any gap. An attack that goes firm against a stronger enemy raises an alert with its grid reference
   so you can send fires or reinforcements.

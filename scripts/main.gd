@@ -238,6 +238,14 @@ func _on_game_start(s: Dictionary) -> void:
 	world.settings = s
 	add_child(world)
 	world.game_ended.connect(_on_game_ended)
+	# a headless client says which after-action report it was sent (multiplayer tests)
+	if not world.srv and DisplayServer.get_name() == "headless":
+		world.report_updated.connect(func():
+			var r: Dictionary = world.report
+			var sd: Array = r.get("sides", [{}, {}])
+			print("CLIENT report t=%.0f full=%s commanders=%d units=%d samples=%d enemy_known=%s" % [float(r.get("t", 0.0)), str(r.get("full", false)),
+				(r.get("players", []) as Array).size(), (r.get("units", []) as Array).size(), (r.get("tl", []) as Array).size(),
+				str(not (sd[1 - maxi(0, world.local_team)] as Dictionary).is_empty())]))
 	if cur and is_instance_valid(cur):
 		_warm_up(cur)
 	if args.has("focus") and world.cam:
@@ -286,6 +294,7 @@ func _on_game_ended(w: int) -> void:
 	if world.srv and (args.has("stats") or args.has("quit-on-win")):
 		print("WINNER %s at t=%.0f" % [Defs.TEAM_NAMES[w], world.time])
 		print("FINAL ", world.debug_stats())
+		print("REPORT ", world.battle.summary())
 	if args.has("quit-on-win"):
 		get_tree().quit()
 
@@ -559,6 +568,12 @@ func _process(_dt: float) -> void:
 		if args.has("dump-structs"):
 			_dump_structs()
 		_shot_i += 1
+		# --stats-tab=all: the next shot is of the next tab
+		if String(args.get("stats-tab", "")) == "all" and world.hud:
+			var key: String = StatsPanel.TABS[_shot_i % StatsPanel.TABS.size()][0]
+			for sp in [world.hud.stats_panel, world.hud.aar_panel]:
+				if sp != null and is_instance_valid(sp) and sp.is_visible_in_tree():
+					sp.show_tab(key)
 		if _shot_i >= count:
 			_shot_done = true
 			if not args.has("quit-after"):
@@ -785,12 +800,29 @@ func _process(_dt: float) -> void:
 		for v in world.vehicles:
 			if v.owner_peer == world.local_peer and not v.eid in world.input.sel_vehicles:
 				world.input.sel_vehicles.append(v.eid)
+	# --report-at=SECONDS: ask the host for the battle statistics then (a client's view of them)
+	if args.has("report-at") and not has_meta("report_asked") and world.time >= float(args["report-at"]):
+		set_meta("report_asked", true)
+		world.request_report()
+	# --end-at=SECONDS: call the battle there (for the side ahead on what it has
+	# destroyed); --stats-tab=summary|commanders|units|timeline opens the
+	# battle statistics a second before the screenshot (after-action report tests)
+	if args.has("end-at") and world.srv and world.winner < 0 and world.time >= float(args["end-at"]):
+		var sd: Array = world.battle.sides
+		world.declare_winner(0 if float(sd[0].val_killed) >= float(sd[1].val_killed) else 1)
+	if args.has("stats-tab") and world.hud and world.winner < 0 and not has_meta("stats_open") and world.time > float(args.get("shot-at", 8.0)) - 1.0:
+		set_meta("stats_open", true)
+		world.hud.open_stats(String(args["stats-tab"]))
+	if args.has("stats-tab") and world.hud and world.winner >= 0 and not has_meta("aar_tab") and world.hud.aar_panel != null:
+		set_meta("aar_tab", true)
+		world.hud.aar_panel.show_tab(String(args["stats-tab"]))
 	if _quit_at > 0.0 and world.time >= _quit_at:
 		_quit_at = -1.0
 		if args.has("dump-structs"):
 			_dump_structs()
 		if world.srv:
 			print("FINAL ", world.debug_stats())
+			print("REPORT ", world.battle.summary())
 		else:
 			var counts := {}
 			var enemy := 0

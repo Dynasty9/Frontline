@@ -2379,6 +2379,8 @@ func add_suppression(amount: float, from_pos: Vector3) -> void:
 func take_damage(amount: float, src, _dir: Vector3, kind := "bullet") -> void:
 	if life == Life.DEAD or life == Life.HIDDEN:
 		return
+	if world.battle:
+		world.battle.soldier_hit(self, amount, src)
 	_hit_dir = _dir
 	_hit_kind = kind
 	if life == Life.DOWNED:
@@ -2438,6 +2440,8 @@ func _go_down() -> void:
 	crawl_t = 1.5
 	downed_t = world.time
 	world.stat("downed")
+	if world.battle:
+		world.battle.soldier_down(self)
 	stretcher_claimed = false
 	rescue_claimed = null
 	if squad:
@@ -2447,6 +2451,8 @@ func _go_down() -> void:
 func _die() -> void:
 	if life == Life.DEAD:
 		return
+	if world.battle:
+		world.battle.soldier_died(self)
 	life = Life.DEAD
 	act = Act.IDLE
 	hp = 0.0
@@ -2517,6 +2523,8 @@ func _release_all() -> void:
 func revive(full := false) -> void:
 	times_downed += 1
 	world.stat("revived")
+	if world.battle:
+		world.battle.revived(self)
 	life = Life.ALIVE
 	var mult: float = [1.0, 0.8, 0.62, 0.45, 0.35][mini(times_downed, 4)]
 	max_hp = base_hp * mult

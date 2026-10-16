@@ -110,6 +110,10 @@ var help_panel: PanelContainer
 var menu_panel: PanelContainer
 var settings_panel: SettingsPanel
 var manual: FieldManual
+var stats_panel: StatsPanel  # the battle statistics (hold Tab, or Esc > Battle Statistics)
+var aar_panel: StatsPanel  # the after-action report on the end-of-battle screen
+var _stats_pinned := false  # opened from the menu (stays until closed), not just peeked at
+var _stats_t := 0.0
 var support_box: VBoxContainer
 var _support_btns := {}  # kind -> Button
 var _support_key := ""
@@ -294,7 +298,7 @@ func _ready() -> void:
 
 	over_panel = _center_panel(Vector2(440, 220))
 	help_panel = _center_panel(Vector2(720, 620))
-	menu_panel = _center_panel(Vector2(320, 300))
+	menu_panel = _center_panel(Vector2(320, 350))
 	_build_help()
 	_build_menu()
 	settings_panel = SettingsPanel.new()
@@ -306,6 +310,13 @@ func _ready() -> void:
 	settings_panel.visible = false
 	settings_panel.closed.connect(func(): settings_panel.visible = false)
 	root.add_child(settings_panel)
+	stats_panel = StatsPanel.new()
+	stats_panel.world = world
+	stats_panel.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
+	stats_panel.visible = false
+	stats_panel.closed.connect(close_stats)
+	root.add_child(stats_panel)
+	world.report_updated.connect(_on_report)
 	# the field manual sits above everything (F2's hidden HUD included)
 	manual = FieldManual.new()
 	manual.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -398,7 +409,7 @@ func _build_help() -> void:
 
 [color=#f5c96e]Camera[/color]  WASD / arrows / screen edge to pan (Shift: faster), wheel to zoom toward the cursor (or + / -), Q/E to turn, Page Up / Page Down to tilt. Middle-drag turns and tilts; Alt+middle-drag grabs the map (swap them in Settings > Interface). Backspace squares the view up again. Ctrl+F follows the selection. Ctrl+F5..F8 save a view, F5..F8 go back to it. Home cycles your FOBs, Space jumps to the last alert. Zoom in close to see what every soldier is doing.
 [color=#f5c96e]Minimap[/color]  Click or drag to look there, right-click to send the selection, wheel to zoom. The white wedge is the camera's view, orange rings are firefights, the needle points north (click it to square up). Size and turning with the camera: Settings > Interface.
-[color=#f5c96e]Command view[/color]  Tab switches to the tactical map. O opens the order of battle (click a unit to select it and look at it). The buttons beside the minimap turn map layers on and off: unit symbols, orders and attack plans, intelligence (last known enemy positions), weapon ranges, soldier labels.
+[color=#f5c96e]Command view[/color]  Tab switches to the tactical map; hold Tab for the battle statistics (Esc > Battle Statistics keeps them open). O opens the order of battle (click a unit to select it and look at it). The buttons beside the minimap turn map layers on and off: unit symbols, orders and attack plans, intelligence (last known enemy positions), weapon ranges, soldier labels.
 [color=#f5c96e]Select[/color]  Click a soldier to select his squad, drag a box, double-click for every squad of that type on screen. Ctrl+1..9 sets a group, 1..9 recalls it. Alt+click a soldier (or click his name in the squad panel) to command just him.
 [color=#f5c96e]Orders[/color]  Right-click ground to move (Shift = run; drag to set the facing), an enemy to attack, an unfinished or damaged building to build or repair, a tunnel / nest / bunker to enter it, a boat to board it (they wade out to it). With a lift helicopter selected, right-click one of your vehicles to sling it underneath, then right-click where to set it down. The pips show where each man will fight from: green hard cover (sandbags, stone, earth), lime medium (cars, house walls - a machine gun goes through), yellow soft (a hedge hides you, bullets don't care), red caught in the open; the tick points the way he'll fire over it. Low cover is fought from prone, waist-high kneeling, chest-high standing; tall walls from their edges.
 [color=#f5c96e]Squad[/color]  X attack-move (or Ctrl+right-click), B defend an area, R retreat, H hold, G grenade, T smoke, F mortar fire mission.
@@ -420,6 +431,7 @@ func _build_menu() -> void:
 	t.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	vb.add_child(t)
 	for it in [["Resume", func(): menu_panel.visible = false],
+			["Battle Statistics", func(): menu_panel.visible = false; open_stats()],
 			["Settings", func(): menu_panel.visible = false; settings_panel.visible = true],
 			["Field Manual", func(): menu_panel.visible = false; manual.visible = true],
 			["Controls", func(): menu_panel.visible = false; toggle_help()],
@@ -443,6 +455,9 @@ func toggle_manual() -> void:
 
 
 func toggle_menu() -> void:
+	if stats_panel.visible:
+		close_stats()
+		return
 	if manual.visible:
 		manual.visible = false
 		return
@@ -672,59 +687,94 @@ func _on_chat(text: String) -> void:
 	_close_chat()
 
 
+## The end of the battle: who won, and the after-action report - the whole
+## battle's figures, both sides', in the stats tabs.
 func show_game_over(w: int) -> void:
+	close_stats()
 	for c in over_panel.get_children():
 		c.queue_free()
-	if not world.mission_info.is_empty():
-		_mission_over()
-		return
+	# the battlefield dims behind the report
+	if not root.has_node("OverDim"):
+		var dim := ColorRect.new()
+		dim.name = "OverDim"
+		dim.color = Color(0.0, 0.01, 0.01, 0.55)
+		dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		dim.mouse_filter = Control.MOUSE_FILTER_STOP
+		root.add_child(dim)
+		root.move_child(dim, over_panel.get_index())
+	var vs := root.size
+	var pw := minf(1180.0, vs.x - 60.0)
+	var ph := minf(840.0, vs.y - 60.0)
+	over_panel.offset_left = -pw * 0.5
+	over_panel.offset_right = pw * 0.5
+	over_panel.offset_top = -ph * 0.5
+	over_panel.offset_bottom = ph * 0.5
 	var vb := VBoxContainer.new()
-	vb.add_theme_constant_override("separation", 14)
+	vb.add_theme_constant_override("separation", 12)
 	over_panel.add_child(vb)
-	var t := UiKit.label("", 38, UiKit.TEXT, 700)
-	t.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	if world.local_team < 0:
-		t.text = "%s WIN" % Defs.TEAM_NAMES[w].to_upper()
-		t.add_theme_color_override("font_color", Defs.TEAM_COLORS[w].lightened(0.3))
-	elif w == world.local_team:
-		t.text = "VICTORY"
-		t.add_theme_color_override("font_color", UiKit.GOOD)
+	var head := HBoxContainer.new()
+	head.add_theme_constant_override("separation", 16)
+	vb.add_child(head)
+	var hv := VBoxContainer.new()
+	hv.add_theme_constant_override("separation", 0)
+	hv.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	head.add_child(hv)
+	var facts := ""
+	if not world.mission_info.is_empty():
+		facts = _mission_head(hv)
 	else:
-		t.text = "DEFEAT"
-		t.add_theme_color_override("font_color", UiKit.BAD)
-	vb.add_child(t)
-	var s := UiKit.label("%s have taken the battlefield." % Defs.TEAM_NAMES[w], 15, UiKit.DIM)
-	s.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	vb.add_child(s)
+		hv.add_child(UiKit.label("AFTER-ACTION REPORT", 12, UiKit.ACCENT, 700))
+		var t := UiKit.label("", 34, UiKit.TEXT, 700)
+		if world.local_team < 0:
+			t.text = "%s WIN" % Defs.TEAM_NAMES[w].to_upper()
+			t.add_theme_color_override("font_color", Defs.TEAM_COLORS[w].lightened(0.3))
+		elif w == world.local_team:
+			t.text = "VICTORY"
+			t.add_theme_color_override("font_color", UiKit.GOOD)
+		else:
+			t.text = "DEFEAT"
+			t.add_theme_color_override("font_color", UiKit.BAD)
+		hv.add_child(t)
+		hv.add_child(UiKit.label("%s have taken the battlefield." % Defs.TEAM_NAMES[w], 14, UiKit.DIM))
+		facts = "Battle lasted %s" % StatsPanel.fmt_time(world.time)
+	var fl := UiKit.label(facts, 13, UiKit.DIM)
+	fl.size_flags_vertical = Control.SIZE_SHRINK_END
+	fl.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	head.add_child(fl)
+	aar_panel = StatsPanel.new()
+	aar_panel.embedded = true
+	aar_panel.world = world
+	aar_panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	vb.add_child(aar_panel)
+	aar_panel.set_report(world.report)
+	var row := HBoxContainer.new()
+	row.alignment = BoxContainer.ALIGNMENT_END
+	row.add_theme_constant_override("separation", 10)
+	vb.add_child(row)
+	if not world.mission_info.is_empty() and multiplayer.is_server():
+		var again := Button.new()
+		again.text = "Play Again" if int(world.mission_info.get("over", 0)) == 1 else "Try Again"
+		again.custom_minimum_size = Vector2(170, 40)
+		again.pressed.connect(func(): over_panel.visible = false; Net.start_game())
+		row.add_child(again)
 	var b := Button.new()
 	b.text = "Return to Menu"
-	b.custom_minimum_size = Vector2(0, 40)
+	b.custom_minimum_size = Vector2(170, 40)
 	b.pressed.connect(_leave)
-	vb.add_child(b)
+	row.add_child(b)
 	over_panel.visible = true
 
 
-## The end of a mission: accomplished or failed, why, and what it cost.
-func _mission_over() -> void:
+## The end of a mission: accomplished or failed and why, the headline of the
+## after-action report. Returns what it cost, in a line.
+func _mission_head(vb: VBoxContainer) -> String:
 	var info: Dictionary = world.mission_info
 	var ok := int(info.get("over", 0)) == 1
-	over_panel.offset_left = -280
-	over_panel.offset_right = 280
-	over_panel.offset_top = -170
-	over_panel.offset_bottom = 170
-	var vb := VBoxContainer.new()
-	vb.add_theme_constant_override("separation", 10)
-	over_panel.add_child(vb)
-	var op := UiKit.label(String(info.get("op", "")).to_upper(), 12, UiKit.ACCENT, 700)
-	op.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	vb.add_child(op)
-	var t := UiKit.label("MISSION ACCOMPLISHED" if ok else "MISSION FAILED", 34, UiKit.GOOD if ok else UiKit.BAD, 700)
-	t.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	vb.add_child(t)
-	var s := UiKit.label(String(info.get("end", "")), 15, UiKit.TEXT)
-	s.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	vb.add_child(UiKit.label(String(info.get("op", "")).to_upper(), 12, UiKit.ACCENT, 700))
+	vb.add_child(UiKit.label("MISSION ACCOMPLISHED" if ok else "MISSION FAILED", 32, UiKit.GOOD if ok else UiKit.BAD, 700))
+	var s := UiKit.label(String(info.get("end", "")), 14, UiKit.TEXT)
 	s.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	s.custom_minimum_size = Vector2(480, 0)
+	s.custom_minimum_size = Vector2(420, 0)
 	vb.add_child(s)
 	var done := 0
 	var all := 0
@@ -736,28 +786,56 @@ func _mission_over() -> void:
 			done += 1
 	var el := float(info.get("el", 0.0))
 	var lost: Array = info.get("lost", [0, 0])
-	var st := UiKit.label("Time %d:%02d    Objectives %d of %d    Men lost %d of %d    Enemy killed %d" % [int(el) / 60, int(el) % 60, done, all, int(lost[0]), int(lost[1]), int(info.get("kills", 0))], 13, UiKit.DIM)
-	st.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	vb.add_child(st)
-	var gap := Control.new()
-	gap.custom_minimum_size = Vector2(0, 6)
-	vb.add_child(gap)
-	var row := HBoxContainer.new()
-	row.alignment = BoxContainer.ALIGNMENT_CENTER
-	row.add_theme_constant_override("separation", 10)
-	vb.add_child(row)
-	if multiplayer.is_server():
-		var again := Button.new()
-		again.text = "Play Again" if ok else "Try Again"
-		again.custom_minimum_size = Vector2(170, 40)
-		again.pressed.connect(func(): over_panel.visible = false; Net.start_game())
-		row.add_child(again)
-	var b := Button.new()
-	b.text = "Return to Menu"
-	b.custom_minimum_size = Vector2(170, 40)
-	b.pressed.connect(_leave)
-	row.add_child(b)
-	over_panel.visible = true
+	return "Time %s    Objectives %d of %d    Men lost %d of %d    Enemy killed %d" % [StatsPanel.fmt_time(el), done, all, int(lost[0]), int(lost[1]), int(info.get("kills", 0))]
+
+
+# --- battle statistics -------------------------------------------------------------------
+
+## Opens the battle statistics and keeps them open (Esc > Battle Statistics).
+func open_stats(tab := "") -> void:
+	if world.winner >= 0:
+		return
+	_stats_pinned = true
+	_show_stats(tab)
+
+
+## Holding Tab: shows them until it's let go (unless they were opened from the menu).
+func peek_stats(on: bool) -> void:
+	if world.winner >= 0 or _stats_pinned:
+		return
+	if on:
+		_show_stats("")
+	else:
+		stats_panel.visible = false
+
+
+func close_stats() -> void:
+	_stats_pinned = false
+	stats_panel.visible = false
+
+
+func _show_stats(tab: String) -> void:
+	var vs := root.size
+	var w := clampf(vs.x - 80.0, 640.0, 1140.0)
+	var h := clampf(vs.y - 120.0, 420.0, 780.0)
+	stats_panel.offset_left = -w * 0.5
+	stats_panel.offset_right = w * 0.5
+	stats_panel.offset_top = -h * 0.5
+	stats_panel.offset_bottom = h * 0.5
+	stats_panel.peek = not _stats_pinned
+	if tab != "":
+		stats_panel.show_tab(tab)
+	stats_panel.set_report(world.report)
+	stats_panel.visible = true
+	_stats_t = 0.0
+	world.request_report()
+
+
+func _on_report() -> void:
+	if stats_panel.visible:
+		stats_panel.set_report(world.report)
+	if aar_panel != null and is_instance_valid(aar_panel):
+		aar_panel.set_report(world.report)
 
 
 # --- per frame -------------------------------------------------------------------------
@@ -787,6 +865,12 @@ func _view_process(dt: float) -> void:
 	_track_orders()
 	_update_support()
 	_update_card()
+	# the battle statistics stay current while they're up
+	if stats_panel.visible:
+		_stats_t += rdt
+		if _stats_t >= 2.0:
+			_stats_t = 0.0
+			world.request_report()
 	# the order of battle fits its contents, down to the support buttons at most
 	var vh := root.size.y
 	var limit := vh - 240.0

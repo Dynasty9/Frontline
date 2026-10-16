@@ -1424,6 +1424,8 @@ func threatened(from: Vector3) -> void:
 func take_damage(amount: float, _src) -> void:
 	if gone or not srv or hp <= 0.0:
 		return
+	if world.battle:
+		world.battle.vehicle_hit(self, amount, _src)
 	if OS.has_environment("FL_DEBUG_DMG"):
 		print("DMG %s hp=%.0f -%.1f from %s t=%.1f" % [vkind, hp, amount, _src.display_name() if _src else "?", world.time])
 	hp -= amount
@@ -1436,6 +1438,8 @@ func take_damage(amount: float, _src) -> void:
 
 func _destroyed() -> void:
 	world.stat("vehicle_destroyed")
+	if world.battle:
+		world.battle.vehicle_destroyed(self)
 	if sling_cargo != null and is_instance_valid(sling_cargo) and not sling_cargo.gone:
 		var load := sling_cargo
 		sling_cargo = null
@@ -1447,11 +1451,15 @@ func _destroyed() -> void:
 		_sink()
 		return
 	# whoever was inside scrambles out of the burning wreck - not all of them
+	# (the men who knocked it out get the ones who don't)
+	var was: Array = world.battle.blame_hit(hit_by) if world.battle else []
 	for s in passengers:
 		if is_instance_valid(s) and not s.gone and s.life == Soldier.Life.HIDDEN:
 			s.riding = null
 			s.unhide(position + Vector3(world.rng.randf_range(-2.5, 2.5), 0, world.rng.randf_range(-2.5, 2.5)))
 			s.take_damage(world.rng.randf_range(30.0, 150.0), null, Vector3.UP, "explosion")
+	if world.battle:
+		world.battle.end_blame(was)
 	passengers.clear()
 	world.fx_event([Fx.EXPLODE, position + Vector3(0, 1.0, 0), 2.0])
 	world.fx_event([Fx.DEBRIS, position + Vector3(0, 1.5, 0), Color(0.15, 0.15, 0.14), 16])

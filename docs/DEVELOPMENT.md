@@ -83,6 +83,8 @@ game/vehicles/          the Arma 3 models by family: vm_nato, vm_csat, vm_indep 
                         V-44X Blackfish), vm_attack (A-10C, A-164 Wipeout) and vm_fighter (F/A-181, F-16C)
 game/vehicle_roster.gd  the Arma 3 roster (stats, behaviour, tiers, patterns) and the Field Manual's garage
 game/director.gd        observer camera and time controls
+game/battle_stats.gd    the after-action record: kills, losses, supply and production credited to each commander
+ui/stats_panel.gd       the battle statistics / after-action report (Summary, Commanders, Units, Timeline tabs)
 ui/hud.gd, menu.gd      interface; ui/settings_panel.gd, ui/perf_overlay.gd, ui/ui_kit.gd (shared style),
 ui/hud_overlay.gd       everything drawn over the battlefield (labels, speech, symbols, orders, plans, intel)
 ui/hud_orbat.gd, hud_layers.gd, hud_sel_info.gd, hud_minimap.gd, hud_top_info.gd, hud_toasts.gd   HUD widgets
@@ -118,6 +120,14 @@ Pass these after `--` on the command line:
 --host --players=2 / --join=127.0.0.1 --team=0        two-process multiplayer test (--bot-cmds issues real commands,
                                                       --ai-allies adds AI commanders to both sides)
 --quit-on-win                                         stop and print the winner when the game ends
+                                                      (with --stats, or at --quit-after: a REPORT line per commander
+                                                      and side from the after-action record, battle_stats.gd)
+--end-at=SECONDS                                      call the battle at that time, for the side ahead (report tests)
+--stats-tab=summary|commanders|units|timeline|all     open the battle statistics a second before --shot-at (after the
+                                                      end: that tab of the after-action report); "all" moves to the
+                                                      next tab after each of --shots
+--report-at=SECONDS                                   (client) ask the host for the statistics then; a headless client
+                                                      prints a CLIENT report line for each it gets
 --perf-at=480 [--perf-shot=path.png]                  fast-forward, then measure real FPS and server tick cost
 --screenshot=out.png --shot-at=30 --focus=X,Z --zoom=40 [--shots=N --shot-every=0.5]
 --mood=golden --perf=3 --preset=ultra                 lighting, overlay level and graphics preset for screenshots

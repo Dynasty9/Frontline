@@ -164,6 +164,7 @@ func fire_bullet(shooter: Entity, muzzle: Vector3, aim: Vector3, tgt: Entity, w:
 		elif tgt is Drone:
 			tgt.shot_down()
 			impact = 3
+	world.battle.shot(shooter, hit)
 	if world.settings.get("debug", false):
 		world.stat("t%d_shots" % shooter.team)
 		if tgt:
@@ -299,8 +300,16 @@ func launch_drone(s: Soldier, t: Entity) -> Drone:
 	return d
 
 
-## d keys: dmg, radius, fling, at (anti-armour), src, team, size, track, dir, top
+## d keys: dmg, radius, fling, at (anti-armour), src, team, size, track, dir, top,
+## by (who called it in, when no src fired it: fire support, a mine)
 func explode(pos: Vector3, d: Dictionary) -> void:
+	var was: Array = world.battle.blame(int(d.get("by", 0)), int(d.get("team", -1))) if d.get("src") == null else []
+	_explode(pos, d)
+	if d.get("src") == null:
+		world.battle.end_blame(was)
+
+
+func _explode(pos: Vector3, d: Dictionary) -> void:
 	var dmg: float = d.get("dmg", 120.0)
 	var r: float = d.get("radius", 5.0)
 	if d.get("top", false) and r >= 3.5:

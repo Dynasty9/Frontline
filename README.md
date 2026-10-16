@@ -53,7 +53,7 @@ When you're ready, choose **Play vs AI** and pick a side. You start at your base
 5. **Build.** Select your engineers and use the build menu at the bottom of the screen. Barracks train more squads, a factory builds vehicles, and new FOBs extend your reach.
 6. **Call support.** The buttons above the minimap call in mortars, artillery and air strikes.
 
-Press **F1** at any time for help, and **F4** for the Field Manual.
+Press **F1** at any time for help, and **F4** for the Field Manual. Hold **Tab** to see how the battle is going: kills, losses, supply and how well each commander is doing. When it's over, the **after-action report** shows both sides' figures, who fought best and why, every squad's record and how the battle swung.
 
 ## Missions
 
@@ -131,6 +131,7 @@ Prefer the middle mouse to pan rather than turn? Swap them in **Settings → Int
 | Action | Keys |
 |---|---|
 | Tactical map | Tab |
+| Battle statistics (your side's so far) | Hold Tab |
 | Order of battle (all your units) | O |
 | Help | F1 |
 | Hide the interface | F2 |
