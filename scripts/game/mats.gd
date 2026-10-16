@@ -211,7 +211,7 @@ static var _flat_cache := {}
 ## The shared primitives (boxes, cylinders, spheres) are flattened once and
 ## kept, so building a soldier or a house only appends arrays.
 static func _flat(mesh: Mesh, si: int) -> Array:
-	var cacheable := mesh is PrimitiveMesh or mesh is BevelMesh
+	var cacheable := mesh is PrimitiveMesh or mesh is BevelMesh or mesh is BodyMesh
 	var key := mesh.get_instance_id() * 8 + si
 	if cacheable and _flat_cache.has(key):
 		return _flat_cache[key]
@@ -397,6 +397,15 @@ static func _preset(kind: String) -> Dictionary:
 			return {"pattern": CANVAS, "col_a": Color(0.5, 0.45, 0.33), "col_b": Color(0.4, 0.36, 0.26), "scale": 1.6, "rough": 0.97, "bump": 0.8, "grime": 0.7, "local_space": true, "use_vcolor": true}
 		"canvas_l":
 			return {"pattern": CANVAS, "col_a": Color(0.42, 0.4, 0.29), "col_b": Color(0.33, 0.31, 0.22), "scale": 4.0, "rough": 0.95, "bump": 0.6, "grime": 0.2, "local_space": true}
+		"suit":
+			# close-woven uniform cloth (a sneaking suit, a field jacket): a faint
+			# weave and soft folds, a little sheen
+			return {"pattern": CANVAS, "col_a": Color(0.5, 0.5, 0.5), "col_b": Color(0.43, 0.43, 0.43), "scale": 5.0, "rough": 0.78, "bump": 0.35, "grime": 0.3, "local_space": true}
+		"armor":
+			# moulded armour and helmet shells: smooth, matte, scuffed
+			return {"pattern": PLAIN, "col_a": Color(0.5, 0.5, 0.5), "rough": 0.58, "bump": 0.25, "grime": 0.25, "local_space": true}
+		"webbing":
+			return {"pattern": CANVAS, "col_a": Color(0.2, 0.2, 0.2), "col_b": Color(0.16, 0.16, 0.16), "scale": 6.0, "rough": 0.9, "bump": 0.5, "grime": 0.2, "local_space": true}
 		"wood_l":
 			return {"pattern": WOOD, "col_a": Color(0.3, 0.2, 0.12), "col_b": Color(0.2, 0.13, 0.08), "scale": 3.0, "rough": 0.6, "bump": 0.4, "grime": 0.0, "local_space": true}
 		"skin":

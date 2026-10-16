@@ -38,6 +38,12 @@ func _ready() -> void:
 		DisplayServer.window_set_position(Vector2i(-12000, -12000))
 		DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_WINDOWED)
 		DisplayServer.window_set_position(Vector2i(-12000, -12000))
+	if args.has("soldier-sheet"):
+		# a lineup of every kind of soldier, saved as an image (no menu, no game)
+		var sheet: Node3D = preload("res://scripts/ui/soldier_sheet.gd").new()
+		sheet.set("args", args)
+		add_child(sheet)
+		return
 	add_child(preload("res://scripts/ui/perf_overlay.gd").new())
 	menu = preload("res://scripts/ui/menu.gd").new()
 	var layer := CanvasLayer.new()
