@@ -26,6 +26,7 @@ matchmaker/                    the matchmaking service (Node, no dependencies; d
 web/                           the website (React + Vite + shadcn, on Railway): live battles with Join links, downloads
 export_presets.cfg, .github/workflows/release.yml   Windows and Linux builds, published on GitHub Releases
 docs/                          FEATURES.md (design), DEVELOPMENT.md (code layout, test flags)
+design/                        logo and artwork used outside the game (not imported by Godot)
 ```
 
 Data lives in tables: units, weapons, squads, buildings and upgrades in `scripts/autoload/defs.gd`, and most vehicles in `scripts/game/vehicle_roster.gd`. Behaviour lives in the class that behaves.

@@ -160,8 +160,9 @@ function and an autopilot function.
   moving one way while he aims another turns his hips and legs towards where he's going and his shoulders
   back to the target. Kicking, lying on a grenade, cooking one (grenade in hand), breathing at rest, a
   knee-buckle before the fall, three ways to lie dead.
-- Kit: Coalition soldiers wear helmets with NVG mounts and headsets, plate carriers with mag pouches, assault packs
-  and knee pads, and carry carbines with optics; Rebels wear shemaghs, mismatched chest rigs and carry AKs.
+- Kit: Coalition soldiers wear slate sneaking suits under armour vests, helmets and goggles (or a bandana),
+  codec headsets, shoulder, elbow, knee and shin pads, and carry carbines with optics; Rebels wear balaclavas,
+  berets, field caps and mismatched field jackets with chest rigs or bandoliers, and carry AKs.
 
 **Command and squad cohesion** (`squad.gd`, `squad_brain.gd`, `commander_ai.gd`)
 - **Battle drills** (`squad_brain.gd`): each squad has its own behaviour tree, walked twice a second, most
@@ -485,11 +486,18 @@ function and an autopilot function.
 - Art direction: minimal modern-military hard-surface. Every box is chamfered so its edges catch the light; the
   palette is muted (low-contrast camo at a realistic scale, near-solid vehicle paint, parkerized gunmetal, faded
   civilian paint, weathered concrete, subdued ID panels and faded flags).
-- Soldiers: the uniform in one colour and the kit over it in another (coyote or ranger green), as real units dress:
-  helmet with rails, NVG mount and headset, plate carrier with flapped mag pouches, admin pouch, radio and
-  tourniquet, battle belt, holster, knee pads, gloves, laced boots, a slim hydration carrier or an assault pack;
-  rebels in muted clothes with AK chest rigs and caps, berets or shemaghs. Weapons at real size: M4A1 with ACOG,
-  Mk18, AKM, M249, PKM, AT4, RPG-7 with its grenade, 60 mm mortar.
+- Soldiers (`soldier_model.gd`, `body_mesh.gd`) are styled after the early Metal Gear Solid games: heroic,
+  heavy-shouldered figures with a strong silhouette, sculpted from lofted cross-sections (a deep chest tapering
+  to the waist, muscle on the limbs, a squared jaw and a heavy brow over narrowed eyes, big gauntleted gloves and
+  boots). The Coalition are FOXHOUND operators: slate-grey sneaking suits with a segmented belly, armour vests with
+  a high padded collar, layered shoulder pads, elbow, knee and shin guards, black webbing, a pistol strapped to
+  the thigh, and a helmet with goggles, a Genome trooper's balaclava with goggles down, or Snake's bandana, whose
+  tails stream out behind him as he runs. The Rebels are Genome and Gurlukovich soldiers: balaclavas with goggles
+  pushed up, berets pulled down over balaclavas, ushankas, Soviet field caps, watch caps and shemaghs, field
+  jackets worn long with turned-up collars and breast pockets, sleeves rolled on some, AK chest rigs or
+  bandoliers. Each side reads at a glance from the camera: cool slate against warm olive and khaki. Kit worn
+  over the body follows its shape (straps, pads and plates sit on the cross-sections they cover). Weapons at real
+  size: M4A1 with ACOG, Mk18, AKM, M249, PKM, AT4, RPG-7 with its grenade, 60 mm mortar.
 - Carried kit sits in standard attachment sockets (forward -Z, top +Y, origin at the balance point): launchers
   slung diagonally across the back, or level on the right shoulder with both hands on the grips to fire.
 - Vehicles: real tyres and hubs, segmented skirts, bins, sights, lights; the Humvee is an M1151, the BTR a

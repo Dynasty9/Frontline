@@ -41,7 +41,7 @@ autoload/online.gd      the matchmaker client: listing, Find Match, STUN + hole 
 autoload/sfx.gd         procedurally synthesised sounds
 game/world.gd           entity registry, replication (spawn / snapshot / props / fx RPCs), commands, queries
 game/entity.gd          base class: props on spawn, packed state in snapshots
-game/soldier*.gd        brain + procedural articulated model
+game/soldier*.gd        brain + procedural articulated model (body_mesh.gd: the lofted body shapes)
 game/soldier_brain.gd   the soldier's behaviour tree: reflexes (grenades, shells, drones, melee), clearing houses, the fight
 game/bt.gd              a small behaviour tree (selector, sequence, condition, action, cooldown)
 game/squad.gd           shared knowledge, rescues, smoke, surrender, auto-engineering
@@ -148,6 +148,10 @@ Pass these after `--` on the command line:
 --host --mission=KEY --players=2                      a co-op mission lobby that starts when the second player joins
 FL_DEBUG_MISSION=1 (env)                              print the map's features (bridges, villages, harbour) and the mission's setup
 --model-sheet=KEYS|FAMILY --sheet-dir=DIR [--side=1] [--sheet-yaw=R]   turntable shots of models (nato, csat, indep, civ, heli, plane, boat, all)
+--soldier-sheet=PATH [--sheet-team=0|1] [--sheet-view=front|back|rts] [--sheet-pose=idle|shoot|run|mix]
+                                                      every kind of soldier lined up in daylight, saved as PATH
+  [--sheet-unit=TYPE --sheet-seed=N | --sheet-seeds=N] [--sheet-stats]   one man turned four ways (or N men of
+                                                      a type) close up; triangles, instances and build time per man
 --manual=model,KEY,SIDE                               a bare model in the Field Manual
 --curtain                                             show the intro / loading screens in an automated run
 --menu-op=0|1|-1                                      open the New Operation panel on that side

@@ -1,6 +1,7 @@
 class_name SoldierModel
 extends Node3D
-## Low-poly articulated soldier built from boxes, posed procedurally.
+## Low-poly articulated soldier, sculpted from lofted shapes (BodyMesh) and
+## boxes in the style of the early Metal Gear Solid games, posed procedurally.
 ## Local -Z is forward. Joints are Node3D pivots; poses are Euler targets
 ## that the joints ease towards every frame.
 
@@ -46,6 +47,7 @@ var crew := false  # working a mounted gun: his own slung, hands on its grips
 var move_yaw := 0.0  # which way he's moving, relative to where he faces (+ to his left)
 var gait_amp := 0.3  # how far the thighs swing at this speed (see pose())
 var nade: Node3D  # a grenade in his right hand (cooking it, throwing it)
+var tails: Node3D  # a bandana's knot: its tails stream out behind him when he runs
 var _back := false
 ## Attachment sockets (torso space). Carried kit is built to one convention -
 ## forward along -Z, top along +Y, origin at its balance point - and sits in a
@@ -82,263 +84,79 @@ var t_fal := Vector3.ZERO  # elbows
 var t_far := Vector3.ZERO
 var t_gun_p := Vector3.ZERO
 var t_gun_r := Vector3.ZERO
+var t_tails := Vector3.ZERO
 
 
+## The body's shape, as cross-sections down each part (see BodyMesh.ring):
+## [y, half width, depth in front, depth behind, centre z]. Kit worn over a
+## part follows these (see _at), so straps, pads and plates sit on the body.
+const PELVIS := [[-0.14, 0.135, 0.09, 0.096], [-0.07, 0.168, 0.106, 0.118], [0.02, 0.166, 0.104, 0.11], [0.11, 0.152, 0.098, 0.1]]
+const TORSO := [[-0.03, 0.152, 0.098, 0.1], [0.1, 0.156, 0.104, 0.1], [0.22, 0.178, 0.116, 0.105], [0.34, 0.2, 0.13, 0.112],
+	[0.44, 0.212, 0.134, 0.115], [0.53, 0.205, 0.116, 0.11], [0.6, 0.15, 0.086, 0.095], [0.655, 0.064, 0.055, 0.06]]
+const THIGH := [[0.03, 0.094, 0.094, 0.1], [-0.1, 0.1, 0.106, 0.1], [-0.26, 0.086, 0.09, 0.084], [-0.4, 0.07, 0.072, 0.07], [-0.47, 0.064, 0.066, 0.064]]
+const SHIN := [[0.02, 0.067, 0.068, 0.068], [-0.1, 0.066, 0.064, 0.078], [-0.22, 0.056, 0.056, 0.06], [-0.3, 0.054, 0.054, 0.056]]
+const UPPER_ARM := [[0.0, 0.07, 0.07, 0.068], [-0.08, 0.068, 0.073, 0.066], [-0.18, 0.06, 0.063, 0.058], [-0.3, 0.05, 0.05, 0.05]]
+const FOREARM := [[0.02, 0.05, 0.05, 0.05], [-0.05, 0.057, 0.055, 0.054], [-0.15, 0.047, 0.046, 0.046], [-0.205, 0.04, 0.04, 0.04]]
+## the head: a squared jaw set forward, cheekbones, a high brow
+const HEAD := [[0.012, 0.03, 0.022, 0.03, -0.058], [0.035, 0.06, 0.05, 0.06, -0.035], [0.07, 0.078, 0.082, 0.078, -0.012],
+	[0.11, 0.084, 0.096, 0.09, 0.0], [0.15, 0.086, 0.098, 0.098, 0.003], [0.19, 0.083, 0.092, 0.1, 0.006], [0.222, 0.068, 0.072, 0.086, 0.01],
+	[0.243, 0.04, 0.04, 0.052, 0.012]]
+
+## Dresses and arms a man of this unit type. The look is after the early
+## Metal Gear Solid games: heroic, heavy-shouldered figures in fitted kit with
+## a strong silhouette - the Coalition as FOXHOUND operators in slate sneaking
+## suits, the Rebels as Genome and Gurlukovich soldiers in balaclavas, berets
+## and mismatched field jackets.
 func build(utype: String, team: int, seed: int) -> void:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = seed
 	seedf = float(seed % 997) * 0.731
 	dvar = int(seed / 7) % 3
-	var skin: Color = [Color(0.86, 0.68, 0.55), Color(0.72, 0.53, 0.4), Color(0.55, 0.38, 0.27), Color(0.4, 0.28, 0.2), Color(0.9, 0.75, 0.62)][rng.randi() % 5]
-	var shirt: Color
-	var pants: Color
-	var vest: Color
-	var hat: Color
-	# the uniform in one colour, the kit over it in another (coyote or ranger
-	# green), the way real units are dressed - muted, nothing toy-bright
-	if team == 0:
-		shirt = Res.vary(Color(0.4, 0.4, 0.3), 0.03, rng)
-		pants = Res.vary(Color(0.38, 0.38, 0.29), 0.03, rng)
-		vest = [Color(0.46, 0.39, 0.28), Color(0.3, 0.32, 0.24)][rng.randi() % 2]
-		hat = Color(0.36, 0.35, 0.27)
-	elif team == 1:
-		shirt = Res.vary([Color(0.5, 0.43, 0.32), Color(0.24, 0.24, 0.23), Color(0.3, 0.31, 0.24), Color(0.45, 0.42, 0.34), Color(0.36, 0.27, 0.2)][rng.randi() % 5], 0.05, rng)
-		pants = Res.vary([Color(0.2, 0.2, 0.19), Color(0.27, 0.27, 0.21), Color(0.38, 0.34, 0.26), Color(0.21, 0.22, 0.24)][rng.randi() % 4], 0.04, rng)
-		vest = Res.vary([Color(0.32, 0.31, 0.23), Color(0.42, 0.37, 0.27)][rng.randi() % 2], 0.05, rng)
-		hat = [Color(0.4, 0.1, 0.08), Color(0.1, 0.1, 0.1), Color(0.3, 0.31, 0.23), Color(0.48, 0.43, 0.34)][rng.randi() % 4]
-	else:
-		shirt = Color(0.78, 0.78, 0.75)
-		pants = Color(0.3, 0.32, 0.3)
-		vest = Color(0.8, 0.8, 0.78)
-		hat = Color(0.8, 0.8, 0.78)
-	var boots := Color(0.36, 0.29, 0.2) if team == 0 else Color(0.12, 0.1, 0.08)
-	var sole := Color(0.06, 0.055, 0.05)
-	var dark := Color(0.1, 0.1, 0.1)
-	var pouch := vest.darkened(0.08)
-	var flap := vest.darkened(0.18)
-	var pack := vest.lerp(Color(0.3, 0.32, 0.24), 0.6) if team == 0 else vest.darkened(0.12)
-	var gloves := Color(0.33, 0.29, 0.22) if team == 0 else skin
-	var pads := Color(0.2, 0.2, 0.18)
-	var wood := Color(0.3, 0.2, 0.12)
-	var steel := Color(0.15, 0.15, 0.15)
-	var fde := Color(0.45, 0.38, 0.27)  # flat dark earth rifle furniture
-	var pocket := pants.darkened(0.07)
-	var scarf: Color = [Color(0.52, 0.47, 0.38), Color(0.28, 0.28, 0.26), Color(0.4, 0.17, 0.14), Color(0.34, 0.35, 0.27)][rng.randi() % 4]
-	var bearer := utype == "bearer"
-	var crew: bool = Defs.UNITS.has(utype) and Defs.UNITS[utype].get("crew", false)
-	if crew:
-		# a vehicle crewman: one-piece coveralls, a light vest
-		shirt = Res.vary(Color(0.36, 0.36, 0.28) if team == 0 else Color(0.2, 0.2, 0.19), 0.02, rng)
-		pants = shirt
-		vest = vest.darkened(0.1)
-		pocket = pants.darkened(0.07)
+	var u: Dictionary = Defs.UNITS.get(utype, {})
+	var bearer: bool = u.get("bearer", false)
+	var is_crew: bool = u.get("crew", false)
+	var medic: bool = u.get("medic", false)
+	var k := _palette(team, is_crew, rng)
 
-	root = Node3D.new()
-	add_child(root)
-	hips = Node3D.new()
-	hips.position = Vector3(0, H0, 0)
-	root.add_child(hips)
-	var pel := Res.mi(hips, Res.cyl(0.165, 0.155, 0.2, 12), Res.mat(pants), Vector3(0, -0.01, 0))
-	pel.scale = Vector3(1.0, 1.0, 0.7)
-	if not bearer:
-		# battle belt (or a plain belt) with pouches round it
-		var belt := Res.mi(hips, Res.cyl(0.178, 0.178, 0.055, 12), Res.mat(vest if team == 0 else pouch), Vector3(0, 0.065, 0), Vector3.ZERO, false)
-		belt.scale = Vector3(1.0, 1.0, 0.72)
-		for a in ([-1.15, 1.15, 2.5, -2.5] if team == 0 else [2.4]):
-			Res.mi(hips, Res.box(Vector3(0.07, 0.09, 0.045)), Res.mat(pouch), Vector3(sin(a) * 0.17, 0.04, cos(a) * 0.122), Vector3(0, a, 0), false)
-	# legs: a full thigh tapering to the knee, a cargo pocket, the shin into a
-	# laced boot with a thick sole; knee pads on the regulars
-	for side in [-1.0, 1.0]:
-		var th := _joint(hips, Vector3(0.1 * side, -0.05, 0))
-		Res.mi(th, Res.sphere(0.09, 10), Res.mat(pants), Vector3.ZERO)
-		Res.mi(th, Res.cyl(0.092, 0.072, 0.44, 10), Res.mat(pants), Vector3(0, -0.21, 0))
-		if not bearer and (team == 0 or rng.randf() < 0.5):
-			Res.mi(th, Res.box(Vector3(0.035, 0.13, 0.12)), Res.mat(pocket), Vector3(side * 0.083, -0.22, 0.0), Vector3(0, 0, side * 0.06), false)
-		var sh := _joint(th, Vector3(0, -0.45, 0))
-		Res.mi(sh, Res.sphere(0.072, 10), Res.mat(pants), Vector3.ZERO)
-		Res.mi(sh, Res.cyl(0.07, 0.058, 0.3, 10), Res.mat(pants), Vector3(0, -0.15, 0))
-		Res.mi(sh, Res.cyl(0.064, 0.066, 0.15, 10), Res.mat(boots), Vector3(0, -0.345, 0), Vector3.ZERO, false)
-		Res.mi(sh, Res.box(Vector3(0.105, 0.085, 0.24)), Res.mat(boots), Vector3(0, -0.39, -0.055), Vector3.ZERO, false)
-		var toe := Res.mi(sh, Res.sphere(0.054, 8), Res.mat(boots), Vector3(0, -0.4, -0.165), Vector3.ZERO, false)
-		toe.scale = Vector3(1.0, 0.72, 1.0)
-		Res.mi(sh, Res.box(Vector3(0.115, 0.03, 0.29)), Res.mat(sole), Vector3(0, -0.445, -0.06), Vector3.ZERO, false)
-		if team == 0 and not bearer:
-			Res.mi(sh, Res.box(Vector3(0.1, 0.12, 0.045)), Res.mat(pads), Vector3(0, -0.03, -0.066), Vector3(-0.08, 0, 0), false)
-			Res.mi(sh, Res.cyl(0.074, 0.074, 0.02, 10), Res.mat(pads), Vector3(0, -0.08, 0), Vector3.ZERO, false)
-		if side < 0.0:
-			thigh_l = th
-			shin_l = sh
-		else:
-			thigh_r = th
-			shin_r = sh
-	if team == 0 and not bearer:
-		# drop-leg holster on the right thigh
-		Res.mi(thigh_r, Res.box(Vector3(0.05, 0.15, 0.1)), Res.mat(pouch), Vector3(0.1, -0.15, 0.01), Vector3.ZERO, false)
-		Res.mi(thigh_r, Res.box(Vector3(0.032, 0.06, 0.04)), Res.mat(dark), Vector3(0.1, -0.05, 0.035), Vector3(0.3, 0, 0), false)
-	elif not bearer and rng.randf() < 0.5:
-		Res.mi(thigh_r, Res.box(Vector3(0.06, 0.14, 0.12)), Res.mat(pouch), Vector3(0.09, -0.12, 0.0), Vector3.ZERO, false)
-
+	root = _joint(self, Vector3.ZERO)
+	hips = _joint(root, Vector3(0, H0, 0))
 	torso = _joint(hips, Vector3(0, 0.05, 0))
-	# an oval waist widening into the chest, rounded shoulders
-	var waist := Res.mi(torso, Res.cyl(0.18, 0.163, 0.3, 10), Res.mat(shirt), Vector3(0, 0.16, 0))
-	waist.scale = Vector3(1.0, 1.0, 0.6)
-	var chest := Res.mi(torso, Res.cyl(0.205, 0.185, 0.3, 10), Res.mat(shirt), Vector3(0, 0.42, 0))
-	chest.scale = Vector3(1.0, 1.0, 0.58)
-	Res.mi(torso, Res.capsule(0.07, 0.48), Res.mat(shirt), Vector3(0, 0.53, 0), Vector3(0, 0, PI / 2), false)
-	var medic: bool = Defs.UNITS.has(utype) and Defs.UNITS[utype].get("medic", false)
-	if not bearer:
-		if team == 0:
-			# plate carrier: front and back plates in a cut carrier, cummerbund,
-			# padded shoulder straps; three rifle-mag pouches with flaps, an admin
-			# pouch, a tourniquet, a radio on the left
-			Res.mi(torso, Res.box(Vector3(0.33, 0.33, 0.06)), Res.mat(vest), Vector3(0, 0.41, -0.13), Vector3(0.05, 0, 0))
-			Res.mi(torso, Res.box(Vector3(0.33, 0.35, 0.06)), Res.mat(vest), Vector3(0, 0.41, 0.13), Vector3(-0.04, 0, 0))
-			var cb := Res.mi(torso, Res.cyl(0.208, 0.205, 0.15, 12), Res.mat(vest), Vector3(0, 0.3, 0))
-			cb.scale = Vector3(1.0, 1.0, 0.7)
-			for x in [-0.115, 0.115]:
-				Res.mi(torso, Res.box(Vector3(0.075, 0.04, 0.28)), Res.mat(vest), Vector3(x, 0.585, 0), Vector3.ZERO, false)
-			for x in [-0.1, 0.0, 0.1]:
-				Res.mi(torso, Res.box(Vector3(0.086, 0.13, 0.055)), Res.mat(pouch), Vector3(x, 0.31, -0.186), Vector3.ZERO, false)
-				Res.mi(torso, Res.box(Vector3(0.09, 0.028, 0.06)), Res.mat(flap), Vector3(x, 0.375, -0.188), Vector3.ZERO, false)
-			Res.mi(torso, Res.box(Vector3(0.19, 0.08, 0.04)), Res.mat(pouch), Vector3(0, 0.48, -0.18), Vector3(0.05, 0, 0), false)
-			Res.mi(torso, Res.box(Vector3(0.03, 0.09, 0.03)), Res.mat(dark), Vector3(-0.115, 0.53, -0.16), Vector3.ZERO, false)
-			Res.mi(torso, Res.box(Vector3(0.07, 0.15, 0.06)), Res.mat(pouch), Vector3(-0.215, 0.36, -0.02), Vector3.ZERO, false)
-			if rng.randf() < 0.4:
-				Res.mi(torso, Res.cyl(0.005, 0.005, 0.4, 4), Res.mat(dark), Vector3(-0.22, 0.62, 0.0), Vector3(0.08, 0, 0.08), false)
-			# on the back: an assault pack (medics, some riflemen) or a slim hydration carrier
-			if medic or rng.randf() < 0.4:
-				Res.mi(torso, Res.box(Vector3(0.28, 0.32, 0.12)), Res.mat(pack), Vector3(0, 0.37, 0.225), Vector3.ZERO, false)
-				Res.mi(torso, Res.box(Vector3(0.27, 0.06, 0.13)), Res.mat(pack.darkened(0.08)), Vector3(0, 0.545, 0.225), Vector3(-0.08, 0, 0), false)
-				for sx in [-1.0, 1.0]:
-					Res.mi(torso, Res.box(Vector3(0.04, 0.16, 0.08)), Res.mat(pack.darkened(0.08)), Vector3(sx * 0.16, 0.32, 0.23), Vector3.ZERO, false)
-			else:
-				Res.mi(torso, Res.box(Vector3(0.22, 0.3, 0.05)), Res.mat(pouch), Vector3(0, 0.43, 0.185), Vector3(-0.04, 0, 0), false)
-		else:
-			# a chest rig of AK mag pouches over whatever he's wearing, straps over
-			# the shoulders crossing at the back, sometimes a bag
-			Res.mi(torso, Res.box(Vector3(0.34, 0.15, 0.07)), Res.mat(vest), Vector3(0, 0.31, -0.14))
-			for x in [-0.12, -0.04, 0.04, 0.12]:
-				Res.mi(torso, Res.box(Vector3(0.07, 0.14, 0.05)), Res.mat(pouch), Vector3(x, 0.32, -0.19), Vector3.ZERO, false)
-				Res.mi(torso, Res.box(Vector3(0.074, 0.028, 0.055)), Res.mat(flap), Vector3(x, 0.39, -0.19), Vector3.ZERO, false)
-			for x in [-0.11, 0.11]:
-				Res.mi(torso, Res.box(Vector3(0.05, 0.025, 0.28)), Res.mat(vest), Vector3(x, 0.585, 0), Vector3.ZERO, false)
-			for sx in [-1.0, 1.0]:
-				Res.mi(torso, Res.box(Vector3(0.04, 0.42, 0.02)), Res.mat(vest), Vector3(0, 0.43, 0.15), Vector3(0, 0, sx * 0.6), false)
-			if medic or rng.randf() < 0.5:
-				Res.mi(torso, Res.box(Vector3(0.26, 0.3, 0.12)), Res.mat(pack), Vector3(0, 0.36, 0.2), Vector3.ZERO, false)
-				Res.mi(torso, Res.box(Vector3(0.25, 0.05, 0.13)), Res.mat(pack.darkened(0.08)), Vector3(0, 0.525, 0.2), Vector3(-0.08, 0, 0), false)
-		if medic:
-			# a red cross on white on the pack
-			Res.mi(torso, Res.box(Vector3(0.1, 0.1, 0.012)), Res.mat(Color(0.75, 0.74, 0.7)), Vector3(0, 0.38, 0.29), Vector3.ZERO, false)
-			Res.mi(torso, Res.box(Vector3(0.07, 0.022, 0.016)), Res.mat(Color(0.6, 0.1, 0.08)), Vector3(0, 0.38, 0.29), Vector3.ZERO, false)
-			Res.mi(torso, Res.box(Vector3(0.022, 0.07, 0.016)), Res.mat(Color(0.6, 0.1, 0.08)), Vector3(0, 0.38, 0.29), Vector3.ZERO, false)
-
 	head = _joint(torso, Vector3(0, 0.62, 0))
-	Res.mi(head, Res.cyl(0.05, 0.055, 0.1, 8), Res.mat(skin), Vector3(0, -0.02, 0), Vector3.ZERO, false)
-	var face := Res.mi(head, Res.sphere(0.11, 12), Res.mat(skin), Vector3(0, 0.12, -0.005), Vector3.ZERO, false)
-	face.scale = Vector3(0.9, 1.06, 1.0)
-	# jaw, nose, ears and a brow shading the eyes: enough to read a face and
-	# which way he is looking
-	var jaw := Res.mi(head, Res.sphere(0.08, 10), Res.mat(skin), Vector3(0, 0.07, -0.035), Vector3.ZERO, false)
-	jaw.scale = Vector3(1.0, 0.8, 1.0)
-	Res.mi(head, Res.box(Vector3(0.028, 0.045, 0.04)), Res.mat(skin), Vector3(0, 0.112, -0.113), Vector3(-0.3, 0, 0), false)
-	for sx in [-1.0, 1.0]:
-		var ear := Res.mi(head, Res.sphere(0.03, 6), Res.mat(skin), Vector3(sx * 0.098, 0.118, 0.005), Vector3.ZERO, false)
-		ear.scale = Vector3(0.5, 1.0, 0.8)
-	var brow := skin.darkened(0.3)
-	Res.mi(head, Res.box(Vector3(0.13, 0.014, 0.025)), Res.mat(brow), Vector3(0, 0.146, -0.099), Vector3.ZERO, false)
-	if crew:
-		# a padded crew helmet (CVC): a soft dome, thick ear cups for the
-		# intercom, the boom mike in front of his mouth
-		var cvc: Color = Color(0.28, 0.29, 0.23) if team == 0 else Color(0.14, 0.14, 0.13)
-		var ch := Res.mi(head, Res.dome(0.14, 12), Res.mat(cvc), Vector3(0, 0.135, 0.01), Vector3.ZERO, false)
-		ch.scale = Vector3(1.0, 0.95, 1.1)
-		# the padded brow roll
-		var roll := Res.mi(head, Res.cyl(0.146, 0.15, 0.03, 12), Res.mat(cvc.darkened(0.2)), Vector3(0, 0.15, 0.01), Vector3.ZERO, false)
-		roll.scale = Vector3(1.0, 1.0, 1.1)
-		for sx in [-1.0, 1.0]:
-			Res.mi(head, Res.cyl(0.055, 0.055, 0.055, 10), Res.mat(cvc.darkened(0.15)), Vector3(sx * 0.12, 0.11, 0.0), Vector3(0, 0, PI / 2), false)
-		Res.mi(head, Res.box(Vector3(0.012, 0.012, 0.11)), Res.mat(dark), Vector3(-0.1, 0.07, -0.07), Vector3(0, 0.6, 0), false)
-		Res.mi(head, Res.sphere(0.016, 6), Res.mat(dark), Vector3(-0.055, 0.065, -0.115), Vector3.ZERO, false)
-	elif team == 0:
-		# modern helmet: a cut-high dome with its rim and rails, NVG mount,
-		# headset over the ears, goggles strapped round the back; eye pro
-		var hm := Res.mi(head, Res.dome(0.146, 14), Res.mat(hat), Vector3(0, 0.13, 0.012), Vector3.ZERO, false)
-		hm.scale = Vector3(1.0, 0.92, 1.08)
-		var rim := Res.mi(head, Res.cyl(0.149, 0.153, 0.024, 14), Res.mat(hat), Vector3(0, 0.132, 0.012), Vector3.ZERO, false)
-		rim.scale = Vector3(1.0, 1.0, 1.08)
-		Res.mi(head, Res.box(Vector3(0.05, 0.04, 0.03)), Res.mat(steel), Vector3(0, 0.2, -0.13), Vector3.ZERO, false)
-		for sx in [-1.0, 1.0]:
-			Res.mi(head, Res.box(Vector3(0.014, 0.026, 0.12)), Res.mat(pouch), Vector3(sx * 0.147, 0.165, 0.01), Vector3.ZERO, false)
-			Res.mi(head, Res.cyl(0.045, 0.045, 0.04, 8), Res.mat(pouch), Vector3(sx * 0.115, 0.11, 0.0), Vector3(0, 0, PI / 2), false)
-		Res.mi(head, Res.box(Vector3(0.2, 0.035, 0.05)), Res.mat(steel), Vector3(0, 0.19, 0.14), Vector3.ZERO, false)
-		if rng.randf() < 0.6:
-			Res.mi(head, Res.box(Vector3(0.165, 0.032, 0.02)), Res.mat(dark), Vector3(0, 0.128, -0.106), Vector3.ZERO, false)
-	elif team == 1:
-		var style := rng.randi() % 4
-		if style == 0:
-			# watch cap, rolled up
-			var w2 := Res.mi(head, Res.dome(0.122, 10), Res.mat(hat), Vector3(0, 0.15, 0.008), Vector3.ZERO, false)
-			w2.scale = Vector3(1.0, 0.95, 1.05)
-			var roll := Res.mi(head, Res.cyl(0.124, 0.126, 0.04, 10), Res.mat(hat.darkened(0.1)), Vector3(0, 0.155, 0.008), Vector3.ZERO, false)
-			roll.scale = Vector3(1.0, 1.0, 1.05)
-		elif style == 1:
-			# shemagh wrapped over the head and face
-			var sh2 := Res.mi(head, Res.sphere(0.125, 10), Res.mat(scarf), Vector3(0, 0.15, 0.0), Vector3.ZERO, false)
-			sh2.scale = Vector3(1.05, 0.95, 1.05)
-			Res.mi(head, Res.box(Vector3(0.2, 0.08, 0.05)), Res.mat(scarf), Vector3(0, 0.07, -0.1), Vector3.ZERO, false)
-		elif style == 2:
-			# beret, pulled down to one side
-			var br := Res.mi(head, Res.sphere(0.135, 12), Res.mat(hat), Vector3(0.025, 0.205, 0.01), Vector3(0, 0, 0.28), false)
-			br.scale = Vector3(1.12, 0.36, 1.08)
-			Res.mi(head, Res.cyl(0.118, 0.118, 0.025, 12), Res.mat(hat.darkened(0.25)), Vector3(0, 0.178, 0.005), Vector3.ZERO, false)
-		else:
-			# ball cap: a rounded crown and a curved brim
-			var cap := Res.mi(head, Res.dome(0.12, 10), Res.mat(hat), Vector3(0, 0.158, 0.005), Vector3.ZERO, false)
-			cap.scale = Vector3(1.0, 0.8, 1.04)
-			var brim := Res.mi(head, Res.cyl(0.075, 0.08, 0.015, 10), Res.mat(hat.darkened(0.15)), Vector3(0, 0.16, -0.125), Vector3(0.18, 0, 0), false)
-			brim.scale = Vector3(1.0, 1.0, 0.75)
-		# scarf round the neck
-		Res.mi(head, Res.cyl(0.085, 0.09, 0.07, 10), Res.mat(scarf), Vector3(0, -0.02, 0), Vector3.ZERO, false)
-	else:
-		var hm2 := Res.mi(head, Res.dome(0.132, 10), Res.mat(hat), Vector3(0, 0.14, 0.01), Vector3.ZERO, false)
-		hm2.scale = Vector3(1.0, 0.8, 1.06)
-		Res.mi(head, Res.box(Vector3(0.1, 0.03, 0.06)), Res.mat(Color(0.8, 0.1, 0.1)), Vector3(0, 0.22, -0.06), Vector3.ZERO, false)
-
-	if team == 1 and not bearer:
-		Res.mi(hips, Res.cyl(0.045, 0.045, 0.13, 8), Res.mat(pouch), Vector3(-0.19, -0.04, 0.08), Vector3.ZERO, false)
-
-	# arms: rounded, gloved
-	for side in [-1.0, 1.0]:
-		var ua := _joint(torso, Vector3(0.27 * side, 0.52, 0))
-		Res.mi(ua, Res.capsule(0.058, 0.34), Res.mat(shirt), Vector3(0, -0.13, 0), Vector3.ZERO, false)
-		var delt := Res.mi(ua, Res.sphere(0.066, 8), Res.mat(shirt), Vector3(0.0, -0.025, 0), Vector3.ZERO, false)
-		delt.scale = Vector3(1.0, 1.1, 1.0)
-		var fa := _joint(ua, Vector3(0, -0.28, 0))
-		Res.mi(fa, Res.capsule(0.05, 0.3), Res.mat(shirt), Vector3(0, -0.11, 0), Vector3.ZERO, false)
-		Res.mi(fa, Res.cyl(0.054, 0.052, 0.05, 10), Res.mat(gloves), Vector3(0, -0.2, 0), Vector3.ZERO, false)
-		Res.mi(fa, Res.box(Vector3(0.062, 0.075, 0.082)), Res.mat(gloves), Vector3(0, -0.245, 0), Vector3(0.15, 0, 0), false)
-		Res.mi(fa, Res.box(Vector3(0.058, 0.05, 0.07)), Res.mat(gloves), Vector3(0, -0.29, -0.018), Vector3(0.55, 0, 0), false)
-		Res.mi(fa, Res.box(Vector3(0.022, 0.05, 0.024)), Res.mat(gloves), Vector3(-side * 0.026, -0.25, -0.042), Vector3(0.3, 0, 0), false)
-		if side < 0.0:
-			arm_l = ua
-			forearm_l = fa
-		else:
-			arm_r = ua
-			forearm_r = fa
-	if team == 0 and not bearer:
-		# a subdued flag patch on the sleeve
-		Res.mi(arm_l, Res.box(Vector3(0.012, 0.05, 0.075)), Res.mat(Defs.TEAM_COLORS[0].lerp(Color(0.3, 0.3, 0.3), 0.72).darkened(0.4)), Vector3(-0.06, -0.06, 0), Vector3.ZERO, false)
-	if Defs.UNITS.has(utype) and Defs.UNITS[utype].get("medic", false):
-		Res.mi(arm_l, Res.cyl(0.064, 0.064, 0.08, 10), Res.mat(Color(0.75, 0.74, 0.7)), Vector3(0, -0.12, 0), Vector3.ZERO, false)
-		Res.mi(arm_l, Res.box(Vector3(0.13, 0.04, 0.05)), Res.mat(Color(0.6, 0.1, 0.08)), Vector3(0, -0.12, 0), Vector3.ZERO, false)
+	thigh_l = _joint(hips, Vector3(-0.1, -0.05, 0))
+	shin_l = _joint(thigh_l, Vector3(0, -0.45, 0))
+	thigh_r = _joint(hips, Vector3(0.1, -0.05, 0))
+	shin_r = _joint(thigh_r, Vector3(0, -0.45, 0))
+	arm_l = _joint(torso, SH_L)
+	forearm_l = _joint(arm_l, Vector3(0, -0.28, 0))
+	arm_r = _joint(torso, SH_R)
+	forearm_r = _joint(arm_r, Vector3(0, -0.28, 0))
+	_body(k)
 	if bearer:
-		Res.mi(arm_l, Res.cyl(0.064, 0.064, 0.08, 10), Res.mat(Color(0.8, 0.1, 0.1)), Vector3(0, -0.12, 0), Vector3.ZERO, false)
+		_kit_bearer(k)
+	elif is_crew:
+		_kit_crew(k)
+	elif team == 0:
+		_kit_coalition(k, medic, rng)
+	else:
+		_kit_rebel(k, medic, rng)
+	_head_gear(k, team, is_crew, bearer, rng)
+	if medic or bearer:
+		# a white armband with a red cross (a plain red one on a bearer)
+		var band := Color(0.8, 0.79, 0.74) if medic else Color(0.62, 0.1, 0.08)
+		_p(arm_l, BodyMesh.loft([_at(UPPER_ARM, -0.11, 0.006), _at(UPPER_ARM, -0.18, 0.006)], 10), "suit", band)
+		if medic:
+			_p(arm_l, Res.box(Vector3(0.012, 0.045, 0.016)), "plain", Color(0.62, 0.1, 0.08), Vector3(-0.068, -0.145, 0))
+			_p(arm_l, Res.box(Vector3(0.012, 0.016, 0.045)), "plain", Color(0.62, 0.1, 0.08), Vector3(-0.068, -0.145, 0))
 
+	var dark := Color(0.1, 0.1, 0.1)
+	var steel := Color(0.15, 0.15, 0.15)
+	var wood := Color(0.3, 0.2, 0.12)
+	var fde := Color(0.45, 0.38, 0.27)  # flat dark earth rifle furniture
+	var pack: Color = k.pouch
 	# weapon (forward is -z; grip near the origin, handguard ahead of it)
 	gun = _joint(torso, Vector3(0.1, 0.32, -0.3))
 	look = "rifle"
-	var w: String = Defs.UNITS[utype].weapon if Defs.UNITS.has(utype) else ""
+	var w: String = u.get("weapon", "")
 	fore_z = {"smg": -0.24, "lmg": -0.55, "pistol": -0.1, "ak": -0.27}.get(w, -0.3)
 	muzzle_local = {"rifle": Vector3(0, 0.02, -0.52), "ak": Vector3(0, 0.0, -0.565), "smg": Vector3(0, 0.02, -0.4),
 		"lmg": Vector3(0, 0.0, -0.85) if team == 1 else Vector3(0, 0.0, -0.77)}.get(w, Vector3(0, 0, -0.6))
@@ -395,8 +213,8 @@ func build(utype: String, team: int, seed: int) -> void:
 	nb.scale = Vector3(1.0, 1.25, 1.0)
 	Res.mi(nade, Res.box(Vector3(0.018, 0.06, 0.03)), Res.mat(Color(0.35, 0.35, 0.33)), Vector3(0.03, 0.05, 0), Vector3(0, 0, -0.3), false)
 	nade.visible = false
-	is_mortar = Defs.UNITS.has(utype) and int(Defs.UNITS[utype].get("mortar", 0)) > 0
-	if Defs.UNITS.has(utype) and (int(Defs.UNITS[utype].get("rockets", 0)) > 0 or is_mortar):
+	is_mortar = int(u.get("mortar", 0)) > 0
+	if int(u.get("rockets", 0)) > 0 or is_mortar:
 		tube = _joint(torso, Vector3.ZERO)
 		var tcol := Color(0.29, 0.31, 0.22) if team == 0 else Color(0.27, 0.27, 0.22)
 		if is_mortar:
@@ -423,7 +241,7 @@ func build(utype: String, team: int, seed: int) -> void:
 			Res.mi(tube, Res.cyl(0.042, 0.042, 0.12, 10), Res.mat(Color(0.3, 0.33, 0.24)), Vector3(0, 0, -0.54), Vector3(PI / 2, 0, 0), false)
 			Res.mi(tube, Res.cyl(0.042, 0.004, 0.17, 10), Res.mat(Color(0.3, 0.33, 0.24)), Vector3(0, 0, -0.68), Vector3(PI / 2, 0, 0), false)
 		tube.transform = SOCK_BACK
-	if Defs.UNITS.has(utype) and Defs.UNITS[utype].get("engineer", false):
+	if u.get("engineer", false):
 		back_item = _joint(torso, Vector3(-0.1, 0.35, 0.28))
 		Res.mi(back_item, Res.box(Vector3(0.05, 0.75, 0.05)), Res.mat(wood), Vector3.ZERO, Vector3(0, 0, 0.5), false)
 		Res.mi(back_item, Res.box(Vector3(0.18, 0.22, 0.03)), Res.mat(steel), Vector3(-0.17, 0.35, 0), Vector3(0, 0, 0.5), false)
@@ -434,19 +252,551 @@ func build(utype: String, team: int, seed: int) -> void:
 	for x in [-0.33, 0.33]:
 		Res.mi(stretcher, Res.box(Vector3(0.04, 0.04, 2.5)), Res.mat(Color(0.5, 0.45, 0.35)), Vector3(x, 0, 0), Vector3.ZERO, false)
 	stretcher.visible = false
-	var cloth := "camo_army" if team == 0 else "fabric"
-	var map := {skin: "skin", shirt: cloth, pants: cloth, hat: cloth if team == 0 else "fabric",
-		vest: "canvas_l", pouch: "canvas_l", pack: "canvas_l", flap: "canvas_l", pack.darkened(0.08): "canvas_l", boots: "boot", dark: "gunmetal",
-		sole: "rubber", fde: "plain", pocket: cloth,
-		wood: "wood_l", steel: "gunmetal", Color(0.12, 0.12, 0.12): "gunmetal", pads: "canvas_l", scarf: "fabric"}
-	if team == 0:
-		map[gloves] = "canvas_l"
-	_skin(self, map)
+	# the weapons and carried kit go from flat colours onto the shared surfaces
+	_skin(self, {dark: "gunmetal", steel: "gunmetal", wood: "wood_l", fde: "plain", pack: "canvas_l"})
 	# one mesh per joint (a surface per material): animation is untouched and
 	# each body part is a single render instance to move
-	for j in [root, hips, torso, head, thigh_l, shin_l, thigh_r, shin_r, arm_l, arm_r, forearm_l, forearm_r, gun, pistol, tube, back_item, stretcher]:
+	for j in [root, hips, torso, head, tails, thigh_l, shin_l, thigh_r, shin_r, arm_l, arm_r, forearm_l, forearm_r, gun, pistol, tube, back_item, stretcher]:
 		if j:
 			Mats.merge_static(j, [], false, false, true)
+
+
+## What he wears, by side: a dictionary of colours (and the surfaces they go on).
+func _palette(team: int, is_crew: bool, rng: RandomNumberGenerator) -> Dictionary:
+	var k := {}
+	k.skin = [Color(0.86, 0.68, 0.55), Color(0.72, 0.53, 0.4), Color(0.55, 0.38, 0.27), Color(0.4, 0.28, 0.2), Color(0.9, 0.75, 0.62)][rng.randi() % 5]
+	k.hair = [Color(0.09, 0.075, 0.06), Color(0.2, 0.14, 0.09), Color(0.3, 0.22, 0.14), Color(0.06, 0.06, 0.06)][rng.randi() % 4]
+	k.boot = Color(0.1, 0.095, 0.09)
+	k.glove = k.skin
+	k.glove_kind = "skin"
+	k.rolled = false
+	k.top_kind = "suit"
+	k.pants_kind = "suit"
+	if team == 0:
+		# FOXHOUND: a slate-grey sneaking suit, its armour a shade darker,
+		# black webbing and gloves
+		k.top = Res.vary(Color(0.3, 0.33, 0.335), 0.025, rng)
+		k.pants = k.top
+		k.armor = Color(0.2, 0.215, 0.22)
+		k.web = Color(0.1, 0.105, 0.105)
+		k.pouch = Color(0.24, 0.26, 0.26)
+		k.glove = Color(0.1, 0.1, 0.1)
+		k.glove_kind = "boot"
+	elif team == 1:
+		# Genome and Gurlukovich soldiers: field jackets and trousers that don't
+		# match, a chest rig over them, some in camouflage
+		k.top = Res.vary([Color(0.4, 0.38, 0.27), Color(0.48, 0.42, 0.31), Color(0.36, 0.29, 0.21), Color(0.31, 0.33, 0.27), Color(0.22, 0.22, 0.21)][rng.randi() % 5], 0.05, rng)
+		if rng.randf() < 0.15:
+			k.top_kind = "camo_rebel"
+		k.pants = Res.vary([Color(0.22, 0.22, 0.2), Color(0.32, 0.31, 0.23), Color(0.4, 0.36, 0.27), Color(0.2, 0.21, 0.23)][rng.randi() % 4], 0.04, rng)
+		k.armor = Res.vary([Color(0.33, 0.32, 0.23), Color(0.42, 0.37, 0.27), Color(0.25, 0.26, 0.21)][rng.randi() % 3], 0.05, rng)
+		k.web = Color(0.2, 0.19, 0.15)
+		k.pouch = (k.armor as Color).darkened(0.08)
+		k.boot = Color(0.12, 0.1, 0.08)
+		k.rolled = rng.randf() < 0.35
+		if rng.randf() < 0.35:
+			k.glove = Color(0.14, 0.13, 0.11)
+			k.glove_kind = "boot"
+	else:
+		# a stretcher bearer: a white smock over grey trousers
+		k.top = Color(0.78, 0.78, 0.75)
+		k.pants = Color(0.3, 0.32, 0.3)
+		k.armor = Color(0.8, 0.8, 0.78)
+		k.web = Color(0.3, 0.3, 0.28)
+		k.pouch = Color(0.6, 0.6, 0.58)
+	if is_crew:
+		# vehicle crew: one-piece coveralls and gloves
+		k.top = Res.vary(Color(0.3, 0.32, 0.29) if team == 0 else Color(0.22, 0.22, 0.2), 0.02, rng)
+		k.top_kind = "suit"
+		k.pants = k.top
+		k.glove = Color(0.1, 0.1, 0.1)
+		k.glove_kind = "boot"
+		k.rolled = false
+	return k
+
+
+## A part of the model on one of the shared surfaces, tinted to `col`.
+func _p(parent: Node3D, mesh: Mesh, kind: String, col: Color, pos := Vector3.ZERO, rot := Vector3.ZERO, scl := Vector3.ONE) -> MeshInstance3D:
+	var mi := MeshInstance3D.new()
+	mi.mesh = mesh
+	mi.position = pos
+	mi.rotation = rot
+	mi.scale = scl
+	parent.add_child(mi)
+	Mats.apply(mi, kind, Mats.tint_for(kind, col))
+	return mi
+
+
+static func _rg(y: float, hw: float, front: float, back: float, sq := 2.0, cx := 0.0, cz := 0.0) -> PackedFloat32Array:
+	return BodyMesh.ring(y, hw, front, back, sq, cx, cz)
+
+
+## A part's cross-section at height y (between the rows of its table), grown
+## by g all round: kit worn over the body follows its shape.
+static func _at(table: Array, y: float, g := 0.0, sq := 2.2) -> PackedFloat32Array:
+	var n := table.size()
+	var dir := signf(float(table[n - 1][0]) - float(table[0][0]))
+	var i := 0
+	while i < n - 2 and (y - float(table[i + 1][0])) * dir > 0.0:
+		i += 1
+	var a: Array = table[i]
+	var b: Array = table[i + 1]
+	var t := clampf((y - float(a[0])) / (float(b[0]) - float(a[0])), 0.0, 1.0)
+	var cz := lerpf(float(a[4]), float(b[4]), t) if a.size() > 4 else 0.0
+	return BodyMesh.ring(y, lerpf(float(a[1]), float(b[1]), t) + g, lerpf(float(a[2]), float(b[2]), t) + g, lerpf(float(a[3]), float(b[3]), t) + g, sq, 0.0, cz)
+
+
+## Every row of a table as a ring.
+static func _rings(table: Array, g := 0.0, sq := 2.2) -> Array:
+	var out := []
+	for row in table:
+		out.append(_at(table, float(row[0]), g, sq))
+	return out
+
+
+## How far forward the front of a cross-section is at x (to set kit on it).
+static func _front(r: PackedFloat32Array, x: float) -> float:
+	var t := clampf(absf(x - r[5]) / r[1], 0.0, 1.0)
+	return r[6] - r[2] * pow(1.0 - pow(t, r[4]), 1.0 / r[4])
+
+
+## A strap or a belt laid straight from a to b (in the parent's space).
+func _strip(parent: Node3D, a: Vector3, b: Vector3, w: float, th: float, kind: String, col: Color) -> void:
+	var d := b - a
+	var y := d.normalized()
+	var x := y.cross(Vector3.BACK if absf(y.z) < 0.9 else Vector3.UP).normalized()
+	var z := x.cross(y).normalized()
+	var mi := _p(parent, Res.box(Vector3(w, d.length(), th)), kind, col, (a + b) * 0.5)
+	mi.basis = Basis(x, y, z)
+
+
+## A strap laid across the front of the chest from (x0, y0) to (x1, y1),
+## following its curve in n straight runs: a bandolier, a satchel's strap.
+func _sash(x0: float, y0: float, x1: float, y1: float, n: int, w: float, th: float, kind: String, col: Color) -> void:
+	var pts: Array[Vector3] = []
+	for i in n + 1:
+		var t := float(i) / n
+		var x := lerpf(x0, x1, t)
+		var y := lerpf(y0, y1, t)
+		pts.append(Vector3(x, y, _front(_at(TORSO, y, 0.012, 2.3), x) - th * 0.3))
+	for i in n:
+		_strip(torso, pts[i], pts[i + 1], w, th, kind, col)
+
+
+## The man himself in his uniform: a deep chest tapering to a narrow waist,
+## heavy shoulders, limbs with muscle on them, gloved hands and big boots.
+func _body(k: Dictionary) -> void:
+	var top: Color = k.top
+	var tk: String = k.top_kind
+	var pants: Color = k.pants
+	var pk: String = k.pants_kind
+	_p(hips, BodyMesh.loft(_rings(PELVIS, 0.0, 2.4), 12), pk, pants)
+	_p(torso, BodyMesh.loft(_rings(TORSO, 0.0, 2.3), 12), tk, top)
+	for side in [-1.0, 1.0]:
+		var th: Node3D = thigh_l if side < 0.0 else thigh_r
+		var sh: Node3D = shin_l if side < 0.0 else shin_r
+		_p(th, Res.sphere(0.094, 10), pk, pants)
+		_p(th, BodyMesh.loft(_rings(THIGH, 0.0, 2.1), 10), pk, pants)
+		_p(sh, Res.sphere(0.068, 10), pk, pants)
+		_p(sh, BodyMesh.loft(_rings(SHIN, 0.0, 2.1), 10), pk, pants)
+		_boot(sh, k)
+		var ua: Node3D = arm_l if side < 0.0 else arm_r
+		var fa: Node3D = forearm_l if side < 0.0 else forearm_r
+		# the deltoid rounds off the shoulder; the arm swells at the bicep and
+		# the forearm below the elbow
+		_p(ua, Res.sphere(0.078, 10), tk, top, Vector3(0, -0.025, 0), Vector3.ZERO, Vector3(1.0, 1.1, 1.05))
+		_p(ua, BodyMesh.loft(_rings(UPPER_ARM, 0.0, 2.1), 10), tk, top)
+		_p(fa, Res.sphere(0.05, 8), tk, top)
+		if k.rolled:
+			# sleeves rolled to the elbow
+			_p(fa, BodyMesh.loft([_rg(0.035, 0.062, 0.062, 0.062), _rg(-0.035, 0.064, 0.064, 0.064)], 10), tk, top.darkened(0.06))
+			_p(fa, BodyMesh.loft(_rings(FOREARM, -0.004, 2.0), 10), "skin", k.skin)
+		else:
+			_p(fa, BodyMesh.loft(_rings(FOREARM, 0.0, 2.0), 10), tk, top)
+		_hand(fa, side, k)
+
+
+## A fist closed round a grip: big gauntleted gloves, or bare hands.
+func _hand(fa: Node3D, side: float, k: Dictionary) -> void:
+	var gc: Color = k.glove
+	var gk: String = k.glove_kind
+	if gk == "skin":
+		_p(fa, Res.cyl(0.042, 0.04, 0.05, 10), gk, gc, Vector3(0, -0.205, 0))
+	else:
+		_p(fa, Res.cyl(0.056, 0.048, 0.06, 10), gk, gc, Vector3(0, -0.2, 0))  # the gauntlet cuff
+	_p(fa, Res.box(Vector3(0.066, 0.08, 0.088)), gk, gc, Vector3(0, -0.25, 0), Vector3(0.15, 0, 0))
+	_p(fa, Res.box(Vector3(0.062, 0.052, 0.074)), gk, gc, Vector3(0, -0.293, -0.018), Vector3(0.55, 0, 0))
+	_p(fa, Res.box(Vector3(0.024, 0.052, 0.026)), gk, gc, Vector3(-side * 0.03, -0.252, -0.044), Vector3(0.3, 0, 0))
+
+
+## A big combat boot: a padded shaft strapped at the ankle, a high toe box,
+## a thick sole.
+func _boot(sh: Node3D, k: Dictionary) -> void:
+	var bc: Color = k.boot
+	_p(sh, BodyMesh.loft([_rg(-0.24, 0.065, 0.066, 0.068), _rg(-0.31, 0.064, 0.066, 0.07), _rg(-0.38, 0.062, 0.068, 0.072)], 10), "boot", bc)
+	_p(sh, BodyMesh.loft([_rg(-0.236, 0.07, 0.071, 0.073), _rg(-0.262, 0.07, 0.071, 0.073)], 10), "boot", bc.lightened(0.06))
+	_p(sh, BodyMesh.loft([_rg(-0.318, 0.068, 0.07, 0.074), _rg(-0.342, 0.068, 0.07, 0.074)], 10), "webbing", bc.darkened(0.2))
+	# the foot, lofted heel to toe (built upright, turned to point forward)
+	var foot := [_rg(0.0, 0.048, 0.03, 0.055, 2.5), _rg(0.06, 0.056, 0.035, 0.085, 2.5), _rg(0.14, 0.058, 0.035, 0.06, 2.5),
+		_rg(0.22, 0.056, 0.034, 0.038, 2.5), _rg(0.265, 0.044, 0.03, 0.024, 2.5)]
+	_p(sh, BodyMesh.loft(foot, 10), "boot", bc, Vector3(0, -0.395, 0.085), Vector3(-PI / 2, 0, 0))
+	_p(sh, Res.box(Vector3(0.124, 0.038, 0.3)), "rubber", Color(0.06, 0.055, 0.05), Vector3(0, -0.44, -0.06))
+
+
+## The Coalition, as FOXHOUND: a segmented belly under a fitted armour vest
+## with a high padded collar, layered shoulder pads, black webbing, a pistol
+## holstered on the right thigh and knee pads - Snake's silhouette, in squads.
+func _kit_coalition(k: Dictionary, medic: bool, rng: RandomNumberGenerator) -> void:
+	var ar: Color = k.armor
+	var web: Color = k.web
+	var pouch: Color = k.pouch
+	# the belly: three armoured segments between the belt and the vest
+	for i in 3:
+		var y := 0.045 + i * 0.05
+		_p(torso, BodyMesh.plate([_at(TORSO, y, 0.012, 2.3), _at(TORSO, y + 0.036, 0.012, 2.3)], -PI * 0.92, -PI * 0.08, 10, 0.016), "armor", ar)
+	# the vest: chest and back plates in one fitted shell, the suit showing at
+	# the armholes
+	_p(torso, BodyMesh.loft([_rg(0.19, 0.2, 0.137, 0.127, 2.7), _rg(0.3, 0.222, 0.157, 0.137, 2.7), _rg(0.42, 0.228, 0.166, 0.142, 2.7),
+		_rg(0.5, 0.205, 0.154, 0.138, 2.7), _rg(0.565, 0.165, 0.118, 0.122, 2.7)], 14), "armor", ar)
+	# the high padded collar, dipping at the front under his chin
+	_p(torso, BodyMesh.loft([_rg(-0.045, 0.12, 0.102, 0.114, 2.2), _rg(0.02, 0.1, 0.086, 0.096, 2.2), _rg(0.055, 0.092, 0.079, 0.09, 2.2)], 12),
+		"webbing", web, Vector3(0, 0.6, 0.0), Vector3(-0.34, 0, 0))
+	# webbing: shoulder straps over the vest, magazine pouches, an admin pouch
+	for sx in [-1.0, 1.0]:
+		_p(torso, Res.box(Vector3(0.05, 0.026, 0.27)), "webbing", web, Vector3(sx * 0.115, 0.578, 0.0))
+		_p(torso, Res.box(Vector3(0.045, 0.2, 0.016)), "webbing", web, Vector3(sx * 0.112, 0.47, -0.158), Vector3(-0.12, 0, 0))
+	for x in [-0.1, 0.0, 0.1]:
+		_p(torso, Res.box(Vector3(0.082, 0.12, 0.05)), "canvas_l", pouch, Vector3(x, 0.3, -0.17))
+		_p(torso, Res.box(Vector3(0.088, 0.03, 0.058)), "canvas_l", pouch.darkened(0.15), Vector3(x, 0.365, -0.172))
+	_p(torso, Res.box(Vector3(0.15, 0.07, 0.035)), "canvas_l", pouch, Vector3(0, 0.45, -0.177), Vector3(0.12, 0, 0))
+	_p(torso, Res.box(Vector3(0.07, 0.15, 0.06)), "canvas_l", pouch, Vector3(-0.222, 0.34, -0.01))
+	# on the back: an assault pack, or the radio with its whip antenna
+	if medic or rng.randf() < 0.45:
+		_p(torso, Res.box(Vector3(0.27, 0.3, 0.11)), "canvas_l", pouch, Vector3(0, 0.37, 0.192))
+		_p(torso, Res.box(Vector3(0.26, 0.06, 0.12)), "canvas_l", pouch.darkened(0.1), Vector3(0, 0.535, 0.192), Vector3(-0.1, 0, 0))
+		for sx in [-1.0, 1.0]:
+			_p(torso, Res.box(Vector3(0.04, 0.16, 0.08)), "canvas_l", pouch.darkened(0.1), Vector3(sx * 0.155, 0.33, 0.2))
+		if medic:
+			_p(torso, Res.box(Vector3(0.1, 0.1, 0.012)), "plain", Color(0.8, 0.79, 0.74), Vector3(0, 0.38, 0.25))
+			_p(torso, Res.box(Vector3(0.07, 0.022, 0.016)), "plain", Color(0.62, 0.1, 0.08), Vector3(0, 0.38, 0.252))
+			_p(torso, Res.box(Vector3(0.022, 0.07, 0.016)), "plain", Color(0.62, 0.1, 0.08), Vector3(0, 0.38, 0.252))
+	else:
+		_p(torso, Res.box(Vector3(0.11, 0.18, 0.065)), "canvas_l", pouch, Vector3(-0.06, 0.4, 0.17))
+		_p(torso, Res.box(Vector3(0.04, 0.03, 0.03)), "plain_dark", Color(0.08, 0.08, 0.08), Vector3(-0.09, 0.505, 0.17))
+		_p(torso, Res.cyl(0.005, 0.005, 0.5, 4), "plain_dark", Color(0.08, 0.08, 0.08), Vector3(-0.1, 0.76, 0.19), Vector3(0.12, 0, 0.06))
+	# the belt and its buckle, pouches round it
+	_p(hips, BodyMesh.loft([_rg(0.03, 0.177, 0.115, 0.122, 2.4), _rg(0.09, 0.169, 0.109, 0.114, 2.4)], 14), "webbing", web)
+	_p(hips, Res.box(Vector3(0.07, 0.052, 0.02)), "gunmetal", Color(0.32, 0.32, 0.3), Vector3(0, 0.06, -0.118))
+	for a in [-1.2, 1.2, 2.45, -2.45]:
+		_p(hips, Res.box(Vector3(0.07, 0.09, 0.045)), "canvas_l", pouch, Vector3(sin(a) * 0.185, 0.045, cos(a) * 0.13), Vector3(0, a, 0))
+	# the pistol on the right thigh, strapped round it
+	_p(thigh_r, Res.box(Vector3(0.05, 0.17, 0.1)), "webbing", web.lightened(0.05), Vector3(0.108, -0.17, 0.01), Vector3(0, 0, 0.05))
+	_p(thigh_r, Res.box(Vector3(0.034, 0.075, 0.042)), "gunmetal", Color(0.12, 0.12, 0.12), Vector3(0.106, -0.05, 0.03), Vector3(0.25, 0, 0.05))
+	for y in [-0.12, -0.25]:
+		_p(thigh_r, BodyMesh.loft([_at(THIGH, y + 0.014, 0.006), _at(THIGH, y - 0.014, 0.006)], 10), "webbing", web)
+	_p(thigh_l, Res.box(Vector3(0.04, 0.13, 0.12)), "suit", (k.pants as Color).darkened(0.08), Vector3(-0.09, -0.22, 0.0), Vector3(0, 0, -0.06))
+	# knee pads
+	for sh in [shin_l, shin_r]:
+		_p(sh, BodyMesh.plate([_rg(0.075, 0.074, 0.08, 0.07), _rg(0.0, 0.08, 0.09, 0.07), _rg(-0.08, 0.072, 0.08, 0.07)], -PI * 0.86, -PI * 0.14, 8, 0.024), "armor", web)
+	# layered pads capping the shoulders, elbow pads
+	for ua in [arm_l, arm_r]:
+		var sx := -1.0 if ua == arm_l else 1.0
+		_p(ua, BodyMesh.loft([_rg(0.07, 0.03, 0.034, 0.034, 2.2), _rg(0.056, 0.062, 0.066, 0.066, 2.4), _rg(0.028, 0.078, 0.08, 0.08, 2.5), _rg(-0.022, 0.08, 0.082, 0.082, 2.5)], 12),
+			"armor", ar, Vector3(sx * 0.004, 0.0, 0.0), Vector3(0, 0, -sx * 0.1))
+		_p(ua, BodyMesh.loft([_rg(-0.018, 0.075, 0.077, 0.077, 2.5), _rg(-0.064, 0.072, 0.074, 0.074, 2.5)], 12), "armor", ar.darkened(0.18),
+			Vector3(sx * 0.003, 0, 0), Vector3(0, 0, -sx * 0.06))
+	for fa in [forearm_l, forearm_r]:
+		_p(fa, BodyMesh.plate([_rg(0.05, 0.058, 0.06, 0.066), _rg(-0.0, 0.062, 0.062, 0.07), _rg(-0.06, 0.058, 0.058, 0.064)], PI * 0.18, PI * 0.82, 8, 0.018), "armor", web)
+	# shin guards above the boots
+	for sh in [shin_l, shin_r]:
+		_p(sh, BodyMesh.plate([_at(SHIN, -0.09, 0.012), _at(SHIN, -0.16, 0.012), _at(SHIN, -0.235, 0.012)], -PI * 0.8, -PI * 0.2, 8, 0.016), "armor", ar)
+	# a subdued unit patch on the left sleeve
+	_p(arm_l, Res.box(Vector3(0.012, 0.05, 0.06)), "plain", Defs.TEAM_COLORS[0].lerp(Color(0.3, 0.3, 0.3), 0.72).darkened(0.4), Vector3(-0.068, -0.15, 0))
+
+
+## The Rebels, as Genome and Gurlukovich soldiers: a field jacket worn long
+## over the hips with its collar turned up, the belt over it, a chest rig of
+## magazine pouches (or a bandolier) - each man a little different.
+func _kit_rebel(k: Dictionary, medic: bool, rng: RandomNumberGenerator) -> void:
+	var top: Color = k.top
+	var tk: String = k.top_kind
+	var rig: Color = k.armor
+	var web: Color = k.web
+	var pouch: Color = k.pouch
+	# the jacket's skirt and its collar, open at the throat
+	_p(torso, BodyMesh.loft([_rg(-0.115, 0.178, 0.12, 0.126, 2.4), _rg(-0.02, 0.166, 0.11, 0.112, 2.4), _rg(0.06, 0.168, 0.112, 0.11, 2.4)], 12), tk, top)
+	_p(torso, BodyMesh.plate([_rg(0.585, 0.122, 0.092, 0.106, 2.2), _rg(0.645, 0.104, 0.084, 0.1, 2.2), _rg(0.675, 0.118, 0.096, 0.114, 2.2)],
+		-0.95, PI + 0.95, 12, 0.018), tk, top.darkened(0.05))
+	if rng.randf() < 0.3:
+		# a bandolier from the left shoulder to the right hip
+		_sash(-0.13, 0.57, 0.14, 0.1, 4, 0.055, 0.022, "canvas_l", rig.darkened(0.15))
+	else:
+		# a chest rig: a panel across the front with four AK magazine pouches
+		_p(torso, BodyMesh.plate([_at(TORSO, 0.22, 0.03, 2.3), _at(TORSO, 0.4, 0.03, 2.3)], -PI * 0.86, -PI * 0.14, 10, 0.03), "canvas_l", rig)
+		for x in [-0.12, -0.04, 0.04, 0.12]:
+			var z := _front(_at(TORSO, 0.32, 0.03, 2.3), x) - 0.022
+			_p(torso, Res.box(Vector3(0.07, 0.14, 0.05)), "canvas_l", pouch, Vector3(x, 0.32, z), Vector3(0, x * 1.4, 0))
+			_p(torso, Res.box(Vector3(0.074, 0.028, 0.056)), "canvas_l", pouch.darkened(0.12), Vector3(x, 0.39, z - 0.002), Vector3(0, x * 1.4, 0))
+		# its straps over the shoulders, crossing at the back
+		for sx in [-1.0, 1.0]:
+			_p(torso, Res.box(Vector3(0.045, 0.024, 0.26)), "webbing", web, Vector3(sx * 0.105, 0.592, 0))
+			_p(torso, Res.box(Vector3(0.04, 0.42, 0.02)), "webbing", web, Vector3(0, 0.4, 0.124), Vector3(0, 0, sx * 0.6))
+	# breast pockets with button-down flaps
+	for sx in [-1.0, 1.0]:
+		var x: float = sx * 0.09
+		var z := _front(_at(TORSO, 0.47, 0.0, 2.3), x)
+		_p(torso, Res.box(Vector3(0.08, 0.09, 0.02)), tk, top.darkened(0.04), Vector3(x, 0.465, z - 0.004), Vector3(0.12, sx * 0.35, 0))
+		_p(torso, Res.box(Vector3(0.086, 0.028, 0.026)), tk, top.darkened(0.1), Vector3(x, 0.51, z - 0.008), Vector3(0.12, sx * 0.35, 0))
+	for fa in [forearm_l, forearm_r]:
+		if not k.rolled:
+			_p(fa, BodyMesh.loft([_at(FOREARM, -0.165, 0.007), _at(FOREARM, -0.2, 0.007)], 10), tk, top.darkened(0.06))
+	if medic or rng.randf() < 0.45:
+		# a canvas pack
+		_p(torso, Res.box(Vector3(0.26, 0.3, 0.12)), "canvas_l", pouch.lerp(Color(0.3, 0.32, 0.24), 0.3), Vector3(0, 0.36, 0.18))
+		_p(torso, Res.box(Vector3(0.25, 0.05, 0.13)), "canvas_l", pouch.darkened(0.12), Vector3(0, 0.525, 0.18), Vector3(-0.08, 0, 0))
+		if medic:
+			_p(torso, Res.box(Vector3(0.1, 0.1, 0.012)), "plain", Color(0.8, 0.79, 0.74), Vector3(0, 0.38, 0.243))
+			_p(torso, Res.box(Vector3(0.07, 0.022, 0.016)), "plain", Color(0.62, 0.1, 0.08), Vector3(0, 0.38, 0.245))
+			_p(torso, Res.box(Vector3(0.022, 0.07, 0.016)), "plain", Color(0.62, 0.1, 0.08), Vector3(0, 0.38, 0.245))
+	# the belt over the jacket, a canteen and a pouch on it
+	_p(hips, BodyMesh.loft([_rg(0.032, 0.18, 0.123, 0.13, 2.4), _rg(0.082, 0.178, 0.121, 0.128, 2.4)], 14), "webbing", web)
+	_p(hips, Res.box(Vector3(0.06, 0.048, 0.018)), "gunmetal", Color(0.35, 0.33, 0.28), Vector3(0, 0.057, -0.127))
+	_p(hips, Res.cyl(0.045, 0.045, 0.13, 8), "canvas_l", pouch, Vector3(-0.17, -0.02, 0.1))
+	_p(hips, Res.box(Vector3(0.075, 0.09, 0.05)), "canvas_l", pouch, Vector3(0.16, 0.03, 0.09), Vector3(0, 2.2, 0))
+	# cargo pockets, and knee pads on some
+	for th in [thigh_l, thigh_r]:
+		var sx := -1.0 if th == thigh_l else 1.0
+		_p(th, Res.box(Vector3(0.04, 0.13, 0.12)), "suit", (k.pants as Color).darkened(0.08), Vector3(sx * 0.09, -0.22, 0.0), Vector3(0, 0, sx * 0.06))
+	if rng.randf() < 0.35:
+		for sh in [shin_l, shin_r]:
+			_p(sh, BodyMesh.plate([_rg(0.07, 0.072, 0.078, 0.07), _rg(0.0, 0.078, 0.086, 0.07), _rg(-0.07, 0.07, 0.078, 0.07)], -PI * 0.84, -PI * 0.16, 8, 0.02), "armor", web)
+
+
+## Vehicle crew: coveralls under a light vest with a couple of pouches.
+func _kit_crew(k: Dictionary) -> void:
+	var vest: Color = (k.armor as Color).darkened(0.1)
+	_p(torso, BodyMesh.loft([_at(TORSO, 0.2, 0.02, 2.5), _at(TORSO, 0.36, 0.024, 2.5), _at(TORSO, 0.47, 0.022, 2.5), _rg(0.54, 0.18, 0.13, 0.126, 2.5)], 12), "canvas_l", vest)
+	for x in [-0.08, 0.08]:
+		_p(torso, Res.box(Vector3(0.08, 0.1, 0.04)), "canvas_l", vest.darkened(0.1), Vector3(x, 0.3, _front(_at(TORSO, 0.3, 0.022, 2.5), x) - 0.012))
+	_p(hips, BodyMesh.loft([_rg(0.03, 0.176, 0.115, 0.122, 2.4), _rg(0.085, 0.168, 0.109, 0.114, 2.4)], 14), "webbing", k.web)
+	_p(thigh_r, Res.box(Vector3(0.05, 0.16, 0.1)), "webbing", k.web, Vector3(0.106, -0.17, 0.01), Vector3(0, 0, 0.05))
+
+
+## A stretcher bearer: no kit but a satchel.
+func _kit_bearer(k: Dictionary) -> void:
+	_p(hips, BodyMesh.loft([_rg(0.03, 0.172, 0.112, 0.118, 2.4), _rg(0.075, 0.166, 0.107, 0.112, 2.4)], 12), "webbing", k.web)
+	_sash(-0.13, 0.57, 0.15, 0.06, 4, 0.035, 0.012, "canvas_l", k.pouch)
+	_p(hips, Res.box(Vector3(0.06, 0.16, 0.2)), "canvas_l", k.pouch, Vector3(0.19, -0.02, -0.02))
+
+
+## The head and what's on it.
+func _head_gear(k: Dictionary, team: int, is_crew: bool, bearer: bool, rng: RandomNumberGenerator) -> void:
+	if is_crew:
+		_face(k)
+		_cvc(team)
+		return
+	if bearer:
+		_face(k)
+		_soft_cap(Color(0.8, 0.8, 0.78), true)
+		return
+	if team == 0:
+		var s := rng.randi() % 10
+		if s < 2:
+			# Snake: hair, a bandana with its long tails, the codec headset
+			_face(k)
+			_hair(k)
+			_bandana([Color(0.09, 0.09, 0.1), Color(0.14, 0.15, 0.16), Color(0.26, 0.28, 0.22)][rng.randi() % 3])
+			_headset()
+		elif s < 5:
+			# a Genome trooper's look: balaclava, goggles down over the eyes
+			_face(k, true, Color(0.13, 0.14, 0.14))
+			_goggles(Transform3D(Basis.IDENTITY, Vector3(0, 0.14, -0.098)), true)
+			_helmet(k, false)
+		else:
+			_face(k)
+			_helmet(k, true)
+			_headset()
+		return
+	var bal: Color = [Color(0.12, 0.12, 0.11), Color(0.24, 0.25, 0.2), Color(0.3, 0.28, 0.24)][rng.randi() % 3]
+	match rng.randi() % 9:
+		0, 1:
+			# balaclava, goggles pushed up on the forehead
+			_face(k, true, bal)
+			_goggles(Transform3D(Basis(Vector3.RIGHT, 0.35), Vector3(0, 0.198, -0.084)), true)
+		2, 3:
+			# a beret over the balaclava
+			_face(k, true, bal)
+			_beret([Color(0.42, 0.09, 0.07), Color(0.12, 0.12, 0.12), Color(0.28, 0.3, 0.22)][rng.randi() % 3])
+		4:
+			_face(k)
+			_ushanka(Color(0.3, 0.26, 0.2) if rng.randf() < 0.5 else Color(0.2, 0.2, 0.2))
+			_scarf(k)
+		5:
+			_face(k)
+			_field_cap(k.top if rng.randf() < 0.5 else Color(0.32, 0.33, 0.25))
+		6:
+			_face(k)
+			_watch_cap(Color(0.12, 0.12, 0.12) if rng.randf() < 0.5 else Color(0.3, 0.31, 0.24))
+			_scarf(k)
+		7:
+			_face(k)
+			_beret([Color(0.42, 0.09, 0.07), Color(0.12, 0.12, 0.12)][rng.randi() % 2])
+			_scarf(k)
+		_:
+			_face(k)
+			_shemagh([Color(0.52, 0.47, 0.38), Color(0.28, 0.28, 0.26), Color(0.4, 0.17, 0.14)][rng.randi() % 3])
+
+
+## The face: a square jaw, cheekbones, a heavy brow over narrowed eyes. Under
+## a balaclava only the eyes show, through the slot in the wool.
+func _face(k: Dictionary, mask := false, mask_col := Color.BLACK) -> void:
+	var skin: Color = k.skin
+	var kind := "suit" if mask else "skin"
+	var col := mask_col if mask else skin
+	_p(head, BodyMesh.loft([_rg(-0.05, 0.054, 0.05, 0.054, 2.0, 0.0, 0.008), _rg(0.05, 0.05, 0.048, 0.05, 2.0, 0.0, 0.008)], 10), kind, col)
+	_p(head, BodyMesh.loft(_rings(HEAD, 0.0, 2.15), 14), kind, col)
+	_p(head, Res.box(Vector3(0.024, 0.05, 0.03)), kind, col, Vector3(0, 0.11, -0.097), Vector3(-0.32, 0, 0))
+	for sx in [-1.0, 1.0]:
+		_p(head, Res.sphere(0.028, 6), kind, col, Vector3(sx * 0.086, 0.122, 0.012), Vector3.ZERO, Vector3(0.5, 1.0, 0.8))
+	if mask:
+		_p(head, BodyMesh.plate([_at(HEAD, 0.122, 0.005, 2.15), _at(HEAD, 0.153, 0.005, 2.15)], -PI * 0.78, -PI * 0.22, 8, 0.012), "skin", skin)
+	var brow := mask_col.lightened(0.04) if mask else skin.darkened(0.12)
+	for sx in [-1.0, 1.0]:
+		# the brow juts over the eyes and draws down to the nose: the squint
+		_p(head, Res.box(Vector3(0.062, 0.02, 0.026)), kind, brow, Vector3(sx * 0.036, 0.156, -0.089), Vector3(0, -sx * 0.32, sx * 0.14))
+		_p(head, Res.box(Vector3(0.03, 0.011, 0.01)), "plain_dark", Color(0.05, 0.045, 0.04), Vector3(sx * 0.036, 0.137, -0.087), Vector3(0, -sx * 0.32, -sx * 0.08))
+	if not mask:
+		_p(head, Res.box(Vector3(0.036, 0.006, 0.006)), "plain_dark", skin.darkened(0.45), Vector3(0, 0.062, -0.092))
+
+
+func _hair(k: Dictionary) -> void:
+	_p(head, BodyMesh.loft([_at(HEAD, 0.165, 0.008, 2.1), _at(HEAD, 0.19, 0.01, 2.1), _at(HEAD, 0.222, 0.011, 2.1), _at(HEAD, 0.243, 0.01, 2.1), _rg(0.258, 0.022, 0.022, 0.032, 2.0, 0.0, 0.012)], 14),
+		"suit", k.hair)
+	_p(head, BodyMesh.plate([_at(HEAD, 0.07, 0.006, 2.1), _at(HEAD, 0.11, 0.008, 2.1), _at(HEAD, 0.17, 0.008, 2.1)], PI * 0.12, PI * 0.88, 10, 0.014), "suit", k.hair)
+
+
+## Snake's bandana: a band round the forehead knotted at the back, and the
+## tails hanging from the knot (on their own joint, so they can fly).
+func _bandana(c: Color) -> void:
+	_p(head, BodyMesh.loft([_at(HEAD, 0.158, 0.011, 2.1), _at(HEAD, 0.2, 0.011, 2.1)], 14), "suit", c)
+	tails = _joint(head, Vector3(0, 0.18, 0.11))
+	_p(tails, Res.box(Vector3(0.045, 0.04, 0.03)), "suit", c)
+	for sx in [-1.0, 1.0]:
+		_p(tails, Res.box(Vector3(0.034, 0.3, 0.007)), "suit", c, Vector3(sx * 0.018, -0.14, 0.02), Vector3(0, sx * 0.15, sx * 0.1))
+
+
+## The codec: an earpiece over the left ear and a boom mike to the mouth.
+func _headset() -> void:
+	var d := Color(0.09, 0.09, 0.09)
+	_p(head, Res.cyl(0.034, 0.034, 0.03, 10), "plain_dark", d, Vector3(-0.094, 0.122, 0.012), Vector3(0, 0, PI / 2))
+	_p(head, Res.box(Vector3(0.008, 0.008, 0.1)), "plain_dark", d, Vector3(-0.083, 0.088, -0.045), Vector3(0.38, 0.42, 0))
+	_p(head, Res.sphere(0.012, 6), "plain_dark", d, Vector3(-0.05, 0.068, -0.092))
+
+
+## Goggles: two lenses in a rubber frame on a strap round the head (or the
+## helmet); `xf` puts the bridge between the lenses.
+func _goggles(xf: Transform3D, strap: bool) -> void:
+	var d := Color(0.08, 0.08, 0.08)
+	var b := xf.basis
+	for sx in [-1.0, 1.0]:
+		var c := xf * Vector3(sx * 0.04, 0, -0.004)
+		var mi := _p(head, Res.cyl(0.033, 0.033, 0.03, 10), "rubber", d, c)
+		mi.basis = b * Basis(Vector3.RIGHT, PI / 2)
+		var lens := _p(head, Res.cyl(0.026, 0.026, 0.008, 10), "glass", Color(0.22, 0.3, 0.33), xf * Vector3(sx * 0.04, 0, -0.018))
+		lens.basis = b * Basis(Vector3.RIGHT, PI / 2)
+	var br := _p(head, Res.box(Vector3(0.022, 0.016, 0.02)), "rubber", d, xf * Vector3(0, 0.0, 0.0))
+	br.basis = b
+	if strap:
+		var y := xf.origin.y
+		var t := b.get_euler().x
+		var piv := Vector3(0, y, 0)
+		var rb := Basis(Vector3.RIGHT, t)
+		_p(head, BodyMesh.loft([_at(HEAD, y - 0.012, 0.008, 2.15), _at(HEAD, y + 0.012, 0.008, 2.15)], 14), "webbing", d.lightened(0.05), piv - rb * piv, Vector3(t, 0, 0))
+
+
+## A combat helmet, sat well down, its rim a lip round the edge, a band
+## round it; goggles on the front (or he's wearing them).
+func _helmet(k: Dictionary, goggles_up: bool) -> void:
+	var hc: Color = (k.armor as Color).lightened(0.08)
+	var tilt := 0.16
+	var piv := Vector3(0, 0.2, 0)
+	var b := Basis(Vector3.RIGHT, tilt)
+	var off := piv - b * piv
+	var rot := Vector3(tilt, 0, 0)
+	_p(head, BodyMesh.loft([_rg(0.118, 0.116, 0.126, 0.134, 2.2, 0, 0.008), _rg(0.135, 0.112, 0.122, 0.13, 2.2, 0, 0.008), _rg(0.19, 0.106, 0.114, 0.122, 2.1, 0, 0.008),
+		_rg(0.24, 0.088, 0.094, 0.102, 2.0, 0, 0.01), _rg(0.272, 0.055, 0.058, 0.064, 2.0, 0, 0.01), _rg(0.287, 0.02, 0.02, 0.024, 2.0, 0, 0.01)], 16), "armor", hc, off, rot)
+	_p(head, BodyMesh.loft([_rg(0.112, 0.121, 0.131, 0.139, 2.2, 0, 0.008), _rg(0.13, 0.12, 0.13, 0.138, 2.2, 0, 0.008)], 16), "armor", hc.darkened(0.2), off, rot)
+	_p(head, BodyMesh.loft([_rg(0.168, 0.112, 0.12, 0.128, 2.1, 0, 0.008), _rg(0.19, 0.109, 0.117, 0.125, 2.1, 0, 0.008)], 16), "webbing", k.web, off, rot)
+	if goggles_up:
+		_goggles(Transform3D(b, off + b * Vector3(0, 0.2, -0.112)), false)
+	for sx in [-1.0, 1.0]:
+		_p(head, Res.box(Vector3(0.012, 0.024, 0.11)), "armor", hc.darkened(0.12), off + b * Vector3(sx * 0.113, 0.165, 0.01), rot)
+
+
+## A tank crewman's padded helmet (a CVC): a soft dome, thick ear cups for the
+## intercom, a padded brow roll, the boom mike in front of his mouth.
+func _cvc(team: int) -> void:
+	var c := Color(0.27, 0.28, 0.24) if team == 0 else Color(0.14, 0.14, 0.13)
+	_p(head, BodyMesh.loft([_rg(0.105, 0.102, 0.112, 0.124, 2.1, 0, 0.01), _rg(0.18, 0.104, 0.112, 0.124, 2.1, 0, 0.01), _rg(0.24, 0.084, 0.09, 0.102, 2.0, 0, 0.01),
+		_rg(0.272, 0.046, 0.05, 0.056, 2.0, 0, 0.01)], 14), "suit", c)
+	_p(head, BodyMesh.loft([_rg(0.15, 0.108, 0.118, 0.128, 2.1, 0, 0.01), _rg(0.18, 0.108, 0.118, 0.128, 2.1, 0, 0.01)], 14), "suit", c.darkened(0.25))
+	for sx in [-1.0, 1.0]:
+		_p(head, Res.cyl(0.055, 0.055, 0.05, 10), "suit", c.darkened(0.15), Vector3(sx * 0.105, 0.115, 0.01), Vector3(0, 0, PI / 2))
+	_p(head, Res.box(Vector3(0.01, 0.01, 0.11)), "plain_dark", Color(0.09, 0.09, 0.09), Vector3(-0.098, 0.075, -0.06), Vector3(0.3, 0.5, 0))
+	_p(head, Res.sphere(0.014, 6), "plain_dark", Color(0.09, 0.09, 0.09), Vector3(-0.05, 0.066, -0.095))
+
+
+## A beret pulled down to the right over the brow, a leather band, a badge.
+func _beret(c: Color) -> void:
+	var piv := Vector3(0, 0.17, 0)
+	var b := Basis(Vector3.BACK, -0.2)
+	_p(head, BodyMesh.loft([_at(HEAD, 0.168, 0.01, 2.1), _rg(0.2, 0.11, 0.116, 0.118, 2.0, 0.006, 0.01), _rg(0.235, 0.12, 0.124, 0.126, 2.0, 0.016, 0.012),
+		_rg(0.258, 0.096, 0.1, 0.104, 2.0, 0.022, 0.014), _rg(0.269, 0.045, 0.05, 0.052, 2.0, 0.024, 0.014)], 14), "suit", c, piv - b * piv, b.get_euler())
+	_p(head, BodyMesh.loft([_at(HEAD, 0.162, 0.012, 2.1), _at(HEAD, 0.18, 0.012, 2.1)], 14), "boot", Color(0.12, 0.1, 0.08))
+	_p(head, Res.box(Vector3(0.026, 0.03, 0.01)), "gunmetal", Color(0.6, 0.5, 0.25), Vector3(-0.045, 0.2, -0.098), Vector3(0, 0.45, 0))
+
+
+## A Soviet field cap: a squared crown, a short brim.
+func _field_cap(c: Color) -> void:
+	_p(head, BodyMesh.loft([_at(HEAD, 0.158, 0.01, 2.3), _rg(0.215, 0.096, 0.104, 0.108, 2.6, 0, 0.006), _rg(0.258, 0.094, 0.1, 0.104, 2.8, 0, 0.006)], 14), "suit", c)
+	_p(head, Res.cyl(0.07, 0.07, 0.012, 12), "suit", c.darkened(0.2), Vector3(0, 0.165, -0.1), Vector3(-0.14, 0, 0), Vector3(1.25, 1.0, 0.75))
+
+
+## A watch cap, rolled up at the edge.
+func _watch_cap(c: Color) -> void:
+	_p(head, BodyMesh.loft([_at(HEAD, 0.15, 0.012, 2.1), _at(HEAD, 0.19, 0.012, 2.1), _at(HEAD, 0.222, 0.012, 2.1), _rg(0.25, 0.05, 0.05, 0.06, 2.0, 0, 0.012),
+		_rg(0.262, 0.02, 0.02, 0.026, 2.0, 0, 0.012)], 14), "suit", c)
+	_p(head, BodyMesh.loft([_at(HEAD, 0.142, 0.02, 2.1), _at(HEAD, 0.172, 0.02, 2.1)], 14), "suit", c.darkened(0.12))
+
+
+## A fur hat with its ear flaps tied up.
+func _ushanka(c: Color) -> void:
+	_p(head, BodyMesh.loft([_at(HEAD, 0.17, 0.016, 2.2), _rg(0.24, 0.098, 0.104, 0.11, 2.4, 0, 0.01), _rg(0.282, 0.092, 0.098, 0.104, 2.6, 0, 0.01)], 14), "suit", c.darkened(0.25))
+	_p(head, BodyMesh.loft([_at(HEAD, 0.14, 0.036, 2.2), _at(HEAD, 0.2, 0.04, 2.2), _rg(0.215, 0.112, 0.124, 0.132, 2.2, 0, 0.006)], 14), "suit", c)
+	for sx in [-1.0, 1.0]:
+		_p(head, Res.box(Vector3(0.026, 0.075, 0.1)), "suit", c, Vector3(sx * 0.108, 0.24, 0.012), Vector3(0, 0, -sx * 0.18))
+
+
+## A shemagh wrapped over the head and across the face below the eyes.
+func _shemagh(c: Color) -> void:
+	_p(head, BodyMesh.loft([_at(HEAD, 0.15, 0.014, 2.1), _at(HEAD, 0.19, 0.016, 2.1), _at(HEAD, 0.222, 0.016, 2.1), _rg(0.258, 0.05, 0.05, 0.062, 2.0, 0, 0.012)], 14), "fabric", c)
+	_p(head, BodyMesh.loft([_at(HEAD, -0.02, 0.022, 2.1), _at(HEAD, 0.035, 0.018, 2.1), _at(HEAD, 0.07, 0.012, 2.1), _at(HEAD, 0.11, 0.01, 2.1)], 14), "fabric", c.darkened(0.06))
+	_p(head, Res.box(Vector3(0.1, 0.2, 0.03)), "fabric", c.darkened(0.08), Vector3(0, 0.07, 0.12), Vector3(-0.2, 0, 0))
+
+
+## A scarf round the neck.
+func _scarf(k: Dictionary) -> void:
+	_p(head, BodyMesh.loft([_rg(-0.04, 0.085, 0.08, 0.085), _rg(0.02, 0.08, 0.075, 0.08), _rg(0.04, 0.07, 0.068, 0.072)], 12), "fabric",
+		[Color(0.52, 0.47, 0.38), Color(0.28, 0.28, 0.26), Color(0.4, 0.17, 0.14), Color(0.34, 0.35, 0.27)][int(seedf * 10.0) % 4])
+
+
+## A soft cap, with a red cross on it for a bearer.
+func _soft_cap(c: Color, cross: bool) -> void:
+	_p(head, BodyMesh.loft([_at(HEAD, 0.158, 0.012, 2.2), _at(HEAD, 0.205, 0.012, 2.2), _rg(0.24, 0.086, 0.09, 0.1, 2.3, 0, 0.01)], 14), "suit", c)
+	_p(head, Res.cyl(0.07, 0.07, 0.012, 12), "suit", c.darkened(0.1), Vector3(0, 0.162, -0.1), Vector3(-0.14, 0, 0), Vector3(1.2, 1.0, 0.75))
+	if cross:
+		_p(head, Res.box(Vector3(0.07, 0.02, 0.012)), "plain", Color(0.62, 0.1, 0.08), Vector3(0, 0.21, -0.098), Vector3(-0.4, 0, 0))
+		_p(head, Res.box(Vector3(0.02, 0.06, 0.012)), "plain", Color(0.62, 0.1, 0.08), Vector3(0, 0.21, -0.098), Vector3(-0.4, 0, 0))
 
 
 ## An M4A1 (or, short, a Mk18 CQB carbine) at its real size: lower receiver and
@@ -957,6 +1307,11 @@ func pose(dt: float, life: int, posture: int, act: int, speed: float, backwards:
 			_launch_grips = true
 			ik_l = true
 			ik_r = true
+	if tails:
+		# the bandana's tails stream out behind him as he runs, and stir when he's still
+		var stream := clampf(speed / 5.0, 0.0, 1.0) if life == 0 else 0.0
+		var flap := sin(Time.get_ticks_msec() * 0.009 + seedf) * (0.05 + 0.15 * stream)
+		t_tails = Vector3(-0.3 - stream * 1.0 + flap, flap * 0.6, 0.0)
 	gun.visible = show_gun and not (crew and life == 0)
 	pistol.visible = show_pistol
 	nade.visible = show_nade and life == 0
@@ -1328,6 +1683,8 @@ func _apply(dt: float, k: float) -> void:
 	_rot(arm_r, t_arr, f)
 	_rot(forearm_l, t_fal, f)
 	_rot(forearm_r, t_far, f)
+	if tails:
+		_rot(tails, t_tails, f)
 	if gun.visible:
 		_mv(gun, t_gun_p, f)
 		_rot(gun, t_gun_r, f)
