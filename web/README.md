@@ -58,18 +58,17 @@ The files under `src/components/ui/` come from shadcn (`npx shadcn add ...`) and
 
 Every clip in `public/media/` was recorded in the game itself with Godot's movie writer, off-screen, then cut
 and encoded as H.264 MP4 (with each clip's first frame as its `.jpg` poster). The hero loop and the feature
-clips are silent; `reel.mp4`, behind "Watch the footage", keeps the game's own sound. For example:
+clips are silent; `reel.mp4`, behind "Watch the footage", keeps the game's own sound, with captions describing it.
+The page only loads a clip when it scrolls into view, and shows the still instead to people who prefer reduced
+motion or have Data Saver on.
 
-```bash
-godot --path . --write-movie bridge.avi --fixed-fps 30 -- --mission=bridgehead --nohud --perf=0 --preset=ultra --pitch=-30
-godot --path . --write-movie a10.avi --fixed-fps 30 -- --mission=bridgehead --nohud --perf=0 --preset=ultra --focus=-150,176 --zoom=42 --pitch=-22 --cam-yaw=0.5 --pan=0.8,0.3 --demo-support=a10 --demo-at=3
-```
-
-Without `--focus` the observer's director camera finds the fighting by itself; `--pitch` gives it a lower, more
-cinematic angle. Keep clips short and small (the feature clips are about 1 MB each at 960×540): the page only
-loads a clip when it scrolls into view, and shows the still instead to people who prefer reduced motion or have
-Data Saver on. The text the page quotes (radio traffic, vehicle names, mission briefs, the numbers) lives in
+The text the page quotes (the counts, the missions, the radio traffic, the vehicle names) lives in
 `src/lib/intel.ts`, taken from the game's own tables.
+
+When the game changes, the `website-footage` skill (`.claude/skills/website-footage/`) brings both up to date:
+`check_intel.py` checks the copy against the game (and `--fix` updates the counts), `record.py` re-records the
+takes listed in its `shots.json`, and `build.py` cuts and encodes them into `public/media`. Its `SKILL.md` walks
+through it, with the flags that make good footage.
 
 ## Deploying
 

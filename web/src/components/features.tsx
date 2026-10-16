@@ -1,6 +1,7 @@
 import { SectionLabel } from "@/components/battles"
 import { Clip } from "@/components/footage"
 import { Reveal } from "@/components/reveal"
+import { COUNTS } from "@/lib/intel"
 import { cn } from "@/lib/utils"
 
 type Feature = {
@@ -38,7 +39,7 @@ const FEATURES: Feature[] = [
     grid: "B4",
     kicker: "Armour",
     title: "Armour that hits like a hammer",
-    text: "Tanks pop smoke when a missile is fired at them. Infantry fighting vehicles drop their squads at the enemy's wire. Ninety-seven vehicles, from quad bikes and technicals to main battle tanks.",
+    text: `Tanks pop smoke when a missile is fired at them. Infantry fighting vehicles drop their squads at the enemy's wire. In all, ${COUNTS.vehicles} vehicles, from quad bikes and technicals to main battle tanks.`,
     tags: ["Main battle tanks", "IFVs", "Tank destroyers", "Smoke"],
   },
   {

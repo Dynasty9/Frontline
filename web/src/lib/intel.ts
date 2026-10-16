@@ -2,7 +2,12 @@
 // the radio lines are what the missions really say over the net
 // (scripts/game/missions.gd, rules.gd), the names are from the vehicle and
 // fire-support tables (vehicle_roster.gd, defs.gd), and the numbers are
-// counted from them. Keep them true when those change.
+// counted from them. Keep them true when those change: the website-footage
+// skill's check_intel.py (.claude/skills/website-footage) compares all of it
+// with the game, and its --fix rewrites COUNTS.
+
+/** Counted from the game: Defs.VEHICLES plus the vehicle roster, Defs.SUPPORT, and the missions the menu lists. */
+export const COUNTS = { vehicles: 98, support: 16, missions: 5 }
 
 /** Radio traffic, word for word, from the missions. */
 export const RADIO: [string, string][] = [
@@ -27,8 +32,8 @@ export const RADIO: [string, string][] = [
 /** The first ticker: what you'll do. */
 export const TICKER = [
   "Squads that think for themselves",
-  "97 vehicles",
-  "16 kinds of fire support",
+  `${COUNTS.vehicles} vehicles`,
+  `${COUNTS.support} kinds of fire support`,
   "House-to-house fighting",
   "Fire that spreads with the wind",
   "Amphibious landings",
@@ -60,9 +65,14 @@ export const HARDWARE = [
 
 /** Counted from the game's tables. `from` is where the counter starts. */
 export const STATS: { value: number; from: number; unit?: string; label: string; note: string }[] = [
-  { value: 97, from: 0, label: "Vehicles", note: "Quad bikes to railgun tanks, gunships to gun trawlers" },
-  { value: 16, from: 0, label: "Fire-support assets", note: "Mortars, 155s, rocket barrages, A-10s and the AC-130" },
-  { value: 5, from: 0, label: "Missions", note: "Played alone or in co-op, dawn to dead of night" },
+  { value: COUNTS.vehicles, from: 0, label: "Vehicles", note: "Quad bikes to railgun tanks, gunships to gun trawlers" },
+  {
+    value: COUNTS.support,
+    from: 0,
+    label: "Fire-support assets",
+    note: "Mortars, 155s, rocket barrages, A-10s and the AC-130",
+  },
+  { value: COUNTS.missions, from: 0, label: "Missions", note: "Played alone or in co-op, dawn to dead of night" },
   {
     value: 1,
     from: 0,

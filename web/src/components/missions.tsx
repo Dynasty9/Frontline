@@ -4,6 +4,8 @@ import { Reveal } from "@/components/reveal"
 import { type Mission, MISSIONS } from "@/lib/intel"
 import { cn } from "@/lib/utils"
 
+const WORDS = ["No", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine", "Ten", "Eleven", "Twelve"]
+
 // the first mission gets the big tile; the rest fill in round it
 const SPANS = [
   "lg:col-span-4 lg:row-span-2 min-h-[22rem] lg:min-h-[34rem]",
@@ -21,7 +23,7 @@ export function Missions() {
           <div>
             <SectionLabel>Missions</SectionLabel>
             <h2 className="mt-3 font-display text-5xl leading-[0.95] font-extrabold uppercase sm:text-6xl">
-              Five operations. <span className="text-primary">Zero margin.</span>
+              {WORDS[MISSIONS.length] ?? MISSIONS.length} operations. <span className="text-primary">Zero margin.</span>
             </h2>
           </div>
           <p className="max-w-sm text-sm leading-relaxed text-muted-foreground">
