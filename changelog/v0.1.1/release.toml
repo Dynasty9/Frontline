@@ -1,0 +1,5 @@
+version = "0.1.1"
+name = "Interface Scale"
+date = "2026-10-16"
+summary = "The interface grows with your window, stays sharp at any size, and can go much bigger without panels running into each other."
+pull_requests = [5]

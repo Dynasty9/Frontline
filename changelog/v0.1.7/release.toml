@@ -1,0 +1,5 @@
+version = "0.1.7"
+name = "Window Size"
+date = "2026-10-16"
+summary = "The game opens at the window size you chose, and the squad card fits even at the largest interface scale."
+pull_requests = [11]

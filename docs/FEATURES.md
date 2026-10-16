@@ -13,7 +13,8 @@ The long version: how each system works and why. For the short version, see the 
 | | |
 |---|---|
 | Camera | WASD / arrows / screen edge pan (Shift: faster), mouse wheel zoom toward the cursor (or + / -), Q/E turn, Page Up / Page Down tilt. Middle-drag turns and tilts; **Alt+middle-drag grabs the map** and pans (Settings swaps the two). **Backspace** squares the view up again, **Ctrl+F** follows the selection, **Ctrl+F5..F8** save a view and **F5..F8** go back to it |
-| Minimap | Click or drag to look there, right-click to send the selection, wheel to zoom. Click the compass needle to square the view up |
+| Minimap | Click or drag to look there, right-click to send the selection, wheel to zoom. Click the compass needle to square the view up. **Alt+click** pings, **Alt+right-drag** draws for your side |
+| Co-commanders | **Alt+click** pings what's under the cursor (an enemy: "enemy spotted"; one of ours: "watch this"; the ground: "look here"). **Hold Alt + left button** for the ping wheel (attack, on my way, need support, danger, defend, look; let go in the middle to call it off). **Alt+right-drag** draws a line for your side. In the Command Net, click a name to look where they're looking, the screen button (or a double-click) to watch their view live |
 | Select | Left-click a soldier to select his squad, drag a box, double-click for all of that type on screen. **Alt+click** a soldier (or click his name in the squad panel) to command just him |
 | Groups | Ctrl+1..9 set, 1..9 recall (double-tap to jump there) |
 | Orders | Right-click: move (Shift = fast run; **drag** to set which way they face), attack enemy, build/repair your structure, enter tunnel / MG nest / watchtower. The **cover pips** under the cursor show where each man will end up: green hard cover, lime medium, yellow soft (hides, doesn't stop bullets), grey dot none, red caught in the open; a tick on a pip points the way he'll fire over the barrier, and the label says how (prone, kneeling, standing, round the edges) |
@@ -25,7 +26,7 @@ The long version: how each system works and why. For the short version, see the 
 | Support | The buttons above the minimap (Z arms the first one ready): click the target, **drag** to set the run-in direction for gun runs and bombing runs |
 | Observer | C director camera, V whose eyes to watch through, P pause, [ ] speed, F2 hide the interface. **Fire support** (observer bar) launches any air or artillery support anywhere to watch it |
 | Command view | Tab tactical map, O order of battle (click a unit to select it and look at it, double-click to zoom in), the buttons beside the minimap turn map layers on and off (unit symbols, orders and attack plans, intelligence, fog of war, weapon ranges, soldier labels) |
-| Other | Home cycles FOBs, Space jumps to the last alert (both glide there), Enter chats (Shift+Enter: team), L message history, F1 help, F3 performance overlay, **F4 field manual**, Esc menu |
+| Other | Home cycles FOBs, Space jumps to the last alert or ping (both glide there), Enter chats (Shift+Enter: team), L message history, F1 help, F3 performance overlay, **F4 field manual**, Esc menu |
 
 ## Watching the AI
 
@@ -62,6 +63,46 @@ they're doing). The observer bar at the top has pause, speed (0.25x to 4x), dire
 - **Co-op:** everyone picks the same side, and the AI takes the empty side.
   **PvP:** pick opposite sides. "Add an AI commander to sides that have players" gives you an AI teammate.
 - If a player leaves, a teammate inherits their squads, or the AI takes over if nobody is left on that side.
+- **Co-commanders** (`co_command.gd`, `ui/hud_coop.gd`, `ui/hud_coop_roster.gd`): you see what the other
+  commanders on your side are doing, as they do it, the way officers in one command post see each other's
+  map markings and hear what each is calling for.
+  - **Colours.** Each player is given a colour in the lobby (the swatch by their name), kept all battle and
+    clear of the two sides' blue and red, so "I'm the pink one" works over voice.
+  - **Presence.** Ten times a second while anything changes (once a second when nothing does) each game tells
+    the host where its camera is looking, where the cursor is, what's selected and what's being lined up; the
+    host passes it on to that side only, and to observers (never the enemy: where you're looking gives your
+    plan away). About 110 bytes a packet; it only ever drives drawing, never the simulation.
+  - **On the battlefield**, in the commander's colour: a viewfinder on the ground at the middle of their
+    screen, turned the way they face and sized to their zoom, with "ROOK'S VIEW" under it (the tactical map
+    adds the whole patch of ground their screen takes in); their cursor, an arrow pointer with a name tag
+    that says what they're doing ("Laying a trench line", "Aiming 155 mm Artillery", "Ordering an attack");
+    a dashed ring round each squad or vehicle they have selected; and whatever they're about to commit:
+    the building's ghost or the line being dragged out (with a tick per length), the fire mission's beaten
+    zone with a hazard sign on it, the order being dragged out with a line from their units to it. A
+    commander looking somewhere off your screen waits at its edge with how far away it is: click the marker
+    to look there. Their units carry their initials on the unit symbols, a fresh order under a symbol says
+    who sent it, and the order's link from HQ is in their colour.
+  - **Command Net** (top right, under a mission's objectives): one row per commander with their colour and
+    initials, what they command, and what they're doing this moment, in order: lining something up; the
+    order they've just given ("Ordered Golf 1: ASSAULT D4"); what they've just committed ("Called in 155 mm
+    Artillery · E5"); who they have selected; idle; or which square they're watching. A row flashes when its
+    commander pings. Its buttons look at their view, or watch it live: your camera keeps to their view
+    until you pan, turn or zoom, with their colour round the screen and a caption saying whose view it is.
+  - **Who spent the supply.** The host tells the side when a commander puts down a building, lays a line,
+    calls in fire support, sets a squad training or starts research. Fire support and research show as a
+    notification, the rest go to the message log (L).
+  - **Pings.** Alt+click marks what's under the cursor (an enemy in sight: "Enemy spotted: BTR-80", stuck
+    to him while he can be seen; one of ours: "Watch this: Bravo 2"; the ground: "Look here"). Holding Alt
+    and the left button opens a wheel: attack here, on my way (drawn as a line from their units), need
+    support, danger, defend here, look here. A ping is a pin with its sign, rings spreading over the ground,
+    who sent it and how far it is; off the screen it waits at the edge; it pulses on the minimap, chimes
+    (a sharper chime for danger, enemies and calls for help) and goes in the message log. Space jumps to
+    the newest. The host lets each commander send a few a second at most.
+  - **Sketches.** Alt+right-drag (on the battlefield or the minimap) draws a line for the side, a route or
+    an axis of advance; it draws itself in on their screens with an arrowhead and the drawer's initials,
+    and fades after 14 seconds, like a grease-pencil line wiped off the map case.
+  - Settings > Interface > "Co-commanders' views and cursors" turns the presence drawing off (pings,
+    sketches and the Command Net stay).
 - **Drop-in:** friends can join a battle that's already running (lobby option, on by default). They join the
   side with human players (the smaller side in PvP), get the current world, and receive a rifle squad and engineers at their FOB.
 - **Fog of war is enforced by the host.** A client is only told about enemy units and buildings its side has spotted,
@@ -307,6 +348,11 @@ function and an autopilot function.
 - Country roads come in from both HQs and both edges of the map and join the main streets. Villages sit on the
   cross road either side of town and on the road between each HQ and the town; farmsteads (farmhouse and barn round a yard, hay bales, a fenced road frontage, an orchard) and
   hedged fields lie along the roads; abandoned cars on the verges, burnt-out armour off the road.
+- **The town and every village have a name and a supply dump** (crated stores on a pallet, fuel drums and a
+  flagpole): the town's on its square where the flagpole stood, a village's on the verge of its main street.
+  Nobody holds them at the start. They are the supply worth fighting over: see *Towns* under Base building and
+  supply. (Missions don't have them; the dumps use their own random numbers, so a seed's map is otherwise
+  unchanged.)
 - Houses have dressed facades: sills and lintels, painted window frames with mullion and transom, panes (many
   shot out), shutters, door frames, steps and double doors hanging open.
 - Walls, hedges, trees, cars and crates are all real cover. Street furniture is set dressing generated on the
@@ -342,9 +388,12 @@ function and an autopilot function.
   roof falls in as ash (a house is left a roofless shell), a tree is left a bare black snag, a car a
   burnt-out shell. Rain damps everything down: fires catch less, spread less and burn lower.
 - Men caught too close get burnt and get back out of the heat ("Fire! Get back!"); nobody takes cover behind
-  something that's burning or in a patch of burning grass, and a man whose cover catches fire moves. A roof
-  fire burns whoever's in the house under it. Your side is warned when one of its buildings catches fire, and
-  engineers repairing it beat the flames out first.
+  something that's burning or in a patch of burning grass, and a man whose cover catches fire moves. Routes
+  go round fires (men well round, drivers if it's not far out of their way). A roof fire burns whoever's in
+  the house under it. Your side is warned when one of its buildings catches fire, and engineers repairing it
+  beat the flames out first.
+- A fire that's well alight lays a pall of smoke across the ground downwind - a burning vehicle, a roof, a
+  grass fire most of all - and nobody sees or aims through it, just as with a smoke screen.
 - The look: tongues of flame that cool from yellow-white through orange to sooty red as they rise, sparks
   swirling up on the heat, a smoke column leaning off downwind (charcoal off fuel and rubber, brown-grey off
   wood, paler off green leaves) lit orange from below, and a flickering light that matters most at night.
@@ -411,17 +460,22 @@ function and an autopilot function.
   tracks thinner), woods and every house's footprint (light while its roof stands, dark once it's a ruin) are
   baked into a texture. Over it go the fog of war (darker where your side can't see), every man you can see as a
   dot (yours brightest, the selection white), vehicles by their map symbols, where the enemy was last seen, aircraft
-  overhead (yours with the ground they can see), bases, objectives and alerts, and an orange ring pulsing wherever
-  men are firing. The camera's view is a lit wedge with a line back to where the camera stands, and a compass needle
+  overhead (yours with the ground they can see), bases, objectives and alerts, each town as a flag in its holder's
+  colour inside the ring of ground that takes it (with how far a capture has got round the ring), and an orange
+  ring pulsing wherever men are firing. The camera's view is a lit wedge with a line back to where the camera stands, and a compass needle
   shows where north lies in the view (click it to square up). Hovering gives the grid square under the cursor.
   Three sizes, and it can turn with the camera so the way you face is always up (Settings > Interface).
+  In co-op each other commander's view is a wedge in their colour with their initial at their camera, with
+  their cursor, rings round what they've selected, their pings and sketches.
 - **Interface scale** (Settings > Interface): the interface grows with the window, so at 100% it takes the same
   share of the screen at any resolution (1.35x at 1080p, 1.8x at 1440p, 2.7x at 4K), and the slider scales it
   from there up to the largest that still fits the window (2x in a 1080p window, 2.7x at 1440p). Text is
   rasterised at the size it's drawn, and the map symbols are re-drawn at a higher resolution on a big scale, so
   both stay sharp. On a narrow screen the command card drops to three columns, the minimap shrinks to leave room
   for the support buttons, notifications stop above the command card, the observer bar moves to the bottom right,
-  and the settings, controls and Field Manual fit the screen and scroll. The menus (laid out for a full
+  the squad card's attack stepper goes under its orders, and the settings, controls and Field Manual fit the
+  screen and scroll. The windowed size picked in Settings > Display is the one the game opens at (maximised if
+  it's too big for the screen), so a bigger window means a bigger interface from the start. The menus (laid out for a full
   1600 x 900) only grow until they fill the window. The scale applies when the slider is let go, so the panel
   doesn't move under the mouse while it's being dragged.
 
@@ -531,6 +585,23 @@ function and an autopilot function.
 - Each finished FOB raises the unit cap by 20, resupplies nearby soldiers, and lays its own road back toward your HQ.
   Supply trucks drive those roads (Rebel trucks carry more, since the Rebels have no helicopters). If you ambush the trucks or block the road (tank traps, mines), every FOB past
   that point stops getting supply.
+- **Towns** (`structure.gd` `_town_tick`, `rules.gd`): the town in the middle and every village are supply. Whoever
+  holds one draws on it - food, fuel, lorries, labour - into its dump: 24 supply a minute from a village, 60 from
+  the town, less as its houses are knocked down (a place shelled to ruins gives about a third), up to what the dump
+  holds. Once there's a load, the town's own lorry drives it to the holder's nearest FOB along a supply road of its
+  own (drawn on the map like the others, and just as easy to ambush or block); the truck's loss costs its load.
+  - To take one, get men inside its ring (30 m round a village's middle, 42 m round the town's crossroads) with none
+    of the other side's there: a squad takes a village in about half a minute, the town in nearer a minute (more
+    men, faster). Both sides there and nobody gains; the holder's men push it back; whatever's in the dump changes
+    hands with it. The holder is warned as soon as the enemy starts.
+  - Holding a town also lets you put a FOB up near it (not just near your own bases), your men round the dump
+    refill their ammunition from it, and the townsfolk tell you who's about (it sees like a building).
+  - Right-click a town that isn't yours with squads selected to send them to take it; select a dump to see who
+    holds it, what it gives and how much of it stands, its stock and where its trucks run.
+- **Supply on the HUD**: the top bar shows your supply and what's coming in a minute (truck and helicopter loads
+  over the last two minutes) and how many towns you hold; beside the FOB lines, a line of its own (stock, rate,
+  where its trucks go) for each town being taken or whose trucks aren't getting through, and the quiet ones in
+  one line once there are more than a couple. The order of battle moves down to make room.
 - Buildings: FOB, barracks, factory, medic tent, research post, helipad (supply helicopters fly over cut
   roads), sandbags, concrete walls, barbed wire, minefields, tank traps, watchtowers (see 85 m, 115 m with a
   lookout up; shoot over walls), and Rebel tunnel entrances (move squads through the network or bring them back out with "Exit here").
@@ -652,7 +723,12 @@ each posed - and what squads and vehicle crews do (battle drills, morale, drivin
 **AI commander** (`commander_ai.gd`): spare squads go forward to hold the town, the villages and the larger
 woods between its front and the enemy's, lying in wait, so the fighting is over the ground in between; a
 forward FOB falls due every few minutes and supply is held back for it (each FOB runs its own supply truck,
-so whoever expands first pulls ahead). It lays **ambushes** (`ambush_plan.gd`) on straight stretches of the
+so whoever expands first pulls ahead). **Towns** are supply, and it goes after them from the start: a squad at a
+time to each village or the town within reach that it doesn't hold (two to one the enemy holds), the near ones
+first; it stays a few minutes once the flag is up, sends the nearest squad back when the enemy starts taking
+one of its own, and gives up on one it can't get into. Its attack waves count an enemy-held town as a softer
+target than a base, and a town it holds out beyond its bases gets the next FOB beside it, on its own side.
+It lays **ambushes** (`ambush_plan.gd`) on straight stretches of the
 roads the enemy uses - his supply track above all - where there's cover to lie in: the squad moves to a rally
 point back from the road, then into an L - the assault line 20-odd metres off the road, the gun at one end
 firing down the killing zone, a man watching the flank - and holds its fire until they're in it. A short,

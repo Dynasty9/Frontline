@@ -1,0 +1,5 @@
+version = "0.1.8"
+name = "Co-commanders"
+date = "2026-10-16"
+summary = "In co-op you can see what the other commanders on your side are doing: where they're looking, what they've selected and what they're about to order. Pings and map sketches let you talk without typing."
+pull_requests = [12]

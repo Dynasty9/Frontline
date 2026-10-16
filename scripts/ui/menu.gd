@@ -858,7 +858,7 @@ func _update_notice() -> void:
 	p.add_theme_stylebox_override("panel", UiKit.box(Color(0.035, 0.045, 0.045, 0.92), 4, UiKit.BAD if bad else UiKit.ACCENT, 1, 12.0))
 	p.anchor_left = 1.0
 	p.anchor_right = 1.0
-	p.offset_left = -440
+	p.offset_left = -540
 	p.offset_right = -32
 	p.offset_top = 44
 	add_child(p)
@@ -875,10 +875,13 @@ func _update_notice() -> void:
 	line.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	v.add_child(line)
 	var website := func(): OS.shell_open(Updater.WEBSITE_URL + "/#download")
+	# that version's changelog on the website: what the update brings
+	var whats_new := func(): OS.shell_open(Updater.WEBSITE_URL + "/changelog/#v" + Updater.latest)
 	match Updater.state:
 		Updater.State.AVAILABLE:
 			head.text = "NEW VERSION"
 			line.text = "Frontline v%s is out (you have v%s)." % [Updater.latest, Updater.version]
+			h.add_child(_btn("What's new", whats_new))
 			h.add_child(_btn("Download", website))
 		Updater.State.DOWNLOADING:
 			head.text = "UPDATING"
@@ -892,6 +895,7 @@ func _update_notice() -> void:
 		Updater.State.READY:
 			head.text = "UPDATE READY"
 			line.text = "Frontline v%s is installed. Restart to play it." % Updater.latest
+			h.add_child(_btn("What's new", whats_new))
 			h.add_child(_btn("Restart", func(): Updater.restart()))
 		Updater.State.FAILED:
 			head.text = "UPDATE FAILED"
@@ -1179,7 +1183,18 @@ func _refresh() -> void:
 		var side: String = Defs.TEAM_NAMES[t] if t >= 0 else "Spectator"
 		l.text = "%s%s  -  %s" % [p.name, " (host)" if id == 1 else "", side]
 		l.add_theme_color_override("font_color", Defs.TEAM_COLORS[t] if t >= 0 else Color(0.7, 0.7, 0.7))
-		player_list.add_child(l)
+		# his colour: his cursor, view and pings on his teammates' screens
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 9)
+		var dot := Panel.new()
+		dot.custom_minimum_size = Vector2(11, 11)
+		dot.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		dot.add_theme_stylebox_override("panel", UiKit.box(Net.player_color(int(id)), 6, Color(0, 0, 0, 0.45), 1, 0.0))
+		dot.tooltip_text = "%s's colour in the battle: cursor, view and pings on teammates' screens." % p.name
+		dot.mouse_filter = Control.MOUSE_FILTER_PASS
+		row.add_child(dot)
+		row.add_child(l)
+		player_list.add_child(row)
 	var mk := String(Net.settings.get("mission", ""))
 	if mk != "":
 		lobby_title.text = "Mission: %s  (%s)" % [String(Missions.find(mk).title), "you are hosting" if host else "connected"]

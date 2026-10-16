@@ -882,7 +882,9 @@ func make_fire(ext: Vector3, smoke_kind := SMOKE_WOOD) -> Node3D:
 	var sc: Array = SMOKE_COLS[smoke_kind]
 	var c0: Color = sc[0]
 	var c1: Color = sc[1]
-	pm = _pm(Vector3.UP, 14.0, 1.0, 2.4, Vector3(WIND.x * 0.75, 0.6, WIND.z * 0.75), 1.5 * k, 2.6 * k)
+	# (it hangs low and rolls off downwind before it climbs: that pall is what
+	# blocks sight, see Fires.smokes)
+	pm = _pm(Vector3.UP, 14.0, 0.8, 2.0, Vector3(WIND.x * 1.15, 0.38, WIND.z * 1.15), 1.5 * k, 2.6 * k)
 	pm.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_SPHERE
 	pm.emission_sphere_radius = maxf(0.4, maxf(ext.x, ext.z) * 0.6)
 	pm.damping_min = 0.25

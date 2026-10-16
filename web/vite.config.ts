@@ -9,4 +9,13 @@ export default defineConfig({
   resolve: {
     alias: { '@': path.resolve(__dirname, './src') },
   },
+  build: {
+    // two pages: the front page, and /changelog/
+    rollupOptions: {
+      input: {
+        main: path.resolve(__dirname, 'index.html'),
+        changelog: path.resolve(__dirname, 'changelog/index.html'),
+      },
+    },
+  },
 })
