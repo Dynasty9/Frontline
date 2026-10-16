@@ -21,7 +21,10 @@ scripts/game/missions.gd       the missions (content); mission_director.gd runs 
 scripts/game/terrain.gd, nav.gd, hnav.gd   ground kinds, cover map, pathfinding grids (HPA*)
 scripts/ui/                    HUD, minimap, Field Manual, menus
 scripts/autoload/online.gd     the matchmaker client: battle list, Find Match, hole punching, optional account
+scripts/autoload/links.gd      frontline:// links from the website: registering the scheme, handing a link to a running copy
 matchmaker/                    the matchmaking service (Node, no dependencies; deployed on Railway, accounts via Supabase)
+web/                           the website (React + Vite + shadcn, on Railway): live battles with Join links, downloads
+export_presets.cfg, .github/workflows/release.yml   Windows and Linux builds, published on GitHub Releases
 docs/                          FEATURES.md (design), DEVELOPMENT.md (code layout, test flags)
 ```
 
@@ -44,7 +47,7 @@ Run every command from the repository root. `godot` means your Godot 4.7.x execu
 3. **Multiplayer**, if you touched anything replicated: run a host and a client (see "Host / client" in DEVELOPMENT.md). The client prints `CLIENT entities=...` when it quits. If you touched matchmaking, run `npm test` in `matchmaker/` and the Find Match pair under "Matchmaker" in DEVELOPMENT.md. Bump `Net.NET_VERSION` when host and client stop understanding each other, so the matchmaker won't pair old and new builds.
 4. **Visuals**: render off-screen and look at the image rather than guessing. Use `--screenshot=out.png --shot-at=SECONDS`, frame the shot with `--focus=X,Z --zoom=M --pitch=DEG --cam-yaw=RAD`, and add `--nohud` to hide the interface. `--manual=category,key,side` opens a Field Manual page.
 
-CI (`.github/workflows/check.yml`) runs steps 1 and 2, and the matchmaker's tests, on every push and pull request.
+CI (`.github/workflows/check.yml`) runs steps 1 and 2, the matchmaker's tests and the website's build and lint, on every push and pull request. `.github/workflows/release.yml` exports the game on every push to `main` (and on pull requests that change the export setup).
 
 ## How the code is written
 

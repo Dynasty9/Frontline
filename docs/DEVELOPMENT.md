@@ -200,6 +200,26 @@ runs, `--login=EMAIL:PASSWORD` (plus `--signup=CALLSIGN` to create the account) 
 keeps that sign-in out of your real one, and `--menu-panel=browse|account` opens those panels for screenshots.
 Without `--matchmaker` the game uses the live service on Railway.
 
+### Join links
+
+A `frontline://` link can be passed after `--`, as a browser would: `godot --path . -- frontline://join/LOBBY_ID`
+(or `frontline://find-match`). Test runs (anything with a `--switch`) don't listen for links handed on by a second
+copy unless given `--links`, so to test the hand-off: start a listed host, then an idle game with `--links`, then a
+third copy with only the link. The third prints `LINKS handed ...` (with `FL_DEBUG_ONLINE=1`) and quits; the idle
+one joins. Only exported builds register the scheme with the OS (`Links._register`).
+
+### Website
+
+`web/` is the website (React, Vite, Tailwind, shadcn/ui; see its README): `npm install && npm run dev`, with
+`VITE_MATCHMAKER_URL` pointing at a local matchmaker if you like. CI builds and lints it.
+
+### Builds and releases
+
+`export_presets.cfg` has a Windows and a Linux preset (one executable each, the game packed inside).
+`.github/workflows/release.yml` exports both on Linux and publishes `Frontline-windows.zip` and
+`Frontline-linux.zip`: every push to `main` refreshes the `nightly` pre-release, and pushing a tag like `v0.2.0`
+publishes a release. The website's download buttons pick the newest release, or the nightly if there's none.
+
 ### Off-screen screenshots
 
 `--screenshot=FILE.png --shot-at=SECONDS` (with `--shots=N --shot-every=S` for a series) saves frames and quits. Frame the shot with `--focus=X,Z --zoom=M --pitch=DEG --cam-yaw=RAD`, and hide the interface with `--nohud`. `--manual=category,key,side` opens a Field Manual page.
