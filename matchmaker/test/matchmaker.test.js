@@ -179,19 +179,21 @@ const withAccounts = await start({ AUTH_BACKEND: 'memory' });
 }
 
 // --- service records (memory backend)
+// a battle as the game reports it, with whatever a test changes
+const battle = (over = {}) => ({
+	game_version: '0.4.0',
+	mode: 'skirmish',
+	title: 'Skirmish vs AI',
+	side: 0,
+	result: 'victory',
+	duration: 412.6,
+	me: { name: 'Hawk', kills: 12, lost: 3, captured: 1, veh_kills: 2, veh_lost: 0, shots: 900, hits: 120, rating: 71.26, score: 640, bogus: 5 },
+	report: { t: 412.6, over: true, winner: 0, players: [{ id: 1, name: 'Hawk', team: 0 }], sides: [{}, {}], tl: [[0, 8, 9]] },
+	...over,
+});
+
 {
 	const s = withAccounts;
-	const battle = (over = {}) => ({
-		game_version: '0.4.0',
-		mode: 'skirmish',
-		title: 'Skirmish vs AI',
-		side: 0,
-		result: 'victory',
-		duration: 412.6,
-		me: { name: 'Hawk', kills: 12, lost: 3, captured: 1, veh_kills: 2, veh_lost: 0, shots: 900, hits: 120, rating: 71.26, score: 640, bogus: 5 },
-		report: { t: 412.6, over: true, winner: 0, players: [{ id: 1, name: 'Hawk', team: 0 }], sides: [{}, {}], tl: [[0, 8, 9]] },
-		...over,
-	});
 
 	test('battles go on your service record, and only yours', async () => {
 		const up = await s.call('POST', '/auth/signup', { email: 'rec@b.cd', password: 'longenough', callsign: 'Hawk' });

@@ -292,10 +292,12 @@ class MemoryAuth {
 
 	async listBattles(token, user, { limit = 20, before = '' } = {}) {
 		const rows = this.battles(user).filter((r) => !before || r.played_at < before);
-		return rows
-			.slice(-limit)
-			.reverse()
-			.map((r) => Object.fromEntries(HEAD.map((k) => [k, r[k]])));
+		// newest first
+		const out = [];
+		for (let i = rows.length - 1; i >= Math.max(0, rows.length - limit); i--) {
+			out.push(Object.fromEntries(HEAD.map((k) => [k, rows[i][k]])));
+		}
+		return out;
 	}
 
 	async getBattle(token, user, id) {
