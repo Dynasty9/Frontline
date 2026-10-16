@@ -23,6 +23,10 @@ var settings_panel: SettingsPanel
 var manual: FieldManual
 var backdrop: MenuScene
 var op_panel: PanelContainer
+var ms_panel: PanelContainer  # the missions
+var _ms_key := ""
+var _ms_cards := {}
+var _ms_detail: VBoxContainer
 var _op_side := 0  # 0 Coalition, 1 Rebels, -1 observe
 var _side_cards := {}
 var _mood_chips := {}
@@ -107,6 +111,7 @@ func _ready() -> void:
 	col.add_child(main_box)
 	main_box.add_child(_section("COMMAND"))
 	main_box.add_child(_big("Play vs AI", "Command one side against the AI commander", func(): _open_op(0)))
+	main_box.add_child(_big("Missions", "Short operations with objectives, alone or in co-op", _open_missions))
 	main_box.add_child(_big("Watch AI Battle", "Two AI commanders fight; the camera finds the action", func(): _open_op(-1)))
 	main_box.add_child(_section("MULTIPLAYER"))
 	main_box.add_child(_big("Host Multiplayer", "Co-op against the AI, or player against player", _host))
@@ -217,6 +222,7 @@ func _ready() -> void:
 	add_child(manual)
 
 	_build_op_panel()
+	_build_mission_panel()
 	var foot := UiKit.label("ALPHA BUILD  \u00b7  GODOT %s  \u00b7  F4 FIELD MANUAL IN BATTLE" % Engine.get_version_info().string.to_upper(), 11, Color(0.75, 0.75, 0.7, 0.45), 600)
 	foot.anchor_left = 1.0
 	foot.anchor_right = 1.0
@@ -425,9 +431,169 @@ func _deploy() -> void:
 
 
 func _unhandled_input(ev: InputEvent) -> void:
-	if visible and op_panel and op_panel.visible and ev is InputEventKey and ev.pressed and (ev as InputEventKey).keycode == KEY_ESCAPE:
-		op_panel.visible = false
-		get_viewport().set_input_as_handled()
+	if visible and ev is InputEventKey and ev.pressed and (ev as InputEventKey).keycode == KEY_ESCAPE:
+		for p in [op_panel, ms_panel]:
+			if p and p.visible:
+				p.visible = false
+				get_viewport().set_input_as_handled()
+
+
+# --- missions ------------------------------------------------------------------------------
+
+## The missions: a card for each, the chosen one's briefing, and play it
+## alone or host it for friends.
+func _build_mission_panel() -> void:
+	ms_panel = PanelContainer.new()
+	ms_panel.add_theme_stylebox_override("panel", UiKit.boxc(Color(0.035, 0.045, 0.045, 0.92), 6, UiKit.LINE, 1, 22.0, 10))
+	ms_panel.anchor_top = 0.5
+	ms_panel.anchor_bottom = 0.5
+	ms_panel.offset_left = 640
+	ms_panel.offset_right = 1260
+	ms_panel.offset_top = -320
+	ms_panel.offset_bottom = 330
+	ms_panel.visible = false
+	add_child(ms_panel)
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 10)
+	ms_panel.add_child(v)
+	v.add_child(UiKit.label("MISSIONS", 13, UiKit.ACCENT, 700))
+	v.add_child(UiKit.label("Short operations, about five minutes each", 22, UiKit.TEXT, 600))
+	var list := VBoxContainer.new()
+	list.add_theme_constant_override("separation", 5)
+	v.add_child(list)
+	for m in Missions.playable():
+		var card := Button.new()
+		card.toggle_mode = true
+		card.focus_mode = Control.FOCUS_NONE
+		card.custom_minimum_size = Vector2(0, 52)
+		var tc: Color = Defs.TEAM_COLORS[int(m.side)]
+		card.add_theme_stylebox_override("normal", UiKit.box(Color(1, 1, 1, 0.03), 4, Color(1, 1, 1, 0.07), 1, 0.0))
+		card.add_theme_stylebox_override("hover", UiKit.box(Color(tc.r, tc.g, tc.b, 0.08), 4, Color(tc.r, tc.g, tc.b, 0.5), 1, 0.0))
+		var cp := UiKit.box(Color(tc.r, tc.g, tc.b, 0.14), 4, tc, 2, 0.0)
+		cp.border_width_left = 4
+		card.add_theme_stylebox_override("pressed", cp)
+		card.add_theme_stylebox_override("hover_pressed", cp)
+		var row := HBoxContainer.new()
+		row.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		row.offset_left = 16
+		row.offset_right = -14
+		row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		card.add_child(row)
+		var cv := VBoxContainer.new()
+		cv.alignment = BoxContainer.ALIGNMENT_CENTER
+		cv.add_theme_constant_override("separation", 0)
+		cv.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		cv.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		row.add_child(cv)
+		var nm := UiKit.label(String(m.title), 17, Color(0.94, 0.93, 0.88), 700)
+		nm.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		cv.add_child(nm)
+		var op := UiKit.label(String(m.op).to_upper(), 10, Color(UiKit.ACCENT.r, UiKit.ACCENT.g, UiKit.ACCENT.b, 0.75), 700)
+		op.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		cv.add_child(op)
+		var tag := UiKit.label("%s  \u00b7  %d MIN" % [Defs.TEAM_NAMES[int(m.side)].to_upper(), int(m.mins)], 11, tc.lightened(0.3), 700)
+		tag.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		tag.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		row.add_child(tag)
+		var key: String = m.key
+		card.pressed.connect(func(): _pick_mission(key))
+		list.add_child(card)
+		_ms_cards[key] = card
+	# the chosen mission's briefing
+	var det := PanelContainer.new()
+	det.add_theme_stylebox_override("panel", UiKit.box(Color(0, 0, 0, 0.28), 4, Color(1, 1, 1, 0.05), 1, 14.0))
+	det.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	v.add_child(det)
+	_ms_detail = VBoxContainer.new()
+	_ms_detail.add_theme_constant_override("separation", 6)
+	det.add_child(_ms_detail)
+	var row2 := HBoxContainer.new()
+	row2.add_theme_constant_override("separation", 10)
+	v.add_child(row2)
+	var go := Button.new()
+	go.text = "PLAY SOLO"
+	go.custom_minimum_size = Vector2(200, 44)
+	go.add_theme_font_override("font", UiKit.font(700))
+	go.add_theme_font_size_override("font_size", 16)
+	go.add_theme_stylebox_override("normal", UiKit.box(Color(UiKit.ACCENT.r, UiKit.ACCENT.g, UiKit.ACCENT.b, 0.85), 4, UiKit.ACCENT, 0, 0.0))
+	go.add_theme_stylebox_override("hover", UiKit.box(UiKit.ACCENT.lightened(0.15), 4, UiKit.ACCENT, 0, 0.0))
+	go.add_theme_stylebox_override("pressed", UiKit.box(UiKit.ACCENT.lightened(0.15), 4, UiKit.ACCENT, 0, 0.0))
+	go.add_theme_color_override("font_color", Color(0.08, 0.07, 0.05))
+	go.add_theme_color_override("font_hover_color", Color(0.05, 0.04, 0.03))
+	go.focus_mode = Control.FOCUS_NONE
+	go.pressed.connect(func(): Sfx.ui("click"); _mission_solo())
+	row2.add_child(go)
+	var co := _btn("Host Co-op", func(): Sfx.ui("click"); _mission_coop())
+	co.custom_minimum_size = Vector2(150, 44)
+	co.tooltip_text = "Open a lobby for this mission: friends join with Join Game and share your force."
+	row2.add_child(co)
+	row2.add_child(_btn("Back", func(): ms_panel.visible = false))
+
+
+func _open_missions() -> void:
+	op_panel.visible = false
+	if _ms_key == "":
+		_ms_key = String(Missions.playable()[0].key)
+	_pick_mission(_ms_key)
+	ms_panel.visible = true
+	ms_panel.modulate.a = 0.0
+	ms_panel.offset_left = 670
+	var tw := create_tween().set_parallel(true)
+	tw.tween_property(ms_panel, "modulate:a", 1.0, 0.18)
+	tw.tween_property(ms_panel, "offset_left", 640.0, 0.18)
+
+
+func _pick_mission(key: String) -> void:
+	_ms_key = key
+	for k in _ms_cards:
+		(_ms_cards[k] as Button).set_pressed_no_signal(k == key)
+	for c in _ms_detail.get_children():
+		c.queue_free()
+	var m := Missions.find(key)
+	var bl := UiKit.label(String(m.blurb), 15, UiKit.TEXT, 600)
+	bl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_ms_detail.add_child(bl)
+	var br := UiKit.label(String(m.brief), 13, Color(0.8, 0.81, 0.77))
+	br.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_ms_detail.add_child(br)
+	for kv in [["FORCE", m.force], ["AREA", m.area], ["CONDITIONS", Curtain.MOOD_TEXT.get(String(m.mood), "")]]:
+		var r := HBoxContainer.new()
+		r.add_theme_constant_override("separation", 10)
+		var k := UiKit.label(String(kv[0]), 11, Color(UiKit.ACCENT.r, UiKit.ACCENT.g, UiKit.ACCENT.b, 0.85), 700)
+		k.custom_minimum_size = Vector2(96, 0)
+		r.add_child(k)
+		var val := UiKit.label(String(kv[1]), 13, Color(0.88, 0.88, 0.84))
+		val.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		val.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		r.add_child(val)
+		_ms_detail.add_child(r)
+
+
+func _mission_solo() -> void:
+	var m := Missions.find(_ms_key)
+	ms_panel.visible = false
+	var port := int(port_spin.value)
+	var err := ERR_CANT_CREATE
+	for i in 5:
+		err = Net.host_game(port + i, int(m.side))
+		if err == OK:
+			break
+	if err != OK:
+		status.text = "Could not start the mission (error %d)." % err
+		return
+	Net.set_setting("mission", _ms_key)
+	Net.start_game()
+
+
+func _mission_coop() -> void:
+	var m := Missions.find(_ms_key)
+	ms_panel.visible = false
+	var err := Net.host_game(int(port_spin.value), int(m.side))
+	if err != OK:
+		status.text = "Could not host on port %d (error %d). Is it already in use?" % [int(port_spin.value), err]
+		return
+	Net.set_setting("mission", _ms_key)
+	_show_lobby()
 
 
 ## The emblem from the splash: the triangle with the red dot.
@@ -545,6 +711,11 @@ func _refresh() -> void:
 		l.text = "%s%s  -  %s" % [p.name, " (host)" if id == 1 else "", side]
 		l.add_theme_color_override("font_color", Defs.TEAM_COLORS[t] if t >= 0 else Color(0.7, 0.7, 0.7))
 		player_list.add_child(l)
+	var mk := String(Net.settings.get("mission", ""))
+	if mk != "":
+		lobby_title.text = "Mission: %s  (%s)" % [String(Missions.find(mk).title), "you are hosting" if host else "connected"]
+	ai_check.visible = mk == ""
+	ally_check.visible = mk == ""
 	var me: Dictionary = Net.players.get(multiplayer.get_unique_id(), {})
 	if not me.is_empty():
 		var mt := int(me.team)
@@ -557,4 +728,4 @@ func _refresh() -> void:
 	ally_check.set_pressed_no_signal(bool(Net.settings.get("ai_allies", false)))
 	start_btn.disabled = not host
 	var mode := "Co-op vs AI" if (counts[0] == 0 or counts[1] == 0) else "Player vs Player"
-	start_btn.text = "Start Battle (%s)" % mode if host else "Waiting for host..."
+	start_btn.text = ("Start Battle (%s)" % mode if mk == "" else "Start Mission (%d players)" % (counts[0] + counts[1])) if host else "Waiting for host..."

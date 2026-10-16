@@ -51,6 +51,23 @@ When you're ready, choose **Play vs AI** and pick a side. You start at your base
 
 Press **F1** at any time for help, and **F4** for the Field Manual.
 
+## Missions
+
+Want something shorter, with a story? **Missions** on the main menu has five-minute operations you can play alone or with friends:
+
+- **Bridgehead**: clear a village and seize the bridge behind it, then hold it against the counterattack.
+- **Beachhead**: land from the sea, knock out the harbour's anti-aircraft guns and take the harbour.
+- **Sky Hook**: carry a tank destroyer to a cut-off outpost under a helicopter, then stop the armour coming for it.
+- **Ambush Alley**: play the Rebels, ambush a Coalition convoy and vanish before the reaction force arrives.
+- **Kingpin**: a night raid into the town to take down a Rebel commander.
+
+Each has objectives on screen and marked on the map. Choose **Host Co-op** to play one with friends.
+
+| | |
+|---|---|
+| ![Sky Hook: a Mohawk carries a Nyx over the river](docs/screenshots/mission_skyhook.jpg) | ![Kingpin: the checkpoint fight at night](docs/screenshots/mission_kingpin.jpg) |
+| Sky Hook: the Nyx on its way to Outpost Kilo | Kingpin: the checkpoint, at night |
+
 ## Controls
 
 **Camera**

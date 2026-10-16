@@ -86,7 +86,12 @@ static func should_withdraw(v: Vehicle) -> bool:
 	if v.brain_state in ["withdraw", "evade"] or v.brain_overruled or v.track_broken or v.hp > v.max_hp * 0.35:
 		return false
 	var f: Structure = v.world.rules.nearest_fob(v.team, v.position)
-	return f != null and Defs.flat(f.position - v.position).length() > 25.0
+	if f == null:
+		return false
+	var d := Defs.flat(f.position - v.position).length()
+	# in a mission the nearest FOB is likely the far end of the map: the crew
+	# fights it out where it is
+	return d > 25.0 and (v.world.mission == null or d < 200.0)
 
 
 static func withdraw(v: Vehicle) -> int:
