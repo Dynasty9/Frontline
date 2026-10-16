@@ -1121,9 +1121,11 @@ func _notice(head_text: String, text: String, bad: bool) -> PanelContainer:
 
 ## A frontline:// link (Links): join that battle, or press Find Match. Ignored
 ## in a battle, a lobby or while connecting, so a stray click never pulls
-## anyone out of a game (or a host away from the one they're hosting).
+## anyone out of a game (or a host away from the one they're hosting). A
+## sign-in from the website is Online's.
 func open_link(url: String) -> void:
-	if not visible or Net.in_game:
+	var what: Array = Links.parse(url)
+	if not visible or Net.in_game or what[0] == "sign-in":
 		return
 	if dialog.mode == JoinDialog.Mode.PROGRESS or dialog.mode == JoinDialog.Mode.PASSWORD:
 		return  # already joining (or hosting) something
@@ -1131,7 +1133,6 @@ func open_link(url: String) -> void:
 	if lobby.visible or (mp is ENetMultiplayerPeer and mp.get_connection_status() != MultiplayerPeer.CONNECTION_DISCONNECTED):
 		dialog.fail("Already in a lobby", "Leave this lobby first to join another battle.")
 		return
-	var what: Array = Links.parse(url)
 	match String(what[0]):
 		"find-match":
 			if not _mm_busy:
@@ -1254,7 +1255,7 @@ func _build_account() -> void:
 
 	account_panel = AccountPanel.new()
 	add_child(account_panel)
-	UiKit.fit_center(account_panel, Vector2(500, 440))
+	UiKit.fit_center(account_panel, AccountPanel.SIZE)
 	account_panel.signed_in.connect(func(): _say("Signed in as %s." % Online.callsign))
 	_build_record_panel()
 
@@ -1308,8 +1309,10 @@ func _on_account() -> void:
 		acct_line.text = "Sign in to keep your callsign, earn ranks and insignia, and keep a service record of every battle you fight."
 		if waiting > 0:
 			acct_line.text = "%d %s waiting for your service record: sign in to keep %s." % [waiting, "battle" if waiting == 1 else "battles", "it" if waiting == 1 else "them"]
-		acct_primary.text = "Sign in"
+		# players sign in with GitHub, on the website: the first time makes the account
+		acct_primary.text = "Sign in with GitHub" if Online.web_sign_in else "Sign in"
 		acct_secondary.text = "Create account"
+	acct_secondary.visible = on or not Online.web_sign_in
 	if on and Online.callsign != "":
 		name_edit.text = Online.callsign
 	name_edit.tooltip_text = ("Signed in as %s. Change it here to rename your account." % Online.email) if on else ""

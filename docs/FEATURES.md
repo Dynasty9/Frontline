@@ -106,6 +106,17 @@ they're doing). The observer bar at the top has pause, speed (0.25x to 4x), dire
 - **Accounts** are optional (Supabase, through the matchmaker). Signed in, your callsign is yours: no other account can register it, and
   battles you host are listed under it with a tick. The account card top right of the main menu signs you in or
   makes an account (the end-of-battle screen offers it too); the session is remembered in `user://account.cfg`.
+  - **Players sign in with GitHub, on the website.** The game never asks for a password: Sign in opens the
+    website with `?sign-in=<state>`, a random one-time value the game keeps (in `account.cfg` too, so it survives
+    the game closing, for half an hour). The site sends the player to GitHub (OAuth with PKCE, through the
+    matchmaker and Supabase); the first time makes the account, its callsign taken from the GitHub username
+    (made to fit, and numbered if it's taken). Back on the site, it hands the game a session of its own in
+    `frontline://sign-in/<state>/<refresh token>`. The game takes only the state it made, so no other page can
+    sign it in to someone else's account, and spends the token at once. The game's session and the site's are
+    separate (a refresh token works once, so the two can't share one), and signing out ends only that one.
+  - **Email and password are for testing**: the game shows its own form when it runs from source or against a
+    matchmaker the website doesn't know, and the website shows one on its dev server or when built against
+    another matchmaker. The live site and the players' game only offer GitHub.
 - **Service record.** Signed in, every battle you fight (as a commander, not watching) goes on your record when it
   ends: what kind of battle, your side, the result and length, your rating, score, kills and losses, and the
   after-action report itself, trimmed (every commander, both sides, the units that did most, the timeline). The

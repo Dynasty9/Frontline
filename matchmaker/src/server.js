@@ -220,6 +220,20 @@ export function createServer({
 			return { session: await auth.login(body.email, body.password) };
 		},
 
+		// Signing in with GitHub: where to send the player ({url}), then the code
+		// they come back with, swapped for a session (see auth.js).
+		'POST /auth/oauth': async ({ ip, body }) => {
+			needAuth();
+			limits.hit('auth', ip, 10);
+			return { url: auth.oauthUrl(body.provider, body.redirect_to, body.code_challenge) };
+		},
+
+		'POST /auth/exchange': async ({ ip, body }) => {
+			needAuth();
+			limits.hit('auth', ip, 10);
+			return { session: await auth.exchange(body.code, body.code_verifier) };
+		},
+
 		'POST /auth/refresh': async ({ ip, body }) => {
 			needAuth();
 			limits.hit('refresh', ip, 30);

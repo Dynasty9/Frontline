@@ -422,6 +422,16 @@ copy unless given `--links`, so to test the hand-off: start a listed host, then 
 third copy with only the link. The third prints `LINKS handed ...` (with `FL_DEBUG_ONLINE=1`) and quits; the idle
 one joins. Only exported builds register the scheme with the OS (`Links._register`).
 
+Players sign in with GitHub on the website, which signs the game in. Email and password are for testing: from
+source the game shows its own email and password form, and so does the website's dev server. `--web-sign-in`
+makes a run from source go through the website (`--web-sign-in=URL` for a local one, its `VITE_MATCHMAKER_URL`
+the same local matchmaker as the game's `--matchmaker`), and `--no-browser` prints the address instead of opening
+it. A local matchmaker with `AUTH_BACKEND=memory` stands in for GitHub: its "Sign in with GitHub" comes straight
+back, signed in as `GitHub Player`, so the whole round trip runs offline. The site then opens
+`frontline://sign-in/STATE/TOKEN`; without an exported build to catch it, copy the link from the dialog's **Open
+Frontline** button and pass it to a second copy as above (the waiting game needs `--links`). A link with any
+state but the one the game made is refused.
+
 ### Website
 
 `web/` is the website (React, Vite, Tailwind, shadcn/ui; see its README): `npm install && npm run dev`, with

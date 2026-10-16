@@ -187,3 +187,26 @@ test('insignia: starters for all, a rank patch once reached, the rest locked', N
 	for (const id of ['r06', 'm01', 'u50']) await refused('PT403', () => wear(C, id));
 	for (const id of ['', 's11', 'r00', 'r51', 'x01', 'S01']) await refused('PT400', () => wear(C, id));
 });
+
+// a player signing in with GitHub for the first time: Supabase's metadata for them, and the callsign they got
+const github = async (id, meta) => {
+	await db.query(`insert into auth.users (id, email, raw_user_meta_data) values ($1, $2, $3)`, [id, `${id}@github.test`, meta]);
+	return (await profile(id)).callsign;
+};
+const id = (n) => `00000000-0000-0000-0000-${String(n).padStart(12, '0')}`;
+
+test('signing in with GitHub: the username for a callsign, made to fit and never taken', NEEDS, async () => {
+	assert.equal(await github(id(1), { user_name: 'octocat' }), 'octocat');
+	// taken, whatever the case: numbered
+	assert.equal(await github(id(2), { user_name: 'OctoCat' }), 'OctoCat-2');
+	assert.equal(await github(id(3), { user_name: 'octocat' }), 'octocat-3');
+	// too long for a callsign: cut, and still room for the number
+	assert.equal(await github(id(4), { user_name: 'a-very-long-github-username' }), 'a-very-long-github-u');
+	assert.equal(await github(id(5), { user_name: 'a-very-long-github-username' }), 'a-very-long-github-2');
+	// what a callsign can't have goes, and too little left is Commander-<id>
+	assert.equal(await github(id(6), { preferred_username: 'tab\tby!' }), 'tabby');
+	assert.equal(await github(id(7), { user_name: 'xy' }), 'Commander-000000');
+	assert.equal(await github(id(8), {}), 'Commander-000000-2');
+	// a callsign typed at sign-up is still taken as it is, or refused
+	await refused('23505', () => signUp(id(9), 'octocat'));
+});

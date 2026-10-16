@@ -1056,7 +1056,7 @@ func _sign_in_for_record() -> void:
 	if account_panel == null:
 		account_panel = AccountPanel.new()
 		root.add_child(account_panel)
-		UiKit.fit_center(account_panel, Vector2(500, 440))
+		UiKit.fit_center(account_panel, AccountPanel.SIZE)
 	account_panel.open(false, Net.my_name)
 
 
