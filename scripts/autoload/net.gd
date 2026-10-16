@@ -20,7 +20,7 @@ const DEFAULT_PORT := 7777
 const MAX_PLAYERS := 8
 ## Bump when what host and client send each other changes, so the matchmaker
 ## only pairs players who can understand each other.
-const NET_VERSION := 7
+const NET_VERSION := 8
 ## Each commander's colour: his cursor, his view and his pings on his
 ## teammates' screens. Handed out in the lobby so it stays the same all battle
 ## (and "I'm the pink one" works over voice). Clear of the sides' blue and red.
@@ -32,10 +32,15 @@ const PLAYER_COLORS := [Color(0.38, 0.95, 0.72), Color(1.0, 0.5, 0.82), Color(0.
 ## shows ("" for "<host>'s battle").
 const DEFAULT_SETTINGS := {"ai_fill": true, "ai_allies": false, "drop_in": true, "mode": "versus", "coop_side": 0, "max_players": MAX_PLAYERS, "name": ""}
 
-## peer_id -> {"name": String, "team": int, "ready": bool, "col": int (into PLAYER_COLORS)}
+## peer_id -> {"name": String, "team": int, "ready": bool, "col": int (into PLAYER_COLORS),
+## "icon": String, "rank": int (the insignia worn and the rank: "" and -1 signed out)}
 var players := {}
 var settings := DEFAULT_SETTINGS.duplicate()
 var my_name := "Commander"
+# the insignia and rank of a signed-in player ("" and -1 signed out), shown
+# beside their name in the lobby (set by Online)
+var my_icon := ""
+var my_rank := -1
 var in_game := false
 ## The lobby's password while hosting ("" for none). It never leaves this
 ## machine: joiners send theirs and the host compares.
@@ -105,7 +110,7 @@ func host_game(port := DEFAULT_PORT, team := 0) -> int:
 		return err
 	multiplayer.multiplayer_peer = peer
 	players.clear()
-	players[1] = {"name": my_name, "team": team, "ready": true, "col": 0}
+	players[1] = {"name": my_name, "team": team, "ready": true, "col": 0, "icon": my_icon, "rank": my_rank}
 	in_game = false
 	# a fresh game: nothing carried over from the last one (a mission, a
 	# password, a name)
@@ -151,6 +156,19 @@ func leave() -> void:
 	away.clear()
 	_rejoining = false
 	session_closed.emit()
+
+
+## Our insignia or rank changed (picked another, or the account caught up
+## with the matchmaker). Hosting a lobby, it shows the new one at once; a
+## client's goes with it when it joins.
+func set_insignia(icon: String, rank: int) -> void:
+	my_icon = icon
+	my_rank = rank
+	if multiplayer.multiplayer_peer is ENetMultiplayerPeer and multiplayer.is_server() and players.has(1) and not in_game:
+		if String(players[1].get("icon", "")) != icon or int(players[1].get("rank", -1)) != rank:
+			players[1].icon = icon
+			players[1].rank = rank
+			_broadcast_lobby()
 
 
 ## The host closes its lobby: everyone in it is told why before the line is
@@ -318,7 +336,7 @@ func _on_connected() -> void:
 	_dbg("connected to the host, registering as %s" % my_name)
 	# (players pick their side in the lobby; only a test client says one now.
 	# The token says who we are if we've been here before)
-	_register.rpc_id(1, my_name, join_password, join_team, token)
+	_register.rpc_id(1, my_name, join_password, join_team, my_icon, my_rank, token)
 
 
 func _on_conn_failed() -> void:
@@ -347,8 +365,9 @@ func _rejoin_host() -> String:
 
 @rpc("any_peer", "call_remote", "reliable")
 ## `pw`: the password they offer; `team`: the side a test client asked for
-## (-2: none, the lobby decides); `tok`: who they are (see `token`).
-func _register(pname: String, pw: String, team := -2, tok := "") -> void:
+## (-2: none, the lobby decides); `icon` and `rank`: the insignia they wear;
+## `tok`: who they are (see `token`).
+func _register(pname: String, pw: String, team := -2, icon := "", rank := -1, tok := "") -> void:
 	if not multiplayer.is_server():
 		return
 	var id := multiplayer.get_remote_sender_id()
@@ -356,6 +375,10 @@ func _register(pname: String, pw: String, team := -2, tok := "") -> void:
 	_dbg("%d registers as %s (in game: %s)" % [id, pname, in_game])
 	if players.has(id) or _turned_away.has(id):
 		return
+	# the insignia is only for show, but one they couldn't have earned isn't shown
+	rank = clampi(rank, -1, Insignia.MAX_RANK)
+	if not Insignia.unlocked(icon, rank):
+		icon = ""
 	tok = tok.substr(0, 64)
 	if tok != "":
 		# the same player connecting again while we still hold their old link:
@@ -377,7 +400,7 @@ func _register(pname: String, pw: String, team := -2, tok := "") -> void:
 				col = _free_color()
 				break
 		var back := _unique_name(pname)
-		players[id] = {"name": back, "team": int(was.team), "ready": true, "col": col}
+		players[id] = {"name": back, "team": int(was.team), "ready": true, "col": col, "icon": icon, "rank": rank}
 		_sync_to_players(id)
 		var rs: Dictionary = settings.duplicate(true)
 		rs["players"] = players.duplicate(true)
@@ -401,7 +424,7 @@ func _register(pname: String, pw: String, team := -2, tok := "") -> void:
 	if in_game:
 		# drop-in: put them on a side and hand them the running game
 		var side := _pick_join_team()
-		players[id] = {"name": clean, "team": side, "ready": true, "col": _free_color()}
+		players[id] = {"name": clean, "team": side, "ready": true, "col": _free_color(), "icon": icon, "rank": rank}
 		# everyone else learns who they are; they get the whole game at once
 		_sync_to_players(id)
 		var s: Dictionary = settings.duplicate(true)
@@ -409,7 +432,7 @@ func _register(pname: String, pw: String, team := -2, tok := "") -> void:
 		_start.rpc_id(id, s)
 		player_joined.emit(id, side, clean)
 		return
-	players[id] = {"name": clean, "team": _pick_join_team(), "ready": false, "col": _free_color()}
+	players[id] = {"name": clean, "team": _pick_join_team(), "ready": false, "col": _free_color(), "icon": icon, "rank": rank}
 	if team >= -1:
 		_put_on_team(id, team)
 	_broadcast_lobby()

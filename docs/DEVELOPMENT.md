@@ -245,6 +245,9 @@ FL_DEBUG_DECOR=1 (env)                                print the street-furniture
                                                       whenever the title or the map changes)
 --sound-dump=DIR                                      every synthesised sound and music sample as a WAV in DIR, then quit
                                                       (works --headless)
+--insignia-dump=web                                   every insignia as web/public/insignia/<id>.svg, and the catalog the
+                                                      website reads as web/src/lib/insignia.json, then quit (--headless)
+--insignia-sheet=PATH [--px=96] [--only=r01,u07]      the whole collection of insignia (or those) on one image, then quit
 FL_DEBUG_MUSIC=1 (env)                                print the music's cue, battle heat and layer levels every 5 s
 ```
 
@@ -315,6 +318,11 @@ cd matchmaker && npm test
 cd matchmaker && npm install && npm run lint && npm run format:check
 ```
 
+Without `npm install` the tests run as the service does, with no dependencies; the database's migrations
+(`supabase/migrations/`) are then skipped, and after it they run on PGlite too. A change to the database is a new
+migration (`supabase migration new <name>`, from `matchmaker/`); the README's "The database" has the rules, and how
+the Database workflow applies new ones to the live project (as they merge, and before every release).
+
 To try the game against it, run one locally (`AUTH_BACKEND=memory` adds throwaway accounts) and point both games at
 it with `--matchmaker=URL`. The host lists its battle with `--list`; the second game presses Find Match:
 
@@ -329,17 +337,31 @@ Set `FL_DEBUG_ONLINE=1` to print what STUN saw, who the host punches towards, an
 exercise the hole-punching path, give the joiner the matchmaker's LAN address instead of `127.0.0.1` (it then only
 connects if your router loops traffic back in, "hairpinning", which many don't). `--no-stun` skips STUN for offline
 runs, `--login=EMAIL:PASSWORD` (plus `--signup=CALLSIGN` to create the account) signs in first, `--account=PATH`
-keeps that sign-in out of your real one, and `--menu-panel=browse|host|account|record|settings` opens those panels
+keeps that sign-in out of your real one, and `--menu-panel=browse|host|account|record|settings|insignia` opens those panels
 for screenshots (`--host-mode=coop|versus|mission` for the host setup, `--browse-pick=TEXT` to choose a battle in the
 browser, `--open-battle` to open the newest battle on the service record). `--host --list` also beacons on the LAN
 (UDP 7787), so a second copy's server browser lists it even with a dead `--matchmaker`. Test runs keep no service
-record; `--record-battles` turns it on (with `--pending=PATH` for the battles waiting to go up, out of your real ones):
+record and earn no rank; `--record-battles` turns both on (with `--pending=PATH` for the battles waiting to go up, out of your real ones):
 
 ```
 godot --headless --path . -- --scenario=attack --play --end-at=40 --quit-after=55 --record-battles --no-stun \
   --matchmaker=http://127.0.0.1:8787 --login=me@test.dev:password1 --signup=Me --account=/tmp/a.cfg --pending=/tmp/p.json
 ```
 Without `--matchmaker` the game uses the live service on Railway.
+
+Ranks: a battle a signed-in player fights in counts once it's under way (so not `--scenario` setups, nor watching,
+nor a test run without `--record-battles`). With `--quit-on-win` the game waits for the matchmaker's answer and prints
+`BATTLE {"gained": ...} rank=... xp=...`; `FL_DEBUG_ONLINE=1` also prints the battle clock starting and stopping. XP is
+timed on the matchmaker's clock, so a battle has to run two real minutes to earn any (a `--timescale` run counts the
+real time, not the game's):
+
+```
+godot --headless --path . -- --mission=bridgehead --play --autoplay --quit-on-win --record-battles --port=7943 --no-stun \
+  --matchmaker=http://127.0.0.1:8787 --account=user://test_account.cfg --login=a@example.test:password1 --signup=Tester
+```
+
+After changing the insignia (`scripts/ui/insignia.gd` for the catalog, `insignia_art.gd` for the drawing), run
+`--insignia-dump=web` and commit what it writes: the website and the matchmaker's tests read it.
 
 ### Join links
 

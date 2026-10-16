@@ -42,6 +42,18 @@ var rec_more: Button
 var rec_view: StatsPanel  # one battle's after-action report, opened from the record
 var _rec_before := ""  # the oldest battle shown (for "older battles")
 var _rec_n := 0  # the latest load (an older answer arriving late is dropped)
+# the rank and the insignia: the one worn on the account card, and the collection
+var ins_btn: Button
+var ins_tex: TextureRect
+var rank_label: Label
+var rank_bar: ProgressBar
+var ins_panel: PanelContainer
+var _ins_head: Dictionary = {}  # the collection's header: icon, name, rank, bar, xp, record
+var _ins_tiles := {}  # id -> the tile's button
+var _ins_counts := {}  # group -> its "7 / 50" label
+var _ins_msg: Label
+var _ins_load: Array = []  # tiles still waiting for their picture (a few are drawn each frame)
+var _ins_pending := ""  # an insignia being put on, until the matchmaker answers
 var _mm_busy := false  # Find Match is working through battles
 var _mm_tries: Array = []  # lobby ids it has tried this time
 var _attempt := 0  # bumps with every join (or host) attempt, so stale answers and timeouts do nothing
@@ -159,6 +171,7 @@ func _ready() -> void:
 	_build_mission_panel()
 	_build_multiplayer()
 	_build_account()
+	_build_insignia_panel()
 	# the join dialog stays over every panel
 	move_child(dialog, -1)
 	var build := ("ALPHA V%s" % Updater.version) if Updater.is_release() else "DEV BUILD"
@@ -184,7 +197,7 @@ func _ready() -> void:
 	notices.offset_right = -32
 	notices.offset_top = 196  # under the account card
 	add_child(notices)
-	for p: Control in [op_panel, ms_panel, host_panel, rec_panel]:
+	for p: Control in [op_panel, ms_panel, host_panel, rec_panel, ins_panel]:
 		p.visibility_changed.connect(_side_panels_changed)
 	Updater.changed.connect(_update_notice)
 	_update_notice()
@@ -353,7 +366,7 @@ func _build_op_panel() -> void:
 
 ## The panels on the right of the menu take turns: opening one closes the rest.
 func _close_panels() -> void:
-	for p: Control in [op_panel, ms_panel, host_panel, account_panel, rec_panel]:
+	for p: Control in [op_panel, ms_panel, host_panel, account_panel, rec_panel, ins_panel]:
 		if p:
 			p.visible = false
 
@@ -395,7 +408,7 @@ func _deploy() -> void:
 func _unhandled_input(ev: InputEvent) -> void:
 	if not (visible and ev is InputEventKey and ev.pressed and (ev as InputEventKey).keycode == KEY_ESCAPE):
 		return
-	for p: Control in [rec_view, account_panel, rec_panel, host_panel, ms_panel, op_panel]:
+	for p: Control in [rec_view, account_panel, ins_panel, rec_panel, host_panel, ms_panel, op_panel]:
 		if p and p.visible:
 			p.visible = false
 			get_viewport().set_input_as_handled()
@@ -1186,8 +1199,24 @@ func _build_account() -> void:
 	head.add_child(_spaced("ACCOUNT", 11, UiKit.ACCENT, 3))
 	acct_badge = _spaced("SIGNED IN", 11, UiKit.GOOD, 2)
 	head.add_child(acct_badge)
+	var who := HBoxContainer.new()
+	who.add_theme_constant_override("separation", 12)
+	v.add_child(who)
+	who.add_child(_make_ins_btn())
+	ins_btn.custom_minimum_size = Vector2(58, 58)
+	var wv := VBoxContainer.new()
+	wv.add_theme_constant_override("separation", 3)
+	wv.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	wv.alignment = BoxContainer.ALIGNMENT_CENTER
+	who.add_child(wv)
 	acct_name = UiKit.label("", 22, UiKit.TEXT, 700)
-	v.add_child(acct_name)
+	wv.add_child(acct_name)
+	rank_label = UiKit.label("", 11, UiKit.ACCENT, 700)
+	rank_label.mouse_filter = Control.MOUSE_FILTER_PASS
+	wv.add_child(rank_label)
+	rank_bar = _xp_bar(200)
+	rank_bar.mouse_filter = Control.MOUSE_FILTER_PASS
+	wv.add_child(rank_bar)
 	acct_line = UiKit.label("", 12, UiKit.DIM)
 	acct_line.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	acct_line.custom_minimum_size = Vector2(370, 0)
@@ -1240,7 +1269,7 @@ func _card_in() -> void:
 ## open on the right, which reach up into that corner.
 func _side_panels_changed() -> void:
 	var busy := false
-	for p: Control in [op_panel, ms_panel, host_panel, rec_panel]:
+	for p: Control in [op_panel, ms_panel, host_panel, rec_panel, ins_panel]:
 		if p and p.visible:
 			busy = true
 	if acct_card:
@@ -1276,7 +1305,7 @@ func _on_account() -> void:
 		acct_secondary.text = "Sign out"
 	else:
 		acct_name.text = "Not signed in"
-		acct_line.text = "Sign in to keep your callsign and a service record of every battle you fight."
+		acct_line.text = "Sign in to keep your callsign, earn ranks and insignia, and keep a service record of every battle you fight."
 		if waiting > 0:
 			acct_line.text = "%d %s waiting for your service record: sign in to keep %s." % [waiting, "battle" if waiting == 1 else "battles", "it" if waiting == 1 else "them"]
 		acct_primary.text = "Sign in"
@@ -1284,6 +1313,16 @@ func _on_account() -> void:
 	if on and Online.callsign != "":
 		name_edit.text = Online.callsign
 	name_edit.tooltip_text = ("Signed in as %s. Change it here to rename your account." % Online.email) if on else ""
+	ins_tex.texture = Insignia.texture(Online.icon if on else Insignia.DEFAULT, 128)
+	ins_tex.modulate = Color.WHITE if on else Color(1, 1, 1, 0.45)
+	ins_btn.tooltip_text = ("Wearing %s. Open your insignia to pick another." % String(Insignia.find(Online.icon).get("n", ""))) if on else "Insignia: sign in to earn ranks and choose one."
+	rank_label.text = ("%s  \u00b7  RANK %d" % [Insignia.rank_name(Online.rank).to_upper(), Online.rank]) if on else "RANKS AND INSIGNIA: CLICK THE PATCH"
+	rank_label.add_theme_color_override("font_color", UiKit.ACCENT if on else UiKit.DIM)
+	rank_label.tooltip_text = ("Rank %d of %d  \u00b7  %s" % [Online.rank, Insignia.MAX_RANK, _xp_text()]) if on else "Sign in and every battle you play earns XP towards the next rank."
+	rank_bar.visible = on
+	_set_bar(rank_bar)
+	if ins_panel and ins_panel.visible:
+		_refresh_insignia()
 	if rec_panel and rec_panel.visible and not on:
 		rec_panel.visible = false
 
@@ -1546,3 +1585,279 @@ func _when(iso: String) -> String:
 	var months := ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
 	return "%d %s %d, %02d:%02d" % [int(d.day), months[clampi(int(d.month) - 1, 0, 11)], int(d.year), int(d.hour), int(d.minute)]
 
+
+# --- the insignia ----------------------------------------------------------------------
+
+## The insignia worn, beside the callsign: it opens the collection.
+func _make_ins_btn() -> Button:
+	ins_btn = Button.new()
+	ins_btn.custom_minimum_size = Vector2(40, 40)
+	ins_btn.focus_mode = Control.FOCUS_NONE
+	ins_btn.add_theme_stylebox_override("normal", UiKit.box(Color(1, 1, 1, 0.03), 5, Color(1, 1, 1, 0.08), 1, 2.0))
+	ins_btn.add_theme_stylebox_override("hover", UiKit.box(Color(UiKit.ACCENT.r, UiKit.ACCENT.g, UiKit.ACCENT.b, 0.12), 5, UiKit.ACCENT, 1, 2.0))
+	ins_btn.add_theme_stylebox_override("pressed", UiKit.box(Color(UiKit.ACCENT.r, UiKit.ACCENT.g, UiKit.ACCENT.b, 0.2), 5, UiKit.ACCENT, 1, 2.0))
+	ins_tex = _ins_rect(Insignia.DEFAULT, 36)
+	ins_tex.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	ins_tex.offset_left = 2
+	ins_tex.offset_top = 2
+	ins_tex.offset_right = -2
+	ins_tex.offset_bottom = -2
+	ins_btn.add_child(ins_tex)
+	ins_btn.pressed.connect(func(): Sfx.ui("click"); _open_insignia())
+	return ins_btn
+
+
+## An insignia as a picture `px` across ("" for none yet).
+func _ins_rect(id: String, px: int) -> TextureRect:
+	var tr := TextureRect.new()
+	tr.texture = Insignia.texture(id, 128) if id != "" else null
+	tr.custom_minimum_size = Vector2(px, px)
+	tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	tr.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+	tr.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	tr.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	return tr
+
+
+func _xp_bar(w: float) -> ProgressBar:
+	var bar := ProgressBar.new()
+	bar.show_percentage = false
+	bar.custom_minimum_size = Vector2(w, 5)
+	bar.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	bar.add_theme_stylebox_override("background", UiKit.box(Color(1, 1, 1, 0.08), 3, Color(0, 0, 0, 0), 0, 0.0))
+	bar.add_theme_stylebox_override("fill", UiKit.box(UiKit.ACCENT, 3, Color(0, 0, 0, 0), 0, 0.0))
+	return bar
+
+
+## How far through the rank the player is (full at the top rank).
+func _set_bar(bar: ProgressBar) -> void:
+	var top := Online.next_xp < 0
+	bar.max_value = 1.0 if top else maxf(1.0, Online.next_xp - Online.rank_xp)
+	bar.value = (1.0 if top else float(Online.xp - Online.rank_xp)) if Online.signed_in() else 0.0
+
+
+func _xp_text() -> String:
+	if Online.next_xp < 0:
+		return "%s XP  \u00b7  TOP RANK" % Insignia.thousands(Online.xp)
+	return "%s / %s XP" % [Insignia.thousands(Online.xp - Online.rank_xp), Insignia.thousands(Online.next_xp - Online.rank_xp)]
+
+
+## The collection: who you are and how far you've come, then every insignia
+## by group. The unlocked can be worn; the rest are shown, locked, with what
+## unlocks them.
+func _build_insignia_panel() -> void:
+	ins_panel = PanelContainer.new()
+	UiFx.glass(ins_panel, 16.0, 24.0)
+	ins_panel.anchor_top = 0.5
+	ins_panel.anchor_bottom = 0.5
+	ins_panel.offset_left = 640
+	ins_panel.offset_right = 1300
+	ins_panel.offset_top = -330
+	ins_panel.offset_bottom = 340
+	ins_panel.visible = false
+	add_child(ins_panel)
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 10)
+	ins_panel.add_child(v)
+	v.add_child(_spaced("INSIGNIA", 13, UiKit.ACCENT, 4))
+	var head := HBoxContainer.new()
+	head.add_theme_constant_override("separation", 16)
+	v.add_child(head)
+	var big := _ins_rect(Insignia.DEFAULT, 92)
+	head.add_child(big)
+	var hv := VBoxContainer.new()
+	hv.add_theme_constant_override("separation", 3)
+	hv.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	hv.alignment = BoxContainer.ALIGNMENT_CENTER
+	head.add_child(hv)
+	var nm := UiKit.label("", 24, UiKit.TEXT, 600)
+	hv.add_child(nm)
+	var rk := UiKit.label("", 13, UiKit.ACCENT, 700)
+	hv.add_child(rk)
+	var bar := _xp_bar(330)
+	hv.add_child(bar)
+	var xpl := UiKit.label("", 12, UiKit.DIM)
+	hv.add_child(xpl)
+	var rec := UiKit.label("", 12, UiKit.DIM)
+	rec.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	hv.add_child(rec)
+	var sign := _btn("Sign in", func(): Sfx.ui("click"); _open_account())
+	sign.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	head.add_child(sign)
+	_ins_head = {"icon": big, "name": nm, "rank": rk, "bar": bar, "xp": xpl, "record": rec, "sign": sign}
+	var scroll := ScrollContainer.new()
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	v.add_child(scroll)
+	var list := VBoxContainer.new()
+	list.add_theme_constant_override("separation", 6)
+	list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.add_child(list)
+	for g in Insignia.GROUPS:
+		var gh := HBoxContainer.new()
+		gh.add_theme_constant_override("separation", 10)
+		gh.custom_minimum_size = Vector2(0, 26)
+		var gl := UiKit.label(String(g[1]).to_upper(), 11, UiKit.ACCENT, 700)
+		gl.size_flags_vertical = Control.SIZE_SHRINK_END
+		gh.add_child(gl)
+		var gc := UiKit.label("", 11, UiKit.DIM, 600)
+		gc.size_flags_vertical = Control.SIZE_SHRINK_END
+		gh.add_child(gc)
+		_ins_counts[g[0]] = gc
+		list.add_child(gh)
+		var gb := UiKit.label(String(g[2]), 12, UiKit.DIM)
+		gb.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		list.add_child(gb)
+		var flow := HFlowContainer.new()
+		flow.add_theme_constant_override("h_separation", 5)
+		flow.add_theme_constant_override("v_separation", 5)
+		list.add_child(flow)
+		for e: Dictionary in Insignia.all():
+			if Insignia.group(String(e.id)) == g[0]:
+				flow.add_child(_ins_tile(e))
+	var foot := HBoxContainer.new()
+	foot.add_theme_constant_override("separation", 10)
+	v.add_child(foot)
+	_ins_msg = UiKit.label("", 13, UiKit.DIM)
+	_ins_msg.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_ins_msg.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_ins_msg.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	foot.add_child(_ins_msg)
+	foot.add_child(_btn("Close", func(): ins_panel.visible = false))
+
+
+## One insignia in the collection. Its picture is drawn a few frames later
+## (_process), so opening the collection never stalls the menu.
+func _ins_tile(e: Dictionary) -> Button:
+	var id := String(e.id)
+	var b := Button.new()
+	b.custom_minimum_size = Vector2(54, 54)
+	b.focus_mode = Control.FOCUS_NONE
+	var tr := _ins_rect("", 46)
+	tr.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	tr.offset_left = 4
+	tr.offset_top = 4
+	tr.offset_right = -4
+	tr.offset_bottom = -4
+	tr.name = "Pic"
+	b.add_child(tr)
+	var lock := LockGlyph.new()
+	lock.name = "Lock"
+	lock.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	lock.anchor_left = 1.0
+	lock.anchor_right = 1.0
+	lock.offset_left = -16
+	lock.offset_top = 4
+	lock.offset_right = -4
+	lock.offset_bottom = 19
+	b.add_child(lock)
+	b.pressed.connect(func(): _pick_insignia(id))
+	_ins_tiles[id] = b
+	_ins_load.append(id)
+	return b
+
+
+func _open_insignia() -> void:
+	_close_panels()
+	_ins_msg.text = ""
+	_refresh_insignia()
+	ins_panel.visible = true
+	UiFx.slide_in(ins_panel, 40.0, 0.32)
+	Sfx.ui("ui_whoosh", -16.0)
+	if Online.signed_in():
+		Online.refresh_me()
+
+
+func _process(_dt: float) -> void:
+	# the collection's pictures, a few each frame while it's open
+	if ins_panel and ins_panel.visible and not _ins_load.is_empty():
+		for i in mini(8, _ins_load.size()):
+			var id: String = _ins_load.pop_front()
+			var t: Button = _ins_tiles[id]
+			(t.get_node("Pic") as TextureRect).texture = Insignia.texture(id, 128)
+
+
+## The collection as it stands: what's unlocked, what's worn.
+func _refresh_insignia() -> void:
+	var on := Online.signed_in()
+	var rank := Online.rank if on else 0
+	var worn := _ins_pending if _ins_pending != "" else (Online.icon if on else "")
+	var h := _ins_head
+	(h.icon as TextureRect).texture = Insignia.texture(worn if worn != "" else Insignia.DEFAULT, 128)
+	(h.icon as TextureRect).modulate = Color.WHITE if on else Color(1, 1, 1, 0.45)
+	(h.sign as Button).visible = not on
+	if on:
+		(h.name as Label).text = Online.callsign
+		(h.rank as Label).text = "%s  \u00b7  RANK %d OF %d" % [Insignia.rank_name(rank).to_upper(), rank, Insignia.MAX_RANK]
+		var nxt := "" if Online.next_xp < 0 else "  \u00b7  %s to %s" % [Insignia.thousands(Online.next_xp - Online.xp), Insignia.rank_name(rank + 1)]
+		(h.xp as Label).text = _xp_text() + nxt
+		(h.record as Label).text = "%d battles, %d won  \u00b7  wearing %s" % [Online.fought, Online.wins, String(Insignia.find(worn).get("n", ""))]
+	else:
+		(h.name as Label).text = "Not signed in"
+		(h.rank as Label).text = "RANKS AND INSIGNIA"
+		(h.xp as Label).text = "Sign in and play: every battle earns XP, and a win half as much again."
+		(h.record as Label).text = "Fifty ranks from Recruit to General of the Army, each with its own patch."
+	_set_bar(h.bar as ProgressBar)
+	var have := {}
+	var total := {}
+	for e: Dictionary in Insignia.all():
+		var id := String(e.id)
+		var g := Insignia.group(id)
+		var open := Insignia.unlocked(id, rank)
+		total[g] = int(total.get(g, 0)) + 1
+		if open:
+			have[g] = int(have.get(g, 0)) + 1
+		var t: Button = _ins_tiles[id]
+		var sel := id == worn
+		var bg := Color(1, 1, 1, 0.04) if open else Color(0, 0, 0, 0.25)
+		var edge := UiKit.ACCENT if sel else Color(1, 1, 1, 0.07)
+		var hov := UiKit.boxc(Color(UiKit.ACCENT.r, UiKit.ACCENT.g, UiKit.ACCENT.b, 0.14 if open else 0.05), 5, UiKit.ACCENT if sel or open else Color(1, 1, 1, 0.18), 2 if sel else 1, 0.0)
+		t.add_theme_stylebox_override("normal", UiKit.boxc(bg, 5, edge, 2 if sel else 1, 0.0))
+		t.add_theme_stylebox_override("hover", hov)
+		t.add_theme_stylebox_override("pressed", hov)
+		(t.get_node("Pic") as TextureRect).modulate = Color.WHITE if open else Color(0.5, 0.5, 0.5, 0.55)
+		(t.get_node("Lock") as Control).visible = not open
+		var how := "Wearing it." if sel else Insignia.unlock_text(id)
+		if open and not sel:
+			how += " Click to wear it." if on else " Sign in to wear it."
+		t.tooltip_text = "%s\n%s\n%s" % [String(e.n), String(e.d), how]
+	for g in Insignia.GROUPS:
+		(_ins_counts[g[0]] as Label).text = "%d / %d UNLOCKED" % [int(have.get(g[0], 0)), int(total.get(g[0], 0))]
+
+
+## Put an insignia on: shown at once, and taken back if the matchmaker says no.
+func _pick_insignia(id: String) -> void:
+	var e := Insignia.find(id)
+	if not Online.signed_in():
+		_ins_msg.text = "Sign in to wear an insignia. Every account starts with the ten starter patches."
+		return
+	if not Insignia.unlocked(id, Online.rank):
+		_ins_msg.text = "%s: %s" % [String(e.n), Insignia.unlock_text(id)]
+		return
+	if id == Online.icon or _ins_pending != "":
+		return
+	Sfx.ui("click")
+	_ins_pending = id
+	_ins_msg.text = "Wearing %s." % String(e.n)
+	_refresh_insignia()
+	var r: Dictionary = await Online.set_icon(id)
+	_ins_pending = ""
+	if not r.ok:
+		_ins_msg.text = String(r.error)
+	_refresh_insignia()
+	_on_account()
+
+
+## A small padlock on the insignia not yet unlocked.
+class LockGlyph extends Control:
+	func _draw() -> void:
+		var w := size.x
+		var h := size.y
+		var body := Rect2(w * 0.1, h * 0.44, w * 0.8, h * 0.52)
+		var c := Vector2(w * 0.5, h * 0.44)
+		draw_arc(c, w * 0.26, PI, TAU, 12, Color(0.05, 0.05, 0.05, 0.9), 4.2, true)
+		draw_arc(c, w * 0.26, PI, TAU, 12, Color(0.86, 0.84, 0.76), 2.0, true)
+		draw_rect(body.grow(1.2), Color(0.05, 0.05, 0.05, 0.9))
+		draw_rect(body, Color(0.86, 0.84, 0.76))
+		draw_circle(Vector2(w * 0.5, h * 0.66), w * 0.08, Color(0.2, 0.2, 0.18))
