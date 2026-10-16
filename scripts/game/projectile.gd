@@ -11,6 +11,7 @@ var ptype := "frag"
 var vel := Vector3.ZERO
 var fuse := 3.4
 var thrower_id := 0
+var by := 0  # (server) who called it in, if it's fire support (the kills are theirs)
 var held_by: Soldier = null
 var smothered_by: Soldier = null  # a man lying on it (see SoldierBrain)
 var handler: Soldier = null  # the one man dealing with it (throwing it back, kicking it, lying on it)
@@ -61,6 +62,8 @@ func apply_props(d: Dictionary) -> void:
 		vel = d.vel
 	if d.has("thrower"):
 		thrower_id = d.thrower
+	if d.has("by"):
+		by = d.by
 	if d.has("fuse"):
 		fuse = d.fuse
 	if d.has("origin"):
@@ -135,7 +138,7 @@ func _jet(dt: float) -> void:
 		var i := _bombs0 - fuse
 		if along > -BOMB_THROW - 5.0 * (_bombs0 - 1.0) + i * 10.0:
 			fuse -= 1.0
-			world.spawn("projectile", {"ptype": "bomb", "team": team, "pos": position + Vector3(0, -1.4, 0), "vel": vel * 0.95, "thrower": thrower_id})
+			world.spawn("projectile", {"ptype": "bomb", "team": team, "pos": position + Vector3(0, -1.4, 0), "vel": vel * 0.95, "thrower": thrower_id, "by": by})
 	if sight > 0.0:
 		_photograph(dt)
 	if along > (stay if stay > 0.0 else 340.0):
@@ -152,7 +155,7 @@ func _bomb(dt: float) -> void:
 	var np := position + vel * dt
 	if np.y <= 0.3:
 		var src: Entity = world.entity(thrower_id) if thrower_id != 0 else null
-		world.combat.explode(Vector3(np.x, 0.3, np.z), {"dmg": 220.0, "radius": 10.0, "fling": 15.0, "at": 300.0, "top": true, "src": src, "team": team, "size": 2.6, "track": 0.6, "struct_mult": 3.0})
+		world.combat.explode(Vector3(np.x, 0.3, np.z), {"dmg": 220.0, "radius": 10.0, "fling": 15.0, "at": 300.0, "top": true, "src": src, "team": team, "by": by, "size": 2.6, "track": 0.6, "struct_mult": 3.0})
 		world.despawn(self)
 		return
 	position = np
@@ -196,7 +199,7 @@ func _ballistic(dt: float) -> void:
 		fuse -= dt
 		if fuse <= 0.0:
 			if not SoldierBrain.smothered(self):
-				world.combat.explode(position, {"dmg": 150.0, "radius": 6.0, "fling": 9.0, "at": 0.0, "src": world.entity(thrower_id), "team": team, "size": 1.0})
+				world.combat.explode(position, {"dmg": 150.0, "radius": 6.0, "fling": 9.0, "at": 0.0, "src": world.entity(thrower_id), "team": team, "by": by, "size": 1.0})
 			world.despawn(self)
 	else:
 		if not flying or life_t > 1.6:
@@ -224,7 +227,7 @@ func _rocket(dt: float) -> void:
 		boom = np
 	if boom != Vector3.INF:
 		var at := 450.0 if ptype == "recoilless" else 380.0
-		world.combat.explode(boom, {"dmg": 110.0, "radius": 4.0, "fling": 8.0, "at": at, "dir": vel.normalized(), "track": 0.25 if ptype == "recoilless" else 0.2, "src": src, "team": team, "size": 1.0, "struct_mult": 2.0})
+		world.combat.explode(boom, {"dmg": 110.0, "radius": 4.0, "fling": 8.0, "at": at, "dir": vel.normalized(), "track": 0.25 if ptype == "recoilless" else 0.2, "src": src, "team": team, "by": by, "size": 1.0, "struct_mult": 2.0})
 		world.despawn(self)
 		return
 	position = np
@@ -250,29 +253,29 @@ func _shell() -> void:
 	var src: Entity = world.entity(thrower_id) if thrower_id != 0 else null
 	match ptype:
 		"grad":
-			world.combat.explode(target, {"dmg": 150.0, "radius": 7.0, "fling": 10.0, "at": 120.0, "top": true, "src": src, "team": team, "size": 1.6, "struct_mult": 2.0})
+			world.combat.explode(target, {"dmg": 150.0, "radius": 7.0, "fling": 10.0, "at": 120.0, "top": true, "src": src, "team": team, "by": by, "size": 1.6, "struct_mult": 2.0})
 			world.despawn(self)
 			return
 		"arty":
-			world.combat.explode(target, {"dmg": 230.0, "radius": 10.0, "fling": 14.0, "at": 220.0, "top": true, "src": src, "team": team, "size": 2.3, "struct_mult": 3.0})
+			world.combat.explode(target, {"dmg": 230.0, "radius": 10.0, "fling": 14.0, "at": 220.0, "top": true, "src": src, "team": team, "by": by, "size": 2.3, "struct_mult": 3.0})
 			world.despawn(self)
 			return
 		"ac105":
-			world.combat.explode(target, {"dmg": 220.0, "radius": 8.5, "fling": 13.0, "at": 300.0, "top": true, "src": src, "team": team, "size": 2.0, "struct_mult": 2.5})
+			world.combat.explode(target, {"dmg": 220.0, "radius": 8.5, "fling": 13.0, "at": 300.0, "top": true, "src": src, "team": team, "by": by, "size": 2.0, "struct_mult": 2.5})
 			world.despawn(self)
 			return
 		"ac40":
-			world.combat.explode(target, {"dmg": 95.0, "radius": 3.8, "fling": 6.0, "at": 140.0, "top": true, "src": src, "team": team, "size": 0.85, "struct_mult": 1.5})
+			world.combat.explode(target, {"dmg": 95.0, "radius": 3.8, "fling": 6.0, "at": 140.0, "top": true, "src": src, "team": team, "by": by, "size": 0.85, "struct_mult": 1.5})
 			world.despawn(self)
 			return
 		"ac25":
-			world.combat.explode(target, {"dmg": 50.0, "radius": 1.8, "fling": 0.0, "at": 70.0, "top": true, "src": src, "team": team, "size": 0.38, "struct_mult": 1.0})
+			world.combat.explode(target, {"dmg": 50.0, "radius": 1.8, "fling": 0.0, "at": 70.0, "top": true, "src": src, "team": team, "by": by, "size": 0.38, "struct_mult": 1.0})
 			world.despawn(self)
 			return
 	if ptype == "mortar":
-		world.combat.explode(target, {"dmg": 130.0, "radius": 6.5, "fling": 9.0, "at": 80.0, "top": true, "src": src, "team": team, "size": 1.2, "struct_mult": 2.0})
+		world.combat.explode(target, {"dmg": 130.0, "radius": 6.5, "fling": 9.0, "at": 80.0, "top": true, "src": src, "team": team, "by": by, "size": 1.2, "struct_mult": 2.0})
 	else:
-		world.spawn("projectile", {"ptype": "smoke", "team": team, "pos": target + Vector3(0, 0.2, 0), "vel": Vector3.ZERO, "thrower": thrower_id, "fuse": 0.0})
+		world.spawn("projectile", {"ptype": "smoke", "team": team, "pos": target + Vector3(0, 0.2, 0), "vel": Vector3.ZERO, "thrower": thrower_id, "fuse": 0.0, "by": by})
 	world.despawn(self)
 
 
@@ -311,7 +314,7 @@ func _atgm(dt: float) -> void:
 	elif life_t > 7.0 or position.distance_to(target) < 0.8:
 		boom = np
 	if boom != Vector3.INF:
-		world.combat.explode(boom, {"dmg": 90.0, "radius": 3.5, "fling": 7.0, "at": 520.0, "dir": vel.normalized(), "top": vel.y < -0.3, "track": 0.25, "src": src, "team": team, "size": 1.1, "struct_mult": 2.0})
+		world.combat.explode(boom, {"dmg": 90.0, "radius": 3.5, "fling": 7.0, "at": 520.0, "dir": vel.normalized(), "top": vel.y < -0.3, "track": 0.25, "src": src, "team": team, "by": by, "size": 1.1, "struct_mult": 2.0})
 		world.despawn(self)
 		return
 	position = np
@@ -334,7 +337,7 @@ func _sam(dt: float) -> void:
 	var src: Entity = world.entity(thrower_id)
 	var near := tgt != null and not tgt.gone and np.distance_to(target) < 3.2
 	if near or life_t > 6.0 or np.y < 0.1:
-		world.combat.explode(target if near else np, {"dmg": 60.0, "radius": 4.0, "fling": 2.0, "at": 620.0 if near else 0.0, "src": src, "team": team, "size": 0.9, "struct_mult": 0.5})
+		world.combat.explode(target if near else np, {"dmg": 60.0, "radius": 4.0, "fling": 2.0, "at": 620.0 if near else 0.0, "src": src, "team": team, "by": by, "size": 0.9, "struct_mult": 0.5})
 		world.despawn(self)
 		return
 	position = np
@@ -631,7 +634,7 @@ func _a10(dt: float) -> void:
 		var h: Array = _hits[i]
 		if world.time >= float(h[0]):
 			_hits.remove_at(i)
-			world.combat.explode(h[1], {"dmg": 75.0, "radius": 2.6, "fling": 5.0, "at": 170.0, "top": true, "src": null, "team": team, "size": 0.68, "struct_mult": 1.6})
+			world.combat.explode(h[1], {"dmg": 75.0, "radius": 2.6, "fling": 5.0, "at": 170.0, "top": true, "src": null, "team": team, "by": by, "size": 0.68, "struct_mult": 1.6})
 	if along > 420.0:
 		world.despawn(self)
 
@@ -734,7 +737,7 @@ func _ac130(dt: float) -> void:
 		aim += Vector3(world.rng.randf_range(-spread, spread), 0, world.rng.randf_range(-spread, spread))
 		aim.y = 0.15
 		var muzzle := position + Vector3(0, -1.5, 0)
-		world.spawn("projectile", {"ptype": g, "team": team, "pos": muzzle, "origin": muzzle, "target": aim, "T": float(gd.T) * world.rng.randf_range(0.9, 1.1), "thrower": 0})
+		world.spawn("projectile", {"ptype": g, "team": team, "pos": muzzle, "origin": muzzle, "target": aim, "T": float(gd.T) * world.rng.randf_range(0.9, 1.1), "thrower": 0, "by": by})
 		if String(gd.snd) != "":
 			world.fx_event([Fx.FAR_SOUND, String(gd.snd), float(gd.vol), target])
 		elif int(nx[1]) == 0:

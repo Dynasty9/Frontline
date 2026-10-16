@@ -147,7 +147,9 @@ func _draw() -> void:
 	draw_style_box(UiKit.boxc(UiKit.PANEL, 7, UiKit.LINE, 1, 0.0, 8), Rect2(0, 0, W, HEAD_H if not open else size.y))
 	UiKit.text(self, Vector2(12, 19), title, 11, UiKit.ACCENT, 700)
 	UiKit.text(self, Vector2(18 + UiKit.text_width(title, 11, 700), 19), sub, 11, UiKit.DIM)
-	UiKit.text(self, Vector2(W - 44, 19), "O", 11, UiKit.DIM, 700)
+	var ok := Keys.label("orbat")
+	if ok != "":
+		UiKit.text(self, Vector2(W - 32 - UiKit.text_width(ok, 11, 700), 19), ok, 11, UiKit.DIM, 700)
 	var cc := Vector2(W - 20, 15)
 	var chev := PackedVector2Array([cc + Vector2(-4, -2), cc + Vector2(0, 2), cc + Vector2(4, -2)]) if open else PackedVector2Array([cc + Vector2(-2, -4), cc + Vector2(2, 0), cc + Vector2(-2, 4)])
 	draw_polyline(chev, UiKit.DIM, 1.6, true)

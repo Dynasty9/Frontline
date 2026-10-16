@@ -49,6 +49,8 @@ var gait_amp := 0.3  # how far the thighs swing at this speed (see pose())
 var nade: Node3D  # a grenade in his right hand (cooking it, throwing it)
 var tails: Node3D  # a bandana's knot: its tails stream out behind him when he runs
 var _back := false
+var _kick := 0.0  # recoil from the shots just fired, dying away
+var _kick_on := Vector3.ZERO  # what of it the joints carry now: weapon back, muzzle up, shoulders back
 ## Attachment sockets (torso space). Carried kit is built to one convention -
 ## forward along -Z, top along +Y, origin at its balance point - and sits in a
 ## socket: stowed across the back, or shouldered to fire.
@@ -1326,12 +1328,6 @@ func _posture_pose(posture: int, act: int, moving: bool, sp: float, cp: float, s
 		t_gun_p = Vector3(0.13, 0.47, -0.18)
 		t_gun_r = Vector3(0.02, 0.0, 0.0)
 		t_head = Vector3(-0.14, 0.12, 0.1)
-		if lean_shoot and act == Soldier.Act.SHOOT:
-			# recoil: the muzzle climbs and the shoulder rocks with each shot
-			var kick := maxf(0.0, sin(act_time * 38.0 + seedf)) * 0.035
-			t_gun_p.z += kick
-			t_gun_r.x += kick * 2.2
-			t_torso.x += kick * 0.6
 		if look == "op":
 			ik_l = false
 			ik_r = false
@@ -1526,16 +1522,10 @@ func _crouch_still(act: int, lean_shoot: bool) -> void:
 
 ## The weapon in the shoulder and level, whatever the lean of the body; the
 ## cheek on the stock.
-func _shoulder(shooting: bool) -> void:
+func _shoulder(_shooting: bool) -> void:
 	t_gun_p = Vector3(0.13, 0.47, -0.18)
 	t_gun_r = Vector3(0.02 - t_torso.x, 0.0, 0.0)
 	t_head = Vector3(-0.14 - t_torso.x * 0.85, 0.12, 0.1)
-	if shooting:
-		# recoil: the muzzle climbs and the shoulder rocks with each shot
-		var kick := maxf(0.0, sin(act_time * 38.0 + seedf)) * 0.03
-		t_gun_p.z += kick
-		t_gun_r.x += kick * 2.0
-		t_torso.x += kick * 0.4
 
 
 ## Knees bent so the hips sit at hy with the feet flat under him, one foot
@@ -1604,10 +1594,8 @@ func _blind_fire(h: float, shooting: bool) -> void:
 	t_gun_p = Vector3(0.04, clampf(y, 0.45, 1.0), -0.4)
 	t_gun_r = Vector3(0.3, 0.0, 0.0)
 	if shooting:
-		var kick := sin(act_time * 41.0 + seedf) * 0.06
-		t_gun_r.x += absf(kick)
-		t_gun_r.y += kick
-		t_gun_p.z += absf(kick) * 0.5
+		# held out at arm's length it wanders off the aim between shots
+		t_gun_r.y += sin(act_time * 9.0 + seedf) * 0.08
 
 
 ## Up on his elbows behind a low lip so the weapon clears it.
@@ -1661,11 +1649,15 @@ func _apply(dt: float, k: float) -> void:
 		ik_r = true
 		t_torso.x = minf(t_torso.x, -0.32)
 		t_head.x = maxf(t_head.x, 0.22)
-		if last_act == Soldier.Act.SHOOT:
-			t_torso.x += randf_range(-0.035, 0.02)  # shoulders shaking with the gun
 	if ik_l or ik_r:
 		_solve_hands()
 	tumble = Vector3.ZERO
+	# last frame's recoil off the joints, so the pose eases from where it was
+	if _kick_on != Vector3.ZERO:
+		gun.position.z -= _kick_on.x
+		gun.rotation.x -= _kick_on.y
+		torso.rotation.x -= _kick_on.z
+		_kick_on = Vector3.ZERO
 	var f := 1.0 - exp(-dt * k)
 	# a joint that has reached its pose isn't touched (every set re-transforms
 	# its meshes on the render server)
@@ -1688,6 +1680,23 @@ func _apply(dt: float, k: float) -> void:
 	if gun.visible:
 		_mv(gun, t_gun_p, f)
 		_rot(gun, t_gun_r, f)
+	if _kick > 0.02:
+		# the shot slams the weapon back into his shoulder and throws the
+		# muzzle up, rocking his shoulders back; it settles within a few frames
+		_kick_on = Vector3(0.032, 0.075, 0.045) * _kick if gun.visible else Vector3(0.0, 0.0, 0.045 * _kick)
+		if crew:
+			_kick_on.z *= 0.5
+		gun.position.z += _kick_on.x
+		gun.rotation.x += _kick_on.y
+		torso.rotation.x += _kick_on.z
+		_kick *= exp(-dt * 24.0)
+	else:
+		_kick = 0.0
+
+
+## A shot just left his weapon (`k`: how hard it kicks; 1 a rifle).
+func fire_kick(k: float) -> void:
+	_kick = minf(_kick + k, 1.8)
 
 
 var _alive_pose := true

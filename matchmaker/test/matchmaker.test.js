@@ -178,6 +178,93 @@ const withAccounts = await start({ AUTH_BACKEND: 'memory' });
 	});
 }
 
+// --- service records (memory backend)
+// a battle as the game reports it, with whatever a test changes
+const battle = (over = {}) => ({
+	game_version: '0.4.0',
+	mode: 'skirmish',
+	title: 'Skirmish vs AI',
+	side: 0,
+	result: 'victory',
+	duration: 412.6,
+	me: { name: 'Hawk', kills: 12, lost: 3, captured: 1, veh_kills: 2, veh_lost: 0, shots: 900, hits: 120, rating: 71.26, score: 640, bogus: 5 },
+	report: { t: 412.6, over: true, winner: 0, players: [{ id: 1, name: 'Hawk', team: 0 }], sides: [{}, {}], tl: [[0, 8, 9]] },
+	...over,
+});
+
+{
+	const s = withAccounts;
+
+	test('battles go on your service record, and only yours', async () => {
+		const up = await s.call('POST', '/auth/signup', { email: 'rec@b.cd', password: 'longenough', callsign: 'Hawk' });
+		const auth = { Authorization: `Bearer ${up.data.session.access_token}` };
+		const other = await s.call('POST', '/auth/signup', { email: 'rec2@b.cd', password: 'longenough', callsign: 'Kite' });
+		const auth2 = { Authorization: `Bearer ${other.data.session.access_token}` };
+
+		// signed in only, and a battle that makes sense
+		assert.equal((await s.call('POST', '/me/battles', battle())).status, 401);
+		assert.equal((await s.call('POST', '/me/battles', battle({ result: 'draw' }), auth)).status, 400);
+		assert.equal((await s.call('POST', '/me/battles', battle({ mode: 'x' }), auth)).status, 400);
+		assert.equal((await s.call('POST', '/me/battles', battle({ side: 2 }), auth)).status, 400);
+		assert.equal((await s.call('POST', '/me/battles', battle({ me: null }), auth)).status, 400);
+		// a report too big to keep
+		assert.equal((await s.call('POST', '/me/battles', battle({ report: { pad: 'x'.repeat(100_000) } }), auth)).status, 400);
+
+		const saved = await s.call('POST', '/me/battles', battle(), auth);
+		assert.equal(saved.status, 200);
+		assert.ok(saved.data.id);
+		await s.call(
+			'POST',
+			'/me/battles',
+			battle({ result: 'defeat', side: 1, mode: 'mission', mission: 'bridgehead', title: 'Bridgehead', me: { kills: 4, lost: 6, rating: 31, score: 90 } }),
+			auth,
+		);
+		await s.call('POST', '/me/battles', battle({ mode: 'coop', me: { kills: 20, lost: 2, rating: 88, score: 1200 } }), auth);
+		await s.call('POST', '/me/battles', battle(), auth2);
+
+		const list = await s.call('GET', '/me/battles?limit=2', undefined, auth);
+		assert.equal(list.status, 200);
+		assert.equal(list.data.battles.length, 2);
+		assert.equal(list.data.more, true);
+		// newest first, headline numbers only
+		assert.equal(list.data.battles[0].mode, 'coop');
+		assert.equal(list.data.battles[0].report, undefined);
+		const rest = await s.call('GET', `/me/battles?before=${encodeURIComponent(list.data.battles[1].played_at)}`, undefined, auth);
+		assert.equal(rest.data.battles.length, 1);
+		assert.equal(rest.data.more, false);
+		assert.equal(rest.data.battles[0].id, saved.data.id);
+		assert.equal(rest.data.battles[0].lost, 4); // killed and captured
+		assert.equal(rest.data.battles[0].rating, 71.3);
+		assert.equal(rest.data.battles[0].duration_s, 413);
+
+		// the whole battle, report and all; nobody else's
+		const one = await s.call('GET', `/me/battles/${saved.data.id}`, undefined, auth);
+		assert.equal(one.status, 200);
+		assert.equal(one.data.battle.report.winner, 0);
+		assert.equal(one.data.battle.me.kills, 12);
+		assert.equal(one.data.battle.me.bogus, undefined);
+		assert.equal((await s.call('GET', `/me/battles/${saved.data.id}`, undefined, auth2)).status, 404);
+		assert.equal((await s.call('GET', '/me/battles/not-an-id', undefined, auth)).status, 404);
+
+		const career = await s.call('GET', '/me/career', undefined, auth);
+		assert.equal(career.status, 200);
+		const c = career.data.career;
+		assert.equal(c.battles, 3);
+		assert.equal(c.victories, 2);
+		assert.equal(c.defeats, 1);
+		assert.equal(c.kills, 36);
+		assert.deepEqual(c.sides, [2, 1]);
+		assert.equal(c.modes.mission, 1);
+		assert.equal(c.best.rating, 88);
+		assert.equal((await s.call('GET', '/me/career', undefined, auth2)).data.career.battles, 1);
+	});
+
+	test('no accounts, no records', async () => {
+		assert.equal((await open.call('GET', '/me/battles', undefined, { Authorization: 'Bearer abc' })).status, 503);
+		assert.equal((await open.call('GET', '/me/career')).status, 401);
+	});
+}
+
 // --- lobby registry
 {
 	test('quick match prefers open lobbies, then the fullest, then the oldest', () => {

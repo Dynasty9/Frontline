@@ -14,7 +14,7 @@ const DEFAULT_PORT := 7777
 const MAX_PLAYERS := 8
 ## Bump when what host and client send each other changes, so the matchmaker
 ## only pairs players who can understand each other.
-const NET_VERSION := 4
+const NET_VERSION := 5
 ## Each commander's colour: his cursor, his view and his pings on his
 ## teammates' screens. Handed out in the lobby so it stays the same all battle
 ## (and "I'm the pink one" works over voice). Clear of the sides' blue and red.
@@ -113,12 +113,17 @@ func _sender() -> int:
 func _on_peer_connected(id: int) -> void:
 	# (the client registers itself with _register once connected) - and the
 	# link survives the host going quiet for a while: laying out a 1 km map
-	# and its nav takes it several seconds
-	_long_timeout(id)
+	# and its nav takes it several seconds. A client's one link is to the host
+	# (peer 1): the other players it hears of are relayed through the host and
+	# have no ENet peer here to set
+	if multiplayer.is_server() or id == 1:
+		_long_timeout(id)
 
 
-## Don't drop a peer for going silent for under a minute (map generation on
-## the host, a big first snapshot on the client).
+## Don't drop a peer for going silent for 45 s (map generation on the host,
+## then its first frame of the new world if it has a window; a big first
+## snapshot on the client). ENet only checks when it next resends, so the real
+## limit lands somewhere between 45 and 90 s.
 func _long_timeout(id: int) -> void:
 	var mp := multiplayer.multiplayer_peer
 	if mp is ENetMultiplayerPeer:

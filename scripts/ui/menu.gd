@@ -39,14 +39,22 @@ var browse_panel: PanelContainer
 var browse_list: VBoxContainer
 var browse_msg: Label
 var _browse_n := 0  # the latest refresh (an older answer arriving late is dropped)
-var account_panel: PanelContainer
-var acct_email: LineEdit
-var acct_pass: LineEdit
-var acct_callsign: LineEdit
-var acct_msg: Label
-var acct_btns: Array[Button] = []
-var acct_btn: Button  # Sign in / Sign out, beside the callsign
-var acct_tag: Label
+var account_panel: AccountPanel
+var acct_card: PanelContainer  # top right: who you're signed in as, or how to sign in
+var acct_name: Label
+var acct_line: Label
+var acct_badge: Label
+var acct_primary: Button
+var acct_secondary: Button
+var rec_panel: PanelContainer  # the service record: career totals and every battle
+var rec_title: Label
+var rec_tiles: GridContainer
+var rec_list: VBoxContainer
+var rec_msg: Label
+var rec_more: Button
+var rec_view: StatsPanel  # one battle's after-action report, opened from the record
+var _rec_before := ""  # the oldest battle shown (for "older battles")
+var _rec_n := 0  # the latest load (an older answer arriving late is dropped)
 var list_check: CheckBox
 var online_label: Label
 var _mm_busy := false  # Find Match is working through battles
@@ -127,7 +135,7 @@ func _ready() -> void:
 	main_box.add_child(_big("Join Game", "Browse the battles being hosted, or connect by address", _open_browser))
 	main_box.add_child(_section("REFERENCE"))
 	main_box.add_child(_big("Field Manual", "Every soldier, weapon, vehicle and work, with its numbers", func(): manual.visible = true))
-	main_box.add_child(_big("Settings", "Graphics, display, interface and sound", func(): settings_panel.visible = true))
+	main_box.add_child(_big("Settings", "Graphics, display, interface, controls and sound", func(): settings_panel.visible = true))
 	main_box.add_child(_big("Quit", "Back to the desktop", func(): get_tree().quit()))
 	var gap2 := Control.new()
 	gap2.custom_minimum_size = Vector2(0, 14)
@@ -135,17 +143,6 @@ func _ready() -> void:
 	var who := HBoxContainer.new()
 	who.add_theme_constant_override("separation", 8)
 	who.add_child(_make_name_edit())
-	acct_btn = _btn("Sign in", func():
-		if Online.signed_in():
-			Online.sign_out()
-			_say("Signed out. You can still play online under any callsign.")
-		else:
-			_open_account())
-	acct_btn.custom_minimum_size = Vector2(96, 34)
-	who.add_child(acct_btn)
-	acct_tag = UiKit.label("ACCOUNT", 11, UiKit.GOOD, 700)
-	acct_tag.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	who.add_child(acct_tag)
 	main_box.add_child(_row("Callsign", who))
 
 	# lobby
@@ -237,7 +234,7 @@ func _ready() -> void:
 	_build_op_panel()
 	_build_mission_panel()
 	_build_browse_panel()
-	_build_account_panel()
+	_build_account()
 	var build := ("ALPHA V%s" % Updater.version) if Updater.is_release() else "DEV BUILD"
 	var foot := UiKit.label("%s  \u00b7  GODOT %s  \u00b7  F4 FIELD MANUAL IN BATTLE" % [build, Engine.get_version_info().string.to_upper()], 11, Color(0.75, 0.75, 0.7, 0.45), 600)
 	foot.anchor_left = 1.0
@@ -256,6 +253,9 @@ func _ready() -> void:
 	multiplayer.connected_to_server.connect(func(): _show_lobby())
 	Online.listing_changed.connect(_refresh)
 	Online.account_changed.connect(_on_account)
+	Online.record_changed.connect(_on_account)
+	for p: Control in [op_panel, ms_panel, browse_panel, rec_panel]:
+		p.visibility_changed.connect(_side_panels_changed)
 	Updater.changed.connect(_update_notice)
 	_update_notice()
 	_on_account()
@@ -283,6 +283,8 @@ func arrive() -> void:
 
 ## The menu's music starts again each time it comes back.
 func _on_visibility() -> void:
+	if is_visible_in_tree() and acct_card:
+		_card_in.call_deferred()
 	if is_visible_in_tree() and not _music_on:
 		_music_on = true
 		Music.play_cue("menu")
@@ -430,7 +432,7 @@ func _build_op_panel() -> void:
 
 ## The panels on the right of the menu take turns: opening one closes the rest.
 func _close_panels() -> void:
-	for p: Control in [op_panel, ms_panel, browse_panel, account_panel]:
+	for p: Control in [op_panel, ms_panel, browse_panel, account_panel, rec_panel]:
 		if p:
 			p.visible = false
 
@@ -472,7 +474,7 @@ func _deploy() -> void:
 func _unhandled_input(ev: InputEvent) -> void:
 	if not (visible and ev is InputEventKey and ev.pressed and (ev as InputEventKey).keycode == KEY_ESCAPE):
 		return
-	for p: Control in [account_panel, browse_panel, ms_panel, op_panel]:
+	for p: Control in [rec_view, account_panel, rec_panel, browse_panel, ms_panel, op_panel]:
 		if p and p.visible:
 			p.visible = false
 			get_viewport().set_input_as_handled()
@@ -862,7 +864,7 @@ func _update_notice() -> void:
 	p.anchor_right = 1.0
 	p.offset_left = -540
 	p.offset_right = -32
-	p.offset_top = 44
+	p.offset_top = 196  # under the account card
 	add_child(p)
 	var h := HBoxContainer.new()
 	h.add_theme_constant_override("separation", 12)
@@ -906,6 +908,8 @@ func _update_notice() -> void:
 	for b in h.get_children():
 		if b is Button:
 			(b as Button).size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	if acct_card:
+		_side_panels_changed()
 
 
 # --- links from the website -------------------------------------------------------------
@@ -1076,96 +1080,387 @@ func _join_listed(l: Dictionary) -> void:
 
 # --- the account ----------------------------------------------------------------------
 
-func _build_account_panel() -> void:
-	account_panel = PanelContainer.new()
-	account_panel.add_theme_stylebox_override("panel", UiKit.boxc(Color(0.035, 0.045, 0.045, 0.95), 6, UiKit.LINE, 1, 22.0, 10))
-	account_panel.set_anchors_preset(Control.PRESET_CENTER)
-	account_panel.offset_left = -240
-	account_panel.offset_right = 240
-	account_panel.offset_top = -185
-	account_panel.offset_bottom = 185
-	account_panel.visible = false
-	add_child(account_panel)
+## The account: a card top right that says who you are (or how to sign in),
+## the sign-in form, and the service record.
+func _build_account() -> void:
+	acct_card = PanelContainer.new()
+	UiFx.glass(acct_card, 12.0, 18.0)
+	acct_card.anchor_left = 1.0
+	acct_card.anchor_right = 1.0
+	acct_card.offset_left = -440
+	acct_card.offset_right = -32
+	acct_card.offset_top = 32
+	acct_card.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+	add_child(acct_card)
 	var v := VBoxContainer.new()
-	v.add_theme_constant_override("separation", 10)
-	account_panel.add_child(v)
-	v.add_child(UiKit.label("ACCOUNT", 13, UiKit.ACCENT, 700))
-	v.add_child(UiKit.label("Sign in", 24, UiKit.TEXT, 600))
-	var blurb := UiKit.label("You don't need an account to play online. One keeps your callsign yours: no one else can register it, and battles you host show a tick so players know it's you.", 13, UiKit.DIM)
-	blurb.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	v.add_child(blurb)
-	acct_email = LineEdit.new()
-	acct_email.placeholder_text = "Email"
-	acct_pass = LineEdit.new()
-	acct_pass.placeholder_text = "Password (8 characters or more)"
-	acct_pass.secret = true
-	acct_pass.text_submitted.connect(func(_t): _acct_go(false))
-	acct_callsign = LineEdit.new()
-	acct_callsign.placeholder_text = "Callsign (new accounts only)"
-	acct_callsign.max_length = 20
-	for e: LineEdit in [acct_email, acct_pass, acct_callsign]:
-		e.custom_minimum_size = Vector2(0, 36)
-		v.add_child(e)
+	v.add_theme_constant_override("separation", 4)
+	acct_card.add_child(v)
+	var head := HBoxContainer.new()
+	head.add_theme_constant_override("separation", 10)
+	v.add_child(head)
+	head.add_child(_spaced("ACCOUNT", 11, UiKit.ACCENT, 3))
+	acct_badge = _spaced("SIGNED IN", 11, UiKit.GOOD, 2)
+	head.add_child(acct_badge)
+	acct_name = UiKit.label("", 22, UiKit.TEXT, 700)
+	v.add_child(acct_name)
+	acct_line = UiKit.label("", 12, UiKit.DIM)
+	acct_line.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	acct_line.custom_minimum_size = Vector2(370, 0)
+	v.add_child(acct_line)
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 8)
 	v.add_child(row)
-	acct_btns = [_btn("Sign in", func(): _acct_go(false)), _btn("Create account", func(): _acct_go(true))]
-	acct_btns[1].custom_minimum_size = Vector2(150, 36)
-	for b in acct_btns:
-		row.add_child(b)
-	row.add_child(_btn("Close", func(): account_panel.visible = false))
-	acct_msg = UiKit.label("", 13, UiKit.DIM)
-	acct_msg.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	v.add_child(acct_msg)
+	acct_primary = _btn("", func():
+		Sfx.ui("click")
+		if Online.signed_in():
+			_open_record()
+		else:
+			_open_account())
+	acct_primary.custom_minimum_size = Vector2(150, 34)
+	# the one thing to do here, in the accent like Deploy
+	acct_primary.add_theme_font_override("font", UiKit.font(700))
+	acct_primary.add_theme_stylebox_override("normal", UiKit.box(Color(UiKit.ACCENT.r, UiKit.ACCENT.g, UiKit.ACCENT.b, 0.85), 4, UiKit.ACCENT, 0, 6.0))
+	acct_primary.add_theme_stylebox_override("hover", UiKit.box(UiKit.ACCENT.lightened(0.15), 4, UiKit.ACCENT, 0, 6.0))
+	acct_primary.add_theme_stylebox_override("pressed", UiKit.box(UiKit.ACCENT.lightened(0.15), 4, UiKit.ACCENT, 0, 6.0))
+	acct_primary.add_theme_color_override("font_color", Color(0.08, 0.07, 0.05))
+	acct_primary.add_theme_color_override("font_hover_color", Color(0.05, 0.04, 0.03))
+	acct_primary.add_theme_color_override("font_pressed_color", Color(0.05, 0.04, 0.03))
+	acct_primary.focus_mode = Control.FOCUS_NONE
+	row.add_child(acct_primary)
+	acct_secondary = _btn("", func():
+		Sfx.ui("click")
+		if Online.signed_in():
+			Online.sign_out()
+			_close_panels()
+			_say("Signed out. You can still play online under any callsign.")
+		else:
+			_open_account(true))
+	acct_secondary.custom_minimum_size = Vector2(150, 34)
+	row.add_child(acct_secondary)
+
+	account_panel = AccountPanel.new()
+	add_child(account_panel)
+	UiKit.fit_center(account_panel, Vector2(500, 440))
+	account_panel.signed_in.connect(func(): _say("Signed in as %s." % Online.callsign))
+	_build_record_panel()
 
 
-func _open_account() -> void:
+func _card_in() -> void:
+	await get_tree().process_frame
+	if acct_card.visible:
+		UiFx.slide_in(acct_card, 70.0, 0.5, 0.35)
+
+
+## The account card (and an update notice) give way to the panels that open
+## on the right, which reach up into that corner.
+func _side_panels_changed() -> void:
+	var busy := false
+	for p: Control in [op_panel, ms_panel, browse_panel, rec_panel]:
+		if p and p.visible:
+			busy = true
+	if acct_card:
+		acct_card.visible = not busy
+	var n := get_node_or_null("UpdateNotice")
+	if n:
+		n.visible = not busy
+
+
+func _spaced(text: String, fs: int, col: Color, spacing: int) -> Label:
+	var l := Label.new()
+	l.text = text
+	l.add_theme_font_override("font", UiFx.spaced(700, spacing))
+	l.add_theme_font_size_override("font_size", fs)
+	l.add_theme_color_override("font_color", col)
+	return l
+
+
+func _open_account(create := false) -> void:
 	_close_panels()
-	account_panel.visible = true
-	acct_callsign.text = name_edit.text if name_edit.text != "Commander" else ""
-	acct_msg.text = ""
-	for b in acct_btns:
-		b.disabled = false
-	# say so up front if this matchmaker has no accounts (or can't be reached)
-	var r: Dictionary = await Online.check()
-	if not account_panel.visible:
-		return
-	if not r.ok:
-		acct_msg.text = String(r.error)
-	elif String(r.data.get("accounts", "off")) == "off":
-		acct_msg.text = "This matchmaker doesn't have accounts switched on. You can play online under any callsign."
-		for b in acct_btns:
-			b.disabled = true
-
-
-func _acct_go(create: bool) -> void:
-	for b in acct_btns:
-		b.disabled = true
-	acct_msg.text = "Creating the account..." if create else "Signing in..."
-	var r: Dictionary
-	if create:
-		r = await Online.sign_up(acct_email.text, acct_pass.text, acct_callsign.text)
-	else:
-		r = await Online.sign_in(acct_email.text, acct_pass.text)
-	for b in acct_btns:
-		b.disabled = false
-	if not r.ok:
-		acct_msg.text = String(r.error)
-	elif r.get("confirm", false):
-		acct_msg.text = "Check your email for the confirmation link, then sign in here."
-	else:
-		acct_pass.text = ""
-		account_panel.visible = false
-		_say("Signed in as %s." % Online.callsign)
+	account_panel.open(create, name_edit.text)
 
 
 func _on_account() -> void:
 	var on := Online.signed_in()
-	acct_btn.text = "Sign out" if on else "Sign in"
-	acct_tag.visible = on
+	acct_badge.visible = on
+	var waiting := Online.pending.size()
+	if on:
+		acct_name.text = Online.callsign if Online.callsign != "" else "Signed in"
+		acct_line.text = Online.email
+		if waiting > 0:
+			acct_line.text += "  \u00b7  %d %s going on your record" % [waiting, "battle" if waiting == 1 else "battles"]
+		acct_primary.text = "Service Record"
+		acct_secondary.text = "Sign out"
+	else:
+		acct_name.text = "Not signed in"
+		acct_line.text = "Sign in to keep your callsign and a service record of every battle you fight."
+		if waiting > 0:
+			acct_line.text = "%d %s waiting for your service record: sign in to keep %s." % [waiting, "battle" if waiting == 1 else "battles", "it" if waiting == 1 else "them"]
+		acct_primary.text = "Sign in"
+		acct_secondary.text = "Create account"
 	if on and Online.callsign != "":
 		name_edit.text = Online.callsign
 	name_edit.tooltip_text = ("Signed in as %s. Change it here to rename your account." % Online.email) if on else ""
+	if rec_panel and rec_panel.visible and not on:
+		rec_panel.visible = false
+
+
+# --- the service record ------------------------------------------------------------------
+
+## Every battle fought signed in: the career's totals over the top, the
+## battles newest first; open one for its after-action report.
+func _build_record_panel() -> void:
+	rec_panel = PanelContainer.new()
+	UiFx.glass(rec_panel, 16.0, 24.0)
+	rec_panel.anchor_top = 0.5
+	rec_panel.anchor_bottom = 0.5
+	rec_panel.offset_left = 640
+	rec_panel.offset_right = 1300
+	rec_panel.offset_top = -330
+	rec_panel.offset_bottom = 340
+	rec_panel.visible = false
+	add_child(rec_panel)
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 10)
+	rec_panel.add_child(v)
+	v.add_child(_spaced("SERVICE RECORD", 13, UiKit.ACCENT, 4))
+	rec_title = _spaced("", 26, UiKit.TEXT, 3)
+	v.add_child(rec_title)
+	rec_tiles = GridContainer.new()
+	rec_tiles.columns = 3
+	rec_tiles.add_theme_constant_override("h_separation", 8)
+	rec_tiles.add_theme_constant_override("v_separation", 8)
+	v.add_child(rec_tiles)
+	v.add_child(_spaced("BATTLES", 11, UiKit.DIM, 3))
+	var sc := ScrollContainer.new()
+	sc.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	sc.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	v.add_child(sc)
+	var lv := VBoxContainer.new()
+	lv.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	lv.add_theme_constant_override("separation", 4)
+	sc.add_child(lv)
+	rec_list = VBoxContainer.new()
+	rec_list.add_theme_constant_override("separation", 4)
+	lv.add_child(rec_list)
+	rec_more = _btn("Older battles", func(): Sfx.ui("click"); _load_battles(false))
+	rec_more.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	lv.add_child(rec_more)
+	rec_msg = UiKit.label("", 13, UiKit.DIM)
+	rec_msg.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	v.add_child(rec_msg)
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 8)
+	v.add_child(row)
+	row.add_child(_btn("Close", func(): rec_panel.visible = false))
+	# a battle's report opens over everything, the menu dimmed behind it
+	var dim := ColorRect.new()
+	dim.color = Color(0.0, 0.01, 0.01, 0.6)
+	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	dim.visible = false
+	add_child(dim)
+	rec_view = StatsPanel.new()
+	rec_view.title = "AFTER-ACTION REPORT"
+	rec_view.visible = false
+	rec_view.closed.connect(func(): rec_view.visible = false)
+	rec_view.visibility_changed.connect(func(): dim.visible = rec_view.visible)
+	add_child(rec_view)
+	UiKit.fit_center(rec_view, Vector2(1180, 820), 30.0)
+
+
+func _open_record() -> void:
+	if not Online.signed_in():
+		_open_account()
+		return
+	_close_panels()
+	rec_panel.visible = true
+	UiFx.slide_in(rec_panel, 40.0, 0.32)
+	Sfx.ui("ui_whoosh", -16.0)
+	rec_title.text = Online.callsign.to_upper()
+	_rec_tiles({})
+	_load_battles(true)
+	var n := _rec_n
+	var r: Dictionary = await Online.career()
+	if n != _rec_n or not rec_panel.visible:
+		return
+	if r.ok:
+		_rec_tiles(r.data.get("career", {}))
+
+
+## The career at a glance: battles, won, kills, K/D, average rating, time.
+func _rec_tiles(c: Dictionary) -> void:
+	for ch in rec_tiles.get_children():
+		ch.queue_free()
+	var n := int(c.get("battles", 0))
+	var won := int(c.get("victories", 0))
+	var lost := float(c.get("lost", 0))
+	var kills := float(c.get("kills", 0))
+	var rv := float(c.get("rating", 0))
+	# [label, value (-1: none yet), how to write it, a word under it]
+	var tiles := [
+		["BATTLES", float(n), func(v: float) -> String: return "%d" % int(round(v)), ""],
+		["WON", float(won), func(v: float) -> String: return "%d  (%d%%)" % [int(round(v)), int(round(100.0 * v / maxf(1.0, n)))], ""],
+		["KILLS", kills, func(v: float) -> String: return StatsPanel.fmt_num(v), ""],
+		["K/D", kills / maxf(1.0, lost), func(v: float) -> String: return "%.1f" % v, ""],
+		["AVG RATING", rv, func(v: float) -> String: return "%d" % int(round(v)), BattleStats.rating_word(rv) if n > 0 else ""],
+		["TIME IN BATTLE", float(c.get("seconds", 0)), func(v: float) -> String: return StatsPanel.fmt_time(v), ""],
+	]
+	for i in tiles.size():
+		var t: Array = tiles[i]
+		var p := PanelContainer.new()
+		UiFx.glass(p, 7.0, 10.0)
+		p.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		var tv := VBoxContainer.new()
+		tv.add_theme_constant_override("separation", 0)
+		p.add_child(tv)
+		tv.add_child(_spaced(String(t[0]), 9, UiKit.DIM, 2))
+		var val := Label.new()
+		val.add_theme_font_override("font", UiFx.digits(700))
+		val.add_theme_font_size_override("font_size", 24)
+		val.add_theme_color_override("font_color", StatsPanel.rating_col(rv) if t[0] == "AVG RATING" and n > 0 else UiKit.TEXT)
+		tv.add_child(val)
+		if c.is_empty() or n == 0:
+			val.text = "-"
+		else:
+			UiFx.count(val, float(t[1]), t[2], 1.0, 0.1 + i * 0.07)
+		if String(t[3]) != "":
+			tv.add_child(_spaced(String(t[3]), 9, StatsPanel.rating_col(rv), 2))
+		rec_tiles.add_child(p)
+		if not c.is_empty():
+			UiFx.slide_in(p, 0.0, 0.3, i * 0.05)
+
+
+func _load_battles(fresh: bool) -> void:
+	if fresh:
+		_rec_n += 1
+		_rec_before = ""
+		for ch in rec_list.get_children():
+			ch.queue_free()
+	var n := _rec_n
+	rec_more.visible = false
+	rec_msg.add_theme_color_override("font_color", UiKit.DIM)
+	rec_msg.text = "Loading your battles..."
+	var r: Dictionary = await Online.battles(_rec_before)
+	if n != _rec_n or not rec_panel.visible:
+		return
+	if not r.ok:
+		rec_msg.add_theme_color_override("font_color", UiKit.BAD)
+		rec_msg.text = String(r.error)
+		return
+	var bs: Array = r.data.get("battles", [])
+	for i in bs.size():
+		var row := _record_row(bs[i])
+		rec_list.add_child(row)
+		UiFx.slide_in(row, 36.0, 0.34, 0.12 + mini(i, 12) * 0.045)
+	if not bs.is_empty():
+		_rec_before = String(bs.back().get("played_at", ""))
+	rec_more.visible = bool(r.data.get("more", false))
+	var waiting := Online.pending.size()
+	rec_msg.text = ""
+	if rec_list.get_child_count() == 0 and bs.is_empty():
+		rec_msg.text = "No battles on your record yet. Every battle you fight while signed in goes on it."
+	if waiting > 0:
+		rec_msg.text += ("  " if rec_msg.text != "" else "") + "%d more waiting to go up (they will when the matchmaker can be reached)." % waiting
+
+
+## One battle on the record: how it ended, what it was, when, and how you did.
+func _record_row(b: Dictionary) -> Button:
+	var btn := Button.new()
+	btn.custom_minimum_size = Vector2(0, 60)
+	btn.focus_mode = Control.FOCUS_NONE
+	var won_it := String(b.get("result", "")) == "victory"
+	var res_col := UiKit.GOOD if won_it else UiKit.BAD
+	for st in ["normal", "hover", "pressed", "hover_pressed"]:
+		btn.add_theme_stylebox_override(st, StyleBoxEmpty.new())
+	btn.draw.connect(func():
+		var hot := 1.0 if btn.is_hovered() else 0.0
+		UiFx.card(btn, Rect2(Vector2.ZERO, btn.size), 1.0, hot, UiFx.fade(res_col, 0.35) if hot > 0.0 else Color(1, 1, 1, 0.07))
+		btn.draw_rect(Rect2(btn.size.x - 4.0, 8.0, 3.0, btn.size.y - 16.0), UiFx.fade(res_col, 0.7)))
+	btn.mouse_entered.connect(btn.queue_redraw)
+	btn.mouse_exited.connect(btn.queue_redraw)
+	btn.tooltip_text = "Open the after-action report"
+	var h := HBoxContainer.new()
+	h.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	h.offset_left = 12
+	h.offset_right = -14
+	h.add_theme_constant_override("separation", 14)
+	h.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	btn.add_child(h)
+	var won := String(b.get("result", "")) == "victory"
+	var bar := ColorRect.new()
+	bar.color = Defs.TEAM_COLORS[clampi(int(b.get("side", 0)), 0, 1)]
+	bar.custom_minimum_size = Vector2(3, 0)
+	h.add_child(bar)
+	var left := VBoxContainer.new()
+	left.alignment = BoxContainer.ALIGNMENT_CENTER
+	left.add_theme_constant_override("separation", 0)
+	left.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	h.add_child(left)
+	var top := HBoxContainer.new()
+	top.add_theme_constant_override("separation", 10)
+	left.add_child(top)
+	top.add_child(UiKit.label("VICTORY" if won else "DEFEAT", 12, UiKit.GOOD if won else UiKit.BAD, 700))
+	top.add_child(UiKit.label(String(b.get("title", "Battle")), 15, UiKit.TEXT, 600))
+	left.add_child(UiKit.label("%s  \u00b7  %s  \u00b7  %s" % [_when(String(b.get("played_at", ""))), Defs.TEAM_NAMES[clampi(int(b.get("side", 0)), 0, 1)],
+		StatsPanel.fmt_time(float(b.get("duration_s", 0)))], 11, UiKit.DIM))
+	var kv := VBoxContainer.new()
+	kv.alignment = BoxContainer.ALIGNMENT_CENTER
+	kv.add_theme_constant_override("separation", 0)
+	h.add_child(kv)
+	var kl := UiKit.label("%d killed  /  %d lost" % [int(b.get("kills", 0)), int(b.get("lost", 0))], 13, UiKit.TEXT, 600)
+	kl.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	kv.add_child(kl)
+	var vk := int(b.get("veh_kills", 0))
+	var sub := UiKit.label(("%d vehicles destroyed" % vk) if vk > 0 else ("score %s" % StatsPanel.fmt_num(float(b.get("score", 0)))), 11, UiKit.DIM)
+	sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	kv.add_child(sub)
+	var rv := float(b.get("rating", 0))
+	var rt := VBoxContainer.new()
+	rt.alignment = BoxContainer.ALIGNMENT_CENTER
+	rt.add_theme_constant_override("separation", 0)
+	rt.custom_minimum_size = Vector2(76, 0)
+	h.add_child(rt)
+	var rl := UiKit.label("%d" % int(round(rv)), 22, StatsPanel.rating_col(rv), 700)
+	rl.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	rt.add_child(rl)
+	var rw := UiKit.label(BattleStats.rating_word(rv), 10, UiKit.DIM)
+	rw.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	rt.add_child(rw)
+	for c in h.get_children():
+		c.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var id := String(b.get("id", ""))
+	var heading := "%s  \u00b7  %s  \u00b7  %s" % [String(b.get("title", "Battle")), _when(String(b.get("played_at", ""))), "Victory" if won else "Defeat"]
+	btn.pressed.connect(func(): Sfx.ui("click"); _open_battle(id, heading))
+	return btn
+
+
+func _open_battle(id: String, heading: String) -> void:
+	rec_msg.add_theme_color_override("font_color", UiKit.DIM)
+	rec_msg.text = "Opening the report..."
+	var r: Dictionary = await Online.battle(id)
+	if not r.ok:
+		rec_msg.add_theme_color_override("font_color", UiKit.BAD)
+		rec_msg.text = String(r.error)
+		return
+	rec_msg.text = ""
+	var b: Dictionary = r.data.get("battle", {})
+	var rep: Dictionary = b.get("report", {})
+	if rep.is_empty() or (rep.get("players", []) as Array).is_empty():
+		rec_msg.text = "That battle's report wasn't kept."
+		return
+	rec_view.fixed_sub = heading
+	rec_view.show_tab("summary")
+	rec_view.set_report(rep)
+	rec_view.visible = true
+
+
+## "16 Oct 2026, 21:04" in this computer's time, from the matchmaker's UTC.
+func _when(iso: String) -> String:
+	if iso.length() < 19:
+		return iso
+	var t := Time.get_unix_time_from_datetime_string(iso.substr(0, 19)) + int(Time.get_time_zone_from_system().get("bias", 0)) * 60
+	var d := Time.get_datetime_dict_from_unix_time(t)
+	var months := ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+	return "%d %s %d, %02d:%02d" % [int(d.day), months[clampi(int(d.month) - 1, 0, 11)], int(d.year), int(d.hour), int(d.minute)]
 
 
 func _refresh() -> void:
