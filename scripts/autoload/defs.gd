@@ -131,6 +131,10 @@ var VEHICLES := {
 ## fly: how it's flown - "jet" (a bomb run), "a10" (a strafing run), "orbit"
 ## (circles the spot firing its guns); model: the aircraft; bombs: how many;
 ## guns: an orbit's weapons (Projectile.GUNSETS); quiet: no warning to the enemy.
+## Reconnaissance (recon: true): fly "recon" is a pass along the line (speed,
+## alt, leg: how far out it starts and flies on), "watch" an unarmed orbit for
+## `stay` seconds; sight: how far its camera sees. from: when in the battle it
+## is first on call (s; the rest from minute five).
 var SUPPORT := {
 	"airstrike": {"name": "F/A-181 Black Wasp II Strike", "team": 0, "cost": 220, "cooldown": 120.0, "shape": "line", "r": 4.0, "fly": "jet", "model": "blackwasp", "bombs": 4,
 		"pattern": "F/A-181 Black Wasp II (Super Hornet / F-22 hybrid), four 500 lb bombs",
@@ -169,6 +173,23 @@ var SUPPORT := {
 		"desc": "Off-map mortars drop twelve rounds on the spot."},
 	"smoke": {"name": "Smoke Screen", "team": -1, "cost": 0, "cooldown": 0.0, "shape": "circle", "r": 14.0,
 		"desc": "Mortar smoke rounds screen the area (observer demo)."},
+	# reconnaissance
+	"gryphon_recon": {"name": "A-149 Gryphon Recon Pass", "team": 0, "cost": 70, "cooldown": 80.0, "from": 120.0, "recon": true, "shape": "sweep", "r": 100.0, "sight": 100.0,
+		"fly": "recon", "model": "gryphon", "speed": 100.0, "alt": 70.0, "leg": 480.0,
+		"pattern": "A-149 Gryphon (Saab JAS 39 Gripen) carrying a reconnaissance pod",
+		"desc": "A Gripen with a recce pod runs along the line at height: everything within 100 m either side of its track shows up for your side as it goes over, the strip stays lit a few seconds while the pictures are read, and what it saw stays on the map as intelligence. Drag to set the line."},
+	"greyhawk_watch": {"name": "MQ-4A Greyhawk Overwatch", "team": 0, "cost": 130, "cooldown": 150.0, "from": 240.0, "recon": true, "shape": "watch", "r": 85.0, "sight": 85.0,
+		"fly": "watch", "model": "greyhawk", "stay": 60.0,
+		"pattern": "MQ-4A Greyhawk (MQ-9 Reaper layout), unarmed, sensor turret",
+		"desc": "An unarmed Greyhawk circles high over the spot for a minute, its camera turret on it: your side sees everything within 85 m of it until it goes home."},
+	"caesar_spotter": {"name": "Caesar BTT Spotter Flight", "team": 1, "cost": 50, "cooldown": 70.0, "from": 120.0, "recon": true, "shape": "sweep", "r": 80.0, "sight": 80.0,
+		"fly": "recon", "model": "caesar", "speed": 48.0, "alt": 45.0, "leg": 400.0,
+		"pattern": "Caesar BTT (Cessna TTx), a smuggler's light plane, a spotter with binoculars in the right seat",
+		"desc": "A smuggler's light plane droning low along the line, a man with binoculars at the window: slow, so what's under it shows for longer, everything within 80 m either side of its track. Cheap. Drag to set the line."},
+	"fenghuang_watch": {"name": "KH-3A Fenghuang Overwatch", "team": 1, "cost": 120, "cooldown": 150.0, "from": 240.0, "recon": true, "shape": "watch", "r": 80.0, "sight": 80.0,
+		"fly": "watch", "model": "fenghuang", "stay": 55.0,
+		"pattern": "KH-3A Fenghuang (CASC CH-3A Rainbow), its missiles left off for fuel",
+		"desc": "CSAT lends a Fenghuang: it circles the spot for most of a minute and shows your side everything within 80 m of it."},
 }
 const DEMO_SUPPORT := ["a10", "wipeout", "ac130", "blackfish", "airstrike", "buzzard", "gryphon", "greyhawk", "sentinel", "neophron", "shikra", "xian", "artillery", "barrage", "mortars", "smoke"]
 
@@ -185,6 +206,11 @@ func _init() -> void:
 			continue
 		var b := "helipad" if d.get("air", false) else ("dock" if String(d.get("base", "")) == "boat" else "factory")
 		(BUILDINGS[b].produces[team] as Array).append(k)
+
+
+## When a support is first on call in a battle (world time, s).
+func support_from(kind: String) -> float:
+	return float(SUPPORT.get(kind, {}).get("from", 300.0))
 
 
 func supports_for(team: int) -> Array:
@@ -214,7 +240,7 @@ var BUILDINGS := {
 	"mortar_pit": {"name": "Mortar Pit", "cost": 130, "time": 22.0, "hp": 900.0, "size": Vector2(5, 5), "teams": [0, 1], "desc": "Crewed mortar. Shells enemies your side can see, even behind cover (30-160 m). Select it for fire missions."},
 	"bunker": {"name": "Bunker", "cost": 160, "time": 30.0, "hp": 2600.0, "size": Vector2(5.6, 5.6), "teams": [0, 1], "desc": "Pillbox with firing slits and a roof that stops shrapnel. Right-click it with a squad to garrison."},
 	"at_post": {"name": "AT Post", "cost": 150, "time": 24.0, "hp": 900.0, "size": Vector2(4, 4), "teams": [0, 1], "desc": "Crewed anti-tank launcher (guided missile / recoilless rifle). Kills vehicles out to 130 m."},
-	"watchtower": {"name": "Watchtower", "cost": 50, "time": 14.0, "hp": 500.0, "size": Vector2(3, 3), "teams": [0, 1], "desc": "Long sight range, shoots over walls."},
+	"watchtower": {"name": "Watchtower", "cost": 50, "time": 14.0, "hp": 500.0, "size": Vector2(3, 3), "teams": [0, 1], "desc": "Sees 85 m over the hedges and roofs, 115 m with a lookout up it (any idle soldier beside it climbs up). Shoots over walls."},
 	"tunnel": {"name": "Tunnel Entrance", "cost": 60, "time": 18.0, "hp": 700.0, "size": Vector2(3, 3), "teams": [1], "desc": "Move squads through the tunnel network. Prisoners are interrogated here."},
 }
 
