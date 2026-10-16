@@ -174,6 +174,10 @@ func _ready() -> void:
 	_build_insignia_panel()
 	# the join dialog stays over every panel
 	move_child(dialog, -1)
+	# the Field Manual and Settings cover the menu while they're open, account
+	# card and notices too (added after them, those would sit on top)
+	for p: Control in [manual, settings_panel]:
+		p.visibility_changed.connect(_over_menu.bind(p))
 	var build := ("ALPHA V%s" % Updater.version) if Updater.is_release() else "DEV BUILD"
 	var foot := UiKit.label("%s  \u00b7  GODOT %s  \u00b7  F4 FIELD MANUAL IN BATTLE" % [build, Engine.get_version_info().string.to_upper()], 11, Color(0.75, 0.75, 0.7, 0.45), 600)
 	foot.anchor_left = 1.0
@@ -604,6 +608,13 @@ func _row(label: String, w: Control) -> HBoxContainer:
 	h.add_child(l)
 	h.add_child(w)
 	return h
+
+
+## `p` over everything else on the menu while it shows, under the join dialog.
+func _over_menu(p: Control) -> void:
+	if p.visible:
+		move_child(p, -1)
+		move_child(dialog, -1)
 
 
 func _btn(text: String, cb: Callable) -> Button:
