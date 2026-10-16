@@ -25,6 +25,10 @@ var players := {}  # peer_id -> {"name": String, "team": int, "col": int (into P
 var settings := {"ai_fill": true, "ai_allies": false, "drop_in": true}
 var my_name := "Commander"
 var in_game := false
+## The side a test client asked for with --team (-2: none). It goes with the
+## registration rather than as a request_team after it, so a host that starts
+## as soon as everyone is in (--players=N) can't start before it lands.
+var join_team := -2
 
 
 func _ready() -> void:
@@ -135,7 +139,11 @@ func _on_peer_disconnected(id: int) -> void:
 
 
 func _on_connected() -> void:
-	_register.rpc_id(1, my_name)
+	# (players pick their side in the lobby, so they register with a name alone)
+	if join_team >= -1:
+		_register.rpc_id(1, my_name, join_team)
+	else:
+		_register.rpc_id(1, my_name)
 
 
 func _on_conn_failed() -> void:
@@ -150,8 +158,9 @@ func _on_server_disconnected() -> void:
 
 # --- lobby RPCs ---------------------------------------------------------------
 
+## `team`: the side a test client asked for (-2: none, the lobby decides).
 @rpc("any_peer", "call_remote", "reliable")
-func _register(pname: String) -> void:
+func _register(pname: String, team := -2) -> void:
 	if not multiplayer.is_server():
 		return
 	var id := multiplayer.get_remote_sender_id()
@@ -163,15 +172,17 @@ func _register(pname: String) -> void:
 			_kick.rpc_id(id, "That game has already started.")
 			return
 		# drop-in: put them on a side and hand them the running game
-		var team := _pick_join_team()
-		players[id] = {"name": clean, "team": team, "col": _free_color()}
+		var side := _pick_join_team()
+		players[id] = {"name": clean, "team": side, "col": _free_color()}
 		_sync_lobby.rpc(players, settings)
 		var s: Dictionary = settings.duplicate(true)
 		s["players"] = players.duplicate(true)
 		_start.rpc_id(id, s)
-		player_joined.emit(id, team, clean)
+		player_joined.emit(id, side, clean)
 		return
 	players[id] = {"name": clean, "team": mission_side() if mission_side() >= 0 else 0, "col": _free_color()}
+	if team >= -1:
+		_put_on_team(id, team)
 	_broadcast_lobby()
 	_lobby_msg.rpc("%s joined." % clean)
 
@@ -222,10 +233,14 @@ func request_team(team: int) -> void:
 		return
 	var id := _sender()
 	if players.has(id):
-		players[id].team = clampi(team, -1, 1)
-		if mission_side() >= 0 and players[id].team >= 0:
-			players[id].team = mission_side()  # a mission is co-op: everyone on its side
+		_put_on_team(id, team)
 		_broadcast_lobby()
+
+
+func _put_on_team(id: int, team: int) -> void:
+	players[id].team = clampi(team, -1, 1)
+	if mission_side() >= 0 and players[id].team >= 0:
+		players[id].team = mission_side()  # a mission is co-op: everyone on its side
 
 
 func set_setting(key: String, value) -> void:
