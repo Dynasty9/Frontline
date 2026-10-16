@@ -288,6 +288,30 @@ function and an autopilot function.
   and roll through them, grass is blown away, roads are holed, ragdolls and debris fall in. Craters give
   light cover and slow vehicles; wrecked buildings leave rubble. Cover and pathing update live.
 
+**Fire** (`fires.gd`; the look in `vfx.gd`)
+- Whatever is made of wood, cloth or fuel can catch alight: trees, hedges, crates, watchtowers, log dugouts,
+  tents and plank huts, the timbers of a pitched roof (flat concrete roofs don't burn), parked cars. Stone,
+  brick, concrete, earth, sandbags and steel don't. A blast may set things alight - the bigger the round and
+  the closer, the likelier (a grenade rarely, a shell or a bomb often) - and a car that's been shot to pieces
+  may go up. A vehicle that brews up burns where it died.
+- A fire takes a few seconds to get hold, roars, then dies down as its fuel runs out. While it roars it
+  throws heat and sparks at whatever will burn nearby, far more readily downwind than up, so a hedgerow or a
+  wood can go up one tree after another. A heavy round on grass or in the woods' undergrowth can start a
+  grass fire: a ring of low flames that creeps outward over blackened ground and may spread on downwind for
+  a while before it burns itself out.
+- What burns is charred and weakened, and in the end burns away: a hedge, a crate stack, a watchtower or a
+  roof falls in as ash (a house is left a roofless shell), a tree is left a bare black snag, a car a
+  burnt-out shell. Rain damps everything down: fires catch less, spread less and burn lower.
+- Men caught too close get burnt and get back out of the heat ("Fire! Get back!"); nobody takes cover behind
+  something that's burning or in a patch of burning grass, and a man whose cover catches fire moves. A roof
+  fire burns whoever's in the house under it. Your side is warned when one of its buildings catches fire, and
+  engineers repairing it beat the flames out first.
+- The look: tongues of flame that cool from yellow-white through orange to sooty red as they rise, sparks
+  swirling up on the heat, a smoke column leaning off downwind (charcoal off fuel and rubber, brown-grey off
+  wood, paler off green leaves) lit orange from below, and a flickering light that matters most at night.
+  The fire chars what it burns - black creeping over it with embers glowing in the cracks; leaves wither,
+  blacken and burn away - and you hear it crackle close to. Burnt-out things smoulder for a while after.
+
 **Wounded, medics and prisoners** (`squad.gd`, `rules.gd`)
 - Badly hit soldiers go down screaming for a medic and start bleeding out. If they're strong enough they crawl to cover and keep firing a pistol, including while being dragged.
 - The squad lays covering fire and throws smoke. A rescuer drags the wounded man back by the shoulders while an escort walks backwards beside them firing. Then he gets patched up (medics are 2x faster). Each time he goes down he comes back weaker.
@@ -351,6 +375,15 @@ function and an autopilot function.
   firing. The camera's view is a lit wedge with a line back to where the camera stands, and a compass needle
   shows where north lies in the view (click it to square up). Hovering gives the grid square under the cursor.
   Three sizes, and it can turn with the camera so the way you face is always up (Settings > Interface).
+- **Interface scale** (Settings > Interface): the interface grows with the window, so at 100% it takes the same
+  share of the screen at any resolution (1.35x at 1080p, 1.8x at 1440p, 2.7x at 4K), and the slider scales it
+  from there up to the largest that still fits the window (2x in a 1080p window, 2.7x at 1440p). Text is
+  rasterised at the size it's drawn, and the map symbols are re-drawn at a higher resolution on a big scale, so
+  both stay sharp. On a narrow screen the command card drops to three columns, the minimap shrinks to leave room
+  for the support buttons, notifications stop above the command card, the observer bar moves to the bottom right,
+  and the settings, controls and Field Manual fit the screen and scroll. The menus (laid out for a full
+  1600 x 900) only grow until they fill the window. The scale applies when the slider is let go, so the panel
+  doesn't move under the mouse while it's being dragged.
 
 **Vehicles** (`vehicle.gd`, `vehicle_brain.gd`, `vehicle_roster.gd`, `drone.gd`, `projectile.gd`)
 - **The core vehicles rebuilt** (`vehicles/vm_core.gd`): the M1A2 SEP Abrams, a worn T-55A, Hilux technicals (DShK
@@ -530,10 +563,12 @@ function and an autopilot function.
   with rust streaks, plank walls, HESCO baskets, camouflage on uniforms and vehicles, canvas, bark. Sandbag walls are
   stacked from individual lumpy bags, FOBs sit under camouflage netting that throws dappled shadows, trees sway.
 - Vehicles are built from sloped, lofted armour: road wheels that turn, tracks, mantlets, cupolas, stowage, rotor blur.
-- Explosions are layered GPU particles: a flash and light burst, a fireball that cools into soot, a lit smoke column
-  that drifts with the wind, a dirt plume, sparks and debris that bounce on the ground, a rolling dust ring, a
-  heat-shimmer shockwave and a scorch mark. Heavy rounds throw a fountain of earth high into the air that rains
-  back down, and clods land around the crater once the debris has fallen.
+- Explosions are layered GPU particles: a flash and light burst, a rolling fireball that cools from the edges in
+  until it's dark smoke, a lit smoke column that drifts with the wind, a dirt plume, sparks and debris that
+  bounce on the ground, a rolling dust ring, a faint heat-shimmer shockwave and a scorch mark. Heavy rounds
+  throw a fountain of earth high into the air that rains back down, fling burning fragments out in arcs that
+  burn on where they land, leave flames licking about the crater for a moment, and clods land around the
+  crater once the debris has fallen.
 - **Physics** (`physics_fx.gd`, `ragdoll.gd`, Jolt): the dead become ragdolls - eleven jointed bodies with
   anatomical limits (knees and elbows bend one way). A bullet knocks a man back and he folds; a blast throws him
   limbs flailing and he tumbles to a stop, into a trench if that's where he lands. Later blasts throw the bodies
@@ -548,7 +583,7 @@ function and an autopilot function.
   seconds (up to a quarter of a minute for heavy rounds), swelling and leaning downwind as it rises, while dust rolls
   out along the ground and hangs there. Hits close together feed the same plume, so a barrage leaves one great
   drifting cloud over the target. Smoke is shaded like a volume (sun, sky, self-shadowing) and fades
-  softly where it meets the ground. Burning wrecks burn, then smoulder. Smoke screens are real volumetric fog when
+  softly where it meets the ground. Burning wrecks burn, then smoulder (see Fire). Smoke screens are real volumetric fog when
   volumetric fog is on. All effect shaders are compiled during loading, so the first explosion doesn't hitch.
 - A minimal HUD: resources top-left, fading notifications, a terrain minimap, and selection / command panels that
   only appear when something is selected. Zoom in and every soldier shows what he's doing ("Bandaging Doyle",

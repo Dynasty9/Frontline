@@ -24,6 +24,21 @@ const MOODS := {
 
 var world: World
 var mood := "golden"
+
+
+## The battle's lighting mood: the one asked for, or one picked from the map
+## seed (so the server knows it's raining without drawing anything).
+static func pick_mood(settings: Dictionary) -> String:
+	var pick := String(settings.get("mood", "random"))
+	if not MOODS.has(pick):
+		var r := RandomNumberGenerator.new()
+		r.seed = int(settings.get("seed", 1)) * 7 + 3
+		# weight the prettier moods a bit higher
+		var bag := ["golden", "golden", "day", "day", "dawn", "dusk", "overcast", "hazy", "night", "rain"]
+		pick = bag[r.randi() % bag.size()]
+		if not MOODS.has(pick):
+			pick = MOODS.keys()[0]
+	return pick
 var env: Environment
 var we: WorldEnvironment
 var sun: DirectionalLight3D
@@ -45,17 +60,7 @@ var _mood_asked := ""  # the Time of day setting as the battle began: changing i
 
 func setup(w: World) -> void:
 	world = w
-	var pick := String(w.settings.get("mood", "random"))
-	if not MOODS.has(pick):
-		var keys := MOODS.keys()
-		var r := RandomNumberGenerator.new()
-		r.seed = int(w.settings.get("seed", 1)) * 7 + 3
-		# weight the prettier moods a bit higher
-		var bag := ["golden", "golden", "day", "day", "dawn", "dusk", "overcast", "hazy", "night", "rain"]
-		pick = bag[r.randi() % bag.size()]
-		if not MOODS.has(pick):
-			pick = keys[0]
-	mood = pick
+	mood = pick_mood(w.settings)
 	_d = MOODS[mood]
 	_mood_asked = String(Settings.get_v("mood"))
 	_make_noise()

@@ -585,6 +585,35 @@ func scenario(sname: String) -> void:
 					tm.alert_t = world.time
 					tq.order_defend(Vector3(0, 0, -80), Vector3(0, 0, -1))
 					tm.order_defend(Vector3(14, 0, -76), Vector3(0, 0, -1)))
+		"fire":
+			# what burns and how it spreads: a wood, a hedgerow, a crate dump, parked
+			# cars, a watchtower and a house, a fighter cell dug in among them. The
+			# edge of the wood, the hedge and the crates are alight from the start,
+			# and a rifle squad comes up to find the cell burnt out of its cover.
+			_woods(Vector3(-22, 0, -30), 12)
+			for i in 6:
+				_spawn("low_wall", Vector3(-4 + i * 4.1, 0, -18), 0.0, -1, {"size": Vector3(4, 1, 0.9), "variant": 1})
+			var cr := _spawn("crates", Vector3(12, 0, -26), 0.3, -1, {"variant": 1})
+			_spawn("crates", Vector3(15, 0, -23.5), -0.2, -1, {"variant": 0})
+			_spawn("car", Vector3(20, 0, -29), PI * 0.5, -1, {"variant": 1})
+			_spawn("car", Vector3(24, 0, -29.5), PI * 0.5, -1, {"variant": 3})
+			_spawn("watchtower", Vector3(5, 0, -33), 0.0, 1)
+			_house(Vector3(32, 0, -44), 8.0, 6.0, 0.0, 1.0, false, 0.0)
+			var cell := r.spawn_squad("fighter_cell", 1, b, Vector3(-14, 0, -26))
+			cell.order_defend(Vector3(-14, 0, -24), Vector3(0, 0, 1))
+			r.spawn_squad("rifle_squad", 0, a, Vector3(0, 0, 30), Vector3(0, 0, 0))
+			# the upwind edge of the wood: the wind carries it through the trees
+			var trees: Array = world.structures.filter(func(st): return st.skind == "tree")
+			trees.sort_custom(func(p, q): return p.position.dot(Fires.WIND) < q.position.dot(Fires.WIND))
+			for i in mini(2, trees.size()):
+				world.fires.ignite(trees[i], 0.6)
+			for st in world.structures:
+				if st.skind == "low_wall" and st.position.x < 0.0:
+					world.fires.ignite(st, 0.5)
+				if st.skind == "roof":
+					world.fires.ignite(st, 0.4)
+			world.fires.ignite(cr, 0.8)
+			world.fires.start_patch(Vector3(2, 0, -24), 2.5, 22.0, 0)
 		"breach":
 			# a fighter cell holed up in a house (doors shut); a rifle squad sent to clear it
 			doors_shut = 1

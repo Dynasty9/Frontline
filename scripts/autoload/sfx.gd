@@ -60,6 +60,7 @@ func _ready() -> void:
 	streams["ac105"] = _boom(3.0, 1.0, 34.0)
 	streams["prop"] = _prop_loop()
 	streams["arty_whistle"] = _incoming()
+	streams["fire"] = _fire_loop()
 	for i in 32:
 		var p := AudioStreamPlayer3D.new()
 		p.unit_size = 14.0
@@ -425,6 +426,36 @@ func _normalize(s: PackedFloat32Array, rms_db: float) -> PackedFloat32Array:
 	for i in s.size():
 		s[i] *= k
 	return s
+
+
+## A fire close to: the low, breathing roar of the flames under a run of
+## crackles and the odd sharp pop of sap or a round cooking off.
+func _fire_loop() -> AudioStreamWAV:
+	var n := int(4.0 * RATE)
+	var s := PackedFloat32Array()
+	s.resize(n)
+	var lp := 0.0
+	var lp2 := 0.0
+	var ck := 0.0
+	var ck_lp := 0.0
+	for i in n:
+		var t := float(i) / RATE
+		var w := randf() * 2.0 - 1.0
+		lp += (w - lp) * 0.03
+		lp2 += (lp - lp2) * 0.25
+		var roar := lp2 * 2.2 * (0.7 + 0.18 * sin(t * TAU * 0.5) + 0.12 * sin(t * TAU * 1.25 + 1.0))
+		if randf() < 0.0016:
+			ck = randf_range(0.25, 0.8)
+		elif randf() < 0.00006:
+			ck = 1.0
+		ck *= 0.988
+		ck_lp += (randf() * 2.0 - 1.0 - ck_lp) * 0.55
+		s[i] = roar * 0.55 + ck_lp * ck * 0.5
+	var fade := int(0.3 * RATE)
+	for i in fade:
+		var k := float(i) / fade
+		s[i] = s[i] * k + s[n - fade + i] * (1.0 - k)
+	return _wav(s.slice(0, n - fade), true)
 
 
 ## Thunder: a crack followed by a long rolling rumble.
