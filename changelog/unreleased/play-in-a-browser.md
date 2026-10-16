@@ -22,5 +22,5 @@ caption = "The menu in the browser: multiplayer points you to the desktop game"
   it does on the desktop.
 - **The first battle takes a while:** on Windows the browser prepares the game's graphics the first time they're
   drawn, which can hold the page for a minute or more (and again briefly as new things appear). Your browser keeps
-  them, so later battles start straight away.
+  them, so after that a battle only waits for its map.
 - Each release comes with the browser build alongside the Windows and Linux downloads.
