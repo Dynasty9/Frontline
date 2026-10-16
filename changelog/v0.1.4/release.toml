@@ -1,0 +1,5 @@
+version = "0.1.4"
+name = "Reconnaissance"
+date = "2026-10-16"
+summary = "You can see what your side can see: the fog of war is drawn on the battlefield and the minimap. Aircraft spot as they fly, and recon flights, overwatch drones and manned watchtowers push the fog back."
+pull_requests = [8]

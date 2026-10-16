@@ -2,9 +2,11 @@ name: Release
 
 # Every merge to main that changes the game publishes a new numbered release
 # (v0.1.4, v0.1.5, ...) with Windows and Linux builds, Frontline-windows.zip
-# and Frontline-linux.zip, and notes listing the merged pull requests. The
-# website's download buttons and the game's "new version" notice both read the
-# latest release.
+# and Frontline-linux.zip. First it files the changelog entries the release
+# was built with under changelog/vX.Y.Z/ (the release is named after its
+# headline change) and bakes the changelog and the release (version, download
+# links, checksums) into the website and the matchmaker, committing that to
+# main, which redeploys both. The GitHub release's notes are the changelog.
 #
 #   - The bump is a patch unless the merged pull request has a "minor" or
 #     "major" label. A "skip release" label skips it.
@@ -158,12 +160,33 @@ jobs:
           path: build/Frontline-*.zip
           retention-days: 14
 
+      # File the release's changelog (changelog/vX.Y.Z/) and bake it, with the
+      # release's download links and checksums, into the website and the
+      # matchmaker; committing that to main redeploys both on Railway. Before
+      # publishing, so the release notes' screenshots are already on main.
+      - name: File the changelog and bake the release into the website and the matchmaker
+        if: needs.plan.outputs.release == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          # the pull request this release came from, for a release with no changelog entry
+          pr=$(gh api "repos/$GITHUB_REPOSITORY/commits/$GITHUB_SHA/pulls" --jq '.[0] // empty' 2>/dev/null || true)
+          [ -n "$pr" ] || pr='{}'
+          export PR_NUMBER=$(jq -r '.number // empty' <<< "$pr")
+          export PR_TITLE=$(jq -r '.title // empty' <<< "$pr")
+          export PR_BODY=$(jq -r '.body // empty' <<< "$pr")
+          bash .github/scripts/bake-release.sh "$VERSION" "$GITHUB_SHA" build
+
       - name: Publish the release
         if: needs.plan.outputs.release == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "v$VERSION" build/Frontline-windows.zip build/Frontline-linux.zip \
-            --target "$GITHUB_SHA" --title "Frontline v$VERSION" --generate-notes --latest
+          name=$(python3 .github/scripts/changelog.py name "$VERSION")
+          python3 .github/scripts/changelog.py notes "$VERSION" > "$RUNNER_TEMP/notes.md"
+          cat "$RUNNER_TEMP/notes.md"
+          gh release create "v$VERSION" build/Frontline-windows.zip build/Frontline-linux.zip             --target "$GITHUB_SHA" --title "Frontline v$VERSION: $name" --notes-file "$RUNNER_TEMP/notes.md" --latest
           # numbered releases replace the old rolling "nightly" pre-release
           gh release delete nightly --yes --cleanup-tag 2>/dev/null || true
