@@ -603,8 +603,9 @@ function and an autopilot function.
   where its trucks go) for each town being taken or whose trucks aren't getting through, and the quiet ones in
   one line once there are more than a couple. The order of battle moves down to make room.
 - Buildings: FOB, barracks, factory, medic tent, research post, helipad (supply helicopters fly over cut
-  roads), sandbags, concrete walls, barbed wire, minefields, tank traps, watchtowers (see 85 m, 115 m with a
-  lookout up; shoot over walls), and Rebel tunnel entrances (move squads through the network or bring them back out with "Exit here").
+  roads), sandbags, HESCO walls and T-walls (Coalition), barricades (Rebels), barbed wire, minefields, tank traps,
+  camouflage nets, ammo caches, watchtowers (see 85 m, 115 m with a lookout up; shoot over walls), and Rebel
+  tunnel entrances (move squads through the network or bring them back out with "Exit here").
 
 **Base defenses**
 - **Build grid**: buildings and works sit on a 1 m grid at 45 degree headings; a building's walls land on grid
@@ -640,6 +641,30 @@ function and an autopilot function.
 - **Bunker** (concrete pillbox, or a log-and-earth dugout for the Rebels): firing slits soldiers shoot through,
   and a roof that stops shrapnel. Right-click it with a squad to garrison.
 - **AT post**: a crewed guided missile (Coalition, top attack) or recoilless rifle (Rebels) that engages vehicles out to 130 m.
+- **Walls and obstacles** (`works_models.gd` builds them all, from the real thing):
+  - *Sandbags*: filled bags laid the way they are in the field, stretcher courses along the wall and header
+    courses across a thick one, joints broken, the face battered back, the tied neck folded under; tan and coyote
+    polypropylene with some olive for the Coalition, hessian and white feed sacks for the Rebels.
+  - *HESCO wall* (Coalition): a line of earth-filled cells, chest high and a metre thick - geotextile behind the
+    welded mesh, coil joints at the corners, weeds in the fill. Stand and fire over it; it stops even a .50 cal,
+    and vehicles.
+  - *Barricade* (Rebels): oil drums, tyre stacks, a sheet of roofing against a heap of rubble, a torn-off lump of
+    concrete, pallets and sacks, chest high. Stand and fire over it. Tanks shove it aside, and the tyres burn black.
+  - *T-walls* (Coalition): precast slabs on wide feet with lifting loops, too tall to see over; men fight round the
+    ends. Light vehicles can't push through.
+  - *Barbed wire*: triple-strand concertina - two coils of razor wire side by side and one on top - wired to steel
+    pickets (the Rebels' to cut stakes). Infantry crawl through it.
+  - *Tank traps*: Czech hedgehogs, three beams at right angles standing on three ends; steel angle bolted through
+    gussets for the Coalition, welded lengths of old rail for the Rebels.
+  - *Minefields*: anti-tank and anti-personnel mines dug in under loosened earth inside a cordon of pickets and
+    tape hung with red triangles - all of which only their own side ever sees.
+- **Camouflage net**: pitched over a gun pit, a mortar, an AT post or a parked vehicle (it goes up over anything,
+  and anything can go in under one). Whatever is under it is spotted at half the range - by men, by vehicles and
+  from the air - but it stops nothing, and it burns. The AI nets its mortar pits, AT posts and .50 cals.
+- **Ammo cache**: forward stores on pallets under a fly sheet, a red flag on a stake. Every man of its side within
+  7 m tops up his magazines, grenades, rockets and mortar bombs from it until it runs dry; a man who's out of
+  ammunition falls back to the nearest cache before the FOB. Hit hard enough to wreck it (or burnt), it cooks off:
+  a blast, then rounds and grenades going off round it for a few seconds. The AI puts one ahead of its front FOB.
 - Soldiers in good cover are much harder to pin down than soldiers in the open, and only their head and shoulders are
   exposed when they pop up to fire. A fortified line beats a frontal assault by similar numbers.
 - Everything can be shot up and repaired. Any FOB can be captured by whoever walks in and holds it. Lose your last FOB and you lose, but a side's last FOB is a last stand and takes four times as long to capture, and HQ sends a free reserve squad every 75 s to a side that is down to its last few soldiers.
@@ -681,7 +706,9 @@ function and an autopilot function.
   boat-hulled 8x8; each vehicle is merged per moving part (hull, turret, wheels, rotor).
 - Every surface is a procedural material: plaster with brick showing through, concrete panels, corrugated metal
   with rust streaks, plank walls, HESCO baskets, camouflage on uniforms and vehicles, canvas, bark. Sandbag walls are
-  stacked from individual lumpy bags, FOBs sit under camouflage netting that throws dappled shadows, trees sway.
+  stacked from individual bags in proper courses, FOBs and camouflage nets throw dappled shadows, trees sway.
+  Defences sit in the ground: trodden earth round the nests and pits, earth banked against the bunkers up to their
+  slits.
 - Vehicles are built from sloped, lofted armour: road wheels that turn, tracks, mantlets, cupolas, stowage, rotor blur.
 - Explosions are layered GPU particles: a flash and light burst, a rolling fireball that cools from the edges in
   until it's dark smoke, a lit smoke column that drifts with the wind, a dirt plume, sparks and debris that

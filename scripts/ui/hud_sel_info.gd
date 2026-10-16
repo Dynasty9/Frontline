@@ -321,5 +321,9 @@ func _structure_info(st: Structure) -> void:
 			UiKit.text(self, Vector2(4, y + 32), "Paused: unit cap reached. Build another FOB.", 12, UiKit.BAD)
 	elif st.skind == "tunnel":
 		UiKit.text(self, Vector2(4, y), "%d soldiers inside. Right-click with a squad selected to send them in." % st.inside_n, 13, UiKit.TEXT)
+	elif st.skind == "ammo_cache" and st.team == hud.world.local_team:
+		var left := st.supply / Structure.CACHE_STOCK
+		UiKit.text(self, Vector2(4, y), "Stores left %d%%  -  men within %d m top up their ammunition, grenades and rockets" % [int(round(left * 100.0)), int(Structure.CACHE_REACH)], 13, UiKit.TEXT if left > 0.25 else UiKit.WARN)
+		_bar(Vector2(4, y + 8), Vector2(260, 5), left, Color(0.85, 0.7, 0.35))
 	elif Defs.BUILDINGS.has(st.skind):
 		UiKit.text(self, Vector2(4, y), Defs.BUILDINGS[st.skind].desc, 13, UiKit.DIM, 400, HORIZONTAL_ALIGNMENT_LEFT, size.x - 8)
