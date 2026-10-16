@@ -13,6 +13,7 @@ caption = "Back on the main menu after dropping out: Rejoin gets you back into t
 - **While you're away** your teammates command your forces, or the AI if nobody is left on your side. When you come back, an AI that was only standing in for you hands everything back.
 - **Closed battles too:** a battle closed to new players ("Let friends join while the battle is running" unticked) still lets its own players back in.
 - **In missions** you get your share of the force back.
+- **One record for the whole battle:** the after-action report and your service record count what you did before and after you dropped out as one, and if the battle ended while you were away, you get its report when you rejoin.
 - **After a crash** you can rejoin straight away: the host lets your old connection go as soon as you're back, instead of waiting a minute or more for it to time out.
 - **HQ reserves** go to a commander who is still in the battle, not to one who has left.
 - Playing online needs this version on every computer in the battle.

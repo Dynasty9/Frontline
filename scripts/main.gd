@@ -99,7 +99,7 @@ func _ready() -> void:
 			var pair := kv.split(":")
 			if pair.size() == 2:
 				var cur = Settings.v.get(pair[0])
-				Settings.v[pair[0]] = (pair[1] == "true") if cur is bool else (float(pair[1]) if cur is float else int(pair[1]))
+				Settings.v[pair[0]] = (pair[1] == "true") if cur is bool else (float(pair[1]) if cur is float else (pair[1] if cur is String else int(pair[1])))
 		Settings.apply_global()
 	if args.has("novsync"):
 		Settings.v["vsync"] = false
@@ -266,6 +266,14 @@ func _on_game_start(s: Dictionary) -> void:
 	world.settings = s
 	add_child(world)
 	world.game_ended.connect(_on_game_ended)
+	# a headless client says which after-action report it was sent (multiplayer tests)
+	if not world.srv and DisplayServer.get_name() == "headless":
+		world.report_updated.connect(func():
+			var r: Dictionary = world.report
+			var sd: Array = r.get("sides", [{}, {}])
+			print("CLIENT report t=%.0f full=%s commanders=%d units=%d samples=%d enemy_known=%s" % [float(r.get("t", 0.0)), str(r.get("full", false)),
+				(r.get("players", []) as Array).size(), (r.get("units", []) as Array).size(), (r.get("tl", []) as Array).size(),
+				str(not (sd[1 - maxi(0, world.local_team)] as Dictionary).is_empty())]))
 	if cur and is_instance_valid(cur):
 		_warm_up(cur)
 	if args.has("focus") and world.cam:
@@ -316,6 +324,36 @@ var _trace_t := 0.0
 var _tf_t := 0.0
 var _trace_f: FileAccess = null
 var _fx_i := 0
+var _sd_next := 2.0
+var _sd_i := 0
+
+
+## Visual test: rounds fired at each kind of surface in a row across the
+## camera's focus - earth, stone, sandbags, wood, leaves, steel, a man - from
+## a little way off (no damage). --shot-demo=hmg fires that gun only;
+## --shot-demo-every=1.5 fires a volley at all of them at once that often;
+## --shot-demo-cannon also fires a tank gun now and then.
+func _shot_demo() -> void:
+	if world.time < _sd_next or world.cam == null:
+		return
+	var guns := ["rifle", "mg", "hmg", "smg"]
+	var snd: String = String(args["shot-demo"]) if String(args["shot-demo"]) != "1" else guns[(_sd_i / 21) % guns.size()]
+	var every := float(args.get("shot-demo-every", 0.09 if snd in ["mg", "hmg", "minigun", "ac"] else 0.13))
+	_sd_next = world.time + every
+	var kinds := [Fx.HIT_DIRT, Fx.HIT_STONE, Fx.HIT_SAND, Fx.HIT_WOOD, Fx.HIT_LEAVES, Fx.HIT_METAL, Fx.HIT_FLESH]
+	var c := world.cam.focus_pos
+	var pick: Array = range(kinds.size()) if every > 0.5 else [_sd_i % kinds.size(), (_sd_i + 3) % kinds.size()]
+	for i: int in pick:
+		var x := (i - 3) * 2.2
+		var to := c + Vector3(x + randf_range(-0.3, 0.3), 0.0 if i == 0 else randf_range(0.6, 1.2), -3.0 + randf_range(-0.3, 0.3))
+		var from := c + Vector3(x * 0.4 + (4.0 if i % 2 == 0 else -4.0), 1.3, 6.0)
+		world.fx.play([Fx.SHOT, from, to, kinds[i], snd, -1])
+	_sd_i += 1
+	if args.has("shot-demo-cannon") and (every > 0.5 or _sd_i % 40 == 0):
+		if _sd_i % 2 == 0:
+			world.fx.play([Fx.CANNON, c + Vector3(7, 2.3, 4), c + Vector3(-8, 0.5, -30)])
+		else:
+			world.fx.play([Fx.LAUNCH, c + Vector3(6, 1.5, 3), Vector3(-0.3, 0.05, -1).normalized()])
 
 
 ## Visual test: fires explosions of every size near the camera focus (no damage).
@@ -339,6 +377,7 @@ func _on_game_ended(w: int) -> void:
 	if world.srv and (args.has("stats") or args.has("quit-on-win")):
 		print("WINNER %s at t=%.0f" % [Defs.TEAM_NAMES[w], world.time])
 		print("FINAL ", world.debug_stats())
+		print("REPORT ", world.battle.summary())
 	if args.has("quit-on-win"):
 		get_tree().quit()
 
@@ -554,16 +593,23 @@ func _process(_dt: float) -> void:
 			var mu := String(args["menu-update"]).split(",")
 			var st: int = ["available", "downloading", "ready", "failed"].find(mu[1] if mu.size() > 1 else "available") + 1
 			Updater.pretend(mu[0], st)
-		# --menu-panel=browse|account|settings: the list of online battles, the sign-in panel, the settings
+		# --menu-panel=browse|account|record|settings: the list of online battles, the sign-in panel,
+		# the service record (signed in), the settings
 		if args.has("menu-panel") and menu and menu.browse_panel and not has_meta("panel_open") and Engine.get_frames_drawn() > 5:
 			set_meta("panel_open", true)
 			if String(args["menu-panel"]) == "account":
 				menu._open_account()
+			elif String(args["menu-panel"]) == "record":
+				menu._open_record()
 			elif String(args["menu-panel"]) == "settings":
 				menu.settings_panel.visible = true
 				menu.settings_panel._show_tab(String(args.get("settings-tab", "interface")))
 			else:
 				menu._open_browser()
+		# --open-battle (with --menu-panel=record): open the newest battle's after-action report
+		if args.has("open-battle") and menu and menu.rec_list and menu.rec_list.get_child_count() > 0 and not has_meta("battle_open"):
+			set_meta("battle_open", true)
+			(menu.rec_list.get_child(0) as Button).pressed.emit()
 		# --menu-missions[=KEY]: open the Missions panel (on that mission)
 		if args.has("menu-missions") and menu and menu.ms_panel and not has_meta("ms_open") and Engine.get_frames_drawn() > 5:
 			set_meta("ms_open", true)
@@ -616,6 +662,12 @@ func _process(_dt: float) -> void:
 		if args.has("dump-structs"):
 			_dump_structs()
 		_shot_i += 1
+		# --stats-tab=all: the next shot is of the next tab
+		if String(args.get("stats-tab", "")) == "all" and world.hud:
+			var key: String = StatsPanel.TABS[_shot_i % StatsPanel.TABS.size()][0]
+			for sp in [world.hud.stats_panel, world.hud.aar_panel]:
+				if sp != null and is_instance_valid(sp) and sp.is_visible_in_tree():
+					sp.show_tab(key)
 		if _shot_i >= count:
 			_shot_done = true
 			if not args.has("quit-after"):
@@ -628,6 +680,9 @@ func _process(_dt: float) -> void:
 			_perf_frames = Engine.get_frames_drawn()
 		elif _perf_t0 > 0 and Time.get_ticks_msec() - _perf_t0 > 10000:
 			var fps := float(Engine.get_frames_drawn() - _perf_frames) / ((Time.get_ticks_msec() - _perf_t0) / 1000.0)
+			# report once: with the clock cleared, a failure below can't repeat
+			# all of this every frame until something kills the run
+			_perf_t0 = 0
 			var alive := 0
 			for s in world.soldiers:
 				if s.life != Soldier.Life.DEAD:
@@ -674,10 +729,16 @@ func _process(_dt: float) -> void:
 						why[k] = int(why.get(k, 0)) + 1
 				print("UNBAKED ", why)
 				print("BY OWNER ", owners)
-			get_viewport().get_texture().get_image().save_png(String(args.get("perf-shot", "user://perf.png")))
+			# a headless run draws nothing, so there's no picture to keep (asking
+			# for one only gets an error), just the numbers above
+			var img: Image = get_viewport().get_texture().get_image() if DisplayServer.get_name() != "headless" else null
+			if img:
+				img.save_png(String(args.get("perf-shot", "user://perf.png")))
 			get_tree().quit()
 	if args.has("fx-demo"):
 		_fx_demo()
+	if args.has("shot-demo"):
+		_shot_demo()
 	if args.has("open-settings") and world.hud and world.time > 1.0 and not world.hud.settings_panel.visible and not has_meta("opened"):
 		set_meta("opened", true)
 		world.hud.settings_panel.visible = true
@@ -795,14 +856,17 @@ func _process(_dt: float) -> void:
 		var mq := String(args["manual"]).split(",")
 		world.hud.manual.open(mq[0], mq[1] if mq.size() > 1 else "", int(mq[2]) if mq.size() > 2 else -1)
 	# --test-fire: every armed man (and every gunner on a gun) fires straight
-	# ahead a few times a second through the real firing path (muzzle tests)
+	# ahead a few times a second through the real firing path (muzzle tests);
+	# --test-fire=ground puts the rounds into the ground 25 m out (impacts);
+	# --test-fire-every=0.3 fires that often instead
 	if args.has("test-fire") and world.srv and world.time > 2.0 and world.time >= _tf_t:
-		_tf_t = world.time + 0.09
+		_tf_t = world.time + float(args.get("test-fire-every", 0.09))
+		var tf_drop := 2.4 if String(args["test-fire"]) == "ground" else 0.0
 		for s in world.soldiers:
 			if s.life != Soldier.Life.ALIVE or s.cur_weapon().is_empty():
 				continue
 			s.mag = maxi(s.mag, 5)
-			s._shoot(s.eye_pos() + Defs.dir_of(s.rotation.y) * 40.0, null, false, false)
+			s._shoot(s.eye_pos() + Defs.dir_of(s.rotation.y) * 40.0 + Vector3(0, -tf_drop, 0), null, false, false)
 		for v in world.vehicles:
 			var vmg: String = v.vdef.get("mg", "")
 			if v.gone or vmg == "":
@@ -865,9 +929,12 @@ func _process(_dt: float) -> void:
 		if world.coop.peers.has(wid):
 			set_meta("coop_watched", true)
 			world.cam.toggle_shadow(wid)
-	# --hud-panel=settings|help|menu|log: open one of the battle's panels (layout checks)
+	# --hud-panel=settings|help|menu|log|over: open one of the battle's panels (layout
+	# checks; "over" is the end of the battle, won by your side)
 	if args.has("hud-panel") and world.hud and world.time > 1.0 and not has_meta("hud_panel"):
 		set_meta("hud_panel", true)
+		if String(args["hud-panel"]) == "over":
+			world.hud.show_game_over(maxi(world.local_team, 0))
 		var hp: Control = {"settings": world.hud.settings_panel, "help": world.hud.help_panel, "menu": world.hud.menu_panel, "log": world.hud.log_panel}.get(String(args["hud-panel"]))
 		if hp:
 			hp.visible = true
@@ -880,6 +947,23 @@ func _process(_dt: float) -> void:
 		for v in world.vehicles:
 			if v.owner_peer == world.local_peer and not v.eid in world.input.sel_vehicles:
 				world.input.sel_vehicles.append(v.eid)
+	# --report-at=SECONDS: ask the host for the battle statistics then (a client's view of them)
+	if args.has("report-at") and not has_meta("report_asked") and world.time >= float(args["report-at"]):
+		set_meta("report_asked", true)
+		world.request_report()
+	# --end-at=SECONDS: call the battle there (for the side ahead on what it has
+	# destroyed), back at normal speed; --stats-tab=summary|commanders|units|timeline opens the
+	# battle statistics a second before the screenshot (after-action report tests)
+	if args.has("end-at") and world.srv and world.winner < 0 and world.time >= float(args["end-at"]):
+		var sd: Array = world.battle.sides
+		world.declare_winner(0 if float(sd[0].val_killed) >= float(sd[1].val_killed) else 1)
+		Engine.time_scale = 1.0  # the end screens run in real time: shoot them at a real pace
+	if args.has("stats-tab") and world.hud and world.winner < 0 and not has_meta("stats_open") and world.time > float(args.get("shot-at", 8.0)) - 1.0:
+		set_meta("stats_open", true)
+		world.hud.open_stats(String(args["stats-tab"]))
+	if args.has("stats-tab") and world.hud and world.winner >= 0 and not has_meta("aar_tab") and world.hud.aar_panel != null:
+		set_meta("aar_tab", true)
+		world.hud.aar_panel.show_tab(String(args["stats-tab"]))
 	# a client's --quit-after counts from when the host's world reached it: the
 	# host only answers once it has laid out the map (and, with a window, drawn
 	# its first frame - a minute or more off-screen), and a client counting from
@@ -901,6 +985,7 @@ func _process(_dt: float) -> void:
 			_dump_structs()
 		if world.srv:
 			print("FINAL ", world.debug_stats())
+			print("REPORT ", world.battle.summary())
 		else:
 			var counts := {}
 			var enemy := 0

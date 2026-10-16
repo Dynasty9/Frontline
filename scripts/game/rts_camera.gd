@@ -213,9 +213,10 @@ func bookmark(slot: int, save: bool) -> void:
 	glide_to(b[0], float(b[1]), float(b[2]), float(b[3]))
 
 
+## Keys are going into the chat, or any text box (signing in at the end of a battle).
 func _typing() -> bool:
 	# (or a key is being rebound in Settings: it isn't for the camera)
-	return (world.hud != null and world.hud.typing) or Keys.capturing
+	return (world.hud != null and world.hud.typing) or Keys.capturing or get_viewport().gui_get_focus_owner() is LineEdit
 
 
 func _clamp_map(p: Vector3) -> Vector3:

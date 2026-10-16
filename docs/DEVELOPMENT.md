@@ -82,8 +82,9 @@ ui/field_manual.gd      the field manual: catalog of everything with stats and 3
 ui/curtain.gd           the title and loading screens
 game/bevel_mesh.gd      chamfered boxes (every Res.box thicker than a sheet)
 assets/                 splash.png: the boot splash, which is the title's first frame (see "Off-screen screenshots")
-game/fx.gd              tracers, impacts, who is saying what, debris; drives vfx.gd
+game/fx.gd              plays the server's effect events: shots, explosions, who is saying what, debris; drives vfx.gd, gunfx.gd
 game/vfx.gd             GPU particle explosions, smoke, flames, char, grass fires, decals, shockwaves (+ their shaders)
+game/gunfx.gd           gunfire on the GPU: tracers, muzzle flashes, impacts, sparks, grit, brass (MultiMesh rings flown by their shaders)
 game/atmosphere.gd      sky, sun, fog, ground shader, post effects, moods
 game/grass.gd           instanced grass, bushes and stones
 game/mats.gd            procedural surface uber-shader, foliage, camouflage netting
@@ -93,10 +94,14 @@ game/vehicles/          the Arma 3 models by family: vm_nato, vm_csat, vm_indep 
                         V-44X Blackfish), vm_attack (A-10C, A-164 Wipeout) and vm_fighter (F/A-181, F-16C)
 game/vehicle_roster.gd  the Arma 3 roster (stats, behaviour, tiers, patterns) and the Field Manual's garage
 game/director.gd        observer camera and time controls
+game/battle_stats.gd    the after-action record: kills, losses, supply and production credited to each commander
+ui/stats_panel.gd       the battle statistics / after-action report (Summary, Commanders, Units, Timeline tabs)
 game/co_command.gd      co-commanders: each player's presence (view, cursor, selection, what's being lined up),
                         pings, sketches and committed actions, relayed by the host to that side only
 ui/hud_coop.gd          co-commanders drawn over the battlefield; ui/hud_coop_roster.gd the Command Net
-ui/hud.gd, menu.gd      interface; ui/settings_panel.gd, ui/perf_overlay.gd, ui/ui_kit.gd (shared style),
+ui/hud.gd, menu.gd      interface; ui/settings_panel.gd, ui/perf_overlay.gd, ui/ui_kit.gd (shared style and the
+                        interface themes: read UiKit.ACCENT and friends when drawing, so a new theme shows at once),
+ui/ui_frame.gd          the panels' tactical frame (a StyleBox: glass fill, hairline, accent corner brackets, glow),
 ui/hud_overlay.gd       everything drawn over the battlefield (labels, speech, symbols, orders, plans, intel)
 ui/hud_orbat.gd, hud_layers.gd, hud_sel_info.gd, hud_minimap.gd, hud_top_info.gd, hud_toasts.gd   HUD widgets
 ui/map_symbols.gd       NATO symbols and status icons
@@ -132,10 +137,24 @@ Pass these after `--` on the command line:
 --host --players=2 / --join=127.0.0.1 --team=0        two-process multiplayer test (--bot-cmds issues real commands,
                                                       --ai-allies adds AI commanders to both sides)
 --quit-on-win                                         stop and print the winner when the game ends
+                                                      (with --stats, or at --quit-after: a REPORT line per commander
+                                                      and side from the after-action record, battle_stats.gd)
+--end-at=SECONDS                                      call the battle at that time, for the side ahead, and drop back
+                                                      to normal speed so the end sequence plays in real time (report tests)
+--stats-tab=summary|commanders|units|timeline|all     open the battle statistics a second before --shot-at (after the
+                                                      end: that tab of the after-action report); "all" moves to the
+                                                      next tab after each of --shots
+--report-at=SECONDS                                   (client) ask the host for the statistics then; a headless client
+                                                      prints a CLIENT report line for each it gets
 --perf-at=480 [--perf-shot=path.png]                  fast-forward, then measure real FPS and server tick cost
 --screenshot=out.png --shot-at=30 --focus=X,Z --zoom=40 [--shots=N --shot-every=0.5]
 --mood=golden --perf=3 --preset=ultra                 lighting, overlay level and graphics preset for screenshots
 --fx-demo=1.4 --fx-every=3                            set off explosions near the camera (visual test, no damage)
+--shot-demo[=rifle|mg|hmg|...] [--shot-demo-every=1.5] [--shot-demo-cannon]
+                                                      rounds fired at earth, stone, sandbags, wood, leaves, steel and a man
+                                                      in a row across the camera's focus (visual test, no damage); a slow
+                                                      --shot-demo-every fires one volley at all of them; -cannon adds a tank
+                                                      gun and a rocket launch
 --cursor=0.5,0.4 --order-mode=defend --select-all     fake the mouse position / order mode (cover preview shots)
   --place=trench [--place-from=X,Z]                   with --cursor: show the placement ghost (or a dragged line)
 --scenario=... --play                                 command the Coalition side of a scenario instead of watching
@@ -160,9 +179,11 @@ Pass these after `--` on the command line:
 --follow=TEAM[,N]                                     keep the camera on that side's Nth squad (tactics review)
 --trace=path.csv                                      log every man twice a second (position, posture, phase) for plotting
 --manual=CATEGORY[,ENTRY[,SIDE]]                      open the field manual on a page (in a battle)
---hud-panel=settings|help|menu|log [--settings-tab=T] open one of the battle's panels (layout checks; add
+--hud-panel=settings|help|menu|log|over [--settings-tab=T]   open one of the battle's panels (over: the end of
+                                                      the battle, won; layout checks; add
                                                       --set=ui_scale:3 for the largest scale the window allows)
 --pan=VX,VZ / --set=key:value,...                     drift the camera (shimmer tests) / override single settings
+                                                      (--set=ui_theme:night for a theme: brass, night, thermal, arctic, dusk)
 --scenario=guns                                       every machine-gun emplacement and trench bay, crewed, with targets
 --scenario=works --static                             every defensive work both sides can build, finished, in two rows (model checks;
                                                       frame them with --focus/--zoom/--pitch, see the layout in mapgen.gd)
@@ -211,7 +232,9 @@ FL_DEBUG_MISSION=1 (env)                              print the map's features (
 --menu-op=0|1|-1                                      open the New Operation panel on that side
 --menu-missions[=KEY]                                 open the Missions panel (on that mission)
 --startup-trace                                       print the first frames' timings
---test-fire                                           every armed man, gunner and vehicle fires ahead (muzzle tests)
+--test-fire[=ground]                                  every armed man, gunner and vehicle fires ahead (muzzle tests);
+                                                      =ground puts the men's rounds into the ground 25 m out (impacts);
+                                                      --test-fire-every=0.3 fires that often (default 0.09 s)
 --seed=N                                              (with --aivai) the same map every run
 --dump-structs                                        list every built structure when --quit-after fires
 FL_DEBUG_TOWNS=1 (env)                                print each town and village: name, dump and the ground that takes it
@@ -299,7 +322,14 @@ Set `FL_DEBUG_ONLINE=1` to print what STUN saw, who the host punches towards, an
 exercise the hole-punching path, give the joiner the matchmaker's LAN address instead of `127.0.0.1` (it then only
 connects if your router loops traffic back in, "hairpinning", which many don't). `--no-stun` skips STUN for offline
 runs, `--login=EMAIL:PASSWORD` (plus `--signup=CALLSIGN` to create the account) signs in first, `--account=PATH`
-keeps that sign-in out of your real one, and `--menu-panel=browse|account|settings` opens those panels for screenshots.
+keeps that sign-in out of your real one, and `--menu-panel=browse|account|record|settings` opens those panels for
+screenshots (`--open-battle` then opens the newest battle on the service record). Test runs keep no service record;
+`--record-battles` turns it on (with `--pending=PATH` for the battles waiting to go up, out of your real ones):
+
+```
+godot --headless --path . -- --scenario=attack --play --end-at=40 --quit-after=55 --record-battles --no-stun \
+  --matchmaker=http://127.0.0.1:8787 --login=me@test.dev:password1 --signup=Me --account=/tmp/a.cfg --pending=/tmp/p.json
+```
 Without `--matchmaker` the game uses the live service on Railway.
 
 ### Join links
