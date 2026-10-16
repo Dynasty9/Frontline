@@ -677,13 +677,28 @@ func hosted_port() -> int:
 
 ## This machine's address on its home network, for players behind the same
 ## router (most routers can't loop a connection back in through their own
-## public address).
+## public address). Home routers hand out 192.168.x.x (or 10.x.x.x); the
+## 172.16-31 range is mostly virtual adapters (WSL, Hyper-V, Docker) that no
+## one else on the network can reach, so it's only taken when there's nothing
+## better.
 func lan_ip() -> String:
+	var best := ""
+	var best_rank := 3
 	for a: String in IP.get_local_addresses():
 		var o := a.split(".")
-		if o.size() == 4 and (o[0] == "10" or (o[0] == "192" and o[1] == "168") or (o[0] == "172" and int(o[1]) >= 16 and int(o[1]) <= 31)):
-			return a
-	return ""
+		if o.size() != 4:
+			continue
+		var rank := 3
+		if o[0] == "192" and o[1] == "168":
+			rank = 0
+		elif o[0] == "10":
+			rank = 1
+		elif o[0] == "172" and int(o[1]) >= 16 and int(o[1]) <= 31:
+			rank = 2
+		if rank < best_rank:
+			best_rank = rank
+			best = a
+	return best
 
 
 func _on_session_closed() -> void:
