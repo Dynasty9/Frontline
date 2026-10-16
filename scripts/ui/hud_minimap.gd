@@ -1,10 +1,11 @@
 class_name HudMinimap
 extends Control
 ## The minimap. The ground, water, roads, woods and buildings are baked into a
-## texture; over it go every unit you can see, where men are fighting, the
-## objectives and alerts, and the camera's view as a lit wedge from where it
-## stands. North is up, or (a setting) the map turns so that the way the
-## camera faces is up, as in the view.
+## texture; over it go the fog of war (darker where your side can't see), every
+## unit you can see, where the enemy was last seen, where men are fighting, the
+## objectives and alerts, aircraft overhead, and the camera's view as a lit
+## wedge from where it stands. North is up, or (a setting) the map turns so
+## that the way the camera faces is up, as in the view.
 ## Left-click or drag: look there. Right-click: send the selection there.
 ## Wheel: zoom the camera. The needle in the corner points north as the camera
 ## sees it; click it to turn back to the starting heading (Backspace).
@@ -22,6 +23,8 @@ const C_WALL := Color(0.64, 0.62, 0.56)
 const C_RUBBLE := Color(0.4, 0.38, 0.34)
 const C_WRECK := Color(0.28, 0.26, 0.24)
 const C_FIGHT := Color(1.0, 0.6, 0.24)
+const C_INTEL := Color(1.0, 0.42, 0.36)
+const C_RECON := Color(0.5, 0.88, 1.0)
 
 var hud: Hud
 var _drag := false
@@ -326,13 +329,19 @@ func _draw() -> void:
 	if _static:
 		draw_set_transform_matrix(_xf)
 		draw_texture_rect(_static, Rect2(Vector2.ZERO, size), false)
+		if w.fog and w.fog.active:
+			# the fog of war: darker wherever your side can't see right now
+			draw_texture_rect_region(w.fog.dark_tex, Rect2(Vector2.ZERO, size), w.fog.map_region(), Color(1, 1, 1, 0.55))
 		draw_set_transform_matrix(Transform2D.IDENTITY)
 	_draw_grid()
 	var sc := clampf(size.x / 240.0, 0.85, 1.35)
 	_draw_objectives(w)
 	_draw_structures(w, sc)
+	if hud.map_layer("intel"):
+		_draw_intel(w, sc)
 	_draw_fighting(w, sc)
 	_draw_units(w, sc)
+	_draw_aircraft(w, sc)
 	_draw_pings(w)
 	_draw_view(w)
 	_draw_compass(w)
@@ -471,6 +480,50 @@ func _draw_units(w: World, sc: float) -> void:
 	for d in w.drones:
 		if d.visible:
 			draw_circle(_pt(d.position), 2.0, Color(1, 1, 0.3))
+
+
+## Where the enemy was last seen (by your men, towers, drones or a recon
+## flight), fading with age: a hollow red diamond, larger for vehicles.
+func _draw_intel(w: World, sc: float) -> void:
+	var t := w.view_team
+	if t < 0 or t >= w.team_info.size():
+		return
+	for it in (w.team_info[t] as Dictionary).get("intel", []):
+		var age := float(it[2])
+		if age < 3.0:
+			continue  # in sight: drawn as a unit
+		var a := clampf(1.0 - age / 90.0, 0.25, 0.85)
+		var p := _pt(it[0])
+		var hs := (2.6 if String(it[1]) == "inf" else 3.6) * sc
+		var d := PackedVector2Array([p + Vector2(0, -hs), p + Vector2(hs, 0), p + Vector2(0, hs), p + Vector2(-hs, 0), p + Vector2(0, -hs)])
+		draw_polyline(d, Color(0, 0, 0, 0.55 * a), 2.6, true)
+		draw_polyline(d, Color(C_INTEL.r, C_INTEL.g, C_INTEL.b, a), 1.2, true)
+
+
+## Aircraft over the battlefield (you hear and see them, whoever's they are): a
+## small arrowhead in the side's colour along its heading, and round your own
+## the ground its camera or crew can see.
+func _draw_aircraft(w: World, sc: float) -> void:
+	for p in w.projectiles:
+		if p.gone or not p.ptype in ["jet", "a10", "ac130"] or not Defs.in_map(p.position, -60.0):
+			continue
+		var pp := _pt(p.position)
+		var c: Color = Defs.TEAM_COLORS[p.team].lightened(0.3) if p.team >= 0 else Color(0.9, 0.9, 0.85)
+		if p.team >= 0 and p.team == w.view_team:
+			var eyes := PackedVector3Array()
+			p.add_eyes(eyes)
+			for e in eyes:
+				draw_arc(_pt(Vector3(e.x, 0, e.y)), e.z * size.x / MapDims.SIZE, 0, TAU, 28, Color(C_RECON.r, C_RECON.g, C_RECON.b, 0.45), 1.0, true)
+		var fw3: Vector3 = p.heading()
+		var fw := (_pt(p.position + fw3) - pp).normalized() if fw3.length() > 0.1 else Vector2(0, -1)
+		var sd := Vector2(-fw.y, fw.x)
+		var s := 4.5 * sc
+		var tri := PackedVector2Array([pp + fw * s, pp - fw * s * 0.6 + sd * s * 0.75, pp - fw * s * 0.25, pp - fw * s * 0.6 - sd * s * 0.75])
+		MapSymbols.poly(self, tri, Color(0, 0, 0, 0.6))
+		var tri2 := PackedVector2Array()
+		for q in tri:
+			tri2.append(pp + (q - pp) * 0.72)
+		MapSymbols.poly(self, tri2, c)
 
 
 ## Alerts and intelligence reports, pulsing until they expire.

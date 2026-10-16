@@ -75,16 +75,11 @@ func setup(w: World) -> void:
 	Settings.changed.connect(apply_settings)
 	apply_settings()
 	if Sfx.enabled and world.has_view:
-		_wind = AudioStreamPlayer.new()
-		_wind.stream = Sfx.streams["wind"]
-		_wind.volume_db = -20.0
-		_wind.autoplay = true
+		_wind = Sfx.make_ambience("wind", WIND_DB.x)
 		add_child(_wind)
-		_rumble = AudioStreamPlayer.new()
-		_rumble.stream = Sfx.streams["rumble"]
-		_rumble.volume_db = -40.0
-		_rumble.autoplay = true
+		_rumble = Sfx.make_ambience("rumble", RUMBLE_DB.x)
 		add_child(_rumble)
+		Music.play_cue("battle")
 	_setup_rain()
 
 
@@ -399,10 +394,7 @@ func _setup_rain() -> void:
 	_splash.visibility_aabb = AABB(Vector3(-50, -2, -50), Vector3(100, 6, 100))
 	add_child(_splash)
 	if Sfx.enabled:
-		_rain_snd = AudioStreamPlayer.new()
-		_rain_snd.stream = Sfx.streams["rain"]
-		_rain_snd.volume_db = -11.0
-		_rain_snd.autoplay = true
+		_rain_snd = Sfx.make_ambience("rain", -11.0)
 		add_child(_rain_snd)
 
 
@@ -427,7 +419,7 @@ func _rain_tick(dt: float) -> void:
 	if _thunder_t > 0.0:
 		_thunder_t -= dt
 		if _thunder_t <= 0.0 and world.cam:
-			Sfx.play("thunder", world.cam.cam.global_position + Vector3(randf_range(-40, 40), 30, randf_range(-40, 40)), 6.0)
+			Sfx.play("thunder", world.cam.cam.global_position + Vector3(randf_range(-40, 40), 30, randf_range(-40, 40)), 6.0, 1.0, &"Ambience")
 
 
 const RAIN_SHADER := """
@@ -614,6 +606,11 @@ func _process(_dt: float) -> void:
 		world.vp("atmosphere", _t0)
 
 
+## Ambience levels (dB): wind from close in to zoomed right out; the distant
+## battle from a lull to the thick of it.
+const WIND_DB := Vector2(-19.0, -15.0)
+const RUMBLE_DB := Vector2(-14.0, -6.0)
+
 var _wind: AudioStreamPlayer
 var _rumble: AudioStreamPlayer
 var _activity := 0.0
@@ -625,7 +622,7 @@ func _view_process(_dt: float) -> void:
 		return
 	if _wind:
 		var z := clampf((world.cam.dist - 15.0) / 60.0, 0.0, 1.0)
-		_wind.volume_db = lerpf(-24.0, -13.0, z)
+		_wind.volume_db = lerpf(WIND_DB.x, WIND_DB.y, z)
 		var act := 0.0
 		if world.director:
 			var now := Time.get_ticks_msec() / 1000.0
@@ -634,7 +631,8 @@ func _view_process(_dt: float) -> void:
 				if now - float(h[2]) < 8.0:
 					act += float(h[1])
 		_activity = lerpf(_activity, clampf(act / 12.0, 0.0, 1.0), 1.0 - exp(-_dt * 0.8))
-		_rumble.volume_db = lerpf(-34.0, -12.0, _activity)
+		_rumble.volume_db = lerpf(RUMBLE_DB.x, RUMBLE_DB.y, _activity)
+		Music.heat = _activity
 	if mood == "night":
 		_flares_tick(_dt / maxf(0.0001, Engine.time_scale) if Engine.time_scale > 0.001 else 0.0)
 	if _rain:

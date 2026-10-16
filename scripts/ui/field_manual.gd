@@ -1257,20 +1257,22 @@ func _build_entries() -> Array:
 	# fire support
 	var sco: float = mx.call(Defs.SUPPORT, func(s): return s.cost)
 	var scd: float = mx.call(Defs.SUPPORT, func(s): return s.cooldown)
-	var srr: float = mx.call(Defs.SUPPORT, func(s): return s.r)
+	var srr: float = mx.call(Defs.SUPPORT, func(s): return 0.0 if s.get("recon", false) else s.r)  # (a recon flight's sight is on another scale)
 	for k in Defs.SUPPORT:
 		var s2: Dictionary = Defs.SUPPORT[k]
 		if int(s2.team) < 0:
 			continue
-		var shape: String = {"line": "a line, dragged to set the run-in", "strafe": "a strafing line, dragged", "orbit": "an orbit over a circle", "circle": "a circle"}.get(String(s2.shape), String(s2.shape))
+		var shape: String = {"line": "a line, dragged to set the run-in", "strafe": "a strafing line, dragged", "orbit": "an orbit over a circle", "circle": "a circle",
+			"sweep": "a line it flies along, dragged", "watch": "an orbit over a circle"}.get(String(s2.shape), String(s2.shape))
+		var from_min := int(Defs.support_from(k) / 60.0)
 		out.append({"cat": "support", "key": k, "name": String(s2.name), "team": int(s2.team),
 			"sub": "%d supply · every %d s" % [int(s2.cost), int(s2.cooldown)], "pattern": String(s2.get("pattern", PATTERN.get(k, ""))),
 			"desc": String(s2.desc), "stats": [
 				["Cost", "%d supply" % int(s2.cost), float(s2.cost) / sco],
 				["Cooldown", "%d s" % int(s2.cooldown), float(s2.cooldown) / scd],
-				["Area", "%d m radius" % int(s2.r), float(s2.r) / srr],
+				["Sees" if s2.get("recon", false) else "Area", ("%d m either side" if String(s2.shape) == "sweep" else "%d m radius") % int(s2.r), minf(1.0, float(s2.r) / srr)],
 				["Aimed as", shape, -1.0],
-			], "rel": ["Called from the support panel or Z, from minute five"]})
+			], "rel": ["Called from the support panel or Z, from minute %s" % ["one", "two", "three", "four", "five", "six"][clampi(from_min - 1, 0, 5)]]})
 
 	# battlefield cover
 	for c in COVER:

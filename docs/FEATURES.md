@@ -24,7 +24,7 @@ The long version: how each system works and why. For the short version, see the 
 | Defenses | Emplacements are crewed by any idle soldier standing next to them. Right-click a bunker with a squad to garrison it. Select a mortar pit for HE / smoke fire missions |
 | Support | The buttons above the minimap (Z arms the first one ready): click the target, **drag** to set the run-in direction for gun runs and bombing runs |
 | Observer | C director camera, V whose eyes to watch through, P pause, [ ] speed, F2 hide the interface. **Fire support** (observer bar) launches any air or artillery support anywhere to watch it |
-| Command view | Tab tactical map, O order of battle (click a unit to select it and look at it, double-click to zoom in), the buttons beside the minimap turn map layers on and off (unit symbols, orders and attack plans, intelligence, weapon ranges, soldier labels) |
+| Command view | Tab tactical map, O order of battle (click a unit to select it and look at it, double-click to zoom in), the buttons beside the minimap turn map layers on and off (unit symbols, orders and attack plans, intelligence, fog of war, weapon ranges, soldier labels) |
 | Other | Home cycles FOBs, Space jumps to the last alert (both glide there), Enter chats (Shift+Enter: team), L message history, F1 help, F3 performance overlay, **F4 field manual**, Esc menu |
 
 ## Watching the AI
@@ -66,7 +66,9 @@ they're doing). The observer bar at the top has pause, speed (0.25x to 4x), dire
   side with human players (the smaller side in PvP), get the current world, and receive a rifle squad and engineers at their FOB.
 - **Fog of war is enforced by the host.** A client is only told about enemy units and buildings its side has spotted,
   gets a "hidden" marker instead of positions once they're out of sight, and never receives enemy supply, production
-  or team stats. Enemy HQs and starting FOBs are revealed to everyone, like start locations in most RTS games.
+  or team stats. Enemy HQs and starting FOBs are revealed to everyone, like start locations in most RTS games. Each
+  player's game draws the fog from its own side's units (which it always knows), so nothing extra crosses the wire
+  but the strips a recon flight has just photographed.
 
 ## Missions
 
@@ -226,6 +228,36 @@ function and an autopilot function.
 - Suppression lingers a moment after the last near miss, cover keeps out bullets better than it keeps out fear,
   and a man dashing between cover is much harder to hit than one walking; small arms aren't wasted on tanks.
 
+**Reconnaissance and the fog of war** (`vision.gd`, `fog_view.gd`, `rules.gd`, `projectile.gd`)
+- **What a side sees** is the sum of its eyes, each a circle of sight (`vision.gd`): a man 56 m (75 m up a
+  watchtower), a man down 22 m, a vehicle what its optics give it (most 50 m, scout cars 75-85 m, the Nyx Recon
+  110 m, drones 70-75 m), a FOB or HQ its perimeter, other positions their sentries, an FPV drone its camera. The
+  host works out the fog from them two and a half times a second; enemies outside every circle aren't sent.
+- **You see the fog.** Ground your side can't see right now is drawn darker and cooler, on the battlefield and on the
+  minimap, so the edge of what you know is plain. Every eye is drawn as a soft disc into a small map of the
+  battlefield (about 5 m to the pixel, fifteen times a second); a full-screen pass finds where each pixel lies on the
+  ground from the depth buffer and darkens it there. Aircraft high overhead aren't darkened; at night the fog is
+  lighter, because everything is dark already. The "Fog of war" map layer (the eye) turns it off.
+- **Watchtowers** see over the hedges and roofs: 85 m, and 115 m with a lookout up it (any idle soldier beside it
+  climbs up). Placing one shows both rings; selecting one shows what it sees now.
+- **Drones.** The Coalition's AR-2 Darter and the Rebels' AR-2 Tayran are cheap quadcopters from the Helipad (tier
+  1) that circle where they're sent and show 70 m round them; the armed MQ-12 Falcon and KH-3A Fenghuang see 75 m.
+  Selecting a drone or recon vehicle shows its sight ring.
+- **Every aircraft spots.** A jet on a bomb run sees 70 m round it as it flies, a gun run 55 m, and an orbiting
+  gunship or armed drone the 70 m circle its sensor turret is watching (and the ground beneath it). So an air strike
+  also shows you what's around the target, and the minimap draws each aircraft with the ground it can see.
+- **Recon flights** (support panel, from minute two): the Coalition's **A-149 Gryphon Recon Pass** (a Gripen with a
+  recce pod, fast and high, 100 m either side of its track) and the Rebels' **Caesar BTT Spotter Flight** (a
+  smuggler's light plane with a man and binoculars in the right seat: slow and low, 80 m either side, cheap), dragged
+  out along a line; the strip they fly over stays lit for six seconds while the pictures are read. From minute four,
+  **MQ-4A Greyhawk Overwatch** and **KH-3A Fenghuang Overwatch**: an unarmed drone circles a spot for most of a minute
+  and shows 80-85 m round it. The enemy hears them coming.
+- **What you've seen stays on the map.** Every enemy your side has seen, by any eye, is remembered where it was last
+  seen for 90 seconds: a hollow red diamond with how long ago, on the battlefield and the minimap (the Intelligence
+  layer). Buildings once seen stay on the map for good.
+- **The AI** sends a recon flight over when the picture's thin: before an attack on ground it can't see, or when it
+  has next to nothing of the enemy in sight. It builds a watchtower at each FOB and an early recon drone.
+
 **Pathfinding and tactics** (`nav.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
 - **Hierarchical A\* (HPA\*)** over both grids: the map is cut into 16 x 16 m clusters with entrances wherever
   neighbouring clusters connect (and wherever a road crosses), true costs inside each cluster precomputed. Long
@@ -337,8 +369,8 @@ function and an autopilot function.
   fire on D3", "Assaulting D3"), and alerts for contact, pinned, casualties and low ammunition. Click to select
   and look at it, Shift+click to add, double-click to zoom in. Observers see both sides.
 - **Map layers** (the column beside the minimap): unit symbols at any zoom, orders and attack plans for all your
-  units, intelligence (where the enemy was last seen and how long ago), weapon ranges of the selection, soldier
-  labels. **Tactical map** (Tab): the battlefield dims under the symbols, every order, plan and contact, and the
+  units, intelligence (where the enemy was last seen and how long ago), the fog of war, weapon ranges of the
+  selection, soldier labels. **Tactical map** (Tab): the battlefield dims under the symbols, every order, plan and contact, and the
   A-H / 1-8 grid on the ground.
 - A selected squad shows each man's watch sector as a faint wedge on the ground, so you can see its all-round
   cover and any gap. An attack that goes firm against a stronger enemy raises an alert with its grid reference
@@ -375,10 +407,11 @@ function and an autopilot function.
   and Ctrl+F5..F8 save views that F5..F8 glide back to.
 - **The minimap** (`hud_minimap.gd`): the ground, water, roads (main roads light with a dark edge, supply
   tracks thinner), woods and every house's footprint (light while its roof stands, dark once it's a ruin) are
-  baked into a texture. Over it go every man you can see as a dot (yours brightest, the selection white),
-  vehicles by their map symbols, bases, objectives and alerts, each town as a flag in its holder's colour inside
-  the ring of ground that takes it (with how far a capture has got round the ring), and an orange ring pulsing
-  wherever men are firing. The camera's view is a lit wedge with a line back to where the camera stands, and a compass needle
+  baked into a texture. Over it go the fog of war (darker where your side can't see), every man you can see as a
+  dot (yours brightest, the selection white), vehicles by their map symbols, where the enemy was last seen, aircraft
+  overhead (yours with the ground they can see), bases, objectives and alerts, each town as a flag in its holder's
+  colour inside the ring of ground that takes it (with how far a capture has got round the ring), and an orange
+  ring pulsing wherever men are firing. The camera's view is a lit wedge with a line back to where the camera stands, and a compass needle
   shows where north lies in the view (click it to square up). Hovering gives the grid square under the cursor.
   Three sizes, and it can turn with the camera so the way you face is always up (Settings > Interface).
 - **Interface scale** (Settings > Interface): the interface grows with the window, so at 100% it takes the same
@@ -443,7 +476,8 @@ function and an autopilot function.
     transport and ambulance, Zamak transport / repair / MRL, and a stolen M900.
   - Rebels, CSAT-supplied: Ifrit (Karatel, unarmed / HMG / GMG), Qilin (LSV, unarmed / minigun / AT), MSE-3 Marid,
     BTR-K Kamysh, T-100 Varsuk, T-100X Futura (railgun), T-140 Angara and T-140K, ZSU-39 Tigris, 2S9 Sochor,
-    Tempest transport / ammo / medical / repair, Mi-48 Kajman, PO-30 Orca (and armed), Mi-290 Taru, KH-3A Fenghuang.
+    Tempest transport / ammo / medical / repair, Mi-48 Kajman, PO-30 Orca (and armed), Mi-290 Taru, AR-2 Tayran,
+    KH-3A Fenghuang.
 - **Tiers.** Light vehicles, trucks and transport helicopters from the start; tanks, IFVs, anti-aircraft
   vehicles and attack helicopters after Armoured Warfare (Coalition) or Foreign Advisers (Rebels); artillery, the
   heaviest tanks and drones after Combined Arms / Expeditionary Corps. The Factory and Helipad pages long lists
@@ -469,7 +503,7 @@ function and an autopilot function.
   it's destroyed with them inside, the survivors scramble out of the wreck, most of them hurt.
 - Armour classes: soft-skinned pickups and trucks bleed from rifle fire; light armour (Humvee, helicopters) shrugs
   it off and needs .50 cals, cannons, AA or rockets; tanks only fear anti-tank weapons.
-- **Off-map support**, from minute five, each on its own cooldown:
+- **Off-map support**, from minute five (recon flights sooner), each on its own cooldown:
   - Coalition: **F/A-181 Black Wasp II strike** (a stick of four high-drag bombs across the spot), **A-10C
     Thunderbolt II** and **A-164 Wipeout gun runs** (in low and visible, nose down, walking a burst of 30 mm
     through the target: the impacts land first, the BRRRT arrives after), **AC-130U Spooky** and the cheaper
@@ -479,6 +513,9 @@ function and an autopilot function.
     enemy), **155 mm artillery** (eight heavy shells, visible arcs and a tearing whistle).
   - Rebels: **To-199 Neophron** strafe, **To-201 Shikra** bomb run, **Y-32 Xi'an** gunship orbit, **rocket barrage**
     (sixteen rockets) and **mortar barrage** (twelve rounds).
+  - Recon: **A-149 Gryphon Recon Pass**, **MQ-4A Greyhawk Overwatch** (Coalition), **Caesar BTT Spotter Flight**,
+    **KH-3A Fenghuang Overwatch** (Rebels): see "Reconnaissance and the fog of war". Every aircraft on a run spots
+    for its side as it flies.
   - Mortar and artillery shells are drawn a little larger than life with a smoke trail, so you can follow the arcs.
   - The AI calls them on dense groups of spotted enemies, never danger-close to its own troops, running gun runs
     in from its own lines.
@@ -506,8 +543,8 @@ function and an autopilot function.
   where its trucks go) for each town being taken or whose trucks aren't getting through, and the quiet ones in
   one line once there are more than a couple. The order of battle moves down to make room.
 - Buildings: FOB, barracks, factory, medic tent, research post, helipad (supply helicopters fly over cut
-  roads), sandbags, concrete walls, barbed wire, minefields, tank traps, watchtowers (long sight, shoots over
-  walls), and Rebel tunnel entrances (move squads through the network or bring them back out with "Exit here").
+  roads), sandbags, concrete walls, barbed wire, minefields, tank traps, watchtowers (see 85 m, 115 m with a
+  lookout up; shoot over walls), and Rebel tunnel entrances (move squads through the network or bring them back out with "Exit here").
 
 **Base defenses**
 - **Build grid**: buildings and works sit on a 1 m grid at 45 degree headings; a building's walls land on grid
@@ -546,7 +583,7 @@ function and an autopilot function.
 - Soldiers in good cover are much harder to pin down than soldiers in the open, and only their head and shoulders are
   exposed when they pop up to fire. A fortified line beats a frontal assault by similar numbers.
 - Everything can be shot up and repaired. Any FOB can be captured by whoever walks in and holds it. Lose your last FOB and you lose, but a side's last FOB is a last stand and takes four times as long to capture, and HQ sends a free reserve squad every 75 s to a side that is down to its last few soldiers.
-- Fog of war, with intel pings.
+- Fog of war, drawn on the ground and the minimap, with intel pings and last-known enemy positions.
 
 **Look and feel** (`atmosphere.gd`, `mats.gd`, `vehicle_models.gd`, `vfx.gd`, `grass.gd`, `ui/`)
 - Eight lighting moods (midday, golden hour, dawn, dusk, overcast, hazy, **night**, **rain & thunder**) with a
@@ -554,7 +591,15 @@ function and an autopilot function.
   At night the sky fills with stars and illumination flares drift down on parachutes over the fighting, throwing
   moving shadows. In the rain, streaks fall around the camera, splashes hit the ground, puddles reflect the sky and
   lightning flashes are followed by thunder.
-- Ambient sound: wind that grows as you zoom out, and a distant-battle rumble that swells with the fighting.
+- Ambient sound: wind that grows as you zoom out (air rushing past and a hollow howl, in irregular gusts), and
+  a distant battle (far-off artillery thumps, machine-gun bursts) that swells with the fighting.
+- Music (`music.gd`), synthesised like everything else: a small orchestra (strings, low strings, horns, a wordless
+  choir, piano, timpani, a war drum, a snare) rendered into samples at start-up and played by a sequencer through a
+  hall reverb. The menu has a theme in D minor (piano, then the horn's tune over a parade snare, then the strings).
+  In battle the score is in layers that follow the fighting: a quiet bed of strings and a few piano notes while
+  it's calm, then low strings driving eighths, drums, and horns as it heats up; in a long lull it rests and
+  leaves the battlefield to the wind. Victory and defeat each get a short sting.
+- Separate volumes for music, effects, ambience and the interface (Settings > Audio).
 - Art direction: minimal modern-military hard-surface. Every box is chamfered so its edges catch the light; the
   palette is muted (low-contrast camo at a realistic scale, near-solid vehicle paint, parkerized gunmetal, faded
   civilian paint, weathered concrete, subdued ID panels and faded flags).

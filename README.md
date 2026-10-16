@@ -16,7 +16,7 @@ Your soldiers take cover behind real walls and wrecks, keep their heads down und
 
 You can play alone against the computer, team up with friends against it, or fight each other online. The battlefield is a square kilometre of countryside with a town, villages, a river and the sea.
 
-Everything you see and hear is made in code. There are no imported 3D models, textures or sound files.
+Everything you see and hear is made in code, the music included. There are no imported 3D models, textures or sound files.
 
 ## Screenshots
 
@@ -53,6 +53,7 @@ When you're ready, choose **Play vs AI** and pick a side. You start at your base
 5. **Build.** Select your engineers and use the build menu at the bottom of the screen. Barracks train more squads, a factory builds vehicles, and new FOBs extend your reach.
 6. **Take the towns.** The town and every village fly a flag by their supply dump. Right-click one with a squad selected: hold its ground with no enemy there and it's yours, and its trucks start bringing supply to your nearest FOB. The more you hold, the more you can build.
 7. **Call support.** The buttons above the minimap call in mortars, artillery and air strikes.
+8. **Get eyes on.** Ground your side can't see right now is drawn darker, on the battlefield and the minimap. Watchtowers, drones from the helipad and recon flights (on the support panel) see further, and every aircraft you call in spots for you as it flies over. Whatever they spot stays on the map as a last-known position.
 
 Press **F1** at any time for help, and **F4** for the Field Manual.
 

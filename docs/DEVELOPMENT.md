@@ -20,6 +20,8 @@ option on its own, laid out like a PC game's options screen:
   field of view, performance overlay.
 - **Interface:** interface scale (relative to the window: `Settings.ui_factor()` is what the window's 2D is
   drawn at), unit activity labels, speech bubbles, cover preview, edge scrolling, camera speed, camera shake.
+- **Audio:** master, music, effects, ambience and interface volumes (each its own mixer bus, set up in
+  `sfx.gd`), music in battle on or off, mute while the window is in the background.
 
 Settings are saved to `user://settings.cfg`.
 
@@ -38,7 +40,8 @@ main.gd                 menu <-> World, command-line test modes
 autoload/defs.gd        all data tables (units, weapons, squads, vehicles, buildings, upgrades)
 autoload/net.gd         ENet host/join, lobby, teams, start
 autoload/online.gd      the matchmaker client: listing, Find Match, STUN + hole punching, optional account
-autoload/sfx.gd         procedurally synthesised sounds
+autoload/sfx.gd         procedurally synthesised sounds, the mixer's buses
+autoload/music.gd       the soundtrack: synthesised instruments, a sequencer, the scores (menu, battle, stings)
 game/world.gd           entity registry, replication (spawn / snapshot / props / fx RPCs), commands, queries
 game/entity.gd          base class: props on spawn, packed state in snapshots
 game/soldier*.gd        brain + procedural articulated model (body_mesh.gd: the lofted body shapes)
@@ -56,6 +59,8 @@ game/combat.gd          LOS, bullets (penetrating soft cover), suppression, expl
 game/fires.gd           what burns, catching alight, spreading downwind, burning down (server; drawn by vfx.gd)
 game/cover.gd           fighting positions on everything solid, what each material stops, stances by height
 game/rules.gd           supply network, trucks, cap, placement, capture, prisoners/intel, fog, victory
+game/vision.gd          every eye a side has (men, vehicles, towers, drones, aircraft) as circles of sight
+game/fog_view.gd        the fog of war drawn on the battlefield and the minimap (a sight map + a full-screen pass)
 game/nav.gd             two AStarGrid2D layers (infantry: vaultable/slow cells; vehicles: smashable cells)
 game/hnav.gd            hierarchical A* (clusters, entrances, danger-weighted abstract graphs)
 game/terrain.gd         ground types, cover map, craters, speed / hit / concealment modifiers
@@ -155,6 +160,8 @@ Pass these after `--` on the command line:
 --scenario=fire                                       a wood, a hedgerow, crates, cars, a watchtower and a house, some of it alight
                                                       from the start, a fighter cell dug in among it (fire spread, burns, fleeing)
 FL_DEBUG_FIRE=1 (env)                                 print who the fires burn, and (on a client) what it hears catching or going out
+--scenario=recon                                      a manned watchtower, a recon pass over Rebel cells, a Rebel spotter plane and drone over the Coalition
+FL_DEBUG_VISION=1 (env)                               every 2 s, what each side has eyes on (eyes, aircraft, recon photos, manned towers, enemies seen, intel)
 --mission=bridgehead|beachhead|skyhook|ambush|kingpin  play a mission; on its own it plays itself (the autopilot in missions.gd)
 --mission=KEY --play [--autoplay]                     command the mission's force yourself (--autoplay: the autopilot still gives orders)
 --mission=KEY --seed=N                                the mission on another map (checks it still places itself sensibly)
@@ -177,7 +184,14 @@ FL_DEBUG_TOWNS=1 (env)                                print each town and villag
 FL_DEBUG_HPA=1 (env)                                  benchmark hierarchical vs flat paths at start-up
 FL_DEBUG_DECOR=1 (env)                                print the street-furniture chunk and mesh counts
 --menu-shot=menu.png --shot-at=6                      screenshot of the main menu
+--sound-dump=DIR                                      every synthesised sound and music sample as a WAV in DIR, then quit
+                                                      (works --headless)
+FL_DEBUG_MUSIC=1 (env)                                print the music's cue, battle heat and layer levels every 5 s
 ```
+
+To hear (or measure) the mix as a player does, record it: Godot's movie writer saves the game's audio with
+the video, e.g. `godot --path . --write-movie out.avi --resolution 320x180 --quit-after 3600 -- --mission=bridgehead`
+(an MJPEG AVI with PCM sound; it runs at a fixed 60 fps, and the music keeps time with it).
 
 Example:
 `godot --headless --path . -- --aivai --timescale=8 --quit-after=600 --stats=120`

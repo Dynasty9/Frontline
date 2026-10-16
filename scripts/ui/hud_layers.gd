@@ -1,14 +1,15 @@
 class_name HudLayers
 extends Control
 ## The map layers, a column of toggles beside the minimap: unit symbols,
-## orders and attack plans, intelligence (last known enemy positions), weapon
-## ranges, soldier labels, and the tactical map (Tab).
+## orders and attack plans, intelligence (last known enemy positions), the fog
+## of war, weapon ranges, soldier labels, and the tactical map (Tab).
 
 const ITEMS := [
 	["tactical", "Tactical map  (Tab)\nDims the battlefield and shows it as a map: every unit, order and contact.", "map"],
 	["units", "Unit symbols\nA symbol for every squad and vehicle at any zoom.", "units"],
 	["orders", "Orders\nRoutes, objectives and attack plans for all your units, not just the selected ones.", "orders"],
 	["intel", "Intelligence\nWhere the enemy was last seen, and how long ago.", "intel"],
+	["vision", "Fog of war\nGround your side can't see right now is drawn darker, on the battlefield and the minimap.", "vision"],
 	["ranges", "Weapon ranges\nHow far the selected units can reach.", "ranges"],
 	["labels", "Soldier labels\nNames, what each man is doing, and the chatter.", "labels"],
 ]
@@ -94,6 +95,17 @@ func _icon(kind: String, c: Vector2, col: Color) -> void:
 			var d := PackedVector2Array([c + Vector2(0, -8), c + Vector2(8, 0), c + Vector2(0, 8), c + Vector2(-8, 0), c + Vector2(0, -8)])
 			draw_polyline(d, col, 1.6, true)
 			UiKit.text(self, c + Vector2(-3, 4), "?", 11, col, 700)
+		"vision":
+			# an eye
+			var lid := PackedVector2Array()
+			for k in 13:
+				var a := PI * k / 12.0
+				lid.append(c + Vector2(-cos(a) * 9.0, -sin(a) * 5.5))
+			for k in 13:
+				var a := PI * k / 12.0
+				lid.append(c + Vector2(cos(a) * 9.0, sin(a) * 5.5))
+			draw_polyline(lid, col, 1.5, true)
+			draw_circle(c, 2.8, col)
 		"ranges":
 			draw_arc(c, 8.0, 0, TAU, 24, col, 1.4, true)
 			draw_arc(c, 4.0, 0, TAU, 16, col, 1.2, true)

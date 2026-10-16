@@ -282,6 +282,7 @@ func _on_visibility() -> void:
 	if is_visible_in_tree() and backdrop == null:
 		backdrop = MenuScene.new()
 		get_tree().root.add_child.call_deferred(backdrop)
+		Music.play_cue("menu")
 	elif not is_visible_in_tree() and backdrop != null:
 		backdrop.queue_free()
 		backdrop = null
