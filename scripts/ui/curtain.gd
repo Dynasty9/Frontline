@@ -1,11 +1,15 @@
 class_name Curtain
 extends Control
-## The full-screen curtain over everything while the game gets ready:
-##  - the intro, carrying on from the boot splash (the same artwork) until the
-##    menu's 3D backdrop has actually rendered, then fading into the menu;
+## The full-screen curtain over everything while the game gets ready, drawn on
+## the same living map (TopoBackdrop) that lies behind the menu:
+##  - the title: it picks up exactly where the boot splash leaves off (the map
+##    asleep under the emblem and the name), sends a wave out of the emblem's
+##    dot that wakes the map and lights its contours, then lifts away and
+##    leaves the menu on the same map;
 ##  - the loading screen before a battle: the operation, its conditions, a tip
-##    and the stages of the build, held while the first frames compile their
-##    shaders behind it, then fading into the battlefield.
+##    and the stages of the build over the map being surveyed, held while the
+##    first frames compile their shaders behind it, then fading into the
+##    battlefield.
 
 signal gone
 
@@ -33,8 +37,16 @@ const OP_B := ["VEIL", "ANVIL", "HARVEST", "LANTERN", "SPEAR", "CROSSING", "RIDG
 const MOOD_TEXT := {"day": "Midday, clear", "golden": "Golden hour, long shadows", "dawn": "Dawn, low sun", "dusk": "Dusk, failing light",
 	"overcast": "Overcast, flat light", "hazy": "Hazy, poor visibility", "night": "Night, street lights and flares", "rain": "Rain and thunder", "random": "Unknown"}
 
+const WAKE_AT := 0.35  # the title: when the wave goes out (seconds in)
+const TITLE_HOLD := 1.9  # and when the menu may take over
+const SAND := Color(0.87, 0.8, 0.63)
+const WORD := Color(0.93, 0.91, 0.84)
+const TAGLINE := "SQUAD TACTICS  \u00b7  COMBINED ARMS  \u00b7  COMMAND"
+
 var mode := "intro"  # "intro" or "loading"
-var _art: Texture2D
+var hold_at := -1.0  # the title held at this moment (screenshots)
+var _map: TopoBackdrop
+var _skip := false  # the title was clicked through
 var _alpha := 1.0
 var _fading := false
 var _fade_rate := 1.8
@@ -48,14 +60,28 @@ var _tip := ""
 var _story := ""  # a mission's briefing, under the lines
 
 
-static func _tex(path: String) -> Texture2D:
-	return load(path) as Texture2D
-
-
 func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_STOP  # nothing behind it takes clicks until it's gone
-	_art = _tex("res://assets/splash.png" if mode == "intro" else "res://assets/backdrop.png")
+	_map = TopoBackdrop.new()
+	_map.show_behind_parent = true
+	_sync_map()
+	add_child(_map)
+
+
+## The title has played (or been clicked through): the menu can take over.
+func title_done() -> bool:
+	return hold_at < 0.0 and (_skip or _t >= TITLE_HOLD)
+
+
+func _gui_input(ev: InputEvent) -> void:
+	if mode == "intro" and ev is InputEventMouseButton and ev.pressed:
+		_skip = true
+
+
+func _input(ev: InputEvent) -> void:
+	if mode == "intro" and ev is InputEventKey and ev.pressed:
+		_skip = true
 
 
 ## The loading screen's briefing: who's fighting, where and when.
@@ -95,7 +121,7 @@ func finish(rate := 1.8) -> void:
 
 func _process(dt: float) -> void:
 	dt = minf(dt, 0.1)  # a long build frame shouldn't skip the fade
-	_t += dt
+	_t = hold_at if hold_at >= 0.0 else _t + dt
 	_shown_progress = move_toward(_shown_progress, _progress, dt * 1.6)
 	if _fading:
 		_alpha -= dt * _fade_rate
@@ -104,44 +130,106 @@ func _process(dt: float) -> void:
 			queue_free()
 			return
 	modulate.a = clampf(_alpha, 0.0, 1.0)
+	_sync_map()
 	queue_redraw()
 
 
-func _draw() -> void:
-	var vs := size
-	draw_rect(Rect2(Vector2.ZERO, vs), Color(0.031, 0.039, 0.043))
-	if _art:
-		# cover the screen, centred (the same framing as the boot splash)
-		var ts := _art.get_size()
-		var k := maxf(vs.x / ts.x, vs.y / ts.y)
-		var ds := ts * k
-		draw_texture_rect(_art, Rect2((vs - ds) * 0.5, ds), false)
+func _sync_map() -> void:
 	if mode == "intro":
-		_draw_intro(vs)
+		_map.wake_at = _dot(size) / Vector2(maxf(size.x, 1.0), maxf(size.y, 1.0))
+		_map.wake_t = _t - WAKE_AT
+		_map.shade = 0.0
+		_map.scan = 0.0
+		_map.quiet = Vector3(0.5, 0.49, 0.62)  # so the name stands clear of the brightest lines
 	else:
-		_draw_loading(vs)
+		_map.wake_t = 1000.0
+		_map.shade = 1.0  # as under the menu, so the one gives way to the other without a seam
+		_map.scan = clampf(_t * 1.5, 0.0, 1.0)
+		_map.quiet = Vector3(0.3, 0.38, 0.5)  # a calm patch under the briefing
+		# closing in on the ground while it's built, then diving into it as the
+		# battlefield fades up
+		var dive := 1.0 - clampf(_alpha, 0.0, 1.0)
+		_map.zoom = 1.0 + 0.4 * (1.0 - exp(-_t * 0.35)) + 1.6 * dive * dive
 
 
-func _draw_intro(vs: Vector2) -> void:
-	# a thin line sweeping under the tagline while things get ready
-	var w := minf(vs.x * 0.3, 520.0)
-	var y := vs.y * 0.5 + vs.y * 0.235
-	var x0 := (vs.x - w) * 0.5
-	draw_rect(Rect2(x0, y, w, 1), Color(1, 1, 1, 0.06))
-	var s := fmod(_t * 0.7, 1.4) - 0.2
-	var a := clampf(s, 0.0, 1.0)
-	var b := clampf(s + 0.2, 0.0, 1.0)
-	draw_rect(Rect2(x0 + w * a, y, w * (b - a), 1), Color(UiKit.ACCENT.r, UiKit.ACCENT.g, UiKit.ACCENT.b, 0.8))
+## The emblem's centre on the title, laid out as on the boot splash (1080
+## pixels high, centred), and its red dot, where the wave starts.
+func _emblem_at(vs: Vector2) -> Vector2:
+	return vs * 0.5 + Vector2(0, -159) * (vs.y / 1080.0)
+
+
+func _dot(vs: Vector2) -> Vector2:
+	return _emblem_at(vs) + Vector2(0, 12.4) * (vs.y / 1080.0)
+
+
+func _draw() -> void:
+	if mode == "intro":
+		_draw_title(size)
+	else:
+		_draw_loading(size)
+
+
+## The title, as on the boot splash: the emblem, the name, a rule and the
+## tagline. When the wave goes out of the dot a ring rides its front, the rule
+## glints where it crosses and each letter flares as it passes; as the menu
+## takes over, the title rises away.
+func _draw_title(vs: Vector2) -> void:
+	var u := vs.y / 1080.0
+	var wt := _t - WAKE_AT
+	var dot := _dot(vs)
+	var front := TopoBackdrop.wave_front(wt) * vs.y if wt >= 0.0 else -1000.0  # where the map's wave has got to
+	var ring := exp(-wt * 1.7) if wt >= 0.0 else 0.0
+	var rise := Vector2(0, -22.0 * u * (1.0 - clampf(_alpha, 0.0, 1.0)))
+	var ec := _emblem_at(vs) + rise
+	var s := 62.0 * u
+	var pts := PackedVector2Array([ec + Vector2(-s, s * 0.78), ec + Vector2(0, -s * 0.82), ec + Vector2(s, s * 0.78), ec + Vector2(-s, s * 0.78)])
+	draw_polyline(pts, SAND.lerp(Color.WHITE, ring * 0.35), 5.0 * u, true)
+	var pulse := exp(-wt * 4.0) if wt >= 0.0 else 0.0
+	draw_circle(dot + rise, s * 0.2 * (1.0 + 0.3 * pulse), Color(0.84, 0.32, 0.24).lerp(Color(1.0, 0.72, 0.6), pulse))
+	if ring > 0.02:
+		draw_arc(dot + rise, maxf(front, 1.0), 0.0, TAU, 128, Color(1.0, 0.86, 0.7, 0.28 * ring), 1.5 * u, true)
+	_spaced("FRONTLINE", vs.x * 0.5, vs.y * 0.5 + 24.0 * u, 806.0 * u, int(121.0 * u), WORD, dot, front, ring, rise)
+	var ry := vs.y * 0.5 + 88.0 * u
+	var rw := 822.0 * u
+	var rx := vs.x * 0.5 - rw * 0.5
+	draw_rect(Rect2(Vector2(rx, ry) + rise, Vector2(rw, 2.0 * u)), SAND)
+	var dy := ry - dot.y
+	if ring > 0.02 and front > absf(dy):
+		var gx := sqrt(front * front - dy * dy)
+		for side in [-1.0, 1.0]:
+			var x: float = vs.x * 0.5 + side * gx
+			if x > rx and x < rx + rw:
+				for i in 6:
+					var hw := (6 - i) * 14.0 * u
+					var x0 := clampf(x - hw, rx, rx + rw)
+					draw_rect(Rect2(Vector2(x0, ry - 0.5 * u) + rise, Vector2(minf(x + hw, rx + rw) - x0, 3.0 * u)), Color(1, 0.95, 0.85, 0.12 * ring))
+	_spaced(TAGLINE, vs.x * 0.5, vs.y * 0.5 + 125.0 * u, 817.0 * u, int(23.0 * u), SAND, dot, front, ring, rise)
+
+
+## Capitals spread evenly to fill a width, centred on cx, each flaring as the
+## wave front passes it.
+func _spaced(text: String, cx: float, base: float, w: float, fs: int, col: Color, dot: Vector2, front: float, ring: float, rise: Vector2) -> void:
+	var f := UiKit.font(700)
+	var adv := PackedFloat32Array()
+	var total := 0.0
+	for i in text.length():
+		var a := f.get_char_size(text.unicode_at(i), fs).x
+		adv.append(a)
+		total += a
+	var gap := (w - total) / maxf(float(text.length() - 1), 1.0)
+	var x := cx - w * 0.5
+	var ci := get_canvas_item()
+	for i in text.length():
+		var ch := text.unicode_at(i)
+		var p := Vector2(x, base) + rise
+		var d := (p + Vector2(adv[i] * 0.5, -fs * 0.35) - dot).length()
+		var fl := ring * exp(-absf(d - front) / (fs * 0.9))
+		f.draw_char(ci, p, ch, fs, col.lerp(Color(1.0, 0.98, 0.93), fl))
+		x += adv[i] + gap
 
 
 func _draw_loading(vs: Vector2) -> void:
 	var acc := UiKit.ACCENT
-	# the emblem as a faint watermark on the right
-	var wc := Vector2(vs.x * 0.74, vs.y * 0.44)
-	var ws := minf(vs.x, vs.y) * 0.2
-	var wp := PackedVector2Array([wc + Vector2(-ws, ws * 0.78), wc + Vector2(0, -ws * 0.82), wc + Vector2(ws, ws * 0.78), wc + Vector2(-ws, ws * 0.78)])
-	draw_polyline(wp, Color(0.87, 0.8, 0.63, 0.05), 6.0, true)
-	draw_circle(wc + Vector2(0, ws * 0.2), ws * 0.2, Color(0.84, 0.32, 0.24, 0.05))
 	var m := Vector2(maxf(64.0, vs.x * 0.06), maxf(56.0, vs.y * 0.09))
 	# the emblem and the operation
 	_emblem(m + Vector2(14, 14), 14.0)

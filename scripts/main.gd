@@ -60,6 +60,13 @@ func _ready() -> void:
 	layer.layer = 10
 	add_child(layer)
 	layer.add_child(menu)
+	# --menu-cursor=X,Y: hold the map's cursor hill there (fractions of the screen; screenshots)
+	if args.has("menu-cursor"):
+		var mc := String(args["menu-cursor"]).split(",")
+		TopoBackdrop.pin_cursor(Vector2(float(mc[0]), float(mc[1])))
+	# --menu-clock=SECONDS: start the map that far into its drift and its colours
+	if args.has("menu-clock"):
+		TopoBackdrop.start_at(float(args["menu-clock"]))
 	_curtains = args.is_empty() or args.has("curtain")
 	_curtain_layer = CanvasLayer.new()
 	_curtain_layer.layer = 120
@@ -185,18 +192,21 @@ func _curtain(mode: String) -> Curtain:
 	return cur
 
 
-## The intro carries on from the boot splash (the same artwork) and lifts once
-## the menu's 3D backdrop has really drawn - no black frames, no pop-in.
+## The title carries on from the boot splash (the same picture), wakes the
+## map and hands it to the menu, which lies on the same map: only the title
+## gives way to the menu.
 func _intro() -> void:
 	var cur := _curtain("intro")
-	var t0 := Time.get_ticks_msec()
-	while menu.backdrop == null or not menu.backdrop.is_inside_tree():
-		await get_tree().process_frame
-	var f0 := Engine.get_frames_drawn()
-	while Engine.get_frames_drawn() < f0 + 8 or Time.get_ticks_msec() - t0 < 900:
+	# --intro-at=SECONDS (with --curtain): hold the title at that moment (screenshots;
+	# 0 is the boot splash, which is rendered this way)
+	if args.has("intro-at"):
+		cur.hold_at = float(args["intro-at"])
+		TopoBackdrop.hold(cur.hold_at)
+	while is_instance_valid(cur) and not cur.title_done():
 		await get_tree().process_frame
 	if is_instance_valid(cur):
-		cur.finish(1.6)
+		menu.arrive()
+		cur.finish(1.8)
 
 
 func _mission_text(s: Dictionary) -> Array:

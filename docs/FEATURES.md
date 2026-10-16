@@ -400,11 +400,19 @@ function and an autopilot function.
   mines, trucks on the road, production, attack plans), shown in the message log with a map ping.
 
 **Interface**
-- Boot splash and intro in Frontline's key art; the intro lifts once the menu's 3D backdrop has drawn.
+- A living topographic map lies behind everything outside a battle: one shader, ground that slowly folds and
+  drifts, contour lines (every fifth an index contour) lit in colours that turn round a wheel of brass, ember,
+  rose, violet, blue and jade over a minute and a half, a map grid with corner crosses. The ground rises in a hill
+  under the cursor, and a click sends a ripple out across it. Every copy shares one clock and cursor, so the
+  title, the menu and the loading screen hand over to each other without a seam.
+- Boot splash and title: the splash is the title's first frame (the map asleep under the emblem and the name).
+  A wave runs out of the emblem's dot, wakes the map and lights the letters as it passes; then the title rises
+  away and the menu glides in on the same map. A click or a key skips it.
 - Main menu: grouped entries that say what they do, and a New Operation panel to pick a side (Coalition, Rebels
-  or Observe, with each side's doctrine) and the time of day. The backdrop is a crewed .50 cal position at dusk.
+  or Observe, with each side's doctrine) and the time of day.
 - Loading screen before each battle: the operation's name, mission, side, area and conditions, a field note and
-  the build's stages; it holds while the first frames compile behind it, then fades into the battlefield.
+  the build's stages, over the map with a survey beam sweeping across it and the view closing in on the ground.
+  It holds while the first frames compile behind it, then dives into the map as the battlefield fades up.
 - **Order of battle** (O): every unit down the left, grouped into infantry, support teams and vehicles, each
   with its symbol, callsign, a pip per man, what it has been told to do and where an attack has got to ("Base of
   fire on D3", "Assaulting D3"), and alerts for contact, pinned, casualties and low ammunition. Click to select
