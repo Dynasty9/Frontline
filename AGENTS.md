@@ -27,6 +27,7 @@ tests/                         tests that drive the game through its test port (
 scripts/autoload/online.gd     the matchmaker client: battle list, Find Match, hole punching, LAN beacons, optional account
 scripts/autoload/links.gd      frontline:// links from the website: registering the scheme, handing a link to a running copy
 scripts/autoload/updater.gd    the game's version, and updating itself to the latest release
+scripts/autoload/errors.gd     error reports from release builds (and crashes, at the next launch) to the matchmaker
 changelog/                     one entry per change, filed under its version at release; CHANGELOG.md is generated
 matchmaker/                    the matchmaking service (Node, no runtime dependencies; deployed on Railway, accounts via Supabase)
 matchmaker/supabase/migrations/   the accounts database's schema, one migration per change; database.yml applies new ones as they merge
@@ -74,6 +75,8 @@ CI (`.github/workflows/check.yml`) runs steps 1 to 3 on every push and pull requ
 - **A new `class_name`** isn't visible to other scripts until the project is re-imported (`godot --headless --path . --import`). Other scripts referencing it will show bogus errors until then.
 - **Packed arrays are value types.** A `PackedFloat32Array` passed into a function is copied, so mutate member arrays in place instead.
 - **Entities get freed.** Soldiers and vehicles can be despawned at any time. Check `is_instance_valid()` before touching a stored reference. `world.despawn` removes a soldier from his squad.
+- **Release builds swallow GDScript's own runtime errors.** In an exported build a null dereference or an out-of-range index prints nothing: the call just returns null and play goes on. Only engine errors and `push_error` reach the players' error reports (`autoload/errors.gd`), so script bugs have to be caught in dev runs and CI.
+- **Worker threads** (`WorkerThreadPool`) pay off when each task works on objects of its own: many threads calling into one shared object (all reading the same `AStarGrid2D`, say) ran slower than a single thread. Never resize an Array or add to a Dictionary from a worker (filling pre-sized slots is fine), and give each worker its own `RandomNumberGenerator`, since the global `randf()` isn't thread-safe. Put anything gameplay depends on back together in a fixed order, so a seed still gives the same result (see `HNav.build_all`).
 - **Ground and water shader colours are linear**, not sRGB. A colour that looks right in a picker comes out far too bright on the ground.
 - **The terrain is flat** (y = 0, plus a deformation height field for craters, trenches and riverbeds). Buildings, trenches and line of sight all assume it, so adding hills is a large change, not a tweak.
 - **Water** has two ground kinds: `TerrainMap.WATER` (deep: impassable on foot) and `SHALLOW` (wadable). Boats path on their own grid (`Nav.find_boat_path`), and separate bodies of water are labelled (`Nav.water_body`).

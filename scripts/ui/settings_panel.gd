@@ -130,6 +130,8 @@ func _ready() -> void:
 		["head", "", "Minimap"],
 		["option", "minimap_size", "Minimap size", Settings.LABELS.minimap_size, ""],
 		["check", "minimap_rotate", "Turn with the camera", null, "The minimap turns so that the way the camera faces is always up. Off: north is always up."],
+		["head", "", "Online"],
+		["check", "error_reports", "Send error reports", null, "When something goes wrong in the game, or it crashes, tell the developers what failed and where: the game's version, your system and graphics card. Never your name, account, files or address."],
 	])
 	# every key, by category, rebindable (scripts/ui/controls_page.gd)
 	var cp := ControlsPage.new()

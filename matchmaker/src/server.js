@@ -5,16 +5,18 @@
 //
 // No dependencies beyond Node itself (20 or newer).
 
+import { timingSafeEqual } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import http from 'node:http';
 import { pathToFileURL } from 'node:url';
 import { AuthError, createAuth, toUser } from './auth.js';
+import { ErrorLog, MAX_BODY as MAX_ERRORS, ReportError } from './errors.js';
 import { HEARTBEAT_S, Lobbies, POLL_S } from './lobbies.js';
 import { careerOf, cleanRecord, isUuid, MAX_BODY as MAX_RECORD, RecordError } from './records.js';
 
 const MAX_BODY = 8 * 1024;
-// routes that take more than that: a battle's after-action report
-const BODY_LIMITS = { 'POST /me/battles': MAX_RECORD };
+// routes that take more than that: a battle's after-action report, a batch of error reports
+const BODY_LIMITS = { 'POST /me/battles': MAX_RECORD, 'POST /errors': MAX_ERRORS };
 
 // The latest release of the game, baked in by the release workflow
 // (.github/workflows/release.yml writes it in the release's pull request, and
@@ -106,7 +108,20 @@ const bearer = (req) => {
 	return h.startsWith('Bearer ') ? h.slice(7).trim() : '';
 };
 
-export function createServer({ env = process.env, auth = createAuth(env), lobbies = new Lobbies(), release = loadRelease(), log = console.log } = {}) {
+const sameSecret = (a, b) => {
+	const x = Buffer.from(String(a));
+	const y = Buffer.from(String(b));
+	return x.length === y.length && timingSafeEqual(x, y);
+};
+
+export function createServer({
+	env = process.env,
+	auth = createAuth(env),
+	lobbies = new Lobbies(),
+	release = loadRelease(),
+	log = console.log,
+	errors = new ErrorLog({ log }),
+} = {}) {
 	const trustProxy = env.TRUST_PROXY ? env.TRUST_PROXY === '1' : !!(env.RAILWAY_ENVIRONMENT_NAME || env.RAILWAY_ENVIRONMENT);
 	const limits = new RateLimit();
 
@@ -277,6 +292,19 @@ export function createServer({ env = process.env, auth = createAuth(env), lobbie
 			return { battle: b };
 		},
 
+		// errors from players' games (see errors.js): anyone may send them, and
+		// only whoever holds ERRORS_TOKEN can read the tally back
+		'POST /errors': async ({ ip, body }) => {
+			limits.hit('errors', ip, 12);
+			return errors.add(body);
+		},
+
+		'GET /errors': async ({ req }) => {
+			if (!env.ERRORS_TOKEN) throw new HttpError(404, 'Not found.');
+			if (!sameSecret(bearer(req), env.ERRORS_TOKEN)) throw new HttpError(401, 'That token is not the one.');
+			return errors.summary();
+		},
+
 		// the totals of every battle on the record
 		'GET /me/career': async ({ req, ip }) => {
 			limits.hit('records', ip, 60);
@@ -332,7 +360,8 @@ export function createServer({ env = process.env, auth = createAuth(env), lobbie
 			const body = await readJson(req, r.max);
 			send(res, 200, await r.fn({ req, res, ip, url, body, params: r.params }));
 		} catch (e) {
-			if (e instanceof HttpError || e instanceof AuthError || e instanceof RecordError) return send(res, e.status, { error: e.message });
+			if (e instanceof HttpError || e instanceof AuthError || e instanceof RecordError || e instanceof ReportError)
+				return send(res, e.status, { error: e.message });
 			log(`error on ${req.method} ${req.url}: ${e && e.stack ? e.stack : e}`);
 			send(res, 500, { error: 'Server error.' });
 		}
