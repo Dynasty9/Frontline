@@ -21,6 +21,7 @@ scripts/game/missions.gd       the missions (content); mission_director.gd runs 
 scripts/game/terrain.gd, nav.gd, hnav.gd   ground kinds, cover map, pathfinding grids (HPA*)
 scripts/ui/                    HUD, minimap, Field Manual, menus
 docs/                          FEATURES.md (design), DEVELOPMENT.md (code layout, test flags)
+design/                        logo and artwork used outside the game (not imported by Godot)
 ```
 
 Data lives in tables: units, weapons, squads, buildings and upgrades in `scripts/autoload/defs.gd`, and most vehicles in `scripts/game/vehicle_roster.gd`. Behaviour lives in the class that behaves.
