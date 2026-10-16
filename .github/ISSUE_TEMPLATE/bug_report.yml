@@ -1,0 +1,44 @@
+name: Bug report
+description: Something broke, crashed, or behaves wrongly
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What you were doing, what you expected, and what happened instead.
+    validations:
+      required: true
+  - type: dropdown
+    id: mode
+    attributes:
+      label: Game mode
+      options:
+        - Play vs AI
+        - Co-op
+        - PvP
+        - Watch AI Battle
+        - A test scenario
+    validations:
+      required: true
+  - type: input
+    id: seed
+    attributes:
+      label: Map seed
+      description: Shown in the Esc menu. Lets us reproduce the map.
+  - type: textarea
+    id: errors
+    attributes:
+      label: Console output
+      description: Any `SCRIPT ERROR` lines (run Godot from a terminal to see them).
+      render: text
+  - type: input
+    id: version
+    attributes:
+      label: Godot version and OS
+      placeholder: Godot 4.7.2, Windows 11
+  - type: textarea
+    id: shots
+    attributes:
+      label: Screenshots
+      description: Drag images here if it's something visual.

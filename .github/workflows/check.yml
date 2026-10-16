@@ -1,0 +1,47 @@
+name: Check
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      GODOT_VERSION: 4.7.2
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cache Godot
+        id: cache-godot
+        uses: actions/cache@v4
+        with:
+          path: ~/godot
+          key: godot-${{ env.GODOT_VERSION }}
+
+      - name: Download Godot
+        if: steps.cache-godot.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p ~/godot
+          curl -sSL -o godot.zip "https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}-stable/Godot_v${GODOT_VERSION}-stable_linux.x86_64.zip"
+          unzip -q godot.zip -d ~/godot
+          mv ~/godot/Godot_v${GODOT_VERSION}-stable_linux.x86_64 ~/godot/godot
+
+      - name: Import and compile every script
+        run: |
+          ~/godot/godot --headless --path . --import 2>&1 | tee import.log
+          if grep -E "SCRIPT ERROR|Parse Error" import.log; then exit 1; fi
+
+      - name: Smoke test (headless scenarios)
+        run: |
+          port=7901
+          for s in attack naval sling; do
+            echo "::group::scenario $s"
+            timeout 240 ~/godot/godot --headless --path . -- --scenario=$s --stats=60 --quit-after=40 --port=$port 2>&1 | tee run_$s.log || true
+            port=$((port + 1))
+            echo "::endgroup::"
+            if grep -E "SCRIPT ERROR" run_$s.log; then echo "::error::script error in scenario $s"; exit 1; fi
+            if ! grep -q "FINAL" run_$s.log; then echo "::error::scenario $s didn't finish"; exit 1; fi
+          done

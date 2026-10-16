@@ -1,0 +1,16 @@
+name: Idea or feature request
+description: Suggest a unit, behaviour, mechanic or improvement
+labels: [enhancement]
+body:
+  - type: textarea
+    id: idea
+    attributes:
+      label: The idea
+      description: What should the game do? If it's a real-world tactic or piece of equipment, how does it work in reality?
+    validations:
+      required: true
+  - type: textarea
+    id: why
+    attributes:
+      label: Why
+      description: What would it add to the game, and how would it affect balance between the sides?
