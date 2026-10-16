@@ -102,7 +102,7 @@ var wheels: Array = []
 var _last_pos := Vector3.ZERO
 var _rotor_spd := 0.0
 var burner: Node3D
-var dust: GPUParticles3D
+var dust: GeometryInstance3D  # (GPU or CPU particles: see Vfx.part)
 var _burn_state := -1
 var ring: MeshInstance3D
 var _vis := true
@@ -1969,8 +1969,8 @@ func _view_process(dt: float) -> void:
 	if dust and dt > 0.0:
 		var spd2 := Defs.flat(position - _last_pos).length() / dt
 		var want_dust := spd2 > 2.0
-		if want_dust != dust.emitting:
-			dust.emitting = want_dust
+		if want_dust != Vfx.is_emitting(dust):
+			Vfx.set_emitting(dust, want_dust)
 	if is_boat() and model:
 		_boat_view(dt)
 	elif not rotor and model:
@@ -2042,7 +2042,7 @@ func _sling_view() -> void:
 	im.surface_end()
 
 
-var spray: GPUParticles3D
+var spray: GeometryInstance3D
 var _ride := Vector3.ZERO  # (view) how the swell has her: heave, pitch, roll
 
 
@@ -2085,8 +2085,8 @@ func _boat_view(dt: float) -> void:
 		add_child(spray)
 	if spray:
 		var on := k > 0.45 and visible
-		if on != spray.emitting:
-			spray.emitting = on
+		if on != Vfx.is_emitting(spray):
+			Vfx.set_emitting(spray, on)
 
 
 ## (view) She's going down: her model (and her fire) go to the effects to
@@ -2102,7 +2102,7 @@ func sink_view() -> void:
 	if b:
 		remove_child(b)
 	if spray:
-		spray.emitting = false
+		Vfx.set_emitting(spray, false)
 	world.fx.vfx.sink(m, b, transform, _hull_size())
 
 

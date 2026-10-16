@@ -99,7 +99,7 @@ func build(w: WaterMap, detail: Texture2D) -> void:
 func _material(code: String, detail: Texture2D) -> ShaderMaterial:
 	var m := ShaderMaterial.new()
 	var sh := Shader.new()
-	sh.code = MapDims.shader(code.replace("__WAVES__", waves_glsl()).replace("__LEVEL__", "%.3f" % WaterMap.LEVEL))
+	sh.code = Mats.code(MapDims.shader(code.replace("__WAVES__", waves_glsl()).replace("__LEVEL__", "%.3f" % WaterMap.LEVEL)))
 	m.shader = sh
 	m.set_shader_parameter("detail_tex", detail)
 	m.set_shader_parameter("chop_tex", chop_tex)
@@ -418,7 +418,7 @@ func foam(p: Vector3, r: float, secs: float, kind: int) -> void:
 	mi.position = Vector3(p.x, WaterMap.LEVEL, p.z)
 	mi.rotation.y = randf() * TAU
 	mi.scale = Vector3(r, 1.0, r)
-	mi.set_instance_shader_parameter("fp", Vector4(t, secs, float(kind), randf() * 10.0))
+	Mats.set_inst(mi, &"fp", Vector4(t, secs, float(kind), randf() * 10.0))
 	mi.visible = true
 	e[1] = t + secs
 
@@ -435,11 +435,17 @@ shader_type spatial;
 render_mode blend_mix, depth_draw_always, cull_back, ambient_light_disabled;
 
 global uniform float water_time;
-uniform sampler2D water_mask : hint_default_black, filter_linear, repeat_disable;
+uniform sampler2D water_mask : hint_default_transparent, filter_linear, repeat_disable;
 uniform sampler2D detail_tex : filter_linear_mipmap, repeat_enable;
 uniform sampler2D chop_tex : hint_normal, filter_linear_mipmap_anisotropic, repeat_enable;
 uniform sampler2D foam_tex : filter_linear_mipmap, repeat_enable;
 uniform sampler2D depth_tex : hint_depth_texture, filter_nearest;
+// a depth read back to clip space: OpenGL's (the browser build's) runs -1..1, Vulkan's 0..1
+#if CURRENT_RENDERER == RENDERER_COMPATIBILITY
+#define NDC_Z(d) ((d) * 2.0 - 1.0)
+#else
+#define NDC_Z(d) (d)
+#endif
 uniform sampler2D screen_tex : hint_screen_texture, filter_linear_mipmap;
 uniform float sea_x = 1e9;
 uniform vec3 coast = vec3(0.0);  // the shoreline's mean x, its seed, 1 if there's a sea
@@ -565,13 +571,13 @@ void fragment() {
 	float fres = 0.02 + 0.98 * pow(1.0 - clamp(dot(ns, eye), 0.0, 1.0), 5.0);
 	// what lies under the water, bent by the ripples (but never something in front of it)
 	float zd = texture(depth_tex, SCREEN_UV).r;
-	vec4 vp = INV_PROJECTION_MATRIX * vec4(SCREEN_UV * 2.0 - 1.0, zd, 1.0);
+	vec4 vp = INV_PROJECTION_MATRIX * vec4(SCREEN_UV * 2.0 - 1.0, NDC_Z(zd), 1.0);
 	vp.xyz /= vp.w;
 	float thick = max(0.0, length(vp.xyz) - dist);
 	vec2 roff = (VIEW_MATRIX * vec4(n.x, 0.0, n.z, 0.0)).xy * 1.1 * clamp(thick, 0.0, 2.0) / max(dist, 4.0);
 	vec2 ruv = clamp(SCREEN_UV + roff, vec2(0.001), vec2(0.999));
 	float zr = texture(depth_tex, ruv).r;
-	vec4 rp = INV_PROJECTION_MATRIX * vec4(ruv * 2.0 - 1.0, zr, 1.0);
+	vec4 rp = INV_PROJECTION_MATRIX * vec4(ruv * 2.0 - 1.0, NDC_Z(zr), 1.0);
 	rp.xyz /= rp.w;
 	if (length(rp.xyz) < dist + 0.05) {
 		ruv = SCREEN_UV;
@@ -648,7 +654,7 @@ shader_type spatial;
 render_mode blend_mix, depth_draw_never, cull_disabled, skip_vertex_transform;
 
 global uniform float water_time;
-uniform sampler2D water_mask : hint_default_black, filter_linear, repeat_disable;
+uniform sampler2D water_mask : hint_default_transparent, filter_linear, repeat_disable;
 uniform sampler2D foam_tex : filter_linear_mipmap, repeat_enable;
 uniform float sea_x = 1e9;
 uniform vec3 zenith : source_color = vec3(0.22, 0.42, 0.74);
@@ -734,7 +740,7 @@ shader_type spatial;
 render_mode blend_mix, depth_draw_never, cull_disabled, skip_vertex_transform;
 
 global uniform float water_time;
-uniform sampler2D water_mask : hint_default_black, filter_linear, repeat_disable;
+uniform sampler2D water_mask : hint_default_transparent, filter_linear, repeat_disable;
 uniform sampler2D foam_tex : filter_linear_mipmap, repeat_enable;
 uniform sampler2D detail_tex : filter_linear_mipmap, repeat_enable;
 uniform float sea_x = 1e9;

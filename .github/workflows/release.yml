@@ -6,8 +6,10 @@ name: Release
 # changelog/unreleased/ until the next release, which ships everything that
 # has merged since the last one.
 #
-# The run builds Windows and Linux from main as it stands (Frontline-windows.zip
-# and Frontline-linux.zip), files every waiting entry under changelog/vX.Y.Z/,
+# The run builds Windows, Linux and the browser from main as it stands
+# (Frontline-windows.zip, Frontline-linux.zip and Frontline-web.zip, which goes
+# up on GitHub Pages too once Pages is switched on: see the pages job), files
+# every waiting entry under changelog/vX.Y.Z/,
 # and bakes the changelog and the release (version, download links, checksums)
 # into the website and the matchmaker, as one commit on a branch of its own,
 # release/vX.Y.Z. It tags that commit, publishes the GitHub release with the
@@ -143,7 +145,7 @@ jobs:
           path: |
             ~/godot
             ~/.local/share/godot/export_templates
-          key: godot-export-${{ env.GODOT_VERSION }}
+          key: godot-export-${{ env.GODOT_VERSION }}-web
 
       - name: Download Godot and export templates
         if: steps.cache-godot.outputs.cache-hit != 'true'
@@ -156,8 +158,10 @@ jobs:
           curl -sSL -o templates.tpz "$base/Godot_v${GODOT_VERSION}-stable_export_templates.tpz"
           dest=~/.local/share/godot/export_templates/${GODOT_VERSION}.stable
           mkdir -p "$dest"
-          # just the two templates we ship: the full set is over a gigabyte
-          unzip -q -j templates.tpz templates/version.txt templates/windows_release_x86_64.exe templates/linux_release.x86_64 -d "$dest"
+          # just the templates we ship: the full set is over a gigabyte (the
+          # browser build is the one without threads, which needs no special
+          # headers from whatever serves it)
+          unzip -q -j templates.tpz templates/version.txt templates/windows_release_x86_64.exe templates/linux_release.x86_64 templates/web_nothreads_release.zip -d "$dest"
           rm godot.zip templates.tpz
           ls -la "$dest"
 
@@ -173,12 +177,14 @@ jobs:
 
       - name: Export
         run: |
-          mkdir -p build/windows build/linux
+          mkdir -p build/windows build/linux build/web
           ~/godot/godot --headless --path . --export-release "Windows" build/windows/Frontline.exe 2>&1 | tee export.log
           ~/godot/godot --headless --path . --export-release "Linux" build/linux/Frontline.x86_64 2>&1 | tee -a export.log
+          ~/godot/godot --headless --path . --export-release "Web" build/web/index.html 2>&1 | tee -a export.log
           test -s build/windows/Frontline.exe && test -s build/linux/Frontline.x86_64
+          test -s build/web/index.html && test -s build/web/index.wasm && test -s build/web/index.pck
           chmod +x build/linux/Frontline.x86_64
-          for d in windows linux; do cp LICENSE build/$d/; (cd build/$d && zip -q -9 -r ../Frontline-$d.zip .); done
+          for d in windows linux web; do cp LICENSE build/$d/; (cd build/$d && zip -q -9 -r ../Frontline-$d.zip .); done
           ls -la build
 
       - name: Keep the zips as workflow artifacts
@@ -212,7 +218,7 @@ jobs:
           name=$(python3 .github/scripts/changelog.py name "$VERSION")
           python3 .github/scripts/changelog.py notes "$VERSION" > "$RUNNER_TEMP/notes.md"
           cat "$RUNNER_TEMP/notes.md"
-          gh release create "v$VERSION" build/Frontline-windows.zip build/Frontline-linux.zip \
+          gh release create "v$VERSION" build/Frontline-windows.zip build/Frontline-linux.zip build/Frontline-web.zip \
             --target "$BAKED" --title "Frontline v$VERSION: $name" --notes-file "$RUNNER_TEMP/notes.md" --latest
           # numbered releases replace the old rolling "nightly" pre-release
           gh release delete nightly --yes --cleanup-tag 2>/dev/null || true
@@ -243,3 +249,52 @@ jobs:
             echo "::warning title=Open the release's pull request::GitHub Actions may not open pull requests here (Settings > Actions > General > Allow GitHub Actions to create and approve pull requests). Open it yourself and merge it: $compare"
             echo "**Open [the release's pull request]($compare) and merge it** to put the release on the website and the matchmaker." >> "$GITHUB_STEP_SUMMARY"
           fi
+
+  # The browser build on GitHub Pages (https://OWNER.github.io/REPO/), for
+  # every release. Pages has to be switched on first, with GitHub Actions as
+  # its source (Settings > Pages); until then this says so and skips.
+  pages:
+    needs: [plan, build]
+    if: needs.plan.outputs.release == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - name: Is Pages switched on?
+        id: pages
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if [ "$(gh api "repos/$GITHUB_REPOSITORY/pages" --jq .build_type 2>/dev/null)" = workflow ]; then
+            echo "on=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::notice::GitHub Pages isn't publishing from Actions (Settings > Pages > Source: GitHub Actions), so the browser build isn't put up there"
+            echo "on=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/download-artifact@v4
+        if: steps.pages.outputs.on == 'true'
+        with:
+          name: Frontline-${{ needs.plan.outputs.version }}
+          path: dl
+
+      - name: Unpack the browser build
+        if: steps.pages.outputs.on == 'true'
+        run: |
+          mkdir site
+          unzip -q dl/Frontline-web.zip -d site
+          ls -la site
+
+      - uses: actions/upload-pages-artifact@v3
+        if: steps.pages.outputs.on == 'true'
+        with:
+          path: site
+
+      - id: deploy
+        if: steps.pages.outputs.on == 'true'
+        uses: actions/deploy-pages@v4
