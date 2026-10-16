@@ -13,7 +13,7 @@ func _gui_input(ev: InputEvent) -> void:
 				if s:
 					hud.world.input.select_unit(s)
 					if ev.double_click and hud.world.cam:
-						hud.world.cam.focus(s.position)
+						hud.world.cam.glide_to(s.position)
 				accept_event()
 				return
 

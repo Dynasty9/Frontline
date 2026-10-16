@@ -157,14 +157,14 @@ func _try_focus() -> void:
 		return
 	if not mission_info.is_empty() and mission_info.get("focus") != null and local_team >= 0:
 		cam.focus(mission_info.focus)
-		cam.yaw = float(mission_info.get("fyaw", 0.0))
+		cam.set_heading(float(mission_info.get("fyaw", 0.0)))
 		focused = true
 		return
 	for st in structures:
 		if st.skind == "fob" and (st.team == local_team or local_team < 0):
 			cam.focus(st.position + Vector3(0, 0, 10 if st.team == 0 else -10))
 			if local_team == 1:
-				cam.yaw = PI
+				cam.set_heading(PI)
 			focused = true
 			return
 

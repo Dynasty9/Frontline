@@ -129,6 +129,10 @@ Pass these after `--` on the command line:
 --blast-at=X,Z,SIZE,TIME                              a real explosion at that spot and time (physics tests);
                                                       X,Z of "f,DX" is DX metres beside the camera's focus
 --pitch=-14 --cam-yaw=-0.84                           fixed camera pitch (degrees) and heading (model close-ups)
+--cam-test                                            drive the camera through its controls (zoom to cursor, grab-pan,
+                                                      turn and tilt, reset, saved views, follow, turning minimap) and
+                                                      print CAMTEST ok / FAIL for each; needs a window, not --headless
+                                                      (e.g. --mission=bridgehead --play --cam-test --offscreen)
 --follow=TEAM[,N]                                     keep the camera on that side's Nth squad (tactics review)
 --trace=path.csv                                      log every man twice a second (position, posture, phase) for plotting
 --manual=CATEGORY[,ENTRY[,SIDE]]                      open the field manual on a page (in a battle)

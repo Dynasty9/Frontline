@@ -31,6 +31,8 @@ const LABELS := {
 	"window": ["Windowed", "Borderless fullscreen", "Exclusive fullscreen"],
 	"look": ["Natural", "Cinematic", "Vivid", "Warm film", "Cold steel", "Bleached war film", "Black & white"],
 	"tonemap": ["AgX (filmic, default)", "ACES", "Filmic", "Reinhard"],
+	"mmb_mode": ["Turn and tilt", "Pan (grab the map)"],
+	"minimap_size": ["Small", "Medium", "Large"],
 }
 const RESOLUTIONS := [Vector2i(1280, 720), Vector2i(1600, 900), Vector2i(1920, 1080), Vector2i(2560, 1440), Vector2i(3840, 2160)]
 ## Colour grading looks: [brightness, contrast, saturation, tint]
@@ -53,6 +55,7 @@ var v := {
 	"ao_q": 2, "upscaler": 1, "sharpen": 0.2, "ssr": true, "lod": 2, "aniso": 3,
 	"window": 0, "resolution": 2, "brightness": 1.0, "contrast": 1.0, "look": 0, "tonemap": 0, "fov": 48.0,
 	"bubbles": true, "cover_preview": true, "edge_pan": true, "cam_speed": 1.0,
+	"zoom_cursor": true, "mmb_mode": 0, "minimap_size": 1, "minimap_rotate": false,
 }
 
 

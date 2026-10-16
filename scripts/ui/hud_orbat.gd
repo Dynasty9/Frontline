@@ -105,11 +105,9 @@ func _pick(kind: String, id: int, mine: bool, add: bool, dbl: bool) -> void:
 				inp.sel_vehicles.append(id)
 	Sfx.ui("click")
 	if at != Vector3.INF and w.cam:
-		w.cam.focus(at)
+		w.cam.glide_to(at, 22.0 if dbl else -1.0)
 		if w.director:
 			w.director.active = false
-		if dbl:
-			w.cam.target_dist = 22.0
 
 
 # --- drawing ------------------------------------------------------------------------------

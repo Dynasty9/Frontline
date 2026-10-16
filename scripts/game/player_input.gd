@@ -223,10 +223,16 @@ func _key(k: InputEventKey) -> void:
 				cancel_modes()
 				order_mode = "defend"
 		KEY_F:
-			if selection_has_mortar():
+			if k.ctrl_pressed:
+				world.cam.toggle_follow()
+			elif selection_has_mortar():
 				ability = "mortar_he"
 			elif selection_has_arty():
 				ability = "arty_he"
+		KEY_BACKSPACE:
+			world.cam.reset_view()
+		KEY_F5, KEY_F6, KEY_F7, KEY_F8:
+			world.cam.bookmark(int(k.keycode - KEY_F5) + 5, k.ctrl_pressed)
 		KEY_R:
 			if place_kind != "":
 				place_yaw += PI * 0.5
@@ -245,7 +251,7 @@ func _key(k: InputEventKey) -> void:
 				world.hud.toggle_orbat()
 		KEY_SPACE:
 			if not world.pings.is_empty():
-				world.cam.focus(world.pings.back()[0])
+				world.cam.glide_to(world.pings.back()[0])
 		KEY_L:
 			if world.hud:
 				world.hud.toggle_log()
@@ -376,22 +382,30 @@ func _cycle_fob() -> void:
 	var f: Structure = fobs[cur % fobs.size()]
 	clear_selection()
 	sel_structure = f.eid
-	world.cam.focus(f.position)
+	world.cam.glide_to(f.position)
 
 
 func _focus_selection() -> void:
+	var c := selection_centre()
+	if c != Vector3.INF:
+		world.cam.glide_to(c)
+
+
+## The middle of everything selected (INF when nothing is).
+func selection_centre() -> Vector3:
 	var c := Vector3.ZERO
 	var n := 0
 	for s in selected_soldiers():
+		if s.life == Soldier.Life.DEAD:
+			continue
 		c += s.position
 		n += 1
 	for id in sel_vehicles:
 		var v = world.entity(id)
-		if v:
+		if v and not v.gone:
 			c += v.position
 			n += 1
-	if n > 0:
-		world.cam.focus(c / n)
+	return Defs.flat(c / n) if n > 0 else Vector3.INF
 
 
 # --- picking & selection ---------------------------------------------------------------
