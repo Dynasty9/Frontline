@@ -1442,15 +1442,18 @@ func stat(key: String) -> void:
 
 func debug_stats() -> String:
 	var c := [{}, {}]
+	var own := [{}, {}]  # whose soldiers: a player's peer id, or "ai"
 	for s in soldiers:
 		if s.team < 0 or s.team > 1:
 			continue
 		var k: String = Soldier.Life.keys()[s.life]
 		c[s.team][k] = int(c[s.team].get(k, 0)) + 1
+		var o := str(s.owner_peer) if s.owner_peer > 0 else "ai"
+		own[s.team][o] = int(own[s.team].get(o, 0)) + 1
 	var out := "t=%.0f ents=%d" % [time, entities.size()]
 	for t in 2:
 		var ti: Dictionary = rules.team_summary()[t] if rules else {}
-		out += " | %s %s veh=%d sup=%d inc=%d/min fobs=%d towns=%d" % [Defs.TEAM_NAMES[t], str(c[t]), _count_veh(t), int(ti.get("supply", 0)), int(ti.get("inc", 0)),
+		out += " | %s %s own=%s veh=%d sup=%d inc=%d/min fobs=%d towns=%d" % [Defs.TEAM_NAMES[t], str(c[t]), str(own[t]), _count_veh(t), int(ti.get("supply", 0)), int(ti.get("inc", 0)),
 			(ti.get("fobs", []) as Array).size(), (ti.get("towns", []) as Array).size()]
 		var bl := {}
 		for st in structures:

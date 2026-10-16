@@ -4,7 +4,7 @@ extends Node
 ##   --aivai               host as spectator, both sides AI
 ##   --host [--players=N]  host and start (when N players have joined)
 ##   --join=IP             join a host
-##   --team=N              team to request after joining (-1 spectator)
+##   --team=N              the side to play (-1 spectator); a client registers with it
 ##   --list                with --host: list the battle on the matchmaker
 ##   --find-match          press Find Match (joins a listed battle, or hosts one)
 ##   --login=EMAIL:PASSWORD [--signup=CALLSIGN]   sign in (or create the account) first
@@ -144,12 +144,12 @@ func _ready() -> void:
 		else:
 			Net.lobby_updated.connect(_maybe_autostart)
 	elif args.has("join") or args.has("find-match"):
+		if args.has("team"):
+			Net.join_team = int(args.team)
 		if args.has("join"):
 			Net.join_game(String(args.join), port)
 		else:
 			menu._find_match()
-		if args.has("team"):
-			multiplayer.connected_to_server.connect(func(): await get_tree().create_timer(0.3).timeout; Net.request_team.rpc_id(1, int(args.team)))
 
 
 ## --login=EMAIL:PASSWORD (with --signup=CALLSIGN to create the account first).
