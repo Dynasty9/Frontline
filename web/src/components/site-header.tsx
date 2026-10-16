@@ -34,7 +34,7 @@ export function SiteHeader({ overlay = false }: { overlay?: boolean }) {
       className={cn(
         "top-0 z-40 border-b transition-[background-color,border-color,backdrop-filter] duration-300",
         overlay ? "fixed inset-x-0" : "sticky",
-        clear ? "border-transparent bg-transparent" : "border-white/10 bg-background/80 backdrop-blur-md",
+        clear ? "border-transparent bg-transparent" : "border-white/10 bg-background/80 backdrop-blur-md"
       )}
     >
       <div className="mx-auto flex h-14 max-w-6xl items-center gap-6 px-4 sm:px-6">
@@ -44,7 +44,13 @@ export function SiteHeader({ overlay = false }: { overlay?: boolean }) {
         </a>
         <nav className="ml-auto hidden items-center gap-1 md:flex">
           {NAV.map(([label, href]) => (
-            <Button key={href} variant="ghost" size="sm" asChild className="text-sm text-muted-foreground hover:text-foreground">
+            <Button
+              key={href}
+              variant="ghost"
+              size="sm"
+              asChild
+              className="text-sm text-muted-foreground hover:text-foreground"
+            >
               <a href={href}>{label}</a>
             </Button>
           ))}

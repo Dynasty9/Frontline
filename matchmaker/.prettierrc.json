@@ -1,0 +1,12 @@
+{
+  "$schema": "https://json.schemastore.org/prettierrc",
+  "useTabs": true,
+  "singleQuote": true,
+  "printWidth": 160,
+  "overrides": [
+    {
+      "files": ["*.json", "*.yml"],
+      "options": { "useTabs": false }
+    }
+  ]
+}

@@ -26,7 +26,7 @@ export function RadioLog({ className }: { className?: string }) {
         setI((c) => c + 1)
         setN(0)
       },
-      reduced ? 4500 : 2200,
+      reduced ? 4500 : 2200
     )
     return () => window.clearTimeout(t)
   }, [i, n, inView, reduced])
@@ -35,7 +35,10 @@ export function RadioLog({ className }: { className?: string }) {
   return (
     <div
       ref={ref}
-      className={cn("border border-white/10 bg-black/55 font-mono text-[11px] leading-relaxed shadow-2xl backdrop-blur-md", className)}
+      className={cn(
+        "border border-white/10 bg-black/55 font-mono text-[11px] leading-relaxed shadow-2xl backdrop-blur-md",
+        className
+      )}
       aria-hidden="true"
     >
       <div className="flex items-center gap-2 border-b border-white/10 px-3 py-2 text-[10px] tracking-[0.2em] text-muted-foreground uppercase">
@@ -48,9 +51,14 @@ export function RadioLog({ className }: { className?: string }) {
           const [who, text] = RADIO[((k % RADIO.length) + RADIO.length) % RADIO.length]
           const current = row === KEEP
           return (
-            <li key={k} className={cn("transition-opacity duration-500", current ? "text-cream" : row === 0 ? "opacity-35" : "opacity-60")}>
-              <span className="text-primary">{who}:</span>{" "}
-              {current && !reduced ? text.slice(0, n) : text}
+            <li
+              key={k}
+              className={cn(
+                "transition-opacity duration-500",
+                current ? "text-cream" : row === 0 ? "opacity-60" : "opacity-75"
+              )}
+            >
+              <span className="text-primary">{who}:</span> {current && !reduced ? text.slice(0, n) : text}
               {current && <span className="caret text-primary" />}
             </li>
           )

@@ -26,7 +26,11 @@ export function Marquee({ items, reverse, time = 60, className, itemClassName, m
     ))
   return (
     <div className={cn("overflow-hidden", className)}>
-      <div className="marquee" data-reverse={reverse || undefined} style={{ "--marquee-time": `${time}s` } as React.CSSProperties}>
+      <div
+        className="marquee"
+        data-reverse={reverse || undefined}
+        style={{ "--marquee-time": `${time}s` } as React.CSSProperties}
+      >
         <div className="flex items-center">{row(0)}</div>
         <div className="flex items-center" aria-hidden="true">
           {row(1)}
@@ -52,7 +56,10 @@ export function TickerBands() {
       <Marquee
         items={TICKER}
         time={55}
-        className={cn(band, "-rotate-[2deg] bg-primary py-3 text-primary-foreground shadow-[0_10px_40px_-10px_rgb(245_201_110/0.5)]")}
+        className={cn(
+          band,
+          "-rotate-[2deg] bg-primary py-3 text-primary-foreground shadow-[0_10px_40px_-10px_rgb(245_201_110/0.5)]"
+        )}
         itemClassName="font-display text-2xl font-extrabold tracking-wide uppercase"
         mark={<Emblem className="size-5 [&_circle]:fill-[#15120b] [&_path]:stroke-[#15120b]" />}
       />

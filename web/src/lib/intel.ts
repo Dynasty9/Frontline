@@ -6,7 +6,10 @@
 
 /** Radio traffic, word for word, from the missions. */
 export const RADIO: [string, string][] = [
-  ["Overlord", "Rebels hold the village at C6 and the bridge behind it. Clear the village, then take that bridge before they blow it."],
+  [
+    "Overlord",
+    "Rebels hold the village at C6 and the bridge behind it. Clear the village, then take that bridge before they blow it.",
+  ],
   ["Fire control", "Shot, over. 155 on C6, eight rounds."],
   ["Overlord", "Feet dry. The AA guns are just inland of the harbour, G4."],
   ["Neptune", "Two enemy boats coming out of the harbour. Engaging."],
@@ -60,7 +63,13 @@ export const STATS: { value: number; from: number; unit?: string; label: string;
   { value: 97, from: 0, label: "Vehicles", note: "Quad bikes to railgun tanks, gunships to gun trawlers" },
   { value: 16, from: 0, label: "Fire-support assets", note: "Mortars, 155s, rocket barrages, A-10s and the AC-130" },
   { value: 5, from: 0, label: "Missions", note: "Played alone or in co-op, dawn to dead of night" },
-  { value: 1, from: 0, unit: "km²", label: "Battlefield", note: "Of countryside: a town, villages, a river and the sea" },
+  {
+    value: 1,
+    from: 0,
+    unit: "km²",
+    label: "Battlefield",
+    note: "Of countryside: a town, villages, a river and the sea",
+  },
   { value: 0, from: 999, label: "Imported assets", note: "Every model, texture and sound is made in code" },
 ]
 
@@ -104,7 +113,8 @@ export const MISSIONS: Mission[] = [
     title: "Ambush Alley",
     op: "Operation Black Harvest",
     time: "Dusk",
-    blurb: "As the Rebels: ambush a Coalition convoy on a country lane, then vanish before their reaction force arrives.",
+    blurb:
+      "As the Rebels: ambush a Coalition convoy on a country lane, then vanish before their reaction force arrives.",
     force: "A fighter cell, two RPG teams, a PKM team and an IED",
   },
   {

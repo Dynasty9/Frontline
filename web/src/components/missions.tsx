@@ -25,8 +25,8 @@ export function Missions() {
             </h2>
           </div>
           <p className="max-w-sm text-sm leading-relaxed text-muted-foreground">
-            Short, hand-built operations with objectives, radio traffic and a twist, each built around something the game
-            does well. Play them alone, or bring a friend: every one works in co-op.
+            Short, hand-built operations with objectives, radio traffic and a twist, each built around something the
+            game does well. Play them alone, or bring a friend: every one works in co-op.
           </p>
         </Reveal>
 
@@ -58,12 +58,19 @@ function MissionCard({ m, n, big }: { m: Mission; n: number; big: boolean }) {
       </div>
 
       <div className="absolute top-4 left-5 flex items-center gap-2 font-mono text-[10px] tracking-[0.2em] text-cream/85 uppercase sm:left-6">
-        <span className="bg-primary px-1.5 py-0.5 font-bold text-primary-foreground">Op {String(n).padStart(2, "0")}</span>
+        <span className="bg-primary px-1.5 py-0.5 font-bold text-primary-foreground">
+          Op {String(n).padStart(2, "0")}
+        </span>
         {m.time}
       </div>
 
       <p className="text-[11px] font-bold tracking-[0.22em] text-primary uppercase">{m.op}</p>
-      <h3 className={cn("mt-1 font-display leading-none font-extrabold uppercase", big ? "text-5xl sm:text-7xl" : "text-4xl")}>
+      <h3
+        className={cn(
+          "mt-1 font-display leading-none font-extrabold uppercase",
+          big ? "text-5xl sm:text-7xl" : "text-4xl"
+        )}
+      >
         {m.title}
       </h3>
       <p className={cn("mt-3 leading-relaxed text-cream/85", big ? "max-w-lg text-base" : "text-sm")}>{m.blurb}</p>

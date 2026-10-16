@@ -102,7 +102,10 @@ function FeatureRow({ f, n, flip }: { f: Feature; n: number; flip: boolean }) {
         <p className="mt-4 leading-relaxed text-muted-foreground">{f.text}</p>
         <ul className="mt-5 flex flex-wrap gap-2">
           {f.tags.map((t) => (
-            <li key={t} className="border border-primary/30 bg-primary/5 px-2.5 py-1 text-[11px] font-bold tracking-[0.14em] text-primary/90 uppercase">
+            <li
+              key={t}
+              className="border border-primary/30 bg-primary/5 px-2.5 py-1 text-[11px] font-bold tracking-[0.14em] text-primary/90 uppercase"
+            >
               {t}
             </li>
           ))}

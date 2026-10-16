@@ -26,7 +26,7 @@ export function useInView<T extends Element>({ once = false, margin = "0px", thr
           setInView(false)
         }
       },
-      { rootMargin: margin, threshold },
+      { rootMargin: margin, threshold }
     )
     io.observe(el)
     return () => io.disconnect()

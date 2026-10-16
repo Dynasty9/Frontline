@@ -18,8 +18,9 @@ export function Downloads({ platform }: { platform: Platform }) {
           Get the game. <span className="text-primary">It's free.</span>
         </h2>
         <p className="mt-4 max-w-2xl text-sm text-muted-foreground">
-          Free and open source. Unzip it anywhere and run Frontline; there's nothing to install. The first time it starts,
-          it also sets up the Join links on this page, and from then on it updates itself whenever a new version comes out.
+          Free and open source. Unzip it anywhere and run Frontline; there's nothing to install. The first time it
+          starts, it also sets up the Join links on this page, and from then on it updates itself whenever a new version
+          comes out.
         </p>
 
         <div className="mt-8 grid gap-4 md:grid-cols-2">
@@ -31,7 +32,9 @@ export function Downloads({ platform }: { platform: Platform }) {
         <div className="mt-6 flex flex-wrap gap-x-6 gap-y-2 text-sm text-muted-foreground">
           <ExtLink href={latest.url}>What's new in {latest.tag}</ExtLink>
           <ExtLink href={`${GITHUB_URL}/releases`}>All releases</ExtLink>
-          <ExtLink href={`${GITHUB_URL}/actions/workflows/release.yml`}>Build artifacts (needs a GitHub account)</ExtLink>
+          <ExtLink href={`${GITHUB_URL}/actions/workflows/release.yml`}>
+            Build artifacts (needs a GitHub account)
+          </ExtLink>
           <ExtLink href={`${GITHUB_URL}#quick-start`}>Run from source</ExtLink>
         </div>
       </div>
