@@ -19,6 +19,9 @@ const PLUMES := {"M": [1.0, 30, 13.0, 6, 16.0, 7.0], "L": [1.7, 52, 20.0, 10, 24
 const MAX_PLUMES := {"M": 8, "L": 6}
 const SMALL_KINDS := ["dust", "smoke", "fire", "spark", "dirt_spurt", "brass", "water_spurt"]
 
+## The browser build's renderer (OpenGL), which can't do everything Forward+ does.
+static var gl := RenderingServer.get_current_rendering_method() == "gl_compatibility"
+
 var world: World
 var noise_tex: ImageTexture
 var scorch_tex: ImageTexture
@@ -309,7 +312,7 @@ func _make_materials() -> void:
 
 func _shader_mat(code: String) -> ShaderMaterial:
 	var sh := Shader.new()
-	sh.code = code
+	sh.code = Mats.code(code)
 	var m := ShaderMaterial.new()
 	m.shader = sh
 	return m
@@ -328,11 +331,12 @@ func apply_lighting() -> void:
 	var zn: Color = at.MOODS[at.mood].zenith
 	var amb := _desat(hz.lerp(zn, 0.4), 0.55)
 	var night := at.mood == "night"
-	smoke_mat.set_shader_parameter("sun_dir", sd)
-	smoke_mat.set_shader_parameter("sun_col", sc)
-	smoke_mat.set_shader_parameter("sun_energy", at.sun.light_energy * (0.45 if night else 0.75))
-	smoke_mat.set_shader_parameter("amb_col", amb)
-	smoke_mat.set_shader_parameter("amb_energy", float(at.MOODS[at.mood].ambient) * (0.6 if night else 1.1))
+	# (and the copies of it carrying a smoke's own density, in the browser build)
+	Mats.set_shared(smoke_mat, &"sun_dir", sd)
+	Mats.set_shared(smoke_mat, &"sun_col", sc)
+	Mats.set_shared(smoke_mat, &"sun_energy", at.sun.light_energy * (0.45 if night else 0.75))
+	Mats.set_shared(smoke_mat, &"amb_col", amb)
+	Mats.set_shared(smoke_mat, &"amb_energy", float(at.MOODS[at.mood].ambient) * (0.6 if night else 1.1))
 	ejecta_mat.set_shader_parameter("light", sc * at.sun.light_energy * 0.45 + amb * float(at.MOODS[at.mood].ambient) * 0.7)
 	fire_light = 2.6 if night else (1.5 if at.mood in ["dusk", "dawn", "rain", "overcast"] else 0.8)
 	if world.fx and world.fx.gunfx:
@@ -378,7 +382,9 @@ func _sys(amount: int, life: float, pm: ParticleProcessMaterial, mat: Material, 
 	p.material_override = mat
 	p.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	p.visibility_aabb = AABB(Vector3(-30, -5, -30), Vector3(60, 60, 60))
-	p.draw_order = GPUParticles3D.DRAW_ORDER_VIEW_DEPTH
+	# (OpenGL sorts by reading every particle back from the GPU, every frame:
+	# a stall WebGL can't afford. There they draw in the order they were born)
+	p.draw_order = GPUParticles3D.DRAW_ORDER_INDEX if gl else GPUParticles3D.DRAW_ORDER_VIEW_DEPTH
 	return p
 
 
@@ -425,9 +431,9 @@ func _build_rig(cls: String) -> Node3D:
 	pm.color_ramp = _ramp([0.0, 0.04, 0.5, 1.0], [Color(0.1, 0.09, 0.08, 0.0), Color(0.1, 0.09, 0.08, 1.0), Color(0.14, 0.13, 0.12, 0.85), Color(0.22, 0.21, 0.2, 0.0)])
 	var fb := _sys(c.fb, c.fbl, pm, smoke_mat)
 	fb.explosiveness = 0.97
-	fb.set_instance_shader_parameter("heat", 1.85)
-	fb.set_instance_shader_parameter("heat_fade", 0.3)
-	fb.set_instance_shader_parameter("density", 1.55)
+	Mats.set_inst(fb, &"heat", 1.85)
+	Mats.set_inst(fb, &"heat_fade", 0.3)
+	Mats.set_inst(fb, &"density", 1.55)
 	layers["fireball"] = fb
 	# 2b. heavy rounds: burning fragments flung out in arcs, still alight
 	# where they land
@@ -477,9 +483,9 @@ func _build_rig(cls: String) -> Node3D:
 	pm.color_initial_ramp = _ramp([0.0, 1.0], [Color(0.8, 0.8, 0.8), Color(1.15, 1.12, 1.1)])
 	var sm := _sys(c.sm, c.sml, pm, smoke_mat)
 	sm.explosiveness = 0.6
-	sm.set_instance_shader_parameter("heat", 0.35)
-	sm.set_instance_shader_parameter("heat_fade", 0.08)
-	sm.set_instance_shader_parameter("density", 1.0)
+	Mats.set_inst(sm, &"heat", 0.35)
+	Mats.set_inst(sm, &"heat_fade", 0.08)
+	Mats.set_inst(sm, &"density", 1.0)
 	layers["smoke"] = sm
 	# 4. dirt plume thrown up from the ground
 	pm = _pm(Vector3.UP, 16.0, 8.0 * k, 21.0 * sqrt(k), Vector3(0, -3.2, 0), 0.9 * k, 2.6 * k)
@@ -494,8 +500,8 @@ func _build_rig(cls: String) -> Node3D:
 	pm.color_initial_ramp = _ramp([0.0, 1.0], [Color(0.75, 0.75, 0.75), Color(1.25, 1.2, 1.15)])
 	var dt := _sys(c.dirt, 3.4, pm, smoke_mat)
 	dt.explosiveness = 0.97
-	dt.set_instance_shader_parameter("density", 1.6)
-	dt.set_instance_shader_parameter("erode", 1.5)
+	Mats.set_inst(dt, &"density", 1.6)
+	Mats.set_inst(dt, &"erode", 1.5)
 	layers["dirt"] = dt
 	# 4b. heavy rounds: a fountain of earth thrown high that falls back to the ground
 	if int(c.col) > 0:
@@ -512,8 +518,8 @@ func _build_rig(cls: String) -> Node3D:
 		var co := _sys(c.col, 3.6, pm, smoke_mat)
 		co.explosiveness = 0.94
 		co.visibility_aabb = AABB(Vector3(-30, -5, -30), Vector3(60, 70, 60))
-		co.set_instance_shader_parameter("density", 1.5)
-		co.set_instance_shader_parameter("erode", 1.4)
+		Mats.set_inst(co, &"density", 1.5)
+		Mats.set_inst(co, &"erode", 1.4)
 		layers["column"] = co
 	# 5. sparks / hot fragments
 	pm = _pm(Vector3.UP, 85.0, 12.0 * sqrt(k), 30.0 * sqrt(k), Vector3(0, -9.8, 0), 0.6, 1.3)
@@ -558,29 +564,31 @@ func _build_rig(cls: String) -> Node3D:
 	db.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
 	layers["debris"] = db
 	# 6b. ejecta: streaks of earth flung out in a cone, trailing dust as they arc and fall
-	pm = _pm(Vector3.UP, 30.0, 11.0 * sqrt(k), 24.0 * sqrt(k), Vector3(0, -15.0, 0), 0.8 * k, 1.5 * k)
-	pm.angle_min = 0.0
-	pm.angle_max = 0.0
-	pm.damping_min = 0.6
-	pm.damping_max = 1.6
-	pm.collision_mode = ParticleProcessMaterial.COLLISION_HIDE_ON_CONTACT
-	pm.color_ramp = _ramp([0.0, 0.7, 1.0], [Color(0.06, 0.05, 0.04, 1.0), Color(0.14, 0.12, 0.1, 0.75), Color(0.25, 0.22, 0.18, 0.0)])
-	var rib := RibbonTrailMesh.new()
-	rib.shape = RibbonTrailMesh.SHAPE_CROSS
-	rib.size = 0.38
-	rib.sections = 6
-	rib.section_length = 0.3
-	rib.section_segments = 1
-	var wc := Curve.new()
-	wc.add_point(Vector2(0, 0.15))
-	wc.add_point(Vector2(1, 1.0))
-	rib.curve = wc
-	var ej := _sys(c.ej, 1.6, pm, ejecta_mat, rib)
-	ej.trail_enabled = true
-	ej.trail_lifetime = 0.3
-	ej.explosiveness = 1.0
-	ej.draw_order = GPUParticles3D.DRAW_ORDER_INDEX
-	layers["ejecta"] = ej
+	# (they trail behind them, which the browser build's renderer can't draw)
+	if not gl:
+		pm = _pm(Vector3.UP, 30.0, 11.0 * sqrt(k), 24.0 * sqrt(k), Vector3(0, -15.0, 0), 0.8 * k, 1.5 * k)
+		pm.angle_min = 0.0
+		pm.angle_max = 0.0
+		pm.damping_min = 0.6
+		pm.damping_max = 1.6
+		pm.collision_mode = ParticleProcessMaterial.COLLISION_HIDE_ON_CONTACT
+		pm.color_ramp = _ramp([0.0, 0.7, 1.0], [Color(0.06, 0.05, 0.04, 1.0), Color(0.14, 0.12, 0.1, 0.75), Color(0.25, 0.22, 0.18, 0.0)])
+		var rib := RibbonTrailMesh.new()
+		rib.shape = RibbonTrailMesh.SHAPE_CROSS
+		rib.size = 0.38
+		rib.sections = 6
+		rib.section_length = 0.3
+		rib.section_segments = 1
+		var wc := Curve.new()
+		wc.add_point(Vector2(0, 0.15))
+		wc.add_point(Vector2(1, 1.0))
+		rib.curve = wc
+		var ej := _sys(c.ej, 1.6, pm, ejecta_mat, rib)
+		ej.trail_enabled = true
+		ej.trail_lifetime = 0.3
+		ej.explosiveness = 1.0
+		ej.draw_order = GPUParticles3D.DRAW_ORDER_INDEX
+		layers["ejecta"] = ej
 	# 7. ground dust ring rolling outward
 	pm = _pm(Vector3(1, 0, 0), 180.0, 7.0 * k, 11.0 * k, Vector3(0, 0.3, 0), 1.4 * k, 2.4 * k)
 	pm.flatness = 1.0
@@ -595,7 +603,7 @@ func _build_rig(cls: String) -> Node3D:
 	pm.color_ramp = _ramp([0.0, 0.1, 1.0], [Color(0.42, 0.38, 0.32, 0.0), Color(0.42, 0.38, 0.32, 0.42), Color(0.48, 0.44, 0.38, 0.0)])
 	var rg := _sys(c.ring, 2.0, pm, smoke_mat)
 	rg.explosiveness = 1.0
-	rg.set_instance_shader_parameter("density", 0.9)
+	Mats.set_inst(rg, &"density", 0.9)
 	layers["ring"] = rg
 	for key in layers:
 		rig.add_child(layers[key])
@@ -624,7 +632,7 @@ func _get_rig(cls: String) -> Node3D:
 func _fire_layer(p: GPUParticles3D, ratio: float, seed_v: float) -> void:
 	p.visible = true
 	p.amount_ratio = clampf(ratio, 0.05, 1.0)
-	p.set_instance_shader_parameter("seed", seed_v)
+	Mats.set_inst(p, &"seed", seed_v)
 	p.restart()
 	p.emitting = true
 
@@ -650,7 +658,8 @@ func explode(p: Vector3, size: float) -> void:
 	if ground:
 		_fire_layer(layers.dirt, fx, sv + 2.0)
 		_fire_layer(layers.debris, fx, sv)
-		_fire_layer(layers.ejecta, fx, sv)
+		if layers.has("ejecta"):
+			_fire_layer(layers.ejecta, fx, sv)
 		if layers.has("column"):
 			_fire_layer(layers.column, fx * clampf(size / 2.0, 0.5, 1.0), sv + 4.0)
 		if layers.has("afterburn") and size >= 1.3:
@@ -715,14 +724,14 @@ func _build_small(kind: String) -> GPUParticles3D:
 			pm.scale_curve = _curve([Vector2(0, 0.6), Vector2(1, 1.0)])
 			pm.color_ramp = _ramp([0.0, 0.1, 1.0], [Color(0.25, 0.2, 0.14, 0.0), Color(0.25, 0.2, 0.14, 1.0), Color(0.3, 0.26, 0.2, 0.0)])
 			p = _sys(6, 0.7, pm, smoke_mat)
-			p.set_instance_shader_parameter("density", 1.3)
+			Mats.set_inst(p, &"density", 1.3)
 		"water_spurt":
 			# a bullet into the water: a thin white spout and a little spray
 			pm = _pm(Vector3.UP, 8.0, 2.8, 5.2, Vector3(0, -9.8, 0), 0.18, 0.4)
 			pm.scale_curve = _curve([Vector2(0, 0.5), Vector2(1, 1.4)])
 			pm.color_ramp = _ramp([0.0, 0.08, 1.0], [Color(0.93, 0.96, 0.98, 0.0), Color(0.93, 0.96, 0.98, 0.95), Color(0.9, 0.94, 0.96, 0.0)])
 			p = _sys(8, 0.8, pm, smoke_mat)
-			p.set_instance_shader_parameter("density", 1.2)
+			Mats.set_inst(p, &"density", 1.2)
 		"smoke":
 			pm = _pm(Vector3.UP, 40.0, 1.0, 3.0, Vector3(0.4, 0.7, 0.2), 1.0, 1.9)
 			pm.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_SPHERE
@@ -739,8 +748,8 @@ func _build_small(kind: String) -> GPUParticles3D:
 			pm.scale_curve = _curve([Vector2(0, 0.5), Vector2(1, 1.0)])
 			pm.color_ramp = _ramp([0.0, 0.1, 1.0], [Color(0.2, 0.18, 0.16, 0.0), Color(0.2, 0.18, 0.16, 1.0), Color(0.3, 0.28, 0.26, 0.0)])
 			p = _sys(8, 0.9, pm, smoke_mat)
-			p.set_instance_shader_parameter("heat", 1.2)
-			p.set_instance_shader_parameter("heat_fade", 0.6)
+			Mats.set_inst(p, &"heat", 1.2)
+			Mats.set_inst(p, &"heat_fade", 0.6)
 		"brass":
 			pm = _pm(Vector3.UP, 25.0, 2.5, 4.0, Vector3(0, -9.8, 0), 0.8, 1.2)
 			pm.particle_flag_rotate_y = true
@@ -851,7 +860,7 @@ func make_fire(ext: Vector3, smoke_kind := SMOKE_WOOD) -> Node3D:
 	fl.explosiveness = 0.0
 	fl.randomness = 0.5
 	fl.visibility_aabb = aabb
-	fl.set_instance_shader_parameter("seed", randf() * 100.0)
+	Mats.set_inst(fl, &"seed", randf() * 100.0)
 	fl.name = "Fire"
 	h.add_child(fl)
 	# sparks and burning flecks carried up and swirled about on the heat
@@ -909,10 +918,10 @@ func make_fire(ext: Vector3, smoke_kind := SMOKE_WOOD) -> Node3D:
 	smk.position = Vector3(0, ext.y * 0.8, 0)
 	smk.visibility_aabb = aabb
 	smk.name = "Smoke"
-	smk.set_instance_shader_parameter("density", 1.15 if smoke_kind != SMOKE_LEAVES else 1.0)
-	smk.set_instance_shader_parameter("heat", 0.55)
-	smk.set_instance_shader_parameter("heat_fade", 0.1)
-	smk.set_instance_shader_parameter("erode", 1.2)
+	Mats.set_inst(smk, &"density", 1.15 if smoke_kind != SMOKE_LEAVES else 1.0)
+	Mats.set_inst(smk, &"heat", 0.55)
+	Mats.set_inst(smk, &"heat_fade", 0.1)
+	Mats.set_inst(smk, &"erode", 1.2)
 	h.add_child(smk)
 	var l := OmniLight3D.new()
 	l.light_color = Color(1.0, 0.52, 0.18)
@@ -993,7 +1002,7 @@ func ground_fire(p: Vector3, r: float, life: float) -> void:
 	spm.scale_min = 1.8
 	spm.scale_max = 3.0
 	spm.scale_curve = _curve([Vector2(0, 0.4), Vector2(0.3, 1.0), Vector2(1, 2.4)])
-	sm.set_instance_shader_parameter("density", 0.6)
+	Mats.set_inst(sm, &"density", 0.6)
 	set_fire(h, 1.0)
 	_ground_fires.append([h, 0.0, life, r, 0])
 	if Settings.get_v("decals"):
@@ -1026,8 +1035,8 @@ func collapse(p: Vector3, ext: Vector3) -> void:
 	pm.scale_curve = _curve([Vector2(0, 0.4), Vector2(1, 1.3)])
 	pm.color_ramp = _ramp([0.0, 0.08, 1.0], [Color(0.16, 0.15, 0.14, 0.0), Color(0.16, 0.15, 0.14, 0.8), Color(0.32, 0.31, 0.3, 0.0)])
 	var ash := _sys(int(14 * k) + 4, 4.5, pm, smoke_mat)
-	ash.set_instance_shader_parameter("heat", 0.8)
-	ash.set_instance_shader_parameter("heat_fade", 0.2)
+	Mats.set_inst(ash, &"heat", 0.8)
+	Mats.set_inst(ash, &"heat_fade", 0.2)
 	for ps in [sp, ash]:
 		add_child(ps)
 		ps.global_position = p
@@ -1055,7 +1064,7 @@ func make_shell_trail(heavy := false) -> GPUParticles3D:
 	p.one_shot = false
 	p.explosiveness = 0.0
 	p.emitting = true
-	p.set_instance_shader_parameter("density", 0.9)
+	Mats.set_inst(p, &"density", 0.9)
 	p.visibility_aabb = AABB(Vector3(-200, -60, -200), Vector3(400, 260, 400))
 	return p
 
@@ -1088,9 +1097,9 @@ func make_trail() -> GPUParticles3D:
 	t.randomness = 0.1
 	t.fixed_fps = 0
 	t.visibility_aabb = AABB(Vector3(-60, -10, -60), Vector3(120, 40, 120))
-	t.set_instance_shader_parameter("heat", 0.9)
-	t.set_instance_shader_parameter("heat_fade", 0.06)
-	t.set_instance_shader_parameter("density", 0.8)
+	Mats.set_inst(t, &"heat", 0.9)
+	Mats.set_inst(t, &"heat_fade", 0.06)
+	Mats.set_inst(t, &"density", 0.8)
 	t.emitting = true
 	return t
 
@@ -1143,7 +1152,7 @@ func splash(p: Vector3, size: float) -> void:
 	col.scale_curve = _curve([Vector2(0, 0.35), Vector2(0.4, 1.0), Vector2(1, 1.5)])
 	col.color_ramp = _ramp([0.0, 0.06, 0.6, 1.0], [Color(0.95, 0.97, 0.98, 0.0), Color(0.96, 0.98, 0.99, 1.0), Color(0.88, 0.91, 0.93, 0.55), Color(0.85, 0.88, 0.9, 0.0)])
 	var c := _sys(int(40 * k), 2.0 + 0.4 * k, col, smoke_mat)
-	c.set_instance_shader_parameter("density", 1.3)
+	Mats.set_inst(c, &"density", 1.3)
 	var sp := _pm(Vector3.UP, 65.0, 4.0 * k, 8.0 * k, Vector3(0, -8.0, 0), 0.5 * k, 1.1 * k)
 	sp.color_ramp = _ramp([0.0, 0.08, 1.0], [Color(0.92, 0.95, 0.96, 0.0), Color(0.92, 0.95, 0.96, 0.8), Color(0.9, 0.93, 0.94, 0.0)])
 	var s := _sys(int(30 * k), 1.3, sp, smoke_mat)
@@ -1301,7 +1310,7 @@ func make_dust(size: float) -> GPUParticles3D:
 	d.one_shot = false
 	d.explosiveness = 0.0
 	d.emitting = false
-	d.set_instance_shader_parameter("density", 0.8)
+	Mats.set_inst(d, &"density", 0.8)
 	d.visibility_aabb = AABB(Vector3(-20, -2, -20), Vector3(40, 12, 40))
 	return d
 
@@ -1329,9 +1338,11 @@ func make_smoke_screen() -> Node3D:
 	s.explosiveness = 0.0
 	s.name = "Smoke"
 	s.visibility_aabb = AABB(Vector3(-15, -2, -15), Vector3(30, 20, 30))
-	s.set_instance_shader_parameter("density", 1.0)
+	Mats.set_inst(s, &"density", 1.0)
 	s.emitting = false
 	h.add_child(s)
+	if gl:
+		return h  # (OpenGL has no volumetric fog: the particles alone)
 	var fv := FogVolume.new()
 	fv.shape = RenderingServer.FOG_VOLUME_SHAPE_ELLIPSOID
 	fv.size = Vector3(2, 2, 2)
@@ -1348,11 +1359,13 @@ func make_smoke_screen() -> Node3D:
 
 func set_smoke_screen(h: Node3D, r: float) -> void:
 	var s := h.get_node("Smoke") as GPUParticles3D
-	var fv := h.get_node("Fog") as FogVolume
+	var fv := h.get_node_or_null("Fog") as FogVolume
 	s.emitting = r > 0.3
 	if s.emitting:
 		(s.process_material as ParticleProcessMaterial).emission_sphere_radius = maxf(0.6, r * 0.7)
 		s.amount_ratio = clampf(Settings.fx_mult() * 1.2, 0.3, 1.0)
+	if fv == null:
+		return
 	var vol: bool = Settings.get_v("vol_fog")
 	fv.visible = vol and r > 0.3
 	if fv.visible:
@@ -1391,7 +1404,7 @@ func _view_process(dt: float) -> void:
 			_waves.remove_at(i)
 			continue
 		mi.scale = Vector3.ONE * (0.5 + 9.0 * float(w[2]) * sqrt(k))
-		mi.set_instance_shader_parameter("wave_t", k)
+		Mats.set_inst(mi, &"wave_t", k)
 	for i in range(_decals.size() - 1, -1, -1):
 		var d: Array = _decals[i]
 		d[1] += dt
@@ -1485,6 +1498,12 @@ render_mode unshaded, blend_mix, depth_draw_never, cull_disabled, shadows_disabl
 
 uniform sampler2D noise_tex : filter_linear_mipmap, repeat_enable;
 uniform sampler2D depth_tex : hint_depth_texture, filter_nearest;
+// a depth read back to clip space: OpenGL's (the browser build's) runs -1..1, Vulkan's 0..1
+#if CURRENT_RENDERER == RENDERER_COMPATIBILITY
+#define NDC_Z(d) ((d) * 2.0 - 1.0)
+#else
+#define NDC_Z(d) (d)
+#endif
 uniform vec3 sun_dir = vec3(0.4, 0.8, 0.3);
 uniform vec3 sun_col : source_color = vec3(1.0, 0.95, 0.85);
 uniform float sun_energy = 1.5;
@@ -1530,7 +1549,7 @@ void fragment() {
 	shape *= mix(1.0, smoothstep(0.15, 0.6, billow), clamp(age * 0.8, 0.0, 0.6));
 	float a = shape * COLOR.a * density;
 	float dz = texture(depth_tex, SCREEN_UV).r;
-	vec4 vp = INV_PROJECTION_MATRIX * vec4(SCREEN_UV * 2.0 - 1.0, dz, 1.0);
+	vec4 vp = INV_PROJECTION_MATRIX * vec4(SCREEN_UV * 2.0 - 1.0, NDC_Z(dz), 1.0);
 	float scene_z = -vp.z / vp.w;
 	a *= clamp((scene_z + VERTEX.z) / softness, 0.0, 1.0);
 	float nz = sqrt(max(0.0, 1.0 - min(r * r, 1.0)));
@@ -1559,6 +1578,12 @@ const FLASH_SHADER := """
 shader_type spatial;
 render_mode unshaded, blend_add, depth_draw_never, cull_disabled, shadows_disabled;
 uniform sampler2D depth_tex : hint_depth_texture, filter_nearest;
+// a depth read back to clip space: OpenGL's (the browser build's) runs -1..1, Vulkan's 0..1
+#if CURRENT_RENDERER == RENDERER_COMPATIBILITY
+#define NDC_Z(d) ((d) * 2.0 - 1.0)
+#else
+#define NDC_Z(d) (d)
+#endif
 uniform vec3 col : source_color = vec3(1.0, 0.72, 0.38);
 uniform float intensity = 7.0;
 instance uniform float rot = 0.0;
@@ -1580,7 +1605,7 @@ void fragment() {
 	g *= 1.0 - smoothstep(0.75, 1.0, r);
 	vec3 c = mix(col, vec3(1.0, 0.95, 0.85), exp(-r * r * 25.0));
 	float dz = texture(depth_tex, SCREEN_UV).r;
-	vec4 vp = INV_PROJECTION_MATRIX * vec4(SCREEN_UV * 2.0 - 1.0, dz, 1.0);
+	vec4 vp = INV_PROJECTION_MATRIX * vec4(SCREEN_UV * 2.0 - 1.0, NDC_Z(dz), 1.0);
 	float soft = clamp((-vp.z / vp.w + VERTEX.z) / 2.5, 0.0, 1.0);
 	ALBEDO = c * intensity * g * COLOR.a * soft;
 	ALPHA = clamp(g * COLOR.a * soft, 0.0, 1.0);
@@ -1637,6 +1662,12 @@ shader_type spatial;
 render_mode unshaded, blend_premul_alpha, depth_draw_never, cull_disabled, shadows_disabled, fog_disabled;
 uniform sampler2D noise_tex : filter_linear_mipmap, repeat_enable;
 uniform sampler2D depth_tex : hint_depth_texture, filter_nearest;
+// a depth read back to clip space: OpenGL's (the browser build's) runs -1..1, Vulkan's 0..1
+#if CURRENT_RENDERER == RENDERER_COMPATIBILITY
+#define NDC_Z(d) ((d) * 2.0 - 1.0)
+#else
+#define NDC_Z(d) (d)
+#endif
 uniform float intensity = 2.4;
 instance uniform float seed = 0.0;
 varying float age;
@@ -1673,7 +1704,7 @@ void fragment() {
 	col = mix(col, vec3(1.0, 0.92, 0.74), smoothstep(0.8, 1.0, temp));
 	float a = body * fade;
 	float dz = texture(depth_tex, SCREEN_UV).r;
-	vec4 vp = INV_PROJECTION_MATRIX * vec4(SCREEN_UV * 2.0 - 1.0, dz, 1.0);
+	vec4 vp = INV_PROJECTION_MATRIX * vec4(SCREEN_UV * 2.0 - 1.0, NDC_Z(dz), 1.0);
 	a *= clamp((-vp.z / vp.w + VERTEX.z) / 0.6, 0.0, 1.0);
 	ALBEDO = col * intensity * (0.45 + 1.3 * temp) * a * COLOR.a;
 	ALPHA = clamp(a * (0.2 + 0.45 * (1.0 - temp)) * COLOR.a, 0.0, 1.0);
@@ -1769,8 +1800,8 @@ func _build_plume(cls: String) -> Node3D:
 	col.explosiveness = 0.0
 	col.randomness = 0.6
 	col.visibility_aabb = AABB(Vector3(-45, -5, -45), Vector3(90, 70, 90))
-	col.set_instance_shader_parameter("density", 0.85)
-	col.set_instance_shader_parameter("erode", 1.2)
+	Mats.set_inst(col, &"density", 0.85)
+	Mats.set_inst(col, &"erode", 1.2)
 	pm = _pm(Vector3(1, 0, 0), 180.0, 0.4 * k, 1.5 * k, Vector3(0.12, 0.012, 0.05), 3.0 * k, 5.0 * k)
 	pm.flatness = 1.0
 	pm.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_RING
@@ -1787,8 +1818,8 @@ func _build_plume(cls: String) -> Node3D:
 	hz.explosiveness = 0.0
 	hz.randomness = 0.5
 	hz.visibility_aabb = AABB(Vector3(-45, -5, -45), Vector3(90, 20, 90))
-	hz.set_instance_shader_parameter("density", 0.6)
-	hz.set_instance_shader_parameter("erode", 0.8)
+	Mats.set_inst(hz, &"density", 0.6)
+	Mats.set_inst(hz, &"erode", 0.8)
 	hz.position = Vector3(0, 0.6, 0)
 	h.add_child(col)
 	h.add_child(hz)
@@ -1833,7 +1864,7 @@ func plume(p: Vector3, size: float) -> void:
 		var ps: GPUParticles3D = node.get_meta(key)
 		ps.visible = true
 		ps.amount_ratio = clampf(fx, 0.1, 1.0)
-		ps.set_instance_shader_parameter("seed", randf() * 100.0)
+		Mats.set_inst(ps, &"seed", randf() * 100.0)
 		ps.emitting = true
 
 

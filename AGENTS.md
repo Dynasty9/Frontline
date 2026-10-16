@@ -29,7 +29,7 @@ changelog/                     one entry per change, filed under its version at 
 matchmaker/                    the matchmaking service (Node, no runtime dependencies; deployed on Railway, accounts via Supabase)
 web/                           the website (React + Vite + shadcn, on Railway): live battles with Join links, downloads;
                                Storybook for its components (*.stories.tsx next to each)
-export_presets.cfg, .github/workflows/release.yml   Windows and Linux builds: every merge that changes the game is released
+export_presets.cfg, .github/workflows/release.yml   Windows, Linux and browser builds: every merge that changes the game is released
 docs/                          FEATURES.md (design), DEVELOPMENT.md (code layout, test flags)
 design/                        logo and artwork used outside the game (not imported by Godot)
 ```
@@ -71,6 +71,10 @@ CI (`.github/workflows/check.yml`) runs steps 1 and 2 on every push and pull req
 - **Entities get freed.** Soldiers and vehicles can be despawned at any time. Check `is_instance_valid()` before touching a stored reference. `world.despawn` removes a soldier from his squad.
 - **Ground and water shader colours are linear**, not sRGB. A colour that looks right in a picker comes out far too bright on the ground.
 - **The terrain is flat** (y = 0, plus a deformation height field for craters, trenches and riverbeds). Buildings, trenches and line of sight all assume it, so adding hills is a large change, not a tweak.
+- **The browser build draws with the Compatibility renderer** (WebGL 2), not Forward+. Per-object shader values go
+  through `Mats.set_inst`, never `set_instance_shader_parameter`, and depth reads, blending and particles have rules
+  of their own: see "The browser build" in DEVELOPMENT.md. Check a visual change with `--rendering-method
+  gl_compatibility` too. In a browser there are no threads, sockets or UDP (`OS.has_feature("web")`).
 - **Water** has two ground kinds: `TerrainMap.WATER` (deep: impassable on foot) and `SHALLOW` (wadable). Boats path on their own grid (`Nav.find_boat_path`), and separate bodies of water are labelled (`Nav.water_body`).
 - **Shader instance uniforms** come from a fixed buffer (`rendering/limits/global_shader_variables/buffer_size` in `project.godot`). If a bigger map spawns many more objects, raise it.
 - **The host is busy for several seconds** generating the map, so ENet peers are given long timeouts (`net.gd`). Don't shorten them.

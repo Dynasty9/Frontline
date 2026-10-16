@@ -1103,7 +1103,7 @@ static func _conifer(root: Node3D, rng: RandomNumberGenerator) -> void:
 			continue
 		var c := Res.mi(root, Res.cyl(0.04, 1.0, 1.0, 9), Mats.foliage(), Vector3(rng.randf_range(-0.06, 0.06), y + h * 0.5, rng.randf_range(-0.06, 0.06)), Vector3(rng.randf_range(-0.07, 0.07), rng.randf() * TAU, rng.randf_range(-0.07, 0.07)))
 		c.scale = Vector3(r * rng.randf_range(0.9, 1.1), h, r * rng.randf_range(0.9, 1.1))
-		c.set_instance_shader_parameter("tint", Res.vary(needles, 0.05, rng).darkened(0.12 * (1.0 - t)))
+		Mats.set_inst(c, &"tint", Res.vary(needles, 0.05, rng).darkened(0.12 * (1.0 - t)))
 
 
 static func _bark(root: Node3D, a: Vector3, b: Vector3, r0: float, r1: float, col: Color) -> void:
@@ -1124,7 +1124,7 @@ static func _leaves(root: Node3D, p: Vector3, r: float, squash: float, col: Colo
 		return
 	var mi := Res.mi(root, Res.sphere(1.0, 10), Mats.foliage(), p)
 	mi.scale = Vector3(r, r * squash, r)
-	mi.set_instance_shader_parameter("tint", col)
+	Mats.set_inst(mi, &"tint", col)
 
 
 ## A house roof: tiled and pitched (ridge along the long side, gable ends in
@@ -2292,7 +2292,7 @@ func _build_model() -> void:
 			nm.subdivide_depth = 8
 			net.mesh = nm
 			net.material_override = Mats.netting()
-			net.set_instance_shader_parameter("tint", Color(0.3, 0.34, 0.2) if team != 1 else Color(0.44, 0.39, 0.27))
+			Mats.set_inst(net, &"tint", Color(0.3, 0.34, 0.2) if team != 1 else Color(0.44, 0.39, 0.27))
 			net.position = Vector3(0, 3.45, 0)
 			model.add_child(net)
 			_mk(Res.cyl(0.05, 0.07, 9.0, 6), "steel", Vector3(-1.8, 4.5, -1.8))
@@ -2716,7 +2716,7 @@ func _skin(n: Node) -> void:
 				var kind := _surf_kind(col, c)
 				if kind == "foliage":
 					c.material_override = Mats.foliage()
-					c.set_instance_shader_parameter("tint", col)
+					Mats.set_inst(c, &"tint", col)
 				else:
 					Mats.apply(c, kind, Mats.tint_for(kind, col))
 		_skin(c)

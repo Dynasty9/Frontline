@@ -40,11 +40,16 @@ func _ready() -> void:
 
 
 func host_game(port := DEFAULT_PORT, team := 0) -> int:
-	var peer := ENetMultiplayerPeer.new()
-	var err := peer.create_server(port, MAX_PLAYERS)
-	if err != OK:
-		return err
-	multiplayer.multiplayer_peer = peer
+	if OS.has_feature("web"):
+		# a browser can't open a port for anyone to join: the game is the
+		# player's alone, still run as its own host
+		multiplayer.multiplayer_peer = OfflineMultiplayerPeer.new()
+	else:
+		var peer := ENetMultiplayerPeer.new()
+		var err := peer.create_server(port, MAX_PLAYERS)
+		if err != OK:
+			return err
+		multiplayer.multiplayer_peer = peer
 	players.clear()
 	players[1] = {"name": my_name, "team": team, "col": 0}
 	in_game = false

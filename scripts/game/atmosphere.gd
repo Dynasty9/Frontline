@@ -226,7 +226,7 @@ var _blank_mask: ImageTexture
 func set_trench_mask(t: Texture2D) -> void:
 	for m in [ground_mat, road_mat]:
 		if m:
-			m.set_shader_parameter("trench_mask", t)
+			Mats.set_shared(m, &"trench_mask", t)
 	Mats.set_ground_maps(null, t)
 	if grass:
 		grass.set_trench_mask(t)
@@ -291,7 +291,7 @@ func _build_ground() -> void:
 	trench_net.set_detail(detail_tex)
 	road_mat = ShaderMaterial.new()
 	var rs := Shader.new()
-	rs.code = MapDims.shader(ROAD_SHADER)
+	rs.code = Mats.code(MapDims.shader(ROAD_SHADER))
 	road_mat.shader = rs
 	road_mat.set_shader_parameter("detail_tex", detail_tex)
 	road_mat.render_priority = 1
@@ -486,7 +486,7 @@ func _spawn_flare(p: Vector3) -> void:
 	var glow := MeshInstance3D.new()
 	glow.mesh = world.fx.vfx.quad if world.fx and world.fx.vfx else QuadMesh.new()
 	glow.material_override = world.fx.vfx.flash_mat if world.fx and world.fx.vfx else null
-	glow.set_instance_shader_parameter("rays", 0.5)
+	Mats.set_inst(glow, &"rays", 0.5)
 	glow.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	root.add_child(glow)
 	var chute := MeshInstance3D.new()
@@ -515,7 +515,7 @@ func apply_mood(m: String) -> void:
 	sky_mat.set_shader_parameter("stars", 1.0 if mood == "night" else 0.0)
 	env.ambient_light_energy = float(_d.ambient)
 	ground_mat.set_shader_parameter("wet", 1.0 if mood == "rain" else 0.0)
-	road_mat.set_shader_parameter("wet", 1.0 if mood == "rain" else 0.0)
+	Mats.set_shared(road_mat, &"wet", 1.0 if mood == "rain" else 0.0)
 	_setup_rain()
 	env.tonemap_exposure = float(_d.exposure) * float(Settings.get_v("brightness"))
 	env.fog_light_color = _d.fog
@@ -655,7 +655,7 @@ func _view_process(_dt: float) -> void:
 
 ## Builds the road strip mesh for a team (called by World when roads change).
 func set_town(r: Rect2) -> void:
-	road_mat.set_shader_parameter("town", Vector4(r.position.x, r.position.y, r.end.x, r.end.y))
+	Mats.set_shared(road_mat, &"town", Vector4(r.position.x, r.position.y, r.end.x, r.end.y))
 
 
 ## A square of ground `size` across in quads of `step` metres, centred on its origin.
@@ -791,7 +791,7 @@ func make_road_mesh(polys: Array, team: int) -> MeshInstance3D:
 	var mi := MeshInstance3D.new()
 	mi.mesh = st.commit()
 	mi.material_override = road_mat
-	mi.set_instance_shader_parameter("country", 1.0 if team == 2 else 0.0)
+	Mats.set_inst(mi, &"country", 1.0 if team == 2 else 0.0)
 	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	return mi
 
@@ -862,7 +862,7 @@ uniform float bump = 1.4;
 uniform float wet = 0.0;
 uniform sampler2D trench_mask : hint_default_black, filter_linear, repeat_disable;
 uniform sampler2D deform_tex : hint_default_black, filter_linear, repeat_disable;
-uniform sampler2D water_mask : hint_default_black, filter_linear, repeat_disable;
+uniform sampler2D water_mask : hint_default_transparent, filter_linear, repeat_disable;
 uniform float sea_x = 1e9;
 
 varying vec3 wpos;

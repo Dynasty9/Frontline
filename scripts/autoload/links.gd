@@ -26,6 +26,11 @@ var _peers: Array = []  # [StreamPeerTCP, received text, give-up time]
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
+	if OS.has_feature("web"):
+		# a browser tab has no command line to be handed a link on, no local
+		# socket and no scheme to claim (and can't join a battle anyway)
+		set_process(false)
+		return
 	var user_args := OS.get_cmdline_user_args()
 	pending = _link_in(OS.get_cmdline_args() + user_args)
 	if pending != "" and _hand_on(pending):

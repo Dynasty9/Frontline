@@ -154,7 +154,28 @@ func _ready() -> void:
 	visibility_changed.connect(func(): if visible: _sync())
 
 
+## What the browser build can't do: its renderer (WebGL 2) has no
+## screen-space lighting, upscaling or depth of field, and the page decides
+## the game's size and when it draws.
+const NOT_ON_WEB := ["ssao", "ao_q", "ssil", "gi", "ssr", "vol_fog", "upscaler", "sharpen", "dof", "resolution", "vsync"]
+
+
+static func _for_web(rows: Array) -> Array:
+	var out := []
+	for r in rows:
+		if String(r[1]) in NOT_ON_WEB:
+			continue
+		if r[0] == "head" and not out.is_empty() and out.back()[0] == "head":
+			out.pop_back()  # a heading with nothing left under it
+		out.append(r)
+	if not out.is_empty() and out.back()[0] == "head":
+		out.pop_back()
+	return out
+
+
 func _page(parent: Control, rows: Array) -> Control:
+	if OS.has_feature("web"):
+		rows = _for_web(rows)
 	var sc := ScrollContainer.new()
 	sc.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	sc.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED

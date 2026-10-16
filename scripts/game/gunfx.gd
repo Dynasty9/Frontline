@@ -559,6 +559,12 @@ render_mode unshaded, blend_add, depth_draw_never, cull_disabled, shadows_disabl
 uniform float now = 0.0;
 uniform sampler2D noise_tex : filter_linear_mipmap, repeat_enable;
 uniform sampler2D depth_tex : hint_depth_texture, filter_nearest;
+// a depth read back to clip space: OpenGL's (the browser build's) runs -1..1, Vulkan's 0..1
+#if CURRENT_RENDERER == RENDERER_COMPATIBILITY
+#define NDC_Z(d) ((d) * 2.0 - 1.0)
+#else
+#define NDC_Z(d) (d)
+#endif
 uniform float intensity = 7.0;
 varying vec4 v_col;
 varying float v_k;
@@ -629,7 +635,7 @@ void fragment() {
 		c = mix(v_col.rgb, vec3(1.0, 0.93, 0.78), clamp(core, 0.0, 1.0));
 	}
 	float dz = texture(depth_tex, SCREEN_UV).r;
-	vec4 vp = INV_PROJECTION_MATRIX * vec4(SCREEN_UV * 2.0 - 1.0, dz, 1.0);
+	vec4 vp = INV_PROJECTION_MATRIX * vec4(SCREEN_UV * 2.0 - 1.0, NDC_Z(dz), 1.0);
 	float soft = clamp((-vp.z / vp.w + VERTEX.z) / 0.2, 0.0, 1.0);
 	ALBEDO = c * g * v_k * intensity * v_col.a * soft;
 	ALPHA = 1.0;
@@ -643,6 +649,12 @@ uniform float now = 0.0;
 uniform vec3 wind = vec3(0.6, 0.0, 0.25);
 uniform sampler2D noise_tex : filter_linear_mipmap, repeat_enable;
 uniform sampler2D depth_tex : hint_depth_texture, filter_nearest;
+// a depth read back to clip space: OpenGL's (the browser build's) runs -1..1, Vulkan's 0..1
+#if CURRENT_RENDERER == RENDERER_COMPATIBILITY
+#define NDC_Z(d) ((d) * 2.0 - 1.0)
+#else
+#define NDC_Z(d) (d)
+#endif
 uniform vec3 sun_dir = vec3(0.4, 0.8, 0.3);
 uniform vec3 sun_col : source_color = vec3(1.0, 0.95, 0.85);
 uniform float sun_energy = 1.0;
@@ -700,7 +712,7 @@ void fragment() {
 	float fade = smoothstep(0.0, 0.04, v_u) * (1.0 - smoothstep(0.2, 1.0, v_u));
 	float a = shape * v_col.a * fade;
 	float dz = texture(depth_tex, SCREEN_UV).r;
-	vec4 vp = INV_PROJECTION_MATRIX * vec4(SCREEN_UV * 2.0 - 1.0, dz, 1.0);
+	vec4 vp = INV_PROJECTION_MATRIX * vec4(SCREEN_UV * 2.0 - 1.0, NDC_Z(dz), 1.0);
 	a *= clamp((-vp.z / vp.w + VERTEX.z) / 0.35, 0.0, 1.0);
 	// lit like a little volume: brighter on the sun's side, darker in the middle
 	float nz = sqrt(max(0.0, 1.0 - min(r * r, 1.0)));

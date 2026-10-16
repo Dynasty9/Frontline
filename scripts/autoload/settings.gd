@@ -231,6 +231,12 @@ func _apply_window() -> void:
 	_win_applied = [wm, ri]
 	if first and _test_launch():
 		return  # test runs keep the project's own window (or the size --resolution asks for)
+	if OS.has_feature("web"):
+		# the page sizes the game, and the browser only goes fullscreen for a
+		# click (so not as the game opens): either kind of fullscreen is its own
+		if not first:
+			DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_FULLSCREEN if wm > 0 else DisplayServer.WINDOW_MODE_WINDOWED)
+		return
 	match wm:
 		1:
 			DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_FULLSCREEN)

@@ -5,6 +5,7 @@ The long version: how each system works and why. For the short version, see the 
 - [Full controls reference](#full-controls-reference)
 - [Watching the AI](#watching-the-ai)
 - [Multiplayer in detail](#multiplayer-in-detail)
+- [In a browser](#in-a-browser)
 - [Missions](#missions)
 - [The systems](#the-systems)
 
@@ -139,6 +140,16 @@ they're doing). The observer bar at the top has pause, speed (0.25x to 4x), dire
   or team stats. Enemy HQs and starting FOBs are revealed to everyone, like start locations in most RTS games. Each
   player's game draws the fog from its own side's units (which it always knows), so nothing extra crosses the wire
   but the strips a recon flight has just photographed.
+
+## In a browser
+
+Every release also comes as a browser build (WebAssembly and WebGL 2), the same game with nothing to install. It
+plays alone: **Play vs AI**, **Missions** and **Watch AI Battle**, the Field Manual and Settings, and signing in for
+a service record. Multiplayer needs the desktop game, since a browser can't make the direct connections a battle
+between players runs over; the menu links to the downloads instead. It looks a little different (no screen-space
+lighting, volumetric fog or particle trails, which the browser's renderer doesn't have) and, with no threads to
+spread the work over, the page stops for the 20 seconds or so it takes to lay out the map. The simulation runs
+about as fast as on the desktop.
 
 ## Missions
 
