@@ -96,7 +96,10 @@ export function ReleaseCard({ release, latest = false }: { release: Release; lat
         </a>
       </div>
       <h3 className="mt-2 text-3xl font-semibold tracking-tight">{release.name}</h3>
-      {release.summary && <p className="mt-3 max-w-3xl text-base leading-relaxed text-muted-foreground">{release.summary}</p>}
+      {/* a release's own summary, unless it only repeats its one change's */}
+      {release.summary && !release.entries.some((e) => e.summary === release.summary) && (
+        <p className="mt-3 max-w-3xl text-base leading-relaxed text-muted-foreground">{release.summary}</p>
+      )}
       <div className="mt-8 space-y-6">
         {entries.map((e) => (
           <EntryBlock key={e.slug} entry={e} />

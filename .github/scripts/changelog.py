@@ -150,10 +150,16 @@ def rel(p: Path) -> str:
         return str(p)
 
 
+def own_summary(r: dict) -> str:
+    """The release's summary, unless it only repeats one of its entries'."""
+    return "" if r["summary"] in {e["summary"] for e in r["entries"]} else r["summary"]
+
+
 def image_url(r: dict, e: dict, s: dict) -> str:
     # served by GitHub from main, where release filed it: no copies of the
     # screenshots in the website's own files
-    return f"https://raw.githubusercontent.com/{REPO}/main/changelog/{r['tag']}/{e['slug']}/{s['file']}"
+    ref = os.environ.get("CHANGELOG_IMAGE_REF", "main")  # another branch, to preview the site before merging
+    return f"https://raw.githubusercontent.com/{REPO}/{ref}/changelog/{r['tag']}/{e['slug']}/{s['file']}"
 
 
 def release_url(r: dict) -> str:
@@ -209,8 +215,8 @@ def build() -> None:
     ]
     for r in rs:
         md += [f"## {r['tag']}: {r['name']}", "", f"*{nice_date(r['date'])}* · [Release on GitHub]({release_url(r)})", ""]
-        if r["summary"]:
-            md += [r["summary"], ""]
+        if own_summary(r):
+            md += [own_summary(r), ""]
         for kind, label in KINDS.items():
             group = [e for e in r["entries"] if e["kind"] == kind]
             if not group:
@@ -230,8 +236,8 @@ def notes(version: str) -> str:
     if not r:
         raise SystemExit(f"no changelog for v{version}")
     out = []
-    if r["summary"]:
-        out += [r["summary"], ""]
+    if own_summary(r):
+        out += [own_summary(r), ""]
     for kind, label in KINDS.items():
         group = [e for e in r["entries"] if e["kind"] == kind]
         if not group:
