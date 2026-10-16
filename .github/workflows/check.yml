@@ -59,3 +59,11 @@ jobs:
             if grep -E "SCRIPT ERROR" run_$s.log; then echo "::error::script error in scenario $s"; exit 1; fi
             if ! grep -q "FINAL" run_$s.log; then echo "::error::scenario $s didn't finish"; exit 1; fi
           done
+
+      - name: Smoke test (a mission, playing itself)
+        run: |
+          # the 1 km map takes a while to lay out on a CI runner; the mission's
+          # first minute (the sling lift) is enough to catch a broken script
+          timeout 420 ~/godot/godot --headless --path . -- --mission=skyhook --stats=60 --quit-after=60 --port=7920 2>&1 | tee run_mission.log || true
+          if grep -E "SCRIPT ERROR" run_mission.log; then echo "::error::script error in the mission"; exit 1; fi
+          if ! grep -q "FINAL" run_mission.log; then echo "::error::the mission didn't finish"; exit 1; fi

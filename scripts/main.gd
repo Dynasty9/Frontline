@@ -106,11 +106,24 @@ func _ready() -> void:
 		Net.set_setting("verbose", args.has("verbose"))
 		Net.set_setting("debug_trucks", args.has("debug-trucks"))
 		Net.start_game()
+	elif args.has("mission") and not args.has("host"):
+		# --play: command the force yourself; otherwise the mission plays itself
+		var md := Missions.find(String(args.mission))
+		Net.host_game(port, int(md.get("side", 0)) if args.has("play") else -1)
+		Net.set_setting("mission", String(args.mission))
+		Net.set_setting("mission_autoplay", args.has("autoplay") or not args.has("play"))
+		if args.has("seed"):
+			Net.set_setting("fixed_seed", int(args.seed))
+		Net.set_setting("verbose", args.has("verbose"))
+		Net.start_game()
 	elif args.has("host"):
 		if args.has("list"):
 			await Online.host(port, int(args.get("team", 0)))
 		else:
 			Net.host_game(port, int(args.get("team", 0)))
+		if args.has("mission"):
+			Net.set_setting("mission", String(args.mission))
+			Net.set_setting("mission_autoplay", args.has("autoplay"))
 		Net.set_setting("ai_allies", args.has("ai-allies"))
 		Net.set_setting("verbose", args.has("verbose"))
 		Net.set_setting("debug_trucks", args.has("debug-trucks"))
@@ -180,6 +193,10 @@ func _mission_text(s: Dictionary) -> Array:
 	var team := int(pl[me].team) if pl.has(me) else -1
 	var what := ""
 	var side := ""
+	if String(s.get("mission", "")) != "":
+		var md := Missions.find(String(s.mission))
+		side = Defs.TEAM_NAMES[int(md.side)]
+		return [String(md.title), [["SIDE", side], ["FORCE", String(md.force)], ["AREA", String(md.area)], ["CONDITIONS", "Assessing"]], String(md.op), String(md.brief)]
 	if String(s.get("scenario", "")) != "":
 		what = "Scenario: %s" % String(s.scenario).capitalize()
 	elif team < 0:
@@ -199,7 +216,7 @@ func _on_game_start(s: Dictionary) -> void:
 	if _curtains:
 		cur = _curtain("loading")
 		var mt := _mission_text(s)
-		cur.brief(int(s.get("seed", 1)), String(mt[0]), mt[1])
+		cur.brief(int(s.get("seed", 1)), String(mt[0]), mt[1], String(mt[2]) if mt.size() > 2 else "", String(mt[3]) if mt.size() > 3 else "")
 		cur.set_stage("Surveying the ground", 0.14)
 		if multiplayer.is_server():
 			# let it reach the screen before the long build (clients build at once:
@@ -472,6 +489,12 @@ func _process(_dt: float) -> void:
 				menu._open_account()
 			else:
 				menu._open_browser()
+		# --menu-missions[=KEY]: open the Missions panel (on that mission)
+		if args.has("menu-missions") and menu and menu.ms_panel and not has_meta("ms_open") and Engine.get_frames_drawn() > 5:
+			set_meta("ms_open", true)
+			if String(args["menu-missions"]) != "1":
+				menu._ms_key = String(args["menu-missions"])
+			menu._open_missions()
 		# (the first frame can take seconds to arrive: count frames drawn, not time)
 		if args.has("menu-shot") and Engine.get_frames_drawn() > 30 and Time.get_ticks_msec() > float(args.get("shot-at", 2.5)) * 1000.0 and not _shot_done:
 			_shot_done = true

@@ -79,7 +79,11 @@ func generate() -> void:
 	for i in int(40 * area * 0.75):
 		_try("tree", Vector3(rng.randf_range(-(H - 8.0), H - 8.0), 0, rng.randf_range(-(H - 10.0), H - 10.0)), 0.0, -1)
 
-	# starting forces
+	# starting forces (a mission brings its own: see MissionDirector)
+	if String(world.settings.get("mission", "")) != "":
+		r.rebuild_network(0)
+		r.rebuild_network(1)
+		return
 	var owners := [[], []]
 	var pl: Dictionary = world.settings.get("players", {})
 	for id in pl:

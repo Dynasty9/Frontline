@@ -146,7 +146,8 @@ func tick(dt: float) -> void:
 		_prisoners()
 		_check_victory()
 		_danger_maps()
-	_trucks(dt)
+	if world.mission == null:
+		_trucks(dt)  # (a mission's supply is what it's given)
 
 
 func random_name(team: int) -> String:
@@ -563,7 +564,7 @@ func capture_fob(f: Structure, new_team: int) -> void:
 
 
 func _check_victory() -> void:
-	if world.winner >= 0 or world.time < 10.0:
+	if world.winner >= 0 or world.time < 10.0 or world.mission != null:
 		return
 	for t in 2:
 		if fobs(t).is_empty():
@@ -699,7 +700,7 @@ var _reserve_t := [0.0, 0.0]
 ## HQ reserves: a side that is down to its last few soldiers gets a free squad
 ## from HQ now and then, so one lost clash doesn't end the battle on the spot.
 func _reserves() -> void:
-	if String(world.settings.get("scenario", "")) != "" or world.time < 120.0:
+	if String(world.settings.get("scenario", "")) != "" or world.mission != null or world.time < 120.0:
 		return
 	for t in 2:
 		if world.time < float(_reserve_t[t]) or depots[t] == null or depots[t].gone:
@@ -735,6 +736,10 @@ func _prisoners() -> void:
 						_free(s)
 						continue
 					var c := _find_captor(s)
+					if c and world.mission != null and Defs.flat(_prison_dest(c.team, s.position).position - s.position).length() > 200.0:
+						# in a mission the nearest FOB is likely the far end of the map:
+						# nobody leaves the fight to walk him there; he sits it out
+						c = null
 					if c:
 						s.captor = c
 						c.start_captor(s)

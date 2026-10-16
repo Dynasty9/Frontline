@@ -161,6 +161,16 @@ func _draw() -> void:
 		var pp := _to_map(pg[0])
 		var r := 4.0 + fmod(now * 2.0, 1.0) * 6.0
 		draw_arc(pp, r, 0, TAU, 16, Color(0.5, 0.9, 1.0) if pg[2] == "intel" else Color(1, 0.5, 0.3), 1.5)
+	# a mission's objectives, by their letters
+	if not w.mission_info.is_empty():
+		for o in w.mission_info.get("objs", []):
+			if int(o[2]) != MissionDirector.ACTIVE or o[4] == null:
+				continue
+			var op := _to_map(o[4])
+			var orad := float(o[5]) * size.x / MapDims.SIZE
+			if orad > 3.0:
+				draw_arc(op, orad, 0, TAU, 24, Color(UiKit.ACCENT.r, UiKit.ACCENT.g, UiKit.ACCENT.b, 0.6), 1.0)
+			HudObjectives.diamond(self, op, 7.0, String(o[0]), UiKit.ACCENT, 1.0)
 	var cam := w.cam
 	var vs := get_viewport().get_visible_rect().size
 	var corners := [cam.ground_point(Vector2(0, 0)), cam.ground_point(Vector2(vs.x, 0)), cam.ground_point(vs), cam.ground_point(Vector2(0, vs.y))]
