@@ -1,0 +1,5 @@
+version = "0.1.3"
+name = "Soundtrack"
+date = "2026-10-16"
+summary = "A synthesised orchestral soundtrack that follows the fighting, a volume slider for each kind of sound, and wind that sounds like wind."
+pull_requests = [7]

@@ -5,12 +5,24 @@
 //
 // No dependencies beyond Node itself (20 or newer).
 
+import { readFileSync } from 'node:fs';
 import http from 'node:http';
 import { pathToFileURL } from 'node:url';
 import { AuthError, createAuth, toUser } from './auth.js';
 import { HEARTBEAT_S, Lobbies, POLL_S } from './lobbies.js';
 
 const MAX_BODY = 8 * 1024;
+
+// The latest release of the game, baked in by the release workflow
+// (.github/workflows/release.yml writes it, and the commit redeploys us): the
+// game's updater asks here which version is current and where to get it.
+export function loadRelease(file = new URL('../release.json', import.meta.url)) {
+	try {
+		return JSON.parse(readFileSync(file, 'utf8'));
+	} catch {
+		return null;
+	}
+}
 
 class HttpError extends Error {
 	constructor(status, message) {
@@ -90,7 +102,7 @@ const bearer = (req) => {
 	return h.startsWith('Bearer ') ? h.slice(7).trim() : '';
 };
 
-export function createServer({ env = process.env, auth = createAuth(env), lobbies = new Lobbies(), log = console.log } = {}) {
+export function createServer({ env = process.env, auth = createAuth(env), lobbies = new Lobbies(), release = loadRelease(), log = console.log } = {}) {
 	const trustProxy = env.TRUST_PROXY ? env.TRUST_PROXY === '1' : !!(env.RAILWAY_ENVIRONMENT_NAME || env.RAILWAY_ENVIRONMENT);
 	const limits = new RateLimit();
 
@@ -113,7 +125,12 @@ export function createServer({ env = process.env, auth = createAuth(env), lobbie
 	};
 
 	const routes = {
-		'GET /health': async () => ({ ok: true, accounts: auth ? auth.name : 'off', ...lobbies.stats() }),
+		'GET /health': async () => ({ ok: true, accounts: auth ? auth.name : 'off', release: release?.version ?? null, ...lobbies.stats() }),
+
+		'GET /release': async () => {
+			if (!release) throw new HttpError(404, 'No release has been published yet.');
+			return release;
+		},
 
 		'GET /lobbies': async ({ url }) => ({ lobbies: lobbies.list(url.searchParams.get('version') || '') }),
 
@@ -122,7 +139,9 @@ export function createServer({ env = process.env, auth = createAuth(env), lobbie
 			const r = lobbies.create(ip, body, await account(req, false));
 			if (r.error) throw new HttpError(400, r.error);
 			const l = r.lobby;
-			log(`lobby ${l.id} up: ${l.host} at ${ip}:${l.port}, stun ${l.punch ? `${l.punch.ip}:${l.punch.port}` : 'none'}, nat ${l.nat}, ${l.version || 'no version'}`);
+			log(
+				`lobby ${l.id} up: ${l.host} at ${ip}:${l.port}, stun ${l.punch ? `${l.punch.ip}:${l.punch.port}` : 'none'}, nat ${l.nat}, ${l.version || 'no version'}`,
+			);
 			return { id: l.id, token: l.token, address: ip, heartbeat: HEARTBEAT_S, poll: POLL_S, lobby: lobbies.view(l) };
 		},
 

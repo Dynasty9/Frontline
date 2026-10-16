@@ -352,10 +352,17 @@ function and an autopilot function.
   flank from edge to edge: a concrete road bridge where the cross road crosses it, a ford in each half, muddy
   banks. A pond lies in each half. Deep water is impassable on foot or in a vehicle; men and vehicles can wade
   the shallows (fords, the edge of the beach) - slowly, and exposed. The beds are carved into the ground, so a
-  man wading sinks to his knees, and the water is drawn with depth-tinted colour (turquoise shallows, deep
-  blue sea, murky green ponds), soft ripples flowing downstream, foam along every shore and a swell on the sea.
-  Bridges and the harbour are key points the AI fights over. The water is laid out on the server as a few
-  shapes and rasterized identically on every client.
+  man wading sinks to his knees. Bridges and the harbour are key points the AI fights over. The water is laid
+  out on the server as a few shapes and rasterized identically on every client.
+- **How the water looks** (`water_view.gd`). The surface is drawn in tiles only where there's water. A swell
+  of a few long wave trains rolls in off the open sea in groups, dying away as the water shoals; breakers spill
+  unevenly along the beach and each one surges up the sand and drains back, leaving it dark and wet. The bed
+  shows through the water, bent by the ripples and dimmed with depth (red light dies first, so sand under the
+  sea turns turquoise and the open sea goes deep blue; fresh water is peaty green-brown), and the sky and its
+  clouds are reflected, more the flatter you look across it. The sun glitters off every ripple (a moon path at
+  night, only a sheen under cloud), rain dimples the water with rings, the wind's chop roughens in gusts, and
+  foam gathers wherever the water meets a bank, a hull or a pile, with whitecaps on the biggest waves. Boats
+  ride the same swell the player sees (the CPU samples the waves the shader draws).
 - On the 1 km map, country lanes branch off the main road to a village in each quarter (mirrored between the
   sides), and on the west the lanes run on over the river - each on its own bridge - to farming villages on
   the far bank: three bridges and two fords across the river in all.
@@ -402,9 +409,12 @@ function and an autopilot function.
   roof falls in as ash (a house is left a roofless shell), a tree is left a bare black snag, a car a
   burnt-out shell. Rain damps everything down: fires catch less, spread less and burn lower.
 - Men caught too close get burnt and get back out of the heat ("Fire! Get back!"); nobody takes cover behind
-  something that's burning or in a patch of burning grass, and a man whose cover catches fire moves. A roof
-  fire burns whoever's in the house under it. Your side is warned when one of its buildings catches fire, and
-  engineers repairing it beat the flames out first.
+  something that's burning or in a patch of burning grass, and a man whose cover catches fire moves. Routes
+  go round fires (men well round, drivers if it's not far out of their way). A roof fire burns whoever's in
+  the house under it. Your side is warned when one of its buildings catches fire, and engineers repairing it
+  beat the flames out first.
+- A fire that's well alight lays a pall of smoke across the ground downwind - a burning vehicle, a roof, a
+  grass fire most of all - and nobody sees or aims through it, just as with a smoke screen.
 - The look: tongues of flame that cool from yellow-white through orange to sooty red as they rise, sparks
   swirling up on the heat, a smoke column leaning off downwind (charcoal off fuel and rubber, brown-grey off
   wood, paler off green leaves) lit orange from below, and a flickering light that matters most at night.
@@ -421,11 +431,19 @@ function and an autopilot function.
   mines, trucks on the road, production, attack plans), shown in the message log with a map ping.
 
 **Interface**
-- Boot splash and intro in Frontline's key art; the intro lifts once the menu's 3D backdrop has drawn.
+- A living topographic map lies behind everything outside a battle: one shader, ground that slowly folds and
+  drifts, contour lines (every fifth an index contour) lit in colours that turn round a wheel of brass, ember,
+  rose, violet, blue and jade over a minute and a half, a map grid with corner crosses. The ground rises in a hill
+  under the cursor, and a click sends a ripple out across it. Every copy shares one clock and cursor, so the
+  title, the menu and the loading screen hand over to each other without a seam.
+- Boot splash and title: the splash is the title's first frame (the map asleep under the emblem and the name).
+  A wave runs out of the emblem's dot, wakes the map and lights the letters as it passes; then the title rises
+  away and the menu glides in on the same map. A click or a key skips it.
 - Main menu: grouped entries that say what they do, and a New Operation panel to pick a side (Coalition, Rebels
-  or Observe, with each side's doctrine) and the time of day. The backdrop is a crewed .50 cal position at dusk.
+  or Observe, with each side's doctrine) and the time of day.
 - Loading screen before each battle: the operation's name, mission, side, area and conditions, a field note and
-  the build's stages; it holds while the first frames compile behind it, then fades into the battlefield.
+  the build's stages, over the map with a survey beam sweeping across it and the view closing in on the ground.
+  It holds while the first frames compile behind it, then dives into the map as the battlefield fades up.
 - **Order of battle** (O): every unit down the left, grouped into infantry, support teams and vehicles, each
   with its symbol, callsign, a pip per man, what it has been told to do and where an attack has got to ("Base of
   fire on D3", "Assaulting D3"), and alerts for contact, pinned, casualties and low ammunition. Click to select
@@ -506,10 +524,15 @@ function and an autopilot function.
   with a stabilised 25 mm). Rebels: an armed motorboat (PKM, four men), the Speedboat HMG and the **Gun
   Trawler** (a converted steel fishing boat with a ZU-23-2 on the foredeck). Boats find their way on their own
   grid of open water (shallows only to nose in to a beach; the low bridge stops them), sit in the water at
-  their draft, pitch up as they get on the plane, heel into turns and leave a wake. Men board a boat lying off
-  a beach or bank by wading out to it, and go ashore over the side wherever it stops by land at the end of a
-  trip. A boat that's sunk goes down in a blast; whoever's aboard swims for the nearest bank. Shells landing in
-  the water throw up a column of spray instead of digging a crater.
+  their draft, pitch and roll over the swell, lift their bows as they get on the plane, heel into turns and
+  throw spray off the bow going hard. Each leaves a wake on the water: white water churned up astern in streaks
+  that spread and fade into a smooth streak, and the bow wave running out in a V at the Kelvin angle (a wake
+  hides with a boat hidden in the fog of war). Men board a boat lying off a beach or bank by wading out to it,
+  and go ashore over the side wherever it stops by land at the end of a trip. A boat that's sunk blows up and
+  founders: she floods, lists over and goes down by the head or the stern, burning till the water closes over
+  the fire, foam boiling up along her as the air comes out, and leaves a rainbowed oil slick with wreckage
+  drifting in it; whoever's aboard swims for the nearest bank. Shells landing in the water throw up a column of
+  spray and leave a ring of foam spreading on the surface instead of a crater; bullets kick up white spouts.
 - **Driving.** A driver steers for a point some way down the road (pure pursuit: further ahead the faster he
   goes), slows for the bends he can see coming - as fast as the tyres or tracks hold the curve - and brakes to
   stop where he's sent. Wheeled vehicles steer like cars: a real turning circle from their wheelbase and
@@ -609,8 +632,9 @@ function and an autopilot function.
   where its trucks go) for each town being taken or whose trucks aren't getting through, and the quiet ones in
   one line once there are more than a couple. The order of battle moves down to make room.
 - Buildings: FOB, barracks, factory, medic tent, research post, helipad (supply helicopters fly over cut
-  roads), sandbags, concrete walls, barbed wire, minefields, tank traps, watchtowers (see 85 m, 115 m with a
-  lookout up; shoot over walls), and Rebel tunnel entrances (move squads through the network or bring them back out with "Exit here").
+  roads), sandbags, HESCO walls and T-walls (Coalition), barricades (Rebels), barbed wire, minefields, tank traps,
+  camouflage nets, ammo caches, watchtowers (see 85 m, 115 m with a lookout up; shoot over walls), and Rebel
+  tunnel entrances (move squads through the network or bring them back out with "Exit here").
 
 **Base defenses**
 - **Build grid**: buildings and works sit on a 1 m grid at 45 degree headings; a building's walls land on grid
@@ -646,6 +670,30 @@ function and an autopilot function.
 - **Bunker** (concrete pillbox, or a log-and-earth dugout for the Rebels): firing slits soldiers shoot through,
   and a roof that stops shrapnel. Right-click it with a squad to garrison.
 - **AT post**: a crewed guided missile (Coalition, top attack) or recoilless rifle (Rebels) that engages vehicles out to 130 m.
+- **Walls and obstacles** (`works_models.gd` builds them all, from the real thing):
+  - *Sandbags*: filled bags laid the way they are in the field, stretcher courses along the wall and header
+    courses across a thick one, joints broken, the face battered back, the tied neck folded under; tan and coyote
+    polypropylene with some olive for the Coalition, hessian and white feed sacks for the Rebels.
+  - *HESCO wall* (Coalition): a line of earth-filled cells, chest high and a metre thick - geotextile behind the
+    welded mesh, coil joints at the corners, weeds in the fill. Stand and fire over it; it stops even a .50 cal,
+    and vehicles.
+  - *Barricade* (Rebels): oil drums, tyre stacks, a sheet of roofing against a heap of rubble, a torn-off lump of
+    concrete, pallets and sacks, chest high. Stand and fire over it. Tanks shove it aside, and the tyres burn black.
+  - *T-walls* (Coalition): precast slabs on wide feet with lifting loops, too tall to see over; men fight round the
+    ends. Light vehicles can't push through.
+  - *Barbed wire*: triple-strand concertina - two coils of razor wire side by side and one on top - wired to steel
+    pickets (the Rebels' to cut stakes). Infantry crawl through it.
+  - *Tank traps*: Czech hedgehogs, three beams at right angles standing on three ends; steel angle bolted through
+    gussets for the Coalition, welded lengths of old rail for the Rebels.
+  - *Minefields*: anti-tank and anti-personnel mines dug in under loosened earth inside a cordon of pickets and
+    tape hung with red triangles - all of which only their own side ever sees.
+- **Camouflage net**: pitched over a gun pit, a mortar, an AT post or a parked vehicle (it goes up over anything,
+  and anything can go in under one). Whatever is under it is spotted at half the range - by men, by vehicles and
+  from the air - but it stops nothing, and it burns. The AI nets its mortar pits, AT posts and .50 cals.
+- **Ammo cache**: forward stores on pallets under a fly sheet, a red flag on a stake. Every man of its side within
+  7 m tops up his magazines, grenades, rockets and mortar bombs from it until it runs dry; a man who's out of
+  ammunition falls back to the nearest cache before the FOB. Hit hard enough to wreck it (or burnt), it cooks off:
+  a blast, then rounds and grenades going off round it for a few seconds. The AI puts one ahead of its front FOB.
 - Soldiers in good cover are much harder to pin down than soldiers in the open, and only their head and shoulders are
   exposed when they pop up to fire. A fortified line beats a frontal assault by similar numbers.
 - Everything can be shot up and repaired. Any FOB can be captured by whoever walks in and holds it. Lose your last FOB and you lose, but a side's last FOB is a last stand and takes four times as long to capture, and HQ sends a free reserve squad every 75 s to a side that is down to its last few soldiers.
@@ -687,7 +735,9 @@ function and an autopilot function.
   boat-hulled 8x8; each vehicle is merged per moving part (hull, turret, wheels, rotor).
 - Every surface is a procedural material: plaster with brick showing through, concrete panels, corrugated metal
   with rust streaks, plank walls, HESCO baskets, camouflage on uniforms and vehicles, canvas, bark. Sandbag walls are
-  stacked from individual lumpy bags, FOBs sit under camouflage netting that throws dappled shadows, trees sway.
+  stacked from individual bags in proper courses, FOBs and camouflage nets throw dappled shadows, trees sway.
+  Defences sit in the ground: trodden earth round the nests and pits, earth banked against the bunkers up to their
+  slits.
 - Vehicles are built from sloped, lofted armour: road wheels that turn, tracks, mantlets, cupolas, stowage, rotor blur.
 - Explosions are layered GPU particles: a flash and light burst, a rolling fireball that cools from the edges in
   until it's dark smoke, a lit smoke column that drifts with the wind, a dirt plume, sparks and debris that

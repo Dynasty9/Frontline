@@ -268,6 +268,15 @@ var _graveyard: Array = []
 var _grave_t := 0.0
 
 
+## (view) An entity cleared away within the last few minutes, by its id (or null).
+func gone_entity(eid: int) -> Entity:
+	for i in range(_graveyard.size() - 1, -1, -1):
+		var e = _graveyard[i][0]
+		if is_instance_valid(e) and e.eid == eid:
+			return e
+	return null
+
+
 func _sweep_graveyard() -> void:
 	while not _graveyard.is_empty() and _graveyard[0][1] < time:
 		var e = _graveyard.pop_front()[0]
@@ -389,9 +398,14 @@ func placement_error(team: int, kind: String, pos: Vector3, yaw: float) -> Strin
 	for st in structures_near(pos, 16.0):
 		if st.skind == "floor" or (kind == "trench" and st.skind == "trench") or (st.skind == "trench" and kind in ["mg_nest", "hmg_nest"]):
 			continue
+		# a net goes up over whatever's to be hidden, and anything can go in under one
+		if kind == "camo_net" or st.skind == "camo_net":
+			if kind == "camo_net" and st.skind == "camo_net" and Defs.flat(st.position - pos).length() < 3.0:
+				return "There's a net here already."
+			continue
 		if Defs.obb_overlap(c, half - Vector2(0.12, 0.12), yaw, Vector2(st.position.x, st.position.z), st.foot - Vector2(0.12, 0.12), st.yaw):
 			return "Blocked by %s." % st.display_name()
-	if not kind in ["mines", "wire", "trench", "sandbags", "fob"] and team >= 0 and team <= 1:
+	if not kind in ["mines", "wire", "trench", "sandbags", "fob", "camo_net"] and team >= 0 and team <= 1:
 		var fp := Vector3(pos.x, 0, pos.z)
 		for poly in roads[team]:
 			var pts: PackedVector3Array = poly
@@ -1460,15 +1474,18 @@ func stat(key: String) -> void:
 
 func debug_stats() -> String:
 	var c := [{}, {}]
+	var own := [{}, {}]  # whose soldiers: a player's peer id, or "ai"
 	for s in soldiers:
 		if s.team < 0 or s.team > 1:
 			continue
 		var k: String = Soldier.Life.keys()[s.life]
 		c[s.team][k] = int(c[s.team].get(k, 0)) + 1
+		var o := str(s.owner_peer) if s.owner_peer > 0 else "ai"
+		own[s.team][o] = int(own[s.team].get(o, 0)) + 1
 	var out := "t=%.0f ents=%d" % [time, entities.size()]
 	for t in 2:
 		var ti: Dictionary = rules.team_summary()[t] if rules else {}
-		out += " | %s %s veh=%d sup=%d inc=%d/min fobs=%d towns=%d" % [Defs.TEAM_NAMES[t], str(c[t]), _count_veh(t), int(ti.get("supply", 0)), int(ti.get("inc", 0)),
+		out += " | %s %s own=%s veh=%d sup=%d inc=%d/min fobs=%d towns=%d" % [Defs.TEAM_NAMES[t], str(c[t]), str(own[t]), _count_veh(t), int(ti.get("supply", 0)), int(ti.get("inc", 0)),
 			(ti.get("fobs", []) as Array).size(), (ti.get("towns", []) as Array).size()]
 		var bl := {}
 		for st in structures:

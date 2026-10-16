@@ -1,0 +1,10 @@
++++
+title = "A clearer supply picture"
+summary = "The top bar shows your income per minute and how many towns you hold, and the order of battle lists each town's stock, rate and truck."
+kind = "improved"
++++
+
+- **Top bar:** income per minute beside your supply, and **TOWNS 3 / 11**.
+- **Town lines** beside the FOB lines show each town's stock and rate and where its truck is going. A town being taken, or whose truck was destroyed or blocked, gets a red line of its own.
+- **On the minimap** each town is a flag in its holder's colour inside its ring, and the ring fills with the colour of whoever is taking it.
+- **On the battlefield** each town has a name plate, its ring is drawn on the ground when the camera is near, and a capture bar shows over the dump.

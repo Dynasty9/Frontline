@@ -37,7 +37,7 @@ void fragment() {
 var ghost_err := ""
 var ability := ""
 var groups := {}
-const LINE_KINDS := ["sandbags", "trench", "wire", "concrete_wall", "tank_trap"]
+const LINE_KINDS := ["sandbags", "hesco", "barricade", "trench", "wire", "concrete_wall", "tank_trap"]
 var place_drag := false
 var place_a := Vector3.ZERO
 var line_items: Array = []  # [pos, yaw, ok]
@@ -853,7 +853,7 @@ func _update_line(gp: Vector3) -> void:
 	var cost := int(def.cost)
 	var info: Dictionary = world.team_info[world.local_team] if world.local_team >= 0 else {}
 	var budget := int(info.get("supply", 0))
-	var h := 1.0 if place_kind != "concrete_wall" else 2.6
+	var h: float = {"concrete_wall": 2.6, "hesco": 1.37, "barricade": 1.2}.get(place_kind, 1.0)
 	while _line_ghosts.size() < n:
 		var g := MeshInstance3D.new()
 		g.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
@@ -912,6 +912,8 @@ func start_place(kind: String) -> void:
 	var h := 3.0
 	if kind in ["sandbags", "trench", "wire", "mines", "tank_trap", "tunnel"]:
 		h = 1.0
+	elif kind in ["hesco", "barricade", "ammo_cache"]:
+		h = 1.3
 	ghost = MeshInstance3D.new()
 	ghost.mesh = Res.box(Vector3(s.x, h, s.y))
 	ghost.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
@@ -940,7 +942,7 @@ func _confirm_place(keep: bool) -> void:
 	gp.y = 0.0
 	world.send_cmd({"t": "build", "kind": place_kind, "pos": gp, "yaw": place_yaw, "squads": sel_squads})
 	Sfx.ui("click")
-	if not (keep or place_kind in ["sandbags", "wire", "tank_trap", "concrete_wall", "trench"] and Input.is_key_pressed(KEY_SHIFT)):
+	if not (keep or place_kind in LINE_KINDS and Input.is_key_pressed(KEY_SHIFT)):
 		cancel_modes()
 
 

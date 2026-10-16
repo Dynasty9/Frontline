@@ -6,24 +6,33 @@ import { useAccount } from "@/lib/account"
 import { GITHUB_URL } from "@/lib/config"
 import { rankName, wornInsignia } from "@/lib/insignia"
 
+// absolute, so they work from the changelog page too
 const NAV = [
-  ["Battles", "#battles"],
-  ["Insignia", "#insignia"],
-  ["Download", "#download"],
-  ["Screenshots", "#screenshots"],
+  ["Battles", "/#battles"],
+  ["Insignia", "/#insignia"],
+  ["What's new", "/changelog/"],
+  ["Download", "/#download"],
+  ["Screenshots", "/#screenshots"],
 ] as const
 
-export function SiteHeader({ accounts }: { accounts: string | undefined }) {
+// `accounts` is the matchmaker's /health answer: "off" hides signing in.
+export function SiteHeader({ accounts }: { accounts?: string }) {
   return (
     <header className="sticky top-0 z-40 border-b bg-background/80 backdrop-blur-md">
       <div className="mx-auto flex h-14 max-w-6xl items-center gap-3 px-4 sm:gap-6 sm:px-6">
-        <a href="#top" className="flex shrink-0 items-center gap-2.5" aria-label="Frontline, back to top">
+        <a href="/" className="flex shrink-0 items-center gap-2.5" aria-label="Frontline home">
           <Emblem className="size-7" />
           <Wordmark className="text-base" />
         </a>
         <nav className="ml-auto hidden items-center gap-1 md:flex">
           {NAV.map(([label, href]) => (
-            <Button key={href} variant="ghost" size="sm" asChild className="text-sm text-muted-foreground hover:text-foreground">
+            <Button
+              key={href}
+              variant="ghost"
+              size="sm"
+              asChild
+              className="text-sm text-muted-foreground hover:text-foreground"
+            >
               <a href={href}>{label}</a>
             </Button>
           ))}
@@ -48,7 +57,7 @@ function AccountChip() {
   if (!user) {
     return (
       <Button variant="ghost" size="sm" asChild className="text-sm text-muted-foreground hover:text-foreground">
-        <a href="#insignia">
+        <a href="/#insignia">
           <UserCircleIcon />
           Sign in
         </a>
@@ -58,7 +67,7 @@ function AccountChip() {
   const worn = wornInsignia(user.icon)
   return (
     <Button variant="outline" size="sm" asChild className="h-8 gap-2 pr-2 pl-1 text-sm">
-      <a href="#insignia" aria-label={`${user.callsign}, ${rankName(user.rank)}: your profile and insignia`}>
+      <a href="/#insignia" aria-label={`${user.callsign}, ${rankName(user.rank)}: your profile and insignia`}>
         {worn && <InsigniaImg id={worn.id} />}
         {/* the callsign only where there's room for it beside the nav (it's in the profile anyway) */}
         <span className="hidden max-w-36 truncate sm:block md:hidden lg:block">{user.callsign}</span>
