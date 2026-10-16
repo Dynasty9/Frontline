@@ -7,10 +7,11 @@ extends Node3D
 ## where they touch geometry. Particle counts follow Settings.fx_mult().
 
 const CLASSES := {
-	# scale, fireball n/life, smoke n/life, dirt n, sparks n, debris n, ring n, ejecta n, earth column n
-	"s": {"k": 0.55, "fb": 8, "fbl": 0.8, "sm": 10, "sml": 4.5, "dirt": 14, "sp": 14, "deb": 10, "ring": 10, "ej": 8, "col": 0},
-	"m": {"k": 1.0, "fb": 14, "fbl": 1.2, "sm": 20, "sml": 6.5, "dirt": 38, "sp": 30, "deb": 30, "ring": 18, "ej": 18, "col": 14},
-	"l": {"k": 1.9, "fb": 24, "fbl": 1.9, "sm": 20, "sml": 8.0, "dirt": 36, "sp": 50, "deb": 56, "ring": 22, "ej": 30, "col": 26},
+	# scale, fireball n/life, smoke n/life, dirt n, sparks n, debris n, ring n, ejecta n, earth column n,
+	# flaming fragments n, flames left burning in the crater n
+	"s": {"k": 0.55, "fb": 10, "fbl": 0.95, "sm": 14, "sml": 4.5, "dirt": 14, "sp": 14, "deb": 10, "ring": 10, "ej": 8, "col": 0, "fl": 0, "ab": 0},
+	"m": {"k": 1.0, "fb": 20, "fbl": 1.45, "sm": 28, "sml": 6.5, "dirt": 38, "sp": 30, "deb": 30, "ring": 18, "ej": 18, "col": 14, "fl": 7, "ab": 7},
+	"l": {"k": 1.9, "fb": 34, "fbl": 2.3, "sm": 32, "sml": 8.0, "dirt": 36, "sp": 50, "deb": 56, "ring": 22, "ej": 30, "col": 26, "fl": 16, "ab": 14},
 }
 const MAX_RIGS := {"s": 22, "m": 16, "l": 10}
 ## Lingering plumes: [scale, column particles, column life, haze particles, haze life, seconds of emission]
@@ -83,6 +84,13 @@ func prewarm(at: Vector3) -> void:
 	add_child(ss)
 	ss.global_position = p
 	set_smoke_screen(ss, 3.0)
+	var cm := MeshInstance3D.new()
+	cm.mesh = Res.box(Vector3(1, 1, 1))
+	cm.material_overlay = char_material()
+	(cm.material_overlay as ShaderMaterial).set_shader_parameter("amount", 0.5)
+	(cm.material_overlay as ShaderMaterial).set_shader_parameter("glow", 0.5)
+	add_child(cm)
+	cm.global_position = p
 	var tr := make_trail()
 	add_child(tr)
 	tr.global_position = p
@@ -107,6 +115,7 @@ func prewarm(at: Vector3) -> void:
 					ps.visible = false
 		b.queue_free()
 		ss.queue_free()
+		cm.queue_free()
 		tr.queue_free())
 
 
@@ -290,6 +299,8 @@ func _make_materials() -> void:
 	tracer_mat = _shader_mat(TRACER_SHADER)
 	wave_mat = _shader_mat(WAVE_SHADER)
 	ejecta_mat = _shader_mat(EJECTA_SHADER)
+	flame_mat = _shader_mat(FLAME_SHADER)
+	flame_mat.set_shader_parameter("noise_tex", noise_tex)
 	debris_mat = StandardMaterial3D.new()
 	debris_mat.vertex_color_use_as_albedo = true
 	debris_mat.roughness = 0.95
@@ -323,6 +334,7 @@ func apply_lighting() -> void:
 	smoke_mat.set_shader_parameter("amb_col", amb)
 	smoke_mat.set_shader_parameter("amb_energy", float(at.MOODS[at.mood].ambient) * (0.6 if night else 1.1))
 	ejecta_mat.set_shader_parameter("light", sc * at.sun.light_energy * 0.45 + amb * float(at.MOODS[at.mood].ambient) * 0.7)
+	fire_light = 2.6 if night else (1.5 if at.mood in ["dusk", "dawn", "rain", "overcast"] else 0.8)
 
 
 func _desat(c: Color, k: float) -> Color:
@@ -398,24 +410,55 @@ func _build_rig(cls: String) -> Node3D:
 	var fl := _sys(1, 0.09, pm, flash_mat)
 	fl.explosiveness = 1.0
 	layers["flash"] = fl
-	# 2. fireball: hot billows that cool into dark smoke
-	pm = _pm(Vector3.UP, 70.0, 3.5 * k, 9.0 * k, Vector3(0, 3.0, 0), 1.9 * k, 3.2 * k)
+	# 2. fireball: hot billows punched out and rolling up on themselves, the
+	# fire going out of them from the edges in until they're dark smoke
+	pm = _pm(Vector3.UP, 75.0, 4.0 * k, 10.0 * k, Vector3(0, 3.5, 0), 2.2 * k, 3.7 * k)
 	pm.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_SPHERE
-	pm.emission_sphere_radius = 0.5 * k
+	pm.emission_sphere_radius = 0.6 * k
 	pm.damping_min = 7.0
 	pm.damping_max = 11.0
-	pm.angular_velocity_min = -50.0
-	pm.angular_velocity_max = 50.0
-	pm.scale_curve = _curve([Vector2(0, 0.3), Vector2(0.12, 0.85), Vector2(1, 1.15)])
-	pm.color_ramp = _ramp([0.0, 0.05, 0.5, 1.0], [Color(0.11, 0.1, 0.09, 0.0), Color(0.11, 0.1, 0.09, 1.0), Color(0.15, 0.14, 0.13, 0.85), Color(0.22, 0.21, 0.2, 0.0)])
+	pm.angular_velocity_min = -60.0
+	pm.angular_velocity_max = 60.0
+	pm.scale_curve = _curve([Vector2(0, 0.3), Vector2(0.1, 0.9), Vector2(1, 1.25)])
+	pm.color_ramp = _ramp([0.0, 0.04, 0.5, 1.0], [Color(0.1, 0.09, 0.08, 0.0), Color(0.1, 0.09, 0.08, 1.0), Color(0.14, 0.13, 0.12, 0.85), Color(0.22, 0.21, 0.2, 0.0)])
 	var fb := _sys(c.fb, c.fbl, pm, smoke_mat)
-	fb.explosiveness = 0.98
-	fb.set_instance_shader_parameter("heat", 1.6)
-	fb.set_instance_shader_parameter("heat_fade", 0.22)
-	fb.set_instance_shader_parameter("density", 1.5)
+	fb.explosiveness = 0.97
+	fb.set_instance_shader_parameter("heat", 1.85)
+	fb.set_instance_shader_parameter("heat_fade", 0.3)
+	fb.set_instance_shader_parameter("density", 1.55)
 	layers["fireball"] = fb
+	# 2b. heavy rounds: burning fragments flung out in arcs, still alight
+	# where they land
+	if int(c.fl) > 0:
+		pm = _pm(Vector3.UP, 62.0, 6.0 * sqrt(k), 14.0 * sqrt(k), Vector3(0, -9.8, 0), 0.38 * sqrt(k), 0.75 * sqrt(k))
+		pm.angle_min = 0.0
+		pm.angle_max = 0.0
+		pm.damping_min = 0.3
+		pm.damping_max = 0.8
+		pm.collision_mode = ParticleProcessMaterial.COLLISION_RIGID
+		pm.collision_bounce = 0.1
+		pm.collision_friction = 1.0
+		pm.scale_curve = _curve([Vector2(0, 1.0), Vector2(0.75, 0.75), Vector2(1, 0.0)])
+		var frag := _sys(c.fl, 2.2, pm, flame_mat)
+		frag.explosiveness = 1.0
+		frag.randomness = 0.5
+		frag.draw_order = GPUParticles3D.DRAW_ORDER_INDEX
+		layers["flaming"] = frag
+		# and flames licking about the crater a moment after
+		pm = _pm(Vector3.UP, 30.0, 0.3, 1.2, Vector3(0, 1.8, 0) + WIND * 0.6, 0.6 * sqrt(k), 1.15 * sqrt(k))
+		pm.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_SPHERE
+		pm.emission_sphere_radius = 0.9 * k
+		pm.angle_min = 0.0
+		pm.angle_max = 0.0
+		pm.scale_curve = _curve([Vector2(0, 0.4), Vector2(0.25, 1.0), Vector2(1, 0.2)])
+		var ab := _sys(c.ab, 1.0, pm, flame_mat)
+		ab.explosiveness = 0.0
+		ab.randomness = 0.6
+		ab.lifetime = 0.9
+		ab.draw_order = GPUParticles3D.DRAW_ORDER_INDEX
+		layers["afterburn"] = ab
 	# 3. smoke column drifting with the wind
-	pm = _pm(Vector3.UP, 16.0, 1.2 * k, 4.2 * k, Vector3(0.38, 0.55, 0.16), 1.9 * k, 3.1 * k)
+	pm = _pm(Vector3.UP, 18.0, 1.2 * k, 4.2 * k, Vector3(0.38, 0.55, 0.16), 2.1 * k, 3.5 * k)
 	pm.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_SPHERE
 	pm.emission_sphere_radius = 0.7 * k
 	pm.damping_min = 0.7
@@ -431,7 +474,7 @@ func _build_rig(cls: String) -> Node3D:
 	pm.color_ramp = _ramp([0.0, 0.07, 0.3, 0.65, 1.0], [Color(0.12, 0.115, 0.11, 0.0), Color(0.13, 0.125, 0.12, 0.85), Color(0.2, 0.195, 0.19, 0.6), Color(0.3, 0.295, 0.29, 0.3), Color(0.38, 0.375, 0.37, 0.0)])
 	pm.color_initial_ramp = _ramp([0.0, 1.0], [Color(0.8, 0.8, 0.8), Color(1.15, 1.12, 1.1)])
 	var sm := _sys(c.sm, c.sml, pm, smoke_mat)
-	sm.explosiveness = 0.75
+	sm.explosiveness = 0.6
 	sm.set_instance_shader_parameter("heat", 0.35)
 	sm.set_instance_shader_parameter("heat_fade", 0.08)
 	sm.set_instance_shader_parameter("density", 1.0)
@@ -600,12 +643,16 @@ func explode(p: Vector3, size: float) -> void:
 	_fire_layer(layers.fireball, fx, sv)
 	_fire_layer(layers.smoke, fx, sv + 1.0)
 	_fire_layer(layers.sparks, fx, sv)
+	if layers.has("flaming") and size >= 1.15:
+		_fire_layer(layers.flaming, fx * clampf((size - 0.9) / 1.2, 0.2, 1.0), sv + 6.0)
 	if ground:
 		_fire_layer(layers.dirt, fx, sv + 2.0)
 		_fire_layer(layers.debris, fx, sv)
 		_fire_layer(layers.ejecta, fx, sv)
 		if layers.has("column"):
 			_fire_layer(layers.column, fx * clampf(size / 2.0, 0.5, 1.0), sv + 4.0)
+		if layers.has("afterburn") and size >= 1.3:
+			_fire_layer(layers.afterburn, fx, sv + 5.0)
 		if size >= 0.9 and not OS.has_environment("FL_NO_PLUMES"):
 			plume(p, size)
 		if fx > 0.5 or size >= 1.0:
@@ -744,55 +791,239 @@ func puff(kind: String, pos: Vector3, dir := Vector3.UP) -> void:
 ## Continuous fire + smoke for burning vehicles and wrecks. Returns a holder whose
 ## children are the emitters; call set_burning(holder, fire, smoke) to tune.
 func make_burner(size: float) -> Node3D:
+	return make_fire(Vector3(0.55, 0.45, 0.55) * size, SMOKE_FUEL)
+
+
+# --- fire ----------------------------------------------------------------------------
+# A fire is tongues of flame (FLAME_SHADER) licking up out of whatever is
+# burning - each one narrows and cools from yellow-white through orange to a
+# sooty red as it rises - with sparks swirling up on the heat, a column of
+# smoke leaning off downwind (black off fuel and rubber, brown-grey off wood,
+# paler and thicker off green leaves) whose underside the flames light up,
+# a light flickering on everything round it, and the crackle of it close to.
+
+const SMOKE_WOOD := 0
+const SMOKE_FUEL := 1
+const SMOKE_LEAVES := 2
+## Smoke colours as it leaves the fire and as it thins out, per kind.
+const SMOKE_COLS := [
+	[Color(0.14, 0.125, 0.11), Color(0.36, 0.35, 0.33)],
+	[Color(0.1, 0.095, 0.09), Color(0.32, 0.31, 0.3)],  # (darker reads as a hole in the ground from above)
+	[Color(0.22, 0.215, 0.2), Color(0.42, 0.42, 0.41)],
+]
+const WIND := Fires.WIND
+var flame_mat: ShaderMaterial
+var fire_light := 1.0  # how much a fire lights its surroundings (far more at night)
+var _char_shader: Shader
+var _smoulders: Array = []  # [holder, t, secs]
+var _ground_fires: Array = []  # [holder, t, life, radius, scars done]
+
+
+## A fire filling the box `ext` (half extents) around the holder: flames,
+## sparks, smoke, light and sound, all off until set_burning / set_fire.
+## Add it to the tree and place it where the fire is.
+func make_fire(ext: Vector3, smoke_kind := SMOKE_WOOD) -> Node3D:
 	var h := Node3D.new()
-	var pm := _pm(Vector3.UP, 25.0, 0.8, 2.2, Vector3(0, 3.5, 0), 0.9 * size, 1.6 * size)
+	var area := maxf(ext.x * ext.z * 4.0, 0.4)
+	var k := clampf(sqrt(area) * 0.5, 0.45, 2.6)
+	var fsz := clampf(0.75 + 0.5 * minf(ext.x, ext.z) + 0.35 * ext.y, 0.8, 2.6)
+	var aabb := AABB(Vector3(-ext.x - 16.0, -ext.y - 2.0, -ext.z - 16.0), Vector3(ext.x * 2.0 + 32.0, ext.y + 48.0, ext.z * 2.0 + 32.0))
+	# flames: rising on their own heat, leaning a little with the wind
+	var pm := _pm(Vector3.UP, 14.0, 0.4, 1.5, Vector3(0, 2.4, 0) + WIND * 0.7, fsz * 0.7, fsz * 1.2)
+	pm.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_BOX
+	pm.emission_box_extents = ext
+	pm.angle_min = 0.0
+	pm.angle_max = 0.0
+	pm.damping_min = 0.6
+	pm.damping_max = 1.2
+	pm.scale_curve = _curve([Vector2(0, 0.35), Vector2(0.22, 1.0), Vector2(0.7, 0.8), Vector2(1, 0.2)])
+	var fl := _sys(clampi(int(12 + area * 3.5), 12, 72), 1.0, pm, flame_mat)
+	fl.one_shot = false
+	fl.explosiveness = 0.0
+	fl.randomness = 0.5
+	fl.visibility_aabb = aabb
+	fl.set_instance_shader_parameter("seed", randf() * 100.0)
+	fl.name = "Fire"
+	h.add_child(fl)
+	# sparks and burning flecks carried up and swirled about on the heat
+	pm = _pm(Vector3.UP, 30.0, 1.2, 3.4, Vector3(0, 0.9, 0) + WIND * 0.9, 0.5, 1.0)
+	pm.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_BOX
+	pm.emission_box_extents = ext * 0.8
+	pm.angle_min = 0.0
+	pm.angle_max = 0.0
+	pm.damping_min = 0.4
+	pm.damping_max = 0.9
+	pm.turbulence_enabled = true
+	pm.turbulence_noise_strength = 2.5
+	pm.turbulence_noise_scale = 2.2
+	pm.turbulence_influence_min = 0.06
+	pm.turbulence_influence_max = 0.16
+	pm.scale_curve = _curve([Vector2(0, 1.0), Vector2(0.7, 0.8), Vector2(1, 0.0)])
+	pm.color_ramp = _ramp([0.0, 0.5, 1.0], [Color(1, 1, 1, 1), Color(1, 0.7, 0.4, 0.9), Color(1, 0.5, 0.2, 0)])
+	var emq := QuadMesh.new()
+	emq.size = Vector2(0.035, 0.13)
+	var em := _sys(clampi(int(6 + area * 1.4), 6, 32), 2.4, pm, spark_mat, emq)
+	em.one_shot = false
+	em.explosiveness = 0.0
+	em.randomness = 0.7
+	em.transform_align = GPUParticles3D.TRANSFORM_ALIGN_Z_BILLBOARD_Y_TO_VELOCITY
+	em.draw_order = GPUParticles3D.DRAW_ORDER_INDEX
+	em.visibility_aabb = aabb
+	em.name = "Embers"
+	h.add_child(em)
+	# smoke: thick where it boils off the top of the flames, which light it from below
+	var sc: Array = SMOKE_COLS[smoke_kind]
+	var c0: Color = sc[0]
+	var c1: Color = sc[1]
+	pm = _pm(Vector3.UP, 14.0, 1.0, 2.4, Vector3(WIND.x * 0.75, 0.6, WIND.z * 0.75), 1.5 * k, 2.6 * k)
 	pm.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_SPHERE
-	pm.emission_sphere_radius = 0.6 * size
-	pm.damping_min = 1.0
-	pm.damping_max = 2.0
-	pm.angular_velocity_min = -60.0
-	pm.angular_velocity_max = 60.0
-	pm.scale_curve = _curve([Vector2(0, 0.6), Vector2(0.5, 1.0), Vector2(1, 0.4)])
-	pm.color_ramp = _ramp([0.0, 0.15, 1.0], [Color(0.15, 0.13, 0.12, 0.0), Color(0.15, 0.13, 0.12, 1.0), Color(0.15, 0.14, 0.13, 0.0)])
-	var fire := _sys(int(14 * size), 0.9, pm, smoke_mat)
-	fire.one_shot = false
-	fire.explosiveness = 0.0
-	fire.set_instance_shader_parameter("heat", 1.5)
-	fire.set_instance_shader_parameter("heat_fade", 0.75)
-	fire.set_instance_shader_parameter("density", 1.2)
-	fire.name = "Fire"
-	h.add_child(fire)
-	pm = _pm(Vector3.UP, 12.0, 2.0, 4.0, Vector3(0.6, 0.6, 0.3), 1.4 * size, 2.6 * size)
-	pm.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_SPHERE
-	pm.emission_sphere_radius = 0.5 * size
-	pm.damping_min = 0.3
-	pm.damping_max = 0.8
+	pm.emission_sphere_radius = maxf(0.4, maxf(ext.x, ext.z) * 0.6)
+	pm.damping_min = 0.25
+	pm.damping_max = 0.6
 	pm.angular_velocity_min = -15.0
 	pm.angular_velocity_max = 15.0
 	pm.turbulence_enabled = true
-	pm.turbulence_noise_strength = 1.2
-	pm.turbulence_noise_scale = 5.0
+	pm.turbulence_noise_strength = 1.3
+	pm.turbulence_noise_scale = 6.0
 	pm.turbulence_influence_min = 0.02
-	pm.turbulence_influence_max = 0.05
-	pm.scale_curve = _curve([Vector2(0, 0.3), Vector2(1, 1.0)])
-	pm.color_ramp = _ramp([0.0, 0.1, 0.6, 1.0], [Color(0.07, 0.065, 0.06, 0.0), Color(0.07, 0.065, 0.06, 0.85), Color(0.16, 0.15, 0.14, 0.5), Color(0.28, 0.27, 0.26, 0.0)])
-	var smk := _sys(int(22 * size), 7.0, pm, smoke_mat)
+	pm.turbulence_influence_max = 0.06
+	pm.scale_curve = _curve([Vector2(0, 0.35), Vector2(0.3, 0.9), Vector2(1, 1.9)])
+	pm.color_ramp = _ramp([0.0, 0.08, 0.55, 1.0], [Color(c0.r, c0.g, c0.b, 0.0), Color(c0.r, c0.g, c0.b, 0.88), Color(c0.lerp(c1, 0.6).r, c0.lerp(c1, 0.6).g, c0.lerp(c1, 0.6).b, 0.5), Color(c1.r, c1.g, c1.b, 0.0)])
+	pm.color_initial_ramp = _ramp([0.0, 1.0], [Color(0.85, 0.85, 0.85), Color(1.12, 1.1, 1.08)])
+	# (burning fuel and rubber put up a far thicker column than wood)
+	var smk := _sys(int(clampi(int(26 + area * 2.6), 26, 64) * (1.4 if smoke_kind == SMOKE_FUEL else 1.0)), 8.5, pm, smoke_mat)
 	smk.one_shot = false
 	smk.explosiveness = 0.0
-	smk.visibility_aabb = AABB(Vector3(-20, -2, -20), Vector3(60, 50, 60))
+	smk.randomness = 0.5
+	smk.position = Vector3(0, ext.y * 0.8, 0)
+	smk.visibility_aabb = aabb
 	smk.name = "Smoke"
-	smk.set_instance_shader_parameter("density", 1.1)
+	smk.set_instance_shader_parameter("density", 1.15 if smoke_kind != SMOKE_LEAVES else 1.0)
+	smk.set_instance_shader_parameter("heat", 0.55)
+	smk.set_instance_shader_parameter("heat_fade", 0.1)
+	smk.set_instance_shader_parameter("erode", 1.2)
 	h.add_child(smk)
 	var l := OmniLight3D.new()
-	l.light_color = Color(1.0, 0.55, 0.2)
-	l.omni_range = 7.0 * size
+	l.light_color = Color(1.0, 0.52, 0.18)
+	l.omni_range = 5.0 + 2.5 * k + ext.y
+	l.omni_attenuation = 1.4
 	l.light_energy = 0.0
-	l.position = Vector3(0, 1.0, 0)
+	l.shadow_enabled = false
 	l.name = "Glow"
 	h.add_child(l)
+	var snd := Sfx.make_loop_player("fire", 3.0 + 2.0 * k, -40.0)
+	snd.autoplay = false  # (only while it burns: see set_burning)
+	snd.max_distance = 70.0
+	snd.name = "Snd"
+	h.add_child(snd)
 	h.set_meta("fire", 0.0)
+	h.set_meta("k", k)
 	_burners.append(h)
 	return h
+
+
+## A fire made by make_fire at strength f (0..1): its smoke goes on thinly
+## even as it dies down.
+func set_fire(h: Node3D, f: float) -> void:
+	set_burning(h, f, 0.3 + 0.7 * f if f > 0.0 else 0.0)
+
+
+## The fire's out: what's left smoulders for `secs`, the smoke thinning
+## away, then the holder frees itself.
+func smoulder(h: Node3D, secs: float) -> void:
+	if h == null or not is_instance_valid(h):
+		return
+	set_burning(h, 0.0, 0.5)
+	if h.get_parent() != self:
+		var xf := h.global_transform
+		h.get_parent().remove_child(h)
+		add_child(h)
+		h.global_transform = xf
+	_smoulders.append([h, 0.0, secs])
+
+
+## A material that chars what it's laid over (as material_overlay): black
+## creeping over it in blotches as `amount` rises, embers glowing in the
+## cracks while `glow` is up.
+func char_material() -> ShaderMaterial:
+	if _char_shader == null:
+		_char_shader = Shader.new()
+		_char_shader.code = CHAR_SHADER
+	var m := ShaderMaterial.new()
+	m.shader = _char_shader
+	m.set_shader_parameter("noise_tex", noise_tex)
+	return m
+
+
+## A grass fire `r` across at p, burning `life` seconds: a ring of low flames
+## creeping outward over black ground, pale smoke, and the grass gone after.
+func ground_fire(p: Vector3, r: float, life: float) -> void:
+	if _ground_fires.size() >= 24:
+		var old: Array = _ground_fires.pop_front()
+		smoulder(old[0], 8.0)
+	var h := make_fire(Vector3(r * 0.5, 0.25, r * 0.5), SMOKE_LEAVES)
+	add_child(h)
+	h.global_position = Vector3(p.x, 0.25, p.z)
+	var fl := h.get_node("Fire") as GPUParticles3D
+	var pm := fl.process_material as ParticleProcessMaterial
+	pm.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_RING
+	pm.emission_ring_axis = Vector3.UP
+	pm.emission_ring_height = 0.1
+	pm.emission_ring_radius = r * 0.4
+	pm.emission_ring_inner_radius = r * 0.25
+	pm.scale_min = 0.45
+	pm.scale_max = 0.85
+	fl.amount = clampi(int(r * 12.0), 14, 48)
+	fl.lifetime = 0.7
+	var sm := h.get_node("Smoke") as GPUParticles3D
+	sm.position = Vector3(0, 0.3, 0)
+	var spm := sm.process_material as ParticleProcessMaterial
+	spm.emission_sphere_radius = r * 0.6
+	spm.scale_min = 1.8
+	spm.scale_max = 3.0
+	spm.scale_curve = _curve([Vector2(0, 0.4), Vector2(0.3, 1.0), Vector2(1, 2.4)])
+	sm.set_instance_shader_parameter("density", 0.6)
+	set_fire(h, 1.0)
+	_ground_fires.append([h, 0.0, life, r, 0])
+	if Settings.get_v("decals"):
+		scorch(Vector3(p.x, 0.0, p.z), r * 2.3)
+
+
+## Something burnt through falls in: a shower of sparks and a gust of ash and
+## smoke where it stood, and a black scorch on the ground.
+func collapse(p: Vector3, ext: Vector3) -> void:
+	var k := clampf(sqrt(maxf(ext.x * ext.z * 4.0, 0.4)) * 0.5, 0.5, 2.5)
+	var pm := _pm(Vector3.UP, 60.0, 3.0, 7.0 * sqrt(k), Vector3(0, -2.0, 0) + WIND, 0.6, 1.2)
+	pm.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_BOX
+	pm.emission_box_extents = ext
+	pm.angle_min = 0.0
+	pm.angle_max = 0.0
+	pm.damping_min = 1.0
+	pm.damping_max = 2.0
+	pm.scale_curve = _curve([Vector2(0, 1.0), Vector2(1, 0.0)])
+	pm.color_ramp = _ramp([0.0, 1.0], [Color(1, 1, 1, 1), Color(1, 0.5, 0.2, 0)])
+	var spq := QuadMesh.new()
+	spq.size = Vector2(0.04, 0.22)
+	var sp := _sys(int(30 * k * Settings.fx_mult()) + 6, 1.8, pm, spark_mat, spq)
+	sp.transform_align = GPUParticles3D.TRANSFORM_ALIGN_Z_BILLBOARD_Y_TO_VELOCITY
+	sp.draw_order = GPUParticles3D.DRAW_ORDER_INDEX
+	pm = _pm(Vector3.UP, 70.0, 1.0, 3.0, Vector3(WIND.x * 0.4, 0.5, WIND.z * 0.4), 1.4 * k, 2.4 * k)
+	pm.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_BOX
+	pm.emission_box_extents = ext
+	pm.damping_min = 1.5
+	pm.damping_max = 2.5
+	pm.scale_curve = _curve([Vector2(0, 0.4), Vector2(1, 1.3)])
+	pm.color_ramp = _ramp([0.0, 0.08, 1.0], [Color(0.16, 0.15, 0.14, 0.0), Color(0.16, 0.15, 0.14, 0.8), Color(0.32, 0.31, 0.3, 0.0)])
+	var ash := _sys(int(14 * k) + 4, 4.5, pm, smoke_mat)
+	ash.set_instance_shader_parameter("heat", 0.8)
+	ash.set_instance_shader_parameter("heat_fade", 0.2)
+	for ps in [sp, ash]:
+		add_child(ps)
+		ps.global_position = p
+		ps.emitting = true
+		get_tree().create_timer(6.0).timeout.connect(ps.queue_free)
+	if Settings.get_v("decals"):
+		scorch(Vector3(p.x, 0.0, p.z), 1.0 + 2.2 * maxf(ext.x, ext.z))
 
 
 var _timed: Array = []  # [holder, t, fire_secs, smoke_secs]
@@ -857,17 +1088,31 @@ func set_burning(h: Node3D, fire: float, smoke: float) -> void:
 	if h == null or not is_instance_valid(h):
 		return
 	var f := h.get_node("Fire") as GPUParticles3D
+	var e := h.get_node("Embers") as GPUParticles3D
 	var s := h.get_node("Smoke") as GPUParticles3D
 	var fx := Settings.fx_mult()
 	f.emitting = fire > 0.02
 	if f.emitting:
-		f.amount_ratio = clampf(fire * fx, 0.05, 1.0)
+		f.amount_ratio = clampf((0.25 + 0.75 * fire) * fx, 0.05, 1.0)
+		# a fire dying down burns low
+		(f.process_material as ParticleProcessMaterial).scale_max = (f.process_material as ParticleProcessMaterial).scale_min * (1.15 + 0.6 * fire)
+	e.emitting = fire > 0.2
+	if e.emitting:
+		e.amount_ratio = clampf(fire * fx, 0.05, 1.0)
 	s.emitting = smoke > 0.02
 	if s.emitting:
 		s.amount_ratio = clampf(smoke * fx, 0.05, 1.0)
+	var snd := h.get_node_or_null("Snd") as AudioStreamPlayer3D
+	if snd and snd.stream:
+		snd.volume_db = linear_to_db(maxf(fire, 0.001)) - 6.0 + 3.0 * float(h.get_meta("k", 1.0))
+		if fire > 0.02 and not snd.playing and snd.is_inside_tree():
+			snd.play(randf() * 3.0)
+		elif fire <= 0.02 and snd.playing:
+			snd.stop()
 	h.set_meta("fire", fire)
 	if f.emitting or s.emitting:
 		f.visible = true
+		e.visible = true
 		s.visible = true
 		if h.has_meta("off_at"):
 			h.remove_meta("off_at")
@@ -1050,12 +1295,50 @@ func _view_process(dt: float) -> void:
 		var h: Node3D = _burners[i]
 		var l := h.get_node("Glow") as OmniLight3D
 		var f := float(h.get_meta("fire"))
-		l.light_energy = f * (2.2 + 0.8 * sin(t * 17.0 + i) + 0.5 * sin(t * 29.0)) if f > 0.02 else 0.0
+		# fires flicker and gutter: a fast shimmer over slower surges
+		var kk := float(h.get_meta("k", 1.0))
+		l.light_energy = f * fire_light * (0.7 + 0.35 * kk) * (1.0 + 0.3 * sin(t * 17.0 + i * 1.7) + 0.2 * sin(t * 29.0 + i) + 0.25 * sin(t * 3.1 + i * 0.6)) if f > 0.02 else 0.0
 		l.visible = f > 0.02
 		if h.has_meta("off_at") and t > float(h.get_meta("off_at")):
 			h.remove_meta("off_at")
-			(h.get_node("Fire") as GPUParticles3D).visible = false
-			(h.get_node("Smoke") as GPUParticles3D).visible = false
+			for nm in ["Fire", "Embers", "Smoke"]:
+				(h.get_node(nm) as GPUParticles3D).visible = false
+	for i in range(_smoulders.size() - 1, -1, -1):
+		var sm: Array = _smoulders[i]
+		var hs: Node3D = sm[0]
+		if not is_instance_valid(hs):
+			_smoulders.remove_at(i)
+			continue
+		sm[1] = float(sm[1]) + dt
+		var left := 1.0 - float(sm[1]) / float(sm[2])
+		if left > 0.0:
+			if int(sm[1] * 2.0) != int((float(sm[1]) - dt) * 2.0):
+				set_burning(hs, 0.0, 0.5 * left)
+		elif float(sm[1]) > float(sm[2]) + 10.0:
+			hs.queue_free()
+			_smoulders.remove_at(i)
+		elif (hs.get_node("Smoke") as GPUParticles3D).emitting:
+			set_burning(hs, 0.0, 0.0)
+	for i in range(_ground_fires.size() - 1, -1, -1):
+		var gf: Array = _ground_fires[i]
+		var hg: Node3D = gf[0]
+		gf[1] = float(gf[1]) + dt
+		var u := float(gf[1]) / float(gf[2])
+		var r: float = gf[3]
+		if u >= 1.0 or not is_instance_valid(hg):
+			_ground_fires.remove_at(i)
+			if is_instance_valid(hg):
+				smoulder(hg, 12.0)
+			continue
+		# the fire front creeps outward, leaving black ground and no grass
+		var pm := (hg.get_node("Fire") as GPUParticles3D).process_material as ParticleProcessMaterial
+		pm.emission_ring_radius = r * (0.4 + 0.6 * sqrt(u))
+		pm.emission_ring_inner_radius = pm.emission_ring_radius * 0.7
+		if u > 0.8 and int(gf[4]) == 0:
+			gf[4] = 1
+			set_fire(hg, 0.4)
+		if world and world.atmo and world.atmo.grass and int(gf[1] / 3.0) != int((float(gf[1]) - dt) / 3.0):
+			world.atmo.grass.scar(hg.global_position, pm.emission_ring_radius + 0.4, 1.0)
 	_rig_check_t -= dt
 	if _rig_check_t <= 0.0:
 		_rig_check_t = 0.5
@@ -1180,7 +1463,7 @@ void fragment() {
 
 const SPARK_SHADER := """
 shader_type spatial;
-render_mode unshaded, blend_add, depth_draw_never, cull_disabled, shadows_disabled;
+render_mode unshaded, blend_add, depth_draw_never, cull_disabled, shadows_disabled, fog_disabled;
 uniform vec3 hot : source_color = vec3(1.0, 0.62, 0.25);
 uniform float intensity = 9.0;
 void fragment() {
@@ -1214,7 +1497,102 @@ void fragment() {
 	vec2 off = NORMAL.xy * rim * k * 0.03;
 	vec3 c = textureLod(screen_tex, SCREEN_UV - off, 0.0).rgb;
 	ALBEDO = c;
-	ALPHA = clamp(rim * 3.0, 0.0, 1.0) * k;
+	ALPHA = clamp(rim * 1.6, 0.0, 0.55) * k * k;
+}
+"""
+
+
+## A tongue of flame on a camera-facing quad (premultiplied: the hot core
+## adds light, the cooler sooty edges darken what's behind). Round at the
+## base, drawn up into a wavering point; hottest low down and early in its
+## life, cooling to a dull red as it rises and fades.
+const FLAME_SHADER := """
+shader_type spatial;
+render_mode unshaded, blend_premul_alpha, depth_draw_never, cull_disabled, shadows_disabled, fog_disabled;
+uniform sampler2D noise_tex : filter_linear_mipmap, repeat_enable;
+uniform sampler2D depth_tex : hint_depth_texture, filter_nearest;
+uniform float intensity = 2.4;
+instance uniform float seed = 0.0;
+varying float age;
+varying float rnd;
+
+void vertex() {
+	mat4 mw = mat4(normalize(INV_VIEW_MATRIX[0]), normalize(INV_VIEW_MATRIX[1]), normalize(INV_VIEW_MATRIX[2]), MODEL_MATRIX[3]);
+	float bs = length(MODEL_MATRIX[0].xyz);
+	MODELVIEW_MATRIX = VIEW_MATRIX * mw * mat4(vec4(bs, 0.0, 0.0, 0.0), vec4(0.0, bs * 1.4, 0.0, 0.0), vec4(0.0, 0.0, bs, 0.0), vec4(0.0, bs * 0.3, 0.0, 1.0));
+	MODELVIEW_NORMAL_MATRIX = mat3(MODELVIEW_MATRIX);
+	age = INSTANCE_CUSTOM.y;
+	rnd = fract(sin(float(INSTANCE_ID) * 12.9898 + seed * 78.233) * 43758.5453);
+}
+
+void fragment() {
+	vec2 p = UV * 2.0 - 1.0;
+	p.y = -p.y;
+	// (nothing may reach the quad's edges, however it wavers)
+	float frame = (1.0 - smoothstep(0.7, 0.98, abs(p.x))) * (1.0 - smoothstep(0.75, 0.98, abs(p.y)));
+	float up = p.y * 0.5 + 0.5;
+	// it wavers more towards the tip
+	float wv = texture(noise_tex, vec2(rnd * 7.1 + up * 0.35, TIME * 0.55 + rnd * 3.0)).b - 0.5;
+	p.x += wv * 0.75 * up;
+	float taper = mix(1.0, 0.3, smoothstep(-0.6, 1.0, p.y));
+	vec2 q = vec2(p.x / taper, (p.y + 0.25) * 0.7);
+	float n = texture(noise_tex, UV * vec2(0.55, 0.35) + vec2(rnd * 5.3, -TIME * 0.8 - rnd * 2.0)).r;
+	float n2 = texture(noise_tex, UV * vec2(1.3, 0.9) + vec2(rnd * 3.1, -TIME * 1.7)).g;
+	float d = length(q) + (n - 0.5) * 0.8 + (n2 - 0.5) * 0.4;
+	float body = (1.0 - smoothstep(0.3, 0.92, d)) * frame;
+	float fade = smoothstep(0.0, 0.1, age) * (1.0 - smoothstep(0.55, 1.0, age));
+	float temp = clamp(body * 1.05 - age * 0.8 - max(p.y, 0.0) * 0.35, 0.0, 1.0);
+	vec3 col = mix(vec3(0.5, 0.06, 0.01), vec3(1.0, 0.34, 0.05), smoothstep(0.05, 0.4, temp));
+	col = mix(col, vec3(1.0, 0.68, 0.28), smoothstep(0.4, 0.75, temp));
+	col = mix(col, vec3(1.0, 0.92, 0.74), smoothstep(0.8, 1.0, temp));
+	float a = body * fade;
+	float dz = texture(depth_tex, SCREEN_UV).r;
+	vec4 vp = INV_PROJECTION_MATRIX * vec4(SCREEN_UV * 2.0 - 1.0, dz, 1.0);
+	a *= clamp((-vp.z / vp.w + VERTEX.z) / 0.6, 0.0, 1.0);
+	ALBEDO = col * intensity * (0.45 + 1.3 * temp) * a * COLOR.a;
+	ALPHA = clamp(a * (0.2 + 0.45 * (1.0 - temp)) * COLOR.a, 0.0, 1.0);
+}
+"""
+
+
+## Char laid over a burning thing (as material_overlay): black creeping over
+## it in blotches as `amount` rises, grey ash in places, cracked into blocks
+## with embers glowing in the cracks while `glow` is up.
+const CHAR_SHADER := """
+shader_type spatial;
+render_mode blend_mix, depth_draw_never, cull_back;
+uniform sampler2D noise_tex : filter_linear_mipmap, repeat_enable;
+uniform float amount = 0.0;
+uniform float glow = 0.0;
+varying vec3 wp;
+varying vec3 wn;
+
+void vertex() {
+	wp = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
+	wn = normalize((MODEL_MATRIX * vec4(NORMAL, 0.0)).xyz);
+}
+
+vec3 tri(vec3 p, vec3 n, float s) {
+	vec3 w = abs(n);
+	w /= (w.x + w.y + w.z + 1e-4);
+	return texture(noise_tex, p.zy * s).rgb * w.x + texture(noise_tex, p.xz * s).rgb * w.y + texture(noise_tex, p.xy * s).rgb * w.z;
+}
+
+void fragment() {
+	vec3 a = tri(wp, wn, 0.09);
+	vec3 b = tri(wp + 3.7, wn, 0.55);
+	float m = a.r * 0.6 + b.r * 0.4;
+	float t = 1.0 - amount * 1.35;
+	float cover = smoothstep(t, t + 0.2, m + 0.08);
+	float crack = smoothstep(0.7, 0.85, 1.0 - b.g);
+	vec3 c = vec3(0.007, 0.006, 0.005) * (0.7 + 0.6 * a.b);
+	c = mix(c, vec3(0.045, 0.043, 0.04), smoothstep(0.62, 0.85, b.b) * 0.45 * (1.0 - glow));
+	ALBEDO = c;
+	ROUGHNESS = 0.97;
+	SPECULAR = 0.08;
+	float flick = 0.55 + 0.45 * sin(TIME * 3.7 + wp.x * 2.3 + wp.z * 1.7 + a.g * 9.0);
+	EMISSION = vec3(1.0, 0.3, 0.04) * glow * (crack * 3.0 + 0.05) * flick * cover;
+	ALPHA = cover;
 }
 """
 

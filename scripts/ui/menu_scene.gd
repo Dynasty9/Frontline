@@ -49,12 +49,8 @@ func _ready() -> void:
 	cam.current = true
 	_place_cam()
 	if Sfx.enabled:
-		for it in [["wind", -17.0], ["rumble", -15.0]]:
-			var ap := AudioStreamPlayer.new()
-			ap.stream = Sfx.streams[it[0]]
-			ap.volume_db = it[1]
-			ap.autoplay = true
-			add_child(ap)
+		add_child(Sfx.make_ambience("wind", -21.0))
+		add_child(Sfx.make_ambience("rumble", -15.0))
 
 
 func _env() -> void:

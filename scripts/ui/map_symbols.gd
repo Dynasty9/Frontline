@@ -267,7 +267,9 @@ const GLYPH_KINDS := ["fire", "supp", "pinned", "reload", "noammo", "ammo", "gre
 const COLS := 16
 
 static var atlas: Texture2D
+static var atlas_k := 1  # the atlas's pixels per interface pixel (more on a scaled-up interface)
 static var _cells := {}  # key -> Rect2 in the atlas
+static var _atlas_vp: SubViewport
 
 
 static func _nato_key(friendly: bool, team: int, glyph: String) -> String:
@@ -278,42 +280,59 @@ static func _glyph_key(kind: String, badge: bool) -> String:
 	return "g%d%s" % [1 if badge else 0, kind]
 
 
-## Builds the atlas under `parent` (a SubViewport that renders once).
-static func build_atlas(parent: Node) -> void:
+## The atlas resolution the interface scale wants: a symbol is never
+## stretched past the size it was drawn at.
+static func atlas_k_for(ui_factor: float) -> int:
+	return clampi(ceili(ui_factor / 1.6), 1, 3)
+
+
+## Builds the atlas under `parent` (a SubViewport that renders once), `k`
+## pixels to each interface pixel. Building it again replaces the old one.
+static func build_atlas(parent: Node, k := 1) -> void:
+	if _atlas_vp and is_instance_valid(_atlas_vp):
+		_atlas_vp.queue_free()
+	atlas = null  # vector symbols until the new one has drawn
+	atlas_k = k
 	var keys := []
 	for f in [true, false]:
 		for t in [0, 1, -1]:
 			for g in NATO_GLYPHS:
 				keys.append(["n", f, t, g])
-	for k in GLYPH_KINDS:
+	for kind in GLYPH_KINDS:
 		for b in [true, false]:
-			keys.append(["g", k, b])
+			keys.append(["g", kind, b])
 	var rows := ceili(keys.size() / float(COLS))
 	var vp := SubViewport.new()
-	vp.size = Vector2i(int(CELL) * COLS, int(CELL) * rows)
+	vp.size = Vector2i(int(CELL) * k * COLS, int(CELL) * k * rows)
 	vp.transparent_bg = true
 	vp.render_target_update_mode = SubViewport.UPDATE_ONCE
 	vp.disable_3d = true
 	parent.add_child(vp)
+	_atlas_vp = vp
 	var painter := AtlasPainter.new()
 	painter.keys = keys
+	painter.k = k
 	painter.size = Vector2(vp.size)
 	vp.add_child(painter)
 	for i in keys.size():
 		var it: Array = keys[i]
-		var r := Rect2((i % COLS) * CELL, (i / COLS) * CELL, CELL, CELL)
+		var r := Rect2((i % COLS) * CELL * k, (i / COLS) * CELL * k, CELL * k, CELL * k)
 		if it[0] == "n":
 			_cells[_nato_key(it[1], it[2], it[3])] = r
 		else:
 			_cells[_glyph_key(it[1], it[2])] = r
 	# the texture is ready once the viewport has drawn
-	parent.get_tree().process_frame.connect(func(): atlas = vp.get_texture(), CONNECT_ONE_SHOT)
+	parent.get_tree().process_frame.connect(func():
+		if is_instance_valid(vp) and vp == _atlas_vp:
+			atlas = vp.get_texture(), CONNECT_ONE_SHOT)
 
 
 class AtlasPainter extends Control:
 	var keys: Array = []
+	var k := 1
 
 	func _draw() -> void:
+		draw_set_transform(Vector2.ZERO, 0.0, Vector2(k, k))
 		for i in keys.size():
 			var it: Array = keys[i]
 			var c := Vector2((i % COLS) * CELL + CELL * 0.5, (i / COLS) * CELL + CELL * 0.5)

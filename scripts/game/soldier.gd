@@ -1083,6 +1083,9 @@ func _fight_think() -> void:
 		# the wall he was behind came down, or the car was blown across the road
 		cover_st = null
 		need = true
+	elif cover_st != null and cover_st.burn > 0.3:
+		cover_st = null  # it's caught fire: he'll not stay behind that
+		need = true
 	elif world.time > next_cover_eval:
 		var threats := _threats()
 		var td := _threat_dir(threats)
@@ -1990,6 +1993,30 @@ func _dive_from(p: Vector3) -> void:
 	stop_moving()
 	at_cover = false
 	peek_up = false
+
+
+var _fire_flee_t := 0.0
+
+
+## Too close to a fire: he gets back out of the heat, shouting about it, and
+## finds somewhere else to fight from.
+func flee_fire(from: Vector3) -> void:
+	if life != Life.ALIVE or mounted != null or riding != null or task in ["smother", "stretcher", "tunnel"] or act == Act.DIVE:
+		return
+	if world.time < _fire_flee_t:
+		return
+	_fire_flee_t = world.time + 2.5
+	var away := Defs.flat(position - from)
+	away = away.normalized() if away.length() > 0.1 else Defs.dir_of(world.rng.randf() * TAU)
+	var dest := world.nav.nearest_walkable(position + away * 7.0)
+	at_cover = false
+	peek_up = false
+	_clear_cover()
+	next_cover_eval = world.time + 2.0
+	go_to(dest, "slot", 2)
+	world.stat("fire_flee")
+	if world.rng.randf() < 0.4:
+		say(_pick(["Fire! Get back!", "It's burning! Move!", "Back, back - it's going up!", "Get out of the fire!"]), true)
 
 
 func _react_drones() -> void:

@@ -230,14 +230,10 @@ func _ready() -> void:
 	col.add_child(hint)
 
 	settings_panel = SettingsPanel.new()
-	settings_panel.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
-	settings_panel.offset_left = -330
-	settings_panel.offset_right = 330
-	settings_panel.offset_top = -300
-	settings_panel.offset_bottom = 300
 	settings_panel.visible = false
 	settings_panel.closed.connect(func(): settings_panel.visible = false)
 	add_child(settings_panel)
+	UiKit.fit_center(settings_panel, Vector2(700, 600))
 	manual = FieldManual.new()
 	manual.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	manual.offset_left = 40
@@ -286,6 +282,7 @@ func _on_visibility() -> void:
 	if is_visible_in_tree() and backdrop == null:
 		backdrop = MenuScene.new()
 		get_tree().root.add_child.call_deferred(backdrop)
+		Music.play_cue("menu")
 	elif not is_visible_in_tree() and backdrop != null:
 		backdrop.queue_free()
 		backdrop = null

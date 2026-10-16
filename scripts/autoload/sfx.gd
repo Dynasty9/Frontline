@@ -1,7 +1,11 @@
 extends Node
 ## Procedurally synthesised sound effects, played through a pool of 3D players.
+## Every player feeds one of the mixer's buses, so music, effects, ambience and
+## the interface each have their own volume (Settings sets the levels).
 
 const RATE := 22050
+## The mixer: each of these feeds Master.
+const BUSES := ["Music", "Effects", "Ambience", "Interface"]
 
 var streams := {}
 var pool: Array = []
@@ -14,9 +18,11 @@ var far_i := 0
 
 
 func _ready() -> void:
+	_setup_buses()
 	if DisplayServer.get_name() == "headless":
 		enabled = false
-		return
+		if dump_dir() == "":
+			return
 	streams["rifle"] = _gun(0.16, 0.9, 1400.0, 0.55)
 	streams["smg"] = _gun(0.12, 0.7, 1800.0, 0.4)
 	streams["mg"] = _gun(0.14, 0.95, 1100.0, 0.6)
@@ -54,23 +60,52 @@ func _ready() -> void:
 	streams["ac105"] = _boom(3.0, 1.0, 34.0)
 	streams["prop"] = _prop_loop()
 	streams["arty_whistle"] = _incoming()
+	streams["fire"] = _fire_loop()
 	for i in 32:
 		var p := AudioStreamPlayer3D.new()
 		p.unit_size = 14.0
 		p.max_distance = 300.0
 		p.attenuation_model = AudioStreamPlayer3D.ATTENUATION_INVERSE_DISTANCE
 		p.panning_strength = 0.8
+		p.bus = &"Effects"
 		add_child(p)
 		pool.append(p)
 	ui_player = AudioStreamPlayer.new()
+	ui_player.bus = &"Interface"
 	add_child(ui_player)
 	for i in 6:
 		var fp := AudioStreamPlayer.new()
+		fp.bus = &"Effects"
 		add_child(fp)
 		far_pool.append(fp)
 
 
-func play(sname: String, pos: Vector3, vol_db := 0.0, pitch := 1.0) -> void:
+func _setup_buses() -> void:
+	for b in BUSES:
+		if AudioServer.get_bus_index(b) >= 0:
+			continue
+		var i := AudioServer.bus_count
+		AudioServer.add_bus(i)
+		AudioServer.set_bus_name(i, b)
+		AudioServer.set_bus_send(i, &"Master")
+
+
+## --sound-dump=DIR: write every synthesised sound to DIR as a WAV and quit
+## (main.gd), so a sound can be listened to or measured on its own.
+func dump_dir() -> String:
+	for a in OS.get_cmdline_user_args():
+		if String(a).begins_with("--sound-dump="):
+			return String(a).substr(13)
+	return ""
+
+
+func dump(dir: String) -> void:
+	DirAccess.make_dir_recursive_absolute(dir)
+	for k in streams:
+		(streams[k] as AudioStreamWAV).save_to_wav(dir.path_join(String(k) + ".wav"))
+
+
+func play(sname: String, pos: Vector3, vol_db := 0.0, pitch := 1.0, bus := &"Effects") -> void:
 	if not enabled or not streams.has(sname):
 		return
 	var now := Time.get_ticks_msec()
@@ -80,6 +115,7 @@ func play(sname: String, pos: Vector3, vol_db := 0.0, pitch := 1.0) -> void:
 	var p: AudioStreamPlayer3D = pool[pool_i]
 	pool_i = (pool_i + 1) % pool.size()
 	p.stream = streams[sname]
+	p.bus = bus
 	p.global_position = pos
 	p.volume_db = vol_db
 	p.pitch_scale = pitch * randf_range(0.9, 1.1)
@@ -109,6 +145,7 @@ func ui(sname: String) -> void:
 
 func make_drone_player() -> AudioStreamPlayer3D:
 	var p := AudioStreamPlayer3D.new()
+	p.bus = &"Effects"
 	if enabled:
 		p.stream = streams["drone"]
 		p.unit_size = 10.0
@@ -253,62 +290,110 @@ func _rotor_loop() -> AudioStreamWAV:
 	return _wav(s, true)
 
 
-## Wind: brown noise with slow gusts (seamless 4 s loop).
+## Wind: air rushing past (noise from a few hundred hertz up) and a hollow
+## howl whose pitch rises as it blows harder, in gusts that come and go
+## irregularly. The gusts are slow swells whose periods divide the loop, so it
+## repeats seamlessly and only every ten seconds. Nothing much below 200 Hz:
+## low noise that swells and fades sounds like surf on a beach, not wind.
 func _wind_loop() -> AudioStreamWAV:
-	var n := int(4.0 * RATE)
+	var secs := 10.0
+	var n := int(secs * RATE)
+	var fade := int(0.5 * RATE)
 	var s := PackedFloat32Array()
-	s.resize(n)
-	var b := 0.0
-	var hp := 0.0
-	for i in n:
-		var t := float(i) / RATE
-		b = b * 0.996 + (randf() * 2.0 - 1.0) * 0.06
-		hp += (b - hp) * 0.02
-		var gust := 0.55 + 0.45 * sin(TAU * 0.25 * t) * sin(TAU * 0.5 * t + 1.0)
-		s[i] = (b - hp) * 2.2 * gust
-	# crossfade the ends so the loop is seamless
-	var fade := int(0.3 * RATE)
-	for i in fade:
-		var k := float(i) / fade
-		s[i] = s[i] * k + s[n - fade + i] * (1.0 - k)
-	return _wav(s, true)
-
-
-## Distant battle: low rumble with far-off thumps and crackle (6 s loop).
-func _rumble_loop() -> AudioStreamWAV:
-	var n := int(6.0 * RATE)
-	var s := PackedFloat32Array()
-	s.resize(n)
+	s.resize(n + fade)
+	var parts := []
+	for k in [1, 2, 3, 5, 8]:
+		parts.append([float(k), randf() * TAU, randf_range(0.5, 1.0) / pow(float(k), 0.6)])
+	var top := 0.0
+	for p in parts:
+		top += float(p[2])
+	var g := 0.0
+	var f := 0.0
+	var low := 0.0
+	var band := 0.0
 	var lp := 0.0
-	var booms := []
+	var hp := 0.0
+	for i in n + fade:
+		if i % 32 == 0:
+			var t := float(i) / RATE
+			var v := 0.0
+			for p in parts:
+				v += float(p[2]) * sin(TAU * float(p[0]) * t / secs + float(p[1]))
+			g = 0.5 + 0.5 * v / top
+			f = 2.0 * sin(PI * (230.0 + 420.0 * g) / RATE)
+		var w := randf() * 2.0 - 1.0
+		# the howl: noise through a resonant band-pass (a state-variable filter)
+		low += f * band
+		band += f * (w - low - 0.45 * band)
+		# the rush: noise between ~250 Hz and ~1.5 kHz
+		lp += (w - lp) * 0.28
+		hp += (lp - hp) * 0.07
+		s[i] = band * 0.22 * (0.55 + 0.45 * g) + (lp - hp) * 0.35 * (0.35 + 0.65 * g * g)
+	return _wav(_normalize(_seamless(s, fade), -20.0), true)
+
+
+## The battle somewhere else: muffled artillery thumps with long tails, far-off
+## machine-gun bursts, and a faint low murmur between them (8 s loop).
+func _rumble_loop() -> AudioStreamWAV:
+	var secs := 8.0
+	var n := int(secs * RATE)
+	var fade := int(0.5 * RATE)
+	var s := PackedFloat32Array()
+	s.resize(n + fade)
+	var lp := 0.0
+	var lp2 := 0.0
+	var hp := 0.0
+	for i in n + fade:
+		lp += ((randf() * 2.0 - 1.0) - lp) * 0.03
+		lp2 += (lp - lp2) * 0.03
+		hp += (lp2 - hp) * 0.012
+		s[i] = lp2 - hp
+	s = _seamless(s, fade)
+	# distant guns, one in each fifth of the loop so they never bunch up (a tail
+	# running past the end carries on at the start: it's a loop)
 	for j in 5:
-		booms.append([randf() * 5.6, randf_range(35.0, 60.0), randf_range(0.4, 1.0)])
-	for i in n:
-		var t := float(i) / RATE
-		lp += ((randf() * 2.0 - 1.0) - lp) * 0.01
-		var v := lp * 1.8
-		for bm in booms:
-			var dt := t - float(bm[0])
-			if dt > 0.0 and dt < 2.0:
-				v += sin(TAU * float(bm[1]) * dt) * exp(-dt * 3.0) * float(bm[2]) * 0.5
-		if randf() < 0.0006:
-			v += (randf() - 0.5) * 0.3
-		s[i] = v
-	var fade := int(0.4 * RATE)
-	for i in fade:
-		var k := float(i) / fade
-		s[i] = s[i] * k + s[n - fade + i] * (1.0 - k)
-	return _wav(s, true)
+		var k0 := int((j * secs / 5.0 + randf_range(0.0, secs / 5.0 - 0.6)) * RATE)
+		var amp := randf_range(0.35, 1.0)
+		var f0 := randf_range(42.0, 62.0)
+		var a := 0.0
+		var b := 0.0
+		for i in int(2.2 * RATE):
+			var t := float(i) / RATE
+			a += ((randf() * 2.0 - 1.0) - a) * 0.08
+			b += (a - b) * 0.08
+			var env := (1.0 - exp(-t * 60.0)) * exp(-t * 2.6)
+			s[(k0 + i) % n] += (b * 6.0 + sin(TAU * f0 * t) * 0.3 * exp(-t * 5.0)) * env * amp
+	# a machine gun firing a long way off
+	for j in 3:
+		var t0 := randf_range(0.0, secs)
+		var rate := randf_range(8.0, 12.0)
+		var amp := randf_range(0.04, 0.09)
+		for q in randi_range(4, 9):
+			var k0 := int((t0 + q / rate + randf_range(0.0, 0.01)) * RATE)
+			var a := 0.0
+			for i in int(0.08 * RATE):
+				a += ((randf() * 2.0 - 1.0) - a) * 0.25
+				s[(k0 + i) % n] += a * exp(-float(i) / RATE * 55.0) * amp
+	# take out what's below hearing: it only reads as pressure, like surf
+	# (run round the loop twice so the filter starts where it ends)
+	var h := 0.0
+	for pass_i in 2:
+		for i in n:
+			h += (s[i] - h) * 0.01
+			if pass_i == 1:
+				s[i] -= h
+	return _wav(_normalize(s, -22.0), true)
 
 
 ## Rain: dense hiss with patter (seamless 3 s loop).
 func _rain_loop() -> AudioStreamWAV:
 	var n := int(3.0 * RATE)
+	var fade := int(0.3 * RATE)
 	var s := PackedFloat32Array()
-	s.resize(n)
+	s.resize(n + fade)
 	var lp := 0.0
 	var hp := 0.0
-	for i in n:
+	for i in n + fade:
 		var w := randf() * 2.0 - 1.0
 		lp += (w - lp) * 0.35
 		hp += (lp - hp) * 0.05
@@ -316,11 +401,61 @@ func _rain_loop() -> AudioStreamWAV:
 		if randf() < 0.004:
 			v += (randf() - 0.5) * 0.6
 		s[i] = v
+	return _wav(_seamless(s, fade), true)
+
+
+## Makes a loop without a seam: `s` runs `fade` samples past the loop's end,
+## and that overrun is faded into the start (equal power, for noise), so the
+## end flows straight on into the beginning.
+func _seamless(s: PackedFloat32Array, fade: int) -> PackedFloat32Array:
+	var n := s.size() - fade
+	for i in fade:
+		var k := float(i) / fade
+		s[i] = s[i] * sqrt(k) + s[n + i] * sqrt(1.0 - k)
+	s.resize(n)
+	return s
+
+
+## Scales `s` to an RMS level (dBFS), so how loud a loop plays is set by its
+## player's volume, not by how the synthesis happened to come out.
+func _normalize(s: PackedFloat32Array, rms_db: float) -> PackedFloat32Array:
+	var sum := 0.0
+	for x in s:
+		sum += x * x
+	var k := db_to_linear(rms_db) / maxf(1e-6, sqrt(sum / maxf(1.0, s.size())))
+	for i in s.size():
+		s[i] *= k
+	return s
+
+
+## A fire close to: the low, breathing roar of the flames under a run of
+## crackles and the odd sharp pop of sap or a round cooking off.
+func _fire_loop() -> AudioStreamWAV:
+	var n := int(4.0 * RATE)
+	var s := PackedFloat32Array()
+	s.resize(n)
+	var lp := 0.0
+	var lp2 := 0.0
+	var ck := 0.0
+	var ck_lp := 0.0
+	for i in n:
+		var t := float(i) / RATE
+		var w := randf() * 2.0 - 1.0
+		lp += (w - lp) * 0.03
+		lp2 += (lp - lp2) * 0.25
+		var roar := lp2 * 2.2 * (0.7 + 0.18 * sin(t * TAU * 0.5) + 0.12 * sin(t * TAU * 1.25 + 1.0))
+		if randf() < 0.0016:
+			ck = randf_range(0.25, 0.8)
+		elif randf() < 0.00006:
+			ck = 1.0
+		ck *= 0.988
+		ck_lp += (randf() * 2.0 - 1.0 - ck_lp) * 0.55
+		s[i] = roar * 0.55 + ck_lp * ck * 0.5
 	var fade := int(0.3 * RATE)
 	for i in fade:
 		var k := float(i) / fade
 		s[i] = s[i] * k + s[n - fade + i] * (1.0 - k)
-	return _wav(s, true)
+	return _wav(s.slice(0, n - fade), true)
 
 
 ## Thunder: a crack followed by a long rolling rumble.
@@ -343,11 +478,24 @@ func _thunder() -> AudioStreamWAV:
 
 func make_loop_player(sname: String, unit := 14.0, vol := -2.0) -> AudioStreamPlayer3D:
 	var p := AudioStreamPlayer3D.new()
+	p.bus = &"Effects"
 	if enabled and streams.has(sname):
 		p.stream = streams[sname]
 		p.unit_size = unit
 		p.max_distance = 220.0
 		p.volume_db = vol
+		p.autoplay = true
+	return p
+
+
+## A bed of sound for the whole scene (wind, the distant battle, rain): not
+## placed anywhere, on the Ambience bus.
+func make_ambience(sname: String, vol_db: float) -> AudioStreamPlayer:
+	var p := AudioStreamPlayer.new()
+	p.bus = &"Ambience"
+	if enabled and streams.has(sname):
+		p.stream = streams[sname]
+		p.volume_db = vol_db
 		p.autoplay = true
 	return p
 
