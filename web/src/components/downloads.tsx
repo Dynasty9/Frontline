@@ -23,10 +23,12 @@ export function Downloads({ stable, nightly, loading, error, platform }: Props) 
   const build = stable ?? nightly
   return (
     <section id="download" className="scroll-mt-16 border-y bg-card/40">
-      <div className="mx-auto max-w-6xl px-4 py-20 sm:px-6">
+      <div className="mx-auto max-w-6xl px-4 py-24 sm:px-6">
         <SectionLabel>Download</SectionLabel>
-        <h2 className="mt-2 text-3xl font-semibold">Get the game</h2>
-        <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
+        <h2 className="mt-3 font-display text-5xl leading-[0.95] font-extrabold uppercase sm:text-6xl">
+          Get the game. <span className="text-primary">It's free.</span>
+        </h2>
+        <p className="mt-4 max-w-2xl text-sm text-muted-foreground">
           Free and open source. Unzip it anywhere and run Frontline; there's nothing to install. The first time it starts,
           it also sets up the Join links on this page, and from then on it updates itself whenever a new version comes out.
         </p>
