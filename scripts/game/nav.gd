@@ -181,8 +181,7 @@ func find_boat_path(from: Vector3, to: Vector3) -> PackedVector3Array:
 
 ## Builds the abstract graphs once the map is laid out.
 func finalize() -> void:
-	hnav_i.build()
-	hnav_v.build()
+	HNav.build_all([hnav_i, hnav_v])
 
 
 ## Re-links clusters whose walls changed, within a small time budget per tick

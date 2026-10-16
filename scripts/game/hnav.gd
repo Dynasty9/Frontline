@@ -77,6 +77,32 @@ func mark_dirty(c: Vector2i) -> void:
 
 
 func build() -> void:
+	build_all([self])
+
+
+## Whole graphs, for a new map: the slow part of starting a battle (tens of
+## thousands of entrances on each, and a few hundred small searches inside
+## every cluster to cost them). The infantry and vehicle graphs share
+## nothing, so each is built on a thread of its own, and the searches, every
+## cluster's on its own local grid, are shared out across all the threads.
+## Each graph is still put together in one fixed order, so its ids, and every
+## route planned on it, come out exactly as they would with no threads at all.
+static func build_all(navs: Array) -> void:
+	var t := WorkerThreadPool.add_group_task(func(i: int): (navs[i] as HNav)._prepare(), navs.size(), -1, true, "Nav: entrances")
+	WorkerThreadPool.wait_for_group_task_completion(t)
+	var per := NC * NC
+	t = WorkerThreadPool.add_group_task(func(k: int): (navs[k / per] as HNav)._cluster_costs(k % per), navs.size() * per, -1, true, "Nav: entrance costs")
+	WorkerThreadPool.wait_for_group_task_completion(t)
+	t = WorkerThreadPool.add_group_task(func(i: int): (navs[i] as HNav)._link_all(), navs.size(), -1, true, "Nav: graph")
+	WorkerThreadPool.wait_for_group_task_completion(t)
+
+
+var _costs: Array = []  # while building: each cluster's _pair_costs
+
+
+## (On a worker thread.) The local grids, copied from the full one, and the
+## entrances along every border.
+func _prepare() -> void:
 	for ci in NC * NC:
 		var lg: AStarGrid2D = local[ci]
 		var r: Rect2i = lg.region
@@ -92,8 +118,21 @@ func build() -> void:
 			_make_border(ci, ci + 1)
 		if cz < NC - 1:
 			_make_border(ci, ci + NC)
+	# the workers each fill in only their own cluster's slot: resizing the
+	# array is what isn't safe from several threads at once
+	_costs.resize(NC * NC)
+
+
+## (On a worker thread.)
+func _cluster_costs(ci: int) -> void:
+	_costs[ci] = _pair_costs(ci)
+
+
+## (On a worker thread.) Every cluster's links, in order.
+func _link_all() -> void:
 	for ci in NC * NC:
-		_intra(ci)
+		_intra(ci, _costs[ci])
+	_costs = []
 	built = true
 	dirty.clear()
 
@@ -272,23 +311,38 @@ func _make_border(a: int, b: int) -> void:
 	border_nodes[_bkey(a, b)] = ids
 
 
-## True costs between every pair of entrances inside one cluster.
-func _intra(ci: int) -> void:
+## True costs between every pair of entrances inside one cluster. `costs` is
+## what _pair_costs found for it, if that has been worked out already.
+func _intra(ci: int, costs := PackedFloat64Array()) -> void:
 	for m in cl_mids[ci]:
 		_g_remove(m)
 	for id in cl_nodes[ci]:
 		for other in cl_nodes[ci]:
 			mids.erase(_key(id, other))
 	cl_mids[ci] = []
+	if costs.is_empty():
+		costs = _pair_costs(ci)
 	var nodes: Array = cl_nodes[ci]
-	var lg: AStarGrid2D = local[ci]
+	var k := 0
 	for i in nodes.size():
 		for j in range(i + 1, nodes.size()):
-			var a: int = nodes[i]
-			var b: int = nodes[j]
-			var c := _local_cost(lg, node_cell[a], node_cell[b])
+			var c := costs[k]
+			k += 1
 			if c >= 0.0:
-				_link(a, b, c, ci, null)
+				_link(nodes[i], nodes[j], c, ci, null)
+
+
+## The cost of walking between each pair of the cluster's entrances (-1: no
+## way through), in the order _intra links them. Only reads the graph, and
+## searches only this cluster's own grid, so clusters can be done side by side.
+func _pair_costs(ci: int) -> PackedFloat64Array:
+	var nodes: Array = cl_nodes[ci]
+	var lg: AStarGrid2D = local[ci]
+	var out := PackedFloat64Array()
+	for i in nodes.size():
+		for j in range(i + 1, nodes.size()):
+			out.append(_local_cost(lg, node_cell[nodes[i]], node_cell[nodes[j]]))
+	return out
 
 
 func _local_cost(lg: AStarGrid2D, a: Vector2i, b: Vector2i) -> float:
