@@ -14,11 +14,17 @@ extends Node
 ## ("symmetric NAT": some mobile and campus networks) can't be punched through,
 ## and a host behind one needs a forwarded port.
 ##
+## The account also carries a rank: battles played signed in earn XP, ranks
+## unlock insignia (Insignia), and the player picks one to wear as their icon.
+## The matchmaker keeps the count and times each battle on its own clock, from
+## battle_begin() to battle_end().
+##
 ## Command line: --matchmaker=URL (or FL_MATCHMAKER), --account=PATH for the
 ## saved sign-in, --no-stun to skip the STUN check (offline tests).
 
-signal account_changed
+signal account_changed  # signed in or out, renamed, or the rank or insignia changed
 signal listing_changed  # listed, unlisted, or failed to list
+signal battle_reported(report: Dictionary)  # {gained, rank_before, rank}: what the last battle earned
 
 const DEFAULT_URL := "https://matchmaker-production-a53e.up.railway.app"
 const ACCOUNT_PATH := "user://account.cfg"
@@ -41,6 +47,15 @@ var _access := ""
 var _access_until := 0.0  # unix seconds
 var _refresh := ""
 var _refreshing := false
+# the rank (from the matchmaker; kept with the sign-in so the menu has it at once)
+var icon := Insignia.DEFAULT
+var xp := 0
+var rank := 0
+var rank_xp := 0
+var next_xp := 150  # -1 at the top rank
+var battles := 0
+var wins := 0
+var _battle_open := false
 
 # this machine's network, as STUN saw it from the hosting port
 var nat := ""  # open, cone, strict, unknown ("" before the first check)
@@ -77,6 +92,9 @@ func _ready() -> void:
 			stun_enabled = false
 	base_url = base_url.rstrip("/")
 	_load_account()
+	if signed_in():
+		# the rank may have moved since (a battle played on another machine)
+		refresh_me.call_deferred()
 	Net.session_closed.connect(_on_session_closed)
 	Net.lobby_updated.connect(func(): _dirty = true)
 	Net.game_start.connect(func(_s): _dirty = true)
@@ -174,6 +192,8 @@ func sign_out() -> void:
 	_access_until = 0.0
 	callsign = ""
 	email = ""
+	_battle_open = false
+	_take_user({"icon": Insignia.DEFAULT, "xp": 0, "rank": 0, "rank_xp": 0, "next_xp": Insignia.rank_xp(1), "battles": 0, "wins": 0})
 	_save_account()
 	account_changed.emit()
 
@@ -183,9 +203,85 @@ func rename(new_callsign: String) -> Dictionary:
 	if r.ok:
 		callsign = String(r.data.get("user", {}).get("callsign", new_callsign))
 		Net.my_name = callsign
+		_take_user(r.data.get("user", {}))
 		_save_account()
 		account_changed.emit()
 	return r
+
+
+## The account as the matchmaker has it now: rank, XP and insignia.
+func refresh_me() -> void:
+	if not signed_in():
+		return
+	var r: Dictionary = await api(HTTPClient.METHOD_GET, "/me", null, PackedStringArray(), 10.0, true)
+	if r.ok and signed_in():
+		_take_user(r.data.get("user", {}))
+		_save_account()
+		account_changed.emit()
+
+
+## Wear an insignia (it must be unlocked: the matchmaker checks). {ok, error}
+func set_icon(id: String) -> Dictionary:
+	if not signed_in():
+		return {"ok": false, "code": 0, "data": {}, "error": "Sign in to choose your insignia."}
+	var r: Dictionary = await api(HTTPClient.METHOD_PATCH, "/me", {"icon": id}, PackedStringArray(), 10.0, true)
+	if r.ok:
+		_take_user(r.data.get("user", {}))
+		_save_account()
+		account_changed.emit()
+	return r
+
+
+## A battle the player is in has begun: start the matchmaker's clock on it.
+## Signed out, nothing is counted.
+func battle_begin() -> void:
+	if not signed_in():
+		return
+	_battle_open = true
+	var r: Dictionary = await api(HTTPClient.METHOD_POST, "/me/battle", {}, PackedStringArray(), 10.0, true)
+	if OS.has_environment("FL_DEBUG_ONLINE"):
+		print("ONLINE battle begun: %s %s" % [str(r.ok), String(r.error)])
+	if not r.ok:
+		_battle_open = false
+
+
+## The battle is over for us: "win", "loss", or "left" before the end.
+## `seconds` is how long it ran in game time. The matchmaker answers with the
+## XP it was worth, and battle_reported carries that to the end screen.
+func battle_end(result: String, seconds: float) -> void:
+	if not _battle_open:
+		return
+	_battle_open = false
+	var before := rank
+	var r: Dictionary = await api(HTTPClient.METHOD_POST, "/me/battle/end", {"result": result, "seconds": seconds}, PackedStringArray(), 10.0, true)
+	if OS.has_environment("FL_DEBUG_ONLINE"):
+		print("ONLINE battle ended (%s, %.0f s): %s %s" % [result, seconds, str(r.data), String(r.error)])
+	if not r.ok:
+		battle_reported.emit({"error": r.error})
+		return
+	_take_user(r.data.get("user", {}))
+	_save_account()
+	account_changed.emit()
+	battle_reported.emit({"gained": int(r.data.get("gained", 0)), "rank_before": int(r.data.get("rank_before", before)), "rank": rank})
+
+
+func battle_open() -> bool:
+	return _battle_open
+
+
+## The rank and insignia fields of the matchmaker's user (any it leaves out
+## stay as they were).
+func _take_user(u: Dictionary) -> void:
+	if u.get("icon") is String and not Insignia.find(String(u.icon)).is_empty():
+		icon = String(u.icon)
+	if u.has("xp"):
+		xp = int(u.xp)
+		rank = int(u.get("rank", Insignia.rank_for(xp)))
+		rank_xp = int(u.get("rank_xp", Insignia.rank_xp(rank)))
+		next_xp = int(u.next_xp) if u.get("next_xp") != null else -1
+	battles = int(u.get("battles", battles))
+	wins = int(u.get("wins", wins))
+	Net.set_insignia(icon if signed_in() else "", rank if signed_in() else -1)
 
 
 func _take_session(s: Dictionary) -> void:
@@ -198,6 +294,7 @@ func _take_session(s: Dictionary) -> void:
 		callsign = String(u.callsign)
 	if callsign != "":
 		Net.my_name = callsign
+	_take_user(u)
 	_save_account()
 	account_changed.emit()
 
@@ -228,6 +325,8 @@ func _load_account() -> void:
 	callsign = String(cf.get_value("account", "callsign", "")) if _refresh != "" else ""
 	if callsign != "":
 		Net.my_name = callsign
+	if _refresh != "":
+		_take_user(cf.get_value("account", "rank", {}))
 
 
 func _save_account() -> void:
@@ -236,6 +335,7 @@ func _save_account() -> void:
 		cf.set_value("account", "refresh_token", _refresh)
 		cf.set_value("account", "email", email)
 		cf.set_value("account", "callsign", callsign)
+		cf.set_value("account", "rank", {"icon": icon, "xp": xp, "rank": rank, "rank_xp": rank_xp, "next_xp": next_xp if next_xp >= 0 else null, "battles": battles, "wins": wins})
 	cf.save(account_path)
 
 

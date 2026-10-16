@@ -4,6 +4,7 @@ import { Downloads } from "@/components/downloads"
 import { Emblem } from "@/components/emblem"
 import { Gallery } from "@/components/gallery"
 import { Hero } from "@/components/hero"
+import { InsigniaSection } from "@/components/insignia"
 import { SiteHeader } from "@/components/site-header"
 import { TooltipProvider } from "@/components/ui/tooltip"
 import { usePoll } from "@/hooks/use-poll"
@@ -21,7 +22,7 @@ export default function App() {
 
   return (
     <TooltipProvider delayDuration={150}>
-      <SiteHeader />
+      <SiteHeader accounts={health.data?.accounts} />
       <main>
         <Hero health={health.data} build={builds.stable ?? builds.nightly} platform={platform} onLaunch={() => setLaunched(true)} />
         <Battles
@@ -32,6 +33,7 @@ export default function App() {
           onLaunch={() => setLaunched(true)}
           onDismissLaunch={() => setLaunched(false)}
         />
+        <InsigniaSection accounts={health.data?.accounts} />
         <Downloads {...builds} platform={platform} />
         <Gallery />
       </main>

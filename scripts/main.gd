@@ -12,6 +12,8 @@ extends Node
 ##   --timescale=X --quit-after=SECONDS --stats=SECONDS --verbose
 ##   --screenshot=PATH --shot-at=SECONDS --focus=X,Z --zoom=D
 ##   --sound-dump=DIR      write every synthesised sound and music sample to DIR as WAVs, then quit
+##   --insignia-dump=DIR   write the insignia art and catalog for the website (DIR = web), then quit
+##   --insignia-sheet=PATH the whole collection of insignia on one image, then quit
 
 var menu: Control
 var world: World
@@ -23,6 +25,7 @@ var _shot_done := false
 var _shot_i := 0
 var _perf_t0 := 0
 var _perf_frames := 0
+var _battle_pending := false  # the rank's battle clock starts once the world is running
 var _curtains := false  # intro and loading screens (normal launches; tests skip them)
 var _curtain_layer: CanvasLayer
 
@@ -46,6 +49,14 @@ func _ready() -> void:
 	if args.has("sound-dump"):
 		Sfx.dump(String(args["sound-dump"]))
 		await Music.dump(String(args["sound-dump"]))
+		get_tree().quit()
+		return
+	if args.has("insignia-dump") or args.has("insignia-sheet"):
+		if args.has("insignia-dump"):
+			Insignia.dump(String(args["insignia-dump"]))
+		if args.has("insignia-sheet"):
+			var only := PackedStringArray() if not args.has("only") else String(args.only).split(",")
+			Insignia.sheet(String(args["insignia-sheet"]), int(args.get("px", 96)), 16, only)
 		get_tree().quit()
 		return
 	if args.has("soldier-sheet"):
@@ -245,6 +256,9 @@ func _on_game_start(s: Dictionary) -> void:
 	world.settings = s
 	add_child(world)
 	world.game_ended.connect(_on_game_ended)
+	# a battle the player fights in (not one they watch, nor a test setup)
+	# counts towards their rank, from when it's under way (_process)
+	_battle_pending = world.local_team >= 0 and not s.has("scenario")
 	if cur and is_instance_valid(cur):
 		_warm_up(cur)
 	if args.has("focus") and world.cam:
@@ -296,10 +310,17 @@ func _fx_demo() -> void:
 func _on_game_ended(w: int) -> void:
 	if world == null:
 		return
+	var reporting := world.local_team >= 0 and Online.battle_open()
+	if world.local_team >= 0:
+		Online.battle_end("win" if w == world.local_team else "loss", world.time)
 	if world.srv and (args.has("stats") or args.has("quit-on-win")):
 		print("WINNER %s at t=%.0f" % [Defs.TEAM_NAMES[w], world.time])
 		print("FINAL ", world.debug_stats())
 	if args.has("quit-on-win"):
+		if reporting:
+			# what the battle was worth to the account (tests of the rank)
+			var rep: Dictionary = await Online.battle_reported
+			print("BATTLE %s rank=%d xp=%d icon=%s" % [JSON.stringify(rep), Online.rank, Online.xp, Online.icon])
 		get_tree().quit()
 
 
@@ -433,6 +454,8 @@ func return_to_menu(msg: String) -> void:
 		_intro()
 	if not args.has("timescale"):
 		Engine.time_scale = 1.0
+	if world and Online.battle_open():
+		Online.battle_end("left", world.time)
 	if world:
 		world.name = "OldWorld"
 		world.queue_free()
@@ -514,7 +537,7 @@ func _process(_dt: float) -> void:
 			var mu := String(args["menu-update"]).split(",")
 			var st: int = ["available", "downloading", "ready", "failed"].find(mu[1] if mu.size() > 1 else "available") + 1
 			Updater.pretend(mu[0], st)
-		# --menu-panel=browse|account|settings: the list of online battles, the sign-in panel, the settings
+		# --menu-panel=browse|account|settings|insignia: the list of online battles, the sign-in panel, the settings, the insignia
 		if args.has("menu-panel") and menu and menu.browse_panel and not has_meta("panel_open") and Engine.get_frames_drawn() > 5:
 			set_meta("panel_open", true)
 			if String(args["menu-panel"]) == "account":
@@ -522,6 +545,8 @@ func _process(_dt: float) -> void:
 			elif String(args["menu-panel"]) == "settings":
 				menu.settings_panel.visible = true
 				menu.settings_panel._show_tab(String(args.get("settings-tab", "interface")))
+			elif String(args["menu-panel"]) == "insignia":
+				menu._open_insignia()
 			else:
 				menu._open_browser()
 		# --menu-missions[=KEY]: open the Missions panel (on that mission)
@@ -536,6 +561,11 @@ func _process(_dt: float) -> void:
 			get_viewport().get_texture().get_image().save_png(String(args["menu-shot"]))
 			get_tree().quit()
 		return
+	# the map is built and the battle under way: start the clock on it (not
+	# before: building the map holds up everything, a request included)
+	if _battle_pending and world.time > 1.0:
+		_battle_pending = false
+		Online.battle_begin()
 	# --trace=path.csv: every half second, where each man is and what he's doing
 	# (for plotting squad movement and posture over a fight)
 	if args.has("trace") and world.srv and world.time >= _trace_t:

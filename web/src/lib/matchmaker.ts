@@ -6,6 +6,9 @@ export type Lobby = {
   name: string
   host: string
   verified: boolean
+  /** the insignia and rank of a signed-in host (null for anyone else) */
+  icon?: string | null
+  rank?: number | null
   players: number
   max_players: number
   in_game: boolean

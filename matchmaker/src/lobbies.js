@@ -109,6 +109,10 @@ export class Lobbies {
 			host,
 			verified: !!account,
 			userId: account ? account.id : null,
+			// the host's insignia and rank as their account had them when they
+			// listed (an anonymous host has neither)
+			icon: account ? account.icon ?? null : null,
+			rank: account ? account.rank ?? null : null,
 			name: cleanText(body.name, 40) || `${host}'s battle`,
 			version: cleanText(body.version, 16),
 			created: this.now(),
@@ -238,6 +242,8 @@ export class Lobbies {
 			name: l.name,
 			host: l.host,
 			verified: l.verified,
+			icon: l.icon,
+			rank: l.rank,
 			players: l.players,
 			max_players: l.maxPlayers,
 			in_game: l.inGame,

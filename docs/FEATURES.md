@@ -60,6 +60,27 @@ they're doing). The observer bar at the top has pause, speed (0.25x to 4x), dire
 - **Accounts** are optional (Supabase, through the matchmaker). Signed in, your callsign is yours: no other account can register it, and
   battles you host are listed under it with a tick. Sign in next to the callsign on the main menu;
   the session is remembered in `user://account.cfg`.
+- **Ranks and insignia** (`ui/insignia.gd`, `ui/insignia_art.gd`, `matchmaker/src/ranks.js`). Signed in, every
+  battle you fight earns XP, and you climb 50 ranks from Recruit to General of the Army (Private I-V, Corporal,
+  Sergeant, Staff Sergeant, Master Sergeant, Lieutenant, Captain, Major and Colonel I-V, then the five grades of
+  general). Each rank takes 20 XP more than the last: 150 for the first, 32,000 in all.
+  - **XP.** A point for every six seconds of battle, up to 45 minutes; a win is worth half as much again, leaving
+    before the end half as much. A battle under two minutes earns nothing. Watching a battle (or a test
+    scenario) doesn't count. There's no game server to referee (players host), so each game reports its own
+    battle, but the matchmaker times it on its own clock, from the battle getting under way to its end: a
+    modified game can't claim more time than really passed. Players can't write their XP to the database
+    directly; it changes only through functions that act on the caller's own row (`supabase/schema.sql`).
+  - **Insignia.** 160 of them, all drawn as SVG by the game from short descriptions: ten starter patches every
+    account has (the branches: infantry, armour, artillery...), a patch for each rank (subdued training patches
+    at the bottom, lettered company patches, tabbed patches, special forces arrowheads, then bullion and the
+    generals' stars at the top), and 100 shown but locked for now: medals, badges and ribbon racks, and company
+    and squadron patches in the style of the Vietnam war and of the battlefield's own units. They're original
+    designs in the style of real ones, not copies.
+  - **Where you see them.** Your insignia sits beside your callsign on the main menu, with your rank and how far
+    through it you are; click it for the collection, where the unlocked can be worn and the locked say what
+    unlocks them. The end of a battle says what it earned, and a promotion shows the new patch. In the lobby each
+    signed-in player's insignia is beside their name, and on the website beside the host of a listed battle. The
+    website has the same collection, and picking one there is picking it in the game: it's kept on the account.
 - **Co-op:** everyone picks the same side, and the AI takes the empty side.
   **PvP:** pick opposite sides. "Add an AI commander to sides that have players" gives you an AI teammate.
 - If a player leaves, a teammate inherits their squads, or the AI takes over if nobody is left on that side.

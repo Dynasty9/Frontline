@@ -116,6 +116,7 @@ var coop_roster: HudCoopRoster  # ...and listed top right
 var alert_label: Label
 var _alert_t := 0.0
 var over_panel: PanelContainer
+var _xp_box: VBoxContainer  # on the end screen: what the battle was worth
 var help_panel: PanelContainer
 var menu_panel: PanelContainer
 var settings_panel: SettingsPanel
@@ -131,6 +132,7 @@ var _msgs: Array = []
 
 func _ready() -> void:
 	layer = 5
+	Online.battle_reported.connect(_on_battle_reported)
 	MapSymbols.build_atlas(self, MapSymbols.atlas_k_for(Settings.ui_factor()))
 	root = Control.new()
 	root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -762,6 +764,8 @@ func show_game_over(w: int) -> void:
 	var s := UiKit.label("%s have taken the battlefield." % Defs.TEAM_NAMES[w], 15, UiKit.DIM)
 	s.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	vb.add_child(s)
+	if world.local_team >= 0:
+		_xp_row(vb)
 	var b := Button.new()
 	b.text = "Return to Menu"
 	b.custom_minimum_size = Vector2(0, 40)
@@ -803,6 +807,8 @@ func _mission_over() -> void:
 	var st := UiKit.label("Time %d:%02d    Objectives %d of %d    Men lost %d of %d    Enemy killed %d" % [int(el) / 60, int(el) % 60, done, all, int(lost[0]), int(lost[1]), int(info.get("kills", 0))], 13, UiKit.DIM)
 	st.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	vb.add_child(st)
+	if world.local_team >= 0:
+		_xp_row(vb)
 	var gap := Control.new()
 	gap.custom_minimum_size = Vector2(0, 6)
 	vb.add_child(gap)
@@ -822,6 +828,76 @@ func _mission_over() -> void:
 	b.pressed.connect(_leave)
 	row.add_child(b)
 	over_panel.visible = true
+
+
+## The end screen's rank line. Signed in, it waits for the matchmaker to say
+## what the battle was worth (Online.battle_reported).
+func _xp_row(vb: VBoxContainer) -> void:
+	_xp_box = VBoxContainer.new()
+	_xp_box.add_theme_constant_override("separation", 6)
+	_xp_box.alignment = BoxContainer.ALIGNMENT_CENTER
+	vb.add_child(_xp_box)
+	var l := UiKit.label("Counting your XP..." if Online.signed_in() else "Sign in from the main menu to earn rank and insignia.", 13, UiKit.DIM)
+	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_xp_box.add_child(l)
+
+
+func _on_battle_reported(rep: Dictionary) -> void:
+	if not is_instance_valid(_xp_box):
+		return
+	for c in _xp_box.get_children():
+		c.queue_free()
+	if rep.has("error"):
+		var e := UiKit.label("Couldn't report the battle: %s" % String(rep.error), 13, UiKit.BAD)
+		e.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		e.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		_xp_box.add_child(e)
+		return
+	var gained := int(rep.get("gained", 0))
+	var top := HBoxContainer.new()
+	top.alignment = BoxContainer.ALIGNMENT_CENTER
+	top.add_theme_constant_override("separation", 10)
+	_xp_box.add_child(top)
+	top.add_child(UiKit.label(("+%d XP" % gained) if gained > 0 else "No XP", 20, UiKit.ACCENT if gained > 0 else UiKit.DIM, 700))
+	var nxt := ("%d / %d XP" % [Online.xp - Online.rank_xp, Online.next_xp - Online.rank_xp]) if Online.next_xp > 0 else "Top rank"
+	var rl := UiKit.label("%s  ·  %s" % [Insignia.rank_name(Online.rank), nxt], 14, UiKit.TEXT, 600)
+	rl.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	top.add_child(rl)
+	var bar := ProgressBar.new()
+	bar.show_percentage = false
+	bar.custom_minimum_size = Vector2(320, 6)
+	bar.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	bar.max_value = maxf(1.0, Online.next_xp - Online.rank_xp) if Online.next_xp > 0 else 1.0
+	bar.value = (Online.xp - Online.rank_xp) if Online.next_xp > 0 else 1.0
+	bar.add_theme_stylebox_override("background", UiKit.box(Color(1, 1, 1, 0.08), 3, Color(0, 0, 0, 0), 0, 0.0))
+	bar.add_theme_stylebox_override("fill", UiKit.box(UiKit.ACCENT, 3, Color(0, 0, 0, 0), 0, 0.0))
+	_xp_box.add_child(bar)
+	if gained <= 0:
+		var why := UiKit.label("Battles shorter than two minutes don't count towards your rank.", 12, UiKit.DIM)
+		why.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		_xp_box.add_child(why)
+	var before := int(rep.get("rank_before", Online.rank))
+	if Online.rank > before:
+		# promoted: the new rank's patch is theirs to wear
+		var id := "r%02d" % Online.rank
+		var row := HBoxContainer.new()
+		row.alignment = BoxContainer.ALIGNMENT_CENTER
+		row.add_theme_constant_override("separation", 12)
+		var tr := TextureRect.new()
+		tr.texture = Insignia.texture(id, 128)
+		tr.custom_minimum_size = Vector2(56, 56)
+		tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		tr.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+		row.add_child(tr)
+		var pv := VBoxContainer.new()
+		pv.alignment = BoxContainer.ALIGNMENT_CENTER
+		pv.add_theme_constant_override("separation", 0)
+		pv.add_child(UiKit.label("PROMOTED: %s" % Insignia.rank_name(Online.rank).to_upper(), 15, UiKit.GOOD, 700))
+		var more := Online.rank - before - 1
+		pv.add_child(UiKit.label("New insignia: %s%s" % [String(Insignia.find(id).get("n", "")), (" and %d more" % more) if more > 0 else ""], 13, UiKit.TEXT))
+		row.add_child(pv)
+		_xp_box.add_child(row)
 
 
 # --- per frame -------------------------------------------------------------------------
