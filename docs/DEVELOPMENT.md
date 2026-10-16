@@ -83,6 +83,9 @@ game/vehicles/          the Arma 3 models by family: vm_nato, vm_csat, vm_indep 
                         V-44X Blackfish), vm_attack (A-10C, A-164 Wipeout) and vm_fighter (F/A-181, F-16C)
 game/vehicle_roster.gd  the Arma 3 roster (stats, behaviour, tiers, patterns) and the Field Manual's garage
 game/director.gd        observer camera and time controls
+game/co_command.gd      co-commanders: each player's presence (view, cursor, selection, what's being lined up),
+                        pings, sketches and committed actions, relayed by the host to that side only
+ui/hud_coop.gd          co-commanders drawn over the battlefield; ui/hud_coop_roster.gd the Command Net
 ui/hud.gd, menu.gd      interface; ui/settings_panel.gd, ui/perf_overlay.gd, ui/ui_kit.gd (shared style),
 ui/hud_overlay.gd       everything drawn over the battlefield (labels, speech, symbols, orders, plans, intel)
 ui/hud_orbat.gd, hud_layers.gd, hud_sel_info.gd, hud_minimap.gd, hud_top_info.gd, hud_toasts.gd   HUD widgets
@@ -150,6 +153,15 @@ Pass these after `--` on the command line:
 --mission=KEY --play [--autoplay]                     command the mission's force yourself (--autoplay: the autopilot still gives orders)
 --mission=KEY --seed=N                                the mission on another map (checks it still places itself sensibly)
 --host --mission=KEY --players=2                      a co-op mission lobby that starts when the second player joins
+--coop-demo[=N]                                       N made-up co-commanders on your side (host only: each gets a real
+                                                      squad), looking about near you, lining up trenches, fire missions and
+                                                      assaults, pinging and sketching (co-commander interface shots)
+  --coop-watch[=I]                                    watch the Ith one's view live
+--bot-presence                                        (a client, headless) this game's presence is made up the same way and
+                                                      really sent, with its pings and sketches; COOP {...} at --quit-after
+                                                      shows what each game sent and took in
+--cursor=X,Y --ping-wheel                             hold the ping wheel open by the faked cursor (screenshots)
+FL_DEBUG_COOP=1 (env)                                 the co-commander layer's cost by part, in the performance overlay
 FL_DEBUG_MISSION=1 (env)                              print the map's features (bridges, villages, harbour) and the mission's setup
 --model-sheet=KEYS|FAMILY --sheet-dir=DIR [--side=1] [--sheet-yaw=R]   turntable shots of models (nato, csat, indep, civ, heli, plane, boat, all)
 --soldier-sheet=PATH [--sheet-team=0|1] [--sheet-view=front|back|rts] [--sheet-pose=idle|shoot|run|mix]
@@ -182,6 +194,20 @@ godot --headless --path . -- --join=127.0.0.1 --team=1 --quit-after=200 --port=7
 ```
 
 The client prints a `CLIENT entities=...` summary when it quits. Check both outputs for `SCRIPT ERROR`.
+
+Co-commanders: bot clients make up their presence, pings and sketches and really send them. Start the one on
+the other side first, so its team request lands before the game starts:
+
+```
+godot --headless --path . -- --host --team=0 --players=4 --quit-after=60 --port=7975
+godot --headless --path . -- --join=127.0.0.1 --team=1 --bot-presence --quit-after=55 --port=7975
+godot --headless --path . -- --join=127.0.0.1 --team=0 --bot-presence --quit-after=55 --port=7975
+godot --headless --path . -- --join=127.0.0.1 --team=0 --bot-presence --quit-after=55 --port=7975
+```
+
+Each client prints `COOP {"sent": ..., "taken": ..., "pings_in": ...}` when it quits: the two on team 0 take
+each other's presence and pings, the one on team 1 takes nothing of theirs. To see it drawn, make one of the
+team 0 clients a normal (windowed) game, or run `--coop-demo` on its own.
 
 ### Matchmaker
 

@@ -13,7 +13,8 @@ The long version: how each system works and why. For the short version, see the 
 | | |
 |---|---|
 | Camera | WASD / arrows / screen edge pan (Shift: faster), mouse wheel zoom toward the cursor (or + / -), Q/E turn, Page Up / Page Down tilt. Middle-drag turns and tilts; **Alt+middle-drag grabs the map** and pans (Settings swaps the two). **Backspace** squares the view up again, **Ctrl+F** follows the selection, **Ctrl+F5..F8** save a view and **F5..F8** go back to it |
-| Minimap | Click or drag to look there, right-click to send the selection, wheel to zoom. Click the compass needle to square the view up |
+| Minimap | Click or drag to look there, right-click to send the selection, wheel to zoom. Click the compass needle to square the view up. **Alt+click** pings, **Alt+right-drag** draws for your side |
+| Co-commanders | **Alt+click** pings what's under the cursor (an enemy: "enemy spotted"; one of ours: "watch this"; the ground: "look here"). **Hold Alt + left button** for the ping wheel (attack, on my way, need support, danger, defend, look; let go in the middle to call it off). **Alt+right-drag** draws a line for your side. In the Command Net, click a name to look where they're looking, the screen button (or a double-click) to watch their view live |
 | Select | Left-click a soldier to select his squad, drag a box, double-click for all of that type on screen. **Alt+click** a soldier (or click his name in the squad panel) to command just him |
 | Groups | Ctrl+1..9 set, 1..9 recall (double-tap to jump there) |
 | Orders | Right-click: move (Shift = fast run; **drag** to set which way they face), attack enemy, build/repair your structure, enter tunnel / MG nest / watchtower. The **cover pips** under the cursor show where each man will end up: green hard cover, lime medium, yellow soft (hides, doesn't stop bullets), grey dot none, red caught in the open; a tick on a pip points the way he'll fire over the barrier, and the label says how (prone, kneeling, standing, round the edges) |
@@ -25,7 +26,7 @@ The long version: how each system works and why. For the short version, see the 
 | Support | The buttons above the minimap (Z arms the first one ready): click the target, **drag** to set the run-in direction for gun runs and bombing runs |
 | Observer | C director camera, V whose eyes to watch through, P pause, [ ] speed, F2 hide the interface. **Fire support** (observer bar) launches any air or artillery support anywhere to watch it |
 | Command view | Tab tactical map, O order of battle (click a unit to select it and look at it, double-click to zoom in), the buttons beside the minimap turn map layers on and off (unit symbols, orders and attack plans, intelligence, weapon ranges, soldier labels) |
-| Other | Home cycles FOBs, Space jumps to the last alert (both glide there), Enter chats (Shift+Enter: team), L message history, F1 help, F3 performance overlay, **F4 field manual**, Esc menu |
+| Other | Home cycles FOBs, Space jumps to the last alert or ping (both glide there), Enter chats (Shift+Enter: team), L message history, F1 help, F3 performance overlay, **F4 field manual**, Esc menu |
 
 ## Watching the AI
 
@@ -62,6 +63,46 @@ they're doing). The observer bar at the top has pause, speed (0.25x to 4x), dire
 - **Co-op:** everyone picks the same side, and the AI takes the empty side.
   **PvP:** pick opposite sides. "Add an AI commander to sides that have players" gives you an AI teammate.
 - If a player leaves, a teammate inherits their squads, or the AI takes over if nobody is left on that side.
+- **Co-commanders** (`co_command.gd`, `ui/hud_coop.gd`, `ui/hud_coop_roster.gd`): you see what the other
+  commanders on your side are doing, as they do it, the way officers in one command post see each other's
+  map markings and hear what each is calling for.
+  - **Colours.** Each player is given a colour in the lobby (the swatch by their name), kept all battle and
+    clear of the two sides' blue and red, so "I'm the pink one" works over voice.
+  - **Presence.** Ten times a second while anything changes (once a second when nothing does) each game tells
+    the host where its camera is looking, where the cursor is, what's selected and what's being lined up; the
+    host passes it on to that side only, and to observers (never the enemy: where you're looking gives your
+    plan away). About 110 bytes a packet; it only ever drives drawing, never the simulation.
+  - **On the battlefield**, in the commander's colour: a viewfinder on the ground at the middle of their
+    screen, turned the way they face and sized to their zoom, with "ROOK'S VIEW" under it (the tactical map
+    adds the whole patch of ground their screen takes in); their cursor, an arrow pointer with a name tag
+    that says what they're doing ("Laying a trench line", "Aiming 155 mm Artillery", "Ordering an attack");
+    a dashed ring round each squad or vehicle they have selected; and whatever they're about to commit:
+    the building's ghost or the line being dragged out (with a tick per length), the fire mission's beaten
+    zone with a hazard sign on it, the order being dragged out with a line from their units to it. A
+    commander looking somewhere off your screen waits at its edge with how far away it is: click the marker
+    to look there. Their units carry their initials on the unit symbols, a fresh order under a symbol says
+    who sent it, and the order's link from HQ is in their colour.
+  - **Command Net** (top right, under a mission's objectives): one row per commander with their colour and
+    initials, what they command, and what they're doing this moment, in order: lining something up; the
+    order they've just given ("Ordered Golf 1: ASSAULT D4"); what they've just committed ("Called in 155 mm
+    Artillery · E5"); who they have selected; idle; or which square they're watching. A row flashes when its
+    commander pings. Its buttons look at their view, or watch it live: your camera keeps to their view
+    until you pan, turn or zoom, with their colour round the screen and a caption saying whose view it is.
+  - **Who spent the supply.** The host tells the side when a commander puts down a building, lays a line,
+    calls in fire support, sets a squad training or starts research. Fire support and research show as a
+    notification, the rest go to the message log (L).
+  - **Pings.** Alt+click marks what's under the cursor (an enemy in sight: "Enemy spotted: BTR-80", stuck
+    to him while he can be seen; one of ours: "Watch this: Bravo 2"; the ground: "Look here"). Holding Alt
+    and the left button opens a wheel: attack here, on my way (drawn as a line from their units), need
+    support, danger, defend here, look here. A ping is a pin with its sign, rings spreading over the ground,
+    who sent it and how far it is; off the screen it waits at the edge; it pulses on the minimap, chimes
+    (a sharper chime for danger, enemies and calls for help) and goes in the message log. Space jumps to
+    the newest. The host lets each commander send a few a second at most.
+  - **Sketches.** Alt+right-drag (on the battlefield or the minimap) draws a line for the side, a route or
+    an axis of advance; it draws itself in on their screens with an arrowhead and the drawer's initials,
+    and fades after 14 seconds, like a grease-pencil line wiped off the map case.
+  - Settings > Interface > "Co-commanders' views and cursors" turns the presence drawing off (pings,
+    sketches and the Command Net stay).
 - **Drop-in:** friends can join a battle that's already running (lobby option, on by default). They join the
   side with human players (the smaller side in PvP), get the current world, and receive a rifle squad and engineers at their FOB.
 - **Fog of war is enforced by the host.** A client is only told about enemy units and buildings its side has spotted,
@@ -351,6 +392,8 @@ function and an autopilot function.
   firing. The camera's view is a lit wedge with a line back to where the camera stands, and a compass needle
   shows where north lies in the view (click it to square up). Hovering gives the grid square under the cursor.
   Three sizes, and it can turn with the camera so the way you face is always up (Settings > Interface).
+  In co-op each other commander's view is a wedge in their colour with their initial at their camera, with
+  their cursor, rings round what they've selected, their pings and sketches.
 
 **Vehicles** (`vehicle.gd`, `vehicle_brain.gd`, `vehicle_roster.gd`, `drone.gd`, `projectile.gd`)
 - **The core vehicles rebuilt** (`vehicles/vm_core.gd`): the M1A2 SEP Abrams, a worn T-55A, Hilux technicals (DShK
