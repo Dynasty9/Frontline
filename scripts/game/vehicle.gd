@@ -887,7 +887,7 @@ func _scan() -> void:
 		best = e
 	if best == null and vdef.cannon:
 		for st in world.structures_near(position, 55.0):
-			if st.team < 0 or st.team == team or not st.is_player_building() or st.skind in ["mines", "wire", "tank_trap", "trench"]:
+			if st.team < 0 or st.team == team or not st.is_player_building() or st.skind in ["mines", "wire", "tank_trap", "trench", "camo_net", "hesco", "barricade"]:
 				continue
 			if not st.visible_to_team(team):
 				continue
@@ -1853,7 +1853,7 @@ func _road_blocked() -> bool:
 	for st in world.structures_near(ahead, 3.0):
 		if st.team < 0 or st.gone or st.team == team:
 			continue  # (its own side's buildings by the road don't stop it: the enemy's roadblocks do)
-		if st.skind in ["tank_trap", "concrete_wall", "barracks", "factory", "research", "medic_tent"] and Defs.flat(st.position - ahead).length() < st.radius + 1.5:
+		if st.skind in ["tank_trap", "concrete_wall", "hesco", "ammo_cache", "barracks", "factory", "research", "medic_tent"] and Defs.flat(st.position - ahead).length() < st.radius + 1.5:
 			return true
 	for v in world.vehicles_near(ahead, 3.0):
 		if v != self and v.team != team:

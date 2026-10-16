@@ -148,6 +148,11 @@ Pass these after `--` on the command line:
                                                       --set=ui_scale:3 for the largest scale the window allows)
 --pan=VX,VZ / --set=key:value,...                     drift the camera (shimmer tests) / override single settings
 --scenario=guns                                       every machine-gun emplacement and trench bay, crewed, with targets
+--scenario=works --static                             every defensive work both sides can build, finished, in two rows (model checks;
+                                                      frame them with --focus/--zoom/--pitch, see the layout in mapgen.gd)
+--scenario=cache                                      an ammo cache filling an empty-handed squad, then blown up (cache_draw,
+                                                      cache_cook_off); a Rebel cell half under a camouflage net, half in the open
+FL_DEBUG_WORKS=1 (env)                                with --scenario=cache: who's under the net and seen, who's filled up
 --scenario=roster                                     every vehicle both sides can field, facing off across the map
 --scenario=sling                                      a Mohawk carries a Humvee and a Taru a BTR on their slings
 --scenario=naval                                      boats on the sea: an RHIB lands a squad under a patrol ship's guns, Rebel boats come out to fight

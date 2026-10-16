@@ -474,6 +474,13 @@ func _economy(sqs: Array) -> void:
 	for f in fobs:
 		if _count_near(f, "sandbags", 24.0) < 4 and t > 40.0:
 			plan.append(["sandbags", f, 9.0, 20.0])
+		# chest-high walls across the front: HESCO for the Coalition, the Rebels
+		# whatever they can drag together
+		var wall := "hesco" if team == Defs.ARMY else "barricade"
+		if _count_near(f, wall, 26.0) < 3 and t > (140.0 if team == Defs.ARMY else 90.0):
+			plan.append([wall, f, 10.0, 20.0])
+		if f == front and _count_near(f, "ammo_cache", 45.0) < 1 and t > 200.0:
+			plan.append(["ammo_cache", f, 14.0, 26.0])
 		if _count_near(f, "mg_nest", 30.0) < 1 and t > 100.0:
 			plan.append(["mg_nest", f, 9.0, 18.0])
 		if _count_near(f, "trench", 34.0) < 6 and t > 110.0:
@@ -488,6 +495,13 @@ func _economy(sqs: Array) -> void:
 			plan.append(["at_post", f, 10.0, 22.0])
 		if _count_near(f, "watchtower", 30.0) < 1 and t > 260.0:
 			plan.append(["watchtower", f, 8.0, 18.0])
+	# nets over the heavy weapons, so the enemy's eyes and his aircraft have
+	# to come close to find them
+	if t > 260.0:
+		for st in _my_structs("mortar_pit", true) + _my_structs("at_post", true) + _my_structs("hmg_nest", true):
+			if _count_near(st, "camo_net", 2.5) == 0:
+				plan.append(["camo_net_over", st, 0.0, 0.0])
+				break
 	if team == Defs.REBELS and front and t > 200.0 and _my_structs("tunnel").size() < 2 + maxi(0, fobs.size() - 1) and _count_near(front, "tunnel", 30.0) > 0:
 		plan.append(["tunnel", front, 45.0, 66.0])
 	if t > obstacle_t and front:
@@ -508,6 +522,13 @@ func _economy(sqs: Array) -> void:
 	for p in plan:
 		if p[0] == "trench_line":
 			if sup > 150 + _fob_reserve() and _dig_line(p[1], float(p[2]), engs):
+				return
+			continue
+		if p[0] == "camo_net_over":
+			var under: Structure = p[1]
+			if sup > int(Defs.BUILDINGS.camo_net.cost) + 60 + _fob_reserve() and world.placement_error(team, "camo_net", under.position, under.yaw) == "":
+				world.stat("ai_camo_net")
+				_place("camo_net", under.position, under.yaw, engs)
 				return
 			continue
 		var def: Dictionary = Defs.BUILDINGS[p[0]]
@@ -632,7 +653,7 @@ func _find_spot(kind: String, center: Vector3, rmin: float, rmax: float) -> Vect
 				return spot.pos
 	for i in 20:
 		var a := rng.randf_range(-PI, PI)
-		if kind in ["sandbags", "mg_nest", "hmg_nest", "wire", "mines", "tank_trap", "watchtower", "trench", "bunker", "at_post"] or rmin >= 40.0:
+		if kind in ["sandbags", "hesco", "barricade", "ammo_cache", "mg_nest", "hmg_nest", "wire", "mines", "tank_trap", "watchtower", "trench", "bunker", "at_post"] or rmin >= 40.0:
 			a = rng.randf_range(-1.1, 1.1)
 		elif kind in ["barracks", "factory", "medic_tent", "research", "mortar_pit"]:
 			a = rng.randf_range(PI * 0.5, PI * 1.5)

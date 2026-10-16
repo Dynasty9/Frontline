@@ -30,7 +30,7 @@ static func structure_sight(st: Structure) -> float:
 			return TOWER_MANNED if st.manned else TOWER
 		"town":
 			return st.zone_r
-		"mines", "wire", "tank_trap", "sandbags", "trench":
+		"mines", "wire", "tank_trap", "sandbags", "trench", "hesco", "barricade", "concrete_wall", "camo_net", "ammo_cache":
 			return 0.0
 	return POST
 
