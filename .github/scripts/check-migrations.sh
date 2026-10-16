@@ -2,7 +2,7 @@
 # The database's migrations in a pull request, against the branch it merges
 # into (usage: check-migrations.sh origin/main). From the repository root.
 #
-# A migration on main is history: the release has applied it to the live
+# A migration on main is history: the Database workflow has applied it to the live
 # database, so editing or removing it changes nothing there and only makes a
 # fresh database differ from the live one. A change to the schema is a new
 # migration. And a new one has to come after every migration already on main,
@@ -28,7 +28,7 @@ for f in $(git diff --name-only --diff-filter=A "$base"...HEAD -- "$dir"); do
 		echo "::error file=$f::A migration is named <14-digit UTC timestamp>_<name>.sql (supabase migration new <name> makes one)."
 		fail=1
 	elif [ -n "$newest" ] && [[ ! "${name:0:14}" > "$newest" ]]; then
-		echo "::error file=$f::$name comes before $newest, the newest migration on the base branch, so the release couldn't apply it. Rename it with a timestamp from now."
+		echo "::error file=$f::$name comes before $newest, the newest migration on the base branch, so supabase db push wouldn't apply it. Rename it with a timestamp from now."
 		fail=1
 	else
 		echo "new migration: $name"

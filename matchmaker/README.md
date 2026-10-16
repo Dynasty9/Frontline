@@ -206,11 +206,13 @@ tests, and every migration applied from scratch on Supabase's image.
 
 ### How a migration reaches the live database
 
-The release workflow (`.github/workflows/release.yml`) does it. When a merge to `main` adds migrations, its first job
-after planning, "Migrate the database", lists the live database's migrations, shows what's to apply
-(`supabase db push --dry-run`), then applies them (`supabase db push`). The game's build waits for it, so a release
-never ships ahead of the schema it needs, and a failed migration stops the release. Running the workflow by hand
-(Actions > Release > Run workflow) applies any still pending.
+The Database workflow (`.github/workflows/database.yml`) does it: it lists the live database's migrations, shows
+what's to apply (`supabase db push --dry-run`), then applies them (`supabase db push`). It runs
+
+- when a merge to `main` adds migrations, since Railway deploys the merged matchmaker at the same time;
+- at the start of every release: the Release workflow calls it before building, so a release never ships ahead of
+  the schema it needs, and a failed migration stops the release;
+- by hand, Actions > Database > Run workflow, to apply any still pending.
 
 It runs in the GitHub environment `production`, whose secret `SUPABASE_DB_URL` is the project's **session pooler**
 connection string (Supabase Dashboard > Connect > Session pooler, port 5432, with the database password filled in):

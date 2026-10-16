@@ -7,7 +7,7 @@ name: Matchmaker
 # dev dependency), and they're applied on Supabase's own Postgres.
 #
 # Only runs when the matchmaker changes. Railway deploys it on its own, and the
-# release workflow applies new migrations to the live database.
+# Database workflow (database.yml) applies new migrations to the live database.
 
 on:
   push:

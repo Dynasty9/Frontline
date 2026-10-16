@@ -159,8 +159,8 @@ class SupabaseAuth {
 	}
 
 	// Every column there is, not a list: Railway deploys the matchmaker and the
-	// release migrates the database independently, so for a minute either can
-	// be ahead. A column this code knows and the database doesn't have yet
+	// Database workflow migrates the database independently, so for a minute
+	// either can be ahead. A column this code knows and the database doesn't have yet
 	// reads as its default (toUser) instead of failing the whole profile.
 	async profile(id, token) {
 		const r = await this.call(`/rest/v1/profiles?id=eq.${encodeURIComponent(id)}&select=*`, { token });

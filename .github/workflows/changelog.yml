@@ -2,8 +2,9 @@ name: Changelog
 
 # Every change to the game ships with a changelog entry for players
 # (changelog/README.md). A pull request that changes the game must add one to
-# changelog/unreleased/, unless it's labelled "skip release". Entries
-# everywhere are checked for the right shape and their screenshots.
+# changelog/unreleased/, where it waits for the next release, unless it's
+# labelled "no changelog" (or the older "skip release"). Entries everywhere are
+# checked for the right shape and their screenshots.
 
 on:
   pull_request:
@@ -23,7 +24,7 @@ jobs:
       - name: Check the changelog entries
         env:
           BASE: ${{ github.base_ref }}
-          SKIP: ${{ contains(github.event.pull_request.labels.*.name, 'skip release') }}
+          SKIP: ${{ contains(github.event.pull_request.labels.*.name, 'no changelog') || contains(github.event.pull_request.labels.*.name, 'skip release') }}
         run: |
           if [ "$GITHUB_EVENT_NAME" = pull_request ] && [ "$SKIP" != true ]; then
             python3 .github/scripts/changelog.py check --base "origin/$BASE" --require

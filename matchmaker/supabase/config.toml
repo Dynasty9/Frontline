@@ -1,6 +1,6 @@
 # The Supabase CLI's settings for this project. Only the database matters here:
 # supabase/migrations/ holds every change to its schema, in order. CI starts the
-# CLI's local database to check they all apply, and the release workflow pushes
+# CLI's local database to check they all apply, and the Database workflow pushes
 # the new ones to the live project (see the README's "The database").
 project_id = "frontline"
 

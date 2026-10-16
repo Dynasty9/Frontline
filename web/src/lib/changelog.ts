@@ -1,6 +1,7 @@
 // Every release's changelog, baked in at build time. The release workflow
 // regenerates src/changelog.json from changelog/ (.github/scripts/changelog.py)
-// each time it publishes a version, and Railway redeploys the site with it.
+// each time it publishes a version, in the release's pull request, and Railway
+// redeploys the site when that merges.
 import data from "@/changelog.json"
 
 export type Kind = "new" | "improved" | "fixed"
