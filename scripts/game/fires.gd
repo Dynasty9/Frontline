@@ -25,18 +25,19 @@ const WIND := Vector3(0.92, 0.0, 0.38)
 
 ## What burns: [how readily it catches (0..1), seconds it burns at full blaze,
 ## what's left: "snag" (a charred tree), "shell" (a burnt-out car), "ash"
-## (nothing) or "stands" (still standing, the worse for it)].
+## (nothing) or "stands" (still standing, the worse for it), how thick a pall
+## of smoke it lays downwind at full blaze (its radius in metres)].
 const FUEL := {
-	"tree": [0.35, 80.0, "snag"],
-	"hedge": [0.6, 45.0, "ash"],
-	"crates": [0.75, 40.0, "ash"],
-	"watchtower": [0.55, 60.0, "ash"],
-	"medic_tent": [0.85, 35.0, "ash"],
-	"barracks": [0.22, 70.0, "stands"],
-	"log_bunker": [0.12, 60.0, "stands"],
-	"roof": [0.3, 75.0, "ash"],
-	"car": [0.45, 55.0, "shell"],
-	"wreck": [0.0, 40.0, "shell"],  # a vehicle brewing up: lit as it's made, never relit
+	"tree": [0.35, 80.0, "snag", 2.5],
+	"hedge": [0.6, 45.0, "ash", 2.0],
+	"crates": [0.75, 40.0, "ash", 1.8],
+	"watchtower": [0.55, 60.0, "ash", 2.5],
+	"medic_tent": [0.85, 35.0, "ash", 2.5],
+	"barracks": [0.22, 70.0, "stands", 3.5],
+	"log_bunker": [0.12, 60.0, "stands", 2.5],
+	"roof": [0.3, 75.0, "ash", 4.0],
+	"car": [0.45, 55.0, "shell", 3.0],
+	"wreck": [0.0, 40.0, "shell", 3.5],  # a vehicle brewing up: lit as it's made, never relit
 }
 const TICK := 0.25
 const CELL := 4.0  # the heat map's cells (m)
@@ -46,6 +47,9 @@ var world
 var burning: Array = []  # what's alight: [structure, where the heat was stamped, how far]
 var patches: Array = []  # grass fires: [pos, radius, seconds left, generation]
 var hot := PackedByteArray()  # per cell: how many fires are close enough to burn a man
+## The smoke a fire lays across the ground downwind once it's well alight:
+## [centre, radius]. Nobody sees through it (see Combat.smoke_blocks).
+var smokes: Array = []
 var wet := false  # raining: fires catch less, spread less and burn lower
 var _hn := 0
 var _t := 0.0
@@ -105,6 +109,7 @@ func blast(p: Vector3, size: float, r: float) -> void:
 		var woods: bool = world.terrain.woods[world.terrain.idx_of(p)] > 0
 		if world.rng.randf() < 0.28 * k * (1.6 if woods else 1.0) and _grass_at(p):
 			start_patch(p, world.rng.randf_range(1.6, 2.4) + size * 0.5, world.rng.randf_range(14.0, 24.0), 0)
+			world.stat("grass_fire_lit")
 
 
 ## A grass fire at p, r across, burning for `life` seconds.
@@ -160,6 +165,15 @@ func tick(dt: float) -> void:
 			_stamp(pt[0], float(pt[1]) + 1.0, -1)
 		elif beat:
 			_patch_beat(pt)
+	smokes.clear()
+	for bt in burning:
+		var bs: Structure = bt[0]
+		var pall := float(FUEL[bs.fire_k][3]) * bs.burn
+		if bs.burn > 0.45 and pall > 1.2:
+			smokes.append([bs.position + WIND * pall * 1.3 + Vector3(0, 1.4, 0), pall])
+	for pt in patches:
+		var pr := float(pt[1]) * 0.9 * clampf(float(pt[2]) / 4.0, 0.3, 1.0)
+		smokes.append([(pt[0] as Vector3) + WIND * pr + Vector3(0, 1.2, 0), pr])
 
 
 func _burn(st: Structure, dt: float, beat: bool) -> void:
@@ -239,9 +253,10 @@ func _patch_beat(pt: Array) -> void:
 		var fk: String = st.fire_kind()
 		if fk != "" and box_dist(st, c) < r + 0.8 and world.rng.randf() < 0.12 * float(FUEL[fk][0]):
 			ignite(st, 0.15)
-	if int(pt[3]) >= 3 or patches.size() >= MAX_PATCHES or life < 5.0 or world.rng.randf() > 0.08:
+	if int(pt[3]) >= 2 or patches.size() >= MAX_PATCHES or life < 5.0 or world.rng.randf() > 0.05:
 		return
-	# the grass downwind catches
+	# the grass downwind catches (a strike's fire creeps on a way, then dies out:
+	# about one more patch for each a shell starts)
 	var dir := Basis(Vector3.UP, world.rng.randf_range(-1.1, 1.1)) * WIND
 	var np: Vector3 = c + dir * r * world.rng.randf_range(1.3, 1.8)
 	if not Defs.in_map(np, 6.0) or not _grass_at(np):
@@ -250,6 +265,7 @@ func _patch_beat(pt: Array) -> void:
 		if Defs.flat((o[0] as Vector3) - np).length() < float(o[1]) * 1.1:
 			return
 	start_patch(np, r * world.rng.randf_range(0.85, 1.05), world.rng.randf_range(12.0, 20.0), int(pt[3]) + 1)
+	world.stat("grass_fire_spread")
 
 
 ## Burns the men within `r` of a fire (dist_fn: how far a point is from it)
@@ -283,7 +299,10 @@ func _grass_at(p: Vector3) -> bool:
 	return tm.base[i] == TerrainMap.GROUND or tm.base[i] == TerrainMap.WOODS
 
 
+## Marks (d = 1) or clears (d = -1) the ground a fire makes too hot to stand
+## on: no cover is taken there, and routes go round it (Nav.stamp_heat).
 func _stamp(p: Vector3, r: float, d: int) -> void:
+	world.nav.stamp_heat(p, r - 0.5, d)
 	var x0 := maxi(0, int((p.x - r + MapDims.HALF) / CELL))
 	var x1 := mini(_hn - 1, int((p.x + r + MapDims.HALF) / CELL))
 	var z0 := maxi(0, int((p.z - r + MapDims.HALF) / CELL))

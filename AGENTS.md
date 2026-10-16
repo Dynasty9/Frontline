@@ -23,7 +23,8 @@ scripts/game/terrain.gd, nav.gd, hnav.gd   ground kinds, cover map, pathfinding 
 scripts/ui/                    HUD, minimap, Field Manual, menus
 scripts/autoload/online.gd     the matchmaker client: battle list, Find Match, hole punching, optional account
 scripts/autoload/links.gd      frontline:// links from the website: registering the scheme, handing a link to a running copy
-scripts/autoload/updater.gd    the game's version, and updating itself from the latest GitHub release
+scripts/autoload/updater.gd    the game's version, and updating itself to the latest release
+changelog/                     one entry per change, filed under its version at release; CHANGELOG.md is generated
 matchmaker/                    the matchmaking service (Node, no runtime dependencies; deployed on Railway, accounts via Supabase)
 web/                           the website (React + Vite + shadcn, on Railway): live battles with Join links, downloads;
                                Storybook for its components (*.stories.tsx next to each)
@@ -79,5 +80,6 @@ CI (`.github/workflows/check.yml`) runs steps 1 and 2 on every push and pull req
 ## Commits and pull requests
 
 - Keep each change coherent and tested (see above). Commit messages: a short summary line, then what changed and why.
+- **Every change to the game adds a changelog entry** for players: `changelog/unreleased/<what-changed>.md`, with its screenshots in `changelog/unreleased/<what-changed>/` ([changelog/README.md](changelog/README.md) shows the format). Merging it releases a new version, and the entry becomes that version's changelog on the website and GitHub. CI fails a pull request that changes the game without one; label it `skip release` if it shouldn't ship a version. Check it with `python .github/scripts/changelog.py check`.
 - If you add a unit, behaviour or system, update the matching section of [docs/FEATURES.md](docs/FEATURES.md), and the README if players would notice it.
-- For visual changes, include before and after screenshots, rendered off-screen.
+- For visual changes, include before and after screenshots, rendered off-screen. Put the ones players should see in the changelog entry's folder; the pull request can show them from the branch (`https://github.com/Dynasty9/Frontline/blob/<branch>/changelog/unreleased/<entry>/<file>.jpg?raw=true`), so there's no need for a separate assets branch.

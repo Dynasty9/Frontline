@@ -1,8 +1,9 @@
-// Made-up answers from the matchmaker and GitHub, for stories and tests. Each
-// lobby is one of the cases the battle list draws differently.
+// Made-up answers from the matchmaker, and a made-up release's changelog, for
+// stories and tests. Each lobby is one of the cases the battle list draws
+// differently.
 
 import type { Health, Lobby } from "@/lib/matchmaker"
-import type { Build, GhAsset, GhRelease } from "@/lib/releases"
+import type { Release } from "@/lib/changelog"
 
 const lobby = (l: Partial<Lobby> & Pick<Lobby, "id" | "name" | "host">): Lobby => ({
   verified: false,
@@ -79,89 +80,43 @@ export const health: Health = {
 
 export const healthQuiet: Health = { ok: true, accounts: "supabase", lobbies: 0, players: 0 }
 
-const RELEASES = "https://github.com/Dynasty9/Frontline/releases"
-
-export const stableBuild: Build = {
-  tag: "v0.1.9",
-  name: "v0.1.9",
-  url: `${RELEASES}/tag/v0.1.9`,
-  published: "2026-10-14T18:22:00Z",
-  prerelease: false,
-  assets: {
-    windows: { url: `${RELEASES}/download/v0.1.9/Frontline-windows.zip`, size: 91_400_000 },
-    linux: { url: `${RELEASES}/download/v0.1.9/Frontline-linux.zip`, size: 88_700_000 },
-  },
+/** A release with one change of each kind: pictures, a markdown body, and neither. */
+export const release: Release = {
+  version: "0.2.0",
+  tag: "v0.2.0",
+  name: "River crossings",
+  date: "2026-10-20",
+  summary: "Engineers bridge rivers under fire, and boats ferry squads across.",
+  url: "https://github.com/Dynasty9/Frontline/releases/tag/v0.2.0",
+  pull_requests: [21, 22, 23],
+  entries: [
+    {
+      slug: "bridging",
+      title: "Engineers lay bridges",
+      kind: "new",
+      summary: "Order an engineer squad to a riverbank and it lays a pontoon bridge, a section at a time.",
+      body: `- **Under fire** the work stops and the engineers take cover.
+- **Tanks** wait for the last section.`,
+      screenshots: [
+        { url: "/shots/river_bridge.jpg", caption: "A pontoon bridge going out under smoke" },
+        { url: "/shots/battle.jpg", caption: "The far bank, taken" },
+      ],
+    },
+    {
+      slug: "ferries",
+      title: "Boats ferry squads",
+      kind: "improved",
+      summary: "A patrol boat can carry a squad across and land it on the far bank.",
+      body: "",
+      screenshots: [],
+    },
+    {
+      slug: "ford-pathing",
+      title: "Soldiers find the ford",
+      kind: "fixed",
+      summary: "Squads no longer wade into deep water looking for the shallow crossing.",
+      body: "",
+      screenshots: [],
+    },
+  ],
 }
-
-export const nightlyBuild: Build = {
-  tag: "nightly",
-  name: "Nightly",
-  url: `${RELEASES}/tag/nightly`,
-  published: "2026-10-15T03:10:00Z",
-  prerelease: true,
-  assets: {
-    windows: { url: `${RELEASES}/download/nightly/Frontline-windows.zip`, size: 91_600_000 },
-    linux: { url: `${RELEASES}/download/nightly/Frontline-linux.zip`, size: 88_900_000 },
-  },
-}
-
-/** A release whose Linux build didn't make it. */
-export const windowsOnlyBuild: Build = {
-  ...stableBuild,
-  assets: { windows: stableBuild.assets.windows },
-}
-
-// What GitHub's releases API answers for the builds above, newest first: a
-// draft and a release still uploading its zips come before them and are
-// passed over.
-const ghAsset = (tag: string, file: string, size: number): GhAsset => ({
-  name: file,
-  browser_download_url: `${RELEASES}/download/${tag}/${file}`,
-  size,
-})
-
-export const ghReleases: GhRelease[] = [
-  {
-    tag_name: "v0.2.0",
-    name: "v0.2.0",
-    html_url: `${RELEASES}/tag/v0.2.0`,
-    published_at: "2026-10-15T20:00:00Z",
-    prerelease: false,
-    draft: true,
-    assets: [ghAsset("v0.2.0", "Frontline-windows.zip", 92_000_000)],
-  },
-  {
-    tag_name: "v0.1.10",
-    name: "v0.1.10",
-    html_url: `${RELEASES}/tag/v0.1.10`,
-    published_at: "2026-10-15T09:00:00Z",
-    prerelease: false,
-    draft: false,
-    assets: [],
-  },
-  {
-    tag_name: "nightly",
-    name: "Nightly",
-    html_url: nightlyBuild.url,
-    published_at: nightlyBuild.published,
-    prerelease: true,
-    draft: false,
-    assets: [
-      ghAsset("nightly", "Frontline-windows.zip", 91_600_000),
-      ghAsset("nightly", "Frontline-linux.zip", 88_900_000),
-    ],
-  },
-  {
-    tag_name: "v0.1.9",
-    name: "v0.1.9",
-    html_url: stableBuild.url,
-    published_at: stableBuild.published,
-    prerelease: false,
-    draft: false,
-    assets: [
-      ghAsset("v0.1.9", "Frontline-windows.zip", 91_400_000),
-      ghAsset("v0.1.9", "Frontline-linux.zip", 88_700_000),
-      ghAsset("v0.1.9", "SHA256SUMS.txt", 180),
-    ],
-  },
-]

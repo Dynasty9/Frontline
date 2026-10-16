@@ -1,10 +1,11 @@
 import type { Meta, StoryObj } from "@storybook/react-vite"
 import { expect, within } from "storybook/test"
 import App from "@/App"
-import { ghReleases, health, healthQuiet, lobbies, lobbyOpen, stableBuild } from "@/test/fixtures"
-import { mockNetwork } from "@/test/network"
+import { latest } from "@/lib/releases"
+import { health, healthQuiet, lobbies, lobbyOpen } from "@/test/fixtures"
+import { mockMatchmaker } from "@/test/network"
 
-// The whole front page, fetching from a stand-in matchmaker and GitHub.
+// The whole front page, polling a stand-in matchmaker.
 const meta = {
   title: "Site/Page",
   component: App,
@@ -15,30 +16,33 @@ export default meta
 type Story = StoryObj<typeof meta>
 
 export const Live: Story = {
-  beforeEach: mockNetwork({ lobbies, health, releases: ghReleases }),
+  beforeEach: mockMatchmaker({ lobbies, health }),
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await expect(await canvas.findByText(lobbyOpen.name)).toBeVisible()
     await expect(await canvas.findByText(/battles live/)).toBeVisible()
-    // the newest release with its zips uploaded, not the draft or the one still uploading
-    const downloads = await canvas.findAllByRole("link", { name: "Download for Windows" })
-    for (const d of downloads) await expect(d).toHaveAttribute("href", stableBuild.assets.windows?.url)
+    // the hero's button and the Windows card both offer the baked-in release
+    const downloads = canvas.getAllByRole("link", { name: "Download for Windows" })
+    for (const d of downloads) await expect(d).toHaveAttribute("href", latest.assets.windows.url)
   },
 }
 
 export const NobodyHosting: Story = {
-  beforeEach: mockNetwork({ lobbies: [], health: healthQuiet, releases: ghReleases }),
+  beforeEach: mockMatchmaker({ lobbies: [], health: healthQuiet }),
   play: async ({ canvasElement }) => {
     await expect(await within(canvasElement).findByText("Nobody is hosting right now")).toBeVisible()
   },
 }
 
-/** The matchmaker and GitHub both down: the page still says what to do. */
-export const Offline: Story = {
-  beforeEach: mockNetwork({}),
+/** The matchmaker down: the page still says what to do, and the downloads still work. */
+export const MatchmakerDown: Story = {
+  beforeEach: mockMatchmaker({}),
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await expect(await canvas.findByText("Can't reach the matchmaker")).toBeVisible()
-    await expect(await canvas.findByText(/Couldn't reach GitHub/)).toBeVisible()
+    await expect(canvas.getAllByRole("link", { name: "Download for Linux" })[0]).toHaveAttribute(
+      "href",
+      latest.assets.linux.url
+    )
   },
 }

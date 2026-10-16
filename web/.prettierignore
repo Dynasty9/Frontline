@@ -2,3 +2,6 @@ dist
 storybook-static
 package-lock.json
 public
+# written by the release workflow (.github/scripts/), in Python's JSON layout
+src/changelog.json
+src/release.json

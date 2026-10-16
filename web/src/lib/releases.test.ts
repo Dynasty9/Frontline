@@ -1,75 +1,26 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
-import { fetchBuilds, formatSize, guessPlatform } from "@/lib/releases"
-import { ghReleases, nightlyBuild, stableBuild } from "@/test/fixtures"
-
-const answer = (body: unknown, status = 200) => vi.fn<typeof fetch>(async () => Response.json(body, { status }))
-
-// sessionStorage as a browser has it
-function stubStorage() {
-  const m = new Map<string, string>()
-  vi.stubGlobal("sessionStorage", {
-    getItem: (k: string) => m.get(k) ?? null,
-    setItem: (k: string, v: string) => void m.set(k, v),
-    removeItem: (k: string) => void m.delete(k),
-  })
-}
+import { afterEach, describe, expect, it, vi } from "vitest"
+import { formatSize, guessPlatform, latest, PLATFORM_NAMES } from "@/lib/releases"
 
 afterEach(() => {
   vi.unstubAllGlobals()
-  vi.useRealTimers()
 })
 
-describe("fetchBuilds", () => {
-  beforeEach(stubStorage)
-
-  it("finds the newest release with its zips uploaded, and the nightly", async () => {
-    vi.stubGlobal("fetch", answer(ghReleases))
-    await expect(fetchBuilds()).resolves.toEqual({ stable: stableBuild, nightly: nightlyBuild })
+// src/release.json is rewritten by every release (.github/workflows/release.yml):
+// whatever it holds, the download buttons have to be able to use it
+describe("the baked-in release", () => {
+  it("names a version and its release page", () => {
+    expect(latest.tag).toBe(`v${latest.version}`)
+    expect(latest.url).toMatch(/^https:\/\/github\.com\/.+\/releases\/tag\//)
+    expect(Number.isNaN(Date.parse(latest.published))).toBe(false)
   })
 
-  it("answers null for builds that don't exist yet", async () => {
-    vi.stubGlobal("fetch", answer([]))
-    await expect(fetchBuilds()).resolves.toEqual({ stable: null, nightly: null })
-  })
-
-  it("only counts zips, and reads the platform from the file name", async () => {
-    const [, , , release] = ghReleases
-    const assets = [
-      { name: "frontline-WINDOWS.zip", browser_download_url: "https://x/w.zip", size: 1 },
-      { name: "Frontline-linux.tar.gz", browser_download_url: "https://x/l.tgz", size: 2 },
-    ]
-    vi.stubGlobal("fetch", answer([{ ...release, assets }]))
-    const { stable } = await fetchBuilds()
-    expect(stable?.assets).toEqual({ windows: { url: "https://x/w.zip", size: 1 } })
-  })
-
-  it("falls back to the tag when a release has no name", async () => {
-    const [, , , release] = ghReleases
-    vi.stubGlobal("fetch", answer([{ ...release, name: null }]))
-    expect((await fetchBuilds()).stable?.name).toBe(release.tag_name)
-  })
-
-  it("asks GitHub once per few minutes", async () => {
-    vi.useFakeTimers({ toFake: ["Date"] })
-    const fetch = answer(ghReleases)
-    vi.stubGlobal("fetch", fetch)
-    await fetchBuilds()
-    await fetchBuilds()
-    expect(fetch).toHaveBeenCalledOnce()
-    vi.advanceTimersByTime(6 * 60_000)
-    await fetchBuilds()
-    expect(fetch).toHaveBeenCalledTimes(2)
-  })
-
-  it("still works with no storage (a private window)", async () => {
-    vi.stubGlobal("sessionStorage", undefined)
-    vi.stubGlobal("fetch", answer(ghReleases))
-    await expect(fetchBuilds()).resolves.toEqual({ stable: stableBuild, nightly: nightlyBuild })
-  })
-
-  it("throws when GitHub refuses", async () => {
-    vi.stubGlobal("fetch", answer({ message: "API rate limit exceeded" }, 403))
-    await expect(fetchBuilds()).rejects.toThrow("GitHub answered 403")
+  it("has a zip for every platform, with its size and checksum", () => {
+    for (const p of Object.keys(PLATFORM_NAMES) as (keyof typeof PLATFORM_NAMES)[]) {
+      const a = latest.assets[p]
+      expect(a.url).toMatch(/^https:\/\/.+\.zip$/)
+      expect(a.size).toBeGreaterThan(0)
+      expect(a.sha256).toMatch(/^[0-9a-f]{64}$/)
+    }
   })
 })
 

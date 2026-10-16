@@ -273,11 +273,18 @@ one joins. Only exported builds register the scheme with the OS (`Links._registe
 
 `web/` is the website (React, Vite, Tailwind, shadcn/ui; see its README): `npm install && npm run dev`, with
 `VITE_MATCHMAKER_URL` pointing at a local matchmaker if you like. `npm run storybook` shows every component and
-section of the page on its own, in each of its states (loading, offline, nobody hosting...), without the matchmaker
-or GitHub. `.github/workflows/web.yml` lints it, checks formatting and types, runs the unit tests, builds it, and
+section of the page on its own, in each of its states (loading, offline, nobody hosting...), without the live
+matchmaker. `.github/workflows/web.yml` lints it, checks formatting and types, runs the unit tests, builds it, and
 renders every story in headless Chromium as a test (its play function and an accessibility check).
 
 ### Builds, releases and updates
+
+Each release files its changelog, bakes itself into the website and the matchmaker, then publishes. The changelog is
+written as part of each pull request (`changelog/unreleased/`, see [changelog/README.md](../changelog/README.md)); at
+release, `.github/scripts/bake-release.sh` moves the entries the version was built with into `changelog/vX.Y.Z/`
+(`changelog.py release`), regenerates `CHANGELOG.md` and `web/src/changelog.json`, writes `release.json` into
+`web/src/` and `matchmaker/` (`release_json.py`), and commits all of it to `main`, which redeploys the website and the
+matchmaker. The GitHub release follows, named after the release's headline change, with the changelog as its notes.
 
 `export_presets.cfg` has a Windows and a Linux preset (one executable each, the game packed inside).
 `.github/workflows/release.yml` releases automatically: every merge to `main` that changes the game (`scripts/`,
@@ -289,7 +296,8 @@ Actions > Release > Run workflow releases by hand. The next number comes from th
 (`.github/scripts/next-version.sh`), and the build stamps it into `project.godot` (`application/config/version`);
 from source the game reads `0.0.0-dev`.
 
-A release build updates itself (`scripts/autoload/updater.gd`): at start it asks GitHub for the latest release,
+A release build updates itself (`scripts/autoload/updater.gd`): at start it asks the matchmaker (`GET /release`,
+falling back to GitHub's API) for the latest release,
 downloads the zip for its platform, checks it against the SHA-256 GitHub publishes, renames the running executable
 aside and puts the new one in its place, then offers a restart (the old file is deleted on the next launch). Where it
 can't (a folder it can't write to), the menu links to the website instead. To try an update from source without

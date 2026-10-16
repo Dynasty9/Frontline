@@ -1,7 +1,10 @@
 extends Node
 ## Keeping the game up to date. A release build (its version is stamped into
-## project.godot by .github/workflows/release.yml) asks GitHub for the latest
-## release when it starts. If that's newer, it downloads the release's zip for
+## project.godot by .github/workflows/release.yml) asks the matchmaker for the
+## latest release when it starts: every release bakes its version, download
+## links and checksums into the matchmaker (GET /release) and the website, so
+## all three agree. GitHub's API is the fallback if the matchmaker can't be
+## reached. If that's newer, it downloads the release's zip for
 ## this platform in the background, checks it against the SHA-256 GitHub
 ## publishes for it, and swaps the executable: the running one is renamed aside
 ## (Windows lets you rename a running program, though not overwrite it) and the
@@ -15,7 +18,7 @@ extends Node
 ## network version (Net.NET_VERSION).
 ##
 ## Test switches: --game-version=X.Y.Z pretends to be that release,
-## --update-api=URL reads the release from another GitHub API URL, and
+## --update-api=URL reads the release from elsewhere (either form), and
 ## --update-target=PATH swaps that file instead of the running executable (so
 ## a run from source can go through a whole update without touching Godot).
 
@@ -33,7 +36,7 @@ var version := String(ProjectSettings.get_setting("application/config/version", 
 var state := State.NONE
 var latest := ""  # the newer release's version, once found
 var error := ""
-var _api := LATEST_RELEASE_API
+var _api := ""  # --update-api, else the matchmaker's /release, then GitHub's
 var _target := ""  # the executable an update replaces ("" when it can't)
 var _asset := {}  # this platform's zip in the latest release: url, digest, size
 var _req: HTTPRequest
@@ -67,27 +70,18 @@ func progress() -> float:
 	return clampf(float(_req.get_downloaded_bytes()) / float(_req.get_body_size()), 0.0, 1.0)
 
 
-## Ask GitHub for the latest release; if it's newer, say so, and install it
-## when we can.
+## Find the latest release; if it's newer, say so, and install it when we can.
 func check() -> void:
-	var req := HTTPRequest.new()
-	req.timeout = 15.0
-	add_child(req)
-	if req.request(_api, PackedStringArray(["Accept: application/vnd.github+json"])) != OK:
-		req.queue_free()
+	var sources := [_api] if _api != "" else [Online.base_url + "/release", LATEST_RELEASE_API]
+	var rel := {}
+	for url in sources:
+		rel = parse_release(await _get_json(String(url)))
+		if not rel.is_empty():
+			break
+	if rel.is_empty() or not newer(String(rel.version), version):
 		return
-	var res: Array = await req.request_completed
-	req.queue_free()
-	if int(res[0]) != HTTPRequest.RESULT_SUCCESS or int(res[1]) != 200:
-		return
-	var d: Variant = JSON.parse_string((res[3] as PackedByteArray).get_string_from_utf8())
-	if not d is Dictionary:
-		return
-	var v := String((d as Dictionary).get("tag_name", "")).trim_prefix("v")
-	if not newer(v, version):
-		return
-	latest = v
-	_asset = _platform_asset((d as Dictionary).get("assets", []))
+	latest = String(rel.version)
+	_asset = rel.asset
 	state = State.AVAILABLE
 	_debug("v%s is out (this is v%s); %s" % [latest, version, "installing" if can_install() else "can't install it here"])
 	changed.emit()
@@ -110,16 +104,46 @@ func can_install() -> bool:
 	return true
 
 
-func _platform_asset(assets: Array) -> Dictionary:
-	var want := ""
+func _get_json(url: String) -> Variant:
+	var req := HTTPRequest.new()
+	req.timeout = 15.0
+	add_child(req)
+	if req.request(url, PackedStringArray(["Accept: application/json"])) != OK:
+		req.queue_free()
+		return null
+	var res: Array = await req.request_completed
+	req.queue_free()
+	if int(res[0]) != HTTPRequest.RESULT_SUCCESS or int(res[1]) != 200:
+		return null
+	return JSON.parse_string((res[3] as PackedByteArray).get_string_from_utf8())
+
+
+## {version, asset: {url, digest, size}} from either the matchmaker's
+## release.json or GitHub's release API ({} if it's neither). The asset is
+## this platform's zip ({} if the release has none).
+static func parse_release(d: Variant) -> Dictionary:
+	if not d is Dictionary:
+		return {}
+	var r: Dictionary = d
+	var plat := ""
 	match OS.get_name():
 		"Windows":
-			want = "Frontline-windows.zip"
+			plat = "windows"
 		"Linux", "FreeBSD":
-			want = "Frontline-linux.zip"
-	for a in assets:
-		if a is Dictionary and String(a.get("name", "")) == want:
-			return {"url": String(a.get("browser_download_url", "")), "digest": String(a.get("digest", "")), "size": int(a.get("size", 0))}
+			plat = "linux"
+	var asset := {}
+	if r.has("version") and r.get("assets") is Dictionary:
+		# ours: assets by platform, with the bare checksum
+		var a: Variant = (r.assets as Dictionary).get(plat)
+		if a is Dictionary:
+			asset = {"url": String(a.get("url", "")), "digest": "sha256:" + String(a.get("sha256", "")), "size": int(a.get("size", 0))}
+		return {"version": String(r.version), "asset": asset}
+	if r.has("tag_name") and r.get("assets") is Array:
+		# GitHub's: a list of files, and the checksum as "sha256:..."
+		for a in r.assets:
+			if a is Dictionary and String(a.get("name", "")) == "Frontline-%s.zip" % plat:
+				asset = {"url": String(a.get("browser_download_url", "")), "digest": String(a.get("digest", "")), "size": int(a.get("size", 0))}
+		return {"version": String(r.tag_name).trim_prefix("v"), "asset": asset}
 	return {}
 
 

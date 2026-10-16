@@ -1,0 +1,5 @@
+version = "0.1.0"
+name = "First Release"
+date = "2026-10-16"
+summary = "The first build you can download and play: the whole game as it stands, now with online play through Find Match, missions, camera controls from other RTS games, restyled soldiers, and a game that keeps itself up to date."
+pull_requests = [1, 2, 3, 4]

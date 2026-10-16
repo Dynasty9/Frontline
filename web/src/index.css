@@ -100,3 +100,38 @@
         center top,
         center top;
 }
+
+/* An entry's details: the changelog's markdown, mostly short lists. */
+.md p {
+    margin-top: 0.5rem;
+}
+.md ul {
+    list-style: disc;
+    padding-left: 1.25rem;
+    margin-top: 0.5rem;
+}
+.md ol {
+    list-style: decimal;
+    padding-left: 1.25rem;
+    margin-top: 0.5rem;
+}
+.md li {
+    margin-top: 0.3rem;
+}
+.md li::marker {
+    color: var(--primary);
+}
+.md strong {
+    color: var(--foreground);
+    font-weight: 600;
+}
+.md a {
+    color: var(--foreground);
+    text-decoration: underline;
+    text-underline-offset: 4px;
+}
+.md code {
+    font-family: var(--font-mono);
+    font-size: 0.85em;
+    color: var(--foreground);
+}

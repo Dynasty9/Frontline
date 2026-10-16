@@ -3,17 +3,19 @@ import { Emblem, Wordmark } from "@/components/emblem"
 import { Button } from "@/components/ui/button"
 import { GITHUB_URL } from "@/lib/config"
 
+// absolute, so they work from the changelog page too
 const NAV = [
-  ["Battles", "#battles"],
-  ["Download", "#download"],
-  ["Screenshots", "#screenshots"],
+  ["Battles", "/#battles"],
+  ["What's new", "/changelog/"],
+  ["Download", "/#download"],
+  ["Screenshots", "/#screenshots"],
 ] as const
 
 export function SiteHeader() {
   return (
     <header className="sticky top-0 z-40 border-b bg-background/80 backdrop-blur-md">
       <div className="mx-auto flex h-14 max-w-6xl items-center gap-6 px-4 sm:px-6">
-        <a href="#top" className="flex items-center gap-2.5" aria-label="Frontline, back to top">
+        <a href="/" className="flex items-center gap-2.5" aria-label="Frontline home">
           <Emblem className="size-7" />
           <Wordmark className="text-base" />
         </a>

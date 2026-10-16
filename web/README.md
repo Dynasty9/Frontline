@@ -2,7 +2,7 @@
 
 The game's front page: the battles being hosted right now (from the matchmaker), a **Join** button on each that
 opens the game and connects you (`frontline://join/<id>`, registered by the game on its first launch), and the
-latest downloads from GitHub Releases.
+latest downloads, and a Changelog page (`/changelog/`) with every release.
 
 React 19, Vite, TypeScript, Tailwind 4 and [shadcn/ui](https://ui.shadcn.com) (the Lyra style, recoloured with the
 game's palette from `scripts/ui/ui_kit.gd`). Needs Node 22.12 or newer.
@@ -13,7 +13,9 @@ npm run dev
 ```
 
 It reads the live matchmaker by default. To use a local one, put `VITE_MATCHMAKER_URL=http://127.0.0.1:8787` in
-`.env.development.local`. `VITE_GITHUB_REPO` changes where downloads come from (default `Dynasty9/Frontline`).
+`.env.development.local`. The latest release (`src/release.json`) and the changelog (`src/changelog.json`) are built
+in: the release workflow rewrites both and commits them, and Railway redeploys the site. Don't edit them by hand;
+the changelog comes from `changelog/` at the top of the repo.
 
 ## Storybook
 
@@ -22,11 +24,11 @@ npm run storybook
 ```
 
 opens [Storybook](https://storybook.js.org) on port 6006: every component and section of the page on its own, in
-each state it can be in (loading, the matchmaker down, nobody hosting, a full battle, a release missing one
-platform...), and the whole page against a stand-in matchmaker and GitHub (`Site/Page`). Nothing in it talks to the
-real services, and Join links only report the click instead of opening the game.
+each state it can be in (loading, the matchmaker down, nobody hosting, a full or closed battle...), the changelog
+and its page, and the whole front page against a stand-in matchmaker (`Site/Page`). Nothing in it talks to the live
+matchmaker, and Join links only report the click instead of opening the game.
 
-Stories sit next to their components (`battles.stories.tsx` by `battles.tsx`), and the made-up lobbies and releases
+Stories sit next to their components (`battles.stories.tsx` by `battles.tsx`), and the made-up lobbies and release
 they show are in `src/test/fixtures.ts`. A new component should come with stories for its states. Many have a
 `play` function that clicks through the story and checks the result.
 
