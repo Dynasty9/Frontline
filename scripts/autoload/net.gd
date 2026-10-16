@@ -21,8 +21,10 @@ const NET_VERSION := 5
 const PLAYER_COLORS := [Color(0.38, 0.95, 0.72), Color(1.0, 0.5, 0.82), Color(0.74, 0.62, 1.0), Color(0.8, 0.98, 0.38),
 	Color(0.4, 0.9, 1.0), Color(1.0, 0.86, 0.46), Color(1.0, 0.64, 0.5), Color(0.62, 0.78, 1.0)]
 
+const DEFAULT_SETTINGS := {"ai_fill": true, "ai_allies": false, "drop_in": true}
+
 var players := {}  # peer_id -> {"name": String, "team": int, "col": int (into PLAYER_COLORS)}
-var settings := {"ai_fill": true, "ai_allies": false, "drop_in": true}
+var settings := DEFAULT_SETTINGS.duplicate()
 var my_name := "Commander"
 var in_game := false
 ## The side a test client asked for with --team (-2: none). It goes with the
@@ -45,14 +47,32 @@ func host_game(port := DEFAULT_PORT, team := 0) -> int:
 	if err != OK:
 		return err
 	multiplayer.multiplayer_peer = peer
-	players.clear()
-	players[1] = {"name": my_name, "team": team, "col": 0}
-	in_game = false
+	_hosting(team)
 	# a fresh game: not the mission the last one was (if it was one)
 	settings.erase("mission")
 	settings.erase("mission_autoplay")
 	lobby_updated.emit()
 	return OK
+
+
+## A game on this machine alone (the test runs: scenarios, AI-vs-AI battles,
+## missions playing themselves, the test port). Godot's offline peer makes this
+## the server, peer 1, with nobody to talk to, so it takes no port and two runs
+## at once can't collide. Each starts from the default settings: a test port
+## loading one game after another mustn't carry the last one's seed or scenario.
+func host_offline(team := 0) -> void:
+	if multiplayer.multiplayer_peer and not (multiplayer.multiplayer_peer is OfflineMultiplayerPeer):
+		multiplayer.multiplayer_peer.close()
+	multiplayer.multiplayer_peer = OfflineMultiplayerPeer.new()
+	_hosting(team)
+	settings = DEFAULT_SETTINGS.duplicate()
+	lobby_updated.emit()
+
+
+func _hosting(team: int) -> void:
+	players.clear()
+	players[1] = {"name": my_name, "team": team, "col": 0}
+	in_game = false
 
 
 ## `local_port`: the UDP port to connect from (0 for any). The matchmaker's

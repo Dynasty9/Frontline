@@ -1,0 +1,13 @@
+{
+  "name": "frontline-tests",
+  "private": true,
+  "description": "Tests that drive the game through its test port (see lib/game.mjs)",
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "test": "node --test"
+  },
+  "license": "MIT"
+}
