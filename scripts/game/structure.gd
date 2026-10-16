@@ -609,20 +609,31 @@ func mg_covers(dir: Vector3) -> bool:
 
 ## The gunner lays the gun (view): it swings to where he aims, within its arc,
 ## and bucks on the mount while he fires.
-func crew_aim(aim_yaw: float, firing: bool, dt: float) -> void:
+func crew_aim(aim_yaw: float, _firing: bool, dt: float) -> void:
 	if _mg.is_empty():
 		return
 	var rel := clampf(wrapf(aim_yaw - yaw, -PI, PI), -MG_ARC, MG_ARC)
 	var tr: Node3D = _mg.traverse
 	tr.rotation.y = lerp_angle(tr.rotation.y, rel, 1.0 - exp(-dt * 7.0))
+	# each round kicks it back on its mount (crew_kick); it runs forward again between them
 	var body: Node3D = _mg.body
 	var el: Node3D = _mg.elev
-	if firing:
-		body.position.z = randf_range(0.008, 0.03)
-		el.rotation.x = randf_range(-0.004, 0.012)
-	else:
-		body.position.z = lerpf(body.position.z, 0.0, 1.0 - exp(-dt * 18.0))
-		el.rotation.x = lerpf(el.rotation.x, 0.0, 1.0 - exp(-dt * 10.0))
+	if body.position.z != 0.0 or el.rotation.x != 0.0:
+		body.position.z = lerpf(body.position.z, 0.0, 1.0 - exp(-dt * 16.0))
+		el.rotation.x = lerpf(el.rotation.x, 0.0, 1.0 - exp(-dt * 12.0))
+		if absf(body.position.z) < 0.0005 and absf(el.rotation.x) < 0.0005:
+			body.position.z = 0.0
+			el.rotation.x = 0.0
+
+
+## A round fired (view): the gun recoils on its pintle and the muzzle jumps.
+func crew_kick(k: float) -> void:
+	if _mg.is_empty():
+		return
+	var body: Node3D = _mg.body
+	var el: Node3D = _mg.elev
+	body.position.z = minf(body.position.z + 0.022 * k, 0.05)
+	el.rotation.x = clampf(el.rotation.x + randf_range(0.004, 0.014) * k, -0.02, 0.03)
 
 
 ## The gun's muzzle in world space right now (view), INF without a model.

@@ -1,6 +1,6 @@
 class_name Fx
 extends Node3D
-## Client-side effects driven by server events: tracers, impacts, explosions,
+## Client-side effects driven by server events: gunfire (GunFx), explosions,
 ## speech bubbles, dropped rifles, debris and falling trees.
 
 const SHOT := 0
@@ -22,14 +22,17 @@ const DIE := 15
 const FIRE := 16  # a grass fire: [FIRE, pos, radius, seconds]
 const BURNT_OUT := 17  # something burnt through falls in: [BURNT_OUT, pos, half extents, yaw]
 
-const TRACER_SPEED := 380.0
+## What a round struck, as a SHOT event carries it: it decides what flies off.
+const HIT_DIRT := 1
+const HIT_FLESH := 2
+const HIT_METAL := 3
+const HIT_WOOD := 4
+const HIT_STONE := 5
+const HIT_SAND := 6  # sandbags, earthworks
+const HIT_LEAVES := 7  # a hedge, a tree's crown
 
 var world: World
-var _tracer_pool: Array = []
-var _tracers: Array = []  # [mi, from, to, t, len, width]
-var _flash_pool: Array = []
-var _flashes: Array = []  # [mi, t]
-var _puffs := {}  # type -> [pool array, index]
+var gunfx: GunFx
 var talk: Array = []  # what's being said right now: [eid, text, born msec, seconds]; the HUD draws it
 var _movers: Array = []  # [node, vel, spin, t, life, rest]
 var _craters: Array = []
@@ -45,27 +48,12 @@ func _ready() -> void:
 	vfx.name = "Vfx"
 	vfx.world = world
 	add_child(vfx)
+	gunfx = GunFx.new()
+	gunfx.name = "GunFx"
+	gunfx.world = world
+	gunfx.vfx = vfx
+	add_child(gunfx)
 	_prewarm.call_deferred()
-	var tm := vfx.tracer_mat
-	for i in 120:
-		var mi := MeshInstance3D.new()
-		mi.mesh = Res.box(Vector3(0.035, 0.035, 1.0))
-		mi.material_override = tm
-		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-		mi.visible = false
-		add_child(mi)
-		_tracer_pool.append(mi)
-	var fm := vfx.flash_mat
-	for i in 40:
-		var f := MeshInstance3D.new()
-		f.mesh = vfx.quad
-		f.material_override = fm
-		f.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-		f.visible = false
-		add_child(f)
-		_flash_pool.append(f)
-	_make_puffs("blood", 16, Color(0.55, 0.05, 0.04, 0.9), 0.08, 8, 0.45, 2.0, Vector3(0, -6, 0))
-	_make_puffs("wood", 12, Color(0.5, 0.36, 0.2, 1.0), 0.08, 8, 0.6, 3.0, Vector3(0, -9, 0))
 	for i in 8:
 		var l := OmniLight3D.new()
 		l.light_color = Color(1.0, 0.7, 0.35)
@@ -81,58 +69,15 @@ func _prewarm() -> void:
 	vfx.apply_lighting()
 	var at := world.cam.focus_pos if world.cam else Vector3.ZERO
 	vfx.prewarm(at)
-
-
-func _make_puffs(kind: String, n: int, col: Color, size: float, amount: int, life: float, vel: float, grav: Vector3, glow := false) -> void:
-	var arr := []
-	for i in n:
-		var p := CPUParticles3D.new()
-		p.one_shot = true
-		p.emitting = false
-		p.amount = amount
-		p.lifetime = life
-		p.explosiveness = 0.95
-		if kind in ["smoke", "dust", "fire"]:
-			p.mesh = Res.quad(Vector2(size * 2.0, size * 2.0))
-			p.material_override = Res.puff_mat(glow)
-		else:
-			p.mesh = Res.sphere(size, 5)
-			p.material_override = Res.vcol_mat(true, glow)
-		p.direction = Vector3.UP
-		p.spread = 60.0
-		p.initial_velocity_min = vel * 0.4
-		p.initial_velocity_max = vel
-		p.gravity = grav
-		p.scale_amount_min = 0.6
-		p.scale_amount_max = 1.4
-		var g := Gradient.new()
-		g.set_color(0, col)
-		g.set_color(1, Color(col.r, col.g, col.b, 0.0))
-		p.color_ramp = g
-		p.local_coords = false
-		add_child(p)
-		arr.append(p)
-	_puffs[kind] = [arr, 0]
+	gunfx.prewarm(at)
 
 
 func _puff(kind: String, pos: Vector3, dir := Vector3.UP) -> void:
-	if kind in Vfx.SMALL_KINDS:
-		vfx.puff(kind, pos, dir)
-		return
-	var entry: Array = _puffs.get(kind, [])
-	if entry.is_empty():
-		return
-	var arr: Array = entry[0]
-	var p: CPUParticles3D = arr[entry[1]]
-	entry[1] = (entry[1] + 1) % arr.size()
-	p.global_position = pos
-	p.direction = dir
-	p.restart()
-	p.emitting = true
+	vfx.puff(kind, pos, dir)
 
 
 func stats_text() -> String:
-	return "tracers %d  talk %d  movers %d  decals %d" % [_tracers.size(), talk.size(), _movers.size(), vfx._decals.size() if vfx else 0]
+	return "%s  talk %d  movers %d  decals %d" % [gunfx.stats_text() if gunfx else "", talk.size(), _movers.size(), vfx._decals.size() if vfx else 0]
 
 
 func _visible_at(p: Vector3) -> bool:
@@ -154,7 +99,7 @@ func play(ev: Array) -> void:
 				world.director.note(ev[1], 1.0)
 	match int(ev[0]):
 		SHOT:
-			_shot(_muzzle_of(ev, 5, ev[1], false), ev[2], int(ev[3]), String(ev[4]))
+			_shot(_muzzle_of(ev, 5, ev[1], false), ev[2], int(ev[3]), String(ev[4]), world.entity(int(ev[5])) if ev.size() > 5 else null)
 		EXPLODE:
 			_explode(ev[1], float(ev[2]))
 		SAY:
@@ -168,14 +113,13 @@ func play(ev: Array) -> void:
 		DEBRIS:
 			_debris(ev[1], ev[2], int(ev[3]))
 		CANNON:
-			_cannon(_muzzle_of(ev, 3, ev[1], true), ev[2])
+			_cannon(_muzzle_of(ev, 3, ev[1], true), ev[2], world.entity(int(ev[3])) if ev.size() > 3 else null)
 		RICOCHET:
 			_ricochet(ev[1], ev[2])
 		SOUND:
 			Sfx.play(String(ev[1]), ev[2], -6.0)
 		LAUNCH:
-			_puff("smoke", ev[1], -ev[2])
-			_flash(ev[1], 0.08, 1.5)
+			_launch(ev[1], ev[2], world.entity(int(ev[3])) if ev.size() > 3 else null)
 		MELEE:
 			Sfx.play("thud", ev[1])
 			_puff("dust", ev[1])
@@ -183,8 +127,7 @@ func play(ev: Array) -> void:
 			_tree_fall(ev[1], float(ev[2]), int(ev[3]) if ev.size() > 3 else 0, int(ev[4]) if ev.size() > 4 else 0)
 		MORTAR:
 			Sfx.play("mortar", ev[1], -2.0)
-			_flash(ev[1], 0.08, 1.8)
-			_puff("smoke", ev[1] + Vector3(0, 0.5, 0))
+			gunfx.mortar_blast(ev[1], _cam_d(ev[1]))
 		SUPPORT:
 			if world.director:
 				world.director.cue(ev[1], float(ev[2]))
@@ -221,48 +164,85 @@ func _muzzle_of(ev: Array, idx: int, fallback: Vector3, main_gun: bool) -> Vecto
 	return mp
 
 
-func _shot(from: Vector3, to: Vector3, impact: int, snd: String) -> void:
-	if not _visible_at(from) and not _visible_at(to):
+## How heavy a round each gun fires, for what it does where it lands.
+const CAL := {"pistol": 0.6, "smg": 0.75, "rifle": 1.0, "minigun": 0.9, "mg": 1.1, "hmg": 1.8, "gmg": 1.3, "ac": 2.4}
+
+
+## What a round that stopped in `st` at hp looks like going in.
+static func surface_of(st: Structure, hp: Vector3) -> int:
+	match String(st.skind):
+		"crates", "watchtower", "fence", "dock":
+			return HIT_WOOD
+		"tree":
+			return HIT_LEAVES if hp.y > 2.3 else HIT_WOOD
+		"low_wall":
+			return HIT_LEAVES if st.variant % 3 == 1 else HIT_STONE  # (a hedge)
+		"sandbags", "mg_nest", "hmg_nest", "mortar_pit", "at_post", "trench", "fob", "tunnel", "medic_tent":
+			return HIT_SAND
+		"car", "wreck", "tank_trap", "wire":
+			return HIT_METAL
+	return HIT_STONE
+
+
+func _cam_d(p: Vector3) -> float:
+	return world.cam.cam.global_position.distance_to(p) if world.cam else 0.0
+
+
+## A round fired from `from` (the muzzle on this screen) to `to`, where it
+## struck `impact` (HIT_*): its recoil on whoever fired it, the flash and
+## smoke at the gun, the round in flight, and what it does when it gets there.
+func _shot(from: Vector3, to: Vector3, impact: int, snd: String, src) -> void:
+	_kick(src, snd)
+	var cd_from := _cam_d(from)
+	var cd_to := _cam_d(to)
+	if cd_from > 230.0 and cd_to > 230.0:
 		return
-	if world.rng.randf() < (0.4 if snd in ["mg", "hmg"] else 0.18):
-		_tracer(from, to, 1.5, 0.55)
-	_flash(from, 0.05, 1.0)
 	Sfx.play(snd, from, -4.0 if snd != "mg" else -2.0)
-	if snd in ["mg", "hmg"] and world.cam and world.cam.dist < 30.0 and world.rng.randf() < 0.5:
-		var side := (to - from).cross(Vector3.UP).normalized()
-		_puff("brass", from, (side + Vector3.UP * 1.2).normalized())
-	var dir := (from - to).normalized()
-	match impact:
-		1:
-			_puff("dust", to, dir)
-			if world.rng.randf() < 0.35:
-				_puff("dirt_spurt", to, dir)
-		2:
-			_puff("blood", to, dir)
-		3:
-			_puff("spark", to, dir)
-		4:
-			_puff("wood", to, dir)
-
-
-func _tracer(from: Vector3, to: Vector3, length: float, width: float) -> void:
-	if _tracer_pool.is_empty():
+	var span := to - from
+	if span.length() < 0.05:
 		return
-	var mi: MeshInstance3D = _tracer_pool.pop_back()
-	mi.visible = true
-	mi.scale = Vector3(width, width, length)
-	_tracers.append([mi, from, to, 0.0, length])
+	var dir := span.normalized()
+	if cd_from <= 230.0:
+		gunfx.muzzle(from, dir, snd, cd_from)
+	var team: int = src.team if src is Entity else -1
+	var t := gunfx.round_flight(from, to, snd, team, minf(cd_from, cd_to))
+	if impact <= 0 or cd_to > 230.0:
+		return
+	gunfx.impact(impact, to, -dir, float(CAL.get(snd, 1.0)), cd_to, t)
+	# now and then a round skips off: off steel or stone, or off the ground
+	# when it came in low
+	var rk := 0.14 if impact == HIT_METAL or impact == HIT_STONE else (0.1 if impact == HIT_DIRT and dir.y > -0.3 else 0.0)
+	if rk > 0.0 and randf() < rk:
+		var n := Vector3.UP if impact == HIT_DIRT else Defs.flat(-dir).normalized()
+		var r := (dir.bounce(n) + GunFx._jit(0.35) + Vector3(0, 0.25, 0)).normalized()
+		gunfx.ricochet(to, r, gunfx.last_tracer, t)
+
+
+## The weapon that fired kicks: the rifle back into his shoulder and its
+## muzzle up, the mounted gun on its pintle, the turret on its ring.
+func _kick(src, snd: String) -> void:
+	if src is Soldier:
+		var s: Soldier = src
+		if s.model == null:
+			return
+		var m: Array = GunFx.MUZZLE.get(snd, GunFx.MUZZLE.rifle)
+		var cm := s.crew_mount()
+		if cm:
+			cm.crew_kick(float(m[7]))
+			s.model.fire_kick(0.3)
+		else:
+			s.model.fire_kick(float(m[7]))
+	elif src is Vehicle and snd == "ac":
+		(src as Vehicle).gun_kick(0.035)
+
+
+## Other code's tracers and flashes (aircraft guns).
+func _tracer(from: Vector3, to: Vector3, length: float, width: float) -> void:
+	gunfx.tracer(from, to, GunFx.TRACER_HOT, length * 1.8, 0.035 * width, 700.0)
 
 
 func _flash(p: Vector3, life: float, size: float) -> void:
-	if _flash_pool.is_empty():
-		return
-	var f: MeshInstance3D = _flash_pool.pop_back()
-	f.global_position = p
-	f.scale = Vector3.ONE * size * 0.6 * world.rng.randf_range(0.7, 1.3)
-	f.set_instance_shader_parameter("rot", world.rng.randf() * TAU)
-	f.visible = true
-	_flashes.append([f, life])
+	gunfx.flash(p, size * 0.45 * randf_range(0.8, 1.2), life, GunFx.HOT)
 
 
 func _light(p: Vector3, energy: float, rng_m: float) -> void:
@@ -305,23 +285,44 @@ func _explode(p: Vector3, size: float) -> void:
 			world.cam.shake(size * 0.5 * (1.0 - d / 50.0))
 
 
-func _cannon(from: Vector3, to: Vector3) -> void:
-	for v in world.vehicles:
-		if v.model and v.position.distance_to(from) < 7.0:
-			v.recoil((to - from).normalized())
-			break
+## A tank or gun firing its main armament: the hull rocks back and the
+## turret jolts, the muzzle blast, and the round's tracer.
+func _cannon(from: Vector3, to: Vector3, src) -> void:
+	var dir := (to - from).normalized()
+	var v: Vehicle = src if src is Vehicle else null
+	if v == null:
+		for x in world.vehicles:
+			if x.model and x.position.distance_to(from) < 7.0:
+				v = x
+				break
+	if v and v.model:
+		v.recoil(dir)
+		v.gun_kick(0.26)
 	Sfx.play("cannon", from, 3.0)
-	_flash(from, 0.1, 5.0)
-	_light(from, 6.0, 16.0)
-	_puff("smoke", from)
-	_puff("dust", Vector3(from.x, 0.2, from.z))
-	_tracer(from, to, 4.0, 3.0)
+	var cd := _cam_d(from)
+	if cd < 260.0:
+		gunfx.cannon_blast(from, dir, cd)
+	gunfx.tracer(from, to, Color(1.0, 0.5, 0.18, 7.0), 14.0, 0.12, 950.0)
+	if world.cam and Settings.get_v("shake"):
+		var d := world.cam.focus_pos.distance_to(from)
+		if d < 40.0:
+			world.cam.shake(0.3 * (1.0 - d / 40.0))
+
+
+## A rocket or missile fired: its launcher's back-blast, and the man who
+## fired it rocked by it.
+func _launch(from: Vector3, dir: Vector3, src) -> void:
+	if src is Soldier and (src as Soldier).model:
+		(src as Soldier).model.fire_kick(1.6)
+	var cd := _cam_d(from)
+	if cd < 230.0:
+		gunfx.launch_blast(from, dir, cd)
 
 
 func _ricochet(p: Vector3, dir: Vector3) -> void:
-	_puff("spark", p, dir)
 	Sfx.play("ricochet", p, -6.0)
-	_tracer(p, p + dir.normalized() * 15.0 + Vector3(0, world.rng.randf_range(1, 5), 0), 1.5, 0.8)
+	if _cam_d(p) < 230.0:
+		gunfx.ricochet(p, dir, false)
 
 
 var _said := {}  # text -> [pos, msec]: one bubble per shout per area
@@ -422,35 +423,6 @@ func _process(dt: float) -> void:
 func _view_process(dt: float) -> void:
 	if not world.has_view:
 		return
-	for i in range(_tracers.size() - 1, -1, -1):
-		var t: Array = _tracers[i]
-		t[3] += dt
-		var from: Vector3 = t[1]
-		var to: Vector3 = t[2]
-		var total := from.distance_to(to)
-		var head_d := minf(total, TRACER_SPEED * t[3])
-		var tail_d := maxf(0.0, TRACER_SPEED * t[3] - float(t[4]))
-		var mi: MeshInstance3D = t[0]
-		if tail_d >= total - 0.01 or total < 0.1:
-			mi.visible = false
-			_tracer_pool.append(mi)
-			_tracers.remove_at(i)
-			continue
-		var dir := (to - from) / total
-		var a := from + dir * tail_d
-		var b := from + dir * head_d
-		var mid := (a + b) * 0.5
-		var len := maxf(0.05, a.distance_to(b))
-		mi.global_position = mid
-		if absf(dir.dot(Vector3.UP)) < 0.99:
-			mi.look_at(mid + dir, Vector3.UP)
-		mi.scale.z = len
-	for i in range(_flashes.size() - 1, -1, -1):
-		_flashes[i][1] -= dt
-		if _flashes[i][1] <= 0.0:
-			_flashes[i][0].visible = false
-			_flash_pool.append(_flashes[i][0])
-			_flashes.remove_at(i)
 	for l in _lights:
 		if l.light_energy > 0.0:
 			l.light_energy = maxf(0.0, l.light_energy * exp(-dt * 7.0) - dt * 2.0)

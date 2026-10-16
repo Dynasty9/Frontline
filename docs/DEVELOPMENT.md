@@ -79,8 +79,9 @@ ui/field_manual.gd      the field manual: catalog of everything with stats and 3
 ui/curtain.gd           the intro and loading screens
 game/bevel_mesh.gd      chamfered boxes (every Res.box thicker than a sheet)
 assets/                 splash.png and backdrop.png (made by a script from the emblem and a topographic map)
-game/fx.gd              tracers, impacts, who is saying what, debris; drives vfx.gd
+game/fx.gd              plays the server's effect events: shots, explosions, who is saying what, debris; drives vfx.gd, gunfx.gd
 game/vfx.gd             GPU particle explosions, smoke, flames, char, grass fires, decals, shockwaves (+ their shaders)
+game/gunfx.gd           gunfire on the GPU: tracers, muzzle flashes, impacts, sparks, grit, brass (MultiMesh rings flown by their shaders)
 game/atmosphere.gd      sky, sun, fog, ground shader, post effects, moods
 game/grass.gd           instanced grass, bushes and stones
 game/mats.gd            procedural surface uber-shader, foliage, camouflage netting
@@ -132,6 +133,11 @@ Pass these after `--` on the command line:
 --screenshot=out.png --shot-at=30 --focus=X,Z --zoom=40 [--shots=N --shot-every=0.5]
 --mood=golden --perf=3 --preset=ultra                 lighting, overlay level and graphics preset for screenshots
 --fx-demo=1.4 --fx-every=3                            set off explosions near the camera (visual test, no damage)
+--shot-demo[=rifle|mg|hmg|...] [--shot-demo-every=1.5] [--shot-demo-cannon]
+                                                      rounds fired at earth, stone, sandbags, wood, leaves, steel and a man
+                                                      in a row across the camera's focus (visual test, no damage); a slow
+                                                      --shot-demo-every fires one volley at all of them; -cannon adds a tank
+                                                      gun and a rocket launch
 --cursor=0.5,0.4 --order-mode=defend --select-all     fake the mouse position / order mode (cover preview shots)
   --place=trench [--place-from=X,Z]                   with --cursor: show the placement ghost (or a dragged line)
 --scenario=... --play                                 command the Coalition side of a scenario instead of watching
@@ -190,7 +196,9 @@ FL_DEBUG_MISSION=1 (env)                              print the map's features (
 --menu-op=0|1|-1                                      open the New Operation panel on that side
 --menu-missions[=KEY]                                 open the Missions panel (on that mission)
 --startup-trace                                       print the first frames' timings
---test-fire                                           every armed man, gunner and vehicle fires ahead (muzzle tests)
+--test-fire[=ground]                                  every armed man, gunner and vehicle fires ahead (muzzle tests);
+                                                      =ground puts the men's rounds into the ground 25 m out (impacts);
+                                                      --test-fire-every=0.3 fires that often (default 0.09 s)
 --seed=N                                              (with --aivai) the same map every run
 --dump-structs                                        list every built structure when --quit-after fires
 FL_DEBUG_TOWNS=1 (env)                                print each town and village: name, dump and the ground that takes it
