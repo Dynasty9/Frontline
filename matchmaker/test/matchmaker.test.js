@@ -1,6 +1,7 @@
 // End-to-end tests against a real server on a random port. Run: npm test
 
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import { existsSync, readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import { createAuth } from '../src/auth.js';
@@ -183,6 +184,109 @@ const ranked = await start({ AUTH_BACKEND: 'memory', TRUST_PROXY: '1' }, { now: 
 		assert.equal((await s.call('POST', '/lobbies', { port: 7777 }, { Authorization: 'Bearer expired' })).status, 401);
 		await s.call('POST', '/auth/logout', undefined, auth2);
 		assert.equal((await s.call('GET', '/me', undefined, auth2)).status, 401);
+	});
+}
+
+// --- one account, two sessions: the website signs the game in with a session of
+// its own, and signing out of either leaves the other signed in
+{
+	test('signing out ends that session only', async () => {
+		const ip = { 'X-Forwarded-For': '10.8.0.1' };
+		const bearer = (session) => ({ ...ip, Authorization: `Bearer ${session.access_token}` });
+		const cred = { email: 'two@places.io', password: 'longenough' };
+		assert.equal((await ranked.call('POST', '/auth/signup', { ...cred, callsign: 'Two Places' }, ip)).status, 200);
+		const game = (await ranked.call('POST', '/auth/login', cred, ip)).data.session;
+		const site = (await ranked.call('POST', '/auth/login', cred, ip)).data.session;
+		await ranked.call('POST', '/auth/logout', undefined, bearer(site));
+		assert.equal((await ranked.call('GET', '/me', undefined, bearer(site))).status, 401);
+		assert.equal((await ranked.call('GET', '/me', undefined, bearer(game))).status, 200);
+		assert.equal((await ranked.call('POST', '/auth/refresh', { refresh_token: game.refresh_token }, ip)).status, 200);
+	});
+
+	test('Supabase is asked to end that session, not every one the account has', async () => {
+		const auth = createAuth({ SUPABASE_URL: 'https://db.test', SUPABASE_KEY: 'sb_publishable_test' });
+		const realFetch = globalThis.fetch;
+		const urls = [];
+		globalThis.fetch = async (url) => {
+			urls.push(String(url));
+			return new Response(null, { status: 204 });
+		};
+		try {
+			await auth.logout('access-token');
+		} finally {
+			globalThis.fetch = realFetch;
+		}
+		assert.deepEqual(urls, ['https://db.test/auth/v1/logout?scope=local']);
+	});
+}
+
+// --- signing in with GitHub: the page keeps a PKCE verifier and sends its
+// challenge; the code it comes back with is only any use with that verifier
+{
+	const verifier = 'v'.repeat(43);
+	const challenge = createHash('sha256').update(verifier).digest('base64url');
+	const PAGE = 'https://site.test/';
+
+	test('GitHub sign-in: off to sign in, back with a code, swapped for a session', async () => {
+		const ip = { 'X-Forwarded-For': '10.8.1.1' };
+		const go = await ranked.call('POST', '/auth/oauth', { provider: 'github', redirect_to: PAGE, code_challenge: challenge }, ip);
+		assert.equal(go.status, 200);
+		// the stand-in for GitHub comes straight back to the page
+		const back = new URL(go.data.url);
+		assert.equal(back.origin + back.pathname, PAGE);
+		const code = back.searchParams.get('code');
+		const r = await ranked.call('POST', '/auth/exchange', { code, code_verifier: verifier }, ip);
+		assert.equal(r.status, 200);
+		assert.equal(r.data.session.user.callsign, 'GitHub Player');
+		const me = await ranked.call('GET', '/me', undefined, { ...ip, Authorization: `Bearer ${r.data.session.access_token}` });
+		assert.equal(me.data.user.callsign, 'GitHub Player');
+		// a code works once
+		assert.equal((await ranked.call('POST', '/auth/exchange', { code, code_verifier: verifier }, ip)).status, 401);
+	});
+
+	test("GitHub sign-in: a code is no use without the page's verifier", async () => {
+		const ip = { 'X-Forwarded-For': '10.8.1.2' };
+		const go = await ranked.call('POST', '/auth/oauth', { provider: 'github', redirect_to: PAGE, code_challenge: challenge }, ip);
+		const code = new URL(go.data.url).searchParams.get('code');
+		assert.equal((await ranked.call('POST', '/auth/exchange', { code, code_verifier: 'w'.repeat(43) }, ip)).status, 401);
+	});
+
+	test('GitHub sign-in: a provider, a page to come back to and a challenge, or nothing', async () => {
+		const ip = { 'X-Forwarded-For': '10.8.1.3' };
+		const go = (body) => ranked.call('POST', '/auth/oauth', { provider: 'github', redirect_to: PAGE, code_challenge: challenge, ...body }, ip);
+		assert.equal((await go({ provider: 'myspace' })).status, 400);
+		assert.equal((await go({ redirect_to: 'javascript:alert(1)' })).status, 400);
+		assert.equal((await go({ code_challenge: 'short' })).status, 400);
+		assert.equal((await open.call('POST', '/auth/oauth', { provider: 'github', redirect_to: PAGE, code_challenge: challenge })).status, 503);
+	});
+
+	test('GitHub sign-in with Supabase: its authorize page with the challenge, then the PKCE grant', async () => {
+		const auth = createAuth({ SUPABASE_URL: 'https://db.test', SUPABASE_KEY: 'sb_publishable_test' });
+		const url = new URL(auth.oauthUrl('github', PAGE, challenge));
+		assert.equal(url.origin + url.pathname, 'https://db.test/auth/v1/authorize');
+		assert.deepEqual(Object.fromEntries(url.searchParams), {
+			provider: 'github',
+			redirect_to: PAGE,
+			code_challenge: challenge,
+			code_challenge_method: 's256',
+		});
+		const realFetch = globalThis.fetch;
+		const calls = [];
+		globalThis.fetch = async (u, init) => {
+			calls.push([String(u), init.body && JSON.parse(init.body)]);
+			if (String(u).includes('/auth/v1/token')) {
+				return Response.json({ access_token: 'a', refresh_token: 'r', expires_in: 3600, user: { id: 'u1', email: 'octo@github.test' } });
+			}
+			return Response.json([{ id: 'u1', callsign: 'octocat', xp: 0 }]);
+		};
+		try {
+			const s = await auth.exchange('the-code', verifier);
+			assert.equal(s.refresh_token, 'r');
+			assert.equal(s.user.callsign, 'octocat');
+		} finally {
+			globalThis.fetch = realFetch;
+		}
+		assert.deepEqual(calls[0], ['https://db.test/auth/v1/token?grant_type=pkce', { auth_code: 'the-code', code_verifier: verifier }]);
 	});
 }
 

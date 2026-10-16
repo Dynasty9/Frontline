@@ -1,7 +1,8 @@
 extends Node
 ## frontline:// links: how the website's Join and Find Match buttons open the
-## game. A link is `frontline://join/<lobby id>` or `frontline://find-match`;
-## the menu acts on it (menu.gd open_link).
+## game, and how it hands back a sign-in. A link is `frontline://join/<lobby id>`
+## or `frontline://find-match`, which the menu acts on (menu.gd open_link), or
+## `frontline://sign-in/<state>/<refresh token>`, which Online takes.
 ##
 ## The browser starts the game with the link as its argument. If a copy is
 ## already running, the new one hands the link to it over a local socket and
@@ -29,7 +30,9 @@ func _ready() -> void:
 	var user_args := OS.get_cmdline_user_args()
 	pending = _link_in(OS.get_cmdline_args() + user_args)
 	if pending != "" and _hand_on(pending):
-		_debug("handed %s to the running game" % pending)
+		_debug("handed %s to the running game" % pending.get_slice("/", 2))
+		# it's theirs now: nothing in this copy may act on it before it quits
+		pending = ""
 		get_tree().quit()
 		return
 	# a player's game listens for links; automated test runs (started with
@@ -93,7 +96,7 @@ func _process(_dt: float) -> void:
 			peer.disconnect_from_host()
 			line = line.get_slice("\n", 0).strip_edges()
 			if line.begins_with(SCHEME + "://"):
-				_debug("got %s from a second copy" % line)
+				_debug("got %s from a second copy" % line.get_slice("/", 2))
 				# bring the game to the front: the player just clicked in a browser
 				if DisplayServer.window_get_mode() == DisplayServer.WINDOW_MODE_MINIMIZED:
 					DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_WINDOWED)
@@ -101,13 +104,18 @@ func _process(_dt: float) -> void:
 				link_opened.emit(line)
 
 
-## What a link asks for: ["join", lobby id], ["find-match", ""], or ["", ""].
+## What a link asks for: ["join", lobby id], ["find-match", ""],
+## ["sign-in", state, refresh token], or ["", ""].
 static func parse(url: String) -> Array:
 	var path := url.substr(url.find("://") + 3).trim_suffix("/")
 	if path == "find-match":
 		return ["find-match", ""]
 	if path.begins_with("join/") and path.length() > 5:
 		return ["join", path.substr(5).uri_decode()]
+	if path.begins_with("sign-in/"):
+		var p := path.substr(8).split("/")
+		if p.size() == 2 and p[0] != "" and p[1] != "":
+			return ["sign-in", p[0].uri_decode(), p[1].uri_decode()]
 	return ["", ""]
 
 

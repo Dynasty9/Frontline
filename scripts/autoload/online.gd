@@ -28,9 +28,19 @@ extends Node
 ## The matchmaker keeps the count and times each battle on its own clock, from
 ## battle_begin() to battle_end().
 ##
+## A player signs in on the website, not in the game: Sign in opens it in their
+## browser, and once they've signed in (or made an account) there it hands the
+## game a session of its own in a frontline:// link (Links). The link carries a
+## random "state" the game made when it opened the page, and the game takes no
+## sign-in it didn't ask for, so no other page can sign it in to someone
+## else's account. Running from source, or against a matchmaker the website
+## doesn't know, the game asks for the email and password itself instead.
+##
 ## Command line: --matchmaker=URL (or FL_MATCHMAKER), --account=PATH for the
-## saved sign-in, --no-stun to skip the STUN check (offline tests). Test runs
-## (any --flag) keep no service record unless given --record-battles.
+## saved sign-in, --no-stun to skip the STUN check (offline tests),
+## --web-sign-in[=SITE] to sign in through the website (this one, or SITE)
+## from source, --no-browser to print its address rather than open it. Test
+## runs (any --flag) keep no service record unless given --record-battles.
 
 signal account_changed  # signed in or out, renamed, or the rank or insignia changed
 signal listing_changed  # listed, unlisted, or failed to list
@@ -38,6 +48,7 @@ signal battle_reported(report: Dictionary)  # {gained, rank_before, rank}: what 
 signal join_progress(stage: String)  # a listed battle being joined: what's happening now
 signal lan_changed  # a battle on this network appeared, changed or went away
 signal record_changed  # the latest battle saved, or battles waiting to be
+signal web_sign_in_failed(error: String)  # the website's sign-in came back, and didn't work
 
 const DEFAULT_URL := "https://matchmaker-production-a53e.up.railway.app"
 const ACCOUNT_PATH := "user://account.cfg"
@@ -45,6 +56,8 @@ const ACCOUNT_PATH := "user://account.cfg"
 ## waiting to go on the record.
 const PENDING_PATH := "user://pending_battles.json"
 const MAX_PENDING := 10
+## How long a sign-in on the website can take before the game stops waiting for it.
+const WEB_SIGN_IN_S := 1800
 const STUN_SERVERS := [["stun.cloudflare.com", 3478], ["stun.l.google.com", 19302]]
 const HEARTBEAT_S := 15.0
 ## Routers forget an idle UDP mapping after 30 s or more; a byte every 15 s
@@ -77,6 +90,13 @@ var _access := ""
 var _access_until := 0.0  # unix seconds
 var _refresh := ""
 var _refreshing := false
+## Signing in on the website (see the top): an exported build on the live
+## matchmaker does, unless told otherwise.
+var web_sign_in := false
+var website_url := ""  # "" for the real one (Updater.WEBSITE_URL)
+var open_browser := true
+var _web_state := ""  # the sign-in the website was opened for: only its link is taken
+var _web_until := 0  # unix seconds
 # the rank (from the matchmaker; kept with the sign-in so the menu has it at once)
 var icon := Insignia.DEFAULT
 var xp := 0
@@ -136,11 +156,25 @@ func _ready() -> void:
 			pending_path = s.substr(10)
 		elif s == "--no-stun":
 			stun_enabled = false
+		elif s == "--no-browser":
+			open_browser = false
 	# a test run's battles aren't anybody's service record
 	record_battles = not flags or "--record-battles" in OS.get_cmdline_user_args()
 	base_url = base_url.rstrip("/")
+	# the website signs players in to the live matchmaker only: running from
+	# source, or against one of your own, the game asks for the password itself
+	web_sign_in = OS.has_feature("template") and base_url == DEFAULT_URL
+	for a in OS.get_cmdline_user_args():
+		if a == "--web-sign-in" or a.begins_with("--web-sign-in="):
+			web_sign_in = true
+			website_url = a.substr(14).rstrip("/")
 	_load_account()
 	_load_pending()
+	Links.link_opened.connect(_on_link)
+	# started by the website's link (the game had closed since it opened the page)
+	if Links.parse(Links.pending)[0] == "sign-in":
+		_on_link.call_deferred(Links.pending)
+		Links.pending = ""
 	if signed_in() and not pending.is_empty() and record_battles:
 		flush_pending.call_deferred()
 	if signed_in():
@@ -240,6 +274,47 @@ func sign_up(mail: String, password: String, new_callsign: String) -> Dictionary
 		else:
 			r["confirm"] = true
 	return r
+
+
+## Send the player to the website to sign in, or to make an account (with a
+## callsign to suggest). The page it opens hands the session back in a link
+## (_on_link). Returns the address.
+func open_web_sign_in(create := false, suggest := "") -> String:
+	_web_state = Crypto.new().generate_random_bytes(16).hex_encode()
+	_web_until = int(Time.get_unix_time_from_system()) + WEB_SIGN_IN_S
+	_save_account()
+	var url := (website_url if website_url != "" else Updater.WEBSITE_URL) + "/?sign-in=" + _web_state
+	if create:
+		url += "&create=1"
+	if suggest != "":
+		url += "&callsign=" + suggest.uri_encode()
+	if open_browser and DisplayServer.get_name() != "headless":
+		OS.shell_open(url)
+	if OS.has_environment("FL_DEBUG_ONLINE") or not open_browser:
+		print("ONLINE sign in at " + url)
+	return url
+
+
+## A frontline:// link: a sign-in from the website is ours (the menu has the rest).
+func _on_link(url: String) -> void:
+	var what: Array = Links.parse(url)
+	if what[0] != "sign-in":
+		return
+	if _web_state == "" or what[1] != _web_state or Time.get_unix_time_from_system() > _web_until:
+		# not the page this game opened, or one it has given up on
+		web_sign_in_failed.emit("That sign-in is from an earlier try: press Sign in to start again.")
+		return
+	_web_state = ""
+	_save_account()
+	# the token is the game's own (the website keeps another), and spent at
+	# once: what was in the link is no use to anyone after this
+	var r: Dictionary = await _request(HTTPClient.METHOD_POST, "/auth/refresh", {"refresh_token": what[2]}, PackedStringArray(), 10.0, false)
+	if r.ok:
+		_take_session(r.data.get("session", {}))
+		if OS.has_environment("FL_DEBUG_ONLINE"):
+			print("ONLINE signed in through the website as %s" % callsign)
+	else:
+		web_sign_in_failed.emit(String(r.error) if int(r.code) != 401 else "The website's sign-in had run out: press Sign in to try again.")
 
 
 func sign_out() -> void:
@@ -380,6 +455,9 @@ func _load_account() -> void:
 	var cf := ConfigFile.new()
 	if cf.load(account_path) != OK:
 		return
+	# a sign-in on the website survives the game closing: its link starts it again
+	_web_state = String(cf.get_value("sign_in", "state", ""))
+	_web_until = int(cf.get_value("sign_in", "until", 0))
 	_refresh = String(cf.get_value("account", "refresh_token", ""))
 	email = String(cf.get_value("account", "email", ""))
 	callsign = String(cf.get_value("account", "callsign", "")) if _refresh != "" else ""
@@ -396,6 +474,9 @@ func _save_account() -> void:
 		cf.set_value("account", "email", email)
 		cf.set_value("account", "callsign", callsign)
 		cf.set_value("account", "rank", {"icon": icon, "xp": xp, "rank": rank, "rank_xp": rank_xp, "next_xp": next_xp if next_xp >= 0 else null, "battles": fought, "wins": wins})
+	if _web_state != "":
+		cf.set_value("sign_in", "state", _web_state)
+		cf.set_value("sign_in", "until", _web_until)
 	cf.save(account_path)
 
 

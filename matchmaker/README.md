@@ -51,10 +51,12 @@ JSON in, JSON out. Errors are `{"error": "..."}` with a 4xx/5xx status.
 | `POST /lobbies/:id/poll?wait=20` | The host's long poll: `{joins: [{ip, port}]}`, the players to punch towards. If the host drops this connection the listing comes down at once. |
 | `POST /lobbies/:id/join` `{ip, port}` | Ask to join, with your STUN endpoint. Returns `{connect: {address, port, via: "lan" \| "punch" \| "direct"}}`. |
 | `DELETE /lobbies/:id` | Unlist (`X-Lobby-Token`). |
-| `POST /auth/signup` `{email, password, callsign}` | `{session}`, or `{confirm: true}` when Supabase wants the email confirmed first. |
-| `POST /auth/login` `{email, password}` | `{session: {access_token, refresh_token, expires_in, user}}` |
+| `POST /auth/oauth` `{provider: "github", redirect_to, code_challenge}` | Sign in with GitHub: `{url}`, where to send the player. They come back to `redirect_to` with `?code=`. `code_challenge` is the PKCE challenge (base64url SHA-256 of a verifier the page keeps). |
+| `POST /auth/exchange` `{code, code_verifier}` | That code and the page's verifier: `{session}`. A player new to Frontline gets a profile named after their GitHub username. |
+| `POST /auth/signup` `{email, password, callsign}` | For testing (players sign in with GitHub): `{session}`, or `{confirm: true}` when Supabase wants the email confirmed first. |
+| `POST /auth/login` `{email, password}` | For testing: `{session: {access_token, refresh_token, expires_in, user}}` |
 | `POST /auth/refresh` `{refresh_token}` | A new session. |
-| `POST /auth/logout`, `GET /me` | Sign out; who am I (`{user}`). Need the bearer token, as do the calls below. |
+| `POST /auth/logout`, `GET /me` | Sign out (that session only: the game and the website hold one each); who am I (`{user}`). Need the bearer token, as do the calls below. |
 | `PATCH /me` `{callsign?, icon?}` | Rename, wear an insignia, or both: `{user}`. An unknown insignia is 400, one not unlocked yet 403 (and then nothing changes). |
 | `POST /me/battle` | A battle starts: `{ok: true}`. Starts this player's battle clock; calling it again starts over, and the battle left open earns nothing. |
 | `POST /me/battle/end` `{result: "win" \| "loss" \| "left", seconds}` | The battle ends: `{gained, rank_before, user}`. `seconds` is how long the game says it ran (game time, so pauses don't count). |
@@ -141,7 +143,7 @@ force it with `TRUST_PROXY=1` / `0`).
 ## Accounts (Supabase)
 
 The live service uses the Supabase project `frontline` (ref `ufmgcpjgtlykcqgtcvxe`, us-west-1, next to Railway's
-us-west2), with email confirmation switched off. To set up another one:
+us-west2), with GitHub sign-in switched on and email confirmation off. To set up another one:
 
 1. Create a Supabase project.
 2. Apply the migrations (see [The database](#the-database)): from this directory,
@@ -155,7 +157,13 @@ us-west2), with email confirmation switched off. To set up another one:
    railway variable set --service matchmaker SUPABASE_URL=https://YOUR-PROJECT.supabase.co SUPABASE_KEY=sb_publishable_...
    ```
 
-4. On the Auth Providers page, open **Email** and switch off **Confirm email**. Supabase's built-in mailer only
+4. Switch on **GitHub**, the way players sign in: make a GitHub OAuth app (GitHub > Settings > Developer settings >
+   OAuth Apps) with the callback `https://YOUR-PROJECT.supabase.co/auth/v1/callback`, and give its client ID and
+   secret to Supabase (Authentication > Sign In / Providers > GitHub). Then, under Authentication > URL
+   Configuration, set the **Site URL** to the website and add it to the **Redirect URLs**
+   (`https://YOUR-SITE/**`, and `http://localhost:5173/**` for the dev server): Supabase sends players back only
+   to those.
+5. On the Auth Providers page, open **Email** (kept for testing) and switch off **Confirm email**. Supabase's built-in mailer only
    delivers to members of your own Supabase team (and two emails an hour), so with confirmation on, every
    player's sign-up fails. To confirm emails, give Supabase your own SMTP server first; the game already tells
    players to click the link when Supabase asks for one.
@@ -170,7 +178,8 @@ Supabase CLI's layout (`<UTC timestamp>_<name>.sql`, applied in that order, each
 it has applied in `supabase_migrations.schema_migrations`, so `supabase db push` applies only the new ones. Together
 they add:
 
-- `profiles`: one per player, made by a trigger at sign-up from the callsign they gave. The callsign (unique
+- `profiles`: one per player, made by a trigger at sign-up: the callsign they typed (email, for testing), or their
+  GitHub username made to fit (numbered if it's taken). The callsign (unique
   regardless of case) is the one column a player may change; the insignia worn (`icon`), `xp`, `battles`, `wins`
   and `battle_started_at` (when the open battle began) change only through the functions below.
 - `battle_records`: each player's service record. They can add battles and read their own, nothing else.
