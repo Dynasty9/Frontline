@@ -20,6 +20,8 @@ option on its own, laid out like a PC game's options screen:
   field of view, performance overlay.
 - **Interface:** interface scale (relative to the window: `Settings.ui_factor()` is what the window's 2D is
   drawn at), unit activity labels, speech bubbles, cover preview, edge scrolling, camera speed, camera shake.
+- **Audio:** master, music, effects, ambience and interface volumes (each its own mixer bus, set up in
+  `sfx.gd`), music in battle on or off, mute while the window is in the background.
 
 Settings are saved to `user://settings.cfg`.
 
@@ -38,7 +40,8 @@ main.gd                 menu <-> World, command-line test modes
 autoload/defs.gd        all data tables (units, weapons, squads, vehicles, buildings, upgrades)
 autoload/net.gd         ENet host/join, lobby, teams, start
 autoload/online.gd      the matchmaker client: listing, Find Match, STUN + hole punching, optional account
-autoload/sfx.gd         procedurally synthesised sounds
+autoload/sfx.gd         procedurally synthesised sounds, the mixer's buses
+autoload/music.gd       the soundtrack: synthesised instruments, a sequencer, the scores (menu, battle, stings)
 game/world.gd           entity registry, replication (spawn / snapshot / props / fx RPCs), commands, queries
 game/entity.gd          base class: props on spawn, packed state in snapshots
 game/soldier*.gd        brain + procedural articulated model (body_mesh.gd: the lofted body shapes)
@@ -173,7 +176,14 @@ FL_DEBUG_MISSION=1 (env)                              print the map's features (
 FL_DEBUG_HPA=1 (env)                                  benchmark hierarchical vs flat paths at start-up
 FL_DEBUG_DECOR=1 (env)                                print the street-furniture chunk and mesh counts
 --menu-shot=menu.png --shot-at=6                      screenshot of the main menu
+--sound-dump=DIR                                      every synthesised sound and music sample as a WAV in DIR, then quit
+                                                      (works --headless)
+FL_DEBUG_MUSIC=1 (env)                                print the music's cue, battle heat and layer levels every 5 s
 ```
+
+To hear (or measure) the mix as a player does, record it: Godot's movie writer saves the game's audio with
+the video, e.g. `godot --path . --write-movie out.avi --resolution 320x180 --quit-after 3600 -- --mission=bridgehead`
+(an MJPEG AVI with PCM sound; it runs at a fixed 60 fps, and the music keeps time with it).
 
 Example:
 `godot --headless --path . -- --aivai --timescale=8 --quit-after=600 --stats=120`

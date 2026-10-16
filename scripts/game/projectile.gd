@@ -514,6 +514,7 @@ func _build_model() -> void:
 			_vm = VehicleModels.build(mk if mk != "" else "ac130", team if team >= 0 else 0, eid)
 			model.add_child(_vm.root)
 			_drone = AudioStreamPlayer.new()
+			_drone.bus = &"Effects"
 			if Sfx.enabled:
 				_drone.stream = Sfx.streams["prop"]
 				_drone.volume_db = -30.0

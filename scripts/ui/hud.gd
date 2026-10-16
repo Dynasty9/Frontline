@@ -724,6 +724,7 @@ func show_game_over(w: int) -> void:
 	if not world.mission_info.is_empty():
 		_mission_over()
 		return
+	Music.sting("defeat" if world.local_team >= 0 and w != world.local_team else "victory")
 	var vb := VBoxContainer.new()
 	vb.add_theme_constant_override("separation", 14)
 	over_panel.add_child(vb)
@@ -754,6 +755,7 @@ func show_game_over(w: int) -> void:
 func _mission_over() -> void:
 	var info: Dictionary = world.mission_info
 	var ok := int(info.get("over", 0)) == 1
+	Music.sting("victory" if ok else "defeat")
 	UiKit.fit_center(over_panel, Vector2(560, 340))
 	var vb := VBoxContainer.new()
 	vb.add_theme_constant_override("separation", 10)
