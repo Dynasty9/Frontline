@@ -2,9 +2,10 @@ name: Release
 
 # Every merge to main that changes the game publishes a new numbered release
 # (v0.1.4, v0.1.5, ...) with Windows and Linux builds, Frontline-windows.zip
-# and Frontline-linux.zip, and notes listing the merged pull requests. The
-# website's download buttons and the game's "new version" notice both read the
-# latest release.
+# and Frontline-linux.zip, and notes listing the merged pull requests. Then it
+# bakes the release (version, download links, checksums) into the website and
+# the matchmaker and commits that to main, which redeploys both: the site's
+# download buttons and the game's updater read it from there.
 #
 #   - The bump is a patch unless the merged pull request has a "minor" or
 #     "major" label. A "skip release" label skips it.
@@ -167,3 +168,30 @@ jobs:
             --target "$GITHUB_SHA" --title "Frontline v$VERSION" --generate-notes --latest
           # numbered releases replace the old rolling "nightly" pre-release
           gh release delete nightly --yes --cleanup-tag 2>/dev/null || true
+
+      # The website and the matchmaker are built with the latest release in
+      # them (web/src/release.json, matchmaker/release.json): the site's
+      # download buttons and the game's updater read it. Committing it to main
+      # redeploys both on Railway. A push made with the workflow's token
+      # doesn't start workflows, so this can't set off another release.
+      - name: Bake the release into the website and the matchmaker
+        if: needs.plan.outputs.release == 'true'
+        run: |
+          python3 .github/scripts/release_json.py "$VERSION" build > "$RUNNER_TEMP/release.json"
+          cat "$RUNNER_TEMP/release.json"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          # on top of main as it is now: more may have merged while we built
+          for attempt in 1 2 3 4 5; do
+            git fetch -q origin main
+            git checkout -q -f -B release-bake origin/main
+            cp "$RUNNER_TEMP/release.json" web/src/release.json
+            cp "$RUNNER_TEMP/release.json" matchmaker/release.json
+            git add web/src/release.json matchmaker/release.json
+            if git diff --cached --quiet; then echo "already baked"; exit 0; fi
+            git commit -q -m "Release v$VERSION: the website and matchmaker offer it" -m "Written by the release workflow."
+            if git push -q origin HEAD:main; then exit 0; fi
+            sleep $((attempt * 5))
+          done
+          echo "::error::couldn't push release.json to main"
+          exit 1
