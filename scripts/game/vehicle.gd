@@ -1491,8 +1491,8 @@ func _destroyed() -> void:
 				w.push_props(wst, {"toss": null}))
 
 
-## A boat going down: a blast, debris, and she's gone; whoever's aboard swims
-## for the nearest bank (if it's near enough to make).
+## A boat going down: a blast, debris, and she founders (Vfx.sink); whoever's
+## aboard swims for the nearest bank (if it's near enough to make).
 func _sink() -> void:
 	var shore := world.nav.nearest_walkable(position)
 	var near := Defs.flat(shore - position).length() < 60.0
@@ -1502,8 +1502,9 @@ func _sink() -> void:
 			s.unhide(world.nav.nearest_walkable(shore + Vector3(world.rng.randf_range(-3, 3), 0, world.rng.randf_range(-3, 3))))
 			s.take_damage(world.rng.randf_range(30.0, 110.0) if near else 999.0, null, Vector3.UP, "explosion")
 	passengers.clear()
-	world.fx_event([Fx.EXPLODE, position + Vector3(0, 0.8, 0), 1.6 if weight() >= 2 else 1.1])
+	world.fx_event([Fx.EXPLODE, position + Vector3(0, 1.4, 0), 1.6 if weight() >= 2 else 1.1])  # (above the water: fire, not spray)
 	world.fx_event([Fx.DEBRIS, position + Vector3(0, 1.0, 0), Color(0.3, 0.3, 0.3), 12])
+	world.fx_event([Fx.SINK, eid, position])  # (she goes down on every screen that can see her)
 	world.send_msg(team, "alert", "%s sunk at %s!" % [display_name(), Defs.grid_ref(position)], position)
 	world.stat("boat_sunk")
 	world.despawn(self)
@@ -2018,30 +2019,68 @@ func _sling_view() -> void:
 	im.surface_end()
 
 
-var wake: GPUParticles3D
+var spray: GPUParticles3D
+var _ride := Vector3.ZERO  # (view) how the swell has her: heave, pitch, roll
 
 
-## (view) Afloat: sitting at its draft, rising and rolling on the water, the bow
-## lifting as it gets up on the plane, heeling into its turns; a wake behind.
+## (view) Afloat: sitting at her draft and riding the swell the player sees
+## (see WaterView.height_at) - the bow lifting to each wave, rolling as it
+## passes under - the bow coming up as she gets on the plane, heeling into her
+## turns; a wake astern, spray off the bow when she's going hard.
 func _boat_view(dt: float) -> void:
 	var t := world.time + float(eid % 23) * 0.7
 	var vmax := maxf(1.0, float(vdef.speed))
 	var sp := velocity.length() if srv else (Defs.flat(position - _last_pos).length() / maxf(dt, 0.001))
 	var k := clampf(sp / vmax, 0.0, 1.0)
 	var light := 1.0 if weight() == 0 else (0.6 if weight() == 1 else 0.25)
-	model.position.y = -float(vdef.get("draft", 0.4)) + 0.07 * sin(t * 1.25) * (1.6 - light * 0.6) + k * 0.12 * light
-	model.rotation.x = lerpf(model.rotation.x, -k * 0.11 * light + 0.025 * sin(t * 0.9), 1.0 - exp(-dt * 2.5))
+	var hs := _hull_size()
+	var fwd := Defs.dir_of(rotation.y)
+	var side := fwd.cross(Vector3.UP)
+	var wv: WaterView = world.atmo.water_view if world.atmo else null
+	var ride := Vector3.ZERO
+	if wv:
+		var hb := wv.height_at(position + fwd * hs.z * 0.4)
+		var ha := wv.height_at(position - fwd * hs.z * 0.4)
+		var hp := wv.height_at(position - side * hs.x * 0.45)
+		var hsb := wv.height_at(position + side * hs.x * 0.45)
+		ride = Vector3((hb + ha + hp + hsb) * 0.25, atan2(hb - ha, hs.z * 0.8), atan2(hsb - hp, hs.x * 0.9))
+	# (a heavy hull answers the waves slowly)
+	_ride = _ride.lerp(ride, 1.0 - exp(-dt * (6.0 if weight() == 0 else (4.0 if weight() == 1 else 2.2))))
+	var bob := 0.025 * sin(t * 1.25) * (1.6 - light * 0.6)  # (still water: the odd ripple)
+	model.position.y = -float(vdef.get("draft", 0.4)) + _ride.x + bob + k * 0.12 * light
+	model.rotation.x = lerpf(model.rotation.x, _ride.y + k * 0.08 * light + 0.01 * sin(t * 0.9), 1.0 - exp(-dt * 4.0))
 	var yr := wrapf(rotation.y - _last_yaw, -PI, PI) / maxf(dt, 0.001)
 	_last_yaw = rotation.y
-	model.rotation.z = lerpf(model.rotation.z, clampf(yr * k * 0.35 * light, -0.25, 0.25) + 0.03 * sin(t * 0.7), 1.0 - exp(-dt * 2.0))
-	if wake == null and world.fx and world.fx.vfx:
-		wake = world.fx.vfx.make_wake(clampf(_hull_size().x / 2.6, 0.8, 2.2))
-		wake.position = Vector3(0, -position.y + WaterMap.LEVEL + 0.08, _hull_size().z * 0.45)
-		add_child(wake)
-	if wake:
-		var on := sp > 1.2 and visible
-		if on != wake.emitting:
-			wake.emitting = on
+	model.rotation.z = lerpf(model.rotation.z, _ride.z + clampf(yr * k * 0.35 * light, -0.25, 0.25) + 0.012 * sin(t * 0.7), 1.0 - exp(-dt * 3.0))
+	if wv:
+		var lv := Vector3(position.x, WaterMap.LEVEL, position.z)
+		wv.wake(eid, lv - fwd * hs.z * 0.46, lv + fwd * hs.z * 0.42, hs.x * 0.5, sp, k, visible)
+	# spray thrown off the bows of a light boat going hard
+	if spray == null and weight() < 2 and world.fx and world.fx.vfx:
+		spray = world.fx.vfx.make_spray(clampf(hs.x / 2.6, 0.8, 1.4))
+		spray.position = Vector3(0, -position.y + WaterMap.LEVEL + 0.15, -hs.z * 0.22)
+		add_child(spray)
+	if spray:
+		var on := k > 0.45 and visible
+		if on != spray.emitting:
+			spray.emitting = on
+
+
+## (view) She's going down: her model (and her fire) go to the effects to
+## sink (see Vfx.sink), and the vehicle itself is left to be cleared away.
+func sink_view() -> void:
+	if model == null or world.fx == null or world.fx.vfx == null:
+		return
+	var m := model
+	model = null
+	remove_child(m)
+	var b := burner
+	burner = null
+	if b:
+		remove_child(b)
+	if spray:
+		spray.emitting = false
+	world.fx.vfx.sink(m, b, transform, _hull_size())
 
 
 var _vm: VehicleModels = null

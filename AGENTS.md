@@ -16,7 +16,7 @@ scripts/game/soldier*.gd       the soldier: simulation, behaviour tree (soldier_
 scripts/game/squad*.gd         squads, battle drills and morale (squad_brain.gd), movement tactics (tactics.gd)
 scripts/game/vehicle*.gd       vehicles: driving, crews (vehicle_brain.gd), models (vehicle_models.gd + vehicles/vm_*.gd)
 scripts/game/commander_ai.gd   the AI commander; naval_ai.gd its navy; attack_plan.gd / ambush_plan.gd its plans
-scripts/game/mapgen.gd         map generation and the --scenario test setups; towngen.gd the town; water.gd the water
+scripts/game/mapgen.gd         map generation and the --scenario test setups; towngen.gd the town; water.gd the water (water_view.gd how it looks)
 scripts/game/missions.gd       the missions (content); mission_director.gd runs them (objectives, events, the end)
 scripts/game/co_command.gd     co-commanders: each player's view, cursor and plans, pings, sketches (relayed to their side only)
 scripts/game/terrain.gd, nav.gd, hnav.gd   ground kinds, cover map, pathfinding grids (HPA*)

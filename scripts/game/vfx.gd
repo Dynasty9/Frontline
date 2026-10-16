@@ -17,7 +17,7 @@ const MAX_RIGS := {"s": 22, "m": 16, "l": 10}
 ## Lingering plumes: [scale, column particles, column life, haze particles, haze life, seconds of emission]
 const PLUMES := {"M": [1.0, 30, 13.0, 6, 16.0, 7.0], "L": [1.7, 52, 20.0, 10, 24.0, 16.0]}
 const MAX_PLUMES := {"M": 8, "L": 6}
-const SMALL_KINDS := ["dust", "smoke", "fire", "spark", "dirt_spurt", "brass"]
+const SMALL_KINDS := ["dust", "smoke", "fire", "spark", "dirt_spurt", "brass", "water_spurt"]
 
 var world: World
 var noise_tex: ImageTexture
@@ -714,6 +714,13 @@ func _build_small(kind: String) -> GPUParticles3D:
 			pm.color_ramp = _ramp([0.0, 0.1, 1.0], [Color(0.25, 0.2, 0.14, 0.0), Color(0.25, 0.2, 0.14, 1.0), Color(0.3, 0.26, 0.2, 0.0)])
 			p = _sys(6, 0.7, pm, smoke_mat)
 			p.set_instance_shader_parameter("density", 1.3)
+		"water_spurt":
+			# a bullet into the water: a thin white spout and a little spray
+			pm = _pm(Vector3.UP, 8.0, 2.8, 5.2, Vector3(0, -9.8, 0), 0.18, 0.4)
+			pm.scale_curve = _curve([Vector2(0, 0.5), Vector2(1, 1.4)])
+			pm.color_ramp = _ramp([0.0, 0.08, 1.0], [Color(0.93, 0.96, 0.98, 0.0), Color(0.93, 0.96, 0.98, 0.95), Color(0.9, 0.94, 0.96, 0.0)])
+			p = _sys(8, 0.8, pm, smoke_mat)
+			p.set_instance_shader_parameter("density", 1.2)
 		"smoke":
 			pm = _pm(Vector3.UP, 40.0, 1.0, 3.0, Vector3(0.4, 0.7, 0.2), 1.0, 1.9)
 			pm.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_SPHERE
@@ -769,7 +776,7 @@ func puff(kind: String, pos: Vector3, dir := Vector3.UP) -> void:
 	if entry.is_empty():
 		return
 	var arr: Array = entry[0]
-	var cap := 24 if kind in ["dust", "spark", "dirt_spurt", "brass"] else 12
+	var cap := 24 if kind in ["dust", "spark", "dirt_spurt", "brass", "water_spurt"] else 12
 	var p: GPUParticles3D
 	if arr.size() < cap:
 		p = _build_small(kind)
@@ -1123,48 +1130,161 @@ func set_burning(h: Node3D, fire: float, smoke: float) -> void:
 		h.set_meta("off_at", Time.get_ticks_msec() / 1000.0 + s.lifetime + 1.0)
 
 
-## Dust kicked up behind a moving vehicle (continuous; emitting follows speed).
-## A shell in the water: a white column thrown up and falling back, spray
-## blown out low, a ring of foam spreading on the surface.
+## A shell in the water: a white column thrown up and falling back, a crown
+## of spray blown out low, and on the surface a ring of foam running outward
+## from a boil where the column came down.
 func splash(p: Vector3, size: float) -> void:
 	var k := clampf(size, 0.4, 2.6)
-	var col := _pm(Vector3.UP, 12.0, 6.0 * k, 11.0 * k, Vector3(0, -9.8, 0), 0.9 * k, 1.8 * k)
-	col.scale_curve = _curve([Vector2(0, 0.4), Vector2(0.4, 1.0), Vector2(1, 1.3)])
-	col.color_ramp = _ramp([0.0, 0.1, 0.7, 1.0], [Color(0.95, 0.97, 0.98, 0.0), Color(0.95, 0.97, 0.98, 0.95), Color(0.85, 0.88, 0.9, 0.5), Color(0.85, 0.88, 0.9, 0.0)])
-	var c := _sys(int(34 * k), 1.6 + 0.4 * k, col, smoke_mat)
-	var sp := _pm(Vector3.UP, 75.0, 3.0 * k, 6.0 * k, Vector3(0, -6.0, 0), 0.6 * k, 1.2 * k)
-	sp.color_ramp = _ramp([0.0, 0.1, 1.0], [Color(0.92, 0.95, 0.96, 0.0), Color(0.92, 0.95, 0.96, 0.7), Color(0.9, 0.93, 0.94, 0.0)])
-	var s := _sys(int(26 * k), 1.2, sp, smoke_mat)
-	var ring := _pm(Vector3.UP, 90.0, 2.0 * k, 4.0 * k, Vector3.ZERO, 1.2 * k, 2.4 * k)
+	var col := _pm(Vector3.UP, 7.0, 8.0 * k, 14.0 * k, Vector3(0, -9.8, 0), 0.8 * k, 1.6 * k)
+	col.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_SPHERE
+	col.emission_sphere_radius = 0.3 * k
+	col.scale_curve = _curve([Vector2(0, 0.35), Vector2(0.4, 1.0), Vector2(1, 1.5)])
+	col.color_ramp = _ramp([0.0, 0.06, 0.6, 1.0], [Color(0.95, 0.97, 0.98, 0.0), Color(0.96, 0.98, 0.99, 1.0), Color(0.88, 0.91, 0.93, 0.55), Color(0.85, 0.88, 0.9, 0.0)])
+	var c := _sys(int(40 * k), 2.0 + 0.4 * k, col, smoke_mat)
+	c.set_instance_shader_parameter("density", 1.3)
+	var sp := _pm(Vector3.UP, 65.0, 4.0 * k, 8.0 * k, Vector3(0, -8.0, 0), 0.5 * k, 1.1 * k)
+	sp.color_ramp = _ramp([0.0, 0.08, 1.0], [Color(0.92, 0.95, 0.96, 0.0), Color(0.92, 0.95, 0.96, 0.8), Color(0.9, 0.93, 0.94, 0.0)])
+	var s := _sys(int(30 * k), 1.3, sp, smoke_mat)
+	var ring := _pm(Vector3.UP, 88.0, 2.5 * k, 5.0 * k, Vector3.ZERO, 1.0 * k, 2.2 * k)
 	ring.damping_min = 2.0
 	ring.damping_max = 3.0
-	ring.color_ramp = _ramp([0.0, 0.1, 1.0], [Color(0.9, 0.93, 0.92, 0.0), Color(0.9, 0.93, 0.92, 0.6), Color(0.88, 0.9, 0.9, 0.0)])
-	var r := _sys(int(18 * k), 3.0, ring, smoke_mat)
+	ring.color_ramp = _ramp([0.0, 0.1, 1.0], [Color(0.9, 0.93, 0.92, 0.0), Color(0.9, 0.93, 0.92, 0.55), Color(0.88, 0.9, 0.9, 0.0)])
+	var r := _sys(int(16 * k), 2.6, ring, smoke_mat)
 	for ps in [c, s, r]:
 		add_child(ps)
 		ps.global_position = p + Vector3(0, 0.1, 0)
 		ps.emitting = true
-		get_tree().create_timer(4.0).timeout.connect(ps.queue_free)
+		get_tree().create_timer(4.5).timeout.connect(ps.queue_free)
+	var wv := water_view()
+	if wv:
+		wv.foam(p, 2.2 + 3.2 * k, 7.0 + 3.0 * k, WaterView.RING)
+		wv.foam(p, 1.2 + 1.4 * k, 5.0 + 2.0 * k, WaterView.BOIL)
 
 
-## Foam churned up behind a boat under way.
-func make_wake(size: float) -> GPUParticles3D:
-	var pm := _pm(Vector3.BACK, 30.0, 0.5, 1.6, Vector3.ZERO, 0.8 * size, 1.6 * size)
+func water_view() -> WaterView:
+	return world.atmo.water_view if world.atmo else null
+
+
+## Spray thrown off the bows of a boat going hard (continuous; emitting follows speed).
+func make_spray(size: float) -> GPUParticles3D:
+	var pm := _pm(Vector3.UP, 70.0, 1.5, 3.5, Vector3(0, -9.8, 0), 0.35 * size, 0.8 * size)
 	pm.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_BOX
-	pm.emission_box_extents = Vector3(0.7 * size, 0.05, 0.5)
-	pm.damping_min = 0.5
-	pm.damping_max = 1.2
-	pm.scale_curve = _curve([Vector2(0, 0.4), Vector2(1, 1.6)])
-	pm.color_ramp = _ramp([0.0, 0.1, 1.0], [Color(0.93, 0.95, 0.95, 0.0), Color(0.93, 0.95, 0.95, 0.75), Color(0.9, 0.92, 0.93, 0.0)])
-	var d := _sys(int(40 * size), 3.5, pm, smoke_mat)
+	pm.emission_box_extents = Vector3(0.9 * size, 0.05, 0.6)
+	pm.scale_curve = _curve([Vector2(0, 0.5), Vector2(1, 1.3)])
+	pm.color_ramp = _ramp([0.0, 0.1, 1.0], [Color(0.93, 0.95, 0.96, 0.0), Color(0.93, 0.95, 0.96, 0.6), Color(0.9, 0.92, 0.93, 0.0)])
+	var d := _sys(int(26 * size), 0.9, pm, smoke_mat)
 	d.one_shot = false
 	d.explosiveness = 0.0
 	d.emitting = false
-	d.set_instance_shader_parameter("density", 0.6)
-	d.visibility_aabb = AABB(Vector3(-30, -2, -30), Vector3(60, 8, 60))
+	d.local_coords = false
+	d.visibility_aabb = AABB(Vector3(-12, -2, -12), Vector3(24, 8, 24))
 	return d
 
 
+# --- a boat going down ---------------------------------------------------------------
+
+var _sinking: Array = []  # [holder, model, its transform afloat, t, seconds, hull, roll, pitch, burner, next boil]
+var _flotsam: Array = []  # [node, drift, spin, t, life, size]
+
+
+## A boat sunk: her model (handed over by the vehicle as it's cleared away)
+## floods and settles, lists over and goes down by the head or the stern,
+## burning till the water closes over the fire; foam boils up along her as
+## the air comes out, and she leaves a slick of oil with wreckage in it. A
+## small boat swamps and rolls; a ship takes longer, her bow or stern rising
+## as she goes.
+func sink(model: Node3D, burner: Node3D, xf: Transform3D, hull: Vector3) -> void:
+	var h := Node3D.new()
+	add_child(h)
+	h.transform = xf
+	h.add_child(model)
+	var big := hull.z > 14.0
+	if burner:
+		model.add_child(burner)
+		burner.transform = model.transform.affine_inverse() * burner.transform
+		set_burning(burner, 1.0, 1.0)
+	var roll := (1.0 if randf() < 0.5 else -1.0) * (randf_range(0.22, 0.4) if big else randf_range(0.6, 1.4))
+	var pitch := (1.0 if randf() < 0.5 else -1.0) * (randf_range(0.2, 0.4) if big else randf_range(0.08, 0.22))
+	_sinking.append([h, model, model.transform, 0.0, 9.0 + hull.z * 0.6, hull, roll, pitch, burner, 0.0])
+	var wv := water_view()
+	if wv:
+		wv.foam(xf.origin, hull.z * 0.5 + 2.0, 8.0, WaterView.BOIL)
+		wv.foam(xf.origin, hull.z * 0.7 + 3.0, 6.0, WaterView.RING)
+
+
+func _tick_sinking(dt: float) -> void:
+	var wv := water_view()
+	for i in range(_sinking.size() - 1, -1, -1):
+		var sk: Array = _sinking[i]
+		var h: Node3D = sk[0]
+		var m: Node3D = sk[1]
+		sk[3] += dt
+		var u: float = sk[3] / float(sk[4])
+		var hull: Vector3 = sk[5]
+		# she settles fast as she floods, hangs a while listing over, then goes
+		var deep := hull.y + 3.5
+		var y := -0.6 * smoothstep(0.0, 0.2, u) - (deep - 0.6) * pow(smoothstep(0.2, 1.0, u), 2.0)
+		var roll: float = float(sk[6]) * smoothstep(0.0, 0.55, u)
+		var pitch: float = float(sk[7]) * pow(smoothstep(0.15, 0.95, u), 1.4)
+		if is_instance_valid(m):
+			m.transform = Transform3D(Basis.from_euler(Vector3(pitch, 0.0, roll)), Vector3(0, y, 0)) * (sk[2] as Transform3D)
+		# the fire burns till the water reaches it
+		var b = sk[8]
+		if b != null and is_instance_valid(b) and (b as Node3D).global_position.y < WaterMap.LEVEL + 0.4:
+			set_burning(b, 0.0, 0.0)
+			sk[8] = null
+		# the air coming out of her: foam boiling up along her length
+		sk[9] -= dt
+		if wv and sk[9] <= 0.0 and u < 0.97:
+			sk[9] = randf_range(0.3, 0.6)
+			var at := h.transform * Vector3(randf_range(-0.4, 0.4) * hull.x, 0, randf_range(-0.45, 0.45) * hull.z)
+			wv.foam(at, randf_range(1.4, 2.4) * maxf(1.0, hull.x * 0.45), randf_range(3.0, 5.0), WaterView.BOIL)
+		if u >= 1.0:
+			if wv:
+				wv.foam(h.position, hull.z * 0.45 + 2.5, 9.0, WaterView.BOIL)
+				wv.foam(h.position, hull.z * 1.1 + 6.0, 150.0, WaterView.OIL)
+			_wreckage(h.position, hull)
+			h.queue_free()
+			_sinking.remove_at(i)
+	for i in range(_flotsam.size() - 1, -1, -1):
+		var f: Array = _flotsam[i]
+		var n: Node3D = f[0]
+		f[3] += dt
+		var age: float = f[3]
+		var life: float = f[4]
+		f[1] = (f[1] as Vector3) * exp(-dt * 0.08)
+		n.position += (f[1] as Vector3) * dt
+		n.rotation.y += float(f[2]) * dt
+		# bobbing on the swell, waterlogged in the end and gone
+		var swell := wv.height_at(n.position) if wv else 0.0
+		var sunk := smoothstep(life - 8.0, life, age) * float(f[5]) * 1.5
+		n.position.y = WaterMap.LEVEL + swell + 0.03 * sin(age * 1.7 + float(i)) - sunk
+		n.rotation.x = 0.12 * sin(age * 1.3 + float(i) * 2.1)
+		n.rotation.z = 0.1 * sin(age * 1.1 + float(i))
+		if age >= life:
+			n.queue_free()
+			_flotsam.remove_at(i)
+
+
+## What floats up from a wreck: planks, crates, cushions, a life jacket,
+## drifting apart on the slick.
+func _wreckage(p: Vector3, hull: Vector3) -> void:
+	var cols := [Color(0.55, 0.44, 0.3), Color(0.46, 0.37, 0.26), Color(0.62, 0.62, 0.6), Color(0.9, 0.4, 0.08), Color(0.75, 0.73, 0.68)]
+	var big := 1.0 if hull.z < 14.0 else 1.5
+	for i in int(clampf(hull.z * 0.6, 6.0, 16.0)):
+		var b := MeshInstance3D.new()
+		var sz := randf_range(0.25, 0.8) * big
+		b.mesh = Res.box(Vector3(sz, sz * 0.22, sz * randf_range(0.6, 2.8)))
+		b.material_override = Res.mat(cols[i % cols.size()])
+		b.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		add_child(b)
+		b.position = p + Vector3(randf_range(-0.6, 0.6) * hull.x, 0, randf_range(-0.4, 0.4) * hull.z)
+		b.rotation.y = randf() * TAU
+		var drift := Vector3(randf_range(-1.0, 1.0), 0, randf_range(-1.0, 1.0)) * randf_range(0.2, 0.8)
+		_flotsam.append([b, drift, randf_range(-0.25, 0.25), 0.0, randf_range(50.0, 90.0), sz * 0.3])
+
+
+## Dust kicked up behind a moving vehicle (continuous; emitting follows speed).
 func make_dust(size: float) -> GPUParticles3D:
 	var pm := _pm(Vector3.UP, 50.0, 0.4, 1.4, Vector3(0.3, 0.35, 0.1), 0.9 * size, 1.8 * size)
 	pm.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_BOX
@@ -1250,6 +1370,8 @@ func _process(dt: float) -> void:
 
 func _view_process(dt: float) -> void:
 	_tick_plumes(dt)
+	if not _sinking.is_empty() or not _flotsam.is_empty():
+		_tick_sinking(dt)
 	for i in range(_late_clods.size() - 1, -1, -1):
 		var lc: Array = _late_clods[i]
 		lc[2] -= dt
