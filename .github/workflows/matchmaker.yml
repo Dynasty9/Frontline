@@ -1,0 +1,64 @@
+name: Matchmaker
+
+# The matchmaking service (matchmaker/): lint and formatting, and its tests on
+# every Node release line it claims to run on. The tests run without
+# `npm install`, as a check that the service still has no runtime dependencies.
+#
+# Only runs when the matchmaker changes. Railway deploys it on its own.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - matchmaker/**
+      - .github/workflows/matchmaker.yml
+  pull_request:
+    paths:
+      - matchmaker/**
+      - .github/workflows/matchmaker.yml
+
+# a newer push to a pull request replaces its older run
+concurrency:
+  group: matchmaker-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    working-directory: matchmaker
+
+jobs:
+  lint:
+    name: Lint and formatting
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: matchmaker/package-lock.json
+      - run: npm ci
+      - name: Lint (oxlint)
+        run: npm run lint
+      - name: Formatting (Prettier)
+        run: npm run format:check
+
+  test:
+    name: Tests (Node ${{ matrix.node }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    strategy:
+      fail-fast: false
+      matrix:
+        # package.json says Node 20 or newer
+        node: [20, 22, 24]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: ${{ matrix.node }}
+      - run: npm test

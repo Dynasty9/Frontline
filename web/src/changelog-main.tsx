@@ -6,5 +6,5 @@ import ChangelogPage from "./changelog-page.tsx"
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <ChangelogPage />
-  </StrictMode>,
+  </StrictMode>
 )

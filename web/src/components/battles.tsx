@@ -94,7 +94,7 @@ function LobbyTable({ lobbies, onLaunch }: { lobbies: Lobby[]; onLaunch: () => v
         </TableRow>
       </TableHeader>
       <TableBody>
-        {[...lobbies].sort(byJoinable).map((l) => (
+        {lobbies.toSorted(byJoinable).map((l) => (
           <TableRow key={l.id}>
             <TableCell className="py-3 pl-4">
               <div className="font-medium text-foreground">{l.name}</div>

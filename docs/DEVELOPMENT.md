@@ -250,10 +250,12 @@ team 0 clients a normal (windowed) game, or run `--coop-demo` on its own.
 
 ### Matchmaker
 
-The matchmaker (`matchmaker/`, see its README) is a small Node service with its own tests:
+The matchmaker (`matchmaker/`, see its README) is a small Node service with its own tests, lint (oxlint) and
+formatting (Prettier); `.github/workflows/matchmaker.yml` runs them whenever it changes:
 
 ```
 cd matchmaker && npm test
+cd matchmaker && npm install && npm run lint && npm run format:check
 ```
 
 To try the game against it, run one locally (`AUTH_BACKEND=memory` adds throwaway accounts) and point both games at
@@ -284,7 +286,10 @@ one joins. Only exported builds register the scheme with the OS (`Links._registe
 ### Website
 
 `web/` is the website (React, Vite, Tailwind, shadcn/ui; see its README): `npm install && npm run dev`, with
-`VITE_MATCHMAKER_URL` pointing at a local matchmaker if you like. CI builds and lints it.
+`VITE_MATCHMAKER_URL` pointing at a local matchmaker if you like. `npm run storybook` shows every component and
+section of the page on its own, in each of its states (loading, offline, nobody hosting...), without the live
+matchmaker. `.github/workflows/web.yml` lints it, checks formatting and types, runs the unit tests, builds it, and
+renders every story in headless Chromium as a test (its play function and an accessibility check).
 
 ### Builds, releases and updates
 
