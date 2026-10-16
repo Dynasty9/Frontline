@@ -4,6 +4,95 @@ Every release of Frontline, newest first. The game updates itself; downloads, an
 are on [the website](https://web-production-5a4c1.up.railway.app/changelog/). Each change is written up in [`changelog/`](changelog/) as part of
 the pull request that makes it.
 
+## v0.1.8: Co-commanders
+
+*16 October 2026* · [Release on GitHub](https://github.com/Dynasty9/Frontline/releases/tag/v0.1.8)
+
+In co-op you can see what the other commanders on your side are doing: where they're looking, what they've selected and what they're about to order. Pings and map sketches let you talk without typing.
+
+### New
+
+#### See what your co-commanders are doing
+
+Each commander on your side gets a colour, and you see where they're looking, their cursor, what they control and what they're about to commit to, so two of you don't shell the same wood or storm the same house.
+
+![Two commanders: one aiming artillery, one digging a trench line, with their views, pings and the Command Net](changelog/v0.1.8/co-commanders/co-commanders.jpg)
+
+- **Where they're looking:** a viewfinder on the ground labelled with their name, a wedge on the minimap, and a marker at the edge of your screen when they're looking elsewhere. Click it to look there.
+- **Their cursor**, with a tag saying what they're doing: "Digging a trench line", "Aiming 155 mm Artillery", "Ordering an attack".
+- **What they control:** their name and colour in the order of battle, their initials on their units' symbols, and a ring round whatever they have selected.
+- **What they're about to do:** the building they're placing, the line they're dragging out, or a fire mission's target area with a hazard sign.
+- **The Command Net** (top right) lists each teammate's latest move, with buttons to look at their view or follow it live.
+- When a teammate builds, calls in support, trains a unit or starts research, the rest of the side is told, so everyone knows where the shared supply went. Settings > Interface can turn all of this off.
+
+#### Pings and map sketches
+
+Mark an enemy, a unit or a spot with a ping, pick a call from the ping wheel, or draw on the map for your side.
+
+- **Ping:** Alt + click on the battlefield or the minimap. A ping on an enemy sticks to him while he's in sight.
+- **Ping wheel:** hold Alt and the left button, then let go on attack, on my way, need support, danger, defend or look. "On my way" draws a line from your units to the spot.
+- **Sketch:** Alt + right-drag draws a line your side can see, on the battlefield or the minimap.
+- **Space** jumps to the newest alert or ping. Pings chime and go in the message log.
+
+## v0.1.7: Window Size
+
+*16 October 2026* · [Release on GitHub](https://github.com/Dynasty9/Frontline/releases/tag/v0.1.7)
+
+The game opens at the window size you chose, and the squad card fits even at the largest interface scale.
+
+### Fixed
+
+#### The game opens at the window size you chose
+
+Settings > Display > Window size was saved but ignored at launch, so the game always opened small. Now it opens at your size, and maximises if that doesn't fit your screen.
+
+![A 4:3 screen at the default and largest scales](changelog/v0.1.7/window-size/four-three.jpg)
+
+![An ultrawide screen at the largest scale](changelog/v0.1.7/window-size/ultrawide.jpg)
+
+- The window opens at the size you picked, so the interface (which follows the window) is the size you expect from the start.
+- If the size doesn't fit your screen with its title bar, the window is maximised instead of being pushed off the top.
+
+#### The squad card fits a narrow panel
+
+At the largest interface scale, an attack's PLAN › MOVE › ASSAULT › SECURE steps were drawn over the squad's orders. Now they move to a line of their own when there's no room.
+
+## v0.1.6: Towns and Supply
+
+*16 October 2026* · [Release on GitHub](https://github.com/Dynasty9/Frontline/releases/tag/v0.1.6)
+
+The town and every village now have a supply dump worth fighting for. Hold one and it sends trucks of supply to your nearest FOB; lose it and the enemy gets them.
+
+### New
+
+#### Capturable towns that give supply
+
+Each village and the town has a named supply dump. Hold the ground round it and the place is yours: it produces supply, and its own truck drives it to your nearest FOB.
+
+![A village's supply dump, flying the holder's colours](changelog/v0.1.6/towns/village-dump.jpg)
+
+![Selecting a dump: who holds it, its stock, and its truck](changelog/v0.1.6/towns/village-selected.jpg)
+
+![The town square, before and after](changelog/v0.1.6/towns/town-square.jpg)
+
+- **Eleven places to take:** the town and ten villages, each with a name. Nobody holds them at the start.
+- **Taking one:** have men inside its ring with none of the enemy's. A squad takes a village in about 30 seconds and the town in about 50, faster with more men. With both sides inside, the capture freezes, and the holder is warned as soon as the enemy starts.
+- **Supply:** a held village makes 24 a minute and the town 60. Shelled or burnt houses cut that. Whatever's in the dump changes hands with the town.
+- **The town's truck** drives each load to your nearest FOB on a road of its own, which can be ambushed or blocked like any supply road. A destroyed truck loses its load.
+- **More reasons to hold them:** you can build a FOB near a town you hold, your men refill ammunition at its dump, and it gives you sight around it. Prisoners can tell you about towns and their trucks.
+- **The AI goes for them too:** it sends squads to take towns from the start, holds them, and counts enemy-held towns as targets.
+
+### Improved
+
+#### A clearer supply picture
+
+The top bar shows your income per minute and how many towns you hold, and the order of battle lists each town's stock, rate and truck.
+
+- **Top bar:** income per minute beside your supply, and **TOWNS 3 / 11**.
+- **Town lines** beside the FOB lines show each town's stock and rate and where its truck is going. A town being taken, or whose truck was destroyed or blocked, gets a red line of its own.
+- **On the minimap** each town is a flag in its holder's colour inside its ring, and the ring fills with the colour of whoever is taking it.
+- **On the battlefield** each town has a name plate, its ring is drawn on the ground when the camera is near, and a capture bar shows over the dump.
+
 ## v0.1.5: Roaring Fires
 
 *16 October 2026* · [Release on GitHub](https://github.com/Dynasty9/Frontline/releases/tag/v0.1.5)
