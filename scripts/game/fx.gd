@@ -21,6 +21,7 @@ const FAR_SOUND := 14
 const DIE := 15
 const FIRE := 16  # a grass fire: [FIRE, pos, radius, seconds]
 const BURNT_OUT := 17  # something burnt through falls in: [BURNT_OUT, pos, half extents, yaw]
+const SINK := 18  # a boat founders: [SINK, eid, pos]
 
 ## What a round struck, as a SHOT event carries it: it decides what flies off.
 const HIT_DIRT := 1
@@ -143,6 +144,13 @@ func play(ev: Array) -> void:
 			Sfx.play("thud", ev[1], -2.0, 0.7)
 			if _visible_at(ev[1]):
 				vfx.collapse(ev[1], ev[2])
+		SINK:
+			# (on a client the boat's already been cleared away by now)
+			var sv = world.entity(int(ev[1]))
+			if sv == null:
+				sv = world.gone_entity(int(ev[1]))
+			if sv is Vehicle and _visible_at(ev[2]):
+				sv.sink_view()
 
 
 ## The muzzle as the shooter's model has it on this screen (the barrel tip of
@@ -208,6 +216,13 @@ func _shot(from: Vector3, to: Vector3, impact: int, snd: String, src) -> void:
 	var t := gunfx.round_flight(from, to, snd, team, minf(cd_from, cd_to))
 	if impact <= 0 or cd_to > 230.0:
 		return
+	if impact == HIT_DIRT and to.y < 0.3 and world.water and not world.water.is_empty() and world.water.wet_at(to):
+		# into the water: a spout, not dust
+		var at := Vector3(to.x, WaterMap.LEVEL, to.z)
+		_puff("water_spurt", at)
+		if randf() < 0.3 and vfx.water_view():
+			vfx.water_view().foam(at, randf_range(0.6, 0.9), 2.0, WaterView.BOIL)
+		return
 	gunfx.impact(impact, to, -dir, float(CAL.get(snd, 1.0)), cd_to, t)
 	# now and then a round skips off: off steel or stone, or off the ground
 	# when it came in low
@@ -256,7 +271,8 @@ func _light(p: Vector3, energy: float, rng_m: float) -> void:
 func _explode(p: Vector3, size: float) -> void:
 	if not world.srv and world.terrain:
 		world.terrain.add_crater(p, size)
-	if world.water and not world.water.is_empty() and p.y < 1.2 and world.water.wet_at(p):
+	var wet: bool = world.water and not world.water.is_empty() and p.y < 3.0 and world.water.wet_at(p)
+	if wet and p.y < 1.2 and not _on_boat(p):
 		# in the water: a column of spray, a ring of foam, no crater
 		Sfx.play("explosion" if size >= 0.8 else "small_boom", p, 0.0)
 		_light(p, 3.0 * size, 10.0 + 6.0 * size)
@@ -267,7 +283,9 @@ func _explode(p: Vector3, size: float) -> void:
 	_light(p, 4.5 * size, 12.0 + 9.0 * size)
 	if _visible_at(p):
 		vfx.explode(p, size)
-		if world.phys and p.y < 1.6 and size >= 1.2:
+		if wet:
+			vfx.splash(Vector3(p.x, WaterMap.LEVEL, p.z), size * 0.45)  # (against a hull: spray round her)
+		elif world.phys and p.y < 1.6 and size >= 1.2:
 			world.phys.blast_chunks(p, size)
 	if world._decor_node and p.y < 3.0 and size >= 0.8:
 		world._decor_node.blast(p, size)
@@ -275,7 +293,9 @@ func _explode(p: Vector3, size: float) -> void:
 	for v in world.vehicles:
 		if v.model and Defs.flat(v.position - p).length() < 5.0 + size * 5.0:
 			v.blast_jolt(p, size)
-	if p.y < 1.6 and size >= 0.9:
+	if wet:
+		pass  # (no hole in the water)
+	elif p.y < 1.6 and size >= 0.9:
 		vfx.crater(p, size)  # permanent, wherever it lands: the ground remembers
 	elif p.y < 1.6 and size >= 0.35 and world.atmo and world.atmo.grass:
 		world.atmo.grass.scar(p, 0.8 + size * 1.5, 0.5)
@@ -283,6 +303,14 @@ func _explode(p: Vector3, size: float) -> void:
 		var d := world.cam.focus_pos.distance_to(p)
 		if d < 50.0 and Settings.get_v("shake"):
 			world.cam.shake(size * 0.5 * (1.0 - d / 50.0))
+
+
+## A blast against a boat's hull (it burns, it doesn't splash).
+func _on_boat(p: Vector3) -> bool:
+	for v in world.vehicles:
+		if v.is_boat() and not v.gone and Defs.flat(v.position - p).length() < v._hull_size().z * 0.5 + 1.0:
+			return true
+	return false
 
 
 ## A tank or gun firing its main armament: the hull rocks back and the

@@ -330,9 +330,7 @@ func impact(kind: int, p: Vector3, back: Vector3, cal: float, cam_d: float, dela
 	var ng := maxi(3, int(14.0 * q * sc))  # grains
 	match kind:
 		Fx.HIT_DIRT:
-			if world.water and not world.water.is_empty() and p.y < 0.6 and world.water.wet_at(p):
-				_splash(Vector3(p.x, WaterMap.LEVEL, p.z), cal, q, delay)
-				return
+			# (into the water it's a spout: Fx._shot)
 			# earth spurts up, mostly straight, a little back the way the round came
 			var d := (up + back * 0.35).normalized()
 			for i in ng:
@@ -398,17 +396,6 @@ func impact(kind: int, p: Vector3, back: Vector3, cal: float, cam_d: float, dela
 			puff(p, back * randf_range(0.6, 1.2) + _jit(0.3), 0.03, randf_range(0.14, 0.2) * sc, randf_range(0.25, 0.35), Color(0.34, 0.04, 0.03, 0.6), 7.0, 0.0, 1.0, 0.2, delay)
 			for i in int(5.0 * q + 1.0):
 				grit(p, (-back + _jit(0.6)).normalized() * randf_range(2.0, 4.5), randf_range(0.3, 0.6), Color(0.26, 0.02, 0.015, 0.9), 0.012, 0.025, 1.0, gy, delay)
-
-
-## A round, or a shell, in the water: a narrow white column thrown up and
-## falling back in drops, and a ring of foam where it went in.
-func _splash(p: Vector3, cal: float, q: float, delay: float) -> void:
-	var sc := sqrt(cal)
-	for i in maxi(2, int(3.0 * q * sc + 0.5)):
-		puff(p + Vector3(0, 0.05, 0), (Vector3.UP + _jit(0.15)) * randf_range(4.0, 7.0) * sc, 0.03 * cal, randf_range(0.14, 0.24) * cal, randf_range(0.8, 1.1), Color(0.86, 0.9, 0.92, 0.85), 1.4, 0.0, 9.8, 0.2, delay)
-	for i in maxi(4, int(12.0 * q * sc)):
-		grit(p + Vector3(0, 0.05, 0), (Vector3.UP + _jit(0.35)).normalized() * randf_range(3.0, 7.5) * sc, randf_range(0.7, 1.2), Color(0.85, 0.9, 0.93, 0.85), 0.016 * sc, 0.035, 0.8, p.y - 0.05, delay)
-	puff(p + Vector3(0, 0.04, 0), Vector3.ZERO, 0.1 * cal, randf_range(0.5, 0.7) * cal, randf_range(1.2, 1.6), Color(0.84, 0.88, 0.9, 0.38), 1.0, 0.0, 0.0, 0.3, delay)
 
 
 ## A ricochet: the round skips off in a new direction, glowing if it was a

@@ -5,7 +5,16 @@ import { SectionLabel } from "@/components/battles"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog"
-import { type Entry, formatDate, type Kind, KIND_LABELS, KINDS, type Release, releases, screenshotsOf } from "@/lib/changelog"
+import {
+  type Entry,
+  formatDate,
+  type Kind,
+  KIND_LABELS,
+  KINDS,
+  type Release,
+  releases,
+  screenshotsOf,
+} from "@/lib/changelog"
 import { cn } from "@/lib/utils"
 
 const KIND_STYLE: Record<Kind, string> = {
@@ -16,7 +25,7 @@ const KIND_STYLE: Record<Kind, string> = {
 
 export function KindBadge({ kind }: { kind: Kind }) {
   return (
-    <Badge variant="outline" className={cn("uppercase tracking-wider", KIND_STYLE[kind])}>
+    <Badge variant="outline" className={cn("tracking-wider uppercase", KIND_STYLE[kind])}>
       {KIND_LABELS[kind]}
     </Badge>
   )
@@ -26,7 +35,9 @@ export function KindBadge({ kind }: { kind: Kind }) {
 function Details({ body }: { body: string }) {
   const html = useMemo(() => marked.parse(body, { async: false }), [body])
   if (!body) return null
-  return <div className="md mt-3 text-sm leading-relaxed text-muted-foreground" dangerouslySetInnerHTML={{ __html: html }} />
+  return (
+    <div className="md mt-3 text-sm leading-relaxed text-muted-foreground" dangerouslySetInnerHTML={{ __html: html }} />
+  )
 }
 
 type Shot = { url: string; caption: string }
@@ -37,10 +48,21 @@ function Screens({ shots, large = false }: { shots: Shot[]; large?: boolean }) {
   if (shots.length === 0) return null
   return (
     <>
-      <div className={cn("mt-4 grid gap-3", shots.length > 1 && "sm:grid-cols-2", large && shots.length === 1 && "max-w-3xl")}>
+      <div
+        className={cn(
+          "mt-4 grid gap-3",
+          shots.length > 1 && "sm:grid-cols-2",
+          large && shots.length === 1 && "max-w-3xl"
+        )}
+      >
         {shots.map((s) => (
           <figure key={s.url}>
-            <button type="button" onClick={() => setOpen(s)} className="group block w-full overflow-hidden ring-1 ring-white/10" aria-label={`Enlarge: ${s.caption}`}>
+            <button
+              type="button"
+              onClick={() => setOpen(s)}
+              className="group block w-full overflow-hidden ring-1 ring-white/10"
+              aria-label={`Enlarge: ${s.caption}`}
+            >
               <img
                 src={s.url}
                 alt={s.caption}
@@ -68,7 +90,7 @@ function EntryBlock({ entry }: { entry: Entry }) {
     <article className="border-t pt-6 first:border-t-0 first:pt-0" id={entry.slug}>
       <div className="flex flex-wrap items-center gap-2">
         <KindBadge kind={entry.kind} />
-        <h4 className="text-lg font-semibold">{entry.title}</h4>
+        <h3 className="text-lg font-semibold">{entry.title}</h3>
       </div>
       <p className="mt-2 text-sm leading-relaxed">{entry.summary}</p>
       <Screens shots={entry.screenshots} />
@@ -90,12 +112,15 @@ export function ReleaseCard({ release, latest = false }: { release: Release; lat
           </Badge>
         )}
         <span className="text-sm text-muted-foreground">{formatDate(release.date)}</span>
-        <a href={release.url} className="ml-auto inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">
+        <a
+          href={release.url}
+          className="ml-auto inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+        >
           Release on GitHub
           <ArrowSquareOutIcon className="size-3.5" />
         </a>
       </div>
-      <h3 className="mt-2 text-3xl font-semibold tracking-tight">{release.name}</h3>
+      <h2 className="mt-2 text-3xl font-semibold tracking-tight">{release.name}</h2>
       {/* a release's own summary, unless it only repeats its one change's */}
       {release.summary && !release.entries.some((e) => e.summary === release.summary) && (
         <p className="mt-3 max-w-3xl text-base leading-relaxed text-muted-foreground">{release.summary}</p>
@@ -145,7 +170,11 @@ export function WhatsNew() {
               </a>
             </Button>
             {releases.slice(1, 3).map((r) => (
-              <a key={r.tag} href={`/changelog/#${r.tag}`} className="text-sm text-muted-foreground hover:text-foreground">
+              <a
+                key={r.tag}
+                href={`/changelog/#${r.tag}`}
+                className="text-sm text-muted-foreground hover:text-foreground"
+              >
                 <span className="font-mono text-xs">{r.tag}</span> {r.name}
               </a>
             ))}
@@ -153,7 +182,13 @@ export function WhatsNew() {
         </div>
         {shot && (
           <a href={`/changelog/#${pictured?.tag ?? latest.tag}`} className="block">
-            <img src={shot.url} alt={shot.caption} loading="lazy" className="aspect-video w-full object-cover ring-1 ring-white/10" />
+            <img
+              src={shot.url}
+              // the caption below names the link; screen readers needn't hear it twice
+              alt=""
+              loading="lazy"
+              className="aspect-video w-full object-cover ring-1 ring-white/10"
+            />
             <span className="mt-1.5 block text-xs text-muted-foreground">
               {/* from an earlier release when the latest has no pictures: say which */}
               {pictured && pictured !== latest && `${pictured.tag} ${pictured.name}: `}

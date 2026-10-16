@@ -38,6 +38,8 @@ const FUEL := {
 	"roof": [0.3, 75.0, "ash", 4.0],
 	"car": [0.45, 55.0, "shell", 3.0],
 	"wreck": [0.0, 40.0, "shell", 3.5],  # a vehicle brewing up: lit as it's made, never relit
+	"camo_net": [0.9, 16.0, "ash", 1.5],  # a net of dry scrim goes up in a flash
+	"barricade": [0.3, 90.0, "stands", 4.0],  # tyres and pallets: slow to catch, they smoulder black for ages
 }
 const TICK := 0.25
 const CELL := 4.0  # the heat map's cells (m)

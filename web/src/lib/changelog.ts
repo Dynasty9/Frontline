@@ -32,7 +32,9 @@ export const KINDS: Kind[] = ["new", "improved", "fixed"]
 
 export function formatDate(iso: string) {
   const d = new Date(`${iso}T12:00:00Z`)
-  return Number.isNaN(d.getTime()) ? iso : d.toLocaleDateString(undefined, { day: "numeric", month: "long", year: "numeric" })
+  return Number.isNaN(d.getTime())
+    ? iso
+    : d.toLocaleDateString(undefined, { day: "numeric", month: "long", year: "numeric" })
 }
 
 /** A release's screenshots, in entry order. */

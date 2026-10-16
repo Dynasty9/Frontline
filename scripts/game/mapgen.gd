@@ -316,6 +316,10 @@ func _roads_meet_water(tg) -> void:
 			str(w.fords), str(w.ponds.map(func(p): return p.c)), str(w.bridges.map(func(b): return [(b[0] + b[1]) * 0.5, b[3]]))])
 
 
+## The defensive works, in the order --scenario=works lays them out.
+const WORKS := ["sandbags", "hesco", "barricade", "concrete_wall", "wire", "tank_trap", "mines", "ammo_cache", "mg_nest", "hmg_nest", "mortar_pit", "at_post", "bunker", "watchtower", "camo_net"]
+
+
 ## Small hand-built test setups used by automated checks (--scenario=NAME).
 func scenario(sname: String) -> void:
 	var r := world.rules
@@ -388,6 +392,61 @@ func scenario(sname: String) -> void:
 			_spawn("low_wall", Vector3(-30, 0, 30), 0.0, -1, {"size": Vector3(4, 1, 0.5), "variant": 2})
 			_spawn("low_wall", Vector3(-30, 0, 24), 0.0, -1, {"size": Vector3(4, 1, 0.5), "variant": 0})
 			_spawn("car", Vector3(-30, 0, 8), 0.5, -1, {"variant": 1})
+		"works":
+			# every defensive work both sides can build, finished, in a row facing
+			# south (the camera): the Coalition's in front, the Rebels' behind -
+			# lines of the linear works, a short zig-zag of trench at the end
+			for tm in 2:
+				var x := -46.0
+				var z := 10.0 - tm * 18.0
+				for k in WORKS:
+					if not tm in Defs.BUILDINGS[k].teams:
+						continue
+					var w: float = Defs.BUILDINGS[k].size.x
+					var n := 2 if k in ["sandbags", "concrete_wall", "wire", "hesco", "barricade"] else (3 if k == "tank_trap" else 1)
+					for i in n:
+						x += w * 0.5 + (0.6 if k == "tank_trap" and i > 0 else 0.0)
+						_spawn(k, Vector3(x, 0, z), PI, tm, {"built": true})
+						if k == "camo_net":
+							_spawn("car", Vector3(x, 0, z), PI * 0.8, -1, {"variant": 2})  # something to hide under it
+						x += w * 0.5
+					x += 3.0
+				_trench_line(Vector3(x, 0, z - 1.0), Vector3(x + 16.0, 0, z - 1.0), tm)
+		"cache":
+			# the ammo cache and the camouflage net at work. Out of the way, a rifle
+			# squad with its pouches empty beside a cache (blown up at 12 s: it
+			# cooks off). At the front, a rifle squad looking at two Rebel cells
+			# 34 m off - inside a man's sight, outside half of it - one under a net,
+			# one in the open. FL_DEBUG_WORKS=1 prints what the Coalition sees
+			# before the shooting starts, and who has filled up.
+			var cache := _spawn("ammo_cache", Vector3(70, 0, 48), 0.0, 0, {"built": true})
+			var sq := r.spawn_squad("rifle_squad", 0, a, Vector3(70, 0, 52))
+			for m in sq.members:
+				m.mag = 0
+				m.reserve = 0
+			var eyes := r.spawn_squad("rifle_squad", 0, a, Vector3(0, 0, 12))
+			_spawn("camo_net", Vector3(-6, 0, -22), 0.0, 1, {"built": true})
+			var hid := r.spawn_squad("fighter_cell", 1, b, Vector3(-6, 0, -22))
+			var open := r.spawn_squad("fighter_cell", 1, b, Vector3(16, 0, -22))
+			for q in [eyes, hid, open]:
+				q.order_defend(q.centroid(), Vector3(0, 0, -1 if q == eyes else 1))
+			if OS.has_environment("FL_DEBUG_WORKS"):
+				world.get_tree().create_timer(2.5, true, true).timeout.connect(func():
+					var n := [0, 0, 0, 0]  # under the net / of them seen, in the open / of them seen
+					for m in hid.members + open.members:
+						var k := 0 if world.terrain.net_cover(m.position) < 1.0 else 2
+						n[k] += 1
+						n[k + 1] += m.vis_mask & 1
+					print("WORKS t=2.5 under_net=%d seen=%d  in_open=%d seen=%d" % n))
+				world.get_tree().create_timer(8.0, true, true).timeout.connect(func():
+					var full := 0
+					for m in sq.members:
+						if is_instance_valid(m) and m.ammo_fraction() > 0.9:
+							full += 1
+					print("WORKS t=8 resupplied=%d/%d cache_left=%.0f" % [full, sq.members.size(), cache.supply]))
+			world.get_tree().create_timer(12.0, true, true).timeout.connect(func():
+				if is_instance_valid(cache) and not cache.gone:
+					cache.take_damage(9999.0))
 		"guns":
 			# the crew-served guns side by side, each crewed: M240B and M2HB nests,
 			# PKM and DShKM nests, and a machine-gun bay of each side in a trench
