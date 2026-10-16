@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite"
-import { expect, fn, within } from "storybook/test"
+import { expect, fn, userEvent, within } from "storybook/test"
 import { Hero } from "@/components/hero"
 import { latest } from "@/lib/releases"
 import { health, healthQuiet } from "@/test/fixtures"
@@ -12,6 +12,7 @@ const meta = {
     health,
     platform: "windows",
     onLaunch: fn(),
+    onWatch: fn(),
   },
 } satisfies Meta<typeof Hero>
 
@@ -43,4 +44,12 @@ export const Loading: Story = {
 
 export const LinuxVisitor: Story = {
   args: { platform: "linux" },
+}
+
+/** "Watch the footage" asks for the reel (App opens it in a dialog). */
+export const WatchTheFootage: Story = {
+  play: async ({ args, canvasElement }) => {
+    await userEvent.click(within(canvasElement).getByRole("button", { name: "Watch the footage" }))
+    await expect(args.onWatch).toHaveBeenCalledOnce()
+  },
 }
