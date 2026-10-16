@@ -598,6 +598,9 @@ func _process(_dt: float) -> void:
 			_perf_frames = Engine.get_frames_drawn()
 		elif _perf_t0 > 0 and Time.get_ticks_msec() - _perf_t0 > 10000:
 			var fps := float(Engine.get_frames_drawn() - _perf_frames) / ((Time.get_ticks_msec() - _perf_t0) / 1000.0)
+			# report once: with the clock cleared, a failure below can't repeat
+			# all of this every frame until something kills the run
+			_perf_t0 = 0
 			var alive := 0
 			for s in world.soldiers:
 				if s.life != Soldier.Life.DEAD:
@@ -644,7 +647,11 @@ func _process(_dt: float) -> void:
 						why[k] = int(why.get(k, 0)) + 1
 				print("UNBAKED ", why)
 				print("BY OWNER ", owners)
-			get_viewport().get_texture().get_image().save_png(String(args.get("perf-shot", "user://perf.png")))
+			# a headless run draws nothing, so there's no picture to keep (asking
+			# for one only gets an error), just the numbers above
+			var img: Image = get_viewport().get_texture().get_image() if DisplayServer.get_name() != "headless" else null
+			if img:
+				img.save_png(String(args.get("perf-shot", "user://perf.png")))
 			get_tree().quit()
 	if args.has("fx-demo"):
 		_fx_demo()
