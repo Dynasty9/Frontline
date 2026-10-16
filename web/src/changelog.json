@@ -1,0 +1,397 @@
+{
+  "releases": [
+    {
+      "version": "0.1.8",
+      "tag": "v0.1.8",
+      "name": "Co-commanders",
+      "date": "2026-10-16",
+      "summary": "In co-op you can see what the other commanders on your side are doing: where they're looking, what they've selected and what they're about to order. Pings and map sketches let you talk without typing.",
+      "url": "https://github.com/Dynasty9/Frontline/releases/tag/v0.1.8",
+      "pull_requests": [
+        12
+      ],
+      "entries": [
+        {
+          "slug": "co-commanders",
+          "title": "See what your co-commanders are doing",
+          "kind": "new",
+          "summary": "Each commander on your side gets a colour, and you see where they're looking, their cursor, what they control and what they're about to commit to, so two of you don't shell the same wood or storm the same house.",
+          "body": "- **Where they're looking:** a viewfinder on the ground labelled with their name, a wedge on the minimap, and a marker at the edge of your screen when they're looking elsewhere. Click it to look there.\n- **Their cursor**, with a tag saying what they're doing: \"Digging a trench line\", \"Aiming 155 mm Artillery\", \"Ordering an attack\".\n- **What they control:** their name and colour in the order of battle, their initials on their units' symbols, and a ring round whatever they have selected.\n- **What they're about to do:** the building they're placing, the line they're dragging out, or a fire mission's target area with a hazard sign.\n- **The Command Net** (top right) lists each teammate's latest move, with buttons to look at their view or follow it live.\n- When a teammate builds, calls in support, trains a unit or starts research, the rest of the side is told, so everyone knows where the shared supply went. Settings > Interface can turn all of this off.",
+          "screenshots": [
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v0.1.8/co-commanders/co-commanders.jpg",
+              "caption": "Two commanders: one aiming artillery, one digging a trench line, with their views, pings and the Command Net"
+            }
+          ]
+        },
+        {
+          "slug": "pings",
+          "title": "Pings and map sketches",
+          "kind": "new",
+          "summary": "Mark an enemy, a unit or a spot with a ping, pick a call from the ping wheel, or draw on the map for your side.",
+          "body": "- **Ping:** Alt + click on the battlefield or the minimap. A ping on an enemy sticks to him while he's in sight.\n- **Ping wheel:** hold Alt and the left button, then let go on attack, on my way, need support, danger, defend or look. \"On my way\" draws a line from your units to the spot.\n- **Sketch:** Alt + right-drag draws a line your side can see, on the battlefield or the minimap.\n- **Space** jumps to the newest alert or ping. Pings chime and go in the message log.",
+          "screenshots": []
+        }
+      ]
+    },
+    {
+      "version": "0.1.7",
+      "tag": "v0.1.7",
+      "name": "Window Size",
+      "date": "2026-10-16",
+      "summary": "The game opens at the window size you chose, and the squad card fits even at the largest interface scale.",
+      "url": "https://github.com/Dynasty9/Frontline/releases/tag/v0.1.7",
+      "pull_requests": [
+        11
+      ],
+      "entries": [
+        {
+          "slug": "window-size",
+          "title": "The game opens at the window size you chose",
+          "kind": "fixed",
+          "summary": "Settings > Display > Window size was saved but ignored at launch, so the game always opened small. Now it opens at your size, and maximises if that doesn't fit your screen.",
+          "body": "- The window opens at the size you picked, so the interface (which follows the window) is the size you expect from the start.\n- If the size doesn't fit your screen with its title bar, the window is maximised instead of being pushed off the top.",
+          "screenshots": [
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v0.1.7/window-size/four-three.jpg",
+              "caption": "A 4:3 screen at the default and largest scales"
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v0.1.7/window-size/ultrawide.jpg",
+              "caption": "An ultrawide screen at the largest scale"
+            }
+          ]
+        },
+        {
+          "slug": "squad-card",
+          "title": "The squad card fits a narrow panel",
+          "kind": "fixed",
+          "summary": "At the largest interface scale, an attack's PLAN › MOVE › ASSAULT › SECURE steps were drawn over the squad's orders. Now they move to a line of their own when there's no room.",
+          "body": "",
+          "screenshots": []
+        }
+      ]
+    },
+    {
+      "version": "0.1.6",
+      "tag": "v0.1.6",
+      "name": "Towns and Supply",
+      "date": "2026-10-16",
+      "summary": "The town and every village now have a supply dump worth fighting for. Hold one and it sends trucks of supply to your nearest FOB; lose it and the enemy gets them.",
+      "url": "https://github.com/Dynasty9/Frontline/releases/tag/v0.1.6",
+      "pull_requests": [
+        9
+      ],
+      "entries": [
+        {
+          "slug": "towns",
+          "title": "Capturable towns that give supply",
+          "kind": "new",
+          "summary": "Each village and the town has a named supply dump. Hold the ground round it and the place is yours: it produces supply, and its own truck drives it to your nearest FOB.",
+          "body": "- **Eleven places to take:** the town and ten villages, each with a name. Nobody holds them at the start.\n- **Taking one:** have men inside its ring with none of the enemy's. A squad takes a village in about 30 seconds and the town in about 50, faster with more men. With both sides inside, the capture freezes, and the holder is warned as soon as the enemy starts.\n- **Supply:** a held village makes 24 a minute and the town 60. Shelled or burnt houses cut that. Whatever's in the dump changes hands with the town.\n- **The town's truck** drives each load to your nearest FOB on a road of its own, which can be ambushed or blocked like any supply road. A destroyed truck loses its load.\n- **More reasons to hold them:** you can build a FOB near a town you hold, your men refill ammunition at its dump, and it gives you sight around it. Prisoners can tell you about towns and their trucks.\n- **The AI goes for them too:** it sends squads to take towns from the start, holds them, and counts enemy-held towns as targets.",
+          "screenshots": [
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v0.1.6/towns/village-dump.jpg",
+              "caption": "A village's supply dump, flying the holder's colours"
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v0.1.6/towns/village-selected.jpg",
+              "caption": "Selecting a dump: who holds it, its stock, and its truck"
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v0.1.6/towns/town-square.jpg",
+              "caption": "The town square, before and after"
+            }
+          ]
+        },
+        {
+          "slug": "supply-picture",
+          "title": "A clearer supply picture",
+          "kind": "improved",
+          "summary": "The top bar shows your income per minute and how many towns you hold, and the order of battle lists each town's stock, rate and truck.",
+          "body": "- **Top bar:** income per minute beside your supply, and **TOWNS 3 / 11**.\n- **Town lines** beside the FOB lines show each town's stock and rate and where its truck is going. A town being taken, or whose truck was destroyed or blocked, gets a red line of its own.\n- **On the minimap** each town is a flag in its holder's colour inside its ring, and the ring fills with the colour of whoever is taking it.\n- **On the battlefield** each town has a name plate, its ring is drawn on the ground when the camera is near, and a capture bar shows over the dump.",
+          "screenshots": []
+        }
+      ]
+    },
+    {
+      "version": "0.1.5",
+      "tag": "v0.1.5",
+      "name": "Roaring Fires",
+      "date": "2026-10-16",
+      "summary": "Fires roar and crackle instead of surging like surf, and many explosions at once no longer distort.",
+      "url": "https://github.com/Dynasty9/Frontline/releases/tag/v0.1.5",
+      "pull_requests": [
+        10
+      ],
+      "entries": [
+        {
+          "slug": "fire-sound",
+          "title": "Fires roar instead of surging",
+          "kind": "fixed",
+          "summary": "Burning buildings had the same rolling-surf sound the wind used to have. Now a fire is a steady roar with crackles on top.",
+          "body": "- The roar sits in the middle of the range instead of a low rumble, at the same loudness as before.\n- It loops without a dip or a jump.",
+          "screenshots": []
+        },
+        {
+          "slug": "explosion-clipping",
+          "title": "No more distortion when shells land together",
+          "kind": "fixed",
+          "summary": "When several explosions went off at once the sound could clip. A limiter on the master volume now holds it just under the top, and everyday levels are unchanged.",
+          "body": "",
+          "screenshots": []
+        }
+      ]
+    },
+    {
+      "version": "0.1.4",
+      "tag": "v0.1.4",
+      "name": "Reconnaissance",
+      "date": "2026-10-16",
+      "summary": "You can see what your side can see: the fog of war is drawn on the battlefield and the minimap. Aircraft spot as they fly, and recon flights, overwatch drones and manned watchtowers push the fog back.",
+      "url": "https://github.com/Dynasty9/Frontline/releases/tag/v0.1.4",
+      "pull_requests": [
+        8
+      ],
+      "entries": [
+        {
+          "slug": "fog-of-war",
+          "title": "A fog of war you can see",
+          "kind": "new",
+          "summary": "Ground your side can't see right now is drawn darker on the battlefield and the minimap, so you know where your vision ends and where you need eyes.",
+          "body": "- The edge is soft, aircraft overhead aren't darkened, and at night it's lighter because everything is dark already.\n- **What you see darkened is exactly what's hidden from you:** enemies inside it don't show.\n- **Last-known positions:** an enemy anyone on your side has seen stays marked where it was last seen for 90 seconds, with how long ago.\n- The new eye button in the map layers turns the fog off.",
+          "screenshots": [
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v0.1.4/fog-of-war/fog-of-war.jpg",
+              "caption": "The fog of war in a bridgehead battle"
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v0.1.4/fog-of-war/before.jpg",
+              "caption": "The same moment before: nothing showed where your vision ended"
+            }
+          ]
+        },
+        {
+          "slug": "recon-flights",
+          "title": "Aircraft that spot, recon flights and overwatch drones",
+          "kind": "new",
+          "summary": "Every aircraft now reveals the ground it flies over. New fire-support calls fly recon passes along a line you draw, or put a drone overhead to watch one spot.",
+          "body": "- **Aircraft spot as they fly:** bomb runs, gun runs, gunships and armed drones all reveal what's around them. The minimap shows every aircraft.\n- **Recon passes** (from minute two): the Coalition's A-149 Gryphon flies fast and high, the Rebels' Caesar spotter flies slow and low. Drag out a line; the strip they fly over stays lit for six seconds.\n- **Overwatch drones** (from minute four): an unarmed drone circles a spot for about a minute and shows what's around it.\n- **Watchtowers** see further, and further still with a lookout up them. Placing one shows its reach.\n- **The Rebels get a drone too:** the AR-2 Tayran quadcopter, at the Helipad.\n- The enemy is warned when a recon flight or overwatch drone comes over, and the AI calls recon flights before it attacks ground it can't see.",
+          "screenshots": [
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v0.1.4/recon-flights/recon-pass.jpg",
+              "caption": "A recon pass lights a strip over the Rebel positions"
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v0.1.4/recon-flights/spotter-plane.jpg",
+              "caption": "The Caesar spotter plane"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "version": "0.1.3",
+      "tag": "v0.1.3",
+      "name": "Soundtrack",
+      "date": "2026-10-16",
+      "summary": "A synthesised orchestral soundtrack that follows the fighting, a volume slider for each kind of sound, and wind that sounds like wind.",
+      "url": "https://github.com/Dynasty9/Frontline/releases/tag/v0.1.3",
+      "pull_requests": [
+        7
+      ],
+      "entries": [
+        {
+          "slug": "soundtrack",
+          "title": "A soundtrack that follows the fighting",
+          "kind": "new",
+          "summary": "Music, made in code like everything else: a theme for the menu, and a battle score that builds as the fighting heats up and eases off in the lulls.",
+          "body": "- **Instruments:** strings, horns, a wordless choir, piano, timpani, a war drum and a snare, played through a concert-hall reverb.\n- **The menu** has a two-minute theme in D minor.\n- **In battle** the score comes in layers: strings and a few piano notes when it's calm; a low-strings pulse, drums and horns as the fighting grows. After a long stretch at full intensity it eases off, and in quiet spells it rests.\n- **Victory and defeat** each get a short sting.",
+          "screenshots": []
+        },
+        {
+          "slug": "audio-settings",
+          "title": "A volume slider for each kind of sound",
+          "kind": "improved",
+          "summary": "Settings > Audio has separate sliders for music, effects, ambience and the interface, plus a switch for music in battle and one to mute the game in the background.",
+          "body": "- **Master, Music, Effects, Ambience and Interface**, each on its own slider.\n- **Music in battle** can be switched off while keeping the menu music.\n- **Mute in the background** silences the game when you switch away.\n- The sliders follow your ears: halfway sounds about half as loud.",
+          "screenshots": [
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v0.1.3/audio-settings/audio-settings.jpg",
+              "caption": "Settings > Audio"
+            }
+          ]
+        },
+        {
+          "slug": "wind",
+          "title": "Wind that sounds like wind, not surf",
+          "kind": "fixed",
+          "summary": "The ambience used to sound like waves breaking. Now it's rushing air with gusts that come and go, over far-off artillery and gunfire.",
+          "body": "- The wind no longer swells and fades on a fixed four-second cycle, or gets louder as you zoom out.\n- The distant battle is far-off thumps and bursts instead of a low rumble.\n- Wind, rain and the distant battle loop without a seam.",
+          "screenshots": []
+        }
+      ]
+    },
+    {
+      "version": "0.1.2",
+      "tag": "v0.1.2",
+      "name": "Fire and Smoke",
+      "date": "2026-10-16",
+      "summary": "Things catch fire now: woods, hedgerows, timber roofs and wrecks burn and spread it downwind. Explosions and smoke are bigger and look the part.",
+      "url": "https://github.com/Dynasty9/Frontline/releases/tag/v0.1.2",
+      "pull_requests": [
+        6
+      ],
+      "entries": [
+        {
+          "slug": "fire",
+          "title": "Fire that spreads",
+          "kind": "new",
+          "summary": "Shells, bombs and burning wrecks set things alight. Fires take hold, roar, spread to whatever will burn nearby (much more readily downwind), and burn themselves out.",
+          "body": "- **What burns:** trees, hedges, crates, watchtowers, log dugouts, tents and plank huts, timber roofs and parked cars. Stone, brick, concrete, earth, sandbags and steel don't.\n- **What sets it off:** blasts (a shell or bomb often, a grenade rarely), cars that have been badly shot up, and destroyed vehicles, which now burn where they died.\n- **Grass fires:** a heavy round in long grass or undergrowth can start a ring of low flames creeping outward over blackened ground.\n- **Spreading:** at full blaze a fire jumps to what's nearby, so a hedgerow or a wood can go up one tree after another.",
+          "screenshots": [
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v0.1.2/fire/fire-day.jpg",
+              "caption": "A hedgerow and a grass fire, with smoke drifting downwind"
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v0.1.2/fire/fire-night.jpg",
+              "caption": "The same fires at night"
+            }
+          ]
+        },
+        {
+          "slug": "explosions-and-smoke",
+          "title": "Bigger explosions and smoke",
+          "kind": "improved",
+          "summary": "Explosions throw a proper fireball and debris, and smoke rises as one billowing column instead of a string of puffs.",
+          "body": "- Fireballs last long enough to see, and the bigger the round, the bigger the blast.\n- Smoke from fires and wrecks rises as a continuous column and drifts with the wind.",
+          "screenshots": [
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v0.1.2/explosions-and-smoke/before-and-after.jpg",
+              "caption": "Explosions before and after"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "version": "0.1.1",
+      "tag": "v0.1.1",
+      "name": "Interface Scale",
+      "date": "2026-10-16",
+      "summary": "The interface grows with your window, stays sharp at any size, and can go much bigger without panels running into each other.",
+      "url": "https://github.com/Dynasty9/Frontline/releases/tag/v0.1.1",
+      "pull_requests": [
+        5
+      ],
+      "entries": [
+        {
+          "slug": "interface-scale",
+          "title": "An interface that's big enough, and stays sharp",
+          "kind": "improved",
+          "summary": "Interface scale now follows the size of your window, text and symbols stay crisp at any scale, and it goes much bigger without the panels overlapping.",
+          "body": "- **Follows the window:** at 100% the interface takes the same share of the screen at any resolution, so it's bigger at 1440p and 4K than before.\n- **Sharp at any size:** text and map symbols are drawn at the scale they're shown, not stretched.\n- **Goes bigger:** the slider reaches the largest scale your window has room for (2× at 1080p, 2.67× at 1440p).\n- **No collisions:** the minimap, selection panel and command card make room for each other, and the Field Manual and observer bar stay on screen.\n- It follows window resizes and fullscreen switches as they happen.",
+          "screenshots": [
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v0.1.1/interface-scale/before-and-after.jpg",
+              "caption": "Before and after, at 1080p"
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v0.1.1/interface-scale/largest.jpg",
+              "caption": "The largest scale, with Settings open"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "version": "0.1.0",
+      "tag": "v0.1.0",
+      "name": "First Release",
+      "date": "2026-10-16",
+      "summary": "The first build you can download and play: the whole game as it stands, now with online play through Find Match, missions, camera controls from other RTS games, restyled soldiers, and a game that keeps itself up to date.",
+      "url": "https://github.com/Dynasty9/Frontline/releases/tag/v0.1.0",
+      "pull_requests": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "entries": [
+        {
+          "slug": "online-play",
+          "title": "Online play: Find Match and a list of battles",
+          "kind": "new",
+          "summary": "Press Find Match to drop into an open battle, or host one for the next player to find. Join Game lists every battle being hosted, and most home routers need no setup.",
+          "body": "- **Find Match** joins the best open battle (ones still in the lobby first, then the fullest). If there isn't one, it hosts a battle and lists it for others.\n- **Join Game** shows every battle being hosted: its commander, how many are in it, and whether it's still in the lobby or already fighting.\n- **No port forwarding for most players.** Your game and the host's are introduced to each other and connect directly; the game traffic never goes through a server. A few strict networks (some mobile and campus ones) can't be reached this way, and the lobby says so.\n- **Join by address** still works for LAN and VPN games.\n- **Accounts are optional.** Sign in beside your callsign and it's yours: no one else can register it, and battles you host show a tick.",
+          "screenshots": [
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v0.1.0/online-play/join-a-battle.jpg",
+              "caption": "Join Game: the battles being hosted, and connect by address"
+            }
+          ]
+        },
+        {
+          "slug": "missions",
+          "title": "Missions",
+          "kind": "new",
+          "summary": "Five short operations with objectives and radio traffic, to play alone or in co-op.",
+          "body": "- Each mission sets a side, a goal and a time of day, and ends in **Mission accomplished** or **Mission failed**.\n- Play them alone, or host one for friends to join in co-op.",
+          "screenshots": [
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v0.1.0/missions/kingpin.jpg",
+              "caption": "Kingpin, one of the missions"
+            }
+          ]
+        },
+        {
+          "slug": "self-updating",
+          "title": "The game keeps itself up to date",
+          "kind": "new",
+          "summary": "When a new version comes out, the game downloads it in the background, checks it, and asks you to restart. Quitting works too: the next launch is the new version.",
+          "body": "- The menu shows the download's progress, then **Restart**.\n- Every download is checked against the checksum published with the release before it's installed.\n- If the game's folder can't be written to, it links to the download instead.\n- The version you're running is shown at the bottom right of the menu.",
+          "screenshots": [
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v0.1.0/self-updating/update-ready.jpg",
+              "caption": "An update downloaded and ready"
+            }
+          ]
+        },
+        {
+          "slug": "website",
+          "title": "The Frontline website",
+          "kind": "new",
+          "summary": "The battles being hosted right now, a Join button that opens the game and connects you, and the latest download.",
+          "body": "- **Join from the browser:** click Join on any battle and the game opens (or the one you have open takes over) and connects you.\n- **Downloads** for Windows and Linux, always the latest version.\n- Start the game once after downloading, so your computer knows how to open the site's Join links.",
+          "screenshots": []
+        },
+        {
+          "slug": "camera-and-minimap",
+          "title": "Camera controls from other RTS games, and a clearer minimap",
+          "kind": "improved",
+          "summary": "The mouse wheel zooms towards the cursor, middle-drag turns and tilts, and the minimap's edges aren't hidden under buttons any more.",
+          "body": "- **Zoom toward the cursor:** whatever you aim at stays under the mouse.\n- **Middle-drag** turns (left and right) and tilts (up and down). **Alt + middle-drag** grabs and drags the map.\n- **Shift** pans faster, and panning eases in and out.\n- **Backspace** (or the compass on the minimap) resets the view, **Ctrl + F** follows the selection, and **Ctrl + F5 to F8** save views that **F5 to F8** recall.\n- Jumps to alerts, bases and groups glide instead of cutting.\n- The minimap's buttons moved off the map, so its top row and right-hand column are visible.",
+          "screenshots": [
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v0.1.0/camera-and-minimap/camera.jpg",
+              "caption": "The new camera, tilted over a village"
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v0.1.0/camera-and-minimap/minimap.jpg",
+              "caption": "The minimap before and after"
+            }
+          ]
+        },
+        {
+          "slug": "restyled-soldiers",
+          "title": "Restyled soldiers",
+          "kind": "improved",
+          "summary": "Soldiers have a new look, after the early Metal Gear Solid games: chunkier, clearer silhouettes that read well from the battle camera.",
+          "body": "- New proportions and gear for both sides, so riflemen, gunners and engineers are easier to tell apart at a glance.",
+          "screenshots": []
+        }
+      ]
+    }
+  ]
+}

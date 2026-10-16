@@ -1,0 +1,5 @@
+version = "0.1.6"
+name = "Towns and Supply"
+date = "2026-10-16"
+summary = "The town and every village now have a supply dump worth fighting for. Hold one and it sends trucks of supply to your nearest FOB; lose it and the enemy gets them."
+pull_requests = [9]

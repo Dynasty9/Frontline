@@ -1,0 +1,5 @@
+version = "0.1.2"
+name = "Fire and Smoke"
+date = "2026-10-16"
+summary = "Things catch fire now: woods, hedgerows, timber roofs and wrecks burn and spread it downwind. Explosions and smoke are bigger and look the part."
+pull_requests = [6]

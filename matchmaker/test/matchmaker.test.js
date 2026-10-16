@@ -110,6 +110,18 @@ const withAccounts = await start({ AUTH_BACKEND: 'memory' });
 		assert.equal((await s.call('GET', '/lobbies?version=hangup')).data.lobbies.length, 0);
 	});
 
+	test('the release the matchmaker was deployed with', async () => {
+		const r = await s.call('GET', '/release');
+		assert.equal(r.status, 200);
+		assert.match(r.data.version, /^\d+\.\d+\.\d+$/);
+		assert.equal(r.data.tag, `v${r.data.version}`);
+		for (const p of ['windows', 'linux']) {
+			assert.match(r.data.assets[p].url, new RegExp(`/releases/download/v${r.data.version}/Frontline-${p}\\.zip$`));
+			assert.match(r.data.assets[p].sha256, /^[0-9a-f]{64}$/);
+		}
+		assert.equal((await s.call('GET', '/health')).data.release, r.data.version);
+	});
+
 	test('bad input is refused', async () => {
 		assert.equal((await s.call('POST', '/lobbies', { port: 80 })).status, 400);
 		assert.equal((await s.call('POST', '/lobbies', { port: 'x' })).status, 400);
