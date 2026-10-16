@@ -420,7 +420,9 @@ function and an autopilot function.
   rasterised at the size it's drawn, and the map symbols are re-drawn at a higher resolution on a big scale, so
   both stay sharp. On a narrow screen the command card drops to three columns, the minimap shrinks to leave room
   for the support buttons, notifications stop above the command card, the observer bar moves to the bottom right,
-  and the settings, controls and Field Manual fit the screen and scroll. The menus (laid out for a full
+  the squad card's attack stepper goes under its orders, and the settings, controls and Field Manual fit the
+  screen and scroll. The windowed size picked in Settings > Display is the one the game opens at (maximised if
+  it's too big for the screen), so a bigger window means a bigger interface from the start. The menus (laid out for a full
   1600 x 900) only grow until they fill the window. The scale applies when the slider is let go, so the panel
   doesn't move under the mouse while it's being dragged.
 

@@ -36,8 +36,8 @@ func _draw() -> void:
 					by_sid[s.sid] = []
 				by_sid[s.sid].append(s)
 		if by_sid.size() == 1:
-			_squad_detail(by_sid.values()[0])
-			need_h = 66.0 + mini((by_sid.values()[0] as Array).size(), 6) * 21.0
+			var extra := _squad_detail(by_sid.values()[0])
+			need_h = 66.0 + extra + mini((by_sid.values()[0] as Array).size(), 6) * 21.0
 			return
 		var rows := 0
 		for sid in inp.sel_squads:
@@ -89,31 +89,46 @@ func _draw() -> void:
 	if e:
 		UiKit.text(self, Vector2(4, 20), _describe(e), 14, UiKit.TEXT)
 
-func _squad_detail(mem: Array) -> void:
+## One squad in full. Returns how much taller than usual it drew (a narrow
+## panel puts the attack's stepper on a line of its own).
+func _squad_detail(mem: Array) -> float:
 	var cs := Squad.callsign_of(mem[0].team, mem[0].sid) if not mem.is_empty() else ""
-	UiKit.text(self, Vector2(4, 16), cs.to_upper(), 13, UiKit.ACCENT, 600)
-	UiKit.text(self, Vector2(12 + UiKit.text_width(cs.to_upper(), 13, 600), 16), _squad_name(mem), 12, UiKit.DIM)
 	var alive := 0
 	for s in mem:
 		if _fit(s):
 			alive += 1
 	UiKit.text(self, Vector2(size.x - 120, 16), "%d / %d fighting" % [alive, mem.size()], 12, UiKit.DIM)
+	var head_end := size.x - 128.0  # where the callsign and type must stop
 	# what it's doing, and where an attack has got to
 	var st: Dictionary = hud.squad_state(mem[0].sid, mem)
 	if int(st.morale) >= 0:
 		# its nerve: steady, shaken, breaking, routed
 		var mcol: Color = [Color(0.6, 0.85, 0.5), Color(1.0, 0.8, 0.35), Color(1.0, 0.52, 0.3), UiKit.BAD][int(st.mstate)]
 		var mtxt: String = SquadBrain.STATE_NAMES[int(st.mstate)].to_upper()
-		UiKit.text(self, Vector2(size.x - 132 - UiKit.text_width(mtxt, 11, 700), 16), mtxt, 11, mcol, 700)
+		var mx := size.x - 132 - UiKit.text_width(mtxt, 11, 700)
+		UiKit.text(self, Vector2(mx, 16), mtxt, 11, mcol, 700)
+		head_end = mx - 8.0
+	UiKit.text(self, Vector2(4, 16), cs.to_upper(), 13, UiKit.ACCENT, 600)
+	var tx := 12 + UiKit.text_width(cs.to_upper(), 13, 600)
+	var tname := _squad_name(mem)
+	if tx + UiKit.text_width(tname, 12) <= head_end:
+		UiKit.text(self, Vector2(tx, 16), tname, 12, UiKit.DIM)  # (dropped when the panel is too narrow for it)
 	var ox := 4.0
 	if String(st.glyph) != "":
 		MapSymbols.glyph(self, st.glyph, Vector2(10, 35), 6.0, st.col, 1.0, false)
 		ox = 22.0
 	UiKit.text(self, Vector2(ox, 40), st.text, 12, st.col, 600)
+	var y := 60.0
 	var o: Array = hud.orders.get(mem[0].sid, [])
 	if not o.is_empty() and o[6] != null:
-		_stepper(Vector2(size.x - 236, 30), String(o[6][0]))
-	var y := 60.0
+		var sx := size.x - 236.0
+		if ox + UiKit.text_width(String(st.text), 12, 600) + 12.0 > sx:
+			# no room beside the orders: under them
+			_stepper(Vector2(ox, 50), String(o[6][0]))
+			y += 26.0
+		else:
+			_stepper(Vector2(sx, 30), String(o[6][0]))
+	var extra := y - 60.0
 	var col_w := size.x * 0.5
 	for i in mini(mem.size(), 12):
 		var s: Soldier = mem[i]
@@ -134,6 +149,7 @@ func _squad_detail(mem: Array) -> void:
 			dt = "KIA"
 		var cat: String = s.doing_cat() if s.life != Soldier.Life.DEAD else "idle"
 		UiKit.text(self, Vector2(x + 34 + UiKit.text_width(nm, 13), yy + 12), dt, 12, Hud.CAT_COLORS.get(cat, UiKit.DIM).darkened(0.05))
+	return extra
 
 ## PLAN > MOVE > ASSAULT > SECURE, the current step lit.
 func _stepper(at: Vector2, phase: String) -> void:

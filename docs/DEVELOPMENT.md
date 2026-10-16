@@ -16,8 +16,9 @@ option on its own, laid out like a PC game's options screen:
   flares, rain and thunder; applies live), colour grading (natural, cinematic, vivid, warm film, cold steel,
   bleached war film, black & white), tonemapper (AgX / ACES / Filmic / Reinhard), brightness, contrast, bloom,
   film grain, tilt-shift depth of field.
-- **Display:** window mode (windowed / borderless / exclusive fullscreen), window size, VSync, frame-rate cap,
-  field of view, performance overlay.
+- **Display:** window mode (windowed / borderless / exclusive fullscreen), window size (applied at launch; a
+  size too big for the screen maximises the window instead; test runs keep the project's window or the size
+  `--resolution` asks for), VSync, frame-rate cap, field of view, performance overlay.
 - **Interface:** interface scale (relative to the window: `Settings.ui_factor()` is what the window's 2D is
   drawn at), unit activity labels, speech bubbles, cover preview, edge scrolling, camera speed, camera shake.
 - **Audio:** master, music, effects, ambience and interface volumes (each its own mixer bus, set up in
