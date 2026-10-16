@@ -1183,7 +1183,18 @@ func _refresh() -> void:
 		var side: String = Defs.TEAM_NAMES[t] if t >= 0 else "Spectator"
 		l.text = "%s%s  -  %s" % [p.name, " (host)" if id == 1 else "", side]
 		l.add_theme_color_override("font_color", Defs.TEAM_COLORS[t] if t >= 0 else Color(0.7, 0.7, 0.7))
-		player_list.add_child(l)
+		# his colour: his cursor, view and pings on his teammates' screens
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 9)
+		var dot := Panel.new()
+		dot.custom_minimum_size = Vector2(11, 11)
+		dot.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		dot.add_theme_stylebox_override("panel", UiKit.box(Net.player_color(int(id)), 6, Color(0, 0, 0, 0.45), 1, 0.0))
+		dot.tooltip_text = "%s's colour in the battle: cursor, view and pings on teammates' screens." % p.name
+		dot.mouse_filter = Control.MOUSE_FILTER_PASS
+		row.add_child(dot)
+		row.add_child(l)
+		player_list.add_child(row)
 	var mk := String(Net.settings.get("mission", ""))
 	if mk != "":
 		lobby_title.text = "Mission: %s  (%s)" % [String(Missions.find(mk).title), "you are hosting" if host else "connected"]

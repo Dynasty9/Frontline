@@ -321,7 +321,8 @@ func _process(dt: float) -> void:
 		var b2: RigidBody3D = e[0]
 		var model: Node3D = e[1]
 		var who = e[2]
-		if not is_instance_valid(who) or not is_instance_valid(model):
+		# (a despawned prop stays valid a while, out of the tree: a road bulldozed it)
+		if not is_instance_valid(who) or not is_instance_valid(model) or not (who as Node).is_inside_tree():
 			b2.queue_free()
 			_tosses.remove_at(i)
 			continue
