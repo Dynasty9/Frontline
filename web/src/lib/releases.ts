@@ -1,7 +1,8 @@
 // The latest release of the game, baked in at build time. Every release
-// (.github/workflows/release.yml) rewrites src/release.json and commits it,
-// and Railway redeploys the site with it, so the page always offers the
-// current version without asking GitHub (or waiting on it) when it loads.
+// (.github/workflows/release.yml) rewrites src/release.json in its pull
+// request, and Railway redeploys the site when that merges, so the page always
+// offers the current version without asking GitHub (or waiting on it) when it
+// loads.
 import release from "@/release.json"
 
 export type Platform = "windows" | "linux"
