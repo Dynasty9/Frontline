@@ -1,9 +1,10 @@
 import { GITHUB_REPO } from "@/lib/config"
 
 // The game's builds live on GitHub Releases (.github/workflows/release.yml):
-// tagged versions (v1.2.3) are releases, and every push to main refreshes a
-// "nightly" pre-release. Each carries Frontline-windows.zip and
-// Frontline-linux.zip.
+// every merge that changes the game publishes the next version (v0.1.4, ...),
+// each with Frontline-windows.zip and Frontline-linux.zip. (A "nightly"
+// pre-release came before numbered releases; it's still read if it's all
+// there is.)
 
 export type Platform = "windows" | "linux"
 

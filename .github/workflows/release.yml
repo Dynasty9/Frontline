@@ -1,36 +1,108 @@
 name: Release
 
-# Builds the game for Windows and Linux and publishes it on GitHub Releases,
-# where the website's download buttons point:
-#   - every push to main refreshes the "nightly" pre-release
-#   - a tag like v0.2.0 publishes a release of that name
-#   - pull requests that touch the build itself, and manual runs, build only
-#     (the zips are kept as workflow artifacts)
-# Each release carries Frontline-windows.zip and Frontline-linux.zip.
+# Every merge to main that changes the game publishes a new numbered release
+# (v0.1.4, v0.1.5, ...) with Windows and Linux builds, Frontline-windows.zip
+# and Frontline-linux.zip, and notes listing the merged pull requests. The
+# website's download buttons and the game's "new version" notice both read the
+# latest release.
+#
+#   - The bump is a patch unless the merged pull request has a "minor" or
+#     "major" label. A "skip release" label skips it.
+#   - Merges that only touch docs, the website, the matchmaker or CI don't
+#     release (those deploy on their own: Railway builds web/ and matchmaker/).
+#   - Run it by hand (Actions > Release > Run workflow) to release now, with
+#     the bump of your choice.
+#   - Pull requests that change the build itself export without releasing, and
+#     keep the zips as workflow artifacts.
+#
+# The version is stamped into project.godot (application/config/version) before
+# export, so a build knows what it is; from source it reads 0.0.0-dev.
 
 on:
   push:
     branches: [main]
-    tags: ['v*']
   pull_request:
     paths:
       - export_presets.cfg
       - .github/workflows/release.yml
+      - .github/scripts/**
   workflow_dispatch:
+    inputs:
+      bump:
+        description: Version bump
+        type: choice
+        options: [patch, minor, major]
+        default: patch
 
+# releases from main go one at a time, in order, so each numbers itself after
+# the last; a newer push to a pull request replaces its older run
 concurrency:
   group: release-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 permissions:
   contents: write
+  pull-requests: read
 
 jobs:
+  plan:
+    runs-on: ubuntu-latest
+    outputs:
+      build: ${{ steps.plan.outputs.build }}
+      release: ${{ steps.plan.outputs.release }}
+      version: ${{ steps.plan.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Decide whether to release, and the version
+        id: plan
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVENT: ${{ github.event_name }}
+          BEFORE: ${{ github.event.before }}
+          INPUT_BUMP: ${{ inputs.bump }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          release=false
+          bump=patch
+          if [ "$EVENT" = push ]; then
+            # what the game is made of: a change anywhere else doesn't need a new build
+            game='^(scripts/|assets/|project\.godot$|main\.tscn$|export_presets\.cfg$|icon\.svg$)'
+            if [ -z "$BEFORE" ] || [ "$BEFORE" = 0000000000000000000000000000000000000000 ] \
+               || ! git cat-file -e "$BEFORE^{commit}" 2>/dev/null \
+               || git diff --name-only "$BEFORE" "$GITHUB_SHA" | grep -qE "$game"; then
+              release=true
+            fi
+            # the labels on the pull request this push merged, if any
+            labels=$(gh api "repos/$GITHUB_REPOSITORY/commits/$GITHUB_SHA/pulls" --jq '.[].labels[].name' 2>/dev/null || true)
+            echo "labels: ${labels:-none}"
+            if grep -qx 'skip release' <<< "$labels"; then release=false; fi
+            if grep -qx 'major' <<< "$labels"; then bump=major; elif grep -qx 'minor' <<< "$labels"; then bump=minor; fi
+          elif [ "$EVENT" = workflow_dispatch ] && [ "$GITHUB_REF" = refs/heads/main ]; then
+            release=true
+            bump="${INPUT_BUMP:-patch}"
+          fi
+          version=$(.github/scripts/next-version.sh "$bump")
+          if [ "$EVENT" = pull_request ]; then version="$version-pr.$PR_NUMBER"; fi
+          build=true
+          if [ "$EVENT" = push ] && [ "$release" = false ]; then build=false; fi
+          echo "build=$build release=$release bump=$bump version=$version"
+          {
+            echo "build=$build"
+            echo "release=$release"
+            echo "version=$version"
+          } >> "$GITHUB_OUTPUT"
+
   build:
+    needs: plan
+    if: needs.plan.outputs.build == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
       GODOT_VERSION: 4.7.2
+      VERSION: ${{ needs.plan.outputs.version }}
     steps:
       - uses: actions/checkout@v4
 
@@ -59,6 +131,11 @@ jobs:
           rm godot.zip templates.tpz
           ls -la "$dest"
 
+      - name: Stamp the version
+        run: |
+          sed -i "s/^config\/version=.*/config\/version=\"$VERSION\"/" project.godot
+          grep -n '^config/version=' project.godot
+
       - name: Import and compile every script
         run: |
           ~/godot/godot --headless --path . --import 2>&1 | tee import.log
@@ -77,24 +154,16 @@ jobs:
       - name: Keep the zips as workflow artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: Frontline-builds
+          name: Frontline-${{ env.VERSION }}
           path: build/Frontline-*.zip
           retention-days: 14
 
-      - name: Publish the nightly pre-release
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          gh release delete nightly --yes --cleanup-tag || true
-          gh release create nightly build/Frontline-windows.zip build/Frontline-linux.zip \
-            --prerelease --target "$GITHUB_SHA" --title "Latest build of main" \
-            --notes "Built automatically from $(git log -1 --format='%h: %s'). For a tested version, use the latest release."
-
       - name: Publish the release
-        if: startsWith(github.ref, 'refs/tags/v')
+        if: needs.plan.outputs.release == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "$GITHUB_REF_NAME" build/Frontline-windows.zip build/Frontline-linux.zip \
-            --title "Frontline $GITHUB_REF_NAME" --generate-notes
+          gh release create "v$VERSION" build/Frontline-windows.zip build/Frontline-linux.zip \
+            --target "$GITHUB_SHA" --title "Frontline v$VERSION" --generate-notes --latest
+          # numbered releases replace the old rolling "nightly" pre-release
+          gh release delete nightly --yes --cleanup-tag 2>/dev/null || true

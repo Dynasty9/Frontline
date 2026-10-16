@@ -495,6 +495,13 @@ func _process(_dt: float) -> void:
 		if args.has("menu-op") and menu and menu.op_panel and not has_meta("op_open") and Engine.get_frames_drawn() > 5:
 			set_meta("op_open", true)
 			menu._open_op(int(args["menu-op"]))
+		# --menu-update=X.Y.Z[,available|downloading|ready|failed]: the update
+		# notice, as if GitHub had that release (screenshots)
+		if args.has("menu-update") and not has_meta("update_shown") and Engine.get_frames_drawn() > 5:
+			set_meta("update_shown", true)
+			var mu := String(args["menu-update"]).split(",")
+			var st: int = ["available", "downloading", "ready", "failed"].find(mu[1] if mu.size() > 1 else "available") + 1
+			Updater.pretend(mu[0], st)
 		# --menu-panel=browse|account|settings: the list of online battles, the sign-in panel, the settings
 		if args.has("menu-panel") and menu and menu.browse_panel and not has_meta("panel_open") and Engine.get_frames_drawn() > 5:
 			set_meta("panel_open", true)
