@@ -269,6 +269,13 @@ The client prints a `CLIENT entities=...` summary when it quits. Check both outp
 with a window, drawn its first frame, which takes a minute or more off-screen. `waited=` in the summary is how long
 the client sat in an empty world first (-1: nothing came, and it gave up 5 minutes past `--quit-after`).
 
+The host's lobby takes `--battle-name=NAME`, `--coop` (everyone on `--team`'s side), `--max-players=N` and
+`--password=PW`; a joiner gives `--password=PW`, and `--ready` / `--say=TEXT` press Ready and chat once it's in the
+lobby. With `--players=N` the host shows its lobby while it waits, so a windowed host can be screenshotted there. On
+a busy machine a host can take ten seconds or more to start listening: start the clients once its port is bound
+(`netstat -ano -p UDP`), or ENet gives up connecting first. `FL_DEBUG_NET=1` prints each side of the lobby handshake
+(connecting, registering, a password asked for, turned away, the battle starting).
+
 Rejoining: `--drop-at=S` makes a client leave the battle S seconds in (as Leave Battle does) and press Rejoin
 `--rejoin-after` seconds later (default 5). Put the client alone on the other side to see the AI stand in and step
 down. The host's `--stats` shows the force's owner change (`own=`) and the counters `rejoined`, `rejoin_returned`
@@ -322,9 +329,11 @@ Set `FL_DEBUG_ONLINE=1` to print what STUN saw, who the host punches towards, an
 exercise the hole-punching path, give the joiner the matchmaker's LAN address instead of `127.0.0.1` (it then only
 connects if your router loops traffic back in, "hairpinning", which many don't). `--no-stun` skips STUN for offline
 runs, `--login=EMAIL:PASSWORD` (plus `--signup=CALLSIGN` to create the account) signs in first, `--account=PATH`
-keeps that sign-in out of your real one, and `--menu-panel=browse|account|record|settings` opens those panels for
-screenshots (`--open-battle` then opens the newest battle on the service record). Test runs keep no service record;
-`--record-battles` turns it on (with `--pending=PATH` for the battles waiting to go up, out of your real ones):
+keeps that sign-in out of your real one, and `--menu-panel=browse|host|account|record|settings` opens those panels
+for screenshots (`--host-mode=coop|versus|mission` for the host setup, `--browse-pick=TEXT` to choose a battle in the
+browser, `--open-battle` to open the newest battle on the service record). `--host --list` also beacons on the LAN
+(UDP 7787), so a second copy's server browser lists it even with a dead `--matchmaker`. Test runs keep no service
+record; `--record-battles` turns it on (with `--pending=PATH` for the battles waiting to go up, out of your real ones):
 
 ```
 godot --headless --path . -- --scenario=attack --play --end-at=40 --quit-after=55 --record-battles --no-stun \
@@ -350,22 +359,23 @@ renders every story in headless Chromium as a test (its play function and an acc
 
 ### Builds, releases and updates
 
-Each release files its changelog, bakes itself into the website and the matchmaker, then publishes. The changelog is
-written as part of each pull request (`changelog/unreleased/`, see [changelog/README.md](../changelog/README.md)); at
-release, `.github/scripts/bake-release.sh` moves the entries the version was built with into `changelog/vX.Y.Z/`
-(`changelog.py release`), regenerates `CHANGELOG.md` and `web/src/changelog.json`, writes `release.json` into
-`web/src/` and `matchmaker/` (`release_json.py`), and commits all of it to `main`, which redeploys the website and the
-matchmaker. The GitHub release follows, named after the release's headline change, with the changelog as its notes.
+Merging a pull request never releases. Releasing is a button: **Actions > Release > Run workflow** on `main`, choosing
+`patch`, `minor` or `major` (and, if you like, a name; otherwise the release is named after its headline change). It
+ships everything merged since the last release: the version is the newest `vX.Y.Z` tag plus that step
+(`.github/scripts/next-version.sh`), and the build stamps it into `project.godot` (`application/config/version`); from
+source the game reads `0.0.0-dev`.
 
-`export_presets.cfg` has a Windows and a Linux preset (one executable each, the game packed inside).
-`.github/workflows/release.yml` releases automatically: every merge to `main` that changes the game (`scripts/`,
-`assets/`, `project.godot`, `main.tscn`, the export presets or the icon) publishes the next version, `v0.1.4` after
-`v0.1.3`, with `Frontline-windows.zip`, `Frontline-linux.zip` and notes listing the merged pull requests. Label a
-pull request `minor` or `major` for a bigger bump, or `skip release` to leave it out. Merges that only touch docs,
-the website or the matchmaker don't release (Railway redeploys those itself, watching `web/` and `matchmaker/`).
-Actions > Release > Run workflow releases by hand. The next number comes from the newest `vX.Y.Z` tag
-(`.github/scripts/next-version.sh`), and the build stamps it into `project.godot` (`application/config/version`);
-from source the game reads `0.0.0-dev`.
+`export_presets.cfg` has a Windows and a Linux preset (one executable each, the game packed inside). The run exports
+both from `main` as it stands, then `.github/scripts/bake-release.sh` makes the release's own commit on a branch,
+`release/vX.Y.Z`: it files every entry waiting in `changelog/unreleased/` under `changelog/vX.Y.Z/` (`changelog.py
+release`), regenerates `CHANGELOG.md` and `web/src/changelog.json`, and writes `release.json` into `web/src/` and
+`matchmaker/` (`release_json.py`). The workflow tags that commit, publishes the GitHub release
+(`Frontline-windows.zip`, `Frontline-linux.zip`, the changelog as its notes) and opens a pull request from the
+branch. Merge it: that's what puts the release on the website and the matchmaker (Railway redeploys both), and the
+matchmaker is where the game hears about updates. The next release won't start until it's merged. Opening that pull
+request needs Settings > Actions > General > "Allow GitHub Actions to create and approve pull requests"; without
+it, the run ends with a link to open it yourself. `python .github/scripts/changelog.py pending` lists what the next
+release would ship. Pull requests that change the export setup test-export without releasing.
 
 A release build updates itself (`scripts/autoload/updater.gd`): at start it asks the matchmaker (`GET /release`,
 falling back to GitHub's API) for the latest release,

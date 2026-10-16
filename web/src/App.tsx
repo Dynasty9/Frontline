@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { Battles } from "@/components/battles"
 import { WhatsNew } from "@/components/changelog"
 import { Downloads } from "@/components/downloads"
@@ -24,6 +24,15 @@ export default function App() {
   const [platform] = useState(guessPlatform)
   // after a Join or Find Match link: a note on what should happen next
   const [launched, setLaunched] = useState(false)
+  // an invite from a friend's lobby (?join=ID): that battle, up top
+  const [invite, setInvite] = useState(() => new URLSearchParams(window.location.search).get("join"))
+  useEffect(() => {
+    if (invite) document.getElementById("battles")?.scrollIntoView()
+  }, [invite])
+  const dismissInvite = () => {
+    setInvite(null)
+    window.history.replaceState(null, "", window.location.pathname + window.location.hash)
+  }
   const [watching, setWatching] = useState(false)
 
   return (
@@ -48,6 +57,8 @@ export default function App() {
           launched={launched}
           onLaunch={() => setLaunched(true)}
           onDismissLaunch={() => setLaunched(false)}
+          invite={invite}
+          onDismissInvite={dismissInvite}
         />
         <WhatsNew />
         <Downloads platform={platform} />

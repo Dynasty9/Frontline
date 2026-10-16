@@ -14,6 +14,11 @@ extends Node
 ## ("symmetric NAT": some mobile and campus networks) can't be punched through,
 ## and a host behind one needs a forwarded port.
 ##
+## Battles on the same network are found without any of that: a host
+## broadcasts a small beacon on the LAN every second or so, and the server
+## browser listens for them, so friends at a LAN party (or two machines at
+## home) see each other with no internet and no addresses typed in.
+##
 ## With an account, every battle fought goes on the player's service record
 ## at the end (its after-action report, kept by the matchmaker); one fought
 ## signed out or offline waits on this machine and goes up at the next sign-in.
@@ -24,6 +29,8 @@ extends Node
 
 signal account_changed
 signal listing_changed  # listed, unlisted, or failed to list
+signal join_progress(stage: String)  # a listed battle being joined: what's happening now
+signal lan_changed  # a battle on this network appeared, changed or went away
 signal record_changed  # the latest battle saved, or battles waiting to be
 
 const DEFAULT_URL := "https://matchmaker-production-a53e.up.railway.app"
@@ -39,6 +46,12 @@ const HEARTBEAT_S := 15.0
 const KEEPALIVE_S := 15.0
 const PUNCH_FOR_S := 4.0
 const PUNCH_EVERY_S := 0.15
+## The LAN beacons: where they're sent, how often, and how long a battle that
+## has gone quiet stays in the list.
+const LAN_PORT := 7787
+const LAN_EVERY_S := 1.0
+const LAN_FORGET_S := 4.0
+const LAN_MAGIC := "FLBEACON"
 
 var base_url := DEFAULT_URL
 var account_path := ACCOUNT_PATH
@@ -72,12 +85,23 @@ var _listing := false
 var _lobby_token := ""
 var _port := 0  # the port Online.host() hosted on (0 when not hosting through us)
 var _dirty := false
+var _relist_t := 0.0  # when to try listing again after it failed
 var _hb_t := 0.0
 var _ka_t := 0.0
 var _punches: Array = []  # [ip, port, until, next]: joiners to punch towards
 # one byte: ENet drops anything under its 2-byte header unread, so these never
 # disturb a game in progress; routers only care that a packet went out
 var _punch_pkt := PackedByteArray([0])
+
+# the LAN: our beacon while hosting, and the browser's ear for everyone else's
+var _lan_tx: PacketPeerUDP
+var _lan_t := 0.0
+var _lan_nonce := ""  # tells our beacon apart from everyone else's
+var _lan_dirty := false
+var _lan_rx: PacketPeerUDP
+## Battles heard on this network: nonce -> the beacon, plus "address" (where
+## it came from) and "seen" (when).
+var lan_games := {}
 
 
 func _ready() -> void:
@@ -105,11 +129,17 @@ func _ready() -> void:
 	if signed_in() and not pending.is_empty() and record_battles:
 		flush_pending.call_deferred()
 	Net.session_closed.connect(_on_session_closed)
-	Net.lobby_updated.connect(func(): _dirty = true)
-	Net.game_start.connect(func(_s): _dirty = true)
-	Net.player_left.connect(func(_i, _t, _n): _dirty = true)
-	Net.player_joined.connect(func(_i, _t, _n): _dirty = true)
-	Net.player_rejoined.connect(func(_i, _o, _t, _n): _dirty = true)
+	Net.lobby_updated.connect(_changed)
+	Net.game_start.connect(func(_s): _changed())
+	Net.player_left.connect(func(_i, _t, _n): _changed())
+	Net.player_joined.connect(func(_i, _t, _n): _changed())
+	Net.player_rejoined.connect(func(_i, _o, _t, _n): _changed())
+
+
+## The battle we host changed: tell the matchmaker and the LAN soon.
+func _changed() -> void:
+	_dirty = true
+	_lan_dirty = true
 
 
 func _now() -> float:
@@ -484,9 +514,12 @@ func _stun_servers() -> Array:
 
 ## Host a battle, and put it on the matchmaker if `listed`. The port is shown
 ## to STUN first, before ENet takes it, so players can be punched through to
-## it. Returns Net.host_game's error.
-func host(port: int, team := 0, listed := true) -> int:
+## it. Returns Net.host_game's error (ERR_SKIP if `still_wanted` says the
+## player gave up while the router was being checked).
+func host(port: int, team := 0, listed := true, still_wanted := Callable()) -> int:
 	var me: Dictionary = await probe(port)
+	if still_wanted.is_valid() and not still_wanted.call():
+		return ERR_SKIP
 	nat = String(me.nat)
 	_stun_ep = {"ip": me.ip, "port": me.port} if me.ok else {}
 	if OS.has_environment("FL_DEBUG_ONLINE"):
@@ -520,7 +553,7 @@ func list_game() -> void:
 	body["host"] = Net.my_name
 	body["version"] = str(Net.NET_VERSION)
 	body["nat"] = nat if nat != "" else "unknown"
-	body["lan"] = _lan_ip()
+	body["lan"] = lan_ip()
 	if not _stun_ep.is_empty():
 		body["punch"] = _stun_ep
 	var r: Dictionary = await api(HTTPClient.METHOD_POST, "/lobbies", body, PackedStringArray(), 10.0, signed_in())
@@ -530,7 +563,10 @@ func list_game() -> void:
 		r = await api(HTTPClient.METHOD_POST, "/lobbies", body)
 	_listing = false
 	if not r.ok:
+		# a blip (the matchmaker restarting, the network): try again shortly,
+		# so a battle never stays off the list because of one bad moment
 		listing_error = String(r.error)
+		_relist_t = _now() + 15.0
 		listing_changed.emit()
 		return
 	var id := String(r.data.get("id", ""))
@@ -542,6 +578,7 @@ func list_game() -> void:
 	lobby_id = id
 	_lobby_token = token
 	_hb_t = _now()
+	_share_invite()
 	listing_changed.emit()
 	_poll_loop(id)
 
@@ -553,7 +590,15 @@ func unlist() -> void:
 	_request(HTTPClient.METHOD_DELETE, "/lobbies/" + lobby_id, null, PackedStringArray(["X-Lobby-Token: " + _lobby_token]), 5.0, false)
 	lobby_id = ""
 	_lobby_token = ""
+	_share_invite()
 	listing_changed.emit()
+
+
+## Everyone in the lobby hears the listing's id, so any of them can copy an
+## invite link for their friends.
+func _share_invite() -> void:
+	if hosting() and String(Net.settings.get("invite", "")) != lobby_id:
+		Net.set_setting("invite", lobby_id)
 
 
 ## The matchmaker forgot the listing (it restarted, or we were silent too
@@ -563,6 +608,7 @@ func _relist(id: String) -> void:
 		return
 	lobby_id = ""
 	_lobby_token = ""
+	_share_invite()
 	if want_listed:
 		list_game()
 
@@ -593,30 +639,76 @@ func _heartbeat(id: String) -> void:
 		_relist(id)
 
 
+## What the server browser shows about the battle we're hosting: sent with
+## every check-in, and in the LAN beacon.
 func _state() -> Dictionary:
+	var teams := [0, 0]
+	var specs := 0
+	for id in Net.players:
+		var t := int(Net.players[id].team)
+		if t >= 0:
+			teams[t] += 1
+		else:
+			specs += 1
+	var mk := String(Net.settings.get("mission", ""))
 	return {
 		"players": maxi(1, Net.players.size()),
-		"max_players": Net.MAX_PLAYERS,
+		"max_players": Net.max_players(),
 		"in_game": Net.in_game,
 		"drop_in": bool(Net.settings.get("drop_in", true)),
+		"name": Net.battle_name(),
+		"mode": "mission" if mk != "" else String(Net.settings.get("mode", "versus")),
+		"mission": String(Missions.find(mk).title) if mk != "" else "",
+		"side": Net.locked_side(),
+		"teams": teams,
+		"spectators": specs,
+		"locked": Net.password != "",
 	}
+
+
+## The address the internet sees for the port we host on ("" before STUN
+## has answered, or if it couldn't).
+func public_address() -> String:
+	return String(_stun_ep.get("ip", ""))
+
+
+func hosted_port() -> int:
+	return _port
 
 
 ## This machine's address on its home network, for players behind the same
 ## router (most routers can't loop a connection back in through their own
-## public address).
-func _lan_ip() -> String:
+## public address). Home routers hand out 192.168.x.x (or 10.x.x.x); the
+## 172.16-31 range is mostly virtual adapters (WSL, Hyper-V, Docker) that no
+## one else on the network can reach, so it's only taken when there's nothing
+## better.
+func lan_ip() -> String:
+	var best := ""
+	var best_rank := 3
 	for a: String in IP.get_local_addresses():
 		var o := a.split(".")
-		if o.size() == 4 and (o[0] == "10" or (o[0] == "192" and o[1] == "168") or (o[0] == "172" and int(o[1]) >= 16 and int(o[1]) <= 31)):
-			return a
-	return ""
+		if o.size() != 4:
+			continue
+		var rank := 3
+		if o[0] == "192" and o[1] == "168":
+			rank = 0
+		elif o[0] == "10":
+			rank = 1
+		elif o[0] == "172" and int(o[1]) >= 16 and int(o[1]) <= 31:
+			rank = 2
+		if rank < best_rank:
+			best_rank = rank
+			best = a
+	return best
 
 
 func _on_session_closed() -> void:
 	unlist()
 	_port = 0
 	_punches.clear()
+	if _lan_tx:
+		_lan_tx.close()
+		_lan_tx = null
 
 
 func _process(_dt: float) -> void:
@@ -625,9 +717,17 @@ func _process(_dt: float) -> void:
 		_hb_t = now
 		_dirty = false
 		_heartbeat(lobby_id)
+	if _lan_rx:
+		_lan_hear(now)
 	if not hosting():
 		_punches.clear()
 		return
+	if want_listed and lobby_id == "" and not _listing and listing_error != "" and now >= _relist_t:
+		list_game()
+	if now >= _lan_t or (_lan_dirty and now >= _lan_t - LAN_EVERY_S + 0.25):
+		_lan_t = now + LAN_EVERY_S
+		_lan_dirty = false
+		_lan_beacon()
 	var enet: ENetConnection = (multiplayer.multiplayer_peer as ENetMultiplayerPeer).host
 	if enet == null:
 		return
@@ -649,7 +749,11 @@ func _process(_dt: float) -> void:
 ## Join a battle from the matchmaker. Show our router a port, have the
 ## matchmaker pass it to the host (who starts punching towards it), then
 ## connect from that same port to wherever the matchmaker says. {err, error, via}
-func join_listed(id: String) -> Dictionary:
+## `still_wanted` is asked after every wait: the player may have cancelled
+## (err ERR_SKIP), and then nothing is connected.
+func join_listed(id: String, still_wanted := Callable()) -> Dictionary:
+	var gave_up := {"err": ERR_SKIP, "error": "", "via": ""}
+	join_progress.emit("Checking your connection")
 	var local := 0
 	for i in 8:
 		var p := 20000 + randi() % 40000
@@ -661,38 +765,134 @@ func join_listed(id: String) -> Dictionary:
 	var me := {"ok": false}
 	if local > 0:
 		me = await probe(local)
+	if still_wanted.is_valid() and not still_wanted.call():
+		return gave_up
+	join_progress.emit("Asking the host to open the way in")
 	var r: Dictionary = await api(HTTPClient.METHOD_POST, "/lobbies/%s/join" % id, {"ip": me.ip, "port": me.port} if me.ok else {})
+	if still_wanted.is_valid() and not still_wanted.call():
+		return gave_up
 	if not r.ok:
 		return {"err": FAILED, "error": r.error, "via": ""}
 	var c: Dictionary = r.data.get("connect", {})
+	join_progress.emit("Connecting to the host")
 	# a moment for the host's first punches to leave its router
 	await get_tree().create_timer(0.3, true, false, true).timeout
+	if still_wanted.is_valid() and not still_wanted.call():
+		return gave_up
 	var err := Net.join_game(String(c.get("address", "")), int(c.get("port", 0)), local, id)
 	if OS.has_environment("FL_DEBUG_ONLINE"):
 		print("ONLINE joining %s:%d from port %d (stun %s:%d) via %s" % [String(c.get("address", "")), int(c.get("port", 0)), local, me.get("ip", ""), int(me.get("port", 0)), String(c.get("via", ""))])
 	return {"err": err, "error": "" if err == OK else "Could not connect (error %d)." % err, "via": String(c.get("via", ""))}
 
 
-## One line for the lobby screen: whether we're listed, and what STUN said
-## about this router.
-func listing_text() -> String:
-	var s := ""
+## Where players can find the battle we're hosting, for the lobby screen:
+## [tag, one line, all well].
+func listing_status() -> Array:
 	if lobby_id != "":
-		s = "Listed online: Find Match can bring players here."
-	elif _listing:
-		s = "Listing this battle online..."
-	elif listing_error != "":
-		s = "Not listed online: %s" % listing_error
-	if not want_listed and lobby_id == "":
-		s = "Not listed online: only players with your address can join."
-	var r := ""
+		return ["LISTED ONLINE", "Anyone can find it in the server browser%s." % (", with the password" if Net.password != "" else ""), true]
+	if _listing:
+		return ["LISTING", "Putting the battle on the server browser...", true]
+	if want_listed and listing_error != "":
+		return ["NOT LISTED", "Couldn't list it online: %s" % listing_error, false]
+	return ["UNLISTED", "Only players on your network, or with your address, can find it.", true]
+
+
+## What STUN said about this router, for the host: whether players will get in.
+func router_text() -> String:
 	match nat:
 		"open":
-			r = "Your connection takes players directly."
+			return "Your connection takes players directly."
 		"cone":
-			r = "Players get in through your router by hole punching."
+			return "Players get in through your router by hole punching."
 		"strict":
-			r = "Your router is strict (symmetric NAT): forward UDP port %d or some players won't get in." % _port
+			return "Your router is strict (symmetric NAT): forward UDP port %d or some players won't get in." % _port
 		"unknown":
-			r = "Couldn't check your router: forwarding UDP port %d makes sure players get in." % _port
-	return (s + "  " + r).strip_edges()
+			return "Couldn't check your router: forwarding UDP port %d makes sure players get in." % _port
+	return ""
+
+
+## A link that brings a friend straight into the battle we're listing: the
+## website's page for it, whose Join button opens the game ("" when unlisted).
+func invite_link() -> String:
+	if lobby_id == "":
+		return ""
+	return "%s/?join=%s" % [Updater.WEBSITE_URL, lobby_id]
+
+
+# --- the LAN ----------------------------------------------------------------------------
+
+## The host's beacon: what the battle is and which port it's on, broadcast to
+## the local network (and to this machine, for a second copy of the game).
+func _lan_beacon() -> void:
+	if _lan_tx == null:
+		_lan_tx = PacketPeerUDP.new()
+		_lan_tx.set_broadcast_enabled(true)
+		if _lan_tx.bind(0) != OK:
+			_lan_tx = null
+			return
+		_lan_nonce = "%08x%08x" % [randi(), randi()]
+	var b := _state()
+	b["v"] = Net.NET_VERSION
+	b["n"] = _lan_nonce
+	b["port"] = _port
+	b["host"] = String(Net.players[1].name) if Net.players.has(1) else Net.my_name
+	b["id"] = lobby_id
+	var pkt := (LAN_MAGIC + JSON.stringify(b)).to_utf8_buffer()
+	for to in ["255.255.255.255", "127.0.0.1"]:
+		_lan_tx.set_dest_address(to, LAN_PORT)
+		_lan_tx.put_packet(pkt)
+
+
+## Listen for battles on this network (the server browser, while it's open).
+## False when the port is taken: another copy of the game is listening.
+func lan_listen(on: bool) -> bool:
+	if not on:
+		if _lan_rx:
+			_lan_rx.close()
+			_lan_rx = null
+		if not lan_games.is_empty():
+			lan_games.clear()
+			lan_changed.emit()
+		return true
+	if _lan_rx:
+		return true
+	_lan_rx = PacketPeerUDP.new()
+	if _lan_rx.bind(LAN_PORT) != OK:
+		_lan_rx = null
+		return false
+	return true
+
+
+func _lan_hear(now: float) -> void:
+	var changed := false
+	while _lan_rx.get_available_packet_count() > 0:
+		var pkt := _lan_rx.get_packet()
+		var from := _lan_rx.get_packet_ip()
+		var txt := pkt.get_string_from_utf8()
+		if not txt.begins_with(LAN_MAGIC):
+			continue
+		var d: Variant = JSON.parse_string(txt.substr(LAN_MAGIC.length()))
+		if not (d is Dictionary) or int(d.get("v", 0)) != Net.NET_VERSION or String(d.get("n", "")) == _lan_nonce:
+			continue
+		var key := String(d.get("n", ""))
+		var old: Dictionary = lan_games.get(key, {})
+		# the same beacon reaches a copy on the same machine twice (broadcast
+		# and loopback): either address works, so keep the first
+		d["address"] = String(old.get("address", from))
+		d["seen"] = now
+		if old.is_empty() or _beacon_differs(old, d):
+			changed = true
+		lan_games[key] = d
+	for k in lan_games.keys():
+		if now - float(lan_games[k].seen) > LAN_FORGET_S:
+			lan_games.erase(k)
+			changed = true
+	if changed:
+		lan_changed.emit()
+
+
+func _beacon_differs(a: Dictionary, b: Dictionary) -> bool:
+	for k in ["name", "players", "max_players", "in_game", "drop_in", "mode", "mission", "side", "teams", "locked", "id"]:
+		if str(a.get(k)) != str(b.get(k)):
+			return true
+	return false

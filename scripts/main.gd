@@ -2,9 +2,12 @@ extends Node
 ## Root: owns the menu and the World. Also understands a few command-line
 ## switches (after `--`) used for automated testing:
 ##   --aivai               host as spectator, both sides AI
-##   --host [--players=N]  host and start (when N players have joined)
-##   --join=IP             join a host
+##   --host [--players=N]  host and start (when N players have joined; the
+##                         lobby shows meanwhile)
+##     --battle-name=NAME --coop --max-players=N --password=PW   the lobby's settings
+##   --join=IP [--password=PW]   join a host
 ##   --team=N              the side to play (-1 spectator); a client registers with it
+##   --ready [--say=TEXT]  once in the lobby: press Ready (and say something)
 ##   --drop-at=S [--rejoin-after=S2]   a client leaves the battle S seconds in, then
 ##                         presses Rejoin Battle S2 (default 5) seconds later
 ##   --rejoin              press Rejoin Battle (with --rejoin-file=PATH: the record a
@@ -145,19 +148,31 @@ func _ready() -> void:
 		Net.start_game()
 	elif args.has("host"):
 		if args.has("list"):
-			await Online.host(port, int(args.get("team", 0)))
+			await Online.host(port, int(args.get("team", 0)), false)
 		else:
 			Net.host_game(port, int(args.get("team", 0)))
+		var cfg := {"ai_allies": args.has("ai-allies"), "verbose": args.has("verbose"), "debug_trucks": args.has("debug-trucks"),
+			"drop_in": not args.has("no-drop-in")}
 		if args.has("mission"):
-			Net.set_setting("mission", String(args.mission))
-			Net.set_setting("mission_autoplay", args.has("autoplay"))
-		Net.set_setting("ai_allies", args.has("ai-allies"))
-		Net.set_setting("drop_in", not args.has("no-drop-in"))
-		Net.set_setting("verbose", args.has("verbose"))
-		Net.set_setting("debug_trucks", args.has("debug-trucks"))
+			cfg["mission"] = String(args.mission)
+			cfg["mission_autoplay"] = args.has("autoplay")
+		if args.has("battle-name"):
+			cfg["name"] = String(args["battle-name"])
+		if args.has("coop"):
+			cfg["mode"] = "coop"
+			cfg["coop_side"] = maxi(0, int(args.get("team", 0)))
+		if args.has("max-players"):
+			cfg["max_players"] = int(args["max-players"])
+		if args.has("password"):
+			Net.password = String(args.password)
+			cfg["locked"] = true
+		Net.configure(cfg)
+		if args.has("list"):
+			Online.list_game()
 		if not args.has("players"):
 			Net.start_game()
 		else:
+			menu._show_lobby()
 			Net.lobby_updated.connect(_maybe_autostart)
 	elif args.has("rejoin"):
 		menu._rejoin()
@@ -165,9 +180,11 @@ func _ready() -> void:
 		if args.has("team"):
 			Net.join_team = int(args.team)
 		if args.has("join"):
-			Net.join_game(String(args.join), port)
+			menu._join_direct(String(args.join), port, String(args.get("password", "")))
 		else:
 			menu._find_match()
+		if args.has("ready") or args.has("say"):
+			Net.lobby_updated.connect(_lobby_test_actions)
 
 
 ## --login=EMAIL:PASSWORD (with --signup=CALLSIGN to create the account first).
@@ -185,6 +202,18 @@ func _dump_structs() -> void:
 	for st in world.structures:
 		if not st.skind in ["floor", "tree"]:
 			print("STRUCT %s t%d pos=%s yaw=%.2f size=%s built=%s wrecked=%s" % [st.skind, st.team, str(st.position.snapped(Vector3.ONE * 0.1)), st.yaw, str(st.size), str(st.built), str(st.wrecked)])
+
+
+## --ready / --say: once we're in the lobby, press Ready and say something.
+func _lobby_test_actions() -> void:
+	if has_meta("lobby_acted") or Net.in_game or not Net.players.has(multiplayer.get_unique_id()):
+		return
+	set_meta("lobby_acted", true)
+	await get_tree().create_timer(0.6).timeout
+	if args.has("say"):
+		Net.send_lobby_chat(String(args.say))
+	if args.has("ready"):
+		Net.set_ready.rpc_id(1, true)
 
 
 func _maybe_autostart() -> void:
@@ -593,19 +622,26 @@ func _process(_dt: float) -> void:
 			var mu := String(args["menu-update"]).split(",")
 			var st: int = ["available", "downloading", "ready", "failed"].find(mu[1] if mu.size() > 1 else "available") + 1
 			Updater.pretend(mu[0], st)
-		# --menu-panel=browse|account|record|settings: the list of online battles, the sign-in panel,
-		# the service record (signed in), the settings
-		if args.has("menu-panel") and menu and menu.browse_panel and not has_meta("panel_open") and Engine.get_frames_drawn() > 5:
+		# --menu-panel=browse|host|account|record|settings: the server browser, the host
+		# setup, the sign-in panel, the service record (signed in), the settings
+		if args.has("menu-panel") and menu and menu.browser and not has_meta("panel_open") and Engine.get_frames_drawn() > 5:
 			set_meta("panel_open", true)
-			if String(args["menu-panel"]) == "account":
-				menu._open_account()
-			elif String(args["menu-panel"]) == "record":
-				menu._open_record()
-			elif String(args["menu-panel"]) == "settings":
-				menu.settings_panel.visible = true
-				menu.settings_panel._show_tab(String(args.get("settings-tab", "interface")))
-			else:
-				menu._open_browser()
+			match String(args["menu-panel"]):
+				"account":
+					menu._open_account()
+				"record":
+					menu._open_record()
+				"settings":
+					menu.settings_panel.visible = true
+					menu.settings_panel._show_tab(String(args.get("settings-tab", "interface")))
+				"host":
+					menu._open_host({"mode": String(args.get("host-mode", "coop"))})
+				_:
+					menu._open_browser()
+		# --browse-pick=TEXT: choose that battle in the server browser once it's listed
+		if args.has("browse-pick") and menu and menu.browser and menu.browser.visible and not has_meta("browse_picked"):
+			if menu.browser.pick(String(args["browse-pick"])):
+				set_meta("browse_picked", true)
 		# --open-battle (with --menu-panel=record): open the newest battle's after-action report
 		if args.has("open-battle") and menu and menu.rec_list and menu.rec_list.get_child_count() > 0 and not has_meta("battle_open"):
 			set_meta("battle_open", true)
