@@ -98,7 +98,8 @@ func _gui_input(ev: InputEvent) -> void:
 		if not sketch.is_empty() and mm.position.distance_to(_sk_last) > 3.0 and sketch.size() < 256:
 			sketch.append(_to_world(mm.position))
 			_sk_last = mm.position
-		tooltip_text = "Compass: north as the camera sees it.\nClick (or Backspace) to turn back to the starting heading." if _on_compass(mm.position) else ""
+		var rk := Keys.label("cam_reset")
+		tooltip_text = ("Compass: north as the camera sees it.\nClick%s to turn back to the starting heading." % ((" (or %s)" % rk) if rk != "" else "")) if _on_compass(mm.position) else ""
 		if _drag:
 			_look(mm.position)
 

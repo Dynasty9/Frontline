@@ -10,7 +10,8 @@ Frontline is a squad-level military RTS written entirely in **GDScript for Godot
 
 ```
 project.godot, main.tscn       entry point (main.gd: menu <-> world, command-line test modes)
-scripts/autoload/              singletons: defs.gd (all data tables), net.gd (ENet lobby), sfx.gd (synthesised sound), settings
+scripts/autoload/              singletons: defs.gd (all data tables), net.gd (ENet lobby), sfx.gd (synthesised sound), settings,
+                               keys.gd (every key binding: ask it, never test a keycode in gameplay or UI code)
 scripts/game/world.gd          entity registry, replication, commands (execute_cmd), spatial queries
 scripts/game/soldier*.gd       the soldier: simulation, behaviour tree (soldier_brain.gd), procedural model
 scripts/game/squad*.gd         squads, battle drills and morale (squad_brain.gd), movement tactics (tactics.gd)

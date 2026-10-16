@@ -10,6 +10,28 @@ The long version: how each system works and why. For the short version, see the 
 
 ## Full controls reference
 
+These are the default keys. **Settings → Controls** (`scripts/autoload/keys.gd`, `scripts/ui/controls_page.gd`)
+changes any of them:
+
+- **By category:** camera, saved views, orders, abilities and fire support, building, control groups,
+  co-commanders, interface, observer, with the mouse's own controls listed at the end for reference.
+- **Two keys per action.** A key can be a combination with Ctrl, Shift or Alt, a modifier on its own (Pan
+  faster is Shift), or a mouse side button.
+- **Rebinding:** click a key and press the new one. Esc cancels, right-click clears.
+- **Clashes.** A key another action already has is moved off it, with a line saying so and an Undo. Keys only
+  clash where both could be live at once: the turn-the-building key while placing doesn't clash with retreat,
+  and observer keys don't clash with orders.
+- **Matching.** The closest match wins: an exact combination first, then a key with extra modifiers held, so
+  Shift + R still retreats while Ctrl + F follows rather than calling a fire mission.
+- **Finding and resetting:** search by action or key, reset one action or everything (a second click
+  confirms).
+- **Saved** to `user://keybinds.cfg`, only the keys that differ from the defaults, so a new default reaches
+  anyone who never changed that key.
+- **Hints follow your keys:** the command card, the F1 help, the support buttons, the mode line, tooltips,
+  camera messages and the loading-screen tips.
+- Two optional actions start unbound: a ping key (tap: ping at the cursor; hold: the ping wheel) and a key that
+  steps through your co-commanders' views.
+
 | | |
 |---|---|
 | Camera | WASD / arrows / screen edge pan (Shift: faster), mouse wheel zoom toward the cursor (or + / -), Q/E turn, Page Up / Page Down tilt. Middle-drag turns and tilts; **Alt+middle-drag grabs the map** and pans (Settings swaps the two). **Backspace** squares the view up again, **Ctrl+F** follows the selection, **Ctrl+F5..F8** save a view and **F5..F8** go back to it |
