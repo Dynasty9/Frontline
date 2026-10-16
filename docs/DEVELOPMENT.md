@@ -53,6 +53,7 @@ game/ambush_plan.gd     a deliberate road ambush: rally point, the L, the killin
 game/vehicle_brain.gd   the vehicle crew's behaviour tree: smoke and back out, front armour on, wait for infantry, repairs
 game/map_dims.gd        the map's size, which everything sized to the map derives from
 game/combat.gd          LOS, bullets (penetrating soft cover), suppression, explosions, choosing cover
+game/fires.gd           what burns, catching alight, spreading downwind, burning down (server; drawn by vfx.gd)
 game/cover.gd           fighting positions on everything solid, what each material stops, stances by height
 game/rules.gd           supply network, trucks, cap, placement, capture, prisoners/intel, fog, victory
 game/nav.gd             two AStarGrid2D layers (infantry: vaultable/slow cells; vehicles: smashable cells)
@@ -73,7 +74,7 @@ ui/curtain.gd           the intro and loading screens
 game/bevel_mesh.gd      chamfered boxes (every Res.box thicker than a sheet)
 assets/                 splash.png and backdrop.png (made by a script from the emblem and a topographic map)
 game/fx.gd              tracers, impacts, who is saying what, debris; drives vfx.gd
-game/vfx.gd             GPU particle explosions, smoke, fire, decals, shockwaves (+ their shaders)
+game/vfx.gd             GPU particle explosions, smoke, flames, char, grass fires, decals, shockwaves (+ their shaders)
 game/atmosphere.gd      sky, sun, fog, ground shader, post effects, moods
 game/grass.gd           instanced grass, bushes and stones
 game/mats.gd            procedural surface uber-shader, foliage, camouflage netting
@@ -148,6 +149,9 @@ Pass these after `--` on the command line:
                                                       enemy about: they bound there by teams and clear the houses
 --scenario=breach                                     a fighter cell holed up in a house; two rifle squads and a gun team clear it
 --scenario=gdrill                                     grenade drill: frags with all sorts of fuses land among a squad round its wounded
+--scenario=fire                                       a wood, a hedgerow, crates, cars, a watchtower and a house, some of it alight
+                                                      from the start, a fighter cell dug in among it (fire spread, burns, fleeing)
+FL_DEBUG_FIRE=1 (env)                                 print who the fires burn, and (on a client) what it hears catching or going out
 --mission=bridgehead|beachhead|skyhook|ambush|kingpin  play a mission; on its own it plays itself (the autopilot in missions.gd)
 --mission=KEY --play [--autoplay]                     command the mission's force yourself (--autoplay: the autopilot still gives orders)
 --mission=KEY --seed=N                                the mission on another map (checks it still places itself sensibly)
