@@ -252,7 +252,8 @@ func _ready() -> void:
 	_build_mission_panel()
 	_build_browse_panel()
 	_build_account_panel()
-	var foot := UiKit.label("ALPHA BUILD  \u00b7  GODOT %s  \u00b7  F4 FIELD MANUAL IN BATTLE" % Engine.get_version_info().string.to_upper(), 11, Color(0.75, 0.75, 0.7, 0.45), 600)
+	var build := ("ALPHA V%s" % Updater.version) if Updater.is_release() else "DEV BUILD"
+	var foot := UiKit.label("%s  \u00b7  GODOT %s  \u00b7  F4 FIELD MANUAL IN BATTLE" % [build, Engine.get_version_info().string.to_upper()], 11, Color(0.75, 0.75, 0.7, 0.45), 600)
 	foot.anchor_left = 1.0
 	foot.anchor_right = 1.0
 	foot.anchor_top = 1.0
@@ -269,6 +270,8 @@ func _ready() -> void:
 	multiplayer.connected_to_server.connect(func(): _show_lobby())
 	Online.listing_changed.connect(_refresh)
 	Online.account_changed.connect(_on_account)
+	Updater.changed.connect(_update_notice)
+	_update_notice()
 	_on_account()
 	# a Join or Find Match link from the website: the one we were started with,
 	# and any a second copy hands on while we run
@@ -838,6 +841,68 @@ func _watch_connect(attempt: int, host_name: String) -> void:
 		_mm_next()
 	else:
 		_say("Couldn't get through to %s's router. Try another battle." % host_name, true)
+
+
+# --- a newer release -------------------------------------------------------------------
+
+## The update notice in the corner: a newer release downloading, installed
+## and waiting for a restart, or (where the game can't update itself) a link
+## to the downloads. Playing online needs the same version as everyone else,
+## so it's worth the space.
+func _update_notice() -> void:
+	var old := get_node_or_null("UpdateNotice")
+	if old:
+		old.queue_free()
+	if Updater.state == Updater.State.NONE:
+		return
+	var p := PanelContainer.new()
+	p.name = "UpdateNotice"
+	var bad: bool = Updater.state == Updater.State.FAILED
+	p.add_theme_stylebox_override("panel", UiKit.box(Color(0.035, 0.045, 0.045, 0.92), 4, UiKit.BAD if bad else UiKit.ACCENT, 1, 12.0))
+	p.anchor_left = 1.0
+	p.anchor_right = 1.0
+	p.offset_left = -440
+	p.offset_right = -32
+	p.offset_top = 44
+	add_child(p)
+	var h := HBoxContainer.new()
+	h.add_theme_constant_override("separation", 12)
+	p.add_child(h)
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 1)
+	v.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	h.add_child(v)
+	var head := UiKit.label("", 11, UiKit.BAD if bad else UiKit.ACCENT, 700)
+	v.add_child(head)
+	var line := UiKit.label("", 14, UiKit.TEXT, 600)
+	line.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	v.add_child(line)
+	var website := func(): OS.shell_open(Updater.WEBSITE_URL + "/#download")
+	match Updater.state:
+		Updater.State.AVAILABLE:
+			head.text = "NEW VERSION"
+			line.text = "Frontline v%s is out (you have v%s)." % [Updater.latest, Updater.version]
+			h.add_child(_btn("Download", website))
+		Updater.State.DOWNLOADING:
+			head.text = "UPDATING"
+			# the percentage ticks along while the menu shows it
+			var t := Timer.new()
+			t.wait_time = 0.25
+			t.autostart = true
+			t.timeout.connect(func(): line.text = "Downloading Frontline v%s... %d%%" % [Updater.latest, int(Updater.progress() * 100.0)])
+			p.add_child(t)
+			line.text = "Downloading Frontline v%s..." % Updater.latest
+		Updater.State.READY:
+			head.text = "UPDATE READY"
+			line.text = "Frontline v%s is installed. Restart to play it." % Updater.latest
+			h.add_child(_btn("Restart", func(): Updater.restart()))
+		Updater.State.FAILED:
+			head.text = "UPDATE FAILED"
+			line.text = "Couldn't update to v%s: %s" % [Updater.latest, Updater.error]
+			h.add_child(_btn("Download", website))
+	for b in h.get_children():
+		if b is Button:
+			(b as Button).size_flags_vertical = Control.SIZE_SHRINK_CENTER
 
 
 # --- links from the website -------------------------------------------------------------
