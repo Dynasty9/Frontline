@@ -94,7 +94,7 @@ func _ready() -> void:
 			var pair := kv.split(":")
 			if pair.size() == 2:
 				var cur = Settings.v.get(pair[0])
-				Settings.v[pair[0]] = (pair[1] == "true") if cur is bool else (float(pair[1]) if cur is float else int(pair[1]))
+				Settings.v[pair[0]] = (pair[1] == "true") if cur is bool else (float(pair[1]) if cur is float else (pair[1] if cur is String else int(pair[1])))
 		Settings.apply_global()
 	if args.has("novsync"):
 		Settings.v["vsync"] = false
@@ -843,9 +843,12 @@ func _process(_dt: float) -> void:
 		if world.coop.peers.has(wid):
 			set_meta("coop_watched", true)
 			world.cam.toggle_shadow(wid)
-	# --hud-panel=settings|help|menu|log: open one of the battle's panels (layout checks)
+	# --hud-panel=settings|help|menu|log|over: open one of the battle's panels (layout
+	# checks; "over" is the end of the battle, won by your side)
 	if args.has("hud-panel") and world.hud and world.time > 1.0 and not has_meta("hud_panel"):
 		set_meta("hud_panel", true)
+		if String(args["hud-panel"]) == "over":
+			world.hud.show_game_over(maxi(world.local_team, 0))
 		var hp: Control = {"settings": world.hud.settings_panel, "help": world.hud.help_panel, "menu": world.hud.menu_panel, "log": world.hud.log_panel}.get(String(args["hud-panel"]))
 		if hp:
 			hp.visible = true

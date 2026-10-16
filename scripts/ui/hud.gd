@@ -120,6 +120,9 @@ var alert_label: Label
 var _alert_t := 0.0
 var over_panel: PanelContainer
 var help_panel: PanelContainer
+var veil: TopoBackdrop  # the living map, see-through, behind the menus and the end of the battle
+var _veil_wave := -1.0  # seconds since the battle ended (its wave wakes the map from the middle)
+var _theme_rev := 0
 var menu_panel: PanelContainer
 var settings_panel: SettingsPanel
 var manual: FieldManual
@@ -212,7 +215,7 @@ func _ready() -> void:
 
 	# minimap, bottom-left (sized by the settings: see layout_minimap)
 	minimap_panel = PanelContainer.new()
-	minimap_panel.add_theme_stylebox_override("panel", UiKit.box(UiKit.PANEL, 8, UiKit.LINE, 1, MINIMAP_PAD, 10))
+	minimap_panel.add_theme_stylebox_override("panel", UiKit.frame(Color(-1, 0, 0), MINIMAP_PAD, 0.8))
 	minimap_panel.anchor_top = 1.0
 	minimap_panel.anchor_bottom = 1.0
 	root.add_child(minimap_panel)
@@ -255,6 +258,11 @@ func _ready() -> void:
 	root.add_child(chat_edit)
 	layout_minimap()
 	Settings.changed.connect(layout_minimap)
+	_theme_rev = UiKit.theme_rev
+	Settings.changed.connect(func():
+		if _theme_rev != UiKit.theme_rev:
+			_theme_rev = UiKit.theme_rev
+			_build_help())  # its headings are in the theme's accent
 	root.resized.connect(layout_minimap)  # the window, or the interface scale, changed
 	root.resized.connect(func():
 		var k := MapSymbols.atlas_k_for(Settings.ui_factor())
@@ -325,6 +333,10 @@ func _ready() -> void:
 	log_box.add_theme_font_size_override("normal_font_size", 13)
 	lv.add_child(log_box)
 
+	veil = TopoBackdrop.new()
+	veil.see_through = 0.5
+	veil.visible = false
+	root.add_child(veil)
 	over_panel = _center_panel(Vector2(440, 220))
 	help_panel = _center_panel(Vector2(720, 620))
 	menu_panel = _center_panel(Vector2(320, 300))
@@ -357,7 +369,7 @@ func _ready() -> void:
 
 func _build_observer_bar() -> void:
 	obs_bar = PanelContainer.new()
-	obs_bar.add_theme_stylebox_override("panel", UiKit.box(UiKit.PANEL, 8, UiKit.LINE, 1, 6.0, 10))
+	obs_bar.add_theme_stylebox_override("panel", UiKit.frame(Color(-1, 0, 0), 6.0, 0.6, 8.0))
 	obs_bar.anchor_left = 0.5
 	obs_bar.anchor_right = 0.5
 	obs_bar.grow_horizontal = Control.GROW_DIRECTION_BOTH
@@ -454,7 +466,7 @@ func _small_button(text: String, tip: String, cb: Callable) -> Button:
 
 func _center_panel(sz: Vector2) -> PanelContainer:
 	var p := PanelContainer.new()
-	p.add_theme_stylebox_override("panel", UiKit.box(Color(0.05, 0.06, 0.055, 0.94), 10, UiKit.LINE, 1, 18.0, 18))
+	p.add_theme_stylebox_override("panel", UiKit.frame(Color(-1, 0, 0), 18.0, 1.3, 16.0, 0.95))
 	p.visible = false
 	root.add_child(p)
 	UiKit.fit_center(p, sz)
@@ -497,7 +509,7 @@ func _build_help() -> void:
 	t += "[color=#f5c96e]Win[/color]  Take or destroy every enemy FOB.\n\n"
 	t += "[color=#f5c96e]Observer[/color]  %s director camera, %s switch whose eyes you watch through, %s pause, %s and %s change speed.\n" % [_k("director"), _k("view_side"), _k("pause"), _k("slower"), _k("faster")]
 	t += "[color=#f5c96e]Other[/color]  %s chat (%s team), %s message history, %s hide the interface, %s performance overlay, %s Field Manual, Esc menu & settings." % [_k("chat"), _k("chat_team"), _k("log"), _k("hide_hud"), _k("perf"), _k("manual")]
-	l.text = t
+	l.text = t.replace("#f5c96e", "#" + UiKit.ACCENT.to_html(false))
 	help_panel.add_child(l)
 
 
@@ -783,7 +795,24 @@ func _on_chat(text: String) -> void:
 	_close_chat()
 
 
+## The living map fades in, see-through, under the Esc menu, the help and the
+## settings, and under the end of the battle, where a wave from the middle of
+## the screen wakes it.
+func _update_veil(rdt: float) -> void:
+	var on := menu_panel.visible or help_panel.visible or settings_panel.visible or over_panel.visible
+	veil.modulate.a = move_toward(veil.modulate.a, 1.0 if on else 0.0, rdt * 4.0)
+	veil.visible = veil.modulate.a > 0.0
+	if _veil_wave >= 0.0 and over_panel.visible:
+		_veil_wave += rdt
+		veil.wake_t = _veil_wave - 0.15
+	else:
+		_veil_wave = -1.0
+		veil.wake_t = 1000.0
+
+
 func show_game_over(w: int) -> void:
+	_veil_wave = 0.0
+	veil.wake_at = Vector2(0.5, 0.5)
 	for c in over_panel.get_children():
 		c.queue_free()
 	if not world.mission_info.is_empty():
@@ -898,6 +927,7 @@ func _view_process(dt: float) -> void:
 	_track_orders()
 	_update_support()
 	_update_card()
+	_update_veil(rdt)
 	# the order of battle fits its contents, down to the support buttons at
 	# most, below however many FOB and town lines there are
 	orbat.position.y = maxf(100.0, top.position.y + top.content_h + 8.0) if world.local_team >= 0 else 100.0
@@ -1038,7 +1068,7 @@ func _update_support() -> void:
 ## Observer: every kind of support, free, anywhere - to see the effects.
 func _build_demo_panel() -> void:
 	demo_panel = PanelContainer.new()
-	demo_panel.add_theme_stylebox_override("panel", UiKit.box(UiKit.PANEL, 8, UiKit.LINE, 1, 6.0, 10))
+	demo_panel.add_theme_stylebox_override("panel", UiKit.frame(Color(-1, 0, 0), 6.0, 0.6, 8.0))
 	demo_panel.anchor_left = 0.5
 	demo_panel.anchor_right = 0.5
 	demo_panel.grow_horizontal = Control.GROW_DIRECTION_BOTH
