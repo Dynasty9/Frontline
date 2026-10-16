@@ -46,7 +46,7 @@ var acct_primary: Button
 var acct_secondary: Button
 var rec_panel: PanelContainer  # the service record: career totals and every battle
 var rec_title: Label
-var rec_tiles: HBoxContainer
+var rec_tiles: GridContainer
 var rec_list: VBoxContainer
 var rec_msg: Label
 var rec_more: Button
@@ -279,6 +279,8 @@ func _ready() -> void:
 
 
 func _on_visibility() -> void:
+	if is_visible_in_tree() and acct_card:
+		_card_in.call_deferred()
 	if is_visible_in_tree() and backdrop == null:
 		backdrop = MenuScene.new()
 		get_tree().root.add_child.call_deferred(backdrop)
@@ -1076,7 +1078,7 @@ func _join_listed(l: Dictionary) -> void:
 ## the sign-in form, and the service record.
 func _build_account() -> void:
 	acct_card = PanelContainer.new()
-	acct_card.add_theme_stylebox_override("panel", UiKit.box(Color(0.035, 0.045, 0.045, 0.86), 6, UiKit.LINE, 1, 16.0, 10))
+	UiFx.glass(acct_card, 12.0, 18.0)
 	acct_card.anchor_left = 1.0
 	acct_card.anchor_right = 1.0
 	acct_card.offset_left = -440
@@ -1090,8 +1092,8 @@ func _build_account() -> void:
 	var head := HBoxContainer.new()
 	head.add_theme_constant_override("separation", 10)
 	v.add_child(head)
-	head.add_child(UiKit.label("ACCOUNT", 11, UiKit.ACCENT, 700))
-	acct_badge = UiKit.label("SIGNED IN", 11, UiKit.GOOD, 700)
+	head.add_child(_spaced("ACCOUNT", 11, UiKit.ACCENT, 3))
+	acct_badge = _spaced("SIGNED IN", 11, UiKit.GOOD, 2)
 	head.add_child(acct_badge)
 	acct_name = UiKit.label("", 22, UiKit.TEXT, 700)
 	v.add_child(acct_name)
@@ -1137,6 +1139,12 @@ func _build_account() -> void:
 	_build_record_panel()
 
 
+func _card_in() -> void:
+	await get_tree().process_frame
+	if acct_card.visible:
+		UiFx.slide_in(acct_card, 70.0, 0.5, 0.35)
+
+
 ## The account card (and an update notice) give way to the panels that open
 ## on the right, which reach up into that corner.
 func _side_panels_changed() -> void:
@@ -1149,6 +1157,15 @@ func _side_panels_changed() -> void:
 	var n := get_node_or_null("UpdateNotice")
 	if n:
 		n.visible = not busy
+
+
+func _spaced(text: String, fs: int, col: Color, spacing: int) -> Label:
+	var l := Label.new()
+	l.text = text
+	l.add_theme_font_override("font", UiFx.spaced(700, spacing))
+	l.add_theme_font_size_override("font_size", fs)
+	l.add_theme_color_override("font_color", col)
+	return l
 
 
 func _open_account(create := false) -> void:
@@ -1187,7 +1204,7 @@ func _on_account() -> void:
 ## battles newest first; open one for its after-action report.
 func _build_record_panel() -> void:
 	rec_panel = PanelContainer.new()
-	rec_panel.add_theme_stylebox_override("panel", UiKit.boxc(Color(0.035, 0.045, 0.045, 0.94), 6, UiKit.LINE, 1, 22.0, 10))
+	UiFx.glass(rec_panel, 16.0, 24.0)
 	rec_panel.anchor_top = 0.5
 	rec_panel.anchor_bottom = 0.5
 	rec_panel.offset_left = 640
@@ -1199,13 +1216,15 @@ func _build_record_panel() -> void:
 	var v := VBoxContainer.new()
 	v.add_theme_constant_override("separation", 10)
 	rec_panel.add_child(v)
-	v.add_child(UiKit.label("SERVICE RECORD", 13, UiKit.ACCENT, 700))
-	rec_title = UiKit.label("", 24, UiKit.TEXT, 600)
+	v.add_child(_spaced("SERVICE RECORD", 13, UiKit.ACCENT, 4))
+	rec_title = _spaced("", 26, UiKit.TEXT, 3)
 	v.add_child(rec_title)
-	rec_tiles = HBoxContainer.new()
-	rec_tiles.add_theme_constant_override("separation", 8)
+	rec_tiles = GridContainer.new()
+	rec_tiles.columns = 3
+	rec_tiles.add_theme_constant_override("h_separation", 8)
+	rec_tiles.add_theme_constant_override("v_separation", 8)
 	v.add_child(rec_tiles)
-	v.add_child(UiKit.label("BATTLES", 11, UiKit.DIM, 700))
+	v.add_child(_spaced("BATTLES", 11, UiKit.DIM, 3))
 	var sc := ScrollContainer.new()
 	sc.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	sc.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
@@ -1248,7 +1267,9 @@ func _open_record() -> void:
 		return
 	_close_panels()
 	rec_panel.visible = true
-	rec_title.text = Online.callsign
+	UiFx.slide_in(rec_panel, 40.0, 0.32)
+	Sfx.ui("ui_whoosh", -16.0)
+	rec_title.text = Online.callsign.to_upper()
 	_rec_tiles({})
 	_load_battles(true)
 	var n := _rec_n
@@ -1266,29 +1287,40 @@ func _rec_tiles(c: Dictionary) -> void:
 	var n := int(c.get("battles", 0))
 	var won := int(c.get("victories", 0))
 	var lost := float(c.get("lost", 0))
+	var kills := float(c.get("kills", 0))
+	var rv := float(c.get("rating", 0))
+	# [label, value (-1: none yet), how to write it, a word under it]
 	var tiles := [
-		["BATTLES", str(n) if not c.is_empty() else "-", ""],
-		["WON", ("%d  (%d%%)" % [won, int(round(100.0 * won / n))]) if n > 0 else "-", ""],
-		["KILLS", StatsPanel.fmt_num(float(c.get("kills", 0))) if not c.is_empty() else "-", ""],
-		["K/D", ("%.1f" % (float(c.get("kills", 0)) / maxf(1.0, lost))) if n > 0 else "-", ""],
-		["AVG RATING", ("%d" % int(round(float(c.get("rating", 0))))) if n > 0 else "-", BattleStats.rating_word(float(c.get("rating", 0))) if n > 0 else ""],
-		["TIME IN BATTLE", StatsPanel.fmt_time(float(c.get("seconds", 0))) if n > 0 else "-", ""],
+		["BATTLES", float(n), func(v: float) -> String: return "%d" % int(round(v)), ""],
+		["WON", float(won), func(v: float) -> String: return "%d  (%d%%)" % [int(round(v)), int(round(100.0 * v / maxf(1.0, n)))], ""],
+		["KILLS", kills, func(v: float) -> String: return StatsPanel.fmt_num(v), ""],
+		["K/D", kills / maxf(1.0, lost), func(v: float) -> String: return "%.1f" % v, ""],
+		["AVG RATING", rv, func(v: float) -> String: return "%d" % int(round(v)), BattleStats.rating_word(rv) if n > 0 else ""],
+		["TIME IN BATTLE", float(c.get("seconds", 0)), func(v: float) -> String: return StatsPanel.fmt_time(v), ""],
 	]
-	for t in tiles:
+	for i in tiles.size():
+		var t: Array = tiles[i]
 		var p := PanelContainer.new()
-		p.add_theme_stylebox_override("panel", UiKit.box(Color(1, 1, 1, 0.035), 6, Color(1, 1, 1, 0.06), 1, 10.0))
+		UiFx.glass(p, 7.0, 10.0)
 		p.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		var tv := VBoxContainer.new()
 		tv.add_theme_constant_override("separation", 0)
 		p.add_child(tv)
-		tv.add_child(UiKit.label(String(t[0]), 10, UiKit.DIM, 700))
-		var val := UiKit.label(String(t[1]), 20, UiKit.TEXT, 700)
-		if t[0] == "AVG RATING" and n > 0:
-			val.add_theme_color_override("font_color", StatsPanel.rating_col(float(c.get("rating", 0))))
+		tv.add_child(_spaced(String(t[0]), 9, UiKit.DIM, 2))
+		var val := Label.new()
+		val.add_theme_font_override("font", UiFx.digits(700))
+		val.add_theme_font_size_override("font_size", 24)
+		val.add_theme_color_override("font_color", StatsPanel.rating_col(rv) if t[0] == "AVG RATING" and n > 0 else UiKit.TEXT)
 		tv.add_child(val)
-		if String(t[2]) != "":
-			tv.add_child(UiKit.label(String(t[2]), 11, UiKit.DIM))
+		if c.is_empty() or n == 0:
+			val.text = "-"
+		else:
+			UiFx.count(val, float(t[1]), t[2], 1.0, 0.1 + i * 0.07)
+		if String(t[3]) != "":
+			tv.add_child(_spaced(String(t[3]), 9, StatsPanel.rating_col(rv), 2))
 		rec_tiles.add_child(p)
+		if not c.is_empty():
+			UiFx.slide_in(p, 0.0, 0.3, i * 0.05)
 
 
 func _load_battles(fresh: bool) -> void:
@@ -1309,8 +1341,10 @@ func _load_battles(fresh: bool) -> void:
 		rec_msg.text = String(r.error)
 		return
 	var bs: Array = r.data.get("battles", [])
-	for b in bs:
-		rec_list.add_child(_record_row(b))
+	for i in bs.size():
+		var row := _record_row(bs[i])
+		rec_list.add_child(row)
+		UiFx.slide_in(row, 36.0, 0.34, 0.12 + mini(i, 12) * 0.045)
 	if not bs.is_empty():
 		_rec_before = String(bs.back().get("played_at", ""))
 	rec_more.visible = bool(r.data.get("more", false))
@@ -1325,8 +1359,18 @@ func _load_battles(fresh: bool) -> void:
 ## One battle on the record: how it ended, what it was, when, and how you did.
 func _record_row(b: Dictionary) -> Button:
 	var btn := Button.new()
-	btn.custom_minimum_size = Vector2(0, 58)
+	btn.custom_minimum_size = Vector2(0, 60)
 	btn.focus_mode = Control.FOCUS_NONE
+	var won_it := String(b.get("result", "")) == "victory"
+	var res_col := UiKit.GOOD if won_it else UiKit.BAD
+	for st in ["normal", "hover", "pressed", "hover_pressed"]:
+		btn.add_theme_stylebox_override(st, StyleBoxEmpty.new())
+	btn.draw.connect(func():
+		var hot := 1.0 if btn.is_hovered() else 0.0
+		UiFx.card(btn, Rect2(Vector2.ZERO, btn.size), 1.0, hot, UiFx.fade(res_col, 0.35) if hot > 0.0 else Color(1, 1, 1, 0.07))
+		btn.draw_rect(Rect2(btn.size.x - 4.0, 8.0, 3.0, btn.size.y - 16.0), UiFx.fade(res_col, 0.7)))
+	btn.mouse_entered.connect(btn.queue_redraw)
+	btn.mouse_exited.connect(btn.queue_redraw)
 	btn.tooltip_text = "Open the after-action report"
 	var h := HBoxContainer.new()
 	h.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)

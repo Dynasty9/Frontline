@@ -126,6 +126,7 @@ var _stats_pinned := false  # opened from the menu (stays until closed), not jus
 var account_panel: AccountPanel  # signing in at the end of a battle, to keep it on the record
 var _rec_note: Label  # the end screen: whether this battle went on the service record
 var _rec_btn: Button
+var _over_row: HBoxContainer  # the report's footer: its note and buttons come in last
 var _stats_t := 0.0
 var support_box: VBoxContainer
 var _support_btns := {}  # kind -> Button
@@ -762,18 +763,16 @@ func show_game_over(w: int) -> void:
 	close_stats()
 	for c in over_panel.get_children():
 		c.queue_free()
-	# the battlefield dims behind the report
-	if not root.has_node("OverDim"):
-		var dim := ColorRect.new()
-		dim.name = "OverDim"
-		dim.color = Color(0.0, 0.01, 0.01, 0.55)
-		dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-		dim.mouse_filter = Control.MOUSE_FILTER_STOP
-		root.add_child(dim)
-		root.move_child(dim, over_panel.get_index())
 	UiKit.fit_center(over_panel, Vector2(1180, 840), 30.0)
+	# the report sits on the same glass as the statistics
+	var glass := StyleBoxEmpty.new()
+	glass.set_content_margin_all(26.0)
+	glass.content_margin_top = 22.0
+	over_panel.add_theme_stylebox_override("panel", glass)
+	if not over_panel.draw.is_connected(_draw_over):
+		over_panel.draw.connect(_draw_over)
 	var vb := VBoxContainer.new()
-	vb.add_theme_constant_override("separation", 12)
+	vb.add_theme_constant_override("separation", 10)
 	over_panel.add_child(vb)
 	var head := HBoxContainer.new()
 	head.add_theme_constant_override("separation", 16)
@@ -786,8 +785,8 @@ func show_game_over(w: int) -> void:
 	if not world.mission_info.is_empty():
 		facts = _mission_head(hv)
 	else:
-		hv.add_child(UiKit.label("AFTER-ACTION REPORT", 12, UiKit.ACCENT, 700))
-		var t := UiKit.label("", 34, UiKit.TEXT, 700)
+		hv.add_child(_spaced_label("AFTER-ACTION REPORT", 12, UiKit.ACCENT, 4))
+		var t := _spaced_label("", 34, UiKit.TEXT, 6)
 		if world.local_team < 0:
 			t.text = "%s WIN" % Defs.TEAM_NAMES[w].to_upper()
 			t.add_theme_color_override("font_color", Defs.TEAM_COLORS[w].lightened(0.3))
@@ -821,26 +820,119 @@ func show_game_over(w: int) -> void:
 	_rec_note.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	_rec_note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	row.add_child(_rec_note)
-	_rec_btn = Button.new()
-	_rec_btn.text = "Sign in"
-	_rec_btn.custom_minimum_size = Vector2(120, 40)
-	_rec_btn.pressed.connect(_sign_in_for_record)
+	_rec_btn = _cta("Sign in", false, _sign_in_for_record)
+	_rec_btn.custom_minimum_size = Vector2(130, 42)
 	row.add_child(_rec_btn)
 	if not Online.record_changed.is_connected(_update_record_note):
 		Online.record_changed.connect(_update_record_note)
 	_update_record_note()
 	if not world.mission_info.is_empty() and multiplayer.is_server():
-		var again := Button.new()
-		again.text = "Play Again" if int(world.mission_info.get("over", 0)) == 1 else "Try Again"
-		again.custom_minimum_size = Vector2(170, 40)
-		again.pressed.connect(func(): over_panel.visible = false; Net.start_game())
-		row.add_child(again)
+		row.add_child(_cta("Play Again" if int(world.mission_info.get("over", 0)) == 1 else "Try Again", false, func(): over_panel.visible = false; Net.start_game()))
+	row.add_child(_cta("Return to Menu", true, _leave))
+	_over_row = row
+	_end_sequence(w)
+
+
+## The report's buttons: spaced capitals on cut-cornered glass; the one to
+## press next in the accent.
+func _cta(text: String, primary: bool, cb: Callable) -> Button:
 	var b := Button.new()
-	b.text = "Return to Menu"
-	b.custom_minimum_size = Vector2(170, 40)
-	b.pressed.connect(_leave)
-	row.add_child(b)
+	b.text = text.to_upper()
+	b.custom_minimum_size = Vector2(190, 42)
+	b.focus_mode = Control.FOCUS_NONE
+	b.add_theme_font_override("font", UiFx.spaced(700, 2))
+	b.add_theme_font_size_override("font_size", 13)
+	for st in ["normal", "hover", "pressed", "hover_pressed", "disabled"]:
+		b.add_theme_stylebox_override(st, StyleBoxEmpty.new())
+	var ink := Color(0.08, 0.07, 0.05) if primary else UiKit.TEXT
+	b.add_theme_color_override("font_color", ink)
+	b.add_theme_color_override("font_hover_color", ink if primary else UiKit.ACCENT)
+	b.add_theme_color_override("font_pressed_color", ink)
+	b.draw.connect(func():
+		var r := Rect2(Vector2.ZERO, b.size)
+		var hot := b.is_hovered()
+		var pts := UiFx.chamfer(r, 8.0)
+		if primary:
+			b.draw_colored_polygon(pts, UiKit.ACCENT.lightened(0.12) if hot else UiFx.fade(UiKit.ACCENT, 0.9))
+		else:
+			b.draw_colored_polygon(pts, Color(1, 1, 1, 0.07 if hot else 0.03))
+			var e := pts.duplicate()
+			e.append(pts[0])
+			b.draw_polyline(e, UiKit.ACCENT if hot else Color(1, 1, 1, 0.2), 1.0, true))
+	b.mouse_entered.connect(func(): b.queue_redraw(); Sfx.ui("ui_tick", -26.0, 1.4))
+	b.mouse_exited.connect(b.queue_redraw)
+	b.pressed.connect(func(): Sfx.ui("click"); cb.call())
+	return b
+
+
+func _spaced_label(text: String, fs: int, col: Color, spacing: int) -> Label:
+	var l := Label.new()
+	l.text = text
+	l.add_theme_font_override("font", UiFx.spaced(700, spacing))
+	l.add_theme_font_size_override("font_size", fs)
+	l.add_theme_color_override("font_color", col)
+	return l
+
+
+func _draw_over() -> void:
+	UiFx.panel(over_panel, Rect2(Vector2.ZERO, over_panel.size), 1.0, 20.0)
+	over_panel.draw_rect(Rect2(26.0, 0.0, over_panel.size.x * 0.34, 2.0), UiKit.ACCENT)
+	over_panel.draw_rect(Rect2(26.0, 2.0, over_panel.size.x * 0.34, 10.0), UiFx.fade(UiKit.ACCENT, 0.06))
+
+
+## The end of the battle as a moment: the battlefield greys out behind a
+## banner with the result (and the player's rating filling its bar), then the
+## after-action report rises into its place (EndBanner).
+func _end_sequence(w: int) -> void:
+	var won := world.local_team < 0 or w == world.local_team
+	var ban := EndBanner.new()
+	ban.world = world
+	if not world.mission_info.is_empty():
+		var ok := int(world.mission_info.get("over", 0)) == 1
+		won = ok
+		ban.headline = "MISSION ACCOMPLISHED" if ok else "MISSION FAILED"
+		ban.sub = String(world.mission_info.get("op", ""))
+	elif world.local_team < 0:
+		ban.headline = "%s WIN" % String(Defs.TEAM_NAMES[w]).to_upper()
+		ban.sub = "Battle lasted %s" % StatsPanel.fmt_time(world.time)
+	else:
+		ban.headline = "VICTORY" if won else "DEFEAT"
+		ban.sub = "%s have taken the battlefield" % Defs.TEAM_NAMES[w]
+	ban.won = won
+	ban.accent = (Defs.TEAM_COLORS[w] as Color).lightened(0.25) if world.local_team < 0 and world.mission_info.is_empty() else (UiKit.GOOD if won else UiKit.BAD)
+	# the player's own rating, if they fought
+	var r: Dictionary = world.report
+	if world.local_team >= 0 and not r.is_empty():
+		for c in r.get("players", []):
+			if int(c.id) == world.local_peer:
+				var rv := BattleStats.rating(c, (r.sides as Array)[world.local_team])
+				ban.rating = rv
+				ban.rating_word = BattleStats.rating_word(rv)
+	var old := root.get_node_or_null("OverGrade")
+	if old:
+		old.queue_free()
+	var grade := EndBanner.make_grade(won)
+	root.add_child(grade)
+	root.move_child(grade, over_panel.get_index())
+	ban.grade = grade
+	root.add_child(ban)
+	over_panel.visible = false
+	ban.finished.connect(_reveal_report)
+
+
+## The report rises into place under where the banner was.
+func _reveal_report() -> void:
 	over_panel.visible = true
+	over_panel.modulate.a = 0.0
+	var y := over_panel.position.y
+	over_panel.position.y = y + 56.0
+	var tw := create_tween().set_parallel(true).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	tw.set_ignore_time_scale(true)
+	tw.tween_property(over_panel, "modulate:a", 1.0, 0.35)
+	tw.tween_property(over_panel, "position:y", y, 0.55)
+	Sfx.ui("ui_whoosh", -12.0, 0.85)
+	if _over_row and is_instance_valid(_over_row):
+		UiFx.slide_in(_over_row, 0.0, 0.4, 1.1)
 
 
 ## Under the after-action report: whether this battle went on the player's
@@ -882,8 +974,8 @@ func _mission_head(vb: VBoxContainer) -> String:
 	var info: Dictionary = world.mission_info
 	var ok := int(info.get("over", 0)) == 1
 	Music.sting("victory" if ok else "defeat")
-	vb.add_child(UiKit.label(String(info.get("op", "")).to_upper(), 12, UiKit.ACCENT, 700))
-	vb.add_child(UiKit.label("MISSION ACCOMPLISHED" if ok else "MISSION FAILED", 32, UiKit.GOOD if ok else UiKit.BAD, 700))
+	vb.add_child(_spaced_label(String(info.get("op", "")).to_upper(), 12, UiKit.ACCENT, 4))
+	vb.add_child(_spaced_label("MISSION ACCOMPLISHED" if ok else "MISSION FAILED", 30, UiKit.GOOD if ok else UiKit.BAD, 5))
 	var s := UiKit.label(String(info.get("end", "")), 14, UiKit.TEXT)
 	s.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	s.custom_minimum_size = Vector2(420, 0)
@@ -918,12 +1010,12 @@ func peek_stats(on: bool) -> void:
 	if on:
 		_show_stats("")
 	else:
-		stats_panel.visible = false
+		stats_panel.pop_out()
 
 
 func close_stats() -> void:
 	_stats_pinned = false
-	stats_panel.visible = false
+	stats_panel.pop_out()
 
 
 func _show_stats(tab: String) -> void:
@@ -931,7 +1023,9 @@ func _show_stats(tab: String) -> void:
 	if tab != "":
 		stats_panel.show_tab(tab)
 	stats_panel.set_report(world.report)
-	stats_panel.visible = true
+	stats_panel.pop_in()
+	if _stats_pinned:
+		Sfx.ui("ui_whoosh", -16.0)
 	_stats_t = 0.0
 	world.request_report()
 

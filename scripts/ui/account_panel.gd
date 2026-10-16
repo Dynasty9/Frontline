@@ -19,13 +19,21 @@ var _busy := false
 
 
 func _ready() -> void:
-	add_theme_stylebox_override("panel", UiKit.boxc(Color(0.035, 0.045, 0.045, 0.97), 6, UiKit.LINE, 1, 22.0, 10))
+	UiFx.glass(self, 16.0, 24.0)
 	visible = false
 	var v := VBoxContainer.new()
 	v.add_theme_constant_override("separation", 10)
 	add_child(v)
-	v.add_child(UiKit.label("ACCOUNT", 13, UiKit.ACCENT, 700))
-	_title = UiKit.label("Sign in", 24, UiKit.TEXT, 600)
+	var head := Label.new()
+	head.text = "ACCOUNT"
+	head.add_theme_font_override("font", UiFx.spaced(700, 4))
+	head.add_theme_font_size_override("font_size", 12)
+	head.add_theme_color_override("font_color", UiKit.ACCENT)
+	v.add_child(head)
+	_title = Label.new()
+	_title.add_theme_font_override("font", UiFx.spaced(700, 3))
+	_title.add_theme_font_size_override("font_size", 24)
+	_title.add_theme_color_override("font_color", UiKit.TEXT)
 	v.add_child(_title)
 	var blurb := UiKit.label("You don't need an account to play. One keeps your callsign yours (no one else can register it, and battles you host show a tick) and keeps a service record of every battle you fight: your rating, kills and losses, and each battle's after-action report.", 13, UiKit.DIM)
 	blurb.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -74,6 +82,8 @@ func _button(text: String, cb: Callable) -> Button:
 ## suggest). Says up front if this matchmaker has no accounts, or can't be reached.
 func open(create := false, suggest := "") -> void:
 	visible = true
+	UiFx.pop(self)
+	Sfx.ui("ui_whoosh", -18.0, 1.15)
 	msg.text = ""
 	_busy = false
 	if callsign.text == "" and suggest != "Commander":
@@ -92,7 +102,7 @@ func open(create := false, suggest := "") -> void:
 
 func _set_mode(create: bool) -> void:
 	_create = create
-	_title.text = "Create an account" if create else "Sign in"
+	_title.text = "CREATE AN ACCOUNT" if create else "SIGN IN"
 	_go.text = "Create account" if create else "Sign in"
 	_switch.text = "I already have an account" if create else "New here? Create an account"
 	callsign.visible = create

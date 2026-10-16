@@ -436,6 +436,14 @@ function and an autopilot function.
   - **Units**: every squad and vehicle, with its commander, kills, losses, strength, time in action and fate.
   - **Timeline**: men in the field, vehicles, enemy killed and supply in hand over the battle, with FOBs built,
     taken and wrecked, vehicles lost and fire missions marked along the bottom; hover for the figures at any moment.
+- **How it moves** (`ui_fx.gd`, `end_banner.gd`). The end of a battle is a moment: the battlefield drains of colour
+  and goes soft (red for a defeat), the camera eases back, a band opens across the screen and VICTORY or DEFEAT
+  slams into it with a hit and a glint, your rating fills its bar and its word lands, then the report rises into
+  place (click to skip). Every tab comes in row by row on cut-cornered glass: numbers count up with a tick, the
+  head-to-head bars open out from the middle, rating dials and bars fill, honours land one at a time as medals
+  with a sweep of light, and the timeline's lines draw themselves across. The sounds are synthesised like the
+  rest: a whoosh, the ticks, the impact, the medal chime. The menu's account card, Service Record and sign-in
+  share the look.
 - A selected squad shows each man's watch sector as a faint wedge on the ground, so you can see its all-round
   cover and any gap. An attack that goes firm against a stronger enemy raises an alert with its grid reference
   so you can send fires or reinforcements.

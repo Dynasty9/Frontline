@@ -850,11 +850,12 @@ func _process(_dt: float) -> void:
 		set_meta("report_asked", true)
 		world.request_report()
 	# --end-at=SECONDS: call the battle there (for the side ahead on what it has
-	# destroyed); --stats-tab=summary|commanders|units|timeline opens the
+	# destroyed), back at normal speed; --stats-tab=summary|commanders|units|timeline opens the
 	# battle statistics a second before the screenshot (after-action report tests)
 	if args.has("end-at") and world.srv and world.winner < 0 and world.time >= float(args["end-at"]):
 		var sd: Array = world.battle.sides
 		world.declare_winner(0 if float(sd[0].val_killed) >= float(sd[1].val_killed) else 1)
+		Engine.time_scale = 1.0  # the end screens run in real time: shoot them at a real pace
 	if args.has("stats-tab") and world.hud and world.winner < 0 and not has_meta("stats_open") and world.time > float(args.get("shot-at", 8.0)) - 1.0:
 		set_meta("stats_open", true)
 		world.hud.open_stats(String(args["stats-tab"]))

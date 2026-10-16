@@ -132,7 +132,8 @@ Pass these after `--` on the command line:
 --quit-on-win                                         stop and print the winner when the game ends
                                                       (with --stats, or at --quit-after: a REPORT line per commander
                                                       and side from the after-action record, battle_stats.gd)
---end-at=SECONDS                                      call the battle at that time, for the side ahead (report tests)
+--end-at=SECONDS                                      call the battle at that time, for the side ahead, and drop back
+                                                      to normal speed so the end sequence plays in real time (report tests)
 --stats-tab=summary|commanders|units|timeline|all     open the battle statistics a second before --shot-at (after the
                                                       end: that tab of the after-action report); "all" moves to the
                                                       next tab after each of --shots
