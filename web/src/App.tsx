@@ -7,6 +7,7 @@ import { Features } from "@/components/features"
 import { Finale } from "@/components/finale"
 import { Gallery } from "@/components/gallery"
 import { Hero } from "@/components/hero"
+import { InsigniaSection } from "@/components/insignia"
 import { TickerBands } from "@/components/marquee"
 import { Missions } from "@/components/missions"
 import { ReelDialog } from "@/components/reel-dialog"
@@ -37,7 +38,7 @@ export default function App() {
 
   return (
     <TooltipProvider delayDuration={150}>
-      <SiteHeader overlay />
+      <SiteHeader overlay accounts={health.data?.accounts} />
       {/* things slide in from the sides as they reveal: never let them widen the page */}
       <main className="overflow-x-clip">
         <Hero
@@ -60,6 +61,7 @@ export default function App() {
           invite={invite}
           onDismissInvite={dismissInvite}
         />
+        <InsigniaSection accounts={health.data?.accounts} />
         <WhatsNew />
         <Downloads platform={platform} />
         <Gallery />

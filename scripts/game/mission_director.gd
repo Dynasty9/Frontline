@@ -462,6 +462,17 @@ func player_joined(id: int) -> void:
 		_hand_over(big, id, 2)
 
 
+## A player back in the mission (the World has handed back whatever of their
+## units still fight). If everyone had gone, the AI's whole force is theirs
+## again; if nothing of theirs is left, they take a share like a newcomer.
+func player_rejoined(id: int, got_back: bool) -> void:
+	if ai_owner(side) in owners or not got_back:
+		player_joined(id)
+	elif not id in owners:
+		owners.append(id)
+	dirty = true
+
+
 ## Moves units from one owner to another: all of them (every = 1) or every other one (2).
 func _hand_over(from: int, to: int, every: int) -> void:
 	var i := 0

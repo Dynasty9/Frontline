@@ -113,6 +113,27 @@ they're doing). The observer bar at the top has pause, speed (0.25x to 4x), dire
   battle newest first; open one for its after-action report. A battle fought signed out or offline waits in
   `user://pending_battles.json` (the last ten) and goes up at the next sign-in. The figures are your own game's
   account of the battle, so the record is only ever shown to you.
+- **Ranks and insignia** (`ui/insignia.gd`, `ui/insignia_art.gd`, `matchmaker/src/ranks.js`). Signed in, every
+  battle you fight earns XP, and you climb 50 ranks from Recruit to General of the Army (Private I-V, Corporal,
+  Sergeant, Staff Sergeant, Master Sergeant, Lieutenant, Captain, Major and Colonel I-V, then the five grades of
+  general). Each rank takes 20 XP more than the last: 150 for the first, 32,000 in all.
+  - **XP.** A point for every six seconds of battle, up to 45 minutes; a win is worth half as much again, leaving
+    before the end half as much. A battle under two minutes earns nothing. Watching a battle (or a test
+    scenario) doesn't count. There's no game server to referee (players host), so each game reports its own
+    battle, but the matchmaker times it on its own clock, from the battle getting under way to its end: a
+    modified game can't claim more time than really passed. Players can't write their XP to the database
+    directly; it changes only through functions that act on the caller's own row (`supabase/migrations/`).
+  - **Insignia.** 160 of them, all drawn as SVG by the game from short descriptions: ten starter patches every
+    account has (the branches: infantry, armour, artillery...), a patch for each rank (subdued training patches
+    at the bottom, lettered company patches, tabbed patches, special forces arrowheads, then bullion and the
+    generals' stars at the top), and 100 shown but locked for now: medals, badges and ribbon racks, and company
+    and squadron patches in the style of the Vietnam war and of the battlefield's own units. They're original
+    designs in the style of real ones, not copies.
+  - **Where you see them.** Your insignia sits on the account card at the top right of the main menu, with your
+    rank and how far through it you are; click it for the collection, where the unlocked can be worn and the
+    locked say what unlocks them. The after-action report's header says what the battle earned, and a promotion
+    shows the new patch. In the lobby each signed-in player's insignia is beside their name, and on the website beside the host of a listed battle. The
+    website has the same collection, and picking one there is picking it in the game: it's kept on the account.
 - **Error reports.** When something goes wrong in a release build (an engine error, a shader the graphics driver
   rejects, a crash), the game tells the matchmaker what failed and where in its code, with the GDScript calls that
   led there, so the developers hear about it without anyone writing in (`autoload/errors.gd`). A crash is sent by the
@@ -122,6 +143,23 @@ they're doing). The observer bar at the top has pause, speed (0.25x to 4x), dire
 - **Co-op:** everyone on the battle's side, and the AI takes the other. **Versus:** players pick sides ("The AI
   takes a side nobody plays" fills an empty one). "AI commands alongside players" gives either an AI teammate.
 - If a player leaves, a teammate inherits their squads, or the AI takes over if nobody is left on that side.
+- **Rejoining** (`net.gd`, `World._on_player_rejoined`): a player who drops out (a lost connection, a crash, Leave
+  Battle) can come back for the rest of the battle, even one closed to drop-ins, full or behind a password (they were
+  let in before, so it isn't asked again). Each copy of the game makes itself a
+  random token and registers with it; the host keeps a departed player's place by token (side, colour) and the
+  squads and vehicles they commanded, and hands back whatever is still fighting from whoever held it. Units they had
+  queued that came out while they were away go to the stand-in and back to them too. An AI that only stood in for a
+  side left without commanders steps down and hands over everything it held; an AI ally the lobby asked for stays.
+  In a mission they get their share back (or, if it's all gone, a share like a newcomer). Their after-action record
+  (`BattleStats.rejoined`) carries on under their new peer id, and a player back after the end gets the report and
+  the end screen. The host never passes the token on, so nobody else can claim a player's place.
+  - **The client remembers the battle** in `user://rejoin.cfg` (address and port, the matchmaker listing, the host's
+    name, the token), kept fresh while playing, so after a lost connection or a restart the main menu shows a
+    "Battle in progress" card with **Rejoin** (and Forget) for two hours. Rejoin goes through the matchmaker again if
+    the battle was listed (its router may need punching afresh), else, or if it's gone from the list, to the address
+    it had. The record is dropped when the battle is decided, when nobody answers, or when the host is back in a lobby.
+  - **A crash**: the host can't tell a dead link from a quiet one for 45-90 s (the long ENet timeouts), so when the
+    same token connects again it lets the old link go at once and the new one takes the place.
 - **Co-commanders** (`co_command.gd`, `ui/hud_coop.gd`, `ui/hud_coop_roster.gd`): you see what the other
   commanders on your side are doing, as they do it, the way officers in one command post see each other's
   map markings and hear what each is calling for.
