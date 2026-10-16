@@ -88,6 +88,10 @@ func _setup_buses() -> void:
 		AudioServer.add_bus(i)
 		AudioServer.set_bus_name(i, b)
 		AudioServer.set_bus_send(i, &"Master")
+	# a limiter last on the master: a dozen shells landing at once get as loud
+	# as the speakers go, not clipped into crackle
+	if AudioServer.get_bus_effect_count(0) == 0:
+		AudioServer.add_bus_effect(0, AudioEffectHardLimiter.new())
 
 
 ## --sound-dump=DIR: write every synthesised sound to DIR as a WAV and quit
@@ -428,34 +432,35 @@ func _normalize(s: PackedFloat32Array, rms_db: float) -> PackedFloat32Array:
 	return s
 
 
-## A fire close to: the low, breathing roar of the flames under a run of
-## crackles and the odd sharp pop of sap or a round cooking off.
+## A fire close to: the breathing roar of the flames under a run of crackles
+## and the odd sharp pop of sap or a round cooking off. The roar sits between
+## ~150 and ~500 Hz: below that, noise that swells reads as surf, like the old
+## wind did. Its breathing repeats twice and five times a loop, so it's seamless.
 func _fire_loop() -> AudioStreamWAV:
 	var n := int(4.0 * RATE)
+	var fade := int(0.3 * RATE)
 	var s := PackedFloat32Array()
-	s.resize(n)
-	var lp := 0.0
-	var lp2 := 0.0
+	s.resize(n + fade)
+	var a := 0.0
+	var b := 0.0
+	var hp := 0.0
 	var ck := 0.0
 	var ck_lp := 0.0
-	for i in n:
+	for i in n + fade:
 		var t := float(i) / RATE
 		var w := randf() * 2.0 - 1.0
-		lp += (w - lp) * 0.03
-		lp2 += (lp - lp2) * 0.25
-		var roar := lp2 * 2.2 * (0.7 + 0.18 * sin(t * TAU * 0.5) + 0.12 * sin(t * TAU * 1.25 + 1.0))
+		a += (w - a) * 0.12
+		b += (a - b) * 0.12
+		hp += (b - hp) * 0.04
+		var roar := (b - hp) * (0.7 + 0.18 * sin(t * TAU * 0.5) + 0.12 * sin(t * TAU * 1.25 + 1.0))
 		if randf() < 0.0016:
 			ck = randf_range(0.25, 0.8)
 		elif randf() < 0.00006:
 			ck = 1.0
 		ck *= 0.988
 		ck_lp += (randf() * 2.0 - 1.0 - ck_lp) * 0.55
-		s[i] = roar * 0.55 + ck_lp * ck * 0.5
-	var fade := int(0.3 * RATE)
-	for i in fade:
-		var k := float(i) / fade
-		s[i] = s[i] * k + s[n - fade + i] * (1.0 - k)
-	return _wav(s.slice(0, n - fade), true)
+		s[i] = roar * 0.65 + ck_lp * ck * 0.5
+	return _wav(_seamless(s, fade), true)
 
 
 ## Thunder: a crack followed by a long rolling rumble.
