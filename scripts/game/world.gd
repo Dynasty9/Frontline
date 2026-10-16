@@ -5,6 +5,7 @@ extends Node3D
 ## (/root/Main/World) is identical on every peer so RPCs line up.
 
 signal game_ended(winner: int)
+signal report_updated
 
 var settings: Dictionary = {}
 var srv := false
@@ -44,6 +45,8 @@ var coop: CoCommand  # what the other commanders on our side are doing (every pe
 var squads := {}
 var next_sid := 1
 var commanders: Array = []
+var battle: BattleStats = null  # (server) the record the after-action report is made from
+var report: Dictionary = {}  # the latest after-action report this peer may see (BattleStats.report)
 var mission: MissionDirector = null  # (server) the mission being played, if it is one
 var mission_info: Dictionary = {}  # the mission's state as the HUD shows it (every peer)
 var mission_rx_t := 0.0  # world time mission_info arrived (its clocks run on from there)
@@ -107,6 +110,7 @@ func _ready() -> void:
 		nav.terrain = terrain
 		combat = Combat.new(self)
 		rules = Rules.new(self)
+		battle = BattleStats.new(self)
 		fires = Fires.new(self)
 		if String(settings.get("scenario", "")) != "":
 			MapGen.new(self).scenario(String(settings.scenario))
@@ -210,6 +214,8 @@ func spawn(kind: String, props: Dictionary) -> Entity:
 	_register(e)
 	add_child(e)
 	e.on_spawned()
+	if e is Vehicle and battle:
+		battle.vehicle_fielded(e)
 	if e is Structure:
 		_shash_add(e)
 		terrain.structure_changed(e, true)
@@ -505,6 +511,7 @@ func _physics_process(dt: float) -> void:
 		sq.tick(dt)
 	tp = _p("squads", tp)
 	rules.tick(dt)
+	battle.tick(dt)
 	tp = _p("rules + fog", tp)
 	for c in commanders:
 		c.tick(dt)
@@ -888,6 +895,7 @@ func set_decor(d: Array, r: Rect2) -> void:
 func _rpc_over(w: int) -> void:
 	winner = w
 	game_ended.emit(w)
+	_record()
 	if hud:
 		hud.show_game_over(w)
 
@@ -969,11 +977,47 @@ func declare_winner(t: int) -> void:
 		send_msg(-1, "system", ("Mission accomplished. " if mission.over == 1 else "Mission failed. ") + mission.end_text)
 	else:
 		send_msg(-1, "system", "%s win the battle!" % Defs.TEAM_NAMES[t])
+	# everyone gets the whole after-action report, then the end
+	report = battle.report(-1)
+	for p in ready_peers:
+		rpc_id(p, "_rpc_report", report)
 	game_ended.emit(t)
+	_record()
 	if hud:
 		hud.show_game_over(t)
 	for p in ready_peers:
 		rpc_id(p, "_rpc_over", t)
+
+
+## The battle goes on this player's service record (if they keep one; nothing
+## for an observer).
+func _record() -> void:
+	Online.record_battle(BattleStats.service_record(self))
+
+
+## Asks the host for the after-action report as it stands (it answers with
+## _rpc_report and report_updated fires).
+func request_report() -> void:
+	if srv:
+		report = battle.report(local_team)
+		report_updated.emit()
+	else:
+		_rpc_report_req.rpc_id(1)
+
+
+@rpc("any_peer", "call_remote", "reliable")
+func _rpc_report_req() -> void:
+	if not srv:
+		return
+	var p := multiplayer.get_remote_sender_id()
+	if p in ready_peers:
+		rpc_id(p, "_rpc_report", battle.report(team_of_peer(p)))
+
+
+@rpc("authority", "call_remote", "reliable")
+func _rpc_report(d: Dictionary) -> void:
+	report = d
+	report_updated.emit()
 
 
 # --- spatial queries ------------------------------------------------------------------
@@ -1127,11 +1171,15 @@ func new_squad(team: int, owner: int, kind: String) -> Squad:
 	sq.owner = owner
 	sq.kind = kind
 	squads[sq.sid] = sq
+	if battle:
+		battle.squad_formed(sq)
 	return sq
 
 
 func remove_squad(sq: Squad) -> void:
 	squads.erase(sq.sid)
+	if battle:
+		battle.squad_gone(sq)
 
 
 var recent_impacts: Array = []  # [pos, time] of shells and bombs, the last 40 s
@@ -1406,6 +1454,7 @@ func _centroid(sqs: Array, vehs: Array) -> Vector3:
 
 
 func _on_player_joined(id: int, team: int, pname: String) -> void:
+	battle.joined(id, team)
 	if mission:
 		if team == mission.side:
 			mission.player_joined(id)

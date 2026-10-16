@@ -335,6 +335,8 @@ func apply_lighting() -> void:
 	smoke_mat.set_shader_parameter("amb_energy", float(at.MOODS[at.mood].ambient) * (0.6 if night else 1.1))
 	ejecta_mat.set_shader_parameter("light", sc * at.sun.light_energy * 0.45 + amb * float(at.MOODS[at.mood].ambient) * 0.7)
 	fire_light = 2.6 if night else (1.5 if at.mood in ["dusk", "dawn", "rain", "overcast"] else 0.8)
+	if world.fx and world.fx.gunfx:
+		world.fx.gunfx.copy_lighting()
 
 
 func _desat(c: Color, k: float) -> Color:

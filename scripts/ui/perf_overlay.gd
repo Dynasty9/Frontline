@@ -27,7 +27,8 @@ func _ready() -> void:
 
 
 func _input(ev: InputEvent) -> void:
-	if ev is InputEventKey and ev.pressed and not ev.echo and ev.keycode == KEY_F3:
+	# (F3 unless rebound; anywhere, the menus included)
+	if ev is InputEventKey and ev.pressed and not ev.echo and not Keys.capturing and Keys.is_event(ev, "perf"):
 		Settings.set_v("perf", (int(Settings.get_v("perf")) + 1) % 4)
 
 

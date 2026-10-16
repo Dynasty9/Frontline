@@ -10,6 +10,28 @@ The long version: how each system works and why. For the short version, see the 
 
 ## Full controls reference
 
+These are the default keys. **Settings → Controls** (`scripts/autoload/keys.gd`, `scripts/ui/controls_page.gd`)
+changes any of them:
+
+- **By category:** camera, saved views, orders, abilities and fire support, building, control groups,
+  co-commanders, interface, observer, with the mouse's own controls listed at the end for reference.
+- **Two keys per action.** A key can be a combination with Ctrl, Shift or Alt, a modifier on its own (Pan
+  faster is Shift), or a mouse side button.
+- **Rebinding:** click a key and press the new one. Esc cancels, right-click clears.
+- **Clashes.** A key another action already has is moved off it, with a line saying so and an Undo. Keys only
+  clash where both could be live at once: the turn-the-building key while placing doesn't clash with retreat,
+  and observer keys don't clash with orders.
+- **Matching.** The closest match wins: an exact combination first, then a key with extra modifiers held, so
+  Shift + R still retreats while Ctrl + F follows rather than calling a fire mission.
+- **Finding and resetting:** search by action or key, reset one action or everything (a second click
+  confirms).
+- **Saved** to `user://keybinds.cfg`, only the keys that differ from the defaults, so a new default reaches
+  anyone who never changed that key.
+- **Hints follow your keys:** the command card, the F1 help, the support buttons, the mode line, tooltips,
+  camera messages and the loading-screen tips.
+- Two optional actions start unbound: a ping key (tap: ping at the cursor; hold: the ping wheel) and a key that
+  steps through your co-commanders' views.
+
 | | |
 |---|---|
 | Camera | WASD / arrows / screen edge pan (Shift: faster), mouse wheel zoom toward the cursor (or + / -), Q/E turn, Page Up / Page Down tilt. Middle-drag turns and tilts; **Alt+middle-drag grabs the map** and pans (Settings swaps the two). **Backspace** squares the view up again, **Ctrl+F** follows the selection, **Ctrl+F5..F8** save a view and **F5..F8** go back to it |
@@ -25,7 +47,7 @@ The long version: how each system works and why. For the short version, see the 
 | Defenses | Emplacements are crewed by any idle soldier standing next to them. Right-click a bunker with a squad to garrison it. Select a mortar pit for HE / smoke fire missions |
 | Support | The buttons above the minimap (Z arms the first one ready): click the target, **drag** to set the run-in direction for gun runs and bombing runs |
 | Observer | C director camera, V whose eyes to watch through, P pause, [ ] speed, F2 hide the interface. **Fire support** (observer bar) launches any air or artillery support anywhere to watch it |
-| Command view | Tab tactical map, O order of battle (click a unit to select it and look at it, double-click to zoom in), the buttons beside the minimap turn map layers on and off (unit symbols, orders and attack plans, intelligence, fog of war, weapon ranges, soldier labels) |
+| Command view | Tab tactical map (**hold Tab**: battle statistics), O order of battle (click a unit to select it and look at it, double-click to zoom in), the buttons beside the minimap turn map layers on and off (unit symbols, orders and attack plans, intelligence, fog of war, weapon ranges, soldier labels) |
 | Other | Home cycles FOBs, Space jumps to the last alert or ping (both glide there), Enter chats (Shift+Enter: team), L message history, F1 help, F3 performance overlay, **F4 field manual**, Esc menu |
 
 ## Watching the AI
@@ -82,8 +104,15 @@ they're doing). The observer bar at the top has pause, speed (0.25x to 4x), dire
 - **Joining by address** (Direct connect) still works without the matchmaker: the host's IP on UDP port **7777**,
   forwarded or over a LAN/VPN (Tailscale, ZeroTier, Hamachi).
 - **Accounts** are optional (Supabase, through the matchmaker). Signed in, your callsign is yours: no other account can register it, and
-  battles you host are listed under it with a tick. Sign in next to the callsign on the main menu;
-  the session is remembered in `user://account.cfg`.
+  battles you host are listed under it with a tick. The account card top right of the main menu signs you in or
+  makes an account (the end-of-battle screen offers it too); the session is remembered in `user://account.cfg`.
+- **Service record.** Signed in, every battle you fight (as a commander, not watching) goes on your record when it
+  ends: what kind of battle, your side, the result and length, your rating, score, kills and losses, and the
+  after-action report itself, trimmed (every commander, both sides, the units that did most, the timeline). The
+  menu's **Service Record** shows your career (battles, wins, kills, K/D, average rating, time in battle) and every
+  battle newest first; open one for its after-action report. A battle fought signed out or offline waits in
+  `user://pending_battles.json` (the last ten) and goes up at the next sign-in. The figures are your own game's
+  account of the battle, so the record is only ever shown to you.
 - **Co-op:** everyone on the battle's side, and the AI takes the other. **Versus:** players pick sides ("The AI
   takes a side nobody plays" fills an empty one). "AI commands alongside players" gives either an AI teammate.
 - If a player leaves, a teammate inherits their squads, or the AI takes over if nobody is left on that side.
@@ -455,6 +484,30 @@ function and an autopilot function.
   units, intelligence (where the enemy was last seen and how long ago), the fog of war, weapon ranges of the
   selection, soldier labels. **Tactical map** (Tab): the battlefield dims under the symbols, every order, plan and contact, and the
   A-H / 1-8 grid on the ground.
+- **Battle statistics and the after-action report** (`battle_stats.gd`, `stats_panel.gd`). The host keeps a record of
+  the battle and credits everything to the commander whose unit did it (a player, or a side's AI): the man who last
+  hurt a soldier gets the kill even if he bleeds out later, fire support and mines count for whoever called or laid
+  them, and the men killed in a burning vehicle for whoever knocked it out. Hold **Tab** (or Esc > Battle
+  Statistics) for your side's figures so far; the enemy's are classified until the end, when the after-action
+  report shows everything, in four tabs:
+  - **Summary**: the two sides head to head (killed, wounded, lost, captured, vehicles, buildings, the supply value
+    destroyed, accuracy, prisoners, FOBs and towns taken, wounded saved, supply delivered and spent, units fielded, fire
+    missions), honours (most valuable, most effective, marksman, tank hunter...) and the soldiers who stood out.
+  - **Commanders**: every player and AI with a **rating** out of 100 - 60% the exchange (supply value destroyed
+    against lost, on a log scale: 4:1 is as good as it gets), 20% marksmanship and 20% their share of their side's
+    fight - and a score, kills, losses, vehicles, accuracy, supply spent and units fielded. Click one for the
+    breakdown: how the rating was made, and everything they did in combat, lost and spent.
+  - **Units**: every squad and vehicle, with its commander, kills, losses, strength, time in action and fate.
+  - **Timeline**: men in the field, vehicles, enemy killed and supply in hand over the battle, with FOBs built,
+    taken and wrecked, vehicles lost and fire missions marked along the bottom; hover for the figures at any moment.
+- **How it moves** (`ui_fx.gd`, `end_banner.gd`). The end of a battle is a moment: the battlefield drains of colour
+  and goes soft (red for a defeat), the camera eases back, a band opens across the screen and VICTORY or DEFEAT
+  slams into it with a hit and a glint, your rating fills its bar and its word lands, then the report rises into
+  place (click to skip). Every tab comes in row by row on cut-cornered glass: numbers count up with a tick, the
+  head-to-head bars open out from the middle, rating dials and bars fill, honours land one at a time as medals
+  with a sweep of light, and the timeline's lines draw themselves across. The sounds are synthesised like the
+  rest: a whoosh, the ticks, the impact, the medal chime. The menu's account card, Service Record and sign-in
+  share the look.
 - A selected squad shows each man's watch sector as a faint wedge on the ground, so you can see its all-round
   cover and any gap. An attack that goes firm against a stronger enemy raises an alert with its grid reference
   so you can send fires or reinforcements.
@@ -702,7 +755,7 @@ function and an autopilot function.
 - Everything can be shot up and repaired. Any FOB can be captured by whoever walks in and holds it. Lose your last FOB and you lose, but a side's last FOB is a last stand and takes four times as long to capture, and HQ sends a free reserve squad every 75 s to a side that is down to its last few soldiers.
 - Fog of war, drawn on the ground and the minimap, with intel pings and last-known enemy positions.
 
-**Look and feel** (`atmosphere.gd`, `mats.gd`, `vehicle_models.gd`, `vfx.gd`, `grass.gd`, `ui/`)
+**Look and feel** (`atmosphere.gd`, `mats.gd`, `vehicle_models.gd`, `vfx.gd`, `gunfx.gd`, `grass.gd`, `ui/`)
 - Eight lighting moods (midday, golden hour, dawn, dusk, overcast, hazy, **night**, **rain & thunder**) with a
   procedural sky, AgX tonemapping, cloud shadows drifting over the ground, volumetric haze and a subtle film look.
   At night the sky fills with stars and illumination flares drift down on parachutes over the fighting, throwing
@@ -748,6 +801,21 @@ function and an autopilot function.
   throw a fountain of earth high into the air that rains back down, fling burning fragments out in arcs that
   burn on where they land, leave flames licking about the crater for a moment, and clods land around the
   crater once the debris has fallen.
+- **Gunfire** (`gunfx.gd`): every round leaves the muzzle in a flash - a white-hot star, a tongue of flame thrown
+  out ahead and split sideways by the flash hider, bigger and longer for a .50 or an autocannon - with a moment's
+  light on everything round it (striking at night), a breath of smoke, and the case spinning out of the ejection
+  port to lie in the grass (brass piles up round a machine gun). The weapon kicks with each shot: the rifle back
+  into the shoulder and the muzzle up, the mounted gun on its pintle, the turret back on its ring when the main gun
+  fires. One round in so many is a tracer, red for the Coalition and green for the Rebels (Soviet-pattern
+  ammunition), never thinner than a pixel or two however far out the camera is. What a round hits decides what
+  flies: earth spurting up with clods raining out of it, grey grit and stone chips blown off a wall, a dry burst
+  of sand off sandbags, splinters, leaves fluttering down, sparks and a glint off steel, a dark mist off a man, a
+  white column and drops off water - shown when the round gets there, not when it's fired. Now and then one skips
+  off steel, stone or the ground and goes wailing away. A tank's gun fires with a blinding flash, a fireball
+  thrown out ahead, burning flecks, a cloud of smoke rolling out round the muzzle and the blast driving dust off
+  the ground; a rocket's back-blast kicks up the ground behind the launcher. All of it is drawn on the GPU, each
+  kind in a single draw call, with nothing moved from script once it's spawned, so a heavy firefight costs about
+  what a light one did.
 - **Physics** (`physics_fx.gd`, `ragdoll.gd`, Jolt): the dead become ragdolls - eleven jointed bodies with
   anatomical limits (knees and elbows bend one way). A bullet knocks a man back and he folds; a blast throws him
   limbs flailing and he tumbles to a stop, into a trench if that's where he lands. Later blasts throw the bodies
