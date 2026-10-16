@@ -295,6 +295,16 @@ assert.ok((await game.stats()).counters.plan_assault >= 1);
 assert.equal(await game.close(), 0);
 ```
 
+What a test pays for before it plays a second: starting a game takes several seconds (the engine compiles every
+script first), and every `load` builds a battle from nothing, on the full-size map even for a scenario: a few
+seconds, most of it the hierarchical nav (`HNav.build_all`), and 10-20 s for a whole battle or mission map. So a
+test file starts one game and loads it afresh for each of its tests: `Game.start()` in `before`, `close()` (and its
+exit code) in `after`, as [tests/attack.test.mjs](../tests/attack.test.mjs) does. A seed replays the same in any
+game, so the tests still don't depend on each other. A test that needs games of its own (one that ends in a
+script error, two that must agree) gets them from `Game.startMany(n)`, which starts them together so their
+start-ups overlap. `node --test` runs the files side by side, and tests inside a `describe(..., { concurrency: true })`
+run side by side too (determinism.test.mjs: the full-map battle, the longest test, runs alongside everything else).
+
 | command | fields | answers |
 | --- | --- | --- |
 | `hello` | | `version`, `net` (NET_VERSION), `tps`, `headless` |
