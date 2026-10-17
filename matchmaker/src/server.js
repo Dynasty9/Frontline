@@ -269,6 +269,14 @@ export function createServer({
 			return { session: await auth.exchange(body.code, body.code_verifier) };
 		},
 
+		// An existing website login authorizes a separate session for the game.
+		'POST /auth/game': async ({ req, ip }) => {
+			needAuth();
+			limits.hit('auth', ip, 10);
+			const session = await auth.gameSession(bearer(req));
+			return { token: session.refresh_token };
+		},
+
 		'POST /auth/refresh': async ({ ip, body }) => {
 			needAuth();
 			limits.hit('refresh', ip, 30);

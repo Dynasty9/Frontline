@@ -127,7 +127,9 @@ they're doing). The observer bar at the top has pause, speed (0.25x to 4x), dire
     the game closing, for half an hour). The site sends the player to GitHub (OAuth with PKCE, through the
     matchmaker and Supabase); the first time makes the account, its callsign taken from the GitHub username
     (made to fit, and numbered if it's taken). Back on the site, it hands the game a session of its own in
-    `frontline://sign-in/<state>/<refresh token>`. The game takes only the state it made, so no other page can
+    `frontline://sign-in/<state>/<refresh token>`. If the website is already signed in, it automatically
+    authorizes a separate game session and returns to the game without asking for GitHub again.
+    The game takes only the state it made, so no other page can
     sign it in to someone else's account, and spends the token at once. The game's session and the site's are
     separate (a refresh token works once, so the two can't share one), and signing out ends only that one.
     Both ends say what's happening, since the work is in the browser: the game's panel lists the steps (sign in

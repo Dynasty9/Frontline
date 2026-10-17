@@ -357,6 +357,20 @@ async function signInGame(
   }
 }
 
+/** Use this browser's login to authorize a session belonging only to the game. */
+export async function signInGameFromWebsite(): Promise<{ token: string } | null> {
+  if (!session) return null
+  set({ busy: true, error: null, notice: null })
+  try {
+    return await authed<{ token: string }>("POST", "/auth/game")
+  } catch (e) {
+    set({ error: message(e) })
+    return null
+  } finally {
+    set({ busy: false })
+  }
+}
+
 // --- signing in with GitHub: OAuth with PKCE, through the matchmaker
 // (matchmaker/src/auth.js). The page makes a random verifier and sends only
 // its hash; the code GitHub's sign-in comes back with is no use without the

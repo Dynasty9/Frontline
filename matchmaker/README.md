@@ -166,8 +166,8 @@ us-west2), with GitHub sign-in switched on and email confirmation off. To set up
    `supabase db push --db-url "postgresql://postgres.REF:PASSWORD@aws-0-REGION.pooler.supabase.com:5432/postgres"`
    with the project's session-pooler connection string. Or paste each file in `supabase/migrations/` into its SQL
    editor, in order.
-3. Give the matchmaker the project URL and its public key (the publishable key, or the legacy anon key). No secret
-   key is needed: the service acts as the signed-in player, and row-level security does the rest.
+3. Give the matchmaker the project URL and its public key (the publishable key, or the legacy anon key). These authorize database requests as the signed-in player; row-level security does the rest.
+   Automatic game sign-in also needs the server-only key described in [Reusing a website login](#reusing-a-website-login-in-the-game).
 
    ```bash
    railway variable set --service matchmaker SUPABASE_URL=https://YOUR-PROJECT.supabase.co SUPABASE_KEY=sb_publishable_...
@@ -215,7 +215,7 @@ they add:
 | `end_battle(result, seconds)` | Closes the battle, works out the XP from the time on the database's clock and the game's `seconds`, adds it (and logs it) and, if it earned any, the record, and returns `{gained, rank_before, xp, rank, battles, wins, icon, callsign}`. |
 | `set_icon(icon)` | Wears an insignia: unknown ids raise `PT400`, locked ones `PT403` (the matchmaker answers 400 and 403). |
 
-XP is written only through these. The matchmaker holds no secret key, so a player could call Supabase's API
+XP is written only through these. Database requests use the public key and player token, so a player could call Supabase's API
 directly with their own token, and anything they could write that way they could set to whatever they like. So the
 columns a player may update are only the harmless ones; the functions run as the table's owner (`SECURITY
 DEFINER`), touch nothing but the caller's own row (`auth.uid()`), and apply the same rules as the matchmaker, with
@@ -297,3 +297,17 @@ To apply them by hand instead, or check what the live database has:
 supabase migration list --db-url "$SUPABASE_DB_URL"
 supabase db push --db-url "$SUPABASE_DB_URL"
 ```
+
+
+### Reusing a website login in the game
+
+`POST /auth/game` accepts the website's bearer token and returns `{token}`, a separate game refresh token.
+The website calls it automatically for a game sign-in request, then opens the existing state-bound
+`frontline://sign-in/` callback. The browser keeps its own session; the two never share a rotating refresh token.
+
+For Supabase, set `SUPABASE_SECRET_KEY` (or legacy `SUPABASE_SERVICE_ROLE_KEY`) **only on the matchmaker**.
+This key is used only for Auth's `admin/generate_link`: the server verifies the caller directly with Auth,
+takes the verified account's confirmed email, generates and consumes a magic link on the server without sending
+email, and checks the returned user ID. The public key and player bearer still authorize all database calls.
+Never put this secret in the website's Vite variables or game. Without it, automatic handoff reports a
+configuration error and the existing GitHub sign-in remains available.
