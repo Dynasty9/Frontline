@@ -299,7 +299,9 @@ func _build_ground() -> void:
 	rs.code = Mats.code(MapDims.shader(ROAD_SHADER))
 	road_mat.shader = rs
 	road_mat.set_shader_parameter("detail_tex", detail_tex)
-	road_mat.render_priority = 1
+	# see-through (its edges fade into the verges), so it draws with the smoke
+	# and fire: before them, or it paints over every blast on a road
+	road_mat.render_priority = -1
 	road_mat.set_shader_parameter("trench_mask", _blank_mask)
 	road_mat.set_shader_parameter("deform_tex", deform_tex)
 	road_mat.set_shader_parameter("wet", 1.0 if mood == "rain" else 0.0)

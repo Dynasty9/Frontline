@@ -308,6 +308,11 @@ assert.ok((await game.stats()).counters.plan_assault >= 1);
 assert.equal(await game.close(), 0);
 ```
 
+A check that fails throws before the `close()` at the end, and a game left running would keep `node --test` waiting
+for ever (in CI, until the job times out). So `game.mjs` adds an `after` hook to each test file that closes whatever
+games its tests left running. A test that starts a game of its own can close it sooner, failed or not, with
+`t.after(() => game.close())` (boats.test.mjs).
+
 What a test pays for before it plays a second: starting a game takes several seconds (the engine compiles every
 script first), and every `load` builds a battle from nothing, on the full-size map even for a scenario: a few
 seconds, most of it the hierarchical nav (`HNav.build_all`), and 10-20 s for a whole battle or mission map. So a
@@ -494,10 +499,11 @@ state but the one the game made is refused.
 
 ### Website
 
-`web/` is the website (React, Vite, Tailwind, shadcn/ui; see its README): `npm install && npm run dev`, with
-`VITE_MATCHMAKER_URL` pointing at a local matchmaker if you like. `npm run storybook` shows every component and
-section of the page on its own, in each of its states (loading, offline, nobody hosting...), without the live
-matchmaker. `.github/workflows/web.yml` lints it, checks formatting and types, runs the unit tests, builds it, and
+`web/` is the website (React, Vite, Tailwind, shadcn/ui, React Router; see its README for its pages):
+`npm install && npm run dev`, with `VITE_MATCHMAKER_URL` pointing at a local matchmaker if you like (with
+`AUTH_BACKEND=memory` you can make throwaway accounts on the dev server to try the account pages). `npm run storybook`
+shows every component and page on its own, in each of its states (loading, offline, nobody hosting, signed in...),
+without the live matchmaker. `.github/workflows/web.yml` lints it, checks formatting and types, runs the unit tests, builds it, and
 renders every story in headless Chromium as a test (its play function and an accessibility check).
 
 ### Builds, releases and updates
@@ -516,12 +522,19 @@ isn't notarized (that needs a paid Apple developer account; Godot can sign and n
 `rcodesign`, given the certificate and an App Store Connect key), so macOS stops it the first time and the player
 allows it under System Settings > Privacy & Security. Its Info.plist claims the `frontline://` scheme and explains
 the local-network prompt (the LAN beacons), both through `application/additional_plist_content`. The run exports
-all four from `main` as it stands, then
+all four from `main` as it stands and zips them, then makes the installers most players download instead (`installer/`):
+`Frontline-windows-setup.exe`, a setup wizard NSIS builds on the Linux runner (`installer/windows.nsi`), which
+installs for the player alone under `%LOCALAPPDATA%\Programs\Frontline` with no administrator rights, adds Start menu
+and desktop shortcuts, the `frontline://` links and an entry in Settings > Apps that uninstalls it; and
+`Frontline-macos.dmg`, a disk image with the app and a link to Applications to drag it onto, which a job on a macOS
+runner makes with `hdiutil` (`installer/macos-dmg.sh`) and then mounts to check the app's signature. Both put the
+game where it can update itself. Then
 `.github/scripts/bake-release.sh` makes the release's own commit on a branch, `release/vX.Y.Z`: it files every entry
 waiting in `changelog/unreleased/` under `changelog/vX.Y.Z/` (`changelog.py release`), regenerates `CHANGELOG.md` and
 `web/src/changelog.json`, and writes `release.json` into `web/src/` and `matchmaker/` (`release_json.py`).
-`.github/scripts/release.py` uploads the zips as a draft release at that commit (`Frontline-windows.zip`,
-`Frontline-macos.zip`, `Frontline-linux.zip`, `Frontline-web.zip`, the changelog as its notes), which nobody else can
+`.github/scripts/release.py` uploads the downloads as a draft release at that commit (`Frontline-windows.zip`,
+`Frontline-macos.zip`, `Frontline-linux.zip`, `Frontline-web.zip`, the two installers, the changelog as its notes),
+which nobody else can
 see, and opens a pull request from the branch that says what the release is: its version, what it was built from, its
 downloads and checksums, and the notes as they'll be published. Merge it: that runs Publish release (`.github/workflows/publish.yml`), which
 checks the draft's downloads against the merged `release.json`, tags the release's commit and publishes it, while
@@ -534,7 +547,8 @@ ship. Pull requests that change the export setup test-export without releasing.
 
 A release build updates itself (`scripts/autoload/updater.gd`): at start it asks the matchmaker (`GET /release`,
 falling back to GitHub's API) for the latest release,
-downloads the zip for its platform, checks it against the SHA-256 GitHub publishes, renames the running executable
+downloads the zip for its platform (`release.json`'s `assets`; the installers are under `installers`, which only the
+website reads), checks it against the SHA-256 GitHub publishes, renames the running executable
 aside and puts the new one in its place, then offers a restart (the old file is deleted on the next launch). On a Mac
 it does the same with the whole app: the new `Frontline.app` is unpacked beside the old one, the folders are
 swapped, and the restart goes through `open -n`. Where it can't (a folder it can't write to, or a Mac app run

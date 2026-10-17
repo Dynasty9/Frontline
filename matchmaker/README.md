@@ -162,7 +162,8 @@ us-west2), with GitHub sign-in switched on and email confirmation off. To set up
    secret to Supabase (Authentication > Sign In / Providers > GitHub). Then, under Authentication > URL
    Configuration, set the **Site URL** to the website and add it to the **Redirect URLs**
    (`https://YOUR-SITE/**`, and `http://localhost:5173/**` for the dev server): Supabase sends players back only
-   to those.
+   to those. Anywhere else it sends them to the Site URL, which starts out as `http://localhost:3000`: a sign-in
+   that lands on `localhost:3000/?code=...` means the site's address is missing from the Redirect URLs.
 5. On the Auth Providers page, open **Email** (kept for testing) and switch off **Confirm email**. Supabase's built-in mailer only
    delivers to members of your own Supabase team (and two emails an hour), so with confirmation on, every
    player's sign-up fails. To confirm emails, give Supabase your own SMTP server first; the game already tells

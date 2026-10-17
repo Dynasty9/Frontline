@@ -31,10 +31,12 @@ scripts/autoload/errors.gd     error reports from release builds (and crashes, a
 changelog/                     one entry per change, filed under its version at release; CHANGELOG.md is generated
 matchmaker/                    the matchmaking service (Node, no runtime dependencies; deployed on Railway, accounts via Supabase)
 matchmaker/supabase/migrations/   the accounts database's schema, one migration per change; database.yml applies new ones as they merge
-web/                           the website (React + Vite + shadcn, on Railway): live battles with Join links, downloads;
-                               Storybook for its components (*.stories.tsx next to each)
+web/                           the website (React + Vite + shadcn + React Router, on Railway): src/pages/ its pages (Play,
+                               live battles with Join links, your account, the changelog); Storybook for its components
+                               and pages (*.stories.tsx next to each)
 export_presets.cfg, .github/workflows/release.yml   Windows, macOS, Linux and browser builds: a release is a button (Actions > Release)
                                that opens a release pull request, and merging that publishes it (publish.yml); no other merge releases
+installer/                     the Windows installer (NSIS: windows.nsi) and the Mac disk image (macos-dmg.sh), made by every release
 docs/                          FEATURES.md (design), DEVELOPMENT.md (code layout, test flags)
 design/                        logo and artwork used outside the game (not imported by Godot)
 ```

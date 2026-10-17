@@ -371,8 +371,9 @@ const leave = (url: string) => window.location.assign(url)
 
 /**
  * Off to GitHub to sign in: for the site, or for the game that sent the
- * player here. Comes back to this page with ?code= (takeGitHubReturn). `go`
- * leaves the page (the stories only record where to).
+ * player here. Comes back to the front page with ?code= (takeGitHubReturn),
+ * which finishes it (src/pages/layout.tsx). `go` leaves the page (the stories
+ * only record where to).
  */
 async function signInWithGitHub(game: SignInRequest | null = null, go = leave) {
   set({ busy: true, error: null, notice: null })
@@ -395,15 +396,18 @@ async function signInWithGitHub(game: SignInRequest | null = null, go = leave) {
   }
 }
 
-let taken: { href: string; back: { back: GitHubReturn; clean: string } | null } | null = null
+/** `clean`: this address without the code. */
+export type GitHubBack = { back: GitHubReturn; clean: string }
+
+let taken: { href: string; back: GitHubBack | null } | null = null
 
 /**
  * Back from GitHub: what this tab went for, from the address (?code=, or
  * ?error= when GitHub or the player said no) and what the tab kept. Null if
  * this page isn't a return from GitHub. It's taken once (a reload doesn't try
- * the code again); `clean` is the address without it.
+ * the code again).
  */
-export function takeGitHubReturn(href = window.location.href): { back: GitHubReturn; clean: string } | null {
+export function takeGitHubReturn(href = window.location.href): GitHubBack | null {
   if (taken?.href === href) return taken.back
   const u = new URL(href)
   const hash = new URLSearchParams(u.hash.slice(1))
@@ -419,7 +423,7 @@ export function takeGitHubReturn(href = window.location.href): { back: GitHubRet
       away = null
     }
   }
-  let result: { back: GitHubReturn; clean: string } | null = null
+  let result: GitHubBack | null = null
   // a ?code= this tab didn't go to GitHub for isn't ours
   if (away && typeof away.verifier === "string") {
     for (const k of ["code", "error", "error_code", "error_description"]) u.searchParams.delete(k)
@@ -524,7 +528,37 @@ async function saveIcon() {
   }
 }
 
+/**
+ * A new callsign. Null once the matchmaker has it, else why not (taken, or
+ * not a callsign), for the form to say: it isn't the account's error.
+ */
+async function rename(callsign: string): Promise<string | null> {
+  if (!session?.user) return "Sign in first."
+  try {
+    const r = await authed<{ user: Partial<User> }>("PATCH", "/me", { callsign: callsign.trim() })
+    // the insignia as this page has it: a pick may still be on its way
+    if (session?.user) setUser(toUser({ ...r.user, icon: session.user.icon }, session.user))
+    return null
+  } catch (e) {
+    return message(e)
+  }
+}
+
 const clearError = () => set({ error: null, notice: null })
+
+/**
+ * For the stories: this page signed in as `user` (or signed out), saved
+ * nowhere, and nothing left over from the story before. Stories run side by
+ * side in frames that share localStorage, so a saved session would sign the
+ * others in too.
+ */
+export function signInForStory(user: User | null) {
+  adopt(
+    user && { access_token: "story-access", refresh_token: "story-refresh", expires_at: Date.now() + 3_600_000, user },
+    false
+  )
+  set({ busy: false, error: null, notice: null })
+}
 
 const subscribe = (l: () => void) => {
   start()
@@ -535,7 +569,7 @@ const subscribe = (l: () => void) => {
 }
 const snapshot = () => state
 
-const actions = { signIn, signUp, signInGame, signInWithGitHub, signOut, setIcon, clearError }
+const actions = { signIn, signUp, signInGame, signInWithGitHub, signOut, setIcon, rename, clearError }
 
 /** The signed-in player (or null) and what can be done about it. */
 export function useAccount() {

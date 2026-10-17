@@ -56,7 +56,7 @@ export const SignIn: Story = {
   },
 }
 
-/** Back from GitHub: the code swapped for the game's own session, and handed to the game. */
+/** Back from GitHub: the code swapped for the game's own session, and handed to the game, which takes it. */
 export const BackFromGitHub: Story = {
   args: {
     returned: { game: { state: STATE, create: false, callsign: "" }, code: "code-back", verifier: "v".repeat(43) },
@@ -69,8 +69,24 @@ export const BackFromGitHub: Story = {
     await expect(args.navigate).toHaveBeenCalledOnce()
     await expect(args.navigate).toHaveBeenCalledWith(link)
     await expect(screen.getByRole("link", { name: "Open Frontline" })).toHaveAttribute("href", link)
+    await expect(screen.getByText(/Opening Frontline/)).toBeVisible()
+    // the browser's "Open Frontline?" prompt, or the game, takes the focus
+    window.dispatchEvent(new Event("blur"))
+    await expect(await screen.findByText(/Over to the game/)).toBeVisible()
+    await expect(screen.getByText("Back to the game").closest("li")).toHaveTextContent("Done:")
     // the game's session, not the site's: the site stays signed out
     await expect(localStorage.getItem("frontline.account")).toBeNull()
+  },
+}
+
+/** Nothing took the link (the game isn't set up for links, or the browser wanted a click): what to do. */
+export const GameDidntOpen: Story = {
+  args: BackFromGitHub.args,
+  beforeEach: mockMatchmaker({ "/auth/exchange": { session: SESSION } }),
+  play: async () => {
+    const note = await screen.findByText(/Your browser didn't open Frontline/, undefined, { timeout: 5000 })
+    await expect(note).toBeVisible()
+    await expect(screen.getByRole("link", { name: "Open Frontline" })).toBeVisible()
   },
 }
 
