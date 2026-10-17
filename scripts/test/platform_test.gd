@@ -66,6 +66,36 @@ static func _links() -> void:
 		_check(String(c[2]), got == String(c[1]), "%s -> %s" % [str(c[0]), got])
 	_check("a Mac's link is read for what it asks", Links.parse(Links.link_in(PackedStringArray(["--uri=\"frontline://join/abc\""]))) == ["join", "abc"])
 	_check("the key beside Alt has this system's name", Keys.name_of(KEY_META) == Keys.meta_name() and Keys.name_of(KEY_F | KEY_MASK_META) == Keys.meta_name() + " + F", Keys.name_of(KEY_F | KEY_MASK_META))
+	_claimed()
+
+
+## Whether the system still sends links to this copy, read from what Windows'
+## `reg export` and Linux's `xdg-mime query default` say: a game that only
+## trusted its own note of having claimed them never noticed them taken away.
+static func _claimed() -> void:
+	# exactly as `reg export` writes the command key: UTF-16 behind its mark, CRLF
+	var exported := func(line: String) -> PackedByteArray:
+		var text := "Windows Registry Editor Version 5.00\r\n\r\n[HKEY_CURRENT_USER\\Software\\Classes\\frontline\\shell\\open\\command]\r\n" + line + "\r\n\r\n"
+		var bytes := PackedByteArray([0xFF, 0xFE])
+		bytes.append_array(text.to_utf16_buffer())
+		return bytes
+	var exe := "C:/Users/José Ñoño/Downloads/Frontline.exe"  # as Godot gives it
+	var ours: PackedByteArray = exported.call(r'@="\"C:\\Users\\José Ñoño\\Downloads\\Frontline.exe\" \"%1\""')
+	_check("Windows: the links still open this copy, whatever letters its path has", Links.windows_claimed(ours, exe))
+	_check("Windows: the installer's folder, in other capitals, is still this copy",
+		Links.windows_claimed(exported.call(r'@="\"c:\\users\\josé ñoño\\downloads\\frontline.exe\" \"%1\""'), exe))
+	_check("Windows: links that open another copy aren't this one's",
+		not Links.windows_claimed(exported.call(r'@="\"C:\\Users\\José Ñoño\\AppData\\Local\\Programs\\Frontline\\Frontline.exe\" \"%1\""'), exe))
+	_check("Windows: a command that doesn't pass the link on doesn't count",
+		not Links.windows_claimed(exported.call(r'@="\"C:\\Users\\José Ñoño\\Downloads\\Frontline.exe\""'), exe))
+	_check("Windows: no key at all (an uninstall took it) is claimed again", not Links.windows_claimed(PackedByteArray(), exe))
+	var bin := "/home/sam/Games/Frontline.x86_64"
+	var desktop := "[Desktop Entry]\nType=Application\nName=Frontline\nExec=\"/home/sam/Games/Frontline.x86_64\" %u\nNoDisplay=true\nMimeType=x-scheme-handler/frontline;\n"
+	_check("Linux: the links still open this copy", Links.linux_claimed("frontline-links.desktop\n", desktop, bin))
+	_check("Linux: another program has the links", not Links.linux_claimed("firefox.desktop\n", desktop, bin))
+	_check("Linux: nothing has the links", not Links.linux_claimed("", desktop, bin))
+	_check("Linux: the entry opens another copy", not Links.linux_claimed("frontline-links.desktop\n", desktop.replace("Games/", "Downloads/"), bin))
+	_check("Linux: the entry is gone", not Links.linux_claimed("frontline-links.desktop\n", "", bin))
 
 
 # --- installing --------------------------------------------------------------------------------
