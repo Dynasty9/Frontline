@@ -2,9 +2,24 @@
 // stories and tests. Each lobby is one of the cases the battle list draws
 // differently.
 
+import type { User } from "@/lib/account"
 import type { Health, Lobby } from "@/lib/matchmaker"
 import type { Release } from "@/lib/changelog"
 import { type Build, latest } from "@/lib/releases"
+
+/** A signed-in player a few ranks up: Corporal I, 1,350 XP, wearing the rank 4 patch (Night Watch). */
+export const player: User = {
+  id: "5f0c1a2b-3c4d-4e5f-8a9b-0c1d2e3f4a5b",
+  email: "raven@example.test",
+  callsign: "Raven",
+  icon: "r04",
+  xp: 1350,
+  rank: 6,
+  rank_xp: 1200,
+  next_xp: 1470,
+  battles: 23,
+  wins: 14,
+}
 
 const lobby = (l: Partial<Lobby> & Pick<Lobby, "id" | "name" | "host">): Lobby => ({
   verified: false,

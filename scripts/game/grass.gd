@@ -180,6 +180,12 @@ func _mark(x: int, z: int) -> void:
 		_blocked[iz * MapDims.N + ix] = 1
 
 
+## Bare ground, where no grass grows (or the grass is off): roads, pavements,
+## floors, the water's edge. Before the grass is laid out, nowhere is.
+func bare(p: Vector3) -> bool:
+	return level == 0 or (not _blocked.is_empty() and _is_blocked(p))
+
+
 func _is_blocked(p: Vector3) -> bool:
 	var ix := floori(p.x) + MapDims.N / 2
 	var iz := floori(p.z) + MapDims.N / 2

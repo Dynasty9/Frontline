@@ -54,6 +54,7 @@ var biome_tex: ImageTexture
 var detail_tex: ImageTexture
 var road_mat: ShaderMaterial
 var grass: Grass
+var wildlife: Wildlife
 var _d := {}
 var _mood_asked := ""  # the Time of day setting as the battle began: changing it mid-battle switches the mood live
 
@@ -72,6 +73,10 @@ func setup(w: World) -> void:
 	grass.atmo = self
 	add_child(grass)
 	grass.set_deform(deform_tex)
+	wildlife = Wildlife.new()
+	wildlife.name = "Wildlife"
+	wildlife.world = world
+	add_child(wildlife)
 	Settings.changed.connect(apply_settings)
 	apply_settings()
 	if Sfx.enabled and world.has_view:
@@ -590,6 +595,8 @@ func apply_settings() -> void:
 	cam_attr.dof_blur_amount = 0.06
 	if grass:
 		grass.apply_settings()
+	if wildlife:
+		wildlife.apply_settings()
 
 
 ## Colour grading: the chosen look on top of the time of day, plus the

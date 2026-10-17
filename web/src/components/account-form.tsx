@@ -32,8 +32,8 @@ export function SignInChoices({
           {busy ? "Signing in…" : "Sign in with GitHub"}
         </Button>
         <p className="text-xs leading-relaxed text-muted-foreground">
-          New to Frontline? Signing in makes your account, named after your GitHub account. You can rename it in the
-          game.
+          New to Frontline? Signing in makes your account, named after your GitHub account. You can rename it whenever
+          you like, here or in the game.
         </p>
         {!email && <Messages />}
       </div>

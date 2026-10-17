@@ -79,6 +79,7 @@ func _ready() -> void:
 		["option", "aniso", "Texture filtering", Settings.LABELS.aniso, "Anisotropic filtering keeps ground textures crisp at a glancing angle."],
 		["option", "lod", "View distance / detail", Settings.LABELS.lod, "How far away models keep their full detail."],
 		["option", "grass", "Vegetation", Settings.LABELS.grass, "Swaying grass blades across the battlefield."],
+		["option", "wildlife", "Wildlife", Settings.LABELS.wildlife, "Birds feeding in the fields and wheeling overhead, rats in town, hares, fish, ducks and dolphins, all taking fright at the fighting. Only round the camera; turn it down or off if it costs you frames."],
 		["option", "effects", "Effects quality", Settings.LABELS.effects, "Particles per explosion, smoke density, debris."],
 		["option", "water", "Water quality", Settings.LABELS.water, "Waves, reflections and the bed seen through the water. Low skips the see-through water, the costly part; High adds light dancing on the shallows and foam streaks in a blow; Ultra a finer swell."],
 		["check", "decals", "Scorch marks & craters", null, "Burn marks left by explosions."],

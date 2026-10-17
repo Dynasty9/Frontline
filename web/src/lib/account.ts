@@ -351,7 +351,11 @@ async function signInGame(
 
 const GITHUB_KEY = "frontline.github"
 
-type Away = { verifier: string; game: SignInRequest | null }
+/** `to`: the page the player signed in from, to go back to (GitHub always comes back to the front page). */
+type Away = { verifier: string; game: SignInRequest | null; to?: string }
+
+// a path on this site, never somewhere else ("//evil.test" is another site)
+const sitePath = (p: unknown): p is string => typeof p === "string" && p.startsWith("/") && !p.startsWith("//")
 
 /** What came back from GitHub to this page: a code to swap for a session, or why not. */
 export type GitHubReturn = { game: SignInRequest | null } & ({ code: string; verifier: string } | { error: string })
@@ -383,8 +387,10 @@ async function signInWithGitHub(game: SignInRequest | null = null, go = leave) {
       redirect_to: window.location.origin + "/",
       code_challenge: await pkceChallenge(verifier),
     })
+    const here = window.location
+    const to = game ? undefined : here.pathname + here.search + here.hash
     try {
-      sessionStorage.setItem(GITHUB_KEY, JSON.stringify({ verifier, game } satisfies Away))
+      sessionStorage.setItem(GITHUB_KEY, JSON.stringify({ verifier, game, to } satisfies Away))
     } catch {
       throw new Error("This browser is blocking the storage a sign-in needs while it's away at GitHub.")
     }
@@ -395,15 +401,18 @@ async function signInWithGitHub(game: SignInRequest | null = null, go = leave) {
   }
 }
 
-let taken: { href: string; back: { back: GitHubReturn; clean: string } | null } | null = null
+/** `clean`: this address without the code. `to`: the page the player signed in from, if it wasn't this one. */
+export type GitHubBack = { back: GitHubReturn; clean: string; to?: string }
+
+let taken: { href: string; back: GitHubBack | null } | null = null
 
 /**
  * Back from GitHub: what this tab went for, from the address (?code=, or
  * ?error= when GitHub or the player said no) and what the tab kept. Null if
  * this page isn't a return from GitHub. It's taken once (a reload doesn't try
- * the code again); `clean` is the address without it.
+ * the code again).
  */
-export function takeGitHubReturn(href = window.location.href): { back: GitHubReturn; clean: string } | null {
+export function takeGitHubReturn(href = window.location.href): GitHubBack | null {
   if (taken?.href === href) return taken.back
   const u = new URL(href)
   const hash = new URLSearchParams(u.hash.slice(1))
@@ -419,7 +428,7 @@ export function takeGitHubReturn(href = window.location.href): { back: GitHubRet
       away = null
     }
   }
-  let result: { back: GitHubReturn; clean: string } | null = null
+  let result: GitHubBack | null = null
   // a ?code= this tab didn't go to GitHub for isn't ours
   if (away && typeof away.verifier === "string") {
     for (const k of ["code", "error", "error_code", "error_description"]) u.searchParams.delete(k)
@@ -428,6 +437,7 @@ export function takeGitHubReturn(href = window.location.href): { back: GitHubRet
       back: code ? { game: away.game, code, verifier: away.verifier } : { game: away.game, error: error ?? "" },
       clean,
     }
+    if (sitePath(away.to) && away.to !== clean) result.to = away.to
   }
   taken = { href, back: result }
   return result
@@ -524,7 +534,35 @@ async function saveIcon() {
   }
 }
 
+/**
+ * A new callsign. Null once the matchmaker has it, else why not (taken, or
+ * not a callsign), for the form to say: it isn't the account's error.
+ */
+async function rename(callsign: string): Promise<string | null> {
+  if (!session?.user) return "Sign in first."
+  try {
+    const r = await authed<{ user: Partial<User> }>("PATCH", "/me", { callsign: callsign.trim() })
+    // the insignia as this page has it: a pick may still be on its way
+    if (session?.user) setUser(toUser({ ...r.user, icon: session.user.icon }, session.user))
+    return null
+  } catch (e) {
+    return message(e)
+  }
+}
+
 const clearError = () => set({ error: null, notice: null })
+
+/**
+ * For the stories: this page signed in as `user` (or signed out), saved
+ * nowhere. Stories run side by side in frames that share localStorage, so a
+ * saved session would sign the others in too.
+ */
+export function signInForStory(user: User | null) {
+  adopt(
+    user && { access_token: "story-access", refresh_token: "story-refresh", expires_at: Date.now() + 3_600_000, user },
+    false
+  )
+}
 
 const subscribe = (l: () => void) => {
   start()
@@ -535,7 +573,7 @@ const subscribe = (l: () => void) => {
 }
 const snapshot = () => state
 
-const actions = { signIn, signUp, signInGame, signInWithGitHub, signOut, setIcon, clearError }
+const actions = { signIn, signUp, signInGame, signInWithGitHub, signOut, setIcon, rename, clearError }
 
 /** The signed-in player (or null) and what can be done about it. */
 export function useAccount() {

@@ -91,19 +91,11 @@ scenarioTests([
         const [ship] = await f.vehicles({ kind: "patrol_ship" });
         assert.ok(ship && ship.hp > 0, "the patrol ship is afloat");
       });
-      await t.test(
-        "the RHIB lands its squad on the beach",
-        {
-          todo:
-            "it never lands them: with most seeds it sails off north up the coast, squad aboard, away from the beach it was sent to " +
-            "(with the rest it's sunk on the way in); so since the scenario was added (#23)",
-        },
-        async () => {
-          f.atLeast("dismount", 1, "the squad got out");
-          const ashore = (await f.soldiers({ team: 0 })).filter((s) => s.life === "ALIVE" && s.riding === 0);
-          assert.ok(ashore.length >= 3, `the squad is ashore (${ashore.length} of 5)`);
-        },
-      );
+      await t.test("the RHIB lands its squad on the beach", async () => {
+        f.atLeast("dismount", 1, "the squad got out");
+        const ashore = (await f.soldiers({ team: 0 })).filter((s) => s.life === "ALIVE" && s.riding === 0);
+        assert.ok(ashore.length >= 3, `the squad is ashore (${ashore.length} of 5)`);
+      });
     },
   },
   {

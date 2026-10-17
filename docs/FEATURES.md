@@ -97,7 +97,11 @@ they're doing). The observer bar at the top has pause, speed (0.25x to 4x), dire
   says so, and that host needs UDP port **7777** forwarded. If a joiner isn't through in 12 seconds, Find Match
   moves on to the next battle.
 - **The website** (`web/`) lists the battles being hosted, each with a **Join** link, `frontline://join/<id>`
-  (and a Find Match one, `frontline://find-match`). An exported build registers the `frontline://` scheme the
+  (and a Find Match one, `frontline://find-match`). Its Play page launches the game with `frontline://open`: any
+  link the game doesn't know starts it (or brings a running copy to the front) and does nothing else, so older
+  versions open too. The browser can't tell the page whether anything took the link, so the page watches for
+  losing focus to the browser's prompt or the game's window, and otherwise explains how to set the game up the
+  first time. An exported build registers the `frontline://` scheme the
   first time it runs (per user: HKCU on Windows, a hidden `.desktop` handler on Linux; a Mac app claims it in its
   Info.plist, which macOS reads when the app is first opened), so the browser starts the game with the link (on a
   Mac, as `--uri="frontline://..."`). If the game is already running, the new copy hands the link to it over a
@@ -860,12 +864,27 @@ function and an autopilot function.
 - Everything can be shot up and repaired. Any FOB can be captured by whoever walks in and holds it. Lose your last FOB and you lose, but a side's last FOB is a last stand and takes four times as long to capture, and HQ sends a free reserve squad every 75 s to a side that is down to its last few soldiers.
 - Fog of war, drawn on the ground and the minimap, with intel pings and last-known enemy positions.
 
-**Look and feel** (`atmosphere.gd`, `mats.gd`, `vehicle_models.gd`, `vfx.gd`, `gunfx.gd`, `grass.gd`, `ui/`)
+**Look and feel** (`atmosphere.gd`, `mats.gd`, `vehicle_models.gd`, `vfx.gd`, `gunfx.gd`, `grass.gd`, `wildlife.gd`, `ui/`)
 - Eight lighting moods (midday, golden hour, dawn, dusk, overcast, hazy, **night**, **rain & thunder**) with a
   procedural sky, AgX tonemapping, cloud shadows drifting over the ground, volumetric haze and a subtle film look.
   At night the sky fills with stars and illumination flares drift down on parachutes over the fighting, throwing
   moving shadows. In the rain, streaks fall around the camera, splashes hit the ground, puddles reflect the sky and
   lightning flashes are followed by thunder.
+- **Wildlife** (`wildlife.gd`), drawn only on each player's own screen and never simulated or sent by the server,
+  so it can't change a battle or its seed. Flocks of sparrows and starlings (pigeons about the town) feed on bare
+  ground - tracks, yards, pavements, mud, shell holes, where the grass doesn't hide them - hopping and pecking,
+  and move on now and then; hares graze in the open; rats run along the walls in town and keep to their own
+  stretch of it; crows and buzzards turn circles overhead (gulls along the coast), throwing shadows; fish swim
+  under the surface of the rivers and ponds and sometimes jump; mallards paddle and upend to feed; dolphins
+  cruise the open sea, rolling up through the swell to breathe and now and then leaping clear. At night the
+  small and soaring birds roost, bats come out and so do more rats; in the rain fewer birds fly. They take
+  fright at gunfire, shells and rockets (Fx tells them) and at the men and vehicles the local player can see
+  coming near - never at a hidden enemy - and a flock goes up with a rush of wings, a rat runs for a hole in the
+  nearest wall, a hare zigzags off, fish dart away. Synthesised calls: birdsong, a coo, caws, a gull's cry, a
+  squeak, the splash of a fish or a dolphin. Only the camera's surroundings are alive: whatever falls behind is
+  moved on ahead out of sight (birds fly in), so the cost doesn't grow with the map. Each kind is one MultiMesh
+  written in one go a frame, with wings, tails and flukes moved in the shader; groups off the screen aren't
+  drawn. Settings > Graphics > Wildlife: Plenty, Some or Off (Off on the Low preset).
 - Ambient sound: wind that grows as you zoom out (air rushing past and a hollow howl, in irregular gusts), and
   a distant battle (far-off artillery thumps, machine-gun bursts) that swells with the fighting.
 - Music (`music.gd`), synthesised like everything else: a small orchestra (strings, low strings, horns, a wordless
