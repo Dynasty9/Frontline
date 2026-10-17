@@ -102,6 +102,13 @@ func _gui_input(ev: InputEvent) -> void:
 		tooltip_text = ("Compass: north as the camera sees it.\nClick%s to turn back to the starting heading." % ((" (or %s)" % rk) if rk != "" else "")) if _on_compass(mm.position) else ""
 		if _drag:
 			_look(mm.position)
+	elif ev is InputEventMagnifyGesture and w.cam:
+		# on a trackpad, a pinch over the map zooms the view, and so do two fingers, as the wheel does
+		w.cam.pinch((ev as InputEventMagnifyGesture).factor)
+		accept_event()
+	elif ev is InputEventPanGesture and w.cam:
+		w.cam.scroll_zoom((ev as InputEventPanGesture).delta.y)
+		accept_event()
 
 
 func _notification(what: int) -> void:

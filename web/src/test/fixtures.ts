@@ -4,6 +4,7 @@
 
 import type { Health, Lobby } from "@/lib/matchmaker"
 import type { Release } from "@/lib/changelog"
+import { type Build, latest } from "@/lib/releases"
 
 const lobby = (l: Partial<Lobby> & Pick<Lobby, "id" | "name" | "host">): Lobby => ({
   verified: false,
@@ -130,4 +131,18 @@ export const release: Release = {
       screenshots: [],
     },
   ],
+}
+
+/** The latest release as it would be with a Mac build, which releases from before it don't have. */
+export const buildWithMac: Build = {
+  ...latest,
+  assets: {
+    ...latest.assets,
+    macos: {
+      name: "Frontline-macos.zip",
+      url: latest.assets.windows.url.replace("Frontline-windows.zip", "Frontline-macos.zip"),
+      size: 96_000_000,
+      sha256: "0".repeat(64),
+    },
+  },
 }

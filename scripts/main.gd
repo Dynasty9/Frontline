@@ -73,6 +73,11 @@ func _ready() -> void:
 			Insignia.sheet(String(args["insignia-sheet"]), int(args.get("px", 96)), 16, only)
 		TestRun.quit(get_tree())
 		return
+	if args.has("platform-test"):
+		# installing an update and reading links, as each system does it (offline, no game)
+		preload("res://scripts/test/platform_test.gd").run()
+		TestRun.quit(get_tree())
+		return
 	if args.has("soldier-sheet"):
 		# a lineup of every kind of soldier, saved as an image (no menu, no game)
 		var sheet: Node3D = preload("res://scripts/ui/soldier_sheet.gd").new()

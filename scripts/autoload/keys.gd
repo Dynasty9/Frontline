@@ -333,18 +333,25 @@ static func name_of(code: int) -> String:
 	if c & KEY_MASK_ALT:
 		parts.append("Alt")
 	if c & KEY_MASK_META:
-		parts.append("Win" if OS.get_name() == "Windows" else "Meta")
+		parts.append(meta_name())
 	var base := c & KEY_CODE_MASK
 	if code < 0:
 		parts.append({MOUSE_BUTTON_MIDDLE: "Middle mouse", MOUSE_BUTTON_XBUTTON1: "Mouse 4", MOUSE_BUTTON_XBUTTON2: "Mouse 5",
 			MOUSE_BUTTON_LEFT: "Left mouse", MOUSE_BUTTON_RIGHT: "Right mouse"}.get(base, "Mouse %d" % base))
 	elif KEY_NAMES.has(base):
 		parts.append(KEY_NAMES[base])
+	elif base == KEY_META:
+		parts.append(meta_name())
 	elif base >= KEY_KP_0 and base <= KEY_KP_9:
 		parts.append("Num %d" % (base - KEY_KP_0))
 	else:
 		parts.append(OS.get_keycode_string(base))
 	return " + ".join(parts)
+
+
+## What the key beside Alt is called here: the Windows key, a Mac's Command key.
+static func meta_name() -> String:
+	return {"Windows": "Win", "macOS": "Cmd"}.get(OS.get_name(), "Meta")
 
 
 ## An action's keys for a hint ("X", "Ctrl + F", "W / Up"); "" if unbound.

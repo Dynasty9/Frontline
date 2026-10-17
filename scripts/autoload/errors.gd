@@ -156,6 +156,7 @@ func _ready() -> void:
 	for p in [
 		["(?i)([a-z]:[\\\\/]users[\\\\/])[^\\\\/\\s\"']+", "$1<name>"],
 		["/home/[^/\\s\"']+", "/home/<name>"],
+		["/Users/[^/\\s\"']+", "/Users/<name>"],  # a Mac's home folders
 		["[\\w.+-]+@[\\w-]+\\.[\\w.-]+", "<email>"],
 		["\\b\\d{1,3}(\\.\\d{1,3}){3}\\b", "<address>"],
 		["(?i)\\b([0-9a-f]{1,4}:){3,7}[0-9a-f]{1,4}\\b", "<address>"],
