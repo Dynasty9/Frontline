@@ -13,7 +13,8 @@ import { cn } from "@/lib/utils"
 const NAV = [
   { label: "The game", to: "/#intel", wide: true },
   { label: "Battles", to: "/battles" },
-  { label: "Ranks", to: "/ranks" },
+  { label: "Leaderboards", to: "/leaderboards" },
+  { label: "Ranks", to: "/ranks", wide: true },
   { label: "What's new", to: "/changelog" },
 ] as const
 

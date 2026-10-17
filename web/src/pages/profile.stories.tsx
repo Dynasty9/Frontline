@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react-vite"
 import { expect, userEvent, waitFor, within } from "storybook/test"
-import { health, player } from "@/test/fixtures"
+import { githubPlayer, health, player } from "@/test/fixtures"
 import { mockMatchmaker, signedIn } from "@/test/network"
 import { loadPage } from "@/test/load-page"
 import { SiteAt } from "@/test/router"
@@ -74,7 +74,56 @@ export const RenameTaken: Story = {
   },
 }
 
-/** The account menu in the header: your profile, and signing out. */
+/** Keeping your battles to yourself, from your profile: your public page link, and the switch. */
+export const KeepBattlesBack: Story = {
+  beforeEach: [mockMatchmaker({ health, me: player }), signedIn(player)],
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await expect(await canvas.findByRole("link", { name: "See your page as they do" })).toHaveAttribute(
+      "href",
+      "/player/Raven"
+    )
+    const show = canvas.getByRole("checkbox", { name: /Show my battles/ })
+    await expect(show).toBeChecked()
+    await userEvent.click(show)
+    await waitFor(() => expect(show).not.toBeChecked())
+  },
+}
+
+/** Your picture: an email account has no GitHub picture, so only the insignia. */
+export const PictureInsigniaOnly: Story = {
+  beforeEach: [mockMatchmaker({ health, me: player }), signedIn(player)],
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await expect(await canvas.findByRole("radio", { name: /Your insignia/ })).toBeChecked()
+    await expect(canvas.getByRole("radio", { name: /Your GitHub picture/ })).toBeDisabled()
+  },
+}
+
+/** A GitHub account picks its GitHub picture, and the header shows it at once. */
+export const PictureFromGitHub: Story = {
+  beforeEach: [mockMatchmaker({ health, me: githubPlayer }), signedIn(githubPlayer)],
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    const github = await canvas.findByRole("radio", { name: /Your GitHub picture/ })
+    await userEvent.click(github)
+    await waitFor(() => expect(github).toBeChecked())
+    const header = canvas.getByRole("button", { name: "Your account: Raven rank 6" })
+    await waitFor(() => expect(header.querySelector("img")).toHaveAttribute("src", githubPlayer.github_avatar))
+  },
+}
+
+/** Signing out of every game and browser, this one too. */
+export const SignOutEverywhere: Story = {
+  beforeEach: [mockMatchmaker({ health, me: player }), signedIn(player)],
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await userEvent.click(await canvas.findByRole("button", { name: "Sign out everywhere" }))
+    await expect(await canvas.findByRole("heading", { level: 1, name: "Sign in to Frontline" })).toBeVisible()
+  },
+}
+
+/** The account menu in the header: your profile, your public page, the boards, and signing out. */
 export const AccountMenu: Story = {
   beforeEach: [mockMatchmaker({ health, me: player }), signedIn(player)],
   play: async ({ canvasElement }) => {
@@ -82,6 +131,8 @@ export const AccountMenu: Story = {
     await userEvent.click(await canvas.findByRole("button", { name: "Your account: Raven rank 6" }))
     const menu = within(document.body)
     await expect(await menu.findByRole("menuitem", { name: "Your profile" })).toHaveAttribute("href", "/profile")
+    await expect(menu.getByRole("menuitem", { name: "Your public page" })).toHaveAttribute("href", "/player/Raven")
+    await expect(menu.getByRole("menuitem", { name: "Leaderboards" })).toHaveAttribute("href", "/leaderboards")
     await userEvent.click(menu.getByRole("menuitem", { name: "Sign out" }))
     await expect(await canvas.findByRole("heading", { level: 1, name: "Sign in to Frontline" })).toBeVisible()
   },

@@ -2,17 +2,24 @@
 
 The game's website. Its pages (`src/pages/`, routed by React Router in `src/router.tsx`):
 
-| Page         | What's on it                                                                                          |
-| ------------ | ----------------------------------------------------------------------------------------------------- |
-| `/`          | the game, for someone who's never played it: footage, features, missions, pictures, what's new        |
-| `/play`      | **Launch** the installed game (`frontline://open`), Find Match, or download it                        |
-| `/battles`   | every battle being hosted, each with a **Join** link (`frontline://join/<id>`), and a friend's invite |
-| `/ranks`     | how ranks are earned, and the whole collection of insignia                                            |
-| `/profile`   | signed in, your rank and record, your callsign (rename it) and the insignia you wear                  |
-| `/changelog` | every release, with its changes and screenshots                                                       |
+| Page                           | What's on it                                                                                                                                                 |
+| ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `/`                            | the game, for someone who's never played it: footage, features, missions, pictures, what's new                                                               |
+| `/play`                        | **Launch** the installed game (`frontline://open`), Find Match, or download it                                                                               |
+| `/battles`                     | every battle being hosted, each with a **Join** link (`frontline://join/<id>`), and a friend's invite                                                        |
+| `/leaderboards`                | the commanders with the most XP: all time, this month, this week (`?period=`, `?page=`); find a player                                                       |
+| `/player/:callsign`            | anyone's public page: rank, XP, record, place on the board; their career and battles, unless kept back                                                       |
+| `/player/:callsign/battle/:id` | one of their battles: its after-action report (their part, every commander, the two sides)                                                                   |
+| `/ranks`                       | how ranks are earned, and the whole collection of insignia                                                                                                   |
+| `/profile`                     | signed in, your rank and record, your callsign (rename it), your picture, whether your battles are public, the insignia you wear, and signing out everywhere |
+| `/changelog`                   | every release, with its changes and screenshots                                                                                                              |
 
-The header on every page has a **Play** button and the account menu (your insignia, callsign and rank, and your
-profile). Signed out, its **Sign in** opens the sign-in dialog over whatever page you're on; so does the ranks page's.
+The header on every page has a **Play** button and the account menu (your picture, callsign and rank; your
+profile, your public page, the leaderboards). Everything public (players, boards, battles) comes from the
+matchmaker's public routes (`src/lib/players.ts`; `matchmaker/src/players.js`), fetched with TanStack Query, so going
+back to a page is instant; the matchmaker and the browser keep each answer for half a minute. A battle's report is
+read the way the game reads it: `src/lib/report.ts` has the game's rating and score formulas (keep them in step with
+`scripts/game/battle_stats.gd`). Signed out, its **Sign in** opens the sign-in dialog over whatever page you're on; so does the ranks page's.
 Signing in there, with GitHub or a test account, takes you to your profile. The
 `frontline://` scheme is registered by the game on its first launch; a link it doesn't know (like `open`) still
 starts it, or brings a running copy to the front. The browser says nothing when no program takes a link, so Launch

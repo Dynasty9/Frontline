@@ -135,8 +135,24 @@ they're doing). The observer bar at the top has pause, speed (0.25x to 4x), dire
   after-action report itself, trimmed (every commander, both sides, the units that did most, the timeline). The
   menu's **Service Record** shows your career (battles, wins, kills, K/D, average rating, time in battle) and every
   battle newest first; open one for its after-action report. A battle fought signed out or offline waits in
-  `user://pending_battles.json` (the last ten) and goes up at the next sign-in. The figures are your own game's
-  account of the battle, so the record is only ever shown to you.
+  `user://pending_battles.json` (the last ten) and goes up at the next sign-in. A record is stamped with when it
+  arrives, and a day holds 200.
+- **Public profiles and leaderboards** (the website, `matchmaker/src/players.js`). Every player has a page on the
+  website, `/player/<callsign>`: their rank, XP and record, their place on the all-time board, and (unless they
+  keep them to themselves) their career and every battle on their service record, each with its after-action
+  report, every commander rated as the game's stats screen rates them. The figures in a battle are that player's
+  own game's word, and the page says so; they're never ranked. The **leaderboards** rank XP, which only the
+  accounts database writes, timed on its own clock: all time, this month and this week (what was earned since the
+  first, or since Monday, UTC), with a signed-in player's own row marked or added at the foot. A player can find
+  any other by callsign.
+  - **Your picture** on the website is your insignia, or the picture on your GitHub account (copied from GitHub at
+    each sign-in; only GitHub's own image host is taken). No uploads, so nothing to moderate.
+  - **Keeping your battles to yourself** (your profile, "Show my battles") takes your battles and career off your
+    page; your rank, XP and record stay public, and the game still shows you your service record.
+  - **A battle counts on the record** (battles fought, won) only if it earned XP: two minutes or more on the
+    database's clock. Before, a "win" reported a moment after starting counted as a battle won.
+  - **Moderation**: a player marked `hidden` in the database is on no board and has no page
+    (`matchmaker/README.md`).
 - **Ranks and insignia** (`ui/insignia.gd`, `ui/insignia_art.gd`, `matchmaker/src/ranks.js`). Signed in, every
   battle you fight earns XP, and you climb 50 ranks from Recruit to General of the Army (Private I-V, Corporal,
   Sergeant, Staff Sergeant, Master Sergeant, Lieutenant, Captain, Major and Colonel I-V, then the five grades of
