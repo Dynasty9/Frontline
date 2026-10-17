@@ -35,7 +35,7 @@ changes any of them:
 
 | | |
 |---|---|
-| Camera | WASD / arrows / screen edge pan (Shift: faster), mouse wheel zoom toward the cursor (or + / -), Q/E turn, Page Up / Page Down tilt. Middle-drag turns and tilts; **Alt+middle-drag grabs the map** and pans (Settings swaps the two). **Backspace** squares the view up again, **Ctrl+F** follows the selection, **Ctrl+F5..F8** save a view and **F5..F8** go back to it |
+| Camera | WASD / arrows / screen edge pan (Shift: faster), mouse wheel zoom toward the cursor (or + / -), Q/E turn, Page Up / Page Down tilt. Middle-drag turns and tilts; **Alt+middle-drag grabs the map** and pans (Settings swaps the two). **Backspace** squares the view up again, **Ctrl+F** follows the selection, **Ctrl+F5..F8** save a view and **F5..F8** go back to it. On a Mac's trackpad: two fingers grab the map (or zoom, a setting), pinch zooms, Option + two fingers turn and tilt |
 | Minimap | Click or drag to look there, right-click to send the selection, wheel to zoom. Click the compass needle to square the view up. **Alt+click** pings, **Alt+right-drag** draws for your side |
 | Co-commanders | **Alt+click** pings what's under the cursor (an enemy: "enemy spotted"; one of ours: "watch this"; the ground: "look here"). **Hold Alt + left button** for the ping wheel (attack, on my way, need support, danger, defend, look; let go in the middle to call it off). **Alt+right-drag** draws a line for your side. In the Command Net, click a name to look where they're looking, the screen button (or a double-click) to watch their view live |
 | Select | Left-click a soldier to select his squad, drag a box, double-click for all of that type on screen. **Alt+click** a soldier (or click his name in the squad panel) to command just him |
@@ -44,7 +44,7 @@ changes any of them:
 | High-level | **X attack-move** (or Ctrl+right-click): the squad bounds forward by fire teams, cover to cover, fights whatever it meets, then digs in at the objective. **B defend**: click the area (drag to face) and the squad spreads into the best cover there and holds. **R retreat** to the nearest FOB (routes around known enemy fire, suppression halved). **H hold** |
 | One soldier | With a single man picked out: right-click to move him into the best cover at that spot, right-click an enemy to engage, a nest or mortar pit to man it; G / T throw, H hold, R fall back. Any squad order brings him back into the squad |
 | Squad | G grenade, T smoke, F mortar fire mission (mortar teams) |
-| Build | Select infantry, click a building in the command card, left-click to place (R turns 90 degrees, Shift+wheel 45). Everything snaps to a 1 m build grid, shown round the cursor while you place. **Click and drag** to lay a whole line of trenches, sandbags, wire, walls or tank traps (lines run at 45 degree headings) |
+| Build | Select infantry, click a building in the command card, left-click to place (R turns 90 degrees, Shift+wheel or Shift + two fingers 45). Everything snaps to a 1 m build grid, shown round the cursor while you place. **Click and drag** to lay a whole line of trenches, sandbags, wire, walls or tank traps (lines run at 45 degree headings) |
 | Defenses | Emplacements are crewed by any idle soldier standing next to them. Right-click a bunker with a squad to garrison it. Select a mortar pit for HE / smoke fire missions |
 | Support | The buttons above the minimap (Z arms the first one ready): click the target, **drag** to set the run-in direction for gun runs and bombing runs |
 | Observer | C director camera, V whose eyes to watch through, P pause, [ ] speed, F2 hide the interface. **Fire support** (observer bar) launches any air or artillery support anywhere to watch it |
@@ -98,9 +98,10 @@ they're doing). The observer bar at the top has pause, speed (0.25x to 4x), dire
   moves on to the next battle.
 - **The website** (`web/`) lists the battles being hosted, each with a **Join** link, `frontline://join/<id>`
   (and a Find Match one, `frontline://find-match`). An exported build registers the `frontline://` scheme the
-  first time it runs (per user: HKCU on Windows, a hidden `.desktop` handler on Linux), so the browser starts the
-  game with the link. If the game is already running, the new copy hands the link to it over a localhost socket
-  and quits. A link is ignored in a battle or a lobby, so a stray click never pulls anyone out of a game, and a
+  first time it runs (per user: HKCU on Windows, a hidden `.desktop` handler on Linux; a Mac app claims it in its
+  Info.plist, which macOS reads when the app is first opened), so the browser starts the game with the link (on a
+  Mac, as `--uri="frontline://..."`). If the game is already running, the new copy hands the link to it over a
+  localhost socket and quits. A link is ignored in a battle or a lobby, so a stray click never pulls anyone out of a game, and a
   battle listed for another version of the game reads as not found.
 - **Joining by address** (Direct connect) still works without the matchmaker: the host's IP on UDP port **7777**,
   forwarded or over a LAN/VPN (Tailscale, ZeroTier, Hamachi).
@@ -630,6 +631,9 @@ function and an autopilot function.
   Alt+middle-drag grabs the map like a sheet of paper (a setting swaps them), Page Up / Down tilt. The pitch comes
   from the zoom, low and level close in and steep from high up, and the player's tilt is added to it; close in it
   stops before the lens goes into the hedges. Keyboard and edge panning ease in and out, and Shift pans faster.
+  On a Mac's trackpad (which scrolls in gestures, not wheel clicks) two fingers grab the map at the middle of the
+  screen, a pinch zooms toward the fingers, and Option + two fingers turn and tilt; a setting, shown only on a
+  Mac, makes two fingers zoom instead, for a Magic Mouse.
   Jumps (the last alert, a base, a group, a unit in the order of battle, a saved view) glide rather than cut.
   Backspace turns back to the heading the battle started on, Ctrl+F follows the selection until you pan away,
   and Ctrl+F5..F8 save views that F5..F8 glide back to.

@@ -9,7 +9,7 @@ import { useReducedMotion } from "@/hooks/use-reduced-motion"
 import { FIND_MATCH_LINK } from "@/lib/config"
 import type { Health } from "@/lib/matchmaker"
 import { media, saveData } from "@/lib/media"
-import { latest, type Platform, PLATFORM_NAMES } from "@/lib/releases"
+import { assetFor, latest, type Platform, PLATFORM_NAMES } from "@/lib/releases"
 
 type Props = {
   health: Health | undefined
@@ -22,7 +22,7 @@ type Props = {
 const COMMANDS = ["squads", "armour", "gunships", "artillery", "patrol boats", "A-10s"]
 
 export function Hero({ health, platform, onLaunch, onWatch }: Props) {
-  const asset = latest.assets[platform]
+  const asset = assetFor(platform)
   const video = useRef<HTMLVideoElement>(null)
   const [ref, inView] = useInView<HTMLElement>()
   const reduced = useReducedMotion()

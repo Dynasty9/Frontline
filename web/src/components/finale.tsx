@@ -6,7 +6,7 @@ import { useInView } from "@/hooks/use-in-view"
 import { useReducedMotion } from "@/hooks/use-reduced-motion"
 import { FIND_MATCH_LINK } from "@/lib/config"
 import { media, saveData } from "@/lib/media"
-import { latest, type Platform, PLATFORM_NAMES } from "@/lib/releases"
+import { assetFor, type Platform, PLATFORM_NAMES, platformList } from "@/lib/releases"
 
 type Props = {
   platform: Platform
@@ -15,7 +15,7 @@ type Props = {
 
 /** The last word: footage behind a call to arms (the hero's own clip, which the browser already has). */
 export function Finale({ platform, onLaunch }: Props) {
-  const asset = latest.assets[platform]
+  const asset = assetFor(platform)
   const [ref, inView] = useInView<HTMLElement>({ margin: "200px" })
   const video = useRef<HTMLVideoElement>(null)
   const reduced = useReducedMotion()
@@ -51,7 +51,7 @@ export function Finale({ platform, onLaunch }: Props) {
           is waiting
         </h2>
         <p className="mt-6 max-w-lg text-base text-cream/80">
-          Free and open source, for Windows and Linux. Unzip it and play: nothing to install, and it keeps itself up to
+          Free and open source, for {platformList()}. Unzip it and play: nothing to install, and it keeps itself up to
           date.
         </p>
         <div className="mt-9 flex flex-wrap justify-center gap-3">

@@ -2,6 +2,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite"
 import { expect, within } from "storybook/test"
 import { Downloads } from "@/components/downloads"
 import { latest } from "@/lib/releases"
+import { buildWithMac } from "@/test/fixtures"
 
 // Always the latest release, baked into the site (src/release.json).
 const meta = {
@@ -32,4 +33,18 @@ export const WindowsVisitor: Story = {
 
 export const LinuxVisitor: Story = {
   args: { platform: "linux" },
+}
+
+/** A release with a Mac build: a third card, and the Mac's own steps. */
+export const MacVisitor: Story = {
+  args: { platform: "macos", build: buildWithMac },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await expect(canvas.getByRole("link", { name: "Download for macOS" })).toHaveAttribute(
+      "href",
+      buildWithMac.assets.macos!.url
+    )
+    await expect(canvas.getByText(/Open Anyway/)).toBeVisible()
+    await expect(canvas.getAllByRole("link", { name: /^Download for / })).toHaveLength(3)
+  },
 }
