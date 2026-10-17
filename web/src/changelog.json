@@ -1,6 +1,27 @@
 {
   "releases": [
     {
+      "version": "1.0.7",
+      "tag": "v1.0.7",
+      "name": "Small fixes",
+      "date": "2026-10-17",
+      "summary": "Signing in on the website, or pressing Join or Find Match there, could start a second copy of the game instead of going to the one you had open. It happened after the game had updated itself. The link goes to the open game now.",
+      "url": "https://github.com/Dynasty9/Frontline/releases/tag/v1.0.7",
+      "pull_requests": [
+        77
+      ],
+      "entries": [
+        {
+          "slug": "links-reach-the-open-game",
+          "title": "Website links reach the game you have open",
+          "kind": "fixed",
+          "summary": "Signing in on the website, or pressing Join or Find Match there, could start a second copy of the game instead of going to the one you had open. It happened after the game had updated itself. The link goes to the open game now.",
+          "body": "- The same happened to a game started while another copy of it was still running, once that other copy had closed.",
+          "screenshots": []
+        }
+      ]
+    },
+    {
       "version": "1.0.6",
       "tag": "v1.0.6",
       "name": "Performance",
