@@ -7,18 +7,18 @@ name: Release
 # releases anything: its changelog entry waits in changelog/unreleased/ until the
 # next release, which ships everything that has merged since the last one.
 #
-# The run builds Windows and Linux from main as it stands (Frontline-windows.zip
-# and Frontline-linux.zip), files every waiting entry under changelog/vX.Y.Z/,
-# and bakes the changelog and the release (version, download links, checksums)
-# into the website and the matchmaker, as one commit on a branch of its own,
-# release/vX.Y.Z. It uploads the zips as a draft release at that commit, and
-# opens a pull request from the branch that says what's in the release: its
-# version, what it was built from, its downloads and checksums, and the release
-# notes. Merging that pull request runs Publish release (publish.yml), which
-# tags the release's commit and publishes it, while Railway puts it on the
-# website and tells the matchmaker, and through it every copy of the game, that
-# it's out. (main only takes pull requests, so the workflow can't commit there
-# itself.)
+# The run builds Windows, Linux and the browser from main as it stands
+# (Frontline-windows.zip, Frontline-linux.zip and Frontline-web.zip), files
+# every waiting entry under changelog/vX.Y.Z/, and bakes the changelog and the
+# release (version, download links, checksums) into the website and the
+# matchmaker, as one commit on a branch of its own, release/vX.Y.Z. It uploads
+# the zips as a draft release at that commit, and opens a pull request from the
+# branch that says what's in the release: its version, what it was built from,
+# its downloads and checksums, and the release notes. Merging that pull request
+# runs Publish release (publish.yml), which tags the release's commit and
+# publishes it, while Railway puts it on the website and tells the matchmaker,
+# and through it every copy of the game, that it's out. (main only takes pull
+# requests, so the workflow can't commit there itself.)
 #
 #   - The version is the newest vX.Y.Z tag plus the step you chose.
 #   - Running it again while the release's pull request is open rebuilds the
@@ -159,7 +159,7 @@ jobs:
           path: |
             ~/godot
             ~/.local/share/godot/export_templates
-          key: godot-export-${{ env.GODOT_VERSION }}
+          key: godot-export-${{ env.GODOT_VERSION }}-web
 
       - name: Download Godot and export templates
         if: steps.cache-godot.outputs.cache-hit != 'true'
@@ -172,8 +172,10 @@ jobs:
           curl -sSL -o templates.tpz "$base/Godot_v${GODOT_VERSION}-stable_export_templates.tpz"
           dest=~/.local/share/godot/export_templates/${GODOT_VERSION}.stable
           mkdir -p "$dest"
-          # just the two templates we ship: the full set is over a gigabyte
-          unzip -q -j templates.tpz templates/version.txt templates/windows_release_x86_64.exe templates/linux_release.x86_64 -d "$dest"
+          # just the templates we ship: the full set is over a gigabyte (the
+          # browser build is the one without threads, which needs no special
+          # headers from whatever serves it)
+          unzip -q -j templates.tpz templates/version.txt templates/windows_release_x86_64.exe templates/linux_release.x86_64 templates/web_nothreads_release.zip -d "$dest"
           rm godot.zip templates.tpz
           ls -la "$dest"
 
@@ -189,12 +191,14 @@ jobs:
 
       - name: Export
         run: |
-          mkdir -p build/windows build/linux
+          mkdir -p build/windows build/linux build/web
           ~/godot/godot --headless --path . --export-release "Windows" build/windows/Frontline.exe 2>&1 | tee export.log
           ~/godot/godot --headless --path . --export-release "Linux" build/linux/Frontline.x86_64 2>&1 | tee -a export.log
+          ~/godot/godot --headless --path . --export-release "Web" build/web/index.html 2>&1 | tee -a export.log
           test -s build/windows/Frontline.exe && test -s build/linux/Frontline.x86_64
+          test -s build/web/index.html && test -s build/web/index.wasm && test -s build/web/index.pck
           chmod +x build/linux/Frontline.x86_64
-          for d in windows linux; do cp LICENSE build/$d/; (cd build/$d && zip -q -9 -r ../Frontline-$d.zip .); done
+          for d in windows linux web; do cp LICENSE build/$d/; (cd build/$d && zip -q -9 -r ../Frontline-$d.zip .); done
           ls -la build
 
       - name: Keep the zips as workflow artifacts

@@ -200,8 +200,8 @@ static func _repaint(k: VehicleModels) -> void:
 
 static func _swap_mat(n: Node, from: Material, to: Material) -> void:
 	for c in n.get_children():
-		if c is MeshInstance3D and (c as MeshInstance3D).material_override == from:
-			(c as MeshInstance3D).material_override = to
+		if c is MeshInstance3D and Mats.base_of((c as MeshInstance3D).material_override) == from:
+			Mats.set_material(c as MeshInstance3D, to)
 		_swap_mat(c, from, to)
 
 

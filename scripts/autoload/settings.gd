@@ -106,7 +106,8 @@ func apply_global() -> void:
 		var aa := int(v.aa)
 		vp.msaa_3d = [Viewport.MSAA_DISABLED, Viewport.MSAA_DISABLED, Viewport.MSAA_2X, Viewport.MSAA_4X, Viewport.MSAA_DISABLED,
 			Viewport.MSAA_DISABLED, Viewport.MSAA_2X, Viewport.MSAA_4X][clampi(aa, 0, 7)]
-		vp.screen_space_aa = Viewport.SCREEN_SPACE_AA_FXAA if aa == 1 else (Viewport.SCREEN_SPACE_AA_SMAA if aa >= 5 else Viewport.SCREEN_SPACE_AA_DISABLED)
+		if not Vfx.gl:  # (OpenGL, the browser build's renderer, has no screen-space AA, and says so)
+			vp.screen_space_aa = Viewport.SCREEN_SPACE_AA_FXAA if aa == 1 else (Viewport.SCREEN_SPACE_AA_SMAA if aa >= 5 else Viewport.SCREEN_SPACE_AA_DISABLED)
 		vp.use_taa = aa == 4
 		var sc: float = clampf(float(v.scale), 0.5, 1.0)
 		vp.scaling_3d_scale = sc
@@ -232,6 +233,12 @@ func _apply_window() -> void:
 	_win_applied = [wm, ri]
 	if first and _test_launch():
 		return  # test runs keep the project's own window (or the size --resolution asks for)
+	if OS.has_feature("web"):
+		# the page sizes the game, and the browser only goes fullscreen for a
+		# click (so not as the game opens): either kind of fullscreen is its own
+		if not first:
+			DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_FULLSCREEN if wm > 0 else DisplayServer.WINDOW_MODE_WINDOWED)
+		return
 	match wm:
 		1:
 			DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_FULLSCREEN)

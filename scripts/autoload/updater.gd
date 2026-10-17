@@ -44,6 +44,8 @@ var _req: HTTPRequest
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
+	if OS.has_feature("web"):
+		return  # the browser build is whatever the website serves: always the latest
 	for a in OS.get_cmdline_user_args():
 		if a.begins_with("--game-version="):
 			version = a.substr(15)

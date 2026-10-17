@@ -5,6 +5,7 @@ The long version: how each system works and why. For the short version, see the 
 - [Full controls reference](#full-controls-reference)
 - [Watching the AI](#watching-the-ai)
 - [Multiplayer in detail](#multiplayer-in-detail)
+- [In a browser](#in-a-browser)
 - [Missions](#missions)
 - [The systems](#the-systems)
 
@@ -218,6 +219,18 @@ they're doing). The observer bar at the top has pause, speed (0.25x to 4x), dire
   or team stats. Enemy HQs and starting FOBs are revealed to everyone, like start locations in most RTS games. Each
   player's game draws the fog from its own side's units (which it always knows), so nothing extra crosses the wire
   but the strips a recon flight has just photographed.
+
+## In a browser
+
+Every release also comes as a browser build (WebAssembly and WebGL 2), the same game with nothing to install. It
+plays alone: **Play vs AI**, **Missions** and **Watch AI Battle**, the Field Manual and Settings, and signing in for
+a service record. Multiplayer needs the desktop game, since a browser can't make the direct connections a battle
+between players runs over; the menu links to the downloads instead. It looks a little different (no screen-space
+lighting, volumetric fog or particle trails, which the browser's renderer doesn't have) and, with no threads to
+spread the work over, the page stops for the 20 seconds or so it takes to lay out the map. The simulation runs
+about as fast as on the desktop. The first battle also waits while the browser compiles the game's shaders (it
+keeps them, so only the first time); to keep that short, lighting is worked out per vertex, particles run on the
+processor, and explosions, muzzle flashes and fires don't cast light.
 
 ## Missions
 
@@ -518,11 +531,25 @@ function and an autopilot function.
   mines, trucks on the road, production, attack plans), shown in the message log with a map ping.
 
 **Interface**
-- A living topographic map lies behind everything outside a battle: one shader, ground that slowly folds and
-  drifts, contour lines (every fifth an index contour) lit in colours that turn round a wheel of brass, ember,
-  rose, violet, blue and jade over a minute and a half, a map grid with corner crosses. The ground rises in a hill
-  under the cursor, and a click sends a ripple out across it. Every copy shares one clock and cursor, so the
-  title, the menu and the loading screen hand over to each other without a seam.
+- A living topographic map lies behind everything outside a battle, drawn like a survey sheet of hill country
+  seen from high up: fine contours on land that climbs gently across the sheet, valleys cut into V's, every fifth
+  contour a heavier index contour lettered with its height (the line broken under the figure), spot heights on
+  the summits, and a map grid with corner crosses, its numbers and a ruler round the margins. One shader draws the
+  ground, which folds and drifts over minutes, its lines tinted in colours that turn round a wheel of brass,
+  ember, rose, violet, blue and jade over three minutes. To letter it, `TopoSurvey` works the same ground out
+  again on the CPU (the shader's noise uses an integer hash, so the two agree to the pixel) and surveys it every
+  half second on a worker thread, carrying the figures along as the ground drifts. It stays a backdrop: awake, it
+  is only a little brighter than the boot splash's map. The whole sheet leans a few pixels after the cursor, and
+  a click sends a faint ring out across it. The view pans slowly to the right over the sheet (the ground, its
+  grid and its figures drift left, and new ground is surveyed in from the right), and clouds drift over it,
+  nearer than the ground: they slide faster, lean further after the cursor and cast soft shadows. On the
+  title and the menu the map is at work: every 11 s a band of interference races across the screen in about
+  a second (the map in it torn into rows shifted sideways, static, rows dropping out, a cyan and magenta
+  fringe), and what it passes over turns up for nine seconds before fading: a contact (a hostile frame, a ring as it's found, its grid square bracketed and its
+  six-figure grid reference), a friendly unit moving off along a dashed track, or an axis of advance pencilled
+  in to a named objective. It's all a pure function of the map's clock, so it repeats exactly in screenshots,
+  and none of it shows over a battle or on the loading screen. Every copy shares one clock, cursor and survey,
+  so the title, the menu and the loading screen hand over to each other without a seam.
 - **Themes** (Settings > Interface), each named for what a soldier looks at the war through: Field Brass (the
   original), Night Vision (phosphor greens), Thermal (an ironbow of violet, red, orange and white-hot), Arctic
   (ice and intelligence blues) and Dusk (violet and rose). A theme sets the accent, the text, the panels and the

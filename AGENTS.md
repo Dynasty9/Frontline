@@ -33,8 +33,8 @@ matchmaker/                    the matchmaking service (Node, no runtime depende
 matchmaker/supabase/migrations/   the accounts database's schema, one migration per change; database.yml applies new ones as they merge
 web/                           the website (React + Vite + shadcn, on Railway): live battles with Join links, downloads;
                                Storybook for its components (*.stories.tsx next to each)
-export_presets.cfg, .github/workflows/release.yml   Windows and Linux builds: a release is a button (Actions > Release) that opens a
-                               release pull request, and merging that publishes it (publish.yml); no other merge releases
+export_presets.cfg, .github/workflows/release.yml   Windows, Linux and browser builds: a release is a button (Actions > Release)
+                               that opens a release pull request, and merging that publishes it (publish.yml); no other merge releases
 docs/                          FEATURES.md (design), DEVELOPMENT.md (code layout, test flags)
 design/                        logo and artwork used outside the game (not imported by Godot)
 ```
@@ -80,6 +80,11 @@ CI (`.github/workflows/check.yml`) runs steps 1 to 3 on every push and pull requ
 - **Worker threads** (`WorkerThreadPool`) pay off when each task works on objects of its own: many threads calling into one shared object (all reading the same `AStarGrid2D`, say) ran slower than a single thread. Never resize an Array or add to a Dictionary from a worker (filling pre-sized slots is fine), and give each worker its own `RandomNumberGenerator`, since the global `randf()` isn't thread-safe. Put anything gameplay depends on back together in a fixed order, so a seed still gives the same result (see `HNav.build_all`).
 - **Ground and water shader colours are linear**, not sRGB. A colour that looks right in a picker comes out far too bright on the ground.
 - **The terrain is flat** (y = 0, plus a deformation height field for craters, trenches and riverbeds). Buildings, trenches and line of sight all assume it, so adding hills is a large change, not a tweak.
+- **The browser build draws with the Compatibility renderer** (WebGL 2), not Forward+. Per-object shader values go
+  through `Mats.set_inst`, never `set_instance_shader_parameter`; a particle emitter goes into the scene through
+  `Vfx.part` (it becomes CPU particles there) and is handled with `Vfx`'s helpers, not as a `GPUParticles3D`; and
+  depth reads and blending have rules of their own: see "The browser build" in DEVELOPMENT.md. Check a visual change with `--rendering-method
+  gl_compatibility` too. In a browser there are no threads, sockets or UDP (`OS.has_feature("web")`).
 - **Water** has two ground kinds: `TerrainMap.WATER` (deep: impassable on foot) and `SHALLOW` (wadable). Boats path on their own grid (`Nav.find_boat_path`), and separate bodies of water are labelled (`Nav.water_body`).
 - **Shader instance uniforms** come from a fixed buffer (`rendering/limits/global_shader_variables/buffer_size` in `project.godot`). If a bigger map spawns many more objects, raise it.
 - **The host is busy for several seconds** generating the map, so ENet peers are given long timeouts (`net.gd`). Don't shorten them.

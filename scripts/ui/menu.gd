@@ -129,13 +129,20 @@ func _ready() -> void:
 	main_box.add_child(_big("Missions", "Short operations with objectives, alone or in co-op", _open_missions))
 	main_box.add_child(_big("Watch AI Battle", "Two AI commanders fight; the camera finds the action", func(): _open_op(-1)))
 	main_box.add_child(_section("MULTIPLAYER"))
-	main_box.add_child(_big("Server Browser", "Every battle being hosted, online and on your network", _open_browser))
-	main_box.add_child(_big("Host a Battle", "Co-op against the AI, versus, or a mission with friends", func(): _open_host({})))
-	main_box.add_child(_big("Find Match", "Straight into the best open battle, or host one to be found", _find_match))
+	if OS.has_feature("web"):
+		# a battle between players runs over direct connections (and hole
+		# punching) a browser can't make, so the browser build plays alone
+		main_box.add_child(_big("Get the Desktop Game", "Multiplayer and co-op need the Windows or Linux build",
+			func(): OS.shell_open(Updater.WEBSITE_URL + "/#download")))
+	else:
+		main_box.add_child(_big("Server Browser", "Every battle being hosted, online and on your network", _open_browser))
+		main_box.add_child(_big("Host a Battle", "Co-op against the AI, versus, or a mission with friends", func(): _open_host({})))
+		main_box.add_child(_big("Find Match", "Straight into the best open battle, or host one to be found", _find_match))
 	main_box.add_child(_section("REFERENCE"))
 	main_box.add_child(_big("Field Manual", "Every soldier, weapon, vehicle and work, with its numbers", func(): manual.visible = true))
 	main_box.add_child(_big("Settings", "Graphics, display, interface, controls and sound", func(): settings_panel.visible = true))
-	main_box.add_child(_big("Quit", "Back to the desktop", func(): get_tree().quit()))
+	if not OS.has_feature("web"):  # (a browser tab is closed, not quit)
+		main_box.add_child(_big("Quit", "Back to the desktop", func(): get_tree().quit()))
 	var gap2 := Control.new()
 	gap2.custom_minimum_size = Vector2(0, 14)
 	main_box.add_child(gap2)
@@ -174,6 +181,10 @@ func _ready() -> void:
 	_build_insignia_panel()
 	# the join dialog stays over every panel
 	move_child(dialog, -1)
+	# the Field Manual and Settings cover the menu while they're open, account
+	# card and notices too (added after them, those would sit on top)
+	for p: Control in [manual, settings_panel]:
+		p.visibility_changed.connect(_over_menu.bind(p))
 	var build := ("ALPHA V%s" % Updater.version) if Updater.is_release() else "DEV BUILD"
 	var foot := UiKit.label("%s  \u00b7  GODOT %s  \u00b7  F4 FIELD MANUAL IN BATTLE" % [build, Engine.get_version_info().string.to_upper()], 11, Color(0.75, 0.75, 0.7, 0.45), 600)
 	foot.anchor_left = 1.0
@@ -493,10 +504,11 @@ func _build_mission_panel() -> void:
 	var go := UiKit.primary_button("PLAY SOLO", 200, 44, 16)
 	go.pressed.connect(func(): Sfx.ui("click"); _mission_solo())
 	row2.add_child(go)
-	var co := _btn("Host Co-op", func(): Sfx.ui("click"); _mission_coop())
-	co.custom_minimum_size = Vector2(150, 44)
-	co.tooltip_text = "Host this mission for friends: it's listed in the server browser, and they share your force."
-	row2.add_child(co)
+	if not OS.has_feature("web"):
+		var co := _btn("Host Co-op", func(): Sfx.ui("click"); _mission_coop())
+		co.custom_minimum_size = Vector2(150, 44)
+		co.tooltip_text = "Host this mission for friends: it's listed in the server browser, and they share your force."
+		row2.add_child(co)
 	row2.add_child(_btn("Back", func(): ms_panel.visible = false))
 
 
@@ -604,6 +616,13 @@ func _row(label: String, w: Control) -> HBoxContainer:
 	h.add_child(l)
 	h.add_child(w)
 	return h
+
+
+## `p` over everything else on the menu while it shows, under the join dialog.
+func _over_menu(p: Control) -> void:
+	if p.visible:
+		move_child(p, -1)
+		move_child(dialog, -1)
 
 
 func _btn(text: String, cb: Callable) -> Button:

@@ -85,7 +85,7 @@ func _ready() -> void:
 	layer.layer = 10
 	add_child(layer)
 	layer.add_child(menu)
-	# --menu-cursor=X,Y: hold the map's cursor hill there (fractions of the screen; screenshots)
+	# --menu-cursor=X,Y: hold the cursor there, the map leaning after it (fractions of the screen; screenshots)
 	if args.has("menu-cursor"):
 		var mc := String(args["menu-cursor"]).split(",")
 		TopoBackdrop.pin_cursor(Vector2(float(mc[0]), float(mc[1])))
@@ -336,6 +336,8 @@ func _on_game_start(s: Dictionary) -> void:
 	world.name = "World"
 	world.settings = s
 	add_child(world)
+	if OS.has_feature("web"):
+		_reveal_next_frame(world)
 	world.game_ended.connect(_on_game_ended)
 	# a headless client says which after-action report it was sent (multiplayer tests)
 	if not world.srv and DisplayServer.get_name() == "headless":
@@ -568,6 +570,17 @@ func _bot_cmds() -> void:
 				print("BOT: squad %d order=%s" % [sid, sq.order])
 		world.send_cmd({"t": "retreat", "squads": mine.keys()})
 		print("BOT: retreat sent")
+
+
+## A browser compiles each shader the first time it's drawn, all within that
+## frame: the battlefield stays out of the frame it was built in, so building
+## it and compiling for it come as two waits, neither long enough for the
+## browser to call the page unresponsive.
+func _reveal_next_frame(w: World) -> void:
+	w.visible = false
+	await get_tree().process_frame
+	if is_instance_valid(w):
+		w.visible = true
 
 
 ## After the build: hold the loading screen while the first frames render
