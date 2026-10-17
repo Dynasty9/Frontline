@@ -33,7 +33,8 @@ matchmaker/                    the matchmaking service (Node, no runtime depende
 matchmaker/supabase/migrations/   the accounts database's schema, one migration per change; database.yml applies new ones as they merge
 web/                           the website (React + Vite + shadcn, on Railway): live battles with Join links, downloads;
                                Storybook for its components (*.stories.tsx next to each)
-export_presets.cfg, .github/workflows/release.yml   Windows, Linux and browser builds: a release is a button (Actions > Release), never a merge
+export_presets.cfg, .github/workflows/release.yml   Windows, Linux and browser builds: a release is a button (Actions > Release)
+                               that opens a release pull request, and merging that publishes it (publish.yml); no other merge releases
 docs/                          FEATURES.md (design), DEVELOPMENT.md (code layout, test flags)
 design/                        logo and artwork used outside the game (not imported by Godot)
 ```
@@ -58,7 +59,7 @@ Run every command from the repository root. `godot` means your Godot 4.7.x execu
 4. **Multiplayer**, if you touched anything replicated: run a host and a client (see "Host / client" in DEVELOPMENT.md). The client prints `CLIENT entities=...` when it quits. If you touched matchmaking, run `npm test` in `matchmaker/` and the Find Match pair under "Matchmaker" in DEVELOPMENT.md. Bump `Net.NET_VERSION` when host and client stop understanding each other, so the matchmaker won't pair old and new builds.
 5. **Visuals**: render off-screen and look at the image rather than guessing. Use `--screenshot=out.png --shot-at=SECONDS`, frame the shot with `--focus=X,Z --zoom=M --pitch=DEG --cam-yaw=RAD`, and add `--nohud` to hide the interface. `--manual=category,key,side` opens a Field Manual page.
 
-CI (`.github/workflows/check.yml`) runs steps 1 to 3 on every push and pull request. `web.yml` and `matchmaker.yml` check the website and the matchmaker when they change: lint (oxlint), formatting (Prettier), tests, and for the website types, the build and the Storybook stories. Before pushing a change there, run `npm run lint`, `npm run format:check` and `npm test` in that directory (`npm run format` fixes the formatting). Merging never releases: `.github/workflows/release.yml` publishes a version when someone runs it (Actions > Release > Run workflow), shipping everything merged since the last one, and test-exports pull requests that change the export setup.
+CI (`.github/workflows/check.yml`) runs steps 1 to 3 on every push and pull request. `web.yml` and `matchmaker.yml` check the website and the matchmaker when they change: lint (oxlint), formatting (Prettier), tests, and for the website types, the build and the Storybook stories. Before pushing a change there, run `npm run lint`, `npm run format:check` and `npm test` in that directory (`npm run format` fixes the formatting). Merging a change never releases it. Releasing is one press and one merge: `.github/workflows/release.yml` (Actions > Release > Run workflow) builds everything merged since the last release, drafts it and opens its pull request, and merging that pull request publishes it (`publish.yml`). The Release workflow also test-exports pull requests that change the export setup.
 
 ## How the code is written
 

@@ -43,7 +43,7 @@ JSON in, JSON out. Errors are `{"error": "..."}` with a 4xx/5xx status.
 | Call | What it does |
 |---|---|
 | `GET /health` | `{ok, accounts: "off" \| "supabase" \| "memory", release, lobbies, players}` |
-| `GET /release` | The latest release of the game: `{version, tag, name, published, url, assets: {windows, linux}}`, each asset with its `url`, `size` and `sha256`. The release workflow writes it into `release.json` and commits it, which redeploys this service; the game's updater reads it. |
+| `GET /release` | The latest release of the game: `{version, tag, name, published, url, assets: {windows, linux}}`, each asset with its `url`, `size` and `sha256`. The release workflow writes it into `release.json` on the release's pull request, and merging that redeploys this service; the game's updater reads it. |
 | `GET /lobbies?version=N` | The battles being hosted, fullest first. No addresses. Each says what it is: `mode` (`coop`, `versus` or `mission`), `mission`, `side`, `teams` (players per side), `spectators` and `locked` (wants a password). A signed-in host's `icon` and `rank` (as they were when the battle was listed), `null` for a host who isn't. |
 | `POST /match` `{version, exclude: [ids]}` | Quick match: `{lobby}`, or `{lobby: null}` (then host one). Holds a seat for 20 s. Never offers a battle with a password. |
 | `POST /lobbies` `{port, host, version, players, max_players, in_game, drop_in, nat, lan, punch: {ip, port}}` | List a battle. Returns `{id, token}`. With a signed-in `Authorization: Bearer`, it's listed under the account's callsign, and replaces that account's earlier listing. |
