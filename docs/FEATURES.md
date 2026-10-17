@@ -104,10 +104,15 @@ they're doing). The observer bar at the top has pause, speed (0.25x to 4x), dire
   link the game doesn't know starts it (or brings a running copy to the front) and does nothing else, so older
   versions open too. The browser can't tell the page whether anything took the link, so the page watches for
   losing focus to the browser's prompt or the game's window, and otherwise explains how to set the game up the
-  first time. An exported build registers the `frontline://` scheme the
-  first time it runs (per user: HKCU on Windows, a hidden `.desktop` handler on Linux; a Mac app claims it in its
-  Info.plist, which macOS reads when the app is first opened), so the browser starts the game with the link (on a
-  Mac, as `--uri="frontline://..."`). If the game is already running, the new copy hands the link to it over a
+  first time. An exported build registers the `frontline://` scheme when it starts (per user: HKCU on Windows, a
+  hidden `.desktop` handler on Linux; a Mac app claims it in its Info.plist, which macOS reads when the app is first
+  opened), so the browser starts the game with the link (on a Mac, as `--uri="frontline://..."`). It asks the
+  system each time whether the links still open this copy (`reg export` of the command key, or `xdg-mime query
+  default` and the `.desktop` entry's `Exec`) rather than trusting its own note of having claimed them
+  (`user://links.cfg`): uninstalling another copy (the installer's uninstaller takes the links with it), a
+  registry cleaner or another copy claiming them can take them away, and a game that went by its note never claimed
+  them back. So the copy started last has the links. Asking runs another program, so it's done on a worker and the
+  title doesn't wait. If the game is already running, the new copy hands the link to it over a
   localhost socket and quits. Only one copy can hold the socket, and one that finds it taken asks again every
   second: the copy an update replaces quits only after starting the new one, and a game that gave up on the socket
   would leave every later link to start a second game once the old copy had gone. A link is ignored in a battle or a lobby, so a stray click never pulls anyone out of a game, and a
