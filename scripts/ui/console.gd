@@ -4,8 +4,8 @@ extends CanvasLayer
 ## the top of the screen, anywhere, the menus included. Typed commands bring
 ## up performance panels, work out why the game is slow, measure what each
 ## graphics setting costs, and change settings on the spot; `help` lists them
-## (console_cmds.gd). Tab completes a command or its argument, Up and Down go
-## through what was typed before, Esc or the key again closes it.
+## (console_cmds.gd). The dropdown completes commands and arguments; Ctrl+Up/Down
+## browse history. Esc dismisses suggestions before closing the console.
 
 const HISTORY_PATH := "user://console_history.txt"
 const HISTORY_KEEP := 60
@@ -28,6 +28,7 @@ var _find_row: HBoxContainer
 var _find_status: Label
 var _find_at := -1
 var _font_size := 13
+var _suggest: ConsoleSuggestions
 var _shown := 0.0  # how far down it has slid, 0..1
 var _last_us := 0
 var _history := PackedStringArray()
@@ -136,10 +137,16 @@ func _build() -> void:
 	_edit.focus_entered.connect(func(): _log.deselect())
 	_edit.keep_editing_on_text_submit = true
 	_edit.text_submitted.connect(_on_submit)
-	_edit.text_changed.connect(func(_t: String): _hint.text = _hint_for(_edit.text))
+	_edit.text_changed.connect(func(_t: String):
+		_hint.text = _hint_for(_edit.text)
+		_hist_i = -1
+		_suggest.refresh())
 	row.add_child(_edit)
 	_hint = UiKit.mono_label(_hint_for(""), 12, UiKit.DIM)
 	box.add_child(_hint)
+	_suggest = ConsoleSuggestions.new()
+	_suggest.console = self
+	_panel.add_child(_suggest)
 
 
 # --- opening and closing ---------------------------------------------------------------------
@@ -152,6 +159,7 @@ func open() -> void:
 	probe.detail = true
 	_panel.visible = true
 	_edit.grab_focus()
+	_suggest.refresh()
 	if not _greeted:
 		_greeted = true
 		out("Frontline console. [b]why[/b] works out what's slowing the game down, [b]bench[/b] measures what each graphics setting costs, [b]graph[/b] and [b]perf 3[/b] bring up the panels. [b]help[/b] lists everything.", UiKit.ACCENT, true)
@@ -162,6 +170,7 @@ func close() -> void:
 	if not is_open:
 		return
 	is_open = false
+	_suggest.dismiss()
 	Keys.console_open = false
 	var focus := get_viewport().gui_get_focus_owner()
 	if focus and _panel.is_ancestor_of(focus):
@@ -193,6 +202,10 @@ func _input(ev: InputEvent) -> void:
 		_edit.grab_focus()
 		get_viewport().set_input_as_handled()
 		return
+	if k.keycode == KEY_ESCAPE and _suggest.visible:
+		_suggest.dismiss()
+		get_viewport().set_input_as_handled()
+		return
 	if Keys.is_event(k, "console") or k.keycode == KEY_ESCAPE:
 		if not k.echo:
 			close()
@@ -200,6 +213,11 @@ func _input(ev: InputEvent) -> void:
 		return
 	if k.ctrl_pressed or k.meta_pressed:
 		match k.keycode:
+			KEY_UP, KEY_DOWN:
+				if not _edit.has_focus():
+					return
+				_browse(1 if k.keycode == KEY_UP else -1)
+				_suggest.dismiss()
 			KEY_C:
 				if (_edit.has_focus() and _edit.has_selection()) or _find.has_focus():
 					return
@@ -240,6 +258,15 @@ func _input(ev: InputEvent) -> void:
 			_find_next(k.shift_pressed)
 			get_viewport().set_input_as_handled()
 		return
+	if _edit.has_focus() and _suggest.visible and not _suggest.options.is_empty():
+		if k.keycode == KEY_UP or k.keycode == KEY_DOWN:
+			_suggest.move_selection(1 if k.keycode == KEY_DOWN else -1)
+			get_viewport().set_input_as_handled()
+			return
+		if (k.keycode == KEY_ENTER or k.keycode == KEY_KP_ENTER) and _suggest.chosen:
+			_suggest.complete()
+			get_viewport().set_input_as_handled()
+			return
 	match k.keycode:
 		KEY_TAB:
 			if not _edit.has_focus() or k.shift_pressed:
@@ -411,6 +438,7 @@ func _on_submit(text: String) -> void:
 	_edit.clear()
 	_hist_i = -1
 	_hint.text = _hint_for("")
+	_suggest.refresh()
 	if line == "":
 		return
 	out("> " + line, UiKit.ACCENT)
@@ -435,39 +463,22 @@ func _browse(dir: int) -> void:
 	if n < 0:
 		_hist_i = -1
 		_set_line(_typed)
+		_suggest.dismiss()
 		return
 	_hist_i = mini(n, _history.size() - 1)
 	_set_line(_history[_history.size() - 1 - _hist_i])
+	_suggest.dismiss()
 
 
 func _set_line(s: String) -> void:
 	_edit.text = s
 	_edit.caret_column = s.length()
 	_hint.text = _hint_for(s)
+	_suggest.refresh()
 
 
-## Tab: the rest of a command's name, or of its argument. Several fit: as far
-## as they agree, and they're listed.
 func _complete() -> void:
-	var text := _edit.text
-	var parts := text.split(" ")
-	var word := parts[parts.size() - 1]
-	var options: Array = cmds.names() if parts.size() == 1 else cmds.complete(parts[0].to_lower(), parts.slice(1, parts.size() - 1))
-	var fits := []
-	for o in options:
-		if String(o).begins_with(word.to_lower()):
-			fits.append(String(o))
-	if fits.is_empty():
-		return
-	var common: String = fits[0]
-	for f in fits:
-		while not String(f).begins_with(common):
-			common = common.left(common.length() - 1)
-	var before := " ".join(parts.slice(0, parts.size() - 1))
-	var line := (before + " " if before != "" else "") + common + (" " if fits.size() == 1 else "")
-	_set_line(line)
-	if fits.size() > 1:
-		dim("  " + "   ".join(fits))
+	_suggest.complete()
 
 
 ## The line under the input: what the command being typed takes.
@@ -475,7 +486,7 @@ func _hint_for(text: String) -> String:
 	var name := text.strip_edges().split(" ")[0].to_lower()
 	var c: Array = cmds.find(name) if name != "" else []
 	if c.is_empty():
-		return "Tab completes   Up/Down history   Ctrl+F find   Ctrl+L clear   Ctrl+C copy/cancel   Esc closes"
+		return "Tab completes   Ctrl+Up/Down history   Ctrl+F find   Ctrl+L clear   Ctrl+C copy/cancel   Esc closes"
 	return "%s %s   %s" % [c[0], c[1], c[2]]
 
 

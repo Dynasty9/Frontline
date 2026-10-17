@@ -149,6 +149,72 @@ func _run() -> void:
 	Input.parse_input_event(_key(KEY_QUOTELEFT | KEY_MASK_SHIFT, false))
 	await _until(func(): return con.is_open)
 	_check("~ opens the console", con.is_open and Keys.console_open)
+	con._set_line("")
+	_check("empty prompt lists every command", con._suggest.options.size() == con.cmds.names().size())
+	await _wait(0.1)
+	# Control rectangles use viewport coordinates, regardless of the UI scale.
+	var wheel := InputEventMouseButton.new()
+	wheel.button_index = MOUSE_BUTTON_WHEEL_DOWN
+	wheel.pressed = true
+	wheel.position = con._suggest.list.global_position + Vector2(20, 20)
+	wheel.global_position = wheel.position
+	var motion := InputEventMouseMotion.new()
+	motion.position = wheel.position
+	motion.global_position = wheel.position
+	get_viewport().push_input(motion, true)
+	await _wait(0.1)
+	get_viewport().push_input(wheel, true)
+	await _wait(0.1)
+	_check("command list scrolls with the mouse wheel", con._suggest.list.get_v_scroll_bar().value > 0)
+	con._suggest.refresh()
+	await _wait(0.1)
+	var click := InputEventMouseButton.new()
+	click.button_index = MOUSE_BUTTON_LEFT
+	click.pressed = true
+	click.position = con._suggest.list.global_position + con._suggest.list.get_item_rect(1).get_center()
+	click.global_position = click.position
+	motion = InputEventMouseMotion.new()
+	motion.position = click.position
+	motion.global_position = click.position
+	get_viewport().push_input(motion, true)
+	await _wait(0.1)
+	get_viewport().push_input(click, true)
+	var release := click.duplicate() as InputEventMouseButton
+	release.pressed = false
+	get_viewport().push_input(release, true)
+	await _wait(0.1)
+	_check("click inserts a suggestion without running it", con._edit.text == "clear " and not con._log.get_parsed_text().is_empty())
+
+	con._set_line("grph")
+	_check("fuzzy completion finds missing letters", con._suggest.options[0] == "graph")
+	Input.parse_input_event(_key(KEY_TAB))
+	Input.parse_input_event(_key(KEY_TAB, false))
+	await _wait(0.1)
+	_check("Tab inserts without executing", con._edit.text == "graph " and not con.graph.visible)
+	con._set_line("set shadw off")
+	con._edit.caret_column = 9
+	con._suggest.refresh()
+	con._complete()
+	_check("argument completion preserves the rest of the line", con._edit.text == "set shadows off")
+	con._set_line("grapj")
+	_check("fuzzy completion tolerates a mistyped letter", con._suggest.options.has("graph"))
+	con._set_line("zzzzzzzz")
+	_check("no matches leaves input intact", con._suggest.options.is_empty() and con._edit.text == "zzzzzzzz")
+	con._set_line("")
+	Input.parse_input_event(_key(KEY_DOWN))
+	Input.parse_input_event(_key(KEY_DOWN, false))
+	await _wait(0.1)
+	var choice: String = con._suggest.options[1]
+	Input.parse_input_event(_key(KEY_ENTER))
+	Input.parse_input_event(_key(KEY_ENTER, false))
+	await _wait(0.1)
+	_check("Enter inserts an explicitly chosen suggestion", con._edit.text == choice + " ")
+	con._set_line("")
+	Input.parse_input_event(_key(KEY_ESCAPE))
+	Input.parse_input_event(_key(KEY_ESCAPE, false))
+	await _wait(0.1)
+	_check("Esc dismisses suggestions without closing", con.is_open and not con._suggest.visible)
+
 	var f1 := cam.focus_pos
 	Input.parse_input_event(_key(KEY_W))
 	await _wait(0.5)
@@ -194,6 +260,7 @@ func _run() -> void:
 	await _wait(0.1)
 	_check("Ctrl+L clears output", con._log.get_parsed_text().is_empty())
 	DisplayServer.clipboard_set(clipboard)
+	con._suggest.dismiss()
 
 	Input.parse_input_event(_key(KEY_ESCAPE))
 	Input.parse_input_event(_key(KEY_ESCAPE, false))
