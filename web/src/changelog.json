@@ -1,6 +1,238 @@
 {
   "releases": [
     {
+      "version": "1.0.3",
+      "tag": "v1.0.3",
+      "name": "Just a little more",
+      "date": "2026-10-17",
+      "summary": "The battlefield has life of its own now. Birds feed in the fields and burst up at gunfire, crows and gulls wheel overhead, rats run along the walls in town, fish jump in the rivers, ducks paddle on the ponds and dolphins roll through the swell offshore. Settings > Graphics > Wildlife turns it down, or off.",
+      "url": "https://github.com/Dynasty9/Frontline/releases/tag/v1.0.3",
+      "pull_requests": [
+        54,
+        57
+      ],
+      "entries": [
+        {
+          "slug": "wildlife",
+          "title": "Wildlife: birds, rats, hares, fish, ducks and dolphins",
+          "kind": "new",
+          "summary": "The battlefield has life of its own now. Birds feed in the fields and burst up at gunfire, crows and gulls wheel overhead, rats run along the walls in town, fish jump in the rivers, ducks paddle on the ponds and dolphins roll through the swell offshore. Settings > Graphics > Wildlife turns it down, or off.",
+          "body": "- **In the fields:** flocks of sparrows and starlings feed on the tracks, yards and mud, hopping and pecking, and\n  move on now and then. Pigeons gather about the town. Hares sit out in the grass and graze.\n- **Overhead:** crows and buzzards turn circles in the sky, gulls along the coast, and their shadows sweep over\n  the ground. At night bats flit about low down instead.\n- **In the water:** fish swim under the surface of the rivers and ponds and now and then jump, ducks paddle about\n  and upend to feed, and out at sea a pod of dolphins rolls up through the surface to breathe, one sometimes\n  leaping clear.\n- **They take fright:** a burst of fire or a shell landing sends the birds up all at once with a rush of wings,\n  and soldiers and vehicles coming near flush them too. Rats bolt for a hole in the nearest wall, hares zigzag\n  away across the field, fish dart off and ducks take to the air. Animals only react to the troops you can see,\n  so they never give away a hidden enemy.\n- **You can hear them:** birdsong, a pigeon's coo, crows and gulls calling, the rush of a flock going up, a rat's\n  squeak and the splash of a jumping fish, on the ambience volume.\n- **The time of day matters:** small birds and the soaring ones roost at night, when more rats come out. Fewer\n  birds fly in the rain.\n- **It costs little and is yours to set:** only the area round your camera is alive, so a bigger map costs no\n  more. **Settings > Graphics > Wildlife** sets it to Plenty, Some or Off, and the quality presets choose for you\n  (Off on Low, Some on Medium, Plenty on High and Ultra).",
+          "screenshots": [
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.3/wildlife/dolphin-leap.jpg",
+              "caption": "A dolphin leaping clear of the swell off the beach"
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.3/wildlife/ducks.jpg",
+              "caption": "Mallards on a pond, one upending to feed"
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.3/wildlife/dolphins.jpg",
+              "caption": "A pair coming up to breathe"
+            }
+          ]
+        },
+        {
+          "slug": "website-pages",
+          "title": "The website gets a Play button, and a page for your account",
+          "kind": "improved",
+          "summary": "The Frontline website is more than one long page now: Play opens the game on your computer (or gets it for you), the live battles have a page of their own, and your account page is where you rename yourself and pick your insignia.",
+          "body": "- **Play**, at the top of every page, opens the game you have installed, or Find Match straight away. If nothing opens, the page tells you how to get the game going the first time.\n- **Live battles** have their own page, and the header says how many are on. A friend's invite link from the game opens it, with their battle at the top.\n- **Your account** shows your rank and record, lets you change your callsign, and holds your insignia collection. The menu on your insignia in the header takes you there, or signs you out.\n- On a phone, the site's links fold into a menu, and the Play page tells you the game needs a computer.",
+          "screenshots": [
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.3/website-pages/play.jpg",
+              "caption": "Play: launch the game, find a match, or download it"
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.3/website-pages/account.jpg",
+              "caption": "Your account: your rank, your callsign and the insignia you wear"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "version": "1.0.2",
+      "tag": "v1.0.2",
+      "name": "I don't even know",
+      "date": "2026-10-17",
+      "summary": "Frontline now comes for macOS too, on Apple silicon and Intel Macs: the whole game, multiplayer included, and it keeps itself up to date like the others. On a MacBook, the trackpad drives the camera.",
+      "url": "https://github.com/Dynasty9/Frontline/releases/tag/v1.0.2",
+      "pull_requests": [
+        36,
+        38,
+        39,
+        43,
+        46,
+        49,
+        50,
+        51,
+        52,
+        53
+      ],
+      "entries": [
+        {
+          "slug": "mac-build",
+          "title": "Frontline on the Mac",
+          "kind": "new",
+          "summary": "Frontline now comes for macOS too, on Apple silicon and Intel Macs: the whole game, multiplayer included, and it keeps itself up to date like the others. On a MacBook, the trackpad drives the camera.",
+          "body": "- **Getting it:** download it from the website, unzip it and move Frontline into Applications, where it can update\n  itself.\n- **The first time:** Apple hasn't notarized the game yet, so macOS won't open it at first. Open System Settings >\n  Privacy & Security and choose **Open Anyway**; after that it opens like any other app.\n- **Join links** on the website open the Mac game too.\n- **On a trackpad:** scroll with two fingers to drag the map, pinch to zoom, and hold Option to turn and tilt the view\n  instead. Shift and two fingers turn what you're placing. On a Magic Mouse, **Settings > Interface > Two-finger\n  scroll** makes scrolling zoom instead.\n- Keys are named the Mac way: the Command key shows as **Cmd**.\n- Needs macOS 13 or later on Apple silicon, or macOS 11 or later on an Intel Mac.",
+          "screenshots": []
+        },
+        {
+          "slug": "play-in-a-browser",
+          "title": "Play in your browser",
+          "kind": "new",
+          "summary": "Frontline now comes as a browser build too: the same game, played alone, with nothing to download or install. Multiplayer still needs the desktop game.",
+          "body": "- **What you can play:** Play vs AI, Missions and Watch AI Battle, plus the Field Manual, Settings, and signing in to\n  keep your service record.\n- **Multiplayer and co-op** need the Windows, Mac or Linux game: a browser can't make the direct connections a battle\n  between players runs over. The menu links to the downloads instead.\n- **It looks a little different:** there's no screen-space lighting, volumetric fog or dust trailing behind flung\n  earth, which the browser's renderer can't draw. Settings it can't use are hidden.\n- The battlefield takes about 30 seconds to lay out, a stage at a time, with the loading screen showing how far it's\n  got. After that the battle runs about as fast as it does on the desktop.\n- **The first battle takes a while:** the first time, the browser also prepares the game's graphics, so the page\n  holds for about a minute before the battle appears (if the browser asks, choose Wait). It keeps them, so after that\n  a battle only waits for its map.\n- **Lighter on effects:** particles run on the processor, and explosions, muzzle flashes and fires don't light up\n  their surroundings, so nothing stalls the battle the first time it happens.\n- Each release comes with the browser build alongside the Windows, Mac and Linux downloads.",
+          "screenshots": [
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.2/play-in-a-browser/browser-battle.jpg",
+              "caption": "An AI battle in a browser tab"
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.2/play-in-a-browser/browser-menu.jpg",
+              "caption": "The menu in the browser: multiplayer points you to the desktop game"
+            }
+          ]
+        },
+        {
+          "slug": "sign-in-with-github",
+          "title": "Sign in with GitHub",
+          "kind": "new",
+          "summary": "Sign in with your GitHub account: the game opens the Frontline website, you sign in with GitHub there, and the game signs in by itself. The first time makes your account, named after you on GitHub.",
+          "body": "- **Sign in with GitHub** (on the main menu, or at the end of a battle) opens the website. Sign in with GitHub there, let your browser open Frontline, and the game is signed in. You never type a password into the game.\n- **Your first sign-in makes your account**, with your GitHub username as your callsign. Rename it in the game whenever you like.\n- **The website has it too**: sign in there with GitHub to see your rank and pick your insignia.\n- **The game and the website sign in separately**, so signing out of one leaves the other signed in.\n- **Closed the game while you were signing in?** The website starts it again, signed in.",
+          "screenshots": [
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.2/sign-in-with-github/sign-in.jpg",
+              "caption": "Sign in with GitHub sends you to the website, and waits for you there"
+            }
+          ]
+        },
+        {
+          "slug": "faster-route-repairs",
+          "title": "Smoother battles as the ground changes",
+          "kind": "improved",
+          "summary": "When walls go up, buildings come down or fires take hold, the host now updates the map soldiers and vehicles plan their routes on about ten times faster, so a big battle spends far less of each moment on it.",
+          "body": "- **What changed:** every change to the ground used to cost the host several milliseconds of re-planning, on about\n  a third of all of the game's updates in a big battle. It now redoes only what the change can reach: a fraction of\n  a millisecond as a rule.\n- **What didn't:** the routes. Soldiers and vehicles go exactly the way they did before, and a replayed battle plays\n  out the same.",
+          "screenshots": []
+        },
+        {
+          "slug": "lighter-pathfinding",
+          "title": "Battles use less memory",
+          "kind": "improved",
+          "summary": "Route planning keeps much less of the map in memory at once, so a battle needs about 120 MB less. Units find exactly the same routes as before.",
+          "body": "- A battle now takes about 120 MB less memory, which matters most in the browser, where a page can't use more than\n  2 GB.\n- Units take exactly the same routes as before.",
+          "screenshots": []
+        },
+        {
+          "slug": "ocean-swell",
+          "title": "An ocean that swells, and a sea for every weather",
+          "kind": "improved",
+          "summary": "Real waves roll in off the sea now: a long swell crossed by the wind's chop, which boats ride. The weather sets the sea, from glassy at dawn to a storm in the rain, and a new Water quality setting keeps it quick on slower machines and in the browser.",
+          "body": "- **Waves you can see:** a long swell rolls in off the open sea in sets, and the wind's own shorter waves run across it. The crests come up sharp and the troughs broad, and boats rise, pitch and roll on the same waves.\n- **The weather sets the sea:** glassy at dawn, dusk and golden hour, a moderate sea by day, choppy under cloud, and a storm sea in the rain, with whitecaps tearing off the crests and streaks of foam down the wind.\n- **The surf** now rises as it comes in over the shallows before it breaks on the beach.\n- **Light on the shallows:** the ripples throw dancing light onto the sand under clear water.\n- **In the browser,** the sun glitters on the water as it does on the desktop.\n- **Water quality** (Settings > Graphics): Low skips the see-through water for speed, Medium is the full sea, High adds the light on the shallows and the wind's streaks, and Ultra a finer swell. The browser starts on Medium.",
+          "screenshots": [
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.2/ocean-swell/swell.jpg",
+              "caption": "The patrol ship riding a sunlit swell, the sun's glitter broken up along the waves"
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.2/ocean-swell/rolling-swell.jpg",
+              "caption": "Swells rolling in under a grey sky, whitecaps breaking off their crests"
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.2/ocean-swell/storm.jpg",
+              "caption": "A storm sea in the rain"
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.2/ocean-swell/calm-dawn.jpg",
+              "caption": "Glassy water at dawn"
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.2/ocean-swell/before-after.jpg",
+              "caption": "Before and after: a sunny sea and an overcast one"
+            }
+          ]
+        },
+        {
+          "slug": "realistic-gunfire",
+          "title": "Gunfire that looks like the real thing",
+          "kind": "improved",
+          "summary": "Muzzle flashes, tracers, bullet impacts and gun smoke are now sized and timed to life: small, quick, bright flashes, thin tracers that glow at night, and smoke that billows and shades itself instead of hanging in round puffs.",
+          "body": "- **Muzzle flashes at real size:** a rifle's is a hand's breadth of flame, a .50's a forearm's, an autocannon's a\n  man's height, each gone in a frame and split into petals by the flash hider (or thrown out sideways by a heavy\n  gun's muzzle brake). Seen from high up they still twinkle, so you can tell who's firing.\n- **Burning gas:** a shot's gas glows for an instant before it cools into a breath of smoke. A tank's gun throws\n  out a fireball that rolls into a cloud hanging in front of it; rockets and mortars do the same at the tube.\n- **Tracers** are thin, bright threads at night and fainter and shorter by day, as they really look.\n- **Bullet impacts** are small and quick: a crown of dust and soil off the ground, a puff of stone dust and chips\n  off a wall, a dry burst off sandbags, instead of the big bursts of before.\n- **Smoke billows:** gun smoke and dust are shaded as clouds, lit on the sun's side and in their own shadow on the\n  other, and no two come out round.",
+          "screenshots": [
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.2/realistic-gunfire/rifles-before-after.jpg",
+              "caption": "Rifles firing over a wall: before, every round threw up a big white cloud; now a tight flash that lights the wall and a quick puff of stone dust"
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.2/realistic-gunfire/tank-fireball.jpg",
+              "caption": "A tank's main gun: a fireball of burning gas that rolls into smoke"
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.2/realistic-gunfire/tank-smoke-before-after.jpg",
+              "caption": "The smoke a tank's gun leaves: round puffs before, one billowing cloud now"
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.2/realistic-gunfire/night.jpg",
+              "caption": "At night every shot lights up what's round it"
+            }
+          ]
+        },
+        {
+          "slug": "survey-map",
+          "title": "A tactical survey map behind the menus",
+          "kind": "improved",
+          "summary": "The living map behind the title, menu and loading screen is now a tactical survey sheet with lettered contours, spot heights and a numbered grid. It's calmer, the view pans slowly as clouds drift over, and now and then a burst of interference turns up a contact or a plan.",
+          "body": "- **A survey sheet:** the map is drawn like a military survey of hill country seen from high up. Fine contours with a heavier index contour every fifth line, lettered with its height; spot heights on the summits; and the map grid numbered round the edges, with a ruler in the margins.\n- **Calmer:** the lines are about as faint as the map on the splash screen, and the ground drifts at a quarter of its old speed, so it stays in the background.\n- **The view pans:** the map slides slowly by as the view moves east, new ground is surveyed in from the right, and clouds drift over it, casting soft shadows.\n- **It follows you:** instead of a hill rising under the cursor, the whole map leans a little after it. A click sends a faint ring across the map instead of a ripple.\n- **The map at work:** every few seconds a burst of interference flashes across the map, and what it passes turns up for a few seconds: an enemy contact with its grid reference, a unit moving off along its track, or an axis of advance pencilled in to an objective.",
+          "screenshots": [
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.2/survey-map/before-and-after.jpg",
+              "caption": "The main menu in v1.0.0 (left) and now"
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.2/survey-map/menu.jpg",
+              "caption": "The main menu, after a survey has turned up a contact, a unit and an axis of advance"
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.2/survey-map/interference.jpg",
+              "caption": "A burst of interference crossing the map"
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.2/survey-map/title.jpg",
+              "caption": "The title, just after the map wakes"
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.2/survey-map/loading.jpg",
+              "caption": "The loading screen"
+            }
+          ]
+        },
+        {
+          "slug": "boats-come-about",
+          "title": "Boats come about for a destination astern",
+          "kind": "fixed",
+          "summary": "A boat sent somewhere straight behind it now turns round and goes there, instead of sailing off the other way with its men still aboard. Wheeled vehicles turn round sooner for a point behind them too.",
+          "body": "- An RHIB, gunboat or patrol ship lying still and sent back the way its stern points could hold its course and keep\n  going the wrong way for good, so a landing party never reached its beach. Now it puts the helm over and comes\n  round, the enemy's boats as well as yours.\n- Trucks, cars and other wheeled vehicles sent somewhere behind them turn round on full lock straight away, rather\n  than rolling on ahead before they start to turn.",
+          "screenshots": []
+        },
+        {
+          "slug": "field-manual-on-top",
+          "title": "The Field Manual opens over the account card",
+          "kind": "fixed",
+          "summary": "Opened from the menu, the Field Manual and Settings now cover everything behind them, so the account card no longer hides the manual's side filter, search and Close button.",
+          "body": "- The account card and the menu's notices sat on top of the Field Manual and Settings when they were open from the\n  main menu. Both now come to the front as they open (a join invitation still shows over them).",
+          "screenshots": [
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.2/field-manual-on-top/field-manual.jpg",
+              "caption": "The Field Manual from the menu, its search and Close button in the clear"
+            }
+          ]
+        }
+      ]
+    },
+    {
       "version": "1.0.1",
       "tag": "v1.0.1",
       "name": "Tons of stuff 2",
