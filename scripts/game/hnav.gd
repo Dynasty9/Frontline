@@ -46,6 +46,8 @@ var _uses := 0
 ## mark_dirty: a cluster's grid is made from these far quicker than by asking
 ## the full grid cell by cell, and the build's worker threads can all read
 ## them (many threads reading one AStarGrid2D ran slower than one alone).
+## They start as a new grid does (open, weight 1) and follow every cell Nav
+## sets, from the first, so a new map never has to be read back cell by cell.
 var _solid := PackedByteArray()
 var _weight := PackedFloat32Array()
 var cl_nodes: Array = []  # per cluster: Array of entrance node ids
@@ -67,6 +69,7 @@ var edge_ver := PackedInt32Array()  # per cluster side (left, right, top, bottom
 var link_ver := PackedInt32Array()  # per cluster: its ver when its links were last worked out
 var basis: Array = []  # per cluster: the entrance ids its costs are listed by
 var costs: Array = []  # per cluster: the costs between them, as a square table (see _relink)
+var _keys: Array = []  # while building: what each cluster's costs hang on (see _cluster_key)
 var mid_f := PackedFloat64Array()  # per side, per cluster: the danger factor its mids carry
 var danger_n := PackedInt32Array()  # per side, per cluster: goes up whenever its danger changes at all
 var border_dn := {}  # _bkey -> Vector4i: the danger_n of each side when its entrances were last weighted
@@ -90,6 +93,9 @@ func _init(g: AStarGrid2D, is_vehicle: bool) -> void:
 	for ci in NCC:
 		cl_nodes.append([])
 		cl_mids.append({})
+	_solid.resize(MapDims.N * MapDims.N)
+	_weight.resize(MapDims.N * MapDims.N)
+	_weight.fill(1.0)
 
 
 ## Cluster ci's own grid, its cells as the full grid has them now.
@@ -107,8 +113,6 @@ func local_grid(ci: int) -> AStarGrid2D:
 				oldest = int(_local[k][1])
 				old = k
 		_local.erase(old)
-	if _solid.is_empty():
-		_snapshot()
 	var lg := _local_from(ci, _solid, _weight)
 	_local[ci] = [lg, _uses]
 	return lg
@@ -139,18 +143,6 @@ static func _local_from(ci: int, solid: PackedByteArray, weight: PackedFloat32Ar
 	return lg
 
 
-## _solid and _weight, read from the full grid.
-func _snapshot() -> void:
-	var n := MapDims.N
-	_solid.resize(n * n)
-	_weight.resize(n * n)
-	for z in n:
-		for x in n:
-			var c := Vector2i(x, z)
-			_solid[z * n + x] = 1 if grid.is_point_solid(c) else 0
-			_weight[z * n + x] = grid.get_point_weight_scale(c)
-
-
 func cluster_of(c: Vector2i) -> int:
 	return clampi(c.y / C, 0, NC - 1) * NC + clampi(c.x / C, 0, NC - 1)
 
@@ -160,27 +152,27 @@ static func _key(a: int, b: int) -> int:
 
 
 ## Nav changed a cell's solidity / weight: mirror it and queue the cluster.
+## (Nav reports every cell it sets, from the start: see _solid.)
 func mark_dirty(c: Vector2i) -> void:
 	var ci := cluster_of(c)
 	var solid := grid.is_point_solid(c)
 	var w := grid.get_point_weight_scale(c)
-	if not _solid.is_empty():
-		var i := c.y * MapDims.N + c.x
-		if built and ((_solid[i] != 0) != solid or _weight[i] != w):
-			# (most calls change nothing: a wall raised where the ground was already blocked)
-			ver[ci] += 1
-			var x := c.x % C
-			var z := c.y % C
-			if x == 0:
-				edge_ver[ci * 4] += 1
-			elif x == C - 1:
-				edge_ver[ci * 4 + 1] += 1
-			if z == 0:
-				edge_ver[ci * 4 + 2] += 1
-			elif z == C - 1:
-				edge_ver[ci * 4 + 3] += 1
-		_solid[i] = 1 if solid else 0
-		_weight[i] = w
+	var i := c.y * MapDims.N + c.x
+	if built and ((_solid[i] != 0) != solid or _weight[i] != w):
+		# (most calls change nothing: a wall raised where the ground was already blocked)
+		ver[ci] += 1
+		var x := c.x % C
+		var z := c.y % C
+		if x == 0:
+			edge_ver[ci * 4] += 1
+		elif x == C - 1:
+			edge_ver[ci * 4 + 1] += 1
+		if z == 0:
+			edge_ver[ci * 4 + 2] += 1
+		elif z == C - 1:
+			edge_ver[ci * 4 + 3] += 1
+	_solid[i] = 1 if solid else 0
+	_weight[i] = w
 	var e: Variant = _local.get(ci)
 	if e != null:
 		var lg: AStarGrid2D = e[0]
@@ -201,19 +193,48 @@ func build() -> void:
 ## cluster's on its own local grid, are shared out across all the threads.
 ## Each graph is still put together in one fixed order, so its ids, and every
 ## route planned on it, come out exactly as they would with no threads at all.
+##
+## Most clusters are much like others: open ground with its entrances in the
+## same places (on a scenario's map nearly all of them; on a battle's, half).
+## A search inside a cluster depends only on its cells and where in it the two
+## entrances are, not on where the cluster is, so clusters alike in every cell
+## and entrance, in either graph, are costed once and share the result.
 static func build_all(navs: Array) -> void:
 	var t := WorkerThreadPool.add_group_task(func(i: int): (navs[i] as HNav)._prepare(), navs.size(), -1, true, "Nav: entrances")
 	WorkerThreadPool.wait_for_group_task_completion(t)
-	t = WorkerThreadPool.add_group_task(func(k: int): (navs[k / NCC] as HNav)._cluster_costs(k % NCC), navs.size() * NCC, -1, true, "Nav: entrance costs")
+	t = WorkerThreadPool.add_group_task(func(k: int): (navs[k / NCC] as HNav)._cluster_key(k % NCC), navs.size() * NCC, -1, true, "Nav: cluster keys")
 	WorkerThreadPool.wait_for_group_task_completion(t)
+	var first := {}  # key -> the cluster (nav * NCC + ci) costed for it
+	var todo := PackedInt32Array()
+	var alike := PackedInt32Array()  # cluster, and the one it shares with, in turn
+	for i in navs.size():
+		var keys: Array = (navs[i] as HNav)._keys
+		for ci in NCC:
+			var key: PackedByteArray = keys[ci]
+			if key.is_empty():
+				continue  # (costed already: nothing to cost)
+			var slot := i * NCC + ci
+			var was: int = first.get(key, -1)
+			if was < 0:
+				first[key] = slot
+				todo.append(slot)
+			else:
+				alike.append(slot)
+				alike.append(was)
+	t = WorkerThreadPool.add_group_task(func(j: int): (navs[todo[j] / NCC] as HNav)._cluster_costs(todo[j] % NCC), todo.size(), -1, true, "Nav: entrance costs")
+	WorkerThreadPool.wait_for_group_task_completion(t)
+	for q in range(0, alike.size(), 2):
+		var d := alike[q]
+		var r := alike[q + 1]
+		(navs[d / NCC] as HNav).costs[d % NCC] = (navs[r / NCC] as HNav).costs[r % NCC]
+	for h: HNav in navs:
+		h._keys = []
 	t = WorkerThreadPool.add_group_task(func(i: int): (navs[i] as HNav)._link_all(), navs.size(), -1, true, "Nav: graph")
 	WorkerThreadPool.wait_for_group_task_completion(t)
 
 
-## (On a worker thread.) The full grid's cells, and the entrances along
-## every border.
+## (On a worker thread.) The entrances along every border.
 func _prepare() -> void:
-	_snapshot()
 	for ci in NCC:
 		var cx := ci % NC
 		var cz := ci / NC
@@ -221,16 +242,39 @@ func _prepare() -> void:
 			_make_border(ci, ci + 1, _border_picks(ci, ci + 1))
 		if cz < NC - 1:
 			_make_border(ci, ci + NC, _border_picks(ci, ci + NC))
+	_keys.resize(NCC)
+
+
+## (On a worker thread.) Everything cluster ci's costs hang on, as bytes:
+## its cells (solid, weight) and its entrances' places in it, in the order
+## they're listed (which decides which way round each pair is costed). An
+## empty key: it has fewer than two entrances, so nothing to cost. The
+## workers each fill in only their own cluster's slot: resizing the arrays is
+## what isn't safe from several threads at once.
+func _cluster_key(ci: int) -> void:
+	var nodes: Array = cl_nodes[ci]
+	basis[ci] = nodes.duplicate()
+	if nodes.size() < 2:
+		costs[ci] = _pair_costs(ci)
+		_keys[ci] = PackedByteArray()
+		return
+	var n := MapDims.N
+	var x0 := (ci % NC) * C
+	var z0 := (ci / NC) * C
+	var key := PackedByteArray()
+	var wts := PackedFloat32Array()
+	for z in range(z0, z0 + C):
+		key.append_array(_solid.slice(z * n + x0, z * n + x0 + C))
+		wts.append_array(_weight.slice(z * n + x0, z * n + x0 + C))
+	key.append_array(wts.to_byte_array())
+	for id: int in nodes:
+		var c: Vector2i = node_cell[id]
+		key.append((c.y - z0) * C + c.x - x0)
+	_keys[ci] = key
 
 
 ## (On a worker thread.) A cluster's grid of its own, for its costs alone.
-## The workers each fill in only their own cluster's slot: resizing the
-## array is what isn't safe from several threads at once.
 func _cluster_costs(ci: int) -> void:
-	basis[ci] = (cl_nodes[ci] as Array).duplicate()
-	if (cl_nodes[ci] as Array).size() < 2:
-		costs[ci] = _pair_costs(ci)  # (nothing to cost, so no grid to make)
-		return
 	costs[ci] = _pair_costs(ci, _local_from(ci, _solid, _weight))
 
 
@@ -438,21 +482,18 @@ func _fresh_danger(k: int) -> void:
 
 # --- graph plumbing (all three copies move together) --------------------------------------
 
-func _danger_f(gi: int, ci: int) -> float:
-	if gi == PLAIN:
-		return 1.0
-	return 1.0 + float(danger[gi - 1][ci])
-
-
+## (Each team's copy weighs a node by that side's danger where it stands.)
 func _g_add(id: int, pos: Vector3, ci: int, base := 1.0) -> void:
 	node_cl[id] = ci
-	for gi in 3:
-		(graphs[gi] as AStar3D).add_point(id, pos, base * _danger_f(gi, ci))
+	(graphs[PLAIN] as AStar3D).add_point(id, pos, base)
+	g_team[0].add_point(id, pos, base * (1.0 + float(danger[0][ci])))
+	g_team[1].add_point(id, pos, base * (1.0 + float(danger[1][ci])))
 
 
 func _g_connect(a: int, b: int) -> void:
-	for g in graphs:
-		(g as AStar3D).connect_points(a, b)
+	(graphs[PLAIN] as AStar3D).connect_points(a, b)
+	g_team[0].connect_points(a, b)
+	g_team[1].connect_points(a, b)
 
 
 func _g_remove(id: int) -> void:
@@ -542,14 +583,18 @@ func _border_picks(a: int, b: int) -> PackedInt32Array:
 	var side_by_side := b == a + 1
 	var ax := (a % NC) * C
 	var az := (a / NC) * C
+	# (the cells along it, a's side and b's, read from the mirror of the full
+	# grid: as indices, the first pair and the step from one pair to the next)
+	var n := MapDims.N
+	var ia := az * n + ax + C - 1 if side_by_side else (az + C - 1) * n + ax
+	var ib := ia + 1 if side_by_side else ia + n
+	var step := n if side_by_side else 1
 	var out := PackedInt32Array()
 	var run_start := -1
 	for i in C + 1:
 		var open := false
 		if i < C:
-			var ca := Vector2i(ax + C - 1, az + i) if side_by_side else Vector2i(ax + i, az + C - 1)
-			var cb := Vector2i(ax + C, az + i) if side_by_side else Vector2i(ax + i, az + C)
-			open = not grid.is_point_solid(ca) and not grid.is_point_solid(cb)
+			open = _solid[ia + i * step] == 0 and _solid[ib + i * step] == 0
 		if open and run_start < 0:
 			run_start = i
 		elif not open and run_start >= 0:
@@ -565,8 +610,7 @@ func _border_picks(a: int, b: int) -> PackedInt32Array:
 			for j in range(run_start, run_end + 2):
 				var cheap := false
 				if j <= run_end:
-					var cj := Vector2i(ax + C, az + j) if side_by_side else Vector2i(ax + j, az + C)
-					cheap = grid.get_point_weight_scale(cj) < 0.95
+					cheap = _weight[ib + j * step] < 0.95
 				if cheap and cheap_start < 0:
 					cheap_start = j
 				elif not cheap and cheap_start >= 0:
@@ -606,16 +650,58 @@ func _make_border(a: int, b: int, picks: PackedInt32Array) -> void:
 
 
 ## Links every pair of entrances inside one cluster, at the costs _pair_costs
-## found (for a new graph: nothing is linked yet).
+## found (for a new graph: nothing is linked yet). It's _link, pair by pair,
+## with what _link looks up for each (positions, danger) worked out once: the
+## same nodes, ids and weights, added to each graph in the same order.
 func _intra(ci: int) -> void:
 	var cm: PackedFloat64Array = costs[ci]
 	var nodes: Array = cl_nodes[ci]
 	var n := nodes.size()
+	if n < 2:
+		return
+	var g0: AStar3D = graphs[PLAIN]
+	var g1 := g_team[0]
+	var g2 := g_team[1]
+	var f1 := 1.0 + float(danger[0][ci])
+	var f2 := 1.0 + float(danger[1][ci])
+	var own: Dictionary = cl_mids[ci]
+	var pos := PackedVector3Array()
+	pos.resize(n)
 	for i in n:
+		var c: Vector2i = node_cell[nodes[i]]
+		pos[i] = Vector3(c.x + 0.5, 0, c.y + 0.5)
+	for i in n:
+		var a: int = nodes[i]
+		var pa := pos[i]
 		for j in range(i + 1, n):
 			var c := cm[i * n + j]
-			if c >= 0.0:
-				_link(nodes[i], nodes[j], c, ci, null)
+			if c < 0.0:
+				continue
+			var b: int = nodes[j]
+			var pb := pos[j]
+			var l := pa.distance_to(pb)
+			if l < 0.5:
+				g0.connect_points(a, b)
+				g1.connect_points(a, b)
+				g2.connect_points(a, b)
+				continue
+			var w := clampf(2.0 * c / l - 1.0, 0.05, 60.0)
+			var m := next_id
+			next_id += 1
+			node_base[m] = w
+			node_cl[m] = ci
+			var pm := (pa + pb) * 0.5
+			g0.add_point(m, pm, w)
+			g1.add_point(m, pm, w * f1)
+			g2.add_point(m, pm, w * f2)
+			g0.connect_points(a, m)
+			g1.connect_points(a, m)
+			g2.connect_points(a, m)
+			g0.connect_points(m, b)
+			g1.connect_points(m, b)
+			g2.connect_points(m, b)
+			mids[mini(a, b) * 2147483648 + maxi(a, b)] = m
+			own[m] = true
 
 
 ## The cost of walking between each pair of the cluster's entrances (-1: no
