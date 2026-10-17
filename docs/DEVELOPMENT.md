@@ -279,7 +279,8 @@ Example:
 `--test-port=N` lets a test drive the game from outside: it listens on 127.0.0.1 (only, and only when asked;
 exported builds leave it out), one JSON object per line each way. Game time moves only when the test steps it,
 so the game must run with `--fixed-fps 30`; between commands it holds still. `--test-port=0` takes any free port
-and prints `TESTPORT listening 127.0.0.1:PORT`. The game quits when the test hangs up.
+and prints `TESTPORT listening 127.0.0.1:PORT`. The game quits when the test hangs up. A test-port game has no
+main menu (nothing a test drives needs it, and leaving it out saves a second or so of every start).
 
 The tests live in `tests/` (Node, no dependencies): `tests/lib/game.mjs` starts a headless game, connects and
 wraps the commands, and each `*.test.mjs` is a `node:test` file. Run them with `npm test` in `tests/`, with
