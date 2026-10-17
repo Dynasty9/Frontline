@@ -155,7 +155,7 @@ func play(ev: Array) -> void:
 				world.director.cue(ev[1], float(ev[2]))
 			Sfx.ui("click")
 		DELIVER:
-			_float_text(ev[1], "+%d supply" % int(ev[2]), Color(0.5, 1.0, 0.5) if int(ev[3]) == world.local_team or world.local_team < 0 else Color(1, 1, 1, 0))
+			_float_text(ev[1], "+%d SUP" % int(ev[2]), UiKit.GOOD if int(ev[3]) == world.local_team or world.local_team < 0 else Color(1, 1, 1, 0))
 		FAR_SOUND:
 			var dist := world.cam.focus_pos.distance_to(ev[3]) if world.cam and ev.size() > 3 else 0.0
 			Sfx.play_far(String(ev[1]), float(ev[2]), 1.0, dist)
@@ -411,7 +411,8 @@ func _float_text(p: Vector3, text: String, col: Color) -> void:
 	l.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 	l.fixed_size = true
 	l.pixel_size = 0.0013
-	l.font_size = 28
+	l.font = UiKit.mono(500)  # a figure, so mono (docs/UI.md, Two voices)
+	l.font_size = 20
 	l.outline_size = 8
 	l.no_depth_test = true
 	l.render_priority = 127  # over roads and other see-through ground layers
