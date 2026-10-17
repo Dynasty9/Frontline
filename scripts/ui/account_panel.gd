@@ -15,9 +15,9 @@ extends PanelContainer
 signal closed
 signal signed_in
 
-## Its size on the screen (UiKit.fit_center): the form's. Sending the player to
-## the website, it's only as tall as its words and buttons.
-const SIZE := Vector2(500, 440)
+## Its size on the screen (UiKit.fit_center): the form's width, and only as
+## tall as what the way in being shown needs (the form, or the website's steps).
+const SIZE := Vector2(500, 0)
 ## Signing in on the website, step by step.
 const WEB_STEPS := [
 	"Sign in with GitHub on the Frontline website, in your browser. The first time makes your account.",
@@ -48,26 +48,24 @@ var _hint: Label
 
 
 func _ready() -> void:
-	UiFx.glass(self, 16.0, 24.0)
+	# a dialog in Signal (docs/UI.md): flat ink marked by the accent's ticks,
+	# a label and a title in capitals, the fields as mono lines over a rule
+	theme = UiKit.theme()
+	add_theme_stylebox_override("panel", UiKit.frame_hot(26.0, 0.96))
 	visible = false
 	var v := VBoxContainer.new()
 	v.add_theme_constant_override("separation", 10)
 	add_child(v)
-	var head := Label.new()
-	head.text = "ACCOUNT"
-	head.add_theme_font_override("font", UiFx.spaced(700, 4))
-	head.add_theme_font_size_override("font_size", 12)
-	head.add_theme_color_override("font_color", UiKit.ACCENT)
-	v.add_child(head)
-	_title = Label.new()
-	_title.add_theme_font_override("font", UiFx.spaced(700, 3))
-	_title.add_theme_font_size_override("font_size", 24)
-	_title.add_theme_color_override("font_color", UiKit.TEXT)
+	v.add_child(UiKit.caps("Account", 12, UiKit.ACCENT))
+	_title = UiKit.caps("", 22, UiKit.TEXT, 600, 2)
 	v.add_child(_title)
-	_blurb = UiKit.label("You don't need an account to play. One keeps your callsign yours (no one else can register it, and battles you host show a tick) and keeps a service record of every battle you fight: your rating, kills and losses, and each battle's after-action report.", 13, UiKit.DIM)
+	# what an account is for, in a line (the whole of it under the cursor)
+	_blurb = UiKit.label("Not needed to play: it keeps your callsign and your battles.", 13, UiKit.DIM)
 	_blurb.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_blurb.mouse_filter = Control.MOUSE_FILTER_PASS
+	_blurb.tooltip_text = "You don't need an account to play. One keeps your callsign yours (no one else can register it, and battles you host show a tick) and keeps a service record of every battle you fight: your rating, kills and losses, and each battle's after-action report."
 	v.add_child(_blurb)
-	_status = UiKit.label("", 15, UiKit.ACCENT, 600)
+	_status = UiKit.label("", 14, UiKit.ACCENT, 600)
 	_status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	v.add_child(_status)
 	_steps = VBoxContainer.new()
@@ -75,9 +73,9 @@ func _ready() -> void:
 	v.add_child(_steps)
 	for i in WEB_STEPS.size():
 		var row := HBoxContainer.new()
-		row.add_theme_constant_override("separation", 10)
-		var n := UiKit.label(str(i + 1), 15, UiKit.DIM, 700)
-		n.custom_minimum_size = Vector2(16, 0)
+		row.add_theme_constant_override("separation", 12)
+		var n := UiKit.mono_label("%d" % (i + 1), 12, UiKit.DIM)
+		n.custom_minimum_size = Vector2(14, 0)
 		var t := UiKit.label(WEB_STEPS[i], 13, UiKit.DIM)
 		t.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		t.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -85,52 +83,68 @@ func _ready() -> void:
 		row.add_child(t)
 		_steps.add_child(row)
 		_step_labels.append([n, t])
-	_hint = UiKit.label("No page in your browser? Press Open it again. Signed in there, but nothing happened here? Press Open Frontline on the page: the game has to be running to take it.", 12, UiKit.DIM)
+	_hint = UiKit.label("No page in your browser? Press Open it again. Signed in there, but nothing happened here? Press Open Frontline on the page: the game has to be running to take it.", 12, UiKit.FAINT)
 	_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	v.add_child(_hint)
 	email = LineEdit.new()
-	email.placeholder_text = "Email"
+	email.placeholder_text = "you@example.com"
 	password = LineEdit.new()
-	password.placeholder_text = "Password (8 characters or more)"
+	password.placeholder_text = "8 characters or more"
 	password.secret = true
 	password.text_submitted.connect(func(_t): _submit())
 	callsign = LineEdit.new()
-	callsign.placeholder_text = "Callsign (what other players see)"
+	callsign.placeholder_text = "What other players see"
 	callsign.max_length = 20
 	callsign.text_submitted.connect(func(_t): _submit())
-	for e: LineEdit in [email, password, callsign]:
-		e.custom_minimum_size = Vector2(0, 36)
-		v.add_child(e)
+	for f in [[email, "Email"], [password, "Password"], [callsign, "Callsign"]]:
+		v.add_child(_field(f[0], String(f[1])))
+	v.add_child(_gap(4))
 	_row = HBoxContainer.new()
-	_row.add_theme_constant_override("separation", 8)
+	_row.add_theme_constant_override("separation", 10)
 	v.add_child(_row)
-	_go = _button("Sign in", _submit)
-	_go.custom_minimum_size = Vector2(150, 38)
-	_row.add_child(_go)
-	_switch = _button("New here? Create an account", func(): _set_mode(not _create))
-	_switch.flat = true
-	_switch.add_theme_color_override("font_color", UiKit.ACCENT)
-	_switch.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_switch.alignment = HORIZONTAL_ALIGNMENT_LEFT
-	_row.add_child(_switch)
-	_close = _button("Close", func(): visible = false; closed.emit())
+	_close = UiKit.button("Close", "quiet")
+	_close.pressed.connect(func(): Sfx.ui("click"); visible = false; closed.emit())
 	_row.add_child(_close)
+	var fill := Control.new()
+	fill.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_row.add_child(fill)
+	_switch = UiKit.button("", "quiet")
+	_switch.pressed.connect(func(): Sfx.ui("click"); _set_mode(not _create))
+	_switch.add_theme_color_override("font_color", UiKit.ACCENT)
+	_row.add_child(_switch)
+	_go = UiKit.primary_button("", 170, 36, 13)
+	_go.pressed.connect(func(): Sfx.ui("click"); _submit())
+	_row.add_child(_go)
 	msg = UiKit.label("", 13, UiKit.DIM)
 	msg.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	v.add_child(msg)
+	# the website's parts wait hidden until it's the way in (open)
+	for c: Control in [_status, _steps, _hint]:
+		c.visible = false
 	Online.account_changed.connect(_on_account_changed)
 	Online.web_sign_in_received.connect(_on_web_received)
 	Online.web_sign_in_failed.connect(_on_web_failed)
 	set_process(false)
 
 
-func _button(text: String, cb: Callable) -> Button:
-	var b := Button.new()
-	b.text = text
-	b.custom_minimum_size = Vector2(90, 38)
-	b.focus_mode = Control.FOCUS_NONE
-	b.pressed.connect(func(): Sfx.ui("click"); cb.call())
-	return b
+## A field and its label: faint capitals beside a mono line over a rule.
+func _field(e: LineEdit, label: String) -> HBoxContainer:
+	var h := HBoxContainer.new()
+	h.add_theme_constant_override("separation", 14)
+	var l := UiKit.caps(label, 11, UiKit.FAINT)
+	l.custom_minimum_size = Vector2(80, 0)
+	l.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	h.add_child(l)
+	e.custom_minimum_size = Vector2(0, 32)
+	e.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	h.add_child(e)
+	return h
+
+
+func _gap(px: float) -> Control:
+	var g := Control.new()
+	g.custom_minimum_size = Vector2(0, px)
+	return g
 
 
 ## Opens on the sign-in form, or the new-account one (with a callsign to
@@ -141,20 +155,26 @@ func open(create := false, suggest := "") -> void:
 	msg.get_parent().move_child(msg, -1)
 	if _web:
 		msg.get_parent().move_child(msg, _row.get_index())
-	UiKit.fit_center(self, Vector2(SIZE.x, 0.0) if _web else SIZE)
-	visible = true
-	UiFx.pop(self)
-	Sfx.ui("ui_whoosh", -18.0, 1.15)
 	msg.text = ""
 	_busy = false
 	_suggest = suggest if suggest != "Commander" else ""
 	if callsign.text == "":
 		callsign.text = _suggest
 	_set_mode(create)
+	visible = true
+	Sfx.ui("ui_whoosh", -18.0, 1.15)
 	if _web:
 		_open_website()
 	else:
 		email.grab_focus.call_deferred()
+	# its wrapped lines are measured only once it's laid out showing (until
+	# then each is a letter wide and miles tall), so it's fitted to what this
+	# way in shows a frame later, unseen until it is
+	modulate.a = 0.0
+	await get_tree().process_frame
+	UiKit.fit_center(self, SIZE)
+	modulate.a = 1.0
+	UiFx.pop(self)
 	var r: Dictionary = await Online.check()
 	if not visible:
 		return
@@ -168,26 +188,30 @@ func open(create := false, suggest := "") -> void:
 func _set_mode(create: bool) -> void:
 	_create = create
 	_title.text = "CREATE AN ACCOUNT" if create and not _web else "SIGN IN"
-	_go.text = "Open the website" if _web else "Create account" if create else "Sign in"
-	_switch.text = "I already have an account" if create else "New here? Create an account"
-	email.visible = not _web
-	password.visible = not _web
-	callsign.visible = create and not _web
+	_go.text = "OPEN THE WEBSITE" if _web else "CREATE ACCOUNT" if create else "SIGN IN"
+	_switch.text = "I HAVE AN ACCOUNT" if create else "NEW HERE? CREATE ONE"
+	# (each field goes with its label)
+	email.get_parent().visible = not _web
+	password.get_parent().visible = not _web
+	callsign.get_parent().visible = create and not _web
 	_switch.visible = not _web
 	# the website's way in tells its steps instead of what an account is for:
 	# the player chose to sign in already
 	_blurb.visible = not _web
 	for c: Control in [_status, _steps, _hint]:
 		c.visible = _web
-	_close.text = "Cancel" if _web else "Close"
+	_close.text = "CANCEL" if _web else "CLOSE"
 	_go.disabled = false
 	msg.text = ""
+	# sized to what this way in shows (sized with the other's parts still
+	# showing, their wrapped lines would stretch it off the screen)
+	UiKit.fit_center(self, SIZE)
 
 
 ## Off to the website, in the browser: the game waits here for it.
 func _open_website() -> void:
 	Online.open_web_sign_in(_create, _suggest if _create else "")
-	_go.text = "Open it again"
+	_go.text = "OPEN IT AGAIN"
 	_show_stage(0, "")
 
 
@@ -229,7 +253,7 @@ func _on_account_changed() -> void:
 func _on_web_failed(error: String) -> void:
 	if not visible or not _web:
 		return
-	_go.text = "Try again"
+	_go.text = "TRY AGAIN"
 	_show_stage(-1, error)
 
 

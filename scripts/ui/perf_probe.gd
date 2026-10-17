@@ -183,8 +183,9 @@ func _process(_dt: float) -> void:
 	if w != _world:
 		_world = w
 		_restart()
-	if w and (w.building or w.time < 1.0):
-		# (the battle is still being built, or has only just been: leave its costs for later)
+	if w and (w.building or not w.loaded or w.time < 1.0):
+		# (the battle is still being built (or, joining, still coming in from the
+		# host), or has only just been: leave its costs for later)
 		if w.sim_usec > 0 or not w.vprof.is_empty() or not w.prof_raw.is_empty():
 			_drop(w)
 		_compiles0 = _compiles()

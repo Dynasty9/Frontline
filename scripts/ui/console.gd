@@ -31,7 +31,6 @@ var _typed := ""  # the line being typed, kept while browsing the history
 var _greeted := false
 var _capture: Array = []  # a command's output, while it's being collected (the test port, report)
 var _capturing := 0
-var _mono: Font
 ## --console=LINE;LINE [--console-at=SECONDS]: typed in once a battle has run
 ## that long (5 s unless set), for screenshots and tests; what they print goes
 ## to the terminal too, as CONSOLE lines
@@ -44,7 +43,6 @@ func _ready() -> void:
 	layer = 125  # over the interface and the loading screen
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	cmds = ConsoleCmds.new(self)
-	_mono = _mono_font()
 	graph = PerfGraph.new()
 	graph.probe = probe
 	graph.visible = false
@@ -56,14 +54,6 @@ func _ready() -> void:
 		_auto_at = float(main.args.get("console-at", 5.0))
 
 
-static func _mono_font() -> Font:
-	var f := SystemFont.new()
-	f.font_names = PackedStringArray(["Cascadia Mono", "Consolas", "Menlo", "DejaVu Sans Mono", "Liberation Mono", "Monospace"])
-	f.antialiasing = TextServer.FONT_ANTIALIASING_GRAY
-	f.oversampling = 0.0
-	return f
-
-
 func _build() -> void:
 	_panel = Control.new()
 	_panel.anchor_right = 1.0
@@ -72,17 +62,19 @@ func _build() -> void:
 	_panel.visible = false
 	_panel.theme = UiKit.theme()
 	add_child(_panel)
+	# the theme's ink, nearly opaque (it's read over a moving battlefield), and
+	# a rule along its bottom edge (both recoloured when the theme changes)
 	var bg := Panel.new()
 	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	bg.add_theme_stylebox_override("panel", UiKit.box(Color(0.02, 0.025, 0.022, 0.96), 0, Color(UiKit.ACCENT.r, UiKit.ACCENT.g, UiKit.ACCENT.b, 0.55), 0, 0.0))
+	bg.add_theme_stylebox_override("panel", UiKit.box(UiKit.fa(UiKit.INK, 0.96), 0, Color(0, 0, 0, 0), 0, 0.0))
 	bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_panel.add_child(bg)
-	var edge := ColorRect.new()  # an accent line along the bottom
-	edge.color = Color(UiKit.ACCENT.r, UiKit.ACCENT.g, UiKit.ACCENT.b, 0.6)
+	var edge := ColorRect.new()
+	edge.color = UiKit.RULE2
 	edge.anchor_top = 1.0
 	edge.anchor_right = 1.0
 	edge.anchor_bottom = 1.0
-	edge.offset_top = -2.0
+	edge.offset_top = -1.0
 	edge.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_panel.add_child(edge)
 	var box := VBoxContainer.new()
@@ -99,24 +91,20 @@ func _build() -> void:
 	_log.selection_enabled = true
 	_log.focus_mode = Control.FOCUS_NONE
 	_log.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	_log.add_theme_font_override("normal_font", _mono)
-	_log.add_theme_font_override("bold_font", _mono)
+	_log.add_theme_font_override("normal_font", UiKit.mono(400))
+	_log.add_theme_font_override("bold_font", UiKit.mono(700))
 	_log.add_theme_font_size_override("normal_font_size", 13)
 	_log.add_theme_font_size_override("bold_font_size", 13)
-	_log.add_theme_color_override("default_color", Color(0.86, 0.87, 0.83))
+	_log.add_theme_color_override("default_color", UiKit.TEXT)
 	box.add_child(_log)
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 8)
 	box.add_child(row)
-	var prompt := Label.new()
-	prompt.text = ">"
-	prompt.add_theme_font_override("font", _mono)
-	prompt.add_theme_font_size_override("font_size", 15)
-	prompt.add_theme_color_override("font_color", UiKit.ACCENT)
+	var prompt := UiKit.mono_label(">", 15, UiKit.ACCENT)
 	row.add_child(prompt)
 	_edit = LineEdit.new()
 	_edit.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_edit.add_theme_font_override("font", _mono)
+	_edit.add_theme_font_override("font", UiKit.mono(400))
 	_edit.add_theme_font_size_override("font_size", 14)
 	_edit.placeholder_text = "why, bench, graph, top, hitches, help..."
 	_edit.context_menu_enabled = false
@@ -124,11 +112,7 @@ func _build() -> void:
 	_edit.text_submitted.connect(_on_submit)
 	_edit.text_changed.connect(func(_t: String): _hint.text = _hint_for(_edit.text))
 	row.add_child(_edit)
-	_hint = Label.new()
-	_hint.add_theme_font_override("font", _mono)
-	_hint.add_theme_font_size_override("font_size", 12)
-	_hint.add_theme_color_override("font_color", UiKit.DIM)
-	_hint.text = _hint_for("")
+	_hint = UiKit.mono_label(_hint_for(""), 12, UiKit.DIM)
 	box.add_child(_hint)
 
 

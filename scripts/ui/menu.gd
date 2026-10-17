@@ -20,10 +20,10 @@ var _ms_cards := {}
 var _ms_detail: VBoxContainer
 var _music_on := false
 var _op_side := 0  # 0 Coalition, 1 Rebels, -1 observe
-var _side_cards := {}
-var _mood_chips := {}
+var _side_cards := {}  # side -> its row in the choice
+var _mood_seg: UiSeg  # the time of day and weather
 var _col: VBoxContainer
-var _margin: MarginContainer
+var _items: Array[Button] = []  # the column's entries (each marker says whether its panel is open)
 # multiplayer: the server browser and the lobby (screens that take the place
 # of the menu), setting up a battle to host, and the join dialog
 var browser: ServerBrowser
@@ -34,8 +34,8 @@ var _join_target := {}  # the battle being joined, to try again with a password
 var account_panel: AccountPanel
 var acct_card: PanelContainer  # top right: who you're signed in as, or how to sign in
 var acct_name: Label
-var acct_line: Label
-var acct_badge: Label
+var acct_line: Label  # battles waiting to go on the record (only when there are some)
+var acct_xp: Label
 var acct_primary: Button
 var acct_secondary: Button
 var rec_panel: PanelContainer  # the service record: career totals and every battle
@@ -51,11 +51,11 @@ var _rec_n := 0  # the latest load (an older answer arriving late is dropped)
 var ins_btn: Button
 var ins_tex: TextureRect
 var rank_label: Label
-var rank_bar: ProgressBar
+var rank_bar: Range  # (a StepBar)
 var ins_panel: PanelContainer
 var _ins_head: Dictionary = {}  # the collection's header: icon, name, rank, bar, xp, record
 var _ins_tiles := {}  # id -> the tile's button
-var _ins_counts := {}  # group -> its "7 / 50" label
+var _ins_counts := {}  # group -> its "7/50" count in the group's header
 var _ins_msg: Label
 var _ins_load: Array = []  # tiles still waiting for their picture (a few are drawn each frame)
 var _ins_pending := ""  # an insignia being put on, until the matchmaker answers
@@ -65,12 +65,19 @@ var _attempt := 0  # bumps with every join (or host) attempt, so stale answers a
 var notices: VBoxContainer  # the cards in the top right, under the account: a newer release, a battle to rejoin
 var rejoin_card: PanelContainer  # back into the battle we dropped out of (while there is one)
 
+## The sides to choose from: the side, its name, what it is (the row's
+## tooltip) and the same in a line of codes.
 const SIDES := [
-	[0, "COALITION", "A regular army. Tanks, IFVs, Humvees, attack helicopters, air strikes and artillery. Fewer men, better kit, long supply lines."],
-	[1, "REBELS", "An insurgent militia. Technicals, BTRs, RPGs, FPV drones and tunnels under the town. Cheap, many and hard to pin down."],
-	[-1, "OBSERVE", "Two AI commanders fight it out. The director camera finds the action; take the camera any time."],
+	[0, "COALITION", "A regular army. Tanks, IFVs, Humvees, attack helicopters, air strikes and artillery. Fewer men, better kit, long supply lines.", "REGULAR ARMY \u00b7 ARMOUR \u00b7 AIR \u00b7 ARTILLERY"],
+	[1, "REBELS", "An insurgent militia. Technicals, BTRs, RPGs, FPV drones and tunnels under the town. Cheap, many and hard to pin down.", "MILITIA \u00b7 TECHNICALS \u00b7 RPGS \u00b7 DRONES \u00b7 TUNNELS"],
+	[-1, "OBSERVE", "Two AI commanders fight it out. The director camera finds the action; take the camera any time.", "AI VS AI \u00b7 DIRECTOR CAMERA"],
 ]
-const MOODS := [["random", "Random"], ["dawn", "Dawn"], ["day", "Midday"], ["golden", "Golden hour"], ["dusk", "Dusk"], ["overcast", "Overcast"], ["hazy", "Hazy"], ["rain", "Rain"], ["night", "Night"]]
+const MOODS := [["random", "Random"], ["dawn", "Dawn"], ["day", "Midday"], ["golden", "Golden"], ["dusk", "Dusk"], ["overcast", "Overcast"], ["hazy", "Hazy"], ["rain", "Rain"], ["night", "Night"]]
+const ITEM_W := 520.0  # the column's entries (and the rules beside its section names)
+## Ranks as codes (SSG III), from the names Insignia gives them in full.
+const RANK_CODES := {"Recruit": "RCT", "Private": "PVT", "Corporal": "CPL", "Sergeant": "SGT", "Staff Sergeant": "SSG",
+	"Master Sergeant": "MSG", "Lieutenant": "LT", "Captain": "CPT", "Major": "MAJ", "Colonel": "COL", "Brigadier General": "BG",
+	"Major General": "MG", "Lieutenant General": "LTG", "General": "GEN", "General of the Army": "GA"}
 
 
 func _ready() -> void:
@@ -83,7 +90,6 @@ func _ready() -> void:
 	add_child(backdrop)
 
 	var margin := MarginContainer.new()
-	_margin = margin
 	margin.anchor_bottom = 1.0
 	margin.offset_right = 600
 	margin.add_theme_constant_override("margin_left", 72)
@@ -124,45 +130,48 @@ func _ready() -> void:
 	gap.custom_minimum_size = Vector2(0, 4)
 	col.add_child(gap)
 
-	# main screen: grouped entries, each saying what it does
+	# main screen (docs/UI.md, the column): the sections, an entry for each
+	# thing to do, and the callsign at the foot of the column
 	main_box = VBoxContainer.new()
-	main_box.add_theme_constant_override("separation", 4)
+	main_box.add_theme_constant_override("separation", 0)
 	main_box.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	main_box.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	col.add_child(main_box)
-	main_box.add_child(_section("COMMAND"))
-	main_box.add_child(_big("Play vs AI", "Command one side against the AI commander", func(): _open_op(0)))
-	main_box.add_child(_big("Missions", "Short operations with objectives, alone or in co-op", _open_missions))
-	main_box.add_child(_big("Watch AI Battle", "Two AI commanders fight; the camera finds the action", func(): _open_op(-1)))
-	main_box.add_child(_section("MULTIPLAYER"))
+	main_box.add_child(_section("Command"))
+	main_box.add_child(_big("Play vs AI", "Command one side against the AI commander", func(): _open_op(0),
+		func() -> bool: return op_panel.visible and _op_side >= 0))
+	main_box.add_child(_big("Missions", "Short operations with objectives, alone or in co-op", _open_missions,
+		func() -> bool: return ms_panel.visible))
+	main_box.add_child(_big("Watch AI Battle", "Two AI commanders fight; the camera finds the action", func(): _open_op(-1),
+		func() -> bool: return op_panel.visible and _op_side < 0))
+	main_box.add_child(_section("Multiplayer"))
 	if OS.has_feature("web"):
 		# a battle between players runs over direct connections (and hole
 		# punching) a browser can't make, so the browser build plays alone
-		main_box.add_child(_big("Get the Desktop Game", "Multiplayer and co-op need the Windows, Mac or Linux build",
+		main_box.add_child(_big("Get the Desktop Game", "Multiplayer and co-op need the desktop build",
 			func(): OS.shell_open(Updater.WEBSITE_URL + "/#download")))
 	else:
 		main_box.add_child(_big("Server Browser", "Every battle being hosted, online and on your network", _open_browser))
-		main_box.add_child(_big("Host a Battle", "Co-op against the AI, versus, or a mission with friends", func(): _open_host({})))
+		main_box.add_child(_big("Host a Battle", "Co-op against the AI, versus, or a mission with friends", func(): _open_host({}),
+			func() -> bool: return host_panel.visible))
 		main_box.add_child(_big("Find Match", "Straight into the best open battle, or host one to be found", _find_match))
-	main_box.add_child(_section("REFERENCE"))
-	main_box.add_child(_big("Field Manual", "Every soldier, weapon, vehicle and work, with its numbers", func(): open_manual()))
-	main_box.add_child(_big("Settings", "Graphics, display, interface, controls and sound", open_settings))
+	main_box.add_child(_section("Reference"))
+	main_box.add_child(_big("Field Manual", "Every soldier, weapon, vehicle and work, with its numbers", func(): open_manual(),
+		func() -> bool: return manual != null and manual.visible))
+	main_box.add_child(_big("Settings", "Graphics, display, interface, controls and sound", open_settings,
+		func() -> bool: return settings_panel != null and settings_panel.visible))
 	if not OS.has_feature("web"):  # (a browser tab is closed, not quit)
 		main_box.add_child(_big("Quit", "Back to the desktop", func(): get_tree().quit()))
-	var gap2 := Control.new()
-	gap2.custom_minimum_size = Vector2(0, 14)
-	main_box.add_child(gap2)
-	var who := HBoxContainer.new()
-	who.add_theme_constant_override("separation", 8)
-	who.add_child(_make_name_edit())
-	main_box.add_child(_row("Callsign", who))
+	var foot_gap := Control.new()
+	foot_gap.custom_minimum_size = Vector2(0, 20)
+	foot_gap.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	main_box.add_child(foot_gap)
+	main_box.add_child(_row("Callsign", _make_name_edit()))
 
-	status = UiKit.label("", 14, UiKit.BAD)
+	status = UiKit.label("", 13, UiKit.BAD)
 	status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	status.custom_minimum_size = Vector2(460, 0)
 	col.add_child(status)
-	var spacer := Control.new()
-	spacer.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	col.add_child(spacer)
 
 	_build_op_panel()
 	_build_mission_panel()
@@ -171,8 +180,14 @@ func _ready() -> void:
 	_build_insignia_panel()
 	# the join dialog stays over every panel
 	move_child(dialog, -1)
+	for p: Control in [op_panel, ms_panel, host_panel]:
+		p.visibility_changed.connect(_mark_items)
+	# the corner: the build and version in mono, faint
 	var build := ("ALPHA V%s" % Updater.version) if Updater.is_release() else "DEV BUILD"
-	var foot := UiKit.label("%s  \u00b7  GODOT %s  \u00b7  F4 FIELD MANUAL IN BATTLE" % [build, Engine.get_version_info().string.to_upper()], 11, Color(0.75, 0.75, 0.7, 0.45), 600)
+	var vi := Engine.get_version_info()
+	var mk := Keys.label("manual").to_upper()
+	var foot := UiKit.mono_label("%s  \u00b7  GODOT %d.%d.%d%s" % [build, int(vi.major), int(vi.minor), int(vi.patch),
+		("  \u00b7  %s FIELD MANUAL IN BATTLE" % mk) if mk != "" else ""], 11, UiKit.FAINT)
 	foot.anchor_left = 1.0
 	foot.anchor_right = 1.0
 	foot.anchor_top = 1.0
@@ -187,12 +202,12 @@ func _ready() -> void:
 	Online.account_changed.connect(_on_account)
 	Online.record_changed.connect(_on_account)
 	notices = VBoxContainer.new()
-	notices.add_theme_constant_override("separation", 10)
+	notices.add_theme_constant_override("separation", 8)
 	notices.anchor_left = 1.0
 	notices.anchor_right = 1.0
-	notices.offset_left = -540
+	notices.offset_left = -640
 	notices.offset_right = -32
-	notices.offset_top = 196  # under the account card
+	notices.offset_top = 100  # under the account
 	add_child(notices)
 	for p: Control in [op_panel, ms_panel, host_panel, rec_panel, ins_panel]:
 		p.visibility_changed.connect(_side_panels_changed)
@@ -209,6 +224,7 @@ func _ready() -> void:
 		open_link.call_deferred(Links.pending)
 		Links.pending = ""
 	_on_visibility()
+
 
 
 ## The Settings, over the menu: built the first time they're opened.
@@ -246,22 +262,23 @@ func open_manual(cat := "", key := "", side := -1) -> void:
 
 
 ## The Field Manual and Settings cover the menu while they're open, account
-## card, notices and footer too (added after them, those would sit on top).
+## card, notices and footer too (added after them, those would sit on top),
+## and light their entry's marker.
 func _cover_menu(p: Control) -> void:
 	p.visibility_changed.connect(_over_menu.bind(p))
+	p.visibility_changed.connect(_mark_items)
 
 
-## The menu comes in as the title lifts away: the column glides in from the
-## left and its entries follow one after another.
+## The menu comes in as the title lifts away: the wordmark fades up where the
+## title left it, then the entries arrive one after another from the left.
 func arrive() -> void:
-	var tw := create_tween().set_parallel(true).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_CUBIC)
-	_margin.position.x = -40.0
-	tw.tween_property(_margin, "position:x", 0.0, 0.8)
-	var items: Array = _col.get_children().slice(0, 3) + main_box.get_children()
-	for i in items.size():
-		var c: CanvasItem = items[i]
+	var tw := create_tween().set_parallel(true)
+	var head: Array = _col.get_children().slice(0, 3)
+	for i in head.size():
+		var c: CanvasItem = head[i]
 		c.modulate.a = 0.0
 		tw.tween_property(c, "modulate:a", 1.0, 0.5).set_delay(0.12 + 0.035 * i)
+	UiMotion.stagger(main_box.get_children(), Vector2(-1, 0), 0.3)
 
 
 ## The menu's music starts again each time it comes back.
@@ -275,130 +292,203 @@ func _on_visibility() -> void:
 		_music_on = false
 
 
-## A menu entry: the name and, under it, what it does. Hover slides in an
-## accent bar.
-func _big(text: String, sub: String, cb: Callable) -> Button:
+## A menu entry (docs/UI.md, the column): a square marker and the name in
+## capitals. Under the cursor the row lights and what the entry does types on
+## beside it; while its panel is open (`open` says so) the marker fills with
+## the accent and the name turns accent.
+func _big(text: String, sub: String, cb: Callable, open := Callable()) -> Button:
 	var b := Button.new()
-	b.text = ""
-	b.custom_minimum_size = Vector2(420, 54 if sub != "" else 44)
+	b.custom_minimum_size = Vector2(ITEM_W, 34)
+	b.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 	b.focus_mode = Control.FOCUS_NONE
-	var n := UiKit.box(Color(0, 0, 0, 0.0), 2, Color(0, 0, 0, 0), 0, 0.0)
-	var h := UiKit.box(Color(UiKit.ACCENT.r, UiKit.ACCENT.g, UiKit.ACCENT.b, 0.12), 2, UiKit.ACCENT, 0, 0.0)
-	h.border_width_left = 3
-	var pr := h.duplicate() as StyleBoxFlat
-	pr.bg_color = Color(UiKit.ACCENT.r, UiKit.ACCENT.g, UiKit.ACCENT.b, 0.22)
-	b.add_theme_stylebox_override("normal", n)
-	b.add_theme_stylebox_override("hover", h)
-	b.add_theme_stylebox_override("pressed", pr)
-	b.add_theme_stylebox_override("hover_pressed", pr)
-	var v := VBoxContainer.new()
-	v.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	v.offset_left = 18
-	v.alignment = BoxContainer.ALIGNMENT_CENTER
-	v.add_theme_constant_override("separation", 0)
-	v.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	b.add_child(v)
-	var l := UiKit.label(text, 21, Color(0.94, 0.93, 0.88), 600)
+	var n := UiKit.bare()
+	var h := UiKit.box(UiKit.fa(UiKit.TEXT, 0.05), 0, Color(0, 0, 0, 0), 0, 0.0)
+	for st in ["normal", "disabled", "focus"]:
+		b.add_theme_stylebox_override(st, n)
+	for st in ["hover", "pressed", "hover_pressed"]:
+		b.add_theme_stylebox_override(st, h)
+	var row := HBoxContainer.new()
+	row.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	row.offset_left = 24
+	row.offset_right = -10
+	row.add_theme_constant_override("separation", 16)
+	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	b.add_child(row)
+	var l := UiKit.caps(text, 17, UiKit.TEXT, 600, 1)
+	l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	v.add_child(l)
-	if sub != "":
-		var s := UiKit.label(sub, 12, Color(0.7, 0.71, 0.66), 400)
-		s.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		v.add_child(s)
-	b.mouse_entered.connect(func():
-		l.add_theme_color_override("font_color", UiKit.ACCENT)
-		create_tween().tween_property(v, "offset_left", 26.0, 0.12))
-	b.mouse_exited.connect(func():
-		l.add_theme_color_override("font_color", Color(0.94, 0.93, 0.88))
-		create_tween().tween_property(v, "offset_left", 18.0, 0.12))
+	row.add_child(l)
+	var s := UiKit.label("", 12, UiKit.DIM)
+	s.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	s.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	s.clip_text = true
+	s.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	s.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	row.add_child(s)
+	b.set_meta("name", l)
+	b.set_meta("open", open)
+	b.draw.connect(func():
+		# the marker: a hollow square, filled while the entry's panel is open
+		var y := roundf(b.size.y * 0.5) - 4.0
+		if b.get_meta("on", false):
+			b.draw_rect(Rect2(6, y, 9, 9), UiKit.ACCENT)
+		else:
+			b.draw_rect(Rect2(6.5, y + 0.5, 8, 8), UiKit.TEXT if b.is_hovered() else UiKit.RULE2, false, 1.0))
+	b.mouse_entered.connect(func(): UiMotion.type_on(s, sub))
+	b.mouse_exited.connect(func(): s.text = "")
 	b.pressed.connect(func(): Sfx.ui("click"); cb.call())
+	_items.append(b)
 	return b
 
 
+## The column's markers: which entry's panel is open.
+func _mark_items() -> void:
+	for b: Button in _items:
+		var f: Callable = b.get_meta("open")
+		var on := f.is_valid() and bool(f.call())
+		b.set_meta("on", on)
+		(b.get_meta("name") as Label).add_theme_color_override("font_color", UiKit.ACCENT if on else UiKit.TEXT)
+		b.queue_redraw()
+
+
+## A section of the column: its name in capitals and a rule running on.
 func _section(text: String) -> Control:
-	var h := HBoxContainer.new()
-	h.add_theme_constant_override("separation", 10)
-	h.custom_minimum_size = Vector2(0, 30)
-	var l := UiKit.label(text, 11, Color(UiKit.ACCENT.r, UiKit.ACCENT.g, UiKit.ACCENT.b, 0.8), 700)
-	l.size_flags_vertical = Control.SIZE_SHRINK_END
-	h.add_child(l)
-	var r := ColorRect.new()
-	r.color = Color(1, 1, 1, 0.08)
-	r.custom_minimum_size = Vector2(320, 1)
-	r.size_flags_vertical = Control.SIZE_SHRINK_END
-	h.add_child(r)
-	return h
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 6)
+	var gap := Control.new()
+	gap.custom_minimum_size = Vector2(0, 12)
+	v.add_child(gap)
+	var h := UiKit.header(text)
+	h.custom_minimum_size = Vector2(ITEM_W, 0)
+	v.add_child(h)
+	return v
 
 
 # --- new operation -----------------------------------------------------------------------
 
-## The operation panel: which side (or just watch) and the time of day.
+## The operation panel (docs/UI.md, the work area): which side (or just
+## watch), the time of day and weather, and Deploy.
 func _build_op_panel() -> void:
-	op_panel = _side_panel()
+	op_panel = _side_panel(1260, -190, 190)
 	var v := VBoxContainer.new()
-	v.add_theme_constant_override("separation", 12)
+	v.add_theme_constant_override("separation", 0)
 	op_panel.add_child(v)
-	v.add_child(UiKit.label("NEW OPERATION", 13, UiKit.ACCENT, 700))
-	v.add_child(UiKit.label("Choose your side", 24, UiKit.TEXT, 600))
+	v.add_child(UiKit.caps("New operation", 12, UiKit.ACCENT))
+	v.add_child(_gap(18))
+	v.add_child(UiKit.header("Side"))
+	v.add_child(_gap(4))
 	for sd in SIDES:
-		var card := Button.new()
-		card.toggle_mode = true
-		card.focus_mode = Control.FOCUS_NONE
-		card.custom_minimum_size = Vector2(0, 86)
-		var tc: Color = Defs.TEAM_COLORS[sd[0]] if int(sd[0]) >= 0 else UiKit.ACCENT
-		var cn := UiKit.box(Color(1, 1, 1, 0.03), 4, Color(1, 1, 1, 0.07), 1, 0.0)
-		var ch := UiKit.box(Color(tc.r, tc.g, tc.b, 0.08), 4, Color(tc.r, tc.g, tc.b, 0.5), 1, 0.0)
-		var cp := UiKit.box(Color(tc.r, tc.g, tc.b, 0.14), 4, tc, 2, 0.0)
-		cp.border_width_left = 4
-		card.add_theme_stylebox_override("normal", cn)
-		card.add_theme_stylebox_override("hover", ch)
-		card.add_theme_stylebox_override("pressed", cp)
-		card.add_theme_stylebox_override("hover_pressed", cp)
-		var cv := VBoxContainer.new()
-		cv.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-		cv.offset_left = 18
-		cv.offset_right = -14
-		cv.offset_top = 10
-		cv.offset_bottom = -8
-		cv.add_theme_constant_override("separation", 3)
-		cv.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		card.add_child(cv)
-		var nm := UiKit.label(String(sd[1]), 17, tc.lightened(0.25), 700)
-		nm.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		cv.add_child(nm)
-		var ds := UiKit.label(String(sd[2]), 13, Color(0.82, 0.82, 0.78))
-		ds.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		ds.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		cv.add_child(ds)
 		var sv: int = sd[0]
-		card.pressed.connect(func(): _pick_side(sv))
-		v.add_child(card)
-		_side_cards[sv] = card
-	v.add_child(UiKit.label("Time of day", 15, UiKit.DIM, 600))
-	var flow := HFlowContainer.new()
-	flow.add_theme_constant_override("h_separation", 6)
-	flow.add_theme_constant_override("v_separation", 6)
-	v.add_child(flow)
+		var row := _choice_row(String(sd[1]), String(sd[3]), Defs.TEAM_COLORS[sv] if sv >= 0 else UiKit.DIM)
+		row.tooltip_text = String(sd[2])
+		row.pressed.connect(func(): _pick_side(sv))
+		v.add_child(row)
+		_side_cards[sv] = row
+	v.add_child(_gap(26))
+	v.add_child(UiKit.header("Time and weather"))
+	v.add_child(_gap(12))
+	var names := []
 	for m in MOODS:
-		var c := Button.new()
-		c.text = String(m[1])
-		c.toggle_mode = true
-		c.focus_mode = Control.FOCUS_NONE
-		c.custom_minimum_size = Vector2(0, 30)
-		var mk: String = m[0]
-		c.pressed.connect(func(): _pick_mood(mk))
-		flow.add_child(c)
-		_mood_chips[mk] = c
-	var gap := Control.new()
-	gap.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	v.add_child(gap)
+		names.append(m[1])
+	_mood_seg = UiSeg.make(names, 0, 11)
+	_mood_seg.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	for i in MOODS.size():
+		var mk: String = MOODS[i][0]
+		(_mood_seg.get_child(i) as Button).tooltip_text = "A different time and weather each battle" if mk == "random" else String(Curtain.MOOD_TEXT.get(mk, ""))
+	_mood_seg.changed.connect(func(i: int): _pick_mood(String(MOODS[i][0])))
+	v.add_child(_mood_seg)
+	var fill := Control.new()
+	fill.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	v.add_child(fill)
+	var back := UiKit.button("Back", "quiet")
+	back.pressed.connect(func(): op_panel.visible = false)
+	var go := UiKit.primary_button("Deploy", 200, 40, 15)
+	go.pressed.connect(func(): Sfx.ui("click"); _deploy())
+	v.add_child(_actions(back, [go]))
+
+
+## A gap of `h` pixels in a column.
+func _gap(h: float) -> Control:
+	var g := Control.new()
+	g.custom_minimum_size = Vector2(0, h)
+	g.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	return g
+
+
+## A work area's actions along its foot (docs/UI.md): the way back quiet on
+## the left, the rest on the right, the main one last.
+func _actions(back: Button, rest: Array) -> HBoxContainer:
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 10)
-	v.add_child(row)
-	var go := UiKit.primary_button("DEPLOY", 220, 44, 17)
-	go.pressed.connect(func(): Sfx.ui("click"); _deploy())
-	row.add_child(go)
-	row.add_child(_btn("Back", func(): op_panel.visible = false))
+	back.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	row.add_child(back)
+	var fill := Control.new()
+	fill.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_child(fill)
+	for b: Button in rest:
+		row.add_child(b)
+	return row
+
+
+## A row of a choice (docs/UI.md, Row): a square marker in its colour, filled
+## when it's the one chosen, the name in capitals and a line of codes, on a
+## rule; `tail` (a figure) sits at its right end. The chosen row's name turns
+## accent and an accent edge marks it.
+func _choice_row(title: String, code: String, mark: Color, tail := "") -> Button:
+	var b := Button.new()
+	b.toggle_mode = true
+	b.focus_mode = Control.FOCUS_NONE
+	b.custom_minimum_size = Vector2(0, 36)
+	var n := UiKit.bare()
+	var hv := UiKit.box(UiKit.fa(UiKit.TEXT, 0.05), 0, Color(0, 0, 0, 0), 0, 0.0)
+	var on := UiKit.box(UiKit.fa(UiKit.ACCENT, 0.1), 0, Color(0, 0, 0, 0), 0, 0.0)
+	for st in ["normal", "disabled", "focus"]:
+		b.add_theme_stylebox_override(st, n)
+	b.add_theme_stylebox_override("hover", hv)
+	b.add_theme_stylebox_override("pressed", on)
+	b.add_theme_stylebox_override("hover_pressed", on)
+	var row := HBoxContainer.new()
+	row.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	row.offset_left = 30
+	row.offset_right = -10
+	row.add_theme_constant_override("separation", 14)
+	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	b.add_child(row)
+	var nm := UiKit.caps(title, 15, UiKit.TEXT, 600, 1)
+	nm.custom_minimum_size = Vector2(124, 0)
+	nm.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	nm.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	row.add_child(nm)
+	var cl := UiKit.mono_label(code, 11, UiKit.DIM)
+	cl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	cl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	cl.clip_text = true
+	cl.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	cl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	row.add_child(cl)
+	if tail != "":
+		var tl := UiKit.mono_label(tail, 12, UiKit.TEXT)
+		tl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		tl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		row.add_child(tl)
+	b.set_meta("name", nm)
+	b.draw.connect(func():
+		var y := b.size.y
+		b.draw_rect(Rect2(0, y - 1.0, b.size.x, 1.0), UiKit.LINE)
+		var my := roundf(y * 0.5) - 4.0
+		if b.button_pressed:
+			b.draw_rect(Rect2(0, 0, 2, y - 1.0), UiKit.ACCENT)
+			b.draw_rect(Rect2(12, my, 9, 9), mark)
+		else:
+			b.draw_rect(Rect2(12.5, my + 0.5, 8, 8), mark, false, 1.0))
+	return b
+
+
+## A choice's row chosen or not (without its signal).
+func _set_row(b: Button, on: bool) -> void:
+	b.set_pressed_no_signal(on)
+	(b.get_meta("name") as Label).add_theme_color_override("font_color", UiKit.ACCENT if on else UiKit.TEXT)
+	b.queue_redraw()
 
 
 ## The panels on the right of the menu take turns: opening one closes the rest.
@@ -413,25 +503,27 @@ func _open_op(side: int) -> void:
 	_pick_side(side)
 	_pick_mood(String(Settings.get_v("mood")))
 	op_panel.visible = true
-	op_panel.modulate.a = 0.0
-	op_panel.offset_left = 670
-	var tw := create_tween().set_parallel(true)
-	tw.tween_property(op_panel, "modulate:a", 1.0, 0.18)
-	tw.tween_property(op_panel, "offset_left", 640.0, 0.18)
+	_settle(op_panel)
+	UiMotion.arrive(op_panel, Vector2(1, 0))
 
 
 func _pick_side(side: int) -> void:
 	_op_side = side
 	for k in _side_cards:
-		(_side_cards[k] as Button).set_pressed_no_signal(k == side)
+		_set_row(_side_cards[k], k == side)
+	_mark_items()
 
 
 func _pick_mood(m: String) -> void:
-	if not _mood_chips.has(m):
+	var i := -1
+	for j in MOODS.size():
+		if String(MOODS[j][0]) == m:
+			i = j
+	if i < 0:
 		m = "random"
+		i = 0
 	Settings.set_v("mood", m)
-	for k in _mood_chips:
-		(_mood_chips[k] as Button).set_pressed_no_signal(k == m)
+	_mood_seg.select(i)
 
 
 func _deploy() -> void:
@@ -457,85 +549,52 @@ func _unhandled_input(ev: InputEvent) -> void:
 
 # --- missions ------------------------------------------------------------------------------
 
-## The missions: a card for each, the chosen one's briefing, and play it
+## The missions: a row for each, the chosen one's briefing, and play it
 ## alone or host it for friends.
 func _build_mission_panel() -> void:
-	ms_panel = PanelContainer.new()
-	ms_panel.add_theme_stylebox_override("panel", UiKit.frame(Color(-1, 0, 0), 22.0, 1.0, 14.0, 0.93))
-	ms_panel.anchor_top = 0.5
-	ms_panel.anchor_bottom = 0.5
-	ms_panel.offset_left = 640
-	ms_panel.offset_right = 1260
-	ms_panel.offset_top = -320
-	ms_panel.offset_bottom = 330
-	ms_panel.visible = false
-	add_child(ms_panel)
+	ms_panel = _side_panel(1260, -320, 330)
 	var v := VBoxContainer.new()
-	v.add_theme_constant_override("separation", 10)
+	v.add_theme_constant_override("separation", 0)
 	ms_panel.add_child(v)
-	v.add_child(UiKit.label("MISSIONS", 13, UiKit.ACCENT, 700))
-	v.add_child(UiKit.label("Short operations, about five minutes each", 22, UiKit.TEXT, 600))
-	var list := VBoxContainer.new()
-	list.add_theme_constant_override("separation", 5)
-	v.add_child(list)
+	v.add_child(UiKit.caps("Missions", 12, UiKit.ACCENT))
+	v.add_child(_gap(18))
+	v.add_child(UiKit.header("Operations", "%d" % MissionList.playable().size()))
+	v.add_child(_gap(4))
 	for m in MissionList.playable():
-		var card := Button.new()
-		card.toggle_mode = true
-		card.focus_mode = Control.FOCUS_NONE
-		card.custom_minimum_size = Vector2(0, 52)
-		var tc: Color = Defs.TEAM_COLORS[int(m.side)]
-		card.add_theme_stylebox_override("normal", UiKit.box(Color(1, 1, 1, 0.03), 4, Color(1, 1, 1, 0.07), 1, 0.0))
-		card.add_theme_stylebox_override("hover", UiKit.box(Color(tc.r, tc.g, tc.b, 0.08), 4, Color(tc.r, tc.g, tc.b, 0.5), 1, 0.0))
-		var cp := UiKit.box(Color(tc.r, tc.g, tc.b, 0.14), 4, tc, 2, 0.0)
-		cp.border_width_left = 4
-		card.add_theme_stylebox_override("pressed", cp)
-		card.add_theme_stylebox_override("hover_pressed", cp)
-		var row := HBoxContainer.new()
-		row.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-		row.offset_left = 16
-		row.offset_right = -14
-		row.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		card.add_child(row)
-		var cv := VBoxContainer.new()
-		cv.alignment = BoxContainer.ALIGNMENT_CENTER
-		cv.add_theme_constant_override("separation", 0)
-		cv.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		cv.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		row.add_child(cv)
-		var nm := UiKit.label(String(m.title), 17, Color(0.94, 0.93, 0.88), 700)
-		nm.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		cv.add_child(nm)
-		var op := UiKit.label(String(m.op).to_upper(), 10, Color(UiKit.ACCENT.r, UiKit.ACCENT.g, UiKit.ACCENT.b, 0.75), 700)
-		op.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		cv.add_child(op)
-		var tag := UiKit.label("%s  \u00b7  %d MIN" % [Defs.TEAM_NAMES[int(m.side)].to_upper(), int(m.mins)], 11, tc.lightened(0.3), 700)
-		tag.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-		tag.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		row.add_child(tag)
+		# the side it's fought from by its marker, the operation as a code
+		var op := String(m.op).to_upper().replace("OPERATION ", "OP ")
+		var card := _choice_row(String(m.title), op, Defs.TEAM_COLORS[int(m.side)], "%d MIN" % int(m.mins))
+		card.tooltip_text = "%s  \u00b7  %s" % [Defs.TEAM_NAMES[int(m.side)], String(m.blurb)]
 		var key: String = m.key
 		card.pressed.connect(func(): _pick_mission(key))
-		list.add_child(card)
+		v.add_child(card)
 		_ms_cards[key] = card
-	# the chosen mission's briefing
-	var det := PanelContainer.new()
-	det.add_theme_stylebox_override("panel", UiKit.box(Color(0, 0, 0, 0.28), 4, Color(1, 1, 1, 0.05), 1, 14.0))
-	det.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	v.add_child(det)
+	# the chosen mission's briefing: prose under a rule, then its facts
+	v.add_child(_gap(26))
+	v.add_child(UiKit.header("Briefing"))
+	v.add_child(_gap(10))
+	# (in a scroll, so a long briefing, or one picked while the panel shows,
+	# scrolls rather than stretching the panel)
+	var bsc := ScrollContainer.new()
+	bsc.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	bsc.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	v.add_child(bsc)
 	_ms_detail = VBoxContainer.new()
-	_ms_detail.add_theme_constant_override("separation", 6)
-	det.add_child(_ms_detail)
-	var row2 := HBoxContainer.new()
-	row2.add_theme_constant_override("separation", 10)
-	v.add_child(row2)
-	var go := UiKit.primary_button("PLAY SOLO", 200, 44, 16)
-	go.pressed.connect(func(): Sfx.ui("click"); _mission_solo())
-	row2.add_child(go)
+	_ms_detail.add_theme_constant_override("separation", 8)
+	_ms_detail.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	bsc.add_child(_ms_detail)
+	var back := UiKit.button("Back", "quiet")
+	back.pressed.connect(func(): ms_panel.visible = false)
+	var rest := []
 	if not OS.has_feature("web"):
-		var co := _btn("Host Co-op", func(): Sfx.ui("click"); _mission_coop())
-		co.custom_minimum_size = Vector2(150, 44)
+		var co := UiKit.button("Host co-op", "secondary", 150, 40)
+		co.pressed.connect(func(): Sfx.ui("click"); _mission_coop())
 		co.tooltip_text = "Host this mission for friends: it's listed in the server browser, and they share your force."
-		row2.add_child(co)
-	row2.add_child(_btn("Back", func(): ms_panel.visible = false))
+		rest.append(co)
+	var go := UiKit.primary_button("Play solo", 180, 40, 15)
+	go.pressed.connect(func(): Sfx.ui("click"); _mission_solo())
+	rest.append(go)
+	v.add_child(_actions(back, rest))
 
 
 func _open_missions() -> void:
@@ -544,33 +603,33 @@ func _open_missions() -> void:
 		_ms_key = String(MissionList.playable()[0].key)
 	_pick_mission(_ms_key)
 	ms_panel.visible = true
-	ms_panel.modulate.a = 0.0
-	ms_panel.offset_left = 670
-	var tw := create_tween().set_parallel(true)
-	tw.tween_property(ms_panel, "modulate:a", 1.0, 0.18)
-	tw.tween_property(ms_panel, "offset_left", 640.0, 0.18)
+	_settle(ms_panel)
+	UiMotion.arrive(ms_panel, Vector2(1, 0))
 
 
 func _pick_mission(key: String) -> void:
 	_ms_key = key
 	for k in _ms_cards:
-		(_ms_cards[k] as Button).set_pressed_no_signal(k == key)
+		_set_row(_ms_cards[k], k == key)
 	for c in _ms_detail.get_children():
 		c.queue_free()
 	var m := MissionList.find(key)
-	var bl := UiKit.label(String(m.blurb), 15, UiKit.TEXT, 600)
+	var bl := UiKit.label(String(m.blurb), 15, UiKit.TEXT, 500)
 	bl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_ms_detail.add_child(bl)
-	var br := UiKit.label(String(m.brief), 13, Color(0.8, 0.81, 0.77))
+	var br := UiKit.label(String(m.brief), 13, UiKit.DIM)
 	br.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_ms_detail.add_child(br)
-	for kv in [["FORCE", m.force], ["AREA", m.area], ["CONDITIONS", Curtain.MOOD_TEXT.get(String(m.mood), "")]]:
+	_ms_detail.add_child(_gap(4))
+	# the facts: a label in faint capitals, its value in mono
+	for kv in [["Side", Defs.TEAM_NAMES[int(m.side)].to_upper()], ["Force", m.force], ["Area", m.area],
+			["Conditions", Curtain.MOOD_TEXT.get(String(m.mood), "")]]:
 		var r := HBoxContainer.new()
-		r.add_theme_constant_override("separation", 10)
-		var k := UiKit.label(String(kv[0]), 11, Color(UiKit.ACCENT.r, UiKit.ACCENT.g, UiKit.ACCENT.b, 0.85), 700)
+		r.add_theme_constant_override("separation", 12)
+		var k := UiKit.caps(String(kv[0]), 11, UiKit.FAINT)
 		k.custom_minimum_size = Vector2(96, 0)
 		r.add_child(k)
-		var val := UiKit.label(String(kv[1]), 13, Color(0.88, 0.88, 0.84))
+		var val := UiKit.mono_label(String(kv[1]), 12, UiKit.TEXT)
 		val.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		val.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		r.add_child(val)
@@ -612,7 +671,8 @@ func _make_name_edit() -> LineEdit:
 	name_edit = LineEdit.new()
 	name_edit.text = Net.my_name
 	name_edit.max_length = 20
-	name_edit.custom_minimum_size = Vector2(240, 34)
+	# a mono line over a rule (the theme's field), the accent while it's edited
+	name_edit.custom_minimum_size = Vector2(220, 30)
 	name_edit.text_changed.connect(func(t): Net.my_name = t if t.strip_edges() != "" else "Commander")
 	# signed in, the callsign belongs to the account: changing it here renames it
 	name_edit.text_submitted.connect(func(_t): _rename())
@@ -634,11 +694,13 @@ func _rename() -> void:
 		_say(String(r.error), true)
 
 
+## A field with its label: faint capitals beside the field's underline.
 func _row(label: String, w: Control) -> HBoxContainer:
 	var h := HBoxContainer.new()
-	h.add_theme_constant_override("separation", 10)
-	var l := UiKit.label(label, 14, UiKit.DIM)
-	l.custom_minimum_size = Vector2(110, 0)
+	h.add_theme_constant_override("separation", 14)
+	var l := UiKit.caps(label, 11, UiKit.FAINT)
+	l.custom_minimum_size = Vector2(24, 0)
+	l.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	h.add_child(l)
 	h.add_child(w)
 	return h
@@ -649,14 +711,6 @@ func _over_menu(p: Control) -> void:
 	if p.visible:
 		move_child(p, -1)
 		move_child(dialog, -1)
-
-
-func _btn(text: String, cb: Callable) -> Button:
-	var b := Button.new()
-	b.text = text
-	b.custom_minimum_size = Vector2(110, 36)
-	b.pressed.connect(cb)
-	return b
 
 
 ## Back to the menu: after a battle, leaving a lobby, or being disconnected
@@ -695,8 +749,7 @@ func _show_lobby() -> void:
 	main_box.visible = false
 	status.text = ""
 	lobby.visible = true
-	lobby.modulate.a = 0.0
-	create_tween().tween_property(lobby, "modulate:a", 1.0, 0.18)
+	UiMotion.arrive(lobby, Vector2(0, 1))
 	lobby.reset()
 
 
@@ -767,6 +820,7 @@ func _build_multiplayer() -> void:
 	host_panel.offset_right = 1260
 	host_panel.offset_top = -305
 	host_panel.offset_bottom = 315
+	host_panel.set_meta("place", [-305.0, 315.0])
 	add_child(host_panel)
 	host_panel.closed.connect(func(): host_panel.visible = false)
 	host_panel.host_requested.connect(_host_with)
@@ -804,8 +858,7 @@ func _open_browser() -> void:
 	main_box.visible = false
 	status.text = ""
 	browser.visible = true
-	browser.modulate.a = 0.0
-	create_tween().tween_property(browser, "modulate:a", 1.0, 0.18)
+	UiMotion.arrive(browser, Vector2(0, 1))
 
 
 func _close_browser() -> void:
@@ -820,11 +873,8 @@ func _open_host(preset: Dictionary) -> void:
 	_close_browser()
 	host_panel.open(preset)
 	host_panel.visible = true
-	host_panel.modulate.a = 0.0
-	host_panel.offset_left = 670
-	var tw := create_tween().set_parallel(true)
-	tw.tween_property(host_panel, "modulate:a", 1.0, 0.18)
-	tw.tween_property(host_panel, "offset_left", 640.0, 0.18)
+	_settle(host_panel)
+	UiMotion.arrive(host_panel, Vector2(1, 0))
 
 
 ## Host a battle as the host setup describes it (an empty `opts`: a public
@@ -944,7 +994,7 @@ func _on_dialog_cancel() -> void:
 
 # --- rejoining ---------------------------------------------------------------------------
 
-## While the battle we were last in may still be going (Net.rejoin), a card
+## While the battle we were last in may still be going (Net.rejoin), a line
 ## in the corner says whose it was and how long ago we left, with Rejoin (and
 ## Forget, for a battle we don't mean to go back to).
 func _refresh_rejoin() -> void:
@@ -957,16 +1007,16 @@ func _refresh_rejoin() -> void:
 		return
 	var host := String(Net.rejoin.get("host", ""))
 	var mins := int((Time.get_unix_time_from_system() - float(Net.rejoin.get("at", 0.0))) / 60.0)
-	var when := "just now" if mins < 1 else ((("%d min" % mins) if mins < 90 else ("%d h" % int(mins / 60.0))) + " ago")
-	rejoin_card = _notice("BATTLE IN PROGRESS", "You left %s %s." % [("%s's battle" % host) if host != "" else "a battle", when], false)
-	var h: HBoxContainer = rejoin_card.get_child(0)
-	h.add_child(_btn("Forget", func(): Net.forget_rejoin(); _refresh_rejoin()))
-	var go := _btn("Rejoin", _rejoin)
-	go.add_theme_color_override("font_color", UiKit.ACCENT)
+	var when := "JUST NOW" if mins < 1 else ((("%d MIN" % mins) if mins < 90 else ("%d H" % int(mins / 60.0))) + " AGO")
+	rejoin_card = _notice("Battle in progress", ("%s \u00b7 LEFT %s" % [host.to_upper(), when]) if host != "" else "LEFT %s" % when, false)
+	rejoin_card.tooltip_text = "You left %s %s. It may still be going: rejoin as the player you were." % [("%s's battle" % host) if host != "" else "a battle", when.to_lower()]
+	var h: HBoxContainer = rejoin_card.get_meta("row")
+	var forget := UiKit.button("Forget", "quiet", 0, 26)
+	forget.pressed.connect(func(): Net.forget_rejoin(); _refresh_rejoin())
+	h.add_child(forget)
+	var go := UiKit.primary_button("Rejoin", 0, 26, 12)
+	go.pressed.connect(_rejoin)
 	h.add_child(go)
-	for b in h.get_children():
-		if b is Button:
-			(b as Button).size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	notices.add_child(rejoin_card)
 
 
@@ -1092,7 +1142,7 @@ func _watch_connect(attempt: int, host_name: String) -> void:
 ## The update notice in the corner: a newer release downloading, installed
 ## and waiting for a restart, or (where the game can't update itself) a link
 ## to the downloads. Playing online needs the same version as everyone else,
-## so it's worth the space.
+## so it's worth the space: one line of codes and its buttons.
 func _update_notice() -> void:
 	var old := notices.get_node_or_null("UpdateNotice")
 	if old:
@@ -1105,61 +1155,85 @@ func _update_notice() -> void:
 	p.name = "UpdateNotice"
 	notices.add_child(p)
 	notices.move_child(p, 0)  # (above a battle to rejoin)
-	var h: HBoxContainer = p.get_child(0)
-	var v: VBoxContainer = h.get_child(0)
-	var head: Label = v.get_child(0)
-	var line: Label = v.get_child(1)
+	var h: HBoxContainer = p.get_meta("row")
+	var line: Label = p.get_meta("code")
+	var ver := "V%s" % Updater.latest
 	var website := func(): OS.shell_open(Updater.WEBSITE_URL + "/#download")
 	# that version's changelog on the website: what the update brings
 	var whats_new := func(): OS.shell_open(Updater.WEBSITE_URL + "/changelog/#v" + Updater.latest)
 	match Updater.state:
 		Updater.State.AVAILABLE:
-			head.text = "NEW VERSION"
-			line.text = "Frontline v%s is out (you have v%s)." % [Updater.latest, Updater.version]
-			h.add_child(_btn("What's new", whats_new))
-			h.add_child(_btn("Download", website))
+			line.text = "%s OUT" % ver
+			p.tooltip_text = "Frontline v%s is out (you have v%s)." % [Updater.latest, Updater.version]
+			h.add_child(_notice_btn("What's new", whats_new))
+			h.add_child(_notice_btn("Download", website))
 		Updater.State.DOWNLOADING:
-			head.text = "UPDATING"
 			# the percentage ticks along while the menu shows it
 			var t := Timer.new()
 			t.wait_time = 0.25
 			t.autostart = true
-			t.timeout.connect(func(): line.text = "Downloading Frontline v%s... %d%%" % [Updater.latest, int(Updater.progress() * 100.0)])
+			t.timeout.connect(func(): line.text = "%s DOWNLOADING %d%%" % [ver, int(Updater.progress() * 100.0)])
 			p.add_child(t)
-			line.text = "Downloading Frontline v%s..." % Updater.latest
+			line.text = "%s DOWNLOADING" % ver
+			(p.get_meta("sep") as Control).visible = false  # (nothing to press meanwhile)
+			p.tooltip_text = "Downloading Frontline v%s." % Updater.latest
 		Updater.State.READY:
-			head.text = "UPDATE READY"
-			line.text = "Frontline v%s is installed. Restart to play it." % Updater.latest
-			h.add_child(_btn("What's new", whats_new))
-			h.add_child(_btn("Restart", func(): Updater.restart()))
+			line.text = "%s READY" % ver
+			p.tooltip_text = "Frontline v%s is installed. Restart to play it." % Updater.latest
+			h.add_child(_notice_btn("What's new", whats_new))
+			var go := UiKit.primary_button("Restart", 0, 26, 12)
+			go.pressed.connect(func(): Updater.restart())
+			h.add_child(go)
 		Updater.State.FAILED:
-			head.text = "UPDATE FAILED"
-			line.text = "Couldn't update to v%s: %s" % [Updater.latest, Updater.error]
-			h.add_child(_btn("Download", website))
-	for b in h.get_children():
-		if b is Button:
-			(b as Button).size_flags_vertical = Control.SIZE_SHRINK_CENTER
+			line.text = "%s UPDATE FAILED" % ver
+			p.set_meta("why", "Couldn't update to v%s: %s" % [Updater.latest, Updater.error])
+			h.add_child(_notice_btn("Download", website))
+	# why it failed, in words, under the line
+	if p.has_meta("why"):
+		var why := UiKit.label(String(p.get_meta("why")), 12, UiKit.DIM)
+		why.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		why.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+		why.custom_minimum_size = Vector2(420, 0)
+		(p.get_child(0) as VBoxContainer).add_child(why)
 	if acct_card:
 		_side_panels_changed()
 
 
-## A card for the top right: a small heading over a line of text, with room
-## on its right (the HBox, its first child) for buttons.
-func _notice(head_text: String, text: String, bad: bool) -> PanelContainer:
+## A line for the top right, under the account (docs/UI.md, the corner): a
+## label in capitals and a code in mono (bad: in red), then a rule and room
+## for buttons. The row they go in, and the code, are its metas "row" and "code".
+func _notice(head_text: String, code: String, bad: bool) -> PanelContainer:
 	var p := PanelContainer.new()
-	p.add_theme_stylebox_override("panel", UiKit.box(Color(0.035, 0.045, 0.045, 0.92), 4, UiKit.BAD if bad else UiKit.ACCENT, 1, 12.0))
-	var h := HBoxContainer.new()
-	h.add_theme_constant_override("separation", 12)
-	p.add_child(h)
+	p.add_theme_stylebox_override("panel", UiKit.bare())
+	p.size_flags_horizontal = Control.SIZE_SHRINK_END
 	var v := VBoxContainer.new()
-	v.add_theme_constant_override("separation", 1)
-	v.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	h.add_child(v)
-	v.add_child(UiKit.label(head_text, 11, UiKit.BAD if bad else UiKit.ACCENT, 700))
-	var line := UiKit.label(text, 14, UiKit.TEXT, 600)
-	line.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	v.add_child(line)
+	v.add_theme_constant_override("separation", 4)
+	p.add_child(v)
+	var h := HBoxContainer.new()
+	h.add_theme_constant_override("separation", 10)
+	h.alignment = BoxContainer.ALIGNMENT_END
+	v.add_child(h)
+	if head_text != "":
+		var hl := UiKit.caps(head_text, 11, UiKit.FAINT)
+		hl.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		h.add_child(hl)
+	var cl := UiKit.mono_label(code, 12, UiKit.BAD if bad else UiKit.ACCENT)
+	cl.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	h.add_child(cl)
+	var sep := UiKit.mono_label("\u00b7", 12, UiKit.FAINT)
+	sep.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	h.add_child(sep)
+	p.set_meta("row", h)
+	p.set_meta("code", cl)
+	p.set_meta("sep", sep)
 	return p
+
+
+## A notice's button: small, an outline in capitals.
+func _notice_btn(text: String, cb: Callable) -> Button:
+	var b := UiKit.button(text, "secondary", 0, 26)
+	b.pressed.connect(cb)
+	return b
 
 
 # --- links from the website -------------------------------------------------------------
@@ -1207,87 +1281,97 @@ func _join_by_id(id: String) -> void:
 	dialog.fail("Couldn't join", "That battle isn't listed any more, or it runs a different version of Frontline.")
 
 
-## A panel on the right of the menu, where the new-operation panel sits.
-func _side_panel() -> PanelContainer:
+## A panel on the right of the menu, where the new-operation panel sits (the
+## work area: flat ink, marked by the accent's corner ticks), reaching from
+## the column to `right` and from `top` to `bottom` about the middle.
+func _side_panel(right: float, top: float, bottom: float) -> PanelContainer:
 	var p := PanelContainer.new()
-	p.add_theme_stylebox_override("panel", UiKit.frame(Color(-1, 0, 0), 22.0, 1.0, 14.0, 0.92))
+	p.add_theme_stylebox_override("panel", UiKit.frame_hot(26.0, 0.9))
 	p.anchor_top = 0.5
 	p.anchor_bottom = 0.5
 	p.offset_left = 640
-	p.offset_right = 1180
-	p.offset_top = -270
-	p.offset_bottom = 290
+	p.offset_right = right
+	p.offset_top = top
+	p.offset_bottom = bottom
+	p.set_meta("place", [top, bottom])
 	p.visible = false
 	add_child(p)
 	return p
 
 
+## A panel on the right that has just opened, back at its place a frame later.
+## Wrapped lines are measured only once they're laid out showing (until then
+## each is a letter wide and thousands of pixels tall), and a panel they've
+## stretched never shrinks back on its own; it's kept unseen until it's back.
+func _settle(p: Control) -> void:
+	var place: Array = p.get_meta("place", [])
+	if place.is_empty():
+		return
+	p.modulate.a = 0.0
+	await get_tree().process_frame
+	p.offset_top = float(place[0])
+	p.offset_bottom = float(place[1])
+	p.modulate.a = 1.0
+
+
 # --- the account ----------------------------------------------------------------------
 
-## The account: a card top right that says who you are (or how to sign in),
+## The account: a line top right that says who you are (or how to sign in),
 ## the sign-in form, and the service record.
 func _build_account() -> void:
 	acct_card = PanelContainer.new()
-	UiFx.glass(acct_card, 12.0, 18.0)
+	acct_card.add_theme_stylebox_override("panel", UiKit.bare())
 	acct_card.anchor_left = 1.0
 	acct_card.anchor_right = 1.0
-	acct_card.offset_left = -440
+	acct_card.offset_left = -640
 	acct_card.offset_right = -32
-	acct_card.offset_top = 32
+	acct_card.offset_top = 30
 	acct_card.grow_horizontal = Control.GROW_DIRECTION_BEGIN
 	add_child(acct_card)
 	var v := VBoxContainer.new()
 	v.add_theme_constant_override("separation", 4)
 	acct_card.add_child(v)
-	var head := HBoxContainer.new()
-	head.add_theme_constant_override("separation", 10)
-	v.add_child(head)
-	head.add_child(_spaced("ACCOUNT", 11, UiKit.ACCENT, 3))
-	acct_badge = _spaced("SIGNED IN", 11, UiKit.GOOD, 2)
-	head.add_child(acct_badge)
-	var who := HBoxContainer.new()
-	who.add_theme_constant_override("separation", 12)
-	v.add_child(who)
-	who.add_child(_make_ins_btn())
-	ins_btn.custom_minimum_size = Vector2(58, 58)
-	var wv := VBoxContainer.new()
-	wv.add_theme_constant_override("separation", 3)
-	wv.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	wv.alignment = BoxContainer.ALIGNMENT_CENTER
-	who.add_child(wv)
-	acct_name = UiKit.label("", 22, UiKit.TEXT, 700)
-	wv.add_child(acct_name)
-	rank_label = UiKit.label("", 11, UiKit.ACCENT, 700)
-	rank_label.mouse_filter = Control.MOUSE_FILTER_PASS
-	wv.add_child(rank_label)
-	rank_bar = _xp_bar(200)
-	rank_bar.mouse_filter = Control.MOUSE_FILTER_PASS
-	wv.add_child(rank_bar)
-	acct_line = UiKit.label("", 12, UiKit.DIM)
-	acct_line.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	acct_line.custom_minimum_size = Vector2(370, 0)
-	v.add_child(acct_line)
+	# one line: the patch worn, the callsign with the rank and XP under it,
+	# then what there is to do (signed out: NOT SIGNED IN and Sign in)
 	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 8)
+	row.add_theme_constant_override("separation", 12)
+	row.alignment = BoxContainer.ALIGNMENT_END
 	v.add_child(row)
-	acct_primary = _btn("", func():
+	row.add_child(_make_ins_btn())
+	ins_btn.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	var wv := VBoxContainer.new()
+	wv.add_theme_constant_override("separation", 2)
+	wv.alignment = BoxContainer.ALIGNMENT_CENTER
+	row.add_child(wv)
+	acct_name = UiKit.caps("", 15, UiKit.TEXT, 600, 1)
+	wv.add_child(acct_name)
+	var rk := HBoxContainer.new()
+	rk.add_theme_constant_override("separation", 8)
+	wv.add_child(rk)
+	rank_label = UiKit.mono_label("", 11, UiKit.DIM)
+	rank_label.mouse_filter = Control.MOUSE_FILTER_PASS
+	rk.add_child(rank_label)
+	rank_bar = _xp_bar(10)
+	rank_bar.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	rk.add_child(rank_bar)
+	acct_xp = UiKit.mono_label("", 11, UiKit.FAINT)
+	acct_xp.mouse_filter = Control.MOUSE_FILTER_PASS
+	rk.add_child(acct_xp)
+	var gap := Control.new()
+	gap.custom_minimum_size = Vector2(4, 0)
+	row.add_child(gap)
+	acct_primary = UiKit.button("", "secondary", 0, 30)
+	acct_primary.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	acct_primary.pressed.connect(func():
 		Sfx.ui("click")
 		if Online.signed_in():
 			_open_record()
 		else:
 			_open_account())
-	acct_primary.custom_minimum_size = Vector2(150, 34)
-	# the one thing to do here, in the accent like Deploy
-	acct_primary.add_theme_font_override("font", UiKit.font(700))
-	acct_primary.add_theme_stylebox_override("normal", UiKit.box(Color(UiKit.ACCENT.r, UiKit.ACCENT.g, UiKit.ACCENT.b, 0.85), 4, UiKit.ACCENT, 0, 6.0))
-	acct_primary.add_theme_stylebox_override("hover", UiKit.box(UiKit.ACCENT.lightened(0.15), 4, UiKit.ACCENT, 0, 6.0))
-	acct_primary.add_theme_stylebox_override("pressed", UiKit.box(UiKit.ACCENT.lightened(0.15), 4, UiKit.ACCENT, 0, 6.0))
-	acct_primary.add_theme_color_override("font_color", Color(0.08, 0.07, 0.05))
-	acct_primary.add_theme_color_override("font_hover_color", Color(0.05, 0.04, 0.03))
-	acct_primary.add_theme_color_override("font_pressed_color", Color(0.05, 0.04, 0.03))
-	acct_primary.focus_mode = Control.FOCUS_NONE
 	row.add_child(acct_primary)
-	acct_secondary = _btn("", func():
+	acct_secondary = UiKit.button("", "quiet", 0, 30)
+	acct_secondary.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	acct_secondary.pressed.connect(func():
 		Sfx.ui("click")
 		if Online.signed_in():
 			Online.sign_out()
@@ -1295,8 +1379,11 @@ func _build_account() -> void:
 			_say("Signed out. You can still play online under any callsign.")
 		else:
 			_open_account(true))
-	acct_secondary.custom_minimum_size = Vector2(150, 34)
 	row.add_child(acct_secondary)
+	# battles waiting to go on the record, when there are any
+	acct_line = UiKit.label("", 12, UiKit.DIM)
+	acct_line.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	v.add_child(acct_line)
 
 	account_panel = AccountPanel.new()
 	add_child(account_panel)
@@ -1311,7 +1398,7 @@ func _card_in() -> void:
 		UiFx.slide_in(acct_card, 70.0, 0.5, 0.35)
 
 
-## The account card (and the notices under it) give way to the panels that
+## The account line (and the notices under it) give way to the panels that
 ## open on the right, which reach up into that corner.
 func _side_panels_changed() -> void:
 	var busy := false
@@ -1324,15 +1411,6 @@ func _side_panels_changed() -> void:
 		notices.visible = not busy
 
 
-func _spaced(text: String, fs: int, col: Color, spacing: int) -> Label:
-	var l := Label.new()
-	l.text = text
-	l.add_theme_font_override("font", UiFx.spaced(700, spacing))
-	l.add_theme_font_size_override("font_size", fs)
-	l.add_theme_color_override("font_color", col)
-	return l
-
-
 func _open_account(create := false) -> void:
 	_close_panels()
 	account_panel.open(create, name_edit.text)
@@ -1340,23 +1418,25 @@ func _open_account(create := false) -> void:
 
 func _on_account() -> void:
 	var on := Online.signed_in()
-	acct_badge.visible = on
 	var waiting := Online.pending.size()
+	acct_name.text = (Online.callsign if Online.callsign != "" else "Signed in") if on else "Not signed in"
+	acct_name.add_theme_font_size_override("font_size", 15 if on else 12)
+	acct_name.add_theme_color_override("font_color", UiKit.TEXT if on else UiKit.FAINT)
+	acct_line.text = ""
+	if waiting > 0:
+		var n := "%d %s" % [waiting, "battle" if waiting == 1 else "battles"]
+		acct_line.text = ("%s going on your record" % n) if on else "%s waiting for your record: sign in to keep %s." % [n, "it" if waiting == 1 else "them"]
+	acct_line.visible = acct_line.text != ""
+	acct_card.tooltip_text = ("Signed in as %s." % Online.email) if on else "Sign in to keep your callsign, earn ranks and insignia, and keep a service record of every battle you fight."
 	if on:
-		acct_name.text = Online.callsign if Online.callsign != "" else "Signed in"
-		acct_line.text = Online.email
-		if waiting > 0:
-			acct_line.text += "  \u00b7  %d %s going on your record" % [waiting, "battle" if waiting == 1 else "battles"]
-		acct_primary.text = "Service Record"
-		acct_secondary.text = "Sign out"
+		acct_primary.text = "RECORD"
+		acct_primary.tooltip_text = "Your service record: every battle you've fought signed in"
+		acct_secondary.text = "SIGN OUT"
 	else:
-		acct_name.text = "Not signed in"
-		acct_line.text = "Sign in to keep your callsign, earn ranks and insignia, and keep a service record of every battle you fight."
-		if waiting > 0:
-			acct_line.text = "%d %s waiting for your service record: sign in to keep %s." % [waiting, "battle" if waiting == 1 else "battles", "it" if waiting == 1 else "them"]
 		# players sign in with GitHub, on the website: the first time makes the account
-		acct_primary.text = "Sign in with GitHub" if Online.web_sign_in else "Sign in"
-		acct_secondary.text = "Create account"
+		acct_primary.text = "SIGN IN WITH GITHUB" if Online.web_sign_in else "SIGN IN"
+		acct_primary.tooltip_text = ""
+		acct_secondary.text = "CREATE ACCOUNT"
 	acct_secondary.visible = on or not Online.web_sign_in
 	if on and Online.callsign != "":
 		name_edit.text = Online.callsign
@@ -1364,10 +1444,11 @@ func _on_account() -> void:
 	ins_tex.texture = Insignia.texture(Online.icon if on else Insignia.DEFAULT, 128)
 	ins_tex.modulate = Color.WHITE if on else Color(1, 1, 1, 0.45)
 	ins_btn.tooltip_text = ("Wearing %s. Open your insignia to pick another." % String(Insignia.find(Online.icon).get("n", ""))) if on else "Insignia: sign in to earn ranks and choose one."
-	rank_label.text = ("%s  \u00b7  RANK %d" % [Insignia.rank_name(Online.rank).to_upper(), Online.rank]) if on else "RANKS AND INSIGNIA: CLICK THE PATCH"
-	rank_label.add_theme_color_override("font_color", UiKit.ACCENT if on else UiKit.DIM)
-	rank_label.tooltip_text = ("Rank %d of %d  \u00b7  %s" % [Online.rank, Insignia.MAX_RANK, _xp_text()]) if on else "Sign in and every battle you play earns XP towards the next rank."
-	rank_bar.visible = on
+	rank_label.text = _rank_code(Online.rank) if on else ""
+	rank_label.tooltip_text = ("%s  \u00b7  rank %d of %d  \u00b7  %s" % [Insignia.rank_name(Online.rank), Online.rank, Insignia.MAX_RANK, _xp_text()]) if on else ""
+	acct_xp.text = _xp_text() if on else ""
+	acct_xp.tooltip_text = rank_label.tooltip_text
+	rank_label.get_parent().visible = on
 	_set_bar(rank_bar)
 	if ins_panel and ins_panel.visible:
 		_refresh_insignia()
@@ -1375,54 +1456,62 @@ func _on_account() -> void:
 		rec_panel.visible = false
 
 
+## A rank as a code: SSG III for Staff Sergeant III, GEN for General.
+static func _rank_code(r: int) -> String:
+	var n := Insignia.rank_name(r)
+	var grade := ""
+	var sp := n.rfind(" ")
+	if sp > 0 and n.substr(sp + 1) in ["I", "II", "III", "IV", "V"]:
+		grade = n.substr(sp)
+		n = n.substr(0, sp)
+	return String(RANK_CODES.get(n, n.to_upper())) + grade
+
+
 # --- the service record ------------------------------------------------------------------
 
 ## Every battle fought signed in: the career's totals over the top, the
 ## battles newest first; open one for its after-action report.
 func _build_record_panel() -> void:
-	rec_panel = PanelContainer.new()
-	UiFx.glass(rec_panel, 16.0, 24.0)
-	rec_panel.anchor_top = 0.5
-	rec_panel.anchor_bottom = 0.5
-	rec_panel.offset_left = 640
-	rec_panel.offset_right = 1300
-	rec_panel.offset_top = -330
-	rec_panel.offset_bottom = 340
-	rec_panel.visible = false
-	add_child(rec_panel)
+	rec_panel = _side_panel(1300, -330, 340)
 	var v := VBoxContainer.new()
-	v.add_theme_constant_override("separation", 10)
+	v.add_theme_constant_override("separation", 0)
 	rec_panel.add_child(v)
-	v.add_child(_spaced("SERVICE RECORD", 13, UiKit.ACCENT, 4))
-	rec_title = _spaced("", 26, UiKit.TEXT, 3)
+	v.add_child(UiKit.caps("Service record", 12, UiKit.ACCENT))
+	v.add_child(_gap(6))
+	rec_title = UiKit.caps("", 22, UiKit.TEXT, 600, 2)
 	v.add_child(rec_title)
+	v.add_child(_gap(16))
+	# the career: a label over its figure, no boxes
 	rec_tiles = GridContainer.new()
 	rec_tiles.columns = 3
-	rec_tiles.add_theme_constant_override("h_separation", 8)
-	rec_tiles.add_theme_constant_override("v_separation", 8)
+	rec_tiles.add_theme_constant_override("h_separation", 24)
+	rec_tiles.add_theme_constant_override("v_separation", 14)
 	v.add_child(rec_tiles)
-	v.add_child(_spaced("BATTLES", 11, UiKit.DIM, 3))
+	v.add_child(_gap(22))
+	v.add_child(UiKit.header("Battles"))
+	v.add_child(_gap(4))
 	var sc := ScrollContainer.new()
 	sc.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	sc.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	v.add_child(sc)
 	var lv := VBoxContainer.new()
 	lv.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	lv.add_theme_constant_override("separation", 4)
+	lv.add_theme_constant_override("separation", 6)
 	sc.add_child(lv)
 	rec_list = VBoxContainer.new()
-	rec_list.add_theme_constant_override("separation", 4)
+	rec_list.add_theme_constant_override("separation", 0)
 	lv.add_child(rec_list)
-	rec_more = _btn("Older battles", func(): Sfx.ui("click"); _load_battles(false))
+	rec_more = UiKit.button("Older battles", "quiet")
+	rec_more.pressed.connect(func(): Sfx.ui("click"); _load_battles(false))
 	rec_more.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 	lv.add_child(rec_more)
 	rec_msg = UiKit.label("", 13, UiKit.DIM)
 	rec_msg.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	v.add_child(rec_msg)
-	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 8)
-	v.add_child(row)
-	row.add_child(_btn("Close", func(): rec_panel.visible = false))
+	v.add_child(_gap(10))
+	var close := UiKit.button("Close", "quiet")
+	close.pressed.connect(func(): rec_panel.visible = false)
+	v.add_child(_actions(close, []))
 
 
 func _open_record() -> void:
@@ -1431,6 +1520,7 @@ func _open_record() -> void:
 		return
 	_close_panels()
 	rec_panel.visible = true
+	_settle(rec_panel)
 	UiFx.slide_in(rec_panel, 40.0, 0.32)
 	Sfx.ui("ui_whoosh", -16.0)
 	rec_title.text = Online.callsign.to_upper()
@@ -1456,7 +1546,7 @@ func _rec_tiles(c: Dictionary) -> void:
 	# [label, value (-1: none yet), how to write it, a word under it]
 	var tiles := [
 		["BATTLES", float(n), func(v: float) -> String: return "%d" % int(round(v)), ""],
-		["WON", float(won), func(v: float) -> String: return "%d  (%d%%)" % [int(round(v)), int(round(100.0 * v / maxf(1.0, n)))], ""],
+		["WON", float(won), func(v: float) -> String: return "%d \u00b7 %d%%" % [int(round(v)), int(round(100.0 * v / maxf(1.0, n)))], ""],
 		["KILLS", kills, func(v: float) -> String: return UiKit.fmt_num(v), ""],
 		["K/D", kills / maxf(1.0, lost), func(v: float) -> String: return "%.1f" % v, ""],
 		["AVG RATING", rv, func(v: float) -> String: return "%d" % int(round(v)), UiKit.rating_word(rv) if n > 0 else ""],
@@ -1464,27 +1554,22 @@ func _rec_tiles(c: Dictionary) -> void:
 	]
 	for i in tiles.size():
 		var t: Array = tiles[i]
-		var p := PanelContainer.new()
-		UiFx.glass(p, 7.0, 10.0)
-		p.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		var tv := VBoxContainer.new()
 		tv.add_theme_constant_override("separation", 0)
-		p.add_child(tv)
-		tv.add_child(_spaced(String(t[0]), 9, UiKit.DIM, 2))
-		var val := Label.new()
-		val.add_theme_font_override("font", UiFx.digits(700))
-		val.add_theme_font_size_override("font_size", 24)
-		val.add_theme_color_override("font_color", UiKit.rating_col(rv) if t[0] == "AVG RATING" and n > 0 else UiKit.TEXT)
+		tv.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		var lh := HBoxContainer.new()
+		lh.add_theme_constant_override("separation", 8)
+		tv.add_child(lh)
+		lh.add_child(UiKit.caps(String(t[0]), 11, UiKit.FAINT))
+		if String(t[3]) != "":
+			lh.add_child(UiKit.caps(String(t[3]), 11, UiKit.rating_col(rv)))
+		var val := UiKit.mono_label("", 24, UiKit.rating_col(rv) if t[0] == "AVG RATING" and n > 0 else UiKit.TEXT)
 		tv.add_child(val)
 		if c.is_empty() or n == 0:
 			val.text = "-"
 		else:
 			UiFx.count(val, float(t[1]), t[2], 1.0, 0.1 + i * 0.07)
-		if String(t[3]) != "":
-			tv.add_child(_spaced(String(t[3]), 9, UiKit.rating_col(rv), 2))
-		rec_tiles.add_child(p)
-		if not c.is_empty():
-			UiFx.slide_in(p, 0.0, 0.3, i * 0.05)
+		rec_tiles.add_child(tv)
 
 
 func _load_battles(fresh: bool) -> void:
@@ -1508,7 +1593,7 @@ func _load_battles(fresh: bool) -> void:
 	for i in bs.size():
 		var row := _record_row(bs[i])
 		rec_list.add_child(row)
-		UiFx.slide_in(row, 36.0, 0.34, 0.12 + mini(i, 12) * 0.045)
+		UiMotion.arrive(row, Vector2(0, 1), mini(i, 7) * UiMotion.STAGGER, UiMotion.TRAVEL_SM)
 	if not bs.is_empty():
 		_rec_before = String(bs.back().get("played_at", ""))
 	rec_more.visible = bool(r.data.get("more", false))
@@ -1520,67 +1605,66 @@ func _load_battles(fresh: bool) -> void:
 		rec_msg.text += ("  " if rec_msg.text != "" else "") + "%d more waiting to go up (they will when the matchmaker can be reached)." % waiting
 
 
-## One battle on the record: how it ended, what it was, when, and how you did.
+## One battle on the record, a ruled row: the side it was fought on (its
+## marker), how it ended, what it was and when, and how you did in figures.
+## Open it for its after-action report.
 func _record_row(b: Dictionary) -> Button:
 	var btn := Button.new()
-	btn.custom_minimum_size = Vector2(0, 60)
+	btn.custom_minimum_size = Vector2(0, 48)
 	btn.focus_mode = Control.FOCUS_NONE
-	var won_it := String(b.get("result", "")) == "victory"
-	var res_col := UiKit.GOOD if won_it else UiKit.BAD
-	for st in ["normal", "hover", "pressed", "hover_pressed"]:
-		btn.add_theme_stylebox_override(st, StyleBoxEmpty.new())
+	var won := String(b.get("result", "")) == "victory"
+	var side := clampi(int(b.get("side", 0)), 0, 1)
+	var side_col: Color = Defs.TEAM_COLORS[side]
+	var hv := UiKit.box(UiKit.fa(UiKit.TEXT, 0.05), 0, Color(0, 0, 0, 0), 0, 0.0)
+	for st in ["normal", "disabled", "focus"]:
+		btn.add_theme_stylebox_override(st, UiKit.bare())
+	for st in ["hover", "pressed", "hover_pressed"]:
+		btn.add_theme_stylebox_override(st, hv)
 	btn.draw.connect(func():
-		var hot := 1.0 if btn.is_hovered() else 0.0
-		UiFx.card(btn, Rect2(Vector2.ZERO, btn.size), 1.0, hot, UiFx.fade(res_col, 0.35) if hot > 0.0 else Color(1, 1, 1, 0.07))
-		btn.draw_rect(Rect2(btn.size.x - 4.0, 8.0, 3.0, btn.size.y - 16.0), UiFx.fade(res_col, 0.7)))
-	btn.mouse_entered.connect(btn.queue_redraw)
-	btn.mouse_exited.connect(btn.queue_redraw)
+		var y := btn.size.y
+		btn.draw_rect(Rect2(0, y - 1.0, btn.size.x, 1.0), UiKit.LINE)
+		btn.draw_rect(Rect2(8, roundf(y * 0.5) - 4.0, 9, 9), side_col))
 	btn.tooltip_text = "Open the after-action report"
 	var h := HBoxContainer.new()
 	h.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	h.offset_left = 12
-	h.offset_right = -14
-	h.add_theme_constant_override("separation", 14)
+	h.offset_left = 30
+	h.offset_right = -10
+	h.add_theme_constant_override("separation", 16)
 	h.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	btn.add_child(h)
-	var won := String(b.get("result", "")) == "victory"
-	var bar := ColorRect.new()
-	bar.color = Defs.TEAM_COLORS[clampi(int(b.get("side", 0)), 0, 1)]
-	bar.custom_minimum_size = Vector2(3, 0)
-	h.add_child(bar)
+	var res := UiKit.caps("Victory" if won else "Defeat", 11, UiKit.GOOD if won else UiKit.BAD)
+	res.custom_minimum_size = Vector2(62, 0)
+	res.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	h.add_child(res)
 	var left := VBoxContainer.new()
 	left.alignment = BoxContainer.ALIGNMENT_CENTER
-	left.add_theme_constant_override("separation", 0)
+	left.add_theme_constant_override("separation", 1)
 	left.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	h.add_child(left)
-	var top := HBoxContainer.new()
-	top.add_theme_constant_override("separation", 10)
-	left.add_child(top)
-	top.add_child(UiKit.label("VICTORY" if won else "DEFEAT", 12, UiKit.GOOD if won else UiKit.BAD, 700))
-	top.add_child(UiKit.label(String(b.get("title", "Battle")), 15, UiKit.TEXT, 600))
-	left.add_child(UiKit.label("%s  \u00b7  %s  \u00b7  %s" % [_when(String(b.get("played_at", ""))), Defs.TEAM_NAMES[clampi(int(b.get("side", 0)), 0, 1)],
-		UiKit.fmt_time(float(b.get("duration_s", 0)))], 11, UiKit.DIM))
+	left.add_child(UiKit.caps(String(b.get("title", "Battle")), 14, UiKit.TEXT, 600, 1))
+	left.add_child(UiKit.mono_label("%s  \u00b7  %s  \u00b7  %s" % [_when(String(b.get("played_at", ""))).to_upper().replace(",", ""),
+		Defs.TEAM_NAMES[side].to_upper(), UiKit.fmt_time(float(b.get("duration_s", 0)))], 11, UiKit.FAINT))
 	var kv := VBoxContainer.new()
 	kv.alignment = BoxContainer.ALIGNMENT_CENTER
-	kv.add_theme_constant_override("separation", 0)
+	kv.add_theme_constant_override("separation", 1)
 	h.add_child(kv)
-	var kl := UiKit.label("%d killed  /  %d lost" % [int(b.get("kills", 0)), int(b.get("lost", 0))], 13, UiKit.TEXT, 600)
+	var kl := UiKit.mono_label("%d KILLED \u00b7 %d LOST" % [int(b.get("kills", 0)), int(b.get("lost", 0))], 12, UiKit.TEXT)
 	kl.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	kv.add_child(kl)
 	var vk := int(b.get("veh_kills", 0))
-	var sub := UiKit.label(("%d vehicles destroyed" % vk) if vk > 0 else ("score %s" % UiKit.fmt_num(float(b.get("score", 0)))), 11, UiKit.DIM)
+	var sub := UiKit.mono_label(("%d VEHICLES" % vk) if vk > 0 else ("SCORE %s" % UiKit.fmt_num(float(b.get("score", 0)))), 11, UiKit.FAINT)
 	sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	kv.add_child(sub)
 	var rv := float(b.get("rating", 0))
 	var rt := VBoxContainer.new()
 	rt.alignment = BoxContainer.ALIGNMENT_CENTER
 	rt.add_theme_constant_override("separation", 0)
-	rt.custom_minimum_size = Vector2(76, 0)
+	rt.custom_minimum_size = Vector2(70, 0)
 	h.add_child(rt)
-	var rl := UiKit.label("%d" % int(round(rv)), 22, UiKit.rating_col(rv), 700)
+	var rl := UiKit.mono_label("%d" % int(round(rv)), 20, UiKit.rating_col(rv))
 	rl.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	rt.add_child(rl)
-	var rw := UiKit.label(UiKit.rating_word(rv), 10, UiKit.DIM)
+	var rw := UiKit.caps(UiKit.rating_word(rv), 10, UiKit.FAINT)
 	rw.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	rt.add_child(rw)
 	for c in h.get_children():
@@ -1618,7 +1702,7 @@ func _open_battle(id: String, heading: String) -> void:
 ## (StatsPanel), so it's built the first time one's opened: GameScripts.
 func _make_rec_view() -> void:
 	var dim := ColorRect.new()
-	dim.color = Color(0.0, 0.01, 0.01, 0.6)
+	dim.color = UiKit.fa(UiKit.INK, 0.6)
 	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	dim.visible = false
 	add_child(dim)
@@ -1650,9 +1734,9 @@ func _make_ins_btn() -> Button:
 	ins_btn = Button.new()
 	ins_btn.custom_minimum_size = Vector2(40, 40)
 	ins_btn.focus_mode = Control.FOCUS_NONE
-	ins_btn.add_theme_stylebox_override("normal", UiKit.box(Color(1, 1, 1, 0.03), 5, Color(1, 1, 1, 0.08), 1, 2.0))
-	ins_btn.add_theme_stylebox_override("hover", UiKit.box(Color(UiKit.ACCENT.r, UiKit.ACCENT.g, UiKit.ACCENT.b, 0.12), 5, UiKit.ACCENT, 1, 2.0))
-	ins_btn.add_theme_stylebox_override("pressed", UiKit.box(Color(UiKit.ACCENT.r, UiKit.ACCENT.g, UiKit.ACCENT.b, 0.2), 5, UiKit.ACCENT, 1, 2.0))
+	ins_btn.add_theme_stylebox_override("normal", UiKit.bare(2.0))
+	ins_btn.add_theme_stylebox_override("hover", UiKit.box(UiKit.fa(UiKit.TEXT, 0.05), 0, UiKit.RULE2, 1, 2.0))
+	ins_btn.add_theme_stylebox_override("pressed", UiKit.box(UiKit.fa(UiKit.TEXT, 0.05), 0, UiKit.ACCENT, 1, 2.0))
 	ins_tex = _ins_rect(Insignia.DEFAULT, 36)
 	ins_tex.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	ins_tex.offset_left = 2
@@ -1677,18 +1761,18 @@ func _ins_rect(id: String, px: int) -> TextureRect:
 	return tr
 
 
-func _xp_bar(w: float) -> ProgressBar:
-	var bar := ProgressBar.new()
-	bar.show_percentage = false
-	bar.custom_minimum_size = Vector2(w, 5)
+## The way through a rank as a counted bar of `steps` steps.
+func _xp_bar(steps: int, sw := 5.0, h := 6.0) -> StepBar:
+	var bar := StepBar.new()
+	bar.count = steps
+	bar.step_w = sw
+	bar.step_h = h
 	bar.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
-	bar.add_theme_stylebox_override("background", UiKit.box(Color(1, 1, 1, 0.08), 3, Color(0, 0, 0, 0), 0, 0.0))
-	bar.add_theme_stylebox_override("fill", UiKit.box(UiKit.ACCENT, 3, Color(0, 0, 0, 0), 0, 0.0))
 	return bar
 
 
 ## How far through the rank the player is (full at the top rank).
-func _set_bar(bar: ProgressBar) -> void:
+func _set_bar(bar: Range) -> void:
 	var top := Online.next_xp < 0
 	bar.max_value = 1.0 if top else maxf(1.0, Online.next_xp - Online.rank_xp)
 	bar.value = (1.0 if top else float(Online.xp - Online.rank_xp)) if Online.signed_in() else 0.0
@@ -1696,74 +1780,64 @@ func _set_bar(bar: ProgressBar) -> void:
 
 func _xp_text() -> String:
 	if Online.next_xp < 0:
-		return "%s XP  \u00b7  TOP RANK" % Insignia.thousands(Online.xp)
-	return "%s / %s XP" % [Insignia.thousands(Online.xp - Online.rank_xp), Insignia.thousands(Online.next_xp - Online.rank_xp)]
+		return "%s XP \u00b7 TOP RANK" % Insignia.thousands(Online.xp)
+	return "%s/%s XP" % [Insignia.thousands(Online.xp - Online.rank_xp), Insignia.thousands(Online.next_xp - Online.rank_xp)]
 
 
 ## The collection: who you are and how far you've come, then every insignia
 ## by group. The unlocked can be worn; the rest are shown, locked, with what
 ## unlocks them.
 func _build_insignia_panel() -> void:
-	ins_panel = PanelContainer.new()
-	UiFx.glass(ins_panel, 16.0, 24.0)
-	ins_panel.anchor_top = 0.5
-	ins_panel.anchor_bottom = 0.5
-	ins_panel.offset_left = 640
-	ins_panel.offset_right = 1300
-	ins_panel.offset_top = -330
-	ins_panel.offset_bottom = 340
-	ins_panel.visible = false
-	add_child(ins_panel)
+	ins_panel = _side_panel(1300, -330, 340)
 	var v := VBoxContainer.new()
-	v.add_theme_constant_override("separation", 10)
+	v.add_theme_constant_override("separation", 0)
 	ins_panel.add_child(v)
-	v.add_child(_spaced("INSIGNIA", 13, UiKit.ACCENT, 4))
+	v.add_child(UiKit.caps("Insignia", 12, UiKit.ACCENT))
+	v.add_child(_gap(12))
 	var head := HBoxContainer.new()
-	head.add_theme_constant_override("separation", 16)
+	head.add_theme_constant_override("separation", 18)
 	v.add_child(head)
 	var big := _ins_rect(Insignia.DEFAULT, 92)
 	head.add_child(big)
 	var hv := VBoxContainer.new()
-	hv.add_theme_constant_override("separation", 3)
+	hv.add_theme_constant_override("separation", 4)
 	hv.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	hv.alignment = BoxContainer.ALIGNMENT_CENTER
 	head.add_child(hv)
-	var nm := UiKit.label("", 24, UiKit.TEXT, 600)
+	var nm := UiKit.caps("", 22, UiKit.TEXT, 600, 2)
 	hv.add_child(nm)
-	var rk := UiKit.label("", 13, UiKit.ACCENT, 700)
+	var rk := UiKit.mono_label("", 12, UiKit.ACCENT)
 	hv.add_child(rk)
-	var bar := _xp_bar(330)
+	var bar := _xp_bar(30, 7.0, 8.0)
 	hv.add_child(bar)
-	var xpl := UiKit.label("", 12, UiKit.DIM)
+	var xpl := UiKit.mono_label("", 11, UiKit.DIM)
+	xpl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	hv.add_child(xpl)
-	var rec := UiKit.label("", 12, UiKit.DIM)
+	var rec := UiKit.mono_label("", 11, UiKit.FAINT)
 	rec.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	hv.add_child(rec)
-	var sign := _btn("Sign in", func(): Sfx.ui("click"); _open_account())
+	var sign := UiKit.button("Sign in", "secondary", 0, 30)
+	sign.pressed.connect(func(): Sfx.ui("click"); _open_account())
 	sign.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	head.add_child(sign)
 	_ins_head = {"icon": big, "name": nm, "rank": rk, "bar": bar, "xp": xpl, "record": rec, "sign": sign}
+	v.add_child(_gap(16))
 	var scroll := ScrollContainer.new()
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	v.add_child(scroll)
 	var list := VBoxContainer.new()
-	list.add_theme_constant_override("separation", 6)
+	list.add_theme_constant_override("separation", 8)
 	list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	scroll.add_child(list)
 	for g in Insignia.GROUPS:
-		var gh := HBoxContainer.new()
-		gh.add_theme_constant_override("separation", 10)
-		gh.custom_minimum_size = Vector2(0, 26)
-		var gl := UiKit.label(String(g[1]).to_upper(), 11, UiKit.ACCENT, 700)
-		gl.size_flags_vertical = Control.SIZE_SHRINK_END
-		gh.add_child(gl)
-		var gc := UiKit.label("", 11, UiKit.DIM, 600)
-		gc.size_flags_vertical = Control.SIZE_SHRINK_END
-		gh.add_child(gc)
-		_ins_counts[g[0]] = gc
+		# each group: a header with how many are unlocked, what they're for, the patches
+		if list.get_child_count() > 0:
+			list.add_child(_gap(8))
+		var gh := UiKit.header(String(g[1]), "0/0")
+		_ins_counts[g[0]] = gh.get_node("Count")
 		list.add_child(gh)
-		var gb := UiKit.label(String(g[2]), 12, UiKit.DIM)
+		var gb := UiKit.label(String(g[2]), 12, UiKit.FAINT)
 		gb.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		list.add_child(gb)
 		var flow := HFlowContainer.new()
@@ -1773,15 +1847,20 @@ func _build_insignia_panel() -> void:
 		for e: Dictionary in Insignia.all():
 			if Insignia.group(String(e.id)) == g[0]:
 				flow.add_child(_ins_tile(e))
+	v.add_child(_gap(12))
 	var foot := HBoxContainer.new()
 	foot.add_theme_constant_override("separation", 10)
 	v.add_child(foot)
+	var close := UiKit.button("Close", "quiet")
+	close.pressed.connect(func(): ins_panel.visible = false)
+	close.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	foot.add_child(close)
 	_ins_msg = UiKit.label("", 13, UiKit.DIM)
 	_ins_msg.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_ins_msg.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	_ins_msg.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_ins_msg.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	foot.add_child(_ins_msg)
-	foot.add_child(_btn("Close", func(): ins_panel.visible = false))
 
 
 ## One insignia in the collection. Its picture is drawn a few frames later
@@ -1820,6 +1899,7 @@ func _open_insignia() -> void:
 	_ins_msg.text = ""
 	_refresh_insignia()
 	ins_panel.visible = true
+	_settle(ins_panel)
 	UiFx.slide_in(ins_panel, 40.0, 0.32)
 	Sfx.ui("ui_whoosh", -16.0)
 	if Online.signed_in():
@@ -1844,18 +1924,23 @@ func _refresh_insignia() -> void:
 	(h.icon as TextureRect).texture = Insignia.texture(worn if worn != "" else Insignia.DEFAULT, 128)
 	(h.icon as TextureRect).modulate = Color.WHITE if on else Color(1, 1, 1, 0.45)
 	(h.sign as Button).visible = not on
+	(h.rank as Label).visible = on
+	(h.bar as Control).visible = on
 	if on:
 		(h.name as Label).text = Online.callsign
-		(h.rank as Label).text = "%s  \u00b7  RANK %d OF %d" % [Insignia.rank_name(rank).to_upper(), rank, Insignia.MAX_RANK]
-		var nxt := "" if Online.next_xp < 0 else "  \u00b7  %s to %s" % [Insignia.thousands(Online.next_xp - Online.xp), Insignia.rank_name(rank + 1)]
+		(h.rank as Label).text = "%s \u00b7 RANK %d/%d" % [_rank_code(rank), rank, Insignia.MAX_RANK]
+		var nxt := "" if Online.next_xp < 0 else " \u00b7 %s TO %s" % [Insignia.thousands(Online.next_xp - Online.xp), _rank_code(rank + 1)]
 		(h.xp as Label).text = _xp_text() + nxt
-		(h.record as Label).text = "%d battles, %d won  \u00b7  wearing %s" % [Online.fought, Online.wins, String(Insignia.find(worn).get("n", ""))]
+		(h.record as Label).text = ("%d BATTLES \u00b7 %d WON \u00b7 WEARING %s" % [Online.fought, Online.wins, String(Insignia.find(worn).get("n", ""))]).to_upper()
 	else:
 		(h.name as Label).text = "Not signed in"
-		(h.rank as Label).text = "RANKS AND INSIGNIA"
 		(h.xp as Label).text = "Sign in and play: every battle earns XP, and a win half as much again."
 		(h.record as Label).text = "Fifty ranks from Recruit to General of the Army, each with its own patch."
-	_set_bar(h.bar as ProgressBar)
+	# figures in mono while signed in; signed out, the two lines are sentences
+	for l: Label in [h.xp, h.record]:
+		l.add_theme_font_override("font", UiKit.mono() if on else UiKit.font())
+		l.add_theme_font_size_override("font_size", 11 if on else 12)
+	_set_bar(h.bar as Range)
 	var have := {}
 	var total := {}
 	for e: Dictionary in Insignia.all():
@@ -1867,10 +1952,12 @@ func _refresh_insignia() -> void:
 			have[g] = int(have.get(g, 0)) + 1
 		var t: Button = _ins_tiles[id]
 		var sel := id == worn
-		var bg := Color(1, 1, 1, 0.04) if open else Color(0, 0, 0, 0.25)
-		var edge := UiKit.ACCENT if sel else Color(1, 1, 1, 0.07)
-		var hov := UiKit.boxc(Color(UiKit.ACCENT.r, UiKit.ACCENT.g, UiKit.ACCENT.b, 0.14 if open else 0.05), 5, UiKit.ACCENT if sel or open else Color(1, 1, 1, 0.18), 2 if sel else 1, 0.0)
-		t.add_theme_stylebox_override("normal", UiKit.boxc(bg, 5, edge, 2 if sel else 1, 0.0))
+		# square tiles on a hairline: the one worn edged in the accent, the
+		# locked ones sunk into the ink
+		var bg := UiKit.fa(UiKit.TEXT, 0.03) if open else UiKit.fa(UiKit.INK, 0.5)
+		var edge := UiKit.ACCENT if sel else (UiKit.LINE if open else UiKit.fa(UiKit.LINE, 0.5))
+		var hov := UiKit.boxc(UiKit.fa(UiKit.TEXT, 0.07 if open else 0.04), 0, UiKit.ACCENT if sel else (UiKit.RULE2 if open else UiKit.LINE), 2 if sel else 1, 0.0)
+		t.add_theme_stylebox_override("normal", UiKit.boxc(bg, 0, edge, 2 if sel else 1, 0.0))
 		t.add_theme_stylebox_override("hover", hov)
 		t.add_theme_stylebox_override("pressed", hov)
 		(t.get_node("Pic") as TextureRect).modulate = Color.WHITE if open else Color(0.5, 0.5, 0.5, 0.55)
@@ -1880,7 +1967,7 @@ func _refresh_insignia() -> void:
 			how += " Click to wear it." if on else " Sign in to wear it."
 		t.tooltip_text = "%s\n%s\n%s" % [String(e.n), String(e.d), how]
 	for g in Insignia.GROUPS:
-		(_ins_counts[g[0]] as Label).text = "%d / %d UNLOCKED" % [int(have.get(g[0], 0)), int(total.get(g[0], 0))]
+		(_ins_counts[g[0]] as Label).text = "%d/%d" % [int(have.get(g[0], 0)), int(total.get(g[0], 0))]
 
 
 ## Put an insignia on: shown at once, and taken back if the matchmaker says no.
@@ -1906,15 +1993,37 @@ func _pick_insignia(id: String) -> void:
 	_on_account()
 
 
-## A small padlock on the insignia not yet unlocked.
+## A small padlock on the insignia not yet unlocked: square, like everything
+## else (a shackle over a body with a slot for the key), on a dark edge.
 class LockGlyph extends Control:
 	func _draw() -> void:
 		var w := size.x
 		var h := size.y
-		var body := Rect2(w * 0.1, h * 0.44, w * 0.8, h * 0.52)
-		var c := Vector2(w * 0.5, h * 0.44)
-		draw_arc(c, w * 0.26, PI, TAU, 12, Color(0.05, 0.05, 0.05, 0.9), 4.2, true)
-		draw_arc(c, w * 0.26, PI, TAU, 12, Color(0.86, 0.84, 0.76), 2.0, true)
-		draw_rect(body.grow(1.2), Color(0.05, 0.05, 0.05, 0.9))
-		draw_rect(body, Color(0.86, 0.84, 0.76))
-		draw_circle(Vector2(w * 0.5, h * 0.66), w * 0.08, Color(0.2, 0.2, 0.18))
+		var body := Rect2(w * 0.1, h * 0.46, w * 0.8, h * 0.5)
+		var arch := PackedVector2Array([Vector2(w * 0.28, h * 0.46), Vector2(w * 0.28, h * 0.12), Vector2(w * 0.72, h * 0.12), Vector2(w * 0.72, h * 0.46)])
+		draw_polyline(arch, Color(0, 0, 0, 0.85), 4.0)
+		draw_polyline(arch, UiKit.DIM, 2.0)
+		draw_rect(body.grow(1.0), Color(0, 0, 0, 0.85))
+		draw_rect(body, UiKit.DIM)
+		draw_rect(Rect2(w * 0.45, h * 0.6, w * 0.1, h * 0.2), UiKit.INK)
+
+
+## A counted bar that only shows (docs/UI.md, Meter): `count` square steps
+## filled with the accent to the value, as far through a rank as the player is.
+class StepBar extends Range:
+	var count := 10
+	var step_w := 5.0
+	var step_h := 6.0
+
+	func _init() -> void:
+		mouse_filter = Control.MOUSE_FILTER_PASS
+		value_changed.connect(func(_v): queue_redraw())
+		changed.connect(queue_redraw)
+
+	func _get_minimum_size() -> Vector2:
+		return Vector2(count * (step_w + 2.0) - 2.0, step_h)
+
+	func _draw() -> void:
+		var span := max_value - min_value
+		var frac := 0.0 if span <= 0.0 else (value - min_value) / span
+		UiKit.steps(self, Vector2(0, (size.y - step_h) * 0.5), frac * count, count, UiKit.ACCENT, step_w, step_h)

@@ -64,7 +64,7 @@ static func _ring(pts: Array, y: float) -> PackedVector3Array:
 ## A plate lying along a face of a side profile, from a to b (each (z, y));
 ## `lift` moves it off the face (positive: away from the hull for a front face
 ## walked bottom to top, or a rear face walked top to bottom).
-static func _plate(k: VehicleModels, p: Node3D, x: float, w: float, a: Vector2, b: Vector2, th: float, mat: String, col = null, lift := 0.0, shadow := true, ext := 0.0) -> MeshInstance3D:
+static func _plate(k: VehicleModels, p: Node3D, x: float, w: float, a: Vector2, b: Vector2, th: float, mat: String, col = null, lift := 0.0, shadow := true, ext := 0.0) -> Variant:
 	var d := b - a
 	var l := d.length()
 	var n := Vector2(-d.y, d.x) / l
@@ -73,11 +73,11 @@ static func _plate(k: VehicleModels, p: Node3D, x: float, w: float, a: Vector2, 
 
 
 ## Box / cylinder placed in a local frame t (a part group turned as one).
-static func _tb(k: VehicleModels, p: Node3D, t: Transform3D, s: Vector3, lp: Vector3, mat: String, col = null, lr := Vector3.ZERO, shadow := true) -> MeshInstance3D:
+static func _tb(k: VehicleModels, p: Node3D, t: Transform3D, s: Vector3, lp: Vector3, mat: String, col = null, lr := Vector3.ZERO, shadow := true) -> Variant:
 	return k._box(p, s, t * lp, mat, col, (t.basis * Basis.from_euler(lr)).get_euler(), shadow)
 
 
-static func _tc(k: VehicleModels, p: Node3D, t: Transform3D, r0: float, r1: float, h: float, lp: Vector3, lr: Vector3, mat: String, col = null, segs := 12, shadow := true) -> MeshInstance3D:
+static func _tc(k: VehicleModels, p: Node3D, t: Transform3D, r0: float, r1: float, h: float, lp: Vector3, lr: Vector3, mat: String, col = null, segs := 12, shadow := true) -> Variant:
 	return k._cyl(p, r0, r1, h, t * lp, (t.basis * Basis.from_euler(lr)).get_euler(), mat, col, segs, shadow)
 
 

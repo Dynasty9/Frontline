@@ -438,16 +438,8 @@ static func _outboard(k: VehicleModels, parent: Node3D, pos: Vector3, s: float, 
 ## Moves a tilted assembly's parts onto its parent, where they already are:
 ## the Field Manual stands a model on the lowest corner of its parts' boxes,
 ## and a rotated sub-node's box reaches lower than its parts do.
-static func _bake(pv: Node3D) -> void:
-	var par := pv.get_parent() as Node3D
-	for c in pv.get_children():
-		var n := c as Node3D
-		var t: Transform3D = pv.transform * n.transform
-		pv.remove_child(n)
-		par.add_child(n)
-		n.transform = t
-	par.remove_child(pv)
-	pv.free()
+static func _bake(k: VehicleModels, pv: Node3D) -> void:
+	k._fold(pv)
 
 
 # --- Zodiac F470 ---------------------------------------------------------------------
@@ -504,7 +496,7 @@ static func _zodiac(k: VehicleModels, team: int) -> void:
 	var mo := _outboard(k, m, Vector3(0, 0.62, zt + 0.1), 0.78, 0.5, "plain_dark", Color(0.14, 0.14, 0.145), "plain_dark", Color(0.12, 0.12, 0.125), "boat_crrc_ob")
 	_rod(k, mo, Vector3(0, 0.1, 0.0), Vector3(0, 0.2, -0.62), 0.024, "gunmetal_w", null, 8, true)
 	k._cyl(mo, 0.032, 0.032, 0.16, Vector3(0, 0.215, -0.7), _aim(Vector3(0, 0.1, -0.62)), "rubber", null, 8)
-	_bake(mo)
+	_bake(k, mo)
 	k._box(m, Vector3(0.34, 0.25, 0.5), Vector3(0.24, 0.355, 1.45), "paint", Color(0.27, 0.29, 0.21))
 	k._box(m, Vector3(0.04, 0.05, 0.3), Vector3(0.24, 0.5, 1.45), "gunmetal_w", null, Vector3.ZERO, false)
 	k._cyl(m, 0.035, 0.035, 0.04, Vector3(0.32, 0.49, 1.27), Vector3.ZERO, "plain", Color(0.18, 0.18, 0.17), 8, false)
@@ -680,7 +672,7 @@ static func _motorboat(k: VehicleModels, seed: int) -> void:
 			var fl := atan2(float(side[4]) - float(side[2]), float(side[5]) - float(side[3]))
 			k._box(m, Vector3(0.006, 0.1, 0.055), Vector3(s * (_hw(side, y) + 0.004), y, z), "paint", stripe.darkened(0.3), Vector3(0, 0, -s * fl), false)
 	# 115 hp outboard on the transom notch
-	_bake(_outboard(k, m, Vector3(0, 0.71, zt + 0.04), 0.92, 0.66, "plain", Color(0.86, 0.86, 0.84), "plain", Color(0.7, 0.7, 0.69), "boat_mb_ob"))
+	_bake(k, _outboard(k, m, Vector3(0, 0.71, zt + 0.04), 0.92, 0.66, "plain", Color(0.86, 0.86, 0.84), "plain", Color(0.7, 0.7, 0.69), "boat_mb_ob"))
 
 
 # --- RHIB ------------------------------------------------------------------------------
@@ -805,7 +797,7 @@ static func _rhib(k: VehicleModels, team: int) -> void:
 	k._add(m, Res.torus(0.025, 0.05), "steel", STAINLESS, Vector3(0, 0.62, _stem(p, 0.62) - 0.04), Vector3(0, 0, PI / 2))
 	# twin outboards and the tie bar between them
 	for s in [-1.0, 1.0]:
-		_bake(_outboard(k, m, Vector3(s * 0.46, _sheer(p, 0.0) + 0.02, zt + 0.04), 1.15, 0.78, "plain_dark", Color(0.12, 0.12, 0.125), "plain_dark", Color(0.1, 0.1, 0.105), "boat_rhib_ob"))
+		_bake(k, _outboard(k, m, Vector3(s * 0.46, _sheer(p, 0.0) + 0.02, zt + 0.04), 1.15, 0.78, "plain_dark", Color(0.12, 0.12, 0.125), "plain_dark", Color(0.1, 0.1, 0.105), "boat_rhib_ob"))
 	_rod(k, m, Vector3(-0.46, 0.9, zt + 0.02), Vector3(0.46, 0.9, zt + 0.02), 0.018, "gunmetal_w")
 
 

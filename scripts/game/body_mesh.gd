@@ -171,5 +171,6 @@ static func _commit(key: String, v: PackedVector3Array, n: PackedVector3Array) -
 	arrays[Mesh.ARRAY_NORMAL] = n
 	var m := BodyMesh.new()
 	m.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+	Mats.keep_arrays(m, arrays)
 	_cache[key] = m
 	return m

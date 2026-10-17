@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite"
 import { expect, userEvent, waitFor, within } from "storybook/test"
 import { latest } from "@/lib/releases"
 import { DesktopCard } from "@/pages/play"
-import { buildWithMac, health } from "@/test/fixtures"
+import { buildWithInstallers, buildWithMac, buildWithoutInstallers, health } from "@/test/fixtures"
 import { mockMatchmaker } from "@/test/network"
 import { loadPage } from "@/test/load-page"
 import { SiteAt } from "@/test/router"
@@ -50,7 +50,7 @@ export const Windows: Story = {
     await expect(canvas.getByRole("link", { name: "Find a match" })).toHaveAttribute("href", "frontline://find-match")
     await expect(canvas.getByRole("link", { name: /^Download for Windows ·/ })).toHaveAttribute(
       "href",
-      latest.assets.windows.url
+      (latest.installers?.windows ?? latest.assets.windows).url
     )
     // the browser version isn't out yet
     await expect(canvas.getByRole("button", { name: "Arrives with the next release" })).toBeDisabled()
@@ -107,7 +107,7 @@ export const Mac: Story = {
       await expect(canvas.getByRole("link", { name: "Launch Frontline" })).toBeVisible()
       await expect(canvas.getByRole("link", { name: /^Download for macOS ·/ })).toHaveAttribute(
         "href",
-        latest.assets.macos.url
+        (latest.installers?.macos ?? latest.assets.macos).url
       )
     } else {
       await expect(canvas.getByText(/This release has no Mac version/)).toBeVisible()
@@ -119,15 +119,27 @@ export const Mac: Story = {
 /** A Mac, and a release with a Mac build: the same as anywhere else, with the Mac download. */
 export const MacBuild: Story = {
   parameters: { layout: "padded", router: true },
-  render: () => <DesktopCard device="macos" build={buildWithMac} />,
+  render: () => <DesktopCard device="macos" build={buildWithoutInstallers} />,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await expect(canvas.getByRole("link", { name: "Launch Frontline" })).toHaveAttribute("href", "frontline://open")
     await expect(canvas.getByRole("link", { name: /^Download for macOS ·/ })).toHaveAttribute(
       "href",
-      buildWithMac.assets.macos?.url
+      buildWithoutInstallers.assets.macos?.url
     )
     await expect(canvas.getByText("Windows · macOS · Linux")).toBeVisible()
+  },
+}
+
+/** A release with a Mac installer offers the disk image instead of the portable zip. */
+export const MacInstaller: Story = {
+  parameters: { layout: "padded", router: true },
+  render: () => <DesktopCard device="macos" build={buildWithInstallers} />,
+  play: async ({ canvasElement }) => {
+    await expect(within(canvasElement).getByRole("link", { name: /^Download for macOS / })).toHaveAttribute(
+      "href",
+      buildWithInstallers.installers?.macos?.url
+    )
   },
 }
 
