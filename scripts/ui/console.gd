@@ -23,6 +23,11 @@ var _panel: Control
 var _log: RichTextLabel
 var _edit: LineEdit
 var _hint: Label
+var _find: LineEdit
+var _find_row: HBoxContainer
+var _find_status: Label
+var _find_at := -1
+var _font_size := 13
 var _shown := 0.0  # how far down it has slid, 0..1
 var _last_us := 0
 var _history := PackedStringArray()
@@ -85,11 +90,31 @@ func _build() -> void:
 	box.offset_bottom = -8
 	box.add_theme_constant_override("separation", 6)
 	_panel.add_child(box)
+	var tools := HFlowContainer.new()
+	tools.add_theme_constant_override("h_separation", 8)
+	box.add_child(tools)
+	for entry in [["Copy all", _copy_all], ["Save text", save_text], ["Find", _show_find], ["Latest", _latest], ["Clear", clear], ["A-", func(): _zoom(-1)], ["A+", func(): _zoom(1)]]:
+		var button := Button.new()
+		button.text = entry[0]
+		button.pressed.connect(entry[1])
+		tools.add_child(button)
+	_find_row = HBoxContainer.new()
+	_find_row.visible = false
+	box.add_child(_find_row)
+	_find = LineEdit.new()
+	_find.placeholder_text = "Find in output (Enter: next, Shift+Enter: previous)"
+	_find.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_find.text_changed.connect(func(_s: String): _find_at = -1; _find_next())
+	_find_row.add_child(_find)
+	_find_status = UiKit.mono_label("", 12, UiKit.DIM)
+	_find_row.add_child(_find_status)
 	_log = RichTextLabel.new()
 	_log.bbcode_enabled = true
 	_log.scroll_following = true
 	_log.selection_enabled = true
-	_log.focus_mode = Control.FOCUS_NONE
+	_log.focus_mode = Control.FOCUS_ALL
+	_log.context_menu_enabled = true
+	_log.deselect_on_focus_loss_enabled = false
 	_log.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	_log.add_theme_font_override("normal_font", UiKit.mono(400))
 	_log.add_theme_font_override("bold_font", UiKit.mono(700))
@@ -107,7 +132,8 @@ func _build() -> void:
 	_edit.add_theme_font_override("font", UiKit.mono(400))
 	_edit.add_theme_font_size_override("font_size", 14)
 	_edit.placeholder_text = "why, bench, graph, top, hitches, help..."
-	_edit.context_menu_enabled = false
+	_edit.context_menu_enabled = true
+	_edit.focus_entered.connect(func(): _log.deselect())
 	_edit.keep_editing_on_text_submit = true
 	_edit.text_submitted.connect(_on_submit)
 	_edit.text_changed.connect(func(_t: String): _hint.text = _hint_for(_edit.text))
@@ -129,7 +155,7 @@ func open() -> void:
 	if not _greeted:
 		_greeted = true
 		out("Frontline console. [b]why[/b] works out what's slowing the game down, [b]bench[/b] measures what each graphics setting costs, [b]graph[/b] and [b]perf 3[/b] bring up the panels. [b]help[/b] lists everything.", UiKit.ACCENT, true)
-		out("Tab completes, Up and Down go through what you typed, Esc closes.", UiKit.DIM)
+		out("Select output to copy it. Ctrl+Shift+C copies output; Ctrl+Shift+V pastes into the prompt. Ctrl+F finds, Ctrl+L clears, Esc closes.", UiKit.DIM)
 
 
 func close() -> void:
@@ -137,7 +163,9 @@ func close() -> void:
 		return
 	is_open = false
 	Keys.console_open = false
-	_edit.release_focus()
+	var focus := get_viewport().gui_get_focus_owner()
+	if focus and _panel.is_ancestor_of(focus):
+		focus.release_focus()
 	_hist_i = -1
 
 
@@ -158,17 +186,72 @@ func _input(ev: InputEvent) -> void:
 			open()
 			get_viewport().set_input_as_handled()
 		return
+	if _log.is_menu_visible() or _edit.is_menu_visible() or _find.is_menu_visible():
+		return
+	if k.keycode == KEY_ESCAPE and _find_row.visible:
+		_find_row.hide()
+		_edit.grab_focus()
+		get_viewport().set_input_as_handled()
+		return
 	if Keys.is_event(k, "console") or k.keycode == KEY_ESCAPE:
 		if not k.echo:
 			close()
 		get_viewport().set_input_as_handled()
 		return
+	if k.ctrl_pressed or k.meta_pressed:
+		match k.keycode:
+			KEY_C:
+				if (_edit.has_focus() and _edit.has_selection()) or _find.has_focus():
+					return
+				if not _log.get_selected_text().is_empty():
+					DisplayServer.clipboard_set(_log.get_selected_text())
+				elif k.shift_pressed:
+					_copy_all()
+				else:
+					_set_line("")
+					_hist_i = -1
+					cmds.cancel()
+					_edit.grab_focus()
+			KEY_V:
+				if _find.has_focus():
+					return
+				_edit.grab_focus()
+				_edit.menu_option(LineEdit.MENU_PASTE)
+			KEY_F:
+				_show_find()
+			KEY_L:
+				clear()
+			KEY_HOME:
+				_log.get_v_scroll_bar().value = 0
+			KEY_END:
+				_latest()
+			KEY_EQUAL, KEY_PLUS, KEY_KP_ADD:
+				_zoom(1)
+			KEY_MINUS, KEY_KP_SUBTRACT:
+				_zoom(-1)
+			KEY_0:
+				_zoom(13 - _font_size)
+			_:
+				return
+		get_viewport().set_input_as_handled()
+		return
+	if _find.has_focus():
+		if k.keycode == KEY_ENTER or k.keycode == KEY_KP_ENTER:
+			_find_next(k.shift_pressed)
+			get_viewport().set_input_as_handled()
+		return
 	match k.keycode:
 		KEY_TAB:
+			if not _edit.has_focus() or k.shift_pressed:
+				return
 			_complete()
 		KEY_UP:
+			if not _edit.has_focus():
+				return
 			_browse(1)
 		KEY_DOWN:
+			if not _edit.has_focus():
+				return
 			_browse(-1)
 		KEY_PAGEUP:
 			_log.get_v_scroll_bar().value -= _log.size.y * 0.8
@@ -193,7 +276,7 @@ func _process(_dt: float) -> void:
 	# keep the keyboard while open (a click on the battlefield would take it)
 	if is_open and not _edit.has_focus():
 		var f := get_viewport().gui_get_focus_owner()
-		if not f is LineEdit and not f is TextEdit:
+		if (f == null or not _panel.is_ancestor_of(f)) and not _log.is_menu_visible() and not _edit.is_menu_visible():
 			_edit.grab_focus()
 	cmds.process()
 	if not _auto.is_empty() and probe.world() and probe.world().time >= _auto_at:
@@ -243,6 +326,8 @@ func dim(text: String) -> void:
 
 func clear() -> void:
 	_log.clear()
+	_find_at = -1
+	_find_status.text = ""
 
 
 static func _plain(bb: String) -> String:
@@ -262,6 +347,63 @@ func run_captured(line: String) -> PackedStringArray:
 	return got
 
 
+func _copy_all() -> void:
+	DisplayServer.clipboard_set(_log.get_parsed_text())
+
+
+func save_text() -> void:
+	var path := "user://console_%s_%d.txt" % [Time.get_datetime_string_from_system().replace(":", "-"), Time.get_ticks_msec()]
+	var file := FileAccess.open(path, FileAccess.WRITE)
+	if file == null:
+		bad("Could not save console text: " + error_string(FileAccess.get_open_error()))
+		return
+	file.store_string(_log.get_parsed_text())
+	file.close()
+	good("Saved console text: " + ProjectSettings.globalize_path(path))
+
+
+func _latest() -> void:
+	_log.get_v_scroll_bar().value = _log.get_v_scroll_bar().max_value
+
+
+func _zoom(delta: int) -> void:
+	_font_size = clampi(_font_size + delta, 10, 24)
+	_log.add_theme_font_size_override("normal_font_size", _font_size)
+	_log.add_theme_font_size_override("bold_font_size", _font_size)
+	_edit.add_theme_font_size_override("font_size", _font_size + 1)
+
+
+func _show_find() -> void:
+	_find_row.show()
+	_find.grab_focus()
+	_find.select_all()
+
+
+func _find_next(backward := false) -> void:
+	var query := _find.text
+	if query.is_empty():
+		_find_status.text = ""
+		return
+	var text := _log.get_parsed_text()
+	var pos := -1
+	if backward:
+		if _find_at > 0:
+			pos = text.rfindn(query, _find_at - 1)
+		if pos < 0:
+			pos = text.rfindn(query)
+	else:
+		pos = text.findn(query, _find_at + 1)
+		if pos < 0:
+			pos = text.findn(query)
+	_find_at = pos
+	if pos < 0:
+		_find_status.text = "No matches"
+	else:
+		var paragraph := text.left(pos).count("\n")
+		_log.scroll_to_paragraph(paragraph)
+		_find_status.text = "Line %d" % (paragraph + 1)
+
+
 # --- typing ----------------------------------------------------------------------------------
 
 func _on_submit(text: String) -> void:
@@ -277,6 +419,7 @@ func _on_submit(text: String) -> void:
 		if _history.size() > HISTORY_KEEP:
 			_history = _history.slice(_history.size() - HISTORY_KEEP)
 		_save_history()
+	_latest.call_deferred()
 	cmds.run(line)
 
 
@@ -332,7 +475,7 @@ func _hint_for(text: String) -> String:
 	var name := text.strip_edges().split(" ")[0].to_lower()
 	var c: Array = cmds.find(name) if name != "" else []
 	if c.is_empty():
-		return "Tab completes   Up/Down history   PgUp/PgDn scroll   Esc closes   help lists the commands"
+		return "Tab completes   Up/Down history   Ctrl+F find   Ctrl+L clear   Ctrl+C copy/cancel   Esc closes"
 	return "%s %s   %s" % [c[0], c[1], c[2]]
 
 
