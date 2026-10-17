@@ -9,7 +9,11 @@ extends Node
 ## quits, so a click joins from the game you have open instead of starting a
 ## second one. An exported build registers the scheme itself the first time it
 ## runs from a given place (per user: no admin rights needed), which is why the
-## website says to start the game once.
+## website says to start the game once. On a Mac the app claims the scheme in
+## its Info.plist (export_presets.cfg) and macOS takes note when it's first
+## opened; a link reaches the game as `--uri="frontline://..."`, and when the
+## game is already running, Godot starts a second copy with it, which hands it
+## on like any other.
 ##
 ## For testing, pass the link after `--`: godot --path . -- frontline://join/ID.
 ## Test runs (any --switch) only listen for links handed on with --links.
@@ -33,7 +37,7 @@ func _ready() -> void:
 		set_process(false)
 		return
 	var user_args := OS.get_cmdline_user_args()
-	pending = _link_in(OS.get_cmdline_args() + user_args)
+	pending = link_in(OS.get_cmdline_args() + user_args)
 	if pending != "" and _hand_on(pending):
 		_debug("handed %s to the running game" % pending.get_slice("/", 2))
 		# it's theirs now: nothing in this copy may act on it before it quits
@@ -45,7 +49,7 @@ func _ready() -> void:
 	# catch a link meant for the game being tested
 	var testing := false
 	for a in user_args:
-		testing = testing or (a.begins_with("--") and a != "--links")
+		testing = testing or (a.begins_with("--") and a != "--links" and link_in(PackedStringArray([a])) == "")
 	if not testing or "--links" in user_args:
 		_server = TCPServer.new()
 		if _server.listen(PORT, "127.0.0.1") != OK:
@@ -57,10 +61,15 @@ func _ready() -> void:
 		_register()
 
 
-func _link_in(args: PackedStringArray) -> String:
+## The link among a copy's arguments: as a browser on Windows or Linux passes
+## it, or as macOS does (`--uri="frontline://..."`). "" if there's none.
+static func link_in(args: PackedStringArray) -> String:
 	for a in args:
-		if a.begins_with(SCHEME + "://"):
-			return a
+		var s := a.trim_prefix("--uri=")
+		if s.length() >= 2 and s.begins_with("\"") and s.ends_with("\""):
+			s = s.substr(1, s.length() - 2)
+		if s.begins_with(SCHEME + "://"):
+			return s
 	return ""
 
 
@@ -143,6 +152,8 @@ func _register() -> void:
 			ok = _register_windows(exe)
 		"Linux", "FreeBSD":
 			ok = _register_linux(exe)
+		"macOS":
+			return  # the app's Info.plist claims it: nothing to do here
 	_debug("registered %s:// for %s: %s" % [SCHEME, exe, str(ok)])
 	if ok:
 		cf.set_value("links", "registered", exe)

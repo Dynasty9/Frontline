@@ -8,30 +8,52 @@ extends Node3D
 ## (a wash of white water astern, the bow wave spreading in a V), shells and
 ## bullets throw up foam, and a sunk boat leaves a boil and a slick of oil.
 ##
-## The swell is one set of waves (SWELL) that the shaders draw and height_at
-## samples, so a boat rides the same waves the player sees. Everything on the
-## water keeps time by the `water_time` global shader uniform (project.godot).
+## The waves are one set (WAVES) that the shaders draw and height_at samples,
+## so a boat rides the same waves the player sees. Everything on the water
+## keeps time by the `water_time` global shader uniform (project.godot). How
+## much of it is drawn is the Water quality setting (Settings "water").
 
 const TILE := 64.0  # the surface is drawn in tiles this big, only where there's water
-const TILE_SUB := 31  # (2 m quads: fine enough for the swell)
+const TILE_SUB := [15, 31, 31, 47]  # quads a tile side, by quality (4 m, 2 m, 2 m, 1.4 m)
 
-## The sea's swell: trains of waves rolling in from the open sea to the east,
-## each [heading, wavelength (m), height (m)]. Waves in deep water run at
-## sqrt(g L / 2 pi), the long ones fastest. The first SWELL_MOVES lift the
-## surface (and the boats on it); the short ones only ruffle the light.
-const SWELL := [
-	[Vector2(-0.97, 0.24), 44.0, 0.2],
-	[Vector2(-0.86, -0.51), 27.0, 0.13],
-	[Vector2(-0.74, 0.67), 17.5, 0.08],
-	[Vector2(-0.99, -0.12), 9.5, 0.045],
-	[Vector2(-0.6, 0.8), 6.1, 0.028],
-	[Vector2(-0.83, -0.56), 4.3, 0.018],
+## The sea's waves, each [group, heading off the group's way (degrees),
+## wavelength (m), height (m)]. Group 0 is the swell, rolling in off the open
+## sea from weather far away: long and regular, its two longest trains close
+## enough in length to come in sets. Group 1 is the wind's own sea, short and
+## steep, running the way the wind blows (Fires.WIND, the wind that carries
+## the smoke): offshore on this coast, so it crosses the swell. The weather
+## sets how big each group runs (SEA_STATE). Deep-water waves run at
+## sqrt(g L / 2 pi), the long ones fastest. They're Gerstner waves: the water
+## moves round in a circle as one passes, so the crests come up sharp and the
+## troughs broad. The first MOVING move the surface (and the boats); the rest
+## only ruffle the light.
+const WAVES := [
+	[0, 0.0, 58.0, 0.3],
+	[0, 9.0, 47.0, 0.24],
+	[0, -17.0, 33.0, 0.14],
+	[1, 0.0, 21.0, 0.12],
+	[1, 28.0, 14.5, 0.08],
+	[1, -33.0, 10.0, 0.05],
+	[1, 12.0, 6.5, 0.022],
+	[1, -48.0, 4.4, 0.014],
+	[0, -30.0, 3.1, 0.009],
 ]
-const SWELL_MOVES := 3
-## The surf: a breaker comes ashore every SURF_L metres at SURF_C m/s, and
-## the water it throws up the beach stands up to SURGE above the sea.
+const MOVING := 6
+const MOVING_LOW := 4  # (Low's coarse grid can't carry the shortest of them)
+const STEEP := 0.75  # how far the crests bunch up in the roughest sea (at 1 they'd fold over)
+## The sea in each weather: how big the (swell, wind sea) run.
+const SEA_STATE := {"day": Vector2(0.85, 0.6), "hazy": Vector2(0.7, 0.4), "golden": Vector2(0.55, 0.3), "dawn": Vector2(0.45, 0.2),
+	"dusk": Vector2(0.5, 0.25), "night": Vector2(0.75, 0.5), "overcast": Vector2(1.0, 0.85), "rain": Vector2(1.15, 1.1)}
+const SEA_MAX := 1.25
+## The waves build over the first OFFSHORE metres out from the beach (in
+## nearer, the surf takes over), which also keeps a dock's jetty dry.
+const OFFSHORE := Vector2(4.0, 35.0)
+## The surf: a breaker comes ashore every SURF_L metres at SURF_C m/s, rising
+## up to SURF_H as it shoals before it spills, and the water it throws up the
+## beach stands up to SURGE above the sea.
 const SURF_L := 15.0
 const SURF_C := 2.1
+const SURF_H := 0.3
 const SURGE := 0.32
 
 ## Patches of foam on the water (see foam()).
@@ -52,7 +74,13 @@ var foam_tex: NoiseTexture2D
 var _tiles: Array = []
 var _mask: Image
 var _sea_x := 1e9
-var _wk := PackedFloat32Array()  # per moving wave: kx, kz, omega, height, phase
+var quality := -1  # the Water quality the surface is built for
+var sea := Vector2(0.85, 0.6)  # how big the swell and the wind sea run (SEA_STATE)
+var _waves: Array = []  # [direction, k, omega, height, phase, group] per wave
+var _q := 0.0  # how far a wave's crest bunches for its height (see STEEP)
+var _wf := PackedFloat32Array()  # (height_at) per moving wave: kx, kz, heading x, z, omega, phase, height, bunching, for this sea
+var _detail: Texture2D
+var caustic_tex: NoiseTexture2D
 var _wakes := {}  # eid -> Wake
 var _patches: Array = []  # [mi, ends at]
 var _patch_i := 0
@@ -61,49 +89,102 @@ var _patch_i := 0
 func _init(w) -> void:
 	world = w
 	name = "Water"
-	for i in SWELL_MOVES:
-		var sw: Array = SWELL[i]
-		var d: Vector2 = (sw[0] as Vector2).normalized()
-		var k := TAU / float(sw[1])
-		_wk.append_array([k * d.x, k * d.y, sqrt(9.81 * k), float(sw[2]), i * 1.7])
+	_set_waves(0.0)
+	Settings.changed.connect(_settings_changed)
+
+
+## The waves for this coast: the swell comes in square to the shore give or
+## take `rot` (radians: each map's own), the wind sea runs with the wind.
+func _set_waves(rot: float) -> void:
+	_waves.clear()
+	var onshore := Vector2(-1, 0).rotated(rot)
+	var wind := Vector2(Fires.WIND.x, Fires.WIND.z).normalized()
+	var ka := 0.0
+	for i in WAVES.size():
+		var wv: Array = WAVES[i]
+		var d: Vector2 = (onshore if int(wv[0]) == 0 else wind).rotated(deg_to_rad(float(wv[1])))
+		var k := TAU / float(wv[2])
+		_waves.append([d, k, sqrt(9.81 * k), float(wv[3]), i * 1.7, int(wv[0])])
+		if i < MOVING:
+			ka += k * float(wv[3])
+	_q = STEEP / (SEA_MAX * ka)
+	_pack()
+
+
+## The moving waves for height_at, flat and scaled for the sea running now.
+func _pack() -> void:
+	_wf.clear()
+	for i in MOVING:
+		var w: Array = _waves[i]
+		var d: Vector2 = w[0]
+		var k: float = w[1]
+		var g: float = sea.x if int(w[5]) == 0 else sea.y
+		_wf.append_array([k * d.x, k * d.y, d.x, d.y, float(w[2]), float(w[4]), float(w[3]) * g, _q * float(w[3]) * g])
 
 
 ## Lays the surface over the water (and again whenever the water changes).
 func build(w: WaterMap, detail: Texture2D) -> void:
 	water = w
 	_mask = w.mask
+	_detail = detail
 	_sea_x = (float(w.coast.x) + 30.0) if not w.coast.is_empty() else 1e9
+	if not w.coast.is_empty():
+		_set_waves((fposmod(float(w.coast.s) * 0.618, 1.0) - 0.5) * 0.7)
 	if mask_tex == null:
 		mask_tex = ImageTexture.create_from_image(w.mask)
 	else:
 		mask_tex.set_image(w.mask)
 	if mat == null:
 		_make_textures()
-		mat = _material(WATER_SHADER, detail)
+		mat = _material("", detail)
 		mat.render_priority = -10  # under everything else see-through: smoke, splashes, wakes
-		wake_mat = _material(WAKE_SHADER, detail)
+		wake_mat = _material("", detail)
 		wake_mat.render_priority = -5
-		patch_mat = _material(PATCH_SHADER, detail)
+		patch_mat = _material("", detail)
 		patch_mat.render_priority = -5
 		_make_patches()
+	# (the swell's heading is baked into the shaders: they're compiled for this coast)
+	wake_mat.shader.code = _code(WAKE_SHADER, MOVING)
+	patch_mat.shader.code = _code(PATCH_SHADER, MOVING)
 	for m in [mat, wake_mat, patch_mat]:
-		m.set_shader_parameter("water_mask", mask_tex)
-		m.set_shader_parameter("sea_x", _sea_x)
+		Mats.set_shared(m, "water_mask", mask_tex)
+		Mats.set_shared(m, "sea_x", _sea_x)
 	var c := Vector3.ZERO
 	if not w.coast.is_empty():
 		c = Vector3(float(w.coast.x), float(w.coast.s), 1.0)
-	mat.set_shader_parameter("coast", c)
+	for m in [mat, wake_mat, patch_mat]:
+		Mats.set_shared(m, "coast", c)
+	quality = -1
+	_settings_changed()
+
+
+## The Water quality setting: the surface's shader and its grid are built for
+## it (Low draws no see-through water and fewer waves; High and Ultra add the
+## light dancing on the bed and the wind's streaks; Ultra a finer grid).
+func _settings_changed() -> void:
+	if mat == null or _mask == null:
+		return
+	var wq := clampi(int(Settings.get_v("water")), 0, 3)
+	if wq == quality:
+		return
+	quality = wq
+	mat.shader.code = _code(WATER_SHADER.replace("__WQ__", str(wq)), MOVING_LOW if wq == 0 else MOVING)
 	_lay_tiles()
 
 
-func _material(code: String, detail: Texture2D) -> ShaderMaterial:
+func _code(src: String, moving: int) -> String:
+	return Mats.code(MapDims.shader(src.replace("__WAVES__", waves_glsl(moving)).replace("__LEVEL__", "%.3f" % WaterMap.LEVEL)))
+
+
+func _material(src: String, detail: Texture2D) -> ShaderMaterial:
 	var m := ShaderMaterial.new()
-	var sh := Shader.new()
-	sh.code = Mats.code(MapDims.shader(code.replace("__WAVES__", waves_glsl()).replace("__LEVEL__", "%.3f" % WaterMap.LEVEL)))
-	m.shader = sh
+	m.shader = Shader.new()
+	if src != "":
+		m.shader.code = _code(src, MOVING)
 	m.set_shader_parameter("detail_tex", detail)
 	m.set_shader_parameter("chop_tex", chop_tex)
 	m.set_shader_parameter("foam_tex", foam_tex)
+	m.set_shader_parameter("caustic_tex", caustic_tex)
 	return m
 
 
@@ -137,6 +218,19 @@ func _make_textures() -> void:
 	foam_tex.height = 256
 	foam_tex.seamless = true
 	foam_tex.noise = fn
+	# light focused by the ripples onto the bed: a web of bright lines along
+	# the cells' edges
+	var kn := FastNoiseLite.new()
+	kn.seed = 11
+	kn.noise_type = FastNoiseLite.TYPE_CELLULAR
+	kn.frequency = 0.035
+	kn.cellular_distance_function = FastNoiseLite.DISTANCE_EUCLIDEAN
+	kn.cellular_return_type = FastNoiseLite.RETURN_DISTANCE2_SUB
+	caustic_tex = NoiseTexture2D.new()
+	caustic_tex.width = 256
+	caustic_tex.height = 256
+	caustic_tex.seamless = true
+	caustic_tex.noise = kn
 
 
 ## Tiles of surface wherever there's water (or the sea's beach, where the
@@ -155,8 +249,8 @@ func _lay_tiles() -> void:
 	var x0 := -n * TILE * 0.5
 	var pm := PlaneMesh.new()
 	pm.size = Vector2(TILE, TILE)
-	pm.subdivide_width = TILE_SUB
-	pm.subdivide_depth = TILE_SUB
+	pm.subdivide_width = int(TILE_SUB[maxi(quality, 0)])
+	pm.subdivide_depth = int(TILE_SUB[maxi(quality, 0)])
 	for tz in n:
 		for tx in n:
 			var r := Rect2(x0 + tx * TILE, x0 + tz * TILE, TILE, TILE)
@@ -179,7 +273,7 @@ func _lay_tiles() -> void:
 			mi.mesh = pm
 			mi.material_override = mat
 			mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-			mi.extra_cull_margin = 1.0  # (the swell lifts it)
+			mi.extra_cull_margin = 2.0  # (the waves lift it and carry it about)
 			mi.position = Vector3(r.get_center().x, WaterMap.LEVEL, r.get_center().y)
 			add_child(mi)
 			_tiles.append(mi)
@@ -201,12 +295,22 @@ func apply_mood(d: Dictionary, mood: String) -> void:
 	# rain and a grey sky: a darker, duller sea
 	var dull := 1.0 if mood in ["overcast", "rain", "night"] else 0.0
 	mat.set_shader_parameter("sea_tint", Color(0.025, 0.14, 0.21).lerp(Color(0.08, 0.15, 0.17), dull))
+	# the sea the weather brings: glassy at dawn, a storm sea in the rain
+	sea = SEA_STATE.get(mood, SEA_STATE.day)
+	_pack()
+	for m in [mat, wake_mat, patch_mat]:
+		Mats.set_shared(m, "sea", sea)
 	mat.set_shader_parameter("shoal_tint", Color(0.12, 0.46, 0.46).lerp(Color(0.16, 0.28, 0.27), dull))
 
 
 func _process(dt: float) -> void:
 	t += dt
 	RenderingServer.global_shader_parameter_set("water_time", t)
+	if Vfx.gl and mat and world.atmo and world.atmo.sun:
+		# (the browser lights per vertex: the water works the sun's glitter out itself)
+		var sun: DirectionalLight3D = world.atmo.sun
+		mat.set_shader_parameter("sun_dir", sun.global_transform.basis.z.normalized())
+		mat.set_shader_parameter("sun_col", sun.light_color * sun.light_energy)
 	for k in _wakes.keys():
 		var wk: Wake = _wakes[k]
 		if t - wk.seen > Wake.LIFE:
@@ -219,28 +323,41 @@ func _process(dt: float) -> void:
 
 # --- the swell ---------------------------------------------------------------------
 
-## GLSL for the swell (see SWELL): swell_v(p, t) = (height, d/dx, d/dz) of the
-## waves that lift the surface, swell_f(p, t) = the slope of the short ones.
-static func waves_glsl() -> String:
-	var v := "vec3 swell_v(vec2 p, float t) { vec3 r = vec3(0.0); float a;"
-	var f := "vec2 swell_f(vec2 p, float t) { vec2 r = vec2(0.0); float a;"
-	for i in SWELL.size():
-		var sw: Array = SWELL[i]
-		var d: Vector2 = (sw[0] as Vector2).normalized()
-		var k := TAU / float(sw[1])
-		var amp := float(sw[2])
-		var ph := " a = %.6f * p.x + %.6f * p.y - %.6f * t + %.3f;" % [k * d.x, k * d.y, sqrt(9.81 * k), i * 1.7]
-		if i < SWELL_MOVES:
-			v += ph + " r += vec3(%.5f * sin(a), %.6f * cos(a), %.6f * cos(a));" % [amp, amp * k * d.x, amp * k * d.y]
+## GLSL for the waves (see WAVES). gerst(p, t, n): where the water laid at p
+## has gone (x, height, z) under the first `moving` waves, with n the sums its
+## normal is made of (n.xz its slope, n.y how far the crests have bunched it);
+## ripples(p, t): the slope of the rest; gerst_h(x, t): the height of the
+## water at x (one step back to where it was laid). `sea` scales each group.
+func waves_glsl(moving: int) -> String:
+	var g := "vec3 gerst(vec2 p, float t, out vec3 n) { vec3 d = vec3(0.0); n = vec3(0.0); float a; float c; float s;"
+	var f := "vec2 ripples(vec2 p, float t) { vec2 r = vec2(0.0); float a;"
+	for i in _waves.size():
+		var w: Array = _waves[i]
+		var d: Vector2 = w[0]
+		var k: float = w[1]
+		var amp: float = w[3]
+		var grp := "sea.x" if int(w[5]) == 0 else "sea.y"
+		var ph := " a = %.6f * p.x + %.6f * p.y - %.6f * t + %.3f;" % [k * d.x, k * d.y, float(w[2]), float(w[4])]
+		if i < moving:
+			var b := _q * amp
+			g += ph + " c = cos(a) * %s; s = sin(a) * %s;" % [grp, grp]
+			g += " d += vec3(%.5f * c, %.5f * s, %.5f * c);" % [b * d.x, amp, b * d.y]
+			g += " n += vec3(%.6f * c, %.6f * s, %.6f * c);" % [k * amp * d.x, k * b, k * amp * d.y]
 		else:
-			f += ph + " r += vec2(%.6f, %.6f) * cos(a);" % [amp * k * d.x, amp * k * d.y]
-	var c := "const float SURF_L = %.2f; const float SURF_C = %.2f; const float SURGE = %.3f;" % [SURF_L, SURF_C, SURGE]
-	var e := "float swell_env(vec2 p) { return 0.62 + 0.38 * sin(p.x * 0.0113 + p.y * 0.0171) * sin(p.x * 0.0067 - p.y * 0.0131 + 1.3); }"
-	return c + " " + e + " " + v + " return r * swell_env(p); } " + f + " return r * swell_env(p); }"
+			f += ph + " r += vec2(%.6f, %.6f) * cos(a) * %s;" % [k * amp * d.x, k * amp * d.y, grp]
+	var h := "float gerst_h(vec2 x, float t) { vec3 n; vec3 d = gerst(x, t, n); return gerst(x - d.xz, t, n).y; }"
+	# (how far the waves have built up at p, out from the beach: see OFFSHORE)
+	h += " float offshore(vec2 p) { if (coast.z < 0.5) { return 1.0; } float s = coast.y;"
+	h += " float into = p.x - (coast.x + 22.0 * sin(p.y * 0.0105 + s) + 9.0 * sin(p.y * 0.031 + s * 2.3) + 4.0 * sin(p.y * 0.077 + s * 0.7));"
+	h += " return smoothstep(OFFSHORE.x, OFFSHORE.y, into); }"
+	var wind := Vector2(Fires.WIND.x, Fires.WIND.z).normalized()
+	var c := "const float SURF_L = %.2f; const float SURF_C = %.2f; const float SURF_H = %.3f; const float SURGE = %.3f; const vec2 WIND = vec2(%.4f, %.4f); const vec2 OFFSHORE = vec2(%.1f, %.1f);" % [SURF_L, SURF_C, SURF_H, SURGE, wind.x, wind.y, OFFSHORE.x, OFFSHORE.y]
+	return c + " " + g + " return d; } " + f + " return r; } " + h
 
 
-## How far the swell has lifted (or dropped) the water at p just now: 0 off
-## the sea, and dying away in the shallows.
+## How far the waves have lifted (or dropped) the water at p just now: 0 off
+## the sea, and dying away in the shallows. (A couple of steps back to the
+## water that has come to be at p, as gerst_h in the shaders.)
 func height_at(p: Vector3) -> float:
 	if _mask == null:
 		return 0.0
@@ -250,15 +367,25 @@ func height_at(p: Vector3) -> float:
 	else:
 		var c := _mask.get_pixel(int(p.x + MapDims.HALF), int(p.z + MapDims.HALF))
 		k = c.b * smoothstep(0.06, 0.55, c.r)
+	if k > 0.0 and water and not water.coast.is_empty():
+		k *= smoothstep(OFFSHORE.x, OFFSHORE.y, p.x - water.coast_x(p.z))
 	if k <= 0.0:
 		return 0.0
+	var x0 := p.x
+	var z0 := p.z
+	for it in 2:
+		var ox := 0.0
+		var oz := 0.0
+		for j in range(0, _wf.size(), 8):
+			var c := cos(_wf[j] * x0 + _wf[j + 1] * z0 - _wf[j + 4] * t + _wf[j + 5]) * _wf[j + 7]
+			ox += _wf[j + 2] * c
+			oz += _wf[j + 3] * c
+		x0 = p.x - ox
+		z0 = p.z - oz
 	var h := 0.0
-	for i in SWELL_MOVES:
-		var j := i * 5
-		h += _wk[j + 3] * sin(_wk[j] * p.x + _wk[j + 1] * p.z - _wk[j + 2] * t + _wk[j + 4])
-	# (the waves come in groups: see swell_env in waves_glsl)
-	var env := 0.62 + 0.38 * sin(p.x * 0.0113 + p.z * 0.0171) * sin(p.x * 0.0067 - p.z * 0.0131 + 1.3)
-	return h * k * env
+	for j in range(0, _wf.size(), 8):
+		h += _wf[j + 6] * sin(_wf[j] * x0 + _wf[j + 1] * z0 - _wf[j + 4] * t + _wf[j + 5])
+	return h * k
 
 
 # --- wakes -----------------------------------------------------------------------------
@@ -429,32 +556,48 @@ func foam(p: Vector3, r: float, secs: float, kind: int) -> void:
 ## so a ship's shadow falls on it) and foam; EMISSION is the bed seen through
 ## the water - the screen behind it, bent by the ripples and dimmed by how
 ## much water the eye looks through, red going first - and the sky reflected,
-## more the flatter you look across it. The sun's glitter is in light().
+## more the flatter you look across it. The sun's glitter is in light() (in
+## fragment() where the lighting is per vertex: the browser build). WQ is the
+## Water quality: Low (0) draws no see-through water, which saves copying the
+## screen every frame; High (2) and Ultra (3) add the light the ripples focus
+## on the bed and the wind's streaks of foam in a blow.
 const WATER_SHADER := """
 shader_type spatial;
 render_mode blend_mix, depth_draw_always, cull_back, ambient_light_disabled;
+
+#define WQ __WQ__
 
 global uniform float water_time;
 uniform sampler2D water_mask : hint_default_transparent, filter_linear, repeat_disable;
 uniform sampler2D detail_tex : filter_linear_mipmap, repeat_enable;
 uniform sampler2D chop_tex : hint_normal, filter_linear_mipmap_anisotropic, repeat_enable;
 uniform sampler2D foam_tex : filter_linear_mipmap, repeat_enable;
+#if WQ >= 1
 uniform sampler2D depth_tex : hint_depth_texture, filter_nearest;
+// (only ever read at full size: no mipmaps of the screen to make each frame)
+uniform sampler2D screen_tex : hint_screen_texture, filter_linear;
+#endif
+#if WQ >= 2
+uniform sampler2D caustic_tex : filter_linear_mipmap, repeat_enable;
+#endif
 // a depth read back to clip space: OpenGL's (the browser build's) runs -1..1, Vulkan's 0..1
 #if CURRENT_RENDERER == RENDERER_COMPATIBILITY
 #define NDC_Z(d) ((d) * 2.0 - 1.0)
 #else
 #define NDC_Z(d) (d)
 #endif
-uniform sampler2D screen_tex : hint_screen_texture, filter_linear_mipmap;
 uniform float sea_x = 1e9;
 uniform vec3 coast = vec3(0.0);  // the shoreline's mean x, its seed, 1 if there's a sea
+uniform vec2 sea = vec2(0.85, 0.6);  // how big the swell and the wind sea run (WaterView.SEA_STATE)
 uniform vec3 zenith : source_color = vec3(0.22, 0.42, 0.74);
 uniform vec3 horizon : source_color = vec3(0.68, 0.76, 0.84);
 uniform float clouds = 0.55;
 uniform float ambient = 0.55;
 uniform float sun_k = 1.0;  // how sharp the sun is on the water (a blur under cloud)
 uniform float rain = 0.0;
+// the sun, for the glitter where the lighting is per vertex
+uniform vec3 sun_dir = vec3(0.0, 1.0, 0.0);
+uniform vec3 sun_col = vec3(1.0);
 // (linear colours) what the water scatters back: peaty green-brown fresh
 // water, blue-green sea, the breakers clouded with sand
 uniform vec3 fresh_tint : source_color = vec3(0.2, 0.22, 0.12);
@@ -467,6 +610,7 @@ uniform vec3 sea_absorb = vec3(0.6, 0.2, 0.15);
 uniform vec3 foam_col : source_color = vec3(0.92, 0.94, 0.94);
 
 varying vec3 wpos;
+varying vec2 gp;  // where this water lies at rest (the waves are worked out from there)
 varying float swell_k;
 varying float glint;
 
@@ -501,17 +645,27 @@ float surge_at(vec2 p, float into) {
 	return smoothstep(0.0, 0.05, s) * exp(-s * 4.0) * smoothstep(-11.0, -2.0, into) * (1.0 - smoothstep(2.0, 9.0, into));
 }
 
+// a breaker rising as the water shoals under it, steepest just before it spills
+float surf_hump(vec2 p, float into) {
+	float s = surf_phase(p, into);
+	return pow(smoothstep(0.55, 1.0, s), 2.5) * smoothstep(20.0, 7.0, into) * smoothstep(-1.0, 3.0, into);
+}
+
 void vertex() {
 	wpos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
-	vec4 m = wmask(wpos.xz);
-	// the swell out at sea, dying away as the water shoals (still on rivers and ponds)
-	swell_k = m.b * smoothstep(0.06, 0.55, m.r);
-	float dy = swell_v(wpos.xz, water_time).x * swell_k;
+	gp = wpos.xz;
+	vec4 m = wmask(gp);
+	// the waves out at sea, building up away from the beach (in nearer the surf
+	// takes over; still on rivers and ponds)
+	float into = coast.z > 0.5 ? coast_into(gp) : 1e4;
+	swell_k = m.b * smoothstep(0.06, 0.55, m.r) * smoothstep(OFFSHORE.x, OFFSHORE.y, into);
+	vec3 n;
+	vec3 d = gerst(gp, water_time, n) * swell_k;
 	if (coast.z > 0.5 && m.b > 0.5) {
-		dy += surge_at(wpos.xz, coast_into(wpos.xz)) * SURGE;
+		d.y += surge_at(gp, into) * SURGE + surf_hump(gp, into) * SURF_H * sea.x;
 	}
-	VERTEX.y += dy;
-	wpos.y += dy;
+	VERTEX += d;
+	wpos += d;
 }
 
 float lace(vec2 p) {
@@ -540,35 +694,59 @@ float foam_of(float amt, float l) {
 void fragment() {
 	vec2 p = wpos.xz;
 	vec4 m = wmask(p);
-	float sea = m.b;
+	float salt = m.b;
 	float into = coast.z > 0.5 ? coast_into(p) : 1e4;
+#if WQ >= 1
 	// (on the sea's beach the surf may run up over the sand)
-	if (m.a < 0.5 && !(sea > 0.5 && into > -12.0)) {
+	if (m.a < 0.5 && !(salt > 0.5 && into > -12.0)) {
 		discard;
 	}
+#else
+	if (m.a < 0.5) {
+		discard;
+	}
+#endif
 	float dist = length(VERTEX);
 	float far = smoothstep(80.0, 360.0, dist);
-	// the surface: the swell, the shorter waves on it, the wind's chop on those -
-	// rougher in the gusts that darken patches of the water
-	vec3 sw = swell_v(p, water_time);
-	vec2 g = (sw.yz + swell_f(p, water_time)) * swell_k;
-	vec2 flow = mix(vec2(0.0, 0.55), vec2(-0.3, 0.1), sea);  // the rivers run south; the wind blows ashore
+	// the surface: the waves, the short ones on them, the wind's chop on those
+	// (rougher in the gusts that darken patches of the water)
+	vec3 gn;
+	gerst(gp, water_time, gn);
+	gn *= swell_k;
+	float bunch = gn.y;  // how far the crests have bunched the water: where it breaks
+	// (the slopes drawn steeper than they are, so the waves read from above)
+	vec2 g = gn.xz * 2.6 + ripples(gp, water_time) * swell_k * 1.5;
+	if (coast.z > 0.5 && salt > 0.5) {
+		// the faces of the breakers coming in
+		g.x += (surf_hump(p + vec2(0.4, 0.0), into + 0.4) - surf_hump(p - vec2(0.4, 0.0), into - 0.4)) * 1.25 * SURF_H * sea.x * 1.5;
+	}
+	vec2 flow = mix(vec2(0.0, 0.55), WIND * 0.3, salt);  // the rivers run south; the chop runs with the wind
 	float gust = texture(detail_tex, p / 260.0 + vec2(water_time * 0.0035, water_time * 0.001)).r;
 	vec2 c1 = texture(chop_tex, p / 12.0 + flow * water_time * 0.045).xy * 2.0 - 1.0;
+#if WQ >= 1
 	vec2 c2 = texture(chop_tex, p / 4.7 + vec2(0.31, 0.17) - flow.yx * water_time * 0.08).xy * 2.0 - 1.0;
-	// (the fine ripples fade out with distance, before they shimmer)
-	float chop = mix(0.2, 0.34, sea) * mix(0.55, 1.45, smoothstep(0.3, 0.75, gust));
+#else
+	vec2 c2 = vec2(0.0);
+#endif
+	// (the chop is the wind sea's own: it gets up with it in a blow; the fine
+	// ripples fade out with distance, before they shimmer)
+	float chop = mix(0.2, 0.34, salt) * mix(0.55, 1.45, smoothstep(0.3, 0.75, gust)) * mix(1.0, 0.45 + 0.75 * sea.y, salt);
 	vec2 gs = g;
-	g += (c1 * 0.6 * (1.0 - far * 0.7) + c2 * 0.4 * (1.0 - smoothstep(25.0, 150.0, dist))) * chop;
+	g += (c1 * 0.6 * (1.0 - far * 0.7) + c2 * 0.4 * (1.0 - smoothstep(25.0, 150.0, dist))) * chop * 1.5;
+#if WQ >= 1
 	if (rain > 0.0) {
 		// rain: every drop a ring spreading out and dying away
-		g += (drops(p, 0.0) + drops(p * 1.37 + 0.5, 0.5)) * rain * (1.0 - smoothstep(20.0, 90.0, dist));
+		g += (drops(p, 0.0) + drops(p * 1.37 + 0.5, 0.5)) * rain * 1.5 * (1.0 - smoothstep(20.0, 90.0, dist));
 	}
-	vec3 n = normalize(vec3(-g.x * 1.35, 1.0, -g.y * 1.35));
+#endif
+	// (bunched up on the crests, spread out in the troughs)
+	float up = max(1.0 - bunch, 0.25);
+	vec3 n = normalize(vec3(-g.x, up, -g.y));
 	vec3 eye = normalize((INV_VIEW_MATRIX * vec4(VIEW, 0.0)).xyz);
 	// how much sky it reflects, by the broader slopes (by every ripple it sparkles)
-	vec3 ns = normalize(vec3(-(gs.x + c1.x * chop * 0.4) * 1.5, 1.0, -(gs.y + c1.y * chop * 0.4) * 1.5));
+	vec3 ns = normalize(vec3(-(gs.x + c1.x * chop * 0.6), up, -(gs.y + c1.y * chop * 0.6)));
 	float fres = 0.02 + 0.98 * pow(1.0 - clamp(dot(ns, eye), 0.0, 1.0), 5.0);
+#if WQ >= 1
 	// what lies under the water, bent by the ripples (but never something in front of it)
 	float zd = texture(depth_tex, SCREEN_UV).r;
 	vec4 vp = INV_PROJECTION_MATRIX * vec4(SCREEN_UV * 2.0 - 1.0, NDC_Z(zd), 1.0);
@@ -585,63 +763,102 @@ void fragment() {
 	}
 	float rthick = max(0.0, length(rp.xyz) - dist);
 	vec3 bed = textureLod(screen_tex, ruv, 0.0).rgb;
+#else
+	// (Low: the depth from the map, the bed showing through as the water's laid over it)
+	float rthick = m.r * 3.0 / max(eye.y, 0.35);
+	float thick = rthick;
+#endif
 	// (the open sea runs deeper than the few metres carved into the map:
 	// darker the farther out)
-	float depth = rthick + sea * clamp(into - 20.0, 0.0, 90.0) * 0.2;
-	vec3 tr = exp(-mix(fresh_absorb, sea_absorb, sea) * depth);
+	float depth = rthick + salt * clamp(into - 20.0, 0.0, 90.0) * 0.2;
+	vec3 tr = exp(-mix(fresh_absorb, sea_absorb, salt) * depth);
+#if WQ >= 2
+	// the light the ripples focus onto the bed, dancing in the shallows
+	float ca = texture(caustic_tex, p / 6.5 + vec2(water_time * 0.023, water_time * 0.011)).r;
+	float cb = texture(caustic_tex, p / 4.9 - vec2(water_time * 0.017, -water_time * 0.02)).r;
+	float caus = pow(1.0 - smoothstep(0.0, 0.2, ca), 3.0) + pow(1.0 - smoothstep(0.0, 0.2, cb), 3.0);
+	bed *= 1.0 + caus * 1.1 * sun_k * (1.0 - smoothstep(0.4, 4.0, rthick)) * (1.0 - far);
+#endif
 	// the breakers: a white front with foam trailing behind it, sand stirred up
 	float surf = 0.0;
 	float zone = 0.0;
-	if (coast.z > 0.5 && sea > 0.5) {
+	if (coast.z > 0.5 && salt > 0.5) {
 		float run = surf_run(p, into);
 		float s = fract(run);
 		zone = smoothstep(17.0, 9.0, into) * smoothstep(-10.0, -1.0, into);
 		// each breaker spills unevenly along its length, here white, there hardly at all
 		float wob = texture(detail_tex, vec2(p.y / 45.0, floor(run) * 0.31)).r;
-		float strength = mix(0.6, 1.0, smoothstep(0.2, 0.8, wob));
+		float strength = mix(0.6, 1.0, smoothstep(0.2, 0.8, wob)) * mix(0.7, 1.15, smoothstep(0.4, 1.2, sea.x));
 		surf = (smoothstep(0.0, 0.03, s) * exp(-s * 4.5) * 0.62 + exp(-s * 2.6) * 0.14) * strength * zone;
 		surf *= mix(0.65, 1.0, smoothstep(-4.0, 1.0, into));  // (thinning as it runs up the sand)
 	}
-	vec3 tint = mix(fresh_tint, mix(shoal_tint, sea_tint, smoothstep(1.0, 7.0, depth)), sea);
+	vec3 tint = mix(fresh_tint, mix(shoal_tint, sea_tint, smoothstep(1.0, 7.0, depth)), salt);
 	tint = mix(tint, surf_tint, zone * 0.4);
 	// foam: a line wherever the water meets something (the bank, a hull, a
-	// pile), the breakers, whitecaps on the swell's crests in the gusts
+	// pile), the breakers, whitecaps where the crests bunch up enough to break
 	float l = lace(p);
+#if WQ >= 1
 	// (on the beach the surf's film is thin all over: only its very edge froths)
-	float cw = mix(0.14, mix(0.05, 0.3, smoothstep(2.0, 8.0, into)), sea);
-	float contact = (1.0 - smoothstep(0.0, cw, thick)) * mix(0.55, mix(0.5, 0.85, smoothstep(2.0, 8.0, into)), sea);
-	// (whitecaps: flecks on the tops of the biggest waves, where the wind gusts)
-	float fleck = smoothstep(0.5, 0.75, texture(foam_tex, p / 9.0 + vec2(water_time * 0.02, 0.0)).r);
-	float caps = swell_k * smoothstep(0.22, 0.34, sw.x) * smoothstep(0.6, 0.85, gust) * fleck * 0.8;
+	float cw = mix(0.14, mix(0.05, 0.3, smoothstep(2.0, 8.0, into)), salt);
+	float contact = (1.0 - smoothstep(0.0, cw, thick)) * mix(0.55, mix(0.5, 0.85, smoothstep(2.0, 8.0, into)), salt);
+#else
+	float contact = (1.0 - smoothstep(0.0, 0.05, m.r)) * 0.7;
+#endif
+	// (whitecaps: flecks the wind tears off the tops of the waves, more in the gusts)
+	float fleck = smoothstep(0.5, 0.75, texture(foam_tex, p / 9.0 + WIND * water_time * 0.08).r);
+	float caps = smoothstep(0.3, 0.58, bunch) * mix(0.45, 1.0, smoothstep(0.4, 0.8, gust)) * fleck;
+#if WQ >= 2
+	// in a blow, streaks of foam laid out down the wind
+	vec2 wf = vec2(dot(p, WIND), dot(p, vec2(-WIND.y, WIND.x)));
+	float streak = smoothstep(0.6, 0.85, texture(foam_tex, vec2(wf.x * 0.012 - water_time * 0.01, wf.y * 0.35)).r);
+	caps += streak * smoothstep(0.75, 1.15, sea.y) * swell_k * 0.55;
+#endif
 	float amt = clamp(contact + surf + caps, 0.0, 1.0);
 	// (seen from afar the lace blurs to grey: thresholding that would break the
 	// foam into blocks, so it gives way to a soft wash of white)
 	float blur = smoothstep(0.04, 0.2, length(fwidth(p)));
 	float foam = mix(foam_of(amt, l), amt * amt * 0.7, blur);
-	// the sky in it, and its clouds
-	vec3 r = reflect(-eye, n);
-	r.y = abs(r.y);
+	// the sky in it, and its clouds (mostly as the broad slopes of the waves
+	// turn it, so a swell shows as long bands of light; the ripples sparkle)
+	vec3 rr = reflect(-eye, n);
+	vec3 rb = reflect(-eye, normalize(mix(n, ns, 0.6)));
+	vec3 r = vec3(rb.x, abs(rb.y), rb.z);
 	vec3 sky = mix(horizon, zenith, pow(r.y, 0.5));
 	vec2 cuv = r.xz / (r.y + 0.18) * 0.09 + vec2(water_time * 0.0015, water_time * 0.0007);
 	float cl = smoothstep(1.0 - clouds - 0.15, 1.0 - clouds + 0.35, texture(detail_tex, cuv).r) * smoothstep(0.0, 0.2, r.y);
 	sky = mix(sky, mix(horizon * 0.95, vec3(1.0), 0.55), cl * 0.8);
-	vec3 scatter = tint * (1.0 - tr);
 	vec3 amb = mix(horizon, zenith, 0.5) * ambient;
+#if WQ >= 1
+	vec3 scatter = tint * (1.0 - tr);
 	ALBEDO = mix(scatter * (1.0 - fres), foam_col, foam);
 	EMISSION = ((bed * tr + scatter * amb) * (1.0 - fres) + sky * fres) * (1.0 - foam) + foam_col * amb * foam * 0.6;
 	// (soft where it laps the bank)
 	ALPHA = clamp(smoothstep(0.0, 0.05, thick) + foam, 0.0, 1.0);
+#else
+	// (laid over the bed: the deeper, the less of it shows through)
+	ALBEDO = mix(tint * (1.0 - fres), foam_col, foam);
+	EMISSION = (tint * amb * 0.5 * (1.0 - fres) + sky * fres) * (1.0 - foam) + foam_col * amb * foam * 0.6;
+	ALPHA = clamp(mix(0.4, 0.95, smoothstep(0.0, 4.0, depth)) + fres * 0.3 + foam, 0.0, 1.0);
+#endif
 	ROUGHNESS = mix(0.05, 0.6, foam);
 	NORMAL = normalize(mix((VIEW_MATRIX * vec4(n, 0.0)).xyz, (VIEW_MATRIX * vec4(0.0, 1.0, 0.0, 0.0)).xyz, foam * 0.7));
 	glint = (1.0 - foam) * mix(0.3, 1.0, fres) * sun_k;
+#if CURRENT_RENDERER == RENDERER_COMPATIBILITY
+	// (lit per vertex there, which would lose every glint: the sun's glitter
+	// is worked out here instead, for each pixel)
+	float sd = clamp(dot(rr, sun_dir), 0.0, 1.0);
+	EMISSION += sun_col * (pow(sd, 1400.0) * 4.0 + pow(sd, 160.0) * 0.16 + pow(sd, 20.0) * 0.012) * glint;
+#endif
 }
 
 void light() {
 	DIFFUSE_LIGHT += clamp(dot(NORMAL, LIGHT), 0.0, 1.0) * ATTENUATION * LIGHT_COLOR / PI;
+#if CURRENT_RENDERER != RENDERER_COMPATIBILITY
 	// the sun on the water: a hard glitter off every ripple facing it, a broad sheen round it
 	float nh = clamp(dot(NORMAL, normalize(LIGHT + VIEW)), 0.0, 1.0);
 	float sp = pow(nh, 1600.0) * 9.0 + pow(nh, 220.0) * 0.25 + pow(nh, 30.0) * 0.025;
 	SPECULAR_LIGHT += sp * glint * ATTENUATION * LIGHT_COLOR;
+#endif
 }
 """
 
@@ -662,6 +879,8 @@ uniform vec3 horizon : source_color = vec3(0.68, 0.76, 0.84);
 uniform float ambient = 0.55;
 uniform vec3 foam_col : source_color = vec3(0.92, 0.94, 0.94);
 uniform vec3 slick_col : source_color = vec3(0.55, 0.66, 0.68);
+uniform vec2 sea = vec2(0.85, 0.6);
+uniform vec3 coast = vec3(0.0);
 
 varying vec3 wp;
 varying float age;
@@ -696,7 +915,7 @@ void vertex() {
 	}
 	wp = VERTEX + NORMAL * off;
 	vec4 m = wmask(wp.xz);
-	wp.y = __LEVEL__ + swell_v(wp.xz, water_time).x * m.b * smoothstep(0.06, 0.55, m.r) + 0.02;
+	wp.y = __LEVEL__ + gerst_h(wp.xz, water_time) * m.b * smoothstep(0.06, 0.55, m.r) * offshore(wp.xz) + 0.02;
 	// (drawn a touch toward the eye, so it stays on the water it lies on)
 	vec3 w = wp + normalize(CAMERA_POSITION_WORLD - wp) * 0.2;
 	VERTEX = (VIEW_MATRIX * vec4(w, 1.0)).xyz;
@@ -745,6 +964,8 @@ uniform sampler2D foam_tex : filter_linear_mipmap, repeat_enable;
 uniform sampler2D detail_tex : filter_linear_mipmap, repeat_enable;
 uniform float sea_x = 1e9;
 uniform vec3 foam_col : source_color = vec3(0.92, 0.94, 0.94);
+uniform vec2 sea = vec2(0.85, 0.6);
+uniform vec3 coast = vec3(0.0);
 instance uniform vec4 fp = vec4(0.0, 1.0, 0.0, 0.0);
 
 varying vec3 wp;
@@ -761,7 +982,7 @@ vec4 wmask(vec2 p) {
 void vertex() {
 	wp = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
 	vec4 m = wmask(wp.xz);
-	wp.y = __LEVEL__ + swell_v(wp.xz, water_time).x * m.b * smoothstep(0.06, 0.55, m.r) + 0.02;
+	wp.y = __LEVEL__ + gerst_h(wp.xz, water_time) * m.b * smoothstep(0.06, 0.55, m.r) * offshore(wp.xz) + 0.02;
 	vec3 w = wp + normalize(CAMERA_POSITION_WORLD - wp) * 0.2;
 	VERTEX = (VIEW_MATRIX * vec4(w, 1.0)).xyz;
 	NORMAL = (VIEW_MATRIX * vec4(0.0, 1.0, 0.0, 0.0)).xyz;

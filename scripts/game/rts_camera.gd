@@ -7,6 +7,8 @@ extends Node3D
 ## with the middle mouse (up and down tilts). Tilt: Page Up / Page Down.
 ## Backspace squares the view up again. The middle-mouse drag turns the view
 ## by default, Alt+drag grabs the map (a setting swaps them).
+## On a Mac's trackpad: pinch to zoom, scroll with two fingers to grab the map
+## (or to zoom, a setting), and hold Option (Alt) to turn and tilt instead.
 
 ## How far the camera pulls back (a bigger map wants a wider view).
 const MAX_DIST := 210.0
@@ -23,6 +25,10 @@ const MIN_HEIGHT := 6.5
 ## Rays at or above the horizon are taken as meeting the ground this steeply
 ## (so an order given with the cursor in the sky lands far out, not behind us).
 const MIN_RAY_DIP := 0.05
+## A trackpad's two-finger scroll comes in units of about 33 points of finger
+## travel (the engine's scale on a Mac), and zooms this many wheel notches a unit.
+const TRACKPAD_PT := 1.0 / 0.03
+const TRACKPAD_ZOOM := 0.4
 
 var world: World
 var cam: Camera3D
@@ -127,7 +133,52 @@ func shake(amount: float) -> void:
 
 ## One notch of the wheel; toward a point on the screen when there is one.
 func zoom_step(dir: int, at := Vector2(-1, -1)) -> void:
-	target_dist = clampf(target_dist * (0.87 if dir < 0 else 1.15), MIN_DIST, MAX_DIST)
+	zoom_by(0.87 if dir < 0 else 1.15, at)
+
+
+## A pinch on a trackpad: spreading the fingers (a factor above 1) zooms in,
+## toward the point between them, as the wheel does toward the cursor.
+func pinch(factor: float, at := Vector2(-1, -1)) -> void:
+	if factor > 0.0:
+		zoom_by(1.0 / factor, at)
+
+
+## A trackpad's two-finger scroll, as a zoom: scrolling down zooms out, like
+## the wheel turned toward you.
+func scroll_zoom(dy: float, at := Vector2(-1, -1)) -> void:
+	zoom_by(pow(1.15, dy * TRACKPAD_ZOOM), at)
+
+
+## Two fingers on a trackpad (or a Magic Mouse). They grab the map, which
+## follows them like a map pushed round a table; or, set to zoom, they zoom.
+## With Option (Alt) they turn and tilt the view like a middle-mouse drag.
+## `delta` is the scroll as the engine gives it: the way the view moves, so the
+## fingers moved the other way (with macOS's usual "natural" scrolling).
+func two_finger(delta: Vector2, at: Vector2, turn := false) -> void:
+	var fingers := -delta * TRACKPAD_PT * DisplayServer.screen_get_scale()
+	_gliding = false
+	_zoom_anchor = Vector3.INF
+	user_moved = true
+	stop_shadow()
+	if turn:
+		yaw -= fingers.x * 0.006
+		tilt = clampf(tilt - fingers.y * 0.15, TILT_MIN, TILT_MAX)
+	elif int(Settings.get_v("scroll_mode")) == 1:
+		scroll_zoom(delta.y, at)
+		return
+	else:
+		# the spot in the middle of the screen moves with the fingers (held at
+		# the middle rather than under the cursor, so a cursor up by the
+		# horizon doesn't send the map hundreds of metres)
+		var mid := get_viewport().get_visible_rect().size * 0.5
+		focus_pos = _clamp_map(focus_pos + Defs.flat(ground_point(mid) - ground_point(mid + fingers)))
+		stop_follow()
+	_apply()
+
+
+## Zooms by a factor (below 1 in), toward a point on the screen when there is one.
+func zoom_by(mult: float, at := Vector2(-1, -1)) -> void:
+	target_dist = clampf(target_dist * mult, MIN_DIST, MAX_DIST)
 	user_moved = true
 	stop_shadow()
 	_zoom_anchor = Vector3.INF
@@ -402,6 +453,13 @@ func _unhandled_input(ev: InputEvent) -> void:
 			yaw -= mm.relative.x * 0.006
 			tilt = clampf(tilt - mm.relative.y * 0.15, TILT_MIN, TILT_MAX)
 		_apply()
+	elif ev is InputEventMagnifyGesture:
+		var mg := ev as InputEventMagnifyGesture
+		pinch(mg.factor, mg.position)
+	elif ev is InputEventPanGesture and not (ev as InputEventPanGesture).shift_pressed:
+		# (Shift and two fingers turn what's being placed, as Shift and the wheel do)
+		var pg := ev as InputEventPanGesture
+		two_finger(pg.delta, pg.position, pg.alt_pressed)
 
 
 func ground_point(screen: Vector2) -> Vector3:

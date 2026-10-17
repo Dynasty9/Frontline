@@ -39,6 +39,15 @@ jobs:
           ~/godot/godot --headless --path . --import 2>&1 | tee import.log
           if grep -E "SCRIPT ERROR|Parse Error" import.log; then exit 1; fi
 
+      # Installing an update (one executable, or a Mac's app, which is a folder)
+      # and reading frontline:// links the way each system hands them over, in
+      # a scratch folder: the Mac's side of the updater gets checked here too
+      - name: Platform test (updates and links)
+        run: |
+          set -o pipefail
+          timeout 60 ~/godot/godot --headless --path . -- --platform-test 2>&1 | tee run_platform.log
+          if grep -q "SCRIPT ERROR" run_platform.log || ! grep -qE "^PLATFORMTEST [0-9]+/[0-9]+ passed" run_platform.log; then exit 1; fi
+
       # Each run steps the game exactly as it plays (--fixed-fps 30: one 1/30 s
       # tick a frame, as fast as the runner goes) and fails by its exit code: a
       # script error anywhere, or a run that never finishes. Errors while the

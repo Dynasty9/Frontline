@@ -8,12 +8,16 @@ extends Node
 ## this platform in the background, checks it against the SHA-256 GitHub
 ## publishes for it, and swaps the executable: the running one is renamed aside
 ## (Windows lets you rename a running program, though not overwrite it) and the
-## new one takes its name. The menu then offers a restart; quitting does as
-## well, since the next launch is the new version. The old file is deleted on
-## that next launch.
+## new one takes its name. On a Mac the game is an app, which is a folder
+## (Frontline.app: the program, the game it runs, and a signature over both),
+## so the whole folder is swapped the same way. The menu then offers a
+## restart; quitting does as well, since the next launch is the new version.
+## The old file (or app) is deleted on that next launch.
 ##
 ## Where the game can't update itself (a build from source, a folder it can't
-## write to, no build for this platform), the menu links to the downloads.
+## write to, no build for this platform, a Mac app run straight from the
+## Downloads folder, which macOS runs from a read-only copy), the menu links to
+## the downloads.
 ## Keeping up matters online: the matchmaker only pairs players on the same
 ## network version (Net.NET_VERSION).
 ##
@@ -97,7 +101,10 @@ func check() -> void:
 func can_install() -> bool:
 	if _target == "" or _asset.is_empty():
 		return false
-	var probe := _target.get_base_dir().path_join(".frontline-write-test")
+	# a Mac app is swapped whole, beside itself: it's the folder it sits in
+	# (Applications, usually) that has to take the new one
+	var bundle := bundle_of(_target)
+	var probe := (bundle if bundle != "" else _target).get_base_dir().path_join(".frontline-write-test")
 	var f := FileAccess.open(probe, FileAccess.WRITE)
 	if f == null:
 		return false
@@ -122,17 +129,13 @@ func _get_json(url: String) -> Variant:
 
 ## {version, asset: {url, digest, size}} from either the matchmaker's
 ## release.json or GitHub's release API ({} if it's neither). The asset is
-## this platform's zip ({} if the release has none).
-static func parse_release(d: Variant) -> Dictionary:
+## the zip for this platform, or for `plat` ({} if the release has none).
+static func parse_release(d: Variant, plat := "") -> Dictionary:
 	if not d is Dictionary:
 		return {}
 	var r: Dictionary = d
-	var plat := ""
-	match OS.get_name():
-		"Windows":
-			plat = "windows"
-		"Linux", "FreeBSD":
-			plat = "linux"
+	if plat == "":
+		plat = platform()
 	var asset := {}
 	if r.has("version") and r.get("assets") is Dictionary:
 		# ours: assets by platform, with the bare checksum
@@ -147,6 +150,18 @@ static func parse_release(d: Variant) -> Dictionary:
 				asset = {"url": String(a.get("browser_download_url", "")), "digest": String(a.get("digest", "")), "size": int(a.get("size", 0))}
 		return {"version": String(r.tag_name).trim_prefix("v"), "asset": asset}
 	return {}
+
+
+## This system, as a release names its zip: Frontline-<platform>.zip.
+static func platform() -> String:
+	match OS.get_name():
+		"Windows":
+			return "windows"
+		"macOS":
+			return "macos"
+		"Linux", "FreeBSD":
+			return "linux"
+	return ""
 
 
 func download() -> void:
@@ -187,12 +202,19 @@ static func install(zip: String, digest: String, target: String) -> String:
 	var z := ZIPReader.new()
 	if z.open(zip) != OK:
 		return "The download isn't a zip the game can read."
+	var bundle := bundle_of(target)
+	var problem := _install_app(z, bundle, target.get_file()) if bundle != "" else _install_file(z, target)
+	z.close()
+	return problem
+
+
+## Windows and Linux: the game is one file, the executable with the game packed inside.
+static func _install_file(z: ZIPReader, target: String) -> String:
 	var entry := ""
 	for f in z.get_files():
 		if f.get_file() == "Frontline.exe" or f.get_file() == "Frontline.x86_64":
 			entry = f
 	var data := z.read_file(entry) if entry != "" else PackedByteArray()
-	z.close()
 	if data.size() < 1024:
 		return "The download has no game in it."
 	var fresh := target + ".new"
@@ -202,9 +224,7 @@ static func install(zip: String, digest: String, target: String) -> String:
 	w.store_buffer(data)
 	w.close()
 	if not target.ends_with(".exe"):
-		# rwxr-xr-x, like the build it replaces
-		FileAccess.set_unix_permissions(fresh, FileAccess.UNIX_READ_OWNER | FileAccess.UNIX_WRITE_OWNER | FileAccess.UNIX_EXECUTE_OWNER
-			| FileAccess.UNIX_READ_GROUP | FileAccess.UNIX_EXECUTE_GROUP | FileAccess.UNIX_READ_OTHER | FileAccess.UNIX_EXECUTE_OTHER)
+		_make_executable(fresh)  # like the build it replaces
 	var old := target + ".old"
 	if FileAccess.file_exists(old):
 		DirAccess.remove_absolute(old)
@@ -217,9 +237,96 @@ static func install(zip: String, digest: String, target: String) -> String:
 	return ""
 
 
+## A Mac: the zip holds Frontline.app, which is unpacked beside the running app
+## and then swapped for it, folder for folder. The program and the game it runs
+## come as a pair, and the app's signature covers both, so they're never
+## replaced one file at a time.
+static func _install_app(z: ZIPReader, bundle: String, exe_name: String) -> String:
+	var prefix := ""  # "Frontline.app/"
+	for f in z.get_files():
+		var i := f.find(".app/Contents/MacOS/")
+		if i > 0 and not f.substr(0, i).contains("/"):
+			prefix = f.substr(0, i + 5)
+			break
+	var exe := "Contents/MacOS/" + exe_name
+	if prefix == "" or not z.file_exists(prefix + exe):
+		return "The download has no game in it."
+	var fresh := bundle + ".new"
+	_remove_tree(fresh)
+	for f in z.get_files():
+		if not f.begins_with(prefix) or f.ends_with("/"):
+			continue
+		var rel := f.substr(prefix.length())
+		if ".." in rel.split("/"):
+			_remove_tree(fresh)
+			return "The download isn't a zip the game can read."
+		var path := fresh.path_join(rel)
+		DirAccess.make_dir_recursive_absolute(path.get_base_dir())
+		var w := FileAccess.open(path, FileAccess.WRITE)
+		if w == null:
+			_remove_tree(fresh)
+			return "The game's folder can't be written to."
+		w.store_buffer(z.read_file(f))
+		w.close()
+		# a zip reader leaves the executable bit behind: the programs need it back
+		if rel.begins_with("Contents/MacOS/") or rel.begins_with("Contents/Frameworks/"):
+			_make_executable(path)
+	var check := FileAccess.open(fresh.path_join(exe), FileAccess.READ)
+	if check == null or check.get_length() < 1024:
+		_remove_tree(fresh)
+		return "The download has no game in it."
+	check.close()
+	var old := bundle + ".old"
+	_remove_tree(old)
+	if DirAccess.rename_absolute(bundle, old) != OK:
+		_remove_tree(fresh)
+		return "The running game couldn't be moved aside."
+	if DirAccess.rename_absolute(fresh, bundle) != OK:
+		DirAccess.rename_absolute(old, bundle)  # put it back as it was
+		return "The new version couldn't be put in place."
+	return ""
+
+
+## The Mac app an executable lives in (".../Frontline.app"), or "" when the
+## game is a single file.
+static func bundle_of(exe: String) -> String:
+	var i := exe.rfind(".app/Contents/MacOS/")
+	return exe.substr(0, i + 4) if i > 0 else ""
+
+
+## rwxr-xr-x
+static func _make_executable(path: String) -> void:
+	FileAccess.set_unix_permissions(path, FileAccess.UNIX_READ_OWNER | FileAccess.UNIX_WRITE_OWNER | FileAccess.UNIX_EXECUTE_OWNER
+		| FileAccess.UNIX_READ_GROUP | FileAccess.UNIX_EXECUTE_GROUP | FileAccess.UNIX_READ_OTHER | FileAccess.UNIX_EXECUTE_OTHER)
+
+
+## Deletes a file, or a folder and everything in it. A link inside is removed,
+## never followed.
+static func _remove_tree(path: String) -> void:
+	if DirAccess.dir_exists_absolute(path):
+		var d := DirAccess.open(path)
+		if d != null:
+			d.include_hidden = true
+			for f in d.get_files():
+				DirAccess.remove_absolute(path.path_join(f))
+			for sub in d.get_directories():
+				if d.is_link(sub):
+					DirAccess.remove_absolute(path.path_join(sub))
+				else:
+					_remove_tree(path.path_join(sub))
+		DirAccess.remove_absolute(path)
+	elif FileAccess.file_exists(path):
+		DirAccess.remove_absolute(path)
+
+
 ## Start the new version and quit this one.
 func restart() -> void:
-	if _target != "" and FileAccess.file_exists(_target):
+	var bundle := bundle_of(_target)
+	if bundle != "" and DirAccess.dir_exists_absolute(bundle):
+		# the way the Finder opens an app (-n: a new copy, though this one
+		# hasn't quite gone yet)
+		OS.create_process("/usr/bin/open", PackedStringArray(["-n", bundle]))
+	elif _target != "" and FileAccess.file_exists(_target):
 		OS.create_process(_target, PackedStringArray())
 	get_tree().quit()
 
@@ -231,10 +338,13 @@ func _fail(msg: String) -> void:
 	changed.emit()
 
 
-## What the last update left behind: the previous executable (in use until we
-## restarted) and a download that never finished.
+## What the last update left behind: the previous executable or app (in use
+## until we restarted) and a download that never finished.
 func _clean_up() -> void:
-	if _target != "" and FileAccess.file_exists(_target + ".old"):
+	var bundle := bundle_of(_target)
+	if bundle != "":
+		_remove_tree(bundle + ".old")
+	elif _target != "" and FileAccess.file_exists(_target + ".old"):
 		DirAccess.remove_absolute(_target + ".old")
 	if FileAccess.file_exists(DOWNLOAD):
 		DirAccess.remove_absolute(ProjectSettings.globalize_path(DOWNLOAD))

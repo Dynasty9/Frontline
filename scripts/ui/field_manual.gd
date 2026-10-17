@@ -529,6 +529,11 @@ func _view_input(ev: InputEvent) -> void:
 			_dist = maxf(_dist * 0.9, 0.6)
 		elif mb.button_index == MOUSE_BUTTON_WHEEL_DOWN and mb.pressed:
 			_dist = minf(_dist * 1.1, 80.0)
+	elif ev is InputEventMagnifyGesture:
+		# a trackpad: pinch, or two fingers, to zoom
+		_dist = clampf(_dist / (ev as InputEventMagnifyGesture).factor, 0.6, 80.0)
+	elif ev is InputEventPanGesture:
+		_dist = clampf(_dist * pow(1.1, (ev as InputEventPanGesture).delta.y * 0.4), 0.6, 80.0)
 	elif ev is InputEventMouseMotion and _drag:
 		var mm := ev as InputEventMouseMotion
 		_yaw -= mm.relative.x * 0.01

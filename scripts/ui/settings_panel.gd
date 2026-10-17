@@ -80,6 +80,7 @@ func _ready() -> void:
 		["option", "lod", "View distance / detail", Settings.LABELS.lod, "How far away models keep their full detail."],
 		["option", "grass", "Vegetation", Settings.LABELS.grass, "Swaying grass blades across the battlefield."],
 		["option", "effects", "Effects quality", Settings.LABELS.effects, "Particles per explosion, smoke density, debris."],
+		["option", "water", "Water quality", Settings.LABELS.water, "Waves, reflections and the bed seen through the water. Low skips the see-through water, the costly part; High adds light dancing on the shallows and foam streaks in a blow; Ultra a finer swell."],
 		["check", "decals", "Scorch marks & craters", null, "Burn marks left by explosions."],
 		["check", "ragdolls", "Ragdoll physics", null, "The dead fall, tumble and are thrown by blasts under real physics; thrown earth and rubble bounce and roll."],
 		["head", "", "Lighting"],
@@ -124,6 +125,7 @@ func _ready() -> void:
 		["head", "", "Camera"],
 		["option", "mmb_mode", "Middle mouse drag", Settings.LABELS.mmb_mode, "What dragging with the middle mouse button does. Holding Alt does the other."],
 		["check", "zoom_cursor", "Zoom toward the cursor", null, "The mouse wheel zooms in on whatever is under the cursor. Off: on the middle of the screen."],
+		["option", "scroll_mode", "Two-finger scroll", Settings.LABELS.scroll_mode, "What scrolling with two fingers on a trackpad or a Magic Mouse does. Pinching zooms either way, and holding Option turns and tilts the view instead."],
 		["check", "edge_pan", "Edge scrolling", null, "Pan the camera with the mouse at the screen edge."],
 		["slider", "cam_speed", "Camera speed", [0.5, 2.0, 0.05], "Hold the pan-faster key (Shift to begin with, see Controls) to go two and a half times as fast."],
 		["check", "shake", "Camera shake", null, "Explosions shake the camera."],
@@ -161,6 +163,8 @@ func _ready() -> void:
 ## screen-space lighting, upscaling or depth of field, and the page decides
 ## the game's size and when it draws.
 const NOT_ON_WEB := ["ssao", "ao_q", "ssil", "gi", "ssr", "vol_fog", "upscaler", "sharpen", "dof", "resolution", "vsync"]
+## Settings only a Mac has a use for: elsewhere a trackpad scrolls like a wheel.
+const ONLY_ON_MAC := ["scroll_mode"]
 
 
 static func _for_web(rows: Array) -> Array:
@@ -179,6 +183,8 @@ static func _for_web(rows: Array) -> Array:
 func _page(parent: Control, rows: Array) -> Control:
 	if OS.has_feature("web"):
 		rows = _for_web(rows)
+	if OS.get_name() != "macOS":
+		rows = rows.filter(func(r: Array) -> bool: return not (String(r[1]) in ONLY_ON_MAC))
 	var sc := ScrollContainer.new()
 	sc.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	sc.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
