@@ -134,6 +134,21 @@ func boat_ok(p: Vector3) -> bool:
 	return has_boats and not boat.is_point_solid(boat_cell(p))
 
 
+## Open water all the way from a to b, for a hull `half_w` metres either side
+## of her keel (checked a cell apart down the middle and both sides).
+func boat_line(a: Vector3, b: Vector3, half_w := 0.0) -> bool:
+	var d := Vector3(b.x - a.x, 0.0, b.z - a.z)
+	var dist := d.length()
+	if dist < 0.01:
+		return boat_ok(a)
+	var side := Vector3(-d.z, 0.0, d.x) / dist * half_w
+	for k in int(dist / BR) + 1:
+		var p := a + d * minf(k * BR / dist, 1.0)
+		if not boat_ok(p) or (half_w > 0.0 and (not boat_ok(p + side) or not boat_ok(p - side))):
+			return false
+	return boat_ok(b)
+
+
 ## The nearest water a boat can reach to p (within r metres) - in that body
 ## of water, if one is given - or INF.
 func nearest_boat(p: Vector3, r := 60.0, body := -1) -> Vector3:

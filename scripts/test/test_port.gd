@@ -296,7 +296,8 @@ func _query(w: World, req: Dictionary) -> Dictionary:
 			for v in w.vehicles:
 				if (team == -9 or v.team == team) and (kind == "" or v.vkind == kind) and (ids.is_empty() or ids.has(v.eid)):
 					out.append({"id": v.eid, "kind": v.vkind, "team": v.team, "owner": v.owner_peer, "hp": snappedf(v.hp, 0.1),
-						"max_hp": v.max_hp, "pos": _xz(v.position), "passengers": v.passengers.size()})
+						"max_hp": v.max_hp, "pos": _xz(v.position), "yaw": snappedf(wrapf(v.rotation.y, -PI, PI), 0.001),
+						"speed": snappedf(v.speed, 0.01), "vel": _xz(v.velocity), "passengers": v.passengers.size()})
 		"structures":
 			for st in w.structures:
 				if (team == -9 or st.team == team) and (st.skind == kind if kind != "" else not st.skind in SCENERY) and (ids.is_empty() or ids.has(st.eid)):
