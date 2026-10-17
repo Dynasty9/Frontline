@@ -130,6 +130,16 @@ func _recipes() -> Array:
 		["prop", _prop_loop],
 		["arty_whistle", _incoming],
 		["fire", _fire_loop],
+		# wildlife (wildlife.gd), on the ambience
+		["birdsong", _birdsong],
+		["birdsong2", _birdsong],
+		["flutter", _flutter],
+		["coo", _coo],
+		["caw", _caw],
+		["gull", _gull],
+		["plop", _plop],
+		["splash", _splash],
+		["squeak", _squeak],
 		# the stats screens and the end of a battle
 		["ui_whoosh", _ui_whoosh],
 		["ui_tick", _ui_tick],
@@ -139,7 +149,11 @@ func _recipes() -> Array:
 	]
 
 
-## (On a worker thread.) Makes sound i of the recipes into made[i].
+## (On a worker thread.) Makes sound i of the recipes into made[i]. A recipe
+## several sounds share (_gun, _boom, _burst...) and the helpers they all call
+## (_wav, _normalize, _seamless) run on several threads at once, so they keep
+## to typed values and never divide whole numbers with / or %: that can crash
+## (see HNav.build_all).
 func _make(i: int, recipes: Array, made: Array) -> void:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = hash(String(recipes[i][0]))
@@ -813,7 +827,9 @@ func _burst(rng: RandomNumberGenerator, dur: float, rate: float, bright: float, 
 		# a short slap-back off the ground
 		v += echo[ei] * 0.35
 		echo[ei] = v
-		ei = (ei + 1) % echo.size()
+		ei += 1
+		if ei == echo.size():
+			ei = 0
 		s[i] = clampf(v * 0.8, -1.0, 1.0)
 	return _wav(s)
 
@@ -849,4 +865,165 @@ func _incoming(rng: RandomNumberGenerator) -> AudioStreamWAV:
 		lp += (noise - lp) * 0.2
 		var env := minf(1.0, t * 1.2) * (1.0 - exp(-(2.0 - t) * 25.0))
 		s[i] = (sin(ph) * 0.22 + lp * 0.5) * env
+	return _wav(s)
+
+
+# --- wildlife ----------------------------------------------------------------------------------
+
+## A small bird's song: a phrase of quick whistled notes, each a fast sweep
+## (some trilled), with short gaps between. Each name seeds a different phrase.
+func _birdsong(rng: RandomNumberGenerator) -> AudioStreamWAV:
+	var n := int(1.5 * RATE)
+	var s := PackedFloat32Array()
+	s.resize(n)
+	var at := rng.randf_range(0.02, 0.08)
+	var ph := 0.0
+	for k in rng.randi_range(5, 9):
+		var dur := rng.randf_range(0.04, 0.13)
+		var f0 := rng.randf_range(2600.0, 4600.0)
+		var f1 := f0 + rng.randf_range(-1600.0, 1600.0)
+		var trill := rng.randf() < 0.3
+		var i0 := int(at * RATE)
+		var i1 := mini(n, int((at + dur) * RATE))
+		for i in range(i0, i1):
+			var u := float(i - i0) / float(i1 - i0)
+			var f := lerpf(f0, f1, u) + (sin(TAU * 38.0 * u * dur) * 500.0 if trill else 0.0)
+			ph += TAU * f / RATE
+			var env := sin(PI * u)
+			s[i] += sin(ph) * env * env * 0.45
+		at += dur + rng.randf_range(0.015, 0.09)
+		if at > 1.4:
+			break
+	return _wav(s)
+
+
+## A flock going up: a dozen birds each beating its wings fast, a soft thump
+## of air at every beat, all at once and then thinning out as they go.
+func _flutter(rng: RandomNumberGenerator) -> AudioStreamWAV:
+	var n := int(1.1 * RATE)
+	var s := PackedFloat32Array()
+	s.resize(n)
+	for b in 12:
+		var rate := rng.randf_range(14.0, 22.0)
+		var start := rng.randf_range(0.0, 0.25)
+		var last := start + rng.randf_range(0.35, 0.8)
+		var tt := start
+		while tt < last:
+			var i0 := int(tt * RATE)
+			var amp := 0.25 * (1.0 - (tt - start) / (last - start))
+			var lp := 0.0
+			for i in range(i0, mini(n, i0 + int(0.03 * RATE))):
+				var u := float(i - i0) / RATE
+				lp += ((rng.randf() * 2.0 - 1.0) - lp) * 0.35
+				s[i] += lp * exp(-u * 120.0) * amp
+			tt += rng.randf_range(0.9, 1.1) / rate
+	return _wav(s)
+
+
+## A pigeon's coo: a soft, throaty "hoo-roo-coo", the middle note rolled.
+func _coo(rng: RandomNumberGenerator) -> AudioStreamWAV:
+	var n := int(1.3 * RATE)
+	var s := PackedFloat32Array()
+	s.resize(n)
+	var lp := 0.0
+	for c in [[0.03, 0.22, 400.0, 470.0], [0.32, 0.42, 470.0, 380.0], [0.82, 0.36, 430.0, 360.0]]:
+		var at: float = c[0]
+		var dur: float = c[1]
+		var ph := 0.0
+		for i in range(int(at * RATE), mini(n, int((at + dur) * RATE))):
+			var u := (float(i) / RATE - at) / dur
+			ph += TAU * lerpf(c[2], c[3], u) * (1.0 + 0.04 * sin(TAU * 24.0 * u * dur)) / RATE
+			lp += ((rng.randf() * 2.0 - 1.0) - lp) * 0.05
+			var tone := sin(ph) * 0.7 + sin(ph * 2.0) * 0.18 + lp * 0.2
+			s[i] = tone * sin(PI * u) * (0.75 + 0.25 * sin(TAU * 24.0 * u * dur)) * 0.5
+	return _wav(s)
+
+
+## A crow's caw, twice: a harsh, nasal "kaah", falling a little.
+func _caw(rng: RandomNumberGenerator) -> AudioStreamWAV:
+	var n := int(0.95 * RATE)
+	var s := PackedFloat32Array()
+	s.resize(n)
+	var lp := 0.0
+	var lp2 := 0.0
+	for c in 2:
+		var at := 0.05 + c * 0.42
+		var dur := rng.randf_range(0.26, 0.32)
+		var ph := 0.0
+		for i in range(int(at * RATE), mini(n, int((at + dur) * RATE))):
+			var u := (float(i) / RATE - at) / dur
+			ph += lerpf(620.0, 520.0, u) * (1.0 + 0.03 * sin(TAU * 31.0 * u * dur)) / RATE
+			var raw := (fmod(ph, 1.0) * 2.0 - 1.0) * (0.75 + 0.5 * (rng.randf() - 0.5))
+			# the throat: a band round a kilohertz or so
+			lp += (raw - lp) * 0.45
+			lp2 += (lp - lp2) * 0.12
+			s[i] = (lp - lp2) * smoothstep(0.0, 0.08, u) * (1.0 - smoothstep(0.6, 1.0, u)) * 1.2
+	return _wav(s)
+
+
+## A gull's cry: a long "kee-ow", rising then falling, and two short laughing calls.
+func _gull(rng: RandomNumberGenerator) -> AudioStreamWAV:
+	var n := int(1.1 * RATE)
+	var s := PackedFloat32Array()
+	s.resize(n)
+	for c in [[0.02, 0.42, 1500.0, 2300.0, 1300.0], [0.55, 0.16, 1700.0, 2000.0, 1500.0], [0.78, 0.16, 1650.0, 1950.0, 1450.0]]:
+		var at: float = c[0]
+		var dur: float = c[1]
+		var ph := 0.0
+		for i in range(int(at * RATE), mini(n, int((at + dur) * RATE))):
+			var u := (float(i) / RATE - at) / dur
+			var f: float = lerpf(c[2], c[3], u / 0.35) if u < 0.35 else lerpf(c[3], c[4], (u - 0.35) / 0.65)
+			ph += TAU * f / RATE
+			var tone := sin(ph) * 0.6 + sin(ph * 2.0) * 0.28 + sin(ph * 3.0) * 0.12
+			s[i] = tone * (1.0 + (rng.randf() - 0.5) * 0.5) * smoothstep(0.0, 0.1, u) * (1.0 - smoothstep(0.7, 1.0, u)) * 0.5
+	return _wav(s)
+
+
+## A fish falling back in: a small plop (the bubble's note rising) and a few droplets.
+func _plop(rng: RandomNumberGenerator) -> AudioStreamWAV:
+	var n := int(0.35 * RATE)
+	var s := PackedFloat32Array()
+	s.resize(n)
+	var ph := 0.0
+	var lp := 0.0
+	for i in n:
+		var t := float(i) / RATE
+		ph += TAU * (500.0 + 1400.0 * minf(1.0, t / 0.04)) / RATE
+		var noise := rng.randf() * 2.0 - 1.0
+		lp += (noise - lp) * 0.6
+		s[i] = sin(ph) * exp(-t * 35.0) * 0.5 + (noise - lp) * exp(-t * 14.0) * 0.25
+	return _wav(s)
+
+
+## A dolphin landing back in the sea: a heavy slap and the rush of the water it threw up.
+func _splash(rng: RandomNumberGenerator) -> AudioStreamWAV:
+	var n := int(1.2 * RATE)
+	var s := PackedFloat32Array()
+	s.resize(n)
+	var lp := 0.0
+	var lp2 := 0.0
+	for i in n:
+		var t := float(i) / RATE
+		var noise := rng.randf() * 2.0 - 1.0
+		lp += (noise - lp) * 0.35
+		lp2 += (lp - lp2) * 0.04
+		var slap := (lp - lp2) * exp(-t * 20.0) * 0.9
+		var rush := (noise - lp) * exp(-t * 3.5) * (1.0 - exp(-t * 30.0)) * 0.2
+		s[i] = slap + rush + sin(TAU * 90.0 * t) * exp(-t * 25.0) * 0.5
+	return _wav(s)
+
+
+## A rat's squeak: two thin, high chirps.
+func _squeak(rng: RandomNumberGenerator) -> AudioStreamWAV:
+	var n := int(0.24 * RATE)
+	var s := PackedFloat32Array()
+	s.resize(n)
+	for c in 2:
+		var at := 0.01 + c * rng.randf_range(0.09, 0.12)
+		var dur := rng.randf_range(0.05, 0.07)
+		var ph := 0.0
+		for i in range(int(at * RATE), mini(n, int((at + dur) * RATE))):
+			var u := (float(i) / RATE - at) / dur
+			ph += TAU * (5200.0 + 1200.0 * sin(PI * u)) / RATE
+			s[i] = sin(ph) * sin(PI * u) * 0.35
 	return _wav(s)

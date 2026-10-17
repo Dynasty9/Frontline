@@ -25,6 +25,8 @@ extends Node
 
 var menu: Control
 var world: World
+var probe: PerfProbe
+var console: Console
 var args := {}
 var _quit_at := -1.0
 ## How much longer than --quit-after a test client waits for the host's world
@@ -73,18 +75,40 @@ func _ready() -> void:
 			Insignia.sheet(String(args["insignia-sheet"]), int(args.get("px", 96)), 16, only)
 		TestRun.quit(get_tree())
 		return
+	if args.has("platform-test"):
+		# installing an update and reading links, as each system does it (offline, no game)
+		preload("res://scripts/test/platform_test.gd").run()
+		TestRun.quit(get_tree())
+		return
 	if args.has("soldier-sheet"):
 		# a lineup of every kind of soldier, saved as an image (no menu, no game)
 		var sheet: Node3D = preload("res://scripts/ui/soldier_sheet.gd").new()
 		sheet.set("args", args)
 		add_child(sheet)
 		return
-	add_child(preload("res://scripts/ui/perf_overlay.gd").new())
-	menu = preload("res://scripts/ui/menu.gd").new()
-	var layer := CanvasLayer.new()
-	layer.layer = 10
-	add_child(layer)
-	layer.add_child(menu)
+	# every frame measured, for the performance overlay (F3) and the console (`)
+	probe = PerfProbe.new()
+	probe.name = "PerfProbe"
+	probe.main = self
+	add_child(probe)
+	var overlay: CanvasLayer = preload("res://scripts/ui/perf_overlay.gd").new()
+	overlay.probe = probe
+	add_child(overlay)
+	console = Console.new()
+	console.name = "Console"
+	console.main = self
+	console.probe = probe
+	add_child(console)
+	# a test driving the game through its port never sees the menu, so it
+	# isn't built: the menu and the screens it opens are a second or more of
+	# compiling and building at every start, and a test run starts many games
+	# (loaded, not preloaded, so this file doesn't compile them either)
+	if not args.has("test-port"):
+		menu = load("res://scripts/ui/menu.gd").new()
+		var layer := CanvasLayer.new()
+		layer.layer = 10
+		add_child(layer)
+		layer.add_child(menu)
 	# --menu-cursor=X,Y: hold the cursor there, the map leaning after it (fractions of the screen; screenshots)
 	if args.has("menu-cursor"):
 		var mc := String(args["menu-cursor"]).split(",")
@@ -287,7 +311,8 @@ func _intro() -> void:
 	while is_instance_valid(cur) and not cur.title_done():
 		await get_tree().process_frame
 	if is_instance_valid(cur):
-		menu.arrive()
+		if menu:
+			menu.arrive()
 		cur.finish(1.8)
 
 
@@ -327,7 +352,8 @@ func _on_game_start(s: Dictionary) -> void:
 			# their world is small and the host's state is on its way)
 			await get_tree().process_frame
 			await get_tree().process_frame
-	menu.visible = false
+	if menu:
+		menu.visible = false
 	Settings.set_ui_menu(false)
 	if world:
 		world.name = "OldWorld"
@@ -336,6 +362,18 @@ func _on_game_start(s: Dictionary) -> void:
 	world.name = "World"
 	world.settings = s
 	add_child(world)
+	if cur:
+		world.build_stage.connect(func(text: String, frac: float):
+			if is_instance_valid(cur):
+				cur.set_stage(text, frac))
+	if OS.has_feature("web"):
+		world.visible = false
+	# (in a browser, a frame of the loading screen between its stages: World._breathe)
+	await world.build()
+	if not is_instance_valid(world):
+		return
+	if OS.has_feature("web"):
+		_reveal_next_frame(world)
 	world.game_ended.connect(_on_game_ended)
 	# a headless client says which after-action report it was sent (multiplayer tests)
 	if not world.srv and DisplayServer.get_name() == "headless":
@@ -570,6 +608,17 @@ func _bot_cmds() -> void:
 		print("BOT: retreat sent")
 
 
+## A browser compiles each shader the first time it's drawn, all within that
+## frame: the battlefield stays out of sight until the frame after it's built,
+## so building it and compiling for it come as separate waits, neither long
+## enough for the browser to call the page unresponsive.
+func _reveal_next_frame(w: World) -> void:
+	w.visible = false
+	await get_tree().process_frame
+	if is_instance_valid(w):
+		w.visible = true
+
+
 ## After the build: hold the loading screen while the first frames render
 ## (and compile their shaders) behind it, then fade into the battlefield.
 func _warm_up(cur: Curtain) -> void:
@@ -602,7 +651,8 @@ func return_to_menu(msg: String) -> void:
 		world = null
 	Net.leave()
 	Settings.set_ui_menu(true)
-	menu.show_menu(msg)
+	if menu:
+		menu.show_menu(msg)
 
 
 var _ms_i := -1
@@ -716,6 +766,8 @@ func _process(_dt: float) -> void:
 			get_viewport().get_texture().get_image().save_png(String(args["menu-shot"]))
 			TestRun.quit(get_tree())
 		return
+	if world.building:
+		return  # (a browser draws the loading screen between its stages: World.build)
 	# the map is built and the battle under way: start the clock on it (not
 	# before: building the map holds up everything, a request included)
 	if _battle_pending and world.time > 1.0:

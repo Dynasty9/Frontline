@@ -9,14 +9,33 @@
 //   const { squads } = await game.query("squads", { team: 1 });
 //   await game.close();
 //
+// Starting a game is the dearest thing a test does (the engine compiles every
+// script first: several seconds), and each load builds a whole new battle, so
+// a test file starts one game and loads it afresh for each of its tests (see
+// attack.test.mjs). Where a test needs games of its own, Game.startMany starts
+// them together, so their start-ups overlap.
+//
+// A check that fails throws before the test's own close(), and a game left
+// running holds its socket open, which keeps node --test waiting for ever. So
+// this module adds an `after` hook to every file that uses it, which closes
+// whatever games the file's tests left running. It runs before the file's own
+// `after` hooks, and a second close() just returns the exit code, so their
+// checks of it still work. A test can close its game sooner, failed or not,
+// with t.after(() => game.close()).
+//
 // GODOT names the Godot 4.7 executable (on Windows, the _console.exe build).
 
 import { spawn } from "node:child_process";
 import net from "node:net";
 import path from "node:path";
+import { after } from "node:test";
 
 export const ROOT = path.resolve(import.meta.dirname, "..", "..");
 const READY = /TESTPORT listening 127\.0\.0\.1:(\d+)/;
+
+/** Every game started that hasn't quit yet. */
+const running = new Set();
+after(() => Promise.all([...running].map((game) => game.close())));
 
 /** A position for an order: [x, z] on the ground. */
 export const v3 = (x, z) => ({ v3: [x, z] });
@@ -28,12 +47,34 @@ export class Game {
       stdio: ["ignore", "pipe", "pipe"],
     });
     const game = new Game(proc);
-    const port = await game.#waitForPort(timeout);
-    await game.#connect(port);
+    try {
+      await game.#connect(await game.#waitForPort(timeout));
+    } catch (err) {
+      proc.kill(); // (one that opened its port but couldn't be reached would wait there for nobody)
+      throw err;
+    }
+    running.add(game);
+    game.#exit.then(() => running.delete(game));
     return game;
   }
 
+  /**
+   * Starts `n` games at once, with the same options as start(): their
+   * start-ups overlap, so two take hardly longer than one. If any fails to
+   * start, the others are closed again and the error thrown.
+   */
+  static async startMany(n, options = {}) {
+    const started = await Promise.allSettled(Array.from({ length: n }, () => Game.start(options)));
+    const failed = started.find((r) => r.status === "rejected");
+    if (failed) {
+      await Promise.all(started.filter((r) => r.status === "fulfilled").map((r) => r.value.close()));
+      throw failed.reason;
+    }
+    return started.map((r) => r.value);
+  }
+
   #proc;
+  #closed = null;
   #sock = null;
   #inbuf = "";
   #pending = []; // [resolve, reject, timer, cmd] in the order sent: replies come back in order
@@ -164,13 +205,26 @@ export class Game {
     return (await this.send("hash")).hash;
   }
 
+  /** Types a line into the in-game console and returns what it printed, a line a string. */
+  async console(line) {
+    return (await this.send("console", { line })).out;
+  }
+
   /** Script errors counted so far, and the last few of them. */
   scriptErrors() {
     return this.send("errors");
   }
 
-  /** Quits the game and returns its exit code (0: no script errors, no failed checks). */
-  async close() {
+  /**
+   * Quits the game and returns its exit code (0: no script errors, no failed
+   * checks). Closing it again only returns the code again.
+   */
+  close() {
+    this.#closed ??= this.#quit();
+    return this.#closed;
+  }
+
+  async #quit() {
     if (this.#sock && !this.#sock.destroyed) {
       await this.send("quit", {}, { timeout: 30_000 }).catch(() => {});
       this.#sock.end();

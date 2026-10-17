@@ -5,6 +5,8 @@ The long version: how each system works and why. For the short version, see the 
 - [Full controls reference](#full-controls-reference)
 - [Watching the AI](#watching-the-ai)
 - [Multiplayer in detail](#multiplayer-in-detail)
+- [In a browser](#in-a-browser)
+- [The console: finding out why it's slow](#the-console-finding-out-why-its-slow)
 - [Missions](#missions)
 - [The systems](#the-systems)
 
@@ -34,7 +36,7 @@ changes any of them:
 
 | | |
 |---|---|
-| Camera | WASD / arrows / screen edge pan (Shift: faster), mouse wheel zoom toward the cursor (or + / -), Q/E turn, Page Up / Page Down tilt. Middle-drag turns and tilts; **Alt+middle-drag grabs the map** and pans (Settings swaps the two). **Backspace** squares the view up again, **Ctrl+F** follows the selection, **Ctrl+F5..F8** save a view and **F5..F8** go back to it |
+| Camera | WASD / arrows / screen edge pan (Shift: faster), mouse wheel zoom toward the cursor (or + / -), Q/E turn, Page Up / Page Down tilt. Middle-drag turns and tilts; **Alt+middle-drag grabs the map** and pans (Settings swaps the two). **Backspace** squares the view up again, **Ctrl+F** follows the selection, **Ctrl+F5..F8** save a view and **F5..F8** go back to it. On a Mac's trackpad: two fingers grab the map (or zoom, a setting), pinch zooms, Option + two fingers turn and tilt |
 | Minimap | Click or drag to look there, right-click to send the selection, wheel to zoom. Click the compass needle to square the view up. **Alt+click** pings, **Alt+right-drag** draws for your side |
 | Co-commanders | **Alt+click** pings what's under the cursor (an enemy: "enemy spotted"; one of ours: "watch this"; the ground: "look here"). **Hold Alt + left button** for the ping wheel (attack, on my way, need support, danger, defend, look; let go in the middle to call it off). **Alt+right-drag** draws a line for your side. In the Command Net, click a name to look where they're looking, the screen button (or a double-click) to watch their view live |
 | Select | Left-click a soldier to select his squad, drag a box, double-click for all of that type on screen. **Alt+click** a soldier (or click his name in the squad panel) to command just him |
@@ -43,12 +45,12 @@ changes any of them:
 | High-level | **X attack-move** (or Ctrl+right-click): the squad bounds forward by fire teams, cover to cover, fights whatever it meets, then digs in at the objective. **B defend**: click the area (drag to face) and the squad spreads into the best cover there and holds. **R retreat** to the nearest FOB (routes around known enemy fire, suppression halved). **H hold** |
 | One soldier | With a single man picked out: right-click to move him into the best cover at that spot, right-click an enemy to engage, a nest or mortar pit to man it; G / T throw, H hold, R fall back. Any squad order brings him back into the squad |
 | Squad | G grenade, T smoke, F mortar fire mission (mortar teams) |
-| Build | Select infantry, click a building in the command card, left-click to place (R turns 90 degrees, Shift+wheel 45). Everything snaps to a 1 m build grid, shown round the cursor while you place. **Click and drag** to lay a whole line of trenches, sandbags, wire, walls or tank traps (lines run at 45 degree headings) |
+| Build | Select infantry, click a building in the command card, left-click to place (R turns 90 degrees, Shift+wheel or Shift + two fingers 45). Everything snaps to a 1 m build grid, shown round the cursor while you place. **Click and drag** to lay a whole line of trenches, sandbags, wire, walls or tank traps (lines run at 45 degree headings) |
 | Defenses | Emplacements are crewed by any idle soldier standing next to them. Right-click a bunker with a squad to garrison it. Select a mortar pit for HE / smoke fire missions |
 | Support | The buttons above the minimap (Z arms the first one ready): click the target, **drag** to set the run-in direction for gun runs and bombing runs |
 | Observer | C director camera, V whose eyes to watch through, P pause, [ ] speed, F2 hide the interface. **Fire support** (observer bar) launches any air or artillery support anywhere to watch it |
 | Command view | Tab tactical map (**hold Tab**: battle statistics), O order of battle (click a unit to select it and look at it, double-click to zoom in), the buttons beside the minimap turn map layers on and off (unit symbols, orders and attack plans, intelligence, fog of war, weapon ranges, soldier labels) |
-| Other | Home cycles FOBs, Space jumps to the last alert or ping (both glide there), Enter chats (Shift+Enter: team), L message history, F1 help, F3 performance overlay, **F4 field manual**, Esc menu |
+| Other | Home cycles FOBs, Space jumps to the last alert or ping (both glide there), Enter chats (Shift+Enter: team), L message history, F1 help, F3 performance overlay, **F4 field manual**, **` (or ~) the console**, Esc menu |
 
 ## Watching the AI
 
@@ -95,11 +97,18 @@ they're doing). The observer bar at the top has pause, speed (0.25x to 4x), dire
   address. If the two STUN servers see different ports the router is "symmetric" and can't be punched; the lobby
   says so, and that host needs UDP port **7777** forwarded. If a joiner isn't through in 12 seconds, Find Match
   moves on to the next battle.
-- **The website** (`web/`) lists the battles being hosted, each with a **Join** link, `frontline://join/<id>`
-  (and a Find Match one, `frontline://find-match`). An exported build registers the `frontline://` scheme the
-  first time it runs (per user: HKCU on Windows, a hidden `.desktop` handler on Linux), so the browser starts the
-  game with the link. If the game is already running, the new copy hands the link to it over a localhost socket
-  and quits. A link is ignored in a battle or a lobby, so a stray click never pulls anyone out of a game, and a
+- **The website** (`web/`) is pages, like any online game's site: a front page that shows the game off, Play,
+  the live battles, the ranks and insignia, your profile and the changelog. Sign in, in the header, opens a dialog
+  over whatever page you're on, and once you're in it takes you to your profile. It lists the battles being hosted,
+  each with a **Join** link, `frontline://join/<id>` (and a Find Match one, `frontline://find-match`). Its Play page launches the game with `frontline://open`: any
+  link the game doesn't know starts it (or brings a running copy to the front) and does nothing else, so older
+  versions open too. The browser can't tell the page whether anything took the link, so the page watches for
+  losing focus to the browser's prompt or the game's window, and otherwise explains how to set the game up the
+  first time. An exported build registers the `frontline://` scheme the
+  first time it runs (per user: HKCU on Windows, a hidden `.desktop` handler on Linux; a Mac app claims it in its
+  Info.plist, which macOS reads when the app is first opened), so the browser starts the game with the link (on a
+  Mac, as `--uri="frontline://..."`). If the game is already running, the new copy hands the link to it over a
+  localhost socket and quits. A link is ignored in a battle or a lobby, so a stray click never pulls anyone out of a game, and a
   battle listed for another version of the game reads as not found.
 - **Joining by address** (Direct connect) still works without the matchmaker: the host's IP on UDP port **7777**,
   forwarded or over a LAN/VPN (Tailscale, ZeroTier, Hamachi).
@@ -114,6 +123,11 @@ they're doing). The observer bar at the top has pause, speed (0.25x to 4x), dire
     `frontline://sign-in/<state>/<refresh token>`. The game takes only the state it made, so no other page can
     sign it in to someone else's account, and spends the token at once. The game's session and the site's are
     separate (a refresh token works once, so the two can't share one), and signing out ends only that one.
+    Both ends say what's happening, since the work is in the browser: the game's panel lists the steps (sign in
+    on the website, let the browser open Frontline, the game signs in), lights up the one it's on and keeps a
+    "Waiting for the website" line moving, then "Signing in..." when the link arrives; the site's dialog shows the
+    two steps, and after handing over the link watches whether the browser took it (the page loses focus to its
+    prompt or the game) and, if nothing did, says what to do.
   - **Email and password are for testing**: the game shows its own form when it runs from source or against a
     matchmaker the website doesn't know, and the website shows one on its dev server or when built against
     another matchmaker. The live site and the players' game only offer GitHub.
@@ -122,8 +136,24 @@ they're doing). The observer bar at the top has pause, speed (0.25x to 4x), dire
   after-action report itself, trimmed (every commander, both sides, the units that did most, the timeline). The
   menu's **Service Record** shows your career (battles, wins, kills, K/D, average rating, time in battle) and every
   battle newest first; open one for its after-action report. A battle fought signed out or offline waits in
-  `user://pending_battles.json` (the last ten) and goes up at the next sign-in. The figures are your own game's
-  account of the battle, so the record is only ever shown to you.
+  `user://pending_battles.json` (the last ten) and goes up at the next sign-in. A record is stamped with when it
+  arrives, and a day holds 200.
+- **Public profiles and leaderboards** (the website, `matchmaker/src/players.js`). Every player has a page on the
+  website, `/player/<callsign>`: their rank, XP and record, their place on the all-time board, and (unless they
+  keep them to themselves) their career and every battle on their service record, each with its after-action
+  report, every commander rated as the game's stats screen rates them. The figures in a battle are that player's
+  own game's word, and the page says so; they're never ranked. The **leaderboards** rank XP, which only the
+  accounts database writes, timed on its own clock: all time, this month and this week (what was earned since the
+  first, or since Monday, UTC), with a signed-in player's own row marked or added at the foot. A player can find
+  any other by callsign.
+  - **Your picture** on the website is your insignia, or the picture on your GitHub account (copied from GitHub at
+    each sign-in; only GitHub's own image host is taken). No uploads, so nothing to moderate.
+  - **Keeping your battles to yourself** (your profile, "Show my battles") takes your battles and career off your
+    page; your rank, XP and record stay public, and the game still shows you your service record.
+  - **A battle counts on the record** (battles fought, won) only if it earned XP: two minutes or more on the
+    database's clock. Before, a "win" reported a moment after starting counted as a battle won.
+  - **Moderation**: a player marked `hidden` in the database is on no board and has no page
+    (`matchmaker/README.md`).
 - **Ranks and insignia** (`ui/insignia.gd`, `ui/insignia_art.gd`, `matchmaker/src/ranks.js`). Signed in, every
   battle you fight earns XP, and you climb 50 ranks from Recruit to General of the Army (Private I-V, Corporal,
   Sergeant, Staff Sergeant, Master Sergeant, Lieutenant, Captain, Major and Colonel I-V, then the five grades of
@@ -218,6 +248,55 @@ they're doing). The observer bar at the top has pause, speed (0.25x to 4x), dire
   or team stats. Enemy HQs and starting FOBs are revealed to everyone, like start locations in most RTS games. Each
   player's game draws the fog from its own side's units (which it always knows), so nothing extra crosses the wire
   but the strips a recon flight has just photographed.
+
+## In a browser
+
+Every release also comes as a browser build (WebAssembly and WebGL 2), the same game with nothing to install. It
+plays alone: **Play vs AI**, **Missions** and **Watch AI Battle**, the Field Manual and Settings, and signing in for
+a service record. Multiplayer needs the desktop game, since a browser can't make the direct connections a battle
+between players runs over; the menu links to the downloads instead. It looks a little different (no screen-space
+lighting, volumetric fog or particle trails, which the browser's renderer doesn't have) and, with no threads to
+spread the work over, the map takes about 30 seconds to lay out, a stage at a time behind the loading screen. The
+simulation runs about as fast as on the desktop. The first battle also waits while the browser compiles the game's
+shaders (it keeps them, so only the first time); to keep that short, lighting is worked out per vertex, particles
+run on the processor, and explosions, muzzle flashes and fires don't cast light.
+
+## The console: finding out why it's slow
+
+The key under Esc (**`** or **~**, rebindable in Settings > Controls) drops a console down from the top of the
+screen, in a battle or in the menus. Its commands are mostly about one question: why is the game slow? Tab
+completes a command or its argument, Up and Down go through what was typed before, Esc closes it, `help` lists
+everything.
+
+- **`why`** reads the last five seconds and says what's holding the frame rate back: the screen's refresh or the
+  frame limit (not a problem), the graphics card (with the resolution it's drawing at), or the processor, and then
+  which part of it: the battle's game logic (its biggest systems, and whether the simulation keeps up with the
+  clock), the view's scripts, the renderer's draw calls. It adds the stutters of the last minute and what they
+  were, a flood of engine errors, an integrated graphics chip, a slow connection to the host.
+- **`bench`** (about a minute, or `bench quick`) turns each graphics setting down in turn, times the frames, and
+  lists what each saves, the most first. Vsync and the frame limit are off while it runs so a saving shows; your
+  own settings are measured again every few steps, so a battle that changes as it runs doesn't skew the answer,
+  and the middle frame of each measure is taken, so the stutter of a setting rebuilding (water, grass) doesn't
+  count against it. It also tries the battle paused (how much of each frame is the battle itself) and the
+  interface hidden, and puts everything back at the end.
+- **`graph`** pins a panel of every frame of the last ten seconds, each a column stacked by what its time went on
+  (game logic, view scripts, the renderer, the rest), the GPU's time as a line over it, and each stutter marked.
+- **`hitches`** lists the latest stutters (frames far longer than those round them, or over a threshold you give)
+  with what each was: the game logic catching up several ticks at once, a script, shaders compiling, engine errors.
+- **`top`** the costliest systems, game logic per tick and view scripts per frame, on average and at their worst;
+  **`render`** draw calls for the scene, the shadows and the interface; **`sys`** the computer (graphics card and
+  driver, processor, memory, screen, renderer); **`net`** the round trip and packet loss; **`errors`** what the
+  engine has logged.
+- **`perf 0-3`** and **`fps`** set the performance overlay (F3 cycles it); **`set`**, **`settings`** and
+  **`preset`** change settings as the Settings screen would (`set shadows off`, `set scale 77%`); **`pause`**
+  pauses a battle you play alone; **`draw overdraw`** and its kin show the scene's debug views.
+- **`report`** writes all of it (and the last bench) to `perf_report.txt` in the game's user folder and copies it
+  to the clipboard, to send to whoever is helping.
+
+Every frame is measured (`scripts/ui/perf_probe.gd`) for the overlay and the console: how long it took, the game
+logic and view scripts run in it, the renderer's CPU and GPU time, shader compilations and engine errors, kept
+frame by frame for ten seconds. Each system's own frame-by-frame cost (its worst frame, which system a stutter was
+in) starts being kept when the console first opens, since it costs a little every frame.
 
 ## Missions
 
@@ -411,7 +490,7 @@ function and an autopilot function.
 - **Hierarchical A\* (HPA\*)** over both grids: the map is cut into 16 x 16 m clusters with entrances wherever
   neighbouring clusters connect (and wherever a road crosses), true costs inside each cluster precomputed. Long
   trips plan on the abstract graph, then refine cluster by cluster. When walls go up or are blown down only the
-  touched clusters are rebuilt.
+  touched clusters are rebuilt, and of those only the borders and links the change can reach.
 - **Danger maps:** every second each side marks the clusters its spotted enemies cover (MG nests, bunkers and
   armour count for more). Ordinary moves skirt them, retreats keep well clear.
 - **Cover map:** every 1 m cell knows its cover level (heavy, light, none, exposed) and which way it faces, updated
@@ -441,15 +520,23 @@ function and an autopilot function.
   the shallows (fords, the edge of the beach) - slowly, and exposed. The beds are carved into the ground, so a
   man wading sinks to his knees. Bridges and the harbour are key points the AI fights over. The water is laid
   out on the server as a few shapes and rasterized identically on every client.
-- **How the water looks** (`water_view.gd`). The surface is drawn in tiles only where there's water. A swell
-  of a few long wave trains rolls in off the open sea in groups, dying away as the water shoals; breakers spill
-  unevenly along the beach and each one surges up the sand and drains back, leaving it dark and wet. The bed
-  shows through the water, bent by the ripples and dimmed with depth (red light dies first, so sand under the
-  sea turns turquoise and the open sea goes deep blue; fresh water is peaty green-brown), and the sky and its
-  clouds are reflected, more the flatter you look across it. The sun glitters off every ripple (a moon path at
-  night, only a sheen under cloud), rain dimples the water with rings, the wind's chop roughens in gusts, and
-  foam gathers wherever the water meets a bank, a hull or a pile, with whitecaps on the biggest waves. Boats
-  ride the same swell the player sees (the CPU samples the waves the shader draws).
+- **How the water looks** (`water_view.gd`). The surface is drawn in tiles only where there's water. The sea
+  runs two wave systems that cross: a swell from weather far out at sea, long and regular and coming in sets
+  (its heading a little different on each map), and the wind's own shorter, steeper sea running offshore with
+  the wind that carries the smoke. They're Gerstner waves, so the crests come up sharp and the troughs broad,
+  and they build up over the first 35 m out from the beach. The weather sets the sea: glassy at dawn, dusk and
+  golden hour, moderate by day, choppy under cloud, a storm sea in the rain with whitecaps breaking off the
+  crests and streaks of foam laid down the wind. Breakers rise as they shoal, spill unevenly along the beach and
+  surge up the sand, leaving it dark and wet. The bed shows through the water, bent by the ripples and dimmed
+  with depth (red light dies first, so sand under the sea turns turquoise and the open sea goes deep blue; fresh
+  water is peaty green-brown), with the light the ripples focus dancing on it in the shallows, and the sky and
+  its clouds are reflected, more the flatter you look across it. The sun glitters off every ripple (a moon path
+  at night, only a sheen under cloud), rain dimples the water with rings, the chop roughens in gusts, and foam
+  gathers wherever the water meets a bank, a hull or a pile. Boats ride the same waves the player sees (the
+  CPU samples the waves the shader draws). **Water quality** (Settings > Graphics) trades this against speed:
+  Low draws no see-through water (copying the screen for it is the costly part, most of all in a browser) and
+  fewer waves on a coarser grid; Medium is the full surface; High adds the light on the bed and the wind's
+  streaks; Ultra a finer grid for the swell.
 - On the 1 km map, country lanes branch off the main road to a village in each quarter (mirrored between the
   sides), and on the west the lanes run on over the river - each on its own bridge - to farming villages on
   the far bank: three bridges and two fords across the river in all.
@@ -617,6 +704,9 @@ function and an autopilot function.
   Alt+middle-drag grabs the map like a sheet of paper (a setting swaps them), Page Up / Down tilt. The pitch comes
   from the zoom, low and level close in and steep from high up, and the player's tilt is added to it; close in it
   stops before the lens goes into the hedges. Keyboard and edge panning ease in and out, and Shift pans faster.
+  On a Mac's trackpad (which scrolls in gestures, not wheel clicks) two fingers grab the map at the middle of the
+  screen, a pinch zooms toward the fingers, and Option + two fingers turn and tilt; a setting, shown only on a
+  Mac, makes two fingers zoom instead, for a Magic Mouse.
   Jumps (the last alert, a base, a group, a unit in the order of battle, a saved view) glide rather than cut.
   Backspace turns back to the heading the battle started on, Ctrl+F follows the selection until you pan away,
   and Ctrl+F5..F8 save views that F5..F8 glide back to.
@@ -662,8 +752,31 @@ function and an autopilot function.
   their draft, pitch and roll over the swell, lift their bows as they get on the plane, heel into turns and
   throw spray off the bow going hard. Each leaves a wake on the water: white water churned up astern in streaks
   that spread and fade into a smooth streak, and the bow wave running out in a V at the Kelvin angle (a wake
-  hides with a boat hidden in the fog of war). Men board a boat lying off a beach or bank by wading out to it,
-  and go ashore over the side wherever it stops by land at the end of a trip. A boat that's sunk blows up and
+  hides with a boat hidden in the fog of war).
+  **A boat handles like a boat, not a car** (`Vehicle._hull_tick`, the coxswain in `_con`): nothing grips the
+  road, so her hull slides through the water - in a hard turn she skids, bow inside the circle she's making
+  and stern swinging out, and the skid costs her way. There are no brakes: the water's drag takes her way off,
+  hard when she's fast and hardly at all once she's slow, and to stop she goes astern (an RHIB needs some 40 m
+  from full speed, a patrol ship 60 m and more). Her rudder or jets turn her only with water going past them -
+  her own way, or the wash of the engines going ahead, which is how she turns from lying stopped - and going
+  astern she hardly steers. Engines, helm and hull answer after a moment, a big hull's after a long one, so
+  the coxswain starts a turn early, meets her with opposite helm as she comes round, and slows for the bends
+  he sees coming as far off as she'd need to; at speed she can't be turned as tight as she can going slow. A
+  river carries a boat down with it (it runs south, fastest in mid-stream), and he steers the course she's
+  really making, current and skid and all. The Gun Trawler, a deep displacement hull, is the slowest of all to
+  answer, needs half as much water again to turn, and heels out of a turn where the planing boats bank into it.
+  On an attack a boat fights at a steady speed rather than stop dead for the shot, as a tank would; she lies
+  to only to fight it out with an enemy abaft her beam, rather than steam away from it.
+  A big hull needs a lot of water to turn round in (the patrol ship's turning circle is over 50 m across):
+  coming about for somewhere astern, she goes round towards her course, or the other way, out to sea, when
+  the shore's in the way; she backs into a spot not far behind rather than swing out in a loop for it (an
+  RHIB, which spins round in her own length, comes about and runs in bow first); and once she's round she
+  picks her route up further on instead of going back for its first points. A boat that runs onto the bank
+  goes astern off it, swinging her bow round towards her course, and tries again (sent close in by the shore,
+  she settles as near as she can get); where her route rounds a point of land she doesn't cut the corner
+  over it.
+  Men board a boat lying off a beach or bank by wading out to it, and go ashore over the side wherever it stops
+  by land at the end of a trip. A boat that's sunk blows up and
   founders: she floods, lists over and goes down by the head or the stern, burning till the water closes over
   the fire, foam boiling up along her as the air comes out, and leaves a rainbowed oil slick with wreckage
   drifting in it; whoever's aboard swims for the nearest bank. Shells landing in the water throw up a column of
@@ -673,7 +786,8 @@ function and an autopilot function.
   stop where he's sent. Wheeled vehicles steer like cars: a real turning circle from their wheelbase and
   steering lock, no turning on the spot, so a truck needs room to turn round. Tracked vehicles skid-steer:
   they pivot where they stand for a sharp turn but turn wider the faster they go. Weight sets how hard they
-  accelerate and brake. A spot close behind is backed into rather than reached by a loop; a vehicle keeps its
+  accelerate and brake. A spot close behind is backed into rather than reached by a loop; for one further
+  back the driver comes round on full lock (boats have handling of their own: see above); a vehicle keeps its
   distance behind one going its way, drives round one standing in the road and passes oncoming traffic on
   the right; supply trucks keep to the right-hand side of the road. Hung up on something, it backs off, turns
   and plans again. (Trucks are slower on the road than they were, so each load carries more.)
@@ -834,12 +948,32 @@ function and an autopilot function.
 - Everything can be shot up and repaired. Any FOB can be captured by whoever walks in and holds it. Lose your last FOB and you lose, but a side's last FOB is a last stand and takes four times as long to capture, and HQ sends a free reserve squad every 75 s to a side that is down to its last few soldiers.
 - Fog of war, drawn on the ground and the minimap, with intel pings and last-known enemy positions.
 
-**Look and feel** (`atmosphere.gd`, `mats.gd`, `vehicle_models.gd`, `vfx.gd`, `gunfx.gd`, `grass.gd`, `ui/`)
+**Look and feel** (`atmosphere.gd`, `mats.gd`, `vehicle_models.gd`, `vfx.gd`, `gunfx.gd`, `grass.gd`, `wildlife.gd`, `ui/`)
 - Eight lighting moods (midday, golden hour, dawn, dusk, overcast, hazy, **night**, **rain & thunder**) with a
   procedural sky, AgX tonemapping, cloud shadows drifting over the ground, volumetric haze and a subtle film look.
   At night the sky fills with stars and illumination flares drift down on parachutes over the fighting, throwing
   moving shadows. In the rain, streaks fall around the camera, splashes hit the ground, puddles reflect the sky and
   lightning flashes are followed by thunder.
+- **Wildlife** (`wildlife.gd`), drawn only on each player's own screen and never simulated or sent by the server,
+  so it can't change a battle or its seed. Flocks of sparrows and starlings (pigeons about the town) feed on bare
+  ground - tracks, yards, pavements, mud, shell holes, where the grass doesn't hide them - hopping and pecking,
+  and move on now and then; hares graze in the open; rats run along the walls in town and keep to their own
+  stretch of it; crows and buzzards turn circles overhead (gulls along the coast), throwing shadows; fish swim
+  under the surface of the rivers and ponds and sometimes jump; mallards paddle and upend to feed; dolphins
+  cruise the open sea, rolling up through the swell to breathe and now and then leaping clear. At night the
+  small and soaring birds roost, bats come out and so do more rats; in the rain fewer birds fly. They take
+  fright at gunfire, shells and rockets (Fx tells them), rounds cracking past or striking near, grass fires,
+  falling trees, low helicopters, a death among them and at the men and vehicles the local player can see coming
+  near - never at a hidden enemy - and a flock goes up with a rush of wings (the flocks nearby going up after
+  it), a rat runs for a hole in the nearest wall, a hare zigzags off, fish dart away, crows and gulls make off.
+  They can be killed, only for the eye: every shot's path is tested against the animals round it (group first,
+  then each), and a round through one, or a blast close by, kills it in a puff of blood and feathers - the round
+  flies on as it would have. Birds tumble out of the air, the dead lie on their sides where they fell (up to 30,
+  cleared out of sight later), fish stunned by a shell in the water float up belly-up. Synthesised calls: birdsong, a coo, caws, a gull's cry, a
+  squeak, the splash of a fish or a dolphin. Only the camera's surroundings are alive: whatever falls behind is
+  moved on ahead out of sight (birds fly in), so the cost doesn't grow with the map. Each kind is one MultiMesh
+  written in one go a frame, with wings, tails and flukes moved in the shader; groups off the screen aren't
+  drawn. Settings > Graphics > Wildlife: Plenty, Some or Off (Off on the Low preset).
 - Ambient sound: wind that grows as you zoom out (air rushing past and a hollow howl, in irregular gusts), and
   a distant battle (far-off artillery thumps, machine-gun bursts) that swells with the fighting.
 - Music (`music.gd`), synthesised like everything else: a small orchestra (strings, low strings, horns, a wordless
@@ -880,21 +1014,25 @@ function and an autopilot function.
   throw a fountain of earth high into the air that rains back down, fling burning fragments out in arcs that
   burn on where they land, leave flames licking about the crater for a moment, and clods land around the
   crater once the debris has fallen.
-- **Gunfire** (`gunfx.gd`): every round leaves the muzzle in a flash - a white-hot star, a tongue of flame thrown
-  out ahead and split sideways by the flash hider, bigger and longer for a .50 or an autocannon - with a moment's
-  light on everything round it (striking at night), a breath of smoke, and the case spinning out of the ejection
-  port to lie in the grass (brass piles up round a machine gun). The weapon kicks with each shot: the rifle back
-  into the shoulder and the muzzle up, the mounted gun on its pintle, the turret back on its ring when the main gun
-  fires. One round in so many is a tracer, red for the Coalition and green for the Rebels (Soviet-pattern
-  ammunition), never thinner than a pixel or two however far out the camera is. What a round hits decides what
-  flies: earth spurting up with clods raining out of it, grey grit and stone chips blown off a wall, a dry burst
-  of sand off sandbags, splinters, leaves fluttering down, sparks and a glint off steel, a dark mist off a man, a
-  white column and drops off water - shown when the round gets there, not when it's fired. Now and then one skips
-  off steel, stone or the ground and goes wailing away. A tank's gun fires with a blinding flash, a fireball
-  thrown out ahead, burning flecks, a cloud of smoke rolling out round the muzzle and the blast driving dust off
-  the ground; a rocket's back-blast kicks up the ground behind the launcher. All of it is drawn on the GPU, each
-  kind in a single draw call, with nothing moved from script once it's spawned, so a heavy firefight costs about
-  what a light one did.
+- **Gunfire** (`gunfx.gd`), sized to life: a rifle's muzzle flash is a hand's breadth of flame gone in a frame,
+  a .50's a forearm's, an autocannon's a man's height - a hot core and a short jet split into petals by the flash
+  hider (thrown out sideways by a heavy gun's muzzle brake), with a moment's light on everything round it
+  (striking at night). The gas that follows the round out glows for an instant and cools into a breath of smoke,
+  and the case spins out of the ejection port to lie in the grass (brass piles up round a machine gun). However
+  small, a flash never shrinks below a few pixels, so you can still see who's firing from high up. The weapon
+  kicks with each shot: the rifle back into the shoulder and the muzzle up, the mounted gun on its pintle, the
+  turret back on its ring when the main gun fires. One round in so many is a tracer, red for the Coalition and
+  green for the Rebels (Soviet-pattern ammunition): a thin bright thread at night, fainter and shorter by day,
+  never thinner than a pixel or two. What a round hits decides what flies, small and quick as in real footage: a
+  crown of dust and soil thrown up out of the ground, a puff of stone dust and chips off a wall, a dry burst of
+  sand off sandbags, splinters, leaves fluttering down, sparks and a glint off steel, a dark mist off a man, a
+  spout off water - shown when the round gets there, not when it's fired. Now and then one skips off steel, stone
+  or the ground. A tank's gun throws out a fireball of burning gas that's full size within a frame or two and
+  rolls into a cloud of smoke left hanging in front of the gun, with burning flecks and the blast driving dust
+  off the ground; a rocket's back-blast burns into a cloud behind the launcher. The smoke is shaded as a volume
+  from a warped density field - lit on the sun's side, in its own shadow on the far one, its thin edges glowing
+  against the sun - so no two puffs come out round. All of it is drawn on the GPU, each kind in a single draw
+  call, with nothing moved from script once it's spawned, so a heavy firefight costs about what a light one did.
 - **Physics** (`physics_fx.gd`, `ragdoll.gd`, Jolt): the dead become ragdolls - eleven jointed bodies with
   anatomical limits (knees and elbows bend one way). A bullet knocks a man back and he folds; a blast throws him
   limbs flailing and he tumbles to a stop, into a trench if that's where he lands. Later blasts throw the bodies

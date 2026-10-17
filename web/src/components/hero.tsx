@@ -1,28 +1,27 @@
-import { CaretDoubleDownIcon, CrosshairIcon, DownloadSimpleIcon, PlayIcon } from "@phosphor-icons/react"
+import { CaretDoubleDownIcon, DownloadSimpleIcon, FilmStripIcon, PlayIcon } from "@phosphor-icons/react"
 import { type CSSProperties, type RefObject, useEffect, useRef, useState } from "react"
+import { Link } from "react-router"
 import { Emblem } from "@/components/emblem"
 import { HudCorners, Timecode } from "@/components/footage"
 import { RadioLog } from "@/components/radio-log"
 import { Button } from "@/components/ui/button"
 import { useInView } from "@/hooks/use-in-view"
 import { useReducedMotion } from "@/hooks/use-reduced-motion"
-import { FIND_MATCH_LINK } from "@/lib/config"
 import type { Health } from "@/lib/matchmaker"
 import { media, saveData } from "@/lib/media"
-import { latest, type Platform, PLATFORM_NAMES } from "@/lib/releases"
+import { assetFor, latest, type Platform, PLATFORM_NAMES } from "@/lib/releases"
 
 type Props = {
   health: Health | undefined
   platform: Platform
-  onLaunch: () => void
   onWatch: () => void
 }
 
 /** What you command, typed into the headline one after another. */
 const COMMANDS = ["squads", "armour", "gunships", "artillery", "patrol boats", "A-10s"]
 
-export function Hero({ health, platform, onLaunch, onWatch }: Props) {
-  const asset = latest.assets[platform]
+export function Hero({ health, platform, onWatch }: Props) {
+  const asset = assetFor(platform)
   const video = useRef<HTMLVideoElement>(null)
   const [ref, inView] = useInView<HTMLElement>()
   const reduced = useReducedMotion()
@@ -86,10 +85,10 @@ export function Hero({ health, platform, onLaunch, onWatch }: Props) {
 
         <div className="mt-9 flex flex-wrap items-center gap-3">
           <Button size="lg" asChild className="shine h-12 px-6 text-sm font-bold tracking-wider uppercase">
-            <a href={asset.url}>
-              <DownloadSimpleIcon weight="bold" />
-              Download for {PLATFORM_NAMES[platform]}
-            </a>
+            <Link to="/play">
+              <PlayIcon weight="fill" />
+              Play now
+            </Link>
           </Button>
           <Button
             size="lg"
@@ -97,9 +96,9 @@ export function Hero({ health, platform, onLaunch, onWatch }: Props) {
             asChild
             className="h-12 border-white/25 bg-black/30 px-6 text-sm font-bold tracking-wider uppercase backdrop-blur-sm"
           >
-            <a href={FIND_MATCH_LINK} onClick={onLaunch}>
-              <CrosshairIcon weight="bold" />
-              Find a match
+            <a href={asset.url}>
+              <DownloadSimpleIcon weight="bold" />
+              Download for {PLATFORM_NAMES[platform]}
             </a>
           </Button>
           <button
@@ -109,7 +108,7 @@ export function Hero({ health, platform, onLaunch, onWatch }: Props) {
           >
             <span className="relative grid size-10 place-items-center rounded-full border border-primary/60 bg-primary/10 transition-colors group-hover:bg-primary/25">
               <span className="absolute inset-0 animate-ping rounded-full border border-primary/40 [animation-duration:2.2s] motion-reduce:hidden" />
-              <PlayIcon weight="fill" className="size-4 text-primary" />
+              <FilmStripIcon weight="fill" className="size-4 text-primary" />
             </span>
             Watch the footage
           </button>
@@ -117,9 +116,9 @@ export function Hero({ health, platform, onLaunch, onWatch }: Props) {
 
         <p className="mt-4 text-xs text-muted-foreground">
           Free and open source · {latest.name} ·{" "}
-          <a href="#download" className="underline-offset-4 hover:text-foreground hover:underline">
+          <Link to="/play#download" className="underline-offset-4 hover:text-foreground hover:underline">
             other platforms
-          </a>
+          </Link>
         </p>
         <LiveLine health={health} />
       </div>

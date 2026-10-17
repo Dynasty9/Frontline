@@ -34,13 +34,15 @@ func _init() -> void:
 	ikind.resize(N * N)
 	vkind.resize(N * N)
 	heat.resize(N * N)
-	# keep vehicles off the outer rim
-	for i in N:
-		for j in [0, 1, 2, N - 3, N - 2, N - 1]:
-			veh.set_point_solid(Vector2i(i, j), true)
-			veh.set_point_solid(Vector2i(j, i), true)
 	hnav_i = HNav.new(inf, false)
 	hnav_v = HNav.new(veh, true)
+	# keep vehicles off the outer rim (every cell set is passed on to the
+	# hierarchical graphs, which keep their own copy: see HNav._solid)
+	for i in N:
+		for j in [0, 1, 2, N - 3, N - 2, N - 1]:
+			for c: Vector2i in [Vector2i(i, j), Vector2i(j, i)]:
+				veh.set_point_solid(c, true)
+				hnav_v.mark_dirty(c)
 
 
 # --- boats --------------------------------------------------------------------------
@@ -134,6 +136,21 @@ func boat_ok(p: Vector3) -> bool:
 	return has_boats and not boat.is_point_solid(boat_cell(p))
 
 
+## Open water all the way from a to b, for a hull `half_w` metres either side
+## of her keel (checked a cell apart down the middle and both sides).
+func boat_line(a: Vector3, b: Vector3, half_w := 0.0) -> bool:
+	var d := Vector3(b.x - a.x, 0.0, b.z - a.z)
+	var dist := d.length()
+	if dist < 0.01:
+		return boat_ok(a)
+	var side := Vector3(-d.z, 0.0, d.x) / dist * half_w
+	for k in int(dist / BR) + 1:
+		var p := a + d * minf(k * BR / dist, 1.0)
+		if not boat_ok(p) or (half_w > 0.0 and (not boat_ok(p + side) or not boat_ok(p - side))):
+			return false
+	return boat_ok(b)
+
+
 ## The nearest water a boat can reach to p (within r metres) - in that body
 ## of water, if one is given - or INF.
 func nearest_boat(p: Vector3, r := 60.0, body := -1) -> Vector3:
@@ -188,8 +205,9 @@ func finalize() -> void:
 ## being laid or a village flattened dirties dozens at once). Counted, not
 ## timed: if how much gets re-linked each tick hung on how fast this computer
 ## is, one seed would route men differently from one run to the next. (It was
-## a 1.2 ms budget, but one cluster takes several ms in GDScript, so in effect
-## it was one a tick, now and then two.)
+## a 1.2 ms budget, when one cluster took several ms in GDScript, so in effect
+## it was one a tick, now and then two. A repair now redoes only what changed,
+## well under a millisecond as a rule.)
 func update_hier(clusters := 1) -> void:
 	for i in clusters:
 		if not hnav_i.dirty.is_empty():
@@ -410,7 +428,7 @@ func _hier_path(h: HNav, g: AStarGrid2D, a: Vector2i, b: Vector2i, team: int, ca
 		var cp := h.cluster_of(p)
 		var seg: Array[Vector2i] = []
 		if cp == h.cluster_of(q):
-			seg = (h.local[cp] as AStarGrid2D).get_id_path(p, q)
+			seg = h.local_grid(cp).get_id_path(p, q)
 		if seg.is_empty():
 			seg = g.get_id_path(p, q)
 		if seg.is_empty():

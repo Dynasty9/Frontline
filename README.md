@@ -12,7 +12,7 @@
 
 Frontline is a real-time strategy game about modern infantry combat. You command squads, not individual soldiers: you decide where they go, and they decide how to get there and how to fight.
 
-Your soldiers take cover behind real walls and wrecks, keep their heads down under fire, drag their wounded to safety and throw enemy grenades back. Squads leapfrog forward one team at a time, clear houses room by room, set ambushes on the roads, and break and run when a fight goes badly. Tanks pop smoke when a missile is fired at them. Shellfire sets woods, hedgerows, roofs and cars alight, and the fire spreads with the wind and drives men out of their cover. Boats land raiding parties on the beach, and helicopters carry vehicles to the front on a cable.
+Your soldiers take cover behind real walls and wrecks, keep their heads down under fire, drag their wounded to safety and throw enemy grenades back. Squads leapfrog forward one team at a time, clear houses room by room, set ambushes on the roads, and break and run when a fight goes badly. Tanks pop smoke when a missile is fired at them. Shellfire sets woods, hedgerows, roofs and cars alight, and the fire spreads with the wind and drives men out of their cover. Life goes on round the fighting: birds feed in the fields until the shooting sends them up, rats run along the walls in town, ducks paddle on the ponds and dolphins roll through the swell offshore. Boats land raiding parties on the beach, and helicopters carry vehicles to the front on a cable.
 
 You can play alone against the computer, team up with friends against it, or fight each other online. The battlefield is a square kilometre of countryside with a town, villages, a river and the sea.
 
@@ -31,7 +31,7 @@ Everything you see and hear is made in code, the music included. There are no im
 
 ## Quick start
 
-The easiest way: download the latest build for Windows or Linux from **[the Frontline website](https://web-production-5a4c1.up.railway.app)** (or the [releases page](https://github.com/Dynasty9/Frontline/releases)), unzip it and run it. It updates itself when a new version comes out; [the changelog](https://web-production-5a4c1.up.railway.app/changelog/) says what's in each. The website also lists the battles being hosted right now, with a **Join** button on each that opens the game and connects you.
+The easiest way: download the latest build for Windows, macOS or Linux from **[the Frontline website](https://web-production-5a4c1.up.railway.app)** (or the [releases page](https://github.com/Dynasty9/Frontline/releases)). On Windows, run the installer (`Frontline-windows-setup.exe`: no administrator rights needed). On a Mac, open the disk image (`Frontline-macos.dmg`) and drag Frontline into Applications; it isn't notarized yet, so the first time, allow it under System Settings → Privacy & Security → Open Anyway. On Linux, or to run it without installing, unzip the zip and run it. It updates itself when a new version comes out; [the changelog](https://web-production-5a4c1.up.railway.app/changelog/) says what's in each. The website also lists the battles being hosted right now, with a **Join** button on each that opens the game and connects you.
 
 To run it from source instead:
 
@@ -96,6 +96,8 @@ Every key below is a default: change any of them in **Settings → Controls**. A
 
 Prefer the middle mouse to pan rather than turn? Swap them in **Settings → Interface**, where you'll also find the minimap's size and an option to turn it with the camera.
 
+On a Mac's trackpad, scroll with two fingers to drag the map and pinch to zoom; hold Option to turn and tilt instead, and Shift to turn what you're placing. **Settings → Interface → Two-finger scroll** makes two fingers zoom instead (handy on a Magic Mouse).
+
 **Selecting**
 
 | Action | Keys |
@@ -141,6 +143,7 @@ Prefer the middle mouse to pan rather than turn? Swap them in **Settings → Int
 | Hide the interface | F2 |
 | Performance overlay | F3 |
 | Field Manual | F4 |
+| Console (why it's slow, frame graphs, a settings benchmark: type `help`) | ` or ~ |
 | Chat (team chat) | Enter (Shift + Enter) |
 | Message history | L |
 | Menu and settings | Esc |

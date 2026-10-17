@@ -61,8 +61,10 @@ export const RESULTS = { win: 1.5, loss: 1, left: 0.5 };
 
 export const isResult = (r) => typeof r === 'string' && Object.hasOwn(RESULTS, r);
 
-// A battle shorter than this earns nothing (quitting at once isn't a battle),
-// and time past the longest earns nothing more (nor does a game left running).
+// A battle shorter than this earns nothing and doesn't count on the record
+// (quitting at once isn't a battle, and a "win" reported a moment after
+// starting isn't a battle won), and time past the longest earns nothing more
+// (nor does a game left running).
 export const MIN_BATTLE_S = 2 * 60;
 export const MAX_BATTLE_S = 45 * 60;
 

@@ -1,21 +1,27 @@
 {
-  "version": "1.0.1",
-  "tag": "v1.0.1",
-  "name": "Frontline v1.0.1",
-  "published": "2026-10-16T22:38:42Z",
-  "url": "https://github.com/Dynasty9/Frontline/releases/tag/v1.0.1",
+  "version": "1.0.4",
+  "tag": "v1.0.4",
+  "name": "Frontline v1.0.4",
+  "published": "2026-10-17T05:25:19Z",
+  "url": "https://github.com/Dynasty9/Frontline/releases/tag/v1.0.4",
   "assets": {
     "windows": {
       "name": "Frontline-windows.zip",
-      "url": "https://github.com/Dynasty9/Frontline/releases/download/v1.0.1/Frontline-windows.zip",
-      "size": 41229383,
-      "sha256": "6cf193e391f20a08318f2201fa925438e6981a7ff636a54c4bed39750edb9e6f"
+      "url": "https://github.com/Dynasty9/Frontline/releases/download/v1.0.4/Frontline-windows.zip",
+      "size": 41723592,
+      "sha256": "55f069ea49d5a0349ee258df42d875de87b5f4ea2d9b4299328ddb2ef2200a35"
+    },
+    "macos": {
+      "name": "Frontline-macos.zip",
+      "url": "https://github.com/Dynasty9/Frontline/releases/download/v1.0.4/Frontline-macos.zip",
+      "size": 64937146,
+      "sha256": "c6646a9886d5e0abbe746e42d96e5f03931f156e6996b9cd051c62b80bccc431"
     },
     "linux": {
       "name": "Frontline-linux.zip",
-      "url": "https://github.com/Dynasty9/Frontline/releases/download/v1.0.1/Frontline-linux.zip",
-      "size": 31649012,
-      "sha256": "6743b5bf0d23db4fa57e43bc820eabcc319735322ba7f232022adc82a37e028e"
+      "url": "https://github.com/Dynasty9/Frontline/releases/download/v1.0.4/Frontline-linux.zip",
+      "size": 32142911,
+      "sha256": "005411e27321376597e7cd22f139275391f13b4bacbf77b97423a4c9329d6f9f"
     }
   }
 }

@@ -8,20 +8,22 @@ const PATH := "user://settings.cfg"
 
 const PRESETS := {
 	"low": {"shadows": 1, "ssao": false, "ao_q": 0, "ssil": false, "gi": false, "vol_fog": false, "glow": true, "aa": 1, "scale": 0.77,
-		"upscaler": 1, "grass": 0, "effects": 0, "decals": false, "ragdolls": false, "post": false, "dof": false, "ssr": false, "lod": 0, "aniso": 1},
+		"upscaler": 1, "grass": 0, "wildlife": 0, "effects": 0, "decals": false, "ragdolls": false, "post": false, "dof": false, "ssr": false, "lod": 0, "aniso": 1, "water": 0},
 	"medium": {"shadows": 2, "ssao": true, "ao_q": 1, "ssil": false, "gi": false, "vol_fog": false, "glow": true, "aa": 2, "scale": 1.0,
-		"upscaler": 1, "grass": 1, "effects": 1, "decals": true, "ragdolls": true, "post": true, "dof": false, "ssr": false, "lod": 1, "aniso": 2},
+		"upscaler": 1, "grass": 1, "wildlife": 1, "effects": 1, "decals": true, "ragdolls": true, "post": true, "dof": false, "ssr": false, "lod": 1, "aniso": 2, "water": 1},
 	"high": {"shadows": 2, "ssao": true, "ao_q": 2, "ssil": true, "gi": false, "vol_fog": true, "glow": true, "aa": 6, "scale": 1.0,
-		"upscaler": 1, "grass": 2, "effects": 2, "decals": true, "ragdolls": true, "post": true, "dof": false, "ssr": true, "lod": 2, "aniso": 3},
+		"upscaler": 1, "grass": 2, "wildlife": 2, "effects": 2, "decals": true, "ragdolls": true, "post": true, "dof": false, "ssr": true, "lod": 2, "aniso": 3, "water": 2},
 	"ultra": {"shadows": 3, "ssao": true, "ao_q": 3, "ssil": true, "gi": true, "vol_fog": true, "glow": true, "aa": 7, "scale": 1.0,
-		"upscaler": 1, "grass": 2, "effects": 2, "decals": true, "ragdolls": true, "post": true, "dof": true, "ssr": true, "lod": 2, "aniso": 4},
+		"upscaler": 1, "grass": 2, "wildlife": 2, "effects": 2, "decals": true, "ragdolls": true, "post": true, "dof": true, "ssr": true, "lod": 2, "aniso": 4, "water": 3},
 }
 
 const LABELS := {
 	"shadows": ["Off", "Low", "High", "Ultra"],
 	"aa": ["Off", "FXAA", "MSAA 2x", "MSAA 4x", "TAA", "SMAA", "MSAA 2x + SMAA", "MSAA 4x + SMAA"],
 	"grass": ["Off", "Sparse", "Dense"],
+	"wildlife": ["Off", "Some", "Plenty"],
 	"effects": ["Low", "Medium", "High"],
+	"water": ["Low", "Medium", "High", "Ultra"],
 	"fps_cap": ["Unlimited", "60", "120", "144", "240"],
 	"perf": ["Off", "FPS", "Compact", "Full breakdown"],
 	"ao_q": ["Low", "Medium", "High", "Ultra"],
@@ -32,6 +34,7 @@ const LABELS := {
 	"look": ["Natural", "Cinematic", "Vivid", "Warm film", "Cold steel", "Bleached war film", "Black & white"],
 	"tonemap": ["AgX (filmic, default)", "ACES", "Filmic", "Reinhard"],
 	"mmb_mode": ["Turn and tilt", "Pan (grab the map)"],
+	"scroll_mode": ["Pan (grab the map)", "Zoom"],
 	"minimap_size": ["Small", "Medium", "Large"],
 }
 const RESOLUTIONS := [Vector2i(1280, 720), Vector2i(1600, 900), Vector2i(1920, 1080), Vector2i(2560, 1440), Vector2i(3840, 2160)]
@@ -50,12 +53,12 @@ const FPS_CAPS := [0, 60, 120, 144, 240]
 var preset := "high"
 var v := {
 	"shadows": 2, "ssao": true, "ssil": true, "gi": false, "vol_fog": true, "glow": true, "aa": 6, "scale": 1.0,
-	"grass": 2, "effects": 2, "decals": true, "ragdolls": true, "post": true, "dof": false,
+	"grass": 2, "wildlife": 2, "effects": 2, "decals": true, "ragdolls": true, "post": true, "dof": false,
 	"vsync": true, "fps_cap": 0, "perf": 1, "shake": true, "ui_scale": 1.0, "mood": "random", "labels": true, "lyr_units": true, "lyr_orders": false, "lyr_intel": true, "lyr_vision": true, "lyr_ranges": false, "orbat": true,
-	"ao_q": 2, "upscaler": 1, "sharpen": 0.2, "ssr": true, "lod": 2, "aniso": 3,
+	"ao_q": 2, "upscaler": 1, "sharpen": 0.2, "ssr": true, "lod": 2, "aniso": 3, "water": 2,
 	"window": 0, "resolution": 2, "brightness": 1.0, "contrast": 1.0, "look": 0, "tonemap": 0, "fov": 48.0,
 	"bubbles": true, "cover_preview": true, "edge_pan": true, "cam_speed": 1.0,
-	"zoom_cursor": true, "mmb_mode": 0, "minimap_size": 1, "minimap_rotate": false,
+	"zoom_cursor": true, "mmb_mode": 0, "scroll_mode": 0, "minimap_size": 1, "minimap_rotate": false,
 	"coop_show": true, "ui_theme": "brass", "error_reports": true,
 	"volume": 0.8, "vol_music": 0.6, "vol_effects": 1.0, "vol_ambience": 0.8, "vol_ui": 0.8, "battle_music": true, "mute_bg": false,
 }
@@ -64,6 +67,9 @@ const VOLUME_BUS := {"volume": "Master", "vol_music": "Music", "vol_effects": "E
 
 
 func _ready() -> void:
+	if OS.has_feature("web"):
+		v.water = 1  # (a browser starts on Medium water, until the player picks)
+		v.wildlife = 1  # (and on Some wildlife: the game's scripts run slower there)
 	_load()
 	apply_global()
 	# the interface follows the window: resizing it or going fullscreen rescales it
@@ -106,7 +112,8 @@ func apply_global() -> void:
 		var aa := int(v.aa)
 		vp.msaa_3d = [Viewport.MSAA_DISABLED, Viewport.MSAA_DISABLED, Viewport.MSAA_2X, Viewport.MSAA_4X, Viewport.MSAA_DISABLED,
 			Viewport.MSAA_DISABLED, Viewport.MSAA_2X, Viewport.MSAA_4X][clampi(aa, 0, 7)]
-		vp.screen_space_aa = Viewport.SCREEN_SPACE_AA_FXAA if aa == 1 else (Viewport.SCREEN_SPACE_AA_SMAA if aa >= 5 else Viewport.SCREEN_SPACE_AA_DISABLED)
+		if not Vfx.gl:  # (OpenGL, the browser build's renderer, has no screen-space AA, and says so)
+			vp.screen_space_aa = Viewport.SCREEN_SPACE_AA_FXAA if aa == 1 else (Viewport.SCREEN_SPACE_AA_SMAA if aa >= 5 else Viewport.SCREEN_SPACE_AA_DISABLED)
 		vp.use_taa = aa == 4
 		var sc: float = clampf(float(v.scale), 0.5, 1.0)
 		vp.scaling_3d_scale = sc
@@ -232,6 +239,12 @@ func _apply_window() -> void:
 	_win_applied = [wm, ri]
 	if first and _test_launch():
 		return  # test runs keep the project's own window (or the size --resolution asks for)
+	if OS.has_feature("web"):
+		# the page sizes the game, and the browser only goes fullscreen for a
+		# click (so not as the game opens): either kind of fullscreen is its own
+		if not first:
+			DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_FULLSCREEN if wm > 0 else DisplayServer.WINDOW_MODE_WINDOWED)
+		return
 	match wm:
 		1:
 			DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_FULLSCREEN)
@@ -282,6 +295,11 @@ func _load() -> void:
 	preset = String(cf.get_value("main", "preset", preset))
 	for k in v:
 		v[k] = cf.get_value("main", k, v[k])
+	# wildlife came later: someone who picked Low to save frames gets none, and a
+	# custom setup gets as much as it has grass, rather than the default's plenty
+	# (never more than this platform's default)
+	if not cf.has_section_key("main", "wildlife"):
+		v.wildlife = mini(int(v.wildlife), int(PRESETS[preset].wildlife) if PRESETS.has(preset) else int(v.grass))
 	# v2: temporal AA (and FSR 2 at native scale) smeared the procedural
 	# surfaces whenever the camera moved; move saved setups to MSAA + SMAA
 	if int(cf.get_value("main", "cfg_version", 1)) < 2:

@@ -253,8 +253,9 @@ def notes(version: str) -> str:
     out += [
         "## Get it",
         "",
-        f"The game updates itself. To install it, download **Frontline-windows.zip** or **Frontline-linux.zip** below,"
-        f" or from [the website]({WEBSITE}/#download), unzip it anywhere and run it.",
+        f"The game updates itself. To install it, download **Frontline-windows.zip**, **Frontline-macos.zip** or"
+        f" **Frontline-linux.zip** below, or from [the website]({WEBSITE}/#download), unzip it anywhere and run it"
+        f" (on a Mac, move Frontline to Applications first).",
         "",
         f"The whole history, with pictures: [Changelog]({WEBSITE}/changelog/#{r['tag']}).",
     ]

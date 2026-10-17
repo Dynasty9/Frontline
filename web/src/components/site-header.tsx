@@ -1,31 +1,39 @@
-import { DownloadSimpleIcon, GithubLogoIcon, UserCircleIcon } from "@phosphor-icons/react"
+import { GithubLogoIcon, ListIcon, PlayIcon } from "@phosphor-icons/react"
 import { useEffect, useState } from "react"
+import { Link, NavLink } from "react-router"
+import { AccountMenu } from "@/components/account-menu"
 import { Emblem, Wordmark } from "@/components/emblem"
-import { InsigniaImg } from "@/components/insignia-img"
 import { Button } from "@/components/ui/button"
-import { useAccount } from "@/lib/account"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { GITHUB_URL } from "@/lib/config"
-import { rankName, wornInsignia } from "@/lib/insignia"
 import { cn } from "@/lib/utils"
 
-// absolute, so they work from the changelog page too
+// The site's pages, and the front page's tour of the game (/#intel). `wide`:
+// on a tablet there isn't room for every link beside the account.
 const NAV = [
-  ["The game", "/#intel"],
-  ["Missions", "/#missions"],
-  ["Battles", "/#battles"],
-  ["Insignia", "/#insignia"],
-  ["What's new", "/changelog/"],
+  { label: "The game", to: "/#intel", wide: true },
+  { label: "Battles", to: "/battles" },
+  { label: "Leaderboards", to: "/leaderboards" },
+  { label: "Ranks", to: "/ranks", wide: true },
+  { label: "What's new", to: "/changelog" },
 ] as const
-// on a tablet there isn't room for every link beside the account chip
-const WIDE_ONLY = new Set<string>(["/#insignia"])
 
 /**
  * The site's header. With `overlay` (the front page) it floats clear over the
  * hero's footage and takes on a backing once the page scrolls under it;
  * otherwise it's a solid bar that sits above the page. `accounts` is the
- * matchmaker's /health answer: "off" hides signing in.
+ * matchmaker's /health answer ("off" hides signing in); `live` is how many
+ * battles are being hosted.
  */
-export function SiteHeader({ overlay = false, accounts }: { overlay?: boolean; accounts?: string }) {
+export function SiteHeader({
+  overlay = false,
+  accounts,
+  live,
+}: {
+  overlay?: boolean
+  accounts?: string
+  live?: number
+}) {
   const [scrolled, setScrolled] = useState(false)
   useEffect(() => {
     if (!overlay) return
@@ -45,25 +53,33 @@ export function SiteHeader({ overlay = false, accounts }: { overlay?: boolean; a
       )}
     >
       <div className="mx-auto flex h-14 max-w-6xl items-center gap-3 px-4 sm:px-6 lg:gap-6">
-        <a href="/" className="flex items-center gap-2.5" aria-label="Frontline home">
+        <MobileNav live={live} />
+        <Link to="/" className="flex items-center gap-2.5" aria-label="Frontline home">
           <Emblem className="size-7" />
           <Wordmark className="text-base" />
-        </a>
-        <nav className="ml-auto hidden items-center gap-1 md:flex">
-          {NAV.map(([label, href]) => (
-            <Button
-              key={href}
-              variant="ghost"
-              size="sm"
-              asChild
-              className={cn(
-                "text-sm text-muted-foreground hover:text-foreground",
-                WIDE_ONLY.has(href) && "hidden lg:inline-flex"
-              )}
-            >
-              <a href={href}>{label}</a>
-            </Button>
-          ))}
+        </Link>
+        <nav aria-label="Site" className="ml-auto hidden items-center gap-1 md:flex">
+          {NAV.map((n) => {
+            // a page's link says when you're on it (aria-current); a front-page section's never does
+            const To = n.to.includes("#") ? Link : NavLink
+            return (
+              <Button
+                key={n.to}
+                variant="ghost"
+                size="sm"
+                asChild
+                className={cn(
+                  "text-sm text-muted-foreground hover:text-foreground aria-[current=page]:text-foreground",
+                  "wide" in n && "hidden lg:inline-flex"
+                )}
+              >
+                <To to={n.to}>
+                  {n.label}
+                  {n.to === "/battles" && !!live && <LiveCount n={live} />}
+                </To>
+              </Button>
+            )
+          })}
         </nav>
         <div className="ml-auto flex items-center gap-2 md:ml-0">
           {/* on a phone it makes way for the account (the footer links the source too) */}
@@ -74,42 +90,52 @@ export function SiteHeader({ overlay = false, accounts }: { overlay?: boolean; a
             </a>
           </Button>
           <Button size="sm" asChild className="text-sm font-bold">
-            <a href="/#download">
-              <DownloadSimpleIcon weight="bold" />
-              Download
-            </a>
+            <Link to="/play">
+              <PlayIcon weight="fill" />
+              Play
+            </Link>
           </Button>
-          {accounts !== "off" && <AccountChip />}
+          {accounts !== "off" && <AccountMenu />}
         </div>
       </div>
     </header>
   )
 }
 
-/** Signed in: your insignia, callsign and rank, which take you to your profile. */
-function AccountChip() {
-  const { user } = useAccount()
-  if (!user) {
-    return (
-      <Button variant="ghost" size="sm" asChild className="text-sm text-muted-foreground hover:text-foreground">
-        <a href="/#insignia" aria-label="Sign in">
-          <UserCircleIcon />
-          <span className="hidden lg:inline">Sign in</span>
-        </a>
-      </Button>
-    )
-  }
-  const worn = wornInsignia(user.icon)
+function LiveCount({ n }: { n: number }) {
   return (
-    <Button variant="outline" size="sm" asChild className="h-8 gap-2 pr-2 pl-1 text-sm">
-      <a href="/#insignia" aria-label={`${user.callsign}, ${rankName(user.rank)}: your profile and insignia`}>
-        {worn && <InsigniaImg id={worn.id} />}
-        {/* the callsign only where there's room for it beside the nav (it's in the profile anyway) */}
-        <span className="hidden max-w-36 truncate sm:block md:hidden lg:block">{user.callsign}</span>
-        <span className="border border-primary/40 px-1 text-[10px] leading-4 font-bold text-primary tabular-nums">
-          {user.rank}
-        </span>
-      </a>
-    </Button>
+    <span className="ml-0.5 inline-flex items-center gap-1 text-xs text-good tabular-nums">
+      <span className="size-1.5 rounded-full bg-good" />
+      {n}
+      <span className="sr-only">{n === 1 ? "battle" : "battles"} live</span>
+    </span>
+  )
+}
+
+/** On a phone the links fold into a menu. */
+function MobileNav({ live }: { live?: number }) {
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="ghost" size="icon-sm" className="-ml-2 md:hidden" aria-label="Menu">
+          <ListIcon className="size-5" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="start" className="w-48">
+        {[{ label: "Play", to: "/play" }, ...NAV].map((n) => (
+          <DropdownMenuItem key={n.to} asChild>
+            <Link to={n.to}>
+              {n.label}
+              {n.to === "/battles" && !!live && <LiveCount n={live} />}
+            </Link>
+          </DropdownMenuItem>
+        ))}
+        <DropdownMenuItem asChild>
+          <a href={GITHUB_URL} target="_blank" rel="noreferrer">
+            Source on GitHub
+          </a>
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
   )
 }

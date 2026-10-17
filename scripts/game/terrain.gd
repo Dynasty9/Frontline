@@ -65,10 +65,24 @@ func _init(w) -> void:
 	_make_biome()
 
 
+## The last seed's biome and the mud it lays (a test loads battle after battle,
+## mostly on one seed): the noise takes a good part of a second to make, and
+## it comes out the same every time for the same seed. Nothing writes to the
+## image; the mud is copied in and out.
+static var _biome_seed := -1
+static var _biome_last: Image = null
+static var _mud_last := PackedByteArray()
+
+
 ## Same noise the ground shader paints with, so mud is where the mud looks like it is.
 func _make_biome() -> void:
+	var s := int(world.settings.get("seed", 1)) % 100000
+	if s == _biome_seed and _biome_last != null:
+		biome_img = _biome_last
+		base = _mud_last.duplicate()
+		return
 	var n := FastNoiseLite.new()
-	n.seed = int(world.settings.get("seed", 1)) % 100000
+	n.seed = s
 	n.noise_type = FastNoiseLite.TYPE_SIMPLEX_SMOOTH
 	n.frequency = 0.012
 	n.fractal_type = FastNoiseLite.FRACTAL_FBM
@@ -80,6 +94,9 @@ func _make_biome() -> void:
 			var b := biome_img.get_pixel(x + bo, z + bo).r
 			if b > 0.725:
 				base[z * N + x] = MUD
+	_biome_seed = s
+	_biome_last = biome_img
+	_mud_last = base.duplicate()
 
 
 func idx_of(p: Vector3) -> int:

@@ -1,21 +1,20 @@
-import { CrosshairIcon, DownloadSimpleIcon } from "@phosphor-icons/react"
+import { DownloadSimpleIcon, PlayIcon } from "@phosphor-icons/react"
 import { useEffect, useRef } from "react"
+import { Link } from "react-router"
 import { Reveal } from "@/components/reveal"
 import { Button } from "@/components/ui/button"
 import { useInView } from "@/hooks/use-in-view"
 import { useReducedMotion } from "@/hooks/use-reduced-motion"
-import { FIND_MATCH_LINK } from "@/lib/config"
 import { media, saveData } from "@/lib/media"
-import { latest, type Platform, PLATFORM_NAMES } from "@/lib/releases"
+import { assetFor, type Platform, PLATFORM_NAMES, platformList } from "@/lib/releases"
 
 type Props = {
   platform: Platform
-  onLaunch: () => void
 }
 
 /** The last word: footage behind a call to arms (the hero's own clip, which the browser already has). */
-export function Finale({ platform, onLaunch }: Props) {
-  const asset = latest.assets[platform]
+export function Finale({ platform }: Props) {
+  const asset = assetFor(platform)
   const [ref, inView] = useInView<HTMLElement>({ margin: "200px" })
   const video = useRef<HTMLVideoElement>(null)
   const reduced = useReducedMotion()
@@ -51,8 +50,7 @@ export function Finale({ platform, onLaunch }: Props) {
           is waiting
         </h2>
         <p className="mt-6 max-w-lg text-base text-cream/80">
-          Free and open source, for Windows and Linux. Unzip it and play: nothing to install, and it keeps itself up to
-          date.
+          Free and open source, for {platformList()}. Download it and play: it keeps itself up to date.
         </p>
         <div className="mt-9 flex flex-wrap justify-center gap-3">
           <Button size="lg" asChild className="shine h-12 px-7 text-sm font-bold tracking-wider uppercase">
@@ -67,10 +65,11 @@ export function Finale({ platform, onLaunch }: Props) {
             asChild
             className="h-12 border-white/25 bg-black/30 px-7 text-sm font-bold tracking-wider uppercase backdrop-blur-sm"
           >
-            <a href={FIND_MATCH_LINK} onClick={onLaunch}>
-              <CrosshairIcon weight="bold" />
-              Find a match
-            </a>
+            {/* launching the game, finding a match: the play page says what happened */}
+            <Link to="/play">
+              <PlayIcon weight="fill" />
+              Play now
+            </Link>
           </Button>
         </div>
       </Reveal>

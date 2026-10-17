@@ -1,29 +1,41 @@
 name: Release
 
-# Releasing is a button: Actions > Release > Run workflow, on main, choosing
-# how big a step it is (patch, minor or major) and, if you like, a name.
-# Merging a pull request never releases anything: its changelog entry waits in
-# changelog/unreleased/ until the next release, which ships everything that
-# has merged since the last one.
+# Releasing is one press and one merge. Press Actions > Release > Run workflow,
+# on main, choosing how big a step it is (patch, minor or major) and, if you
+# like, a name. That prepares the release; nothing is public yet. Then merge the
+# pull request it opens: that publishes it. Merging any other pull request never
+# releases anything: its changelog entry waits in changelog/unreleased/ until the
+# next release, which ships everything that has merged since the last one.
 #
-# The run builds Windows and Linux from main as it stands (Frontline-windows.zip
-# and Frontline-linux.zip), files every waiting entry under changelog/vX.Y.Z/,
-# and bakes the changelog and the release (version, download links, checksums)
-# into the website and the matchmaker, as one commit on a branch of its own,
-# release/vX.Y.Z. It tags that commit, publishes the GitHub release with the
-# changelog as its notes, and opens a pull request from the branch. Merging
-# that pull request puts the release on the website and tells the matchmaker,
+# The run builds Windows, macOS, Linux and the browser from main as it stands
+# (Frontline-windows.zip, Frontline-macos.zip, Frontline-linux.zip and
+# Frontline-web.zip), and the installers that most players download instead:
+# Frontline-windows-setup.exe, and Frontline-macos.dmg (made on a Mac runner,
+# since only macOS makes disk images; see installer/). It files every waiting
+# entry under changelog/vX.Y.Z/, and bakes the changelog and the
+# release (version, download links, checksums) into the website and the
+# matchmaker, as one commit on a branch of its own, release/vX.Y.Z. It uploads
+# the downloads as a draft release at that commit, and opens a pull request from the
+# branch that says what's in the release: its version, what it was built from,
+# its downloads and checksums, and the release notes. Merging that pull request
+# runs Publish release (publish.yml), which tags the release's commit and
+# publishes it, while Railway puts it on the website and tells the matchmaker,
 # and through it every copy of the game, that it's out. (main only takes pull
 # requests, so the workflow can't commit there itself.)
 #
 #   - The version is the newest vX.Y.Z tag plus the step you chose.
-#   - It won't release while the last release's pull request is still open
-#     (its entries would ship twice), or when no entries are waiting.
+#   - Running it again while the release's pull request is open rebuilds the
+#     release from main as it is then (another step, another name, or what has
+#     merged since) and updates the pull request, or replaces it with a new one
+#     if the version changed. The pull request is a draft while it's rebuilt.
+#   - It won't start when no entries are waiting, while a merged release isn't
+#     published yet, or while a release published the old way round (before its
+#     pull request merged) still has its pull request open.
 #   - Opening the pull request needs Settings > Actions > General > "Allow
 #     GitHub Actions to create and approve pull requests". Without it, the run
 #     ends with a link to open it yourself.
 #   - Pull requests that change the build itself export without releasing, and
-#     keep the zips as workflow artifacts.
+#     keep the downloads as workflow artifacts.
 #   - First it applies any database migrations the live Supabase project
 #     hasn't had (database.yml, which also runs as they merge): the release's
 #     matchmaker and game may need them, and a failed migration stops it.
@@ -46,6 +58,7 @@ on:
   pull_request:
     paths:
       - export_presets.cfg
+      - installer/**
       - .github/workflows/release.yml
       - .github/scripts/**
 
@@ -83,10 +96,17 @@ jobs:
               echo "::error::Release from main (this run is on $GITHUB_REF_NAME)."
               exit 1
             fi
-            # the last release's entries reach main with its pull request
+            # a release published the old way round, before its pull request
+            # merged: its entries reach main only with that pull request
             last=$(git tag --list 'v[0-9]*.[0-9]*.[0-9]*' --sort=-v:refname | head -n 1)
             if [ -n "$last" ] && [ ! -d "changelog/$last" ]; then
-              echo "::error::$last's pull request (release/$last) isn't merged yet. Merge it first, or its changes would ship again."
+              echo "::error::$last is published but its pull request (release/$last) isn't merged yet. Merge it first, or its changes would ship again."
+              exit 1
+            fi
+            # a release merged but not out: Publish release is running, or failed
+            filed=$(cd changelog && ls -d v[0-9]*.[0-9]*.[0-9]* 2> /dev/null | sort -V | tail -n 1)
+            if [ -n "$filed" ] && ! git rev-parse -q --verify "refs/tags/$filed" > /dev/null; then
+              echo "::error::$filed has merged but isn't published yet. Wait for its Publish release run, or if that failed, run it again (Actions > Publish release)."
               exit 1
             fi
             pending=$(python3 .github/scripts/changelog.py pending)
@@ -105,7 +125,7 @@ jobs:
           } >> "$GITHUB_OUTPUT"
           if [ "$release" = true ]; then
             {
-              echo "## Releasing v$version"
+              echo "## Preparing v$version"
               echo
               echo '```'
               echo "$pending"
@@ -143,7 +163,7 @@ jobs:
           path: |
             ~/godot
             ~/.local/share/godot/export_templates
-          key: godot-export-${{ env.GODOT_VERSION }}
+          key: godot-export-${{ env.GODOT_VERSION }}-web-macos
 
       - name: Download Godot and export templates
         if: steps.cache-godot.outputs.cache-hit != 'true'
@@ -156,8 +176,11 @@ jobs:
           curl -sSL -o templates.tpz "$base/Godot_v${GODOT_VERSION}-stable_export_templates.tpz"
           dest=~/.local/share/godot/export_templates/${GODOT_VERSION}.stable
           mkdir -p "$dest"
-          # just the two templates we ship: the full set is over a gigabyte
-          unzip -q -j templates.tpz templates/version.txt templates/windows_release_x86_64.exe templates/linux_release.x86_64 -d "$dest"
+          # just the templates we ship: the full set is over a gigabyte (the
+          # browser build is the one without threads, which needs no special
+          # headers from whatever serves it; macos.zip holds the Mac app for
+          # Apple silicon and Intel alike)
+          unzip -q -j templates.tpz templates/version.txt templates/windows_release_x86_64.exe templates/linux_release.x86_64 templates/macos.zip templates/web_nothreads_release.zip -d "$dest"
           rm godot.zip templates.tpz
           ls -la "$dest"
 
@@ -171,26 +194,136 @@ jobs:
           ~/godot/godot --headless --path . --import 2>&1 | tee import.log
           if grep -E "SCRIPT ERROR|Parse Error" import.log; then exit 1; fi
 
+      # The Mac app is a folder (Frontline.app), which Godot zips itself so the
+      # program inside keeps its executable bit. Its signature is ad-hoc: enough
+      # for Apple silicon to run it, but the app isn't notarized, so macOS asks
+      # the player to allow it the first time.
       - name: Export
         run: |
-          mkdir -p build/windows build/linux
+          mkdir -p build/windows build/linux build/web
           ~/godot/godot --headless --path . --export-release "Windows" build/windows/Frontline.exe 2>&1 | tee export.log
           ~/godot/godot --headless --path . --export-release "Linux" build/linux/Frontline.x86_64 2>&1 | tee -a export.log
+          ~/godot/godot --headless --path . --export-release "Web" build/web/index.html 2>&1 | tee -a export.log
+          ~/godot/godot --headless --path . --export-release "macOS" build/Frontline-macos.zip 2>&1 | tee -a export.log
           test -s build/windows/Frontline.exe && test -s build/linux/Frontline.x86_64
+          test -s build/web/index.html && test -s build/web/index.wasm && test -s build/web/index.pck
+          unzip -l build/Frontline-macos.zip | grep -E ' Frontline\.app/Contents/MacOS/Frontline$'
+          unzip -l build/Frontline-macos.zip | grep -E ' Frontline\.app/Contents/Resources/Frontline\.pck$'
+          zipinfo build/Frontline-macos.zip Frontline.app/Contents/MacOS/Frontline | grep -E '^-rwx'
           chmod +x build/linux/Frontline.x86_64
-          for d in windows linux; do cp LICENSE build/$d/; (cd build/$d && zip -q -9 -r ../Frontline-$d.zip .); done
+          for d in windows linux web; do cp LICENSE build/$d/; (cd build/$d && zip -q -9 -r ../Frontline-$d.zip .); done
+          zip -q -j build/Frontline-macos.zip LICENSE
           ls -la build
 
-      - name: Keep the zips as workflow artifacts
+      # NSIS runs on Linux and makes a Windows setup wizard (installer/windows.nsi)
+      - name: Make the Windows installer
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq nsis > /dev/null
+          # the licence page shows Windows line endings
+          sed 's/$/\r/' LICENSE > "$RUNNER_TEMP/LICENSE.txt"
+          makensis -NOCD -V2 -DVERSION="$VERSION" -DVERSION4="${VERSION%%-*}.0" \
+            -DEXE=build/windows/Frontline.exe -DLICENSE="$RUNNER_TEMP/LICENSE.txt" \
+            -DOUT=build/Frontline-windows-setup.exe installer/windows.nsi
+          ls -la build/Frontline-windows-setup.exe
+
+      - name: Hand the build to the Mac installer and the release
+        uses: actions/upload-artifact@v4
+        with:
+          name: export
+          path: |
+            build/Frontline-*.zip
+            build/Frontline-windows-setup.exe
+          retention-days: 1
+          compression-level: 0
+
+  # The Mac's disk image: hdiutil is macOS's own, so this one job runs on a Mac.
+  macos-installer:
+    needs: [plan, build]
+    if: ${{ !cancelled() && needs.build.result == 'success' }}
+    runs-on: macos-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: installer
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: export
+          path: build
+
+      - name: Make the Mac installer
+        run: bash installer/macos-dmg.sh build/Frontline-macos.zip build/Frontline-macos.dmg
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: macos-installer
+          path: build/Frontline-macos.dmg
+          retention-days: 1
+          compression-level: 0
+
+  # Everything built: draft the release and open its pull request (or, for a
+  # pull request, rehearse that).
+  release:
+    needs: [plan, build, macos-installer]
+    if: ${{ !cancelled() && needs.build.result == 'success' && needs.macos-installer.result == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      VERSION: ${{ needs.plan.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # the changelog looks up which pull request added each entry
+          fetch-depth: 0
+
+      # the run's artifacts so far: the export and the disk image
+      - uses: actions/download-artifact@v4
+        with:
+          merge-multiple: true
+          path: build
+
+      - name: Keep the downloads as workflow artifacts
         uses: actions/upload-artifact@v4
         with:
           name: Frontline-${{ env.VERSION }}
-          path: build/Frontline-*.zip
+          path: build/Frontline-*
           retention-days: 14
+          compression-level: 0
+
+      # A pull request that changes the release itself rehearses the steps a
+      # release takes after the build, against a remote that lives and dies on
+      # this runner, and shows the release pull request it would open.
+      - name: Rehearse the release (nothing leaves the runner)
+        if: github.event_name == 'pull_request'
+        run: |
+          if [ -z "$(python3 .github/scripts/changelog.py pending)" ]; then
+            echo "No changelog entries are waiting, so there's nothing to rehearse."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git init -q --bare "$RUNNER_TEMP/origin.git"
+          git push -q "$RUNNER_TEMP/origin.git" HEAD:refs/heads/main
+          v=$(.github/scripts/next-version.sh patch)
+          sha=$(BAKE_REMOTE="$RUNNER_TEMP/origin.git" bash .github/scripts/bake-release.sh "$v" build)
+          {
+            echo "## The release's pull request, rehearsed"
+            echo
+            python3 .github/scripts/release.py pr "$v" "$sha" patch --print
+          } >> "$GITHUB_STEP_SUMMARY"
 
       # The release's own commit, on release/vX.Y.Z: its changelog filed, and the
-      # release baked into the website and the matchmaker. Tagging it (rather
-      # than main) keeps the release notes' screenshots where the tag says.
+      # release baked into the website and the matchmaker. Publishing tags it
+      # (rather than main), so the tag holds exactly the game that was built and
+      # the release notes' screenshots are where the tag says.
+      - name: Hold the release's pull request while it's rebuilt
+        if: needs.plan.outputs.release == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 .github/scripts/release.py hold "$VERSION"
+
       - name: File the changelog and bake the release on its branch
         id: bake
         if: needs.plan.outputs.release == 'true'
@@ -201,45 +334,17 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           echo "sha=$(bash .github/scripts/bake-release.sh "$VERSION" build "$NAME")" >> "$GITHUB_OUTPUT"
 
-      - name: Publish the release
+      - name: Draft the release (nothing public until its pull request merges)
         if: needs.plan.outputs.release == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
           BAKED: ${{ steps.bake.outputs.sha }}
-          # the screenshots, from the release's own tag: they reach main only with its pull request
-          CHANGELOG_IMAGE_REF: v${{ env.VERSION }}
-        run: |
-          name=$(python3 .github/scripts/changelog.py name "$VERSION")
-          python3 .github/scripts/changelog.py notes "$VERSION" > "$RUNNER_TEMP/notes.md"
-          cat "$RUNNER_TEMP/notes.md"
-          gh release create "v$VERSION" build/Frontline-windows.zip build/Frontline-linux.zip \
-            --target "$BAKED" --title "Frontline v$VERSION: $name" --notes-file "$RUNNER_TEMP/notes.md" --latest
-          # numbered releases replace the old rolling "nightly" pre-release
-          gh release delete nightly --yes --cleanup-tag 2>/dev/null || true
-          echo "Published [v$VERSION: $name](https://github.com/$GITHUB_REPOSITORY/releases/tag/v$VERSION)." >> "$GITHUB_STEP_SUMMARY"
+        run: python3 .github/scripts/release.py draft "$VERSION" "$BAKED" build
 
-      - name: Open the pull request that brings the release into main
+      - name: Open the pull request that releases it
         if: needs.plan.outputs.release == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
-        run: |
-          name=$(python3 .github/scripts/changelog.py name "$VERSION")
-          branch="release/v$VERSION"
-          {
-            echo "v$VERSION is published: https://github.com/$GITHUB_REPOSITORY/releases/tag/v$VERSION"
-            echo
-            echo "Merging this files its changelog under \`changelog/v$VERSION/\` and puts the release on the website"
-            echo "(download links, the changelog page) and the matchmaker, which is what tells every copy of the game"
-            echo "that there's an update. Railway redeploys both when it merges."
-            echo
-            echo "Merge it before the next release: that one won't start while this is open."
-          } > "$RUNNER_TEMP/pr.md"
-          if url=$(gh pr create --base main --head "$branch" --title "Release v$VERSION: $name" --body-file "$RUNNER_TEMP/pr.md" 2>&1); then
-            echo "$url"
-            echo "Merge [the release's pull request]($url) to put it on the website and the matchmaker." >> "$GITHUB_STEP_SUMMARY"
-          else
-            echo "$url"
-            compare="https://github.com/$GITHUB_REPOSITORY/compare/main...$branch?expand=1"
-            echo "::warning title=Open the release's pull request::GitHub Actions may not open pull requests here (Settings > Actions > General > Allow GitHub Actions to create and approve pull requests). Open it yourself and merge it: $compare"
-            echo "**Open [the release's pull request]($compare) and merge it** to put the release on the website and the matchmaker." >> "$GITHUB_STEP_SUMMARY"
-          fi
+          BAKED: ${{ steps.bake.outputs.sha }}
+          BUMP: ${{ inputs.bump }}
+        run: python3 .github/scripts/release.py pr "$VERSION" "$BAKED" "$BUMP"

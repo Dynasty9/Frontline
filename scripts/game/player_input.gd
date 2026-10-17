@@ -12,6 +12,7 @@ var dragging := false
 var lmb := false
 var place_kind := ""
 var place_yaw := 0.0
+var _place_turn := 0.0  # Shift + two fingers on a trackpad, gathered into whole steps
 var ghost: MeshInstance3D
 var build_grid: MeshInstance3D  # the 1 m build grid shown round the cursor while placing
 const GRID_SHADER := """
@@ -216,8 +217,18 @@ func _unhandled_input(ev: InputEvent) -> void:
 			_end_sketch()
 		elif mb.button_index == MOUSE_BUTTON_RIGHT and not mb.pressed and rmb and not rmb_left:
 			_end_order(mb.position)
-		elif place_kind != "" and mb.pressed and mb.shift_pressed and (mb.button_index == MOUSE_BUTTON_WHEEL_UP or mb.button_index == MOUSE_BUTTON_WHEEL_DOWN):
-			place_yaw = TrenchNet.snap_yaw(place_yaw + (TrenchNet.BUILD_ANGLE if mb.button_index == MOUSE_BUTTON_WHEEL_UP else -TrenchNet.BUILD_ANGLE))
+		elif place_kind != "" and mb.pressed and mb.shift_pressed and mb.button_index in [MOUSE_BUTTON_WHEEL_UP, MOUSE_BUTTON_WHEEL_DOWN, MOUSE_BUTTON_WHEEL_LEFT, MOUSE_BUTTON_WHEEL_RIGHT]:
+			# (a Mac turns Shift + the wheel into a sideways scroll: up comes as left)
+			var up := mb.button_index == MOUSE_BUTTON_WHEEL_UP or mb.button_index == MOUSE_BUTTON_WHEEL_LEFT
+			place_yaw = TrenchNet.snap_yaw(place_yaw + (TrenchNet.BUILD_ANGLE if up else -TrenchNet.BUILD_ANGLE))
+	elif ev is InputEventPanGesture and place_kind != "" and (ev as InputEventPanGesture).shift_pressed:
+		# Shift + two fingers on a trackpad, like Shift + the wheel: a step for
+		# every couple of units scrolled, whichever way the scroll comes
+		var pd := (ev as InputEventPanGesture).delta
+		_place_turn -= pd.y if absf(pd.y) >= absf(pd.x) else pd.x
+		while absf(_place_turn) >= 2.0:
+			place_yaw = TrenchNet.snap_yaw(place_yaw + signf(_place_turn) * TrenchNet.BUILD_ANGLE)
+			_place_turn -= signf(_place_turn) * 2.0
 	elif ev is InputEventMouseMotion:
 		var mpos := (ev as InputEventMouseMotion).position
 		if lmb and mpos.distance_to(drag_start) > 8.0:
@@ -251,7 +262,7 @@ var _coop_i := -1
 ## A key press (or an extra mouse button) in a battle: Esc always backs out;
 ## everything else is whatever it's bound to (Settings > Controls).
 func _key(ev: InputEvent) -> void:
-	if (world.hud and world.hud.typing) or Keys.capturing:
+	if (world.hud and world.hud.typing) or Keys.capturing or Keys.console_open:
 		return
 	if ev is InputEventKey and (ev as InputEventKey).keycode == KEY_ESCAPE:
 		if pinging or sketching:

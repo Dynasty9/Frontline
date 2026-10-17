@@ -240,7 +240,9 @@ static func table() -> Dictionary:
 		Vector3(2.4, 3.2, 15.3), 0, {"mg": "minigun", "cap": 3, "air": true, "rockets": 6, "gun_h": 0.9,
 		"desc": "Ghost Hawk with stub wings and rocket pods: a gunship that can still take a door gunner's view."})
 	# ---------------------------------------------------------------- naval (the Boat Dock)
-	# draft: how deep the hull sits; seats: men it carries (they land on any shore)
+	# draft: how deep the hull sits; seats: men it carries (they land on any shore);
+	# displacement: a deep hull that ploughs through the water rather than planing over it
+	# (slow to answer, a wide turning circle, heels out of a turn: see Vehicle._hull_k)
 	t["rhib"] = _v("RHIB", 0, 1, "naval", "NATO", "Rigid-hulled inflatable", "Centre-console RHIB", 90, 10.0, 260.0, 0, 15.5, 1.7, "boat",
 		Vector3(2.6, 1.6, 7.8), 0, {"mg": "", "seats": 6, "cap": 1, "draft": 0.35,
 		"desc": "Fast, open and unarmed: six men up the river or along the coast, landed on any beach or bank."})
@@ -257,7 +259,7 @@ static func table() -> Dictionary:
 		Vector3(3.0, 2.4, 11.8), 1, {"mg": "gmg", "seats": 6, "cap": 2, "draft": 0.5, "gun_h": 1.9,
 		"desc": "CSAT's riverine craft: 40 mm grenade launcher and a heavy machine gun, room for a squad."})
 	t["gun_trawler"] = _v("Gun Trawler", 1, 2, "naval", "FIA", "Armed trawler", "Converted fishing trawler, ZU-23-2", 260, 30.0, 1350.0, 0, 8.5, 0.75, "boat",
-		Vector3(5.5, 6.5, 18.0), 2, {"mg": "zu23", "aa": true, "cap": 3, "draft": 1.85, "gun_h": 4.6, "sight": 85.0,
+		Vector3(5.5, 6.5, 18.0), 2, {"mg": "zu23", "aa": true, "cap": 3, "draft": 1.85, "displacement": true, "gun_h": 4.6, "sight": 85.0,
 		"desc": "A steel fishing boat with a twin 23 mm cannon welded on the foredeck: shreds helicopters, light boats and anything on the beach."})
 	return t
 
