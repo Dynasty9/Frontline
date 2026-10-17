@@ -23,9 +23,9 @@ npm run dev
 ```
 
 It reads the live matchmaker by default. To use a local one, put `VITE_MATCHMAKER_URL=http://127.0.0.1:8787` in
-`.env.development.local`. The latest release (`src/release.json`) and the changelog (`src/changelog.json`) are built
-in: the release workflow rewrites both and commits them, and Railway redeploys the site. Don't edit them by hand;
-the changelog comes from `changelog/` at the top of the repo.
+`.env.development.local`. The latest release (`src/release.json`) and the changelog (`src/changelog.json`) are built in:
+the release workflow rewrites both on the release's pull request, and merging that redeploys the site. Don't edit them
+by hand; the changelog comes from `changelog/` at the top of the repo.
 
 ## Storybook
 

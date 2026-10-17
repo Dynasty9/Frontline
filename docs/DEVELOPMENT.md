@@ -443,23 +443,28 @@ renders every story in headless Chromium as a test (its play function and an acc
 
 ### Builds, releases and updates
 
-Merging a pull request never releases. Releasing is a button: **Actions > Release > Run workflow** on `main`, choosing
-`patch`, `minor` or `major` (and, if you like, a name; otherwise the release is named after its headline change). It
-ships everything merged since the last release: the version is the newest `vX.Y.Z` tag plus that step
-(`.github/scripts/next-version.sh`), and the build stamps it into `project.godot` (`application/config/version`); from
-source the game reads `0.0.0-dev`.
+Merging a change never releases it. Releasing is one press and one merge: **Actions > Release > Run workflow** on
+`main`, choosing `patch`, `minor` or `major` (and, if you like, a name; otherwise the release is named after its
+headline change), then merge the pull request it opens. It ships everything merged since the last release: the version
+is the newest `vX.Y.Z` tag plus that step (`.github/scripts/next-version.sh`), and the build stamps it into
+`project.godot` (`application/config/version`); from source the game reads `0.0.0-dev`.
 
-`export_presets.cfg` has a Windows and a Linux preset (one executable each, the game packed inside) and a Web one
-(see [The browser build](#the-browser-build)). The run exports all three from `main` as it stands, then `.github/scripts/bake-release.sh` makes the release's own commit on a branch,
-`release/vX.Y.Z`: it files every entry waiting in `changelog/unreleased/` under `changelog/vX.Y.Z/` (`changelog.py
-release`), regenerates `CHANGELOG.md` and `web/src/changelog.json`, and writes `release.json` into `web/src/` and
-`matchmaker/` (`release_json.py`). The workflow tags that commit, publishes the GitHub release
-(`Frontline-windows.zip`, `Frontline-linux.zip`, `Frontline-web.zip`, the changelog as its notes) and opens a pull request from the
-branch. Merge it: that's what puts the release on the website and the matchmaker (Railway redeploys both), and the
-matchmaker is where the game hears about updates. The next release won't start until it's merged. Opening that pull
-request needs Settings > Actions > General > "Allow GitHub Actions to create and approve pull requests"; without
-it, the run ends with a link to open it yourself. `python .github/scripts/changelog.py pending` lists what the next
-release would ship. Pull requests that change the export setup test-export without releasing.
+`export_presets.cfg` has a Windows and a Linux preset (one executable each, the game packed inside) and a Web one (see
+[The browser build](#the-browser-build)). The run exports all three from `main` as it stands, then
+`.github/scripts/bake-release.sh` makes the release's own commit on a branch, `release/vX.Y.Z`: it files every entry
+waiting in `changelog/unreleased/` under `changelog/vX.Y.Z/` (`changelog.py release`), regenerates `CHANGELOG.md` and
+`web/src/changelog.json`, and writes `release.json` into `web/src/` and `matchmaker/` (`release_json.py`).
+`.github/scripts/release.py` uploads the zips as a draft release at that commit (`Frontline-windows.zip`,
+`Frontline-linux.zip`, `Frontline-web.zip`, the changelog as its notes), which nobody else can see, and opens a pull
+request from the branch that says what the release is: its version, what it was built from, its downloads and checksums,
+and the notes as they'll be published. Merge it: that runs Publish release (`.github/workflows/publish.yml`), which
+checks the draft's downloads against the merged `release.json`, tags the release's commit and publishes it, while
+Railway redeploys the website and the matchmaker, which is where the game hears about updates. Running Release again
+before merging rebuilds the release and updates its pull request (or replaces it, if the version changed). If Publish
+release fails, the release has merged but isn't out: re-run it, or run it by hand on `main`. Opening the pull request
+needs Settings > Actions > General > "Allow GitHub Actions to create and approve pull requests"; without it, the run
+ends with a link to open it yourself. `python .github/scripts/changelog.py pending` lists what the next release would
+ship. Pull requests that change the export setup test-export without releasing.
 
 A release build updates itself (`scripts/autoload/updater.gd`): at start it asks the matchmaker (`GET /release`,
 falling back to GitHub's API) for the latest release,
@@ -483,8 +488,7 @@ python -m http.server 8000 --directory build/web
 ```
 
 then open `http://localhost:8000`. Exporting needs Godot's `web_nothreads_release.zip` template. Every release
-attaches the export as `Frontline-web.zip`, and puts it up on GitHub Pages once Pages is switched on for the
-repository with GitHub Actions as its source (the `pages` job in `release.yml` skips until then).
+attaches the export as `Frontline-web.zip`; the website on Railway is where it's to be played.
 
 What's different in a browser (`OS.has_feature("web")`):
 
