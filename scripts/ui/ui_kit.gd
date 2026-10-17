@@ -656,7 +656,7 @@ static func rating_col(v: float) -> Color:
 	if v >= 70.0:
 		return GOOD
 	if v >= 55.0:
-		return Color(0.8, 0.9, 0.5)
+		return TEXT
 	if v >= 40.0:
 		return WARN
 	return BAD

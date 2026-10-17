@@ -4,6 +4,8 @@ extends Control
 ## joining a battle (each step ticked off as it's done, so a player can see
 ## it's getting somewhere and where it stuck), the password a battle asks for,
 ## and what went wrong when it does. Dims the menu behind it.
+## Signal (docs/UI.md): the focused dialog, flat ink with the accent's corner
+## ticks; each step a ruled row with its state as a mono code.
 
 signal cancelled
 signal password_entered(pw: String)
@@ -20,7 +22,7 @@ var _pw_box: VBoxContainer
 var _pw_edit: LineEdit
 var _ok_btn: Button
 var _cancel_btn: Button
-var _step_rows: Array = []  # [HBoxContainer, Spinner, Label]
+var _step_rows: Array = []  # [the row, its Spinner, its Label]
 
 
 func _ready() -> void:
@@ -28,23 +30,23 @@ func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	visible = false
 	var dim := ColorRect.new()
-	dim.color = Color(0.0, 0.01, 0.0, 0.62)
+	dim.color = Color(UiKit.INK.r, UiKit.INK.g, UiKit.INK.b, 0.66)
 	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(dim)
 	_panel = PanelContainer.new()
-	_panel.add_theme_stylebox_override("panel", UiKit.box(Color(0.035, 0.045, 0.045, 0.97), 6, UiKit.LINE, 1, 24.0, 14))
+	_panel.add_theme_stylebox_override("panel", UiKit.frame_hot(24.0, 0.97))
 	add_child(_panel)
 	UiKit.fit_center(_panel, Vector2(500, 0))
 	var v := VBoxContainer.new()
 	v.add_theme_constant_override("separation", 10)
 	_panel.add_child(v)
-	_sub = UiKit.label("", 12, UiKit.ACCENT, 700)
+	_sub = UiKit.caps("", 11, UiKit.ACCENT)
 	v.add_child(_sub)
-	_title = UiKit.label("", 22, UiKit.TEXT, 600)
+	_title = UiKit.caps("", 20, UiKit.TEXT, 600, 1)
 	_title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	v.add_child(_title)
 	_steps = VBoxContainer.new()
-	_steps.add_theme_constant_override("separation", 6)
+	_steps.add_theme_constant_override("separation", 0)
 	v.add_child(_steps)
 	_msg = UiKit.label("", 14, UiKit.DIM)
 	_msg.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -56,18 +58,20 @@ func _ready() -> void:
 	_pw_edit = LineEdit.new()
 	_pw_edit.secret = true
 	_pw_edit.placeholder_text = "Password"
-	_pw_edit.custom_minimum_size = Vector2(0, 38)
+	_pw_edit.custom_minimum_size = Vector2(0, 32)
 	_pw_edit.text_submitted.connect(func(_t): _ok())
 	_pw_box.add_child(_pw_edit)
+	var gap := Control.new()
+	gap.custom_minimum_size = Vector2(0, 4)
+	v.add_child(gap)
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 10)
 	row.alignment = BoxContainer.ALIGNMENT_END
 	v.add_child(row)
-	_cancel_btn = Button.new()
-	_cancel_btn.custom_minimum_size = Vector2(120, 38)
+	_cancel_btn = UiKit.button("Cancel", "secondary", 120, 36)
 	_cancel_btn.pressed.connect(_cancel)
 	row.add_child(_cancel_btn)
-	_ok_btn = UiKit.primary_button("Join", 130, 38)
+	_ok_btn = UiKit.primary_button("Join", 130, 36)
 	_ok_btn.pressed.connect(_ok)
 	row.add_child(_ok_btn)
 
@@ -76,9 +80,9 @@ func _ready() -> void:
 func begin(what: String, title: String) -> void:
 	mode = Mode.PROGRESS
 	visible = true
-	_sub.text = what.to_upper()
+	_sub.text = what
 	_sub.add_theme_color_override("font_color", UiKit.ACCENT)
-	_title.text = title
+	UiMotion.type_on(_title, title)
 	_title.visible = true
 	for c in _steps.get_children():
 		c.queue_free()
@@ -88,9 +92,7 @@ func begin(what: String, title: String) -> void:
 	_msg.visible = false
 	_pw_box.visible = false
 	_ok_btn.visible = false
-	_cancel_btn.text = "Cancel"
-	_panel.modulate.a = 0.0
-	create_tween().tween_property(_panel, "modulate:a", 1.0, 0.15)
+	_cancel_btn.text = "CANCEL"
 
 
 ## The next step: the one before it is done.
@@ -100,16 +102,24 @@ func step(text: String) -> void:
 	if not _step_rows.is_empty() and String((_step_rows[-1][2] as Label).text) == text:
 		return
 	_finish_last()
+	var p := PanelContainer.new()
+	var sb := UiKit.box(Color(0, 0, 0, 0), 0, UiKit.LINE, 0, 0.0)
+	sb.border_width_bottom = 1
+	p.add_theme_stylebox_override("panel", sb)
+	p.custom_minimum_size = Vector2(0, 32)
 	var h := HBoxContainer.new()
-	h.add_theme_constant_override("separation", 10)
+	h.add_theme_constant_override("separation", 12)
+	p.add_child(h)
 	var sp := Spinner.new()
-	sp.custom_minimum_size = Vector2(18, 18)
+	sp.custom_minimum_size = Vector2(34, 14)
 	sp.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	h.add_child(sp)
-	var l := UiKit.label(text + "...", 15, UiKit.TEXT)
+	var l := UiKit.label(text + "...", 14, UiKit.TEXT)
+	l.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	h.add_child(l)
-	_steps.add_child(h)
-	_step_rows.append([h, sp, l])
+	_steps.add_child(p)
+	_step_rows.append([p, sp, l])
+	UiMotion.arrive(p, Vector2(0, 1), 0.0, UiMotion.TRAVEL_SM)
 
 
 func _finish_last() -> void:
@@ -126,7 +136,7 @@ func _finish_last() -> void:
 func ask_password(title: String, wrong: bool) -> void:
 	mode = Mode.PASSWORD
 	visible = true
-	_sub.text = "PASSWORD REQUIRED"
+	_sub.text = "Password required"
 	_sub.add_theme_color_override("font_color", UiKit.ACCENT)
 	_title.text = title
 	_title.visible = true
@@ -137,8 +147,8 @@ func ask_password(title: String, wrong: bool) -> void:
 	_pw_box.visible = true
 	_pw_edit.text = ""
 	_ok_btn.visible = true
-	_ok_btn.text = "Join"
-	_cancel_btn.text = "Cancel"
+	_ok_btn.text = "JOIN"
+	_cancel_btn.text = "CANCEL"
 	_pw_edit.grab_focus.call_deferred()
 
 
@@ -148,7 +158,7 @@ func fail(head: String, why: String, title := "") -> void:
 	if mode == Mode.PROGRESS:
 		_finish_last()
 		if not _step_rows.is_empty():
-			# the step it got stuck on gets a cross, not a tick
+			# the step it got stuck on says FAIL, not OK
 			(_step_rows[-1][1] as Spinner).failed = true
 			var l: Label = _step_rows[-1][2]
 			l.add_theme_color_override("font_color", UiKit.BAD)
@@ -156,8 +166,9 @@ func fail(head: String, why: String, title := "") -> void:
 		_steps.visible = false
 	mode = Mode.FAILED
 	visible = true
-	_sub.text = head.to_upper()
+	_sub.text = head
 	_sub.add_theme_color_override("font_color", UiKit.BAD)
+	UiMotion.flicker(_sub, 2)
 	if title != "":
 		_title.text = title
 	_title.visible = _title.text != ""
@@ -166,7 +177,7 @@ func fail(head: String, why: String, title := "") -> void:
 	_msg.add_theme_color_override("font_color", UiKit.BAD)
 	_pw_box.visible = false
 	_ok_btn.visible = false
-	_cancel_btn.text = "Close"
+	_cancel_btn.text = "CLOSE"
 
 
 func close() -> void:
@@ -199,32 +210,37 @@ func _unhandled_input(ev: InputEvent) -> void:
 		_cancel()
 
 
-## A turning arc while a step is under way, a tick once it's done (or a
-## cross, where it failed).
+## A step's state: four squares round a square, one lit at a time going
+## round, while it's under way; OK once it's done, or FAIL where it stuck.
 class Spinner extends Control:
-	var done := false
+	const STEP_S := 0.12  # how long each square stays lit
+	var done := false:
+		set(v):
+			done = v
+			queue_redraw()
 	var failed := false:
 		set(v):
 			failed = v
 			queue_redraw()
-	var _a := 0.0
+	var _t := 0.0
 
 	func _process(dt: float) -> void:
-		if not done:
-			_a = fmod(_a + dt * 7.0, TAU)
-		queue_redraw()
-		if done:
+		if done or failed:
 			set_process(false)
+			return
+		_t += dt
+		queue_redraw()
 
 	func _draw() -> void:
-		var c := size * 0.5
-		var r := minf(size.x, size.y) * 0.42
-		if failed:
-			draw_line(c + Vector2(-r, -r) * 0.7, c + Vector2(r, r) * 0.7, UiKit.BAD, 2.2, true)
-			draw_line(c + Vector2(-r, r) * 0.7, c + Vector2(r, -r) * 0.7, UiKit.BAD, 2.2, true)
+		if failed or done:
+			var f := UiKit.mono(400)
+			draw_string(f, Vector2(0, size.y * 0.5 + 4.0), "FAIL" if failed else "OK", HORIZONTAL_ALIGNMENT_LEFT, -1, 11, UiKit.BAD if failed else UiKit.GOOD)
 			return
-		if done:
-			draw_polyline(PackedVector2Array([c + Vector2(-r * 0.7, 0.0), c + Vector2(-r * 0.15, r * 0.6), c + Vector2(r * 0.8, -r * 0.6)]), UiKit.GOOD, 2.2, true)
-			return
-		draw_arc(c, r, 0.0, TAU, 24, Color(1, 1, 1, 0.12), 2.0, true)
-		draw_arc(c, r, _a, _a + 1.9, 16, UiKit.ACCENT, 2.2, true)
+		var s := minf(size.x, size.y)
+		var b := floorf((s - 2.0) * 0.5)  # each square's side
+		var y0 := floorf((size.y - s) * 0.5)
+		var lit := int(_t / STEP_S) % 4
+		var at := [Vector2(0, 0), Vector2(b + 2.0, 0), Vector2(b + 2.0, b + 2.0), Vector2(0, b + 2.0)]
+		for i in 4:
+			var p: Vector2 = at[i]
+			draw_rect(Rect2(p + Vector2(0, y0), Vector2(b, b)), UiKit.ACCENT if i == lit else UiKit.RULE2)
