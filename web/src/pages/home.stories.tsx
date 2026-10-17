@@ -1,12 +1,16 @@
 import type { Meta, StoryObj } from "@storybook/react-vite"
 import { expect, screen, userEvent, waitFor, within } from "storybook/test"
-import { latest } from "@/lib/releases"
+import { assetFor, guessPlatform, PLATFORM_NAMES } from "@/lib/releases"
 import { health, lobbies, lobbyOpen, player } from "@/test/fixtures"
 import { awayAtGitHub, mockMatchmaker } from "@/test/network"
 import { loadPage } from "@/test/load-page"
 import { SiteAt } from "@/test/router"
 
 // The whole front page, polling a stand-in matchmaker.
+
+// The hero and the finale offer the build for the browser's own platform (Windows here, Linux in CI).
+const platform = guessPlatform()
+const download = { name: `Download for ${PLATFORM_NAMES[platform]}`, url: assetFor(platform).url }
 const meta = {
   title: "Pages/Home",
   component: SiteAt,
@@ -25,8 +29,8 @@ export const Live: Story = {
     await expect(await canvas.findByText(`${health.lobbies} battles live · ${health.players} players`)).toBeVisible()
     // Play goes to the play page; the hero's download and the finale's both offer the baked-in release
     for (const p of canvas.getAllByRole("link", { name: "Play now" })) await expect(p).toHaveAttribute("href", "/play")
-    const downloads = canvas.getAllByRole("link", { name: "Download for Windows" })
-    for (const d of downloads) await expect(d).toHaveAttribute("href", latest.assets.windows.url)
+    const downloads = canvas.getAllByRole("link", { name: download.name })
+    for (const d of downloads) await expect(d).toHaveAttribute("href", download.url)
     // the header says how many battles are on
     await expect(canvas.getByRole("link", { name: `Battles ${health.lobbies} battles live` })).toHaveAttribute(
       "href",
@@ -44,10 +48,7 @@ export const MatchmakerDown: Story = {
   beforeEach: mockMatchmaker({}),
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(canvas.getAllByRole("link", { name: "Download for Windows" })[0]).toHaveAttribute(
-      "href",
-      latest.assets.windows.url
-    )
+    await expect(canvas.getAllByRole("link", { name: download.name })[0]).toHaveAttribute("href", download.url)
   },
 }
 
