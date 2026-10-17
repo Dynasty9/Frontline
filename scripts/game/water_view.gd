@@ -142,10 +142,13 @@ func build(w: WaterMap, detail: Texture2D) -> void:
 		wake_mat.render_priority = -5
 		patch_mat = _material("", detail)
 		patch_mat.render_priority = -5
-		_make_patches()
 	# (the swell's heading is baked into the shaders: they're compiled for this coast)
 	wake_mat.shader.code = _code(WAKE_SHADER, MOVING)
 	patch_mat.shader.code = _code(PATCH_SHADER, MOVING)
+	if _patches.is_empty():
+		# (only now: an object given a material whose shader has no code yet
+		# draws with the engine's plain white one, and still does once it has)
+		_make_patches()
 	for m in [mat, wake_mat, patch_mat]:
 		Mats.set_shared(m, "water_mask", mask_tex)
 		Mats.set_shared(m, "sea_x", _sea_x)
