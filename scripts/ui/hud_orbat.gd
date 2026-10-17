@@ -34,6 +34,10 @@ func _gui_input(ev: InputEvent) -> void:
 		if h != _hover:
 			_hover = h
 			queue_redraw()
+	elif ev is InputEventPanGesture:
+		# two fingers on a trackpad scroll the list
+		_scroll = clampf(_scroll + (ev as InputEventPanGesture).delta.y * 30.0, 0.0, maxf(0.0, _content_h - size.y))
+		accept_event()
 	elif ev is InputEventMouseButton and ev.pressed:
 		var mb := ev as InputEventMouseButton
 		if mb.button_index == MOUSE_BUTTON_WHEEL_UP or mb.button_index == MOUSE_BUTTON_WHEEL_DOWN:

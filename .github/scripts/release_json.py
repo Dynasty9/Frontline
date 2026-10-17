@@ -2,9 +2,9 @@
 
     python3 release_json.py VERSION ZIP_DIR [PUBLISHED]  > release.json
 
-ZIP_DIR holds Frontline-windows.zip and Frontline-linux.zip as published.
-The download URLs are GitHub's fixed ones for the release's tag, and the
-checksums are what the game's updater checks a download against.
+ZIP_DIR holds Frontline-windows.zip, Frontline-macos.zip and Frontline-linux.zip
+as published. The download URLs are GitHub's fixed ones for the release's tag,
+and the checksums are what the game's updater checks a download against.
 """
 
 import hashlib
@@ -13,7 +13,7 @@ import os
 import sys
 from datetime import datetime, timezone
 
-PLATFORMS = ("windows", "linux")
+PLATFORMS = ("windows", "macos", "linux")
 
 
 def main() -> None:

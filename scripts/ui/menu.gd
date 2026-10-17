@@ -132,7 +132,7 @@ func _ready() -> void:
 	if OS.has_feature("web"):
 		# a battle between players runs over direct connections (and hole
 		# punching) a browser can't make, so the browser build plays alone
-		main_box.add_child(_big("Get the Desktop Game", "Multiplayer and co-op need the Windows or Linux build",
+		main_box.add_child(_big("Get the Desktop Game", "Multiplayer and co-op need the Windows, Mac or Linux build",
 			func(): OS.shell_open(Updater.WEBSITE_URL + "/#download")))
 	else:
 		main_box.add_child(_big("Server Browser", "Every battle being hosted, online and on your network", _open_browser))
