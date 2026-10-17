@@ -4,6 +4,56 @@ Every release of Frontline, newest first. The game updates itself; downloads, an
 are on [the website](https://web-production-5a4c1.up.railway.app/changelog/). Each change is written up in [`changelog/`](changelog/) as part of
 the pull request that makes it.
 
+## v1.0.3: Just a little more
+
+*17 October 2026* · [Release on GitHub](https://github.com/Dynasty9/Frontline/releases/tag/v1.0.3)
+
+### New
+
+#### Wildlife: birds, rats, hares, fish, ducks and dolphins
+
+The battlefield has life of its own now. Birds feed in the fields and burst up at gunfire, crows and gulls wheel overhead, rats run along the walls in town, fish jump in the rivers, ducks paddle on the ponds and dolphins roll through the swell offshore. Settings > Graphics > Wildlife turns it down, or off.
+
+![A dolphin leaping clear of the swell off the beach](changelog/v1.0.3/wildlife/dolphin-leap.jpg)
+
+![Mallards on a pond, one upending to feed](changelog/v1.0.3/wildlife/ducks.jpg)
+
+![A pair coming up to breathe](changelog/v1.0.3/wildlife/dolphins.jpg)
+
+- **In the fields:** flocks of sparrows and starlings feed on the tracks, yards and mud, hopping and pecking, and
+  move on now and then. Pigeons gather about the town. Hares sit out in the grass and graze.
+- **Overhead:** crows and buzzards turn circles in the sky, gulls along the coast, and their shadows sweep over
+  the ground. At night bats flit about low down instead.
+- **In the water:** fish swim under the surface of the rivers and ponds and now and then jump, ducks paddle about
+  and upend to feed, and out at sea a pod of dolphins rolls up through the surface to breathe, one sometimes
+  leaping clear.
+- **They take fright:** a burst of fire or a shell landing sends the birds up all at once with a rush of wings,
+  and soldiers and vehicles coming near flush them too. Rats bolt for a hole in the nearest wall, hares zigzag
+  away across the field, fish dart off and ducks take to the air. Animals only react to the troops you can see,
+  so they never give away a hidden enemy.
+- **You can hear them:** birdsong, a pigeon's coo, crows and gulls calling, the rush of a flock going up, a rat's
+  squeak and the splash of a jumping fish, on the ambience volume.
+- **The time of day matters:** small birds and the soaring ones roost at night, when more rats come out. Fewer
+  birds fly in the rain.
+- **It costs little and is yours to set:** only the area round your camera is alive, so a bigger map costs no
+  more. **Settings > Graphics > Wildlife** sets it to Plenty, Some or Off, and the quality presets choose for you
+  (Off on Low, Some on Medium, Plenty on High and Ultra).
+
+### Improved
+
+#### The website gets a Play button, and a page for your account
+
+The Frontline website is more than one long page now: Play opens the game on your computer (or gets it for you), the live battles have a page of their own, and your account page is where you rename yourself and pick your insignia.
+
+![Play: launch the game, find a match, or download it](changelog/v1.0.3/website-pages/play.jpg)
+
+![Your account: your rank, your callsign and the insignia you wear](changelog/v1.0.3/website-pages/account.jpg)
+
+- **Play**, at the top of every page, opens the game you have installed, or Find Match straight away. If nothing opens, the page tells you how to get the game going the first time.
+- **Live battles** have their own page, and the header says how many are on. A friend's invite link from the game opens it, with their battle at the top.
+- **Your account** shows your rank and record, lets you change your callsign, and holds your insignia collection. The menu on your insignia in the header takes you there, or signs you out.
+- On a phone, the site's links fold into a menu, and the Play page tells you the game needs a computer.
+
 ## v1.0.2: I don't even know
 
 *17 October 2026* · [Release on GitHub](https://github.com/Dynasty9/Frontline/releases/tag/v1.0.2)

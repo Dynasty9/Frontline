@@ -1,6 +1,58 @@
 {
   "releases": [
     {
+      "version": "1.0.3",
+      "tag": "v1.0.3",
+      "name": "Just a little more",
+      "date": "2026-10-17",
+      "summary": "The battlefield has life of its own now. Birds feed in the fields and burst up at gunfire, crows and gulls wheel overhead, rats run along the walls in town, fish jump in the rivers, ducks paddle on the ponds and dolphins roll through the swell offshore. Settings > Graphics > Wildlife turns it down, or off.",
+      "url": "https://github.com/Dynasty9/Frontline/releases/tag/v1.0.3",
+      "pull_requests": [
+        54,
+        57
+      ],
+      "entries": [
+        {
+          "slug": "wildlife",
+          "title": "Wildlife: birds, rats, hares, fish, ducks and dolphins",
+          "kind": "new",
+          "summary": "The battlefield has life of its own now. Birds feed in the fields and burst up at gunfire, crows and gulls wheel overhead, rats run along the walls in town, fish jump in the rivers, ducks paddle on the ponds and dolphins roll through the swell offshore. Settings > Graphics > Wildlife turns it down, or off.",
+          "body": "- **In the fields:** flocks of sparrows and starlings feed on the tracks, yards and mud, hopping and pecking, and\n  move on now and then. Pigeons gather about the town. Hares sit out in the grass and graze.\n- **Overhead:** crows and buzzards turn circles in the sky, gulls along the coast, and their shadows sweep over\n  the ground. At night bats flit about low down instead.\n- **In the water:** fish swim under the surface of the rivers and ponds and now and then jump, ducks paddle about\n  and upend to feed, and out at sea a pod of dolphins rolls up through the surface to breathe, one sometimes\n  leaping clear.\n- **They take fright:** a burst of fire or a shell landing sends the birds up all at once with a rush of wings,\n  and soldiers and vehicles coming near flush them too. Rats bolt for a hole in the nearest wall, hares zigzag\n  away across the field, fish dart off and ducks take to the air. Animals only react to the troops you can see,\n  so they never give away a hidden enemy.\n- **You can hear them:** birdsong, a pigeon's coo, crows and gulls calling, the rush of a flock going up, a rat's\n  squeak and the splash of a jumping fish, on the ambience volume.\n- **The time of day matters:** small birds and the soaring ones roost at night, when more rats come out. Fewer\n  birds fly in the rain.\n- **It costs little and is yours to set:** only the area round your camera is alive, so a bigger map costs no\n  more. **Settings > Graphics > Wildlife** sets it to Plenty, Some or Off, and the quality presets choose for you\n  (Off on Low, Some on Medium, Plenty on High and Ultra).",
+          "screenshots": [
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.3/wildlife/dolphin-leap.jpg",
+              "caption": "A dolphin leaping clear of the swell off the beach"
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.3/wildlife/ducks.jpg",
+              "caption": "Mallards on a pond, one upending to feed"
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.3/wildlife/dolphins.jpg",
+              "caption": "A pair coming up to breathe"
+            }
+          ]
+        },
+        {
+          "slug": "website-pages",
+          "title": "The website gets a Play button, and a page for your account",
+          "kind": "improved",
+          "summary": "The Frontline website is more than one long page now: Play opens the game on your computer (or gets it for you), the live battles have a page of their own, and your account page is where you rename yourself and pick your insignia.",
+          "body": "- **Play**, at the top of every page, opens the game you have installed, or Find Match straight away. If nothing opens, the page tells you how to get the game going the first time.\n- **Live battles** have their own page, and the header says how many are on. A friend's invite link from the game opens it, with their battle at the top.\n- **Your account** shows your rank and record, lets you change your callsign, and holds your insignia collection. The menu on your insignia in the header takes you there, or signs you out.\n- On a phone, the site's links fold into a menu, and the Play page tells you the game needs a computer.",
+          "screenshots": [
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.3/website-pages/play.jpg",
+              "caption": "Play: launch the game, find a match, or download it"
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.3/website-pages/account.jpg",
+              "caption": "Your account: your rank, your callsign and the insignia you wear"
+            }
+          ]
+        }
+      ]
+    },
+    {
       "version": "1.0.2",
       "tag": "v1.0.2",
       "name": "I don't even know",
