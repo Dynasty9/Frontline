@@ -42,7 +42,7 @@ func _init(w: World, mission_key: String, gen: MapGen) -> void:
 	world = w
 	key = mission_key
 	mg = gen
-	def = Missions.find(key)
+	def = MissionList.find(key)
 	side = int(def.get("side", 0))
 	foe = 1 - side
 	var pl: Dictionary = world.settings.get("players", {})

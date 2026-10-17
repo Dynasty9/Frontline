@@ -40,10 +40,12 @@ Settings are saved to `user://settings.cfg`, key bindings to `user://keybinds.cf
 
 ```
 main.gd                 menu <-> World, command-line test modes
+game_scripts.gd         the game's classes compile on a worker while the title plays: the launch never names them
 test/test_run.gd        how a test run ends: exit code 1 on a script error or a failed check
 test/test_port.gd       the test port: a test drives the game over a local socket (see "The test port")
 test/cam_test.gd, keys_test.gd   the camera and key bindings driven end to end (--cam-test, --keys-test)
 test/platform_test.gd   updates and links as each system does them (--platform-test)
+                        (exported builds leave these four out, and ui/soldier_sheet.gd: run them from source)
 autoload/defs.gd        all data tables (units, weapons, squads, vehicles, buildings, upgrades)
 autoload/net.gd         ENet host/join, lobby, teams, start
 autoload/online.gd      the matchmaker client: listing, Find Match, STUN + hole punching, optional account
@@ -75,7 +77,8 @@ game/terrain.gd         ground types, cover map, craters, speed / hit / concealm
 game/trench_net.gd      the dug trench network (mask, walls, spoil, duckboards)
 game/mapgen.gd          procedural battlefield + test scenarios
 game/mission_director.gd   a mission on the server: objectives, scripted events, the end, co-op ownership
-game/missions.gd        the missions' content: the catalogue, placing each by the map's features, its objectives and events
+game/missions.gd        the missions' content: placing each by the map's features, its objectives and events
+game/mission_list.gd    the missions' catalogue (names, sides, briefings), apart so the menu needn't compile the game
 ui/hud_objectives.gd    a mission's objectives panel, clock and banners
 game/towngen.gd         the town's street plan and lots, hamlet, farms, fields, power lines
 game/physics_fx.gd      client physics: ground with the trenches cut in, ragdolls, chunks, tossed props
@@ -493,7 +496,10 @@ A `frontline://` link can be passed after `--`, as a browser would: `godot --pat
 (or `frontline://find-match`). Test runs (anything with a `--switch`) don't listen for links handed on by a second
 copy unless given `--links`, so to test the hand-off: start a listed host, then an idle game with `--links`, then a
 third copy with only the link. The third prints `LINKS handed ...` (with `FL_DEBUG_ONLINE=1`) and quits; the idle
-one joins. Only exported builds register the scheme with the OS (`Links._register`).
+one joins. Only exported builds register the scheme with the OS (`Links._register`), so `--platform-test` checks
+how a game tells whether the links still open it (`Links.windows_claimed`, `linux_claimed`). `FL_LINKS_PORT`
+moves the socket off the one a game you're playing listens on: `tests/links.test.mjs` passes links between copies
+on a port of its own.
 
 Players sign in with GitHub on the website, which signs the game in. Email and password are for testing: from
 source the game shows its own email and password form, and so does the website's dev server. `--web-sign-in`

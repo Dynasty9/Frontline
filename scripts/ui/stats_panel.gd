@@ -295,7 +295,7 @@ func set_report(r: Dictionary) -> void:
 			_sub.text = "Gathering reports from the field..."
 		else:
 			var whose: String = "Both sides" if bool(r.get("full", false)) else (String(Defs.TEAM_NAMES[int(r.get("view", 0))]) + " figures")
-			_sub.text = "%s into the battle  ·  %s" % [fmt_time(float(r.get("t", 0.0))), whose]
+			_sub.text = "%s into the battle  ·  %s" % [UiKit.fmt_time(float(r.get("t", 0.0))), whose]
 	if _hint:
 		_hint.visible = peek
 		_close.visible = not peek
@@ -342,23 +342,7 @@ func players_of(t: int) -> Array:
 
 
 # --- formatting ------------------------------------------------------------------------------
-
-static func fmt_num(v: float) -> String:
-	var n := int(round(v))
-	var s := str(absi(n))
-	var out := ""
-	while s.length() > 3:
-		out = "," + s.substr(s.length() - 3) + out
-		s = s.substr(0, s.length() - 3)
-	return ("-" if n < 0 else "") + s + out
-
-
-static func fmt_time(t: float) -> String:
-	var s := maxi(0, int(t))
-	if s >= 3600:
-		return "%d:%02d:%02d" % [s / 3600, (s / 60) % 60, s % 60]
-	return "%d:%02d" % [s / 60, s % 60]
-
+# (counts, times and the rating's word and colour: UiKit.fmt_num, fmt_time, rating_word, rating_col)
 
 static func accuracy(r: Dictionary) -> float:
 	var sh := float(r.get("shots", 0.0))
@@ -391,19 +375,9 @@ static func exchange(r: Dictionary) -> String:
 	return ("%.1f : 1" % (a / b)) if a >= b else ("1 : %.1f" % (b / a))
 
 
-static func rating_col(v: float) -> Color:
-	if v >= 70.0:
-		return UiKit.GOOD
-	if v >= 55.0:
-		return Color(0.8, 0.9, 0.5)
-	if v >= 40.0:
-		return UiKit.WARN
-	return UiKit.BAD
-
-
 static func plural(n: float, one: String, many := "") -> String:
 	var i := int(round(n))
-	return "%s %s" % [fmt_num(i), one if i == 1 else (many if many != "" else one + "s")]
+	return "%s %s" % [UiKit.fmt_num(i), one if i == 1 else (many if many != "" else one + "s")]
 
 
 static func side_col(t: int) -> Color:
@@ -699,7 +673,7 @@ class _Summary extends _Page:
 	func _fmt(sd: Dictionary, key: String, v: float) -> String:
 		if key == "acc":
 			return ("%d%%" % int(round(v))) if StatsPanel.accuracy(sd) >= 0.0 else "-"
-		return StatsPanel.fmt_num(v)
+		return UiKit.fmt_num(v)
 
 	func _h2h(x0: float, w: float) -> float:
 		var order := p.sides_in_order()
@@ -869,16 +843,16 @@ class _Summary extends _Page:
 		var out := []
 		var b := _best(pl, func(c2): return float(BattleStats.score(c2)), 1.0)
 		if not b.is_empty():
-			out.append(["Most valuable", b, "%s points" % StatsPanel.fmt_num(BattleStats.score(b)), "The highest score: value destroyed, plus 100 a FOB taken, 50 a town, 15 a prisoner, 5 a man saved, 2 a structure built."])
+			out.append(["Most valuable", b, "%s points" % UiKit.fmt_num(BattleStats.score(b)), "The highest score: value destroyed, plus 100 a FOB taken, 50 a town, 15 a prisoner, 5 a man saved, 2 a structure built."])
 		if pl.size() >= 2:
 			var sds: Array = p.report.sides
 			var e := _best(pl, func(c2): return BattleStats.rating(c2, sds[int(c2.team)]) if float(c2.val_killed) + float(c2.val_lost) >= 60.0 else -1.0, 0.0)
 			if not e.is_empty():
 				var rv := BattleStats.rating(e, sds[int(e.team)])
-				out.append(["Most effective", e, "%s  ·  %d" % [BattleStats.rating_word(rv), int(round(rv))], "The best rating: what they destroyed against what they lost, their marksmanship and their share of the fight."])
+				out.append(["Most effective", e, "%s  ·  %d" % [UiKit.rating_word(rv), int(round(rv))], "The best rating: what they destroyed against what they lost, their marksmanship and their share of the fight."])
 		var m := _best(pl, func(c2): return StatsPanel.accuracy(c2) if float(c2.shots) >= 100.0 else -1.0, 0.0)
 		if not m.is_empty():
-			out.append(["Marksman", m, "%s of %s rounds hit" % [StatsPanel.fmt_acc(m), StatsPanel.fmt_num(float(m.shots))], "The best accuracy (at least 100 rounds fired)."])
+			out.append(["Marksman", m, "%s of %s rounds hit" % [StatsPanel.fmt_acc(m), UiKit.fmt_num(float(m.shots))], "The best accuracy (at least 100 rounds fired)."])
 		var t := _best(pl, func(c2): return float(c2.veh_kills), 1.0)
 		if not t.is_empty():
 			out.append(["Tank hunter", t, StatsPanel.plural(float(t.veh_kills), "vehicle") + " destroyed", "The most enemy vehicles knocked out."])
@@ -1019,18 +993,18 @@ class _Commanders extends _Page:
 					if not total:
 						var rv := BattleStats.rating(cm, side)
 						var shown := p.num(key + "r", rv, d + 0.1, 1.1)
-						var rc := StatsPanel.rating_col(shown)
+						var rc := UiKit.rating_col(shown)
 						UiFx.ring(self, Vector2(x + 16, cy - 5), 13.0, 3.5, shown / 100.0, rc, ink)
 						big(x + 38, cy + 2, "%d" % int(round(shown)), 22, rc)
-						cap(x + 70, cy - 1, BattleStats.rating_word(rv), 9, UiKit.DIM, HORIZONTAL_ALIGNMENT_LEFT, cw - 72.0, 1)
+						cap(x + 70, cy - 1, UiKit.rating_word(rv), 9, UiKit.DIM, HORIZONTAL_ALIGNMENT_LEFT, cw - 72.0, 1)
 					x += cw
 					continue
 				"score":
-					s = StatsPanel.fmt_num(p.num(key + "s", float(BattleStats.score(cm)), d + 0.1))
+					s = UiKit.fmt_num(p.num(key + "s", float(BattleStats.score(cm)), d + 0.1))
 				"kills":
-					s = StatsPanel.fmt_num(p.num(key + "k", float(cm.kills), d + 0.1))
+					s = UiKit.fmt_num(p.num(key + "k", float(cm.kills), d + 0.1))
 				"lost":
-					s = StatsPanel.fmt_num(p.num(key + "l", float(cm.lost) + float(cm.captured), d + 0.1))
+					s = UiKit.fmt_num(p.num(key + "l", float(cm.lost) + float(cm.captured), d + 0.1))
 				"kd":
 					s = StatsPanel.kd(cm)
 				"veh":
@@ -1041,9 +1015,9 @@ class _Commanders extends _Page:
 				"ex":
 					s = StatsPanel.exchange(cm)
 				"spent":
-					s = StatsPanel.fmt_num(p.num(key + "p", float(cm.spent), d + 0.1))
+					s = UiKit.fmt_num(p.num(key + "p", float(cm.spent), d + 0.1))
 				"fielded":
-					s = StatsPanel.fmt_num(float(cm.squads) + float(cm.vehicles))
+					s = UiKit.fmt_num(float(cm.squads) + float(cm.vehicles))
 			if total:
 				txt(x, cy, s, 14, UiKit.DIM, 400, HORIZONTAL_ALIGNMENT_RIGHT, cw - 10.0)
 			else:
@@ -1070,14 +1044,14 @@ class _Commanders extends _Page:
 		var key := "d%d" % int(cm.id)
 		var rv := BattleStats.rating(cm, side)
 		var shown := p.num(key + "r", rv, d + 0.15, 1.4)
-		var rc := StatsPanel.rating_col(shown)
+		var rc := UiKit.rating_col(shown)
 		# the rating on a dial
 		var dc := Vector2(86, y + 100)
 		UiFx.ring(self, dc, 54.0, 8.0, shown / 100.0, rc, ink)
 		big(dc.x - 60, dc.y + 14, "%d" % int(round(shown)), 46, rc, HORIZONTAL_ALIGNMENT_CENTER, 120)
-		cap(dc.x - 60, dc.y + 34, BattleStats.rating_word(rv), 10, rc, HORIZONTAL_ALIGNMENT_CENTER, 120, 2)
+		cap(dc.x - 60, dc.y + 34, UiKit.rating_word(rv), 10, rc, HORIZONTAL_ALIGNMENT_CENTER, 120, 2)
 		cap(dc.x - 60, y + 30, "Rating", 9, UiKit.DIM, HORIZONTAL_ALIGNMENT_CENTER, 120, 3)
-		txt(dc.x - 70, y + 186, "Score  " + StatsPanel.fmt_num(p.num(key + "s", float(BattleStats.score(cm)), d + 0.2)), 13, UiKit.TEXT, 600, HORIZONTAL_ALIGNMENT_CENTER, 140)
+		txt(dc.x - 70, y + 186, "Score  " + UiKit.fmt_num(p.num(key + "s", float(BattleStats.score(cm)), d + 0.2)), 13, UiKit.TEXT, 600, HORIZONTAL_ALIGNMENT_CENTER, 140)
 		var tag := p.who_tag(cm)
 		cap(dc.x - 70, y + 203, String(Defs.TEAM_NAMES[int(cm.team)]) + (("  ·  " + tag) if tag != "" else ""), 9, UiKit.DIM, HORIZONTAL_ALIGNMENT_CENTER, 140, 1)
 		# what the rating is made of
@@ -1090,8 +1064,8 @@ class _Commanders extends _Page:
 		var sk := float(side.get("val_killed", 0.0))
 		var rp := BattleStats.rating_parts(cm, side)
 		var parts := [
-			["Exchange", "60%", rp[0], "%s destroyed : %s lost  (%s)" % [StatsPanel.fmt_num(vk), StatsPanel.fmt_num(vl), StatsPanel.exchange(cm)]],
-			["Marksmanship", "20%", rp[1], ("%s of %s rounds hit" % [StatsPanel.fmt_acc(cm), StatsPanel.fmt_num(sh)]) if sh > 0.0 else "No rounds fired"],
+			["Exchange", "60%", rp[0], "%s destroyed : %s lost  (%s)" % [UiKit.fmt_num(vk), UiKit.fmt_num(vl), StatsPanel.exchange(cm)]],
+			["Marksmanship", "20%", rp[1], ("%s of %s rounds hit" % [StatsPanel.fmt_acc(cm), UiKit.fmt_num(sh)]) if sh > 0.0 else "No rounds fired"],
 			["Share of the fight", "20%", rp[2], ("%d%% of all their side destroyed" % int(round(vk / sk * 100.0))) if sk > 0.0 else "Nothing destroyed on this side yet"],
 		]
 		var py := y + 54.0
@@ -1100,7 +1074,7 @@ class _Commanders extends _Page:
 			var fk := p.num(key + "p%d" % i, float(pt[2]), d + 0.3 + i * 0.18, 0.9)
 			txt(mx, py, String(pt[0]), 13, UiKit.TEXT, 600)
 			cap(mx, py, String(pt[1]), 9, UiKit.DIM, HORIZONTAL_ALIGNMENT_RIGHT, mw, 1)
-			UiFx.bar(self, Rect2(mx, py + 8, mw, 7), fk, StatsPanel.rating_col(float(pt[2]) * 100.0), ink, 1.0 - UiFx.span(p.page_t, d + 0.3 + i * 0.18, 0.9))
+			UiFx.bar(self, Rect2(mx, py + 8, mw, 7), fk, UiKit.rating_col(float(pt[2]) * 100.0), ink, 1.0 - UiFx.span(p.page_t, d + 0.3 + i * 0.18, 0.9))
 			txt(mx, py + 30, String(pt[3]), 11, UiKit.DIM, 400, HORIZONTAL_ALIGNMENT_LEFT, mw)
 			py += 50.0
 		# everything they did
@@ -1123,7 +1097,7 @@ class _Commanders extends _Page:
 					var la := p.appear(d + 0.25 + gi * 0.08 + ri * 0.04, 0.3)
 					ink = a * la
 					txt(gxi, ly, String(kv[0]), 12, UiKit.DIM)
-					var vs := String(kv[1]) if kv[1] is String else StatsPanel.fmt_num(p.num(key + "g%d%d" % [gi, ri], float(kv[1]), d + 0.25 + gi * 0.08 + ri * 0.04, 0.7))
+					var vs := String(kv[1]) if kv[1] is String else UiKit.fmt_num(p.num(key + "g%d%d" % [gi, ri], float(kv[1]), d + 0.25 + gi * 0.08 + ri * 0.04, 0.7))
 					big(gxi, ly + 1, vs, 16, UiKit.TEXT, HORIZONTAL_ALIGNMENT_RIGHT, gw - 18.0)
 					ly += 24.0
 				ink = a
@@ -1238,7 +1212,7 @@ class _Units extends _Page:
 						"kills", "downs", "veh", "lost":
 							var field := "veh_kills" if ck == "veh" else ck
 							var v := float(u.get(field, 0))
-							s = StatsPanel.fmt_num(p.num("u%s%s" % [String(u.key), ck], v, d + 0.05, 0.7))
+							s = UiKit.fmt_num(p.num("u%s%s" % [String(u.key), ck], v, d + 0.05, 0.7))
 							big(x, y + 25, s, 17, UiKit.TEXT if v > 0.0 else UiFx.fade(UiKit.DIM, 0.6), HORIZONTAL_ALIGNMENT_RIGHT, cw - 10.0)
 						"men":
 							if veh:
@@ -1252,7 +1226,7 @@ class _Units extends _Page:
 									var lit := m < int(u.alive)
 									rect(Rect2(px + m * (pw + 2.0), y + 14, pw, 11), Color(0.9, 0.93, 0.88, 0.9) if lit else Color(1, 1, 1, 0.12))
 						"time":
-							txt(x, y + 24, StatsPanel.fmt_time((float(u.t1) if gone else now) - float(u.t0)), 13, UiKit.DIM, 600, HORIZONTAL_ALIGNMENT_RIGHT, cw - 10.0)
+							txt(x, y + 24, UiKit.fmt_time((float(u.t1) if gone else now) - float(u.t0)), 13, UiKit.DIM, 600, HORIZONTAL_ALIGNMENT_RIGHT, cw - 10.0)
 						"status":
 							var stc := UiKit.BAD if gone else UiKit.GOOD
 							var st := ("Destroyed" if veh else "Wiped out") if gone else "In the field"
@@ -1336,10 +1310,10 @@ class _Timeline extends _Page:
 		for g in lines_n + 1:
 			var gy := plot.end.y - plot.size.y * g / float(lines_n)
 			line(Vector2(plot.position.x, gy), Vector2(plot.position.x + plot.size.x * a, gy), Color(1, 1, 1, 0.05 if g > 0 else 0.15))
-			big(r.position.x + 4, gy + 4, StatsPanel.fmt_num(step * g), 11, UiKit.DIM, HORIZONTAL_ALIGNMENT_RIGHT, 38)
+			big(r.position.x + 4, gy + 4, UiKit.fmt_num(step * g), 11, UiKit.DIM, HORIZONTAL_ALIGNMENT_RIGHT, 38)
 		for g in 5:
 			var gx := lerpf(plot.position.x, plot.end.x, g / 4.0)
-			big(gx - 30, plot.end.y + 17, StatsPanel.fmt_time(lerpf(t0, t1, g / 4.0)), 11, UiKit.DIM, HORIZONTAL_ALIGNMENT_CENTER, 60)
+			big(gx - 30, plot.end.y + 17, UiKit.fmt_time(lerpf(t0, t1, g / 4.0)), 11, UiKit.DIM, HORIZONTAL_ALIGNMENT_CENTER, 60)
 		var span := maxf(1.0, t1 - t0)
 		var drawn := _drawn(delay)
 		var t_cut := lerpf(t0, t1, drawn)
@@ -1405,14 +1379,14 @@ class _Timeline extends _Page:
 			for t in order:
 				var v2 := float(row2[int(spec[1 + t])])
 				if v2 >= 0.0:
-					lines.append([t, StatsPanel.fmt_num(v2)])
+					lines.append([t, UiKit.fmt_num(v2)])
 					var py := plot.end.y - plot.size.y * v2 / vmax
 					draw_circle(Vector2(hx, py), 4.0, c(StatsPanel.side_col(t).lightened(0.3)))
 			var bw := 96.0
 			var bx := hx + 10.0 if hx + 10.0 + bw < plot.end.x else hx - 10.0 - bw
 			var bh := 22.0 + 17.0 * lines.size()
 			UiFx.card(self, Rect2(bx, ty, bw, bh), ink, 0.5)
-			big(bx + 9, ty + 15, StatsPanel.fmt_time(hover_t), 11, UiKit.DIM)
+			big(bx + 9, ty + 15, UiKit.fmt_time(hover_t), 11, UiKit.DIM)
 			for li in lines.size():
 				var tt: int = lines[li][0]
 				rect(Rect2(bx + 9, ty + 24 + li * 17, 6, 6), StatsPanel.side_col(tt))
@@ -1472,13 +1446,13 @@ class _Timeline extends _Page:
 					draw_colored_polygon(PackedVector2Array([Vector2(ex, cy - sz * 0.9), Vector2(ex + sz * 0.9, cy + sz * 0.7), Vector2(ex - sz * 0.9, cy + sz * 0.7)]), c(col.lightened(0.25)))
 				_:
 					rect(Rect2(ex - sz * 0.6, cy - sz * 0.6, sz * 1.2, sz * 1.2), col.darkened(0.05))
-			tip(Rect2(ex - 7, cy - 8, 14, 16), "%s  %s" % [StatsPanel.fmt_time(et), String(e[3])])
+			tip(Rect2(ex - 7, cy - 8, 14, 16), "%s  %s" % [UiKit.fmt_time(et), String(e[3])])
 			var dd := absf(mouse.x - ex) + absf(mouse.y - cy) * 0.5
 			if mouse.x >= 0.0 and dd < best_d and dd < 24.0:
 				best_d = dd
 				near = e
 		if not near.is_empty():
-			big(x0, ly + 28, StatsPanel.fmt_time(float(near[0])), 13, UiKit.ACCENT)
+			big(x0, ly + 28, UiKit.fmt_time(float(near[0])), 13, UiKit.ACCENT)
 			txt(x0 + 46, ly + 28, String(near[3]), 13, UiKit.TEXT, 600)
 		elif ev.is_empty():
 			cap(x0, ly + 27, "Nothing of note yet", 10, UiKit.DIM)
