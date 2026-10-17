@@ -99,11 +99,10 @@ func _view_process(dt: float) -> void:
 			_start_rebuild()
 	if _task >= 0:
 		if not WorkerThreadPool.is_task_completed(_task):
-			return  # (the chunks wait for where grass can't grow)
+			return  # (the grass as it was stays till the new is laid out)
 		WorkerThreadPool.wait_for_task_completion(_task)
 		_task = -1
-		_blocked = _job.blocked
-		_job = null
+		_lay_out()
 	var n := 0
 	while not _queue.is_empty() and n < 12:
 		_build_chunk(_queue.pop_front())
@@ -118,31 +117,42 @@ func _exit_tree() -> void:
 
 func _start_rebuild() -> void:
 	level = int(Settings.get_v("grass"))
+	if _task >= 0:
+		WorkerThreadPool.wait_for_task_completion(_task)  # (a rebuild already on its way: redone from now)
+		_task = -1
+	if level == 0:
+		_job = null
+		_clear()
+		return
+	_job = _blocked_job()
+	if OS.has_feature("nothreads"):
+		_job.run()
+		_lay_out()
+	else:
+		_task = WorkerThreadPool.add_task(_job.run, false, "Grass: bare ground")
+
+
+## Where grass can't grow is worked out: the old chunks go and the new ones
+## queue up, the nearest the camera first.
+func _lay_out() -> void:
+	_blocked = _job.blocked
+	_job = null
+	_clear()
+	var nc := int(HALF / CHUNK)
+	for cx in range(-nc, nc):
+		for cz in range(-nc, nc):
+			_queue.append(Vector2i(cx, cz))
+	var cam: Vector3 = atmo.world.cam.focus_pos if atmo.world.cam else Vector3.ZERO
+	var hc := CHUNK * 0.5
+	_queue.sort_custom(func(a, b): return Vector2(a.x * CHUNK + hc - cam.x, a.y * CHUNK + hc - cam.z).length() < Vector2(b.x * CHUNK + hc - cam.x, b.y * CHUNK + hc - cam.z).length())
+
+
+func _clear() -> void:
 	for k in _built:
 		for node in _built[k]:
 			node.queue_free()
 	_built.clear()
 	_queue.clear()
-	if level == 0:
-		return
-	if _task >= 0:
-		WorkerThreadPool.wait_for_task_completion(_task)  # (a rebuild already on its way: redone from now)
-		_task = -1
-	_job = _blocked_job()
-	if OS.has_feature("nothreads"):
-		_job.run()
-		_blocked = _job.blocked
-		_job = null
-	else:
-		_task = WorkerThreadPool.add_task(_job.run, false, "Grass: bare ground")
-	var nc := int(HALF / CHUNK)
-	for cx in range(-nc, nc):
-		for cz in range(-nc, nc):
-			_queue.append(Vector2i(cx, cz))
-	# build the chunks nearest the camera first
-	var cam: Vector3 = atmo.world.cam.focus_pos if atmo.world.cam else Vector3.ZERO
-	var hc := CHUNK * 0.5
-	_queue.sort_custom(func(a, b): return Vector2(a.x * CHUNK + hc - cam.x, a.y * CHUNK + hc - cam.z).length() < Vector2(b.x * CHUNK + hc - cam.x, b.y * CHUNK + hc - cam.z).length())
 
 
 var _job: BlockedJob = null  # where grass can't grow, being worked out on a worker thread
