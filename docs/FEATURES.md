@@ -636,7 +636,11 @@ catalogue entry in `MissionList.LIST`, a setup function and an autopilot functio
   battle (where a wave from the middle of the screen wakes it), with the battlefield showing through it.
 - Boot splash and title: the splash is the title's first frame (the map asleep under the emblem and the name).
   A wave runs out of the emblem's dot, wakes the map and lights the letters as it passes; then the title rises
-  away and the menu glides in on the same map. A click or a key skips it.
+  away and the menu glides in on the same map. A click or a key skips it. Only the scripts the title and the
+  menu need compile before the splash gives way: the rest of the game (`World` and everything it reaches)
+  compiles on a worker thread while the title plays (`scripts/game_scripts.gd`), and a battle or the Field
+  Manual wanted before it's done waits for it. The Field Manual and the Settings are built the first time
+  they're opened.
 - Main menu: grouped entries that say what they do, and a New Operation panel to pick a side (Coalition, Rebels
   or Observe, with each side's doctrine) and the time of day.
 - Loading screen before each battle: the operation's name, mission, side, area and conditions, a field note and
