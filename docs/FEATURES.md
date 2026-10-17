@@ -698,7 +698,8 @@ function and an autopilot function.
   stop where he's sent. Wheeled vehicles steer like cars: a real turning circle from their wheelbase and
   steering lock, no turning on the spot, so a truck needs room to turn round. Tracked vehicles skid-steer:
   they pivot where they stand for a sharp turn but turn wider the faster they go. Weight sets how hard they
-  accelerate and brake. A spot close behind is backed into rather than reached by a loop; a vehicle keeps its
+  accelerate and brake. A spot close behind is backed into rather than reached by a loop; for one further
+  back the driver comes round on full lock (a boat's coxswain puts the helm hard over); a vehicle keeps its
   distance behind one going its way, drives round one standing in the road and passes oncoming traffic on
   the right; supply trucks keep to the right-hand side of the road. Hung up on something, it backs off, turns
   and plans again. (Trucks are slower on the road than they were, so each load carries more.)
