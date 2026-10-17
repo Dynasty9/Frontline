@@ -21,6 +21,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { FIND_MATCH_LINK, joinLink } from "@/lib/config"
 import { findInsignia, rankName } from "@/lib/insignia"
 import { joinable, type Lobby } from "@/lib/matchmaker"
+import { playerPath } from "@/lib/players"
 import { cn } from "@/lib/utils"
 
 // Battles you can join first; within each, the matchmaker's order (fullest first).
@@ -287,7 +288,14 @@ function Host({ lobby }: { lobby: Lobby }) {
           </TooltipContent>
         </Tooltip>
       )}
-      {lobby.host}
+      {/* a signed-in host's callsign is theirs: it leads to their page */}
+      {lobby.verified ? (
+        <Link to={playerPath(lobby.host)} className="hover:text-foreground hover:underline">
+          {lobby.host}
+        </Link>
+      ) : (
+        lobby.host
+      )}
       {ins && rank !== null && <span className="sr-only">, {rankName(rank)}</span>}
       {lobby.verified && (
         <Tooltip>
