@@ -267,7 +267,7 @@ FL_DEBUG_DECOR=1 (env)                                print the street-furniture
 FL_DEBUG_WILDLIFE=1 (env)                             every 5 s: the wildlife's cost, how many of each are drawn, what took
                                                       fright at what, and where one of each is (the first time, the water too)
 FL_WILDLIFE_FOLLOW=KIND (env)                         the camera keeps on one animal (birds, ducks, soarer, bat, rat, hare, fish,
-                                                      dolphins), for a close look with --zoom / --pitch (windowed only)
+                                                      dolphins, dead), for a close look with --zoom / --pitch (windowed only)
 --menu-shot=menu.png --shot-at=6                      screenshot of the main menu (with --curtain --intro-at=0 at
                                                       1920x1080 it is the boot splash: save it as assets/splash.png
                                                       whenever the title or the map changes)
