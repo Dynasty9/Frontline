@@ -27,6 +27,7 @@ const LIST := [
 	["settings", "[filter]", "The settings and their values."],
 	["preset", "low | medium | high | ultra", "Applies a graphics preset."],
 	["report", "", "Writes all of the above to a file and copies it to the clipboard, to share."],
+	["save", "", "Saves the console scrollback as a plain-text file."],
 	["clear", "", "Clears the console."],
 	["close", "", "Closes the console (so do Esc and the console key)."],
 ]
@@ -892,3 +893,12 @@ func c_report(_a: PackedStringArray) -> void:
 	if DisplayServer.get_name() != "headless":
 		DisplayServer.clipboard_set(all)
 	con.good("Written to %s, and copied to the clipboard." % ProjectSettings.globalize_path(REPORT_PATH))
+
+
+func c_save(_args: PackedStringArray) -> void:
+	con.save_text()
+
+
+func cancel() -> void:
+	if not _bench.is_empty():
+		_bench_end("Benchmark stopped; settings are back as they were.")

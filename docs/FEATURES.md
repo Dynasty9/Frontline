@@ -282,6 +282,19 @@ screen, in a battle or in the menus. Its commands are mostly about one question:
 completes a command or its argument, Up and Down go through what was typed before, Esc closes it, `help` lists
 everything.
 
+Select output with the mouse, double-click words, or focus it and use Ctrl+A; Ctrl+C copies the selection
+without colour markup. Both output and prompt have right-click menus. Ctrl+V (or Ctrl+Shift+V) pastes into
+the prompt for editing; Enter is still required to run it. The prompt supports selection, cut, undo/redo,
+and word/caret movement. Ctrl+Shift+C copies selected output, or all output when nothing is selected.
+The toolbar also has **Copy all** and **Save text** (`save`), which writes a timestamped text file in the
+game's user-data directory and prints its full path.
+
+Ctrl+F searches scrollback, ignoring case; Enter/Shift+Enter jumps to the next/previous match with wraparound.
+Esc dismisses search first. PgUp/PgDn scroll, Ctrl+Home/End jump to the oldest/latest output, and **Latest**
+returns to the live output. Ctrl+L clears output without losing command history. Ctrl+C with no selection
+clears the prompt and stops an active benchmark, restoring its settings. Ctrl+plus/minus changes text size,
+Ctrl+0 resets it. Scrollback is bounded to 600 paragraphs and command history to 60 entries.
+
 - **`why`** reads the last five seconds and says what's holding the frame rate back: the screen's refresh or the
   frame limit (not a problem), the graphics card (with the resolution it's drawing at), or the processor, and then
   which part of it: the battle's game logic (its biggest systems, and whether the simulation keeps up with the
