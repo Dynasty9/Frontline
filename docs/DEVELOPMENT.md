@@ -395,9 +395,11 @@ godot --headless --path . -- --join=127.0.0.1 --team=1 --quit-after=200 --port=7
 ```
 
 The client prints a `CLIENT entities=...` summary when it quits. Check both outputs for `SCRIPT ERROR`. A client's
-`--quit-after` counts from when the host's world reaches it: the host answers only once it has laid out the map and,
-with a window, drawn its first frame, which takes a minute or more off-screen. `waited=` in the summary is how long
-the client sat in an empty world first (-1: nothing came, and it gave up 5 minutes past `--quit-after`).
+`--quit-after` counts from when the host's world has reached it and been built (`World.loaded`): the host answers
+only once it has laid out the map and, with a window, drawn its first frame, which takes a minute or more off-screen.
+`waited=` in the summary is how long the client took to get there (-1: nothing came, and it gave up 5 minutes past
+`--quit-after`). With `FL_DEBUG_NET=1` the host prints what it sent a joiner (`JOIN sent peer ... entities in N kB`)
+and the client when its world was laid out, built and covered (`JOIN loaded ...`).
 
 The host's lobby takes `--battle-name=NAME`, `--coop` (everyone on `--team`'s side), `--max-players=N` and
 `--password=PW`; a joiner gives `--password=PW`, and `--ready` / `--say=TEXT` press Ready and chat once it's in the

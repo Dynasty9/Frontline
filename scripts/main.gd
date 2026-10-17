@@ -654,8 +654,17 @@ func _reveal_next_frame(w: Node3D) -> void:
 
 
 ## After the build: hold the loading screen while the first frames render
-## (and compile their shaders) behind it, then fade into the battlefield.
+## (and compile their shaders) behind it, then fade into the battlefield. A
+## client's battle is still on its way from the host then: the screen stays up
+## until all of it is here and built (World.loaded), saying how far it has got.
 func _warm_up(cur: Curtain) -> void:
+	var w := world
+	while is_instance_valid(w) and not w.loaded:
+		if not is_instance_valid(cur):
+			return
+		await get_tree().process_frame
+	if not is_instance_valid(w) or w != world or not is_instance_valid(cur):
+		return
 	if world.atmo:
 		cur.add_line("CONDITIONS", String(Curtain.MOOD_TEXT.get(world.atmo.mood, world.atmo.mood.capitalize())))
 	cur.set_stage("Deploying forces", 0.72)
@@ -793,7 +802,7 @@ func _process(_dt: float) -> void:
 		return  # (a browser draws the loading screen between its stages: World.build)
 	# the map is built and the battle under way: start the clock on it (not
 	# before: building the map holds up everything, a request included)
-	if _battle_pending and world.time > 1.0:
+	if _battle_pending and world.time > 1.0 and world.loaded:
 		_battle_pending = false
 		Online.battle_begin()
 	# --trace=path.csv: every half second, where each man is and what he's doing
@@ -1139,11 +1148,11 @@ func _process(_dt: float) -> void:
 	if args.has("stats-tab") and world.hud and world.winner >= 0 and not has_meta("aar_tab") and world.hud.aar_panel != null:
 		set_meta("aar_tab", true)
 		world.hud.aar_panel.show_tab(String(args["stats-tab"]))
-	# a client's --quit-after counts from when the host's world reached it: the
-	# host only answers once it has laid out the map (and, with a window, drawn
-	# its first frame - a minute or more off-screen), and a client counting from
-	# its own empty world can give up before it has been sent anything
-	if not world.srv and not world.has_meta("world_at") and not world.entities.is_empty():
+	# a client's --quit-after counts from when the host's world reached it and
+	# was built: the host only answers once it has laid out the map (and, with a
+	# window, drawn its first frame - a minute or more off-screen), and a client
+	# counting from its own empty world can give up before it has been sent anything
+	if not world.srv and not world.has_meta("world_at") and world.loaded:
 		world.set_meta("world_at", world.time)
 	var run_t: float = world.time
 	if not world.srv:

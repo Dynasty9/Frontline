@@ -250,6 +250,13 @@ they're doing). The observer bar at the top has pause, speed (0.25x to 4x), dire
     sketches and the Command Net stay).
 - **Drop-in:** friends can join a battle that's already running (lobby option, on by default). They join the
   side with human players (the smaller side in PvP), get the current world, and receive a rifle squad and engineers at their FOB.
+- **Joining** (`World._client_ready`, "joining" in `world.gd`): a client's world starts empty and the host sends it
+  the battle as it stands in a few compressed messages (a few hundred kB for a whole town): the ground first (the
+  water's shapes, the roads, the set dressing and the host's own ground kinds, so paving and bridge decks are road
+  on every peer), then every entity it may know of, a structure only with what differs from a new one. The client
+  lays the ground out on a worker thread while the rest arrives, then builds the entities and works out the cover
+  map a slice of each frame at a time, answering the connection every frame. The loading screen stays up, saying
+  how far it has got, until all of it is built, so play starts on the whole battlefield with no backlog.
 - **Fog of war is enforced by the host.** A client is only told about enemy units and buildings its side has spotted,
   gets a "hidden" marker instead of positions once they're out of sight, and never receives enemy supply, production
   or team stats. Enemy HQs and starting FOBs are revealed to everyone, like start locations in most RTS games. Each
