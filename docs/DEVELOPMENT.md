@@ -129,11 +129,12 @@ to that team.
 Models are built in script from parts (boxes, cylinders, lofted hulls) and merged (`Mats.merge_static`) into a mesh
 per material, each part's tint carried as vertex colour. A model merged whole puts its parts straight into the
 merged meshes (`Mats.Bake`: trees, house and garden walls, floors, rubble, crates, the street furniture, and every
-vehicle, whose builders' `_add` only notes a part down for its moving piece) without making them as nodes first;
-a part a model goes on to use (a flag that changes colour, a door that swings) stays a node, out of the merge. A mesh built in script keeps the arrays it was made from (`Mats.keep_arrays`), so merging
-never reads one back from the graphics card, which waits on it each time. Merged-away parts let go of their meshes
-at once (a part deleted with its mesh had the renderer bring it up to date first: tens of thousands at once froze
-the first frame of a battle for ten seconds and more).
+vehicle, whose builders' `_add` only notes a part down for its moving piece) without making them as nodes first; a
+part a model goes on to use (a flag that changes colour, a door that swings) stays a node, out of the merge. A mesh
+built in script keeps the arrays it was made from (`Mats.keep_arrays`), so merging never reads one back from the
+graphics card, which waits on it each time. Merged-away parts let go of their meshes at once (a part deleted with
+its mesh had the renderer bring it up to date first: tens of thousands at once froze the first frame of a battle
+for ten seconds and more).
 
 ## Automated test modes
 
