@@ -6,6 +6,8 @@ extends Node3D
 
 signal game_ended(winner: int)
 signal report_updated
+## How far build() has got: what the loading screen says, and its share of the way.
+signal build_stage(text: String, frac: float)
 
 var settings: Dictionary = {}
 var srv := false
@@ -109,6 +111,20 @@ func _ready() -> void:
 		phys = PhysicsFx.new(self)
 		phys.name = "Phys"
 		add_child(phys)
+
+
+## True while build() is under way.
+var building := false
+
+
+## The battle itself, once the world is in the tree: the ground and all that
+## stands on it, the routes, the AI commanders and the view. main.gd awaits it
+## straight after adding the world. Everywhere but in a browser it runs from
+## start to finish at once, as part of that frame (see _breathe).
+func build() -> void:
+	building = true
+	if OS.has_feature("web"):
+		process_mode = Node.PROCESS_MODE_DISABLED  # (nothing ticks a world half built)
 	if srv:
 		nav = Nav.new()
 		nav.terrain = terrain
@@ -120,14 +136,17 @@ func _ready() -> void:
 			MapGen.new(self).scenario(String(settings.scenario))
 		elif String(settings.get("mission", "")) != "":
 			var mgen := MapGen.new(self)
-			mgen.generate()
+			await mgen.generate()
 			mission = MissionDirector.new(self, String(settings.mission), mgen)
 			mission.setup()
 			set_mission_info(mission.info())
 		else:
-			MapGen.new(self).generate()
+			await MapGen.new(self).generate()
+		await _breathe("Settling the ground", 0.56)
 		terrain.tick(1 << 30)
+		await _breathe("Charting the water", 0.6)
 		_water_view()
+		await _breathe("Plotting the routes", 0.62)
 		var tn := Time.get_ticks_msec()
 		nav.finalize()
 		print("Hierarchical nav: %s infantry, %s vehicles (%d ms)" % [nav.hnav_i.stats(), nav.hnav_v.stats(), Time.get_ticks_msec() - tn])
@@ -138,6 +157,7 @@ func _ready() -> void:
 		Net.player_left.connect(_on_player_left)
 		Net.player_joined.connect(_on_player_joined)
 		Net.player_rejoined.connect(_on_player_rejoined)
+		await _breathe("Deploying forces", 0.7)
 	if has_view:
 		cam = RtsCamera.new()
 		cam.name = "Cam"
@@ -162,6 +182,19 @@ func _ready() -> void:
 		_try_focus()
 	if not srv:
 		_client_ready.rpc_id(1)
+	process_mode = Node.PROCESS_MODE_INHERIT
+	building = false
+
+
+## Between the stages of build() (and of MapGen.generate): tells the loading
+## screen, and in a browser waits a frame. A browser runs the game on the
+## page's one thread, and a page that doesn't draw or answer for half a minute
+## gets called unresponsive; built in one go, a battle took about that long.
+## Everywhere else this returns at once, so the build is one piece as ever.
+func _breathe(text: String, frac: float) -> void:
+	build_stage.emit(text, frac)
+	if OS.has_feature("web") and is_inside_tree():
+		await get_tree().process_frame
 
 
 # --- environment ------------------------------------------------------------
