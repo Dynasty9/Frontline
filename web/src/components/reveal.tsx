@@ -6,7 +6,7 @@ type Props = {
   children: ReactNode
   className?: string
   /** where it comes in from: rises (up), slides (left / right), grows (zoom) or is wiped on (wipe) */
-  from?: "up" | "left" | "right" | "zoom" | "wipe"
+  from?: "up" | "left" | "right" | "zoom" | "wipe" | "signal" | "type"
   /** ms to wait after it comes into view, to stagger a row of things */
   delay?: number
 }

@@ -2,116 +2,113 @@ import { SectionLabel } from "@/components/battles"
 import { Clip } from "@/components/footage"
 import { Reveal } from "@/components/reveal"
 import { COUNTS } from "@/lib/intel"
-import { cn } from "@/lib/utils"
 
-type Feature = {
-  clip: string
-  cam: string
-  grid: string
-  kicker: string
-  title: string
-  text: string
-  tags: string[]
-}
-
-const FEATURES: Feature[] = [
-  {
-    clip: "infantry",
-    cam: "Cam 02 · Infantry",
-    grid: "C6",
-    kicker: "Infantry",
-    title: "Soldiers that think for themselves",
-    text: "They take cover behind real walls and wrecks, keep their heads down under fire, drag the wounded to safety and throw enemy grenades back. You never have to tell a man where to stand.",
-    tags: ["Cover", "Suppression", "Casualty drag", "Grenade throw-back"],
-  },
-  {
-    clip: "squads",
-    cam: "Cam 03 · Assault",
-    grid: "E3",
-    kicker: "Squads",
-    title: "Squads that fight like squads",
-    text: "Teams leapfrog forward under covering fire, clear houses room by room, set ambushes on the roads, and break and run when a fight goes badly. Give the order; they work out the drill.",
-    tags: ["Bounding overwatch", "Room clearing", "Ambushes", "Morale"],
-  },
-  {
-    clip: "armour",
-    cam: "Cam 04 · Armour",
-    grid: "B4",
-    kicker: "Armour",
-    title: "Armour that hits like a hammer",
-    text: `Tanks pop smoke when a missile is fired at them. Infantry fighting vehicles drop their squads at the enemy's wire. In all, ${COUNTS.vehicles} vehicles, from quad bikes and technicals to main battle tanks.`,
-    tags: ["Main battle tanks", "IFVs", "Tank destroyers", "Smoke"],
-  },
-  {
-    clip: "fires",
-    cam: "Cam 05 · Fire mission",
-    grid: "G4",
-    kicker: "Fire support",
-    title: "Call it in",
-    text: "155 mm artillery, rocket barrages, mortars, A-10 gun runs and an AC-130 on station. Shellfire sets woods, hedgerows, roofs and cars alight, and the fire spreads with the wind and drives men out of cover.",
-    tags: ["Artillery", "Gun runs", "Gunships", "Spreading fire"],
-  },
-  {
-    clip: "sea",
-    cam: "Cam 06 · Naval",
-    grid: "H5",
-    kicker: "Sea and sky",
-    title: "From the sea and the sky",
-    text: "Boats land raiding parties on the beach under a patrol ship's guns. Helicopters carry vehicles to the front on a cable, and attack helicopters come in low from the sea.",
-    tags: ["Patrol ships", "RHIB landings", "Sling loads", "Helicopters"],
-  },
-]
-
+/** Start with a decision, then widen the battlefield. Each beat has its own scale. */
 export function Features() {
   return (
-    <section id="intel" className="relative mx-auto max-w-6xl scroll-mt-16 px-4 py-24 sm:px-6">
-      <Reveal>
-        <SectionLabel>The game</SectionLabel>
-        <h2 className="mt-3 max-w-3xl font-display text-5xl leading-[0.95] font-extrabold uppercase sm:text-6xl">
-          Give the order. <span className="text-primary">Watch them fight.</span>
+    <section id="intel" className="story mx-auto max-w-6xl scroll-mt-16 px-4 py-24 sm:px-6">
+      <Reveal from="signal">
+        <SectionLabel>01 / Take command</SectionLabel>
+        <h2 className="mt-4 max-w-3xl font-display text-5xl leading-none font-extrabold uppercase sm:text-7xl">
+          The road is covered.
+          <br />
+          <span className="text-primary">Find another way.</span>
         </h2>
-        <p className="mt-5 max-w-2xl text-base leading-relaxed text-muted-foreground">
-          You command squads, not soldiers. Every clip on this page was recorded in the game as it plays: no cutscenes,
-          no mock-ups, no pre-rendered anything.
+        <p className="mt-6 max-w-xl text-lg leading-relaxed text-muted-foreground">
+          Pin them down. Send a squad around the flank. Decide when to push and when to pull back. Frontline is a
+          real-time strategy game about reading the fight and making the call.
         </p>
       </Reveal>
 
-      <div className="mt-20 space-y-28">
-        {FEATURES.map((f, i) => (
-          <FeatureRow key={f.clip} f={f} n={i + 1} flip={i % 2 === 1} />
-        ))}
-      </div>
-    </section>
-  )
-}
+      <article className="mt-12 grid items-center gap-8 lg:grid-cols-[1.6fr_1fr] lg:gap-14">
+        <Reveal from="signal">
+          <Clip name="squads" label="Assault · In-game footage" grid="E3" className="aspect-video" />
+        </Reveal>
+        <Reveal from="type" delay={120}>
+          <p className="font-mono text-xs tracking-widest text-primary uppercase">Your orders. Their instincts.</p>
+          <h3 className="mt-4 font-display text-4xl leading-none font-bold uppercase">
+            You choose the move.
+            <br />
+            They fight as a team.
+          </h3>
+          <p className="mt-5 leading-relaxed text-muted-foreground">
+            One team covers while another advances. Squads clear houses, spring ambushes and break contact when the
+            fight turns against them. Give the order; they work out the drill.
+          </p>
+          <p className="mt-6 border-t pt-4 font-mono text-xs tracking-wide text-muted-foreground">
+            COVER → ADVANCE → ASSAULT
+          </p>
+        </Reveal>
+      </article>
 
-function FeatureRow({ f, n, flip }: { f: Feature; n: number; flip: boolean }) {
-  return (
-    <article className="grid items-center gap-10 lg:grid-cols-12 lg:gap-14">
-      <Reveal from={flip ? "right" : "left"} className={cn("lg:col-span-7", flip && "lg:order-2")}>
-        <div className="relative">
-          <div className="absolute -inset-3 -z-10 bg-[radial-gradient(ellipse_at_center,rgb(245_201_110/0.14),transparent_70%)] blur-2xl" />
-          <Clip name={f.clip} label={f.cam} grid={f.grid} className="sweep aspect-video" />
+      <article className="my-20 grid items-center gap-8 border-y py-10 md:grid-cols-[1fr_1.2fr] md:gap-16">
+        <Reveal from="signal">
+          <SectionLabel>Every soldier matters</SectionLabel>
+          <h3 className="mt-4 font-display text-4xl leading-none font-bold uppercase sm:text-5xl">
+            Under fire,
+            <br />
+            instinct takes over.
+          </h3>
+          <p className="mt-5 max-w-md leading-relaxed text-muted-foreground">
+            Watch a man duck behind a wreck, drag a wounded comrade to safety or throw an enemy grenade back. These are
+            soldiers reacting to the battle you set in motion.
+          </p>
+        </Reveal>
+        <Reveal from="type">
+          <Clip name="infantry" label="Infantry · In-game footage" grid="C6" className="aspect-video" />
+        </Reveal>
+      </article>
+
+      <article>
+        <Reveal from="signal" className="mb-10 flex flex-wrap items-end justify-between gap-6">
+          <div>
+            <SectionLabel>02 / Change the fight</SectionLabel>
+            <h3 className="mt-4 font-display text-5xl leading-none font-extrabold uppercase sm:text-7xl">
+              Now bring the
+              <br />
+              <span className="text-primary">heavy hitters.</span>
+            </h3>
+          </div>
+          <p className="max-w-sm leading-relaxed text-muted-foreground">
+            A tank breaks the deadlock. A fire mission forces the enemy out of cover. A landing opens a whole new front.
+            Make your forces work together.
+          </p>
+        </Reveal>
+        <Reveal from="signal">
+          <Clip name="armour" label="Armour · In-game footage" grid="B4" className="aspect-video sm:aspect-[21/9]" />
+        </Reveal>
+        <div className="flex flex-wrap justify-between gap-3 border-b py-5">
+          <p className="font-display text-xl font-bold uppercase">Break through on the ground</p>
+          <p className="font-mono text-xs text-muted-foreground">
+            {COUNTS.vehicles} vehicles · From quad bikes to main battle tanks
+          </p>
         </div>
-      </Reveal>
-      <Reveal delay={120} className={cn("lg:col-span-5", flip && "lg:order-1")}>
-        <div className="flex items-end gap-4">
-          <span className="stencil text-7xl sm:text-8xl">{String(n).padStart(2, "0")}</span>
-          <span className="mb-2 text-xs font-bold tracking-[0.25em] text-primary uppercase">{f.kicker}</span>
+        <div className="mt-10 grid gap-10 md:grid-cols-2">
+          <div>
+            <Reveal from="type">
+              <Clip name="fires" label="Fire mission · In-game footage" grid="G4" className="aspect-video" />
+            </Reveal>
+            <h4 className="mt-5 font-display text-3xl font-bold uppercase">Call it in</h4>
+            <p className="mt-2 leading-relaxed text-muted-foreground">
+              Mortars, artillery and gun runs. Shellfire sets cover alight; the wind carries the flames. The battlefield
+              changes with every strike.
+            </p>
+          </div>
+          <div className="md:pt-16">
+            <Reveal from="signal">
+              <Clip name="sea" label="Naval · In-game footage" grid="H5" className="aspect-video" />
+            </Reveal>
+            <h4 className="mt-5 font-display text-3xl font-bold uppercase">Open another front</h4>
+            <p className="mt-2 leading-relaxed text-muted-foreground">
+              Land raiders under a patrol ship’s guns. Sling a vehicle forward by helicopter. Bring the fight from
+              somewhere they weren’t watching.
+            </p>
+          </div>
         </div>
-        <h3 className="mt-4 font-display text-4xl leading-none font-extrabold uppercase sm:text-5xl">{f.title}</h3>
-        <p className="mt-4 leading-relaxed text-muted-foreground">{f.text}</p>
-        <ul className="mt-5 flex flex-wrap gap-2">
-          {f.tags.map((t) => (
-            <li
-              key={t}
-              className="border border-primary/30 bg-primary/5 px-2.5 py-1 text-[11px] font-bold tracking-[0.14em] text-primary/90 uppercase"
-            >
-              {t}
-            </li>
-          ))}
-        </ul>
-      </Reveal>
-    </article>
+      </article>
+      <p className="mt-12 font-mono text-xs text-muted-foreground">
+        Actual gameplay throughout. Every clip recorded in Frontline.
+      </p>
+    </section>
   )
 }

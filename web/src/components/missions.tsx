@@ -1,84 +1,80 @@
+import { useState } from "react"
 import { SectionLabel } from "@/components/battles"
 import { HudCorners } from "@/components/footage"
 import { Reveal } from "@/components/reveal"
-import { type Mission, MISSIONS } from "@/lib/intel"
+import { MISSIONS } from "@/lib/intel"
 import { cn } from "@/lib/utils"
 
-const WORDS = ["No", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine", "Ten", "Eleven", "Twelve"]
-
-// the first mission gets the big tile; the rest fill in round it
-const SPANS = [
-  "lg:col-span-4 lg:row-span-2 min-h-[22rem] lg:min-h-[34rem]",
-  "lg:col-span-2 min-h-[16.5rem]",
-  "lg:col-span-2 min-h-[16.5rem]",
-  "lg:col-span-3 min-h-[18rem]",
-  "lg:col-span-3 min-h-[18rem]",
-]
-
 export function Missions() {
+  const [selected, setSelected] = useState(0)
+  const mission = MISSIONS[selected]
   return (
-    <section id="missions" className="scroll-mt-16 border-y border-white/10 bg-card/40">
+    <section id="missions" className="story scroll-mt-16 border-y bg-card/40">
       <div className="mx-auto max-w-6xl px-4 py-24 sm:px-6">
-        <Reveal className="flex flex-wrap items-end justify-between gap-6">
-          <div>
-            <SectionLabel>Missions</SectionLabel>
-            <h2 className="mt-3 font-display text-5xl leading-[0.95] font-extrabold uppercase sm:text-6xl">
-              {WORDS[MISSIONS.length] ?? MISSIONS.length} operations. <span className="text-primary">Zero margin.</span>
-            </h2>
-          </div>
-          <p className="max-w-sm text-sm leading-relaxed text-muted-foreground">
-            Short, hand-built operations with objectives, radio traffic and a twist, each built around something the
-            game does well. Play them alone, or bring a friend: every one works in co-op.
+        <Reveal from="signal">
+          <SectionLabel>03 / Your first operation</SectionLabel>
+          <h2 className="mt-4 font-display text-5xl leading-none font-extrabold uppercase sm:text-7xl">
+            A plan. A squad.
+            <br />
+            <span className="text-primary">Then contact.</span>
+          </h2>
+          <p className="mt-6 max-w-xl leading-relaxed text-muted-foreground">
+            Seize a bridge before the counterattack. Slip into town after dark. Short, hand-built operations put your
+            decisions to the test, with objectives and radio traffic as the fight unfolds.
           </p>
         </Reveal>
-
-        <div className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-6">
-          {MISSIONS.map((m, i) => (
-            <Reveal key={m.key} from="zoom" delay={i * 80} className={cn("flex", SPANS[i], i === 0 && "sm:col-span-2")}>
-              <MissionCard m={m} n={i + 1} big={i === 0} />
-            </Reveal>
-          ))}
+        <div className="mt-12 grid items-start gap-8 lg:grid-cols-[1fr_2fr]">
+          <div aria-label="Choose an operation" className="border-t">
+            {MISSIONS.map((m, i) => (
+              <button
+                key={m.key}
+                type="button"
+                aria-pressed={selected === i}
+                aria-controls="operation-briefing"
+                onClick={() => setSelected(i)}
+                className={cn(
+                  "flex min-h-16 w-full items-center gap-4 border-b px-3 py-4 text-left focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-primary",
+                  selected === i
+                    ? "border-primary bg-primary/10 text-primary"
+                    : "text-muted-foreground hover:bg-secondary hover:text-foreground"
+                )}
+              >
+                <span className="font-mono text-xs">{String(i + 1).padStart(2, "0")}</span>
+                <span className="flex-1 font-display text-xl font-bold uppercase">{m.title}</span>
+                <span aria-hidden="true">{selected === i ? "↗" : "+"}</span>
+              </button>
+            ))}
+            <p className="mt-5 text-sm leading-relaxed text-muted-foreground">
+              Every operation plays solo or in co-op. Bring a friend and share command.
+            </p>
+          </div>
+          <div id="operation-briefing" aria-live="polite" aria-atomic="true">
+            <article key={mission.key} className="operation-cut">
+              <div className="relative">
+                <img
+                  src={`/media/m-${mission.key}.jpg`}
+                  alt={`${mission.title} battlefield`}
+                  loading="lazy"
+                  width={1600}
+                  height={900}
+                  className="aspect-video w-full object-cover"
+                />
+                <HudCorners inset="0.75rem" />
+              </div>
+              <div className="mt-5 flex flex-wrap justify-between gap-2 font-mono text-xs tracking-wider text-primary uppercase">
+                <p>{mission.op}</p>
+                <p>{mission.time}</p>
+              </div>
+              <h3 className="mt-3 font-display text-4xl font-bold uppercase">{mission.title}</h3>
+              <p className="mt-2 max-w-xl leading-relaxed text-muted-foreground">{mission.blurb}</p>
+              <p className="mt-5 border-t pt-4 text-sm text-muted-foreground">
+                <span className="font-mono text-xs text-foreground">YOUR FORCE / </span>
+                {mission.force}
+              </p>
+            </article>
+          </div>
         </div>
       </div>
     </section>
-  )
-}
-
-function MissionCard({ m, n, big }: { m: Mission; n: number; big: boolean }) {
-  return (
-    <article className="group sweep relative isolate flex w-full flex-col justify-end overflow-hidden bg-black p-5 ring-1 ring-white/10 transition-shadow hover:ring-primary/50 sm:p-6">
-      <img
-        src={`/media/m-${m.key}.jpg`}
-        alt=""
-        loading="lazy"
-        className="absolute inset-0 -z-20 size-full object-cover transition-transform duration-[1.4s] ease-out group-hover:scale-110"
-      />
-      <div className="absolute inset-0 -z-10 bg-gradient-to-t from-black via-black/55 to-black/5" />
-      <div className="scanlines pointer-events-none absolute inset-0 -z-10 opacity-60" />
-      <div className="opacity-0 transition-opacity duration-300 group-hover:opacity-100">
-        <HudCorners inset="0.6rem" />
-      </div>
-
-      <div className="absolute top-4 left-5 flex items-center gap-2 font-mono text-[10px] tracking-[0.2em] text-cream/85 uppercase sm:left-6">
-        <span className="bg-primary px-1.5 py-0.5 font-bold text-primary-foreground">
-          Op {String(n).padStart(2, "0")}
-        </span>
-        {m.time}
-      </div>
-
-      <p className="text-[11px] font-bold tracking-[0.22em] text-primary uppercase">{m.op}</p>
-      <h3
-        className={cn(
-          "mt-1 font-display leading-none font-extrabold uppercase",
-          big ? "text-5xl sm:text-7xl" : "text-4xl"
-        )}
-      >
-        {m.title}
-      </h3>
-      <p className={cn("mt-3 leading-relaxed text-cream/85", big ? "max-w-lg text-base" : "text-sm")}>{m.blurb}</p>
-      <p className="mt-3 max-h-0 overflow-hidden text-xs text-muted-foreground opacity-0 transition-all duration-500 group-hover:max-h-12 group-hover:opacity-100">
-        <span className="font-bold tracking-wider text-cream/70 uppercase">Force</span> · {m.force}
-      </p>
-    </article>
   )
 }

@@ -78,9 +78,8 @@ export function Hero({ health, platform, onWatch }: Props) {
           You command the <Typewriter words={COMMANDS} />
         </p>
         <p className="mt-4 max-w-xl text-base leading-relaxed text-cream/80 sm:text-lg">
-          A squad-level strategy game where every soldier thinks for himself. You decide where they go; they decide how
-          to get there and how to fight. Take on the AI alone, team up with friends against it, or fight each other
-          online.
+          A real-time strategy game where every soldier thinks for himself. You decide where they go; they decide how to
+          get there and how to fight. Take on the AI alone, team up with friends against it, or fight each other online.
         </p>
 
         <div className="mt-9 flex flex-wrap items-center gap-3">
