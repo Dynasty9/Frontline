@@ -339,7 +339,7 @@ func refresh() -> void:
 		"coop":
 			_tag.text = "CO-OP VS AI  ·  %s" % Defs.TEAM_NAMES[locked].to_upper()
 		"mission":
-			_tag.text = "MISSION  ·  %s" % String(Missions.find(mk).title).to_upper()
+			_tag.text = "MISSION  ·  %s" % String(MissionList.find(mk).title).to_upper()
 		_:
 			_tag.text = "VERSUS"
 	_title.text = Net.battle_name()
@@ -605,7 +605,7 @@ func _refresh_settings(host: bool, mode: String, mk: String) -> void:
 	var mission := mode == "mission"
 	(_set_rows.mode as Control).visible = not mission
 	(_set_rows.mission as Control).visible = mission
-	_mission_label.text = String(Missions.find(mk).title) if mission else ""
+	_mission_label.text = String(MissionList.find(mk).title) if mission else ""
 	_mode_opt.select(0 if mode == "coop" else 1)
 	(_set_rows.side as Control).visible = mode == "coop"
 	_side_opt.select(clampi(int(s.get("coop_side", 0)), 0, 1))

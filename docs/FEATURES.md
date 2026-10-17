@@ -287,8 +287,8 @@ sets one up as a listed battle, and friends join it from the server browser). Ea
 - The end screen says what happened and what it cost (time, objectives, men lost, enemy killed), with **Try Again**.
 
 The code: `scripts/game/mission_director.gd` (the machinery), `scripts/game/missions.gd` (the content),
-`scripts/ui/hud_objectives.gd` (the panel). Adding a mission is a catalogue entry in `Missions.LIST`, a setup
-function and an autopilot function.
+`scripts/game/mission_list.gd` (the catalogue), `scripts/ui/hud_objectives.gd` (the panel). Adding a mission is a
+catalogue entry in `MissionList.LIST`, a setup function and an autopilot function.
 
 ## The systems
 

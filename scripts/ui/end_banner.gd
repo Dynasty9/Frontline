@@ -185,7 +185,7 @@ func _draw() -> void:
 			var ra := rk * fade
 			var fill := UiFx.out_expo(UiFx.span(t, 1.45, 1.1))
 			var shown := rating * fill
-			var rc := StatsPanel.rating_col(shown)
+			var rc := UiKit.rating_col(shown)
 			draw_string(UiFx.spaced(700, 3), Vector2(bx, by - 10.0), "YOUR RATING", HORIZONTAL_ALIGNMENT_LEFT, -1, 12, UiFx.fade(UiKit.DIM, ra))
 			UiFx.bar(self, Rect2(bx, by, bwid, 10.0), shown / 100.0, rc, ra, 1.0 - fill)
 			draw_string(UiFx.digits(700), Vector2(bx + bwid + 16.0, by + 12.0), "%d" % int(round(shown)), HORIZONTAL_ALIGNMENT_LEFT, -1, 34, UiFx.fade(rc, ra))

@@ -38,8 +38,11 @@ var _sim_ms := 0.0
 var _frame_ms := 0.0
 
 
-func _world() -> World:
-	return get_tree().root.get_node_or_null("Main/World") as World
+## The battle (World), if one's running. Asked for by path and left untyped:
+## this overlay is up from the first frame, before the game's classes have
+## compiled (GameScripts), so it names none of them.
+func _world() -> Node3D:
+	return get_tree().root.get_node_or_null("Main/World") as Node3D
 
 
 func _process(dt: float) -> void:
@@ -180,7 +183,7 @@ func _draw_overlay() -> void:
 	if w.srv:
 		_text(Vector2(x, y), "SIMULATION (host) ms per tick", Color(1.0, 0.85, 0.5), 12)
 		y += 16
-		var keys := w.prof.keys()
+		var keys: Array = w.prof.keys()
 		keys.sort_custom(func(a, b): return float(w.prof[a]) > float(w.prof[b]))
 		for k in keys:
 			var ms: float = w.prof[k]
@@ -211,7 +214,7 @@ func _draw_overlay() -> void:
 		counts[e.ekind()] = int(counts.get(e.ekind(), 0)) + 1
 	var alive := 0
 	for s in w.soldiers:
-		if s.life == Soldier.Life.ALIVE:
+		if s.life == s.Life.ALIVE:
 			alive += 1
 	_text(Vector2(x, y), "entities %d  (soldiers %d alive / %d, vehicles %d, structures %d, projectiles %d)" % [w.entities.size(), alive, w.soldiers.size(), w.vehicles.size(), w.structures.size(), w.projectiles.size()], Color(0.85, 0.85, 0.8), 11)
 	y += 15

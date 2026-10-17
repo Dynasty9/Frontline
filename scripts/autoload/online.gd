@@ -841,7 +841,7 @@ func _state() -> Dictionary:
 		"drop_in": bool(Net.settings.get("drop_in", true)),
 		"name": Net.battle_name(),
 		"mode": "mission" if mk != "" else String(Net.settings.get("mode", "versus")),
-		"mission": String(Missions.find(mk).title) if mk != "" else "",
+		"mission": String(MissionList.find(mk).title) if mk != "" else "",
 		"side": Net.locked_side(),
 		"teams": teams,
 		"spectators": specs,

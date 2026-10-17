@@ -209,7 +209,7 @@ func _load_args(req: Dictionary) -> Variant:
 	if what != 1:
 		return "load one of: scenario, mission, battle"
 	# (find falls back to a mission: a mistyped key mustn't quietly play that one)
-	if a.has("mission") and String(Missions.find(String(a.mission)).key) != String(a.mission):
+	if a.has("mission") and String(MissionList.find(String(a.mission)).key) != String(a.mission):
 		return "no such mission: %s" % a.mission
 	a.erase("listen")  # (a test's game is always offline)
 	return a
