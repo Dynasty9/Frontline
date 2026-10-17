@@ -495,6 +495,8 @@ What's different in a browser (`OS.has_feature("web")`):
 - **No worker threads:** the music renders a sample a frame instead of on a thread, and map generation blocks the
   page while it runs (about 20 s, as long as on the desktop).
 - **Settings** a browser can't use (the screen-space effects, the upscalers, window size, VSync) are hidden.
+- **Water quality starts at Medium** (High's extras cost little, but the browser is often a weaker machine); the
+  water works the sun's glitter out per pixel itself, since the lighting there is per vertex.
 
 It draws with the Compatibility renderer (OpenGL ES 3 / WebGL 2) instead of Forward+. Run the desktop build with
 `--rendering-method gl_compatibility` (before the `--`) to see what the browser will. Code that draws has to keep
