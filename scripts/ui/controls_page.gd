@@ -7,6 +7,8 @@ extends VBoxContainer
 ## Each row can go back to its default, and everything can at once. The search
 ## box finds an action by its name or its key. The mouse's own controls are
 ## listed at the end for reference.
+## Signal (docs/UI.md): ruled rows, action names in capitals, every key in
+## mono in a square box; the one waiting for a key is filled with the accent.
 
 const COL_W := 136.0
 
@@ -36,12 +38,12 @@ func _ready() -> void:
 	_search.text_changed.connect(func(_t): _filter())
 	top.add_child(_search)
 	_reset_all = Button.new()
-	_reset_all.text = "Reset all to defaults"
+	_reset_all.text = "RESET ALL"
 	_reset_all.custom_minimum_size = Vector2(180, 32)
 	_reset_all.focus_mode = Control.FOCUS_NONE
 	_reset_all.pressed.connect(_on_reset_all)
 	top.add_child(_reset_all)
-	var hint := UiKit.label("Click a key to change it, then press the new one (with Ctrl, Shift or Alt if you like). Esc cancels, right-click clears.", 12, UiKit.DIM)
+	var hint := UiKit.label("Click a key to change it, then press the new one (with Ctrl, Shift or Alt if you like). Esc cancels, right-click clears.", 12, UiKit.FAINT)
 	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	add_child(hint)
 	var mrow := HBoxContainer.new()
@@ -52,7 +54,7 @@ func _ready() -> void:
 	_msg.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	mrow.add_child(_msg)
 	_undo = Button.new()
-	_undo.text = "Undo"
+	_undo.text = "UNDO"
 	_undo.custom_minimum_size = Vector2(70, 26)
 	_undo.focus_mode = Control.FOCUS_NONE
 	_undo.visible = false
@@ -63,7 +65,7 @@ func _ready() -> void:
 	sc.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	add_child(sc)
 	_list = VBoxContainer.new()
-	_list.add_theme_constant_override("separation", 3)
+	_list.add_theme_constant_override("separation", 0)
 	_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	sc.add_child(_list)
 	_build()
@@ -93,10 +95,13 @@ func _build() -> void:
 	for m in Keys.MOUSE:
 		var r := HBoxContainer.new()
 		r.add_theme_constant_override("separation", 8)
-		var l := UiKit.label(m[0], 14)
+		var l := UiKit.caps(m[0], 12, UiKit.DIM)
 		l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		l.custom_minimum_size = Vector2(0, 30)
+		l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 		r.add_child(l)
-		var v := UiKit.label(m[1], 13, UiKit.DIM, 600)
+		var v := UiKit.mono_label(String(m[1]).to_upper(), 11, UiKit.TEXT)
+		v.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 		v.custom_minimum_size = Vector2(COL_W * 2.0 + 8.0, 0)
 		v.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		r.add_child(v)
@@ -108,7 +113,7 @@ func _build() -> void:
 		_list.add_child(w)
 
 
-## A row on a band, so every other one can be shaded (see _filter).
+## A row on a band: ruled off under it (see _filter).
 func _band(r: Control) -> PanelContainer:
 	var w := PanelContainer.new()
 	w.add_theme_stylebox_override("panel", BAND[0])
@@ -118,17 +123,18 @@ func _band(r: Control) -> PanelContainer:
 
 
 const BAND_PAD := 3.0
-static var BAND: Array = [_band_box(Color(0, 0, 0, 0)), _band_box(Color(1, 1, 1, 0.035))]
+static var BAND: Array = [_band_box(Color(0, 0, 0, 0)), _band_box(Color(0, 0, 0, 0))]
 
 
 static func _band_box(c: Color) -> StyleBoxFlat:
 	var sb := StyleBoxFlat.new()
 	sb.bg_color = c
-	sb.set_corner_radius_all(4)
-	sb.content_margin_left = BAND_PAD + 3.0
+	sb.border_color = UiKit.LINE
+	sb.border_width_bottom = 1
+	sb.content_margin_left = BAND_PAD
 	sb.content_margin_right = BAND_PAD
-	sb.content_margin_top = 1.0
-	sb.content_margin_bottom = 1.0
+	sb.content_margin_top = 2.0
+	sb.content_margin_bottom = 2.0
 	return sb
 
 
@@ -136,13 +142,13 @@ func _head_row(cat: String, cols: bool) -> Control:
 	var hb := HBoxContainer.new()
 	hb.add_theme_constant_override("separation", 8)
 	hb.custom_minimum_size = Vector2(0, 30)
-	var hl := UiKit.label(cat.to_upper(), 12, UiKit.ACCENT, 600)
+	var hl := UiKit.caps(cat, 11, UiKit.FAINT)
 	hl.vertical_alignment = VERTICAL_ALIGNMENT_BOTTOM
 	hl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	hl.size_flags_vertical = Control.SIZE_FILL
 	hb.add_child(hl)
-	for t in (["Key", "Second key"] if cols else ["", ""]):
-		var cl := UiKit.label(t, 11, UiKit.DIM, 600)
+	for t in (["KEY", "2ND KEY"] if cols else ["", ""]):
+		var cl := UiKit.mono_label(t, 10, UiKit.FAINT)
 		cl.custom_minimum_size = Vector2(COL_W, 0)
 		cl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		cl.vertical_alignment = VERTICAL_ALIGNMENT_BOTTOM
@@ -158,18 +164,20 @@ func _action_row(a: Array) -> Control:
 	var id: String = a[0]
 	var r := HBoxContainer.new()
 	r.add_theme_constant_override("separation", 8)
-	var l := UiKit.label(a[1], 14)
+	var l := UiKit.caps(a[1], 12, UiKit.DIM)
 	l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	l.tooltip_text = String(a[6])
 	l.mouse_filter = Control.MOUSE_FILTER_PASS
 	r.add_child(l)
 	var btns := []
 	for slot in 2:
 		var b := Button.new()
-		b.custom_minimum_size = Vector2(COL_W, 30)
+		b.custom_minimum_size = Vector2(COL_W, 28)
 		b.focus_mode = Control.FOCUS_NONE
 		b.clip_text = true
-		b.add_theme_font_size_override("font_size", 13)
+		b.add_theme_font_override("font", UiKit.mono(400))
+		b.add_theme_font_size_override("font_size", 12)
 		var s: int = slot
 		b.pressed.connect(func(): _start_capture(id, s))
 		b.gui_input.connect(func(ev: InputEvent):
@@ -179,11 +187,11 @@ func _action_row(a: Array) -> Control:
 		r.add_child(b)
 		btns.append(b)
 	var rs := Button.new()
-	rs.text = "Reset"
+	rs.text = "RESET"
 	rs.tooltip_text = "Back to the default"
-	rs.custom_minimum_size = Vector2(64, 30)
+	rs.custom_minimum_size = Vector2(64, 28)
 	rs.focus_mode = Control.FOCUS_NONE
-	rs.add_theme_font_size_override("font_size", 12)
+	rs.add_theme_font_size_override("font_size", 11)
 	rs.pressed.connect(func(): _snap(); Keys.reset(id); _say("“%s” is back to its default." % Keys.title(id), false))
 	r.add_child(rs)
 	var w := _band(r)
@@ -201,18 +209,21 @@ func _refresh() -> void:
 			var code := Keys.get_bind(id, slot)
 			var waiting: bool = _capture.size() == 2 and _capture[0] == id and int(_capture[1]) == slot
 			if waiting:
-				b.text = "Press a key..."
-				b.add_theme_color_override("font_color", UiKit.ACCENT)
-				b.add_theme_stylebox_override("normal", UiKit.box(Color(0.24, 0.22, 0.15, 0.95), 5, UiKit.ACCENT, 1, 6.0))
+				b.text = "PRESS A KEY"
+				b.add_theme_color_override("font_color", UiKit.ON_ACCENT)
+				b.add_theme_stylebox_override("normal", UiKit.box(UiKit.ACCENT, 0, UiKit.ACCENT, 1, 6.0))
 				continue
 			b.remove_theme_stylebox_override("normal")
 			var nm := Keys.name_of(code)
-			b.text = nm if nm != "" else "—"
+			b.text = nm.to_upper() if nm != "" else "—"
 			var changed: bool = code != d[slot]
 			b.add_theme_color_override("font_color", UiKit.DIM if nm == "" else (UiKit.ACCENT if changed else UiKit.TEXT))
 			var dn := Keys.name_of(d[slot])
 			b.tooltip_text = ("Default: %s" % (dn if dn != "" else "none")) + "\nClick to change, right-click to clear."
-		(rw.reset as Button).disabled = Keys.is_default(id)
+		# Reset only where there's something to reset (kept in place, so the columns line up)
+		var dflt := Keys.is_default(id)
+		(rw.reset as Button).disabled = dflt
+		(rw.reset as Button).modulate.a = 0.0 if dflt else 1.0
 	_filter()
 
 
@@ -344,11 +355,11 @@ func _on_reset_all() -> void:
 	if now - _reset_armed > 3000:
 		# a second press within three seconds does it
 		_reset_armed = now
-		_reset_all.text = "Click again to reset all"
-		get_tree().create_timer(3.0).timeout.connect(func(): if is_instance_valid(_reset_all): _reset_all.text = "Reset all to defaults")
+		_reset_all.text = "CLICK AGAIN TO RESET"
+		get_tree().create_timer(3.0).timeout.connect(func(): if is_instance_valid(_reset_all): _reset_all.text = "RESET ALL")
 		return
 	_reset_armed = 0
-	_reset_all.text = "Reset all to defaults"
+	_reset_all.text = "RESET ALL"
 	_stop_capture()
 	_snap()
 	Keys.reset_all()

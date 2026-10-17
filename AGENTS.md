@@ -37,7 +37,7 @@ web/                           the website (React + Vite + shadcn + React Router
 export_presets.cfg, .github/workflows/release.yml   Windows, macOS, Linux and browser builds: a release is a button (Actions > Release)
                                that opens a release pull request, and merging that publishes it (publish.yml); no other merge releases
 installer/                     the Windows installer (NSIS: windows.nsi) and the Mac disk image (macos-dmg.sh), made by every release
-docs/                          FEATURES.md (design), DEVELOPMENT.md (code layout, test flags)
+docs/                          FEATURES.md (design), DEVELOPMENT.md (code layout, test flags), UI.md (Signal: how the interface looks and moves)
 design/                        logo and artwork used outside the game (not imported by Godot)
 ```
 
@@ -70,6 +70,7 @@ CI (`.github/workflows/check.yml`) runs steps 1 to 3 on every push and pull requ
 - **The server is authoritative.** Gameplay runs only on the host (`world.srv`). Anything clients must see has to be replicated: per-tick state through each entity's `write_state` / `read_state`, one-off property changes through `world.push_props`, effects through `world.fx_event`, and static map data (roads, water) through RPCs from `world._client_ready`.
 - **Determinism.** Use `world.rng` (or a generator seeded from it) for gameplay randomness, so a seed reproduces a map and a fight. `randf()`, `Array.shuffle()` and `pick_random()` draw on Godot's global generator, which no seed reaches, and gameplay must never hang on the wall clock (`Time.*`) or the frame rate. Map data is either replicated as entities or sent as a few shapes that every peer rasterizes identically (see `water.gd`).
 - **Map size comes from `MapDims`** (`scripts/game/map_dims.gd`). Never hard-code the map's dimensions.
+- **The interface follows Signal** ([docs/UI.md](docs/UI.md)): build it from `UiKit`'s tokens, fonts and parts (`UiSeg`, `UiSteps`, `UiMotion`), capitals for labels and names, mono for figures and codes, rules and corner ticks rather than boxes, and no colour literals where a token fits.
 - **Performance matters.** Soldiers and vehicles are ticked in GDScript: avoid per-frame allocations in hot paths, use the spatial queries (`world.units_near`, `soldiers_near`, `structures_near`) rather than scanning every entity, and throttle expensive decisions with timers.
 
 ## Gotchas

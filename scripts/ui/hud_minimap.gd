@@ -414,9 +414,9 @@ func _draw_grid() -> void:
 		_label(_xf * Vector2(7.0, size.y * f), str(i + 1), fs, lc)
 
 
-## Text centred on a point.
+## A grid letter or number centred on a point, in mono (docs/UI.md, Two voices).
 func _label(c: Vector2, s: String, fs: int, col: Color) -> void:
-	UiKit.text(self, c + Vector2(-UiKit.text_width(s, fs, 600) * 0.5, fs * 0.36), s, fs, col, 600)
+	UiKit.mono_at(self, c + Vector2(-UiKit.mono_w(s, fs) * 0.5, fs * 0.36), s, fs, col)
 
 
 ## A mission's objectives, by their letters.
@@ -609,11 +609,11 @@ func _draw_coop(w: World, sc: float) -> void:
 					draw_colored_polygon(pts, Color(col.r, col.g, col.b, 0.09 * a))
 				pts.append(pts[0])
 				draw_polyline(pts, Color(col.r, col.g, col.b, 0.9 * a), 1.4, true)
-				draw_circle(eye, 5.5 * sc, Color(0, 0, 0, 0.6 * a))
-				draw_circle(eye, 4.6 * sc, Color(col.r, col.g, col.b, a))
+				draw_rect(Rect2(eye - Vector2(5.5, 5.5) * sc, Vector2(11, 11) * sc), Color(0, 0, 0, 0.6 * a))
+				draw_rect(Rect2(eye - Vector2(4.6, 4.6) * sc, Vector2(9.2, 9.2) * sc), Color(col.r, col.g, col.b, a))
 				var ini := co.initials(p.peer).substr(0, 1)
 				var fs := 8 if sc < 1.1 else 9
-				draw_string(UiKit.font(700), eye + Vector2(-UiKit.text_width(ini, fs, 700) * 0.5, fs * 0.36), ini, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, HudCoop.INK)
+				draw_string(UiKit.mono(500), eye + Vector2(-UiKit.mono_w(ini, fs) * 0.5, fs * 0.36), ini, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, HudCoop.INK)
 			for sid in p.sq:
 				var g: Dictionary = groups.get(sid, {})
 				if not g.is_empty() and int(g["n"]) > 0:
@@ -695,8 +695,8 @@ func _draw_view(w: World) -> void:
 func _draw_compass(w: World) -> void:
 	var c := _compass_c()
 	var hot := _hover.x >= 0.0 and _on_compass(_hover)
-	draw_circle(c, COMPASS_R, Color(0.03, 0.04, 0.04, 0.82))
-	draw_arc(c, COMPASS_R, 0, TAU, 28, UiKit.ACCENT if hot else Color(1, 1, 1, 0.25), 1.2, true)
+	draw_circle(c, COMPASS_R, UiKit.fa(UiKit.INK, 0.82))
+	draw_arc(c, COMPASS_R, 0, TAU, 28, UiKit.ACCENT if hot else UiKit.RULE2, 1.0, true)
 	var yaw: float = w.cam.yaw if w.cam else 0.0
 	var n := Vector2(sin(yaw), -cos(yaw))
 	var side := Vector2(-n.y, n.x) * 3.2
@@ -712,6 +712,6 @@ func _draw_hover() -> void:
 		return
 	var g := Defs.grid_ref(_to_world(_hover))
 	var p := _hover + Vector2(10, -6)
-	p.x = minf(p.x, size.x - UiKit.text_width(g, 12, 600) - 4.0)
+	p.x = minf(p.x, size.x - UiKit.mono_w(g, 12) - 4.0)
 	p.y = maxf(p.y, 14.0)
-	UiKit.text(self, p, g, 12, UiKit.TEXT, 600)
+	UiKit.mono_at(self, p, g, 12, UiKit.TEXT)

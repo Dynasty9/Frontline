@@ -67,27 +67,26 @@ func _notification(what: int) -> void:
 		queue_redraw()
 
 
+## The tools as plain line icons (docs/UI.md): faint when off, the accent
+## when on, lit under the cursor. No boxes.
 func _draw() -> void:
 	for i in ITEMS.size():
 		var key: String = ITEMS[i][0]
 		var on: bool = hud.tactical if key == "tactical" else hud.map_layer(key)
 		var r := Rect2(0, i * (S + 4.0), S, S)
-		var bg := Color(0.24, 0.22, 0.15, 0.95) if on else Color(0.055, 0.065, 0.06, 0.84)
 		if i == _hover:
-			bg = bg.lightened(0.08)
-		var border := Color(UiKit.ACCENT.r, UiKit.ACCENT.g, UiKit.ACCENT.b, 0.75) if on else UiKit.LINE
-		draw_style_box(UiKit.boxc(bg, 6, border, 1, 0.0), r)
+			draw_rect(r, UiKit.fa(UiKit.TEXT, 0.06))
 		var c := r.get_center()
-		var col := UiKit.ACCENT if on else UiKit.DIM
+		var col := UiKit.ACCENT if on else (UiKit.TEXT if i == _hover else UiKit.FAINT)
 		_icon(String(ITEMS[i][2]), c, col)
 
 
 func _icon(kind: String, c: Vector2, col: Color) -> void:
 	match kind:
 		"map":
-			for k in 3:
-				var x := c.x - 8 + k * 5.4
-				MapSymbols.poly(self, PackedVector2Array([Vector2(x, c.y - 6 + (k % 2) * 2), Vector2(x + 5, c.y - 8 + (k % 2) * 2), Vector2(x + 5, c.y + 7 - (k % 2) * 2), Vector2(x, c.y + 9 - (k % 2) * 2)]), Color(col.r, col.g, col.b, 0.55 + 0.2 * (k % 2)))
+			draw_polyline(PackedVector2Array([c + Vector2(-8, -5), c + Vector2(-3, -7), c + Vector2(3, -5), c + Vector2(8, -7), c + Vector2(8, 6), c + Vector2(3, 8), c + Vector2(-3, 6), c + Vector2(-8, 8), c + Vector2(-8, -5)]), col, 1.4)
+			draw_line(c + Vector2(-3, -7), c + Vector2(-3, 6), col, 1.2)
+			draw_line(c + Vector2(3, -5), c + Vector2(3, 8), col, 1.2)
 		"units":
 			var r := Rect2(c - Vector2(8, 5.5), Vector2(16, 11))
 			draw_rect(r, col, false, 1.6)
