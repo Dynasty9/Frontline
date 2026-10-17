@@ -43,6 +43,7 @@ main.gd                 menu <-> World, command-line test modes
 test/test_run.gd        how a test run ends: exit code 1 on a script error or a failed check
 test/test_port.gd       the test port: a test drives the game over a local socket (see "The test port")
 test/cam_test.gd, keys_test.gd   the camera and key bindings driven end to end (--cam-test, --keys-test)
+test/platform_test.gd   updates and links as each system does them (--platform-test)
 autoload/defs.gd        all data tables (units, weapons, squads, vehicles, buildings, upgrades)
 autoload/net.gd         ENet host/join, lobby, teams, start
 autoload/online.gd      the matchmaker client: listing, Find Match, STUN + hole punching, optional account
@@ -122,7 +123,8 @@ to that team.
 ## Automated test modes
 
 Pass these after `--` on the command line. Every run given switches is a test run: it exits with code 1 if a
-script error happened anywhere in it (or one of its own checks failed: `--cam-test`, `--keys-test`) and prints
+script error happened anywhere in it (or one of its own checks failed: `--cam-test`, `--keys-test`,
+`--platform-test`) and prints
 `TESTRUN failed`, 0 if it ran clean (`scripts/test/test_run.gd`).
 
 Pass the engine switch `--fixed-fps 30` before the `--` to step the game exactly as it plays: every frame is then
@@ -191,9 +193,14 @@ Scenarios, AI-vs-AI battles and missions run offline: they take no port, so any 
 --bind=ACTION:KEY[,ACTION:KEY]                        rebind keys for this run only (ids in keys.gd, e.g. --bind=attack_move:K)
 --hud-panel=settings --settings-tab=controls          the Controls page open (layout shots)
 --cam-test                                            drive the camera through its controls (zoom to cursor, grab-pan,
-                                                      turn and tilt, reset, saved views, follow, turning minimap) and
-                                                      print CAMTEST ok / FAIL for each; needs a window, not --headless
+                                                      turn and tilt, a Mac's trackpad, reset, saved views, follow,
+                                                      turning minimap) and print CAMTEST ok / FAIL for each; needs a
+                                                      window, not --headless
                                                       (e.g. --mission=bridgehead --play --cam-test --offscreen)
+--platform-test                                       offline, on any system: finding this system's download in a
+                                                      release, installing an update (one executable, and a Mac's app,
+                                                      swapped whole), reading frontline:// links as each system hands
+                                                      them over; prints PLATFORMTEST ok / FAIL; works --headless
 --follow=TEAM[,N]                                     keep the camera on that side's Nth squad (tactics review)
 --trace=path.csv                                      log every man twice a second (position, posture, phase) for plotting
 --manual=CATEGORY[,ENTRY[,SIDE]]                      open the field manual on a page (in a battle)
@@ -284,7 +291,8 @@ Example:
 `--test-port=N` lets a test drive the game from outside: it listens on 127.0.0.1 (only, and only when asked;
 exported builds leave it out), one JSON object per line each way. Game time moves only when the test steps it,
 so the game must run with `--fixed-fps 30`; between commands it holds still. `--test-port=0` takes any free port
-and prints `TESTPORT listening 127.0.0.1:PORT`. The game quits when the test hangs up.
+and prints `TESTPORT listening 127.0.0.1:PORT`. The game quits when the test hangs up. A test-port game has no
+main menu (nothing a test drives needs it, and leaving it out saves a second or so of every start).
 
 The tests live in `tests/` (Node, no dependencies): `tests/lib/game.mjs` starts a headless game, connects and
 wraps the commands, and each `*.test.mjs` is a `node:test` file. Run them with `npm test` in `tests/`, with
@@ -299,6 +307,16 @@ await game.step(60);
 assert.ok((await game.stats()).counters.plan_assault >= 1);
 assert.equal(await game.close(), 0);
 ```
+
+What a test pays for before it plays a second: starting a game takes several seconds (the engine compiles every
+script first), and every `load` builds a battle from nothing, on the full-size map even for a scenario: a few
+seconds, most of it the hierarchical nav (`HNav.build_all`), and 10-20 s for a whole battle or mission map. So a
+test file starts one game and loads it afresh for each of its tests: `Game.start()` in `before`, `close()` (and its
+exit code) in `after`, as [tests/attack.test.mjs](../tests/attack.test.mjs) does. A seed replays the same in any
+game, so the tests still don't depend on each other. A test that needs games of its own (one that ends in a
+script error, two that must agree) gets them from `Game.startMany(n)`, which starts them together so their
+start-ups overlap. `node --test` runs the files side by side, and tests inside a `describe(..., { concurrency: true })`
+run side by side too (determinism.test.mjs: the full-map battle, the longest test, runs alongside everything else).
 
 | command | fields | answers |
 | --- | --- | --- |
@@ -490,15 +508,22 @@ headline change), then merge the pull request it opens. It ships everything merg
 is the newest `vX.Y.Z` tag plus that step (`.github/scripts/next-version.sh`), and the build stamps it into
 `project.godot` (`application/config/version`); from source the game reads `0.0.0-dev`.
 
-`export_presets.cfg` has a Windows and a Linux preset (one executable each, the game packed inside) and a Web one (see
-[The browser build](#the-browser-build)). The run exports all three from `main` as it stands, then
+`export_presets.cfg` has a Windows and a Linux preset (one executable each, the game packed inside), a macOS one and a
+Web one (see [The browser build](#the-browser-build)). The Mac build is `Frontline.app`, a folder: the program for
+Apple silicon and Intel in one (`Contents/MacOS/Frontline`), the game beside it (`Contents/Resources/Frontline.pck`)
+and an ad-hoc signature over both, which Godot writes from Linux and which is enough for Apple silicon to run it. It
+isn't notarized (that needs a paid Apple developer account; Godot can sign and notarize from Linux through
+`rcodesign`, given the certificate and an App Store Connect key), so macOS stops it the first time and the player
+allows it under System Settings > Privacy & Security. Its Info.plist claims the `frontline://` scheme and explains
+the local-network prompt (the LAN beacons), both through `application/additional_plist_content`. The run exports
+all four from `main` as it stands, then
 `.github/scripts/bake-release.sh` makes the release's own commit on a branch, `release/vX.Y.Z`: it files every entry
 waiting in `changelog/unreleased/` under `changelog/vX.Y.Z/` (`changelog.py release`), regenerates `CHANGELOG.md` and
 `web/src/changelog.json`, and writes `release.json` into `web/src/` and `matchmaker/` (`release_json.py`).
 `.github/scripts/release.py` uploads the zips as a draft release at that commit (`Frontline-windows.zip`,
-`Frontline-linux.zip`, `Frontline-web.zip`, the changelog as its notes), which nobody else can see, and opens a pull
-request from the branch that says what the release is: its version, what it was built from, its downloads and checksums,
-and the notes as they'll be published. Merge it: that runs Publish release (`.github/workflows/publish.yml`), which
+`Frontline-macos.zip`, `Frontline-linux.zip`, `Frontline-web.zip`, the changelog as its notes), which nobody else can
+see, and opens a pull request from the branch that says what the release is: its version, what it was built from, its
+downloads and checksums, and the notes as they'll be published. Merge it: that runs Publish release (`.github/workflows/publish.yml`), which
 checks the draft's downloads against the merged `release.json`, tags the release's commit and publishes it, while
 Railway redeploys the website and the matchmaker, which is where the game hears about updates. Running Release again
 before merging rebuilds the release and updates its pull request (or replaces it, if the version changed). If Publish
@@ -510,9 +535,12 @@ ship. Pull requests that change the export setup test-export without releasing.
 A release build updates itself (`scripts/autoload/updater.gd`): at start it asks the matchmaker (`GET /release`,
 falling back to GitHub's API) for the latest release,
 downloads the zip for its platform, checks it against the SHA-256 GitHub publishes, renames the running executable
-aside and puts the new one in its place, then offers a restart (the old file is deleted on the next launch). Where it
-can't (a folder it can't write to), the menu links to the website instead. To try an update from source without
-touching Godot itself: `--game-version=0.0.1` pretends to be an old release, `--update-target=PATH` swaps a stand-in
+aside and puts the new one in its place, then offers a restart (the old file is deleted on the next launch). On a Mac
+it does the same with the whole app: the new `Frontline.app` is unpacked beside the old one, the folders are
+swapped, and the restart goes through `open -n`. Where it can't (a folder it can't write to, or a Mac app run
+straight from Downloads, which macOS runs from a read-only copy), the menu links to the website instead.
+`--platform-test` checks the installing, both ways, on any system. To try an update from source without touching
+Godot itself: `--game-version=0.0.1` pretends to be an old release, `--update-target=PATH` swaps a stand-in
 file instead of the running executable, and `--update-api=URL` reads the release from elsewhere (a local JSON file
 with a higher `tag_name`). `--menu-update=0.1.2,ready` shows the notice for screenshots (`available`, `downloading`,
 `ready` or `failed`).
@@ -541,6 +569,8 @@ What's different in a browser (`OS.has_feature("web")`):
 - **No worker threads:** the music renders a sample a frame instead of on a thread, and map generation blocks the
   page while it runs (about 20 s, as long as on the desktop).
 - **Settings** a browser can't use (the screen-space effects, the upscalers, window size, VSync) are hidden.
+- **Water quality starts at Medium** (High's extras cost little, but the browser is often a weaker machine); the
+  water works the sun's glitter out per pixel itself, since the lighting there is per vertex.
 
 It draws with the Compatibility renderer (OpenGL ES 3 / WebGL 2) instead of Forward+. Run the desktop build with
 `--rendering-method gl_compatibility` (before the `--`) to see what the browser will. Code that draws has to keep

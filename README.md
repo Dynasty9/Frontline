@@ -31,7 +31,7 @@ Everything you see and hear is made in code, the music included. There are no im
 
 ## Quick start
 
-The easiest way: download the latest build for Windows or Linux from **[the Frontline website](https://web-production-5a4c1.up.railway.app)** (or the [releases page](https://github.com/Dynasty9/Frontline/releases)), unzip it and run it. It updates itself when a new version comes out; [the changelog](https://web-production-5a4c1.up.railway.app/changelog/) says what's in each. The website also lists the battles being hosted right now, with a **Join** button on each that opens the game and connects you.
+The easiest way: download the latest build for Windows, macOS or Linux from **[the Frontline website](https://web-production-5a4c1.up.railway.app)** (or the [releases page](https://github.com/Dynasty9/Frontline/releases)), unzip it and run it (on a Mac, move Frontline into Applications first; it isn't notarized yet, so the first time, allow it under System Settings → Privacy & Security → Open Anyway). It updates itself when a new version comes out; [the changelog](https://web-production-5a4c1.up.railway.app/changelog/) says what's in each. The website also lists the battles being hosted right now, with a **Join** button on each that opens the game and connects you.
 
 To run it from source instead:
 
@@ -95,6 +95,8 @@ Every key below is a default: change any of them in **Settings → Controls**. A
 | Jump to the latest alert or ping | Space |
 
 Prefer the middle mouse to pan rather than turn? Swap them in **Settings → Interface**, where you'll also find the minimap's size and an option to turn it with the camera.
+
+On a Mac's trackpad, scroll with two fingers to drag the map and pinch to zoom; hold Option to turn and tilt instead, and Shift to turn what you're placing. **Settings → Interface → Two-finger scroll** makes two fingers zoom instead (handy on a Magic Mouse).
 
 **Selecting**
 

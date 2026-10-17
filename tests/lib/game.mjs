@@ -9,6 +9,12 @@
 //   const { squads } = await game.query("squads", { team: 1 });
 //   await game.close();
 //
+// Starting a game is the dearest thing a test does (the engine compiles every
+// script first: several seconds), and each load builds a whole new battle, so
+// a test file starts one game and loads it afresh for each of its tests (see
+// attack.test.mjs). Where a test needs games of its own, Game.startMany starts
+// them together, so their start-ups overlap.
+//
 // GODOT names the Godot 4.7 executable (on Windows, the _console.exe build).
 
 import { spawn } from "node:child_process";
@@ -33,7 +39,23 @@ export class Game {
     return game;
   }
 
+  /**
+   * Starts `n` games at once, with the same options as start(): their
+   * start-ups overlap, so two take hardly longer than one. If any fails to
+   * start, the others are closed again and the error thrown.
+   */
+  static async startMany(n, options = {}) {
+    const started = await Promise.allSettled(Array.from({ length: n }, () => Game.start(options)));
+    const failed = started.find((r) => r.status === "rejected");
+    if (failed) {
+      await Promise.all(started.filter((r) => r.status === "fulfilled").map((r) => r.value.close()));
+      throw failed.reason;
+    }
+    return started.map((r) => r.value);
+  }
+
   #proc;
+  #closed = null;
   #sock = null;
   #inbuf = "";
   #pending = []; // [resolve, reject, timer, cmd] in the order sent: replies come back in order
@@ -169,8 +191,16 @@ export class Game {
     return this.send("errors");
   }
 
-  /** Quits the game and returns its exit code (0: no script errors, no failed checks). */
-  async close() {
+  /**
+   * Quits the game and returns its exit code (0: no script errors, no failed
+   * checks). Closing it again only returns the code again.
+   */
+  close() {
+    this.#closed ??= this.#quit();
+    return this.#closed;
+  }
+
+  async #quit() {
     if (this.#sock && !this.#sock.destroyed) {
       await this.send("quit", {}, { timeout: 30_000 }).catch(() => {});
       this.#sock.end();

@@ -700,7 +700,12 @@ func _follow(pts: PackedVector3Array, i: int, dt: float, vmax: float, may_revers
 	else:
 		_rev = false
 	var e := wrapf(err - PI, -PI, PI) if _rev else err  # measured from the way it's travelling
-	var kappa := 2.0 * sin(e) / maxf(to.length(), 1.0)
+	# the arc that runs through the point it's steering for - but a point
+	# abaft the beam is steered for as hard as one abeam: sin(e) dwindles
+	# back to nothing as it comes round dead astern, and a driver (or a
+	# coxswain) with where he's going right behind him puts the wheel over
+	# and comes round, rather than keep on away from it
+	var kappa := 2.0 * (sin(e) if absf(e) < PI * 0.5 else signf(e)) / maxf(to.length(), 1.0)
 	var v_t: float = vmax * (float(h[3]) if _rev else 1.0)
 	# slow for the bend ahead, and to stop where it's going
 	var far := _lookahead(pts, i, 18.0) - Defs.flat(position)

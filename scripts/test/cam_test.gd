@@ -52,6 +52,23 @@ func _mm(at: Vector2, rel: Vector2) -> InputEventMouseMotion:
 	return e
 
 
+## Two fingers scrolling on a trackpad (`delta` as a Mac gives it: the way the view moves).
+func _pan(at: Vector2, delta: Vector2, alt := false, shift := false) -> InputEventPanGesture:
+	var e := InputEventPanGesture.new()
+	e.position = at
+	e.delta = delta
+	e.alt_pressed = alt
+	e.shift_pressed = shift
+	return e
+
+
+func _pinch(at: Vector2, factor: float) -> InputEventMagnifyGesture:
+	var e := InputEventMagnifyGesture.new()
+	e.position = at
+	e.factor = factor
+	return e
+
+
 func _drag(cam: RtsCamera, a: Vector2, b: Vector2, alt := false) -> void:
 	cam._unhandled_input(_mb(MOUSE_BUTTON_MIDDLE, true, a, alt))
 	cam._unhandled_input(_mm(b, b - a))
@@ -127,6 +144,47 @@ func _run() -> void:
 	_check("a grab out by the horizon doesn't lurch", f0.distance_to(cam.focus_pos) < 4.0 and f0.distance_to(cam.focus_pos) > 0.1, "%.2f m for 30 px" % f0.distance_to(cam.focus_pos))
 	cam.tilt = 0.0
 	Settings.v["mmb_mode"] = 0
+
+	# a Mac's trackpad: two fingers grab the map, the spot in the middle of the
+	# screen going where they go (the other way to the scroll's delta)
+	cam.target_dist = 70.0
+	cam.dist = 70.0
+	cam._apply()
+	Settings.v["scroll_mode"] = 0
+	var px := RtsCamera.TRACKPAD_PT * DisplayServer.screen_get_scale()
+	held = cam.ground_point(mid)
+	y0 = cam.yaw
+	cam._unhandled_input(_pan(mid, Vector2(3, -2)))
+	var under := mid - Vector2(3, -2) * px
+	_check("two fingers grab the map", held.distance_to(cam.ground_point(under)) < 0.5 and absf(cam.yaw - y0) < 0.001, "drift %.2f m" % held.distance_to(cam.ground_point(under)))
+	# ... with Option they turn and tilt, as a middle drag does
+	y0 = cam.yaw
+	t0 = cam.tilt
+	f0 = cam.focus_pos
+	cam._unhandled_input(_pan(mid, Vector2(-1, 0.5), true))
+	var want_tilt := clampf(t0 + 0.5 * px * 0.15, RtsCamera.TILT_MIN, RtsCamera.TILT_MAX)
+	_check("Option and two fingers turn and tilt", absf(cam.yaw - (y0 - px * 0.006)) < 0.01 and absf(cam.tilt - want_tilt) < 0.01 and f0.distance_to(cam.focus_pos) < 0.01,
+		"turned %.2f rad, tilted %.1f deg" % [cam.yaw - y0, cam.tilt - t0])
+	cam.tilt = 0.0
+	cam._apply()
+	# ... with Shift they're left to whatever is being placed
+	f0 = cam.focus_pos
+	var d0 := cam.target_dist
+	cam._unhandled_input(_pan(mid, Vector2(2, 2), false, true))
+	_check("Shift and two fingers leave the camera alone", f0.distance_to(cam.focus_pos) < 0.01 and absf(cam.target_dist - d0) < 0.01)
+	# set to zoom, scrolling down zooms out, like the wheel turned toward you
+	Settings.v["scroll_mode"] = 1
+	cam._unhandled_input(_pan(mid, Vector2(0, 3)))
+	_check("set to zoom, two fingers zoom", cam.target_dist > d0 * 1.1 and f0.distance_to(cam.focus_pos) < 0.01, "%.0f m to %.0f m" % [d0, cam.target_dist])
+	Settings.v["scroll_mode"] = 0
+	await _settle(cam)
+	# a pinch zooms toward the spot between the fingers, which stays under them
+	g0 = cam.ground_point(sp)
+	d0 = cam.dist
+	for i in 6:
+		cam._unhandled_input(_pinch(sp, 1.08))
+	await _settle(cam)
+	_check("a pinch zooms in toward the fingers", g0.distance_to(cam.ground_point(sp)) < 1.5 and cam.dist < d0 * 0.75, "drift %.2f m, zoom %.0f m to %.0f m" % [g0.distance_to(cam.ground_point(sp)), d0, cam.dist])
 
 	# Backspace: back to the starting heading, the tilt level
 	cam.reset_view()
