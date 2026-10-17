@@ -560,9 +560,6 @@ var _rev := false  # backing up to where it's going
 
 ## [acceleration, braking (m/s²), cornering grip (m/s² sideways), reverse speed (fraction)]
 func _handling() -> Array:
-	if is_boat():
-		# a hull in the water: quick off the mark if it's light, no brakes but the drag
-		return [[2.8, 2.2, 3.2, 0.3], [2.0, 1.7, 2.6, 0.3], [0.85, 0.75, 1.7, 0.25]][clampi(weight(), 0, 2)]
 	match weight():
 		0:
 			return [3.0, 6.5, 4.0, 0.4]
@@ -649,7 +646,9 @@ func _avoid(la: Vector3, fwd: Vector3) -> Vector3:
 		var go := 1.0
 		if standing:
 			go = -signf(lat) if absf(lat) > 0.3 else 1.0
-			if world.nav.vkind_at(position + fwd * ahead + side * go * clear) == Nav.SOLID:
+			var past := position + fwd * ahead + side * go * clear
+			# (a boat's room is open water - which is no way at all for anything on wheels)
+			if (not world.nav.boat_ok(past)) if is_boat() else world.nav.vkind_at(past) == Nav.SOLID:
 				go = -go
 			_avoid_cap = 3.0
 		best = ahead
@@ -751,10 +750,14 @@ func _move_by(v: Vector3, dt: float) -> void:
 	var np := position + velocity * dt
 	if is_boat():
 		np.y = WaterMap.LEVEL
-		if world.nav.boat_ok(np):
+		_grounded = not world.nav.boat_ok(np)
+		if not _grounded:
 			position = np
 		else:
-			speed *= 0.4  # aground / against the bank
+			# aground / against the bank: it takes the way off her
+			speed *= 0.4
+			_sway *= 0.4
+			yaw_rate *= 0.5
 		return
 	if base() == "supply" or world.nav.vkind_at(np) != Nav.SOLID:
 		position = np
@@ -1525,34 +1528,450 @@ func _sink() -> void:
 	world.despawn(self)
 
 
-## Under way on the water: the same driving as on land (see _follow) with a
-## hull's handling, a watchdog for running aground, and - on an attack - a
-## halt to fire when there's something in range.
+# --- on the water --------------------------------------------------------------------------
+#
+# A boat isn't driven like a car: nothing grips the road. Her hull slides
+# through the water, so in a turn she skids - her bow inside the circle she's
+# making, her stern swinging out - and the skid costs her way. There are no
+# brakes: the water's drag takes her way off, hard when she's fast and hardly
+# at all once she's slow, and to stop she goes astern. Her rudder (or her
+# jets) turns her only with water going past it - her own way, or the wash
+# when the engines are going ahead, which is how a coxswain turns a boat lying
+# stopped - and going astern she hardly steers. Engines, helm and hull all
+# answer after a moment, a big hull's after a long one, so he puts the helm
+# over before the turn and meets her with opposite helm as she comes round.
+# A river carries her down with it.
+
+## [thrust at full ahead (m/s²), how hard the water stops her sliding sideways
+## (1/s), how long she takes to answer the helm (s), how long the engines take
+## to answer the throttle (s), the helm to go hard over from amidships (s), how
+## hard she'll turn at speed (m/s² sideways)]: light boats quick in all of it,
+## a patrol ship slower, a deep displacement hull slowest of all
+const HULL := [[2.8, 2.6, 0.35, 0.5, 0.5, 5.0], [2.0, 1.8, 0.7, 0.9, 0.8, 3.6], [0.85, 1.1, 1.5, 2.2, 1.6, 2.4]]
+const HULL_DISPLACEMENT := [0.7, 0.7, 2.6, 3.0, 2.5, 1.2]
+
+var _sway := 0.0  # how fast she's sliding sideways through the water (m/s, + to her left)
+var _throttle := 0.0  # her engines as they've answered: -1 full astern .. 1 full ahead
+var _rudder := 0.0  # her helm as it's answered: -1 hard right .. 1 hard left
+var _current := Vector3.ZERO  # the way the water's moving where she is (a river's current)
+var _current_t := 0.0
+var _about := 0.0  # the way she's coming about (+1 to the left; 0: the nearer way)
 var _landing := false  # under way with men aboard: they go ashore where it stops
+var _grounded := false  # her last move would have put her on the bank (see _move_by)
+var _rejoin_t := 0.0
+var _astern := false  # going astern off the bank (see _back_off)
+var _astern_t := 0.0
+var _astern_from := Vector3.ZERO  # where she began
+var _astern_stop := false  # backed off far enough: taking the way off her
+var _tries := 0  # how many times she's gone astern to try again for...
+var _tries_for := Vector3.INF  # ...this spot
+var _tries_t := -INF  # (when she last did)
 
 
+func _hull_k() -> Array:
+	return HULL_DISPLACEMENT if vdef.get("displacement", false) else HULL[clampi(weight(), 0, 2)]
+
+
+## The radius of the circle she turns in hard over, going slow: about her own
+## length for a boat or a patrol ship on jets, half as much again for a
+## displacement hull with one screw and a rudder.
+func _turn_radius() -> float:
+	return _hull_size().z * (1.6 if vdef.get("displacement", false) else (0.81 if weight() == 0 else 1.06))
+
+
+## How close behind her a spot has to be for her to back into it rather than
+## come about for it: closer than she'd swing out coming about - a few metres
+## for an RHIB, which spins round in her own length and runs in bow first;
+## fifty for a patrol ship, whose loop would be 150 m and more.
+func _back_in() -> float:
+	return 2.0 * _turn_radius()
+
+
+## The water's drag on her at `u` m/s ahead (or astern): mostly growing with
+## the square of her speed, so it takes her way off hard when she's fast and
+## barely at all when she's slow (and a transom shoved through the water is
+## draggier still).
+func _drag(u: float) -> float:
+	var x := u / float(vdef.speed)
+	return float(_hull_k()[0]) * (0.8 * x * absf(x) + 0.2 * x) * (2.5 if u < 0.0 else 1.0)
+
+
+## The water going past her rudder: her way through it, and the wash of her
+## screws (or jets) going ahead, which counts for most when she's slow.
+func _rudder_flow(u: float) -> float:
+	var vmax := float(vdef.speed)
+	var wash := 0.35 * vmax * maxf(_throttle, 0.0) * clampf(1.0 - u / (0.5 * vmax), 0.0, 1.0)
+	return (u if u >= 0.0 else u * 0.5) + wash
+
+
+## One tick of her through the water (see above): the engines and the helm
+## coming round to their orders, thrust against drag, the hull skidding in a
+## turn and - `carried` - the current taking her with it.
+func _hull_tick(dt: float, throttle: float, helm: float, carried := true) -> void:
+	var k: Array = _hull_k()
+	_throttle = move_toward(_throttle, clampf(throttle, -1.0, 1.0), dt / float(k[3]))
+	_rudder = move_toward(_rudder, clampf(helm, -1.0, 1.0), dt / float(k[4]))
+	var u := speed
+	var thrust: float = float(k[0]) * (_throttle if _throttle > 0.0 else _throttle * 0.5)
+	# the helm turns her as fast as the water past it will - and at speed no
+	# harder than the hull will take
+	var turn := _rudder * _rudder_flow(u) / _turn_radius()
+	var most: float = float(k[5]) / maxf(absf(u), 1.0)
+	yaw_rate += (clampf(turn, -most, most) - yaw_rate) * (1.0 - exp(-dt / float(k[2])))
+	# her way carries on as the hull swings: she skids, the water stops the
+	# slide, and the slide costs her way
+	u += (thrust - _drag(u) + yaw_rate * _sway) * dt
+	_sway = (_sway - yaw_rate * u * dt) / (1.0 + float(k[1]) * dt)
+	speed = u
+	rotation.y += yaw_rate * dt
+	var fwd := Defs.dir_of(rotation.y)
+	var through := fwd * speed + Vector3.UP.cross(fwd) * _sway
+	# (the current carries her where there's water to carry her; against the
+	# bank it just holds her there)
+	if carried and _current != Vector3.ZERO and world.nav.boat_ok(position + (through + _current) * dt):
+		through += _current
+	_move_by(through, dt)
+
+
+## The coxswain: helm and engines to take her on for `to` at `want` m/s
+## (stern first, going astern, if it's less than nothing). He steers by the
+## way she's really going - skid, current and all - not where her bow points.
+func _con(dt: float, to: Vector3, want: float) -> void:
+	var astern := want < 0.0
+	var me := Defs.flat(position)
+	var ground := Defs.flat(velocity)
+	var course := rotation.y + (PI if astern else 0.0)
+	if ground.length() > 1.0 and (ground.dot(Defs.dir_of(rotation.y)) < 0.0) == astern:
+		course = Defs.yaw_of(ground)
+	var e := wrapf(Defs.yaw_of(to - me) - course, -PI, PI)
+	var turn := 0.0  # the rate of turn he wants
+	if absf(e) < PI * 0.5:
+		turn = 2.0 * sin(e) * maxf(ground.length(), 1.0) / maxf(me.distance_to(to), 1.0)
+	else:
+		turn = (_about if _about != 0.0 and not astern else signf(e)) * 10.0  # (hard over)
+	# the helm that gives her that: a touch more while she gathers the turn,
+	# less - or the other way, meeting her - as she comes up to it
+	var flow := _rudder_flow(speed)
+	var helm := (2.0 * turn - yaw_rate) * _turn_radius() / flow if absf(flow) > 0.3 else _rudder
+	# and the engines: what holds that speed against the drag, more to gather
+	# way, astern to take it off
+	var vmax := float(vdef.speed)
+	var hold := _drag(want) / float(_hull_k()[0]) * (2.0 if astern else 1.0)
+	_hull_tick(dt, hold + (want - speed) * 3.0 / vmax, helm)
+
+
+## Lying to: the way taken off her with the engines - the water alone would
+## let her drift on at a crawl for minutes - and her helm left where it was,
+## so she carries on round the turn she was in as she slows; stopped, she
+## keeps her station on her engines.
+func _lie_to(dt: float) -> void:
+	var throttle := 0.0
+	if absf(speed) > 0.05:
+		throttle = -signf(speed) * minf(1.0, absf(speed) * 3.0 / float(vdef.speed) + 0.15)
+	elif _throttle == 0.0:
+		speed = 0.0
+	_hull_tick(dt, throttle, _rudder, absf(speed) > 1.0)
+
+
+## How far down her route she looks to steer by: further the faster she's
+## going and the slower she answers.
+func _boat_ld() -> float:
+	var k: Array = _hull_k()
+	return clampf(0.8 * _hull_size().z + absf(speed) * (1.0 + float(k[2]) + float(k[4])), 8.0, 45.0)
+
+
+## How fast she should be going down her route (from point i): for the bends
+## ahead - looked for as far off as she'd need to slow for them, which with no
+## brakes is a long way - and to stop where she's going (astern, once the
+## engines have come round).
+func _passage_speed(pts: PackedVector3Array, i: int) -> float:
+	var k: Array = _hull_k()
+	var me := Defs.flat(position)
+	var stop := 0.4 * float(k[0])
+	var to_end := me.distance_to(Defs.flat(pts[pts.size() - 1]))
+	var v := minf(float(vdef.speed), sqrt(2.0 * stop * maxf(0.0, to_end - 2.0 - absf(speed) * float(k[3]))) + 0.4)
+	var heading := rotation.y + (PI if _rev else 0.0)
+	var d := 16.0
+	var far := speed * speed / (2.0 * stop) + 16.0
+	while d < far * 1.5 and d <= 128.0:
+		var bend := absf(wrapf(Defs.yaw_of(_lookahead(pts, i, d) - me) - heading, -PI, PI))
+		# (the curve through it from here - round hard over for one abaft her beam)
+		var kappa := 1.0 / _turn_radius() if bend > PI * 0.5 else 2.0 * sin(bend) / d
+		var v_bend := sqrt(float(k[5]) / maxf(kappa, 0.0005))
+		v = minf(v, sqrt(v_bend * v_bend + 2.0 * stop * maxf(0.0, d - 16.0)))
+		d *= 2.0
+	return v
+
+
+## On her way down her route from point path_i: past the points she's reached
+## or gone by, then steering for one some way down it at the speed for the
+## water ahead (and no more than `cap`). Returns the point she's got to,
+## path.size() once she's there.
+func _under_way(dt: float, cap := INF) -> int:
+	var pts := path
+	var n := pts.size()
+	var i := path_i
+	var me := Defs.flat(position)
+	var reach := maxf(2.5, _hull_size().z * 0.2)
+	while i < n - 1:
+		var pi := Defs.flat(pts[i])
+		var seg := Defs.flat(pts[i + 1]) - pi
+		if me.distance_to(pi) < reach or (seg.length() > 0.01 and (me - pi).dot(seg) > 0.0):
+			i += 1
+		else:
+			break
+	var to_end := me.distance_to(Defs.flat(pts[n - 1]))
+	if i >= n - 1 and to_end < reach and Defs.flat(velocity).length() < 0.6:
+		return n
+	var la := _lookahead(pts, i, _boat_ld())
+	if not world.nav.boat_line(position, la):
+		la = Defs.flat(pts[i])  # (where her route rounds a point of land she doesn't cut the corner over it)
+	# close behind her she backs into it, rather than come about for it
+	var err := wrapf(Defs.yaw_of(la - me) - rotation.y, -PI, PI)
+	if not _rev and absf(err) > 2.1 and to_end < _back_in():
+		_rev = true
+	elif _rev and (absf(err) < 1.2 or to_end > _back_in() + 10.0):
+		_rev = false
+	var fwd := Defs.dir_of(rotation.y)
+	var want := _passage_speed(pts, i)
+	if _rev:
+		want = -minf(want, float(vdef.speed) * 0.3)
+	else:
+		la = _avoid(la, fwd)
+		want = minf(minf(minf(want, cap), _avoid_cap), _traffic_limit(fwd, want))
+	_con(dt, la, want)
+	return i
+
+
+## Under way: down her route - on an attack, fighting at a steady speed (or
+## lying to) when there's something in range. A hull with a big turning
+## circle comes about the way she has the sea room for (_choose_about) and
+## picks her route up further on once she's round (_rejoin); one that runs
+## onto the bank goes astern off it (_back_off).
 func _boat_drive(dt: float) -> void:
 	position.y = WaterMap.LEVEL
+	_current_t -= dt
+	if _current_t <= 0.0:
+		_current_t = 0.5
+		_current = world.water.current_at(position) if world.water else Vector3.ZERO
 	if path_i >= path.size():
-		_coast(dt)
+		_astern = false
+		_tries = 0
+		_lie_to(dt)
 		return
 	if not passengers.is_empty():
 		_landing = true
-	var halt := 70.0 if vdef.cannon else 58.0
-	if assault and _target_ok() and Defs.flat(target.position - position).length() < halt:
-		_coast(dt)
-		_stuck_t = 0.0
+	if OS.has_environment("FL_DEBUG_BOAT") and fmod(world.time, 2.0) < dt:
+		_debug_boat("")
+	if _astern:
+		_back_off(dt)
 		return
-	_stuck_t += dt
+	# on an attack she fights at a steady speed rather than stop dead for the
+	# shot, as a tank would: a boat lying stopped is a sitting target, her
+	# guns are stabilised, and stopping a big hull and getting her going
+	# again takes the best part of a minute. But she doesn't steam away from
+	# a fight: with the enemy abaft her beam she lies to and fights it out.
+	var cap := INF
+	if assault and _target_ok() and Defs.flat(target.position - position).length() < (70.0 if vdef.cannon else 58.0):
+		var bearing := wrapf(Defs.yaw_of(Defs.flat(target.position - position)) - rotation.y, -PI, PI)
+		cap = float(vdef.speed) * 0.4 if absf(bearing) < PI * 0.5 else 0.0
+	# watchdog: hung up on something without touching the bank - or just not
+	# quite settling where she's going (a big hull is hard to put exactly on
+	# a spot: close is there)
+	_stuck_t = 0.0 if cap == 0.0 else _stuck_t + dt
 	if _stuck_t > 4.0:
 		if Defs.flat(position - _stuck_p).length() < 1.5:
-			speed = -2.0
-			path = world.nav.find_boat_path(position, path[path.size() - 1])
-			path_i = 0
+			if _near_end():
+				path_i = path.size()
+				return
 			world.stat("boat_unstick")
+			_tried_for()
+			_go_astern()
+			return
 		_stuck_t = 0.0
 		_stuck_p = position
-	path_i = _follow(path, path_i, dt, float(vdef.speed))
+	_rejoin_t -= dt
+	if _rejoin_t <= 0.0:
+		_rejoin_t = 1.0
+		_rejoin()
+	_choose_about()
+	path_i = _under_way(dt, cap)
+	if _grounded and speed > 0.5 and path_i < path.size():
+		# run onto the bank: close to where she's going, that's as far in as
+		# she gets, and she's there (a boat landing men runs in till she
+		# touches); short of it, she doesn't sit on the sand but goes astern
+		if _near_end():
+			path_i = path.size()
+		else:
+			world.stat("boat_aground")
+			if OS.has_environment("FL_DEBUG_BOAT"):
+				_debug_boat(" aground")
+			_tried_for()
+			_go_astern()
+
+
+## (FL_DEBUG_BOAT) where she is, how she's going, and how far down her route.
+func _debug_boat(what: String) -> void:
+	print("BOAT t=%.1f %s %d at %s heading %.2f speed %.1f sliding %.1f turning %.2f engines %.2f helm %.2f point %d/%d of a route to %s%s%s" % [
+		world.time, vkind, eid, Defs.flat(position).snapped(Vector3.ONE * 0.1), wrapf(rotation.y, -PI, PI), speed, _sway, yaw_rate,
+		_throttle, _rudder, path_i, path.size(), Defs.flat(path[path.size() - 1]).snapped(Vector3.ONE), " (astern)" if _astern else "", what])
+
+
+## Close to where she's going: within 10 m, or most of her length for a big
+## hull - and further each time she's had to go astern and try again for the
+## same spot (as close in as she'll get is close enough), up to a few times
+## that: further off she's still on her way, working round in narrow water.
+func _near_end() -> bool:
+	var end := path[path.size() - 1]
+	var tries := mini(_tries, 3) if end.is_equal_approx(_tries_for) else 0
+	return Defs.flat(end - position).length() < maxf(10.0, _hull_size().z * 0.6) * (1 + tries)
+
+
+## Another go astern to try again for where she's going (a nudge against the
+## bank a moment after the last isn't another try: she's working round).
+func _tried_for() -> void:
+	var end := path[path.size() - 1]
+	if not end.is_equal_approx(_tries_for):
+		_tries = 1
+	elif world.time - _tries_t > 6.0:
+		_tries += 1
+	_tries_for = end
+	_tries_t = world.time
+
+
+## Having come about (or been pushed off her route), a hull with a big
+## turning circle can find the next point of her route out of her reach:
+## astern of her, or inside the circle she turns in, so that steering for it
+## only takes her round again - back to where the route began. A coxswain
+## picks his route up further on instead: the furthest point of it ahead of
+## him, wide enough of his turning circle to make for, with open water for
+## the turn onto it and the run in.
+func _rejoin() -> void:
+	var n := path.size()
+	var me := Defs.flat(position)
+	# (within as far as she looks ahead to steer, she's on her route; and
+	# backing into a spot astern, there's nothing ahead to pick up)
+	if path_i >= n - 1 or _rev or me.distance_to(Defs.flat(path[path_i])) < _boat_ld():
+		return
+	var fwd := Defs.dir_of(rotation.y)
+	var r := _turn_radius()
+	if _in_reach(Defs.flat(path[path_i]) - me, fwd, r):
+		return
+	var tries := 0
+	for j in range(mini(n - 1, path_i + 24), path_i, -1):
+		var rel := Defs.flat(path[j]) - me
+		if rel.length() > 150.0 or not _in_reach(rel, fwd, r):
+			continue
+		if _can_come_round(signf(wrapf(Defs.yaw_of(rel) - rotation.y, -PI, PI)), Defs.flat(path[j]), PI):
+			path_i = j
+			world.stat("boat_rejoin")
+			return
+		tries += 1
+		if tries >= 6:
+			return
+
+
+## Coming about for a point abaft her beam, she goes round on full lock, the
+## nearer way for her course - and a big hull's turning circle is a lot of
+## water. With the shore in the way of coming round that side, the coxswain
+## brings her round the other way, out to sea, if that way's clear.
+func _choose_about() -> void:
+	var err := wrapf(Defs.yaw_of(_lookahead(path, path_i, _boat_ld()) - Defs.flat(position)) - rotation.y, -PI, PI)
+	# (close behind her she backs into it instead: see _under_way)
+	if absf(err) < PI * 0.5 or _rev or (absf(err) > 2.1 and Defs.flat(path[path.size() - 1] - position).length() < _back_in()):
+		_about = 0.0
+	elif _about == 0.0:
+		# round towards her course a few turning circles on - not the point
+		# she's just missed, which may lie dead astern and either way round
+		var course := _lookahead(path, path_i, _turn_radius() * 3.0)
+		var ce := wrapf(Defs.yaw_of(course - Defs.flat(position)) - rotation.y, -PI, PI)
+		var s := signf(ce) if absf(ce) < 3.0 else signf(err)
+		_about = s
+		if not _can_come_round(s, course, TAU) and _can_come_round(-s, course, TAU):
+			_about = -s
+			world.stat("boat_about_seaward")
+			if OS.has_environment("FL_DEBUG_BOAT"):
+				_debug_boat(" comes about the other way, for sea room")
+
+
+## Can she come round on full lock to that side (+1 left, -1 right) till
+## she's pointing at `to`, and then run in to it, in open water all the way
+## for her beam? (Not if she'd go round more than `most` radians first: a
+## point inside her turning circle she never comes to point at.)
+func _can_come_round(side: float, to: Vector3, most: float) -> bool:
+	var r := _turn_radius()
+	var me := Defs.flat(position)
+	var c := me + Vector3.UP.cross(Defs.dir_of(rotation.y)) * side * r  # what she turns about
+	var hw := _hull_size().x * 0.5
+	var step := minf(4.0 / r, 0.3)  # (about 4 m of the turn at a time)
+	var p := me
+	var a := 0.0
+	while a < most:
+		var off := wrapf(Defs.yaw_of(to - p) - (rotation.y + side * a), -PI, PI)
+		if absf(off) < PI * 0.5 and (absf(off) <= step or signf(off) != side):
+			# round: she straightens up and runs in (the last length of it
+			# may be close by the bank: that's a spot she comes alongside)
+			var run := to - p
+			var by := to - run.normalized() * minf(run.length(), _hull_size().z)
+			return world.nav.boat_line(p, by, hw) and world.nav.boat_line(by, to)
+		a += step
+		var arm := (me - c).rotated(Vector3.UP, side * a)
+		p = c + arm
+		var out := arm.normalized() * hw
+		if not world.nav.boat_ok(p) or not world.nav.boat_ok(p + out) or not world.nav.boat_ok(p - out):
+			return false
+	return false
+
+
+## Can she steer straight for a point `rel` off her bow: ahead of her beam,
+## and outside the circle she turns in on that side?
+static func _in_reach(rel: Vector3, fwd: Vector3, r: float) -> bool:
+	var f := rel.dot(fwd)
+	var l := absf(rel.dot(fwd.cross(Vector3.UP)))
+	return f > 0.0 and f * f + l * l > 2.0 * r * l
+
+
+## Off the bank she has run onto, or whatever she's hung up on: astern, on
+## a fresh course from where she is.
+func _go_astern() -> void:
+	path = world.nav.find_boat_path(position, path[path.size() - 1])
+	path_i = 0
+	_about = 0.0
+	_astern = true
+	_astern_t = 12.0
+	_astern_from = position
+	_astern_stop = false
+	_stuck_t = 0.0
+	_stuck_p = position
+
+
+## Going astern, swinging her bow round towards her course as she goes: far
+## enough to get clear of the bank (a fair way, for a big hull), then till
+## she points near enough the way she's going to go ahead for it - or till
+## her stern touches too. Then, the way off her, she plans her course again
+## from there.
+func _back_off(dt: float) -> void:
+	_astern_t -= dt
+	var r := _turn_radius()
+	var aim := 0.0
+	if not path.is_empty():
+		aim = wrapf(Defs.yaw_of(_lookahead(path, 0, r * 2.0) - Defs.flat(position)) - rotation.y, -PI, PI)
+	var backed := Defs.flat(position - _astern_from).length()
+	if backed > r * 1.5 or (backed > maxf(3.0, r * 0.3) and absf(aim) < 0.7) or _astern_t <= 0.0:
+		_astern_stop = true
+	var vmax := float(vdef.speed)
+	var want := 0.0 if _astern_stop else -vmax * 0.3
+	# (going astern the helm works the other way round, and not for much)
+	var flow := _rudder_flow(speed)
+	var helm := clampf(aim * 2.0, -1.0, 1.0) * absf(speed) / flow if absf(flow) > 0.3 else _rudder
+	_hull_tick(dt, _drag(want) / float(_hull_k()[0]) * 2.0 + (want - speed) * 3.0 / vmax, helm)
+	if path.is_empty() or (_astern_stop and absf(speed) < 0.3) or (_grounded and speed < 0.0) or _astern_t < -8.0:
+		_astern = false
+		if not path.is_empty():
+			path = world.nav.find_boat_path(position, path[path.size() - 1])
+			path_i = 0
+		_stuck_t = 0.0
+		_stuck_p = position
 
 
 ## The crew - those who live through it - bail out of the hatches, burnt and
@@ -2079,7 +2498,9 @@ func _boat_view(dt: float) -> void:
 	model.rotation.x = lerpf(model.rotation.x, _ride.y + k * 0.08 * light + 0.01 * sin(t * 0.9), 1.0 - exp(-dt * 4.0))
 	var yr := wrapf(rotation.y - _last_yaw, -PI, PI) / maxf(dt, 0.001)
 	_last_yaw = rotation.y
-	model.rotation.z = lerpf(model.rotation.z, _ride.z + clampf(yr * k * 0.35 * light, -0.25, 0.25) + 0.012 * sin(t * 0.7), 1.0 - exp(-dt * 3.0))
+	# a planing hull banks into a turn; a deep displacement hull heels out of it
+	var heel := yr * k * 0.35 * light * (-0.6 if vdef.get("displacement", false) else 1.0)
+	model.rotation.z = lerpf(model.rotation.z, _ride.z + clampf(heel, -0.25, 0.25) + 0.012 * sin(t * 0.7), 1.0 - exp(-dt * 3.0))
 	if wv:
 		var lv := Vector3(position.x, WaterMap.LEVEL, position.z)
 		wv.wake(eid, lv - fwd * hs.z * 0.46, lv + fwd * hs.z * 0.42, hs.x * 0.5, sp, k, visible)

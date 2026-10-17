@@ -173,6 +173,9 @@ func _answer(cmd: String, req: Dictionary) -> Variant:
 			return {"version": Updater.version, "net": Net.NET_VERSION, "tps": TPS, "headless": DisplayServer.get_name() == "headless"}
 		"errors":
 			return {"count": TestRun.script_errors, "recent": TestRun.recent}
+		"console":
+			# a line typed into the console, and what it printed
+			return {"out": Array(main.console.run_captured(String(req.get("line", ""))))}
 	if not _world_ok():
 		return {"ok": false, "error": "no game loaded" if cmd in ["order", "query", "stats", "hash"] else "unknown command: %s" % cmd}
 	var w: World = main.world
@@ -209,7 +212,7 @@ func _load_args(req: Dictionary) -> Variant:
 	if what != 1:
 		return "load one of: scenario, mission, battle"
 	# (find falls back to a mission: a mistyped key mustn't quietly play that one)
-	if a.has("mission") and String(Missions.find(String(a.mission)).key) != String(a.mission):
+	if a.has("mission") and String(MissionList.find(String(a.mission)).key) != String(a.mission):
 		return "no such mission: %s" % a.mission
 	a.erase("listen")  # (a test's game is always offline)
 	return a
@@ -298,7 +301,8 @@ func _query(w: World, req: Dictionary) -> Dictionary:
 			for v in w.vehicles:
 				if (team == -9 or v.team == team) and (kind == "" or v.vkind == kind) and (ids.is_empty() or ids.has(v.eid)):
 					out.append({"id": v.eid, "kind": v.vkind, "team": v.team, "owner": v.owner_peer, "hp": snappedf(v.hp, 0.1),
-						"max_hp": v.max_hp, "pos": _xz(v.position), "passengers": v.passengers.size()})
+						"max_hp": v.max_hp, "pos": _xz(v.position), "yaw": snappedf(wrapf(v.rotation.y, -PI, PI), 0.001),
+						"speed": snappedf(v.speed, 0.01), "vel": _xz(v.velocity), "passengers": v.passengers.size()})
 		"structures":
 			for st in w.structures:
 				if (team == -9 or st.team == team) and (st.skind == kind if kind != "" else not st.skind in SCENERY) and (ids.is_empty() or ids.has(st.eid)):

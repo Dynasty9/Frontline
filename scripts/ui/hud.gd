@@ -526,7 +526,7 @@ func _build_help() -> void:
 	t += "[color=#f5c96e]Towns[/color]  The town and every village have a supply dump flying the flag of whoever holds it. Get men inside its ring with no enemy there to take it (right-click a town that isn't yours with squads selected). A town you hold fills its dump and trucks it to your nearest FOB, refills your men's ammunition round the dump, and lets you build a FOB near it. Click a dump to see what it gives.\n"
 	t += "[color=#f5c96e]Win[/color]  Take or destroy every enemy FOB.\n\n"
 	t += "[color=#f5c96e]Observer[/color]  %s director camera, %s switch whose eyes you watch through, %s pause, %s and %s change speed.\n" % [_k("director"), _k("view_side"), _k("pause"), _k("slower"), _k("faster")]
-	t += "[color=#f5c96e]Other[/color]  %s chat (%s team), %s message history, %s hide the interface, %s performance overlay, %s Field Manual, Esc menu & settings." % [_k("chat"), _k("chat_team"), _k("log"), _k("hide_hud"), _k("perf"), _k("manual")]
+	t += "[color=#f5c96e]Other[/color]  %s chat (%s team), %s message history, %s hide the interface, %s performance overlay, %s Field Manual, %s console (why is it slow? type why), Esc menu & settings." % [_k("chat"), _k("chat_team"), _k("log"), _k("hide_hud"), _k("perf"), _k("manual"), _k("console")]
 	l.text = t.replace("#f5c96e", "#" + UiKit.ACCENT.to_html(false))
 	help_panel.add_child(l)
 
@@ -875,7 +875,7 @@ func show_game_over(w: int) -> void:
 			t.add_theme_color_override("font_color", UiKit.BAD)
 		hv.add_child(t)
 		hv.add_child(UiKit.label("%s have taken the battlefield." % Defs.TEAM_NAMES[w], 14, UiKit.DIM))
-		facts = "Battle lasted %s" % StatsPanel.fmt_time(world.time)
+		facts = "Battle lasted %s" % UiKit.fmt_time(world.time)
 		Music.sting("defeat" if world.local_team >= 0 and w != world.local_team else "victory")
 	if world.local_team >= 0 and Online.signed_in():
 		_xp_row(head)
@@ -985,7 +985,7 @@ func _end_sequence(w: int) -> void:
 		ban.sub = String(world.mission_info.get("op", ""))
 	elif world.local_team < 0:
 		ban.headline = "%s WIN" % String(Defs.TEAM_NAMES[w]).to_upper()
-		ban.sub = "Battle lasted %s" % StatsPanel.fmt_time(world.time)
+		ban.sub = "Battle lasted %s" % UiKit.fmt_time(world.time)
 	else:
 		ban.headline = "VICTORY" if won else "DEFEAT"
 		ban.sub = "%s have taken the battlefield" % Defs.TEAM_NAMES[w]
@@ -998,7 +998,7 @@ func _end_sequence(w: int) -> void:
 			if int(c.id) == world.local_peer:
 				var rv := BattleStats.rating(c, (r.sides as Array)[world.local_team])
 				ban.rating = rv
-				ban.rating_word = BattleStats.rating_word(rv)
+				ban.rating_word = UiKit.rating_word(rv)
 	var old := root.get_node_or_null("OverGrade")
 	if old:
 		old.queue_free()
@@ -1141,7 +1141,7 @@ func _mission_head(vb: VBoxContainer) -> String:
 			done += 1
 	var el := float(info.get("el", 0.0))
 	var lost: Array = info.get("lost", [0, 0])
-	return "Time %s    Objectives %d of %d    Men lost %d of %d    Enemy killed %d" % [StatsPanel.fmt_time(el), done, all, int(lost[0]), int(lost[1]), int(info.get("kills", 0))]
+	return "Time %s    Objectives %d of %d    Men lost %d of %d    Enemy killed %d" % [UiKit.fmt_time(el), done, all, int(lost[0]), int(lost[1]), int(info.get("kills", 0))]
 
 
 # --- battle statistics -------------------------------------------------------------------
@@ -1291,7 +1291,7 @@ func _view_process(dt: float) -> void:
 	if objectives.need_h > 0.0:
 		ry = 12.0 + objectives.need_h + 10.0
 	elif perf_big:
-		ry = 22.0 + (150.0 if perf_lvl == 2 else 590.0) + 8.0
+		ry = 22.0 + (184.0 if perf_lvl == 2 else 590.0) + 8.0  # (perf_overlay.gd's PANEL_H)
 	coop_roster.position = Vector2(root.size.x - 14.0 - HudCoopRoster.W, ry)
 	coop_roster.size = Vector2(HudCoopRoster.W, coop_roster.need_h)
 	if not perf_big:

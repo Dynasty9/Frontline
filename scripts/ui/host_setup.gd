@@ -98,7 +98,7 @@ func _ready() -> void:
 	_ms_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_ms_opt = OptionButton.new()
 	_ms_opt.custom_minimum_size = Vector2(0, 34)
-	for m in Missions.playable():
+	for m in MissionList.playable():
 		_ms_opt.add_item("%s  ·  %s, %d min" % [String(m.title), Defs.TEAM_NAMES[int(m.side)], int(m.mins)])
 		_ms_opt.set_item_metadata(_ms_opt.item_count - 1, String(m.key))
 	_ms_opt.item_selected.connect(func(i: int): _mission = String(_ms_opt.get_item_metadata(i)); _sync())
@@ -203,7 +203,7 @@ func _ready() -> void:
 	back.pressed.connect(func(): closed.emit())
 	br.add_child(back)
 
-	_mission = String(Missions.playable()[0].key)
+	_mission = String(MissionList.playable()[0].key)
 	_pick_mode(_mode)
 	_pick_side(_side)
 	_pick_access(_access)
@@ -304,7 +304,7 @@ func _sync() -> void:
 		for i in _ms_opt.item_count:
 			if String(_ms_opt.get_item_metadata(i)) == _mission:
 				_ms_opt.select(i)
-		var md := Missions.find(_mission)
+		var md := MissionList.find(_mission)
 		_ms_note.text = String(md.blurb)
 
 

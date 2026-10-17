@@ -4,6 +4,190 @@ Every release of Frontline, newest first. The game updates itself; downloads, an
 are on [the website](https://web-production-5a4c1.up.railway.app/changelog/). Each change is written up in [`changelog/`](changelog/) as part of
 the pull request that makes it.
 
+## v1.0.6: Performance
+
+*17 October 2026* · [Release on GitHub](https://github.com/Dynasty9/Frontline/releases/tag/v1.0.6)
+
+### Improved
+
+#### The game opens faster
+
+The title and the menu come up seconds sooner after you launch the game. The rest of the game gets ready behind the title while it plays, instead of before anything shows.
+
+- **The title shows sooner:** the game used to prepare everything it would need for a battle before showing
+  anything at all. Now it shows the title and the menu as soon as they're ready, and prepares the battle behind
+  them while the title plays.
+- **Starting a battle straight away** (in the first few seconds) waits behind the loading screen for that to
+  finish; after that, battles start as quickly as before.
+- **The Field Manual and the Settings** are put together the first time you open them, not every time the game
+  starts.
+
+#### Battlefields are laid out faster
+
+Laying out a new battlefield - the rivers and the sea, the roads, the cover the ground gives - is several times quicker, so a battle or a mission starts several seconds sooner. The ground comes out exactly as it did.
+
+- **Why:** the water, the roads and the cover were worked out cell by cell over far more of the map than they
+  touch, and some of it two or three times over. Now each is worked out only where it reaches, once, and the
+  water and the cover are shared out over all your processor's cores.
+- **What didn't change:** the battlefield. Every river, road, house, hedge and tree is where it was, the cover and
+  the routes are the same, and a replayed battle plays out the same.
+
+## v1.0.5: Performance and more
+
+*17 October 2026* · [Release on GitHub](https://github.com/Dynasty9/Frontline/releases/tag/v1.0.5)
+
+### New
+
+#### Leaderboards, and a page for every commander
+
+The website ranks the commanders with the most experience, of all time, this month and this week, and every player has a page of their own: their rank, their record, and the battles they've fought, after-action reports and all.
+
+![The leaderboards: experience of all time, this month and this week, with you marked](changelog/v1.0.5/leaderboards-and-public-profiles/leaderboards.jpg)
+
+![A commander's page: their rank and record, their career and their battles](changelog/v1.0.5/leaderboards-and-public-profiles/player.jpg)
+
+![A battle's after-action report on the website, every commander rated as the game rates them](changelog/v1.0.5/leaderboards-and-public-profiles/battle.jpg)
+
+- **Leaderboards** on the website rank experience, all time, this month and this week. Signed in, you'll find yourself marked on it, wherever you are. Experience is timed on the matchmaker's clock, so nobody can claim more than they've played.
+- **Every commander has a page**: their rank, experience, battles won and place on the board, their career, and every battle they've fought signed in, each with its after-action report and every commander in it rated the way the game rates them. Find anyone by callsign; a host's name in the battle list leads to theirs.
+- **Your battles are public now.** Before, your service record was only ever shown to you. If you'd rather keep it that way, untick **Show my battles** on your profile: your rank and record stay on your page, your battles and career come off it, and the game still shows them to you.
+- **Your picture**: your insignia, or the picture on your GitHub account, if you signed in with GitHub. Pick it on your profile.
+- **Sign out everywhere** on your profile signs your account out of every game and browser it's signed in to.
+- **A battle counts on your record** (battles fought and won) only if it earned experience: two minutes or more. A battle abandoned in its first minute no longer counts as fought, or won.
+
+#### A console that tells you why the game is slow
+
+Press the key under Esc (` or ~) for a console. Type why and it works out what's holding your frame rate back; bench measures what each graphics setting costs you; graph shows every frame and its stutters.
+
+![why: what's holding the frame rate back, and the stutters of the last minute](changelog/v1.0.5/in-game-console/console-why.jpg)
+
+![graph: every frame of the last few seconds, split into what its time went on, stutters marked in red](changelog/v1.0.5/in-game-console/frame-graph.jpg)
+
+- **`why`** looks at the last few seconds and says what's limiting you: your screen's refresh rate, the graphics
+  card, or the processor, and which part of the game takes the most. It also flags stutters, a flood of engine
+  errors, an integrated graphics chip and a slow connection to the host.
+- **`bench`** turns each graphics setting down in turn (shadows, ambient occlusion, grass, water, render scale and
+  more), times it, and lists what each one saves, the most first. It puts your settings back when it's done.
+  `bench quick` is faster.
+- **`graph`** pins a frame-time graph to the screen; **`hitches`** lists the latest stutters and what each one
+  was; **`top`** shows the costliest parts of the game.
+- **`render`**, **`sys`**, **`net`** and **`errors`** show what's being drawn, your computer, your connection and
+  anything the engine has complained about.
+- **`set shadows off`**, **`preset low`** and the like change settings on the spot; **`perf 3`** brings up the
+  full performance overlay.
+- **`report`** writes all of it to a file and copies it to the clipboard, ready to paste to whoever is helping.
+- Tab completes, Up and Down bring back what you typed, Esc closes it. The key can be changed in Settings >
+  Controls.
+- The compact performance overlay (F3) no longer draws its GPU bar over its first line, or its last line
+  below the panel.
+
+#### Installers for Windows and the Mac
+
+The game now comes with an installer on Windows and a disk image on the Mac, so it lands where it can keep itself up to date, with a shortcut to start it from.
+
+![The Windows installer: no administrator rights needed](changelog/v1.0.5/installers/windows-setup.jpg)
+
+- **Windows:** the download is a setup wizard. It needs no administrator rights, puts Frontline in your Start menu
+  (and on the desktop, if you like), and uninstalls from Settings > Apps.
+- **Mac:** the download is a disk image: open it and drag Frontline into Applications.
+- Either way the game goes where it can update itself. On Windows the website's Join buttons work straight away,
+  before you've even started the game.
+- The zips are still there, a link under each download button, to run the game from anywhere without installing it.
+  Linux keeps its zip.
+
+### Improved
+
+#### Boats handle like boats
+
+Boats no longer drive like cars on water. They slide through it, skid in a hard turn, have no brakes, answer the helm after a moment and are carried by a river's current, and their coxswains handle them like it.
+
+- **No brakes:** a boat slows on the water's drag and goes astern to stop. An RHIB at full speed needs some
+  40 m to stop, a patrol ship 60 m and more, so they ease off well before where they're going.
+- **Skidding:** in a hard turn a boat slides, her bow pointing inside the turn and her stern swinging out,
+  and loses speed doing it. At speed she can't turn as tight as she can going slow.
+- **Steering needs water past the rudder:** a boat stopped turns by going ahead on her engines, and going
+  astern she hardly steers.
+- **A moment to answer:** engines and helm take a moment, a patrol ship a long one, so her coxswain puts the
+  helm over early and meets her with opposite helm as she comes round.
+- **Rivers have a current:** it runs south, fastest in mid-stream, and carries a boat with it.
+- **The Gun Trawler** is a deep, slow fishing hull: the slowest to answer, the widest turner, and she heels
+  out of a turn where the speedboats bank into it.
+- **Fighting on the move:** on an attack a boat keeps going at a steady speed instead of stopping dead to shoot,
+  and only lies to to fight it out with an enemy that's dropped astern of her.
+- **Coming about:** an RHIB with its beach just behind it spins round and runs in bow first.
+
+#### Wildlife caught in the fighting
+
+The animals run from more of the battle now, and can be killed by it: a round through a flock or a shell among them brings them down in a puff of blood and feathers. It's only for the eye, so a round that hits a bird flies on exactly as it would have.
+
+![Fish stunned by a shell in the water, floating up belly-up](changelog/v1.0.5/wildlife-in-the-fighting/stunned-fish.jpg)
+
+- **They can be killed:** a round through a bird, a rat, a hare or a dolphin, or into the water right over a
+  fish, kills it in a puff of blood (and feathers, from a bird), and a shell kills whatever is close and throws
+  it. Birds tumble out of the air and the dead lie on their sides where they fell, then are cleared away out of
+  sight after a while. Fish stunned by a shell in the water float up belly-up.
+- **Only for the eye:** none of it touches the battle. A round that hits a bird flies on as it would have, and
+  each player's game has animals of its own.
+- **They run from more:** rounds cracking past or striking nearby, a grass fire (they keep clear while it burns),
+  a tree coming down, a helicopter flying low, and one of their own killed. Crows, gulls and bats now make off
+  instead of circling on, and a fright spreads: when one flock goes up, the flocks feeding nearby follow.
+
+### Fixed
+
+#### A rare crash at the start of a battle
+
+Starting a battle could, once in a long while, crash the game while it worked out the routes across the map. It no longer can.
+
+- The crash came while the loading screen read "Plotting the routes", in the first battle after starting the game.
+- The same fault could, even more rarely, crash the game as it started up and made its sounds.
+
+#### Big ships come about without running aground
+
+A patrol ship sent somewhere astern now turns the way it has room for and joins its route further on, instead of circling back to where it started and running up the beach. A boat that touches the shore backs off it.
+
+- A patrol ship (or a gun trawler) needs a lot of water to turn round. Sent somewhere behind it, it used to come
+  round, then turn back for the start of its route next to where it had begun, go round again and end up on
+  the beach. Now it picks its route up further on once it's round, and reaches where it was sent.
+- It comes about towards where it's going, and if the shore is in the way on that side, it turns the other way,
+  out to sea.
+- It backs into a spot not far behind it instead of swinging out in a wide loop.
+- A boat that runs onto a bank or beach goes astern off it, swings its bow round and carries on, instead of
+  sitting on the sand. Sent somewhere close in by the shore, it settles as near as it can get instead of
+  backing off and trying again for ever.
+- Where its route rounds a point of land, a boat no longer cuts the corner over it.
+- A boat steering round another one standing in its way now keeps to the open water side.
+
+#### No more crash when an attack outlasts a squad it lost
+
+A battle could crash when a squad was wiped out partway through a planned attack and the attack dragged on for minutes after. The lost squad now drops out of the attack the moment it's gone.
+
+- The rest of the attack carries on exactly as before. When it ends, only the squads still in the field get their new orders.
+
+#### Roads no longer show through smoke and explosions
+
+Smoke, flames and dust from a blast on or near a road now cover the road like the ground around it, instead of the road showing through them in hard-edged strips.
+
+![Before and after: shells bursting at a crossroads in town](changelog/v1.0.5/roads-under-smoke/before-after.jpg)
+
+- Smoke drifting over a road no longer stops in a sharp line at the road's edges.
+- Flames on a road now burn over the whole road, not just over the stripes of a zebra crossing.
+
+#### The website opens the game on Windows, and signing in says what's happening
+
+On Windows the website's Launch, Join and Find Match buttons, and its sign-in for the game, never reached the game: it couldn't set itself up to take them. Now it can, and signing in from the game shows each step as it goes.
+
+![Signing in from the game: the steps, and the one you're on](changelog/v1.0.5/website-links-on-windows/game-sign-in.jpg)
+
+- **Fixed:** on Windows, the game never managed to set itself up to open the website's links, so Launch Frontline,
+  Join, Find Match and the sign-in handed back from the website did nothing. Start the game once after it updates
+  and they all work.
+- **Signing in from the game** lists the steps (sign in with GitHub on the website, let your browser open
+  Frontline, the game signs in) and shows which one you're on, with a line that keeps moving while it waits for the
+  website. When the website hands the sign-in back it says it's signing in; if something went wrong it says what,
+  with a Try again button.
+- **On the website**, after you sign in for the game it shows the two steps, and whether your browser opened the
+  game. If it didn't, it says what to do, with a button to open it again.
+
 ## v1.0.4: Touchups
 
 *17 October 2026* · [Release on GitHub](https://github.com/Dynasty9/Frontline/releases/tag/v1.0.4)

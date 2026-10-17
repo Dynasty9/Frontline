@@ -149,7 +149,11 @@ func _recipes() -> Array:
 	]
 
 
-## (On a worker thread.) Makes sound i of the recipes into made[i].
+## (On a worker thread.) Makes sound i of the recipes into made[i]. A recipe
+## several sounds share (_gun, _boom, _burst...) and the helpers they all call
+## (_wav, _normalize, _seamless) run on several threads at once, so they keep
+## to typed values and never divide whole numbers with / or %: that can crash
+## (see HNav.build_all).
 func _make(i: int, recipes: Array, made: Array) -> void:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = hash(String(recipes[i][0]))
@@ -823,7 +827,9 @@ func _burst(rng: RandomNumberGenerator, dur: float, rate: float, bright: float, 
 		# a short slap-back off the ground
 		v += echo[ei] * 0.35
 		echo[ei] = v
-		ei = (ei + 1) % echo.size()
+		ei += 1
+		if ei == echo.size():
+			ei = 0
 		s[i] = clampf(v * 0.8, -1.0, 1.0)
 	return _wav(s)
 

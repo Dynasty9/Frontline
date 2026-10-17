@@ -637,20 +637,6 @@ static func rating_parts(r: Dictionary, side: Dictionary) -> Array:
 	return [exchange, acc, share]
 
 
-static func rating_word(v: float) -> String:
-	if v >= 85.0:
-		return "Outstanding"
-	if v >= 70.0:
-		return "Effective"
-	if v >= 55.0:
-		return "Capable"
-	if v >= 40.0:
-		return "Mixed"
-	if v >= 25.0:
-		return "Costly"
-	return "Ineffective"
-
-
 ## Points: what they destroyed, plus ground taken (FOBs and towns), prisoners,
 ## saving men and building (a little: a line of sandbags is not a battle won).
 static func score(r: Dictionary) -> int:

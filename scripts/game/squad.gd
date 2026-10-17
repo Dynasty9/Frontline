@@ -680,8 +680,19 @@ func tick(dt: float) -> void:
 			any = true
 			break
 	if not any:
+		# wiped out: struck off. It lets go of its dead (their bodies are
+		# cleared away in time, and freed) and of any plan it was part of, so
+		# whatever still holds the squad - an attack the squads beside it carry
+		# on with, ordering every squad in it when it ends - finds nobody here.
+		if plan != null:
+			world.stat("plan_squad_lost")
 		for m in members:
 			m.squad = null
+		members = []
+		plan = null
+		if ambush_plan != null:
+			ambush_plan.done = true
+			ambush_plan = null
 		world.remove_squad(self)
 		return
 	for id in known.keys():

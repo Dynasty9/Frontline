@@ -40,10 +40,12 @@ Settings are saved to `user://settings.cfg`, key bindings to `user://keybinds.cf
 
 ```
 main.gd                 menu <-> World, command-line test modes
+game_scripts.gd         the game's classes compile on a worker while the title plays: the launch never names them
 test/test_run.gd        how a test run ends: exit code 1 on a script error or a failed check
 test/test_port.gd       the test port: a test drives the game over a local socket (see "The test port")
 test/cam_test.gd, keys_test.gd   the camera and key bindings driven end to end (--cam-test, --keys-test)
 test/platform_test.gd   updates and links as each system does them (--platform-test)
+                        (exported builds leave these four out, and ui/soldier_sheet.gd: run them from source)
 autoload/defs.gd        all data tables (units, weapons, squads, vehicles, buildings, upgrades)
 autoload/net.gd         ENet host/join, lobby, teams, start
 autoload/online.gd      the matchmaker client: listing, Find Match, STUN + hole punching, optional account
@@ -75,7 +77,8 @@ game/terrain.gd         ground types, cover map, craters, speed / hit / concealm
 game/trench_net.gd      the dug trench network (mask, walls, spoil, duckboards)
 game/mapgen.gd          procedural battlefield + test scenarios
 game/mission_director.gd   a mission on the server: objectives, scripted events, the end, co-op ownership
-game/missions.gd        the missions' content: the catalogue, placing each by the map's features, its objectives and events
+game/missions.gd        the missions' content: placing each by the map's features, its objectives and events
+game/mission_list.gd    the missions' catalogue (names, sides, briefings), apart so the menu needn't compile the game
 ui/hud_objectives.gd    a mission's objectives panel, clock and banners
 game/towngen.gd         the town's street plan and lots, hamlet, farms, fields, power lines
 game/physics_fx.gd      client physics: ground with the trenches cut in, ragdolls, chunks, tossed props
@@ -103,6 +106,9 @@ ui/stats_panel.gd       the battle statistics / after-action report (Summary, Co
 game/co_command.gd      co-commanders: each player's presence (view, cursor, selection, what's being lined up),
                         pings, sketches and committed actions, relayed by the host to that side only
 ui/hud_coop.gd          co-commanders drawn over the battlefield; ui/hud_coop_roster.gd the Command Net
+ui/console.gd           the console (` or ~): typing, history, Tab; ui/console_cmds.gd its commands (why, bench, top,
+                        hitches, render, sys, set, report...); ui/perf_graph.gd the frame graph
+ui/perf_probe.gd        measures every frame for the overlay and the console (and logs the stutters)
 ui/hud.gd, menu.gd      interface; ui/settings_panel.gd, ui/perf_overlay.gd, ui/ui_kit.gd (shared style and the
                         interface themes: read UiKit.ACCENT and friends when drawing, so a new theme shows at once),
 ui/ui_frame.gd          the panels' tactical frame (a StyleBox: glass fill, hairline, accent corner brackets, glow),
@@ -195,11 +201,14 @@ Scenarios, AI-vs-AI battles and missions run offline: they take no port, so any 
                                                       beside the first vehicle of that kind)
 --pitch=-14 --cam-yaw=-0.84                           fixed camera pitch (degrees) and heading (model close-ups)
 --keys-test                                           the key bindings end to end: names and matching, clashes, rebound
-                                                      keys reaching the game, a held key panning the camera, the Controls
+                                                      keys reaching the game, a held key panning the camera, the console
+                                                      keeping the keys typed into it, the Controls
                                                       page (rebind, move a key off another action, Undo, a modifier alone,
                                                       search, reset); prints KEYTEST ok / FAIL; needs a window
                                                       (e.g. --host --team=0 --keys-test --offscreen)
 --bind=ACTION:KEY[,ACTION:KEY]                        rebind keys for this run only (ids in keys.gd, e.g. --bind=attack_move:K)
+--console="why;graph" [--console-at=SECONDS]          open the console and type those lines (; between them) once the
+                                                      battle has run that long (5 s unless set); screenshots of it
 --hud-panel=settings --settings-tab=controls          the Controls page open (layout shots)
 --cam-test                                            drive the camera through its controls (zoom to cursor, grab-pan,
                                                       turn and tilt, a Mac's trackpad, reset, saved views, follow,
@@ -227,6 +236,7 @@ FL_DEBUG_WORKS=1 (env)                                with --scenario=cache: who
 --scenario=roster                                     every vehicle both sides can field, facing off across the map
 --scenario=sling                                      a Mohawk carries a Humvee and a Taru a BTR on their slings
 --scenario=naval                                      boats on the sea: an RHIB lands a squad under a patrol ship's guns, Rebel boats come out to fight
+FL_DEBUG_BOAT=1 (env)                                 every 2 s, each boat under way: where, heading, speed, how far down its route; and each grounding
 --scenario=tactics                                    a rifle squad and an MG team sent 120 m up to hold a hamlet with the
                                                       enemy about: they bound there by teams and clear the houses
 --scenario=breach                                     a fighter cell holed up in a house; two rifle squads and a gun team clear it
@@ -338,10 +348,11 @@ run side by side too (determinism.test.mjs: the full-map battle, the longest tes
 | `load` | one of `scenario`, `mission`, `battle: true` (AI vs AI); `seed`, `play`, `autoplay`, `static`, `verbose` | `t` (0), `seed`, and how many `soldiers`, `vehicles`, `structures`, `squads`; a fresh battle each time |
 | `step` | `seconds`, or `ticks` | `t`, `ticks` run, `winner` (-1 while it goes on) |
 | `order` | `team` (0 or 1: that side's AI, which owns a scenario's squads too) or `peer` (1: you, loaded with `play`); `t` and the order's fields as `World.execute_cmd` takes them, positions as `{"v3": [x, z]}` | `squads`, `vehicles`: how many of those listed the order reached |
-| `query` | `what`: `world`, `squads`, `soldiers`, `vehicles`, `structures`; `team`, `kind`, `ids` | the list (positions as `[x, z]`); structures leave out trees and floors unless asked for by `kind` |
+| `query` | `what`: `world`, `squads`, `soldiers`, `vehicles`, `structures`; `team`, `kind`, `ids` | the list (positions as `[x, z]`; a vehicle's `yaw`, `speed` along its heading and `vel` over the ground too); structures leave out trees and floors unless asked for by `kind` |
 | `stats` | | `counters` (every `world.stat`), `report` (the after-action summary) |
 | `hash` | | `hash`: a fingerprint of the whole simulation; two runs from one seed agree on it tick for tick |
 | `errors` | | `count` and the `recent` script errors |
+| `console` | `line` | `out`: what typing that line into the console printed, a line a string (`game.console("why")`) |
 | `quit` | | the game quits with its exit code |
 
 Every reply has `ok` (with `error` when false) and `errors`, the script errors counted so far.
@@ -494,7 +505,10 @@ A `frontline://` link can be passed after `--`, as a browser would: `godot --pat
 (or `frontline://find-match`). Test runs (anything with a `--switch`) don't listen for links handed on by a second
 copy unless given `--links`, so to test the hand-off: start a listed host, then an idle game with `--links`, then a
 third copy with only the link. The third prints `LINKS handed ...` (with `FL_DEBUG_ONLINE=1`) and quits; the idle
-one joins. Only exported builds register the scheme with the OS (`Links._register`).
+one joins. Only exported builds register the scheme with the OS (`Links._register`), so `--platform-test` checks
+how a game tells whether the links still open it (`Links.windows_claimed`, `linux_claimed`). `FL_LINKS_PORT`
+moves the socket off the one a game you're playing listens on: `tests/links.test.mjs` passes links between copies
+on a port of its own.
 
 Players sign in with GitHub on the website, which signs the game in. Email and password are for testing: from
 source the game shows its own email and password form, and so does the website's dev server. `--web-sign-in`

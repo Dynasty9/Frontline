@@ -618,20 +618,25 @@ func _physics_process(dt: float) -> void:
 
 ## Profiling helper: accumulates a smoothed per-tick cost for a named system.
 ## Client-side (view) profiling: microseconds per system, summed each frame.
+## PerfProbe takes these and sets them back to zero: the totals every frame,
+## each system's own every half second (every frame once someone's looking).
 var vprof := {}
-var sim_usec := 0  # simulation time accumulated since the overlay last read it
-var vprof_avg := {}
-var _vprof_frames := 0
-var _vprof_t := 0.0
+var vp_usec := 0  # all of them, since the probe last read it (every frame)
+var sim_usec := 0  # simulation time accumulated since the probe last read it
+var prof_raw := {}  # ms per simulated system, unsmoothed, since the probe last read it
 
 
 func vp(key: String, since: int) -> void:
-	vprof[key] = int(vprof.get(key, 0)) + Time.get_ticks_usec() - since
+	var d := Time.get_ticks_usec() - since
+	vprof[key] = int(vprof.get(key, 0)) + d
+	vp_usec += d
 
 
 func _p(key: String, since: int) -> int:
 	var now := Time.get_ticks_usec()
-	prof[key] = lerpf(float(prof.get(key, 0.0)), (now - since) / 1000.0, 0.05)
+	var ms := (now - since) / 1000.0
+	prof[key] = lerpf(float(prof.get(key, 0.0)), ms, 0.05)
+	prof_raw[key] = float(prof_raw.get(key, 0.0)) + ms
 	return now
 
 
