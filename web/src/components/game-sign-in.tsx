@@ -11,7 +11,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { finishGitHub, type GitHubReturn, useAccount } from "@/lib/account"
+import { finishGitHub, type GitHubReturn, signInGameFromWebsite, useAccount } from "@/lib/account"
 import { EMAIL_SIGN_IN, signInLink } from "@/lib/config"
 import type { SignInRequest } from "@/lib/game-sign-in"
 import { watchHandoff } from "@/lib/launch"
@@ -37,7 +37,8 @@ type Handoff = "waiting" | "opened" | "missing"
 
 /**
  * The game sent the player here to sign in (?sign-in=, src/lib/game-sign-in.ts).
- * They sign in with GitHub (back on this page, `returned`), and the site hands
+ * An existing website login is used automatically. Otherwise they sign in
+ * with GitHub (back on this page, `returned`). The site hands
  * the game a session of its own in a frontline:// link: the browser asks to
  * open Frontline, and the game is signed in. The site itself stays as it was.
  *
@@ -48,8 +49,11 @@ type Handoff = "waiting" | "opened" | "missing"
  * browsers only open an app straight from a click).
  */
 export function GameSignIn({ request, accounts, onClose, returned, email = EMAIL_SIGN_IN, navigate = go }: Props) {
-  const { signInGame, signInWithGitHub } = useAccount()
-  const [finishing, setFinishing] = useState(!!returned && !("error" in returned))
+  const { user, error, signInGame, signInWithGitHub } = useAccount()
+  const [finishing, setFinishing] = useState(!returned || !("error" in returned))
+  const [attempt, setAttempt] = useState(0)
+  const existing = useRef<{ key: string; result: Promise<{ token: string } | null> } | null>(null)
+  const delivered = useRef<string | null>(null)
   const [link, setLink] = useState<string | null>(null)
   const [handoff, setHandoff] = useState<Handoff>("waiting")
   const live = useRef(true)
@@ -90,6 +94,27 @@ export function GameSignIn({ request, accounts, onClose, returned, email = EMAIL
     }
   }, [returned, request.state, handOver])
 
+  useEffect(() => {
+    if (returned || accounts === "off") return
+    const key = `${request.state}:${attempt}`
+    // StrictMode replays effects; join the same request and deliver it once.
+    if (existing.current?.key !== key) {
+      existing.current = { key, result: signInGameFromWebsite() }
+    }
+    let current = true
+    void existing.current.result.then((result) => {
+      if (!current) return
+      setFinishing(false)
+      if (result && delivered.current !== key) {
+        delivered.current = key
+        handOver(signInLink(request.state, result.token))
+      }
+    })
+    return () => {
+      current = false
+    }
+  }, [returned, accounts, request.state, attempt, handOver])
+
   const submit = async (address: string, password: string, callsign: string | null) => {
     const r = await signInGame(address, password, callsign)
     if (r === null || r === "confirm") return r
@@ -104,12 +129,14 @@ export function GameSignIn({ request, accounts, onClose, returned, email = EMAIL
         <DialogHeader className="gap-1.5 p-4 pr-10">
           <SectionLabel>The game</SectionLabel>
           <DialogTitle className="text-xl font-semibold">
-            {link ? "You're signed in" : finishing ? "Signing you in…" : "Sign in to Frontline"}
+            {link ? "You're signed in" : finishing && accounts !== "off" ? "Signing you in…" : "Sign in to Frontline"}
           </DialogTitle>
           <DialogDescription>
             {link
               ? "Now the game signs in with it."
-              : "Your game sent you here. Sign in with GitHub, and the game signs in too."}
+              : user
+                ? `Signing in to the game as ${user.callsign || "Commander"}.`
+                : "Your game sent you here. Sign in with GitHub, and the game signs in too."}
           </DialogDescription>
           {accounts !== "off" && <Steps at={step} done={handoff === "opened"} />}
         </DialogHeader>
@@ -140,10 +167,23 @@ export function GameSignIn({ request, accounts, onClose, returned, email = EMAIL
               <GithubLogoIcon weight="fill" className="size-4 text-foreground" />
               <CircleNotchIcon className="absolute inset-0 m-auto size-9 animate-spin text-primary motion-reduce:hidden" />
             </span>
-            Signing in with GitHub…
+            {returned ? "Signing in with GitHub…" : "Signing in to the game…"}
           </output>
         ) : (
           <div className="border-t">
+            {user && error && (
+              <div className="px-4 pt-4">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setFinishing(true)
+                    setAttempt((n) => n + 1)
+                  }}
+                >
+                  Try again
+                </Button>
+              </div>
+            )}
             <SignInChoices
               blurb="Your account keeps your callsign yours, and every battle you play counts towards your rank."
               onGitHub={() => void signInWithGitHub(request, navigate)}
@@ -163,7 +203,7 @@ export function GameSignIn({ request, accounts, onClose, returned, email = EMAIL
   )
 }
 
-const STEPS = ["Sign in with GitHub", "Back to the game"]
+const STEPS = ["Sign in", "Back to the game"]
 
 /** The two steps, and which one this is: `at` (1 or 2), every step before it done, and all of them once `done`. */
 function Steps({ at, done }: { at: number; done: boolean }) {

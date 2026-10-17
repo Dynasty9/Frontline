@@ -1,3 +1,5 @@
+import { StrictMode } from "react"
+import { signInForStory, type User } from "@/lib/account"
 import type { Meta, StoryObj } from "@storybook/react-vite"
 import { expect, fn, screen, userEvent, waitFor } from "storybook/test"
 import { GameSignIn } from "@/components/game-sign-in"
@@ -15,12 +17,14 @@ const SESSION = { access_token: "access-1", refresh_token: "token-1", expires_in
 /** A stand-in matchmaker: these paths answer, everything else is down. */
 function mockMatchmaker(answers: Record<string, unknown>) {
   return () => {
+    signInForStory(null)
     const realFetch = globalThis.fetch
     globalThis.fetch = async (input) => {
       const path = new URL(input instanceof Request ? input.url : String(input)).pathname
       return path in answers ? Response.json(answers[path]) : Response.json({ error: "down" }, { status: 503 })
     }
     return () => {
+      signInForStory(null)
       globalThis.fetch = realFetch
       sessionStorage.removeItem("frontline.github")
     }
@@ -86,7 +90,7 @@ export const GameDidntOpen: Story = {
   play: async () => {
     const note = await screen.findByText(/Your browser didn't open Frontline/, undefined, { timeout: 5000 })
     await expect(note).toBeVisible()
-    await expect(screen.getByRole("link", { name: "Open Frontline" })).toBeVisible()
+    await waitFor(() => expect(screen.getByRole("link", { name: "Open Frontline" })).toBeVisible())
   },
 }
 
@@ -139,4 +143,42 @@ export const AccountsOff: Story = {
 /** On a phone. */
 export const Phone: Story = {
   globals: { viewport: { value: "mobile1" } },
+}
+
+/** An existing website session signs in the game automatically, even under StrictMode. */
+export const AlreadySignedIn: Story = {
+  render: (args) => (
+    <StrictMode>
+      <GameSignIn {...args} />
+    </StrictMode>
+  ),
+  beforeEach: () => {
+    const restore = mockMatchmaker({ "/auth/game": { token: "game-only" } })()
+    signInForStory(USER as User)
+    return restore
+  },
+  play: async ({ args }) => {
+    await waitFor(() => expect(args.navigate).toHaveBeenCalledWith(`frontline://sign-in/${STATE}/game-only`))
+    await expect(args.navigate).toHaveBeenCalledOnce()
+    await expect(screen.queryByRole("button", { name: "Sign in with GitHub" })).toBeNull()
+    await waitFor(() => expect(screen.getByRole("link", { name: "Open Frontline" })).toBeVisible())
+    await expect(localStorage.getItem("frontline.account")).toBeNull()
+  },
+}
+
+/** An outage keeps the browser login and lets the player retry without GitHub. */
+export const ExistingLoginRetry: Story = {
+  beforeEach: () => {
+    const restore = mockMatchmaker({})()
+    signInForStory(USER as User)
+    return restore
+  },
+  play: async ({ args }) => {
+    await expect(await screen.findByRole("alert")).toHaveTextContent("down")
+    await expect(args.navigate).not.toHaveBeenCalled()
+    globalThis.fetch = async () => Response.json({ token: "retried-game" })
+    await userEvent.click(screen.getByRole("button", { name: "Try again" }))
+    await waitFor(() => expect(args.navigate).toHaveBeenCalledWith(`frontline://sign-in/${STATE}/retried-game`))
+    await expect(args.navigate).toHaveBeenCalledOnce()
+  },
 }

@@ -15,6 +15,8 @@
 //             row-level security lets each user read and rename only their own
 //             profile, and XP is only ever written by the database's own
 //             functions, which time each battle on the database's clock.
+//             Automatic game sign-in additionally uses a server-only secret
+//             for Auth admin links; database calls never use that secret.
 //   memory    in-process, for local testing only (AUTH_BACKEND=memory).
 // With neither configured, accounts are switched off.
 
@@ -114,7 +116,7 @@ export function toUser(u) {
 export function createAuth(env = process.env, { now } = {}) {
 	const url = env.SUPABASE_URL;
 	const key = env.SUPABASE_KEY || env.SUPABASE_PUBLISHABLE_KEY || env.SUPABASE_ANON_KEY;
-	if (url && key) return new SupabaseAuth(url.replace(/\/+$/, ''), key);
+	if (url && key) return new SupabaseAuth(url.replace(/\/+$/, ''), key, env.SUPABASE_SECRET_KEY || env.SUPABASE_SERVICE_ROLE_KEY);
 	if (env.AUTH_BACKEND === 'memory') return new MemoryAuth({ now });
 	return null;
 }
@@ -146,10 +148,11 @@ class TokenCache {
 }
 
 class SupabaseAuth {
-	constructor(url, key) {
+	constructor(url, key, secretKey) {
 		this.name = 'supabase';
 		this.url = url;
 		this.key = key;
+		this.secretKey = secretKey;
 		this.cache = new TokenCache();
 	}
 
@@ -250,6 +253,40 @@ class SupabaseAuth {
 		});
 		if (!r.ok) throw new AuthError(r.status === 429 ? 429 : 401, SupabaseAuth.message(r.data, 'That sign-in ran out: try again.'));
 		return this.session(r.data);
+	}
+
+	// The website has already authenticated this player. Make a separate
+	// session for the game without sharing the browser's rotating refresh
+	// token. The admin link stays on this server and never sends an email.
+	async gameSession(token) {
+		if (!token) throw new AuthError(401, 'Sign in first.');
+		// Do not use the profile cache or accept an email supplied by the caller.
+		const verified = await this.call('/auth/v1/user', { token });
+		if (!verified.ok) {
+			if (verified.status === 429) throw new AuthError(429, 'Too many requests: wait a minute and try again.');
+			if (verified.status >= 500) throw new AuthError(503, 'The account service is unreachable.');
+			throw new AuthError(401, 'Your sign-in has expired.');
+		}
+		const user = verified.data;
+		if (!user?.id || !user.email || !user.email_confirmed_at) throw new AuthError(403, 'Confirm your account before signing in to the game.');
+		if (!this.secretKey) throw new AuthError(503, 'Automatic game sign-in is not configured yet. You can still sign in with GitHub.');
+		const generated = await this.call('/auth/v1/admin/generate_link', {
+			method: 'POST',
+			headers: { apikey: this.secretKey, Authorization: `Bearer ${this.secretKey}` },
+			body: { type: 'magiclink', email: user.email },
+		});
+		// Check the identity both before and after consuming the link: an email
+		// change racing this request must never sign in a different account.
+		if (!generated.ok || generated.data?.id !== user.id || !generated.data?.hashed_token) throw new AuthError(503, 'Could not sign in to the game. Try again.');
+		const result = await this.call('/auth/v1/verify', {
+			method: 'POST',
+			body: { type: 'magiclink', token_hash: generated.data.hashed_token },
+		});
+		if (!result.ok || !result.data?.access_token || result.data?.user?.id !== user.id) {
+			if (result.data?.access_token) await this.logout(result.data.access_token);
+			throw new AuthError(503, 'Could not sign in to the game. Try again.');
+		}
+		return this.session(result.data);
 	}
 
 	async refresh(refreshToken) {
@@ -482,6 +519,12 @@ class MemoryAuth {
 			this.users.set(email, MemoryAuth.profile({ email, callsign, github_avatar: 'https://avatars.githubusercontent.com/u/583231?v=4' }));
 		}
 		return this.issue(this.users.get(email));
+	}
+
+	async gameSession(token) {
+		const user = await this.user(token);
+		if (!user) throw new AuthError(401, 'Your sign-in has expired.');
+		return this.issue(this.users.get(user.email));
 	}
 
 	async refresh(refreshToken) {
