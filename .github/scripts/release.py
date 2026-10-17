@@ -25,6 +25,7 @@ workflow). Python 3.11+, standard library only.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
 import subprocess
@@ -156,10 +157,21 @@ def draft(version: str, baked: str, zip_dir: str) -> None:
     print(f"drafted {tag} at {baked[:10]}: {', '.join(Path(z).name for z in zips)}")
 
 
-def pr_body(version: str, baked: str, bump: str, draft_url: str) -> str:
+def zip_downloads(zip_dir: str) -> list[dict]:
+    """The zips in `zip_dir`, as the draft will hold them."""
+    return [{"name": z.name, "size": z.stat().st_size, "sha256": hashlib.sha256(z.read_bytes()).hexdigest()}
+            for z in sorted(Path(zip_dir).glob("Frontline-*.zip"))]
+
+
+def draft_downloads(rel: dict) -> list[dict]:
+    """The downloads in a draft release, with GitHub's SHA-256 of each."""
+    return [{"name": a["name"], "size": a["size"], "sha256": (a.get("digest") or "").removeprefix("sha256:")}
+            for a in sorted(rel.get("assets", []), key=lambda a: a["name"])]
+
+
+def pr_body(version: str, baked: str, bump: str, draft_url: str, downloads: list[dict]) -> str:
     r = filed(version)
     tag = r["tag"]
-    info = json.loads((ROOT / "web" / "src" / "release.json").read_text(encoding="utf-8"))
     built = git("rev-parse", f"{baked}^")
     last = last_tag()
     run_id = os.environ.get("GITHUB_RUN_ID")
@@ -171,8 +183,8 @@ def pr_body(version: str, baked: str, bump: str, draft_url: str) -> str:
         since, step = "", "the first release"
     prs = ", ".join(f"#{n}" for n in r["pull_requests"])
     entries = len(r["entries"])
-    downloads = ", ".join(f"`{a['name']}` ({a['size'] / 1e6:.1f} MB)" for a in info["assets"].values())
-    sums = "\n".join(f"{a['sha256']}  {a['name']}" for a in info["assets"].values())
+    sizes = ", ".join(f"`{a['name']}` ({a['size'] / 1e6:.1f} MB)" for a in downloads)
+    sums = "\n".join(f"{a['sha256']}  {a['name']}" for a in downloads if a["sha256"])
     lines = [
         f"**Merging this releases Frontline {tag}: {r['name']}.** It publishes [the release]({draft_url}) on GitHub,"
         f" tagged `{tag}`, with the downloads below; puts it on [the website]({changelog.WEBSITE}) (the downloads and"
@@ -184,7 +196,7 @@ def pr_body(version: str, baked: str, bump: str, draft_url: str) -> str:
         f"| **Version** | `{tag}`, {step} |",
         f"| **Built from** | `main` at {built[:10]}{since} |",
         f"| **Changes** | {entries} entr{'ies' if entries != 1 else 'y'}" + (f", from {prs}" if prs else "") + " |",
-        f"| **Downloads** | {downloads}, waiting in [the draft release]({draft_url}) |",
+        f"| **Downloads** | {sizes}, waiting in [the draft release]({draft_url}) |",
         f"| **Dated** | {changelog.nice_date(r['date'])} |",
         "",
         f"To change the version or the name, or to take in what has merged since, run"
@@ -217,7 +229,8 @@ def pr(version: str, baked: str, bump: str) -> None:
     if not mine:
         fail(f"there's no draft of {tag} at {baked[:10]}: run `release.py draft` first")
     title = f"Release {tag}: {filed(version)['name']}"
-    body = temp_file(pr_body(version, baked, bump, mine["html_url"]))
+    downloads = draft_downloads(api(f"repos/{REPO}/releases/{mine['id']}"))
+    body = temp_file(pr_body(version, baked, bump, mine["html_url"], downloads))
     prs = release_prs()
     own = next((p for p in prs if p["headRefName"] == branch), None)
     if own:
@@ -354,6 +367,7 @@ def main() -> None:
     p.add_argument("baked")
     p.add_argument("bump")
     p.add_argument("--print", action="store_true", help="print the description instead of opening the pull request")
+    p.add_argument("--zips", default="build", help="with --print: where the zips are (default build)")
     u = sub.add_parser("publish")
     u.add_argument("--version")
     u.add_argument("--head", help="the merged pull request's head commit")
@@ -365,7 +379,7 @@ def main() -> None:
     elif a.cmd == "draft":
         draft(a.version, a.baked, a.zips)
     elif a.cmd == "pr" and a.print:
-        sys.stdout.write(pr_body(a.version, a.baked, a.bump, f"{GITHUB}/releases"))
+        sys.stdout.write(pr_body(a.version, a.baked, a.bump, f"{GITHUB}/releases", zip_downloads(a.zips)))
     elif a.cmd == "pr":
         pr(a.version, a.baked, a.bump)
     elif a.cmd == "publish":
