@@ -80,6 +80,7 @@ func _ready() -> void:
 		["option", "lod", "View distance / detail", Settings.LABELS.lod, "How far away models keep their full detail."],
 		["option", "grass", "Vegetation", Settings.LABELS.grass, "Swaying grass blades across the battlefield."],
 		["option", "effects", "Effects quality", Settings.LABELS.effects, "Particles per explosion, smoke density, debris."],
+		["option", "water", "Water quality", Settings.LABELS.water, "Waves, reflections and the bed seen through the water. Low skips the see-through water, the costly part; High adds light dancing on the shallows and foam streaks in a blow; Ultra a finer swell."],
 		["check", "decals", "Scorch marks & craters", null, "Burn marks left by explosions."],
 		["check", "ragdolls", "Ragdoll physics", null, "The dead fall, tumble and are thrown by blasts under real physics; thrown earth and rubble bounce and roll."],
 		["head", "", "Lighting"],

@@ -454,15 +454,23 @@ function and an autopilot function.
   the shallows (fords, the edge of the beach) - slowly, and exposed. The beds are carved into the ground, so a
   man wading sinks to his knees. Bridges and the harbour are key points the AI fights over. The water is laid
   out on the server as a few shapes and rasterized identically on every client.
-- **How the water looks** (`water_view.gd`). The surface is drawn in tiles only where there's water. A swell
-  of a few long wave trains rolls in off the open sea in groups, dying away as the water shoals; breakers spill
-  unevenly along the beach and each one surges up the sand and drains back, leaving it dark and wet. The bed
-  shows through the water, bent by the ripples and dimmed with depth (red light dies first, so sand under the
-  sea turns turquoise and the open sea goes deep blue; fresh water is peaty green-brown), and the sky and its
-  clouds are reflected, more the flatter you look across it. The sun glitters off every ripple (a moon path at
-  night, only a sheen under cloud), rain dimples the water with rings, the wind's chop roughens in gusts, and
-  foam gathers wherever the water meets a bank, a hull or a pile, with whitecaps on the biggest waves. Boats
-  ride the same swell the player sees (the CPU samples the waves the shader draws).
+- **How the water looks** (`water_view.gd`). The surface is drawn in tiles only where there's water. The sea
+  runs two wave systems that cross: a swell from weather far out at sea, long and regular and coming in sets
+  (its heading a little different on each map), and the wind's own shorter, steeper sea running offshore with
+  the wind that carries the smoke. They're Gerstner waves, so the crests come up sharp and the troughs broad,
+  and they build up over the first 35 m out from the beach. The weather sets the sea: glassy at dawn, dusk and
+  golden hour, moderate by day, choppy under cloud, a storm sea in the rain with whitecaps breaking off the
+  crests and streaks of foam laid down the wind. Breakers rise as they shoal, spill unevenly along the beach and
+  surge up the sand, leaving it dark and wet. The bed shows through the water, bent by the ripples and dimmed
+  with depth (red light dies first, so sand under the sea turns turquoise and the open sea goes deep blue; fresh
+  water is peaty green-brown), with the light the ripples focus dancing on it in the shallows, and the sky and
+  its clouds are reflected, more the flatter you look across it. The sun glitters off every ripple (a moon path
+  at night, only a sheen under cloud), rain dimples the water with rings, the chop roughens in gusts, and foam
+  gathers wherever the water meets a bank, a hull or a pile. Boats ride the same waves the player sees (the
+  CPU samples the waves the shader draws). **Water quality** (Settings > Graphics) trades this against speed:
+  Low draws no see-through water (copying the screen for it is the costly part, most of all in a browser) and
+  fewer waves on a coarser grid; Medium is the full surface; High adds the light on the bed and the wind's
+  streaks; Ultra a finer grid for the swell.
 - On the 1 km map, country lanes branch off the main road to a village in each quarter (mirrored between the
   sides), and on the west the lanes run on over the river - each on its own bridge - to farming villages on
   the far bank: three bridges and two fords across the river in all.
