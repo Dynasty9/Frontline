@@ -4,7 +4,8 @@ extends Node
 ## clashes, presses reaching the game through PlayerInput (a rebound key works
 ## and the old one doesn't, placing takes R before retreat), a mouse side
 ## button on the tactical map (tapped and held), a held key driving the
-## camera, and the Controls page rebinding a key (moving it off another
+## camera, the console opening on its key and keeping what's typed into it
+## from the game, and the Controls page rebinding a key (moving it off another
 ## action, Undo, a modifier on its own). Prints
 ## KEYTEST ok / FAIL lines and a total, then quits. Needs a window (the camera
 ## and the HUD), so run it off-screen:
@@ -141,6 +142,34 @@ func _run() -> void:
 	var fwd := Vector3(-sin(cam.yaw), 0, -cos(cam.yaw))
 	_check("held, a rebound key pans the camera", (cam.focus_pos - f0).dot(fwd) > 1.0, "%.1f m forward" % (cam.focus_pos - f0).dot(fwd))
 	Keys.reset("cam_up")
+	# --- the console: its key (` or ~) opens it, and while it's open the keys are its own
+	var con: Console = world.get_parent().console
+	inp.cancel_modes()
+	Input.parse_input_event(_key(KEY_QUOTELEFT | KEY_MASK_SHIFT))
+	Input.parse_input_event(_key(KEY_QUOTELEFT | KEY_MASK_SHIFT, false))
+	await _until(func(): return con.is_open)
+	_check("~ opens the console", con.is_open and Keys.console_open)
+	var f1 := cam.focus_pos
+	Input.parse_input_event(_key(KEY_W))
+	await _wait(0.5)
+	Input.parse_input_event(_key(KEY_W, false))
+	await _wait(0.2)
+	_check("typing W into it doesn't pan the camera", cam.focus_pos.distance_to(f1) < 0.1, "%.1f m" % cam.focus_pos.distance_to(f1))
+	_press(KEY_X)
+	_check("nor is a typed X an order", inp.order_mode == "", inp.order_mode)
+	_check("a command runs", con.run_captured("why").size() > 0)
+	Input.parse_input_event(_key(KEY_ESCAPE))
+	Input.parse_input_event(_key(KEY_ESCAPE, false))
+	await _until(func(): return not con.is_open)
+	_check("Esc closes it", not con.is_open and not Keys.console_open)
+	_check("and leaves the battle's menu shut", not world.hud.menu_panel.visible)
+	Input.parse_input_event(_key(KEY_QUOTELEFT))
+	Input.parse_input_event(_key(KEY_QUOTELEFT, false))
+	await _until(func(): return con.is_open)
+	Input.parse_input_event(_key(KEY_QUOTELEFT))
+	Input.parse_input_event(_key(KEY_QUOTELEFT, false))
+	await _until(func(): return not con.is_open)
+	_check("` opens it and closes it again", not con.is_open)
 	# --- the Controls page
 	var sp: SettingsPanel = world.hud.settings_panel
 	sp.visible = true

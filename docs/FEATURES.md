@@ -6,6 +6,7 @@ The long version: how each system works and why. For the short version, see the 
 - [Watching the AI](#watching-the-ai)
 - [Multiplayer in detail](#multiplayer-in-detail)
 - [In a browser](#in-a-browser)
+- [The console: finding out why it's slow](#the-console-finding-out-why-its-slow)
 - [Missions](#missions)
 - [The systems](#the-systems)
 
@@ -49,7 +50,7 @@ changes any of them:
 | Support | The buttons above the minimap (Z arms the first one ready): click the target, **drag** to set the run-in direction for gun runs and bombing runs |
 | Observer | C director camera, V whose eyes to watch through, P pause, [ ] speed, F2 hide the interface. **Fire support** (observer bar) launches any air or artillery support anywhere to watch it |
 | Command view | Tab tactical map (**hold Tab**: battle statistics), O order of battle (click a unit to select it and look at it, double-click to zoom in), the buttons beside the minimap turn map layers on and off (unit symbols, orders and attack plans, intelligence, fog of war, weapon ranges, soldier labels) |
-| Other | Home cycles FOBs, Space jumps to the last alert or ping (both glide there), Enter chats (Shift+Enter: team), L message history, F1 help, F3 performance overlay, **F4 field manual**, Esc menu |
+| Other | Home cycles FOBs, Space jumps to the last alert or ping (both glide there), Enter chats (Shift+Enter: team), L message history, F1 help, F3 performance overlay, **F4 field manual**, **` (or ~) the console**, Esc menu |
 
 ## Watching the AI
 
@@ -259,6 +260,43 @@ spread the work over, the map takes about 30 seconds to lay out, a stage at a ti
 simulation runs about as fast as on the desktop. The first battle also waits while the browser compiles the game's
 shaders (it keeps them, so only the first time); to keep that short, lighting is worked out per vertex, particles
 run on the processor, and explosions, muzzle flashes and fires don't cast light.
+
+## The console: finding out why it's slow
+
+The key under Esc (**`** or **~**, rebindable in Settings > Controls) drops a console down from the top of the
+screen, in a battle or in the menus. Its commands are mostly about one question: why is the game slow? Tab
+completes a command or its argument, Up and Down go through what was typed before, Esc closes it, `help` lists
+everything.
+
+- **`why`** reads the last five seconds and says what's holding the frame rate back: the screen's refresh or the
+  frame limit (not a problem), the graphics card (with the resolution it's drawing at), or the processor, and then
+  which part of it: the battle's game logic (its biggest systems, and whether the simulation keeps up with the
+  clock), the view's scripts, the renderer's draw calls. It adds the stutters of the last minute and what they
+  were, a flood of engine errors, an integrated graphics chip, a slow connection to the host.
+- **`bench`** (about a minute, or `bench quick`) turns each graphics setting down in turn, times the frames, and
+  lists what each saves, the most first. Vsync and the frame limit are off while it runs so a saving shows; your
+  own settings are measured again every few steps, so a battle that changes as it runs doesn't skew the answer,
+  and the middle frame of each measure is taken, so the stutter of a setting rebuilding (water, grass) doesn't
+  count against it. It also tries the battle paused (how much of each frame is the battle itself) and the
+  interface hidden, and puts everything back at the end.
+- **`graph`** pins a panel of every frame of the last ten seconds, each a column stacked by what its time went on
+  (game logic, view scripts, the renderer, the rest), the GPU's time as a line over it, and each stutter marked.
+- **`hitches`** lists the latest stutters (frames far longer than those round them, or over a threshold you give)
+  with what each was: the game logic catching up several ticks at once, a script, shaders compiling, engine errors.
+- **`top`** the costliest systems, game logic per tick and view scripts per frame, on average and at their worst;
+  **`render`** draw calls for the scene, the shadows and the interface; **`sys`** the computer (graphics card and
+  driver, processor, memory, screen, renderer); **`net`** the round trip and packet loss; **`errors`** what the
+  engine has logged.
+- **`perf 0-3`** and **`fps`** set the performance overlay (F3 cycles it); **`set`**, **`settings`** and
+  **`preset`** change settings as the Settings screen would (`set shadows off`, `set scale 77%`); **`pause`**
+  pauses a battle you play alone; **`draw overdraw`** and its kin show the scene's debug views.
+- **`report`** writes all of it (and the last bench) to `perf_report.txt` in the game's user folder and copies it
+  to the clipboard, to send to whoever is helping.
+
+Every frame is measured (`scripts/ui/perf_probe.gd`) for the overlay and the console: how long it took, the game
+logic and view scripts run in it, the renderer's CPU and GPU time, shader compilations and engine errors, kept
+frame by frame for ten seconds. Each system's own frame-by-frame cost (its worst frame, which system a stutter was
+in) starts being kept when the console first opens, since it costs a little every frame.
 
 ## Missions
 
