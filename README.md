@@ -31,7 +31,7 @@ Everything you see and hear is made in code, the music included. There are no im
 
 ## Quick start
 
-The easiest way: download the latest build for Windows, macOS or Linux from **[the Frontline website](https://web-production-5a4c1.up.railway.app)** (or the [releases page](https://github.com/Dynasty9/Frontline/releases)), unzip it and run it (on a Mac, move Frontline into Applications first; it isn't notarized yet, so the first time, allow it under System Settings → Privacy & Security → Open Anyway). It updates itself when a new version comes out; [the changelog](https://web-production-5a4c1.up.railway.app/changelog/) says what's in each. The website also lists the battles being hosted right now, with a **Join** button on each that opens the game and connects you.
+The easiest way: download the latest build for Windows, macOS or Linux from **[the Frontline website](https://web-production-5a4c1.up.railway.app)** (or the [releases page](https://github.com/Dynasty9/Frontline/releases)). On Windows, run the installer (`Frontline-windows-setup.exe`: no administrator rights needed). On a Mac, open the disk image (`Frontline-macos.dmg`) and drag Frontline into Applications; it isn't notarized yet, so the first time, allow it under System Settings → Privacy & Security → Open Anyway. On Linux, or to run it without installing, unzip the zip and run it. It updates itself when a new version comes out; [the changelog](https://web-production-5a4c1.up.railway.app/changelog/) says what's in each. The website also lists the battles being hosted right now, with a **Join** button on each that opens the game and connects you.
 
 To run it from source instead:
 

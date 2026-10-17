@@ -1,6 +1,16 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
-import { formatSize, guessDevice, guessPlatform, latest, platformList, platformsOf } from "@/lib/releases"
-import { buildWithMac } from "@/test/fixtures"
+import {
+  assetFor,
+  formatSize,
+  guessDevice,
+  guessPlatform,
+  installerFor,
+  latest,
+  platformList,
+  platformsOf,
+  zipFor,
+} from "@/lib/releases"
+import { buildWithInstallers, buildWithMac, buildWithoutInstallers } from "@/test/fixtures"
 
 afterEach(() => {
   vi.unstubAllGlobals()
@@ -23,6 +33,34 @@ describe("the baked-in release", () => {
       expect(a.size).toBeGreaterThan(0)
       expect(a.sha256).toMatch(/^[0-9a-f]{64}$/)
     }
+  })
+
+  it("has installers only for Windows and the Mac, if it has any", () => {
+    for (const [p, a] of Object.entries(latest.installers ?? {})) {
+      expect(p).toMatch(/^(windows|macos)$/)
+      expect(a.url).toMatch(p === "windows" ? /^https:\/\/.+-setup\.exe$/ : /^https:\/\/.+\.dmg$/)
+      expect(a.size).toBeGreaterThan(0)
+      expect(a.sha256).toMatch(/^[0-9a-f]{64}$/)
+    }
+  })
+})
+
+describe("what the download buttons give", () => {
+  it("is the installer where the release has one", () => {
+    expect(assetFor("windows", buildWithInstallers).name).toBe("Frontline-windows-setup.exe")
+    expect(assetFor("macos", buildWithInstallers).name).toBe("Frontline-macos.dmg")
+  })
+
+  it("is the zip for Linux, and before the installers", () => {
+    expect(installerFor("linux", buildWithInstallers)).toBeUndefined()
+    expect(assetFor("linux", buildWithInstallers).name).toBe("Frontline-linux.zip")
+    expect(assetFor("windows", buildWithoutInstallers).name).toBe("Frontline-windows.zip")
+    expect(assetFor("macos", buildWithoutInstallers).name).toBe("Frontline-macos.zip")
+  })
+
+  it("keeps the zip within reach beside an installer", () => {
+    expect(zipFor("windows", buildWithInstallers).name).toBe("Frontline-windows.zip")
+    expect(zipFor("macos", buildWithInstallers).name).toBe("Frontline-macos.zip")
   })
 })
 

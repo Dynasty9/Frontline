@@ -185,7 +185,13 @@ func _register_windows(exe: String) -> bool:
 	var f := FileAccess.open(file, FileAccess.WRITE)
 	if f == null:
 		return false
-	f.store_buffer(("\ufeff" + reg.replace("\n", "\r\n")).to_utf16_buffer())
+	# reg only reads UTF-16 with its byte-order mark (FF FE) in front. It's
+	# written as bytes: a "\ufeff" in a string comes out of an exported build
+	# (its scripts stored as tokens) as nothing at all, reg turned the file
+	# down, and no player's game on Windows ever claimed the scheme.
+	var bytes := PackedByteArray([0xFF, 0xFE])
+	bytes.append_array(reg.replace("\n", "\r\n").to_utf16_buffer())
+	f.store_buffer(bytes)
 	f.close()
 	var code := OS.execute("reg", ["import", file.replace("/", "\\")])
 	DirAccess.remove_absolute(file)

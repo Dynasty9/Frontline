@@ -5,7 +5,7 @@ bakes the release on its own branch, release/vX.Y.Z (bake-release.sh), then:
 
     release.py hold VERSION               makes the release's open pull request a draft while
                                           it's rebuilt, so it can't be merged half-way
-    release.py draft VERSION BAKED ZIPS   uploads the build as a draft release at the baked
+    release.py draft VERSION BAKED BUILD  uploads the build as a draft release at the baked
                                           commit: nothing anyone else can see yet
     release.py pr VERSION BAKED BUMP      opens the pull request that says what the release
                                           is (or brings the open one up to date), and closes
@@ -141,26 +141,33 @@ def hold(version: str) -> None:
                 print(f"#{p['number']} is a draft while it's rebuilt, so it can't be merged half-way")
 
 
-def draft(version: str, baked: str, zip_dir: str) -> None:
+def release_files(build_dir: str) -> list[Path]:
+    """What a release offers: the zips (Frontline-<platform>.zip) and the
+    installers (Frontline-windows-setup.exe, Frontline-macos.dmg)."""
+    return sorted(p for pattern in ("Frontline-*.zip", "Frontline-*-setup.exe", "Frontline-*.dmg")
+                  for p in Path(build_dir).glob(pattern))
+
+
+def draft(version: str, baked: str, build_dir: str) -> None:
     tag = f"v{version}"
     if any(not r["draft"] for r in releases_tagged(tag)):
         fail(f"{tag} is already published")
     delete_drafts(tag)
-    zips = sorted(str(p) for p in Path(zip_dir).glob("Frontline-*.zip"))
-    if not zips:
-        fail(f"no Frontline-*.zip in {zip_dir}")
+    files = [str(p) for p in release_files(build_dir)]
+    if not any(f.endswith(".zip") for f in files):
+        fail(f"no Frontline-*.zip in {build_dir}")
     # the screenshots from the baked commit, so the draft shows them; publishing
     # rewrites the notes to take them from the tag
-    gh("release", "create", tag, *zips, "--draft", "--target", baked,
+    gh("release", "create", tag, *files, "--draft", "--target", baked,
        "--title", f"Frontline {tag}: {filed(version)['name']}",
        "--notes-file", temp_file(notes(version, baked)))
-    print(f"drafted {tag} at {baked[:10]}: {', '.join(Path(z).name for z in zips)}")
+    print(f"drafted {tag} at {baked[:10]}: {', '.join(Path(f).name for f in files)}")
 
 
-def zip_downloads(zip_dir: str) -> list[dict]:
-    """The zips in `zip_dir`, as the draft will hold them."""
-    return [{"name": z.name, "size": z.stat().st_size, "sha256": hashlib.sha256(z.read_bytes()).hexdigest()}
-            for z in sorted(Path(zip_dir).glob("Frontline-*.zip"))]
+def build_downloads(build_dir: str) -> list[dict]:
+    """The downloads in `build_dir`, as the draft will hold them."""
+    return [{"name": f.name, "size": f.stat().st_size, "sha256": hashlib.sha256(f.read_bytes()).hexdigest()}
+            for f in release_files(build_dir)]
 
 
 def draft_downloads(rel: dict) -> list[dict]:
@@ -277,7 +284,7 @@ def check_downloads(version: str, rel: dict) -> list[str]:
     if web.get("version") != version:
         problems.append(f"release.json is for {web.get('version')}, not {version}")
     assets = {a["name"]: a for a in rel.get("assets", [])}
-    for want in web.get("assets", {}).values():
+    for want in [*web.get("assets", {}).values(), *web.get("installers", {}).values()]:
         got = assets.get(want["name"])
         if not got:
             problems.append(f"the draft has no {want['name']}")
@@ -361,13 +368,13 @@ def main() -> None:
     d = sub.add_parser("draft")
     d.add_argument("version")
     d.add_argument("baked")
-    d.add_argument("zips")
+    d.add_argument("build", help="the folder the downloads are in")
     p = sub.add_parser("pr")
     p.add_argument("version")
     p.add_argument("baked")
     p.add_argument("bump")
     p.add_argument("--print", action="store_true", help="print the description instead of opening the pull request")
-    p.add_argument("--zips", default="build", help="with --print: where the zips are (default build)")
+    p.add_argument("--build", default="build", help="with --print: where the downloads are (default build)")
     u = sub.add_parser("publish")
     u.add_argument("--version")
     u.add_argument("--head", help="the merged pull request's head commit")
@@ -377,9 +384,9 @@ def main() -> None:
     if a.cmd == "hold":
         hold(a.version)
     elif a.cmd == "draft":
-        draft(a.version, a.baked, a.zips)
+        draft(a.version, a.baked, a.build)
     elif a.cmd == "pr" and a.print:
-        sys.stdout.write(pr_body(a.version, a.baked, a.bump, f"{GITHUB}/releases", zip_downloads(a.zips)))
+        sys.stdout.write(pr_body(a.version, a.baked, a.bump, f"{GITHUB}/releases", build_downloads(a.build)))
     elif a.cmd == "pr":
         pr(a.version, a.baked, a.bump)
     elif a.cmd == "publish":

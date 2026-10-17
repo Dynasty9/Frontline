@@ -9,11 +9,13 @@ name: Release
 #
 # The run builds Windows, macOS, Linux and the browser from main as it stands
 # (Frontline-windows.zip, Frontline-macos.zip, Frontline-linux.zip and
-# Frontline-web.zip), files every waiting entry under changelog/vX.Y.Z/, and
-# bakes the changelog and the
+# Frontline-web.zip), and the installers that most players download instead:
+# Frontline-windows-setup.exe, and Frontline-macos.dmg (made on a Mac runner,
+# since only macOS makes disk images; see installer/). It files every waiting
+# entry under changelog/vX.Y.Z/, and bakes the changelog and the
 # release (version, download links, checksums) into the website and the
 # matchmaker, as one commit on a branch of its own, release/vX.Y.Z. It uploads
-# the zips as a draft release at that commit, and opens a pull request from the
+# the downloads as a draft release at that commit, and opens a pull request from the
 # branch that says what's in the release: its version, what it was built from,
 # its downloads and checksums, and the release notes. Merging that pull request
 # runs Publish release (publish.yml), which tags the release's commit and
@@ -33,7 +35,7 @@ name: Release
 #     GitHub Actions to create and approve pull requests". Without it, the run
 #     ends with a link to open it yourself.
 #   - Pull requests that change the build itself export without releasing, and
-#     keep the zips as workflow artifacts.
+#     keep the downloads as workflow artifacts.
 #   - First it applies any database migrations the live Supabase project
 #     hasn't had (database.yml, which also runs as they merge): the release's
 #     matchmaker and game may need them, and a failed migration stops it.
@@ -56,6 +58,7 @@ on:
   pull_request:
     paths:
       - export_presets.cfg
+      - installer/**
       - .github/workflows/release.yml
       - .github/scripts/**
 
@@ -212,12 +215,82 @@ jobs:
           zip -q -j build/Frontline-macos.zip LICENSE
           ls -la build
 
-      - name: Keep the zips as workflow artifacts
+      # NSIS runs on Linux and makes a Windows setup wizard (installer/windows.nsi)
+      - name: Make the Windows installer
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq nsis > /dev/null
+          # the licence page shows Windows line endings
+          sed 's/$/\r/' LICENSE > "$RUNNER_TEMP/LICENSE.txt"
+          makensis -NOCD -V2 -DVERSION="$VERSION" -DVERSION4="${VERSION%%-*}.0" \
+            -DEXE=build/windows/Frontline.exe -DLICENSE="$RUNNER_TEMP/LICENSE.txt" \
+            -DOUT=build/Frontline-windows-setup.exe installer/windows.nsi
+          ls -la build/Frontline-windows-setup.exe
+
+      - name: Hand the build to the Mac installer and the release
+        uses: actions/upload-artifact@v4
+        with:
+          name: export
+          path: |
+            build/Frontline-*.zip
+            build/Frontline-windows-setup.exe
+          retention-days: 1
+          compression-level: 0
+
+  # The Mac's disk image: hdiutil is macOS's own, so this one job runs on a Mac.
+  macos-installer:
+    needs: [plan, build]
+    if: ${{ !cancelled() && needs.build.result == 'success' }}
+    runs-on: macos-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: installer
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: export
+          path: build
+
+      - name: Make the Mac installer
+        run: bash installer/macos-dmg.sh build/Frontline-macos.zip build/Frontline-macos.dmg
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: macos-installer
+          path: build/Frontline-macos.dmg
+          retention-days: 1
+          compression-level: 0
+
+  # Everything built: draft the release and open its pull request (or, for a
+  # pull request, rehearse that).
+  release:
+    needs: [plan, build, macos-installer]
+    if: ${{ !cancelled() && needs.build.result == 'success' && needs.macos-installer.result == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      VERSION: ${{ needs.plan.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # the changelog looks up which pull request added each entry
+          fetch-depth: 0
+
+      # the run's artifacts so far: the export and the disk image
+      - uses: actions/download-artifact@v4
+        with:
+          merge-multiple: true
+          path: build
+
+      - name: Keep the downloads as workflow artifacts
         uses: actions/upload-artifact@v4
         with:
           name: Frontline-${{ env.VERSION }}
-          path: build/Frontline-*.zip
+          path: build/Frontline-*
           retention-days: 14
+          compression-level: 0
 
       # A pull request that changes the release itself rehearses the steps a
       # release takes after the build, against a remote that lives and dies on
