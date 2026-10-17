@@ -95,10 +95,18 @@ func _ready() -> void:
 	local_team = int(pl[local_peer].team) if pl.has(local_peer) else -1
 	view_team = local_team
 	rng.seed = int(settings.get("seed", 1))
+	# the host has its battle from the start; a client's comes from the host (see
+	# Joining), out of sight under the loading screen: drawing it meanwhile only
+	# slows the building down
+	loaded = srv
+	set_process(not srv)
+	visible = srv
 	terrain = TerrainMap.new(self)
 	water = WaterMap.new(self)
 	if has_view:
 		_build_environment()
+		if not srv and atmo.grass:
+			atmo.grass.set_process(false)  # (grown once, on the finished ground: _load_done)
 	fx = Fx.new()
 	fx.name = "Fx"
 	fx.world = self
@@ -332,6 +340,10 @@ func _sweep_graveyard() -> void:
 
 
 func _exit_tree() -> void:
+	if _ground_task >= 0:
+		# (left while the ground was still being laid out: it works on this world's maps)
+		WorkerThreadPool.wait_for_task_completion(_ground_task)
+		_ground_task = -1
 	for it in _graveyard:
 		if is_instance_valid(it[0]) and not it[0].is_inside_tree():
 			it[0].free()
@@ -504,7 +516,9 @@ func say(e: Entity, text: String) -> void:
 # --- server tick ------------------------------------------------------------------
 
 func _physics_process(dt: float) -> void:
-	if terrain:
+	# (a client loading works through the cover map under the loading screen
+	# instead, by the time it takes rather than by the tick: _load_tick)
+	if terrain and loaded:
 		terrain.tick(2500)
 	_grave_t -= dt
 	if _grave_t <= 0.0:
@@ -771,23 +785,30 @@ func _client_ready() -> void:
 	# only players the lobby let in (not a peer that never said who it was)
 	if p in ready_peers or not Net.players.has(p):
 		return
+	var t0 := Time.get_ticks_usec()
 	var view := view_of(p)
 	var kn := {}
 	known[p] = kn
-	var arr := []
+	var recs := []
 	for e in entities.values():
 		if not can_know(e, view):
 			continue
-		arr.append([e.eid, e.ekind(), e.get_props()])
+		recs.append(_join_rec(e))
 		kn[e.eid] = true
-		if arr.size() >= 80:
-			rpc_id(p, "_rpc_spawn", arr)
-			arr = []
-	if not arr.is_empty():
-		rpc_id(p, "_rpc_spawn", arr)
-	rpc_id(p, "_rpc_water", water.to_dict())
-	rpc_id(p, "_rpc_roads", roads)
-	rpc_id(p, "_rpc_decor", decor, town_rect)
+	# the battlefield as it stands, packed small (see Joining): the ground first,
+	# so the client lays its water out while the rest comes in, then everything
+	# on it, then word that that's all there is
+	var sent := 0
+	var pk := _pack({"n": recs.size(), "water": water.to_dict(), "roads": roads, "decor": decor, "town": town_rect, "kinds": terrain.base})
+	rpc_id(p, "_rpc_join_map", pk)
+	sent += (pk[1] as PackedByteArray).size()
+	for i in range(0, recs.size(), JOIN_PACK):
+		pk = _pack(recs.slice(i, i + JOIN_PACK))
+		rpc_id(p, "_rpc_join_ents", pk)
+		sent += (pk[1] as PackedByteArray).size()
+	rpc_id(p, "_rpc_join_end")
+	if OS.has_environment("FL_DEBUG_NET"):
+		print("JOIN sent peer %d %d entities in %d kB (%.1f ms)" % [p, recs.size(), sent / 1024, (Time.get_ticks_usec() - t0) / 1000.0])
 	if not mission_info.is_empty():
 		rpc_id(p, "_rpc_mission", mission_info)
 	if winner >= 0:
@@ -803,22 +824,8 @@ func _client_ready() -> void:
 @rpc("authority", "call_remote", "reliable")
 func _rpc_spawn(arr: Array) -> void:
 	for it in arr:
-		var id: int = it[0]
-		if entities.has(id):
-			continue
-		var e := _make(it[1])
-		e.world = self
-		e.eid = id
-		e.srv = false
-		e.apply_props(it[2])
-		e.name = "E%d" % id
-		_register(e)
-		add_child(e)
-		e.on_spawned()
-		if e is Structure:
-			_shash_add(e)
-			terrain.structure_changed(e, true)
-	if not focused:
+		_queue_ent(int(it[0]), String(it[1]), it[2])
+	if loaded and not focused:
 		_try_focus()
 
 
@@ -828,6 +835,10 @@ func _rpc_despawn(ids: Array) -> void:
 		var e: Entity = entities.get(id)
 		if e:
 			despawn(e)
+		elif _load_rec.has(id):
+			# gone before we got round to building it
+			(_load_rec[id] as Array)[1] = ""
+			_load_rec.erase(id)
 
 
 @rpc("authority", "call_remote", "reliable")
@@ -836,6 +847,9 @@ func _rpc_props(d: Dictionary) -> void:
 		var e: Entity = entities.get(id)
 		if e:
 			e.apply_props(d[id])
+		elif _load_rec.has(id):
+			# (still waiting to be built: it's built as it is now)
+			((_load_rec[id] as Array)[2] as Dictionary).merge(d[id], true)
 
 
 @rpc("authority", "call_remote", "unreliable_ordered", 1)
@@ -862,7 +876,9 @@ func _rpc_snap(data: PackedByteArray) -> void:
 
 @rpc("authority", "call_remote", "unreliable_ordered", 2)
 func _rpc_fx(evs: Array) -> void:
-	if not has_view:
+	# (nobody sees them under the loading screen, and a crater dug meanwhile
+	# would be dug into ground still being laid out: _lay_ground)
+	if not has_view or not loaded:
 		return
 	for ev in evs:
 		fx.play(ev)
@@ -895,14 +911,6 @@ func _rpc_mission(d: Dictionary) -> void:
 	_try_focus()
 
 
-@rpc("authority", "call_remote", "reliable")
-func _rpc_water(d: Dictionary) -> void:
-	water.from_dict(d)
-	water.paint_kinds()
-	water.carve()
-	_water_view()
-
-
 ## (view) The water's surface, and everything that draws differently by it.
 func _water_view() -> void:
 	if not has_view or water.is_empty() or atmo == null:
@@ -915,12 +923,9 @@ func _water_view() -> void:
 @rpc("authority", "call_remote", "reliable")
 func _rpc_roads(r: Array) -> void:
 	roads = r
-	_rebuild_roads()
-
-
-@rpc("authority", "call_remote", "reliable")
-func _rpc_decor(d: Array, r: Rect2) -> void:
-	set_decor(d, r)
+	# (while loading, they're laid with the rest of the ground: _ground_done)
+	if loaded:
+		_rebuild_roads()
 
 
 func set_decor(d: Array, r: Rect2) -> void:
@@ -946,6 +951,292 @@ func _rpc_over(w: int) -> void:
 	_record()
 	if hud:
 		hud.show_game_over(w)
+
+
+# --- joining (client) ------------------------------------------------------------------
+# A client's world starts empty; the host sends it the battle as it stands once
+# it says it's ready (_client_ready): the ground's shapes and kinds, then every
+# entity it may know of, in a few compressed messages, then word that that's
+# all. The client lays the ground out on a worker thread while the rest comes
+# in, then builds what stands on it a slice at a time, then works out the cover
+# map; the loading screen stays up meanwhile (main.gd), so the battle isn't
+# built in a few huge frames after it's shown, and the connection is answered
+# every frame, so the stream doesn't stall behind the building. Whatever the
+# host sends meanwhile (new entities, changes, removals) queues up behind it.
+
+const ENT_KINDS := ["soldier", "structure", "vehicle", "projectile", "drone"]
+const JOIN_PACK := 400  # entities in each message of the join stream
+const JOIN_MAX := 1 << 28  # (bytes) more than any battle unpacks to
+const LOAD_SLICE_US := 45000  # building per frame under the loading screen (it still moves, at 15 fps or so)
+
+## The battle as the host had it when we came in is all here and built (the
+## host's is from the start).
+var loaded := false
+var load_frac := 0.0  # (client) how far it has got, 0..1
+var _join_n := 0  # how many entities the host is sending
+var _join_ground := false  # the ground has come
+var _join_end := false  # and everything else
+var _join_kinds := PackedByteArray()  # the host's ground kinds, until laid
+var _load_q: Array = []  # [eid, kind ("" once gone), props], to build in the order they came
+var _load_i := 0
+var _load_rec := {}  # eid -> its record in _load_q, while it waits
+var _load_step := 0
+var _load_built := 0
+var _load_cells := 0  # cover cells to work out after the building
+var _cover_batch := 512  # and how many at a time (as many as take about a third of a slice)
+var _cover_min := -1  # (or at least as many as TerrainMap shares out over its worker threads, if it does)
+var _load_t0 := 0
+var _load_marks: Array = []  # (FL_DEBUG_NET) when each stage was done
+var _ground_task := -1
+var _ground_water: WaterMap  # the water laid out off the main thread, then handed over
+
+
+## One entity as the join stream carries it: [eid, its kind (ENT_KINDS), props].
+## A structure leaves out what a new one has anyway: most of the map is trees,
+## walls and floors that nothing has touched, and the client starts from the
+## same defaults.
+func _join_rec(e: Entity) -> Array:
+	var d := e.get_props()
+	if e is Structure:
+		var def := _struct_defaults()
+		for k in def:
+			if d.has(k) and typeof(d[k]) == typeof(def[k]) and d[k] == def[k]:
+				d.erase(k)
+	var ki := ENT_KINDS.find(e.ekind())
+	return [e.eid, ki if ki >= 0 else e.ekind(), d]
+
+
+static var _sdef := {}
+
+
+static func _struct_defaults() -> Dictionary:
+	if _sdef.is_empty():
+		var s := Structure.new()
+		_sdef = s.get_props()
+		s.free()
+	return _sdef
+
+
+## A value packed for the join stream: [its size, zstd-compressed bytes].
+static func _pack(v: Variant) -> Array:
+	var raw := var_to_bytes(v)
+	return [raw.size(), raw.compress(FileAccess.COMPRESSION_ZSTD)]
+
+
+static func _unpack(pk: Array) -> Variant:
+	if pk.size() != 2 or not pk[1] is PackedByteArray or int(pk[0]) <= 0 or int(pk[0]) > JOIN_MAX:
+		return null
+	return bytes_to_var((pk[1] as PackedByteArray).decompress(int(pk[0]), FileAccess.COMPRESSION_ZSTD))
+
+
+@rpc("authority", "call_remote", "reliable")
+func _rpc_join_map(pk: Array) -> void:
+	var d = _unpack(pk)
+	if not d is Dictionary:
+		push_error("The host's map didn't unpack.")
+		return
+	_join_n = int(d.get("n", 0))
+	water.from_dict(d.get("water", {}))
+	roads = d.get("roads", [[], [], []])
+	decor = d.get("decor", [])
+	town_rect = d.get("town", Rect2())
+	_join_kinds = d.get("kinds", PackedByteArray())
+	_join_ground = true
+	_load_mark("map")
+
+
+@rpc("authority", "call_remote", "reliable")
+func _rpc_join_ents(pk: Array) -> void:
+	var arr = _unpack(pk)
+	if not arr is Array:
+		push_error("The host's entities didn't unpack.")
+		return
+	for it in arr:
+		var k = it[1]
+		_queue_ent(int(it[0]), ENT_KINDS[int(k)] if k is int else String(k), it[2])
+
+
+@rpc("authority", "call_remote", "reliable")
+func _rpc_join_end() -> void:
+	_join_end = true
+	_load_mark("stream")
+
+
+## (client) An entity the host has told us of: built at once in a running
+## battle; while we're loading, it waits its turn behind the rest.
+func _queue_ent(id: int, kind: String, props: Dictionary) -> void:
+	if entities.has(id) or _load_rec.has(id):
+		return
+	if loaded:
+		_build_ent(id, kind, props)
+		return
+	var rec := [id, kind, props]
+	_load_q.append(rec)
+	_load_rec[id] = rec
+
+
+func _build_ent(id: int, kind: String, props: Dictionary) -> void:
+	var e := _make(kind)
+	e.world = self
+	e.eid = id
+	e.srv = false
+	e.apply_props(props)
+	e.name = "E%d" % id
+	_register(e)
+	add_child(e)
+	e.on_spawned()
+	if e is Structure:
+		_shash_add(e)
+		terrain.structure_changed(e, true)
+
+
+func _process(_dt: float) -> void:
+	if not srv and not loaded:
+		_load_tick()
+
+
+## (client) A frame's worth of loading: the ground (and, meanwhile, the set
+## dressing), then the entities and the cover map a slice at a time.
+func _load_tick() -> void:
+	var t0 := Time.get_ticks_usec()
+	if _load_t0 == 0:
+		_load_t0 = t0
+	match _load_step:
+		0:
+			if not _join_ground:
+				_load_stage("Waiting for the host", 0.0)
+				return
+			_lay_ground()
+			_load_step = 1
+			_load_stage("Laying out the town", 0.03)
+		1:
+			# (the street furniture stands on nothing the ground's work touches)
+			set_decor(decor, town_rect)
+			_load_mark("decor")
+			_load_step = 2
+			_load_stage("Charting the water", 0.1)
+		2:
+			if _ground_task >= 0 and not WorkerThreadPool.is_task_completed(_ground_task):
+				_load_stage("Charting the water", 0.1 + 0.08 * minf(1.0, (t0 - _load_t0) / 4000000.0))
+				return
+			_ground_done()
+			_load_step = 3
+			_load_stage("Moving in", 0.2)
+		3:
+			while _load_i < _load_q.size() and Time.get_ticks_usec() - t0 < LOAD_SLICE_US:
+				var rec: Array = _load_q[_load_i]
+				_load_i += 1
+				if String(rec[1]) == "":
+					continue
+				_load_rec.erase(rec[0])
+				_build_ent(int(rec[0]), String(rec[1]), rec[2])
+				_load_built += 1
+			if _load_i >= _load_q.size():
+				_load_q.clear()
+				_load_i = 0
+				if _join_end:
+					if _load_cells == 0:
+						_load_mark("entities")
+					_load_cells = maxi(1, terrain._queue.size() - terrain._qhead)
+					_load_step = 4
+			_load_stage("Moving in", 0.2 + 0.7 * minf(1.0, float(_load_built) / maxf(1.0, _join_n)))
+		4:
+			if _load_i < _load_q.size():
+				_load_step = 3  # (more came in meanwhile)
+				return
+			# the cover every wall and hedge gives, worked out as the host did
+			# when it laid the map out: in batches as big as fit the frame (a
+			# big batch may be shared out over the worker threads)
+			if _cover_min < 0:
+				_cover_min = int(terrain.get_script().get_script_constant_map().get("THREAD_CELLS", 0))
+			while terrain._qhead < terrain._queue.size() and Time.get_ticks_usec() - t0 < LOAD_SLICE_US:
+				var c0 := Time.get_ticks_usec()
+				terrain.tick(maxi(_cover_batch, _cover_min))
+				var took := maxi(1, Time.get_ticks_usec() - c0)
+				_cover_batch = clampi(int(_cover_batch * (LOAD_SLICE_US / 3.0) / took), 128, 1 << 16)
+			var left: int = terrain._queue.size() - terrain._qhead
+			_load_stage("Taking cover", 0.9 + 0.1 * (1.0 - float(left) / _load_cells))
+			if terrain._queue.is_empty():
+				_load_done()
+
+
+func _load_stage(text: String, frac: float) -> void:
+	load_frac = frac
+	# (the loading screen runs from where the client's empty world left it to
+	# where main.gd's warm-up takes over)
+	build_stage.emit(text, 0.14 + 0.58 * frac)
+
+
+func _load_mark(what: String) -> void:
+	if _load_t0 == 0:
+		_load_t0 = Time.get_ticks_usec()
+	_load_marks.append("%s %.1f s" % [what, (Time.get_ticks_usec() - _load_t0) / 1000000.0])
+
+
+## (client) The ground as the host has it: the water's shapes rasterized into
+## the ground kinds and carved into the ground heights, and over that the kinds
+## the host ended up with (a bridge deck or a paved square is road there
+## because of the order its map was laid out in, which the shapes alone don't
+## tell). Seconds of work, done on a worker thread while the rest comes in and
+## the street furniture goes up; nothing else touches the ground meanwhile
+## (entities wait to be built, effects aren't played, the cover map and the
+## roads wait). The water is laid out by a WaterMap of its own, handed over
+## when it's done, since the view reads the real one's decks every frame. (The
+## carving says when it's done itself: Atmosphere takes the new heights to the
+## view and the physics ground.)
+func _lay_ground() -> void:
+	_ground_water = WaterMap.new(self)
+	_ground_water.from_dict(water.to_dict())
+	_ground_task = WorkerThreadPool.add_task(_ground_job, false, "Laying out the ground")
+
+
+func _ground_job() -> void:
+	var w := _ground_water
+	if not w.is_empty():
+		w.paint_kinds()
+	var tm := terrain
+	var k := _join_kinds
+	if k.size() == tm.base.size():
+		for i in k.size():
+			if tm.base[i] != k[i]:
+				tm.base[i] = k[i]
+				tm._refresh_cell(i)
+	if not w.is_empty():
+		w.carve()
+
+
+func _ground_done() -> void:
+	if _ground_task >= 0:
+		WorkerThreadPool.wait_for_task_completion(_ground_task)
+		_ground_task = -1
+	var w := _ground_water
+	_ground_water = null
+	_join_kinds = PackedByteArray()
+	if w and not w.is_empty():
+		water.deck = w.deck
+		water.mask = w.mask
+		water.version += w.version
+	terrain.version += 1
+	_load_mark("ground")
+	_rebuild_roads()
+	_water_view()
+
+
+func _load_done() -> void:
+	loaded = true
+	set_process(false)
+	visible = true  # (main.gd's warm-up draws its first frames behind the loading screen)
+	_load_rec.clear()
+	_load_mark("cover")
+	if atmo and atmo.grass:
+		atmo.grass.set_process(true)
+		atmo.grass.request_rebuild(0.2)
+	if hud and hud.has_method("refresh_minimap"):
+		hud.refresh_minimap()
+	_try_focus()
+	_load_stage("Ready", 1.0)
+	if OS.has_environment("FL_DEBUG_NET"):
+		print("JOIN loaded %d entities: %s" % [entities.size(), ", ".join(_load_marks)])
 
 
 # --- messages / roads / end of game ------------------------------------------------
