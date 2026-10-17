@@ -449,3 +449,50 @@
     font-size: 0.85em;
     color: var(--foreground);
 }
+
+/* Signal: a single acquisition cut or stepped text reveal, never a looping scan. */
+.reveal[data-from="signal"],
+.reveal[data-from="type"] {
+    transform: none;
+    filter: none;
+    transition: opacity 180ms steps(2, end) var(--delay, 0ms);
+}
+.reveal[data-from="type"] {
+    clip-path: inset(0 100% 0 0);
+    transition:
+        clip-path 420ms steps(8, end) var(--delay, 0ms),
+        opacity 80ms;
+}
+.reveal[data-shown] {
+    clip-path: inset(0);
+}
+.story video {
+    transition: none;
+    transform: none;
+}
+.story .rec-dot {
+    animation: none;
+    box-shadow: none;
+}
+.operation-cut {
+    animation: operation-cut 160ms steps(2, end);
+}
+@keyframes operation-cut {
+    from {
+        opacity: 0.3;
+    }
+    to {
+        opacity: 1;
+    }
+}
+@media (prefers-reduced-motion: reduce) {
+    .reveal[data-from="signal"],
+    .reveal[data-from="type"] {
+        transition: none;
+        clip-path: none;
+        opacity: 1;
+    }
+    .operation-cut {
+        animation: none;
+    }
+}

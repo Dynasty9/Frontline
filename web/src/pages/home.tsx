@@ -5,10 +5,8 @@ import { Features } from "@/components/features"
 import { Finale } from "@/components/finale"
 import { Gallery } from "@/components/gallery"
 import { Hero } from "@/components/hero"
-import { TickerBands } from "@/components/marquee"
 import { Missions } from "@/components/missions"
 import { ReelDialog } from "@/components/reel-dialog"
-import { Stats } from "@/components/stats"
 import { usePageTitle } from "@/hooks/use-page-title"
 import { guessPlatform } from "@/lib/releases"
 import { useSite } from "@/hooks/use-site"
@@ -37,8 +35,6 @@ export default function Home() {
   return (
     <>
       <Hero health={health} platform={platform} onWatch={() => setWatching(true)} />
-      <TickerBands />
-      <Stats />
       <Features />
       <Missions />
       <Gallery />
