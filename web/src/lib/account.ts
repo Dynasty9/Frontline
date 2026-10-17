@@ -379,7 +379,7 @@ export async function signInGameFromWebsite(): Promise<{ token: string } | null>
 
 const GITHUB_KEY = "frontline.github"
 
-type Away = { verifier: string; game: SignInRequest | null }
+type Away = { verifier: string; game: SignInRequest | null; returnTo?: string }
 
 /** What came back from GitHub to this page: a code to swap for a session, or why not. */
 export type GitHubReturn = { game: SignInRequest | null } & ({ code: string; verifier: string } | { error: string })
@@ -413,7 +413,14 @@ async function signInWithGitHub(game: SignInRequest | null = null, go = leave) {
       code_challenge: await pkceChallenge(verifier),
     })
     try {
-      sessionStorage.setItem(GITHUB_KEY, JSON.stringify({ verifier, game } satisfies Away))
+      sessionStorage.setItem(
+        GITHUB_KEY,
+        JSON.stringify({
+          verifier,
+          game,
+          returnTo: game ? undefined : window.location.pathname + window.location.search + window.location.hash,
+        } satisfies Away)
+      )
     } catch {
       throw new Error("This browser is blocking the storage a sign-in needs while it's away at GitHub.")
     }
@@ -458,11 +465,26 @@ export function takeGitHubReturn(href = window.location.href): GitHubBack | null
     const clean = u.pathname + u.search + (hash.has("error") ? "" : u.hash)
     result = {
       back: code ? { game: away.game, code, verifier: away.verifier } : { game: away.game, error: error ?? "" },
-      clean,
+      clean: away.game ? clean : (localReturnPath(away.returnTo, u.origin) ?? clean),
     }
   }
   taken = { href, back: result }
   return result
+}
+
+/** Only a local path can be restored; the provider callback stays at the allow-listed root. */
+function localReturnPath(value: unknown, origin: string): string | null {
+  if (typeof value !== "string" || !value.startsWith("/") || value.startsWith("//") || value.includes("\\")) return null
+  for (const char of value) if (char.charCodeAt(0) <= 32) return null
+  try {
+    const destination = new URL(value, origin)
+    if (destination.origin !== origin) return null
+    for (const key of ["code", "error", "error_code", "error_description", "sign-in"])
+      destination.searchParams.delete(key)
+    return destination.pathname + destination.search + destination.hash
+  } catch {
+    return null
+  }
 }
 
 const finishing = new Map<string, Promise<{ token: string } | "in" | null>>()

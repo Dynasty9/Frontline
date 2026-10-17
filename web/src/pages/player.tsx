@@ -1,6 +1,7 @@
 import { EyeSlashIcon, PencilSimpleIcon, UserCircleDashedIcon, WarningIcon } from "@phosphor-icons/react"
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query"
 import { Link, useParams } from "react-router"
+import { CommandersNav } from "@/components/commanders-nav"
 import { SectionLabel } from "@/components/battles"
 import { Corners, XpProgress } from "@/components/insignia"
 import { PlayerSearch } from "@/components/leaderboard"
@@ -63,6 +64,7 @@ export default function PlayerPage() {
 
   return (
     <div className="topo">
+      <CommandersNav />
       <div className="mx-auto max-w-6xl px-4 pt-14 pb-24 sm:px-6">
         <SectionLabel>Commander</SectionLabel>
         {player.isPending ? (

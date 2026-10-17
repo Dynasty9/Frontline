@@ -62,12 +62,20 @@ export function Battles({
             Live battles. <span className="text-primary">Join in a click.</span>
           </Heading>
           <p className="mt-4 max-w-2xl text-sm text-muted-foreground">
-            Click Join and the game opens and connects you straight to the host. Most home routers need no setup: the
-            matchmaker introduces you, and the game traffic goes directly between players.
+            Choose a battle and join it in the desktop game. Play co-op, take on another commander, or follow a friend’s
+            invite. No account required.
           </p>
         </div>
         <Updated at={updatedAt} failing={!!error && !!lobbies} />
       </div>
+
+      <p className="mt-4 text-sm text-muted-foreground">
+        New here?{" "}
+        <Link to="/play#download" className="text-foreground underline underline-offset-4">
+          Download Frontline
+        </Link>{" "}
+        and start it once before joining. To host, open the game and choose Host a Battle.
+      </p>
 
       {invite && !launched && (
         <Invite

@@ -1,5 +1,4 @@
 import {
-  BrowserIcon,
   CheckCircleIcon,
   CheckIcon,
   CrosshairIcon,
@@ -10,6 +9,10 @@ import {
   WarningIcon,
 } from "@phosphor-icons/react"
 import { useState } from "react"
+import { Link } from "react-router"
+import { useAccount } from "@/lib/account"
+import { useSite } from "@/hooks/use-site"
+import { openSignIn } from "@/hooks/use-sign-in-dialog"
 import { SectionLabel } from "@/components/battles"
 import { Downloads } from "@/components/downloads"
 import { Badge } from "@/components/ui/badge"
@@ -32,9 +35,12 @@ import {
   platformsOf,
 } from "@/lib/releases"
 
-/** /play: the desktop game (launch it, or download it), and the browser version beside it. */
+/** /play: download first for a new device; launch first after a successful handoff. */
 export default function PlayPage() {
   usePageTitle("Play")
+  const { user } = useAccount()
+  const { health } = useSite()
+  const signedIn = !!user && health?.accounts !== "off"
   const [device] = useState(guessDevice)
   const [platform] = useState(() => guessPlatform())
 
@@ -44,18 +50,75 @@ export default function PlayPage() {
         <div className="mx-auto max-w-6xl px-4 pt-14 pb-20 sm:px-6">
           <SectionLabel>Play</SectionLabel>
           <h1 className="mt-2 font-display text-5xl leading-[0.95] font-extrabold uppercase sm:text-6xl">
-            Report for duty. <span className="text-primary">It's free.</span>
+            {signedIn ? (
+              <>
+                Back for <span className="text-primary">another battle.</span>
+              </>
+            ) : (
+              <>
+                Report for duty. <span className="text-primary">It's free.</span>
+              </>
+            )}
           </h1>
           <p className="mt-4 max-w-2xl text-sm text-muted-foreground">
-            The desktop game is the whole of Frontline: battles online, co-op with friends and every mission. You don't
-            need an account to play, but sign in and every battle you fight counts towards your rank.
+            {signedIn
+              ? `Ready, ${user.callsign}? Open the game for missions and multiplayer, or browse the live battles to choose a host.`
+              : "Download Frontline for the full game: solo missions, co-op with friends and battles online. No account or purchase needed."}
           </p>
           <div className="mt-8 grid items-stretch gap-4 lg:grid-cols-[1.5fr_1fr]">
             <DesktopCard device={device} />
-            <BrowserCard device={device} />
+            <aside className="border-t py-6 lg:border-t-0 lg:border-l lg:pl-8">
+              <h2 className="font-display text-2xl font-bold uppercase">
+                {signedIn ? "Choose your next move" : "From download to first orders"}
+              </h2>
+              {signedIn ? (
+                <div className="mt-5 space-y-5 text-sm">
+                  <p className="text-muted-foreground">
+                    Missions and hosting start in the game. The website helps you find a battle and manage your
+                    commander.
+                  </p>
+                  <Link to="/battles" className="block border-b pb-3 hover:text-primary">
+                    Browse live battles →
+                  </Link>
+                  <Link to="/profile" className="block border-b pb-3 hover:text-primary">
+                    Your profile & insignia →
+                  </Link>
+                </div>
+              ) : (
+                <ol className="mt-5 space-y-5 text-sm">
+                  <li>
+                    <span className="mr-3 font-mono text-primary">01</span>Download for your computer.
+                  </li>
+                  <li>
+                    <span className="mr-3 font-mono text-primary">02</span>Install or unpack it, then start Frontline.
+                  </li>
+                  <li>
+                    <span className="mr-3 font-mono text-primary">03</span>Pick a mission or join a battle.
+                  </li>
+                </ol>
+              )}
+              <p className="mt-8 border-t pt-4 text-xs leading-relaxed text-muted-foreground">
+                Browser play is in development. The desktop version has the full game now.
+              </p>
+            </aside>
           </div>
         </div>
       </section>
+      {!signedIn && health?.accounts !== "off" && (
+        <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-4 px-4 py-8 sm:px-6">
+          <div>
+            <h2 className="font-display text-xl font-bold uppercase">
+              An account is optional. Your progress is personal.
+            </h2>
+            <p className="mt-2 text-sm text-muted-foreground">
+              Sign in to keep your callsign, earn ranks and choose your insignia.
+            </p>
+          </div>
+          <Button variant="outline" className="min-h-11" onClick={openSignIn}>
+            Sign in to track progress
+          </Button>
+        </div>
+      )}
       <Downloads platform={platform} />
     </>
   )
@@ -100,7 +163,13 @@ export function DesktopCard({ device, build = latest }: { device: Device; build?
         {platform ? (
           <>
             <div className="flex flex-wrap gap-2">
-              <Button size="lg" asChild className="shine h-11 px-5 text-sm font-bold tracking-wider uppercase">
+              {!launch.installed && <DownloadAction platform={platform} build={build} primary />}
+              <Button
+                size="lg"
+                variant={launch.installed ? "default" : "outline"}
+                asChild
+                className="h-11 px-5 text-sm font-bold tracking-wider uppercase"
+              >
                 <a href={OPEN_LINK} onClick={launch.onClick}>
                   <PlayIcon weight="fill" />
                   Launch Frontline
@@ -117,13 +186,7 @@ export function DesktopCard({ device, build = latest }: { device: Device; build?
                   Find a match
                 </a>
               </Button>
-              <Button size="lg" variant="outline" asChild className="h-11 px-5 text-sm">
-                <a href={assetFor(platform, build).url}>
-                  <DownloadSimpleIcon weight="bold" />
-                  Download for {PLATFORM_NAMES[platform]}
-                  <span className="text-muted-foreground">· {formatSize(assetFor(platform, build).size)}</span>
-                </a>
-              </Button>
+              {launch.installed && <DownloadAction platform={platform} build={build} />}
             </div>
             <LaunchNote state={launch.state} installed={launch.installed} />
           </>
@@ -162,47 +225,33 @@ function LaunchNote({ state, installed }: { state: LaunchState; installed: boole
         <span className="flex items-start gap-2 text-warn">
           <WarningIcon weight="fill" className="mt-px size-4 shrink-0" />
           <span>
-            Nothing opened? Frontline isn't on this computer yet, or it hasn't been started here. Download it, unzip it
-            and start it once: after that, these buttons open it.
+            Nothing opened? Frontline isn't on this computer yet, or it hasn't been started here. Download it, install
+            or unpack it and start it once: after that, these buttons open it.
           </span>
         </span>
       ) : installed ? (
         <span className="text-muted-foreground">Launch opens Frontline on this computer.</span>
       ) : (
         <span className="text-muted-foreground">
-          First time? Download it, unzip it anywhere and start Frontline once. From then on, Launch and the Join buttons
-          on this site open it.
+          First time? Download it, install or unpack it anywhere and start Frontline once. From then on, Launch and the
+          Join buttons on this site open it.
         </span>
       )}
     </output>
   )
 }
 
-function BrowserCard({ device }: { device: Device }) {
+function DownloadAction({ platform, build, primary = false }: { platform: Platform; build: Build; primary?: boolean }) {
   return (
-    <Card className="gap-0 py-0 text-sm">
-      <div className="p-5 sm:p-6">
-        <div className="flex flex-wrap items-center gap-2">
-          <BrowserIcon weight="fill" className="size-5 text-primary" />
-          <h2 className="text-lg font-semibold">In your browser</h2>
-          <Badge variant="outline" className="border-primary/40 text-primary">
-            Coming soon
-          </Badge>
-        </div>
-        <p className="mt-4 leading-relaxed text-muted-foreground">
-          Take on the AI and play the missions right here, with nothing to install. Battles online stay with the desktop
-          game.
-        </p>
-      </div>
-      <div className="mt-auto space-y-3 border-t p-5 sm:p-6">
-        <Button size="lg" variant="outline" disabled className="h-11 w-full px-5 text-sm">
-          Arrives with the next release
-        </Button>
-        {device === "mobile" && (
-          <p className="text-xs text-muted-foreground">It needs a computer too: a keyboard, a mouse and WebGL 2.</p>
-        )}
-      </div>
-    </Card>
+    <Button size="lg" variant={primary ? "default" : "outline"} asChild className="h-11 px-5 text-sm">
+      <a href={assetFor(platform, build).url}>
+        <DownloadSimpleIcon weight="bold" />
+        Download for {PLATFORM_NAMES[platform]}
+        <span className={primary ? "opacity-75" : "text-muted-foreground"}>
+          · {formatSize(assetFor(platform, build).size)}
+        </span>
+      </a>
+    </Button>
   )
 }
 

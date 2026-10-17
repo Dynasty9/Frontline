@@ -113,9 +113,9 @@ export function signedIn(user: User) {
  * The session the code is swapped for isn't saved, and afterwards the page is
  * signed out and its sign-in dialog shut, ready for the next story.
  */
-export function awayAtGitHub() {
+export function awayAtGitHub(returnTo?: string) {
   return () => {
-    sessionStorage.setItem("frontline.github", JSON.stringify({ verifier: "v".repeat(43), game: null }))
+    sessionStorage.setItem("frontline.github", JSON.stringify({ verifier: "v".repeat(43), game: null, returnTo }))
     const setItem = Storage.prototype.setItem
     Storage.prototype.setItem = function (key: string, value: string) {
       if (key !== "frontline.account") setItem.call(this, key, value)

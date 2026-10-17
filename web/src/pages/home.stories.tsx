@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite"
 import { expect, screen, userEvent, waitFor, within } from "storybook/test"
 import { assetFor, guessPlatform, PLATFORM_NAMES } from "@/lib/releases"
 import { health, lobbies, lobbyOpen, player } from "@/test/fixtures"
-import { awayAtGitHub, mockMatchmaker } from "@/test/network"
+import { awayAtGitHub, mockMatchmaker, signedIn } from "@/test/network"
 import { loadPage } from "@/test/load-page"
 import { SiteAt } from "@/test/router"
 
@@ -39,7 +39,10 @@ export const Live: Story = {
     // the battles, the ranks and the downloads have pages of their own
     await expect(canvas.queryByText(lobbyOpen.name)).toBeNull()
     await expect(canvas.queryByRole("heading", { name: "Earn your insignia" })).toBeNull()
-    for (const r of canvas.getAllByRole("link", { name: "Ranks" })) await expect(r).toHaveAttribute("href", "/ranks")
+    await expect(canvas.queryByRole("link", { name: "Ranks" })).toBeNull()
+    await expect(
+      within(canvas.getByRole("navigation", { name: "Site" })).getByRole("link", { name: "Commanders" })
+    ).toHaveAttribute("href", "/leaderboards")
   },
 }
 
@@ -66,20 +69,18 @@ export const SignIn: Story = {
   },
 }
 
-/** Back from GitHub (/?code=): the dialog signs them in, and on to their profile. */
+/** Back from GitHub: the visitor stays home and sees their returning-player welcome. */
 export const BackFromGitHub: Story = {
   args: { path: "/?code=code-back" },
-  // where it goes once signed in: the profile page
-  loaders: [() => import("@/pages/profile").then(() => ({}))],
   beforeEach: [mockMatchmaker({ lobbies, health, exchange: player }), awayAtGitHub()],
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    // the code swapped, /me asked, the dialog shut, the profile shown: give it a moment on a busy machine
+    // the code swapped, /me asked, the dialog shut, the welcome shown: give it a moment on a busy machine
     await expect(
-      await canvas.findByRole("heading", { level: 1, name: "Your profile" }, { timeout: 5000 })
+      await canvas.findByRole("heading", { level: 1, name: /Welcome back, Raven/ }, { timeout: 5000 })
     ).toBeVisible()
-    await expect(canvas.getByRole("button", { name: "Your account: Raven rank 6" })).toBeVisible()
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull())
+    await expect(canvas.getByRole("button", { name: "Your account: Raven rank 6" })).toBeVisible()
   },
 }
 
@@ -117,5 +118,39 @@ export const Invite: Story = {
     const canvas = within(canvasElement)
     await waitFor(() => expect(canvas.getByText("Raven invited you to Bridgehead at dawn")).toBeVisible())
     await expect(canvas.getByRole("heading", { level: 1, name: /Live battles/ })).toBeVisible()
+  },
+}
+
+export const ReturningPlayer: Story = {
+  beforeEach: [mockMatchmaker({ lobbies, health, me: player }), signedIn(player)],
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await expect(await canvas.findByRole("heading", { level: 1, name: /Welcome back, Raven/ })).toBeVisible()
+    await expect(canvas.getByRole("link", { name: "Play Frontline" })).toHaveAttribute("href", "/play")
+    await expect(canvas.getByRole("link", { name: "Your public record" })).toHaveAttribute("href", "/player/Raven")
+    await expect(canvas.queryByRole("button", { name: "Watch the footage" })).toBeNull()
+  },
+}
+
+export const SignsOut: Story = {
+  beforeEach: [mockMatchmaker({ lobbies, health, me: player }), signedIn(player)],
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await userEvent.click(await canvas.findByRole("button", { name: "Your account: Raven rank 6" }))
+    await userEvent.click(screen.getByRole("menuitem", { name: "Sign out" }))
+    await expect(await canvas.findByRole("heading", { level: 1, name: "Frontline" })).toBeVisible()
+    await expect(canvas.getByRole("button", { name: "Sign in" })).toBeVisible()
+  },
+}
+
+export const ReturningGameTour: Story = {
+  args: { path: "/#intel" },
+  beforeEach: [mockMatchmaker({ lobbies, health, me: player }), signedIn(player)],
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await expect(await canvas.findByRole("heading", { name: /The road is covered/ })).toBeInTheDocument()
+    await expect(
+      within(canvas.getByRole("navigation", { name: "Site" })).getByRole("link", { name: "The game" })
+    ).toHaveAttribute("aria-current", "page")
   },
 }

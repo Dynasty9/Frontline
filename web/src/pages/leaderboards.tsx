@@ -1,6 +1,7 @@
 import { CaretLeftIcon, CaretRightIcon, TrophyIcon, WarningIcon } from "@phosphor-icons/react"
 import { keepPreviousData, useQuery } from "@tanstack/react-query"
 import { Link, useSearchParams } from "react-router"
+import { CommandersNav } from "@/components/commanders-nav"
 import { SectionLabel } from "@/components/battles"
 import { LeaderboardTable, PlayerSearch } from "@/components/leaderboard"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
@@ -48,14 +49,15 @@ export default function LeaderboardsPage() {
 
   return (
     <div className="topo">
+      <CommandersNav />
       <div className="mx-auto max-w-6xl px-4 pt-14 pb-24 sm:px-6">
-        <SectionLabel>Leaderboards</SectionLabel>
+        <SectionLabel>Commanders / Leaderboards</SectionLabel>
         <h1 className="mt-2 font-display text-5xl leading-[0.95] font-extrabold uppercase sm:text-6xl">
           Top commanders. <span className="text-primary">Earned in battle.</span>
         </h1>
         <p className="mt-4 max-w-2xl text-sm text-muted-foreground">
-          Every battle you fight signed in earns experience: a point for every six seconds of it, half as much again for
-          a win. It's timed on the matchmaker's clock, so nobody can claim more than they've played.
+          Meet the commanders earning their place through time in battle. Compare experience across all time, this month
+          or this week. For rank thresholds and unlocks, visit the rank guide.
         </p>
 
         <div className="mt-8 flex flex-wrap items-end justify-between gap-4">

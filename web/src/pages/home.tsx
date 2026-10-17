@@ -4,6 +4,8 @@ import { WhatsNew } from "@/components/changelog"
 import { Features } from "@/components/features"
 import { Finale } from "@/components/finale"
 import { Gallery } from "@/components/gallery"
+import { PlayerHome } from "@/components/player-home"
+import { useAccount } from "@/lib/account"
 import { Hero } from "@/components/hero"
 import { Missions } from "@/components/missions"
 import { ReelDialog } from "@/components/reel-dialog"
@@ -23,6 +25,7 @@ const MOVED: Record<string, string> = { "#download": "/play#download", "#insigni
 export default function Home() {
   usePageTitle()
   const { health } = useSite()
+  const { user } = useAccount()
   const [platform] = useState(guessPlatform)
   const [watching, setWatching] = useState(false)
   const { hash } = useLocation()
@@ -32,14 +35,25 @@ export default function Home() {
   if (invite) return <Navigate to={`/battles?join=${encodeURIComponent(invite)}`} replace />
   if (MOVED[hash]) return <Navigate to={MOVED[hash]} replace />
 
+  const returning = !!user && health?.accounts !== "off"
+  const exploring = !returning || !!hash
+
   return (
     <>
-      <Hero health={health} platform={platform} onWatch={() => setWatching(true)} />
-      <Features />
-      <Missions />
-      <Gallery />
+      {user && health?.accounts !== "off" ? (
+        <PlayerHome user={user} live={health?.lobbies} />
+      ) : (
+        <Hero health={health} platform={platform} onWatch={() => setWatching(true)} />
+      )}
+      {exploring && (
+        <>
+          <Features />
+          <Missions />
+          <Gallery />
+        </>
+      )}
       <WhatsNew />
-      <Finale platform={platform} />
+      {exploring && <Finale platform={platform} />}
       <ReelDialog open={watching} onClose={() => setWatching(false)} />
     </>
   )

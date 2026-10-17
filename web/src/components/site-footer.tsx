@@ -1,36 +1,61 @@
 import { Link } from "react-router"
 import { Emblem } from "@/components/emblem"
+import { useAccount } from "@/lib/account"
 import { GITHUB_URL } from "@/lib/config"
 
-const LINKS = [
-  { label: "Play", to: "/play" },
-  { label: "Live battles", to: "/battles" },
-  { label: "Leaderboards", to: "/leaderboards" },
-  { label: "Ranks", to: "/ranks" },
-  { label: "What's new", to: "/changelog" },
-  { label: "Your profile", to: "/profile" },
-] as const
-
-export function SiteFooter() {
+export function SiteFooter({ accounts }: { accounts?: string }) {
+  const { user } = useAccount()
   return (
     <footer className="border-t">
-      <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-6 gap-y-3 px-4 py-8 text-xs text-muted-foreground sm:px-6">
-        <span className="flex items-center gap-2">
-          <Emblem className="size-5" />
-          Frontline is free and open source under the MIT License.
-        </span>
-        <nav aria-label="Footer" className="flex flex-wrap gap-x-6 gap-y-3 sm:ml-auto">
-          {LINKS.map((l) => (
-            <Link key={l.to} to={l.to} className="hover:text-foreground">
-              {l.label}
+      <div className="mx-auto grid max-w-6xl gap-10 px-4 py-12 sm:grid-cols-[1fr_2fr] sm:px-6">
+        <div>
+          <Link to="/" className="flex items-center gap-3 text-sm font-bold tracking-widest uppercase">
+            <Emblem className="size-6" />
+            Frontline
+          </Link>
+          <p className="mt-4 max-w-xs text-sm leading-relaxed text-muted-foreground">
+            Squad tactics. Combined arms.
+            <br />
+            Free to play, with or without an account.
+          </p>
+        </div>
+        <nav aria-label="Footer" className="grid grid-cols-2 gap-8 text-sm sm:grid-cols-3">
+          <div className="space-y-3">
+            <p className="font-mono text-xs text-muted-foreground uppercase">Discover</p>
+            <Link className="block hover:text-primary" to="/#intel">
+              The game
             </Link>
-          ))}
-          <a href={GITHUB_URL} className="hover:text-foreground">
-            Source on GitHub
-          </a>
-          <a href={`${GITHUB_URL}/issues`} className="hover:text-foreground">
-            Report a bug
-          </a>
+            <Link className="block hover:text-primary" to="/changelog">
+              Updates
+            </Link>
+          </div>
+          <div className="space-y-3">
+            <p className="font-mono text-xs text-muted-foreground uppercase">Take part</p>
+            <Link className="block hover:text-primary" to="/play">
+              Play & download
+            </Link>
+            <Link className="block hover:text-primary" to="/battles">
+              Live battles
+            </Link>
+            <Link className="block hover:text-primary" to="/leaderboards">
+              Commanders
+            </Link>
+            {user && accounts !== "off" && (
+              <Link className="block hover:text-primary" to="/profile">
+                Your profile
+              </Link>
+            )}
+          </div>
+          <div className="space-y-3">
+            <p className="font-mono text-xs text-muted-foreground uppercase">Project</p>
+            <a className="block hover:text-primary" href={GITHUB_URL}>
+              Source on GitHub
+            </a>
+            <a className="block hover:text-primary" href={`${GITHUB_URL}/issues`}>
+              Report a bug
+            </a>
+            <p className="text-xs text-muted-foreground">Open source · MIT License</p>
+          </div>
         </nav>
       </div>
     </footer>
