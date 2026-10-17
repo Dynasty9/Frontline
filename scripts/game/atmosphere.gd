@@ -54,6 +54,7 @@ var biome_tex: ImageTexture
 var detail_tex: ImageTexture
 var road_mat: ShaderMaterial
 var grass: Grass
+var wildlife: Wildlife
 var _d := {}
 var _mood_asked := ""  # the Time of day setting as the battle began: changing it mid-battle switches the mood live
 
@@ -72,6 +73,10 @@ func setup(w: World) -> void:
 	grass.atmo = self
 	add_child(grass)
 	grass.set_deform(deform_tex)
+	wildlife = Wildlife.new()
+	wildlife.name = "Wildlife"
+	wildlife.world = world
+	add_child(wildlife)
 	Settings.changed.connect(apply_settings)
 	apply_settings()
 	if Sfx.enabled and world.has_view:
@@ -294,7 +299,9 @@ func _build_ground() -> void:
 	rs.code = Mats.code(MapDims.shader(ROAD_SHADER))
 	road_mat.shader = rs
 	road_mat.set_shader_parameter("detail_tex", detail_tex)
-	road_mat.render_priority = 1
+	# see-through (its edges fade into the verges), so it draws with the smoke
+	# and fire: before them, or it paints over every blast on a road
+	road_mat.render_priority = -1
 	road_mat.set_shader_parameter("trench_mask", _blank_mask)
 	road_mat.set_shader_parameter("deform_tex", deform_tex)
 	road_mat.set_shader_parameter("wet", 1.0 if mood == "rain" else 0.0)
@@ -590,6 +597,8 @@ func apply_settings() -> void:
 	cam_attr.dof_blur_amount = 0.06
 	if grass:
 		grass.apply_settings()
+	if wildlife:
+		wildlife.apply_settings()
 
 
 ## Colour grading: the chosen look on top of the time of day, plus the

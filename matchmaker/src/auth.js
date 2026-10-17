@@ -19,8 +19,9 @@
 // With neither configured, accounts are switched off.
 
 import { createHash, randomBytes, randomUUID, scryptSync, timingSafeEqual } from 'node:crypto';
+import { periodStart, rankBoard } from './players.js';
 import { battleXp, insignia, isResult, lockedMessage, progress, rankOf, STARTER_ICON, unlocked } from './ranks.js';
-import { HEAD } from './records.js';
+import { careerOf, HEAD } from './records.js';
 
 export class AuthError extends Error {
 	constructor(status, message) {
@@ -77,14 +78,31 @@ function checkBattleEnd(result, seconds) {
 	if (typeof seconds !== 'number' || !Number.isFinite(seconds) || seconds < 0) throw new AuthError(400, 'Say how long the battle ran, in seconds.');
 }
 
+// What a player may change about how others see them: their picture (their
+// insignia, or the picture on their GitHub account, which only a GitHub
+// account has), and whether their battles are public.
+function checkAvatar(avatar, user) {
+	if (avatar !== 'insignia' && avatar !== 'github') throw new AuthError(400, 'Your picture is your insignia or your GitHub picture.');
+	if (avatar === 'github' && !user.github_avatar) throw new AuthError(400, 'There is no GitHub picture on this account.');
+}
+
+function checkHideHistory(hide) {
+	if (typeof hide !== 'boolean') throw new AuthError(400, 'hide_history: true or false.');
+}
+
 // A player as the game and the website see them, wherever a user is returned.
 // Only the XP is stored: the rank and where it begins and ends follow from it.
+// (What anyone else may see of them is players.js's business.)
 export function toUser(u) {
 	return {
 		id: u.id,
 		email: u.email,
 		callsign: u.callsign ?? '',
 		icon: u.icon ?? STARTER_ICON,
+		avatar: u.avatar === 'github' ? 'github' : 'insignia',
+		github_avatar: u.github_avatar ?? null,
+		hide_history: u.hide_history === true,
+		joined: u.created_at ?? u.joined ?? null,
 		...progress(u.xp ?? 0),
 		battles: u.battles ?? 0,
 		wins: u.wins ?? 0,
@@ -242,10 +260,11 @@ class SupabaseAuth {
 
 	// This session only: the game and the website each hold one of their own
 	// (the website signs the game in), and signing out of one leaves the
-	// other. Supabase's default would end every session the account has.
-	async logout(token) {
+	// other. Supabase's default would end every session the account has, which
+	// is what 'global' (the website's "Sign out everywhere") asks for.
+	async logout(token, scope = 'local') {
 		this.cache.drop(token);
-		await this.call('/auth/v1/logout?scope=local', { method: 'POST', token });
+		await this.call(`/auth/v1/logout?scope=${scope === 'global' ? 'global' : 'local'}`, { method: 'POST', token });
 	}
 
 	async user(token) {
@@ -256,11 +275,13 @@ class SupabaseAuth {
 		return this.remember(token, { id: r.data.id, email: r.data.email, ...(await this.profile(r.data.id, token)) });
 	}
 
-	// {callsign, icon}, either or both. The callsign is the one column a player
-	// may write directly; the insignia goes through set_icon(), which checks
-	// it's been unlocked.
-	async updateProfile(token, user, { callsign, icon }) {
+	// {callsign, icon, avatar, hide_history}, any of them. The insignia goes
+	// through set_icon(), which checks it's been unlocked; the rest are the
+	// columns a player may write directly.
+	async updateProfile(token, user, { callsign, icon, avatar, hide_history }) {
 		if (callsign !== undefined) callsign = checkCallsign(callsign);
+		if (avatar !== undefined) checkAvatar(avatar, user);
+		if (hide_history !== undefined) checkHideHistory(hide_history);
 		const ins = icon !== undefined ? checkIcon(icon) : null;
 		let u = user;
 		if (ins) {
@@ -269,16 +290,17 @@ class SupabaseAuth {
 			if (!r.ok) throw SupabaseAuth.failed(r, 'Could not change the insignia.');
 			u = this.remember(token, { ...u, icon: ins.id });
 		}
-		if (callsign !== undefined) {
+		const change = Object.fromEntries(Object.entries({ callsign, avatar, hide_history }).filter(([, v]) => v !== undefined));
+		if (Object.keys(change).length) {
 			const r = await this.call(`/rest/v1/profiles?id=eq.${encodeURIComponent(user.id)}`, {
 				method: 'PATCH',
 				token,
-				body: { callsign },
+				body: change,
 				headers: { Prefer: 'return=minimal' },
 			});
-			if (r.status === 409 || r.data?.code === '23505') throw new AuthError(409, 'That callsign is taken.');
-			if (!r.ok) throw new AuthError(400, SupabaseAuth.message(r.data, 'Could not change the callsign.'));
-			u = this.remember(token, { ...u, callsign });
+			if (callsign !== undefined && (r.status === 409 || r.data?.code === '23505')) throw new AuthError(409, 'That callsign is taken.');
+			if (!r.ok) throw new AuthError(400, SupabaseAuth.message(r.data, 'Could not change your profile.'));
+			u = this.remember(token, { ...u, ...change });
 		}
 		return toUser(u);
 	}
@@ -334,6 +356,39 @@ class SupabaseAuth {
 		if (!r.ok || !Array.isArray(r.data)) throw new AuthError(503, SupabaseAuth.message(r.data, 'Could not read that battle.'));
 		return r.data[0] || null;
 	}
+
+	// --- what anyone may see (players.js): the database's public functions,
+	// asked with the public key alone (the public_profiles migration)
+
+	async publicCall(fn, body, fallback) {
+		const r = await this.rpc(fn, null, body);
+		if (!r.ok) throw r.data?.code === 'PT400' ? new AuthError(400, SupabaseAuth.message(r.data, fallback)) : SupabaseAuth.failed(r, fallback);
+		return r.data ?? null;
+	}
+
+	leaderboard(period, { limit, offset, me }) {
+		return this.publicCall('leaderboard_xp', { period, lim: limit, off: offset, me: me || null }, 'Could not read the leaderboard.');
+	}
+
+	player(name) {
+		return this.publicCall('player_card', { name }, 'Could not read that player.');
+	}
+
+	playerCareer(name) {
+		return this.publicCall('player_career', { name }, "Could not read that player's career.");
+	}
+
+	playerBattles(name, { limit = 20, before = '' } = {}) {
+		return this.publicCall('player_battles', { name, lim: limit, before: before || null }, "Could not read that player's battles.");
+	}
+
+	playerBattle(name, id) {
+		return this.publicCall('player_battle', { name, battle: id }, 'Could not read that battle.');
+	}
+
+	findPlayers(prefix) {
+		return this.publicCall('find_players', { prefix }, 'Could not look for players.');
+	}
 }
 
 // Local testing only: forgets everything on restart. Ranks follow the same
@@ -342,10 +397,31 @@ class MemoryAuth {
 	constructor({ now = Date.now } = {}) {
 		this.name = 'memory';
 		this.now = now; // the battle clock (tests fake a battle's length with it)
-		this.users = new Map(); // email -> {id, email, callsign, salt, hash, icon, xp, battles, wins, battleStarted}
+		// email -> {id, email, callsign, salt, hash, icon, xp, battles, wins, battleStarted, created_at,
+		// avatar, github_avatar, hide_history, hidden}
+		this.users = new Map();
 		this.access = new Map(); // token -> {user, until}
 		this.refreshTokens = new Map(); // token -> email
 		this.codes = new Map(); // a GitHub sign-in on its way: code -> {challenge, until}
+		this.xpLog = []; // every battle that earned XP: {user_id, gained, at}, at on the wall clock
+	}
+
+	// A new player's profile, as the database's sign-up trigger makes one.
+	static profile(fields) {
+		return {
+			id: randomUUID(),
+			icon: STARTER_ICON,
+			xp: 0,
+			battles: 0,
+			wins: 0,
+			battleStarted: null,
+			created_at: new Date().toISOString(),
+			avatar: 'insignia',
+			github_avatar: null,
+			hide_history: false,
+			hidden: false,
+			...fields,
+		};
 	}
 
 	static hash(password, salt) {
@@ -372,18 +448,7 @@ class MemoryAuth {
 		if (this.users.has(email)) throw new AuthError(400, 'User already registered');
 		if (this.taken(callsign)) throw new AuthError(409, 'That callsign is taken.');
 		const salt = randomBytes(16);
-		const u = {
-			id: randomUUID(),
-			email,
-			callsign,
-			salt,
-			hash: MemoryAuth.hash(password, salt),
-			icon: STARTER_ICON,
-			xp: 0,
-			battles: 0,
-			wins: 0,
-			battleStarted: null,
-		};
+		const u = MemoryAuth.profile({ email, callsign, salt, hash: MemoryAuth.hash(password, salt) });
 		this.users.set(email, u);
 		return { session: this.issue(u), confirm: false };
 	}
@@ -413,7 +478,8 @@ class MemoryAuth {
 		if (!this.users.has(email)) {
 			let callsign = 'GitHub Player';
 			for (let n = 2; this.taken(callsign); n++) callsign = `GitHub Player ${n}`;
-			this.users.set(email, { id: randomUUID(), email, callsign, icon: STARTER_ICON, xp: 0, battles: 0, wins: 0, battleStarted: null });
+			// GitHub's Octocat, for a picture: what Supabase would copy from a real GitHub account
+			this.users.set(email, MemoryAuth.profile({ email, callsign, github_avatar: 'https://avatars.githubusercontent.com/u/583231?v=4' }));
 		}
 		return this.issue(this.users.get(email));
 	}
@@ -425,8 +491,12 @@ class MemoryAuth {
 		return this.issue(this.users.get(email));
 	}
 
-	async logout(token) {
+	async logout(token, scope = 'local') {
+		const e = this.access.get(token);
 		this.access.delete(token);
+		if (scope !== 'global' || !e) return;
+		for (const [t, a] of this.access) if (a.user.id === e.user.id) this.access.delete(t);
+		for (const [t, email] of this.refreshTokens) if (email === e.user.email) this.refreshTokens.delete(t);
 	}
 
 	async user(token) {
@@ -435,17 +505,21 @@ class MemoryAuth {
 		return toUser(e.user);
 	}
 
-	async updateProfile(token, user, { callsign, icon }) {
+	async updateProfile(token, user, { callsign, icon, avatar, hide_history }) {
 		const u = this.users.get(user.email);
 		if (callsign !== undefined) {
 			callsign = checkCallsign(callsign);
 			if (this.taken(callsign, u.id)) throw new AuthError(409, 'That callsign is taken.');
 		}
+		if (avatar !== undefined) checkAvatar(avatar, u);
+		if (hide_history !== undefined) checkHideHistory(hide_history);
 		const ins = icon !== undefined ? checkIcon(icon) : null;
 		if (ins && !unlocked(ins, rankOf(u.xp))) throw new AuthError(403, lockedMessage(ins));
 		// all of it or none of it
 		if (callsign !== undefined) u.callsign = callsign;
 		if (ins) u.icon = ins.id;
+		if (avatar !== undefined) u.avatar = avatar;
+		if (hide_history !== undefined) u.hide_history = hide_history;
 		return toUser(u);
 	}
 
@@ -454,16 +528,17 @@ class MemoryAuth {
 	}
 
 	// An end with no battle open is a retry of one already counted (or a battle
-	// the clock never heard about), so it earns and counts nothing.
+	// the clock never heard about), so it earns and counts nothing. Only a
+	// battle that earns XP counts on the record, as the database has it.
 	async endBattle(token, user, result, seconds) {
 		checkBattleEnd(result, seconds);
 		const u = this.users.get(user.email);
 		const rankBefore = rankOf(u.xp);
-		let gained = 0;
-		if (u.battleStarted !== null) {
-			gained = battleXp(result, (this.now() - u.battleStarted) / 1000, seconds);
+		const gained = u.battleStarted !== null ? battleXp(result, (this.now() - u.battleStarted) / 1000, seconds) : 0;
+		if (gained > 0) {
 			if (result !== 'left') u.battles++;
 			if (result === 'win') u.wins++;
+			this.xpLog.push({ user_id: u.id, gained, at: Date.now() });
 		}
 		u.xp += gained;
 		u.battleStarted = null;
@@ -498,5 +573,92 @@ class MemoryAuth {
 
 	async getBattle(token, user, id) {
 		return this.battles(user).find((r) => r.id === id) || null;
+	}
+
+	// --- what anyone may see (players.js), as the database's public functions answer it
+
+	// a player by callsign, whatever the case, unless they're hidden
+	byCallsign(name) {
+		const c = String(name ?? '')
+			.trim()
+			.toLowerCase();
+		for (const u of this.users.values()) if (!u.hidden && u.callsign.toLowerCase() === c) return u;
+		return null;
+	}
+
+	static picture = (u) => (u.avatar === 'github' ? u.github_avatar : null);
+
+	async leaderboard(period, { limit, offset, me }) {
+		const since = periodStart(period);
+		const earned = new Map();
+		for (const l of this.xpLog) if (since !== null && l.at >= since) earned.set(l.user_id, (earned.get(l.user_id) ?? 0) + l.gained);
+		const entries = [...this.users.values()]
+			.filter((u) => !u.hidden)
+			.map((u) => ({
+				callsign: u.callsign,
+				icon: u.icon,
+				avatar: MemoryAuth.picture(u),
+				xp: u.xp,
+				battles: u.battles,
+				wins: u.wins,
+				created_at: Date.parse(u.created_at),
+				score: since === null ? u.xp : (earned.get(u.id) ?? 0),
+			}));
+		return rankBoard(entries, { limit, offset, me });
+	}
+
+	async player(name) {
+		const u = this.byCallsign(name);
+		if (!u) return null;
+		let seen = 0;
+		for (const l of this.xpLog) if (l.user_id === u.id) seen = Math.max(seen, l.at);
+		const above = [...this.users.values()].filter((o) => !o.hidden && o.xp > u.xp).length;
+		return {
+			callsign: u.callsign,
+			icon: u.icon,
+			avatar: MemoryAuth.picture(u),
+			xp: u.xp,
+			battles: u.battles,
+			wins: u.wins,
+			joined: u.created_at,
+			history: !u.hide_history,
+			position: u.xp > 0 ? above + 1 : null,
+			last_seen: seen ? new Date(seen).toISOString() : null,
+		};
+	}
+
+	// the player's battles, unless they keep them to themselves
+	shown(name) {
+		const u = this.byCallsign(name);
+		return u && !u.hide_history ? u : null;
+	}
+
+	async playerCareer(name) {
+		const u = this.shown(name);
+		return u ? careerOf(this.battles(u)) : null;
+	}
+
+	async playerBattles(name, { limit = 20, before = '' } = {}) {
+		const u = this.shown(name);
+		return u ? this.listBattles(null, u, { limit, before }) : null;
+	}
+
+	async playerBattle(name, id) {
+		const u = this.shown(name);
+		const b = u && this.battles(u).find((r) => r.id === id);
+		if (!b) return null;
+		const { user_id: _, ...rest } = b;
+		return rest;
+	}
+
+	async findPlayers(prefix) {
+		const p = String(prefix ?? '')
+			.trim()
+			.toLowerCase();
+		return [...this.users.values()]
+			.filter((u) => !u.hidden && u.callsign.toLowerCase().startsWith(p))
+			.toSorted((a, b) => b.xp - a.xp || a.callsign.localeCompare(b.callsign))
+			.slice(0, 10)
+			.map((u) => ({ callsign: u.callsign, icon: u.icon, avatar: MemoryAuth.picture(u), xp: u.xp }));
 	}
 }

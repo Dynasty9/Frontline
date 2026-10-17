@@ -100,6 +100,25 @@ func play(ev: Array) -> void:
 				world.director.note(ev[1], 1.5)
 			LAUNCH:
 				world.director.note(ev[1], 1.0)
+	var wl: Wildlife = world.atmo.wildlife if world.atmo else null
+	if wl and wl.level > 0:
+		# the birds go up at gunfire, and everything runs from a shell; what a
+		# round or a blast catches dies (for the eye only: the round flies on)
+		match int(ev[0]):
+			SHOT:
+				wl.shot(ev[1], ev[2])
+				wl.startle(ev[1], 40.0)
+			EXPLODE:
+				wl.blast(ev[1], float(ev[2]))
+				wl.startle(ev[1], 55.0 + 30.0 * float(ev[2]))
+			CANNON, MORTAR:
+				wl.startle(ev[1], 75.0)
+			LAUNCH:
+				wl.startle(ev[1], 45.0)
+			FIRE:
+				wl.fire(ev[1], float(ev[2]), float(ev[3]))
+			TREE_FALL:
+				wl.startle(ev[1], 25.0)
 	match int(ev[0]):
 		SHOT:
 			_shot(_muzzle_of(ev, 5, ev[1], false), ev[2], int(ev[3]), String(ev[4]), world.entity(int(ev[5])) if ev.size() > 5 else null)

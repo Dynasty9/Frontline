@@ -15,6 +15,7 @@ import assert from 'node:assert/strict';
 import { readdirSync, readFileSync } from 'node:fs';
 import { before, test } from 'node:test';
 import { MAX_BATTLE_S, rankOf, xpFor } from '../src/ranks.js';
+import { careerOf } from '../src/records.js';
 
 const PGlite = await import('@electric-sql/pglite').then(
 	(m) => m.PGlite,
@@ -152,7 +153,8 @@ test('battles: timed on the database clock, worth their time and result', NEEDS,
 
 	await begin(B);
 	await openFor(B, '1 minute');
-	assert.equal((await end(B, 'win', 600)).gained, 0, 'under two minutes on our clock');
+	j = await end(B, 'win', 600);
+	assert.deepEqual([j.gained, j.battles, j.wins], [0, 1, 1], 'under two minutes on our clock: nothing, and not a battle won');
 
 	await begin(B);
 	await openFor(B, '30 minutes');
@@ -161,7 +163,7 @@ test('battles: timed on the database clock, worth their time and result', NEEDS,
 	await begin(B);
 	await openFor(B, '20 minutes');
 	j = await end(B, 'left', 1200);
-	assert.deepEqual([j.gained, j.battles], [100, 3], 'left: half, and not on the record');
+	assert.deepEqual([j.gained, j.battles], [100, 2], 'left: half, and not on the record');
 
 	await begin(B);
 	await openFor(B, '3 hours');
@@ -209,4 +211,193 @@ test('signing in with GitHub: the username for a callsign, made to fit and never
 	assert.equal(await github(id(8), {}), 'Commander-000000-2');
 	// a callsign typed at sign-up is still taken as it is, or refused
 	await refused('23505', () => signUp(id(9), 'octocat'));
+});
+
+// --- public profiles and leaderboards
+
+const D = id(101);
+const E = id(102);
+const F = id(103);
+const anon = async (query, params = []) => (await as(null, query, params, 'anon'))[0];
+const card = async (name) => (await anon('select public.player_card($1) j', [name])).j;
+const board = async (period, lim = 50, off = 0, me = null) => (await anon('select public.leaderboard_xp($1, $2, $3, $4) j', [period, lim, off, me])).j;
+const battles = async (name, older = null) => (await anon('select public.player_battles($1, 20, $2) j', [name, older])).j;
+const pic = (n) => `https://avatars.githubusercontent.com/u/${n}?v=4`;
+const found = async (q) => (await anon('select public.find_players($1) j', [q])).j.map((p) => p.callsign);
+const canRun = async (role, fn) => (await db.query(`select has_function_privilege($1, 'public.${fn}', 'EXECUTE') v`, [role])).rows[0].v;
+const battle = async (name, bid) => (await anon('select public.player_battle($1, $2) j', [name, bid])).j;
+const record = async (uid, f = {}) =>
+	(
+		await as(
+			uid,
+			`insert into public.battle_records (user_id, mode, side, result, title, rating, kills, lost, duration_s, me, report)
+			values ($1, $2, $3, $4, $5, $6, $7, $8, 600, '{"kills": 1}', '{"winner": 0}') returning id`,
+			[uid, f.mode ?? 'skirmish', f.side ?? 0, f.result ?? 'victory', f.title ?? 'Battle vs the AI', f.rating ?? 50, f.kills ?? 10, f.lost ?? 5],
+		)
+	)[0];
+
+test('every battle that earns XP is logged, and only those', NEEDS, async () => {
+	const logged = (await db.query('select coalesce(sum(gained), 0)::integer s from public.xp_log where user_id = $1', [B])).rows[0].s;
+	assert.equal(logged, (await profile(B)).xp);
+	assert.equal((await db.query('select count(*)::integer n from public.xp_log where gained <= 0')).rows[0].n, 0);
+});
+
+test("anyone may read a player's card: never their email, never a hidden player", NEEDS, async () => {
+	await signUp(D, 'Delta');
+	await signUp(E, 'Echo');
+	await signUp(F, 'Foxtrot');
+	for (const [uid, xp] of [
+		[D, 900_000],
+		[E, 900_000],
+		[F, 500_000],
+	])
+		await db.query('update public.profiles set xp = $2 where id = $1', [uid, xp]);
+
+	const c = await card('delta ');
+	assert.deepEqual(Object.keys(c).toSorted(), ['avatar', 'battles', 'callsign', 'history', 'icon', 'joined', 'last_seen', 'position', 'wins', 'xp']);
+	assert.deepEqual([c.callsign, c.icon, c.avatar, c.xp, c.history, c.position], ['Delta', 's01', null, 900_000, true, 1]);
+	// level on XP: the same place
+	assert.equal((await card('Echo')).position, 1);
+	assert.equal((await card('Foxtrot')).position, 3);
+	assert.equal(await card('Nobody'), null);
+	// no XP yet: on no board
+	await signUp(id(105), 'Newcomer');
+	assert.equal((await card('Newcomer')).position, null);
+
+	await db.query('update public.profiles set hidden = true where id = $1', [F]);
+	assert.equal(await card('Foxtrot'), null);
+	await db.query('update public.profiles set hidden = false where id = $1', [F]);
+});
+
+test('a player picks their picture and hides their battles; whether they are hidden is not theirs', NEEDS, async () => {
+	await as(D, `update public.profiles set avatar = 'github', hide_history = true where id = $1`, [D]);
+	assert.deepEqual([(await profile(D)).avatar, (await profile(D)).hide_history], ['github', true]);
+	await as(D, `update public.profiles set hide_history = false where id = $1`, [D]);
+	await refused('42501', () => as(D, `update public.profiles set hidden = false where id = $1`, [D]));
+	await refused('42501', () => as(D, `update public.profiles set github_avatar = 'https://avatars.githubusercontent.com/u/1' where id = $1`, [D]));
+	await refused('23514', () => as(D, `update public.profiles set avatar = 'upload' where id = $1`, [D]));
+	// no GitHub picture to show: no picture, whatever they picked
+	assert.equal((await card('Delta')).avatar, null);
+	await as(D, `update public.profiles set avatar = 'insignia' where id = $1`, [D]);
+});
+
+test("a GitHub player's picture comes from GitHub, keeps up with it, and is only ever GitHub's", NEEDS, async () => {
+	const G = id(104);
+	await db.query(`insert into auth.users (id, email, raw_user_meta_data) values ($1, 'g@github.test', $2)`, [G, { user_name: 'pictured', avatar_url: pic(1) }]);
+	assert.equal((await profile(G)).github_avatar, pic(1));
+	// shown only once they pick it
+	assert.equal((await card('pictured')).avatar, null);
+	await as(G, `update public.profiles set avatar = 'github' where id = $1`, [G]);
+	assert.equal((await card('pictured')).avatar, pic(1));
+	// a new picture on GitHub, at their next sign-in
+	await db.query(`update auth.users set raw_user_meta_data = $2 where id = $1`, [G, { user_name: 'pictured', avatar_url: pic(2) }]);
+	assert.equal((await card('pictured')).avatar, pic(2));
+	// a picture from anywhere else isn't taken
+	await db.query(`update auth.users set raw_user_meta_data = $2 where id = $1`, [G, { user_name: 'pictured', avatar_url: 'https://evil.test/x.png' }]);
+	assert.equal((await profile(G)).github_avatar, null);
+	assert.equal((await card('pictured')).avatar, null);
+});
+
+test('leaderboards: all time by XP, this week and month by what was earned in them', NEEDS, async () => {
+	let b = await board('all', 2);
+	assert.deepEqual(
+		b.rows.map((r) => [r.position, r.callsign, r.score]),
+		[
+			[1, 'Delta', 900_000],
+			[1, 'Echo', 900_000],
+		],
+	);
+	assert.deepEqual(Object.keys(b.rows[0]).toSorted(), ['avatar', 'battles', 'callsign', 'icon', 'position', 'score', 'wins', 'xp']);
+	assert.equal(b.total, (await db.query('select count(*)::integer n from public.profiles where xp > 0 and not hidden')).rows[0].n);
+	b = await board('all', 1, 2, 'foxtrot');
+	assert.deepEqual([b.rows[0].callsign, b.rows[0].position, b.me.callsign, b.me.position, b.me.n], ['Foxtrot', 3, 'Foxtrot', 3, 3]);
+	assert.equal((await board('all', 1, 0, 'Nobody')).me, null);
+
+	// earned this week (and so this month), and long ago
+	await db.query(`insert into public.xp_log (user_id, gained, at) values ($1, 50, now()), ($2, 70, now()), ($3, 999, now() - interval '60 days')`, [D, E, F]);
+	for (const period of ['week', 'month']) {
+		const d = (await board(period, 50, 0, 'Delta')).me;
+		const e = (await board(period, 50, 0, 'Echo')).me;
+		assert.deepEqual([d.score, e.score], [50, 70], period);
+		assert.ok(e.position < d.position, period);
+		assert.equal((await board(period, 50, 0, 'Foxtrot')).me, null, `${period}: nothing earned in it`);
+	}
+
+	// a hidden player is on no board
+	await db.query('update public.profiles set hidden = true where id = $1', [E]);
+	b = await board('all', 1, 0, 'Echo');
+	assert.deepEqual([b.rows[0].callsign, b.me], ['Delta', null]);
+	assert.equal((await board('all', 1, 0, 'Foxtrot')).me.position, 2);
+	await db.query('update public.profiles set hidden = false where id = $1', [E]);
+
+	await refused('PT400', () => board('year'));
+	// asking for too much gets a page's worth
+	assert.ok((await board('all', 10_000)).rows.length <= 100);
+});
+
+test('service records: stamped when they arrive, 200 a day, and anyone may read them unless kept back', NEEDS, async () => {
+	await refused('42501', () =>
+		as(D, `insert into public.battle_records (user_id, mode, side, result, played_at) values ($1, 'skirmish', 0, 'victory', '2020-01-01')`, [D]),
+	);
+	const first = await record(D, { title: 'First', rating: 40, kills: 12, lost: 4 });
+	await record(D, { title: 'Second', result: 'defeat', side: 1, mode: 'mission', rating: 70, kills: 3, lost: 9 });
+
+	const list = await battles('Delta');
+	assert.deepEqual(
+		list.map((r) => r.title),
+		['Second', 'First'],
+	);
+	assert.equal(list[0].me, undefined, 'headline numbers only');
+	assert.deepEqual(
+		(await battles('Delta', list[0].played_at)).map((r) => r.title),
+		['First'],
+	);
+	const one = await battle('Delta', first.id);
+	assert.deepEqual([one.title, one.me.kills, one.report.winner, one.user_id], ['First', 1, 0, undefined]);
+	assert.equal(await battle('Echo', first.id), null, "not Echo's");
+
+	// the career, as the matchmaker totals a player's own
+	const career = (await anon('select public.player_career($1) j', ['Delta'])).j;
+	const rows = (await db.query('select * from public.battle_records where user_id = $1', [D])).rows;
+	const js = careerOf(rows.map((r) => ({ ...r, played_at: r.played_at.toISOString() })));
+	assert.deepEqual(Object.keys(career).toSorted(), Object.keys(js).toSorted());
+	for (const k of ['battles', 'victories', 'defeats', 'kills', 'lost', 'seconds', 'rating', 'sides', 'modes']) assert.deepEqual(career[k], js[k], k);
+	assert.equal(career.best.title, 'Second');
+
+	// kept to themselves: nothing but the card, which says so
+	await as(D, `update public.profiles set hide_history = true where id = $1`, [D]);
+	assert.equal((await card('Delta')).history, false);
+	assert.equal(await battles('Delta'), null);
+	assert.equal(await battle('Delta', first.id), null);
+	assert.equal((await anon('select public.player_career($1) j', ['Delta'])).j, null);
+	await as(D, `update public.profiles set hide_history = false where id = $1`, [D]);
+
+	// a day's worth, then no more
+	await db.query(`insert into public.battle_records (user_id, mode, side, result) select $1, 'skirmish', 0, 'victory' from generate_series(1, 200)`, [F]);
+	await refused('PT429', () => record(F));
+});
+
+test('finding a player as their callsign is typed', NEEDS, async () => {
+	assert.deepEqual(await found('ech'), ['Echo']);
+	assert.deepEqual((await found('OCTO')).toSorted(), ['OctoCat-2', 'octocat', 'octocat-3']);
+	// _ and % are themselves, not wildcards
+	assert.deepEqual(await found('%'), []);
+	assert.deepEqual(await found('_'), []);
+});
+
+test('anyone may run the public functions, and nothing else this migration adds', NEEDS, async () => {
+	for (const fn of [
+		'player_card(text)',
+		'find_players(text)',
+		'leaderboard_xp(text, integer, integer, text)',
+		'player_career(text)',
+		'player_battles(text, integer, timestamp with time zone)',
+		'player_battle(text, uuid)',
+	])
+		for (const role of ['anon', 'authenticated']) assert.equal(await canRun(role, fn), true, `${role} ${fn}`);
+	for (const fn of ['handle_user_updated()', 'github_avatar_of(jsonb)', 'battle_records_daily_cap()'])
+		for (const role of ['anon', 'authenticated']) assert.equal(await canRun(role, fn), false, `${role} ${fn}`);
+	// the log itself is closed
+	await refused('42501', () => as(D, 'select * from public.xp_log'));
+	await refused('42501', () => as(D, `insert into public.xp_log (user_id, gained) values ($1, 1000)`, [D]));
 });

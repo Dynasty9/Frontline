@@ -8,6 +8,7 @@ import {
   XIcon,
 } from "@phosphor-icons/react"
 import { useEffect, useState } from "react"
+import { Link } from "react-router"
 import { Emblem } from "@/components/emblem"
 import { InsigniaImg } from "@/components/insignia-img"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
@@ -20,6 +21,8 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { FIND_MATCH_LINK, joinLink } from "@/lib/config"
 import { findInsignia, rankName } from "@/lib/insignia"
 import { joinable, type Lobby } from "@/lib/matchmaker"
+import { playerPath } from "@/lib/players"
+import { cn } from "@/lib/utils"
 
 // Battles you can join first; within each, the matchmaker's order (fullest first).
 const byJoinable = (a: Lobby, b: Lobby) => Number(joinable(b)) - Number(joinable(a))
@@ -32,8 +35,10 @@ type Props = {
   onLaunch: () => void
   onDismissLaunch: () => void
   // the battle an invite link (?join=ID) points at
-  invite: string | null
-  onDismissInvite: () => void
+  invite?: string | null
+  onDismissInvite?: () => void
+  /** the page's own heading (the battles page), rather than a section's */
+  page?: boolean
 }
 
 export function Battles({
@@ -43,17 +48,19 @@ export function Battles({
   launched,
   onLaunch,
   onDismissLaunch,
-  invite,
-  onDismissInvite,
+  invite = null,
+  onDismissInvite = () => {},
+  page = false,
 }: Props) {
+  const Heading = page ? "h1" : "h2"
   return (
-    <section id="battles" className="mx-auto max-w-6xl scroll-mt-16 px-4 py-24 sm:px-6">
+    <section id="battles" className={cn("mx-auto max-w-6xl scroll-mt-16 px-4 sm:px-6", page ? "pt-14 pb-24" : "py-24")}>
       <SectionLabel>Online</SectionLabel>
       <div className="mt-2 flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h2 className="mt-1 font-display text-5xl leading-[0.95] font-extrabold uppercase sm:text-6xl">
+          <Heading className="mt-1 font-display text-5xl leading-[0.95] font-extrabold uppercase sm:text-6xl">
             Live battles. <span className="text-primary">Join in a click.</span>
-          </h2>
+          </Heading>
           <p className="mt-4 max-w-2xl text-sm text-muted-foreground">
             Click Join and the game opens and connects you straight to the host. Most home routers need no setup: the
             matchmaker introduces you, and the game traffic goes directly between players.
@@ -77,9 +84,9 @@ export function Battles({
           <AlertTitle>Opening Frontline…</AlertTitle>
           <AlertDescription>
             Your browser may ask whether to open the game. If nothing happens,{" "}
-            <a href="#download" className="text-foreground underline underline-offset-4">
+            <Link to="/play#download" className="text-foreground underline underline-offset-4">
               download Frontline
-            </a>{" "}
+            </Link>{" "}
             and start it once: the first launch teaches your computer to open these links.
           </AlertDescription>
           <button
@@ -101,7 +108,7 @@ export function Battles({
         ) : lobbies.length === 0 ? (
           <Empty onLaunch={onLaunch} />
         ) : (
-          <LobbyTable lobbies={lobbies} invite={invite} onLaunch={onLaunch} />
+          <LobbyRows lobbies={lobbies.toSorted(byJoinable)} invite={invite} onLaunch={onLaunch} />
         )}
       </Card>
     </section>
@@ -138,9 +145,9 @@ function Invite({
               {modeText(lobby)} · {lobby.players}/{lobby.max_players} players
               {lobby.locked ? " · ask them for the password" : ""}. Join opens Frontline and takes you straight to their
               lobby. No game yet?{" "}
-              <a href="#download" className="text-foreground underline underline-offset-4">
+              <Link to="/play#download" className="text-foreground underline underline-offset-4">
                 Download it
-              </a>{" "}
+              </Link>{" "}
               and start it once first.
             </p>
             <div className="mt-3">
@@ -195,7 +202,7 @@ function modeText(l: Lobby): string {
   }
 }
 
-function LobbyTable({ lobbies, invite, onLaunch }: { lobbies: Lobby[]; invite: string | null; onLaunch: () => void }) {
+function LobbyRows({ lobbies, invite, onLaunch }: { lobbies: Lobby[]; invite: string | null; onLaunch: () => void }) {
   return (
     <Table>
       <TableHeader>
@@ -211,7 +218,7 @@ function LobbyTable({ lobbies, invite, onLaunch }: { lobbies: Lobby[]; invite: s
         </TableRow>
       </TableHeader>
       <TableBody>
-        {lobbies.toSorted(byJoinable).map((l) => (
+        {lobbies.map((l) => (
           <TableRow key={l.id} className={l.id === invite ? "bg-primary/5" : undefined}>
             <TableCell className="py-3 pl-4">
               <div className="flex items-center gap-1.5 font-medium text-foreground">
@@ -281,7 +288,14 @@ function Host({ lobby }: { lobby: Lobby }) {
           </TooltipContent>
         </Tooltip>
       )}
-      {lobby.host}
+      {/* a signed-in host's callsign is theirs: it leads to their page */}
+      {lobby.verified ? (
+        <Link to={playerPath(lobby.host)} className="hover:text-foreground hover:underline">
+          {lobby.host}
+        </Link>
+      ) : (
+        lobby.host
+      )}
       {ins && rank !== null && <span className="sr-only">, {rankName(rank)}</span>}
       {lobby.verified && (
         <Tooltip>

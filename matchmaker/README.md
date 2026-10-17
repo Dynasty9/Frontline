@@ -56,34 +56,50 @@ JSON in, JSON out. Errors are `{"error": "..."}` with a 4xx/5xx status.
 | `POST /auth/signup` `{email, password, callsign}` | For testing (players sign in with GitHub): `{session}`, or `{confirm: true}` when Supabase wants the email confirmed first. |
 | `POST /auth/login` `{email, password}` | For testing: `{session: {access_token, refresh_token, expires_in, user}}` |
 | `POST /auth/refresh` `{refresh_token}` | A new session. |
-| `POST /auth/logout`, `GET /me` | Sign out (that session only: the game and the website hold one each); who am I (`{user}`). Need the bearer token, as do the calls below. |
-| `PATCH /me` `{callsign?, icon?}` | Rename, wear an insignia, or both: `{user}`. An unknown insignia is 400, one not unlocked yet 403 (and then nothing changes). |
+| `POST /auth/logout` `{scope?: "global"}`, `GET /me` | Sign out (that session only: the game and the website hold one each; `global` ends every session the account has, the website's "Sign out everywhere"); who am I (`{user}`). Need the bearer token, as do the calls below. |
+| `PATCH /me` `{callsign?, icon?, avatar?, hide_history?}` | Rename, wear an insignia, pick your picture (`insignia`, or `github`: only for an account with a GitHub picture), keep your battles off your public page: any of them, `{user}`. An unknown insignia is 400, one not unlocked yet 403 (and then nothing changes). |
 | `POST /me/battle` | A battle starts: `{ok: true}`. Starts this player's battle clock; calling it again starts over, and the battle left open earns nothing. |
 | `POST /me/battle/end` `{result: "win" \| "loss" \| "left", seconds}` | The battle ends: `{gained, rank_before, user}`. `seconds` is how long the game says it ran (game time, so pauses don't count). |
 | `POST /me/battles` `{mode, mission, title, side, result, duration, game_version, me, report}` | Put a battle on your service record (up to ~100 KB with its report). `{id, played_at}`. |
 | `GET /me/battles?limit=20&before=TIME` | Your battles, newest first, headline numbers only: `{battles, more}`. `before` is the last one's `played_at`. |
 | `GET /me/battles/:id` | One battle, with your figures (`me`) and its after-action report (`report`). |
 | `GET /me/career` | The totals of every battle on your record: battles, victories, kills, losses, average and best rating, time. |
+| `GET /leaderboards/xp?period=all\|month\|week&page=N&me=CALLSIGN` | A leaderboard of XP: all of it, or what was earned this month or this week (calendar ones, UTC). `{board, period, page, pages, per_page, total, rows, me}`, 50 rows a page, each `{position, callsign, icon, avatar, rank, xp, score, battles, wins}` (`score` is what the board ranks by); players level on it share a position. `me` is the named player's row, wherever they are on the board. Anyone may ask, as for the five below. |
+| `GET /players?q=TEXT` | Players whose callsigns start with `q` (two letters or more), the highest ranked first: `{players: [{callsign, icon, avatar, rank}]}`, at most 10. |
+| `GET /players/:callsign` | A player's public card: `{player: {callsign, icon, avatar, xp, rank, rank_xp, next_xp, battles, wins, joined, history, position, last_seen}}`. `avatar` is their GitHub picture if they've chosen it, else `null` (their insignia); `history` false means they keep their battles to themselves; `position` is their place on the all-time board. Never an email. 404 for no such player. |
+| `GET /players/:callsign/career` | Their career, as `/me/career` totals one: `{career}`, `null` if they keep their battles to themselves. |
+| `GET /players/:callsign/battles?limit=20&before=TIME` | Their battles, as `/me/battles`: `{battles, more}`, or `{battles: [], more: false, hidden: true}`. |
+| `GET /players/:callsign/battles/:id` | One of their battles, with their figures and its after-action report: `{battle}`. 404 if it isn't theirs or they keep their battles to themselves. |
 | `POST /errors` `{game_version, os, gpu, driver, session, reports: [{kind, message, condition, where, context, backtrace, log, count}]}` | Error reports from a player's game (`kind`: `error`, `script`, `shader` or `crash`; up to 24 at once). `{ok, accepted}`. |
 | `GET /errors` | The error tally since the service started, most common first: each error once, with its count, sessions, and the versions, systems, GPUs and drivers it was seen on. Needs `Authorization: Bearer <ERRORS_TOKEN>`; without `ERRORS_TOKEN` set it doesn't exist. |
 
 A user, wherever one is returned (the session's `user`, `/me`, a battle's end), is
-`{id, email, callsign, icon, xp, rank, rank_xp, next_xp, battles, wins}`: the insignia worn (`s01` to begin with),
-total XP, the rank (0, Recruit, to 50), the XP where that rank began and where the next begins (`null` at 50), and
-the battles fought to the end and won.
+`{id, email, callsign, icon, avatar, github_avatar, hide_history, joined, xp, rank, rank_xp, next_xp, battles, wins}`:
+the insignia worn (`s01` to begin with), the picture shown on the website (`insignia` or `github`) and their GitHub
+picture (`null` for an account that isn't a GitHub one), whether their battles are kept off their public page, when
+they joined, total XP, the rank (0, Recruit, to 50), the XP where that rank began and where the next begins (`null`
+at 50), and the battles fought to the end and won.
 
 **Ranks.** Reaching rank *r* takes `150r + 10r(r-1)` XP: 150 for rank 1, 32,000 for rank 50. A battle is worth a
 point per tenth of a minute, times 1.5 for a win, 1 for a loss and 0.5 for leaving early. The minutes counted are
 the shorter of the game's `seconds` and how long the battle was open on the server's clock, at most 45; under 2
-earn nothing. Wins and losses count towards `battles` (and `wins`); an end with no battle open (a retry, say)
-earns and counts nothing. There's no game server to referee a battle (players host), so the game reports its own
+earn nothing. Wins and losses that earn XP count towards `battles` (and `wins`): a battle under 2 minutes counts
+for nothing, so a "win" reported a moment after starting isn't a battle won. An end with no battle open (a retry,
+say) earns and counts nothing. There's no game server to referee a battle (players host), so the game reports its own
 result; timing it on our clock means a modified game can't claim hours of play in seconds, and XP stays bounded by
 real time played. The rules live in [`src/ranks.js`](src/ranks.js), and again in SQL for Supabase.
 
 **Insignia.** `s01`-`s10` are the starters every account has; `r01`-`r50` are the rank patches, `rNN` unlocked at
 rank NN; `m01`-`m50` (awards) and `u01`-`u50` (unit patches) exist but can't be worn by anyone yet.
 
-The battle calls are limited to 20 a minute per address, sign-in and renaming to 10, insignia changes to 30.
+The battle calls are limited to 20 a minute per address, sign-in and renaming to 10, insignia (and picture) changes
+to 30, and the public pages (`/leaderboards`, `/players`) to 120.
+
+**Public pages.** The leaderboards and players' pages are for anyone to read, so their answers are kept for half a
+minute, here (in memory) and in the browser (`Cache-Control: public, max-age=30`): a board a crowd is looking at is
+worked out once, and a change shows within the half minute. Everything else is `no-store`. Only XP is ranked: the
+database writes it, timed on its own clock. A player's battles are their own game's word, shown as theirs and never
+ranked.
 
 A lobby whose host stops checking in for 45 s is dropped, and an unknown lobby id on any host call returns 404,
 which the game answers by listing again (so a restart of this service costs nothing but a few seconds).
@@ -162,7 +178,8 @@ us-west2), with GitHub sign-in switched on and email confirmation off. To set up
    secret to Supabase (Authentication > Sign In / Providers > GitHub). Then, under Authentication > URL
    Configuration, set the **Site URL** to the website and add it to the **Redirect URLs**
    (`https://YOUR-SITE/**`, and `http://localhost:5173/**` for the dev server): Supabase sends players back only
-   to those.
+   to those. Anywhere else it sends them to the Site URL, which starts out as `http://localhost:3000`: a sign-in
+   that lands on `localhost:3000/?code=...` means the site's address is missing from the Redirect URLs.
 5. On the Auth Providers page, open **Email** (kept for testing) and switch off **Confirm email**. Supabase's built-in mailer only
    delivers to members of your own Supabase team (and two emails an hour), so with confirmation on, every
    player's sign-up fails. To confirm emails, give Supabase your own SMTP server first; the game already tells
@@ -179,10 +196,15 @@ it has applied in `supabase_migrations.schema_migrations`, so `supabase db push`
 they add:
 
 - `profiles`: one per player, made by a trigger at sign-up: the callsign they typed (email, for testing), or their
-  GitHub username made to fit (numbered if it's taken). The callsign (unique
-  regardless of case) is the one column a player may change; the insignia worn (`icon`), `xp`, `battles`, `wins`
-  and `battle_started_at` (when the open battle began) change only through the functions below.
-- `battle_records`: each player's service record. They can add battles and read their own, nothing else.
+  GitHub username made to fit (numbered if it's taken), and their GitHub picture (`github_avatar`, kept up to date
+  at each sign-in; only GitHub's image host is taken). The callsign (unique regardless of case), the picture shown
+  (`avatar`: `insignia` or `github`) and `hide_history` are the columns a player may change; the insignia worn
+  (`icon`), `xp`, `battles`, `wins` and `battle_started_at` (when the open battle began) change only through the
+  functions below, and `hidden` (see [Moderation](#moderation)) only by hand.
+- `battle_records`: each player's service record. They can add battles and read their own, nothing else; a record
+  is stamped with when it arrived (`played_at` isn't theirs to set), and a day holds 200.
+- `xp_log`: every battle that earned XP, and when, for this week's and this month's leaderboards. Only
+  `end_battle` writes it, and no player can read it directly.
 - `callsign_taken(name)` for the sign-up form (signed-out callers only), and the rank functions, which only
   signed-in players may run:
 
@@ -190,15 +212,33 @@ they add:
 |---|---|
 | `frontline_rank(xp)` | The rank for a total of XP (the same curve as `src/ranks.js`). |
 | `begin_battle()` | Starts the caller's battle clock: `battle_started_at = now()`. |
-| `end_battle(result, seconds)` | Closes the battle, works out the XP from the time on the database's clock and the game's `seconds`, adds it and the record, and returns `{gained, rank_before, xp, rank, battles, wins, icon, callsign}`. |
+| `end_battle(result, seconds)` | Closes the battle, works out the XP from the time on the database's clock and the game's `seconds`, adds it (and logs it) and, if it earned any, the record, and returns `{gained, rank_before, xp, rank, battles, wins, icon, callsign}`. |
 | `set_icon(icon)` | Wears an insignia: unknown ids raise `PT400`, locked ones `PT403` (the matchmaker answers 400 and 403). |
 
 XP is written only through these. The matchmaker holds no secret key, so a player could call Supabase's API
 directly with their own token, and anything they could write that way they could set to whatever they like. So the
-callsign stays the only column a player may update; the functions run as the table's owner (`SECURITY DEFINER`),
-touch nothing but the caller's own row (`auth.uid()`), and apply the same rules as the matchmaker, with the
-battle timed on the database's clock. Going round the matchmaker gets a player nothing the game wouldn't. The
+columns a player may update are only the harmless ones; the functions run as the table's owner (`SECURITY
+DEFINER`), touch nothing but the caller's own row (`auth.uid()`), and apply the same rules as the matchmaker, with
+the battle timed on the database's clock. Going round the matchmaker gets a player nothing the game wouldn't. The
 linter's warning that signed-in users can run `SECURITY DEFINER` functions is expected for the last three.
+
+What anyone may read, signed in or not, goes through the public functions, which hand back public columns only
+(never an email, never a hidden player), and only what a player hasn't kept back: `leaderboard_xp(period, lim, off,
+me)`, `player_card(name)`, `find_players(prefix)`, `player_career(name)`, `player_battles(name, lim, before)` and
+`player_battle(name, battle)`. The linter warns that anyone may run these `SECURITY DEFINER` functions: that's what
+they're for, and they read only what's public.
+
+### Moderation
+
+A callsign that shouldn't be on the leaderboards (offensive, impersonating someone) comes off them, and the
+player's page goes, with one update in the Supabase dashboard's SQL editor:
+
+```sql
+update public.profiles set hidden = true where lower(callsign) = lower('TheCallsign');
+```
+
+They can still play and sign in; nobody else sees them. `hidden = false` brings them back. To rename them instead,
+set `callsign` (it must be 3-20 letters, digits, spaces, _ . or -, and not taken).
 
 ### Changing it
 

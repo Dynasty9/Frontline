@@ -32,8 +32,8 @@ export function SignInChoices({
           {busy ? "Signing in…" : "Sign in with GitHub"}
         </Button>
         <p className="text-xs leading-relaxed text-muted-foreground">
-          New to Frontline? Signing in makes your account, named after your GitHub account. You can rename it in the
-          game.
+          New to Frontline? Signing in makes your account, named after your GitHub account. You can rename it whenever
+          you like, here or in the game.
         </p>
         {!email && <Messages />}
       </div>
@@ -46,6 +46,28 @@ export function SignInChoices({
         </div>
       )}
     </>
+  )
+}
+
+/**
+ * Signing in to the site itself (not the game: game-sign-in.tsx): the sign-in
+ * dialog's, and the profile page's when you're signed out. `navigate`: where
+ * Sign in with GitHub sends the browser (the stories only record it).
+ */
+export function SiteSignIn({ email, navigate }: { email: boolean; navigate?: (url: string) => void }) {
+  const { signIn, signUp, signInWithGitHub } = useAccount()
+  return (
+    <SignInChoices
+      blurb="The same account you play with in the game. It keeps your callsign yours, and every battle you play signed in counts towards your rank."
+      onGitHub={() => void signInWithGitHub(null, navigate)}
+      email={email}
+      form={{
+        intro: (creating) =>
+          creating ? "A test account, for the game and this site." : "A test account's email and password.",
+        onSubmit: async (address, password, callsign) =>
+          callsign === null ? ((await signIn(address, password)) ? "in" : null) : signUp(address, password, callsign),
+      }}
+    />
   )
 }
 

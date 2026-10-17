@@ -1,13 +1,21 @@
-import { CheckIcon, LockSimpleIcon, SignOutIcon, WarningIcon } from "@phosphor-icons/react"
+import {
+  ArrowRightIcon,
+  CheckIcon,
+  LockSimpleIcon,
+  SignOutIcon,
+  UserCircleIcon,
+  WarningIcon,
+} from "@phosphor-icons/react"
 import { memo, useRef, useState } from "react"
-import { SignInChoices } from "@/components/account-form"
+import { Link } from "react-router"
 import { SectionLabel } from "@/components/battles"
 import { InsigniaImg } from "@/components/insignia-img"
+import { PlayerAvatar } from "@/components/player-avatar"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
-import { type User, useAccount } from "@/lib/account"
-import { EMAIL_SIGN_IN } from "@/lib/config"
+import { openSignIn } from "@/hooks/use-sign-in-dialog"
+import { pictureOf, type User, useAccount } from "@/lib/account"
 import {
   GROUPS,
   INSIGNIA,
@@ -23,49 +31,71 @@ import {
 import { cn } from "@/lib/utils"
 
 /**
- * Ranks and the insignia collection; signed in, the player's profile beside
- * it. `accounts` is the matchmaker's /health answer ("off": no signing in);
- * `emailSignIn` offers email and password too (for testing: EMAIL_SIGN_IN).
+ * The ranks page (/ranks): how ranks are earned, and the whole insignia
+ * collection; signed in, the player's rank beside it, and the insignia
+ * they've unlocked ready to wear. `accounts` is the matchmaker's /health
+ * answer ("off": no signing in).
  */
-export function InsigniaSection({
-  accounts,
-  emailSignIn = EMAIL_SIGN_IN,
-}: {
-  accounts: string | undefined
-  emailSignIn?: boolean
-}) {
+export function InsigniaSection({ accounts }: { accounts: string | undefined }) {
   const account = useAccount()
   const off = accounts === "off"
   const user = off ? null : account.user
 
   return (
-    <section id="insignia" className="scroll-mt-16 border-t">
-      <div className="mx-auto max-w-6xl px-4 py-20 sm:px-6">
-        <SectionLabel>Ranks</SectionLabel>
-        <h2 className="mt-2 text-3xl font-semibold">{user ? "Your insignia" : "Earn your insignia"}</h2>
-        <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
-          Play battles while you're signed in to your account and you earn experience, more for a win. Fifty ranks climb
-          from Recruit to General of the Army, and each one you reach unlocks a patch you can wear as your insignia,
-          shown beside your callsign when you host. Every account starts with ten.
-        </p>
+    <section className="mx-auto max-w-6xl px-4 pt-14 pb-24 sm:px-6">
+      <SectionLabel>Ranks</SectionLabel>
+      <h1 className="mt-2 text-4xl font-semibold">{user ? "Your insignia" : "Earn your insignia"}</h1>
+      <p className="mt-3 max-w-2xl text-sm leading-relaxed text-muted-foreground">
+        Play battles while you're signed in to your account and you earn experience, more for a win. Fifty ranks climb
+        from Recruit to General of the Army, and each one you reach unlocks a patch you can wear as your insignia, shown
+        beside your callsign when you host. Every account starts with ten.
+      </p>
 
-        <div className="mt-8 grid items-start gap-8 lg:grid-cols-[19rem_1fr]">
-          <div className="lg:sticky lg:top-20">
-            {user ? <Profile user={user} /> : off ? <AccountsOff /> : <SignIn email={emailSignIn} />}
-          </div>
-          <Collection user={user} onPick={account.setIcon} />
+      <div className="mt-8 grid items-start gap-8 lg:grid-cols-[19rem_1fr]">
+        <div className="lg:sticky lg:top-20">
+          {user ? <Profile user={user} /> : off ? <AccountsOff /> : <StartEarning />}
+          {user && (
+            <Link
+              to="/profile"
+              className="mt-3 inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground"
+            >
+              Your profile: your callsign, and more
+              <ArrowRightIcon className="size-3.5" />
+            </Link>
+          )}
         </div>
+        <section aria-labelledby="the-collection" className="min-w-0">
+          {/* the groups' headings sit under it */}
+          <h2 id="the-collection" className="sr-only">
+            The insignia
+          </h2>
+          <Collection user={user} onPick={account.setIcon} />
+        </section>
       </div>
     </section>
   )
 }
 
-function Profile({ user }: { user: User }) {
+/** Signed out, beside the collection: what signing in starts, and the way in (the sign-in dialog). */
+function StartEarning() {
+  return (
+    <Card className="gap-3 p-4 text-sm">
+      <p className="font-semibold">Start earning</p>
+      <p className="text-xs leading-relaxed text-muted-foreground">
+        Sign in and every battle you play counts towards your next rank. It's the same account you play with in the
+        game, and you don't need one to play online.
+      </p>
+      <Button onClick={openSignIn} className="h-9 w-full text-sm font-semibold">
+        <UserCircleIcon weight="fill" />
+        Sign in
+      </Button>
+    </Card>
+  )
+}
+
+export function Profile({ user }: { user: User }) {
   const { error, signOut } = useAccount()
   const worn = wornInsignia(user.icon)
-  const top = user.next_xp === null || user.rank >= MAX_RANK
-  const span = top ? 1 : Math.max(1, (user.next_xp ?? 0) - user.rank_xp)
-  const into = top ? 1 : Math.min(span, Math.max(0, user.xp - user.rank_xp))
   const next = nextUnlock(user.rank)
 
   return (
@@ -73,7 +103,7 @@ function Profile({ user }: { user: User }) {
       <div className="flex items-center gap-4 p-4">
         <div className="relative grid size-24 shrink-0 place-items-center bg-muted/60 ring-1 ring-white/10">
           <Corners />
-          {worn && <InsigniaImg id={worn.id} className="size-20" />}
+          <PlayerAvatar icon={user.icon} avatar={pictureOf(user)} className="size-20" />
         </div>
         <div className="min-w-0">
           <p className="truncate text-xl font-semibold">{user.callsign || "Commander"}</p>
@@ -85,27 +115,7 @@ function Profile({ user }: { user: User }) {
         </div>
       </div>
 
-      <div className="border-t px-4 py-3">
-        <div className="flex items-baseline justify-between gap-3 text-xs">
-          <span className="text-muted-foreground">{top ? "Max rank" : `Next: ${rankName(user.rank + 1)}`}</span>
-          <span className="tabular-nums">
-            {top ? `${user.xp.toLocaleString()} XP` : `${into.toLocaleString()} / ${span.toLocaleString()} XP`}
-          </span>
-        </div>
-        {/* a real <progress> for screen readers; the bar is drawn, so it animates */}
-        <progress
-          className="sr-only"
-          aria-label={top ? "Max rank" : `Experience towards ${rankName(user.rank + 1)}`}
-          max={span}
-          value={into}
-        />
-        <div aria-hidden="true" className="mt-2 h-1.5 bg-muted">
-          <div
-            className="h-full bg-primary transition-[width] duration-500"
-            style={{ width: `${(into / span) * 100}%` }}
-          />
-        </div>
-      </div>
+      <XpProgress {...user} className="border-t" />
 
       <dl className="grid grid-cols-2 border-t">
         <Stat label="Battles" value={user.battles} />
@@ -150,8 +160,50 @@ function Stat({ label, value, className }: { label: string; value: number; class
   )
 }
 
+/** How far a player is towards their next rank, as a bar (or that they're at the top). */
+export function XpProgress({
+  rank,
+  xp,
+  rank_xp,
+  next_xp,
+  className,
+}: {
+  rank: number
+  xp: number
+  rank_xp: number
+  next_xp: number | null
+  className?: string
+}) {
+  const top = next_xp === null || rank >= MAX_RANK
+  const span = top ? 1 : Math.max(1, (next_xp ?? 0) - rank_xp)
+  const into = top ? 1 : Math.min(span, Math.max(0, xp - rank_xp))
+  return (
+    <div className={cn("px-4 py-3", className)}>
+      <div className="flex items-baseline justify-between gap-3 text-xs">
+        <span className="text-muted-foreground">{top ? "Max rank" : `Next: ${rankName(rank + 1)}`}</span>
+        <span className="tabular-nums">
+          {top ? `${xp.toLocaleString()} XP` : `${into.toLocaleString()} / ${span.toLocaleString()} XP`}
+        </span>
+      </div>
+      {/* a real <progress> for screen readers; the bar is drawn, so it animates */}
+      <progress
+        className="sr-only"
+        aria-label={top ? "Max rank" : `Experience towards ${rankName(rank + 1)}`}
+        max={span}
+        value={into}
+      />
+      <div aria-hidden="true" className="mt-2 h-1.5 bg-muted">
+        <div
+          className="h-full bg-primary transition-[width] duration-500"
+          style={{ width: `${(into / span) * 100}%` }}
+        />
+      </div>
+    </div>
+  )
+}
+
 /** Amber corner marks, the HUD's target frame, round the insignia being worn. */
-function Corners() {
+export function Corners() {
   const c = "pointer-events-none absolute size-3 border-primary"
   return (
     <>
@@ -163,26 +215,7 @@ function Corners() {
   )
 }
 
-function SignIn({ email }: { email: boolean }) {
-  const { signIn, signUp, signInWithGitHub } = useAccount()
-  return (
-    <Card className="gap-0 py-0 text-sm">
-      <SignInChoices
-        blurb="The same account you play with in the game. It keeps your callsign yours, and every battle you play signed in counts towards your rank. You don't need one to play online."
-        onGitHub={() => void signInWithGitHub()}
-        email={email}
-        form={{
-          intro: (creating) =>
-            creating ? "A test account, for the game and this site." : "A test account's email and password.",
-          onSubmit: async (address, password, callsign) =>
-            callsign === null ? ((await signIn(address, password)) ? "in" : null) : signUp(address, password, callsign),
-        }}
-      />
-    </Card>
-  )
-}
-
-function AccountsOff() {
+export function AccountsOff() {
   return (
     <Card className="p-4 text-sm">
       <p className="font-medium">Accounts are switched off</p>
@@ -194,7 +227,7 @@ function AccountsOff() {
   )
 }
 
-function Collection({ user, onPick }: { user: User | null; onPick: (id: string) => void }) {
+export function Collection({ user, onPick }: { user: User | null; onPick: (id: string) => void }) {
   // a visitor sees what a brand-new account would
   const rank = user?.rank ?? 0
   const wearing = user ? wornInsignia(user.icon)?.id : undefined
