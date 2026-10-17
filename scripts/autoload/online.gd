@@ -48,6 +48,7 @@ signal battle_reported(report: Dictionary)  # {gained, rank_before, rank}: what 
 signal join_progress(stage: String)  # a listed battle being joined: what's happening now
 signal lan_changed  # a battle on this network appeared, changed or went away
 signal record_changed  # the latest battle saved, or battles waiting to be
+signal web_sign_in_received  # the website's sign-in came back: signing in with it now
 signal web_sign_in_failed(error: String)  # the website's sign-in came back, and didn't work
 
 const DEFAULT_URL := "https://matchmaker-production-a53e.up.railway.app"
@@ -302,10 +303,11 @@ func _on_link(url: String) -> void:
 		return
 	if _web_state == "" or what[1] != _web_state or Time.get_unix_time_from_system() > _web_until:
 		# not the page this game opened, or one it has given up on
-		web_sign_in_failed.emit("That sign-in is from an earlier try: press Sign in to start again.")
+		web_sign_in_failed.emit("That sign-in was from an earlier try. Press Try again for a fresh one.")
 		return
 	_web_state = ""
 	_save_account()
+	web_sign_in_received.emit()
 	# the token is the game's own (the website keeps another), and spent at
 	# once: what was in the link is no use to anyone after this
 	var r: Dictionary = await _request(HTTPClient.METHOD_POST, "/auth/refresh", {"refresh_token": what[2]}, PackedStringArray(), 10.0, false)
@@ -314,7 +316,7 @@ func _on_link(url: String) -> void:
 		if OS.has_environment("FL_DEBUG_ONLINE"):
 			print("ONLINE signed in through the website as %s" % callsign)
 	else:
-		web_sign_in_failed.emit(String(r.error) if int(r.code) != 401 else "The website's sign-in had run out: press Sign in to try again.")
+		web_sign_in_failed.emit(String(r.error) if int(r.code) != 401 else "The website's sign-in had run out. Press Try again.")
 
 
 func sign_out() -> void:
