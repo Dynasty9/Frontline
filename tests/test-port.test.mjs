@@ -14,7 +14,7 @@ before(async () => {
 });
 after(async () => {
   await other?.close(); // (already closed, unless its test didn't run)
-  assert.equal(await game?.close(), 0, "the game's exit code");
+  if (game) assert.equal(await game.close(), 0, "the game's exit code");
 });
 
 test("says hello", async () => {

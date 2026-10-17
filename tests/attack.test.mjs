@@ -18,7 +18,7 @@ before(async () => {
   game = await Game.start();
 });
 after(async () => {
-  assert.equal(await game?.close(), 0, "the game's exit code");
+  if (game) assert.equal(await game.close(), 0, "the game's exit code");
 });
 
 test("an assault on the yard is planned and carried", async () => {
