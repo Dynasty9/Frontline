@@ -378,7 +378,7 @@ func _on_game_start(s: Dictionary) -> void:
 				cur.set_stage(text, frac))
 	if OS.has_feature("web"):
 		world.visible = false
-	# (in a browser, a frame of the loading screen between its stages: World._breathe)
+	# (with a window, a frame of the loading screen between its stages: World._breathe)
 	await world.build()
 	if not is_instance_valid(world):
 		return
