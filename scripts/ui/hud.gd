@@ -1075,8 +1075,8 @@ func show_game_over(w: int) -> void:
 	if not world.mission_info.is_empty():
 		facts = _mission_head(hv)
 	else:
-		hv.add_child(_spaced_label("AFTER-ACTION REPORT", 12, UiKit.ACCENT, 4))
-		var t := _spaced_label("", 34, UiKit.TEXT, 6)
+		hv.add_child(UiKit.caps("After-action report", 11, UiKit.FAINT, 600, 2))
+		var t := UiKit.caps("", 34, UiKit.TEXT, 600, 4)
 		if world.local_team < 0:
 			t.text = "%s WIN" % Defs.TEAM_NAMES[w].to_upper()
 			t.add_theme_color_override("font_color", Defs.TEAM_COLORS[w].lightened(0.3))
@@ -1088,11 +1088,11 @@ func show_game_over(w: int) -> void:
 			t.add_theme_color_override("font_color", UiKit.BAD)
 		hv.add_child(t)
 		hv.add_child(UiKit.label("%s have taken the battlefield." % Defs.TEAM_NAMES[w], 14, UiKit.DIM))
-		facts = "Battle lasted %s" % UiKit.fmt_time(world.time)
+		facts = "T+%s" % UiKit.fmt_time(world.time)
 		Music.sting("defeat" if world.local_team >= 0 and w != world.local_team else "victory")
 	if world.local_team >= 0 and Online.signed_in():
 		_xp_row(head)
-	var fl := UiKit.label(facts, 13, UiKit.DIM)
+	var fl := UiKit.mono_label(facts, 12, UiKit.DIM)
 	fl.size_flags_vertical = Control.SIZE_SHRINK_END
 	fl.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	head.add_child(fl)
@@ -1107,7 +1107,7 @@ func show_game_over(w: int) -> void:
 	row.add_theme_constant_override("separation", 10)
 	vb.add_child(row)
 	# the service record: saved, or sign in to keep it
-	_rec_note = UiKit.label("", 13, UiKit.DIM)
+	_rec_note = UiKit.label("", 13, UiKit.FAINT)
 	_rec_note.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_rec_note.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	_rec_note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -1128,42 +1128,9 @@ func show_game_over(w: int) -> void:
 	_end_sequence(w)
 
 
-## The report's buttons: spaced capitals on cut-cornered glass; the one to
-## press next in the accent.
+## The report's buttons: the one to press next is the primary (docs/UI.md).
 func _cta(text: String, primary: bool, cb: Callable) -> Button:
-	var b := Button.new()
-	b.text = text.to_upper()
-	b.custom_minimum_size = Vector2(190, 42)
-	b.focus_mode = Control.FOCUS_NONE
-	b.add_theme_font_override("font", UiFx.spaced(700, 2))
-	b.add_theme_font_size_override("font_size", 13)
-	# cut corners: a flat box whose two corners are single straight segments
-	var cut := func(bg: Color, edge: Color) -> StyleBoxFlat:
-		var sb := StyleBoxFlat.new()
-		sb.bg_color = bg
-		sb.border_color = edge
-		sb.set_border_width_all(0 if primary else 1)
-		sb.corner_radius_top_left = 9
-		sb.corner_radius_bottom_right = 9
-		sb.corner_detail = 1
-		sb.anti_aliasing = true
-		sb.set_content_margin_all(8.0)
-		return sb
-	if primary:
-		b.add_theme_stylebox_override("normal", cut.call(UiFx.fade(UiKit.ACCENT, 0.92), Color.TRANSPARENT))
-		b.add_theme_stylebox_override("hover", cut.call(UiKit.ACCENT.lightened(0.14), Color.TRANSPARENT))
-		b.add_theme_stylebox_override("pressed", cut.call(UiKit.ACCENT.darkened(0.08), Color.TRANSPARENT))
-	else:
-		b.add_theme_stylebox_override("normal", cut.call(Color(1, 1, 1, 0.03), Color(1, 1, 1, 0.2)))
-		b.add_theme_stylebox_override("hover", cut.call(Color(1, 1, 1, 0.07), UiKit.ACCENT))
-		b.add_theme_stylebox_override("pressed", cut.call(UiFx.fade(UiKit.ACCENT, 0.18), UiKit.ACCENT))
-	b.add_theme_stylebox_override("hover_pressed", b.get_theme_stylebox("pressed"))
-	b.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
-	var ink := Color(0.08, 0.07, 0.05) if primary else UiKit.TEXT
-	b.add_theme_color_override("font_color", ink)
-	b.add_theme_color_override("font_hover_color", ink if primary else UiKit.ACCENT)
-	b.add_theme_color_override("font_pressed_color", ink)
-	b.add_theme_color_override("font_hover_pressed_color", ink)
+	var b := UiKit.button(text, "primary" if primary else "secondary", 190, 40)
 	b.mouse_entered.connect(func(): Sfx.ui("ui_tick", -26.0, 1.4))
 	b.pressed.connect(func(): Sfx.ui("click"); cb.call())
 	return b
@@ -1179,9 +1146,7 @@ func _spaced_label(text: String, fs: int, col: Color, spacing: int) -> Label:
 
 
 func _draw_over() -> void:
-	UiFx.panel(over_panel, Rect2(Vector2.ZERO, over_panel.size), 1.0, 20.0)
-	over_panel.draw_rect(Rect2(26.0, 0.0, over_panel.size.x * 0.34, 2.0), UiKit.ACCENT)
-	over_panel.draw_rect(Rect2(26.0, 2.0, over_panel.size.x * 0.34, 10.0), UiFx.fade(UiKit.ACCENT, 0.06))
+	UiFx.panel(over_panel, Rect2(Vector2.ZERO, over_panel.size), 1.0)
 
 
 ## The end of the battle as a moment: the battlefield greys out behind a
@@ -1338,8 +1303,8 @@ func _mission_head(vb: VBoxContainer) -> String:
 	var info: Dictionary = world.mission_info
 	var ok := int(info.get("over", 0)) == 1
 	Music.sting("victory" if ok else "defeat")
-	vb.add_child(_spaced_label(String(info.get("op", "")).to_upper(), 12, UiKit.ACCENT, 4))
-	vb.add_child(_spaced_label("MISSION ACCOMPLISHED" if ok else "MISSION FAILED", 30, UiKit.GOOD if ok else UiKit.BAD, 5))
+	vb.add_child(UiKit.caps(String(info.get("op", "")), 11, UiKit.FAINT, 600, 2))
+	vb.add_child(UiKit.caps("Mission accomplished" if ok else "Mission failed", 30, UiKit.GOOD if ok else UiKit.BAD, 600, 4))
 	var s := UiKit.label(String(info.get("end", "")), 14, UiKit.TEXT)
 	s.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	s.custom_minimum_size = Vector2(420, 0)
@@ -1354,7 +1319,7 @@ func _mission_head(vb: VBoxContainer) -> String:
 			done += 1
 	var el := float(info.get("el", 0.0))
 	var lost: Array = info.get("lost", [0, 0])
-	return "Time %s    Objectives %d of %d    Men lost %d of %d    Enemy killed %d" % [UiKit.fmt_time(el), done, all, int(lost[0]), int(lost[1]), int(info.get("kills", 0))]
+	return "T+%s · OBJECTIVES %d/%d · LOST %d/%d · KILLED %d" % [UiKit.fmt_time(el), done, all, int(lost[0]), int(lost[1]), int(info.get("kills", 0))]
 
 
 # --- battle statistics -------------------------------------------------------------------

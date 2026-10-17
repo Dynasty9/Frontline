@@ -4,6 +4,9 @@ extends PanelContainer
 ## fire mission and upgrade in the game, with its numbers (read live from Defs,
 ## so they are always the game's own) and a 3D model to turn over. Opened from
 ## the main menu and in battle (F4 / Esc menu).
+## Signal (docs/UI.md): lists with a hairline under each row and the chosen one
+## in the accent, each entry marked by a small square in its side's colour, the
+## figures as a table of labels, counted bars and mono values.
 
 signal closed
 
@@ -143,11 +146,13 @@ var _sel := ""
 var _entries: Array = []  # all entries (dictionaries), built once
 var _cat_btns := {}
 var _side_btns := {}
+var _row_sb: Array = []  # the list rows' styles: at rest, under the cursor, chosen
+var _bar_w := 160.0  # the figures' bar column (none when nothing on the page compares)
 var _list: VBoxContainer
+var _list_head: HBoxContainer  # the list's header: the category and how many it shows
 var _title: Label
 var _chips: HBoxContainer
 var _desc: Label
-var _pattern: Label
 var _stats: GridContainer
 var _rel: Label
 var _view: SubViewport
@@ -169,39 +174,40 @@ var _idle_t := 0.0
 
 func _ready() -> void:
 	theme = UiKit.theme()
-	add_theme_stylebox_override("panel", UiKit.frame(Color(-1, 0, 0), 14.0, 1.0, 16.0, 0.97))
+	add_theme_stylebox_override("panel", UiKit.frame(Color(-1, 0, 0), 14.0, 0.0, UiKit.TICK_ARM, 0.97))
 	_entries = _build_entries()
 	var vb := VBoxContainer.new()
 	vb.add_theme_constant_override("separation", 10)
 	add_child(vb)
 	# title bar: name, side filter, search, close
 	var top := HBoxContainer.new()
-	top.add_theme_constant_override("separation", 8)
+	top.add_theme_constant_override("separation", 14)
 	vb.add_child(top)
-	var tl := UiKit.label("Field Manual", 24, UiKit.TEXT, 700)
+	var tl := UiKit.caps("Field Manual", 18, UiKit.TEXT, 600, 2)
+	tl.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	top.add_child(tl)
-	var sub := UiKit.label("  every unit, weapon, vehicle and work in the field, with its numbers", 13, UiKit.DIM)
+	var sub := UiKit.label("every unit, weapon, vehicle and work in the field, with its numbers", 13, UiKit.FAINT)
 	sub.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	sub.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	sub.clip_text = true  # gives way first when the interface is scaled up
 	sub.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	top.add_child(sub)
+	# the side filter: tabs, the one in force underlined in the accent
+	var sides := HBoxContainer.new()
+	sides.add_theme_constant_override("separation", 16)
+	top.add_child(sides)
 	for s in [[-1, "Both sides"], [0, "Coalition"], [1, "Rebels"]]:
-		var b := Button.new()
-		b.text = s[1]
-		b.toggle_mode = true
-		b.custom_minimum_size = Vector2(96, 32)
+		var b := _tab(String(s[1]))
 		var sv: int = s[0]
 		b.pressed.connect(func(): _set_side(sv))
-		top.add_child(b)
+		sides.add_child(b)
 		_side_btns[sv] = b
 	var search := LineEdit.new()
 	search.placeholder_text = "Search"
 	search.custom_minimum_size = Vector2(170, 32)
 	search.text_changed.connect(func(t: String): _query = t.strip_edges().to_lower(); _fill_list())
 	top.add_child(search)
-	var close := Button.new()
-	close.text = "Close"
-	close.custom_minimum_size = Vector2(80, 32)
+	var close := UiKit.button("Close", "secondary", 84, 32)
 	close.pressed.connect(func(): closed.emit())
 	top.add_child(close)
 	# body: categories | list | detail
@@ -215,26 +221,43 @@ func _ready() -> void:
 	body.add_child(csc)
 	var cats := VBoxContainer.new()
 	cats.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	cats.add_theme_constant_override("separation", 3)
+	cats.add_theme_constant_override("separation", 0)
 	csc.add_child(cats)
 	for c in CATS:
-		var b2 := Button.new()
-		b2.text = c[1]
-		b2.toggle_mode = true
-		b2.alignment = HORIZONTAL_ALIGNMENT_LEFT
-		b2.custom_minimum_size = Vector2(0, 31)
+		# a row of the list: the category in capitals, how many entries it
+		# holds (as filtered: a search shows at a glance where the matches are)
+		var b2 := _row_button(34)
+		var row := _row_box(b2)
+		var cl := UiKit.caps(String(c[1]), 12, UiKit.DIM)
+		cl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		cl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		cl.clip_text = true
+		cl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		row.add_child(cl)
+		var cn := UiKit.mono_label("", 11, UiKit.FAINT)
+		cn.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		cn.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		row.add_child(cn)
+		b2.set_meta("name", cl)
+		b2.set_meta("count", cn)
 		var ck: String = c[0]
 		b2.pressed.connect(func(): _set_cat(ck))
 		cats.add_child(b2)
 		_cat_btns[ck] = b2
+	var lc := VBoxContainer.new()
+	lc.add_theme_constant_override("separation", 6)
+	body.add_child(lc)
+	_list_head = UiKit.header("Infantry", "0")  # (both filled in by _fill_list)
+	lc.add_child(_list_head)
 	var sc := ScrollContainer.new()
 	_list_sc = sc
 	sc.custom_minimum_size = Vector2(300, 0)
+	sc.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	sc.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	body.add_child(sc)
+	lc.add_child(sc)
 	_list = VBoxContainer.new()
 	_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_list.add_theme_constant_override("separation", 4)
+	_list.add_theme_constant_override("separation", 0)
 	sc.add_child(_list)
 	var det := VBoxContainer.new()
 	det.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -247,26 +270,29 @@ func _ready() -> void:
 	det.add_child(dsc)
 	var dv := VBoxContainer.new()
 	dv.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	dv.add_theme_constant_override("separation", 6)
+	dv.add_theme_constant_override("separation", 8)
 	dsc.add_child(dv)
+	# the name, and whose it is and what it does as codes beside it
 	var head := HBoxContainer.new()
-	head.add_theme_constant_override("separation", 10)
+	head.add_theme_constant_override("separation", 16)
 	dv.add_child(head)
-	_title = UiKit.label("", 22, UiKit.TEXT, 700)
+	_title = UiKit.caps("", 22, UiKit.TEXT, 600, 1)
 	head.add_child(_title)
 	_chips = HBoxContainer.new()
-	_chips.add_theme_constant_override("separation", 6)
+	_chips.add_theme_constant_override("separation", 7)
+	_chips.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	head.add_child(_chips)
-	_pattern = UiKit.label("", 13, UiKit.ACCENT)
-	_pattern.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	dv.add_child(_pattern)
 	_desc = UiKit.label("", 14, UiKit.TEXT)
 	_desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	dv.add_child(_desc)
+	# the figures: a label, a counted bar where it compares with the rest of
+	# its kind, and the value; a hairline under each row (drawn by _rule_rows)
 	_stats = GridContainer.new()
 	_stats.columns = 3
 	_stats.add_theme_constant_override("h_separation", 12)
-	_stats.add_theme_constant_override("v_separation", 5)
+	_stats.add_theme_constant_override("v_separation", 7)
+	_stats.draw.connect(_rule_rows)
+	_stats.sort_children.connect(_stats.queue_redraw)
 	dv.add_child(_stats)
 	_rel = UiKit.label("", 13, UiKit.DIM)
 	_rel.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -307,7 +333,9 @@ func open(cat: String, key := "", side := -1) -> void:
 func _set_cat(c: String) -> void:
 	_cat = c
 	for k in _cat_btns:
-		_cat_btns[k].button_pressed = k == c
+		var b: Button = _cat_btns[k]
+		b.set_pressed_no_signal(k == c)
+		_paint(b)
 	_sel = ""
 	_fill_list()
 
@@ -315,14 +343,19 @@ func _set_cat(c: String) -> void:
 func _set_side(s: int) -> void:
 	_side = s
 	for k in _side_btns:
-		_side_btns[k].button_pressed = k == s
+		(_side_btns[k] as Button).set_pressed_no_signal(k == s)
 	_fill_list()
 
 
 func _visible_entries() -> Array:
+	return _entries_in(_cat)
+
+
+## A category's entries through the side filter and the search.
+func _entries_in(cat: String) -> Array:
 	var out := []
 	for e in _entries:
-		if e.cat != _cat:
+		if e.cat != cat:
 			continue
 		if _side >= 0 and int(e.team) >= 0 and int(e.team) != _side and not (e.get("both", false)):
 			continue
@@ -338,40 +371,54 @@ func _fill_list() -> void:
 	for c in _list.get_children():
 		_list.remove_child(c)
 		c.queue_free()
+	for k in _cat_btns:
+		var cb: Button = _cat_btns[k]
+		var cn := _entries_in(String(k)).size()
+		cb.set_meta("n", cn)
+		(cb.get_meta("count") as Label).text = "%d" % cn
+		_paint(cb)
 	var vis := _visible_entries()
+	var cname := _cat
+	for c in CATS:
+		if c[0] == _cat:
+			cname = String(c[1])
+	(_list_head.get_node("Text") as Label).text = cname
+	(_list_head.get_node("Count") as Label).text = "%d" % vis.size()
 	for e in vis:
-		var b := Button.new()
-		b.toggle_mode = true
-		b.custom_minimum_size = Vector2(0, 46)
-		b.button_pressed = e.key == _sel
-		b.text = ""
-		var row := HBoxContainer.new()
-		row.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-		row.offset_left = 10
-		row.offset_right = -10
-		row.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		b.add_child(row)
-		var dot := ColorRect.new()
-		dot.custom_minimum_size = Vector2(4, 30)
-		dot.color = _side_col(int(e.team), e.get("both", false))
-		dot.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-		dot.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		row.add_child(dot)
+		var b := _row_button(44)
+		var row := _row_box(b)
+		row.add_theme_constant_override("separation", 10)
+		var mk := SideMark.new()
+		mk.team = int(e.team)
+		mk.both = bool(e.get("both", false))
+		mk.dy = -8.0  # level with the name, the first of the two lines
+		mk.custom_minimum_size = Vector2(8, 0)
+		mk.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		row.add_child(mk)
 		var col := VBoxContainer.new()
-		col.add_theme_constant_override("separation", 0)
+		col.add_theme_constant_override("separation", 1)
 		col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		col.alignment = BoxContainer.ALIGNMENT_CENTER
 		col.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		row.add_child(col)
-		var n := UiKit.label(String(e.name), 15, UiKit.TEXT, 600)
+		var n := UiKit.caps(String(e.name), 13, UiKit.TEXT)
+		n.clip_text = true
+		n.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 		n.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		col.add_child(n)
-		var s2 := UiKit.label(String(e.get("sub", "")), 11, UiKit.DIM)
+		# its figures as a code (a drill's is when it happens, which is a sentence)
+		var sub := String(e.get("sub", ""))
+		var s2 := UiKit.label(sub, 11, UiKit.FAINT) if e.cat == "drills" else UiKit.mono_label(sub.to_upper(), 11, UiKit.FAINT)
 		s2.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		s2.clip_text = true
+		s2.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 		col.add_child(s2)
 		var k: String = e.key
 		b.set_meta("key", k)
+		b.set_meta("name", n)
+		b.set_meta("rest", UiKit.TEXT)
+		b.set_pressed_no_signal(e.key == _sel)
+		_paint(b)
 		b.pressed.connect(func(): _select(k))
 		_list.add_child(b)
 	if _sel == "" and not vis.is_empty():
@@ -383,6 +430,7 @@ func _select(key: String) -> void:
 	for b in _list.get_children():
 		if b is Button:
 			b.set_pressed_no_signal(String(b.get_meta("key", "")) == key)
+			_paint(b)
 	var e: Dictionary = {}
 	for x in _visible_entries():
 		if x.key == key:
@@ -391,52 +439,164 @@ func _select(key: String) -> void:
 		return
 	_title.text = String(e.name)
 	for c in _chips.get_children():
+		_chips.remove_child(c)
 		c.queue_free()
-	_chips.add_child(_chip(_side_name(int(e.team), e.get("both", false)), _side_col(int(e.team), e.get("both", false))))
-	if e.has("role"):
-		_chips.add_child(_chip(String(e.role), UiKit.DIM))
-	_pattern.text = ("Pattern: " + String(e.pattern)) if e.has("pattern") else ""
-	_pattern.visible = e.has("pattern")
+	var both: bool = e.get("both", false)
+	var mk := SideMark.new()
+	mk.team = int(e.team)
+	mk.both = both
+	mk.custom_minimum_size = Vector2(8, 16)
+	_chips.add_child(mk)
+	_chips.add_child(UiKit.caps(_side_name(int(e.team), both), 12, UiKit.DIM))
+	if e.has("role") and String(e.role) != "":
+		_chips.add_child(UiKit.caps("·  " + String(e.role), 12, UiKit.FAINT))
 	_desc.text = String(e.get("desc", ""))
+	_desc.visible = _desc.text != ""
 	for c in _stats.get_children():
+		_stats.remove_child(c)
 		c.queue_free()
+	# (a page with no figures to compare gives the bars' column up to the values)
+	_bar_w = 0.0
 	for s in e.stats:
-		var lab := UiKit.label(String(s[0]), 13, UiKit.DIM)
-		lab.custom_minimum_size = Vector2(150, 0)
-		_stats.add_child(lab)
-		var bar := StatBar.new()
-		bar.frac = float(s[2])
-		bar.col = UiKit.ACCENT if float(s[2]) >= 0.0 else Color(0, 0, 0, 0)
-		bar.custom_minimum_size = Vector2(160, 14)
-		bar.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-		_stats.add_child(bar)
-		var val := UiKit.label(String(s[1]), 13, UiKit.TEXT, 600)
-		val.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		val.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART  # wraps rather than widening the page
-		_stats.add_child(val)
-	_rel.text = "\n".join(e.get("rel", []))
+		if float(s[2]) >= 0.0:
+			_bar_w = 160.0
+	if String(e.get("pattern", "")) != "":
+		_stat_row("Pattern", -1.0, String(e.pattern), true, UiKit.DIM)
+	for s in e.stats:
+		_stat_row(String(s[0]), float(s[2]), String(s[1]), e.cat == "drills")
+	# where it's found, who uses it, what it's part of: as rows of the table
+	# where the line names its subject ("Used by: ..."), as prose where it doesn't
+	var rest := []
+	for r in e.get("rel", []):
+		var ln := String(r)
+		var i := ln.find(": ")
+		if i > 0 and i <= 24:
+			_stat_row(ln.substr(0, i), -1.0, ln.substr(i + 2), true, UiKit.DIM)
+		else:
+			rest.append(ln)
+	_rel.text = "\n".join(rest)
+	_rel.visible = not rest.is_empty()
+	_stats.queue_redraw()
 	_show_model(e)
 
 
-func _chip(t: String, c: Color) -> Control:
-	var p := PanelContainer.new()
-	p.add_theme_stylebox_override("panel", UiKit.boxc(Color(c.r, c.g, c.b, 0.16), 4, Color(c.r, c.g, c.b, 0.5), 1, 4.0))
-	p.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	var l := UiKit.label(t, 12, c.lightened(0.2), 600)
-	p.add_child(l)
-	return p
+## A row of the figures: the label in faint capitals, a counted bar when the
+## figure compares with the rest of its kind (frac >= 0), and the value -
+## a figure or a short code in mono, a phrase as prose.
+func _stat_row(label: String, frac: float, value: String, prose := false, col := UiKit.TEXT) -> void:
+	var lab := UiKit.caps(label, 11, UiKit.FAINT)
+	lab.custom_minimum_size = Vector2(150, 0)
+	var pad := UiKit.bare()
+	pad.content_margin_top = 3.0  # on the value's line
+	lab.add_theme_stylebox_override("normal", pad)
+	_stats.add_child(lab)
+	var bar := StatBar.new()
+	bar.frac = frac
+	bar.custom_minimum_size = Vector2(_bar_w, 18)
+	bar.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	_stats.add_child(bar)
+	var code := not prose and (frac >= 0.0 or value.length() <= 16 or _figure(value))
+	var val := UiKit.mono_label(value, 13, col) if code else UiKit.label(value, 13, col)
+	val.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	val.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART  # wraps rather than widening the page
+	_stats.add_child(val)
 
 
-func _side_col(t: int, both: bool) -> Color:
-	if both or t < 0:
-		return UiKit.ACCENT
-	return Defs.TEAM_COLORS[t]
+static func _figure(s: String) -> bool:
+	for ch in s:
+		if ch >= "0" and ch <= "9":
+			return true
+	return false
+
+
+## A hairline under each row of the figures.
+func _rule_rows() -> void:
+	var vs := float(_stats.get_theme_constant("v_separation"))
+	var n := _stats.get_child_count()
+	for i in range(0, n, 3):
+		var c := _stats.get_child(i) as Control
+		var y := floorf(c.position.y + c.size.y + vs * 0.5) + 0.5
+		_stats.draw_line(Vector2(0, y), Vector2(_stats.size.x, y), UiKit.LINE, 1.0)
 
 
 func _side_name(t: int, both: bool) -> String:
 	if both or t < 0:
 		return "Both sides"
 	return Defs.TEAM_NAMES[t]
+
+
+## A tab of the side filter: capitals, the one in force in the accent and
+## underlined.
+func _tab(text: String) -> Button:
+	var b := Button.new()
+	b.text = text.to_upper()
+	b.toggle_mode = true
+	b.focus_mode = Control.FOCUS_NONE
+	b.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	b.add_theme_font_override("font", UiKit.cond(600, 1))
+	b.add_theme_font_size_override("font_size", 12)
+	var on := UiKit.underline(UiKit.ACCENT, 2.0, 6.0)
+	var off := UiKit.bare()
+	off.content_margin_left = 2
+	off.content_margin_right = 2
+	off.content_margin_top = 6
+	off.content_margin_bottom = 6
+	for st in ["normal", "hover", "disabled", "focus"]:
+		b.add_theme_stylebox_override(st, off)
+	b.add_theme_stylebox_override("pressed", on)
+	b.add_theme_stylebox_override("hover_pressed", on)
+	b.add_theme_color_override("font_color", UiKit.FAINT)
+	b.add_theme_color_override("font_hover_color", UiKit.TEXT)
+	b.add_theme_color_override("font_pressed_color", UiKit.ACCENT)
+	b.add_theme_color_override("font_hover_pressed_color", UiKit.ACCENT)
+	return b
+
+
+## A row of a list (the categories, the entries): a hairline under it, a
+## faint fill under the cursor, and the chosen one washed with the accent
+## behind a 2 px accent edge, its name in the accent (_paint).
+func _row_button(h: float) -> Button:
+	if _row_sb.is_empty():
+		var rest := UiKit.box(Color(0, 0, 0, 0), 0, UiKit.LINE, 0, 0.0)
+		rest.border_width_bottom = 1
+		var hover := UiKit.box(UiKit.fa(UiKit.TEXT, 0.05), 0, UiKit.LINE, 0, 0.0)
+		hover.border_width_bottom = 1
+		var chosen := UiKit.box(UiKit.fa(UiKit.ACCENT, 0.08), 0, UiKit.ACCENT, 0, 0.0)
+		chosen.border_width_left = 2
+		_row_sb = [rest, hover, chosen]
+	var b := Button.new()
+	b.toggle_mode = true
+	b.focus_mode = Control.FOCUS_NONE
+	b.custom_minimum_size = Vector2(0, h)
+	b.text = ""
+	for st in ["normal", "disabled"]:
+		b.add_theme_stylebox_override(st, _row_sb[0])
+	b.add_theme_stylebox_override("hover", _row_sb[1])
+	b.add_theme_stylebox_override("pressed", _row_sb[2])
+	b.add_theme_stylebox_override("hover_pressed", _row_sb[2])
+	b.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
+	return b
+
+
+func _row_box(b: Button) -> HBoxContainer:
+	var row := HBoxContainer.new()
+	row.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	row.offset_left = 10
+	row.offset_right = -10
+	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	b.add_child(row)
+	return row
+
+
+## A row's name in the accent while it's the chosen one (an empty category's faint).
+func _paint(b: Button) -> void:
+	var nl: Label = b.get_meta("name", null)
+	if nl == null:
+		return
+	var rest: Color = b.get_meta("rest", UiKit.DIM)
+	if int(b.get_meta("n", 1)) == 0:
+		rest = UiKit.FAINT
+	nl.add_theme_color_override("font_color", UiKit.ACCENT if b.button_pressed else rest)
 
 
 # --- the 3D view ---------------------------------------------------------------------
@@ -1372,14 +1532,31 @@ func _unit_desc(k: String, u: Dictionary) -> String:
 	return "The backbone of the squad: fights from cover, throws grenades, moves by bounds."
 
 
-## A thin bar of how a number compares with the rest of its kind.
+## How a number compares with the rest of its kind, as a counted bar: as
+## many steps lit as its share of the biggest (never none, if it has any).
 class StatBar extends Control:
 	var frac := 0.0
-	var col := Color.WHITE
 
 	func _draw() -> void:
 		if frac < 0.0:
 			return
-		var r := Rect2(Vector2(0, size.y * 0.5 - 3), Vector2(size.x, 6))
-		draw_rect(r, Color(1, 1, 1, 0.08))
-		draw_rect(Rect2(r.position, Vector2(size.x * clampf(frac, 0.02, 1.0), 6)), col)
+		var n := maxi(4, int((size.x + 2.0) / 9.0))
+		var lit := ceilf(clampf(frac, 0.0, 1.0) * n - 0.25) if frac > 0.0 else 0.0
+		UiKit.steps(self, Vector2(0, floorf(size.y * 0.5) - 5.0), maxf(lit, 1.0 if frac > 0.0 else 0.0), n, UiKit.TEXT, 7.0, 10.0)
+
+
+## Whose something is: a small square in its side's colour, halved between
+## the two when both sides have it.
+class SideMark extends Control:
+	var team := -1
+	var both := false
+	var dy := 0.0  # up or down from the middle, to sit level with a line of text
+
+	func _draw() -> void:
+		var s := 8.0
+		var p := Vector2(0, floorf(size.y * 0.5 - s * 0.5 + dy))
+		if both or team < 0:
+			draw_rect(Rect2(p, Vector2(s * 0.5, s)), Defs.TEAM_COLORS[0])
+			draw_rect(Rect2(p + Vector2(s * 0.5, 0), Vector2(s * 0.5, s)), Defs.TEAM_COLORS[1])
+		else:
+			draw_rect(Rect2(p, Vector2(s, s)), Defs.TEAM_COLORS[team])

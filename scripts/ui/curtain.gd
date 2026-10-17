@@ -9,7 +9,9 @@ extends Control
 ##  - the loading screen before a battle: the operation, its conditions, a tip
 ##    and the stages of the build over the map being surveyed, held while the
 ##    first frames compile their shaders behind it, then fading into the
-##    battlefield.
+##    battlefield. It's a Signal readout (docs/UI.md): labels in faint
+##    capitals, values in mono, rules under the lines, the field note as prose
+##    under a rule and the build as a row of counted steps.
 
 signal gone
 
@@ -56,10 +58,13 @@ var _t := 0.0
 var _progress := 0.0
 var _shown_progress := 0.0
 var _stage := ""
+var _stage_t := -1.0  # when the stage's name started to type on (-1: drawn whole)
 var _title := ""
-var _lines: Array = []  # [label, value]
+var _lines: Array = []  # [label, value, when the value started to type on]
 var _tip := ""
 var _story := ""  # a mission's briefing, under the lines
+var _last_us := 0
+var _steady := false  # the last frame came on time (see _born)
 
 
 func _ready() -> void:
@@ -93,7 +98,9 @@ func brief(seed: int, what: String, lines: Array, op := "", story := "") -> void
 	_title = "OPERATION %s %s" % [OP_A[r.randi() % OP_A.size()], OP_B[r.randi() % OP_B.size()]]
 	if op != "":
 		_title = op.to_upper()
-	_lines = [["MISSION", what]] + lines
+	_lines = [["MISSION", what, _born()]]
+	for l in lines:
+		_lines.append([String(l[0]), String(l[1]), _born()])
 	_tip = _with_keys(TIPS[r.randi() % TIPS.size()])
 	if OS.has_feature("web"):
 		# the page answers only between the stages of laying out the battlefield
@@ -115,17 +122,39 @@ static func _with_keys(t: String) -> String:
 func add_line(label: String, value: String) -> void:
 	for l in _lines:
 		if l[0] == label:
-			l[1] = value
+			if l[1] != value:
+				l[1] = value
+				l[2] = _born()  # a value coming in (the conditions, once known) types on
 			queue_redraw()
 			return
-	_lines.append([label, value])
+	_lines.append([label, value, _born()])
 	queue_redraw()
 
 
 func set_stage(text: String, frac: float) -> void:
-	_stage = text
+	if text != _stage:
+		_stage = text
+		_stage_t = _born()
 	_progress = clampf(frac, _progress, 1.0)
 	queue_redraw()
+
+
+## When text arriving now starts to type on: now, while the screen's frames are
+## coming steadily, or never (drawn whole) while it's being held up. On the
+## desktop the battlefield is built in one long frame right after the screen
+## first draws, and in a browser each stage of it is a long frame: a line
+## caught half typed would hang there for the whole wait.
+func _born() -> float:
+	return _t if _steady else -1.0
+
+
+## How much of `s` has typed on since `at` (all of it with Reduce motion, or
+## when it was drawn whole).
+func _typed(s: String, at: float) -> String:
+	if at < 0.0 or UiMotion.reduced():
+		return s
+	var dur := minf(s.length() * UiMotion.TYPE, UiMotion.TYPE_MAX)
+	return s.left(ceili(clampf((_t - at) / maxf(dur, 0.001), 0.0, 1.0) * s.length()))
 
 
 ## Fade out, then free.
@@ -137,6 +166,11 @@ func finish(rate := 1.8) -> void:
 func _process(dt: float) -> void:
 	dt = minf(dt, 0.1)  # a long build frame shouldn't skip the fade
 	_t = hold_at if hold_at >= 0.0 else _t + dt
+	# whether the frames are coming steadily, by the wall clock (dt is the
+	# game's, and capped)
+	var now := Time.get_ticks_usec()
+	_steady = _last_us > 0 and now - _last_us < 100000
+	_last_us = now
 	_shown_progress = move_toward(_shown_progress, _progress, dt * 1.6)
 	if _fading:
 		_alpha -= dt * _fade_rate
@@ -243,63 +277,72 @@ func _spaced(text: String, cx: float, base: float, w: float, fs: int, col: Color
 		x += adv[i] + gap
 
 
+## The loading screen, down the left over the map: the name, the operation
+## ruled off, the briefing as lines of a label and its value, and at the foot
+## the field note and the build's progress, all in one column.
 func _draw_loading(vs: Vector2) -> void:
-	var acc := UiKit.ACCENT
 	var m := Vector2(maxf(64.0, vs.x * 0.06), maxf(56.0, vs.y * 0.09))
-	# the emblem and the operation
+	var cw := minf(720.0, vs.x - m.x * 2.0)  # the column's width
+	var vx := m.x + 130.0  # where the values start
 	_emblem(m + Vector2(14, 14), 14.0)
-	UiKit.text(self, m + Vector2(44, 22), "FRONTLINE", 15, Color(0.93, 0.9, 0.82), 700)
-	UiKit.text(self, m + Vector2(0, 92), _title, 42, Color(0.95, 0.93, 0.86), 700)
-	draw_rect(Rect2(m + Vector2(0, 110), Vector2(minf(560.0, vs.x * 0.42), 2)), Color(acc.r, acc.g, acc.b, 0.9))
-	# the briefing lines
+	UiKit.caps_at(self, m + Vector2(44, 19), "Frontline", 13, UiKit.DIM)
+	UiKit.text_f(self, UiKit.cond(700, 2), m + Vector2(0, 92), _title, 44, UiKit.TEXT)
+	UiKit.rule(self, Vector2(m.x, m.y + 110.5), Vector2(m.x + cw, m.y + 110.5), UiKit.RULE2)
 	var y := m.y + 150.0
 	for l in _lines:
-		UiKit.text(self, Vector2(m.x, y), String(l[0]), 12, Color(acc.r, acc.g, acc.b, 0.85), 700)
-		UiKit.text(self, Vector2(m.x + 130, y), String(l[1]), 16, Color(0.9, 0.9, 0.86), 500)
-		y += 30.0
+		UiKit.caps_at(self, Vector2(m.x, y), String(l[0]), 11, UiKit.FAINT)
+		UiKit.mono_at(self, Vector2(vx, y), _typed(String(l[1]).to_upper(), float(l[2])), 13, UiKit.TEXT)
+		UiKit.rule(self, Vector2(m.x, y + 12.5), Vector2(m.x + cw, y + 12.5))
+		y += 34.0
 	if _story != "":
-		# the briefing, as the commander reads it out
-		y += 10.0
-		UiKit.text(self, Vector2(m.x, y), "BRIEFING", 12, Color(acc.r, acc.g, acc.b, 0.85), 700)
-		_wrap(_story, Vector2(m.x + 130, y), minf(620.0, vs.x * 0.46), 15, Color(0.86, 0.86, 0.82))
-	# the tip, in a panel at the bottom left (a mission's briefing takes its place)
-	if _story == "":
-		var tw := minf(640.0, vs.x * 0.45)
-		var tr := Rect2(Vector2(m.x, vs.y - m.y - 170), Vector2(tw, 74))
-		draw_rect(tr, Color(0, 0, 0, 0.42))
-		draw_rect(Rect2(tr.position, Vector2(3, tr.size.y)), acc)
-		UiKit.text(self, tr.position + Vector2(18, 24), "FIELD NOTE", 11, Color(acc.r, acc.g, acc.b, 0.9), 700)
-		_wrap(_tip, tr.position + Vector2(18, 46), tw - 36, 15, Color(0.88, 0.88, 0.84))
-	# progress: the stage and a bar along the bottom
-	var by := vs.y - m.y - 40
-	var bw := vs.x - m.x * 2.0
-	UiKit.text(self, Vector2(m.x, by - 14), _stage.to_upper(), 12, Color(0.85, 0.85, 0.8), 700)
-	UiKit.text(self, Vector2(m.x + bw - 60, by - 14), "%3d%%" % int(_shown_progress * 100.0), 12, Color(0.85, 0.85, 0.8), 700)
-	draw_rect(Rect2(m.x, by, bw, 2), Color(1, 1, 1, 0.08))
-	draw_rect(Rect2(m.x, by, bw * _shown_progress, 2), acc)
-	# a small working indicator: three ticks pulsing in turn
-	for i in 3:
-		var p := 0.35 + 0.65 * maxf(0.0, sin(_t * 5.0 - i * 0.9))
-		draw_rect(Rect2(m.x + bw - 90 + i * 9, by - 21, 5, 5), Color(acc.r, acc.g, acc.b, p))
+		# a mission's briefing, as the commander reads it out
+		y += 8.0
+		UiKit.caps_at(self, Vector2(m.x, y), "Briefing", 11, UiKit.FAINT)
+		_prose(_wrap_lines(_story, cw - 130.0, 15), Vector2(vx, y), 15, UiKit.TEXT)
+	else:
+		# the field note: prose under a rule, its label at the head of the rule
+		var tl := _wrap_lines(_tip, cw, 15)
+		var fy := vs.y - m.y - 74.0 - tl.size() * 21.0
+		var lw := UiKit.caps_at(self, Vector2(m.x, fy), "Field note", 11, UiKit.FAINT)
+		UiKit.rule(self, Vector2(m.x + lw + 8.0, fy - 3.5), Vector2(m.x + cw, fy - 3.5))
+		_prose(tl, Vector2(m.x, fy + 25.0), 15, UiKit.TEXT)
+	# the build: its stage in capitals and how far it's got in mono over a row
+	# of counted steps, the next one blinking while it's worked on
+	var py := vs.y - m.y - 10.0
+	UiKit.caps_at(self, Vector2(m.x, py - 10.0), _typed(_stage, _stage_t), 11, UiKit.DIM)
+	var pct := "%d%%" % int(_shown_progress * 100.0)
+	UiKit.mono_at(self, Vector2(m.x + cw - UiKit.mono_w(pct, 12), py - 10.0), pct, 12, UiKit.TEXT)
+	var n := int((cw + 2.0) / 9.0)
+	var sw := (cw - 2.0 * (n - 1)) / n
+	var filled := _shown_progress * n
+	UiKit.steps(self, Vector2(m.x, py), filled, n, UiKit.ACCENT, sw, 8.0)
+	var head := ceili(filled - 0.001)  # (as steps() counts them)
+	if head < n and not UiMotion.reduced() and int(_t * 4.0) % 2 == 0:
+		draw_rect(Rect2(m.x + head * (sw + 2.0), py, sw, 8.0), UiKit.fa(UiKit.ACCENT, 0.55))
 
 
 func _emblem(c: Vector2, s: float) -> void:
 	var pts := PackedVector2Array([c + Vector2(-s, s * 0.78), c + Vector2(0, -s * 0.82), c + Vector2(s, s * 0.78), c + Vector2(-s, s * 0.78)])
-	draw_polyline(pts, Color(0.87, 0.8, 0.63), 2.5, true)
+	draw_polyline(pts, SAND, 2.5, true)
 	draw_circle(c + Vector2(0, s * 0.2), s * 0.2, Color(0.84, 0.32, 0.24))
 
 
-func _wrap(text: String, p: Vector2, w: float, fs: int, col: Color) -> void:
-	var words := text.split(" ")
+## Prose broken into lines that fit `w`.
+static func _wrap_lines(text: String, w: float, fs: int) -> PackedStringArray:
+	var out := PackedStringArray()
 	var line := ""
-	var y := p.y
-	for wd in words:
-		var trial := wd if line == "" else line + " " + wd
+	for wd in text.split(" "):
+		var trial: String = wd if line == "" else line + " " + wd
 		if UiKit.text_width(trial, fs, 400) > w and line != "":
-			UiKit.text(self, Vector2(p.x, y), line, fs, col, 400)
-			y += fs + 6
+			out.append(line)
 			line = wd
 		else:
 			line = trial
 	if line != "":
-		UiKit.text(self, Vector2(p.x, y), line, fs, col, 400)
+		out.append(line)
+	return out
+
+
+func _prose(lines: PackedStringArray, p: Vector2, fs: int, col: Color) -> void:
+	for i in lines.size():
+		UiKit.text(self, Vector2(p.x, p.y + i * (fs + 6)), lines[i], fs, col, 400)

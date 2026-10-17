@@ -653,10 +653,11 @@ catalogue entry in `MissionList.LIST`, a setup function and an autopilot functio
   compiles on a worker thread while the title plays (`scripts/game_scripts.gd`), and a battle or the Field
   Manual wanted before it's done waits for it. The Field Manual and the Settings are built the first time
   they're opened.
-- Main menu: grouped entries that say what they do, and a New Operation panel to pick a side (Coalition, Rebels
-  or Observe, with each side's doctrine) and the time of day.
-- Loading screen before each battle: the operation's name, mission, side, area and conditions, a field note and
-  the build's stages, over the map with a survey beam sweeping across it and the view closing in on the ground.
+- Main menu: grouped entries in capitals, each with a square marker that lights while its panel is open and a
+  line saying what it does beside the one under the cursor, and a New Operation panel to pick a side (Coalition,
+  Rebels or Observe, with each side's doctrine as a line of codes) and the time of day as one row of segments.
+- Loading screen before each battle: the operation's name, then mission, side, area and conditions as label and
+  code rows, a field note under a rule and the build's stages as a row of counted steps, over the map with a survey beam sweeping across it and the view closing in on the ground.
   It holds while the first frames compile behind it, then dives into the map as the battlefield fades up.
 - **Order of battle** (O): every unit down the left, grouped into infantry, support teams and vehicles, each
   with its symbol, callsign, a pip per man, what it has been told to do and where an attack has got to ("Base of
@@ -1073,7 +1074,7 @@ catalogue entry in `MissionList.LIST`, a setup function and an autopilot functio
 
 **Field Manual** (`ui/field_manual.gd`; main menu, Esc menu or F4): every soldier, squad, weapon, vehicle, building,
 defence, fire mission and upgrade, with what it is modelled on (M4A1, PKM, M2HB, Bradley, BTR-80, AC-130J...), its
-numbers read live from the game's tables with bars against the rest of its kind, derived figures (rate of fire,
+numbers read live from the game's tables with counted bars against the rest of its kind, derived figures (rate of fire,
 sustained damage, squad firepower, km/h), what carries or trains it, and a 3D model to turn over and zoom.
 A **Cover** chapter covers every kind of battlefield cover - stone and brick walls, hedges, sandbags, cars,
 crates, wrecks, rubble, tall walls, windows, trenches, craters and woods - with what it stops, how much blast
