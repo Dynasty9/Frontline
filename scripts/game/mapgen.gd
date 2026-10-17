@@ -7,9 +7,53 @@ extends RefCounted
 
 var world: World
 var rng: RandomNumberGenerator
-var placed: Array = []  # [Vector2 center, Vector2 half, yaw]
+var placed: Array = []  # [Vector2 center, Vector2 half, yaw] (add with _place)
 var doors_shut := -1  # houses' doors: -1 some shut (most), 1 all shut, 0 all open
-var clear: Array = []  # [Vector2 center, radius]
+var clear: Array = []  # [Vector2 center, radius] (add with _keep_clear)
+## The same, filed by the 16 m square their middles are in, so a look for room
+## (_is_free) goes through only what's near it; the few big ones (a town, a
+## yard) are looked through every time.
+const GRID := 16.0
+const BIG := 12.0  # (half diagonal, radius) bigger than this is filed as big
+var _placed_at := {}  # Vector2i -> [placed entries]
+var _placed_big: Array = []
+var _clear_at := {}
+var _clear_big: Array = []
+
+
+func _place(e: Array) -> void:
+	placed.append(e)
+	if (e[1] as Vector2).length() > BIG:
+		_placed_big.append(e)
+		return
+	var key := Vector2i(floori(e[0].x / GRID), floori(e[0].y / GRID))
+	var a = _placed_at.get(key)
+	if a == null:
+		a = []
+		_placed_at[key] = a
+	a.append(e)
+
+
+## Takes back the last thing placed.
+func _unplace_last() -> void:
+	var e: Array = placed.pop_back()
+	if (e[1] as Vector2).length() > BIG:
+		_placed_big.pop_back()
+	else:
+		(_placed_at[Vector2i(floori(e[0].x / GRID), floori(e[0].y / GRID))] as Array).pop_back()
+
+
+func _keep_clear(e: Array) -> void:
+	clear.append(e)
+	if float(e[1]) > BIG:
+		_clear_big.append(e)
+		return
+	var key := Vector2i(floori(e[0].x / GRID), floori(e[0].y / GRID))
+	var a = _clear_at.get(key)
+	if a == null:
+		a = []
+		_clear_at[key] = a
+	a.append(e)
 
 
 func _init(w: World) -> void:
@@ -22,6 +66,9 @@ func generate() -> void:
 	var H := MapDims.HALF
 	var k := H / 128.0  # how much bigger than the original 256 m field each way
 	var area := k * k
+	# nothing asks the way until the ground's laid out: the routes hear of
+	# each cell it changes once, when it's done (see TerrainMap.hold_nav)
+	world.terrain.hold_nav()
 	var d0 := _spawn("depot", Vector3(0, 0, H - 12.0), 0.0, 0)
 	var d1 := _spawn("depot", Vector3(0, 0, -(H - 12.0)), PI, 1)
 	r.depots = [d0, d1]
@@ -34,16 +81,16 @@ func generate() -> void:
 	for st in [d0, d1, f0, f1]:
 		st.seen_mask = 3  # start locations are common knowledge
 	for p in [d0.position, d1.position]:
-		clear.append([Vector2(p.x, p.z), 26.0])
+		_keep_clear([Vector2(p.x, p.z), 26.0])
 	for f in [f0, f1]:
-		clear.append([Vector2(f.position.x, f.position.z), 30.0])
+		_keep_clear([Vector2(f.position.x, f.position.z), 30.0])
 	# keep the lane between HQ and starting FOB open
 	for t in 2:
 		var a: Vector3 = [d0, d1][t].position
 		var b: Vector3 = [f0, f1][t].position
 		for i in 5:
 			var p := a.lerp(b, i / 4.0)
-			clear.append([Vector2(p.x, p.z), 10.0])
+			_keep_clear([Vector2(p.x, p.z), 10.0])
 
 	await world._breathe("Surveying the rivers", 0.18)
 	_lay_water()
@@ -87,6 +134,7 @@ func generate() -> void:
 	for i in int(40 * area * 0.75):
 		_try("tree", Vector3(rng.randf_range(-(H - 8.0), H - 8.0), 0, rng.randf_range(-(H - 10.0), H - 10.0)), 0.0, -1)
 
+	world.terrain.release_nav()
 	await world._breathe("Mustering the forces", 0.53)
 	# starting forces (a mission brings its own: see MissionDirector)
 	if String(world.settings.get("mission", "")) != "":
@@ -213,7 +261,7 @@ func _dump_spot(tg, c: Vector3, d: Vector3) -> Array:
 			for s in [1.0, -1.0]:
 				var p: Vector3 = c + d * t + n * (s * off)
 				var yaw := Defs.yaw_of(-n * s)
-				if not _is_free(p, half, yaw, 0.3, false) or tg._road_dist(p) < off - 0.6:
+				if not _is_free(p, half, yaw, 0.3, false) or tg._road_dist(p, off) < off - 0.6:
 					continue
 				var crowded := false
 				for e in tg.decor:
@@ -315,7 +363,7 @@ func _roads_meet_water(tg) -> void:
 		var b: Vector3 = br[1]
 		var d := Defs.flat(b - a)
 		_spawn("bridge", (a + b) * 0.5, Defs.yaw_of(d), -1, {"size": Vector3(float(br[2]) * 2.0, 0, d.length()), "variant": 1 if br.size() > 3 and br[3] == "quay" else 0})
-		placed.append([Vector2((a.x + b.x) * 0.5, (a.z + b.z) * 0.5), Vector2(float(br[2]) + 1.0, d.length() * 0.5 + 1.0), Defs.yaw_of(d)])
+		_place([Vector2((a.x + b.x) * 0.5, (a.z + b.z) * 0.5), Vector2(float(br[2]) + 1.0, d.length() * 0.5 + 1.0), Defs.yaw_of(d)])
 	w.carve()
 	world.nav.build_boat_grid(w)
 	if OS.has_environment("FL_DEBUG_WATER"):
@@ -861,7 +909,7 @@ func _spawn(kind: String, pos: Vector3, yaw: float, team: int, extra := {}) -> S
 	var props := {"skind": kind, "pos": pos, "yaw": yaw, "team": team}
 	props.merge(extra, true)
 	var st: Structure = world.spawn("structure", props)
-	placed.append([Vector2(pos.x, pos.z), st.foot, yaw])
+	_place([Vector2(pos.x, pos.z), st.foot, yaw])
 	return st
 
 
@@ -896,15 +944,37 @@ func _is_free(pos: Vector3, half: Vector2, yaw: float, margin := 0.6, use_clear 
 				return false
 	var c := Vector2(pos.x, pos.z)
 	if use_clear:
-		for cl in clear:
-			if c.distance_to(cl[0]) < cl[1] + half.length():
+		var hl := half.length()
+		for cl in _clear_big:
+			if c.distance_to(cl[0]) < cl[1] + hl:
 				return false
+		# (the rest are no bigger than BIG: only those filed within reach can be in the way)
+		var reach := hl + BIG + 1.0
+		for gx in range(floori((c.x - reach) / GRID), floori((c.x + reach) / GRID) + 1):
+			for gz in range(floori((c.y - reach) / GRID), floori((c.y + reach) / GRID) + 1):
+				var a = _clear_at.get(Vector2i(gx, gz))
+				if a == null:
+					continue
+				for cl in a:
+					if c.distance_to(cl[0]) < cl[1] + hl:
+						return false
 	var h := half + Vector2(margin, margin)
-	for p in placed:
+	for p in _placed_big:
 		if c.distance_to(p[0]) > h.length() + p[1].length() + 1.0:
 			continue
 		if Defs.obb_overlap(c, h, yaw, p[0], p[1], p[2]):
 			return false
+	var reach2 := h.length() + BIG + 2.0
+	for gx in range(floori((c.x - reach2) / GRID), floori((c.x + reach2) / GRID) + 1):
+		for gz in range(floori((c.y - reach2) / GRID), floori((c.y + reach2) / GRID) + 1):
+			var a = _placed_at.get(Vector2i(gx, gz))
+			if a == null:
+				continue
+			for p in a:
+				if c.distance_to(p[0]) > h.length() + p[1].length() + 1.0:
+					continue
+				if Defs.obb_overlap(c, h, yaw, p[0], p[1], p[2]):
+					return false
 	return true
 
 
@@ -956,8 +1026,8 @@ func _house(c: Vector3, w: float, d: float, axis: float, street_side: float, yar
 	var color := rng.randi() % Structure.HOUSE_COLORS.size()
 	var ruined := rng.randf() < ruin_p
 	_spawn("floor", c, axis, -1, {"size": Vector3(w, 0.06, d)})
-	placed.pop_back()
-	placed.append([Vector2(c.x, c.z), half, axis])
+	_unplace_last()
+	_place([Vector2(c.x, c.z), half, axis])
 	# four walls: front faces the street
 	var sides := [
 		[Vector3(0, 0, -d * 0.5), w, 0.0],
