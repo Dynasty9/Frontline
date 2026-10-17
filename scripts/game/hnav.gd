@@ -29,6 +29,9 @@ const NC := MapDims.N / C
 const NCC := NC * NC
 const PLAIN := 0
 const UNKNOWN := -2.0  # a cost not worked out yet (-1 is "no way through")
+## Each cluster's corner cell. The build's worker threads look a cluster's
+## place up here rather than work it out with / and % (see build_all).
+static var _corner: Array[Vector2i] = _corners()
 
 var grid: AStarGrid2D
 var vehicle := false
@@ -122,16 +125,17 @@ func local_grid(ci: int) -> AStarGrid2D:
 ## give it. Only those unlike a fresh grid's (open, weight 1) need setting:
 ## walls, water and roads.
 static func _local_from(ci: int, solid: PackedByteArray, weight: PackedFloat32Array) -> AStarGrid2D:
+	var o := _corner[ci]
 	var lg := AStarGrid2D.new()
-	lg.region = Rect2i((ci % NC) * C, (ci / NC) * C, C, C)
+	lg.region = Rect2i(o, Vector2i(C, C))
 	lg.cell_size = Vector2(1, 1)
 	lg.diagonal_mode = AStarGrid2D.DIAGONAL_MODE_ONLY_IF_NO_OBSTACLES
 	lg.default_compute_heuristic = AStarGrid2D.HEURISTIC_OCTILE
 	lg.default_estimate_heuristic = AStarGrid2D.HEURISTIC_OCTILE
 	lg.update()
 	var n := MapDims.N
-	var x0 := (ci % NC) * C
-	var z0 := (ci / NC) * C
+	var x0 := o.x
+	var z0 := o.y
 	for z in range(z0, z0 + C):
 		var row := z * n
 		for x in range(x0, x0 + C):
@@ -145,6 +149,13 @@ static func _local_from(ci: int, solid: PackedByteArray, weight: PackedFloat32Ar
 
 func cluster_of(c: Vector2i) -> int:
 	return clampi(c.y / C, 0, NC - 1) * NC + clampi(c.x / C, 0, NC - 1)
+
+
+static func _corners() -> Array[Vector2i]:
+	var out: Array[Vector2i] = []
+	for ci in NCC:
+		out.append(Vector2i((ci % NC) * C, (ci / NC) * C))
+	return out
 
 
 static func _key(a: int, b: int) -> int:
@@ -199,16 +210,31 @@ func build() -> void:
 ## A search inside a cluster depends only on its cells and where in it the two
 ## entrances are, not on where the cluster is, so clusters alike in every cell
 ## and entrance, in either graph, are costed once and share the result.
+##
+## What the workers run keeps clear of a race in GDScript itself
+## (godotengine/godot#124010). An operator on values whose type the compiler
+## can't tell (untyped ones, or objects: `lg == null` was one) works out
+## which routine to use the first time it runs and writes that into the
+## function's code, and another thread on the same line at that moment can
+## read it half-written and crash. In an exported game, whole-number / and %
+## do the same. So whatever two workers may run at once keeps to typed values
+## and never divides whole numbers: a cluster's corner comes from _corner,
+## and each graph's clusters go to the workers as tasks of their own rather
+## than numbered across both graphs and divided back out.
 static func build_all(navs: Array) -> void:
 	var t := WorkerThreadPool.add_group_task(func(i: int): (navs[i] as HNav)._prepare(), navs.size(), -1, true, "Nav: entrances")
 	WorkerThreadPool.wait_for_group_task_completion(t)
-	t = WorkerThreadPool.add_group_task(func(k: int): (navs[k / NCC] as HNav)._cluster_key(k % NCC), navs.size() * NCC, -1, true, "Nav: cluster keys")
-	WorkerThreadPool.wait_for_group_task_completion(t)
+	var tasks := PackedInt64Array()
+	for h: HNav in navs:
+		tasks.append(WorkerThreadPool.add_group_task(h._cluster_key, NCC, -1, true, "Nav: cluster keys"))
+	for g in tasks:
+		WorkerThreadPool.wait_for_group_task_completion(g)
 	var first := {}  # key -> the cluster (nav * NCC + ci) costed for it
-	var todo := PackedInt32Array()
+	var todo: Array[PackedInt32Array] = []  # per nav: the clusters to cost
 	var alike := PackedInt32Array()  # cluster, and the one it shares with, in turn
 	for i in navs.size():
 		var keys: Array = (navs[i] as HNav)._keys
+		var own := PackedInt32Array()
 		for ci in NCC:
 			var key: PackedByteArray = keys[ci]
 			if key.is_empty():
@@ -217,12 +243,19 @@ static func build_all(navs: Array) -> void:
 			var was: int = first.get(key, -1)
 			if was < 0:
 				first[key] = slot
-				todo.append(slot)
+				own.append(ci)
 			else:
 				alike.append(slot)
 				alike.append(was)
-	t = WorkerThreadPool.add_group_task(func(j: int): (navs[todo[j] / NCC] as HNav)._cluster_costs(todo[j] % NCC), todo.size(), -1, true, "Nav: entrance costs")
-	WorkerThreadPool.wait_for_group_task_completion(t)
+		todo.append(own)
+	tasks.clear()
+	for i in navs.size():
+		var h: HNav = navs[i]
+		var cls := todo[i]
+		if not cls.is_empty():
+			tasks.append(WorkerThreadPool.add_group_task(func(j: int): h._cluster_costs(cls[j]), cls.size(), -1, true, "Nav: entrance costs"))
+	for g in tasks:
+		WorkerThreadPool.wait_for_group_task_completion(g)
 	for q in range(0, alike.size(), 2):
 		var d := alike[q]
 		var r := alike[q + 1]
@@ -235,13 +268,13 @@ static func build_all(navs: Array) -> void:
 
 ## (On a worker thread.) The entrances along every border.
 func _prepare() -> void:
-	for ci in NCC:
-		var cx := ci % NC
-		var cz := ci / NC
-		if cx < NC - 1:
-			_make_border(ci, ci + 1, _border_picks(ci, ci + 1))
-		if cz < NC - 1:
-			_make_border(ci, ci + NC, _border_picks(ci, ci + NC))
+	for cz in NC:
+		for cx in NC:
+			var ci := cz * NC + cx
+			if cx < NC - 1:
+				_make_border(ci, ci + 1, _border_picks(ci, ci + 1))
+			if cz < NC - 1:
+				_make_border(ci, ci + NC, _border_picks(ci, ci + NC))
 	_keys.resize(NCC)
 
 
@@ -255,12 +288,12 @@ func _cluster_key(ci: int) -> void:
 	var nodes: Array = cl_nodes[ci]
 	basis[ci] = nodes.duplicate()
 	if nodes.size() < 2:
-		costs[ci] = _pair_costs(ci)
+		costs[ci] = _pair_costs(ci, null)  # (nothing to cost, so no grid to make)
 		_keys[ci] = PackedByteArray()
 		return
 	var n := MapDims.N
-	var x0 := (ci % NC) * C
-	var z0 := (ci / NC) * C
+	var x0 := _corner[ci].x
+	var z0 := _corner[ci].y
 	var key := PackedByteArray()
 	var wts := PackedFloat32Array()
 	for z in range(z0, z0 + C):
@@ -581,8 +614,8 @@ func _add_node(c: Vector2i, ci: int) -> int:
 ## of a short one, two in from the ends of a long one.
 func _border_picks(a: int, b: int) -> PackedInt32Array:
 	var side_by_side := b == a + 1
-	var ax := (a % NC) * C
-	var az := (a / NC) * C
+	var ax := _corner[a].x
+	var az := _corner[a].y
 	# (the cells along it, a's side and b's, read from the mirror of the full
 	# grid: as indices, the first pair and the step from one pair to the next)
 	var n := MapDims.N
@@ -600,8 +633,9 @@ func _border_picks(a: int, b: int) -> PackedInt32Array:
 		elif not open and run_start >= 0:
 			var run_end := i - 1
 			var picks := []
+			# (halves by >> 1, not / 2, on the workers: see build_all)
 			if run_end - run_start < 6:
-				picks.append((run_start + run_end) / 2)
+				picks.append((run_start + run_end) >> 1)
 			else:
 				picks.append(run_start + 2)
 				picks.append(run_end - 2)
@@ -614,7 +648,7 @@ func _border_picks(a: int, b: int) -> PackedInt32Array:
 				if cheap and cheap_start < 0:
 					cheap_start = j
 				elif not cheap and cheap_start >= 0:
-					var mid := (cheap_start + j - 1) / 2
+					var mid := (cheap_start + j - 1) >> 1
 					var near := false
 					for q in picks:
 						if absi(int(q) - mid) < 3:
@@ -631,8 +665,8 @@ func _border_picks(a: int, b: int) -> PackedInt32Array:
 ## The entrances at `picks` on the border between a and b, linked across it.
 func _make_border(a: int, b: int, picks: PackedInt32Array) -> void:
 	var side_by_side := b == a + 1
-	var ax := (a % NC) * C
-	var az := (a / NC) * C
+	var ax := _corner[a].x
+	var az := _corner[a].y
 	var ids := []
 	for p in picks:
 		var pa := Vector2i(ax + C - 1, az + p) if side_by_side else Vector2i(ax + p, az + C - 1)
@@ -707,18 +741,17 @@ func _intra(ci: int) -> void:
 ## The cost of walking between each pair of the cluster's entrances (-1: no
 ## way through), as an n x n table: [i * n + j] is from entrance i to entrance
 ## j, worked out for i < j (the way round _intra links them). Only reads the
-## graph, and searches only this cluster's own grid, so clusters can be done
-## side by side.
-func _pair_costs(ci: int, lg: AStarGrid2D = null) -> PackedFloat64Array:
+## graph, and searches only lg, this cluster's own grid, so clusters can be
+## done side by side. With fewer than two entrances there's nothing to search
+## and lg may be null (it isn't checked for null: see build_all).
+func _pair_costs(ci: int, lg: AStarGrid2D) -> PackedFloat64Array:
 	var nodes: Array = cl_nodes[ci]
 	var n := nodes.size()
 	var out := PackedFloat64Array()
 	out.resize(n * n)
 	out.fill(UNKNOWN)
 	if n < 2:
-		return out  # (nothing to cost, so no grid to make)
-	if lg == null:
-		lg = local_grid(ci)
+		return out
 	for i in n:
 		for j in range(i + 1, n):
 			out[i * n + j] = _local_cost(lg, node_cell[nodes[i]], node_cell[nodes[j]])
