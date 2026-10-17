@@ -127,12 +127,19 @@ var building := false
 
 ## The battle itself, once the world is in the tree: the ground and all that
 ## stands on it, the routes, the AI commanders and the view. main.gd awaits it
-## straight after adding the world. Everywhere but in a browser it runs from
-## start to finish at once, as part of that frame (see _breathe).
+## straight after adding the world. With a window it's laid out a stage at a
+## time, a frame of the loading screen between stages (see _breathe);
+## headless it runs from start to finish at once, as part of that frame.
 func build() -> void:
 	building = true
-	if OS.has_feature("web"):
-		process_mode = Node.PROCESS_MODE_DISABLED  # (nothing ticks a world half built)
+	_staged = srv and (OS.has_feature("web") or (has_view and String(settings.get("scenario", "")) == ""))
+	var polled := get_tree().multiplayer_poll
+	if _staged:
+		# nothing ticks a world half built, and no-one's word reaches it: a
+		# player who has loaded is answered (sent the battlefield) once it's
+		# all there, as when it was built in one go
+		process_mode = Node.PROCESS_MODE_DISABLED
+		get_tree().multiplayer_poll = false
 	if srv:
 		nav = Nav.new()
 		nav.terrain = terrain
@@ -190,18 +197,41 @@ func build() -> void:
 		_try_focus()
 	if not srv:
 		_client_ready.rpc_id(1)
+	if _staged:
+		get_tree().multiplayer_poll = polled
+		_staged = false
 	process_mode = Node.PROCESS_MODE_INHERIT
 	building = false
 
 
+var _staged := false  # build() is waiting a frame between its stages
+var _answer_ms := 0
+
+
+## (a stage of a staged build, on the desktop) Has the window answer the
+## system every quarter of a second while the stage lays out the town or the
+## woods (several seconds, thousands of things put down): Windows marks a
+## window that hasn't answered for five seconds Not Responding. Whatever input
+## came in meanwhile is dropped. Nothing in the battle depends on it.
+func _answer_window() -> void:
+	var now := Time.get_ticks_msec()
+	if now >= _answer_ms and not OS.has_feature("web"):
+		_answer_ms = now + 250
+		DisplayServer.force_process_and_drop_events()
+
+
 ## Between the stages of build() (and of MapGen.generate): tells the loading
-## screen, and in a browser waits a frame. A browser runs the game on the
-## page's one thread, and a page that doesn't draw or answer for half a minute
-## gets called unresponsive; built in one go, a battle took about that long.
-## Everywhere else this returns at once, so the build is one piece as ever.
+## screen, and with a window waits a frame, so the loading bar moves and the
+## window answers. Built in one go a battle took half a minute, all in one
+## frame: a browser (which runs the game on the page's one thread) calls a page
+## like that unresponsive, Windows marks the window Not Responding. The world
+## doesn't tick meanwhile, and the stages build exactly what one go did.
+## Headless this returns at once, so the build stays one piece; so it does
+## for a --scenario test setup on the desktop (small, and its scripted events
+## run on timers).
 func _breathe(text: String, frac: float) -> void:
 	build_stage.emit(text, frac)
-	if OS.has_feature("web") and is_inside_tree():
+	if _staged and is_inside_tree():
 		await get_tree().process_frame
 
 
@@ -267,6 +297,8 @@ func spawn(kind: String, props: Dictionary) -> Entity:
 		terrain.structure_changed(e, true)
 	if not ready_peers.is_empty():
 		_pend_spawn.append([e.eid, kind])
+	if _staged:
+		_answer_window()
 	return e
 
 

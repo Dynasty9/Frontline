@@ -104,19 +104,19 @@ static func _aim_y(d: Vector3, xh := Vector3.RIGHT) -> Vector3:
 
 
 ## A round bar from a to b.
-static func _tube(k: VehicleModels, p: Node3D, a: Vector3, b: Vector3, r: float, mat: String, col = null, segs := 8, shadow := true) -> MeshInstance3D:
+static func _tube(k: VehicleModels, p: Node3D, a: Vector3, b: Vector3, r: float, mat: String, col = null, segs := 8, shadow := true) -> Variant:
 	return k._add(p, Res.cyl(r, r, (b - a).length(), segs), mat, col, (a + b) * 0.5, _aim_y(b - a), Vector3.ONE, shadow)
 
 
 ## A flat plate whose length runs from a to b, `w` wide (along x unless the
 ## plate runs along x) and `t` thick.
-static func _plate(k: VehicleModels, p: Node3D, a: Vector3, b: Vector3, w: float, t: float, mat: String, col = null, xh := Vector3.RIGHT, shadow := true) -> MeshInstance3D:
+static func _plate(k: VehicleModels, p: Node3D, a: Vector3, b: Vector3, w: float, t: float, mat: String, col = null, xh := Vector3.RIGHT, shadow := true) -> Variant:
 	return k._add(p, Res.box(Vector3(w, (b - a).length(), t)), mat, col, (a + b) * 0.5, _aim_y(b - a, xh), Vector3.ONE, shadow)
 
 
 ## A pane (glass, a hatch, a grille) lying on a sloped face: centre c, `up`
 ## the in-face direction its height runs along, size (width along x, height).
-static func _pane(k: VehicleModels, p: Node3D, c: Vector3, up: Vector3, s: Vector2, mat: String, col = null, t := 0.03, xh := Vector3.RIGHT) -> MeshInstance3D:
+static func _pane(k: VehicleModels, p: Node3D, c: Vector3, up: Vector3, s: Vector2, mat: String, col = null, t := 0.03, xh := Vector3.RIGHT) -> Variant:
 	var u := up.normalized() * s.y * 0.5
 	return _plate(k, p, c - u, c + u, s.x, t, mat, col, xh, false)
 
@@ -498,7 +498,7 @@ static func _qilin(k: VehicleModels, team: int, arm: String) -> void:
 ## A box lying on a face: `n` the face's outward normal, `ay` the in-face
 ## direction its height runs along, size (width, height, thickness). It sits
 ## on the face (pushed out by half its thickness); `psi` turns it in the face.
-static func _onface(k: VehicleModels, p: Node3D, c: Vector3, n: Vector3, ay: Vector3, s: Vector3, mat: String, col = null, psi := 0.0, shadow := true) -> MeshInstance3D:
+static func _onface(k: VehicleModels, p: Node3D, c: Vector3, n: Vector3, ay: Vector3, s: Vector3, mat: String, col = null, psi := 0.0, shadow := true) -> Variant:
 	var z := n.normalized()
 	var y := (ay - z * ay.dot(z)).normalized()
 	var x := y.cross(z).normalized()

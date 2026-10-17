@@ -94,6 +94,7 @@ static func _lathe(key: String, prof: Array, segs := 24, crease := 50.0) -> Arra
 	arr[Mesh.ARRAY_NORMAL] = ns
 	var am := ArrayMesh.new()
 	am.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arr)
+	Mats.keep_arrays(am, arr)
 	_mc[kk] = am
 	return am
 
@@ -161,6 +162,7 @@ static func _sheet(key: String, rings: Array, inward := false, face := Vector3.Z
 	arr[Mesh.ARRAY_NORMAL] = ns
 	var am := ArrayMesh.new()
 	am.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arr)
+	Mats.keep_arrays(am, arr)
 	_mc[kk] = am
 	return am
 
@@ -201,6 +203,7 @@ static func _decal(k: VehicleModels, p: Node3D, key: String, polys: Array, to3: 
 		arr[Mesh.ARRAY_NORMAL] = ns
 		am = ArrayMesh.new()
 		am.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arr)
+		Mats.keep_arrays(am, arr)
 		_mc[kk] = am
 	k._add(p, am, mat, col, Vector3.ZERO, Vector3.ZERO, Vector3.ONE, false)
 

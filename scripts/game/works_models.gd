@@ -122,6 +122,7 @@ static func _commit(v: PackedVector3Array, n: PackedVector3Array, uv := PackedVe
 		arrays[Mesh.ARRAY_TEX_UV] = uv
 	var m := ArrayMesh.new()
 	m.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+	Mats.keep_arrays(m, arrays)
 	return m
 
 

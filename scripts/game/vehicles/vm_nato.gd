@@ -78,7 +78,7 @@ static func _cam(team: int) -> String:
 ## A plate lying on a sloped face seen side-on: its length runs from a to b
 ## ((z, y) points), centred on x, pushed `push` out along the face's normal
 ## (outward is forward/up when a -> b climbs a front face).
-static func _zy(k: VehicleModels, p: Node3D, x: float, w: float, a: Vector2, b: Vector2, t: float, push: float, mat: String, col = null, shadow := true) -> MeshInstance3D:
+static func _zy(k: VehicleModels, p: Node3D, x: float, w: float, a: Vector2, b: Vector2, t: float, push: float, mat: String, col = null, shadow := true) -> Variant:
 	var d := b - a
 	var dn := d.normalized()
 	var n := Vector2(-dn.y, dn.x)
@@ -88,7 +88,7 @@ static func _zy(k: VehicleModels, p: Node3D, x: float, w: float, a: Vector2, b: 
 
 ## A plate on a side face sloping in (seen from the front): a, b are (x, y)
 ## points on the right-hand side, bottom to top; s = -1 mirrors it to the left.
-static func _xy(k: VehicleModels, p: Node3D, s: float, z: float, l: float, a: Vector2, b: Vector2, t: float, push: float, mat: String, col = null, shadow := true) -> MeshInstance3D:
+static func _xy(k: VehicleModels, p: Node3D, s: float, z: float, l: float, a: Vector2, b: Vector2, t: float, push: float, mat: String, col = null, shadow := true) -> Variant:
 	var d := b - a
 	var dn := d.normalized()
 	var n := Vector2(dn.y, -dn.x)
@@ -99,7 +99,7 @@ static func _xy(k: VehicleModels, p: Node3D, s: float, z: float, l: float, a: Ve
 ## A box lying flat on a face: local x along ex, local y along ey (squared
 ## up to ex), its thickness standing out of the face toward `out`; surf is
 ## the point on the face under the box's centre.
-static func _on_face(k: VehicleModels, p: Node3D, surf: Vector3, ex: Vector3, ey: Vector3, out: Vector3, size: Vector3, mat: String, col = null, shadow := true) -> MeshInstance3D:
+static func _on_face(k: VehicleModels, p: Node3D, surf: Vector3, ex: Vector3, ey: Vector3, out: Vector3, size: Vector3, mat: String, col = null, shadow := true) -> Variant:
 	var x := ex.normalized()
 	var z := x.cross(ey).normalized()
 	if z.dot(out) < 0.0:
@@ -135,12 +135,12 @@ static func _aim(d: Vector3) -> Vector3:
 
 
 ## A round tube from a to b (roll cages, rails, booms, hoses).
-static func _tube(k: VehicleModels, p: Node3D, a: Vector3, b: Vector3, r: float, mat: String, col = null, segs := 8, shadow := true) -> MeshInstance3D:
+static func _tube(k: VehicleModels, p: Node3D, a: Vector3, b: Vector3, r: float, mat: String, col = null, segs := 8, shadow := true) -> Variant:
 	return k._cyl(p, r, r, a.distance_to(b), (a + b) * 0.5, _aim(b - a), mat, col, segs, shadow)
 
 
 ## A square-section beam from a to b.
-static func _beam(k: VehicleModels, p: Node3D, a: Vector3, b: Vector3, w: float, h: float, mat: String, col = null) -> MeshInstance3D:
+static func _beam(k: VehicleModels, p: Node3D, a: Vector3, b: Vector3, w: float, h: float, mat: String, col = null) -> Variant:
 	return k._box(p, Vector3(w, a.distance_to(b), h), (a + b) * 0.5, mat, col, _aim(b - a))
 
 
