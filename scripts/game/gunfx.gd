@@ -8,18 +8,19 @@ extends Node3D
 ## from there (drag, gravity, wind, coming down on the ground), so nothing is
 ## moved from script once it has been spawned, however heavy the fire.
 
-## Muzzle look per weapon sound: [flash radius, flame length, flame width,
-## flash life, light, smoke, brass size (0: none), recoil kick, tracer share,
-## tracer speed, tracer width]
+## Muzzle look per weapon sound, roughly to life: a rifle's flash is a hand's
+## breadth of flame, a .50's a forearm's, an autocannon's a man's height.
+## [flash radius, flame length, flame width, flash life, light, smoke, brass
+## size (0: none), recoil kick, tracer share, tracer speed, tracer width]
 const MUZZLE := {
-	"pistol": [0.2, 0.3, 0.16, 0.04, 0.5, 0.3, 0.75, 0.55, 0.0, 480.0, 0.03],
-	"rifle": [0.3, 0.62, 0.24, 0.045, 0.9, 0.45, 1.0, 1.0, 0.2, 520.0, 0.04],
-	"smg": [0.26, 0.45, 0.2, 0.04, 0.75, 0.38, 0.85, 0.65, 0.12, 480.0, 0.035],
-	"mg": [0.4, 0.9, 0.3, 0.05, 1.2, 0.6, 1.0, 0.85, 0.4, 540.0, 0.045],
-	"minigun": [0.36, 0.7, 0.26, 0.035, 1.1, 0.5, 0.9, 0.3, 0.35, 600.0, 0.04],
-	"hmg": [0.7, 1.4, 0.5, 0.06, 2.0, 1.1, 1.6, 1.3, 0.45, 560.0, 0.07],
-	"gmg": [0.5, 0.65, 0.42, 0.06, 1.4, 1.2, 0.0, 1.0, 0.0, 300.0, 0.05],
-	"ac": [1.05, 2.0, 0.75, 0.07, 2.8, 1.7, 2.1, 1.0, 0.6, 620.0, 0.1],
+	"pistol": [0.07, 0.15, 0.07, 0.03, 0.4, 0.12, 0.75, 0.55, 0.0, 380.0, 0.025],
+	"rifle": [0.1, 0.3, 0.11, 0.035, 0.8, 0.22, 1.0, 1.0, 0.2, 800.0, 0.03],
+	"smg": [0.09, 0.22, 0.09, 0.03, 0.6, 0.18, 0.85, 0.65, 0.12, 420.0, 0.028],
+	"mg": [0.14, 0.42, 0.15, 0.04, 1.0, 0.35, 1.0, 0.85, 0.25, 780.0, 0.035],
+	"minigun": [0.13, 0.36, 0.13, 0.03, 1.0, 0.3, 0.9, 0.3, 0.25, 820.0, 0.03],
+	"hmg": [0.26, 0.8, 0.28, 0.045, 1.8, 0.7, 1.6, 1.3, 0.25, 850.0, 0.05],
+	"gmg": [0.22, 0.38, 0.24, 0.05, 1.3, 0.8, 0.0, 1.0, 0.0, 240.0, 0.04],
+	"ac": [0.5, 1.4, 0.5, 0.06, 2.6, 1.3, 2.1, 1.0, 0.5, 950.0, 0.07],
 }
 ## Tracer colours: red for the Coalition's rounds, green for the Rebels'
 ## (the Soviet-pattern ammunition), a hot orange for anyone else's.
@@ -73,7 +74,7 @@ func _ready() -> void:
 	var fx := Settings.fx_mult()
 	_tr = _ring(quad, TRACER_SHADER, int(320 * maxf(fx, 0.6)), true, 0.6)
 	_fl = _ring(quad, FLASH_SHADER, 200, true, 0.8)
-	_pf = _ring(quad, PUFF_SHADER, int(900 * maxf(fx, 0.5)), true, 0.0)
+	_pf = _ring(quad, PUFF_SHADER, int(1200 * maxf(fx, 0.5)), true, 0.0)
 	_sp = _ring(quad, SPARK_SHADER, int(700 * maxf(fx, 0.5)), true, 0.7)
 	_gr = _ring(quad, SPARK_SHADER.replace("blend_add", "blend_mix"), int(1400 * maxf(fx, 0.5)), true, 0.1)
 	(_gr.mi.material_override as ShaderMaterial).set_shader_parameter("grit", true)
@@ -209,9 +210,10 @@ func flame(p: Vector3, axis: Vector3, width: float, life: float, col: Color, del
 ## A puff of smoke, dust, spray or mist. v: its speed at birth, which drag
 ## eats away; r0/r1: its radius at birth and at the end; rise: how fast it
 ## climbs on its own (smoke) and grav how fast it falls back (thrown earth,
-## water); wind_k: how much the wind carries it.
-func puff(p: Vector3, v: Vector3, r0: float, r1: float, life: float, col: Color, drag := 2.0, rise := 0.0, grav := 0.0, wind_k := 1.0, delay := 0.0) -> void:
-	_pf.put(Transform3D(Basis(v, Vector3(r0, r1, drag), Vector3(rise, wind_k, randf_range(-0.6, 0.6))), p), col, Color(_t0() + delay, life, randf(), grav))
+## water); wind_k: how much the wind carries it; heat: for how many seconds
+## it's still burning gas, glowing before it cools into smoke.
+func puff(p: Vector3, v: Vector3, r0: float, r1: float, life: float, col: Color, drag := 2.0, rise := 0.0, grav := 0.0, wind_k := 1.0, delay := 0.0, heat := 0.0) -> void:
+	_pf.put(Transform3D(Basis(v, Vector3(r0, r1, drag), Vector3(rise, wind_k, heat)), p), col, Color(_t0() + delay, life, randf(), grav))
 
 
 ## A hot spark flying off on `v`, smeared along its path, gone when it
@@ -257,10 +259,18 @@ func light(p: Vector3, energy: float, rng_m: float) -> void:
 
 # --- guns --------------------------------------------------------------------------
 
-## A round leaving a muzzle at p, fired along dir: the flash, the flame
-## thrown out ahead of it (and split out sideways by the flash hider or
-## brake), a moment's light, a breath of smoke, the case spinning out of the
-## ejection port, dust blown up off the ground under a gun fired low.
+const SMOKE := Color(0.62, 0.61, 0.58)  # propellant smoke
+const SOIL := Color(0.58, 0.52, 0.42)  # dry earth thrown up as dust (fine dust shows far paler than the ground)
+const SOIL_GRIT := Color(0.3, 0.25, 0.18)
+
+
+## A round leaving a muzzle at p, fired along dir. What you really see is a
+## flash a hand's breadth across that's gone in a frame - a hot core and a
+## short jet of flame, split into petals by the flash hider (or thrown out
+## sideways by a heavy gun's muzzle brake) - the burning gas that follows the
+## round out, glowing for an instant and cooling to a breath of smoke, a
+## moment's light on what's round it, the case spinning out of the ejection
+## port, and dust blown up off the ground under a gun fired low.
 func muzzle(p: Vector3, dir: Vector3, kind: String, cam_d: float) -> void:
 	shots += 1
 	var m: Array = MUZZLE.get(kind, MUZZLE.rifle)
@@ -269,133 +279,148 @@ func muzzle(p: Vector3, dir: Vector3, kind: String, cam_d: float) -> void:
 	var fl: float = m[1]
 	var fw: float = m[2]
 	var life: float = m[3]
+	var s: float = m[5]
 	var k := randf_range(0.8, 1.2)
-	flame(p - dir * 0.02, dir * fl * randf_range(0.7, 1.3), fw * k, life * 0.9, HOT)
-	flash(p + dir * fr * 0.3, fr * k, life, HOT)
+	flame(p, dir * fl * randf_range(0.75, 1.25), fw * k, life, HOT)
+	flash(p + dir * fr * 0.5, fr * k, life * 0.8, HOT)
 	if cam_d > 140.0:
 		return
-	if fl > 1.0 or randf() < 0.4:
-		var side := dir.cross(Vector3.UP)
-		side = side.normalized() if side.length_squared() > 0.01 else Vector3.RIGHT
-		side = side.rotated(dir, randf() * TAU if fl < 1.0 else randf_range(-0.3, 0.3))
-		var sl := fl * randf_range(0.22, 0.38)
-		flame(p + dir * 0.04, side * sl, fw * 0.55, life * 0.7, HOT)
-		flame(p + dir * 0.04, -side * sl, fw * 0.55, life * 0.7, HOT)
+	var side := dir.cross(Vector3.UP)
+	side = side.normalized() if side.length_squared() > 0.01 else Vector3.RIGHT
+	if fl > 0.7:
+		# a heavy gun's muzzle brake throws the gas out to the sides
+		var sl := fl * randf_range(0.3, 0.45)
+		flame(p + dir * 0.03, (side + dir * 0.35).normalized() * sl, fw * 0.6, life * 0.8, HOT)
+		flame(p + dir * 0.03, (-side + dir * 0.35).normalized() * sl, fw * 0.6, life * 0.8, HOT)
+	elif randf() < 0.5:
+		# the flash hider's prongs split it into a little star of petals
+		var r0 := randf() * TAU
+		for i in 3:
+			var pd := (dir + side.rotated(dir, r0 + i * TAU / 3.0) * 0.7).normalized()
+			flame(p, pd * fl * randf_range(0.35, 0.5), fw * 0.45, life * 0.7, HOT)
 	if cam_d < 90.0:
-		light(p + dir * 0.4, float(m[4]), 3.0 + float(m[4]) * 2.6)
-	var s: float = m[5]
-	if cam_d < 110.0 and randf() < 0.8 * fx:
-		puff(p + dir * 0.2 * s, dir * randf_range(1.2, 2.6) * sqrt(s) + _jit(0.3), 0.06 * s, randf_range(0.45, 0.8) * s, randf_range(1.3, 2.3), Color(0.62, 0.61, 0.58, 0.26 + 0.1 * minf(s, 1.5)), 2.8, 0.22)
+		light(p + dir * 0.3, float(m[4]), 2.5 + float(m[4]) * 2.4)
+	if cam_d < 110.0 and randf() < fx:
+		# the gas behind the round: burning for an instant, then smoke
+		puff(p + dir * 0.05, dir * randf_range(2.0, 4.0) * sqrt(s) + _jit(0.2), 0.02 + 0.03 * s, 0.08 + 0.22 * s, randf_range(0.35, 0.6), Color(SMOKE.r, SMOKE.g, SMOKE.b, 0.3 + 0.15 * minf(s, 1.5)), 8.0, 0.15, 0.0, 0.5, 0.0, 0.03 + 0.03 * s)
+		if randf() < 0.5:
+			puff(p + dir * 0.25 * sqrt(s), dir * randf_range(0.6, 1.4) * sqrt(s) + _jit(0.15), 0.03 + 0.06 * s, (0.25 + 0.45 * s) * randf_range(0.8, 1.2), randf_range(1.2, 2.2), Color(SMOKE.r, SMOKE.g, SMOKE.b, 0.08 + 0.06 * minf(s, 1.5)), 2.5, 0.2)
 	var gy := ground_y(p)
 	var fd := Defs.flat(dir)
-	if cam_d < 100.0 and p.y - gy < (0.75 if fl < 1.0 else 1.8) and fd.length() > 0.3 and randf() < 0.65 * fx:
+	if cam_d < 100.0 and p.y - gy < (0.5 if fl < 0.7 else 1.6) and fd.length() > 0.3 and randf() < 0.6 * fx:
 		# fired low, the blast lifts the dust off the ground in front
 		fd = fd.normalized()
-		puff(Vector3(p.x, gy + 0.1, p.z) + fd * 0.5 * s, fd * randf_range(1.6, 3.2) * sqrt(s) + Vector3(0, 0.25, 0), 0.1 * s, randf_range(0.7, 1.1) * s, randf_range(1.6, 2.4), Color(0.5, 0.45, 0.37, 0.32), 2.4, 0.12)
+		puff(Vector3(p.x, gy + 0.08, p.z) + fd * 0.4 * sqrt(s), fd * randf_range(1.5, 3.0) * sqrt(s) + Vector3(0, 0.2, 0), 0.06 + 0.06 * s, (0.35 + 0.5 * s) * randf_range(0.8, 1.2), randf_range(1.4, 2.2), Color(SOIL.r, SOIL.g, SOIL.b, 0.22), 2.6, 0.1)
 	var bs: float = m[6]
 	if bs > 0.0 and cam_d < 48.0 and randf() < fx:
-		var right := dir.cross(Vector3.UP)
-		right = right.normalized() if right.length_squared() > 0.01 else Vector3.RIGHT
+		var right := side
 		var bv := right * randf_range(1.8, 3.0) + Vector3(0, randf_range(1.6, 2.6), 0) - dir * randf_range(0.2, 0.9)
 		chunk(p - dir * (0.35 + 0.1 * bs) + right * 0.05, bv, Vector3(0.011, 0.011, 0.04) * bs, randf_range(16.0, 26.0), BRASS, gy, 26.0, 0.4, 0.0, true)
 
 
-## The round in flight: a tracer (in its side's colour) for one round in so
-## many, and the barest streak for some of the others. Returns how long it
-## takes to get there.
-func round_flight(from: Vector3, to: Vector3, kind: String, team: int, cam_d: float) -> float:
+## 0 by day, 1 at night (from how much a fire lights up its surroundings).
+func darkness() -> float:
+	return clampf(((vfx.fire_light if vfx else 0.8) - 0.8) / 1.8, 0.0, 1.0)
+
+
+## The round in flight: one in so many is a tracer, in its side's colour - a
+## bright streak at night, a dimmer, shorter one by day (the others can't be
+## seen at all). Returns how long the round takes to get there.
+func round_flight(from: Vector3, to: Vector3, kind: String, team: int, _cam_d: float) -> float:
 	var m: Array = MUZZLE.get(kind, MUZZLE.rifle)
 	var speed: float = m[9]
 	var dist := from.distance_to(to)
 	last_tracer = randf() < float(m[8])
 	if last_tracer:
 		var col: Color = TRACER_COLS[team] if team >= 0 and team < TRACER_COLS.size() else TRACER_HOT
-		tracer(from, to, col, randf_range(6.5, 9.5) * (1.3 if float(m[10]) > 0.06 else 1.0), float(m[10]) * 1.4, speed)
-	elif cam_d < 110.0 and randf() < 0.45 * Settings.fx_mult():
-		tracer(from, to, Color(1.0, 0.9, 0.78, 0.55), 2.2, 0.012, speed)
+		var dark := darkness()
+		col.a *= lerpf(0.4, 1.0, dark)
+		# (lit for the length it covers while the eye holds it, a sixtieth or so)
+		tracer(from, to, col, speed * 0.011 * lerpf(0.65, 1.0, dark) * randf_range(0.85, 1.15), float(m[10]), speed)
 	return minf(dist / speed, 0.45)
 
 
 ## What a round does to what it hit (Fx.HIT_*), at p, `back` pointing back
 ## along its path, `cal` its weight (1: a rifle round), shown after `delay`
-## (when it gets there). Each is a fast, hard spray of grit with a small dense
-## burst of dust at its heart, a few bigger bits thrown clear, and a haze
-## that hangs on after.
+## (when it gets there). Real ones are small and quick: a fast cone of fine
+## stuff blown out of the hole, dense for an instant, grains and a few bigger
+## bits arcing clear, and a thin haze left drifting.
 func impact(kind: int, p: Vector3, back: Vector3, cal: float, cam_d: float, delay := 0.0) -> void:
 	var q := clampf(1.3 - cam_d / 140.0, 0.3, 1.0) * Settings.fx_mult()
-	cal *= 1.45  # (a little larger than life, to read from up where the camera is)
+	cal *= 1.1  # (a touch over life size, to read from where the camera is)
 	var gy := ground_y(p)
 	var sc := sqrt(cal)
 	var up := Vector3.UP
-	var ng := maxi(3, int(14.0 * q * sc))  # grains
+	var ng := maxi(2, int(9.0 * q * sc))  # grains
 	match kind:
 		Fx.HIT_DIRT:
 			# (into the water it's a spout: Fx._shot)
-			# earth spurts up, mostly straight, a little back the way the round came
-			var d := (up + back * 0.35).normalized()
+			# the crown of soil and dust thrown up out of the hole, a little back
+			# the way the round came, falling back as it spreads
+			var d := (up + back * 0.4).normalized()
+			for i in maxi(3, int(6.0 * q * sc + 0.5)):
+				puff(p + Vector3(0, 0.03, 0), (d + _jit(0.22)).normalized() * randf_range(3.5, 8.5) * sc, 0.04 * cal, randf_range(0.18, 0.3) * cal, randf_range(0.6, 1.1), Color(SOIL.r, SOIL.g, SOIL.b, 0.7), 7.0, 0.05, 1.2, 0.4, delay)
+			puff(p + Vector3(0, 0.1, 0), d * 0.6 + _jit(0.2), 0.1 * cal, randf_range(0.42, 0.65) * cal, randf_range(1.6, 2.4), Color(SOIL.r, SOIL.g, SOIL.b, 0.18), 2.0, 0.15, 0.0, 1.0, delay + 0.03)
 			for i in ng:
-				grit(p + Vector3(0, 0.03, 0), (d + _jit(0.38)).normalized() * randf_range(3.0, 8.5) * sc, randf_range(0.6, 1.0), Color(0.24, 0.18, 0.12, 0.95), 0.022 * sc, 0.035, 1.4, gy, delay)
-			for i in maxi(2, int(3.0 * q * sc + 0.5)):
-				puff(p + Vector3(0, 0.05, 0), (d + _jit(0.2)) * randf_range(5.0, 10.0) * sc, 0.03 * cal, randf_range(0.18, 0.3) * cal, randf_range(0.5, 0.8), Color(0.27, 0.21, 0.15, 0.9), 8.0, 0.0, 2.5, 0.3, delay)
-			puff(p + Vector3(0, 0.12, 0), d * 0.8 + _jit(0.25), 0.1 * cal, randf_range(0.55, 0.8) * cal, randf_range(1.8, 2.6), Color(0.45, 0.4, 0.32, 0.22), 2.2, 0.2, 0.0, 1.0, delay + 0.02)
-			for i in int(3.0 * q * cal + 1.0):
-				var ce := randf_range(0.04, 0.07) * sc
-				chunk(p + Vector3(0, 0.04, 0), (d + _jit(0.5)) * randf_range(2.0, 5.0) * sc, Vector3(ce, ce * 0.8, ce), randf_range(5.0, 9.0), Color(0.17, 0.13, 0.09) * randf_range(0.8, 1.15), gy, 14.0, 0.4, delay)
+				grit(p + Vector3(0, 0.02, 0), (d + _jit(0.45)).normalized() * randf_range(2.5, 6.5) * sc, randf_range(0.5, 0.8), Color(SOIL_GRIT.r, SOIL_GRIT.g, SOIL_GRIT.b, 0.85), 0.013 * sc, 0.02, 1.6, gy, delay)
+			for i in int(2.0 * q * cal + 0.8):
+				var ce := randf_range(0.025, 0.045) * sc
+				chunk(p + Vector3(0, 0.03, 0), (d + _jit(0.5)) * randf_range(2.0, 4.5) * sc, Vector3(ce, ce * 0.8, ce), randf_range(5.0, 9.0), Color(0.2, 0.16, 0.11) * randf_range(0.8, 1.15), gy, 14.0, 0.4, delay)
 		Fx.HIT_STONE:
-			# grit and dust blown hard back off the face, chips flying, now
+			# grit and stone dust blown hard back off the face, chips flying, now
 			# and then a spark struck off it
-			var d := (back + up * 0.25).normalized()
+			var d := (back + up * 0.2).normalized()
+			for i in maxi(2, int(3.0 * q * sc + 0.5)):
+				puff(p + back * 0.05, (d + _jit(0.3)).normalized() * randf_range(3.0, 6.5) * sc, 0.03 * cal, randf_range(0.14, 0.24) * cal, randf_range(0.5, 0.9), Color(0.58, 0.57, 0.54, 0.58), 8.0, 0.05, 0.6, 0.4, delay)
+			puff(p + back * 0.15, back * 0.5 + _jit(0.2), 0.08 * cal, randf_range(0.38, 0.55) * cal, randf_range(1.4, 2.0), Color(0.57, 0.56, 0.54, 0.14), 2.0, 0.14, 0.0, 1.0, delay + 0.03)
 			for i in ng:
-				grit(p + back * 0.03, (d + _jit(0.6)).normalized() * randf_range(4.0, 10.0) * sc, randf_range(0.4, 0.8), Color(0.36, 0.35, 0.33, 0.9), 0.018 * sc, 0.03, 1.6, gy, delay)
-			for i in maxi(1, int(2.0 * q * sc + 0.5)):
-				puff(p + back * 0.06, (d + _jit(0.35)) * randf_range(3.0, 6.0) * sc, 0.04 * cal, randf_range(0.22, 0.34) * cal, randf_range(0.7, 1.1), Color(0.5, 0.49, 0.46, 0.62), 6.5, 0.1, 0.5, 0.4, delay)
-			puff(p + back * 0.2, back * 0.7 + _jit(0.25), 0.1 * cal, randf_range(0.55, 0.8) * cal, randf_range(1.8, 2.6), Color(0.52, 0.51, 0.49, 0.14), 2.0, 0.16, 0.0, 1.0, delay + 0.02)
-			for i in int(3.0 * q * cal + 1.0):
-				var ce := randf_range(0.03, 0.055) * sc
-				chunk(p + back * 0.05, (d + _jit(0.7)) * randf_range(2.5, 6.0) * sc, Vector3(ce, ce * 0.6, ce * 0.9), randf_range(5.0, 8.0), Color(0.5, 0.49, 0.46) * randf_range(0.8, 1.2), gy, 18.0, 0.35, delay)
-			if randf() < 0.25 + 0.2 * cal:
-				flash(p + back * 0.05, 0.14 * sc, 0.035, Color(1.0, 0.8, 0.55, 0.7), delay)
-				for i in randi_range(2, 4):
-					spark(p + back * 0.03, (d + _jit(0.9)).normalized() * randf_range(4.0, 9.0), randf_range(0.12, 0.3), HOT, 0.01, 0.018, 2.0, 9.8, gy, delay)
+				grit(p + back * 0.03, (d + _jit(0.55)).normalized() * randf_range(3.5, 8.0) * sc, randf_range(0.35, 0.65), Color(0.42, 0.41, 0.39, 0.85), 0.012 * sc, 0.02, 1.8, gy, delay)
+			for i in int(2.0 * q * cal + 0.8):
+				var ce := randf_range(0.02, 0.04) * sc
+				chunk(p + back * 0.05, (d + _jit(0.7)) * randf_range(2.5, 5.5) * sc, Vector3(ce, ce * 0.6, ce * 0.9), randf_range(5.0, 8.0), Color(0.5, 0.49, 0.46) * randf_range(0.8, 1.2), gy, 18.0, 0.35, delay)
+			if randf() < 0.2 + 0.15 * cal:
+				flash(p + back * 0.04, 0.07 * sc, 0.03, Color(1.0, 0.82, 0.55, 0.8), delay)
+				for i in randi_range(2, 3):
+					spark(p + back * 0.03, (d + _jit(0.9)).normalized() * randf_range(4.0, 9.0), randf_range(0.1, 0.25), HOT, 0.008, 0.016, 2.0, 9.8, gy, delay)
 		Fx.HIT_SAND:
 			# sandbags and packed earth: a dry burst of sand and dust, no chips
 			var d := (back * 0.8 + up * 0.6).normalized()
+			for i in maxi(2, int(3.0 * q * sc + 0.5)):
+				puff(p + back * 0.05, (d + _jit(0.32)).normalized() * randf_range(2.5, 5.5) * sc, 0.04 * cal, randf_range(0.18, 0.3) * cal, randf_range(0.6, 1.0), Color(0.56, 0.49, 0.37, 0.6), 7.0, 0.05, 1.0, 0.4, delay)
+			puff(p + back * 0.15, back * 0.4 + _jit(0.2), 0.1 * cal, randf_range(0.42, 0.6) * cal, randf_range(1.5, 2.2), Color(0.55, 0.5, 0.4, 0.15), 2.0, 0.12, 0.0, 1.0, delay + 0.03)
 			for i in ng:
-				grit(p + back * 0.03, (d + _jit(0.55)).normalized() * randf_range(3.0, 7.0) * sc, randf_range(0.5, 0.9), Color(0.47, 0.4, 0.28, 0.9), 0.016 * sc, 0.03, 1.8, gy, delay)
-			for i in maxi(2, int(2.5 * q * sc + 0.5)):
-				puff(p + back * 0.06, (d + _jit(0.4)) * randf_range(2.5, 5.0) * sc, 0.05 * cal, randf_range(0.26, 0.4) * cal, randf_range(0.7, 1.2), Color(0.5, 0.44, 0.32, 0.66), 6.0, 0.05, 1.5, 0.5, delay)
-			puff(p + back * 0.2, back * 0.5 + _jit(0.25), 0.12 * cal, randf_range(0.6, 0.85) * cal, randf_range(1.8, 2.6), Color(0.52, 0.47, 0.38, 0.17), 2.0, 0.14, 0.0, 1.0, delay + 0.02)
+				grit(p + back * 0.03, (d + _jit(0.5)).normalized() * randf_range(2.5, 6.0) * sc, randf_range(0.45, 0.75), Color(0.45, 0.38, 0.27, 0.85), 0.011 * sc, 0.02, 2.0, gy, delay)
 		Fx.HIT_WOOD:
-			# splinters torn out and a puff of light sawdust
+			# splinters torn out and a puff of pale sawdust
 			var d := (back + up * 0.3).normalized()
 			for i in maxi(2, ng / 2):
-				grit(p + back * 0.03, (d + _jit(0.6)).normalized() * randf_range(3.0, 8.0) * sc, randf_range(0.5, 0.9), Color(0.6, 0.47, 0.3, 0.95), 0.014 * sc, 0.035, 1.4, gy, delay)
-			puff(p + back * 0.08, (d + _jit(0.3)) * randf_range(2.0, 4.0) * sc, 0.04 * cal, randf_range(0.26, 0.4) * cal, randf_range(0.9, 1.4), Color(0.58, 0.48, 0.34, 0.5), 4.5, 0.1, 0.4, 0.6, delay)
-			for i in int(4.0 * q * cal + 1.5):
-				var ln := randf_range(0.08, 0.18) * sc
-				chunk(p + back * 0.05, (d + _jit(0.7)) * randf_range(2.5, 6.0) * sc, Vector3(ln * 0.2, ln * 0.2, ln), randf_range(6.0, 10.0), Color(0.62, 0.47, 0.29) * randf_range(0.75, 1.15), gy, 16.0, 0.5, delay)
+				grit(p + back * 0.03, (d + _jit(0.6)).normalized() * randf_range(3.0, 7.0) * sc, randf_range(0.45, 0.8), Color(0.62, 0.5, 0.33, 0.9), 0.011 * sc, 0.025, 1.5, gy, delay)
+			puff(p + back * 0.06, (d + _jit(0.3)).normalized() * randf_range(1.5, 3.5) * sc, 0.03 * cal, randf_range(0.18, 0.28) * cal, randf_range(0.8, 1.2), Color(0.6, 0.5, 0.36, 0.42), 6.0, 0.08, 0.4, 0.6, delay)
+			for i in int(3.0 * q * cal + 1.0):
+				var ln := randf_range(0.06, 0.14) * sc
+				chunk(p + back * 0.05, (d + _jit(0.7)) * randf_range(2.5, 5.5) * sc, Vector3(ln * 0.18, ln * 0.18, ln), randf_range(6.0, 10.0), Color(0.62, 0.47, 0.29) * randf_range(0.75, 1.15), gy, 16.0, 0.5, delay)
 		Fx.HIT_LEAVES:
 			# leaves and twigs shot off, fluttering down; a puff of green dust
 			for i in maxi(2, ng / 2):
-				grit(p, (back + _jit(0.8)).normalized() * randf_range(2.0, 5.0), randf_range(0.3, 0.6), Color(0.2, 0.27, 0.1, 0.9), 0.014, 0.03, 2.5, gy, delay)
-			puff(p + back * 0.1, back * 1.2 + _jit(0.5), 0.06 * cal, randf_range(0.4, 0.6) * cal, randf_range(1.2, 1.8), Color(0.3, 0.33, 0.18, 0.36), 3.0, 0.1, 0.0, 0.8, delay)
-			for i in int(6.0 * q * cal + 2.5):
-				var lf := randf_range(0.06, 0.1)
+				grit(p, (back + _jit(0.8)).normalized() * randf_range(2.0, 4.5), randf_range(0.3, 0.55), Color(0.2, 0.27, 0.1, 0.85), 0.011, 0.025, 2.5, gy, delay)
+			puff(p + back * 0.1, back * 0.9 + _jit(0.4), 0.05 * cal, randf_range(0.3, 0.45) * cal, randf_range(1.0, 1.6), Color(0.32, 0.34, 0.2, 0.28), 3.0, 0.08, 0.0, 0.8, delay)
+			for i in int(5.0 * q * cal + 2.0):
+				var lf := randf_range(0.05, 0.09)
 				var g := randf_range(0.7, 1.2)
-				chunk(p + _jit(0.2), (back * randf_range(1.0, 3.0) + _jit(1.5) + up * 1.2), Vector3(lf, lf * 0.08, lf * 0.75), randf_range(6.0, 10.0), Color(0.18 * g, 0.26 * g, 0.08 * g), gy, 5.0, 3.6, delay)
+				chunk(p + _jit(0.2), (back * randf_range(1.0, 2.5) + _jit(1.3) + up * 1.0), Vector3(lf, lf * 0.08, lf * 0.75), randf_range(6.0, 10.0), Color(0.18 * g, 0.26 * g, 0.08 * g), gy, 5.0, 3.6, delay)
 		Fx.HIT_METAL:
 			# sparks sprayed off the plate, a white-hot glint, a wisp of smoke
 			var rd := (back + _jit(0.5)).normalized()
-			flash(p + back * 0.05, 0.24 * sc, 0.045, Color(1.0, 0.8, 0.52, 1.0), delay)
-			for i in maxi(4, int(11.0 * q * sc + 0.5)):
-				spark(p + back * 0.04, (rd + _jit(0.85)).normalized() * randf_range(4.0, 14.0) * sc, randf_range(0.15, 0.5), HOT, 0.012, 0.022, 1.6, 9.8, gy, delay)
-			puff(p + back * 0.1, back * 0.6 + _jit(0.3), 0.04, randf_range(0.26, 0.4) * cal, randf_range(0.9, 1.4), Color(0.42, 0.41, 0.4, 0.3), 3.0, 0.3, 0.0, 0.8, delay)
+			flash(p + back * 0.04, 0.1 * sc, 0.03, Color(1.0, 0.82, 0.55, 1.0), delay)
+			for i in maxi(3, int(8.0 * q * sc + 0.5)):
+				spark(p + back * 0.03, (rd + _jit(0.85)).normalized() * randf_range(4.0, 12.0) * sc, randf_range(0.12, 0.4), HOT, 0.009, 0.02, 1.6, 9.8, gy, delay)
+			puff(p + back * 0.08, back * 0.5 + _jit(0.25), 0.03, randf_range(0.18, 0.28) * cal, randf_range(0.8, 1.2), Color(0.42, 0.41, 0.4, 0.22), 3.5, 0.25, 0.0, 0.8, delay)
 		Fx.HIT_FLESH:
 			# a quick dark mist, most of it out the far side
-			puff(p, (-back * randf_range(1.5, 3.0) + _jit(0.4)) * sc, 0.04, randf_range(0.26, 0.36) * sc, randf_range(0.3, 0.42), Color(0.3, 0.03, 0.02, 0.8), 7.0, 0.0, 2.0, 0.2, delay)
-			puff(p, back * randf_range(0.6, 1.2) + _jit(0.3), 0.03, randf_range(0.14, 0.2) * sc, randf_range(0.25, 0.35), Color(0.34, 0.04, 0.03, 0.6), 7.0, 0.0, 1.0, 0.2, delay)
-			for i in int(5.0 * q + 1.0):
-				grit(p, (-back + _jit(0.6)).normalized() * randf_range(2.0, 4.5), randf_range(0.3, 0.6), Color(0.26, 0.02, 0.015, 0.9), 0.012, 0.025, 1.0, gy, delay)
+			puff(p, (-back * randf_range(1.5, 3.0) + _jit(0.3)) * sc, 0.03, randf_range(0.16, 0.24) * sc, randf_range(0.25, 0.35), Color(0.3, 0.03, 0.02, 0.65), 8.0, 0.0, 2.0, 0.2, delay)
+			puff(p, back * randf_range(0.5, 1.0) + _jit(0.2), 0.02, randf_range(0.1, 0.14) * sc, randf_range(0.2, 0.3), Color(0.34, 0.04, 0.03, 0.5), 8.0, 0.0, 1.0, 0.2, delay)
+			for i in int(3.0 * q + 1.0):
+				grit(p, (-back + _jit(0.6)).normalized() * randf_range(2.0, 4.0), randf_range(0.25, 0.5), Color(0.26, 0.02, 0.015, 0.85), 0.01, 0.02, 1.0, gy, delay)
 
 
 ## A ricochet: the round skips off in a new direction, glowing if it was a
@@ -403,86 +428,96 @@ func impact(kind: int, p: Vector3, back: Vector3, cal: float, cam_d: float, dela
 func ricochet(p: Vector3, dir: Vector3, bright: bool, delay := 0.0) -> void:
 	var d := dir.normalized()
 	var to := p + d * randf_range(10.0, 22.0) + Vector3(0, randf_range(1.0, 6.0), 0)
-	tracer(p, to, TRACER_HOT if bright else Color(1.0, 0.78, 0.55, 1.6), 3.0 if bright else 1.6, 0.03 if bright else 0.015, 300.0, delay)
-	for i in randi_range(3, 6):
-		spark(p, (d + _jit(0.7)).normalized() * randf_range(4.0, 10.0), randf_range(0.12, 0.35), HOT, 0.012, 0.02, 1.6, 9.8, ground_y(p), delay)
-	flash(p, 0.22, 0.035, Color(1.0, 0.8, 0.55, 1.0), delay)
+	if bright:
+		var col := TRACER_HOT
+		col.a *= lerpf(0.4, 1.0, darkness())
+		tracer(p, to, col, 3.0, 0.03, 450.0, delay)
+	for i in randi_range(3, 5):
+		spark(p, (d + _jit(0.7)).normalized() * randf_range(4.0, 10.0), randf_range(0.1, 0.3), HOT, 0.009, 0.018, 1.6, 9.8, ground_y(p), delay)
+	flash(p, 0.08, 0.03, Color(1.0, 0.82, 0.55, 1.0), delay)
 
 
-## A tank's main gun: a blinding flash, a fireball thrown out ahead and a
-## long tongue of flame, burning propellant flecks, a great cloud of smoke
-## rolling out round the muzzle and, if it's low enough, the blast slapping
-## the ground and driving a ring of dust out from under the gun.
+## A tank's main gun: a flash of fire the size of a car, gone in a blink, the
+## burning gas rolling out ahead in a fireball that turns to smoke, flecks of
+## burning propellant, a great cloud left hanging in front of the gun and,
+## close to the ground, the blast driving a ring of dust out from under it
+## that hides the tank for a moment.
 func cannon_blast(p: Vector3, dir: Vector3, cam_d: float) -> void:
 	var fx := Settings.fx_mult()
-	flash(p + dir * 0.6, 2.6, 0.1, HOT)
-	flash(p + dir * 2.4, 1.9, 0.13, Color(1.0, 0.5, 0.18, 1.0))
-	flame(p, dir * randf_range(4.0, 5.5), 1.6, 0.09, HOT)
+	flash(p + dir * 1.4, 2.0, 0.06, HOT)
+	flame(p, dir * randf_range(3.5, 4.5), 1.6, 0.07, HOT)
 	light(p + dir * 1.5, 7.0, 18.0)
 	if cam_d > 200.0:
 		return
-	for i in int(8 * fx) + 3:
-		puff(p + dir * randf_range(0.5, 2.5), dir * randf_range(5.0, 15.0) + _jit(3.0), 0.4, randf_range(1.6, 2.6), randf_range(2.4, 3.8), Color(0.6, 0.58, 0.55, 0.4), 2.4, 0.3)
-	for i in int(4 * fx) + 2:
-		var sd := dir.cross(Vector3.UP).normalized() * (1.0 if i % 2 == 0 else -1.0)
-		puff(p + dir * 0.3, sd * randf_range(3.0, 7.0) + dir * randf_range(1.0, 3.0) + _jit(1.0), 0.3, randf_range(1.1, 1.8), randf_range(2.0, 3.0), Color(0.58, 0.56, 0.53, 0.38), 2.6, 0.3)
-	for i in int(12 * fx) + 4:
-		spark(p + dir * 0.4, (dir + _jit(0.35)).normalized() * randf_range(14.0, 34.0), randf_range(0.2, 0.55), HOT, 0.03, 0.012, 2.4, 3.0)
+	# the fireball: it's out at full size within a frame or two, burning,
+	# and the smoke it turns into takes over from it
+	for i in int(6 * fx) + 3:
+		puff(p + dir * randf_range(0.6, 2.6) + _jit(0.35), (dir + _jit(0.35)) * randf_range(4.0, 10.0), 0.8, randf_range(1.4, 2.0), randf_range(0.4, 0.6), Color(0.5, 0.48, 0.45, 0.85), 6.0, 0.4, 0.0, 0.6, randf_range(0.0, 0.02), randf_range(0.14, 0.22))
+	# the smoke left hanging in front of the gun
+	for i in int(9 * fx) + 3:
+		puff(p + dir * randf_range(0.8, 3.0), dir * randf_range(3.0, 9.0) + _jit(2.0), 0.9, randf_range(1.9, 3.0), randf_range(3.5, 5.5), Color(0.6, 0.58, 0.55, 0.34), 2.2, 0.3, 0.0, 1.0, randf_range(0.04, 0.12))
+	for i in int(10 * fx) + 3:
+		spark(p + dir * 0.4, (dir + _jit(0.3)).normalized() * randf_range(14.0, 32.0), randf_range(0.2, 0.5), HOT, 0.025, 0.012, 2.4, 3.0)
 	var gy := ground_y(p)
 	var f := Defs.flat(dir)
 	if p.y - gy < 4.5 and f.length() > 0.2:
 		f = f.normalized()
-		for i in int(12 * fx) + 4:
-			var a := randf_range(-1.9, 1.9)
+		for i in int(14 * fx) + 5:
+			var a := randf_range(-2.0, 2.0)
 			var d := f.rotated(Vector3.UP, a)
 			var gp := Vector3(p.x, gy + 0.35, p.z) + f * 1.2 + d * randf_range(0.3, 1.5)
-			puff(gp, d * randf_range(5.0, 11.0) * (1.25 - absf(a) / 3.0) + Vector3(0, randf_range(0.3, 1.2), 0), 0.5, randf_range(1.6, 2.8), randf_range(2.2, 3.6), Color(0.5, 0.45, 0.36, 0.4), 2.6, 0.18, 0.0, 1.0, randf_range(0.0, 0.05))
+			puff(gp, d * randf_range(5.0, 12.0) * (1.25 - absf(a) / 3.0) + Vector3(0, randf_range(0.3, 1.2), 0), 0.6, randf_range(1.8, 3.2), randf_range(3.0, 5.0), Color(SOIL.r, SOIL.g, SOIL.b, 0.5), 2.6, 0.18, 0.0, 1.0, randf_range(0.0, 0.06))
 	if vfx and fx >= 0.6:
 		vfx._shockwave(p + dir * 0.8, 0.45)
 
 
-## A rocket or missile leaving its launcher: flame and smoke out of both ends
-## of the tube, and the back-blast kicking up the ground behind it.
+## A rocket or missile leaving its launcher: flame out of both ends of the
+## tube, the back-blast's burning gas turning to a cloud of smoke and kicking
+## up the ground behind it.
 func launch_blast(p: Vector3, dir: Vector3, cam_d: float) -> void:
 	var fx := Settings.fx_mult()
 	var d := dir.normalized()
-	flash(p + d * 0.2, 0.7, 0.06, HOT)
-	flame(p, d * 1.1, 0.45, 0.06, HOT)
+	flame(p, d * 0.7, 0.3, 0.05, HOT)
+	flash(p + d * 0.15, 0.3, 0.04, HOT)
 	var bp := p - d * 1.0
-	flame(bp, -d * randf_range(1.8, 2.6), 0.9, 0.08, HOT)
-	flash(bp - d * 0.4, 1.0, 0.08, HOT)
+	flame(bp, -d * randf_range(1.6, 2.4), 0.8, 0.07, HOT)
+	flash(bp - d * 0.3, 0.6, 0.05, HOT)
 	light(bp, 3.5, 9.0)
 	if cam_d > 160.0:
 		return
-	for i in int(7 * fx) + 3:
-		puff(bp - d * randf_range(0.0, 0.6), (-d + _jit(0.3)) * randf_range(7.0, 16.0), 0.25, randf_range(1.1, 2.0), randf_range(2.2, 3.4), Color(0.64, 0.62, 0.58, 0.48), 3.2, 0.25)
-	for i in int(3 * fx) + 1:
-		puff(p + d * 0.3, (d + _jit(0.4)) * randf_range(2.0, 4.0), 0.15, randf_range(0.6, 1.0), randf_range(1.6, 2.4), Color(0.66, 0.64, 0.6, 0.4), 3.0, 0.25)
+	for i in int(3 * fx) + 2:
+		puff(bp - d * randf_range(0.0, 0.5), (-d + _jit(0.25)) * randf_range(6.0, 12.0), 0.2, randf_range(0.6, 1.0), randf_range(0.8, 1.2), Color(0.55, 0.53, 0.5, 0.7), 5.0, 0.3, 0.0, 0.6, 0.0, randf_range(0.06, 0.1))
+	for i in int(6 * fx) + 3:
+		puff(bp - d * randf_range(0.0, 0.6), (-d + _jit(0.3)) * randf_range(5.0, 13.0), 0.25, randf_range(1.0, 1.8), randf_range(2.4, 3.6), Color(0.64, 0.62, 0.58, 0.32), 3.0, 0.25)
+	for i in int(2 * fx) + 1:
+		puff(p + d * 0.3, (d + _jit(0.4)) * randf_range(2.0, 4.0), 0.12, randf_range(0.4, 0.7), randf_range(1.4, 2.2), Color(0.66, 0.64, 0.6, 0.25), 3.0, 0.25)
 	var gy := ground_y(bp)
 	if bp.y - gy < 2.5:
 		var f := Defs.flat(-d)
 		f = f.normalized() if f.length() > 0.2 else Vector3.BACK
 		for i in int(6 * fx) + 2:
 			var g := f.rotated(Vector3.UP, randf_range(-1.1, 1.1))
-			puff(Vector3(bp.x, gy + 0.2, bp.z) + g * randf_range(0.3, 1.2), g * randf_range(3.0, 8.0) + Vector3(0, 0.4, 0), 0.3, randf_range(1.2, 2.0), randf_range(2.2, 3.2), Color(0.5, 0.45, 0.36, 0.42), 2.6, 0.15)
+			puff(Vector3(bp.x, gy + 0.2, bp.z) + g * randf_range(0.3, 1.2), g * randf_range(3.0, 8.0) + Vector3(0, 0.4, 0), 0.3, randf_range(1.1, 1.8), randf_range(2.2, 3.2), Color(SOIL.r, SOIL.g, SOIL.b, 0.32), 2.6, 0.15)
 
 
-## A mortar round leaving the tube: a bark of flame straight up, smoke and
-## dust blown out round the base plate.
+## A mortar round leaving the tube: a bark of flame straight up, the gas
+## cooling into a puff of smoke, dust blown out round the base plate.
 func mortar_blast(p: Vector3, cam_d: float) -> void:
 	var fx := Settings.fx_mult()
 	var up := Vector3.UP
-	flame(p, up * randf_range(1.3, 1.8), 0.55, 0.06, HOT)
-	flash(p + up * 0.3, 0.9, 0.06, HOT)
+	flame(p, up * randf_range(1.0, 1.4), 0.4, 0.05, HOT)
+	flash(p + up * 0.25, 0.4, 0.04, HOT)
 	light(p + up * 0.5, 3.0, 8.0)
 	if cam_d > 160.0:
 		return
-	for i in int(4 * fx) + 2:
-		puff(p + up * 0.3, (up + _jit(0.25)) * randf_range(3.0, 8.0), 0.2, randf_range(0.9, 1.6), randf_range(2.4, 3.4), Color(0.64, 0.62, 0.58, 0.45), 2.8, 0.3)
+	for i in 2:
+		puff(p + up * 0.25, (up + _jit(0.2)) * randf_range(4.0, 8.0), 0.12, randf_range(0.4, 0.6), randf_range(0.7, 1.0), Color(0.55, 0.53, 0.5, 0.65), 5.0, 0.3, 0.0, 0.6, 0.0, 0.06)
+	for i in int(3 * fx) + 2:
+		puff(p + up * 0.3, (up + _jit(0.25)) * randf_range(3.0, 7.0), 0.2, randf_range(0.8, 1.4), randf_range(2.4, 3.4), Color(0.64, 0.62, 0.58, 0.32), 2.8, 0.3)
 	var gy := ground_y(p)
 	for i in int(6 * fx) + 2:
 		var g := Vector3.FORWARD.rotated(up, randf() * TAU)
-		puff(Vector3(p.x, gy + 0.15, p.z) + g * 0.4, g * randf_range(2.5, 5.0) + Vector3(0, 0.3, 0), 0.25, randf_range(0.8, 1.3), randf_range(1.8, 2.6), Color(0.5, 0.45, 0.36, 0.36), 2.8, 0.12)
+		puff(Vector3(p.x, gy + 0.15, p.z) + g * 0.4, g * randf_range(2.5, 5.0) + Vector3(0, 0.3, 0), 0.25, randf_range(0.7, 1.2), randf_range(1.8, 2.6), Color(SOIL.r, SOIL.g, SOIL.b, 0.28), 2.8, 0.12)
 
 
 ## Draws each layer once out of sight, so their shaders are compiled during
@@ -492,7 +527,7 @@ func prewarm(at: Vector3) -> void:
 	tracer(p, p + Vector3(5, 0, 0), TRACER_HOT)
 	flash(p, 0.3, 0.05, HOT)
 	flame(p, Vector3(1, 0, 0), 0.3, 0.05, HOT)
-	puff(p, Vector3.ZERO, 0.2, 0.5, 0.2, Color(0.5, 0.5, 0.5, 0.5))
+	puff(p, Vector3.ZERO, 0.2, 0.5, 0.2, Color(0.5, 0.5, 0.5, 0.5), 2.0, 0.0, 0.0, 1.0, 0.0, 0.1)
 	spark(p, Vector3.UP, 0.2, HOT)
 	grit(p, Vector3.UP, 0.2, Color(0.2, 0.2, 0.2, 1.0))
 	chunk(p, Vector3.UP, Vector3(0.05, 0.05, 0.05), 0.2, Color(0.2, 0.2, 0.2), p.y - 1.0)
@@ -534,9 +569,9 @@ void vertex() {
 		side = sl > 1e-5 ? side / sl : INV_VIEW_MATRIX[0].xyz;
 		// never thinner than a pixel or two, however far off: it dims instead
 		float px = length(to_p) * 2.0 / (PROJECTION_MATRIX[1][1] * VIEWPORT_SIZE.y);
-		float w = max(prm.y, px * 2.2);
+		float w = max(prm.y, px * 1.6);
 		v_k = clamp(prm.y / w, 0.45, 1.0);
-		wp = p + side * (UV.x - 0.5) * w * 3.0;
+		wp = p + side * (UV.x - 0.5) * w * 2.4;
 	}
 	VERTEX = (VIEW_MATRIX * vec4(wp, 1.0)).xyz;
 }
@@ -544,10 +579,10 @@ void vertex() {
 void fragment() {
 	float x = UV.x * 2.0 - 1.0;
 	float a = UV.y;  // 0 at the head, 1 at the tail
-	float core = exp(-x * x * 14.0);
-	float halo = exp(-x * x * 3.0);
+	float core = exp(-x * x * 20.0);
+	float halo = exp(-x * x * 4.0);
 	float along = (1.0 - a) * (1.0 - a);
-	vec3 c = v_col.rgb * (halo * 0.35 + core * 0.9) + vec3(1.0, 0.9, 0.8) * core * core * (1.0 - a) * 0.6;
+	vec3 c = v_col.rgb * (halo * 0.16 + core) + vec3(1.0, 0.9, 0.8) * core * core * (1.0 - a) * 0.5;
 	ALBEDO = c * v_col.a * v_k * mix(0.04, 1.0, along) * smoothstep(0.0, 0.03, 1.0 - a + 0.01);
 	ALPHA = 1.0;
 }
@@ -565,7 +600,7 @@ uniform sampler2D depth_tex : hint_depth_texture, filter_nearest;
 #else
 #define NDC_Z(d) (d)
 #endif
-uniform float intensity = 7.0;
+uniform float intensity = 5.0;
 varying vec4 v_col;
 varying float v_k;
 varying float v_seed;
@@ -588,11 +623,16 @@ void vertex() {
 		v_k = pow(1.0 - u, 1.3);
 		if (prm.z < 0.5) {
 			float a = v_seed * 6.2831;
-			vec2 q = vec2(UV.x - 0.5, 0.5 - UV.y) * 2.0 * prm.x * (0.85 + 0.35 * u);
+			// a flash is so bright it still twinkles a few pixels wide from far
+			// off, however small it really is
+			float px = length(o - cam) * 2.0 / (PROJECTION_MATRIX[1][1] * VIEWPORT_SIZE.y);
+			float rad = max(prm.x, px * 3.0);
+			v_k *= mix(1.0, clamp(prm.x / rad, 0.0, 1.0), 0.5);
+			vec2 q = vec2(UV.x - 0.5, 0.5 - UV.y) * 2.0 * rad * (0.85 + 0.35 * u);
 			q = vec2(q.x * cos(a) - q.y * sin(a), q.x * sin(a) + q.y * cos(a));
 			// drawn a little towards the camera, so the gun doesn't cut through it
 			vec3 tc = normalize(cam - o);
-			wp = o + tc * min(prm.x * 0.5, 0.3) + INV_VIEW_MATRIX[0].xyz * q.x + INV_VIEW_MATRIX[1].xyz * q.y;
+			wp = o + tc * min(rad * 0.5, 0.3) + INV_VIEW_MATRIX[0].xyz * q.x + INV_VIEW_MATRIX[1].xyz * q.y;
 		} else {
 			float len = length(axis);
 			vec3 dir = axis / max(len, 1e-4);
@@ -611,28 +651,29 @@ void fragment() {
 	float g;
 	vec3 c;
 	if (v_kind < 0.5) {
-		// the burst: a white-hot core, ragged spikes, a soft orange bloom
+		// the burst: a white-hot point in a ragged ball of orange gas
 		vec2 p = UV * 2.0 - 1.0;
 		float r = length(p);
 		float ang = atan(p.y, p.x);
-		float n = texture(noise_tex, vec2(ang * 0.3183 + v_seed * 3.0, v_seed * 7.0)).r;
-		float spikes = pow(abs(cos(ang * 2.0 + v_seed * 11.0)), 14.0) + pow(abs(cos(ang * 3.0 + v_seed * 5.0)), 24.0) * 0.6;
-		g = exp(-r * r * 16.0) * 1.8 + spikes * (0.4 + 0.9 * n) * exp(-r * 3.4) * 0.9 + exp(-r * 4.5) * 0.3;
-		g *= 1.0 - smoothstep(0.75, 1.0, r);
-		c = mix(v_col.rgb, vec3(1.0, 0.95, 0.86), exp(-r * r * 22.0));
+		float n = texture(noise_tex, vec2(ang * 0.159 + v_seed * 3.0, r * 0.25 + v_seed * 7.0)).r;
+		float rr = r * (0.75 + 0.6 * n);
+		g = exp(-r * r * 36.0) * 2.0 + exp(-rr * rr * 5.0) * 0.55;
+		g *= 1.0 - smoothstep(0.7, 1.0, r);
+		c = mix(v_col.rgb, vec3(1.0, 0.92, 0.74), exp(-r * r * 28.0));
 	} else {
-		// the flame: widest a little way out from the muzzle, torn to a point
+		// the flame: a narrow jet at the muzzle blooming into a ragged lick of
+		// fire a little way out, torn away at the tip
 		float x = UV.x * 2.0 - 1.0;
 		float v = UV.y;
-		float n = texture(noise_tex, vec2(UV.x * 0.3 + v_seed * 5.1, v * 0.45 + v_seed * 2.3)).r;
-		float n2 = texture(noise_tex, vec2(UV.x * 0.8 + v_seed * 1.7, v * 1.3 - v_seed * 4.0)).g;
-		float prof = sqrt(sin(3.14159 * clamp(v * 0.94 + 0.03, 0.0, 1.0))) * mix(1.0, 0.45, v);
-		float edge = prof * (0.55 + 0.75 * n);
-		float d = abs(x) + (n2 - 0.5) * 0.35 * v;
-		float body = 1.0 - smoothstep(edge * 0.3, edge, d);
-		float core = (1.0 - smoothstep(0.0, edge * 0.42, d)) * (1.0 - smoothstep(0.04, 0.55, v));
-		g = body * (0.45 + 0.65 * (1.0 - v)) * (0.7 + 0.6 * n) + core * 1.5;
-		c = mix(v_col.rgb, vec3(1.0, 0.93, 0.78), clamp(core, 0.0, 1.0));
+		float n = texture(noise_tex, vec2(UV.x * 0.35 + v_seed * 5.1, v * 0.5 + v_seed * 2.3)).r;
+		float n2 = texture(noise_tex, vec2(UV.x * 0.9 + v_seed * 1.7, v * 1.6 - v_seed * 4.0)).g;
+		float prof = mix(0.3, 1.0, smoothstep(0.0, 0.4, v)) * sqrt(1.0 - smoothstep(0.45, 1.0, v));
+		float edge = prof * (0.5 + 0.8 * n);
+		float d = abs(x) + (n2 - 0.5) * 0.45 * v;
+		float body = 1.0 - smoothstep(edge * 0.25, edge, d);
+		float core = (1.0 - smoothstep(0.0, edge * 0.4, d)) * (1.0 - smoothstep(0.05, 0.5, v));
+		g = body * (0.4 + 0.6 * (1.0 - v)) * (0.6 + 0.7 * n) + core * 1.3;
+		c = mix(v_col.rgb * vec3(1.0, 0.85, 0.75), vec3(1.0, 0.92, 0.75), clamp(core, 0.0, 1.0));
 	}
 	float dz = texture(depth_tex, SCREEN_UV).r;
 	vec4 vp = INV_PROJECTION_MATRIX * vec4(SCREEN_UV * 2.0 - 1.0, NDC_Z(dz), 1.0);
@@ -642,6 +683,11 @@ void fragment() {
 }
 """
 
+## Smoke and dust as a little volume on a sprite: a density field from
+## warped noise (dense at the heart, wispy and torn at the edges), shaded by
+## how much of itself lies between each point and the sun, so it's lit on
+## one side and in its own shadow on the other the way real smoke is - and,
+## for a moment, hot gas glowing through it before it cools.
 const PUFF_SHADER := """
 shader_type spatial;
 render_mode unshaded, blend_mix, depth_draw_never, cull_disabled, shadows_disabled, skip_vertex_transform;
@@ -663,14 +709,14 @@ uniform float amb_energy = 0.8;
 varying vec4 v_col;
 varying float v_u;
 varying float v_seed;
-varying vec2 v_rot;
-varying vec3 v_lv;
+varying float v_heat;
+varying vec3 v_ls;  // towards the sun in the sprite's own frame: across it, and (z) towards the camera
 
 void vertex() {
 	vec3 o = MODEL_MATRIX[3].xyz;
 	vec3 v0 = MODEL_MATRIX[0].xyz;
 	vec3 sz = MODEL_MATRIX[1].xyz;  // radius at birth, radius at the end, drag
-	vec3 mo = MODEL_MATRIX[2].xyz;  // rise, wind share, spin
+	vec3 mo = MODEL_MATRIX[2].xyz;  // rise, wind share, seconds it's still burning gas
 	float age = now - INSTANCE_CUSTOM.x;
 	float life = INSTANCE_CUSTOM.y;
 	vec3 cam = INV_VIEW_MATRIX[3].xyz;
@@ -678,48 +724,72 @@ void vertex() {
 	v_col = COLOR;
 	v_seed = INSTANCE_CUSTOM.z;
 	v_u = 1.0;
-	v_rot = vec2(1.0, 0.0);
-	v_lv = normalize((VIEW_MATRIX * vec4(sun_dir, 0.0)).xyz);
+	v_heat = 0.0;
+	v_ls = vec3(0.0, 0.0, 1.0);
 	if (age >= 0.0 && age < life) {
 		float u = age / life;
 		float k = max(sz.z, 0.05);
 		vec3 p = o + v0 * ((1.0 - exp(-k * age)) / k) + wind * (mo.y * age);
 		p.y += mo.x * age - 0.5 * INSTANCE_CUSTOM.w * age * age;
+		// it opens out fast, then slows as the air takes it
 		float s = mix(sz.x, sz.y, 1.0 - pow(1.0 - u, 3.0));
 		p.y = max(p.y, o.y - 0.3 + s * 0.3);
-		float a = v_seed * 6.2831 + mo.z * age;
-		v_rot = vec2(cos(a), sin(a));
+		float a = v_seed * 6.2831 + (v_seed - 0.5) * 1.4 * age;
+		vec2 rc = vec2(cos(a), sin(a));
 		vec2 q = vec2(UV.x - 0.5, 0.5 - UV.y) * 2.0 * s;
-		q = vec2(q.x * v_rot.x - q.y * v_rot.y, q.x * v_rot.y + q.y * v_rot.x);
+		q = vec2(q.x * rc.x - q.y * rc.y, q.x * rc.y + q.y * rc.x);
 		wp = p + INV_VIEW_MATRIX[0].xyz * q.x + INV_VIEW_MATRIX[1].xyz * q.y;
 		v_u = u;
+		v_heat = mo.z > 0.0 ? pow(clamp(1.0 - age / mo.z, 0.0, 1.0), 1.5) : 0.0;
+		vec3 lv = normalize((VIEW_MATRIX * vec4(sun_dir, 0.0)).xyz);
+		v_ls = vec3(lv.x * rc.x + lv.y * rc.y, -lv.x * rc.y + lv.y * rc.x, lv.z);
 	}
 	VERTEX = (VIEW_MATRIX * vec4(wp, 1.0)).xyz;
 }
 
+// how thick the smoke is at p (-1..1 across the sprite)
+float density(vec2 p, float u, float seed) {
+	vec2 b = vec2(seed * 5.31, seed * 9.17);
+	vec2 flow = vec2(u * 0.09, u * 0.06);
+	vec3 w = texture(noise_tex, p * 0.18 + b + flow).rgb;
+	// the outline itself is warped, so no two come out round
+	vec2 pw = p + (w.rb - 0.5) * (0.55 + 0.35 * u);
+	float n1 = texture(noise_tex, pw * 0.3 + b * 1.3 - flow).r;
+	float n2 = texture(noise_tex, pw * 0.75 + b * 2.1 + flow * 1.5).g;
+	float n = clamp((n1 * 0.65 + n2 * 0.35 - 0.5) * 1.8 + 0.5, 0.0, 1.0);
+	float fall = 1.0 - smoothstep(0.1, 0.95, length(pw));
+	// a dense heart going wispy as it spreads, eaten away from the edges in;
+	// (and nothing may reach the quad's edges)
+	return clamp(fall * (0.15 + 1.5 * n) - u * 0.45 * (1.0 - n), 0.0, 1.0) * (1.0 - smoothstep(0.75, 1.0, length(p)));
+}
+
 void fragment() {
 	vec2 p = vec2(UV.x * 2.0 - 1.0, 1.0 - UV.y * 2.0);
-	float r = length(p);
-	vec2 nuv = UV * 0.42 + vec2(v_seed * 5.31, v_seed * 9.17);
-	vec3 t1 = texture(noise_tex, nuv + vec2(v_u * 0.07, v_u * 0.05)).rgb;
-	vec3 t2 = texture(noise_tex, nuv * 2.03 + 0.37 - vec2(v_u * 0.1, 0.0)).rgb;
-	float n = t1.r * 0.45 + t1.g * 0.3 + t2.g * 0.25;
-	float edge = r + (0.5 - n) * (1.05 + v_u * 0.9);
-	// (however the noise eats at it, nothing may reach the quad's edges)
-	float shape = (1.0 - smoothstep(0.25, 0.95, edge)) * (1.0 - smoothstep(0.62, 0.98, r));
-	// it tears into wisps as it spreads and thins
-	shape *= mix(1.0, smoothstep(0.18, 0.62, t2.g * 0.6 + t1.b * 0.4), 0.3 + 0.4 * v_u);
-	float fade = smoothstep(0.0, 0.04, v_u) * (1.0 - smoothstep(0.2, 1.0, v_u));
-	float a = shape * v_col.a * fade;
+	float d = density(p, v_u, v_seed);
+	// the smoke between here and the sun: sampled towards it across the
+	// sprite, or (the sun behind or before it) its own thickness here. Seen
+	// from the sun's side it's lit all over; from the far side the thick of
+	// it is in its own shadow and only the thin edges glow.
+	float ds = density(p + v_ls.xy * 0.45, v_u, v_seed);
+	float thick = mix(ds, d, abs(v_ls.z) * 0.6);
+	float lit = exp(-thick * mix(2.4, 0.35, v_ls.z * 0.5 + 0.5));
+	float rim = pow(max(-v_ls.z, 0.0), 2.0) * (1.0 - smoothstep(0.0, 0.45, d)) * 0.6;
+	// (the thick of it a little darker: it shades itself from the sky too)
+	vec3 col = v_col.rgb * (sun_col * sun_energy * (lit * 0.9 + rim) + amb_col * amb_energy) * (1.0 - 0.22 * d * d);
+	float fade = smoothstep(0.0, 0.03, v_u) * (1.0 - smoothstep(0.25, 1.0, v_u));
+	float a = smoothstep(0.0, 0.85, d) * v_col.a * fade;
+	if (v_heat > 0.0) {
+		// burning gas: hottest in the thick of it, going sooty as it cools
+		float h = v_heat * smoothstep(0.04, 0.5, d);
+		vec3 fire = mix(vec3(0.55, 0.1, 0.02), vec3(1.0, 0.42, 0.08), smoothstep(0.1, 0.45, h));
+		fire = mix(fire, vec3(1.0, 0.85, 0.55), smoothstep(0.5, 0.85, h));
+		col *= mix(1.0, 0.5, v_heat * (1.0 - h));
+		col = mix(col, fire * (0.8 + 7.0 * h * h), smoothstep(0.02, 0.25, h));
+		a = clamp(a + h * 0.5 * v_col.a, 0.0, 1.0);
+	}
 	float dz = texture(depth_tex, SCREEN_UV).r;
 	vec4 vp = INV_PROJECTION_MATRIX * vec4(SCREEN_UV * 2.0 - 1.0, NDC_Z(dz), 1.0);
 	a *= clamp((-vp.z / vp.w + VERTEX.z) / 0.35, 0.0, 1.0);
-	// lit like a little volume: brighter on the sun's side, darker in the middle
-	float nz = sqrt(max(0.0, 1.0 - min(r * r, 1.0)));
-	vec3 ns = normalize(vec3(p * 0.8 + (vec2(t1.r, t2.r) - 0.5) * 0.8, nz + 0.35));
-	vec3 nv = vec3(v_rot.x * ns.x - v_rot.y * ns.y, v_rot.y * ns.x + v_rot.x * ns.y, ns.z);
-	float diff = clamp(dot(nv, v_lv) * 0.7 + 0.3, 0.0, 1.0);
-	vec3 col = v_col.rgb * (sun_col * sun_energy * diff * mix(0.55, 1.0, n) + amb_col * amb_energy * (0.6 + 0.4 * n));
 	ALBEDO = col;
 	ALPHA = clamp(a, 0.0, 1.0);
 }
