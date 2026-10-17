@@ -4,6 +4,34 @@ Every release of Frontline, newest first. The game updates itself; downloads, an
 are on [the website](https://web-production-5a4c1.up.railway.app/changelog/). Each change is written up in [`changelog/`](changelog/) as part of
 the pull request that makes it.
 
+## v1.0.6: Performance
+
+*17 October 2026* · [Release on GitHub](https://github.com/Dynasty9/Frontline/releases/tag/v1.0.6)
+
+### Improved
+
+#### The game opens faster
+
+The title and the menu come up seconds sooner after you launch the game. The rest of the game gets ready behind the title while it plays, instead of before anything shows.
+
+- **The title shows sooner:** the game used to prepare everything it would need for a battle before showing
+  anything at all. Now it shows the title and the menu as soon as they're ready, and prepares the battle behind
+  them while the title plays.
+- **Starting a battle straight away** (in the first few seconds) waits behind the loading screen for that to
+  finish; after that, battles start as quickly as before.
+- **The Field Manual and the Settings** are put together the first time you open them, not every time the game
+  starts.
+
+#### Battlefields are laid out faster
+
+Laying out a new battlefield - the rivers and the sea, the roads, the cover the ground gives - is several times quicker, so a battle or a mission starts several seconds sooner. The ground comes out exactly as it did.
+
+- **Why:** the water, the roads and the cover were worked out cell by cell over far more of the map than they
+  touch, and some of it two or three times over. Now each is worked out only where it reaches, once, and the
+  water and the cover are shared out over all your processor's cores.
+- **What didn't change:** the battlefield. Every river, road, house, hedge and tree is where it was, the cover and
+  the routes are the same, and a replayed battle plays out the same.
+
 ## v1.0.5: Performance and more
 
 *17 October 2026* · [Release on GitHub](https://github.com/Dynasty9/Frontline/releases/tag/v1.0.5)
