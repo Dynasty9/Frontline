@@ -287,7 +287,8 @@ Example:
 `--test-port=N` lets a test drive the game from outside: it listens on 127.0.0.1 (only, and only when asked;
 exported builds leave it out), one JSON object per line each way. Game time moves only when the test steps it,
 so the game must run with `--fixed-fps 30`; between commands it holds still. `--test-port=0` takes any free port
-and prints `TESTPORT listening 127.0.0.1:PORT`. The game quits when the test hangs up.
+and prints `TESTPORT listening 127.0.0.1:PORT`. The game quits when the test hangs up. A test-port game has no
+main menu (nothing a test drives needs it, and leaving it out saves a second or so of every start).
 
 The tests live in `tests/` (Node, no dependencies): `tests/lib/game.mjs` starts a headless game, connects and
 wraps the commands, and each `*.test.mjs` is a `node:test` file. Run them with `npm test` in `tests/`, with
@@ -302,6 +303,16 @@ await game.step(60);
 assert.ok((await game.stats()).counters.plan_assault >= 1);
 assert.equal(await game.close(), 0);
 ```
+
+What a test pays for before it plays a second: starting a game takes several seconds (the engine compiles every
+script first), and every `load` builds a battle from nothing, on the full-size map even for a scenario: a few
+seconds, most of it the hierarchical nav (`HNav.build_all`), and 10-20 s for a whole battle or mission map. So a
+test file starts one game and loads it afresh for each of its tests: `Game.start()` in `before`, `close()` (and its
+exit code) in `after`, as [tests/attack.test.mjs](../tests/attack.test.mjs) does. A seed replays the same in any
+game, so the tests still don't depend on each other. A test that needs games of its own (one that ends in a
+script error, two that must agree) gets them from `Game.startMany(n)`, which starts them together so their
+start-ups overlap. `node --test` runs the files side by side, and tests inside a `describe(..., { concurrency: true })`
+run side by side too (determinism.test.mjs: the full-map battle, the longest test, runs alongside everything else).
 
 | command | fields | answers |
 | --- | --- | --- |

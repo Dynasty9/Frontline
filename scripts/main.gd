@@ -85,11 +85,16 @@ func _ready() -> void:
 		add_child(sheet)
 		return
 	add_child(preload("res://scripts/ui/perf_overlay.gd").new())
-	menu = preload("res://scripts/ui/menu.gd").new()
-	var layer := CanvasLayer.new()
-	layer.layer = 10
-	add_child(layer)
-	layer.add_child(menu)
+	# a test driving the game through its port never sees the menu, so it
+	# isn't built: the menu and the screens it opens are a second or more of
+	# compiling and building at every start, and a test run starts many games
+	# (loaded, not preloaded, so this file doesn't compile them either)
+	if not args.has("test-port"):
+		menu = load("res://scripts/ui/menu.gd").new()
+		var layer := CanvasLayer.new()
+		layer.layer = 10
+		add_child(layer)
+		layer.add_child(menu)
 	# --menu-cursor=X,Y: hold the cursor there, the map leaning after it (fractions of the screen; screenshots)
 	if args.has("menu-cursor"):
 		var mc := String(args["menu-cursor"]).split(",")
@@ -292,7 +297,8 @@ func _intro() -> void:
 	while is_instance_valid(cur) and not cur.title_done():
 		await get_tree().process_frame
 	if is_instance_valid(cur):
-		menu.arrive()
+		if menu:
+			menu.arrive()
 		cur.finish(1.8)
 
 
@@ -332,7 +338,8 @@ func _on_game_start(s: Dictionary) -> void:
 			# their world is small and the host's state is on its way)
 			await get_tree().process_frame
 			await get_tree().process_frame
-	menu.visible = false
+	if menu:
+		menu.visible = false
 	Settings.set_ui_menu(false)
 	if world:
 		world.name = "OldWorld"
@@ -630,7 +637,8 @@ func return_to_menu(msg: String) -> void:
 		world = null
 	Net.leave()
 	Settings.set_ui_menu(true)
-	menu.show_menu(msg)
+	if menu:
+		menu.show_menu(msg)
 
 
 var _ms_i := -1
