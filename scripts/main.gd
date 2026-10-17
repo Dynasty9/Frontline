@@ -90,7 +90,7 @@ func _ready() -> void:
 		layer.layer = 10
 		add_child(layer)
 		layer.add_child(menu)
-	# --menu-cursor=X,Y: hold the map's cursor hill there (fractions of the screen; screenshots)
+	# --menu-cursor=X,Y: hold the cursor there, the map leaning after it (fractions of the screen; screenshots)
 	if args.has("menu-cursor"):
 		var mc := String(args["menu-cursor"]).split(",")
 		TopoBackdrop.pin_cursor(Vector2(float(mc[0]), float(mc[1])))
@@ -343,6 +343,18 @@ func _on_game_start(s: Dictionary) -> void:
 	world.name = "World"
 	world.settings = s
 	add_child(world)
+	if cur:
+		world.build_stage.connect(func(text: String, frac: float):
+			if is_instance_valid(cur):
+				cur.set_stage(text, frac))
+	if OS.has_feature("web"):
+		world.visible = false
+	# (in a browser, a frame of the loading screen between its stages: World._breathe)
+	await world.build()
+	if not is_instance_valid(world):
+		return
+	if OS.has_feature("web"):
+		_reveal_next_frame(world)
 	world.game_ended.connect(_on_game_ended)
 	# a headless client says which after-action report it was sent (multiplayer tests)
 	if not world.srv and DisplayServer.get_name() == "headless":
@@ -577,6 +589,17 @@ func _bot_cmds() -> void:
 		print("BOT: retreat sent")
 
 
+## A browser compiles each shader the first time it's drawn, all within that
+## frame: the battlefield stays out of sight until the frame after it's built,
+## so building it and compiling for it come as separate waits, neither long
+## enough for the browser to call the page unresponsive.
+func _reveal_next_frame(w: World) -> void:
+	w.visible = false
+	await get_tree().process_frame
+	if is_instance_valid(w):
+		w.visible = true
+
+
 ## After the build: hold the loading screen while the first frames render
 ## (and compile their shaders) behind it, then fade into the battlefield.
 func _warm_up(cur: Curtain) -> void:
@@ -724,6 +747,8 @@ func _process(_dt: float) -> void:
 			get_viewport().get_texture().get_image().save_png(String(args["menu-shot"]))
 			TestRun.quit(get_tree())
 		return
+	if world.building:
+		return  # (a browser draws the loading screen between its stages: World.build)
 	# the map is built and the battle under way: start the clock on it (not
 	# before: building the map holds up everything, a request included)
 	if _battle_pending and world.time > 1.0:

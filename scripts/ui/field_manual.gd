@@ -464,6 +464,10 @@ func _make_view() -> Control:
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
 	env.ambient_light_color = Color(0.66, 0.65, 0.62)
 	env.ambient_light_energy = 0.16
+	if ProjectSettings.get_setting("rendering/shading/overrides/force_vertex_shading", false):
+		# lit per vertex (the browser build), the floor loses the key light's
+		# sheen and the model much of its modelling: more fill makes up for it
+		env.ambient_light_energy = 0.55
 	env.tonemap_mode = Environment.TONE_MAPPER_AGX  # as in the game
 	env.tonemap_exposure = 0.85
 	env.ssao_enabled = true
@@ -505,6 +509,8 @@ func _make_view() -> Control:
 	_floor_mat = ShaderMaterial.new()
 	_floor_mat.shader = fsh
 	_floor.material_override = _floor_mat
+	if ProjectSettings.get_setting("rendering/shading/overrides/force_vertex_shading", false):
+		_floor_mat.set_shader_parameter("sheen", 1.0)
 	_stage.add_child(_floor)
 	_turn = Node3D.new()
 	_stage.add_child(_turn)
@@ -988,6 +994,7 @@ shader_type spatial;
 render_mode specular_schlick_ggx;
 uniform float radius = 6.0;
 uniform float cell = 1.0;
+uniform float sheen = 0.0;  // the key light's sheen, painted on where lighting is per vertex
 varying vec3 wp;
 void vertex() { wp = VERTEX; }
 void fragment() {
@@ -1002,6 +1009,7 @@ void fragment() {
 	c = mix(c, vec3(0.06, 0.075, 0.08), max(ln * 0.5, ln2 * 0.8));
 	float fade = 1.0 - smoothstep(radius * 0.3, radius, r);
 	ALBEDO = c * fade;
+	EMISSION = vec3(0.3, 0.26, 0.21) * sheen * (1.0 - smoothstep(0.0, radius * 1.6, length(wp.xz + vec2(0.0, radius * 0.5))));
 	ROUGHNESS = 0.62;
 	SPECULAR = 0.35;
 }
