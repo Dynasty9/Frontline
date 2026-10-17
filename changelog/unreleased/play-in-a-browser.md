@@ -18,8 +18,8 @@ caption = "The menu in the browser: multiplayer points you to the desktop game"
   between players runs over. The menu links to the downloads instead.
 - **It looks a little different:** there's no screen-space lighting, volumetric fog or dust trailing behind flung
   earth, which the browser's renderer can't draw. Settings it can't use are hidden.
-- The page pauses for about 20 seconds while the battlefield is laid out. After that the battle runs about as fast as
-  it does on the desktop.
+- The battlefield takes about 30 seconds to lay out, a stage at a time, with the loading screen showing how far it's
+  got. After that the battle runs about as fast as it does on the desktop.
 - **The first battle takes a while:** the first time, the browser also prepares the game's graphics, so the page
   holds for about a minute before the battle appears (if the browser asks, choose Wait). It keeps them, so after that
   a battle only waits for its map.
