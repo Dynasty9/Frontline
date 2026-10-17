@@ -1,12 +1,17 @@
 extends Control
 ## Main menu, and the way into multiplayer: the server browser, hosting, the
 ## lobby, and the dialog that shows a join (or a host) getting there.
+##
+## The menu is up before the game's own classes have compiled (they compile
+## behind the title: GameScripts), so it names none of them: the Field Manual
+## and a battle's after-action report are loaded by path, the first time
+## they're opened.
 
 var name_edit: LineEdit
 var status: Label
 var main_box: VBoxContainer
-var settings_panel: SettingsPanel
-var manual: FieldManual
+var settings_panel: SettingsPanel  # built the first time it's opened (open_settings)
+var manual: Control  # the Field Manual (FieldManual), built the first time it's opened (open_manual)
 var backdrop: TopoBackdrop
 var op_panel: PanelContainer
 var ms_panel: PanelContainer  # the missions
@@ -39,7 +44,7 @@ var rec_tiles: GridContainer
 var rec_list: VBoxContainer
 var rec_msg: Label
 var rec_more: Button
-var rec_view: StatsPanel  # one battle's after-action report, opened from the record
+var rec_view: Control  # one battle's after-action report (StatsPanel), opened from the record
 var _rec_before := ""  # the oldest battle shown (for "older battles")
 var _rec_n := 0  # the latest load (an older answer arriving late is dropped)
 # the rank and the insignia: the one worn on the account card, and the collection
@@ -139,8 +144,8 @@ func _ready() -> void:
 		main_box.add_child(_big("Host a Battle", "Co-op against the AI, versus, or a mission with friends", func(): _open_host({})))
 		main_box.add_child(_big("Find Match", "Straight into the best open battle, or host one to be found", _find_match))
 	main_box.add_child(_section("REFERENCE"))
-	main_box.add_child(_big("Field Manual", "Every soldier, weapon, vehicle and work, with its numbers", func(): manual.visible = true))
-	main_box.add_child(_big("Settings", "Graphics, display, interface, controls and sound", func(): settings_panel.visible = true))
+	main_box.add_child(_big("Field Manual", "Every soldier, weapon, vehicle and work, with its numbers", func(): open_manual()))
+	main_box.add_child(_big("Settings", "Graphics, display, interface, controls and sound", open_settings))
 	if not OS.has_feature("web"):  # (a browser tab is closed, not quit)
 		main_box.add_child(_big("Quit", "Back to the desktop", func(): get_tree().quit()))
 	var gap2 := Control.new()
@@ -159,21 +164,6 @@ func _ready() -> void:
 	spacer.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	col.add_child(spacer)
 
-	settings_panel = SettingsPanel.new()
-	settings_panel.visible = false
-	settings_panel.closed.connect(func(): settings_panel.visible = false)
-	add_child(settings_panel)
-	UiKit.fit_center(settings_panel, Vector2(700, 600))
-	manual = FieldManual.new()
-	manual.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	manual.offset_left = 40
-	manual.offset_right = -40
-	manual.offset_top = 36
-	manual.offset_bottom = -36
-	manual.visible = false
-	manual.closed.connect(func(): manual.visible = false)
-	add_child(manual)
-
 	_build_op_panel()
 	_build_mission_panel()
 	_build_multiplayer()
@@ -181,10 +171,6 @@ func _ready() -> void:
 	_build_insignia_panel()
 	# the join dialog stays over every panel
 	move_child(dialog, -1)
-	# the Field Manual and Settings cover the menu while they're open, account
-	# card and notices too (added after them, those would sit on top)
-	for p: Control in [manual, settings_panel]:
-		p.visibility_changed.connect(_over_menu.bind(p))
 	var build := ("ALPHA V%s" % Updater.version) if Updater.is_release() else "DEV BUILD"
 	var foot := UiKit.label("%s  \u00b7  GODOT %s  \u00b7  F4 FIELD MANUAL IN BATTLE" % [build, Engine.get_version_info().string.to_upper()], 11, Color(0.75, 0.75, 0.7, 0.45), 600)
 	foot.anchor_left = 1.0
@@ -223,6 +209,46 @@ func _ready() -> void:
 		open_link.call_deferred(Links.pending)
 		Links.pending = ""
 	_on_visibility()
+
+
+## The Settings, over the menu: built the first time they're opened.
+func open_settings() -> void:
+	if settings_panel == null:
+		settings_panel = SettingsPanel.new()
+		settings_panel.visible = false
+		settings_panel.closed.connect(func(): settings_panel.visible = false)
+		add_child(settings_panel)
+		UiKit.fit_center(settings_panel, Vector2(700, 600))
+		_cover_menu(settings_panel)
+	settings_panel.visible = true
+
+
+## The Field Manual, over the menu, on a page if one's given (a category, an
+## entry, a side: FieldManual.open). It shows the game's own soldiers and
+## vehicles, so it's built the first time it's opened, once those have
+## compiled (which this waits for, in the first seconds after the launch).
+func open_manual(cat := "", key := "", side := -1) -> void:
+	if manual == null:
+		manual = GameScripts.load_script(GameScripts.FIELD_MANUAL).new()
+		manual.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		manual.offset_left = 40
+		manual.offset_right = -40
+		manual.offset_top = 36
+		manual.offset_bottom = -36
+		manual.visible = false
+		manual.closed.connect(func(): manual.visible = false)
+		add_child(manual)
+		_cover_menu(manual)
+	if cat != "":
+		manual.open(cat, key, side)
+	else:
+		manual.visible = true
+
+
+## The Field Manual and Settings cover the menu while they're open, account
+## card, notices and footer too (added after them, those would sit on top).
+func _cover_menu(p: Control) -> void:
+	p.visibility_changed.connect(_over_menu.bind(p))
 
 
 ## The menu comes in as the title lifts away: the column glides in from the
@@ -452,7 +478,7 @@ func _build_mission_panel() -> void:
 	var list := VBoxContainer.new()
 	list.add_theme_constant_override("separation", 5)
 	v.add_child(list)
-	for m in Missions.playable():
+	for m in MissionList.playable():
 		var card := Button.new()
 		card.toggle_mode = true
 		card.focus_mode = Control.FOCUS_NONE
@@ -515,7 +541,7 @@ func _build_mission_panel() -> void:
 func _open_missions() -> void:
 	_close_panels()
 	if _ms_key == "":
-		_ms_key = String(Missions.playable()[0].key)
+		_ms_key = String(MissionList.playable()[0].key)
 	_pick_mission(_ms_key)
 	ms_panel.visible = true
 	ms_panel.modulate.a = 0.0
@@ -531,7 +557,7 @@ func _pick_mission(key: String) -> void:
 		(_ms_cards[k] as Button).set_pressed_no_signal(k == key)
 	for c in _ms_detail.get_children():
 		c.queue_free()
-	var m := Missions.find(key)
+	var m := MissionList.find(key)
 	var bl := UiKit.label(String(m.blurb), 15, UiKit.TEXT, 600)
 	bl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_ms_detail.add_child(bl)
@@ -552,7 +578,7 @@ func _pick_mission(key: String) -> void:
 
 
 func _mission_solo() -> void:
-	var m := Missions.find(_ms_key)
+	var m := MissionList.find(_ms_key)
 	ms_panel.visible = false
 	var port := Net.DEFAULT_PORT
 	var err := ERR_CANT_CREATE
@@ -815,7 +841,7 @@ func _host_with(opts: Dictionary) -> void:
 	var mk := String(opts.get("mission", "")) if mode == "mission" else ""
 	var side := 0
 	if mk != "":
-		side = int(Missions.find(mk).side)
+		side = int(MissionList.find(mk).side)
 	elif mode == "coop":
 		side = clampi(int(opts.get("side", 0)), 0, 1)
 	var port := int(opts.get("port", Net.DEFAULT_PORT))
@@ -1397,19 +1423,6 @@ func _build_record_panel() -> void:
 	row.add_theme_constant_override("separation", 8)
 	v.add_child(row)
 	row.add_child(_btn("Close", func(): rec_panel.visible = false))
-	# a battle's report opens over everything, the menu dimmed behind it
-	var dim := ColorRect.new()
-	dim.color = Color(0.0, 0.01, 0.01, 0.6)
-	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	dim.visible = false
-	add_child(dim)
-	rec_view = StatsPanel.new()
-	rec_view.title = "AFTER-ACTION REPORT"
-	rec_view.visible = false
-	rec_view.closed.connect(func(): rec_view.visible = false)
-	rec_view.visibility_changed.connect(func(): dim.visible = rec_view.visible)
-	add_child(rec_view)
-	UiKit.fit_center(rec_view, Vector2(1180, 820), 30.0)
 
 
 func _open_record() -> void:
@@ -1444,10 +1457,10 @@ func _rec_tiles(c: Dictionary) -> void:
 	var tiles := [
 		["BATTLES", float(n), func(v: float) -> String: return "%d" % int(round(v)), ""],
 		["WON", float(won), func(v: float) -> String: return "%d  (%d%%)" % [int(round(v)), int(round(100.0 * v / maxf(1.0, n)))], ""],
-		["KILLS", kills, func(v: float) -> String: return StatsPanel.fmt_num(v), ""],
+		["KILLS", kills, func(v: float) -> String: return UiKit.fmt_num(v), ""],
 		["K/D", kills / maxf(1.0, lost), func(v: float) -> String: return "%.1f" % v, ""],
-		["AVG RATING", rv, func(v: float) -> String: return "%d" % int(round(v)), BattleStats.rating_word(rv) if n > 0 else ""],
-		["TIME IN BATTLE", float(c.get("seconds", 0)), func(v: float) -> String: return StatsPanel.fmt_time(v), ""],
+		["AVG RATING", rv, func(v: float) -> String: return "%d" % int(round(v)), UiKit.rating_word(rv) if n > 0 else ""],
+		["TIME IN BATTLE", float(c.get("seconds", 0)), func(v: float) -> String: return UiKit.fmt_time(v), ""],
 	]
 	for i in tiles.size():
 		var t: Array = tiles[i]
@@ -1461,14 +1474,14 @@ func _rec_tiles(c: Dictionary) -> void:
 		var val := Label.new()
 		val.add_theme_font_override("font", UiFx.digits(700))
 		val.add_theme_font_size_override("font_size", 24)
-		val.add_theme_color_override("font_color", StatsPanel.rating_col(rv) if t[0] == "AVG RATING" and n > 0 else UiKit.TEXT)
+		val.add_theme_color_override("font_color", UiKit.rating_col(rv) if t[0] == "AVG RATING" and n > 0 else UiKit.TEXT)
 		tv.add_child(val)
 		if c.is_empty() or n == 0:
 			val.text = "-"
 		else:
 			UiFx.count(val, float(t[1]), t[2], 1.0, 0.1 + i * 0.07)
 		if String(t[3]) != "":
-			tv.add_child(_spaced(String(t[3]), 9, StatsPanel.rating_col(rv), 2))
+			tv.add_child(_spaced(String(t[3]), 9, UiKit.rating_col(rv), 2))
 		rec_tiles.add_child(p)
 		if not c.is_empty():
 			UiFx.slide_in(p, 0.0, 0.3, i * 0.05)
@@ -1546,7 +1559,7 @@ func _record_row(b: Dictionary) -> Button:
 	top.add_child(UiKit.label("VICTORY" if won else "DEFEAT", 12, UiKit.GOOD if won else UiKit.BAD, 700))
 	top.add_child(UiKit.label(String(b.get("title", "Battle")), 15, UiKit.TEXT, 600))
 	left.add_child(UiKit.label("%s  \u00b7  %s  \u00b7  %s" % [_when(String(b.get("played_at", ""))), Defs.TEAM_NAMES[clampi(int(b.get("side", 0)), 0, 1)],
-		StatsPanel.fmt_time(float(b.get("duration_s", 0)))], 11, UiKit.DIM))
+		UiKit.fmt_time(float(b.get("duration_s", 0)))], 11, UiKit.DIM))
 	var kv := VBoxContainer.new()
 	kv.alignment = BoxContainer.ALIGNMENT_CENTER
 	kv.add_theme_constant_override("separation", 0)
@@ -1555,7 +1568,7 @@ func _record_row(b: Dictionary) -> Button:
 	kl.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	kv.add_child(kl)
 	var vk := int(b.get("veh_kills", 0))
-	var sub := UiKit.label(("%d vehicles destroyed" % vk) if vk > 0 else ("score %s" % StatsPanel.fmt_num(float(b.get("score", 0)))), 11, UiKit.DIM)
+	var sub := UiKit.label(("%d vehicles destroyed" % vk) if vk > 0 else ("score %s" % UiKit.fmt_num(float(b.get("score", 0)))), 11, UiKit.DIM)
 	sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	kv.add_child(sub)
 	var rv := float(b.get("rating", 0))
@@ -1564,10 +1577,10 @@ func _record_row(b: Dictionary) -> Button:
 	rt.add_theme_constant_override("separation", 0)
 	rt.custom_minimum_size = Vector2(76, 0)
 	h.add_child(rt)
-	var rl := UiKit.label("%d" % int(round(rv)), 22, StatsPanel.rating_col(rv), 700)
+	var rl := UiKit.label("%d" % int(round(rv)), 22, UiKit.rating_col(rv), 700)
 	rl.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	rt.add_child(rl)
-	var rw := UiKit.label(BattleStats.rating_word(rv), 10, UiKit.DIM)
+	var rw := UiKit.label(UiKit.rating_word(rv), 10, UiKit.DIM)
 	rw.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	rt.add_child(rw)
 	for c in h.get_children():
@@ -1592,10 +1605,32 @@ func _open_battle(id: String, heading: String) -> void:
 	if rep.is_empty() or (rep.get("players", []) as Array).is_empty():
 		rec_msg.text = "That battle's report wasn't kept."
 		return
+	if rec_view == null:
+		_make_rec_view()
 	rec_view.fixed_sub = heading
 	rec_view.show_tab("summary")
 	rec_view.set_report(rep)
 	rec_view.visible = true
+
+
+## A battle's report opens over everything, the menu dimmed behind it (just
+## above the record it's opened from). It's the battle's own after-action report
+## (StatsPanel), so it's built the first time one's opened: GameScripts.
+func _make_rec_view() -> void:
+	var dim := ColorRect.new()
+	dim.color = Color(0.0, 0.01, 0.01, 0.6)
+	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	dim.visible = false
+	add_child(dim)
+	move_child(dim, rec_panel.get_index() + 1)
+	rec_view = GameScripts.load_script(GameScripts.STATS_PANEL).new()
+	rec_view.title = "AFTER-ACTION REPORT"
+	rec_view.visible = false
+	rec_view.closed.connect(func(): rec_view.visible = false)
+	rec_view.visibility_changed.connect(func(): dim.visible = rec_view.visible)
+	add_child(rec_view)
+	move_child(rec_view, dim.get_index() + 1)
+	UiKit.fit_center(rec_view, Vector2(1180, 820), 30.0)
 
 
 ## "16 Oct 2026, 21:04" in this computer's time, from the matchmaker's UTC.

@@ -300,6 +300,55 @@ static func header(text: String) -> Label:
 	return l
 
 
+# --- numbers as the reports write them: the after-action report, the end of a
+# battle and the menu's service record (kept here, with no game in them, so the
+# menu can show the record without compiling the battle's classes)
+
+## A count: 12,480 (or -3).
+static func fmt_num(v: float) -> String:
+	var n := int(round(v))
+	var s := str(absi(n))
+	var out := ""
+	while s.length() > 3:
+		out = "," + s.substr(s.length() - 3) + out
+		s = s.substr(0, s.length() - 3)
+	return ("-" if n < 0 else "") + s + out
+
+
+## A length of time: 4:05, or 1:02:09 past the hour.
+static func fmt_time(t: float) -> String:
+	var s := maxi(0, int(t))
+	if s >= 3600:
+		return "%d:%02d:%02d" % [s / 3600, (s / 60) % 60, s % 60]
+	return "%d:%02d" % [s / 60, s % 60]
+
+
+## A commander's rating (0-100, BattleStats.rating) in a word.
+static func rating_word(v: float) -> String:
+	if v >= 85.0:
+		return "Outstanding"
+	if v >= 70.0:
+		return "Effective"
+	if v >= 55.0:
+		return "Capable"
+	if v >= 40.0:
+		return "Mixed"
+	if v >= 25.0:
+		return "Costly"
+	return "Ineffective"
+
+
+## And in a colour.
+static func rating_col(v: float) -> Color:
+	if v >= 70.0:
+		return GOOD
+	if v >= 55.0:
+		return Color(0.8, 0.9, 0.5)
+	if v >= 40.0:
+		return WARN
+	return BAD
+
+
 ## Draws text with a soft dark outline on any CanvasItem.
 static func text(ci: CanvasItem, p: Vector2, s: String, size := 13, col := TEXT, weight := 400, align := HORIZONTAL_ALIGNMENT_LEFT, width := -1.0) -> void:
 	var f := font(weight)

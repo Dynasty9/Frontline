@@ -530,7 +530,7 @@ func mission_side() -> int:
 	var mk := String(settings.get("mission", ""))
 	if mk == "":
 		return -1
-	return int(Missions.find(mk).get("side", 0))
+	return int(MissionList.find(mk).get("side", 0))
 
 
 ## The side every player fights on, in a mission or a co-op battle (-1 when
@@ -725,7 +725,7 @@ func start_game() -> void:
 	if mk != "":
 		# a mission: its own ground, weather and enemy (no AI commander), and
 		# every player on its side
-		var md := Missions.find(mk)
+		var md := MissionList.find(mk)
 		s["seed"] = int(s.fixed_seed) if s.has("fixed_seed") else int(md.get("seed", s.seed))
 		s["mood"] = String(md.get("mood", s.mood))
 		s["ai_teams"] = []
