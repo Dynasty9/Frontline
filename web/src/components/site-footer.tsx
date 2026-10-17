@@ -5,6 +5,7 @@ import { GITHUB_URL } from "@/lib/config"
 const LINKS = [
   { label: "Play", to: "/play" },
   { label: "Live battles", to: "/battles" },
+  { label: "Leaderboards", to: "/leaderboards" },
   { label: "Ranks", to: "/ranks" },
   { label: "What's new", to: "/changelog" },
   { label: "Your profile", to: "/profile" },
