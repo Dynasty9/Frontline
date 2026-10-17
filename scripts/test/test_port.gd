@@ -173,6 +173,9 @@ func _answer(cmd: String, req: Dictionary) -> Variant:
 			return {"version": Updater.version, "net": Net.NET_VERSION, "tps": TPS, "headless": DisplayServer.get_name() == "headless"}
 		"errors":
 			return {"count": TestRun.script_errors, "recent": TestRun.recent}
+		"console":
+			# a line typed into the console, and what it printed
+			return {"out": Array(main.console.run_captured(String(req.get("line", ""))))}
 	if not _world_ok():
 		return {"ok": false, "error": "no game loaded" if cmd in ["order", "query", "stats", "hash"] else "unknown command: %s" % cmd}
 	var w: World = main.world

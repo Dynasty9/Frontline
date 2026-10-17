@@ -103,6 +103,9 @@ ui/stats_panel.gd       the battle statistics / after-action report (Summary, Co
 game/co_command.gd      co-commanders: each player's presence (view, cursor, selection, what's being lined up),
                         pings, sketches and committed actions, relayed by the host to that side only
 ui/hud_coop.gd          co-commanders drawn over the battlefield; ui/hud_coop_roster.gd the Command Net
+ui/console.gd           the console (` or ~): typing, history, Tab; ui/console_cmds.gd its commands (why, bench, top,
+                        hitches, render, sys, set, report...); ui/perf_graph.gd the frame graph
+ui/perf_probe.gd        measures every frame for the overlay and the console (and logs the stutters)
 ui/hud.gd, menu.gd      interface; ui/settings_panel.gd, ui/perf_overlay.gd, ui/ui_kit.gd (shared style and the
                         interface themes: read UiKit.ACCENT and friends when drawing, so a new theme shows at once),
 ui/ui_frame.gd          the panels' tactical frame (a StyleBox: glass fill, hairline, accent corner brackets, glow),
@@ -186,11 +189,14 @@ Scenarios, AI-vs-AI battles and missions run offline: they take no port, so any 
                                                       beside the first vehicle of that kind)
 --pitch=-14 --cam-yaw=-0.84                           fixed camera pitch (degrees) and heading (model close-ups)
 --keys-test                                           the key bindings end to end: names and matching, clashes, rebound
-                                                      keys reaching the game, a held key panning the camera, the Controls
+                                                      keys reaching the game, a held key panning the camera, the console
+                                                      keeping the keys typed into it, the Controls
                                                       page (rebind, move a key off another action, Undo, a modifier alone,
                                                       search, reset); prints KEYTEST ok / FAIL; needs a window
                                                       (e.g. --host --team=0 --keys-test --offscreen)
 --bind=ACTION:KEY[,ACTION:KEY]                        rebind keys for this run only (ids in keys.gd, e.g. --bind=attack_move:K)
+--console="why;graph" [--console-at=SECONDS]          open the console and type those lines (; between them) once the
+                                                      battle has run that long (5 s unless set); screenshots of it
 --hud-panel=settings --settings-tab=controls          the Controls page open (layout shots)
 --cam-test                                            drive the camera through its controls (zoom to cursor, grab-pan,
                                                       turn and tilt, a Mac's trackpad, reset, saved views, follow,
@@ -333,6 +339,7 @@ run side by side too (determinism.test.mjs: the full-map battle, the longest tes
 | `stats` | | `counters` (every `world.stat`), `report` (the after-action summary) |
 | `hash` | | `hash`: a fingerprint of the whole simulation; two runs from one seed agree on it tick for tick |
 | `errors` | | `count` and the `recent` script errors |
+| `console` | `line` | `out`: what typing that line into the console printed, a line a string (`game.console("why")`) |
 | `quit` | | the game quits with its exit code |
 
 Every reply has `ok` (with `error` when false) and `errors`, the script errors counted so far.

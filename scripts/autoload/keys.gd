@@ -93,6 +93,7 @@ const ACTIONS := [
 	["hide_hud", "Hide the interface", "Interface", "ui", KEY_F2, NONE, ""],
 	["perf", "Performance overlay", "Interface", "ui", KEY_F3, NONE, "Off, FPS, compact, full breakdown."],
 	["manual", "Field Manual", "Interface", "ui", KEY_F4, NONE, ""],
+	["console", "Console", "Interface", "ui", KEY_QUOTELEFT, NONE, "Type commands: why the game is slow (why), what each setting costs (bench), frame graphs. help lists them."],
 	["director", "Director camera", "Observer", "obs", KEY_C, NONE, "The camera follows the fighting by itself."],
 	["pause", "Pause", "Observer", "obs", KEY_P, NONE, ""],
 	["slower", "Slower", "Observer", "obs", KEY_BRACKETLEFT, NONE, ""],
@@ -123,6 +124,7 @@ const MODS := KEY_MASK_SHIFT | KEY_MASK_CTRL | KEY_MASK_ALT | KEY_MASK_META
 
 var binds := {}  # id -> [code, code]
 var capturing := false  # the Controls page is waiting for a key: the game leaves the keys alone
+var console_open := false  # the keys are going into the console: the game leaves them alone too
 var _info := {}  # id -> its row in ACTIONS
 
 

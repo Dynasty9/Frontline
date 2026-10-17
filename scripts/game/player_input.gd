@@ -262,7 +262,7 @@ var _coop_i := -1
 ## A key press (or an extra mouse button) in a battle: Esc always backs out;
 ## everything else is whatever it's bound to (Settings > Controls).
 func _key(ev: InputEvent) -> void:
-	if (world.hud and world.hud.typing) or Keys.capturing:
+	if (world.hud and world.hud.typing) or Keys.capturing or Keys.console_open:
 		return
 	if ev is InputEventKey and (ev as InputEventKey).keycode == KEY_ESCAPE:
 		if pinging or sketching:

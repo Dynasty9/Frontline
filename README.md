@@ -143,6 +143,7 @@ On a Mac's trackpad, scroll with two fingers to drag the map and pinch to zoom; 
 | Hide the interface | F2 |
 | Performance overlay | F3 |
 | Field Manual | F4 |
+| Console (why it's slow, frame graphs, a settings benchmark: type `help`) | ` or ~ |
 | Chat (team chat) | Enter (Shift + Enter) |
 | Message history | L |
 | Menu and settings | Esc |
