@@ -25,7 +25,12 @@ const PORT := 47781  # localhost only: where a running game listens for links
 
 ## The link this copy was started with, until the menu takes it.
 var pending := ""
+## PORT, or FL_LINKS_PORT: a test's copies pass links among themselves, not
+## to the game you're playing.
+var port := PORT
 var _server: TCPServer
+var _takes_links := false  # a player's game, or a test run given --links
+var _listen_at := 0  # when to ask for the port again, while another copy has it
 var _peers: Array = []  # [StreamPeerTCP, received text, give-up time]
 
 
@@ -36,6 +41,8 @@ func _ready() -> void:
 		# socket and no scheme to claim (and can't join a battle anyway)
 		set_process(false)
 		return
+	if OS.has_environment("FL_LINKS_PORT"):
+		port = int(OS.get_environment("FL_LINKS_PORT"))
 	var user_args := OS.get_cmdline_user_args()
 	pending = link_in(OS.get_cmdline_args() + user_args)
 	if pending != "" and _hand_on(pending):
@@ -50,11 +57,9 @@ func _ready() -> void:
 	var testing := false
 	for a in user_args:
 		testing = testing or (a.begins_with("--") and a != "--links" and link_in(PackedStringArray([a])) == "")
-	if not testing or "--links" in user_args:
-		_server = TCPServer.new()
-		if _server.listen(PORT, "127.0.0.1") != OK:
-			# another copy already listens: it gets the links
-			_server = null
+	_takes_links = not testing or "--links" in user_args
+	if _takes_links:
+		_listen()
 	# and only a player's game claims the scheme: a test run of an exported
 	# build (from a scratch folder, say) must not point the links at itself
 	if not testing:
@@ -73,10 +78,24 @@ static func link_in(args: PackedStringArray) -> String:
 	return ""
 
 
+## Take the port, unless another copy has it: that one gets the links, and
+## this one asks again in a second. It may only be on its way out (an update
+## starts the new version, then quits the old), and a game that gave up on the
+## port would leave nothing listening once it had gone: every link from then
+## on would start a second game instead of reaching this one.
+func _listen() -> void:
+	var server := TCPServer.new()
+	if server.listen(port, "127.0.0.1") == OK:
+		_server = server
+		_debug("listening for links")
+	else:
+		_listen_at = Time.get_ticks_msec() + 1000
+
+
 ## Give the link to a copy that's already running. False if there isn't one.
 func _hand_on(url: String) -> bool:
 	var peer := StreamPeerTCP.new()
-	if peer.connect_to_host("127.0.0.1", PORT) != OK:
+	if peer.connect_to_host("127.0.0.1", port) != OK:
 		return false
 	var t0 := Time.get_ticks_msec()
 	while Time.get_ticks_msec() - t0 < 500:
@@ -94,6 +113,8 @@ func _hand_on(url: String) -> bool:
 
 func _process(_dt: float) -> void:
 	if _server == null:
+		if _takes_links and Time.get_ticks_msec() >= _listen_at:
+			_listen()
 		return
 	while _server.is_connection_available():
 		_peers.append([_server.take_connection(), "", Time.get_ticks_msec() + 2000])

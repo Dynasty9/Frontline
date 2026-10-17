@@ -108,7 +108,9 @@ they're doing). The observer bar at the top has pause, speed (0.25x to 4x), dire
   first time it runs (per user: HKCU on Windows, a hidden `.desktop` handler on Linux; a Mac app claims it in its
   Info.plist, which macOS reads when the app is first opened), so the browser starts the game with the link (on a
   Mac, as `--uri="frontline://..."`). If the game is already running, the new copy hands the link to it over a
-  localhost socket and quits. A link is ignored in a battle or a lobby, so a stray click never pulls anyone out of a game, and a
+  localhost socket and quits. Only one copy can hold the socket, and one that finds it taken asks again every
+  second: the copy an update replaces quits only after starting the new one, and a game that gave up on the socket
+  would leave every later link to start a second game once the old copy had gone. A link is ignored in a battle or a lobby, so a stray click never pulls anyone out of a game, and a
   battle listed for another version of the game reads as not found.
 - **Joining by address** (Direct connect) still works without the matchmaker: the host's IP on UDP port **7777**,
   forwarded or over a LAN/VPN (Tailscale, ZeroTier, Hamachi).

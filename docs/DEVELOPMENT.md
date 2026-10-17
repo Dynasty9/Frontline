@@ -493,7 +493,9 @@ A `frontline://` link can be passed after `--`, as a browser would: `godot --pat
 (or `frontline://find-match`). Test runs (anything with a `--switch`) don't listen for links handed on by a second
 copy unless given `--links`, so to test the hand-off: start a listed host, then an idle game with `--links`, then a
 third copy with only the link. The third prints `LINKS handed ...` (with `FL_DEBUG_ONLINE=1`) and quits; the idle
-one joins. Only exported builds register the scheme with the OS (`Links._register`).
+one joins. Only exported builds register the scheme with the OS (`Links._register`). `FL_LINKS_PORT` moves the
+socket off the one a game you're playing listens on: `tests/links.test.mjs` passes links between copies on a port
+of its own.
 
 Players sign in with GitHub on the website, which signs the game in. Email and password are for testing: from
 source the game shows its own email and password form, and so does the website's dev server. `--web-sign-in`
