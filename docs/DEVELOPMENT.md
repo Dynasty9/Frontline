@@ -264,6 +264,10 @@ FL_DEBUG_MISSION=1 (env)                              print the map's features (
 FL_DEBUG_TOWNS=1 (env)                                print each town and village: name, dump and the ground that takes it
 FL_DEBUG_HPA=1 (env)                                  benchmark hierarchical vs flat paths at start-up
 FL_DEBUG_DECOR=1 (env)                                print the street-furniture chunk and mesh counts
+FL_DEBUG_WILDLIFE=1 (env)                             every 5 s: the wildlife's cost, how many of each are drawn, what took
+                                                      fright at what, and where one of each is (the first time, the water too)
+FL_WILDLIFE_FOLLOW=KIND (env)                         the camera keeps on one animal (birds, ducks, soarer, bat, rat, hare, fish,
+                                                      dolphins), for a close look with --zoom / --pitch (windowed only)
 --menu-shot=menu.png --shot-at=6                      screenshot of the main menu (with --curtain --intro-at=0 at
                                                       1920x1080 it is the boot splash: save it as assets/splash.png
                                                       whenever the title or the map changes)
@@ -586,6 +590,9 @@ to what that renderer can do:
   GPU each frame, which stalls WebGL). `Vfx.gl` says which renderer is drawing.
 - An unset `hint_default_black` texture reads alpha 1 there and 0 under Forward+: use `hint_default_transparent`
   where the alpha matters.
+- **A MultiMesh's vertex colours read black** there unless it has instance colours (`use_colors`): `COLOR` comes
+  out multiplied by an instance colour that isn't there. Per-vertex data a shader needs goes in `UV2` instead
+  (`wildlife.gd`); `INSTANCE_CUSTOM` arrives fine.
 
 **Shader compiling is what the browser build is shaped around.** Browsers on Windows run WebGL through ANGLE on
 Direct3D 11, whose compiler is slow on Godot's Compatibility shaders, and a browser compiles each one the first time
