@@ -36,6 +36,7 @@ web/                           the website (React + Vite + shadcn + React Router
                                and pages (*.stories.tsx next to each)
 export_presets.cfg, .github/workflows/release.yml   Windows, macOS, Linux and browser builds: a release is a button (Actions > Release)
                                that opens a release pull request, and merging that publishes it (publish.yml); no other merge releases
+installer/                     the Windows installer (NSIS: windows.nsi) and the Mac disk image (macos-dmg.sh), made by every release
 docs/                          FEATURES.md (design), DEVELOPMENT.md (code layout, test flags)
 design/                        logo and artwork used outside the game (not imported by Godot)
 ```

@@ -15,8 +15,12 @@ export type Build = {
   name: string
   url: string // the release page
   published: string
-  // every release has Windows and Linux; macOS from the first release with a Mac build
+  // the zips, the game itself: every release has Windows and Linux; macOS from
+  // the first release with a Mac build
   assets: Record<"windows" | "linux", Asset> & Partial<Record<"macos", Asset>>
+  // the Windows setup wizard and the Mac disk image, from the first release
+  // that has them
+  installers?: Partial<Record<"windows" | "macos", Asset>>
 }
 
 export const latest: Build = release
@@ -35,8 +39,18 @@ export function guessPlatform(build: Build = latest): Platform {
   return build.assets[p] ? p : "windows"
 }
 
-/** A release's download for a platform (Windows' if it has none for it, which guessPlatform never picks). */
+/** What the download button gives for a platform: its installer where the release has one, else its zip. */
 export function assetFor(platform: Platform, build: Build = latest): Asset {
+  return installerFor(platform, build) ?? zipFor(platform, build)
+}
+
+/** A release's installer for a platform: Windows and macOS, from the first release with them. */
+export function installerFor(platform: Platform, build: Build = latest): Asset | undefined {
+  return platform === "linux" ? undefined : build.installers?.[platform]
+}
+
+/** A release's zip for a platform, to run from anywhere (Windows' if it has none for it, which guessPlatform never picks). */
+export function zipFor(platform: Platform, build: Build = latest): Asset {
   return build.assets[platform] ?? build.assets.windows
 }
 

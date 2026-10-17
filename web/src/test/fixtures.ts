@@ -5,7 +5,7 @@
 import type { User } from "@/lib/account"
 import type { Health, Lobby } from "@/lib/matchmaker"
 import type { Release } from "@/lib/changelog"
-import { type Build, latest } from "@/lib/releases"
+import { type Asset, type Build, latest } from "@/lib/releases"
 
 /** A signed-in player a few ranks up: Corporal I, 1,350 XP, wearing the rank 4 patch (Night Watch). */
 export const player: User = {
@@ -161,3 +161,22 @@ export const buildWithMac: Build = {
     },
   },
 }
+
+const download = (name: string, size: number): Asset => ({
+  name,
+  url: latest.assets.windows.url.replace("Frontline-windows.zip", name),
+  size,
+  sha256: "0".repeat(64),
+})
+
+/** The latest release as it would be with installers for Windows and the Mac. */
+export const buildWithInstallers: Build = {
+  ...buildWithMac,
+  installers: {
+    windows: download("Frontline-windows-setup.exe", 42_000_000),
+    macos: download("Frontline-macos.dmg", 66_000_000),
+  },
+}
+
+/** The latest release as releases from before the installers were: just the zips. */
+export const buildWithoutInstallers: Build = { ...buildWithMac, installers: undefined }
