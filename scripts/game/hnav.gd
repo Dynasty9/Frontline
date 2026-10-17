@@ -5,7 +5,8 @@ extends RefCounted
 ## The 1 m grid is cut into 16 m clusters (32 x 32 of them on a 512 m map). Wherever two neighbouring
 ## clusters share an open stretch of border there is an entrance (a pair of
 ## abstract nodes). Inside each cluster the true cost between its entrances is
-## precomputed on a small local grid. Long paths are planned on this abstract
+## precomputed on a small local grid (made from the full one when it's wanted,
+## and the most recently used kept). Long paths are planned on this abstract
 ## graph (a few thousand nodes instead of a quarter of a million cells) and then refined
 ## cell by cell between consecutive waypoints.
 ##
@@ -33,7 +34,20 @@ var grid: AStarGrid2D
 var vehicle := false
 var graphs: Array = []  # [plain, team 0 view, team 1 view]
 var g_team: Array[AStar3D] = []  # (the last two again)
-var local: Array = []  # per cluster AStarGrid2D covering just that cluster
+## Small grids covering one cluster each, for the searches inside it. Kept
+## for every cluster (4096 on a full map) they came to 77 MB a graph, copies
+## of what the full grid holds, so a cluster's is made when it's wanted and
+## the last CACHE used are kept: a battle's paths keep to the ground it's
+## fought over.
+const CACHE := 512
+var _local := {}  # cluster -> [AStarGrid2D, when last used]
+var _uses := 0
+## The full grid's cells as plain arrays (solid 1/0; weight), kept in step by
+## mark_dirty: a cluster's grid is made from these far quicker than by asking
+## the full grid cell by cell, and the build's worker threads can all read
+## them (many threads reading one AStarGrid2D ran slower than one alone).
+var _solid := PackedByteArray()
+var _weight := PackedFloat32Array()
 var cl_nodes: Array = []  # per cluster: Array of entrance node ids
 var border_nodes := {}  # _bkey(a, b) (cluster ids, a < b) -> Array of node ids, a's and b's in turn
 var border_picks := {}  # _bkey -> PackedInt32Array: where along the border its entrances are
@@ -76,14 +90,65 @@ func _init(g: AStarGrid2D, is_vehicle: bool) -> void:
 	for ci in NCC:
 		cl_nodes.append([])
 		cl_mids.append({})
-		var lg := AStarGrid2D.new()
-		lg.region = Rect2i((ci % NC) * C, (ci / NC) * C, C, C)
-		lg.cell_size = Vector2(1, 1)
-		lg.diagonal_mode = AStarGrid2D.DIAGONAL_MODE_ONLY_IF_NO_OBSTACLES
-		lg.default_compute_heuristic = AStarGrid2D.HEURISTIC_OCTILE
-		lg.default_estimate_heuristic = AStarGrid2D.HEURISTIC_OCTILE
-		lg.update()
-		local.append(lg)
+
+
+## Cluster ci's own grid, its cells as the full grid has them now.
+func local_grid(ci: int) -> AStarGrid2D:
+	_uses += 1
+	var e: Variant = _local.get(ci)
+	if e != null:
+		e[1] = _uses
+		return e[0]
+	if _local.size() >= CACHE:
+		var old := -1
+		var oldest := _uses
+		for k: int in _local:
+			if int(_local[k][1]) < oldest:
+				oldest = int(_local[k][1])
+				old = k
+		_local.erase(old)
+	if _solid.is_empty():
+		_snapshot()
+	var lg := _local_from(ci, _solid, _weight)
+	_local[ci] = [lg, _uses]
+	return lg
+
+
+## A grid for cluster ci with the cells `solid` and `weight` (full-map arrays)
+## give it. Only those unlike a fresh grid's (open, weight 1) need setting:
+## walls, water and roads.
+static func _local_from(ci: int, solid: PackedByteArray, weight: PackedFloat32Array) -> AStarGrid2D:
+	var lg := AStarGrid2D.new()
+	lg.region = Rect2i((ci % NC) * C, (ci / NC) * C, C, C)
+	lg.cell_size = Vector2(1, 1)
+	lg.diagonal_mode = AStarGrid2D.DIAGONAL_MODE_ONLY_IF_NO_OBSTACLES
+	lg.default_compute_heuristic = AStarGrid2D.HEURISTIC_OCTILE
+	lg.default_estimate_heuristic = AStarGrid2D.HEURISTIC_OCTILE
+	lg.update()
+	var n := MapDims.N
+	var x0 := (ci % NC) * C
+	var z0 := (ci / NC) * C
+	for z in range(z0, z0 + C):
+		var row := z * n
+		for x in range(x0, x0 + C):
+			if solid[row + x] != 0:
+				lg.set_point_solid(Vector2i(x, z))
+			var w := weight[row + x]
+			if w != 1.0:
+				lg.set_point_weight_scale(Vector2i(x, z), w)
+	return lg
+
+
+## _solid and _weight, read from the full grid.
+func _snapshot() -> void:
+	var n := MapDims.N
+	_solid.resize(n * n)
+	_weight.resize(n * n)
+	for z in n:
+		for x in n:
+			var c := Vector2i(x, z)
+			_solid[z * n + x] = 1 if grid.is_point_solid(c) else 0
+			_weight[z * n + x] = grid.get_point_weight_scale(c)
 
 
 func cluster_of(c: Vector2i) -> int:
@@ -97,24 +162,30 @@ static func _key(a: int, b: int) -> int:
 ## Nav changed a cell's solidity / weight: mirror it and queue the cluster.
 func mark_dirty(c: Vector2i) -> void:
 	var ci := cluster_of(c)
-	var lg: AStarGrid2D = local[ci]
 	var solid := grid.is_point_solid(c)
 	var w := grid.get_point_weight_scale(c)
-	if built and (solid != lg.is_point_solid(c) or w != lg.get_point_weight_scale(c)):
-		# (most calls change nothing: a wall raised where the ground was already blocked)
-		ver[ci] += 1
-		var x := c.x % C
-		var z := c.y % C
-		if x == 0:
-			edge_ver[ci * 4] += 1
-		elif x == C - 1:
-			edge_ver[ci * 4 + 1] += 1
-		if z == 0:
-			edge_ver[ci * 4 + 2] += 1
-		elif z == C - 1:
-			edge_ver[ci * 4 + 3] += 1
-	lg.set_point_solid(c, solid)
-	lg.set_point_weight_scale(c, w)
+	if not _solid.is_empty():
+		var i := c.y * MapDims.N + c.x
+		if built and ((_solid[i] != 0) != solid or _weight[i] != w):
+			# (most calls change nothing: a wall raised where the ground was already blocked)
+			ver[ci] += 1
+			var x := c.x % C
+			var z := c.y % C
+			if x == 0:
+				edge_ver[ci * 4] += 1
+			elif x == C - 1:
+				edge_ver[ci * 4 + 1] += 1
+			if z == 0:
+				edge_ver[ci * 4 + 2] += 1
+			elif z == C - 1:
+				edge_ver[ci * 4 + 3] += 1
+		_solid[i] = 1 if solid else 0
+		_weight[i] = w
+	var e: Variant = _local.get(ci)
+	if e != null:
+		var lg: AStarGrid2D = e[0]
+		lg.set_point_solid(c, solid)
+		lg.set_point_weight_scale(c, w)
 	if built:
 		dirty[ci] = true
 
@@ -139,17 +210,10 @@ static func build_all(navs: Array) -> void:
 	WorkerThreadPool.wait_for_group_task_completion(t)
 
 
-## (On a worker thread.) The local grids, copied from the full one, and the
-## entrances along every border.
+## (On a worker thread.) The full grid's cells, and the entrances along
+## every border.
 func _prepare() -> void:
-	for ci in NCC:
-		var lg: AStarGrid2D = local[ci]
-		var r: Rect2i = lg.region
-		for z in range(r.position.y, r.end.y):
-			for x in range(r.position.x, r.end.x):
-				var c := Vector2i(x, z)
-				lg.set_point_solid(c, grid.is_point_solid(c))
-				lg.set_point_weight_scale(c, grid.get_point_weight_scale(c))
+	_snapshot()
 	for ci in NCC:
 		var cx := ci % NC
 		var cz := ci / NC
@@ -159,11 +223,15 @@ func _prepare() -> void:
 			_make_border(ci, ci + NC, _border_picks(ci, ci + NC))
 
 
-## (On a worker thread.) The workers each fill in only their own cluster's
-## slot: resizing the array is what isn't safe from several threads at once.
+## (On a worker thread.) A cluster's grid of its own, for its costs alone.
+## The workers each fill in only their own cluster's slot: resizing the
+## array is what isn't safe from several threads at once.
 func _cluster_costs(ci: int) -> void:
 	basis[ci] = (cl_nodes[ci] as Array).duplicate()
-	costs[ci] = _pair_costs(ci)
+	if (cl_nodes[ci] as Array).size() < 2:
+		costs[ci] = _pair_costs(ci)  # (nothing to cost, so no grid to make)
+		return
+	costs[ci] = _pair_costs(ci, _local_from(ci, _solid, _weight))
 
 
 ## (On a worker thread.) Every cluster's links, in order.
@@ -303,7 +371,7 @@ func _relink(k: int, before: Array) -> void:
 		bas = nodes.duplicate()
 		basis[k] = bas
 	var nbas := bas.size()
-	var lg: AStarGrid2D = local[k]
+	var lg: AStarGrid2D = null  # (made only if something needs searching)
 	for i in n:
 		var oi := at[i]
 		var row := bp[i] * nbas
@@ -317,6 +385,8 @@ func _relink(k: int, before: Array) -> void:
 			var cb: Vector2i = node_cell[b]
 			var c := cm[row + bp[j]]
 			if c == UNKNOWN:
+				if lg == null:
+					lg = local_grid(k)
 				c = _local_cost(lg, ca, cb)
 				cm[row + bp[j]] = c
 			if oi >= 0 and oj >= 0 and c == cm[bp[j] * nbas + bp[i]]:
@@ -553,13 +623,16 @@ func _intra(ci: int) -> void:
 ## j, worked out for i < j (the way round _intra links them). Only reads the
 ## graph, and searches only this cluster's own grid, so clusters can be done
 ## side by side.
-func _pair_costs(ci: int) -> PackedFloat64Array:
+func _pair_costs(ci: int, lg: AStarGrid2D = null) -> PackedFloat64Array:
 	var nodes: Array = cl_nodes[ci]
-	var lg: AStarGrid2D = local[ci]
 	var n := nodes.size()
 	var out := PackedFloat64Array()
 	out.resize(n * n)
 	out.fill(UNKNOWN)
+	if n < 2:
+		return out  # (nothing to cost, so no grid to make)
+	if lg == null:
+		lg = local_grid(ci)
 	for i in n:
 		for j in range(i + 1, n):
 			out[i * n + j] = _local_cost(lg, node_cell[nodes[i]], node_cell[nodes[j]])
@@ -624,8 +697,8 @@ func route(a: Vector2i, b: Vector2i, team: int, care: float) -> Array[Vector2i]:
 	var temp := []
 	_g_add(s_id, Vector3(a.x + 0.5, 0, a.y + 0.5), ca)
 	_g_add(g_id, Vector3(b.x + 0.5, 0, b.y + 0.5), cb)
-	var la: AStarGrid2D = local[ca]
-	var lb: AStarGrid2D = local[cb]
+	var la := local_grid(ca)
+	var lb := local_grid(cb)
 	for id in cl_nodes[ca]:
 		var c := _local_cost(la, a, node_cell[id])
 		if c >= 0.0:
