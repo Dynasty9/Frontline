@@ -122,6 +122,11 @@ they're doing). The observer bar at the top has pause, speed (0.25x to 4x), dire
     `frontline://sign-in/<state>/<refresh token>`. The game takes only the state it made, so no other page can
     sign it in to someone else's account, and spends the token at once. The game's session and the site's are
     separate (a refresh token works once, so the two can't share one), and signing out ends only that one.
+    Both ends say what's happening, since the work is in the browser: the game's panel lists the steps (sign in
+    on the website, let the browser open Frontline, the game signs in), lights up the one it's on and keeps a
+    "Waiting for the website" line moving, then "Signing in..." when the link arrives; the site's dialog shows the
+    two steps, and after handing over the link watches whether the browser took it (the page loses focus to its
+    prompt or the game) and, if nothing did, says what to do.
   - **Email and password are for testing**: the game shows its own form when it runs from source or against a
     matchmaker the website doesn't know, and the website shows one on its dev server or when built against
     another matchmaker. The live site and the players' game only offer GitHub.
