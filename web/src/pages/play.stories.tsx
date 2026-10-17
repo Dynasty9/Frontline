@@ -1,7 +1,8 @@
 import type { Meta, StoryObj } from "@storybook/react-vite"
 import { expect, userEvent, waitFor, within } from "storybook/test"
 import { latest } from "@/lib/releases"
-import { health } from "@/test/fixtures"
+import { DesktopCard } from "@/pages/play"
+import { buildWithMac, health } from "@/test/fixtures"
 import { mockMatchmaker } from "@/test/network"
 import { loadPage } from "@/test/load-page"
 import { SiteAt } from "@/test/router"
@@ -96,13 +97,53 @@ export const Linux: Story = {
   },
 }
 
-/** No Mac build: say so, rather than offer the Windows one. */
+/** On a Mac, with whatever the baked-in release has for it. */
 export const Mac: Story = {
   beforeEach: visitor(MAC),
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(await canvas.findByText(/There's no Mac version yet/)).toBeVisible()
-    await expect(canvas.queryByRole("link", { name: "Launch Frontline" })).toBeNull()
+    await canvas.findByRole("heading", { level: 1, name: /Report for duty/ })
+    if (latest.assets.macos) {
+      await expect(canvas.getByRole("link", { name: "Launch Frontline" })).toBeVisible()
+      await expect(canvas.getByRole("link", { name: /^Download for macOS ·/ })).toHaveAttribute(
+        "href",
+        latest.assets.macos.url
+      )
+    } else {
+      await expect(canvas.getByText(/This release has no Mac version/)).toBeVisible()
+      await expect(canvas.queryByRole("link", { name: "Launch Frontline" })).toBeNull()
+    }
+  },
+}
+
+/** A Mac, and a release with a Mac build: the same as anywhere else, with the Mac download. */
+export const MacBuild: Story = {
+  parameters: { layout: "padded", router: true },
+  render: () => <DesktopCard device="macos" build={buildWithMac} />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await expect(canvas.getByRole("link", { name: "Launch Frontline" })).toHaveAttribute("href", "frontline://open")
+    await expect(canvas.getByRole("link", { name: /^Download for macOS ·/ })).toHaveAttribute(
+      "href",
+      buildWithMac.assets.macos?.url
+    )
+    await expect(canvas.getByText("Windows · macOS · Linux")).toBeVisible()
+  },
+}
+
+/** A Mac, and a release from before the Mac build: no Windows download offered in its place. */
+export const MacNoBuild: Story = {
+  parameters: { layout: "padded", router: true },
+  render: () => (
+    <DesktopCard
+      device="macos"
+      build={{ ...buildWithMac, assets: { windows: latest.assets.windows, linux: latest.assets.linux } }}
+    />
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await expect(canvas.getByText(/This release has no Mac version/)).toBeVisible()
+    await expect(canvas.queryByRole("link", { name: /^Download for/ })).toBeNull()
   },
 }
 

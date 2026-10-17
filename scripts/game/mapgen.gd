@@ -686,7 +686,7 @@ func scenario(sname: String) -> void:
 						if OS.has_environment("FL_DEBUG_SLING"):
 							print("SLING t=%.0f mohawk=%s ph=%d humvee=%s btr=%s" % [world.time, mh.position.snapped(Vector3.ONE * 0.1), mh.lift_phase, hv.position.snapped(Vector3.ONE * 0.1), bt.position.snapped(Vector3.ONE * 0.1)]))
 		"naval":
-			# boats on the sea: a Coalition RHIB lands a squad on a beach the
+			# boats on the sea: a Coalition RHIB lands a squad on the coast the
 			# Rebels hold, its patrol ship covering it; Rebel boats come out to fight
 			_lay_water()
 			var w: WaterMap = world.water
@@ -708,7 +708,11 @@ func scenario(sname: String) -> void:
 			bq.order_defend(Vector3(w.coast_x(-30.0) - 18.0, 0, -30.0), Vector3(1, 0, 0))
 			if not world.settings.get("static", false):
 				world.get_tree().create_timer(2.0, true, true).timeout.connect(func():
-					rh.order_move(Vector3(w.coast_x(-5.0) - 4.0, 0, -5.0))
+					# the beach up the coast from the Rebels' cell, under the patrol
+					# ship's guns: an open boat run in on the cell itself is shot to
+					# pieces by its rifles before it touches the sand (a raid lands
+					# away from them too: NavalAI._launch)
+					rh.order_move(Vector3(w.coast_x(40.0) - 4.0, 0, 40.0))
 					sb.order_assault(Vector3(w.coast_x(40.0) + 40.0, 0, 40.0))
 					mb.order_assault(Vector3(w.coast_x(20.0) + 25.0, 0, 20.0)))
 		"tactics":

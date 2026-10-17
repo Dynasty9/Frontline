@@ -7,9 +7,10 @@ name: Release
 # releases anything: its changelog entry waits in changelog/unreleased/ until the
 # next release, which ships everything that has merged since the last one.
 #
-# The run builds Windows, Linux and the browser from main as it stands
-# (Frontline-windows.zip, Frontline-linux.zip and Frontline-web.zip), files
-# every waiting entry under changelog/vX.Y.Z/, and bakes the changelog and the
+# The run builds Windows, macOS, Linux and the browser from main as it stands
+# (Frontline-windows.zip, Frontline-macos.zip, Frontline-linux.zip and
+# Frontline-web.zip), files every waiting entry under changelog/vX.Y.Z/, and
+# bakes the changelog and the
 # release (version, download links, checksums) into the website and the
 # matchmaker, as one commit on a branch of its own, release/vX.Y.Z. It uploads
 # the zips as a draft release at that commit, and opens a pull request from the
@@ -159,7 +160,7 @@ jobs:
           path: |
             ~/godot
             ~/.local/share/godot/export_templates
-          key: godot-export-${{ env.GODOT_VERSION }}-web
+          key: godot-export-${{ env.GODOT_VERSION }}-web-macos
 
       - name: Download Godot and export templates
         if: steps.cache-godot.outputs.cache-hit != 'true'
@@ -174,8 +175,9 @@ jobs:
           mkdir -p "$dest"
           # just the templates we ship: the full set is over a gigabyte (the
           # browser build is the one without threads, which needs no special
-          # headers from whatever serves it)
-          unzip -q -j templates.tpz templates/version.txt templates/windows_release_x86_64.exe templates/linux_release.x86_64 templates/web_nothreads_release.zip -d "$dest"
+          # headers from whatever serves it; macos.zip holds the Mac app for
+          # Apple silicon and Intel alike)
+          unzip -q -j templates.tpz templates/version.txt templates/windows_release_x86_64.exe templates/linux_release.x86_64 templates/macos.zip templates/web_nothreads_release.zip -d "$dest"
           rm godot.zip templates.tpz
           ls -la "$dest"
 
@@ -189,16 +191,25 @@ jobs:
           ~/godot/godot --headless --path . --import 2>&1 | tee import.log
           if grep -E "SCRIPT ERROR|Parse Error" import.log; then exit 1; fi
 
+      # The Mac app is a folder (Frontline.app), which Godot zips itself so the
+      # program inside keeps its executable bit. Its signature is ad-hoc: enough
+      # for Apple silicon to run it, but the app isn't notarized, so macOS asks
+      # the player to allow it the first time.
       - name: Export
         run: |
           mkdir -p build/windows build/linux build/web
           ~/godot/godot --headless --path . --export-release "Windows" build/windows/Frontline.exe 2>&1 | tee export.log
           ~/godot/godot --headless --path . --export-release "Linux" build/linux/Frontline.x86_64 2>&1 | tee -a export.log
           ~/godot/godot --headless --path . --export-release "Web" build/web/index.html 2>&1 | tee -a export.log
+          ~/godot/godot --headless --path . --export-release "macOS" build/Frontline-macos.zip 2>&1 | tee -a export.log
           test -s build/windows/Frontline.exe && test -s build/linux/Frontline.x86_64
           test -s build/web/index.html && test -s build/web/index.wasm && test -s build/web/index.pck
+          unzip -l build/Frontline-macos.zip | grep -E ' Frontline\.app/Contents/MacOS/Frontline$'
+          unzip -l build/Frontline-macos.zip | grep -E ' Frontline\.app/Contents/Resources/Frontline\.pck$'
+          zipinfo build/Frontline-macos.zip Frontline.app/Contents/MacOS/Frontline | grep -E '^-rwx'
           chmod +x build/linux/Frontline.x86_64
           for d in windows linux web; do cp LICENSE build/$d/; (cd build/$d && zip -q -9 -r ../Frontline-$d.zip .); done
+          zip -q -j build/Frontline-macos.zip LICENSE
           ls -la build
 
       - name: Keep the zips as workflow artifacts

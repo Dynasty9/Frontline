@@ -18,12 +18,25 @@ import { Card } from "@/components/ui/card"
 import { type LaunchState, useLaunch } from "@/hooks/use-launch"
 import { usePageTitle } from "@/hooks/use-page-title"
 import { FIND_MATCH_LINK, GITHUB_URL, OPEN_LINK } from "@/lib/config"
-import { type Device, formatSize, guessDevice, latest, type Platform, PLATFORM_NAMES } from "@/lib/releases"
+import {
+  assetFor,
+  type Build,
+  type Device,
+  formatSize,
+  guessDevice,
+  guessPlatform,
+  latest,
+  type Platform,
+  PLATFORM_NAMES,
+  platformList,
+  platformsOf,
+} from "@/lib/releases"
 
 /** /play: the desktop game (launch it, or download it), and the browser version beside it. */
 export default function PlayPage() {
   usePageTitle("Play")
   const [device] = useState(guessDevice)
+  const [platform] = useState(() => guessPlatform())
 
   return (
     <>
@@ -43,7 +56,7 @@ export default function PlayPage() {
           </div>
         </div>
       </section>
-      <Downloads platform={device === "linux" ? "linux" : "windows"} />
+      <Downloads platform={platform} />
     </>
   )
 }
@@ -55,9 +68,11 @@ const DESKTOP = [
   "Keeps itself up to date",
 ]
 
-function DesktopCard({ device }: { device: Device }) {
+/** Launch, find a match or download, for what the visitor is on and what `build` has a download for. */
+export function DesktopCard({ device, build = latest }: { device: Device; build?: Build }) {
   const launch = useLaunch()
-  const platform: Platform | null = device === "windows" || device === "linux" ? device : null
+  // a computer the release has a build for (a Mac only once there's a Mac build)
+  const platform: Platform | null = device !== "mobile" && build.assets[device] ? device : null
 
   return (
     <Card className="gap-0 py-0 text-sm">
@@ -66,7 +81,9 @@ function DesktopCard({ device }: { device: Device }) {
           <DesktopIcon weight="fill" className="size-5 text-primary" />
           <h2 className="text-lg font-semibold">Desktop game</h2>
           <Badge variant="outline" className="text-muted-foreground">
-            Windows · Linux
+            {platformsOf(build)
+              .map((p) => PLATFORM_NAMES[p])
+              .join(" · ")}
           </Badge>
         </div>
         <ul className="mt-4 grid gap-2 sm:grid-cols-2">
@@ -101,27 +118,27 @@ function DesktopCard({ device }: { device: Device }) {
                 </a>
               </Button>
               <Button size="lg" variant="outline" asChild className="h-11 px-5 text-sm">
-                <a href={latest.assets[platform].url}>
+                <a href={assetFor(platform, build).url}>
                   <DownloadSimpleIcon weight="bold" />
                   Download for {PLATFORM_NAMES[platform]}
-                  <span className="text-muted-foreground">· {formatSize(latest.assets[platform].size)}</span>
+                  <span className="text-muted-foreground">· {formatSize(assetFor(platform, build).size)}</span>
                 </a>
               </Button>
             </div>
             <LaunchNote state={launch.state} installed={launch.installed} />
           </>
-        ) : device === "mac" ? (
+        ) : device === "macos" ? (
           <Note icon={InfoIcon}>
-            There's no Mac version yet. You can{" "}
+            This release has no Mac version; the next one will. Until then you can{" "}
             <a href={`${GITHUB_URL}#quick-start`} className="text-foreground underline underline-offset-4">
               run it from source
             </a>{" "}
-            with Godot, or play on a Windows or Linux computer.
+            with Godot, or play on {platformList(build)}.
           </Note>
         ) : (
           <Note icon={InfoIcon}>
-            Frontline is played with a keyboard and mouse, on Windows or Linux. Come back on a computer to play: the
-            downloads are below.
+            Frontline is played with a keyboard and mouse, on {platformList(build)}. Come back on a computer to play:
+            the downloads are below.
           </Note>
         )}
       </div>

@@ -35,7 +35,7 @@ changes any of them:
 
 | | |
 |---|---|
-| Camera | WASD / arrows / screen edge pan (Shift: faster), mouse wheel zoom toward the cursor (or + / -), Q/E turn, Page Up / Page Down tilt. Middle-drag turns and tilts; **Alt+middle-drag grabs the map** and pans (Settings swaps the two). **Backspace** squares the view up again, **Ctrl+F** follows the selection, **Ctrl+F5..F8** save a view and **F5..F8** go back to it |
+| Camera | WASD / arrows / screen edge pan (Shift: faster), mouse wheel zoom toward the cursor (or + / -), Q/E turn, Page Up / Page Down tilt. Middle-drag turns and tilts; **Alt+middle-drag grabs the map** and pans (Settings swaps the two). **Backspace** squares the view up again, **Ctrl+F** follows the selection, **Ctrl+F5..F8** save a view and **F5..F8** go back to it. On a Mac's trackpad: two fingers grab the map (or zoom, a setting), pinch zooms, Option + two fingers turn and tilt |
 | Minimap | Click or drag to look there, right-click to send the selection, wheel to zoom. Click the compass needle to square the view up. **Alt+click** pings, **Alt+right-drag** draws for your side |
 | Co-commanders | **Alt+click** pings what's under the cursor (an enemy: "enemy spotted"; one of ours: "watch this"; the ground: "look here"). **Hold Alt + left button** for the ping wheel (attack, on my way, need support, danger, defend, look; let go in the middle to call it off). **Alt+right-drag** draws a line for your side. In the Command Net, click a name to look where they're looking, the screen button (or a double-click) to watch their view live |
 | Select | Left-click a soldier to select his squad, drag a box, double-click for all of that type on screen. **Alt+click** a soldier (or click his name in the squad panel) to command just him |
@@ -44,7 +44,7 @@ changes any of them:
 | High-level | **X attack-move** (or Ctrl+right-click): the squad bounds forward by fire teams, cover to cover, fights whatever it meets, then digs in at the objective. **B defend**: click the area (drag to face) and the squad spreads into the best cover there and holds. **R retreat** to the nearest FOB (routes around known enemy fire, suppression halved). **H hold** |
 | One soldier | With a single man picked out: right-click to move him into the best cover at that spot, right-click an enemy to engage, a nest or mortar pit to man it; G / T throw, H hold, R fall back. Any squad order brings him back into the squad |
 | Squad | G grenade, T smoke, F mortar fire mission (mortar teams) |
-| Build | Select infantry, click a building in the command card, left-click to place (R turns 90 degrees, Shift+wheel 45). Everything snaps to a 1 m build grid, shown round the cursor while you place. **Click and drag** to lay a whole line of trenches, sandbags, wire, walls or tank traps (lines run at 45 degree headings) |
+| Build | Select infantry, click a building in the command card, left-click to place (R turns 90 degrees, Shift+wheel or Shift + two fingers 45). Everything snaps to a 1 m build grid, shown round the cursor while you place. **Click and drag** to lay a whole line of trenches, sandbags, wire, walls or tank traps (lines run at 45 degree headings) |
 | Defenses | Emplacements are crewed by any idle soldier standing next to them. Right-click a bunker with a squad to garrison it. Select a mortar pit for HE / smoke fire missions |
 | Support | The buttons above the minimap (Z arms the first one ready): click the target, **drag** to set the run-in direction for gun runs and bombing runs |
 | Observer | C director camera, V whose eyes to watch through, P pause, [ ] speed, F2 hide the interface. **Fire support** (observer bar) launches any air or artillery support anywhere to watch it |
@@ -102,9 +102,10 @@ they're doing). The observer bar at the top has pause, speed (0.25x to 4x), dire
   versions open too. The browser can't tell the page whether anything took the link, so the page watches for
   losing focus to the browser's prompt or the game's window, and otherwise explains how to set the game up the
   first time. An exported build registers the `frontline://` scheme the
-  first time it runs (per user: HKCU on Windows, a hidden `.desktop` handler on Linux), so the browser starts the
-  game with the link. If the game is already running, the new copy hands the link to it over a localhost socket
-  and quits. A link is ignored in a battle or a lobby, so a stray click never pulls anyone out of a game, and a
+  first time it runs (per user: HKCU on Windows, a hidden `.desktop` handler on Linux; a Mac app claims it in its
+  Info.plist, which macOS reads when the app is first opened), so the browser starts the game with the link (on a
+  Mac, as `--uri="frontline://..."`). If the game is already running, the new copy hands the link to it over a
+  localhost socket and quits. A link is ignored in a battle or a lobby, so a stray click never pulls anyone out of a game, and a
   battle listed for another version of the game reads as not found.
 - **Joining by address** (Direct connect) still works without the matchmaker: the host's IP on UDP port **7777**,
   forwarded or over a LAN/VPN (Tailscale, ZeroTier, Hamachi).
@@ -428,7 +429,7 @@ function and an autopilot function.
 - **Hierarchical A\* (HPA\*)** over both grids: the map is cut into 16 x 16 m clusters with entrances wherever
   neighbouring clusters connect (and wherever a road crosses), true costs inside each cluster precomputed. Long
   trips plan on the abstract graph, then refine cluster by cluster. When walls go up or are blown down only the
-  touched clusters are rebuilt.
+  touched clusters are rebuilt, and of those only the borders and links the change can reach.
 - **Danger maps:** every second each side marks the clusters its spotted enemies cover (MG nests, bunkers and
   armour count for more). Ordinary moves skirt them, retreats keep well clear.
 - **Cover map:** every 1 m cell knows its cover level (heavy, light, none, exposed) and which way it faces, updated
@@ -458,15 +459,23 @@ function and an autopilot function.
   the shallows (fords, the edge of the beach) - slowly, and exposed. The beds are carved into the ground, so a
   man wading sinks to his knees. Bridges and the harbour are key points the AI fights over. The water is laid
   out on the server as a few shapes and rasterized identically on every client.
-- **How the water looks** (`water_view.gd`). The surface is drawn in tiles only where there's water. A swell
-  of a few long wave trains rolls in off the open sea in groups, dying away as the water shoals; breakers spill
-  unevenly along the beach and each one surges up the sand and drains back, leaving it dark and wet. The bed
-  shows through the water, bent by the ripples and dimmed with depth (red light dies first, so sand under the
-  sea turns turquoise and the open sea goes deep blue; fresh water is peaty green-brown), and the sky and its
-  clouds are reflected, more the flatter you look across it. The sun glitters off every ripple (a moon path at
-  night, only a sheen under cloud), rain dimples the water with rings, the wind's chop roughens in gusts, and
-  foam gathers wherever the water meets a bank, a hull or a pile, with whitecaps on the biggest waves. Boats
-  ride the same swell the player sees (the CPU samples the waves the shader draws).
+- **How the water looks** (`water_view.gd`). The surface is drawn in tiles only where there's water. The sea
+  runs two wave systems that cross: a swell from weather far out at sea, long and regular and coming in sets
+  (its heading a little different on each map), and the wind's own shorter, steeper sea running offshore with
+  the wind that carries the smoke. They're Gerstner waves, so the crests come up sharp and the troughs broad,
+  and they build up over the first 35 m out from the beach. The weather sets the sea: glassy at dawn, dusk and
+  golden hour, moderate by day, choppy under cloud, a storm sea in the rain with whitecaps breaking off the
+  crests and streaks of foam laid down the wind. Breakers rise as they shoal, spill unevenly along the beach and
+  surge up the sand, leaving it dark and wet. The bed shows through the water, bent by the ripples and dimmed
+  with depth (red light dies first, so sand under the sea turns turquoise and the open sea goes deep blue; fresh
+  water is peaty green-brown), with the light the ripples focus dancing on it in the shallows, and the sky and
+  its clouds are reflected, more the flatter you look across it. The sun glitters off every ripple (a moon path
+  at night, only a sheen under cloud), rain dimples the water with rings, the chop roughens in gusts, and foam
+  gathers wherever the water meets a bank, a hull or a pile. Boats ride the same waves the player sees (the
+  CPU samples the waves the shader draws). **Water quality** (Settings > Graphics) trades this against speed:
+  Low draws no see-through water (copying the screen for it is the costly part, most of all in a browser) and
+  fewer waves on a coarser grid; Medium is the full surface; High adds the light on the bed and the wind's
+  streaks; Ultra a finer grid for the swell.
 - On the 1 km map, country lanes branch off the main road to a village in each quarter (mirrored between the
   sides), and on the west the lanes run on over the river - each on its own bridge - to farming villages on
   the far bank: three bridges and two fords across the river in all.
@@ -634,6 +643,9 @@ function and an autopilot function.
   Alt+middle-drag grabs the map like a sheet of paper (a setting swaps them), Page Up / Down tilt. The pitch comes
   from the zoom, low and level close in and steep from high up, and the player's tilt is added to it; close in it
   stops before the lens goes into the hedges. Keyboard and edge panning ease in and out, and Shift pans faster.
+  On a Mac's trackpad (which scrolls in gestures, not wheel clicks) two fingers grab the map at the middle of the
+  screen, a pinch zooms toward the fingers, and Option + two fingers turn and tilt; a setting, shown only on a
+  Mac, makes two fingers zoom instead, for a Magic Mouse.
   Jumps (the last alert, a base, a group, a unit in the order of battle, a saved view) glide rather than cut.
   Backspace turns back to the heading the battle started on, Ctrl+F follows the selection until you pan away,
   and Ctrl+F5..F8 save views that F5..F8 glide back to.
@@ -690,7 +702,8 @@ function and an autopilot function.
   stop where he's sent. Wheeled vehicles steer like cars: a real turning circle from their wheelbase and
   steering lock, no turning on the spot, so a truck needs room to turn round. Tracked vehicles skid-steer:
   they pivot where they stand for a sharp turn but turn wider the faster they go. Weight sets how hard they
-  accelerate and brake. A spot close behind is backed into rather than reached by a loop; a vehicle keeps its
+  accelerate and brake. A spot close behind is backed into rather than reached by a loop; for one further
+  back the driver comes round on full lock (a boat's coxswain puts the helm hard over); a vehicle keeps its
   distance behind one going its way, drives round one standing in the road and passes oncoming traffic on
   the right; supply trucks keep to the right-hand side of the road. Hung up on something, it backs off, turns
   and plans again. (Trucks are slower on the road than they were, so each load carries more.)
@@ -897,21 +910,25 @@ function and an autopilot function.
   throw a fountain of earth high into the air that rains back down, fling burning fragments out in arcs that
   burn on where they land, leave flames licking about the crater for a moment, and clods land around the
   crater once the debris has fallen.
-- **Gunfire** (`gunfx.gd`): every round leaves the muzzle in a flash - a white-hot star, a tongue of flame thrown
-  out ahead and split sideways by the flash hider, bigger and longer for a .50 or an autocannon - with a moment's
-  light on everything round it (striking at night), a breath of smoke, and the case spinning out of the ejection
-  port to lie in the grass (brass piles up round a machine gun). The weapon kicks with each shot: the rifle back
-  into the shoulder and the muzzle up, the mounted gun on its pintle, the turret back on its ring when the main gun
-  fires. One round in so many is a tracer, red for the Coalition and green for the Rebels (Soviet-pattern
-  ammunition), never thinner than a pixel or two however far out the camera is. What a round hits decides what
-  flies: earth spurting up with clods raining out of it, grey grit and stone chips blown off a wall, a dry burst
-  of sand off sandbags, splinters, leaves fluttering down, sparks and a glint off steel, a dark mist off a man, a
-  white column and drops off water - shown when the round gets there, not when it's fired. Now and then one skips
-  off steel, stone or the ground and goes wailing away. A tank's gun fires with a blinding flash, a fireball
-  thrown out ahead, burning flecks, a cloud of smoke rolling out round the muzzle and the blast driving dust off
-  the ground; a rocket's back-blast kicks up the ground behind the launcher. All of it is drawn on the GPU, each
-  kind in a single draw call, with nothing moved from script once it's spawned, so a heavy firefight costs about
-  what a light one did.
+- **Gunfire** (`gunfx.gd`), sized to life: a rifle's muzzle flash is a hand's breadth of flame gone in a frame,
+  a .50's a forearm's, an autocannon's a man's height - a hot core and a short jet split into petals by the flash
+  hider (thrown out sideways by a heavy gun's muzzle brake), with a moment's light on everything round it
+  (striking at night). The gas that follows the round out glows for an instant and cools into a breath of smoke,
+  and the case spins out of the ejection port to lie in the grass (brass piles up round a machine gun). However
+  small, a flash never shrinks below a few pixels, so you can still see who's firing from high up. The weapon
+  kicks with each shot: the rifle back into the shoulder and the muzzle up, the mounted gun on its pintle, the
+  turret back on its ring when the main gun fires. One round in so many is a tracer, red for the Coalition and
+  green for the Rebels (Soviet-pattern ammunition): a thin bright thread at night, fainter and shorter by day,
+  never thinner than a pixel or two. What a round hits decides what flies, small and quick as in real footage: a
+  crown of dust and soil thrown up out of the ground, a puff of stone dust and chips off a wall, a dry burst of
+  sand off sandbags, splinters, leaves fluttering down, sparks and a glint off steel, a dark mist off a man, a
+  spout off water - shown when the round gets there, not when it's fired. Now and then one skips off steel, stone
+  or the ground. A tank's gun throws out a fireball of burning gas that's full size within a frame or two and
+  rolls into a cloud of smoke left hanging in front of the gun, with burning flecks and the blast driving dust
+  off the ground; a rocket's back-blast burns into a cloud behind the launcher. The smoke is shaded as a volume
+  from a warped density field - lit on the sun's side, in its own shadow on the far one, its thin edges glowing
+  against the sun - so no two puffs come out round. All of it is drawn on the GPU, each kind in a single draw
+  call, with nothing moved from script once it's spawned, so a heavy firefight costs about what a light one did.
 - **Physics** (`physics_fx.gd`, `ragdoll.gd`, Jolt): the dead become ragdolls - eleven jointed bodies with
   anatomical limits (knees and elbows bend one way). A bullet knocks a man back and he folds; a blast throws him
   limbs flailing and he tumbles to a stop, into a trench if that's where he lands. Later blasts throw the bodies
