@@ -308,6 +308,11 @@ assert.ok((await game.stats()).counters.plan_assault >= 1);
 assert.equal(await game.close(), 0);
 ```
 
+A check that fails throws before the `close()` at the end, and a game left running would keep `node --test` waiting
+for ever (in CI, until the job times out). So `game.mjs` adds an `after` hook to each test file that closes whatever
+games its tests left running. A test that starts a game of its own can close it sooner, failed or not, with
+`t.after(() => game.close())` (boats.test.mjs).
+
 What a test pays for before it plays a second: starting a game takes several seconds (the engine compiles every
 script first), and every `load` builds a battle from nothing, on the full-size map even for a scenario: a few
 seconds, most of it the hierarchical nav (`HNav.build_all`), and 10-20 s for a whole battle or mission map. So a
