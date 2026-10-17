@@ -80,6 +80,14 @@ func _ready() -> void:
 		preload("res://scripts/test/platform_test.gd").run()
 		TestRun.quit(get_tree())
 		return
+	if args.has("ui-gallery"):
+		# every interface component in each of its states, saved as an image (docs/UI.md)
+		var gl := CanvasLayer.new()
+		add_child(gl)
+		var gal: Control = preload("res://scripts/test/ui_gallery.gd").new()
+		gal.set("args", args)
+		gl.add_child(gal)
+		return
 	if args.has("soldier-sheet"):
 		# a lineup of every kind of soldier, saved as an image (no menu, no game)
 		var sheet: Node3D = preload("res://scripts/ui/soldier_sheet.gd").new()

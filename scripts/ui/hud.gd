@@ -87,7 +87,7 @@ var obs_dir: Button
 var obs_view: Button
 var obs_slower: Button
 var obs_faster: Button
-var _log_head: Label
+var _log_head: Label  # the log's header text (its count shows the key that closes it)
 var toasts: HudToasts
 var objectives: HudObjectives
 var log_panel: PanelContainer
@@ -334,8 +334,9 @@ func _ready() -> void:
 	root.add_child(log_panel)
 	var lv := VBoxContainer.new()
 	log_panel.add_child(lv)
-	_log_head = UiKit.header("Messages")
-	lv.add_child(_log_head)
+	var lh := UiKit.header("Messages")
+	_log_head = lh.get_node("Text") as Label
+	lv.add_child(lh)
 	log_box = RichTextLabel.new()
 	log_box.bbcode_enabled = true
 	log_box.scroll_following = true
@@ -542,7 +543,7 @@ func _keys_changed() -> void:
 		obs_faster.tooltip_text = "Faster%s" % _kt("faster")
 		obs_dir.tooltip_text = "Cinematic camera that follows the fighting%s" % _kt("director")
 		obs_view.tooltip_text = "Whose eyes to watch through: both sides, or one side's fog of war%s" % _kt("view_side")
-	_log_head.text = ("MESSAGES  (%s TO CLOSE)" % Keys.label("log").to_upper()) if Keys.label("log") != "" else "MESSAGES"
+	_log_head.text = ("Messages  ·  %s closes" % Keys.label("log")) if Keys.label("log") != "" else "Messages"
 
 
 ## " (key)" for a tooltip, or "" when nothing is bound.
