@@ -156,7 +156,7 @@ func _ready() -> void:
 	pv.add_child(UiKit.mono_label("OP SCARLET LANTERN · COALITION", 12, UiKit.FAINT))
 	c2.add_child(pc)
 	var pc2 := PanelContainer.new()
-	pc2.add_theme_stylebox_override("panel", UiKit.frame(Color(-1, 0, 0), 10.0, 1.0))
+	pc2.add_theme_stylebox_override("panel", UiKit.frame_hot(10.0))
 	pc2.add_child(UiKit.label("Accent ticks: a selected region.", 13, UiKit.DIM))
 	c2.add_child(pc2)
 

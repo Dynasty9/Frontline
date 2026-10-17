@@ -166,9 +166,9 @@ static func fa(c: Color, a: float) -> Color:
 	return Color(c.r, c.g, c.b, c.a * a)
 
 
-## The panel frame (UiFrame): flat ink and corner ticks; no border, no glow.
-## `glow` and `arm` are kept for the callers that set them: glow > 0 puts the
-## ticks in the accent (a selected or primary region), arm is the ticks' reach.
+## The panel frame (UiFrame): flat ink and corner ticks; no border, no glow
+## (`glow` is kept for the callers that pass it). `arm` is the ticks' reach;
+## frame_hot() gives the accent's ticks, for a dialog or a selected region.
 static func frame(bg := Color(-1, 0, 0), pad := 10.0, glow := 0.0, arm := TICK_ARM, opacity := -1.0) -> UiFrame:
 	var f := UiFrame.new()
 	f.bg = bg
@@ -177,6 +177,19 @@ static func frame(bg := Color(-1, 0, 0), pad := 10.0, glow := 0.0, arm := TICK_A
 	f.opacity = opacity
 	f.set_content_margin_all(pad)
 	return f
+
+
+static func frame_hot(pad := 16.0, opacity := 0.94) -> UiFrame:
+	var f := frame(Color(-1, 0, 0), pad, 0.0, TICK_ARM, opacity)
+	f.hot = true
+	return f
+
+
+## No frame at all: content on a scrim, with this padding.
+static func bare(pad := 0.0) -> StyleBoxEmpty:
+	var sb := StyleBoxEmpty.new()
+	sb.set_content_margin_all(pad)
+	return sb
 
 
 # --- type -------------------------------------------------------------------------------------
@@ -615,6 +628,29 @@ static func text_f(ci: CanvasItem, f: Font, p: Vector2, s: String, size := 12, c
 	if outline:
 		ci.draw_string_outline(f, p, s, align, width, size, 3, Color(0, 0, 0, 0.5 * col.a))
 	ci.draw_string(f, p, s, align, width, size, col)
+
+
+## Capitals in the label face drawn at a point; returns the width.
+static func caps_at(ci: CanvasItem, p: Vector2, t: String, size := 12, col := TEXT, outline := true) -> float:
+	var f := cond(600, 1)
+	var u := t.to_upper()
+	text_f(ci, f, p, u, size, col, HORIZONTAL_ALIGNMENT_LEFT, -1, outline)
+	return f.get_string_size(u, HORIZONTAL_ALIGNMENT_LEFT, -1, size).x
+
+
+## Mono drawn at a point; returns the width.
+static func mono_at(ci: CanvasItem, p: Vector2, t: String, size := 12, col := DIM, outline := true) -> float:
+	var f := mono(400)
+	text_f(ci, f, p, t, size, col, HORIZONTAL_ALIGNMENT_LEFT, -1, outline)
+	return f.get_string_size(t, HORIZONTAL_ALIGNMENT_LEFT, -1, size).x
+
+
+static func caps_w(t: String, size := 12) -> float:
+	return cond(600, 1).get_string_size(t.to_upper(), HORIZONTAL_ALIGNMENT_LEFT, -1, size).x
+
+
+static func mono_w(t: String, size := 12) -> float:
+	return mono(400).get_string_size(t, HORIZONTAL_ALIGNMENT_LEFT, -1, size).x
 
 
 ## Four corner ticks round a rect, `gap` outside it.

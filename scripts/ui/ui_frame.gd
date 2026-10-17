@@ -7,7 +7,8 @@ extends StyleBox
 
 var bg := Color(-1, 0, 0)  # the fill (r < 0: the theme's panel ink)
 var opacity := -1.0  # with the theme's ink: this opaque instead of the panel's own
-var glow := 0.0  # > 0: the ticks in the accent (a selected or primary region)
+var glow := 0.0  # (kept for the callers that set it: Signal casts no glow)
+var hot := false  # the ticks in the accent: a selected or active region, a dialog
 var arm := UiKit.TICK_ARM  # how far each tick runs along its edges
 var ticks := true
 var _fill := Color()
@@ -22,7 +23,7 @@ func _sync() -> void:
 	_fill = UiKit.PANEL if bg.r < 0.0 else bg
 	if bg.r < 0.0 and opacity >= 0.0:
 		_fill.a = opacity
-	_tick = UiKit.ACCENT if glow > 0.0 else UiKit.RULE2
+	_tick = UiKit.ACCENT if hot else UiKit.RULE2
 
 
 func _draw(ci: RID, r: Rect2) -> void:

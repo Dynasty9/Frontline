@@ -1,9 +1,17 @@
 class_name HudSelInfo
 extends Control
+## What's selected, bottom centre, in Signal (docs/UI.md): a name and its type,
+## one line of codes, then a cell per man (or a row per squad or vehicle, or a
+## structure's state). It sits on the bottom scrim: no box.
 
 var hud: Hud
 var need_h := 120.0
 var _rows: Array = []  # [Rect2, soldier eid] - click to command just him
+
+const NAME_Y := 18.0  # the name line's baseline
+const CODE_Y := 38.0  # the codes' baseline
+const CELL_H := 34.0  # a man's cell
+
 
 func _gui_input(ev: InputEvent) -> void:
 	if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT:
@@ -17,16 +25,16 @@ func _gui_input(ev: InputEvent) -> void:
 				accept_event()
 				return
 
+
 func _draw() -> void:
 	var w := hud.world
 	var inp := w.input
-	var y := 16.0
 	_rows.clear()
 	if inp.sel_unit != 0:
 		var su: Soldier = w.entity(inp.sel_unit) as Soldier
 		if su:
 			_unit_detail(su)
-			need_h = 96.0
+			need_h = 92.0
 			return
 	if not inp.sel_squads.is_empty():
 		var by_sid := {}
@@ -36,9 +44,11 @@ func _draw() -> void:
 					by_sid[s.sid] = []
 				by_sid[s.sid].append(s)
 		if by_sid.size() == 1:
-			var extra := _squad_detail(by_sid.values()[0])
-			need_h = 66.0 + extra + mini((by_sid.values()[0] as Array).size(), 6) * 21.0
+			var mem: Array = by_sid.values()[0]
+			_squad_detail(mem)
+			need_h = 54.0 + ceili(mini(mem.size(), 12) / float(_cols())) * CELL_H
 			return
+		var y := 2.0
 		var rows := 0
 		for sid in inp.sel_squads:
 			if not by_sid.has(sid) or rows >= 6:
@@ -46,144 +56,221 @@ func _draw() -> void:
 			rows += 1
 			var mem: Array = by_sid[sid]
 			var sym := MapSymbols.squad_symbol(mem)
-			MapSymbols.nato(self, Vector2(16, y + 8), 22.0, true, mem[0].team, sym[0])
-			var cs := Squad.callsign_of(mem[0].team, int(sid))
-			UiKit.text(self, Vector2(34, y + 12), cs.to_upper(), 12, UiKit.ACCENT, 600)
-			UiKit.text(self, Vector2(38 + UiKit.text_width(cs.to_upper(), 12, 600), y + 12), _squad_name(mem), 11, UiKit.DIM)
+			MapSymbols.nato(self, Vector2(10, y + 12), 18.0, true, mem[0].team, sym[0])
+			var x := 26.0 + UiKit.caps_at(self, Vector2(26, y + 17), Squad.callsign_of(mem[0].team, int(sid)), 13, UiKit.TEXT)
+			x += 8.0 + UiKit.caps_at(self, Vector2(x + 8.0, y + 17), _squad_name(mem), 11, UiKit.FAINT)
 			var alive := 0
+			var hurt := 0
 			var mounted := false
 			for s in mem:
 				if _fit(s):
 					alive += 1
+				elif s.life == Soldier.Life.DOWNED:
+					hurt += 1
 				if s.riding != null:
 					mounted = true
+			var st: Dictionary = hud.squad_state(int(sid), mem)
+			UiKit.mono_at(self, Vector2(maxf(x + 16.0, size.x * 0.42), y + 17), String(st.code), 12, _code_col(st))
 			if mounted:
-				UiKit.text(self, Vector2(size.x - 124, y + 12), "MOUNTED", 10, UiKit.DIM, 600)
-			UiKit.text(self, Vector2(size.x - 54, y + 12), "%d/%d" % [alive, mem.size()], 12, UiKit.TEXT if alive * 2 > mem.size() else UiKit.BAD, 600)
-			var x := 190.0
-			for s in mem:
-				_pip(Vector2(x, y), s)
-				x += 28.0
+				UiKit.mono_at(self, Vector2(size.x - 150, y + 17), "MOUNTED", 11, UiKit.FAINT)
+			UiKit.mono_at(self, Vector2(size.x - 86, y + 17), "%d/%d" % [alive, mem.size()], 12, UiKit.TEXT if alive * 2 > mem.size() else UiKit.BAD)
+			UiKit.pips(self, Vector2(size.x - 44, y + 8), alive, hurt, mem.size() - alive - hurt)
+			UiKit.rule(self, Vector2(0, y + 25.5), Vector2(size.x, y + 25.5))
 			y += 26.0
 		need_h = y + 4.0
 		return
 	if not inp.sel_vehicles.is_empty():
+		var y2 := 2.0
 		for id in inp.sel_vehicles:
 			var v: Vehicle = w.entity(id)
 			if v == null:
 				continue
-			UiKit.text(self, Vector2(4, y + 10), v.display_name(), 14, UiKit.TEXT, 600)
-			_bar(Vector2(180, y), Vector2(160, 8), v.health_frac(), UiKit.GOOD)
-			if (v.flags & Vehicle.F_TRACK) != 0:
-				UiKit.text(self, Vector2(352, y + 10), "Track broken - engineers can repair", 12, UiKit.BAD)
-			y += 24.0
-		need_h = y + 4.0
+			var vx := UiKit.caps_at(self, Vector2(2, y2 + 17), v.display_name(), 13, UiKit.TEXT)
+			var code := "TRACK BROKEN · NEEDS ENGINEERS" if (v.flags & Vehicle.F_TRACK) != 0 else ("ENGAGING" if (v.flags & Vehicle.F_FIRE) != 0 else "")
+			if code != "":
+				UiKit.mono_at(self, Vector2(maxf(vx + 16.0, size.x * 0.42), y2 + 17), code, 12, UiKit.BAD if (v.flags & Vehicle.F_TRACK) != 0 else UiKit.WARN)
+			UiKit.steps(self, Vector2(size.x - 104, y2 + 9), v.health_frac() * 10.0, 10, _health_col(v.health_frac()), 8.0, 10.0)
+			UiKit.rule(self, Vector2(0, y2 + 25.5), Vector2(size.x, y2 + 25.5))
+			y2 += 26.0
+		need_h = y2 + 4.0
 		return
-	var st: Structure = w.entity(inp.sel_structure) as Structure
-	if st:
-		_structure_info(st)
-		need_h = 140.0 if st.skind == "town" else 110.0
+	var st2: Structure = w.entity(inp.sel_structure) as Structure
+	if st2:
+		need_h = _structure_info(st2)
 		return
 	need_h = 30.0
 	var e: Entity = hud._inspect if hud._inspect_t > 0.0 and hud._inspect and not hud._inspect.gone else null
 	if e:
-		UiKit.text(self, Vector2(4, 20), _describe(e), 14, UiKit.TEXT)
+		_describe(e)
 
-## One squad in full. Returns how much taller than usual it drew (a narrow
-## panel puts the attack's stepper on a line of its own).
-func _squad_detail(mem: Array) -> float:
+
+## How many men's cells fit across.
+func _cols() -> int:
+	return clampi(int(size.x / 112.0), 3, 6)
+
+
+## A state code's colour: dim unless it needs the commander.
+func _code_col(st: Dictionary) -> Color:
+	if int(st.get("mstate", 0)) >= 3 or String(st.code).begins_with("ROUTING") or String(st.code).begins_with("FALL BACK"):
+		return UiKit.BAD
+	if bool(st.pinned):
+		return UiKit.WARN
+	return UiKit.DIM
+
+
+static func _health_col(f: float) -> Color:
+	return UiKit.GOOD if f > 0.6 else (UiKit.WARN if f > 0.3 else UiKit.BAD)
+
+
+## One squad in full: its name, its nerve and strength, a line of codes (and
+## where an attack has got to), then a cell per man.
+func _squad_detail(mem: Array) -> void:
 	var cs := Squad.callsign_of(mem[0].team, mem[0].sid) if not mem.is_empty() else ""
 	var alive := 0
 	for s in mem:
 		if _fit(s):
 			alive += 1
-	UiKit.text(self, Vector2(size.x - 120, 16), "%d / %d fighting" % [alive, mem.size()], 12, UiKit.DIM)
-	var head_end := size.x - 128.0  # where the callsign and type must stop
-	# what it's doing, and where an attack has got to
 	var st: Dictionary = hud.squad_state(mem[0].sid, mem)
+	var x := UiKit.caps_at(self, Vector2(0, NAME_Y), cs, 17, UiKit.TEXT)
+	x += 10.0 + UiKit.caps_at(self, Vector2(x + 10.0, NAME_Y), _squad_name(mem), 11, UiKit.FAINT)
+	# right: its nerve, then how many are still fighting
+	var rx := size.x - UiKit.mono_w("%d/%d" % [alive, mem.size()], 12)
+	UiKit.mono_at(self, Vector2(rx, NAME_Y), "%d/%d" % [alive, mem.size()], 12, UiKit.TEXT if alive * 2 > mem.size() else UiKit.BAD)
 	if int(st.morale) >= 0:
-		# its nerve: steady, shaken, breaking, routed
-		var mcol: Color = [Color(0.6, 0.85, 0.5), Color(1.0, 0.8, 0.35), Color(1.0, 0.52, 0.3), UiKit.BAD][int(st.mstate)]
+		var mcol: Color = [UiKit.GOOD, UiKit.WARN, Color(1.0, 0.62, 0.35), UiKit.BAD][int(st.mstate)]
 		var mtxt: String = SquadBrain.STATE_NAMES[int(st.mstate)].to_upper()
-		var mx := size.x - 132 - UiKit.text_width(mtxt, 11, 700)
-		UiKit.text(self, Vector2(mx, 16), mtxt, 11, mcol, 700)
-		head_end = mx - 8.0
-	UiKit.text(self, Vector2(4, 16), cs.to_upper(), 13, UiKit.ACCENT, 600)
-	var tx := 12 + UiKit.text_width(cs.to_upper(), 13, 600)
-	var tname := _squad_name(mem)
-	if tx + UiKit.text_width(tname, 12) <= head_end:
-		UiKit.text(self, Vector2(tx, 16), tname, 12, UiKit.DIM)  # (dropped when the panel is too narrow for it)
-	var ox := 4.0
-	if String(st.glyph) != "":
-		MapSymbols.glyph(self, st.glyph, Vector2(10, 35), 6.0, st.col, 1.0, false)
-		ox = 22.0
-	UiKit.text(self, Vector2(ox, 40), st.text, 12, st.col, 600)
-	var y := 60.0
+		UiKit.mono_at(self, Vector2(rx - 16.0 - UiKit.mono_w(mtxt, 12), NAME_Y), mtxt, 12, mcol)
+	# the codes: what it's doing, then what most of the men are doing, then the attack's steps
+	var line: String = st.code
+	var common := _common_doing(mem)
+	if common != "" and not (bool(st.pinned) and common.to_lower().contains("pinned")):
+		line += " · " + common.to_upper()
+	var cx := UiKit.mono_at(self, Vector2(0, CODE_Y), line, 12, _code_col(st))
 	var o: Array = hud.orders.get(mem[0].sid, [])
 	if not o.is_empty() and o[6] != null:
-		var sx := size.x - 236.0
-		if ox + UiKit.text_width(String(st.text), 12, 600) + 12.0 > sx:
-			# no room beside the orders: under them
-			_stepper(Vector2(ox, 50), String(o[6][0]))
-			y += 26.0
-		else:
-			_stepper(Vector2(sx, 30), String(o[6][0]))
-	var extra := y - 60.0
-	var col_w := size.x * 0.5
+		_stepper(Vector2(maxf(cx + 24.0, size.x - 300.0), CODE_Y), String(o[6][0]))
+	# the men
+	var cols := _cols()
+	var cw := size.x / cols
+	var y0 := CODE_Y + 12.0
+	UiKit.rule(self, Vector2(0, y0 - 0.5), Vector2(size.x, y0 - 0.5))
+	var mouse := get_local_mouse_position()
 	for i in mini(mem.size(), 12):
 		var s: Soldier = mem[i]
-		var x := 0.0 if i < 6 else col_w
-		var yy := y + (i % 6) * 21.0
+		var c := Rect2((i % cols) * cw, y0 + (i / cols) * CELL_H, cw, CELL_H)
 		if s.life == Soldier.Life.ALIVE and hud.world.input.can_command():
-			var rr := Rect2(x, yy - 2, col_w - 6, 20)
-			_rows.append([rr, s.eid])
-			if rr.has_point(get_local_mouse_position()):
-				draw_style_box(UiKit.boxc(Color(1, 1, 1, 0.07), 4, Color(0, 0, 0, 0), 0, 0.0), rr)
-		_pip(Vector2(x + 2, yy), s, true)
-		var nm := s.sname
-		if (s.flags & Soldier.F_LEADER) != 0:
-			nm = "SL  " + nm
-		UiKit.text(self, Vector2(x + 30, yy + 12), nm, 13, UiKit.TEXT if s.life == Soldier.Life.ALIVE else UiKit.DIM)
-		var dt := s.doing_text()
-		if s.life == Soldier.Life.DEAD:
-			dt = "KIA"
-		var cat: String = s.doing_cat() if s.life != Soldier.Life.DEAD else "idle"
-		UiKit.text(self, Vector2(x + 34 + UiKit.text_width(nm, 13), yy + 12), dt, 12, Hud.CAT_COLORS.get(cat, UiKit.DIM).darkened(0.05))
-	return extra
+			_rows.append([c, s.eid])
+			if c.has_point(mouse):
+				draw_rect(c, UiKit.fa(UiKit.TEXT, 0.05))
+		_man(c, s, common)
+		if i % cols != cols - 1:
+			UiKit.rule(self, Vector2(c.end.x - 6.5, c.position.y + 5), Vector2(c.end.x - 6.5, c.end.y - 5))
 
-## PLAN > MOVE > ASSAULT > SECURE, the current step lit.
+
+## What most of the squad is doing ("" if nothing stands out): said once on
+## the squad's line instead of on every man's.
+func _common_doing(mem: Array) -> String:
+	var n := {}
+	var alive := 0
+	for s in mem:
+		if s.life != Soldier.Life.ALIVE:
+			continue
+		alive += 1
+		var d: String = s.doing_text()
+		if d != "":
+			n[d] = int(n.get(d, 0)) + 1
+	var best := ""
+	var bn := 0
+	for d in n:
+		if int(n[d]) > bn:
+			bn = int(n[d])
+			best = d
+	return best if alive > 1 and bn * 2 > alive else ""
+
+
+## A man's cell: a pip for his state, his name, his role, and what he's doing
+## when it isn't what the squad is.
+func _man(c: Rect2, s: Soldier, common: String) -> void:
+	var col := UiKit.TEXT
+	match s.life:
+		Soldier.Life.DOWNED:
+			col = UiKit.BAD if int(Time.get_ticks_msec() / 300) % 2 == 0 else UiKit.fa(UiKit.BAD, 0.4)
+		Soldier.Life.DEAD:
+			col = UiKit.RULE2
+		Soldier.Life.HIDDEN:
+			col = UiKit.INTEL
+		_:
+			if s.health_frac() < 0.5:
+				col = UiKit.WARN
+	draw_rect(Rect2(c.position.x, c.position.y + 6, 3, 22), col)
+	var sup := s.supp_value() if s.life == Soldier.Life.ALIVE else 0.0
+	if sup > 25.0:
+		draw_rect(Rect2(c.position.x + 5, c.position.y + 6, 2, 22), UiKit.BAD if sup >= 60.0 else UiKit.WARN)
+	var x := c.position.x + 11.0
+	var nm := s.sname
+	var dead := s.life == Soldier.Life.DEAD
+	UiKit.caps_at(self, Vector2(x, c.position.y + 16), nm, 12, UiKit.FAINT if dead else UiKit.TEXT)
+	var role := "SL" if (s.flags & Soldier.F_LEADER) != 0 else _role(s)
+	var dt := s.doing_text()
+	var code := role
+	var cc := UiKit.FAINT
+	if dead:
+		code = "KIA"
+		cc = UiKit.BAD
+	elif s.life == Soldier.Life.DOWNED:
+		code = "DOWN"
+		cc = UiKit.BAD
+	elif dt != "" and dt != common:
+		code = role + " · " + dt.to_upper()
+		cc = Hud.CAT_COLORS.get(s.doing_cat(), UiKit.DIM)
+	elif s.life == Soldier.Life.ALIVE and s.ammo_fraction() < 0.25:
+		code = role + " · LOW AMMO"
+		cc = UiKit.WARN
+	var maxw := c.size.x - 18.0
+	while code.length() > 3 and UiKit.mono_w(code, 11) > maxw:
+		code = code.substr(0, code.length() - 2)
+	UiKit.mono_at(self, Vector2(x, c.position.y + 29), code, 11, cc)
+
+
+## A short code for a man's job.
+static func _role(s: Soldier) -> String:
+	if s.udef.get("medic", false):
+		return "MED"
+	var u := String(s.utype)
+	return {"rifleman": "RFL", "engineer": "ENG", "mg_gunner": "MG", "at_soldier": "AT", "fighter": "FTR", "digger": "DIG", "pkm": "MG",
+		"rpg": "RPG", "fpv_op": "FPV", "mortar_gunner": "MOR", "r_mortar": "MOR", "crewman": "CRW", "r_crewman": "CRW", "bearer": "STR"}.get(u, u.substr(0, 3).to_upper())
+
+
+## PLAN › MOVE › ASSAULT › SECURE, the current step in the accent.
 func _stepper(at: Vector2, phase: String) -> void:
 	var steps := ["PLAN", "MOVE", "ASSAULT", "SECURE"]
 	var cur := {"plan": 0, "move": 1, "fix": 1, "assault": 2, "fallback": 2}.get(phase, 3) as int
 	var x := at.x
 	for i in steps.size():
-		var lab: String = steps[i]
-		var tw := UiKit.text_width(lab, 10, 700)
-		var r := Rect2(x, at.y, tw + 14, 18)
-		var on := i == cur
-		var done := i < cur
-		var bg := Color(UiKit.ACCENT.r, UiKit.ACCENT.g, UiKit.ACCENT.b, 0.22) if on else (Color(1, 1, 1, 0.07) if done else Color(0, 0, 0, 0.25))
-		var bd := UiKit.ACCENT if on else Color(1, 1, 1, 0.12)
-		draw_style_box(UiKit.boxc(bg, 9, bd, 1, 0.0), r)
-		var tc := UiKit.ACCENT if on else (UiKit.TEXT if done else UiKit.DIM)
+		var tc := UiKit.ACCENT if i == cur else (UiKit.DIM if i < cur else UiKit.FAINT)
 		if phase == "fix" and i == 1 or phase == "fallback" and i == 2:
 			tc = UiKit.BAD
-		UiKit.text(self, Vector2(x + 7, at.y + 13), lab, 10, tc, 700)
-		x += r.size.x + 4.0
+		x += UiKit.mono_at(self, Vector2(x, at.y), steps[i], 11, tc)
+		if i < steps.size() - 1:
+			x += 6.0 + UiKit.mono_at(self, Vector2(x + 6.0, at.y), "›", 11, UiKit.FAINT) + 6.0
 
 
 func _unit_detail(s: Soldier) -> void:
-	UiKit.text(self, Vector2(4, 16), s.sname.to_upper(), 13, UiKit.ACCENT, 600)
-	var ut := String(s.udef.get("name", s.utype)).capitalize()
-	UiKit.text(self, Vector2(10 + UiKit.text_width(s.sname.to_upper(), 13, 600), 16), ut, 12, UiKit.DIM)
-	_pip(Vector2(4, 30), s)
-	UiKit.text(self, Vector2(34, 43), s.doing_text() if s.doing_text() != "" else "Waiting for orders", 13, Hud.CAT_COLORS.get(s.doing_cat(), UiKit.DIM))
-	UiKit.text(self, Vector2(4, 68), "Health", 11, UiKit.DIM, 600)
-	_bar(Vector2(52, 62), Vector2(120, 6), s.health_frac(), Color(1.0, 0.3, 0.25).lerp(UiKit.GOOD, s.health_frac()))
-	UiKit.text(self, Vector2(186, 68), "Ammo", 11, UiKit.DIM, 600)
-	_bar(Vector2(224, 62), Vector2(120, 6), s.ammo_fraction(), Color(0.45, 0.7, 1.0))
+	var x := UiKit.caps_at(self, Vector2(0, NAME_Y), s.sname, 17, UiKit.TEXT)
+	UiKit.caps_at(self, Vector2(x + 10.0, NAME_Y), String(s.udef.get("name", s.utype)), 11, UiKit.FAINT)
+	var dt := s.doing_text() if s.doing_text() != "" else "Waiting for orders"
+	UiKit.mono_at(self, Vector2(0, CODE_Y), "DIRECT COMMAND · " + dt.to_upper(), 12, Hud.CAT_COLORS.get(s.doing_cat(), UiKit.DIM))
+	UiKit.rule(self, Vector2(0, CODE_Y + 11.5), Vector2(size.x, CODE_Y + 11.5))
+	var y := CODE_Y + 30.0
+	var hx := UiKit.caps_at(self, Vector2(0, y), "Health", 11, UiKit.FAINT) + 10.0
+	UiKit.steps(self, Vector2(hx, y - 10), s.health_frac() * 10.0, 10, _health_col(s.health_frac()), 8.0, 10.0)
+	var ax := hx + 110.0
+	ax += UiKit.caps_at(self, Vector2(ax, y), "Ammo", 11, UiKit.FAINT) + 10.0
+	UiKit.steps(self, Vector2(ax, y - 10), s.ammo_fraction() * 10.0, 10, UiKit.TEXT, 8.0, 10.0)
 	var cov := hud.world.terrain.describe(s.position) if hud.world.terrain else ""
-	UiKit.text(self, Vector2(4, 88), "Under your direct command  -  " + cov, 12, UiKit.DIM)
+	if cov != "":
+		UiKit.mono_at(self, Vector2(ax + 120.0, y), cov.to_upper(), 11, UiKit.DIM)
+
 
 func _squad_name(mem: Array) -> String:
 	if mem.is_empty():
@@ -208,122 +295,89 @@ func _squad_name(mem: Array) -> String:
 			best_d = d
 	return best
 
+
 ## Fit to fight: standing, or out of sight inside a vehicle or a bunker.
 static func _fit(s: Soldier) -> bool:
 	return s.life == Soldier.Life.ALIVE or s.life == Soldier.Life.HIDDEN
 
-func _describe(e: Entity) -> String:
+
+## Something looked at (not selected): its name, its side and its state.
+func _describe(e: Entity) -> void:
+	var x := UiKit.caps_at(self, Vector2(0, NAME_Y), e.display_name(), 15, UiKit.TEXT)
+	if e.team >= 0:
+		draw_rect(Rect2(x + 10.0, NAME_Y - 9, 7, 7), Defs.TEAM_COLORS[e.team])
+		x += 22.0 + UiKit.caps_at(self, Vector2(x + 22.0, NAME_Y), Defs.TEAM_NAMES[e.team], 11, UiKit.FAINT)
 	if e is Soldier:
-		var states := ["", "wounded - bleeding out", "KIA", "surrendering", "prisoner", ""]
-		return "%s   %s   %s" % [e.display_name(), Defs.TEAM_NAMES[e.team] if e.team >= 0 else "", states[e.life]]
-	if e is Structure:
-		var t := e.display_name()
-		if e.team >= 0:
-			t += "   (%s)" % Defs.TEAM_NAMES[e.team]
-		return t
-	return e.display_name()
+		var states := ["", "WOUNDED · BLEEDING OUT", "KIA", "SURRENDERING", "PRISONER", ""]
+		var t: String = states[e.life]
+		if t != "":
+			UiKit.mono_at(self, Vector2(x + 14.0, NAME_Y), t, 12, UiKit.BAD)
 
-func _pip(p: Vector2, s: Soldier, small := false) -> void:
-	var col := Color(0.3, 0.85, 0.35)
-	var h := s.health_frac()
-	match s.life:
-		Soldier.Life.ALIVE:
-			col = Color(1.0, 0.3, 0.25).lerp(Color(0.35, 0.82, 0.4), h)
-		Soldier.Life.DOWNED:
-			col = Color(1.0, 0.15, 0.12) if int(Time.get_ticks_msec() / 300) % 2 == 0 else Color(0.45, 0.06, 0.05)
-		Soldier.Life.DEAD:
-			col = Color(0.25, 0.25, 0.25)
-		Soldier.Life.HIDDEN:
-			col = Color(0.35, 0.5, 0.8)
-		_:
-			col = Color(0.9, 0.9, 0.9)
-	var sz := Vector2(22, 16)
-	draw_style_box(UiKit.boxc(col, 3, Color(0, 0, 0, 0.4), 1, 0.0), Rect2(p, sz))
-	var ic := s.utype.substr(0, 2).to_upper()
-	if s.udef.get("medic", false):
-		ic = "+"
-	draw_string(UiKit.font(600), p + Vector2(3, 12.5), ic, HORIZONTAL_ALIGNMENT_CENTER, 16, 10, Color(0, 0, 0, 0.75))
-	if s.life == Soldier.Life.ALIVE:
-		_bar(p + Vector2(0, sz.y + 1), Vector2(sz.x, 2), s.ammo_fraction(), Color(0.45, 0.7, 1.0))
-		var sup := s.supp_value()
-		if sup >= 60.0:
-			draw_rect(Rect2(p - Vector2(2, 2), sz + Vector2(4, 4)), Color(1, 0.25, 0.2), false, 1.5)
-		elif sup > 25.0:
-			draw_rect(Rect2(p - Vector2(1, 1), sz + Vector2(2, 2)), Color(1, 0.7, 0.25), false, 1.0)
 
-func _bar(p: Vector2, sz: Vector2, f: float, col: Color) -> void:
-	draw_rect(Rect2(p, sz), Color(0, 0, 0, 0.55))
-	draw_rect(Rect2(p, Vector2(sz.x * clampf(f, 0.0, 1.0), sz.y)), col)
+## A row of the structure panel: a label and its value as a code.
+func _row(y: float, label: String, value: String, col := UiKit.DIM) -> float:
+	UiKit.caps_at(self, Vector2(0, y), label, 11, UiKit.FAINT)
+	UiKit.mono_at(self, Vector2(96, y), value, 12, col)
+	return y + 18.0
 
-## A town or village: who holds it, what it gives (and how much of it still
-## stands to give it), what's in its dump and where its trucks go - or how to
-## take it, and how far along whoever's taking it is.
-func _town_info(st: Structure, y: float) -> void:
+
+## A structure or a town: its name and side, its state as a counted bar, and
+## a few label and code rows. Returns the height drawn.
+func _structure_info(st: Structure) -> float:
 	var w := hud.world
 	var lt := w.local_team
-	var k := clampi(st.variant, 0, 1)
-	var holder: String = ("Held by the " + Defs.TEAM_NAMES[st.team]) if st.team >= 0 else "Nobody holds it yet"
-	UiKit.text(self, Vector2(4, y), "%s  ·  %s  ·  %d%% of its houses stand" % [Defs.TOWN_KINDS[k], holder, int(round(st.intact * 100.0))], 13, UiKit.TEXT)
-	y += 19.0
-	UiKit.text(self, Vector2(4, y), "Gives %d supply a minute (%d at full strength), trucked to the holder's nearest FOB." % [int(round(st.town_rate())), int(Defs.TOWN_YIELD[k])], 13, UiKit.DIM)
-	y += 19.0
-	if st.team == lt and lt >= 0:
-		var to := ""
-		for tn in (w.team_info[lt] as Dictionary).get("towns", []):
-			if int(tn[0]) == st.eid:
-				to = ("Trucks run to FOB " + String(tn[5])) if String(tn[5]) != "" else "No FOB to truck it to: build one within reach"
-		UiKit.text(self, Vector2(4, y), "In the dump: %d / %d.  %s" % [int(st.supply), int(Defs.TOWN_STOCK[k]), to], 13, UiKit.TEXT)
-	else:
-		UiKit.text(self, Vector2(4, y), "To take it: men inside the ring (%d m) with none of the other side's there." % int(st.zone_r), 13, UiKit.DIM)
-	y += 19.0
-	if st.cap_prog > 0.0 and st.cap_team >= 0:
-		var who: String = "us" if st.cap_team == lt else ("the " + Defs.TEAM_NAMES[st.cap_team])
-		UiKit.text(self, Vector2(4, y), "Being taken by %s: %d%%" % [who, int(st.cap_prog)], 13, UiKit.GOOD if st.cap_team == lt else UiKit.BAD)
-		_bar(Vector2(4, y + 8), Vector2(260, 5), st.cap_prog / 100.0, Defs.TEAM_COLORS[st.cap_team])
-
-
-func _structure_info(st: Structure) -> void:
-	var y := 18.0
-	UiKit.text(self, Vector2(4, y), st.display_name(), 17, UiKit.TEXT, 600)
+	var x := UiKit.caps_at(self, Vector2(0, NAME_Y), st.display_name(), 17, UiKit.TEXT)
 	if st.team >= 0:
-		UiKit.text(self, Vector2(10 + UiKit.text_width(st.display_name(), 17, 600), y), Defs.TEAM_NAMES[st.team], 12, Defs.TEAM_COLORS[st.team].lightened(0.3))
-	y += 12.0
+		draw_rect(Rect2(x + 10.0, NAME_Y - 9, 7, 7), Defs.TEAM_COLORS[st.team])
+		UiKit.caps_at(self, Vector2(x + 22.0, NAME_Y), Defs.TEAM_NAMES[st.team], 11, UiKit.FAINT)
+	var y := CODE_Y
 	if st.skind == "town":
 		# a town can't be knocked down, only its houses: how much of it stands
-		_bar(Vector2(4, y), Vector2(260, 6), st.intact, Color(0.85, 0.75, 0.5))
-		_town_info(st, y + 26.0)
-		return
-	_bar(Vector2(4, y), Vector2(260, 6), st.hp / maxf(1.0, st.max_hp), UiKit.GOOD)
-	y += 26.0
-	if not st.built:
-		UiKit.text(self, Vector2(4, y), "Under construction %d%%  -  select soldiers and right-click it to help build" % int(st.progress * 100.0), 13, UiKit.WARN)
-		_bar(Vector2(4, y + 8), Vector2(260, 5), st.progress, UiKit.WARN)
-		return
-	if st.skind == "fob":
-		var txt := "Supply %d" % int(st.supply)
-		if st.wrecked:
-			txt += "   WRECKED - repair to 50% to restore"
-		UiKit.text(self, Vector2(4, y), txt, 13, UiKit.TEXT)
-		y += 20.0
+		var k := clampi(st.variant, 0, 1)
+		y = _row(y, "Holder", Defs.TEAM_NAMES[st.team].to_upper() if st.team >= 0 else "NOBODY")
+		y = _row(y, "Houses", "%d%% STANDING" % int(round(st.intact * 100.0)))
+		y = _row(y, "Gives", "%d/M · %d AT FULL STRENGTH" % [int(round(st.town_rate())), int(Defs.TOWN_YIELD[k])])
+		if st.team == lt and lt >= 0:
+			var to := "NO FOB IN REACH"
+			for tn in (w.team_info[lt] as Dictionary).get("towns", []):
+				if int(tn[0]) == st.eid and String(tn[5]) != "":
+					to = "TRUCKS TO " + String(tn[5]).to_upper()
+			y = _row(y, "Dump", "%d/%d · %s" % [int(st.supply), int(Defs.TOWN_STOCK[k]), to])
+		else:
+			y = _row(y, "To take", "MEN IN THE %dM RING · NONE OF THEIRS" % int(st.zone_r))
 		if st.cap_prog > 0.0 and st.cap_team >= 0:
-			UiKit.text(self, Vector2(4, y), "Being captured by %s" % Defs.TEAM_NAMES[st.cap_team], 13, UiKit.BAD)
-			_bar(Vector2(4, y + 8), Vector2(260, 5), st.cap_prog / 100.0, Defs.TEAM_COLORS[st.cap_team])
-		return
+			var who: String = "US" if st.cap_team == lt else Defs.TEAM_NAMES[st.cap_team].to_upper()
+			y = _row(y, "Taking", "%s %d%%" % [who, int(st.cap_prog)], UiKit.GOOD if st.cap_team == lt else UiKit.BAD)
+		return y + 4.0
+	UiKit.caps_at(self, Vector2(0, y), "State", 11, UiKit.FAINT)
+	var f := st.hp / maxf(1.0, st.max_hp)
+	UiKit.steps(self, Vector2(96, y - 10), f * 20.0, 20, _health_col(f), 6.0, 10.0)
+	y += 20.0
+	if not st.built:
+		y = _row(y, "Building", "%d%% · SELECT MEN AND RIGHT-CLICK IT TO HELP" % int(st.progress * 100.0), UiKit.WARN)
+		return y + 4.0
+	if st.skind == "fob":
+		y = _row(y, "Supply", str(int(st.supply)), UiKit.TEXT)
+		if st.wrecked:
+			y = _row(y, "Wrecked", "REPAIR TO 50% TO RESTORE", UiKit.BAD)
+		if st.cap_prog > 0.0 and st.cap_team >= 0:
+			y = _row(y, "Captured", "%s %d%%" % [Defs.TEAM_NAMES[st.cap_team].to_upper(), int(st.cap_prog)], UiKit.BAD)
+		return y + 4.0
 	if not st.queue_items.is_empty():
-		UiKit.text(self, Vector2(4, y), "Training", 12, UiKit.DIM, 600)
-		var x := 70.0
-		for i in st.queue_items.size():
-			var nm := Defs.item_name(String(st.queue_items[i]))
-			UiKit.text(self, Vector2(x, y), nm, 12, UiKit.TEXT if i == 0 else UiKit.DIM)
-			x += UiKit.text_width(nm, 12) + 14.0
-		_bar(Vector2(4, y + 8), Vector2(260, 5), st.queue_frac, Color(0.5, 0.8, 1.0))
+		var q := []
+		for it in st.queue_items:
+			q.append(Defs.item_name(String(it)).to_upper())
+		y = _row(y, "Training", " · ".join(q), UiKit.TEXT)
+		UiKit.steps(self, Vector2(96, y - 10), st.queue_frac * 20.0, 20, UiKit.ACCENT, 6.0, 6.0)
+		y += 12.0
 		if st.prod_status == "cap":
-			UiKit.text(self, Vector2(4, y + 32), "Paused: unit cap reached. Build another FOB.", 12, UiKit.BAD)
+			y = _row(y, "Paused", "UNIT CAP · BUILD ANOTHER FOB", UiKit.BAD)
 	elif st.skind == "tunnel":
-		UiKit.text(self, Vector2(4, y), "%d soldiers inside. Right-click with a squad selected to send them in." % st.inside_n, 13, UiKit.TEXT)
-	elif st.skind == "ammo_cache" and st.team == hud.world.local_team:
+		y = _row(y, "Inside", "%d · RIGHT-CLICK WITH A SQUAD TO SEND THEM IN" % st.inside_n)
+	elif st.skind == "ammo_cache" and st.team == lt:
 		var left := st.supply / Structure.CACHE_STOCK
-		UiKit.text(self, Vector2(4, y), "Stores left %d%%  -  men within %d m top up their ammunition, grenades and rockets" % [int(round(left * 100.0)), int(Structure.CACHE_REACH)], 13, UiKit.TEXT if left > 0.25 else UiKit.WARN)
-		_bar(Vector2(4, y + 8), Vector2(260, 5), left, Color(0.85, 0.7, 0.35))
+		y = _row(y, "Stores", "%d%% · REFILLS MEN WITHIN %dM" % [int(round(left * 100.0)), int(Structure.CACHE_REACH)], UiKit.TEXT if left > 0.25 else UiKit.WARN)
 	elif Defs.BUILDINGS.has(st.skind):
-		UiKit.text(self, Vector2(4, y), Defs.BUILDINGS[st.skind].desc, 13, UiKit.DIM, 400, HORIZONTAL_ALIGNMENT_LEFT, size.x - 8)
+		UiKit.text(self, Vector2(0, y), Defs.BUILDINGS[st.skind].desc, 13, UiKit.DIM, 400, HORIZONTAL_ALIGNMENT_LEFT, size.x - 8)
+		y += 18.0
+	return y + 4.0

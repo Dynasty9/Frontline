@@ -120,7 +120,7 @@ func _draw() -> void:
 		var sp2 := cam.unproject_position(p2)
 		_bar(sp2 + Vector2(-24, 0), Vector2(48, 4), v.health_frac(), UiKit.GOOD)
 		if (v.flags & Vehicle.F_TRACK) != 0:
-			UiKit.text(self, sp2 + Vector2(-26, -5), "TRACK HIT", 11, UiKit.BAD, 600)
+			UiKit.caps_at(self, sp2 + Vector2(-24, -5), "Track hit", 11, UiKit.BAD)
 	for st in _team_structs:
 		if st.gone or (st.team < 0 and st.skind != "town") or not st.visible:
 			continue
@@ -136,7 +136,7 @@ func _draw() -> void:
 			_bar(sp3 + Vector2(-30, 0), Vector2(60, 4), st.progress, UiKit.WARN)
 		elif capturable and st.cap_prog > 0.0 and st.cap_team >= 0:
 			_bar(sp3 + Vector2(-40, 0), Vector2(80, 6), st.cap_prog / 100.0, Defs.TEAM_COLORS[st.cap_team])
-			UiKit.text(self, sp3 + Vector2(-34, -5), "CAPTURING", 11, Color(1, 1, 1), 600)
+			UiKit.caps_at(self, sp3 + Vector2(-40, -5), "Capturing", 11, UiKit.TEXT)
 		else:
 			_bar(sp3 + Vector2(-30, 0), Vector2(60, 3), st.hp / maxf(1.0, st.max_hp), UiKit.GOOD)
 	var now := w.time
@@ -158,42 +158,46 @@ func _draw() -> void:
 	var d := w.director
 	if d and d.active and d._subject and not d._subject.gone and d._subject is Soldier:
 		var sj: Soldier = d._subject
-		var cap: String = "%s  -  %s" % [sj.display_name(), Defs.TEAM_NAMES[sj.team] if sj.team >= 0 else ""]
+		var cap: String = sj.display_name()
+		var side: String = Defs.TEAM_NAMES[sj.team] if sj.team >= 0 else ""
 		var act := sj.doing_text()
-		var cw := maxf(UiKit.text_width(cap, 15, 600), UiKit.text_width(act, 13)) + 40.0
-		var cr := Rect2(vs.x * 0.5 - cw * 0.5, vs.y - 92, cw, 52.0 if act != "" else 32.0)
-		UiKit.pill(self, cr, Color(0.03, 0.035, 0.03, 0.6))
-		UiKit.text(self, Vector2(cr.position.x + 20, cr.position.y + 21), cap, 15, UiKit.TEXT, 600)
+		var cw := maxf(UiKit.caps_w(cap, 15) + UiKit.caps_w(side, 11) + 14.0, UiKit.caps_w(act, 12)) + 36.0
+		var cr := Rect2(vs.x * 0.5 - cw * 0.5, vs.y - 92, cw, 50.0 if act != "" else 32.0)
+		draw_rect(cr, UiKit.fa(UiKit.INK, 0.82))
+		UiKit.ticks(self, cr, UiKit.RULE2, UiKit.TICK_ARM, 0.0)
+		var cx := cr.position.x + 18.0 + UiKit.caps_at(self, Vector2(cr.position.x + 18, cr.position.y + 22), cap, 15, UiKit.TEXT)
+		if sj.team >= 0:
+			UiKit.caps_at(self, Vector2(cx + 14, cr.position.y + 22), side, 11, Defs.TEAM_COLORS[sj.team].lightened(0.35))
 		if act != "":
-			UiKit.text(self, Vector2(cr.position.x + 20, cr.position.y + 41), act, 13, Hud.CAT_COLORS.get(sj.doing_cat(), UiKit.DIM))
+			UiKit.caps_at(self, Vector2(cr.position.x + 18, cr.position.y + 40), act, 12, Hud.CAT_COLORS.get(sj.doing_cat(), UiKit.DIM))
 	var mp: Vector2 = inp._mouse()
 	if not inp.preview.is_empty():
 		_cover_preview(inp, cam, mp)
 	if inp.place_kind != "" and inp.ghost_err != "":
-		UiKit.text(self, mp + Vector2(18, 26), inp.ghost_err, 13, UiKit.BAD)
+		UiKit.caps_at(self, mp + Vector2(18, 26), inp.ghost_err, 12, UiKit.BAD)
 	elif inp.ability.begins_with("support:") or inp.ability.begins_with("demo:"):
 		_support_preview(inp, mp)
 	elif inp.ability != "":
-		var lbl := "Throw grenade here"
+		var lbl := "Grenade"
 		match inp.ability:
 			"smoke":
-				lbl = "Throw smoke here"
+				lbl = "Smoke"
 			"mortar_he", "pit_he":
-				lbl = "Mortar HE on this spot"
+				lbl = "Mortar HE"
 			"arty_he":
-				lbl = "Artillery salvo on this spot"
+				lbl = "Artillery salvo"
 			"mortar_smoke", "pit_smoke":
-				lbl = "Mortar smoke on this spot"
-		UiKit.text(self, mp + Vector2(18, 26), lbl, 13, UiKit.WARN)
+				lbl = "Mortar smoke"
+		_hint(mp, lbl, _grid_at(inp, mp), UiKit.WARN)
 	elif inp.place_drag and not inp.line_items.is_empty():
 		var ok := 0
 		for it in inp.line_items:
 			if it[2]:
 				ok += 1
-		UiKit.text(self, mp + Vector2(18, 26), "%d x %s  (%d supply)" % [ok, Defs.BUILDINGS[inp.place_kind].name, ok * int(Defs.BUILDINGS[inp.place_kind].cost)], 13, UiKit.GOOD)
+		_hint(mp, "%d × %s" % [ok, Defs.BUILDINGS[inp.place_kind].name], "%d SUP" % (ok * int(Defs.BUILDINGS[inp.place_kind].cost)), UiKit.GOOD)
 	elif inp.hover and inp.hover.visible and not inp.pinging:
 		if inp.has_units() and inp.hover.is_hostile_to(lt):
-			UiKit.text(self, mp + Vector2(18, 26), "Attack", 13, UiKit.BAD, 600)
+			_hint(mp, "Attack", "", UiKit.BAD)
 		elif inp.hover is Soldier:
 			_hover_card(inp.hover as Soldier, mp)
 		elif inp.hover is Vehicle:
@@ -241,16 +245,15 @@ func _cover_preview(inp, cam: Camera3D, mp: Vector2) -> void:
 		var lbl := ""
 		match inp.order_mode:
 			"assault":
-				lbl = "Attack-move  ·  "
+				lbl = "Attack-move · "
 			"defend":
-				lbl = "Defend  ·  "
+				lbl = "Defend · "
 		var cs: String = w.terrain.describe(gp, gp + inp.preview_face * 40.0) if w.terrain else ""
 		if not near_info.is_empty():
 			cs = Cover.describe(near_info)
 		var pos: Vector2 = (inp.rmb_start if inp.rmb else mp) + Vector2(18, 44)
-		var tw := UiKit.text_width(lbl + cs, 12) + 14.0
-		draw_style_box(UiKit.boxc(Color(0.03, 0.035, 0.03, 0.7), 4, Color(0, 0, 0, 0), 0, 0.0), Rect2(pos + Vector2(-7, -14), Vector2(tw, 19)))
-		UiKit.text(self, pos, lbl + cs, 12, UiKit.TEXT)
+		var x := pos.x + UiKit.caps_at(self, pos, lbl, 11, UiKit.ACCENT)
+		UiKit.caps_at(self, Vector2(x, pos.y), cs, 11, UiKit.TEXT)
 
 func _shield(c: Vector2, col: Color, lvl: int) -> void:
 	if lvl == 0:
@@ -313,8 +316,26 @@ func _support_preview(inp, mp: Vector2) -> void:
 		_:
 			_ground_ring(gp, float(sd.get("r", 14.0)), red)
 	var cost := int(sd.get("cost", 0))
-	var lbl := "%s%s" % [String(sd.get("name", k)), ("  -  %d supply" % cost) if inp.ability.begins_with("support:") else "  (demo)"]
-	UiKit.text(self, mp + Vector2(18, 26), lbl, 13, UiKit.BAD, 600)
+	_hint(mp, String(sd.get("name", k)), ("%d SUP" % cost) if inp.ability.begins_with("support:") else "DEMO", UiKit.BAD)
+
+
+## A cursor hint (docs/UI.md, Codes): what the click will do in capitals, and
+## its figure in mono after it.
+func _hint(mp: Vector2, what: String, code: String, col: Color) -> void:
+	var x := mp.x + 18.0 + UiKit.caps_at(self, mp + Vector2(18, 26), what, 12, col)
+	if code != "":
+		UiKit.mono_at(self, Vector2(x + 8.0, mp.y + 26), code, 12, UiKit.TEXT)
+
+
+## The grid square under the cursor, for a hint.
+func _grid_at(inp, mp: Vector2) -> String:
+	var cam := hud.world.cam.cam
+	var o := cam.project_ray_origin(mp)
+	var d := cam.project_ray_normal(mp)
+	if absf(d.y) < 0.0001:
+		return ""
+	var t := -o.y / d.y
+	return Defs.grid_ref(o + d * t) if t > 0.0 else ""
 
 func _ground_poly(pts: Array, col: Color) -> void:
 	var cam := hud.world.cam.cam
@@ -411,17 +432,22 @@ func _structure_labels(cam: Camera3D, vs: Vector2, zoom: float) -> void:
 		var sp := cam.unproject_position(p)
 		if sp.x < -120 or sp.x > vs.x + 120 or sp.y < -30 or sp.y > vs.y + 30:
 			continue
-		var txt: String = st.display_name() + ("  (WRECKED)" if st.wrecked else "")
+		var txt: String = st.display_name()
+		var code := "WRECKED" if st.wrecked else ""
 		if st.skind == "town":
-			txt += "  ·  " + ("town" if st.variant == 1 else "village")
-		var tw := UiKit.text_width(txt, fs, 600)
-		var r := Rect2(sp.x - tw * 0.5 - 10, sp.y - fs - 5, tw + 20, fs + 10)
-		draw_style_box(UiKit.boxc(Color(0.03, 0.035, 0.03, 0.66), 4, Color(1, 1, 1, 0.08), 1, 0.0), r)
+			code = "TOWN" if st.variant == 1 else "VILLAGE"
+		var tw := UiKit.caps_w(txt, fs)
+		var cw := UiKit.mono_w(code, fs - 2) + 8.0 if code != "" else 0.0
+		var r := Rect2(sp.x - (tw + cw) * 0.5 - 10, sp.y - fs - 5, tw + cw + 14, fs + 10)
+		var mc := UiKit.TEXT
 		if st.team >= 0:
-			draw_rect(Rect2(r.position + Vector2(1, 1), Vector2(3, r.size.y - 2)), Defs.TEAM_COLORS[st.team])
+			mc = Defs.TEAM_COLORS[st.team]
 		elif st.skind == "town":
-			draw_rect(Rect2(r.position + Vector2(1, 1), Vector2(3, r.size.y - 2)), Structure.C_TOWN_FLAG)
-		UiKit.text(self, Vector2(r.position.x + 11, r.position.y + fs + 2), txt, fs, Color(1, 1, 1, 0.94), 600)
+			mc = Structure.C_TOWN_FLAG
+		draw_rect(Rect2(r.position.x, sp.y - fs * 0.5 - 3.0, 6, 6), mc)
+		UiKit.caps_at(self, Vector2(r.position.x + 12, sp.y), txt, fs, UiKit.TEXT)
+		if code != "":
+			UiKit.mono_at(self, Vector2(r.position.x + 20 + tw, sp.y), code, fs - 2, UiKit.BAD if st.wrecked else UiKit.DIM)
 		_place_rect(r)
 
 ## Each squad's orders drawn on the ground: dashed arrows for moves, a bold
@@ -730,7 +756,7 @@ static func _order_words(o: Array) -> String:
 static func _order_tag(o: Array) -> String:
 	var k := String(o[0])
 	var words := {"move": "MOVE", "assault": "ASSAULT", "defend": "DEFEND", "retreat": "FALL BACK", "attack": "ENGAGE", "build": "BUILD", "hold": "HOLD", "tunnel": "TUNNELS", "bound": "BOUND", "ambush": "AMBUSH"}
-	return String(words.get(k, k.to_upper())) + ("" if k in ["retreat", "hold", "tunnel"] else "  " + Defs.grid_ref(o[1]))
+	return String(words.get(k, k.to_upper())) + ("" if k in ["retreat", "hold", "tunnel"] else " " + Defs.grid_ref(o[1]))
 
 ## Speech: comic bubbles close up (light for banter, dark for shouts, red for
 ## casualties, green for the radio); further out only the shouts, cut short.
@@ -817,9 +843,9 @@ func _bubble(anchor: Vector2, text: String, kind: String, a: float, fs: int, wma
 		r.position.y -= sz.y * 0.5 + 4.0
 		tries += 1
 	_place_rect(r)
-	var bg := Color(0.04, 0.045, 0.04, 0.88)
-	var fg := Color(1.0, 0.95, 0.82)
-	var edge := Color(1.0, 0.75, 0.4, 0.5)
+	var bg := UiKit.fa(UiKit.INK, 0.88)
+	var fg := UiKit.TEXT
+	var edge := UiKit.fa(UiKit.ACCENT, 0.5)
 	match kind:
 		"chat":
 			bg = Color(0.95, 0.94, 0.89, 0.94)
@@ -840,7 +866,7 @@ func _bubble(anchor: Vector2, text: String, kind: String, a: float, fs: int, wma
 	var tx := clampf(anchor.x, r.position.x + 9.0, r.end.x - 9.0)
 	if anchor.y > r.end.y + 1.0:
 		MapSymbols.poly(self, PackedVector2Array([Vector2(tx - 5, r.end.y - 1), Vector2(tx + 5, r.end.y - 1), anchor]), bg)
-	draw_style_box(UiKit.boxc(bg, 7, edge, 1, 0.0), r)
+	draw_style_box(UiKit.boxc(bg, 0, edge, 1, 0.0), r)
 	var x0 := r.position.x + 8.0
 	if kind == "radio":
 		MapSymbols.glyph(self, "radio", Vector2(x0 + 5, r.position.y + r.size.y * 0.5), 6.0, fg, a, false)
@@ -868,8 +894,8 @@ func _name_tags(men: Array, a: float, zoom: float, lt: int) -> void:
 		if gk == "pinned":
 			col = UiKit.BAD
 		var fs := 11
-		var nw := UiKit.text_width(s.sname, fs, 600)
-		var tw := nw + (UiKit.text_width("  " + txt, fs) if txt != "" else 0.0) + (15.0 if gk != "" else 0.0)
+		var nw := UiKit.caps_w(s.sname, fs)
+		var tw := nw + (UiKit.caps_w(txt, fs) + 8.0 if txt != "" else 0.0) + (15.0 if gk != "" else 0.0)
 		var sp: Vector2 = men[i][2]
 		var rect := Rect2(sp.x - tw * 0.5 - 6, sp.y - 32, tw + 12, 16)
 		var tries := 0
@@ -880,7 +906,6 @@ func _name_tags(men: Array, a: float, zoom: float, lt: int) -> void:
 			continue
 		_place_rect(rect)
 		var al := a * (1.0 if s.team == lt or lt < 0 else 0.85)
-		draw_style_box(UiKit.boxc(Color(0.03, 0.035, 0.03, 0.58 * al), 4, Color(0, 0, 0, 0), 0, 0.0), rect)
 		if s.team >= 0:
 			var tc: Color = Defs.TEAM_COLORS[s.team]
 			draw_rect(Rect2(rect.position + Vector2(0, 3), Vector2(2, 10)), Color(tc.r, tc.g, tc.b, al))
@@ -888,9 +913,9 @@ func _name_tags(men: Array, a: float, zoom: float, lt: int) -> void:
 		if gk != "":
 			MapSymbols.glyph(self, gk, Vector2(x + 5, rect.position.y + 8), 6.0, col, al, false)
 			x += 15.0
-		UiKit.text(self, Vector2(x, rect.position.y + 12), s.sname, fs, Color(1, 1, 1, 0.92 * al), 600)
+		UiKit.caps_at(self, Vector2(x, rect.position.y + 12), s.sname, fs, UiKit.fa(UiKit.TEXT, al))
 		if txt != "":
-			UiKit.text(self, Vector2(x + nw, rect.position.y + 12), "  " + txt, fs, Color(col.r, col.g, col.b, al))
+			UiKit.caps_at(self, Vector2(x + nw + 8.0, rect.position.y + 12), txt, fs, Color(col.r, col.g, col.b, al))
 
 ## Mid zoom: no names, just an icon over each man doing something worth
 ## knowing about.
@@ -1000,7 +1025,7 @@ func _nato_markers(cam: Camera3D, lt: int, a: float) -> void:
 		var ty := py + 15.0
 		if mine:
 			var cs := Squad.callsign_of(tm, int(sid))
-			UiKit.text(self, Vector2(sp.x - UiKit.text_width(cs, 10, 600) * 0.5, ty), cs, 10, Color(1, 1, 1, 0.8 * a), 600)
+			UiKit.caps_at(self, Vector2(sp.x - UiKit.caps_w(cs, 10) * 0.5, ty), cs, 10, UiKit.fa(UiKit.TEXT, 0.85 * a))
 			ty += 12.0
 		if age < 6.0:
 			var tag := _order_tag(o)
@@ -1008,9 +1033,9 @@ func _nato_markers(cam: Camera3D, lt: int, a: float) -> void:
 			var tcol := UiKit.ACCENT
 			if own != 0:
 				# who sent it, in his colour
-				tag = "%s  %s" % [w.coop.initials(own), tag]
+				tag = "%s %s" % [w.coop.initials(own), tag]
 				tcol = Net.player_color(own)
-			UiKit.text(self, Vector2(sp.x - UiKit.text_width(tag, 10, 600) * 0.5, ty), tag, 10, Color(tcol.r, tcol.g, tcol.b, ta), 600)
+			UiKit.mono_at(self, Vector2(sp.x - UiKit.mono_w(tag, 10) * 0.5, ty), tag, 10, Color(tcol.r, tcol.g, tcol.b, ta))
 	for v in w.vehicles:
 		if not v.visible or v.team < 0 or v.vkind == "truck":
 			continue
@@ -1033,7 +1058,7 @@ func _nato_markers(cam: Camera3D, lt: int, a: float) -> void:
 		_place_rect(vr)
 		MapSymbols.nato(self, vp, 28.0, v.team == lt or lt < 0, v.team, vs3[0], vs3[1], a)
 		if v.selected:
-			draw_arc(vp, 21.0, 0.0, TAU, 28, Color(1, 1, 1, 0.55 * a), 1.5, true)
+			UiKit.ticks(self, Rect2(vp - Vector2(17, 13), Vector2(34, 26)), UiKit.fa(UiKit.ACCENT, a), 5.0, 2.0, 1.5)
 		var vo := _co_owner(v)
 		if vo != 0:
 			_owner_tab(vp + Vector2(6.0, -22.5), vo, a)
@@ -1050,10 +1075,10 @@ func _co_owner(e: Entity) -> int:
 ## Another commander's unit: his initials on a small tab in his colour.
 func _owner_tab(at: Vector2, peer: int, a: float) -> void:
 	var ini := hud.world.coop.initials(peer) if hud.world.coop else "?"
-	var tw := UiKit.text_width(ini, 8, 700)
-	var r := Rect2(at, Vector2(tw + 7.0, 11.0))
-	draw_style_box(UiKit.boxc(HudCoop._a(Net.player_color(peer), 0.95 * a), 3, Color(0, 0, 0, 0.5 * a), 1, 0.0), r)
-	draw_string(UiKit.font(700), r.position + Vector2(3.5, 8.8), ini, HORIZONTAL_ALIGNMENT_LEFT, -1, 8, Color(0.03, 0.04, 0.04, a))
+	var tw := UiKit.mono_w(ini, 8)
+	var r := Rect2(at, Vector2(tw + 6.0, 11.0))
+	draw_rect(r, HudCoop._a(Net.player_color(peer), 0.95 * a))
+	draw_string(UiKit.mono(500), r.position + Vector2(3.0, 8.8), ini, HORIZONTAL_ALIGNMENT_LEFT, -1, 8, UiKit.fa(UiKit.ON_ACCENT, a))
 
 
 ## Zoomed out: each order is seen leaving HQ - a link from the commander's
@@ -1118,22 +1143,29 @@ func _hover_card(s: Soldier, mp: Vector2) -> void:
 	if own != 0:
 		sub = "%s's" % Net.player_name(own)
 	var act := s.doing_text()
+	var ac: Color = Hud.CAT_COLORS.get(s.doing_cat(), UiKit.DIM)
 	match s.life:
 		Soldier.Life.DOWNED:
-			act = "Wounded  -  " + act
+			act = "Wounded · " + act
+			ac = UiKit.BAD
 		Soldier.Life.DEAD:
 			act = "Killed in action"
-	var wd := maxf(UiKit.text_width(nm, 14, 600) + UiKit.text_width(sub, 12) + 16.0, UiKit.text_width(act, 12)) + 24.0
-	wd = maxf(wd, 170.0)
-	var r := Rect2(mp + Vector2(20, 20), Vector2(wd, 62.0 if act != "" else 46.0))
-	draw_style_box(UiKit.boxc(Color(0.03, 0.035, 0.03, 0.88), 6, Color(1, 1, 1, 0.1), 1, 0.0, 6), r)
-	UiKit.text(self, r.position + Vector2(12, 19), nm, 14, UiKit.TEXT, 600)
+			ac = UiKit.BAD
+	var wd := maxf(UiKit.caps_w(nm, 14) + UiKit.caps_w(sub, 11) + 16.0, UiKit.caps_w(act, 11)) + 24.0
+	wd = maxf(wd, 176.0)
+	var r := Rect2(mp + Vector2(24, 24), Vector2(wd, 64.0 if act != "" else 48.0))
+	_card(r)
+	UiKit.caps_at(self, r.position + Vector2(12, 20), nm, 14, UiKit.TEXT)
 	if s.team >= 0:
-		UiKit.text(self, r.position + Vector2(20 + UiKit.text_width(nm, 14, 600), 19), sub, 12, Net.player_color(own) if own != 0 else Defs.TEAM_COLORS[s.team].lightened(0.35))
-	_bar(r.position + Vector2(12, 28), Vector2(wd * 0.5 - 18, 4), s.health_frac(), Color(1.0, 0.3, 0.25).lerp(UiKit.GOOD, s.health_frac()))
-	_bar(r.position + Vector2(wd * 0.5, 28), Vector2(wd * 0.5 - 12, 4), s.ammo_fraction(), Color(0.45, 0.7, 1.0))
+		UiKit.caps_at(self, r.position + Vector2(20 + UiKit.caps_w(nm, 14), 20), sub, 11, Net.player_color(own) if own != 0 else Defs.TEAM_COLORS[s.team].lightened(0.35))
+	var hf := s.health_frac()
+	var x := r.position.x + 12.0
+	x += UiKit.mono_at(self, Vector2(x, r.position.y + 39), "HP", 10, UiKit.FAINT) + 5.0
+	x += UiKit.steps(self, Vector2(x, r.position.y + 31), hf * 8.0, 8, UiKit.GOOD if hf > 0.5 else (UiKit.WARN if hf > 0.25 else UiKit.BAD), 4.0, 8.0) + 12.0
+	x += UiKit.mono_at(self, Vector2(x, r.position.y + 39), "AM", 10, UiKit.FAINT) + 5.0
+	UiKit.steps(self, Vector2(x, r.position.y + 31), s.ammo_fraction() * 8.0, 8, UiKit.INTEL, 4.0, 8.0)
 	if act != "":
-		UiKit.text(self, r.position + Vector2(12, 52), act, 12, Hud.CAT_COLORS.get(s.doing_cat(), UiKit.DIM))
+		UiKit.caps_at(self, r.position + Vector2(12, 56), act, 11, ac)
 
 func _ground_ring(c: Vector3, r: float, col: Color) -> void:
 	var cam := hud.world.cam.cam
@@ -1154,15 +1186,23 @@ func _vehicle_card(v: Vehicle, mp: Vector2) -> void:
 		sub = "%s's" % Net.player_name(own)
 	var hf := v.health_frac()
 	var st := "Track broken" if (v.flags & Vehicle.F_TRACK) != 0 else ("Burning" if hf < 0.2 else ("Smoking" if hf < 0.4 else ""))
-	var wd := maxf(UiKit.text_width(nm, 14, 600) + UiKit.text_width(sub, 12) + 40.0, 180.0)
-	var r := Rect2(mp + Vector2(20, 20), Vector2(wd, 58.0 if st != "" else 42.0))
-	draw_style_box(UiKit.boxc(Color(0.03, 0.035, 0.03, 0.88), 6, Color(1, 1, 1, 0.1), 1, 0.0, 6), r)
-	UiKit.text(self, r.position + Vector2(12, 19), nm, 14, UiKit.TEXT, 600)
+	var wd := maxf(UiKit.caps_w(nm, 14) + UiKit.caps_w(sub, 11) + 40.0, 184.0)
+	var r := Rect2(mp + Vector2(24, 24), Vector2(wd, 62.0 if st != "" else 46.0))
+	_card(r)
+	UiKit.caps_at(self, r.position + Vector2(12, 20), nm, 14, UiKit.TEXT)
 	if v.team >= 0:
-		UiKit.text(self, r.position + Vector2(20 + UiKit.text_width(nm, 14, 600), 19), sub, 12, Net.player_color(own) if own != 0 else Defs.TEAM_COLORS[v.team].lightened(0.35))
-	_bar(r.position + Vector2(12, 28), Vector2(wd - 24, 4), hf, Color(1.0, 0.3, 0.25).lerp(UiKit.GOOD, hf))
+		UiKit.caps_at(self, r.position + Vector2(20 + UiKit.caps_w(nm, 14), 20), sub, 11, Net.player_color(own) if own != 0 else Defs.TEAM_COLORS[v.team].lightened(0.35))
+	var x := r.position.x + 12.0
+	x += UiKit.mono_at(self, Vector2(x, r.position.y + 39), "HP", 10, UiKit.FAINT) + 5.0
+	UiKit.steps(self, Vector2(x, r.position.y + 31), hf * 12.0, 12, UiKit.GOOD if hf > 0.5 else (UiKit.WARN if hf > 0.25 else UiKit.BAD), 6.0, 8.0)
 	if st != "":
-		UiKit.text(self, r.position + Vector2(12, 50), st, 12, UiKit.BAD)
+		UiKit.caps_at(self, r.position + Vector2(12, 54), st, 11, UiKit.BAD)
+
+
+## A hover card's ground: ink with corner ticks (docs/UI.md, Panels).
+func _card(r: Rect2) -> void:
+	draw_rect(r, UiKit.fa(UiKit.INK, 0.9))
+	UiKit.ticks(self, r, UiKit.RULE2, UiKit.TICK_ARM, 0.0)
 
 const PGRID := 64.0
 var _pgrid := {}  # Vector2i cell -> [Rect2]
@@ -1273,14 +1313,15 @@ func _plan_graphics(pl: Array, team: int, a: float, sel: bool) -> void:
 		var so := cam.unproject_position(po)
 		_tag(so + Vector2(0, -2), "OBJ " + Defs.grid_ref(obj), tc, a)
 		var pn: String = String(Hud.PHASE_NAMES.get(phase, phase)).to_upper()
-		UiKit.text(self, so + Vector2(-UiKit.text_width(pn, 10, 700) * 0.5, 16), pn, 10, Color(1, 1, 1, 0.85 * a), 700)
+		UiKit.caps_at(self, so + Vector2(-UiKit.caps_w(pn, 10) * 0.5, 18), pn, 10, UiKit.fa(UiKit.TEXT, 0.85 * a))
 
 
 func _tag(at: Vector2, text: String, col: Color, a: float) -> void:
-	var tw := UiKit.text_width(text, 10, 700)
+	var tw := UiKit.mono_w(text, 10)
 	var r := Rect2(at.x - tw * 0.5 - 6, at.y - 12, tw + 12, 16)
-	draw_style_box(UiKit.boxc(Color(0.03, 0.035, 0.03, 0.78 * a), 4, Color(col.r, col.g, col.b, 0.8 * a), 1, 0.0), r)
-	UiKit.text(self, Vector2(r.position.x + 6, r.position.y + 12), text, 10, Color(col.r, col.g, col.b, a), 700)
+	draw_rect(r, UiKit.fa(UiKit.INK, 0.8 * a))
+	UiKit.ticks(self, r, Color(col.r, col.g, col.b, 0.9 * a), 4.0, 0.0)
+	UiKit.mono_at(self, Vector2(r.position.x + 6, r.position.y + 12), text, 10, Color(col.r, col.g, col.b, a), false)
 
 
 ## Where the enemy was last seen: hollow diamonds that fade with age, with
@@ -1310,10 +1351,9 @@ func _intel(cam: Camera3D, vs: Vector2, lt: int) -> void:
 			var d := PackedVector2Array([sp + Vector2(0, -hs), sp + Vector2(hs, 0), sp + Vector2(0, hs), sp + Vector2(-hs, 0), sp + Vector2(0, -hs)])
 			draw_polyline(d, Color(0, 0, 0, 0.5 * a), 4.0, true)
 			draw_polyline(d, red, 2.0, true)
-			UiKit.text(self, sp + Vector2(-3, 4), "?", 10, red, 700)
+			UiKit.mono_at(self, sp + Vector2(-3, 4), "?", 10, red)
 			if age > 10.0:
-				var at := "%ds" % int(age)
-				UiKit.text(self, sp + Vector2(hs + 3, 4), at, 9, Color(1, 1, 1, 0.6 * a), 600)
+				UiKit.mono_at(self, sp + Vector2(hs + 3, 4), "%dS" % int(age), 9, UiKit.fa(UiKit.TEXT, 0.6 * a))
 
 
 ## What each man of a selected squad is watching while it holds: a faint
@@ -1421,7 +1461,7 @@ func _map_grid(cam: Camera3D, vs: Vector2) -> void:
 			var sp := cam.unproject_position(c)
 			if sp.x < 0 or sp.y < 0 or sp.x > vs.x or sp.y > vs.y:
 				continue
-			UiKit.text(self, sp, "%s%d" % ["ABCDEFGHIJKLMNOP"[cx], cz + 1], 10, Color(0.75, 0.9, 1.0, 0.4), 700)
+			UiKit.mono_at(self, sp, "%s%d" % ["ABCDEFGHIJKLMNOP"[cx], cz + 1], 10, Color(0.75, 0.9, 1.0, 0.45))
 
 
 func _mark(name: String) -> void:
