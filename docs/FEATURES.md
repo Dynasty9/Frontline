@@ -425,7 +425,7 @@ function and an autopilot function.
 - **Hierarchical A\* (HPA\*)** over both grids: the map is cut into 16 x 16 m clusters with entrances wherever
   neighbouring clusters connect (and wherever a road crosses), true costs inside each cluster precomputed. Long
   trips plan on the abstract graph, then refine cluster by cluster. When walls go up or are blown down only the
-  touched clusters are rebuilt.
+  touched clusters are rebuilt, and of those only the borders and links the change can reach.
 - **Danger maps:** every second each side marks the clusters its spotted enemies cover (MG nests, bunkers and
   armour count for more). Ordinary moves skirt them, retreats keep well clear.
 - **Cover map:** every 1 m cell knows its cover level (heavy, light, none, exposed) and which way it faces, updated
@@ -698,7 +698,8 @@ function and an autopilot function.
   stop where he's sent. Wheeled vehicles steer like cars: a real turning circle from their wheelbase and
   steering lock, no turning on the spot, so a truck needs room to turn round. Tracked vehicles skid-steer:
   they pivot where they stand for a sharp turn but turn wider the faster they go. Weight sets how hard they
-  accelerate and brake. A spot close behind is backed into rather than reached by a loop; a vehicle keeps its
+  accelerate and brake. A spot close behind is backed into rather than reached by a loop; for one further
+  back the driver comes round on full lock (a boat's coxswain puts the helm hard over); a vehicle keeps its
   distance behind one going its way, drives round one standing in the road and passes oncoming traffic on
   the right; supply trucks keep to the right-hand side of the road. Hung up on something, it backs off, turns
   and plans again. (Trucks are slower on the road than they were, so each load carries more.)
@@ -905,21 +906,25 @@ function and an autopilot function.
   throw a fountain of earth high into the air that rains back down, fling burning fragments out in arcs that
   burn on where they land, leave flames licking about the crater for a moment, and clods land around the
   crater once the debris has fallen.
-- **Gunfire** (`gunfx.gd`): every round leaves the muzzle in a flash - a white-hot star, a tongue of flame thrown
-  out ahead and split sideways by the flash hider, bigger and longer for a .50 or an autocannon - with a moment's
-  light on everything round it (striking at night), a breath of smoke, and the case spinning out of the ejection
-  port to lie in the grass (brass piles up round a machine gun). The weapon kicks with each shot: the rifle back
-  into the shoulder and the muzzle up, the mounted gun on its pintle, the turret back on its ring when the main gun
-  fires. One round in so many is a tracer, red for the Coalition and green for the Rebels (Soviet-pattern
-  ammunition), never thinner than a pixel or two however far out the camera is. What a round hits decides what
-  flies: earth spurting up with clods raining out of it, grey grit and stone chips blown off a wall, a dry burst
-  of sand off sandbags, splinters, leaves fluttering down, sparks and a glint off steel, a dark mist off a man, a
-  white column and drops off water - shown when the round gets there, not when it's fired. Now and then one skips
-  off steel, stone or the ground and goes wailing away. A tank's gun fires with a blinding flash, a fireball
-  thrown out ahead, burning flecks, a cloud of smoke rolling out round the muzzle and the blast driving dust off
-  the ground; a rocket's back-blast kicks up the ground behind the launcher. All of it is drawn on the GPU, each
-  kind in a single draw call, with nothing moved from script once it's spawned, so a heavy firefight costs about
-  what a light one did.
+- **Gunfire** (`gunfx.gd`), sized to life: a rifle's muzzle flash is a hand's breadth of flame gone in a frame,
+  a .50's a forearm's, an autocannon's a man's height - a hot core and a short jet split into petals by the flash
+  hider (thrown out sideways by a heavy gun's muzzle brake), with a moment's light on everything round it
+  (striking at night). The gas that follows the round out glows for an instant and cools into a breath of smoke,
+  and the case spins out of the ejection port to lie in the grass (brass piles up round a machine gun). However
+  small, a flash never shrinks below a few pixels, so you can still see who's firing from high up. The weapon
+  kicks with each shot: the rifle back into the shoulder and the muzzle up, the mounted gun on its pintle, the
+  turret back on its ring when the main gun fires. One round in so many is a tracer, red for the Coalition and
+  green for the Rebels (Soviet-pattern ammunition): a thin bright thread at night, fainter and shorter by day,
+  never thinner than a pixel or two. What a round hits decides what flies, small and quick as in real footage: a
+  crown of dust and soil thrown up out of the ground, a puff of stone dust and chips off a wall, a dry burst of
+  sand off sandbags, splinters, leaves fluttering down, sparks and a glint off steel, a dark mist off a man, a
+  spout off water - shown when the round gets there, not when it's fired. Now and then one skips off steel, stone
+  or the ground. A tank's gun throws out a fireball of burning gas that's full size within a frame or two and
+  rolls into a cloud of smoke left hanging in front of the gun, with burning flecks and the blast driving dust
+  off the ground; a rocket's back-blast burns into a cloud behind the launcher. The smoke is shaded as a volume
+  from a warped density field - lit on the sun's side, in its own shadow on the far one, its thin edges glowing
+  against the sun - so no two puffs come out round. All of it is drawn on the GPU, each kind in a single draw
+  call, with nothing moved from script once it's spawned, so a heavy firefight costs about what a light one did.
 - **Physics** (`physics_fx.gd`, `ragdoll.gd`, Jolt): the dead become ragdolls - eleven jointed bodies with
   anatomical limits (knees and elbows bend one way). A bullet knocks a man back and he folds; a blast throws him
   limbs flailing and he tumbles to a stop, into a trench if that's where he lands. Later blasts throw the bodies
