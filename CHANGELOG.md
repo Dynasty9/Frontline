@@ -4,6 +4,47 @@ Every release of Frontline, newest first. The game updates itself; downloads, an
 are on [the website](https://web-production-5a4c1.up.railway.app/changelog/). Each change is written up in [`changelog/`](changelog/) as part of
 the pull request that makes it.
 
+## v1.0.10: Console tools and fuzzy completion
+
+*17 October 2026* · [Release on GitHub](https://github.com/Dynasty9/Frontline/releases/tag/v1.0.10)
+
+### Improved
+
+#### Find console commands as you type
+
+A scrollable command dropdown lists every command, then narrows to fuzzy matches and argument suggestions as you type.
+
+![Browse the full command list without leaving the console.](changelog/v1.0.10/console-completion/after.jpg)
+
+- An empty prompt shows every command with its description in a scrollable dropdown.
+- Typing finds close matches, including partial spellings and small typos. Arguments get suggestions too.
+- Use Up/Down to choose, then Tab or Enter to insert; you can also click a suggestion. Inserting never executes it.
+- Ctrl+Up/Down browses your command history. Esc dismisses suggestions before closing the console.
+- Completing in the middle of a line keeps the arguments that follow it.
+
+#### A console you can copy, search and save
+
+Select and copy console output, paste commands, search scrollback and save transcripts, with familiar terminal shortcuts.
+
+![Console tools for copying, finding and saving output.](changelog/v1.0.10/text-console/after.jpg)
+
+- Select text and copy it with Ctrl+C or the right-click menu. Paste into the command prompt with Ctrl+V or Ctrl+Shift+V.
+- Copy all output or save a plain-text transcript with the toolbar.
+- Find output with Ctrl+F; Enter and Shift+Enter move through matches.
+- Clear output with Ctrl+L, jump through scrollback with Ctrl+Home/End, and adjust text size with Ctrl+plus/minus.
+- Ctrl+C with nothing selected clears the prompt and safely stops a running benchmark.
+- Command history, Tab completion, undo/redo and normal text editing remain available.
+
+### Fixed
+
+#### Sign in to the game from your website login
+
+Already signed into the website? Signing in from the game now uses that account and returns you to Frontline automatically.
+
+The website no longer asks you to sign in with GitHub again when you're already signed in.
+Your game and website keep separate sessions, so both stay signed in. If the browser blocks opening the game
+automatically, use **Open Frontline** to return.
+
 ## v1.0.9: A new look for the whole interface
 
 *17 October 2026* · [Release on GitHub](https://github.com/Dynasty9/Frontline/releases/tag/v1.0.9)

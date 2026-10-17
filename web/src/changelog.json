@@ -1,6 +1,55 @@
 {
   "releases": [
     {
+      "version": "1.0.10",
+      "tag": "v1.0.10",
+      "name": "Console tools and fuzzy completion",
+      "date": "2026-10-17",
+      "summary": "A scrollable command dropdown lists every command, then narrows to fuzzy matches and argument suggestions as you type.",
+      "url": "https://github.com/Dynasty9/Frontline/releases/tag/v1.0.10",
+      "pull_requests": [
+        86,
+        87,
+        88
+      ],
+      "entries": [
+        {
+          "slug": "console-completion",
+          "title": "Find console commands as you type",
+          "kind": "improved",
+          "summary": "A scrollable command dropdown lists every command, then narrows to fuzzy matches and argument suggestions as you type.",
+          "body": "- An empty prompt shows every command with its description in a scrollable dropdown.\n- Typing finds close matches, including partial spellings and small typos. Arguments get suggestions too.\n- Use Up/Down to choose, then Tab or Enter to insert; you can also click a suggestion. Inserting never executes it.\n- Ctrl+Up/Down browses your command history. Esc dismisses suggestions before closing the console.\n- Completing in the middle of a line keeps the arguments that follow it.",
+          "screenshots": [
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.10/console-completion/after.jpg",
+              "caption": "Browse the full command list without leaving the console."
+            }
+          ]
+        },
+        {
+          "slug": "text-console",
+          "title": "A console you can copy, search and save",
+          "kind": "improved",
+          "summary": "Select and copy console output, paste commands, search scrollback and save transcripts, with familiar terminal shortcuts.",
+          "body": "- Select text and copy it with Ctrl+C or the right-click menu. Paste into the command prompt with Ctrl+V or Ctrl+Shift+V.\n- Copy all output or save a plain-text transcript with the toolbar.\n- Find output with Ctrl+F; Enter and Shift+Enter move through matches.\n- Clear output with Ctrl+L, jump through scrollback with Ctrl+Home/End, and adjust text size with Ctrl+plus/minus.\n- Ctrl+C with nothing selected clears the prompt and safely stops a running benchmark.\n- Command history, Tab completion, undo/redo and normal text editing remain available.",
+          "screenshots": [
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.10/text-console/after.jpg",
+              "caption": "Console tools for copying, finding and saving output."
+            }
+          ]
+        },
+        {
+          "slug": "existing-website-login",
+          "title": "Sign in to the game from your website login",
+          "kind": "fixed",
+          "summary": "Already signed into the website? Signing in from the game now uses that account and returns you to Frontline automatically.",
+          "body": "The website no longer asks you to sign in with GitHub again when you're already signed in.\nYour game and website keep separate sessions, so both stay signed in. If the browser blocks opening the game\nautomatically, use **Open Frontline** to return.",
+          "screenshots": []
+        }
+      ]
+    },
+    {
       "version": "1.0.9",
       "tag": "v1.0.9",
       "name": "A new look for the whole interface",
