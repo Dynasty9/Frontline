@@ -281,8 +281,11 @@ run on the processor, and explosions, muzzle flashes and fires don't cast light.
 
 The key under Esc (**`** or **~**, rebindable in Settings > Controls) drops a console down from the top of the
 screen, in a battle or in the menus. Its commands are mostly about one question: why is the game slow? Tab
-completes a command or its argument, Up and Down go through what was typed before, Esc closes it, `help` lists
-everything.
+inserts a command or its argument from a scrollable dropdown. With an empty prompt, the dropdown lists every
+command and its description; typing ranks prefixes, partial spellings and small typos. Up/Down chooses a
+suggestion, Tab or a click inserts it, and Enter inserts an explicitly chosen suggestion without running it.
+Otherwise Enter runs the prompt as typed. Ctrl+Up/Down browses command history; Esc dismisses the dropdown,
+then closes the console. Completion works at the caret and preserves arguments after it. `help` lists everything.
 
 Select output with the mouse, double-click words, or focus it and use Ctrl+A; Ctrl+C copies the selection
 without colour markup. Both output and prompt have right-click menus. Ctrl+V (or Ctrl+Shift+V) pastes into

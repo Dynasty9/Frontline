@@ -143,7 +143,7 @@ On a Mac's trackpad, scroll with two fingers to drag the map and pinch to zoom; 
 | Hide the interface | F2 |
 | Performance overlay | F3 |
 | Field Manual | F4 |
-| Console (select/copy output, paste commands, Ctrl+F search; type `help`) | ` or ~ |
+| Console (fuzzy command dropdown, copy/paste, Ctrl+F output search) | ` or ~ |
 | Chat (team chat) | Enter (Shift + Enter) |
 | Message history | L |
 | Menu and settings | Esc |
