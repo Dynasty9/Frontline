@@ -34,13 +34,15 @@ func _init() -> void:
 	ikind.resize(N * N)
 	vkind.resize(N * N)
 	heat.resize(N * N)
-	# keep vehicles off the outer rim
-	for i in N:
-		for j in [0, 1, 2, N - 3, N - 2, N - 1]:
-			veh.set_point_solid(Vector2i(i, j), true)
-			veh.set_point_solid(Vector2i(j, i), true)
 	hnav_i = HNav.new(inf, false)
 	hnav_v = HNav.new(veh, true)
+	# keep vehicles off the outer rim (every cell set is passed on to the
+	# hierarchical graphs, which keep their own copy: see HNav._solid)
+	for i in N:
+		for j in [0, 1, 2, N - 3, N - 2, N - 1]:
+			for c: Vector2i in [Vector2i(i, j), Vector2i(j, i)]:
+				veh.set_point_solid(c, true)
+				hnav_v.mark_dirty(c)
 
 
 # --- boats --------------------------------------------------------------------------
