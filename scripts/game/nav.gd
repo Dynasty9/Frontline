@@ -188,8 +188,9 @@ func finalize() -> void:
 ## being laid or a village flattened dirties dozens at once). Counted, not
 ## timed: if how much gets re-linked each tick hung on how fast this computer
 ## is, one seed would route men differently from one run to the next. (It was
-## a 1.2 ms budget, but one cluster takes several ms in GDScript, so in effect
-## it was one a tick, now and then two.)
+## a 1.2 ms budget, when one cluster took several ms in GDScript, so in effect
+## it was one a tick, now and then two. A repair now redoes only what changed,
+## well under a millisecond as a rule.)
 func update_hier(clusters := 1) -> void:
 	for i in clusters:
 		if not hnav_i.dirty.is_empty():

@@ -411,7 +411,7 @@ function and an autopilot function.
 - **Hierarchical A\* (HPA\*)** over both grids: the map is cut into 16 x 16 m clusters with entrances wherever
   neighbouring clusters connect (and wherever a road crosses), true costs inside each cluster precomputed. Long
   trips plan on the abstract graph, then refine cluster by cluster. When walls go up or are blown down only the
-  touched clusters are rebuilt.
+  touched clusters are rebuilt, and of those only the borders and links the change can reach.
 - **Danger maps:** every second each side marks the clusters its spotted enemies cover (MG nests, bunkers and
   armour count for more). Ordinary moves skirt them, retreats keep well clear.
 - **Cover map:** every 1 m cell knows its cover level (heavy, light, none, exposed) and which way it faces, updated
