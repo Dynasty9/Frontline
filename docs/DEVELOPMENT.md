@@ -120,6 +120,15 @@ sends compact per-entity snapshots at 15 Hz (length-prefixed records chunked int
 spawn/despawn/property events, and batched effect events. Clients interpolate. Team-only messages are only sent
 to that team.
 
+Models are built in script from parts (boxes, cylinders, lofted hulls) and merged (`Mats.merge_static`) into a mesh
+per material, each part's tint carried as vertex colour. A model merged whole puts its parts straight into the
+merged meshes (`Mats.Bake`: trees, house and garden walls, floors, rubble, crates, the street furniture, and every
+vehicle, whose builders' `_add` only notes a part down for its moving piece) without making them as nodes first;
+a part a model goes on to use (a flag that changes colour, a door that swings) stays a node, out of the merge. A mesh built in script keeps the arrays it was made from (`Mats.keep_arrays`), so merging
+never reads one back from the graphics card, which waits on it each time. Merged-away parts let go of their meshes
+at once (a part deleted with its mesh had the renderer bring it up to date first: tens of thousands at once froze
+the first frame of a battle for ten seconds and more).
+
 ## Automated test modes
 
 Pass these after `--` on the command line. Every run given switches is a test run: it exits with code 1 if a
@@ -622,12 +631,14 @@ for the browser:
 - **No light from effects** (explosion and muzzle flashes, fires): the first time a light falls on something, its
   shaders compile again with lights on.
 - **The battle is built a stage at a time** (`World.build`, `MapGen.generate`): between stages `World._breathe`
-  tells the loading screen and, in a browser, waits a frame, with the half-built world neither ticking nor drawn.
-  Built in one go it held the page for about 30 s, long enough for Chrome to call it unresponsive; now no stage
-  takes more than about 7 s. Everywhere else `_breathe` returns at once, so the build is one piece, in one frame,
-  as it always was. The battlefield then stays out of sight for a frame (`main.gd` `_reveal_next_frame`), so
-  compiling its shaders (about 17 s the first time) is a wait of its own. The loading screen's field note says to
-  choose Wait if the browser asks anyway.
+  tells the loading screen and waits a frame, with the half-built world neither ticking nor drawn. Built in one go
+  it held the page for about 30 s, long enough for Chrome to call it unresponsive; now no stage takes more than
+  about 7 s. The battlefield then stays out of sight for a frame (`main.gd` `_reveal_next_frame`), so compiling its
+  shaders (about 17 s the first time) is a wait of its own. The loading screen's field note says to choose Wait if
+  the browser asks anyway. (A desktop host with a window builds a stage at a time too, its multiplayer polling
+  paused meanwhile so a player who has loaded is sent the battlefield once it's all there: the loading bar moves,
+  and Windows doesn't call the window Not Responding. Headless, and for a desktop `--scenario`, `_breathe` returns
+  at once, so the build is one piece in one frame, as tests and dedicated hosts have it.)
 
 With nothing cached, a first battle now starts after about a minute, then plays without long hitches; the browser
 keeps the compiled shaders, so later battles wait only for the map. To see where the time goes, run the desktop

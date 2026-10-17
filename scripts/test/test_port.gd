@@ -226,8 +226,10 @@ func _stepped() -> Dictionary:
 	return {"t": w.time, "ticks": Engine.get_physics_frames() - _phys0, "winner": w.winner}
 
 
+## A battle is loaded once it's built (with a window it's built over several
+## frames: see World._breathe).
 func _world_ok() -> bool:
-	return main.world != null and is_instance_valid(main.world) and main.world.is_inside_tree() and main.world.srv
+	return main.world != null and is_instance_valid(main.world) and main.world.is_inside_tree() and main.world.srv and not main.world.building
 
 
 ## An order, as a commander gives it (World.execute_cmd): "t" is the order and

@@ -156,6 +156,7 @@ static func _mesh(vs: PackedVector3Array, ns: PackedVector3Array) -> ArrayMesh:
 	var am := ArrayMesh.new()
 	if not vs.is_empty():
 		am.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arr)
+		Mats.keep_arrays(am, arr)
 	return am
 
 
@@ -179,7 +180,7 @@ static func _slab(key: String, a: Vector3, b: Vector3, c: Vector3, d: Vector3, t
 
 
 ## k._add with the order of arguments used here.
-static func _put(k: VehicleModels, p: Node3D, mesh: Mesh, mat: String, col, pos := Vector3.ZERO, rot := Vector3.ZERO, shadow := true) -> MeshInstance3D:
+static func _put(k: VehicleModels, p: Node3D, mesh: Mesh, mat: String, col, pos := Vector3.ZERO, rot := Vector3.ZERO, shadow := true) -> Variant:
 	return k._add(p, mesh, mat, col, pos, rot, Vector3.ONE, shadow)
 
 
@@ -196,6 +197,7 @@ static func _repaint(k: VehicleModels) -> void:
 		_skin_mat.set_shader_parameter("pattern", Mats.PLAIN)
 		_skin_mat.set_shader_parameter("bump", 0.15)
 	_swap_mat(k.root, src, _skin_mat)
+	k._swap_noted(src, _skin_mat)
 
 
 static func _swap_mat(n: Node, from: Material, to: Material) -> void:
@@ -207,7 +209,7 @@ static func _swap_mat(n: Node, from: Material, to: Material) -> void:
 
 ## Canopy glass with a coloured coating (a stealth jet's gold): the shared
 ## glass surface, more metallic, tinted. One material per colour.
-static func _glaze(k: VehicleModels, mi: MeshInstance3D, col: Color, metal := 0.7) -> void:
+static func _glaze(k: VehicleModels, mi: Variant, col: Color, metal := 0.7) -> void:
 	if k.burnt:
 		return
 	var key := "%s_%.2f" % [col.to_html(), metal]
@@ -217,7 +219,7 @@ static func _glaze(k: VehicleModels, mi: MeshInstance3D, col: Color, metal := 0.
 		g.set_shader_parameter("metal", metal)
 		g.set_shader_parameter("rough", 0.07)
 		_glass[key] = g
-	mi.material_override = _glass[key]
+	k._restyle(mi, _glass[key])
 
 
 # --- sections ----------------------------------------------------------------------
@@ -320,7 +322,7 @@ static func _loop(pts: Array, z: float, y0: float, sd := 1.0) -> PackedVector3Ar
 
 ## A body through resampled rows: points j0..j1 of each half section (the
 ## whole section by default), rows i0..i1.
-static func _hull(k: VehicleModels, p: Node3D, key: String, rows: Array, y0: float, mat: String, col, j0 := 0, j1 := -1, i0 := 0, i1 := -1, crease := 30.0) -> MeshInstance3D:
+static func _hull(k: VehicleModels, p: Node3D, key: String, rows: Array, y0: float, mat: String, col, j0 := 0, j1 := -1, i0 := 0, i1 := -1, crease := 30.0) -> Variant:
 	var rings := []
 	if not _mc.has("ft_" + key):
 		var last := rows.size() - 1 if i1 < 0 else i1

@@ -57,6 +57,16 @@ func _ready() -> void:
 
 var _hdata := PackedFloat32Array()
 var _mask := PackedByteArray()
+## The ground samples (x0, z0, x1, z1, inclusive) waiting to be redone (x0 < 0:
+## none). Changes that come in together are redone in one go, at the end of
+## the frame: the first frame of a battle brings two over the whole map (the
+## shell holes and riverbeds the map was made with, and the trenches).
+var _pend := Rect2i(-1, 0, 0, 0)
+var _job: HeightsJob = null  # a big redo, under way on a worker thread
+var _task := -1
+## A redo over more samples than this goes to a worker thread: the whole map
+## is a million, about a second of script.
+const BIG := 40000
 
 
 ## Cuts the trench network into the ground (called when the network changes);
@@ -64,46 +74,100 @@ var _mask := PackedByteArray()
 func update_ground(mask: PackedByteArray, area := Rect2()) -> void:
 	_mask = mask
 	var full := _hdata.size() != GROUND_N * GROUND_N or not area.has_area()
-	_hdata.resize(GROUND_N * GROUND_N)
-	var x0 := 0
-	var x1 := GROUND_N - 1
-	var z0 := 0
-	var z1 := GROUND_N - 1
-	if not full:
-		var h := (GROUND_N - 1) * 0.5
-		x0 = clampi(floori(area.position.x + h), 0, GROUND_N - 1)
-		x1 = clampi(ceili(area.end.x + h), 0, GROUND_N - 1)
-		z0 = clampi(floori(area.position.y + h), 0, GROUND_N - 1)
-		z1 = clampi(ceili(area.end.y + h), 0, GROUND_N - 1)
-	for z in range(z0, z1 + 1):
-		for x in range(x0, x1 + 1):
-			_hdata[z * GROUND_N + x] = _height(x, z)
-	_hm.map_data = _hdata
+	if full:
+		_redo(0, 0, GROUND_N - 1, GROUND_N - 1)
+		return
+	var h := (GROUND_N - 1) * 0.5
+	_redo(clampi(floori(area.position.x + h), 0, GROUND_N - 1), clampi(floori(area.position.y + h), 0, GROUND_N - 1),
+		clampi(ceili(area.end.x + h), 0, GROUND_N - 1), clampi(ceili(area.end.y + h), 0, GROUND_N - 1))
 
 
 ## Follows the shell holes (rect in terrain height samples).
 func update_deform(r: Rect2i) -> void:
+	var k := TerrainMap.DRES
+	_redo(clampi(r.position.x / k, 0, GROUND_N - 1), clampi(r.position.y / k, 0, GROUND_N - 1),
+		clampi(r.end.x / k + 1, 0, GROUND_N - 1), clampi(r.end.y / k + 1, 0, GROUND_N - 1))
+
+
+## Samples x0..x1, z0..z1 are to be redone: at the end of the frame, with
+## whatever else comes in before then.
+func _redo(x0: int, z0: int, x1: int, z1: int) -> void:
+	if _pend.position.x < 0:
+		_pend = Rect2i(x0, z0, x1 - x0, z1 - z0)
+		if _task < 0:
+			_flush.call_deferred()
+	else:
+		_pend = _pend.merge(Rect2i(x0, z0, x1 - x0, z1 - z0))
+
+
+func _flush() -> void:
+	if _task >= 0 or _pend.position.x < 0:
+		return  # (a worker is on it: what came in since goes after, see _process)
 	if _hdata.size() != GROUND_N * GROUND_N:
 		_hdata.resize(GROUND_N * GROUND_N)
-	var k := TerrainMap.DRES
-	var x0 := clampi(r.position.x / k, 0, GROUND_N - 1)
-	var x1 := clampi(r.end.x / k + 1, 0, GROUND_N - 1)
-	var z0 := clampi(r.position.y / k, 0, GROUND_N - 1)
-	var z1 := clampi(r.end.y / k + 1, 0, GROUND_N - 1)
-	for z in range(z0, z1 + 1):
-		for x in range(x0, x1 + 1):
-			_hdata[z * GROUND_N + x] = _height(x, z)
+	var r := _pend
+	_pend = Rect2i(-1, 0, 0, 0)
+	var job := HeightsJob.new(_hdata, _mask, world.terrain.dh if world.terrain else PackedFloat32Array(), r)
+	if (r.size.x + 1) * (r.size.y + 1) > BIG and not OS.has_feature("nothreads"):
+		# the ground stays as it was for the second or so this takes
+		_job = job
+		_task = WorkerThreadPool.add_task(job.run, false, "Physics ground")
+		return
+	job.run()
+	_take(job)
+
+
+## A finished redo: the ground the bodies land on.
+func _take(job: HeightsJob) -> void:
+	_hdata = job.heights
 	_hm.map_data = _hdata
 
 
-func _height(x: int, z: int) -> float:
-	var n := TrenchNet.N
-	if not _mask.is_empty():
-		var pz := clampi(z * TrenchNet.RES, 0, n - 1)
-		var px := clampi(x * TrenchNet.RES, 0, n - 1)
-		if _mask[pz * n + px] > 150:
-			return TrenchNet.FLOOR_Y
-	return world.terrain.deform_at(Vector3(x - MapDims.HALF, 0, z - MapDims.HALF)) if world.terrain else 0.0
+func _exit_tree() -> void:
+	if _task >= 0:
+		WorkerThreadPool.wait_for_task_completion(_task)  # nothing may be left running on a worker
+		_task = -1
+
+
+## The physics ground's heights redone over a rectangle of its samples: the
+## trench floor where the trench mask is dug, else the shell holes and
+## riverbeds (TerrainMap.deform_at, worked out the same way). It works on its
+## own copies of the heights and masks (packed arrays copy when written to),
+## so it can run on a worker thread while the battle goes on.
+class HeightsJob:
+	var heights: PackedFloat32Array
+	var mask: PackedByteArray
+	var dh: PackedFloat32Array
+	var rect: Rect2i
+
+	func _init(h: PackedFloat32Array, m: PackedByteArray, d: PackedFloat32Array, r: Rect2i) -> void:
+		heights = h
+		mask = m
+		dh = d
+		rect = r
+
+	func run() -> void:
+		var n := TrenchNet.N
+		var dn := TerrainMap.DN
+		var has_mask := not mask.is_empty()
+		var has_dh := dh.size() == dn * dn
+		for z in range(rect.position.y, rect.end.y + 1):
+			var pz := clampi(z * TrenchNet.RES, 0, n - 1)
+			var fz := (float(z) - MapDims.HALF + TerrainMap.H) * TerrainMap.DRES - 0.5
+			var z0 := clampi(floori(fz), 0, dn - 2)
+			var tz := clampf(fz - z0, 0.0, 1.0)
+			var row := z * PhysicsFx.GROUND_N
+			for x in range(rect.position.x, rect.end.x + 1):
+				if has_mask and mask[pz * n + clampi(x * TrenchNet.RES, 0, n - 1)] > 150:
+					heights[row + x] = TrenchNet.FLOOR_Y
+				elif has_dh:
+					var fx := (float(x) - MapDims.HALF + TerrainMap.H) * TerrainMap.DRES - 0.5
+					var x0 := clampi(floori(fx), 0, dn - 2)
+					var tx := clampf(fx - x0, 0.0, 1.0)
+					var j := z0 * dn + x0
+					heights[row + x] = lerpf(lerpf(dh[j], dh[j + 1], tx), lerpf(dh[j + dn], dh[j + dn + 1], tx), tz)
+				else:
+					heights[row + x] = 0.0
 
 
 func _mask_all() -> int:
@@ -282,6 +346,12 @@ func _physics_process(_dt: float) -> void:
 
 
 func _process(dt: float) -> void:
+	if _task >= 0 and WorkerThreadPool.is_task_completed(_task):
+		WorkerThreadPool.wait_for_task_completion(_task)
+		_task = -1
+		_take(_job)
+		_job = null
+		_flush()  # (anything that came in meanwhile)
 	var a := Engine.get_physics_interpolation_fraction()
 	for i in range(ragdolls.size() - 1, -1, -1):
 		var r = ragdolls[i]

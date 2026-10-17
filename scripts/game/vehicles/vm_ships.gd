@@ -300,7 +300,7 @@ static var _meshes := {}
 
 ## A box: chamfered (Res.box) when it's big enough for its edges to catch the
 ## light, a plain one (a quarter of the vertices) for the small parts.
-static func _bx(k: VehicleModels, parent: Node3D, s: Vector3, pos: Vector3, kind: String, col = null, rot := Vector3.ZERO, shadow := true) -> MeshInstance3D:
+static func _bx(k: VehicleModels, parent: Node3D, s: Vector3, pos: Vector3, kind: String, col = null, rot := Vector3.ZERO, shadow := true) -> Variant:
 	return k._add(parent, _box_mesh(s), kind, col, pos, rot, Vector3.ONE, shadow)
 
 
@@ -410,7 +410,7 @@ static func _liferaft(k: VehicleModels, m: Node3D, pos: Vector3, tilt: float, cr
 		_bx(k, pv, Vector3(0.62, 0.12, 0.08), Vector3(0, 0.06, dz), "paint", cradle_col)
 	_bx(k, pv, Vector3(0.1, 0.05, 0.9), Vector3(0.24, 0.02, 0), "paint", cradle_col)
 	_bx(k, pv, Vector3(0.1, 0.05, 0.9), Vector3(-0.24, 0.02, 0), "paint", cradle_col)
-	VmBoat._bake(pv)
+	VmBoat._bake(k, pv)
 
 
 ## A mushroom ventilator on the deck.
@@ -524,7 +524,7 @@ static func _m2(k: VehicleModels, m: Node3D, pos: Vector3, yaw: float, el := 0.0
 		_rod(k, pv, Vector3(sx, 0.12, 0.28), Vector3(sx, 0.2, 0.36), 0.016, "rubber", null, 6, true)
 	_bx(k, pv, Vector3(0.11, 0.19, 0.29), Vector3(-0.15, 0.08, -0.08), "paint", Color(0.3, 0.33, 0.22))
 	_bx(k, pv, Vector3(0.06, 0.02, 0.1), Vector3(-0.07, 0.19, -0.08), "steel", Color(0.6, 0.48, 0.22), Vector3(0, 0, 0.4), false)
-	VmBoat._bake(pv)
+	VmBoat._bake(k, pv)
 
 
 ## ZU-23-2 twin 23 mm cannon, its wheels gone and its base welded down: the
@@ -582,7 +582,7 @@ static func _zu23(k: VehicleModels, m: Node3D, pos: Vector3, col: Color) -> Node
 		_rod(k, tv, Vector3(sx * 0.46, 0.62, 0.22), Vector3(sx * 0.33, 0.62, 0.22), 0.02, gm)
 	# a slab of steel plate welded on in front of the cradle
 	_bx(k, tv, Vector3(0.95, 0.34, 0.03), Vector3(0, 0.36, -0.64), "steel", Color(0.31, 0.3, 0.26), Vector3(-0.08, 0, 0))
-	VmBoat._bake(el)  # (the muzzle marker moves with the rest)
+	VmBoat._bake(k, el)  # (the muzzle marker moves with the rest)
 	return tv
 
 
@@ -607,7 +607,7 @@ static func _dshk(k: VehicleModels, m: Node3D, pos: Vector3, yaw: float) -> void
 		_rod(k, pv, Vector3(sx, 0.1, 0.33), Vector3(sx, 0.2, 0.42), 0.017, "wood_dark", null, 6, true)
 	_bx(k, pv, Vector3(0.14, 0.22, 0.3), Vector3(-0.17, 0.07, 0.0), "paint", Color(0.3, 0.33, 0.22))
 	_bx(k, pv, Vector3(0.5, 0.32, 0.025), Vector3(0, 0.06, -0.4), "steel", Color(0.32, 0.31, 0.27), Vector3(-0.1, 0, 0))
-	VmBoat._bake(pv)
+	VmBoat._bake(k, pv)
 
 
 # --- Mk VI patrol boat -------------------------------------------------------------------
@@ -877,7 +877,7 @@ static func _patrol_ship(k: VehicleModels, team: int, seed: int) -> void:
 	var az := 8.7
 	var g2 := _mk38(k, m, Vector3(0, _dk(p, az), az), grey)
 	g2.rotation.y = PI - 0.35
-	VmBoat._bake(g2)
+	VmBoat._bake(k, g2)
 	for s in [-1.0, 1.0]:
 		_bx(k, m, Vector3(0.66, 0.5, 0.46), Vector3(s * 1.4, _dk(p, 7.0) + 0.25, 7.0), "plain", grey)
 		_bx(k, m, Vector3(0.68, 0.03, 0.48), Vector3(s * 1.4, _dk(p, 7.0) + 0.51, 7.0), "plain", grey.darkened(0.08))

@@ -127,6 +127,7 @@ static func skin(rings: Array, key: String, crease := 40.0) -> ArrayMesh:
 	arr[Mesh.ARRAY_NORMAL] = ns
 	var am := ArrayMesh.new()
 	am.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arr)
+	Mats.keep_arrays(am, arr)
 	_mc[key] = am
 	return am
 
@@ -214,7 +215,7 @@ static func st_at(st: Array, z: float) -> Array:
 
 
 ## A smooth lofted body through stations (see sec()).
-static func body(k: VehicleModels, p: Node3D, key: String, st: Array, mat: String, col, n := 20, crease := 40.0, pos := Vector3.ZERO) -> MeshInstance3D:
+static func body(k: VehicleModels, p: Node3D, key: String, st: Array, mat: String, col, n := 20, crease := 40.0, pos := Vector3.ZERO) -> Variant:
 	var kk := "pl_" + key
 	var rings := []
 	if not _mc.has(kk):
@@ -380,7 +381,7 @@ static func surf_at(secs: Array, x: float) -> Array:
 
 
 ## A rod from a to b (radius r at a, r2 at b): struts, probes, gear legs, barrels.
-static func rod(k: VehicleModels, p: Node3D, a: Vector3, b: Vector3, r: float, mat: String, col = null, segs := 8, r2 := -1.0, shadow := true) -> MeshInstance3D:
+static func rod(k: VehicleModels, p: Node3D, a: Vector3, b: Vector3, r: float, mat: String, col = null, segs := 8, r2 := -1.0, shadow := true) -> Variant:
 	var d := b - a
 	var y := d.normalized()
 	var x := y.cross(Vector3.FORWARD if absf(y.z) < 0.9 else Vector3.RIGHT).normalized()

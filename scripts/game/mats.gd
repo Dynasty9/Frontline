@@ -283,6 +283,13 @@ static func merge_static(root: Node3D, keep: Array = [], deep := true, remerge :
 	var groups := {}
 	var victims: Array = []
 	_collect(root, Transform3D.IDENTITY, groups, victims, keep, deep, remerge, single)
+	_emit(root, groups, single)
+	_free_parts(victims)
+
+
+## The merged meshes, under `root`: one per material (and shadow setting), or
+## with `single` one mesh with a surface per material.
+static func _emit(root: Node3D, groups: Dictionary, single: bool) -> void:
 	if single and not groups.is_empty():
 		# one mesh, a surface per material: one render instance to move, not a dozen
 		var am2 := ArrayMesh.new()
@@ -302,9 +309,6 @@ static func merge_static(root: Node3D, keep: Array = [], deep := true, remerge :
 		mi2.mesh = am2
 		mi2.cast_shadow = shadow
 		root.add_child(mi2)
-		for v in victims:
-			v.get_parent().remove_child(v)
-			v.queue_free()
 		return
 	for key in groups:
 		var g: Dictionary = groups[key]
@@ -320,8 +324,22 @@ static func merge_static(root: Node3D, keep: Array = [], deep := true, remerge :
 		mi.material_override = g.mat if g.mat.get_shader_parameter("use_vcolor") == true else vc_variant(g.mat)
 		mi.cast_shadow = g.shadow
 		root.add_child(mi)
+
+
+## The parts that went into the merged meshes let go of their meshes now, and
+## are deleted at the end of the frame. Laying out a battle makes and merges
+## tens of thousands of them; holding their meshes, they were all deleted in
+## the frame after it, and the first deletion had the renderer bring every one
+## of them up to date first (each with a search through every object's shader
+## values for a free place): a freeze of ten seconds and more. Deleted at once
+## instead, each deletion did that for the parts of the model not merged yet.
+## A part without a mesh is nothing for the renderer to bring up to date.
+## (Nothing holds on to a part once it's merged: whatever a model goes on to
+## use - a flag that changes colour, a door that swings - it keeps out.)
+static func _free_parts(victims: Array) -> void:
 	for v in victims:
 		v.get_parent().remove_child(v)
+		(v as MeshInstance3D).mesh = null
 		v.queue_free()
 
 
@@ -330,13 +348,18 @@ static var _flat_cache := {}
 
 ## A surface as an unindexed triangle list [verts, normals, colours or null].
 ## The shared primitives (boxes, cylinders, spheres) are flattened once and
-## kept, so building a soldier or a house only appends arrays.
+## kept, so building a soldier or a house only appends arrays. Any other mesh
+## keeps its own flattened copy for as long as it lives (every tank of a kind
+## shares its hull, every sandbag one bag).
 static func _flat(mesh: Mesh, si: int) -> Array:
 	var cacheable := mesh is PrimitiveMesh or mesh is BevelMesh or mesh is BodyMesh
 	var key := mesh.get_instance_id() * 8 + si
 	if cacheable and _flat_cache.has(key):
 		return _flat_cache[key]
-	var arr := mesh.surface_get_arrays(si)
+	var own: Dictionary = {} if cacheable else mesh.get_meta(&"flat", {})
+	if own.has(si):
+		return own[si]
+	var arr := _arrays(mesh, si)
 	var v: PackedVector3Array = arr[Mesh.ARRAY_VERTEX]
 	var n: PackedVector3Array = arr[Mesh.ARRAY_NORMAL]
 	var c = arr[Mesh.ARRAY_COLOR]
@@ -363,7 +386,58 @@ static func _flat(mesh: Mesh, si: int) -> Array:
 	var out := [v, n, c if hasc else null]
 	if cacheable:
 		_flat_cache[key] = out
+	else:
+		own[si] = out
+		mesh.set_meta(&"flat", own)
 	return out
+
+
+## Has `mesh` (made in script from `arrays`, its one surface) remember them,
+## so merging it never has to read it back from the renderer (see _arrays).
+static func keep_arrays(mesh: ArrayMesh, arrays: Array) -> void:
+	mesh.set_meta(&"src", arrays)
+
+
+## A surface's arrays as the renderer gives them back. Reading a mesh back
+## from the graphics card waits on it, a millisecond or two each time, and a
+## battlefield's models merged thousands (every box of a new size, every
+## vehicle hull): with a window that was most of what building them cost. A
+## mesh made in script keeps the arrays it was made from (keep_arrays); the
+## renderer holds normals and colours packed (normals as two 16-bit octahedral
+## coordinates, colours a byte a channel), so they're packed and unpacked here
+## the way it does it, to come out exactly as it would give them back.
+static func _arrays(mesh: Mesh, si: int) -> Array:
+	if si != 0 or not mesh.has_meta(&"src"):
+		return mesh.surface_get_arrays(si)
+	var src: Array = mesh.get_meta(&"src")
+	mesh.remove_meta(&"src")  # (flattened once, and kept: see _flat)
+	var out := src.duplicate()
+	if src[Mesh.ARRAY_NORMAL] != null:
+		var sn: PackedVector3Array = src[Mesh.ARRAY_NORMAL]
+		var pn := PackedVector3Array()
+		pn.resize(sn.size())
+		for i in sn.size():
+			# (scaled in single precision, as the renderer does; truncated to 16
+			# bits, which makes nothing of the not-a-number a zero normal gives)
+			var e := sn[i].octahedron_encode() * 65535.0
+			var ex := 0 if is_nan(e.x) else int(clampf(e.x, 0.0, 65535.0))
+			var ey := 0 if is_nan(e.y) else int(clampf(e.y, 0.0, 65535.0))
+			pn[i] = Vector3.octahedron_decode(Vector2(ex / 65535.0, ey / 65535.0))
+		out[Mesh.ARRAY_NORMAL] = pn
+	if src[Mesh.ARRAY_COLOR] != null:
+		var sc: PackedColorArray = src[Mesh.ARRAY_COLOR]
+		var pc := PackedColorArray()
+		pc.resize(sc.size())
+		for i in sc.size():
+			var c := sc[i]
+			pc[i] = Color(_byte(c.r) / 255.0, _byte(c.g) / 255.0, _byte(c.b) / 255.0, _byte(c.a) / 255.0)
+		out[Mesh.ARRAY_COLOR] = pc
+	return out
+
+
+## A colour channel as the renderer stores it: a byte, truncated.
+static func _byte(v: float) -> int:
+	return 0 if is_nan(v) else int(clampf(v * 255.0, 0.0, 255.0))
 
 
 static func _collect(node: Node, xf: Transform3D, groups: Dictionary, victims: Array, keep: Array, deep := true, remerge := false, single := false) -> void:
@@ -389,43 +463,88 @@ static func _collect(node: Node, xf: Transform3D, groups: Dictionary, victims: A
 					break
 				mats.append(sm0)
 			if ok and not mats.is_empty():
-				var tint = get_inst(mi, &"tint")
-				# the tint uniform is sRGB (source_color); vertex colours are read as linear
-				var col: Color = (tint as Color).srgb_to_linear() if tint is Color else Color(1, 1, 1)
-				var nb := Transform3D(cx.basis.inverse().transposed(), Vector3.ZERO)
-				for si in mi.mesh.get_surface_count():
-					var sm: ShaderMaterial = mats[si]
-					var vc: bool = sm.get_shader_parameter("use_vcolor") == true
-					var key := str(sm.get_instance_id()) if single else "%d|%d" % [sm.get_instance_id(), mi.cast_shadow]
-					if not groups.has(key):
-						groups[key] = {"mat": sm, "shadow": mi.cast_shadow, "v": PackedVector3Array(), "n": PackedVector3Array(), "c": PackedColorArray()}
-					var g: Dictionary = groups[key]
-					if mi.cast_shadow != GeometryInstance3D.SHADOW_CASTING_SETTING_OFF:
-						g.shadow = mi.cast_shadow
-					# plain triangle lists, so parts are appended with native array
-					# ops (no index offsetting loop in script)
-					var fa := _flat(mi.mesh, si)
-					var verts: PackedVector3Array = fa[0]
-					g.v.append_array(cx * verts)
-					g.n.append_array(nb * (fa[1] as PackedVector3Array))
-					if vc and fa[2] != null and (fa[2] as PackedColorArray).size() == verts.size():
-						g.c.append_array(fa[2])
-					else:
-						# in the scale the merged material reads it back at (see VC_K)
-						var fk := 1.0
-						if vc:
-							var kp = sm.get_shader_parameter("vcolor_k")
-							fk = 1.0 / float(kp) if kp != null else 1.0
-						elif sm.shader == shader():
-							fk = 1.0 / VC_K
-						var cols := PackedColorArray()
-						cols.resize(verts.size())
-						cols.fill(Color(col.r * fk, col.g * fk, col.b * fk, col.a))
-						g.c.append_array(cols)
+				_append(groups, mi.mesh, mats, mi.cast_shadow, get_inst(mi, &"tint"), cx, single)
 				victims.append(mi)
 				continue
 		if deep:
 			_collect(c, cx, groups, victims, keep, deep, remerge, single)
+
+
+## One part onto the merged meshes: each surface of `mesh` (under its material
+## in `mats`) placed by `cx` in the root's space, its tint (an sRGB colour, or
+## null for none) as vertex colour.
+static func _append(groups: Dictionary, mesh: Mesh, mats: Array, shadow: int, tint: Variant, cx: Transform3D, single: bool) -> void:
+	# the tint uniform is sRGB (source_color); vertex colours are read as linear
+	var col: Color = (tint as Color).srgb_to_linear() if tint is Color else Color(1, 1, 1)
+	var nb := Transform3D(cx.basis.inverse().transposed(), Vector3.ZERO)
+	for si in mesh.get_surface_count():
+		var sm: ShaderMaterial = mats[si]
+		var vc: bool = sm.get_shader_parameter("use_vcolor") == true
+		var key := str(sm.get_instance_id()) if single else "%d|%d" % [sm.get_instance_id(), shadow]
+		if not groups.has(key):
+			groups[key] = {"mat": sm, "shadow": shadow, "v": PackedVector3Array(), "n": PackedVector3Array(), "c": PackedColorArray()}
+		var g: Dictionary = groups[key]
+		if shadow != GeometryInstance3D.SHADOW_CASTING_SETTING_OFF:
+			g.shadow = shadow
+		# plain triangle lists, so parts are appended with native array
+		# ops (no index offsetting loop in script)
+		var fa := _flat(mesh, si)
+		var verts: PackedVector3Array = fa[0]
+		g.v.append_array(cx * verts)
+		g.n.append_array(nb * (fa[1] as PackedVector3Array))
+		if vc and fa[2] != null and (fa[2] as PackedColorArray).size() == verts.size():
+			g.c.append_array(fa[2])
+		else:
+			# in the scale the merged material reads it back at (see VC_K)
+			var fk := 1.0
+			if vc:
+				var kp = sm.get_shader_parameter("vcolor_k")
+				fk = 1.0 / float(kp) if kp != null else 1.0
+			elif sm.shader == shader():
+				fk = 1.0 / VC_K
+			var cols := PackedColorArray()
+			cols.resize(verts.size())
+			cols.fill(Color(col.r * fk, col.g * fk, col.b * fk, col.a))
+			g.c.append_array(cols)
+
+
+## Parts written straight into merged meshes, for a model that knows as it goes
+## that a part will be merged (a tree is nothing else): the same meshes
+## merge_static makes of the same parts built as nodes and merged, without
+## making the nodes. Building a battlefield made and threw away tens of
+## thousands of those, and each one had the renderer make (and later drop) an
+## object for it. Parts go in the order they're added, as children would.
+class Bake:
+	var groups := {}
+	var single := false
+
+	func _init(one_mesh := false) -> void:
+		single = one_mesh
+
+	## A part under one of our materials (a preset from get_mat, the foliage, a
+	## paving), placed by `xf` (its node's transform: see Mats.place) in a
+	## holder placed by `parent` in the model (the identity for a part of the
+	## model itself, else as merge_static adds up the holders' transforms), with
+	## a tint (as set_inst would give it) or none, casting a shadow or not.
+	func part(mesh: Mesh, mat: ShaderMaterial, xf: Transform3D, tint: Variant = null, shadow := true, parent := Transform3D.IDENTITY) -> void:
+		if Mats.per_material and tint is Color:
+			tint = Mats._round(tint)  # (what get_inst gives back there)
+		var mats := []
+		mats.resize(mesh.get_surface_count())
+		mats.fill(mat)
+		Mats._append(groups, mesh, mats, GeometryInstance3D.SHADOW_CASTING_SETTING_ON if shadow else GeometryInstance3D.SHADOW_CASTING_SETTING_OFF,
+			tint, parent * xf, single)
+
+	## The merged meshes, added under `root` (as merge_static adds them).
+	func commit(root: Node3D) -> void:
+		Mats._emit(root, groups, single)
+		groups = {}
+
+
+## A node's transform from its position, rotation and scale, worked out as
+## Node3D works it out (so a baked part sits exactly where the node would).
+static func place(pos: Vector3, rot := Vector3.ZERO, scl := Vector3.ONE) -> Transform3D:
+	return Transform3D(Basis.from_euler(rot) * Basis.from_scale(scl), pos)
 
 
 static var _netting: ShaderMaterial

@@ -813,34 +813,34 @@ func _house_wall_detail(rng: RandomNumberGenerator) -> void:
 	var wall: Color = HOUSE_COLORS[ci % HOUSE_COLORS.size()]
 	var trim: Color = [Color(0.86, 0.85, 0.8), Color(0.32, 0.23, 0.16), Color(0.23, 0.34, 0.28), Color(0.84, 0.83, 0.78), Color(0.36, 0.38, 0.43)][ci % 5]
 	var zo := 0.2
-	_mk(Res.box(Vector3(L, 0.34, 0.04)), "plaster", Vector3(0, 0.17, zo + 0.02), Vector3.ZERO, wall.darkened(0.3))
+	_mkb(Res.box(Vector3(L, 0.34, 0.04)), "plaster", Vector3(0, 0.17, zo + 0.02), Vector3.ZERO, wall.darkened(0.3))
 	match variant:
 		1:
 			var w := 1.3
-			_mk(Res.box(Vector3(w + 0.24, 0.07, 0.16)), "plaster", Vector3(0, 0.965, zo + 0.06), Vector3.ZERO, wall.lightened(0.25))
-			_mk(Res.box(Vector3(w + 0.16, 0.13, 0.03)), "plaster", Vector3(0, 2.07, zo + 0.015), Vector3.ZERO, wall.darkened(0.1))
+			_mkb(Res.box(Vector3(w + 0.24, 0.07, 0.16)), "plaster", Vector3(0, 0.965, zo + 0.06), Vector3.ZERO, wall.lightened(0.25))
+			_mkb(Res.box(Vector3(w + 0.16, 0.13, 0.03)), "plaster", Vector3(0, 2.07, zo + 0.015), Vector3.ZERO, wall.darkened(0.1))
 			var fz := zo - 0.1
 			for x in [-w * 0.5 + 0.035, w * 0.5 - 0.035]:
-				_mk(Res.box(Vector3(0.07, 1.0, 0.07)), "paint", Vector3(x, 1.5, fz), Vector3.ZERO, trim, false)
+				_mkb(Res.box(Vector3(0.07, 1.0, 0.07)), "paint", Vector3(x, 1.5, fz), Vector3.ZERO, trim, false)
 			for y in [1.035, 1.965]:
-				_mk(Res.box(Vector3(w, 0.07, 0.07)), "paint", Vector3(0, y, fz), Vector3.ZERO, trim, false)
-			_mk(Res.box(Vector3(0.05, 0.9, 0.05)), "paint", Vector3(0, 1.5, fz), Vector3.ZERO, trim, false)
-			_mk(Res.box(Vector3(w - 0.1, 0.05, 0.05)), "paint", Vector3(0, 1.7, fz), Vector3.ZERO, trim, false)
+				_mkb(Res.box(Vector3(w, 0.07, 0.07)), "paint", Vector3(0, y, fz), Vector3.ZERO, trim, false)
+			_mkb(Res.box(Vector3(0.05, 0.9, 0.05)), "paint", Vector3(0, 1.5, fz), Vector3.ZERO, trim, false)
+			_mkb(Res.box(Vector3(w - 0.1, 0.05, 0.05)), "paint", Vector3(0, 1.7, fz), Vector3.ZERO, trim, false)
 			for x in [-0.31, 0.31]:
 				if rng.randf() < 0.4:
-					_mk(Res.box(Vector3(0.56, 0.86, 0.012)), "glass", Vector3(x, 1.5, fz), Vector3.ZERO, null, false)
+					_mkb(Res.box(Vector3(0.56, 0.86, 0.012)), "glass", Vector3(x, 1.5, fz), Vector3.ZERO, null, false)
 			if rng.randf() < 0.45:
 				var shc: Color = [Color(0.24, 0.36, 0.27), Color(0.31, 0.39, 0.46), Color(0.36, 0.25, 0.16), Color(0.5, 0.22, 0.17)][(ci + 1) % 4]
 				for sx in [-1.0, 1.0]:
 					if rng.randf() < 0.85:
-						_mk(Res.box(Vector3(0.6, 1.04, 0.035)), "paint", Vector3(sx * (w * 0.5 + 0.33), 1.5, zo + 0.03), Vector3(0, sx * rng.randf_range(0.0, 0.2), 0), shc, false)
+						_mkb(Res.box(Vector3(0.6, 1.04, 0.035)), "paint", Vector3(sx * (w * 0.5 + 0.33), 1.5, zo + 0.03), Vector3(0, sx * rng.randf_range(0.0, 0.2), 0), shc, false)
 		2:
 			var w := 1.9
 			var fz := zo - 0.08
 			for x in [-w * 0.5 + 0.04, w * 0.5 - 0.04]:
-				_mk(Res.box(Vector3(0.08, 2.2, 0.1)), "paint", Vector3(x, 1.1, fz), Vector3.ZERO, trim, false)
-			_mk(Res.box(Vector3(w, 0.09, 0.1)), "paint", Vector3(0, 2.16, fz), Vector3.ZERO, trim, false)
-			_mk(Res.box(Vector3(w + 0.4, 0.14, 0.6)), "plaster", Vector3(0, 0.07, zo + 0.3), Vector3.ZERO, Color(0.62, 0.6, 0.56))
+				_mkb(Res.box(Vector3(0.08, 2.2, 0.1)), "paint", Vector3(x, 1.1, fz), Vector3.ZERO, trim, false)
+			_mkb(Res.box(Vector3(w, 0.09, 0.1)), "paint", Vector3(0, 2.16, fz), Vector3.ZERO, trim, false)
+			_mkb(Res.box(Vector3(w + 0.4, 0.14, 0.6)), "plaster", Vector3(0, 0.07, zo + 0.3), Vector3.ZERO, Color(0.62, 0.6, 0.56))
 			# double doors: shut (till someone comes through), or swung in -
 			# one may be gone. Each leaf hangs on its own hinge so it can swing.
 			var dc: Color = [Color(0.3, 0.2, 0.13), Color(0.22, 0.32, 0.26), Color(0.26, 0.31, 0.4), Color(0.42, 0.2, 0.15)][(ci + 2) % 4]
@@ -1020,18 +1020,22 @@ static func preview_model(kind: String, side: int, v := 0, sz := Vector3.ZERO, s
 ## A tree. Its id decides the look, so every peer builds the same one and
 ## the tree that falls when it is felled is the one that stood: broadleaf
 ## (a third are conifers); variant 1 is a small orchard tree. With 16 set the
-## fire has been through it: the same tree as a bare black snag.
+## fire has been through it: the same tree as a bare black snag. Every part
+## of it is merged, so the parts go straight into the merged meshes (a
+## battlefield has over a thousand trees, of twenty-odd parts each); `root`
+## starts out empty.
 static func tree_model(root: Node3D, id: int, v: int) -> void:
 	_snag = (v & 16) != 0
 	v &= 15
 	var rng := RandomNumberGenerator.new()
 	rng.seed = id * 7919 + v
+	var bake := Mats.Bake.new()
 	if v != 1 and (id * 2654435761) % 100 < 34:
-		_conifer(root, rng)
+		_conifer(bake, rng)
 	else:
-		_broadleaf(root, rng, v == 1)
+		_broadleaf(bake, rng, v == 1)
 	_snag = false
-	Mats.merge_static(root)
+	bake.commit(root)
 
 
 static var _snag := false  # building a burnt tree: charred limbs, no leaves
@@ -1041,7 +1045,7 @@ const C_CHAR := Color(0.07, 0.06, 0.05)
 ## A flared trunk forking into three or four limbs, each carrying a clump of
 ## leaf masses (lighter on top, darker underneath), twigs poking out of the
 ## crown, which is wider than it is tall.
-static func _broadleaf(root: Node3D, rng: RandomNumberGenerator, small: bool) -> void:
+static func _broadleaf(bake: Mats.Bake, rng: RandomNumberGenerator, small: bool) -> void:
 	var k := 0.62 if small else 1.0
 	var bark := Res.vary(Color(0.3, 0.24, 0.18), 0.08, rng)
 	if _snag:
@@ -1052,8 +1056,8 @@ static func _broadleaf(root: Node3D, rng: RandomNumberGenerator, small: bool) ->
 	var crown := rng.randf_range(4.6, 5.6) * k  # where the limbs end
 	var spread := rng.randf_range(1.3, 2.0) * k
 	var top := Vector3(rng.randf_range(-0.25, 0.25) * k, fork, rng.randf_range(-0.25, 0.25) * k)
-	_bark(root, Vector3.ZERO, top, 0.3 * k, 0.2 * k, bark)
-	Mats.apply(Res.mi(root, Res.cyl(0.26 * k, 0.46 * k, 0.45 * k, 8), null, Vector3(0, 0.22 * k, 0)), "bark", Mats.tint_for("bark", bark))
+	_bark(bake, Vector3.ZERO, top, 0.3 * k, 0.2 * k, bark)
+	_bark_part(bake, Res.cyl(0.26 * k, 0.46 * k, 0.45 * k, 8), Mats.place(Vector3(0, 0.22 * k, 0)), bark)
 	var limbs := rng.randi_range(3, 4)
 	var a0 := rng.randf() * TAU
 	for i in limbs:
@@ -1062,9 +1066,9 @@ static func _broadleaf(root: Node3D, rng: RandomNumberGenerator, small: bool) ->
 		var end := top + out * spread * rng.randf_range(0.7, 1.1)
 		end.y = crown + rng.randf_range(-0.6, 0.5) * k
 		var mid := top.lerp(end, 0.45) + out * 0.25 * k
-		_bark(root, top, mid, 0.17 * k, 0.12 * k, bark)
-		_bark(root, mid, end, 0.12 * k, 0.05 * k, bark)
-		_bark(root, end, end + (out + Vector3(0, 0.5, 0)).normalized() * 1.2 * k, 0.05 * k, 0.015, bark)
+		_bark(bake, top, mid, 0.17 * k, 0.12 * k, bark)
+		_bark(bake, mid, end, 0.12 * k, 0.05 * k, bark)
+		_bark(bake, end, end + (out + Vector3(0, 0.5, 0)).normalized() * 1.2 * k, 0.05 * k, 0.015, bark)
 		for j in rng.randi_range(3, 4):
 			var off := Vector3(rng.randf_range(-1.0, 1.0), rng.randf_range(-0.45, 0.75), rng.randf_range(-1.0, 1.0)) * k
 			var lc := Res.vary(leaf, 0.05, rng)
@@ -1072,18 +1076,18 @@ static func _broadleaf(root: Node3D, rng: RandomNumberGenerator, small: bool) ->
 				lc = lc.lightened(0.04)
 			elif off.y < 0.0:
 				lc = lc.darkened(0.14)
-			_leaves(root, end + off, rng.randf_range(0.95, 1.35) * k, rng.randf_range(0.72, 0.88), lc)
+			_leaves(bake, end + off, rng.randf_range(0.95, 1.35) * k, rng.randf_range(0.72, 0.88), lc)
 	# the heart of the crown and its top
-	_leaves(root, Vector3(top.x, crown - 0.2 * k, top.z), 1.5 * k, 0.8, leaf.darkened(0.18))
-	_leaves(root, Vector3(top.x, crown + 0.9 * k, top.z), 1.35 * k, 0.8, leaf.lightened(0.05))
+	_leaves(bake, Vector3(top.x, crown - 0.2 * k, top.z), 1.5 * k, 0.8, leaf.darkened(0.18))
+	_leaves(bake, Vector3(top.x, crown + 0.9 * k, top.z), 1.35 * k, 0.8, leaf.lightened(0.05))
 
 
 ## A spruce: a straight tapering stem and tiers of drooping boughs, wide and
 ## dark at the bottom, a narrow spire at the top.
-static func _conifer(root: Node3D, rng: RandomNumberGenerator) -> void:
+static func _conifer(bake: Mats.Bake, rng: RandomNumberGenerator) -> void:
 	var ph := rng.randf_range(8.0, 11.0)
 	var needles := Res.vary(Color(0.13, 0.21, 0.14), 0.12, rng)
-	_bark(root, Vector3.ZERO, Vector3(0, ph, 0), 0.26, 0.04, Color(0.32, 0.24, 0.17))
+	_bark(bake, Vector3.ZERO, Vector3(0, ph, 0), 0.26, 0.04, Color(0.32, 0.24, 0.17))
 	# many overlapping tiers, each a little askew, so it reads as one ragged
 	# mass of boughs rather than a stack of plates
 	var tiers := rng.randi_range(9, 12)
@@ -1099,14 +1103,16 @@ static func _conifer(root: Node3D, rng: RandomNumberGenerator) -> void:
 			for j in 3:
 				var out := Vector3(cos(a0 + TAU * j / 3.0), 0, sin(a0 + TAU * j / 3.0))
 				var base := Vector3(0, y + h * 0.4, 0)
-				_bark(root, base, base + out * r * rng.randf_range(0.35, 0.6) + Vector3(0, -0.25, 0), 0.05, 0.012, C_CHAR)
+				_bark(bake, base, base + out * r * rng.randf_range(0.35, 0.6) + Vector3(0, -0.25, 0), 0.05, 0.012, C_CHAR)
 			continue
-		var c := Res.mi(root, Res.cyl(0.04, 1.0, 1.0, 9), Mats.foliage(), Vector3(rng.randf_range(-0.06, 0.06), y + h * 0.5, rng.randf_range(-0.06, 0.06)), Vector3(rng.randf_range(-0.07, 0.07), rng.randf() * TAU, rng.randf_range(-0.07, 0.07)))
-		c.scale = Vector3(r * rng.randf_range(0.9, 1.1), h, r * rng.randf_range(0.9, 1.1))
-		Mats.set_inst(c, &"tint", Res.vary(needles, 0.05, rng).darkened(0.12 * (1.0 - t)))
+		# (drawn in this order: where the tier sits, how it leans, how wide, its colour)
+		var pos := Vector3(rng.randf_range(-0.06, 0.06), y + h * 0.5, rng.randf_range(-0.06, 0.06))
+		var rot := Vector3(rng.randf_range(-0.07, 0.07), rng.randf() * TAU, rng.randf_range(-0.07, 0.07))
+		var scl := Vector3(r * rng.randf_range(0.9, 1.1), h, r * rng.randf_range(0.9, 1.1))
+		bake.part(Res.cyl(0.04, 1.0, 1.0, 9), Mats.foliage(), Mats.place(pos, rot, scl), Res.vary(needles, 0.05, rng).darkened(0.12 * (1.0 - t)))
 
 
-static func _bark(root: Node3D, a: Vector3, b: Vector3, r0: float, r1: float, col: Color) -> void:
+static func _bark(bake: Mats.Bake, a: Vector3, b: Vector3, r0: float, r1: float, col: Color) -> void:
 	if _snag:
 		col = C_CHAR
 	var y := b - a
@@ -1114,17 +1120,19 @@ static func _bark(root: Node3D, a: Vector3, b: Vector3, r0: float, r1: float, co
 	y /= L
 	var x := y.cross(Vector3.FORWARD if absf(y.dot(Vector3.FORWARD)) < 0.9 else Vector3.RIGHT).normalized()
 	var z := x.cross(y)
-	var mi := Res.mi(root, Res.cyl(r1, r0, 1.0, 7), null)
-	mi.transform = Transform3D(Basis(x, y * L, z), (a + b) * 0.5)
-	Mats.apply(mi, "bark", Mats.tint_for("bark", col))
+	_bark_part(bake, Res.cyl(r1, r0, 1.0, 7), Transform3D(Basis(x, y * L, z), (a + b) * 0.5), col)
 
 
-static func _leaves(root: Node3D, p: Vector3, r: float, squash: float, col: Color) -> void:
+## A piece of trunk or limb, in bark tinted towards `col` (Mats.apply's tint).
+static func _bark_part(bake: Mats.Bake, mesh: Mesh, xf: Transform3D, col: Color) -> void:
+	var tint := Mats.tint_for("bark", col)
+	bake.part(mesh, Mats.get_mat("bark"), xf, tint if tint != Color(1, 1, 1) else null)
+
+
+static func _leaves(bake: Mats.Bake, p: Vector3, r: float, squash: float, col: Color) -> void:
 	if _snag:
 		return
-	var mi := Res.mi(root, Res.sphere(1.0, 10), Mats.foliage(), p)
-	mi.scale = Vector3(r, r * squash, r)
-	Mats.set_inst(mi, &"tint", col)
+	bake.part(Res.sphere(1.0, 10), Mats.foliage(), Mats.place(p, Vector3.ZERO, Vector3(r, r * squash, r)), col)
 
 
 ## A house roof: tiled and pitched (ridge along the long side, gable ends in
@@ -2211,9 +2219,56 @@ func _mk(mesh: Mesh, kind: String, p: Vector3, rot := Vector3.ZERO, col = null, 
 	return mi
 
 
+## (view) The common kinds of scenery - house walls, garden walls and hedges,
+## floors, rubble, crates; the town is thousands of them - put the parts of
+## their models that end up merged straight into the merged meshes (see
+## Mats.Bake), with the surfaces _skin would have given them. The rest are made
+## as nodes as ever: the door leaves (they swing), anything glassy or glowing.
+const BAKED := ["house_wall", "low_wall", "floor", "rubble", "crates"]
+var _bake: Mats.Bake = null
+
+
+## _box for a part nothing goes on to use: baked if it would be merged.
+func _bx(p: Vector3, s: Vector3, c: Color, r := 0.0, shadow := true) -> void:
+	if _bake == null:
+		_box(p, s, c, r, shadow)
+		return
+	_skinned(Res.box(s), Res.mat(c), p, Vector3(0, r, 0), Vector3.ONE, shadow)
+
+
+## _mk for a part nothing goes on to use.
+func _mkb(mesh: Mesh, kind: String, p: Vector3, rot := Vector3.ZERO, col = null, shadow := true) -> void:
+	if _bake == null:
+		_mk(mesh, kind, p, rot, col, shadow)
+		return
+	var t := Mats.tint_for(kind, col) if col is Color else Color(1, 1, 1)
+	_bake.part(mesh, Mats.get_mat(kind), Mats.place(p, rot), t if t != Color(1, 1, 1) else null, shadow)
+
+
+## A part in a flat colour (`sm`, from Res.mat) that _skin would put on one of
+## our surfaces: into the bake, else made as a node like Res.mi (and scaled).
+func _skinned(mesh: Mesh, sm: StandardMaterial3D, p: Vector3, rot: Vector3, scl: Vector3, shadow: bool) -> void:
+	if _bake == null or not _skinnable(sm):
+		var mi := Res.mi(model, mesh, sm, p, rot, shadow)
+		if scl != Vector3.ONE:
+			mi.scale = scl
+		return
+	# (the colour _skin reads off the material: Res.mat shares one between
+	# colours a hair apart, the first of them)
+	var col := sm.albedo_color
+	var xf := Mats.place(p, rot, scl)
+	var kind := _surf_kind(col, mesh)
+	if kind == "foliage":
+		_bake.part(mesh, Mats.foliage(), xf, col, shadow)
+	else:
+		var t := Mats.tint_for(kind, col)
+		_bake.part(mesh, Mats.get_mat(kind), xf, t if t != Color(1, 1, 1) else null, shadow)
+
+
 func _build_model() -> void:
 	model = Node3D.new()
 	add_child(model)
+	_bake = Mats.Bake.new() if skind in BAKED else null
 	var rng := RandomNumberGenerator.new()
 	rng.seed = eid * 7919 + variant
 	var bags: Array = []
@@ -2229,7 +2284,7 @@ func _build_model() -> void:
 		var col: Color = p.color
 		if skind in ["house_wall", "rubble", "crates"]:
 			col = Res.vary(col, 0.05, rng)
-		_box(p.p, p.s, col, p.r, skind != "floor")
+		_bx(p.p, p.s, col, p.r, skind != "floor")
 	var tc := _flag_color()
 	match skind:
 		"low_wall":
@@ -2242,14 +2297,17 @@ func _build_model() -> void:
 				for i in n:
 					var x := (float(i) + 0.5) / n * size.x - size.x * 0.5
 					var r := rng.randf_range(0.5, 0.6)
-					var lm := Res.mi(model, Res.sphere(0.55, 8), Res.mat(Res.vary(hc, 0.05, rng)), Vector3(x, 0.6 + rng.randf_range(-0.04, 0.07), rng.randf_range(-0.05, 0.05)))
-					lm.scale = Vector3(1.15, 1.12, 0.84) * (r / 0.55)
+					# (drawn in this order: the colour, then where it sits)
+					var lmesh := Res.sphere(0.55, 8)
+					var lmat := Res.mat(Res.vary(hc, 0.05, rng))
+					_skinned(lmesh, lmat, Vector3(x, 0.6 + rng.randf_range(-0.04, 0.07), rng.randf_range(-0.05, 0.05)), Vector3.ZERO, Vector3(1.15, 1.12, 0.84) * (r / 0.55), true)
 					if rng.randf() < 0.18:
-						var sh := Res.mi(model, Res.sphere(0.3, 6), Res.mat(Res.vary(hc, 0.05, rng).lightened(0.06)), Vector3(x, 1.2, rng.randf_range(-0.15, 0.15)))
-						sh.scale = Vector3(0.8, 1.3, 0.8)
+						var smesh := Res.sphere(0.3, 6)
+						var smat := Res.mat(Res.vary(hc, 0.05, rng).lightened(0.06))
+						_skinned(smesh, smat, Vector3(x, 1.2, rng.randf_range(-0.15, 0.15)), Vector3.ZERO, Vector3(0.8, 1.3, 0.8), true)
 			else:
-				_box(p.p, p.s, p.color)
-				_box(Vector3(0, p.s.y + 0.04, 0), Vector3(p.s.x + 0.06, 0.08, p.s.z + 0.08), p.color.darkened(0.15))
+				_bx(p.p, p.s, p.color)
+				_bx(Vector3(0, p.s.y + 0.04, 0), Vector3(p.s.x + 0.06, 0.08, p.s.z + 0.08), p.color.darkened(0.15))
 		"house_wall":
 			_house_wall_detail(rng)
 		"floor":
@@ -2262,7 +2320,7 @@ func _build_model() -> void:
 			_roof_model(rng)
 		"crates":
 			for p in parts:
-				_box(p.p + Vector3(0, p.s.y * 0.5 + 0.01, 0), Vector3(p.s.x * 0.9, 0.04, p.s.z * 0.9), C_WOOD.darkened(0.3), p.r)
+				_bx(p.p + Vector3(0, p.s.y * 0.5 + 0.01, 0), Vector3(p.s.x * 0.9, 0.04, p.s.z * 0.9), C_WOOD.darkened(0.3), p.r)
 		"car":
 			# parked cars: the island's own (hatchbacks, SUVs, pickups, 4x4s)
 			var civ_key: String = ["hatchback", "suv", "offroad", "mb4wd", "hatchback_sport"][variant % 5]
@@ -2560,6 +2618,9 @@ func _build_model() -> void:
 		if sub:
 			keep.append(sub)
 			Mats.merge_static(sub, [])
+	if _bake:
+		_bake.commit(model)
+		_bake = null
 	Mats.merge_static(model, keep)
 	# (a freshly killed vehicle's fire is the server's: see Fires and _burn_view)
 
@@ -2713,9 +2774,9 @@ func _skin(n: Node) -> void:
 	for c in n.get_children():
 		if c is MeshInstance3D and c != _flag:
 			var sm := (c as MeshInstance3D).material_override as StandardMaterial3D
-			if sm and not sm.emission_enabled and sm.shading_mode != BaseMaterial3D.SHADING_MODE_UNSHADED and sm.albedo_color.a > 0.99:
+			if _skinnable(sm):
 				var col := sm.albedo_color
-				var kind := _surf_kind(col, c)
+				var kind := _surf_kind(col, (c as MeshInstance3D).mesh)
 				if kind == "foliage":
 					c.material_override = Mats.foliage()
 					Mats.set_inst(c, &"tint", col)
@@ -2724,7 +2785,12 @@ func _skin(n: Node) -> void:
 		_skin(c)
 
 
-func _surf_kind(c: Color, mi: MeshInstance3D) -> String:
+## A flat colour _skin puts on one of our surfaces (not glowing, unlit or see-through).
+static func _skinnable(sm: StandardMaterial3D) -> bool:
+	return sm != null and not sm.emission_enabled and sm.shading_mode != BaseMaterial3D.SHADING_MODE_UNSHADED and sm.albedo_color.a > 0.99
+
+
+func _surf_kind(c: Color, mesh: Mesh) -> String:
 	var v := maxf(c.r, maxf(c.g, c.b))
 	var dark := v < 0.16
 	match skind:
@@ -2745,10 +2811,10 @@ func _surf_kind(c: Color, mi: MeshInstance3D) -> String:
 		"tree":
 			return "foliage" if c.g > c.r * 1.2 else "bark"
 		"factory", "depot":
-			if Res.box_size(mi.mesh) != Vector3.ZERO and c.r > 0.2 and absf(c.r - c.g) > 0.05:
+			if Res.box_size(mesh) != Vector3.ZERO and c.r > 0.2 and absf(c.r - c.g) > 0.05:
 				return "corrugated"
 		"fob":
-			if Res.box_size(mi.mesh).y > 2.0:
+			if Res.box_size(mesh).y > 2.0:
 				return "hesco"
 		"helipad":
 			return "concrete" if not dark else "metal_dark"
@@ -2756,19 +2822,19 @@ func _surf_kind(c: Color, mi: MeshInstance3D) -> String:
 			if c.r > 0.7 and c.g < 0.2:
 				return "paint"
 		"barracks":
-			if mi.mesh is PrismMesh:
+			if mesh is PrismMesh:
 				return "corrugated"
-			if Res.box_size(mi.mesh).y > 2.5:
+			if Res.box_size(mesh).y > 2.5:
 				return "wood_painted"
 		"bunker":
 			if team != 1:
 				return "precast"
-			if mi.mesh is SphereMesh or mi.mesh is PrismMesh:
+			if mesh is SphereMesh or mesh is PrismMesh:
 				return "earth"  # the dugout's mound and banked earth
 			if team == 1 and c.r > c.b * 1.6 and v < 0.5:
 				return "wood_dark"
 		"trench":
-			if Res.box_size(mi.mesh).y > 0.5 and c.r < 0.4 and c.r > c.b * 1.5:
+			if Res.box_size(mesh).y > 0.5 and c.r < 0.4 and c.r > c.b * 1.5:
 				return "earth"
 	if dark:
 		return "gunmetal_w"
