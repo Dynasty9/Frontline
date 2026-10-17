@@ -1,8 +1,25 @@
 # Frontline website
 
-The game's front page: footage recorded in the game, its missions, the battles being hosted right now (from the
-matchmaker), a **Join** button on each that opens the game and connects you (`frontline://join/<id>`, registered by
-the game on its first launch), the latest downloads, and a Changelog page (`/changelog/`) with every release.
+The game's website. Its pages (`src/pages/`, routed by React Router in `src/router.tsx`):
+
+| Page         | What's on it                                                                                              |
+| ------------ | --------------------------------------------------------------------------------------------------------- |
+| `/`          | footage recorded in the game, its missions, the first few live battles, ranks and insignia, the downloads |
+| `/play`      | **Launch** the installed game (`frontline://open`), Find Match, or download it                            |
+| `/battles`   | every battle being hosted, each with a **Join** link (`frontline://join/<id>`), and a friend's invite     |
+| `/account`   | signing in; signed in, your rank and record, your callsign (rename it) and the insignia you wear          |
+| `/changelog` | every release, with its changes and screenshots                                                           |
+
+The header on every page has a **Play** button and the account menu (your insignia, callsign and rank). The
+`frontline://` scheme is registered by the game on its first launch; a link it doesn't know (like `open`) still
+starts it, or brings a running copy to the front. The browser says nothing when no program takes a link, so Launch
+watches for the page losing focus (the browser's "Open Frontline?" prompt, or the game's window) and, if that doesn't
+happen, says how to get the game going the first time (`src/lib/launch.ts`).
+
+Railway serves `index.html` for any address that isn't a file, and the router takes it from there. Pages other than
+the front page are fetched when first visited. The game opens a few of the front page's addresses, and older copies
+will go on opening them, so they keep working: `/?sign-in=` (the game's sign-in, handled on any page by
+`src/pages/layout.tsx`), `/?join=<id>` (sent on to `/battles`), `/#download` and `/changelog/#vX.Y.Z`.
 
 The **Insignia** section explains ranks and shows the whole collection of insignia (the patches a player wears as
 their icon). Signed in with a game account (through the matchmaker: `src/lib/account.ts`), it becomes the player's
@@ -34,13 +51,16 @@ npm run storybook
 ```
 
 opens [Storybook](https://storybook.js.org) on port 6006: every component and section of the page on its own, in
-each state it can be in (loading, the matchmaker down, nobody hosting, a full or closed battle...), the changelog
-and its page, and the whole front page against a stand-in matchmaker (`Site/Page`). Nothing in it talks to the live
-matchmaker, and Join links only report the click instead of opening the game.
+each state it can be in (loading, the matchmaker down, nobody hosting, a full or closed battle...), and every page of
+the site (`Pages/...`) through its real router, against a stand-in matchmaker. Nothing in it talks to the live
+matchmaker, and frontline:// links only report the click instead of opening the game.
 
-Stories sit next to their components (`battles.stories.tsx` by `battles.tsx`), and the made-up lobbies and release
-they show are in `src/test/fixtures.ts`. A new component should come with stories for its states. Many have a
-`play` function that clicks through the story and checks the result.
+Stories sit next to their components (`battles.stories.tsx` by `battles.tsx`), and the made-up lobbies, player and
+release they show are in `src/test/fixtures.ts`. A new component should come with stories for its states. Many have
+a `play` function that clicks through the story and checks the result. A page's story renders the whole site at an
+address (`SiteAt` in `src/test/router.tsx`, with `parameters.router: false`); every other story gets a router of its
+own, for its links. `mockMatchmaker` (`src/test/network.ts`) answers the page's requests, and `signedIn(player)` signs
+the page in. It never saves the session: stories run side by side in frames that share `localStorage`.
 
 ## Checks
 

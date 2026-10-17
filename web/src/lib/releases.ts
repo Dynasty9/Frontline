@@ -48,6 +48,18 @@ export function platformList(build: Build = latest): string {
   return names.length > 1 ? `${names.slice(0, -1).join(", ")} and ${names.at(-1)}` : names.join("")
 }
 
+/** A computer (whether or not the release has a build for it yet), or a phone or tablet: no keyboard and mouse. */
+export type Device = Platform | "mobile"
+
+/** What the visitor is on, for what the play page offers them. */
+export function guessDevice(): Device {
+  const ua = navigator.userAgent
+  if (/android|iphone|ipad|ipod|mobile/i.test(ua)) return "mobile"
+  // an iPad asks for the desktop site as a Mac, but a Mac has no touch screen
+  if (/macintosh|mac os x/i.test(ua)) return (navigator.maxTouchPoints ?? 0) > 1 ? "mobile" : "macos"
+  return /linux|x11/i.test(ua) ? "linux" : "windows"
+}
+
 export function formatSize(bytes: number) {
   return bytes >= 1e9 ? `${(bytes / 1e9).toFixed(1)} GB` : `${Math.round(bytes / 1e6)} MB`
 }

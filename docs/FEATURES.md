@@ -97,7 +97,11 @@ they're doing). The observer bar at the top has pause, speed (0.25x to 4x), dire
   says so, and that host needs UDP port **7777** forwarded. If a joiner isn't through in 12 seconds, Find Match
   moves on to the next battle.
 - **The website** (`web/`) lists the battles being hosted, each with a **Join** link, `frontline://join/<id>`
-  (and a Find Match one, `frontline://find-match`). An exported build registers the `frontline://` scheme the
+  (and a Find Match one, `frontline://find-match`). Its Play page launches the game with `frontline://open`: any
+  link the game doesn't know starts it (or brings a running copy to the front) and does nothing else, so older
+  versions open too. The browser can't tell the page whether anything took the link, so the page watches for
+  losing focus to the browser's prompt or the game's window, and otherwise explains how to set the game up the
+  first time. An exported build registers the `frontline://` scheme the
   first time it runs (per user: HKCU on Windows, a hidden `.desktop` handler on Linux; a Mac app claims it in its
   Info.plist, which macOS reads when the app is first opened), so the browser starts the game with the link (on a
   Mac, as `--uri="frontline://..."`). If the game is already running, the new copy hands the link to it over a

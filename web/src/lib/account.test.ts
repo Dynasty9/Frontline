@@ -45,6 +45,21 @@ describe("takeGitHubReturn", () => {
     expect(takeGitHubReturn(href)).toEqual(r)
   })
 
+  it("goes back to the page the player signed in from, if it's on this site", () => {
+    store.set("frontline.github", JSON.stringify({ verifier: VERIFIER, game: null, to: "/account" }))
+    expect(takeGitHubReturn("https://site.test/?code=c1")).toEqual({
+      back: { game: null, code: "c1", verifier: VERIFIER },
+      clean: "/",
+      to: "/account",
+    })
+    // the front page is where GitHub comes back to anyway
+    store.set("frontline.github", JSON.stringify({ verifier: VERIFIER, game: null, to: "/" }))
+    expect(takeGitHubReturn("https://site.test/?code=c2")?.to).toBeUndefined()
+    // never off the site
+    store.set("frontline.github", JSON.stringify({ verifier: VERIFIER, game: null, to: "//evil.test/" }))
+    expect(takeGitHubReturn("https://site.test/?code=c3")?.to).toBeUndefined()
+  })
+
   it("says why when GitHub, or the player, said no", () => {
     away()
     expect(takeGitHubReturn("https://site.test/?error=access_denied&error_description=The+user+denied+access")).toEqual(
