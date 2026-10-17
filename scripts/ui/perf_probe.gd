@@ -84,7 +84,7 @@ var _nodes0 := 0
 var _sorted := PackedFloat32Array()
 var _fview := {}  # this frame's view systems, usec (only kept for a hitch)
 var _fsim := {}  # this frame's simulated systems, ms
-var _world: World = null  # the battle being measured
+var _world: Node3D = null  # the battle being measured (World: untyped, see world())
 
 
 ## Counts what the engine logs (errors and warnings, from any thread). A flood
@@ -154,8 +154,10 @@ func _ready() -> void:
 	_nodes0 = int(Performance.get_monitor(Performance.OBJECT_NODE_COUNT))
 
 
-func world() -> World:
-	var w: World = main.world if main else null
+## The battle (World), if one's running. Untyped: this is up from the first frame,
+## before the game's classes have compiled (GameScripts), so it names none of them.
+func world() -> Node3D:
+	var w: Node3D = main.world if main else null
 	return w if is_instance_valid(w) else null
 
 
@@ -240,7 +242,7 @@ func _process(_dt: float) -> void:
 ## Moves what each system has cost since last time out of the world: into the
 ## window's sums, and frame by frame (`detail`) into the systems' worst frames
 ## and, for a stutter, into its record.
-func _take(w: World, ticks: int, hitch: bool) -> void:
+func _take(w: Node3D, ticks: int, hitch: bool) -> void:
 	for k in w.vprof:
 		var us: int = w.vprof[k]
 		if us == 0:
@@ -289,7 +291,7 @@ func _restart() -> void:
 
 
 ## Sets what the battle measured back to zero, unread.
-static func _drop(w: World) -> void:
+static func _drop(w: Node3D) -> void:
 	w.sim_usec = 0
 	w.vp_usec = 0
 	for k in w.vprof:
@@ -336,7 +338,7 @@ func _close_window() -> void:
 	low1 = 1000.0 / maxf(0.001, _sorted[lo + int((count - 1) * 0.99)])
 
 
-func _hitch(w: World, ms: float, sim: float, view: float, rcpu: float, gpu: float, ticks: int, compiles: int, errs: int, nodes: int) -> void:
+func _hitch(w: Node3D, ms: float, sim: float, view: float, rcpu: float, gpu: float, ticks: int, compiles: int, errs: int, nodes: int) -> void:
 	hitch_total += 1
 	var h := {"n": frames - 1, "at": _now_ms, "t": w.time, "ms": ms, "median": median_ms, "sim": sim, "view": view, "rcpu": rcpu,
 		"gpu": gpu, "ticks": ticks, "compiles": compiles, "errors": errs, "nodes": nodes, "views": _top(_fview, 0.001), "sims": _top(_fsim, 1.0)}

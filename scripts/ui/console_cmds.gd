@@ -4,6 +4,8 @@ extends RefCounted
 ## Most of them answer "why is the game slow?": what each frame's time goes on
 ## (PerfProbe measures it), the stutters, the renderer, this computer, and a
 ## benchmark that tries each graphics setting off in turn and times it.
+## The console is up from the launch, before the game's classes have compiled
+## (GameScripts), so the battle is untyped here and none of them is named.
 
 ## [name, arguments, what it does]
 const LIST := [
@@ -225,7 +227,7 @@ func c_why(_a: PackedStringArray) -> void:
 					con.out("  Time outside the game's own measures: the engine's physics and animation, the driver, or waiting for the GPU. bench shows whether the graphics settings move it.")
 	# the battle's simulation, which has to keep up with the clock
 	if w and w.srv:
-		var share := w.tick_ms * Engine.physics_ticks_per_second / 1000.0
+		var share: float = w.tick_ms * Engine.physics_ticks_per_second / 1000.0
 		if share > 0.9:
 			con.bad("- The battle's simulation can't keep up: %.1f ms a tick, %d ticks a second, %.0f%% of real time. The game slows and stutters to catch up." % [w.tick_ms, Engine.physics_ticks_per_second, share * 100.0])
 		elif share > 0.4:
@@ -263,7 +265,7 @@ func c_why(_a: PackedStringArray) -> void:
 	con.dim("bench measures each graphics setting (about a minute), graph shows every frame, top the costliest parts, report writes it all to a file.")
 
 
-func _sim_line(w: World, r: Dictionary) -> String:
+func _sim_line(w: Node3D, r: Dictionary) -> String:
 	if w == null:
 		return "No battle running."
 	if not w.srv:
@@ -271,10 +273,10 @@ func _sim_line(w: World, r: Dictionary) -> String:
 	return "%.1f ms a tick at %d ticks a second, %.1f ticks a frame. Most of it: %s. %s" % [w.tick_ms, Engine.physics_ticks_per_second, r.ticks, _top_text(_no_total(w.prof), 4), _units(w)]
 
 
-func _units(w: World) -> String:
+func _units(w: Node3D) -> String:
 	var alive := 0
 	for s in w.soldiers:
-		if s.life == Soldier.Life.ALIVE:
+		if s.life == s.Life.ALIVE:
 			alive += 1
 	return "(%d soldiers alive, %d vehicles, %d projectiles in flight.)" % [alive, w.vehicles.size(), w.projectiles.size()]
 
@@ -542,7 +544,7 @@ func c_draw(a: PackedStringArray) -> void:
 		RenderingServer.set_debug_generate_wireframes(true)
 	con.get_viewport().debug_draw = DRAWS[mode]
 	con.out("Drawing %s.%s" % [mode, "" if mode == "normal" else " (draw normal goes back)"])
-	if Vfx.gl and mode in ["lighting", "normals", "shadows", "ssao"]:
+	if RenderingServer.get_current_rendering_method() == "gl_compatibility" and mode in ["lighting", "normals", "shadows", "ssao"]:
 		con.warn("(This renderer can't show that one.)")
 
 
@@ -744,7 +746,7 @@ func _bench_next() -> void:
 		_bench_done()
 		return
 	var step: Array = steps[_bench.i]
-	var w: World = _bench.world
+	var w: Node3D = _bench.world
 	match String(step[0]):
 		"":
 			pass

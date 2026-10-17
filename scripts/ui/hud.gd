@@ -875,7 +875,7 @@ func show_game_over(w: int) -> void:
 			t.add_theme_color_override("font_color", UiKit.BAD)
 		hv.add_child(t)
 		hv.add_child(UiKit.label("%s have taken the battlefield." % Defs.TEAM_NAMES[w], 14, UiKit.DIM))
-		facts = "Battle lasted %s" % StatsPanel.fmt_time(world.time)
+		facts = "Battle lasted %s" % UiKit.fmt_time(world.time)
 		Music.sting("defeat" if world.local_team >= 0 and w != world.local_team else "victory")
 	if world.local_team >= 0 and Online.signed_in():
 		_xp_row(head)
@@ -985,7 +985,7 @@ func _end_sequence(w: int) -> void:
 		ban.sub = String(world.mission_info.get("op", ""))
 	elif world.local_team < 0:
 		ban.headline = "%s WIN" % String(Defs.TEAM_NAMES[w]).to_upper()
-		ban.sub = "Battle lasted %s" % StatsPanel.fmt_time(world.time)
+		ban.sub = "Battle lasted %s" % UiKit.fmt_time(world.time)
 	else:
 		ban.headline = "VICTORY" if won else "DEFEAT"
 		ban.sub = "%s have taken the battlefield" % Defs.TEAM_NAMES[w]
@@ -998,7 +998,7 @@ func _end_sequence(w: int) -> void:
 			if int(c.id) == world.local_peer:
 				var rv := BattleStats.rating(c, (r.sides as Array)[world.local_team])
 				ban.rating = rv
-				ban.rating_word = BattleStats.rating_word(rv)
+				ban.rating_word = UiKit.rating_word(rv)
 	var old := root.get_node_or_null("OverGrade")
 	if old:
 		old.queue_free()
@@ -1141,7 +1141,7 @@ func _mission_head(vb: VBoxContainer) -> String:
 			done += 1
 	var el := float(info.get("el", 0.0))
 	var lost: Array = info.get("lost", [0, 0])
-	return "Time %s    Objectives %d of %d    Men lost %d of %d    Enemy killed %d" % [StatsPanel.fmt_time(el), done, all, int(lost[0]), int(lost[1]), int(info.get("kills", 0))]
+	return "Time %s    Objectives %d of %d    Men lost %d of %d    Enemy killed %d" % [UiKit.fmt_time(el), done, all, int(lost[0]), int(lost[1]), int(info.get("kills", 0))]
 
 
 # --- battle statistics -------------------------------------------------------------------
