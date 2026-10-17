@@ -1,0 +1,4 @@
+version = "1.0.9"
+name = "A new look for the whole interface"
+date = "2026-10-17"
+pull_requests = [80, 83, 84]
