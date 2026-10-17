@@ -1,0 +1,4 @@
+version = "1.0.10"
+name = "Console tools and fuzzy completion"
+date = "2026-10-17"
+pull_requests = [86, 87, 88]
