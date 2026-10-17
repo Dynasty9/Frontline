@@ -50,8 +50,7 @@ export function Finale({ platform }: Props) {
           is waiting
         </h2>
         <p className="mt-6 max-w-lg text-base text-cream/80">
-          Free and open source, for {platformList()}. Unzip it and play: nothing to install, and it keeps itself up to
-          date.
+          Free and open source, for {platformList()}. Download it and play: it keeps itself up to date.
         </p>
         <div className="mt-9 flex flex-wrap justify-center gap-3">
           <Button size="lg" asChild className="shine h-12 px-7 text-sm font-bold tracking-wider uppercase">

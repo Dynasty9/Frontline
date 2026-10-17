@@ -22,6 +22,13 @@ export type User = {
   next_xp: number | null
   battles: number
   wins: number
+  /** their picture: their insignia, or the picture on their GitHub account */
+  avatar: "insignia" | "github"
+  /** that GitHub picture, if the account is a GitHub one */
+  github_avatar: string | null
+  /** their battles are theirs alone, not on their public page */
+  hide_history: boolean
+  joined: string | null
 }
 
 export type AccountState = {
@@ -102,7 +109,14 @@ const BLANK: User = {
   next_xp: RANKS[1]?.xp ?? null,
   battles: 0,
   wins: 0,
+  avatar: "insignia",
+  github_avatar: null,
+  hide_history: false,
+  joined: null,
 }
+
+/** The picture a player shows: their GitHub one if they've chosen it (and have one), else null for their insignia. */
+export const pictureOf = (u: Pick<User, "avatar" | "github_avatar">) => (u.avatar === "github" ? u.github_avatar : null)
 
 const toUser = (u: Partial<User> | undefined, prev: User | null): User => ({ ...BLANK, ...prev, ...u })
 
@@ -473,14 +487,20 @@ export function finishGitHub(back: GitHubReturn): Promise<{ token: string } | "i
   return p
 }
 
-function signOut() {
+/** Signed out of this browser (the game, and any other, stay signed in). */
+const signOut = () => leaveSession(false)
+
+/** Signed out of every game and browser the account is signed in to. */
+const signOutEverywhere = () => leaveSession(true)
+
+function leaveSession(everywhere: boolean) {
   const s = session
   window.clearTimeout(iconTimer)
   iconTimer = 0
   adopt(null)
   set({ error: null, notice: null })
   // the matchmaker revokes the token; signed out here whatever it says
-  if (s) call("POST", "/auth/logout", undefined, s.access_token).catch(() => {})
+  if (s) call("POST", "/auth/logout", everywhere ? { scope: "global" } : undefined, s.access_token).catch(() => {})
 }
 
 /** Wear an insignia: shown at once, put back if the matchmaker says no. */
@@ -533,9 +553,20 @@ async function saveIcon() {
  * not a callsign), for the form to say: it isn't the account's error.
  */
 async function rename(callsign: string): Promise<string | null> {
+  return changeProfile({ callsign: callsign.trim() })
+}
+
+/**
+ * Changes to the profile: a new callsign, the picture shown (insignia or
+ * GitHub's), whether their battles are public. Null once the matchmaker has
+ * them, else why not, for the form to say.
+ */
+async function changeProfile(
+  change: Partial<Pick<User, "callsign" | "avatar" | "hide_history">>
+): Promise<string | null> {
   if (!session?.user) return "Sign in first."
   try {
-    const r = await authed<{ user: Partial<User> }>("PATCH", "/me", { callsign: callsign.trim() })
+    const r = await authed<{ user: Partial<User> }>("PATCH", "/me", change)
     // the insignia as this page has it: a pick may still be on its way
     if (session?.user) setUser(toUser({ ...r.user, icon: session.user.icon }, session.user))
     return null
@@ -569,7 +600,18 @@ const subscribe = (l: () => void) => {
 }
 const snapshot = () => state
 
-const actions = { signIn, signUp, signInGame, signInWithGitHub, signOut, setIcon, rename, clearError }
+const actions = {
+  signIn,
+  signUp,
+  signInGame,
+  signInWithGitHub,
+  signOut,
+  signOutEverywhere,
+  setIcon,
+  rename,
+  changeProfile,
+  clearError,
+}
 
 /** The signed-in player (or null) and what can be done about it. */
 export function useAccount() {

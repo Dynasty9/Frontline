@@ -123,6 +123,11 @@ they're doing). The observer bar at the top has pause, speed (0.25x to 4x), dire
     `frontline://sign-in/<state>/<refresh token>`. The game takes only the state it made, so no other page can
     sign it in to someone else's account, and spends the token at once. The game's session and the site's are
     separate (a refresh token works once, so the two can't share one), and signing out ends only that one.
+    Both ends say what's happening, since the work is in the browser: the game's panel lists the steps (sign in
+    on the website, let the browser open Frontline, the game signs in), lights up the one it's on and keeps a
+    "Waiting for the website" line moving, then "Signing in..." when the link arrives; the site's dialog shows the
+    two steps, and after handing over the link watches whether the browser took it (the page loses focus to its
+    prompt or the game) and, if nothing did, says what to do.
   - **Email and password are for testing**: the game shows its own form when it runs from source or against a
     matchmaker the website doesn't know, and the website shows one on its dev server or when built against
     another matchmaker. The live site and the players' game only offer GitHub.
@@ -131,8 +136,24 @@ they're doing). The observer bar at the top has pause, speed (0.25x to 4x), dire
   after-action report itself, trimmed (every commander, both sides, the units that did most, the timeline). The
   menu's **Service Record** shows your career (battles, wins, kills, K/D, average rating, time in battle) and every
   battle newest first; open one for its after-action report. A battle fought signed out or offline waits in
-  `user://pending_battles.json` (the last ten) and goes up at the next sign-in. The figures are your own game's
-  account of the battle, so the record is only ever shown to you.
+  `user://pending_battles.json` (the last ten) and goes up at the next sign-in. A record is stamped with when it
+  arrives, and a day holds 200.
+- **Public profiles and leaderboards** (the website, `matchmaker/src/players.js`). Every player has a page on the
+  website, `/player/<callsign>`: their rank, XP and record, their place on the all-time board, and (unless they
+  keep them to themselves) their career and every battle on their service record, each with its after-action
+  report, every commander rated as the game's stats screen rates them. The figures in a battle are that player's
+  own game's word, and the page says so; they're never ranked. The **leaderboards** rank XP, which only the
+  accounts database writes, timed on its own clock: all time, this month and this week (what was earned since the
+  first, or since Monday, UTC), with a signed-in player's own row marked or added at the foot. A player can find
+  any other by callsign.
+  - **Your picture** on the website is your insignia, or the picture on your GitHub account (copied from GitHub at
+    each sign-in; only GitHub's own image host is taken). No uploads, so nothing to moderate.
+  - **Keeping your battles to yourself** (your profile, "Show my battles") takes your battles and career off your
+    page; your rank, XP and record stay public, and the game still shows you your service record.
+  - **A battle counts on the record** (battles fought, won) only if it earned XP: two minutes or more on the
+    database's clock. Before, a "win" reported a moment after starting counted as a battle won.
+  - **Moderation**: a player marked `hidden` in the database is on no board and has no page
+    (`matchmaker/README.md`).
 - **Ranks and insignia** (`ui/insignia.gd`, `ui/insignia_art.gd`, `matchmaker/src/ranks.js`). Signed in, every
   battle you fight earns XP, and you climb 50 ranks from Recruit to General of the Army (Private I-V, Corporal,
   Sergeant, Staff Sergeant, Master Sergeant, Lieutenant, Captain, Major and Colonel I-V, then the five grades of
@@ -918,9 +939,14 @@ function and an autopilot function.
   under the surface of the rivers and ponds and sometimes jump; mallards paddle and upend to feed; dolphins
   cruise the open sea, rolling up through the swell to breathe and now and then leaping clear. At night the
   small and soaring birds roost, bats come out and so do more rats; in the rain fewer birds fly. They take
-  fright at gunfire, shells and rockets (Fx tells them) and at the men and vehicles the local player can see
-  coming near - never at a hidden enemy - and a flock goes up with a rush of wings, a rat runs for a hole in the
-  nearest wall, a hare zigzags off, fish dart away. Synthesised calls: birdsong, a coo, caws, a gull's cry, a
+  fright at gunfire, shells and rockets (Fx tells them), rounds cracking past or striking near, grass fires,
+  falling trees, low helicopters, a death among them and at the men and vehicles the local player can see coming
+  near - never at a hidden enemy - and a flock goes up with a rush of wings (the flocks nearby going up after
+  it), a rat runs for a hole in the nearest wall, a hare zigzags off, fish dart away, crows and gulls make off.
+  They can be killed, only for the eye: every shot's path is tested against the animals round it (group first,
+  then each), and a round through one, or a blast close by, kills it in a puff of blood and feathers - the round
+  flies on as it would have. Birds tumble out of the air, the dead lie on their sides where they fell (up to 30,
+  cleared out of sight later), fish stunned by a shell in the water float up belly-up. Synthesised calls: birdsong, a coo, caws, a gull's cry, a
   squeak, the splash of a fish or a dolphin. Only the camera's surroundings are alive: whatever falls behind is
   moved on ahead out of sight (birds fly in), so the cost doesn't grow with the map. Each kind is one MultiMesh
   written in one go a frame, with wings, tails and flukes moved in the shader; groups off the screen aren't

@@ -27,6 +27,9 @@ export const routes: RouteObject[] = [
           { path: "play", lazy: page(() => import("@/pages/play")) },
           { path: "battles", lazy: page(() => import("@/pages/battles")) },
           { path: "ranks", lazy: page(() => import("@/pages/ranks")) },
+          { path: "leaderboards", lazy: page(() => import("@/pages/leaderboards")) },
+          { path: "player/:callsign", lazy: page(() => import("@/pages/player")) },
+          { path: "player/:callsign/battle/:id", lazy: page(() => import("@/pages/battle")) },
           { path: "profile", lazy: page(() => import("@/pages/profile")) },
           // the profile's old address
           { path: "account", element: <Navigate to="/profile" replace /> },

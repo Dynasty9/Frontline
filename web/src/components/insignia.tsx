@@ -10,11 +10,12 @@ import { memo, useRef, useState } from "react"
 import { Link } from "react-router"
 import { SectionLabel } from "@/components/battles"
 import { InsigniaImg } from "@/components/insignia-img"
+import { PlayerAvatar } from "@/components/player-avatar"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { openSignIn } from "@/hooks/use-sign-in-dialog"
-import { type User, useAccount } from "@/lib/account"
+import { pictureOf, type User, useAccount } from "@/lib/account"
 import {
   GROUPS,
   INSIGNIA,
@@ -95,9 +96,6 @@ function StartEarning() {
 export function Profile({ user }: { user: User }) {
   const { error, signOut } = useAccount()
   const worn = wornInsignia(user.icon)
-  const top = user.next_xp === null || user.rank >= MAX_RANK
-  const span = top ? 1 : Math.max(1, (user.next_xp ?? 0) - user.rank_xp)
-  const into = top ? 1 : Math.min(span, Math.max(0, user.xp - user.rank_xp))
   const next = nextUnlock(user.rank)
 
   return (
@@ -105,7 +103,7 @@ export function Profile({ user }: { user: User }) {
       <div className="flex items-center gap-4 p-4">
         <div className="relative grid size-24 shrink-0 place-items-center bg-muted/60 ring-1 ring-white/10">
           <Corners />
-          {worn && <InsigniaImg id={worn.id} className="size-20" />}
+          <PlayerAvatar icon={user.icon} avatar={pictureOf(user)} className="size-20" />
         </div>
         <div className="min-w-0">
           <p className="truncate text-xl font-semibold">{user.callsign || "Commander"}</p>
@@ -117,27 +115,7 @@ export function Profile({ user }: { user: User }) {
         </div>
       </div>
 
-      <div className="border-t px-4 py-3">
-        <div className="flex items-baseline justify-between gap-3 text-xs">
-          <span className="text-muted-foreground">{top ? "Max rank" : `Next: ${rankName(user.rank + 1)}`}</span>
-          <span className="tabular-nums">
-            {top ? `${user.xp.toLocaleString()} XP` : `${into.toLocaleString()} / ${span.toLocaleString()} XP`}
-          </span>
-        </div>
-        {/* a real <progress> for screen readers; the bar is drawn, so it animates */}
-        <progress
-          className="sr-only"
-          aria-label={top ? "Max rank" : `Experience towards ${rankName(user.rank + 1)}`}
-          max={span}
-          value={into}
-        />
-        <div aria-hidden="true" className="mt-2 h-1.5 bg-muted">
-          <div
-            className="h-full bg-primary transition-[width] duration-500"
-            style={{ width: `${(into / span) * 100}%` }}
-          />
-        </div>
-      </div>
+      <XpProgress {...user} className="border-t" />
 
       <dl className="grid grid-cols-2 border-t">
         <Stat label="Battles" value={user.battles} />
@@ -182,8 +160,50 @@ function Stat({ label, value, className }: { label: string; value: number; class
   )
 }
 
+/** How far a player is towards their next rank, as a bar (or that they're at the top). */
+export function XpProgress({
+  rank,
+  xp,
+  rank_xp,
+  next_xp,
+  className,
+}: {
+  rank: number
+  xp: number
+  rank_xp: number
+  next_xp: number | null
+  className?: string
+}) {
+  const top = next_xp === null || rank >= MAX_RANK
+  const span = top ? 1 : Math.max(1, (next_xp ?? 0) - rank_xp)
+  const into = top ? 1 : Math.min(span, Math.max(0, xp - rank_xp))
+  return (
+    <div className={cn("px-4 py-3", className)}>
+      <div className="flex items-baseline justify-between gap-3 text-xs">
+        <span className="text-muted-foreground">{top ? "Max rank" : `Next: ${rankName(rank + 1)}`}</span>
+        <span className="tabular-nums">
+          {top ? `${xp.toLocaleString()} XP` : `${into.toLocaleString()} / ${span.toLocaleString()} XP`}
+        </span>
+      </div>
+      {/* a real <progress> for screen readers; the bar is drawn, so it animates */}
+      <progress
+        className="sr-only"
+        aria-label={top ? "Max rank" : `Experience towards ${rankName(rank + 1)}`}
+        max={span}
+        value={into}
+      />
+      <div aria-hidden="true" className="mt-2 h-1.5 bg-muted">
+        <div
+          className="h-full bg-primary transition-[width] duration-500"
+          style={{ width: `${(into / span) * 100}%` }}
+        />
+      </div>
+    </div>
+  )
+}
+
 /** Amber corner marks, the HUD's target frame, round the insignia being worn. */
-function Corners() {
+export function Corners() {
   const c = "pointer-events-none absolute size-3 border-primary"
   return (
     <>

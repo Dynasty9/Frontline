@@ -14,12 +14,14 @@ extends Node3D
 ## the map is. Every kind is one MultiMesh, written in one go each frame, and
 ## wings, tails and flukes are moved by the shaders. Animals take fright only
 ## at what the player can see, so a hidden enemy flushes no birds, on the
-## host's screen or on a client's. Settings > Graphics > Wildlife sets how
-## much there is, or turns it off.
+## host's screen or on a client's. They can be killed - a round through a
+## flock, a shell among them - and fall and lie where they fell, but only
+## for the eye: the round flies on as it would have. Settings > Graphics >
+## Wildlife sets how much there is, or turns it off.
 
 ## The meshes, one MultiMesh each, and how many each can draw.
 enum {SONG, BIG, DUCK, RAT, HARE, FISH, DOLPHIN}
-const CAPS := [128, 8, 14, 20, 6, 40, 12]
+const CAPS := [160, 16, 24, 32, 12, 64, 16]  # (the living and the dead)
 
 ## The bird shader's palette rows (and the small birds' kinds).
 enum {SPARROW, STARLING, CROW, GULL, BUZZARD, BAT, DRAKE, HEN, PIGEON}
@@ -51,6 +53,20 @@ const SHY_HARE := Vector2(22.0, 45.0)
 ## How big each soaring bird (and bat) is against its mesh.
 const SOAR_SIZE := [1.0, 1.0, 1.0, 1.15, 1.35, 1.25]
 
+## How close a round has to pass to hit one (m, at its own size): a small
+## bird, a crow, a duck, a rat, a hare, a fish, a dolphin - a mesh each.
+const HIT_R := [0.1, 0.3, 0.22, 0.1, 0.18, 0.14, 0.4]
+## How high above its origin each lies when it's down on its side (m, at its
+## own size), and how it lies: on its side, or (fish, dolphins) belly up.
+const REST_Y := [0.03, 0.07, 0.02, 0.05, 0.1, -0.02, -0.12]
+const REST_ROLL := [PI * 0.5, PI * 0.5, PI * 0.5, PI * 0.5, PI * 0.5, PI, PI * 0.6]
+## How many dead lie about at most (the oldest out of sight go first), and for how long.
+const DEAD_MAX := 30
+const DEAD_LIFE := 150.0
+## Feathers knocked out of a bird hit, by its palette row.
+const FEATHER := [Color(0.5, 0.38, 0.26), Color(0.12, 0.12, 0.12), Color(0.08, 0.08, 0.09), Color(0.92, 0.93, 0.94),
+	Color(0.42, 0.3, 0.2), Color(0.0, 0.0, 0.0, 0.0), Color(0.55, 0.52, 0.46), Color(0.5, 0.4, 0.28), Color(0.6, 0.62, 0.66)]
+
 ## Beyond this far from the camera each is too small to make out, so isn't drawn.
 const SEE_SMALL := 150.0  # small birds
 const SEE_RAT := 90.0
@@ -60,6 +76,7 @@ var world: World
 var level := -1
 var rng := RandomNumberGenerator.new()
 var t := 0.0
+var _frame := 0
 var focus := Vector3.ZERO  # what the camera looks at
 var reach := 120.0  # how far round it there's life
 var cam_pos := Vector3.ZERO
@@ -73,8 +90,10 @@ var _bats: Array = []
 var _runners: Array = []
 var _schools: Array = []
 var _pods: Array = []
-var _threats := PackedVector3Array()  # men and vehicles round the camera the player can see
-var _big := PackedByteArray()  # 1: a vehicle (heard and seen from further off)
+var _threats := PackedVector3Array()  # men and vehicles round the camera the player can see (and fires)
+var _big := PackedByteArray()  # 1: a vehicle or a fire (heard and seen from further off), 2: an aircraft
+var _fires: Array = []  # [where, until]: grass fires burning
+var _dead: Array = []  # Carcass
 var _scan_t := 0.0
 var _scanned := false  # (this frame)
 var _plan_t := 0.0
@@ -85,6 +104,7 @@ var _dbg_us := 0
 var _dbg_n := 0
 var _dbg_t := 0.0
 var _dbg_fright := {}  # (FL_DEBUG_WILDLIFE) what took fright at what, since the last report
+var _dbg := OS.has_environment("FL_DEBUG_WILDLIFE")
 
 
 func _ready() -> void:
@@ -128,6 +148,8 @@ func apply_settings() -> void:
 	_runners.clear()
 	_schools.clear()
 	_pods.clear()
+	_dead.clear()
+	_fires.clear()
 	for b in _b:
 		(b as Batch).clear()
 	_first = true
@@ -161,9 +183,9 @@ func _process(dt: float) -> void:
 	var t0 := Time.get_ticks_usec()
 	_tick(dt)
 	world.vp("wildlife", t0)
-	if OS.has_environment("FL_DEBUG_WILDLIFE"):
+	if _dbg:
 		_debug_report(t0, dt)
-	# FL_WILDLIFE_FOLLOW=dolphins (birds, ducks, soarer, bat, rat, hare, fish): the camera keeps on one (for a look at it)
+	# FL_WILDLIFE_FOLLOW=dolphins (birds, ducks, soarer, bat, rat, hare, fish, dead): the camera keeps on one (for a look at it)
 	if OS.has_environment("FL_WILDLIFE_FOLLOW"):
 		var q := _one_of(OS.get_environment("FL_WILDLIFE_FOLLOW"))
 		if q.x != INF:
@@ -213,6 +235,8 @@ func _debug_report(t0: int, dt: float) -> void:
 ## (debugging) Where the first of a kind is (a flock down on the ground
 ## first); INF if there's none about.
 func _one_of(kind: String) -> Vector3:
+	if kind == "dead":
+		return (_dead[0] as Carcass).p if not _dead.is_empty() else Vector3.INF
 	var groups: Array = {"birds": _flocks, "ducks": _ducks, "soarer": _soarers, "bat": _bats, "rat": _runners, "hare": _runners,
 		"fish": _schools, "dolphins": _pods}.get(kind, [])
 	var flying := Vector3.INF
@@ -231,6 +255,7 @@ func _one_of(kind: String) -> Vector3:
 
 func _tick(dt: float) -> void:
 	t += dt
+	_frame += 1
 	_cam = world.cam.cam
 	cam_pos = _cam.global_position
 	_planes = _cam.get_frustum()
@@ -261,6 +286,7 @@ func _tick(dt: float) -> void:
 		_swim(s, dt)
 	for p in _pods:
 		_pod(p, dt)
+	_carcasses(dt)
 	if _first:
 		# every kind drawn once, out of sight under the ground, so its shaders compile
 		# while the battle is still being revealed: a browser compiles a shader the
@@ -319,6 +345,13 @@ func _scan() -> void:
 			continue
 		if _d2(v.position, focus) < r2 and v.seen_by_local():
 			_threats.append(v.position)
+			_big.append(2 if v.is_air() else 1)
+	# a grass fire keeps everything off like a vehicle would
+	for i in range(_fires.size() - 1, -1, -1):
+		if t > float(_fires[i][1]):
+			_fires.remove_at(i)
+		elif _d2(_fires[i][0], focus) < r2:
+			_threats.append(_fires[i][0])
 			_big.append(1)
 
 
@@ -327,7 +360,7 @@ func _threat(p: Vector3, man: float, veh: float) -> int:
 	var best := -1
 	var bd := INF
 	for i in _threats.size():
-		var r := veh if _big[i] == 1 else man
+		var r := veh if _big[i] >= 1 else man
 		var d := _d2(p, _threats[i])
 		if d < r * r and d < bd:
 			bd = d
@@ -349,11 +382,12 @@ func startle(p: Vector3, r: float) -> void:
 			_fright("ducks", "fire")
 			_take_off(f, p)
 	for s in _soarers:
-		if s.on and _d2(s.p, p) < r2 * 0.6:
-			s.climb = 1.0
+		if s.on and s.scared <= 0.0 and _d2(s.p, p) < r2 * 0.6:
+			_fright("soarer", "fire")
+			_scare(s, p)
 	for s in _bats:
-		if s.on and _d2(s.p, p) < r2 * 0.6:
-			s.climb = 0.6
+		if s.on and s.scared <= 0.0 and _d2(s.p, p) < r2 * 0.6:
+			_scare(s, p)
 	for ru in _runners:
 		if ru.on and ru.state != Runner.FLEE and _d2(ru.p, p) < r2 * (0.5 if ru.hare else 0.3):
 			_fright("hare" if ru.hare else "rat", "fire")
@@ -392,6 +426,8 @@ class Flock:
 	var cruise := 8.0
 	var speed := 10.0
 	var stay := 0.0  # on the ground: until it moves on of its own accord
+	var alarm := 0.0  # another flock went up near it: going up too in this long
+	var alarm_from := Vector3.ZERO
 	var mix := 1.0  # 0 -> 1: from where each was to where it's going
 	var song := 3.0
 	var p := PackedVector3Array()  # each bird (on the ground: its spot; in the air: where it's drawn)
@@ -407,6 +443,22 @@ class Flock:
 
 	func _init(is_duck: bool) -> void:
 		duck = is_duck
+
+	## One of them gone (killed).
+	func remove(i: int) -> void:
+		p.remove_at(i)
+		was.remove_at(i)
+		slot.remove_at(i)
+		yaw.remove_at(i)
+		act.remove_at(i)
+		hop.remove_at(i)
+		ph.remove_at(i)
+		lag.remove_at(i)
+		peck.remove_at(i)
+		sp.remove_at(i)
+		n -= 1
+		if n <= 0:
+			on = false
 
 	func resize(k: int) -> void:
 		n = k
@@ -437,7 +489,7 @@ func _flock(f: Flock, dt: float) -> void:
 		return
 	if not f.want or far:
 		f.leaving = not f.want
-		_take_off(f, f.c + Vector3(rng.randf_range(-1, 1), 0, rng.randf_range(-1, 1)))
+		_take_off(f, f.c + Vector3(rng.randf_range(-1, 1), 0, rng.randf_range(-1, 1)), false)
 		return
 	_feed(f, dt)
 
@@ -447,8 +499,15 @@ func _feed(f: Flock, dt: float) -> void:
 	f.stay -= dt
 	if f.mix >= 1.0 and f.stay <= 0.0:
 		# moving on to another patch
-		_take_off(f, f.c + Vector3(rng.randf_range(-1, 1), 0, rng.randf_range(-1, 1)))
+		_take_off(f, f.c + Vector3(rng.randf_range(-1, 1), 0, rng.randf_range(-1, 1)), false)
 		return
+	if f.alarm > 0.0:
+		# the flock next to it went up: so does this one, a moment after
+		f.alarm -= dt
+		if f.alarm <= 0.0:
+			_fright("ducks" if f.duck else "birds", "others")
+			_take_off(f, f.alarm_from)
+			return
 	if _scanned:
 		var shy: Vector2 = SHY_DUCK if f.duck else SHY_BIRD
 		var ti := _threat(f.c, shy.x + 3.0, shy.y)
@@ -463,13 +522,13 @@ func _feed(f: Flock, dt: float) -> void:
 	var vis := _seen(f.c, 6.0, SEE_SMALL)
 	var b: Batch = _b[DUCK if f.duck else SONG]
 	for i in f.n:
+		if not vis:
+			continue  # (off the screen they keep still: nobody sees where each one is)
 		if landed:
 			if f.duck:
 				_paddle(f, i, dt)
 			else:
 				_hop(f, i, dt)
-		if not vis:
-			continue
 		var q := f.p[i]
 		q.y = f.gy
 		var pitch := 0.0
@@ -607,12 +666,14 @@ func _fly(f: Flock, dt: float) -> void:
 
 
 ## Up and away from what frightened them (from_p), towards somewhere quieter
-## to come down; out of the camera's surroundings altogether if there isn't one.
-func _take_off(f: Flock, from_p: Vector3) -> void:
+## to come down; out of the camera's surroundings altogether if there isn't
+## one. A fright spreads: the flocks feeding nearby go up after it.
+func _take_off(f: Flock, from_p: Vector3, fright := true) -> void:
 	if f.air:
 		return
 	f.air = true
 	f.mix = 0.0
+	f.alarm = 0.0
 	for i in f.n:
 		var q := f.p[i]
 		q.y = f.gy
@@ -625,10 +686,9 @@ func _take_off(f: Flock, from_p: Vector3) -> void:
 	f.hd = atan2(-away.x, -away.z) + rng.randf_range(-0.5, 0.5)
 	f.turn = 0.0
 	f.c.y = f.gy
-	var spooked := _d2(f.c, from_p) < 60.0 * 60.0
 	if not f.leaving:
 		var fw := Vector3(-sin(f.hd), 0.0, -cos(f.hd))
-		var to := _landing(f, f.c + fw * (rng.randf_range(45.0, 100.0) if spooked else rng.randf_range(25.0, 70.0)))
+		var to := _landing(f, f.c + fw * (rng.randf_range(45.0, 100.0) if fright else rng.randf_range(25.0, 70.0)))
 		if to.x == INF:
 			f.leaving = true
 		else:
@@ -636,6 +696,17 @@ func _take_off(f: Flock, from_p: Vector3) -> void:
 	if cam_pos.distance_to(f.c) < 90.0 and not f.duck:
 		var pitch := rng.randf_range(0.75, 0.9) if f.kind == PIGEON else rng.randf_range(0.95, 1.1)
 		_call("flutter", f.c, -4.0 + minf(4.0, f.n * 0.3), pitch, true)
+	if fright:
+		for g in _flocks:
+			_alarm(g, f, from_p)
+		for g in _ducks:
+			_alarm(g, f, from_p)
+
+
+func _alarm(g: Flock, f: Flock, from_p: Vector3) -> void:
+	if g != f and g.on and not g.air and g.alarm <= 0.0 and _d2(g.c, f.c) < 35.0 * 35.0:
+		g.alarm = rng.randf_range(0.25, 0.9)
+		g.alarm_from = from_p
 
 
 ## Somewhere to come down near `near`: bare ground (fresh water for ducks)
@@ -750,20 +821,39 @@ class Soarer:
 	var flap := 0.0  # flapping for this much longer
 	var rest := 2.0  # gliding for this much longer
 	var climb := 0.0  # frightened: climbing away
+	var scared := 0.0  # frightened: making off for this much longer
 	var cry := 6.0
 	var k := 0.0  # its own offset in time
+	var shown := true  # drawn last frame (off the screen it's moved every other frame)
+	var owed := 0.0  # time it hasn't been moved for
 
 
 func _soar(s: Soarer, dt: float) -> void:
 	if not s.on:
 		_appear(s, _spawn_soarer, dt)
 		return
+	if not s.shown and not _scanned and (_frame + int(s.k)) % 2 == 0:
+		s.owed += dt
+		return
+	dt += s.owed
+	s.owed = 0.0
 	var bat := s.kind == BAT
 	if not s.want:
 		s.drift = (s.c - focus).normalized() * 8.0  # off elsewhere
 	if _d2(s.c, focus) > pow(reach * 1.3, 2.0) and (not s.want or _unseen(s.p, 400.0)):
 		s.on = false
 		return
+	if s.scared > 0.0:
+		s.scared -= dt
+		if s.scared <= 0.0:
+			s.drift = s.drift.normalized() * 1.2
+	elif _scanned:
+		# a helicopter coming close
+		for i in _threats.size():
+			if _big[i] == 2 and _threats[i].distance_squared_to(s.p) < 45.0 * 45.0:
+				_fright("soarer", "aircraft")
+				_scare(s, _threats[i])
+				break
 	s.c += s.drift * dt
 	var spin := 1.0 + (0.7 * sin(t * 2.7 + s.k) if bat else 0.0)
 	s.a += s.w * spin * dt
@@ -811,11 +901,25 @@ func _soar(s: Soarer, dt: float) -> void:
 					_call("gull", s.p, -6.0, rng.randf_range(0.92, 1.1))
 				BUZZARD:
 					_call("gull", s.p, -9.0, rng.randf_range(0.66, 0.72))
-	if bat and not _seen(s.p, 2.0, SEE_SMALL):
+	# (a big bird's shadow can fall in view from well outside it)
+	s.shown = _seen(s.p, 2.0, SEE_SMALL) if bat else _seen(s.p, 45.0, 400.0)
+	if bat and not s.shown:
 		return
 	var bas := Basis.from_euler(Vector3(clampf(atan2(v.y, maxf(flat, 0.1)), -0.6, 0.6), hd, clampf(turn * flat / 9.8, -0.8, 0.8)))
 	var b: Batch = _b[SONG if bat else BIG]
 	b.put(s.p, bas, SOAR_SIZE[s.kind], Color(0.5 + 0.5 * flap, s.kind / 8.0, 0.0, 0.0))
+
+
+## Off and away from what frightened it (from_p), climbing and beating hard.
+func _scare(s: Soarer, from_p: Vector3) -> void:
+	var away := s.p - from_p
+	away.y = 0.0
+	if away.length() < 0.1:
+		away = Vector3(rng.randf_range(-1, 1), 0, rng.randf_range(-1, 1))
+	s.drift = away.normalized() * (5.0 if s.kind == BAT else 8.0)
+	s.scared = rng.randf_range(5.0, 9.0)
+	s.climb = 0.6 if s.kind == BAT else 1.0
+	s.flap = rng.randf_range(1.5, 3.0)
 
 
 func _spawn_soarer(s: Soarer) -> void:
@@ -841,6 +945,7 @@ func _spawn_soarer(s: Soarer) -> void:
 	s.k = rng.randf() * 100.0
 	s.drift = Vector3.ZERO if bat else Vector3(rng.randf_range(-1, 1), 0, rng.randf_range(-1, 1)) * 1.2
 	s.climb = 0.0
+	s.scared = 0.0
 	s.flap = 0.0
 	s.rest = rng.randf_range(0.5, 4.0)
 	# somewhere it isn't seen arriving (a bat over open ground or the trees)
@@ -881,6 +986,8 @@ class Runner:
 	var hole := Vector3.INF  # a rat's way in
 	var up := 0.0  # sitting up (a hare on the alert): 0..1
 	var zig := 0.0
+	var shown := true  # drawn last frame (off the screen, sitting, it's looked at every fourth)
+	var owed := 0.0
 
 	func _init(is_hare: bool) -> void:
 		hare = is_hare
@@ -890,6 +997,11 @@ func _run(r: Runner, dt: float) -> void:
 	if not r.on:
 		_appear(r, _spawn_runner, dt)
 		return
+	if not r.shown and r.state == Runner.SIT and not _scanned and (_frame + int(r.zig * 10.0)) % 4 != 0:
+		r.owed += dt
+		return
+	dt += r.owed
+	r.owed = 0.0
 	if (_d2(r.p, focus) > pow(reach * 1.15, 2.0) or not r.want) and _unseen(r.p, SEE_RAT):
 		r.on = false
 		return
@@ -949,7 +1061,8 @@ func _run(r: Runner, dt: float) -> void:
 				r.state = Runner.SIT
 				r.timer = rng.randf_range(2.0, 8.0) if r.hare else rng.randf_range(0.5, 3.0)
 				r.zig = rng.randf() * 7.0
-	if not _seen(r.p, 1.0, SEE_RAT * (1.4 if r.hare else 1.0)):
+	r.shown = _seen(r.p, 1.0, SEE_RAT * (1.4 if r.hare else 1.0))
+	if not r.shown:
 		return
 	var q := r.p
 	q.y = _gy(q) + bob
@@ -1066,6 +1179,7 @@ class School:
 	var dart := 0.0
 	var turn_t := 0.0
 	var look_t := 0.0
+	var sy := INF  # the surface over it (worked out every other frame)
 	var n := 0
 	var off := PackedVector3Array()
 	var ph := PackedFloat32Array()
@@ -1075,6 +1189,19 @@ class School:
 	var j0 := Vector3.ZERO
 	var jv := Vector3.ZERO
 	var next_jump := 10.0
+
+	## One of them gone (killed).
+	func remove(i: int) -> void:
+		off.remove_at(i)
+		ph.remove_at(i)
+		depth.remove_at(i)
+		if jumper == i:
+			jumper = -1
+		elif jumper > i:
+			jumper -= 1
+		n -= 1
+		if n <= 0:
+			on = false
 
 
 func _swim(s: School, dt: float) -> void:
@@ -1134,7 +1261,9 @@ func _swim(s: School, dt: float) -> void:
 	var pal := (C_SEAFISH if s.sea else C_FISH) / 8.0
 	# (under the surface as it is just now: the swell drops it in the troughs; too
 	# near it and the water shows them as a bright shoal, not a dark shape)
-	var surf := _surf(s.c)
+	if _frame % 2 == 0 or s.sy == INF:
+		s.sy = _surf(s.c)  # (every other frame: the swell is dear to work out)
+	var surf := s.sy
 	var bed := world.terrain.deform_at(s.c) + 0.12
 	for i in s.n:
 		s.ph[i] += dt * TAU * (1.6 + sp * 2.2)
@@ -1208,6 +1337,19 @@ class Pod:
 	var was := PackedFloat32Array()  # how high it was last frame against the surface
 	var size := PackedFloat32Array()
 
+	## One of them gone (killed).
+	func remove(i: int) -> void:
+		off.remove_at(i)
+		cyc.remove_at(i)
+		dur.remove_at(i)
+		leap.remove_at(i)
+		beat.remove_at(i)
+		was.remove_at(i)
+		size.remove_at(i)
+		n -= 1
+		if n <= 0:
+			on = false
+
 
 const BREATH := 0.3  # of a breath, the part up through the surface
 const LEAP := 0.45
@@ -1247,6 +1389,7 @@ func _pod(s: Pod, dt: float) -> void:
 	var vis := _seen(s.c, 8.0, 220.0)
 	var hb := Basis(Vector3.UP, s.yaw)
 	var b: Batch = _b[DOLPHIN]
+	var surf := (WaterMap.LEVEL + wv.height_at(s.c) if wv else WaterMap.LEVEL) if vis else 0.0  # (once a pod: dear to work out)
 	for i in s.n:
 		s.cyc[i] += dt / s.dur[i]
 		if s.cyc[i] >= 1.0:
@@ -1267,7 +1410,7 @@ func _pod(s: Pod, dt: float) -> void:
 		s.was[i] = top
 		if not vis:
 			continue
-		q.y = WaterMap.LEVEL + (wv.height_at(q) if wv else 0.0) + y
+		q.y = surf + y
 		var pitch := atan2((_breath_y(s.cyc[i] + 0.01, s.leap[i] == 1) - y) / (0.01 * s.dur[i]), sp)
 		var bas := Basis.from_euler(Vector3(pitch, s.yaw, sin(s.beat[i] * 0.3 + i) * 0.08))
 		b.put(q, bas, s.size[i], Color(fmod(s.beat[i] / TAU, 1.0), C_DOLPHIN / 8.0, 0.09, 1.0))
@@ -1319,10 +1462,301 @@ func _spawn_pod(s: Pod) -> void:
 		return
 
 
+# --- shot, blown up, dead ---------------------------------------------------------------------
+
+## A round's flight from a to b (Fx calls this for every shot): a bird or a
+## beast it passes through dies - only for the eye: the round flies on as it
+## would have - and everything it cracks past, or strikes the ground near,
+## takes fright.
+func shot(a: Vector3, b: Vector3) -> void:
+	if level <= 0 or _cam == null:
+		return
+	var t0 := Time.get_ticks_usec()
+	_shot(a, b)
+	_cost(t0)
+
+
+## What it costs goes in the performance overlay (and FL_DEBUG_WILDLIFE's report).
+func _cost(t0: int) -> void:
+	world.vp("wildlife", t0)
+	if _dbg:
+		_dbg_us += Time.get_ticks_usec() - t0
+
+
+func _shot(a: Vector3, b: Vector3) -> void:
+	var ab := b - a
+	var ll := ab.length_squared()
+	if ll < 0.01 or _seg_d2(Vector3(a.x, 0, a.z), Vector3(ab.x, 0, ab.z), maxf(ab.x * ab.x + ab.z * ab.z, 0.0001), Vector3(focus.x, 0, focus.z)) > pow(reach + 20.0, 2.0):
+		return
+	var dir := ab / sqrt(ll)
+	for g in 2:
+		for f: Flock in (_flocks if g == 0 else _ducks):
+			if not f.on:
+				continue
+			var mid := f.c if f.air else Vector3(f.c.x, f.gy, f.c.z)
+			var d2 := _seg_d2(a, ab, ll, mid)
+			if d2 > 10.0 * 10.0 and _d2(b, mid) > 12.0 * 12.0:
+				continue
+			var mesh := DUCK if f.duck else SONG
+			var hr: float = HIT_R[mesh] * f.sz
+			for i in range(f.n - 1, -1, -1):
+				var q := f.p[i] if f.air else Vector3(f.p[i].x, f.gy + REST_Y[mesh] * f.sz, f.p[i].z)
+				if _seg_d2(a, ab, ll, q) < hr * hr:
+					_kill_bird(f, i, dir)
+			if f.on and not f.air:
+				_fright("ducks" if f.duck else "birds", "round")
+				_take_off(f, a + ab * _seg_t(a, ab, ll, mid))
+	for g in 2:
+		for s: Soarer in (_soarers if g == 0 else _bats):
+			if not s.on:
+				continue
+			var d2 := _seg_d2(a, ab, ll, s.p)
+			var mesh := SONG if s.kind == BAT else BIG
+			var hr: float = HIT_R[mesh] * float(SOAR_SIZE[s.kind])
+			if d2 < hr * hr:
+				_kill(mesh, s.p, Vector3(-sin(s.hd), 0.0, -cos(s.hd)) * 6.0 + dir * 2.0, s.hd, SOAR_SIZE[s.kind], Color(0.62, s.kind / 8.0, 0.35, 0.0), FEATHER[s.kind])
+				s.on = false
+			elif d2 < 12.0 * 12.0 and s.scared <= 0.0:
+				_scare(s, a + ab * _seg_t(a, ab, ll, s.p))
+	for r: Runner in _runners:
+		if not r.on:
+			continue
+		var mesh := HARE if r.hare else RAT
+		var q := r.p + Vector3(0.0, REST_Y[mesh], 0.0)
+		var d2 := _seg_d2(a, ab, ll, q)
+		if d2 < HIT_R[mesh] * HIT_R[mesh]:
+			_kill(mesh, q, dir * 1.5 + Vector3(0.0, 1.5, 0.0), r.yaw, 1.0, Color(0.0, (C_HARE if r.hare else C_RAT) / 8.0, 0.0, 0.0))
+			r.on = false
+		elif r.state != Runner.FLEE and (d2 < 6.0 * 6.0 or _d2(b, r.p) < 8.0 * 8.0):
+			_fright("hare" if r.hare else "rat", "round")
+			_flee(r, b)
+	# into the water: a fish right under where it struck, and a dolphin at the surface
+	var wet: bool = world.water.wet_at(b) and b.y < 0.3
+	for sc: School in _schools:
+		if not sc.on or not wet or _d2(sc.c, b) > 6.0 * 6.0:
+			continue
+		var hb := Basis(Vector3.UP, sc.yaw)
+		for i in range(sc.n - 1, -1, -1):
+			var q := sc.c + hb * sc.off[i]
+			if _d2(q, b) < 0.45 * 0.45:
+				q.y = _surf(q) - sc.depth[i]
+				_kill(FISH, q, Vector3.ZERO, sc.yaw, 1.0, Color(0.0, (C_SEAFISH if sc.sea else C_FISH) / 8.0, 0.0, 0.0))
+				sc.remove(i)
+		if sc.on:
+			_dart(sc, b)
+	for pd: Pod in _pods:
+		if not pd.on or _d2(pd.c, b) > 15.0 * 15.0 and _seg_d2(a, ab, ll, pd.c) > 15.0 * 15.0:
+			continue
+		var hb := Basis(Vector3.UP, pd.yaw)
+		for i in range(pd.n - 1, -1, -1):
+			var y := _breath_y(pd.cyc[i], pd.leap[i] == 1)
+			if y < -0.5:
+				continue  # (under the water: the round never gets to it)
+			var q := pd.c + hb * pd.off[i]
+			q.y = _surf(q) + y
+			var hr: float = HIT_R[DOLPHIN] * pd.size[i]
+			if _seg_d2(a, ab, ll, q) < hr * hr:
+				_kill(DOLPHIN, q, Vector3.ZERO, pd.yaw, pd.size[i], Color(0.0, C_DOLPHIN / 8.0, 0.0, 1.0))
+				pd.remove(i)
+		if pd.on:
+			pd.aim = _yaw_away(pd.c, b)
+			pd.hurry = 6.0
+
+
+## A shell, a bomb, a grenade at p (Fx calls this, `size` as it's drawn): what's
+## close is killed and thrown; in the water, the fish near it are stunned and
+## float up. (startle() then sends everything further off running.)
+func blast(p: Vector3, size: float) -> void:
+	if level <= 0 or _cam == null or _d2(p, focus) > pow(reach + 30.0, 2.0):
+		return
+	var t0 := Time.get_ticks_usec()
+	_blast(p, size)
+	_cost(t0)
+
+
+func _blast(p: Vector3, size: float) -> void:
+	var kr := 1.5 + 2.5 * size
+	var kr2 := kr * kr
+	for g in 2:
+		for f: Flock in (_flocks if g == 0 else _ducks):
+			if not f.on or _d2(f.c, p) > pow(kr + 6.0, 2.0):
+				continue
+			for i in range(f.n - 1, -1, -1):
+				var q := f.p[i] if f.air else Vector3(f.p[i].x, f.gy, f.p[i].z)
+				if q.distance_squared_to(p) < kr2:
+					_kill_bird(f, i, (q - p).normalized(), (q - p).normalized() * (4.0 + 5.0 * size) + Vector3(0.0, 3.0 + 3.0 * size, 0.0))
+	for g in 2:
+		for s: Soarer in (_soarers if g == 0 else _bats):
+			if s.on and s.p.distance_squared_to(p) < kr2 * 1.5:
+				var mesh := SONG if s.kind == BAT else BIG
+				_kill(mesh, s.p, (s.p - p).normalized() * 6.0, s.hd, SOAR_SIZE[s.kind], Color(0.62, s.kind / 8.0, 0.35, 0.0), FEATHER[s.kind])
+				s.on = false
+	for r: Runner in _runners:
+		if r.on and _d2(r.p, p) < kr2:
+			var mesh := HARE if r.hare else RAT
+			var away := r.p - p
+			away.y = 0.0
+			_kill(mesh, r.p + Vector3(0.0, REST_Y[mesh], 0.0), away.normalized() * (3.0 + 4.0 * size) + Vector3(0.0, 3.0 + 2.0 * size, 0.0), r.yaw, 1.0,
+				Color(0.0, (C_HARE if r.hare else C_RAT) / 8.0, 0.0, 0.0))
+			r.on = false
+	if world.water.wet_at(p) and p.y < 1.0:
+		var fr := 3.0 + 6.0 * size
+		for sc: School in _schools:
+			if not sc.on or _d2(sc.c, p) > pow(fr + 3.0, 2.0):
+				continue
+			var hb := Basis(Vector3.UP, sc.yaw)
+			for i in range(sc.n - 1, -1, -1):
+				var q := sc.c + hb * sc.off[i]
+				if _d2(q, p) < fr * fr:
+					q.y = _surf(q) - sc.depth[i]
+					_kill(FISH, q, Vector3.ZERO, sc.yaw + rng.randf_range(-1, 1), 1.0, Color(0.0, (C_SEAFISH if sc.sea else C_FISH) / 8.0, 0.0, 0.0))
+					sc.remove(i)
+		for pd: Pod in _pods:
+			if not pd.on:
+				continue
+			var hb := Basis(Vector3.UP, pd.yaw)
+			for i in range(pd.n - 1, -1, -1):
+				var q := pd.c + hb * pd.off[i]
+				if _d2(q, p) < pow(1.5 + 2.0 * size, 2.0):
+					q.y = _surf(q) + _breath_y(pd.cyc[i], pd.leap[i] == 1)
+					_kill(DOLPHIN, q, Vector3.ZERO, pd.yaw, pd.size[i], Color(0.0, C_DOLPHIN / 8.0, 0.0, 1.0))
+					pd.remove(i)
+
+
+## A grass fire at p (Fx calls this): everything keeps clear of it while it burns.
+func fire(p: Vector3, r: float, secs: float) -> void:
+	if level <= 0:
+		return
+	_fires.append([p, t + secs])
+	startle(p, r + 20.0)
+
+
+func _kill_bird(f: Flock, i: int, dir: Vector3, thrown := Vector3.INF) -> void:
+	var mesh := DUCK if f.duck else SONG
+	var q := f.p[i] if f.air else Vector3(f.p[i].x, f.gy + REST_Y[mesh] * f.sz, f.p[i].z)
+	var v := thrown
+	if v.x == INF:
+		# shot: out of the air with the way it was flying; on the ground, knocked over
+		v = Vector3(-sin(f.hd) * f.speed * 0.5, f.vy, -cos(f.hd) * f.speed * 0.5) if f.air else dir * 0.6 + Vector3(0.0, 0.8, 0.0)
+	var sp: int = int(f.sp[i] * 8.0 + 0.5)
+	_kill(mesh, q, v, f.yaw[i] if not f.air else f.hd, f.sz, Color(0.62, f.sp[i], 0.35, 0.0), FEATHER[sp])
+	f.remove(i)
+
+
+## Something killed at p, moving at v: a puff of blood (and feathers, from a
+## bird), the rest nearby take fright, and the body falls and lies there.
+func _kill(mesh: int, p: Vector3, v: Vector3, yaw: float, sz: float, c: Color, feather := Color(0, 0, 0, 0)) -> void:
+	_fright(["bird", "crow", "duck", "rat", "hare", "fish", "dolphin"][mesh], "killed")
+	var k := Carcass.new()
+	k.b = mesh
+	k.p = p
+	k.v = v
+	k.yaw = yaw
+	k.sz = sz
+	k.c = c
+	k.side = 1.0 if rng.randf() < 0.5 else -1.0
+	k.tumble = rng.randf_range(4.0, 9.0) if v.length() > 2.0 else 0.0
+	k.water = mesh == FISH or mesh == DOLPHIN or (world.water.wet_at(p) and world.terrain.deform_at(p) < WaterMap.LEVEL - 0.1)
+	if _dead.size() >= DEAD_MAX:
+		# room for it: the oldest out of sight goes (the oldest of all if none is)
+		var gone := 0
+		for i in _dead.size():
+			if _unseen((_dead[i] as Carcass).p, 60.0):
+				gone = i
+				break
+		_dead.remove_at(gone)
+	_dead.append(k)
+	var g: GunFx = world.fx.gunfx if world.fx else null
+	if g and cam_pos.distance_to(p) < 130.0 and mesh != FISH:
+		var s := sqrt(sz) * (2.0 if mesh == DOLPHIN else (1.0 if mesh == BIG or mesh == DUCK or mesh == HARE else 0.6))
+		g.puff(p, v * 0.2 + Vector3(0.0, 0.4, 0.0), 0.02 * s, 0.14 * s, 0.35, Color(0.3, 0.03, 0.02, 0.6), 8.0, 0.0, 1.0, 0.2)
+		if feather.a > 0.0:
+			for i in int(4 + 6 * s):
+				var fv := Vector3(rng.randf_range(-1, 1), rng.randf_range(0.2, 1.2), rng.randf_range(-1, 1)) * rng.randf_range(0.8, 2.2) + v * 0.15
+				var fl := rng.randf_range(0.025, 0.045) * s
+				g.chunk(p, fv, Vector3(fl * 0.6, fl * 0.06, fl), rng.randf_range(6.0, 10.0), feather * rng.randf_range(0.85, 1.15), _gy(p), 5.0, 3.6)
+	if mesh == RAT and cam_pos.distance_to(p) < 35.0:
+		_call("squeak", p, -9.0, rng.randf_range(1.1, 1.3), true)
+	startle(p, 14.0)
+
+
+## A dead creature: falling (a bird out of the air, something thrown by a
+## blast), or floating up (a fish), then lying where it came down (afloat, if
+## that's the water) until it's been out of sight a good while.
+class Carcass:
+	var b := 0  # which mesh
+	var p := Vector3.ZERO
+	var v := Vector3.ZERO
+	var yaw := 0.0
+	var side := 1.0  # which side it lies on
+	var tumble := 0.0  # how fast it turns over as it falls
+	var spin := 0.0
+	var sz := 1.0
+	var c := Color()  # what its shader draws it by
+	var water := false
+	var sy := WaterMap.LEVEL  # the surface it floats on
+	var down := false
+	var lain := 0.0
+
+
+func _carcasses(dt: float) -> void:
+	for i in range(_dead.size() - 1, -1, -1):
+		var k: Carcass = _dead[i]
+		var rest: float = REST_Y[k.b] * k.sz
+		if not k.down:
+			var lo := _surf(k.p) + rest if k.water else _gy(k.p) + rest
+			if k.water and k.p.y < lo:
+				# (underwater: it floats up)
+				k.p.y = minf(lo, k.p.y + dt * 0.5)
+				k.p += Vector3(k.v.x, 0.0, k.v.z) * dt
+				k.v *= 1.0 - minf(1.0, dt * 2.0)
+				if k.p.y >= lo:
+					k.down = true
+					k.sy = lo - rest
+			else:
+				k.v.y -= 9.8 * dt
+				k.v *= 1.0 - minf(1.0, dt * (0.9 if k.b == SONG else 0.3))  # (a small bird's wings and feathers drag)
+				k.p += k.v * dt
+				k.spin += k.tumble * dt
+				if k.p.y <= lo:
+					k.water = k.water or (world.water.wet_at(k.p) and world.terrain.deform_at(k.p) < WaterMap.LEVEL - 0.1)
+					k.sy = _surf(k.p)
+					k.p.y = k.sy + rest if k.water else lo
+					k.down = true
+					if k.water and _wv() and cam_pos.distance_to(k.p) < 90.0:
+						_wv().foam(k.p, 0.3 + 0.3 * k.sz, 1.2, WaterView.RING)
+		else:
+			k.lain += dt
+			if k.water:
+				if (_frame + i) % 3 == 0 and _seen(k.p, 1.0, 160.0):
+					k.sy = _surf(k.p)  # (the swell is dear to work out: now and then, and only when it shows)
+				k.p.y = k.sy + rest + 0.01 * sin(t * 1.3 + i)
+				k.yaw += sin(t * 0.2 + i) * 0.03 * dt
+			if (k.lain > DEAD_LIFE or _d2(k.p, focus) > pow(reach * 1.5, 2.0)) and _unseen(k.p, 60.0):
+				_dead.remove_at(i)
+				continue
+		if not _seen(k.p, 1.0, 160.0):
+			continue
+		var roll: float = REST_ROLL[k.b] * k.side
+		var bas := Basis.from_euler(Vector3(k.spin, k.yaw, roll + k.spin * 0.7)) if not k.down else Basis.from_euler(Vector3(0.0, k.yaw, roll))
+		(_b[k.b] as Batch).put(k.p, bas, k.sz, k.c)
+
+
+static func _seg_t(a: Vector3, ab: Vector3, ll: float, p: Vector3) -> float:
+	return clampf((p - a).dot(ab) / ll, 0.0, 1.0)
+
+
+## How far (squared) p is from the segment from a along ab (ll: its length squared).
+static func _seg_d2(a: Vector3, ab: Vector3, ll: float, p: Vector3) -> float:
+	return (a + ab * _seg_t(a, ab, ll, p)).distance_squared_to(p)
+
+
 # --- where things are ----------------------------------------------------------------------------
 
-## (FL_DEBUG_WILDLIFE) Counts a fright: what, and at what.
+## (FL_DEBUG_WILDLIFE) Counts a fright (or a death): what, and at what.
 func _fright(what: String, at: String) -> void:
+	if not _dbg:
+		return
 	var k := what + "@" + at
 	_dbg_fright[k] = int(_dbg_fright.get(k, 0)) + 1
 

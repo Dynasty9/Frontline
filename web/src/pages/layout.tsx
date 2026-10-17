@@ -1,3 +1,4 @@
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { useEffect, useLayoutEffect, useState } from "react"
 import { Outlet, ScrollRestoration, useLocation, useNavigate } from "react-router"
 import { GameSignIn } from "@/components/game-sign-in"
@@ -54,27 +55,35 @@ export function Layout() {
     void navigate(withoutSignInRequest(here), { replace: true })
   }
 
+  // The answers the pages fetch (players, boards, battles): kept while you look
+  // around, so going back is instant. The matchmaker keeps them half a minute too.
+  const [queries] = useState(
+    () => new QueryClient({ defaultOptions: { queries: { staleTime: 30_000, retry: 1, refetchOnWindowFocus: false } } })
+  )
+
   return (
-    <TooltipProvider delayDuration={150}>
-      <SiteHeader overlay={location.pathname === "/"} accounts={health.data?.accounts} live={health.data?.lobbies} />
-      {/* things slide in from the sides as they reveal: never let them widen the page */}
-      <main className="overflow-x-clip">
-        <Outlet context={{ health: health.data } satisfies Site} />
-      </main>
-      <SiteFooter />
-      <SignInDialog open={signingIn} onClose={closeSignIn} accounts={health.data?.accounts} finishing={finishing} />
-      {gameSignIn && (
-        <GameSignIn
-          request={gameSignIn}
-          accounts={health.data?.accounts}
-          onClose={closeGameSignIn}
-          returned={github?.back.game ? github.back : undefined}
-        />
-      )}
-      {/* a new one for each page */}
-      <InstantPageScroll key={location.pathname} />
-      <ScrollRestoration />
-    </TooltipProvider>
+    <QueryClientProvider client={queries}>
+      <TooltipProvider delayDuration={150}>
+        <SiteHeader overlay={location.pathname === "/"} accounts={health.data?.accounts} live={health.data?.lobbies} />
+        {/* things slide in from the sides as they reveal: never let them widen the page */}
+        <main className="overflow-x-clip">
+          <Outlet context={{ health: health.data } satisfies Site} />
+        </main>
+        <SiteFooter />
+        <SignInDialog open={signingIn} onClose={closeSignIn} accounts={health.data?.accounts} finishing={finishing} />
+        {gameSignIn && (
+          <GameSignIn
+            request={gameSignIn}
+            accounts={health.data?.accounts}
+            onClose={closeGameSignIn}
+            returned={github?.back.game ? github.back : undefined}
+          />
+        )}
+        {/* a new one for each page */}
+        <InstantPageScroll key={location.pathname} />
+        <ScrollRestoration />
+      </TooltipProvider>
+    </QueryClientProvider>
   )
 }
 

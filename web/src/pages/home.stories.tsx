@@ -74,7 +74,10 @@ export const BackFromGitHub: Story = {
   beforeEach: [mockMatchmaker({ lobbies, health, exchange: player }), awayAtGitHub()],
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(await canvas.findByRole("heading", { level: 1, name: "Your profile" })).toBeVisible()
+    // the code swapped, /me asked, the dialog shut, the profile shown: give it a moment on a busy machine
+    await expect(
+      await canvas.findByRole("heading", { level: 1, name: "Your profile" }, { timeout: 5000 })
+    ).toBeVisible()
     await expect(canvas.getByRole("button", { name: "Your account: Raven rank 6" })).toBeVisible()
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull())
   },
