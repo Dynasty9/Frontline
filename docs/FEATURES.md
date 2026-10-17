@@ -6,6 +6,7 @@ The long version: how each system works and why. For the short version, see the 
 - [Watching the AI](#watching-the-ai)
 - [Multiplayer in detail](#multiplayer-in-detail)
 - [In a browser](#in-a-browser)
+- [The console: finding out why it's slow](#the-console-finding-out-why-its-slow)
 - [Missions](#missions)
 - [The systems](#the-systems)
 
@@ -49,7 +50,7 @@ changes any of them:
 | Support | The buttons above the minimap (Z arms the first one ready): click the target, **drag** to set the run-in direction for gun runs and bombing runs |
 | Observer | C director camera, V whose eyes to watch through, P pause, [ ] speed, F2 hide the interface. **Fire support** (observer bar) launches any air or artillery support anywhere to watch it |
 | Command view | Tab tactical map (**hold Tab**: battle statistics), O order of battle (click a unit to select it and look at it, double-click to zoom in), the buttons beside the minimap turn map layers on and off (unit symbols, orders and attack plans, intelligence, fog of war, weapon ranges, soldier labels) |
-| Other | Home cycles FOBs, Space jumps to the last alert or ping (both glide there), Enter chats (Shift+Enter: team), L message history, F1 help, F3 performance overlay, **F4 field manual**, Esc menu |
+| Other | Home cycles FOBs, Space jumps to the last alert or ping (both glide there), Enter chats (Shift+Enter: team), L message history, F1 help, F3 performance overlay, **F4 field manual**, **` (or ~) the console**, Esc menu |
 
 ## Watching the AI
 
@@ -259,6 +260,43 @@ spread the work over, the map takes about 30 seconds to lay out, a stage at a ti
 simulation runs about as fast as on the desktop. The first battle also waits while the browser compiles the game's
 shaders (it keeps them, so only the first time); to keep that short, lighting is worked out per vertex, particles
 run on the processor, and explosions, muzzle flashes and fires don't cast light.
+
+## The console: finding out why it's slow
+
+The key under Esc (**`** or **~**, rebindable in Settings > Controls) drops a console down from the top of the
+screen, in a battle or in the menus. Its commands are mostly about one question: why is the game slow? Tab
+completes a command or its argument, Up and Down go through what was typed before, Esc closes it, `help` lists
+everything.
+
+- **`why`** reads the last five seconds and says what's holding the frame rate back: the screen's refresh or the
+  frame limit (not a problem), the graphics card (with the resolution it's drawing at), or the processor, and then
+  which part of it: the battle's game logic (its biggest systems, and whether the simulation keeps up with the
+  clock), the view's scripts, the renderer's draw calls. It adds the stutters of the last minute and what they
+  were, a flood of engine errors, an integrated graphics chip, a slow connection to the host.
+- **`bench`** (about a minute, or `bench quick`) turns each graphics setting down in turn, times the frames, and
+  lists what each saves, the most first. Vsync and the frame limit are off while it runs so a saving shows; your
+  own settings are measured again every few steps, so a battle that changes as it runs doesn't skew the answer,
+  and the middle frame of each measure is taken, so the stutter of a setting rebuilding (water, grass) doesn't
+  count against it. It also tries the battle paused (how much of each frame is the battle itself) and the
+  interface hidden, and puts everything back at the end.
+- **`graph`** pins a panel of every frame of the last ten seconds, each a column stacked by what its time went on
+  (game logic, view scripts, the renderer, the rest), the GPU's time as a line over it, and each stutter marked.
+- **`hitches`** lists the latest stutters (frames far longer than those round them, or over a threshold you give)
+  with what each was: the game logic catching up several ticks at once, a script, shaders compiling, engine errors.
+- **`top`** the costliest systems, game logic per tick and view scripts per frame, on average and at their worst;
+  **`render`** draw calls for the scene, the shadows and the interface; **`sys`** the computer (graphics card and
+  driver, processor, memory, screen, renderer); **`net`** the round trip and packet loss; **`errors`** what the
+  engine has logged.
+- **`perf 0-3`** and **`fps`** set the performance overlay (F3 cycles it); **`set`**, **`settings`** and
+  **`preset`** change settings as the Settings screen would (`set shadows off`, `set scale 77%`); **`pause`**
+  pauses a battle you play alone; **`draw overdraw`** and its kin show the scene's debug views.
+- **`report`** writes all of it (and the last bench) to `perf_report.txt` in the game's user folder and copies it
+  to the clipboard, to send to whoever is helping.
+
+Every frame is measured (`scripts/ui/perf_probe.gd`) for the overlay and the console: how long it took, the game
+logic and view scripts run in it, the renderer's CPU and GPU time, shader compilations and engine errors, kept
+frame by frame for ten seconds. Each system's own frame-by-frame cost (its worst frame, which system a stutter was
+in) starts being kept when the console first opens, since it costs a little every frame.
 
 ## Missions
 
@@ -714,8 +752,31 @@ catalogue entry in `MissionList.LIST`, a setup function and an autopilot functio
   their draft, pitch and roll over the swell, lift their bows as they get on the plane, heel into turns and
   throw spray off the bow going hard. Each leaves a wake on the water: white water churned up astern in streaks
   that spread and fade into a smooth streak, and the bow wave running out in a V at the Kelvin angle (a wake
-  hides with a boat hidden in the fog of war). Men board a boat lying off a beach or bank by wading out to it,
-  and go ashore over the side wherever it stops by land at the end of a trip. A boat that's sunk blows up and
+  hides with a boat hidden in the fog of war).
+  **A boat handles like a boat, not a car** (`Vehicle._hull_tick`, the coxswain in `_con`): nothing grips the
+  road, so her hull slides through the water - in a hard turn she skids, bow inside the circle she's making
+  and stern swinging out, and the skid costs her way. There are no brakes: the water's drag takes her way off,
+  hard when she's fast and hardly at all once she's slow, and to stop she goes astern (an RHIB needs some 40 m
+  from full speed, a patrol ship 60 m and more). Her rudder or jets turn her only with water going past them -
+  her own way, or the wash of the engines going ahead, which is how she turns from lying stopped - and going
+  astern she hardly steers. Engines, helm and hull answer after a moment, a big hull's after a long one, so
+  the coxswain starts a turn early, meets her with opposite helm as she comes round, and slows for the bends
+  he sees coming as far off as she'd need to; at speed she can't be turned as tight as she can going slow. A
+  river carries a boat down with it (it runs south, fastest in mid-stream), and he steers the course she's
+  really making, current and skid and all. The Gun Trawler, a deep displacement hull, is the slowest of all to
+  answer, needs half as much water again to turn, and heels out of a turn where the planing boats bank into it.
+  On an attack a boat fights at a steady speed rather than stop dead for the shot, as a tank would; she lies
+  to only to fight it out with an enemy abaft her beam, rather than steam away from it.
+  A big hull needs a lot of water to turn round in (the patrol ship's turning circle is over 50 m across):
+  coming about for somewhere astern, she goes round towards her course, or the other way, out to sea, when
+  the shore's in the way; she backs into a spot not far behind rather than swing out in a loop for it (an
+  RHIB, which spins round in her own length, comes about and runs in bow first); and once she's round she
+  picks her route up further on instead of going back for its first points. A boat that runs onto the bank
+  goes astern off it, swinging her bow round towards her course, and tries again (sent close in by the shore,
+  she settles as near as she can get); where her route rounds a point of land she doesn't cut the corner
+  over it.
+  Men board a boat lying off a beach or bank by wading out to it, and go ashore over the side wherever it stops
+  by land at the end of a trip. A boat that's sunk blows up and
   founders: she floods, lists over and goes down by the head or the stern, burning till the water closes over
   the fire, foam boiling up along her as the air comes out, and leaves a rainbowed oil slick with wreckage
   drifting in it; whoever's aboard swims for the nearest bank. Shells landing in the water throw up a column of
@@ -726,7 +787,7 @@ catalogue entry in `MissionList.LIST`, a setup function and an autopilot functio
   steering lock, no turning on the spot, so a truck needs room to turn round. Tracked vehicles skid-steer:
   they pivot where they stand for a sharp turn but turn wider the faster they go. Weight sets how hard they
   accelerate and brake. A spot close behind is backed into rather than reached by a loop; for one further
-  back the driver comes round on full lock (a boat's coxswain puts the helm hard over); a vehicle keeps its
+  back the driver comes round on full lock (boats have handling of their own: see above); a vehicle keeps its
   distance behind one going its way, drives round one standing in the road and passes oncoming traffic on
   the right; supply trucks keep to the right-hand side of the road. Hung up on something, it backs off, turns
   and plans again. (Trucks are slower on the road than they were, so each load carries more.)

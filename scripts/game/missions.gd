@@ -491,10 +491,21 @@ func _drive_beachhead(d: MissionDirector) -> void:
 			var tries := int(_staged.get("rhib_try%d" % i, 0))
 			_staged["rhib_try%d" % i] = tries + 1
 			rh.order_move(beach + Vector3(-6, 0, (i - 1) * 14.0 + tries * 9.0))
-	# the patrol ship closes the harbour, where its guns reach the AA trucks
+	# the patrol ship closes the harbour, where its guns reach the AA trucks:
+	# well in, between the two (lying further out and up the coast, it never
+	# got a shot at the southern one)
 	var ship = ctx.ship
 	if _live(ship) and _once("ship", "cover", 0.0):
-		ship.order_assault(d.world.nav.nearest_boat(Vector3(d.world.water.coast_x(h.z + 10.0) + 26.0, 0, h.z + 10.0)))
+		ship.order_assault(d.world.nav.nearest_boat(Vector3(d.world.water.coast_x(h.z - 6.0) + 16.0, 0, h.z - 6.0)))
+	# and once an AA truck is spotted it goes in after it, as the briefing
+	# says ("once they're spotted its guns can reach them from the water"),
+	# rather than hope it has a shot from wherever it's lying
+	if _live(ship):
+		for id in ctx.aa:
+			var aa = d.world.entities.get(int(id))
+			if d.alive(int(id)) and aa is Vehicle and aa.visible_to_team(d.side) and _once("ship_aa", "aa%d" % int(id), 30.0):
+				ship.order_attack(aa)
+				break
 	var stage := ""
 	var at := Vector3.ZERO
 	if _active(d, "aa") or _active(d, "land"):

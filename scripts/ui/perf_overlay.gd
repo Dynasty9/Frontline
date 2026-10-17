@@ -1,18 +1,15 @@
 extends CanvasLayer
 ## Performance overlay. F3 cycles: off -> FPS -> compact -> full breakdown.
+## The numbers come from PerfProbe, which measures every frame.
 
 const GRAPH_N := 240
+## The panel's height at each level (the HUD keeps its notifications clear of it).
+const PANEL_H := [0.0, 0.0, 184.0, 590.0]
 
+var probe: PerfProbe
 var canvas: Control
-var frames := PackedFloat32Array()
-var _fi := 0
-var _gpu_ms := 0.0
-var _cpu_ms := 0.0
-var _acc_t := 0.0
-var _fps_min := 0.0
-var _fps_max := 0.0
-var _low1 := 0.0
-var _measuring := false
+var _graph := PackedVector2Array()
+var _graph_col := PackedColorArray()
 
 
 func _ready() -> void:
@@ -22,7 +19,8 @@ func _ready() -> void:
 	canvas.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	canvas.draw.connect(_draw_overlay)
 	add_child(canvas)
-	frames.resize(GRAPH_N)
+	_graph.resize(GRAPH_N)
+	_graph_col.resize(GRAPH_N)
 	process_mode = Node.PROCESS_MODE_ALWAYS
 
 
@@ -32,50 +30,14 @@ func _input(ev: InputEvent) -> void:
 		Settings.set_v("perf", (int(Settings.get_v("perf")) + 1) % 4)
 
 
-var _view_frames := 0
-var _view_avg := {}
-var _sim_ms := 0.0
-var _frame_ms := 0.0
-
-
-## The battle (World), if one's running. Asked for by path and left untyped:
-## this overlay is up from the first frame, before the game's classes have
-## compiled (GameScripts), so it names none of them.
+## The battle (World), if one's running: untyped, since this overlay is up from
+## the first frame, before the game's classes have compiled (GameScripts).
 func _world() -> Node3D:
-	return get_tree().root.get_node_or_null("Main/World") as Node3D
+	return probe.world()
 
 
-func _process(dt: float) -> void:
+func _process(_dt: float) -> void:
 	var lvl := int(Settings.get_v("perf"))
-	if lvl >= 2 and not _measuring:
-		RenderingServer.viewport_set_measure_render_time(get_viewport().get_viewport_rid(), true)
-		_measuring = true
-	var real_dt := dt / maxf(0.0001, Engine.time_scale) if Engine.time_scale > 0.0 else 1.0 / maxf(1.0, Engine.get_frames_per_second())
-	frames[_fi] = real_dt * 1000.0
-	_fi = (_fi + 1) % GRAPH_N
-	_acc_t += real_dt
-	_view_frames += 1
-	if _acc_t > 0.5:
-		_acc_t = 0.0
-		var wv := _world()
-		if wv:
-			_view_avg = {}
-			for k in wv.vprof:
-				_view_avg[k] = float(wv.vprof[k]) / maxf(1.0, _view_frames) / 1000.0
-			wv.vprof.clear()
-			_sim_ms = float(wv.sim_usec) / maxf(1.0, _view_frames) / 1000.0
-			wv.sim_usec = 0
-		_frame_ms = 500.0 / maxf(1.0, _view_frames) if _view_frames > 0 else 0.0
-		_view_frames = 0
-		var sorted := frames.duplicate()
-		sorted.sort()
-		_low1 = 1000.0 / maxf(0.001, sorted[int(GRAPH_N * 0.99)])
-		_fps_min = 1000.0 / maxf(0.001, sorted[GRAPH_N - 1])
-		_fps_max = 1000.0 / maxf(0.001, sorted[0])
-	if _measuring:
-		var rid := get_viewport().get_viewport_rid()
-		_cpu_ms = lerpf(_cpu_ms, RenderingServer.viewport_get_measured_render_time_cpu(rid), 0.1)
-		_gpu_ms = lerpf(_gpu_ms, RenderingServer.viewport_get_measured_render_time_gpu(rid), 0.1)
 	canvas.visible = lvl > 0
 	if lvl > 0:
 		canvas.queue_redraw()
@@ -111,24 +73,26 @@ func _draw_overlay() -> void:
 	var pw := 330.0 if lvl == 2 else 560.0
 	var x := vs.x - pw
 	var y := 40.0
-	var panel_h := 150.0 if lvl == 2 else 590.0
+	var panel_h: float = PANEL_H[lvl]
 	canvas.draw_rect(Rect2(x - 10, y - 18, pw, panel_h), Color(0.02, 0.03, 0.02, 0.8))
 	canvas.draw_rect(Rect2(x - 10, y - 18, pw, panel_h), Color(0.5, 0.55, 0.4, 0.5), false, 1.0)
 	_text(Vector2(x, y), "%d FPS   %.2f ms" % [fps, ft], _fps_col(fps), 18)
 	y += 18
-	_text(Vector2(x, y), "min %d  max %d  1%% low %d" % [_fps_min, _fps_max, _low1], Color(0.8, 0.8, 0.75), 12)
+	_text(Vector2(x, y), "min %d  max %d  1%% low %d" % [probe.fps_min, probe.fps_max, probe.low1], Color(0.8, 0.8, 0.75), 12)
 	y += 20
-	var view_ms := 0.0
-	for k in _view_avg:
-		view_ms += float(_view_avg[k])
+	var view_ms := probe.view_ms
+	var sim_ms := probe.sim_ms
+	var cpu_ms := probe.cpu_ms
+	var gpu_ms := probe.gpu_ms
+	var view_avg := probe.view_avg
 	var draws := Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME)
 	var prims := Performance.get_monitor(Performance.RENDER_TOTAL_PRIMITIVES_IN_FRAME)
 	var objs := Performance.get_monitor(Performance.RENDER_TOTAL_OBJECTS_IN_FRAME)
 	var vmem := Performance.get_monitor(Performance.RENDER_VIDEO_MEM_USED) / 1048576.0
 	# frame breakdown bar
-	var other := maxf(0.0, ft - _sim_ms - view_ms - _cpu_ms)
-	var parts := [["game logic (simulation)", _sim_ms, Color(1.0, 0.75, 0.35)], ["game view scripts", view_ms, Color(0.4, 0.75, 1.0)],
-		["render CPU", _cpu_ms, Color(0.75, 0.55, 1.0)], ["engine / sync / idle", other, Color(0.45, 0.45, 0.45)]]
+	var other := maxf(0.0, ft - sim_ms - view_ms - cpu_ms)
+	var parts := [["game logic (simulation)", sim_ms, Color(1.0, 0.75, 0.35)], ["game view scripts", view_ms, Color(0.4, 0.75, 1.0)],
+		["render CPU", cpu_ms, Color(0.75, 0.55, 1.0)], ["engine / sync / idle", other, Color(0.45, 0.45, 0.45)]]
 	var total := 0.0
 	for pt in parts:
 		total += float(pt[1])
@@ -140,16 +104,15 @@ func _draw_overlay() -> void:
 		canvas.draw_rect(Rect2(bx, y, w2, 10), pt[2])
 		bx += w2
 	canvas.draw_line(Vector2(x + 16.7 * scale, y - 2), Vector2(x + 16.7 * scale, y + 12), Color(1, 1, 1, 0.6), 1.0)
-	y += 26
 	# GPU runs alongside the CPU: separate bar on the same scale
-	canvas.draw_rect(Rect2(x, y + 2, _gpu_ms * scale, 6), Color(0.45, 1.0, 0.6))
-	y += 8
+	canvas.draw_rect(Rect2(x, y + 13, gpu_ms * scale, 6), Color(0.45, 1.0, 0.6))
+	y += 36
 	for pt in parts:
 		canvas.draw_rect(Rect2(x, y - 9, 9, 9), pt[2])
 		_text(Vector2(x + 14, y), "%s  %.2f ms" % [pt[0], pt[1]], Color(0.9, 0.9, 0.85), 12)
 		y += 16
 	canvas.draw_rect(Rect2(x, y - 9, 9, 9), Color(0.45, 1.0, 0.6))
-	_text(Vector2(x + 14, y), "GPU  %.2f ms  (%s-bound)" % [_gpu_ms, "GPU" if _gpu_ms > ft - other * 0.5 and _gpu_ms > _sim_ms + view_ms + _cpu_ms else "CPU"], Color(0.9, 0.9, 0.85), 12)
+	_text(Vector2(x + 14, y), "GPU  %.2f ms  (%s-bound)" % [gpu_ms, "GPU" if gpu_ms > ft - other * 0.5 and gpu_ms > sim_ms + view_ms + cpu_ms else "CPU"], Color(0.9, 0.9, 0.85), 12)
 	y += 16
 	_text(Vector2(x, y), "draw calls %d   objects %d   tris %.0fk" % [draws, objs, prims / 1000.0], Color(0.85, 0.85, 0.8), 12)
 	y += 16
@@ -167,13 +130,12 @@ func _draw_overlay() -> void:
 		var ry: float = y + gh - ref / gmax * gh
 		canvas.draw_line(Vector2(x, ry), Vector2(x + 310, ry), Color(1, 1, 1, 0.18), 1.0)
 		_text(Vector2(x + 312 - 40, ry - 2), "%.0f ms" % ref, Color(1, 1, 1, 0.4), 10)
-	var prev := Vector2.ZERO
+	# (one polyline: a draw call per segment cost more than the rest of the overlay)
 	for i in GRAPH_N:
-		var v: float = frames[(_fi + i) % GRAPH_N]
-		var pt2 := Vector2(x + float(i) / (GRAPH_N - 1) * 310.0, y + gh - clampf(v / gmax, 0.0, 1.0) * gh)
-		if i > 0:
-			canvas.draw_line(prev, pt2, _fps_col(1000.0 / maxf(0.01, v)), 1.2)
-		prev = pt2
+		var v: float = probe.at(probe.f_ms, GRAPH_N - 1 - i)
+		_graph[i] = Vector2(x + float(i) / (GRAPH_N - 1) * 310.0, y + gh - clampf(v / gmax, 0.0, 1.0) * gh)
+		_graph_col[i] = _fps_col(1000.0 / maxf(0.01, v))
+	canvas.draw_polyline_colors(_graph, _graph_col, 1.2)
 	y += gh + 18
 	var w := _world()
 	if w == null:
@@ -196,11 +158,11 @@ func _draw_overlay() -> void:
 	var vx := x + 275.0
 	_text(Vector2(vx, y), "VIEW scripts ms per frame", Color(0.55, 0.85, 1.0), 12)
 	y += 16
-	var vkeys := _view_avg.keys()
-	vkeys.sort_custom(func(a, b): return float(_view_avg[a]) > float(_view_avg[b]))
+	var vkeys := view_avg.keys()
+	vkeys.sort_custom(func(a, b): return float(view_avg[a]) > float(view_avg[b]))
 	var vsum := 0.0
 	for k in vkeys:
-		var ms2: float = _view_avg[k]
+		var ms2: float = view_avg[k]
 		vsum += ms2
 		canvas.draw_rect(Rect2(vx + 150, y - 9, minf(110.0, ms2 * 25.0), 8), Color(0.45, 0.75, 1.0, 0.8))
 		_text(Vector2(vx, y), "%s" % k, Color(0.85, 0.85, 0.8), 12)

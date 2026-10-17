@@ -205,6 +205,11 @@ export class Game {
     return (await this.send("hash")).hash;
   }
 
+  /** Types a line into the in-game console and returns what it printed, a line a string. */
+  async console(line) {
+    return (await this.send("console", { line })).out;
+  }
+
   /** Script errors counted so far, and the last few of them. */
   scriptErrors() {
     return this.send("errors");

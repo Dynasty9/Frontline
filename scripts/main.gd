@@ -27,6 +27,8 @@ var menu: Control
 ## The battle (World). This file names none of the game's classes, so loading
 ## it doesn't compile them: they compile behind the title (GameScripts).
 var world: Node3D
+var probe: PerfProbe
+var console: Console
 var args := {}
 var _quit_at := -1.0
 ## How much longer than --quit-after a test client waits for the host's world
@@ -92,7 +94,19 @@ func _ready() -> void:
 		sheet.set("args", args)
 		add_child(sheet)
 		return
-	add_child(preload("res://scripts/ui/perf_overlay.gd").new())
+	# every frame measured, for the performance overlay (F3) and the console (`)
+	probe = PerfProbe.new()
+	probe.name = "PerfProbe"
+	probe.main = self
+	add_child(probe)
+	var overlay: CanvasLayer = preload("res://scripts/ui/perf_overlay.gd").new()
+	overlay.probe = probe
+	add_child(overlay)
+	console = Console.new()
+	console.name = "Console"
+	console.main = self
+	console.probe = probe
+	add_child(console)
 	# a test driving the game through its port never sees the menu, so it
 	# isn't built: the menu and the screens it opens are a second or more of
 	# compiling and building at every start, and a test run starts many games
