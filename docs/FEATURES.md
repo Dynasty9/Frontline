@@ -752,8 +752,31 @@ function and an autopilot function.
   their draft, pitch and roll over the swell, lift their bows as they get on the plane, heel into turns and
   throw spray off the bow going hard. Each leaves a wake on the water: white water churned up astern in streaks
   that spread and fade into a smooth streak, and the bow wave running out in a V at the Kelvin angle (a wake
-  hides with a boat hidden in the fog of war). Men board a boat lying off a beach or bank by wading out to it,
-  and go ashore over the side wherever it stops by land at the end of a trip. A boat that's sunk blows up and
+  hides with a boat hidden in the fog of war).
+  **A boat handles like a boat, not a car** (`Vehicle._hull_tick`, the coxswain in `_con`): nothing grips the
+  road, so her hull slides through the water - in a hard turn she skids, bow inside the circle she's making
+  and stern swinging out, and the skid costs her way. There are no brakes: the water's drag takes her way off,
+  hard when she's fast and hardly at all once she's slow, and to stop she goes astern (an RHIB needs some 40 m
+  from full speed, a patrol ship 60 m and more). Her rudder or jets turn her only with water going past them -
+  her own way, or the wash of the engines going ahead, which is how she turns from lying stopped - and going
+  astern she hardly steers. Engines, helm and hull answer after a moment, a big hull's after a long one, so
+  the coxswain starts a turn early, meets her with opposite helm as she comes round, and slows for the bends
+  he sees coming as far off as she'd need to; at speed she can't be turned as tight as she can going slow. A
+  river carries a boat down with it (it runs south, fastest in mid-stream), and he steers the course she's
+  really making, current and skid and all. The Gun Trawler, a deep displacement hull, is the slowest of all to
+  answer, needs half as much water again to turn, and heels out of a turn where the planing boats bank into it.
+  On an attack a boat fights at a steady speed rather than stop dead for the shot, as a tank would; she lies
+  to only to fight it out with an enemy abaft her beam, rather than steam away from it.
+  A big hull needs a lot of water to turn round in (the patrol ship's turning circle is over 50 m across):
+  coming about for somewhere astern, she goes round towards her course, or the other way, out to sea, when
+  the shore's in the way; she backs into a spot not far behind rather than swing out in a loop for it (an
+  RHIB, which spins round in her own length, comes about and runs in bow first); and once she's round she
+  picks her route up further on instead of going back for its first points. A boat that runs onto the bank
+  goes astern off it, swinging her bow round towards her course, and tries again (sent close in by the shore,
+  she settles as near as she can get); where her route rounds a point of land she doesn't cut the corner
+  over it.
+  Men board a boat lying off a beach or bank by wading out to it, and go ashore over the side wherever it stops
+  by land at the end of a trip. A boat that's sunk blows up and
   founders: she floods, lists over and goes down by the head or the stern, burning till the water closes over
   the fire, foam boiling up along her as the air comes out, and leaves a rainbowed oil slick with wreckage
   drifting in it; whoever's aboard swims for the nearest bank. Shells landing in the water throw up a column of
@@ -764,7 +787,7 @@ function and an autopilot function.
   steering lock, no turning on the spot, so a truck needs room to turn round. Tracked vehicles skid-steer:
   they pivot where they stand for a sharp turn but turn wider the faster they go. Weight sets how hard they
   accelerate and brake. A spot close behind is backed into rather than reached by a loop; for one further
-  back the driver comes round on full lock (a boat's coxswain puts the helm hard over); a vehicle keeps its
+  back the driver comes round on full lock (boats have handling of their own: see above); a vehicle keeps its
   distance behind one going its way, drives round one standing in the road and passes oncoming traffic on
   the right; supply trucks keep to the right-hand side of the road. Hung up on something, it backs off, turns
   and plans again. (Trucks are slower on the road than they were, so each load carries more.)

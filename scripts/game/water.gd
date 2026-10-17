@@ -9,6 +9,7 @@ extends RefCounted
 
 const LEVEL := -0.45  # the water's surface
 const WADE := -1.0  # a bed above this is shallow enough to wade (a ford, the edge of a beach)
+const RIVER_FLOW := 0.45  # how fast a river runs in mid-stream (m/s)
 
 var world
 var coast := {}  # {"x": mean shoreline x (the sea is east of it), "s": seed}
@@ -50,6 +51,31 @@ func coast_x(z: float) -> float:
 		return INF
 	var s := float(coast.s)
 	return float(coast.x) + 22.0 * sin(z * 0.0105 + s) + 9.0 * sin(z * 0.031 + s * 2.3) + 4.0 * sin(z * 0.077 + s * 0.7)
+
+
+## The way the water's moving at p, and how fast: a river runs south (as the
+## water is drawn: see water_view.gd), fastest in mid-stream and slack under
+## the banks; the sea and the ponds lie still.
+func current_at(p: Vector3) -> Vector3:
+	for r in rivers:
+		var pts: PackedVector3Array = r.pts
+		var hw: float = float(r.w) * 0.5
+		var best := hw
+		var flow := Vector3.ZERO
+		for si in pts.size() - 1:
+			var a := pts[si]
+			var b := pts[si + 1]
+			if p.z < minf(a.z, b.z) - hw or p.z > maxf(a.z, b.z) + hw or p.x < minf(a.x, b.x) - hw or p.x > maxf(a.x, b.x) + hw:
+				continue
+			var ab := Vector3(b.x - a.x, 0.0, b.z - a.z)
+			var t := clampf(((p.x - a.x) * ab.x + (p.z - a.z) * ab.z) / maxf(ab.length_squared(), 0.0001), 0.0, 1.0)
+			var d := Vector2(p.x - a.x - ab.x * t, p.z - a.z - ab.z * t).length()
+			if d < best:
+				best = d
+				flow = ab.normalized() * (-1.0 if ab.z > 0.0 else 1.0)
+		if flow != Vector3.ZERO:
+			return flow * RIVER_FLOW * (1.0 - (best / hw) * (best / hw))
+	return Vector3.ZERO
 
 
 func _pond_r(p: Dictionary, ang: float) -> float:
