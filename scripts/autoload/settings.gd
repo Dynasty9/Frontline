@@ -8,19 +8,20 @@ const PATH := "user://settings.cfg"
 
 const PRESETS := {
 	"low": {"shadows": 1, "ssao": false, "ao_q": 0, "ssil": false, "gi": false, "vol_fog": false, "glow": true, "aa": 1, "scale": 0.77,
-		"upscaler": 1, "grass": 0, "effects": 0, "decals": false, "ragdolls": false, "post": false, "dof": false, "ssr": false, "lod": 0, "aniso": 1},
+		"upscaler": 1, "grass": 0, "wildlife": 0, "effects": 0, "decals": false, "ragdolls": false, "post": false, "dof": false, "ssr": false, "lod": 0, "aniso": 1},
 	"medium": {"shadows": 2, "ssao": true, "ao_q": 1, "ssil": false, "gi": false, "vol_fog": false, "glow": true, "aa": 2, "scale": 1.0,
-		"upscaler": 1, "grass": 1, "effects": 1, "decals": true, "ragdolls": true, "post": true, "dof": false, "ssr": false, "lod": 1, "aniso": 2},
+		"upscaler": 1, "grass": 1, "wildlife": 1, "effects": 1, "decals": true, "ragdolls": true, "post": true, "dof": false, "ssr": false, "lod": 1, "aniso": 2},
 	"high": {"shadows": 2, "ssao": true, "ao_q": 2, "ssil": true, "gi": false, "vol_fog": true, "glow": true, "aa": 6, "scale": 1.0,
-		"upscaler": 1, "grass": 2, "effects": 2, "decals": true, "ragdolls": true, "post": true, "dof": false, "ssr": true, "lod": 2, "aniso": 3},
+		"upscaler": 1, "grass": 2, "wildlife": 2, "effects": 2, "decals": true, "ragdolls": true, "post": true, "dof": false, "ssr": true, "lod": 2, "aniso": 3},
 	"ultra": {"shadows": 3, "ssao": true, "ao_q": 3, "ssil": true, "gi": true, "vol_fog": true, "glow": true, "aa": 7, "scale": 1.0,
-		"upscaler": 1, "grass": 2, "effects": 2, "decals": true, "ragdolls": true, "post": true, "dof": true, "ssr": true, "lod": 2, "aniso": 4},
+		"upscaler": 1, "grass": 2, "wildlife": 2, "effects": 2, "decals": true, "ragdolls": true, "post": true, "dof": true, "ssr": true, "lod": 2, "aniso": 4},
 }
 
 const LABELS := {
 	"shadows": ["Off", "Low", "High", "Ultra"],
 	"aa": ["Off", "FXAA", "MSAA 2x", "MSAA 4x", "TAA", "SMAA", "MSAA 2x + SMAA", "MSAA 4x + SMAA"],
 	"grass": ["Off", "Sparse", "Dense"],
+	"wildlife": ["Off", "Some", "Plenty"],
 	"effects": ["Low", "Medium", "High"],
 	"fps_cap": ["Unlimited", "60", "120", "144", "240"],
 	"perf": ["Off", "FPS", "Compact", "Full breakdown"],
@@ -50,7 +51,7 @@ const FPS_CAPS := [0, 60, 120, 144, 240]
 var preset := "high"
 var v := {
 	"shadows": 2, "ssao": true, "ssil": true, "gi": false, "vol_fog": true, "glow": true, "aa": 6, "scale": 1.0,
-	"grass": 2, "effects": 2, "decals": true, "ragdolls": true, "post": true, "dof": false,
+	"grass": 2, "wildlife": 2, "effects": 2, "decals": true, "ragdolls": true, "post": true, "dof": false,
 	"vsync": true, "fps_cap": 0, "perf": 1, "shake": true, "ui_scale": 1.0, "mood": "random", "labels": true, "lyr_units": true, "lyr_orders": false, "lyr_intel": true, "lyr_vision": true, "lyr_ranges": false, "orbat": true,
 	"ao_q": 2, "upscaler": 1, "sharpen": 0.2, "ssr": true, "lod": 2, "aniso": 3,
 	"window": 0, "resolution": 2, "brightness": 1.0, "contrast": 1.0, "look": 0, "tonemap": 0, "fov": 48.0,
@@ -289,6 +290,10 @@ func _load() -> void:
 	preset = String(cf.get_value("main", "preset", preset))
 	for k in v:
 		v[k] = cf.get_value("main", k, v[k])
+	# wildlife came later: someone who picked Low to save frames gets none, and a
+	# custom setup gets as much as it has grass, rather than the default's plenty
+	if not cf.has_section_key("main", "wildlife"):
+		v.wildlife = int(PRESETS[preset].wildlife) if PRESETS.has(preset) else int(v.grass)
 	# v2: temporal AA (and FSR 2 at native scale) smeared the procedural
 	# surfaces whenever the camera moved; move saved setups to MSAA + SMAA
 	if int(cf.get_value("main", "cfg_version", 1)) < 2:
