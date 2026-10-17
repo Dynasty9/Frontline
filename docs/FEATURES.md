@@ -630,8 +630,13 @@ function and an autopilot function.
   six colours the map's contours turn through; the colours that mean something (good, bad, warning, intel) stay
   the same in all of them. It changes live: the interface recolours at once and the map's colours flow into the
   new ones over a second or so.
-- Panels wear a tactical frame in the map's language: dark glass, a hairline edge, accent brackets on the
-  corners like the crosses on the map's grid, and a faint glow in the accent. The button under the cursor glows.
+- **Signal** ([UI.md](UI.md)): the interface is a battle management display laid onto the scene. The HUD sits
+  on the battlefield over scrims that darken toward the screen's edges, with no boxes: 1 px rules under rows and
+  corner ticks where a region needs marking, everything square. Names and labels are condensed capitals, every
+  figure and code is mono (`SUP 2115 +230/M`, `PINNED · TO SPT D4`, `T+04:31`, `RDY`), and prose is kept for
+  sentences. One accent colour marks what's selected, active or primary. Short choices in the settings are rows
+  of segments, amounts are counted bars, keys are drawn as key boxes. Things cut, type on, count or flicker
+  rather than glide or glow, and Settings > Interface > Reduce motion makes all of it cut.
 - In a battle, the map comes back see-through behind the Esc menu, the help, the settings and the end of the
   battle (where a wave from the middle of the screen wakes it), with the battlefield showing through it.
 - Boot splash and title: the splash is the title's first frame (the map asleep under the emblem and the name).
@@ -1049,8 +1054,9 @@ function and an autopilot function.
   drifting cloud over the target. Smoke is shaded like a volume (sun, sky, self-shadowing) and fades
   softly where it meets the ground. Burning wrecks burn, then smoulder (see Fire). Smoke screens are real volumetric fog when
   volumetric fog is on. All effect shaders are compiled during loading, so the first explosion doesn't hitch.
-- A minimal HUD: resources top-left, fading notifications, a terrain minimap, and selection / command panels that
-  only appear when something is selected. Zoom in and every soldier shows what he's doing ("Bandaging Doyle",
+- A minimal HUD: the status line along the top, the order of battle and the ready fire missions down the left,
+  the latest radio lines top right, a terrain minimap, and the selection and its orders along the bottom only when
+  something is selected. Zoom in and every soldier shows what he's doing ("Bandaging Doyle",
   "Pinned down", "Manning the .50 Cal Nest", "Dragging Hakim to safety"); hover one for a small card.
 - The main menu sits over a live 3D scene: a .50 cal crew at golden hour with a burning wreck and shelling on the horizon.
 

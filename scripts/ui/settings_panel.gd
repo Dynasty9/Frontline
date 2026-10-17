@@ -2,6 +2,9 @@ class_name SettingsPanel
 extends PanelContainer
 ## Graphics, display, interface, controls and audio settings. Every change applies live and is saved.
 ## Used by the main menu and the in-game Esc menu.
+## Signal (docs/UI.md, Options): a short choice is a row of segments (ON | OFF,
+## LOW | MEDIUM | HIGH), a long one a drop-down, an amount a counted bar;
+## the pages are tabs underlined in the accent.
 
 signal closed
 
@@ -10,7 +13,7 @@ const MOOD_NAMES := ["Random each battle", "Midday", "Golden hour", "Dawn", "Dus
 const RES_NAMES := ["1280 x 720", "1600 x 900", "1920 x 1080", "2560 x 1440", "3840 x 2160"]
 
 var _rows := {}  # key -> control
-var _preset_btns := {}
+var _presets: UiSeg
 var _syncing := false
 var _tab := "graphics"
 var _pages := {}
@@ -25,49 +28,59 @@ func _ready() -> void:
 	add_child(vb)
 	var title := HBoxContainer.new()
 	vb.add_child(title)
-	var tl := UiKit.label("Settings", 22, UiKit.TEXT, 600)
+	var tl := UiKit.caps("Settings", 18, UiKit.TEXT, 600, 2)
 	tl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	title.add_child(tl)
-	var close := Button.new()
-	close.text = "Done"
-	close.custom_minimum_size = Vector2(90, 32)
+	var close := UiKit.button("Done", "secondary", 90, 30)
 	close.pressed.connect(func(): closed.emit())
 	title.add_child(close)
 	# quality presets
 	var pr := HBoxContainer.new()
 	_presets_row = pr
-	pr.add_theme_constant_override("separation", 6)
+	pr.add_theme_constant_override("separation", 14)
 	vb.add_child(pr)
-	pr.add_child(UiKit.label("Quality", 14, UiKit.DIM))
-	var sp := Control.new()
-	sp.custom_minimum_size = Vector2(10, 0)
-	pr.add_child(sp)
-	for p in ["low", "medium", "high", "ultra"]:
-		var b := Button.new()
-		b.text = p.capitalize()
-		b.toggle_mode = true
-		b.custom_minimum_size = Vector2(92, 32)
-		b.pressed.connect(func(): Settings.apply_preset(p); _sync())
-		pr.add_child(b)
-		_preset_btns[p] = b
-	var custom := UiKit.label("", 13, UiKit.DIM)
+	var ql := UiKit.caps("Quality", 11, UiKit.FAINT)
+	ql.custom_minimum_size = Vector2(70, 0)
+	pr.add_child(ql)
+	_presets = UiSeg.make(["Low", "Medium", "High", "Ultra"], -1)
+	_presets.changed.connect(func(i: int): Settings.apply_preset(["low", "medium", "high", "ultra"][i]); _sync())
+	pr.add_child(_presets)
+	var custom := UiKit.mono_label("", 11, UiKit.WARN)
 	custom.name = "Custom"
 	pr.add_child(custom)
-	# tabs
+	# tabs: capitals, the open one underlined in the accent
 	var tabs := HBoxContainer.new()
-	tabs.add_theme_constant_override("separation", 4)
+	tabs.add_theme_constant_override("separation", 18)
 	vb.add_child(tabs)
+	var on := UiKit.underline(UiKit.ACCENT, 2.0, 6.0)
+	var off := UiKit.bare()
+	off.content_margin_left = 2
+	off.content_margin_right = 2
+	off.content_margin_top = 6
+	off.content_margin_bottom = 6
 	for t in [["graphics", "Graphics"], ["lighting", "Lighting & Look"], ["display", "Display"], ["interface", "Interface"], ["controls", "Controls"], ["audio", "Audio"]]:
 		var b2 := Button.new()
-		b2.text = t[1]
+		b2.text = String(t[1]).to_upper()
 		b2.toggle_mode = true
-		b2.custom_minimum_size = Vector2(0, 30)
+		b2.focus_mode = Control.FOCUS_NONE
+		b2.add_theme_font_override("font", UiKit.cond(600, 1))
+		b2.add_theme_font_size_override("font_size", 12)
+		for st in ["normal", "hover", "disabled", "focus"]:
+			b2.add_theme_stylebox_override(st, off)
+		b2.add_theme_stylebox_override("pressed", on)
+		b2.add_theme_stylebox_override("hover_pressed", on)
+		b2.add_theme_color_override("font_color", UiKit.FAINT)
+		b2.add_theme_color_override("font_hover_color", UiKit.TEXT)
+		b2.add_theme_color_override("font_pressed_color", UiKit.ACCENT)
+		b2.add_theme_color_override("font_hover_pressed_color", UiKit.ACCENT)
 		var key: String = t[0]
 		b2.pressed.connect(func(): _show_tab(key))
 		tabs.add_child(b2)
 		_tab_btns[key] = b2
-	var sep := HSeparator.new()
-	sep.add_theme_stylebox_override("separator", UiKit.box(UiKit.LINE, 0, Color(0, 0, 0, 0), 0, 0.0))
+	var sep := ColorRect.new()
+	sep.color = UiKit.LINE
+	sep.custom_minimum_size = Vector2(0, 1)
+	sep.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	vb.add_child(sep)
 	var stack := Control.new()
 	stack.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -123,6 +136,7 @@ func _ready() -> void:
 		["check", "bubbles", "Speech bubbles", null, "Shouts, radio calls and the men's banter."],
 		["check", "cover_preview", "Cover preview", null, "Pips under the cursor showing the cover each man will take (green heavy, yellow light, red exposed)."],
 		["check", "coop_show", "Co-commanders' views and cursors", null, "In co-op: where the other commanders on your side are looking, their cursors, what they've selected and what they're lining up, in their colours. (Pings and the Command Net show either way.)"],
+		["check", "reduce_motion", "Reduce motion", null, "Panels cut straight in instead of typing or counting on, and warnings don't flicker."],
 		["head", "", "Camera"],
 		["option", "mmb_mode", "Middle mouse drag", Settings.LABELS.mmb_mode, "What dragging with the middle mouse button does. Holding Alt does the other."],
 		["check", "zoom_cursor", "Zoom toward the cursor", null, "The mouse wheel zooms in on whatever is under the cursor. Off: on the middle of the screen."],
@@ -200,50 +214,72 @@ func _page(parent: Control, rows: Array) -> Control:
 		var kind: String = r[0]
 		var key: String = r[1]
 		if kind == "head":
-			var hl := UiKit.label(String(r[2]).to_upper(), 12, UiKit.ACCENT, 600)
-			hl.custom_minimum_size = Vector2(0, 26)
+			# a section: its name in faint capitals and a rule running on from it
+			var hl := UiKit.caps(String(r[2]), 11, UiKit.FAINT)
+			hl.custom_minimum_size = Vector2(0, 30)
 			hl.vertical_alignment = VERTICAL_ALIGNMENT_BOTTOM
 			g.add_child(hl)
-			g.add_child(Control.new())
+			var rule := VBoxContainer.new()
+			rule.alignment = BoxContainer.ALIGNMENT_END
+			var line := ColorRect.new()
+			line.color = UiKit.LINE
+			line.custom_minimum_size = Vector2(0, 1)
+			line.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			rule.add_child(line)
+			var under := Control.new()
+			under.custom_minimum_size = Vector2(0, 6)
+			rule.add_child(under)
+			g.add_child(rule)
 			continue
 		if kind == "note":
 			# a quiet line under the setting above it (shown when it has something to say)
 			var gap := Control.new()
 			g.add_child(gap)
-			var nl := UiKit.label("", 12, UiKit.DIM)
+			var nl := UiKit.label("", 12, UiKit.FAINT)
 			nl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 			nl.custom_minimum_size = Vector2(220, 0)
 			nl.set_meta("gap", gap)
 			g.add_child(nl)
 			_rows[key] = nl
 			continue
-		var lbl := UiKit.label(r[2], 14)
-		lbl.custom_minimum_size = Vector2(250, 0)
+		var lbl := UiKit.caps(r[2], 12, UiKit.DIM)
+		lbl.custom_minimum_size = Vector2(250, 26)
+		lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 		lbl.tooltip_text = r[4]
 		lbl.mouse_filter = Control.MOUSE_FILTER_PASS
 		g.add_child(lbl)
 		var c: Control
 		match kind:
 			"option":
-				var ob := OptionButton.new()
-				for item in r[3]:
-					ob.add_item(item)
-				ob.custom_minimum_size = Vector2(220, 30)
-				ob.item_selected.connect(func(i): _apply(key, MOODS[i] if key == "mood" else (UiKit.THEME_KEYS[i] if key == "ui_theme" else i)))
-				c = ob
+				var pick := func(i: int): _apply(key, MOODS[i] if key == "mood" else (UiKit.THEME_KEYS[i] if key == "ui_theme" else i))
+				if _short(r[3]):
+					var sg := UiSeg.make(r[3], -1)
+					sg.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+					sg.changed.connect(pick)
+					c = sg
+				else:
+					var ob := OptionButton.new()
+					for item in r[3]:
+						ob.add_item(item)
+					ob.custom_minimum_size = Vector2(240, 28)
+					ob.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+					ob.item_selected.connect(pick)
+					c = ob
 			"check":
-				var cb := CheckButton.new()
-				cb.toggled.connect(func(on): _apply(key, on))
+				var cb := UiSeg.make(["Off", "On"], -1)
+				cb.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+				cb.changed.connect(func(i: int): _apply(key, i == 1))
+				cb.set_meta("check", true)
 				c = cb
 			"slider":
 				var hb := HBoxContainer.new()
-				var sl := HSlider.new()
+				hb.add_theme_constant_override("separation", 12)
+				var sl := UiSteps.new()
 				sl.min_value = r[3][0]
 				sl.max_value = r[3][1]
 				sl.step = r[3][2]
-				sl.custom_minimum_size = Vector2(170, 24)
 				sl.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-				var vl := UiKit.label("", 13, UiKit.DIM)
+				var vl := UiKit.mono_label("", 12, UiKit.TEXT)
 				vl.custom_minimum_size = Vector2(46, 0)
 				var deg: bool = r.size() > 5 and r[5] == "deg"
 				hb.set_meta("deg", deg)
@@ -261,10 +297,24 @@ func _page(parent: Control, rows: Array) -> Control:
 				hb.set_meta("slider", sl)
 				hb.set_meta("val", vl)
 				c = hb
-		c.tooltip_text = r[4]
+		if c is UiSeg:
+			(c as UiSeg).set_tooltip(r[4])
+		else:
+			c.tooltip_text = r[4]
 		g.add_child(c)
 		_rows[key] = c
 	return sc
+
+
+## Whether a choice is short enough to lay out as segments: five or fewer,
+## and narrow enough to sit beside its label.
+static func _short(items: Array) -> bool:
+	if items.size() > 5:
+		return false
+	var w := 0.0
+	for it in items:
+		w += UiKit.caps_w(String(it), 11) + 21.0
+	return w <= 400.0
 
 
 func _show_tab(key: String) -> void:
@@ -284,25 +334,27 @@ func _apply(key: String, v) -> void:
 
 func _sync() -> void:
 	_syncing = true
-	for p in _preset_btns:
-		_preset_btns[p].button_pressed = Settings.preset == p
+	_presets.select(["low", "medium", "high", "ultra"].find(Settings.preset))
 	var cl := find_child("Custom", true, false) as Label
 	if cl:
-		cl.text = "  (custom)" if Settings.preset == "custom" else ""
+		cl.text = "CUSTOM" if Settings.preset == "custom" else ""
 	for key in _rows:
 		var c: Control = _rows[key]
 		var v = Settings.get_v(key)
-		if c is OptionButton:
+		if c is OptionButton or (c is UiSeg and not c.has_meta("check")):
+			var i := int(v) if not (key in ["mood", "ui_theme"]) else 0
 			if key == "mood":
-				(c as OptionButton).select(maxi(0, MOODS.find(String(v))))
+				i = maxi(0, MOODS.find(String(v)))
 			elif key == "ui_theme":
-				(c as OptionButton).select(maxi(0, UiKit.THEME_KEYS.find(String(v))))
+				i = maxi(0, UiKit.THEME_KEYS.find(String(v)))
+			if c is OptionButton:
+				(c as OptionButton).select(i)
 			else:
-				(c as OptionButton).select(int(v))
-		elif c is CheckButton:
-			(c as CheckButton).button_pressed = bool(v)
+				(c as UiSeg).select(i)
+		elif c is UiSeg:
+			(c as UiSeg).select(1 if bool(v) else 0)
 		elif c.has_meta("slider"):
-			var sl: HSlider = c.get_meta("slider")
+			var sl: UiSteps = c.get_meta("slider")
 			if key == "ui_scale":
 				sl.max_value = Settings.ui_scale_max()  # as far as this window allows
 			sl.value = float(v)

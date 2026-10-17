@@ -88,7 +88,8 @@ var obs_dir: Button
 var obs_view: Button
 var obs_slower: Button
 var obs_faster: Button
-var _log_head: Label  # the log's header text (its count shows the key that closes it)
+var _log_head: Label  # the log's header text
+var _log_key: Label  # and, after it, the key that closes it
 var toasts: HudToasts
 var objectives: HudObjectives
 var log_panel: PanelContainer
@@ -344,27 +345,34 @@ func _ready() -> void:
 	card.add_theme_constant_override("v_separation", 0)
 	cv.add_child(card)
 
-	# message history (L)
+	# message history (L): it opens in place of the latest lines, top right,
+	# on a lighter ink rather than in a box
 	log_panel = PanelContainer.new()
 	log_panel.anchor_left = 1.0
 	log_panel.anchor_right = 1.0
-	log_panel.offset_left = -480
+	log_panel.offset_left = -440
 	log_panel.offset_right = -14
-	log_panel.offset_top = 60
+	log_panel.offset_top = 36
 	log_panel.offset_bottom = 420
 	log_panel.visible = false
+	log_panel.add_theme_stylebox_override("panel", UiKit.box(UiKit.PANEL_SOFT, 0, Color(0, 0, 0, 0), 0, 10.0))
 	root.add_child(log_panel)
 	var lv := VBoxContainer.new()
+	lv.add_theme_constant_override("separation", 6)
 	log_panel.add_child(lv)
-	var lh := UiKit.header("Messages")
+	var lh := UiKit.header("Messages", "-")
 	_log_head = lh.get_node("Text") as Label
+	_log_key = lh.get_node("Count") as Label
 	lv.add_child(lh)
 	log_box = RichTextLabel.new()
 	log_box.bbcode_enabled = true
 	log_box.scroll_following = true
 	log_box.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	log_box.add_theme_font_override("normal_font", UiKit.font(400))
+	log_box.add_theme_font_override("mono_font", UiKit.mono(400))
 	log_box.add_theme_font_size_override("normal_font_size", 13)
 	log_box.add_theme_font_size_override("mono_font_size", 12)
+	log_box.add_theme_constant_override("line_separation", 3)
 	lv.add_child(log_box)
 
 	veil = TopoBackdrop.new()
@@ -640,7 +648,8 @@ func _keys_changed() -> void:
 		obs_faster.tooltip_text = "Faster%s" % _kt("faster")
 		obs_dir.tooltip_text = "Cinematic camera that follows the fighting%s" % _kt("director")
 		obs_view.tooltip_text = "Whose eyes to watch through: both sides, or one side's fog of war%s" % _kt("view_side")
-	_log_head.text = ("Messages  ·  %s closes" % Keys.label("log")) if Keys.label("log") != "" else "Messages"
+	_log_head.text = "Messages"
+	_log_key.text = ("%s CLOSES" % Keys.label("log").to_upper()) if Keys.label("log") != "" else ""
 
 
 ## " (key)" for a tooltip, or "" when nothing is bound.
@@ -757,7 +766,7 @@ func toggle_menu() -> void:
 		help_panel.visible = false
 		return
 	if log_panel.visible:
-		log_panel.visible = false
+		toggle_log()
 		return
 	menu_panel.visible = not menu_panel.visible
 	if menu_panel.visible:
@@ -960,6 +969,18 @@ func plan_text(pl: Array) -> String:
 
 func toggle_log() -> void:
 	log_panel.visible = not log_panel.visible
+	toasts.visible = not log_panel.visible
+	if log_panel.visible:
+		_fit_log()
+		UiMotion.arrive(log_panel, Vector2(0, -1))
+
+
+## The history takes the latest lines' place while it's open, as tall as what
+## it holds (a box round one line says nothing), up to the space above the orders.
+func _fit_log() -> void:
+	toasts.visible = false
+	var h := clampf(log_box.get_content_height(), 18.0, 330.0)
+	log_panel.offset_bottom = log_panel.offset_top + h + 52.0
 
 
 func flash(text: String) -> void:
@@ -1394,6 +1415,8 @@ func _view_process(dt: float) -> void:
 	_alert_t -= rdt
 	alert_label.modulate.a = clampf(_alert_t * 1.5, 0.0, 1.0)
 	_inspect_t -= rdt
+	if log_panel.visible:
+		_fit_log()
 	var spectator := world.local_team < 0
 	obs_bar.visible = spectator and world.director != null
 	if obs_bar.visible:

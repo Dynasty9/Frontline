@@ -100,7 +100,7 @@ func _ready() -> void:
 	g.add_child(UiKit.caps("Theme", 11, UiKit.DIM))
 	g.add_child(UiSeg.make(["Brass", "Night", "Thermal", "Arctic", "Dusk"], UiKit.THEME_KEYS.find(UiKit.theme_key)))
 	g.add_child(UiKit.caps("Labels", 11, UiKit.DIM))
-	g.add_child(UiSeg.make(["On", "Off"], 0))
+	g.add_child(UiSeg.make(["Off", "On"], 1))
 	g.add_child(UiKit.caps("Scale", 11, UiKit.DIM))
 	var st := UiSteps.new()
 	st.min_value = 0.6
