@@ -5,13 +5,13 @@ import { mockMatchmaker, signedIn } from "@/test/network"
 import { loadPage } from "@/test/load-page"
 import { SiteAt } from "@/test/router"
 
-// /account: signing in, and the signed-in player's callsign, rank and insignia.
+// /profile: the signed-in player's callsign, rank and insignia; signed out, signing in.
 const meta = {
-  title: "Pages/Account",
+  title: "Pages/Profile",
   component: SiteAt,
   parameters: { layout: "fullscreen", router: false },
   loaders: [loadPage],
-  args: { path: "/account" },
+  args: { path: "/profile" },
 } satisfies Meta<typeof SiteAt>
 
 export default meta
@@ -32,7 +32,7 @@ export const SignedIn: Story = {
   beforeEach: [mockMatchmaker({ health, me: player }), signedIn(player)],
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(await canvas.findByRole("heading", { level: 1, name: "Your account" })).toBeVisible()
+    await expect(await canvas.findByRole("heading", { level: 1, name: "Your profile" })).toBeVisible()
     await expect(canvas.getByText("Corporal I")).toBeVisible()
     await expect(canvas.getByLabelText("Your callsign")).toHaveValue("Raven")
     // nothing to save until it changes
@@ -74,19 +74,27 @@ export const RenameTaken: Story = {
   },
 }
 
-/** The account menu in the header: your account, and signing out. */
+/** The account menu in the header: your profile, and signing out. */
 export const AccountMenu: Story = {
   beforeEach: [mockMatchmaker({ health, me: player }), signedIn(player)],
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await userEvent.click(await canvas.findByRole("button", { name: "Your account: Raven rank 6" }))
     const menu = within(document.body)
-    await expect(await menu.findByRole("menuitem", { name: "Account and insignia" })).toHaveAttribute(
-      "href",
-      "/account"
-    )
+    await expect(await menu.findByRole("menuitem", { name: "Your profile" })).toHaveAttribute("href", "/profile")
     await userEvent.click(menu.getByRole("menuitem", { name: "Sign out" }))
     await expect(await canvas.findByRole("heading", { level: 1, name: "Sign in to Frontline" })).toBeVisible()
+  },
+}
+
+/** The profile's old address (/account) still gets there. */
+export const OldAddress: Story = {
+  args: { path: "/account" },
+  // where it's sent: the profile page
+  loaders: [() => import("@/pages/profile").then(() => ({}))],
+  beforeEach: [mockMatchmaker({ health, me: player }), signedIn(player)],
+  play: async ({ canvasElement }) => {
+    await expect(await within(canvasElement).findByRole("heading", { level: 1, name: "Your profile" })).toBeVisible()
   },
 }
 

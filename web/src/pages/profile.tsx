@@ -1,7 +1,8 @@
 import { CheckCircleIcon, CheckIcon, WarningIcon } from "@phosphor-icons/react"
 import { useId, useState } from "react"
+import { SiteSignIn } from "@/components/account-form"
 import { SectionLabel } from "@/components/battles"
-import { Collection, Profile, SignIn } from "@/components/insignia"
+import { Collection, Profile } from "@/components/insignia"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -19,22 +20,22 @@ const PERKS = [
 ]
 
 /**
- * /account: signing in, and once you are, your account: the rank you've
- * reached, your callsign, and the insignia you wear. It's the same account
- * the game signs in to.
+ * /profile: your profile, the rank you've reached, your callsign and the
+ * insignia you wear, and where signing in takes you. Signed out, it's the
+ * way to sign in. It's the same account the game signs in to.
  */
-export default function AccountPage() {
+export default function ProfilePage() {
   const { health } = useSite()
   const account = useAccount()
   const off = health?.accounts === "off"
   const user = off ? null : account.user
-  usePageTitle(user ? "Your account" : "Sign in")
+  usePageTitle(user ? "Your profile" : "Sign in")
 
   return (
     <div className="topo">
       <div className="mx-auto max-w-6xl px-4 pt-14 pb-24 sm:px-6">
-        <SectionLabel>Account</SectionLabel>
-        <h1 className="mt-2 text-4xl font-semibold">{user ? "Your account" : "Sign in to Frontline"}</h1>
+        <SectionLabel>Profile</SectionLabel>
+        <h1 className="mt-2 text-4xl font-semibold">{user ? "Your profile" : "Sign in to Frontline"}</h1>
         <p className="mt-3 max-w-2xl text-sm leading-relaxed text-muted-foreground">
           {user
             ? "Your rank, your callsign and the insignia you wear: the same in the game and on this site."
@@ -50,7 +51,9 @@ export default function AccountPage() {
           </Card>
         ) : !user ? (
           <div className="mt-8 grid items-start gap-8 lg:grid-cols-[22rem_1fr]">
-            <SignIn email={EMAIL_SIGN_IN} />
+            <Card className="gap-0 py-0 text-sm">
+              <SiteSignIn email={EMAIL_SIGN_IN} />
+            </Card>
             <div>
               <h2 className="font-semibold">What an account gives you</h2>
               <ul className="mt-3 space-y-2.5 text-sm text-muted-foreground">

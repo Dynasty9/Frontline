@@ -1,5 +1,4 @@
 import {
-  ArrowRightIcon,
   CrosshairIcon,
   EnvelopeSimpleOpenIcon,
   InfoIcon,
@@ -37,8 +36,6 @@ type Props = {
   // the battle an invite link (?join=ID) points at
   invite?: string | null
   onDismissInvite?: () => void
-  /** list only the first few, and link to the battles page for the rest (the front page) */
-  limit?: number
   /** the page's own heading (the battles page), rather than a section's */
   page?: boolean
 }
@@ -52,7 +49,6 @@ export function Battles({
   onDismissLaunch,
   invite = null,
   onDismissInvite = () => {},
-  limit,
   page = false,
 }: Props) {
   const Heading = page ? "h1" : "h2"
@@ -111,7 +107,7 @@ export function Battles({
         ) : lobbies.length === 0 ? (
           <Empty onLaunch={onLaunch} />
         ) : (
-          <LobbyTable lobbies={lobbies} invite={invite} onLaunch={onLaunch} limit={limit} />
+          <LobbyRows lobbies={lobbies.toSorted(byJoinable)} invite={invite} onLaunch={onLaunch} />
         )}
       </Card>
     </section>
@@ -203,35 +199,6 @@ function modeText(l: Lobby): string {
     default:
       return "Battle"
   }
-}
-
-function LobbyTable({
-  lobbies,
-  invite,
-  onLaunch,
-  limit,
-}: {
-  lobbies: Lobby[]
-  invite: string | null
-  onLaunch: () => void
-  limit?: number
-}) {
-  const shown = lobbies.toSorted(byJoinable).slice(0, limit)
-  const more = lobbies.length - shown.length
-  return (
-    <>
-      <LobbyRows lobbies={shown} invite={invite} onLaunch={onLaunch} />
-      {more > 0 && (
-        <Link
-          to="/battles"
-          className="flex items-center justify-center gap-2 border-t py-3 text-sm font-semibold text-primary hover:bg-muted/50"
-        >
-          {more === 1 ? "1 more battle" : `${more} more battles`}: see them all
-          <ArrowRightIcon className="size-4" />
-        </Link>
-      )}
-    </>
-  )
 }
 
 function LobbyRows({ lobbies, invite, onLaunch }: { lobbies: Lobby[]; invite: string | null; onLaunch: () => void }) {

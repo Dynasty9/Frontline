@@ -1,4 +1,4 @@
-import { CaretDownIcon, SignOutIcon, UserCircleIcon, UserGearIcon } from "@phosphor-icons/react"
+import { CaretDownIcon, IdentificationBadgeIcon, SignOutIcon, UserCircleIcon } from "@phosphor-icons/react"
 import { Link } from "react-router"
 import { InsigniaImg } from "@/components/insignia-img"
 import { Button } from "@/components/ui/button"
@@ -10,22 +10,28 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import { openSignIn } from "@/hooks/use-sign-in-dialog"
 import { useAccount } from "@/lib/account"
 import { rankName, wornInsignia } from "@/lib/insignia"
 
 /**
- * The header's account button. Signed out it's the way to sign in; signed in
- * it's your insignia, callsign and rank, and a menu: your account, signing out.
+ * The header's account button. Signed out it opens the sign-in dialog, on
+ * whatever page you're on; signed in it's your insignia, callsign and rank,
+ * and a menu: your profile, signing out.
  */
 export function AccountMenu() {
   const { user, signOut } = useAccount()
   if (!user) {
     return (
-      <Button variant="ghost" size="sm" asChild className="text-sm text-muted-foreground hover:text-foreground">
-        <Link to="/account" aria-label="Sign in">
-          <UserCircleIcon />
-          <span className="hidden lg:inline">Sign in</span>
-        </Link>
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={openSignIn}
+        aria-label="Sign in"
+        className="text-sm text-muted-foreground hover:text-foreground"
+      >
+        <UserCircleIcon />
+        <span className="hidden lg:inline">Sign in</span>
       </Button>
     )
   }
@@ -58,9 +64,9 @@ export function AccountMenu() {
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuItem asChild>
-          <Link to="/account">
-            <UserGearIcon />
-            Account and insignia
+          <Link to="/profile">
+            <IdentificationBadgeIcon />
+            Your profile
           </Link>
         </DropdownMenuItem>
         <DropdownMenuItem onSelect={signOut}>

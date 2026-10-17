@@ -116,9 +116,9 @@ export function Hero({ health, platform, onWatch }: Props) {
 
         <p className="mt-4 text-xs text-muted-foreground">
           Free and open source · {latest.name} ·{" "}
-          <a href="#download" className="underline-offset-4 hover:text-foreground hover:underline">
+          <Link to="/play#download" className="underline-offset-4 hover:text-foreground hover:underline">
             other platforms
-          </a>
+          </Link>
         </p>
         <LiveLine health={health} />
       </div>

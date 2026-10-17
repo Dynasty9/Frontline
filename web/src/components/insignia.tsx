@@ -1,14 +1,20 @@
-import { ArrowRightIcon, CheckIcon, LockSimpleIcon, SignOutIcon, WarningIcon } from "@phosphor-icons/react"
+import {
+  ArrowRightIcon,
+  CheckIcon,
+  LockSimpleIcon,
+  SignOutIcon,
+  UserCircleIcon,
+  WarningIcon,
+} from "@phosphor-icons/react"
 import { memo, useRef, useState } from "react"
 import { Link } from "react-router"
-import { SignInChoices } from "@/components/account-form"
 import { SectionLabel } from "@/components/battles"
 import { InsigniaImg } from "@/components/insignia-img"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
+import { openSignIn } from "@/hooks/use-sign-in-dialog"
 import { type User, useAccount } from "@/lib/account"
-import { EMAIL_SIGN_IN } from "@/lib/config"
 import {
   GROUPS,
   INSIGNIA,
@@ -24,49 +30,65 @@ import {
 import { cn } from "@/lib/utils"
 
 /**
- * Ranks and the insignia collection; signed in, the player's profile beside
- * it. `accounts` is the matchmaker's /health answer ("off": no signing in);
- * `emailSignIn` offers email and password too (for testing: EMAIL_SIGN_IN).
+ * The ranks page (/ranks): how ranks are earned, and the whole insignia
+ * collection; signed in, the player's rank beside it, and the insignia
+ * they've unlocked ready to wear. `accounts` is the matchmaker's /health
+ * answer ("off": no signing in).
  */
-export function InsigniaSection({
-  accounts,
-  emailSignIn = EMAIL_SIGN_IN,
-}: {
-  accounts: string | undefined
-  emailSignIn?: boolean
-}) {
+export function InsigniaSection({ accounts }: { accounts: string | undefined }) {
   const account = useAccount()
   const off = accounts === "off"
   const user = off ? null : account.user
 
   return (
-    <section id="insignia" className="scroll-mt-16 border-t">
-      <div className="mx-auto max-w-6xl px-4 py-20 sm:px-6">
-        <SectionLabel>Ranks</SectionLabel>
-        <h2 className="mt-2 text-3xl font-semibold">{user ? "Your insignia" : "Earn your insignia"}</h2>
-        <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
-          Play battles while you're signed in to your account and you earn experience, more for a win. Fifty ranks climb
-          from Recruit to General of the Army, and each one you reach unlocks a patch you can wear as your insignia,
-          shown beside your callsign when you host. Every account starts with ten.
-        </p>
+    <section className="mx-auto max-w-6xl px-4 pt-14 pb-24 sm:px-6">
+      <SectionLabel>Ranks</SectionLabel>
+      <h1 className="mt-2 text-4xl font-semibold">{user ? "Your insignia" : "Earn your insignia"}</h1>
+      <p className="mt-3 max-w-2xl text-sm leading-relaxed text-muted-foreground">
+        Play battles while you're signed in to your account and you earn experience, more for a win. Fifty ranks climb
+        from Recruit to General of the Army, and each one you reach unlocks a patch you can wear as your insignia, shown
+        beside your callsign when you host. Every account starts with ten.
+      </p>
 
-        <div className="mt-8 grid items-start gap-8 lg:grid-cols-[19rem_1fr]">
-          <div className="lg:sticky lg:top-20">
-            {user ? <Profile user={user} /> : off ? <AccountsOff /> : <SignIn email={emailSignIn} />}
-            {user && (
-              <Link
-                to="/account"
-                className="mt-3 inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground"
-              >
-                Your account: your callsign, and more
-                <ArrowRightIcon className="size-3.5" />
-              </Link>
-            )}
-          </div>
-          <Collection user={user} onPick={account.setIcon} />
+      <div className="mt-8 grid items-start gap-8 lg:grid-cols-[19rem_1fr]">
+        <div className="lg:sticky lg:top-20">
+          {user ? <Profile user={user} /> : off ? <AccountsOff /> : <StartEarning />}
+          {user && (
+            <Link
+              to="/profile"
+              className="mt-3 inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground"
+            >
+              Your profile: your callsign, and more
+              <ArrowRightIcon className="size-3.5" />
+            </Link>
+          )}
         </div>
+        <section aria-labelledby="the-collection" className="min-w-0">
+          {/* the groups' headings sit under it */}
+          <h2 id="the-collection" className="sr-only">
+            The insignia
+          </h2>
+          <Collection user={user} onPick={account.setIcon} />
+        </section>
       </div>
     </section>
+  )
+}
+
+/** Signed out, beside the collection: what signing in starts, and the way in (the sign-in dialog). */
+function StartEarning() {
+  return (
+    <Card className="gap-3 p-4 text-sm">
+      <p className="font-semibold">Start earning</p>
+      <p className="text-xs leading-relaxed text-muted-foreground">
+        Sign in and every battle you play counts towards your next rank. It's the same account you play with in the
+        game, and you don't need one to play online.
+      </p>
+      <Button onClick={openSignIn} className="h-9 w-full text-sm font-semibold">
+        <UserCircleIcon weight="fill" />
+        Sign in
+      </Button>
+    </Card>
   )
 }
 
@@ -170,25 +192,6 @@ function Corners() {
       <span className={`${c} bottom-0 left-0 border-b-2 border-l-2`} />
       <span className={`${c} right-0 bottom-0 border-r-2 border-b-2`} />
     </>
-  )
-}
-
-export function SignIn({ email }: { email: boolean }) {
-  const { signIn, signUp, signInWithGitHub } = useAccount()
-  return (
-    <Card className="gap-0 py-0 text-sm">
-      <SignInChoices
-        blurb="The same account you play with in the game. It keeps your callsign yours, and every battle you play signed in counts towards your rank. You don't need one to play online."
-        onGitHub={() => void signInWithGitHub()}
-        email={email}
-        form={{
-          intro: (creating) =>
-            creating ? "A test account, for the game and this site." : "A test account's email and password.",
-          onSubmit: async (address, password, callsign) =>
-            callsign === null ? ((await signIn(address, password)) ? "in" : null) : signUp(address, password, callsign),
-        }}
-      />
-    </Card>
   )
 }
 
