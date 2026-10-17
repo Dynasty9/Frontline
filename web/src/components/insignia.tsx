@@ -1,5 +1,6 @@
-import { CheckIcon, LockSimpleIcon, SignOutIcon, WarningIcon } from "@phosphor-icons/react"
+import { ArrowRightIcon, CheckIcon, LockSimpleIcon, SignOutIcon, WarningIcon } from "@phosphor-icons/react"
 import { memo, useRef, useState } from "react"
+import { Link } from "react-router"
 import { SignInChoices } from "@/components/account-form"
 import { SectionLabel } from "@/components/battles"
 import { InsigniaImg } from "@/components/insignia-img"
@@ -52,6 +53,15 @@ export function InsigniaSection({
         <div className="mt-8 grid items-start gap-8 lg:grid-cols-[19rem_1fr]">
           <div className="lg:sticky lg:top-20">
             {user ? <Profile user={user} /> : off ? <AccountsOff /> : <SignIn email={emailSignIn} />}
+            {user && (
+              <Link
+                to="/account"
+                className="mt-3 inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground"
+              >
+                Your account: your callsign, and more
+                <ArrowRightIcon className="size-3.5" />
+              </Link>
+            )}
           </div>
           <Collection user={user} onPick={account.setIcon} />
         </div>
@@ -60,7 +70,7 @@ export function InsigniaSection({
   )
 }
 
-function Profile({ user }: { user: User }) {
+export function Profile({ user }: { user: User }) {
   const { error, signOut } = useAccount()
   const worn = wornInsignia(user.icon)
   const top = user.next_xp === null || user.rank >= MAX_RANK
@@ -163,7 +173,7 @@ function Corners() {
   )
 }
 
-function SignIn({ email }: { email: boolean }) {
+export function SignIn({ email }: { email: boolean }) {
   const { signIn, signUp, signInWithGitHub } = useAccount()
   return (
     <Card className="gap-0 py-0 text-sm">
@@ -182,7 +192,7 @@ function SignIn({ email }: { email: boolean }) {
   )
 }
 
-function AccountsOff() {
+export function AccountsOff() {
   return (
     <Card className="p-4 text-sm">
       <p className="font-medium">Accounts are switched off</p>
@@ -194,7 +204,7 @@ function AccountsOff() {
   )
 }
 
-function Collection({ user, onPick }: { user: User | null; onPick: (id: string) => void }) {
+export function Collection({ user, onPick }: { user: User | null; onPick: (id: string) => void }) {
   // a visitor sees what a brand-new account would
   const rank = user?.rank ?? 0
   const wearing = user ? wornInsignia(user.icon)?.id : undefined

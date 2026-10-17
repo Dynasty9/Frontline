@@ -13,9 +13,11 @@ export const EMAIL_SIGN_IN: boolean =
 export const GITHUB_REPO: string = import.meta.env.VITE_GITHUB_REPO ?? "Dynasty9/Frontline"
 export const GITHUB_URL = `https://github.com/${GITHUB_REPO}`
 
-// The game registers this scheme on first launch (scripts/autoload/online.gd).
+// The game registers this scheme on first launch (scripts/autoload/links.gd).
 export const joinLink = (lobbyId: string) => `frontline://join/${encodeURIComponent(lobbyId)}`
 export const FIND_MATCH_LINK = "frontline://find-match"
+/** Just the game, to its menu. A link the game doesn't know still starts it, so older versions open too. */
+export const OPEN_LINK = "frontline://open"
 /** A sign-in for the game that asked for it (`state`): a session of its own (src/lib/game-sign-in.ts). */
 export const signInLink = (state: string, refreshToken: string) =>
   `frontline://sign-in/${encodeURIComponent(state)}/${encodeURIComponent(refreshToken)}`

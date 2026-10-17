@@ -11,7 +11,6 @@ const meta = {
   args: {
     health,
     platform: "windows",
-    onLaunch: fn(),
     onWatch: fn(),
   },
 } satisfies Meta<typeof Hero>
@@ -23,6 +22,7 @@ export const BattlesLive: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await expect(canvas.getByText(`${health.lobbies} battles live · ${health.players} players`)).toBeVisible()
+    await expect(canvas.getByRole("link", { name: "Play now" })).toHaveAttribute("href", "/play")
     await expect(canvas.getByRole("link", { name: "Download for Windows" })).toHaveAttribute(
       "href",
       latest.assets.windows.url

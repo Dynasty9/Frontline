@@ -23,6 +23,18 @@ export function guessPlatform(): Platform {
   return /linux|x11/i.test(navigator.userAgent) && !/android/i.test(navigator.userAgent) ? "linux" : "windows"
 }
 
+/** A computer the game has a build for, a Mac (no build yet), or a phone or tablet (no keyboard and mouse). */
+export type Device = Platform | "mac" | "mobile"
+
+/** What the visitor is on, for what the play page offers them. */
+export function guessDevice(): Device {
+  const ua = navigator.userAgent
+  if (/android|iphone|ipad|ipod|mobile/i.test(ua)) return "mobile"
+  // an iPad asks for the desktop site as a Mac, but a Mac has no touch screen
+  if (/macintosh|mac os x/i.test(ua)) return (navigator.maxTouchPoints ?? 0) > 1 ? "mobile" : "mac"
+  return guessPlatform()
+}
+
 export const PLATFORM_NAMES: Record<Platform, string> = { windows: "Windows", linux: "Linux" }
 
 export function formatSize(bytes: number) {

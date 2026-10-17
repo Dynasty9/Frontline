@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
-import { formatSize, guessPlatform, latest, PLATFORM_NAMES } from "@/lib/releases"
+import { formatSize, guessDevice, guessPlatform, latest, PLATFORM_NAMES } from "@/lib/releases"
 
 afterEach(() => {
   vi.unstubAllGlobals()
@@ -44,6 +44,32 @@ describe("guessPlatform", () => {
     expect(platformFor("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/140.0")).toBe("windows")
     expect(platformFor("Mozilla/5.0 (Macintosh; Intel Mac OS X 15_6) AppleWebKit/605.1.15 Safari/605.1.15")).toBe(
       "windows"
+    )
+  })
+})
+
+const deviceFor = (userAgent: string, maxTouchPoints = 0) => {
+  vi.stubGlobal("navigator", { userAgent, maxTouchPoints })
+  return guessDevice()
+}
+
+describe("guessDevice", () => {
+  it("is the platform on a Windows or Linux computer", () => {
+    expect(deviceFor("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/140.0")).toBe("windows")
+    expect(deviceFor("Mozilla/5.0 (X11; Linux x86_64; rv:140.0) Gecko/20100101 Firefox/140.0")).toBe("linux")
+  })
+
+  it("knows a Mac", () => {
+    expect(deviceFor("Mozilla/5.0 (Macintosh; Intel Mac OS X 15_6) AppleWebKit/605.1.15 Safari/605.1.15")).toBe("mac")
+  })
+
+  it("takes phones and tablets for what they are, an iPad asking for the desktop site too", () => {
+    expect(deviceFor("Mozilla/5.0 (Linux; Android 15; Pixel 9) AppleWebKit/537.36 Chrome/140.0 Mobile")).toBe("mobile")
+    expect(deviceFor("Mozilla/5.0 (iPhone; CPU iPhone OS 19_0 like Mac OS X) AppleWebKit/605.1.15 Mobile")).toBe(
+      "mobile"
+    )
+    expect(deviceFor("Mozilla/5.0 (Macintosh; Intel Mac OS X 15_6) AppleWebKit/605.1.15 Safari/605.1.15", 5)).toBe(
+      "mobile"
     )
   })
 })

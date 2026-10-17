@@ -472,10 +472,11 @@ state but the one the game made is refused.
 
 ### Website
 
-`web/` is the website (React, Vite, Tailwind, shadcn/ui; see its README): `npm install && npm run dev`, with
-`VITE_MATCHMAKER_URL` pointing at a local matchmaker if you like. `npm run storybook` shows every component and
-section of the page on its own, in each of its states (loading, offline, nobody hosting...), without the live
-matchmaker. `.github/workflows/web.yml` lints it, checks formatting and types, runs the unit tests, builds it, and
+`web/` is the website (React, Vite, Tailwind, shadcn/ui, React Router; see its README for its pages):
+`npm install && npm run dev`, with `VITE_MATCHMAKER_URL` pointing at a local matchmaker if you like (with
+`AUTH_BACKEND=memory` you can make throwaway accounts on the dev server to try the account pages). `npm run storybook`
+shows every component and page on its own, in each of its states (loading, offline, nobody hosting, signed in...),
+without the live matchmaker. `.github/workflows/web.yml` lints it, checks formatting and types, runs the unit tests, builds it, and
 renders every story in headless Chromium as a test (its play function and an accessibility check).
 
 ### Builds, releases and updates
