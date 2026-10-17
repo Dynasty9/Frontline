@@ -27,12 +27,7 @@ const MISSIONS = [
   { key: "beachhead", side: 0, cap: 600 }, // (180 s)
   { key: "skyhook", side: 0, cap: 600 }, // (230 s)
   { key: "ambush", side: 1, cap: 600 }, // (180 s)
-  {
-    key: "kingpin",
-    side: 0,
-    cap: 900,
-    todo: "the autopilot loses its own raid: the force is wiped out in the town about 150 s in (being looked into)",
-  },
+  { key: "kingpin", side: 0, cap: 600 }, // (180 s)
 ];
 
 const skip = !LONG && "set FL_TEST_LONG=1 to play them (a few minutes each)";
