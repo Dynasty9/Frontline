@@ -310,6 +310,43 @@ assert.equal(await game.close(), 0);
 
 Every reply has `ok` (with `error` when false) and `errors`, the script errors counted so far.
 
+### Scenario expectations
+
+Every scenario has an expectation: what it's there to show, which must still happen when it runs with its seed, so a
+behaviour that quietly stops happening fails the tests. They're tables in `tests/scenarios-*.test.mjs` (infantry,
+armour, air and sea, the ground and what's built on it); each file plays its rows one after another in one game, and
+`tests/lib/expect.mjs` runs them. A row names the scenario, a seed, how long to run it and what must be true by then:
+
+```js
+{
+  scenario: "breach",
+  seed: 1,
+  secs: 40,
+  does: "two squads and a gun team breach the house and clear the fighter cell out of it",
+  check: async (f) => {
+    f.atLeast("room_entry", 1, "they went in room by room");
+    const cell = await f.soldiers({ team: 1 });
+    assert.equal(cell.filter(fighting).length, 0, "nobody in the house is still fighting");
+  },
+},
+```
+
+`f` holds the behaviour counters at the end (`f.n(key)`, `f.atLeast(key, n, why)`, `f.never(key, why)`, `f.sum(/re/)`)
+and asks the test port's queries (`f.soldiers`, `f.vehicles`, `f.squads`, `f.structures`, with `{ team, kind, ids }`).
+For what leaves no counter behind, `begin(f)` looks at the field before time moves and `during(f, t)` every `every`
+seconds on the way. A script error during a row fails it; `load` adds load fields (`{ static: true }`).
+
+To add a scenario, or change what one does: run it with a few seeds (`--scenario=X --seed=N --stats=20`, or
+`game.stats()` and queries from a scratch script) and look at what happens. Then write down what it's for, the behaviour
+that must happen with room to spare rather than that run's numbers, on a seed where it does. Something that only
+happens with some seeds is fine to test on one of those. Something broken gets its row (or a subtest, `t.test(...)`)
+marked `todo: "why"`: it still runs, and starts passing once it's fixed, but doesn't fail the suite meanwhile.
+
+`tests/missions.test.mjs` plays each mission to its end on its autopilot and expects it accomplished (`winner` is the
+mission's side). Each is a few minutes of battle on the full map, so they only run with `FL_TEST_LONG=1` (CI leaves them
+out): `cd tests && FL_TEST_LONG=1 node --test missions.test.mjs`. They play side by side, `FL_TEST_JOBS` at a time
+(default half the cores).
+
 ### Host / client
 
 Two processes on one machine. Start the host, then the client a few seconds later (the host spends several seconds laying out the 1 km map):
