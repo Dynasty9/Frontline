@@ -1,6 +1,57 @@
 {
   "releases": [
     {
+      "version": "1.0.8",
+      "tag": "v1.0.8",
+      "name": "UI and more!",
+      "date": "2026-10-17",
+      "summary": "The battle's interface now reads like a battle management display laid onto the battlefield: no more boxes, short codes instead of sentences, every figure lined up in mono, and one colour for what's selected.",
+      "url": "https://github.com/Dynasty9/Frontline/releases/tag/v1.0.8",
+      "pull_requests": [
+        79,
+        80
+      ],
+      "entries": [
+        {
+          "slug": "signal-interface",
+          "title": "A new look for the battle's interface",
+          "kind": "improved",
+          "summary": "The battle's interface now reads like a battle management display laid onto the battlefield: no more boxes, short codes instead of sentences, every figure lined up in mono, and one colour for what's selected.",
+          "body": "- **No more boxes:** the status line, the order of battle, fire support, the selection and the orders sit on the\n  battlefield over a soft darkening at the screen's edges, with thin rules between rows.\n- **Short codes:** each squad's line says what it's doing in a few characters (`PINNED · TO SPT D4`, `MOV E8`),\n  supply reads `SUP 2115 +230/M`, the clock `T+04:31`, and a man's role `RFL`, `MG` or `MED`.\n- **Fire support** lists the missions that are ready; the rest fold into one line with the next one's countdown.\n- **Orders** are a grid of keys, the order you're giving lit up.\n- **The selection** shows the squad's state once, its plan's stages, and a cell for each man with his role.\n- **Alerts** come in three levels: a plain line, a yellow caution and a red warning that flickers in.\n- **On the battlefield** base and town names, hover cards and cursor hints lose their boxes, and `+115 SUP` is a\n  small tag rather than the biggest text on the screen.\n- **Settings:** on/off and short choices are rows of segments, amounts are counted bars, and the tabs are\n  underlined. New: **Settings > Interface > Reduce motion** makes everything appear at once instead of typing or\n  flickering in.\n- **F1** is a key reference in three columns, using your own key bindings, instead of a page of paragraphs.\n- **The message history (L)** opens in place of the latest messages, only as tall as what's in it.",
+          "screenshots": [
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.8/signal-interface/battle-hud.jpg",
+              "caption": "The battle's interface sits straight on the battlefield"
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.8/signal-interface/battle-hud-before.jpg",
+              "caption": "The same moment before"
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.8/signal-interface/settings.jpg",
+              "caption": "Settings: short choices as segments, amounts as counted bars"
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.8/signal-interface/key-reference.jpg",
+              "caption": "F1 is now a key reference you can take in at a glance"
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.8/signal-interface/pause-menu.jpg",
+              "caption": "The Esc menu"
+            }
+          ]
+        },
+        {
+          "slug": "links-claimed-again",
+          "title": "Website links work again after an uninstall",
+          "kind": "fixed",
+          "summary": "If the links from the website were taken away (uninstalling another copy of Frontline, or a registry cleaner), the game never claimed them back, so Join, Find Match and signing in on the website did nothing. Starting the game sets them up again now.",
+          "body": "- Each time it starts, the game checks that your system still opens website links with it, and sets them up again\n  if not.\n- With more than one copy of the game, links open the one you started last.",
+          "screenshots": []
+        }
+      ]
+    },
+    {
       "version": "1.0.7",
       "tag": "v1.0.7",
       "name": "Small fixes",
