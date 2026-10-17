@@ -4,6 +4,48 @@ Every release of Frontline, newest first. The game updates itself; downloads, an
 are on [the website](https://web-production-5a4c1.up.railway.app/changelog/). Each change is written up in [`changelog/`](changelog/) as part of
 the pull request that makes it.
 
+## v1.0.4: Touchups
+
+*17 October 2026* · [Release on GitHub](https://github.com/Dynasty9/Frontline/releases/tag/v1.0.4)
+
+### Improved
+
+#### Scenarios and battles start sooner
+
+Working out the routes across a new battlefield now takes about half the time and far less of your processor, so a scenario is ready in about half the time and a full battle a second or so sooner.
+
+- **Why:** most of a battlefield is open ground much like the rest of it. The way across each patch is now worked
+  out once for every patch that's just the same, instead of for each in turn.
+- **What didn't change:** the routes. Soldiers and vehicles go exactly the way they did before, and a replayed battle
+  plays out the same.
+
+#### Signing in on the website, in one click
+
+Sign in, in the website's header, opens a sign-in window over whatever page you're on, and once you're in it takes you to your profile. The front page is about the game now; ranks have a page of their own.
+
+![Sign in opens over the page you're on](changelog/v1.0.4/website-sign-in-and-pages/sign-in.jpg)
+
+![The ranks and every insignia, on a page of their own](changelog/v1.0.4/website-sign-in-and-pages/ranks.jpg)
+
+- **Sign in** in the header opens a sign-in window right where you are: no scrolling down the page to find it.
+- Back from GitHub, the window says it's signing you in, then takes you to **your profile**: your rank, your record,
+  your callsign and your insignia. If GitHub didn't sign you in, it says why, with the button to try again.
+- The front page shows the game off. The live battles, the ranks and insignia, the downloads and your profile each
+  have a page of their own, in the header.
+- Old links still work: the game's Download button goes to the downloads, and `/account` to your profile.
+
+### Fixed
+
+#### Splashes leave rings of foam again
+
+A shell landing in the water, a boat going down and rounds hitting the sea leave rings and boils of foam on the water again, instead of flat white squares that turned blue as the swell rolled over them.
+
+![Before and after: a shell's splash in the sea](changelog/v1.0.4/foam-rings/before-after.jpg)
+
+- A shell bursting in the water throws up its column and leaves a ring of foam running outward and breaking up,
+  with white water boiling where the column fell back.
+- A sinking boat churns the water white as she goes down, and leaves a slick of oil spreading where she sank.
+
 ## v1.0.3: Just a little more
 
 *17 October 2026* · [Release on GitHub](https://github.com/Dynasty9/Frontline/releases/tag/v1.0.3)

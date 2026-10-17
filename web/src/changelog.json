@@ -1,6 +1,59 @@
 {
   "releases": [
     {
+      "version": "1.0.4",
+      "tag": "v1.0.4",
+      "name": "Touchups",
+      "date": "2026-10-17",
+      "summary": "Working out the routes across a new battlefield now takes about half the time and far less of your processor, so a scenario is ready in about half the time and a full battle a second or so sooner.",
+      "url": "https://github.com/Dynasty9/Frontline/releases/tag/v1.0.4",
+      "pull_requests": [
+        60,
+        61,
+        62
+      ],
+      "entries": [
+        {
+          "slug": "sooner-battle-start",
+          "title": "Scenarios and battles start sooner",
+          "kind": "improved",
+          "summary": "Working out the routes across a new battlefield now takes about half the time and far less of your processor, so a scenario is ready in about half the time and a full battle a second or so sooner.",
+          "body": "- **Why:** most of a battlefield is open ground much like the rest of it. The way across each patch is now worked\n  out once for every patch that's just the same, instead of for each in turn.\n- **What didn't change:** the routes. Soldiers and vehicles go exactly the way they did before, and a replayed battle\n  plays out the same.",
+          "screenshots": []
+        },
+        {
+          "slug": "website-sign-in-and-pages",
+          "title": "Signing in on the website, in one click",
+          "kind": "improved",
+          "summary": "Sign in, in the website's header, opens a sign-in window over whatever page you're on, and once you're in it takes you to your profile. The front page is about the game now; ranks have a page of their own.",
+          "body": "- **Sign in** in the header opens a sign-in window right where you are: no scrolling down the page to find it.\n- Back from GitHub, the window says it's signing you in, then takes you to **your profile**: your rank, your record,\n  your callsign and your insignia. If GitHub didn't sign you in, it says why, with the button to try again.\n- The front page shows the game off. The live battles, the ranks and insignia, the downloads and your profile each\n  have a page of their own, in the header.\n- Old links still work: the game's Download button goes to the downloads, and `/account` to your profile.",
+          "screenshots": [
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.4/website-sign-in-and-pages/sign-in.jpg",
+              "caption": "Sign in opens over the page you're on"
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.4/website-sign-in-and-pages/ranks.jpg",
+              "caption": "The ranks and every insignia, on a page of their own"
+            }
+          ]
+        },
+        {
+          "slug": "foam-rings",
+          "title": "Splashes leave rings of foam again",
+          "kind": "fixed",
+          "summary": "A shell landing in the water, a boat going down and rounds hitting the sea leave rings and boils of foam on the water again, instead of flat white squares that turned blue as the swell rolled over them.",
+          "body": "- A shell bursting in the water throws up its column and leaves a ring of foam running outward and breaking up,\n  with white water boiling where the column fell back.\n- A sinking boat churns the water white as she goes down, and leaves a slick of oil spreading where she sank.",
+          "screenshots": [
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.4/foam-rings/before-after.jpg",
+              "caption": "Before and after: a shell's splash in the sea"
+            }
+          ]
+        }
+      ]
+    },
+    {
       "version": "1.0.3",
       "tag": "v1.0.3",
       "name": "Just a little more",
