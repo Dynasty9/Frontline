@@ -410,7 +410,7 @@ func _hier_path(h: HNav, g: AStarGrid2D, a: Vector2i, b: Vector2i, team: int, ca
 		var cp := h.cluster_of(p)
 		var seg: Array[Vector2i] = []
 		if cp == h.cluster_of(q):
-			seg = (h.local[cp] as AStarGrid2D).get_id_path(p, q)
+			seg = h.local_grid(cp).get_id_path(p, q)
 		if seg.is_empty():
 			seg = g.get_id_path(p, q)
 		if seg.is_empty():

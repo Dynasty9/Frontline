@@ -111,6 +111,7 @@ ui/map_symbols.gd       NATO symbols and status icons
 game/attack_plan.gd     the deliberate attack (plan, support by fire, flank, assault, consolidate)
 ui/topo_backdrop.gd     the living topographic map behind the title, the menu and the loading screen (one
                         shader; every copy shares one clock and cursor, so screens hand over without a seam)
+ui/topo_survey.gd       the same map's ground worked out on the CPU, to letter its contours and summits
 ```
 
 Networking is server-authoritative. Clients send command dictionaries (`World.send_cmd`). The host simulates at 30 Hz and
@@ -245,7 +246,7 @@ FL_DEBUG_MISSION=1 (env)                              print the map's features (
 --curtain                                             show the title / loading screens in an automated run
 --intro-at=SECONDS                                    (with --curtain) hold the title at that moment of its animation
 --menu-clock=SECONDS                                  start the menu's map that far into its drift and colours
---menu-cursor=X,Y                                     hold the map's cursor hill there (fractions of the screen)
+--menu-cursor=X,Y                                     hold the cursor there, the map leaning after it (fractions of the screen)
 --menu-op=0|1|-1                                      open the New Operation panel on that side
 --menu-missions[=KEY]                                 open the Missions panel (on that mission)
 --startup-trace                                       print the first frames' timings
@@ -308,6 +309,43 @@ assert.equal(await game.close(), 0);
 | `quit` | | the game quits with its exit code |
 
 Every reply has `ok` (with `error` when false) and `errors`, the script errors counted so far.
+
+### Scenario expectations
+
+Every scenario has an expectation: what it's there to show, which must still happen when it runs with its seed, so a
+behaviour that quietly stops happening fails the tests. They're tables in `tests/scenarios-*.test.mjs` (infantry,
+armour, air and sea, the ground and what's built on it); each file plays its rows one after another in one game, and
+`tests/lib/expect.mjs` runs them. A row names the scenario, a seed, how long to run it and what must be true by then:
+
+```js
+{
+  scenario: "breach",
+  seed: 1,
+  secs: 40,
+  does: "two squads and a gun team breach the house and clear the fighter cell out of it",
+  check: async (f) => {
+    f.atLeast("room_entry", 1, "they went in room by room");
+    const cell = await f.soldiers({ team: 1 });
+    assert.equal(cell.filter(fighting).length, 0, "nobody in the house is still fighting");
+  },
+},
+```
+
+`f` holds the behaviour counters at the end (`f.n(key)`, `f.atLeast(key, n, why)`, `f.never(key, why)`, `f.sum(/re/)`)
+and asks the test port's queries (`f.soldiers`, `f.vehicles`, `f.squads`, `f.structures`, with `{ team, kind, ids }`).
+For what leaves no counter behind, `begin(f)` looks at the field before time moves and `during(f, t)` every `every`
+seconds on the way. A script error during a row fails it; `load` adds load fields (`{ static: true }`).
+
+To add a scenario, or change what one does: run it with a few seeds (`--scenario=X --seed=N --stats=20`, or
+`game.stats()` and queries from a scratch script) and look at what happens. Then write down what it's for, the behaviour
+that must happen with room to spare rather than that run's numbers, on a seed where it does. Something that only
+happens with some seeds is fine to test on one of those. Something broken gets its row (or a subtest, `t.test(...)`)
+marked `todo: "why"`: it still runs, and starts passing once it's fixed, but doesn't fail the suite meanwhile.
+
+`tests/missions.test.mjs` plays each mission to its end on its autopilot and expects it accomplished (`winner` is the
+mission's side). Each is a few minutes of battle on the full map, so they only run with `FL_TEST_LONG=1` (CI leaves them
+out): `cd tests && FL_TEST_LONG=1 node --test missions.test.mjs`. They play side by side, `FL_TEST_JOBS` at a time
+(default half the cores).
 
 ### Host / client
 
@@ -442,23 +480,28 @@ renders every story in headless Chromium as a test (its play function and an acc
 
 ### Builds, releases and updates
 
-Merging a pull request never releases. Releasing is a button: **Actions > Release > Run workflow** on `main`, choosing
-`patch`, `minor` or `major` (and, if you like, a name; otherwise the release is named after its headline change). It
-ships everything merged since the last release: the version is the newest `vX.Y.Z` tag plus that step
-(`.github/scripts/next-version.sh`), and the build stamps it into `project.godot` (`application/config/version`); from
-source the game reads `0.0.0-dev`.
+Merging a change never releases it. Releasing is one press and one merge: **Actions > Release > Run workflow** on
+`main`, choosing `patch`, `minor` or `major` (and, if you like, a name; otherwise the release is named after its
+headline change), then merge the pull request it opens. It ships everything merged since the last release: the version
+is the newest `vX.Y.Z` tag plus that step (`.github/scripts/next-version.sh`), and the build stamps it into
+`project.godot` (`application/config/version`); from source the game reads `0.0.0-dev`.
 
-`export_presets.cfg` has a Windows and a Linux preset (one executable each, the game packed inside) and a Web one
-(see [The browser build](#the-browser-build)). The run exports all three from `main` as it stands, then `.github/scripts/bake-release.sh` makes the release's own commit on a branch,
-`release/vX.Y.Z`: it files every entry waiting in `changelog/unreleased/` under `changelog/vX.Y.Z/` (`changelog.py
-release`), regenerates `CHANGELOG.md` and `web/src/changelog.json`, and writes `release.json` into `web/src/` and
-`matchmaker/` (`release_json.py`). The workflow tags that commit, publishes the GitHub release
-(`Frontline-windows.zip`, `Frontline-linux.zip`, `Frontline-web.zip`, the changelog as its notes) and opens a pull request from the
-branch. Merge it: that's what puts the release on the website and the matchmaker (Railway redeploys both), and the
-matchmaker is where the game hears about updates. The next release won't start until it's merged. Opening that pull
-request needs Settings > Actions > General > "Allow GitHub Actions to create and approve pull requests"; without
-it, the run ends with a link to open it yourself. `python .github/scripts/changelog.py pending` lists what the next
-release would ship. Pull requests that change the export setup test-export without releasing.
+`export_presets.cfg` has a Windows and a Linux preset (one executable each, the game packed inside) and a Web one (see
+[The browser build](#the-browser-build)). The run exports all three from `main` as it stands, then
+`.github/scripts/bake-release.sh` makes the release's own commit on a branch, `release/vX.Y.Z`: it files every entry
+waiting in `changelog/unreleased/` under `changelog/vX.Y.Z/` (`changelog.py release`), regenerates `CHANGELOG.md` and
+`web/src/changelog.json`, and writes `release.json` into `web/src/` and `matchmaker/` (`release_json.py`).
+`.github/scripts/release.py` uploads the zips as a draft release at that commit (`Frontline-windows.zip`,
+`Frontline-linux.zip`, `Frontline-web.zip`, the changelog as its notes), which nobody else can see, and opens a pull
+request from the branch that says what the release is: its version, what it was built from, its downloads and checksums,
+and the notes as they'll be published. Merge it: that runs Publish release (`.github/workflows/publish.yml`), which
+checks the draft's downloads against the merged `release.json`, tags the release's commit and publishes it, while
+Railway redeploys the website and the matchmaker, which is where the game hears about updates. Running Release again
+before merging rebuilds the release and updates its pull request (or replaces it, if the version changed). If Publish
+release fails, the release has merged but isn't out: re-run it, or run it by hand on `main`. Opening the pull request
+needs Settings > Actions > General > "Allow GitHub Actions to create and approve pull requests"; without it, the run
+ends with a link to open it yourself. `python .github/scripts/changelog.py pending` lists what the next release would
+ship. Pull requests that change the export setup test-export without releasing.
 
 A release build updates itself (`scripts/autoload/updater.gd`): at start it asks the matchmaker (`GET /release`,
 falling back to GitHub's API) for the latest release,
@@ -482,8 +525,7 @@ python -m http.server 8000 --directory build/web
 ```
 
 then open `http://localhost:8000`. Exporting needs Godot's `web_nothreads_release.zip` template. Every release
-attaches the export as `Frontline-web.zip`, and puts it up on GitHub Pages once Pages is switched on for the
-repository with GitHub Actions as its source (the `pages` job in `release.yml` skips until then).
+attaches the export as `Frontline-web.zip`; the website on Railway is where it's to be played.
 
 What's different in a browser (`OS.has_feature("web")`):
 
@@ -530,9 +572,13 @@ for the browser:
   `restart_particles` and `pm_set` / `pm_get`, which work on either kind.
 - **No light from effects** (explosion and muzzle flashes, fires): the first time a light falls on something, its
   shaders compile again with lights on.
-- **The battlefield misses the frame it's built in** (`main.gd` `_reveal_next_frame`), so building the map (about
-  25 s) and compiling for it (about 20 s) are two waits, not one long enough for Chrome to call the page
-  unresponsive. The loading screen's field note says to choose Wait if it does.
+- **The battle is built a stage at a time** (`World.build`, `MapGen.generate`): between stages `World._breathe`
+  tells the loading screen and, in a browser, waits a frame, with the half-built world neither ticking nor drawn.
+  Built in one go it held the page for about 30 s, long enough for Chrome to call it unresponsive; now no stage
+  takes more than about 7 s. Everywhere else `_breathe` returns at once, so the build is one piece, in one frame,
+  as it always was. The battlefield then stays out of sight for a frame (`main.gd` `_reveal_next_frame`), so
+  compiling its shaders (about 17 s the first time) is a wait of its own. The loading screen's field note says to
+  choose Wait if the browser asks anyway.
 
 With nothing cached, a first battle now starts after about a minute, then plays without long hitches; the browser
 keeps the compiled shaders, so later battles wait only for the map. To see where the time goes, run the desktop
