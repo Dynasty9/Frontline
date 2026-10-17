@@ -1,5 +1,5 @@
 import type { ComponentType } from "react"
-import type { RouteObject } from "react-router"
+import { Navigate, type RouteObject } from "react-router"
 import Home from "@/pages/home"
 import { Layout } from "@/pages/layout"
 import NotFound from "@/pages/not-found"
@@ -26,7 +26,10 @@ export const routes: RouteObject[] = [
           { index: true, Component: Home },
           { path: "play", lazy: page(() => import("@/pages/play")) },
           { path: "battles", lazy: page(() => import("@/pages/battles")) },
-          { path: "account", lazy: page(() => import("@/pages/account")) },
+          { path: "ranks", lazy: page(() => import("@/pages/ranks")) },
+          { path: "profile", lazy: page(() => import("@/pages/profile")) },
+          // the profile's old address
+          { path: "account", element: <Navigate to="/profile" replace /> },
           { path: "changelog", lazy: page(() => import("@/pages/changelog")) },
           { path: "*", Component: NotFound },
         ],

@@ -351,11 +351,7 @@ async function signInGame(
 
 const GITHUB_KEY = "frontline.github"
 
-/** `to`: the page the player signed in from, to go back to (GitHub always comes back to the front page). */
-type Away = { verifier: string; game: SignInRequest | null; to?: string }
-
-// a path on this site, never somewhere else ("//evil.test" is another site)
-const sitePath = (p: unknown): p is string => typeof p === "string" && p.startsWith("/") && !p.startsWith("//")
+type Away = { verifier: string; game: SignInRequest | null }
 
 /** What came back from GitHub to this page: a code to swap for a session, or why not. */
 export type GitHubReturn = { game: SignInRequest | null } & ({ code: string; verifier: string } | { error: string })
@@ -375,8 +371,9 @@ const leave = (url: string) => window.location.assign(url)
 
 /**
  * Off to GitHub to sign in: for the site, or for the game that sent the
- * player here. Comes back to this page with ?code= (takeGitHubReturn). `go`
- * leaves the page (the stories only record where to).
+ * player here. Comes back to the front page with ?code= (takeGitHubReturn),
+ * which finishes it (src/pages/layout.tsx). `go` leaves the page (the stories
+ * only record where to).
  */
 async function signInWithGitHub(game: SignInRequest | null = null, go = leave) {
   set({ busy: true, error: null, notice: null })
@@ -387,10 +384,8 @@ async function signInWithGitHub(game: SignInRequest | null = null, go = leave) {
       redirect_to: window.location.origin + "/",
       code_challenge: await pkceChallenge(verifier),
     })
-    const here = window.location
-    const to = game ? undefined : here.pathname + here.search + here.hash
     try {
-      sessionStorage.setItem(GITHUB_KEY, JSON.stringify({ verifier, game, to } satisfies Away))
+      sessionStorage.setItem(GITHUB_KEY, JSON.stringify({ verifier, game } satisfies Away))
     } catch {
       throw new Error("This browser is blocking the storage a sign-in needs while it's away at GitHub.")
     }
@@ -401,8 +396,8 @@ async function signInWithGitHub(game: SignInRequest | null = null, go = leave) {
   }
 }
 
-/** `clean`: this address without the code. `to`: the page the player signed in from, if it wasn't this one. */
-export type GitHubBack = { back: GitHubReturn; clean: string; to?: string }
+/** `clean`: this address without the code. */
+export type GitHubBack = { back: GitHubReturn; clean: string }
 
 let taken: { href: string; back: GitHubBack | null } | null = null
 
@@ -437,7 +432,6 @@ export function takeGitHubReturn(href = window.location.href): GitHubBack | null
       back: code ? { game: away.game, code, verifier: away.verifier } : { game: away.game, error: error ?? "" },
       clean,
     }
-    if (sitePath(away.to) && away.to !== clean) result.to = away.to
   }
   taken = { href, back: result }
   return result
@@ -554,14 +548,16 @@ const clearError = () => set({ error: null, notice: null })
 
 /**
  * For the stories: this page signed in as `user` (or signed out), saved
- * nowhere. Stories run side by side in frames that share localStorage, so a
- * saved session would sign the others in too.
+ * nowhere, and nothing left over from the story before. Stories run side by
+ * side in frames that share localStorage, so a saved session would sign the
+ * others in too.
  */
 export function signInForStory(user: User | null) {
   adopt(
     user && { access_token: "story-access", refresh_token: "story-refresh", expires_at: Date.now() + 3_600_000, user },
     false
   )
+  set({ busy: false, error: null, notice: null })
 }
 
 const subscribe = (l: () => void) => {

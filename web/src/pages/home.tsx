@@ -1,39 +1,38 @@
 import { useState } from "react"
-import { Navigate, useSearchParams } from "react-router"
-import { Battles } from "@/components/battles"
+import { Navigate, useLocation, useSearchParams } from "react-router"
 import { WhatsNew } from "@/components/changelog"
-import { Downloads } from "@/components/downloads"
 import { Features } from "@/components/features"
 import { Finale } from "@/components/finale"
 import { Gallery } from "@/components/gallery"
 import { Hero } from "@/components/hero"
-import { InsigniaSection } from "@/components/insignia"
 import { TickerBands } from "@/components/marquee"
 import { Missions } from "@/components/missions"
 import { ReelDialog } from "@/components/reel-dialog"
 import { Stats } from "@/components/stats"
 import { usePageTitle } from "@/hooks/use-page-title"
-import { usePoll } from "@/hooks/use-poll"
-import { fetchLobbies } from "@/lib/matchmaker"
 import { guessPlatform } from "@/lib/releases"
 import { useSite } from "@/hooks/use-site"
 
-/** How many battles the front page lists before sending you to the battles page for the rest. */
-const FRONT_PAGE_BATTLES = 5
+// Sections the front page used to have, which have pages of their own now.
+// The game opens /#download, and older copies will go on doing so.
+const MOVED: Record<string, string> = { "#download": "/play#download", "#insignia": "/ranks", "#battles": "/battles" }
 
-/** The front page: the game, what's on right now, and how to get it. */
+/**
+ * The front page: what the game is, to someone who's never played it. The
+ * live battles, the ranks, the downloads and your profile have pages of
+ * their own.
+ */
 export default function Home() {
   usePageTitle()
   const { health } = useSite()
-  const lobbies = usePoll(fetchLobbies, 5_000)
   const [platform] = useState(guessPlatform)
-  // after a Join or Find Match link: a note on what should happen next
-  const [launched, setLaunched] = useState(false)
   const [watching, setWatching] = useState(false)
+  const { hash } = useLocation()
   // an invite from a friend's lobby (?join=ID), from the game: the battles page shows it
   const [search] = useSearchParams()
   const invite = search.get("join")
   if (invite) return <Navigate to={`/battles?join=${encodeURIComponent(invite)}`} replace />
+  if (MOVED[hash]) return <Navigate to={MOVED[hash]} replace />
 
   return (
     <>
@@ -42,20 +41,9 @@ export default function Home() {
       <Stats />
       <Features />
       <Missions />
-      <Battles
-        lobbies={lobbies.data}
-        error={lobbies.error}
-        updatedAt={lobbies.updatedAt}
-        launched={launched}
-        onLaunch={() => setLaunched(true)}
-        onDismissLaunch={() => setLaunched(false)}
-        limit={FRONT_PAGE_BATTLES}
-      />
-      <InsigniaSection accounts={health?.accounts} />
-      <WhatsNew />
-      <Downloads platform={platform} />
       <Gallery />
-      <Finale platform={platform} onLaunch={() => setLaunched(true)} />
+      <WhatsNew />
+      <Finale platform={platform} />
       <ReelDialog open={watching} onClose={() => setWatching(false)} />
     </>
   )

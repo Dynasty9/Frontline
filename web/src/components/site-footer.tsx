@@ -5,8 +5,9 @@ import { GITHUB_URL } from "@/lib/config"
 const LINKS = [
   { label: "Play", to: "/play" },
   { label: "Live battles", to: "/battles" },
+  { label: "Ranks", to: "/ranks" },
   { label: "What's new", to: "/changelog" },
-  { label: "Your account", to: "/account" },
+  { label: "Your profile", to: "/profile" },
 ] as const
 
 export function SiteFooter() {

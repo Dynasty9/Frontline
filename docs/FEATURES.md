@@ -96,8 +96,10 @@ they're doing). The observer bar at the top has pause, speed (0.25x to 4x), dire
   address. If the two STUN servers see different ports the router is "symmetric" and can't be punched; the lobby
   says so, and that host needs UDP port **7777** forwarded. If a joiner isn't through in 12 seconds, Find Match
   moves on to the next battle.
-- **The website** (`web/`) lists the battles being hosted, each with a **Join** link, `frontline://join/<id>`
-  (and a Find Match one, `frontline://find-match`). Its Play page launches the game with `frontline://open`: any
+- **The website** (`web/`) is pages, like any online game's site: a front page that shows the game off, Play,
+  the live battles, the ranks and insignia, your profile and the changelog. Sign in, in the header, opens a dialog
+  over whatever page you're on, and once you're in it takes you to your profile. It lists the battles being hosted,
+  each with a **Join** link, `frontline://join/<id>` (and a Find Match one, `frontline://find-match`). Its Play page launches the game with `frontline://open`: any
   link the game doesn't know starts it (or brings a running copy to the front) and does nothing else, so older
   versions open too. The browser can't tell the page whether anything took the link, so the page watches for
   losing focus to the browser's prompt or the game's window, and otherwise explains how to set the game up the

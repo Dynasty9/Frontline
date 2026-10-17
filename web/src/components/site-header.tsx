@@ -8,12 +8,12 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { GITHUB_URL } from "@/lib/config"
 import { cn } from "@/lib/utils"
 
-// The front page's sections (/#intel) and the site's other pages. `wide`: on a
-// tablet there isn't room for every link beside the account.
+// The site's pages, and the front page's tour of the game (/#intel). `wide`:
+// on a tablet there isn't room for every link beside the account.
 const NAV = [
   { label: "The game", to: "/#intel", wide: true },
   { label: "Battles", to: "/battles" },
-  { label: "Ranks", to: "/#insignia" },
+  { label: "Ranks", to: "/ranks" },
   { label: "What's new", to: "/changelog" },
 ] as const
 
