@@ -39,10 +39,12 @@ export default function ProfilePage() {
     <div className="topo">
       <div className="mx-auto max-w-6xl px-4 pt-14 pb-24 sm:px-6">
         <SectionLabel>Profile</SectionLabel>
-        <h1 className="mt-2 text-4xl font-semibold">{user ? "Your profile" : "Sign in to Frontline"}</h1>
+        <h1 className="mt-3 font-display text-5xl font-extrabold uppercase sm:text-6xl">
+          {user ? "Your profile" : "Sign in to Frontline"}
+        </h1>
         <p className="mt-3 max-w-2xl text-sm leading-relaxed text-muted-foreground">
           {user
-            ? "Your rank, your callsign and the insignia you wear: the same in the game and on this site."
+            ? "Your callsign, picture, insignia and privacy settings. Your public record shows your battle history."
             : "One account for the game and this site. You don't need one to play, online or off."}
         </p>
 

@@ -41,12 +41,11 @@ export function Layout() {
     void finishGitHub(github.back).finally(() => setFinishing(false))
   }, [github, navigate])
 
-  // signed in through the dialog, with GitHub or (testing) a password: on to their profile
+  // Signing in should preserve the battle, briefing or guide the visitor was using.
   useEffect(() => {
     if (!signingIn || !user) return
     closeSignIn()
-    void navigate("/profile")
-  }, [signingIn, user, navigate])
+  }, [signingIn, user])
 
   // the game sent the player here to sign in (?sign-in=STATE)
   const [gameSignIn, setGameSignIn] = useState(() => readSignInRequest(location.search) ?? github?.back.game ?? null)
@@ -64,12 +63,16 @@ export function Layout() {
   return (
     <QueryClientProvider client={queries}>
       <TooltipProvider delayDuration={150}>
-        <SiteHeader overlay={location.pathname === "/"} accounts={health.data?.accounts} live={health.data?.lobbies} />
+        <SiteHeader
+          overlay={location.pathname === "/" && (!user || health.data?.accounts === "off")}
+          accounts={health.data?.accounts}
+          live={health.data?.lobbies}
+        />
         {/* things slide in from the sides as they reveal: never let them widen the page */}
-        <main className="overflow-x-clip">
+        <main id="main-content" tabIndex={-1} className="overflow-x-clip">
           <Outlet context={{ health: health.data } satisfies Site} />
         </main>
-        <SiteFooter />
+        <SiteFooter accounts={health.data?.accounts} />
         <SignInDialog open={signingIn} onClose={closeSignIn} accounts={health.data?.accounts} finishing={finishing} />
         {gameSignIn && (
           <GameSignIn

@@ -45,6 +45,28 @@ describe("takeGitHubReturn", () => {
     expect(takeGitHubReturn(href)).toEqual(r)
   })
 
+  it("restores the page and invitation after the root OAuth callback", () => {
+    store.set(
+      "frontline.github",
+      JSON.stringify({ verifier: VERIFIER, game: null, returnTo: "/battles?join=invite-42#battles" })
+    )
+    expect(takeGitHubReturn("https://site.test/?code=restore-invite")?.clean).toBe("/battles?join=invite-42#battles")
+  })
+
+  it.each(["https://other.test/", "//other.test/", "/\\other.test/", "javascript:alert(1)", "/\n/other.test/"])(
+    "rejects an external or malformed return destination: %s",
+    (returnTo) => {
+      store.set("frontline.github", JSON.stringify({ verifier: VERIFIER, game: null, returnTo }))
+      expect(takeGitHubReturn("https://site.test/?code=" + encodeURIComponent(returnTo))?.clean).toBe("/")
+    }
+  )
+
+  it("does not let a site destination replace a game sign-in", () => {
+    const game = { state: STATE, create: false, callsign: "" }
+    store.set("frontline.github", JSON.stringify({ verifier: VERIFIER, game, returnTo: "/profile" }))
+    expect(takeGitHubReturn("https://site.test/?code=keep-game")?.clean).toBe("/")
+  })
+
   it("says why when GitHub, or the player, said no", () => {
     away()
     expect(takeGitHubReturn("https://site.test/?error=access_denied&error_description=The+user+denied+access")).toEqual(

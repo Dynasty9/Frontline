@@ -2,8 +2,8 @@ import type { Meta, StoryObj } from "@storybook/react-vite"
 import { expect, userEvent, waitFor, within } from "storybook/test"
 import { latest } from "@/lib/releases"
 import { DesktopCard } from "@/pages/play"
-import { buildWithInstallers, buildWithMac, buildWithoutInstallers, health } from "@/test/fixtures"
-import { mockMatchmaker } from "@/test/network"
+import { buildWithInstallers, buildWithMac, buildWithoutInstallers, health, player } from "@/test/fixtures"
+import { mockMatchmaker, signedIn } from "@/test/network"
 import { loadPage } from "@/test/load-page"
 import { SiteAt } from "@/test/router"
 
@@ -53,7 +53,7 @@ export const Windows: Story = {
       (latest.installers?.windows ?? latest.assets.windows).url
     )
     // the browser version isn't out yet
-    await expect(canvas.getByRole("button", { name: "Arrives with the next release" })).toBeDisabled()
+    await expect(canvas.getByText(/Browser play is in development/)).toBeVisible()
   },
 }
 
@@ -164,5 +164,31 @@ export const Phone: Story = {
   globals: { viewport: { value: "mobile1" } },
   play: async ({ canvasElement }) => {
     await expect(await within(canvasElement).findByText(/played with a keyboard and mouse/)).toBeVisible()
+  },
+}
+
+export const ReturningPlayer: Story = {
+  beforeEach: [visitor(WINDOWS), mockMatchmaker({ health, me: player }), signedIn(player)],
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await expect(await canvas.findByRole("heading", { level: 1, name: /Back for another battle/ })).toBeVisible()
+    await expect(canvas.getByRole("link", { name: /Browse live battles/ })).toHaveAttribute("href", "/battles")
+    await expect(canvas.queryByRole("button", { name: "Sign in to track progress" })).toBeNull()
+  },
+}
+
+export const Installed: Story = {
+  beforeEach: [
+    visitor(WINDOWS),
+    () => {
+      localStorage.setItem("frontline.installed", "1")
+      return () => localStorage.removeItem("frontline.installed")
+    },
+  ],
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    const launch = await canvas.findByRole("link", { name: "Launch Frontline" })
+    const download = canvas.getByRole("link", { name: /^Download for Windows ·/ })
+    await expect(launch.compareDocumentPosition(download) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
   },
 }

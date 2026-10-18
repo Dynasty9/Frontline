@@ -4,23 +4,24 @@ The game's website. Its pages (`src/pages/`, routed by React Router in `src/rout
 
 | Page                           | What's on it                                                                                                                                                 |
 | ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `/`                            | the game, for someone who's never played it: footage, features, missions, pictures, what's new                                                               |
-| `/play`                        | **Launch** the installed game (`frontline://open`), Find Match, or download it                                                                               |
+| `/`                            | signed out: the game tour; signed in: play shortcuts, progress and updates (the tour remains at `/#intel`)                                                   |
+| `/play`                        | download first on a new device; launch first after a successful game handoff; Find Match and platform downloads                                              |
 | `/battles`                     | every battle being hosted, each with a **Join** link (`frontline://join/<id>`), and a friend's invite                                                        |
 | `/leaderboards`                | the commanders with the most XP: all time, this month, this week (`?period=`, `?page=`); find a player                                                       |
 | `/player/:callsign`            | anyone's public page: rank, XP, record, place on the board; their career and battles, unless kept back                                                       |
 | `/player/:callsign/battle/:id` | one of their battles: its after-action report (their part, every commander, the two sides)                                                                   |
-| `/ranks`                       | how ranks are earned, and the whole collection of insignia                                                                                                   |
+| `/ranks`                       | the public rank guide: XP thresholds and unlocks; insignia selection lives in `/profile`                                                                     |
 | `/profile`                     | signed in, your rank and record, your callsign (rename it), your picture, whether your battles are public, the insignia you wear, and signing out everywhere |
 | `/changelog`                   | every release, with its changes and screenshots                                                                                                              |
 
-The header on every page has a **Play** button and the account menu (your picture, callsign and rank; your
-profile, your public page, the leaderboards). Everything public (players, boards, battles) comes from the
+The header keeps four destinations: **The game**, **Battles**, **Commanders** and **Updates**, plus **Play** and the account menu. Commanders groups the leaderboards and rank guide under a shared secondary navigation. GitHub and project links live in the footer. Personal settings and insignia selection live in the profile; the account menu also links the public record.
+
+Everything public (players, boards, battles) comes from the
 matchmaker's public routes (`src/lib/players.ts`; `matchmaker/src/players.js`), fetched with TanStack Query, so going
 back to a page is instant; the matchmaker and the browser keep each answer for half a minute. A battle's report is
 read the way the game reads it: `src/lib/report.ts` has the game's rating and score formulas (keep them in step with
 `scripts/game/battle_stats.gd`). Signed out, its **Sign in** opens the sign-in dialog over whatever page you're on; so does the ranks page's.
-Signing in there, with GitHub or a test account, takes you to your profile. The
+Signing in keeps the current page and invitation. GitHub still returns to the allow-listed root callback; this tab saves a local return path alongside the PKCE verifier, validates it, and restores it without changing the game sign-in flow. The
 `frontline://` scheme is registered by the game on its first launch; a link it doesn't know (like `open`) still
 starts it, or brings a running copy to the front. The browser says nothing when no program takes a link, so Launch
 watches for the page losing focus (the browser's "Open Frontline?" prompt, or the game's window) and, if that doesn't

@@ -132,7 +132,7 @@ export const AccountMenu: Story = {
     const menu = within(document.body)
     await expect(await menu.findByRole("menuitem", { name: "Your profile" })).toHaveAttribute("href", "/profile")
     await expect(menu.getByRole("menuitem", { name: "Your public page" })).toHaveAttribute("href", "/player/Raven")
-    await expect(menu.getByRole("menuitem", { name: "Leaderboards" })).toHaveAttribute("href", "/leaderboards")
+    await expect(menu.queryByRole("menuitem", { name: "Leaderboards" })).toBeNull()
     await userEvent.click(menu.getByRole("menuitem", { name: "Sign out" }))
     await expect(await canvas.findByRole("heading", { level: 1, name: "Sign in to Frontline" })).toBeVisible()
   },

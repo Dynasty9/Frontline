@@ -3,7 +3,6 @@ import {
   GlobeHemisphereWestIcon,
   IdentificationBadgeIcon,
   SignOutIcon,
-  TrophyIcon,
   UserCircleIcon,
 } from "@phosphor-icons/react"
 import { Link } from "react-router"
@@ -36,10 +35,10 @@ export function AccountMenu() {
         size="sm"
         onClick={openSignIn}
         aria-label="Sign in"
-        className="text-sm text-muted-foreground hover:text-foreground"
+        className="h-11 text-sm text-muted-foreground hover:text-foreground"
       >
         <UserCircleIcon />
-        <span className="hidden lg:inline">Sign in</span>
+        <span className="hidden sm:inline">Sign in</span>
       </Button>
     )
   }
@@ -47,7 +46,7 @@ export function AccountMenu() {
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         {/* its name is what it shows, said in full: "Your account: Raven rank 6" */}
-        <Button variant="outline" size="sm" className="h-8 gap-2 pr-1.5 pl-1 text-sm">
+        <Button variant="outline" size="sm" className="h-11 gap-2 pr-1.5 pl-1 text-sm">
           <PlayerAvatar icon={user.icon} avatar={pictureOf(user)} />
           <span className="sr-only">Your account:</span>
           {/* the callsign only where there's room for it beside the nav (a screen reader always has it) */}
@@ -80,12 +79,6 @@ export function AccountMenu() {
           <Link to={playerPath(user.callsign)}>
             <GlobeHemisphereWestIcon />
             Your public page
-          </Link>
-        </DropdownMenuItem>
-        <DropdownMenuItem asChild>
-          <Link to="/leaderboards">
-            <TrophyIcon />
-            Leaderboards
           </Link>
         </DropdownMenuItem>
         <DropdownMenuSeparator />

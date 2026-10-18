@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react-vite"
-import { expect, userEvent, waitFor, within } from "storybook/test"
-import { health, lobbies, lobbyOpen } from "@/test/fixtures"
-import { mockMatchmaker } from "@/test/network"
+import { expect, screen, userEvent, waitFor, within } from "storybook/test"
+import { health, lobbies, lobbyOpen, player } from "@/test/fixtures"
+import { mockMatchmaker, awayAtGitHub } from "@/test/network"
 import { loadPage } from "@/test/load-page"
 import { SiteAt } from "@/test/router"
 
@@ -36,5 +36,21 @@ export const Invited: Story = {
     await expect(await canvas.findByText("Raven invited you to Bridgehead at dawn")).toBeVisible()
     await userEvent.click(canvas.getAllByRole("button", { name: "Dismiss" })[0])
     await waitFor(() => expect(canvas.queryByText(/invited you/)).toBeNull())
+  },
+}
+
+/** Signing in from an invitation leaves the player in that battle, not in account settings. */
+export const SignInKeepsInvite: Story = {
+  args: { path: "/?code=code-back" },
+  beforeEach: [mockMatchmaker({ lobbies, health, exchange: player }), awayAtGitHub(`/battles?join=${lobbyOpen.id}`)],
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await waitFor(() => expect(canvas.getByRole("button", { name: "Your account: Raven rank 6" })).toBeVisible())
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull())
+    await expect(
+      await canvas.findByText("Raven invited you to Bridgehead at dawn", {}, { timeout: 5000 })
+    ).toBeVisible()
+    await expect(canvas.getByRole("heading", { level: 1, name: /Live battles/ })).toBeVisible()
+    await expect(canvas.queryByRole("heading", { level: 1, name: "Your profile" })).toBeNull()
   },
 }
