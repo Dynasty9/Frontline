@@ -684,6 +684,15 @@ catalogue entry in `MissionList.LIST`, a setup function and an autopilot functio
 - Loading screen before each battle: the operation's name, then mission, side, area and conditions as label and
   code rows, a field note under a rule and the build's stages as a row of counted steps, over the map with a survey beam sweeping across it and the view closing in on the ground.
   It holds while the first frames compile behind it, then dives into the map as the battlefield fades up.
+- **Shared allied command:** every player can select and order any squad, vehicle or individual soldier on
+  their side, regardless of who recruited it. Click, drag-select, control groups and the order-of-battle list
+  all use the same allied selection. Other commanders' current selections still show in their colours;
+  these are coordination cues, not ownership locks. Enemy and neutral troops cannot be commanded, and
+  observers can inspect but cannot issue orders. A human order takes an AI-controlled unit out of the
+  strategic AI's allocation so it does not overwrite the player's orders. Orders between human allies leave
+  recruitment attribution intact. Construction can assign an allied engineer, and tunnel orders move allied
+  passengers, without requiring the issuing commander to own them. Supply convoys and supply helicopters
+  continue their automatic routes rather than taking troop orders.
 - **Order of battle** (O): every unit down the left, grouped into infantry, support teams and vehicles, each
   with its symbol, callsign, a pip per man, what it has been told to do and where an attack has got to ("Base of
   fire on D3", "Assaulting D3"), and alerts for contact, pinned, casualties and low ammunition. Click to select
@@ -755,7 +764,7 @@ catalogue entry in `MissionList.LIST`, a setup function and an autopilot functio
 - **The minimap** (`hud_minimap.gd`): the ground, water, roads (main roads light with a dark edge, supply
   tracks thinner), woods and every house's footprint (light while its roof stands, dark once it's a ruin) are
   baked into a texture. Over it go the fog of war (darker where your side can't see), every man you can see as a
-  dot (yours brightest, the selection white), vehicles by their map symbols, where the enemy was last seen, aircraft
+  dot (allies brightest, the selection white), vehicles by their map symbols, where the enemy was last seen, aircraft
   overhead (yours with the ground they can see), bases, objectives and alerts, each town as a flag in its holder's
   colour inside the ring of ground that takes it (with how far a capture has got round the ring), and an orange
   ring pulsing wherever men are firing. The camera's view is a lit wedge with a line back to where the camera stands, and a compass needle

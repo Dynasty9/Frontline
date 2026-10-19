@@ -1599,35 +1599,60 @@ func _rpc_cmd(d: Dictionary) -> void:
 	execute_cmd(multiplayer.get_remote_sender_id(), d)
 
 
-func _own_squads(peer: int, ids: Array) -> Array:
+## Human commanders share every unit on their side. The AI keeps its own
+## allocation, so it cannot silently take over a human commander's troops.
+## Check the team as well as ownership: neither client-supplied IDs nor an
+## old owner field can grant command of an enemy or neutral unit.
+func can_command_unit(peer: int, unit_team: int, owner: int) -> bool:
+	var team := team_of_peer(peer)
+	return team in [0, 1] and unit_team == team and (peer > 0 or owner == peer)
+
+
+func _command_squads(peer: int, ids: Array) -> Array:
 	var out := []
 	for id in ids:
 		var sq: Squad = squads.get(int(id))
-		if sq and sq.owner == peer:
+		if sq and can_command_unit(peer, sq.team, sq.owner) and not sq in out:
 			out.append(sq)
 	return out
 
 
-func _own_vehicles(peer: int, ids: Array) -> Array:
+func _command_vehicles(peer: int, ids: Array) -> Array:
 	var out := []
 	for id in ids:
 		var v = entities.get(int(id))
-		if v is Vehicle and v.owner_peer == peer:
+		if v is Vehicle and not v.is_auto() and can_command_unit(peer, v.team, v.owner_peer) and not v in out:
 			out.append(v)
 	return out
 
 
+## An explicit human order takes an AI-controlled unit out of the strategic
+## AI's allocation. Keep human owners unchanged for attribution and rejoining;
+## every allied player can still command the unit, regardless of that owner.
+func take_command(peer: int, sqs: Array, vehs: Array) -> void:
+	if peer <= 0:
+		return
+	for sq in sqs:
+		if sq.owner < 0 and can_command_unit(peer, sq.team, sq.owner):
+			give_squad(sq, peer)
+	for v in vehs:
+		if v.owner_peer < 0 and can_command_unit(peer, v.team, v.owner_peer):
+			give_vehicle(v, peer)
+
+
 func execute_cmd(peer: int, d: Dictionary) -> void:
+	if not srv:
+		return
 	if String(d.get("t", "")) == "demo_support":
 		if _demo_ok(peer):
 			rules.demo_support(String(d.get("kind", "")), d.pos, d.get("dir", Vector3.ZERO))
 		return
 	var team := team_of_peer(peer)
-	if team < 0 or winner >= 0:
+	if not team in [0, 1] or winner >= 0:
 		return
 	var t: String = d.get("t", "")
-	var sqs := _own_squads(peer, d.get("squads", []))
-	var vehs := _own_vehicles(peer, d.get("vehicles", []))
+	var sqs := _command_squads(peer, d.get("squads", []))
+	var vehs := _command_vehicles(peer, d.get("vehicles", []))
 	# a routed squad runs whatever it's told, until it has rallied
 	for sq in sqs.duplicate():
 		if sq.drill == "rout" and t != "retreat" and t != "unit":
@@ -1639,6 +1664,7 @@ func execute_cmd(peer: int, d: Dictionary) -> void:
 			sq.order_n += 1
 	match t:
 		"move":
+			take_command(peer, sqs, vehs)
 			var pos: Vector3 = d.pos
 			var face: Vector3 = d.get("face", Vector3.ZERO)
 			var mode: int = int(d.get("mode", 0))
@@ -1653,6 +1679,7 @@ func execute_cmd(peer: int, d: Dictionary) -> void:
 			for i in m:
 				vehs[i].order_move(pos + side * (i - (m - 1) / 2.0) * 9.0 - face * (6.0 if n > 0 else 0.0))
 		"assault", "defend":
+			take_command(peer, sqs, vehs)
 			var apos: Vector3 = d.pos
 			var aface: Vector3 = d.get("face", Vector3.ZERO)
 			if aface.length() < 0.1:
@@ -1677,25 +1704,34 @@ func execute_cmd(peer: int, d: Dictionary) -> void:
 				else:
 					vehs[i].order_move(vp)
 		"dismount":
+			take_command(peer, [], vehs)
 			for v in vehs:
 				v.dismount()
 		"unit":
 			var us = entities.get(int(d.get("soldier", 0)))
-			if us is Soldier and us.owner_peer == peer and us.team == team:
+			if us is Soldier and can_command_unit(peer, us.team, us.owner_peer):
+				if us.squad:
+					take_command(peer, [us.squad], [])
+				elif peer > 0 and us.owner_peer < 0:
+					us.owner_peer = peer
+					push_props(us, {"owner": peer})
 				us.unit_order(d)
 		"attack":
 			var tgt: Entity = entities.get(int(d.get("target", 0)))
 			if tgt and tgt.is_hostile_to(team):
+				take_command(peer, sqs, vehs)
 				for sq in sqs:
 					sq.order_attack(tgt)
 				for v in vehs:
 					v.order_attack(tgt)
 		"stop":
+			take_command(peer, sqs, vehs)
 			for sq in sqs:
 				sq.order_stop()
 			for v in vehs:
 				v.order_stop()
 		"retreat":
+			take_command(peer, sqs, vehs)
 			for sq in sqs:
 				sq.order_retreat()
 			for v in vehs:
@@ -1724,26 +1760,29 @@ func execute_cmd(peer: int, d: Dictionary) -> void:
 			var pit = entities.get(int(d.get("building", 0)))
 			if pit is Structure and pit.team == team:
 				pit.queue_fire(d.pos, kind, peer)
-			for vid in d.get("vehicles", []):
-				var av = entities.get(int(vid))
-				if av is Vehicle and av.team == team and av.vdef.has("art") and av.fire_queue.size() < 3:
+			for av in vehs:
+				if av.vdef.has("art") and av.fire_queue.size() < 3:
 					var ad: Dictionary = av.vdef.art
 					var dist: float = Defs.flat((d.pos as Vector3) - av.position).length()
 					if dist < float(ad.get("min", 40.0)) or dist > float(ad.get("max", 240.0)):
 						send_msg(team, "info", "%s: out of range (%d-%d m)." % [av.display_name(), int(ad.get("min", 40.0)), int(ad.get("max", 240.0))], av.position)
 						continue
+					take_command(peer, [], [av])
 					av.fire_queue.append(d.pos)
 					av.arty_t = minf(av.arty_t, time)
+			take_command(peer, sqs, [])
 			for sq in sqs:
 				sq.order_fire_mission(d.pos, kind)
 		"work":
 			var tgt: Entity = entities.get(int(d.get("target", 0)))
 			if tgt and tgt.team == team:
+				take_command(peer, sqs, [])
 				for sq in sqs:
 					sq.order_work(tgt)
 		"enter":
 			var st = entities.get(int(d.get("target", 0)))
 			if st is Structure and st.team == team:
+				take_command(peer, sqs, [])
 				for sq in sqs:
 					sq.order_enter(st)
 		"sling":
@@ -1751,14 +1790,17 @@ func execute_cmd(peer: int, d: Dictionary) -> void:
 			if sv is Vehicle and sv.team == team:
 				for v in vehs:
 					if v.can_sling(sv):
+						take_command(peer, [], [v, sv])
 						v.order_sling(sv)
 						break
 		"board":
 			var bv = entities.get(int(d.get("target", 0)))
 			if bv is Vehicle and bv.team == team:
+				take_command(peer, sqs, [])
 				for sq in sqs:
 					sq.order_board(bv)
 		"throw":
+			take_command(peer, sqs, [])
 			for sq in sqs:
 				sq.order_throw(d.pos, String(d.get("kind", "frag")))
 		"support":

@@ -39,7 +39,7 @@ func _draw() -> void:
 	if not inp.sel_squads.is_empty():
 		var by_sid := {}
 		for s in w.soldiers:
-			if s.sid in inp.sel_squads and (s.owner_peer == w.local_peer or w.local_team < 0):
+			if s.sid in inp.sel_squads and inp.is_mine(s):
 				if not by_sid.has(s.sid):
 					by_sid[s.sid] = []
 				by_sid[s.sid].append(s)

@@ -541,15 +541,16 @@ func _build_help() -> void:
 		c.queue_free()
 	var vb := VBoxContainer.new()
 	vb.add_theme_constant_override("separation", 12)
-	help_panel.add_child(vb)
+	UiKit.scroll_content(help_panel, vb)
 	var head := HBoxContainer.new()
 	vb.add_child(head)
 	var t := UiKit.caps("Controls", 12, UiKit.ACCENT)
 	t.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	head.add_child(t)
 	head.add_child(UiKit.mono_label("CHANGE ANY KEY: SETTINGS › CONTROLS", 11, UiKit.FAINT))
-	var cols := HBoxContainer.new()
-	cols.add_theme_constant_override("separation", 28)
+	var cols := HFlowContainer.new()
+	cols.add_theme_constant_override("h_separation", 28)
+	cols.add_theme_constant_override("v_separation", 14)
 	vb.add_child(cols)
 	var groups := [
 		[["Camera", [[_kk(["cam_up", "cam_left", "cam_down", "cam_right"]), "Pan (or the screen's edge)"], [_kk(["cam_fast"]), "Pan faster"],
@@ -573,6 +574,7 @@ func _build_help() -> void:
 		var cv := VBoxContainer.new()
 		cv.add_theme_constant_override("separation", 3)
 		cv.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		cv.custom_minimum_size.x = 280
 		cols.add_child(cv)
 		for g in col:
 			cv.add_child(UiKit.header(String(g[0])))
@@ -586,6 +588,7 @@ func _build_help() -> void:
 					hb.add_child(_key_box(String(k)))
 				var l := UiKit.label(String(row[1]), 13, UiKit.DIM)
 				l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+				l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 				var sp := Control.new()
 				sp.custom_minimum_size = Vector2(6, 0)
 				hb.add_child(sp)
@@ -661,7 +664,7 @@ func _kt(id: String) -> String:
 func _build_menu() -> void:
 	var vb := VBoxContainer.new()
 	vb.add_theme_constant_override("separation", 0)
-	menu_panel.add_child(vb)
+	UiKit.scroll_content(menu_panel, vb)
 	var head := HBoxContainer.new()
 	vb.add_child(head)
 	var t := UiKit.caps("Paused" if world.director and world.director.can_control_time() else "Menu", 12, UiKit.ACCENT)
@@ -670,6 +673,7 @@ func _build_menu() -> void:
 	_menu_clock = UiKit.mono_label("", 12, UiKit.DIM)
 	head.add_child(_menu_clock)
 	_menu_ctx = UiKit.mono_label("", 12, UiKit.FAINT)
+	_menu_ctx.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	vb.add_child(_menu_ctx)
 	var gap := Control.new()
 	gap.custom_minimum_size = Vector2(0, 14)

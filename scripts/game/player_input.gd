@@ -86,11 +86,15 @@ func can_command() -> bool:
 	return world.local_team >= 0 and world.winner < 0
 
 
+## Recruitment ownership is attribution, not an allied selection lock.
 func is_mine(e: Entity) -> bool:
 	if e == null:
 		return false
+	# Supply convoys run themselves; they are inspected, not ordered.
+	if world.local_team >= 0 and e is Vehicle and e.is_auto():
+		return false
 	# observers may select anything to inspect it (they can't give orders)
-	return e.owner_peer == world.local_peer or (world.local_team < 0 and e.team >= 0)
+	return e.team >= 0 and (e.team == world.local_team or world.local_team < 0)
 
 
 func has_units() -> bool:
@@ -111,6 +115,8 @@ func clear_selection() -> void:
 
 ## Picks one soldier out of his squad for direct orders.
 func select_unit(s: Soldier) -> void:
+	if not is_mine(s):
+		return
 	clear_selection()
 	sel_unit = s.eid
 	Sfx.ui("click")
@@ -119,7 +125,7 @@ func select_unit(s: Soldier) -> void:
 func selected_soldiers() -> Array:
 	var out := []
 	for s in world.soldiers:
-		if (s.sid in sel_squads or s.eid == sel_unit) and s.owner_peer == world.local_peer and not s.gone:
+		if (s.sid in sel_squads or s.eid == sel_unit) and s.team == world.local_team and world.local_team >= 0 and not s.gone:
 			out.append(s)
 	return out
 
@@ -169,7 +175,7 @@ func _unhandled_input(ev: InputEvent) -> void:
 				if order_mode != "":
 					_begin_order(mb, true)
 					return
-				# Alt+click pings (Alt+click on one of your own men still picks him out)
+				# Alt+click pings (Alt+click on one of your allied men still picks him out)
 				if mb.alt_pressed and not _alt_picks(mb.position):
 					pinging = true
 					ping_at = mb.position
@@ -414,7 +420,7 @@ func _key(ev: InputEvent) -> void:
 					world.hud.flash("%s's view" % Net.player_name(p.peer))
 
 
-## Alt+click on one of your own men picks him out of his squad (rather than pinging).
+## Alt+click on one of your allied men picks him out of his squad (rather than pinging).
 func _alt_picks(at: Vector2) -> bool:
 	var e := pick(at)
 	return e is Soldier and is_mine(e) and e.life == Soldier.Life.ALIVE
@@ -1073,7 +1079,7 @@ func _view_process(dt: float) -> void:
 		if not live.has(sel_squads[i]):
 			sel_squads.remove_at(i)
 	for i in range(sel_vehicles.size() - 1, -1, -1):
-		if world.entity(sel_vehicles[i]) == null:
+		if not is_mine(world.entity(sel_vehicles[i])):
 			sel_vehicles.remove_at(i)
 	if sel_structure != 0 and world.entity(sel_structure) == null:
 		sel_structure = 0

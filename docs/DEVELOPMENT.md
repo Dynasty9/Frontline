@@ -124,7 +124,11 @@ ui/topo_survey.gd       the same map's ground worked out on the CPU, to letter i
 Networking is server-authoritative. Clients send command dictionaries (`World.send_cmd`). The host simulates at 30 Hz and
 sends compact per-entity snapshots at 15 Hz (length-prefixed records chunked into roughly 1.1 KB unreliable packets), reliable
 spawn/despawn/property events, and batched effect events. Clients interpolate. Team-only messages are only sent
-to that team.
+to that team. Human command authority is team-based, not recruitment ownership: the host resolves the sender
+from the RPC and filters every requested squad, vehicle and individual soldier against that sender's team.
+Strategic AI commanders keep their allocation; an explicit human order hands an AI unit into the shared human
+force through the existing replicated owner properties. `tests/allied-commands.test.mjs` checks selection,
+AI handoff and rejected enemy/observer commands both locally and through an ENet host/client pair.
 
 Models are built in script from parts (boxes, cylinders, lofted hulls) and merged (`Mats.merge_static`) into a mesh
 per material, each part's tint carried as vertex colour. A model merged whole puts its parts straight into the
@@ -687,6 +691,14 @@ curl -H "Authorization: Bearer local" http://127.0.0.1:8787/errors
 The matchmaker writes each new error to its log in full, then a line each time one passes another power of ten;
 `GET /errors` (with `ERRORS_TOKEN` as the bearer token) is the tally since it started, most common first. On the live
 service that's `railway logs --service matchmaker | grep -E "^(error|script|shader|crash) "`.
+
+### Visibility regression checks
+
+`tests/visibility.test.mjs` checks every lighting mood across close and map-wide camera distances,
+including a bound on atmospheric optical depth, and checks that transparent world symbols and solid map
+symbols have distinct atlas cells. Run `godot --path . scripts/test/visibility_test.tscn` with a renderer
+to also sample their actual fill opacity. The test is headless-compatible; its two pixel checks run only
+with a display. Fog-of-war sight and server enemy filtering are deliberately unchanged.
 
 ### Off-screen screenshots
 

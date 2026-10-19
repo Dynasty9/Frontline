@@ -79,25 +79,12 @@ func _look(peer: int) -> void:
 
 
 ## What he's doing, for his row: [text, colour].
-func _status(p: CoCommand.Presence, owner_of: Dictionary) -> Array:
+func _status(p: CoCommand.Presence) -> Array:
 	var w := hud.world
 	var act := w.coop.activity(p, true)
 	if act != "":
 		return [act, UiKit.ACCENT]
-	# an order he has just sent
-	var now := Time.get_ticks_msec()
-	var best := ""
-	var best_age := 6.0
-	for sid in hud.orders:
-		var o: Array = hud.orders[sid]
-		if int(o[5]) < 0 or int(owner_of.get(int(sid), 0)) != p.peer:
-			continue
-		var age := (now - int(o[5])) / 1000.0
-		if age < best_age:
-			best_age = age
-			best = "Ordered %s: %s" % [Squad.callsign_of(int(o[4]), int(sid)), HudOverlay._order_tag(o)]
-	if best != "":
-		return [best, UiKit.TEXT]
+	# Unit ownership is recruitment attribution, not the last order's sender.
 	# something he has just built, called in or set training
 	var dd: Array = w.coop.last_deed(p.peer, 15.0)
 	if not dd.is_empty():
@@ -138,13 +125,13 @@ func _draw() -> void:
 	if all.is_empty():
 		need_h = 0.0
 		return
-	# who commands what, once a redraw
-	var owner_of := {}
+	# recruitment attribution, once a redraw
+	var seen_squads := {}
 	var units := {}
 	for s in w.soldiers:
 		if s.sid != 0 and s.owner_peer > 0 and s.life != Soldier.Life.DEAD:
-			if not owner_of.has(s.sid):
-				owner_of[s.sid] = s.owner_peer
+			if not seen_squads.has(s.sid):
+				seen_squads[s.sid] = true
 				var u: Array = units.get(s.owner_peer, [0, 0])
 				u[0] += 1
 				units[s.owner_peer] = u
@@ -212,7 +199,7 @@ func _draw() -> void:
 		var nw := UiKit.caps_w(nm, 13)
 		if ut != "" and nw + 10.0 + UiKit.mono_w(ut.to_upper(), 10) < maxn:
 			UiKit.mono_at(self, Vector2(x0 + nw + 10.0, r.position.y + 18), ut.to_upper(), 10, UiKit.DIM)
-		var stt := _status(p, owner_of)
+		var stt := _status(p)
 		var line: String = stt[0]
 		while line.length() > 4 and UiKit.caps_w(line, 11) > maxn:
 			line = line.substr(0, line.length() - 2)

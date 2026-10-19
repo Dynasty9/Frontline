@@ -22,6 +22,13 @@ const MOODS := {
 		"horizon": Color(0.82, 0.8, 0.74), "fog": Color(0.8, 0.77, 0.7), "fog_d": 0.0042, "ambient": 0.65, "soft": 1.5, "clouds": 0.25, "exposure": 1.05},
 }
 
+# Atmospheric haze is scenery, not concealment. Keep its optical depth low at
+# the command camera's focus, even when the player zooms all the way out.
+# Fog of war and combat smoke have their own, unchanged gameplay rules.
+const HAZE_STRENGTH := 0.25
+const VOLUME_STRENGTH := 0.15
+const HAZE_DISTANCE := 32.0
+
 var world: World
 var mood := "golden"
 
@@ -165,7 +172,7 @@ func _build_env() -> void:
 	env.fog_light_color = _d.fog
 	env.fog_light_energy = 1.0
 	env.fog_sun_scatter = 0.12
-	env.fog_density = float(_d.fog_d)
+	env.fog_density = float(_d.fog_d) * HAZE_STRENGTH
 	env.fog_sky_affect = 0.35
 	env.ssao_radius = 1.4
 	env.ssao_intensity = 2.2
@@ -179,7 +186,7 @@ func _build_env() -> void:
 	env.sdfgi_use_occlusion = true
 	env.sdfgi_bounce_feedback = 0.4
 	env.sdfgi_energy = 0.9
-	env.volumetric_fog_density = 0.0011 if mood != "hazy" else 0.003
+	env.volumetric_fog_density = (0.0011 if mood != "hazy" else 0.003) * VOLUME_STRENGTH
 	env.volumetric_fog_albedo = (_d.fog as Color).lerp(Color(0.9, 0.9, 0.9), 0.55)
 	env.volumetric_fog_anisotropy = 0.35
 	env.volumetric_fog_length = 260.0
@@ -532,7 +539,7 @@ func apply_mood(m: String) -> void:
 	_setup_rain()
 	env.tonemap_exposure = float(_d.exposure) * float(Settings.get_v("brightness"))
 	env.fog_light_color = _d.fog
-	env.fog_density = float(_d.fog_d)
+	_apply_haze(world.cam.dist if world.cam else HAZE_DISTANCE)
 	env.volumetric_fog_albedo = (_d.fog as Color).lerp(Color(0.9, 0.9, 0.9), 0.55)
 	_apply_look()
 	sun.rotation_degrees = Vector3(-float(_d.elev), float(_d.azim), 0)
@@ -654,10 +661,7 @@ func _view_process(_dt: float) -> void:
 		_flares_tick(_dt / maxf(0.0001, Engine.time_scale) if Engine.time_scale > 0.001 else 0.0)
 	if _rain:
 		_rain_tick(_dt / maxf(0.0001, Engine.time_scale) if Engine.time_scale > 0.001 else 0.016)
-	# the camera climbs as it zooms out: thin the fog so the battlefield stays crisp
-	var fk := clampf(45.0 / maxf(10.0, world.cam.dist), 0.35, 1.0)
-	env.fog_density = float(_d.fog_d) * fk
-	env.volumetric_fog_density = (0.0011 if mood != "hazy" else 0.003) * fk
+	_apply_haze(world.cam.dist)
 	if not Settings.get_v("dof"):
 		return
 	# gentle tilt-shift: keep the focus plane at the camera's target
@@ -666,6 +670,18 @@ func _view_process(_dt: float) -> void:
 	cam_attr.dof_blur_far_transition = d * 0.9
 	cam_attr.dof_blur_near_distance = d * 0.55
 	cam_attr.dof_blur_near_transition = d * 0.3
+
+
+## No lower clamp: distant command cameras otherwise look through an ever
+## thicker veil. Mood still sets the colour and relative amount of haze.
+static func haze_distance_factor(distance: float) -> float:
+	return minf(1.0, HAZE_DISTANCE / maxf(1.0, distance))
+
+
+func _apply_haze(distance: float) -> void:
+	var k := haze_distance_factor(distance)
+	env.fog_density = float(_d.fog_d) * HAZE_STRENGTH * k
+	env.volumetric_fog_density = (0.0011 if mood != "hazy" else 0.003) * VOLUME_STRENGTH * k
 
 
 ## Builds the road strip mesh for a team (called by World when roads change).

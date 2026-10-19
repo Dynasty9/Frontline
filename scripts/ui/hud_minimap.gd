@@ -494,7 +494,7 @@ func _draw_fighting(w: World, sc: float) -> void:
 		draw_circle(p, 1.6 * sc, Color(C_FIGHT.r, C_FIGHT.g, C_FIGHT.b, 0.5))
 
 
-## Every man you can see as a dot with a dark edge (yours brightest, the
+## Every man you can see as a dot with a dark edge (allies brightest, the
 ## selected white), vehicles by their map symbols, drones as yellow points.
 func _draw_units(w: World, sc: float) -> void:
 	var r := 1.3 * sc
@@ -509,7 +509,7 @@ func _draw_units(w: World, sc: float) -> void:
 			rr = r * 1.3
 		elif s.team < 0:
 			c = Color(0.9, 0.9, 0.85)
-		elif s.owner_peer == w.local_peer:
+		elif s.team == w.local_team:
 			c = Defs.TEAM_COLORS[s.team].lightened(0.4)
 		else:
 			c = Defs.TEAM_COLORS[s.team].lightened(0.12)

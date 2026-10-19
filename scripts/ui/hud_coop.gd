@@ -275,7 +275,7 @@ func _name_pill(at: Vector2, peer: int, nm: String, sub: String, a: float) -> Re
 func _view_frame(cam: Camera3D, vs: Vector2, p: CoCommand.Presence) -> void:
 	var w := hud.world
 	var col := w.coop.color(p.peer)
-	var a := 0.95 if p.idle < 45 else 0.5
+	var a := 0.55 if p.idle < 45 else 0.3
 	# looking at much the same ground as you: a whisper of a frame
 	if Defs.flat(p.s_focus - w.cam.focus_pos).length() < 8.0 and absf(p.dist - w.cam.dist) < 10.0:
 		a *= 0.35
@@ -300,8 +300,8 @@ func _view_frame(cam: Camera3D, vs: Vector2, p: CoCommand.Presence) -> void:
 			continue
 		segs.append_array([s1, s0, s0, s2])
 	if not segs.is_empty():
-		draw_multiline(segs, Color(0, 0, 0, 0.45 * a), 6.0, true)
-		draw_multiline(segs, _a(col, a), 3.0, true)
+		draw_multiline(segs, Color(0, 0, 0, 0.25 * a), 3.5, true)
+		draw_multiline(segs, _a(col, a), 1.5, true)
 	# the way he's facing: a tick off the far side
 	var t0 := _gp(cam, f + fwd * (hs + 0.5))
 	var t1 := _gp(cam, f + fwd * (hs + maxf(2.0, hs * 0.3)))
@@ -354,7 +354,7 @@ func _edge_chip(cam: Camera3D, vs: Vector2, p: CoCommand.Presence) -> void:
 		return
 	var e := _edge(cam, vs, p.s_focus)
 	var col := w.coop.color(p.peer)
-	var a := 0.95 if p.idle < 45 else 0.55
+	var a := 0.55 if p.idle < 45 else 0.35
 	var dist := int(round(Defs.flat(p.s_focus - w.cam.focus_pos).length() / 5.0) * 5.0)
 	var txt := w.coop.pname(p.peer).to_upper()
 	var dtx := "%dM" % dist
@@ -473,27 +473,27 @@ func _selection(cam: Camera3D, p: CoCommand.Presence) -> void:
 		for s in g["mem"]:
 			if s.life == Soldier.Life.ALIVE:
 				r = maxf(r, Defs.flat(s.position - c).length() + 2.4)
-				if close and s.visible:
-					_ring(cam, s.position, 0.75, col, 0.9, false, 14, 1.6)
-		var top := _ring(cam, c, minf(r, 18.0), col, 0.85, true, 28)
+				if close and s.visible and not s.selected:
+					_ring(cam, s.position, 0.75, col, 0.4, false, 14, 1.1, false)
+		var top := _ring(cam, c, minf(r, 18.0), col, 0.45, true, 28, 1.3, false)
 		if top != Vector2.INF and tags:
 			_badge(top + Vector2(0, -2), p.peer, 9.0, 0.95)
 	for id in p.veh:
 		var v = w.entity(id)
 		if v is Vehicle and v.visible and not v.gone:
-			var top2 := _ring(cam, v.position, 5.5, col, 0.85, true, 32)
+			var top2 := _ring(cam, v.position, 5.5, col, 0.45, true, 32, 1.3, false)
 			if top2 != Vector2.INF and tags:
 				_badge(top2 + Vector2(0, -2), p.peer, 9.0, 0.95)
 	if p.unit != 0:
 		var u = w.entity(p.unit)
 		if u is Soldier and u.visible:
-			var top3 := _ring(cam, u.position, 1.4, col, 0.95, false, 20)
+			var top3 := _ring(cam, u.position, 1.4, col, 0.55, false, 20, 1.3, false)
 			if top3 != Vector2.INF:
 				_badge(top3 + Vector2(0, -12), p.peer, 8.0, 0.95)
 	if p.st != 0:
 		var st = w.entity(p.st)
 		if st is Structure and st.visible:
-			_ring(cam, st.position, maxf(3.0, st.radius + 1.0), col, 0.75, true, 36)
+			_ring(cam, st.position, maxf(3.0, st.radius + 1.0), col, 0.4, true, 36, 1.3, false)
 
 
 ## What he's lining up, before he commits it: the building's ghost (or the
