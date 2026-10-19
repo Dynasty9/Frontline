@@ -244,9 +244,9 @@ func _order(w: World, req: Dictionary) -> Dictionary:
 	var peer := int(d.get("peer", -1 - int(d.get("team", 0))))
 	for k in ["cmd", "id", "peer", "team"]:
 		d.erase(k)
-	# what the order reaches: squads or vehicles listed but not this commander's are ignored
-	var sqs: int = w._own_squads(peer, d.get("squads", [])).size()
-	var vehs: int = w._own_vehicles(peer, d.get("vehicles", [])).size()
+	# what the order reaches: enemy, neutral or unknown squads and vehicles are ignored
+	var sqs: int = w._command_squads(peer, d.get("squads", [])).size()
+	var vehs: int = w._command_vehicles(peer, d.get("vehicles", [])).size()
 	w.execute_cmd(peer, d)
 	return {"t": w.time, "squads": sqs, "vehicles": vehs}
 

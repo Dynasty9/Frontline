@@ -1,6 +1,6 @@
 class_name HudOrbat
 extends Control
-## Order of battle: every unit you have, grouped (infantry, support teams,
+## Order of battle: every allied unit, grouped (infantry, support teams,
 ## vehicles), a line each (docs/UI.md, Row): its symbol, callsign, what it's
 ## doing as a code (MOV D8, PINNED · DEF E4) and its strength in pips. It sits
 ## on the left scrim with no box: a header, then rows with a rule under each.
@@ -245,7 +245,7 @@ func _squad_row(y: float, sid: int, mem: Array, top: float, bottom: float) -> fl
 		return y + ROW_H
 	var r := Rect2(0, y, W, ROW_H)
 	var team: int = mem[0].team
-	var mine: bool = mem[0].owner_peer == w.local_peer
+	var mine: bool = w.input.is_mine(mem[0])
 	var idx := _rows.size()
 	var sel: bool = sid in w.input.sel_squads
 	_rows.append([r, "sq", sid, mine])
@@ -261,8 +261,6 @@ func _squad_row(y: float, sid: int, mem: Array, top: float, bottom: float) -> fl
 	var tag := String(sym[1])
 	if tag != "":
 		x += 5.0 + UiKit.caps_at(self, Vector2(x + 5.0, y + 17), tag, 10, UiKit.FAINT)
-	if not mine and w.local_team >= 0:
-		x += 6.0 + _owner_tag(Vector2(x + 6.0, y + 17), int(mem[0].owner_peer))
 	# strength: a pip per man, at the end
 	var alive := 0
 	var hurt := 0
@@ -290,7 +288,7 @@ func _vehicle_row(y: float, v, top: float, bottom: float) -> float:
 	if not _visible_row(y, ROW_H, top, bottom):
 		return y + ROW_H
 	var r := Rect2(0, y, W, ROW_H)
-	var mine: bool = v.owner_peer == w.local_peer
+	var mine: bool = w.input.is_mine(v)
 	var idx := _rows.size()
 	var sel: bool = v.eid in w.input.sel_vehicles
 	_rows.append([r, "veh", v.eid, mine])
@@ -301,8 +299,6 @@ func _vehicle_row(y: float, v, top: float, bottom: float) -> float:
 	if by != 0:
 		draw_rect(Rect2(0, y + 3, 2, ROW_H - 6), Net.player_color(by))
 	var x := 26.0 + UiKit.caps_at(self, Vector2(26, y + 17), String(v.display_name()), 13, UiKit.ACCENT if sel else UiKit.TEXT)
-	if not mine and w.local_team >= 0:
-		x += 6.0 + _owner_tag(Vector2(x + 6.0, y + 17), int(v.owner_peer))
 	var hf: float = v.health_frac()
 	UiKit.steps(self, Vector2(W - 40, y + 8), hf * 6.0, 6, UiKit.GOOD if hf > 0.6 else (UiKit.WARN if hf > 0.3 else UiKit.BAD), 5.0, 9.0)
 	var code := "HOLD"
@@ -320,12 +316,3 @@ func _vehicle_row(y: float, v, top: float, bottom: float) -> float:
 		code = "MOVING"
 	UiKit.mono_at(self, Vector2(maxf(x + 12.0, 128.0), y + 17), code, 12, col)
 	return y + ROW_H
-
-
-## Whose a unit is when it isn't yours: another commander's initials in his
-## colour, or AI. Returns the width.
-func _owner_tag(at: Vector2, own: int) -> float:
-	if own > 0 and Net.players.has(own):
-		var nm: String = hud.world.coop.initials(own) if hud.world.coop else Net.player_name(own).substr(0, 2).to_upper()
-		return UiKit.mono_at(self, at, nm, 10, Net.player_color(own))
-	return UiKit.mono_at(self, at, "AI" if own < 0 else "ALLY", 10, UiKit.FAINT)

@@ -71,8 +71,9 @@ func _ready() -> void:
 	_n_players = _figure(top, "Players")
 
 	# search and filters: the mode is one choice, what to hide any of three
-	var fr := HBoxContainer.new()
-	fr.add_theme_constant_override("separation", 26)
+	var fr := HFlowContainer.new()
+	fr.add_theme_constant_override("h_separation", 26)
+	fr.add_theme_constant_override("v_separation", 8)
 	v.add_child(fr)
 	var search := LineEdit.new()
 	search.placeholder_text = "Search battles and hosts"
@@ -108,7 +109,10 @@ func _ready() -> void:
 	var body := HBoxContainer.new()
 	body.add_theme_constant_override("separation", 22)
 	body.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	v.add_child(body)
+	# At narrow sizes the table can scroll sideways without taking its
+	# footer off screen; the filters and direct-connect fields wrap.
+	var body_scroll := UiKit.scroll_content(v, body)
+	body_scroll.custom_minimum_size.y = 180
 	var tcol := VBoxContainer.new()
 	tcol.add_theme_constant_override("separation", 0)
 	tcol.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -188,8 +192,9 @@ func _ready() -> void:
 
 	# connect by address (one line of fields), or host instead
 	v.add_child(_hrule(UiKit.LINE))
-	var bot := HBoxContainer.new()
-	bot.add_theme_constant_override("separation", 12)
+	var bot := HFlowContainer.new()
+	bot.add_theme_constant_override("h_separation", 12)
+	bot.add_theme_constant_override("v_separation", 8)
 	v.add_child(bot)
 	var dl := UiKit.caps("Direct connect", 11, UiKit.FAINT)
 	dl.size_flags_vertical = Control.SIZE_SHRINK_CENTER

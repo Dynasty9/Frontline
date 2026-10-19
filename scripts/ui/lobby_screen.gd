@@ -82,7 +82,9 @@ func _ready() -> void:
 	var body := HBoxContainer.new()
 	body.add_theme_constant_override("separation", 22)
 	body.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	v.add_child(body)
+	# The roster and settings may be taller than a short window. Keep the
+	# Leave / Ready / Start line outside the scrolling part.
+	UiKit.scroll_content(v, body)
 	var left := VBoxContainer.new()
 	left.add_theme_constant_override("separation", 14)
 	left.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -91,6 +93,7 @@ func _ready() -> void:
 	# the two sides
 	var sides := HBoxContainer.new()
 	sides.add_theme_constant_override("separation", 28)
+	sides.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	left.add_child(sides)
 	for t in 2:
 		sides.add_child(_side_column(t))
@@ -224,7 +227,10 @@ func _side_column(t: int) -> Control:
 	v.add_child(note)
 	var rows := VBoxContainer.new()
 	rows.add_theme_constant_override("separation", 0)
-	v.add_child(rows)
+	# A full co-op side must not push its Join button and the lobby footer
+	# off screen. Only the roster scrolls; the side action stays beneath it.
+	var roster := UiKit.scroll_content(v, rows)
+	roster.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	var jm := MarginContainer.new()
 	jm.add_theme_constant_override("margin_top", 10)
 	v.add_child(jm)

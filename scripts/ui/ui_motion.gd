@@ -24,7 +24,10 @@ static func reduced() -> bool:
 ## left): it's drawn in its first frame `travel` pixels off and slides into
 ## place. In a container it waits a frame for the container to place it.
 static func arrive(c: Control, from := Vector2(-1, 0), delay := 0.0, travel := TRAVEL_MD, dur := QUICK) -> void:
-	if reduced() or not is_instance_valid(c):
+	if not is_instance_valid(c):
+		return
+	if reduced():
+		finish_arrive(c)
 		return
 	if delay > 0.0:
 		c.modulate.a = 0.0
@@ -32,14 +35,32 @@ static func arrive(c: Control, from := Vector2(-1, 0), delay := 0.0, travel := T
 		await c.get_tree().process_frame
 		if not is_instance_valid(c):
 			return
+	# A quick close and reopen starts from the resting place, not halfway
+	# through the previous arrival. Otherwise fixed dialogs drift each time.
+	finish_arrive(c)
 	var base := c.position
 	c.position = base + from * travel
+	if delay > 0.0:
+		c.modulate.a = 0.0
 	var tw := c.create_tween()
+	c.set_meta("ui_arrive", {"tween": tw, "base": base})
 	tw.set_ignore_time_scale(true)
 	if delay > 0.0:
 		tw.tween_interval(delay)
 		tw.tween_callback(func(): c.modulate.a = 1.0)
 	tw.tween_property(c, "position", base, dur).set_trans(Tween.TRANS_EXPO).set_ease(Tween.EASE_OUT)
+	tw.tween_callback(func(): c.remove_meta("ui_arrive"))
+
+
+## Finish an arrival before another animation or a window resize lays it out.
+static func finish_arrive(c: Control) -> void:
+	if not c.has_meta("ui_arrive"):
+		return
+	var old: Dictionary = c.get_meta("ui_arrive")
+	(old.tween as Tween).kill()
+	c.position = old.base
+	c.modulate.a = 1.0
+	c.remove_meta("ui_arrive")
 
 
 ## A list's rows arriving one after another (the first eight; the rest with the eighth).

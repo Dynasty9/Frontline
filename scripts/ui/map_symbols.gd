@@ -20,19 +20,27 @@ const ORDER_COLORS := {"assault": Color(1.0, 0.56, 0.44), "attack": Color(1.0, 0
 ## Draws a unit symbol centred on c: friendly = rectangle, hostile = diamond,
 ## the glyph inside says what it is (X infantry, oval armour, both mechanised,
 ## bow-tie rotary wing), a short tag above for teams (MG, AT, MORT, ENG).
-static func nato_vec(ci: CanvasItem, c: Vector2, w: float, friendly: bool, team: int, glyph: String, tag := "", alpha := 1.0) -> void:
+static func nato_vec(ci: CanvasItem, c: Vector2, w: float, friendly: bool, team: int, glyph: String, tag := "", alpha := 1.0, subtle := false) -> void:
 	var col: Color = Defs.TEAM_COLORS[team] if team >= 0 else Color(0.8, 0.8, 0.8)
-	var fill := Color(col.r, col.g, col.b, 0.82 * alpha)
+	# In the world the men must remain visible through their symbol. The map
+	# and roster keep solid counters, where there is no model underneath.
+	var fill := Color(col.r, col.g, col.b, (0.14 if subtle else 0.82) * alpha)
 	var ink := Color(0.02, 0.03, 0.03, 0.95 * alpha)
+	if subtle:
+		ink = UiKit.fa(col.lightened(0.15), 0.9 * alpha)
 	var hw := w * 0.5
 	var hh := w * 0.34
 	var box := Rect2(c - Vector2(hw, hh), Vector2(w, hh * 2.0))
 	if friendly:
+		if subtle:
+			ci.draw_rect(box, Color(0, 0, 0, 0.4 * alpha), false, 3.5)
 		ci.draw_rect(box, fill)
 		ci.draw_rect(box, ink, false, 1.5)
 	else:
 		var d := PackedVector2Array([c + Vector2(0, -hw * 0.8), c + Vector2(hw * 0.8, 0), c + Vector2(0, hw * 0.8), c + Vector2(-hw * 0.8, 0), c + Vector2(0, -hw * 0.8)])
 		MapSymbols.poly(ci, d, fill)
+		if subtle:
+			ci.draw_polyline(d, Color(0, 0, 0, 0.4 * alpha), 3.5, true)
 		ci.draw_polyline(d, ink, 1.5, true)
 		box = Rect2(c - Vector2(hw * 0.42, hh * 0.62), Vector2(hw * 0.84, hh * 1.24))
 	var lw := 1.4
@@ -272,8 +280,8 @@ static var _cells := {}  # key -> Rect2 in the atlas
 static var _atlas_vp: SubViewport
 
 
-static func _nato_key(friendly: bool, team: int, glyph: String) -> String:
-	return "n%d%d%s" % [1 if friendly else 0, team + 1, glyph]
+static func _nato_key(friendly: bool, team: int, glyph: String, subtle := false) -> String:
+	return "n%d%d%s%d" % [1 if friendly else 0, team + 1, glyph, 1 if subtle else 0]
 
 
 static func _glyph_key(kind: String, badge: bool) -> String:
@@ -297,7 +305,8 @@ static func build_atlas(parent: Node, k := 1) -> void:
 	for f in [true, false]:
 		for t in [0, 1, -1]:
 			for g in NATO_GLYPHS:
-				keys.append(["n", f, t, g])
+				for subtle in [false, true]:
+					keys.append(["n", f, t, g, subtle])
 	for kind in GLYPH_KINDS:
 		for b in [true, false]:
 			keys.append(["g", kind, b])
@@ -318,7 +327,7 @@ static func build_atlas(parent: Node, k := 1) -> void:
 		var it: Array = keys[i]
 		var r := Rect2((i % COLS) * CELL * k, (i / COLS) * CELL * k, CELL * k, CELL * k)
 		if it[0] == "n":
-			_cells[_nato_key(it[1], it[2], it[3])] = r
+			_cells[_nato_key(it[1], it[2], it[3], it[4])] = r
 		else:
 			_cells[_glyph_key(it[1], it[2])] = r
 	# the texture is ready once the viewport has drawn
@@ -337,15 +346,15 @@ class AtlasPainter extends Control:
 			var it: Array = keys[i]
 			var c := Vector2((i % COLS) * CELL + CELL * 0.5, (i / COLS) * CELL + CELL * 0.5)
 			if it[0] == "n":
-				MapSymbols.nato_vec(self, c, NATO_W, it[1], it[2], it[3], "", 1.0)
+				MapSymbols.nato_vec(self, c, NATO_W, it[1], it[2], it[3], "", 1.0, it[4])
 			else:
 				MapSymbols.glyph_vec(self, it[1], c, GLYPH_R, Color(1, 1, 1), 1.0, it[2])
 
 
-static func nato(ci: CanvasItem, c: Vector2, w: float, friendly: bool, team: int, glyph: String, tag := "", alpha := 1.0) -> void:
-	var r = _cells.get(_nato_key(friendly, team, glyph)) if atlas else null
+static func nato(ci: CanvasItem, c: Vector2, w: float, friendly: bool, team: int, glyph: String, tag := "", alpha := 1.0, subtle := false) -> void:
+	var r = _cells.get(_nato_key(friendly, team, glyph, subtle)) if atlas else null
 	if r == null:
-		nato_vec(ci, c, w, friendly, team, glyph, tag, alpha)
+		nato_vec(ci, c, w, friendly, team, glyph, tag, alpha, subtle)
 		return
 	var sz := CELL * w / NATO_W
 	ci.draw_texture_rect_region(atlas, Rect2(c - Vector2(sz, sz) * 0.5, Vector2(sz, sz)), r, Color(1, 1, 1, alpha))

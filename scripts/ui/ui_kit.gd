@@ -775,6 +775,20 @@ static func text_width(s: String, size := 13, weight := 400) -> float:
 	return w
 
 
+## A bounded dialog can shrink below its contents without hiding its last
+## action. Focused controls scroll into view for keyboard and controller users.
+static func scroll_content(parent: Control, content: Control) -> ScrollContainer:
+	var sc := ScrollContainer.new()
+	sc.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	sc.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	sc.follow_focus = true
+	parent.add_child(sc)
+	content.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	content.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	sc.add_child(content)
+	return sc
+
+
 ## Centres a panel on its parent at the size it wants, or as much of that as
 ## the parent has room for (a big interface scale in a small window), and
 ## keeps it so as the window changes. Call again to change the size it wants.
@@ -794,6 +808,7 @@ static func fit_center(c: Control, want: Vector2, margin := 16.0) -> void:
 static func _fit(c) -> void:
 	if not is_instance_valid(c):
 		return
+	UiMotion.finish_arrive(c)
 	var p: Control = c.get_parent_control()
 	var room: Vector2 = (p.size if p else c.get_viewport_rect().size) - Vector2.ONE * float(c.get_meta("fit_margin")) * 2.0
 	var want: Vector2 = c.get_meta("fit_want")

@@ -202,10 +202,15 @@ func ui_scale_max() -> float:
 func ui_factor() -> float:
 	if DisplayServer.get_name() == "headless":
 		return 1.0  # no window to fit (and the tests lay out as they always have)
-	var px := _win_px()
+	return ui_factor_for(_win_px())
+
+
+## The same fit calculation without a display, for layout checks at real
+## window sizes. The headless simulation keeps its usual unscaled viewport.
+func ui_factor_for(px: Vector2) -> float:
 	var lim: Vector2 = UI_MIN_MENU if ui_menu else UI_MIN_BATTLE
 	var fit := minf(px.x / lim.x, px.y / lim.y)
-	return minf(maxf(ui_base() * clampf(float(v.ui_scale), UI_SCALE_MIN, 4.0), 0.5), fit)
+	return minf(maxf(px.y / UI_REF_H * clampf(float(v.ui_scale), UI_SCALE_MIN, 4.0), 0.5), fit)
 
 
 func apply_ui_scale() -> void:

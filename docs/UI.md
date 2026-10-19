@@ -88,7 +88,9 @@ darkens toward that edge (`UiScrim`), so it reads over any ground without a box:
 - **Right**: the **Log** and the mission's objectives; in co-op the command net.
 
 Menus put the title and the entries on the left over the living map, panels in the middle, the account on the
-right.
+right. Dialogs stay inside the scaled viewport: long content scrolls, and keyboard focus brings its action into
+view. The lobby's roster scrolls independently so Join, Ready, Start and Leave stay reachable; browser filters
+and direct-connect controls wrap rather than pushing actions off the right edge.
 
 ## Scrim
 

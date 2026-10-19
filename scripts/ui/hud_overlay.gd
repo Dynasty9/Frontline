@@ -35,7 +35,9 @@ func _draw() -> void:
 	var labels_on: bool = hud.map_layer("labels")
 	var a_units := a_far
 	if hud.map_layer("units") and zoom > CLOSE_Z:
-		a_units = maxf(a_far, 0.85)
+		# Do not stack large squad counters on top of individual men at
+		# normal command zoom. Bring them in gradually as the models recede.
+		a_units = maxf(a_far, smoothstep(CLOSE_Z + 6.0, FAR_Z, zoom) * 0.72)
 	if hud.tactical:
 		# the map view: symbols, orders and contacts on a dimmed battlefield
 		a_units = 1.0
@@ -95,7 +97,9 @@ func _draw() -> void:
 			continue
 		var own: bool = s.team == lt
 		var want: bool = s.selected or (own and s.life == Soldier.Life.DOWNED) or (own and s.health_frac() < 0.98 and s.life == Soldier.Life.ALIVE)
-		if not want or (a_far > 0.6 and s.life != Soldier.Life.DOWNED):
+		# At squad-symbol distance the strength pips already say how the
+		# squad is doing; per-man bars would cover the tiny soldier models.
+		if not want or (zoom >= FAR_Z and s.life != Soldier.Life.DOWNED):
 			continue
 		var p: Vector3 = s.position + Vector3(0, 2.1, 0)
 		if cam.is_position_behind(p) or cpos.distance_to(p) > 160.0:
@@ -935,7 +939,7 @@ func _status_icons(men: Array, a: float) -> void:
 		if _overlaps(r):
 			continue
 		_place_rect(r)
-		MapSymbols.glyph(self, gk, sp, 7.5, col, a * (0.7 if gk == "chat" else 1.0))
+		MapSymbols.glyph(self, gk, sp, 6.5, col, a * (0.55 if gk == "chat" else 0.78), false)
 
 ## Zoomed out: one unit symbol per squad, with what it's been told to do, a
 ## pip per man, a burst when it's in contact and its callsign; a new order
@@ -975,7 +979,7 @@ func _nato_markers(cam: Camera3D, lt: int, a: float) -> void:
 		var mem: Array = g["mem"]
 		var sym := MapSymbols.squad_symbol(mem)
 		var sel := _sel_sids.has(sid)
-		var sz := 30.0 if sel else 26.0
+		var sz := (30.0 if sel else 26.0) if hud.tactical else (26.0 if sel else 23.0)
 		var hw := sz * 0.5
 		var o: Array = hud.orders.get(sid, [])
 		var age := 1e9 if o.is_empty() or int(o[5]) < 0 else (now - int(o[5])) / 1000.0
@@ -992,16 +996,15 @@ func _nato_markers(cam: Camera3D, lt: int, a: float) -> void:
 					firing += 1
 				if (s.flags & (Soldier.F_SUPP | Soldier.F_PINNED)) != 0:
 					supp += 1
-		MapSymbols.nato(self, sp, sz, mine, tm, sym[0], sym[1], a)
+		MapSymbols.nato(self, sp, sz, mine, tm, sym[0], sym[1], a, not hud.tactical)
 		if sel:
 			draw_arc(sp, hw + 7.0, 0.0, TAU, 28, Color(1, 1, 1, 0.55 * a), 1.5, true)
-		# another commander's squad: his initials on it, and his colour round it while he has it selected
-		var own := _co_owner(mem[0])
-		if own != 0:
-			_owner_tab(sp + Vector2(hw + 1.0, -sz * 0.34 - 12.0), own, a)
+		# Shared troops have no exclusive controller. Only mark a teammate
+		# who is actively selecting them, not the commander who recruited them.
 		var by := int(w.coop.sel_sq.get(sid, 0)) if w.coop else 0
 		if by != 0:
-			draw_arc(sp, hw + 7.0, 0.0, TAU, 28, HudCoop._a(Net.player_color(by), 0.95 * a), 2.0, true)
+			draw_arc(sp, hw + 7.0, 0.0, TAU, 28, HudCoop._a(Net.player_color(by), 0.55 * a), 1.3, true)
+			_owner_tab(sp + Vector2(hw + 1.0, -sz * 0.34 - 12.0), by, a)
 		if firing > 0:
 			_contact_burst(sp + Vector2(-hw - 3.0, -hw * 0.62), a)
 		if supp * 2 >= maxi(1, alive) and alive > 0:
@@ -1031,10 +1034,6 @@ func _nato_markers(cam: Camera3D, lt: int, a: float) -> void:
 			var tag := _order_tag(o)
 			var ta := clampf((6.0 - age) * 1.5, 0.0, 1.0) * a
 			var tcol := UiKit.ACCENT
-			if own != 0:
-				# who sent it, in his colour
-				tag = "%s %s" % [w.coop.initials(own), tag]
-				tcol = Net.player_color(own)
 			UiKit.mono_at(self, Vector2(sp.x - UiKit.mono_w(tag, 10) * 0.5, ty), tag, 10, Color(tcol.r, tcol.g, tcol.b, ta))
 	for v in w.vehicles:
 		if not v.visible or v.team < 0 or v.vkind == "truck":
@@ -1056,15 +1055,13 @@ func _nato_markers(cam: Camera3D, lt: int, a: float) -> void:
 				vr.position += off
 				break
 		_place_rect(vr)
-		MapSymbols.nato(self, vp, 28.0, v.team == lt or lt < 0, v.team, vs3[0], vs3[1], a)
+		MapSymbols.nato(self, vp, 28.0 if hud.tactical else 24.0, v.team == lt or lt < 0, v.team, vs3[0], vs3[1], a, not hud.tactical)
 		if v.selected:
 			UiKit.ticks(self, Rect2(vp - Vector2(17, 13), Vector2(34, 26)), UiKit.fa(UiKit.ACCENT, a), 5.0, 2.0, 1.5)
-		var vo := _co_owner(v)
-		if vo != 0:
-			_owner_tab(vp + Vector2(6.0, -22.5), vo, a)
 		var vby := int(w.coop.sel_veh.get(v.eid, 0)) if w.coop else 0
 		if vby != 0:
-			draw_arc(vp, 21.0, 0.0, TAU, 28, HudCoop._a(Net.player_color(vby), 0.95 * a), 2.0, true)
+			draw_arc(vp, 21.0, 0.0, TAU, 28, HudCoop._a(Net.player_color(vby), 0.55 * a), 1.3, true)
+			_owner_tab(vp + Vector2(6.0, -22.5), vby, a)
 
 ## The other human commander a unit belongs to (0: yours, the AI's or nobody's).
 func _co_owner(e: Entity) -> int:
@@ -1072,18 +1069,18 @@ func _co_owner(e: Entity) -> int:
 	return own if own > 0 and own != hud.world.local_peer and Net.players.has(own) else 0
 
 
-## Another commander's unit: his initials on a small tab in his colour.
+## An allied commander currently selecting this unit: a light initials tab.
 func _owner_tab(at: Vector2, peer: int, a: float) -> void:
 	var ini := hud.world.coop.initials(peer) if hud.world.coop else "?"
 	var tw := UiKit.mono_w(ini, 8)
 	var r := Rect2(at, Vector2(tw + 6.0, 11.0))
-	draw_rect(r, HudCoop._a(Net.player_color(peer), 0.95 * a))
-	draw_string(UiKit.mono(500), r.position + Vector2(3.0, 8.8), ini, HORIZONTAL_ALIGNMENT_LEFT, -1, 8, UiKit.fa(UiKit.ON_ACCENT, a))
+	draw_rect(r, UiKit.fa(UiKit.INK, 0.3 * a))
+	draw_string(UiKit.mono(500), r.position + Vector2(3.0, 8.8), ini, HORIZONTAL_ALIGNMENT_LEFT, -1, 8, HudCoop._a(Net.player_color(peer).lightened(0.4), 0.8 * a))
 
 
 ## Zoomed out: each order is seen leaving HQ - a link from the commander's
-## headquarters to the squad, with the message running down it (in the
-## colour of whoever sent it, when that's another commander on your side).
+## headquarters to the squad, with the message running down it in team colour.
+## Recruitment ownership does not tell us which ally issued the order.
 func _command_links(cam: Camera3D, a: float) -> void:
 	if a <= 0.0:
 		return
@@ -1109,9 +1106,6 @@ func _command_links(cam: Camera3D, a: float) -> void:
 		var s0 := cam.unproject_position(p0)
 		var s1 := cam.unproject_position(p1)
 		var tc: Color = Defs.TEAM_COLORS[int(o[4])].lightened(0.4)
-		var own := _co_owner((g["mem"] as Array)[0])
-		if own != 0:
-			tc = Net.player_color(own)
 		var fade := clampf((2.2 - age) * 2.0, 0.0, 1.0) * a
 		var mid := (s0 + s1) * 0.5 + Vector2(0, -minf(90.0, s0.distance_to(s1) * 0.18))
 		var pts := PackedVector2Array()
@@ -1141,7 +1135,7 @@ func _hover_card(s: Soldier, mp: Vector2) -> void:
 	var sub: String = Defs.TEAM_NAMES[s.team] if s.team >= 0 else ""
 	var own := _co_owner(s)
 	if own != 0:
-		sub = "%s's" % Net.player_name(own)
+		sub += " · Shared control" if s.team == hud.world.local_team else ""
 	var act := s.doing_text()
 	var ac: Color = Hud.CAT_COLORS.get(s.doing_cat(), UiKit.DIM)
 	match s.life:
@@ -1183,7 +1177,7 @@ func _vehicle_card(v: Vehicle, mp: Vector2) -> void:
 	var sub: String = Defs.TEAM_NAMES[v.team] if v.team >= 0 else ""
 	var own := _co_owner(v)
 	if own != 0:
-		sub = "%s's" % Net.player_name(own)
+		sub += " · Shared control" if v.team == hud.world.local_team else ""
 	var hf := v.health_frac()
 	var st := "Track broken" if (v.flags & Vehicle.F_TRACK) != 0 else ("Burning" if hf < 0.2 else ("Smoking" if hf < 0.4 else ""))
 	var wd := maxf(UiKit.caps_w(nm, 14) + UiKit.caps_w(sub, 11) + 40.0, 184.0)

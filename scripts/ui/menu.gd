@@ -847,10 +847,17 @@ func _build_multiplayer() -> void:
 ## the lobby.
 func _screen(c: Control) -> void:
 	c.set_anchors_preset(Control.PRESET_FULL_RECT)
-	c.offset_left = 72
-	c.offset_right = -72
-	c.offset_top = 196
-	c.offset_bottom = -56
+	var layout := func():
+		UiMotion.finish_arrive(c)
+		# Leave more of a narrow window for the screen, not the decorative
+		# margins. These are logical pixels, after the interface scale.
+		var inset := clampf((size.x - 1200.0) * 0.5, 16.0, 72.0)
+		c.offset_left = inset
+		c.offset_right = -inset
+		c.offset_top = clampf(size.y - 540.0, 16.0, 196.0)
+		c.offset_bottom = -minf(56.0, size.y * 0.065)
+	resized.connect(layout)
+	layout.call()
 
 
 func _open_browser() -> void:
