@@ -33,3 +33,4 @@ caption = "A full generated 3,072 metre battlefield, started with 480 soldiers a
 - Squads retry an unvisited house when a rifleman becomes available to clear it.
 - Soldiers checking buildings search house floors directly, skipping unrelated nearby scenery.
 - Emplaced gunners choose targets their gun can reach instead of fixating on enemies outside its firing arc.
+- Soldiers evaluate the same reaction priorities with less decision-processing overhead.

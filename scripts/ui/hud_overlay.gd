@@ -90,8 +90,9 @@ func _draw() -> void:
 		_status_icons(men, a_mid)
 	_mark("labels")
 	_nato_markers(cam, lt, a_units)
-	_command_links(cam, a_units)
 	_mark("symbols")
+	_command_links(cam, a_units)
+	_mark("command links")
 	# health bars: selected, wounded or downed friendlies
 	for s in w.soldiers:
 		if not s.visible or s.life == Soldier.Life.HIDDEN or s.life == Soldier.Life.DEAD:

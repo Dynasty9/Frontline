@@ -363,9 +363,9 @@ catalogue entry in `MissionList.LIST`, a setup function and an autopilot functio
 ## The systems
 
 **Soldier AI** (`scripts/game/soldier.gd`, `soldier_brain.gd`, `bt.gd`, `combat.gd`)
-- **A behaviour tree decides what each man does** (`bt.gd`, `soldier_brain.gd`): one tree, shared by every
-  soldier and walked each time he thinks. Reflexes come first, most urgent first; then, if he's free, the
-  fight. The leaf that acted is kept on the soldier (`bt_path`) for debugging and the stats.
+- **Priority decisions govern each man** (`soldier_brain.gd`): reflexes come first, most urgent first;
+  then, if he's free, the fight. Direct checks avoid dispatching a tree of callbacks for every soldier.
+  The action that won is kept on the soldier (`bt_path`) for debugging and the stats.
 - **"Grenade!"** The first man to see it yells, and everyone near it picks one of, in order: *smother it* -
   when it's too late to throw and it's among men who can't get away (a wounded man being treated, a crowded
   bay), the man beside it may throw himself on it: it kills him and barely reaches anyone else; *throw it

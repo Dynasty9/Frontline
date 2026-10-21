@@ -1083,6 +1083,7 @@ func _rpc_props(d: Dictionary) -> void:
 
 @rpc("authority", "call_remote", "unreliable_ordered", 1)
 func _rpc_snap(data: PackedByteArray) -> void:
+	var started := Time.get_ticks_usec()
 	var n := data.size()
 	_net_in += n
 	if n < 4:
@@ -1105,6 +1106,7 @@ func _rpc_snap(data: PackedByteArray) -> void:
 		elif _load_rec.has(id):
 			_spawn_states[id] = data.slice(st, st + ln)
 		b.seek(st + ln)
+	vp("snapshot decode", started)
 
 
 @rpc("authority", "call_remote", "unreliable_ordered", 2)

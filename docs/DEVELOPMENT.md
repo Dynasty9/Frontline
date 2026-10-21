@@ -99,7 +99,7 @@ autoload/music.gd       the soundtrack: synthesised instruments, a sequencer, th
 game/world.gd           entity registry, replication (spawn / snapshot / props / fx RPCs), commands, queries
 game/entity.gd          base class: props on spawn, packed state in snapshots
 game/soldier*.gd        brain + procedural articulated model (body_mesh.gd: the lofted body shapes)
-game/soldier_brain.gd   the soldier's behaviour tree: reflexes (grenades, shells, drones, melee), clearing houses, the fight
+game/soldier_brain.gd   the soldier's priority decisions: reflexes (grenades, shells, drones, melee), clearing houses, the fight
 game/bt.gd              a small behaviour tree (selector, sequence, condition, action, cooldown)
 game/squad.gd           shared knowledge, rescues, smoke, surrender, auto-engineering
 game/squad_brain.gd     the squad's behaviour tree: battle drills, morale, fire discipline, ammo sharing
