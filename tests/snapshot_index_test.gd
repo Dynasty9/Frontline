@@ -61,6 +61,11 @@ func _ready() -> void:
 	check(client.time == 18.0, "Later snapshots must continue synchronizing battle time")
 	client._rpc_snap(PackedByteArray([0, 1]))
 	check(client.time == 18.0, "A truncated header must not change the clock")
+	for invalid in [NAN, INF, -1.0]:
+		snapshot.clear()
+		snapshot.put_float(invalid)
+		client._rpc_snap(snapshot.data_array)
+		check(client.time == 18.0, "Invalid snapshot clocks must be rejected")
 	client._physics_process(1.0)
 	check(is_equal_approx(client.time, 18.1), "The view may interpolate only briefly without a fresh snapshot")
 	client._physics_process(1.0)

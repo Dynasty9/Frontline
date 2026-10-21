@@ -55,3 +55,4 @@ caption = "Distant vehicles share simpler material surfaces while retaining thei
 - Capturing towns updates only changed supply roads instead of repainting the whole map; long diagonal roads check only nearby ground cells.
 - Squads checking for enemy buildings use the owned-building index instead of searching unrelated scenery.
 - The battle clock follows the simulation server, excluding loading time and stopping when the host pauses.
+- Large assault formations check only nearby squadmates when choosing cover, retaining the same positions with fewer comparisons.

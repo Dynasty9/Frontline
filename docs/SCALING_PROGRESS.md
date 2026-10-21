@@ -165,3 +165,14 @@ Do not interpret an unchecked gate or a headless result as validated 60 FPS supp
   time and host slowdown in the battle clock. Clients now synchronize that clock
   and extrapolate for at most 100 ms without another snapshot. Direct snapshot,
   ENet authority and real private-server pause/resume/reconnect checks pass.
+
+- Optional detailed reports now include the maximum individual call as well as
+  accumulated time, and split squad planning into phases. This isolated a
+  149.63 ms assault-execution call; ordinary squad formation calls peaked below
+  0.64 ms. Attack plans place larger combined elements directly through terrain.
+- Formation cover searches prefilter previously assigned men once per slot to
+  the maximum possible search reach. Candidate ordering and scoring remain
+  unchanged. All 16 reference cases match exactly, including wall anchors,
+  trenches, narrow/wide formations, 1-96 men and map edges. In the 200-man
+  isolated control, the original placement took 192.11 ms versus 28.00 ms.
+  Full-game performance validation of this change is still pending.

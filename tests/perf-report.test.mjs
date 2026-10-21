@@ -13,7 +13,7 @@ test("performance reports attribute the worst measured tick including terrain wo
   const report = path.join(directory, "report.json");
   const { stdout, stderr } = await promisify(execFile)(process.env.GODOT || "godot", [
     "--headless", "--path", ROOT, "--", "--scenario=stress", "--units=12",
-    "--stress-mode=idle", "--port=19489", "--perf-at=0.1", "--perf-duration=0.3",
+    "--stress-mode=idle", "--perf-details", "--port=19489", "--perf-at=0.1", "--perf-duration=0.3",
     `--perf-json=${report}`, "--quit-after=3",
   ], { timeout: 120_000 });
   assert.doesNotMatch(stdout + stderr, /SCRIPT ERROR|Parse Error/);
@@ -24,4 +24,8 @@ test("performance reports attribute the worst measured tick including terrain wo
   const attributed = Object.values(data.worst_tick.systems_ms).reduce((a, b) => a + b, 0);
   assert.ok(attributed <= data.worst_tick.total_ms + 0.001);
   assert.ok(attributed > 0);
+  assert.ok(data.nested_max_ms._think > 0);
+  for (const [key, peak] of Object.entries(data.nested_max_ms)) {
+    assert.ok(peak <= data.nested_total_ms[key] + 0.001);
+  }
 });

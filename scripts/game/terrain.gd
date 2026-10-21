@@ -1014,13 +1014,18 @@ func slots(c: Vector3, face: Vector3, n: int, wide := false) -> Array:
 		var col := float(i) - (n - 1) * 0.5
 		var depth := -absf(col) * 0.7 if wide else (-1.2 if i % 2 == 0 else 1.0)
 		var p := c + side * col * spacing + face * depth
-		var sp := best_spot_near(p, 3.4 if wide else 2.6, threat, taken)
+		# The widest search reaches 7 + 1.6 + 0.8 m, then checks men within 1.4 m.
+		var nearby_taken := []
+		for previous: Vector3 in taken:
+			if Defs.flat(previous - p).length_squared() < 121.0:
+				nearby_taken.append(previous)
+		var sp := best_spot_near(p, 3.4 if wide else 2.6, threat, nearby_taken)
 		var q: Vector3 = sp[0]
 		if wide and trench[idx_of(q)] == 0:
 			# a defensive line mans the trench if there's one in reach
-			var tq := nearest_trench(p, 7.0, taken)
+			var tq := nearest_trench(p, 7.0, nearby_taken)
 			if tq != Vector3.INF:
-				var ts := best_spot_near(tq, 1.6, threat, taken)
+				var ts := best_spot_near(tq, 1.6, threat, nearby_taken)
 				sp = ts if trench[idx_of(ts[0])] > 0 else [tq, cover_vs(tq, threat), {}]
 				q = sp[0]
 		taken.append(q)

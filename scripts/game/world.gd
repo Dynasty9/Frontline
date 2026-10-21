@@ -757,11 +757,16 @@ var measured_systems := {}
 var measured_worst_tick := {}
 var _measured_tick_systems := {}
 var measured_details := {}
+var measured_detail_max := {}
 var measured_views := {}
 
 
-func detail(key: String, since: int) -> void:
-	measured_details[key] = float(measured_details.get(key, 0.0)) + (Time.get_ticks_usec() - since) / 1000.0
+func detail(key: String, since: int) -> int:
+	var now := Time.get_ticks_usec()
+	var elapsed := (now - since) / 1000.0
+	measured_details[key] = float(measured_details.get(key, 0.0)) + elapsed
+	measured_detail_max[key] = maxf(float(measured_detail_max.get(key, 0.0)), elapsed)
+	return now
 var vp_usec := 0
 var prof_raw := {}
 var sim_usec := 0  # simulation time accumulated since the overlay last read it
@@ -1110,7 +1115,10 @@ func _rpc_snap(data: PackedByteArray) -> void:
 	var b := StreamPeerBuffer.new()
 	b.data_array = data
 	# Loading time and a slow host must not advance the client's battle clock.
-	_snapshot_time = b.get_float()
+	var snapshot_time := b.get_float()
+	if not is_finite(snapshot_time) or snapshot_time < 0.0:
+		return
+	_snapshot_time = snapshot_time
 	time = _snapshot_time
 	while b.get_position() + 5 <= n:
 		var id := b.get_u32()

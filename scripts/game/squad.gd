@@ -310,12 +310,15 @@ func _nearest_threat(p: Vector3, r: float) -> Dictionary:
 
 ## Slots around `center`, each man snapped to the best cover within a few metres.
 func formation(center: Vector3, face: Vector3, n: int, wide := false) -> Array:
+	var stamp := Time.get_ticks_usec() if world.measure_details else 0
 	var out := []
 	for sl in world.terrain.slots(center, face, n, wide):
 		# a fighting position stays exactly where it is (it's beside a wall
 		# by design); anything else is nudged onto open ground
 		var fp: bool = sl.size() > 2 and not (sl[2] as Dictionary).is_empty()
 		out.append(sl[0] if fp else world.nav.nearest_walkable(sl[0]))
+	if stamp:
+		world.detail("squad formation", stamp)
 	return out
 
 
@@ -747,6 +750,7 @@ func tick(dt: float) -> void:
 	if think_t > 0.0:
 		return
 	think_t = 0.5
+	var stamp := Time.get_ticks_usec() if world.measure_details else 0
 	var keep := []
 	for m in members:
 		if is_instance_valid(m) and not m.gone and m.squad == self:
@@ -784,6 +788,8 @@ func tick(dt: float) -> void:
 	if morale < 0.0:
 		morale = SquadBrain.base_morale(self)
 	SquadBrain.morale_tick(self, 0.5)
+	if stamp:
+		stamp = world.detail("squad upkeep", stamp)
 	if ambush_plan != null:
 		ambush_plan.tick()
 		if ambush_plan != null and ambush_plan.done:
@@ -791,22 +797,36 @@ func tick(dt: float) -> void:
 	else:
 		SquadBrain.ambush_tick(self)
 	SquadBrain.think(self)
+	if stamp:
+		stamp = world.detail("squad decisions", stamp)
 	Tactics.crew_tick(self)
 	Tactics.straggler_tick(self)
 	Tactics.overwatch_tick(self)
 	Tactics.then_defend_tick(self)
 	Tactics.clear_call_tick(self)
+	if stamp:
+		stamp = world.detail("squad tactics", stamp)
 	if drill == "rout":
 		_surrender_logic()
 		return
 	if travel and order == "move":
 		_follow_tick()
+	if stamp:
+		stamp = world.detail("squad follow", stamp)
 	_rescue_logic()
 	_surrender_logic()
 	_medic_logic()
+	if stamp:
+		stamp = world.detail("squad rescue", stamp)
 	_engineer_logic()
+	if stamp:
+		stamp = world.detail("squad engineers", stamp)
 	_assault_logic()
+	if stamp:
+		stamp = world.detail("squad assault", stamp)
 	SquadBrain.share_ammo(self)
+	if stamp:
+		stamp = world.detail("squad ammo", stamp)
 
 
 ## Morale as it shows: 0 steady, 1 shaken, 2 breaking, 3 routed.

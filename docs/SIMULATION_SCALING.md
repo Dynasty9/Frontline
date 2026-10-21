@@ -39,6 +39,9 @@ without the optional extension. This is not a full Rust server rewrite.
 - Local navigation grids use a bounded cache rather than eagerly duplicating every
   cell into thousands of local AStarGrid2D objects. Larger maps use 32 m clusters.
   Global terrain/navigation arrays are still dense: this is not infinite streaming.
+- Formation cover searches compare candidates only with previously assigned men
+  within the maximum search reach, preserving the same slots without repeatedly
+  checking distant platoon members.
 - Squad planning is staggered without extra random draws. Nearby members share
   threat assessments for up to 0.25 s; building contacts are shared for up to
   0.75 s. New contacts invalidate those assessments. Separated men assess their
