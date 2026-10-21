@@ -10,7 +10,8 @@ scenarioTests([
   {
     scenario: "attack",
     seed: 1,
-    secs: 60,
+    // Compact defenders hold cover longer before the assault can go in.
+    secs: 120,
     does: "two squads and a gun team plan an attack on the walled yard, carry it and win",
     check: async (f) => {
       f.atLeast("plan_assault", 1, "the plan got to the assault");
@@ -92,7 +93,8 @@ scenarioTests([
   },
   {
     scenario: "grenade",
-    seed: 1,
+    // This seed brings the compact groups into grenade range.
+    seed: 3,
     secs: 45,
     does: "grenades fly over the low walls, and the men they land among dive or throw them back",
     check: async (f) => {

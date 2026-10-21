@@ -906,13 +906,13 @@ func best_cover_near(p: Vector3, r: float, from: Vector3, taken: Array) -> Vecto
 ## The same as [pos, cover level, fighting position or {}]: a fighting
 ## position on a wall, the sandbags or a car (see Cover) beats the bare cells
 ## beside it, since that's exactly where a man would kneel or stand to fire.
-func best_spot_near(p: Vector3, r: float, from: Vector3, taken: Array) -> Array:
-	var best := p
+func best_spot_near(p: Vector3, r: float, from: Vector3, taken: Array, group_center := Vector3.INF, group_radius := 0.0) -> Array:
+	var best := p if group_center == Vector3.INF else group_center
 	var bs := -1e9
-	var c := idx_of(p)
+	var c := idx_of(p if group_center == Vector3.INF else group_center)
 	var cx := c % N
 	var cz := c / N
-	var ri := int(ceil(r))
+	var ri := int(ceil(r if group_center == Vector3.INF else group_radius))
 	for z in range(maxi(0, cz - ri), mini(N, cz + ri + 1)):
 		for x in range(maxi(0, cx - ri), mini(N, cx + ri + 1)):
 			var i := z * N + x
@@ -920,72 +920,56 @@ func best_spot_near(p: Vector3, r: float, from: Vector3, taken: Array) -> Array:
 				continue
 			var q := center(i)
 			var d := Defs.flat(q - p).length()
-			if d > r:
+			if (group_center == Vector3.INF and d > r) or (group_center != Vector3.INF and not group_spot(q, group_center, group_radius)):
 				continue
 			var sc := cover_vs(q, from) * 3.0 - d * 0.6 + (2.5 if trench[i] > 0 else 0.0)
 			for t in taken:
 				if Defs.flat((t as Vector3) - q).length() < 1.4:
-					sc -= 5.0
+					sc -= 100.0 if group_center != Vector3.INF else 5.0
 			if sc > bs:
 				bs = sc
 				best = q
-	var an := Cover.best_near(world, p, r + 0.8, from, taken)
+	var an := Cover.best_near(world, p, r + 0.8 if group_center == Vector3.INF else group_radius * 2.0, from, taken, group_center, group_radius)
 	if not an.is_empty() and float(an[1]) + 0.5 >= bs:
 		return [an[0], Cover.level_of(int(an[2].mat)), an[2]]
 	return [best, cover_vs(best, from), {}]
 
 
-## The closest trench cell to p within r that nobody has taken (INF if none).
-func nearest_trench(p: Vector3, r: float, taken: Array) -> Vector3:
-	var best := Vector3.INF
-	var bs := 1e9
-	var c := idx_of(p)
-	var cx := c % N
-	var cz := c / N
-	var ri := int(ceil(r))
-	for z in range(maxi(0, cz - ri), mini(N, cz + ri + 1)):
-		for x in range(maxi(0, cx - ri), mini(N, cx + ri + 1)):
-			var i := z * N + x
-			if trench[i] == 0 or solid[i] > 0:
-				continue
-			var q := center(i)
-			var d := Defs.flat(q - p).length()
-			if d > r:
-				continue
-			for t in taken:
-				if Defs.flat((t as Vector3) - q).length() < 1.4:
-					d += 6.0
-			if d < bs:
-				bs = d
-				best = q
-	return best if bs < r else Vector3.INF
+## A squad shares open ground; better cover across a wall must not split it.
+func group_spot(p: Vector3, c: Vector3, radius: float, normal := Vector3.ZERO) -> bool:
+	# Wall anchors sit inside padded nav cells; approach from their outward side.
+	var approach := p - normal * 0.8
+	return Defs.flat(p - c).length_squared() <= radius * radius and world.nav.walkable(approach) and world.nav._line_free(c, approach, false)
 
 
-## Formation slots for n men around `c` facing `face`, each snapped to the
-## best cover in reach. Returns [[pos, cover level], ...]. A defensive line
-## (wide) spreads further apart in a shallow arc and looks further for cover.
+## Compact circular slots, shared by orders and their preview. Defence has a
+## little more room to occupy cover, but never stretches into a squad-wide line.
 func slots(c: Vector3, face: Vector3, n: int, wide := false) -> Array:
 	if face.length() < 0.1:
 		face = Vector3.FORWARD
+	c = world.nav.nearest_walkable(c)
+	if world.nav.kind_at(c) != Nav.FREE:
+		# A click on a vaultable wall belongs beside it, on the sheltered side.
+		var best := INF
+		var clicked := c
+		for z in range(-3, 4):
+			for x in range(-3, 4):
+				var q := clicked + Vector3(x, 0, z)
+				var score := q.distance_squared_to(clicked) + face.dot(q - clicked) * 0.1
+				if world.nav.kind_at(q) == Nav.FREE and score < best:
+					best = score
+					c = q
 	var side := face.cross(Vector3.UP).normalized()
 	var threat := c + face * 40.0
 	var taken := []
 	var out := []
-	var spacing := 4.0 if wide else 3.2
+	var radius := 6.5 if wide else 5.5
 	for i in n:
-		var col := float(i) - (n - 1) * 0.5
-		var depth := -absf(col) * 0.7 if wide else (-1.2 if i % 2 == 0 else 1.0)
-		var p := c + side * col * spacing + face * depth
-		var sp := best_spot_near(p, 3.4 if wide else 2.6, threat, taken)
-		var q: Vector3 = sp[0]
-		if wide and trench[idx_of(q)] == 0:
-			# a defensive line mans the trench if there's one in reach
-			var tq := nearest_trench(p, 7.0, taken)
-			if tq != Vector3.INF:
-				var ts := best_spot_near(tq, 1.6, threat, taken)
-				sp = ts if trench[idx_of(ts[0])] > 0 else [tq, cover_vs(tq, threat), {}]
-				q = sp[0]
-		taken.append(q)
+		var angle := i * 2.399963
+		var spread := minf(4.5 if wide else 3.5, sqrt(float(i)) * 1.5)
+		var p := c + (side * cos(angle) + face * sin(angle)) * spread
+		var sp := best_spot_near(p, 3.4 if wide else 2.6, threat, taken, c, radius)
+		taken.append(sp[0])
 		out.append(sp)
 	return out
 

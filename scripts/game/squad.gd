@@ -29,7 +29,7 @@ var contact_t := -99.0
 var alert_t := -99.0  # the last time the squad knew of (or heard) an enemy
 # command and cohesion
 var leader = null  # untyped: the man may be freed
-var travel := false  # long move: the leader leads, the rest keep their place in the wedge
+var travel := false  # long move: the leader leads, the rest keep their place in the group
 var travel_mode := 0
 var final_slots := {}  # eid -> where each man ends up
 var plan = null  # AttackPlan this squad is part of (untyped: shared between squads)
@@ -301,15 +301,16 @@ func order_move(pos: Vector3, face: Vector3, mode := 0, tactical := true) -> voi
 	travel = ld != null and ld in mems and mems.size() > 1 and Defs.flat(pos - centroid()).length() > 26.0
 	travel_mode = mode
 	if travel:
-		# the leader heads for his spot; the others keep their place in the wedge on him
+		# the leader heads for his spot; the others keep their place in a compact group behind him
 		ld.cmd_move(final_slots[ld.eid], mode, facing)
 		_offsets.clear()
 		var k := 0
 		for m in mems:
 			if m == ld:
 				continue
-			var row := k / 2 + 1
-			_offsets[m.eid] = Vector2((-1.0 if k % 2 == 0 else 1.0) * row * 2.6, row * 3.4)
+			var angle := k * 2.399963
+			var radius := minf(3.5, sqrt(float(k + 1)) * 1.4)
+			_offsets[m.eid] = Vector2(cos(angle) * radius, 3.8 + sin(angle) * radius)
 			k += 1
 		_follow_tick()
 	else:
@@ -338,25 +339,19 @@ func _follow_tick() -> void:
 	if head.length() < 0.1:
 		head = facing
 	var side := head.cross(Vector3.UP)
-	# in town the wedge folds into two staggered files, one along each side of
-	# the street, each man watching the windows across from him
-	var urban: bool = world.town_rect.size.x > 8.0 and world.town_rect.grow(-4.0).has_point(Vector2(ld.position.x, ld.position.z))
-	var lag_sum := 0.0
-	var n := 0
+	var max_lag := 0.0
 	for m in members:
 		if m == ld or not m.can_take_orders() or m.detached or not _offsets.has(m.eid):
 			continue
 		var o: Vector2 = _offsets[m.eid]
-		if urban:
-			var row := roundf(o.y / 3.4)
-			o = Vector2(signf(o.x) * 3.2, row * 4.4 + (2.2 if o.x > 0.0 else 0.0) - 2.2)
 		var tgt := world.nav.nearest_walkable(ld.position + side * o.x - head * o.y)
+		if not world.nav._line_free(ld.position, tgt, false):
+			tgt = ld.position  # file through the same gap before spreading out again
 		var lag := Defs.flat(tgt - m.position).length()
-		lag_sum += lag
-		n += 1
+		max_lag = maxf(max_lag, lag)
 		m.follow_to(tgt, 2 if lag > 9.0 else (maxi(travel_mode, 1) if lag > 3.5 else travel_mode), facing)
 	# don't run off and leave them
-	ld.move_mode = 0 if n > 0 and lag_sum / n > 8.0 else travel_mode
+	ld.move_mode = 0 if max_lag > 8.0 else travel_mode
 
 
 func order_attack(t: Entity) -> void:

@@ -443,7 +443,7 @@ catalogue entry in `MissionList.LIST`, a setup function and an autopilot functio
   quiet, a leader, friends close by, a tank alongside and a hole in the ground build it back; dropping enemies
   lifts it. Steady, it fights as it should; shaken, it shoots worse and is pinned sooner; breaking, it breaks
   contact; routed, it runs for the rear and won't take orders until it has rallied. The squad card shows it.
-- **Moving tactically** (`tactics.gd`). Out of contact a squad travels in its wedge; where contact is likely
+- **Moving tactically** (`tactics.gd`). Out of contact a squad travels in a compact group; where contact is likely
   (the enemy about lately, or seen near where it's going) it moves by *bounding overwatch*: one fire team goes
   firm - down, spread out, watching its sectors - while the other dashes 30-odd metres to the next cover, then
   they leapfrog, so nobody is ever in the open without a team covering him. The covering team's gunner puts a
@@ -463,8 +463,12 @@ catalogue entry in `MissionList.LIST`, a setup function and an autopilot functio
   heaves with their breathing, and a man catching his breath stands bent over, hands on his knees. A long move
   at a run arrives winded; a walk keeps men fresh. Men short of ammunition get a magazine from a mate beside them.
 - Every squad has a callsign (Alpha 1, Bravo 2 / Lion 1, Hawk 2...) and a squad leader who takes the orders. On a
-  long move he leads and the men keep their place in a wedge on him, laggards running to catch up, the leader
-  easing off so nobody is left behind. When he goes down, the next man steps up and says so.
+  long move he leads and the men keep a compact circle behind him, laggards running to catch up, the leader
+  easing off for the furthest laggard. Followers file through the same gaps before spreading out again.
+  Orders place the men within 5.5 metres of their destination (6.5 when defending), favoring cover on
+  the same side of walls. Fighting men search within 3 metres of their assigned place without crossing
+  a barrier; detached soldiers, emergency dives and casualty rescue retain their own freedom.
+  When the leader goes down, the next man steps up and says so.
 - The AI commander's orders go out over the command net ("Command: Jackal 1, Lion 2, assault D7.") and the squad
   leaders acknowledge them.
 - **Deliberate attacks** (`attack_plan.gd`): an attack-move order is planned and executed the way infantry are

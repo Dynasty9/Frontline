@@ -383,6 +383,10 @@ func _explode(pos: Vector3, d: Dictionary) -> void:
 ## what stops the most, where he can shoot back, close by and not taken - or
 ## a fold in the ground (a crater, a rubble heap, the woods).
 func find_cover(s: Soldier, anchor: Vector3, radius: float, threats: Array, prone: bool) -> Dictionary:
+	# Men can use cover near their assigned place without vaulting away from the squad.
+	var grouped := s.squad != null and not s.detached and not prone
+	if grouped:
+		radius = minf(radius, 3.0)
 	var cands := []
 	var r2 := radius * radius
 	for st in world.structures_near(anchor, radius + 4.0):
@@ -425,6 +429,9 @@ func find_cover(s: Soldier, anchor: Vector3, radius: float, threats: Array, pron
 			break
 		var ev: Dictionary
 		var st = c[1]
+		var candidate: Vector3 = st.anc_p[c[2]] if st != null else c[2]
+		if grouped and not world.terrain.group_spot(candidate, anchor, radius, st.anc_n[c[2]] if st != null else Vector3.ZERO):
+			continue
 		if st != null:
 			var ai: int = c[2]
 			if not Cover.reachable(world, st.anc_p[ai]):
