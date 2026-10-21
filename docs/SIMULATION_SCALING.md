@@ -44,9 +44,17 @@ without the optional extension. This is not a full Rust server rewrite.
   0.75 s. New contacts invalidate those assessments. Separated men assess their
   own sectors; sight, weapon timing and urgent reactions remain individual.
 - Distant soldiers share baked model poses with generated mesh LOD through
-  64 m spatial MultiMesh batches. Empty batches expire after five seconds. Close models are
+  64 m spatial MultiMesh batches. Only active batches are visited each frame;
+  empty batches expire after five to six seconds. Close models are
   created when needed. Distant color variation and subtle gestures are simplified.
   Hidden units never enter the batch. Selection stays on the individual soldier.
+- Vehicles retain articulated pivots and use one material surface per part beyond
+  100 m. Near materials remain detailed. Wrecks skip this extra baking work during
+  combat. This reduces draw submissions but adds work when a new vehicle loads.
+- Squad marker status shares the existing 10 Hz overview refresh. Empty selection
+  clears only previously marked soldiers; membership and ownership changes still
+  apply immediately. Squad existence checks stop at the first living member
+  instead of allocating a full membership list.
 - Zoomed-out HUD drawing no longer projects every soldier for invisible close-up
   labels. Headquarters links, fog, town counts and minimap symbols use the small
   building indexes; the performance overlay no longer scans every entity for an unused count. Cosmetic network event batches stay below the normal datagram budget.

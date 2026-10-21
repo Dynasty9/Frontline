@@ -1164,6 +1164,10 @@ bounded path work; destroyed obstacles trigger incremental graph rebuilding.
 Distant soldiers use shared baked poses of their procedural models, including
 standing, crouching, prone and walking poses. Nearby soldiers retain articulated
 animation. Distant palette variation and subtle gestures are simplified.
+Distant vehicles use a single material surface per moving part beyond 100 m;
+turrets, wheels and rotors keep their pivots. Near vehicles retain their original
+materials. Wrecks retain their original materials to avoid baking meshes during
+combat. Squad overview status refreshes at 10 Hz; selection remains immediate.
 
 Clients build nearby scenery first and cache visited models; distant models and
 cosmetic collision bodies remain inactive. The server still simulates the complete

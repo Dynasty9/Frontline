@@ -917,7 +917,7 @@ func _military(sqs: Array) -> void:
 	for sq in sqs:
 		if _is_engineer_squad(sq) and sq.kind in ["engineer_team", "digger_team"]:
 			continue
-		if sq.alive_members().is_empty() or sq.kind in ["crew", "r_crew"]:
+		if not sq.has_alive_members() or sq.kind in ["crew", "r_crew"]:
 			continue  # (a crew that bailed out is on its way back to the vehicle park)
 		fighters.append(sq)
 	# retreat battered squads

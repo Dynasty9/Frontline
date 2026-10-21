@@ -10,6 +10,14 @@ caption = "The earlier 500-soldier rendering test on a 1,024 metre map."
 [[screenshots]]
 file = "after.png"
 caption = "A full generated 3,072 metre battlefield, started with 480 soldiers and 20 vehicles. The 60 FPS target remains under validation."
+
+[[screenshots]]
+file = "vehicle-before.png"
+caption = "Detailed vehicle materials at distant camera range, magnified for comparison."
+
+[[screenshots]]
+file = "vehicle-after.png"
+caption = "Distant vehicles share simpler material surfaces while retaining their silhouettes and moving turrets."
 +++
 
 - Static scenery no longer runs an empty building simulation every tick. Fire and combat still affect it.
@@ -37,3 +45,6 @@ caption = "A full generated 3,072 metre battlefield, started with 480 soldiers a
 - Squad callsigns and order labels reuse their drawings while tracking the camera, reducing interface work in large battles.
 - Stationary units avoid redundant model-transform updates, and distant soldier batches avoid rebuilding string keys each frame.
 - Radio notifications reuse unchanged text drawings between their arrival flashes and fade-out.
+- Distant vehicles simplify material surfaces while retaining their moving parts; close-up vehicles keep their detailed materials.
+- Distant soldier rendering visits active pose batches instead of every cached pose each frame.
+- Squad status markers share a short overview refresh, and empty selections avoid scanning every soldier.

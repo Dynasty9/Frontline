@@ -353,6 +353,28 @@ static func bake_mesh(root: Node3D) -> ArrayMesh:
 	var groups := {}
 	var unused := []
 	_collect(root, Transform3D.IDENTITY, groups, unused, [], true, true, true)
+	return _bake_groups(groups)
+
+
+## Moving vehicle parts keep their pivots, but distant paint needs one surface.
+static func add_distance_lod(root: Node3D, distance: float, keep: Array = []) -> void:
+	var groups := {}
+	var originals := []
+	_collect(root, Transform3D.IDENTITY, groups, originals, keep, false, true, true)
+	if groups.is_empty():
+		return
+	var coarse := MeshInstance3D.new()
+	coarse.mesh = _bake_groups(groups)
+	coarse.visibility_range_begin = distance
+	coarse.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	for original: MeshInstance3D in originals:
+		original.visibility_range_end = distance
+		if original.cast_shadow != GeometryInstance3D.SHADOW_CASTING_SETTING_OFF:
+			coarse.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
+	root.add_child(coarse)
+
+
+static func _bake_groups(groups: Dictionary) -> ArrayMesh:
 	var mesh := ArrayMesh.new()
 	var vertices := PackedVector3Array()
 	var normals := PackedVector3Array()
@@ -377,7 +399,7 @@ static func bake_mesh(root: Node3D) -> ArrayMesh:
 	arrays[Mesh.ARRAY_COLOR] = colors
 	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
 	# At this distance cloth weave and metal wear are subpixel. Keep the
-	# uniform, skin and equipment colours in one surface for each shared pose.
+	# uniform, skin, equipment and vehicle paint colours in one surface.
 	if _distant_material == null:
 		_distant_material = ShaderMaterial.new()
 		var simple := Shader.new()

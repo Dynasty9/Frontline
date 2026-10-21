@@ -320,6 +320,7 @@ func _process(dt: float) -> void:
 	var terrain_started := Time.get_ticks_usec()
 	_update_ground_tiles()
 	world.vp("cosmetic terrain collision", terrain_started)
+	var bodies_started := Time.get_ticks_usec()
 	var a := Engine.get_physics_interpolation_fraction()
 	for i in range(ragdolls.size() - 1, -1, -1):
 		var r = ragdolls[i]
@@ -379,3 +380,4 @@ func _process(dt: float) -> void:
 				model.transform = e[3]
 				b2.queue_free()
 				_tosses.remove_at(i)
+	world.vp("cosmetic bodies", bodies_started)

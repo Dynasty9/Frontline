@@ -13,6 +13,8 @@ var _next_pose := 0
 var _warmup: Array = []
 var _detail_frame := -1
 var _detail_count := 0
+var _active: Array = []
+var _expires_at := 0.0
 
 
 func prepare(unit: String, team: int) -> void:
@@ -55,7 +57,9 @@ func _process(_dt: float) -> void:
 	if not _warmup.is_empty():
 		var pose: Array = _warmup.pop_front()
 		_make_pose(pose[0], pose[1], pose[2], pose[3], pose[4])
-	for group: Dictionary in groups.values():
+	var previous_groups := _active
+	_active = []
+	for group: Dictionary in previous_groups:
 		group.count = 0
 	for s: Soldier in world.soldiers:
 		if not s.view_lod or not s.visible or s.gone:
@@ -79,6 +83,8 @@ func _process(_dt: float) -> void:
 		var group := _group_for(key, cell)
 		var mm: MultiMesh = group.mm
 		var slot: int = group.count
+		if slot == 0:
+			_active.append(group)
 		if slot >= mm.instance_count:
 			# Resizing clears transforms; copy only when this cell first grows.
 			var previous := mm.buffer
@@ -95,12 +101,19 @@ func _process(_dt: float) -> void:
 		mm.set_instance_transform(slot, transform)
 		group.count = slot + 1
 		group.last_used = world.time
-	for key in groups.keys():
-		var group: Dictionary = groups[key]
+	for group: Dictionary in previous_groups:
+		if group.count == 0:
+			(group.mm as MultiMesh).visible_instance_count = 0
+	for group: Dictionary in _active:
 		(group.mm as MultiMesh).visible_instance_count = group.count
-		if group.count == 0 and world.time - float(group.last_used) > 5.0:
-			(group.node as MultiMeshInstance3D).queue_free()
-			groups.erase(key)
+	# Old walking poses stay cached briefly, but need no per-frame visits.
+	if world.time >= _expires_at:
+		_expires_at = world.time + 1.0
+		for key in groups.keys():
+			var group: Dictionary = groups[key]
+			if group.count == 0 and world.time - float(group.last_used) > 5.0:
+				(group.node as MultiMeshInstance3D).queue_free()
+				groups.erase(key)
 	world.vp("distant soldiers", started)
 
 

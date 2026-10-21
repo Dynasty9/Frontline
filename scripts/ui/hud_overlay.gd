@@ -387,16 +387,28 @@ func _build_groups(inp) -> void:
 			continue
 		var g: Dictionary = _groups.get(s.sid, {})
 		if g.is_empty():
-			g = {"mem": [], "c": Vector3.ZERO, "n": 0, "team": s.team, "lead": null}
+			g = {"mem": [], "c": Vector3.ZERO, "n": 0, "team": s.team, "lead": null, "firing": 0, "supp": 0, "pips": []}
 			_groups[s.sid] = g
 		(g["mem"] as Array).append(s)
+		var pc := Color(0.92, 0.95, 0.9)
+		if s.life == Soldier.Life.DOWNED:
+			pc = Color(1, 0.32, 0.26)
+		elif s.life != Soldier.Life.ALIVE:
+			pc = Color(0.32, 0.32, 0.3)
+		g.pips.append(pc)
 		if s.life == Soldier.Life.ALIVE:
 			g["c"] = (g["c"] as Vector3) + s.position
 			g["n"] = int(g["n"]) + 1
+			if (s.flags & Soldier.F_SHOOTING) != 0:
+				g.firing += 1
+			if (s.flags & (Soldier.F_SUPP | Soldier.F_PINNED)) != 0:
+				g.supp += 1
 			if (s.flags & Soldier.F_LEADER) != 0:
 				g["lead"] = s
 	for sid in _groups:
 		var g: Dictionary = _groups[sid]
+		g.symbol = MapSymbols.squad_symbol(g.mem)
+		g.callsign = Squad.callsign_of(g.team, int(sid)).to_upper()
 		if int(g["n"]) > 0:
 			g["c"] = (g["c"] as Vector3) / float(g["n"])
 
@@ -1002,7 +1014,7 @@ func _nato_markers(cam: Camera3D, lt: int, a: float) -> void:
 		var tm: int = g["team"]
 		var mine := tm == lt or lt < 0
 		var mem: Array = g["mem"]
-		var sym := MapSymbols.squad_symbol(mem)
+		var sym: Array = g.symbol
 		var sel := _sel_sids.has(sid)
 		var sz := (30.0 if sel else 26.0) if hud.tactical else (26.0 if sel else 23.0)
 		var hw := sz * 0.5
@@ -1011,16 +1023,9 @@ func _nato_markers(cam: Camera3D, lt: int, a: float) -> void:
 		if age < 1.6:
 			var k := age / 1.6
 			draw_arc(sp, 16.0 + k * 28.0, 0.0, TAU, 32, Color(1, 1, 1, (1.0 - k) * 0.85 * a), 2.0, true)
-		var firing := 0
-		var supp := 0
-		var alive := 0
-		for s in mem:
-			if s.life == Soldier.Life.ALIVE:
-				alive += 1
-				if (s.flags & Soldier.F_SHOOTING) != 0:
-					firing += 1
-				if (s.flags & (Soldier.F_SUPP | Soldier.F_PINNED)) != 0:
-					supp += 1
+		var firing: int = g.firing
+		var supp: int = g.supp
+		var alive: int = g.n
 		MapSymbols.nato(self, sp, sz, mine, tm, sym[0], sym[1], a, not hud.tactical)
 		if sel:
 			draw_arc(sp, hw + 7.0, 0.0, TAU, 28, Color(1, 1, 1, 0.55 * a), 1.5, true)
@@ -1041,19 +1046,13 @@ func _nato_markers(cam: Camera3D, lt: int, a: float) -> void:
 		# strength: a pip per man (white standing, red down, grey lost)
 		var py := sp.y + hw * 0.68 + 4.0
 		var px := sp.x - mem.size() * 2.5
-		for s in mem:
-			var pc := Color(0.92, 0.95, 0.9)
-			if s.life == Soldier.Life.DOWNED:
-				pc = Color(1, 0.32, 0.26)
-			elif s.life != Soldier.Life.ALIVE:
-				pc = Color(0.32, 0.32, 0.3)
+		for pc: Color in g.pips:
 			draw_rect(Rect2(px - 0.5, py - 0.5, 5, 4), Color(0, 0, 0, 0.6 * a))
 			draw_rect(Rect2(px, py, 4, 3), Color(pc.r, pc.g, pc.b, a))
 			px += 5.0
 		var ty := py + 15.0
 		if mine:
-			var cs := Squad.callsign_of(tm, int(sid))
-			_map_text(Vector2i(int(sid), 0), Vector2(sp.x, ty), cs.to_upper(), UiKit.cond(600, 1), 10, UiKit.fa(UiKit.TEXT, 0.85 * a))
+			_map_text(Vector2i(int(sid), 0), Vector2(sp.x, ty), g.callsign, UiKit.cond(600, 1), 10, UiKit.fa(UiKit.TEXT, 0.85 * a))
 			ty += 12.0
 		if age < 6.0:
 			var tag := _order_tag(o)

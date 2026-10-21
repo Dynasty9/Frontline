@@ -55,3 +55,21 @@ Do not interpret an unchecked gate or a headless result as validated 60 FPS supp
 - Notifications retain steady drawings between arrival flashes and departure fades; the draw-count lifecycle regression passes.
 - Profiling now includes minimap, roster, notifications and resource drawing, plus physics CPU samples. Nested soldier timers are opt-in (`--details` in the benchmark tool); reports record `detailed_timing` on both processes. The A/B runs did not demonstrate a speedup from removing nested timers.
 - Latest 1 km generated-map diagnostic: 24.64 FPS, frame p50 38.52 ms / p95 59.11 ms, simulation p50 40.32 ms / p95 92.83 ms. Minimap and roster drawing together cost about 3.1 ms/frame. Sparse controls measured 228.48 FPS with 20 soldiers and 29.09 FPS with 480 soldiers plus 20 vehicles. These narrow the remaining bottleneck to battlefield density; they do not satisfy the acceptance gates.
+
+- Vehicle distance materials preserve hull/turret/wheel pivots and detailed near
+  geometry. Magnified before/after renders were inspected. Wrecks skip extra
+  baking to avoid combat-time construction spikes. The focused regression covers
+  real tank turrets, wrecks, bounds, excluded parts and empty pivots.
+- Active soldier batches avoid revisiting every cached animation pose each
+  frame. The sparse mixed-unit diagnostic measured 34.62 FPS; its batch work was
+  about 2.45 ms/frame. Increasing cells from 64 to 128 m did not improve FPS and
+  was reverted. A cosmetic debris-budget experiment also showed no gain and was
+  reverted.
+- Selection and squad overview regressions cover ownership, deaths, new members,
+  freed references, strength pips and status refresh. Selection input cost in the
+  next generated-map diagnostic was about 0.23 ms/frame.
+- Latest generated 1 km, 480 soldiers + 20 vehicles, low, 1280x720, 20-second
+  diagnostic: 29.14 FPS, frame p50 32.91 ms / p95 46.85 ms / maximum 80.07 ms;
+  simulation p50 39.17 ms / p95 94.04 ms. Screenshot inspected. Other user-owned
+  workloads were active, including a separate animation recording; this is not
+  controlled acceptance evidence. Both performance gates remain unmet.

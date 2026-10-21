@@ -1299,7 +1299,7 @@ func team_summary() -> Array:
 		# every squad's current orders, for the map graphics: sid -> [order, where, facing, order number]
 		var sq := {}
 		for s in world.squads.values():
-			if s.team != t or s.alive_members().is_empty():
+			if s.team != t or not s.has_alive_members():
 				continue
 			var pl = null
 			if s.plan != null:

@@ -968,6 +968,8 @@ func _process(_dt: float) -> void:
 			print("PERF nested_total_ms=", JSON.stringify(world.measured_details))
 			_perf_frame_samples.sort()
 			var report := {"rendered": DisplayServer.get_name() != "headless", "fps": fps,
+				"worker_threads": ProjectSettings.get_setting("threading/worker_pool/max_threads"),
+				"render_thread_mode": ProjectSettings.get_setting("rendering/driver/threads/thread_model"),
 				"detailed_timing": world.measure_details, "frames": _sample_report(_perf_frame_samples), "ticks": _sample_report(world.measured_ticks),
 				"render_cpu": _sample_report(_perf_render_cpu), "render_gpu": _sample_report(_perf_render_gpu), "process_cpu": _sample_report(_perf_process), "physics_cpu": _sample_report(_perf_physics),
 				"static_memory_bytes": Performance.get_monitor(Performance.MEMORY_STATIC),

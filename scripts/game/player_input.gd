@@ -5,6 +5,7 @@ extends Node
 
 var world: World
 var sel_squads: Array = []
+var _marked_soldiers: Array[Soldier] = []
 var sel_vehicles: Array = []
 var sel_structure := 0
 var drag_start := Vector2.ZERO
@@ -1070,25 +1071,7 @@ func _view_process(dt: float) -> void:
 			_end_ping()
 		if sketching and not Input.is_mouse_button_pressed(MOUSE_BUTTON_RIGHT):
 			_end_sketch()
-	# keep selection valid
-	var live := {}
-	for s in world.soldiers:
-		if s.sid != 0 and is_mine(s) and s.life != Soldier.Life.DEAD:
-			live[s.sid] = true
-	for i in range(sel_squads.size() - 1, -1, -1):
-		if not live.has(sel_squads[i]):
-			sel_squads.remove_at(i)
-	for i in range(sel_vehicles.size() - 1, -1, -1):
-		if not is_mine(world.entity(sel_vehicles[i])):
-			sel_vehicles.remove_at(i)
-	if sel_structure != 0 and world.entity(sel_structure) == null:
-		sel_structure = 0
-	if sel_unit != 0:
-		var su = world.entity(sel_unit)
-		if not (su is Soldier) or su.life != Soldier.Life.ALIVE or not is_mine(su):
-			sel_unit = 0
-	for s in world.soldiers:
-		s.selected = (s.sid != 0 and s.sid in sel_squads and is_mine(s)) or (sel_unit != 0 and s.eid == sel_unit)
+	_update_selection()
 	_prev_t -= dt
 	if _prev_t <= 0.0:
 		_prev_t = 0.05
@@ -1175,3 +1158,37 @@ func _update_preview() -> void:
 		var p: Vector3 = gp + side * (i - (n - 1) / 2.0) * 13.0
 		for sl in world.terrain.slots(p, face, cnt, order_mode == "defend"):
 			preview.append(sl)
+
+
+func _update_selection() -> void:
+	var live := {}
+	if not sel_squads.is_empty():
+		for s in world.soldiers:
+			if s.sid != 0 and s.sid in sel_squads and is_mine(s) and s.life != Soldier.Life.DEAD:
+				live[s.sid] = true
+	for i in range(sel_squads.size() - 1, -1, -1):
+		if not live.has(sel_squads[i]):
+			sel_squads.remove_at(i)
+	for i in range(sel_vehicles.size() - 1, -1, -1):
+		if not is_mine(world.entity(sel_vehicles[i])):
+			sel_vehicles.remove_at(i)
+	if sel_structure != 0 and world.entity(sel_structure) == null:
+		sel_structure = 0
+	if sel_unit != 0:
+		var su = world.entity(sel_unit)
+		if not (su is Soldier) or su.life != Soldier.Life.ALIVE or not is_mine(su):
+			sel_unit = 0
+	# Clearing an empty selection need only visit the men marked last frame.
+	for s in _marked_soldiers:
+		if is_instance_valid(s):
+			s.selected = false
+	_marked_soldiers.clear()
+	if not sel_squads.is_empty():
+		for s in world.soldiers:
+			if (s.sid != 0 and s.sid in sel_squads and is_mine(s)) or (sel_unit != 0 and s.eid == sel_unit):
+				s.selected = true
+				_marked_soldiers.append(s)
+	elif sel_unit != 0:
+		var s: Soldier = world.entity(sel_unit)
+		s.selected = true
+		_marked_soldiers.append(s)

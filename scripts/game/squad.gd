@@ -142,6 +142,13 @@ func alive_members() -> Array:
 	return out
 
 
+func has_alive_members() -> bool:
+	for m in members:
+		if is_instance_valid(m) and not m.gone and m.life == Soldier.Life.ALIVE:
+			return true
+	return false
+
+
 func centroid() -> Vector3:
 	if _centroid_t == world.time:
 		return _centroid

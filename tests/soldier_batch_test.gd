@@ -13,8 +13,10 @@ func _ready() -> void:
 	var batch := SoldierViewBatch.new()
 	batch.world = world
 	add_child(batch)
-	batch._make_pose("rifleman:0:0:0", "rifleman", 0, 0, 0)
-	var mesh: ArrayMesh = batch.poses["rifleman:0:0:0"]
+	batch.prepare("rifleman", 0)
+	var pose: int = batch._types["rifleman"][0]
+	batch._make_pose(pose, "rifleman", 0, 0, 0)
+	var mesh: ArrayMesh = batch.poses[pose]
 	check(mesh.get_surface_count() == 1, "A distant pose must require only one material draw per pass")
 	var importer := ImporterMesh.from_mesh(mesh)
 	var levels := 0

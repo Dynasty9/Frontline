@@ -2284,7 +2284,7 @@ func _on_player_rejoined(id: int, old_id: int, team: int, pname: String) -> void
 	var back := 0
 	for sid in keep.get("squads", {}):
 		var sq: Squad = squads.get(int(sid))
-		if sq and sq.team == team and not sq.alive_members().is_empty():
+		if sq and sq.team == team and sq.has_alive_members():
 			give_squad(sq, id)
 			back += 1
 	for eid in keep.get("vehicles", {}):
@@ -2358,7 +2358,7 @@ func debug_stats() -> String:
 		# each squad's nerve (and the drill it's in)
 		var mor := []
 		for sq in squads.values():
-			if sq.team == t and not sq.alive_members().is_empty():
+			if sq.team == t and sq.has_alive_members():
 				mor.append("%d%s" % [int(sq.morale), ("/" + sq.drill) if sq.drill != "" else ""])
 		out += " mor=%s" % ",".join(mor)
 	out += "\n   events=%s" % str(stats)

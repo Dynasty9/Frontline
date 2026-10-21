@@ -34,12 +34,14 @@ func _ready() -> void:
 	var original := Vector3i(0, 0, first)
 	assert(view.groups.size() == 1 and view.groups[original].count == 2)
 	assert(view.groups[original].mm.visible_instance_count == 2)
-	b.position.x = 65
+	b.position.x = SoldierViewBatch.CELL + 1
 	view._process(0.0)
 	assert(view.groups[original].count == 1 and view.groups[Vector3i(1, 0, first)].count == 1)
 	a.posture = Soldier.Post.CROUCH
 	view._process(0.0)
 	assert(view.groups[original].count == 0 and view.groups[Vector3i(0, 0, first + 5)].count == 1)
+	assert(view.groups[original].mm.visible_instance_count == 0, "Previous poses must disappear before cache expiry")
+	assert(view._active.size() == 2, "Only populated poses need per-frame updates")
 	b.team = 1
 	view._process(0.0)
 	assert(view.groups[Vector3i(1, 0, enemy)].count == 1)
