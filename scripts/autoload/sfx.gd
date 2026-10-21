@@ -17,60 +17,29 @@ var enabled := true
 var _last := {}  # name -> msec, throttles very frequent sounds
 var far_pool: Array = []  # non-positional players for things heard from far away (aircraft, gunship fire)
 var far_i := 0
+# the sounds being made: the worker threads' task, and what it's making
+var _synth := -1
+var _recipes_made: Array = []
+var _made: Array = []
 
 
 func _ready() -> void:
 	_setup_buses()
+	set_process(false)
 	if DisplayServer.get_name() == "headless":
 		enabled = false
 		if dump_dir() == "":
 			return
-	streams["rifle"] = _gun(0.16, 0.9, 1400.0, 0.55)
-	streams["smg"] = _gun(0.12, 0.7, 1800.0, 0.4)
-	streams["mg"] = _gun(0.14, 0.95, 1100.0, 0.6)
-	streams["pistol"] = _gun(0.11, 0.6, 2200.0, 0.35)
-	streams["hmg"] = _gun(0.26, 1.0, 650.0, 1.1)
-	streams["gmg"] = _gun(0.22, 0.85, 420.0, 1.3)  # a deep thump per grenade
-	streams["ac"] = _gun(0.3, 1.0, 520.0, 1.35)  # autocannon bark
-	streams["minigun"] = _gun(0.07, 0.75, 1600.0, 0.35)
-	streams["mortar"] = _boom(0.45, 0.55, 130.0)
-	streams["whistle"] = _whistle()
-	streams["cannon"] = _boom(1.4, 0.8, 70.0)
-	streams["explosion"] = _boom(1.6, 1.0, 55.0)
-	streams["small_boom"] = _boom(0.7, 0.7, 90.0)
-	streams["ricochet"] = _ricochet()
-	streams["drone"] = _drone_loop()
-	streams["launch"] = _whoosh()
-	streams["thud"] = _thud()
-	streams["click"] = _click()
-	streams["objective"] = _chime([660.0, 880.0])
-	streams["objective_done"] = _chime([660.0, 880.0, 1320.0])
-	streams["objective_failed"] = _chime([520.0, 390.0])
-	streams["ping"] = _pip([1320.0, 1760.0], 0.065)
-	streams["ping_alert"] = _pip([1560.0, 1170.0, 1560.0], 0.06)
-	streams["build"] = _knock()
-	streams["door_kick"] = _door_kick()
-	streams["door"] = _creak()
-	streams["jet"] = _jet()
-	streams["big_boom"] = _boom(2.6, 1.0, 38.0)
-	streams["rotor"] = _rotor_loop()
-	streams["wind"] = _wind_loop()
-	streams["rumble"] = _rumble_loop()
-	streams["rain"] = _rain_loop()
-	streams["thunder"] = _thunder()
-	streams["brrt"] = _burst(2.1, 65.0, 0.16, 1.0, 1.55)
-	streams["ac25"] = _burst(1.3, 30.0, 0.3, 0.55, 0.95)
-	streams["ac40"] = _boom(0.9, 0.95, 92.0)
-	streams["ac105"] = _boom(3.0, 1.0, 34.0)
-	streams["prop"] = _prop_loop()
-	streams["arty_whistle"] = _incoming()
-	streams["fire"] = _fire_loop()
-	# the stats screens and the end of a battle
-	streams["ui_whoosh"] = _ui_whoosh()
-	streams["ui_tick"] = _ui_tick()
-	streams["ui_slam"] = _ui_slam(false)
-	streams["ui_slam_low"] = _ui_slam(true)
-	streams["ui_medal"] = _ui_medal()
+	# Every sound is made at start-up. None depends on another, so they're
+	# made side by side on the worker threads, each with random numbers of its
+	# own (seeded by its name, so it sounds the same every launch): the global
+	# ones aren't safe to share between threads. Nothing waits for them while
+	# the menu is being built; the first sound asked for before they're done
+	# waits for the rest (_ensure).
+	_recipes_made = _recipes()
+	_made.resize(_recipes_made.size())  # each worker fills in only its own slot
+	_synth = WorkerThreadPool.add_group_task(_make.bind(_recipes_made, _made), _recipes_made.size(), -1, true, "Sound synthesis")
+	set_process(true)
 	for i in 32:
 		var p := AudioStreamPlayer3D.new()
 		p.unit_size = 14.0
@@ -91,6 +60,104 @@ func _ready() -> void:
 		fp.bus = &"Effects"
 		add_child(fp)
 		far_pool.append(fp)
+
+
+func _process(_dt: float) -> void:
+	if _synth >= 0 and WorkerThreadPool.is_group_task_completed(_synth):
+		_ensure()
+
+
+## The sounds, once they're all made (waiting for them if they aren't yet).
+func _ensure() -> void:
+	if _synth < 0:
+		return
+	WorkerThreadPool.wait_for_group_task_completion(_synth)
+	_synth = -1
+	for i in _recipes_made.size():
+		streams[_recipes_made[i][0]] = _made[i]
+	_recipes_made = []
+	_made = []
+	set_process(false)
+
+
+## One sound, for a player of your own (null if there's no such sound).
+func stream(sname: String) -> AudioStream:
+	_ensure()
+	return streams.get(sname)
+
+
+## Every sound: its name, and the synthesis that makes it (called with the
+## sound's own RandomNumberGenerator).
+func _recipes() -> Array:
+	return [
+		["rifle", _gun.bind(0.16, 0.9, 1400.0, 0.55)],
+		["smg", _gun.bind(0.12, 0.7, 1800.0, 0.4)],
+		["mg", _gun.bind(0.14, 0.95, 1100.0, 0.6)],
+		["pistol", _gun.bind(0.11, 0.6, 2200.0, 0.35)],
+		["hmg", _gun.bind(0.26, 1.0, 650.0, 1.1)],
+		["gmg", _gun.bind(0.22, 0.85, 420.0, 1.3)],  # a deep thump per grenade
+		["ac", _gun.bind(0.3, 1.0, 520.0, 1.35)],  # autocannon bark
+		["minigun", _gun.bind(0.07, 0.75, 1600.0, 0.35)],
+		["mortar", _boom.bind(0.45, 0.55, 130.0)],
+		["whistle", _whistle],
+		["cannon", _boom.bind(1.4, 0.8, 70.0)],
+		["explosion", _boom.bind(1.6, 1.0, 55.0)],
+		["small_boom", _boom.bind(0.7, 0.7, 90.0)],
+		["ricochet", _ricochet],
+		["drone", _drone_loop],
+		["launch", _whoosh],
+		["thud", _thud],
+		["click", _click],
+		["objective", _chime.bind([660.0, 880.0])],
+		["objective_done", _chime.bind([660.0, 880.0, 1320.0])],
+		["objective_failed", _chime.bind([520.0, 390.0])],
+		["ping", _pip.bind([1320.0, 1760.0], 0.065)],
+		["ping_alert", _pip.bind([1560.0, 1170.0, 1560.0], 0.06)],
+		["build", _knock],
+		["door_kick", _door_kick],
+		["door", _creak],
+		["jet", _jet],
+		["big_boom", _boom.bind(2.6, 1.0, 38.0)],
+		["rotor", _rotor_loop],
+		["wind", _wind_loop],
+		["rumble", _rumble_loop],
+		["rain", _rain_loop],
+		["thunder", _thunder],
+		["brrt", _burst.bind(2.1, 65.0, 0.16, 1.0, 1.55)],
+		["ac25", _burst.bind(1.3, 30.0, 0.3, 0.55, 0.95)],
+		["ac40", _boom.bind(0.9, 0.95, 92.0)],
+		["ac105", _boom.bind(3.0, 1.0, 34.0)],
+		["prop", _prop_loop],
+		["arty_whistle", _incoming],
+		["fire", _fire_loop],
+		# wildlife (wildlife.gd), on the ambience
+		["birdsong", _birdsong],
+		["birdsong2", _birdsong],
+		["flutter", _flutter],
+		["coo", _coo],
+		["caw", _caw],
+		["gull", _gull],
+		["plop", _plop],
+		["splash", _splash],
+		["squeak", _squeak],
+		# the stats screens and the end of a battle
+		["ui_whoosh", _ui_whoosh],
+		["ui_tick", _ui_tick],
+		["ui_slam", _ui_slam.bind(false)],
+		["ui_slam_low", _ui_slam.bind(true)],
+		["ui_medal", _ui_medal],
+	]
+
+
+## (On a worker thread.) Makes sound i of the recipes into made[i]. A recipe
+## several sounds share (_gun, _boom, _burst...) and the helpers they all call
+## (_wav, _normalize, _seamless) run on several threads at once, so they keep
+## to typed values and never divide whole numbers with / or %: that can crash
+## (see HNav.build_all).
+func _make(i: int, recipes: Array, made: Array) -> void:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = hash(String(recipes[i][0]))
+	made[i] = (recipes[i][1] as Callable).call(rng)
 
 
 func _setup_buses() -> void:
@@ -117,13 +184,17 @@ func dump_dir() -> String:
 
 
 func dump(dir: String) -> void:
+	_ensure()
 	DirAccess.make_dir_recursive_absolute(dir)
 	for k in streams:
 		(streams[k] as AudioStreamWAV).save_to_wav(dir.path_join(String(k) + ".wav"))
 
 
 func play(sname: String, pos: Vector3, vol_db := 0.0, pitch := 1.0, bus := &"Effects") -> void:
-	if not enabled or not streams.has(sname):
+	if not enabled:
+		return
+	_ensure()
+	if not streams.has(sname):
 		return
 	var now := Time.get_ticks_msec()
 	if now - int(_last.get(sname + str(int(pos.x / 8)) + str(int(pos.z / 8)), 0)) < 25:
@@ -142,7 +213,10 @@ func play(sname: String, pos: Vector3, vol_db := 0.0, pitch := 1.0, bus := &"Eff
 ## Heard rather than placed: aircraft overhead, a gunship's guns two hundred
 ## metres up. `pan` is ignored (mono), volume falls off with `dist`.
 func play_far(sname: String, vol_db := 0.0, pitch := 1.0, dist := 0.0) -> void:
-	if not enabled or not streams.has(sname):
+	if not enabled:
+		return
+	_ensure()
+	if not streams.has(sname):
 		return
 	var p: AudioStreamPlayer = far_pool[far_i]
 	far_i = (far_i + 1) % far_pool.size()
@@ -153,7 +227,10 @@ func play_far(sname: String, vol_db := 0.0, pitch := 1.0, dist := 0.0) -> void:
 
 
 func ui(sname: String, vol_db := -8.0, pitch := 1.0) -> void:
-	if not enabled or not streams.has(sname):
+	if not enabled:
+		return
+	_ensure()
+	if not streams.has(sname):
 		return
 	var p: AudioStreamPlayer = ui_pool[ui_i % ui_pool.size()]
 	ui_i += 1
@@ -167,6 +244,7 @@ func make_drone_player() -> AudioStreamPlayer3D:
 	var p := AudioStreamPlayer3D.new()
 	p.bus = &"Effects"
 	if enabled:
+		_ensure()
 		p.stream = streams["drone"]
 		p.unit_size = 10.0
 		p.max_distance = 120.0
@@ -194,7 +272,7 @@ func _wav(samples: PackedFloat32Array, loop := false) -> AudioStreamWAV:
 	return w
 
 
-func _gun(dur: float, vol: float, crack_hz: float, body: float) -> AudioStreamWAV:
+func _gun(rng: RandomNumberGenerator, dur: float, vol: float, crack_hz: float, body: float) -> AudioStreamWAV:
 	var n := int(dur * RATE)
 	var s := PackedFloat32Array()
 	s.resize(n)
@@ -202,7 +280,7 @@ func _gun(dur: float, vol: float, crack_hz: float, body: float) -> AudioStreamWA
 	var a := clampf(crack_hz / RATE * 6.0, 0.05, 0.9)
 	for i in n:
 		var t := float(i) / RATE
-		var noise := randf() * 2.0 - 1.0
+		var noise := rng.randf() * 2.0 - 1.0
 		lp += (noise - lp) * a
 		var crack := lp * exp(-t * 38.0)
 		var thump := sin(TAU * 95.0 * t) * exp(-t * 28.0) * body
@@ -210,7 +288,7 @@ func _gun(dur: float, vol: float, crack_hz: float, body: float) -> AudioStreamWA
 	return _wav(s)
 
 
-func _boom(dur: float, vol: float, base_hz: float) -> AudioStreamWAV:
+func _boom(rng: RandomNumberGenerator, dur: float, vol: float, base_hz: float) -> AudioStreamWAV:
 	var n := int(dur * RATE)
 	var s := PackedFloat32Array()
 	s.resize(n)
@@ -218,7 +296,7 @@ func _boom(dur: float, vol: float, base_hz: float) -> AudioStreamWAV:
 	var lp2 := 0.0
 	for i in n:
 		var t := float(i) / RATE
-		var noise := randf() * 2.0 - 1.0
+		var noise := rng.randf() * 2.0 - 1.0
 		lp += (noise - lp) * 0.08
 		lp2 += (lp - lp2) * 0.1
 		var env := exp(-t * 3.2) * (1.0 - exp(-t * 400.0))
@@ -228,7 +306,7 @@ func _boom(dur: float, vol: float, base_hz: float) -> AudioStreamWAV:
 	return _wav(s)
 
 
-func _ricochet() -> AudioStreamWAV:
+func _ricochet(rng: RandomNumberGenerator) -> AudioStreamWAV:
 	var n := int(0.35 * RATE)
 	var s := PackedFloat32Array()
 	s.resize(n)
@@ -237,11 +315,11 @@ func _ricochet() -> AudioStreamWAV:
 		var t := float(i) / RATE
 		var f := 3400.0 - t * 5000.0
 		ph += TAU * f / RATE
-		s[i] = (sin(ph) * 0.5 + (randf() - 0.5) * 0.15) * exp(-t * 9.0)
+		s[i] = (sin(ph) * 0.5 + (rng.randf() - 0.5) * 0.15) * exp(-t * 9.0)
 	return _wav(s)
 
 
-func _drone_loop() -> AudioStreamWAV:
+func _drone_loop(rng: RandomNumberGenerator) -> AudioStreamWAV:
 	var n := int(0.5 * RATE)
 	var s := PackedFloat32Array()
 	s.resize(n)
@@ -253,11 +331,11 @@ func _drone_loop() -> AudioStreamWAV:
 		ph2 += TAU * 392.0 / RATE
 		var saw := fmod(ph / TAU, 1.0) * 2.0 - 1.0
 		var saw2 := fmod(ph2 / TAU, 1.0) * 2.0 - 1.0
-		s[i] = (saw * 0.35 + saw2 * 0.15 + (randf() - 0.5) * 0.08) * 0.8
+		s[i] = (saw * 0.35 + saw2 * 0.15 + (rng.randf() - 0.5) * 0.08) * 0.8
 	return _wav(s, true)
 
 
-func _whoosh() -> AudioStreamWAV:
+func _whoosh(rng: RandomNumberGenerator) -> AudioStreamWAV:
 	var n := int(0.7 * RATE)
 	var s := PackedFloat32Array()
 	s.resize(n)
@@ -265,13 +343,13 @@ func _whoosh() -> AudioStreamWAV:
 	for i in n:
 		var t := float(i) / RATE
 		var a := 0.05 + t * 0.4
-		lp += ((randf() * 2.0 - 1.0) - lp) * a
+		lp += ((rng.randf() * 2.0 - 1.0) - lp) * a
 		s[i] = lp * exp(-t * 3.0) * (1.0 - exp(-t * 60.0)) * 1.6
 	return _wav(s)
 
 
 ## Jet pass: rising roar, a doppler drop as it goes over, rumble trailing off.
-func _jet() -> AudioStreamWAV:
+func _jet(rng: RandomNumberGenerator) -> AudioStreamWAV:
 	var n := int(5.0 * RATE)
 	var s := PackedFloat32Array()
 	s.resize(n)
@@ -282,7 +360,7 @@ func _jet() -> AudioStreamWAV:
 		var t := float(i) / RATE
 		var t_pass := 2.2
 		var near := 1.0 / (1.0 + pow((t - t_pass) * 1.6, 2.0))
-		var noise := randf() * 2.0 - 1.0
+		var noise := rng.randf() * 2.0 - 1.0
 		lp += (noise - lp) * (0.08 + near * 0.25)
 		lp2 += (lp - lp2) * 0.2
 		var f := 900.0 if t < t_pass else 900.0 - minf(1.0, (t - t_pass) * 2.0) * 380.0
@@ -294,7 +372,7 @@ func _jet() -> AudioStreamWAV:
 
 
 ## Helicopter rotor: low thudding blade slap over turbine whine.
-func _rotor_loop() -> AudioStreamWAV:
+func _rotor_loop(rng: RandomNumberGenerator) -> AudioStreamWAV:
 	var n := int(1.0 * RATE)
 	var s := PackedFloat32Array()
 	s.resize(n)
@@ -302,7 +380,7 @@ func _rotor_loop() -> AudioStreamWAV:
 	var ph := 0.0
 	for i in n:
 		var t := float(i) / RATE
-		var noise := randf() * 2.0 - 1.0
+		var noise := rng.randf() * 2.0 - 1.0
 		lp += (noise - lp) * 0.12
 		var slap := pow(maxf(0.0, sin(TAU * 5.0 * t)), 8.0)
 		ph += TAU * 1450.0 / RATE
@@ -315,7 +393,7 @@ func _rotor_loop() -> AudioStreamWAV:
 ## irregularly. The gusts are slow swells whose periods divide the loop, so it
 ## repeats seamlessly and only every ten seconds. Nothing much below 200 Hz:
 ## low noise that swells and fades sounds like surf on a beach, not wind.
-func _wind_loop() -> AudioStreamWAV:
+func _wind_loop(rng: RandomNumberGenerator) -> AudioStreamWAV:
 	var secs := 10.0
 	var n := int(secs * RATE)
 	var fade := int(0.5 * RATE)
@@ -323,7 +401,7 @@ func _wind_loop() -> AudioStreamWAV:
 	s.resize(n + fade)
 	var parts := []
 	for k in [1, 2, 3, 5, 8]:
-		parts.append([float(k), randf() * TAU, randf_range(0.5, 1.0) / pow(float(k), 0.6)])
+		parts.append([float(k), rng.randf() * TAU, rng.randf_range(0.5, 1.0) / pow(float(k), 0.6)])
 	var top := 0.0
 	for p in parts:
 		top += float(p[2])
@@ -341,7 +419,7 @@ func _wind_loop() -> AudioStreamWAV:
 				v += float(p[2]) * sin(TAU * float(p[0]) * t / secs + float(p[1]))
 			g = 0.5 + 0.5 * v / top
 			f = 2.0 * sin(PI * (230.0 + 420.0 * g) / RATE)
-		var w := randf() * 2.0 - 1.0
+		var w := rng.randf() * 2.0 - 1.0
 		# the howl: noise through a resonant band-pass (a state-variable filter)
 		low += f * band
 		band += f * (w - low - 0.45 * band)
@@ -354,7 +432,7 @@ func _wind_loop() -> AudioStreamWAV:
 
 ## The battle somewhere else: muffled artillery thumps with long tails, far-off
 ## machine-gun bursts, and a faint low murmur between them (8 s loop).
-func _rumble_loop() -> AudioStreamWAV:
+func _rumble_loop(rng: RandomNumberGenerator) -> AudioStreamWAV:
 	var secs := 8.0
 	var n := int(secs * RATE)
 	var fade := int(0.5 * RATE)
@@ -364,7 +442,7 @@ func _rumble_loop() -> AudioStreamWAV:
 	var lp2 := 0.0
 	var hp := 0.0
 	for i in n + fade:
-		lp += ((randf() * 2.0 - 1.0) - lp) * 0.03
+		lp += ((rng.randf() * 2.0 - 1.0) - lp) * 0.03
 		lp2 += (lp - lp2) * 0.03
 		hp += (lp2 - hp) * 0.012
 		s[i] = lp2 - hp
@@ -372,27 +450,27 @@ func _rumble_loop() -> AudioStreamWAV:
 	# distant guns, one in each fifth of the loop so they never bunch up (a tail
 	# running past the end carries on at the start: it's a loop)
 	for j in 5:
-		var k0 := int((j * secs / 5.0 + randf_range(0.0, secs / 5.0 - 0.6)) * RATE)
-		var amp := randf_range(0.35, 1.0)
-		var f0 := randf_range(42.0, 62.0)
+		var k0 := int((j * secs / 5.0 + rng.randf_range(0.0, secs / 5.0 - 0.6)) * RATE)
+		var amp := rng.randf_range(0.35, 1.0)
+		var f0 := rng.randf_range(42.0, 62.0)
 		var a := 0.0
 		var b := 0.0
 		for i in int(2.2 * RATE):
 			var t := float(i) / RATE
-			a += ((randf() * 2.0 - 1.0) - a) * 0.08
+			a += ((rng.randf() * 2.0 - 1.0) - a) * 0.08
 			b += (a - b) * 0.08
 			var env := (1.0 - exp(-t * 60.0)) * exp(-t * 2.6)
 			s[(k0 + i) % n] += (b * 6.0 + sin(TAU * f0 * t) * 0.3 * exp(-t * 5.0)) * env * amp
 	# a machine gun firing a long way off
 	for j in 3:
-		var t0 := randf_range(0.0, secs)
-		var rate := randf_range(8.0, 12.0)
-		var amp := randf_range(0.04, 0.09)
-		for q in randi_range(4, 9):
-			var k0 := int((t0 + q / rate + randf_range(0.0, 0.01)) * RATE)
+		var t0 := rng.randf_range(0.0, secs)
+		var rate := rng.randf_range(8.0, 12.0)
+		var amp := rng.randf_range(0.04, 0.09)
+		for q in rng.randi_range(4, 9):
+			var k0 := int((t0 + q / rate + rng.randf_range(0.0, 0.01)) * RATE)
 			var a := 0.0
 			for i in int(0.08 * RATE):
-				a += ((randf() * 2.0 - 1.0) - a) * 0.25
+				a += ((rng.randf() * 2.0 - 1.0) - a) * 0.25
 				s[(k0 + i) % n] += a * exp(-float(i) / RATE * 55.0) * amp
 	# take out what's below hearing: it only reads as pressure, like surf
 	# (run round the loop twice so the filter starts where it ends)
@@ -406,7 +484,7 @@ func _rumble_loop() -> AudioStreamWAV:
 
 
 ## Rain: dense hiss with patter (seamless 3 s loop).
-func _rain_loop() -> AudioStreamWAV:
+func _rain_loop(rng: RandomNumberGenerator) -> AudioStreamWAV:
 	var n := int(3.0 * RATE)
 	var fade := int(0.3 * RATE)
 	var s := PackedFloat32Array()
@@ -414,12 +492,12 @@ func _rain_loop() -> AudioStreamWAV:
 	var lp := 0.0
 	var hp := 0.0
 	for i in n + fade:
-		var w := randf() * 2.0 - 1.0
+		var w := rng.randf() * 2.0 - 1.0
 		lp += (w - lp) * 0.35
 		hp += (lp - hp) * 0.05
 		var v := (lp - hp) * 0.5
-		if randf() < 0.004:
-			v += (randf() - 0.5) * 0.6
+		if rng.randf() < 0.004:
+			v += (rng.randf() - 0.5) * 0.6
 		s[i] = v
 	return _wav(_seamless(s, fade), true)
 
@@ -452,7 +530,7 @@ func _normalize(s: PackedFloat32Array, rms_db: float) -> PackedFloat32Array:
 ## and the odd sharp pop of sap or a round cooking off. The roar sits between
 ## ~150 and ~500 Hz: below that, noise that swells reads as surf, like the old
 ## wind did. Its breathing repeats twice and five times a loop, so it's seamless.
-func _fire_loop() -> AudioStreamWAV:
+func _fire_loop(rng: RandomNumberGenerator) -> AudioStreamWAV:
 	var n := int(4.0 * RATE)
 	var fade := int(0.3 * RATE)
 	var s := PackedFloat32Array()
@@ -464,23 +542,23 @@ func _fire_loop() -> AudioStreamWAV:
 	var ck_lp := 0.0
 	for i in n + fade:
 		var t := float(i) / RATE
-		var w := randf() * 2.0 - 1.0
+		var w := rng.randf() * 2.0 - 1.0
 		a += (w - a) * 0.12
 		b += (a - b) * 0.12
 		hp += (b - hp) * 0.04
 		var roar := (b - hp) * (0.7 + 0.18 * sin(t * TAU * 0.5) + 0.12 * sin(t * TAU * 1.25 + 1.0))
-		if randf() < 0.0016:
-			ck = randf_range(0.25, 0.8)
-		elif randf() < 0.00006:
+		if rng.randf() < 0.0016:
+			ck = rng.randf_range(0.25, 0.8)
+		elif rng.randf() < 0.00006:
 			ck = 1.0
 		ck *= 0.988
-		ck_lp += (randf() * 2.0 - 1.0 - ck_lp) * 0.55
+		ck_lp += (rng.randf() * 2.0 - 1.0 - ck_lp) * 0.55
 		s[i] = roar * 0.65 + ck_lp * ck * 0.5
 	return _wav(_seamless(s, fade), true)
 
 
 ## Thunder: a crack followed by a long rolling rumble.
-func _thunder() -> AudioStreamWAV:
+func _thunder(rng: RandomNumberGenerator) -> AudioStreamWAV:
 	var n := int(5.0 * RATE)
 	var s := PackedFloat32Array()
 	s.resize(n)
@@ -488,7 +566,7 @@ func _thunder() -> AudioStreamWAV:
 	var lp2 := 0.0
 	for i in n:
 		var t := float(i) / RATE
-		var w := randf() * 2.0 - 1.0
+		var w := rng.randf() * 2.0 - 1.0
 		lp += (w - lp) * 0.04
 		lp2 += (lp - lp2) * 0.05
 		var roll := (0.6 + 0.4 * sin(TAU * 1.3 * t) * sin(TAU * 0.7 * t + 2.0)) * exp(-t * 0.7)
@@ -500,6 +578,7 @@ func _thunder() -> AudioStreamWAV:
 func make_loop_player(sname: String, unit := 14.0, vol := -2.0) -> AudioStreamPlayer3D:
 	var p := AudioStreamPlayer3D.new()
 	p.bus = &"Effects"
+	_ensure()
 	if enabled and streams.has(sname):
 		p.stream = streams[sname]
 		p.unit_size = unit
@@ -514,6 +593,7 @@ func make_loop_player(sname: String, unit := 14.0, vol := -2.0) -> AudioStreamPl
 func make_ambience(sname: String, vol_db: float) -> AudioStreamPlayer:
 	var p := AudioStreamPlayer.new()
 	p.bus = &"Ambience"
+	_ensure()
 	if enabled and streams.has(sname):
 		p.stream = streams[sname]
 		p.volume_db = vol_db
@@ -521,7 +601,7 @@ func make_ambience(sname: String, vol_db: float) -> AudioStreamPlayer:
 	return p
 
 
-func _whistle() -> AudioStreamWAV:
+func _whistle(rng: RandomNumberGenerator) -> AudioStreamWAV:
 	var n := int(1.4 * RATE)
 	var s := PackedFloat32Array()
 	s.resize(n)
@@ -534,17 +614,17 @@ func _whistle() -> AudioStreamWAV:
 	return _wav(s)
 
 
-func _thud() -> AudioStreamWAV:
+func _thud(rng: RandomNumberGenerator) -> AudioStreamWAV:
 	var n := int(0.18 * RATE)
 	var s := PackedFloat32Array()
 	s.resize(n)
 	for i in n:
 		var t := float(i) / RATE
-		s[i] = (sin(TAU * 110.0 * t) * 0.8 + (randf() - 0.5) * 0.3) * exp(-t * 30.0)
+		s[i] = (sin(TAU * 110.0 * t) * 0.8 + (rng.randf() - 0.5) * 0.3) * exp(-t * 30.0)
 	return _wav(s)
 
 
-func _click() -> AudioStreamWAV:
+func _click(rng: RandomNumberGenerator) -> AudioStreamWAV:
 	var n := int(0.04 * RATE)
 	var s := PackedFloat32Array()
 	s.resize(n)
@@ -555,7 +635,7 @@ func _click() -> AudioStreamWAV:
 
 
 ## A panel sliding in: a short breath of air, rising then gone.
-func _ui_whoosh() -> AudioStreamWAV:
+func _ui_whoosh(rng: RandomNumberGenerator) -> AudioStreamWAV:
 	var dur := 0.34
 	var n := int(dur * RATE)
 	var s := PackedFloat32Array()
@@ -566,26 +646,26 @@ func _ui_whoosh() -> AudioStreamWAV:
 		var t := float(i) / RATE
 		var k := t / dur
 		var cut := 0.04 + 0.32 * sin(k * PI)
-		lp += ((randf() * 2.0 - 1.0) - lp) * cut
+		lp += ((rng.randf() * 2.0 - 1.0) - lp) * cut
 		lp2 += (lp - lp2) * 0.5
 		s[i] = (lp - lp2 * 0.6) * pow(sin(k * PI), 1.6) * 1.5
 	return _wav(s)
 
 
 ## One tick of a number counting up.
-func _ui_tick() -> AudioStreamWAV:
+func _ui_tick(rng: RandomNumberGenerator) -> AudioStreamWAV:
 	var n := int(0.022 * RATE)
 	var s := PackedFloat32Array()
 	s.resize(n)
 	for i in n:
 		var t := float(i) / RATE
-		s[i] = (sin(TAU * 2700.0 * t) * 0.6 + sin(TAU * 5400.0 * t) * 0.15 + (randf() - 0.5) * 0.12) * exp(-t * 260.0) * 0.55
+		s[i] = (sin(TAU * 2700.0 * t) * 0.6 + sin(TAU * 5400.0 * t) * 0.15 + (rng.randf() - 0.5) * 0.12) * exp(-t * 260.0) * 0.55
 	return _wav(s)
 
 
 ## The end-of-battle banner landing: a sub drop under a hard transient, a
 ## metal ring, and a long dark tail. low: the defeat's, heavier and duller.
-func _ui_slam(low: bool) -> AudioStreamWAV:
+func _ui_slam(rng: RandomNumberGenerator, low: bool) -> AudioStreamWAV:
 	var dur := 1.8
 	var n := int(dur * RATE)
 	var s := PackedFloat32Array()
@@ -600,19 +680,19 @@ func _ui_slam(low: bool) -> AudioStreamWAV:
 		var f := f1 + (f0 - f1) * exp(-t * 6.0)
 		ph += TAU * f / RATE
 		var sub := sin(ph) * exp(-t * (2.6 if low else 3.4)) * 0.95
-		lp += ((randf() * 2.0 - 1.0) - lp) * (0.35 if low else 0.55)
+		lp += ((rng.randf() * 2.0 - 1.0) - lp) * (0.35 if low else 0.55)
 		var hit := lp * exp(-t * 22.0) * 0.9
 		var ring := 0.0
 		if not low:
 			ring = (sin(TAU * 1830.0 * t) * 0.5 + sin(TAU * 2750.0 * t) * 0.35 + sin(TAU * 4120.0 * t) * 0.15) * exp(-t * 9.0) * 0.16
-		tail += ((randf() * 2.0 - 1.0) - tail) * 0.06
+		tail += ((rng.randf() * 2.0 - 1.0) - tail) * 0.06
 		var verb := tail * exp(-t * 2.2) * (1.0 - exp(-t * 30.0)) * 0.55
 		s[i] = (sub + hit + ring + verb) * 0.64
 	return _wav(s)
 
 
 ## An honour landing: a bright little chord and a sparkle over it.
-func _ui_medal() -> AudioStreamWAV:
+func _ui_medal(rng: RandomNumberGenerator) -> AudioStreamWAV:
 	var dur := 1.1
 	var n := int(dur * RATE)
 	var s := PackedFloat32Array()
@@ -627,14 +707,14 @@ func _ui_medal() -> AudioStreamWAV:
 				continue
 			var f: float = notes[j] * (1.0 + 0.003 * sin(TAU * 5.5 * lt))
 			v += (sin(TAU * f * lt) * 0.7 + sin(TAU * f * 2.0 * lt) * 0.12) * minf(1.0, lt * 300.0) * exp(-lt * 4.2) * 0.22
-		var sp := (randf() - 0.5) * exp(-t * 14.0) * 0.12 * sin(TAU * 7300.0 * t)
+		var sp := (rng.randf() - 0.5) * exp(-t * 14.0) * 0.12 * sin(TAU * 7300.0 * t)
 		s[i] = v + sp
 	return _wav(s)
 
 
 ## A co-commander's ping: a few short, bright pips, clear of the radio chimes
 ## so it never reads as an objective.
-func _pip(notes: Array, step: float) -> AudioStreamWAV:
+func _pip(rng: RandomNumberGenerator, notes: Array, step: float) -> AudioStreamWAV:
 	var n := int((step * notes.size() + 0.16) * RATE)
 	var s := PackedFloat32Array()
 	s.resize(n)
@@ -650,7 +730,7 @@ func _pip(notes: Array, step: float) -> AudioStreamWAV:
 
 ## A mission's radio chime: a burst of squelch, then a short run of tones
 ## (rising for good news, falling for bad).
-func _chime(notes: Array) -> AudioStreamWAV:
+func _chime(rng: RandomNumberGenerator, notes: Array) -> AudioStreamWAV:
 	var step := 0.13
 	var n := int((0.06 + step * notes.size() + 0.25) * RATE)
 	var s := PackedFloat32Array()
@@ -678,26 +758,26 @@ func _chime(notes: Array) -> AudioStreamWAV:
 
 ## A boot through a door: the crack of the lock giving, a deep boom from
 ## the panel, and the slam of it hitting the wall inside.
-func _door_kick() -> AudioStreamWAV:
+func _door_kick(rng: RandomNumberGenerator) -> AudioStreamWAV:
 	var n := int(0.5 * RATE)
 	var s := PackedFloat32Array()
 	s.resize(n)
 	var lp := 0.0
 	for i in n:
 		var t := float(i) / RATE
-		var crack := (randf() - 0.5) * exp(-t * 90.0) * 1.1
+		var crack := (rng.randf() - 0.5) * exp(-t * 90.0) * 1.1
 		var boom := sin(TAU * 85.0 * t + sin(TAU * 31.0 * t)) * exp(-t * 16.0) * 0.9
 		var t2 := t - 0.21
 		var slam := 0.0
 		if t2 > 0.0:
-			lp += ((randf() - 0.5) - lp) * 0.35
+			lp += ((rng.randf() - 0.5) - lp) * 0.35
 			slam = (sin(TAU * 140.0 * t2) * 0.6 + lp * 1.4) * exp(-t2 * 26.0) * 0.8
 		s[i] = clampf(crack + boom + slam, -1.0, 1.0)
 	return _wav(s)
 
 
 ## Old hinges: a door pushed open.
-func _creak() -> AudioStreamWAV:
+func _creak(rng: RandomNumberGenerator) -> AudioStreamWAV:
 	var n := int(0.7 * RATE)
 	var s := PackedFloat32Array()
 	s.resize(n)
@@ -712,20 +792,20 @@ func _creak() -> AudioStreamWAV:
 	return _wav(s)
 
 
-func _knock() -> AudioStreamWAV:
+func _knock(rng: RandomNumberGenerator) -> AudioStreamWAV:
 	var n := int(0.1 * RATE)
 	var s := PackedFloat32Array()
 	s.resize(n)
 	for i in n:
 		var t := float(i) / RATE
-		s[i] = (sin(TAU * 520.0 * t) * 0.5 + (randf() - 0.5) * 0.4) * exp(-t * 55.0)
+		s[i] = (sin(TAU * 520.0 * t) * 0.5 + (rng.randf() - 0.5) * 0.4) * exp(-t * 55.0)
 	return _wav(s)
 
 
 
 ## Automatic cannon: a train of sharp reports `rate` per second (65 = the A-10's
 ## GAU-8, a tearing BRRRT; 30 = the gunship's 25 mm buzz).
-func _burst(dur: float, rate: float, bright: float, bass: float, hold: float) -> AudioStreamWAV:
+func _burst(rng: RandomNumberGenerator, dur: float, rate: float, bright: float, bass: float, hold: float) -> AudioStreamWAV:
 	var n := int(dur * RATE)
 	var s := PackedFloat32Array()
 	s.resize(n)
@@ -739,7 +819,7 @@ func _burst(dur: float, rate: float, bright: float, bass: float, hold: float) ->
 		var on := 1.0 if t < hold else exp(-(t - hold) * 9.0)
 		var ph := fmod(t * rate, 1.0)
 		var pulse := exp(-ph * 7.0)
-		var noise := randf() * 2.0 - 1.0
+		var noise := rng.randf() * 2.0 - 1.0
 		lp += (noise - lp) * bright
 		lp2 += (lp - lp2) * 0.3
 		var saw := (1.0 - ph * 2.0) * 0.4 * bass
@@ -747,20 +827,22 @@ func _burst(dur: float, rate: float, bright: float, bass: float, hold: float) ->
 		# a short slap-back off the ground
 		v += echo[ei] * 0.35
 		echo[ei] = v
-		ei = (ei + 1) % echo.size()
+		ei += 1
+		if ei == echo.size():
+			ei = 0
 		s[i] = clampf(v * 0.8, -1.0, 1.0)
 	return _wav(s)
 
 
 ## Four turboprops droning in a slow orbit (loops).
-func _prop_loop() -> AudioStreamWAV:
+func _prop_loop(rng: RandomNumberGenerator) -> AudioStreamWAV:
 	var n := int(2.0 * RATE)
 	var s := PackedFloat32Array()
 	s.resize(n)
 	var lp := 0.0
 	for i in n:
 		var t := float(i) / RATE
-		var noise := randf() * 2.0 - 1.0
+		var noise := rng.randf() * 2.0 - 1.0
 		lp += (noise - lp) * 0.04
 		var hum := sin(TAU * 72.0 * t) * 0.3 + sin(TAU * 74.5 * t) * 0.3 + sin(TAU * 144.0 * t) * 0.12 + sin(TAU * 216.0 * t) * 0.05
 		var beat := 0.75 + 0.25 * sin(TAU * 2.5 * t)
@@ -769,7 +851,7 @@ func _prop_loop() -> AudioStreamWAV:
 
 
 ## A heavy shell coming in: a falling tearing whistle.
-func _incoming() -> AudioStreamWAV:
+func _incoming(rng: RandomNumberGenerator) -> AudioStreamWAV:
 	var n := int(2.0 * RATE)
 	var s := PackedFloat32Array()
 	s.resize(n)
@@ -779,8 +861,169 @@ func _incoming() -> AudioStreamWAV:
 		var t := float(i) / RATE
 		var f := 900.0 - t * 380.0
 		ph += TAU * f / RATE
-		var noise := randf() * 2.0 - 1.0
+		var noise := rng.randf() * 2.0 - 1.0
 		lp += (noise - lp) * 0.2
 		var env := minf(1.0, t * 1.2) * (1.0 - exp(-(2.0 - t) * 25.0))
 		s[i] = (sin(ph) * 0.22 + lp * 0.5) * env
+	return _wav(s)
+
+
+# --- wildlife ----------------------------------------------------------------------------------
+
+## A small bird's song: a phrase of quick whistled notes, each a fast sweep
+## (some trilled), with short gaps between. Each name seeds a different phrase.
+func _birdsong(rng: RandomNumberGenerator) -> AudioStreamWAV:
+	var n := int(1.5 * RATE)
+	var s := PackedFloat32Array()
+	s.resize(n)
+	var at := rng.randf_range(0.02, 0.08)
+	var ph := 0.0
+	for k in rng.randi_range(5, 9):
+		var dur := rng.randf_range(0.04, 0.13)
+		var f0 := rng.randf_range(2600.0, 4600.0)
+		var f1 := f0 + rng.randf_range(-1600.0, 1600.0)
+		var trill := rng.randf() < 0.3
+		var i0 := int(at * RATE)
+		var i1 := mini(n, int((at + dur) * RATE))
+		for i in range(i0, i1):
+			var u := float(i - i0) / float(i1 - i0)
+			var f := lerpf(f0, f1, u) + (sin(TAU * 38.0 * u * dur) * 500.0 if trill else 0.0)
+			ph += TAU * f / RATE
+			var env := sin(PI * u)
+			s[i] += sin(ph) * env * env * 0.45
+		at += dur + rng.randf_range(0.015, 0.09)
+		if at > 1.4:
+			break
+	return _wav(s)
+
+
+## A flock going up: a dozen birds each beating its wings fast, a soft thump
+## of air at every beat, all at once and then thinning out as they go.
+func _flutter(rng: RandomNumberGenerator) -> AudioStreamWAV:
+	var n := int(1.1 * RATE)
+	var s := PackedFloat32Array()
+	s.resize(n)
+	for b in 12:
+		var rate := rng.randf_range(14.0, 22.0)
+		var start := rng.randf_range(0.0, 0.25)
+		var last := start + rng.randf_range(0.35, 0.8)
+		var tt := start
+		while tt < last:
+			var i0 := int(tt * RATE)
+			var amp := 0.25 * (1.0 - (tt - start) / (last - start))
+			var lp := 0.0
+			for i in range(i0, mini(n, i0 + int(0.03 * RATE))):
+				var u := float(i - i0) / RATE
+				lp += ((rng.randf() * 2.0 - 1.0) - lp) * 0.35
+				s[i] += lp * exp(-u * 120.0) * amp
+			tt += rng.randf_range(0.9, 1.1) / rate
+	return _wav(s)
+
+
+## A pigeon's coo: a soft, throaty "hoo-roo-coo", the middle note rolled.
+func _coo(rng: RandomNumberGenerator) -> AudioStreamWAV:
+	var n := int(1.3 * RATE)
+	var s := PackedFloat32Array()
+	s.resize(n)
+	var lp := 0.0
+	for c in [[0.03, 0.22, 400.0, 470.0], [0.32, 0.42, 470.0, 380.0], [0.82, 0.36, 430.0, 360.0]]:
+		var at: float = c[0]
+		var dur: float = c[1]
+		var ph := 0.0
+		for i in range(int(at * RATE), mini(n, int((at + dur) * RATE))):
+			var u := (float(i) / RATE - at) / dur
+			ph += TAU * lerpf(c[2], c[3], u) * (1.0 + 0.04 * sin(TAU * 24.0 * u * dur)) / RATE
+			lp += ((rng.randf() * 2.0 - 1.0) - lp) * 0.05
+			var tone := sin(ph) * 0.7 + sin(ph * 2.0) * 0.18 + lp * 0.2
+			s[i] = tone * sin(PI * u) * (0.75 + 0.25 * sin(TAU * 24.0 * u * dur)) * 0.5
+	return _wav(s)
+
+
+## A crow's caw, twice: a harsh, nasal "kaah", falling a little.
+func _caw(rng: RandomNumberGenerator) -> AudioStreamWAV:
+	var n := int(0.95 * RATE)
+	var s := PackedFloat32Array()
+	s.resize(n)
+	var lp := 0.0
+	var lp2 := 0.0
+	for c in 2:
+		var at := 0.05 + c * 0.42
+		var dur := rng.randf_range(0.26, 0.32)
+		var ph := 0.0
+		for i in range(int(at * RATE), mini(n, int((at + dur) * RATE))):
+			var u := (float(i) / RATE - at) / dur
+			ph += lerpf(620.0, 520.0, u) * (1.0 + 0.03 * sin(TAU * 31.0 * u * dur)) / RATE
+			var raw := (fmod(ph, 1.0) * 2.0 - 1.0) * (0.75 + 0.5 * (rng.randf() - 0.5))
+			# the throat: a band round a kilohertz or so
+			lp += (raw - lp) * 0.45
+			lp2 += (lp - lp2) * 0.12
+			s[i] = (lp - lp2) * smoothstep(0.0, 0.08, u) * (1.0 - smoothstep(0.6, 1.0, u)) * 1.2
+	return _wav(s)
+
+
+## A gull's cry: a long "kee-ow", rising then falling, and two short laughing calls.
+func _gull(rng: RandomNumberGenerator) -> AudioStreamWAV:
+	var n := int(1.1 * RATE)
+	var s := PackedFloat32Array()
+	s.resize(n)
+	for c in [[0.02, 0.42, 1500.0, 2300.0, 1300.0], [0.55, 0.16, 1700.0, 2000.0, 1500.0], [0.78, 0.16, 1650.0, 1950.0, 1450.0]]:
+		var at: float = c[0]
+		var dur: float = c[1]
+		var ph := 0.0
+		for i in range(int(at * RATE), mini(n, int((at + dur) * RATE))):
+			var u := (float(i) / RATE - at) / dur
+			var f: float = lerpf(c[2], c[3], u / 0.35) if u < 0.35 else lerpf(c[3], c[4], (u - 0.35) / 0.65)
+			ph += TAU * f / RATE
+			var tone := sin(ph) * 0.6 + sin(ph * 2.0) * 0.28 + sin(ph * 3.0) * 0.12
+			s[i] = tone * (1.0 + (rng.randf() - 0.5) * 0.5) * smoothstep(0.0, 0.1, u) * (1.0 - smoothstep(0.7, 1.0, u)) * 0.5
+	return _wav(s)
+
+
+## A fish falling back in: a small plop (the bubble's note rising) and a few droplets.
+func _plop(rng: RandomNumberGenerator) -> AudioStreamWAV:
+	var n := int(0.35 * RATE)
+	var s := PackedFloat32Array()
+	s.resize(n)
+	var ph := 0.0
+	var lp := 0.0
+	for i in n:
+		var t := float(i) / RATE
+		ph += TAU * (500.0 + 1400.0 * minf(1.0, t / 0.04)) / RATE
+		var noise := rng.randf() * 2.0 - 1.0
+		lp += (noise - lp) * 0.6
+		s[i] = sin(ph) * exp(-t * 35.0) * 0.5 + (noise - lp) * exp(-t * 14.0) * 0.25
+	return _wav(s)
+
+
+## A dolphin landing back in the sea: a heavy slap and the rush of the water it threw up.
+func _splash(rng: RandomNumberGenerator) -> AudioStreamWAV:
+	var n := int(1.2 * RATE)
+	var s := PackedFloat32Array()
+	s.resize(n)
+	var lp := 0.0
+	var lp2 := 0.0
+	for i in n:
+		var t := float(i) / RATE
+		var noise := rng.randf() * 2.0 - 1.0
+		lp += (noise - lp) * 0.35
+		lp2 += (lp - lp2) * 0.04
+		var slap := (lp - lp2) * exp(-t * 20.0) * 0.9
+		var rush := (noise - lp) * exp(-t * 3.5) * (1.0 - exp(-t * 30.0)) * 0.2
+		s[i] = slap + rush + sin(TAU * 90.0 * t) * exp(-t * 25.0) * 0.5
+	return _wav(s)
+
+
+## A rat's squeak: two thin, high chirps.
+func _squeak(rng: RandomNumberGenerator) -> AudioStreamWAV:
+	var n := int(0.24 * RATE)
+	var s := PackedFloat32Array()
+	s.resize(n)
+	for c in 2:
+		var at := 0.01 + c * rng.randf_range(0.09, 0.12)
+		var dur := rng.randf_range(0.05, 0.07)
+		var ph := 0.0
+		for i in range(int(at * RATE), mini(n, int((at + dur) * RATE))):
+			var u := (float(i) / RATE - at) / dur
+			ph += TAU * (5200.0 + 1200.0 * sin(PI * u)) / RATE
+			s[i] = sin(ph) * sin(PI * u) * 0.35
 	return _wav(s)

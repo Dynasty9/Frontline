@@ -83,6 +83,7 @@ func _started(settings: Dictionary) -> void:
 	world.name = "World"
 	world.settings = settings
 	add_child(world)
+	await world.build()
 
 
 func _finish() -> void:

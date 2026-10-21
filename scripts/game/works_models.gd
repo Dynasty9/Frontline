@@ -122,6 +122,7 @@ static func _commit(v: PackedVector3Array, n: PackedVector3Array, uv := PackedVe
 		arrays[Mesh.ARRAY_TEX_UV] = uv
 	var m := ArrayMesh.new()
 	m.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+	Mats.keep_arrays(m, arrays)
 	return m
 
 
@@ -595,7 +596,7 @@ static func _hesco(model: Node3D, L: float, rng: RandomNumberGenerator) -> void:
 		if rng.randf() < 0.35:
 			var wd := Res.mi(model, Res.sphere(0.12, 6), Mats.foliage(), Vector3(x + rng.randf_range(-0.3, 0.3), h + 0.02, rng.randf_range(-0.3, 0.3)))
 			wd.scale = Vector3(1.0, 0.7, 1.0)
-			wd.set_instance_shader_parameter("tint", Color(0.3, 0.33, 0.16))
+			Mats.set_inst(wd, &"tint", Color(0.3, 0.33, 0.16))
 		# the top edges of the cage
 		for sz in [-d * 0.5, d * 0.5]:
 			_rod(model, Vector3(x - cw * 0.5 + 0.02, h + 0.005, sz), Vector3(x + cw * 0.5 - 0.02, h + 0.005, sz), 0.009, "wire", null, 4, false)
@@ -906,7 +907,7 @@ static func _camo_net(model: Node3D, rebel: bool, rng: RandomNumberGenerator) ->
 	var net := MeshInstance3D.new()
 	net.mesh = _net_mesh(rng.randi() % 2)
 	net.material_override = Mats.netting_tent()
-	net.set_instance_shader_parameter("tint", Color(0.42, 0.37, 0.26) if rebel else Color(0.23, 0.27, 0.15))
+	Mats.set_inst(net, &"tint", Color(0.42, 0.37, 0.26) if rebel else Color(0.23, 0.27, 0.15))
 	model.add_child(net)
 	var pk := "wood_dark" if rebel else "steel"
 	var pc = null if rebel else Color(0.45, 0.46, 0.42)

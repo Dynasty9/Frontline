@@ -1,17 +1,29 @@
-// Accounts are optional. Matchmaking works without them; an account only ties a
-// callsign to a player, so no one else can register it, and battles they host
-// are listed as theirs (verified).
+// Accounts are optional. Matchmaking works without them; an account ties a
+// callsign to a player, so no one else can register it, battles they host are
+// listed as theirs (verified), and the battles they play earn XP towards a rank
+// and the insignia that come with it (ranks.js).
+//
+// Players sign in with GitHub, on the website (which signs the game in too).
+// The page keeps a PKCE verifier and sends only its challenge (oauthUrl), so
+// the code GitHub's sign-in comes back with is no use to anyone else
+// (exchange). Email and password are for testing.
 //
 // Two backends with the same interface:
 //   supabase  Supabase Auth for the users, and a `profiles` table for the
-//             callsign (supabase/schema.sql). Needs only the project URL and
-//             its public (anon / publishable) key: row-level security lets each
-//             user read and rename only their own profile.
+//             callsign, insignia and record (supabase/migrations/). Needs only
+//             the project URL and its public (anon / publishable) key:
+//             row-level security lets each user read and rename only their own
+//             profile, and XP is only ever written by the database's own
+//             functions, which time each battle on the database's clock.
+//             Automatic game sign-in additionally uses a server-only secret
+//             for Auth admin links; database calls never use that secret.
 //   memory    in-process, for local testing only (AUTH_BACKEND=memory).
 // With neither configured, accounts are switched off.
 
-import { randomBytes, randomUUID, scryptSync, timingSafeEqual } from 'node:crypto';
-import { HEAD } from './records.js';
+import { createHash, randomBytes, randomUUID, scryptSync, timingSafeEqual } from 'node:crypto';
+import { periodStart, rankBoard } from './players.js';
+import { battleXp, insignia, isResult, lockedMessage, progress, rankOf, STARTER_ICON, unlocked } from './ranks.js';
+import { careerOf, HEAD } from './records.js';
 
 export class AuthError extends Error {
 	constructor(status, message) {
@@ -33,11 +45,79 @@ function checkCredentials(email, password) {
 	if (String(password ?? '').length < 8) throw new AuthError(400, 'Passwords need at least 8 characters.');
 }
 
-export function createAuth(env = process.env) {
+// The sign-in providers players may use, and what a page asking for one sends:
+// where to come back to, and its PKCE challenge (base64url SHA-256, 43 chars).
+const PROVIDERS = new Set(['github']);
+
+function checkOAuth(provider, redirectTo, challenge) {
+	if (!PROVIDERS.has(provider)) throw new AuthError(400, 'Sign in with GitHub.');
+	let u;
+	try {
+		u = new URL(String(redirectTo ?? ''));
+	} catch {
+		u = null;
+	}
+	if (!u || (u.protocol !== 'https:' && u.protocol !== 'http:')) throw new AuthError(400, 'Say which page to come back to.');
+	if (!/^[A-Za-z0-9_-]{43,128}$/.test(String(challenge ?? ''))) throw new AuthError(400, 'A sign-in needs its PKCE challenge.');
+	return u;
+}
+
+const s256 = (verifier) =>
+	createHash('sha256')
+		.update(String(verifier ?? ''))
+		.digest('base64url');
+
+// A known insignia (whether this player may wear it is another matter).
+export function checkIcon(id) {
+	const ins = insignia(id);
+	if (!ins) throw new AuthError(400, 'No such insignia.');
+	return ins;
+}
+
+// What the game reports when a battle ends: how it went, and how long it ran.
+function checkBattleEnd(result, seconds) {
+	if (!isResult(result)) throw new AuthError(400, 'A battle ends in a "win", a "loss" or "left".');
+	if (typeof seconds !== 'number' || !Number.isFinite(seconds) || seconds < 0) throw new AuthError(400, 'Say how long the battle ran, in seconds.');
+}
+
+// What a player may change about how others see them: their picture (their
+// insignia, or the picture on their GitHub account, which only a GitHub
+// account has), and whether their battles are public.
+function checkAvatar(avatar, user) {
+	if (avatar !== 'insignia' && avatar !== 'github') throw new AuthError(400, 'Your picture is your insignia or your GitHub picture.');
+	if (avatar === 'github' && !user.github_avatar) throw new AuthError(400, 'There is no GitHub picture on this account.');
+}
+
+function checkHideHistory(hide) {
+	if (typeof hide !== 'boolean') throw new AuthError(400, 'hide_history: true or false.');
+}
+
+// A player as the game and the website see them, wherever a user is returned.
+// Only the XP is stored: the rank and where it begins and ends follow from it.
+// (What anyone else may see of them is players.js's business.)
+export function toUser(u) {
+	return {
+		id: u.id,
+		email: u.email,
+		callsign: u.callsign ?? '',
+		icon: u.icon ?? STARTER_ICON,
+		avatar: u.avatar === 'github' ? 'github' : 'insignia',
+		github_avatar: u.github_avatar ?? null,
+		hide_history: u.hide_history === true,
+		joined: u.created_at ?? u.joined ?? null,
+		...progress(u.xp ?? 0),
+		battles: u.battles ?? 0,
+		wins: u.wins ?? 0,
+	};
+}
+
+// `now` is the memory backend's battle clock (tests fake a battle's length with
+// it); Supabase times battles on the database's own.
+export function createAuth(env = process.env, { now } = {}) {
 	const url = env.SUPABASE_URL;
 	const key = env.SUPABASE_KEY || env.SUPABASE_PUBLISHABLE_KEY || env.SUPABASE_ANON_KEY;
-	if (url && key) return new SupabaseAuth(url.replace(/\/+$/, ''), key);
-	if (env.AUTH_BACKEND === 'memory') return new MemoryAuth();
+	if (url && key) return new SupabaseAuth(url.replace(/\/+$/, ''), key, env.SUPABASE_SECRET_KEY || env.SUPABASE_SERVICE_ROLE_KEY);
+	if (env.AUTH_BACKEND === 'memory') return new MemoryAuth({ now });
 	return null;
 }
 
@@ -68,10 +148,11 @@ class TokenCache {
 }
 
 class SupabaseAuth {
-	constructor(url, key) {
+	constructor(url, key, secretKey) {
 		this.name = 'supabase';
 		this.url = url;
 		this.key = key;
+		this.secretKey = secretKey;
 		this.cache = new TokenCache();
 	}
 
@@ -101,15 +182,37 @@ class SupabaseAuth {
 		return (data && (data.msg || data.error_description || data.message || data.error)) || fallback;
 	}
 
+	// One of our database functions (supabase/migrations/), run as the player.
+	rpc(fn, token, body = {}) {
+		return this.call(`/rest/v1/rpc/${fn}`, { method: 'POST', token, body });
+	}
+
+	static failed(r, fallback) {
+		if (r.status === 401) return new AuthError(401, 'Your sign-in has expired.');
+		// a function this matchmaker expects isn't in the database yet: it was
+		// deployed a moment before its migration (see profile())
+		if (r.status === 404 || r.data?.code === 'PGRST202') return new AuthError(503, 'The account service is being updated: try again in a minute.');
+		return new AuthError(r.status >= 500 ? 503 : 400, SupabaseAuth.message(r.data, fallback));
+	}
+
+	remember(token, u) {
+		const user = toUser(u);
+		this.cache.set(token, user);
+		return user;
+	}
+
 	async session(data) {
-		const user = { id: data.user.id, email: data.user.email, callsign: await this.callsign(data.user.id, data.access_token) };
-		this.cache.set(data.access_token, user);
+		const user = this.remember(data.access_token, { id: data.user.id, email: data.user.email, ...(await this.profile(data.user.id, data.access_token)) });
 		return { access_token: data.access_token, refresh_token: data.refresh_token, expires_in: data.expires_in, user };
 	}
 
-	async callsign(id, token) {
-		const r = await this.call(`/rest/v1/profiles?id=eq.${encodeURIComponent(id)}&select=callsign`, { token });
-		return r.ok && Array.isArray(r.data) && r.data[0] ? r.data[0].callsign : '';
+	// Every column there is, not a list: Railway deploys the matchmaker and the
+	// Database workflow migrates the database independently, so for a minute
+	// either can be ahead. A column this code knows and the database doesn't have yet
+	// reads as its default (toUser) instead of failing the whole profile.
+	async profile(id, token) {
+		const r = await this.call(`/rest/v1/profiles?id=eq.${encodeURIComponent(id)}&select=*`, { token });
+		return r.ok && Array.isArray(r.data) && r.data[0] ? r.data[0] : {};
 	}
 
 	async signup(email, password, callsign) {
@@ -117,7 +220,7 @@ class SupabaseAuth {
 		callsign = checkCallsign(callsign);
 		const taken = await this.call('/rest/v1/rpc/callsign_taken', { method: 'POST', body: { name: callsign } });
 		if (taken.ok && taken.data === true) throw new AuthError(409, 'That callsign is taken.');
-		// the profile row is made by a trigger from this metadata (schema.sql)
+		// the profile row is made by a trigger from this metadata (supabase/migrations/)
 		const r = await this.call('/auth/v1/signup', { method: 'POST', body: { email, password, data: { callsign } } });
 		if (!r.ok) throw new AuthError(r.status === 429 ? 429 : 400, SupabaseAuth.message(r.data, 'Could not create the account.'));
 		// with "Confirm email" on, Supabase sends a link and there's no session yet
@@ -131,15 +234,74 @@ class SupabaseAuth {
 		return this.session(r.data);
 	}
 
+	// Where to send the player to sign in with GitHub: Supabase's page, which
+	// comes back to `redirectTo` with ?code= (if Supabase's Redirect URLs allow
+	// it; otherwise to its Site URL).
+	oauthUrl(provider, redirectTo, challenge) {
+		const back = checkOAuth(provider, redirectTo, challenge);
+		const q = new URLSearchParams({ provider, redirect_to: back.href, code_challenge: challenge, code_challenge_method: 's256' });
+		return `${this.url}/auth/v1/authorize?${q}`;
+	}
+
+	// The code GitHub's sign-in came back with, and the verifier only the page
+	// that asked for it has: a session. A player new to Frontline gets their
+	// profile from the database, named after their GitHub account.
+	async exchange(code, verifier) {
+		const r = await this.call('/auth/v1/token?grant_type=pkce', {
+			method: 'POST',
+			body: { auth_code: String(code ?? ''), code_verifier: String(verifier ?? '') },
+		});
+		if (!r.ok) throw new AuthError(r.status === 429 ? 429 : 401, SupabaseAuth.message(r.data, 'That sign-in ran out: try again.'));
+		return this.session(r.data);
+	}
+
+	// The website has already authenticated this player. Make a separate
+	// session for the game without sharing the browser's rotating refresh
+	// token. The admin link stays on this server and never sends an email.
+	async gameSession(token) {
+		if (!token) throw new AuthError(401, 'Sign in first.');
+		// Do not use the profile cache or accept an email supplied by the caller.
+		const verified = await this.call('/auth/v1/user', { token });
+		if (!verified.ok) {
+			if (verified.status === 429) throw new AuthError(429, 'Too many requests: wait a minute and try again.');
+			if (verified.status >= 500) throw new AuthError(503, 'The account service is unreachable.');
+			throw new AuthError(401, 'Your sign-in has expired.');
+		}
+		const user = verified.data;
+		if (!user?.id || !user.email || !user.email_confirmed_at) throw new AuthError(403, 'Confirm your account before signing in to the game.');
+		if (!this.secretKey) throw new AuthError(503, 'Automatic game sign-in is not configured yet. You can still sign in with GitHub.');
+		const generated = await this.call('/auth/v1/admin/generate_link', {
+			method: 'POST',
+			headers: { apikey: this.secretKey, Authorization: `Bearer ${this.secretKey}` },
+			body: { type: 'magiclink', email: user.email },
+		});
+		// Check the identity both before and after consuming the link: an email
+		// change racing this request must never sign in a different account.
+		if (!generated.ok || generated.data?.id !== user.id || !generated.data?.hashed_token) throw new AuthError(503, 'Could not sign in to the game. Try again.');
+		const result = await this.call('/auth/v1/verify', {
+			method: 'POST',
+			body: { type: 'magiclink', token_hash: generated.data.hashed_token },
+		});
+		if (!result.ok || !result.data?.access_token || result.data?.user?.id !== user.id) {
+			if (result.data?.access_token) await this.logout(result.data.access_token);
+			throw new AuthError(503, 'Could not sign in to the game. Try again.');
+		}
+		return this.session(result.data);
+	}
+
 	async refresh(refreshToken) {
 		const r = await this.call('/auth/v1/token?grant_type=refresh_token', { method: 'POST', body: { refresh_token: String(refreshToken ?? '') } });
 		if (!r.ok) throw new AuthError(401, 'Signed out: please sign in again.');
 		return this.session(r.data);
 	}
 
-	async logout(token) {
+	// This session only: the game and the website each hold one of their own
+	// (the website signs the game in), and signing out of one leaves the
+	// other. Supabase's default would end every session the account has, which
+	// is what 'global' (the website's "Sign out everywhere") asks for.
+	async logout(token, scope = 'local') {
 		this.cache.drop(token);
-		await this.call('/auth/v1/logout', { method: 'POST', token });
+		await this.call(`/auth/v1/logout?scope=${scope === 'global' ? 'global' : 'local'}`, { method: 'POST', token });
 	}
 
 	async user(token) {
@@ -147,31 +309,58 @@ class SupabaseAuth {
 		if (hit) return hit;
 		const r = await this.call('/auth/v1/user', { token });
 		if (!r.ok || !r.data?.id) return null;
-		const user = { id: r.data.id, email: r.data.email, callsign: await this.callsign(r.data.id, token) };
-		this.cache.set(token, user);
-		return user;
+		return this.remember(token, { id: r.data.id, email: r.data.email, ...(await this.profile(r.data.id, token)) });
 	}
 
-	async setCallsign(token, user, callsign) {
-		callsign = checkCallsign(callsign);
-		const r = await this.call(`/rest/v1/profiles?id=eq.${encodeURIComponent(user.id)}`, {
-			method: 'PATCH',
-			token,
-			body: { callsign },
-			headers: { Prefer: 'return=minimal' },
-		});
-		if (r.status === 409 || r.data?.code === '23505') throw new AuthError(409, 'That callsign is taken.');
-		if (!r.ok) throw new AuthError(400, SupabaseAuth.message(r.data, 'Could not change the callsign.'));
-		user.callsign = callsign;
-		this.cache.set(token, user);
-		return user;
+	// {callsign, icon, avatar, hide_history}, any of them. The insignia goes
+	// through set_icon(), which checks it's been unlocked; the rest are the
+	// columns a player may write directly.
+	async updateProfile(token, user, { callsign, icon, avatar, hide_history }) {
+		if (callsign !== undefined) callsign = checkCallsign(callsign);
+		if (avatar !== undefined) checkAvatar(avatar, user);
+		if (hide_history !== undefined) checkHideHistory(hide_history);
+		const ins = icon !== undefined ? checkIcon(icon) : null;
+		let u = user;
+		if (ins) {
+			const r = await this.rpc('set_icon', token, { icon: ins.id });
+			if (r.data?.code === 'PT403') throw new AuthError(403, lockedMessage(ins));
+			if (!r.ok) throw SupabaseAuth.failed(r, 'Could not change the insignia.');
+			u = this.remember(token, { ...u, icon: ins.id });
+		}
+		const change = Object.fromEntries(Object.entries({ callsign, avatar, hide_history }).filter(([, v]) => v !== undefined));
+		if (Object.keys(change).length) {
+			const r = await this.call(`/rest/v1/profiles?id=eq.${encodeURIComponent(user.id)}`, {
+				method: 'PATCH',
+				token,
+				body: change,
+				headers: { Prefer: 'return=minimal' },
+			});
+			if (callsign !== undefined && (r.status === 409 || r.data?.code === '23505')) throw new AuthError(409, 'That callsign is taken.');
+			if (!r.ok) throw new AuthError(400, SupabaseAuth.message(r.data, 'Could not change your profile.'));
+			u = this.remember(token, { ...u, ...change });
+		}
+		return toUser(u);
 	}
 
-	// --- service records (battle_records in schema.sql; row-level security keeps
+	async beginBattle(token) {
+		const r = await this.rpc('begin_battle', token);
+		if (!r.ok) throw SupabaseAuth.failed(r, 'Could not start the battle clock.');
+	}
+
+	async endBattle(token, user, result, seconds) {
+		checkBattleEnd(result, seconds);
+		const r = await this.rpc('end_battle', token, { result, seconds });
+		if (!r.ok || !r.data) throw SupabaseAuth.failed(r, 'Could not record the battle.');
+		const d = r.data;
+		const u = this.remember(token, { ...user, callsign: d.callsign, icon: d.icon, xp: d.xp, battles: d.battles, wins: d.wins });
+		return { gained: d.gained, rank_before: d.rank_before, user: u };
+	}
+
+	// --- service records (battle_records, supabase/migrations/; row-level security keeps
 	// each player to their own)
 
 	static noTable(r) {
-		// the table isn't there: schema.sql hasn't been run on this project
+		// the table isn't there: the migrations haven't reached this project
 		if (r.status === 404 || r.data?.code === 'PGRST205' || r.data?.code === '42P01')
 			throw new AuthError(503, 'Battle records are not set up on this server yet.');
 	}
@@ -204,15 +393,72 @@ class SupabaseAuth {
 		if (!r.ok || !Array.isArray(r.data)) throw new AuthError(503, SupabaseAuth.message(r.data, 'Could not read that battle.'));
 		return r.data[0] || null;
 	}
+
+	// --- what anyone may see (players.js): the database's public functions,
+	// asked with the public key alone (the public_profiles migration)
+
+	async publicCall(fn, body, fallback) {
+		const r = await this.rpc(fn, null, body);
+		if (!r.ok) throw r.data?.code === 'PT400' ? new AuthError(400, SupabaseAuth.message(r.data, fallback)) : SupabaseAuth.failed(r, fallback);
+		return r.data ?? null;
+	}
+
+	leaderboard(period, { limit, offset, me }) {
+		return this.publicCall('leaderboard_xp', { period, lim: limit, off: offset, me: me || null }, 'Could not read the leaderboard.');
+	}
+
+	player(name) {
+		return this.publicCall('player_card', { name }, 'Could not read that player.');
+	}
+
+	playerCareer(name) {
+		return this.publicCall('player_career', { name }, "Could not read that player's career.");
+	}
+
+	playerBattles(name, { limit = 20, before = '' } = {}) {
+		return this.publicCall('player_battles', { name, lim: limit, before: before || null }, "Could not read that player's battles.");
+	}
+
+	playerBattle(name, id) {
+		return this.publicCall('player_battle', { name, battle: id }, 'Could not read that battle.');
+	}
+
+	findPlayers(prefix) {
+		return this.publicCall('find_players', { prefix }, 'Could not look for players.');
+	}
 }
 
-// Local testing only: forgets everything on restart.
+// Local testing only: forgets everything on restart. Ranks follow the same
+// rules as the SQL in supabase/migrations/.
 class MemoryAuth {
-	constructor() {
+	constructor({ now = Date.now } = {}) {
 		this.name = 'memory';
-		this.users = new Map(); // email -> {id, email, callsign, salt, hash}
+		this.now = now; // the battle clock (tests fake a battle's length with it)
+		// email -> {id, email, callsign, salt, hash, icon, xp, battles, wins, battleStarted, created_at,
+		// avatar, github_avatar, hide_history, hidden}
+		this.users = new Map();
 		this.access = new Map(); // token -> {user, until}
 		this.refreshTokens = new Map(); // token -> email
+		this.codes = new Map(); // a GitHub sign-in on its way: code -> {challenge, until}
+		this.xpLog = []; // every battle that earned XP: {user_id, gained, at}, at on the wall clock
+	}
+
+	// A new player's profile, as the database's sign-up trigger makes one.
+	static profile(fields) {
+		return {
+			id: randomUUID(),
+			icon: STARTER_ICON,
+			xp: 0,
+			battles: 0,
+			wins: 0,
+			battleStarted: null,
+			created_at: new Date().toISOString(),
+			avatar: 'insignia',
+			github_avatar: null,
+			hide_history: false,
+			hidden: false,
+			...fields,
+		};
 	}
 
 	static hash(password, salt) {
@@ -224,7 +470,7 @@ class MemoryAuth {
 		const refresh = randomBytes(24).toString('base64url');
 		this.access.set(access, { user: u, until: Date.now() + 3600_000 });
 		this.refreshTokens.set(refresh, u.email);
-		return { access_token: access, refresh_token: refresh, expires_in: 3600, user: { id: u.id, email: u.email, callsign: u.callsign } };
+		return { access_token: access, refresh_token: refresh, expires_in: 3600, user: toUser(u) };
 	}
 
 	taken(callsign, exceptId = null) {
@@ -239,15 +485,46 @@ class MemoryAuth {
 		if (this.users.has(email)) throw new AuthError(400, 'User already registered');
 		if (this.taken(callsign)) throw new AuthError(409, 'That callsign is taken.');
 		const salt = randomBytes(16);
-		const u = { id: randomUUID(), email, callsign, salt, hash: MemoryAuth.hash(password, salt) };
+		const u = MemoryAuth.profile({ email, callsign, salt, hash: MemoryAuth.hash(password, salt) });
 		this.users.set(email, u);
 		return { session: this.issue(u), confirm: false };
 	}
 
 	async login(email, password) {
 		const u = this.users.get(String(email ?? '').toLowerCase());
-		if (!u || !timingSafeEqual(u.hash, MemoryAuth.hash(password, u.salt))) throw new AuthError(401, 'Invalid login credentials');
+		// a GitHub player has no password
+		if (!u?.hash || !timingSafeEqual(u.hash, MemoryAuth.hash(password, u.salt))) throw new AuthError(401, 'Invalid login credentials');
 		return this.issue(u);
+	}
+
+	// A stand-in for GitHub: back at once, signed in as the one local GitHub
+	// player, so the website's whole round trip runs without the real thing.
+	oauthUrl(provider, redirectTo, challenge) {
+		const back = checkOAuth(provider, redirectTo, challenge);
+		const code = randomBytes(16).toString('base64url');
+		this.codes.set(code, { challenge, until: Date.now() + 300_000 });
+		back.searchParams.set('code', code);
+		return back.href;
+	}
+
+	async exchange(code, verifier) {
+		const c = this.codes.get(String(code ?? ''));
+		this.codes.delete(String(code ?? ''));
+		if (!c || c.until < Date.now() || s256(verifier) !== c.challenge) throw new AuthError(401, 'That sign-in ran out: try again.');
+		const email = 'github-player@users.test';
+		if (!this.users.has(email)) {
+			let callsign = 'GitHub Player';
+			for (let n = 2; this.taken(callsign); n++) callsign = `GitHub Player ${n}`;
+			// GitHub's Octocat, for a picture: what Supabase would copy from a real GitHub account
+			this.users.set(email, MemoryAuth.profile({ email, callsign, github_avatar: 'https://avatars.githubusercontent.com/u/583231?v=4' }));
+		}
+		return this.issue(this.users.get(email));
+	}
+
+	async gameSession(token) {
+		const user = await this.user(token);
+		if (!user) throw new AuthError(401, 'Your sign-in has expired.');
+		return this.issue(this.users.get(user.email));
 	}
 
 	async refresh(refreshToken) {
@@ -257,21 +534,58 @@ class MemoryAuth {
 		return this.issue(this.users.get(email));
 	}
 
-	async logout(token) {
+	async logout(token, scope = 'local') {
+		const e = this.access.get(token);
 		this.access.delete(token);
+		if (scope !== 'global' || !e) return;
+		for (const [t, a] of this.access) if (a.user.id === e.user.id) this.access.delete(t);
+		for (const [t, email] of this.refreshTokens) if (email === e.user.email) this.refreshTokens.delete(t);
 	}
 
 	async user(token) {
 		const e = this.access.get(token);
 		if (!e || e.until < Date.now()) return null;
-		return { id: e.user.id, email: e.user.email, callsign: e.user.callsign };
+		return toUser(e.user);
 	}
 
-	async setCallsign(token, user, callsign) {
-		callsign = checkCallsign(callsign);
-		if (this.taken(callsign, user.id)) throw new AuthError(409, 'That callsign is taken.');
-		this.users.get(user.email).callsign = callsign;
-		return { ...user, callsign };
+	async updateProfile(token, user, { callsign, icon, avatar, hide_history }) {
+		const u = this.users.get(user.email);
+		if (callsign !== undefined) {
+			callsign = checkCallsign(callsign);
+			if (this.taken(callsign, u.id)) throw new AuthError(409, 'That callsign is taken.');
+		}
+		if (avatar !== undefined) checkAvatar(avatar, u);
+		if (hide_history !== undefined) checkHideHistory(hide_history);
+		const ins = icon !== undefined ? checkIcon(icon) : null;
+		if (ins && !unlocked(ins, rankOf(u.xp))) throw new AuthError(403, lockedMessage(ins));
+		// all of it or none of it
+		if (callsign !== undefined) u.callsign = callsign;
+		if (ins) u.icon = ins.id;
+		if (avatar !== undefined) u.avatar = avatar;
+		if (hide_history !== undefined) u.hide_history = hide_history;
+		return toUser(u);
+	}
+
+	async beginBattle(token, user) {
+		this.users.get(user.email).battleStarted = this.now();
+	}
+
+	// An end with no battle open is a retry of one already counted (or a battle
+	// the clock never heard about), so it earns and counts nothing. Only a
+	// battle that earns XP counts on the record, as the database has it.
+	async endBattle(token, user, result, seconds) {
+		checkBattleEnd(result, seconds);
+		const u = this.users.get(user.email);
+		const rankBefore = rankOf(u.xp);
+		const gained = u.battleStarted !== null ? battleXp(result, (this.now() - u.battleStarted) / 1000, seconds) : 0;
+		if (gained > 0) {
+			if (result !== 'left') u.battles++;
+			if (result === 'win') u.wins++;
+			this.xpLog.push({ user_id: u.id, gained, at: Date.now() });
+		}
+		u.xp += gained;
+		u.battleStarted = null;
+		return { gained, rank_before: rankBefore, user: toUser(u) };
 	}
 
 	// service records: user id -> rows, oldest first
@@ -302,5 +616,92 @@ class MemoryAuth {
 
 	async getBattle(token, user, id) {
 		return this.battles(user).find((r) => r.id === id) || null;
+	}
+
+	// --- what anyone may see (players.js), as the database's public functions answer it
+
+	// a player by callsign, whatever the case, unless they're hidden
+	byCallsign(name) {
+		const c = String(name ?? '')
+			.trim()
+			.toLowerCase();
+		for (const u of this.users.values()) if (!u.hidden && u.callsign.toLowerCase() === c) return u;
+		return null;
+	}
+
+	static picture = (u) => (u.avatar === 'github' ? u.github_avatar : null);
+
+	async leaderboard(period, { limit, offset, me }) {
+		const since = periodStart(period);
+		const earned = new Map();
+		for (const l of this.xpLog) if (since !== null && l.at >= since) earned.set(l.user_id, (earned.get(l.user_id) ?? 0) + l.gained);
+		const entries = [...this.users.values()]
+			.filter((u) => !u.hidden)
+			.map((u) => ({
+				callsign: u.callsign,
+				icon: u.icon,
+				avatar: MemoryAuth.picture(u),
+				xp: u.xp,
+				battles: u.battles,
+				wins: u.wins,
+				created_at: Date.parse(u.created_at),
+				score: since === null ? u.xp : (earned.get(u.id) ?? 0),
+			}));
+		return rankBoard(entries, { limit, offset, me });
+	}
+
+	async player(name) {
+		const u = this.byCallsign(name);
+		if (!u) return null;
+		let seen = 0;
+		for (const l of this.xpLog) if (l.user_id === u.id) seen = Math.max(seen, l.at);
+		const above = [...this.users.values()].filter((o) => !o.hidden && o.xp > u.xp).length;
+		return {
+			callsign: u.callsign,
+			icon: u.icon,
+			avatar: MemoryAuth.picture(u),
+			xp: u.xp,
+			battles: u.battles,
+			wins: u.wins,
+			joined: u.created_at,
+			history: !u.hide_history,
+			position: u.xp > 0 ? above + 1 : null,
+			last_seen: seen ? new Date(seen).toISOString() : null,
+		};
+	}
+
+	// the player's battles, unless they keep them to themselves
+	shown(name) {
+		const u = this.byCallsign(name);
+		return u && !u.hide_history ? u : null;
+	}
+
+	async playerCareer(name) {
+		const u = this.shown(name);
+		return u ? careerOf(this.battles(u)) : null;
+	}
+
+	async playerBattles(name, { limit = 20, before = '' } = {}) {
+		const u = this.shown(name);
+		return u ? this.listBattles(null, u, { limit, before }) : null;
+	}
+
+	async playerBattle(name, id) {
+		const u = this.shown(name);
+		const b = u && this.battles(u).find((r) => r.id === id);
+		if (!b) return null;
+		const { user_id: _, ...rest } = b;
+		return rest;
+	}
+
+	async findPlayers(prefix) {
+		const p = String(prefix ?? '')
+			.trim()
+			.toLowerCase();
+		return [...this.users.values()]
+			.filter((u) => !u.hidden && u.callsign.toLowerCase().startsWith(p))
+			.toSorted((a, b) => b.xp - a.xp || a.callsign.localeCompare(b.callsign))
+			.slice(0, 10)
+			.map((u) => ({ callsign: u.callsign, icon: u.icon, avatar: MemoryAuth.picture(u), xp: u.xp }));
 	}
 }

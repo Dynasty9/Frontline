@@ -22,6 +22,7 @@ boot_splash/use_filter=true
 
 [autoload]
 
+Errors="*res://scripts/autoload/errors.gd"
 Links="*res://scripts/autoload/links.gd"
 Defs="*res://scripts/autoload/defs.gd"
 Net="*res://scripts/autoload/net.gd"
@@ -32,6 +33,10 @@ Music="*res://scripts/autoload/music.gd"
 Online="*res://scripts/autoload/online.gd"
 Updater="*res://scripts/autoload/updater.gd"
 LocalServer="*res://scripts/autoload/local_server.gd"
+
+[debug]
+
+settings/gdscript/always_track_call_stacks=true
 
 [display]
 
@@ -51,6 +56,8 @@ jolt_physics_3d/limits/world_boundary_shape_size=8192.0
 limits/global_shader_variables/buffer_size=2097152
 anti_aliasing/quality/msaa_3d=2
 lights_and_shadows/directional_shadow/size=4096
+shading/overrides/force_vertex_shading.web=true
+textures/vram_compression/import_etc2_astc=true
 
 [shader_globals]
 

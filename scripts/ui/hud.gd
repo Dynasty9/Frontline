@@ -47,16 +47,17 @@ func layout_minimap() -> void:
 	layers_ui.offset_right = layers_ui.offset_left + HudLayers.S
 	layers_ui.offset_bottom = -14
 	layers_ui.offset_top = -14 - lh
-	var above := -14 - outer - 6
+	var above := -14 - outer - 16
+	support_box.offset_right = 14 + maxf(outer, 300.0)
 	support_box.offset_bottom = above
 	support_box.offset_top = above
 	chat_edit.offset_bottom = above
 	chat_edit.offset_top = above - 34
 
 
-## The narrowest the selection panel gets, and a command card button.
+## The narrowest the selection panel gets, and an order in the orders grid.
 const SEL_MIN_W := 300.0
-const CARD_BTN := Vector2(92, 46)
+const CARD_BTN := Vector2(136, 26)
 
 
 ## Where the bottom-left cluster (minimap and layer column) ends on the right.
@@ -87,7 +88,8 @@ var obs_dir: Button
 var obs_view: Button
 var obs_slower: Button
 var obs_faster: Button
-var _log_head: Label
+var _log_head: Label  # the log's header text
+var _log_key: Label  # and, after it, the key that closes it
 var toasts: HudToasts
 var objectives: HudObjectives
 var log_panel: PanelContainer
@@ -119,7 +121,11 @@ var coop_roster: HudCoopRoster  # ...and listed top right
 var alert_label: Label
 var _alert_t := 0.0
 var over_panel: PanelContainer
+var _xp_box: VBoxContainer  # in the report's header: what the battle was worth to the rank
 var help_panel: PanelContainer
+var veil: TopoBackdrop  # the living map, see-through, behind the menus and the end of the battle
+var _veil_wave := -1.0  # seconds since the battle ended (its wave wakes the map from the middle)
+var _theme_rev := 0
 var menu_panel: PanelContainer
 var settings_panel: SettingsPanel
 var manual: FieldManual
@@ -138,10 +144,16 @@ var demo_panel: PanelContainer
 var _inspect: Entity = null
 var _inspect_t := 0.0
 var _msgs: Array = []
+var _scrims := {}  # edge -> UiScrim: the HUD sits on the scene with no boxes (docs/UI.md, Scrim)
+var _fires_open := false  # the fire support list showing every mission, not just the ready ones
+var _fires_more: Button  # its last row: how many more are cooling down (click to show them)
+var _menu_clock: Label  # the pause dialog's battle clock
+var _menu_ctx: Label  # ...and what battle this is
 
 
 func _ready() -> void:
 	layer = 5
+	Online.battle_reported.connect(_on_battle_reported)
 	MapSymbols.build_atlas(self, MapSymbols.atlas_k_for(Settings.ui_factor()))
 	root = Control.new()
 	root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -169,6 +181,13 @@ func _ready() -> void:
 	coop.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	coop.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	root.add_child(coop)
+
+	# the edge scrims: the ink fading in from the screen's edges, so the HUD
+	# reads over the battlefield without a box round anything
+	for e in [["top", 96.0, 0.0], ["left", 400.0, 640.0], ["right", 560.0, 320.0], ["bottom", 250.0, 0.0]]:
+		var sc := UiScrim.make(e[0], e[1], e[2])
+		_scrims[e[0]] = sc
+		root.add_child(sc)
 
 	top = HudTopInfo.new()
 	top.hud = self
@@ -210,17 +229,18 @@ func _ready() -> void:
 	alert_label.offset_left = -360
 	alert_label.offset_right = 360
 	alert_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	alert_label.add_theme_font_override("font", UiKit.font(600))
-	alert_label.add_theme_font_size_override("font_size", 19)
-	alert_label.add_theme_color_override("font_color", UiKit.WARN)
-	alert_label.add_theme_constant_override("outline_size", 7)
-	alert_label.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.75))
+	alert_label.add_theme_font_override("font", UiKit.cond(600, 2))
+	alert_label.add_theme_font_size_override("font_size", 15)
+	alert_label.add_theme_color_override("font_color", UiKit.TEXT)
+	alert_label.add_theme_constant_override("outline_size", 5)
+	alert_label.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.7))
+	alert_label.uppercase = true
 	alert_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	root.add_child(alert_label)
 
 	# minimap, bottom-left (sized by the settings: see layout_minimap)
 	minimap_panel = PanelContainer.new()
-	minimap_panel.add_theme_stylebox_override("panel", UiKit.box(UiKit.PANEL, 8, UiKit.LINE, 1, MINIMAP_PAD, 10))
+	minimap_panel.add_theme_stylebox_override("panel", UiKit.frame(Color(-1, 0, 0), MINIMAP_PAD))
 	minimap_panel.anchor_top = 1.0
 	minimap_panel.anchor_bottom = 1.0
 	root.add_child(minimap_panel)
@@ -249,7 +269,7 @@ func _ready() -> void:
 	support_box.offset_left = 14
 	support_box.offset_right = 224
 	support_box.grow_vertical = Control.GROW_DIRECTION_BEGIN
-	support_box.add_theme_constant_override("separation", 3)
+	support_box.add_theme_constant_override("separation", 0)
 	root.add_child(support_box)
 
 	chat_edit = LineEdit.new()
@@ -258,11 +278,20 @@ func _ready() -> void:
 	chat_edit.offset_left = 14
 	chat_edit.offset_right = 430
 	chat_edit.visible = false
+	var cn := UiKit.underline(UiKit.ACCENT, 8.0, 6.0)
+	cn.bg_color = UiKit.PANEL
+	chat_edit.add_theme_stylebox_override("normal", cn)
+	chat_edit.add_theme_stylebox_override("focus", cn)
 	chat_edit.text_submitted.connect(_on_chat)
 	chat_edit.focus_exited.connect(func(): _close_chat())
 	root.add_child(chat_edit)
 	layout_minimap()
 	Settings.changed.connect(layout_minimap)
+	_theme_rev = UiKit.theme_rev
+	Settings.changed.connect(func():
+		if _theme_rev != UiKit.theme_rev:
+			_theme_rev = UiKit.theme_rev
+			_build_help())  # its headings are in the theme's accent
 	root.resized.connect(layout_minimap)  # the window, or the interface scale, changed
 	root.resized.connect(func():
 		var k := MapSymbols.atlas_k_for(Settings.ui_factor())
@@ -279,6 +308,7 @@ func _ready() -> void:
 	sel_panel.offset_right = 230
 	sel_panel.offset_top = -196
 	sel_panel.offset_bottom = -14
+	sel_panel.add_theme_stylebox_override("panel", UiKit.bare(4.0))
 	sel_panel.mouse_filter = Control.MOUSE_FILTER_STOP
 	root.add_child(sel_panel)
 	sel_info = HudSelInfo.new()
@@ -299,43 +329,59 @@ func _ready() -> void:
 	card_panel.offset_bottom = -14
 	card_panel.offset_left = -14
 	card_panel.offset_top = -14
+	card_panel.add_theme_stylebox_override("panel", UiKit.bare(0.0))
 	root.add_child(card_panel)
 	var cv := VBoxContainer.new()
-	cv.add_theme_constant_override("separation", 6)
+	cv.add_theme_constant_override("separation", 4)
 	card_panel.add_child(cv)
-	card_title = UiKit.label("", 12, UiKit.DIM)
-	card_title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART  # the buttons set the card's width, not the title
-	cv.add_child(card_title)
+	var ch := UiKit.header("Orders")
+	card_title = ch.get_node("Text") as Label
+	card_title.clip_text = true  # the keys set the card's width, not the title
+	card_title.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	cv.add_child(ch)
 	card = GridContainer.new()
-	card.columns = 5
-	card.add_theme_constant_override("h_separation", 5)
-	card.add_theme_constant_override("v_separation", 5)
+	card.columns = 3
+	card.add_theme_constant_override("h_separation", 12)
+	card.add_theme_constant_override("v_separation", 0)
 	cv.add_child(card)
 
-	# message history (L)
+	# message history (L): it opens in place of the latest lines, top right,
+	# on a lighter ink rather than in a box
 	log_panel = PanelContainer.new()
 	log_panel.anchor_left = 1.0
 	log_panel.anchor_right = 1.0
-	log_panel.offset_left = -480
+	log_panel.offset_left = -440
 	log_panel.offset_right = -14
-	log_panel.offset_top = 60
+	log_panel.offset_top = 36
 	log_panel.offset_bottom = 420
 	log_panel.visible = false
+	log_panel.add_theme_stylebox_override("panel", UiKit.box(UiKit.PANEL_SOFT, 0, Color(0, 0, 0, 0), 0, 10.0))
 	root.add_child(log_panel)
 	var lv := VBoxContainer.new()
+	lv.add_theme_constant_override("separation", 6)
 	log_panel.add_child(lv)
-	_log_head = UiKit.header("Messages")
-	lv.add_child(_log_head)
+	var lh := UiKit.header("Messages", "-")
+	_log_head = lh.get_node("Text") as Label
+	_log_key = lh.get_node("Count") as Label
+	lv.add_child(lh)
 	log_box = RichTextLabel.new()
 	log_box.bbcode_enabled = true
 	log_box.scroll_following = true
 	log_box.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	log_box.add_theme_font_override("normal_font", UiKit.font(400))
+	log_box.add_theme_font_override("mono_font", UiKit.mono(400))
 	log_box.add_theme_font_size_override("normal_font_size", 13)
+	log_box.add_theme_font_size_override("mono_font_size", 12)
+	log_box.add_theme_constant_override("line_separation", 3)
 	lv.add_child(log_box)
 
+	veil = TopoBackdrop.new()
+	veil.see_through = 0.5
+	veil.visible = false
+	root.add_child(veil)
 	over_panel = _center_panel(Vector2(440, 220))
-	help_panel = _center_panel(Vector2(720, 620))
-	menu_panel = _center_panel(Vector2(320, 350))
+	help_panel = _center_panel(Vector2(1000, 640))
+	menu_panel = _center_panel(Vector2(340, 316))
 	_build_help()
 	Keys.changed.connect(_keys_changed)
 	_build_menu()
@@ -373,7 +419,7 @@ func _ready() -> void:
 
 func _build_observer_bar() -> void:
 	obs_bar = PanelContainer.new()
-	obs_bar.add_theme_stylebox_override("panel", UiKit.box(UiKit.PANEL, 8, UiKit.LINE, 1, 6.0, 10))
+	obs_bar.add_theme_stylebox_override("panel", UiKit.frame(Color(-1, 0, 0), 6.0, 0.6, 8.0))
 	obs_bar.anchor_left = 0.5
 	obs_bar.anchor_right = 0.5
 	obs_bar.grow_horizontal = Control.GROW_DIRECTION_BOTH
@@ -383,7 +429,7 @@ func _build_observer_bar() -> void:
 	var hb := HBoxContainer.new()
 	hb.add_theme_constant_override("separation", 6)
 	obs_bar.add_child(hb)
-	var tag := UiKit.label("OBSERVER", 12, UiKit.ACCENT, 600)
+	var tag := UiKit.caps("Observer", 12, UiKit.ACCENT)
 	tag.custom_minimum_size = Vector2(76, 0)
 	tag.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	tag.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
@@ -392,7 +438,7 @@ func _build_observer_bar() -> void:
 	hb.add_child(obs_pause)
 	obs_slower = _small_button("-", "Slower", func(): world.director.set_speed_index(world.director.speed_i - 1))
 	hb.add_child(obs_slower)
-	obs_speed = UiKit.label("1x", 14, UiKit.TEXT, 600)
+	obs_speed = UiKit.mono_label("1X", 14, UiKit.TEXT)
 	obs_speed.custom_minimum_size = Vector2(44, 0)
 	obs_speed.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	obs_speed.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
@@ -459,18 +505,18 @@ func _place_obs_bar() -> void:
 
 func _small_button(text: String, tip: String, cb: Callable) -> Button:
 	var b := Button.new()
-	b.text = text
+	b.text = text.to_upper()
 	b.tooltip_text = tip
 	b.focus_mode = Control.FOCUS_NONE
 	b.custom_minimum_size = Vector2(34 if text.length() <= 1 else 74, 30)
-	b.add_theme_font_size_override("font_size", 13)
+	b.add_theme_font_size_override("font_size", 12)
 	b.pressed.connect(func(): Sfx.ui("click"); cb.call())
 	return b
 
 
 func _center_panel(sz: Vector2) -> PanelContainer:
 	var p := PanelContainer.new()
-	p.add_theme_stylebox_override("panel", UiKit.box(Color(0.05, 0.06, 0.055, 0.94), 10, UiKit.LINE, 1, 18.0, 18))
+	p.add_theme_stylebox_override("panel", UiKit.frame_hot(18.0, 0.95))
 	p.visible = false
 	root.add_child(p)
 	UiKit.fit_center(p, sz)
@@ -487,34 +533,111 @@ func _k_pan() -> String:
 	return "%s / %s / %s / %s" % [_k("cam_up"), _k("cam_left"), _k("cam_down"), _k("cam_right")]
 
 
-## The controls (F1), with the keys as they're bound now: rebuilt when they change.
+## The controls (F1), with the keys as they're bound now: rebuilt when they
+## change. A key reference (docs/UI.md): [KEY] and what it does, in groups;
+## the how-it-works lives in the Field Manual, with a few lines of it here.
 func _build_help() -> void:
 	for c in help_panel.get_children():
 		c.queue_free()
-	var l := RichTextLabel.new()
-	l.bbcode_enabled = true
-	l.add_theme_font_size_override("normal_font_size", 14)
-	l.add_theme_font_override("bold_font", UiKit.font(600))
-	var t := "[font_size=20][b]Controls[/b][/font_size]   [color=#9ea292]Change any key in Settings > Controls[/color]\n\n"
-	t += "[color=#f5c96e]Camera[/color]  %s or the screen edge to pan (%s: faster), wheel to zoom toward the cursor (or %s / %s), %s / %s to turn, %s / %s to tilt. Middle-drag turns and tilts; Alt+middle-drag grabs the map (swap them in Settings > Interface). %s squares the view up again. %s follows the selection. %s..%s save a view, %s..%s go back to it. %s cycles your FOBs, %s jumps to the last alert or ping. Zoom in close to see what every soldier is doing.\n" % [
-		_k_pan(), _k("cam_fast"), _k("cam_zoom_in"), _k("cam_zoom_out"), _k("cam_turn_left"), _k("cam_turn_right"), _k("cam_tilt_up"), _k("cam_tilt_down"),
-		_k("cam_reset"), _k("cam_follow"), _k("view_save_1"), _k("view_save_4"), _k("view_go_1"), _k("view_go_4"), _k("cycle_fob"), _k("jump_alert")]
-	t += "[color=#f5c96e]Minimap[/color]  Click or drag to look there, right-click to send the selection, wheel to zoom. The white wedge is the camera's view, orange rings are firefights, the needle points north (click it to square up). Size and turning with the camera: Settings > Interface.\n"
-	t += "[color=#f5c96e]Command view[/color]  %s switches to the tactical map; hold it for the battle statistics (Esc > Battle Statistics keeps them open). %s opens the order of battle (click a unit to select it and look at it). The buttons beside the minimap turn map layers on and off: unit symbols, orders and attack plans, intelligence (last known enemy positions), fog of war, weapon ranges, soldier labels.\n" % [_k("tactical"), _k("orbat")]
-	t += "[color=#f5c96e]Select[/color]  Click a soldier to select his squad, drag a box, double-click for every squad of that type on screen. %s..%s set a group, %s..%s recall it (twice quickly jumps there). Alt+click a soldier (or click his name in the squad panel) to command just him.\n" % [_k("group_set_1"), _k("group_set_9"), _k("group_1"), _k("group_9")]
-	t += "[color=#f5c96e]Orders[/color]  Right-click ground to move (Shift = run; drag to set the facing), an enemy to attack, an unfinished or damaged building to build or repair, a tunnel / nest / bunker to enter it, a boat to board it (they wade out to it). With a lift helicopter selected, right-click one of your vehicles to sling it underneath, then right-click where to set it down. The pips show where each man will fight from: green hard cover (sandbags, stone, earth), lime medium (cars, house walls - a machine gun goes through), yellow soft (a hedge hides you, bullets don't care), red caught in the open; the tick points the way he'll fire over it. Low cover is fought from prone, waist-high kneeling, chest-high standing; tall walls from their edges.\n"
-	t += "[color=#f5c96e]Squad[/color]  %s attack-move (or Ctrl+right-click), %s defend an area, %s retreat, %s hold, %s grenade, %s smoke, %s mortar fire mission.\n" % [_k("attack_move"), _k("defend"), _k("retreat"), _k("hold"), _k("grenade"), _k("smoke"), _k("fire_mission")]
-	t += "[color=#f5c96e]Build[/color]  Select infantry, open Base or Defenses on the command card and click to place (%s turns 90 degrees, Shift+wheel 45; everything snaps to the 1 m build grid). Drag to lay a whole line of trenches (fire bays and traverses; hold Alt for straight), sandbags, wire or walls.\n" % _k("rotate_build")
-	t += "[color=#f5c96e]Support[/color]  The buttons above the minimap (%s arms the first one ready): click the target and drag to set the run-in direction. Observers can launch any of them from Fire support.\n" % _k("support")
-	t += "[color=#f5c96e]Co-commanders[/color]  Every commander has a colour. On your side, theirs show as viewfinders on the ground and the minimap (where they're looking), cursors with their names and what they're doing, rings round what they've selected, and the building, fire mission or order they're lining up before they commit it. The Command Net (top right) lists them: click a name to look where they're looking, the screen button (or a double-click) to watch their view live%s. Alt+click to ping: an enemy (enemy spotted), one of ours (watch this) or the ground (look here), on the minimap too%s. Hold Alt and the left button for the ping wheel: attack, on my way, need support, danger, defend, look. Alt+right-drag draws on the map for your side.\n" % [
-		(" (%s goes from one to the next)" % _k("coop_next")) if Keys.label("coop_next") != "" else "", (", or %s (hold it for the wheel)" % _k("ping")) if Keys.label("ping") != "" else ""]
-	t += "[color=#f5c96e]Supply[/color]  Each FOB lays a road back to your lines. Trucks drive supply down it; lose the road and the FOBs beyond it starve. The top bar shows what's coming in a minute.\n"
-	t += "[color=#f5c96e]Towns[/color]  The town and every village have a supply dump flying the flag of whoever holds it. Get men inside its ring with no enemy there to take it (right-click a town that isn't yours with squads selected). A town you hold fills its dump and trucks it to your nearest FOB, refills your men's ammunition round the dump, and lets you build a FOB near it. Click a dump to see what it gives.\n"
-	t += "[color=#f5c96e]Win[/color]  Take or destroy every enemy FOB.\n\n"
-	t += "[color=#f5c96e]Observer[/color]  %s director camera, %s switch whose eyes you watch through, %s pause, %s and %s change speed.\n" % [_k("director"), _k("view_side"), _k("pause"), _k("slower"), _k("faster")]
-	t += "[color=#f5c96e]Other[/color]  %s chat (%s team), %s message history, %s hide the interface, %s performance overlay, %s Field Manual, Esc menu & settings." % [_k("chat"), _k("chat_team"), _k("log"), _k("hide_hud"), _k("perf"), _k("manual")]
-	l.text = t
-	help_panel.add_child(l)
+	var vb := VBoxContainer.new()
+	vb.add_theme_constant_override("separation", 12)
+	UiKit.scroll_content(help_panel, vb)
+	var head := HBoxContainer.new()
+	vb.add_child(head)
+	var t := UiKit.caps("Controls", 12, UiKit.ACCENT)
+	t.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	head.add_child(t)
+	head.add_child(UiKit.mono_label("CHANGE ANY KEY: SETTINGS › CONTROLS", 11, UiKit.FAINT))
+	var cols := HFlowContainer.new()
+	cols.add_theme_constant_override("h_separation", 28)
+	cols.add_theme_constant_override("v_separation", 14)
+	vb.add_child(cols)
+	var groups := [
+		[["Camera", [[_kk(["cam_up", "cam_left", "cam_down", "cam_right"]), "Pan (or the screen's edge)"], [_kk(["cam_fast"]), "Pan faster"],
+			[_kk(["cam_zoom_in", "cam_zoom_out"]), "Zoom (or the wheel)"], [_kk(["cam_turn_left", "cam_turn_right"]), "Turn"], [_kk(["cam_tilt_up", "cam_tilt_down"]), "Tilt"],
+			[["MMB"], "Turn and tilt (Alt: grab)"], [_kk(["cam_reset"]), "Square the view up"], [_kk(["cam_follow"]), "Follow the selection"],
+			[_kr("view_save_1", "view_save_4"), "Save a view"], [_kr("view_go_1", "view_go_4"), "Go to a view"], [_kk(["cycle_fob"]), "Cycle your FOBs"], [_kk(["jump_alert"]), "Last alert or ping"]]],
+		 ["Command", [[["LMB"], "Select · drag a box"], [["2× LMB"], "Every squad of that type"], [["RMB"], "Move · attack · build · enter"], [["SHIFT+RMB"], "Run there"],
+			[["ALT+LMB"], "Command one man"], [_kr("group_set_1", "group_set_9"), "Set a group"], [_kr("group_1", "group_9"), "Recall a group (twice: go there)"],
+			[_kk(["tactical"]), "Tactical map (hold: statistics)"], [_kk(["orbat"]), "Order of battle"]]]],
+		[["Orders", [[_kk(["attack_move"]), "Attack-move (Ctrl+RMB)"], [_kk(["defend"]), "Defend an area"], [_kk(["hold"]), "Hold"], [_kk(["retreat"]), "Retreat"],
+			[_kk(["grenade"]), "Grenade"], [_kk(["smoke"]), "Smoke"], [_kk(["fire_mission"]), "Mortar fire mission"], [_kk(["support"]), "First ready fire support"],
+			[_kk(["rotate_build"]), "Rotate a building (Shift+wheel: 45°)"]]],
+		 ["Co-commanders", [[["ALT+LMB"] if Keys.label("ping") == "" else _kk(["ping"]), "Ping (hold: the wheel)"], [["ALT+RMB"], "Draw on the map"],
+			[_kk(["coop_next"]), "Next commander's view"]]]],
+		[["Other", [[_kk(["chat"]), "Chat"], [_kk(["chat_team"]), "Team chat"], [_kk(["log"]), "Message history"], [_kk(["hide_hud"]), "Hide the interface"],
+			[_kk(["perf"]), "Performance overlay"], [_kk(["manual"]), "Field Manual"], [_kk(["console"]), "Console (type why)"], [["ESC"], "Menu and settings"]]],
+		 ["Observer", [[_kk(["director"]), "Director camera"], [_kk(["view_side"]), "Whose eyes to watch through"], [_kk(["pause"]), "Pause"],
+			[_kk(["slower", "faster"]), "Slower · faster"]]]],
+	]
+	for col in groups:
+		var cv := VBoxContainer.new()
+		cv.add_theme_constant_override("separation", 3)
+		cv.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		cv.custom_minimum_size.x = 280
+		cols.add_child(cv)
+		for g in col:
+			cv.add_child(UiKit.header(String(g[0])))
+			for row in g[1]:
+				var keys: Array = row[0]
+				if keys.is_empty():
+					continue
+				var hb := HBoxContainer.new()
+				hb.add_theme_constant_override("separation", 4)
+				for k in keys:
+					hb.add_child(_key_box(String(k)))
+				var l := UiKit.label(String(row[1]), 13, UiKit.DIM)
+				l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+				l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+				var sp := Control.new()
+				sp.custom_minimum_size = Vector2(6, 0)
+				hb.add_child(sp)
+				hb.add_child(l)
+				cv.add_child(hb)
+			var gap := Control.new()
+			gap.custom_minimum_size = Vector2(0, 8)
+			cv.add_child(gap)
+	vb.add_child(UiKit.header("How it works"))
+	for line in ["Cover pips under the cursor: green hard, lime medium, yellow soft, red open. The tick shows where he'll fire from.",
+			"Supply runs by truck down each FOB's road. Cut the road and the FOBs beyond it starve.",
+			"Towns: men in the ring with none of theirs take it. It fills its dump and trucks it to your nearest FOB.",
+			"Minimap: click to look, right-click to send the selection. The wedge is your view; orange rings are firefights.",
+			"Win: take or destroy every enemy FOB. The Field Manual (%s) has the rest." % (Keys.label("manual") if Keys.label("manual") != "" else "Esc › Field manual")]:
+		var l2 := UiKit.label(line, 13, UiKit.DIM)
+		l2.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		vb.add_child(l2)
+
+
+## The keys bound to these actions ("" ones left out).
+func _kk(ids: Array) -> Array:
+	var out := []
+	for id in ids:
+		var k := Keys.label(String(id))
+		if k != "":
+			out.append(k.to_upper())
+	return out
+
+
+## A run of numbered keys as one, "F5–F8".
+func _kr(first: String, last: String) -> Array:
+	var a := Keys.label(first)
+	var b := Keys.label(last)
+	if a == "" or b == "":
+		return _kk([first, last])
+	return ["%s–%s" % [a.to_upper(), b.to_upper()]]
+
+
+## A key in its box, for the key reference.
+static func _key_box(k: String) -> PanelContainer:
+	var p := PanelContainer.new()
+	var sb := UiKit.box(Color(0, 0, 0, 0), 0, UiKit.RULE2, 1, 0.0)
+	sb.content_margin_left = 5
+	sb.content_margin_right = 5
+	sb.content_margin_top = 1
+	sb.content_margin_bottom = 1
+	p.add_theme_stylebox_override("panel", sb)
+	p.add_child(UiKit.mono_label(k, 11, UiKit.TEXT))
+	return p
 
 
 ## Everything on screen that names a key, again after a key has been changed.
@@ -528,7 +651,8 @@ func _keys_changed() -> void:
 		obs_faster.tooltip_text = "Faster%s" % _kt("faster")
 		obs_dir.tooltip_text = "Cinematic camera that follows the fighting%s" % _kt("director")
 		obs_view.tooltip_text = "Whose eyes to watch through: both sides, or one side's fog of war%s" % _kt("view_side")
-	_log_head.text = ("MESSAGES  (%s TO CLOSE)" % Keys.label("log").to_upper()) if Keys.label("log") != "" else "MESSAGES"
+	_log_head.text = "Messages"
+	_log_key.text = ("%s CLOSES" % Keys.label("log").to_upper()) if Keys.label("log") != "" else ""
 
 
 ## " (key)" for a tooltip, or "" when nothing is bound.
@@ -539,23 +663,87 @@ func _kt(id: String) -> String:
 
 func _build_menu() -> void:
 	var vb := VBoxContainer.new()
-	vb.add_theme_constant_override("separation", 10)
-	menu_panel.add_child(vb)
-	var t := UiKit.label("Paused" if world.director and world.director.can_control_time() else "Menu", 22, UiKit.TEXT, 600)
-	t.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	vb.add_child(t)
-	for it in [["Resume", func(): menu_panel.visible = false],
-			["Battle Statistics", func(): menu_panel.visible = false; open_stats()],
-			["Settings", func(): menu_panel.visible = false; settings_panel.visible = true],
-			["Field Manual", func(): menu_panel.visible = false; manual.visible = true],
-			["Controls", func(): menu_panel.visible = false; toggle_help()],
-			["Leave Battle", _leave]]:
-		var b := Button.new()
-		b.text = it[0]
-		b.custom_minimum_size = Vector2(0, 40)
-		b.add_theme_font_size_override("font_size", 16)
-		b.pressed.connect(it[1])
-		vb.add_child(b)
+	vb.add_theme_constant_override("separation", 0)
+	UiKit.scroll_content(menu_panel, vb)
+	var head := HBoxContainer.new()
+	vb.add_child(head)
+	var t := UiKit.caps("Paused" if world.director and world.director.can_control_time() else "Menu", 12, UiKit.ACCENT)
+	t.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	head.add_child(t)
+	_menu_clock = UiKit.mono_label("", 12, UiKit.DIM)
+	head.add_child(_menu_clock)
+	_menu_ctx = UiKit.mono_label("", 12, UiKit.FAINT)
+	_menu_ctx.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	vb.add_child(_menu_ctx)
+	var gap := Control.new()
+	gap.custom_minimum_size = Vector2(0, 14)
+	vb.add_child(gap)
+	var top_rule := ColorRect.new()
+	top_rule.color = UiKit.LINE
+	top_rule.custom_minimum_size = Vector2(0, 1)
+	vb.add_child(top_rule)
+	for it in [["Resume", "Esc", func(): menu_panel.visible = false, false],
+			["Battle statistics", Keys.label("tactical"), func(): menu_panel.visible = false; open_stats(), false],
+			["Settings", "", func(): menu_panel.visible = false; settings_panel.visible = true, false],
+			["Field manual", Keys.label("manual"), func(): menu_panel.visible = false; manual.visible = true, false],
+			["Controls", Keys.label("help"), func(): menu_panel.visible = false; toggle_help(), false],
+			["Leave battle", "", _leave, true]]:
+		vb.add_child(list_item(String(it[0]), String(it[1]), it[2], bool(it[3])))
+
+
+## The pause dialog's context: the battle's clock and what battle it is.
+func _menu_context() -> void:
+	if _menu_clock == null:
+		return
+	_menu_clock.text = "T+%02d:%02d" % [int(world.time / 60.0), int(world.time) % 60]
+	var what: String = String(world.mission_info.get("op", world.mission_info.get("title", ""))) if not world.mission_info.is_empty() else "Battle"
+	var side: String = Defs.TEAM_NAMES[world.local_team] if world.local_team >= 0 else "Observer"
+	_menu_ctx.text = ("%s · %s" % [what, side]).to_upper()
+
+
+## A line of a dialog's list (docs/UI.md, Dialog): capitals on a rule; under
+## the cursor it fills with the accent. `key` shows at its end; `danger` is in red.
+static func list_item(text: String, key: String, cb: Callable, danger := false) -> Button:
+	var b := Button.new()
+	b.custom_minimum_size = Vector2(0, 36)
+	b.focus_mode = Control.FOCUS_ALL
+	var n := UiKit.box(Color(0, 0, 0, 0), 0, Color(0, 0, 0, 0), 0, 0.0)
+	n.border_color = UiKit.LINE
+	n.border_width_bottom = 1
+	n.content_margin_left = 10
+	var h := UiKit.box(UiKit.ACCENT, 0, UiKit.ACCENT, 0, 0.0)
+	h.content_margin_left = 10
+	for st in ["normal", "disabled"]:
+		b.add_theme_stylebox_override(st, n)
+	for st in ["hover", "pressed", "hover_pressed", "focus"]:
+		b.add_theme_stylebox_override(st, h)
+	var row := HBoxContainer.new()
+	row.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	row.offset_left = 10
+	row.offset_right = -10
+	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	b.add_child(row)
+	var l := UiKit.caps(text, 14, UiKit.BAD if danger else UiKit.TEXT, 600, 1)
+	l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	row.add_child(l)
+	var k: Label = null
+	if key != "":
+		k = UiKit.mono_label(key.to_upper(), 11, UiKit.FAINT)
+		k.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		k.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		row.add_child(k)
+	var lit := func(on: bool) -> void:
+		l.add_theme_color_override("font_color", UiKit.ON_ACCENT if on else (UiKit.BAD if danger else UiKit.TEXT))
+		if k:
+			k.add_theme_color_override("font_color", UiKit.ON_ACCENT if on else UiKit.FAINT)
+	b.mouse_entered.connect(lit.bind(true))
+	b.mouse_exited.connect(lit.bind(false))
+	b.focus_entered.connect(lit.bind(true))
+	b.focus_exited.connect(lit.bind(false))
+	b.pressed.connect(func(): Sfx.ui("click"); cb.call())
+	return b
 
 
 func _leave() -> void:
@@ -582,9 +770,12 @@ func toggle_menu() -> void:
 		help_panel.visible = false
 		return
 	if log_panel.visible:
-		log_panel.visible = false
+		toggle_log()
 		return
 	menu_panel.visible = not menu_panel.visible
+	if menu_panel.visible:
+		_menu_context()
+		UiMotion.arrive(menu_panel, Vector2(0, 1))
 
 
 func toggle_help() -> void:
@@ -641,9 +832,11 @@ func _track_orders() -> void:
 
 
 ## What a squad is doing, in a few words, for the order of battle and the
-## squad card: {text, col, glyph, contact, pinned, wounded, low_ammo}.
+## squad card: {text, code, col, glyph, contact, pinned, wounded, low_ammo}.
+## `code` is the same said the Signal way (docs/UI.md, Voice): MOV D8,
+## PINNED · DEF E4.
 func squad_state(sid: int, mem: Array) -> Dictionary:
-	var out := {"text": "Holding", "col": UiKit.DIM, "glyph": "", "contact": false, "pinned": false, "wounded": 0, "low_ammo": false, "morale": -1, "mstate": 0}
+	var out := {"text": "Holding", "code": "HOLD", "col": UiKit.DIM, "glyph": "", "contact": false, "pinned": false, "wounded": 0, "low_ammo": false, "morale": -1, "mstate": 0}
 	var alive := 0
 	var pinned := 0
 	var low := 0
@@ -667,6 +860,8 @@ func squad_state(sid: int, mem: Array) -> Dictionary:
 	var o: Array = orders.get(sid, [])
 	if not o.is_empty():
 		var g := Defs.grid_ref(o[1])
+		out.code = {"move": "MOV ", "bound": "BOUND ", "ambush": "AMBUSH ", "assault": "ATK ", "defend": "DEF ", "build": "BUILD "}.get(String(o[0]), "") + g
+		out.code = {"retreat": "FALL BACK", "attack": "ENGAGE", "tunnel": "TUNNELS", "contact": "CONTACT", "displace": "DISPLACE", "rout": "ROUTING"}.get(String(o[0]), out.code)
 		match String(o[0]):
 			"move":
 				out.text = "Moving to " + g
@@ -717,20 +912,44 @@ func squad_state(sid: int, mem: Array) -> Dictionary:
 				out.col = UiKit.BAD
 		if String(o[8]) == "withdraw":
 			out.text = "Breaking contact"
+			out.code = "BREAK CONTACT"
 		var pl = o[6]
 		if pl != null:
 			out.text = plan_text(pl)
+			out.code = plan_code(pl)
 		out.morale = int(o[7])
 		out.mstate = SquadBrain.state(float(o[7]), String(o[8]) == "rout") if int(o[7]) >= 0 else 0
 	if riding:
 		out.text = "Mounted  ·  " + out.text
+		out.code = "MOUNTED · " + out.code
 	if out.pinned:
 		out.text = "PINNED  ·  " + out.text
-		out.col = UiKit.BAD
+		out.code = "PINNED · " + out.code
+		out.col = UiKit.WARN
 	elif out.contact and not String(out.text).begins_with("Attacking"):
 		out.text = "In contact  ·  " + out.text
+		if not String(out.code).begins_with("CONTACT"):
+			out.code = "CONTACT · " + out.code
 		out.col = Color(1.0, 0.72, 0.42)
 	return out
+
+
+## A squad's part in an attack plan, as a code.
+func plan_code(pl: Array) -> String:
+	var role := String(pl[5]) if pl.size() > 5 else "assault"
+	var obj := Defs.grid_ref(pl[1])
+	match String(pl[0]):
+		"plan":
+			return "PLAN " + obj
+		"move":
+			return ("TO SPT " if role == "support" else "TO ASLT ") + obj
+		"fix":
+			return "FIX %s · NEED SPT" % obj
+		"assault":
+			return ("FIRE ON " + obj) if role == "support" else ("ASSAULT " + obj)
+		"fallback":
+			return "REGROUP " + obj
+	return "ATK " + obj
 
 
 ## One line for a squad's part in an attack plan.
@@ -754,6 +973,18 @@ func plan_text(pl: Array) -> String:
 
 func toggle_log() -> void:
 	log_panel.visible = not log_panel.visible
+	toasts.visible = not log_panel.visible
+	if log_panel.visible:
+		_fit_log()
+		UiMotion.arrive(log_panel, Vector2(0, -1))
+
+
+## The history takes the latest lines' place while it's open, as tall as what
+## it holds (a box round one line says nothing), up to the space above the orders.
+func _fit_log() -> void:
+	toasts.visible = false
+	var h := clampf(log_box.get_content_height(), 18.0, 330.0)
+	log_panel.offset_bottom = log_panel.offset_top + h + 52.0
 
 
 func flash(text: String) -> void:
@@ -772,7 +1003,7 @@ func add_message(kind: String, text: String, toast := true) -> void:
 	var mins := int(world.time / 60.0)
 	var secs := int(world.time) % 60
 	var clean := text.replace("[", "(").replace("]", ")") if kind == "chat" else text
-	var line := "[color=#777]%d:%02d[/color]  [color=#%s]%s[/color]" % [mins, secs, col.to_html(false), clean]
+	var line := "[color=#%s][code]%02d:%02d[/code][/color]  [color=#%s]%s[/color]" % [UiKit.FAINT.to_html(false), mins, secs, col.to_html(false), clean]
 	_msgs.append(line)
 	if _msgs.size() > 120:
 		_msgs.pop_front()
@@ -803,10 +1034,27 @@ func _on_chat(text: String) -> void:
 	_close_chat()
 
 
+## The living map fades in, see-through, under the Esc menu, the help and the
+## settings, and under the end of the battle, where a wave from the middle of
+## the screen wakes it.
+func _update_veil(rdt: float) -> void:
+	var on := menu_panel.visible or help_panel.visible or settings_panel.visible or over_panel.visible
+	veil.modulate.a = move_toward(veil.modulate.a, 1.0 if on else 0.0, rdt * 4.0)
+	veil.visible = veil.modulate.a > 0.0
+	if _veil_wave >= 0.0 and over_panel.visible:
+		_veil_wave += rdt
+		veil.wake_t = _veil_wave - 0.15
+	else:
+		_veil_wave = -1.0
+		veil.wake_t = 1000.0
+
+
 ## The end of the battle: who won, and the after-action report - the whole
 ## battle's figures, both sides', in the stats tabs.
 func show_game_over(w: int) -> void:
 	close_stats()
+	_veil_wave = 0.0
+	veil.wake_at = Vector2(0.5, 0.5)
 	for c in over_panel.get_children():
 		c.queue_free()
 	UiKit.fit_center(over_panel, Vector2(1180, 840), 30.0)
@@ -831,8 +1079,8 @@ func show_game_over(w: int) -> void:
 	if not world.mission_info.is_empty():
 		facts = _mission_head(hv)
 	else:
-		hv.add_child(_spaced_label("AFTER-ACTION REPORT", 12, UiKit.ACCENT, 4))
-		var t := _spaced_label("", 34, UiKit.TEXT, 6)
+		hv.add_child(UiKit.caps("After-action report", 11, UiKit.FAINT, 600, 2))
+		var t := UiKit.caps("", 34, UiKit.TEXT, 600, 4)
 		if world.local_team < 0:
 			t.text = "%s WIN" % Defs.TEAM_NAMES[w].to_upper()
 			t.add_theme_color_override("font_color", Defs.TEAM_COLORS[w].lightened(0.3))
@@ -844,9 +1092,11 @@ func show_game_over(w: int) -> void:
 			t.add_theme_color_override("font_color", UiKit.BAD)
 		hv.add_child(t)
 		hv.add_child(UiKit.label("%s have taken the battlefield." % Defs.TEAM_NAMES[w], 14, UiKit.DIM))
-		facts = "Battle lasted %s" % StatsPanel.fmt_time(world.time)
+		facts = "T+%s" % UiKit.fmt_time(world.time)
 		Music.sting("defeat" if world.local_team >= 0 and w != world.local_team else "victory")
-	var fl := UiKit.label(facts, 13, UiKit.DIM)
+	if world.local_team >= 0 and Online.signed_in():
+		_xp_row(head)
+	var fl := UiKit.mono_label(facts, 12, UiKit.DIM)
 	fl.size_flags_vertical = Control.SIZE_SHRINK_END
 	fl.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	head.add_child(fl)
@@ -861,7 +1111,7 @@ func show_game_over(w: int) -> void:
 	row.add_theme_constant_override("separation", 10)
 	vb.add_child(row)
 	# the service record: saved, or sign in to keep it
-	_rec_note = UiKit.label("", 13, UiKit.DIM)
+	_rec_note = UiKit.label("", 13, UiKit.FAINT)
 	_rec_note.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_rec_note.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	_rec_note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -882,42 +1132,9 @@ func show_game_over(w: int) -> void:
 	_end_sequence(w)
 
 
-## The report's buttons: spaced capitals on cut-cornered glass; the one to
-## press next in the accent.
+## The report's buttons: the one to press next is the primary (docs/UI.md).
 func _cta(text: String, primary: bool, cb: Callable) -> Button:
-	var b := Button.new()
-	b.text = text.to_upper()
-	b.custom_minimum_size = Vector2(190, 42)
-	b.focus_mode = Control.FOCUS_NONE
-	b.add_theme_font_override("font", UiFx.spaced(700, 2))
-	b.add_theme_font_size_override("font_size", 13)
-	# cut corners: a flat box whose two corners are single straight segments
-	var cut := func(bg: Color, edge: Color) -> StyleBoxFlat:
-		var sb := StyleBoxFlat.new()
-		sb.bg_color = bg
-		sb.border_color = edge
-		sb.set_border_width_all(0 if primary else 1)
-		sb.corner_radius_top_left = 9
-		sb.corner_radius_bottom_right = 9
-		sb.corner_detail = 1
-		sb.anti_aliasing = true
-		sb.set_content_margin_all(8.0)
-		return sb
-	if primary:
-		b.add_theme_stylebox_override("normal", cut.call(UiFx.fade(UiKit.ACCENT, 0.92), Color.TRANSPARENT))
-		b.add_theme_stylebox_override("hover", cut.call(UiKit.ACCENT.lightened(0.14), Color.TRANSPARENT))
-		b.add_theme_stylebox_override("pressed", cut.call(UiKit.ACCENT.darkened(0.08), Color.TRANSPARENT))
-	else:
-		b.add_theme_stylebox_override("normal", cut.call(Color(1, 1, 1, 0.03), Color(1, 1, 1, 0.2)))
-		b.add_theme_stylebox_override("hover", cut.call(Color(1, 1, 1, 0.07), UiKit.ACCENT))
-		b.add_theme_stylebox_override("pressed", cut.call(UiFx.fade(UiKit.ACCENT, 0.18), UiKit.ACCENT))
-	b.add_theme_stylebox_override("hover_pressed", b.get_theme_stylebox("pressed"))
-	b.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
-	var ink := Color(0.08, 0.07, 0.05) if primary else UiKit.TEXT
-	b.add_theme_color_override("font_color", ink)
-	b.add_theme_color_override("font_hover_color", ink if primary else UiKit.ACCENT)
-	b.add_theme_color_override("font_pressed_color", ink)
-	b.add_theme_color_override("font_hover_pressed_color", ink)
+	var b := UiKit.button(text, "primary" if primary else "secondary", 190, 40)
 	b.mouse_entered.connect(func(): Sfx.ui("ui_tick", -26.0, 1.4))
 	b.pressed.connect(func(): Sfx.ui("click"); cb.call())
 	return b
@@ -933,9 +1150,7 @@ func _spaced_label(text: String, fs: int, col: Color, spacing: int) -> Label:
 
 
 func _draw_over() -> void:
-	UiFx.panel(over_panel, Rect2(Vector2.ZERO, over_panel.size), 1.0, 20.0)
-	over_panel.draw_rect(Rect2(26.0, 0.0, over_panel.size.x * 0.34, 2.0), UiKit.ACCENT)
-	over_panel.draw_rect(Rect2(26.0, 2.0, over_panel.size.x * 0.34, 10.0), UiFx.fade(UiKit.ACCENT, 0.06))
+	UiFx.panel(over_panel, Rect2(Vector2.ZERO, over_panel.size), 1.0)
 
 
 ## The end of the battle as a moment: the battlefield greys out behind a
@@ -952,7 +1167,7 @@ func _end_sequence(w: int) -> void:
 		ban.sub = String(world.mission_info.get("op", ""))
 	elif world.local_team < 0:
 		ban.headline = "%s WIN" % String(Defs.TEAM_NAMES[w]).to_upper()
-		ban.sub = "Battle lasted %s" % StatsPanel.fmt_time(world.time)
+		ban.sub = "Battle lasted %s" % UiKit.fmt_time(world.time)
 	else:
 		ban.headline = "VICTORY" if won else "DEFEAT"
 		ban.sub = "%s have taken the battlefield" % Defs.TEAM_NAMES[w]
@@ -965,7 +1180,7 @@ func _end_sequence(w: int) -> void:
 			if int(c.id) == world.local_peer:
 				var rv := BattleStats.rating(c, (r.sides as Array)[world.local_team])
 				ban.rating = rv
-				ban.rating_word = BattleStats.rating_word(rv)
+				ban.rating_word = UiKit.rating_word(rv)
 	var old := root.get_node_or_null("OverGrade")
 	if old:
 		old.queue_free()
@@ -1013,7 +1228,7 @@ func _update_record_note() -> void:
 				_rec_note.text = "Couldn't reach the matchmaker: this battle goes on your service record next time it can."
 				_rec_note.add_theme_color_override("font_color", UiKit.WARN)
 			else:
-				_rec_note.text = "Sign in to keep this battle, and every one after it, on a service record."
+				_rec_note.text = "Sign in to keep this battle, and every one after it, on a service record, and to earn ranks and insignia."
 				_rec_btn.visible = true
 		_:
 			_rec_note.text = ""
@@ -1023,8 +1238,67 @@ func _sign_in_for_record() -> void:
 	if account_panel == null:
 		account_panel = AccountPanel.new()
 		root.add_child(account_panel)
-		UiKit.fit_center(account_panel, Vector2(500, 440))
+		UiKit.fit_center(account_panel, AccountPanel.SIZE)
 	account_panel.open(false, Net.my_name)
+
+
+## The rank's corner of the report's header. It waits for the matchmaker to
+## say what the battle was worth (Online.battle_reported): the XP, how far
+## through the rank, and a promotion with the patch that comes with it.
+func _xp_row(parent: Control) -> void:
+	_xp_box = VBoxContainer.new()
+	_xp_box.add_theme_constant_override("separation", 4)
+	_xp_box.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	_xp_box.custom_minimum_size = Vector2(320, 0)
+	parent.add_child(_xp_box)
+	_xp_box.add_child(UiKit.label("Counting your XP...", 13, UiKit.DIM))
+
+
+func _on_battle_reported(rep: Dictionary) -> void:
+	if not is_instance_valid(_xp_box):
+		return
+	for c in _xp_box.get_children():
+		c.queue_free()
+	if rep.has("error"):
+		var e := UiKit.label("Couldn't count this battle towards your rank: %s" % String(rep.error), 13, UiKit.BAD)
+		e.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		e.custom_minimum_size = Vector2(320, 0)
+		_xp_box.add_child(e)
+		return
+	var gained: int = int(rep.get("gained", 0))
+	var before: int = int(rep.get("rank_before", Online.rank))
+	var promoted: bool = Online.rank > before
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 12)
+	_xp_box.add_child(row)
+	# promoted: the new rank's patch is theirs to wear
+	var id: String = ("r%02d" % Online.rank) if promoted else Online.icon
+	var pic := TextureRect.new()
+	pic.texture = Insignia.texture(id, 128)
+	pic.custom_minimum_size = Vector2(52, 52)
+	pic.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	pic.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	pic.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+	row.add_child(pic)
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 1)
+	v.alignment = BoxContainer.ALIGNMENT_CENTER
+	row.add_child(v)
+	var rname := Insignia.rank_name(Online.rank).to_upper()
+	v.add_child(_spaced_label(("PROMOTED: " + rname) if promoted else rname, 12, UiKit.GOOD if promoted else UiKit.ACCENT, 2))
+	var nxt := ("%s / %s XP" % [Insignia.thousands(Online.xp - Online.rank_xp), Insignia.thousands(Online.next_xp - Online.rank_xp)]) if Online.next_xp > 0 else "Top rank"
+	v.add_child(UiKit.label(("+%d XP  \u00b7  %s" % [gained, nxt]) if gained > 0 else "No XP: battles under two minutes don't count", 14, UiKit.TEXT, 600))
+	if promoted:
+		var more: int = Online.rank - before - 1
+		v.add_child(UiKit.label("New insignia: %s%s" % [String(Insignia.find(id).get("n", "")), (" and %d more" % more) if more > 0 else ""], 12, UiKit.DIM))
+	var bar := ProgressBar.new()
+	bar.show_percentage = false
+	bar.custom_minimum_size = Vector2(320, 4)
+	bar.max_value = maxf(1.0, Online.next_xp - Online.rank_xp) if Online.next_xp > 0 else 1.0
+	bar.value = (Online.xp - Online.rank_xp) if Online.next_xp > 0 else 1.0
+	bar.add_theme_stylebox_override("background", UiKit.box(Color(1, 1, 1, 0.08), 2, Color(0, 0, 0, 0), 0, 0.0))
+	bar.add_theme_stylebox_override("fill", UiKit.box(UiKit.ACCENT, 2, Color(0, 0, 0, 0), 0, 0.0))
+	_xp_box.add_child(bar)
 
 
 ## The end of a mission: accomplished or failed and why, the headline of the
@@ -1033,8 +1307,8 @@ func _mission_head(vb: VBoxContainer) -> String:
 	var info: Dictionary = world.mission_info
 	var ok := int(info.get("over", 0)) == 1
 	Music.sting("victory" if ok else "defeat")
-	vb.add_child(_spaced_label(String(info.get("op", "")).to_upper(), 12, UiKit.ACCENT, 4))
-	vb.add_child(_spaced_label("MISSION ACCOMPLISHED" if ok else "MISSION FAILED", 30, UiKit.GOOD if ok else UiKit.BAD, 5))
+	vb.add_child(UiKit.caps(String(info.get("op", "")), 11, UiKit.FAINT, 600, 2))
+	vb.add_child(UiKit.caps("Mission accomplished" if ok else "Mission failed", 30, UiKit.GOOD if ok else UiKit.BAD, 600, 4))
 	var s := UiKit.label(String(info.get("end", "")), 14, UiKit.TEXT)
 	s.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	s.custom_minimum_size = Vector2(420, 0)
@@ -1049,7 +1323,7 @@ func _mission_head(vb: VBoxContainer) -> String:
 			done += 1
 	var el := float(info.get("el", 0.0))
 	var lost: Array = info.get("lost", [0, 0])
-	return "Time %s    Objectives %d of %d    Men lost %d of %d    Enemy killed %d" % [StatsPanel.fmt_time(el), done, all, int(lost[0]), int(lost[1]), int(info.get("kills", 0))]
+	return "T+%s · OBJECTIVES %d/%d · LOST %d/%d · KILLED %d" % [UiKit.fmt_time(el), done, all, int(lost[0]), int(lost[1]), int(info.get("kills", 0))]
 
 
 # --- battle statistics -------------------------------------------------------------------
@@ -1110,20 +1384,23 @@ func _view_process(dt: float) -> void:
 	_alert_t -= rdt
 	alert_label.modulate.a = clampf(_alert_t * 1.5, 0.0, 1.0)
 	_inspect_t -= rdt
+	if log_panel.visible:
+		_fit_log()
 	var spectator := world.local_team < 0
 	obs_bar.visible = spectator and world.director != null
 	if obs_bar.visible:
 		var d := world.director
 		var spd: float = d.speed()
-		obs_speed.text = "paused" if spd <= 0.0 else ("%sx" % (str(spd) if spd < 1.0 else str(int(spd))))
-		obs_pause.text = "Play" if spd <= 0.0 else "Pause"
+		obs_speed.text = "PAUSED" if spd <= 0.0 else ("%sX" % (str(spd) if spd < 1.0 else str(int(spd))))
+		obs_pause.text = "PLAY" if spd <= 0.0 else "PAUSE"
 		obs_pause.disabled = not d.can_control_time()
 		obs_dir.set_pressed_no_signal(d.active)
-		obs_view.text = "View: " + (["Both sides", Defs.TEAM_NAMES[0], Defs.TEAM_NAMES[1]][world.view_team + 1])
+		obs_view.text = "VIEW: " + (["Both sides", Defs.TEAM_NAMES[0], Defs.TEAM_NAMES[1]][world.view_team + 1]).to_upper()
 		_place_obs_bar()
 	_track_orders()
 	_update_support()
 	_update_card()
+	_update_veil(rdt)
 	# the battle statistics stay current while they're up
 	if stats_panel.visible:
 		_stats_t += rdt
@@ -1141,7 +1418,7 @@ func _view_process(dt: float) -> void:
 	# on a narrow screen (a big interface scale) the command card gives up
 	# columns before the selection panel beside it is squeezed
 	var room := root.size.x - minimap_right() - 10.0 - SEL_MIN_W - 12.0 - 14.0
-	var cols := clampi(int((room - 15.0) / (CARD_BTN.x + 5.0)), 3, 5)
+	var cols := clampi(int((room - 15.0) / (CARD_BTN.x + 12.0)), 2, 3)
 	if card.columns != cols:
 		card.columns = cols
 	var has_sel := world.input != null and (world.input.has_units() or world.input.sel_structure != 0 or (_inspect_t > 0.0 and _inspect != null and not _inspect.gone))
@@ -1169,6 +1446,14 @@ func _view_process(dt: float) -> void:
 		sel_panel.offset_right = x0 + w
 		sel_info.custom_minimum_size.x = w - 22.0
 	card_panel.visible = card.get_child_count() > 0
+	_card_active()
+	if menu_panel.visible:
+		_menu_context()
+	var bs: UiScrim = _scrims["bottom"]
+	var want_b := 1.0 if (sel_panel.visible or card_panel.visible) else 0.55
+	if absf(bs.strength - want_b) > 0.01:
+		bs.strength = move_toward(bs.strength, want_b, rdt * 4.0)
+		bs.queue_redraw()
 	if slow:
 		top.queue_redraw()
 		orbat.queue_redraw()
@@ -1198,7 +1483,7 @@ func _view_process(dt: float) -> void:
 	if objectives.need_h > 0.0:
 		ry = 12.0 + objectives.need_h + 10.0
 	elif perf_big:
-		ry = 22.0 + (150.0 if perf_lvl == 2 else 590.0) + 8.0
+		ry = 22.0 + (184.0 if perf_lvl == 2 else 590.0) + 8.0  # (perf_overlay.gd's PANEL_H)
 	coop_roster.position = Vector2(root.size.x - 14.0 - HudCoopRoster.W, ry)
 	coop_roster.size = Vector2(HudCoopRoster.W, coop_roster.need_h)
 	if not perf_big:
@@ -1221,6 +1506,25 @@ func _view_process(dt: float) -> void:
 	coop.queue_redraw()
 
 
+## A fire mission's name, short: its designation and what it does
+## ("A-10C Thunderbolt II Gun Run" is A-10C GUN RUN); the full name is its tooltip.
+const _FIRE_WORDS := ["Strike", "Gun", "Run", "Gunship", "Strafe", "Drone", "Recon", "Pass", "Precision", "Overwatch", "Artillery", "Barrage",
+	"Mortars", "Smoke", "Airstrike", "Bombing", "Rockets", "Missile", "Salvo", "Cluster", "Napalm", "Strike.", "Rocket", "Helicopter"]
+
+
+static func fire_short(name: String) -> String:
+	var tok := name.split(" ")
+	var out := [tok[0]]
+	for i in range(1, tok.size()):
+		var w := String(tok[i])
+		if w in _FIRE_WORDS or w == w.to_lower() or w.contains("-"):
+			out.append(w)
+	return " ".join(out).to_upper()
+
+
+## FIRES (docs/UI.md, Layout): the fire missions on call, a row each above the
+## minimap. The ready ones are listed; the ones cooling down fold into a last
+## row (+9 ON COOLDOWN · NEXT 81S) that opens them.
 func _update_support() -> void:
 	var kinds: Array = Defs.supports_for(world.local_team) if world.local_team >= 0 else []
 	if not world.mission_info.is_empty():
@@ -1233,26 +1537,22 @@ func _update_support() -> void:
 		for c in support_box.get_children():
 			c.queue_free()
 		_support_btns.clear()
-		var i := 0
+		if not kinds.is_empty():
+			support_box.add_child(UiKit.header("Fires", "%02d" % kinds.size()))
 		for k in kinds:
-			var b := Button.new()
-			b.focus_mode = Control.FOCUS_NONE
-			b.custom_minimum_size = Vector2(210, 28)
-			b.add_theme_font_size_override("font_size", 13)
-			b.alignment = HORIZONTAL_ALIGNMENT_LEFT
-			b.tooltip_text = String(Defs.SUPPORT[k].desc)
 			var kk: String = k
-			b.pressed.connect(func():
-				Sfx.ui("click")
+			var b := _fire_row(fire_short(String(Defs.SUPPORT[k].name)), "%s\n%s" % [Defs.SUPPORT[k].name, Defs.SUPPORT[k].desc], func():
 				world.input.cancel_modes()
 				world.input.ability = "support:" + kk)
 			support_box.add_child(b)
 			_support_btns[k] = b
-			i += 1
+		_fires_more = _fire_row("", "Show every fire mission", func(): _fires_open = not _fires_open)
+		support_box.add_child(_fires_more)
 	if kinds.is_empty():
 		return
 	var sup: Dictionary = world.team_info[world.local_team].get("sup", {}) if world.local_team >= 0 else {}
 	var first := true
+	var cooling := []
 	for k in kinds:
 		var b: Button = _support_btns.get(k)
 		if b == null:
@@ -1260,17 +1560,73 @@ func _update_support() -> void:
 		var sd: Dictionary = Defs.SUPPORT[k]
 		var left := float(sup.get(k, Defs.support_from(k))) - world.time
 		b.disabled = left > 0.0
-		var zk := Keys.label("support")
-		var hot := ("  [%s]" % zk) if first and left <= 0.0 and zk != "" else ""
+		var state: Label = b.get_meta("state")
+		var nm: Label = b.get_meta("name")
 		if left <= 0.0:
+			var zk := Keys.label("support")
+			state.text = ("[%s] RDY · %d" % [zk.to_upper(), int(sd.cost)]) if first and zk != "" else ("RDY · %d" % int(sd.cost))
+			state.add_theme_color_override("font_color", UiKit.GOOD)
+			nm.add_theme_color_override("font_color", UiKit.TEXT)
 			first = false
-		b.text = ("  %s   %d%s" % [sd.name, int(sd.cost), hot]) if left <= 0.0 else ("  %s   %ds" % [sd.name, int(ceil(left))])
+			b.visible = true
+		else:
+			state.text = "%dS" % int(ceil(left))
+			state.add_theme_color_override("font_color", UiKit.FAINT)
+			nm.add_theme_color_override("font_color", UiKit.DIM)
+			cooling.append([left, b])
+	# the ones cooling down: shown when opened, or a couple when few are ready
+	cooling.sort_custom(func(a, c): return float(a[0]) < float(c[0]))
+	var show_n := cooling.size() if _fires_open else maxi(0, 2 - (kinds.size() - cooling.size()))
+	for i in cooling.size():
+		(cooling[i][1] as Button).visible = i < show_n
+	var hidden := cooling.size() - show_n
+	_fires_more.visible = hidden > 0 or (_fires_open and cooling.size() > 0)
+	(_fires_more.get_meta("name") as Label).text = ("+%d on cooldown" % hidden) if hidden > 0 else "Fold the list"
+	(_fires_more.get_meta("state") as Label).text = ("NEXT %dS" % int(ceil(float(cooling[show_n][0])))) if hidden > 0 else ""
+
+
+## A row of the fire support list: its name, and its state at the end.
+func _fire_row(name: String, tip: String, cb: Callable) -> Button:
+	var b := Button.new()
+	b.focus_mode = Control.FOCUS_NONE
+	b.custom_minimum_size = Vector2(0, 24)
+	b.tooltip_text = tip
+	var n := UiKit.box(Color(0, 0, 0, 0), 0, UiKit.LINE, 0, 0.0)
+	n.border_width_bottom = 1
+	var h := UiKit.box(UiKit.fa(UiKit.TEXT, 0.05), 0, UiKit.LINE, 0, 0.0)
+	h.border_width_bottom = 1
+	var pr := UiKit.box(UiKit.fa(UiKit.ACCENT, 0.22), 0, UiKit.LINE, 0, 0.0)
+	pr.border_width_bottom = 1
+	b.add_theme_stylebox_override("normal", n)
+	b.add_theme_stylebox_override("disabled", n)
+	b.add_theme_stylebox_override("hover", h)
+	b.add_theme_stylebox_override("pressed", pr)
+	b.add_theme_stylebox_override("hover_pressed", pr)
+	var row := HBoxContainer.new()
+	row.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	row.offset_left = 2
+	row.offset_right = -2
+	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	b.add_child(row)
+	var l := UiKit.caps(name, 12, UiKit.TEXT, 600, 1)
+	l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	row.add_child(l)
+	var st := UiKit.mono_label("", 12, UiKit.FAINT)
+	st.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	st.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	row.add_child(st)
+	b.set_meta("name", l)
+	b.set_meta("state", st)
+	b.pressed.connect(func(): Sfx.ui("click"); cb.call())
+	return b
 
 
 ## Observer: every kind of support, free, anywhere - to see the effects.
 func _build_demo_panel() -> void:
 	demo_panel = PanelContainer.new()
-	demo_panel.add_theme_stylebox_override("panel", UiKit.box(UiKit.PANEL, 8, UiKit.LINE, 1, 6.0, 10))
+	demo_panel.add_theme_stylebox_override("panel", UiKit.frame(Color(-1, 0, 0), 6.0, 0.6, 8.0))
 	demo_panel.anchor_left = 0.5
 	demo_panel.anchor_right = 0.5
 	demo_panel.grow_horizontal = Control.GROW_DIRECTION_BOTH
@@ -1280,7 +1636,7 @@ func _build_demo_panel() -> void:
 	var vb := VBoxContainer.new()
 	vb.add_theme_constant_override("separation", 6)
 	demo_panel.add_child(vb)
-	vb.add_child(UiKit.label("FIRE SUPPORT DEMO  -  pick one, click the map (drag sets the run-in direction)", 12, UiKit.ACCENT, 600))
+	vb.add_child(UiKit.caps("Fire support demo · pick one, click the map, drag sets the run-in", 12, UiKit.ACCENT))
 	var g := GridContainer.new()
 	g.columns = 4
 	g.add_theme_constant_override("h_separation", 6)
@@ -1367,7 +1723,7 @@ func _update_card() -> void:
 		return
 	if key.begins_with("unit:"):
 		var su: Soldier = world.entity(inp.sel_unit) as Soldier
-		card_title.text = "SOLDIER ORDERS  -  %s" % (su.sname.to_upper() if su else "")
+		card_title.text = "Orders · %s" % (su.sname if su else "")
 		_button("Grenade", Keys.label("grenade"), "Throw a frag grenade at a spot.", func(): inp.ability = "frag")
 		_button("Smoke", Keys.label("smoke"), "Throw smoke to block line of sight.", func(): inp.ability = "smoke")
 		_button("Hold", Keys.label("hold"), "Stop right here.", func(): inp.hold())
@@ -1379,7 +1735,7 @@ func _update_card() -> void:
 				inp.sel_squads.append(s2.sid))
 	elif key.begins_with("units:inf"):
 		if _card_page == "main":
-			card_title.text = "ORDERS"
+			card_title.text = "Orders"
 			_button("Attack-move", Keys.label("attack_move"), "Push to a spot in bounds, one fire team moving while the other covers. They stop to fight anything they meet, then dig in at the objective. (Ctrl+right-click)", func(): inp.cancel_modes(); inp.order_mode = "assault")
 			_button("Defend", Keys.label("defend"), "Hold an area: the squad spreads into the best cover there facing the way you drag, and stays put.", func(): inp.cancel_modes(); inp.order_mode = "defend")
 			_button("Base", "Build", "FOBs, barracks, factory, medic tent, research...", func(): _card_page = "base")
@@ -1392,15 +1748,15 @@ func _update_card() -> void:
 			_button("Retreat", Keys.label("retreat"), "Run back to the nearest FOB, keeping clear of known enemy fire. Retreating men shrug off half the suppression.", func(): inp.retreat())
 			_button("Hold", Keys.label("hold"), "Stop and hold position here.", func(): inp.hold())
 		else:
-			card_title.text = "BUILD %s  -  soldiers walk over and build it by hand" % ("BASE" if _card_page == "base" else "DEFENSES")
-			_button("Back", "", "Back to orders.", func(): _card_page = "main")
+			card_title.text = "Build %s" % ("base" if _card_page == "base" else "defences")
+			_button("Back", "‹", "Back to orders.", func(): _card_page = "main")
 			for kind in Defs.BUILD_MENU[lt]:
 				if (kind in BASE_KINDS) != (_card_page == "base"):
 					continue
 				var d: Dictionary = Defs.BUILDINGS[kind]
 				_button(d.name, str(d.cost), "%s\nCost %d supply. Build time %ds (engineers are twice as fast)." % [d.desc, d.cost, int(d.time)], func(): inp.start_place(kind))
 	elif key.begins_with("units:veh"):
-		card_title.text = "VEHICLE ORDERS"
+		card_title.text = "Vehicle orders"
 		_button("Attack-move", Keys.label("attack_move"), "Drive to a spot, halting for a steady shot at anything in range on the way. Troops inside dismount when the enemy is close.", func(): inp.cancel_modes(); inp.order_mode = "assault")
 		_button("Dismount", "", "Drop the ramp: the troops inside get out and dig in.", func(): world.send_cmd({"t": "dismount", "vehicles": inp.sel_vehicles}))
 		if inp.selection_has_arty():
@@ -1423,7 +1779,7 @@ func _update_card() -> void:
 			var page := _card_page.trim_prefix("prod:") if _card_page.begins_with("prod:") else ""
 			if cats.size() > 1 and items.size() > 9 and page == "":
 				# a long list: pick a category first
-				card_title.text = "BUILD  -  pick a category (right-click the ground to set a rally point)"
+				card_title.text = "Train · RMB sets the rally point"
 				for c in cats:
 					var n := 0
 					for item in items:
@@ -1432,9 +1788,9 @@ func _update_card() -> void:
 					var cc: String = c
 					_button(PROD_CATS[cc][0], "%d types" % n, PROD_CATS[cc][1], func(): _card_page = "prod:" + cc)
 			else:
-				card_title.text = ("%s  -  right-click the ground to set a rally point" % String(PROD_CATS[page][0]).to_upper()) if page != "" else "TRAIN  -  right-click the ground to set a rally point"
+				card_title.text = ("Train %s · RMB sets the rally point" % String(PROD_CATS[page][0]).to_lower()) if page != "" else "Train · RMB sets the rally point"
 				if page != "":
-					_button("Back", "", "Back to the categories.", func(): _card_page = "main")
+					_button("Back", "‹", "Back to the categories.", func(): _card_page = "main")
 				for item in items:
 					if page != "" and _prod_cat(item) != page:
 						continue
@@ -1452,7 +1808,7 @@ func _update_card() -> void:
 						_button(d2.name, str(d2.cost), "%s\nCost %d, %ds." % [d2.desc, d2.cost, int(d2.time)], func(): world.send_cmd({"t": "train", "building": sid, "item": item}))
 			_button("Cancel", "", "Cancel the last item in the queue (refunded).", func(): world.send_cmd({"t": "cancel", "building": st.eid}))
 		elif st.skind == "research":
-			card_title.text = "RESEARCH"
+			card_title.text = "Research"
 			var have: Array = world.team_info[lt].get("up", [])
 			for k in Defs.UPGRADES:
 				var u: Dictionary = Defs.UPGRADES[k]
@@ -1461,11 +1817,11 @@ func _update_card() -> void:
 				var sid2 := st.eid
 				_button(u.name, str(u.cost), "%s\nCost %d, %ds." % [u.desc, u.cost, int(u.time)], func(): world.send_cmd({"t": "research", "building": sid2, "item": k}))
 		elif st.skind == "mortar_pit":
-			card_title.text = "MORTAR PIT  -  fires on spotted enemies, or on your call"
+			card_title.text = "Mortar pit · fires on spotted enemies"
 			_button("Fire HE", "", "Fire mission: 6 high-explosive rounds on a spot.", func(): inp.ability = "pit_he")
 			_button("Fire smoke", "", "Fire mission: 6 smoke rounds to screen an area.", func(): inp.ability = "pit_smoke")
 		elif st.skind == "tunnel":
-			card_title.text = "TUNNEL NETWORK"
+			card_title.text = "Tunnel network"
 			_button("Exit here", "", "Bring everyone inside back out at this entrance.", func(): world.send_cmd({"t": "tunnel_exit", "building": st.eid, "exit": st.eid}))
 			for t in world.structures:
 				if t.skind == "tunnel" and t.team == lt and t.built and t != st:
@@ -1492,25 +1848,82 @@ func _prod_cat(item: String) -> String:
 	return "light"
 
 
+## An order in the orders grid (docs/UI.md, Keys): its key in a box, its name
+## in capitals, and (for a build, a train or a page) its cost or a mark at the
+## end. A key fills with the accent while its order is the one in hand.
 func _button(text: String, sub: String, tip: String, cb: Callable) -> Button:
 	var b := Button.new()
-	b.text = text if sub == "" else "%s\n%s" % [text, sub]
 	b.tooltip_text = tip
 	b.custom_minimum_size = CARD_BTN
-	b.clip_text = true
-	b.add_theme_font_size_override("font_size", 12)
 	b.focus_mode = Control.FOCUS_NONE
+	var n := UiKit.box(Color(0, 0, 0, 0), 0, Color(0, 0, 0, 0), 0, 0.0)
+	var h := UiKit.box(UiKit.fa(UiKit.TEXT, 0.05), 0, Color(0, 0, 0, 0), 0, 0.0)
+	for st in ["normal", "disabled", "focus"]:
+		b.add_theme_stylebox_override(st, n)
+	for st in ["hover", "pressed", "hover_pressed"]:
+		b.add_theme_stylebox_override(st, h)
+	var row := HBoxContainer.new()
+	row.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	row.add_theme_constant_override("separation", 7)
+	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	b.add_child(row)
+	var is_key := sub != "" and not sub.is_valid_int() and sub != "Build" and sub != "‹" and not sub.begins_with("tier ") and not sub.ends_with(" types")
+	var kb: PanelContainer = null
+	if is_key:
+		kb = _key_box(sub.to_upper())
+		kb.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		kb.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		row.add_child(kb)
+	var danger := text in ["Retreat", "Fall back", "Cancel"]
+	var l := UiKit.caps(text, 12, UiKit.BAD if danger else UiKit.TEXT, 600, 1)
+	l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	l.clip_text = true
+	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	row.add_child(l)
+	if sub != "" and not is_key:
+		var tag := sub
+		if sub == "Build":
+			tag = "›"
+		elif sub.begins_with("tier "):
+			tag = "T" + sub.trim_prefix("tier ")
+		elif sub.ends_with(" types"):
+			tag = sub.trim_suffix(" types")
+		var sl := UiKit.mono_label(tag, 11, UiKit.FAINT)
+		sl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		sl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		row.add_child(sl)
+	b.set_meta("name", l)
+	if kb:
+		b.set_meta("key", kb)
+	b.set_meta("order", text)
 	b.pressed.connect(func(): Sfx.ui("click"); cb.call(); _card_key = "")
 	card.add_child(b)
 	return b
 
 
-
-
-
-
-
-
-
-
-
+## Which order is in hand (attack-move, defend, a grenade, a fire mission):
+## its key in the orders grid fills with the accent.
+func _card_active() -> void:
+	var inp := world.input
+	if inp == null:
+		return
+	var hand := {"Attack-move": inp.order_mode == "assault", "Defend": inp.order_mode == "defend", "Grenade": inp.ability == "frag",
+		"Smoke": inp.ability == "smoke", "Mortar HE": inp.ability == "mortar_he", "Mortar smoke": inp.ability == "mortar_smoke",
+		"Fire mission": inp.ability == "arty_he", "Fire HE": inp.ability == "pit_he", "Fire smoke": inp.ability == "pit_smoke"}
+	for b in card.get_children():
+		if not b.has_meta("key"):
+			continue
+		var on: bool = hand.get(String(b.get_meta("order")), false)
+		if on == b.get_meta("on", false):
+			continue
+		b.set_meta("on", on)
+		var kb: PanelContainer = b.get_meta("key")
+		var sb := UiKit.box(UiKit.ACCENT if on else Color(0, 0, 0, 0), 0, UiKit.ACCENT if on else UiKit.RULE2, 1, 0.0)
+		sb.content_margin_left = 5
+		sb.content_margin_right = 5
+		sb.content_margin_top = 1
+		sb.content_margin_bottom = 1
+		kb.add_theme_stylebox_override("panel", sb)
+		(kb.get_child(0) as Label).add_theme_color_override("font_color", UiKit.ON_ACCENT if on else UiKit.TEXT)
+		(b.get_meta("name") as Label).add_theme_color_override("font_color", UiKit.ACCENT if on else UiKit.TEXT)

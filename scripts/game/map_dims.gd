@@ -23,17 +23,7 @@ static func configure(metres: int) -> void:
 	SIZE = float(N)
 	BIOME = N
 	CELL = SIZE / GRID
-	# Cache dimensions once per match; terrain queries must not dispatch a
-	# chain of property getters for every cell lookup.
-	Nav.N = N
-	Nav.H = HALF
-	TerrainMap.N = N
-	TerrainMap.H = HALF
-	TerrainMap.DN = N * TerrainMap.DRES
-	HNav.C = 16 if N == 1024 else 32
-	HNav.NC = N / HNav.C
-	TrenchNet.N = N * TrenchNet.RES
-	Defs.MAP_HALF = HALF
+
 
 
 ## Shader code with the map's size filled in (shaders use __MAP_HALF__ and

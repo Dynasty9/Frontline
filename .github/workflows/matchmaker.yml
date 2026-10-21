@@ -3,8 +3,11 @@ name: Matchmaker
 # The matchmaking service (matchmaker/): lint and formatting, and its tests on
 # every Node release line it claims to run on. The tests run without
 # `npm install`, as a check that the service still has no runtime dependencies.
+# The database's migrations get a job of their own: their tests need PGlite (a
+# dev dependency), and they're applied on Supabase's own Postgres.
 #
-# Only runs when the matchmaker changes. Railway deploys it on its own.
+# Only runs when the matchmaker changes. Railway deploys it on its own, and the
+# Database workflow (database.yml) applies new migrations to the live database.
 
 on:
   push:
@@ -62,3 +65,34 @@ jobs:
         with:
           node-version: ${{ matrix.node }}
       - run: npm test
+
+  migrations:
+    name: Database migrations
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - name: Migrations on the base branch stay as they are, and new ones come after them
+        if: github.event_name == 'pull_request'
+        working-directory: .
+        run: bash .github/scripts/check-migrations.sh "origin/$GITHUB_BASE_REF"
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: matchmaker/package-lock.json
+      - run: npm ci
+      - name: The migrations, and the rules they enforce (PGlite)
+        run: node --test test/migrations.test.js
+      - uses: supabase/setup-cli@v1
+        with:
+          version: 2.119.0
+      # every migration from an empty database, on the image the live project
+      # runs (supabase/config.toml has its Postgres version)
+      - name: Every migration applies on Supabase's own Postgres
+        run: |
+          supabase db start
+          supabase migration up --local
+          supabase migration list --local

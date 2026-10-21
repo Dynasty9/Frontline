@@ -37,6 +37,7 @@ static func build(kind: String, team: int, seed: int, is_burnt := false) -> Vehi
 	var k := VehicleModels.new()
 	k.root = Node3D.new()
 	k.burnt = is_burnt
+	k._baking = true
 	# a vehicle may share another's model (a variant), named in its definition
 	var mk := kind
 	if Defs.VEHICLES.has(kind):
@@ -45,6 +46,7 @@ static func build(kind: String, team: int, seed: int, is_burnt := false) -> Vehi
 	# them builds a key, the older model below stands
 	if VmCore.build(k, mk, team, seed) or VmGunship.build(k, mk, team, seed) or VmAttack.build(k, mk, team, seed) or VmFighter.build(k, mk, team, seed):
 		k._merge_parts(k.root, Vector3.ZERO)
+		k._baked()
 		return k
 	match mk:
 		"tank":
@@ -82,6 +84,7 @@ static func build(kind: String, team: int, seed: int, is_burnt := false) -> Vehi
 					or VmBoat.build(k, mk, team, seed) or VmShips.build(k, mk, team, seed)):
 				k._truck(team)
 	k._merge_parts(k.root, Vector3.ZERO)
+	k._baked()
 	return k
 
 
@@ -100,12 +103,20 @@ func _merge_parts(n: Node3D, off: Vector3) -> void:
 	for c in n.get_children():
 		if c is Node3D and not (c is MeshInstance3D):
 			_merge_parts(c, off + (c as Node3D).position)
+	if _parts.has(n):
+		# the parts made for it, straight into its mesh (see _add)
+		var bake := Mats.Bake.new(true)
+		for pt: Array in _parts[n]:
+			var xf: Transform3D = Transform3D(pt[7], pt[4]) if pt[7] is Basis else Mats.place(pt[4], pt[5], pt[6])
+			bake.part(pt[0], pt[8] if pt[8] is ShaderMaterial else pt[1], xf, pt[2] if pt[2] != Color(1, 1, 1) else null, pt[3])
+		_parts.erase(n)
+		bake.commit(n)
 	var before := n.get_child_count()
 	Mats.merge_static(n, [blur] if blur else [], false, false, true)
 	for i in range(before, n.get_child_count()):
 		var mi := n.get_child(i) as MeshInstance3D
 		if mi and off != Vector3.ZERO:
-			mi.set_instance_shader_parameter("pofs", off)
+			Mats.set_inst(mi, &"pofs", off)
 
 
 # --- mesh helpers ----------------------------------------------------------------
@@ -179,7 +190,12 @@ static func solid(rings: Array, key: String) -> ArrayMesh:
 		var inside := _centroid(other)
 		for i in range(1, r.size() - 1):
 			_tri(st, r[0], r[i], r[i + 1], inside)
-	var m := st.commit()
+	# (what st.commit() makes, keeping the arrays: see Mats.keep_arrays)
+	var arrays := st.commit_to_arrays()
+	var m := ArrayMesh.new()
+	if arrays.size() == Mesh.ARRAY_MAX and arrays[Mesh.ARRAY_VERTEX] != null and not (arrays[Mesh.ARRAY_VERTEX] as PackedVector3Array).is_empty():
+		m.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+		Mats.keep_arrays(m, arrays)
 	_cache[key] = m
 	return m
 
@@ -212,37 +228,131 @@ static func _capsule(r: float, h: float) -> CapsuleMesh:
 
 # --- part helpers ----------------------------------------------------------------
 
-func _add(parent: Node3D, mesh: Mesh, kind: String, col, pos: Vector3, rot := Vector3.ZERO, scl := Vector3.ONE, shadow := true) -> MeshInstance3D:
-	var mi := MeshInstance3D.new()
-	mi.mesh = mesh
-	mi.position = pos
-	mi.rotation = rot
-	mi.scale = scl
-	if not shadow:
-		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	parent.add_child(mi)
+## A part of the model on one of our surfaces, tinted to `col`. While the
+## model is built it's only noted down (and the note returned: see _turn,
+## _unshadow, _restyle for changing it afterwards): _merge_parts puts it
+## straight into its piece's merged mesh without making a node of it (a tank
+## is four hundred parts). Otherwise it's made as a node, and that returned.
+func _add(parent: Node3D, mesh: Mesh, kind: String, col, pos: Vector3, rot := Vector3.ZERO, scl := Vector3.ONE, shadow := true) -> Variant:
 	var k := kind
 	if burnt:
 		k = "burnt" if kind != "glass" else "burnt"
-	if col is Color and not burnt:
-		Mats.apply(mi, k, Mats.tint_for(k, col))
-	else:
-		Mats.apply(mi, k)
+	var t := Mats.tint_for(k, col) if col is Color and not burnt else Color(1, 1, 1)
+	var pt := [mesh, Mats.get_mat(k), t, shadow, pos, rot, scl, null, null]
+	if not _baking:
+		return _add_node(parent, pt)
+	if not _parts.has(parent):
+		_parts[parent] = []
+	(_parts[parent] as Array).append(pt)
+	return pt
+
+
+var _baking := false  # build(): parts are noted down for _merge_parts (see _add)
+## node -> its parts noted down: [mesh, material, tint, shadow, position, rotation,
+## scale, basis (or null: from rotation and scale), material set over it (or null)]
+var _parts := {}
+
+
+## A noted part as a node (as every part once was made).
+func _add_node(parent: Node3D, pt: Array) -> MeshInstance3D:
+	var mi := MeshInstance3D.new()
+	mi.mesh = pt[0]
+	mi.position = pt[4]
+	mi.rotation = pt[5]
+	mi.scale = pt[6]
+	if not pt[3]:
+		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	parent.add_child(mi)
+	# (Mats.apply)
+	Mats.set_material(mi, pt[1])
+	if pt[2] != Color(1, 1, 1):
+		Mats.set_inst(mi, &"tint", pt[2])
 	# continuous camouflage across parts: offset the local pattern space
-	var off := pos
+	var off: Vector3 = pt[4]
 	var p := parent
 	while p and p != root:
 		off += p.position
 		p = p.get_parent() as Node3D
-	mi.set_instance_shader_parameter("pofs", off)
+	Mats.set_inst(mi, &"pofs", off)
+	if pt[7] is Basis:
+		mi.basis = pt[7]
+	if pt[8] is Material:
+		mi.material_override = pt[8]
 	return mi
 
 
-func _box(parent: Node3D, s: Vector3, pos: Vector3, kind: String, col = null, rot := Vector3.ZERO, shadow := true) -> MeshInstance3D:
+## A part turned by `b` after it was made (laid from a to b): its basis.
+func _turn(part: Variant, b: Basis) -> void:
+	if part is Array:
+		part[7] = b
+	else:
+		(part as MeshInstance3D).basis = b
+
+
+## A part that casts no shadow after all.
+func _unshadow(part: Variant) -> void:
+	if part is Array:
+		part[3] = false
+	else:
+		(part as MeshInstance3D).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+
+
+## A part given a surface of its own after it was made (a tinted canopy).
+func _restyle(part: Variant, m: Material) -> void:
+	if part is Array:
+		part[8] = m
+	else:
+		(part as MeshInstance3D).material_override = m
+
+
+## Moves pv's parts and nodes onto its parent, where they already are, and
+## drops pv (VmBoat._bake: a tilted assembly the Field Manual would stand
+## wrongly).
+func _fold(pv: Node3D) -> void:
+	var par := pv.get_parent() as Node3D
+	for c in pv.get_children():
+		var n := c as Node3D
+		var t: Transform3D = pv.transform * n.transform
+		pv.remove_child(n)
+		par.add_child(n)
+		n.transform = t
+	if _parts.has(pv):
+		if not _parts.has(par):
+			_parts[par] = []
+		for pt: Array in _parts[pv]:
+			# (placed as the part's node, set to the same transform, would be)
+			var t2: Transform3D = pv.transform * (Transform3D(pt[7], pt[4]) if pt[7] is Basis else Mats.place(pt[4], pt[5], pt[6]))
+			pt[4] = t2.origin
+			pt[7] = t2.basis
+			(_parts[par] as Array).append(pt)
+		_parts.erase(pv)
+	par.remove_child(pv)
+	pv.free()
+
+
+## Every part on surface `from` put on `to` (VmFighter._repaint), noted down or not.
+func _swap_noted(from: Material, to: Material) -> void:
+	for parent: Node3D in _parts:
+		for pt: Array in _parts[parent]:
+			if Mats.base_of(pt[8] if pt[8] is Material else pt[1]) == from:
+				pt[8] = to
+
+
+## The model is built: a part noted down on a node _merge_parts didn't reach
+## is made as a node after all, as it always was.
+func _baked() -> void:
+	_baking = false
+	for parent: Node3D in _parts:
+		for pt: Array in _parts[parent]:
+			_add_node(parent, pt)
+	_parts.clear()
+
+
+func _box(parent: Node3D, s: Vector3, pos: Vector3, kind: String, col = null, rot := Vector3.ZERO, shadow := true) -> Variant:
 	return _add(parent, Res.box(s), kind, col, pos, rot, Vector3.ONE, shadow)
 
 
-func _cyl(parent: Node3D, r0: float, r1: float, h: float, pos: Vector3, rot: Vector3, kind: String, col = null, segs := 12, shadow := true) -> MeshInstance3D:
+func _cyl(parent: Node3D, r0: float, r1: float, h: float, pos: Vector3, rot: Vector3, kind: String, col = null, segs := 12, shadow := true) -> Variant:
 	return _add(parent, Res.cyl(r0, r1, h, segs), kind, col, pos, rot, Vector3.ONE, shadow)
 
 

@@ -70,7 +70,7 @@ static var _plain := {}
 ## k._box, but a small part (under 4 cm thick somewhere) gets a plain box:
 ## its chamfers wouldn't show, and a bevelled box costs four times the
 ## vertices - these models stand on the battlefield by the dozen.
-static func _bx(k: VehicleModels, p: Node3D, s: Vector3, pos: Vector3, mat: String, col = null, rot := Vector3.ZERO, shadow := true) -> MeshInstance3D:
+static func _bx(k: VehicleModels, p: Node3D, s: Vector3, pos: Vector3, mat: String, col = null, rot := Vector3.ZERO, shadow := true) -> Variant:
 	if minf(s.x, minf(s.y, s.z)) >= 0.04:
 		return k._box(p, s, pos, mat, col, rot, shadow)
 	var key := "%.3f,%.3f,%.3f" % [s.x, s.y, s.z]
@@ -92,7 +92,7 @@ static func _aim(d: Vector3) -> Vector3:
 
 
 ## A round bar from a to b (radius r, or r at a and rb at b).
-static func _tube(k: VehicleModels, p: Node3D, a: Vector3, b: Vector3, r: float, mat: String, col = null, segs := 8, shadow := true, rb := -1.0) -> MeshInstance3D:
+static func _tube(k: VehicleModels, p: Node3D, a: Vector3, b: Vector3, r: float, mat: String, col = null, segs := 8, shadow := true, rb := -1.0) -> Variant:
 	return k._cyl(p, rb if rb >= 0.0 else r, r, a.distance_to(b), (a + b) * 0.5, _aim(b - a), mat, col, segs, shadow)
 
 
@@ -105,7 +105,7 @@ static func _path(k: VehicleModels, p: Node3D, pts: Array, r: float, mat: String
 
 
 ## A square-section bar from a to b, w across (kept level where it can be), t thick.
-static func _bar(k: VehicleModels, p: Node3D, a: Vector3, b: Vector3, w: float, t: float, mat: String, col = null, shadow := true) -> MeshInstance3D:
+static func _bar(k: VehicleModels, p: Node3D, a: Vector3, b: Vector3, w: float, t: float, mat: String, col = null, shadow := true) -> Variant:
 	var y := (b - a).normalized()
 	var ref := Vector3.RIGHT if absf(y.dot(Vector3.RIGHT)) < 0.9 else Vector3.FORWARD
 	var z := ref.cross(y).normalized()
@@ -116,7 +116,7 @@ static func _bar(k: VehicleModels, p: Node3D, a: Vector3, b: Vector3, w: float, 
 ## A plate lying on a face seen side-on: its length from a to b ((z, y)
 ## points), centred on x, w wide, t thick, pushed `push` out along the face's
 ## normal (outward is up/forward when a -> b climbs a front face toward the back).
-static func _zy(k: VehicleModels, p: Node3D, x: float, w: float, a: Vector2, b: Vector2, t: float, push: float, mat: String, col = null, shadow := true) -> MeshInstance3D:
+static func _zy(k: VehicleModels, p: Node3D, x: float, w: float, a: Vector2, b: Vector2, t: float, push: float, mat: String, col = null, shadow := true) -> Variant:
 	var d := b - a
 	var dn := d.normalized()
 	var n := Vector2(-dn.y, dn.x)
@@ -126,7 +126,7 @@ static func _zy(k: VehicleModels, p: Node3D, x: float, w: float, a: Vector2, b: 
 
 ## A box lying flat on a face: local x along ex, y along ey (squared up), its
 ## thickness standing out of the face toward `out`; surf the point under its centre.
-static func _on_face(k: VehicleModels, p: Node3D, surf: Vector3, ex: Vector3, ey: Vector3, out: Vector3, size: Vector3, mat: String, col = null, shadow := true) -> MeshInstance3D:
+static func _on_face(k: VehicleModels, p: Node3D, surf: Vector3, ex: Vector3, ey: Vector3, out: Vector3, size: Vector3, mat: String, col = null, shadow := true) -> Variant:
 	var x := ex.normalized()
 	var z := x.cross(ey).normalized()
 	if z.dot(out) < 0.0:

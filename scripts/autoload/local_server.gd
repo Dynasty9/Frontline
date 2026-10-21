@@ -120,7 +120,7 @@ func _client_registered() -> void:
 
 func authorize(candidate: String, version: int) -> bool:
 	_debug("authorize child=%s token_match=%s version=%d players=%d" % [child, candidate == token, version, Net.players.size()])
-	return not child or (candidate == token and version == Net.NET_VERSION and Net.players.size() < 2)
+	return not child or (candidate == token and version == Net.NET_VERSION)
 
 
 func requested_team() -> int:

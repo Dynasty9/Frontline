@@ -44,12 +44,21 @@ func _ready() -> void:
 
 func verify_reference(terrain: TerrainMap, st: Structure) -> void:
 	var r := ceili(st.radius + 2.0)
-	var mismatches := 0
+	var cells := PackedInt32Array()
+	var before := []
 	for z in range(-r, r + 1):
 		for x in range(-r, r + 1):
 			var i := terrain.idx_of(Vector3(x, 0, z))
-			var before := [terrain.cov[i], terrain.cdir[i], terrain.solid[i], terrain.rubble[i], terrain.trench[i]]
-			terrain._recompute_cell(i)
-			if before != [terrain.cov[i], terrain.cdir[i], terrain.solid[i], terrain.rubble[i], terrain.trench[i]]:
-				mismatches += 1
+			cells.append(i)
+			before.append([terrain.cov[i], terrain.cdir[i], terrain.solid[i], terrain.rubble[i], terrain.trench[i]])
+	# Independently queue the whole surrounding square, including every cell
+	# the optimized structure bounds chose not to visit.
+	terrain._queue = cells
+	terrain._qhead = 0
+	terrain.tick(1 << 30)
+	var mismatches := 0
+	for n in cells.size():
+		var i := cells[n]
+		if before[n] != [terrain.cov[i], terrain.cdir[i], terrain.solid[i], terrain.rubble[i], terrain.trench[i]]:
+			mismatches += 1
 	check(mismatches == 0, "Bounded cover update differs from exhaustive region for %s at %.2f: %d cells" % [st.skind, st.yaw, mismatches])

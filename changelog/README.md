@@ -1,15 +1,16 @@
 # The changelog
 
-Every change to the game comes with an entry here, written for players. When it ships, the release workflow files the
-entry under its version (`changelog/v0.1.6/`), names the release, and shows it on
+Every change to the game comes with an entry here, written for players. Merging it releases nothing: entries wait in
+`changelog/unreleased/` until someone presses the release button and merges the pull request it opens, and that
+release ships all of them. The release workflow files them under its version (`changelog/v0.1.6/`), names the release, and shows it on
 [the website's Changelog page](https://web-production-5a4c1.up.railway.app/changelog/), in the GitHub release's
-notes and in [CHANGELOG.md](../CHANGELOG.md).
+notes and in [CHANGELOG.md](../CHANGELOG.md). A pull request never touches a version number.
 
 ## Adding an entry
 
 A pull request that changes the game (anything under `scripts/` or `assets/`, `project.godot`, `main.tscn`, the
-export presets or the icon) adds a file to `changelog/unreleased/`. CI fails without one. If players shouldn't get a
-new version for the change, label the pull request `skip release` instead.
+export presets or the icon) adds a file to `changelog/unreleased/`. CI fails without one. If players needn't hear
+about the change, label the pull request `no changelog` instead.
 
 `changelog/unreleased/fire-and-smoke.md`:
 
@@ -47,7 +48,14 @@ Check your entry with `python .github/scripts/changelog.py check`.
 
 ## What happens at release
 
-The release workflow (`.github/workflows/release.yml`) runs `changelog.py release`. It moves the entries the version
-was built with into `changelog/vX.Y.Z/`, writes `release.toml` there (the version's name and date), and regenerates
-`web/src/changelog.json` (what the website shows) and `CHANGELOG.md`. A release that somehow has no entry gets one
-written from its pull request's title and description.
+Releasing is **Actions > Release > Run workflow** on `main` (pick `patch`, `minor` or `major`, and optionally a
+name). `python .github/scripts/changelog.py pending` lists what it would ship. The workflow runs `changelog.py
+release`, which moves every waiting entry into `changelog/vX.Y.Z/`, writes `release.toml` there (the version's name,
+date and the pull requests its entries came from), and regenerates `web/src/changelog.json` (what the website shows)
+and `CHANGELOG.md`. That lands on a `release/vX.Y.Z` branch with a pull request that shows the release notes as
+they'll be published, with the build waiting in a draft release. Nothing is public until that pull request merges:
+merging it publishes the release on GitHub and puts it on the website. To change the name or the step, run Release
+again: it rebuilds the release and updates the pull request. It won't release with no entries waiting.
+
+A release gathers many entries, so several may set `headline` or `release_name`. The first of them (new before
+improved before fixed, then by file name) names the release, unless the person releasing gives it a name.

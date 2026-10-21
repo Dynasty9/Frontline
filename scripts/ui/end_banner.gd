@@ -1,10 +1,13 @@
 class_name EndBanner
 extends Control
 ## The moment a battle ends, before the after-action report: the battlefield
-## drains of colour and goes soft, a band opens across the screen and the
-## result slams into it, a glint runs over the letters, your rating fills its
-## bar, and then the banner lifts away and the report rises into its place.
-## A click, Space, Enter or Esc skips straight to the report.
+## drains of colour and goes soft, a band of ink ruled off in the result's
+## colour cuts on across the screen, interference runs through it as the
+## signal comes in, and the result types on in capitals over a line of what
+## happened and the facts in mono (the battle's clock, the objectives met);
+## your rating counts up its steps, and then the banner goes and the report
+## arrives in its place (docs/UI.md, Motion). A click, Space, Enter or Esc
+## skips straight to the report.
 
 signal finished
 
@@ -27,7 +30,14 @@ void fragment() {
 	COLOR = vec4(c, 1.0);
 }
 """
-const OUT_AT := 3.5  # when it starts to lift away (later with a rating bar to fill)
+const OUT_AT := 3.5  # when it goes (later with a rating bar to fill)
+const BAND_AT := 0.15  # the band cuts on (and flickers once)
+const TYPE_AT := 0.5  # the result starts to type on, as it lands
+const SUB_AT := 0.95  # the line under it
+## The interference as the band comes on: [start, length, where across the
+## band (0 its top, 1 its foot), height] of each pass
+const NOISE := [[0.17, 0.08, 0.3, 8.0], [0.21, 0.05, 0.78, 3.0], [0.33, 0.06, 0.62, 5.0], [0.5, 0.1, 0.52, 14.0],
+	[0.54, 0.05, 0.24, 3.0], [0.72, 0.05, 0.4, 2.0]]
 
 var world: World
 var won := true
@@ -45,6 +55,7 @@ var _medal := false
 var _tick_ms := 0
 var _cam_d0 := -1.0
 var _cam_yaw0 := 0.0
+var _facts := ""  # the mono line: T+12:40 · OBJECTIVES 3/3
 
 
 func _ready() -> void:
@@ -54,6 +65,33 @@ func _ready() -> void:
 	if world and world.cam:
 		_cam_d0 = world.cam.target_dist
 		_cam_yaw0 = world.cam.yaw
+	_facts = _facts_line()
+
+
+## What the battle came to, as codes: how long it ran (a mission by its own
+## clock) and, in a mission, how many of the objectives it had to meet were met.
+## The time is left out when the line over it already says it.
+func _facts_line() -> String:
+	if world == null:
+		return ""
+	var parts := PackedStringArray()
+	var el := world.time
+	var info: Dictionary = world.mission_info
+	if not info.is_empty():
+		el = float(info.get("el", el))
+	if not sub.contains(UiKit.fmt_time(el)):
+		var s := maxi(0, int(el))
+		parts.append("T+%02d:%02d" % [s / 60, s % 60] if s < 3600 else "T+%d:%02d:%02d" % [s / 3600, (s / 60) % 60, s % 60])
+	var need := 0
+	var met := 0
+	for o in info.get("objs", []):
+		if not bool(o[7]):  # (the optional ones aren't counted)
+			need += 1
+			if int(o[2]) == MissionDirector.DONE:
+				met += 1
+	if need > 0:
+		parts.append("OBJECTIVES %d/%d" % [met, need])
+	return " · ".join(parts)
 
 
 func _out_at() -> float:
@@ -90,7 +128,7 @@ func _process(_d: float) -> void:
 		var k := UiFx.in_out(t / (_out_at() + 0.6))
 		world.cam.target_dist = lerpf(_cam_d0, _cam_d0 * 1.35, k)
 		world.cam.yaw = _cam_yaw0 + 0.22 * k
-	if not _slammed and t >= 0.5:
+	if not _slammed and t >= TYPE_AT:
 		_slam()
 	if rating >= 0.0 and t > 1.45 and t < 2.6 and now - _tick_ms > 45:
 		_tick_ms = now
@@ -115,91 +153,106 @@ func _slam() -> void:
 
 
 func _draw() -> void:
-	var c := size * 0.5
-	c.y -= size.y * 0.06
-	var out := UiFx.span(t, _out_at(), 0.5)
-	var lift := UiFx.out_cubic(out) * 60.0
-	var fade := 1.0 - UiFx.out_cubic(out)
-	draw_set_transform(Vector2(0, -lift))
-	# the band opens out from the middle
-	var bk := UiFx.out_cubic(UiFx.span(t, 0.22, 0.38))
-	var bh := 186.0 if rating < 0.0 else 262.0
-	var bw := size.x * bk
-	if bw > 2.0:
-		var x0 := c.x - bw * 0.5
-		var top := c.y - 96.0
-		var cols := PackedColorArray()
-		var dark := Color(0.02, 0.025, 0.025, 0.82 * fade)
-		var clear := Color(0.02, 0.025, 0.025, 0.0)
-		var pts := PackedVector2Array([Vector2(x0, top), Vector2(x0 + bw * 0.22, top), Vector2(x0 + bw * 0.78, top), Vector2(x0 + bw, top),
-			Vector2(x0 + bw, top + bh), Vector2(x0 + bw * 0.78, top + bh), Vector2(x0 + bw * 0.22, top + bh), Vector2(x0, top + bh)])
-		cols = PackedColorArray([clear, dark, dark, clear, clear, dark, dark, clear])
-		draw_polygon(pts, cols)
-		# hairlines top and bottom, lit in the middle
-		var lc := UiFx.fade(accent, 0.75 * fade)
-		draw_line(Vector2(c.x - bw * 0.36, top), Vector2(c.x + bw * 0.36, top), lc, 2.0)
-		draw_line(Vector2(c.x - bw * 0.36, top + bh), Vector2(c.x + bw * 0.36, top + bh), UiFx.fade(accent, 0.4 * fade), 1.0)
-		draw_rect(Rect2(c.x - bw * 0.36, top, bw * 0.72, 18.0), UiFx.fade(accent, 0.06 * fade))
-	# the result slams in: from big, overshooting into place
-	var hk := UiFx.span(t, 0.4, 0.42)
-	if hk > 0.0:
-		var hs := lerpf(2.3, 1.0, UiFx.out_back(hk, 1.2))
-		var ha := minf(1.0, hk * 4.0) * fade
-		var size_h := 96 if headline.length() <= 10 else 64
-		var f := UiFx.spaced(700, 14 if headline.length() <= 10 else 8)
-		var tw := UiFx.width(f, headline, size_h)
-		var base := Vector2(c.x - tw * 0.5, c.y + size_h * 0.32)
-		draw_set_transform_matrix(Transform2D(0.0, Vector2(hs, hs), 0.0, Vector2(0, -lift) + c * (1.0 - hs)))
-		draw_string_outline(f, base, headline, HORIZONTAL_ALIGNMENT_LEFT, -1, size_h, 26, UiFx.fade(accent, 0.12 * ha))
-		draw_string_outline(f, base, headline, HORIZONTAL_ALIGNMENT_LEFT, -1, size_h, 8, Color(0, 0, 0, 0.55 * ha))
-		draw_string(f, base, headline, HORIZONTAL_ALIGNMENT_LEFT, -1, size_h, UiFx.fade(accent.lightened(0.25), ha))
-		# a flash on impact
-		var flash := 1.0 - UiFx.span(t, 0.5, 0.3)
-		if hk >= 1.0 and flash > 0.0:
-			draw_string(f, base, headline, HORIZONTAL_ALIGNMENT_LEFT, -1, size_h, Color(1, 1, 1, 0.75 * flash * fade))
-		draw_set_transform(Vector2(0, -lift))
-		# accent strokes run out from either side of it
-		var lk := UiFx.out_cubic(UiFx.span(t, 0.62, 0.5))
-		if lk > 0.0:
-			var gapx := tw * 0.5 + 34.0
-			var ll := minf(size.x * 0.5 - gapx - 40.0, 300.0) * lk
-			var ly := c.y - 4.0
-			draw_rect(Rect2(c.x + gapx, ly, ll, 3.0), UiFx.fade(accent, 0.85 * fade))
-			draw_rect(Rect2(c.x - gapx - ll, ly, ll, 3.0), UiFx.fade(accent, 0.85 * fade))
-			draw_rect(Rect2(c.x + gapx + ll - 8.0, ly - 3.0, 8.0, 9.0), UiFx.fade(Color.WHITE, 0.6 * fade))
-			draw_rect(Rect2(c.x - gapx - ll, ly - 3.0, 8.0, 9.0), UiFx.fade(Color.WHITE, 0.6 * fade))
-		# a glint across the letters
-		UiFx.shine(self, Rect2(c.x - tw * 0.5 - 30.0, c.y - size_h * 0.55, tw + 60.0, size_h * 1.0), UiFx.span(t, 0.78, 0.7), 1.6 * fade)
-	# the line under it
-	var sk := UiFx.out_cubic(UiFx.span(t, 0.95, 0.45))
-	if sk > 0.0 and sub != "":
-		var sf := UiFx.spaced(600, 4)
-		draw_string(sf, Vector2(0, c.y + 64.0 + (1.0 - sk) * 10.0), sub.to_upper(), HORIZONTAL_ALIGNMENT_CENTER, size.x, 15, UiFx.fade(UiKit.TEXT, 0.85 * sk * fade))
-	# your rating fills its bar, and its word lands at the end
-	if rating >= 0.0:
-		var rk := UiFx.out_cubic(UiFx.span(t, 1.2, 0.35))
-		if rk > 0.0:
-			var bwid := 440.0
-			var bx := c.x - bwid * 0.5
-			var by := c.y + 124.0
-			var ra := rk * fade
-			var fill := UiFx.out_expo(UiFx.span(t, 1.45, 1.1))
-			var shown := rating * fill
-			var rc := StatsPanel.rating_col(shown)
-			draw_string(UiFx.spaced(700, 3), Vector2(bx, by - 10.0), "YOUR RATING", HORIZONTAL_ALIGNMENT_LEFT, -1, 12, UiFx.fade(UiKit.DIM, ra))
-			UiFx.bar(self, Rect2(bx, by, bwid, 10.0), shown / 100.0, rc, ra, 1.0 - fill)
-			draw_string(UiFx.digits(700), Vector2(bx + bwid + 16.0, by + 12.0), "%d" % int(round(shown)), HORIZONTAL_ALIGNMENT_LEFT, -1, 34, UiFx.fade(rc, ra))
-			var wk := UiFx.span(t, 2.55, 0.35)
-			if wk > 0.0:
-				# the word lands over the end of the bar
-				var ws := lerpf(1.7, 1.0, UiFx.out_back(wk))
-				var wp := Vector2(bx + bwid, by - 10.0)
-				draw_set_transform_matrix(Transform2D(0.0, Vector2(ws, ws), 0.0, Vector2(0, -lift) + wp * (1.0 - ws)))
-				draw_string(UiFx.spaced(700, 3), Vector2(bx, by - 10.0), rating_word.to_upper(), HORIZONTAL_ALIGNMENT_RIGHT, bwid, 13, UiFx.fade(rc, minf(1.0, wk * 3.0) * fade))
-				draw_set_transform(Vector2(0, -lift))
-	if t < _out_at():
-		draw_string(UiFx.spaced(600, 2), Vector2(0, size.y - 36.0), "CLICK TO CONTINUE", HORIZONTAL_ALIGNMENT_CENTER, size.x, 11, UiFx.fade(UiKit.DIM, 0.5 * UiFx.span(t, 1.6, 0.6)))
-	draw_set_transform(Vector2.ZERO)
+	var calm := UiMotion.reduced()
+	# going: a few pixels up and gone as the report arrives (at once with
+	# Reduce motion)
+	var go := UiFx.span(t, _out_at(), UiMotion.QUICK)
+	if go >= 1.0 or (calm and t >= _out_at()):
+		return
+	var c := Vector2(size.x * 0.5, size.y * 0.44 - go * UiMotion.TRAVEL_MD * 0.5)
+	# the band: ink across the screen, ruled off top and foot in the result's
+	# colour; it cuts on and flickers once
+	if t < BAND_AT or (not calm and t >= BAND_AT + UiMotion.INSTANT and t < BAND_AT + UiMotion.INSTANT * 2.0):
+		return
+	var top := c.y - 84.0
+	var bh := 206.0 if rating < 0.0 else 262.0
+	draw_rect(Rect2(0, top, size.x, bh), UiKit.fa(UiKit.INK, 0.84))
+	draw_line(Vector2(0, top + 0.5), Vector2(size.x, top + 0.5), UiKit.fa(accent, 0.7), 1.0)
+	draw_line(Vector2(0, top + bh - 0.5), Vector2(size.x, top + bh - 0.5), UiKit.fa(accent, 0.7), 1.0)
+	# the result types on in capitals, a square cursor running ahead of it
+	var size_h := 96 if headline.length() <= 10 else 64
+	var f := UiKit.cond(700, 14 if headline.length() <= 10 else 8)
+	var tw := UiFx.width(f, headline, size_h)
+	var base := Vector2(c.x - tw * 0.5, c.y + size_h * 0.36)
+	var shown := _typed(headline, TYPE_AT, minf(headline.length() * 0.06, 0.5))
+	if shown != "":
+		draw_string(f, base, shown, HORIZONTAL_ALIGNMENT_LEFT, -1, size_h, accent)
+	if not calm and t >= TYPE_AT and shown.length() < headline.length():
+		var cx := base.x + UiFx.width(f, shown, size_h) + (8.0 if shown != "" else 0.0)
+		draw_rect(Rect2(cx, base.y - size_h * 0.7, size_h * 0.42, size_h * 0.7), accent)
+	# what happened in capitals, and the facts in mono, typing on under it
+	var y := c.y + 66.0
+	if sub != "":
+		var sf := UiKit.cond(600, 2)
+		var su := sub.to_upper()
+		UiKit.text_f(self, sf, Vector2(c.x - UiFx.width(sf, su, 15) * 0.5, y), _typed(su, SUB_AT, -1.0), 15, UiKit.TEXT, HORIZONTAL_ALIGNMENT_LEFT, -1, false)
+		y += 26.0
+	if _facts != "":
+		var ft := _typed(_facts, SUB_AT + 0.12, -1.0)
+		UiKit.mono_at(self, Vector2(c.x - UiKit.mono_w(_facts, 13) * 0.5, y), ft, 13, UiKit.DIM, false)
+	# your rating counts up its steps, and its word types on over the end
+	if rating >= 0.0 and t >= 1.2:
+		var bwid := 440.0
+		var bx := c.x - bwid * 0.5
+		var by := c.y + 130.0
+		var fill := 1.0 if calm else UiFx.out_expo(UiFx.span(t, 1.45, 1.1))
+		var val := rating * fill
+		var rc := UiKit.rating_col(val)
+		UiKit.caps_at(self, Vector2(bx, by - 10.0), "Your rating", 11, UiKit.FAINT, false)
+		UiFx.bar(self, Rect2(bx, by, bwid, 10.0), val / 100.0, rc, 1.0, 1.0 - fill)
+		UiKit.text_f(self, UiKit.mono(700), Vector2(bx + bwid + 16.0, by + 11.0), "%d" % int(round(val)), 30, rc, HORIZONTAL_ALIGNMENT_LEFT, -1, false)
+		var word := rating_word.to_upper()
+		var wt := _typed(word, 2.55, -1.0)
+		if wt != "":
+			UiKit.caps_at(self, Vector2(bx + bwid - UiKit.caps_w(word, 13), by - 10.0), wt, 13, rc, false)
+	if t >= 1.6:
+		var ct := "Click to continue"
+		UiKit.caps_at(self, Vector2(c.x - UiKit.caps_w(ct, 11) * 0.5, size.y - 36.0), ct, 11, UiKit.FAINT, false)
+	if not calm:
+		_interference(top, bh)
+
+
+## The first letters of `s`, typing on from `at` over `dur` seconds (-1: the
+## interface's own pace; all of it at once with Reduce motion).
+func _typed(s: String, at: float, dur: float) -> String:
+	if t < at:
+		return ""
+	if UiMotion.reduced():
+		return s
+	if dur < 0.0:
+		dur = minf(s.length() * UiMotion.TYPE, UiMotion.TYPE_MAX)
+	return s.left(ceili(clampf((t - at) / maxf(dur, 0.001), 0.0, 1.0) * s.length()))
+
+
+## The signal coming in: a few passes of interference across the band, each a
+## strip of ink broken by bright runs that change 24 times a second (as the
+## map's do, TopoBackdrop), cutting on and off. No glow, nothing eased.
+func _interference(top: float, bh: float) -> void:
+	var tick := int(t * 24.0)
+	for i in NOISE.size():
+		var nz: Array = NOISE[i]
+		if t < float(nz[0]) or t >= float(nz[0]) + float(nz[1]):
+			continue
+		var h: float = nz[3]
+		var y := top + bh * float(nz[2]) + (_hash(tick * 7 + i) - 0.5) * 16.0
+		draw_rect(Rect2(0, y, size.x, h), UiKit.fa(UiKit.INK, 0.92))
+		var x := 0.0
+		var k := 0
+		while x < size.x:
+			var w := 4.0 + _hash(tick * 131 + i * 17 + k) * 70.0
+			var v := _hash(tick * 71 + i * 29 + k * 3 + 5)
+			if v > 0.45:
+				var col := accent if v > 0.88 else UiKit.TEXT
+				var sh := maxf(1.0, h * (0.3 + 0.7 * _hash(k * 13 + tick)))
+				draw_rect(Rect2(x, y + (h - sh) * 0.5, w, sh), UiKit.fa(col, 0.15 + (v - 0.45) * 1.1))
+			x += w
+			k += 1
+
+
+## A cheap repeatable 0-1 noise for the interference (the look only; nothing
+## in the game hangs on it).
+static func _hash(n: int) -> float:
+	return fposmod(sin(float(n) * 12.9898) * 43758.5453, 1.0)
 
 
 ## The grade under everything: one full-screen rect with the shader.

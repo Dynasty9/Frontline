@@ -7,7 +7,7 @@ private headless process. The visible process retains input, UI, interpolation,
 models and effects. A random session token and protocol version protect the
 loopback connection. Launch/readiness, pause/resume, reconnect ownership and exit
 are managed by LocalServer. Public multiplayer retains the existing host flow;
-web retains the in-process fallback. Protocol version is now 7.
+web retains the in-process fallback. Protocol version is now 10.
 
 Rust accelerates one measured numeric hotspot: nearest-enemy candidate selection.
 Once per tick the host supplies IDs, teams, positions and visibility factors to
@@ -30,9 +30,9 @@ without the optional extension. This is not a full Rust server rewrite.
 - Cover invalidation follows rotated footprints and cover parts instead of a
   circumscribed square; long walls no longer re-evaluate distant ground.
 - Navigation invalidates only cells whose solidity or cost actually changed.
-  Rebuilding yields between borders and entrance pairs. Land orders are coalesced
+  Rebuilding reuses unchanged borders and entrance-pair costs. Land orders are coalesced
   per entity, cancellable and processed four per tick. Graph rebuilding processes
-  48 small work items per tick; fixed quotas avoid machine-speed-dependent order
+  one dirty cluster per tick; fixed quotas avoid machine-speed-dependent order
   completion. Missing routes during
   rebuilding retry; valid unaffected routes can proceed. There is no full-map A*
   fallback when a hierarchical route fails.
@@ -48,13 +48,14 @@ without the optional extension. This is not a full Rust server rewrite.
   created when needed. Distant color variation and subtle gestures are simplified.
   Hidden units never enter the batch. Selection stays on the individual soldier.
 - Zoomed-out HUD drawing no longer projects every soldier for invisible close-up
-  labels. Cosmetic network event batches stay below the normal datagram budget.
+  labels. Headquarters links, fog, town counts and minimap symbols use the small
+  building indexes; the performance overlay no longer scans every entity for an unused count. Cosmetic network event batches stay below the normal datagram budget.
 - Crater textures use bordered 512-sample array layers, with at most two layer
   uploads per frame. Cosmetic ground collision uses 32 m tiles around the camera,
   rebuilding at most two tiles per frame. Authoritative terrain remains complete.
   A small crater no longer uploads or rebuilds the entire 3 km heightfield.
-- Initial client entities are constructed in batches of at most 16 or 3 ms per
-  frame. Updates received during loading are retained. The 3D world stays hidden until
+- Initial client entities use the compressed join stream and staged loader from main,
+  with a 45 ms construction budget while the loading curtain is up. Updates received during loading are retained. The 3D world stays hidden until
   initial construction finishes; later reinforcements do not restart loading. Shared soldier poses warm
   one per frame; a private battle waits for the loading acknowledgement before
   advancing combat. Individual close models also have a construction quota.
@@ -147,3 +148,16 @@ Godot as the simulation host avoids silently changing those gameplay systems.
 - [Rust GDExtension bindings](https://godot-rust.github.io/book/)
 
 - [Godot mesh level of detail](https://docs.godotengine.org/en/stable/tutorials/3d/mesh_lod.html)
+
+## Integration check, 20 October 2026
+
+PR #93 incorporates main's compressed join stream, staged terrain loading,
+rejoin protocol, background script compilation and incremental navigation cost reuse.
+The Windows installer includes the native library; Mac and browser exports exclude
+its descriptor and use GDScript perception. The protocol change preserves private
+session authentication alongside public reconnect identity.
+
+The integrated focused suite passes all 13 regressions and seven gameplay smoke
+scenarios. Platform update/link checks pass 36/36. The full behavior suite is under
+review; repeatability checks passed both same-process reload and separate-process
+full-map replay. No new 60 FPS acceptance claim is made by these correctness checks.

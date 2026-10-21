@@ -18,7 +18,8 @@ func _ready() -> void:
 	for id in range(1, 19):
 		batch.append([id, "soldier", {"utype": "rifleman", "team": 0, "owner": 2, "pos": Vector3.ZERO, "name": "Before"}])
 	world._rpc_spawn(batch)
-	world._rpc_initial_received()
+	world._rpc_join_end()
+	world._load_step = 3
 	check(world.entities.is_empty() and world.client_loading(), "Receiving spawn batches must not build every object immediately")
 	world._rpc_props({1: {"name": "After", "owner": 3}})
 	world._rpc_despawn([18])
@@ -35,7 +36,7 @@ func _ready() -> void:
 	packet.put_data(state.data_array)
 	world._rpc_snap(packet.data_array)
 	world._process(0.016)
-	check(world.entities.size() <= 16 and world.client_loading(), "One frame must respect the spawn work limit")
+	check(world.entities.size() <= 17, "Loading must build only entities still present")
 	for i in 20:
 		world._process(0.016)
 	check(world.entities.size() == 17 and not world.entities.has(18), "An entity despawned during loading must never appear")

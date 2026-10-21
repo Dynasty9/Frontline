@@ -22,6 +22,13 @@ const MOODS := {
 		"horizon": Color(0.82, 0.8, 0.74), "fog": Color(0.8, 0.77, 0.7), "fog_d": 0.0042, "ambient": 0.65, "soft": 1.5, "clouds": 0.25, "exposure": 1.05},
 }
 
+# Atmospheric haze is scenery, not concealment. Keep its optical depth low at
+# the command camera's focus, even when the player zooms all the way out.
+# Fog of war and combat smoke have their own, unchanged gameplay rules.
+const HAZE_STRENGTH := 0.25
+const VOLUME_STRENGTH := 0.15
+const HAZE_DISTANCE := 32.0
+
 var world: World
 var mood := "golden"
 
@@ -54,6 +61,7 @@ var biome_tex: ImageTexture
 var detail_tex: ImageTexture
 var road_mat: ShaderMaterial
 var grass: Grass
+var wildlife: Wildlife
 var _d := {}
 var _mood_asked := ""  # the Time of day setting as the battle began: changing it mid-battle switches the mood live
 
@@ -72,6 +80,10 @@ func setup(w: World) -> void:
 	grass.atmo = self
 	add_child(grass)
 	grass.set_deform(deform_tex)
+	wildlife = Wildlife.new()
+	wildlife.name = "Wildlife"
+	wildlife.world = world
+	add_child(wildlife)
 	Settings.changed.connect(apply_settings)
 	apply_settings()
 	if Sfx.enabled and world.has_view:
@@ -160,7 +172,7 @@ func _build_env() -> void:
 	env.fog_light_color = _d.fog
 	env.fog_light_energy = 1.0
 	env.fog_sun_scatter = 0.12
-	env.fog_density = float(_d.fog_d)
+	env.fog_density = float(_d.fog_d) * HAZE_STRENGTH
 	env.fog_sky_affect = 0.35
 	env.ssao_radius = 1.4
 	env.ssao_intensity = 2.2
@@ -174,7 +186,7 @@ func _build_env() -> void:
 	env.sdfgi_use_occlusion = true
 	env.sdfgi_bounce_feedback = 0.4
 	env.sdfgi_energy = 0.9
-	env.volumetric_fog_density = 0.0011 if mood != "hazy" else 0.003
+	env.volumetric_fog_density = (0.0011 if mood != "hazy" else 0.003) * VOLUME_STRENGTH
 	env.volumetric_fog_albedo = (_d.fog as Color).lerp(Color(0.9, 0.9, 0.9), 0.55)
 	env.volumetric_fog_anisotropy = 0.35
 	env.volumetric_fog_length = 260.0
@@ -226,7 +238,7 @@ var _blank_mask: ImageTexture
 func set_trench_mask(t: Texture2D) -> void:
 	for m in [ground_mat, road_mat]:
 		if m:
-			m.set_shader_parameter("trench_mask", t)
+			Mats.set_shared(m, &"trench_mask", t)
 	Mats.set_ground_maps(null, t)
 	if grass:
 		grass.set_trench_mask(t)
@@ -291,10 +303,12 @@ func _build_ground() -> void:
 	trench_net.set_detail(detail_tex)
 	road_mat = ShaderMaterial.new()
 	var rs := Shader.new()
-	rs.code = MapDims.shader(ROAD_SHADER)
+	rs.code = Mats.code(MapDims.shader(ROAD_SHADER))
 	road_mat.shader = rs
 	road_mat.set_shader_parameter("detail_tex", detail_tex)
-	road_mat.render_priority = 1
+	# see-through (its edges fade into the verges), so it draws with the smoke
+	# and fire: before them, or it paints over every blast on a road
+	road_mat.render_priority = -1
 	road_mat.set_shader_parameter("trench_mask", _blank_mask)
 	road_mat.set_shader_parameter("deform_tex", deform_tex)
 	road_mat.set_shader_parameter("wet", 1.0 if mood == "rain" else 0.0)
@@ -317,8 +331,8 @@ func _build_post() -> void:
 
 # --- rain: streaks around the camera, splashes, lightning and thunder ---------
 
-var _rain: GPUParticles3D
-var _splash: GPUParticles3D
+var _rain: GeometryInstance3D  # (GPU or CPU particles: see Vfx.part)
+var _splash: GeometryInstance3D
 var _rain_snd: AudioStreamPlayer
 var _bolt_t := 12.0
 var _flash := 0.0
@@ -348,23 +362,26 @@ func _setup_rain() -> void:
 	pm.initial_velocity_max = 32.0
 	pm.gravity = Vector3.ZERO
 	pm.collision_mode = ParticleProcessMaterial.COLLISION_HIDE_ON_CONTACT
-	_rain = GPUParticles3D.new()
-	_rain.amount = int(14000 * Settings.fx_mult())
-	_rain.lifetime = 1.6
-	_rain.preprocess = 1.6
-	_rain.process_material = pm
+	var rain := GPUParticles3D.new()
+	rain.amount = int(14000 * Settings.fx_mult())
+	rain.lifetime = 1.6
+	rain.preprocess = 1.6
+	rain.process_material = pm
 	var q := QuadMesh.new()
 	q.size = Vector2(0.06, 1.2)
-	_rain.draw_pass_1 = q
+	rain.draw_pass_1 = q
 	var rm := ShaderMaterial.new()
 	var sh := Shader.new()
 	sh.code = RAIN_SHADER
 	rm.shader = sh
-	_rain.material_override = rm
-	_rain.transform_align = GPUParticles3D.TRANSFORM_ALIGN_Z_BILLBOARD_Y_TO_VELOCITY
-	_rain.local_coords = false
-	_rain.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	_rain.visibility_aabb = AABB(Vector3(-70, -60, -70), Vector3(140, 80, 140))
+	rain.material_override = rm
+	rain.transform_align = GPUParticles3D.TRANSFORM_ALIGN_Z_BILLBOARD_Y_TO_VELOCITY
+	rain.local_coords = false
+	rain.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	rain.visibility_aabb = AABB(Vector3(-70, -60, -70), Vector3(140, 80, 140))
+	if Vfx.gl:
+		rain.amount = int(rain.amount * 0.35)  # (CPU particles in the browser: see Vfx.part)
+	_rain = Vfx.part(rain)
 	add_child(_rain)
 	var sp := ParticleProcessMaterial.new()
 	sp.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_BOX
@@ -376,22 +393,25 @@ func _setup_rain() -> void:
 	sp.gravity = Vector3(0, -9.8, 0)
 	sp.scale_min = 0.6
 	sp.scale_max = 1.2
-	_splash = GPUParticles3D.new()
-	_splash.amount = int(2500 * Settings.fx_mult())
-	_splash.lifetime = 0.25
-	_splash.process_material = sp
+	var splash := GPUParticles3D.new()
+	splash.amount = int(2500 * Settings.fx_mult())
+	splash.lifetime = 0.25
+	splash.process_material = sp
 	var sq := QuadMesh.new()
 	sq.size = Vector2(0.08, 0.08)
-	_splash.draw_pass_1 = sq
+	splash.draw_pass_1 = sq
 	var smat := StandardMaterial3D.new()
 	smat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	smat.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED
 	smat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	smat.albedo_color = Color(0.8, 0.85, 0.9, 0.45)
-	_splash.material_override = smat
-	_splash.local_coords = false
-	_splash.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	_splash.visibility_aabb = AABB(Vector3(-50, -2, -50), Vector3(100, 6, 100))
+	splash.material_override = smat
+	splash.local_coords = false
+	splash.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	splash.visibility_aabb = AABB(Vector3(-50, -2, -50), Vector3(100, 6, 100))
+	if Vfx.gl:
+		splash.amount = int(splash.amount * 0.35)
+	_splash = Vfx.part(splash)
 	add_child(_splash)
 	if Sfx.enabled:
 		_rain_snd = Sfx.make_ambience("rain", -11.0)
@@ -486,7 +506,7 @@ func _spawn_flare(p: Vector3) -> void:
 	var glow := MeshInstance3D.new()
 	glow.mesh = world.fx.vfx.quad if world.fx and world.fx.vfx else QuadMesh.new()
 	glow.material_override = world.fx.vfx.flash_mat if world.fx and world.fx.vfx else null
-	glow.set_instance_shader_parameter("rays", 0.5)
+	Mats.set_inst(glow, &"rays", 0.5)
 	glow.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	root.add_child(glow)
 	var chute := MeshInstance3D.new()
@@ -497,7 +517,7 @@ func _spawn_flare(p: Vector3) -> void:
 	root.add_child(chute)
 	if world.fx and world.fx.vfx:
 		var tr := world.fx.vfx.make_trail()
-		tr.amount_ratio = 0.5
+		Vfx.set_ratio(tr, 0.5)
 		root.add_child(tr)
 	_flares.append([root, l, 0.0, randf_range(20.0, 26.0), glow])
 
@@ -515,11 +535,11 @@ func apply_mood(m: String) -> void:
 	sky_mat.set_shader_parameter("stars", 1.0 if mood == "night" else 0.0)
 	env.ambient_light_energy = float(_d.ambient)
 	ground_mat.set_shader_parameter("wet", 1.0 if mood == "rain" else 0.0)
-	road_mat.set_shader_parameter("wet", 1.0 if mood == "rain" else 0.0)
+	Mats.set_shared(road_mat, &"wet", 1.0 if mood == "rain" else 0.0)
 	_setup_rain()
 	env.tonemap_exposure = float(_d.exposure) * float(Settings.get_v("brightness"))
 	env.fog_light_color = _d.fog
-	env.fog_density = float(_d.fog_d)
+	_apply_haze(world.cam.dist if world.cam else HAZE_DISTANCE)
 	env.volumetric_fog_albedo = (_d.fog as Color).lerp(Color(0.9, 0.9, 0.9), 0.55)
 	_apply_look()
 	sun.rotation_degrees = Vector3(-float(_d.elev), float(_d.azim), 0)
@@ -584,6 +604,8 @@ func apply_settings() -> void:
 	cam_attr.dof_blur_amount = 0.06
 	if grass:
 		grass.apply_settings()
+	if wildlife:
+		wildlife.apply_settings()
 
 
 ## Colour grading: the chosen look on top of the time of day, plus the
@@ -639,10 +661,7 @@ func _view_process(_dt: float) -> void:
 		_flares_tick(_dt / maxf(0.0001, Engine.time_scale) if Engine.time_scale > 0.001 else 0.0)
 	if _rain:
 		_rain_tick(_dt / maxf(0.0001, Engine.time_scale) if Engine.time_scale > 0.001 else 0.016)
-	# the camera climbs as it zooms out: thin the fog so the battlefield stays crisp
-	var fk := clampf(45.0 / maxf(10.0, world.cam.dist), 0.35, 1.0)
-	env.fog_density = float(_d.fog_d) * fk
-	env.volumetric_fog_density = (0.0011 if mood != "hazy" else 0.003) * fk
+	_apply_haze(world.cam.dist)
 	if not Settings.get_v("dof"):
 		return
 	# gentle tilt-shift: keep the focus plane at the camera's target
@@ -653,9 +672,21 @@ func _view_process(_dt: float) -> void:
 	cam_attr.dof_blur_near_transition = d * 0.3
 
 
+## No lower clamp: distant command cameras otherwise look through an ever
+## thicker veil. Mood still sets the colour and relative amount of haze.
+static func haze_distance_factor(distance: float) -> float:
+	return minf(1.0, HAZE_DISTANCE / maxf(1.0, distance))
+
+
+func _apply_haze(distance: float) -> void:
+	var k := haze_distance_factor(distance)
+	env.fog_density = float(_d.fog_d) * HAZE_STRENGTH * k
+	env.volumetric_fog_density = (0.0011 if mood != "hazy" else 0.003) * VOLUME_STRENGTH * k
+
+
 ## Builds the road strip mesh for a team (called by World when roads change).
 func set_town(r: Rect2) -> void:
-	road_mat.set_shader_parameter("town", Vector4(r.position.x, r.position.y, r.end.x, r.end.y))
+	Mats.set_shared(road_mat, &"town", Vector4(r.position.x, r.position.y, r.end.x, r.end.y))
 
 
 ## A square of ground `size` across in quads of `step` metres, centred on its origin.
@@ -797,7 +828,7 @@ func make_road_mesh(polys: Array, team: int) -> MeshInstance3D:
 	var mi := MeshInstance3D.new()
 	mi.mesh = st.commit()
 	mi.material_override = road_mat
-	mi.set_instance_shader_parameter("country", 1.0 if team == 2 else 0.0)
+	Mats.set_inst(mi, &"country", 1.0 if team == 2 else 0.0)
 	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	return mi
 
@@ -869,7 +900,7 @@ uniform float wet = 0.0;
 uniform sampler2D trench_mask : hint_default_black, filter_linear, repeat_disable;
 uniform sampler2DArray deform_tex : filter_linear, repeat_disable;
 // TERRAIN_TEXTURE_HELPER
-uniform sampler2D water_mask : hint_default_black, filter_linear, repeat_disable;
+uniform sampler2D water_mask : hint_default_transparent, filter_linear, repeat_disable;
 uniform float sea_x = 1e9;
 
 varying vec3 wpos;

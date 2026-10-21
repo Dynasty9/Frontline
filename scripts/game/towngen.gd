@@ -86,7 +86,7 @@ func _pave(p: Vector3, yaw: float, size: Vector3) -> void:
 
 
 func _reserve(p: Vector3, half: Vector2, yaw: float) -> void:
-	mg.reserve_space(Vector2(p.x, p.z), half, yaw)
+	mg._place([Vector2(p.x, p.z), half, yaw])
 
 
 # --- the street plan ---------------------------------------------------------------
@@ -636,7 +636,7 @@ func _water_tower() -> void:
 	for i in 24:
 		var a := rng.randf() * TAU
 		var p := TrenchNet.snap_pos(center + Vector3(cos(a), 0, sin(a)) * rng.randf_range(REACH - 6.0, REACH + 10.0))
-		if mg._is_free(p, Vector2(3.2, 3.2), 0.0, 0.5) and _road_dist(p) > 8.0:
+		if mg._is_free(p, Vector2(3.2, 3.2), 0.0, 0.5) and _road_dist(p, 9.0) > 8.0:
 			_d("water_tower", p, TrenchNet.snap_yaw(a))
 			_reserve(p, Vector2(3.0, 3.0), 0.0)
 			return
@@ -644,13 +644,59 @@ func _water_tower() -> void:
 
 # --- the countryside ---------------------------------------------------------------
 
-func _road_dist(p: Vector3) -> float:
+## How far p is from the nearest stretch of the map's roads. Asked whether
+## it's nearer than some distance (`upto`), only the stretches filed within
+## reach of p are looked at (see _road_grid): the answer is the same where it's
+## nearer than that, and at least `upto` where it isn't.
+func _road_dist(p: Vector3, upto := INF) -> float:
 	var best := 1e9
-	for poly in world.roads[2]:
+	var q := Vector3(p.x, 0, p.z)
+	if upto == INF:
+		for poly in world.roads[2]:
+			var pts: PackedVector3Array = poly
+			for i in range(0, pts.size() - 1):
+				best = minf(best, Defs.dist_point_segment(q, pts[i], pts[i + 1]))
+		return best
+	_road_grid()
+	var r := upto + 1.0
+	for gx in range(floori((p.x - r) / ROAD_CELL), floori((p.x + r) / ROAD_CELL) + 1):
+		for gz in range(floori((p.z - r) / ROAD_CELL), floori((p.z + r) / ROAD_CELL) + 1):
+			var segs = _road_at.get(Vector2i(gx, gz))
+			if segs == null:
+				continue
+			var ends: PackedVector3Array = segs
+			for i in range(0, ends.size(), 2):
+				best = minf(best, Defs.dist_point_segment(q, ends[i], ends[i + 1]))
+	return best  # (from those near: no nearer than `upto` if the nearest wasn't among them)
+
+
+const ROAD_CELL := 16.0
+var _road_at := {}  # Vector2i -> the ends of every stretch of road whose box (and a metre) touches that square
+var _road_was: Array = []  # the roads as they were filed
+
+
+## Files the map's roads (world.roads[2]) by the squares they cross, again
+## whenever they've changed.
+func _road_grid() -> void:
+	var roads: Array = world.roads[2]
+	if roads == _road_was and not _road_at.is_empty():
+		return
+	_road_was = roads.duplicate(true)
+	_road_at.clear()
+	for poly in roads:
 		var pts: PackedVector3Array = poly
 		for i in range(0, pts.size() - 1):
-			best = minf(best, Defs.dist_point_segment(Vector3(p.x, 0, p.z), pts[i], pts[i + 1]))
-	return best
+			var a := pts[i]
+			var b := pts[i + 1]
+			for gx in range(floori((minf(a.x, b.x) - 1.0) / ROAD_CELL), floori((maxf(a.x, b.x) + 1.0) / ROAD_CELL) + 1):
+				for gz in range(floori((minf(a.z, b.z) - 1.0) / ROAD_CELL), floori((maxf(a.z, b.z) + 1.0) / ROAD_CELL) + 1):
+					var k := Vector2i(gx, gz)
+					if not _road_at.has(k):
+						_road_at[k] = PackedVector3Array()
+					var ends: PackedVector3Array = _road_at[k]
+					ends.append(a)
+					ends.append(b)
+					_road_at[k] = ends
 
 
 ## A handful of houses either side of the straight run of the road through
@@ -702,7 +748,7 @@ func farms(k: int) -> void:
 		var base := TrenchNet.snap_pos(p + n * 9.0)
 		var hc := base + n * 4.5 - t * 7.0
 		var bc := base + n * 6.5 + t * 8.0
-		if _road_dist(hc) < 9.0 or _road_dist(bc) < 10.0:
+		if _road_dist(hc, 9.0) < 9.0 or _road_dist(bc, 10.0) < 10.0:
 			continue
 		if not mg._is_free(hc, Vector2(6, 5), axis, 1.0) or not mg._is_free(bc, Vector2(8, 6), axis, 1.0):
 			continue
@@ -778,7 +824,7 @@ func fields(k: int) -> void:
 			if rng.randf() < 0.13:
 				continue
 			var hp := start + t * (s * 4.0)
-			if _road_dist(hp) > 6.0 and mg._try("low_wall", hp, yaw_along(t), -1, {"size": Vector3(4.0, 1.0, 0.5), "variant": variant}) != null:
+			if _road_dist(hp, 7.0) > 6.0 and mg._try("low_wall", hp, yaw_along(t), -1, {"size": Vector3(4.0, 1.0, 0.5), "variant": variant}) != null:
 				put += 1
 		if rng.randf() < 0.7:
 			var end := start + t * ((len1 if rng.randf() < 0.5 else 0) * 4.0 - 2.0)
@@ -815,11 +861,11 @@ func roadside(cars: int, wrecks: int) -> void:
 ## Keep the scattered scenery out of town and off the roads; hand the street
 ## furniture to the world.
 func finish() -> void:
-	mg.reserve_clear(rect.get_center(), REACH + 4.0)
+	mg._keep_clear([rect.get_center(), REACH + 4.0])
 	for hm in hamlets:
-		mg.reserve_clear(Vector2(hm.c.x, hm.c.z), 24.0)
+		mg._keep_clear([Vector2(hm.c.x, hm.c.z), 24.0])
 	for poly in world.roads[2]:
 		var arr: PackedVector3Array = poly
 		for k in range(0, arr.size(), 2):
-			mg.reserve_clear(Vector2(arr[k].x, arr[k].z), 3.6)
+			mg._keep_clear([Vector2(arr[k].x, arr[k].z), 3.6])
 	world.set_decor(decor, rect)

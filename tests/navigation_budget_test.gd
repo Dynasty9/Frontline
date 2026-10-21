@@ -94,7 +94,7 @@ func _ready() -> void:
 	cached.mark_dirty(changed)
 	for ci in 513:
 		cached.local_grid(ci)
-	check(cached.local[0] == null and cached._local_order.size() == 512, "Local grids must evict within the cell budget")
+	check(not cached._local.has(0) and cached._local.size() == 512, "Local grids must evict within the cell budget")
 	var restored := cached.local_grid(0)
 	check(restored.is_point_solid(changed) and restored.get_point_weight_scale(changed) == 2.5, "Eviction must preserve obstacle and movement costs")
 	print("NAVIGATION_BUDGET_TEST failures=%d rebuild_steps=%d" % [failures, steps])

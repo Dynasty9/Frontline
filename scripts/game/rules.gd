@@ -398,7 +398,7 @@ func try_place(peer: int, team: int, kind: String, pos: Vector3, yaw: float, sqs
 	if builders.is_empty():
 		var bd := 1e9
 		for sq in world.squads.values():
-			if sq.owner != peer or sq.order == "build":
+			if not world.can_command_unit(peer, sq.team, sq.owner) or sq.order == "build":
 				continue
 			var eng := false
 			for m in sq.members:
@@ -410,6 +410,7 @@ func try_place(peer: int, team: int, kind: String, pos: Vector3, yaw: float, sqs
 			if d < bd:
 				bd = d
 				builders = [sq]
+	world.take_command(peer, builders, [])
 	for sq in builders:
 		sq.order_work(st)
 	return st
@@ -792,7 +793,7 @@ func spawn_squad(key: String, team: int, owner: int, pos: Vector3, dest := Vecto
 func rejoin_squad(s: Soldier) -> void:
 	var owner := s.owner_peer
 	if owner > 0 and not Net.players.has(owner):
-		owner = -1 - s.team
+		owner = world.acting_owner(owner, s.team)
 		s.owner_peer = owner
 		world.push_props(s, {"owner": owner})
 	var best: Squad = null
@@ -875,12 +876,13 @@ func tunnel_exit(st: Structure, ex: Structure, peer: int) -> void:
 	var tt := 1.0 if st == ex else 3.0 + dist / (28.0 if has_upgrade(st.team, "deep_tunnels") else 14.0)
 	var moved := 0
 	for s in st.inside.duplicate():
-		if s.gone or s.owner_peer != peer:
+		if s.gone or not world.can_command_unit(peer, s.team, s.owner_peer):
 			continue
 		s.hidden_reason = "tunnel_travel"
 		s.hidden_t = tt + world.rng.randf() * 1.5
 		s.task_pos = ex.position + Vector3(world.rng.randf_range(-3, 3), 0, world.rng.randf_range(-3, 3))
 		if s.squad:
+			world.take_command(peer, [s.squad], [])
 			s.squad.order_pos = ex.position
 		moved += 1
 	if moved > 0:
@@ -907,10 +909,10 @@ func _reserves() -> void:
 		if alive >= 6:
 			continue
 		_reserve_t[t] = world.time + 75.0
+		# to the side's first commander still in the battle (or the AI)
 		var owner := -1 - t
-		var pl: Dictionary = world.settings.get("players", {})
-		for id in pl:
-			if int(pl[id].team) == t:
+		for id in Net.players:
+			if int(Net.players[id].team) == t:
 				owner = int(id)
 				break
 		var hq: Structure = depots[t]

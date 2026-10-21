@@ -1,10 +1,11 @@
 """Frontline's changelog: one entry per change, gathered into releases.
 
 Every pull request that changes the game adds an entry for players to
-changelog/unreleased/ (changelog/README.md says how). When the release
-workflow publishes a version, the entries that version was built with move to
-changelog/vX.Y.Z/, the release is named after its headline change, and this
-script writes everything that shows the changelog:
+changelog/unreleased/ (changelog/README.md says how). Merging it releases
+nothing: entries wait there until someone runs the release workflow (Actions >
+Release > Run workflow). That files every waiting entry under changelog/vX.Y.Z/,
+names the release after its headline change, and this script writes everything
+that shows the changelog:
 
     web/src/changelog.json    the website's Changelog page and What's new
     CHANGELOG.md              the whole history, readable on GitHub
@@ -12,8 +13,8 @@ script writes everything that shows the changelog:
 
     changelog.py check [--base REF] [--require]   validate entries; with --require,
                                                   fail if the game changed but no entry was added
-    changelog.py release VERSION --built SHA [--pr N --pr-title T --pr-body B]
-                                                  file this release's entries, then build
+    changelog.py pending                          the entries waiting for the next release
+    changelog.py release VERSION                  file every waiting entry under VERSION, then build
     changelog.py build                            regenerate the outputs from changelog/v*/
     changelog.py name VERSION                     the release's name
     changelog.py notes VERSION                    the release's notes (markdown)
@@ -252,62 +253,58 @@ def notes(version: str) -> str:
     out += [
         "## Get it",
         "",
-        f"The game updates itself. To install it, download **Frontline-windows.zip** or **Frontline-linux.zip** below,"
-        f" or from [the website]({WEBSITE}/#download), unzip it anywhere and run it.",
+        f"The game updates itself. To install it, download **Frontline-windows.zip**, **Frontline-macos.zip** or"
+        f" **Frontline-linux.zip** below, or from [the website]({WEBSITE}/#download), unzip it anywhere and run it"
+        f" (on a Mac, move Frontline to Applications first).",
         "",
         f"The whole history, with pictures: [Changelog]({WEBSITE}/changelog/#{r['tag']}).",
     ]
     return "\n".join(out).rstrip() + "\n"
 
 
-def write_fallback(dest: Path, version: str, pr: str, title: str, body: str) -> None:
-    """A release with no entry (one merged without, or released by hand) still
-    gets one, from its pull request."""
-    para = ""
-    for block in re.split(r"\n\s*\n", body or ""):
-        b = block.strip()
-        if b and not b.startswith(("#", "|", "-", "*", ">", "```", "<!--", "🤖")):
-            para = " ".join(b.split())
-            break
-    title = (title or "Fixes and improvements").strip()
-    summary = para[:300] or "Smaller fixes and improvements."
-    slug = re.sub(r"[^a-z0-9]+", "-", title.lower()).strip("-")[:48].strip("-") or "changes"
-    more = f"\nSee [pull request #{pr}](https://github.com/{REPO}/pull/{pr}) for the details.\n" if pr else ""
-    meta = f'title = {json.dumps(title[:80])}\nsummary = {json.dumps(summary)}\nkind = "improved"\n'
-    (dest / f"{slug}.md").write_text(f"+++\n{meta}+++\n{more}", encoding="utf-8", newline="\n")
+def pending() -> list[dict]:
+    """The entries waiting in changelog/unreleased/ for the next release."""
+    return read_dir(UNRELEASED) if UNRELEASED.is_dir() else []
 
 
-def release(version: str, built: str, pr: str, pr_title: str, pr_body: str) -> None:
-    """File the entries this version was built with under changelog/vVERSION/."""
+def pr_of(path: Path) -> int | None:
+    """The pull request that added an entry: a squash merge's subject ends
+    with "(#123)"."""
+    subjects = subprocess.run(["git", "log", "--diff-filter=A", "--format=%s", "--", rel(path)], cwd=ROOT,
+                              capture_output=True, text=True).stdout.splitlines()
+    m = re.search(r"\(#(\d+)\)\s*$", subjects[-1]) if subjects else None
+    return int(m.group(1)) if m else None
+
+
+def release(version: str, name: str = "") -> None:
+    """File every waiting entry under changelog/vVERSION/: everything merged
+    since the last release, which is what the workflow has just built. The
+    release is called `name`, or else after its headline entry."""
+    waiting = pending()
+    if not waiting:
+        raise SystemExit("nothing to release: there are no entries in changelog/unreleased/")
     dest = LOG / f"v{version}"
-    dest.mkdir(parents=True, exist_ok=True)
-    # only the entries that were in the commit that was built: more may have
-    # merged while it built, and those belong to the next release
-    built_names = set(
-        subprocess.run(["git", "ls-tree", "--name-only", f"{built}:changelog/unreleased"], cwd=ROOT,
-                       capture_output=True, text=True).stdout.split()
-    )
-    moved = []
-    for md in sorted(UNRELEASED.glob("*.md")) if UNRELEASED.is_dir() else []:
-        if md.name.lower() == "readme.md" or md.name not in built_names:
-            continue
+    if dest.exists():
+        raise SystemExit(f"{rel(dest)} already exists")
+    dest.mkdir(parents=True)
+    prs = sorted({n for e in waiting if (n := pr_of(e["path"]))})
+    for e in waiting:
+        md = e["path"]
         shutil.move(str(md), dest / md.name)
         pics = UNRELEASED / md.stem
         if pics.is_dir():
             shutil.move(str(pics), dest / md.stem)
-        moved.append(md.name)
-    if not moved and not any(p for p in dest.glob("*.md")):
-        write_fallback(dest, version, pr, pr_title, pr_body)
     entries = read_dir(dest)
+    name = name.strip() or release_name(entries)
     toml_lines = [
         f'version = "{version}"',
-        f"name = {json.dumps(release_name(entries))}",
+        f"name = {json.dumps(name)}",
         f'date = "{datetime.now(timezone.utc).date().isoformat()}"',
     ]
-    if pr:
-        toml_lines.append(f"pull_requests = [{int(pr)}]")
+    if prs:
+        toml_lines.append(f"pull_requests = [{', '.join(str(n) for n in prs)}]")
     (dest / "release.toml").write_text("\n".join(toml_lines) + "\n", encoding="utf-8", newline="\n")
-    print(f"v{version}: {release_name(entries)} ({len(entries)} entries: {', '.join(e['slug'] for e in entries)})", file=sys.stderr)
+    print(f"v{version}: {name} ({len(entries)} entries: {', '.join(e['slug'] for e in entries)})", file=sys.stderr)
     build()
 
 
@@ -331,7 +328,7 @@ def check(base: str | None, require: bool) -> int:
             problems.append(
                 "This pull request changes the game but adds no changelog entry.\n"
                 "  Add changelog/unreleased/<what-changed>.md (changelog/README.md shows how), or label the pull\n"
-                "  request 'skip release' if players shouldn't get a new version for it."
+                "  request 'no changelog' if players needn't hear about it."
             )
     for p in problems:
         print(f"::error::{p}" if os.environ.get("GITHUB_ACTIONS") else p, file=sys.stderr)
@@ -354,12 +351,10 @@ def main() -> None:
     c = sub.add_parser("check")
     c.add_argument("--base")
     c.add_argument("--require", action="store_true")
+    sub.add_parser("pending")
     r = sub.add_parser("release")
     r.add_argument("version")
-    r.add_argument("--built", required=True)
-    r.add_argument("--pr", default="")
-    r.add_argument("--pr-title", default="")
-    r.add_argument("--pr-body", default="")
+    r.add_argument("--name", default="", help="what to call the release (default: after its headline entry)")
     sub.add_parser("build")
     n = sub.add_parser("notes")
     n.add_argument("version")
@@ -368,8 +363,11 @@ def main() -> None:
     a = ap.parse_args()
     if a.cmd == "check":
         sys.exit(check(a.base, a.require))
-    if a.cmd == "release":
-        release(a.version, a.built, a.pr, a.pr_title, a.pr_body)
+    if a.cmd == "pending":
+        for e in pending():
+            print(f"{e['kind']:<9}{e['slug']}: {e['title']}")
+    elif a.cmd == "release":
+        release(a.version, a.name)
     elif a.cmd == "build":
         build()
     elif a.cmd == "notes":

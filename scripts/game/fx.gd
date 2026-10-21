@@ -55,7 +55,9 @@ func _ready() -> void:
 	gunfx.vfx = vfx
 	add_child(gunfx)
 	_prewarm.call_deferred()
-	for i in 8:
+	# (none in the browser build: the first time a light falls on something, the
+	# browser compiles that thing's shaders again for it, a hitch mid-battle)
+	for i in (0 if Vfx.gl else 8):
 		var l := OmniLight3D.new()
 		l.light_color = Color(1.0, 0.7, 0.35)
 		l.omni_range = 14.0
@@ -98,6 +100,25 @@ func play(ev: Array) -> void:
 				world.director.note(ev[1], 1.5)
 			LAUNCH:
 				world.director.note(ev[1], 1.0)
+	var wl: Wildlife = world.atmo.wildlife if world.atmo else null
+	if wl and wl.level > 0:
+		# the birds go up at gunfire, and everything runs from a shell; what a
+		# round or a blast catches dies (for the eye only: the round flies on)
+		match int(ev[0]):
+			SHOT:
+				wl.shot(ev[1], ev[2])
+				wl.startle(ev[1], 40.0)
+			EXPLODE:
+				wl.blast(ev[1], float(ev[2]))
+				wl.startle(ev[1], 55.0 + 30.0 * float(ev[2]))
+			CANNON, MORTAR:
+				wl.startle(ev[1], 75.0)
+			LAUNCH:
+				wl.startle(ev[1], 45.0)
+			FIRE:
+				wl.fire(ev[1], float(ev[2]), float(ev[3]))
+			TREE_FALL:
+				wl.startle(ev[1], 25.0)
 	match int(ev[0]):
 		SHOT:
 			_shot(_muzzle_of(ev, 5, ev[1], false), ev[2], int(ev[3]), String(ev[4]), world.entity(int(ev[5])) if ev.size() > 5 else null)
@@ -134,7 +155,7 @@ func play(ev: Array) -> void:
 				world.director.cue(ev[1], float(ev[2]))
 			Sfx.ui("click")
 		DELIVER:
-			_float_text(ev[1], "+%d supply" % int(ev[2]), Color(0.5, 1.0, 0.5) if int(ev[3]) == world.local_team or world.local_team < 0 else Color(1, 1, 1, 0))
+			_float_text(ev[1], "+%d SUP" % int(ev[2]), UiKit.GOOD if int(ev[3]) == world.local_team or world.local_team < 0 else Color(1, 1, 1, 0))
 		FAR_SOUND:
 			var dist := world.cam.focus_pos.distance_to(ev[3]) if world.cam and ev.size() > 3 else 0.0
 			Sfx.play_far(String(ev[1]), float(ev[2]), 1.0, dist)
@@ -261,6 +282,8 @@ func _flash(p: Vector3, life: float, size: float) -> void:
 
 
 func _light(p: Vector3, energy: float, rng_m: float) -> void:
+	if _lights.is_empty():
+		return
 	var l: OmniLight3D = _lights[_light_i]
 	_light_i = (_light_i + 1) % _lights.size()
 	l.global_position = p + Vector3(0, 1.5, 0)
@@ -388,7 +411,8 @@ func _float_text(p: Vector3, text: String, col: Color) -> void:
 	l.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 	l.fixed_size = true
 	l.pixel_size = 0.0013
-	l.font_size = 28
+	l.font = UiKit.mono(500)  # a figure, so mono (docs/UI.md, Two voices)
+	l.font_size = 20
 	l.outline_size = 8
 	l.no_depth_test = true
 	l.render_priority = 127  # over roads and other see-through ground layers

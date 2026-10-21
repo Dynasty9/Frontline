@@ -34,7 +34,6 @@ var cdir := PackedByteArray()  # direction the cover faces (0..7) or OMNI
 var solid := PackedByteArray()  # inside a wall or building (nowhere to stand)
 var trench := PackedByteArray()  # inside a dug trench
 var netted := PackedByteArray()  # under a camouflage net
-var _inside_hit := false
 var biome_img: Image
 var _dirs: Array[Vector2] = []
 var version := 0  # bumps whenever cover / kinds change (UI caches)
@@ -55,6 +54,8 @@ func _init(w) -> void:
 		a.resize(N * N)
 	cov.resize(N * N)
 	cov.fill(1)
+	_dirty.resize(N * N)
+	_dirty.fill(0)
 	cdir.fill(255)
 	for i in 8:
 		var ang := TAU * i / 8.0
@@ -65,10 +66,24 @@ func _init(w) -> void:
 	_make_biome()
 
 
+## The last seed's biome and the mud it lays (a test loads battle after battle,
+## mostly on one seed): the noise takes a good part of a second to make, and
+## it comes out the same every time for the same seed. Nothing writes to the
+## image; the mud is copied in and out.
+static var _biome_seed := -1
+static var _biome_last: Image = null
+static var _mud_last := PackedByteArray()
+
+
 ## Same noise the ground shader paints with, so mud is where the mud looks like it is.
 func _make_biome() -> void:
+	var s := int(world.settings.get("seed", 1)) % 100000
+	if s == _biome_seed and _biome_last != null:
+		biome_img = _biome_last
+		base = _mud_last.duplicate()
+		return
 	var n := FastNoiseLite.new()
-	n.seed = int(world.settings.get("seed", 1)) % 100000
+	n.seed = s
 	n.noise_type = FastNoiseLite.TYPE_SIMPLEX_SMOOTH
 	n.frequency = 0.012
 	n.fractal_type = FastNoiseLite.FRACTAL_FBM
@@ -80,6 +95,9 @@ func _make_biome() -> void:
 			var b := biome_img.get_pixel(x + bo, z + bo).r
 			if b > 0.725:
 				base[z * N + x] = MUD
+	_biome_seed = s
+	_biome_last = biome_img
+	_mud_last = base.duplicate()
 
 
 func idx_of(p: Vector3) -> int:
@@ -129,9 +147,15 @@ func cover_vs(p: Vector3, from: Vector3) -> int:
 
 
 func _base_cover(i: int) -> int:
-	if crater[i] > 0 or rubble[i] > 0 or (woods[i] > 0 and base[i] != ROAD):
+	return ground_cover(crater[i], rubble[i], woods[i], base[i])
+
+
+## The cover the ground itself gives: a crater, rubble or trees (not on a
+## road) are light cover; a road or mud leaves you exposed.
+static func ground_cover(cr: int, ru: int, wo: int, ba: int) -> int:
+	if cr > 0 or ru > 0 or (wo > 0 and ba != ROAD):
 		return LIGHT
-	if base[i] == ROAD or base[i] == MUD:
+	if ba == ROAD or ba == MUD:
 		return EXPOSED
 	return NONE
 
@@ -228,6 +252,8 @@ func nav_weight(idx: int, vehicle: bool) -> float:
 # --- building the map ------------------------------------------------------------------
 
 func paint_roads(polys: Array, half_w := 2.2) -> void:
+	# (a cell that's road already is passed over while the ground is fresh: see _fresh)
+	var keep: bool = _fresh and not (world.nav and world.nav.hnav_i and world.nav.hnav_i.built)
 	for poly in polys:
 		var pts: PackedVector3Array = poly
 		for k in range(pts.size() - 1):
@@ -237,28 +263,53 @@ func paint_roads(polys: Array, half_w := 2.2) -> void:
 			var x1 := floori(maxf(a.x, b.x) + half_w + 1.0 + H)
 			var z0 := floori(minf(a.z, b.z) - half_w - 1.0 + H)
 			var z1 := floori(maxf(a.z, b.z) + half_w + 1.0 + H)
+			# (Defs.dist_point_segment, worked through here for every cell)
+			var sa := Vector3(a.x, 0, a.z)
+			var ab := Vector3(b.x, 0, b.z) - sa
+			var l2 := ab.length_squared()
+			var dot := l2 >= 0.0001
 			for z in range(maxi(0, z0), mini(N - 1, z1) + 1):
+				var row := z * N
 				for x in range(maxi(0, x0), mini(N - 1, x1) + 1):
+					var was: int = base[row + x]
+					if was >= WATER or (keep and was == ROAD):
+						continue
 					var c := Vector3(x - H + 0.5, 0, z - H + 0.5)
-					if Defs.dist_point_segment(c, Vector3(a.x, 0, a.z), Vector3(b.x, 0, b.z)) <= half_w and base[z * N + x] < WATER:
-						base[z * N + x] = ROAD
-						_refresh_cell(z * N + x)
+					var d := c.distance_to(sa + ab * clampf((c - sa).dot(ab) / l2, 0.0, 1.0)) if dot else c.distance_to(sa)
+					if d <= half_w:
+						base[row + x] = ROAD
+						_refresh_cell(row + x)
 	version += 1
 
 
 ## Sets the ground kind over a rectangle (sidewalks and squares are road).
 func paint_box(c: Vector3, half: Vector2, yaw: float, kind: int) -> void:
 	var r := half.length() + 1.0
+	# (Defs.point_in_obb, worked through here for every cell)
+	var ax := Vector2(cos(yaw), -sin(yaw))
+	var az := Vector2(sin(yaw), cos(yaw))
+	var cc := Vector2(c.x, c.z)
 	for z in range(maxi(0, floori(c.z - r + H)), mini(N - 1, floori(c.z + r + H)) + 1):
 		for x in range(maxi(0, floori(c.x - r + H)), mini(N - 1, floori(c.x + r + H)) + 1):
-			if Defs.point_in_obb(Vector2(x - H + 0.5, z - H + 0.5), Vector2(c.x, c.z), half, yaw):
+			var d := Vector2(x - H + 0.5, z - H + 0.5) - cc
+			if absf(d.dot(ax)) <= half.x and absf(d.dot(az)) <= half.y:
 				base[z * N + x] = kind
 				_refresh_cell(z * N + x)
 	version += 1
 
 
-var _dirty := {}
-var _queue: Array = []
+var _dirty := PackedByteArray()  # 1: the cell is in the queue
+var _queue := PackedInt32Array()
+## Until the first cover recompute (tick), every cell's cover and routes are
+## just as its ground last left them: whatever changes a cell's ground works
+## them out again there and then (_refresh_cell), and nothing else has set
+## them. Working out a cell that's road already, as road again, changes
+## nothing then, so paint_roads passes over it - the map's roads are painted
+## three times while a battle's laid out, each stretch over the one before.
+## (After a recompute it would: a road cell with nothing round it is "no
+## cover" there, "exposed" from _refresh_cell. And once the routes' graphs are
+## built, Nav marks every cell it's told of for a repair.)
+var _fresh := true
 
 
 ## A structure appeared, finished building, or was destroyed: queue the cells
@@ -295,8 +346,8 @@ func structure_changed(st, added := true) -> void:
 	for z in range(z0, z1 + 1):
 		for x in range(x0, x1 + 1):
 			var i := z * N + x
-			if not _dirty.has(i):
-				_dirty[i] = true
+			if _dirty[i] == 0:
+				_dirty[i] = 1
 				_queue.append(i)
 
 
@@ -313,7 +364,8 @@ func _tree_woods(p: Vector3, delta: int) -> void:
 	for z in range(maxi(0, cz - 4), mini(N, cz + 5)):
 		for x in range(maxi(0, cx - 4), mini(N, cx + 5)):
 			var i := z * N + x
-			if Defs.flat(center(i) - p).length() < 3.8:
+			var d := Vector3(x - H + 0.5, 0.0, z - H + 0.5) - p  # (centre(i) - p)
+			if Vector3(d.x, 0.0, d.z).length() < 3.8:
 				woods[i] = clampi(int(woods[i]) + delta, 0, 255)
 				_refresh_cell(i)
 	version += 1
@@ -340,15 +392,47 @@ func _nets_changed(st, added: bool) -> void:
 			netted[z * N + x] = on
 
 
-## Processes queued cells; call every frame / tick.
+## Processes queued cells; call every frame / tick. Each cell's cover is
+## worked out from the structures within reach (_lay_out, CoverJob) and then
+## written, and the routes told of it, cell by cell in the queue's order. A
+## big batch (a new map's: tens of thousands of cells) is worked out on the
+## worker threads, a slice of the queue each; nothing a cell's working-out
+## reads is written until they're all done.
 func tick(budget := 2500) -> void:
 	if _queue.is_empty():
 		return
 	var end := mini(_qhead + budget, _queue.size())
-	for k in range(_qhead, end):
-		var i: int = _queue[k]
-		_dirty.erase(i)
-		_recompute_cell(i)
+	_fresh = false
+	var cells := _queue.slice(_qhead, end)
+	var lay := _lay_out(cells)
+	var jobs: Array = []
+	var per := cells.size() if cells.size() < THREAD_CELLS else JOB_CELLS
+	for s in range(0, cells.size(), per):
+		var job := CoverJob.new()
+		job.lay = lay
+		job.cells = cells.slice(s, mini(s + per, cells.size()))
+		job.first = s
+		job.crater = crater
+		job.woods = woods
+		job.base = base
+		jobs.append(job)
+	if jobs.size() == 1:
+		(jobs[0] as CoverJob).run()
+	else:
+		var task := WorkerThreadPool.add_group_task(func(j: int): (jobs[j] as CoverJob).run(), jobs.size(), -1, true, "Cover")
+		WorkerThreadPool.wait_for_group_task_completion(task)
+	for job: CoverJob in jobs:
+		var out := job.out
+		var jc := job.cells
+		for q in jc.size():
+			var i := jc[q]
+			_dirty[i] = 0
+			rubble[i] = out[q * 5]
+			trench[i] = out[q * 5 + 1]
+			solid[i] = out[q * 5 + 2]
+			cov[i] = out[q * 5 + 3]
+			cdir[i] = out[q * 5 + 4]
+			_nav_refresh(i)
 	_qhead = end
 	if _qhead >= _queue.size():
 		_queue.clear()
@@ -357,103 +441,395 @@ func tick(budget := 2500) -> void:
 
 
 var _qhead := 0  # next queued cell (the queue is consumed in place, not copied)
+const THREAD_CELLS := 8192  # a batch this big is shared out over the worker threads,
+const JOB_CELLS := 2048  # this many cells a task
+
+# what a structure offers in cover (see _lay_out)
+enum {C_NONE, C_PARTS, C_TRENCH, C_BUNKER}
+const NO_COVER := ["floor", "wire", "mines", "tank_trap", "tunnel", "helipad", "tree", "camo_net"]
+# World's buckets of structures (16 m squares) are each cut into 2 m squares
+# that list (in the bucket's order) the structures that can reach a cell in
+# them: a town's bucket holds a hundred walls and more, a cell is near a few.
+const SUB := 2.0
+const SUB_PAD := 2.0  # (a cell looks into the buckets within 1.6 m of it)
+const SUB_N := 10  # (World.SCELL + 2 SUB_PAD) / SUB
+const SUB_LEN := SUB_N * SUB_N + 1
 
 
-func _recompute_cell(i: int) -> void:
-	var c := center(i)
-	var best := NONE
-	var bdir := 255
-	var rub := 0
-	var tr := 0
-	_inside_hit = false
-	for st in world.structures_near(c, 1.6):
-		if st.gone:
+## What's near a batch of cells, as plain arrays (a job touches no structure):
+## World's buckets the cells look into, and every structure standing in them
+## once, as a slot, with what it offers in cover.
+class CoverLay:
+	extends RefCounted
+	var sc := 16.0  # World.SCELL: a bucket's size
+	var bx0 := 0  # the first bucket column (and row) on the map
+	var nb := 0  # buckets across
+	var bucket := PackedInt32Array()  # (bx - bx0) * nb + (bz - bx0) -> the bucket's number, -1 none
+	var starts := PackedInt32Array()  # per bucket, per 2 m square (SUB_LEN each): where its list starts in idx
+	var idx := PackedInt32Array()  # the lists: slots
+	var slots := 0
+	var pos := PackedVector3Array()  # per slot: the structure's position
+	var rad := PackedFloat64Array()  # its radius
+	var kind := PackedByteArray()  # C_*
+	var rub := PackedByteArray()  # rubble
+	var dug := PackedByteArray()  # a finished trench
+	var p0 := PackedInt32Array()  # its cover parts (in wc and pf), from
+	var p1 := PackedInt32Array()  # to
+	var wc := PackedVector3Array()  # per cover part: its centre (world)
+	var pf := PackedFloat64Array()  # and its turn (cos, sin), half size (x, z), level
+	var obb := PackedVector2Array()  # per slot: centre, half size (rubble), half size (bunker), axes (2)
+	var seg := PackedVector3Array()  # per slot: a trench's ends
+	var centers := PackedVector3Array()  # the batch's cells' centres (TerrainMap.center), in its order
+
+
+## One slice of a batch: each cell's rubble, trench, solid, cover level + 1 and
+## cover direction, five bytes a cell in `out` (see TerrainMap.tick).
+class CoverJob:
+	extends RefCounted
+	var lay: CoverLay
+	var cells := PackedInt32Array()
+	var first := 0  # where its cells start in the batch
+	var crater := PackedByteArray()
+	var woods := PackedByteArray()
+	var base := PackedByteArray()
+	var out := PackedByteArray()
+
+	func run() -> void:
+		var sc := lay.sc
+		var bx0 := lay.bx0
+		var nb := lay.nb
+		var bucket := lay.bucket
+		var starts := lay.starts
+		var idx := lay.idx
+		var pos := lay.pos
+		var rad := lay.rad
+		var kind := lay.kind
+		var rub_of := lay.rub
+		var dug := lay.dug
+		var p0 := lay.p0
+		var p1 := lay.p1
+		var wc := lay.wc
+		var pf := lay.pf
+		var obb := lay.obb
+		var seg := lay.seg
+		var centers := lay.centers  # (worked out on the main thread: no whole-number / or % here, see HNav.build_all)
+		var met := PackedInt32Array()  # per slot: the last cell (q) that met it
+		met.resize(lay.slots)
+		met.fill(-1)
+		out.resize(cells.size() * 5)
+		for q in cells.size():
+			var i := cells[q]
+			var c := centers[first + q]
+			var best := NONE
+			var bdir := 255
+			var rub := 0
+			var tr := 0
+			var hit := false  # the cell is inside a wall or building
+			# the structures within 1.6 m (World.structures_near: its buckets, in
+			# its order, each structure once)
+			for bx in range(floori((c.x - 1.6) / sc), floori((c.x + 1.6) / sc) + 1):
+				for bz in range(floori((c.z - 1.6) / sc), floori((c.z + 1.6) / sc) + 1):
+					var b := bucket[(bx - bx0) * nb + (bz - bx0)]
+					if b < 0:
+						continue
+					var sub := b * SUB_LEN + floori((c.z - (bz * sc - SUB_PAD)) / SUB) * SUB_N + floori((c.x - (bx * sc - SUB_PAD)) / SUB)
+					for j in range(starts[sub], starts[sub + 1]):
+						var s := idx[j]
+						if met[s] == q:
+							continue
+						met[s] = q
+						var dv: Vector3 = pos[s] - c
+						if not (Vector3(dv.x, 0.0, dv.z).length() <= 1.6 + rad[s]):
+							continue
+						var in_trench := false
+						if dug[s] == 1:
+							in_trench = TrenchNet.sd_seg(seg[s * 2], seg[s * 2 + 1], c) < -0.0  # (TrenchNet.inside)
+							if in_trench:
+								tr = 1
+						if rub_of[s] == 1:
+							# (Defs.point_in_obb)
+							var d := Vector2(c.x, c.z) - obb[s * 5]
+							if absf(d.dot(obb[s * 5 + 3])) <= obb[s * 5 + 1].x and absf(d.dot(obb[s * 5 + 4])) <= obb[s * 5 + 1].y:
+								rub = 1
+						var k := kind[s]
+						if k == C_NONE or p0[s] == p1[s]:
+							continue
+						if k == C_TRENCH:
+							# dug in: heavy cover from every side down in the trench
+							if in_trench and HEAVY > best:
+								best = HEAVY
+								bdir = OMNI
+							continue
+						if k == C_BUNKER:
+							var d := Vector2(c.x, c.z) - obb[s * 5]
+							if absf(d.dot(obb[s * 5 + 3])) <= obb[s * 5 + 2].x and absf(d.dot(obb[s * 5 + 4])) <= obb[s * 5 + 2].y:
+								# under a roof: heavy cover from every side inside the footprint
+								if HEAVY > best:
+									best = HEAVY
+									bdir = OMNI
+								continue
+						# the best of its parts (the first, of those as good)
+						var not_rubble := rub_of[s] == 0
+						var lvl_s := 0
+						var dir_s := 0
+						for p in range(p0[s], p1[s]):
+							# cell position in the part's local frame
+							var d := c - wc[p]
+							var cs := pf[p * 5]
+							var sn := pf[p * 5 + 1]
+							var hx := pf[p * 5 + 2]
+							var hz := pf[p * 5 + 3]
+							var lx := d.x * cs - d.z * sn
+							var lz := d.x * sn + d.z * cs
+							var qx := clampf(lx, -hx, hx)
+							var qz := clampf(lz, -hz, hz)
+							var gap := Vector2(lx - qx, lz - qz).length()
+							var inside := gap < 0.001
+							if inside and not_rubble:
+								hit = true
+							if inside or gap > 1.35:
+								continue
+							var lvl := int(pf[p * 5 + 4])
+							if lvl > lvl_s:
+								# direction from the cell towards the cover (world space)
+								var lv := Vector2(qx - lx, qz - lz)
+								var wx := lv.x * cs + lv.y * sn
+								var wz := -lv.x * sn + lv.y * cs
+								lvl_s = lvl
+								dir_s = posmod(int(round(atan2(wz, wx) / (TAU / 8.0))), 8)
+						if lvl_s > best:
+							best = lvl_s
+							bdir = dir_s
+			# what the ground itself gives (TerrainMap.ground_cover, with the rubble just found)
+			var ba := base[i]
+			var bc := NONE
+			if crater[i] > 0 or rub > 0 or (woods[i] > 0 and ba != ROAD):
+				bc = LIGHT
+			elif ba == ROAD or ba == MUD:
+				bc = EXPOSED
+			if bc > best or (bc == best and best == LIGHT):
+				best = bc
+				bdir = OMNI if bc == LIGHT else 255
+			out[q * 5] = rub
+			out[q * 5 + 1] = tr
+			out[q * 5 + 2] = 1 if hit else 0
+			out[q * 5 + 3] = best + 1
+			out[q * 5 + 4] = bdir
+
+
+## What's near `cells` (see CoverLay): the buckets of World's they look into,
+## laid out, and what each structure in those offers in cover.
+func _lay_out(cells: PackedInt32Array) -> CoverLay:
+	var lay := CoverLay.new()
+	var sc: float = World.SCELL
+	lay.sc = sc
+	lay.bx0 = floori((-H - 1.6) / sc)
+	lay.nb = floori((H + 1.6) / sc) - lay.bx0 + 1
+	var nb := lay.nb
+	var bx0 := lay.bx0
+	var want := PackedByteArray()
+	want.resize(nb * nb)
+	want.fill(0)
+	# (and where the cells are: a structure that can reach none of them is left out)
+	var lo := Vector2(INF, INF)
+	var hi := Vector2(-INF, -INF)
+	for i in cells:
+		var c := center(i)
+		lay.centers.append(c)
+		lo = Vector2(minf(lo.x, c.x), minf(lo.y, c.z))
+		hi = Vector2(maxf(hi.x, c.x), maxf(hi.y, c.z))
+		for bx in range(floori((c.x - 1.6) / sc), floori((c.x + 1.6) / sc) + 1):
+			for bz in range(floori((c.z - 1.6) / sc), floori((c.z + 1.6) / sc) + 1):
+				want[(bx - bx0) * nb + (bz - bx0)] = 1
+	lay.bucket.resize(nb * nb)
+	lay.bucket.fill(-1)
+	var slot_of := {}  # eid -> slot
+	var buckets: Dictionary = world._shash
+	var nbu := 0
+	for w in nb * nb:
+		if want[w] == 0:
 			continue
-		if st.skind == "trench" and st.built and TrenchNet.inside(st, c):
-			tr = 1
-		if st.skind == "rubble" and Defs.point_in_obb(Vector2(c.x, c.z), Vector2(st.position.x, st.position.z), st.foot + Vector2(0.4, 0.4), st.yaw):
-			rub = 1
-		var res: Array = _contribution(st, c)
-		if res.is_empty():
+		var bx := w / nb + bx0
+		var bz := w % nb + bx0
+		var a = buckets.get(Vector2i(bx, bz))
+		if a == null:
 			continue
-		if int(res[0]) > best:
-			best = int(res[0])
-			bdir = int(res[1])
-	rubble[i] = rub
-	trench[i] = tr
-	solid[i] = 1 if _inside_hit else 0
-	var bc := _base_cover(i)
-	if bc > best or (bc == best and best == LIGHT):
-		best = bc
-		bdir = OMNI if bc == LIGHT else 255
-	cov[i] = best + 1
-	cdir[i] = bdir
-	_nav_refresh(i)
+		var list := PackedInt32Array()  # its structures standing, as slots, in its order
+		for st in a:
+			if not is_instance_valid(st) or st.gone:
+				continue
+			var reach: float = st.radius + 1.7
+			var sp: Vector3 = st.position
+			if sp.x + reach < lo.x or sp.x - reach > hi.x or sp.z + reach < lo.y or sp.z - reach > hi.y:
+				continue
+			var s: int = slot_of.get(st.eid, -1)
+			if s < 0:
+				s = lay.slots
+				slot_of[st.eid] = s
+				_add_slot(lay, st)
+			list.append(s)
+		if list.is_empty():
+			continue
+		lay.bucket[w] = nbu
+		nbu += 1
+		# the 2 m squares each structure can reach a cell in (1.6 m past its radius)
+		var ox: float = bx * sc - SUB_PAD
+		var oz: float = bz * sc - SUB_PAD
+		var counts := PackedInt32Array()
+		counts.resize(SUB_LEN)
+		counts.fill(0)
+		var spans := PackedInt32Array()
+		for s in list:
+			var r: float = 1.6 + lay.rad[s] + 0.05
+			var p := lay.pos[s]
+			var x0 := maxi(0, floori((p.x - r - ox) / SUB))
+			var x1 := mini(SUB_N - 1, floori((p.x + r - ox) / SUB))
+			var z0 := maxi(0, floori((p.z - r - oz) / SUB))
+			var z1 := mini(SUB_N - 1, floori((p.z + r - oz) / SUB))
+			spans.append(x0)
+			spans.append(x1)
+			spans.append(z0)
+			spans.append(z1)
+			for z in range(z0, z1 + 1):
+				for x in range(x0, x1 + 1):
+					counts[z * SUB_N + x + 1] += 1
+		var at := lay.idx.size()
+		for t in SUB_N * SUB_N:
+			counts[t + 1] += counts[t]
+		lay.idx.resize(at + counts[SUB_N * SUB_N])
+		var fill := counts.duplicate()
+		for k in list.size():
+			for z in range(spans[k * 4 + 2], spans[k * 4 + 3] + 1):
+				for x in range(spans[k * 4], spans[k * 4 + 1] + 1):
+					var t := z * SUB_N + x
+					lay.idx[at + fill[t]] = list[k]
+					fill[t] += 1
+		for t in SUB_LEN:
+			counts[t] += at
+		lay.starts.append_array(counts)
+	return lay
+
+
+## A structure's slot in a CoverLay: where it is, and what it offers the
+## cells round it in cover - its cover parts (high enough to hide behind) with
+## each one's centre, turn, half size and level, a rubble heap's or a
+## bunker's footprint, a trench's ends.
+func _add_slot(lay: CoverLay, st) -> void:
+	lay.slots += 1
+	lay.pos.append(st.position)
+	lay.rad.append(st.radius)
+	var k := C_PARTS
+	if not st.built or st.skind in NO_COVER:
+		k = C_NONE
+	elif st.skind == "trench":
+		k = C_TRENCH
+	elif st.skind == "bunker":
+		k = C_BUNKER
+	var rubble_st: bool = st.skind == "rubble"
+	lay.kind.append(k)
+	lay.rub.append(1 if rubble_st else 0)
+	lay.dug.append(1 if st.skind == "trench" and st.built else 0)
+	lay.p0.append(lay.wc.size())
+	if k != C_NONE:
+		var b := Basis(Vector3.UP, st.yaw)
+		var heavy: bool = st.skind in HEAVY_KINDS
+		for part in st.parts:
+			if not part.cover:
+				continue
+			var top: float = part.p.y + part.s.y * 0.5
+			if top < 0.55:
+				continue  # (too low to hide behind)
+			var yaw: float = st.yaw + part.r
+			var hx: float = part.s.x * 0.5
+			var hz: float = part.s.z * 0.5
+			lay.wc.append(st.position + b * part.p)
+			lay.pf.append(cos(yaw))
+			lay.pf.append(sin(yaw))
+			lay.pf.append(hx)
+			lay.pf.append(hz)
+			lay.pf.append(LIGHT if rubble_st else (HEAVY if (top >= 1.35 or heavy) else LIGHT))
+	lay.p1.append(lay.wc.size())
+	# (Defs.point_in_obb's footprint and axes, TrenchNet.inside's ends)
+	lay.obb.append(Vector2(st.position.x, st.position.z))
+	lay.obb.append(st.foot + Vector2(0.4, 0.4))
+	lay.obb.append(st.foot)
+	lay.obb.append(Vector2(cos(st.yaw), -sin(st.yaw)))
+	lay.obb.append(Vector2(sin(st.yaw), cos(st.yaw)))
+	if st.skind == "trench":
+		var sg := TrenchNet.seg_of(st)
+		lay.seg.append(sg[0])
+		lay.seg.append(sg[1])
+	else:
+		lay.seg.append(Vector3.ZERO)
+		lay.seg.append(Vector3.ZERO)
 
 
 func _refresh_cell(i: int) -> void:
 	var lvl: int = cov[i] - 1
-	if lvl <= LIGHT and cdir[i] in [255, OMNI]:
+	var d: int = cdir[i]
+	if lvl <= LIGHT and (d == 255 or d == OMNI):
 		var b := _base_cover(i)
 		cov[i] = b + 1
 		cdir[i] = OMNI if b == LIGHT else 255
 	_nav_refresh(i)
 
 
+## _refresh_cell for each of `cells`, in turn (the same, without two calls a cell).
+func refresh_cells(cells: PackedInt32Array) -> void:
+	var nav = world.nav
+	for i in cells:
+		var lvl: int = cov[i] - 1
+		var d: int = cdir[i]
+		if lvl <= LIGHT and (d == 255 or d == OMNI):
+			var b := ground_cover(crater[i], rubble[i], woods[i], base[i])
+			cov[i] = b + 1
+			cdir[i] = OMNI if b == LIGHT else 255
+		if _nav_hold:
+			if _nav_held[i] == 0:
+				_nav_held[i] = 1
+				_nav_list.append(i)
+		elif nav:
+			nav.terrain_changed(i)
+
+
 func _nav_refresh(i: int) -> void:
+	if _nav_hold:
+		if _nav_held[i] == 0:
+			_nav_held[i] = 1
+			_nav_list.append(i)
+		return
 	if world.nav:
 		world.nav.terrain_changed(i)
 
 
-## [level, dir] this structure gives the cell at `c`, or [] if none.
-func _contribution(st, c: Vector3) -> Array:
-	if not st.built or st.skind in ["floor", "wire", "mines", "tank_trap", "tunnel", "helipad", "tree", "camo_net"]:
-		return []
-	var b := Basis(Vector3.UP, st.yaw)
-	var best := []
-	for part in st.parts:
-		if not part.cover:
-			continue
-		var top: float = part.p.y + part.s.y * 0.5
-		if top < 0.55:
-			continue
-		var wc: Vector3 = st.position + b * part.p
-		var yaw: float = st.yaw + part.r
-		# cell position in the part's local frame
-		var d := c - wc
-		var lx := d.x * cos(yaw) - d.z * sin(yaw)
-		var lz := d.x * sin(yaw) + d.z * cos(yaw)
-		var hx: float = part.s.x * 0.5
-		var hz: float = part.s.z * 0.5
-		var qx := clampf(lx, -hx, hx)
-		var qz := clampf(lz, -hz, hz)
-		var gap := Vector2(lx - qx, lz - qz).length()
-		var inside := gap < 0.001
-		if st.skind == "trench":
-			# dug in: heavy cover from every side down in the trench
-			if TrenchNet.inside(st, c):
-				return [HEAVY, OMNI]
-			continue
-		if st.skind == "bunker":
-			# under a roof: heavy cover from every side inside the footprint
-			if Defs.point_in_obb(Vector2(c.x, c.z), Vector2(st.position.x, st.position.z), st.foot, st.yaw):
-				return [HEAVY, OMNI]
-		if inside and st.skind != "rubble":
-			_inside_hit = true
-		if inside or gap > 1.35:
-			continue
-		var lvl := HEAVY if (top >= 1.35 or st.skind in HEAVY_KINDS) else LIGHT
-		if st.skind == "rubble":
-			lvl = LIGHT
-		# direction from the cell towards the cover (world space)
-		var lv := Vector2(qx - lx, qz - lz)
-		var wx := lv.x * cos(yaw) + lv.y * sin(yaw)
-		var wz := -lv.x * sin(yaw) + lv.y * cos(yaw)
-		var ang := atan2(wz, wx)
-		var di := posmod(int(round(ang / (TAU / 8.0))), 8)
-		if best.is_empty() or lvl > int(best[0]):
-			best = [lvl, di]
-	return best
+## While the map is laid out nothing asks the way, and how Nav weighs a cell
+## hangs only on what the cell is when it's told (nothing of what it was
+## before): so until release_nav, the cells that change are only noted, and
+## then told to it once each - not each time (a road painted over three
+## times, every tree of a wood, the whole sea). Only before Nav.finalize: once
+## the hierarchical graphs are built, the order cells come in matters to them.
+var _nav_hold := false
+var _nav_held := PackedByteArray()
+var _nav_list := PackedInt32Array()
+
+
+func hold_nav() -> void:
+	_nav_hold = true
+	_nav_held.resize(N * N)
+	_nav_held.fill(0)
+	_nav_list = PackedInt32Array()
+
+
+func release_nav() -> void:
+	if not _nav_hold:
+		return
+	_nav_hold = false
+	var cells := _nav_list
+	_nav_list = PackedInt32Array()
+	_nav_held = PackedByteArray()
+	if world.nav:
+		for i in cells:
+			world.nav.terrain_changed(i)
 
 
 # --- craters (destructible ground) ---------------------------------------------------------

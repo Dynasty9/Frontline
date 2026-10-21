@@ -9,7 +9,7 @@ extends Control
 ## the way: click the marker to look there. Your own ping wheel (hold Alt and
 ## the left button) is drawn here too.
 
-const INK := Color(0.03, 0.04, 0.04)
+const INK := UiKit.ON_ACCENT  # text on a commander's colour
 ## The cursor: an arrow pointer, tip at the origin.
 const ARROW := [Vector2(0, 0), Vector2(0, 16.5), Vector2(4.3, 12.6), Vector2(7.2, 19.0), Vector2(9.9, 17.8), Vector2(7.1, 11.6), Vector2(12.6, 11.6)]
 const WHEEL_LABELS := {"attack": "Attack here", "omw": "On my way", "help": "Need support", "danger": "Danger",
@@ -237,30 +237,30 @@ func _arrow_head(tip: Vector2, from: Vector2, col: Color, a: float, hs := 9.0) -
 	MapSymbols.poly(self, PackedVector2Array([tip + dv * hs, tip - dv * hs * 0.5 + nv * hs * 0.8, tip - dv * hs * 0.5 - nv * hs * 0.8]), _a(col, a))
 
 
-## A round badge in a commander's colour with his initials.
+## A square badge in a commander's colour with his initials in mono.
 func _badge(c: Vector2, peer: int, r: float, a: float) -> void:
 	var co := hud.world.coop
 	var col := co.color(peer)
-	draw_circle(c, r + 1.5, Color(0, 0, 0, 0.5 * a))
-	draw_circle(c, r, _a(col, a))
+	draw_rect(Rect2(c - Vector2(r + 1.0, r + 1.0), Vector2(r + 1.0, r + 1.0) * 2.0), Color(0, 0, 0, 0.5 * a))
+	draw_rect(Rect2(c - Vector2(r, r), Vector2(r, r) * 2.0), _a(col, a))
 	var ini := co.initials(peer)
 	var fs := int(clampf(r * 0.95, 8.0, 14.0))
-	var tw := UiKit.text_width(ini, fs, 700)
-	draw_string(UiKit.font(700), c + Vector2(-tw * 0.5, fs * 0.36), ini, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, _a(INK, a))
+	var tw := UiKit.mono_w(ini, fs)
+	draw_string(UiKit.mono(500), c + Vector2(-tw * 0.5, fs * 0.36), ini, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, _a(INK, a))
 
 
 ## His name on a pill in his colour, and (if any) what he's doing on a dark
 ## tab hanging off it. Returns the rectangle it took.
 func _name_pill(at: Vector2, peer: int, nm: String, sub: String, a: float) -> Rect2:
 	var col := hud.world.coop.color(peer)
-	var nw := UiKit.text_width(nm, 12, 700) + 14.0
-	var sw := (UiKit.text_width(sub, 11, 600) + 14.0) if sub != "" else 0.0
+	var nw := UiKit.caps_w(nm, 12) + 14.0
+	var sw := (UiKit.caps_w(sub, 11) + 14.0) if sub != "" else 0.0
 	var r := Rect2(at, Vector2(nw + sw, 20.0))
 	if sub != "":
-		draw_style_box(UiKit.boxc(Color(0.03, 0.035, 0.035, 0.86 * a), 10, _a(col, 0.55 * a), 1, 0.0), r)
-		draw_string(UiKit.font(600), r.position + Vector2(nw + 7.0, 14.0), sub, HORIZONTAL_ALIGNMENT_LEFT, -1, 11, Color(0.95, 0.96, 0.92, a))
-	draw_style_box(UiKit.boxc(_a(col, 0.97 * a), 10, Color(0, 0, 0, 0.3 * a), 1, 0.0), Rect2(at, Vector2(nw, 20.0)))
-	draw_string(UiKit.font(700), at + Vector2(7.0, 14.5), nm, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, _a(INK, a))
+		draw_rect(r, UiKit.fa(UiKit.INK, 0.86 * a))
+		UiKit.caps_at(self, r.position + Vector2(nw + 7.0, 14.0), sub, 11, UiKit.fa(UiKit.TEXT, a), false)
+	draw_rect(Rect2(at, Vector2(nw, 20.0)), _a(col, 0.97 * a))
+	UiKit.caps_at(self, at + Vector2(7.0, 14.5), nm, 12, _a(INK, a), false)
 	return r
 
 
@@ -275,7 +275,7 @@ func _name_pill(at: Vector2, peer: int, nm: String, sub: String, a: float) -> Re
 func _view_frame(cam: Camera3D, vs: Vector2, p: CoCommand.Presence) -> void:
 	var w := hud.world
 	var col := w.coop.color(p.peer)
-	var a := 0.95 if p.idle < 45 else 0.5
+	var a := 0.55 if p.idle < 45 else 0.3
 	# looking at much the same ground as you: a whisper of a frame
 	if Defs.flat(p.s_focus - w.cam.focus_pos).length() < 8.0 and absf(p.dist - w.cam.dist) < 10.0:
 		a *= 0.35
@@ -300,8 +300,8 @@ func _view_frame(cam: Camera3D, vs: Vector2, p: CoCommand.Presence) -> void:
 			continue
 		segs.append_array([s1, s0, s0, s2])
 	if not segs.is_empty():
-		draw_multiline(segs, Color(0, 0, 0, 0.45 * a), 6.0, true)
-		draw_multiline(segs, _a(col, a), 3.0, true)
+		draw_multiline(segs, Color(0, 0, 0, 0.25 * a), 3.5, true)
+		draw_multiline(segs, _a(col, a), 1.5, true)
 	# the way he's facing: a tick off the far side
 	var t0 := _gp(cam, f + fwd * (hs + 0.5))
 	var t1 := _gp(cam, f + fwd * (hs + maxf(2.0, hs * 0.3)))
@@ -314,7 +314,7 @@ func _view_frame(cam: Camera3D, vs: Vector2, p: CoCommand.Presence) -> void:
 	var nb := _gp(cam, f - fwd * hs)
 	if _on_screen(nb, vs, -20.0):
 		var nm := "%s'S VIEW" % w.coop.pname(p.peer).to_upper()
-		var tw := UiKit.text_width(nm, 11, 700) + 16.0
+		var tw := UiKit.caps_w(nm, 11) + 16.0
 		var at := nb + Vector2(-tw * 0.5, 20)
 		# clear of the base names and unit symbols already on the screen
 		for k in 4:
@@ -323,7 +323,7 @@ func _view_frame(cam: Camera3D, vs: Vector2, p: CoCommand.Presence) -> void:
 			at.y += 18.0
 		hud.overlay._place_rect(Rect2(at + Vector2(0, -12), Vector2(tw, 16)))
 		MapSymbols.glyph(self, "eye", at + Vector2(6, -4), 6.5, col, a, false)
-		UiKit.text(self, at + Vector2(16, 0), nm, 11, _a(col, a), 700)
+		UiKit.caps_at(self, at + Vector2(16, 0), nm, 11, _a(col, a))
 
 
 ## A solid line over the ground, sampled so the bits behind the camera drop out.
@@ -354,10 +354,11 @@ func _edge_chip(cam: Camera3D, vs: Vector2, p: CoCommand.Presence) -> void:
 		return
 	var e := _edge(cam, vs, p.s_focus)
 	var col := w.coop.color(p.peer)
-	var a := 0.95 if p.idle < 45 else 0.55
+	var a := 0.55 if p.idle < 45 else 0.35
 	var dist := int(round(Defs.flat(p.s_focus - w.cam.focus_pos).length() / 5.0) * 5.0)
-	var txt := "%s  %d m" % [w.coop.pname(p.peer), dist]
-	var tw := UiKit.text_width(txt, 11, 600)
+	var txt := w.coop.pname(p.peer).to_upper()
+	var dtx := "%dM" % dist
+	var tw := UiKit.caps_w(txt, 11) + 8.0 + UiKit.mono_w(dtx, 11)
 	var dn: Vector2 = e[1]
 	var c: Vector2 = e[0]
 	var r := Rect2(c - Vector2(14 + (tw + 10.0) * (0.5 + dn.x * 0.5), 14), Vector2(28 + tw + 10.0, 28))
@@ -373,11 +374,13 @@ func _edge_chip(cam: Camera3D, vs: Vector2, p: CoCommand.Presence) -> void:
 		r.position += Vector2(0, 32) if absf(dn.x) > absf(dn.y) else Vector2(r.size.x + 6.0, 0)
 	_taken.append(r)
 	chips.append([r, p.peer])
-	draw_style_box(UiKit.boxc(Color(0.03, 0.035, 0.035, 0.84 * a), 14, _a(col, 0.8 * a), 1, 0.0), r)
+	draw_rect(r, UiKit.fa(UiKit.INK, 0.84 * a))
+	UiKit.ticks(self, r, _a(col, 0.9 * a), 5.0, 0.0)
 	var bc := r.position + Vector2(14, 14) if dn.x <= 0.0 else r.end - Vector2(14, 14)
-	_badge(bc, p.peer, 10.0, a)
+	_badge(bc, p.peer, 9.0, a)
 	var tx := r.position.x + 30.0 if dn.x <= 0.0 else r.position.x + 9.0
-	UiKit.text(self, Vector2(tx, r.position.y + 18.5), txt, 11, Color(1, 1, 1, 0.92 * a), 600)
+	tx += UiKit.caps_at(self, Vector2(tx, r.position.y + 18.5), txt, 11, UiKit.fa(UiKit.TEXT, 0.92 * a), false) + 8.0
+	UiKit.mono_at(self, Vector2(tx, r.position.y + 18.5), dtx, 11, UiKit.fa(UiKit.DIM, a), false)
 	# the arrow, out from the badge the way his view lies
 	var tip := bc + dn * 19.0
 	_arrow_head(tip, bc, col, a, 6.0)
@@ -411,14 +414,17 @@ func _shadow_frame(vs: Vector2) -> void:
 	var col := w.coop.color(w.cam.shadow)
 	draw_rect(Rect2(Vector2(2, 2), vs - Vector2(4, 4)), _a(col, 0.75), false, 3.0)
 	var nm := "%s'S VIEW" % w.coop.pname(w.cam.shadow).to_upper()
-	var sub := "pan, turn or zoom to take your camera back"
-	var tw := UiKit.text_width(nm, 13, 700) + UiKit.text_width(sub, 12) + 62.0
+	var sub := "PAN, TURN OR ZOOM TO TAKE YOUR CAMERA BACK"
+	var tw := UiKit.caps_w(nm, 13) + UiKit.mono_w(sub, 10) + 62.0
 	var r := Rect2(vs.x * 0.5 - tw * 0.5, 54, tw, 30)
-	draw_style_box(UiKit.boxc(Color(0.03, 0.035, 0.035, 0.88), 15, _a(col, 0.9), 1, 0.0), r)
+	draw_rect(r, UiKit.fa(UiKit.INK, 0.9))
+	UiKit.ticks(self, r, _a(col, 0.9), UiKit.TICK_ARM, 0.0)
+	# live: a square that blinks, not a glow
 	var t := Time.get_ticks_msec() / 1000.0
-	draw_circle(r.position + Vector2(17, 15), 5.0, _a(col, 0.55 + 0.45 * sin(t * 4.0)))
-	UiKit.text(self, r.position + Vector2(30, 20), nm, 13, col, 700)
-	UiKit.text(self, r.position + Vector2(40 + UiKit.text_width(nm, 13, 700), 20), sub, 12, UiKit.DIM)
+	if fmod(t, 1.0) < 0.6:
+		draw_rect(Rect2(r.position + Vector2(13, 11), Vector2(8, 8)), col)
+	UiKit.caps_at(self, r.position + Vector2(30, 20), nm, 13, col, false)
+	UiKit.mono_at(self, r.position + Vector2(40 + UiKit.caps_w(nm, 13), 20), sub, 10, UiKit.DIM, false)
 
 
 # --- his cursor and what he has in hand ------------------------------------------------------
@@ -467,27 +473,27 @@ func _selection(cam: Camera3D, p: CoCommand.Presence) -> void:
 		for s in g["mem"]:
 			if s.life == Soldier.Life.ALIVE:
 				r = maxf(r, Defs.flat(s.position - c).length() + 2.4)
-				if close and s.visible:
-					_ring(cam, s.position, 0.75, col, 0.9, false, 14, 1.6)
-		var top := _ring(cam, c, minf(r, 18.0), col, 0.85, true, 28)
+				if close and s.visible and not s.selected:
+					_ring(cam, s.position, 0.75, col, 0.4, false, 14, 1.1, false)
+		var top := _ring(cam, c, minf(r, 18.0), col, 0.45, true, 28, 1.3, false)
 		if top != Vector2.INF and tags:
 			_badge(top + Vector2(0, -2), p.peer, 9.0, 0.95)
 	for id in p.veh:
 		var v = w.entity(id)
 		if v is Vehicle and v.visible and not v.gone:
-			var top2 := _ring(cam, v.position, 5.5, col, 0.85, true, 32)
+			var top2 := _ring(cam, v.position, 5.5, col, 0.45, true, 32, 1.3, false)
 			if top2 != Vector2.INF and tags:
 				_badge(top2 + Vector2(0, -2), p.peer, 9.0, 0.95)
 	if p.unit != 0:
 		var u = w.entity(p.unit)
 		if u is Soldier and u.visible:
-			var top3 := _ring(cam, u.position, 1.4, col, 0.95, false, 20)
+			var top3 := _ring(cam, u.position, 1.4, col, 0.55, false, 20, 1.3, false)
 			if top3 != Vector2.INF:
 				_badge(top3 + Vector2(0, -12), p.peer, 8.0, 0.95)
 	if p.st != 0:
 		var st = w.entity(p.st)
 		if st is Structure and st.visible:
-			_ring(cam, st.position, maxf(3.0, st.radius + 1.0), col, 0.75, true, 36)
+			_ring(cam, st.position, maxf(3.0, st.radius + 1.0), col, 0.4, true, 36, 1.3, false)
 
 
 ## What he's lining up, before he commits it: the building's ghost (or the
@@ -684,15 +690,16 @@ func _pings(cam: Camera3D, vs: Vector2, co: CoCommand) -> void:
 			draw_circle(g, 3.2, _a(col, fade))
 			_ping_badge(bc, pg.kind, col, mark, 12.0 * pop, fade)
 			# who, what, how far (on a dark pill: no outline needed on the text)
-			var dist := "%d m" % dm
-			var nw := UiKit.text_width(who, 11, 700)
-			var tw := UiKit.text_width(pg.text, 11, 600)
-			var dw := UiKit.text_width(dist, 10, 600)
+			var dist := "%dM" % dm
+			var nw := UiKit.caps_w(who, 11)
+			var tw := UiKit.text_width(pg.text, 11, 500)
+			var dw := UiKit.mono_w(dist, 10)
 			var r := Rect2(bc + Vector2(17, -10), Vector2(nw + tw + dw + 32, 20))
-			draw_style_box(UiKit.boxc(Color(0.03, 0.035, 0.035, 0.85 * fade), 10, _a(col, 0.6 * fade), 1, 0.0), r)
-			draw_string(UiKit.font(700), r.position + Vector2(9, 14), who, HORIZONTAL_ALIGNMENT_LEFT, -1, 11, _a(col, fade))
-			draw_string(UiKit.font(600), r.position + Vector2(16 + nw, 14), pg.text, HORIZONTAL_ALIGNMENT_LEFT, -1, 11, Color(0.96, 0.97, 0.94, fade))
-			draw_string(UiKit.font(600), r.position + Vector2(24 + nw + tw, 14), dist, HORIZONTAL_ALIGNMENT_LEFT, -1, 10, _a(UiKit.DIM, fade))
+			draw_rect(r, UiKit.fa(UiKit.INK, 0.85 * fade))
+			draw_rect(Rect2(r.position, Vector2(2, r.size.y)), _a(col, fade))
+			UiKit.caps_at(self, r.position + Vector2(9, 14), who, 11, _a(col, fade), false)
+			draw_string(UiKit.font(500), r.position + Vector2(16 + nw, 14), pg.text, HORIZONTAL_ALIGNMENT_LEFT, -1, 11, UiKit.fa(UiKit.TEXT, fade))
+			UiKit.mono_at(self, r.position + Vector2(24 + nw + tw, 14), dist, 10, _a(UiKit.DIM, fade), false)
 		else:
 			var e := _edge(cam, vs, pos)
 			var ec: Vector2 = e[0]
@@ -700,9 +707,9 @@ func _pings(cam: Camera3D, vs: Vector2, co: CoCommand) -> void:
 			var pulse := 1.0 + 0.12 * sin(age * 9.0) if age < 3.0 else 1.0
 			_arrow_head(ec + dn * 20.0, ec, col, fade, 7.0)
 			_ping_badge(ec, pg.kind, col, mark, 12.0 * pulse, fade)
-			var lbl := "%s  %d m" % [who, dm]
-			var lw := UiKit.text_width(lbl, 10, 600)
-			UiKit.text(self, ec + Vector2(-lw * 0.5, 27), lbl, 10, _a(col, fade), 600)
+			var lbl := "%s %dM" % [who.to_upper(), dm]
+			var lw := UiKit.mono_w(lbl, 10)
+			UiKit.mono_at(self, ec + Vector2(-lw * 0.5, 27), lbl, 10, _a(col, fade))
 
 
 ## Lines drawn on the map (Alt+right-drag): each in its commander's colour,
@@ -773,8 +780,8 @@ func _wheel() -> void:
 	var pick: String = inp.ping_wheel_pick()
 	var me := co.color(hud.world.local_peer)
 	draw_circle(c, WHEEL_R + 3.0, Color(0, 0, 0, 0.35))
-	draw_circle(c, WHEEL_R, Color(0.03, 0.035, 0.035, 0.72))
-	draw_arc(c, WHEEL_R, 0.0, TAU, 48, Color(1, 1, 1, 0.12), 1.0, true)
+	draw_circle(c, WHEEL_R, UiKit.fa(UiKit.INK, 0.78))
+	draw_arc(c, WHEEL_R, 0.0, TAU, 48, UiKit.RULE2, 1.0, true)
 	var n := CoCommand.WHEEL.size()
 	var step := TAU / n
 	for i in n:
@@ -798,12 +805,12 @@ func _wheel() -> void:
 		var bc := c + dir * 62.0
 		_ping_badge(bc, k, me if hot else Color(1, 1, 1, 0.35), CoCommand.PING_COLORS.get(k, Color(0.96, 0.97, 0.94)), 16.0 if hot else 13.0, 1.0)
 		var lbl: String = WHEEL_LABELS.get(k, k)
-		var lw := UiKit.text_width(lbl, 11, 700)
+		var lw := UiKit.caps_w(lbl, 11)
 		var lp := c + dir * (WHEEL_R + 14.0)
-		UiKit.text(self, lp + Vector2(-lw * 0.5 + dir.x * lw * 0.5, 4.0), lbl, 11, me if hot else Color(1, 1, 1, 0.75), 700)
+		UiKit.caps_at(self, lp + Vector2(-lw * 0.5 + dir.x * lw * 0.5, 4.0), lbl, 11, me if hot else UiKit.DIM)
 	draw_circle(c, PlayerInput.PING_WHEEL_R - 8.0, Color(0, 0, 0, 0.35))
-	var mid := "cancel" if pick == "" else ""
+	var mid := "CANCEL" if pick == "" else ""
 	if mid != "":
-		var mw := UiKit.text_width(mid, 10, 600)
-		UiKit.text(self, c + Vector2(-mw * 0.5, 4.0), mid, 10, UiKit.DIM, 600)
+		var mw := UiKit.mono_w(mid, 10)
+		UiKit.mono_at(self, c + Vector2(-mw * 0.5, 4.0), mid, 10, UiKit.DIM)
 	draw_line(c, inp._mouse(), _a(me, 0.6), 1.5, true)

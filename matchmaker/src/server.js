@@ -5,20 +5,57 @@
 //
 // No dependencies beyond Node itself (20 or newer).
 
+import { timingSafeEqual } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import http from 'node:http';
 import { pathToFileURL } from 'node:url';
-import { AuthError, createAuth } from './auth.js';
+import { AuthError, CALLSIGN_RE, createAuth, toUser } from './auth.js';
+import { ErrorLog, MAX_BODY as MAX_ERRORS, ReportError } from './errors.js';
 import { HEARTBEAT_S, Lobbies, POLL_S } from './lobbies.js';
+import { callsignParam, MAX_PAGE, PER_PAGE, PERIODS, PlayerError, toBoard, toPlayer } from './players.js';
+import { rankOf } from './ranks.js';
 import { careerOf, cleanRecord, isUuid, MAX_BODY as MAX_RECORD, RecordError } from './records.js';
 
 const MAX_BODY = 8 * 1024;
-// routes that take more than that: a battle's after-action report
-const BODY_LIMITS = { 'POST /me/battles': MAX_RECORD };
+// routes that take more than that: a battle's after-action report, a batch of error reports
+const BODY_LIMITS = { 'POST /me/battles': MAX_RECORD, 'POST /errors': MAX_ERRORS };
+
+// What anyone may see (players.js): the website's leaderboards and player
+// pages. The same for everyone who asks, so an answer is kept for half a
+// minute, here and in the browser: a board a crowd is looking at is worked out
+// once. A player's own changes show on their own pages straight away (those
+// read /me); everyone else sees them within the half minute.
+const PUBLIC_S = 30;
+const PUBLIC_ROUTES = new Set([
+	'GET /leaderboards/:board',
+	'GET /players',
+	'GET /players/:callsign',
+	'GET /players/:callsign/career',
+	'GET /players/:callsign/battles',
+	'GET /players/:callsign/battles/:id',
+]);
+
+class Memo {
+	constructor(ttlMs = PUBLIC_S * 1000, max = 2000, now = Date.now) {
+		this.ttlMs = ttlMs;
+		this.max = max;
+		this.now = now;
+		this.map = new Map();
+	}
+	async get(key, fn) {
+		const e = this.map.get(key);
+		if (e && e.until > this.now()) return e.value;
+		const value = await fn();
+		if (this.map.size >= this.max) this.map.clear();
+		this.map.set(key, { value, until: this.now() + this.ttlMs });
+		return value;
+	}
+}
 
 // The latest release of the game, baked in by the release workflow
-// (.github/workflows/release.yml writes it, and the commit redeploys us): the
-// game's updater asks here which version is current and where to get it.
+// (.github/workflows/release.yml writes it in the release's pull request, and
+// merging that redeploys us): the game's updater asks here which version is
+// current and where to get it.
 export function loadRelease(file = new URL('../release.json', import.meta.url)) {
 	try {
 		return JSON.parse(readFileSync(file, 'utf8'));
@@ -86,13 +123,13 @@ async function readJson(req, max = MAX_BODY) {
 	}
 }
 
-function send(res, status, data) {
+function send(res, status, data, cache = 'no-store') {
 	if (res.destroyed) return; // the caller hung up (a host's long poll, say)
 	const body = JSON.stringify(data);
 	res.writeHead(status, {
 		'Content-Type': 'application/json; charset=utf-8',
 		'Content-Length': Buffer.byteLength(body),
-		'Cache-Control': 'no-store',
+		'Cache-Control': cache,
 		'Access-Control-Allow-Origin': '*',
 	});
 	res.end(body);
@@ -105,9 +142,23 @@ const bearer = (req) => {
 	return h.startsWith('Bearer ') ? h.slice(7).trim() : '';
 };
 
-export function createServer({ env = process.env, auth = createAuth(env), lobbies = new Lobbies(), release = loadRelease(), log = console.log } = {}) {
+const sameSecret = (a, b) => {
+	const x = Buffer.from(String(a));
+	const y = Buffer.from(String(b));
+	return x.length === y.length && timingSafeEqual(x, y);
+};
+
+export function createServer({
+	env = process.env,
+	auth = createAuth(env),
+	lobbies = new Lobbies(),
+	release = loadRelease(),
+	log = console.log,
+	errors = new ErrorLog({ log }),
+} = {}) {
 	const trustProxy = env.TRUST_PROXY ? env.TRUST_PROXY === '1' : !!(env.RAILWAY_ENVIRONMENT_NAME || env.RAILWAY_ENVIRONMENT);
 	const limits = new RateLimit();
+	const memo = new Memo();
 
 	const needAuth = () => {
 		if (!auth) throw new HttpError(503, 'Accounts are not enabled on this server.');
@@ -204,29 +255,139 @@ export function createServer({ env = process.env, auth = createAuth(env), lobbie
 			return { session: await auth.login(body.email, body.password) };
 		},
 
+		// Signing in with GitHub: where to send the player ({url}), then the code
+		// they come back with, swapped for a session (see auth.js).
+		'POST /auth/oauth': async ({ ip, body }) => {
+			needAuth();
+			limits.hit('auth', ip, 10);
+			return { url: auth.oauthUrl(body.provider, body.redirect_to, body.code_challenge) };
+		},
+
+		'POST /auth/exchange': async ({ ip, body }) => {
+			needAuth();
+			limits.hit('auth', ip, 10);
+			return { session: await auth.exchange(body.code, body.code_verifier) };
+		},
+
+		// An existing website login authorizes a separate session for the game.
+		'POST /auth/game': async ({ req, ip }) => {
+			needAuth();
+			limits.hit('auth', ip, 10);
+			const session = await auth.gameSession(bearer(req));
+			return { token: session.refresh_token };
+		},
+
 		'POST /auth/refresh': async ({ ip, body }) => {
 			needAuth();
 			limits.hit('refresh', ip, 30);
 			return { session: await auth.refresh(body.refresh_token) };
 		},
 
-		'POST /auth/logout': async ({ req }) => {
+		// this session; {scope: "global"} for every session the account has
+		'POST /auth/logout': async ({ req, body }) => {
 			needAuth();
 			const token = bearer(req);
-			if (token) await auth.logout(token);
+			if (token) await auth.logout(token, body.scope === 'global' ? 'global' : 'local');
 			return { ok: true };
 		},
 
-		'GET /me': async ({ req }) => {
+		'GET /me': async ({ req }) => ({ user: toUser(await account(req, true)) }),
+
+		// {callsign, icon, avatar, hide_history}, any of them. Renaming counts
+		// against the sign-in limit as it always has; a player trying on
+		// insignia (or a picture) gets more goes.
+		'PATCH /me': async ({ req, ip, body }) => {
+			if (body.callsign !== undefined) limits.hit('auth', ip, 10);
+			else limits.hit('icon', ip, 30);
 			const a = await account(req, true);
-			return { user: { id: a.id, email: a.email, callsign: a.callsign } };
+			const change = { callsign: body.callsign, icon: body.icon, avatar: body.avatar, hide_history: body.hide_history };
+			if (Object.values(change).every((v) => v === undefined)) throw new HttpError(400, 'Nothing to change.');
+			return { user: await auth.updateProfile(a.token, a, change) };
 		},
 
-		'PATCH /me': async ({ req, ip, body }) => {
-			limits.hit('auth', ip, 10);
+		// --- what anyone may see (PUBLIC_ROUTES)
+
+		// ?period=all|month|week&page=N, and &me=<callsign> for that player's
+		// own row wherever they are on the board
+		'GET /leaderboards/:board': async ({ url, params }) => {
+			needAuth();
+			if (params.board !== 'xp') throw new HttpError(404, 'No such leaderboard.');
+			const period = url.searchParams.get('period') || 'all';
+			if (!PERIODS.includes(period)) throw new HttpError(400, 'A leaderboard is for all time, this month or this week.');
+			const page = Math.min(MAX_PAGE, Math.max(1, Math.floor(Number(url.searchParams.get('page')) || 1)));
+			const me = String(url.searchParams.get('me') || '').trim();
+			const b = await auth.leaderboard(period, { limit: PER_PAGE, offset: (page - 1) * PER_PAGE, me: CALLSIGN_RE.test(me) ? me : null });
+			return toBoard(period, page, b);
+		},
+
+		// ?q=<the start of a callsign>
+		'GET /players': async ({ url }) => {
+			needAuth();
+			const q = String(url.searchParams.get('q') || '').trim();
+			if (q.length < 2 || q.length > 20) return { players: [] };
+			const found = await auth.findPlayers(q);
+			return { players: found.map((p) => ({ callsign: p.callsign, icon: p.icon, avatar: p.avatar ?? null, rank: rankOf(Number(p.xp) || 0) })) };
+		},
+
+		'GET /players/:callsign': async ({ params }) => {
+			needAuth();
+			const c = await auth.player(callsignParam(params.callsign));
+			if (!c) throw new HttpError(404, 'No such player.');
+			return { player: toPlayer(c) };
+		},
+
+		// null for a player who keeps their battles to themselves
+		'GET /players/:callsign/career': async ({ params }) => {
+			needAuth();
+			const name = callsignParam(params.callsign);
+			const career = await auth.playerCareer(name);
+			if (career === null && !(await auth.player(name))) throw new HttpError(404, 'No such player.');
+			return { career };
+		},
+
+		// newest first; ?before=<played_at of the last one you have> for more.
+		// {hidden: true} and none for a player who keeps them to themselves.
+		'GET /players/:callsign/battles': async ({ url, params }) => {
+			needAuth();
+			const name = callsignParam(params.callsign);
+			const limit = Math.min(50, Math.max(1, Number(url.searchParams.get('limit')) || 20));
+			const before = String(url.searchParams.get('before') || '');
+			if (before && Number.isNaN(Date.parse(before))) throw new HttpError(400, 'before: a time, please.');
+			const rows = await auth.playerBattles(name, { limit: limit + 1, before });
+			if (rows === null) {
+				if (!(await auth.player(name))) throw new HttpError(404, 'No such player.');
+				return { battles: [], more: false, hidden: true };
+			}
+			return { battles: rows.slice(0, limit), more: rows.length > limit };
+		},
+
+		'GET /players/:callsign/battles/:id': async ({ params }) => {
+			needAuth();
+			const name = callsignParam(params.callsign);
+			if (!isUuid(params.id)) throw new HttpError(404, 'No such battle.');
+			const b = await auth.playerBattle(name, params.id);
+			if (!b) throw new HttpError(404, 'No such battle.');
+			return { battle: b };
+		},
+
+		// The battle clock, started when a signed-in player's battle begins.
+		// There's no game server to referee a battle (players host them), so
+		// the game reports its own result. The time it's worth is measured here,
+		// on our clock, from this call to the end: a modified game can't claim
+		// hours of play in seconds, so XP is bounded by real time played.
+		// Calling it again starts over, forfeiting a battle left open.
+		'POST /me/battle': async ({ req, ip }) => {
+			limits.hit('battle', ip, 20);
 			const a = await account(req, true);
-			const u = await auth.setCallsign(a.token, a, body.callsign);
-			return { user: { id: u.id, email: u.email, callsign: u.callsign } };
+			await auth.beginBattle(a.token, a);
+			return { ok: true };
+		},
+
+		// {result: "win" | "loss" | "left", seconds}: {gained, rank_before, user}
+		'POST /me/battle/end': async ({ req, ip, body }) => {
+			limits.hit('battle', ip, 20);
+			const a = await account(req, true);
+			return auth.endBattle(a.token, a, body.result, body.seconds);
 		},
 
 		// the player's service record: every battle they fought signed in
@@ -256,6 +417,19 @@ export function createServer({ env = process.env, auth = createAuth(env), lobbie
 			return { battle: b };
 		},
 
+		// errors from players' games (see errors.js): anyone may send them, and
+		// only whoever holds ERRORS_TOKEN can read the tally back
+		'POST /errors': async ({ ip, body }) => {
+			limits.hit('errors', ip, 12);
+			return errors.add(body);
+		},
+
+		'GET /errors': async ({ req }) => {
+			if (!env.ERRORS_TOKEN) throw new HttpError(404, 'Not found.');
+			if (!sameSecret(bearer(req), env.ERRORS_TOKEN)) throw new HttpError(401, 'That token is not the one.');
+			return errors.summary();
+		},
+
 		// the totals of every battle on the record
 		'GET /me/career': async ({ req, ip }) => {
 			limits.hit('records', ip, 60);
@@ -276,7 +450,7 @@ export function createServer({ env = process.env, auth = createAuth(env), lobbie
 	const table = Object.entries(routes).map(([key, fn]) => {
 		const [method, path] = key.split(' ');
 		const parts = path.split('/');
-		return { method, parts, fn, max: BODY_LIMITS[key] || MAX_BODY };
+		return { method, parts, fn, max: BODY_LIMITS[key] || MAX_BODY, public: PUBLIC_ROUTES.has(key) };
 	});
 	const route = (method, pathname) => {
 		const segs = pathname.replace(/\/+$/, '').split('/');
@@ -287,7 +461,7 @@ export function createServer({ env = process.env, auth = createAuth(env), lobbie
 			const params = {};
 			if (!r.parts.every((p, i) => (p.startsWith(':') ? ((params[p.slice(1)] = decodeURIComponent(segs[i])), true) : p === segs[i]))) continue;
 			pathFound = true;
-			if (r.method === method) return { fn: r.fn, params, max: r.max };
+			if (r.method === method) return { fn: r.fn, params, max: r.max, public: r.public };
 		}
 		return pathFound ? 'method' : null;
 	};
@@ -309,9 +483,15 @@ export function createServer({ env = process.env, auth = createAuth(env), lobbie
 			if (r === 'method') throw new HttpError(405, 'Method not allowed.');
 			limits.hit('all', ip, 240);
 			const body = await readJson(req, r.max);
-			send(res, 200, await r.fn({ req, res, ip, url, body, params: r.params }));
+			const run = () => r.fn({ req, res, ip, url, body, params: r.params });
+			if (!r.public) return send(res, 200, await run());
+			limits.hit('public', ip, 120);
+			// a callsign is a callsign whatever its case
+			const key = `${req.method} ${url.pathname}?${[...url.searchParams].toSorted().join('&')}`.toLowerCase();
+			send(res, 200, await memo.get(key, run), `public, max-age=${PUBLIC_S}`);
 		} catch (e) {
-			if (e instanceof HttpError || e instanceof AuthError || e instanceof RecordError) return send(res, e.status, { error: e.message });
+			if (e instanceof HttpError || e instanceof AuthError || e instanceof RecordError || e instanceof ReportError || e instanceof PlayerError)
+				return send(res, e.status, { error: e.message });
 			log(`error on ${req.method} ${req.url}: ${e && e.stack ? e.stack : e}`);
 			send(res, 500, { error: 'Server error.' });
 		}
