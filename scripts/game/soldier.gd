@@ -971,7 +971,11 @@ func _sector_dir() -> Vector3:
 
 func _sector_dir_work() -> Vector3:
 	var threats: Array = squad.sector_threats(position)
-	var f := hold_face if threats.is_empty() else _threat_dir(threats)
+	var f := _threat_dir(threats)
+	if threats.is_empty():
+		var watch := Defs.flat(hold_pos + hold_face * 40.0 - position)
+		if watch.length() >= 0.01:
+			f = watch.normalized()
 	var right := Vector3(-f.z, 0, f.x)
 	var mems: Array = squad.members
 	if mems.size() >= 6 and mems.back() == self and not vis_targets.size():
@@ -1235,6 +1239,12 @@ func go_to(p: Vector3, kind: String, mode: int) -> void:
 	var revision := _path_revision
 	_path_pending = true
 	path = PackedVector3Array()
+	_stuck_p = position
+	_stuck_t = 0.0
+	path_i = 0
+	goal = p
+	goal_kind = kind
+	move_mode = mode
 	world.nav.request_path(self, p, false, team, care, func(points: PackedVector3Array):
 		if revision != _path_revision:
 			return
@@ -1253,12 +1263,6 @@ func go_to(p: Vector3, kind: String, mode: int) -> void:
 					at_cover = false
 					next_cover_eval = world.time + 1.0
 				stop_moving())
-	_stuck_p = position
-	_stuck_t = 0.0
-	path_i = 0
-	goal = p
-	goal_kind = kind
-	move_mode = mode
 
 
 func stop_moving() -> void:

@@ -59,6 +59,16 @@ func _ready() -> void:
 	var unit := Entity.new()
 	unit.eid = 1
 	unit.position = from
+	var short_goal := from + Vector3(2, 0, 0)
+	nav.request_path(unit, short_goal, false, -1, 0.0, func(p): delivered.append(p))
+	check(delivered.size() == 1 and delivered[0] == PackedVector3Array([short_goal]), "A short clear move must not wait behind graph searches")
+	delivered.clear()
+	var fire_cell := nav.cell_of(from + Vector3(1, 0, 0))
+	nav.heat[fire_cell.y * Nav.N + fire_cell.x] = 1
+	nav.request_path(unit, short_goal, false, -1, 0.0, func(_p): delivered.append("fire shortcut"))
+	check(delivered.is_empty(), "A short move must not bypass routing around fire")
+	nav.cancel_path(unit.eid)
+	nav.heat[fire_cell.y * Nav.N + fire_cell.x] = 0
 	nav.request_path(unit, to, false, -1, 0.0, func(_p): delivered.append("old"))
 	nav.request_path(unit, to, false, -1, 0.0, func(p): delivered.append(p))
 	nav.process_paths()

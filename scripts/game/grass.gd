@@ -22,6 +22,8 @@ var _queue: Array = []
 var _rebuild_t := -1.0
 var _blocked := PackedByteArray()
 var _built := {}  # Vector2i -> Array of nodes
+var _center := Vector2i(999999, 999999)
+const REACH := 7  # beyond the bushes' 170 m fade, including a chunk and pan margin
 
 
 func _ready() -> void:
@@ -103,8 +105,13 @@ func _view_process(dt: float) -> void:
 		WorkerThreadPool.wait_for_task_completion(_task)
 		_task = -1
 		_lay_out()
+	if level == 0 or _blocked.is_empty():
+		return
+	var camera := atmo.world.cam
+	_stream(camera.cam.global_position if camera else Vector3.ZERO)
+	var started := Time.get_ticks_usec()
 	var n := 0
-	while not _queue.is_empty() and n < 12:
+	while not _queue.is_empty() and n < 2 and Time.get_ticks_usec() - started < 1000:
 		_build_chunk(_queue.pop_front())
 		n += 1
 
@@ -138,13 +145,26 @@ func _lay_out() -> void:
 	_blocked = _job.blocked
 	_job = null
 	_clear()
+
+
+func _stream(pos: Vector3) -> void:
+	var center := Vector2i(floori(pos.x / CHUNK), floori(pos.z / CHUNK))
+	if center == _center:
+		return
+	_center = center
+	_queue.clear()
+	for key: Vector2i in _built.keys():
+		if absi(key.x - center.x) > REACH + 2 or absi(key.y - center.y) > REACH + 2:
+			for node in _built[key]:
+				node.queue_free()
+			_built.erase(key)
 	var nc := int(HALF / CHUNK)
-	for cx in range(-nc, nc):
-		for cz in range(-nc, nc):
-			_queue.append(Vector2i(cx, cz))
-	var cam: Vector3 = atmo.world.cam.focus_pos if atmo.world.cam else Vector3.ZERO
-	var hc := CHUNK * 0.5
-	_queue.sort_custom(func(a, b): return Vector2(a.x * CHUNK + hc - cam.x, a.y * CHUNK + hc - cam.z).length() < Vector2(b.x * CHUNK + hc - cam.x, b.y * CHUNK + hc - cam.z).length())
+	for x in range(maxi(-nc, center.x - REACH), mini(nc, center.x + REACH + 1)):
+		for z in range(maxi(-nc, center.y - REACH), mini(nc, center.y + REACH + 1)):
+			var key := Vector2i(x, z)
+			if not _built.has(key):
+				_queue.append(key)
+	_queue.sort_custom(func(a: Vector2i, b: Vector2i): return (a - center).length_squared() < (b - center).length_squared())
 
 
 func _clear() -> void:
@@ -153,6 +173,7 @@ func _clear() -> void:
 			node.queue_free()
 	_built.clear()
 	_queue.clear()
+	_center = Vector2i(999999, 999999)
 
 
 var _job: BlockedJob = null  # where grass can't grow, being worked out on a worker thread

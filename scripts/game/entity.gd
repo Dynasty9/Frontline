@@ -30,6 +30,12 @@ var selected := false
 var hit_by: Array = []  # (server) the last enemy to hurt it: [owner, team, unit, soldier eid] (see BattleStats)
 
 
+func _ready() -> void:
+	# Entity frame callbacks only draw; authority advances them through sim().
+	if world != null and not world.has_view:
+		set_process(false)
+
+
 func ekind() -> String:
 	return ""
 

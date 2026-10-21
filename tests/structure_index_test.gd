@@ -13,6 +13,12 @@ func check(ok: bool, message: String) -> void:
 func _ready() -> void:
 	var w := World.new()
 	w.has_view = false
+	for kind in ["structure", "soldier", "vehicle", "projectile", "drone"]:
+		var entity := w._make(kind)
+		entity.world = w
+		add_child(entity)
+		check(not entity.is_processing(), "Headless entities must not run view callbacks: " + kind)
+		entity.free()
 	var rules := Rules.new(w)
 	for i in 1000:
 		add_structure(w, "tree", -1)

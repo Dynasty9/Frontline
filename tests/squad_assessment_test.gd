@@ -18,6 +18,11 @@ func _ready() -> void:
 	var combat := Combat.new(world)
 	check(combat.find_cover(man, Vector3.ZERO, 30.0, [], false).is_empty(), "Quiet sectors must skip cover enumeration entirely")
 	squad.add(man)
+	man.world = world
+	man.position = Vector3(0, 0, 8)
+	man.hold_pos = Vector3(8, 0, 0)
+	man.hold_face = Vector3.FORWARD
+	check(man._sector_dir().is_equal_approx(man._threat_dir(man._threats())), "Without contacts, watch the assigned position's sector from the soldier's current position")
 	check(not squad.in_combat(), "An undisturbed squad must remain out of combat")
 	var enemy := Soldier.new()
 	enemy.eid = 7
@@ -49,6 +54,33 @@ func _ready() -> void:
 	check(squad.sector_threats(man.position) == heard_briefing, "Sustained fire must share the same assessment window")
 	world.time += 0.2
 	check(squad.sector_threats(man.position) != heard_briefing, "Heard positions must refresh at the normal cadence")
+	var house := Structure.new()
+	house.eid = 20
+	house.skind = "floor"
+	house.size = Vector3(8, 0.1, 8)
+	var door := Structure.new()
+	door.eid = 21
+	door.skind = "house_wall"
+	door.variant = 2
+	door.position = Vector3(0, 0, 4)
+	world._shash_add(house)
+	world._shash_add(door)
+	var buddy := Soldier.new()
+	buddy.world = world
+	squad.add(buddy)
+	squad.order = "defend"
+	squad.alert_t = world.time
+	for soldier in [man, buddy]:
+		soldier.wdef = {"range": 50}
+		soldier.task = "resupply"
+	check(not Tactics.can_clear(squad) and not squad.cleared.has(house.eid), "Busy riflemen must leave an unvisited house eligible for clearing")
+	man.task = ""
+	world.time += 2.1
+	check(Tactics.can_clear(squad), "The squad must reconsider the house when a rifleman becomes available")
+	squad.remove(buddy)
+	buddy.free()
+	house.free()
+	door.free()
 	squad.remove(man)
 	man.free()
 	enemy.free()

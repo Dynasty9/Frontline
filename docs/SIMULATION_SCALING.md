@@ -61,6 +61,9 @@ without the optional extension. This is not a full Rust server rewrite.
   advancing combat. Individual close models also have a construction quota.
 - Solid order arrows use two projected endpoints, dashed lines use batched draw
   calls, and squad overview groups refresh at 10 Hz while selection is immediate.
+- Grass queues at most 225 nearby 32 m chunks, with a two-chunk/1 ms construction
+  budget per frame and a two-chunk retention margin. This covers its longest
+  170 m fade distance without generating all 9,216 chunks of a 3 km map.
 
 ## Dimensions and budgets
 

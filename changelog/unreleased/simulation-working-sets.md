@@ -27,4 +27,7 @@ caption = "A full generated 3,072 metre battlefield, started with 480 soldiers a
 - Large maps load without drawing the partly built battlefield; the private simulation waits until loading finishes.
 - Static scenery replication and map placement avoid repeated whole-map searches.
 - Nearby scenery loads first; distant scenery is cached as you explore the map.
+- Cosmetic grass, bushes and stones build around the camera rather than across the whole map during play.
 - Nearby units can reuse checked movement corridors, while keeping their own destinations.
+- Short unobstructed moves respond immediately, including dashes into cover.
+- Squads retry an unvisited house when a rifleman becomes available to clear it.

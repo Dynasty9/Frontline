@@ -1170,5 +1170,9 @@ cosmetic collision bodies remain inactive. The server still simulates the comple
 map. Nearby movement orders can reuse a checked route corridor, with separate
 destinations and invalidation when terrain or danger changes.
 
+Grass, bushes and stones are generated around the camera, beyond their visible
+fade distance. Panning reuses nearby chunks and evicts distant ones; returning
+to an area recreates the same vegetation from its seed.
+
 See [SIMULATION_SCALING.md](SIMULATION_SCALING.md) for the native perception
 boundary, measurement results and remaining limits.

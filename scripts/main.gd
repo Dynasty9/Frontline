@@ -41,6 +41,7 @@ var _shot_i := 0
 var _perf_t0 := 0
 var _perf_frames := 0
 var _perf_started := false
+var _perf_ready_ms := -1
 var _perf_frame_us := 0
 var _perf_frame_samples: Array[float] = []
 var _perf_render_cpu: Array[float] = []
@@ -914,6 +915,10 @@ func _process(_dt: float) -> void:
 			if not args.has("quit-after"):
 				TestRun.quit(get_tree())
 	if args.has("perf-at"):
+		# Both processes warm up by wall time after loading, even if simulation
+		# is too slow to keep up; otherwise the client exits before the report.
+		if _perf_ready_ms < 0 and not world.client_loading() and not world._local_loading:
+			_perf_ready_ms = Time.get_ticks_msec()
 		if _perf_t0 > 0:
 			var frame_now := Time.get_ticks_usec()
 			if _perf_frame_us > 0:
@@ -925,7 +930,7 @@ func _process(_dt: float) -> void:
 					_perf_process.append(Performance.get_monitor(Performance.TIME_PROCESS) * 1000.0)
 			_perf_frame_us = frame_now
 		var pt := float(args["perf-at"])
-		if view_time >= pt and not world.client_loading() and not _perf_started:
+		if _perf_ready_ms >= 0 and Time.get_ticks_msec() - _perf_ready_ms >= pt * 1000.0 and not _perf_started:
 			_perf_started = true
 			Engine.time_scale = 1.0
 			_perf_t0 = Time.get_ticks_msec()

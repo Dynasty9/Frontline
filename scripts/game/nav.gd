@@ -33,6 +33,16 @@ const ROUTE_CACHE_LIMIT := 128
 
 func request_path(unit: Entity, destination: Vector3, vehicle: bool, team: int, care: float, done: Callable) -> void:
 	var id := unit.eid
+	# A short clear step needs no graph search, especially a dash into cover.
+	var grid := veh if vehicle else inf
+	var hierarchy: HNav = hnav_v if vehicle else hnav_i
+	var from := cell_of(unit.position)
+	var to := cell_of(destination)
+	var local_policy := care <= 0.0 or hierarchy.cluster_of(from) == hierarchy.cluster_of(to)
+	if local_policy and unit.position.distance_squared_to(destination) <= 16.0 * 16.0 and not grid.is_point_solid(from) and not grid.is_point_solid(to) and _line_free(unit.position, destination, vehicle):
+		cancel_path(id)
+		done.call(PackedVector3Array([Vector3(destination.x, 0, destination.z)]))
+		return
 	if not _path_jobs.has(id):
 		_path_order.append(id)
 	_path_jobs[id] = [weakref(unit), destination, vehicle, team, care, done, Time.get_ticks_msec()]
