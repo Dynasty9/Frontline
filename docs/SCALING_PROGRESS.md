@@ -175,4 +175,18 @@ Do not interpret an unchecked gate or a headless result as validated 60 FPS supp
   unchanged. All 16 reference cases match exactly, including wall anchors,
   trenches, narrow/wide formations, 1-96 men and map edges. In the 200-man
   isolated control, the original placement took 192.11 ms versus 28.00 ms.
-  Full-game performance validation of this change is still pending.
+  All 76 local tests and CI pass at b726482. The exported 3 km Forward+
+  control (480 soldiers, 20 vehicles, commanders, low preset, 1280x720,
+  30-second measurement after 30 seconds warmup) averaged 25.86 FPS, with
+  frame p50/p95 36.98/54.24 ms. Complete server ticks were 36.23/77.37 ms
+  p50/p95, maximum 183.11 ms (122.98 ms pathing). It ended with 444 soldiers
+  alive. Other user-owned workloads were active; this is not a controlled
+  before/after attribution or sustained 500-unit acceptance result.
+- A sequential Compatibility renderer control averaged 22.10 FPS and showed
+  severe battlefield rendering corruption in the inspected screenshot. It is
+  rejected; the temporary export override was restored. Forward+ remains the
+  default. Both runs fail all frame and simulation acceptance gates.
+- An occupied-row proximity-query prototype matched 600 seeded reference
+  queries, including result order and units moving after the hash rebuild.
+  It helped very broad queries but slowed common small searches, so it was
+  removed rather than adding another index to every simulation tick.
