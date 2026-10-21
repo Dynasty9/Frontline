@@ -1209,6 +1209,8 @@ func open_replay(source: String) -> Node:
 		replay_viewer.queue_free()
 	Net.leave()
 	_curtains = false
+	for curtain in _curtain_layer.get_children():
+		curtain.queue_free()
 	if menu:
 		menu.visible = false
 	var player: Node = GameScripts.load_script("res://scripts/game/replay_player.gd").new()

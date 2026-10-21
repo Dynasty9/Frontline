@@ -21,9 +21,15 @@ var failed := false
 var record_kinds := {}
 var record_lengths := {}
 var prop_types := {}
+var downloaded := {}
+var download_progress: ProgressBar
+var playback_buttons: Array[BaseButton] = []
+var loading_backdrop: TopoBackdrop
 
 func _ready() -> void:
 	layer = 30
+	loading_backdrop = TopoBackdrop.new()
+	add_child(loading_backdrop)
 	var panel := PanelContainer.new()
 	panel.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
 	panel.offset_top = -92
@@ -34,6 +40,9 @@ func _ready() -> void:
 	label = Label.new()
 	label.text = "Loading recording…"
 	box.add_child(label)
+	download_progress = ProgressBar.new()
+	download_progress.visible = false
+	box.add_child(download_progress)
 	slider = HSlider.new()
 	slider.min_value = 0
 	slider.step = 0.1
@@ -91,9 +100,14 @@ func _ready() -> void:
 		main.return_to_menu("")
 		queue_free())
 	row.add_child(exit_button)
+	for button in row.get_children():
+		if button is BaseButton and button != exit_button:
+			playback_buttons.append(button)
 	_refresh()
 
 func fetch_json(path: String) -> Dictionary:
+	if downloaded.has(path):
+		return downloaded[path]
 	if not source.begins_with("http://") and not source.begins_with("https://"):
 		var file := source.path_join("index.json" if path.is_empty() else path.trim_prefix("/chunks/") + ".json")
 		if not FileAccess.file_exists(file) or FileAccess.get_file_as_bytes(file).size() > 12 * 1024 * 1024:
@@ -216,7 +230,43 @@ func _refresh() -> void:
 		position = maxf(position, float(manifest.duration) - 1.0)
 	slider.max_value = maxf(0.1, float(manifest.get("duration", 0)))
 	if sequence < 0 and not manifest.chunks.is_empty():
+		if manifest.get("status") != "live" and not await _download_recording():
+			return
 		await seek(maxf(0, float(manifest.duration) - 1) if manifest.get("status") == "live" else 0)
+
+
+func _download_recording() -> bool:
+	busy = true
+	slider.editable = false
+	slider.hide()
+	download_progress.show()
+	for button in playback_buttons:
+		button.disabled = true
+	var total: int = manifest.chunks.size()
+	var bytes := 0
+	for i in total:
+		label.text = "Loading replay · %d / %d parts" % [i, total]
+		var path := "/chunks/%d" % i
+		var body := await fetch_json(path)
+		bytes += JSON.stringify(body).length()
+		if bytes > BattleRecording.MAX_BYTES or body.get("sequence") != i or decode(body).is_empty():
+			downloaded.clear()
+			failed = true
+			busy = false
+			label.text = "Could not load the complete replay. Close it and try again."
+			download_progress.hide()
+			return false
+		# Keep compressed data; only the current part is expanded during playback.
+		downloaded[path] = body
+		download_progress.value = 100.0 * (i + 1) / total
+		await get_tree().process_frame
+	busy = false
+	slider.editable = true
+	slider.show()
+	download_progress.hide()
+	for button in playback_buttons:
+		button.disabled = false
+	return true
 
 func seek(target: float) -> void:
 	if busy or failed or manifest.get("chunks", []).is_empty():
@@ -259,6 +309,7 @@ func seek(target: float) -> void:
 		_apply(chunk.frames[frame], false, false)
 		frame += 1
 	world.time = position
+	loading_backdrop.hide()
 	for e in world.entities.values():
 		if e.net_init:
 			e.position = e.net_pos

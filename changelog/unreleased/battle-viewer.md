@@ -10,6 +10,10 @@ caption = "A recorded test battle running in the browser, with the game's own ca
 [[screenshots]]
 file = "mobile.jpg"
 caption = "Find recordings from the Battles page. The 3D viewer works best on a desktop."
+
+[[screenshots]]
+file = "loading.jpg"
+caption = "Saved replays load completely before playback, with progress and controls inside the game."
 +++
 
 Public battles can now broadcast to a browser viewer, using Frontline's own
@@ -20,6 +24,9 @@ The host also saves a replay locally. Open **Replays** in the desktop menu and
 choose a recording folder to watch it again, pause, change speed, or drag the
 timeline back to an earlier moment. Public recordings remain available on the
 website for seven days when the server's recording storage is enabled.
+
+Saved replays load fully before playback starts. Loading progress and all replay
+controls, including the scrubber, live inside the game itself.
 
 These are host recordings, not independently verified results. Recordings made
 before this feature cannot be reconstructed from an old after-action report.

@@ -45,6 +45,8 @@ func _run() -> void:
 		TestRun.quit(get_tree())
 		return
 	player.speed = 0
+	check(player.downloaded.size() == player.manifest.chunks.size(), "loads the complete replay before playback")
+	player.source = path.path_join("unavailable")
 	for target in [15.0, 3.0, 21.0, 0.0]:
 		await player.seek(target)
 		check(not player.failed, "seek succeeds at %s" % target)
@@ -76,6 +78,7 @@ func _run() -> void:
 	check(not player._valid_props("soldier", {"pos": Vector3.ZERO, "utype": "missing-unit"}, true), "rejects unknown unit")
 	check(not player._valid_fx([0, "wrong"]), "rejects malformed effect")
 	check(not player._valid_map({"kinds": PackedByteArray()}), "rejects malformed map")
+	player.source = path
 	var live_manifest: Dictionary = player.manifest.duplicate(true)
 	live_manifest.status = "live"
 	var index := FileAccess.open(path.path_join("index.json"), FileAccess.WRITE)
@@ -89,5 +92,8 @@ func _run() -> void:
 	player.position = 3
 	await player._refresh()
 	check(player.position == 3 and not player.follow_live, "pause keeps the chosen live moment")
+	player.source = path.path_join("unavailable")
+	player.downloaded.clear()
+	check(not await player._download_recording() and player.failed, "incomplete downloads do not start playback")
 	print("REPLAY TEST complete: record, commands, forward seek, rewind, state, validation")
 	TestRun.quit(get_tree())

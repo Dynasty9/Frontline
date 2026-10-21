@@ -56,6 +56,11 @@ Each chunk is a bounded, zstd-compressed Godot Variant encoded as base64 in JSON
 Decoding never permits objects or scripts. The viewer checks structure, entity
 types, and packet boundaries before handing data to the existing renderer.
 
+Saved replays download and validate every part before playback begins. Loading
+progress, the timeline, pause, speed, and camera controls are all inside the game
+UI. The viewer keeps compressed parts in memory, so playback and scrubbing need
+no further chunk downloads. Live broadcasts continue streaming as new parts arrive.
+
 Seeking reconstructs the observer world from the preceding checkpoint and advances
 its state to the target. This also clears transient effects. It can take a few
 seconds on a large battlefield; the controls show loading and reject overlapping
