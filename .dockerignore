@@ -1,0 +1,10 @@
+.git
+.godot
+**/node_modules
+**/dist
+web/public/game
+build
+*.log
+.claude
+
+**/.env*

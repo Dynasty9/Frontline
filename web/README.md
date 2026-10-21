@@ -125,3 +125,7 @@ railway up --service web --ci
 ```
 
 Railway builds it with `npm run build` and serves `dist/` as a static site.
+
+## Battle viewer
+
+`/battles` lists live broadcasts and recordings; `/watch/:id` embeds the actual Godot observer. Build `Dockerfile.web` with repository-root context to include the browser export at `/game/`. The existing static-only build still works, but correctly reports the viewer unavailable. See [recording deployment](../docs/REPLAYS.md).

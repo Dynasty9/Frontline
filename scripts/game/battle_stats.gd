@@ -554,6 +554,8 @@ static func service_record(w: World) -> Dictionary:
 		mode = "coop"
 		title = "Co-op vs the AI"
 	var rep := trim_report(r)
+	if r.has("replay"):
+		rep["replay"] = r.replay
 	rep["me"] = w.local_peer
 	rep["me_team"] = w.local_team
 	return {"game_version": Updater.version, "mode": mode, "mission": String(w.settings.get("mission", "")), "title": title,

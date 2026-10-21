@@ -114,6 +114,7 @@ export type Commander = Figures & { id?: number; name?: string; team?: number; a
 
 /** The after-action report as the game keeps it (BattleStats.trim_report), the parts the site reads. */
 export type Report = {
+  replay?: string
   t?: number
   winner?: number
   players?: Commander[]

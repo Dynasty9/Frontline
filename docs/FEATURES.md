@@ -1145,3 +1145,8 @@ garrisons, answers attacks on its bases, sends waves at your FOBs and ambushes y
 digs forward tunnel entrances and moves its attack waves through them. AI-vs-AI results swing a lot between
 batches of six games (from 5–1 one way to 5–1 the other with small parameter changes), so the sides are close
 but balance needs real playtesting. With the base defenses, most games last 10–23 minutes.
+
+
+## Battle recordings and browser spectators
+
+Hosts save seekable observer recordings. Listed public battles can broadcast with a minimum 60-second delay; the website lists broadcasts and seven days of replays when persistent recording storage is enabled. The browser uses the game renderer, with camera controls, pause, speed and a timeline. Private battles stay local. Recordings are not independently verified. See [REPLAYS.md](REPLAYS.md) for the format, deployment and limitations.

@@ -1387,7 +1387,7 @@ func _view_process(dt: float) -> void:
 	if log_panel.visible:
 		_fit_log()
 	var spectator := world.local_team < 0
-	obs_bar.visible = spectator and world.director != null
+	obs_bar.visible = spectator and world.director != null and not world.settings.get("replay", false)
 	if obs_bar.visible:
 		var d := world.director
 		var spd: float = d.speed()

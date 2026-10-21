@@ -10,6 +10,7 @@ signal report_updated
 signal build_stage(text: String, frac: float)
 
 var settings: Dictionary = {}
+var recording: BattleRecording
 var srv := false
 var has_view := true
 var local_peer := 1
@@ -88,7 +89,7 @@ var _shash := {}
 
 
 func _ready() -> void:
-	srv = multiplayer.is_server()
+	srv = multiplayer.is_server() and not settings.get("replay", false)
 	has_view = DisplayServer.get_name() != "headless"
 	local_peer = multiplayer.get_unique_id()
 	var pl: Dictionary = settings.get("players", {})
@@ -115,6 +116,8 @@ func _ready() -> void:
 	coop.name = "CoCommand"
 	coop.world = self
 	add_child(coop)
+	if settings.get("replay", false):
+		coop.set_process(false)
 	if has_view:
 		phys = PhysicsFx.new(self)
 		phys.name = "Phys"
@@ -177,6 +180,8 @@ func build() -> void:
 		cam = RtsCamera.new()
 		cam.name = "Cam"
 		cam.world = self
+		if settings.get("replay", false):
+			cam.edge_pan = false
 		add_child(cam)
 		director = Director.new()
 		director.name = "Director"
@@ -195,13 +200,17 @@ func build() -> void:
 		hud.world = self
 		add_child(hud)
 		_try_focus()
-	if not srv:
+	if not srv and not settings.get("replay", false):
 		_client_ready.rpc_id(1)
 	if _staged:
 		get_tree().multiplayer_poll = polled
 		_staged = false
 	process_mode = Node.PROCESS_MODE_INHERIT
 	building = false
+	if srv and (Online.record_battles or get_tree().root.get_node("Main").args.has("record-replay")):
+		recording = BattleRecording.new()
+		recording.world = self
+		add_child(recording)
 
 
 var _staged := false  # build() is waiting a frame between its stages
@@ -295,6 +304,8 @@ func spawn(kind: String, props: Dictionary) -> Entity:
 	if e is Structure:
 		_shash_add(e)
 		terrain.structure_changed(e, true)
+	if recording and not recording.stopped:
+		recording.births.append([e.eid, kind, e.get_props().duplicate(true)])
 	if not ready_peers.is_empty():
 		_pend_spawn.append([e.eid, kind])
 	if _staged:
@@ -338,6 +349,8 @@ func despawn(e: Entity) -> void:
 	elif e is Drone:
 		drones.erase(e)
 	e.on_despawn()
+	if recording and not recording.stopped:
+		recording.deaths.append(e.eid)
 	if srv and not ready_peers.is_empty():
 		_pend_despawn.append(e.eid)
 	# Keep the object alive for a while so stale references elsewhere can
@@ -527,6 +540,8 @@ func placement_error(team: int, kind: String, pos: Vector3, yaw: float) -> Strin
 
 
 func push_props(e: Entity, d: Dictionary) -> void:
+	if recording:
+		recording.changed(e.eid, d)
 	if not srv or ready_peers.is_empty():
 		return
 	var cur: Dictionary = _pend_props.get(e.eid, {})
@@ -535,6 +550,8 @@ func push_props(e: Entity, d: Dictionary) -> void:
 
 
 func fx_event(ev: Array) -> void:
+	if recording and not recording.stopped:
+		recording.events.append(ev.duplicate(true))
 	if has_view:
 		fx.play(ev)
 	if srv and not ready_peers.is_empty():
@@ -557,7 +574,8 @@ func _physics_process(dt: float) -> void:
 		_grave_t = 5.0
 		_sweep_graveyard()
 	if not srv:
-		time += dt
+		if not settings.get("replay", false):
+			time += dt
 		_net_in_t += dt
 		if _net_in_t >= 1.0:
 			net_in_bps = _net_in / _net_in_t
@@ -567,6 +585,8 @@ func _physics_process(dt: float) -> void:
 	time += dt
 	var t0 := Time.get_ticks_usec()
 	var tp := t0
+	if recording:
+		recording.before_tick()
 	_flush()
 	tp = _p("network", tp)
 	nav.update_hier()
@@ -602,6 +622,8 @@ func _physics_process(dt: float) -> void:
 	if mission:
 		mission.tick(dt)
 	tp = _p("AI commanders", tp)
+	if recording:
+		recording.after_tick()
 	_snap_t -= dt
 	if _snap_t <= 0.0:
 		_snap_t = 1.0 / 15.0
@@ -1350,6 +1372,8 @@ func declare_winner(t: int) -> void:
 		send_msg(-1, "system", "%s win the battle!" % Defs.TEAM_NAMES[t])
 	# everyone gets the whole after-action report, then the end
 	report = battle.report(-1)
+	if recording and not recording.replay_id.is_empty():
+		report["replay"] = recording.replay_id
 	for p in ready_peers:
 		rpc_id(p, "_rpc_report", report)
 	game_ended.emit(t)
@@ -1369,6 +1393,9 @@ func _record() -> void:
 ## Asks the host for the after-action report as it stands (it answers with
 ## _rpc_report and report_updated fires).
 func request_report() -> void:
+	if settings.get("replay", false):
+		report_updated.emit()
+		return
 	if srv:
 		report = battle.report(local_team)
 		report_updated.emit()
@@ -1586,6 +1613,8 @@ func team_of_peer(peer: int) -> int:
 
 
 func send_cmd(d: Dictionary) -> void:
+	if settings.get("replay", false):
+		return
 	if srv:
 		execute_cmd(local_peer, d)
 	else:
@@ -1641,6 +1670,10 @@ func take_command(peer: int, sqs: Array, vehs: Array) -> void:
 
 
 func execute_cmd(peer: int, d: Dictionary) -> void:
+	if settings.get("replay", false):
+		return
+	if recording:
+		recording.order(peer, d)
 	if not srv:
 		return
 	if String(d.get("t", "")) == "demo_support":
@@ -1867,6 +1900,8 @@ func _centroid(sqs: Array, vehs: Array) -> Vector3:
 
 
 func _on_player_joined(id: int, team: int, pname: String) -> void:
+	if recording:
+		recording.order(id, {"t": "player_joined", "team": team, "name": pname})
 	battle.joined(id, team)
 	if mission:
 		if team == mission.side:
@@ -1935,6 +1970,8 @@ func give_vehicle(v: Vehicle, to: int) -> void:
 
 
 func _on_player_left(id: int, team: int, pname: String) -> void:
+	if recording:
+		recording.order(id, {"t": "player_left", "team": team, "name": pname})
 	ready_peers.erase(id)
 	known.erase(id)
 	if team < 0:

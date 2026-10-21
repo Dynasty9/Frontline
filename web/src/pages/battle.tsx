@@ -110,6 +110,11 @@ function Report({ battle: b, callsign }: { battle: Battle; callsign: string }) {
         </p>
       </div>
 
+      {b.report.replay && /^[a-f0-9]{24}$/.test(b.report.replay) && (
+        <Button asChild className="mt-6 min-h-11">
+          <Link to={`/watch/${b.report.replay}`}>Watch replay</Link>
+        </Button>
+      )}
       <Part battle={b} callsign={callsign} />
 
       {commanders.length > 0 && (

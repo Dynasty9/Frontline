@@ -28,3 +28,6 @@ storybook-static
 *storybook.log
 __screenshots__
 .vitest-attachments
+
+# Exported Godot viewer (built with the site image)
+public/game/

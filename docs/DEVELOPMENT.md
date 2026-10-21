@@ -709,3 +709,8 @@ so remake it whenever the title or the map shader changes, so that the splash ha
 jump: run at 1920x1080 with `--curtain --intro-at=0 --menu-shot=assets/splash.png` (a held frame has no grain,
 which keeps the PNG small).
 
+
+
+## Recording and replay tests
+
+Use `--record-replay=FOLDER` to save a test battle, and `--replay=FOLDER` to watch it. `--replay=URL` opens the recording API in the same observer. `--replay-test` checks forward and backward seeks against recorded state; `tests/replay.test.mjs` includes it in the game suite. See [REPLAYS.md](REPLAYS.md).
