@@ -768,7 +768,7 @@ func _show_lobby() -> void:
 ## The host told us who's in the lobby: that's when a join has worked (and
 ## not before - a host that wants a password, or is full, turns us away first).
 func _on_lobby_updated() -> void:
-	if Net.in_game or not visible or lobby.visible or multiplayer.is_server():
+	if LocalServer.starting or Net.in_game or not visible or lobby.visible or multiplayer.is_server():
 		return
 	if Net.players.has(multiplayer.get_unique_id()) and multiplayer.multiplayer_peer is ENetMultiplayerPeer:
 		if _join_target.is_empty():

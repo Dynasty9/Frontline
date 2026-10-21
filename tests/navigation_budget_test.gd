@@ -80,6 +80,11 @@ func _ready() -> void:
 	check(soldier._move_tick(1.0 / 30.0, 2.0), "A queued route must not finish movement-dependent tasks")
 	soldier.stop_moving()
 	check(not soldier.is_moving(), "Stopping must clear pending movement")
+	soldier.path = PackedVector3Array([to])
+	soldier.goal_kind = "task"
+	soldier._stuck_t = 4.0
+	check(soldier._move_tick(1.0 / 30.0, 2.0) and soldier._path_pending, "A stuck soldier must keep his task while requesting a replacement route")
+	soldier.stop_moving()
 	soldier.free()
 	world.free()
 	MapDims.N = 512

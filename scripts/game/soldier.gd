@@ -1334,7 +1334,7 @@ func _move_tick_work(dt: float, speed: float) -> bool:
 			world.stat("repath")
 			var g2 := path[path.size() - 1]
 			go_to(g2, goal_kind, move_mode)
-			return false
+			return true  # replanning still counts as travelling to the task
 		_stuck_t = 0.0
 		_stuck_p = position
 	var tgt := path[path_i]

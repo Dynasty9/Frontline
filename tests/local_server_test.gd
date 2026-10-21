@@ -13,6 +13,9 @@ func check(ok: bool, message: String) -> void:
 
 
 func _ready() -> void:
+	# The real menu must not mistake the private connection for a cancelled join.
+	var menu := load("res://scripts/ui/menu.gd").new() as Control
+	add_child(menu)
 	Net.game_start.connect(_started)
 	Net.net_error.connect(func(_message): error_seen = true)
 	check(LocalServer.launch({"scenario": "stress", "stress_units": 20, "stress_scenery": 0, "stress_mode": "idle", "scenario_player": true, "ai_fill": false, "fixed_seed": 3}, 0) == OK, "Private server must launch")
