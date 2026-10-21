@@ -14,7 +14,7 @@ const DEFAULT_PORT := 7777
 const MAX_PLAYERS := 8
 ## Bump when what host and client send each other changes, so the matchmaker
 ## only pairs players who can understand each other.
-const NET_VERSION := 5
+const NET_VERSION := 7
 ## Each commander's colour: his cursor, his view and his pings on his
 ## teammates' screens. Handed out in the lobby so it stays the same all battle
 ## (and "I'm the pink one" works over voice). Clear of the sides' blue and red.
@@ -39,8 +39,9 @@ func _ready() -> void:
 	multiplayer.server_disconnected.connect(_on_server_disconnected)
 
 
-func host_game(port := DEFAULT_PORT, team := 0) -> int:
+func host_game(port := DEFAULT_PORT, team := 0, bind_ip := "*") -> int:
 	var peer := ENetMultiplayerPeer.new()
+	peer.set_bind_ip(bind_ip)
 	var err := peer.create_server(port, MAX_PLAYERS)
 	if err != OK:
 		return err
@@ -120,16 +121,14 @@ func _on_peer_connected(id: int) -> void:
 		_long_timeout(id)
 
 
-## Don't drop a peer for going silent for 45 s (map generation on the host,
-## then its first frame of the new world if it has a window; a big first
-## snapshot on the client). ENet only checks when it next resends, so the real
-## limit lands somewhere between 45 and 90 s.
-func _long_timeout(id: int) -> void:
+## Large-map construction can block polling for several minutes. Allow that
+## during loading, then restore the ordinary timeout once the client is ready.
+func _long_timeout(id: int, loading := true) -> void:
 	var mp := multiplayer.multiplayer_peer
 	if mp is ENetMultiplayerPeer:
 		var pp: ENetPacketPeer = (mp as ENetMultiplayerPeer).get_peer(id)
 		if pp:
-			pp.set_timeout(64, 45000, 90000)
+			pp.set_timeout(64, 300000 if loading else 45000, 600000 if loading else 90000)
 
 
 func _on_peer_disconnected(id: int) -> void:
@@ -138,6 +137,8 @@ func _on_peer_disconnected(id: int) -> void:
 	if players.has(id):
 		var p: Dictionary = players[id]
 		players.erase(id)
+		if LocalServer.child:
+			LocalServer.disconnected_peer = id
 		player_left.emit(id, int(p.team), String(p.name))
 		if not in_game:
 			_broadcast_lobby()
@@ -146,18 +147,22 @@ func _on_peer_disconnected(id: int) -> void:
 func _on_connected() -> void:
 	# (players pick their side in the lobby, so they register with a name alone)
 	if join_team >= -1:
-		_register.rpc_id(1, my_name, join_team)
+		_register.rpc_id(1, my_name, join_team, LocalServer.token, NET_VERSION)
 	else:
-		_register.rpc_id(1, my_name)
+		_register.rpc_id(1, my_name, -2, LocalServer.token, NET_VERSION)
 
 
 func _on_conn_failed() -> void:
 	leave()
+	if LocalServer.reconnect():
+		return
 	net_error.emit("Could not connect to host.")
 
 
 func _on_server_disconnected() -> void:
 	leave()
+	if LocalServer.reconnect():
+		return
 	net_error.emit("Lost connection to host.")
 
 
@@ -165,19 +170,24 @@ func _on_server_disconnected() -> void:
 
 ## `team`: the side a test client asked for (-2: none, the lobby decides).
 @rpc("any_peer", "call_remote", "reliable")
-func _register(pname: String, team := -2) -> void:
+func _register(pname: String, team := -2, token := "", version := NET_VERSION) -> void:
 	if not multiplayer.is_server():
 		return
 	var id := multiplayer.get_remote_sender_id()
+	if version != NET_VERSION or not LocalServer.authorize(token, version):
+		_kick.rpc_id(id, "Incompatible game version or private session.")
+		return
+	if LocalServer.child:
+		team = LocalServer.requested_team()
 	var clean := pname.strip_edges().substr(0, 20)
 	if clean == "":
 		clean = "Player %d" % (players.size() + 1)
 	if in_game:
-		if not bool(settings.get("drop_in", true)):
+		if not bool(settings.get("drop_in", true)) and not LocalServer.child:
 			_kick.rpc_id(id, "That game has already started.")
 			return
 		# drop-in: put them on a side and hand them the running game
-		var side := _pick_join_team()
+		var side := LocalServer.requested_team() if LocalServer.child else _pick_join_team()
 		players[id] = {"name": clean, "team": side, "col": _free_color()}
 		_sync_lobby.rpc(players, settings)
 		var s: Dictionary = settings.duplicate(true)

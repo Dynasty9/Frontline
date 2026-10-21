@@ -109,7 +109,7 @@ func _make_noise() -> void:
 func biome_at(p: Vector3) -> float:
 	var u := int(floor(p.x + MapDims.BIOME * 0.5)) % MapDims.BIOME
 	var v := int(floor(p.z + MapDims.BIOME * 0.5)) % MapDims.BIOME
-	return biome_img.get_pixel(posmod(u, 512), posmod(v, 512)).r
+	return biome_img.get_pixel(posmod(u, biome_img.get_width()), posmod(v, biome_img.get_height())).r
 
 
 func grass_amount(p: Vector3) -> float:
@@ -232,10 +232,11 @@ func set_trench_mask(t: Texture2D) -> void:
 		grass.set_trench_mask(t)
 
 
-var deform_tex: ImageTexture
+var deform_tex: Texture2DArray
+var _deform_tiles: TerrainTexture
 var _deform_t := 0.0
-const GROUND_HALF := MapDims.HALF + 8.0  # the fine, deformable ground covers the map; a ring of plain ground beyond
-const GROUND_CHUNKS := int(GROUND_HALF * 2.0 / 33.0)  # about 33 m chunks, culled one by one
+var GROUND_HALF := MapDims.HALF + 8.0
+var GROUND_CHUNKS := ceili(GROUND_HALF * 2.0 / 64.0)
 const GROUND_LOD := 170.0  # beyond this from the camera a chunk is drawn on a coarser grid
 
 
@@ -259,9 +260,10 @@ func _build_ground() -> void:
 	# the battlefield itself: chunks of fine grid (culled one by one), all
 	# sharing one mesh; the shader lifts or sinks each vertex to the ground height
 	if world.terrain and world.terrain.deform_img:
-		deform_tex = ImageTexture.create_from_image(world.terrain.deform_img)
+		_deform_tiles = TerrainTexture.new(world.terrain.deform_img)
 	else:
-		deform_tex = ImageTexture.create_from_image(Image.create(4, 4, false, Image.FORMAT_RF))
+		_deform_tiles = TerrainTexture.new(Image.create(TerrainTexture.TILE, TerrainTexture.TILE, false, Image.FORMAT_RH))
+	deform_tex = _deform_tiles.texture
 	ground_mat.set_shader_parameter("deform_tex", deform_tex)
 	Mats.set_ground_maps(deform_tex, null)
 	var step := 0.5 if int(Settings.get_v("lod")) >= 1 else 1.0
@@ -281,10 +283,8 @@ func _build_ground() -> void:
 				mi.extra_cull_margin = 2.0
 				if far:
 					mi.visibility_range_begin = GROUND_LOD
-					mi.visibility_range_begin_margin = 8.0
 				else:
 					mi.visibility_range_end = GROUND_LOD
-					mi.visibility_range_end_margin = 8.0
 				add_child(mi)
 	trench_net = TrenchNet.new(world)
 	add_child(trench_net)
@@ -661,6 +661,9 @@ func set_town(r: Rect2) -> void:
 ## A square of ground `size` across in quads of `step` metres, centred on its origin.
 func _grid_mesh(size: float, step: float) -> ArrayMesh:
 	var n := int(round(size / step))
+	# The map width is not necessarily a multiple of the requested spacing.
+	# Both detail levels must end at exactly the same chunk boundary.
+	step = size / n
 	var v := PackedVector3Array()
 	var nr := PackedVector3Array()
 	var idx := PackedInt32Array()
@@ -740,13 +743,16 @@ func build_water(w: WaterMap) -> void:
 func _update_deform(dt: float) -> void:
 	_deform_t -= dt
 	var tm = world.terrain
-	if tm == null or tm.deform_img == null or tm.deform_dirty.size == Vector2i.ZERO or _deform_t > 0.0:
+	if tm == null or tm.deform_img == null:
 		return
-	_deform_t = 0.22
-	deform_tex.update(tm.deform_img)
-	if world.phys:
-		world.phys.update_deform(tm.deform_dirty)
-	tm.deform_dirty = Rect2i()
+	if not tm.deform_dirty.is_empty() and _deform_t <= 0.0:
+		_deform_t = 0.22
+		for rect: Rect2i in tm.deform_dirty:
+			_deform_tiles.mark_dirty(rect)
+			if world.phys:
+				world.phys.update_deform(rect)
+		tm.deform_dirty.clear()
+	_deform_tiles.flush()
 
 
 func make_road_mesh(polys: Array, team: int) -> MeshInstance3D:
@@ -861,7 +867,8 @@ uniform float cloud_strength = 0.3;
 uniform float bump = 1.4;
 uniform float wet = 0.0;
 uniform sampler2D trench_mask : hint_default_black, filter_linear, repeat_disable;
-uniform sampler2D deform_tex : hint_default_black, filter_linear, repeat_disable;
+uniform sampler2DArray deform_tex : filter_linear, repeat_disable;
+// TERRAIN_TEXTURE_HELPER
 uniform sampler2D water_mask : hint_default_black, filter_linear, repeat_disable;
 uniform float sea_x = 1e9;
 
@@ -869,7 +876,7 @@ varying vec3 wpos;
 varying float puddle;
 
 float dfm(vec2 p) {
-	return textureLod(deform_tex, (p + __MAP_HALF__) / __MAP_SIZE__, 0.0).r;
+	return terrain_height(deform_tex, (p + __MAP_HALF__) / __MAP_SIZE__);
 }
 
 void vertex() {
@@ -981,7 +988,8 @@ uniform sampler2D detail_tex : filter_linear_mipmap, repeat_enable;
 uniform float wet = 0.0;
 uniform sampler2D trench_mask : hint_default_black, filter_linear, repeat_disable;
 uniform vec4 town = vec4(0.0);  // min x, min z, max x, max z: streets here are asphalt
-uniform sampler2D deform_tex : hint_default_black, filter_linear, repeat_disable;
+uniform sampler2DArray deform_tex : filter_linear, repeat_disable;
+// TERRAIN_TEXTURE_HELPER
 instance uniform float country = 0.0;
 varying vec3 wpos;
 void vertex() { wpos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz; }
@@ -990,7 +998,7 @@ void fragment() {
 		discard;
 	}
 	// a shell hole punches through the road surface
-	if (texture(deform_tex, (wpos.xz + __MAP_HALF__) / __MAP_SIZE__).r < -0.07) {
+	if (terrain_height(deform_tex, (wpos.xz + __MAP_HALF__) / __MAP_SIZE__) < -0.07) {
 		discard;
 	}
 	float x = UV.x;

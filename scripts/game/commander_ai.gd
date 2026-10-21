@@ -368,7 +368,7 @@ func _my_squads() -> Array:
 
 func _my_structs(kind := "", built_only := false) -> Array:
 	var out := []
-	for st in world.structures:
+	for st in world.owned_structures:
 		if st.team != team:
 			continue
 		if kind != "" and st.skind != kind:
@@ -1164,7 +1164,7 @@ func _pick_target() -> Structure:
 	var from: Vector3 = front.position if front else Vector3.ZERO
 	var best: Structure = null
 	var bd := 1e9
-	for st in world.structures:
+	for st in world.owned_structures:
 		if st.skind != "fob" or st.team == team or st.team < 0 or not st.built:
 			continue
 		var known: bool = ((st.seen_mask >> team) & 1) == 1 or st.completed_order <= 2

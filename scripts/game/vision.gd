@@ -51,7 +51,7 @@ static func eyes(w: World, team: int, marks: Array = [], structures = null) -> P
 	for v in w.vehicles:
 		if v.team == team and not v.gone:
 			out.append(Vector3(v.position.x, v.position.z, float(v.vdef.get("sight", VEHICLE))))
-	for st in (w.structures if structures == null else structures):
+	for st in (w.owned_structures if structures == null else structures):
 		if st.team != team or st.gone or not st.built:
 			continue
 		var r := structure_sight(st)

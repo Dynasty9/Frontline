@@ -852,3 +852,30 @@ garrisons, answers attacks on its bases, sends waves at your FOBs and ambushes y
 digs forward tunnel entrances and moves its attack waves through them. AI-vs-AI results swing a lot between
 batches of six games (from 5–1 one way to 5–1 the other with small parameter changes), so the sides are close
 but balance needs real playtesting. With the base defenses, most games last 10–23 minutes.
+
+### Large battles and shared AI work
+
+Desktop skirmishes and observer games can select 1,024, 2,048 or 3,072 metre maps.
+Solo games and missions launch a private headless simulation with the same game
+executable. The visible game sends commands and draws interpolated snapshots;
+the simulation remains authoritative for every soldier, including off-screen units.
+Pause, resume and returning to the menu control the owned simulation process.
+Web retains the in-process host path.
+
+Squads stagger their planning and share nearby threat assessments (up to 0.25 s)
+and building contacts (up to 0.75 s, invalidated by new contacts). Men separated
+from the squad assess their own sectors. Individual line of sight, weapon fire,
+damage and urgent reactions still run independently. Land orders queue through
+bounded path work; destroyed obstacles trigger incremental graph rebuilding.
+
+Distant soldiers use shared baked poses of their procedural models, including
+standing, crouching, prone and walking poses. Nearby soldiers retain articulated
+animation. Distant palette variation and subtle gestures are simplified.
+
+Clients build nearby scenery first and cache visited models; distant models and
+cosmetic collision bodies remain inactive. The server still simulates the complete
+map. Nearby movement orders can reuse a checked route corridor, with separate
+destinations and invalidation when terrain or danger changes.
+
+See [SIMULATION_SCALING.md](SIMULATION_SCALING.md) for the native perception
+boundary, measurement results and remaining limits.

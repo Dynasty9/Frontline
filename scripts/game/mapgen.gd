@@ -8,8 +8,11 @@ extends RefCounted
 var world: World
 var rng: RandomNumberGenerator
 var placed: Array = []  # [Vector2 center, Vector2 half, yaw]
+var _placed_cells := {}
+const PLACEMENT_CELL := 32.0
 var doors_shut := -1  # houses' doors: -1 some shut (most), 1 all shut, 0 all open
 var clear: Array = []  # [Vector2 center, radius]
+var _clear_cells := {}
 
 
 func _init(w: World) -> void:
@@ -34,16 +37,16 @@ func generate() -> void:
 	for st in [d0, d1, f0, f1]:
 		st.seen_mask = 3  # start locations are common knowledge
 	for p in [d0.position, d1.position]:
-		clear.append([Vector2(p.x, p.z), 26.0])
+		reserve_clear(Vector2(p.x, p.z), 26.0)
 	for f in [f0, f1]:
-		clear.append([Vector2(f.position.x, f.position.z), 30.0])
+		reserve_clear(Vector2(f.position.x, f.position.z), 30.0)
 	# keep the lane between HQ and starting FOB open
 	for t in 2:
 		var a: Vector3 = [d0, d1][t].position
 		var b: Vector3 = [f0, f1][t].position
 		for i in 5:
 			var p := a.lerp(b, i / 4.0)
-			clear.append([Vector2(p.x, p.z), 10.0])
+			reserve_clear(Vector2(p.x, p.z), 10.0)
 
 	_lay_water()
 	# the town, its roads and everything that hangs off them (see TownGen)
@@ -308,7 +311,7 @@ func _roads_meet_water(tg) -> void:
 		var b: Vector3 = br[1]
 		var d := Defs.flat(b - a)
 		_spawn("bridge", (a + b) * 0.5, Defs.yaw_of(d), -1, {"size": Vector3(float(br[2]) * 2.0, 0, d.length()), "variant": 1 if br.size() > 3 and br[3] == "quay" else 0})
-		placed.append([Vector2((a.x + b.x) * 0.5, (a.z + b.z) * 0.5), Vector2(float(br[2]) + 1.0, d.length() * 0.5 + 1.0), Defs.yaw_of(d)])
+		reserve_space(Vector2((a.x + b.x) * 0.5, (a.z + b.z) * 0.5), Vector2(float(br[2]) + 1.0, d.length() * 0.5 + 1.0), Defs.yaw_of(d))
 	w.carve()
 	world.nav.build_boat_grid(w)
 	if OS.has_environment("FL_DEBUG_WATER"):
@@ -333,6 +336,8 @@ func scenario(sname: String) -> void:
 	var a := 1 if world.settings.get("scenario_player", false) else -1
 	var b := -2
 	match sname:
+		"stress":
+			StressBattle.populate(world)
 		"air":
 			var hp2 := _spawn("helipad", Vector3(0, 0, 60), 0.0, 0)
 			var gs: Vehicle = world.spawn("vehicle", {"vkind": "gunship", "team": 0, "owner": a, "pos": Vector3(0, 20, 50), "yaw": 0.0})
@@ -848,8 +853,71 @@ func _spawn(kind: String, pos: Vector3, yaw: float, team: int, extra := {}) -> S
 	var props := {"skind": kind, "pos": pos, "yaw": yaw, "team": team}
 	props.merge(extra, true)
 	var st: Structure = world.spawn("structure", props)
-	placed.append([Vector2(pos.x, pos.z), st.foot, yaw])
+	reserve_space(Vector2(pos.x, pos.z), st.foot, yaw)
 	return st
+
+
+func reserve_space(center: Vector2, half: Vector2, yaw: float) -> void:
+	placed.append([center, half, yaw])
+	_index_placement(placed.size() - 1)
+
+
+func reserve_clear(center: Vector2, radius: float) -> void:
+	var index := clear.size()
+	clear.append([center, radius])
+	var bounds := _placement_bounds(center, Vector2.ONE * radius, 0)
+	for z in range(bounds.position.y, bounds.end.y):
+		for x in range(bounds.position.x, bounds.end.x):
+			var key := Vector2i(x, z)
+			if not _clear_cells.has(key):
+				_clear_cells[key] = []
+			(_clear_cells[key] as Array).append(index)
+
+
+func _clear_overlaps(center: Vector2, radius: float) -> bool:
+	var bounds := _placement_bounds(center, Vector2.ONE * radius, 0)
+	for z in range(bounds.position.y, bounds.end.y):
+		for x in range(bounds.position.x, bounds.end.x):
+			for index in _clear_cells.get(Vector2i(x, z), []):
+				var area: Array = clear[index]
+				if center.distance_to(area[0]) < float(area[1]) + radius:
+					return true
+	return false
+
+
+func _placement_bounds(center: Vector2, half: Vector2, yaw: float) -> Rect2i:
+	var c := absf(cos(yaw))
+	var s := absf(sin(yaw))
+	var extent := Vector2(c * half.x + s * half.y, s * half.x + c * half.y) + Vector2.ONE * 0.001
+	var low := Vector2i(((center - extent) / PLACEMENT_CELL).floor())
+	var high := Vector2i(((center + extent) / PLACEMENT_CELL).floor())
+	return Rect2i(low, high - low + Vector2i.ONE)
+
+
+func _index_placement(index: int) -> void:
+	var p: Array = placed[index]
+	var bounds := _placement_bounds(p[0], p[1], p[2])
+	for z in range(bounds.position.y, bounds.end.y):
+		for x in range(bounds.position.x, bounds.end.x):
+			var key := Vector2i(x, z)
+			if not _placed_cells.has(key):
+				_placed_cells[key] = []
+			var bucket: Array = _placed_cells[key]
+			if index not in bucket:
+				bucket.append(index)
+
+
+func _space_overlaps(center: Vector2, half: Vector2, yaw: float) -> bool:
+	# Generation used to compare each new tree with every previous object.
+	# Rotated bounds choose nearby candidates; the same exact OBB test decides.
+	var bounds := _placement_bounds(center, half, yaw)
+	for z in range(bounds.position.y, bounds.end.y):
+		for x in range(bounds.position.x, bounds.end.x):
+			for index in _placed_cells.get(Vector2i(x, z), []):
+				var p: Array = placed[index]
+				if Defs.obb_overlap(center, half, yaw, p[0], p[1], p[2]):
+					return true
+	return false
 
 
 func _foot_of(kind: String, extra: Dictionary) -> Vector2:
@@ -882,17 +950,10 @@ func _is_free(pos: Vector3, half: Vector2, yaw: float, margin := 0.6, use_clear 
 			if world.water.wet_at(q) or world.water.on_deck(q) or world.terrain.deform_at(q) < -0.3:
 				return false
 	var c := Vector2(pos.x, pos.z)
-	if use_clear:
-		for cl in clear:
-			if c.distance_to(cl[0]) < cl[1] + half.length():
-				return false
+	if use_clear and _clear_overlaps(c, half.length()):
+		return false
 	var h := half + Vector2(margin, margin)
-	for p in placed:
-		if c.distance_to(p[0]) > h.length() + p[1].length() + 1.0:
-			continue
-		if Defs.obb_overlap(c, h, yaw, p[0], p[1], p[2]):
-			return false
-	return true
+	return not _space_overlaps(c, h, yaw)
 
 
 func _try(kind: String, pos: Vector3, yaw: float, team: int, extra := {}) -> Structure:
@@ -943,8 +1004,8 @@ func _house(c: Vector3, w: float, d: float, axis: float, street_side: float, yar
 	var color := rng.randi() % Structure.HOUSE_COLORS.size()
 	var ruined := rng.randf() < ruin_p
 	_spawn("floor", c, axis, -1, {"size": Vector3(w, 0.06, d)})
-	placed.pop_back()
-	placed.append([Vector2(c.x, c.z), half, axis])
+	placed[placed.size() - 1] = [Vector2(c.x, c.z), half, axis]
+	_index_placement(placed.size() - 1)
 	# four walls: front faces the street
 	var sides := [
 		[Vector3(0, 0, -d * 0.5), w, 0.0],

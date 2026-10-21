@@ -383,6 +383,10 @@ func _explode(pos: Vector3, d: Dictionary) -> void:
 ## what stops the most, where he can shoot back, close by and not taken - or
 ## a fold in the ground (a crater, a rubble heap, the woods).
 func find_cover(s: Soldier, anchor: Vector3, radius: float, threats: Array, prone: bool) -> Dictionary:
+	# Without an approach to shelter from, no candidate can pass the protection
+	# test. Keep his existing quiet-sector behaviour without surveying the town.
+	if threats.is_empty():
+		return {}
 	var cands := []
 	var r2 := radius * radius
 	for st in world.structures_near(anchor, radius + 4.0):

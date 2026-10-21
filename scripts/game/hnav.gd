@@ -17,14 +17,18 @@ extends RefCounted
 ## side whose weights are scaled by that side's danger map (the clusters its
 ## spotted enemies cover), so careful moves route around known fire.
 
-const C := 16
-const NC := MapDims.N / C
+static var C := 16
+static var NC := 64
 const PLAIN := 0
 
 var grid: AStarGrid2D
 var vehicle := false
 var graphs: Array = []  # [plain, team 0 view, team 1 view]
 var local: Array = []  # per cluster AStarGrid2D covering just that cluster
+const LOCAL_CELL_BUDGET := 131072
+var _local_order: Array[int] = []
+var _solid := PackedByteArray()
+var _weight := PackedFloat64Array()
 var cl_nodes: Array = []  # per cluster: Array of entrance node ids
 var border_nodes := {}  # "a:b" (cluster ids, a < b) -> Array of node ids
 var node_cell := {}  # entrance id -> Vector2i
@@ -34,6 +38,15 @@ var mids := {}  # pair key -> mid id
 var cl_mids: Array = []  # per cluster: Array of mid ids
 var next_id := 1
 var dirty := {}
+var revision := 0
+var terrain_revision := 0
+var danger_revision := [0, 0]
+var _borders: Array[Vector2i] = []
+var _intra_queue: Array[int] = []
+var _active_ci := -1
+var _active_nodes: Array = []
+var _pair_i := 0
+var _pair_j := 1
 var built := false
 var danger: Array = [PackedFloat32Array(), PackedFloat32Array()]
 
@@ -45,17 +58,35 @@ func _init(g: AStarGrid2D, is_vehicle: bool) -> void:
 		graphs.append(AStar3D.new())
 	for t in 2:
 		danger[t].resize(NC * NC)
+	_solid.resize(MapDims.N * MapDims.N)
+	_weight.resize(MapDims.N * MapDims.N)
+	_weight.fill(1.0)
+	local.resize(NC * NC)
 	for ci in NC * NC:
 		cl_nodes.append([])
 		cl_mids.append([])
-		var lg := AStarGrid2D.new()
-		lg.region = Rect2i((ci % NC) * C, (ci / NC) * C, C, C)
-		lg.cell_size = Vector2(1, 1)
-		lg.diagonal_mode = AStarGrid2D.DIAGONAL_MODE_ONLY_IF_NO_OBSTACLES
-		lg.default_compute_heuristic = AStarGrid2D.HEURISTIC_OCTILE
-		lg.default_estimate_heuristic = AStarGrid2D.HEURISTIC_OCTILE
-		lg.update()
-		local.append(lg)
+
+
+func local_grid(ci: int) -> AStarGrid2D:
+	if local[ci] != null:
+		return local[ci]
+	while _local_order.size() >= LOCAL_CELL_BUDGET / (C * C):
+		local[_local_order.pop_front()] = null
+	var lg := AStarGrid2D.new()
+	lg.region = Rect2i((ci % NC) * C, (ci / NC) * C, C, C)
+	lg.cell_size = Vector2(1, 1)
+	lg.diagonal_mode = AStarGrid2D.DIAGONAL_MODE_ONLY_IF_NO_OBSTACLES
+	lg.default_compute_heuristic = AStarGrid2D.HEURISTIC_OCTILE
+	lg.default_estimate_heuristic = AStarGrid2D.HEURISTIC_OCTILE
+	lg.update()
+	for z in range(lg.region.position.y, lg.region.end.y):
+		for x in range(lg.region.position.x, lg.region.end.x):
+			var idx := z * MapDims.N + x
+			lg.set_point_solid(Vector2i(x, z), _solid[idx] != 0)
+			lg.set_point_weight_scale(Vector2i(x, z), _weight[idx])
+	local[ci] = lg
+	_local_order.append(ci)
+	return lg
 
 
 func cluster_of(c: Vector2i) -> int:
@@ -70,21 +101,34 @@ static func _key(a: int, b: int) -> int:
 func mark_dirty(c: Vector2i) -> void:
 	var ci := cluster_of(c)
 	var lg: AStarGrid2D = local[ci]
-	lg.set_point_solid(c, grid.is_point_solid(c))
-	lg.set_point_weight_scale(c, grid.get_point_weight_scale(c))
+	var idx := c.y * MapDims.N + c.x
+	var solid := grid.is_point_solid(c)
+	var weight := grid.get_point_weight_scale(c)
+	# Cover is recomputed around a changed building too. Most of those cells
+	# still have exactly the same movement cost: do not rebuild their routes.
+	if bool(_solid[idx]) == solid and _weight[idx] == weight:
+		return
+	revision += 1
+	terrain_revision += 1
+	_solid[idx] = int(solid)
+	_weight[idx] = weight
+	if lg:
+		lg.set_point_solid(c, solid)
+		lg.set_point_weight_scale(c, weight)
 	if built:
 		dirty[ci] = true
 
 
 func build() -> void:
-	for ci in NC * NC:
-		var lg: AStarGrid2D = local[ci]
-		var r: Rect2i = lg.region
-		for z in range(r.position.y, r.end.y):
-			for x in range(r.position.x, r.end.x):
-				var c := Vector2i(x, z)
-				lg.set_point_solid(c, grid.is_point_solid(c))
-				lg.set_point_weight_scale(c, grid.get_point_weight_scale(c))
+	for z in MapDims.N:
+		for x in MapDims.N:
+			var c := Vector2i(x, z)
+			var idx := z * MapDims.N + x
+			_solid[idx] = int(grid.is_point_solid(c))
+			_weight[idx] = grid.get_point_weight_scale(c)
+	for ci in _local_order:
+		local[ci] = null
+	_local_order.clear()
 	for ci in NC * NC:
 		var cx := ci % NC
 		var cz := ci / NC
@@ -98,20 +142,49 @@ func build() -> void:
 	dirty.clear()
 
 
-## Rebuild queued clusters (a few per call, so a collapsing house never stalls a tick).
+func has_work() -> bool:
+	return not dirty.is_empty() or not _borders.is_empty() or not _intra_queue.is_empty() or _active_ci >= 0
+
+
+## One work item is one border or one pair of entrances. The caller checks
+## its deadline between items, rather than after rebuilding a whole village.
 func update(budget := 3) -> void:
 	if not built:
 		build()
 		return
-	var n := 0
-	while not dirty.is_empty() and n < budget:
-		var ci: int = dirty.keys()[0]
-		dirty.erase(ci)
-		_rebuild_cluster(ci)
-		n += 1
+	for step in budget:
+		if not _borders.is_empty():
+			var edge := _borders.pop_back() as Vector2i
+			_clear_border(edge.x, edge.y)
+			_make_border(edge.x, edge.y)
+		elif _active_ci >= 0:
+			if _pair_i >= _active_nodes.size() - 1:
+				_active_ci = -1
+				continue
+			var a: int = _active_nodes[_pair_i]
+			var b: int = _active_nodes[_pair_j]
+			var cost := _local_cost(local_grid(_active_ci), node_cell[a], node_cell[b])
+			if cost >= 0.0:
+				_link(a, b, cost, _active_ci, null)
+			_pair_j += 1
+			if _pair_j >= _active_nodes.size():
+				_pair_i += 1
+				_pair_j = _pair_i + 1
+		elif not _intra_queue.is_empty():
+			_active_ci = _intra_queue.pop_front()
+			_clear_intra(_active_ci)
+			_active_nodes = cl_nodes[_active_ci]
+			_pair_i = 0
+			_pair_j = 1
+		elif not dirty.is_empty():
+			var ci: int = dirty.keys()[0]
+			dirty.erase(ci)
+			_queue_cluster(ci)
+		else:
+			return
 
 
-func _rebuild_cluster(ci: int) -> void:
+func _queue_cluster(ci: int) -> void:
 	var cx := ci % NC
 	var cz := ci / NC
 	var nbs := []
@@ -124,12 +197,10 @@ func _rebuild_cluster(ci: int) -> void:
 	if cz < NC - 1:
 		nbs.append(ci + NC)
 	for nb in nbs:
-		_clear_border(mini(ci, nb), maxi(ci, nb))
+		_borders.append(Vector2i(mini(ci, nb), maxi(ci, nb)))
+	_intra_queue.append(ci)
 	for nb in nbs:
-		_make_border(mini(ci, nb), maxi(ci, nb))
-	_intra(ci)
-	for nb in nbs:
-		_intra(nb)
+		_intra_queue.append(nb)
 
 
 # --- graph plumbing (all three copies move together) --------------------------------------
@@ -273,15 +344,19 @@ func _make_border(a: int, b: int) -> void:
 
 
 ## True costs between every pair of entrances inside one cluster.
-func _intra(ci: int) -> void:
+func _clear_intra(ci: int) -> void:
 	for m in cl_mids[ci]:
 		_g_remove(m)
 	for id in cl_nodes[ci]:
 		for other in cl_nodes[ci]:
 			mids.erase(_key(id, other))
 	cl_mids[ci] = []
+
+
+func _intra(ci: int) -> void:
+	_clear_intra(ci)
 	var nodes: Array = cl_nodes[ci]
-	var lg: AStarGrid2D = local[ci]
+	var lg := local_grid(ci)
 	for i in nodes.size():
 		for j in range(i + 1, nodes.size()):
 			var a: int = nodes[i]
@@ -318,6 +393,8 @@ func set_danger(team: int, values: PackedFloat32Array) -> void:
 	for ci in NC * NC:
 		if absf(old[ci] - values[ci]) < 0.05:
 			continue
+		revision += 1
+		danger_revision[team] += 1
 		var f := 1.0 + values[ci]
 		for id in cl_nodes[ci]:
 			g.set_point_weight_scale(id, f)
@@ -344,8 +421,8 @@ func route(a: Vector2i, b: Vector2i, team: int, care: float) -> Array[Vector2i]:
 	var temp := []
 	_g_add(s_id, Vector3(a.x + 0.5, 0, a.y + 0.5), ca)
 	_g_add(g_id, Vector3(b.x + 0.5, 0, b.y + 0.5), cb)
-	var la: AStarGrid2D = local[ca]
-	var lb: AStarGrid2D = local[cb]
+	var la := local_grid(ca)
+	var lb := local_grid(cb)
 	for id in cl_nodes[ca]:
 		var c := _local_cost(la, a, node_cell[id])
 		if c >= 0.0:

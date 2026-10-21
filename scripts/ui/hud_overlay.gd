@@ -8,6 +8,7 @@ var _sel_sids := {}
 var _pt := 0
 var _team_structs: Array = []
 var _ts_t := 0
+var _groups_at := -1000
 const CLOSE_Z := 22.0
 const FAR_Z := 42.0
 
@@ -70,7 +71,7 @@ func _draw() -> void:
 	_mark("orders")
 	if not w.mission_info.is_empty() and int(w.mission_info.get("over", 0)) == 0:
 		_mission_marks(cam, vs)
-	var men := _men_on_screen(cam, vs)
+	var men := _men_on_screen(cam, vs) if a_close + a_mid > 0.0 else []
 	_mark("men on screen")
 	if a_close > 0.0:
 		_interactions(cam, men, a_close)
@@ -342,10 +343,15 @@ func _ground_arrow(a: Vector3, b: Vector3, col: Color) -> void:
 # --- levels of detail -------------------------------------------------------
 
 func _build_groups(inp) -> void:
-	_groups.clear()
 	_sel_sids.clear()
 	for sid in inp.sel_squads:
 		_sel_sids[sid] = true
+	# Membership and squad markers are an overview; selection stays immediate.
+	var now := Time.get_ticks_msec()
+	if now - _groups_at < 100:
+		return
+	_groups_at = now
+	_groups.clear()
 	for s in hud.world.soldiers:
 		if s.sid == 0 or not s.visible or s.life == Soldier.Life.HIDDEN:
 			continue
@@ -493,7 +499,15 @@ func _ground_path(a: Vector3, b: Vector3, col: Color, alpha: float, grow: float,
 	if l < 1.5:
 		return
 	var dir := d.normalized()
-	var n := maxi(2, int(l / 2.5))
+	var start := Vector3(a.x, 0.3, a.z)
+	var end := start + dir * l
+	if cam.is_position_behind(start) or cam.is_position_behind(end):
+		return
+	var bounds := Rect2(cam.unproject_position(start), Vector2.ZERO).expand(cam.unproject_position(end))
+	if not bounds.grow(20.0).intersects(get_viewport_rect()):
+		return
+	# Solid orders are straight on the flat ground; only dashes need samples.
+	var n := maxi(2, int(l / 2.5)) if dashed else 1
 	var pts := PackedVector2Array()
 	for i in n + 1:
 		var p := a + dir * (l * i / n)
@@ -504,9 +518,12 @@ func _ground_path(a: Vector3, b: Vector3, col: Color, alpha: float, grow: float,
 	var c := Color(col.r, col.g, col.b, alpha)
 	var sh := Color(0, 0, 0, alpha * 0.45)
 	if dashed:
+		var segments := PackedVector2Array()
 		for i in range(0, pts.size() - 1, 2):
-			draw_line(pts[i], pts[i + 1], sh, width + 2.0, true)
-			draw_line(pts[i], pts[i + 1], c, width, true)
+			segments.append(pts[i])
+			segments.append(pts[i + 1])
+		draw_multiline(segments, sh, width + 2.0, true)
+		draw_multiline(segments, c, width, true)
 	else:
 		draw_polyline(pts, sh, width + 2.0, true)
 		draw_polyline(pts, c, width, true)
@@ -535,9 +552,12 @@ func _dashed_ring(c3: Vector3, r: float, col: Color, alpha: float) -> void:
 			return
 		pts.append(cam.unproject_position(p))
 	var c := Color(col.r, col.g, col.b, alpha)
+	var segments := PackedVector2Array()
 	for i in range(0, pts.size() - 1, 2):
-		draw_line(pts[i], pts[i + 1], Color(0, 0, 0, alpha * 0.4), 4.0, true)
-		draw_line(pts[i], pts[i + 1], c, 2.0, true)
+		segments.append(pts[i])
+		segments.append(pts[i + 1])
+	draw_multiline(segments, Color(0, 0, 0, alpha * 0.4), 4.0, true)
+	draw_multiline(segments, c, 2.0, true)
 
 ## Each town's ground as a ring in its holder's colours (the town's own while
 ## nobody holds it) when the camera is over it, and whenever someone is
@@ -610,7 +630,7 @@ func _defend_arc(c3: Vector3, face: Vector3, col: Color, alpha: float) -> void:
 	var base := atan2(face.z, face.x) if face.length() > 0.1 else -PI * 0.5
 	var r := 7.0
 	var pts := PackedVector2Array()
-	var ticks := []
+	var ticks := PackedVector2Array()
 	for i in 15:
 		var ang := base + deg_to_rad(-70.0 + i * 10.0)
 		var dv := Vector3(cos(ang), 0, sin(ang))
@@ -620,12 +640,12 @@ func _defend_arc(c3: Vector3, face: Vector3, col: Color, alpha: float) -> void:
 			return
 		pts.append(cam.unproject_position(p))
 		if i % 2 == 1:
-			ticks.append([p, p + dv * 1.4])
+			ticks.append(pts[pts.size() - 1])
+			ticks.append(cam.unproject_position(p + dv * 1.4))
 	var c := Color(col.r, col.g, col.b, alpha)
 	draw_polyline(pts, Color(0, 0, 0, alpha * 0.45), 5.0, true)
 	draw_polyline(pts, c, 3.0, true)
-	for t in ticks:
-		draw_line(cam.unproject_position(t[0]), cam.unproject_position(t[1]), c, 2.0, true)
+	draw_multiline(ticks, c, 2.0, true)
 
 ## Who's dealing with whom, close up: chat partners, a medic and his patient,
 ## a guard and his prisoner.

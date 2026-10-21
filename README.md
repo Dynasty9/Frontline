@@ -14,7 +14,7 @@ Frontline is a real-time strategy game about modern infantry combat. You command
 
 Your soldiers take cover behind real walls and wrecks, keep their heads down under fire, drag their wounded to safety and throw enemy grenades back. Squads leapfrog forward one team at a time, clear houses room by room, set ambushes on the roads, and break and run when a fight goes badly. Tanks pop smoke when a missile is fired at them. Shellfire sets woods, hedgerows, roofs and cars alight, and the fire spreads with the wind and drives men out of their cover. Boats land raiding parties on the beach, and helicopters carry vehicles to the front on a cable.
 
-You can play alone against the computer, team up with friends against it, or fight each other online. The battlefield is a square kilometre of countryside with a town, villages, a river and the sea.
+You can play alone against the computer, team up with friends against it, or fight each other online. Desktop skirmishes offer 1,024, 2,048 and 3,072 metre square battlefields. Single-player simulation runs in its own local process so combat does not block drawing the battlefield. Larger maps need more memory; see the measured workloads in [simulation scaling](docs/SIMULATION_SCALING.md).
 
 Everything you see and hear is made in code, the music included. There are no imported 3D models, textures or sound files.
 

@@ -1,0 +1,30 @@
++++
+title = "Large-battle simulation and rendering improvements"
+summary = "Desktop solo battles run simulation separately, share more AI work, and draw distant soldiers more efficiently. Skirmishes offer maps up to 3,072 metres across."
+kind = "improved"
+
+[[screenshots]]
+file = "before.png"
+caption = "The earlier 500-soldier rendering test on a 1,024 metre map."
+
+[[screenshots]]
+file = "after.png"
+caption = "A full generated 3,072 metre battlefield, started with 480 soldiers and 20 vehicles. The 60 FPS target remains under validation."
++++
+
+- Static scenery no longer runs an empty building simulation every tick. Fire and combat still affect it.
+- Supply and unit-cap checks search the bases directly, including changes from construction, capture and destruction.
+- Performance diagnostics now distinguish sustained simulation cost from occasional slow ticks.
+- Updating nearby cover no longer rebuilds routes through ground whose movement cost has not changed.
+- Desktop solo battles and missions run their simulation separately from drawing, with pause, resume and reconnect support.
+- Skirmish setup offers 1,024, 2,048 and 3,072 metre square maps. Larger maps need more memory.
+- Squad members share threat assessments and building contacts; individual weapons, visibility and damage still work independently.
+- Distant soldiers share simpler animated poses, while close-up soldiers retain detailed movement.
+- Movement orders spread pathfinding work across ticks, including when buildings are destroyed or routes are blocked.
+- Updates include the native simulation helper as well as the game executable.
+
+- Explosions update nearby terrain textures and cosmetic ground collision instead of rebuilding the entire map.
+- Large maps load without drawing the partly built battlefield; the private simulation waits until loading finishes.
+- Static scenery replication and map placement avoid repeated whole-map searches.
+- Nearby scenery loads first; distant scenery is cached as you explore the map.
+- Nearby units can reuse checked movement corridors, while keeping their own destinations.

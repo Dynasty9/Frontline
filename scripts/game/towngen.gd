@@ -86,7 +86,7 @@ func _pave(p: Vector3, yaw: float, size: Vector3) -> void:
 
 
 func _reserve(p: Vector3, half: Vector2, yaw: float) -> void:
-	mg.placed.append([Vector2(p.x, p.z), half, yaw])
+	mg.reserve_space(Vector2(p.x, p.z), half, yaw)
 
 
 # --- the street plan ---------------------------------------------------------------
@@ -815,11 +815,11 @@ func roadside(cars: int, wrecks: int) -> void:
 ## Keep the scattered scenery out of town and off the roads; hand the street
 ## furniture to the world.
 func finish() -> void:
-	mg.clear.append([rect.get_center(), REACH + 4.0])
+	mg.reserve_clear(rect.get_center(), REACH + 4.0)
 	for hm in hamlets:
-		mg.clear.append([Vector2(hm.c.x, hm.c.z), 24.0])
+		mg.reserve_clear(Vector2(hm.c.x, hm.c.z), 24.0)
 	for poly in world.roads[2]:
 		var arr: PackedVector3Array = poly
 		for k in range(0, arr.size(), 2):
-			mg.clear.append([Vector2(arr[k].x, arr[k].z), 3.6])
+			mg.reserve_clear(Vector2(arr[k].x, arr[k].z), 3.6)
 	world.set_decor(decor, rect)

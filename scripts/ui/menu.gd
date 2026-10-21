@@ -29,6 +29,7 @@ var _ms_cards := {}
 var _ms_detail: VBoxContainer
 var _music_on := false
 var _op_side := 0  # 0 Coalition, 1 Rebels, -1 observe
+var _map_size := 1024
 var _side_cards := {}
 var _mood_chips := {}
 var _col: VBoxContainer
@@ -406,6 +407,13 @@ func _build_op_panel() -> void:
 		c.pressed.connect(func(): _pick_mood(mk))
 		flow.add_child(c)
 		_mood_chips[mk] = c
+	if not OS.has_feature("web"):
+		v.add_child(UiKit.label("Battlefield size", 15, UiKit.DIM, 600))
+		var dimensions := OptionButton.new()
+		for metres in [1024, 2048, 3072]:
+			dimensions.add_item("%d × %d m" % [metres, metres], metres)
+		dimensions.item_selected.connect(func(index: int): _map_size = dimensions.get_item_id(index))
+		v.add_child(dimensions)
 	var gap := Control.new()
 	gap.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	v.add_child(gap)
@@ -615,6 +623,10 @@ func _pick_mission(key: String) -> void:
 func _mission_solo() -> void:
 	var m := Missions.find(_ms_key)
 	ms_panel.visible = false
+	if not OS.has_feature("web"):
+		var local_err := LocalServer.launch({"mission": _ms_key, "ai_fill": true}, int(m.side))
+		status.text = "Starting simulation..." if local_err == OK else "Could not start the mission (error %d)." % local_err
+		return
 	var port := int(port_spin.value)
 	var err := ERR_CANT_CREATE
 	for i in 5:
@@ -723,6 +735,10 @@ func _show_lobby() -> void:
 
 
 func _single_player(side := 0) -> void:
+	if not OS.has_feature("web"):
+		var local_err := LocalServer.launch({"ai_fill": true, "map_size": _map_size}, side)
+		status.text = "Starting simulation..." if local_err == OK else "Could not start a local game (error %d)." % local_err
+		return
 	var port := int(port_spin.value)
 	var err := ERR_CANT_CREATE
 	for i in 5:
@@ -737,6 +753,10 @@ func _single_player(side := 0) -> void:
 
 
 func _observe() -> void:
+	if not OS.has_feature("web"):
+		var local_err := LocalServer.launch({"ai_fill": true, "map_size": _map_size}, -1)
+		status.text = "Starting simulation..." if local_err == OK else "Could not start (error %d)." % local_err
+		return
 	var port := int(port_spin.value)
 	var err := ERR_CANT_CREATE
 	for i in 5:

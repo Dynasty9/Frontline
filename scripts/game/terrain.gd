@@ -8,8 +8,8 @@ extends RefCounted
 ## the same data (map seed, roads, structures, explosions) and patched as
 ## things are built, destroyed or blown into craters.
 
-const N := MapDims.N
-const H := MapDims.HALF
+static var N := 1024
+static var H := 512.0
 
 enum {GROUND, ROAD, WOODS, MUD, CRATER, RUBBLE, TRENCH, WATER, SHALLOW}
 const KIND_NAMES := ["Open ground", "Road", "Woods", "Mud", "Crater", "Rubble", "Trench", "Deep water", "Shallows"]
@@ -43,9 +43,9 @@ var version := 0  # bumps whenever cover / kinds change (UI caches)
 ## men lie in the same holes everywhere. Clients draw it (the ground mesh is
 ## displaced by it) and the physics ground follows it.
 const DRES := 2  # 50 cm, like the ground mesh (a 512 m map at 25 cm would be 16 MB per upload)
-const DN := N * DRES
+static var DN := 1024 * DRES
 var dh := PackedFloat32Array()
-var deform_dirty := Rect2i()  # samples changed since the view last looked
+var deform_dirty: Array[Rect2i] = []  # keep distant blasts separate instead of dirtying the ground between them
 var deform_img: Image  # (view only) the same heights as a texture
 
 
@@ -187,11 +187,17 @@ func in_trench(p: Vector3) -> bool:
 
 
 func concealment(p: Vector3) -> float:
-	var c := net_cover(p)
-	if in_trench(p):
+	var i := idx_of(p)
+	var c := 0.5 if netted[i] > 0 else 1.0
+	if trench[i] > 0:
 		return 0.7 * c
-	var k := kind_at(p)
-	return (0.6 if k == WOODS else (0.85 if k == CRATER else 1.0)) * c
+	if base[i] >= WATER:
+		return c
+	if crater[i] > 0:
+		return 0.85 * c
+	if rubble[i] == 0 and woods[i] > 0 and base[i] != ROAD:
+		return 0.6 * c
+	return c
 
 
 ## Under a camouflage net: whatever's there is seen at half the range.
@@ -266,17 +272,38 @@ func structure_changed(st, added := true) -> void:
 	if st.skind == "camo_net":
 		_nets_changed(st, added)
 		return
-	var r: float = st.radius + 1.6
-	var x0 := maxi(0, floori(st.position.x - r + H))
-	var x1 := mini(N - 1, floori(st.position.x + r + H))
-	var z0 := maxi(0, floori(st.position.z - r + H))
-	var z1 := mini(N - 1, floori(st.position.z + r + H))
+	if st.skind in ["floor", "wire", "mines", "tank_trap", "tunnel", "helipad"]:
+		return  # these never contribute cover, rubble or trench occupancy
+	# Long walls affect a strip of ground, not the large square around their
+	# circumscribed circle. Include every cover part and the footprint so thrown
+	# works, rubble and trench ends keep their existing cover behaviour.
+	var center := Vector2(st.position.x, st.position.z)
+	var extent := _rotated_extent(st.foot, st.yaw)
+	var bounds := Rect2(center - extent, extent * 2.0)
+	var basis := Basis(Vector3.UP, st.yaw)
+	for part in st.parts:
+		if not part.cover:
+			continue
+		var pos: Vector3 = st.position + basis * part.p
+		var half := _rotated_extent(Vector2(part.s.x, part.s.z) * 0.5, st.yaw + part.r)
+		bounds = bounds.merge(Rect2(Vector2(pos.x, pos.z) - half, half * 2.0))
+	bounds = bounds.grow(2.1)
+	var x0 := maxi(0, floori(bounds.position.x + H))
+	var x1 := mini(N - 1, floori(bounds.end.x + H))
+	var z0 := maxi(0, floori(bounds.position.y + H))
+	var z1 := mini(N - 1, floori(bounds.end.y + H))
 	for z in range(z0, z1 + 1):
 		for x in range(x0, x1 + 1):
 			var i := z * N + x
 			if not _dirty.has(i):
 				_dirty[i] = true
 				_queue.append(i)
+
+
+func _rotated_extent(half: Vector2, yaw: float) -> Vector2:
+	var c := absf(cos(yaw))
+	var s := absf(sin(yaw))
+	return Vector2(c * half.x + s * half.y, s * half.x + c * half.y)
 
 
 func _tree_woods(p: Vector3, delta: int) -> void:
@@ -515,7 +542,8 @@ func _stamp_crater(p: Vector3, size: float) -> void:
 			if deform_img:
 				deform_img.set_pixel(x, z, Color(dh[i], 0, 0))
 	var rect := Rect2i(x0, z0, x1 - x0 + 1, z1 - z0 + 1)
-	deform_dirty = rect if deform_dirty.size == Vector2i.ZERO else deform_dirty.merge(rect)
+	if deform_img:
+		deform_dirty.append(rect)
 
 
 # --- cover snapping (Company of Heroes style) ---------------------------------------------

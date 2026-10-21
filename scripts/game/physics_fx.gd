@@ -15,11 +15,14 @@ const L_RAGDOLL := 16
 const L_GROUND := 32
 const MAX_RAGDOLLS := 16
 const MAX_CHUNKS := 90
-const GROUND_N := MapDims.N + 1
+const GROUND_TILE := 32
+const GROUND_RADIUS := 6
 
 var world
 var ground: StaticBody3D
-var _hm: HeightMapShape3D
+var _ground_tiles := {}
+var _ground_dirty := {}
+var _ground_center := Vector2i(-999, -999)
 var _mat: PhysicsMaterial
 var _chunk_mat: PhysicsMaterial
 var ragdolls: Array = []
@@ -43,19 +46,15 @@ func _ready() -> void:
 	ground.collision_mask = 0
 	ground.physics_material_override = _mat
 	var cs := CollisionShape3D.new()
-	_hm = HeightMapShape3D.new()
-	_hm.map_width = GROUND_N
-	_hm.map_depth = GROUND_N
-	var data := PackedFloat32Array()
-	data.resize(GROUND_N * GROUND_N)
-	data.fill(0.0)
-	_hm.map_data = data
-	cs.shape = _hm
+	# A distant cosmetic fragment can fall out of the active tiles without
+	# falling forever. Detailed collision around the camera sits above this.
+	var fallback := WorldBoundaryShape3D.new()
+	fallback.plane = Plane(Vector3.UP, -2.0)
+	cs.shape = fallback
 	ground.add_child(cs)
 	add_child(ground)
 
 
-var _hdata := PackedFloat32Array()
 var _mask := PackedByteArray()
 
 
@@ -63,37 +62,73 @@ var _mask := PackedByteArray()
 ## only the area that changed (metres) is redone, all of it when that is empty.
 func update_ground(mask: PackedByteArray, area := Rect2()) -> void:
 	_mask = mask
-	var full := _hdata.size() != GROUND_N * GROUND_N or not area.has_area()
-	_hdata.resize(GROUND_N * GROUND_N)
-	var x0 := 0
-	var x1 := GROUND_N - 1
-	var z0 := 0
-	var z1 := GROUND_N - 1
-	if not full:
-		var h := (GROUND_N - 1) * 0.5
-		x0 = clampi(floori(area.position.x + h), 0, GROUND_N - 1)
-		x1 = clampi(ceili(area.end.x + h), 0, GROUND_N - 1)
-		z0 = clampi(floori(area.position.y + h), 0, GROUND_N - 1)
-		z1 = clampi(ceili(area.end.y + h), 0, GROUND_N - 1)
-	for z in range(z0, z1 + 1):
-		for x in range(x0, x1 + 1):
-			_hdata[z * GROUND_N + x] = _height(x, z)
-	_hm.map_data = _hdata
+	for key: Vector2i in _ground_tiles:
+		var bounds := Rect2(Vector2(key * GROUND_TILE) - Vector2.ONE * MapDims.HALF, Vector2.ONE * GROUND_TILE)
+		if not area.has_area() or bounds.grow(1.0).intersects(area):
+			_ground_dirty[key] = true
 
 
 ## Follows the shell holes (rect in terrain height samples).
 func update_deform(r: Rect2i) -> void:
-	if _hdata.size() != GROUND_N * GROUND_N:
-		_hdata.resize(GROUND_N * GROUND_N)
-	var k := TerrainMap.DRES
-	var x0 := clampi(r.position.x / k, 0, GROUND_N - 1)
-	var x1 := clampi(r.end.x / k + 1, 0, GROUND_N - 1)
-	var z0 := clampi(r.position.y / k, 0, GROUND_N - 1)
-	var z1 := clampi(r.end.y / k + 1, 0, GROUND_N - 1)
-	for z in range(z0, z1 + 1):
-		for x in range(x0, x1 + 1):
-			_hdata[z * GROUND_N + x] = _height(x, z)
-	_hm.map_data = _hdata
+	var area := Rect2(Vector2(r.position) / TerrainMap.DRES - Vector2.ONE * MapDims.HALF, Vector2(r.size) / TerrainMap.DRES)
+	update_ground(_mask, area)
+
+
+func _update_ground_tiles() -> void:
+	if world.cam == null:
+		return
+	var focus: Vector3 = world.cam.focus_pos
+	var center := Vector2i(floori((focus.x + MapDims.HALF) / GROUND_TILE), floori((focus.z + MapDims.HALF) / GROUND_TILE))
+	if center != _ground_center:
+		_ground_center = center
+		var wanted := {}
+		for radius in GROUND_RADIUS + 1:
+			for z in range(-radius, radius + 1):
+				for x in range(-radius, radius + 1):
+					if maxi(absi(x), absi(z)) != radius:
+						continue
+					var key := center + Vector2i(x, z)
+					if key.x < 0 or key.y < 0 or key.x >= MapDims.N / GROUND_TILE or key.y >= MapDims.N / GROUND_TILE:
+						continue
+					wanted[key] = true
+					if not _ground_tiles.has(key):
+						_ground_dirty[key] = true
+		for key in _ground_tiles.keys():
+			if not wanted.has(key):
+				(_ground_tiles[key].body as StaticBody3D).queue_free()
+				_ground_tiles.erase(key)
+		for key in _ground_dirty.keys():
+			if not wanted.has(key):
+				_ground_dirty.erase(key)
+	for i in mini(2, _ground_dirty.size()):
+		var key: Vector2i = _ground_dirty.keys()[0]
+		_ground_dirty.erase(key)
+		_rebuild_ground_tile(key)
+
+
+func _rebuild_ground_tile(key: Vector2i) -> void:
+	var tile: Dictionary = _ground_tiles.get(key, {})
+	if tile.is_empty():
+		var body := StaticBody3D.new()
+		body.collision_layer = L_GROUND
+		body.collision_mask = 0
+		body.physics_material_override = _mat
+		body.position = Vector3((key.x + 0.5) * GROUND_TILE - MapDims.HALF, 0, (key.y + 0.5) * GROUND_TILE - MapDims.HALF)
+		var shape := HeightMapShape3D.new()
+		shape.map_width = GROUND_TILE + 1
+		shape.map_depth = GROUND_TILE + 1
+		var collision := CollisionShape3D.new()
+		collision.shape = shape
+		body.add_child(collision)
+		add_child(body)
+		tile = {"body": body, "shape": shape}
+		_ground_tiles[key] = tile
+	var data := PackedFloat32Array()
+	data.resize((GROUND_TILE + 1) * (GROUND_TILE + 1))
+	for z in GROUND_TILE + 1:
+		for x in GROUND_TILE + 1:
+			data[z * (GROUND_TILE + 1) + x] = _height(key.x * GROUND_TILE + x, key.y * GROUND_TILE + z)
+	(tile.shape as HeightMapShape3D).map_data = data
 
 
 func _height(x: int, z: int) -> float:
@@ -282,6 +317,9 @@ func _physics_process(_dt: float) -> void:
 
 
 func _process(dt: float) -> void:
+	var terrain_started := Time.get_ticks_usec()
+	_update_ground_tiles()
+	world.vp("cosmetic terrain collision", terrain_started)
 	var a := Engine.get_physics_interpolation_fraction()
 	for i in range(ragdolls.size() - 1, -1, -1):
 		var r = ragdolls[i]

@@ -3,8 +3,8 @@ extends RefCounted
 ## Two 1 m grids over the whole map (MapDims): one for infantry (low walls are vaultable,
 ## wire is slow), one for vehicles (walls are smashable, tank traps solid).
 
-const N := MapDims.N
-const H := MapDims.HALF
+static var N := 1024
+static var H := 512.0
 const FREE := 0
 const LOW := 1
 const SLOW := 2
@@ -21,6 +21,60 @@ var heat := PackedByteArray()  # per cell: how many fires burn close enough to h
 var terrain: TerrainMap
 var hnav_i = null  # hierarchical graphs over the two grids (see hnav.gd)
 var hnav_v = null
+var _path_jobs := {}
+var _path_order: Array[int] = []
+var _path_head := 0
+var path_queue_peak := 0
+var path_wait_max_ms := 0.0
+var path_cache_hits := 0
+var _route_cache := {}
+const ROUTE_CACHE_LIMIT := 128
+
+
+func request_path(unit: Entity, destination: Vector3, vehicle: bool, team: int, care: float, done: Callable) -> void:
+	var id := unit.eid
+	if not _path_jobs.has(id):
+		_path_order.append(id)
+	_path_jobs[id] = [weakref(unit), destination, vehicle, team, care, done, Time.get_ticks_msec()]
+	path_queue_peak = maxi(path_queue_peak, _path_jobs.size())
+
+
+func cancel_path(id: int) -> void:
+	_path_jobs.erase(id)
+
+
+func process_paths(max_jobs := 4) -> void:
+	# Fixed quotas keep command completion independent of machine speed.
+	# Each query uses bounded local grids and the abstract graph.
+	var count := 0
+	var end := _path_order.size()
+	while _path_head < end and count < max_jobs:
+		var id := _path_order[_path_head]
+		_path_head += 1
+		var job: Array = _path_jobs.get(id, [])
+		_path_jobs.erase(id)
+		if job.is_empty():
+			continue
+		var unit: Entity = job[0].get_ref()
+		if unit == null or unit.gone:
+			continue
+		path_wait_max_ms = maxf(path_wait_max_ms, Time.get_ticks_msec() - int(job[6]))
+		var result := find_path(unit.position, job[1], job[2], job[3], job[4])
+		count += 1
+		var hierarchy: HNav = hnav_v if job[2] else hnav_i
+		if result.is_empty() and hierarchy.has_work():
+			# Missing edges during rebuilding do not mean unreachable. Retry
+			# next tick, while unaffected orders can still make progress.
+			_path_jobs[id] = job
+			_path_order.append(id)
+			continue
+		(job[5] as Callable).call(result)
+	if _path_head == _path_order.size():
+		_path_order.clear()
+		_path_head = 0
+	elif _path_head >= 1024:
+		_path_order = _path_order.slice(_path_head)
+		_path_head = 0
 
 
 func _init() -> void:
@@ -185,16 +239,15 @@ func finalize() -> void:
 	hnav_v.build()
 
 
-## Re-links clusters whose walls changed, within a small time budget per tick
+## Re-links clusters whose walls changed, with a fixed work quota per tick
 ## (a road being laid or a village flattened dirties dozens at once).
-func update_hier(budget_usec := 1200) -> void:
-	var t0 := Time.get_ticks_usec()
+func update_hier(work_items := 48) -> void:
 	var turn := 0
-	while Time.get_ticks_usec() - t0 < budget_usec:
+	while turn < work_items:
 		var h: HNav = hnav_i if turn % 2 == 0 else hnav_v
 		var other: HNav = hnav_v if turn % 2 == 0 else hnav_i
-		if h.dirty.is_empty():
-			if other.dirty.is_empty():
+		if not h.has_work():
+			if not other.has_work():
 				return
 		else:
 			h.update(1)
@@ -348,9 +401,29 @@ func nearest_walkable(p: Vector3, vehicle := false) -> Vector3:
 	return center(_nearest_free(g, c))
 
 
+## Optional diagnostics for the --perf-at measurement window.
+var profile_paths := false
+var path_calls := 0
+var path_usec := 0
+var path_max_usec := 0
+var path_fallbacks := 0
+
+
 ## `team` and `care` (0 = shortest, 1+ = keep well clear of known enemy fire)
 ## feed the tactical cost of the hierarchical planner used for longer trips.
 func find_path(from: Vector3, to: Vector3, vehicle := false, team := -1, care := 0.0) -> PackedVector3Array:
+	if not profile_paths:
+		return _find_path(from, to, vehicle, team, care)
+	var start := Time.get_ticks_usec()
+	var result := _find_path(from, to, vehicle, team, care)
+	var elapsed := Time.get_ticks_usec() - start
+	path_calls += 1
+	path_usec += elapsed
+	path_max_usec = maxi(path_max_usec, elapsed)
+	return result
+
+
+func _find_path(from: Vector3, to: Vector3, vehicle: bool, team: int, care: float) -> PackedVector3Array:
 	var g := veh if vehicle else inf
 	var a := cell_of(from)
 	var b := cell_of(to)
@@ -366,11 +439,30 @@ func find_path(from: Vector3, to: Vector3, vehicle := false, team := -1, care :=
 		return out
 	var ids: Array[Vector2i] = []
 	var h: HNav = hnav_v if vehicle else hnav_i
-	var span := maxi(absi(a.x - b.x), absi(a.y - b.y))
-	if h and h.built and (span > 40 or (care > 0.0 and span > 20)):
+	var graph := 1 if vehicle else 0
+	var policy := team if care > 0.0 and team >= 0 and team < 2 else -1
+	# One side's changing threat picture does not invalidate the other side's
+	# routes, or a short move that never considered danger in the first place.
+	var danger_version: int = h.danger_revision[policy] if policy >= 0 else 0
+	var cache_key := "%d:%d:%d:%d:%d:%d:%d:%d" % [graph, policy, h.terrain_revision, danger_version, a.x / 32, a.y / 32, b.x / 32, b.y / 32]
+	if end_exact and _route_cache.has(cache_key):
+		var cached: PackedVector3Array = _route_cache[cache_key]
+		var last_from: Vector3 = from if cached.size() == 1 else cached[cached.size() - 2]
+		var first_to: Vector3 = to if cached.size() == 1 else cached[0]
+		if _line_free(from, first_to, vehicle) and _line_free(last_from, to, vehicle):
+			var reused := cached.duplicate()
+			reused[reused.size() - 1] = Vector3(to.x, 0, to.z)
+			path_cache_hits += 1
+			return reused
+	if h and h.built:
 		ids = _hier_path(h, g, a, b, team, care)
-	if ids.is_empty():
-		ids = g.get_id_path(a, b, true)
+	else:
+		if profile_paths:
+			path_fallbacks += 1
+		# Only loading tools may query before finalization. Keep that search
+		# inside one small cluster; never search the entire map on failure.
+		if h.cluster_of(a) == h.cluster_of(b):
+			ids = h.local_grid(h.cluster_of(a)).get_id_path(a, b)
 	if ids.is_empty():
 		return out
 	var pts: Array = []
@@ -390,12 +482,24 @@ func find_path(from: Vector3, to: Vector3, vehicle := false, team := -1, care :=
 			j -= 1
 		out.append(pts[j])
 		i = j
+	# Nearby members can follow the same corridor. Check their own first and
+	# last legs, and discard every cached route when terrain or danger changes.
+	if end_exact and not out.is_empty() and not h.has_work():
+		if _route_cache.size() >= ROUTE_CACHE_LIMIT:
+			_route_cache.erase(_route_cache.keys()[0])
+		_route_cache[cache_key] = out
 	return out
 
 
 ## Abstract route, then each leg refined on the cluster's own small grid.
 func _hier_path(h: HNav, g: AStarGrid2D, a: Vector2i, b: Vector2i, team: int, care: float) -> Array[Vector2i]:
 	var out: Array[Vector2i] = []
+	# A man shifting a few metres within one cluster can use that small grid.
+	# If a wall divides it, the abstract graph can still find a way around.
+	if h.cluster_of(a) == h.cluster_of(b):
+		out = h.local_grid(h.cluster_of(a)).get_id_path(a, b)
+		if not out.is_empty():
+			return out
 	var wps: Array[Vector2i] = h.route(a, b, team, care)
 	if wps.size() < 2:
 		return out
@@ -406,14 +510,14 @@ func _hier_path(h: HNav, g: AStarGrid2D, a: Vector2i, b: Vector2i, team: int, ca
 		if p == q:
 			continue
 		if absi(p.x - q.x) <= 1 and absi(p.y - q.y) <= 1:
+			if g.is_point_solid(p) or g.is_point_solid(q):
+				return []
 			out.append(q)
 			continue
 		var cp := h.cluster_of(p)
 		var seg: Array[Vector2i] = []
 		if cp == h.cluster_of(q):
-			seg = (h.local[cp] as AStarGrid2D).get_id_path(p, q)
-		if seg.is_empty():
-			seg = g.get_id_path(p, q)
+			seg = h.local_grid(cp).get_id_path(p, q)
 		if seg.is_empty():
 			out.clear()
 			return out

@@ -26,8 +26,24 @@ var _shot_done := false
 var _shot_i := 0
 var _perf_t0 := 0
 var _perf_frames := 0
+var _perf_started := false
+var _perf_frame_us := 0
+var _perf_frame_samples: Array[float] = []
+var _perf_render_cpu: Array[float] = []
+var _perf_render_gpu: Array[float] = []
+var _perf_process: Array[float] = []
 var _curtains := false  # intro and loading screens (normal launches; tests skip them)
 var _curtain_layer: CanvasLayer
+
+
+func _sample_report(values: Array[float]) -> Dictionary:
+	if values.is_empty():
+		return {"count": 0}
+	var sorted := values.duplicate()
+	sorted.sort()
+	return {"count": sorted.size(), "p50_ms": sorted[sorted.size() / 2],
+		"p95_ms": sorted[mini(sorted.size() - 1, ceili(sorted.size() * 0.95) - 1)],
+		"p99_ms": sorted[mini(sorted.size() - 1, ceili(sorted.size() * 0.99) - 1)], "max_ms": sorted.back()}
 
 
 func _ready() -> void:
@@ -38,6 +54,14 @@ func _ready() -> void:
 		if s.begins_with("--"):
 			var kv := s.substr(2).split("=", true, 1)
 			args[kv[0]] = kv[1] if kv.size() > 1 else "1"
+	if args.has("perf-at"):
+		Engine.max_fps = 0
+		if DisplayServer.get_name() != "headless":
+			DisplayServer.window_set_vsync_mode(DisplayServer.VSYNC_DISABLED)
+	if args.has("managed-server"):
+		Net.game_start.connect(_on_game_start)
+		LocalServer.start_child(String(args["managed-server"]))
+		return
 	if args.has("offscreen") and DisplayServer.get_name() != "headless":
 		# renders for tooling (model sheets): the window starts minimized (the
 		# render copy's override.cfg) and is moved far off-screen before it's
@@ -110,12 +134,42 @@ func _ready() -> void:
 	var port := int(args.get("port", Net.DEFAULT_PORT))
 	if args.has("login"):
 		await _test_login()
-	if args.has("scenario"):
+	if args.has("local-server"):
+		var options := {"ai_fill": not args.has("scenario"), "fixed_seed": int(args.get("seed", 3)), "stress_units": int(args.get("units", 500)), "stress_mode": String(args.get("stress-mode", "combat")), "stress_scenery": int(args.get("scenery", 200))}
+		options["map_size"] = int(args.get("map-size", 1024))
+		options["benchmark_output"] = String(args.get("perf-json", ""))
+		options["stress_generated"] = args.has("stress-generated")
+		options["stress_vehicles"] = int(args.get("vehicles", 0))
+		if args.has("stress-commanders"):
+			options["ai_fill"] = true
+		if args.has("perf-at"):
+			options["perf_at"] = float(args["perf-at"])
+			options["perf_duration"] = float(args.get("perf-duration", 10))
+		if args.has("scenario"):
+			options["scenario"] = String(args.scenario)
+			options["scenario_player"] = args.has("play")
+		if args.has("mission"):
+			options["mission"] = String(args.mission)
+			options["mission_autoplay"] = args.has("autoplay") or not args.has("play")
+		var err := LocalServer.launch(options, int(args.get("team", -1)))
+		if err != OK:
+			push_error("Local server launch failed: %d" % err)
+			get_tree().quit(1)
+	elif args.has("scenario"):
 		# --play: command the Coalition side yourself instead of watching
 		Net.host_game(port, 0 if args.has("play") else -1)
 		Net.set_setting("scenario", String(args.scenario))
+		if args.has("seed"):
+			Net.set_setting("fixed_seed", int(args.seed))
+		Net.set_setting("stress_units", int(args.get("units", 500)))
+		Net.set_setting("stress_vehicles", int(args.get("vehicles", 0)))
+		Net.set_setting("stress_generated", args.has("stress-generated"))
+		Net.set_setting("gdscript_perception", args.has("gdscript-perception"))
+		Net.set_setting("map_size", int(args.get("map-size", 1024)))
+		Net.set_setting("stress_mode", String(args.get("stress-mode", "combat")))
+		Net.set_setting("stress_scenery", int(args.get("scenery", 200)))
 		Net.set_setting("scenario_player", args.has("play"))
-		Net.set_setting("ai_fill", false)
+		Net.set_setting("ai_fill", args.has("stress-commanders"))
 		Net.set_setting("debug_trucks", args.has("debug-trucks"))
 		Net.set_setting("debug", true)
 		Net.set_setting("debug_cover", args.has("debug-cover"))
@@ -123,6 +177,7 @@ func _ready() -> void:
 		Net.start_game()
 	elif args.has("aivai"):
 		Net.host_game(port, -1)
+		Net.set_setting("map_size", int(args.get("map-size", 1024)))
 		if args.has("seed"):
 			Net.set_setting("fixed_seed", int(args.seed))
 		Net.set_setting("verbose", args.has("verbose"))
@@ -147,6 +202,7 @@ func _ready() -> void:
 			Net.set_setting("mission", String(args.mission))
 			Net.set_setting("mission_autoplay", args.has("autoplay"))
 		Net.set_setting("ai_allies", args.has("ai-allies"))
+		Net.set_setting("map_size", int(args.get("map-size", 1024)))
 		Net.set_setting("verbose", args.has("verbose"))
 		Net.set_setting("debug_trucks", args.has("debug-trucks"))
 		if not args.has("players"):
@@ -248,7 +304,8 @@ func _on_game_start(s: Dictionary) -> void:
 			# their world is small and the host's state is on its way)
 			await get_tree().process_frame
 			await get_tree().process_frame
-	menu.visible = false
+	if menu:
+		menu.visible = false
 	Settings.set_ui_menu(false)
 	if world:
 		world.name = "OldWorld"
@@ -474,7 +531,7 @@ func _warm_up(cur: Curtain) -> void:
 	cur.set_stage("Deploying forces", 0.72)
 	var f0 := Engine.get_frames_drawn()
 	var t0 := Time.get_ticks_msec()
-	while Engine.get_frames_drawn() < f0 + 24 or Time.get_ticks_msec() - t0 < 1100:
+	while world and (world.client_loading() or Engine.get_frames_drawn() < f0 + 24 or Time.get_ticks_msec() - t0 < 1100):
 		if not is_instance_valid(cur):
 			return
 		var k := clampf(float(Engine.get_frames_drawn() - f0) / 24.0, 0.0, 1.0)
@@ -486,6 +543,10 @@ func _warm_up(cur: Curtain) -> void:
 
 
 func return_to_menu(msg: String) -> void:
+	if args.has("perf-json"):
+		push_error("Benchmark interrupted: " + msg)
+		get_tree().quit(1)
+	LocalServer.stop()
 	if _curtains:
 		_intro()
 	if not args.has("timescale"):
@@ -600,6 +661,9 @@ func _process(_dt: float) -> void:
 			get_viewport().get_texture().get_image().save_png(String(args["menu-shot"]))
 			get_tree().quit()
 		return
+	if not world.srv and not world.has_meta("world_at") and not world.client_loading() and not world.entities.is_empty():
+		world.set_meta("world_at", world.time)
+	var view_time := world.time if world.srv else world.time - float(world.get_meta("world_at", CLIENT_WAIT))
 	# --trace=path.csv: every half second, where each man is and what he's doing
 	# (for plotting squad movement and posture over a fight)
 	if args.has("trace") and world.srv and world.time >= _trace_t:
@@ -629,7 +693,7 @@ func _process(_dt: float) -> void:
 	if _stats_every > 0.0 and world.srv and world.time >= _stats_t:
 		_stats_t = world.time + _stats_every
 		print(world.debug_stats())
-	if args.has("screenshot") and not _shot_done and world.time >= float(args.get("shot-at", 8.0)) + _shot_i * float(args.get("shot-every", 0.5)):
+	if args.has("screenshot") and not _shot_done and not world.client_loading() and view_time >= float(args.get("shot-at", 8.0)) + _shot_i * float(args.get("shot-every", 0.5)):
 		var path := String(args.screenshot)
 		var count := int(args.get("shots", 1))
 		if count > 1:
@@ -651,12 +715,37 @@ func _process(_dt: float) -> void:
 			if not args.has("quit-after"):
 				get_tree().quit()
 	if args.has("perf-at"):
+		if _perf_t0 > 0:
+			var frame_now := Time.get_ticks_usec()
+			if _perf_frame_us > 0:
+				_perf_frame_samples.append((frame_now - _perf_frame_us) / 1000.0)
+				if world.has_view:
+					var viewport := get_viewport().get_viewport_rid()
+					_perf_render_cpu.append(RenderingServer.viewport_get_measured_render_time_cpu(viewport) + RenderingServer.get_frame_setup_time_cpu())
+					_perf_render_gpu.append(RenderingServer.viewport_get_measured_render_time_gpu(viewport))
+					_perf_process.append(Performance.get_monitor(Performance.TIME_PROCESS) * 1000.0)
+			_perf_frame_us = frame_now
 		var pt := float(args["perf-at"])
-		if world.time >= pt and Engine.time_scale != 1.0:
+		if view_time >= pt and not world.client_loading() and not _perf_started:
+			_perf_started = true
 			Engine.time_scale = 1.0
 			_perf_t0 = Time.get_ticks_msec()
 			_perf_frames = Engine.get_frames_drawn()
-		elif _perf_t0 > 0 and Time.get_ticks_msec() - _perf_t0 > 10000:
+			_perf_frame_us = Time.get_ticks_usec()
+			_perf_frame_samples.clear()
+			_perf_render_cpu.clear()
+			_perf_render_gpu.clear()
+			_perf_process.clear()
+			if world.has_view:
+				RenderingServer.viewport_set_measure_render_time(get_viewport().get_viewport_rid(), true)
+			world.measured_ticks.clear()
+			world.measured_systems.clear()
+			world.measured_details.clear()
+			world.measured_views.clear()
+			world.measure_ticks = true
+			if world.nav:
+				world.nav.profile_paths = true
+		elif _perf_t0 > 0 and Time.get_ticks_msec() - _perf_t0 > maxf(1.0, float(args.get("perf-duration", 10))) * 1000.0:
 			var fps := float(Engine.get_frames_drawn() - _perf_frames) / ((Time.get_ticks_msec() - _perf_t0) / 1000.0)
 			# report once: with the clock cleared, a failure below can't repeat
 			# all of this every frame until something kills the run
@@ -666,6 +755,37 @@ func _process(_dt: float) -> void:
 				if s.life != Soldier.Life.DEAD:
 					alive += 1
 			print("PERF fps=%.1f server_tick_ms=%.2f entities=%d soldiers_alive=%d total_soldiers=%d vehicles=%d" % [fps, world.tick_ms, world.entities.size(), alive, world.soldiers.size(), world.vehicles.size()])
+			print("PERF systems_ms=", JSON.stringify(world.prof))
+			print("PERF nested_total_ms=", JSON.stringify(world.measured_details))
+			_perf_frame_samples.sort()
+			var report := {"rendered": DisplayServer.get_name() != "headless", "fps": fps,
+				"frames": _sample_report(_perf_frame_samples), "ticks": _sample_report(world.measured_ticks),
+				"render_cpu": _sample_report(_perf_render_cpu), "render_gpu": _sample_report(_perf_render_gpu), "process_cpu": _sample_report(_perf_process),
+				"static_memory_bytes": Performance.get_monitor(Performance.MEMORY_STATIC),
+				"nodes": Performance.get_monitor(Performance.OBJECT_NODE_COUNT), "map_m": MapDims.N,
+				"loading_ms": world.loading_ms.duplicate(),
+				"path_queue_peak": world.nav.path_queue_peak if world.nav else 0,
+				"path_cache_hits": world.nav.path_cache_hits if world.nav else 0,
+				"path_wait_max_ms": world.nav.path_wait_max_ms if world.nav else 0,
+				"draw_calls": Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME),
+				"render_objects": Performance.get_monitor(Performance.RENDER_TOTAL_OBJECTS_IN_FRAME),
+				"render_primitives": Performance.get_monitor(Performance.RENDER_TOTAL_PRIMITIVES_IN_FRAME),
+				"soldiers_alive": alive, "systems_total_ms": world.measured_systems.duplicate(),
+				"nested_total_ms": world.measured_details.duplicate(), "views_total_ms": world.measured_views.duplicate()}
+			print("BENCHMARK ", JSON.stringify(report))
+			if args.has("perf-json"):
+				var report_file := FileAccess.open(String(args["perf-json"]), FileAccess.WRITE)
+				if report_file:
+					report_file.store_string(JSON.stringify(report, "\t"))
+			var samples := world.measured_ticks
+			if not samples.is_empty():
+				samples.sort()
+				var means := {}
+				for key in world.measured_systems:
+					means[key] = float(world.measured_systems[key]) / samples.size()
+				print("PERF ticks=%d p50_ms=%.2f p95_ms=%.2f max_ms=%.2f means_ms=%s" % [samples.size(), samples[samples.size() / 2], samples[mini(samples.size() - 1, ceili(samples.size() * 0.95) - 1)], samples.back(), JSON.stringify(means)])
+			if world.nav:
+				print("PERF paths=%d total_path_ms=%.2f max_path_ms=%.2f grid_searches=%d" % [world.nav.path_calls, world.nav.path_usec / 1000.0, world.nav.path_max_usec / 1000.0, world.nav.path_fallbacks])
 			if OS.has_environment("FL_DEBUG_NODES"):
 				var counts := {}
 				var owners := {}
@@ -712,7 +832,11 @@ func _process(_dt: float) -> void:
 			var img: Image = get_viewport().get_texture().get_image() if DisplayServer.get_name() != "headless" else null
 			if img:
 				img.save_png(String(args.get("perf-shot", "user://perf.png")))
-			get_tree().quit()
+			world.measure_ticks = false
+			if world.nav:
+				world.nav.profile_paths = false
+			if not LocalServer.child and not args.has("quit-after"):
+				get_tree().quit()
 	if args.has("fx-demo"):
 		_fx_demo()
 	if args.has("shot-demo"):
@@ -943,12 +1067,10 @@ func _process(_dt: float) -> void:
 	# host only answers once it has laid out the map (and, with a window, drawn
 	# its first frame - a minute or more off-screen), and a client counting from
 	# its own empty world can give up before it has been sent anything
-	if not world.srv and not world.has_meta("world_at") and not world.entities.is_empty():
-		world.set_meta("world_at", world.time)
 	var run_t := world.time
 	if not world.srv:
 		run_t = world.time - float(world.get_meta("world_at", CLIENT_WAIT))
-	if _quit_at > 0.0 and run_t >= _quit_at:
+	if _quit_at > 0.0 and run_t >= _quit_at and (world.srv or world.has_meta("world_at") or not LocalServer.connected):
 		_quit_at = -1.0
 		if args.has("dump-structs"):
 			_dump_structs()

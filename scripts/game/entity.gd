@@ -5,7 +5,11 @@ extends Node3D
 
 var world: World
 var eid := 0
-var team := -1
+var team := -1:
+	set(value):
+		team = value
+		if world != null and self is Structure:
+			world.refresh_owned_structure(self)
 var owner_peer := 0
 var hp := 100.0
 var max_hp := 100.0
@@ -13,7 +17,11 @@ var srv := false
 var gone := false
 var vis_mask := 0
 var seen_mask := 0
-var net_dirty := true
+var net_dirty := true:
+	set(value):
+		net_dirty = value
+		if value and world != null and self is Structure:
+			world.mark_static_dirty(self)
 var resend_t := 0.0
 var net_pos := Vector3.ZERO
 var net_yaw := 0.0

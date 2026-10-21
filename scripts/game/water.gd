@@ -231,7 +231,9 @@ func carve() -> void:
 		return
 	_mode = 1
 	_visit(TerrainMap.DRES)
-	tm.deform_dirty = Rect2i(0, 0, TerrainMap.DN, TerrainMap.DN)
+	if tm.deform_img:
+		tm.deform_dirty.clear()
+		tm.deform_dirty.append(Rect2i(0, 0, TerrainMap.DN, TerrainMap.DN))
 	version += 1
 
 

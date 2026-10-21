@@ -395,13 +395,12 @@ static func can_breach(s: Soldier) -> bool:
 	if cl != null and is_instance_valid(cl) and cl != s and not cl.gone and cl.life == Soldier.Life.ALIVE and cl.task == "breach":
 		return false
 	var mine := house_at(s.world, s.position)
-	for k in s.squad.known.values():
-		var e = k.e
-		# (a man in a house tends to stay there: seen there a while ago will do)
-		if not (e is Soldier) or e.gone or e.life != Soldier.Life.ALIVE or s.world.time - float(k.t) > 25.0:
+	for contact in s.squad.building_contacts():
+		var e: Soldier = contact[0]
+		var h: Structure = contact[1]
+		if not is_instance_valid(e) or not is_instance_valid(h) or e.gone or h.gone or e.life != Soldier.Life.ALIVE:
 			continue
-		var h := house_at(s.world, e.position)
-		if h == null or h == mine:
+		if h == mine:
 			continue
 		if Defs.flat(h.position - s.position).length() > 30.0 or Defs.flat(h.position - s.hold_pos).length() > 32.0:
 			continue

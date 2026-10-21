@@ -28,6 +28,8 @@ on:
       - export_presets.cfg
       - .github/workflows/release.yml
       - .github/scripts/**
+      - native/**
+      - tools/build_native.py
   workflow_dispatch:
     inputs:
       bump:
@@ -71,7 +73,7 @@ jobs:
           bump=patch
           if [ "$EVENT" = push ]; then
             # what the game is made of: a change anywhere else doesn't need a new build
-            game='^(scripts/|assets/|project\.godot$|main\.tscn$|export_presets\.cfg$|icon\.svg$)'
+            game='^(scripts/|assets/|native/|tools/build_native.py$|project\.godot$|main\.tscn$|export_presets\.cfg$|icon\.svg$)'
             if [ -z "$BEFORE" ] || [ "$BEFORE" = 0000000000000000000000000000000000000000 ] \
                || ! git cat-file -e "$BEFORE^{commit}" 2>/dev/null \
                || git diff --name-only "$BEFORE" "$GITHUB_SHA" | grep -qE "$game"; then
@@ -97,8 +99,28 @@ jobs:
             echo "version=$version"
           } >> "$GITHUB_OUTPUT"
 
-  build:
+  native:
     needs: plan
+    if: needs.plan.outputs.build == 'true'
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build simulation extension
+        run: |
+          rustup toolchain install 1.94.0 --profile minimal
+          python tools/build_native.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: native-${{ matrix.os }}
+          path: |
+            bin/native/*
+            frontline_sim.gdextension
+
+  build:
+    needs: [plan, native]
     if: needs.plan.outputs.build == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -107,6 +129,11 @@ jobs:
       VERSION: ${{ needs.plan.outputs.version }}
     steps:
       - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: native-*
+          merge-multiple: true
 
       - name: Cache Godot and export templates
         id: cache-godot
@@ -148,7 +175,9 @@ jobs:
           mkdir -p build/windows build/linux
           ~/godot/godot --headless --path . --export-release "Windows" build/windows/Frontline.exe 2>&1 | tee export.log
           ~/godot/godot --headless --path . --export-release "Linux" build/linux/Frontline.x86_64 2>&1 | tee -a export.log
+          if grep -E "SCRIPT ERROR|Parse Error|ERROR:" export.log; then exit 1; fi
           test -s build/windows/Frontline.exe && test -s build/linux/Frontline.x86_64
+          test -s build/windows/frontline_sim.dll && test -s build/linux/libfrontline_sim.so
           chmod +x build/linux/Frontline.x86_64
           for d in windows linux; do cp LICENSE build/$d/; (cd build/$d && zip -q -9 -r ../Frontline-$d.zip .); done
           ls -la build

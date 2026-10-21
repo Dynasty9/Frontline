@@ -158,16 +158,25 @@ func tick(dt: float) -> void:
 	_t_vis -= dt
 	if _t_vis <= 0.0:
 		_t_vis = 0.4
+		var stamp := Time.get_ticks_usec() if world.measure_ticks else 0
 		_visibility()
+		if stamp:
+			world.detail("rules visibility", stamp)
 	_t_sec -= dt
 	if _t_sec <= 0.0:
 		_t_sec = 1.0
 		_reserves()
 		_prisoners()
 		_check_victory()
+		var stamp := Time.get_ticks_usec() if world.measure_ticks else 0
 		_danger_maps()
+		if stamp:
+			world.detail("rules danger", stamp)
 	if world.mission == null:
+		var stamp := Time.get_ticks_usec() if world.measure_ticks else 0
 		_trucks(dt)  # (a mission's supply is what it's given)
+		if stamp:
+			world.detail("rules supply", stamp)
 
 
 func random_name(team: int) -> String:
@@ -243,7 +252,7 @@ func max_fob_supply(team: int) -> int:
 
 func fobs(team: int, include_wrecked := true) -> Array:
 	var out := []
-	for st in world.structures:
+	for st in world.fob_structures:
 		if st.skind == "fob" and st.team == team and st.built and (include_wrecked or not st.wrecked):
 			out.append(st)
 	return out
@@ -435,7 +444,7 @@ func mortar_target(team: int, from: Vector3, rmin: float, rmax: float) -> Vector
 		if sc > bs:
 			bs = sc
 			best = s.position
-	for st in world.structures:
+	for st in world.owned_structures:
 		if st.team == team or st.team < 0 or not st.built or not st.skind in ["mg_nest", "hmg_nest", "mortar_pit", "at_post", "bunker", "watchtower"]:
 			continue
 		if ((st.seen_mask >> team) & 1) == 0:
@@ -570,7 +579,7 @@ func route_to(f: Structure) -> PackedVector3Array:
 func _trucks(dt: float) -> void:
 	for tn in town_list:
 		_town_truck(tn, dt)
-	for st in world.structures:
+	for st in world.fob_structures:
 		if st.skind != "fob" or not st.built or st.team < 0:
 			continue
 		if st.truck and st.truck.gone:
@@ -986,7 +995,7 @@ func _free(s: Soldier) -> void:
 func _prison_dest(team: int, pos: Vector3) -> Structure:
 	var best: Structure = null
 	var bd := 1e9
-	for st in world.structures:
+	for st in world.owned_structures:
 		if st.team != team or not st.built:
 			continue
 		var ok: bool = st.skind == "fob" or (team == Defs.REBELS and st.skind == "tunnel")
@@ -1046,7 +1055,7 @@ func _give_intel(p: Soldier, mode: String) -> void:
 			if s.team == about and s.life == Soldier.Life.ALIVE:
 				n += 1
 		facts.append(["fob%d" % f.eid, "%s at %s has %d supply and %d men guarding it." % [f.display_name(), Defs.grid_ref(f.position), int(f.supply), n], f.position])
-	for st in world.structures:
+	for st in world.owned_structures:
 		if st.team != about or not st.built:
 			continue
 		var f := nearest_fob(about, st.position)
@@ -1130,7 +1139,7 @@ func _danger_maps() -> void:
 			if v.team == t or v.team < 0 or v.is_auto() or not v.visible_to_team(t):
 				continue
 			_threat(dm, v.position, 60.0, 3.0 if v.vdef.get("cannon", false) else 2.0)
-		for st in world.structures:
+		for st in world.owned_structures:
 			if st.team == t or st.team < 0 or not st.built or not ((st.seen_mask >> t) & 1):
 				continue
 			if st.skind in ["mg_nest", "hmg_nest", "bunker", "at_post"]:
@@ -1173,7 +1182,7 @@ func add_mark(team: int, p: Vector3, r: float, linger: float) -> void:
 func _visibility() -> void:
 	var cells := [{}, {}]
 	var own := [[], []]  # each side's buildings (the map's own - houses, trees, walls - see nothing)
-	for st in world.structures:
+	for st in world.owned_structures:
 		if st.team == 0 or st.team == 1:
 			own[st.team].append(st)
 	for t in 2:
@@ -1189,7 +1198,7 @@ func _visibility() -> void:
 		_vis_ent(v, cells)
 	for d in world.drones:
 		_vis_ent(d, cells)
-	for st in world.structures:
+	for st in world.owned_structures:
 		if st.team >= 0:
 			_vis_ent(st, cells)
 	if OS.has_environment("FL_DEBUG_VISION"):
@@ -1215,7 +1224,7 @@ func _debug_vision() -> void:
 			if e.team >= 0 and e.team != t and ((e.vis_mask >> t) & 1) == 1 and (not (e is Soldier) or e.life == Soldier.Life.ALIVE):
 				sees += 1
 		var towers := 0
-		for st in world.structures:
+		for st in world.owned_structures:
 			if st.team == t and st.skind == "watchtower" and st.manned:
 				towers += 1
 		line += "  | %s: eyes=%d aircraft=%d photos=%d manned_towers=%d sees=%d intel=%d" % [Defs.TEAM_NAMES[t], Vision.eyes(world, t, marks[t]).size(), air, (marks[t] as Array).size(), towers, sees, (sighted[t] as Dictionary).size()]

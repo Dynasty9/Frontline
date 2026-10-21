@@ -2,6 +2,51 @@
 
 How the code is laid out, and the command-line modes used to test it. See also [CONTRIBUTING](../CONTRIBUTING.md).
 
+## Scaling and the optional native extension
+
+Gameplay remains GDScript. A Rust GDExtension accelerates nearest-enemy candidate
+selection using numeric snapshots; individual visibility and combat stay in Godot.
+Install Rust 1.94.0 (`rustup toolchain install 1.94.0 --profile minimal`), then run
+`python tools/build_native.py` from the root. Re-import Godot afterward. A checkout
+without the generated extension uses the GDScript reference query. Release CI builds
+and includes native Windows/Linux libraries. Do not commit generated binaries.
+
+`--local-server` launches a private headless child using the current executable.
+Desktop solo menu actions do this automatically; `--host` retains the public host
+path. Local sessions bind loopback, require a random session token and protocol
+version, and stop when the owner exits. Logs are under `user://local_servers/`.
+
+Run a measured 500-unit case with:
+
+```powershell
+python tools/benchmark_scaling.py --godot "C:/path/to/Godot_console.exe" --rendered --local-server --map-size 3072 --duration 90 --output build/my-benchmark
+```
+
+Use `--exported` with an exported executable. Use a fresh output folder. The runner
+saves frame/tick percentiles, process RSS samples, logs and a screenshot. `--mode`
+selects `idle`, `march` or `combat`; `--zoom` changes the camera distance. Each
+standalone case obtains a separate UDP port. A headless result is not an FPS result.
+Use `--generated --commanders` to retain a full procedural landscape and strategic
+AI, and `--units=480 --vehicles=20` for a mixed force. `--width=1920 --height=1080`
+sets the render resolution; `--preset=high` is the runner's non-persistent default.
+For direct runs use `--scenario=stress --units=500 --map-size=2048 --seed=3`,
+`--perf-at=15 --perf-duration=10 --perf-json=ABSOLUTE_PATH`, and a unique `--port`.
+
+Regression scenes: `tests/structure_index_test.tscn`,
+`tests/perception_index_test.tscn`, `tests/navigation_budget_test.tscn`, and
+`tests/local_server_test.tscn`. The last launches a child and checks commands,
+pause/resume, ownership after reconnect, and process cleanup.
+`tests/client_loading_test.tscn` covers updates arriving before entity construction;
+`tests/map_placement_test.tscn` compares indexed placement with exhaustive overlap checks.
+`tests/snapshot_index_test.tscn` verifies bounded scenery refresh and initial-state privacy.
+`tests/terrain_cover_test.tscn` compares bounded cover changes with exhaustive recomputation.
+`tests/soldier_batch_test.tscn` checks spatial batching and generated mesh LOD; run it rendered as well to verify GPU transform buffers.
+`tests/terrain_updates_test.tscn` checks texture/collision seams and mesh boundaries;
+`tests/squad_assessment_test.tscn` checks shared assessment expiry and immediate
+new-contact handling. `tests/update_sidecars_test.tscn` checks executable/native
+library update staging. Run the full local suite with `python tools/check_scaling.py
+--godot C:/path/to/Godot_console.exe`.
+
 ## Settings and the performance overlay
 
 **Esc > Settings** (or Settings in the main menu): quality presets (Low / Medium / High / Ultra) and every
@@ -114,6 +159,19 @@ spawn/despawn/property events, and batched effect events. Clients interpolate. T
 to that team.
 
 ## Automated test modes
+
+`--perf-at=N` measures ten wall-clock seconds at normal speed after reaching N simulation
+seconds (use `--timescale=5` to fast-forward). It also works without fast-forwarding. The
+report includes per-tick median, p95 and maximum, mean system costs, and land-path query
+counts, total time, maximum time and full-grid search count. Path time is nested inside
+the calling system's time; do not add it to the total. Headless FPS is zero because no
+frames are rendered. The overlay's game-logic bar is time per rendered frame, which can
+contain several simulation ticks; its system table is time per tick.
+
+Run `godot --headless --path . res://tests/structure_index_test.tscn` for building-index
+lifecycle checks and a same-process FOB lookup comparison with 1,000 scenery objects.
+See [simulation scaling](SIMULATION_SCALING.md) for the performance investigation and
+the proposed route to larger maps and a separate simulation process.
 
 Pass these after `--` on the command line:
 
@@ -367,3 +425,13 @@ so remake it whenever the title or the map shader changes, so that the splash ha
 jump: run at 1920x1080 with `--curtain --intro-at=0 --menu-shot=assets/splash.png` (a held frame has no grain,
 which keeps the PNG small).
 
+
+### Additional scaling diagnostics
+
+`tests/structure_view_test.tscn` checks deferred scenery construction, camera-cell
+changes, removal, and construction finishing outside the visible region.
+The scaling runner includes this scene alongside the navigation and AI regressions.
+Benchmark JSON includes loading-stage timings, route-cache hits and path queue
+waiting time. `--require-target` makes the benchmark fail when any measured rendered
+frame exceeds 16.67 ms or any simulation tick exceeds 33.33 ms; ordinary runs retain
+these budget results without treating an unfinished optimization as a harness error.

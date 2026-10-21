@@ -5,7 +5,7 @@ extends Node3D
 ## progressively (a few chunks per frame) when the map or settings change.
 
 const CHUNK := 32.0
-const HALF := MapDims.HALF
+var HALF := MapDims.HALF
 
 var atmo: Atmosphere
 var mat: ShaderMaterial
@@ -45,7 +45,7 @@ func _ready() -> void:
 	request_rebuild(1.2)
 
 
-func set_deform(t: Texture2D) -> void:
+func set_deform(t: Texture2DArray) -> void:
 	mat.set_shader_parameter("deform_tex", t)
 	bush_mat.set_shader_parameter("deform_tex", t)
 
@@ -341,7 +341,8 @@ uniform vec3 dry_col : source_color = vec3(0.5, 0.45, 0.24);
 uniform float wind = 0.11;
 uniform sampler2D scar : hint_default_black, filter_linear, repeat_disable;
 uniform sampler2D trench_mask : hint_default_black, filter_linear, repeat_disable;
-uniform sampler2D deform_tex : hint_default_black, filter_linear, repeat_disable;
+uniform sampler2DArray deform_tex : filter_linear, repeat_disable;
+// TERRAIN_TEXTURE_HELPER
 
 varying float h;
 varying float g;
@@ -362,7 +363,7 @@ void vertex() {
 	VERTEX.y *= 1.0 - burnt * 0.85;
 	VERTEX.xz *= 1.0 + burnt * 0.4;
 	// stand on the ground as it is now (shell holes, rims)
-	VERTEX.y += textureLod(deform_tex, (o.xz + __MAP_HALF__) / __MAP_SIZE__, 0.0).r / max(0.05, length(MODEL_MATRIX[1].xyz));
+	VERTEX.y += terrain_height(deform_tex, (o.xz + __MAP_HALF__) / __MAP_SIZE__) / max(0.05, length(MODEL_MATRIX[1].xyz));
 	float t = TIME * 1.7 + o.x * 0.21 + o.z * 0.13;
 	float gust = 0.6 + 0.4 * sin(TIME * 0.35 + o.x * 0.02 + o.z * 0.015);
 	float sway = (sin(t) + 0.45 * sin(t * 2.7 + 1.3)) * wind * gust * h * h;
@@ -397,12 +398,13 @@ varying vec3 lp;
 varying float rnd;
 float hash(vec3 p) { return fract(sin(dot(p, vec3(127.1, 311.7, 74.7))) * 43758.5453); }
 uniform sampler2D trench_mask : hint_default_black, filter_linear, repeat_disable;
-uniform sampler2D deform_tex : hint_default_black, filter_linear, repeat_disable;
+uniform sampler2DArray deform_tex : filter_linear, repeat_disable;
+// TERRAIN_TEXTURE_HELPER
 void vertex() {
 	if (textureLod(trench_mask, (MODEL_MATRIX[3].xz + __MAP_HALF__) / __MAP_SIZE__, 0.0).r > 0.3) {
 		VERTEX *= 0.0;
 	}
-	float gd = textureLod(deform_tex, (MODEL_MATRIX[3].xz + __MAP_HALF__) / __MAP_SIZE__, 0.0).r;
+	float gd = terrain_height(deform_tex, (MODEL_MATRIX[3].xz + __MAP_HALF__) / __MAP_SIZE__);
 	if (gd < -0.12) {
 		VERTEX *= 0.0;  // blown away
 	}

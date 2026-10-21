@@ -18,6 +18,9 @@ var track_broken := false
 var track_fix := 0.0
 var path := PackedVector3Array()
 var path_i := 0
+var _path_revision := 0
+var path_pending := false
+var path_destination := Vector3.INF
 var target: Entity = null
 var forced_target: Entity = null
 var cannon_t := 2.0
@@ -212,7 +215,7 @@ func is_boat() -> bool:
 
 
 func is_moving() -> bool:
-	return path_i < path.size() or (is_heli() and velocity.length() > 0.5)
+	return path_pending or path_i < path.size() or (is_heli() and velocity.length() > 0.5)
 
 
 ## Missiles back to a full load (built with them; an ammo truck refills them).
@@ -300,7 +303,7 @@ func order_move(p: Vector3) -> void:
 	if is_boat():
 		path = world.nav.find_boat_path(position, p)
 	else:
-		path = world.nav.find_path(position, p, true, team, 0.5)
+		_request_ground_path(p, 0.5)
 	path_i = 0
 	_stuck_t = 0.0
 	_stuck_p = position
@@ -455,6 +458,23 @@ func order_sling(v: Vehicle) -> void:
 	world.stat("sling_order")
 
 
+func _request_ground_path(destination: Vector3, care: float) -> void:
+	_path_revision += 1
+	path_pending = true
+	path_destination = destination
+	var revision := _path_revision
+	path = PackedVector3Array()
+	path_i = 0
+	world.nav.request_path(self, destination, true, team, care, func(points: PackedVector3Array):
+		if revision != _path_revision:
+			return
+		path_pending = false
+		if gone or hp <= 0.0:
+			return
+		path = points
+		path_i = 0)
+
+
 func order_attack(t: Entity) -> void:
 	forced_target = t
 	if base() == "attack_heli":
@@ -465,11 +485,15 @@ func order_attack(t: Entity) -> void:
 		if is_boat():
 			path = world.nav.find_boat_path(position, t.position - d.normalized() * 40.0)
 		else:
-			path = world.nav.find_path(position, t.position - d.normalized() * 40.0, true, team, 0.2)
+			_request_ground_path(t.position - d.normalized() * 40.0, 0.2)
 		path_i = 0
 
 
 func order_stop() -> void:
+	_path_revision += 1
+	path_pending = false
+	path_destination = Vector3.INF
+	world.nav.cancel_path(eid)
 	if base() == "uav":
 		uav_dest = Vector3(position.x, 0.0, position.z)
 	if base() == "attack_heli":
@@ -793,7 +817,7 @@ func _drive(dt: float) -> void:
 		if world.nav.vkind_at(bp) != Nav.SOLID:
 			position = bp
 		if _unstick_t <= 0.0:
-			path = world.nav.find_path(position, path[path.size() - 1], true, team, 0.0)
+			_request_ground_path(path[path.size() - 1], 0.0)
 			path_i = 0
 			_stuck_t = 0.0
 			_stuck_p = position
@@ -1015,7 +1039,7 @@ func _arty_tick(dt: float) -> void:
 			if _salvo <= 0:
 				_lay_yaw = INF
 		return
-	if path_i < path.size() or world.time < arty_t:
+	if path_pending or path_i < path.size() or world.time < arty_t:
 		return
 	var tp := Vector3.INF
 	if not fire_queue.is_empty():
