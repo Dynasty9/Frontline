@@ -8,11 +8,14 @@ var _sel_sids := {}
 var _pt := 0
 var _team_structs: Array = []
 var _ts_t := 0
+var _map_labels := {}
+var _label_epoch := 0
 var _groups_at := -1000
 const CLOSE_Z := 22.0
 const FAR_Z := 42.0
 
 func _draw() -> void:
+	_label_epoch += 1
 	var w := hud.world
 	var inp := w.input
 	if inp == null or w.cam == null:
@@ -90,6 +93,7 @@ func _draw() -> void:
 		_status_icons(men, a_mid)
 	_mark("labels")
 	_nato_markers(cam, lt, a_units)
+	_finish_map_labels()
 	_mark("symbols")
 	_command_links(cam, a_units)
 	_mark("command links")
@@ -1049,13 +1053,13 @@ func _nato_markers(cam: Camera3D, lt: int, a: float) -> void:
 		var ty := py + 15.0
 		if mine:
 			var cs := Squad.callsign_of(tm, int(sid))
-			UiKit.caps_at(self, Vector2(sp.x - UiKit.caps_w(cs, 10) * 0.5, ty), cs, 10, UiKit.fa(UiKit.TEXT, 0.85 * a))
+			_map_text(Vector2i(int(sid), 0), Vector2(sp.x, ty), cs.to_upper(), UiKit.cond(600, 1), 10, UiKit.fa(UiKit.TEXT, 0.85 * a))
 			ty += 12.0
 		if age < 6.0:
 			var tag := _order_tag(o)
 			var ta := clampf((6.0 - age) * 1.5, 0.0, 1.0) * a
 			var tcol := UiKit.ACCENT
-			UiKit.mono_at(self, Vector2(sp.x - UiKit.mono_w(tag, 10) * 0.5, ty), tag, 10, Color(tcol.r, tcol.g, tcol.b, ta))
+			_map_text(Vector2i(int(sid), 1), Vector2(sp.x, ty), tag, UiKit.mono(400), 10, Color(tcol.r, tcol.g, tcol.b, ta))
 	for v in w.vehicles:
 		if not v.visible or v.team < 0 or v.vkind == "truck":
 			continue
@@ -1083,6 +1087,50 @@ func _nato_markers(cam: Camera3D, lt: int, a: float) -> void:
 		if vby != 0:
 			draw_arc(vp, 21.0, 0.0, TAU, 28, HudCoop._a(Net.player_color(vby), 0.55 * a), 1.3, true)
 			_owner_tab(vp + Vector2(6.0, -22.5), vby, a)
+
+## Retain shaped text and drawing commands while the camera moves its anchor.
+class MapLabel extends Node2D:
+	var text := ""
+	var face: Font
+	var font_size := 0
+	var width := 0.0
+	var epoch := 0
+
+	func set_text(value: String, font: Font, pixels: int) -> void:
+		if text == value and face == font and font_size == pixels:
+			return
+		text = value
+		face = font
+		font_size = pixels
+		width = face.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x
+		queue_redraw()
+
+	func _draw() -> void:
+		UiKit.text_f(self, face, Vector2.ZERO, text, font_size, Color.WHITE)
+
+
+func _map_text(key: Vector2i, anchor: Vector2, text: String, face: Font, pixels: int, color: Color) -> void:
+	var label: MapLabel = _map_labels.get(key)
+	if label == null:
+		label = MapLabel.new()
+		label.show_behind_parent = true
+		add_child(label)
+		_map_labels[key] = label
+	label.set_text(text, face, pixels)
+	label.position = anchor - Vector2(label.width * 0.5, 0)
+	label.modulate = color
+	label.epoch = _label_epoch
+	label.visible = true
+
+
+func _finish_map_labels() -> void:
+	for key in _map_labels.keys():
+		var label: MapLabel = _map_labels[key]
+		label.visible = label.epoch == _label_epoch
+		if not _groups.has(key.x):
+			label.queue_free()
+			_map_labels.erase(key)
+
 
 ## The other human commander a unit belongs to (0: yours, the AI's or nobody's).
 func _co_owner(e: Entity) -> int:

@@ -46,3 +46,6 @@ Do not interpret an unchecked gate or a headless result as validated 60 FPS supp
 
 - All 61 gameplay tests pass after the scenario checks above. Soldier decision dispatch now follows the same priorities directly, removing per-leaf tree/callable dispatch. A 60-case reference-tree test passes and all 24 fingerprints across six battle replays match before/after. The isolated 20,000-decision benchmark fell from 418-714 ms to 118-166 ms; this is dispatch overhead, not a whole-simulation speedup.
 - Client attribution at low quality: squad symbols 8.25 ms/frame, distant soldier batches 3.65 ms/frame, snapshot decoding 1.30 ms/frame, command links 0.17 ms/frame. That run overlapped correctness tests and is profiling evidence only, not an FPS acceptance run.
+
+- Retained callsign/order-label drawings pass a lifecycle/position/font/color test. The rendered 1 km 500-unit check was visually inspected; symbol time fell from 8.45 to 3.77 ms/frame in the diagnostic runs. The newer run measured 24.95 FPS (p50 37.60 ms, p95 60.54 ms), still failing the target. The runs are not a controlled overall-speedup comparison.
+- All export presets exclude `build/*`, keeping local benchmark images, reports and helper scripts out of release packages. A Windows export confirms none are packed.
