@@ -53,3 +53,5 @@ caption = "Distant vehicles share simpler material surfaces while retaining thei
 - The battlefield overlay reuses its drawing between status updates while the camera and pointer are still; interaction redraws immediately.
 - Visibility checks skip unrelated projectiles and reuse each soldier's observation point within a scan.
 - Capturing towns updates only changed supply roads instead of repainting the whole map; long diagonal roads check only nearby ground cells.
+- Squads checking for enemy buildings use the owned-building index instead of searching unrelated scenery.
+- The battle clock follows the simulation server, excluding loading time and stopping when the host pauses.

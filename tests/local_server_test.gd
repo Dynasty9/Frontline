@@ -41,8 +41,10 @@ func _ready() -> void:
 		LocalServer.set_speed(0.0)
 		await get_tree().create_timer(0.7).timeout
 		var paused := own.net_pos
+		var paused_time := world.time
 		await get_tree().create_timer(0.8).timeout
 		check(own.net_pos.distance_to(paused) < 0.01, "Paused simulation must stop moving")
+		check(is_equal_approx(world.time, paused_time), "The client battle clock must stop with the paused host")
 		LocalServer.set_speed(1.0)
 		await get_tree().create_timer(1.5).timeout
 		check(own.net_pos.distance_to(paused) > 0.1, "Paused server must accept resume while its clock is stopped")

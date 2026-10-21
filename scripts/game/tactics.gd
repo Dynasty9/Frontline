@@ -56,8 +56,9 @@ static func bounding_wanted(q: Squad, dest: Vector3, mode: int) -> bool:
 				continue
 			if e.visible_to_team(q.team):
 				return true
-	for st in q.world.structures_near(dest, 150.0):
-		if st.team >= 0 and st.team != q.team and st.is_player_building() and st.visible_to_team(q.team):
+	for st: Structure in q.world.owned_structures:
+		if not st.gone and st.team != q.team and st.is_player_building() and st.visible_to_team(q.team) \
+				and Defs.flat(st.position - dest).length() <= 150.0 + st.radius:
 			return true
 	return false
 

@@ -80,6 +80,10 @@ world allocation. Three times the width means nine times the area. The desktop
 skirmish menu offers these sizes; missions retain their authored size by default.
 CLI host, AI and stress modes accept --map-size.
 
+Clients synchronize battle time from authoritative snapshots, with at most 100 ms
+of interpolation while awaiting the next snapshot. Loading, a paused host or a
+lost connection cannot keep advancing the displayed battle clock.
+
 The authoritative simulation runs at 30 Hz (33.3 ms per tick). Rendering at 60 FPS
 has a separate 16.67 ms frame budget. The old overlay added catch-up ticks into a
 rendered frame, so a displayed 130 ms did not identify one specific slow function.

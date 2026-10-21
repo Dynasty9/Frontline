@@ -15,6 +15,7 @@ var has_view := true
 var local_peer := 1
 var local_team := 0
 var time := 0.0
+var _snapshot_time := 0.0
 var entities := {}
 var next_eid := 1
 var ready_peers: Array = []
@@ -658,7 +659,7 @@ func _physics_process(dt: float) -> void:
 		_grave_t = 5.0
 		_sweep_graveyard()
 	if not srv:
-		time += dt
+		time = minf(time + dt, _snapshot_time + 0.1)
 		_net_in_t += dt
 		if _net_in_t >= 1.0:
 			net_in_bps = _net_in / _net_in_t
@@ -1108,7 +1109,9 @@ func _rpc_snap(data: PackedByteArray) -> void:
 		return
 	var b := StreamPeerBuffer.new()
 	b.data_array = data
-	b.get_float()
+	# Loading time and a slow host must not advance the client's battle clock.
+	_snapshot_time = b.get_float()
+	time = _snapshot_time
 	while b.get_position() + 5 <= n:
 		var id := b.get_u32()
 		var ln := b.get_u8()

@@ -150,3 +150,18 @@ Do not interpret an unchecked gate or a headless result as validated 60 FPS supp
   Reports now include those stages and retain the worst tick's system breakdown;
   a real-game report test checks that its duration equals the measured maximum.
   Historical tick numbers above therefore understate complete logic cost.
+
+- All 74 local checks and CI passed at 6a3b1b2. The subsequent rendered 3 km
+  60-second diagnostic measured 28.82 FPS, frame p50 32.87 / p95 51.42 ms.
+  Complete simulation ticks measured p50 31.73 / p95 68.32 / maximum 202.94 ms.
+  Terrain/cleanup was only 82.72 ms total; the worst tick spent 157.91 ms in
+  squad planning. The rendered image was inspected; performance still fails.
+- Tactical enemy-building checks now use the existing owned-building index.
+  Reference comparisons cover 120 seeded destinations plus visibility, capture,
+  neutralisation and destruction. An isolated 3,000-scenery-object control took
+  736-741 ms for 100 old checks versus 14-16 ms with the index. This is a query
+  improvement, not a measured whole-game FPS claim.
+- Client snapshots previously discarded the server timestamp, leaving loading
+  time and host slowdown in the battle clock. Clients now synchronize that clock
+  and extrapolate for at most 100 ms without another snapshot. Direct snapshot,
+  ENet authority and real private-server pause/resume/reconnect checks pass.
