@@ -4,7 +4,7 @@ extends Node
 ## Watching never re-simulates combat and never awards progress.
 
 const FORMAT := 1
-const CHUNK_SECONDS := 10.0
+const CHUNK_SECONDS := 2.0
 const MAX_BYTES := 256 * 1024 * 1024
 var world: World
 var folder := ""
@@ -148,6 +148,7 @@ func _process(_dt: float) -> void:
 
 func _upload() -> void:
 	uploading = true
+	var previous_uploaded := uploaded
 	if replay_id.is_empty():
 		var r: Dictionary = await Online._request(HTTPClient.METHOD_POST, "/replays",
 			{"lobby": Online.lobby_id, "format": FORMAT, "protocol": Net.NET_VERSION, "version": Updater.version},
@@ -163,7 +164,7 @@ func _upload() -> void:
 		if r.get("ok", false):
 			uploaded += 1
 	uploading = false
-	retry_at = Time.get_ticks_msec() + 5000
+	retry_at = Time.get_ticks_msec() + (5000 if uploaded == previous_uploaded else 0)
 
 func _exit_tree() -> void:
 	flush(true)

@@ -11,6 +11,7 @@ var position := 0.0
 var speed := 1.0
 var busy := false
 var refreshing := false
+var follow_live := true
 var poll_at := 0
 var label: Label
 var slider: HSlider
@@ -51,6 +52,8 @@ func _ready() -> void:
 	playing.text = "Pause"
 	playing.pressed.connect(func():
 		speed = 1.0 if speed == 0 else 0.0
+		if speed == 0:
+			follow_live = false
 		playing.text = "Play" if speed == 0 else "Pause")
 	row.add_child(playing)
 	var rate := OptionButton.new()
@@ -59,11 +62,13 @@ func _ready() -> void:
 	rate.select(2)
 	rate.item_selected.connect(func(i: int):
 		speed = [0.25, 0.5, 1.0, 2.0, 4.0][i]
+		follow_live = false
 		playing.text = "Pause")
 	row.add_child(rate)
 	var live := Button.new()
 	live.text = "Latest"
 	live.pressed.connect(func(): seek(maxf(0.0, float(manifest.get("duration", 0)) - 1.0)))
+	live.pressed.connect(func(): follow_live = true)
 	row.add_child(live)
 	var follow := Button.new()
 	follow.text = "Follow action"
@@ -198,7 +203,7 @@ func _refresh() -> void:
 	refreshing = true
 	var next := await fetch_json("")
 	refreshing = false
-	poll_at = Time.get_ticks_msec() + 5000
+	poll_at = Time.get_ticks_msec() + 500
 	if next.is_empty():
 		label.text = "Recording unavailable. Retrying…"
 		return
@@ -207,6 +212,8 @@ func _refresh() -> void:
 		label.text = "This recording needs a different version of Frontline."
 		return
 	manifest = next
+	if follow_live and sequence >= 0 and manifest.get("status") == "live":
+		position = maxf(position, float(manifest.duration) - 1.0)
 	slider.max_value = maxf(0.1, float(manifest.get("duration", 0)))
 	if sequence < 0 and not manifest.chunks.is_empty():
 		await seek(maxf(0, float(manifest.duration) - 1) if manifest.get("status") == "live" else 0)
@@ -214,6 +221,8 @@ func _refresh() -> void:
 func seek(target: float) -> void:
 	if busy or failed or manifest.get("chunks", []).is_empty():
 		return
+	if sequence >= 0:
+		follow_live = false
 	busy = true
 	label.text = "Loading battlefield…"
 	target = clampf(target, 0, float(manifest.duration))
@@ -316,7 +325,7 @@ func _update_label() -> void:
 	var state := String(manifest.get("status", "complete"))
 	label.text = "%02d:%02d / %02d:%02d · %s%s" % [int(position) / 60, int(position) % 60,
 		int(manifest.duration) / 60, int(manifest.duration) % 60, state.to_upper(),
-		" · 60-second broadcast delay" if state == "live" else " · Recorded by host"]
+		" · Live · a few seconds behind" if state == "live" else " · Recorded by host"]
 
 
 func _valid_props(kind: String, values: Dictionary, full: bool) -> bool:

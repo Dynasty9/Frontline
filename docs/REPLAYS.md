@@ -16,8 +16,8 @@ The same observer reads local recordings and public broadcasts.
   started broadcasting before the battle ended.
 - Pause, playback speed, and the scrubber affect only the viewer. The host's
   match continues normally. “Latest” seeks to the newest publicly available moment.
-- Each uploaded chunk is withheld for 60 seconds after receipt, even if the host
-  says the match has ended. Chunk collection and network latency add to that delay.
+- Each uploaded chunk is withheld for one second after receipt, even if the host
+  says the match has ended. Two-second chunks, immediate uploads, and half-second viewer polling aim for roughly 3–5 seconds behind play on a healthy connection. Loading and slow networks can add delay.
 - If the host closes the game or loses its connection before uploading everything,
   the public recording can be partial. Returning to the menu lets queued uploads
   finish; local chunks remain available even if the public upload fails.
@@ -47,7 +47,7 @@ not automatically deleted; each local recording has the same size/duration cap.
 
 ## Format and seeking
 
-Format 1 stores independent checkpoints every ten seconds, with ten observation
+Format 1 stores independent checkpoints every two seconds, with ten observation
 samples per simulated second between them (static entities update once per second).
 The first chunk includes the ground, water, scenery, and initial match settings.
 Checkpoints contain entity properties and their existing network state; following

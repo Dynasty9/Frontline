@@ -17,7 +17,7 @@ export function Replays() {
         a plan played out.
       </p>
       <p className="mt-2 text-sm text-muted-foreground">
-        Public broadcasts run at least 60 seconds behind play. Recordings are kept for seven days.
+        Live broadcasts aim to stay just a few seconds behind play. Recordings are kept for seven days.
       </p>
       {loading && <output className="mt-6 block">Looking for broadcasts…</output>}
       {error && <output className="mt-6 block text-muted-foreground">{error.message}</output>}

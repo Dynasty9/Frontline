@@ -15,7 +15,7 @@ const replay: Replay = {
   protocol: 9,
   status: "complete",
   duration: 1340,
-  delay: 60,
+  delay: 1,
   created: 1792530000000,
   verified: false,
   chunks: [{ sequence: 0, start: 0, end: 10 }],
@@ -48,7 +48,7 @@ export const WaitingForDelay: Story = {
   }),
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(await canvas.findByText(/gathering its first minute/)).toBeVisible()
+    await expect(await canvas.findByText(/broadcast is starting/)).toBeVisible()
     await expect(canvas.getByRole("button", { name: "Open battlefield" })).toBeDisabled()
   },
 }

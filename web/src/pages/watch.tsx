@@ -9,7 +9,7 @@ import { fetchReplay, replaySource } from "@/lib/replays"
 export default function WatchPage() {
   const { id = "" } = useParams()
   const load = useCallback((signal: AbortSignal) => fetchReplay(id, signal), [id])
-  const { data, error } = usePoll(load, 10_000)
+  const { data, error } = usePoll(load, 1_000)
   const [startedId, setStartedId] = useState<string | null>(null)
   const started = startedId === id
   usePageTitle(data?.name || "Watch battle")
@@ -29,7 +29,7 @@ export default function WatchPage() {
         Back to battles
       </Link>
       <p className="mt-6 font-mono text-xs text-primary uppercase">
-        {data?.status === "live" ? "Live broadcast · 60-second delay" : "Battle replay"}
+        {data?.status === "live" ? "Live broadcast · a few seconds behind" : "Battle replay"}
       </p>
       <h1 className="mt-2 font-display text-4xl font-bold uppercase">{data?.name || "Watch the battle"}</h1>
       {error && (
@@ -60,7 +60,7 @@ export default function WatchPage() {
               <div className="flex min-h-80 flex-col items-center justify-center gap-5 p-8 text-center">
                 <p>
                   {!data.chunks.length
-                    ? "The broadcast is gathering its first minute. It will be ready shortly."
+                    ? "The broadcast is starting. The battlefield will be ready shortly."
                     : available === null
                       ? "Checking the viewer…"
                       : available

@@ -17,7 +17,10 @@ func _run() -> void:
 	var world: World = main.world
 	if main.args.has("replay-upload-test"):
 		var listing: Dictionary = await Online._request(HTTPClient.METHOD_POST, "/lobbies", {"port": 7917, "host": "Replay integration test", "name": "Live recording test", "in_game": true}, PackedStringArray(), 10, false)
-		check(listing.ok, "creates test lobby")
+		check(listing.ok, "creates test lobby: " + String(listing.get("error", "")))
+		if not listing.ok:
+			TestRun.quit(get_tree())
+			return
 		Online.lobby_id = listing.data.id
 		Online._lobby_token = listing.data.token
 	world.execute_cmd(1, {"t": "move", "squads": [1], "pos": Vector3(0, 0, -20)})
@@ -26,6 +29,7 @@ func _run() -> void:
 	world.recording.flush()
 	world.recording.flush(true)
 	check(world.recording.manifest.status == "complete", "finishes at an exact chunk boundary")
+	check(world.recording.sequence >= 11, "publishes two-second chunks")
 	if main.args.has("replay-upload-test"):
 		var deadline := Time.get_ticks_msec() + 40000
 		while world.recording.uploaded < world.recording.sequence and Time.get_ticks_msec() < deadline:
@@ -72,5 +76,18 @@ func _run() -> void:
 	check(not player._valid_props("soldier", {"pos": Vector3.ZERO, "utype": "missing-unit"}, true), "rejects unknown unit")
 	check(not player._valid_fx([0, "wrong"]), "rejects malformed effect")
 	check(not player._valid_map({"kinds": PackedByteArray()}), "rejects malformed map")
+	var live_manifest: Dictionary = player.manifest.duplicate(true)
+	live_manifest.status = "live"
+	var index := FileAccess.open(path.path_join("index.json"), FileAccess.WRITE)
+	index.store_string(JSON.stringify(live_manifest))
+	index.close()
+	player.follow_live = true
+	await player._refresh()
+	check(player.position >= float(live_manifest.duration) - 1, "live playback catches up after loading")
+	player.speed = 1
+	player.playing.pressed.emit()
+	player.position = 3
+	await player._refresh()
+	check(player.position == 3 and not player.follow_live, "pause keeps the chosen live moment")
 	print("REPLAY TEST complete: record, commands, forward seek, rewind, state, validation")
 	TestRun.quit(get_tree())

@@ -5,7 +5,7 @@ import { mkdirSync, readFileSync, readdirSync, renameSync, rmSync, writeFileSync
 import { join } from 'node:path';
 
 export const REPLAY_BODY = 12 * 1024 * 1024;
-export const DELAY_MS = 60_000;
+export const DELAY_MS = 1_000;
 const RETENTION_MS = 7 * 86400_000;
 const MAX_RECORDING = 256 * 1024 * 1024;
 const MAX_STORAGE = 5 * 1024 * 1024 * 1024;
@@ -96,7 +96,7 @@ export class Replays {
 		if (
 			!Number.isInteger(sequence) ||
 			sequence < 0 ||
-			sequence > 1440 ||
+			sequence > 7200 ||
 			!Number.isFinite(start) ||
 			!Number.isFinite(end) ||
 			start < 0 ||

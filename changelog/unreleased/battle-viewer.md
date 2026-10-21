@@ -14,8 +14,7 @@ caption = "Find recordings from the Battles page. The 3D viewer works best on a 
 
 Public battles can now broadcast to a browser viewer, using Frontline's own
 3D battlefield. Open **Battles → Watch** on the website, move the camera, or
-let the observer camera follow the fighting. Public broadcasts run at least
-60 seconds behind the players; password-protected and unlisted battles stay private.
+let the observer camera follow the fighting. Public broadcasts aim to stay only a few seconds behind the players; password-protected and unlisted battles stay private.
 
 The host also saves a replay locally. Open **Replays** in the desktop menu and
 choose a recording folder to watch it again, pause, change speed, or drag the

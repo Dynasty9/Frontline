@@ -29,6 +29,8 @@ test('durable ordered chunks, delayed reads, no secret exposure, and retention',
 	assert.equal(JSON.stringify(replays.list()).includes('secret'), false);
 	now += DELAY_MS;
 	assert.deepEqual(replays.chunk(id, '0'), chunk);
+	assert.equal(DELAY_MS, 1000);
+	assert.equal(replays.view(replays.get(id)).delay, 1);
 	replays.append(id, token, { ...chunk, sequence: 1, start: 10, end: 12, final: true });
 	assert.equal(replays.view(replays.get(id)).status, 'live'); // Finishing cannot bypass the delay.
 	now += DELAY_MS;
