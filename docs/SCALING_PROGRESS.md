@@ -73,3 +73,13 @@ Do not interpret an unchecked gate or a headless result as validated 60 FPS supp
   simulation p50 39.17 ms / p95 94.04 ms. Screenshot inspected. Other user-owned
   workloads were active, including a separate animation recording; this is not
   controlled acceptance evidence. Both performance gates remain unmet.
+- All 69 gameplay tests and all 13 scaling regression scenes pass. CI for
+  `f96db1a` passed, including Linux checks and Windows/Linux native builds.
+- Export-only worker experiments (same sparse mixed-unit case, 15 seconds):
+  default workers / safe render thread 33.33 FPS; four workers / safe render
+  thread 36.96 FPS; four workers / separate render thread 41.43 FPS. The latter
+  still had frame p95 34.39 ms and simulation p95 55.13 ms. No engine default
+  has been changed on this evidence; cross-platform and sustained checks remain.
+- A new minimap regression reproduced two remote fights collapsing into one
+  marker on 2 km and 3 km maps. A two-coordinate cell key fixes the collision;
+  the test also checks same-cell grouping and hidden/dead filtering.
