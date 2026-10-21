@@ -882,6 +882,15 @@ catalogue entry in `MissionList.LIST`, a setup function and an autopilot functio
   their side (the armed ones fire missiles); recon vehicles see further. New weapons: 40 mm grenade machine
   guns, 20/30/40 mm cannon, twin 35 mm, miniguns, each with its own sound; main guns by the vehicle (125 mm,
   120 mm, a railgun, recoilless rifles).
+- **Rotorcraft flight.** Attack, transport and supply helicopters share a flight controller: momentum
+  carries through turns and new orders, the pilot accelerates and brakes gradually, and the nose and
+  bank follow the acceleration rather than pretending the aircraft is a road vehicle. Yaw has its own
+  turn rate, so gunships can keep their nose on a target while moving sideways. Climbs and descents
+  ease in and out; transports settle into a low-speed hover before landing or attaching a sling.
+  Loads reduce speed, acceleration and yaw response. Stop holds a troop transport in the air without
+  dropping its sling load; a new move resumes the flight, even during a landing. The host simulates
+  flight and sends pitch and bank with its snapshots; clients only interpolate the view. Drones and
+  ground vehicles keep their existing movement systems.
 - **Boarding:** select infantry and right-click your truck, APC, Slammer or a landed helicopter: they climb in
   (as many as fit) and ride until they dismount or it arrives.
 - Tanks smash through walls, trees and cars. Small arms ricochet off them. Frontal rockets can bounce,
