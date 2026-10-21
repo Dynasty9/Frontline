@@ -209,7 +209,7 @@ func _refresh() -> void:
 	manifest = next
 	slider.max_value = maxf(0.1, float(manifest.get("duration", 0)))
 	if sequence < 0 and not manifest.chunks.is_empty():
-		await seek(0)
+		await seek(maxf(0, float(manifest.duration) - 1) if manifest.get("status") == "live" else 0)
 
 func seek(target: float) -> void:
 	if busy or failed or manifest.get("chunks", []).is_empty():
