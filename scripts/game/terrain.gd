@@ -270,7 +270,17 @@ func paint_roads(polys: Array, half_w := 2.2) -> void:
 			var dot := l2 >= 0.0001
 			for z in range(maxi(0, z0), mini(N - 1, z1) + 1):
 				var row := z * N
-				for x in range(maxi(0, x0), mini(N - 1, x1) + 1):
+				var lo := x0
+				var hi := x1
+				# Only the part of a diagonal road crossing this row can paint it.
+				if absf(ab.z) > 0.0001:
+					var ta := clampf((z - H + 0.5 - half_w - a.z) / ab.z, 0.0, 1.0)
+					var tb := clampf((z - H + 0.5 + half_w - a.z) / ab.z, 0.0, 1.0)
+					var xa := a.x + ab.x * ta
+					var xb := a.x + ab.x * tb
+					lo = maxi(lo, floori(minf(xa, xb) - half_w + H - 1.0))
+					hi = mini(hi, ceili(maxf(xa, xb) + half_w + H + 1.0))
+				for x in range(maxi(0, lo), mini(N - 1, hi) + 1):
 					var was: int = base[row + x]
 					if was >= WATER or (keep and was == ROAD):
 						continue

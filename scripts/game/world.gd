@@ -69,7 +69,7 @@ var key_points: Array = []  # ground worth holding: [{"pos", "kind" ("town", "vi
 var _decor_node: Node3D
 var terrain: TerrainMap
 var water: WaterMap
-var _painted_roads := -1
+var _painted_roads: Array = [[], [], []]
 var _road_meshes: Array = [null, null, null]
 var pings: Array = []  # [pos, expire, kind]
 var winner := -1
@@ -648,6 +648,7 @@ func say(e: Entity, text: String) -> void:
 # --- server tick ------------------------------------------------------------------
 
 func _physics_process(dt: float) -> void:
+	var t0 := Time.get_ticks_usec()
 	# (a client loading works through the cover map under the loading screen
 	# instead, by the time it takes rather than by the tick: _load_tick)
 	if terrain and loaded:
@@ -670,8 +671,7 @@ func _physics_process(dt: float) -> void:
 		_flush()
 		return
 	time += dt
-	var t0 := Time.get_ticks_usec()
-	var tp := t0
+	var tp := _p("terrain + cleanup", t0)
 	_flush()
 	tp = _p("network", tp)
 	nav.update_hier()
@@ -736,7 +736,10 @@ func _physics_process(dt: float) -> void:
 	prof["TOTAL"] = tick_ms
 	sim_usec += Time.get_ticks_usec() - t0
 	if measure_ticks:
-		measured_ticks.append((Time.get_ticks_usec() - t0) / 1000.0)
+		var elapsed := (Time.get_ticks_usec() - t0) / 1000.0
+		measured_ticks.append(elapsed)
+		if elapsed > float(measured_worst_tick.get("total_ms", 0.0)):
+			measured_worst_tick = {"time": time, "total_ms": elapsed, "systems_ms": _measured_tick_systems.duplicate()}
 	net_out_bps = lerpf(net_out_bps, _net_out / maxf(dt, 0.001), 0.05)
 	_net_out = 0.0
 
@@ -750,6 +753,8 @@ var measure_ticks := false
 var measure_details := false
 var measured_ticks: Array[float] = []
 var measured_systems := {}
+var measured_worst_tick := {}
+var _measured_tick_systems := {}
 var measured_details := {}
 var measured_views := {}
 
@@ -779,6 +784,7 @@ func _p(key: String, since: int) -> int:
 	prof_raw[key] = float(prof_raw.get(key, 0.0)) + ms
 	if measure_ticks:
 		measured_systems[key] = float(measured_systems.get(key, 0.0)) + ms
+		_measured_tick_systems[key] = ms
 	return now
 
 
@@ -1555,30 +1561,36 @@ func set_roads(team: int, polys: Array) -> void:
 
 
 func _rebuild_roads() -> void:
-	# the ground under any road is road (fast, exposed)
-	var sig := 0
+	var changed_view := false
 	for t in 3:
-		sig = sig * 31 + (roads[t] as Array).size()
-		for poly in roads[t]:
-			sig = sig * 7 + (poly as PackedVector3Array).size()
-	if sig != _painted_roads and terrain:
-		_painted_roads = sig
-		for t in 3:
-			terrain.paint_roads(roads[t], 2.4 if t == 2 else 1.8)
-	if not has_view or atmo == null:
-		return
-	for t in 3:
+		var current: Array = roads[t]
+		var previous: Array = _painted_roads[t]
+		var changed := current != previous
+		if terrain and changed:
+			# A captured town adds a supply route; the island's existing roads stay put.
+			var added := []
+			for poly: PackedVector3Array in current:
+				if not poly in previous:
+					added.append(poly)
+			if not added.is_empty():
+				terrain.paint_roads(added, 2.4 if t == 2 else 1.8)
+			_painted_roads[t] = current.duplicate()
+		if not has_view or atmo == null:
+			continue
+		if not changed and (_road_meshes[t] != null or current.is_empty()):
+			continue
+		changed_view = true
 		if _road_meshes[t]:
 			_road_meshes[t].queue_free()
 			_road_meshes[t] = null
-		if (roads[t] as Array).is_empty():
+		if current.is_empty():
 			continue
-		var mi := atmo.make_road_mesh(roads[t], t)
+		var mi := atmo.make_road_mesh(current, t)
 		add_child(mi)
 		_road_meshes[t] = mi
 		if OS.has_environment("FL_DEBUG_ROADS"):
-			print("ROADS t=%d polys=%d aabb=%s" % [t, (roads[t] as Array).size(), str(mi.get_aabb())])
-	if atmo.grass:
+			print("ROADS t=%d polys=%d aabb=%s" % [t, current.size(), str(mi.get_aabb())])
+	if changed_view and atmo.grass:
 		atmo.grass.request_rebuild(1.0)
 
 

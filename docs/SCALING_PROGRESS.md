@@ -122,3 +122,31 @@ Do not interpret an unchecked gate or a headless result as validated 60 FPS supp
   the seven-contact limit and target preference are unchanged. The next headless
   diagnostic measured median 31.65 ms / p95 58.80 ms versus 30.42 / 55.00 ms before;
   this does not establish a whole-simulation improvement under the external load.
+
+- Main's helicopter changes are integrated with snapshot protocol 11. All 72 local
+  checks pass, and CI for d6d7fdb passed Linux gameplay plus Windows/Linux native
+  builds, exports and the macOS installer checks.
+- The integrated 3 km, initially 480-soldier/20-vehicle, 120-second rendered run
+  measured 31.21 FPS (frame p50 30.33 / p95 49.17 ms); simulation p50 27.66 /
+  p95 67.12 ms. It ended with 221 soldiers alive, so it does not prove sustained
+  500-unit capacity. Peak combined client/server RSS was about 6.86 GiB.
+- Worst-tick diagnostics isolated a 656.87 ms headless tick: 635.59 ms was in
+  structure updates, where town captures repainted the whole road network.
+  Incremental road updates reduced total structure work to 244.13 ms across the
+  next entire 120-second measurement; its worst tick was 288.06 ms in other
+  systems. A separate animation recording started during that run, so this is
+  hotspot evidence, not controlled FPS acceptance.
+- Road regression coverage includes unchanged networks, added routes, coordinate
+  changes with unchanged point counts, removals, and exhaustive raster comparison
+  for diagonal, horizontal, vertical, degenerate, off-map and seeded segments.
+  Water and cover values remain identical. The renderer minimap-cache experiment
+  was removed after its input check exposed a co-command hover regression.
+
+- With incremental road painting and row-wise segment bounds, the next 120-second
+  headless 3 km run measured median 22.50 / p95 51.46 / maximum 170.78 ms, with
+  241.33 ms total structure work. No animation preview was active when this run
+  started, so none needed suspension. Both simulation gates still fail.
+- The previous tick timer omitted terrain maintenance and graveyard cleanup.
+  Reports now include those stages and retain the worst tick's system breakdown;
+  a real-game report test checks that its duration equals the measured maximum.
+  Historical tick numbers above therefore understate complete logic cost.

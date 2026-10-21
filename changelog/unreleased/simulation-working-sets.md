@@ -52,3 +52,4 @@ caption = "Distant vehicles share simpler material surfaces while retaining thei
 - Stationary vehicles avoid repeatedly updating unchanged hull, turret and wheel transforms.
 - The battlefield overlay reuses its drawing between status updates while the camera and pointer are still; interaction redraws immediately.
 - Visibility checks skip unrelated projectiles and reuse each soldier's observation point within a scan.
+- Capturing towns updates only changed supply roads instead of repainting the whole map; long diagonal roads check only nearby ground cells.

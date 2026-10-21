@@ -591,6 +591,7 @@ catalogue entry in `MissionList.LIST`, a setup function and an autopilot functio
   dappled shadows. A tree that is shelled or run over falls away from what hit it and stays down.
 
 **Terrain** (`terrain.gd`, `mapgen.gd`)
+- Capturing towns updates only changed supply-road geometry; unchanged roads and their drawings are retained. Road terrain painting checks the strip beside each segment, preserving the same ground and cover cells.
 - Country roads wind from HQ to HQ through the town, with a crossroad through the middle. On a road you're
   fast (vehicles +35%) but exposed. Mud slows everyone (vehicles badly) and leaves you exposed. Woods conceal you
   and give light cover. Vehicles strongly prefer roads.
