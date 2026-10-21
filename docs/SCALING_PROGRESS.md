@@ -83,3 +83,19 @@ Do not interpret an unchecked gate or a headless result as validated 60 FPS supp
 - A new minimap regression reproduced two remote fights collapsing into one
   marker on 2 km and 3 km maps. A two-coordinate cell key fixes the collision;
   the test also checks same-cell grouping and hidden/dead filtering.
+
+- A 60-second generated 2 km diagnostic measured 32.52 FPS, frame p50 29.87 ms /
+  p95 40.95 ms / maximum 113.07 ms; simulation p50 30.32 ms / p95 54.54 ms.
+  The screenshot was inspected. This still fails both performance gates.
+- A native nearby-unit prototype passed 71 tests including exact result-order,
+  hidden-unit, vehicle, movement, team-change and despawn checks. Its isolated
+  query benchmark improved, but the full simulation comparison measured median
+  ticks of 42.84 ms with it versus 31.48 ms without it. It was reverted, including
+  the staged library; no additional native object-reference API ships.
+- Vehicle transform notifications now have direct regression coverage. Idle
+  hulls, turrets, barrels and wheels no longer receive unchanged transforms;
+  movement, elevation, recoil and suspension still update. Windows export passes.
+- The subsequent 30-second 2 km mixed battle measured 29.45 FPS (frame p50
+  32.20 ms / p95 48.35 ms), simulation p50 33.50 ms / p95 64.75 ms. The render
+  was inspected. The shorter window and external load preclude attributing the
+  difference to the transform change; this is not a demonstrated FPS improvement.

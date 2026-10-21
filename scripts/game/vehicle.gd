@@ -2135,7 +2135,9 @@ func _suspension(dt: float) -> void:
 		var tt := Time.get_ticks_msec() / 1000.0
 		rumble = (sin(tt * 31.0 + eid) * 0.5 + sin(tt * 47.0) * 0.5) * (0.004 if heavy else 0.006) * minf(_vel_s.length() / 6.0, 1.0)
 	var sus := Transform3D(Basis.from_euler(Vector3(_sus.x + rumble, 0.0, _sus.y + rumble * 0.6)), Vector3(0, _sus.z, 0))
-	model.transform = (ip_offset() if srv else Transform3D.IDENTITY) * sus
+	var pose := (ip_offset() if srv else Transform3D.IDENTITY) * sus
+	if model.transform != pose:
+		model.transform = pose
 
 
 ## How far the ground drops under a point: into a trench, or a crater.
@@ -2374,7 +2376,10 @@ func _view_process(dt: float) -> void:
 		visible = v
 		_vis = v
 	if turret:
-		turret.rotation.y = turret_yaw
+		var facing := turret.rotation
+		facing.y = turret_yaw
+		if turret.rotation != facing:
+			turret.rotation = facing
 		if _gun_kick > 0.0:
 			if _turret_rest == Vector3.INF:
 				_turret_rest = turret.position
@@ -2385,7 +2390,10 @@ func _view_process(dt: float) -> void:
 		# laid for indirect fire: the barrel (or the launcher) goes up
 		var want_e := float(vdef.get("elev", 0.6)) if (flags & F_ELEV) != 0 else 0.0
 		_elev_v = move_toward(_elev_v, want_e, dt * 0.5)
-		_vm.elev.rotation.x = _elev_v
+		var elevation := _vm.elev.rotation
+		elevation.x = _elev_v
+		if _vm.elev.rotation != elevation:
+			_vm.elev.rotation = elevation
 	if rotor:
 		var want := 30.0 if position.y > 0.3 or (flags & F_FIRE) != 0 else (9.0 if (flags & F_GROUND) == 0 or base() != "lift_heli" else 14.0)
 		_rotor_spd = move_toward(_rotor_spd, want, dt * 12.0)
@@ -2427,7 +2435,7 @@ func _view_process(dt: float) -> void:
 		var mv := position - _last_pos
 		var fwd := Defs.dir_of(rotation.y)
 		var spd := mv.dot(fwd)
-		if absf(spd) < 2.0:
+		if spd != 0.0 and absf(spd) < 2.0:
 			for w in wheels:
 				w.rotation.x -= spd / 0.42
 		_steer_wheels(dt, spd)
@@ -2584,7 +2592,11 @@ func _steer_wheels(dt: float, step: float) -> void:
 	for i in wheels.size():
 		var k: float = _steer_k[i]
 		if k > 0.0:
-			(wheels[i] as Node3D).rotation.y = _steer_v * k
+			var wheel := wheels[i] as Node3D
+			var facing := wheel.rotation
+			facing.y = _steer_v * k
+			if wheel.rotation != facing:
+				wheel.rotation = facing
 
 
 ## Where a shot leaves this vehicle's model right now (view): the tip of the

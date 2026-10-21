@@ -49,3 +49,4 @@ caption = "Distant vehicles share simpler material surfaces while retaining thei
 - Distant soldier rendering visits active pose batches instead of every cached pose each frame.
 - Squad status markers share a short overview refresh, and empty selections avoid scanning every soldier.
 - The minimap keeps distant fighting markers separate on larger maps.
+- Stationary vehicles avoid repeatedly updating unchanged hull, turret and wheel transforms.
