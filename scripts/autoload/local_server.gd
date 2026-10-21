@@ -61,6 +61,8 @@ func launch(options: Dictionary, team: int) -> int:
 	argv.append_array(["--", "--managed-server=" + session])
 	if options.has("perf_at"):
 		argv.append("--perf-at=" + str(options.perf_at))
+		if options.get("perf_details", false):
+			argv.append("--perf-details")
 		argv.append("--perf-duration=" + str(options.get("perf_duration", 10)))
 		argv.append("--perf-json=" + session + ".perf.json")
 	pid = OS.create_process(OS.get_executable_path(), argv, false)

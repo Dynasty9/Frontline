@@ -138,11 +138,14 @@ func ip_offset() -> Transform3D:
 func net_smooth(dt: float) -> void:
 	if not net_init:
 		return
-	if position.distance_to(net_pos) > 8.0:
-		position = net_pos
-	else:
-		position = position.lerp(net_pos, 1.0 - exp(-dt * 14.0))
-	rotation.y = lerp_angle(rotation.y, net_yaw, 1.0 - exp(-dt * 14.0))
+	var next_pos := net_pos if position.distance_to(net_pos) > 8.0 else position.lerp(net_pos, 1.0 - exp(-dt * 14.0))
+	var next_rotation := rotation
+	next_rotation.y = lerp_angle(rotation.y, net_yaw, 1.0 - exp(-dt * 14.0))
+	# Unchanged transforms still dirty every child model in the scene tree.
+	if next_pos != position:
+		position = next_pos
+	if next_rotation != rotation:
+		rotation = next_rotation
 
 
 static func put_v3(b: StreamPeerBuffer, p: Vector3) -> void:

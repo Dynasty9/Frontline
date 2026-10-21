@@ -41,6 +41,7 @@ p = argparse.ArgumentParser()
 p.add_argument("--godot", required=True)
 p.add_argument("--output", required=True)
 p.add_argument("--exported", action="store_true")
+p.add_argument("--details", action="store_true", help="Time individual soldier methods; adds profiling overhead")
 p.add_argument("--rendered", action="store_true")
 p.add_argument("--require-target", action="store_true", help="Fail if any measured rendered frame exceeds 16.67 ms or simulation tick exceeds 33.33 ms")
 p.add_argument("--local-server", action="store_true")
@@ -81,6 +82,8 @@ with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as port_socket:
     cmd.append(f"--port={port_socket.getsockname()[1]}")
 if a.rendered:
     cmd += ["--offscreen", f"--screenshot={out / 'battle.png'}", f"--shot-at={a.warmup+a.duration+2}"]
+if a.details:
+    cmd += ["--perf-details"]
 if a.local_server:
     cmd += ["--local-server"]
 if a.generated:

@@ -158,7 +158,7 @@ func tick(dt: float) -> void:
 	_t_vis -= dt
 	if _t_vis <= 0.0:
 		_t_vis = 0.4
-		var stamp := Time.get_ticks_usec() if world.measure_ticks else 0
+		var stamp := Time.get_ticks_usec() if world.measure_details else 0
 		_visibility()
 		if stamp:
 			world.detail("rules visibility", stamp)
@@ -168,12 +168,12 @@ func tick(dt: float) -> void:
 		_reserves()
 		_prisoners()
 		_check_victory()
-		var stamp := Time.get_ticks_usec() if world.measure_ticks else 0
+		var stamp := Time.get_ticks_usec() if world.measure_details else 0
 		_danger_maps()
 		if stamp:
 			world.detail("rules danger", stamp)
 	if world.mission == null:
-		var stamp := Time.get_ticks_usec() if world.measure_ticks else 0
+		var stamp := Time.get_ticks_usec() if world.measure_details else 0
 		_trucks(dt)  # (a mission's supply is what it's given)
 		if stamp:
 			world.detail("rules supply", stamp)

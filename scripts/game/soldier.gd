@@ -274,7 +274,7 @@ func ekind() -> String:
 
 
 func _update_doing() -> void:
-	var stamp := Time.get_ticks_usec() if world.measure_ticks else 0
+	var stamp := Time.get_ticks_usec() if world.measure_details else 0
 	_update_doing_work()
 	if stamp:
 		world.detail("_update_doing", stamp)
@@ -815,7 +815,7 @@ func _posture_sanity(dt: float) -> void:
 
 
 func _update_flags() -> void:
-	var stamp := Time.get_ticks_usec() if world.measure_ticks else 0
+	var stamp := Time.get_ticks_usec() if world.measure_details else 0
 	_update_flags_work()
 	if stamp:
 		world.detail("_update_flags", stamp)
@@ -944,7 +944,7 @@ func _alive(dt: float) -> void:
 ## What he sees, then what he does about it: the reflexes and the fight are
 ## a behaviour tree (SoldierBrain).
 func _think() -> void:
-	var stamp := Time.get_ticks_usec() if world.measure_ticks else 0
+	var stamp := Time.get_ticks_usec() if world.measure_details else 0
 	_think_work()
 	if stamp:
 		world.detail("_think", stamp)
@@ -962,7 +962,7 @@ func _think_work() -> void:
 ## squad's frontage by where he stands in it (the flanks look out to the
 ## flanks); in a big squad the last man covers the rear.
 func _sector_dir() -> Vector3:
-	var stamp := Time.get_ticks_usec() if world.measure_ticks else 0
+	var stamp := Time.get_ticks_usec() if world.measure_details else 0
 	var result := _sector_dir_work()
 	if stamp:
 		world.detail("_sector_dir", stamp)
@@ -987,14 +987,14 @@ func _sector_dir_work() -> Vector3:
 # --- perception --------------------------------------------------------------------
 
 func _scan() -> void:
-	var stamp := Time.get_ticks_usec() if world.measure_ticks else 0
+	var stamp := Time.get_ticks_usec() if world.measure_details else 0
 	_scan_work()
 	if stamp:
 		world.detail("_scan", stamp)
 
 
 func _scan_work() -> void:
-	var phase := Time.get_ticks_usec() if world.measure_ticks else 0
+	var phase := Time.get_ticks_usec() if world.measure_details else 0
 	vis_targets.clear()
 	if is_bearer():
 		target = null
@@ -1156,7 +1156,7 @@ func _aim_point(e: Entity) -> Vector3:
 ## His place in the fight: in cover where his squad is holding, out of ammo
 ## and looking for more. (The special weapons come first: see SoldierBrain.)
 func _fight_think() -> void:
-	var stamp := Time.get_ticks_usec() if world.measure_ticks else 0
+	var stamp := Time.get_ticks_usec() if world.measure_details else 0
 	_fight_think_work()
 	if stamp:
 		world.detail("_fight_think", stamp)
@@ -1322,7 +1322,7 @@ func _speed() -> float:
 
 
 func _move_tick(dt: float, speed: float) -> bool:
-	var stamp := Time.get_ticks_usec() if world.measure_ticks else 0
+	var stamp := Time.get_ticks_usec() if world.measure_details else 0
 	var result := _move_tick_work(dt, speed)
 	if stamp:
 		world.detail("_move_tick", stamp)
@@ -1428,7 +1428,7 @@ func _barrier_ahead(dir: Vector3) -> bool:
 
 
 func _compute_sep() -> void:
-	var stamp := Time.get_ticks_usec() if world.measure_ticks else 0
+	var stamp := Time.get_ticks_usec() if world.measure_details else 0
 	_compute_sep_work()
 	if stamp:
 		world.detail("_compute_sep", stamp)
@@ -1471,18 +1471,21 @@ func _ground() -> float:
 
 
 func _settle_y(dt: float) -> void:
-	var stamp := Time.get_ticks_usec() if world.measure_ticks else 0
+	var stamp := Time.get_ticks_usec() if world.measure_details else 0
 	_settle_y_work(dt)
 	if stamp:
 		world.detail("_settle_y", stamp)
 
 
 func _settle_y_work(dt: float) -> void:
-	position.y = lerpf(position.y, base_y + _ground(), 1.0 - exp(-dt * 8.0))
+	var settled := position
+	settled.y = lerpf(position.y, base_y + _ground(), 1.0 - exp(-dt * 8.0))
+	if settled != position:
+		position = settled
 
 
 func _fight_tick(dt: float) -> void:
-	var stamp := Time.get_ticks_usec() if world.measure_ticks else 0
+	var stamp := Time.get_ticks_usec() if world.measure_details else 0
 	_fight_tick_work(dt)
 	if stamp:
 		world.detail("_fight_tick", stamp)
@@ -1612,7 +1615,7 @@ func _end_idle() -> void:
 
 
 func _choose_act(moving: bool) -> void:
-	var stamp := Time.get_ticks_usec() if world.measure_ticks else 0
+	var stamp := Time.get_ticks_usec() if world.measure_details else 0
 	_choose_act_work(moving)
 	if stamp:
 		world.detail("_choose_act", stamp)
@@ -1726,7 +1729,7 @@ func _cover_cycle(dt: float, w: Dictionary, want_fire: bool, pinned: bool) -> vo
 
 
 func _weapon_tick(dt: float, moving: bool, mode: String) -> void:
-	var stamp := Time.get_ticks_usec() if world.measure_ticks else 0
+	var stamp := Time.get_ticks_usec() if world.measure_details else 0
 	_weapon_tick_work(dt, moving, mode)
 	if stamp:
 		world.detail("_weapon_tick", stamp)
@@ -3777,7 +3780,10 @@ func _view_process(dt: float) -> void:
 		if absf(net_pos.y - position.y) > 0.01 or position.distance_to(net_pos) > 0.01:
 			net_smooth(dt)
 		else:
-			rotation.y = lerp_angle(rotation.y, net_yaw, 1.0 - exp(-dt * 14.0))
+			var facing := rotation
+			facing.y = lerp_angle(facing.y, net_yaw, 1.0 - exp(-dt * 14.0))
+			if facing != rotation:
+				rotation = facing
 	var v := life != Life.HIDDEN and seen_by_local()
 	if v != _vis:
 		visible = v

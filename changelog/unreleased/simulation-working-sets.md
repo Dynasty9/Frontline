@@ -35,3 +35,5 @@ caption = "A full generated 3,072 metre battlefield, started with 480 soldiers a
 - Emplaced gunners choose targets their gun can reach instead of fixating on enemies outside its firing arc.
 - Soldiers evaluate the same reaction priorities with less decision-processing overhead.
 - Squad callsigns and order labels reuse their drawings while tracking the camera, reducing interface work in large battles.
+- Stationary units avoid redundant model-transform updates, and distant soldier batches avoid rebuilding string keys each frame.
+- Radio notifications reuse unchanged text drawings between their arrival flashes and fade-out.

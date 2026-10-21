@@ -369,6 +369,13 @@ func _check_bake() -> void:
 # --- drawing ------------------------------------------------------------------------------
 
 func _draw() -> void:
+	var started := Time.get_ticks_usec()
+	_draw_content()
+	if hud and hud.world:
+		hud.world.vp("minimap drawing", started)
+
+
+func _draw_content() -> void:
 	var w := hud.world
 	_check_bake()
 	_update_xf()

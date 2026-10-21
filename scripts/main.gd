@@ -44,6 +44,7 @@ var _perf_started := false
 var _perf_ready_ms := -1
 var _perf_frame_us := 0
 var _perf_frame_samples: Array[float] = []
+var _perf_physics: Array[float] = []
 var _perf_render_cpu: Array[float] = []
 var _perf_render_gpu: Array[float] = []
 var _perf_process: Array[float] = []
@@ -221,6 +222,7 @@ func _ready() -> void:
 			options["ai_fill"] = true
 		if args.has("perf-at"):
 			options["perf_at"] = float(args["perf-at"])
+			options["perf_details"] = args.has("perf-details")
 			options["perf_duration"] = float(args.get("perf-duration", 10))
 		if args.has("scenario"):
 			options["scenario"] = String(args.scenario)
@@ -928,6 +930,7 @@ func _process(_dt: float) -> void:
 					_perf_render_cpu.append(RenderingServer.viewport_get_measured_render_time_cpu(viewport) + RenderingServer.get_frame_setup_time_cpu())
 					_perf_render_gpu.append(RenderingServer.viewport_get_measured_render_time_gpu(viewport))
 					_perf_process.append(Performance.get_monitor(Performance.TIME_PROCESS) * 1000.0)
+					_perf_physics.append(Performance.get_monitor(Performance.TIME_PHYSICS_PROCESS) * 1000.0)
 			_perf_frame_us = frame_now
 		var pt := float(args["perf-at"])
 		if _perf_ready_ms >= 0 and Time.get_ticks_msec() - _perf_ready_ms >= pt * 1000.0 and not _perf_started:
@@ -940,6 +943,7 @@ func _process(_dt: float) -> void:
 			_perf_render_cpu.clear()
 			_perf_render_gpu.clear()
 			_perf_process.clear()
+			_perf_physics.clear()
 			if world.has_view:
 				RenderingServer.viewport_set_measure_render_time(get_viewport().get_viewport_rid(), true)
 			world.measured_ticks.clear()
@@ -947,6 +951,7 @@ func _process(_dt: float) -> void:
 			world.measured_details.clear()
 			world.measured_views.clear()
 			world.measure_ticks = true
+			world.measure_details = args.has("perf-details")
 			if world.nav:
 				world.nav.profile_paths = true
 		elif _perf_t0 > 0 and Time.get_ticks_msec() - _perf_t0 > maxf(1.0, float(args.get("perf-duration", 10))) * 1000.0:
@@ -963,8 +968,8 @@ func _process(_dt: float) -> void:
 			print("PERF nested_total_ms=", JSON.stringify(world.measured_details))
 			_perf_frame_samples.sort()
 			var report := {"rendered": DisplayServer.get_name() != "headless", "fps": fps,
-				"frames": _sample_report(_perf_frame_samples), "ticks": _sample_report(world.measured_ticks),
-				"render_cpu": _sample_report(_perf_render_cpu), "render_gpu": _sample_report(_perf_render_gpu), "process_cpu": _sample_report(_perf_process),
+				"detailed_timing": world.measure_details, "frames": _sample_report(_perf_frame_samples), "ticks": _sample_report(world.measured_ticks),
+				"render_cpu": _sample_report(_perf_render_cpu), "render_gpu": _sample_report(_perf_render_gpu), "process_cpu": _sample_report(_perf_process), "physics_cpu": _sample_report(_perf_physics),
 				"static_memory_bytes": Performance.get_monitor(Performance.MEMORY_STATIC),
 				"nodes": Performance.get_monitor(Performance.OBJECT_NODE_COUNT), "map_m": int(world.settings.get("map_size", 1024)),
 				"loading_ms": world.loading_ms.duplicate(),
@@ -1037,6 +1042,7 @@ func _process(_dt: float) -> void:
 			if img:
 				img.save_png(String(args.get("perf-shot", "user://perf.png")))
 			world.measure_ticks = false
+			world.measure_details = false
 			if world.nav:
 				world.nav.profile_paths = false
 			if not LocalServer.child and not args.has("quit-after"):

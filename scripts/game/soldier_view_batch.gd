@@ -9,19 +9,24 @@ var groups := {}
 var poses := {}
 var prototypes := {}
 var _types := {}
+var _next_pose := 0
 var _warmup: Array = []
 var _detail_frame := -1
 var _detail_count := 0
 
 
 func prepare(unit: String, team: int) -> void:
-	var key := "%s:%d" % [unit, team]
-	if _types.has(key):
+	if not _types.has(unit):
+		_types[unit] = {}
+	var teams: Dictionary = _types[unit]
+	if teams.has(team):
 		return
-	_types[key] = true
+	var base := _next_pose
+	_next_pose += 15
+	teams[team] = base
 	for posture in 3:
 		for frame in 5:
-			_warmup.append(["%s:%d:%d" % [key, posture, frame], unit, team, posture, frame])
+			_warmup.append([base + posture * 5 + frame, unit, team, posture, frame])
 
 
 func warming() -> bool:
@@ -62,10 +67,12 @@ func _process(_dt: float) -> void:
 			posture = Soldier.Post.STAND
 		var walking := s.act in [Soldier.Act.WALK, Soldier.Act.RUN, Soldier.Act.LIMP, Soldier.Act.CRAWL]
 		var frame := posmod(int(world.time * 8.0) + s.eid, 4) + 1 if walking else 0
-		var key := "%s:%d:%d:%d" % [s.utype, s.team, posture, frame]
-		if not poses.has(key):
+		if not _types.has(s.utype) or not (_types[s.utype] as Dictionary).has(s.team):
 			prepare(s.utype, s.team)
-			key = "%s:%d:0:0" % [s.utype, s.team]
+		var base: int = _types[s.utype][s.team]
+		var key := base + posture * 5 + frame
+		if not poses.has(key):
+			key = base
 			if not poses.has(key):
 				continue
 		var cell := Vector2i(floori(s.position.x / CELL), floori(s.position.z / CELL))
@@ -97,8 +104,8 @@ func _process(_dt: float) -> void:
 	world.vp("distant soldiers", started)
 
 
-func _make_pose(key: String, unit: String, team: int, posture: int, frame: int) -> void:
-	var prototype_key := "%s:%d" % [unit, team]
+func _make_pose(key: int, unit: String, team: int, posture: int, frame: int) -> void:
+	var prototype_key := key - posture * 5 - frame
 	var prototype: SoldierModel = prototypes.get(prototype_key)
 	if prototype == null:
 		prototype = SoldierModel.new()
@@ -116,8 +123,8 @@ func _make_pose(key: String, unit: String, team: int, posture: int, frame: int) 
 	poses[key] = mesh
 
 
-func _group_for(pose: String, cell: Vector2i) -> Dictionary:
-	var key := "%s:%d:%d" % [pose, cell.x, cell.y]
+func _group_for(pose: int, cell: Vector2i) -> Dictionary:
+	var key := Vector3i(cell.x, cell.y, pose)
 	if groups.has(key):
 		return groups[key]
 	var mm := MultiMesh.new()

@@ -49,3 +49,9 @@ Do not interpret an unchecked gate or a headless result as validated 60 FPS supp
 
 - Retained callsign/order-label drawings pass a lifecycle/position/font/color test. The rendered 1 km 500-unit check was visually inspected; symbol time fell from 8.45 to 3.77 ms/frame in the diagnostic runs. The newer run measured 24.95 FPS (p50 37.60 ms, p95 60.54 ms), still failing the target. The runs are not a controlled overall-speedup comparison.
 - All export presets exclude `build/*`, keeping local benchmark images, reports and helper scripts out of release packages. A Windows export confirms none are packed.
+
+- Stationary interpolation and ground settling skip unchanged transforms, including the soldier view's stationary-facing path. Live Godot notification checks cover idle, movement, turning and teleport behavior.
+- Distant soldier batches use numeric pose/cell keys; pose, team, movement, visibility and expiry checks pass. The generated-map screenshot was inspected.
+- Notifications retain steady drawings between arrival flashes and departure fades; the draw-count lifecycle regression passes.
+- Profiling now includes minimap, roster, notifications and resource drawing, plus physics CPU samples. Nested soldier timers are opt-in (`--details` in the benchmark tool); reports record `detailed_timing` on both processes. The A/B runs did not demonstrate a speedup from removing nested timers.
+- Latest 1 km generated-map diagnostic: 24.64 FPS, frame p50 38.52 ms / p95 59.11 ms, simulation p50 40.32 ms / p95 92.83 ms. Minimap and roster drawing together cost about 3.1 ms/frame. Sparse controls measured 228.48 FPS with 20 soldiers and 29.09 FPS with 480 soldiers plus 20 vehicles. These narrow the remaining bottleneck to battlefield density; they do not satisfy the acceptance gates.

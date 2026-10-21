@@ -67,6 +67,13 @@ func _sep(x: float) -> float:
 
 
 func _draw() -> void:
+	var started := Time.get_ticks_usec()
+	_draw_content()
+	if hud and hud.world:
+		hud.world.vp("resource drawing", started)
+
+
+func _draw_content() -> void:
 	var w := hud.world
 	var lt := w.local_team
 	var mins := int(w.time / 60.0)

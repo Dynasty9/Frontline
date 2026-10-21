@@ -736,6 +736,7 @@ func _physics_process(dt: float) -> void:
 ## each system's own every half second (every frame once someone's looking).
 var vprof := {}
 var measure_ticks := false
+var measure_details := false
 var measured_ticks: Array[float] = []
 var measured_systems := {}
 var measured_details := {}

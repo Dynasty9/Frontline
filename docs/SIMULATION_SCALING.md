@@ -169,3 +169,9 @@ House containment queries use a floor-only spatial index maintained with the
 normal structure index. They retain the same radius filtering and iteration
 order; destruction and relocation remove old entries. Six scenario replays
 matched all 24 pre-change fingerprints after this optimization.
+
+Benchmark reports include aggregate system/view timing and physics CPU samples.
+Use `--details` with `tools/benchmark_scaling.py` to additionally time individual
+soldier methods (`--perf-details` in the game). Nested timers add instrumentation
+work; compare reports with the same `detailed_timing` setting. The managed local
+server receives the same profiling mode as its renderer.
