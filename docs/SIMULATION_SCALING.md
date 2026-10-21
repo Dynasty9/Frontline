@@ -7,7 +7,7 @@ private headless process. The visible process retains input, UI, interpolation,
 models and effects. A random session token and protocol version protect the
 loopback connection. Launch/readiness, pause/resume, reconnect ownership and exit
 are managed by LocalServer. Public multiplayer retains the existing host flow;
-web retains the in-process fallback. Protocol version is now 10.
+web retains the in-process fallback. Protocol version is now 11, including the helicopter flight snapshot changes.
 
 Rust accelerates one measured numeric hotspot: nearest-enemy candidate selection.
 Once per tick the host supplies IDs, teams, positions and visibility factors to
