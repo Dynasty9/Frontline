@@ -19,6 +19,29 @@ func _ready() -> void:
 		add_child(entity)
 		check(not entity.is_processing(), "Headless entities must not run view callbacks: " + kind)
 		entity.free()
+	var floor_a := add_structure(w, "floor", -1)
+	var scenery := add_structure(w, "tree", -1)
+	w._shash_add(scenery)
+	var floor_b := add_structure(w, "floor", -1)
+	floor_a.radius = 12.0
+	floor_b.position = Vector3(10, 0, 5)
+	floor_b.radius = 6.0
+	for st in [floor_a, floor_b]:
+		w._shash_add(st)
+	for x in range(-20, 21, 5):
+		for z in range(-20, 21, 5):
+			var pos := Vector3(x, 0, z)
+			var expected := w.structures_near(pos, 9.0).filter(func(st): return st.skind == "floor")
+			check(w.structures_near(pos, 9.0, true) == expected, "House queries must preserve spatial filtering and candidate order")
+	w.despawn(floor_a)
+	check(not floor_a in w.structures_near(Vector3.ZERO, 20.0, true), "Despawn must remove the house index entry")
+	w._shash_remove(floor_b)
+	floor_b.position = Vector3(150, 0, 150)
+	w._shash_add(floor_b)
+	check(w.structures_near(Vector3.ZERO, 20.0, true).is_empty() and w.structures_near(floor_b.position, 9.0, true) == [floor_b], "Relocated houses must leave their old cells")
+	w.despawn(floor_b)
+	check(w._house_hash.is_empty(), "Removing the last house must clear empty buckets")
+	w.despawn(scenery)
 	var rules := Rules.new(w)
 	for i in 1000:
 		add_structure(w, "tree", -1)

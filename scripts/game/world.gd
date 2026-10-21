@@ -108,6 +108,7 @@ func client_loading() -> bool:
 
 const SCELL := 16.0
 var _shash := {}
+var _house_hash := {}
 
 
 func _ready() -> void:
@@ -1771,6 +1772,10 @@ func _shash_add(e: Structure) -> void:
 			a = []
 			_shash[k] = a
 		a.append(e)
+		if e.skind == "floor":
+			if not _house_hash.has(k):
+				_house_hash[k] = []
+			(_house_hash[k] as Array).append(e)
 
 
 func _shash_remove(e: Structure) -> void:
@@ -1778,15 +1783,20 @@ func _shash_remove(e: Structure) -> void:
 		var a = _shash.get(k)
 		if a:
 			a.erase(e)
+		if _house_hash.has(k):
+			(_house_hash[k] as Array).erase(e)
+			if (_house_hash[k] as Array).is_empty():
+				_house_hash.erase(k)
 	e.hash_cells = []
 
 
-func structures_near(p: Vector3, r: float) -> Array:
+func structures_near(p: Vector3, r: float, floors_only := false) -> Array:
+	var index := _house_hash if floors_only else _shash
 	var out := []
 	var seen := {}
 	for x in range(floori((p.x - r) / SCELL), floori((p.x + r) / SCELL) + 1):
 		for z in range(floori((p.z - r) / SCELL), floori((p.z + r) / SCELL) + 1):
-			var a = _shash.get(Vector2i(x, z))
+			var a = index.get(Vector2i(x, z))
 			if a == null:
 				continue
 			for st in a:

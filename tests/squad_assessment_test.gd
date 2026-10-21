@@ -1,5 +1,14 @@
 extends Node
 
+class VisibleCombat extends Combat:
+	func can_see(_soldier: Soldier, _entity: Entity) -> bool:
+		return true
+
+class Gunner extends Soldier:
+	var candidates: Array = []
+	func scan_candidates() -> Array:
+		return candidates
+
 var failures := 0
 
 
@@ -86,5 +95,36 @@ func _ready() -> void:
 	enemy.free()
 	newcomer.free()
 	world.free()
+	check_gun_arc()
 	print("SQUAD_ASSESSMENT_TEST failures=%d" % failures)
 	get_tree().quit(1 if failures else 0)
+
+
+func check_gun_arc() -> void:
+	var world := World.new()
+	world.combat = VisibleCombat.new(world)
+	var gun := Structure.new()
+	gun.skind = "mg_nest"
+	var gunner := Gunner.new()
+	gunner.world = world
+	gunner.mounted = gun
+	gunner.task = "man"
+	gunner.task_phase = 2
+	var flank := Soldier.new()
+	flank.position = gun.front_dir().cross(Vector3.UP) * 3.0
+	var ahead := Soldier.new()
+	ahead.position = gun.front_dir() * 10.0
+	gunner.candidates = [[9.0, flank], [100.0, ahead]]
+	gunner._scan()
+	check(gunner.target == ahead, "A nearer contact outside the mount arc must not block a gunner's valid target")
+	check(gunner.vis_targets == [flank, ahead], "The gunner must still see and report flanking contacts")
+	gunner.mounted = null
+	gunner.task = ""
+	gunner.target = null
+	gunner._scan()
+	check(gunner.target == flank, "A dismounted gunner must regain unrestricted targeting")
+	gunner.free()
+	gun.free()
+	flank.free()
+	ahead.free()
+	world.free()

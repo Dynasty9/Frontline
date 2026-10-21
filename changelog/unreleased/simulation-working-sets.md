@@ -31,3 +31,5 @@ caption = "A full generated 3,072 metre battlefield, started with 480 soldiers a
 - Nearby units can reuse checked movement corridors, while keeping their own destinations.
 - Short unobstructed moves respond immediately, including dashes into cover.
 - Squads retry an unvisited house when a rifleman becomes available to clear it.
+- Soldiers checking buildings search house floors directly, skipping unrelated nearby scenery.
+- Emplaced gunners choose targets their gun can reach instead of fixating on enemies outside its firing arc.

@@ -35,3 +35,7 @@ Do not interpret an unchecked gate or a headless result as validated 60 FPS supp
 - Latest diagnostic headless 3 km / 480 soldiers + 20 vehicles run: 366 measured ticks over 20 seconds; p50 50.26 ms, p95 89.19 ms, maximum 128.03 ms. No runtime errors, but the simulation budget fails. This was not a controlled idle-machine benchmark.
 - A focused regression confirms busy riflemen no longer permanently skip an unvisited house; the tactics scenario still clears only one house and remains unresolved.
 - Keep PR #93 in draft. Rendered 60 FPS and the larger-map acceptance gates remain unmet.
+
+- Floor-only spatial lookup preserves all 24 fingerprints across six 60-second scenario replays. Its lifecycle/filter/order regression passes. The next headless 3 km run measured p50 44.52 ms, p95 82.04 ms and maximum 124.97 ms across 414 ticks; CPU contention still applies.
+- The gun-crew regression exposed fixation on out-of-arc targets. Mounted gun scoring now retains awareness of those contacts but selects targets inside its arc; the focused regression and original guns scenario both pass.
+- The lost-squad regression now forces squad removal and frees the dead before ending the plan, instead of depending on seed-specific casualties. This directly exercises the old lifetime crash and passes.

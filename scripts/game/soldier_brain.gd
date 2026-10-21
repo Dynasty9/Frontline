@@ -337,7 +337,7 @@ static func cook_time(s: Soldier, target: Entity, d: float) -> float:
 
 ## The house (its floor) that p is in, or null.
 static func house_at(w: World, p: Vector3) -> Structure:
-	for st in w.structures_near(p, 9.0):
+	for st in w.structures_near(p, 9.0, true):
 		if st.skind != "floor" or st.gone:
 			continue
 		var l: Vector3 = Basis(Vector3.UP, -st.yaw) * (p - st.position)

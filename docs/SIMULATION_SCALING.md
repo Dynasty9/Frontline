@@ -164,3 +164,8 @@ The integrated focused suite passes all 13 regressions and seven gameplay smoke
 scenarios. Platform update/link checks pass 36/36. The full behavior suite is under
 review; repeatability checks passed both same-process reload and separate-process
 full-map replay. No new 60 FPS acceptance claim is made by these correctness checks.
+
+House containment queries use a floor-only spatial index maintained with the
+normal structure index. They retain the same radius filtering and iteration
+order; destruction and relocation remove old entries. Six scenario replays
+matched all 24 pre-change fingerprints after this optimization.

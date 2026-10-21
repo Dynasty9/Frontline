@@ -1015,6 +1015,9 @@ func _scan_work() -> void:
 			vis_targets.append(e)
 			if squad:
 				squad.report(e)
+			# A gunner still reports flanking contacts, but aims within the mount's arc.
+			if task == "man" and task_phase == 2 and mounted and mounted.skind in ["mg_nest", "hmg_nest"] and not mounted.mg_covers(e.position - position):
+				continue
 			var s := -sqrt(it[0])
 			if e is Soldier:
 				if e.life == Life.DOWNED:
