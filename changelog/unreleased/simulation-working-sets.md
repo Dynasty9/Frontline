@@ -50,3 +50,5 @@ caption = "Distant vehicles share simpler material surfaces while retaining thei
 - Squad status markers share a short overview refresh, and empty selections avoid scanning every soldier.
 - The minimap keeps distant fighting markers separate on larger maps.
 - Stationary vehicles avoid repeatedly updating unchanged hull, turret and wheel transforms.
+- The battlefield overlay reuses its drawing between status updates while the camera and pointer are still; interaction redraws immediately.
+- Visibility checks skip unrelated projectiles and reuse each soldier's observation point within a scan.

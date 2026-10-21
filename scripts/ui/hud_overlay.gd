@@ -13,6 +13,24 @@ var _label_epoch := 0
 var _groups_at := -1000
 const CLOSE_Z := 22.0
 const FAR_Z := 42.0
+var _refresh_left := 0.0
+var _refresh_view := Transform3D.IDENTITY
+var _refresh_pointer := Vector2.INF
+
+
+func _input(event: InputEvent) -> void:
+	if not event is InputEventMouseMotion:
+		_refresh_left = 0.0
+
+
+func refresh_for_view(dt: float, view: Transform3D, pointer: Vector2) -> void:
+	_refresh_left -= dt
+	if _refresh_left > 0.0 and view == _refresh_view and pointer == _refresh_pointer:
+		return
+	_refresh_left = maxf(0.0, _refresh_left + 1.0 / 30.0) if _refresh_left <= 0.0 else 1.0 / 30.0
+	_refresh_view = view
+	_refresh_pointer = pointer
+	queue_redraw()
 
 func _draw() -> void:
 	_label_epoch += 1

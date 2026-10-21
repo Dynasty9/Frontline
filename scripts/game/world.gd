@@ -89,6 +89,7 @@ var _dirty_static := {}
 var _static_cursor := 0
 var _unrevealed := {}  # peer -> entities not yet known to that peer
 var projectiles: Array = []
+var smoke_projectiles: Array[Projectile] = []
 var drones: Array = []
 
 const HCELL := 12.0
@@ -393,8 +394,17 @@ func _register(e: Entity) -> void:
 			fob_structures.append(e)
 	elif e is Projectile:
 		projectiles.append(e)
+		refresh_smoke_projectile(e)
 	elif e is Drone:
 		drones.append(e)
+
+
+func refresh_smoke_projectile(e: Projectile) -> void:
+	if e.ptype == "smoke" and not e.gone:
+		if not e in smoke_projectiles:
+			smoke_projectiles.append(e)
+	else:
+		smoke_projectiles.erase(e)
 
 
 func despawn(e: Entity) -> void:
@@ -424,6 +434,7 @@ func despawn(e: Entity) -> void:
 			terrain.structure_changed(e, false)
 	elif e is Projectile:
 		projectiles.erase(e)
+		smoke_projectiles.erase(e)
 	elif e is Drone:
 		drones.erase(e)
 	e.on_despawn()

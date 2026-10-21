@@ -99,3 +99,26 @@ Do not interpret an unchecked gate or a headless result as validated 60 FPS supp
   32.20 ms / p95 48.35 ms), simulation p50 33.50 ms / p95 64.75 ms. The render
   was inspected. The shorter window and external load preclude attributing the
   difference to the transform change; this is not a demonstrated FPS improvement.
+- A sparse mixed-unit control with the HUD hidden reached 64.61 FPS (frame
+  p95 20.28 ms), showing significant interface overhead but still missing the
+  strict frame gate. Hiding the HUD is diagnostic only.
+- Explicit rectangle batching was investigated and rejected. Both triangle
+  arrays and retained MultiMesh instances produced pixel-identical output in
+  Forward+ and Compatibility. However, an alternating-frame control showed
+  ordinary rectangles already use one draw call; the custom builders took
+  roughly four times longer to prepare. Neither prototype is retained. An
+  apparent 38.88 FPS mixed-battle result is therefore not claimed as a speedup.
+
+- Stationary battlefield overlays retain drawings between 30 Hz updates, carrying
+  elapsed time across uneven frames; camera, pointer and input changes redraw
+  immediately. Real draw-count tests cover both paths. The earlier capped-cadence
+  sparse mixed-battle diagnostic measured 41.82 FPS; its image was inspected.
+- A separate-render-thread experiment reached 49.35 FPS but produced texture
+  update and shutdown errors. It is rejected; safe rendering remains the default.
+  Switching to Mobile rendering measured 43.38 FPS and does not resolve the gap.
+- Smoke visibility uses a lifecycle-maintained smoke-only collection. Tests compare
+  1,000 seeded rays with the exhaustive reference and cover radius, position, type,
+  despawn and fire-smoke changes. Individual scans reuse their observation point;
+  the seven-contact limit and target preference are unchanged. The next headless
+  diagnostic measured median 31.65 ms / p95 58.80 ms versus 30.42 / 55.00 ms before;
+  this does not establish a whole-simulation improvement under the external load.

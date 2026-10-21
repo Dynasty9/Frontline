@@ -49,8 +49,8 @@ func ent_of(col) -> Entity:
 
 
 func smoke_blocks(a: Vector3, b: Vector3) -> bool:
-	for p in world.projectiles:
-		if p.ptype == "smoke" and p.smoke_r > 0.8:
+	for p: Projectile in world.smoke_projectiles:
+		if p.smoke_r > 0.8:
 			if Defs.seg_sphere(a, b, p.position + Vector3(0, 1.4, 0), p.smoke_r):
 				return true
 	# the smoke rolling off a big fire is as good as a screen

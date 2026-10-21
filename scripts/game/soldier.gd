@@ -1006,12 +1006,14 @@ func _scan_work() -> void:
 		phase = Time.get_ticks_usec()
 	var best_s := -1e9
 	var checked := 0
+	var eye := scan_eye()
+	var exclude := get_exclude()
 	for it in arr:
 		if checked >= 7:
 			break
 		checked += 1
 		var e: Entity = it[1]
-		if world.combat.can_see(self, e):
+		if world.combat.can_see_from(eye, e, exclude):
 			vis_targets.append(e)
 			if squad:
 				squad.report(e)
@@ -1044,7 +1046,7 @@ func _scan_work() -> void:
 		if d.team == team or d.dead:
 			continue
 		var dd := position.distance_to(d.position)
-		if dd < 38.0 and world.combat.clear_line(scan_eye(), d.position):
+		if dd < 38.0 and world.combat.clear_line(eye, d.position):
 			vis_targets.append(d)
 			if dd < 30.0 or d.diving:
 				best = d

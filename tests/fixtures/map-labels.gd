@@ -1,5 +1,10 @@
 extends Node
 
+class Overlay extends HudOverlay:
+	var draws := 0
+	func _draw() -> void:
+		draws += 1
+
 func _ready() -> void:
 	var overlay := HudOverlay.new()
 	overlay._groups[7] = {}
@@ -29,5 +34,40 @@ func _ready() -> void:
 	assert(overlay._map_labels.is_empty() and label.is_queued_for_deletion())
 	await get_tree().process_frame
 	overlay.free()
+	var refreshed := Overlay.new()
+	add_child(refreshed)
+	refreshed.refresh_for_view(0.0, Transform3D.IDENTITY, Vector2.ZERO)
+	await get_tree().process_frame
+	await get_tree().process_frame
+	var before := refreshed.draws
+	refreshed.refresh_for_view(0.01, Transform3D.IDENTITY, Vector2.ZERO)
+	await get_tree().process_frame
+	await get_tree().process_frame
+	assert(refreshed.draws == before, "A stationary overlay should retain its drawing between refreshes")
+	refreshed.refresh_for_view(0.024, Transform3D.IDENTITY, Vector2.ZERO)
+	await get_tree().process_frame
+	await get_tree().process_frame
+	assert(refreshed.draws == before + 1, "Stationary status and animations still refresh at 30 Hz")
+	var moved := Transform3D.IDENTITY.translated(Vector3(1, 0, 0))
+	refreshed.refresh_for_view(0.0, moved, Vector2.ZERO)
+	await get_tree().process_frame
+	await get_tree().process_frame
+	assert(refreshed.draws == before + 2, "Camera motion must redraw immediately")
+	refreshed.refresh_for_view(0.0, moved, Vector2(10, 5))
+	await get_tree().process_frame
+	await get_tree().process_frame
+	assert(refreshed.draws == before + 3, "Pointer motion must redraw immediately")
+	refreshed._input(InputEventKey.new())
+	refreshed.refresh_for_view(0.0, moved, Vector2(10, 5))
+	await get_tree().process_frame
+	await get_tree().process_frame
+	assert(refreshed.draws == before + 4, "Selection and commands must redraw on input without waiting for the timer")
+	before = refreshed.draws
+	for i in 42:
+		refreshed.refresh_for_view(1.0 / 42.0, moved, Vector2(10, 5))
+		await get_tree().process_frame
+		await get_tree().process_frame
+	assert(refreshed.draws - before >= 29 and refreshed.draws - before <= 31, "Refresh cadence must retain elapsed time between uneven frames")
+	refreshed.free()
 	print("MAP_LABELS passed")
 	get_tree().quit()

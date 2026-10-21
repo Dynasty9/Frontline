@@ -1168,6 +1168,10 @@ Distant vehicles use a single material surface per moving part beyond 100 m;
 turrets, wheels and rotors keep their pivots. Near vehicles retain their original
 materials. Wrecks retain their original materials to avoid baking meshes during
 combat. Squad overview status refreshes at 10 Hz; selection remains immediate.
+The battlefield overlay retains drawings between 30 Hz refreshes when the camera
+and pointer are still. Camera movement, pointer movement and input refresh it
+immediately. Smoke sight checks visit smoke grenades directly rather than every
+projectile; cloud growth, movement and dissipation still take effect immediately.
 
 Clients build nearby scenery first and cache visited models; distant models and
 cosmetic collision bodies remain inactive. The server still simulates the complete
