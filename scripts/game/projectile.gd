@@ -7,7 +7,11 @@ extends Entity
 
 const GRAVITY := 18.0
 
-var ptype := "frag"
+var ptype := "frag":
+	set(value):
+		ptype = value
+		if world and world.entities.get(eid) == self:
+			world.refresh_smoke_projectile(self)
 var vel := Vector3.ZERO
 var fuse := 3.4
 var thrower_id := 0

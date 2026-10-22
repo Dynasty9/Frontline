@@ -12,3 +12,7 @@ desktop.ini
 
 # agent worktrees
 .claude/worktrees/
+native/target/
+bin/native/
+frontline_sim.gdextension
+__pycache__/

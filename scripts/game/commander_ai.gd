@@ -378,7 +378,7 @@ func _my_squads() -> Array:
 
 func _my_structs(kind := "", built_only := false) -> Array:
 	var out := []
-	for st in world.structures:
+	for st in world.owned_structures:
 		if st.team != team:
 			continue
 		if kind != "" and st.skind != kind:
@@ -917,7 +917,7 @@ func _military(sqs: Array) -> void:
 	for sq in sqs:
 		if _is_engineer_squad(sq) and sq.kind in ["engineer_team", "digger_team"]:
 			continue
-		if sq.alive_members().is_empty() or sq.kind in ["crew", "r_crew"]:
+		if not sq.has_alive_members() or sq.kind in ["crew", "r_crew"]:
 			continue  # (a crew that bailed out is on its way back to the vehicle park)
 		fighters.append(sq)
 	# retreat battered squads
@@ -1174,7 +1174,7 @@ func _pick_target() -> Structure:
 	var from: Vector3 = front.position if front else Vector3.ZERO
 	var best: Structure = null
 	var bd := 1e9
-	for st in world.structures:
+	for st in world.owned_structures:
 		if st.skind != "fob" or st.team == team or st.team < 0 or not st.built:
 			continue
 		var known: bool = ((st.seen_mask >> team) & 1) == 1 or st.completed_order <= 2

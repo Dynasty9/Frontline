@@ -130,6 +130,8 @@ func _move(x := 30.0) -> Dictionary:
 
 
 func _check_orders(peer: int) -> void:
+	# The fixture disables physics ticks; deliver the queued routes as the next tick would.
+	field.nav.process_paths()
 	_check("allied human squad accepts the move", field.squads[1].order == "move")
 	_check("allied squad owner stays unchanged", field.squads[1].owner == 1)
 	_check("duplicate squad IDs are ordered once", field.squads[1].order_n == 1)

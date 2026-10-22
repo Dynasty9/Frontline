@@ -146,6 +146,7 @@ var _stuck_p := Vector3.ZERO
 var _stuck_t := 0.0
 var _pose_dt := 0.0
 var _pose_skip := 0
+var view_lod := false
 var debug_pose: Array = []  # test gallery: [posture, act, life, view speed] frozen
 var riding = null  # the vehicle he's sitting in (untyped: may be freed)
 var detached := false  # under a direct order of his own until the squad is given one
@@ -186,6 +187,8 @@ var melee_cd := 0.0
 var scav_t := 0.0
 var resupply_t := 0.0
 var think_t := 0.0
+var _path_pending := false
+var _path_revision := 0
 var scan_n := 0
 var say_cd := 0.0
 var scream_t := 0.0
@@ -271,6 +274,13 @@ func ekind() -> String:
 
 
 func _update_doing() -> void:
+	var stamp := Time.get_ticks_usec() if world.measure_details else 0
+	_update_doing_work()
+	if stamp:
+		world.detail("_update_doing", stamp)
+
+
+func _update_doing_work() -> void:
 	doing_ent = 0
 	var d := 0
 	match life:
@@ -463,9 +473,6 @@ func on_spawned() -> void:
 	net_yaw = rotation.y
 	net_init = true
 	if world.has_view:
-		model = SoldierModel.new()
-		add_child(model)
-		model.build(utype, team, eid * 31 + 7)
 		ring = Res.mi(self, Res.plane(1.25), Res.ring_mat(Defs.TEAM_COLORS[team] if team >= 0 else Color.WHITE), Vector3(0, 0.06, 0), Vector3.ZERO, false)
 		ring.visible = false
 		_last_view_pos = position
@@ -476,7 +483,7 @@ func is_bearer() -> bool:
 
 
 func is_moving() -> bool:
-	return path_i < path.size()
+	return _path_pending or path_i < path.size()
 
 
 func cur_weapon() -> Dictionary:
@@ -808,6 +815,13 @@ func _posture_sanity(dt: float) -> void:
 
 
 func _update_flags() -> void:
+	var stamp := Time.get_ticks_usec() if world.measure_details else 0
+	_update_flags_work()
+	if stamp:
+		world.detail("_update_flags", stamp)
+
+
+func _update_flags_work() -> void:
 	var f := 0
 	if suppression > 25.0:
 		f |= F_SUPP
@@ -930,6 +944,13 @@ func _alive(dt: float) -> void:
 ## What he sees, then what he does about it: the reflexes and the fight are
 ## a behaviour tree (SoldierBrain).
 func _think() -> void:
+	var stamp := Time.get_ticks_usec() if world.measure_details else 0
+	_think_work()
+	if stamp:
+		world.detail("_think", stamp)
+
+
+func _think_work() -> void:
 	scan_n += 1
 	if scan_n % 2 == 0 or target == null:
 		_scan()
@@ -941,7 +962,20 @@ func _think() -> void:
 ## squad's frontage by where he stands in it (the flanks look out to the
 ## flanks); in a big squad the last man covers the rear.
 func _sector_dir() -> Vector3:
-	var f := _threat_dir(_threats())
+	var stamp := Time.get_ticks_usec() if world.measure_details else 0
+	var result := _sector_dir_work()
+	if stamp:
+		world.detail("_sector_dir", stamp)
+	return result
+
+
+func _sector_dir_work() -> Vector3:
+	var threats: Array = squad.sector_threats(position)
+	var f := _threat_dir(threats)
+	if threats.is_empty():
+		var watch := Defs.flat(hold_pos + hold_face * 40.0 - position)
+		if watch.length() >= 0.01:
+			f = watch.normalized()
 	var right := Vector3(-f.z, 0, f.x)
 	var mems: Array = squad.members
 	if mems.size() >= 6 and mems.back() == self and not vis_targets.size():
@@ -953,44 +987,39 @@ func _sector_dir() -> Vector3:
 # --- perception --------------------------------------------------------------------
 
 func _scan() -> void:
+	var stamp := Time.get_ticks_usec() if world.measure_details else 0
+	_scan_work()
+	if stamp:
+		world.detail("_scan", stamp)
+
+
+func _scan_work() -> void:
+	var phase := Time.get_ticks_usec() if world.measure_details else 0
 	vis_targets.clear()
 	if is_bearer():
 		target = null
 		return
-	var r := sight_range()
-	var arr := []
-	for e in world.units_near(position, maxf(r, 85.0)):
-		if e.team == team or e.team < 0:
-			continue
-		var d2 := Defs.flat(e.position - position).length_squared()
-		if e is Soldier:
-			if e.life != Life.ALIVE and e.life != Life.DOWNED:
-				continue
-			if e.life == Life.DOWNED and world.time - e.last_shot_t > 2.0:
-				continue  # leave the wounded alone unless they're shooting
-			var rr := r * world.terrain.concealment(e.position)
-			if world.time - e.last_shot_t > 8.0 and not e.is_moving() and (e.at_cover or e.posture == Post.PRONE):
-				rr *= 0.7  # still, low and silent: it's movement and muzzle flash that give men away
-			if d2 > rr * rr:
-				continue
-		elif e is Vehicle and not e.is_air() and world.terrain.netted[world.terrain.idx_of(e.position)] > 0:
-			var rv := maxf(r, 85.0) * 0.5  # a vehicle parked under a net
-			if d2 > rv * rv:
-				continue
-		arr.append([d2, e])
-	arr.sort_custom(func(a, b): return a[0] < b[0])
+	var arr := scan_candidates()
 	var best: Entity = null
+	if phase:
+		world.detail("scan candidates", phase)
+		phase = Time.get_ticks_usec()
 	var best_s := -1e9
 	var checked := 0
+	var eye := scan_eye()
+	var exclude := get_exclude()
 	for it in arr:
 		if checked >= 7:
 			break
 		checked += 1
 		var e: Entity = it[1]
-		if world.combat.can_see(self, e):
+		if world.combat.can_see_from(eye, e, exclude):
 			vis_targets.append(e)
 			if squad:
 				squad.report(e)
+			# A gunner still reports flanking contacts, but aims within the mount's arc.
+			if task == "man" and task_phase == 2 and mounted and mounted.skind in ["mg_nest", "hmg_nest"] and not mounted.mg_covers(e.position - position):
+				continue
 			var s := -sqrt(it[0])
 			if e is Soldier:
 				if e.life == Life.DOWNED:
@@ -1011,11 +1040,13 @@ func _scan() -> void:
 			if s > best_s:
 				best_s = s
 				best = e
+	if phase:
+		world.detail("scan LOS", phase)
 	for d in world.drones:
 		if d.team == team or d.dead:
 			continue
 		var dd := position.distance_to(d.position)
-		if dd < 38.0 and world.combat.clear_line(scan_eye(), d.position):
+		if dd < 38.0 and world.combat.clear_line(eye, d.position):
 			vis_targets.append(d)
 			if dd < 30.0 or d.diving:
 				best = d
@@ -1025,6 +1056,66 @@ func _scan() -> void:
 		elif forced_target is Structure and Defs.flat(forced_target.position - position).length() < cur_weapon().get("range", 50.0):
 			best = forced_target
 	target = best
+
+
+## Visit nearby cells first. Once seven eligible contacts are found, entire
+## cells farther away can be rejected before touching their soldiers. The
+## actual LOS and concealment rules are unchanged, including off-screen fights.
+func scan_candidates() -> Array:
+	var out := []
+	var p := position
+	var r := sight_range()
+	if world.perception:
+		var ids: PackedInt32Array = world.perception.nearest(p.x, p.z, team, r)
+		for id in ids:
+			var e := world.entity(id)
+			if e and not e.gone:
+				if e is Soldier and (e.life not in [Life.ALIVE, Life.DOWNED] or (e.life == Life.DOWNED and world.time - e.last_shot_t > 2.0)):
+					continue
+				var diff := e.position - p
+				out.append([diff.x * diff.x + diff.z * diff.z, e])
+		return out
+	var limit := maxf(r, 85.0) ** 2
+	var cell := Vector2i(floori(p.x / World.HCELL), floori(p.z / World.HCELL))
+	for offset: Vector2i in world.perception_cells:
+		var key := cell + offset
+		var dx := maxf(0.0, absf((key.x + 0.5) * World.HCELL - p.x) - World.HCELL * 0.5)
+		var dz := maxf(0.0, absf((key.y + 0.5) * World.HCELL - p.z) - World.HCELL * 0.5)
+		if dx * dx + dz * dz > limit:
+			continue
+		var bucket: Array = world._uhash.get(key, [])
+		for e: Entity in bucket:
+			if e.gone or e.team == team or e.team < 0:
+				continue
+			var ep := e.position
+			var diff := ep - p
+			var d2 := diff.x * diff.x + diff.z * diff.z
+			if d2 > limit:
+				continue
+			if e is Soldier:
+				var s := e as Soldier
+				if s.life != Life.ALIVE and s.life != Life.DOWNED:
+					continue
+				if s.life == Life.DOWNED and world.time - s.last_shot_t > 2.0:
+					continue
+				var rr := r * world.terrain.concealment(ep)
+				if world.time - s.last_shot_t > 8.0 and not s.is_moving() and (s.at_cover or s.posture == Post.PRONE):
+					rr *= 0.7
+				if d2 > rr * rr:
+					continue
+			elif e is Vehicle:
+				var v := e as Vehicle
+				if not v.is_air() and world.terrain.netted[world.terrain.idx_of(ep)] > 0 and d2 > maxf(r, 85.0) ** 2 * 0.25:
+					continue
+			var at := out.size()
+			while at > 0 and (float(out[at - 1][0]) > d2 or (float(out[at - 1][0]) == d2 and (out[at - 1][1] as Entity).eid > e.eid)):
+				at -= 1
+			out.insert(at, [d2, e])
+			if out.size() > 7:
+				out.pop_back()
+			if out.size() == 7:
+				limit = float(out[6][0])
+	return out
 
 
 func _target_valid(e: Entity) -> bool:
@@ -1067,6 +1158,13 @@ func _aim_point(e: Entity) -> Vector3:
 ## His place in the fight: in cover where his squad is holding, out of ammo
 ## and looking for more. (The special weapons come first: see SoldierBrain.)
 func _fight_think() -> void:
+	var stamp := Time.get_ticks_usec() if world.measure_details else 0
+	_fight_think_work()
+	if stamp:
+		world.detail("_fight_think", stamp)
+
+
+func _fight_think_work() -> void:
 	var w := cur_weapon()
 	if w.is_empty():
 		return
@@ -1142,18 +1240,41 @@ func go_to(p: Vector3, kind: String, mode: int) -> void:
 		care = 1.6
 	elif kind == "slot":
 		care = 0.8 if mode == 0 else 0.35
-	path = world.nav.find_path(position, p, false, team, care)
+	_path_revision += 1
+	var revision := _path_revision
+	_path_pending = true
+	path = PackedVector3Array()
 	_stuck_p = position
 	_stuck_t = 0.0
 	path_i = 0
 	goal = p
 	goal_kind = kind
 	move_mode = mode
-	if path.is_empty():
-		_arrived()
+	world.nav.request_path(self, p, false, team, care, func(points: PackedVector3Array):
+		if revision != _path_revision:
+			return
+		_path_pending = false
+		if life == Life.DEAD or life == Life.HIDDEN:
+			return
+		path = points
+		path_i = 0
+		if path.is_empty():
+			if Defs.flat(position - goal).length_squared() < 1.7 * 1.7:
+				_arrived()
+			else:
+				world.stat("path_unreachable")
+				if goal_kind == "cover":
+					_clear_cover()
+					at_cover = false
+					next_cover_eval = world.time + 1.0
+				stop_moving())
 
 
 func stop_moving() -> void:
+	_path_revision += 1
+	_path_pending = false
+	if world.nav:
+		world.nav.cancel_path(eid)
 	path = PackedVector3Array()
 	path_i = 0
 	goal_kind = ""
@@ -1203,6 +1324,16 @@ func _speed() -> float:
 
 
 func _move_tick(dt: float, speed: float) -> bool:
+	var stamp := Time.get_ticks_usec() if world.measure_details else 0
+	var result := _move_tick_work(dt, speed)
+	if stamp:
+		world.detail("_move_tick", stamp)
+	return result
+
+
+func _move_tick_work(dt: float, speed: float) -> bool:
+	if _path_pending:
+		return true  # callers must not finish a task while its route is queued
 	if path_i >= path.size():
 		return false
 	# watchdog: no progress for a while -> plan again from here
@@ -1211,11 +1342,8 @@ func _move_tick(dt: float, speed: float) -> bool:
 		if Defs.flat(position - _stuck_p).length() < 0.8 and slide_t <= 0.0:
 			world.stat("repath")
 			var g2 := path[path.size() - 1]
-			path = world.nav.find_path(position + Vector3(world.rng.randf_range(-0.4, 0.4), 0, world.rng.randf_range(-0.4, 0.4)), g2, false, team, 0.0)
-			path_i = 0
-			if path.is_empty():
-				_arrived()
-				return false
+			go_to(g2, goal_kind, move_mode)
+			return true  # replanning still counts as travelling to the task
 		_stuck_t = 0.0
 		_stuck_p = position
 	var tgt := path[path_i]
@@ -1302,6 +1430,13 @@ func _barrier_ahead(dir: Vector3) -> bool:
 
 
 func _compute_sep() -> void:
+	var stamp := Time.get_ticks_usec() if world.measure_details else 0
+	_compute_sep_work()
+	if stamp:
+		world.detail("_compute_sep", stamp)
+
+
+func _compute_sep_work() -> void:
 	_sep = Vector3.ZERO
 	if life != Life.ALIVE or dragged_by or task in ["stretcher", "captor"]:
 		return
@@ -1338,10 +1473,27 @@ func _ground() -> float:
 
 
 func _settle_y(dt: float) -> void:
-	position.y = lerpf(position.y, base_y + _ground(), 1.0 - exp(-dt * 8.0))
+	var stamp := Time.get_ticks_usec() if world.measure_details else 0
+	_settle_y_work(dt)
+	if stamp:
+		world.detail("_settle_y", stamp)
+
+
+func _settle_y_work(dt: float) -> void:
+	var settled := position
+	settled.y = lerpf(position.y, base_y + _ground(), 1.0 - exp(-dt * 8.0))
+	if settled != position:
+		position = settled
 
 
 func _fight_tick(dt: float) -> void:
+	var stamp := Time.get_ticks_usec() if world.measure_details else 0
+	_fight_tick_work(dt)
+	if stamp:
+		world.detail("_fight_tick", stamp)
+
+
+func _fight_tick_work(dt: float) -> void:
 	var moving := _move_tick(dt, _speed())
 	if not moving:
 		_apply_sep(dt)
@@ -1465,6 +1617,13 @@ func _end_idle() -> void:
 
 
 func _choose_act(moving: bool) -> void:
+	var stamp := Time.get_ticks_usec() if world.measure_details else 0
+	_choose_act_work(moving)
+	if stamp:
+		world.detail("_choose_act", stamp)
+
+
+func _choose_act_work(moving: bool) -> void:
 	if door_wait > 0.0:
 		act = Act.KICK if door_kick else Act.IDLE
 	elif reload_t > 0.0:
@@ -1572,6 +1731,13 @@ func _cover_cycle(dt: float, w: Dictionary, want_fire: bool, pinned: bool) -> vo
 
 
 func _weapon_tick(dt: float, moving: bool, mode: String) -> void:
+	var stamp := Time.get_ticks_usec() if world.measure_details else 0
+	_weapon_tick_work(dt, moving, mode)
+	if stamp:
+		world.detail("_weapon_tick", stamp)
+
+
+func _weapon_tick_work(dt: float, moving: bool, mode: String) -> void:
 	fire_t -= dt
 	if reload_t > 0.0:
 		reload_t -= dt
@@ -3604,10 +3770,10 @@ func _process(dt: float) -> void:
 
 
 func _view_process(dt: float) -> void:
-	if not world.has_view or model == null:
+	if not world.has_view:
 		return
 	# a body that has come to rest only needs a look now and then
-	if life == Life.DEAD and model._baked and is_static():
+	if model and life == Life.DEAD and model._baked and is_static():
 		_corpse_t -= dt
 		if _corpse_t > 0.0:
 			return
@@ -3616,14 +3782,36 @@ func _view_process(dt: float) -> void:
 		if absf(net_pos.y - position.y) > 0.01 or position.distance_to(net_pos) > 0.01:
 			net_smooth(dt)
 		else:
-			rotation.y = lerp_angle(rotation.y, net_yaw, 1.0 - exp(-dt * 14.0))
+			var facing := rotation
+			facing.y = lerp_angle(facing.y, net_yaw, 1.0 - exp(-dt * 14.0))
+			if facing != rotation:
+				rotation = facing
 	var v := life != Life.HIDDEN and seen_by_local()
 	if v != _vis:
 		visible = v
 		_vis = v
 	if not v:
+		view_lod = false
 		_last_view_pos = position
 		return
+	if world.cam and world.soldier_view and debug_pose.is_empty():
+		var distance := world.cam.cam.global_position.distance_to(position)
+		view_lod = distance > (80.0 if view_lod else 90.0) or not world.cam.cam.is_position_in_frustum(position + Vector3(0, 1.0, 0))
+		if not view_lod and model == null and not world.soldier_view.acquire_detail_slot():
+			view_lod = true  # keep the shared model visible while detail warms up
+	else:
+		view_lod = false
+	if view_lod:
+		if model:
+			model.visible = false
+		ring.visible = selected
+		_last_view_pos = position
+		return
+	if model == null:
+		model = SoldierModel.new()
+		add_child(model)
+		model.build(utype, team, eid * 31 + 7)
+	model.visible = true
 	# off-screen men are posed a few times a second, distant ones every other
 	# or third frame, close ones every frame
 	_pose_dt += dt

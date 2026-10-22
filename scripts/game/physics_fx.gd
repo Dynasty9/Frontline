@@ -15,11 +15,14 @@ const L_RAGDOLL := 16
 const L_GROUND := 32
 const MAX_RAGDOLLS := 16
 const MAX_CHUNKS := 90
-const GROUND_N := MapDims.N + 1
+const GROUND_TILE := 32
+const GROUND_RADIUS := 6
 
 var world
 var ground: StaticBody3D
-var _hm: HeightMapShape3D
+var _ground_tiles := {}
+var _ground_dirty := {}
+var _ground_center := Vector2i(-999, -999)
 var _mat: PhysicsMaterial
 var _chunk_mat: PhysicsMaterial
 var ragdolls: Array = []
@@ -43,131 +46,99 @@ func _ready() -> void:
 	ground.collision_mask = 0
 	ground.physics_material_override = _mat
 	var cs := CollisionShape3D.new()
-	_hm = HeightMapShape3D.new()
-	_hm.map_width = GROUND_N
-	_hm.map_depth = GROUND_N
-	var data := PackedFloat32Array()
-	data.resize(GROUND_N * GROUND_N)
-	data.fill(0.0)
-	_hm.map_data = data
-	cs.shape = _hm
+	# A distant cosmetic fragment can fall out of the active tiles without
+	# falling forever. Detailed collision around the camera sits above this.
+	var fallback := WorldBoundaryShape3D.new()
+	fallback.plane = Plane(Vector3.UP, -2.0)
+	cs.shape = fallback
 	ground.add_child(cs)
 	add_child(ground)
 
 
-var _hdata := PackedFloat32Array()
 var _mask := PackedByteArray()
-## The ground samples (x0, z0, x1, z1, inclusive) waiting to be redone (x0 < 0:
-## none). Changes that come in together are redone in one go, at the end of
-## the frame: the first frame of a battle brings two over the whole map (the
-## shell holes and riverbeds the map was made with, and the trenches).
-var _pend := Rect2i(-1, 0, 0, 0)
-var _job: HeightsJob = null  # a big redo, under way on a worker thread
-var _task := -1
-## A redo over more samples than this goes to a worker thread: the whole map
-## is a million, about a second of script.
-const BIG := 40000
 
 
 ## Cuts the trench network into the ground (called when the network changes);
 ## only the area that changed (metres) is redone, all of it when that is empty.
 func update_ground(mask: PackedByteArray, area := Rect2()) -> void:
 	_mask = mask
-	var full := _hdata.size() != GROUND_N * GROUND_N or not area.has_area()
-	if full:
-		_redo(0, 0, GROUND_N - 1, GROUND_N - 1)
-		return
-	var h := (GROUND_N - 1) * 0.5
-	_redo(clampi(floori(area.position.x + h), 0, GROUND_N - 1), clampi(floori(area.position.y + h), 0, GROUND_N - 1),
-		clampi(ceili(area.end.x + h), 0, GROUND_N - 1), clampi(ceili(area.end.y + h), 0, GROUND_N - 1))
+	for key: Vector2i in _ground_tiles:
+		var bounds := Rect2(Vector2(key * GROUND_TILE) - Vector2.ONE * MapDims.HALF, Vector2.ONE * GROUND_TILE)
+		if not area.has_area() or bounds.grow(1.0).intersects(area):
+			_ground_dirty[key] = true
 
 
 ## Follows the shell holes (rect in terrain height samples).
 func update_deform(r: Rect2i) -> void:
-	var k := TerrainMap.DRES
-	_redo(clampi(r.position.x / k, 0, GROUND_N - 1), clampi(r.position.y / k, 0, GROUND_N - 1),
-		clampi(r.end.x / k + 1, 0, GROUND_N - 1), clampi(r.end.y / k + 1, 0, GROUND_N - 1))
+	var area := Rect2(Vector2(r.position) / TerrainMap.DRES - Vector2.ONE * MapDims.HALF, Vector2(r.size) / TerrainMap.DRES)
+	update_ground(_mask, area)
 
 
-## Samples x0..x1, z0..z1 are to be redone: at the end of the frame, with
-## whatever else comes in before then.
-func _redo(x0: int, z0: int, x1: int, z1: int) -> void:
-	if _pend.position.x < 0:
-		_pend = Rect2i(x0, z0, x1 - x0, z1 - z0)
-		if _task < 0:
-			_flush.call_deferred()
-	else:
-		_pend = _pend.merge(Rect2i(x0, z0, x1 - x0, z1 - z0))
-
-
-func _flush() -> void:
-	if _task >= 0 or _pend.position.x < 0:
-		return  # (a worker is on it: what came in since goes after, see _process)
-	if _hdata.size() != GROUND_N * GROUND_N:
-		_hdata.resize(GROUND_N * GROUND_N)
-	var r := _pend
-	_pend = Rect2i(-1, 0, 0, 0)
-	var job := HeightsJob.new(_hdata, _mask, world.terrain.dh if world.terrain else PackedFloat32Array(), r)
-	if (r.size.x + 1) * (r.size.y + 1) > BIG and not OS.has_feature("nothreads"):
-		# the ground stays as it was for the second or so this takes
-		_job = job
-		_task = WorkerThreadPool.add_task(job.run, false, "Physics ground")
+func _update_ground_tiles() -> void:
+	if world.cam == null:
 		return
-	job.run()
-	_take(job)
+	var focus: Vector3 = world.cam.focus_pos
+	var center := Vector2i(floori((focus.x + MapDims.HALF) / GROUND_TILE), floori((focus.z + MapDims.HALF) / GROUND_TILE))
+	if center != _ground_center:
+		_ground_center = center
+		var wanted := {}
+		for radius in GROUND_RADIUS + 1:
+			for z in range(-radius, radius + 1):
+				for x in range(-radius, radius + 1):
+					if maxi(absi(x), absi(z)) != radius:
+						continue
+					var key := center + Vector2i(x, z)
+					if key.x < 0 or key.y < 0 or key.x >= MapDims.N / GROUND_TILE or key.y >= MapDims.N / GROUND_TILE:
+						continue
+					wanted[key] = true
+					if not _ground_tiles.has(key):
+						_ground_dirty[key] = true
+		for key in _ground_tiles.keys():
+			if not wanted.has(key):
+				(_ground_tiles[key].body as StaticBody3D).queue_free()
+				_ground_tiles.erase(key)
+		for key in _ground_dirty.keys():
+			if not wanted.has(key):
+				_ground_dirty.erase(key)
+	for i in mini(2, _ground_dirty.size()):
+		var key: Vector2i = _ground_dirty.keys()[0]
+		_ground_dirty.erase(key)
+		_rebuild_ground_tile(key)
 
 
-## A finished redo: the ground the bodies land on.
-func _take(job: HeightsJob) -> void:
-	_hdata = job.heights
-	_hm.map_data = _hdata
+func _rebuild_ground_tile(key: Vector2i) -> void:
+	var tile: Dictionary = _ground_tiles.get(key, {})
+	if tile.is_empty():
+		var body := StaticBody3D.new()
+		body.collision_layer = L_GROUND
+		body.collision_mask = 0
+		body.physics_material_override = _mat
+		body.position = Vector3((key.x + 0.5) * GROUND_TILE - MapDims.HALF, 0, (key.y + 0.5) * GROUND_TILE - MapDims.HALF)
+		var shape := HeightMapShape3D.new()
+		shape.map_width = GROUND_TILE + 1
+		shape.map_depth = GROUND_TILE + 1
+		var collision := CollisionShape3D.new()
+		collision.shape = shape
+		body.add_child(collision)
+		add_child(body)
+		tile = {"body": body, "shape": shape}
+		_ground_tiles[key] = tile
+	var data := PackedFloat32Array()
+	data.resize((GROUND_TILE + 1) * (GROUND_TILE + 1))
+	for z in GROUND_TILE + 1:
+		for x in GROUND_TILE + 1:
+			data[z * (GROUND_TILE + 1) + x] = _height(key.x * GROUND_TILE + x, key.y * GROUND_TILE + z)
+	(tile.shape as HeightMapShape3D).map_data = data
 
 
-func _exit_tree() -> void:
-	if _task >= 0:
-		WorkerThreadPool.wait_for_task_completion(_task)  # nothing may be left running on a worker
-		_task = -1
-
-
-## The physics ground's heights redone over a rectangle of its samples: the
-## trench floor where the trench mask is dug, else the shell holes and
-## riverbeds (TerrainMap.deform_at, worked out the same way). It works on its
-## own copies of the heights and masks (packed arrays copy when written to),
-## so it can run on a worker thread while the battle goes on.
-class HeightsJob:
-	var heights: PackedFloat32Array
-	var mask: PackedByteArray
-	var dh: PackedFloat32Array
-	var rect: Rect2i
-
-	func _init(h: PackedFloat32Array, m: PackedByteArray, d: PackedFloat32Array, r: Rect2i) -> void:
-		heights = h
-		mask = m
-		dh = d
-		rect = r
-
-	func run() -> void:
-		var n := TrenchNet.N
-		var dn := TerrainMap.DN
-		var has_mask := not mask.is_empty()
-		var has_dh := dh.size() == dn * dn
-		for z in range(rect.position.y, rect.end.y + 1):
-			var pz := clampi(z * TrenchNet.RES, 0, n - 1)
-			var fz := (float(z) - MapDims.HALF + TerrainMap.H) * TerrainMap.DRES - 0.5
-			var z0 := clampi(floori(fz), 0, dn - 2)
-			var tz := clampf(fz - z0, 0.0, 1.0)
-			var row := z * PhysicsFx.GROUND_N
-			for x in range(rect.position.x, rect.end.x + 1):
-				if has_mask and mask[pz * n + clampi(x * TrenchNet.RES, 0, n - 1)] > 150:
-					heights[row + x] = TrenchNet.FLOOR_Y
-				elif has_dh:
-					var fx := (float(x) - MapDims.HALF + TerrainMap.H) * TerrainMap.DRES - 0.5
-					var x0 := clampi(floori(fx), 0, dn - 2)
-					var tx := clampf(fx - x0, 0.0, 1.0)
-					var j := z0 * dn + x0
-					heights[row + x] = lerpf(lerpf(dh[j], dh[j + 1], tx), lerpf(dh[j + dn], dh[j + dn + 1], tx), tz)
-				else:
-					heights[row + x] = 0.0
+func _height(x: int, z: int) -> float:
+	var n := TrenchNet.N
+	if not _mask.is_empty():
+		var pz := clampi(z * TrenchNet.RES, 0, n - 1)
+		var px := clampi(x * TrenchNet.RES, 0, n - 1)
+		if _mask[pz * n + px] > 150:
+			return TrenchNet.FLOOR_Y
+	return world.terrain.deform_at(Vector3(x - MapDims.HALF, 0, z - MapDims.HALF)) if world.terrain else 0.0
 
 
 func _mask_all() -> int:
@@ -346,12 +317,10 @@ func _physics_process(_dt: float) -> void:
 
 
 func _process(dt: float) -> void:
-	if _task >= 0 and WorkerThreadPool.is_task_completed(_task):
-		WorkerThreadPool.wait_for_task_completion(_task)
-		_task = -1
-		_take(_job)
-		_job = null
-		_flush()  # (anything that came in meanwhile)
+	var terrain_started := Time.get_ticks_usec()
+	_update_ground_tiles()
+	world.vp("cosmetic terrain collision", terrain_started)
+	var bodies_started := Time.get_ticks_usec()
 	var a := Engine.get_physics_interpolation_fraction()
 	for i in range(ragdolls.size() - 1, -1, -1):
 		var r = ragdolls[i]
@@ -411,3 +380,4 @@ func _process(dt: float) -> void:
 				model.transform = e[3]
 				b2.queue_free()
 				_tosses.remove_at(i)
+	world.vp("cosmetic bodies", bodies_started)

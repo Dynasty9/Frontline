@@ -8,10 +8,32 @@ var _sel_sids := {}
 var _pt := 0
 var _team_structs: Array = []
 var _ts_t := 0
+var _map_labels := {}
+var _label_epoch := 0
+var _groups_at := -1000
 const CLOSE_Z := 22.0
 const FAR_Z := 42.0
+var _refresh_left := 0.0
+var _refresh_view := Transform3D.IDENTITY
+var _refresh_pointer := Vector2.INF
+
+
+func _input(event: InputEvent) -> void:
+	if not event is InputEventMouseMotion:
+		_refresh_left = 0.0
+
+
+func refresh_for_view(dt: float, view: Transform3D, pointer: Vector2) -> void:
+	_refresh_left -= dt
+	if _refresh_left > 0.0 and view == _refresh_view and pointer == _refresh_pointer:
+		return
+	_refresh_left = maxf(0.0, _refresh_left + 1.0 / 30.0) if _refresh_left <= 0.0 else 1.0 / 30.0
+	_refresh_view = view
+	_refresh_pointer = pointer
+	queue_redraw()
 
 func _draw() -> void:
+	_label_epoch += 1
 	var w := hud.world
 	var inp := w.input
 	if inp == null or w.cam == null:
@@ -53,9 +75,9 @@ func _draw() -> void:
 	_ts_t -= 1
 	if _ts_t <= 0:
 		_ts_t = 30
-		_team_structs.clear()
-		for st2 in w.structures:
-			if st2.team >= 0 or st2.label_h > 0.0:
+		_team_structs.assign(w.owned_structures)
+		for st2 in w.sim_structures:
+			if st2.team < 0 and st2.label_h > 0.0:
 				_team_structs.append(st2)
 	_clear_placed()
 	_build_groups(inp)
@@ -72,7 +94,7 @@ func _draw() -> void:
 	_mark("orders")
 	if not w.mission_info.is_empty() and int(w.mission_info.get("over", 0)) == 0:
 		_mission_marks(cam, vs)
-	var men := _men_on_screen(cam, vs)
+	var men := _men_on_screen(cam, vs) if a_close + a_mid > 0.0 else []
 	_mark("men on screen")
 	if a_close > 0.0:
 		_interactions(cam, men, a_close)
@@ -89,8 +111,10 @@ func _draw() -> void:
 		_status_icons(men, a_mid)
 	_mark("labels")
 	_nato_markers(cam, lt, a_units)
-	_command_links(cam, a_units)
+	_finish_map_labels()
 	_mark("symbols")
+	_command_links(cam, a_units)
+	_mark("command links")
 	# health bars: selected, wounded or downed friendlies
 	for s in w.soldiers:
 		if not s.visible or s.life == Soldier.Life.HIDDEN or s.life == Soldier.Life.DEAD:
@@ -367,25 +391,42 @@ func _ground_arrow(a: Vector3, b: Vector3, col: Color) -> void:
 # --- levels of detail -------------------------------------------------------
 
 func _build_groups(inp) -> void:
-	_groups.clear()
 	_sel_sids.clear()
 	for sid in inp.sel_squads:
 		_sel_sids[sid] = true
+	# Membership and squad markers are an overview; selection stays immediate.
+	var now := Time.get_ticks_msec()
+	if now - _groups_at < 100:
+		return
+	_groups_at = now
+	_groups.clear()
 	for s in hud.world.soldiers:
 		if s.sid == 0 or not s.visible or s.life == Soldier.Life.HIDDEN:
 			continue
 		var g: Dictionary = _groups.get(s.sid, {})
 		if g.is_empty():
-			g = {"mem": [], "c": Vector3.ZERO, "n": 0, "team": s.team, "lead": null}
+			g = {"mem": [], "c": Vector3.ZERO, "n": 0, "team": s.team, "lead": null, "firing": 0, "supp": 0, "pips": []}
 			_groups[s.sid] = g
 		(g["mem"] as Array).append(s)
+		var pc := Color(0.92, 0.95, 0.9)
+		if s.life == Soldier.Life.DOWNED:
+			pc = Color(1, 0.32, 0.26)
+		elif s.life != Soldier.Life.ALIVE:
+			pc = Color(0.32, 0.32, 0.3)
+		g.pips.append(pc)
 		if s.life == Soldier.Life.ALIVE:
 			g["c"] = (g["c"] as Vector3) + s.position
 			g["n"] = int(g["n"]) + 1
+			if (s.flags & Soldier.F_SHOOTING) != 0:
+				g.firing += 1
+			if (s.flags & (Soldier.F_SUPP | Soldier.F_PINNED)) != 0:
+				g.supp += 1
 			if (s.flags & Soldier.F_LEADER) != 0:
 				g["lead"] = s
 	for sid in _groups:
 		var g: Dictionary = _groups[sid]
+		g.symbol = MapSymbols.squad_symbol(g.mem)
+		g.callsign = Squad.callsign_of(g.team, int(sid)).to_upper()
 		if int(g["n"]) > 0:
 			g["c"] = (g["c"] as Vector3) / float(g["n"])
 
@@ -523,7 +564,15 @@ func _ground_path(a: Vector3, b: Vector3, col: Color, alpha: float, grow: float,
 	if l < 1.5:
 		return
 	var dir := d.normalized()
-	var n := maxi(2, int(l / 2.5))
+	var start := Vector3(a.x, 0.3, a.z)
+	var end := start + dir * l
+	if cam.is_position_behind(start) or cam.is_position_behind(end):
+		return
+	var bounds := Rect2(cam.unproject_position(start), Vector2.ZERO).expand(cam.unproject_position(end))
+	if not bounds.grow(20.0).intersects(get_viewport_rect()):
+		return
+	# Solid orders are straight on the flat ground; only dashes need samples.
+	var n := maxi(2, int(l / 2.5)) if dashed else 1
 	var pts := PackedVector2Array()
 	for i in n + 1:
 		var p := a + dir * (l * i / n)
@@ -534,9 +583,12 @@ func _ground_path(a: Vector3, b: Vector3, col: Color, alpha: float, grow: float,
 	var c := Color(col.r, col.g, col.b, alpha)
 	var sh := Color(0, 0, 0, alpha * 0.45)
 	if dashed:
+		var segments := PackedVector2Array()
 		for i in range(0, pts.size() - 1, 2):
-			draw_line(pts[i], pts[i + 1], sh, width + 2.0, true)
-			draw_line(pts[i], pts[i + 1], c, width, true)
+			segments.append(pts[i])
+			segments.append(pts[i + 1])
+		draw_multiline(segments, sh, width + 2.0, true)
+		draw_multiline(segments, c, width, true)
 	else:
 		draw_polyline(pts, sh, width + 2.0, true)
 		draw_polyline(pts, c, width, true)
@@ -565,9 +617,12 @@ func _dashed_ring(c3: Vector3, r: float, col: Color, alpha: float) -> void:
 			return
 		pts.append(cam.unproject_position(p))
 	var c := Color(col.r, col.g, col.b, alpha)
+	var segments := PackedVector2Array()
 	for i in range(0, pts.size() - 1, 2):
-		draw_line(pts[i], pts[i + 1], Color(0, 0, 0, alpha * 0.4), 4.0, true)
-		draw_line(pts[i], pts[i + 1], c, 2.0, true)
+		segments.append(pts[i])
+		segments.append(pts[i + 1])
+	draw_multiline(segments, Color(0, 0, 0, alpha * 0.4), 4.0, true)
+	draw_multiline(segments, c, 2.0, true)
 
 ## Each town's ground as a ring in its holder's colours (the town's own while
 ## nobody holds it) when the camera is over it, and whenever someone is
@@ -640,7 +695,7 @@ func _defend_arc(c3: Vector3, face: Vector3, col: Color, alpha: float) -> void:
 	var base := atan2(face.z, face.x) if face.length() > 0.1 else -PI * 0.5
 	var r := 7.0
 	var pts := PackedVector2Array()
-	var ticks := []
+	var ticks := PackedVector2Array()
 	for i in 15:
 		var ang := base + deg_to_rad(-70.0 + i * 10.0)
 		var dv := Vector3(cos(ang), 0, sin(ang))
@@ -650,12 +705,12 @@ func _defend_arc(c3: Vector3, face: Vector3, col: Color, alpha: float) -> void:
 			return
 		pts.append(cam.unproject_position(p))
 		if i % 2 == 1:
-			ticks.append([p, p + dv * 1.4])
+			ticks.append(pts[pts.size() - 1])
+			ticks.append(cam.unproject_position(p + dv * 1.4))
 	var c := Color(col.r, col.g, col.b, alpha)
 	draw_polyline(pts, Color(0, 0, 0, alpha * 0.45), 5.0, true)
 	draw_polyline(pts, c, 3.0, true)
-	for t in ticks:
-		draw_line(cam.unproject_position(t[0]), cam.unproject_position(t[1]), c, 2.0, true)
+	draw_multiline(ticks, c, 2.0, true)
 
 ## Who's dealing with whom, close up: chat partners, a medic and his patient,
 ## a guard and his prisoner.
@@ -977,7 +1032,7 @@ func _nato_markers(cam: Camera3D, lt: int, a: float) -> void:
 		var tm: int = g["team"]
 		var mine := tm == lt or lt < 0
 		var mem: Array = g["mem"]
-		var sym := MapSymbols.squad_symbol(mem)
+		var sym: Array = g.symbol
 		var sel := _sel_sids.has(sid)
 		var sz := (30.0 if sel else 26.0) if hud.tactical else (26.0 if sel else 23.0)
 		var hw := sz * 0.5
@@ -986,16 +1041,9 @@ func _nato_markers(cam: Camera3D, lt: int, a: float) -> void:
 		if age < 1.6:
 			var k := age / 1.6
 			draw_arc(sp, 16.0 + k * 28.0, 0.0, TAU, 32, Color(1, 1, 1, (1.0 - k) * 0.85 * a), 2.0, true)
-		var firing := 0
-		var supp := 0
-		var alive := 0
-		for s in mem:
-			if s.life == Soldier.Life.ALIVE:
-				alive += 1
-				if (s.flags & Soldier.F_SHOOTING) != 0:
-					firing += 1
-				if (s.flags & (Soldier.F_SUPP | Soldier.F_PINNED)) != 0:
-					supp += 1
+		var firing: int = g.firing
+		var supp: int = g.supp
+		var alive: int = g.n
 		MapSymbols.nato(self, sp, sz, mine, tm, sym[0], sym[1], a, not hud.tactical)
 		if sel:
 			draw_arc(sp, hw + 7.0, 0.0, TAU, 28, Color(1, 1, 1, 0.55 * a), 1.5, true)
@@ -1016,25 +1064,19 @@ func _nato_markers(cam: Camera3D, lt: int, a: float) -> void:
 		# strength: a pip per man (white standing, red down, grey lost)
 		var py := sp.y + hw * 0.68 + 4.0
 		var px := sp.x - mem.size() * 2.5
-		for s in mem:
-			var pc := Color(0.92, 0.95, 0.9)
-			if s.life == Soldier.Life.DOWNED:
-				pc = Color(1, 0.32, 0.26)
-			elif s.life != Soldier.Life.ALIVE:
-				pc = Color(0.32, 0.32, 0.3)
+		for pc: Color in g.pips:
 			draw_rect(Rect2(px - 0.5, py - 0.5, 5, 4), Color(0, 0, 0, 0.6 * a))
 			draw_rect(Rect2(px, py, 4, 3), Color(pc.r, pc.g, pc.b, a))
 			px += 5.0
 		var ty := py + 15.0
 		if mine:
-			var cs := Squad.callsign_of(tm, int(sid))
-			UiKit.caps_at(self, Vector2(sp.x - UiKit.caps_w(cs, 10) * 0.5, ty), cs, 10, UiKit.fa(UiKit.TEXT, 0.85 * a))
+			_map_text(Vector2i(int(sid), 0), Vector2(sp.x, ty), g.callsign, UiKit.cond(600, 1), 10, UiKit.fa(UiKit.TEXT, 0.85 * a))
 			ty += 12.0
 		if age < 6.0:
 			var tag := _order_tag(o)
 			var ta := clampf((6.0 - age) * 1.5, 0.0, 1.0) * a
 			var tcol := UiKit.ACCENT
-			UiKit.mono_at(self, Vector2(sp.x - UiKit.mono_w(tag, 10) * 0.5, ty), tag, 10, Color(tcol.r, tcol.g, tcol.b, ta))
+			_map_text(Vector2i(int(sid), 1), Vector2(sp.x, ty), tag, UiKit.mono(400), 10, Color(tcol.r, tcol.g, tcol.b, ta))
 	for v in w.vehicles:
 		if not v.visible or v.team < 0 or v.vkind == "truck":
 			continue
@@ -1063,6 +1105,50 @@ func _nato_markers(cam: Camera3D, lt: int, a: float) -> void:
 			draw_arc(vp, 21.0, 0.0, TAU, 28, HudCoop._a(Net.player_color(vby), 0.55 * a), 1.3, true)
 			_owner_tab(vp + Vector2(6.0, -22.5), vby, a)
 
+## Retain shaped text and drawing commands while the camera moves its anchor.
+class MapLabel extends Node2D:
+	var text := ""
+	var face: Font
+	var font_size := 0
+	var width := 0.0
+	var epoch := 0
+
+	func set_text(value: String, font: Font, pixels: int) -> void:
+		if text == value and face == font and font_size == pixels:
+			return
+		text = value
+		face = font
+		font_size = pixels
+		width = face.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x
+		queue_redraw()
+
+	func _draw() -> void:
+		UiKit.text_f(self, face, Vector2.ZERO, text, font_size, Color.WHITE)
+
+
+func _map_text(key: Vector2i, anchor: Vector2, text: String, face: Font, pixels: int, color: Color) -> void:
+	var label: MapLabel = _map_labels.get(key)
+	if label == null:
+		label = MapLabel.new()
+		label.show_behind_parent = true
+		add_child(label)
+		_map_labels[key] = label
+	label.set_text(text, face, pixels)
+	label.position = anchor - Vector2(label.width * 0.5, 0)
+	label.modulate = color
+	label.epoch = _label_epoch
+	label.visible = true
+
+
+func _finish_map_labels() -> void:
+	for key in _map_labels.keys():
+		var label: MapLabel = _map_labels[key]
+		label.visible = label.epoch == _label_epoch
+		if not _groups.has(key.x):
+			label.queue_free()
+			_map_labels.erase(key)
+
+
 ## The other human commander a unit belongs to (0: yours, the AI's or nobody's).
 func _co_owner(e: Entity) -> int:
 	var own: int = e.owner_peer
@@ -1086,7 +1172,7 @@ func _command_links(cam: Camera3D, a: float) -> void:
 		return
 	var now := Time.get_ticks_msec()
 	var hq := {}
-	for st in hud.world.structures:
+	for st in hud.world.owned_structures:
 		if st.skind == "depot" and st.team >= 0:
 			hq[st.team] = st.position
 	for sid in hud.orders:

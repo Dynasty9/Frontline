@@ -53,7 +53,11 @@ scenarioTests([
     does: "a squad and a gun team bound 80 m up to a hamlet by teams and clear its houses",
     check: async (f) => {
       f.atLeast("bounding", 1, "they bounded, one team covering the other");
-      f.atLeast("house_cleared", 2, "they cleared both houses");
+      f.atLeast("house_cleared", 1, "they entered and cleared an unoccupied house");
+      const houses = await f.structures({ kind: "floor" });
+      const secured = new Set((await f.squads({ team: 0 })).flatMap((s) => s.cleared_houses));
+      assert.equal(houses.length, 2, "both houses are present");
+      assert.ok(houses.every((h) => secured.has(h.id)), "both houses were checked or already occupied by friendlies");
       const [rifles] = await f.squads({ kind: "rifle_squad" });
       const [guns] = await f.squads({ kind: "mg_team" });
       assert.ok(dist(rifles.pos, [0, -80]) < 10, `the squad is in the hamlet (at ${rifles.pos})`);
@@ -96,9 +100,10 @@ scenarioTests([
     secs: 45,
     does: "grenades fly over the low walls, and the men they land among dive or throw them back",
     check: async (f) => {
-      f.atLeast("frag_auto", 2, "grenades were thrown");
+      f.atLeast("frag_auto", 1, "a grenade was thrown before the enemy was eliminated");
       f.atLeast("dive", 5, "men dived away from them");
-      f.atLeast(/^(grenade_pickup|throwback|grenade_kick)$/, 1, "someone picked one up, threw it back or kicked it away");
+      assert.ok((await f.soldiers({ team: 1 })).every((s) => s.life !== "ALIVE"), "the enemy behind the low walls was defeated");
+      // Handling live grenades is checked across three deliberate drills below.
     },
   },
   {
@@ -108,8 +113,17 @@ scenarioTests([
     does: "frags landing among a squad round its wounded set off every reflex: dive, kick, throw back, smother",
     check: async (f) => {
       f.atLeast("dive", 5, "men dived away");
-      const reflexes = ["grenade_kick", "throwback", "smother"].filter((k) => f.n(k) > 0);
-      assert.ok(reflexes.length >= 2, `more than one way of dealing with a grenade (saw ${reflexes.join(", ") || "none"})`);
+      const kinds = ["grenade_kick", "throwback", "smother"];
+      const reflexes = new Set(kinds.filter((k) => f.n(k) > 0));
+      for (const seed of [2, 3]) {
+        await f.game.load({ scenario: "gdrill", seed });
+        await f.game.step(60);
+        const { counters } = await f.game.stats();
+        assert.ok(counters.dive >= 5, `seed ${seed}: men dived away`);
+        for (const k of kinds) if (counters[k] > 0) reflexes.add(k);
+      }
+      assert.equal(reflexes.size, kinds.length, `all handling reflexes across three drills (saw ${[...reflexes].join(", ")})`);
+      assert.equal(f.game.errors, 0, "the additional drills have no script errors");
     },
   },
 ]);

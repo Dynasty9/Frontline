@@ -1,7 +1,7 @@
 class_name SoldierBrain
 extends RefCounted
-## What a soldier does about what's going on around him, as a behaviour tree
-## (see BT) walked every time he thinks:
+## What a soldier does about what's going on around him, in priority order
+## whenever he thinks:
 ##   1. reflexes, most urgent first - a grenade lands by him (throw himself on
 ##      it if that's the only way to save the men around him, throw it back if
 ##      there's time, kick it away if it's at his feet, get down if there's a
@@ -15,59 +15,51 @@ extends RefCounted
 ## Men busy with something that can't wait (a stretcher, crawling wounded,
 ## the tunnels) keep only the reflexes that save their own skin.
 
-static var _tree: BT.Branch = null
-
-
-static func tree() -> BT.Branch:
-	if _tree == null:
-		_tree = _build()
-	return _tree
-
-
+## Keep reflex priority explicit; per-man decisions need no tree dispatch.
 static func think(s: Soldier) -> void:
-	tree().tick(s)
-
-
-static func _build() -> BT.Branch:
-	return BT.sel("brain", [
-		# committed: lying on a grenade there's nothing else to decide
-		BT.cond("committed", func(s): return s.task == "smother"),
-		BT.seq("busy", [
-			BT.cond("busy", func(s): return busy(s)),
-			BT.always(BT.sel("save himself", [
-				BT.act("dive from a grenade", func(s): return ok(s._react_grenade(true))),
-				BT.act("dive from a shell", func(s): return ok(s._react_shells(true))),
-			])),
-		]),
-		BT.sel("reflexes", [
-			BT.seq("grenade!", [
-				BT.cond("grenade landed by him", func(s): return grenade_close(s)),
-				BT.sel("deal with it", [
-					BT.seq("smother", [BT.cond("nobody else can be saved", func(s): return can_smother(s)), BT.act("throw himself on it", func(s): return smother(s))]),
-					BT.seq("throw back", [BT.cond("time to throw it back", func(s): return can_throw_back(s)), BT.act("pick it up", func(s): return throw_back(s))]),
-					BT.seq("kick", [BT.cond("at his feet", func(s): return can_kick(s)), BT.act("kick it away", func(s): return kick(s))]),
-					BT.seq("wall", [BT.cond("a wall between", func(s): return wall_between(s)), BT.act("get down behind it", func(s): return duck(s))]),
-					BT.act("dive clear", func(s): return dive_clear(s)),
-				]),
-			]),
-			BT.act("shell incoming", func(s): return ok(s._react_shells(false))),
-			BT.act("drone diving", func(s): return drone(s)),
-			BT.seq("melee", [BT.cond("hands free", func(s): return s.task != "man" and s.task != "pilot"), BT.act("hand to hand", func(s): return ok(s._try_melee()))]),
-		]),
-		BT.seq("duty", [
-			BT.always(BT.act("scavenge", func(s): return scavenge(s))),
-			BT.cond("free", func(s): return s.task == ""),
-			BT.always(BT.sel("fight", [
-				BT.seq("clear a house", [BT.cond("enemy in a house", func(s): return can_breach(s)), BT.act("stack on the door", func(s): return breach(s))]),
-				BT.act("mortar", func(s): return ok(s._try_mortar())),
-				BT.act("launcher", func(s): return ok(s._try_rocket())),
-				BT.act("drone", func(s): return ok(s._try_drone())),
-				BT.act("grenade", func(s): return ok(s._try_grenade())),
-				BT.act("hold", func(s): return hold(s)),
-			])),
-			BT.act("watch his sector", func(s): return sector(s)),
-		]),
-	])
+	if s.task == "smother":
+		return
+	if busy(s):
+		if s._react_grenade(true):
+			s.bt_path = "dive from a grenade"
+		elif s._react_shells(true):
+			s.bt_path = "dive from a shell"
+		return
+	if grenade_close(s):
+		if can_smother(s):
+			smother(s)
+			s.bt_path = "throw himself on it"
+		elif can_throw_back(s):
+			throw_back(s)
+			s.bt_path = "pick it up"
+		elif can_kick(s):
+			kick(s)
+			s.bt_path = "kick it away"
+		elif wall_between(s):
+			duck(s)
+			s.bt_path = "get down behind it"
+		else:
+			dive_clear(s)
+			s.bt_path = "dive clear"
+		return
+	if s._react_shells(false):
+		s.bt_path = "shell incoming"
+		return
+	if drone(s) != BT.FAIL:
+		s.bt_path = "drone diving"
+		return
+	if s.task != "man" and s.task != "pilot" and s._try_melee():
+		s.bt_path = "hand to hand"
+		return
+	scavenge(s)
+	if s.task != "":
+		return
+	if can_breach(s):
+		breach(s)
+	elif not s._try_mortar() and not s._try_rocket() and not s._try_drone() and not s._try_grenade():
+		hold(s)
+	sector(s)
+	s.bt_path = "watch his sector"
 
 
 static func ok(b: bool) -> int:
@@ -337,7 +329,7 @@ static func cook_time(s: Soldier, target: Entity, d: float) -> float:
 
 ## The house (its floor) that p is in, or null.
 static func house_at(w: World, p: Vector3) -> Structure:
-	for st in w.structures_near(p, 9.0):
+	for st in w.structures_near(p, 9.0, true):
 		if st.skind != "floor" or st.gone:
 			continue
 		var l: Vector3 = Basis(Vector3.UP, -st.yaw) * (p - st.position)
@@ -395,13 +387,12 @@ static func can_breach(s: Soldier) -> bool:
 	if cl != null and is_instance_valid(cl) and cl != s and not cl.gone and cl.life == Soldier.Life.ALIVE and cl.task == "breach":
 		return false
 	var mine := house_at(s.world, s.position)
-	for k in s.squad.known.values():
-		var e = k.e
-		# (a man in a house tends to stay there: seen there a while ago will do)
-		if not (e is Soldier) or e.gone or e.life != Soldier.Life.ALIVE or s.world.time - float(k.t) > 25.0:
+	for contact in s.squad.building_contacts():
+		var e: Soldier = contact[0]
+		var h: Structure = contact[1]
+		if not is_instance_valid(e) or not is_instance_valid(h) or e.gone or h.gone or e.life != Soldier.Life.ALIVE:
 			continue
-		var h := house_at(s.world, e.position)
-		if h == null or h == mine:
+		if h == mine:
 			continue
 		if Defs.flat(h.position - s.position).length() > 30.0 or Defs.flat(h.position - s.hold_pos).length() > 32.0:
 			continue
