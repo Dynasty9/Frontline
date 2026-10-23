@@ -8,6 +8,8 @@ import type { Health, Lobby } from "@/lib/matchmaker"
 import type { Battle, BattleHead, Board, Career, Period, PublicPlayer } from "@/lib/players"
 
 export type Answers = {
+  replays?: import("@/lib/replays").Replay[]
+  viewer?: boolean
   lobbies?: Lobby[]
   health?: Health
   /** the signed-in player, for /me (signedIn puts their session in the page) */
@@ -60,9 +62,16 @@ export function mockMatchmaker(answers: Answers) {
     const realFetch = globalThis.fetch
     let me = answers.me
     globalThis.fetch = async (input, init) => {
-      const url = new URL(input instanceof Request ? input.url : String(input))
+      const url = new URL(input instanceof Request ? input.url : String(input), window.location.origin)
       const method = init?.method ?? "GET"
       const route = `${method} ${url.pathname}`
+      if (route === "GET /replays") return Response.json({ enabled: true, replays: answers.replays ?? [] })
+      if (url.pathname.startsWith("/replays/")) {
+        const replay = answers.replays?.find((r) => r.id === url.pathname.split("/")[2])
+        return Response.json(replay ?? { error: "Not found" }, { status: replay ? 200 : 404 })
+      }
+      if (url.pathname === "/game/viewer.json")
+        return Response.json(answers.viewer ? { format: 1, protocol: 9 } : {}, { status: answers.viewer ? 200 : 404 })
       const pub = method === "GET" ? publicAnswer(answers, url) : undefined
       if (pub) return pub
       if (route === "POST /auth/exchange" && answers.exchange) {

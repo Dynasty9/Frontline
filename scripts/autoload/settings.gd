@@ -119,7 +119,7 @@ func apply_global() -> void:
 		vp.use_taa = aa == 4
 		var sc: float = clampf(float(v.scale), 0.5, 1.0)
 		vp.scaling_3d_scale = sc
-		var up := int(v.upscaler)
+		var up := 0 if RenderingServer.get_current_rendering_method() == "gl_compatibility" else int(v.upscaler)
 		if up == 2:
 			vp.scaling_3d_mode = Viewport.SCALING_3D_MODE_FSR2  # FSR 2 brings its own temporal AA
 		elif up == 1 and sc < 0.99:

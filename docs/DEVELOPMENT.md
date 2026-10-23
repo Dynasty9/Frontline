@@ -786,7 +786,12 @@ The motion scenario includes scheduled infantry and tank damage to make visual
 regressions repeatable; other movement and fire use normal game simulation.
 
 Scenario launches also honor --seed=N. For repeatable motion-demo comparisons, use --scenario=motion --seed=3 with --fixed-fps 60 before the argument separator. The seed fixes simulation initialization; it does not promise identical rendered particles or cross-platform physics.
-### Additional scaling diagnostics
+
+## Recording and replay tests
+
+Use `--record-replay=FOLDER` to save a test battle, and `--replay=FOLDER` to watch it. `--replay=URL` opens the recording API in the same observer. `--replay-test` checks forward and backward seeks against recorded state; `tests/replay.test.mjs` includes it in the game suite. See [REPLAYS.md](REPLAYS.md).
+
+## Additional scaling diagnostics
 
 `tests/structure_view_test.tscn` checks deferred scenery construction, camera-cell
 changes, removal, and construction finishing outside the visible region.

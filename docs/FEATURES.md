@@ -392,7 +392,10 @@ catalogue entry in `MissionList.LIST`, a setup function and an autopilot functio
   standing behind a chest-high wall or on a trench's fire step (to 1.55 m), and round the ends of anything
   taller, leaning out. His weapon rests on the top; when he ducks his head really is below it. Formation
   slots, the move preview and each man's own choice of cover all use the same positions, so a squad told to
-  hold by a wall lines it.
+  hold by a wall lines it. Tall barriers also offer a second row 1.5 metres behind the first:
+  overflow soldiers shelter there when the front row is occupied. Physical wall blocking still applies,
+  but their effective cover rating is one tier lower (less shelter from near misses), and they
+  cannot lean around an edge from that row. The wall itself retains its normal bullet resistance.
 - **What it's made of matters.** Hedges, tents and single crates are *soft*: they hide you, but rounds go
   through (a burst into a hedge finds whoever is behind it). Cars, house walls and stacked crates are *medium*:
   they stop a rifle, not a machine gun. Stone, brick, concrete, sandbags, earth and wrecks are *hard*: only a
@@ -443,7 +446,7 @@ catalogue entry in `MissionList.LIST`, a setup function and an autopilot functio
   quiet, a leader, friends close by, a tank alongside and a hole in the ground build it back; dropping enemies
   lifts it. Steady, it fights as it should; shaken, it shoots worse and is pinned sooner; breaking, it breaks
   contact; routed, it runs for the rear and won't take orders until it has rallied. The squad card shows it.
-- **Moving tactically** (`tactics.gd`). Out of contact a squad travels in its wedge; where contact is likely
+- **Moving tactically** (`tactics.gd`). Out of contact a squad travels in a compact group; where contact is likely
   (the enemy about lately, or seen near where it's going) it moves by *bounding overwatch*: one fire team goes
   firm - down, spread out, watching its sectors - while the other dashes 30-odd metres to the next cover, then
   they leapfrog, so nobody is ever in the open without a team covering him. The covering team's gunner puts a
@@ -463,8 +466,12 @@ catalogue entry in `MissionList.LIST`, a setup function and an autopilot functio
   heaves with their breathing, and a man catching his breath stands bent over, hands on his knees. A long move
   at a run arrives winded; a walk keeps men fresh. Men short of ammunition get a magazine from a mate beside them.
 - Every squad has a callsign (Alpha 1, Bravo 2 / Lion 1, Hawk 2...) and a squad leader who takes the orders. On a
-  long move he leads and the men keep their place in a wedge on him, laggards running to catch up, the leader
-  easing off so nobody is left behind. When he goes down, the next man steps up and says so.
+  long move he leads and the men keep a compact circle behind him, laggards running to catch up, the leader
+  easing off for the furthest laggard. Followers file through the same gaps before spreading out again.
+  Orders place the men within 5.5 metres of their destination (6.5 when defending), favoring cover on
+  the same side of walls. Fighting men search within 3 metres of their assigned place without crossing
+  a barrier; detached soldiers, emergency dives and casualty rescue retain their own freedom.
+  When the leader goes down, the next man steps up and says so.
 - The AI commander's orders go out over the command net ("Command: Jackal 1, Lion 2, assault D7.") and the squad
   leaders acknowledge them.
 - **Deliberate attacks** (`attack_plan.gd`): an attack-move order is planned and executed the way infantry are
@@ -1170,7 +1177,12 @@ Captured contact IK anchors low supporting feet in world space, blends the ankle
 
 This is an opt-in evaluation, not a complete production animation library. Authored directional crouch, precise finger wrapping, mounted reloads, vehicle boarding/seating, prone get-up, final art quality and large-crowd performance still need work. The M2 fixture passes; mounted M240 and original-model DShK reach/clearance are known remaining issues.
 
-### Large battles and shared AI work
+
+## Battle recordings and browser spectators
+
+Hosts save seekable observer recordings. Listed public battles can broadcast only a few seconds behind play; the website lists broadcasts and seven days of replays when persistent recording storage is enabled. The browser uses the game renderer, with camera controls, pause, speed and a timeline. Private battles stay local. Recordings are not independently verified. See [REPLAYS.md](REPLAYS.md) for the format, deployment and limitations.
+
+## Large battles and shared AI work
 
 Desktop skirmishes and observer games can select 1,024, 2,048 or 3,072 metre maps.
 Solo games and missions launch a private headless simulation with the same game

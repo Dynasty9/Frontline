@@ -4,7 +4,7 @@ import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { ROOT } from "./lib/game.mjs";
 
-test("nearby formation occupancy preserves positions, cover, trenches and map edges", async () => {
+test("compact formations retain cover, trenches and map boundaries", async () => {
   const { stdout, stderr } = await promisify(execFile)(process.env.GODOT || "godot", [
     "--headless", "--path", ROOT, "res://tests/fixtures/formation-occupancy.tscn",
   ], { timeout: 120_000 });

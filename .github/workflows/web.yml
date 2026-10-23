@@ -12,10 +12,16 @@ on:
     branches: [main]
     paths:
       - web/**
+      - Dockerfile.web
+      - .dockerignore
+      - .github/scripts/viewer_manifest.py
       - .github/workflows/web.yml
   pull_request:
     paths:
       - web/**
+      - Dockerfile.web
+      - .dockerignore
+      - .github/scripts/viewer_manifest.py
       - .github/workflows/web.yml
 
 # a newer push to a pull request replaces its older run
@@ -31,6 +37,19 @@ defaults:
     working-directory: web
 
 jobs:
+  viewer:
+    name: Browser viewer image
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - name: Build website and Godot viewer
+        working-directory: .
+        run: docker build -f Dockerfile.web -t frontline-web .
+      - name: Validate nginx configuration
+        working-directory: .
+        run: docker run --rm frontline-web nginx -t
+
   check:
     name: Lint, types, unit tests, build
     runs-on: ubuntu-latest

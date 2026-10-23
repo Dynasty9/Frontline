@@ -707,7 +707,7 @@ func _shift_along() -> bool:
 		if j == cover_ai or st.anc_n[j].dot(cover_n) < 0.9:
 			continue
 		var k: int = st.anc_k[j]
-		if (k == Cover.OVER) == edge or (edge and k == Cover.SHELTER):
+		if k == Cover.STACK or (k == Cover.OVER) == edge or (edge and k == Cover.SHELTER):
 			continue
 		var q: Vector3 = st.anc_p[j]
 		var d := Defs.flat(q - position).length()
