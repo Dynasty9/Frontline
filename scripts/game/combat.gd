@@ -455,6 +455,8 @@ func find_cover(s: Soldier, anchor: Vector3, radius: float, threats: Array, pron
 				"h": gh, "mat": Cover.SOFT if gh == 0.0 else Cover.HARD, "st": null, "ai": -1}
 		var p: Vector3 = ev.pos
 		var sc: float = float(ev.prot) * 10.0 + [0.0, 1.8, 3.4, 4.2][int(ev.mat)]
+		if st != null and st.anc_k[int(ev.ai)] == Cover.STACK:
+			sc -= 2.5  # Keep the front row preferred when it has room.
 		match int(ev.type):
 			Soldier.Cov.LOW:
 				sc += 1.0 if prone else (4.0 if ev.fire else 1.5)

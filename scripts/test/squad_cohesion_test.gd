@@ -63,6 +63,31 @@ func _ready() -> void:
 		check(sl[0].x >= 0 and sl[0].z > 0.9, "an L-shaped corner keeps the squad in the same pocket")
 	for wall in w.walls:
 		wall.free()
+	w.walls.clear()
+	w.nav = Nav.new()
+	w.terrain = TerrainMap.new(w)
+	var tall := Structure.new()
+	tall.skind = "tall_wall"
+	tall.size = Vector3(6, 2.6, 0.5)
+	tall._define_parts()
+	tall._compute_cover_pts()
+	w.walls.append(tall)
+	var front := []
+	for i in tall.anc_p.size():
+		if tall.anc_n[i] == Vector3.FORWARD and tall.anc_k[i] != Cover.STACK:
+			front.append(tall.anc_p[i])
+	check(front.size() == 4, "six metre wall has four front-row places")
+	var rear := Cover.best_near(w, Vector3(0, 0, 3), 6, Vector3(0, 0, -40), front, Vector3(0, 0, 3), 5.5)
+	check(not rear.is_empty() and rear[2].k == Cover.STACK, "full front row sends the next soldier behind the same wall")
+	check(rear[0].z > 2 and rear[0].z < 3 and absf(rear[0].x) < 2, "rear row stays close and inside the wall ends")
+	for p in front:
+		check(rear[0].distance_to(p) >= 1.4, "rear soldier does not overlap the front row")
+	var empty := Cover.best_near(w, Vector3(0, 0, 3), 6, Vector3(0, 0, -40), [], Vector3(0, 0, 3), 5.5)
+	check(empty[2].k != Cover.STACK, "free front-row cover is preferred")
+	check(rear[2].mat < empty[2].mat, "rear row has a lower effective protection rating")
+	check(Cover.SUPP[rear[2].mat] > Cover.SUPP[empty[2].mat], "near misses suppress the rear row more than the front")
+	check(Cover.mat_of(tall) == Cover.HARD, "rear row does not change the wall's bullet resistance")
+	tall.free()
 	w.terrain = null
 	print("SQUADCOHESION %d checks, %d failures" % [checks, TestRun.failures])
 	TestRun.quit(get_tree())

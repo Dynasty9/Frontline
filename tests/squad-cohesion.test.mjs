@@ -6,6 +6,21 @@ import { Game, ROOT, v3 } from "./lib/game.mjs";
 
 const run = promisify(execFile);
 
+test("the whole squad stacks behind one wall during contact", async (t) => {
+  const game = await Game.start();
+  t.after(() => game.close());
+  await game.load({ scenario: "lean", seed: 2 });
+  await game.step(12);
+  const { soldiers } = await game.query("soldiers", { team: 0 });
+  const men = soldiers.filter((s) => s.life === "ALIVE");
+  assert.equal(men.length, 5);
+  for (const man of men) {
+    assert.ok(Math.abs(man.pos[0]) < 3.5, "every soldier stays within the middle wall's width");
+    assert.ok(man.pos[1] > -10 && man.pos[1] < -6.5, "every soldier shelters within a pace of the front row");
+  }
+  assert.equal(game.errors, 0);
+});
+
 test("squad formations remain compact and on the same side of walls", async () => {
   const { stdout, stderr } = await run(process.env.GODOT || "godot", [
     "--headless", "--path", ROOT, "res://scripts/test/squad_cohesion_test.tscn",

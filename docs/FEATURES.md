@@ -392,7 +392,10 @@ catalogue entry in `MissionList.LIST`, a setup function and an autopilot functio
   standing behind a chest-high wall or on a trench's fire step (to 1.55 m), and round the ends of anything
   taller, leaning out. His weapon rests on the top; when he ducks his head really is below it. Formation
   slots, the move preview and each man's own choice of cover all use the same positions, so a squad told to
-  hold by a wall lines it.
+  hold by a wall lines it. Tall barriers also offer a second row 1.5 metres behind the first:
+  overflow soldiers shelter there when the front row is occupied. Physical wall blocking still applies,
+  but their effective cover rating is one tier lower (less shelter from near misses), and they
+  cannot lean around an edge from that row. The wall itself retains its normal bullet resistance.
 - **What it's made of matters.** Hedges, tents and single crates are *soft*: they hide you, but rounds go
   through (a burst into a hedge finds whoever is behind it). Cars, house walls and stacked crates are *medium*:
   they stop a rifle, not a machine gun. Stone, brick, concrete, sandbags, earth and wrecks are *hard*: only a
