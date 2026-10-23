@@ -14,7 +14,7 @@ extends RefCounted
 ## concrete and earth stop everything short of a heavy machine gun, and a
 ## trench, a bunker or a HESCO wall stops that too.
 
-enum {OVER = 1, EDGE_L = 2, EDGE_R = 3, SHELTER = 4}
+enum {OVER = 1, EDGE_L = 2, EDGE_R = 3, SHELTER = 4, STACK = 5}
 enum {SOFT, MEDIUM, HARD, FORT}
 enum {PRONE, KNEEL, STAND, TALL}
 
@@ -160,6 +160,10 @@ static func build(st) -> void:
 				for k in ns:
 					var t := ((float(k) + 0.5) / ns - 0.5) * (hl * 2.0 - 1.6)
 					_add(st, st.position + b * (base + pr * (nl * (hd + off) + tl * t)), wn, top, SHELTER)
+				# Overflow men shelter a pace behind the front row, inside the wall's ends.
+				for k in ns:
+					var t := ((float(k) + 0.5) / ns - 0.5) * (hl * 2.0 - 1.6)
+					_add(st, st.position + b * (base + pr * (nl * (hd + off + 1.5) + tl * t)), wn, top, STACK)
 			else:
 				var off := offset(top)
 				var n := maxi(1, int((hl * 2.0 + 0.2) / SPACING))
@@ -259,23 +263,28 @@ static func evaluate(world, st, i: int, threats: Array, prone := false) -> Dicti
 		typ = Soldier.Cov.LEAN
 	return {"type": typ, "prot": float(prot) / threats.size(), "fire": fire > 0, "lean": lean,
 		"tdir": td.normalized() if td.length() > 0.01 else n, "pos": p, "n": n, "h": h,
-		"mat": mat_of(st), "st": st, "ai": i}
+		"mat": anchor_mat(st, i), "st": st, "ai": i}
+
+
+static func anchor_mat(st, i: int) -> int:
+	# A pace back, less of the man is sheltered from flanks and near misses.
+	return maxi(SOFT, mat_of(st) - 1) if st.anc_k[i] == STACK else mat_of(st)
 
 
 ## The best anchor within r of p to fight from against a threat at `from`,
 ## as [pos, terrain cover level, info] - or [] if none faces that way.
 ## Shared by the server's formation slots and the client's move preview.
-static func best_near(world, p: Vector3, r: float, from: Vector3, taken: Array) -> Array:
+static func best_near(world, p: Vector3, r: float, from: Vector3, taken: Array, group_center := Vector3.INF, group_radius := 0.0) -> Array:
 	var best := []
 	var bs := -1e9
 	for st in world.structures_near(p, r + 2.0):
 		if not st.provides_cover():
 			continue
-		var m := mat_of(st)
 		for i in st.anc_p.size():
+			var m := anchor_mat(st, i)
 			var q: Vector3 = st.anc_p[i]
 			var d := Defs.flat(q - p).length()
-			if d > r:
+			if d > r or (group_center != Vector3.INF and not world.terrain.group_spot(q, group_center, group_radius, st.anc_n[i])):
 				continue
 			var to := Defs.flat(from - q)
 			if to.length() < 0.5 or st.anc_n[i].dot(to.normalized()) < 0.3:
@@ -284,11 +293,13 @@ static func best_near(world, p: Vector3, r: float, from: Vector3, taken: Array) 
 			var sc: float = [3.5, 5.0, 6.5, 7.0][m] - d * 0.6 + (2.5 if st.skind == "trench" else 0.0)
 			if k == SHELTER:
 				sc -= 1.5
+			elif k == STACK:
+				sc -= 2.5
 			elif k == OVER and stance(st.anc_h[i]) == PRONE:
 				sc -= 0.5
 			for t in taken:
 				if Defs.flat((t as Vector3) - q).length() < 1.15:
-					sc -= 6.0
+					sc -= 100.0 if group_center != Vector3.INF else 6.0
 			if sc > bs:
 				bs = sc
 				best = [q, sc, {"n": st.anc_n[i], "h": st.anc_h[i], "k": k, "mat": m, "eid": st.eid}]
@@ -304,7 +315,9 @@ static func describe(info: Dictionary) -> String:
 	var m: int = info.mat
 	var k: int = info.k
 	var how: String = STANCE_NAMES[stance(info.h)]
-	if k == SHELTER:
+	if k == STACK:
+		how = "second row shelter; less protection"
+	elif k == SHELTER:
 		how = "no line of fire"
 	elif k == EDGE_L or k == EDGE_R:
 		how = STANCE_NAMES[TALL]

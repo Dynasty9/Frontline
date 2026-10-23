@@ -1,36 +1,10 @@
 extends Node
 
-class ReferenceGround extends TerrainMap:
-	func slots(c: Vector3, face: Vector3, n: int, wide := false) -> Array:
-		if face.length() < 0.1:
-			face = Vector3.FORWARD
-		var side := face.cross(Vector3.UP).normalized()
-		var threat := c + face * 40.0
-		var taken := []
-		var out := []
-		var spacing := 4.0 if wide else 3.2
-		for i in n:
-			var col := float(i) - (n - 1) * 0.5
-			var depth := -absf(col) * 0.7 if wide else (-1.2 if i % 2 == 0 else 1.0)
-			var p := c + side * col * spacing + face * depth
-			var sp := best_spot_near(p, 3.4 if wide else 2.6, threat, taken)
-			var q: Vector3 = sp[0]
-			if wide and trench[idx_of(q)] == 0:
-				# a defensive line mans the trench if there's one in reach
-				var tq := nearest_trench(p, 7.0, taken)
-				if tq != Vector3.INF:
-					var ts := best_spot_near(tq, 1.6, threat, taken)
-					sp = ts if trench[idx_of(ts[0])] > 0 else [tq, cover_vs(tq, threat), {}]
-					q = sp[0]
-			taken.append(q)
-			out.append(sp)
-		return out
-
 func _ready() -> void:
 	var w := World.new()
 	w.has_view = false
 	var fast := TerrainMap.new(w)
-	var reference := ReferenceGround.new(w)
+	w.nav = Nav.new()
 	w.terrain = fast
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 701
@@ -60,22 +34,21 @@ func _ready() -> void:
 		w._register(st)
 		w._shash_add(st)
 		w.add_child(st)
-	reference.cov = fast.cov
-	reference.cdir = fast.cdir
-	reference.solid = fast.solid
-	reference.trench = fast.trench
 	var cases := 0
 	for wide in [false, true]:
 		for count in [1, 8, 32, 96]:
-			for center in [Vector3.ZERO, Vector3(490, 0, 490)]:
+			for center in [Vector3.ZERO, Vector3(MapDims.HALF - 2, 0, MapDims.HALF - 2)]:
 				var face := Vector3(rng.randf_range(-1, 1), 0, rng.randf_range(-1, 1)).normalized()
-				var expected := reference.slots(center, face, count, wide)
-				assert(fast.slots(center, face, count, wide) == expected, "Nearby occupancy must retain every formation position and cover choice")
+				var slots := fast.slots(center, face, count, wide)
+				assert(slots.size() == count, "each man receives a position")
+				assert(slots == fast.slots(center, face, count, wide), "cover selection is deterministic")
+				for sl in slots:
+					var p: Vector3 = sl[0]
+					assert(absf(p.x) < MapDims.HALF and absf(p.z) < MapDims.HALF, "positions stay inside the map")
+					var normal: Vector3 = sl[2].get("n", Vector3.ZERO)
+					assert(fast.group_spot(p, center, 6.5 if wide else 5.5, normal), "positions remain in the squad's pocket")
 				cases += 1
-	for ground in [reference, fast]:
-		var start := Time.get_ticks_usec()
-		ground.slots(Vector3.ZERO, Vector3.FORWARD, 200, true)
-		print("FORMATION_TIME reference=%s ms=%.3f" % [ground == reference, (Time.get_ticks_usec() - start) / 1000.0])
+	assert(fast.trench[fast.idx_of(fast.slots(Vector3.ZERO, Vector3.FORWARD, 1, true)[0][0])] > 0, "defence still favors nearby trench cover")
 	w.free()
 	print("FORMATION_OCCUPANCY passed cases=%d" % cases)
 	get_tree().quit()
