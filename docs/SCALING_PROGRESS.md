@@ -190,3 +190,48 @@ Do not interpret an unchecked gate or a headless result as validated 60 FPS supp
   queries, including result order and units moving after the hash rebuild.
   It helped very broad queries but slowed common small searches, so it was
   removed rather than adding another index to every simulation tick.
+
+
+## 23 October follow-up
+
+- PR #93 is merged. Further work starts from 8f938b9 on
+  `codex/battle-hotpaths`; the 60 FPS acceptance gates remain open.
+- Local navigation grids now use insertion order for LRU eviction rather than
+  scanning every cached grid. A seeded reference test compares 1,800 accesses
+  at each of the 16 m and 32 m cluster sizes and verifies edits both while
+  resident and after eviction. The 2,500-miss
+  isolated control took 160-192 ms before versus 51-62 ms afterward.
+- On the same generated 3 km map, 100 route queries retained identical lengths
+  and waypoint counts. Total query-loop time was 534 ms before and 491 ms after;
+  the maximum query was 47.36 versus 42.16 ms. These single-run diagnostics do
+  not establish an FPS improvement. Hierarchy size and obstacle detail remain
+  unchanged.
+- Animated combat markers reuse one star polygon and transform it for each
+  marker. The rendered 12,000-marker drawing control took 241 ms before versus
+  109 ms afterward. Reference geometry checks cover 100 phases; both rendered
+  images were inspected, including a following untransformed drawing.
+- Per-instance transform caching slowed the moving-soldier control. Typed batch
+  records gave only small/inconsistent gains. Neither experiment is retained.
+- All 78 game tests pass, and the Windows release export succeeds. The opt-in
+  full-mission campaign was not enabled. A final rendered marker check exits
+  without errors and preserves the following drawing's coordinates.
+- Additional cache controls: 2,500 misses at the 32 m cluster size took
+  234-253 ms before versus 201-203 ms after. Cache hits cost more: 100,000
+  hits took 46-47 ms before versus 61-65 ms after (about 0.15-0.19 microseconds
+  extra per hit). This is an eviction improvement, not a claim that every
+  navigation operation is faster.
+- A 200-marker rendered control measured 0.160/0.177 ms render CPU before/after
+  and essentially the same 201 draw calls; script drawing took 589/350 ms
+  across 180 frames. The renderer-side cost is small, but not zero.
+- Exported battle controls remain below 60 FPS. Early sequential controls
+  measured 29.01/27.56 FPS on the old build and 24.65/23.51 FPS on the modified
+  build. A concurrent video encoder was observed using roughly nine cores;
+  other applications also remained active. A fresh baseline export reached
+  29.00 FPS and a navigation-only export 29.66 FPS. These measurements do not
+  establish a whole-game improvement. Further isolation results are recorded
+  in [PR #97](https://github.com/Dynasty9/Frontline/pull/97).
+- The canvas-transform marker prototype reached only 25.29 FPS when exported
+  on its own. Despite its isolated CPU savings, it is not retained. The final
+  implementation transforms the cached vertices in native code and submits
+  the same world-space polygon command as before, without canvas state changes.
+  Earlier marker timings above describe the discarded canvas-transform version.

@@ -1,0 +1,67 @@
+extends Node
+
+class ReferenceNav extends HNav:
+	var _uses := 0
+	func local_grid(ci: int) -> AStarGrid2D:
+		_uses += 1
+		var e: Variant = _local.get(ci)
+		if e != null:
+			e[1] = _uses
+			return e[0]
+		if _local.size() >= CACHE_CELLS / (C * C):
+			var old := -1
+			var oldest := _uses
+			for k: int in _local:
+				if int(_local[k][1]) < oldest:
+					oldest = int(_local[k][1])
+					old = k
+			_local.erase(old)
+		var lg := _local_from(ci, _solid, _weight)
+		_local[ci] = [lg, _uses]
+		return lg
+
+func _ready() -> void:
+	for cluster in [16, 32]:
+		check_cache(cluster)
+	print("NAV_LRU passed")
+	get_tree().quit()
+
+func check_cache(cluster: int) -> void:
+	MapDims.N = 1024
+	HNav.C = cluster
+	HNav.NC = MapDims.N / cluster
+	var capacity := HNav.CACHE_CELLS / (cluster * cluster)
+	var grid := AStarGrid2D.new()
+	grid.region = Rect2i(0, 0, 1024, 1024)
+	grid.update()
+	var old := ReferenceNav.new(grid, false)
+	var current := HNav.new(grid, false)
+	var random := RandomNumberGenerator.new()
+	random.seed = 826
+	for i in capacity:
+		old.local_grid(i)
+		current.local_grid(i)
+	for i in 1800:
+		var ci := random.randi_range(0, 1023)
+		old.local_grid(ci)
+		current.local_grid(ci)
+		assert(old._local.size() == current._local.size())
+		for key in old._local:
+			assert(current._local.has(key), "LRU eviction changed")
+	var cell := Vector2i(4, 7)
+	current.local_grid(0)
+	grid.set_point_solid(cell, true)
+	grid.set_point_weight_scale(cell, 2.5)
+	current.mark_dirty(cell)
+	assert(current.local_grid(0).is_point_solid(cell))
+	assert(current.local_grid(0).get_point_weight_scale(cell) == 2.5)
+	for i in range(1, capacity + 2):
+		current.local_grid(i)
+	assert(not current._local.has(0))
+	assert(current.local_grid(0).is_point_solid(cell) and current.local_grid(0).get_point_weight_scale(cell) == 2.5)
+	for repeat in 3:
+		for nav in [old, current]:
+			var start := Time.get_ticks_usec()
+			for i in 2500:
+				nav.local_grid(i % 1024)
+			print("NAV_LRU cluster=%d reference=%s ms=%.3f" % [cluster, nav == old, (Time.get_ticks_usec() - start) / 1000.0])
