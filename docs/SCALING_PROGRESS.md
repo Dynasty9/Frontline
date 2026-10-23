@@ -282,3 +282,39 @@ that whole range to code changes. Before/after rendered images were inspected.
 Local artifacts: `build/bench-work-budget-base-control`,
 `build/bench-work-budget-route`, `build/route-generated.log`, and
 `build/native-route-all-tests2.log`. The 60 FPS goal remains open.
+
+## Current-main integration and replay stalls
+
+Rebased onto `de6bff8` (cohesion and replay recording included). Sequential
+exported controls with the same workload above measured 38.65 FPS on current main
+and 45.57 FPS with rendering/native-route changes, before the changes below.
+Both had server p99 around 445 ms and maxima around 662 ms. The worst tick spent
+613-637 ms selecting squad positions; snapshot-stage totals included recording.
+
+Further changes preserve exhaustive formation choices through 200-man groups,
+replace full-map AStarGrid2D storage with compact land rasters, and cache unchanged
+replay scenery in entity-ID blocks. Recording samples visit the moving registry;
+completed immutable chunks are encoded by one bounded worker. Checkpoint tests
+compare live properties and observer packet bytes after damage, spawn/despawn,
+and continued combat, and the existing forward/backward seek test passes.
+
+Detailed-profile controls (timing instrumentation enabled, other apps running):
+
+| Stage | Formation/raster only | Plus replay changes |
+| --- | ---: | ---: |
+| Server ticks in sample | 618 | 839 |
+| Replay main-thread total | 8307 ms | 850 ms |
+| Checkpoint total / max | 2145 / 230 ms | 182 / 27 ms |
+| Replay sampling total / max | 4296 / 81 ms | 662 / 19 ms |
+| Tick p50 / p95 / p99 | 34.77 / 96.57 / 445.29 ms | 30.89 / 59.69 / 75.08 ms |
+| Tick maximum | 463.30 ms | 365.59 ms |
+| Client average FPS | 47.76 | 43.15 |
+
+The worker encoding cost still exists off the simulation thread. Recording's
+main-thread reduction is about 90%; it is not a 90% whole-game speedup. The faster
+server advances further (463 versus 450 surviving soldiers), changing the battle
+phase. The later outlier spans soldier scanning and snapshot transmission and
+cannot be attributed to a single algorithm from wall-clock timing alone. These
+runs do not meet 60 FPS; desktop contention remains uncontrolled by request.
+Artifacts: `build/bench-integration-base`, `build/bench-integration-route`,
+`build/bench-integration-formation`, `build/bench-integration-replay`.

@@ -35,7 +35,7 @@ const UNKNOWN := -2.0  # a cost not worked out yet (-1 is "no way through")
 ## place up here rather than work it out with / and % (see build_all).
 static var _corner: Array[Vector2i] = _corners()
 
-var grid: AStarGrid2D
+var grid: Object
 var vehicle := false
 var graphs: Array = []  # [plain, team 0 view, team 1 view]
 var g_team: Array = []  # (the last two again)
@@ -81,7 +81,7 @@ var danger_n := PackedInt32Array()  # per side, per cluster: goes up whenever it
 var border_dn := {}  # _bkey -> Vector4i: the danger_n of each side when its entrances were last weighted
 
 
-func _init(g: AStarGrid2D, is_vehicle: bool) -> void:
+func _init(g: Object, is_vehicle: bool) -> void:
 	NCC = NC * NC
 	_corner = _corners()
 	grid = g
@@ -170,8 +170,8 @@ static func _key(a: int, b: int) -> int:
 ## (Nav reports every cell it sets, from the start: see _solid.)
 func mark_dirty(c: Vector2i) -> void:
 	var ci := cluster_of(c)
-	var solid := grid.is_point_solid(c)
-	var w := grid.get_point_weight_scale(c)
+	var solid: bool = grid.is_point_solid(c)
+	var w: float = grid.get_point_weight_scale(c)
 	var i := c.y * MapDims.N + c.x
 	if (_solid[i] != 0) == solid and _weight[i] == w:
 		return

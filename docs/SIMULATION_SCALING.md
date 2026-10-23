@@ -196,3 +196,5 @@ Use `--details` with `tools/benchmark_scaling.py` to additionally time individua
 soldier methods (`--perf-details` in the game). Nested timers add instrumentation
 work; compare reports with the same `detailed_timing` setting. The managed local
 server receives the same profiling mode as its renderer.
+
+Whole-map land navigation uses `NavRaster` byte solidity and float32 weights; AStarGrid2D search storage is allocated only for local clusters (or the explicit flat-grid diagnostic). At 3072 m, one raster allocates 45 MiB versus 686 MiB for a full AStarGrid2D. Seeded mutation and conversion tests compare both representations, including fractional weights. Formation selection caches geometry and incremental occupancy only within one synchronous `slots` call; no decisions survive terrain changes or later orders. Exhaustive-reference tests retain identical selections through 200-person groups.

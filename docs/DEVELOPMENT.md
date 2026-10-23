@@ -118,7 +118,7 @@ game/cover.gd           fighting positions on everything solid, what each materi
 game/rules.gd           supply network, trucks, cap, placement, capture, prisoners/intel, fog, victory
 game/vision.gd          every eye a side has (men, vehicles, towers, drones, aircraft) as circles of sight
 game/fog_view.gd        the fog of war drawn on the battlefield and the minimap (a sight map + a full-screen pass)
-game/nav.gd             two AStarGrid2D layers (infantry: vaultable/slow cells; vehicles: smashable cells)
+game/nav.gd             two compact NavRaster layers (infantry: vaultable/slow cells; vehicles: smashable cells)
 game/hnav.gd            hierarchical A* (clusters, entrances, danger-weighted abstract graphs)
 game/terrain.gd         ground types, cover map, craters, speed / hit / concealment modifiers
 game/trench_net.gd      the dug trench network (mask, walls, spoil, duckboards)

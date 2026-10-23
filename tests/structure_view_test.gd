@@ -84,6 +84,10 @@ func check_camera_residency() -> void:
 	camera.look_at(Vector3.ZERO)
 	view.focus_at(Vector3.ZERO, camera)
 	check(view.active.size() < 81, "A close view should not retain the old kilometre-wide square")
+	view.focus_at(Vector3.ZERO)
+	check(view.active.size() == 81, "Removing the camera must restore fallback residency at the same position")
+	view.focus_at(Vector3.ZERO, camera)
+	check(view.active.size() < 81, "Restoring the camera must invalidate fallback residency")
 	for screen in [Vector2i(1280, 720), Vector2i(720, 1280)]:
 		viewport.size = screen
 		for fov in [40.0, 75.0]:

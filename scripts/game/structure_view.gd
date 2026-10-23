@@ -16,6 +16,7 @@ var head := 0
 var center := Vector2i(-999, -999)
 var _camera_transform := Transform3D()
 var _camera_projection := Projection()
+var _camera_id := 0
 
 func add(st: Structure) -> void:
 	var keys := []
@@ -54,8 +55,10 @@ func warming() -> bool:
 
 func focus_at(pos: Vector3, camera: Camera3D = null) -> void:
 	var next := Vector2i(floori(pos.x / CELL), floori(pos.z / CELL))
-	if next == center and (camera == null or (camera.global_transform == _camera_transform and camera.get_camera_projection() == _camera_projection)):
+	var camera_id := camera.get_instance_id() if camera else 0
+	if next == center and camera_id == _camera_id and (camera == null or (camera.global_transform == _camera_transform and camera.get_camera_projection() == _camera_projection)):
 		return
+	_camera_id = camera_id
 	center = next
 	var visible_cells := {}
 	var low := next - Vector2i(REACH, REACH)

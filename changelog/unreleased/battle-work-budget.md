@@ -13,6 +13,9 @@ caption = "After: the same map and camera, with visibility-aware rendering and n
 +++
 
 - Scenery loads around what the camera can see, including a margin for roofs and screen edges.
+- Large maps store navigation cells compactly, saving about 1.25 GiB across the two 3 km land grids.
+- Replay recording reuses unchanged scenery and encodes completed chunks in the background to reduce battle stalls.
+- Formation planning reuses nearby cover checks while retaining the same selected positions.
 - Native path search skips intermediate cost nodes while retaining terrain and danger costs.
 - Soldiers reuse confirmed obstruction by an unchanged wall. Opening a door or changing the blocking geometry immediately requires a fresh check; smoke remains live.
 

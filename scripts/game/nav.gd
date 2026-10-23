@@ -12,8 +12,8 @@ const SOLID := 3
 const PAD_INF := 0.25
 const PAD_VEH := 1.7
 
-var inf := AStarGrid2D.new()
-var veh := AStarGrid2D.new()
+var inf := NavRaster.new(N)
+var veh := NavRaster.new(N)
 var ikind := PackedByteArray()
 var vkind := PackedByteArray()
 var cell_objs := {}  # idx -> Array of [eid, ikind, vkind]
@@ -88,13 +88,6 @@ func process_paths(max_jobs := 4) -> void:
 
 
 func _init() -> void:
-	for g in [inf, veh]:
-		g.region = Rect2i(0, 0, N, N)
-		g.cell_size = Vector2(1, 1)
-		g.diagonal_mode = AStarGrid2D.DIAGONAL_MODE_ONLY_IF_NO_OBSTACLES
-		g.default_compute_heuristic = AStarGrid2D.HEURISTIC_OCTILE
-		g.default_estimate_heuristic = AStarGrid2D.HEURISTIC_OCTILE
-		g.update()
 	ikind.resize(N * N)
 	vkind.resize(N * N)
 	heat.resize(N * N)
@@ -408,7 +401,7 @@ func stamp_heat(p: Vector3, r: float, d: int) -> void:
 				_recompute(idx)
 
 
-func _nearest_free(g: AStarGrid2D, c: Vector2i) -> Vector2i:
+func _nearest_free(g: NavRaster, c: Vector2i) -> Vector2i:
 	for r in range(1, 10):
 		for dx in range(-r, r + 1):
 			for dz in [-r, r]:
@@ -520,7 +513,7 @@ func _find_path(from: Vector3, to: Vector3, vehicle: bool, team: int, care: floa
 
 
 ## Abstract route, then each leg refined on the cluster's own small grid.
-func _hier_path(h: HNav, g: AStarGrid2D, a: Vector2i, b: Vector2i, team: int, care: float) -> Array[Vector2i]:
+func _hier_path(h: HNav, g: NavRaster, a: Vector2i, b: Vector2i, team: int, care: float) -> Array[Vector2i]:
 	var out: Array[Vector2i] = []
 	# A man shifting a few metres within one cluster can use that small grid.
 	# If a wall divides it, the abstract graph can still find a way around.
@@ -576,6 +569,7 @@ func _line_free(a: Vector3, b: Vector3, vehicle: bool) -> bool:
 func benchmark(rng: RandomNumberGenerator) -> void:
 	for vehicle in [false, true]:
 		var g := veh if vehicle else inf
+		var flat := g.reference_grid()
 		var h: HNav = hnav_v if vehicle else hnav_i
 		var n := 0
 		var ratio := 0.0
@@ -595,7 +589,7 @@ func benchmark(rng: RandomNumberGenerator) -> void:
 			if g.is_point_solid(a) or g.is_point_solid(b):
 				continue
 			var t0 := Time.get_ticks_usec()
-			var f: Array[Vector2i] = g.get_id_path(a, b)
+			var f: Array[Vector2i] = flat.get_id_path(a, b)
 			var t1 := Time.get_ticks_usec()
 			var hp := _hier_path(h, g, a, b, -1, 0.0)
 			var t2 := Time.get_ticks_usec()

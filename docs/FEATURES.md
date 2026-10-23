@@ -1166,7 +1166,7 @@ but balance needs real playtesting. With the base defenses, most games last 10â€
 
 ## Battle recordings and browser spectators
 
-Hosts save seekable observer recordings. Listed public battles can broadcast only a few seconds behind play; the website lists broadcasts and seven days of replays when persistent recording storage is enabled. The browser uses the game renderer, with camera controls, pause, speed and a timeline. Private battles stay local. Recordings are not independently verified. See [REPLAYS.md](REPLAYS.md) for the format, deployment and limitations.
+Hosts save seekable observer recordings. Unchanged scenery is cached and completed chunks are encoded on a worker so recording does less work on the simulation thread. Listed public battles can broadcast only a few seconds behind play; the website lists broadcasts and seven days of replays when persistent recording storage is enabled. The browser uses the game renderer, with camera controls, pause, speed and a timeline. Private battles stay local. Recordings are not independently verified. See [REPLAYS.md](REPLAYS.md) for the format, deployment and limitations.
 
 ## Large battles and shared AI work
 

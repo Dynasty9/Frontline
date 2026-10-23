@@ -52,6 +52,8 @@ samples per simulated second between them (static entities update once per secon
 The first chunk includes the ground, water, scenery, and initial match settings.
 Checkpoints contain entity properties and their existing network state; following
 frames contain spawns, removals, property changes, effects, and state updates.
+Unchanged scenery records and observer packets are cached in small entity-ID blocks; dirty scenery, active buildings, spawns and removals refresh those blocks. Snapshot timestamps are refreshed for each sample. Completed immutable chunks are serialized and compressed by one worker; only finished files enter the manifest. The next chunk and shutdown join any pending worker, bounding memory without dropping samples.
+
 Each chunk is a bounded, zstd-compressed Godot Variant encoded as base64 in JSON.
 Decoding never permits objects or scripts. The viewer checks structure, entity
 types, and packet boundaries before handing data to the existing renderer.
