@@ -1,14 +1,14 @@
 # Shared unit motion prototype
 
-**Status:** Prototype implemented; imported skeletal character migration proposed.
-**Date:** 2026-10-17
+**Status:** Integrated prototype with optional imported riflemen; see [current setup and validation](../tests/mocap/SKINNED.md).
+**Updated:** 2026-10-23
 
 ## Decision and scope
 
 Keep simulation, damage and navigation server-authoritative. Reuse visual animation
 and impact components across models. Start validation with one rifleman and one tank.
-The current soldiers remain articulated procedural meshes: this change does not turn
-them into skinned characters or include purchased motion capture.
+Procedural meshes remain the default. Locally installed character and animation assets
+enable skinned Coalition riflemen with captured locomotion, contact IK and skeletal ragdolls.
 
 The reusable pieces are:
 
@@ -26,7 +26,7 @@ The reusable pieces are:
   considers angular movement as well as linear movement.
 
 `Fx.UNIT_HIT` carries entity ID, world direction and normalized strength. `Fx.DIE`
-also carries travel velocity. Net version 6 separates incompatible peers. The hit
+also carries travel velocity. Net version 12 separates incompatible peers. The hit
 direction is available from current combat; precise limb hit locations are not yet
 part of that event. Living hits remain animation overlays, not gameplay knockdowns.
 

@@ -15,10 +15,22 @@ func _ready() -> void:
 	rear.position.x = 8.0
 	await get_tree().physics_frame
 	await get_tree().physics_frame
+	var pending_cover := World.new()
+	man.world = pending_cover
+	pending_cover.time = 1.0
+	man.next_cover_eval = 0.0
+	assert(not man._prepare_prone(1.0 / 60.0))
+	assert(man._prone_back_goal == Vector3.INF, "Backstep interrupted cover acquisition")
+	man.world = null
+	pending_cover.free()
+	man.at_cover = true
+	man.cover_n = Vector3.FORWARD
+	man.cover_h = 1.0
 	for frame in 30:
 		man._prepare_prone(1.0 / 60.0)
 		man._prone_check_t = 0.0
 	assert(man.position.z > 0.0 and man._prone_back_goal != Vector3.INF, "Open retreat did not begin")
+	assert(man.at_cover and man.cover_n == Vector3.FORWARD and man.cover_h == 1.0 and man.cover_pos == man._prone_back_goal, "Backstep discarded the protective barrier")
 	man._clear_task()
 	assert(man._prone_back_goal == Vector3.INF and man._prone_back_speed == 0.0 and man._prone_settle == 0.0, "New order retained the old maneuver")
 	man._prone_retry = 0.0
@@ -30,7 +42,7 @@ func _ready() -> void:
 	var stopped := man.position
 	assert(not man._prepare_prone(1.0 / 60.0))
 	assert(man.position == stopped and man._prone_back_goal == Vector3.INF, "New obstacle failed to cancel the retreat")
-	print("BACKSTEP SAFETY PASS blocked path, order cancellation and newly obstructed path")
+	print("BACKSTEP SAFETY PASS blocked path, cover acquisition/protection, order cancellation and new obstacle")
 	get_tree().quit()
 func _wall(at: Vector3) -> StaticBody3D:
 	var body := StaticBody3D.new()

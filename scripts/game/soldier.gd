@@ -886,6 +886,8 @@ func _prepare_prone(dt: float) -> bool:
 	_prone_retry = maxf(0.0, _prone_retry - dt)
 	if _prone_back_goal == Vector3.INF and _prone_settle <= 0.0:
 		if _room_for_prone(): return true
+		# Finish finding or reaching cover before adjusting the firing position.
+		if world != null and not at_cover and (_path_pending or goal_kind == "cover" or world.time > next_cover_eval): return false
 		if _prone_retry > 0.0: return false
 		_prone_retry = 0.5
 		for step in range(1, 19):
@@ -894,10 +896,12 @@ func _prepare_prone(dt: float) -> bool:
 			if _prone_clear_at(candidate):
 				_prone_back_goal = global_position + global_basis.z * minf(float(step) * 0.1 + 0.08, 1.8)
 				if not _prone_step_clear(_prone_back_goal): _prone_back_goal = candidate
-				at_cover = false
-				_clear_cover()
+				# Keep the barrier's protection while making room behind it.
+				if at_cover:
+					cover_pos = _prone_back_goal
+					cover_st = null
+					cover_ai = -1
 				if world != null:
-					next_cover_eval = world.time + 4.0
 					world.stat("prone_backstep")
 				break
 		if _prone_back_goal == Vector3.INF: return false
@@ -1923,10 +1927,11 @@ func _weapon_tick_work(dt: float, moving: bool, mode: String) -> void:
 	if hit_dirt_t > 0.0 and mode != "escort" and not moving:
 		want = Post.PRONE
 		shoot_ok = false
-	if want == Post.PRONE and not moving and mode == "normal":
+	# A brief duck should not abandon a useful firing position.
+	if want == Post.PRONE and not moving and mode == "normal" and (not at_cover or pinned):
 		if not _prepare_prone(dt):
 			want = Post.CROUCH
-			shoot_ok = false
+			if _prone_back_goal != Vector3.INF or _prone_settle > 0.0: shoot_ok = false
 	else:
 		_cancel_prone_backstep()
 		if want == Post.PRONE and not _room_for_prone(): want = Post.CROUCH
