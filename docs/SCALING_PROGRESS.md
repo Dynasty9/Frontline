@@ -230,3 +230,8 @@ Do not interpret an unchecked gate or a headless result as validated 60 FPS supp
   29.00 FPS and a navigation-only export 29.66 FPS. These measurements do not
   establish a whole-game improvement. Further isolation results are recorded
   in [PR #97](https://github.com/Dynasty9/Frontline/pull/97).
+- The canvas-transform marker prototype reached only 25.29 FPS when exported
+  on its own. Despite its isolated CPU savings, it is not retained. The final
+  implementation transforms the cached vertices in native code and submits
+  the same world-space polygon command as before, without canvas state changes.
+  Earlier marker timings above describe the discarded canvas-transform version.

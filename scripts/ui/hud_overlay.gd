@@ -1217,9 +1217,8 @@ func _contact_burst(c: Vector2, a: float) -> void:
 	var t := Time.get_ticks_msec() / 1000.0
 	var r := 6.5 + sin(t * 11.0) * 1.3
 	# The same star pulses and turns; its vertices need not be rebuilt per squad.
-	draw_set_transform(c, t, Vector2(r, r))
-	draw_colored_polygon(_contact_shape, Color(1.0, 0.55, 0.2, 0.95 * a))
-	draw_set_transform(Vector2.ZERO)
+	var transform := Transform2D(t, Vector2(r, r), 0.0, c)
+	draw_colored_polygon(transform * _contact_shape, Color(1.0, 0.55, 0.2, 0.95 * a))
 
 func _hover_card(s: Soldier, mp: Vector2) -> void:
 	var nm := s.display_name()
