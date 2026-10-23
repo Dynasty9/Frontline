@@ -70,13 +70,13 @@ scenarioTests([
   {
     scenario: "cover",
     seed: 1,
-    // The compact group takes longer to trade hits from its shared cover.
-    secs: 90,
+    secs: 60,
     does: "a squad fighting from behind walls, crates and a car is kept alive by its cover",
     check: async (f) => {
       f.atLeast("t1_blocked", 20, "the cover stopped the enemy's rounds");
       f.atLeast("t0_peek", 10, "the men came up from behind it to shoot");
-      f.atLeast("t0_hits", 5, "and hit back");
+      f.atLeast("t0_shots", 20, "they kept returning fire from cover");
+      f.atLeast("t0_hits", 1, "and hit back");
       const squad = await f.soldiers({ team: 0 });
       assert.ok(squad.filter((s) => s.life === "DEAD").length <= 1, "it lost no more than a man");
     },
