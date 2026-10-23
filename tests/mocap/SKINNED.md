@@ -858,3 +858,7 @@ The wall fixture reproduced a 0.292024 m bone crossing during captured crouch-to
 The subsequent mounted-reach experiments are saved only in ignored build candidates; production remains at the preceding mounted-finger fix while wall clearance takes priority.
 
 Validation for prone clearance: full import and seed-3 attack scenario (60 simulated seconds) finish without script errors. The localhost host/client animation fixture passes cover, crouch, repeated hits and ragdoll replication; it is a general regression check, not a networked reproduction of this wall case. The focused wall fixture checks every transition frame from the prone request, not only the final pose.
+
+## PR gameplay recordings
+
+The PR includes `changelog/unreleased/infantry-animation/gameplay.mp4`, captured from the ordinary `--scenario=motion --seed=3 --skinned-units --swat-units --motion-camera` battle, plus `game-activities.mp4`. The latter uses `tests/mocap/activities_game.tscn` with the same scenario and asset flags: it stages a normal sandbag work order and smoking idle choice, then applies a lethal hit. Its assertions require both activity states to occur. Use `--fixed-fps 60 --write-movie build/activities.avi` before `--` to record it. Local source assets are required. Recorded fixed-step movies do not measure real-time frame rate. The activity run reports ObjectDB instances at shutdown; cleanup remains unverified.
