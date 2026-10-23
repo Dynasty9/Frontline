@@ -235,3 +235,50 @@ Do not interpret an unchecked gate or a headless result as validated 60 FPS supp
   implementation transforms the cached vertices in native code and submits
   the same world-space polygon command as before, without canvas state changes.
   Earlier marker timings above describe the discarded canvas-transform version.
+
+
+## Work-budget follow-up (23 October)
+
+The following controls use the pre-cohesion/replay base `5adeda0`. Later integration
+must be checked separately. Other applications remain running at the user's request.
+
+- Camera-frustum scenery residency replaces the fixed square, retaining a margin
+  for roofs and shadows. Sampled visibility tests cover camera angles, aspect ratios,
+  FOV and heights. Distant soldier batches skip cells outside a conservative view
+  margin; camera-pan and visible-point tests pass.
+- Blocked sight checks reuse obstruction only with unchanged endpoints, exclusions
+  and blocking collision boxes. Tests cover movement, posture, collision layers,
+  shape disabling/resizing, door removal, freed blockers and smoke dissipation.
+  A repeated blocked-query control took 43-44 ms cached versus 73-75 ms fresh for
+  10,000 calls. Positive sight and smoke remain live. This is not a whole-game claim.
+- The tactical overlay retains a raster between 15 Hz stationary updates. Camera,
+  pointer and input invalidate immediately; resizing and hide/show have tests.
+  Reducing soldiers' candidate budget regressed infantry scenarios and was removed.
+  A minimap raster experiment changed FPS by less than 1% and was also removed.
+- Rust RouteGraph contracts degree-two search states while preserving directional
+  edge costs and reconstructed waypoints. 900 seeded comparisons (excluding deleted
+  endpoints) cover danger changes and removals; navigation rebuild/order tests pass.
+  On a synthetic 120,000-node graph, 120 nearby searches took 6.2-11.2 ms versus
+  22.1-23.5 ms with AStar3D. On a generated 3 km map, 100 complete path requests took
+  349-384 ms versus 437-489 ms; maximum requests were 19.7-21.0 versus 38.9-41.5 ms.
+  Equal-cost route choices can differ: smoothed total distance differed by 0.27%,
+  with individual differences from -1.54% to +6.53%. All 80 gameplay tests pass.
+  Graph assembly now runs on the main thread because the Rust binding requires it;
+  local-grid costing remains parallel. The generated graph build took about 7 s.
+- Sequential exported Forward+ controls: 3072 m generated map, 480 soldiers,
+  20 vehicles, commanders, seed 3, low preset, 1280x720, 30 s warmup + 30 s sample.
+
+| Build | Average FPS | Frame p50 / p95 / p99 (ms) | Tick p50 / p95 / max (ms) |
+| --- | --- | --- | --- |
+| `5adeda0` baseline | 35.73 | 26.88 / 40.85 / 52.65 | 27.03 / 57.06 / 108.23 |
+| Rendering + exact sight cache + native routes | 43.17 | 21.98 / 35.48 / 50.04 | 29.53 / 62.93 / 111.18 |
+
+This pair is about 21% faster on average rendering, but simulation timing did not
+improve and all strict acceptance gates still fail. Battles evolve differently;
+439-456 soldiers survived the later sample windows, so these are not sustained
+500-alive acceptance runs. Peak observed server RSS was 4027/3723 MiB. Earlier
+controls ranged from 20 to 43 FPS as desktop contention changed; do not attribute
+that whole range to code changes. Before/after rendered images were inspected.
+Local artifacts: `build/bench-work-budget-base-control`,
+`build/bench-work-budget-route`, `build/route-generated.log`, and
+`build/native-route-all-tests2.log`. The 60 FPS goal remains open.

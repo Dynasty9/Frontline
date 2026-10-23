@@ -1002,7 +1002,8 @@ func _process(_dt: float) -> void:
 				"render_objects": Performance.get_monitor(Performance.RENDER_TOTAL_OBJECTS_IN_FRAME),
 				"render_primitives": Performance.get_monitor(Performance.RENDER_TOTAL_PRIMITIVES_IN_FRAME),
 				"soldiers_alive": alive, "systems_total_ms": world.measured_systems.duplicate(), "worst_tick": world.measured_worst_tick.duplicate(true),
-				"nested_total_ms": world.measured_details.duplicate(), "nested_max_ms": world.measured_detail_max.duplicate(), "views_total_ms": world.measured_views.duplicate()}
+				"nested_total_ms": world.measured_details.duplicate(), "nested_max_ms": world.measured_detail_max.duplicate(), "views_total_ms": world.measured_views.duplicate(),
+				"events_since_start": world.stats.duplicate()}
 			print("BENCHMARK ", JSON.stringify(report))
 			if args.has("perf-json"):
 				var report_file := FileAccess.open(String(args["perf-json"]), FileAccess.WRITE)

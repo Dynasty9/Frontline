@@ -9,12 +9,17 @@ loopback connection. Launch/readiness, pause/resume, reconnect ownership and exi
 are managed by LocalServer. Public multiplayer retains the existing host flow;
 web retains the in-process fallback. Protocol version is now 11, including the helicopter flight snapshot changes.
 
-Rust accelerates one measured numeric hotspot: nearest-enemy candidate selection.
+Rust accelerates numeric search: nearest-enemy candidate selection and abstract
+navigation routes.
 Once per tick the host supplies IDs, teams, positions and visibility factors to
 PerceptionSearch. It returns at most seven candidates, ordered by distance and ID.
 Godot still checks current lifecycle state, individual line of sight and weapons.
 The GDScript implementation remains available for comparison or source checkouts
-without the optional extension. This is not a full Rust server rewrite.
+without the optional extension. RouteGraph skips degree-two intermediate search
+states while preserving their two directional edge costs and reconstructed
+waypoints. Terrain and danger changes update the same graph immediately. The
+bindings run on the main thread; independent local-grid costing remains parallel.
+Platforms without the extension use AStar3D. This is not a full Rust server rewrite.
 
 ## Work removed or bounded
 
@@ -130,7 +135,8 @@ close-camera, mixed-unit and longer-run checks are tracked in SCALING_PROGRESS.m
 ## Verification and reproduction
 
 The client constructs scenery models and cosmetic collision bodies in a moving
-9 by 9 set of 128 m cells around the camera. Construction is limited to four
+set of 128 m cells intersecting the camera frustum, with a preload margin for
+roofs and shadows. Without a camera it uses the previous 9 by 9 square. Construction is limited to four
 structures or 2 ms per frame; the initial loading curtain waits for nearby models.
 Previously visited models remain cached but hidden outside this area. The server
 retains the complete map, collision, cover and off-screen combat. This reduces

@@ -43,6 +43,7 @@ p.add_argument("--output", required=True)
 p.add_argument("--exported", action="store_true")
 p.add_argument("--details", action="store_true", help="Time individual soldier methods; adds profiling overhead")
 p.add_argument("--rendered", action="store_true")
+p.add_argument("--nohud", action="store_true", help="Hide the HUD to isolate its rendering cost")
 p.add_argument("--require-target", action="store_true", help="Fail if any measured rendered frame exceeds 16.67 ms or simulation tick exceeds 33.33 ms")
 p.add_argument("--local-server", action="store_true")
 p.add_argument("--generated", action="store_true")
@@ -84,6 +85,8 @@ if a.rendered:
     cmd += ["--offscreen", f"--screenshot={out / 'battle.png'}", f"--shot-at={a.warmup+a.duration+2}"]
 if a.details:
     cmd += ["--perf-details"]
+if a.nohud:
+    cmd += ["--nohud"]
 if a.local_server:
     cmd += ["--local-server"]
 if a.generated:

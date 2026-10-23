@@ -5,10 +5,12 @@ How the code is laid out, and the command-line modes used to test it. See also [
 ## Scaling and the optional native extension
 
 Gameplay remains GDScript. A Rust GDExtension accelerates nearest-enemy candidate
-selection using numeric snapshots; individual visibility and combat stay in Godot.
+selection using numeric snapshots and contracts degree-two navigation search states.
+Individual visibility and combat stay in Godot. Native graph assembly runs on the
+main thread; local-grid costing still uses workers.
 Install Rust 1.94.0 (`rustup toolchain install 1.94.0 --profile minimal`), then run
 `python tools/build_native.py` from the root. Re-import Godot afterward. A checkout
-without the generated extension uses the GDScript reference query. Release CI builds
+without the generated extension uses GDScript perception and Godot AStar3D routes. Release CI builds
 and includes native Windows/Linux libraries. Do not commit generated binaries.
 
 `--local-server` launches a private headless child using the current executable.

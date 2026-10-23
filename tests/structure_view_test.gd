@@ -64,5 +64,43 @@ func _ready() -> void:
 	actual.set_view_active(false)
 	check(not actual.model.visible and actual.body.collision_layer == 0, "Inactive scenery must leave rendering and cosmetic collision")
 	world.free()
+	check_camera_residency()
 	print("STRUCTURE_VIEW_TEST failures=%d" % failures)
 	get_tree().quit(1 if failures else 0)
+
+
+func check_camera_residency() -> void:
+	var viewport := SubViewport.new()
+	viewport.size = Vector2i(1280, 720)
+	add_child(viewport)
+	var camera := Camera3D.new()
+	camera.far = 700.0
+	camera.fov = 40.0
+	viewport.add_child(camera)
+	var world := World.new()
+	var view := StructureView.new()
+	view.world = world
+	camera.position = Vector3(0, 100, 100)
+	camera.look_at(Vector3.ZERO)
+	view.focus_at(Vector3.ZERO, camera)
+	check(view.active.size() < 81, "A close view should not retain the old kilometre-wide square")
+	for screen in [Vector2i(1280, 720), Vector2i(720, 1280)]:
+		viewport.size = screen
+		for fov in [40.0, 75.0]:
+			camera.fov = fov
+			for distance in [30.0, 210.0]:
+				for pitch in [20.0, 80.0]:
+					for yaw in [0.0, 1.3]:
+						camera.position = Vector3(0, distance * sin(deg_to_rad(pitch)), distance * cos(deg_to_rad(pitch))).rotated(Vector3.UP, yaw)
+						camera.look_at(Vector3.ZERO)
+						view.focus_at(Vector3.ZERO, camera)
+						for x in range(-900, 901, 60):
+							for z in range(-900, 901, 60):
+								for height in [0.0, 32.0, 96.0]:
+									var point := Vector3(x, height, z)
+									if camera.is_position_in_frustum(point):
+										var cell := Vector2i(floori(x / StructureView.CELL), floori(z / StructureView.CELL))
+										check(view.active.has(cell), "Visible scenery must remain resident through tilt, rotation, zoom and resize")
+	view.free()
+	world.free()
+	viewport.free()
