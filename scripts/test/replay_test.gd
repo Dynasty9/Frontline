@@ -11,7 +11,7 @@ func check(ok: bool, message: String) -> void:
 
 func _run() -> void:
 	main.args["record-replay"] = "user://replay-test-%d" % Time.get_ticks_msec()
-	main.start_local({"scenario": String(main.args.get("replay-scenario", "attack")), "seed": "3", "play": "0", "map-size": String(main.args.get("map-size", 1024))})
+	main.start_local({"scenario": String(main.args.get("replay-scenario", "attack")), "seed": "3", "play": "0", "map-size": str(main.args.get("map-size", 1024))})
 	while not main.world or main.world.building:
 		await get_tree().process_frame
 	var world: World = main.world

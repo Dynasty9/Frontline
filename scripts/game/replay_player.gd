@@ -24,20 +24,26 @@ var prop_types := {}
 var downloaded := {}
 var download_progress: ProgressBar
 var playback_buttons: Array[BaseButton] = []
+var panel: PanelContainer
 var loading_backdrop: TopoBackdrop
 
 func _ready() -> void:
 	layer = 30
 	loading_backdrop = TopoBackdrop.new()
 	add_child(loading_backdrop)
-	var panel := PanelContainer.new()
+	panel = PanelContainer.new()
 	panel.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
-	panel.offset_top = -92
+	panel.offset_left = 14
+	panel.offset_right = -14
+	panel.offset_top = -14
+	panel.offset_bottom = -14
+	panel.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	panel.add_theme_stylebox_override("panel", UiKit.frame(Color(-1, 0, 0), 6.0, 0.9, 8.0))
 	panel.theme = UiKit.theme()
 	add_child(panel)
 	var box := VBoxContainer.new()
 	panel.add_child(box)
-	label = Label.new()
+	label = UiKit.mono_label("", 13, UiKit.ACCENT)
 	label.text = "Loading recording…"
 	box.add_child(label)
 	download_progress = ProgressBar.new()
@@ -58,12 +64,12 @@ func _ready() -> void:
 	var row := HFlowContainer.new()
 	box.add_child(row)
 	playing = Button.new()
-	playing.text = "Pause"
+	playing.text = "PAUSE"
 	playing.pressed.connect(func():
 		speed = 1.0 if speed == 0 else 0.0
 		if speed == 0:
 			follow_live = false
-		playing.text = "Play" if speed == 0 else "Pause")
+		playing.text = "PLAY" if speed == 0 else "PAUSE")
 	row.add_child(playing)
 	var rate := OptionButton.new()
 	for value in [0.25, 0.5, 1.0, 2.0, 4.0]:
@@ -72,15 +78,15 @@ func _ready() -> void:
 	rate.item_selected.connect(func(i: int):
 		speed = [0.25, 0.5, 1.0, 2.0, 4.0][i]
 		follow_live = false
-		playing.text = "Pause")
+		playing.text = "PAUSE")
 	row.add_child(rate)
 	var live := Button.new()
-	live.text = "Latest"
+	live.text = "LATEST"
 	live.pressed.connect(func(): seek(maxf(0.0, float(manifest.get("duration", 0)) - 1.0)))
 	live.pressed.connect(func(): follow_live = true)
 	row.add_child(live)
 	var follow := Button.new()
-	follow.text = "Follow action"
+	follow.text = "DIRECTOR"
 	follow.pressed.connect(func():
 		if is_instance_valid(main.world) and main.world.director:
 			main.world.cam.user_moved = false
@@ -88,21 +94,24 @@ func _ready() -> void:
 			main.world.director._pick_shot())
 	row.add_child(follow)
 	var viewpoint := Button.new()
-	viewpoint.text = "View: both sides"
+	viewpoint.text = "VIEW: BOTH"
 	viewpoint.pressed.connect(func():
 		if is_instance_valid(main.world) and main.world.director:
 			main.world.director.cycle_view()
-			viewpoint.text = "View: " + (["Coalition", "Rebels"][main.world.view_team] if main.world.view_team >= 0 else "both sides"))
+			viewpoint.text = "VIEW: " + (["COALITION", "REBELS"][main.world.view_team] if main.world.view_team >= 0 else "BOTH"))
 	row.add_child(viewpoint)
 	var exit_button := Button.new()
-	exit_button.text = "Close replay"
+	exit_button.text = "CLOSE REPLAY"
 	exit_button.pressed.connect(func():
 		main.return_to_menu("")
 		queue_free())
 	row.add_child(exit_button)
 	for button in row.get_children():
-		if button is BaseButton and button != exit_button:
-			playback_buttons.append(button)
+		if button is BaseButton:
+			button.custom_minimum_size.y = 30
+			button.add_theme_font_size_override("font_size", 12)
+			if button != exit_button:
+				playback_buttons.append(button)
 	_refresh()
 
 func fetch_json(path: String) -> Dictionary:
@@ -341,7 +350,16 @@ func _apply(state: Dictionary, full: bool, effects: bool) -> void:
 	elif effects:
 		world._rpc_fx(state.fx)
 
+func _layout_controls() -> void:
+	if not is_instance_valid(main.world) or not main.world.hud:
+		return
+	var hud: Hud = main.world.hud
+	panel.offset_left = hud.minimap_right() + 14.0
+	# The director caption sits above the transport, beside the desktop minimap.
+	hud.world.settings["replay_controls_height"] = panel.size.y + 28.0
+
 func _process(dt: float) -> void:
+	_layout_controls()
 	Engine.time_scale = 0.0 if busy or failed else speed
 	if failed or busy:
 		return

@@ -14,6 +14,9 @@ caption = "Find recordings from the Battles page. The 3D viewer works best on a 
 [[screenshots]]
 file = "loading.jpg"
 caption = "Saved replays load completely before playback, with progress and controls inside the game."
+[[screenshots]]
+file = "fitted.png"
+caption = "The fitted browser player keeps the FPS meter visible and integrates replay controls beside the desktop minimap."
 +++
 
 Public battles can now broadcast to a browser viewer, using Frontline's own
@@ -30,3 +33,5 @@ controls, including the scrubber, live inside the game itself.
 
 These are host recordings, not independently verified results. Recordings made
 before this feature cannot be reconstructed from an old after-action report.
+
+The browser battlefield fills the available window, keeping the FPS meter clear of the site header. Replay controls use the desktop Signal interface and sit beside the minimap, with the director caption above the timeline.

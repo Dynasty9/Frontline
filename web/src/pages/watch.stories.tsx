@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite"
-import { expect, within } from "storybook/test"
+import { expect, userEvent, within } from "storybook/test"
 import { mockMatchmaker } from "@/test/network"
 import { health } from "@/test/fixtures"
 import { loadPage } from "@/test/load-page"
@@ -38,6 +38,18 @@ export const Ready: Story = {
     await expect(await canvas.findByText("Take a seat at the command table.")).toBeVisible()
     await expect(canvas.getByRole("button", { name: "Open battlefield" })).toBeEnabled()
     await expect(canvas.getByText(/not been independently verified/)).toBeVisible()
+  },
+}
+export const Player: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    const page = within(canvasElement.ownerDocument.body)
+    await userEvent.click(await canvas.findByRole("button", { name: "Open battlefield" }))
+    const player = await page.findByRole("dialog", { name: replay.name })
+    await expect(within(player).getByTitle(`Frontline battle: ${replay.name}`)).toBeVisible()
+    await userEvent.click(within(player).getByRole("button", { name: /^Close$/ }))
+    await expect(page.queryByRole("dialog")).not.toBeInTheDocument()
+    await expect(canvas.getByRole("button", { name: "Open battlefield" })).toBeEnabled()
   },
 }
 export const WaitingForDelay: Story = {

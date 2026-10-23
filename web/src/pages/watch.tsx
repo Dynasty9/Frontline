@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query"
 import { useCallback, useState } from "react"
 import { Link, useParams } from "react-router"
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { usePoll } from "@/hooks/use-poll"
 import { usePageTitle } from "@/hooks/use-page-title"
@@ -45,17 +46,32 @@ export default function WatchPage() {
           </p>
           <div className="mt-6 border bg-background">
             {started ? (
-              <iframe
-                key={id}
-                title={`Frontline battle: ${data.name}`}
-                // The bundled Godot runtime needs same-origin asset access; replay files contain data only.
-                // oxlint-disable-next-line react/iframe-missing-sandbox
-                sandbox="allow-scripts allow-same-origin allow-pointer-lock"
-                className="h-[75svh] min-h-96 w-full"
-                src={`/game/index.html?replay=${encodeURIComponent(replaySource(id))}`}
-                allow="fullscreen; autoplay"
-                allowFullScreen
-              />
+              <Dialog
+                open
+                onOpenChange={(open) => {
+                  if (!open) setStartedId(null)
+                }}
+              >
+                <DialogContent
+                  className="h-dvh max-w-none grid-rows-[auto_minmax(0,1fr)] gap-0 p-0 sm:max-w-none"
+                  aria-describedby={undefined}
+                >
+                  <DialogTitle className="truncate border-b px-4 py-4 pr-14 font-mono text-xs uppercase">
+                    {data.name}
+                  </DialogTitle>
+                  <iframe
+                    key={id}
+                    title={`Frontline battle: ${data.name}`}
+                    // The bundled Godot runtime needs same-origin asset access; replay files contain data only.
+                    // oxlint-disable-next-line react/iframe-missing-sandbox
+                    sandbox="allow-scripts allow-same-origin allow-pointer-lock"
+                    className="h-full min-h-0 w-full"
+                    src={`/game/index.html?replay=${encodeURIComponent(replaySource(id))}`}
+                    allow="fullscreen; autoplay"
+                    allowFullScreen
+                  />
+                </DialogContent>
+              </Dialog>
             ) : (
               <div className="flex min-h-80 flex-col items-center justify-center gap-5 p-8 text-center">
                 <p>
