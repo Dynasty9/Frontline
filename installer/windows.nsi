@@ -74,6 +74,7 @@ Section "Frontline"
 	SetShellVarContext current
 	SetOutPath "$INSTDIR"
 	File "/oname=${GAME}" "${EXE}"
+	File "/oname=frontline_sim.dll" "${NATIVE}"
 	File "/oname=LICENSE.txt" "${LICENSE}"
 	File "/oname=Frontline.ico" "${ICON}"
 	; what an update leaves until the game next starts (updater.gd)
@@ -116,6 +117,9 @@ Section "Uninstall"
 	; the updater's: the version before the last update, and one half-installed
 	Delete "$INSTDIR\${GAME}.old"
 	Delete "$INSTDIR\${GAME}.new"
+	Delete "$INSTDIR\frontline_sim.dll"
+	Delete "$INSTDIR\frontline_sim.dll.old"
+	Delete "$INSTDIR\frontline_sim.dll.new"
 	Delete "$INSTDIR\LICENSE.txt"
 	Delete "$INSTDIR\Frontline.ico"
 	Delete "$INSTDIR\${UNINSTALLER}"

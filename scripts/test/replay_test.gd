@@ -11,7 +11,7 @@ func check(ok: bool, message: String) -> void:
 
 func _run() -> void:
 	main.args["record-replay"] = "user://replay-test-%d" % Time.get_ticks_msec()
-	main.start_local({"scenario": String(main.args.get("replay-scenario", "attack")), "seed": "3", "play": "0"})
+	main.start_local({"scenario": String(main.args.get("replay-scenario", "attack")), "seed": "3", "play": "0", "map-size": String(main.args.get("map-size", 1024))})
 	while not main.world or main.world.building:
 		await get_tree().process_frame
 	var world: World = main.world
@@ -50,6 +50,7 @@ func _run() -> void:
 	for target in [15.0, 3.0, 21.0, 0.0]:
 		await player.seek(target)
 		check(not player.failed, "seek succeeds at %s" % target)
+		check(MapDims.N == int(main.args.get("map-size", 1024)), "seek restores recorded map dimensions")
 		check(is_equal_approx(main.world.time, target), "seek restores the clock")
 		var states: Array = [player.chunk.checkpoint]
 		for state in player.chunk.frames:

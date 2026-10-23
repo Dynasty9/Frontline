@@ -27,7 +27,7 @@ func _ready() -> void:
 
 
 func can_control_time() -> bool:
-	return world.srv and world.ready_peers.is_empty()
+	return LocalServer.connected or (world.srv and world.ready_peers.is_empty())
 
 
 func speed() -> float:
@@ -38,6 +38,8 @@ func set_speed_index(i: int) -> void:
 	if not can_control_time():
 		return
 	speed_i = clampi(i, 0, SPEEDS.size() - 1)
+	if LocalServer.connected:
+		LocalServer.set_speed(SPEEDS[speed_i])
 	Engine.time_scale = maxf(0.0001, SPEEDS[speed_i]) if speed_i > 0 else 0.0
 
 

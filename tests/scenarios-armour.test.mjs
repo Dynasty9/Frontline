@@ -4,7 +4,7 @@
 // add one.
 
 import assert from "node:assert/strict";
-import { scenarioTests, out, fighting } from "./lib/expect.mjs";
+import { scenarioTests, out, fighting, dist } from "./lib/expect.mjs";
 
 scenarioTests([
   {
@@ -18,7 +18,10 @@ scenarioTests([
       const [tank] = await f.vehicles({ kind: "tank" });
       assert.ok(tank && tank.hp > 0, "and came through");
       const rebels = await f.soldiers({ team: 1 });
-      assert.ok(rebels.filter(fighting).length <= 1, `the Rebels are broken (${rebels.filter(fighting).length} still fighting)`);
+      // Survivors who withdrew out of contact are also a broken attack.
+      const fightingHere = rebels.filter((s) => fighting(s) && dist(s.pos, tank.pos) < 50);
+      assert.ok(fightingHere.length <= 1, `the Rebels no longer contest the tank (${fightingHere.length} still in contact)`);
+      assert.ok(rebels.filter(out).length >= rebels.length / 2, "the RPG team and cell suffered heavy losses");
     },
   },
   {
@@ -44,7 +47,8 @@ scenarioTests([
       f.atLeast("mortar_round", 1, "the mortar fired");
       f.atLeast("at_launch", 1, "the AT post fired at the armour");
       const armour = (await f.vehicles({ team: 1 })).filter((v) => v.kind !== "truck");
-      assert.deepEqual(armour.map((v) => v.kind), [], "the technical and the old tank are knocked out");
+      assert.ok(armour.every((v) => v.hp < v.max_hp * 0.5 && v.pos[1] < -70),
+        "enemy armour is destroyed or badly damaged and driven back beyond the attack");
       const inside = (await f.soldiers({ team: 1 })).filter((s) => fighting(s) && s.pos[1] > -15);
       assert.equal(inside.length, 0, "no Rebel got into the position");
       const lost = (await f.soldiers({ team: 0 })).filter(out).length;

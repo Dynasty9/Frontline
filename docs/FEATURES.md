@@ -363,9 +363,9 @@ catalogue entry in `MissionList.LIST`, a setup function and an autopilot functio
 ## The systems
 
 **Soldier AI** (`scripts/game/soldier.gd`, `soldier_brain.gd`, `bt.gd`, `combat.gd`)
-- **A behaviour tree decides what each man does** (`bt.gd`, `soldier_brain.gd`): one tree, shared by every
-  soldier and walked each time he thinks. Reflexes come first, most urgent first; then, if he's free, the
-  fight. The leaf that acted is kept on the soldier (`bt_path`) for debugging and the stats.
+- **Priority decisions govern each man** (`soldier_brain.gd`): reflexes come first, most urgent first;
+  then, if he's free, the fight. Direct checks avoid dispatching a tree of callbacks for every soldier.
+  The action that won is kept on the soldier (`bt_path`) for debugging and the stats.
 - **"Grenade!"** The first man to see it yells, and everyone near it picks one of, in order: *smother it* -
   when it's too late to throw and it's among men who can't get away (a wounded man being treated, a crowded
   bay), the man beside it may throw himself on it: it kills him and barely reaches anyone else; *throw it
@@ -591,6 +591,7 @@ catalogue entry in `MissionList.LIST`, a setup function and an autopilot functio
   dappled shadows. A tree that is shelled or run over falls away from what hit it and stays down.
 
 **Terrain** (`terrain.gd`, `mapgen.gd`)
+- Capturing towns updates only changed supply-road geometry; unchanged roads and their drawings are retained. Road terrain painting checks the strip beside each segment, preserving the same ground and cover cells.
 - Country roads wind from HQ to HQ through the town, with a crossroad through the middle. On a road you're
   fast (vehicles +35%) but exposed. Mud slows everyone (vehicles badly) and leaves you exposed. Woods conceal you
   and give light cover. Vehicles strongly prefer roads.
@@ -878,6 +879,15 @@ catalogue entry in `MissionList.LIST`, a setup function and an autopilot functio
   their side (the armed ones fire missiles); recon vehicles see further. New weapons: 40 mm grenade machine
   guns, 20/30/40 mm cannon, twin 35 mm, miniguns, each with its own sound; main guns by the vehicle (125 mm,
   120 mm, a railgun, recoilless rifles).
+- **Rotorcraft flight.** Attack, transport and supply helicopters share a flight controller: momentum
+  carries through turns and new orders, the pilot accelerates and brakes gradually, and the nose and
+  bank follow the acceleration rather than pretending the aircraft is a road vehicle. Yaw has its own
+  turn rate, so gunships can keep their nose on a target while moving sideways. Climbs and descents
+  ease in and out; transports settle into a low-speed hover before landing or attaching a sling.
+  Loads reduce speed, acceleration and yaw response. Stop holds a troop transport in the air without
+  dropping its sling load; a new move resumes the flight, even during a landing. The host simulates
+  flight and sends pitch and bank with its snapshots; clients only interpolate the view. Drones and
+  ground vehicles keep their existing movement systems.
 - **Boarding:** select infantry and right-click your truck, APC, Slammer or a landed helicopter: they climb in
   (as many as fit) and ride until they dismount or it arrives.
 - Tanks smash through walls, trees and cars. Small arms ricochet off them. Frontal rockets can bounce,
@@ -1149,4 +1159,43 @@ but balance needs real playtesting. With the base defenses, most games last 10â€
 
 ## Battle recordings and browser spectators
 
-Hosts save seekable observer recordings. Listed public battles can broadcast with a minimum 60-second delay; the website lists broadcasts and seven days of replays when persistent recording storage is enabled. The browser uses the game renderer, with camera controls, pause, speed and a timeline. Private battles stay local. Recordings are not independently verified. See [REPLAYS.md](REPLAYS.md) for the format, deployment and limitations.
+Hosts save seekable observer recordings. Listed public battles can broadcast only a few seconds behind play; the website lists broadcasts and seven days of replays when persistent recording storage is enabled. The browser uses the game renderer, with camera controls, pause, speed and a timeline. Private battles stay local. Recordings are not independently verified. See [REPLAYS.md](REPLAYS.md) for the format, deployment and limitations.
+
+## Large battles and shared AI work
+
+Desktop skirmishes and observer games can select 1,024, 2,048 or 3,072 metre maps.
+Solo games and missions launch a private headless simulation with the same game
+executable. The visible game sends commands and draws interpolated snapshots;
+the simulation remains authoritative for every soldier, including off-screen units.
+Pause, resume and returning to the menu control the owned simulation process.
+Web retains the in-process host path.
+
+Squads stagger their planning and share nearby threat assessments (up to 0.25 s)
+and building contacts (up to 0.75 s, invalidated by new contacts). Men separated
+from the squad assess their own sectors. Individual line of sight, weapon fire,
+damage and urgent reactions still run independently. Land orders queue through
+bounded path work; destroyed obstacles trigger incremental graph rebuilding.
+
+Distant soldiers use shared baked poses of their procedural models, including
+standing, crouching, prone and walking poses. Nearby soldiers retain articulated
+animation. Distant palette variation and subtle gestures are simplified.
+Distant vehicles use a single material surface per moving part beyond 100 m;
+turrets, wheels and rotors keep their pivots. Near vehicles retain their original
+materials. Wrecks retain their original materials to avoid baking meshes during
+combat. Squad overview status refreshes at 10 Hz; selection remains immediate.
+The battlefield overlay retains drawings between 30 Hz refreshes when the camera
+and pointer are still. Camera movement, pointer movement and input refresh it
+immediately. Smoke sight checks visit smoke grenades directly rather than every
+projectile; cloud growth, movement and dissipation still take effect immediately.
+
+Clients build nearby scenery first and cache visited models; distant models and
+cosmetic collision bodies remain inactive. The server still simulates the complete
+map. Nearby movement orders can reuse a checked route corridor, with separate
+destinations and invalidation when terrain or danger changes.
+
+Grass, bushes and stones are generated around the camera, beyond their visible
+fade distance. Panning reuses nearby chunks and evicts distant ones; returning
+to an area recreates the same vegetation from its seed.
+
+See [SIMULATION_SCALING.md](SIMULATION_SCALING.md) for the native perception
+boundary, measurement results and remaining limits.

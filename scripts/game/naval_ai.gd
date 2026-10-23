@@ -237,7 +237,7 @@ static func _raid(c, v: Vehicle, roles: Dictionary) -> void:
 			w.stat("ai_raid_pickup")
 		"pickup":
 			var sq: Squad = w.squads.get(int(r.sq))
-			if sq == null or sq.alive_members().is_empty():
+			if sq == null or not sq.has_alive_members():
 				roles[v.eid] = {"role": "home", "t": w.time}
 				return
 			if v.path_i >= v.path.size() and absf(v.speed) < 0.8 and String(r.get("boarding", "")) == "":

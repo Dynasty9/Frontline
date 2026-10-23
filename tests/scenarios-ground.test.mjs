@@ -5,6 +5,10 @@
 // ("Scenario expectations") for how to add one.
 
 import assert from "node:assert/strict";
+import { test } from "node:test";
+import { execFile } from "node:child_process";
+import { promisify } from "node:util";
+import { ROOT } from "./lib/game.mjs";
 import { scenarioTests, dist } from "./lib/expect.mjs";
 
 // The cache scenario prints who the Coalition sees under the camouflage net and
@@ -41,13 +45,12 @@ scenarioTests([
     scenario: "fire",
     seed: 4,
     secs: 60,
-    does: "fire spreads through the wood and along the hedge, things burn down, and the men caught in it flee",
+    does: "fire spreads through the wood and along the hedge, and things burn down",
     check: async (f) => {
       f.atLeast("fire_tree", 4, "the fire went through the wood (two trees were lit)");
       f.atLeast("fire_hedge", 3, "and along the hedgerow (one section was lit)");
       f.atLeast("burnt_down", 2, "things burnt down");
-      f.atLeast("fire_burns", 1, "the fire caught men");
-      f.atLeast("fire_flee", 1, "and they ran from it");
+      // Damage and escape are forced in the fixture below: troops can avoid this fire.
     },
   },
   {
@@ -137,3 +140,12 @@ scenarioTests([
     },
   },
 ]);
+
+
+test("a soldier caught in a fire is burned and flees while a distant soldier stays safe", async () => {
+  const { stdout, stderr } = await promisify(execFile)(process.env.GODOT || "godot", [
+    "--headless", "--path", ROOT, "res://tests/fixtures/fire-escape.tscn",
+  ], { timeout: 120_000 });
+  assert.doesNotMatch(stdout + stderr, /SCRIPT ERROR|Parse Error/);
+  assert.match(stdout, /FIRE_ESCAPE passed/);
+});

@@ -117,6 +117,8 @@ func _merge_parts(n: Node3D, off: Vector3) -> void:
 		var mi := n.get_child(i) as MeshInstance3D
 		if mi and off != Vector3.ZERO:
 			Mats.set_inst(mi, &"pofs", off)
+	if not burnt:
+		Mats.add_distance_lod(n, 100.0, [blur] if blur else [])
 
 
 # --- mesh helpers ----------------------------------------------------------------

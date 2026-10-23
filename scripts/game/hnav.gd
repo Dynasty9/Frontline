@@ -24,9 +24,9 @@ extends RefCounted
 ## side whose weights are scaled by that side's danger map (the clusters its
 ## spotted enemies cover), so careful moves route around known fire.
 
-const C := 16
-const NC := MapDims.N / C
-const NCC := NC * NC
+static var C := 16
+static var NC := 64
+static var NCC := 4096
 const PLAIN := 0
 const UNKNOWN := -2.0  # a cost not worked out yet (-1 is "no way through")
 ## Each cluster's corner cell. The build's worker threads look a cluster's
@@ -40,11 +40,10 @@ var g_team: Array[AStar3D] = []  # (the last two again)
 ## Small grids covering one cluster each, for the searches inside it. Kept
 ## for every cluster (4096 on a full map) they came to 77 MB a graph, copies
 ## of what the full grid holds, so a cluster's is made when it's wanted and
-## the last CACHE used are kept: a battle's paths keep to the ground it's
+## the last CACHE_CELLS cells used are kept: a battle's paths keep to the ground it's
 ## fought over.
-const CACHE := 512
-var _local := {}  # cluster -> [AStarGrid2D, when last used]
-var _uses := 0
+const CACHE_CELLS := 131072
+var _local := {}  # cluster -> grid, least recently used first
 ## The full grid's cells as plain arrays (solid 1/0; weight), kept in step by
 ## mark_dirty: a cluster's grid is made from these far quicker than by asking
 ## the full grid cell by cell, and the build's worker threads can all read
@@ -64,6 +63,8 @@ var mids := {}  # pair key -> mid id
 var cl_mids: Array = []  # per cluster: Dictionary of its mid ids
 var next_id := 1
 var dirty := {}
+var terrain_revision := 0
+var danger_revision := [0, 0]
 var built := false
 var danger: Array = [PackedFloat32Array(), PackedFloat32Array()]
 # What a rebuild needs to tell what changed:
@@ -79,6 +80,8 @@ var border_dn := {}  # _bkey -> Vector4i: the danger_n of each side when its ent
 
 
 func _init(g: AStarGrid2D, is_vehicle: bool) -> void:
+	NCC = NC * NC
+	_corner = _corners()
 	grid = g
 	vehicle = is_vehicle
 	for i in 3:
@@ -103,21 +106,20 @@ func _init(g: AStarGrid2D, is_vehicle: bool) -> void:
 
 ## Cluster ci's own grid, its cells as the full grid has them now.
 func local_grid(ci: int) -> AStarGrid2D:
-	_uses += 1
-	var e: Variant = _local.get(ci)
-	if e != null:
-		e[1] = _uses
-		return e[0]
-	if _local.size() >= CACHE:
+	var cached: AStarGrid2D = _local.get(ci)
+	if cached != null:
+		# Dictionary insertion order keeps eviction independent of cache size.
+		_local.erase(ci)
+		_local[ci] = cached
+		return cached
+	if _local.size() >= CACHE_CELLS / (C * C):
 		var old := -1
-		var oldest := _uses
 		for k: int in _local:
-			if int(_local[k][1]) < oldest:
-				oldest = int(_local[k][1])
-				old = k
+			old = k
+			break
 		_local.erase(old)
 	var lg := _local_from(ci, _solid, _weight)
-	_local[ci] = [lg, _uses]
+	_local[ci] = lg
 	return lg
 
 
@@ -169,8 +171,11 @@ func mark_dirty(c: Vector2i) -> void:
 	var solid := grid.is_point_solid(c)
 	var w := grid.get_point_weight_scale(c)
 	var i := c.y * MapDims.N + c.x
-	if built and ((_solid[i] != 0) != solid or _weight[i] != w):
+	if (_solid[i] != 0) == solid and _weight[i] == w:
+		return
+	if built:
 		# (most calls change nothing: a wall raised where the ground was already blocked)
+		terrain_revision += 1
 		ver[ci] += 1
 		var x := c.x % C
 		var z := c.y % C
@@ -184,9 +189,8 @@ func mark_dirty(c: Vector2i) -> void:
 			edge_ver[ci * 4 + 3] += 1
 	_solid[i] = 1 if solid else 0
 	_weight[i] = w
-	var e: Variant = _local.get(ci)
-	if e != null:
-		var lg: AStarGrid2D = e[0]
+	var lg: AStarGrid2D = _local.get(ci)
+	if lg != null:
 		lg.set_point_solid(c, solid)
 		lg.set_point_weight_scale(c, w)
 	if built:
@@ -789,6 +793,7 @@ func set_danger(team: int, values: PackedFloat32Array) -> void:
 			danger_n[team * NCC + ci] += 1
 		if absf(old[ci] - values[ci]) < 0.05:
 			continue
+		danger_revision[team] += 1
 		var f := 1.0 + values[ci]
 		for id in cl_nodes[ci]:
 			g.set_point_weight_scale(id, f)
@@ -847,3 +852,7 @@ func route(a: Vector2i, b: Vector2i, team: int, care: float) -> Array[Vector2i]:
 
 func stats() -> String:
 	return "%d entrances, %d nodes" % [node_cell.size(), (graphs[PLAIN] as AStar3D).get_point_count()]
+
+
+func has_work() -> bool:
+	return not dirty.is_empty()

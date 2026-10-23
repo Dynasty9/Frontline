@@ -48,6 +48,11 @@ var _req: HTTPRequest
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
+	for argument in OS.get_cmdline_user_args():
+		if argument.begins_with("--managed-server="):
+			return  # the launcher owns updates and the shared download file
+
+
 	if OS.has_feature("web"):
 		return  # the browser build is whatever the website serves: always the latest
 	for a in OS.get_cmdline_user_args():
@@ -84,7 +89,8 @@ func check() -> void:
 		rel = parse_release(await _get_json(String(url)))
 		if not rel.is_empty():
 			break
-	if rel.is_empty() or not newer(String(rel.version), version):
+	var missing_native := OS.has_feature("template") and not ClassDB.class_exists("PerceptionSearch")
+	if rel.is_empty() or (not newer(String(rel.version), version) and not (missing_native and String(rel.version) == version)):
 		return
 	latest = String(rel.version)
 	_asset = rel.asset
@@ -211,15 +217,41 @@ static func install(zip: String, digest: String, target: String) -> String:
 ## Windows and Linux: the game is one file, the executable with the game packed inside.
 static func _install_file(z: ZIPReader, target: String) -> String:
 	var entry := ""
+	var libraries := {}
 	for f in z.get_files():
 		if f.get_file() == "Frontline.exe" or f.get_file() == "Frontline.x86_64":
 			entry = f
+		if f.get_file() in ["frontline_sim.dll", "libfrontline_sim.so"]:
+			libraries[target.get_base_dir().path_join(f.get_file())] = z.read_file(f)
 	var data := z.read_file(entry) if entry != "" else PackedByteArray()
 	if data.size() < 1024:
 		return "The download has no game in it."
+	# Stage every sidecar before replacing the executable. Existing clients
+	# updated only the executable; a missing extension triggers same-version
+	# repair on their next launch, followed by the usual restart notice.
+	var swapped: Array = []
+	for path: String in libraries:
+		var library: PackedByteArray = libraries[path]
+		var file := FileAccess.open(path + ".new", FileAccess.WRITE)
+		if library.is_empty() or file == null:
+			_restore_libraries(swapped)
+			return "The simulation library couldn't be staged."
+		file.store_buffer(library)
+		file.close()
+		var existed := FileAccess.file_exists(path)
+		if FileAccess.file_exists(path + ".old"):
+			DirAccess.remove_absolute(path + ".old")
+		if existed and DirAccess.rename_absolute(path, path + ".old") != OK:
+			_restore_libraries(swapped)
+			return "The simulation library is in use; close other copies and retry."
+		swapped.append([path, existed])
+		if DirAccess.rename_absolute(path + ".new", path) != OK:
+			_restore_libraries(swapped)
+			return "The new simulation library couldn't be put in place."
 	var fresh := target + ".new"
 	var w := FileAccess.open(fresh, FileAccess.WRITE)
 	if w == null:
+		_restore_libraries(swapped)
 		return "The game's folder can't be written to."
 	w.store_buffer(data)
 	w.close()
@@ -230,11 +262,22 @@ static func _install_file(z: ZIPReader, target: String) -> String:
 		DirAccess.remove_absolute(old)
 	if DirAccess.rename_absolute(target, old) != OK:
 		DirAccess.remove_absolute(fresh)
+		_restore_libraries(swapped)
 		return "The running game couldn't be moved aside."
 	if DirAccess.rename_absolute(fresh, target) != OK:
 		DirAccess.rename_absolute(old, target)  # put it back as it was
+		_restore_libraries(swapped)
 		return "The new version couldn't be put in place."
 	return ""
+
+
+static func _restore_libraries(swapped: Array) -> void:
+	for i in range(swapped.size() - 1, -1, -1):
+		var path: String = swapped[i][0]
+		if FileAccess.file_exists(path):
+			DirAccess.remove_absolute(path)
+		if swapped[i][1]:
+			DirAccess.rename_absolute(path + ".old", path)
 
 
 ## A Mac: the zip holds Frontline.app, which is unpacked beside the running app
@@ -346,6 +389,11 @@ func _clean_up() -> void:
 		_remove_tree(bundle + ".old")
 	elif _target != "" and FileAccess.file_exists(_target + ".old"):
 		DirAccess.remove_absolute(_target + ".old")
+	if _target != "":
+		for library in ["frontline_sim.dll", "libfrontline_sim.so"]:
+			var old := _target.get_base_dir().path_join(library + ".old")
+			if FileAccess.file_exists(old):
+				DirAccess.remove_absolute(old)
 	if FileAccess.file_exists(DOWNLOAD):
 		DirAccess.remove_absolute(ProjectSettings.globalize_path(DOWNLOAD))
 

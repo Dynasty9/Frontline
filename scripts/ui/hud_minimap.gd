@@ -369,6 +369,13 @@ func _check_bake() -> void:
 # --- drawing ------------------------------------------------------------------------------
 
 func _draw() -> void:
+	var started := Time.get_ticks_usec()
+	_draw_content()
+	if hud and hud.world:
+		hud.world.vp("minimap drawing", started)
+
+
+func _draw_content() -> void:
 	var w := hud.world
 	_check_bake()
 	_update_xf()
@@ -437,7 +444,10 @@ func _draw_objectives(w: World) -> void:
 ## What the sides have built: FOBs and depots as squares, the rest as small
 ## marks; and the towns, whoever holds them.
 func _draw_structures(w: World, sc: float) -> void:
-	for st in w.structures:
+	for st in w.sim_structures:
+		if st.skind == "town" and st.team < 0 and not st.gone:
+			_draw_town(st, sc)
+	for st in w.owned_structures:
 		if st.gone:
 			continue
 		if st.skind == "town":
@@ -484,7 +494,7 @@ func _draw_fighting(w: World, sc: float) -> void:
 	for s in w.soldiers:
 		if not s.visible or s.life != Soldier.Life.ALIVE or (s.flags & Soldier.F_SHOOTING) == 0:
 			continue
-		var key := int((s.position.x + MapDims.HALF) / 24.0) * 64 + int((s.position.z + MapDims.HALF) / 24.0)
+		var key := Vector2i(floori((s.position.x + MapDims.HALF) / 24.0), floori((s.position.z + MapDims.HALF) / 24.0))
 		if not _fight.has(key):
 			_fight[key] = s.position
 	var ph := fmod(Time.get_ticks_msec() / 1000.0 * 1.4, 1.0)

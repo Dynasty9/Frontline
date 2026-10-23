@@ -16,6 +16,7 @@ var has_view := true
 var local_peer := 1
 var local_team := 0
 var time := 0.0
+var _snapshot_time := 0.0
 var entities := {}
 var next_eid := 1
 var ready_peers: Array = []
@@ -27,6 +28,11 @@ var known := {}  # peer -> {eid: true}: what each client has been told exists
 var _reveal_t := 0.0
 var tick_ms := 0.0
 var prof := {}
+# Static scenery still participates in combat and fire, but has no building
+# simulation. Keep the small working sets independent of the map's tree count.
+var sim_structures: Array[Structure] = []
+var fob_structures: Array[Structure] = []
+var owned_structures: Array[Structure] = []
 var net_out_bps := 0.0
 var net_in_bps := 0.0
 var _net_out := 0.0
@@ -65,13 +71,15 @@ var key_points: Array = []  # ground worth holding: [{"pos", "kind" ("town", "vi
 var _decor_node: Node3D
 var terrain: TerrainMap
 var water: WaterMap
-var _painted_roads := -1
+var _painted_roads: Array = [[], [], []]
 var _road_meshes: Array = [null, null, null]
 var pings: Array = []  # [pos, expire, kind]
 var winner := -1
 var rng := RandomNumberGenerator.new()
 var focused := false
 var director: Director
+var structure_view: StructureView
+var soldier_view: SoldierViewBatch
 var fog: FogView  # the fog of war drawn over the ground and the minimap (clients and a host with a view)
 var atmo: Atmosphere
 var view_team := -1  # whose fog of war we render (spectators can switch)
@@ -79,23 +87,59 @@ var view_team := -1  # whose fog of war we render (spectators can switch)
 var soldiers: Array = []
 var vehicles: Array = []
 var structures: Array = []
+var _dirty_static := {}
+var _static_cursor := 0
+var _unrevealed := {}  # peer -> entities not yet known to that peer
 var projectiles: Array = []
+var smoke_projectiles: Array[Projectile] = []
 var drones: Array = []
 
 const HCELL := 12.0
 var _uhash := {}
+var perception_cells: Array[Vector2i] = []
+var perception: RefCounted
+var _spawn_states := {}
+var loading_ms := {}
+var _load_started := 0
+var _local_loading := false
+var _loading_notified := false
+
+
+func client_loading() -> bool:
+	return not srv and not loaded
+
+
 const SCELL := 16.0
 var _shash := {}
+var _house_hash := {}
 
 
 func _ready() -> void:
+	_load_started = Time.get_ticks_msec()
+	MapDims.configure(int(settings.get("map_size", 1024)))
+	# Cache dimensions once per match; terrain queries must not dispatch a
+	# chain of property getters for every cell lookup.
+	Nav.N = MapDims.N
+	Nav.H = MapDims.HALF
+	TerrainMap.N = MapDims.N
+	TerrainMap.H = MapDims.HALF
+	TerrainMap.DN = MapDims.N * TerrainMap.DRES
+	HNav.C = 16 if MapDims.N == 1024 else 32
+	HNav.NC = MapDims.N / HNav.C
+	TrenchNet.N = MapDims.N * TrenchNet.RES
+	Defs.MAP_HALF = MapDims.HALF
 	srv = multiplayer.is_server() and not settings.get("replay", false)
+	# The loading curtain covers the scene; drawing partially built scenery
+	# only delays construction on large maps. Processing and RPCs stay active.
+	visible = srv
+	_local_loading = srv and LocalServer.child
 	has_view = DisplayServer.get_name() != "headless"
 	local_peer = multiplayer.get_unique_id()
 	var pl: Dictionary = settings.get("players", {})
 	local_team = int(pl[local_peer].team) if pl.has(local_peer) else -1
 	view_team = local_team
 	rng.seed = int(settings.get("seed", 1))
+	_load_mark("allocating terrain")
 	# the host has its battle from the start; a client's comes from the host (see
 	# Joining), out of sight under the loading screen: drawing it meanwhile only
 	# slows the building down
@@ -103,6 +147,7 @@ func _ready() -> void:
 	set_process(not srv)
 	visible = srv
 	terrain = TerrainMap.new(self)
+	_load_mark("terrain ready")
 	water = WaterMap.new(self)
 	if has_view:
 		_build_environment()
@@ -144,14 +189,25 @@ func build() -> void:
 		process_mode = Node.PROCESS_MODE_DISABLED
 		get_tree().multiplayer_poll = false
 	if srv:
+		if ClassDB.class_exists("PerceptionSearch") and not settings.get("gdscript_perception", false):
+			perception = ClassDB.instantiate("PerceptionSearch")
 		nav = Nav.new()
+		_load_mark("navigation grids ready")
 		nav.terrain = terrain
 		combat = Combat.new(self)
 		rules = Rules.new(self)
 		battle = BattleStats.new(self)
 		fires = Fires.new(self)
 		if String(settings.get("scenario", "")) != "":
-			MapGen.new(self).scenario(String(settings.scenario))
+			if settings.scenario == "stress" and settings.get("stress_generated", false):
+				await MapGen.new(self).generate()
+				for unit: Entity in soldiers.duplicate() + vehicles.duplicate():
+					despawn(unit)
+				for squad in squads.values():
+					remove_squad(squad)
+				StressBattle.populate(self)
+			else:
+				MapGen.new(self).scenario(String(settings.scenario))
 		elif String(settings.get("mission", "")) != "":
 			var mgen := MapGen.new(self)
 			await mgen.generate()
@@ -160,6 +216,7 @@ func build() -> void:
 			set_mission_info(mission.info())
 		else:
 			await MapGen.new(self).generate()
+		_load_mark("map generated")
 		await _breathe("Settling the ground", 0.56)
 		terrain.tick(1 << 30)
 		await _breathe("Charting the water", 0.6)
@@ -167,6 +224,7 @@ func build() -> void:
 		await _breathe("Plotting the routes", 0.62)
 		var tn := Time.get_ticks_msec()
 		nav.finalize()
+		_load_mark("navigation ready")
 		print("Hierarchical nav: %s infantry, %s vehicles (%d ms)" % [nav.hnav_i.stats(), nav.hnav_v.stats(), Time.get_ticks_msec() - tn])
 		if OS.has_environment("FL_DEBUG_HPA"):
 			nav.benchmark(rng)
@@ -183,6 +241,13 @@ func build() -> void:
 		if settings.get("replay", false):
 			cam.edge_pan = false
 		add_child(cam)
+		if not srv:
+			structure_view = StructureView.new()
+			structure_view.world = self
+			add_child(structure_view)
+		soldier_view = SoldierViewBatch.new()
+		soldier_view.world = self
+		add_child(soldier_view)
 		director = Director.new()
 		director.name = "Director"
 		director.world = self
@@ -207,7 +272,7 @@ func build() -> void:
 		_staged = false
 	process_mode = Node.PROCESS_MODE_INHERIT
 	building = false
-	if srv and (Online.record_battles or get_tree().root.get_node("Main").args.has("record-replay")):
+	if srv and (Online.record_battles or LocalServer.child or get_tree().root.get_node("Main").args.has("record-replay")):
 		recording = BattleRecording.new()
 		recording.world = self
 		add_child(recording)
@@ -313,18 +378,45 @@ func spawn(kind: String, props: Dictionary) -> Entity:
 	return e
 
 
+func refresh_owned_structure(e: Structure) -> void:
+	if not entities.has(e.eid) or e.gone:
+		return
+	if e.team >= 0:
+		if not e in owned_structures:
+			owned_structures.append(e)
+	else:
+		owned_structures.erase(e)
+
+
 func _register(e: Entity) -> void:
 	entities[e.eid] = e
 	if e is Soldier:
 		soldiers.append(e)
+		if soldier_view:
+			soldier_view.prepare(e.utype, e.team)
 	elif e is Vehicle:
 		vehicles.append(e)
 	elif e is Structure:
 		structures.append(e)
+		refresh_owned_structure(e)
+		mark_static_dirty(e)
+		if e.skind in Structure.SIM_KINDS:
+			sim_structures.append(e)
+		if e.skind == "fob":
+			fob_structures.append(e)
 	elif e is Projectile:
 		projectiles.append(e)
+		refresh_smoke_projectile(e)
 	elif e is Drone:
 		drones.append(e)
+
+
+func refresh_smoke_projectile(e: Projectile) -> void:
+	if e.ptype == "smoke" and not e.gone:
+		if not e in smoke_projectiles:
+			smoke_projectiles.append(e)
+	else:
+		smoke_projectiles.erase(e)
 
 
 func despawn(e: Entity) -> void:
@@ -332,6 +424,8 @@ func despawn(e: Entity) -> void:
 		return
 	e.gone = true
 	entities.erase(e.eid)
+	for pending: Dictionary in _unrevealed.values():
+		pending.erase(e.eid)
 	if e is Soldier:
 		soldiers.erase(e)
 		# out of his squad now: nothing may touch him once he's freed
@@ -340,12 +434,19 @@ func despawn(e: Entity) -> void:
 	elif e is Vehicle:
 		vehicles.erase(e)
 	elif e is Structure:
+		if structure_view:
+			structure_view.remove(e)
 		structures.erase(e)
+		owned_structures.erase(e)
+		_dirty_static.erase(e.eid)
+		sim_structures.erase(e)
+		fob_structures.erase(e)
 		_shash_remove(e)
 		if terrain:
 			terrain.structure_changed(e, false)
 	elif e is Projectile:
 		projectiles.erase(e)
+		smoke_projectiles.erase(e)
 	elif e is Drone:
 		drones.erase(e)
 	e.on_despawn()
@@ -565,6 +666,7 @@ func say(e: Entity, text: String) -> void:
 # --- server tick ------------------------------------------------------------------
 
 func _physics_process(dt: float) -> void:
+	var t0 := Time.get_ticks_usec()
 	# (a client loading works through the cover map under the loading screen
 	# instead, by the time it takes rather than by the tick: _load_tick)
 	if terrain and loaded:
@@ -575,21 +677,27 @@ func _physics_process(dt: float) -> void:
 		_sweep_graveyard()
 	if not srv:
 		if not settings.get("replay", false):
-			time += dt
+			time = minf(time + dt, _snapshot_time + 0.1)
 		_net_in_t += dt
 		if _net_in_t >= 1.0:
 			net_in_bps = _net_in / _net_in_t
 			_net_in = 0.0
 			_net_in_t = 0.0
 		return
+	# A private battle begins once its renderer has built the initial world.
+	# Network flushing continues, so loading never advances combat unseen.
+	if _local_loading:
+		_flush()
+		return
 	time += dt
-	var t0 := Time.get_ticks_usec()
-	var tp := t0
+	var tp := _p("terrain + cleanup", t0)
 	if recording:
 		recording.before_tick()
 	_flush()
 	tp = _p("network", tp)
 	nav.update_hier()
+	tp = _p("navigation rebuild", tp)
+	nav.process_paths()
 	tp = _p("pathing", tp)
 	_rebuild_uhash()
 	tp = _p("spatial hash", tp)
@@ -599,11 +707,12 @@ func _physics_process(dt: float) -> void:
 			if has_view:
 				e.ip_capture()
 	tp = _p("soldiers", tp)
-	for e in structures.duplicate():
+	for e in sim_structures.duplicate():
 		if not e.gone:
 			e.sim(dt)
-	fires.tick(dt)
 	tp = _p("structures", tp)
+	fires.tick(dt)
+	tp = _p("fire", tp)
 	for arr in [vehicles.duplicate(), projectiles.duplicate(), drones.duplicate()]:
 		for e in arr:
 			if not e.gone:
@@ -645,9 +754,15 @@ func _physics_process(dt: float) -> void:
 	if _reveal_t <= 0.0:
 		_reveal_t = 0.4
 		_reveal_pass()
+	tp = _p("team + reveal", tp)
 	tick_ms = lerpf(tick_ms, (Time.get_ticks_usec() - t0) / 1000.0, 0.05)
 	prof["TOTAL"] = tick_ms
 	sim_usec += Time.get_ticks_usec() - t0
+	if measure_ticks:
+		var elapsed := (Time.get_ticks_usec() - t0) / 1000.0
+		measured_ticks.append(elapsed)
+		if elapsed > float(measured_worst_tick.get("total_ms", 0.0)):
+			measured_worst_tick = {"time": time, "total_ms": elapsed, "systems_ms": _measured_tick_systems.duplicate()}
 	net_out_bps = lerpf(net_out_bps, _net_out / maxf(dt, 0.001), 0.05)
 	_net_out = 0.0
 
@@ -657,15 +772,37 @@ func _physics_process(dt: float) -> void:
 ## PerfProbe takes these and sets them back to zero: the totals every frame,
 ## each system's own every half second (every frame once someone's looking).
 var vprof := {}
-var vp_usec := 0  # all of them, since the probe last read it (every frame)
-var sim_usec := 0  # simulation time accumulated since the probe last read it
-var prof_raw := {}  # ms per simulated system, unsmoothed, since the probe last read it
+var measure_ticks := false
+var measure_details := false
+var measured_ticks: Array[float] = []
+var measured_systems := {}
+var measured_worst_tick := {}
+var _measured_tick_systems := {}
+var measured_details := {}
+var measured_detail_max := {}
+var measured_views := {}
+
+
+func detail(key: String, since: int) -> int:
+	var now := Time.get_ticks_usec()
+	var elapsed := (now - since) / 1000.0
+	measured_details[key] = float(measured_details.get(key, 0.0)) + elapsed
+	measured_detail_max[key] = maxf(float(measured_detail_max.get(key, 0.0)), elapsed)
+	return now
+var vp_usec := 0
+var prof_raw := {}
+var sim_usec := 0  # simulation time accumulated since the overlay last read it
+var vprof_avg := {}
+var _vprof_frames := 0
+var _vprof_t := 0.0
 
 
 func vp(key: String, since: int) -> void:
-	var d := Time.get_ticks_usec() - since
-	vprof[key] = int(vprof.get(key, 0)) + d
-	vp_usec += d
+	var elapsed := Time.get_ticks_usec() - since
+	vprof[key] = int(vprof.get(key, 0)) + elapsed
+	vp_usec += elapsed
+	if measure_ticks:
+		measured_views[key] = float(measured_views.get(key, 0.0)) + elapsed / 1000.0
 
 
 func _p(key: String, since: int) -> int:
@@ -673,6 +810,9 @@ func _p(key: String, since: int) -> int:
 	var ms := (now - since) / 1000.0
 	prof[key] = lerpf(float(prof.get(key, 0.0)), ms, 0.05)
 	prof_raw[key] = float(prof_raw.get(key, 0.0)) + ms
+	if measure_ticks:
+		measured_systems[key] = float(measured_systems.get(key, 0.0)) + ms
+		_measured_tick_systems[key] = ms
 	return now
 
 
@@ -690,9 +830,12 @@ func _flush() -> void:
 			var arr := []
 			for it in _pend_spawn:
 				var e: Entity = entities.get(it[0])
-				if e and not kn.has(e.eid) and can_know(e, view):
-					arr.append([e.eid, it[1], e.get_props()])
-					kn[e.eid] = true
+				if e and not kn.has(e.eid):
+					if can_know(e, view):
+						arr.append(_initial_spawn(e, view))
+						kn[e.eid] = true
+					else:
+						(_unrevealed[p] as Dictionary)[e.eid] = e
 			if not arr.is_empty():
 				rpc_id(p, "_rpc_spawn", arr)
 		_pend_spawn.clear()
@@ -727,7 +870,20 @@ func _flush() -> void:
 				rpc_id(p, "_rpc_props", d)
 		_pend_props.clear()
 	if not _pend_fx.is_empty():
-		_to_ready("_rpc_fx", _pend_fx.duplicate())
+		# Unreliable events must fit a datagram even during a whole platoon's
+		# opening volley. Reserve space for RPC and Variant array headers.
+		var batch: Array = []
+		var bytes := 64
+		for event in _pend_fx:
+			var size := var_to_bytes(event).size()
+			if bytes + size > 1200 and not batch.is_empty():
+				_to_ready("_rpc_fx", batch)
+				batch = []
+				bytes = 64
+			batch.append(event)
+			bytes += size
+		if not batch.is_empty():
+			_to_ready("_rpc_fx", batch)
 		_pend_fx.clear()
 
 
@@ -757,13 +913,9 @@ func _reveal_pass() -> void:
 		var view := view_of(p)
 		if view < 0:
 			continue
-		var kn: Dictionary = known.get(p, {})
 		var arr := []
-		for e in entities.values():
-			if e.gone or kn.has(e.eid) or not can_know(e, view):
-				continue
-			arr.append([e.eid, e.ekind(), e.get_props()])
-			kn[e.eid] = true
+		for e: Entity in _take_reveals(p, view):
+			arr.append(_initial_spawn(e, view))
 			if arr.size() >= 80:
 				rpc_id(p, "_rpc_spawn", arr)
 				arr = []
@@ -771,11 +923,40 @@ func _reveal_pass() -> void:
 			rpc_id(p, "_rpc_spawn", arr)
 
 
-func _send_snapshots() -> void:
-	if ready_peers.is_empty():
-		return
+func _take_reveals(peer: int, view: int) -> Array:
+	var out := []
+	var pending: Dictionary = _unrevealed.get(peer, {})
+	var kn: Dictionary = known.get(peer, {})
+	for e: Entity in pending.values():
+		if e.gone or kn.has(e.eid):
+			pending.erase(e.eid)
+		elif can_know(e, view):
+			pending.erase(e.eid)
+			kn[e.eid] = true
+			out.append(e)
+	return out
+
+
+func _initial_spawn(e: Entity, view: int) -> Array:
+	var state := StreamPeerBuffer.new()
+	writing_view = view
+	e.write_state(state)
+	writing_view = -1
+	var props := e.get_props()
+	if view >= 0 and e.team >= 0 and e.team != view:
+		props.erase("queue")
+		props.erase("supply")
+	return [e.eid, e.ekind(), props, state.data_array]
+
+
+func mark_static_dirty(e: Entity) -> void:
+	if srv and not e.gone and not ready_peers.is_empty():
+		_dirty_static[e.eid] = e
+
+
+func _snapshot_entities() -> Array:
 	var list := []
-	for e in entities.values():
+	for e in soldiers + vehicles + projectiles + drones:
 		if e.gone:
 			continue
 		if e.is_static():
@@ -784,6 +965,28 @@ func _send_snapshots() -> void:
 			e.net_dirty = false
 			e.resend_t = time + 2.5 + randf() * 1.5
 		list.append(e)
+	# Changed buildings go immediately; unchanged scenery is refreshed over
+	# three seconds, rather than scanning the whole map fifteen times a second.
+	var selected := _dirty_static.duplicate()
+	_dirty_static.clear()
+	for i in ceili(structures.size() / 45.0):
+		if structures.is_empty():
+			break
+		_static_cursor %= structures.size()
+		var e: Entity = structures[_static_cursor]
+		_static_cursor += 1
+		selected[e.eid] = e
+	for e: Entity in selected.values():
+		if not e.gone:
+			e.net_dirty = false
+			list.append(e)
+	return list
+
+
+func _send_snapshots() -> void:
+	if ready_peers.is_empty():
+		return
+	var list := _snapshot_entities()
 	var by_view := {}
 	for p in ready_peers:
 		var v := view_of(p)
@@ -831,6 +1034,17 @@ func _build_snapshot(list: Array, view: int) -> Array:
 
 # --- client RPCs ---------------------------------------------------------------------
 
+
+@rpc("any_peer", "call_remote", "reliable")
+func _client_loaded() -> void:
+	if srv and multiplayer.get_remote_sender_id() in ready_peers:
+		Net._long_timeout(multiplayer.get_remote_sender_id(), false)
+		if LocalServer.child:
+			if _local_loading:
+				for job: Array in nav._path_jobs.values():
+					job[6] = Time.get_ticks_msec()
+			_local_loading = false
+
 @rpc("any_peer", "call_remote", "reliable")
 func _client_ready() -> void:
 	if not srv:
@@ -843,11 +1057,13 @@ func _client_ready() -> void:
 	var view := view_of(p)
 	var kn := {}
 	known[p] = kn
+	_unrevealed[p] = {}
 	var recs := []
 	for e in entities.values():
 		if not can_know(e, view):
+			(_unrevealed[p] as Dictionary)[e.eid] = e
 			continue
-		recs.append(_join_rec(e))
+		recs.append(_join_rec(e, view))
 		kn[e.eid] = true
 	# the battlefield as it stands, packed small (see Joining): the ground first,
 	# so the client lays its water out while the rest comes in, then everything
@@ -871,14 +1087,12 @@ func _client_ready() -> void:
 		rpc_id(p, "_rpc_report", battle.report(-1))
 		rpc_id(p, "_rpc_over", winner)
 	ready_peers.append(p)
-	for e in entities.values():
-		e.net_dirty = true
 
 
 @rpc("authority", "call_remote", "reliable")
 func _rpc_spawn(arr: Array) -> void:
 	for it in arr:
-		_queue_ent(int(it[0]), String(it[1]), it[2])
+		_queue_ent(int(it[0]), String(it[1]), it[2], it[3] if it.size() > 3 else PackedByteArray())
 	if loaded and not focused:
 		_try_focus()
 
@@ -886,6 +1100,7 @@ func _rpc_spawn(arr: Array) -> void:
 @rpc("authority", "call_remote", "reliable")
 func _rpc_despawn(ids: Array) -> void:
 	for id in ids:
+		_spawn_states.erase(id)
 		var e: Entity = entities.get(id)
 		if e:
 			despawn(e)
@@ -900,7 +1115,13 @@ func _rpc_props(d: Dictionary) -> void:
 	for id in d:
 		var e: Entity = entities.get(id)
 		if e:
+			var moved: bool = e is Structure and structure_view != null and (d[id] as Dictionary).has("pos")
+			if moved:
+				structure_view.remove(e)
+				e.set_view_active(false)
 			e.apply_props(d[id])
+			if moved:
+				structure_view.add(e)
 		elif _load_rec.has(id):
 			# (still waiting to be built: it's built as it is now)
 			((_load_rec[id] as Array)[2] as Dictionary).merge(d[id], true)
@@ -908,24 +1129,35 @@ func _rpc_props(d: Dictionary) -> void:
 
 @rpc("authority", "call_remote", "unreliable_ordered", 1)
 func _rpc_snap(data: PackedByteArray) -> void:
+	var started := Time.get_ticks_usec()
 	var n := data.size()
 	_net_in += n
 	if n < 4:
 		return
 	var b := StreamPeerBuffer.new()
 	b.data_array = data
-	b.get_float()
+	# Loading time and a slow host must not advance the client's battle clock.
+	var snapshot_time := b.get_float()
+	if not is_finite(snapshot_time) or snapshot_time < 0.0:
+		return
+	_snapshot_time = snapshot_time
+	time = _snapshot_time
 	while b.get_position() + 5 <= n:
 		var id := b.get_u32()
 		var ln := b.get_u8()
 		var st := b.get_position()
+		if st + ln > n:
+			return
 		var e: Entity = entities.get(id)
 		if e:
 			if ln > 0:
 				e.read_state(b)
 			elif local_team >= 0:
 				e.vis_mask &= ~(1 << local_team)
+		elif _load_rec.has(id):
+			_spawn_states[id] = data.slice(st, st + ln)
 		b.seek(st + ln)
+	vp("snapshot decode", started)
 
 
 @rpc("authority", "call_remote", "unreliable_ordered", 2)
@@ -1049,15 +1281,16 @@ var _ground_water: WaterMap  # the water laid out off the main thread, then hand
 ## A structure leaves out what a new one has anyway: most of the map is trees,
 ## walls and floors that nothing has touched, and the client starts from the
 ## same defaults.
-func _join_rec(e: Entity) -> Array:
-	var d := e.get_props()
+func _join_rec(e: Entity, view: int) -> Array:
+	var initial := _initial_spawn(e, view)
+	var d: Dictionary = initial[2]
 	if e is Structure:
 		var def := _struct_defaults()
 		for k in def:
 			if d.has(k) and typeof(d[k]) == typeof(def[k]) and d[k] == def[k]:
 				d.erase(k)
 	var ki := ENT_KINDS.find(e.ekind())
-	return [e.eid, ki if ki >= 0 else e.ekind(), d]
+	return [e.eid, ki if ki >= 0 else e.ekind(), d, initial[3]]
 
 
 static var _sdef := {}
@@ -1107,7 +1340,7 @@ func _rpc_join_ents(pk: Array) -> void:
 		return
 	for it in arr:
 		var k = it[1]
-		_queue_ent(int(it[0]), ENT_KINDS[int(k)] if k is int else String(k), it[2])
+		_queue_ent(int(it[0]), ENT_KINDS[int(k)] if k is int else String(k), it[2], it[3])
 
 
 @rpc("authority", "call_remote", "reliable")
@@ -1118,9 +1351,10 @@ func _rpc_join_end() -> void:
 
 ## (client) An entity the host has told us of: built at once in a running
 ## battle; while we're loading, it waits its turn behind the rest.
-func _queue_ent(id: int, kind: String, props: Dictionary) -> void:
+func _queue_ent(id: int, kind: String, props: Dictionary, state := PackedByteArray()) -> void:
 	if entities.has(id) or _load_rec.has(id):
 		return
+	_spawn_states[id] = state
 	if loaded:
 		_build_ent(id, kind, props)
 		return
@@ -1138,10 +1372,23 @@ func _build_ent(id: int, kind: String, props: Dictionary) -> void:
 	e.name = "E%d" % id
 	_register(e)
 	add_child(e)
+	if e is Structure and structure_view != null:
+		e.defer_view = true
 	e.on_spawned()
+	if _spawn_states.has(id):
+		var data: PackedByteArray = _spawn_states[id]
+		_spawn_states.erase(id)
+		if not data.is_empty():
+			var buffer := StreamPeerBuffer.new()
+			buffer.data_array = data
+			e.read_state(buffer)
+		elif local_team >= 0:
+			e.vis_mask &= ~(1 << local_team)
 	if e is Structure:
 		_shash_add(e)
 		terrain.structure_changed(e, true)
+		if structure_view:
+			structure_view.add(e)
 
 
 func _process(_dt: float) -> void:
@@ -1222,6 +1469,9 @@ func _load_stage(text: String, frac: float) -> void:
 
 
 func _load_mark(what: String) -> void:
+	loading_ms[what] = Time.get_ticks_msec() - _load_started
+	if settings.has("perf_at") and not LocalServer.session.is_empty():
+		LocalServer._write(".load" if srv else ".view-load", loading_ms)
 	if _load_t0 == 0:
 		_load_t0 = Time.get_ticks_usec()
 	_load_marks.append("%s %.1f s" % [what, (Time.get_ticks_usec() - _load_t0) / 1000000.0])
@@ -1277,7 +1527,16 @@ func _ground_done() -> void:
 
 
 func _load_done() -> void:
+	_try_focus()
+	if soldier_view != null and soldier_view.warming():
+		return
+	if structure_view != null and structure_view.warming():
+		return
 	loaded = true
+	_load_mark("client ready")
+	if is_inside_tree() and multiplayer.get_unique_id() != 1:
+		_client_loaded.rpc_id(1)
+		Net._long_timeout(1, false)
 	set_process(false)
 	visible = true  # (main.gd's warm-up draws its first frames behind the loading screen)
 	_load_rec.clear()
@@ -1335,30 +1594,36 @@ func set_roads(team: int, polys: Array) -> void:
 
 
 func _rebuild_roads() -> void:
-	# the ground under any road is road (fast, exposed)
-	var sig := 0
+	var changed_view := false
 	for t in 3:
-		sig = sig * 31 + (roads[t] as Array).size()
-		for poly in roads[t]:
-			sig = sig * 7 + (poly as PackedVector3Array).size()
-	if sig != _painted_roads and terrain:
-		_painted_roads = sig
-		for t in 3:
-			terrain.paint_roads(roads[t], 2.4 if t == 2 else 1.8)
-	if not has_view or atmo == null:
-		return
-	for t in 3:
+		var current: Array = roads[t]
+		var previous: Array = _painted_roads[t]
+		var changed := current != previous
+		if terrain and changed:
+			# A captured town adds a supply route; the island's existing roads stay put.
+			var added := []
+			for poly: PackedVector3Array in current:
+				if not poly in previous:
+					added.append(poly)
+			if not added.is_empty():
+				terrain.paint_roads(added, 2.4 if t == 2 else 1.8)
+			_painted_roads[t] = current.duplicate()
+		if not has_view or atmo == null:
+			continue
+		if not changed and (_road_meshes[t] != null or current.is_empty()):
+			continue
+		changed_view = true
 		if _road_meshes[t]:
 			_road_meshes[t].queue_free()
 			_road_meshes[t] = null
-		if (roads[t] as Array).is_empty():
+		if current.is_empty():
 			continue
-		var mi := atmo.make_road_mesh(roads[t], t)
+		var mi := atmo.make_road_mesh(current, t)
 		add_child(mi)
 		_road_meshes[t] = mi
 		if OS.has_environment("FL_DEBUG_ROADS"):
-			print("ROADS t=%d polys=%d aabb=%s" % [t, (roads[t] as Array).size(), str(mi.get_aabb())])
-	if atmo.grass:
+			print("ROADS t=%d polys=%d aabb=%s" % [t, current.size(), str(mi.get_aabb())])
+	if changed_view and atmo.grass:
 		atmo.grass.request_rebuild(1.0)
 
 
@@ -1421,13 +1686,48 @@ func _rpc_report(d: Dictionary) -> void:
 # --- spatial queries ------------------------------------------------------------------
 
 func _rebuild_uhash() -> void:
+	if perception_cells.is_empty():
+		for x in range(-8, 9):
+			for z in range(-8, 9):
+				perception_cells.append(Vector2i(x, z))
+		perception_cells.sort_custom(func(a: Vector2i, b: Vector2i): return a.length_squared() < b.length_squared())
 	_uhash.clear()
-	for s in soldiers:
+	var contact_meta := PackedInt32Array()
+	var contact_values := PackedFloat64Array()
+	var contact_count := 0
+	if perception:
+		contact_meta.resize((soldiers.size() + vehicles.size()) * 3)
+		contact_values.resize(contact_meta.size())
+	for s: Soldier in soldiers:
 		if s.life == Soldier.Life.HIDDEN:
 			continue
 		_hadd(s)
-	for v in vehicles:
+		if perception and s.team >= 0 and (s.life == Soldier.Life.ALIVE or (s.life == Soldier.Life.DOWNED and time - s.last_shot_t <= 2.0)):
+			var factor := terrain.concealment(s.position)
+			if time - s.last_shot_t > 8.0 and not s.is_moving() and (s.at_cover or s.posture == Soldier.Post.PRONE):
+				factor *= 0.7
+			contact_meta[contact_count] = s.eid
+			contact_meta[contact_count + 1] = s.team
+			contact_meta[contact_count + 2] = 0
+			contact_values[contact_count] = s.position.x
+			contact_values[contact_count + 1] = s.position.z
+			contact_values[contact_count + 2] = factor
+			contact_count += 3
+	for v: Vehicle in vehicles:
 		_hadd(v)
+		if perception and not v.gone:
+			var factor := 0.5 if not v.is_air() and terrain.netted[terrain.idx_of(v.position)] > 0 else 1.0
+			contact_meta[contact_count] = v.eid
+			contact_meta[contact_count + 1] = v.team
+			contact_meta[contact_count + 2] = 1
+			contact_values[contact_count] = v.position.x
+			contact_values[contact_count + 1] = v.position.z
+			contact_values[contact_count + 2] = factor
+			contact_count += 3
+	if perception:
+		contact_meta.resize(contact_count)
+		contact_values.resize(contact_count)
+		perception.rebuild(contact_meta, contact_values)
 
 
 func _hadd(e: Entity) -> void:
@@ -1440,7 +1740,7 @@ func _hadd(e: Entity) -> void:
 
 
 ## Soldiers (not hidden) and vehicles within r of p. Server only.
-func units_near(p: Vector3, r: float) -> Array:
+func units_near(p: Vector3, r: float, enemy_of := -1) -> Array:
 	var out := []
 	var x0 := floori((p.x - r) / HCELL)
 	var x1 := floori((p.x + r) / HCELL)
@@ -1452,8 +1752,13 @@ func units_near(p: Vector3, r: float) -> Array:
 			var a = _uhash.get(Vector2i(x, z))
 			if a == null:
 				continue
-			for e in a:
-				if not e.gone and Defs.flat(e.position - p).length_squared() <= r2:
+			for e: Entity in a:
+				if e.gone or (enemy_of >= 0 and (e.team == enemy_of or e.team < 0)):
+					continue
+				var ep := e.position
+				var dx := ep.x - p.x
+				var dz := ep.z - p.z
+				if dx * dx + dz * dz <= r2:
 					out.append(e)
 	return out
 
@@ -1531,6 +1836,10 @@ func _shash_add(e: Structure) -> void:
 			a = []
 			_shash[k] = a
 		a.append(e)
+		if e.skind == "floor":
+			if not _house_hash.has(k):
+				_house_hash[k] = []
+			(_house_hash[k] as Array).append(e)
 
 
 func _shash_remove(e: Structure) -> void:
@@ -1538,15 +1847,20 @@ func _shash_remove(e: Structure) -> void:
 		var a = _shash.get(k)
 		if a:
 			a.erase(e)
+		if _house_hash.has(k):
+			(_house_hash[k] as Array).erase(e)
+			if (_house_hash[k] as Array).is_empty():
+				_house_hash.erase(k)
 	e.hash_cells = []
 
 
-func structures_near(p: Vector3, r: float) -> Array:
+func structures_near(p: Vector3, r: float, floors_only := false) -> Array:
+	var index := _house_hash if floors_only else _shash
 	var out := []
 	var seen := {}
 	for x in range(floori((p.x - r) / SCELL), floori((p.x + r) / SCELL) + 1):
 		for z in range(floori((p.z - r) / SCELL), floori((p.z + r) / SCELL) + 1):
-			var a = _shash.get(Vector2i(x, z))
+			var a = index.get(Vector2i(x, z))
 			if a == null:
 				continue
 			for st in a:
@@ -1564,6 +1878,8 @@ func new_squad(team: int, owner: int, kind: String) -> Squad:
 	var sq := Squad.new()
 	sq.world = self
 	sq.sid = next_sid
+	# Spread squad planning across the half-second without consuming combat RNG.
+	sq.think_t = fmod(float(sq.sid) * 0.309016994, 0.5)
 	next_sid += 1
 	sq.team = team
 	sq.owner = owner
@@ -1902,6 +2218,20 @@ func _centroid(sqs: Array, vehs: Array) -> Vector3:
 func _on_player_joined(id: int, team: int, pname: String) -> void:
 	if recording:
 		recording.order(id, {"t": "player_joined", "team": team, "name": pname})
+
+	if LocalServer.child and LocalServer.disconnected_peer != 0:
+		var old := LocalServer.disconnected_peer
+		for sq in squads.values():
+			if sq.owner == old:
+				sq.owner = id
+		for e: Entity in entities.values():
+			if e.owner_peer == old:
+				e.owner_peer = id
+				push_props(e, {"owner": id})
+		if mission:
+			mission.owner_changed(old, id)
+		LocalServer.disconnected_peer = 0
+		return
 	battle.joined(id, team)
 	if mission:
 		if team == mission.side:
@@ -1974,6 +2304,9 @@ func _on_player_left(id: int, team: int, pname: String) -> void:
 		recording.order(id, {"t": "player_left", "team": team, "name": pname})
 	ready_peers.erase(id)
 	known.erase(id)
+	_unrevealed.erase(id)
+	if LocalServer.child:
+		return  # the authenticated launcher can reclaim exactly these forces
 	if team < 0:
 		send_msg(-1, "system", "%s left the game." % pname)
 		return
@@ -2010,6 +2343,9 @@ func _on_player_left(id: int, team: int, pname: String) -> void:
 ## an AI that only stood in for a side left without commanders hands back
 ## command too (with all it was holding).
 func _on_player_rejoined(id: int, old_id: int, team: int, pname: String) -> void:
+	if LocalServer.child:
+		_on_player_joined(id, team, pname)
+		return
 	var keep: Dictionary = away_forces.get(old_id, {})
 	away_forces.erase(old_id)
 	battle.rejoined(old_id, id, team)
@@ -2020,7 +2356,7 @@ func _on_player_rejoined(id: int, old_id: int, team: int, pname: String) -> void
 	var back := 0
 	for sid in keep.get("squads", {}):
 		var sq: Squad = squads.get(int(sid))
-		if sq and sq.team == team and not sq.alive_members().is_empty():
+		if sq and sq.team == team and sq.has_alive_members():
 			give_squad(sq, id)
 			back += 1
 	for eid in keep.get("vehicles", {}):
@@ -2094,7 +2430,7 @@ func debug_stats() -> String:
 		# each squad's nerve (and the drill it's in)
 		var mor := []
 		for sq in squads.values():
-			if sq.team == t and not sq.alive_members().is_empty():
+			if sq.team == t and sq.has_alive_members():
 				mor.append("%d%s" % [int(sq.morale), ("/" + sq.drill) if sq.drill != "" else ""])
 		out += " mor=%s" % ",".join(mor)
 	out += "\n   events=%s" % str(stats)

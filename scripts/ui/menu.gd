@@ -20,6 +20,7 @@ var _ms_cards := {}
 var _ms_detail: VBoxContainer
 var _music_on := false
 var _op_side := 0  # 0 Coalition, 1 Rebels, -1 observe
+var _map_size := 1024
 var _side_cards := {}  # side -> its row in the choice
 var _mood_seg: UiSeg  # the time of day and weather
 var _col: VBoxContainer
@@ -399,6 +400,13 @@ func _build_op_panel() -> void:
 		(_mood_seg.get_child(i) as Button).tooltip_text = "A different time and weather each battle" if mk == "random" else String(Curtain.MOOD_TEXT.get(mk, ""))
 	_mood_seg.changed.connect(func(i: int): _pick_mood(String(MOODS[i][0])))
 	v.add_child(_mood_seg)
+	if not OS.has_feature("web"):
+		v.add_child(UiKit.label("Battlefield size", 15, UiKit.DIM, 600))
+		var dimensions := OptionButton.new()
+		for metres in [1024, 2048, 3072]:
+			dimensions.add_item("%d x %d m" % [metres, metres], metres)
+		dimensions.item_selected.connect(func(index: int): _map_size = dimensions.get_item_id(index))
+		v.add_child(dimensions)
 	var fill := Control.new()
 	fill.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	v.add_child(fill)
@@ -641,6 +649,10 @@ func _pick_mission(key: String) -> void:
 func _mission_solo() -> void:
 	var m := MissionList.find(_ms_key)
 	ms_panel.visible = false
+	if not OS.has_feature("web"):
+		var local_err := LocalServer.launch({"mission": _ms_key, "ai_fill": true}, int(m.side))
+		status.text = "Starting simulation..." if local_err == OK else "Could not start the mission (error %d)." % local_err
+		return
 	var port := Net.DEFAULT_PORT
 	var err := ERR_CANT_CREATE
 	for i in 5:
@@ -758,7 +770,7 @@ func _show_lobby() -> void:
 ## The host told us who's in the lobby: that's when a join has worked (and
 ## not before - a host that wants a password, or is full, turns us away first).
 func _on_lobby_updated() -> void:
-	if Net.in_game or not visible or lobby.visible or multiplayer.is_server():
+	if LocalServer.starting or Net.in_game or not visible or lobby.visible or multiplayer.is_server():
 		return
 	if Net.players.has(multiplayer.get_unique_id()) and multiplayer.multiplayer_peer is ENetMultiplayerPeer:
 		if _join_target.is_empty():
@@ -769,6 +781,10 @@ func _on_lobby_updated() -> void:
 
 
 func _single_player(side := 0) -> void:
+	if not OS.has_feature("web"):
+		var local_err := LocalServer.launch({"ai_fill": true, "map_size": _map_size}, side)
+		status.text = "Starting simulation..." if local_err == OK else "Could not start a local game (error %d)." % local_err
+		return
 	var port := Net.DEFAULT_PORT
 	var err := ERR_CANT_CREATE
 	for i in 5:
@@ -783,6 +799,10 @@ func _single_player(side := 0) -> void:
 
 
 func _observe() -> void:
+	if not OS.has_feature("web"):
+		var local_err := LocalServer.launch({"ai_fill": true, "map_size": _map_size}, -1)
+		status.text = "Starting simulation..." if local_err == OK else "Could not start (error %d)." % local_err
+		return
 	var port := Net.DEFAULT_PORT
 	var err := ERR_CANT_CREATE
 	for i in 5:

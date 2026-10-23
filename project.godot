@@ -6,6 +6,8 @@ config_version=5
 
 [application]
 
+run/flush_stdout_on_print=true
+
 config/name="Frontline"
 config/description="Squad-based multiplayer RTS with thinking soldiers."
 config/version="0.0.0-dev"
@@ -30,6 +32,7 @@ Keys="*res://scripts/autoload/keys.gd"
 Music="*res://scripts/autoload/music.gd"
 Online="*res://scripts/autoload/online.gd"
 Updater="*res://scripts/autoload/updater.gd"
+LocalServer="*res://scripts/autoload/local_server.gd"
 
 [debug]
 
@@ -45,6 +48,8 @@ window/size/viewport_height=900
 3d/physics_engine="Jolt Physics"
 common/physics_ticks_per_second=30
 common/max_physics_steps_per_frame=6
+jolt_physics_3d/limits/max_bodies=65536
+jolt_physics_3d/limits/world_boundary_shape_size=8192.0
 
 [rendering]
 

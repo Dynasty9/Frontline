@@ -10,6 +10,14 @@ var owner := 0
 var kind := ""
 var members: Array = []
 var known := {}  # eid -> {"e": Entity, "pos": Vector3, "t": float}
+var _combat_cache_t := -1.0
+var _combat_cache := false
+var _centroid_t := -1.0
+var _centroid := Vector3.ZERO
+var _briefing_t := -1.0
+var _briefing: Array = []
+var _buildings_t := -1.0
+var _building_contacts: Array = []
 var heard: Array = []  # [pos, t] gunfire from unseen shooters
 var order := "hold"
 var order_pos := Vector3.ZERO
@@ -109,6 +117,7 @@ func add(s: Soldier) -> void:
 	if s in members:
 		return
 	members.append(s)
+	_centroid_t = -1.0
 	s.squad = self
 	s.sid = sid
 	if world.battle:
@@ -119,6 +128,7 @@ func add(s: Soldier) -> void:
 
 func remove(s: Soldier) -> void:
 	members.erase(s)
+	_centroid_t = -1.0
 	if s.squad == self:
 		s.squad = null
 		s.sid = 0
@@ -132,16 +142,25 @@ func alive_members() -> Array:
 	return out
 
 
+func has_alive_members() -> bool:
+	for m in members:
+		if is_instance_valid(m) and not m.gone and m.life == Soldier.Life.ALIVE:
+			return true
+	return false
+
+
 func centroid() -> Vector3:
+	if _centroid_t == world.time:
+		return _centroid
 	var c := Vector3.ZERO
 	var n := 0
 	for m in members:
 		if is_instance_valid(m) and not m.gone and m.life != Soldier.Life.DEAD and m.life != Soldier.Life.HIDDEN:
 			c += m.position
 			n += 1
-	if n == 0:
-		return order_pos
-	return c / n
+	_centroid_t = world.time
+	_centroid = order_pos if n == 0 else c / n
+	return _centroid
 
 
 # --- knowledge ------------------------------------------------------------------------
@@ -149,20 +168,36 @@ func centroid() -> Vector3:
 func report(e: Entity) -> void:
 	if e == null or e.gone:
 		return
+	if not known.has(e.eid):
+		_briefing_t = -1.0
+		_buildings_t = -1.0
 	known[e.eid] = {"e": e, "pos": e.position, "t": world.time}
+	_combat_cache_t = world.time
+	_combat_cache = true
 
 
 func report_pos(p: Vector3) -> void:
+	# The first shot wakes the squad immediately. Sustained fire updates the
+	# shared briefing on its normal cadence instead of restarting every man.
+	if _briefing.is_empty():
+		_briefing_t = -1.0
+	_combat_cache_t = -1.0
 	heard.append([p, world.time])
 	if heard.size() > 8:
 		heard.pop_front()
 
 
 func in_combat() -> bool:
+	if _combat_cache_t == world.time:
+		return _combat_cache
+	_combat_cache_t = world.time
+	_combat_cache = false
 	for k in known.values():
 		if world.time - float(k.t) < 8.0:
+			_combat_cache = true
 			return true
-	return not heard.is_empty() and world.time - float(heard.back()[1]) < 6.0
+	_combat_cache = not heard.is_empty() and world.time - float(heard.back()[1]) < 6.0
+	return _combat_cache
 
 
 ## On a war footing: part of a planned attack, assaulting or defending, or
@@ -172,9 +207,40 @@ func tactical() -> bool:
 	return plan != null or order in ["assault", "attack", "defend"] or world.time - alert_t < 60.0
 
 
+## Nearby men watch the same avenues of approach. A separated man assesses
+## his own position; individual sight and weapon checks remain independent.
+func sector_threats(origin: Vector3) -> Array:
+	var center := centroid()
+	if origin.distance_squared_to(center) > 25.0 * 25.0:
+		return threat_points(origin, 3)
+	if _briefing_t < 0.0 or world.time - _briefing_t >= 0.25:
+		_briefing = threat_points(center, 3)
+		_briefing_t = world.time
+	return _briefing
+
+
+## The leader shares which contacts occupy buildings. Each breacher still
+## checks his own route, doorway, ammunition and whether another man went first.
+func building_contacts() -> Array:
+	if _buildings_t >= 0.0 and world.time - _buildings_t < 0.75:
+		return _building_contacts
+	_buildings_t = world.time
+	_building_contacts.clear()
+	for k in known.values():
+		var e = k.e
+		if not is_instance_valid(e) or not (e is Soldier) or e.gone or e.life != Soldier.Life.ALIVE or world.time - float(k.t) > 25.0:
+			continue
+		var house := SoldierBrain.house_at(world, e.position)
+		if house:
+			_building_contacts.append([e, house])
+	return _building_contacts
+
+
 func threat_points(origin: Vector3, n: int) -> Array:
 	var arr := []
-	for k in known.values():
+	if n <= 0:
+		return arr
+	for k: Dictionary in known.values():
 		if world.time - float(k.t) > 15.0:
 			continue
 		var e: Entity = k.e
@@ -183,17 +249,29 @@ func threat_points(origin: Vector3, n: int) -> Array:
 		if e is Soldier and e.life != Soldier.Life.ALIVE:
 			continue
 		var p: Vector3 = k.pos
-		arr.append([Defs.flat(p - origin).length_squared(), p])
+		var diff := p - origin
+		_insert_threat(arr, n, diff.x * diff.x + diff.z * diff.z, p)
 	for h in heard:
 		if world.time - float(h[1]) < 8.0:
-			arr.append([Defs.flat(h[0] - origin).length_squared() + 400.0, h[0]])
-	arr.sort_custom(func(a, b): return a[0] < b[0])
+			var diff: Vector3 = h[0] - origin
+			_insert_threat(arr, n, diff.x * diff.x + diff.z * diff.z + 400.0, h[0])
 	var out := []
 	for i in mini(n, arr.size()):
 		if arr[i][0] > 120.0 * 120.0:
 			break
 		out.append(arr[i][1] + Vector3(0, 1.5, 0))
 	return out
+
+
+func _insert_threat(out: Array, n: int, distance: float, point: Vector3) -> void:
+	if distance > 120.0 * 120.0 or (out.size() >= n and distance >= float(out.back()[0])):
+		return
+	var at := out.size()
+	while at > 0 and float(out[at - 1][0]) > distance:
+		at -= 1
+	out.insert(at, [distance, point])
+	if out.size() > n:
+		out.pop_back()
 
 
 func last_known_near(p: Vector3, r: float, max_age: float) -> Dictionary:
@@ -232,12 +310,15 @@ func _nearest_threat(p: Vector3, r: float) -> Dictionary:
 
 ## Slots around `center`, each man snapped to the best cover within a few metres.
 func formation(center: Vector3, face: Vector3, n: int, wide := false) -> Array:
+	var stamp := Time.get_ticks_usec() if world.measure_details else 0
 	var out := []
 	for sl in world.terrain.slots(center, face, n, wide):
 		# a fighting position stays exactly where it is (it's beside a wall
 		# by design); anything else is nudged onto open ground
 		var fp: bool = sl.size() > 2 and not (sl[2] as Dictionary).is_empty()
 		out.append(sl[0] if fp else world.nav.nearest_walkable(sl[0]))
+	if stamp:
+		world.detail("squad formation", stamp)
 	return out
 
 
@@ -669,6 +750,7 @@ func tick(dt: float) -> void:
 	if think_t > 0.0:
 		return
 	think_t = 0.5
+	var stamp := Time.get_ticks_usec() if world.measure_details else 0
 	var keep := []
 	for m in members:
 		if is_instance_valid(m) and not m.gone and m.squad == self:
@@ -699,12 +781,15 @@ func tick(dt: float) -> void:
 		var k: Dictionary = known[id]
 		if world.time - float(k.t) > 20.0 or k.e.gone:
 			known.erase(id)
+			_combat_cache_t = -1.0
 	if not known.is_empty() or (not heard.is_empty() and world.time - float(heard.back()[1]) < 10.0):
 		alert_t = world.time
 	get_leader()
 	if morale < 0.0:
 		morale = SquadBrain.base_morale(self)
 	SquadBrain.morale_tick(self, 0.5)
+	if stamp:
+		stamp = world.detail("squad upkeep", stamp)
 	if ambush_plan != null:
 		ambush_plan.tick()
 		if ambush_plan != null and ambush_plan.done:
@@ -712,22 +797,36 @@ func tick(dt: float) -> void:
 	else:
 		SquadBrain.ambush_tick(self)
 	SquadBrain.think(self)
+	if stamp:
+		stamp = world.detail("squad decisions", stamp)
 	Tactics.crew_tick(self)
 	Tactics.straggler_tick(self)
 	Tactics.overwatch_tick(self)
 	Tactics.then_defend_tick(self)
 	Tactics.clear_call_tick(self)
+	if stamp:
+		stamp = world.detail("squad tactics", stamp)
 	if drill == "rout":
 		_surrender_logic()
 		return
 	if travel and order == "move":
 		_follow_tick()
+	if stamp:
+		stamp = world.detail("squad follow", stamp)
 	_rescue_logic()
 	_surrender_logic()
 	_medic_logic()
+	if stamp:
+		stamp = world.detail("squad rescue", stamp)
 	_engineer_logic()
+	if stamp:
+		stamp = world.detail("squad engineers", stamp)
 	_assault_logic()
+	if stamp:
+		stamp = world.detail("squad assault", stamp)
 	SquadBrain.share_ammo(self)
+	if stamp:
+		stamp = world.detail("squad ammo", stamp)
 
 
 ## Morale as it shows: 0 steady, 1 shaken, 2 breaking, 3 routed.

@@ -20,6 +20,10 @@ const LINE_WORKS := ["trench", "sandbags", "wire", "mines", "tank_trap", "concre
 ## is in it (a man topping up draws one a second).
 const CACHE_REACH := 7.0
 const CACHE_STOCK := 160.0
+## Kinds with work in sim(). Include unfinished and neutral buildings in the
+## world's index: completion and capture change their eligibility in place.
+const SIM_KINDS := ["fob", "town", "barracks", "factory", "research", "helipad", "dock",
+	"medic_tent", "mg_nest", "watchtower", "hmg_nest", "mortar_pit", "at_post", "mines", "ammo_cache"]
 
 var skind := ""
 var size := Vector3.ONE
@@ -42,6 +46,9 @@ var nav_cells: Array = []
 var hash_cells: Array = []
 var body: StaticBody3D
 var model: Node3D
+var view_active := true
+var defer_view := false
+var _toss_received_ms := 0
 var smashable := true
 var indestructible := false
 
@@ -170,6 +177,7 @@ func apply_props(d: Dictionary) -> void:
 		if model:
 			_apply_tilt()
 	if d.has("toss"):
+		_toss_received_ms = Time.get_ticks_msec()
 		toss = d.toss
 		if toss != null and model:
 			_start_toss()
@@ -231,19 +239,37 @@ func on_spawned() -> void:
 		if skind == "ammo_cache" and supply <= 0.0:
 			supply = CACHE_STOCK
 	_compute_cover_pts()  # every peer: the move preview shows the same spots
-	if not srv and world.has_view and built:
-		_make_body()  # so ragdolls and debris land on walls on every client
 	if world.has_view:
-		_build_model()
-		_update_visual()
-		_apply_tilt()
-		if toss != null:
-			_start_toss()
-		if team < 0 and built and not skind in SMOKE_KINDS and skind != "roof":
-			set_process(false)  # map scenery: nothing to update per frame
+		if defer_view:
+			view_active = false
+			set_process(false)
+		else:
+			set_view_active(true)
 	# a vehicle that has just brewed up burns where it died
 	if srv and world.fires and variant >= 6 and skind in ["wreck", "rubble"]:
 		world.fires.ignite(self, 1.0)
+
+
+func set_view_active(value: bool) -> void:
+	view_active = value
+	if value and not srv and built and body == null:
+		_make_body()
+	if value and model == null:
+		_build_model()
+		_update_visual()
+		_apply_tilt()
+		if toss != null and Time.get_ticks_msec() - _toss_received_ms < 2000:
+			_start_toss()
+		_burn_view()
+	if model:
+		model.visible = value
+	if not srv and body:
+		body.collision_layer = Defs.L_COVER if value else 0
+	if is_instance_valid(_fire_fx):
+		_fire_fx.visible = value
+	if is_instance_valid(_damage_fx):
+		_damage_fx.visible = value
+	set_process(value and (team >= 0 or not built or skind in SMOKE_KINDS or skind == "roof" or burn > 0.0 or _fire_fx != null))
 
 
 func _default_hp() -> float:
@@ -1832,7 +1858,7 @@ func read_state(b: StreamPeerBuffer) -> void:
 		_recolor()
 	if was_built != built or not built:
 		_update_visual()
-	if built and not was_built and not srv and world.has_view:
+	if built and not was_built and not srv and world.has_view and view_active:
 		_make_body()
 	if built != was_built and world.terrain:
 		world.terrain.structure_changed(self, true)
@@ -1848,7 +1874,7 @@ func _process(_dt: float) -> void:
 
 
 func _view_process(_dt: float) -> void:
-	if not world.has_view or model == null:
+	if not world.has_view or not view_active or model == null:
 		return
 	if burn > 0.0 or _fire_fx:
 		_fire_view(_dt)
@@ -1970,6 +1996,7 @@ func _rebuild_model() -> void:
 	_char_mats.clear()
 	_build_model()
 	_apply_tilt()
+	model.visible = view_active
 	_char = 0.0  # (built charred black already)
 	_char_set = -1.0
 
@@ -2008,7 +2035,7 @@ func _fire_box() -> Array:
 ## (view) The flames follow the burn: lit, roaring, dying down, then smoke
 ## drifting off what's left.
 func _burn_view() -> void:
-	if not world.has_view or model == null or world.fx == null or world.fx.vfx == null:
+	if not world.has_view or not view_active or model == null or world.fx == null or world.fx.vfx == null:
 		return
 	var lvl := int(burn * 24.0)
 	if lvl == _fire_shown:
@@ -2190,6 +2217,8 @@ func _build_scaffold(h: float) -> void:
 
 
 func _recolor() -> void:
+	if world.has_view and view_active and model != null and team >= 0:
+		set_process(true)  # a captured neutral site now has ownership and fog to draw
 	if _flag:
 		_flag.material_override = Res.mat(_flag_color(), 0.8)
 

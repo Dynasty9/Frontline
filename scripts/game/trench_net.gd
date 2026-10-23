@@ -9,7 +9,7 @@ extends Node3D
 ## duckboards, and the spoil heaped along the lips as a parapet.
 
 const RES := 4  # mask texels per metre
-const N := MapDims.N * RES
+static var N := 1024 * RES
 const HALF_W := 0.72  # half the trench width (m)
 const FLOOR_Y := -1.2
 const TILE := 16

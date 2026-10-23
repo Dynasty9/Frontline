@@ -314,6 +314,8 @@ func _process(_dt: float) -> void:
 
 
 func _send_tick() -> void:
+	if not world.srv and (not multiplayer.has_multiplayer_peer() or multiplayer.get_unique_id() == 1):
+		return
 	# a client waits until the host's world is up and talking to it
 	if not world.srv and world.entities.is_empty():
 		return

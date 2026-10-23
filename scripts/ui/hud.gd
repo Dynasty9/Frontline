@@ -1502,7 +1502,8 @@ func _view_process(dt: float) -> void:
 	if _map_t <= 0.0:
 		_map_t = 1.0 / 15.0
 		minimap.queue_redraw()
-	overlay.queue_redraw()
+	if world.cam:
+		overlay.refresh_for_view(rdt, world.cam.cam.get_camera_transform(), root.get_global_mouse_position())
 	coop.queue_redraw()
 
 

@@ -171,7 +171,7 @@ func _valid_state(state: Dictionary, full: bool) -> bool:
 		if rec[0] <= 0 or not _valid_props(rec[1], rec[2], true):
 			return false
 		record_kinds[rec[0]] = rec[1]
-		record_lengths[rec[0]] = {"soldier": 31, "vehicle": 24, "structure": 15 if rec[2].get("skind") == "town" else 14, "projectile": 14, "drone": 16}[rec[1]]
+		record_lengths[rec[0]] = {"soldier": 31, "vehicle": 28, "structure": 15 if rec[2].get("skind") == "town" else 14, "projectile": 14, "drone": 16}[rec[1]]
 	for packet in state.snapshots:
 		if not packet is PackedByteArray or packet.size() < 4 or packet.size() > 2048:
 			return false
@@ -292,7 +292,7 @@ func seek(target: float) -> void:
 	chunk = next
 	sequence = wanted
 	# A fresh observer resets transient effects, fog, and entities when rewinding.
-	await main._on_game_start({"replay": true, "players": {1: {"team": -1, "name": "Observer"}}})
+	await main._on_game_start({"replay": true, "map_size": int(map.get("map_size", 1024)), "players": {1: {"team": -1, "name": "Observer"}}})
 	var world: World = main.world
 	world._rpc_join_map(World._pack(map))
 	world._rpc_spawn(chunk.checkpoint.entities)
@@ -468,7 +468,10 @@ func _valid_points(points: Variant) -> bool:
 
 
 func _valid_map(value: Dictionary) -> bool:
-	if not value.get("kinds") is PackedByteArray or value.kinds.size() != MapDims.N * MapDims.N or not _valid_roads(value.get("roads")):
+	var metres: int = int(value.get("map_size", 1024))
+	if not metres in [1024, 2048, 3072]:
+		return false
+	if not value.get("kinds") is PackedByteArray or value.kinds.size() != metres * metres or not _valid_roads(value.get("roads")):
 		return false
 	if not value.get("town") is Rect2 or not value.get("decor") is Array or value.decor.size() > 100000 or not value.get("water") is Dictionary:
 		return false

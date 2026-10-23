@@ -20,7 +20,7 @@ const DEFAULT_PORT := 7777
 const MAX_PLAYERS := 8
 ## Bump when what host and client send each other changes, so the matchmaker
 ## only pairs players who can understand each other.
-const NET_VERSION := 9
+const NET_VERSION := 11
 ## Each commander's colour: his cursor, his view and his pings on his
 ## teammates' screens. Handed out in the lobby so it stays the same all battle
 ## (and "I'm the pink one" works over voice). Clear of the sides' blue and red.
@@ -103,13 +103,14 @@ func _ready() -> void:
 	_load_rejoin()
 
 
-func host_game(port := DEFAULT_PORT, team := 0) -> int:
+func host_game(port := DEFAULT_PORT, team := 0, bind_ip := "*") -> int:
 	if OS.has_feature("web"):
 		# a browser can't open a port for anyone to join: the game is the
 		# player's alone, still run as its own host
 		host_offline(team)
 		return OK
 	var peer := ENetMultiplayerPeer.new()
+	peer.set_bind_ip(bind_ip)
 	var err := peer.create_server(port, MAX_PLAYERS)
 	if err != OK:
 		return err
@@ -164,7 +165,7 @@ func join_game(ip: String, port := DEFAULT_PORT, local_port := 0, lobby := "") -
 
 
 func leave() -> void:
-	if in_game and not multiplayer.is_server() and not rejoin.is_empty():
+	if in_game and multiplayer.multiplayer_peer.get_connection_status() == MultiplayerPeer.CONNECTION_CONNECTED and not multiplayer.is_server() and not rejoin.is_empty():
 		_touch_rejoin()
 	if multiplayer.multiplayer_peer and not (multiplayer.multiplayer_peer is OfflineMultiplayerPeer):
 		multiplayer.multiplayer_peer.close()
@@ -321,16 +322,14 @@ func _on_peer_connected(id: int) -> void:
 					_broadcast_lobby())
 
 
-## Don't drop a peer for going silent for 45 s (map generation on the host,
-## then its first frame of the new world if it has a window; a big first
-## snapshot on the client). ENet only checks when it next resends, so the real
-## limit lands somewhere between 45 and 90 s.
-func _long_timeout(id: int) -> void:
+## Large-map construction can block polling for several minutes. Allow that
+## during loading, then restore the ordinary timeout once the client is ready.
+func _long_timeout(id: int, loading := true) -> void:
 	var mp := multiplayer.multiplayer_peer
 	if mp is ENetMultiplayerPeer:
 		var pp: ENetPacketPeer = (mp as ENetMultiplayerPeer).get_peer(id)
 		if pp:
-			pp.set_timeout(64, 45000, 90000)
+			pp.set_timeout(64, 300000 if loading else 45000, 600000 if loading else 90000)
 
 
 func _on_peer_disconnected(id: int) -> void:
@@ -342,6 +341,8 @@ func _on_peer_disconnected(id: int) -> void:
 	if players.has(id):
 		var p: Dictionary = players[id]
 		players.erase(id)
+		if LocalServer.child:
+			LocalServer.disconnected_peer = id
 		if in_game and tok != "":
 			# their place is kept for the rest of the battle
 			away[tok] = {"peer": id, "name": String(p.name), "team": int(p.team), "col": int(p.get("col", -1))}
@@ -358,7 +359,7 @@ func _on_connected() -> void:
 	_dbg("connected to the host, registering as %s" % my_name)
 	# (players pick their side in the lobby; only a test client says one now.
 	# The token says who we are if we've been here before)
-	_register.rpc_id(1, my_name, join_password, join_team, my_icon, my_rank, token)
+	_register.rpc_id(1, my_name, join_password, join_team, my_icon, my_rank, token, LocalServer.token, NET_VERSION)
 
 
 func _on_conn_failed() -> void:
@@ -368,6 +369,8 @@ func _on_conn_failed() -> void:
 	if back:
 		forget_rejoin()
 	leave()
+	if LocalServer.reconnect():
+		return
 	net_error.emit(("Couldn't get back into %s's battle: nobody answered. It may have ended." % host) if back
 		else "The host didn't answer. The battle may have closed, or their router is blocking the way in.")
 
@@ -375,6 +378,8 @@ func _on_conn_failed() -> void:
 func _on_server_disconnected() -> void:
 	var was := in_game and can_rejoin()
 	leave()
+	if LocalServer.reconnect():
+		return
 	net_error.emit("Lost connection to the host. You can rejoin while the battle lasts." if was else "Lost connection to host.")
 
 
@@ -389,10 +394,15 @@ func _rejoin_host() -> String:
 ## `pw`: the password they offer; `team`: the side a test client asked for
 ## (-2: none, the lobby decides); `icon` and `rank`: the insignia they wear;
 ## `tok`: who they are (see `token`).
-func _register(pname: String, pw: String, team := -2, icon := "", rank := -1, tok := "") -> void:
+func _register(pname: String, pw: String, team := -2, icon := "", rank := -1, tok := "", private_token := "", version := NET_VERSION) -> void:
 	if not multiplayer.is_server():
 		return
 	var id := multiplayer.get_remote_sender_id()
+	if version != NET_VERSION or not LocalServer.authorize(private_token, version):
+		_turn_away(id, "Incompatible game version or private session.")
+		return
+	if LocalServer.child:
+		team = LocalServer.requested_team()
 	_arriving.erase(id)
 	_dbg("%d registers as %s (in game: %s)" % [id, pname, in_game])
 	if players.has(id) or _turned_away.has(id):
@@ -439,13 +449,13 @@ func _register(pname: String, pw: String, team := -2, icon := "", rank := -1, to
 	if players.size() >= max_players():
 		_turn_away(id, "That battle is full.")
 		return
-	if in_game and not bool(settings.get("drop_in", true)):
+	if in_game and not bool(settings.get("drop_in", true)) and not LocalServer.child:
 		_turn_away(id, "That battle has already started, and the host isn't letting anyone join mid-battle.")
 		return
 	var clean := _unique_name(pname)
 	if in_game:
 		# drop-in: put them on a side and hand them the running game
-		var side := _pick_join_team()
+		var side := LocalServer.requested_team() if LocalServer.child else _pick_join_team()
 		players[id] = {"name": clean, "team": side, "ready": true, "col": _free_color(), "icon": icon, "rank": rank}
 		# everyone else learns who they are; they get the whole game at once
 		_sync_to_players(id)

@@ -18,6 +18,9 @@ var track_broken := false
 var track_fix := 0.0
 var path := PackedVector3Array()
 var path_i := 0
+var _path_revision := 0
+var path_pending := false
+var path_destination := Vector3.INF
 var target: Entity = null
 var forced_target: Entity = null
 var cannon_t := 2.0
@@ -55,6 +58,10 @@ var heli_dest: Structure = null
 var heli_phase := 0
 var heli_t := 0.0
 var rotor: Node3D
+var flight: HelicopterFlight
+var flight_pitch := 0.0
+var flight_roll := 0.0
+var _flight_hold := Vector3.INF
 
 # view
 # missiles: ATGMs at armour, SAMs at aircraft (counts refilled by ammo trucks)
@@ -72,7 +79,7 @@ var _lay_yaw := INF  # where the gun is laid (turret yaw), INF: on the target
 var _svc_t := 0.0
 # troop-carrying helicopters and drones: where they've been sent
 var lift_dest := Vector3.INF
-var lift_phase := 0  # 0 on the ground, 1 climbing, 2 cruising, 3 landing, 4 unloading
+var lift_phase := 0  # 0 ground, 1 climb, 2 cruise, 3 land, 4 unload, 5/6 sling, 7 hold
 var lift_t := 0.0
 var uav_dest := Vector3.INF
 var _orbit := 0.0
@@ -149,6 +156,8 @@ func get_props() -> Dictionary:
 
 func on_spawned() -> void:
 	vdef = Defs.VEHICLES[vkind]
+	if base() in ["attack_heli", "lift_heli"]:
+		flight = HelicopterFlight.new()
 	if srv:
 		max_hp = float(vdef.hp)
 		hp = max_hp
@@ -212,7 +221,7 @@ func is_boat() -> bool:
 
 
 func is_moving() -> bool:
-	return path_i < path.size() or (is_heli() and velocity.length() > 0.5)
+	return path_pending or path_i < path.size() or (is_heli() and velocity.length() > 0.5)
 
 
 ## Missiles back to a full load (built with them; an ammo truck refills them).
@@ -292,6 +301,8 @@ func order_move(p: Vector3) -> void:
 		return
 	if base() == "lift_heli":
 		lift_dest = _landing_spot(p)
+		if lift_phase in [3, 4, 7]:
+			lift_phase = 2 if position.y > 3.0 else 1
 		return
 	if base() == "uav":
 		uav_dest = Vector3(p.x, 0.0, p.z)
@@ -300,7 +311,7 @@ func order_move(p: Vector3) -> void:
 	if is_boat():
 		path = world.nav.find_boat_path(position, p)
 	else:
-		path = world.nav.find_path(position, p, true, team, 0.5)
+		_request_ground_path(p, 0.5)
 	path_i = 0
 	_stuck_t = 0.0
 	_stuck_p = position
@@ -455,6 +466,23 @@ func order_sling(v: Vehicle) -> void:
 	world.stat("sling_order")
 
 
+func _request_ground_path(destination: Vector3, care: float) -> void:
+	_path_revision += 1
+	path_pending = true
+	path_destination = destination
+	var revision := _path_revision
+	path = PackedVector3Array()
+	path_i = 0
+	world.nav.request_path(self, destination, true, team, care, func(points: PackedVector3Array):
+		if revision != _path_revision:
+			return
+		path_pending = false
+		if gone or hp <= 0.0:
+			return
+		path = points
+		path_i = 0)
+
+
 func order_attack(t: Entity) -> void:
 	forced_target = t
 	if base() == "attack_heli":
@@ -465,11 +493,20 @@ func order_attack(t: Entity) -> void:
 		if is_boat():
 			path = world.nav.find_boat_path(position, t.position - d.normalized() * 40.0)
 		else:
-			path = world.nav.find_path(position, t.position - d.normalized() * 40.0, true, team, 0.2)
+			_request_ground_path(t.position - d.normalized() * 40.0, 0.2)
 		path_i = 0
 
 
 func order_stop() -> void:
+	_path_revision += 1
+	path_pending = false
+	path_destination = Vector3.INF
+	world.nav.cancel_path(eid)
+	if base() == "lift_heli" and not is_auto():
+		sling_target = null
+		lift_dest = Vector3.INF
+		_flight_hold = position
+		lift_phase = 7 if position.y > 0.6 else 0
 	if base() == "uav":
 		uav_dest = Vector3(position.x, 0.0, position.z)
 	if base() == "attack_heli":
@@ -801,7 +838,7 @@ func _drive(dt: float) -> void:
 		if world.nav.vkind_at(bp) != Nav.SOLID:
 			position = bp
 		if _unstick_t <= 0.0:
-			path = world.nav.find_path(position, path[path.size() - 1], true, team, 0.0)
+			_request_ground_path(path[path.size() - 1], 0.0)
 			path_i = 0
 			_stuck_t = 0.0
 			_stuck_p = position
@@ -1023,7 +1060,7 @@ func _arty_tick(dt: float) -> void:
 			if _salvo <= 0:
 				_lay_yaw = INF
 		return
-	if path_i < path.size() or world.time < arty_t:
+	if path_pending or path_i < path.size() or world.time < arty_t:
 		return
 	var tp := Vector3.INF
 	if not fire_queue.is_empty():
@@ -1092,6 +1129,18 @@ func _service_tick(dt: float) -> void:
 
 
 # --- troop-carrying helicopters -------------------------------------------------------
+
+## Every rotorcraft phase uses the same dynamics, including vertical flight.
+func _fly_to(goal: Vector3, dt: float, face := INF) -> bool:
+	flight.step(self, goal, dt, face)
+	flight_pitch = flight.pitch
+	flight_roll = flight.roll
+	return flight.settled(self, goal)
+
+
+func _flight_ground(p: Vector3) -> float:
+	return maxf(0.0, world.ground_y(p)) + 0.15
+
 
 const LIFT_ALT := 16.0
 
@@ -1199,42 +1248,32 @@ func _lift_tick(dt: float) -> void:
 		_fire_tick()
 	match lift_phase:
 		0:
-			position.y = maxf(0.15, position.y - 5.0 * dt)
-			if lift_dest != Vector3.INF and Defs.flat(lift_dest - position).length() > 6.0:
+			_fly_to(Vector3(position.x, _flight_ground(position), position.z), dt)
+			if lift_dest != Vector3.INF and Defs.flat(lift_dest - position).length() > 0.7:
 				lift_phase = 1
 		1:
-			position.y = minf(LIFT_ALT, position.y + 6.0 * dt)
-			if position.y >= LIFT_ALT - 0.1:
+			var climb := Vector3(position.x, LIFT_ALT, position.z)
+			if _fly_to(climb, dt):
 				if sling_target != null:
 					lift_phase = 5
 				elif lift_dest != Vector3.INF:
 					lift_phase = 2
 		2:
-			var to := Defs.flat(lift_dest - position)
-			var want := Defs.yaw_of(to)
-			rotation.y += clampf(wrapf(want - rotation.y, -PI, PI), -float(vdef.turn) * dt, float(vdef.turn) * dt)
-			var vmax := float(vdef.speed) * (0.65 if sling_cargo != null else 1.0)  # (a load underneath slows it)
-			speed = move_toward(speed, vmax if to.length() > 25.0 else maxf(3.0, to.length() * 0.6), (3.0 if sling_cargo != null else 6.0) * dt)
-			velocity = to.normalized() * speed
-			position += velocity * dt
-			if to.length() < 1.5:
-				speed = 0.0
-				velocity = Vector3.ZERO
+			var cruise := Vector3(lift_dest.x, LIFT_ALT, lift_dest.z)
+			if _fly_to(cruise, dt):
 				lift_phase = 3
 		3:
 			if sling_cargo != null:
-				# down until the load touches, let go, and away
-				var floor_y := _cargo_h() + SLING_ROPE
-				position.y = maxf(floor_y, position.y - 4.0 * dt)
-				if position.y <= floor_y + 0.05:
+				var drop := Vector3(lift_dest.x, _flight_ground(lift_dest) + _cargo_h() + SLING_ROPE, lift_dest.z)
+				if _fly_to(drop, dt):
 					_sling_t += dt
 					if _sling_t > 1.2:
 						_release_sling()
 						lift_dest = Vector3.INF
 						lift_phase = 1
 				return
-			position.y = maxf(0.15, position.y - 5.0 * dt)
-			if position.y <= 0.16:
+			var touchdown := Vector3(lift_dest.x, _flight_ground(lift_dest), lift_dest.z)
+			if _fly_to(touchdown, dt):
 				lift_dest = Vector3.INF
 				if not passengers.is_empty():
 					dismount()
@@ -1243,45 +1282,37 @@ func _lift_tick(dt: float) -> void:
 				else:
 					lift_phase = 0
 		5:
-			# to the vehicle, at height
 			var tv := sling_target
 			if tv == null or tv.gone or not can_sling(tv):
 				sling_target = null
 				lift_phase = 1
 				return
-			var to := Defs.flat(tv.position - position)
-			rotation.y += clampf(wrapf(Defs.yaw_of(to) - rotation.y, -PI, PI), -float(vdef.turn) * dt, float(vdef.turn) * dt) if to.length() > 4.0 else 0.0
-			speed = move_toward(speed, float(vdef.speed) if to.length() > 25.0 else maxf(1.5, to.length() * 0.5), 6.0 * dt)
-			velocity = to.normalized() * speed if to.length() > 0.3 else Vector3.ZERO
-			position += velocity * dt
-			position.y = move_toward(position.y, LIFT_ALT, 6.0 * dt)
-			if to.length() < 1.2:
-				speed = 0.0
-				velocity = Vector3.ZERO
+			if _fly_to(Vector3(tv.position.x, LIFT_ALT, tv.position.z), dt):
 				_sling_t = 0.0
 				lift_phase = 6
 		6:
-			# the hover: down over it, the hook on, then up with it
-			var tv2 := sling_target
-			if tv2 == null or tv2.gone or not can_sling(tv2):
+			var tv := sling_target
+			if tv == null or tv.gone or not can_sling(tv):
 				sling_target = null
 				lift_phase = 1
 				return
-			var hover := tv2.position.y + tv2._hull_size().y + SLING_ROPE
-			position.x = move_toward(position.x, tv2.position.x, 2.0 * dt)
-			position.z = move_toward(position.z, tv2.position.z, 2.0 * dt)
-			position.y = move_toward(position.y, hover, 4.0 * dt)
-			if absf(position.y - hover) < 0.1:
+			var hover := tv.position + Vector3(0, tv._hull_size().y + SLING_ROPE, 0)
+			if _fly_to(hover, dt):
 				_sling_t += dt
 				if _sling_t > 1.5:
-					_hook(tv2)
+					_hook(tv)
+			else:
+				_sling_t = 0.0
 		4:
+			_fly_to(Vector3(position.x, _flight_ground(position), position.z), dt)
 			lift_t -= dt
 			if lift_t <= 0.0:
 				lift_phase = 0
 				var home := heli_home if heli_home and not heli_home.gone and heli_home.team == team else null
 				if home and Defs.flat(home.position - position).length() > 20.0:
-					lift_dest = _landing_spot(home.position + Vector3(0, 0, 0))
+					lift_dest = _landing_spot(home.position)
+		7:
+			_fly_to(_flight_hold, dt)
 
 
 # --- drones -----------------------------------------------------------------------------
@@ -2111,7 +2142,9 @@ func _suspension(dt: float) -> void:
 		var tt := Time.get_ticks_msec() / 1000.0
 		rumble = (sin(tt * 31.0 + eid) * 0.5 + sin(tt * 47.0) * 0.5) * (0.004 if heavy else 0.006) * minf(_vel_s.length() / 6.0, 1.0)
 	var sus := Transform3D(Basis.from_euler(Vector3(_sus.x + rumble, 0.0, _sus.y + rumble * 0.6)), Vector3(0, _sus.z, 0))
-	model.transform = (ip_offset() if srv else Transform3D.IDENTITY) * sus
+	var pose := (ip_offset() if srv else Transform3D.IDENTITY) * sus
+	if model.transform != pose:
+		model.transform = pose
 
 
 ## How far the ground drops under a point: into a trench, or a crater.
@@ -2132,7 +2165,7 @@ var rocket_t := 6.0
 
 
 ## Flies straight to its orders, then circles whatever it is fighting at
-## 40-55 m, nose on the target: chain gun bursts and rocket salvos.
+## 60-75 m, nose on the target: chain gun bursts and rocket salvos.
 func _gunship_tick(dt: float) -> void:
 	scan_t -= dt
 	rocket_t -= dt
@@ -2152,15 +2185,8 @@ func _gunship_tick(dt: float) -> void:
 	elif gs_dest != Vector3.INF:
 		want = gs_dest
 	want.y = GS_ALT if hp > max_hp * 0.25 else GS_ALT * 0.7
-	var flat := Defs.flat(want - position)
-	var spd := float(vdef.speed)
-	var vd := flat.normalized() * minf(spd, flat.length() * 0.8)
-	velocity = velocity.move_toward(vd, 8.0 * dt)
-	position += velocity * dt
-	position.y = move_toward(position.y, want.y, 5.0 * dt)
-	var face := (target.position - position) if has_t else velocity
-	if Defs.flat(face).length() > 0.5:
-		rotation.y = lerp_angle(rotation.y, Defs.yaw_of(Defs.flat(face)), minf(1.0, 2.2 * dt))
+	var face := Defs.yaw_of(Defs.flat(target.position - position)) if has_t else INF
+	_fly_to(want, dt, face)
 	_turret_tick(dt)
 	_fire_tick()
 	if has_t and rocket_t <= 0.0 and _aim_err() < 0.35:
@@ -2198,6 +2224,7 @@ func _heli_tick(dt: float) -> void:
 	var home := heli_home if heli_home and not heli_home.gone and heli_home.team == team else null
 	match heli_phase:
 		0:  # waiting on the pad, then pick the FOB that needs supply most
+			_fly_to(Vector3(position.x, _flight_ground(position), position.z), dt)
 			heli_t -= dt
 			if heli_t > 0.0:
 				return
@@ -2213,8 +2240,7 @@ func _heli_tick(dt: float) -> void:
 				return
 			heli_phase = 1
 		1, 4:  # climb
-			position.y = minf(HELI_ALT, position.y + 6.0 * dt)
-			if position.y >= HELI_ALT - 0.1:
+			if _fly_to(Vector3(position.x, HELI_ALT, position.z), dt):
 				heli_phase += 1
 		2, 5:  # cruise
 			var goal: Vector3
@@ -2225,19 +2251,13 @@ func _heli_tick(dt: float) -> void:
 				goal = heli_dest.position + Vector3(9.0, 0, 0)
 			else:
 				goal = home.position if home else world.rules.depots[team].position + Vector3(0, 0, -12)
-			var to := Defs.flat(goal - position)
-			var want := Defs.yaw_of(to)
-			rotation.y += clampf(wrapf(want - rotation.y, -PI, PI), -float(vdef.turn) * dt, float(vdef.turn) * dt)
-			speed = move_toward(speed, float(vdef.speed) if to.length() > 25.0 else maxf(3.0, to.length() * 0.6), 6.0 * dt)
-			velocity = Defs.flat(to).normalized() * speed
-			position += velocity * dt
-			if to.length() < 1.5:
-				speed = 0.0
-				velocity = Vector3.ZERO
+			goal.y = HELI_ALT
+			if _fly_to(goal, dt):
+				_flight_hold = Vector3(goal.x, _flight_ground(goal), goal.z)
 				heli_phase += 1
 		3, 6:  # land
-			position.y = maxf(0.15, position.y - 5.0 * dt)
-			if position.y <= 0.16:
+			_flight_hold.y = _flight_ground(_flight_hold)
+			if _fly_to(_flight_hold, dt):
 				if heli_phase == 3:
 					heli_t = 3.0
 					heli_phase = 7
@@ -2245,6 +2265,8 @@ func _heli_tick(dt: float) -> void:
 					heli_phase = 0
 					heli_t = 12.0
 		7:  # unloading
+			_flight_hold.y = _flight_ground(_flight_hold)
+			_fly_to(_flight_hold, dt)
 			heli_t -= dt
 			if heli_t <= 0.0:
 				if heli_dest and not heli_dest.gone and heli_dest.team == team:
@@ -2314,6 +2336,8 @@ func write_state(b: StreamPeerBuffer) -> void:
 	b.put_u8(vis_mask)
 	b.put_8(team)
 	b.put_u32(sling_eid)
+	put_ang(b, flight_pitch)
+	put_ang(b, flight_roll)
 
 
 func read_state(b: StreamPeerBuffer) -> void:
@@ -2325,6 +2349,8 @@ func read_state(b: StreamPeerBuffer) -> void:
 	vis_mask = b.get_u8()
 	team = b.get_8()
 	sling_eid = b.get_u32()
+	flight_pitch = wrapf(get_ang(b), -PI, PI)
+	flight_roll = wrapf(get_ang(b), -PI, PI)
 
 
 func health_frac() -> float:
@@ -2350,7 +2376,10 @@ func _view_process(dt: float) -> void:
 		visible = v
 		_vis = v
 	if turret:
-		turret.rotation.y = turret_yaw
+		var facing := turret.rotation
+		facing.y = turret_yaw
+		if turret.rotation != facing:
+			turret.rotation = facing
 		if _gun_kick > 0.0:
 			if _turret_rest == Vector3.INF:
 				_turret_rest = turret.position
@@ -2361,7 +2390,10 @@ func _view_process(dt: float) -> void:
 		# laid for indirect fire: the barrel (or the launcher) goes up
 		var want_e := float(vdef.get("elev", 0.6)) if (flags & F_ELEV) != 0 else 0.0
 		_elev_v = move_toward(_elev_v, want_e, dt * 0.5)
-		_vm.elev.rotation.x = _elev_v
+		var elevation := _vm.elev.rotation
+		elevation.x = _elev_v
+		if _vm.elev.rotation != elevation:
+			_vm.elev.rotation = elevation
 	if rotor:
 		var want := 30.0 if position.y > 0.3 or (flags & F_FIRE) != 0 else (9.0 if (flags & F_GROUND) == 0 or base() != "lift_heli" else 14.0)
 		_rotor_spd = move_toward(_rotor_spd, want, dt * 12.0)
@@ -2384,7 +2416,11 @@ func _view_process(dt: float) -> void:
 	if not rotor and _vm and not _vm.rotors.is_empty():
 		for i in _vm.rotors.size():
 			(_vm.rotors[i] as Node3D).rotation.y += dt * 30.0 * (-1.0 if i % 2 == 0 else 1.0)
-	if rotor and model and dt > 0.0:
+	if flight and model and dt > 0.0:
+		model.rotation.x = lerp_angle(model.rotation.x, flight_pitch, 1.0 - exp(-dt * 10.0))
+		model.rotation.z = lerp_angle(model.rotation.z, flight_roll, 1.0 - exp(-dt * 10.0))
+	elif rotor and model and dt > 0.0:
+		# Rotary drones keep their own orbit guidance and view treatment.
 		var mv2 := position - _last_pos
 		var fs := mv2.dot(Defs.dir_of(rotation.y)) / dt
 		var ss := mv2.dot(Defs.dir_of(rotation.y).cross(Vector3.UP)) / dt
@@ -2397,13 +2433,13 @@ func _view_process(dt: float) -> void:
 			Vfx.set_emitting(dust, want_dust)
 	if is_boat() and model:
 		_boat_view(dt)
-	elif not rotor and model:
+	elif not rotor and not flight and model:
 		_suspension(dt)
 	if not wheels.is_empty():
 		var mv := position - _last_pos
 		var fwd := Defs.dir_of(rotation.y)
 		var spd := mv.dot(fwd)
-		if absf(spd) < 2.0:
+		if spd != 0.0 and absf(spd) < 2.0:
 			for w in wheels:
 				w.rotation.x -= spd / 0.42
 		_steer_wheels(dt, spd)
@@ -2560,7 +2596,11 @@ func _steer_wheels(dt: float, step: float) -> void:
 	for i in wheels.size():
 		var k: float = _steer_k[i]
 		if k > 0.0:
-			(wheels[i] as Node3D).rotation.y = _steer_v * k
+			var wheel := wheels[i] as Node3D
+			var facing := wheel.rotation
+			facing.y = _steer_v * k
+			if wheel.rotation != facing:
+				wheel.rotation = facing
 
 
 ## Where a shot leaves this vehicle's model right now (view): the tip of the

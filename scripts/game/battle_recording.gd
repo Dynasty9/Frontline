@@ -42,7 +42,7 @@ func _ready() -> void:
 	manifest = {"format": FORMAT, "protocol": Net.NET_VERSION, "version": Updater.version,
 		"name": String(world.settings.get("name", "")).strip_edges() if not String(world.settings.get("name", "")).is_empty() else "Frontline battle", "verified": false, "chunks": [], "duration": 0.0, "status": "live"}
 	checkpoint = capture()
-	initial_map = {"n": checkpoint.entities.size(), "water": world.water.to_dict().duplicate(true), "roads": world.roads.duplicate(true),
+	initial_map = {"map_size": MapDims.N, "n": checkpoint.entities.size(), "water": world.water.to_dict().duplicate(true), "roads": world.roads.duplicate(true),
 		"decor": world.decor.duplicate(true), "town": world.town_rect, "kinds": world.terrain.base.duplicate()}
 	_save_manifest()
 

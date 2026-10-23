@@ -18,7 +18,7 @@ func _town_count(w: World) -> int:
 	if w.time > _towns_t:
 		_towns_t = w.time + 5.0
 		_towns_n = 0
-		for st in w.structures:
+		for st in w.sim_structures:
 			if st.skind == "town":
 				_towns_n += 1
 	return _towns_n
@@ -67,6 +67,13 @@ func _sep(x: float) -> float:
 
 
 func _draw() -> void:
+	var started := Time.get_ticks_usec()
+	_draw_content()
+	if hud and hud.world:
+		hud.world.vp("resource drawing", started)
+
+
+func _draw_content() -> void:
 	var w := hud.world
 	var lt := w.local_team
 	var mins := int(w.time / 60.0)

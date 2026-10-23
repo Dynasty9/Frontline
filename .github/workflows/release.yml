@@ -59,6 +59,8 @@ on:
     paths:
       - export_presets.cfg
       - installer/**
+      - native/**
+      - tools/build_native.py
       - .github/workflows/release.yml
       - .github/scripts/**
 
@@ -141,10 +143,29 @@ jobs:
     uses: ./.github/workflows/database.yml
     secrets: inherit
 
+  native:
+    needs: plan
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build simulation extension
+        run: |
+          rustup toolchain install 1.94.0 --profile minimal
+          python tools/build_native.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: native-${{ matrix.os }}
+          path: |
+            bin/native/*
+            frontline_sim.gdextension
+
   build:
-    needs: [plan, database]
+    needs: [plan, database, native]
     # after the database, or without it for a pull request's trial export
-    if: ${{ !cancelled() && needs.plan.result == 'success' && contains(fromJSON('["success", "skipped"]'), needs.database.result) }}
+    if: ${{ !cancelled() && needs.plan.result == 'success' && needs.native.result == 'success' && contains(fromJSON('["success", "skipped"]'), needs.database.result) }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
@@ -155,6 +176,11 @@ jobs:
         with:
           # the changelog looks up which pull request added each entry
           fetch-depth: 0
+
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: native-*
+          merge-multiple: true
 
       - name: Cache Godot and export templates
         id: cache-godot
@@ -210,6 +236,7 @@ jobs:
           unzip -l build/Frontline-macos.zip | grep -E ' Frontline\.app/Contents/MacOS/Frontline$'
           unzip -l build/Frontline-macos.zip | grep -E ' Frontline\.app/Contents/Resources/Frontline\.pck$'
           zipinfo build/Frontline-macos.zip Frontline.app/Contents/MacOS/Frontline | grep -E '^-rwx'
+          test -s build/windows/frontline_sim.dll && test -s build/linux/libfrontline_sim.so
           chmod +x build/linux/Frontline.x86_64
           for d in windows linux web; do cp LICENSE build/$d/; (cd build/$d && zip -q -9 -r ../Frontline-$d.zip .); done
           zip -q -j build/Frontline-macos.zip LICENSE
@@ -222,7 +249,7 @@ jobs:
           sudo apt-get install -y -qq nsis > /dev/null
           # the licence page shows Windows line endings
           sed 's/$/\r/' LICENSE > "$RUNNER_TEMP/LICENSE.txt"
-          makensis -NOCD -V2 -DVERSION="$VERSION" -DVERSION4="${VERSION%%-*}.0" \
+          makensis -NOCD -V2 -DVERSION="$VERSION" -DVERSION4="${VERSION%%-*}.0" -DNATIVE=build/windows/frontline_sim.dll \
             -DEXE=build/windows/Frontline.exe -DLICENSE="$RUNNER_TEMP/LICENSE.txt" \
             -DOUT=build/Frontline-windows-setup.exe installer/windows.nsi
           ls -la build/Frontline-windows-setup.exe

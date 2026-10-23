@@ -486,7 +486,9 @@ func carve() -> void:
 		var dh: PackedFloat32Array = tm.dh
 		for i in changed:
 			img.set_pixel(i % TerrainMap.DN, i / TerrainMap.DN, Color(dh[i], 0, 0))
-	tm.deform_dirty = Rect2i(0, 0, TerrainMap.DN, TerrainMap.DN)
+	if img:
+		tm.deform_dirty.clear()
+		tm.deform_dirty.append(Rect2i(0, 0, TerrainMap.DN, TerrainMap.DN))
 	version += 1
 
 

@@ -289,7 +289,7 @@ func _query(w: World, req: Dictionary) -> Dictionary:
 				if (team == -9 or sq.team == team) and (kind == "" or sq.kind == kind) and (ids.is_empty() or ids.has(sq.sid)):
 					var alive: Array = sq.alive_members()
 					out.append({"id": sq.sid, "kind": sq.kind, "name": sq.display_name(), "team": sq.team, "owner": sq.owner, "order": sq.order,
-						"drill": sq.drill, "morale": roundi(sq.morale), "men": sq.members.size(), "alive": alive.size(),
+						"drill": sq.drill, "cleared_houses": sq.cleared.keys(), "morale": roundi(sq.morale), "men": sq.members.size(), "alive": alive.size(),
 						"pos": _xz(sq.centroid()) if not sq.members.is_empty() else null})
 		"soldiers":
 			for s in w.soldiers:
