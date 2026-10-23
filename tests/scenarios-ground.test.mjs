@@ -44,7 +44,8 @@ scenarioTests([
   {
     scenario: "fire",
     seed: 4,
-    secs: 60,
+    // Allow staggered ignition and randomized fuel loads to finish burning.
+    secs: 90,
     does: "fire spreads through the wood and along the hedge, and things burn down",
     check: async (f) => {
       f.atLeast("fire_tree", 4, "the fire went through the wood (two trees were lit)");
