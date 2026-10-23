@@ -16,6 +16,7 @@ const FAR_Z := 42.0
 var _refresh_left := 0.0
 var _refresh_view := Transform3D.IDENTITY
 var _refresh_pointer := Vector2.INF
+static var _contact_shape := PackedVector2Array()
 
 
 func _input(event: InputEvent) -> void:
@@ -1207,14 +1208,18 @@ func _command_links(cam: Camera3D, a: float) -> void:
 		draw_circle(dot, 7.0, Color(tc.r, tc.g, tc.b, 0.3 * fade))
 
 func _contact_burst(c: Vector2, a: float) -> void:
+	if not c.is_finite() or absf(c.x) > 19990.0 or absf(c.y) > 19990.0:
+		return
+	if _contact_shape.is_empty():
+		for i in 16:
+			var angle := TAU * i / 16.0
+			_contact_shape.append(Vector2(cos(angle), sin(angle)) * (1.0 if i % 2 == 0 else 0.45))
 	var t := Time.get_ticks_msec() / 1000.0
 	var r := 6.5 + sin(t * 11.0) * 1.3
-	var pts := PackedVector2Array()
-	for i in 16:
-		var ang := TAU * i / 16.0 + t
-		var rr := r if i % 2 == 0 else r * 0.45
-		pts.append(c + Vector2(cos(ang), sin(ang)) * rr)
-	MapSymbols.poly(self, pts, Color(1.0, 0.55, 0.2, 0.95 * a))
+	# The same star pulses and turns; its vertices need not be rebuilt per squad.
+	draw_set_transform(c, t, Vector2(r, r))
+	draw_colored_polygon(_contact_shape, Color(1.0, 0.55, 0.2, 0.95 * a))
+	draw_set_transform(Vector2.ZERO)
 
 func _hover_card(s: Soldier, mp: Vector2) -> void:
 	var nm := s.display_name()

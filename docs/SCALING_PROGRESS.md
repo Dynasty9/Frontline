@@ -190,3 +190,28 @@ Do not interpret an unchecked gate or a headless result as validated 60 FPS supp
   queries, including result order and units moving after the hash rebuild.
   It helped very broad queries but slowed common small searches, so it was
   removed rather than adding another index to every simulation tick.
+
+
+## 23 October follow-up
+
+- PR #93 is merged. Further work starts from 8f938b9 on
+  `codex/battle-hotpaths`; the 60 FPS acceptance gates remain open.
+- Local navigation grids now use insertion order for LRU eviction rather than
+  scanning every cached grid. A seeded reference test compares 1,800 accesses
+  at each of the 16 m and 32 m cluster sizes and verifies edits both while
+  resident and after eviction. The 2,500-miss
+  isolated control took 160-192 ms before versus 51-62 ms afterward.
+- On the same generated 3 km map, 100 route queries retained identical lengths
+  and waypoint counts. Total query-loop time was 534 ms before and 491 ms after;
+  the maximum query was 47.36 versus 42.16 ms. These single-run diagnostics do
+  not establish an FPS improvement. Hierarchy size and obstacle detail remain
+  unchanged.
+- Animated combat markers reuse one star polygon and transform it for each
+  marker. The rendered 12,000-marker drawing control took 241 ms before versus
+  109 ms afterward. Reference geometry checks cover 100 phases; both rendered
+  images were inspected, including a following untransformed drawing.
+- Per-instance transform caching slowed the moving-soldier control. Typed batch
+  records gave only small/inconsistent gains. Neither experiment is retained.
+- All 78 game tests pass, and the Windows release export succeeds. The opt-in
+  full-mission campaign was not enabled. A final rendered marker check exits
+  without errors and preserves the following drawing's coordinates.

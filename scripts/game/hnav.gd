@@ -43,8 +43,7 @@ var g_team: Array[AStar3D] = []  # (the last two again)
 ## the last CACHE_CELLS cells used are kept: a battle's paths keep to the ground it's
 ## fought over.
 const CACHE_CELLS := 131072
-var _local := {}  # cluster -> [AStarGrid2D, when last used]
-var _uses := 0
+var _local := {}  # cluster -> grid, least recently used first
 ## The full grid's cells as plain arrays (solid 1/0; weight), kept in step by
 ## mark_dirty: a cluster's grid is made from these far quicker than by asking
 ## the full grid cell by cell, and the build's worker threads can all read
@@ -107,21 +106,20 @@ func _init(g: AStarGrid2D, is_vehicle: bool) -> void:
 
 ## Cluster ci's own grid, its cells as the full grid has them now.
 func local_grid(ci: int) -> AStarGrid2D:
-	_uses += 1
-	var e: Variant = _local.get(ci)
-	if e != null:
-		e[1] = _uses
-		return e[0]
+	var cached: AStarGrid2D = _local.get(ci)
+	if cached != null:
+		# Dictionary insertion order keeps eviction independent of cache size.
+		_local.erase(ci)
+		_local[ci] = cached
+		return cached
 	if _local.size() >= CACHE_CELLS / (C * C):
 		var old := -1
-		var oldest := _uses
 		for k: int in _local:
-			if int(_local[k][1]) < oldest:
-				oldest = int(_local[k][1])
-				old = k
+			old = k
+			break
 		_local.erase(old)
 	var lg := _local_from(ci, _solid, _weight)
-	_local[ci] = [lg, _uses]
+	_local[ci] = lg
 	return lg
 
 
@@ -191,9 +189,8 @@ func mark_dirty(c: Vector2i) -> void:
 			edge_ver[ci * 4 + 3] += 1
 	_solid[i] = 1 if solid else 0
 	_weight[i] = w
-	var e: Variant = _local.get(ci)
-	if e != null:
-		var lg: AStarGrid2D = e[0]
+	var lg: AStarGrid2D = _local.get(ci)
+	if lg != null:
 		lg.set_point_solid(c, solid)
 		lg.set_point_weight_scale(c, w)
 	if built:
