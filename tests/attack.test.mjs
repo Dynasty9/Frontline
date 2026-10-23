@@ -11,7 +11,7 @@ import { test, before, after } from "node:test";
 import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
-import { Game, ROOT, v3 } from "./lib/game.mjs";
+import { Game, v3, ROOT } from "./lib/game.mjs";
 
 const YARD = v3(-2, -42);
 
@@ -38,14 +38,15 @@ test("an assault on the yard is planned and carried", async () => {
   assert.ok(fighting <= 2, `the cell is broken (${fighting} of 6 still fighting)`);
 });
 
-// Force a wiped squad and free its bodies before the attack ends. Survival
-// now depends on tighter cover selection, so a seed is not a reliable fixture.
+// Strike a squad off during an attack, free its dead, then end the plan.
+// This must cover the old freed-member crash even when a seeded assault wins
+// without losing any squad after changes to AI scheduling or pathfinding.
 test("a squad lost in the middle of an attack is struck off, and the attack ends without it", async () => {
   const { stdout, stderr } = await promisify(execFile)(process.env.GODOT || "godot", [
-    "--headless", "--path", ROOT, "res://scripts/test/wiped_squad_test.tscn",
-  ], { timeout: 120_000, maxBuffer: 2 * 1024 * 1024 });
-  assert.match(stdout, /WIPEDSQUAD passed/);
-  assert.doesNotMatch(stdout + stderr, /SCRIPT ERROR|Parse Error|TESTRUN failed/);
+    "--headless", "--path", ROOT, "res://tests/fixtures/attack-lifecycle.tscn",
+  ], { timeout: 120_000 });
+  assert.doesNotMatch(stdout + stderr, /SCRIPT ERROR|Parse Error/);
+  assert.match(stdout, /ATTACK_LIFECYCLE passed/);
 });
 
 test("a squad sent round the flank gets there", async () => {

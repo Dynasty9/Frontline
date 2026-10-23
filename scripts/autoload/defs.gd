@@ -5,7 +5,7 @@ const ARMY := 0
 const REBELS := 1
 const TEAM_NAMES := ["Coalition", "Rebels"]
 const TEAM_COLORS := [Color(0.35, 0.62, 1.0), Color(1.0, 0.36, 0.28)]
-const MAP_HALF := MapDims.HALF
+var MAP_HALF := 512.0
 const GRID_N := 256
 
 # physics layers (bit values)

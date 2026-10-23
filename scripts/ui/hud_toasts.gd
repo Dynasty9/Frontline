@@ -18,19 +18,25 @@ func push(kind: String, text: String) -> void:
 	for it in items:
 		if it[1] == text:
 			it[2] = 0.0
+			queue_redraw()
 			return
 	var t := hud.world.time if hud and hud.world else 0.0
 	items.push_front([kind, text, 0.0, 10.0 if kind in ["alert", "intel", "warn"] else LIFE, t])
 	if items.size() > 6:
 		items.pop_back()
+	queue_redraw()
 
 
 func tick(dt: float) -> void:
+	var changed := false
 	for i in range(items.size() - 1, -1, -1):
+		# Between arrival and departure the log's drawing stays unchanged.
+		changed = changed or items[i][2] < 0.24 or items[i][2] + dt >= items[i][3] - 0.15
 		items[i][2] += dt
 		if items[i][2] > items[i][3]:
 			items.remove_at(i)
-	queue_redraw()
+	if changed:
+		queue_redraw()
 
 
 ## Who a message is from, and what it says: "Bravo 1: Contact east" splits at
@@ -44,6 +50,13 @@ static func _split(kind: String, text: String) -> Array:
 
 
 func _draw() -> void:
+	var started := Time.get_ticks_usec()
+	_draw_content()
+	if hud and hud.world:
+		hud.world.vp("notification drawing", started)
+
+
+func _draw_content() -> void:
 	var y := 0.0
 	var w := size.x
 	for it in items:

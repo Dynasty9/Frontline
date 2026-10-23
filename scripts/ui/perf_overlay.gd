@@ -171,9 +171,6 @@ func _draw_overlay() -> void:
 	_text(Vector2(vx, y), "sum", Color(0.7, 0.8, 0.9), 12)
 	_text(Vector2(vx + 105, y), "%.2f" % vsum, Color(1, 1, 1, 0.9), 12)
 	y = maxf(y + 15, y1) + 6
-	var counts := {}
-	for e in w.entities.values():
-		counts[e.ekind()] = int(counts.get(e.ekind(), 0)) + 1
 	var alive := 0
 	for s in w.soldiers:
 		if s.life == s.Life.ALIVE:

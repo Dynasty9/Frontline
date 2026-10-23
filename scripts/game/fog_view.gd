@@ -136,7 +136,7 @@ func _process(dt: float) -> void:
 	if _own_t <= 0.0:
 		_own_t = 1.0
 		_own.clear()
-		for st in world.structures:
+		for st in world.owned_structures:
 			if st.team == team:
 				_own.append(st)
 	var marks: Array = (world.team_info[team] as Dictionary).get("marks", []) if team < world.team_info.size() else []

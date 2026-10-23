@@ -388,6 +388,7 @@ func scenario(sname: String) -> void:
 	var a := 1 if world.settings.get("scenario_player", false) else -1
 	var b := -2
 	match sname:
+		"stress": StressBattle.populate(world)
 		"air":
 			var hp2 := _spawn("helipad", Vector3(0, 0, 60), 0.0, 0)
 			var gs: Vehicle = world.spawn("vehicle", {"vkind": "gunship", "team": 0, "owner": a, "pos": Vector3(0, 20, 50), "yaw": 0.0})

@@ -363,9 +363,9 @@ catalogue entry in `MissionList.LIST`, a setup function and an autopilot functio
 ## The systems
 
 **Soldier AI** (`scripts/game/soldier.gd`, `soldier_brain.gd`, `bt.gd`, `combat.gd`)
-- **A behaviour tree decides what each man does** (`bt.gd`, `soldier_brain.gd`): one tree, shared by every
-  soldier and walked each time he thinks. Reflexes come first, most urgent first; then, if he's free, the
-  fight. The leaf that acted is kept on the soldier (`bt_path`) for debugging and the stats.
+- **Priority decisions govern each man** (`soldier_brain.gd`): reflexes come first, most urgent first;
+  then, if he's free, the fight. Direct checks avoid dispatching a tree of callbacks for every soldier.
+  The action that won is kept on the soldier (`bt_path`) for debugging and the stats.
 - **"Grenade!"** The first man to see it yells, and everyone near it picks one of, in order: *smother it* -
   when it's too late to throw and it's among men who can't get away (a wounded man being treated, a crowded
   bay), the man beside it may throw himself on it: it kills him and barely reaches anyone else; *throw it
@@ -595,6 +595,7 @@ catalogue entry in `MissionList.LIST`, a setup function and an autopilot functio
   dappled shadows. A tree that is shelled or run over falls away from what hit it and stays down.
 
 **Terrain** (`terrain.gd`, `mapgen.gd`)
+- Capturing towns updates only changed supply-road geometry; unchanged roads and their drawings are retained. Road terrain painting checks the strip beside each segment, preserving the same ground and cover cells.
 - Country roads wind from HQ to HQ through the town, with a crossroad through the middle. On a road you're
   fast (vehicles +35%) but exposed. Mud slows everyone (vehicles badly) and leaves you exposed. Woods conceal you
   and give light cover. Vehicles strongly prefer roads.
@@ -1158,3 +1159,42 @@ garrisons, answers attacks on its bases, sends waves at your FOBs and ambushes y
 digs forward tunnel entrances and moves its attack waves through them. AI-vs-AI results swing a lot between
 batches of six games (from 5–1 one way to 5–1 the other with small parameter changes), so the sides are close
 but balance needs real playtesting. With the base defenses, most games last 10–23 minutes.
+
+### Large battles and shared AI work
+
+Desktop skirmishes and observer games can select 1,024, 2,048 or 3,072 metre maps.
+Solo games and missions launch a private headless simulation with the same game
+executable. The visible game sends commands and draws interpolated snapshots;
+the simulation remains authoritative for every soldier, including off-screen units.
+Pause, resume and returning to the menu control the owned simulation process.
+Web retains the in-process host path.
+
+Squads stagger their planning and share nearby threat assessments (up to 0.25 s)
+and building contacts (up to 0.75 s, invalidated by new contacts). Men separated
+from the squad assess their own sectors. Individual line of sight, weapon fire,
+damage and urgent reactions still run independently. Land orders queue through
+bounded path work; destroyed obstacles trigger incremental graph rebuilding.
+
+Distant soldiers use shared baked poses of their procedural models, including
+standing, crouching, prone and walking poses. Nearby soldiers retain articulated
+animation. Distant palette variation and subtle gestures are simplified.
+Distant vehicles use a single material surface per moving part beyond 100 m;
+turrets, wheels and rotors keep their pivots. Near vehicles retain their original
+materials. Wrecks retain their original materials to avoid baking meshes during
+combat. Squad overview status refreshes at 10 Hz; selection remains immediate.
+The battlefield overlay retains drawings between 30 Hz refreshes when the camera
+and pointer are still. Camera movement, pointer movement and input refresh it
+immediately. Smoke sight checks visit smoke grenades directly rather than every
+projectile; cloud growth, movement and dissipation still take effect immediately.
+
+Clients build nearby scenery first and cache visited models; distant models and
+cosmetic collision bodies remain inactive. The server still simulates the complete
+map. Nearby movement orders can reuse a checked route corridor, with separate
+destinations and invalidation when terrain or danger changes.
+
+Grass, bushes and stones are generated around the camera, beyond their visible
+fade distance. Panning reuses nearby chunks and evicts distant ones; returning
+to an area recreates the same vegetation from its seed.
+
+See [SIMULATION_SCALING.md](SIMULATION_SCALING.md) for the native perception
+boundary, measurement results and remaining limits.

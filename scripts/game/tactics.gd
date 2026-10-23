@@ -56,8 +56,9 @@ static func bounding_wanted(q: Squad, dest: Vector3, mode: int) -> bool:
 				continue
 			if e.visible_to_team(q.team):
 				return true
-	for st in q.world.structures_near(dest, 150.0):
-		if st.team >= 0 and st.team != q.team and st.is_player_building() and st.visible_to_team(q.team):
+	for st: Structure in q.world.owned_structures:
+		if not st.gone and st.team != q.team and st.is_player_building() and st.visible_to_team(q.team) \
+				and Defs.flat(st.position - dest).length() <= 150.0 + st.radius:
 			return true
 	return false
 
@@ -248,8 +249,8 @@ static func can_clear(q: Squad) -> bool:
 			continue
 		if q.world.time - float(q.cleared.get(st.eid, -1e9)) < 600.0:
 			continue
-		q.cleared[st.eid] = q.world.time
 		if _friends_inside(q, st):
+			q.cleared[st.eid] = q.world.time
 			continue
 		var door := []
 		var bd := 1e9
@@ -281,6 +282,8 @@ static func start_clear(q: Squad) -> int:
 	var door: Array = q.bt_clear[1]
 	var s: Soldier = q.bt_clear[2]
 	var buddy: Soldier = q.bt_clear[3]
+	# Busy riflemen must not mark an unvisited house as cleared.
+	q.cleared[h.eid] = q.world.time
 	SoldierBrain.start_clearing(s, h, door, buddy)
 	q.world.stat("clear_house")
 	return BT.OK

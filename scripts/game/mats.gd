@@ -31,7 +31,7 @@ static var _cache := {}
 static func shader() -> Shader:
 	if _shader == null:
 		_shader = Shader.new()
-		_shader.code = code(SURFACE_SHADER)
+		_shader.code = code(TerrainTexture.shader(SURFACE_SHADER))
 	return _shader
 
 
@@ -174,7 +174,7 @@ static func get_mat(kind: String) -> ShaderMaterial:
 ## with holes where the ground under it has been cratered or dug out, so a
 ## shell hole in the square is a hole (and a man lying in it can be seen).
 static var _paving := {}
-static var _crater_tex: Texture2D = null
+static var _crater_tex: Texture2DArray = null
 static var _trench_tex: Texture2D = null
 
 
@@ -195,7 +195,7 @@ static func paving(kind: String) -> ShaderMaterial:
 ## The ground's deformation and trench masks (the atmosphere hands them over
 ## as they're made and remade); paving materials, and merged copies of them,
 ## cut their holes from these.
-static func set_ground_maps(crater: Texture2D, trench: Texture2D) -> void:
+static func set_ground_maps(crater: Texture2DArray, trench: Texture2D) -> void:
 	if crater:
 		_crater_tex = crater
 	if trench:
@@ -205,6 +205,7 @@ static func set_ground_maps(crater: Texture2D, trench: Texture2D) -> void:
 		if v.get_shader_parameter("crater_cut") == true:
 			mats.append(v)
 	for m in mats:
+		m.set_shader_parameter("crater_half", MapDims.HALF)
 		if crater:
 			set_shared(m, &"crater_tex", crater)
 		if trench:
@@ -344,6 +345,81 @@ static func _free_parts(victims: Array) -> void:
 
 
 static var _flat_cache := {}
+static var _distant_material: ShaderMaterial
+
+
+## Snapshot an articulated model without changing its joints or meshes.
+static func bake_mesh(root: Node3D) -> ArrayMesh:
+	var groups := {}
+	var unused := []
+	_collect(root, Transform3D.IDENTITY, groups, unused, [], true, true, true)
+	return _bake_groups(groups)
+
+
+## Moving vehicle parts keep their pivots, but distant paint needs one surface.
+static func add_distance_lod(root: Node3D, distance: float, keep: Array = []) -> void:
+	var groups := {}
+	var originals := []
+	_collect(root, Transform3D.IDENTITY, groups, originals, keep, false, true, true)
+	if groups.is_empty():
+		return
+	var coarse := MeshInstance3D.new()
+	coarse.mesh = _bake_groups(groups)
+	coarse.visibility_range_begin = distance
+	coarse.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	for original: MeshInstance3D in originals:
+		original.visibility_range_end = distance
+		if original.cast_shadow != GeometryInstance3D.SHADOW_CASTING_SETTING_OFF:
+			coarse.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
+	root.add_child(coarse)
+
+
+static func _bake_groups(groups: Dictionary) -> ArrayMesh:
+	var mesh := ArrayMesh.new()
+	var vertices := PackedVector3Array()
+	var normals := PackedVector3Array()
+	var colors := PackedColorArray()
+	for group: Dictionary in groups.values():
+		vertices.append_array(group.v)
+		normals.append_array(group.n)
+		var material: ShaderMaterial = group.mat
+		var base: Color = material.get_shader_parameter("col_a")
+		if int(material.get_shader_parameter("pattern")) == CAMO:
+			base = base.lerp(material.get_shader_parameter("col_b"), 0.35)
+		base = base.srgb_to_linear()
+		var scale := VC_K
+		if material.get_shader_parameter("use_vcolor") == true:
+			scale = float(material.get_shader_parameter("vcolor_k"))
+		for tint: Color in group.c:
+			colors.append(Color(base.r * tint.r * scale, base.g * tint.g * scale, base.b * tint.b * scale, 1.0))
+	var arrays := []
+	arrays.resize(Mesh.ARRAY_MAX)
+	arrays[Mesh.ARRAY_VERTEX] = vertices
+	arrays[Mesh.ARRAY_NORMAL] = normals
+	arrays[Mesh.ARRAY_COLOR] = colors
+	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+	# At this distance cloth weave and metal wear are subpixel. Keep the
+	# uniform, skin, equipment and vehicle paint colours in one surface.
+	if _distant_material == null:
+		_distant_material = ShaderMaterial.new()
+		var simple := Shader.new()
+		simple.code = "shader_type spatial; void fragment() { ALBEDO = COLOR.rgb; ROUGHNESS = 0.9; }"
+		_distant_material.shader = simple
+	mesh.surface_set_material(0, _distant_material)
+	# Hundreds of instances share this mesh. Weld identical vertex attributes
+	# once so the GPU can reuse transformed vertices without changing the pose.
+	var indexed := ArrayMesh.new()
+	for surface in mesh.get_surface_count():
+		var tool := SurfaceTool.new()
+		tool.create_from(mesh, surface)
+		tool.index()
+		tool.set_material(mesh.surface_get_material(surface))
+		tool.commit(indexed)
+	var importer := ImporterMesh.new()
+	for surface in indexed.get_surface_count():
+		importer.add_surface(Mesh.PRIMITIVE_TRIANGLES, indexed.surface_get_arrays(surface), [], {}, indexed.surface_get_material(surface))
+	importer.generate_lods(25.0, 60.0, [])
+	return importer.get_mesh()
 
 
 ## A surface as an unindexed triangle list [verts, normals, colours or null].
@@ -709,7 +785,8 @@ uniform bool use_vcolor = false;
 uniform float vcolor_k = 1.0;  // merged parts: the vertex colour is stored scaled down (Mats.VC_K)
 // paving (Mats.paving): a shell hole or a trench punches through it, as through the roads
 uniform bool crater_cut = false;
-uniform sampler2D crater_tex : hint_default_black, filter_linear, repeat_disable;
+uniform sampler2DArray crater_tex : filter_linear, repeat_disable;
+// TERRAIN_TEXTURE_HELPER
 uniform sampler2D trench_tex : hint_default_black, filter_linear, repeat_disable;
 uniform float crater_half = 256.0;
 uniform sampler2D noise_tex : filter_linear_mipmap_anisotropic, repeat_enable;
@@ -746,7 +823,7 @@ void vertex() {
 void fragment() {
 	if (crater_cut) {
 		vec2 cuv = (wpos.xz + crater_half) / (crater_half * 2.0);
-		if (texture(crater_tex, cuv).r < -0.07 || texture(trench_tex, cuv).r > 0.5) {
+		if (terrain_height(crater_tex, cuv) < -0.07 || texture(trench_tex, cuv).r > 0.5) {
 			discard;
 		}
 	}

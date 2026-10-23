@@ -137,7 +137,7 @@ static func _friends_near(q: Squad, r: float) -> int:
 	var c := q.centroid()
 	var n := 0
 	for o in q.world.squads.values():
-		if o == q or o.team != q.team or o.drill == "rout" or o.alive_members().is_empty():
+		if o == q or o.team != q.team or o.drill == "rout" or not o.has_alive_members():
 			continue
 		if Defs.flat(o.centroid() - c).length() < r:
 			n += 1
@@ -210,7 +210,7 @@ static func casualty(q: Squad, s: Soldier) -> void:
 # --- routed --------------------------------------------------------------------------
 
 static func should_rout(q: Squad) -> bool:
-	return q.morale < ROUT and not q.alive_members().is_empty() and (q.in_combat() or q.world.time - q.last_cas_t < 20.0)
+	return q.morale < ROUT and q.has_alive_members() and (q.in_combat() or q.world.time - q.last_cas_t < 20.0)
 
 
 static func start_rout(q: Squad) -> int:

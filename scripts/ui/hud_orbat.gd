@@ -118,6 +118,13 @@ func _pick(kind: String, id: int, mine: bool, add: bool, dbl: bool) -> void:
 # --- drawing ------------------------------------------------------------------------------
 
 func _draw() -> void:
+	var started := Time.get_ticks_usec()
+	_draw_content()
+	if hud and hud.world:
+		hud.world.vp("roster drawing", started)
+
+
+func _draw_content() -> void:
 	var w := hud.world
 	if w == null or w.input == null:
 		return
