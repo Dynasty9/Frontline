@@ -215,3 +215,18 @@ Do not interpret an unchecked gate or a headless result as validated 60 FPS supp
 - All 78 game tests pass, and the Windows release export succeeds. The opt-in
   full-mission campaign was not enabled. A final rendered marker check exits
   without errors and preserves the following drawing's coordinates.
+- Additional cache controls: 2,500 misses at the 32 m cluster size took
+  234-253 ms before versus 201-203 ms after. Cache hits cost more: 100,000
+  hits took 46-47 ms before versus 61-65 ms after (about 0.15-0.19 microseconds
+  extra per hit). This is an eviction improvement, not a claim that every
+  navigation operation is faster.
+- A 200-marker rendered control measured 0.160/0.177 ms render CPU before/after
+  and essentially the same 201 draw calls; script drawing took 589/350 ms
+  across 180 frames. The renderer-side cost is small, but not zero.
+- Exported battle controls remain below 60 FPS. Early sequential controls
+  measured 29.01/27.56 FPS on the old build and 24.65/23.51 FPS on the modified
+  build. A concurrent video encoder was observed using roughly nine cores;
+  other applications also remained active. A fresh baseline export reached
+  29.00 FPS and a navigation-only export 29.66 FPS. These measurements do not
+  establish a whole-game improvement. Further isolation results are recorded
+  in [PR #97](https://github.com/Dynasty9/Frontline/pull/97).
