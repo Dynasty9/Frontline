@@ -101,7 +101,6 @@ func _ready() -> void:
 		Settings.apply_global()
 	if args.has("timescale"):
 		Engine.time_scale = float(args.timescale)
-		Engine.physics_ticks_per_second = 30
 		Engine.max_physics_steps_per_frame = 16
 	if args.has("quit-after"):
 		_quit_at = float(args["quit-after"])
@@ -113,6 +112,8 @@ func _ready() -> void:
 	if args.has("scenario"):
 		# --play: command the Coalition side yourself instead of watching
 		Net.host_game(port, 0 if args.has("play") else -1)
+		if args.has("seed"):
+			Net.set_setting("fixed_seed", int(args.seed))
 		Net.set_setting("scenario", String(args.scenario))
 		Net.set_setting("scenario_player", args.has("play"))
 		Net.set_setting("ai_fill", false)
@@ -966,4 +967,15 @@ func _process(_dt: float) -> void:
 			print("CLIENT entities=%d %s time=%.1f team_info=%s waited=%.1f" % [world.entities.size(), str(counts), world.time, str(world.team_info[0].get("supply", -1)), float(world.get_meta("world_at", -1.0))])
 		if not world.coop.peers.is_empty() or int(world.coop.stats.get("sent", 0)) > 0:
 			print("COOP ", world.coop.summary())
+		if not Engine.get_write_movie_path().is_empty():
+			# Movie audio needs a final mix after playback stops to release its stream references.
+			get_tree().paused = true
+			Music.set_process(false)
+			Sfx.enabled = false
+			for type in ["AudioStreamPlayer", "AudioStreamPlayer2D", "AudioStreamPlayer3D"]:
+				for player in get_tree().root.find_children("*", type, true, false):
+					player.stop()
+					player.stream = null
+			await get_tree().process_frame
+			await get_tree().process_frame
 		get_tree().quit()

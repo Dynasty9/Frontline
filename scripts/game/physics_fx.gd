@@ -112,18 +112,29 @@ func _mask_all() -> int:
 
 # --- ragdolls -------------------------------------------------------------------------
 
-func ragdoll(s: Soldier, impulse: Vector3, kind: int) -> void:
+func ragdoll(s: Soldier, impulse: Vector3, kind: int, travel := Vector3.ZERO) -> void:
 	if not Settings.get_v("ragdolls") or s.model == null or not s.visible or s.model.ragdoll != null:
 		return
-	if world.cam and world.cam.cam.global_position.distance_to(s.position) > 170.0:
+	var camera := s.get_viewport().get_camera_3d() if s.is_inside_tree() else null
+	if camera != null and camera.global_position.distance_to(s.global_position) > 170.0:
 		return
+	# Duplicate death effects must not consume a slot or freeze another corpse.
+	if s.model.skinned and s.model.skinned.dead: return
 	while ragdolls.size() >= MAX_RAGDOLLS:
 		var old = ragdolls.pop_front()
 		if is_instance_valid(old):
 			old.finish()
+	if s.model.skinned:
+		var skin := s.model.skinned
+		skin.last_velocity = travel
+		skin.kill(impulse, kind)
+		skin.ragdoll.set_collision_layers(L_RAGDOLL, _mask_all())
+		ragdolls.append(skin.ragdoll)
+		world.stat("skinned_ragdoll")
+		return
 	var r := Ragdoll.new()
 	add_child(r)
-	r.setup(s.model, impulse, kind, _mat, L_RAGDOLL, _mask_all())
+	r.setup(s.model, impulse, kind, _mat, L_RAGDOLL, _mask_all(), travel)
 	ragdolls.append(r)
 
 

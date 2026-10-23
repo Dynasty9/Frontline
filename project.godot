@@ -38,8 +38,11 @@ window/size/viewport_height=900
 [physics]
 
 3d/physics_engine="Jolt Physics"
-common/physics_ticks_per_second=30
-common/max_physics_steps_per_frame=6
+jolt_physics_3d/simulation/position_steps=10
+jolt_physics_3d/simulation/speculative_contact_distance=0.04
+jolt_physics_3d/simulation/penetration_slop=0.005
+common/physics_ticks_per_second=120
+common/max_physics_steps_per_frame=12
 
 [rendering]
 

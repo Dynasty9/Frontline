@@ -10,7 +10,7 @@ The long version: how each system works and why. For the short version, see the 
 
 ## Full controls reference
 
-These are the default keys. **Settings → Controls** (`scripts/autoload/keys.gd`, `scripts/ui/controls_page.gd`)
+These are the default keys. **Settings â†’ Controls** (`scripts/autoload/keys.gd`, `scripts/ui/controls_page.gd`)
 changes any of them:
 
 - **By category:** camera, saved views, orders, abilities and fire support, building, control groups,
@@ -328,7 +328,8 @@ function and an autopilot function.
 - **The AI** sends a recon flight over when the picture's thin: before an attack on ground it can't see, or when it
   has next to nothing of the enemy in sight. It builds a watchtower at each FOB and an early recon drone.
 
-**Pathfinding and tactics** (`nav.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
+**Pathfinding and tactics** (
+av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
 - **Hierarchical A\* (HPA\*)** over both grids: the map is cut into 16 x 16 m clusters with entrances wherever
   neighbouring clusters connect (and wherever a road crosses), true costs inside each cluster precomputed. Long
   trips plan on the abstract graph, then refine cluster by cluster. When walls go up or are blown down only the
@@ -837,7 +838,8 @@ point back from the road, then into an L - the assault line 20-odd metres off th
 firing down the killing zone, a man watching the flank - and holds its fire until they're in it. A short,
 violent burst, then smoke and away (the Rebels, more often ambushers, simply melt away); an ambush nobody
 walks into is given up after a few minutes, and one bumped on the way is called off. Its **navy**
-(`naval_ai.gd`): once it has a factory it builds a dock on its stretch of coast and keeps a gunboat or two -
+(
+aval_ai.gd`): once it has a factory it builds a dock on its stretch of coast and keeps a gunboat or two -
 going after whatever of the enemy it can see near the water, else patrolling off the front - and a ferry that
 runs raids, picking up a reserve squad at the shore and landing it on a beach near an enemy FOB or whatever's
 being attacked. Spending draws on all of a side's FOBs (nearest first), so a big purchase - a tank, a dock -
@@ -852,3 +854,145 @@ garrisons, answers attacks on its bases, sends waves at your FOBs and ambushes y
 digs forward tunnel entrances and moves its attack waves through them. AI-vs-AI results swing a lot between
 batches of six games (from 5–1 one way to 5–1 the other with small parameter changes), so the sides are close
 but balance needs real playtesting. With the base defenses, most games last 10–23 minutes.
+
+### Shared unit motion prototype
+
+Soldiers share keyed walk/run poses, weight shifts on acceleration and turns, and
+directional hit recovery. Ragdolls preserve travel momentum and use a shared human
+joint/mass profile; coherent blast spin replaces random per-limb spinning. Vehicles
+use the same bounded impact spring, scaled down for heavy armour. These are visual
+responses; combat and movement remain authoritative on the host.
+
+The one-rifleman/one-tank lab and the plan for imported skeletal animations are in
+[UNIT_MOTION.md](UNIT_MOTION.md). Battlefield units still use procedural articulated
+models. A separate [MCO evaluation scene](../tests/mocap/README.md) compares imported
+rifle mocap on that rig and a skinned mannequin, including articulated ragdoll handoff.
+Skinned battlefield units and physical get-up actions are not included.
+
+### Imported rifleman evaluation
+
+With local MCO sample assets and the Vanguard character installed, `--skinned-units`
+uses the skinned character for Coalition riflemen in ordinary battles. Rifle idle,
+walk and jog retarget by rest orientation while retaining the model's skin weights
+and bone lengths. Planted-foot IK adjusts the pelvis and ankles; both arms solve
+to fixed weapon grips. Replicated hits layer recovery onto the spine, and fatal
+impacts transfer the current pose to thirteen constrained physics bodies and a
+separate dropped rifle. Cover and terrain collisions use the existing physics
+layers and active-ragdoll cap. Other actions retain procedural poses on the skin.
+Local MCO preparation enables texture mipmaps, and the rifle material follows the player's anisotropic-filtering setting. The military model retains its supplied normal maps at full strength; the FBX importer otherwise loads them with zero strength. This remains an opt-in art evaluation, not a complete production animation set.
+See [setup and captures](../tests/mocap/SKINNED.md). The interactive
+`tests/mocap/viewer.tscn` scene lists installed sample clips, supports scrubbing
+and slow playback, and lets you click the character to test projectile hits,
+ragdolls, and wall impacts. Launch with `play_skinned.ps1 -Viewer`. Its model inspector shows live bones,
+joint names, triangle wireframes, and base-mesh statistics for either character.
+
+With the locally installed Mixamo downloads, add `--swat-units` to use the SWAT
+character for this evaluation. `play_skinned.ps1 -Viewer -Swat` also exposes the
+Mixamo shooter clips and kneel-to-prone transition on their native rig, alongside
+the MCO retargeting comparison. These additional action clips are viewer previews;
+battle action transitions retain their existing fallback until explicitly mapped.
+
+
+The imported rifleman samples ground height independently at each foot contact.
+Captured/procedural pose changes blend before foot and weapon contact solving,
+so stance handoffs do not interpolate away from their final grip targets.
+
+The optional SWAT motion lab also includes a playable camera-relative rifle controller: walking, running, strafing, jumping, crouching, and moving reloads, with the same inspector and projectile ragdolls. Its shared pose driver accepts movement/action state independently of keyboard controls. The reload now separates the supplied M4 magazine and follows removal/insertion hand contacts. This remains an evaluation scene; RTS action routing is unchanged.
+
+The optional playable motion lab includes rolling terrain with matching mesh collision, per-foot slope alignment and pelvis reach correction. Its reload magazine hides while stowed in the kit and returns when the replacement is drawn. These terrain changes are limited to the inspection demo.
+
+The optional skinned motion prototype keeps a slung rifle attached to the procedural back socket during hands-free idle activities. Its local viewer also exposes downloaded work, seated, and vehicle animation candidates; these do not yet replace gameplay boarding or construction.
+
+Opt-in SWAT riflemen now use the motion-lab directional locomotion driver in live battles while standing. This remains dependent on locally installed prototype assets; other postures and actions retain their existing fallback.
+
+Standing opt-in SWAT riflemen also play a captured reload synchronized to the rifle reload duration, including magazine stowing and replacement. Crouched reloads layer the captured upper body over the existing grounded stance; prone reloads retain their fallback poses.
+
+The optional skinned crouch presentation now corrects the planted boot and trailing toe against ground height before applying upper-body reloads, with contact influence blended around movement.
+
+Skinned mounted gunners now lean into the weapon and solve both arms to its existing world-space grip anchors after pose blending. `tests/mocap/mounted_grips.tscn` checks kneeling M2 palm contact during traverse and recoil; mounted entry restores saved grip fingers after a rifle reload. Fitted finger wrapping and mounted reload choreography still need work; the original-rig DShK reach and military M240 platform clearance also remain unvalidated by the passing M2 check.
+
+The mounted kneel uses a side-set supporting boot to clear the tripod platform. Its focused test uses `Structure.crew_stance`, the platform dimensions, and the full permitted traverse arc, with checks for leg-segment clearance and grip contact.
+
+Skinned posture changes capture the previous corrected bone pose, including foot IK, when switching between procedural stances. Whole-body transitions use a 0.65-second blend, including interruptions; ordinary aiming retains its shorter crossfade. `tests/mocap/gameplay_stances.tscn` checks standing, kneeling, prone, and interrupted changes through SoldierModel. The procedural prone aiming pose remains unfinished.
+
+Stationary prone idle/shooting in the optional SWAT gameplay path now plays the downloaded `Rifle Kneel To Prone` clip and holds its final supported pose. The shared driver handles interruptions and weapon attachment. `gameplay_stances.tscn` verifies that the captured branch is used and the settled head remains above 23 cm on flat ground. Crawling, prone reloads, over-cover aiming, slope fitting, and an authored get-up remain separate work. `prone_capture.tscn` previews the unmodified captured clip for comparison.
+
+Skinned ragdoll joint attachment positions now come from the captured death pose, accounting for intermediate shoulder/spine bones. Their angular reference frames retain the bind-pose anatomy. Initial anchor alignment and first-second dynamic separation are measured separately from settled collision/joint checks. Early solver separation remains unfinished.
+
+The skinned death path preserves bullet, blast, and collapse types. Bullets transfer more velocity to the chest than the limbs; blasts throw the whole body; collapse retains travel without an added hit. The viewer and showcase use the same distinction.
+
+Skinned knee constraints align their hinge axis with the thigh/shin bend plane captured at death, retaining the anatomical flexion and sideways limits. Nearly straight legs retain the rest-frame fallback.
+
+Skinned ragdolls inherit sampled limb and weapon motion from the final corrected living pose. Root travel remains supplied by gameplay so it is not counted twice. Linear velocity accounts for each collider's center of mass; sampling resets after revival, viewer scrubbing, and invalid or greater-than-100-ms pose intervals. Per-part animation velocity is bounded to 8 m/s and angular velocity to 12 rad/s to limit discontinuities.
+
+A visible magazine detached during the skinned reload becomes a separate physical prop on death, preserving its pose and sampled motion. Seated magazines stay with the rifle and stowed magazines stay hidden. The prop shares ragdoll collision-layer updates and cleanup; revival restores it to the rifle.
+
+Dropped rifles and magazines temporarily ignore initial owner overlaps. A shape query with a 2 cm clearance margin restores each excluded collision once the prop clears that part; it does not use a fixed timer that could enable collision inside a hand or torso. Queries stop once all exceptions are removed.
+
+Ragdoll drawing now preserves captured local bone positions, drives the pelvis from physics, and aims simulated body segments toward their child bodies while retaining twist. This prevents solver separation from stretching the skin. The tests check bone-length error below 1 mm and settled skin-to-collider origin offset below 5 cm. SWAT idle/crouch/prone and the older character idle fixture pass; early physical separation is unchanged and remains separately reported.
+
+The prototype uses ten Jolt position-solving steps to improve landing contacts. The jogging-blast fixture now passes its existing settled overlap limit without changing collision shapes or widening assertions; early transient joint separation is still unfinished.
+
+Skinned knee and elbow hinge limits now use the Godot/Jolt angular sign convention and captured bend plane. An isolated hinge regression checks that valid flexion is retained. Physics contacts advance at 120 Hz while the authoritative battle simulation retains 60 updates per second. Host model interpolation follows the battle clock rather than restarting on each physics tick. This gives fast ragdoll impacts smaller steps without doubling AI, spatial queries or snapshot scheduling; accelerated and slowed time still apply to the battle step. Contact quality and crowded-battle performance are checked separately.
+
+The shared native rifle controller retains each imported locomotion clip's horizontal root travel before making it in-place. Playback phase follows movement speed divided by the blended authored stride, rather than using one distance for walking, running and both strafe directions. Moving-foot planting is still incomplete.
+
+Grounded native rifle movement briefly anchors a low foot, fades the anchor on lift-off or excessive reach, and waits for the next swing before replanting. Jumping and controller resets clear both plants. This improves backward and lateral contact; forward running remains incomplete.
+
+The native rifle controller preserves the sampled gait instead of low-pass filtering every bone each frame. Velocity, posture and action transitions still blend. This reduces effective stride shortening and the resulting contact drift.
+
+Horizontal rifle foot correction follows the world plant target with a bounded adjustment rate, avoiding a second exponential delay while limiting abrupt anchor changes. Vertical terrain correction stays smoothed; residual ankle and toe sliding remains under review.
+
+Captured rifle movement, prone and preview poses apply firing recoil to the upper chest before placing the hand-attached weapon, keeping both captured grips together while leaving lower-body contacts unchanged.
+
+Blast-driven skinned ragdolls receive coherent angular motion around their captured center of mass: each limb gets both spin and its matching tangential velocity. This avoids introducing artificial joint-anchor velocity disagreements at the animation-to-physics handoff.
+
+The opt-in captured rifle controller preserves the idle support-hand grip through locomotion blends using arm IK, with gradual release for reloads and jumps. Authored arm lengths and the current elbow bend plane are retained.
+
+Captured crouch blends compensate the spine for the borrowed pelvis rotation, preserving rifle aim. Captured reloads and the gameplay crouched-reload overlay likewise resolve their upper-body pose against the receiving pelvis.
+
+Opt-in skinned riflemen now use the shared captured controller while moving in crouch. Stopping returns them to the grounded kneel, with its captured reload overlay. Crouch sampling preserves the active posture transition, and the support-hand constraint fades in with that transition.
+
+The shared combat slide uses a low, feet-first pose with a folded trailing knee, including when transferred to the opt-in skinned rifleman.
+
+Slide entry and exit blend independently of the crouch/standing posture. The original mocap solver limits horizontal foot-contact correction changes during plant release, and actor resets discard old anchors and offsets.
+
+Skinned death effects survive delayed alive snapshots; only a transition from downed/dead back to alive revives the skin. Ragdoll distance culling uses the active viewport camera, including close-up inspection views.
+
+The shared captured rifle controller blends its foot support from ankle to forefoot with running speed. The ankle can roll around a planted toe; terrain clearance and the captured foot rotation remain active.
+
+Captured rifle contact timing uses the same ankle-to-forefoot blend as the foot support position, so a running toe can plant before the heel finishes descending.
+
+Captured crouch movement retargets only its lower-body source bones; the retained rifle upper body is left untouched. Inactive hit reactions advance their spring without rewriting spine poses.
+
+Fully crouched poses skip the standing diagonal-foot solve that their lower-body animation replaces. The crouch-foot-path fixture compares all local bone transforms against the unskipped path through a full turn and both stance transitions.
+
+Fallback weapon fitting exits its bounded reach-projection loop once a full pass moves neither hand target. Arm IK and grip checks still run, while unconverged poses retain all three fitting passes.
+
+After a skinned rifleman loads successfully, its hidden procedural root releases leaf mesh nodes while retaining pose and attachment pivots. The geometry fixture checks procedural-only, original-skinned and SWAT configurations through the real unit construction path.
+
+Mixed native rifle locomotion uses a shared AnimationTree blend graph with per-soldier parameters and explicit phase sampling. Single active clips retain direct sampling. The independence fixture checks that advancing one soldier does not alter another's weights or pose. Intermediate forward/backward speeds are covered by the stride fixture; diagonal foot sliding remains an open quality issue.
+
+Diagonal blends preserve sampled local foot/toe trajectories with leg IK before ground contact, avoiding the collapsed swing produced by rotation blending alone. Trajectories are cached per model, and correction fades in near cardinal directions. Stride timing uses the magnitude of blended directional travel. Four diagonal contact cases supplement the existing stride guards; residual sliding remains.
+
+The network animation fixture checks a rendered client's crouch-to-diagonal transition, support-hand grip, hit reaction and persistent skeletal ragdoll against a separate host.
+
+Diagonal contacts anchor the toe using the same directional fade as the trajectory correction, while retaining the existing lift-based contact timing. They hold full horizontal reach weight until the bounded stretch release. The stride fixture checks tighter diagonal toe-drift limits and a continuous turn through cardinal/diagonal boundaries.
+
+The opt-in skinned controller also detects toe-first diagonal landings before the ankle settles. Diagonal anchors allow the longer planted step and follow its contact correction; straight movement keeps its previous contact parameters. The stride fixture bounds all four diagonal contact-drift means at 2 mm/s; terrain and grip checks cover the shared controller.
+
+The diagonal contact solver uses the faster correction while planted and the gentler existing return speed after release. The stride regression also covers a 30 Hz turn to bound knee and ankle movement between poses.
+
+Jolt speculative contact distance is 0.04 m so fast ragdoll limbs begin collision response earlier. The wall-impact fixture checks initial, first-second and settled self-overlap, anchor separation, wall contact and skin stretch. The first-second self-overlap ceiling is 0.04 m; the transient anchor-gap ceiling remains 0.06 m.
+
+Opt-in skinned riflemen layer the supplied frontal hit clip's spine/head rotations over the directional spring response. Incoming direction gates the clip so it does not push side/rear hits backward; locomotion, feet and grip solving remain shared.
+
+Downloaded rifle clips are converted into the receiving skeleton rest space before caching. Non-pelvis translations retain the receiving bone lengths; pelvis motion and stride travel use its coordinate axes and scale. This supports the original centimeter/Z-up character and the meter/Y-up SWAT rig through the same controller.
+
+Standing rifle locomotion rejects low, fast-moving swing feet as landing candidates and gives those swings clearance before contact. Diagonal toe contacts remain independent of the ankle landing speed.
+
+Retargeted pelvis displacement and root-travel distance scale with receiving rest-pelvis height. Foot contact acquisition is immediate at a new zero-error anchor; release corrections are bounded per pose update as well as per second.
+
+The rifle controller caches the pre-contact crouch sample while both phase and actor transform are unchanged. It still solves terrain contacts, blends the stance, updates weapon contacts and applies impacts each pose update. Reset invalidates the sample.
+
+Prone entry reserves the full kneel-to-prone body sweep against cover collision on the server. If the space is blocked, the soldier remains crouched; clients receive that posture. Stationary clearance checks are reused for up to 0.2 seconds and refreshed immediately after a position or facing change. This conservative check does not automatically move the soldier away from the obstacle.

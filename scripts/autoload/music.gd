@@ -113,6 +113,13 @@ func _ready() -> void:
 	_task = WorkerThreadPool.add_task(_render_all, false, "Music synthesis")
 
 
+func _exit_tree() -> void:
+	# A quick demo exit must not free the synth while its worker still uses it.
+	if _task >= 0:
+		WorkerThreadPool.wait_for_task_completion(_task)
+		_task = -1
+
+
 ## Starts a cue: "menu" or "battle", or "" for silence. Whatever was playing
 ## dies away first.
 func play_cue(cue_name: String) -> void:

@@ -168,6 +168,19 @@ var cf_until := 0.0  # his own covering-fire task (his fire team is the base of 
 var cf_pos := Vector3.ZERO
 var fteam := 0  # which fire team he's in (0 Alpha, 1 Bravo)
 var _sim_prev := Vector3.ZERO
+static var _prone_shape: BoxShape3D
+var _prone_query: PhysicsShapeQueryParameters3D
+var _prone_check_t := 0.0
+var _prone_checked := Transform3D.IDENTITY
+var _prone_clear := false
+var _prone_back_goal := Vector3.INF
+var _prone_back_speed := 0.0
+var _prone_settle := 0.0
+var _prone_retry := 0.0
+static var _prone_step_shape: CapsuleShape3D
+var _prone_step_query: PhysicsShapeQueryParameters3D
+var motion_velocity := Vector3.ZERO
+var _death_velocity := Vector3.ZERO
 var _supp_t := -99.0  # last near miss: heads stay down a moment after the cracks stop
 var _shuffle := false  # stepping aside to make room this tick
 var vis_targets: Array = []
@@ -748,6 +761,7 @@ func _danger() -> bool:
 # --- main loop -------------------------------------------------------------------
 
 func sim(dt: float) -> void:
+	var motion_start := position
 	if not debug_pose.is_empty():
 		posture = int(debug_pose[0])
 		act = int(debug_pose[1])
@@ -783,6 +797,7 @@ func sim(dt: float) -> void:
 			Life.HIDDEN:
 				_hidden(dt)
 	_posture_sanity(dt)
+	motion_velocity = ((position - motion_start) / maxf(dt, 0.001)).limit_length(15.0)
 	_update_flags()
 
 
@@ -792,7 +807,12 @@ func _posture_sanity(dt: float) -> void:
 	if life != Life.ALIVE or dt <= 0.0:
 		_sim_prev = position
 		return
+	_prone_check_t -= dt
+	if posture == Post.PRONE and not _room_for_prone():
+		posture = Post.CROUCH
 	var sp := Defs.flat(position - _sim_prev).length() / dt
+	if posture == Post.CROUCH and act == Act.CRAWL:
+		act = Act.WALK if sp > 0.01 else Act.IDLE
 	_sim_prev = position
 	if sp < 0.3 or act in [Act.CRAWL, Act.DIVE, Act.FLUNG, Act.SLIDE, Act.DRAGGED, Act.CARRIED, Act.VAULT, Act.SMOTHER]:
 		return
@@ -805,6 +825,90 @@ func _posture_sanity(dt: float) -> void:
 		fixed += "idle"
 	if fixed != "" and OS.has_environment("FL_DEBUG_PRONE"):
 		world.stat("posture_fix_%s_%s_%s" % [fixed, task, goal_kind])
+
+
+func _room_for_prone() -> bool:
+	if _prone_query != null and _prone_check_t > 0.0 and global_transform.is_equal_approx(_prone_checked):
+		return _prone_clear
+	if _prone_shape == null:
+		_prone_shape = BoxShape3D.new()
+		# Reserve the whole kneel-to-prone sweep, including outstretched arms and boots.
+		_prone_shape.size = Vector3(1.6, 1.6, 2.6)
+	if _prone_query == null:
+		_prone_query = PhysicsShapeQueryParameters3D.new()
+		_prone_query.shape = _prone_shape
+		_prone_query.collision_mask = Defs.L_COVER
+	_prone_checked = global_transform
+	_prone_clear = _prone_clear_at(global_position)
+	_prone_check_t = 0.2
+	return _prone_clear
+
+
+func _prone_clear_at(at: Vector3) -> bool:
+	_prone_query.transform = global_transform * Transform3D(Basis.IDENTITY, Vector3(0, 0.88, -0.1))
+	_prone_query.transform.origin += at - global_position
+	return get_world_3d().direct_space_state.intersect_shape(_prone_query, 1).is_empty()
+
+
+func _cancel_prone_backstep() -> void:
+	_prone_back_goal = Vector3.INF
+	_prone_back_speed = 0.0
+	_prone_settle = 0.0
+
+
+func _prone_step_clear(to: Vector3) -> bool:
+	if world != null and (not world.nav.walkable(to) or absf(world.ground_y(to) - position.y) > 0.25):
+		return false
+	if _prone_step_query == null:
+		if _prone_step_shape == null:
+			_prone_step_shape = CapsuleShape3D.new()
+			_prone_step_shape.radius = 0.32
+			_prone_step_shape.height = 1.25
+		_prone_step_query = PhysicsShapeQueryParameters3D.new()
+		_prone_step_query.shape = _prone_step_shape
+		_prone_step_query.collision_mask = Defs.L_COVER
+	_prone_step_query.transform = Transform3D(Basis.IDENTITY, global_position + Vector3.UP * 0.7)
+	_prone_step_query.motion = to - global_position
+	var space := get_world_3d().direct_space_state
+	if not space.intersect_shape(_prone_step_query, 1).is_empty(): return false
+	return space.cast_motion(_prone_step_query)[0] >= 1.0
+
+
+## Take a short backward step before lying down; never teleport out of cover.
+func _prepare_prone(dt: float) -> bool:
+	_prone_retry = maxf(0.0, _prone_retry - dt)
+	if _prone_back_goal == Vector3.INF and _prone_settle <= 0.0:
+		if _room_for_prone(): return true
+		if _prone_retry > 0.0: return false
+		_prone_retry = 0.5
+		for step in range(1, 19):
+			var candidate := global_position + global_basis.z * (float(step) * 0.1)
+			if not _prone_step_clear(candidate): break
+			if _prone_clear_at(candidate):
+				_prone_back_goal = candidate + global_basis.z * 0.08
+				if not _prone_step_clear(_prone_back_goal): _prone_back_goal = candidate
+				at_cover = false
+				_clear_cover()
+				if world != null:
+					next_cover_eval = world.time + 4.0
+					world.stat("prone_backstep")
+				break
+		if _prone_back_goal == Vector3.INF: return false
+	if _prone_back_goal != Vector3.INF:
+		if not _prone_step_clear(_prone_back_goal):
+			_cancel_prone_backstep()
+			return false
+		var remaining := global_position.distance_to(_prone_back_goal)
+		var target_speed := minf(0.65, sqrt(2.0 * 1.5 * remaining))
+		_prone_back_speed = move_toward(_prone_back_speed, target_speed, dt * 1.5)
+		global_position = global_position.move_toward(_prone_back_goal, _prone_back_speed * dt)
+		if global_position.distance_to(_prone_back_goal) < 0.001:
+			_prone_back_goal = Vector3.INF
+			_prone_back_speed = 0.0
+			_prone_settle = 0.35
+		return false
+	_prone_settle = maxf(0.0, _prone_settle - dt)
+	return _prone_settle <= 0.0 and _room_for_prone()
 
 
 func _update_flags() -> void:
@@ -1067,6 +1171,7 @@ func _aim_point(e: Entity) -> Vector3:
 ## His place in the fight: in cover where his squad is holding, out of ammo
 ## and looking for more. (The special weapons come first: see SoldierBrain.)
 func _fight_think() -> void:
+	if _prone_back_goal != Vector3.INF or _prone_settle > 0.0: return
 	var w := cur_weapon()
 	if w.is_empty():
 		return
@@ -1136,6 +1241,7 @@ func _seek_cover(anchor: Vector3, radius: float, threats: Array) -> void:
 
 
 func go_to(p: Vector3, kind: String, mode: int) -> void:
+	_cancel_prone_backstep()
 	# retreats keep well clear of known enemy fire; ordinary moves skirt it
 	var care := 0.0
 	if task == "retreat" or task == "limp":
@@ -1343,7 +1449,7 @@ func _settle_y(dt: float) -> void:
 
 func _fight_tick(dt: float) -> void:
 	var moving := _move_tick(dt, _speed())
-	if not moving:
+	if not moving and _prone_back_goal == Vector3.INF and _prone_settle <= 0.0:
 		_apply_sep(dt)
 		_settle_y(dt)
 		if at_cover and cover_n != Vector3.ZERO:
@@ -1359,6 +1465,8 @@ func _fight_tick(dt: float) -> void:
 		_shuffle = false
 	_weapon_tick(dt, moving, "normal")
 	_choose_act(moving or _shuffle)
+	if _prone_back_goal != Vector3.INF or _prone_settle > 0.0:
+		act = Act.WALK if _prone_back_speed > 0.0 else Act.IDLE
 	_idle_tick(dt, moving)
 
 
@@ -1648,6 +1756,13 @@ func _weapon_tick(dt: float, moving: bool, mode: String) -> void:
 	if hit_dirt_t > 0.0 and mode != "escort" and not moving:
 		want = Post.PRONE
 		shoot_ok = false
+	if want == Post.PRONE and not moving and mode == "normal":
+		if not _prepare_prone(dt):
+			want = Post.CROUCH
+			shoot_ok = false
+	else:
+		_cancel_prone_backstep()
+		if want == Post.PRONE and not _room_for_prone(): want = Post.CROUCH
 	posture = want
 	if not shoot_ok or reload_t > 0.0 or fire_t > 0.0 or w.is_empty():
 		return
@@ -2337,6 +2452,7 @@ func cmd_stop() -> void:
 
 
 func _clear_task() -> void:
+	_cancel_prone_backstep()
 	match task:
 		"rescue":
 			if task_ent is Soldier:
@@ -2430,6 +2546,9 @@ func take_damage(amount: float, src, _dir: Vector3, kind := "bullet") -> void:
 		world.battle.soldier_hit(self, amount, src)
 	_hit_dir = _dir
 	_hit_kind = kind
+	if life == Life.ALIVE and amount > 0.0 and kind in ["bullet", "melee", "explosion"]:
+		world.fx_event([Fx.UNIT_HIT, eid, _dir, clampf(amount / 70.0, 0.12, 1.0)])
+		world.stat("soldier_hit_reaction")
 	if life == Life.DOWNED:
 		bleed -= amount * 0.3
 		if (kind == "explosion" and amount > 45.0) or bleed <= 0.0 or world.rng.randf() < amount / 300.0:
@@ -2498,6 +2617,7 @@ func _go_down() -> void:
 func _die() -> void:
 	if life == Life.DEAD:
 		return
+	_death_velocity = motion_velocity
 	if world.battle:
 		world.battle.soldier_died(self)
 	life = Life.DEAD
@@ -2537,8 +2657,9 @@ func _death_fx() -> void:
 		imp = d * 4.0 + Vector3.UP * 2.5
 	elif _hit_kind in ["bullet", "melee"]:
 		kind = 0
-		imp = d * 2.6 + Vector3.UP * 0.4
-	world.fx_event([Fx.DIE, eid, imp, kind])
+		imp = d * 0.8
+	# fling_v already contains the ballistic velocity; don't add running twice.
+	world.fx_event([Fx.DIE, eid, imp, kind, Vector3.ZERO if flinging else _death_velocity])
 
 
 func _release_all() -> void:
@@ -3628,12 +3749,13 @@ func _view_process(dt: float) -> void:
 	# or third frame, close ones every frame
 	_pose_dt += dt
 	var cm := crew_mount() if life == Life.ALIVE else null
-	if world.cam and cm == null:
+	var view_camera := get_viewport().get_camera_3d()
+	if view_camera != null and cm == null:
 		var every := 1
-		if not world.cam.cam.is_position_in_frustum(position + Vector3(0, 1.0, 0)):
+		if not view_camera.is_position_in_frustum(position + Vector3(0, 1.0, 0)):
 			every = 6
 		else:
-			var cd := world.cam.cam.global_position.distance_to(position)
+			var cd := view_camera.global_position.distance_to(position)
 			every = 3 if cd > 90.0 else (2 if cd > 50.0 else 1)
 		_pose_skip += 1
 		if _pose_skip < every:

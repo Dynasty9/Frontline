@@ -7,6 +7,11 @@ extends Node3D
 
 const H0 := 0.95
 
+var skinned: SkinnedRifleman
+var rifle_driver: RefCounted
+var _native_locomotion := false
+var _native_prone := false
+
 var root: Node3D
 var hips: Node3D
 var torso: Node3D
@@ -25,6 +30,7 @@ var tube: Node3D
 var stretcher: Node3D
 var back_item: Node3D
 var phase := 0.0
+var motion := HumanoidMotion.new()
 var act_time := 0.0
 var last_act := -1
 var tumble := Vector3.ZERO
@@ -60,6 +66,7 @@ var _launch_grips := false
 var crew_r := Vector3.ZERO  # world positions of the mounted gun's handles
 var crew_l := Vector3.ZERO
 # two-hand weapon hold: the arms are solved from where the weapon is
+var weapon_slung := false
 var ik_l := false
 var ik_r := false
 var ik_l_target := Vector3.INF  # override for the left hand (torso space), e.g. the magazine pouch
@@ -261,6 +268,26 @@ func build(utype: String, team: int, seed: int) -> void:
 	for j in [root, hips, torso, head, tails, thigh_l, shin_l, thigh_r, shin_r, arm_l, arm_r, forearm_l, forearm_r, gun, pistol, tube, back_item, stretcher]:
 		if j:
 			Mats.merge_static(j, [], false, false, true)
+	# Opt-in until the character source assets are installed for a release.
+	if is_inside_tree() and get_parent() is Soldier and utype == "rifleman" and "--skinned-units" in OS.get_cmdline_user_args() and ResourceLoader.exists("res://assets/local_mocap/character/Soldier.glb"):
+		skinned = SkinnedRifleman.new()
+		add_child(skinned)
+		if skinned.build():
+			skinned.bind_procedural(self)
+			skinned.ground_height = get_parent().world.ground_y
+			if "--swat-units" in OS.get_cmdline_user_args():
+				load("res://scripts/game/mixamo_clips.gd").install(skinned, true)
+				rifle_driver = load("res://scripts/game/rifle_animation_controller.gd").new()
+				rifle_driver.setup(skinned)
+				get_parent().world.stat("native_riflemen")
+			root.visible = false
+			# Keep pose/attachment pivots, but discard geometry replaced by the skin.
+			for mesh in root.find_children("*", "MeshInstance3D", true, false):
+				if mesh.get_child_count() == 0: mesh.queue_free()
+		else:
+			skinned.queue_free()
+			skinned = null
+
 
 
 ## What he wears, by side: a dictionary of colours (and the surfaces they go on).
@@ -891,6 +918,7 @@ func _joint(parent: Node3D, p: Vector3) -> Node3D:
 func pose(dt: float, life: int, posture: int, act: int, speed: float, backwards: bool, lean_shoot: bool) -> void:
 	if ragdoll != null:
 		return  # the physics owns the body
+	var revived := life == Soldier.Life.ALIVE and _last_life != Soldier.Life.ALIVE
 	_alive_pose = life == 0
 	if ragdoll_done:
 		if life == 2 and not act in [Soldier.Act.CARRIED, Soldier.Act.DRAGGED]:
@@ -962,6 +990,7 @@ func pose(dt: float, life: int, posture: int, act: int, speed: float, backwards:
 	ik_l = has_gun and look != "op"
 	ik_r = has_gun and look != "op"
 	ik_l_target = Vector3.INF
+	weapon_slung = false
 	var show_gun := has_gun
 	var show_pistol := false
 	var show_nade := false
@@ -1055,11 +1084,12 @@ func pose(dt: float, life: int, posture: int, act: int, speed: float, backwards:
 				t_arr = Vector3(2.8, 0, 0.2)
 				k = 16.0
 			Soldier.Act.SLIDE:
-				t_root_r = Vector3(0.85, 0, 0)
+				t_root_r = Vector3(0.55, 0, 0)
 				t_root_p = Vector3(0, -0.15, -0.3)
-				t_thl = Vector3(1.4, 0, 0)
-				t_thr = Vector3(0.7, 0, 0)
-				t_shr = Vector3(-1.2, 0, 0)
+				t_hips_p = Vector3(0, 0.63, 0)
+				t_thl = Vector3(0.8, 0, 0)
+				t_thr = Vector3(1.1, 0, 0)
+				t_shr = Vector3(-2.4, 0, 0)
 				k = 18.0
 			Soldier.Act.VAULT:
 				t_hips_p = Vector3(0, H0 + 0.1, 0)
@@ -1318,7 +1348,55 @@ func pose(dt: float, life: int, posture: int, act: int, speed: float, backwards:
 	pistol.visible = show_pistol
 	nade.visible = show_nade and life == 0
 	stretcher.visible = show_stretcher
+	if life == Soldier.Life.ALIVE:
+		motion.apply(self, dt, speed, posture, act)
 	_apply(dt, k)
+	if skinned:
+		skinned.ground_y = global_position.y
+		if posture != Soldier.Post.CROUCH: skinned.kneel_weight = 0.0
+		if life == Soldier.Life.ALIVE:
+			# A death effect can arrive before its snapshot; an old alive state is not a revival.
+			if revived: skinned.revive()
+			var captured_walk := posture == Soldier.Post.STAND or (posture == Soldier.Post.CROUCH and rifle_driver != null and not over_wall)
+			var captured_prone := rifle_driver != null and posture == Soldier.Post.PRONE and speed < 0.1 and act in [Soldier.Act.IDLE, Soldier.Act.SHOOT] and not crew and not over_wall and skinned.native_player.has_animation(rifle_driver.PRONE_CLIP)
+			if not captured_prone: _native_prone = false
+			if captured_prone:
+				if not _native_prone: rifle_driver.prone_time = 0.0
+				_native_prone = true
+				_native_locomotion = false
+				skinned._begin_pose(10) # Captured prone, distinct from procedural posture modes.
+				rifle_driver.advance_prone(dt)
+			elif captured_walk and act in [Soldier.Act.IDLE, Soldier.Act.WALK, Soldier.Act.RUN, Soldier.Act.SHOOT, Soldier.Act.RELOAD] and not crew and (act != Soldier.Act.RELOAD or rifle_driver != null):
+				if rifle_driver != null:
+					if not _native_locomotion: rifle_driver.reset()
+					_native_locomotion = true
+					skinned._begin_pose(2)
+					var local_velocity := Vector3.FORWARD.rotated(Vector3.UP, move_yaw) * speed
+					var reload_progress := -1.0
+					if act == Soldier.Act.RELOAD:
+						var seconds: float = Defs.WEAPONS["rifle"].reload
+						reload_progress = act_time / seconds
+					elif rifle_driver.action == "reloading":
+						rifle_driver.action = ""
+					rifle_driver.advance(dt, local_velocity, posture == Soldier.Post.CROUCH, true, reload_progress)
+				else:
+					skinned.pose(dt, speed)
+			else:
+				_native_locomotion = false
+				skinned.pose_procedural(self, dt, posture)
+				if posture == Soldier.Post.CROUCH:
+					skinned.ground_kneel(dt, speed < 0.1, crew)
+				elif posture in [Soldier.Post.LEAN_L, Soldier.Post.LEAN_R] and not crew:
+					skinned.ground_cover(dt, speed < 0.1)
+				if rifle_driver != null:
+					rifle_driver.action = ""
+					if posture == Soldier.Post.CROUCH and act == Soldier.Act.RELOAD and not crew:
+						rifle_driver.overlay_reload(act_time / float(Defs.WEAPONS["rifle"].reload))
+		elif not skinned.dead:
+			_native_prone = false
+			# The replicated death effect supplies the impulse and world collision layers.
+			skinned.pose_procedural(self, dt, posture)
+		if life == Soldier.Life.ALIVE: skinned.capture_motion(dt)
 
 
 func _posture_pose(posture: int, act: int, moving: bool, sp: float, cp: float, speed: float, lean_shoot: bool) -> void:
@@ -1417,13 +1495,16 @@ func _posture_pose(posture: int, act: int, moving: bool, sp: float, cp: float, s
 ## A stride: each thigh swings about `base` (forward +); the knee folds as
 ## the leg comes through and is all but straight while the foot is planted
 ## (a little bent - `knee` - for a soldier's soft-kneed walk or a crouch).
-## The left leg comes forward while cp > 0, the right while cp < 0.
-func _walk(sp: float, cp: float, amp: float, base := 0.0, knee := 0.1) -> void:
-	t_thl = Vector3(base + sp * amp, 0, -0.03)
-	t_thr = Vector3(base - sp * amp, 0, 0.03)
+## Shared keyed poses separate contact, passing and recovery within each step.
+func _walk(sp: float, _cp: float, amp: float, base := 0.0, knee := 0.1) -> void:
+	var running := clampf((amp - 0.38) / 0.24, 0.0, 1.0)
+	var left := HumanoidGait.leg(phase, running)
+	var right := HumanoidGait.leg(phase + PI, running)
+	t_thl = Vector3(base + left.x * amp, 0, -0.03)
+	t_thr = Vector3(base + right.x * amp, 0, 0.03)
 	var lift := 0.45 + amp * 1.6
-	t_shl = Vector3(-knee - pow(maxf(0.0, cp), 1.5) * lift, 0, 0)
-	t_shr = Vector3(-knee - pow(maxf(0.0, -cp), 1.5) * lift, 0, 0)
+	t_shl = Vector3(-knee - left.y * lift, 0, 0)
+	t_shr = Vector3(-knee - right.y * lift, 0, 0)
 	t_torso.y += sp * 0.07 * amp
 	t_hips_p.y = t_hips_p.y - absf(sp) * 0.05 * amp
 
@@ -1443,6 +1524,9 @@ func _strafe() -> void:
 
 ## Rifle slung across the back, both hands free.
 func _sling() -> void:
+	weapon_slung = true
+	ik_l = false
+	ik_r = false
 	t_gun_p = Vector3(0.0, 0.32, 0.2)
 	t_gun_r = Vector3(0.8, PI * 0.5, 0)
 
@@ -1696,6 +1780,7 @@ func _apply(dt: float, k: float) -> void:
 
 ## A shot just left his weapon (`k`: how hard it kicks; 1 a rifle).
 func fire_kick(k: float) -> void:
+	if skinned: skinned.fire_kick(k)
 	_kick = minf(_kick + k, 1.8)
 
 
@@ -1705,6 +1790,8 @@ var _alive_pose := true
 ## Where the shot leaves the weapon in his hands right now (world space), or
 ## INF if he isn't visibly holding one.
 func muzzle_world() -> Vector3:
+	if skinned and not skinned.dead:
+		return skinned.weapon.global_transform * Vector3(0, 0.03, 0.6)
 	if pistol and pistol.is_visible_in_tree():
 		return pistol.global_transform * Vector3(0, 0.0, -0.16)
 	if gun and gun.is_visible_in_tree() and look != "op":
