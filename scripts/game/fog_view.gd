@@ -136,7 +136,7 @@ func _process(dt: float) -> void:
 	if _own_t <= 0.0:
 		_own_t = 1.0
 		_own.clear()
-		for st in world.structures:
+		for st in world.owned_structures:
 			if st.team == team:
 				_own.append(st)
 	var marks: Array = (world.team_info[team] as Dictionary).get("marks", []) if team < world.team_info.size() else []
@@ -164,9 +164,21 @@ void fragment() {
 
 const FOG_SHADER := """
 shader_type spatial;
+// the browser build's renderer (OpenGL) tonemaps each thing as it draws it, so
+// a multiply would darken what's in sight too: there the darkness is laid over
+#if CURRENT_RENDERER == RENDERER_COMPATIBILITY
+render_mode unshaded, blend_mix, depth_test_disabled, depth_draw_never, cull_disabled, fog_disabled, shadows_disabled;
+#else
 render_mode unshaded, blend_mul, depth_test_disabled, depth_draw_never, cull_disabled, fog_disabled, shadows_disabled;
+#endif
 
 uniform sampler2D depth_tex : hint_depth_texture, filter_nearest;
+// a depth read back to clip space: OpenGL's (the browser build's) runs -1..1, Vulkan's 0..1
+#if CURRENT_RENDERER == RENDERER_COMPATIBILITY
+#define NDC_Z(d) ((d) * 2.0 - 1.0)
+#else
+#define NDC_Z(d) (d)
+#endif
 uniform sampler2D sight_tex : hint_default_white, filter_linear, repeat_disable;
 uniform vec3 shade : source_color = vec3(0.6, 0.62, 0.68);
 uniform float origin = -500.0;  // the sight map's corner (m)
@@ -179,8 +191,8 @@ void vertex() {
 void fragment() {
 	vec3 k = vec3(1.0);
 	float d = texture(depth_tex, SCREEN_UV).r;
-	if (d > 1e-7) {  // (0: the sky)
-		vec4 vp = INV_PROJECTION_MATRIX * vec4(SCREEN_UV * 2.0 - 1.0, d, 1.0);
+	if (d > 1e-7 && d < 0.9999999) {  // (0 or 1, whichever way the depth runs: the sky)
+		vec4 vp = INV_PROJECTION_MATRIX * vec4(SCREEN_UV * 2.0 - 1.0, NDC_Z(d), 1.0);
 		vp.xyz /= vp.w;
 		vec3 wp = (INV_VIEW_MATRIX * vec4(vp.xyz, 1.0)).xyz;
 		vec2 uv = (wp.xz - origin) / span;
@@ -192,6 +204,11 @@ void fragment() {
 		float dark = (1.0 - smoothstep(0.1, 0.9, seen)) * (1.0 - smoothstep(16.0, 34.0, wp.y));
 		k = mix(vec3(1.0), shade, dark);
 	}
+#if CURRENT_RENDERER == RENDERER_COMPATIBILITY
+	ALBEDO = vec3(0.0);
+	ALPHA = 1.0 - (k.r + k.g + k.b) / 3.0;
+#else
 	ALBEDO = k;
+#endif
 }
 """

@@ -7,7 +7,11 @@ extends Entity
 
 const GRAVITY := 18.0
 
-var ptype := "frag"
+var ptype := "frag":
+	set(value):
+		ptype = value
+		if world and world.entities.get(eid) == self:
+			world.refresh_smoke_projectile(self)
 var vel := Vector3.ZERO
 var fuse := 3.4
 var thrower_id := 0
@@ -30,7 +34,7 @@ var _fire_el := -1.0
 var _hits: Array = []  # A-10: [arrive_time, pos]
 var _next := {}  # AC-130: gun -> next shot time
 var _brrt_at := -1.0
-var _gun_smoke: GPUParticles3D
+var _gun_smoke: GeometryInstance3D  # (GPU or CPU particles: see Vfx.part)
 var _drone: AudioStreamPlayer
 var _vm: VehicleModels
 var mk := ""  # support aircraft: which model flies it
@@ -42,7 +46,7 @@ var _mark_t := 0.0
 
 var model: Node3D
 var smoke_fx: Node3D
-var trail: GPUParticles3D
+var trail: GeometryInstance3D
 var _vis := true
 
 
@@ -455,7 +459,7 @@ func _view_process(dt: float) -> void:
 
 func on_despawn() -> void:
 	if _gun_smoke and is_instance_valid(_gun_smoke):
-		_gun_smoke.emitting = false
+		Vfx.set_emitting(_gun_smoke, false)
 		var gs := _gun_smoke
 		get_tree().create_timer(3.0).timeout.connect(gs.queue_free)
 		_gun_smoke = null
@@ -464,7 +468,7 @@ func on_despawn() -> void:
 		var gp := trail.global_position
 		trail.reparent(world.fx.vfx)
 		trail.global_position = gp
-		trail.emitting = false
+		Vfx.set_emitting(trail, false)
 		get_tree().create_timer(2.0).timeout.connect(trail.queue_free)
 		trail = null
 
@@ -534,7 +538,7 @@ func _build_model() -> void:
 			_drone = AudioStreamPlayer.new()
 			_drone.bus = &"Effects"
 			if Sfx.enabled:
-				_drone.stream = Sfx.streams["prop"]
+				_drone.stream = Sfx.stream("prop")
 				_drone.volume_db = -30.0
 				_drone.autoplay = true
 			add_child(_drone)
@@ -655,7 +659,7 @@ func _a10_view(dt: float) -> void:
 	if _vm and _vm.mg_tip and is_instance_valid(_vm.mg_tip) and _vm.mg_tip.is_inside_tree():
 		nose = _vm.mg_tip.global_position  # the model's own gun muzzle
 	if _gun_smoke:
-		_gun_smoke.emitting = firing
+		Vfx.set_emitting(_gun_smoke, firing)
 		_gun_smoke.global_position = nose
 	if firing:
 		if _brrt_at < 0.0:

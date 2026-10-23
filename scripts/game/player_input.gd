@@ -5,6 +5,7 @@ extends Node
 
 var world: World
 var sel_squads: Array = []
+var _marked_soldiers: Array[Soldier] = []
 var sel_vehicles: Array = []
 var sel_structure := 0
 var drag_start := Vector2.ZERO
@@ -12,6 +13,7 @@ var dragging := false
 var lmb := false
 var place_kind := ""
 var place_yaw := 0.0
+var _place_turn := 0.0  # Shift + two fingers on a trackpad, gathered into whole steps
 var ghost: MeshInstance3D
 var build_grid: MeshInstance3D  # the 1 m build grid shown round the cursor while placing
 const GRID_SHADER := """
@@ -85,11 +87,15 @@ func can_command() -> bool:
 	return world.local_team >= 0 and world.winner < 0
 
 
+## Recruitment ownership is attribution, not an allied selection lock.
 func is_mine(e: Entity) -> bool:
 	if e == null:
 		return false
+	# Supply convoys run themselves; they are inspected, not ordered.
+	if world.local_team >= 0 and e is Vehicle and e.is_auto():
+		return false
 	# observers may select anything to inspect it (they can't give orders)
-	return e.owner_peer == world.local_peer or (world.local_team < 0 and e.team >= 0)
+	return e.team >= 0 and (e.team == world.local_team or world.local_team < 0)
 
 
 func has_units() -> bool:
@@ -110,6 +116,8 @@ func clear_selection() -> void:
 
 ## Picks one soldier out of his squad for direct orders.
 func select_unit(s: Soldier) -> void:
+	if not is_mine(s):
+		return
 	clear_selection()
 	sel_unit = s.eid
 	Sfx.ui("click")
@@ -118,7 +126,7 @@ func select_unit(s: Soldier) -> void:
 func selected_soldiers() -> Array:
 	var out := []
 	for s in world.soldiers:
-		if (s.sid in sel_squads or s.eid == sel_unit) and s.owner_peer == world.local_peer and not s.gone:
+		if (s.sid in sel_squads or s.eid == sel_unit) and s.team == world.local_team and world.local_team >= 0 and not s.gone:
 			out.append(s)
 	return out
 
@@ -168,7 +176,7 @@ func _unhandled_input(ev: InputEvent) -> void:
 				if order_mode != "":
 					_begin_order(mb, true)
 					return
-				# Alt+click pings (Alt+click on one of your own men still picks him out)
+				# Alt+click pings (Alt+click on one of your allied men still picks him out)
 				if mb.alt_pressed and not _alt_picks(mb.position):
 					pinging = true
 					ping_at = mb.position
@@ -216,8 +224,18 @@ func _unhandled_input(ev: InputEvent) -> void:
 			_end_sketch()
 		elif mb.button_index == MOUSE_BUTTON_RIGHT and not mb.pressed and rmb and not rmb_left:
 			_end_order(mb.position)
-		elif place_kind != "" and mb.pressed and mb.shift_pressed and (mb.button_index == MOUSE_BUTTON_WHEEL_UP or mb.button_index == MOUSE_BUTTON_WHEEL_DOWN):
-			place_yaw = TrenchNet.snap_yaw(place_yaw + (TrenchNet.BUILD_ANGLE if mb.button_index == MOUSE_BUTTON_WHEEL_UP else -TrenchNet.BUILD_ANGLE))
+		elif place_kind != "" and mb.pressed and mb.shift_pressed and mb.button_index in [MOUSE_BUTTON_WHEEL_UP, MOUSE_BUTTON_WHEEL_DOWN, MOUSE_BUTTON_WHEEL_LEFT, MOUSE_BUTTON_WHEEL_RIGHT]:
+			# (a Mac turns Shift + the wheel into a sideways scroll: up comes as left)
+			var up := mb.button_index == MOUSE_BUTTON_WHEEL_UP or mb.button_index == MOUSE_BUTTON_WHEEL_LEFT
+			place_yaw = TrenchNet.snap_yaw(place_yaw + (TrenchNet.BUILD_ANGLE if up else -TrenchNet.BUILD_ANGLE))
+	elif ev is InputEventPanGesture and place_kind != "" and (ev as InputEventPanGesture).shift_pressed:
+		# Shift + two fingers on a trackpad, like Shift + the wheel: a step for
+		# every couple of units scrolled, whichever way the scroll comes
+		var pd := (ev as InputEventPanGesture).delta
+		_place_turn -= pd.y if absf(pd.y) >= absf(pd.x) else pd.x
+		while absf(_place_turn) >= 2.0:
+			place_yaw = TrenchNet.snap_yaw(place_yaw + signf(_place_turn) * TrenchNet.BUILD_ANGLE)
+			_place_turn -= signf(_place_turn) * 2.0
 	elif ev is InputEventMouseMotion:
 		var mpos := (ev as InputEventMouseMotion).position
 		if lmb and mpos.distance_to(drag_start) > 8.0:
@@ -251,7 +269,7 @@ var _coop_i := -1
 ## A key press (or an extra mouse button) in a battle: Esc always backs out;
 ## everything else is whatever it's bound to (Settings > Controls).
 func _key(ev: InputEvent) -> void:
-	if (world.hud and world.hud.typing) or Keys.capturing:
+	if (world.hud and world.hud.typing) or Keys.capturing or Keys.console_open:
 		return
 	if ev is InputEventKey and (ev as InputEventKey).keycode == KEY_ESCAPE:
 		if pinging or sketching:
@@ -403,7 +421,7 @@ func _key(ev: InputEvent) -> void:
 					world.hud.flash("%s's view" % Net.player_name(p.peer))
 
 
-## Alt+click on one of your own men picks him out of his squad (rather than pinging).
+## Alt+click on one of your allied men picks him out of his squad (rather than pinging).
 func _alt_picks(at: Vector2) -> bool:
 	var e := pick(at)
 	return e is Soldier and is_mine(e) and e.life == Soldier.Life.ALIVE
@@ -537,7 +555,7 @@ func cancel_modes() -> void:
 
 func _cycle_fob() -> void:
 	var fobs := []
-	for st in world.structures:
+	for st in world.fob_structures:
 		if st.skind == "fob" and (st.team == world.local_team or world.local_team < 0):
 			fobs.append(st)
 	if fobs.is_empty():
@@ -1053,25 +1071,7 @@ func _view_process(dt: float) -> void:
 			_end_ping()
 		if sketching and not Input.is_mouse_button_pressed(MOUSE_BUTTON_RIGHT):
 			_end_sketch()
-	# keep selection valid
-	var live := {}
-	for s in world.soldiers:
-		if s.sid != 0 and is_mine(s) and s.life != Soldier.Life.DEAD:
-			live[s.sid] = true
-	for i in range(sel_squads.size() - 1, -1, -1):
-		if not live.has(sel_squads[i]):
-			sel_squads.remove_at(i)
-	for i in range(sel_vehicles.size() - 1, -1, -1):
-		if world.entity(sel_vehicles[i]) == null:
-			sel_vehicles.remove_at(i)
-	if sel_structure != 0 and world.entity(sel_structure) == null:
-		sel_structure = 0
-	if sel_unit != 0:
-		var su = world.entity(sel_unit)
-		if not (su is Soldier) or su.life != Soldier.Life.ALIVE or not is_mine(su):
-			sel_unit = 0
-	for s in world.soldiers:
-		s.selected = (s.sid != 0 and s.sid in sel_squads and is_mine(s)) or (sel_unit != 0 and s.eid == sel_unit)
+	_update_selection()
 	_prev_t -= dt
 	if _prev_t <= 0.0:
 		_prev_t = 0.05
@@ -1158,3 +1158,37 @@ func _update_preview() -> void:
 		var p: Vector3 = gp + side * (i - (n - 1) / 2.0) * 13.0
 		for sl in world.terrain.slots(p, face, cnt, order_mode == "defend"):
 			preview.append(sl)
+
+
+func _update_selection() -> void:
+	var live := {}
+	if not sel_squads.is_empty():
+		for s in world.soldiers:
+			if s.sid != 0 and s.sid in sel_squads and is_mine(s) and s.life != Soldier.Life.DEAD:
+				live[s.sid] = true
+	for i in range(sel_squads.size() - 1, -1, -1):
+		if not live.has(sel_squads[i]):
+			sel_squads.remove_at(i)
+	for i in range(sel_vehicles.size() - 1, -1, -1):
+		if not is_mine(world.entity(sel_vehicles[i])):
+			sel_vehicles.remove_at(i)
+	if sel_structure != 0 and world.entity(sel_structure) == null:
+		sel_structure = 0
+	if sel_unit != 0:
+		var su = world.entity(sel_unit)
+		if not (su is Soldier) or su.life != Soldier.Life.ALIVE or not is_mine(su):
+			sel_unit = 0
+	# Clearing an empty selection need only visit the men marked last frame.
+	for s in _marked_soldiers:
+		if is_instance_valid(s):
+			s.selected = false
+	_marked_soldiers.clear()
+	if not sel_squads.is_empty():
+		for s in world.soldiers:
+			if (s.sid != 0 and s.sid in sel_squads and is_mine(s)) or (sel_unit != 0 and s.eid == sel_unit):
+				s.selected = true
+				_marked_soldiers.append(s)
+	elif sel_unit != 0:
+		var s: Soldier = world.entity(sel_unit)
+		s.selected = true
+		_marked_soldiers.append(s)

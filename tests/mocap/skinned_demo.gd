@@ -14,6 +14,8 @@ var wall: StaticBody3D
 var second: SkinnedRifleman
 
 func _ready() -> void:
+	Engine.physics_ticks_per_second = 120
+	Engine.max_physics_steps_per_frame = 12
 	Settings.no_save = true
 	Settings.apply_preset("ultra", false)
 	Settings.v["dof"] = false

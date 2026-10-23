@@ -1,0 +1,67 @@
+name: Publish release
+
+# The second half of releasing (release.yml is the first). Actions > Release
+# builds the game, uploads it as a draft release and opens a pull request from
+# release/vX.Y.Z that says what's in it. Merging that pull request runs this:
+# it checks that the draft's downloads are the ones the merged release.json
+# names (what the website and the matchmaker now offer, and what the game's
+# updater checks a download against), tags the commit that was built, and
+# publishes the release with the changelog as its notes. Railway redeploys the
+# website and the matchmaker from the same merge, and that usually takes longer
+# than this does, so the downloads are up by the time anything links to them.
+#
+#   - A release published the old way round (before its pull request merged)
+#     is left as it is, so merging its pull request is harmless.
+#   - If it fails, the release has merged but isn't out, and Release won't
+#     start: fix the cause and re-run it, or run it by hand (Actions > Publish
+#     release > Run workflow, on main), which publishes the newest release
+#     filed on main if it isn't out yet.
+
+on:
+  pull_request:
+    types: [closed]
+    branches: [main]
+    # a release's pull request files its changelog under changelog/vX.Y.Z/
+    paths:
+      - changelog/v*/release.toml
+  workflow_dispatch:
+
+concurrency:
+  group: publish-release
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  publish:
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.pull_request.merged &&
+      startsWith(github.event.pull_request.head.ref, 'release/v') &&
+      github.event.pull_request.head.repo.full_name == github.repository)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # main with the release merged into it
+          ref: ${{ github.event.pull_request.merge_commit_sha || github.sha }}
+
+      - name: Tag the release's commit and publish it
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BRANCH: ${{ github.event.pull_request.head.ref }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          if [ "$GITHUB_EVENT_NAME" = workflow_dispatch ]; then
+            if [ "$GITHUB_REF" != refs/heads/main ]; then
+              echo "::error::Publish from main (this run is on $GITHUB_REF_NAME)."
+              exit 1
+            fi
+            python3 .github/scripts/release.py publish
+          else
+            python3 .github/scripts/release.py publish --version "${BRANCH#release/v}" --head "$HEAD_SHA" --pr "$PR_NUMBER"
+          fi

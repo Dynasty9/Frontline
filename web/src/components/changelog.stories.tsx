@@ -22,7 +22,8 @@ export const Release: Story = {
     await userEvent.click(canvas.getByRole("button", { name: `Enlarge: ${first.caption}` }))
     // the dialog is portalled to the end of <body>, outside the story's canvas
     const dialog = await waitFor(() => screen.getByRole("dialog"))
-    await expect(within(dialog).getByRole("img", { name: first.caption })).toBeVisible()
+    // it fades in: keep looking until it has (checked at once, it can still be at opacity 0)
+    await waitFor(() => expect(within(dialog).getByRole("img", { name: first.caption })).toBeVisible())
     await userEvent.keyboard("{Escape}")
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull())
   },

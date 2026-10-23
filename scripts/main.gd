@@ -2,19 +2,33 @@ extends Node
 ## Root: owns the menu and the World. Also understands a few command-line
 ## switches (after `--`) used for automated testing:
 ##   --aivai               host as spectator, both sides AI
-##   --host [--players=N]  host and start (when N players have joined)
-##   --join=IP             join a host
+##   --host [--players=N]  host and start (when N players have joined; the
+##                         lobby shows meanwhile)
+##     --battle-name=NAME --coop --max-players=N --password=PW   the lobby's settings
+##   --join=IP [--password=PW]   join a host
 ##   --team=N              the side to play (-1 spectator); a client registers with it
+##   --ready [--say=TEXT]  once in the lobby: press Ready (and say something)
+##   --drop-at=S [--rejoin-after=S2]   a client leaves the battle S seconds in, then
+##                         presses Rejoin Battle S2 (default 5) seconds later
+##   --rejoin              press Rejoin Battle (with --rejoin-file=PATH: the record a
+##                         run with the same --rejoin-file left, as after a crash)
 ##   --list                with --host: list the battle on the matchmaker
+##   --no-drop-in          with --host: nobody new may join once the battle runs
 ##   --find-match          press Find Match (joins a listed battle, or hosts one)
 ##   --login=EMAIL:PASSWORD [--signup=CALLSIGN]   sign in (or create the account) first
 ##   (and Online's own: --matchmaker=URL --account=PATH --no-stun)
 ##   --timescale=X --quit-after=SECONDS --stats=SECONDS --verbose
 ##   --screenshot=PATH --shot-at=SECONDS --focus=X,Z --zoom=D
 ##   --sound-dump=DIR      write every synthesised sound and music sample to DIR as WAVs, then quit
+##   --insignia-dump=DIR   write the insignia art and catalog for the website (DIR = web), then quit
+##   --insignia-sheet=PATH the whole collection of insignia on one image, then quit
 
 var menu: Control
-var world: World
+## The battle (World). This file names none of the game's classes, so loading
+## it doesn't compile them: they compile behind the title (GameScripts).
+var world: Node3D
+var probe: PerfProbe
+var console: Console
 var args := {}
 var _quit_at := -1.0
 ## How much longer than --quit-after a test client waits for the host's world
@@ -26,8 +40,27 @@ var _shot_done := false
 var _shot_i := 0
 var _perf_t0 := 0
 var _perf_frames := 0
+var _perf_started := false
+var _perf_ready_ms := -1
+var _perf_frame_us := 0
+var _perf_frame_samples: Array[float] = []
+var _perf_physics: Array[float] = []
+var _perf_render_cpu: Array[float] = []
+var _perf_render_gpu: Array[float] = []
+var _perf_process: Array[float] = []
+var _battle_pending := false  # the rank's battle clock starts once the world is running
 var _curtains := false  # intro and loading screens (normal launches; tests skip them)
 var _curtain_layer: CanvasLayer
+
+
+func _sample_report(values: Array[float]) -> Dictionary:
+	if values.is_empty():
+		return {"count": 0}
+	var sorted := values.duplicate()
+	sorted.sort()
+	return {"count": sorted.size(), "p50_ms": sorted[sorted.size() / 2],
+		"p95_ms": sorted[mini(sorted.size() - 1, ceili(sorted.size() * 0.95) - 1)],
+		"p99_ms": sorted[mini(sorted.size() - 1, ceili(sorted.size() * 0.99) - 1)], "max_ms": sorted.back()}
 
 
 func _ready() -> void:
@@ -38,6 +71,20 @@ func _ready() -> void:
 		if s.begins_with("--"):
 			var kv := s.substr(2).split("=", true, 1)
 			args[kv[0]] = kv[1] if kv.size() > 1 else "1"
+	if args.has("skinned-units") or args.has("swat-units"):
+		Engine.physics_ticks_per_second = 120
+		Engine.max_physics_steps_per_frame = 12
+	if not args.is_empty():
+		# a test run: script errors fail it (its exit code; see TestRun)
+		TestRun.watch()
+	if args.has("perf-at"):
+		Engine.max_fps = 0
+		if DisplayServer.get_name() != "headless":
+			DisplayServer.window_set_vsync_mode(DisplayServer.VSYNC_DISABLED)
+	if args.has("managed-server"):
+		Net.game_start.connect(_on_game_start)
+		LocalServer.start_child(String(args["managed-server"]))
+		return
 	if args.has("offscreen") and DisplayServer.get_name() != "headless":
 		# renders for tooling (model sheets): the window starts minimized (the
 		# render copy's override.cfg) and is moved far off-screen before it's
@@ -49,21 +96,67 @@ func _ready() -> void:
 	if args.has("sound-dump"):
 		Sfx.dump(String(args["sound-dump"]))
 		await Music.dump(String(args["sound-dump"]))
-		get_tree().quit()
+		TestRun.quit(get_tree())
+		return
+	if args.has("insignia-dump") or args.has("insignia-sheet"):
+		if args.has("insignia-dump"):
+			Insignia.dump(String(args["insignia-dump"]))
+		if args.has("insignia-sheet"):
+			var only := PackedStringArray() if not args.has("only") else String(args.only).split(",")
+			Insignia.sheet(String(args["insignia-sheet"]), int(args.get("px", 96)), 16, only)
+		TestRun.quit(get_tree())
+		return
+	if args.has("platform-test"):
+		# installing an update and reading links, as each system does it (offline, no game)
+		var pt := _test_script("res://scripts/test/platform_test.gd")
+		if pt:
+			pt.run()
+		TestRun.quit(get_tree())
+		return
+	if args.has("ui-gallery"):
+		# every interface component in each of its states, saved as an image (docs/UI.md)
+		var gl := CanvasLayer.new()
+		add_child(gl)
+		var gal: Control = preload("res://scripts/test/ui_gallery.gd").new()
+		gal.set("args", args)
+		gl.add_child(gal)
 		return
 	if args.has("soldier-sheet"):
 		# a lineup of every kind of soldier, saved as an image (no menu, no game)
-		var sheet: Node3D = preload("res://scripts/ui/soldier_sheet.gd").new()
+		var ss := _test_script("res://scripts/ui/soldier_sheet.gd")
+		if ss == null:
+			TestRun.quit(get_tree())
+			return
+		var sheet: Node3D = ss.new()
 		sheet.set("args", args)
 		add_child(sheet)
 		return
-	add_child(preload("res://scripts/ui/perf_overlay.gd").new())
-	menu = preload("res://scripts/ui/menu.gd").new()
-	var layer := CanvasLayer.new()
-	layer.layer = 10
-	add_child(layer)
-	layer.add_child(menu)
-	# --menu-cursor=X,Y: hold the map's cursor hill there (fractions of the screen; screenshots)
+	# every frame measured, for the performance overlay (F3) and the console (`)
+	probe = PerfProbe.new()
+	probe.name = "PerfProbe"
+	probe.main = self
+	add_child(probe)
+	var overlay: CanvasLayer = preload("res://scripts/ui/perf_overlay.gd").new()
+	overlay.probe = probe
+	add_child(overlay)
+	console = Console.new()
+	console.name = "Console"
+	console.main = self
+	console.probe = probe
+	add_child(console)
+	# a test driving the game through its port never sees the menu, so it
+	# isn't built: the menu and the screens it opens are a second or more of
+	# compiling and building at every start, and a test run starts many games
+	# (loaded, not preloaded, so this file doesn't compile them either)
+	if not args.has("test-port"):
+		menu = load("res://scripts/ui/menu.gd").new()
+		var layer := CanvasLayer.new()
+		layer.layer = 10
+		add_child(layer)
+		layer.add_child(menu)
+		# the rest of the game compiles while the title plays
+		GameScripts.compile_in_background()
+	# --menu-cursor=X,Y: hold the cursor there, the map leaning after it (fractions of the screen; screenshots)
 	if args.has("menu-cursor"):
 		var mc := String(args["menu-cursor"]).split(",")
 		TopoBackdrop.pin_cursor(Vector2(float(mc[0]), float(mc[1])))
@@ -94,7 +187,7 @@ func _ready() -> void:
 			var pair := kv.split(":")
 			if pair.size() == 2:
 				var cur = Settings.v.get(pair[0])
-				Settings.v[pair[0]] = (pair[1] == "true") if cur is bool else (float(pair[1]) if cur is float else int(pair[1]))
+				Settings.v[pair[0]] = (pair[1] == "true") if cur is bool else (float(pair[1]) if cur is float else (pair[1] if cur is String else int(pair[1])))
 		Settings.apply_global()
 	if args.has("novsync"):
 		Settings.v["vsync"] = false
@@ -109,68 +202,138 @@ func _ready() -> void:
 	var port := int(args.get("port", Net.DEFAULT_PORT))
 	if args.has("login"):
 		await _test_login()
-	if args.has("scenario"):
-		# --play: command the Coalition side yourself instead of watching
-		Net.host_game(port, 0 if args.has("play") else -1)
-		if args.has("seed"):
-			Net.set_setting("fixed_seed", int(args.seed))
-		Net.set_setting("scenario", String(args.scenario))
-		Net.set_setting("scenario_player", args.has("play"))
-		Net.set_setting("ai_fill", false)
-		Net.set_setting("debug_trucks", args.has("debug-trucks"))
-		Net.set_setting("debug", true)
-		Net.set_setting("debug_cover", args.has("debug-cover"))
-		Net.set_setting("static", args.has("static"))
-		Net.start_game()
-	elif args.has("aivai"):
-		Net.host_game(port, -1)
-		if args.has("seed"):
-			Net.set_setting("fixed_seed", int(args.seed))
-		Net.set_setting("verbose", args.has("verbose"))
-		Net.set_setting("debug_trucks", args.has("debug-trucks"))
-		Net.start_game()
-	elif args.has("mission") and not args.has("host"):
-		# --play: command the force yourself; otherwise the mission plays itself
-		var md := Missions.find(String(args.mission))
-		Net.host_game(port, int(md.get("side", 0)) if args.has("play") else -1)
-		Net.set_setting("mission", String(args.mission))
-		Net.set_setting("mission_autoplay", args.has("autoplay") or not args.has("play"))
-		if args.has("seed"):
-			Net.set_setting("fixed_seed", int(args.seed))
-		Net.set_setting("verbose", args.has("verbose"))
-		Net.start_game()
+	# --test-port=N: a test drives the game over a local socket (0: any free port)
+	if args.has("test-port"):
+		# (exported builds leave it out: export_presets.cfg)
+		var tps: Script = load("res://scripts/test/test_port.gd") if ResourceLoader.exists("res://scripts/test/test_port.gd") else null
+		if tps == null:
+			print("TESTPORT isn't in this build: run the game from source")
+			TestRun.fail()
+			TestRun.quit(get_tree())
+			return
+		var tp: Node = tps.new()
+		tp.set("main", self)
+		add_child(tp)
+	if args.has("local-server"):
+		var options := {"ai_fill": not args.has("scenario"), "fixed_seed": int(args.get("seed", 3)), "stress_units": int(args.get("units", 500)), "stress_mode": String(args.get("stress-mode", "combat")), "stress_scenery": int(args.get("scenery", 200))}
+		options["map_size"] = int(args.get("map-size", 1024))
+		options["benchmark_output"] = String(args.get("perf-json", ""))
+		options["stress_generated"] = args.has("stress-generated")
+		options["stress_vehicles"] = int(args.get("vehicles", 0))
+		if args.has("stress-commanders"):
+			options["ai_fill"] = true
+		if args.has("perf-at"):
+			options["perf_at"] = float(args["perf-at"])
+			options["perf_details"] = args.has("perf-details")
+			options["perf_duration"] = float(args.get("perf-duration", 10))
+		if args.has("scenario"):
+			options["scenario"] = String(args.scenario)
+			options["scenario_player"] = args.has("play")
+		if args.has("mission"):
+			options["mission"] = String(args.mission)
+			options["mission_autoplay"] = args.has("autoplay") or not args.has("play")
+		var err := LocalServer.launch(options, int(args.get("team", -1)))
+		if err != OK:
+			push_error("Local server launch failed: %d" % err)
+			get_tree().quit(1)
+	elif args.has("scenario") or args.has("aivai") or (args.has("mission") and not args.has("host")):
+		start_local(args)
 	elif args.has("host"):
 		if args.has("list"):
-			await Online.host(port, int(args.get("team", 0)))
+			await Online.host(port, int(args.get("team", 0)), false)
 		else:
 			Net.host_game(port, int(args.get("team", 0)))
+		var cfg := {"ai_allies": args.has("ai-allies"), "verbose": args.has("verbose"), "debug_trucks": args.has("debug-trucks"),
+			"drop_in": not args.has("no-drop-in")}
 		if args.has("mission"):
-			Net.set_setting("mission", String(args.mission))
-			Net.set_setting("mission_autoplay", args.has("autoplay"))
-		Net.set_setting("ai_allies", args.has("ai-allies"))
-		Net.set_setting("verbose", args.has("verbose"))
-		Net.set_setting("debug_trucks", args.has("debug-trucks"))
+			cfg["mission"] = String(args.mission)
+			cfg["mission_autoplay"] = args.has("autoplay")
+		if args.has("battle-name"):
+			cfg["name"] = String(args["battle-name"])
+		if args.has("coop"):
+			cfg["mode"] = "coop"
+			cfg["coop_side"] = maxi(0, int(args.get("team", 0)))
+		if args.has("max-players"):
+			cfg["max_players"] = int(args["max-players"])
+		if args.has("password"):
+			Net.password = String(args.password)
+			cfg["locked"] = true
+		cfg["map_size"] = int(args.get("map-size", 1024))
+		Net.configure(cfg)
+		if args.has("list"):
+			Online.list_game()
 		if not args.has("players"):
 			Net.start_game()
 		else:
+			menu._show_lobby()
 			Net.lobby_updated.connect(_maybe_autostart)
+	elif args.has("rejoin"):
+		menu._rejoin()
 	elif args.has("join") or args.has("find-match"):
 		if args.has("team"):
 			Net.join_team = int(args.team)
 		if args.has("join"):
-			Net.join_game(String(args.join), port)
+			menu._join_direct(String(args.join), port, String(args.get("password", "")))
 		else:
 			menu._find_match()
+		if args.has("ready") or args.has("say"):
+			Net.lobby_updated.connect(_lobby_test_actions)
+
+
+## A game on this machine alone, as tests run one: a --scenario, an AI-vs-AI
+## battle (--aivai) or a mission (--mission; on its own it plays itself, --play
+## to command it). `a` holds the switches without their dashes; the test port
+## passes its own. No network: it hosts offline, so it takes no port (--listen
+## opens --port as before, for a client to join). --seed fixes the map and the
+## fight, for a scenario as for the rest.
+func start_local(a: Dictionary) -> void:
+	var team := -1
+	if a.has("play"):
+		team = int(MissionList.find(String(a.mission)).get("side", 0)) if a.has("mission") else 0
+	if a.has("listen"):
+		Net.host_game(int(a.get("port", Net.DEFAULT_PORT)), team)
+	else:
+		Net.host_offline(team)
+	if a.has("seed"):
+		Net.set_setting("fixed_seed", int(a.seed))
+	Net.configure({"map_size": int(a.get("map-size", 1024)), "stress_units": int(a.get("units", 500)),
+		"stress_vehicles": int(a.get("vehicles", 0)), "stress_generated": a.has("stress-generated"),
+		"stress_mode": String(a.get("stress-mode", "combat")), "stress_scenery": int(a.get("scenery", 200)),
+		"gdscript_perception": a.has("gdscript-perception")})
+	Net.set_setting("verbose", a.has("verbose"))
+	Net.set_setting("debug_trucks", a.has("debug-trucks"))
+	if a.has("scenario"):
+		# --play: command the Coalition side yourself instead of watching
+		Net.set_setting("scenario", String(a.scenario))
+		Net.set_setting("scenario_player", a.has("play"))
+		Net.set_setting("ai_fill", a.has("stress-commanders"))
+		Net.set_setting("debug", true)
+		Net.set_setting("debug_cover", a.has("debug-cover"))
+		Net.set_setting("static", a.has("static"))
+	elif a.has("mission"):
+		# --play: command the force yourself (--autoplay: the autopilot still gives orders)
+		Net.set_setting("mission", String(a.mission))
+		Net.set_setting("mission_autoplay", a.has("autoplay") or not a.has("play"))
+	Net.start_game()
 
 
 ## --login=EMAIL:PASSWORD (with --signup=CALLSIGN to create the account first).
 func _test_login() -> void:
 	var cred := String(args.login).split(":", true, 1)
 	var r: Dictionary
-	if args.has("signup"):
-		r = await Online.sign_up(cred[0], cred[1] if cred.size() > 1 else "", String(args.signup))
-	else:
-		r = await Online.sign_in(cred[0], cred[1] if cred.size() > 1 else "")
+	# the first frames can hold the main thread for seconds (the menu's backdrop
+	# building) and a request times out under them: try again a moment later
+	for attempt in 3:
+		if args.has("signup"):
+			r = await Online.sign_up(cred[0], cred[1] if cred.size() > 1 else "", String(args.signup))
+			if not r.ok and int(r.code) != 0:
+				# the account is there already (a second run): sign in to it
+				r = await Online.sign_in(cred[0], cred[1] if cred.size() > 1 else "")
+		else:
+			r = await Online.sign_in(cred[0], cred[1] if cred.size() > 1 else "")
+		if r.ok or int(r.code) != 0:
+			break
+		await get_tree().create_timer(2.0).timeout
 	print("LOGIN ok=%s callsign=%s %s" % [str(r.ok), Online.callsign, String(r.error)])
 
 
@@ -178,6 +341,18 @@ func _dump_structs() -> void:
 	for st in world.structures:
 		if not st.skind in ["floor", "tree"]:
 			print("STRUCT %s t%d pos=%s yaw=%.2f size=%s built=%s wrecked=%s" % [st.skind, st.team, str(st.position.snapped(Vector3.ONE * 0.1)), st.yaw, str(st.size), str(st.built), str(st.wrecked)])
+
+
+## --ready / --say: once we're in the lobby, press Ready and say something.
+func _lobby_test_actions() -> void:
+	if has_meta("lobby_acted") or Net.in_game or not Net.players.has(multiplayer.get_unique_id()):
+		return
+	set_meta("lobby_acted", true)
+	await get_tree().create_timer(0.6).timeout
+	if args.has("say"):
+		Net.send_lobby_chat(String(args.say))
+	if args.has("ready"):
+		Net.set_ready.rpc_id(1, true)
 
 
 func _maybe_autostart() -> void:
@@ -209,7 +384,8 @@ func _intro() -> void:
 	while is_instance_valid(cur) and not cur.title_done():
 		await get_tree().process_frame
 	if is_instance_valid(cur):
-		menu.arrive()
+		if menu:
+			menu.arrive()
 		cur.finish(1.8)
 
 
@@ -220,7 +396,7 @@ func _mission_text(s: Dictionary) -> Array:
 	var what := ""
 	var side := ""
 	if String(s.get("mission", "")) != "":
-		var md := Missions.find(String(s.mission))
+		var md := MissionList.find(String(s.mission))
 		side = Defs.TEAM_NAMES[int(md.side)]
 		return [String(md.title), [["SIDE", side], ["FORCE", String(md.force)], ["AREA", String(md.area)], ["CONDITIONS", "Assessing"]], String(md.op), String(md.brief)]
 	if String(s.get("scenario", "")) != "":
@@ -234,7 +410,7 @@ func _mission_text(s: Dictionary) -> Array:
 				humans += 1
 		what = ("Command the %s against the AI" % Defs.TEAM_NAMES[team]) if humans <= 1 else ("%d commanders, %s" % [humans, "co-op" if s.get("ai_fill", true) else "head to head"])
 	side = Defs.TEAM_NAMES[team] if team >= 0 else "Observer"
-	return [what, [["SIDE", side], ["AREA", "A crossroads town and its farmland, %d x %d m" % [int(MapDims.SIZE), int(MapDims.SIZE)]], ["CONDITIONS", "Assessing"]]]
+	return [what, [["SIDE", side], ["AREA", "A crossroads town and its farmland, %d x %d m" % [int(s.get("map_size", 1024)), int(s.get("map_size", 1024))]], ["CONDITIONS", "Assessing"]]]
 
 
 func _on_game_start(s: Dictionary) -> void:
@@ -249,15 +425,28 @@ func _on_game_start(s: Dictionary) -> void:
 			# their world is small and the host's state is on its way)
 			await get_tree().process_frame
 			await get_tree().process_frame
-	menu.visible = false
+	if menu:
+		menu.visible = false
 	Settings.set_ui_menu(false)
 	if world:
 		world.name = "OldWorld"
 		world.queue_free()
-	world = World.new()
+	world = GameScripts.load_script(GameScripts.WORLD).new()
 	world.name = "World"
 	world.settings = s
 	add_child(world)
+	if cur:
+		world.build_stage.connect(func(text: String, frac: float):
+			if is_instance_valid(cur):
+				cur.set_stage(text, frac))
+	if OS.has_feature("web"):
+		world.visible = false
+	# (with a window, a frame of the loading screen between its stages: World._breathe)
+	await world.build()
+	if not is_instance_valid(world):
+		return
+	if OS.has_feature("web"):
+		_reveal_next_frame(world)
 	world.game_ended.connect(_on_game_ended)
 	# a headless client says which after-action report it was sent (multiplayer tests)
 	if not world.srv and DisplayServer.get_name() == "headless":
@@ -267,6 +456,10 @@ func _on_game_start(s: Dictionary) -> void:
 			print("CLIENT report t=%.0f full=%s commanders=%d units=%d samples=%d enemy_known=%s" % [float(r.get("t", 0.0)), str(r.get("full", false)),
 				(r.get("players", []) as Array).size(), (r.get("units", []) as Array).size(), (r.get("tl", []) as Array).size(),
 				str(not (sd[1 - maxi(0, world.local_team)] as Dictionary).is_empty())]))
+	# a battle the player fights in (not one they watch, nor a test setup, nor
+	# a test run unless it asks with --record-battles, like the service record)
+	# counts towards their rank, from when it's under way (_process)
+	_battle_pending = world.local_team >= 0 and not s.has("scenario") and Online.record_battles
 	if cur and is_instance_valid(cur):
 		_warm_up(cur)
 	if args.has("focus") and world.cam:
@@ -290,14 +483,41 @@ func _on_game_start(s: Dictionary) -> void:
 		world.coop.start_bot()
 	# --keys-test: the key bindings end to end (matching, rebinding, the Controls page)
 	if args.has("keys-test") and world.cam:
-		var kt: Node = preload("res://scripts/game/keys_test.gd").new()
-		kt.set("world", world)
-		world.add_child(kt)
+		var kts := _test_script("res://scripts/test/keys_test.gd")
+		if kts:
+			var kt: Node = kts.new()
+			kt.set("world", world)
+			world.add_child(kt)
 	# --cam-test: drive the camera through its controls and check each one
 	if args.has("cam-test") and world.cam:
-		var ct: Node = preload("res://scripts/game/cam_test.gd").new()
-		ct.set("world", world)
-		world.add_child(ct)
+		var cts := _test_script("res://scripts/test/cam_test.gd")
+		if cts:
+			var ct: Node = cts.new()
+			ct.set("world", world)
+			world.add_child(ct)
+
+
+## A script only tests use, loaded when its switch is given (not preloaded, so
+## it doesn't compile at every launch). Exported builds leave them out
+## (export_presets.cfg): there it says so and fails the run.
+func _test_script(path: String) -> Script:
+	if ResourceLoader.exists(path):
+		return load(path)
+	print("%s isn't in this build: run the game from source" % path.get_file())
+	TestRun.fail()
+	return null
+
+
+## (tests) How many men and vehicles we command.
+func _mine() -> int:
+	var n := 0
+	for s in world.soldiers:
+		if s.owner_peer == world.local_peer and s.life != s.Life.DEAD:
+			n += 1
+	for v in world.vehicles:
+		if v.owner_peer == world.local_peer and not v.gone:
+			n += 1
+	return n
 
 
 var _fx_next := 2.0
@@ -321,20 +541,21 @@ func _shot_demo() -> void:
 	var snd: String = String(args["shot-demo"]) if String(args["shot-demo"]) != "1" else guns[(_sd_i / 21) % guns.size()]
 	var every := float(args.get("shot-demo-every", 0.09 if snd in ["mg", "hmg", "minigun", "ac"] else 0.13))
 	_sd_next = world.time + every
-	var kinds := [Fx.HIT_DIRT, Fx.HIT_STONE, Fx.HIT_SAND, Fx.HIT_WOOD, Fx.HIT_LEAVES, Fx.HIT_METAL, Fx.HIT_FLESH]
-	var c := world.cam.focus_pos
+	var fx = world.fx
+	var kinds := [fx.HIT_DIRT, fx.HIT_STONE, fx.HIT_SAND, fx.HIT_WOOD, fx.HIT_LEAVES, fx.HIT_METAL, fx.HIT_FLESH]
+	var c: Vector3 = world.cam.focus_pos
 	var pick: Array = range(kinds.size()) if every > 0.5 else [_sd_i % kinds.size(), (_sd_i + 3) % kinds.size()]
 	for i: int in pick:
 		var x := (i - 3) * 2.2
 		var to := c + Vector3(x + randf_range(-0.3, 0.3), 0.0 if i == 0 else randf_range(0.6, 1.2), -3.0 + randf_range(-0.3, 0.3))
 		var from := c + Vector3(x * 0.4 + (4.0 if i % 2 == 0 else -4.0), 1.3, 6.0)
-		world.fx.play([Fx.SHOT, from, to, kinds[i], snd, -1])
+		fx.play([fx.SHOT, from, to, kinds[i], snd, -1])
 	_sd_i += 1
 	if args.has("shot-demo-cannon") and (every > 0.5 or _sd_i % 40 == 0):
 		if _sd_i % 2 == 0:
-			world.fx.play([Fx.CANNON, c + Vector3(7, 2.3, 4), c + Vector3(-8, 0.5, -30)])
+			fx.play([fx.CANNON, c + Vector3(7, 2.3, 4), c + Vector3(-8, 0.5, -30)])
 		else:
-			world.fx.play([Fx.LAUNCH, c + Vector3(6, 1.5, 3), Vector3(-0.3, 0.05, -1).normalized()])
+			fx.play([fx.LAUNCH, c + Vector3(6, 1.5, 3), Vector3(-0.3, 0.05, -1).normalized()])
 
 
 ## Visual test: fires explosions of every size near the camera focus (no damage).
@@ -343,9 +564,9 @@ func _fx_demo() -> void:
 		return
 	var sizes := [1.0, 1.4, 0.4, 2.0, 1.2]
 	var sz: float = float(args["fx-demo"]) if String(args["fx-demo"]) != "1" else sizes[_fx_i % sizes.size()]
-	var c := world.cam.focus_pos if world.cam else Vector3.ZERO
+	var c: Vector3 = world.cam.focus_pos if world.cam else Vector3.ZERO
 	var off := Vector3(-6 + (_fx_i % 3) * 6.0, 0.0, -3 + (_fx_i % 2) * 5.0)
-	world.fx.play([Fx.EXPLODE, c + off, sz])
+	world.fx.play([world.fx.EXPLODE, c + off, sz])
 	_fx_i += 1
 	_fx_next = world.time + float(args.get("fx-every", 2.5))
 
@@ -353,12 +574,21 @@ func _fx_demo() -> void:
 func _on_game_ended(w: int) -> void:
 	if world == null:
 		return
+	if not world.srv:
+		Net.forget_rejoin()  # nothing to go back to
+	var reporting: bool = world.local_team >= 0 and Online.battle_open()
+	if world.local_team >= 0:
+		Online.battle_end("win" if w == world.local_team else "loss", world.time)
 	if world.srv and (args.has("stats") or args.has("quit-on-win")):
 		print("WINNER %s at t=%.0f" % [Defs.TEAM_NAMES[w], world.time])
 		print("FINAL ", world.debug_stats())
 		print("REPORT ", world.battle.summary())
 	if args.has("quit-on-win"):
-		get_tree().quit()
+		if reporting:
+			# what the battle was worth to the account (tests of the rank)
+			var rep: Dictionary = await Online.battle_reported
+			print("BATTLE %s rank=%d xp=%d icon=%s" % [JSON.stringify(rep), Online.rank, Online.xp, Online.icon])
+		TestRun.quit(get_tree())
 
 
 var _def_step := 0
@@ -367,7 +597,7 @@ var _pit_id := 0
 
 ## Test helper: lay a trench line by "dragging", build a mortar pit, then call a fire mission.
 func _bot_defense() -> void:
-	var fob: Structure = null
+	var fob: Node3D = null
 	for st in world.structures:
 		if st.skind == "fob" and st.team == world.local_team:
 			fob = st
@@ -422,7 +652,7 @@ func _bot_cmds() -> void:
 		print("BOT: move sent for ", riflemen)
 	elif _bot_step == 1 and world.time > 6.0:
 		_bot_step = 2
-		var fob: Structure = null
+		var fob: Node3D = null
 		for st in world.structures:
 			if st.skind == "fob" and st.team == world.local_team:
 				fob = st
@@ -450,7 +680,7 @@ func _bot_cmds() -> void:
 	elif _bot_step == 5 and world.time > 24.0:
 		_bot_step = 6
 		for s in world.soldiers:
-			if s.owner_peer == world.local_peer and s.life == Soldier.Life.ALIVE:
+			if s.owner_peer == world.local_peer and s.life == s.Life.ALIVE:
 				world.send_cmd({"t": "unit", "soldier": s.eid, "o": "move", "pos": s.position + Vector3(6, 0, 0), "face": Vector3.ZERO})
 				world.send_cmd({"t": "unit", "soldier": s.eid, "o": "throw", "pos": s.position + Vector3(10, 0, -15), "kind": "smoke"})
 				print("BOT: unit orders sent to ", s.sname)
@@ -467,15 +697,35 @@ func _bot_cmds() -> void:
 		print("BOT: retreat sent")
 
 
+## A browser compiles each shader the first time it's drawn, all within that
+## frame: the battlefield stays out of sight until the frame after it's built,
+## so building it and compiling for it come as separate waits, neither long
+## enough for the browser to call the page unresponsive.
+func _reveal_next_frame(w: Node3D) -> void:
+	w.visible = false
+	await get_tree().process_frame
+	if is_instance_valid(w):
+		w.visible = true
+
+
 ## After the build: hold the loading screen while the first frames render
-## (and compile their shaders) behind it, then fade into the battlefield.
+## (and compile their shaders) behind it, then fade into the battlefield. A
+## client's battle is still on its way from the host then: the screen stays up
+## until all of it is here and built (World.loaded), saying how far it has got.
 func _warm_up(cur: Curtain) -> void:
+	var w := world
+	while is_instance_valid(w) and not w.loaded:
+		if not is_instance_valid(cur):
+			return
+		await get_tree().process_frame
+	if not is_instance_valid(w) or w != world or not is_instance_valid(cur):
+		return
 	if world.atmo:
 		cur.add_line("CONDITIONS", String(Curtain.MOOD_TEXT.get(world.atmo.mood, world.atmo.mood.capitalize())))
 	cur.set_stage("Deploying forces", 0.72)
 	var f0 := Engine.get_frames_drawn()
 	var t0 := Time.get_ticks_msec()
-	while Engine.get_frames_drawn() < f0 + 24 or Time.get_ticks_msec() - t0 < 1100:
+	while world and (world.client_loading() or Engine.get_frames_drawn() < f0 + 24 or Time.get_ticks_msec() - t0 < 1100):
 		if not is_instance_valid(cur):
 			return
 		var k := clampf(float(Engine.get_frames_drawn() - f0) / 24.0, 0.0, 1.0)
@@ -487,17 +737,24 @@ func _warm_up(cur: Curtain) -> void:
 
 
 func return_to_menu(msg: String) -> void:
+	if args.has("perf-json"):
+		push_error("Benchmark interrupted: " + msg)
+		get_tree().quit(1)
+	LocalServer.stop()
 	if _curtains:
 		_intro()
 	if not args.has("timescale"):
 		Engine.time_scale = 1.0
+	if world and Online.battle_open():
+		Online.battle_end("left", world.time)
 	if world:
 		world.name = "OldWorld"
 		world.queue_free()
 		world = null
 	Net.leave()
 	Settings.set_ui_menu(true)
-	menu.show_menu(msg)
+	if menu:
+		menu.show_menu(msg)
 
 
 var _ms_i := -1
@@ -511,26 +768,14 @@ var _ms_t := 0.0
 func _model_sheet_tick() -> void:
 	var spec := String(args["model-sheet"])
 	var keys: Array[String] = []
-	match spec:
-		"nato":
-			keys.assign(VmNato.KEYS)
-		"csat":
-			keys.assign(VmCsat.KEYS)
-		"indep":
-			keys.assign(VmIndep.KEYS)
-		"civ":
-			keys.assign(VmCiv.KEYS)
-		"heli":
-			keys.assign(VmHeli.KEYS)
-		"plane":
-			keys.assign(VmPlane.KEYS)
-		"boat":
-			keys.assign(VmBoat.KEYS)
-		"all":
-			keys = VehicleModels.family_keys()
-		_:
-			for k in spec.split(","):
-				keys.append(k)
+	# (a family's models are listed in its builder, scripts/game/vehicles/vm_<family>.gd)
+	if spec in ["nato", "csat", "indep", "civ", "heli", "plane", "boat"]:
+		keys.assign(GameScripts.load_script("res://scripts/game/vehicles/vm_%s.gd" % spec).KEYS)
+	elif spec == "all":
+		keys.assign(GameScripts.load_script("res://scripts/game/vehicle_models.gd").family_keys())
+	else:
+		for k in spec.split(","):
+			keys.append(k)
 	var now := Time.get_ticks_msec() / 1000.0
 	if _ms_i >= 0 and now < _ms_t:
 		return
@@ -542,13 +787,14 @@ func _model_sheet_tick() -> void:
 		img.get_region(r).save_png(String(args.get("sheet-dir", "user://")).path_join(keys[_ms_i] + ".png"))
 	_ms_i += 1
 	if _ms_i >= keys.size():
-		get_tree().quit()
+		TestRun.quit(get_tree())
 		return
-	menu.manual.open("model", keys[_ms_i], int(args.get("side", 0)))
+	menu.open_manual("model", keys[_ms_i], int(args.get("side", 0)))
 	if args.has("sheet-yaw"):
 		menu.manual._yaw = float(args["sheet-yaw"])
 		menu.manual._idle_t = 99.0
-	_ms_t = now + 1.4
+	# (from now: the first page waits for the manual to be built)
+	_ms_t = Time.get_ticks_msec() / 1000.0 + 1.4
 
 
 func _process(_dt: float) -> void:
@@ -556,11 +802,11 @@ func _process(_dt: float) -> void:
 		print("FRAME t=%d ms frames=%d dt=%.0f ms" % [Time.get_ticks_msec(), Engine.get_frames_drawn(), _dt * 1000.0])
 	if world == null:
 		# --manual=category[,entry[,side]]: open the field manual on a page
-		if args.has("manual") and menu and menu.manual and not has_meta("manual_open") and Time.get_ticks_msec() > 800:
+		if args.has("manual") and menu and not has_meta("manual_open") and Time.get_ticks_msec() > 800:
 			set_meta("manual_open", true)
 			var mp := String(args["manual"]).split(",")
-			menu.manual.open(mp[0], mp[1] if mp.size() > 1 else "", int(mp[2]) if mp.size() > 2 else -1)
-		if args.has("model-sheet") and menu and menu.manual and Engine.get_frames_drawn() > 20:
+			menu.open_manual(mp[0], mp[1] if mp.size() > 1 else "", int(mp[2]) if mp.size() > 2 else -1)
+		if args.has("model-sheet") and menu and Engine.get_frames_drawn() > 20:
 			_model_sheet_tick()
 		if args.has("menu-op") and menu and menu.op_panel and not has_meta("op_open") and Engine.get_frames_drawn() > 5:
 			set_meta("op_open", true)
@@ -572,19 +818,29 @@ func _process(_dt: float) -> void:
 			var mu := String(args["menu-update"]).split(",")
 			var st: int = ["available", "downloading", "ready", "failed"].find(mu[1] if mu.size() > 1 else "available") + 1
 			Updater.pretend(mu[0], st)
-		# --menu-panel=browse|account|record|settings: the list of online battles, the sign-in panel,
-		# the service record (signed in), the settings
-		if args.has("menu-panel") and menu and menu.browse_panel and not has_meta("panel_open") and Engine.get_frames_drawn() > 5:
+		# --menu-panel=browse|host|account|record|settings|insignia: the server browser,
+		# the host setup, the sign-in panel, the service record (signed in), the settings,
+		# the insignia
+		if args.has("menu-panel") and menu and menu.browser and not has_meta("panel_open") and Engine.get_frames_drawn() > 5:
 			set_meta("panel_open", true)
-			if String(args["menu-panel"]) == "account":
-				menu._open_account()
-			elif String(args["menu-panel"]) == "record":
-				menu._open_record()
-			elif String(args["menu-panel"]) == "settings":
-				menu.settings_panel.visible = true
-				menu.settings_panel._show_tab(String(args.get("settings-tab", "interface")))
-			else:
-				menu._open_browser()
+			match String(args["menu-panel"]):
+				"account":
+					menu._open_account()
+				"record":
+					menu._open_record()
+				"settings":
+					menu.open_settings()
+					menu.settings_panel._show_tab(String(args.get("settings-tab", "interface")))
+				"host":
+					menu._open_host({"mode": String(args.get("host-mode", "coop"))})
+				"insignia":
+					menu._open_insignia()
+				_:
+					menu._open_browser()
+		# --browse-pick=TEXT: choose that battle in the server browser once it's listed
+		if args.has("browse-pick") and menu and menu.browser and menu.browser.visible and not has_meta("browse_picked"):
+			if menu.browser.pick(String(args["browse-pick"])):
+				set_meta("browse_picked", true)
 		# --open-battle (with --menu-panel=record): open the newest battle's after-action report
 		if args.has("open-battle") and menu and menu.rec_list and menu.rec_list.get_child_count() > 0 and not has_meta("battle_open"):
 			set_meta("battle_open", true)
@@ -599,8 +855,18 @@ func _process(_dt: float) -> void:
 		if args.has("menu-shot") and Engine.get_frames_drawn() > 30 and Time.get_ticks_msec() > float(args.get("shot-at", 2.5)) * 1000.0 and not _shot_done:
 			_shot_done = true
 			get_viewport().get_texture().get_image().save_png(String(args["menu-shot"]))
-			get_tree().quit()
+			TestRun.quit(get_tree())
 		return
+	if world.building:
+		return  # (a browser draws the loading screen between its stages: World.build)
+	# the map is built and the battle under way: start the clock on it (not
+	# before: building the map holds up everything, a request included)
+	if _battle_pending and world.time > 1.0 and world.loaded:
+		_battle_pending = false
+		Online.battle_begin()
+	if not world.srv and not world.has_meta("world_at") and not world.client_loading() and not world.entities.is_empty():
+		world.set_meta("world_at", world.time)
+	var view_time: float = world.time if world.srv else world.time - float(world.get_meta("world_at", CLIENT_WAIT))
 	# --trace=path.csv: every half second, where each man is and what he's doing
 	# (for plotting squad movement and posture over a fight)
 	if args.has("trace") and world.srv and world.time >= _trace_t:
@@ -630,7 +896,7 @@ func _process(_dt: float) -> void:
 	if _stats_every > 0.0 and world.srv and world.time >= _stats_t:
 		_stats_t = world.time + _stats_every
 		print(world.debug_stats())
-	if args.has("screenshot") and not _shot_done and world.time >= float(args.get("shot-at", 8.0)) + _shot_i * float(args.get("shot-every", 0.5)):
+	if args.has("screenshot") and not _shot_done and not world.client_loading() and view_time >= float(args.get("shot-at", 8.0)) + _shot_i * float(args.get("shot-every", 0.5)):
 		var path := String(args.screenshot)
 		var count := int(args.get("shots", 1))
 		if count > 1:
@@ -643,30 +909,98 @@ func _process(_dt: float) -> void:
 		_shot_i += 1
 		# --stats-tab=all: the next shot is of the next tab
 		if String(args.get("stats-tab", "")) == "all" and world.hud:
-			var key: String = StatsPanel.TABS[_shot_i % StatsPanel.TABS.size()][0]
+			var tabs: Array = GameScripts.load_script(GameScripts.STATS_PANEL).TABS
+			var key: String = tabs[_shot_i % tabs.size()][0]
 			for sp in [world.hud.stats_panel, world.hud.aar_panel]:
 				if sp != null and is_instance_valid(sp) and sp.is_visible_in_tree():
 					sp.show_tab(key)
 		if _shot_i >= count:
 			_shot_done = true
 			if not args.has("quit-after"):
-				get_tree().quit()
+				TestRun.quit(get_tree())
 	if args.has("perf-at"):
+		# Both processes warm up by wall time after loading, even if simulation
+		# is too slow to keep up; otherwise the client exits before the report.
+		if _perf_ready_ms < 0 and not world.client_loading() and not world._local_loading:
+			_perf_ready_ms = Time.get_ticks_msec()
+		if _perf_t0 > 0:
+			var frame_now := Time.get_ticks_usec()
+			if _perf_frame_us > 0:
+				_perf_frame_samples.append((frame_now - _perf_frame_us) / 1000.0)
+				if world.has_view:
+					var viewport := get_viewport().get_viewport_rid()
+					_perf_render_cpu.append(RenderingServer.viewport_get_measured_render_time_cpu(viewport) + RenderingServer.get_frame_setup_time_cpu())
+					_perf_render_gpu.append(RenderingServer.viewport_get_measured_render_time_gpu(viewport))
+					_perf_process.append(Performance.get_monitor(Performance.TIME_PROCESS) * 1000.0)
+					_perf_physics.append(Performance.get_monitor(Performance.TIME_PHYSICS_PROCESS) * 1000.0)
+			_perf_frame_us = frame_now
 		var pt := float(args["perf-at"])
-		if world.time >= pt and Engine.time_scale != 1.0:
+		if _perf_ready_ms >= 0 and Time.get_ticks_msec() - _perf_ready_ms >= pt * 1000.0 and not _perf_started:
+			_perf_started = true
 			Engine.time_scale = 1.0
 			_perf_t0 = Time.get_ticks_msec()
 			_perf_frames = Engine.get_frames_drawn()
-		elif _perf_t0 > 0 and Time.get_ticks_msec() - _perf_t0 > 10000:
+			_perf_frame_us = Time.get_ticks_usec()
+			_perf_frame_samples.clear()
+			_perf_render_cpu.clear()
+			_perf_render_gpu.clear()
+			_perf_process.clear()
+			_perf_physics.clear()
+			if world.has_view:
+				RenderingServer.viewport_set_measure_render_time(get_viewport().get_viewport_rid(), true)
+			world.measured_ticks.clear()
+			world.measured_systems.clear()
+			world.measured_worst_tick.clear()
+			world.measured_details.clear()
+			world.measured_detail_max.clear()
+			world.measured_views.clear()
+			world.measure_ticks = true
+			world.measure_details = args.has("perf-details")
+			if world.nav:
+				world.nav.profile_paths = true
+		elif _perf_t0 > 0 and Time.get_ticks_msec() - _perf_t0 > maxf(1.0, float(args.get("perf-duration", 10))) * 1000.0:
 			var fps := float(Engine.get_frames_drawn() - _perf_frames) / ((Time.get_ticks_msec() - _perf_t0) / 1000.0)
 			# report once: with the clock cleared, a failure below can't repeat
 			# all of this every frame until something kills the run
 			_perf_t0 = 0
 			var alive := 0
 			for s in world.soldiers:
-				if s.life != Soldier.Life.DEAD:
+				if s.life != s.Life.DEAD:
 					alive += 1
 			print("PERF fps=%.1f server_tick_ms=%.2f entities=%d soldiers_alive=%d total_soldiers=%d vehicles=%d" % [fps, world.tick_ms, world.entities.size(), alive, world.soldiers.size(), world.vehicles.size()])
+			print("PERF systems_ms=", JSON.stringify(world.prof))
+			print("PERF nested_total_ms=", JSON.stringify(world.measured_details))
+			_perf_frame_samples.sort()
+			var report := {"rendered": DisplayServer.get_name() != "headless", "fps": fps,
+				"worker_threads": ProjectSettings.get_setting("threading/worker_pool/max_threads"),
+				"render_thread_mode": ProjectSettings.get_setting("rendering/driver/threads/thread_model"),
+				"detailed_timing": world.measure_details, "frames": _sample_report(_perf_frame_samples), "ticks": _sample_report(world.measured_ticks),
+				"render_cpu": _sample_report(_perf_render_cpu), "render_gpu": _sample_report(_perf_render_gpu), "process_cpu": _sample_report(_perf_process), "physics_cpu": _sample_report(_perf_physics),
+				"static_memory_bytes": Performance.get_monitor(Performance.MEMORY_STATIC),
+				"nodes": Performance.get_monitor(Performance.OBJECT_NODE_COUNT), "map_m": int(world.settings.get("map_size", 1024)),
+				"loading_ms": world.loading_ms.duplicate(),
+				"path_queue_peak": world.nav.path_queue_peak if world.nav else 0,
+				"path_cache_hits": world.nav.path_cache_hits if world.nav else 0,
+				"path_wait_max_ms": world.nav.path_wait_max_ms if world.nav else 0,
+				"draw_calls": Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME),
+				"render_objects": Performance.get_monitor(Performance.RENDER_TOTAL_OBJECTS_IN_FRAME),
+				"render_primitives": Performance.get_monitor(Performance.RENDER_TOTAL_PRIMITIVES_IN_FRAME),
+				"soldiers_alive": alive, "systems_total_ms": world.measured_systems.duplicate(), "worst_tick": world.measured_worst_tick.duplicate(true),
+				"nested_total_ms": world.measured_details.duplicate(), "nested_max_ms": world.measured_detail_max.duplicate(), "views_total_ms": world.measured_views.duplicate()}
+			print("BENCHMARK ", JSON.stringify(report))
+			if args.has("perf-json"):
+				var report_file := FileAccess.open(String(args["perf-json"]), FileAccess.WRITE)
+				if report_file:
+					report_file.store_string(JSON.stringify(report, "\t"))
+			var samples: Array[float] = world.measured_ticks
+			if not samples.is_empty():
+				samples.sort()
+				var means := {}
+				for key in world.measured_systems:
+					means[key] = float(world.measured_systems[key]) / samples.size()
+				print("PERF ticks=%d p50_ms=%.2f p95_ms=%.2f max_ms=%.2f means_ms=%s" % [samples.size(), samples[samples.size() / 2], samples[mini(samples.size() - 1, ceili(samples.size() * 0.95) - 1)], samples.back(), JSON.stringify(means)])
+			if world.nav:
+				print("PERF paths=%d total_path_ms=%.2f max_path_ms=%.2f grid_searches=%d" % [world.nav.path_calls, world.nav.path_usec / 1000.0, world.nav.path_max_usec / 1000.0, world.nav.path_fallbacks])
 			if OS.has_environment("FL_DEBUG_NODES"):
 				var counts := {}
 				var owners := {}
@@ -689,7 +1023,7 @@ func _process(_dt: float) -> void:
 				var dead_n := 0
 				var baked := 0
 				for so in world.soldiers:
-					if so.life == Soldier.Life.DEAD and so.model:
+					if so.life == so.Life.DEAD and so.model:
 						dead_n += 1
 						if so.model._baked:
 							baked += 1
@@ -703,8 +1037,8 @@ func _process(_dt: float) -> void:
 				print("CORPSES n=%d baked=%d meshes=%d" % [dead_n, baked, dead_mi])
 				var why := {}
 				for so in world.soldiers:
-					if so.life == Soldier.Life.DEAD and so.model and not so.model._baked:
-						var k := "act=%s rag=%s done=%s vis=%s still=%d" % [Soldier.Act.keys()[so.act], str(so.model.ragdoll != null), str(so.model.ragdoll_done), str(so.visible), so.model._still]
+					if so.life == so.Life.DEAD and so.model and not so.model._baked:
+						var k := "act=%s rag=%s done=%s vis=%s still=%d" % [so.Act.keys()[so.act], str(so.model.ragdoll != null), str(so.model.ragdoll_done), str(so.visible), so.model._still]
 						why[k] = int(why.get(k, 0)) + 1
 				print("UNBAKED ", why)
 				print("BY OWNER ", owners)
@@ -713,7 +1047,12 @@ func _process(_dt: float) -> void:
 			var img: Image = get_viewport().get_texture().get_image() if DisplayServer.get_name() != "headless" else null
 			if img:
 				img.save_png(String(args.get("perf-shot", "user://perf.png")))
-			get_tree().quit()
+			world.measure_ticks = false
+			world.measure_details = false
+			if world.nav:
+				world.nav.profile_paths = false
+			if not LocalServer.child and not args.has("quit-after"):
+				TestRun.quit(get_tree())
 	if args.has("fx-demo"):
 		_fx_demo()
 	if args.has("shot-demo"):
@@ -723,13 +1062,13 @@ func _process(_dt: float) -> void:
 		world.hud.settings_panel.visible = true
 	if args.has("smoke-demo") and world.srv and world.time > 1.0 and not has_meta("smoked"):
 		set_meta("smoked", true)
-		var c := world.cam.focus_pos if world.cam else Vector3.ZERO
+		var c: Vector3 = world.cam.focus_pos if world.cam else Vector3.ZERO
 		world.spawn("projectile", {"ptype": "smoke", "team": 0, "pos": c + Vector3(4, 0.2, 0), "vel": Vector3.ZERO, "thrower": 0, "fuse": 0.0})
 	if args.has("model-test") and world.cam and not has_meta("modeled"):
 		set_meta("modeled", true)
 		var x := -12.0
 		for mk in String(args["model-test"]).split(","):
-			var vm := VehicleModels.build(mk, 0, 7)
+			var vm = GameScripts.load_script("res://scripts/game/vehicle_models.gd").build(mk, 0, 7)
 			world.add_child(vm.root)
 			vm.root.position = world.cam.focus_pos + Vector3(x, float(args.get("model-y", 1.5)), 0)
 			x += 24.0
@@ -757,7 +1096,7 @@ func _process(_dt: float) -> void:
 			world.input.start_place(String(args.place))
 			if args.has("place-from"):
 				var pf := String(args["place-from"]).split(",")
-				world.input.place_a = TrenchNet.snap_pos(Vector3(float(pf[0]), 0, float(pf[1])))
+				world.input.place_a = GameScripts.load_script("res://scripts/game/trench_net.gd").snap_pos(Vector3(float(pf[0]), 0, float(pf[1])))
 				world.input.place_drag = true
 	# --blast-at=x,z,size,time: a real explosion there (physics / ragdoll tests);
 	# x,z of "f,dx" means dx metres beside the camera's focus, "v:kind,dx" beside
@@ -782,7 +1121,7 @@ func _process(_dt: float) -> void:
 		if String(args["focus-town"]).contains(","):
 			var ft := String(args["focus-town"]).split(",")
 			off = Vector3(float(ft[0]), 0, float(ft[1]))
-		var tc := world.town_rect.get_center()
+		var tc: Vector2 = world.town_rect.get_center()
 		world.cam.focus(Vector3(tc.x, 0, tc.y) + off)
 		world.focused = true
 		if world.director:
@@ -842,7 +1181,7 @@ func _process(_dt: float) -> void:
 		_tf_t = world.time + float(args.get("test-fire-every", 0.09))
 		var tf_drop := 2.4 if String(args["test-fire"]) == "ground" else 0.0
 		for s in world.soldiers:
-			if s.life != Soldier.Life.ALIVE or s.cur_weapon().is_empty():
+			if s.life != s.Life.ALIVE or s.cur_weapon().is_empty():
 				continue
 			s.mag = maxi(s.mag, 5)
 			s._shoot(s.eye_pos() + Defs.dir_of(s.rotation.y) * 40.0 + Vector3(0, -tf_drop, 0), null, false, false)
@@ -860,7 +1199,7 @@ func _process(_dt: float) -> void:
 	if args.has("follow") and world.cam and world.time > 0.5:
 		var fw := String(args["follow"]).split(",")
 		var want3 := int(fw[1]) if fw.size() > 1 else 0
-		var sids := world.squads.keys()
+		var sids: Array = world.squads.keys()
 		sids.sort()
 		for sid in sids:
 			var sq = world.squads[sid]
@@ -872,7 +1211,7 @@ func _process(_dt: float) -> void:
 			var c := Vector3.ZERO
 			var n := 0
 			for m in sq.members:
-				if is_instance_valid(m) and m.life == Soldier.Life.ALIVE:
+				if is_instance_valid(m) and m.life == m.Life.ALIVE:
 					c += m.position
 					n += 1
 			if n > 0:
@@ -908,9 +1247,12 @@ func _process(_dt: float) -> void:
 		if world.coop.peers.has(wid):
 			set_meta("coop_watched", true)
 			world.cam.toggle_shadow(wid)
-	# --hud-panel=settings|help|menu|log: open one of the battle's panels (layout checks)
+	# --hud-panel=settings|help|menu|log|over: open one of the battle's panels (layout
+	# checks; "over" is the end of the battle, won by your side)
 	if args.has("hud-panel") and world.hud and world.time > 1.0 and not has_meta("hud_panel"):
 		set_meta("hud_panel", true)
+		if String(args["hud-panel"]) == "over":
+			world.hud.show_game_over(maxi(world.local_team, 0))
 		var hp: Control = {"settings": world.hud.settings_panel, "help": world.hud.help_panel, "menu": world.hud.menu_panel, "log": world.hud.log_panel}.get(String(args["hud-panel"]))
 		if hp:
 			hp.visible = true
@@ -940,16 +1282,22 @@ func _process(_dt: float) -> void:
 	if args.has("stats-tab") and world.hud and world.winner >= 0 and not has_meta("aar_tab") and world.hud.aar_panel != null:
 		set_meta("aar_tab", true)
 		world.hud.aar_panel.show_tab(String(args["stats-tab"]))
-	# a client's --quit-after counts from when the host's world reached it: the
-	# host only answers once it has laid out the map (and, with a window, drawn
-	# its first frame - a minute or more off-screen), and a client counting from
-	# its own empty world can give up before it has been sent anything
-	if not world.srv and not world.has_meta("world_at") and not world.entities.is_empty():
+	# a client's --quit-after counts from when the host's world reached it and
+	# was built: the host only answers once it has laid out the map (and, with a
+	# window, drawn its first frame - a minute or more off-screen), and a client
+	# counting from its own empty world can give up before it has been sent anything
+	if not world.srv and not world.has_meta("world_at") and world.loaded:
 		world.set_meta("world_at", world.time)
-	var run_t := world.time
+	var run_t: float = world.time
 	if not world.srv:
 		run_t = world.time - float(world.get_meta("world_at", CLIENT_WAIT))
-	if _quit_at > 0.0 and run_t >= _quit_at:
+	if args.has("drop-at") and not world.srv and world.has_meta("world_at") and not has_meta("dropped") and run_t >= float(args["drop-at"]):
+		set_meta("dropped", true)
+		print("DROP at t=%.1f mine=%d" % [world.time, _mine()])
+		return_to_menu("")
+		get_tree().create_timer(float(args.get("rejoin-after", 5.0)), true, false, true).timeout.connect(menu._rejoin)
+		return
+	if _quit_at > 0.0 and run_t >= _quit_at and (world.srv or world.has_meta("world_at") or not LocalServer.connected):
 		_quit_at = -1.0
 		if args.has("dump-structs"):
 			_dump_structs()
@@ -964,18 +1312,7 @@ func _process(_dt: float) -> void:
 				if e.team >= 0 and e.team != world.local_team:
 					enemy += 1
 			counts["ENEMY_KNOWN"] = enemy
-			print("CLIENT entities=%d %s time=%.1f team_info=%s waited=%.1f" % [world.entities.size(), str(counts), world.time, str(world.team_info[0].get("supply", -1)), float(world.get_meta("world_at", -1.0))])
+			print("CLIENT entities=%d %s time=%.1f team_info=%s waited=%.1f team=%d mine=%d" % [world.entities.size(), str(counts), world.time, str(world.team_info[0].get("supply", -1)), float(world.get_meta("world_at", -1.0)), world.local_team, _mine()])
 		if not world.coop.peers.is_empty() or int(world.coop.stats.get("sent", 0)) > 0:
 			print("COOP ", world.coop.summary())
-		if not Engine.get_write_movie_path().is_empty():
-			# Movie audio needs a final mix after playback stops to release its stream references.
-			get_tree().paused = true
-			Music.set_process(false)
-			Sfx.enabled = false
-			for type in ["AudioStreamPlayer", "AudioStreamPlayer2D", "AudioStreamPlayer3D"]:
-				for player in get_tree().root.find_children("*", type, true, false):
-					player.stop()
-					player.stream = null
-			await get_tree().process_frame
-			await get_tree().process_frame
-		get_tree().quit()
+		TestRun.quit(get_tree())

@@ -7,6 +7,8 @@ extends Control
 ## what he has under command, and two buttons - look at his view, or watch his
 ## screen live. A row lights up when its commander pings.
 ## Click a row to look where he's looking; double-click to watch it live.
+## Signal (docs/UI.md): no box, on the right scrim; a header and its rule,
+## then a ruled row per commander with his colour as its edge.
 
 const W := 300.0
 const HEAD_H := 28.0
@@ -77,25 +79,12 @@ func _look(peer: int) -> void:
 
 
 ## What he's doing, for his row: [text, colour].
-func _status(p: CoCommand.Presence, owner_of: Dictionary) -> Array:
+func _status(p: CoCommand.Presence) -> Array:
 	var w := hud.world
 	var act := w.coop.activity(p, true)
 	if act != "":
 		return [act, UiKit.ACCENT]
-	# an order he has just sent
-	var now := Time.get_ticks_msec()
-	var best := ""
-	var best_age := 6.0
-	for sid in hud.orders:
-		var o: Array = hud.orders[sid]
-		if int(o[5]) < 0 or int(owner_of.get(int(sid), 0)) != p.peer:
-			continue
-		var age := (now - int(o[5])) / 1000.0
-		if age < best_age:
-			best_age = age
-			best = "Ordered %s: %s" % [Squad.callsign_of(int(o[4]), int(sid)), HudOverlay._order_tag(o)]
-	if best != "":
-		return [best, UiKit.TEXT]
+	# Unit ownership is recruitment attribution, not the last order's sender.
 	# something he has just built, called in or set training
 	var dd: Array = w.coop.last_deed(p.peer, 15.0)
 	if not dd.is_empty():
@@ -136,13 +125,13 @@ func _draw() -> void:
 	if all.is_empty():
 		need_h = 0.0
 		return
-	# who commands what, once a redraw
-	var owner_of := {}
+	# recruitment attribution, once a redraw
+	var seen_squads := {}
 	var units := {}
 	for s in w.soldiers:
 		if s.sid != 0 and s.owner_peer > 0 and s.life != Soldier.Life.DEAD:
-			if not owner_of.has(s.sid):
-				owner_of[s.sid] = s.owner_peer
+			if not seen_squads.has(s.sid):
+				seen_squads[s.sid] = true
 				var u: Array = units.get(s.owner_peer, [0, 0])
 				u[0] += 1
 				units[s.owner_peer] = u
@@ -153,48 +142,50 @@ func _draw() -> void:
 			units[v.owner_peer] = u2
 	var h := HEAD_H + all.size() * ROW_H + 4.0
 	need_h = h
-	draw_style_box(UiKit.boxc(UiKit.PANEL, 8, UiKit.LINE, 1, 0.0), Rect2(0, 0, W, h))
-	UiKit.text(self, Vector2(12, 18), "COMMAND NET", 11, UiKit.ACCENT, 700)
+	var hx := 2.0 + UiKit.caps_at(self, Vector2(2, 17), "Command net", 11, UiKit.FAINT)
+	UiKit.mono_at(self, Vector2(hx + 8, 17), "%02d" % all.size(), 11, UiKit.DIM)
 	# your own colour, so you can tell them which you are
 	var me := co.color(w.local_peer)
-	var hint := "Alt+click to ping"
-	var hx := W - 12.0 - UiKit.text_width(hint, 10, 600)
-	UiKit.text(self, Vector2(hx, 18), hint, 10, UiKit.DIM, 600)
-	var yx := hx - 40.0
-	draw_circle(Vector2(yx, 14), 4.5, me)
-	UiKit.text(self, Vector2(yx + 8, 18), "You", 10, me, 700)
-	draw_line(Vector2(10, HEAD_H), Vector2(W - 10, HEAD_H), UiKit.LINE, 1.0)
+	var hint := "ALT+CLICK PING"
+	var hw := UiKit.mono_w(hint, 10)
+	UiKit.mono_at(self, Vector2(W - 2.0 - hw, 17), hint, 10, UiKit.FAINT)
+	var yx := W - 2.0 - hw - 46.0
+	draw_rect(Rect2(yx, 9, 7, 7), me)
+	UiKit.caps_at(self, Vector2(yx + 12, 17), "You", 10, me)
+	UiKit.rule(self, Vector2(0, HEAD_H - 0.5), Vector2(W, HEAD_H - 0.5), UiKit.RULE2)
 	var now := Time.get_ticks_msec()
 	var y := HEAD_H + 2.0
 	for p in all:
 		var peer: int = p.peer
 		var col := co.color(peer)
-		var r := Rect2(5, y, W - 10, ROW_H - 3)
-		var look := Rect2(r.end.x - 58, r.position.y + 9, 25, 25)
-		var watch := Rect2(r.end.x - 29, r.position.y + 9, 25, 25)
+		var r := Rect2(0, y, W, ROW_H - 3)
+		var look := Rect2(r.end.x - 54, r.position.y + 10, 24, 24)
+		var watch := Rect2(r.end.x - 26, r.position.y + 10, 24, 24)
 		_rows.append([r, look, watch, peer])
 		var watching: bool = w.cam != null and w.cam.shadow == peer
 		var hot := r.has_point(_hover)
 		# he just pinged: his row flashes in his colour
 		var fl := 1.0 - clampf((now - int(co.flash.get(peer, -99999))) / 1400.0, 0.0, 1.0)
-		var bg := Color(1, 1, 1, 0.05) if hot else Color(0, 0, 0, 0)
+		var bg := UiKit.fa(UiKit.TEXT, 0.05) if hot else Color(0, 0, 0, 0)
 		if fl > 0.0:
 			bg = bg.lerp(Color(col.r, col.g, col.b, 0.22), fl)
 		if watching:
 			bg = Color(col.r, col.g, col.b, 0.12)
-		draw_style_box(UiKit.boxc(bg, 6, Color(col.r, col.g, col.b, 0.75) if watching else Color(0, 0, 0, 0), 1 if watching else 0, 0.0), r)
-		draw_rect(Rect2(r.position + Vector2(0, 7), Vector2(3, r.size.y - 14)), col)
+		if bg.a > 0.0:
+			draw_rect(r, bg)
+		draw_rect(Rect2(r.position, Vector2(2, r.size.y)), col)
+		UiKit.rule(self, Vector2(0, r.end.y + 0.5), Vector2(W, r.end.y + 0.5))
 		var idle: bool = p.idle >= 60
-		var bc := r.position + Vector2(22, r.size.y * 0.5)
-		draw_circle(bc, 14.5, Color(0, 0, 0, 0.45))
-		draw_circle(bc, 13.0, col if not idle else col.darkened(0.45))
+		# his initials on a square of his colour
+		var bc := r.position + Vector2(24, r.size.y * 0.5)
+		draw_rect(Rect2(bc - Vector2(12, 12), Vector2(24, 24)), col if not idle else col.darkened(0.45))
 		var ini := co.initials(peer)
-		var iw := UiKit.text_width(ini, 12, 700)
-		draw_string(UiKit.font(700), bc + Vector2(-iw * 0.5, 4.5), ini, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, HudCoop.INK)
-		var x0 := r.position.x + 44.0
+		var iw := UiKit.mono_w(ini, 12)
+		draw_string(UiKit.mono(500), bc + Vector2(-iw * 0.5, 4.5), ini, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, HudCoop.INK)
+		var x0 := r.position.x + 46.0
 		var nm := co.pname(peer)
 		var maxn := look.position.x - x0 - 8.0
-		UiKit.text(self, Vector2(x0, r.position.y + 17), nm, 13, UiKit.TEXT, 700)
+		UiKit.caps_at(self, Vector2(x0, r.position.y + 18), nm, 13, UiKit.TEXT)
 		var u: Array = units.get(peer, [0, 0])
 		var ut := ""
 		var pt := w.team_of_peer(peer)
@@ -202,33 +193,33 @@ func _draw() -> void:
 			# watching: both sides' commanders are listed, so say whose each is
 			ut = String(Defs.TEAM_NAMES[pt])
 		if int(u[0]) > 0:
-			ut += ("  ·  " if ut != "" else "") + "%d %s" % [int(u[0]), "squad" if int(u[0]) == 1 else "squads"]
+			ut += (" · " if ut != "" else "") + "%d SQ" % int(u[0])
 		if int(u[1]) > 0:
-			ut += ("  ·  " if ut != "" else "") + "%d %s" % [int(u[1]), "vehicle" if int(u[1]) == 1 else "vehicles"]
-		var nw := UiKit.text_width(nm, 13, 700)
-		if ut != "" and nw + 10.0 + UiKit.text_width(ut, 10, 600) < maxn:
-			UiKit.text(self, Vector2(x0 + nw + 10.0, r.position.y + 17), ut, 10, UiKit.DIM, 600)
-		var stt := _status(p, owner_of)
+			ut += (" · " if ut != "" else "") + "%d VEH" % int(u[1])
+		var nw := UiKit.caps_w(nm, 13)
+		if ut != "" and nw + 10.0 + UiKit.mono_w(ut.to_upper(), 10) < maxn:
+			UiKit.mono_at(self, Vector2(x0 + nw + 10.0, r.position.y + 18), ut.to_upper(), 10, UiKit.DIM)
+		var stt := _status(p)
 		var line: String = stt[0]
-		while line.length() > 4 and UiKit.text_width(line, 11, 600) > maxn:
+		while line.length() > 4 and UiKit.caps_w(line, 11) > maxn:
 			line = line.substr(0, line.length() - 2)
 		if line != String(stt[0]):
 			line = line.strip_edges() + "…"
-		UiKit.text(self, Vector2(x0, r.position.y + 34), line, 11, stt[1], 600)
+		UiKit.caps_at(self, Vector2(x0, r.position.y + 35), line, 11, stt[1])
 		_button(look, "look", col, look.has_point(_hover), false)
 		_button(watch, "watch", col, watch.has_point(_hover), watching)
 		y += ROW_H
 
 
 func _button(r: Rect2, kind: String, col: Color, hot: bool, on: bool) -> void:
-	var bg := Color(0.12, 0.13, 0.12, 0.9)
+	# square, a hairline round it; filled in his colour while it's on
 	if on:
-		bg = Color(col.r, col.g, col.b, 0.85)
+		draw_rect(r, Color(col.r, col.g, col.b, 0.85))
 	elif hot:
-		bg = Color(0.2, 0.21, 0.19, 0.95)
-	draw_style_box(UiKit.boxc(bg, 5, Color(col.r, col.g, col.b, 0.8) if (hot or on) else Color(1, 1, 1, 0.1), 1, 0.0), r)
+		draw_rect(r, UiKit.fa(UiKit.TEXT, 0.08))
+	draw_rect(r.grow(-0.5), Color(col.r, col.g, col.b, 0.8) if (hot or on) else UiKit.RULE2, false, 1.0)
 	var c := r.get_center()
-	var ink := HudCoop.INK if on else (Color(1, 1, 1) if hot else Color(0.85, 0.86, 0.82))
+	var ink := HudCoop.INK if on else (UiKit.TEXT if hot else UiKit.DIM)
 	if kind == "look":
 		# a viewfinder: corner brackets round a dot
 		var s := 6.5

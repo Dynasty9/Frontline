@@ -42,7 +42,7 @@ static func applies(v: Vehicle) -> bool:
 
 
 static func _save_order(v: Vehicle) -> void:
-	v.brain_resume = {"dest": v.path[v.path.size() - 1] if v.path_i < v.path.size() else Vector3.INF,
+	v.brain_resume = {"dest": v.path_destination if v.path_pending else (v.path[v.path.size() - 1] if v.path_i < v.path.size() else Vector3.INF),
 		"assault": v.assault, "assault_dest": v.assault_dest}
 
 

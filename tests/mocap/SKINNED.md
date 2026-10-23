@@ -2,8 +2,9 @@
 
 ## Current demo
 
-Latest recordings: `build/battle-materials.mp4` (28.07 seconds, live rifleman/tank battle) and `build/controller-grounded.mp4` (18 seconds, terrain movement/jump/reload/projectile death/reset). Both include rest-space and height-scaled retargeting, motion-aware landing and bounded contact release. The latest battle also includes the stationary-crouch cache, direct momentum sampling, separate 120 Hz physics / 60 Hz battle clocks, restored SWAT normal maps and mipmapped rifle textures. Both character rigs pass the terrain controller sequence and stride checks; the original-model viewer now exposes 56 installed clips and passes projectile/native-ragdoll/reset checks. Fresh contact sheets were inspected. Fresh localhost replication checks pass the latest motion changes, cover contacts, repeated frontal flinch, death and full-ragdoll framing. WAN latency/loss and final art quality remain unverified.
+Latest integration recording: `build/backstep-in-game-final.mp4` (8 seconds). A real server-controlled rifleman backs away from a wall, settles, and goes prone. The rendered regression measures 0.980 m retreat, 0.000093 m/s fully planted support drift and a 0.050 m maximum sampled joint step. Both character rigs also pass the isolated backstep fixture. Blocked rear paths and cancelled orders are covered without imported assets.
 
+The default battle clock remains 30 Hz. Opt-in skinned characters use 120 Hz physics while simulation remains 30 Hz. The active inspection camera now controls detail selection, and animation movement uses the interpolated rendered position to avoid stepping through false sideways poses when reversing. Earlier battle/controller recordings and measurements below are development history, not final validation of this merge. WAN latency/loss and final art quality remain unverified.
 Use `powershell -File tests/mocap/play_skinned.ps1 -Swat` for the in-game rifleman/tank
 sequence, or add `-Controller` for playable movement on terrain. `-Viewer -Swat` opens
 the animation, skeleton and projectile inspector. The military character is the local

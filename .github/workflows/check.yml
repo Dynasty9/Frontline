@@ -1,8 +1,9 @@
 name: Check
 
-# The game: every script compiles, and a few scenarios and a mission run
-# headless without a script error. The website and the matchmaker have their
-# own workflows (web.yml, matchmaker.yml).
+# The game: every script compiles, a few scenarios and a mission run headless
+# without a script error, and the tests in tests/ drive it through its test
+# port. The website and the matchmaker have their own workflows (web.yml,
+# matchmaker.yml).
 
 on:
   push:
@@ -17,6 +18,11 @@ jobs:
       GODOT_VERSION: 4.7.2
     steps:
       - uses: actions/checkout@v4
+
+      - name: Build numeric simulation extension
+        run: |
+          rustup toolchain install 1.94.0 --profile minimal
+          python3 tools/build_native.py
 
       - name: Cache Godot
         id: cache-godot
@@ -38,22 +44,73 @@ jobs:
           ~/godot/godot --headless --path . --import 2>&1 | tee import.log
           if grep -E "SCRIPT ERROR|Parse Error" import.log; then exit 1; fi
 
+      - name: Animation movement regressions (no licensed assets)
+        run: |
+          set -o pipefail
+          for scene in backstep_safety simulation_clock; do
+            timeout 120 ~/godot/godot --headless --path . --quit-after 600 tests/mocap/${scene}.tscn 2>&1 | tee ${scene}.log
+            if grep -E "SCRIPT ERROR|Parse Error|ERROR:" ${scene}.log || ! grep -q "PASS" ${scene}.log; then exit 1; fi
+          done
+          timeout 180 ~/godot/godot --headless --path . --fixed-fps 30 tests/mocap/backstep_game.tscn -- --scenario=motion --seed=3 --no-stun --quit-after=20 2>&1 | tee backstep_game.log
+          if grep -E "SCRIPT ERROR|Parse Error|ERROR:" backstep_game.log || ! grep -q "GAME BACKSTEP.*pass=true" backstep_game.log; then exit 1; fi
+
+      - name: Simulation scaling regressions
+        run: |
+          set -o pipefail
+          for test in structure_index perception_index navigation_budget client_loading update_sidecars terrain_updates squad_assessment map_placement snapshot_index terrain_cover soldier_batch structure_view grass_stream; do
+            timeout 120 ~/godot/godot --headless --path . res://tests/${test}_test.tscn 2>&1 | tee ${test}.log
+            if grep -E "SCRIPT ERROR|Parse Error|failures=[1-9]" ${test}.log; then exit 1; fi
+          done
+
+      # Installing an update (one executable, or a Mac's app, which is a folder)
+      # and reading frontline:// links the way each system hands them over, in
+      # a scratch folder: the Mac's side of the updater gets checked here too
+      - name: Platform test (updates and links)
+        run: |
+          set -o pipefail
+          timeout 60 ~/godot/godot --headless --path . -- --platform-test 2>&1 | tee run_platform.log
+          if grep -q "SCRIPT ERROR" run_platform.log || ! grep -qE "^PLATFORMTEST [0-9]+/[0-9]+ passed" run_platform.log; then exit 1; fi
+
+      # Each run steps the game exactly as it plays (--fixed-fps 30: one 1/30 s
+      # tick a frame, as fast as the runner goes) and fails by its exit code: a
+      # script error anywhere, or a run that never finishes. Errors while the
+      # autoloads start come before the game counts them, hence the grep too.
       - name: Smoke test (headless scenarios)
         run: |
-          port=7901
+          set -o pipefail
+          fail=0
           for s in attack naval sling; do
             echo "::group::scenario $s"
-            timeout 240 ~/godot/godot --headless --path . -- --scenario=$s --stats=60 --quit-after=40 --port=$port 2>&1 | tee run_$s.log || true
-            port=$((port + 1))
+            code=0
+            timeout 240 ~/godot/godot --headless --fixed-fps 30 --path . -- --scenario=$s --seed=1 --stats=20 --quit-after=40 2>&1 | tee run_$s.log || code=$?
             echo "::endgroup::"
-            if grep -E "SCRIPT ERROR" run_$s.log; then echo "::error::script error in scenario $s"; exit 1; fi
-            if ! grep -q "FINAL" run_$s.log; then echo "::error::scenario $s didn't finish"; exit 1; fi
+            if [ $code -ne 0 ] || grep -q "SCRIPT ERROR" run_$s.log || ! grep -q "^FINAL" run_$s.log; then
+              echo "::error::scenario $s failed (exit code $code)"
+              grep -E "SCRIPT ERROR|TESTRUN" run_$s.log | head -20
+              fail=1
+            fi
           done
+          exit $fail
 
       - name: Smoke test (a mission, playing itself)
         run: |
+          set -o pipefail
           # the 1 km map takes a while to lay out on a CI runner; the mission's
           # first minute (the sling lift) is enough to catch a broken script
-          timeout 420 ~/godot/godot --headless --path . -- --mission=skyhook --stats=60 --quit-after=60 --port=7920 2>&1 | tee run_mission.log || true
-          if grep -E "SCRIPT ERROR" run_mission.log; then echo "::error::script error in the mission"; exit 1; fi
-          if ! grep -q "FINAL" run_mission.log; then echo "::error::the mission didn't finish"; exit 1; fi
+          code=0
+          timeout 420 ~/godot/godot --headless --fixed-fps 30 --path . -- --mission=skyhook --stats=30 --quit-after=60 2>&1 | tee run_mission.log || code=$?
+          if [ $code -ne 0 ] || grep -q "SCRIPT ERROR" run_mission.log || ! grep -q "^FINAL" run_mission.log; then
+            echo "::error::the mission failed (exit code $code)"
+            grep -E "SCRIPT ERROR|TESTRUN" run_mission.log | head -20
+            exit 1
+          fi
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+
+      # tests/: each starts headless games and drives them through the test port
+      # (scripts/test/test_port.gd): orders, exact steps, questions, fingerprints
+      - name: Tests (through the test port)
+        working-directory: tests
+        run: GODOT=~/godot/godot node --test

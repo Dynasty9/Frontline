@@ -5,6 +5,9 @@ extends Node
 ## startup, and a sequencer plays them from the scores below through a hall
 ## reverb on the Music bus.
 ##
+## Without worker threads (the browser build) it renders one sample a frame
+## instead, so the title and the menu keep moving while it does.
+##
 ## The menu plays the theme. A battle plays a score in layers that come and go
 ## with the fighting (Atmosphere reports how hot it is): a quiet bed of strings
 ## and a few piano notes while it's calm, then a driving low pulse, drums and
@@ -46,6 +49,7 @@ var heat := 0.0  # how hot the fighting is, 0..1 (Atmosphere sets it)
 
 var _task := -1
 var _rendered := {}  # filled by the worker thread
+var _to_render: Array = []  # [inst, note] still to render, without threads
 var _samples := {}  # inst -> [[hz, AudioStreamWAV], ...]
 var _ready_ok := false
 var _synth_rng := RandomNumberGenerator.new()  # the worker thread's own
@@ -110,7 +114,13 @@ func _ready() -> void:
 	_rng.randomize()
 	_synth_rng.seed = 1944
 	_last_us = Time.get_ticks_usec()
-	_task = WorkerThreadPool.add_task(_render_all, false, "Music synthesis")
+	if OS.has_feature("nothreads"):
+		for inst in INSTRUMENTS:
+			_rendered[inst] = []
+			for nn in INSTRUMENTS[inst][1]:
+				_to_render.append([inst, nn])
+	else:
+		_task = WorkerThreadPool.add_task(_render_all, false, "Music synthesis")
 
 
 func _exit_tree() -> void:
@@ -174,9 +184,16 @@ func _process(delta: float) -> void:
 	var wall := (now - _last_us) / 1000000.0
 	_last_us = now
 	if not _ready_ok:
-		if _task >= 0 and WorkerThreadPool.is_task_completed(_task):
+		var done := false
+		if not _to_render.is_empty():
+			var e: Array = _to_render.pop_front()
+			(_rendered[e[0]] as Array).append(_render(String(e[0]), _midi(String(e[1]))))
+			done = _to_render.is_empty()
+		elif _task >= 0 and WorkerThreadPool.is_task_completed(_task):
 			WorkerThreadPool.wait_for_task_completion(_task)
 			_task = -1
+			done = true
+		if done:
 			_samples = _rendered
 			_ready_ok = true
 			if enabled and _want != "":

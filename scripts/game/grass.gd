@@ -5,7 +5,7 @@ extends Node3D
 ## progressively (a few chunks per frame) when the map or settings change.
 
 const CHUNK := 32.0
-const HALF := MapDims.HALF
+var HALF := MapDims.HALF
 
 var atmo: Atmosphere
 var mat: ShaderMaterial
@@ -22,6 +22,8 @@ var _queue: Array = []
 var _rebuild_t := -1.0
 var _blocked := PackedByteArray()
 var _built := {}  # Vector2i -> Array of nodes
+var _center := Vector2i(999999, 999999)
+const REACH := 7  # beyond the bushes' 170 m fade, including a chunk and pan margin
 
 
 func _ready() -> void:
@@ -45,7 +47,7 @@ func _ready() -> void:
 	request_rebuild(1.2)
 
 
-func set_deform(t: Texture2D) -> void:
+func set_deform(t: Texture2DArray) -> void:
 	mat.set_shader_parameter("deform_tex", t)
 	bush_mat.set_shader_parameter("deform_tex", t)
 
@@ -97,69 +99,142 @@ func _view_process(dt: float) -> void:
 		_rebuild_t -= dt
 		if _rebuild_t <= 0.0:
 			_start_rebuild()
+	if _task >= 0:
+		if not WorkerThreadPool.is_task_completed(_task):
+			return  # (the grass as it was stays till the new is laid out)
+		WorkerThreadPool.wait_for_task_completion(_task)
+		_task = -1
+		_lay_out()
+	if level == 0 or _blocked.is_empty():
+		return
+	var camera := atmo.world.cam
+	_stream(camera.cam.global_position if camera else Vector3.ZERO)
+	var started := Time.get_ticks_usec()
 	var n := 0
-	while not _queue.is_empty() and n < 12:
+	while not _queue.is_empty() and n < 2 and Time.get_ticks_usec() - started < 1000:
 		_build_chunk(_queue.pop_front())
 		n += 1
 
 
+func _exit_tree() -> void:
+	if _task >= 0:
+		WorkerThreadPool.wait_for_task_completion(_task)  # nothing may be left running on a worker
+		_task = -1
+
+
 func _start_rebuild() -> void:
 	level = int(Settings.get_v("grass"))
+	if _task >= 0:
+		WorkerThreadPool.wait_for_task_completion(_task)  # (a rebuild already on its way: redone from now)
+		_task = -1
+	if level == 0:
+		_job = null
+		_clear()
+		return
+	_job = _blocked_job()
+	if OS.has_feature("nothreads"):
+		_job.run()
+		_lay_out()
+	else:
+		_task = WorkerThreadPool.add_task(_job.run, false, "Grass: bare ground")
+
+
+## Where grass can't grow is worked out: the old chunks go and the new ones
+## queue up, the nearest the camera first.
+func _lay_out() -> void:
+	_blocked = _job.blocked
+	_job = null
+	_clear()
+
+
+func _stream(pos: Vector3) -> void:
+	var center := Vector2i(floori(pos.x / CHUNK), floori(pos.z / CHUNK))
+	if center == _center:
+		return
+	_center = center
+	_queue.clear()
+	for key: Vector2i in _built.keys():
+		if absi(key.x - center.x) > REACH + 2 or absi(key.y - center.y) > REACH + 2:
+			for node in _built[key]:
+				node.queue_free()
+			_built.erase(key)
+	var nc := int(HALF / CHUNK)
+	for x in range(maxi(-nc, center.x - REACH), mini(nc, center.x + REACH + 1)):
+		for z in range(maxi(-nc, center.y - REACH), mini(nc, center.y + REACH + 1)):
+			var key := Vector2i(x, z)
+			if not _built.has(key):
+				_queue.append(key)
+	_queue.sort_custom(func(a: Vector2i, b: Vector2i): return (a - center).length_squared() < (b - center).length_squared())
+
+
+func _clear() -> void:
 	for k in _built:
 		for node in _built[k]:
 			node.queue_free()
 	_built.clear()
 	_queue.clear()
-	if level == 0:
-		return
-	_make_blocked()
-	var nc := int(HALF / CHUNK)
-	for cx in range(-nc, nc):
-		for cz in range(-nc, nc):
-			_queue.append(Vector2i(cx, cz))
-	# build the chunks nearest the camera first
-	var cam: Vector3 = atmo.world.cam.focus_pos if atmo.world.cam else Vector3.ZERO
-	var hc := CHUNK * 0.5
-	_queue.sort_custom(func(a, b): return Vector2(a.x * CHUNK + hc - cam.x, a.y * CHUNK + hc - cam.z).length() < Vector2(b.x * CHUNK + hc - cam.x, b.y * CHUNK + hc - cam.z).length())
+	_center = Vector2i(999999, 999999)
 
 
-## 1 m grid of places grass must not grow: building floors, walls, roads.
-func _make_blocked() -> void:
-	_blocked = PackedByteArray()
-	_blocked.resize(MapDims.N * MapDims.N)
+var _job: BlockedJob = null  # where grass can't grow, being worked out on a worker thread
+var _task := -1
+
+
+## Where grass can't grow, worked out from what's on the map now: the
+## buildings, pavements and roads are copied out here (a few thousand), the
+## grid is filled in on a worker thread (a million cells, a quarter of a
+## second and more of script that held up a frame).
+func _blocked_job() -> BlockedJob:
+	var j := BlockedJob.new()
 	var w := atmo.world
 	for st in w.structures:
 		if st.gone:
 			continue
 		var big: bool = st.skind in ["floor", "fob", "barracks", "factory", "medic_tent", "research", "depot", "helipad", "bunker", "mortar_pit", "hmg_nest", "mg_nest", "at_post", "tunnel", "house_wall", "tall_wall", "concrete_wall", "hesco", "barricade", "ammo_cache", "wreck", "car", "crates", "bridge", "town"]
-		if not big:
-			continue
-		var h: Vector2 = st.foot + Vector2(0.4, 0.4)
-		var r := h.length()
-		for x in range(floori(st.position.x - r), floori(st.position.x + r) + 1):
-			for z in range(floori(st.position.z - r), floori(st.position.z + r) + 1):
-				if Defs.point_in_obb(Vector2(x + 0.5, z + 0.5), Vector2(st.position.x, st.position.z), h, st.yaw):
-					_mark(x, z)
+		if big:
+			j.boxes.append([Vector2(st.position.x, st.position.z), st.foot + Vector2(0.4, 0.4), float(st.yaw)])
 	# sidewalks, squares, gardens and the like
 	for e in w.decor:
 		if not String(e[0]) in ["walk", "pave", "junction", "soft", "lot_pave", "drive", "path", "garden"]:
 			continue
 		var s3: Vector3 = e[3]
-		var h3 := Vector2(s3.x * 0.5 + 0.2, s3.z * 0.5 + 0.2)
 		var c3: Vector3 = e[1]
-		var r3 := h3.length()
-		for x in range(floori(c3.x - r3), floori(c3.x + r3) + 1):
-			for z in range(floori(c3.z - r3), floori(c3.z + r3) + 1):
-				if Defs.point_in_obb(Vector2(x + 0.5, z + 0.5), Vector2(c3.x, c3.z), h3, float(e[2])):
-					_mark(x, z)
+		j.boxes.append([Vector2(c3.x, c3.z), Vector2(s3.x * 0.5 + 0.2, s3.z * 0.5 + 0.2), float(e[2])])
 	# the water, and the sand and mud along its shores
 	if w.water and w.water.mask:
-		var md: PackedByteArray = w.water.mask.get_data()
-		for i in MapDims.N * MapDims.N:
-			if md[i * 4 + 3] > 0 or md[i * 4 + 1] > 110:
-				_blocked[i] = 1
+		j.water = w.water.mask.get_data()
 	for t in 3:
-		for poly in w.roads[t]:
+		j.roads.append_array(w.roads[t])
+	return j
+
+
+## 1 m grid of places grass must not grow: building floors, walls, roads.
+class BlockedJob:
+	var boxes: Array = []  # [centre, half size, yaw] (x, z)
+	var water := PackedByteArray()  # the water mask's pixels (RGBA8)
+	var roads: Array = []  # PackedVector3Array polylines
+	var blocked := PackedByteArray()
+
+	func run() -> void:
+		blocked.resize(MapDims.N * MapDims.N)
+		for b in boxes:
+			var c: Vector2 = b[0]
+			var h: Vector2 = b[1]
+			var yaw: float = b[2]
+			var r := h.length()
+			# (Defs.point_in_obb)
+			var a0 := Vector2(cos(yaw), -sin(yaw))
+			var a1 := Vector2(sin(yaw), cos(yaw))
+			for x in range(floori(c.x - r), floori(c.x + r) + 1):
+				for z in range(floori(c.y - r), floori(c.y + r) + 1):
+					var d := Vector2(x + 0.5, z + 0.5) - c
+					if absf(d.dot(a0)) <= h.x and absf(d.dot(a1)) <= h.y:
+						_mark(x, z)
+		if water.size() == MapDims.N * MapDims.N * 4:
+			for i in MapDims.N * MapDims.N:
+				if water[i * 4 + 3] > 0 or water[i * 4 + 1] > 110:
+					blocked[i] = 1
+		for poly in roads:
 			var pts: PackedVector3Array = poly
 			for i in range(pts.size() - 1):
 				var a := pts[i]
@@ -172,12 +247,17 @@ func _make_blocked() -> void:
 							if dx * dx + dz * dz <= 8:
 								_mark(floori(p.x) + dx, floori(p.z) + dz)
 
+	func _mark(x: int, z: int) -> void:
+		var ix := x + MapDims.N / 2
+		var iz := z + MapDims.N / 2
+		if ix >= 0 and iz >= 0 and ix < MapDims.N and iz < MapDims.N:
+			blocked[iz * MapDims.N + ix] = 1
 
-func _mark(x: int, z: int) -> void:
-	var ix := x + MapDims.N / 2
-	var iz := z + MapDims.N / 2
-	if ix >= 0 and iz >= 0 and ix < MapDims.N and iz < MapDims.N:
-		_blocked[iz * MapDims.N + ix] = 1
+
+## Bare ground, where no grass grows (or the grass is off): roads, pavements,
+## floors, the water's edge. Before the grass is laid out, nowhere is.
+func bare(p: Vector3) -> bool:
+	return level == 0 or (not _blocked.is_empty() and _is_blocked(p))
 
 
 func _is_blocked(p: Vector3) -> bool:
@@ -341,7 +421,8 @@ uniform vec3 dry_col : source_color = vec3(0.5, 0.45, 0.24);
 uniform float wind = 0.11;
 uniform sampler2D scar : hint_default_black, filter_linear, repeat_disable;
 uniform sampler2D trench_mask : hint_default_black, filter_linear, repeat_disable;
-uniform sampler2D deform_tex : hint_default_black, filter_linear, repeat_disable;
+uniform sampler2DArray deform_tex : filter_linear, repeat_disable;
+// TERRAIN_TEXTURE_HELPER
 
 varying float h;
 varying float g;
@@ -362,7 +443,7 @@ void vertex() {
 	VERTEX.y *= 1.0 - burnt * 0.85;
 	VERTEX.xz *= 1.0 + burnt * 0.4;
 	// stand on the ground as it is now (shell holes, rims)
-	VERTEX.y += textureLod(deform_tex, (o.xz + __MAP_HALF__) / __MAP_SIZE__, 0.0).r / max(0.05, length(MODEL_MATRIX[1].xyz));
+	VERTEX.y += terrain_height(deform_tex, (o.xz + __MAP_HALF__) / __MAP_SIZE__) / max(0.05, length(MODEL_MATRIX[1].xyz));
 	float t = TIME * 1.7 + o.x * 0.21 + o.z * 0.13;
 	float gust = 0.6 + 0.4 * sin(TIME * 0.35 + o.x * 0.02 + o.z * 0.015);
 	float sway = (sin(t) + 0.45 * sin(t * 2.7 + 1.3)) * wind * gust * h * h;
@@ -397,12 +478,13 @@ varying vec3 lp;
 varying float rnd;
 float hash(vec3 p) { return fract(sin(dot(p, vec3(127.1, 311.7, 74.7))) * 43758.5453); }
 uniform sampler2D trench_mask : hint_default_black, filter_linear, repeat_disable;
-uniform sampler2D deform_tex : hint_default_black, filter_linear, repeat_disable;
+uniform sampler2DArray deform_tex : filter_linear, repeat_disable;
+// TERRAIN_TEXTURE_HELPER
 void vertex() {
 	if (textureLod(trench_mask, (MODEL_MATRIX[3].xz + __MAP_HALF__) / __MAP_SIZE__, 0.0).r > 0.3) {
 		VERTEX *= 0.0;
 	}
-	float gd = textureLod(deform_tex, (MODEL_MATRIX[3].xz + __MAP_HALF__) / __MAP_SIZE__, 0.0).r;
+	float gd = terrain_height(deform_tex, (MODEL_MATRIX[3].xz + __MAP_HALF__) / __MAP_SIZE__);
 	if (gd < -0.12) {
 		VERTEX *= 0.0;  // blown away
 	}

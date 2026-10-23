@@ -150,7 +150,7 @@ static func _clip(p: PackedVector2Array, f: Array, nrm: Vector2, c: float, cut: 
 ## A convex side profile (z, y) extruded from x0 to x1, its outer edges (flag
 ## true) chamfered by ch at both ends. rnd [zmin, zmax, front length, front
 ## inset, rear length, rear inset] rounds the corners off in plan.
-static func _xprism(k: VehicleModels, parent: Node3D, key: String, p: PackedVector2Array, f: Array, x0: float, x1: float, ch: float, mat: String, col = null, rnd: Array = []) -> MeshInstance3D:
+static func _xprism(k: VehicleModels, parent: Node3D, key: String, p: PackedVector2Array, f: Array, x0: float, x1: float, ch: float, mat: String, col = null, rnd: Array = []) -> Variant:
 	var d := []
 	for fl in f:
 		d.append(ch if fl else 0.0)
@@ -265,7 +265,7 @@ static func _flare(k: VehicleModels, parent: Node3D, key: String, zc: float, yc:
 
 ## A loft through plan outlines (x, z pairs, convex, same point count) at the
 ## given heights, the top edge chamfered by ch. Returns the mesh instance.
-static func _yloft(k: VehicleModels, parent: Node3D, key: String, outlines: Array, ys: Array, ch: float, mat: String, col = null, pos := Vector3.ZERO) -> MeshInstance3D:
+static func _yloft(k: VehicleModels, parent: Node3D, key: String, outlines: Array, ys: Array, ch: float, mat: String, col = null, pos := Vector3.ZERO) -> Variant:
 	var rings := []
 	var n := outlines.size()
 	for i in n:
@@ -291,7 +291,7 @@ static func _yloft(k: VehicleModels, parent: Node3D, key: String, outlines: Arra
 ## A thin plate laid on a face given by its four corners (in order round it):
 ## the part [u0, u1] x [v0, v1] of it (u along c0-c1, v from c0-c1 to c3-c2),
 ## `out` proud of the face and `thick` thick, along the normal away from `inside`.
-static func _pane(k: VehicleModels, parent: Node3D, key: String, c: Array, inside: Vector3, u0: float, u1: float, v0: float, v1: float, out: float, thick: float, mat: String, col = null) -> MeshInstance3D:
+static func _pane(k: VehicleModels, parent: Node3D, key: String, c: Array, inside: Vector3, u0: float, u1: float, v0: float, v1: float, out: float, thick: float, mat: String, col = null) -> Variant:
 	var c0: Vector3 = c[0]
 	var c1: Vector3 = c[1]
 	var c2: Vector3 = c[2]
@@ -330,26 +330,26 @@ static func _zring(p: PackedVector2Array, z0: float, slope: float, y0: float) ->
 
 
 ## A box from a to b (w across, t thick), its width kept as level as it goes.
-static func _strut(k: VehicleModels, parent: Node3D, a: Vector3, b: Vector3, w: float, t: float, mat: String, col = null, shadow := true) -> MeshInstance3D:
-	var mi := k._add(parent, Res.box(Vector3(w, (b - a).length(), t)), mat, col, (a + b) * 0.5, Vector3.ZERO, Vector3.ONE, shadow)
-	mi.basis = _along(b - a)
+static func _strut(k: VehicleModels, parent: Node3D, a: Vector3, b: Vector3, w: float, t: float, mat: String, col = null, shadow := true) -> Variant:
+	var mi: Variant = k._add(parent, Res.box(Vector3(w, (b - a).length(), t)), mat, col, (a + b) * 0.5, Vector3.ZERO, Vector3.ONE, shadow)
+	k._turn(mi, _along(b - a))
 	return mi
 
 
 ## A box from a to b (its length), h tall about `up`, t thick: lamps and
 ## panels laid along a curving surface.
-static func _slab(k: VehicleModels, parent: Node3D, a: Vector3, b: Vector3, h: float, t: float, mat: String, col = null, up := Vector3.UP, shadow := false) -> MeshInstance3D:
-	var mi := k._add(parent, Res.box(Vector3((b - a).length(), h, t)), mat, col, (a + b) * 0.5, Vector3.ZERO, Vector3.ONE, shadow)
+static func _slab(k: VehicleModels, parent: Node3D, a: Vector3, b: Vector3, h: float, t: float, mat: String, col = null, up := Vector3.UP, shadow := false) -> Variant:
+	var mi: Variant = k._add(parent, Res.box(Vector3((b - a).length(), h, t)), mat, col, (a + b) * 0.5, Vector3.ZERO, Vector3.ONE, shadow)
 	var x := (b - a).normalized()
 	var z := x.cross(up).normalized()
-	mi.basis = Basis(x, z.cross(x), z)
+	k._turn(mi, Basis(x, z.cross(x), z))
 	return mi
 
 
 ## A tube from a to b.
-static func _rod(k: VehicleModels, parent: Node3D, a: Vector3, b: Vector3, r: float, mat: String, col = null, segs := 8, shadow := true) -> MeshInstance3D:
-	var mi := k._add(parent, Res.cyl(r, r, (b - a).length(), segs), mat, col, (a + b) * 0.5, Vector3.ZERO, Vector3.ONE, shadow)
-	mi.basis = _along(b - a)
+static func _rod(k: VehicleModels, parent: Node3D, a: Vector3, b: Vector3, r: float, mat: String, col = null, segs := 8, shadow := true) -> Variant:
+	var mi: Variant = k._add(parent, Res.cyl(r, r, (b - a).length(), segs), mat, col, (a + b) * 0.5, Vector3.ZERO, Vector3.ONE, shadow)
+	k._turn(mi, _along(b - a))
 	return mi
 
 
@@ -1548,8 +1548,8 @@ static func _tractor(k: VehicleModels, seed: int) -> void:
 		for i in 22:
 			var a := TAU * i / 22.0
 			for side in [-1.0, 1.0]:
-				var lug := k._add(w, Res.box(Vector3(0.24, 0.05, 0.07)), "rubber", null, Vector3(side * 0.11, sin(a) * (rr + 0.01), cos(a) * (rr + 0.01)))
-				lug.basis = Basis(Vector3.RIGHT, -a) * Basis(Vector3.UP, side * 0.45)
+				var lug: Variant = k._add(w, Res.box(Vector3(0.24, 0.05, 0.07)), "rubber", null, Vector3(side * 0.11, sin(a) * (rr + 0.01), cos(a) * (rr + 0.01)))
+				k._turn(lug, Basis(Vector3.RIGHT, -a) * Basis(Vector3.UP, side * 0.45))
 		# the mudguards: a wide curved guard and its inner wall
 		_flare(k, m, "civ_trc_rw%d" % int(s), zr, ry, rr + 0.1, rr + 0.13, s * 0.84 - 0.27, s * 0.84 + 0.27, 0.12, PI - 0.12, "paint", red, 8)
 		var x0 := 0.58 if s > 0 else -0.62

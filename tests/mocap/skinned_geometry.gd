@@ -2,6 +2,9 @@ extends "res://scripts/main.gd"
 
 var frames := 0
 
+func _ready() -> void:
+	super._ready()
+
 func _process(dt: float) -> void:
 	super._process(dt)
 	if not is_instance_valid(world) or world.time < 0.2: return
@@ -10,7 +13,7 @@ func _process(dt: float) -> void:
 	var native := 0
 	var procedural := 0
 	for unit in world.soldiers:
-		var model: SoldierModel = unit.model
+		var model: Node3D = unit.model
 		if model == null: continue
 		if model.skinned == null:
 			assert(not model.root.find_children("*", "MeshInstance3D", true, false).is_empty(), "Procedural soldier lost its geometry")

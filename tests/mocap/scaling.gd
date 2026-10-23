@@ -13,8 +13,11 @@ var pose_times := {}
 var pose_modes := {"locomotion":0.0, "prone":0.0, "fallback":0.0}
 var fallback_states := {}
 
+var soldier_script: Script
+
 func _ready() -> void:
 	super._ready()
+	soldier_script = GameScripts.load_script("res://scripts/game/soldier.gd")
 	for child in get_children():
 		if child.get_script() == preload("res://scripts/ui/perf_overlay.gd"): overlay = child
 	assert(overlay != null)
@@ -42,7 +45,7 @@ func _process(dt: float) -> void:
 	var updated := 0
 	for man in world.soldiers:
 		if man.model == null or man.model.rifle_driver == null: continue
-		if man.life == Soldier.Life.ALIVE:
+		if man.life == soldier_script.Life.ALIVE:
 			var mode := "locomotion" if man.model._native_locomotion else ("prone" if man.model._native_prone else "fallback")
 			pose_modes[mode] += 1.0
 			if mode == "fallback":
@@ -66,6 +69,6 @@ func _process(dt: float) -> void:
 		for mode in pose_modes: pose_modes[mode] /= frames.size()
 		print("SCALING mean_live_pose_modes=", pose_modes)
 		for state in fallback_states:
-			print("SCALING fallback ", Soldier.Post.keys()[int(state) / 100], "/", Soldier.Act.keys()[int(state) % 100], " mean=", float(fallback_states[state]) / frames.size())
+			print("SCALING fallback ", soldier_script.Post.keys()[int(state) / 100], "/", soldier_script.Act.keys()[int(state) % 100], " mean=", float(fallback_states[state]) / frames.size())
 		for key in view_ms: view_ms[key] /= frames.size()
 		print("SCALING mean_view_ms=", view_ms, " render_cpu_ms=", render_cpu_ms / frames.size(), " render_gpu_ms=", render_gpu_ms / frames.size())

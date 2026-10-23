@@ -1,5 +1,8 @@
 extends "res://scripts/main.gd"
 
+func _ready() -> void:
+	super._ready()
+
 func _process(dt: float) -> void:
 	super._process(dt)
 	if not is_instance_valid(world): return

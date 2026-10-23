@@ -5,7 +5,11 @@ extends Node3D
 
 var world: World
 var eid := 0
-var team := -1
+var team := -1:
+	set(value):
+		team = value
+		if world != null and self is Structure:
+			world.refresh_owned_structure(self)
 var owner_peer := 0
 var hp := 100.0
 var max_hp := 100.0
@@ -13,13 +17,23 @@ var srv := false
 var gone := false
 var vis_mask := 0
 var seen_mask := 0
-var net_dirty := true
+var net_dirty := true:
+	set(value):
+		net_dirty = value
+		if value and world != null and self is Structure:
+			world.mark_static_dirty(self)
 var resend_t := 0.0
 var net_pos := Vector3.ZERO
 var net_yaw := 0.0
 var net_init := false
 var selected := false
 var hit_by: Array = []  # (server) the last enemy to hurt it: [owner, team, unit, soldier eid] (see BattleStats)
+
+
+func _ready() -> void:
+	# Entity frame callbacks only draw; authority advances them through sim().
+	if world != null and not world.has_view:
+		set_process(false)
 
 
 func ekind() -> String:
@@ -97,7 +111,7 @@ func visible_to_team(t: int) -> bool:
 
 
 # --- smooth motion on the host -------------------------------------------------------
-# Battle updates run at 60 Hz independently of the smaller physics steps.
+# Battle updates run at 30 Hz independently of the smaller physics steps.
 # The host draws between its last two battle transforms, including physics
 # ticks between battle updates. Clients smooth the network stream instead.
 var _ip_a := Transform3D.IDENTITY
@@ -124,11 +138,14 @@ func ip_offset() -> Transform3D:
 func net_smooth(dt: float) -> void:
 	if not net_init:
 		return
-	if position.distance_to(net_pos) > 8.0:
-		position = net_pos
-	else:
-		position = position.lerp(net_pos, 1.0 - exp(-dt * 14.0))
-	rotation.y = lerp_angle(rotation.y, net_yaw, 1.0 - exp(-dt * 14.0))
+	var next_pos := net_pos if position.distance_to(net_pos) > 8.0 else position.lerp(net_pos, 1.0 - exp(-dt * 14.0))
+	var next_rotation := rotation
+	next_rotation.y = lerp_angle(rotation.y, net_yaw, 1.0 - exp(-dt * 14.0))
+	# Unchanged transforms still dirty every child model in the scene tree.
+	if next_pos != position:
+		position = next_pos
+	if next_rotation != rotation:
+		rotation = next_rotation
 
 
 static func put_v3(b: StreamPeerBuffer, p: Vector3) -> void:

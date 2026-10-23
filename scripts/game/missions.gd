@@ -6,50 +6,8 @@ extends RefCounted
 ## same) and placed by its features - the river's bridges, the villages, the
 ## harbour - rather than by coordinates, so it still works if the map changes.
 ## MissionDirector runs them; this is the content: who is where, what the
-## objectives are, and what happens as they're met.
-
-const LIST := [
-	{"key": "bridgehead", "title": "Bridgehead", "op": "Operation Broken Crossing", "side": 0, "seed": 1, "mood": "dawn", "mins": 5,
-		"blurb": "Clear a riverside village, seize its bridge and hold it against the counterattack.",
-		"force": "Two rifle squads, an MG team, an AT team and an AMV-7 Marshall",
-		"area": "A farming village on the river, and its bridge",
-		"brief": "Dawn. Rebel fighters hold the village on our bank of the river, and the bridge beyond it. Clear the village house by house and take the bridge before they can blow it. Then hold it: they will come back across hard, with armour, before our tanks can get up the lane. 155 mm artillery is on call."},
-	{"key": "beachhead", "title": "Beachhead", "op": "Operation Iron Tide", "side": 0, "seed": 2, "mood": "golden", "mins": 5,
-		"blurb": "Land from the sea, knock out the harbour's anti-aircraft guns and take the harbour.",
-		"force": "Three RHIBs (two rifle squads, an MG team and an AT team) and a Mk VI patrol ship",
-		"area": "The coast and the fishing harbour",
-		"brief": "Two anti-aircraft trucks guard the harbour, and until they are gone no helicopter can get near the coast. Their twin 23 mm guns will cut infantry to pieces in the open. Run the RHIBs onto the beach south of the harbour, then destroy the guns: with the patrol ship's guns from the water, the AT team, or the one artillery fire mission you have. Then clear the harbour for the battalion landing behind you. Expect boats."},
-	{"key": "skyhook", "title": "Sky Hook", "op": "Operation Long Lantern", "side": 0, "seed": 4, "mood": "overcast", "mins": 5,
-		"blurb": "Fly a tank destroyer to a cut-off outpost on a helicopter's sling, then stop the armour coming for it.",
-		"force": "A CH-49 Mohawk, an AWC Nyx anti-tank vehicle and the outpost's garrison",
-		"area": "The river, and Outpost Kilo on the far bank",
-		"brief": "Outpost Kilo, across the river, reports an armoured column forming to the north, and it has nothing that can stop a BTR. The bridge is wired with charges. Hook the Nyx under the Mohawk (select the helicopter, right-click the Nyx), fly it over the river and set it down at Kilo (right-click the ground there), then hold the outpost until the column is broken."},
-	{"key": "ambush", "title": "Ambush Alley", "op": "Operation Black Harvest", "side": 1, "seed": 3, "mood": "dusk", "mins": 5,
-		"blurb": "As the Rebels: ambush a Coalition convoy on a country lane, then vanish before their reaction force arrives.",
-		"force": "A fighter cell, two RPG teams, a PKM team, and an IED in the lane",
-		"area": "A country lane between a village and the main road",
-		"brief": "At dusk a Coalition convoy will leave the village and run down the lane to the main road. There is an IED dug into the lane. Get into the woods above it before the convoy moves, let the IED open the ambush, and destroy the convoy. Then break contact and get back to the rally point: their quick reaction force, helicopters and all, will be on the spot within minutes."},
-	{"key": "kingpin", "title": "Kingpin", "op": "Operation Silent Gate", "side": 0, "seed": 5, "mood": "night", "mins": 5,
-		"blurb": "A night raid into the town: break through a checkpoint, take down a Rebel commander and get out.",
-		"force": "Two rifle squads, an MG team and two Hunter HMGs",
-		"area": "The town, at night",
-		"brief": "A Rebel commander is spending the night in a house in the town, behind a checkpoint on the main street. Go in on foot, clear the checkpoint (it has RPGs: keep the Hunters back until it's down), breach the house and kill or capture him. Once he is down every Rebel in town will come for you: get back to the Hunters before they cut the road. A Greyhawk drone comes on station two minutes in."},
-	{"key": "survey", "title": "Survey", "op": "Survey", "side": 0, "seed": 1, "mood": "day", "mins": 1, "hidden": true,
-		"blurb": "", "force": "", "area": "", "brief": ""},
-]
-
-
-static func find(key: String) -> Dictionary:
-	for m in LIST:
-		if m.key == key:
-			return m
-	return LIST[LIST.size() - 1]
-
-
-## The missions the menu offers.
-static func playable() -> Array:
-	return LIST.filter(func(m): return not m.get("hidden", false))
-
+## objectives are, and what happens as they're met. The catalogue, what the
+## menu says about each, is MissionList.
 
 ## The map's features, for placing a mission: the town, the villages, the
 ## bridges over the river, the harbour, the coast and the river itself.
@@ -533,10 +491,21 @@ func _drive_beachhead(d: MissionDirector) -> void:
 			var tries := int(_staged.get("rhib_try%d" % i, 0))
 			_staged["rhib_try%d" % i] = tries + 1
 			rh.order_move(beach + Vector3(-6, 0, (i - 1) * 14.0 + tries * 9.0))
-	# the patrol ship closes the harbour, where its guns reach the AA trucks
+	# the patrol ship closes the harbour, where its guns reach the AA trucks:
+	# well in, between the two (lying further out and up the coast, it never
+	# got a shot at the southern one)
 	var ship = ctx.ship
 	if _live(ship) and _once("ship", "cover", 0.0):
-		ship.order_assault(d.world.nav.nearest_boat(Vector3(d.world.water.coast_x(h.z + 10.0) + 26.0, 0, h.z + 10.0)))
+		ship.order_assault(d.world.nav.nearest_boat(Vector3(d.world.water.coast_x(h.z - 6.0) + 16.0, 0, h.z - 6.0)))
+	# and once an AA truck is spotted it goes in after it, as the briefing
+	# says ("once they're spotted its guns can reach them from the water"),
+	# rather than hope it has a shot from wherever it's lying
+	if _live(ship):
+		for id in ctx.aa:
+			var aa = d.world.entities.get(int(id))
+			if d.alive(int(id)) and aa is Vehicle and aa.visible_to_team(d.side) and _once("ship_aa", "aa%d" % int(id), 30.0):
+				ship.order_attack(aa)
+				break
 	var stage := ""
 	var at := Vector3.ZERO
 	if _active(d, "aa") or _active(d, "land"):
@@ -944,33 +913,258 @@ func _kingpin_out(d: MissionDirector) -> void:
 			t.order_assault(ctx.start - north * 30.0))
 
 
+## (FL_DEBUG_MISSION) Every squad and vehicle on the field, and Kassem, each
+## time the autopilot thinks: where they are, their orders, plans and drills.
+func _kp_trace(d: MissionDirector) -> void:
+	var w := d.world
+	var line := "KP t=%.0f" % w.time
+	for sq in w.squads.values():
+		var al: Array = sq.alive_members()
+		if al.is_empty():
+			continue
+		var ph: String = String(sq.plan.phase) if sq.plan != null else "-"
+		line += " | %s%d %s %d/%d @%s %s/%s dr=%s m=%d" % ["C" if sq.team == d.side else "R", sq.sid, sq.kind, al.size(), sq.members.size(), str(sq.centroid().round()), sq.order, ph, sq.drill, int(sq.morale)]
+	for v in w.vehicles:
+		if not v.gone and v.hp > 0.0:
+			line += " | V%d %s t%d @%s hp=%d" % [v.eid, v.vkind, v.team, str(v.position.round()), int(v.hp)]
+	var h = ctx.get("hvt")
+	if h != null and is_instance_valid(h):
+		line += " | HVT @%s life=%d seen=%s" % [str(h.position.round()), h.life, str(h.visible_to_team(d.side))]
+	print(line)
+
+
 func _drive_kingpin(d: MissionDirector) -> void:
+	if OS.has_environment("FL_DEBUG_MISSION"):
+		_kp_trace(d)
 	var stage := ""
-	var at := Vector3.ZERO
-	var south := Vector3(0, 0, 1)
 	if _active(d, "checkpoint"):
 		stage = "cp"
-		at = ctx.cp
 	elif _active(d, "hvt"):
 		stage = "hvt"
-		at = ctx.hv
 	elif _active(d, "exfil"):
 		stage = "exfil"
-		at = ctx.start
 	if stage == "":
 		return
-	var i := 0
+	var start: Vector3 = ctx.start
+	var south := Vector3(0, 0, 1)
+	if stage == "exfil":
+		# everyone back to the Hunters at a run, the crews of any wreck too
+		# (they count): a run doesn't stop to trade shots
+		var i := 0
+		for sq in _my_squads(d):
+			if _once("sq%d" % sq.sid, stage, 20.0):
+				sq.order_move(start + Vector3((i % 3 - 1) * 8.0, 0, 0), -south, 2)
+			i += 1
+		# the Hunters hold the street just short of them, guns to the north,
+		# covering the run back and waiting for the technicals
+		for v in ctx.vh:
+			if _live(v) and _once("vh%d" % v.eid, stage):
+				v.order_assault(_walk(d, start - south * 40.0))
+		_kp_drone(d, stage, start)
+		return
+	var at := _kp_target(d, stage)
+	var force := []
 	for sq in _my_squads(d):
-		if _once("sq%d" % sq.sid, stage):
-			if stage == "exfil":
-				sq.order_move(at + Vector3((i % 3 - 1) * 8.0, 0, 0), -south, 2)
-			else:
-				sq.order_assault(at + Vector3((i % 3 - 1) * 8.0, 0, 0), -south)
-		i += 1
-	if stage == "hvt":
-		_call(d, "greyhawk", ctx.hv)
-	# the Hunters: a fire base out of RPG range while the checkpoint is
-	# taken, then up the street behind the assault
+		if sq.kind != "crew":  # a wreck's crew goes back to crew another
+			force.append(sq)
+	_kp_assault(d, force, at, stage)
+	_kp_drone(d, stage, at)
+	_kp_hunters(d, stage, at, force)
+
+
+## (autopilot) The whole force goes in as one, the way a player sends it
+## (every squad selected, one assault order): a platoon attack, one squad
+## fixing the enemy while the rest go round a flank (see AttackPlan). Ordered
+## squad by squad, each plans an attack of its own, finds itself outnumbered
+## and goes firm, and they sit there. The order stands while the attack goes
+## on; it's given again once the attack is over and the job isn't done, or
+## when the enemy has moved on. A long way off (after Kassem, who has run),
+## they close at a run first and attack from there.
+func _kp_assault(d: MissionDirector, force: Array, at: Vector3, stage: String) -> void:
+	if force.is_empty():
+		return
+	var was: Array = _staged.get("kp_force", ["", -1e9, Vector3.INF])
+	var going := false
+	var c := Vector3.ZERO
+	for sq in force:
+		c += sq.centroid()
+		if sq.plan != null and not sq.plan.done:
+			going = true
+	c /= force.size()
+	var moved := Defs.flat(at - (was[2] as Vector3)).length() > 25.0
+	if was[0] == stage and (_now - float(was[1]) < 20.0 or (going and not moved)):
+		return
+	_staged["kp_force"] = [stage, _now, at]
+	var order := {"t": "assault", "pos": at}
+	var far := Defs.flat(at - c).length()
+	if stage == "hvt" and far > 100.0 and Defs.flat(at - (ctx.hv as Vector3)).length() > 25.0:
+		order = {"t": "move", "pos": _walk(d, at + Defs.flat(c - at).normalized() * 70.0), "mode": 2}
+	_kp_order(d, force, order)
+
+
+## (autopilot) One order to every squad of the force at once, as a commander
+## gives it with them all selected (World.execute_cmd); in co-op each
+## commander gives it to his own share.
+func _kp_order(d: MissionDirector, force: Array, cmd: Dictionary) -> void:
+	var by_owner := {}
+	for sq in force:
+		if not by_owner.has(sq.owner):
+			by_owner[sq.owner] = []
+		by_owner[sq.owner].append(sq.sid)
+	for o in by_owner:
+		var c := cmd.duplicate()
+		c["squads"] = by_owner[o]
+		d.world.execute_cmd(int(o), c)
+
+
+## (autopilot) What the force goes for: the enemy we know is holding the
+## checkpoint, then Kassem - in the house, or wherever he went: under fire his
+## bodyguard pulls out and takes him with it. It follows him where he was
+## seen; if nobody saw him go, it finds the house empty and casts about for
+## him from there (a stand-in for players sweeping the streets around it).
+func _kp_target(d: MissionDirector, stage: String) -> Vector3:
+	var known := _kp_known(d)
+	if stage == "cp":
+		var c := Vector3.ZERO
+		var n := 0
+		for id in known:
+			var p: Vector3 = known[id].pos
+			if Defs.flat(p - ctx.cp).length() < 30.0:
+				c += p
+				n += 1
+		return c / n if n > 0 else ctx.cp
+	var hv: Vector3 = ctx.hv
+	var h = ctx.hvt
+	if not is_instance_valid(h) or not d.alive(h.eid):
+		return hv
+	var gone: bool = Defs.flat(h.position - hv).length() > 15.0
+	if gone and d.afoot_in(hv, 12.0) > 0:
+		ctx.empty = true
+	if h.visible_to_team(d.side):
+		return h.position
+	if known.has(h.eid):
+		return known[h.eid].pos
+	# his bodyguard, seen on the move
+	var c2 := Vector3.ZERO
+	var n2 := 0
+	for id in known:
+		var e = known[id].e
+		if is_instance_valid(e) and e.squad == h.squad and Defs.flat((known[id].pos as Vector3) - hv).length() > 15.0:
+			c2 += known[id].pos
+			n2 += 1
+	if n2 > 0:
+		return c2 / n2
+	if gone and ctx.get("empty", false):
+		return h.position
+	return hv
+
+
+## Enemies our side knows of (seen in the last half minute and still on
+## their feet): eid -> {e, pos, t}, the latest report of each.
+func _kp_known(d: MissionDirector, secs := 30.0) -> Dictionary:
+	var out := {}
+	for sq in d.world.squads.values():
+		if sq.team != d.side:
+			continue
+		for id in sq.known:
+			var k: Dictionary = sq.known[id]
+			var e = k.e
+			if not is_instance_valid(e) or e.gone or not (e is Soldier) or e.life != Soldier.Life.ALIVE or _now - float(k.t) > secs:
+				continue
+			if not out.has(id) or float(k.t) > float(out[id].t):
+				out[id] = k
+	return out
+
+
+## (autopilot) Has the attack stuck? A plan of ours gone firm against too
+## many of them, or thrown back to its start line: that's when a player calls
+## for fire, or brings the guns up. Returns where it's fixed on (or INF).
+func _kp_stuck(force: Array) -> Vector3:
+	for sq in force:
+		var p = sq.plan
+		if p != null and not p.done and String(p.phase) in ["fix", "fallback"]:
+			return p.fire_at
+	return Vector3.INF
+
+
+## (autopilot) The Greyhawk, once it's on station, where a player would want
+## it: on an attack that has stuck, on Kassem if he's seen running, or on
+## whatever is chasing the raid out of town. Never on his house while he's in
+## it: fire from above that it can't answer breaks his bodyguard, and when it
+## runs it takes him along, as far as the edge of the map. Never with our own
+## men close to the spot either (they'd take cover from it themselves).
+func _kp_drone(d: MissionDirector, stage: String, at: Vector3) -> void:
+	if ctx.get("drone", false) or not "greyhawk" in d.support or d.world.rules.support_left(d.side, "greyhawk") > 0.0:
+		return
+	var aim := Vector3.INF
+	if stage == "exfil":
+		# the enemy nearest the rally point: the technicals, or the cells on our heels
+		var bd := 1e9
+		for sq in d.world.squads.values():
+			if sq.team != d.side:
+				continue
+			for id in sq.known:
+				var k: Dictionary = sq.known[id]
+				var e = k.e
+				if not is_instance_valid(e) or e.gone or _now - float(k.t) > 8.0 or (e is Soldier and e.life != Soldier.Life.ALIVE) or (e is Vehicle and e.hp <= 0.0):
+					continue
+				var dd := Defs.flat((k.pos as Vector3) - at).length()
+				if dd < bd and dd < 160.0:
+					bd = dd
+					aim = k.pos
+	else:
+		aim = _kp_stuck(_my_squads(d))
+		var h = ctx.hvt
+		if stage == "hvt" and is_instance_valid(h) and d.alive(h.eid):
+			var out: bool = Defs.flat(h.position - (ctx.hv as Vector3)).length() > 15.0
+			if out and h.visible_to_team(d.side):
+				aim = h.position
+			elif not out and aim != Vector3.INF and Defs.flat(aim - (ctx.hv as Vector3)).length() < 30.0:
+				aim = Vector3.INF
+	if aim == Vector3.INF:
+		return
+	for s in d.world.soldiers_near(aim, 30.0):
+		if s.team == d.side and s.life == Soldier.Life.ALIVE:
+			return
+	ctx.drone = d.world.rules.call_support(d.owners[0], d.side, "greyhawk", aim)
+
+
+## (autopilot) The Hunters: a fire base out of the RPGs' reach (they sit just
+## beyond the checkpoint) while the infantry takes it - brought up close if
+## the attack sticks and nobody has seen an RPG for a while, and kept there -
+## then up the street behind the assault on the house, their .50s in range of
+## wherever it's going, and after Kassem himself if he's seen running. Never
+## up to where an RPG gunner has been seen lately.
+func _kp_hunters(d: MissionDirector, stage: String, at: Vector3, force: Array) -> void:
+	var start: Vector3 = ctx.start
+	var cp: Vector3 = ctx.cp
+	var back := Defs.flat(start - at).normalized()
+	var fb := cp + Vector3(0, 0, 85.0)
+	if stage == "cp" and (ctx.get("guns_up", false) or _kp_stuck(force) != Vector3.INF) and not _kp_rpgs(d, cp, 110.0):
+		ctx.guns_up = true
+		fb = at + back * 50.0
+	elif stage == "hvt" and not _kp_rpgs(d, at + back * 55.0, 90.0):
+		fb = at + back * 55.0
+	fb = _walk(d, fb)
+	var h = ctx.hvt
+	var chase: bool = stage == "hvt" and is_instance_valid(h) and d.alive(h.eid) and h.visible_to_team(d.side) \
+		and Defs.flat(h.position - (ctx.hv as Vector3)).length() > 15.0 and not _kp_rpgs(d, h.position, 90.0)
 	for v in ctx.vh:
-		if _live(v) and stage != "exfil" and _once("vh%d" % v.eid, stage):
-			v.order_assault(ctx.cp + south * 70.0 if stage == "cp" else ctx.cp)
+		if not _live(v):
+			continue
+		if chase:
+			if _once("vh%d" % v.eid, "chase", 10.0):
+				v.order_attack(h)
+		elif _once("vh%d" % v.eid, "%s%s" % [stage, str((fb / 20.0).round())]):
+			v.order_assault(fb)
+
+
+## Is an RPG gunner with rockets left known to be about (seen in the last
+## minute, still on his feet) within r of a point?
+func _kp_rpgs(d: MissionDirector, p: Vector3, r: float) -> bool:
+	var known := _kp_known(d, 60.0)
+	for id in known:
+		var e = known[id].e
+		if e.rockets > 0 and Defs.flat((known[id].pos as Vector3) - p).length() < r:
+			return true
+	return false

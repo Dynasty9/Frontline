@@ -1,13 +1,17 @@
 // End-to-end tests against a real server on a random port. Run: npm test
 
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
+import { existsSync, readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import { createAuth } from '../src/auth.js';
+import { ErrorLog, MAX_ENTRIES } from '../src/errors.js';
 import { Lobbies } from '../src/lobbies.js';
+import { battleXp, insignia, MAX_RANK, progress, rankOf, xpFor } from '../src/ranks.js';
 import { createServer } from '../src/server.js';
 
-async function start(env) {
-	const server = createServer({ env, auth: createAuth(env), log: () => {} });
+async function start(env, authOptions) {
+	const server = createServer({ env, auth: createAuth(env, authOptions), log: () => {} });
 	await new Promise((r) => server.listen(0, '127.0.0.1', r));
 	// don't hold the test run open once the tests are done
 	server.unref();
@@ -25,6 +29,14 @@ async function start(env) {
 
 const open = await start({});
 const withAccounts = await start({ AUTH_BACKEND: 'memory' });
+const reporting = await start({ ERRORS_TOKEN: 'tally-token' });
+// For the ranks: the battle clock is ours to wind on, and each player calls
+// from an address of their own (X-Forwarded-For) so the rate limits don't mix.
+let clock = 1_000_000;
+const ranked = await start({ AUTH_BACKEND: 'memory', TRUST_PROXY: '1' }, { now: () => clock });
+// The public pages, on a server of their own: what it answers is kept for half
+// a minute, so other tests' players mustn't share it.
+const pub = await start({ AUTH_BACKEND: 'memory', TRUST_PROXY: '1' }, { now: () => clock });
 
 // --- matchmaking without accounts
 {
@@ -178,6 +190,426 @@ const withAccounts = await start({ AUTH_BACKEND: 'memory' });
 	});
 }
 
+// --- one account, two sessions: the website signs the game in with a session of
+// its own, and signing out of either leaves the other signed in
+{
+	test('signing out ends that session only', async () => {
+		const ip = { 'X-Forwarded-For': '10.8.0.1' };
+		const bearer = (session) => ({ ...ip, Authorization: `Bearer ${session.access_token}` });
+		const cred = { email: 'two@places.io', password: 'longenough' };
+		assert.equal((await ranked.call('POST', '/auth/signup', { ...cred, callsign: 'Two Places' }, ip)).status, 200);
+		const game = (await ranked.call('POST', '/auth/login', cred, ip)).data.session;
+		const site = (await ranked.call('POST', '/auth/login', cred, ip)).data.session;
+		await ranked.call('POST', '/auth/logout', undefined, bearer(site));
+		assert.equal((await ranked.call('GET', '/me', undefined, bearer(site))).status, 401);
+		assert.equal((await ranked.call('GET', '/me', undefined, bearer(game))).status, 200);
+		assert.equal((await ranked.call('POST', '/auth/refresh', { refresh_token: game.refresh_token }, ip)).status, 200);
+	});
+
+	test('Supabase is asked to end that session, not every one the account has', async () => {
+		const auth = createAuth({ SUPABASE_URL: 'https://db.test', SUPABASE_KEY: 'sb_publishable_test' });
+		const realFetch = globalThis.fetch;
+		const urls = [];
+		globalThis.fetch = async (url) => {
+			urls.push(String(url));
+			return new Response(null, { status: 204 });
+		};
+		try {
+			await auth.logout('access-token');
+		} finally {
+			globalThis.fetch = realFetch;
+		}
+		assert.deepEqual(urls, ['https://db.test/auth/v1/logout?scope=local']);
+	});
+
+	test("Supabase: everyone's pages from its public functions, asked with the public key alone", async () => {
+		const auth = createAuth({ SUPABASE_URL: 'https://db.test', SUPABASE_KEY: 'sb_publishable_test' });
+		const realFetch = globalThis.fetch;
+		const asked = [];
+		globalThis.fetch = async (url, init) => {
+			asked.push({ url: String(url), auth: init.headers.Authorization, apikey: init.headers.apikey, body: JSON.parse(init.body ?? 'null') });
+			if (String(url).endsWith('/leaderboard_xp') && JSON.parse(init.body).period === 'year')
+				return Response.json({ code: 'PT400', message: 'A leaderboard is for "all" time, this "month" or this "week".' }, { status: 400 });
+			if (String(url).endsWith('/player_card')) return Response.json(null);
+			return Response.json({ total: 0, rows: [], me: null });
+		};
+		try {
+			assert.deepEqual(await auth.leaderboard('week', { limit: 50, offset: 50, me: 'Raven' }), { total: 0, rows: [], me: null });
+			assert.equal(await auth.player('Raven'), null);
+			await assert.rejects(auth.leaderboard('year', { limit: 50, offset: 0 }), (e) => e.status === 400);
+		} finally {
+			globalThis.fetch = realFetch;
+		}
+		assert.deepEqual(
+			asked.map((a) => [a.url, a.auth, a.apikey]),
+			[
+				['https://db.test/rest/v1/rpc/leaderboard_xp', undefined, 'sb_publishable_test'],
+				['https://db.test/rest/v1/rpc/player_card', undefined, 'sb_publishable_test'],
+				['https://db.test/rest/v1/rpc/leaderboard_xp', undefined, 'sb_publishable_test'],
+			],
+		);
+		assert.deepEqual(asked[0].body, { period: 'week', lim: 50, off: 50, me: 'Raven' });
+	});
+
+	test('Supabase: a picture and keeping battles back are written with the callsign, in one go', async () => {
+		const auth = createAuth({ SUPABASE_URL: 'https://db.test', SUPABASE_KEY: 'sb_publishable_test' });
+		const realFetch = globalThis.fetch;
+		const asked = [];
+		globalThis.fetch = async (url, init) => {
+			asked.push({ url: String(url), method: init.method, body: JSON.parse(init.body ?? 'null') });
+			return new Response(null, { status: 204 });
+		};
+		const user = { id: 'u1', email: 'a@b.cd', callsign: 'Raven', github_avatar: 'https://avatars.githubusercontent.com/u/1?v=4' };
+		try {
+			const u = await auth.updateProfile('tok', user, { callsign: 'Raven Six', avatar: 'github', hide_history: true });
+			assert.deepEqual([u.callsign, u.avatar, u.hide_history], ['Raven Six', 'github', true]);
+			await assert.rejects(auth.updateProfile('tok', { ...user, github_avatar: null }, { avatar: 'github' }), (e) => e.status === 400);
+		} finally {
+			globalThis.fetch = realFetch;
+		}
+		assert.deepEqual(asked, [
+			{ url: 'https://db.test/rest/v1/profiles?id=eq.u1', method: 'PATCH', body: { callsign: 'Raven Six', avatar: 'github', hide_history: true } },
+		]);
+	});
+}
+
+// --- signing in with GitHub: the page keeps a PKCE verifier and sends its
+// challenge; the code it comes back with is only any use with that verifier
+{
+	const verifier = 'v'.repeat(43);
+	const challenge = createHash('sha256').update(verifier).digest('base64url');
+	const PAGE = 'https://site.test/';
+
+	test('GitHub sign-in: off to sign in, back with a code, swapped for a session', async () => {
+		const ip = { 'X-Forwarded-For': '10.8.1.1' };
+		const go = await ranked.call('POST', '/auth/oauth', { provider: 'github', redirect_to: PAGE, code_challenge: challenge }, ip);
+		assert.equal(go.status, 200);
+		// the stand-in for GitHub comes straight back to the page
+		const back = new URL(go.data.url);
+		assert.equal(back.origin + back.pathname, PAGE);
+		const code = back.searchParams.get('code');
+		const r = await ranked.call('POST', '/auth/exchange', { code, code_verifier: verifier }, ip);
+		assert.equal(r.status, 200);
+		assert.equal(r.data.session.user.callsign, 'GitHub Player');
+		const me = await ranked.call('GET', '/me', undefined, { ...ip, Authorization: `Bearer ${r.data.session.access_token}` });
+		assert.equal(me.data.user.callsign, 'GitHub Player');
+		// a code works once
+		assert.equal((await ranked.call('POST', '/auth/exchange', { code, code_verifier: verifier }, ip)).status, 401);
+	});
+
+	test("GitHub sign-in: a code is no use without the page's verifier", async () => {
+		const ip = { 'X-Forwarded-For': '10.8.1.2' };
+		const go = await ranked.call('POST', '/auth/oauth', { provider: 'github', redirect_to: PAGE, code_challenge: challenge }, ip);
+		const code = new URL(go.data.url).searchParams.get('code');
+		assert.equal((await ranked.call('POST', '/auth/exchange', { code, code_verifier: 'w'.repeat(43) }, ip)).status, 401);
+	});
+
+	test('GitHub sign-in: a provider, a page to come back to and a challenge, or nothing', async () => {
+		const ip = { 'X-Forwarded-For': '10.8.1.3' };
+		const go = (body) => ranked.call('POST', '/auth/oauth', { provider: 'github', redirect_to: PAGE, code_challenge: challenge, ...body }, ip);
+		assert.equal((await go({ provider: 'myspace' })).status, 400);
+		assert.equal((await go({ redirect_to: 'javascript:alert(1)' })).status, 400);
+		assert.equal((await go({ code_challenge: 'short' })).status, 400);
+		assert.equal((await open.call('POST', '/auth/oauth', { provider: 'github', redirect_to: PAGE, code_challenge: challenge })).status, 503);
+	});
+
+	test('GitHub sign-in with Supabase: its authorize page with the challenge, then the PKCE grant', async () => {
+		const auth = createAuth({ SUPABASE_URL: 'https://db.test', SUPABASE_KEY: 'sb_publishable_test' });
+		const url = new URL(auth.oauthUrl('github', PAGE, challenge));
+		assert.equal(url.origin + url.pathname, 'https://db.test/auth/v1/authorize');
+		assert.deepEqual(Object.fromEntries(url.searchParams), {
+			provider: 'github',
+			redirect_to: PAGE,
+			code_challenge: challenge,
+			code_challenge_method: 's256',
+		});
+		const realFetch = globalThis.fetch;
+		const calls = [];
+		globalThis.fetch = async (u, init) => {
+			calls.push([String(u), init.body && JSON.parse(init.body)]);
+			if (String(u).includes('/auth/v1/token')) {
+				return Response.json({ access_token: 'a', refresh_token: 'r', expires_in: 3600, user: { id: 'u1', email: 'octo@github.test' } });
+			}
+			return Response.json([{ id: 'u1', callsign: 'octocat', xp: 0 }]);
+		};
+		try {
+			const s = await auth.exchange('the-code', verifier);
+			assert.equal(s.refresh_token, 'r');
+			assert.equal(s.user.callsign, 'octocat');
+		} finally {
+			globalThis.fetch = realFetch;
+		}
+		assert.deepEqual(calls[0], ['https://db.test/auth/v1/token?grant_type=pkce', { auth_code: 'the-code', code_verifier: verifier }]);
+	});
+}
+
+// --- ranks, XP and insignia
+{
+	const s = ranked;
+	const minutes = (m) => {
+		clock += m * 60_000;
+	};
+	let n = 0;
+	// a new player, signed in, calling from their own address
+	const player = async () => {
+		n++;
+		const ip = { 'X-Forwarded-For': `10.9.0.${n}` };
+		const up = await s.call('POST', '/auth/signup', { email: `p${n}@ranks.io`, password: 'longenough', callsign: `Ranker ${n}` }, ip);
+		assert.equal(up.status, 200);
+		const h = { ...ip, Authorization: `Bearer ${up.data.session.access_token}` };
+		const call = (method, path, body) => s.call(method, path, body, h);
+		// a whole battle: started, `wall` minutes on our clock, then ended
+		const battle = async (result, wall, seconds = wall * 60) => {
+			assert.equal((await call('POST', '/me/battle')).status, 200);
+			minutes(wall);
+			const r = await call('POST', '/me/battle/end', { result, seconds });
+			assert.equal(r.status, 200);
+			return r.data;
+		};
+		return { ip, h, call, battle, session: up.data.session };
+	};
+
+	test('the XP curve: 150 for rank 1, 32,000 for rank 50, and no further', () => {
+		assert.equal(xpFor(0), 0);
+		assert.equal(xpFor(1), 150);
+		assert.equal(xpFor(2), 320);
+		assert.equal(xpFor(MAX_RANK), 32000);
+		assert.equal(rankOf(0), 0);
+		assert.equal(rankOf(149), 0);
+		assert.equal(rankOf(150), 1);
+		assert.equal(rankOf(31999), 49);
+		assert.equal(rankOf(32000), 50);
+		assert.equal(rankOf(10_000_000), 50);
+		assert.equal(rankOf(-5), 0);
+		for (let r = 1; r <= MAX_RANK; r++) {
+			assert.equal(rankOf(xpFor(r) - 1), r - 1);
+			assert.equal(rankOf(xpFor(r)), r);
+		}
+		assert.deepEqual(progress(0), { xp: 0, rank: 0, rank_xp: 0, next_xp: 150 });
+		assert.deepEqual(progress(1234), { xp: 1234, rank: 6, rank_xp: 1200, next_xp: 1470 });
+		assert.deepEqual(progress(40000), { xp: 40000, rank: 50, rank_xp: 32000, next_xp: null });
+	});
+
+	test('insignia ids: ten starters, a patch per rank, awards and units locked', () => {
+		assert.deepEqual(insignia('s01'), { id: 's01', group: 'starter', unlock: 0 });
+		assert.deepEqual(insignia('s10'), { id: 's10', group: 'starter', unlock: 0 });
+		assert.deepEqual(insignia('r07'), { id: 'r07', group: 'rank', unlock: 7 });
+		assert.deepEqual(insignia('r50'), { id: 'r50', group: 'rank', unlock: 50 });
+		assert.deepEqual(insignia('m01'), { id: 'm01', group: 'award', unlock: null });
+		assert.deepEqual(insignia('u50'), { id: 'u50', group: 'unit', unlock: null });
+		for (const bad of ['s00', 's11', 'r00', 'r51', 'm51', 'x01', 'R01', 'r1', 'r001', ' s01', '', null, undefined, 5, {}]) {
+			assert.equal(insignia(bad), null, String(bad));
+		}
+	});
+
+	test('battle XP: a point per tenth of a minute, times the result', () => {
+		assert.equal(battleXp('loss', 1200, 1200), 200);
+		assert.equal(battleXp('win', 1200, 1200), 300);
+		assert.equal(battleXp('left', 1200, 1200), 100);
+		assert.equal(battleXp('left', 1206, 1206), 100); // 201 tenths, halved and rounded down
+		// under two minutes is nothing; two minutes exactly counts
+		assert.equal(battleXp('win', 119.9, 600), 0);
+		assert.equal(battleXp('win', 120, 600), 30);
+		// the shorter of our clock and the game's, at most 45 minutes
+		assert.equal(battleXp('loss', 1800, 300), 50);
+		assert.equal(battleXp('loss', 300, 1800), 50);
+		assert.equal(battleXp('win', 86400, 86400), 675);
+	});
+
+	test('the user object on sign-up, sign-in and /me', async () => {
+		const p = await player();
+		const fresh = { icon: 's01', avatar: 'insignia', github_avatar: null, hide_history: false, xp: 0, rank: 0, rank_xp: 0, next_xp: 150, battles: 0, wins: 0 };
+		const keys = [
+			'avatar',
+			'battles',
+			'callsign',
+			'email',
+			'github_avatar',
+			'hide_history',
+			'icon',
+			'id',
+			'joined',
+			'next_xp',
+			'rank',
+			'rank_xp',
+			'wins',
+			'xp',
+		];
+		const check = (u) => {
+			assert.deepEqual(Object.keys(u).toSorted(), keys);
+			assert.equal(u.callsign, `Ranker ${n}`);
+			for (const [k, v] of Object.entries(fresh)) assert.equal(u[k], v, k);
+		};
+		check(p.session.user);
+		const login = await s.call('POST', '/auth/login', { email: `p${n}@ranks.io`, password: 'longenough' }, p.ip);
+		check(login.data.session.user);
+		check((await p.call('GET', '/me')).data.user);
+
+		await p.battle('win', 20);
+		const me = (await p.call('GET', '/me')).data.user;
+		assert.deepEqual([me.xp, me.rank, me.rank_xp, me.next_xp, me.battles, me.wins], [300, 1, 150, 320, 1, 1]);
+		// a new sign-in sees the same record
+		const again = await s.call('POST', '/auth/login', { email: `p${n}@ranks.io`, password: 'longenough' }, p.ip);
+		assert.equal(again.data.session.user.xp, 300);
+	});
+
+	test('a battle is worth the time it ran, on our clock', async () => {
+		const p = await player();
+		// nothing open: nothing gained or counted
+		let r = await p.call('POST', '/me/battle/end', { result: 'win', seconds: 1200 });
+		assert.equal(r.status, 200);
+		assert.deepEqual([r.data.gained, r.data.rank_before, r.data.user.xp, r.data.user.battles], [0, 0, 0, 0]);
+
+		// too short to earn anything, or to count: a "win" a minute in isn't a battle won
+		r = await p.battle('win', 1);
+		assert.deepEqual([r.gained, r.user.battles, r.user.wins], [0, 0, 0]);
+
+		// a 20-minute win: 200 tenths of a minute, times 1.5
+		r = await p.battle('win', 20);
+		assert.deepEqual([r.gained, r.rank_before, r.user.xp, r.user.rank, r.user.battles, r.user.wins], [300, 0, 300, 1, 1, 1]);
+		// the same end sent twice (a retry) counts once
+		r = (await p.call('POST', '/me/battle/end', { result: 'win', seconds: 1200 })).data;
+		assert.deepEqual([r.gained, r.user.xp, r.user.battles, r.user.wins], [0, 300, 1, 1]);
+
+		r = await p.battle('loss', 20);
+		assert.deepEqual([r.gained, r.rank_before, r.user.rank, r.user.battles, r.user.wins], [200, 1, 2, 2, 1]);
+		// leaving is worth half, and isn't a battle fought to the end
+		r = await p.battle('left', 20);
+		assert.deepEqual([r.gained, r.user.battles, r.user.wins], [100, 2, 1]);
+
+		// the game says 5 minutes of game time (it was paused), our clock 30
+		r = await p.battle('loss', 30, 300);
+		assert.equal(r.gained, 50);
+		// the game claims an hour that took 3 minutes on our clock
+		r = await p.battle('win', 3, 3600);
+		assert.equal(r.gained, 45);
+		// at most 45 minutes count
+		r = await p.battle('win', 50, 3000);
+		assert.equal(r.gained, 675);
+		assert.deepEqual([r.user.xp, r.user.battles, r.user.wins], [300 + 200 + 100 + 50 + 45 + 675, 5, 3]);
+
+		// starting again forfeits the battle left open: the clock starts over
+		assert.equal((await p.call('POST', '/me/battle')).status, 200);
+		minutes(20);
+		r = await p.battle('win', 0, 1200);
+		assert.deepEqual([r.gained, r.user.battles], [0, 5]);
+	});
+
+	test('a bad battle report is refused and leaves the battle open', async () => {
+		const p = await player();
+		await p.call('POST', '/me/battle');
+		minutes(10);
+		const bad = [
+			{ result: 'draw', seconds: 600 },
+			{ seconds: 600 },
+			{ result: 'win' },
+			{ result: 'win', seconds: '600' },
+			{ result: 'win', seconds: -1 },
+			{ result: 'constructor', seconds: 600 },
+		];
+		for (const body of bad) assert.equal((await p.call('POST', '/me/battle/end', body)).status, 400, JSON.stringify(body));
+		const r = await p.call('POST', '/me/battle/end', { result: 'loss', seconds: 600 });
+		assert.equal(r.data.gained, 100);
+	});
+
+	test('battle routes need a sign-in, and are rate limited', async () => {
+		assert.equal((await s.call('POST', '/me/battle')).status, 401);
+		assert.equal((await s.call('POST', '/me/battle/end', { result: 'win', seconds: 600 })).status, 401);
+		assert.equal((await open.call('POST', '/me/battle')).status, 401);
+		assert.equal((await open.call('POST', '/me/battle', {}, { Authorization: 'Bearer abc' })).status, 503);
+		const p = await player();
+		for (let i = 0; i < 20; i++) assert.equal((await p.call('POST', '/me/battle')).status, 200);
+		assert.equal((await p.call('POST', '/me/battle')).status, 429);
+	});
+
+	test('insignia: starters for all, rank patches once reached, the rest locked', async () => {
+		const p = await player();
+		const wear = (icon) => p.call('PATCH', '/me', { icon });
+		let r = await wear('s05');
+		assert.equal(r.status, 200);
+		assert.equal(r.data.user.icon, 's05');
+		r = await wear('r05');
+		assert.equal(r.status, 403);
+		assert.match(r.data.error, /locked.*rank 5/);
+		for (const id of ['m01', 'u01', 'm50']) assert.equal((await wear(id)).status, 403, id);
+		for (const id of ['junk', 's11', 'r51', 'r00', '', null, 7]) assert.equal((await wear(id)).status, 400, String(id));
+		assert.equal((await p.call('PATCH', '/me', {})).status, 400);
+		assert.equal((await p.call('GET', '/me')).data.user.icon, 's05');
+
+		// rank 5 is 950 XP: a 45-minute win and a 20-minute one
+		await p.battle('win', 45);
+		const b = await p.battle('win', 20);
+		assert.deepEqual([b.rank_before, b.user.rank], [3, 5]);
+		r = await wear('r05');
+		assert.equal(r.status, 200);
+		assert.equal(r.data.user.icon, 'r05');
+		assert.equal((await wear('r06')).status, 403);
+		assert.equal((await wear('r01')).status, 200);
+		assert.equal((await p.call('GET', '/me')).data.user.icon, 'r01');
+
+		// both at once; a locked insignia changes neither
+		r = await p.call('PATCH', '/me', { callsign: 'Patched', icon: 'm01' });
+		assert.equal(r.status, 403);
+		assert.equal((await p.call('GET', '/me')).data.user.callsign, `Ranker ${n}`);
+		r = await p.call('PATCH', '/me', { callsign: 'Patched', icon: 's02' });
+		assert.deepEqual([r.status, r.data.user.callsign, r.data.user.icon, r.data.user.rank], [200, 'Patched', 's02', 5]);
+	});
+
+	test("a listing shows the host's insignia and rank, and nothing for a guest", async () => {
+		const p = await player();
+		await p.battle('loss', 45); // 450 XP: rank 2
+		await p.call('PATCH', '/me', { icon: 'r02' });
+		const host = await s.call('POST', '/lobbies', { port: 7800, version: 'ranked' }, p.h);
+		assert.equal(host.status, 200);
+		assert.deepEqual([host.data.lobby.verified, host.data.lobby.icon, host.data.lobby.rank], [true, 'r02', 2]);
+		const guest = await s.call('POST', '/lobbies', { port: 7801, version: 'ranked', host: 'Guest', players: 2 }, { 'X-Forwarded-For': '10.9.1.1' });
+		assert.deepEqual([guest.data.lobby.verified, guest.data.lobby.icon, guest.data.lobby.rank], [false, null, null]);
+
+		const list = (await s.call('GET', '/lobbies?version=ranked')).data.lobbies;
+		const byId = Object.fromEntries(list.map((l) => [l.id, l]));
+		assert.deepEqual([byId[host.data.id].icon, byId[host.data.id].rank], ['r02', 2]);
+		assert.deepEqual([byId[guest.data.id].icon, byId[guest.data.id].rank], [null, null]);
+		// quick match hands out the same view (the guest's battle is fuller, so first)
+		const m = (await s.call('POST', '/match', { version: 'ranked' }, { 'X-Forwarded-For': '10.9.1.2' })).data.lobby;
+		assert.deepEqual([m.id, m.icon, m.rank], [guest.data.id, null, null]);
+		const m2 = (await s.call('POST', '/match', { version: 'ranked', exclude: [guest.data.id] }, { 'X-Forwarded-For': '10.9.1.2' })).data.lobby;
+		assert.deepEqual([m2.id, m2.icon, m2.rank], [host.data.id, 'r02', 2]);
+	});
+
+	// The website's insignia table (web/, which may not have it yet) has to
+	// agree with the rules here.
+	const table = new URL('../../web/src/lib/insignia.json', import.meta.url);
+	test("the website's insignia table agrees with ranks.js", { skip: !existsSync(table) && 'web/src/lib/insignia.json is not there' }, () => {
+		const t = JSON.parse(readFileSync(table, 'utf8'));
+		assert.deepEqual(
+			t.ranks.map((r) => r.rank).toSorted((a, b) => a - b),
+			Array.from({ length: MAX_RANK + 1 }, (_, i) => i),
+		);
+		for (const r of t.ranks) assert.equal(r.xp, xpFor(r.rank), `rank ${r.rank}`);
+		const ids = new Set();
+		for (const i of t.insignia) {
+			const ours = insignia(i.id);
+			assert.ok(ours, `${i.id} is an id the matchmaker knows`);
+			assert.ok(!ids.has(i.id), `${i.id} is listed once`);
+			ids.add(i.id);
+			assert.equal(i.group, ours.group, `${i.id} is in the ${ours.group} group`);
+			// the same unlock rank (0 for the starters), and no rank claimed
+			// for what nobody can unlock yet (the table marks those -1)
+			const isRank = Number.isInteger(i.unlock) && i.unlock >= 0 && i.unlock <= MAX_RANK;
+			if (ours.unlock === null) assert.ok(!isRank, `${i.id} is locked for everyone`);
+			else assert.equal(i.unlock, ours.unlock, `${i.id} unlocks at rank ${ours.unlock}`);
+		}
+		for (const [g, count] of [
+			['s', 10],
+			['r', MAX_RANK],
+			['m', 50],
+			['u', 50],
+		]) {
+			for (let k = 1; k <= count; k++) assert.ok(ids.has(g + String(k).padStart(2, '0')), `${g}${String(k).padStart(2, '0')} is in the table`);
+		}
+	});
+}
+
 // --- service records (memory backend)
 // a battle as the game reports it, with whatever a test changes
 const battle = (over = {}) => ({
@@ -265,6 +697,183 @@ const battle = (over = {}) => ({
 	});
 }
 
+// --- what anyone may see: player pages and leaderboards (players.js)
+{
+	const s = pub;
+	let n = 0;
+	// a player signed in from an address of their own, with `wins` 20-minute wins (300 XP each) behind them
+	const pilot = async (callsign, wins = 0) => {
+		n++;
+		const ip = { 'X-Forwarded-For': `10.7.0.${n}` };
+		const email = `pub${n}@b.cd`;
+		const up = await s.call('POST', '/auth/signup', { email, password: 'longenough', callsign }, ip);
+		assert.equal(up.status, 200);
+		const h = { ...ip, Authorization: `Bearer ${up.data.session.access_token}` };
+		const call = (method, path, body) => s.call(method, path, body, h);
+		for (let i = 0; i < wins; i++) {
+			await call('POST', '/me/battle');
+			clock += 20 * 60_000;
+			assert.equal((await call('POST', '/me/battle/end', { result: 'win', seconds: 1200 })).data.gained, 300);
+		}
+		return { ip, email, call, session: up.data.session };
+	};
+	// someone who isn't signed in
+	const visitor = (path) => s.call('GET', path, undefined, { 'X-Forwarded-For': '10.7.1.1' });
+	const found = async (q) => (await visitor(`/players?q=${encodeURIComponent(q)}`)).data.players;
+
+	test("a player's page: anyone may see it, and never their email", async () => {
+		await pilot('Kestrel', 2);
+		const r = await visitor('/players/kestrel');
+		assert.equal(r.status, 200);
+		const c = r.data.player;
+		assert.deepEqual(Object.keys(c).toSorted(), [
+			'avatar',
+			'battles',
+			'callsign',
+			'history',
+			'icon',
+			'joined',
+			'last_seen',
+			'next_xp',
+			'position',
+			'rank',
+			'rank_xp',
+			'wins',
+			'xp',
+		]);
+		assert.deepEqual([c.callsign, c.xp, c.rank, c.battles, c.wins, c.history, c.position, c.avatar], ['Kestrel', 600, rankOf(600), 2, 2, true, 1, null]);
+		assert.ok(Date.parse(c.joined) && Date.parse(c.last_seen));
+		assert.equal(JSON.stringify(r.data).includes('@'), false);
+		assert.equal((await visitor('/players/Nobody%20Here')).status, 404);
+		// not even a callsign
+		assert.equal((await visitor('/players/x')).status, 404);
+	});
+
+	test('leaderboards: all time, this month and this week, players level on XP sharing a place', async () => {
+		await pilot('Harrier', 3);
+		await pilot('Merlin', 2);
+		// no XP yet: on no board
+		await pilot('Hobby');
+		const b = (await visitor('/leaderboards/xp')).data;
+		assert.deepEqual(
+			b.rows.map((r) => [r.position, r.callsign, r.score, r.rank]),
+			[
+				[1, 'Harrier', 900, rankOf(900)],
+				[2, 'Kestrel', 600, rankOf(600)],
+				[2, 'Merlin', 600, rankOf(600)],
+			],
+		);
+		assert.deepEqual([b.board, b.period, b.page, b.pages, b.per_page, b.total, b.me], ['xp', 'all', 1, 1, 50, 3, null]);
+		assert.deepEqual(Object.keys(b.rows[0]).toSorted(), ['avatar', 'battles', 'callsign', 'icon', 'position', 'rank', 'score', 'wins', 'xp']);
+		// a signed-in visitor's own row, wherever they are
+		const me = (await visitor('/leaderboards/xp?me=merlin')).data.me;
+		assert.deepEqual([me.callsign, me.position], ['Merlin', 2]);
+		// everything was earned today, so this month's and this week's are the same
+		for (const period of ['month', 'week']) {
+			const w = (await visitor(`/leaderboards/xp?period=${period}`)).data;
+			assert.deepEqual(
+				w.rows.map((r) => [r.callsign, r.score]),
+				[
+					['Harrier', 900],
+					['Kestrel', 600],
+					['Merlin', 600],
+				],
+				period,
+			);
+		}
+		assert.deepEqual((await visitor('/leaderboards/xp?page=9')).data.rows, []);
+		assert.equal((await visitor('/leaderboards/xp?period=year')).status, 400);
+		assert.equal((await visitor('/leaderboards/kills')).status, 404);
+		assert.equal((await open.call('GET', '/leaderboards/xp')).status, 503);
+	});
+
+	test('battles are public: the list, each report, the career, and nothing of anyone else', async () => {
+		const p = await pilot('Peregrine');
+		const saved = await p.call('POST', '/me/battles', battle());
+		await p.call('POST', '/me/battles', battle({ result: 'defeat', title: 'Second' }));
+		let r = await visitor('/players/peregrine/battles?limit=1');
+		assert.deepEqual([r.status, r.data.battles.length, r.data.more, r.data.battles[0].title], [200, 1, true, 'Second']);
+		assert.equal(r.data.battles[0].report, undefined, 'headline numbers only');
+		r = await visitor(`/players/Peregrine/battles/${saved.data.id}`);
+		assert.deepEqual([r.data.battle.title, r.data.battle.report.winner, r.data.battle.user_id], ['Skirmish vs AI', 0, undefined]);
+		assert.equal((await visitor('/players/peregrine/career')).data.career.battles, 2);
+		// another player's page doesn't have it
+		await pilot('Gyr');
+		assert.equal((await visitor(`/players/gyr/battles/${saved.data.id}`)).status, 404);
+		assert.equal((await visitor('/players/gyr/battles/not-an-id')).status, 404);
+		assert.equal((await visitor('/players/Nobody%20Here/battles')).status, 404);
+	});
+
+	test('a player may keep their battles to themselves: their page says so, and shows none', async () => {
+		const p = await pilot('Falcon', 1);
+		const saved = await p.call('POST', '/me/battles', battle());
+		assert.equal((await p.call('PATCH', '/me', { hide_history: 'yes' })).status, 400);
+		assert.equal((await p.call('PATCH', '/me', { hide_history: true })).data.user.hide_history, true);
+		assert.deepEqual((await visitor('/players/falcon/battles')).data, { battles: [], more: false, hidden: true });
+		assert.equal((await visitor(`/players/falcon/battles/${saved.data.id}`)).status, 404);
+		assert.deepEqual((await visitor('/players/falcon/career')).data, { career: null });
+		const c = (await visitor('/players/falcon')).data.player;
+		// the rank and record stay public
+		assert.deepEqual([c.history, c.xp, c.battles], [false, 300, 1]);
+	});
+
+	test('public answers are kept for half a minute, by the browser too', async () => {
+		const p = await pilot('Lanner', 1);
+		const res = await fetch(`${s.base}/players/Lanner`, { headers: { 'X-Forwarded-For': '10.7.1.2' } });
+		assert.equal(res.headers.get('cache-control'), 'public, max-age=30');
+		assert.equal((await res.json()).player.history, true);
+		await p.call('PATCH', '/me', { hide_history: true });
+		// the same question (whatever the callsign's case): the same answer, for now
+		assert.equal((await visitor('/players/lanner')).data.player.history, true);
+		// a player's own questions aren't kept
+		const mine = await fetch(`${s.base}/me`, { headers: { ...p.ip, Authorization: `Bearer ${p.session.access_token}` } });
+		assert.equal(mine.headers.get('cache-control'), 'no-store');
+	});
+
+	test("a picture: the insignia, or the GitHub account's own", async () => {
+		const p = await pilot('Osprey');
+		// an email account has no GitHub picture to show
+		assert.equal((await p.call('PATCH', '/me', { avatar: 'github' })).status, 400);
+		assert.equal((await p.call('PATCH', '/me', { avatar: 'upload' })).status, 400);
+
+		const verifier = 'v'.repeat(43);
+		const challenge = createHash('sha256').update(verifier).digest('base64url');
+		const ip = { 'X-Forwarded-For': '10.7.2.1' };
+		const go = await s.call('POST', '/auth/oauth', { provider: 'github', redirect_to: 'https://site.test/', code_challenge: challenge }, ip);
+		const code = new URL(go.data.url).searchParams.get('code');
+		const session = (await s.call('POST', '/auth/exchange', { code, code_verifier: verifier }, ip)).data.session;
+		assert.match(session.user.github_avatar, /^https:\/\/avatars\.githubusercontent\.com\//);
+		assert.equal(session.user.avatar, 'insignia');
+		const h = { ...ip, Authorization: `Bearer ${session.access_token}` };
+		assert.equal((await s.call('PATCH', '/me', { avatar: 'github' }, h)).data.user.avatar, 'github');
+		const c = (await visitor(`/players/${encodeURIComponent(session.user.callsign)}`)).data.player;
+		assert.equal(c.avatar, session.user.github_avatar);
+	});
+
+	test('finding a player as their callsign is typed', async () => {
+		const ps = await found('pe');
+		assert.deepEqual(
+			ps.map((p) => p.callsign),
+			['Peregrine'],
+		);
+		assert.deepEqual(Object.keys(ps[0]).toSorted(), ['avatar', 'callsign', 'icon', 'rank']);
+		// the most experienced first
+		assert.deepEqual((await found('M')).length, 0, 'one letter is too few');
+		assert.deepEqual(
+			(await found('HA')).map((p) => p.callsign),
+			['Harrier'],
+		);
+	});
+
+	test('signing out everywhere ends every session the account has', async () => {
+		const p = await pilot('Sparrow');
+		const other = (await s.call('POST', '/auth/login', { email: p.email, password: 'longenough' }, p.ip)).data.session;
+		assert.equal((await p.call('POST', '/auth/logout', { scope: 'global' })).status, 200);
+		assert.equal((await s.call('GET', '/me', undefined, { ...p.ip, Authorization: `Bearer ${other.access_token}` })).status, 401);
+		assert.equal((await s.call('POST', '/auth/refresh', { refresh_token: other.refresh_token }, p.ip)).status, 401);
+	});
+}
+
 // --- lobby registry
 {
 	test('quick match prefers open lobbies, then the fullest, then the oldest', () => {
@@ -286,6 +895,38 @@ const battle = (over = {}) => ({
 		assert.equal(reg.match('v', [full.id, old.id, newer.id]).id, strict.id);
 		assert.equal(reg.match('v', [full.id, old.id, newer.id, strict.id]).id, running.id);
 		assert.equal(reg.match('other'), null);
+	});
+
+	test('a battle says what it is, and one with a password is never matched', () => {
+		const reg = new Lobbies();
+		const coop = reg.create('10.0.0.1', { port: 7001, version: 'v', players: 2, mode: 'coop', side: 1, teams: [0, 2], locked: true }).lobby;
+		const mission = reg.create('10.0.0.2', {
+			port: 7002,
+			version: 'v',
+			mode: 'mission',
+			mission: 'Bridgehead\u0007',
+			side: 0,
+			teams: [1, 0],
+			spectators: 1,
+		}).lobby;
+		const v = reg.list('v');
+		const c = v.find((l) => l.id === coop.id);
+		assert.equal(c.mode, 'coop');
+		assert.equal(c.side, 1);
+		assert.deepEqual(c.teams, [0, 2]);
+		assert.equal(c.locked, true);
+		const m = v.find((l) => l.id === mission.id);
+		assert.equal(m.mission, 'Bridgehead');
+		assert.equal(m.spectators, 1);
+		// nonsense is cleaned up rather than passed on
+		reg.update(mission, { mode: 'deathmatch', side: 7, teams: ['x', 99], locked: 0 });
+		assert.equal(mission.mode, '');
+		assert.equal(mission.side, 1);
+		assert.deepEqual(mission.teams, [0, 64]);
+		assert.equal(mission.locked, false);
+		// the fuller battle wants a password: Find Match only offers the other
+		assert.equal(reg.match('v').id, mission.id);
+		assert.equal(reg.match('v', [mission.id]), null);
 	});
 
 	test('a STUN endpoint must come from the address that reports it', async () => {
@@ -317,5 +958,81 @@ const battle = (over = {}) => ({
 		assert.ok(reg.create('5.5.5.5', { port: 7001, lan: '8.8.8.8' }).lobby.lan === '');
 		assert.ok(reg.create('5.5.5.5', { port: 7002, lan: '10.1.2.3' }).lobby.lan === '10.1.2.3');
 		assert.ok(reg.create('5.5.5.5', { port: 7003 }).error);
+	});
+}
+
+// --- error reports
+const nodeMissing = (n) => ({
+	kind: 'error',
+	message: `Node not found: "Squad${n}" (relative to "/root/Main").`,
+	condition: 'Method/function failed. Returning: nullptr',
+	where: 'get_node (scene/main/node.cpp:1976)',
+	context: 'battle',
+	backtrace: ['_on_order (res://scripts/game/squad.gd:120)', '_tick (res://scripts/game/world.gd:500)'],
+	count: 3,
+});
+
+{
+	const s = reporting;
+	const meta = { game_version: '0.4.0', os: 'Windows 11', gpu: 'Radeon RX 7800', driver: 'vulkan', session: 'a1b2c3d4' };
+
+	test('error reports are tallied, the same error together', async () => {
+		const r = await s.call('POST', '/errors', { ...meta, reports: [nodeMissing(4), { kind: 'shader', message: 'Unknown identifier', where: 'water' }] });
+		assert.equal(r.status, 200);
+		assert.equal(r.data.accepted, 2);
+		// the same error with other numbers in it, from another launch on another version
+		await s.call('POST', '/errors', { ...meta, game_version: '0.4.1', session: 'e5f6', reports: [nodeMissing(12)] });
+		const t = await s.call('GET', '/errors', undefined, { Authorization: 'Bearer tally-token' });
+		assert.equal(t.status, 200);
+		assert.equal(t.data.received, 2);
+		const [top, shader] = t.data.errors;
+		assert.equal(top.count, 6);
+		assert.equal(top.sessions, 2);
+		assert.deepEqual(top.versions, { '0.4.0': 1, '0.4.1': 1 });
+		assert.equal(top.gpus['Radeon RX 7800'], 2);
+		assert.equal(top.backtrace[0], '_on_order (res://scripts/game/squad.gd:120)');
+		assert.equal(top.context, 'battle');
+		assert.equal(shader.kind, 'shader');
+		assert.equal(shader.count, 1);
+	});
+
+	test('only whoever holds the token reads the tally', async () => {
+		assert.equal((await s.call('GET', '/errors')).status, 401);
+		assert.equal((await s.call('GET', '/errors', undefined, { Authorization: 'Bearer nope' })).status, 401);
+		// and without a token configured there is nothing to read
+		assert.equal((await open.call('GET', '/errors', undefined, { Authorization: 'Bearer tally-token' })).status, 404);
+	});
+
+	test('error reports that are not reports are refused', async () => {
+		assert.equal((await s.call('POST', '/errors', { ...meta })).status, 400);
+		assert.equal((await s.call('POST', '/errors', { ...meta, reports: [{ kind: 'gossip', message: 'x' }] })).status, 400);
+		assert.equal((await s.call('POST', '/errors', { ...meta, reports: [{ kind: 'error' }] })).status, 400);
+		const big = { ...meta, reports: [{ kind: 'error', message: 'x'.repeat(60 * 1024) }] };
+		assert.equal((await s.call('POST', '/errors', big)).status, 413);
+	});
+
+	test('a new error is logged in full once, then as it grows', () => {
+		const lines = [];
+		const log = new ErrorLog({ log: (l) => lines.push(l) });
+		const crash = { kind: 'crash', message: 'Program crashed with signal 11', backtrace: ['_draw (res://scripts/ui/hud.gd:88)'], log: ['ERROR: Invalid mesh'] };
+		log.add({ ...meta, reports: [crash] });
+		assert.equal(lines.length, 1);
+		assert.match(lines[0], /^crash [0-9a-f]{12} \(0\.4\.0, Windows 11, Radeon RX 7800\): Program crashed with signal 11/);
+		assert.match(lines[0], /_draw \(res:\/\/scripts\/ui\/hud\.gd:88\)/);
+		assert.match(lines[0], /\| ERROR: Invalid mesh/);
+		log.add({ ...meta, reports: [{ ...crash, count: 8 }] });
+		assert.equal(lines.length, 1);
+		log.add({ ...meta, reports: [{ ...crash, count: 150 }] });
+		assert.equal(lines.length, 2);
+		assert.match(lines[1], /seen 159 times in 1 sessions/);
+	});
+
+	test('the tally keeps the errors seen most recently', () => {
+		const log = new ErrorLog({ log: () => {} });
+		for (let i = 0; i < MAX_ENTRIES + 5; i++) log.add({ reports: [{ kind: 'error', message: 'boom', where: `site ${i}` }] });
+		const { errors } = log.summary();
+		assert.equal(errors.length, MAX_ENTRIES);
+		assert.ok(!errors.some((e) => e.where === 'site 0'));
+		assert.ok(errors.some((e) => e.where === `site ${MAX_ENTRIES + 4}`));
 	});
 }

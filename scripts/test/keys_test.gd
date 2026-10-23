@@ -1,0 +1,312 @@
+extends Node
+## --keys-test: checks the key bindings end to end with made-up input. Reading
+## and naming bindings, the closest match (exact modifiers before extra ones),
+## clashes, presses reaching the game through PlayerInput (a rebound key works
+## and the old one doesn't, placing takes R before retreat), a mouse side
+## button on the tactical map (tapped and held), a held key driving the
+## camera, the console opening on its key and keeping what's typed into it
+## from the game, and the Controls page rebinding a key (moving it off another
+## action, Undo, a modifier on its own). Prints
+## KEYTEST ok / FAIL lines and a total, then quits. Needs a window (the camera
+## and the HUD), so run it off-screen:
+##   godot --path . -- --host --team=0 --keys-test --offscreen
+## Nothing is saved: test runs never write the player's bindings.
+
+var world: World
+var _fails := 0
+var _n := 0
+
+
+func _ready() -> void:
+	_run()
+
+
+func _check(what: String, ok: bool, detail := "") -> void:
+	_n += 1
+	if not ok:
+		_fails += 1
+		TestRun.fail()
+	print("KEYTEST %s %s  %s" % ["ok  " if ok else "FAIL", what, detail])
+
+
+func _wait(t: float) -> void:
+	await get_tree().create_timer(t, true, false, true).timeout
+
+
+static func _key(code: int, down := true) -> InputEventKey:
+	var e := InputEventKey.new()
+	e.keycode = code & KEY_CODE_MASK
+	e.pressed = down
+	e.ctrl_pressed = (code & KEY_MASK_CTRL) != 0
+	e.shift_pressed = (code & KEY_MASK_SHIFT) != 0
+	e.alt_pressed = (code & KEY_MASK_ALT) != 0
+	return e
+
+
+func _press(code: int) -> void:
+	world.input._unhandled_input(_key(code))
+	world.input._unhandled_input(_key(code, false))
+
+
+## A side button pressed or let go, fed to the engine as a real mouse's would
+## be (mid-screen, over the battlefield), so Input knows whether it's held.
+func _side_button(down: bool) -> void:
+	var mb := InputEventMouseButton.new()
+	mb.button_index = MOUSE_BUTTON_XBUTTON1
+	mb.button_mask = MOUSE_BUTTON_MASK_MB_XBUTTON1 if down else 0
+	mb.pressed = down
+	mb.position = get_viewport().get_visible_rect().size * 0.5
+	mb.global_position = mb.position
+	Input.parse_input_event(mb)
+
+
+## Waits until it's so, or a few seconds: an event fed to the engine reaches
+## the game a frame later, and off-screen frames are slow.
+func _until(cond: Callable, limit := 3.0) -> void:
+	var t := 0.0
+	while not cond.call() and t < limit:
+		await _wait(0.1)
+		t += 0.1
+
+
+func _run() -> void:
+	while world.input == null or world.hud == null or world.time < 1.5:
+		await _wait(0.2)
+	var inp := world.input
+	assert(Settings.no_save)
+	# --- names and matching
+	_check("Ctrl + F reads as Ctrl + F", Keys.name_of(KEY_F | KEY_MASK_CTRL) == "Ctrl + F", Keys.name_of(KEY_F | KEY_MASK_CTRL))
+	_check("a typed name parses back", Keys.parse("Ctrl+F") == (KEY_F | KEY_MASK_CTRL) and Keys.parse("Mouse4") == -MOUSE_BUTTON_XBUTTON1)
+	_check("brackets and keypad read plainly", Keys.name_of(KEY_BRACKETLEFT) == "[" and Keys.name_of(KEY_KP_ADD) == "Num +")
+	_check("F means the fire mission", Keys.action_for(_key(KEY_F), PlayerInput.KEY_ACTIONS) == "fire_mission")
+	_check("Ctrl + F means follow, not the fire mission", Keys.action_for(_key(KEY_F | KEY_MASK_CTRL), PlayerInput.KEY_ACTIONS) == "cam_follow")
+	_check("Shift + R still retreats", Keys.action_for(_key(KEY_R | KEY_MASK_SHIFT), PlayerInput.KEY_ACTIONS) == "retreat")
+	_check("Shift + Enter is team chat", Keys.action_for(_key(KEY_ENTER | KEY_MASK_SHIFT), PlayerInput.KEY_ACTIONS) == "chat_team")
+	_check("Ctrl + 3 sets group 3", Keys.action_for(_key(KEY_3 | KEY_MASK_CTRL), PlayerInput.KEY_ACTIONS) == "group_set_3")
+	# --- clashes
+	var cl := Keys.clashes("defend", KEY_X)
+	_check("X for defend clashes with attack-move", cl.size() == 1 and cl[0][0] == "attack_move", str(cl))
+	_check("R for turning a building doesn't clash with retreat", Keys.clashes("rotate_build", KEY_R).is_empty())
+	_check("a camera key clashes with an order", not Keys.clashes("cam_up", KEY_H).is_empty())
+	_check("an observer key doesn't clash with an order", Keys.clashes("pause", KEY_H).is_empty())
+	# --- presses reaching the game
+	inp.clear_selection()
+	for s in world.soldiers:
+		if s.owner_peer == world.local_peer and s.sid != 0:
+			inp.sel_squads.append(s.sid)
+			break
+	_check("a squad to give orders to", inp.has_units())
+	_press(KEY_X)
+	_check("X arms attack-move", inp.order_mode == "assault", inp.order_mode)
+	inp.cancel_modes()
+	Keys.set_bind("attack_move", 0, KEY_K)
+	_press(KEY_X)
+	_check("rebound to K, X no longer does it", inp.order_mode == "", inp.order_mode)
+	_press(KEY_K)
+	_check("and K does", inp.order_mode == "assault", inp.order_mode)
+	inp.cancel_modes()
+	Keys.reset("attack_move")
+	_check("the hint on the command card follows", Keys.label("attack_move") == "X")
+	inp.start_place("sandbags")
+	var y0: float = inp.place_yaw
+	_press(KEY_R)
+	_check("placing, R turns the building", absf(inp.place_yaw - y0 - PI * 0.5) < 0.001 and inp.place_kind == "sandbags")
+	inp.cancel_modes()
+	# --- a mouse side button on the tactical map: a tap switches to the map when
+	# it's let go, held it shows the statistics. The release of a side button is
+	# noticed through Input's state, so the presses go through the engine
+	Keys.set_bind("tactical", 1, -MOUSE_BUTTON_XBUTTON1)
+	var tac: bool = world.hud.tactical
+	_side_button(true)
+	_side_button(false)
+	await _until(func() -> bool: return world.hud.tactical != tac)
+	_check("a mouse side button can be bound", world.hud.tactical != tac)
+	if world.hud.tactical != tac:
+		world.hud.toggle_tactical()
+	_side_button(true)
+	await _until(func() -> bool: return inp._tab_peek)
+	_check("held, the side button shows the statistics", inp._tab_peek)
+	_side_button(false)
+	await _until(func() -> bool: return inp._tab_down < 0)
+	_check("let go, they go away and the map stays as it was", inp._tab_down < 0 and world.hud.tactical == tac)
+	Keys.reset("tactical")
+	# --- a held key driving the camera
+	var cam := world.cam
+	cam.stop_follow()
+	Keys.set_bind("cam_up", 0, KEY_I)
+	var f0 := cam.focus_pos
+	Input.parse_input_event(_key(KEY_I))
+	await _wait(0.5)
+	Input.parse_input_event(_key(KEY_I, false))
+	await _wait(0.2)
+	var fwd := Vector3(-sin(cam.yaw), 0, -cos(cam.yaw))
+	_check("held, a rebound key pans the camera", (cam.focus_pos - f0).dot(fwd) > 1.0, "%.1f m forward" % (cam.focus_pos - f0).dot(fwd))
+	Keys.reset("cam_up")
+	# --- the console: its key (` or ~) opens it, and while it's open the keys are its own
+	var con: Console = world.get_parent().console
+	inp.cancel_modes()
+	Input.parse_input_event(_key(KEY_QUOTELEFT | KEY_MASK_SHIFT))
+	Input.parse_input_event(_key(KEY_QUOTELEFT | KEY_MASK_SHIFT, false))
+	await _until(func(): return con.is_open)
+	_check("~ opens the console", con.is_open and Keys.console_open)
+	con._set_line("")
+	_check("empty prompt lists every command", con._suggest.options.size() == con.cmds.names().size())
+	await _wait(0.1)
+	# Control rectangles use viewport coordinates, regardless of the UI scale.
+	var wheel := InputEventMouseButton.new()
+	wheel.button_index = MOUSE_BUTTON_WHEEL_DOWN
+	wheel.pressed = true
+	wheel.position = con._suggest.list.global_position + Vector2(20, 20)
+	wheel.global_position = wheel.position
+	var motion := InputEventMouseMotion.new()
+	motion.position = wheel.position
+	motion.global_position = wheel.position
+	get_viewport().push_input(motion, true)
+	await _wait(0.1)
+	get_viewport().push_input(wheel, true)
+	await _wait(0.1)
+	_check("command list scrolls with the mouse wheel", con._suggest.list.get_v_scroll_bar().value > 0)
+	con._suggest.refresh()
+	await _wait(0.1)
+	var click := InputEventMouseButton.new()
+	click.button_index = MOUSE_BUTTON_LEFT
+	click.pressed = true
+	click.position = con._suggest.list.global_position + con._suggest.list.get_item_rect(1).get_center()
+	click.global_position = click.position
+	motion = InputEventMouseMotion.new()
+	motion.position = click.position
+	motion.global_position = click.position
+	get_viewport().push_input(motion, true)
+	await _wait(0.1)
+	get_viewport().push_input(click, true)
+	var release := click.duplicate() as InputEventMouseButton
+	release.pressed = false
+	get_viewport().push_input(release, true)
+	await _wait(0.1)
+	_check("click inserts a suggestion without running it", con._edit.text == "clear " and not con._log.get_parsed_text().is_empty())
+
+	con._set_line("grph")
+	_check("fuzzy completion finds missing letters", con._suggest.options[0] == "graph")
+	Input.parse_input_event(_key(KEY_TAB))
+	Input.parse_input_event(_key(KEY_TAB, false))
+	await _wait(0.1)
+	_check("Tab inserts without executing", con._edit.text == "graph " and not con.graph.visible)
+	con._set_line("set shadw off")
+	con._edit.caret_column = 9
+	con._suggest.refresh()
+	con._complete()
+	_check("argument completion preserves the rest of the line", con._edit.text == "set shadows off")
+	con._set_line("grapj")
+	_check("fuzzy completion tolerates a mistyped letter", con._suggest.options.has("graph"))
+	con._set_line("zzzzzzzz")
+	_check("no matches leaves input intact", con._suggest.options.is_empty() and con._edit.text == "zzzzzzzz")
+	con._set_line("")
+	Input.parse_input_event(_key(KEY_DOWN))
+	Input.parse_input_event(_key(KEY_DOWN, false))
+	await _wait(0.1)
+	var choice: String = con._suggest.options[1]
+	Input.parse_input_event(_key(KEY_ENTER))
+	Input.parse_input_event(_key(KEY_ENTER, false))
+	await _wait(0.1)
+	_check("Enter inserts an explicitly chosen suggestion", con._edit.text == choice + " ")
+	con._set_line("")
+	Input.parse_input_event(_key(KEY_ESCAPE))
+	Input.parse_input_event(_key(KEY_ESCAPE, false))
+	await _wait(0.1)
+	_check("Esc dismisses suggestions without closing", con.is_open and not con._suggest.visible)
+
+	var f1 := cam.focus_pos
+	Input.parse_input_event(_key(KEY_W))
+	await _wait(0.5)
+	Input.parse_input_event(_key(KEY_W, false))
+	await _wait(0.2)
+	_check("typing W into it doesn't pan the camera", cam.focus_pos.distance_to(f1) < 0.1, "%.1f m" % cam.focus_pos.distance_to(f1))
+	_press(KEY_X)
+	_check("nor is a typed X an order", inp.order_mode == "", inp.order_mode)
+	_check("a command runs", con.run_captured("why").size() > 0)
+	# The output must keep focus long enough to select/copy, including between frames.
+	var clipboard := DisplayServer.clipboard_get()
+	con.clear()
+	con.out("console copy test [literal]")
+	con._log.grab_focus()
+	await _wait(0.2)
+	_check("output keeps keyboard focus", con._log.has_focus())
+	Input.parse_input_event(_key(KEY_A | KEY_MASK_CTRL))
+	Input.parse_input_event(_key(KEY_A | KEY_MASK_CTRL, false))
+	await _wait(0.1)
+	Input.parse_input_event(_key(KEY_C | KEY_MASK_CTRL))
+	Input.parse_input_event(_key(KEY_C | KEY_MASK_CTRL, false))
+	await _wait(0.1)
+	_check("selected output copies as plain text", DisplayServer.clipboard_get().contains("console copy test [literal]"))
+	con._set_line("")
+	Input.parse_input_event(_key(KEY_V | KEY_MASK_CTRL | KEY_MASK_SHIFT))
+	Input.parse_input_event(_key(KEY_V | KEY_MASK_CTRL | KEY_MASK_SHIFT, false))
+	await _wait(0.1)
+	_check("paste from output focuses the prompt without executing", con._edit.has_focus() and con._edit.text.contains("console copy test"))
+	Input.parse_input_event(_key(KEY_C | KEY_MASK_CTRL))
+	Input.parse_input_event(_key(KEY_C | KEY_MASK_CTRL, false))
+	await _wait(0.1)
+	_check("Ctrl+C cancels an unselected input", con._edit.text.is_empty())
+	con._show_find()
+	con._find.text = "COPY TEST"
+	con._find_next()
+	_check("find is case insensitive", con._find_at == 8)
+	Input.parse_input_event(_key(KEY_ESCAPE))
+	Input.parse_input_event(_key(KEY_ESCAPE, false))
+	await _wait(0.1)
+	_check("Esc dismisses search before the console", con.is_open and not con._find_row.visible)
+	Input.parse_input_event(_key(KEY_L | KEY_MASK_CTRL))
+	Input.parse_input_event(_key(KEY_L | KEY_MASK_CTRL, false))
+	await _wait(0.1)
+	_check("Ctrl+L clears output", con._log.get_parsed_text().is_empty())
+	DisplayServer.clipboard_set(clipboard)
+	con._suggest.dismiss()
+
+	Input.parse_input_event(_key(KEY_ESCAPE))
+	Input.parse_input_event(_key(KEY_ESCAPE, false))
+	await _until(func(): return not con.is_open)
+	_check("Esc closes it", not con.is_open and not Keys.console_open)
+	_check("and leaves the battle's menu shut", not world.hud.menu_panel.visible)
+	Input.parse_input_event(_key(KEY_QUOTELEFT))
+	Input.parse_input_event(_key(KEY_QUOTELEFT, false))
+	await _until(func(): return con.is_open)
+	Input.parse_input_event(_key(KEY_QUOTELEFT))
+	Input.parse_input_event(_key(KEY_QUOTELEFT, false))
+	await _until(func(): return not con.is_open)
+	_check("` opens it and closes it again", not con.is_open)
+	# --- the Controls page
+	var sp: SettingsPanel = world.hud.settings_panel
+	sp.visible = true
+	sp._show_tab("controls")
+	await _wait(0.2)
+	var cp: ControlsPage = sp._pages["controls"]
+	cp._start_capture("hold", 0)
+	_check("waiting for a key, the game leaves the keys alone", Keys.capturing)
+	cp._input(_key(KEY_J))
+	_check("the page binds the key pressed", Keys.get_bind("hold", 0) == KEY_J and not Keys.capturing)
+	cp._start_capture("defend", 0)
+	cp._input(_key(KEY_X))
+	_check("taking X for defend moves it off attack-move", Keys.get_bind("defend", 0) == KEY_X and Keys.get_bind("attack_move", 0) == Keys.NONE)
+	_check("and says so", cp._msg.text.contains("Attack-move") and cp._undo.visible, cp._msg.text)
+	cp._on_undo()
+	_check("Undo puts both back", Keys.get_bind("defend", 0) == KEY_B and Keys.get_bind("attack_move", 0) == KEY_X)
+	cp._start_capture("cam_fast", 0)
+	cp._input(_key(KEY_CTRL | KEY_MASK_CTRL))
+	cp._input(_key(KEY_CTRL, false))
+	_check("a modifier on its own can be the key", Keys.get_bind("cam_fast", 0) == KEY_CTRL, Keys.name_of(Keys.get_bind("cam_fast", 0)))
+	cp._start_capture("grenade", 1)
+	cp._input(_key(KEY_ESCAPE))
+	_check("Esc calls it off", Keys.get_bind("grenade", 1) == Keys.NONE and not Keys.capturing)
+	cp._search.text = "smoke"
+	cp._filter()
+	var shown := 0
+	for id in cp._rows:
+		if (cp._rows[id].row as Control).visible:
+			shown += 1
+	_check("search finds the action", shown >= 1 and (cp._rows["smoke"].row as Control).visible and not (cp._rows["hold"].row as Control).visible, "%d shown" % shown)
+	cp._search.text = ""
+	Keys.reset_all()
+	_check("reset all puts every default back", Keys.is_default("hold") and Keys.is_default("cam_fast"))
+	sp.visible = false
+	print("KEYTEST %d/%d passed" % [_n - _fails, _n])
+	TestRun.quit(get_tree())

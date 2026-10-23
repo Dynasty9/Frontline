@@ -15,3 +15,7 @@ desktop.ini
 
 # Locally licensed animation evaluation assets
 assets/local_mocap/
+native/target/
+bin/native/
+frontline_sim.gdextension
+__pycache__/

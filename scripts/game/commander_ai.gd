@@ -80,10 +80,20 @@ func _support() -> void:
 		_cmd({"t": "support", "kind": kind, "pos": best, "dir": dir})
 
 
+## Shuffles with this commander's own generator: Array.shuffle() draws on the
+## global one, which no seed reaches, and a seed must replay the same battle.
+func _shuffle(a: Array) -> void:
+	for i in range(a.size() - 1, 0, -1):
+		var j := rng.randi_range(0, i)
+		var tmp: Variant = a[i]
+		a[i] = a[j]
+		a[j] = tmp
+
+
 ## Any off-map fire support that is ready and affordable ("" if none).
 func _support_kind() -> String:
 	var opts := Defs.supports_for(team)
-	opts.shuffle()
+	_shuffle(opts)
 	for k in opts:
 		if Defs.SUPPORT[k].get("recon", false):
 			continue  # (recon flights are for finding the enemy: see _recon)
@@ -368,7 +378,7 @@ func _my_squads() -> Array:
 
 func _my_structs(kind := "", built_only := false) -> Array:
 	var out := []
-	for st in world.structures:
+	for st in world.owned_structures:
 		if st.team != team:
 			continue
 		if kind != "" and st.skind != kind:
@@ -639,7 +649,7 @@ func _find_spot(kind: String, center: Vector3, rmin: float, rmax: float) -> Vect
 		for st in world.structures_near(center, rmax + 6.0):
 			if st.skind == "trench" and st.team == team and st.built and absf(Defs.dir_of(st.yaw).dot(fwd)) < 0.5:
 				cands.append(st)
-		cands.shuffle()
+		_shuffle(cands)
 		for st in cands:
 			var spot: Dictionary = world.trench_mount_spot(st.position, Defs.yaw_of(fwd))
 			if spot.is_empty():
@@ -907,7 +917,7 @@ func _military(sqs: Array) -> void:
 	for sq in sqs:
 		if _is_engineer_squad(sq) and sq.kind in ["engineer_team", "digger_team"]:
 			continue
-		if sq.alive_members().is_empty() or sq.kind in ["crew", "r_crew"]:
+		if not sq.has_alive_members() or sq.kind in ["crew", "r_crew"]:
 			continue  # (a crew that bailed out is on its way back to the vehicle park)
 		fighters.append(sq)
 	# retreat battered squads
@@ -1164,7 +1174,7 @@ func _pick_target() -> Structure:
 	var from: Vector3 = front.position if front else Vector3.ZERO
 	var best: Structure = null
 	var bd := 1e9
-	for st in world.structures:
+	for st in world.owned_structures:
 		if st.skind != "fob" or st.team == team or st.team < 0 or not st.built:
 			continue
 		var known: bool = ((st.seen_mask >> team) & 1) == 1 or st.completed_order <= 2

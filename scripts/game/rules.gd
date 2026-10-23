@@ -158,16 +158,25 @@ func tick(dt: float) -> void:
 	_t_vis -= dt
 	if _t_vis <= 0.0:
 		_t_vis = 0.4
+		var stamp := Time.get_ticks_usec() if world.measure_details else 0
 		_visibility()
+		if stamp:
+			world.detail("rules visibility", stamp)
 	_t_sec -= dt
 	if _t_sec <= 0.0:
 		_t_sec = 1.0
 		_reserves()
 		_prisoners()
 		_check_victory()
+		var stamp := Time.get_ticks_usec() if world.measure_details else 0
 		_danger_maps()
+		if stamp:
+			world.detail("rules danger", stamp)
 	if world.mission == null:
+		var stamp := Time.get_ticks_usec() if world.measure_details else 0
 		_trucks(dt)  # (a mission's supply is what it's given)
+		if stamp:
+			world.detail("rules supply", stamp)
 
 
 func random_name(team: int) -> String:
@@ -243,7 +252,7 @@ func max_fob_supply(team: int) -> int:
 
 func fobs(team: int, include_wrecked := true) -> Array:
 	var out := []
-	for st in world.structures:
+	for st in world.fob_structures:
 		if st.skind == "fob" and st.team == team and st.built and (include_wrecked or not st.wrecked):
 			out.append(st)
 	return out
@@ -389,7 +398,7 @@ func try_place(peer: int, team: int, kind: String, pos: Vector3, yaw: float, sqs
 	if builders.is_empty():
 		var bd := 1e9
 		for sq in world.squads.values():
-			if sq.owner != peer or sq.order == "build":
+			if not world.can_command_unit(peer, sq.team, sq.owner) or sq.order == "build":
 				continue
 			var eng := false
 			for m in sq.members:
@@ -401,6 +410,7 @@ func try_place(peer: int, team: int, kind: String, pos: Vector3, yaw: float, sqs
 			if d < bd:
 				bd = d
 				builders = [sq]
+	world.take_command(peer, builders, [])
 	for sq in builders:
 		sq.order_work(st)
 	return st
@@ -435,7 +445,7 @@ func mortar_target(team: int, from: Vector3, rmin: float, rmax: float) -> Vector
 		if sc > bs:
 			bs = sc
 			best = s.position
-	for st in world.structures:
+	for st in world.owned_structures:
 		if st.team == team or st.team < 0 or not st.built or not st.skind in ["mg_nest", "hmg_nest", "mortar_pit", "at_post", "bunker", "watchtower"]:
 			continue
 		if ((st.seen_mask >> team) & 1) == 0:
@@ -570,7 +580,7 @@ func route_to(f: Structure) -> PackedVector3Array:
 func _trucks(dt: float) -> void:
 	for tn in town_list:
 		_town_truck(tn, dt)
-	for st in world.structures:
+	for st in world.fob_structures:
 		if st.skind != "fob" or not st.built or st.team < 0:
 			continue
 		if st.truck and st.truck.gone:
@@ -783,7 +793,7 @@ func spawn_squad(key: String, team: int, owner: int, pos: Vector3, dest := Vecto
 func rejoin_squad(s: Soldier) -> void:
 	var owner := s.owner_peer
 	if owner > 0 and not Net.players.has(owner):
-		owner = -1 - s.team
+		owner = world.acting_owner(owner, s.team)
 		s.owner_peer = owner
 		world.push_props(s, {"owner": owner})
 	var best: Squad = null
@@ -866,12 +876,13 @@ func tunnel_exit(st: Structure, ex: Structure, peer: int) -> void:
 	var tt := 1.0 if st == ex else 3.0 + dist / (28.0 if has_upgrade(st.team, "deep_tunnels") else 14.0)
 	var moved := 0
 	for s in st.inside.duplicate():
-		if s.gone or s.owner_peer != peer:
+		if s.gone or not world.can_command_unit(peer, s.team, s.owner_peer):
 			continue
 		s.hidden_reason = "tunnel_travel"
 		s.hidden_t = tt + world.rng.randf() * 1.5
 		s.task_pos = ex.position + Vector3(world.rng.randf_range(-3, 3), 0, world.rng.randf_range(-3, 3))
 		if s.squad:
+			world.take_command(peer, [s.squad], [])
 			s.squad.order_pos = ex.position
 		moved += 1
 	if moved > 0:
@@ -898,10 +909,10 @@ func _reserves() -> void:
 		if alive >= 6:
 			continue
 		_reserve_t[t] = world.time + 75.0
+		# to the side's first commander still in the battle (or the AI)
 		var owner := -1 - t
-		var pl: Dictionary = world.settings.get("players", {})
-		for id in pl:
-			if int(pl[id].team) == t:
+		for id in Net.players:
+			if int(Net.players[id].team) == t:
 				owner = int(id)
 				break
 		var hq: Structure = depots[t]
@@ -986,7 +997,7 @@ func _free(s: Soldier) -> void:
 func _prison_dest(team: int, pos: Vector3) -> Structure:
 	var best: Structure = null
 	var bd := 1e9
-	for st in world.structures:
+	for st in world.owned_structures:
 		if st.team != team or not st.built:
 			continue
 		var ok: bool = st.skind == "fob" or (team == Defs.REBELS and st.skind == "tunnel")
@@ -1046,7 +1057,7 @@ func _give_intel(p: Soldier, mode: String) -> void:
 			if s.team == about and s.life == Soldier.Life.ALIVE:
 				n += 1
 		facts.append(["fob%d" % f.eid, "%s at %s has %d supply and %d men guarding it." % [f.display_name(), Defs.grid_ref(f.position), int(f.supply), n], f.position])
-	for st in world.structures:
+	for st in world.owned_structures:
 		if st.team != about or not st.built:
 			continue
 		var f := nearest_fob(about, st.position)
@@ -1130,7 +1141,7 @@ func _danger_maps() -> void:
 			if v.team == t or v.team < 0 or v.is_auto() or not v.visible_to_team(t):
 				continue
 			_threat(dm, v.position, 60.0, 3.0 if v.vdef.get("cannon", false) else 2.0)
-		for st in world.structures:
+		for st in world.owned_structures:
 			if st.team == t or st.team < 0 or not st.built or not ((st.seen_mask >> t) & 1):
 				continue
 			if st.skind in ["mg_nest", "hmg_nest", "bunker", "at_post"]:
@@ -1173,7 +1184,7 @@ func add_mark(team: int, p: Vector3, r: float, linger: float) -> void:
 func _visibility() -> void:
 	var cells := [{}, {}]
 	var own := [[], []]  # each side's buildings (the map's own - houses, trees, walls - see nothing)
-	for st in world.structures:
+	for st in world.owned_structures:
 		if st.team == 0 or st.team == 1:
 			own[st.team].append(st)
 	for t in 2:
@@ -1189,7 +1200,7 @@ func _visibility() -> void:
 		_vis_ent(v, cells)
 	for d in world.drones:
 		_vis_ent(d, cells)
-	for st in world.structures:
+	for st in world.owned_structures:
 		if st.team >= 0:
 			_vis_ent(st, cells)
 	if OS.has_environment("FL_DEBUG_VISION"):
@@ -1215,7 +1226,7 @@ func _debug_vision() -> void:
 			if e.team >= 0 and e.team != t and ((e.vis_mask >> t) & 1) == 1 and (not (e is Soldier) or e.life == Soldier.Life.ALIVE):
 				sees += 1
 		var towers := 0
-		for st in world.structures:
+		for st in world.owned_structures:
 			if st.team == t and st.skind == "watchtower" and st.manned:
 				towers += 1
 		line += "  | %s: eyes=%d aircraft=%d photos=%d manned_towers=%d sees=%d intel=%d" % [Defs.TEAM_NAMES[t], Vision.eyes(world, t, marks[t]).size(), air, (marks[t] as Array).size(), towers, sees, (sighted[t] as Dictionary).size()]
@@ -1288,7 +1299,7 @@ func team_summary() -> Array:
 		# every squad's current orders, for the map graphics: sid -> [order, where, facing, order number]
 		var sq := {}
 		for s in world.squads.values():
-			if s.team != t or s.alive_members().is_empty():
+			if s.team != t or not s.has_alive_members():
 				continue
 			var pl = null
 			if s.plan != null:

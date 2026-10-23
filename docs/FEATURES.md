@@ -5,6 +5,8 @@ The long version: how each system works and why. For the short version, see the 
 - [Full controls reference](#full-controls-reference)
 - [Watching the AI](#watching-the-ai)
 - [Multiplayer in detail](#multiplayer-in-detail)
+- [In a browser](#in-a-browser)
+- [The console: finding out why it's slow](#the-console-finding-out-why-its-slow)
 - [Missions](#missions)
 - [The systems](#the-systems)
 
@@ -34,7 +36,7 @@ changes any of them:
 
 | | |
 |---|---|
-| Camera | WASD / arrows / screen edge pan (Shift: faster), mouse wheel zoom toward the cursor (or + / -), Q/E turn, Page Up / Page Down tilt. Middle-drag turns and tilts; **Alt+middle-drag grabs the map** and pans (Settings swaps the two). **Backspace** squares the view up again, **Ctrl+F** follows the selection, **Ctrl+F5..F8** save a view and **F5..F8** go back to it |
+| Camera | WASD / arrows / screen edge pan (Shift: faster), mouse wheel zoom toward the cursor (or + / -), Q/E turn, Page Up / Page Down tilt. Middle-drag turns and tilts; **Alt+middle-drag grabs the map** and pans (Settings swaps the two). **Backspace** squares the view up again, **Ctrl+F** follows the selection, **Ctrl+F5..F8** save a view and **F5..F8** go back to it. On a Mac's trackpad: two fingers grab the map (or zoom, a setting), pinch zooms, Option + two fingers turn and tilt |
 | Minimap | Click or drag to look there, right-click to send the selection, wheel to zoom. Click the compass needle to square the view up. **Alt+click** pings, **Alt+right-drag** draws for your side |
 | Co-commanders | **Alt+click** pings what's under the cursor (an enemy: "enemy spotted"; one of ours: "watch this"; the ground: "look here"). **Hold Alt + left button** for the ping wheel (attack, on my way, need support, danger, defend, look; let go in the middle to call it off). **Alt+right-drag** draws a line for your side. In the Command Net, click a name to look where they're looking, the screen button (or a double-click) to watch their view live |
 | Select | Left-click a soldier to select his squad, drag a box, double-click for all of that type on screen. **Alt+click** a soldier (or click his name in the squad panel) to command just him |
@@ -43,12 +45,12 @@ changes any of them:
 | High-level | **X attack-move** (or Ctrl+right-click): the squad bounds forward by fire teams, cover to cover, fights whatever it meets, then digs in at the objective. **B defend**: click the area (drag to face) and the squad spreads into the best cover there and holds. **R retreat** to the nearest FOB (routes around known enemy fire, suppression halved). **H hold** |
 | One soldier | With a single man picked out: right-click to move him into the best cover at that spot, right-click an enemy to engage, a nest or mortar pit to man it; G / T throw, H hold, R fall back. Any squad order brings him back into the squad |
 | Squad | G grenade, T smoke, F mortar fire mission (mortar teams) |
-| Build | Select infantry, click a building in the command card, left-click to place (R turns 90 degrees, Shift+wheel 45). Everything snaps to a 1 m build grid, shown round the cursor while you place. **Click and drag** to lay a whole line of trenches, sandbags, wire, walls or tank traps (lines run at 45 degree headings) |
+| Build | Select infantry, click a building in the command card, left-click to place (R turns 90 degrees, Shift+wheel or Shift + two fingers 45). Everything snaps to a 1 m build grid, shown round the cursor while you place. **Click and drag** to lay a whole line of trenches, sandbags, wire, walls or tank traps (lines run at 45 degree headings) |
 | Defenses | Emplacements are crewed by any idle soldier standing next to them. Right-click a bunker with a squad to garrison it. Select a mortar pit for HE / smoke fire missions |
 | Support | The buttons above the minimap (Z arms the first one ready): click the target, **drag** to set the run-in direction for gun runs and bombing runs |
 | Observer | C director camera, V whose eyes to watch through, P pause, [ ] speed, F2 hide the interface. **Fire support** (observer bar) launches any air or artillery support anywhere to watch it |
 | Command view | Tab tactical map (**hold Tab**: battle statistics), O order of battle (click a unit to select it and look at it, double-click to zoom in), the buttons beside the minimap turn map layers on and off (unit symbols, orders and attack plans, intelligence, fog of war, weapon ranges, soldier labels) |
-| Other | Home cycles FOBs, Space jumps to the last alert or ping (both glide there), Enter chats (Shift+Enter: team), L message history, F1 help, F3 performance overlay, **F4 field manual**, Esc menu |
+| Other | Home cycles FOBs, Space jumps to the last alert or ping (both glide there), Enter chats (Shift+Enter: team), L message history, F1 help, F3 performance overlay, **F4 field manual**, **` (or ~) the console**, Esc menu |
 
 ## Watching the AI
 
@@ -60,10 +62,34 @@ they're doing). The observer bar at the top has pause, speed (0.25x to 4x), dire
 ## Multiplayer in detail
 
 - The host is the authoritative server and runs the entire simulation, including the AI.
-- **Matchmaking.** Hosted battles are listed on the matchmaker (`matchmaker/`, a small Node service on Railway) unless
-  the host unticks "List online". **Find Match** joins the best open battle (ones still in the lobby first, then the
-  fullest) or, if there is none, hosts one for the next player to find; **Join Game** shows the list. The matchmaker
-  only introduces players: game traffic goes straight between them.
+- **Hosting.** **Host a Battle** sets up the lobby: a name, the mode (**Co-op vs AI**: every player on one side and
+  the AI commanding the other; **Versus**: players pick sides, and the AI can take an empty one; or a **Mission**
+  played together), the seats (2 to 8), the time of day, drop-in, an AI commander alongside the players, and who
+  can join: **Public** (listed), **Password** (listed with a padlock; the password never leaves the host, which
+  checks what joiners send and asks again when it's wrong) or **Unlisted**. Missions' **Host Co-op** opens the same
+  setup on that mission, so a co-op mission is listed like any other battle.
+- **The server browser** lists every battle being hosted, online (from the matchmaker) and on the local network:
+  name, host, mode (and side or mission), players and seats, whether it's in the lobby or running (open to drop-in or
+  closed), and how good the connection should be (LAN, direct, hole punching, or a strict router). It can be searched,
+  filtered (mode, full, running, passworded) and sorted by any column, refreshes itself every 10 seconds, and shows
+  the chosen battle's sides and seats beside the list. Double-click (or **Join**) to join; a battle with a password
+  asks for it first. **Direct connect** takes an address (and a port and password). A dialog ticks off each step of a
+  join (checking the connection, asking the host to open the way in, connecting, joining the lobby) and says plainly
+  what went wrong if it fails.
+- **LAN discovery.** A host broadcasts a small beacon (UDP port 7787) every second with what the server browser
+  needs; the browser listens while it's open, so battles on the same network show up with no internet. A battle that
+  is listed online and also heard on the LAN is joined over the LAN.
+- **The lobby** shows the two sides as columns: each player with their ready state (and HOST and YOU tags), the AI
+  commander where the AI will play, the open seats, players still connecting, and anyone watching. Players switch
+  sides (where the mode allows), watch instead, press **Ready**, and chat; the host changes the settings, removes
+  players and starts when they like (it says who it's still waiting on). A player arriving gets a chime and their row
+  lights up, and the host's taskbar flashes if the game isn't in front. Names are made unique (a second "Commander"
+  becomes "Commander 2"). **Copy invite link** gives the website's page for a listed battle (`/?join=<id>`), which
+  any player in the lobby can send a friend. Closing the lobby tells everyone in it why.
+- **Matchmaking.** Listed battles are on the matchmaker (`matchmaker/`, a small Node service on Railway), which also
+  hears each battle's mode, sides and whether it's locked. **Find Match** joins the best open battle (ones still in
+  the lobby first, then the fullest; never one with a password) or, if there is none, hosts one for the next player
+  to find. The matchmaker only introduces players: game traffic goes straight between them.
 - **Getting through routers.** Before hosting, the game asks two public STUN servers what address and port its
   router shows the internet for the game port. A joiner does the same from a fresh port; the matchmaker swaps the
   two (the host hears about the joiner on a long poll), both send packets at each other so each router lets the
@@ -71,27 +97,119 @@ they're doing). The observer bar at the top has pause, speed (0.25x to 4x), dire
   address. If the two STUN servers see different ports the router is "symmetric" and can't be punched; the lobby
   says so, and that host needs UDP port **7777** forwarded. If a joiner isn't through in 12 seconds, Find Match
   moves on to the next battle.
-- **The website** (`web/`) lists the battles being hosted, each with a **Join** link, `frontline://join/<id>`
-  (and a Find Match one, `frontline://find-match`). An exported build registers the `frontline://` scheme the
-  first time it runs (per user: HKCU on Windows, a hidden `.desktop` handler on Linux), so the browser starts the
-  game with the link. If the game is already running, the new copy hands the link to it over a localhost socket
-  and quits. A link is ignored in a battle or a lobby, so a stray click never pulls anyone out of a game, and a
+- **The website** (`web/`) is pages, like any online game's site: a front page that shows the game off, Play,
+  the live battles, the ranks and insignia, your profile and the changelog. Sign in, in the header, opens a dialog
+  over whatever page you're on, and once you're in it takes you to your profile. It lists the battles being hosted,
+  each with a **Join** link, `frontline://join/<id>` (and a Find Match one, `frontline://find-match`). Its Play page launches the game with `frontline://open`: any
+  link the game doesn't know starts it (or brings a running copy to the front) and does nothing else, so older
+  versions open too. The browser can't tell the page whether anything took the link, so the page watches for
+  losing focus to the browser's prompt or the game's window, and otherwise explains how to set the game up the
+  first time. An exported build registers the `frontline://` scheme when it starts (per user: HKCU on Windows, a
+  hidden `.desktop` handler on Linux; a Mac app claims it in its Info.plist, which macOS reads when the app is first
+  opened), so the browser starts the game with the link (on a Mac, as `--uri="frontline://..."`). It asks the
+  system each time whether the links still open this copy (`reg export` of the command key, or `xdg-mime query
+  default` and the `.desktop` entry's `Exec`) rather than trusting its own note of having claimed them
+  (`user://links.cfg`): uninstalling another copy (the installer's uninstaller takes the links with it), a
+  registry cleaner or another copy claiming them can take them away, and a game that went by its note never claimed
+  them back. So the copy started last has the links. Asking runs another program, so it's done on a worker and the
+  title doesn't wait. If the game is already running, the new copy hands the link to it over a
+  localhost socket and quits. Only one copy can hold the socket, and one that finds it taken asks again every
+  second: the copy an update replaces quits only after starting the new one, and a game that gave up on the socket
+  would leave every later link to start a second game once the old copy had gone. A link is ignored in a battle or a lobby, so a stray click never pulls anyone out of a game, and a
   battle listed for another version of the game reads as not found.
-- **Joining by address** still works without the matchmaker: the host's IP on UDP port **7777**, forwarded or over a
-  LAN/VPN (Tailscale, ZeroTier, Hamachi).
+- **Joining by address** (Direct connect) still works without the matchmaker: the host's IP on UDP port **7777**,
+  forwarded or over a LAN/VPN (Tailscale, ZeroTier, Hamachi).
 - **Accounts** are optional (Supabase, through the matchmaker). Signed in, your callsign is yours: no other account can register it, and
   battles you host are listed under it with a tick. The account card top right of the main menu signs you in or
   makes an account (the end-of-battle screen offers it too); the session is remembered in `user://account.cfg`.
+  - **Players sign in with GitHub, on the website.** The game never asks for a password: Sign in opens the
+    website with `?sign-in=<state>`, a random one-time value the game keeps (in `account.cfg` too, so it survives
+    the game closing, for half an hour). The site sends the player to GitHub (OAuth with PKCE, through the
+    matchmaker and Supabase); the first time makes the account, its callsign taken from the GitHub username
+    (made to fit, and numbered if it's taken). Back on the site, it hands the game a session of its own in
+    `frontline://sign-in/<state>/<refresh token>`. If the website is already signed in, it automatically
+    authorizes a separate game session and returns to the game without asking for GitHub again.
+    The game takes only the state it made, so no other page can
+    sign it in to someone else's account, and spends the token at once. The game's session and the site's are
+    separate (a refresh token works once, so the two can't share one), and signing out ends only that one.
+    Both ends say what's happening, since the work is in the browser: the game's panel lists the steps (sign in
+    on the website, let the browser open Frontline, the game signs in), lights up the one it's on and keeps a
+    "Waiting for the website" line moving, then "Signing in..." when the link arrives; the site's dialog shows the
+    two steps, and after handing over the link watches whether the browser took it (the page loses focus to its
+    prompt or the game) and, if nothing did, says what to do.
+  - **Email and password are for testing**: the game shows its own form when it runs from source or against a
+    matchmaker the website doesn't know, and the website shows one on its dev server or when built against
+    another matchmaker. The live site and the players' game only offer GitHub.
 - **Service record.** Signed in, every battle you fight (as a commander, not watching) goes on your record when it
   ends: what kind of battle, your side, the result and length, your rating, score, kills and losses, and the
   after-action report itself, trimmed (every commander, both sides, the units that did most, the timeline). The
   menu's **Service Record** shows your career (battles, wins, kills, K/D, average rating, time in battle) and every
   battle newest first; open one for its after-action report. A battle fought signed out or offline waits in
-  `user://pending_battles.json` (the last ten) and goes up at the next sign-in. The figures are your own game's
-  account of the battle, so the record is only ever shown to you.
-- **Co-op:** everyone picks the same side, and the AI takes the empty side.
-  **PvP:** pick opposite sides. "Add an AI commander to sides that have players" gives you an AI teammate.
+  `user://pending_battles.json` (the last ten) and goes up at the next sign-in. A record is stamped with when it
+  arrives, and a day holds 200.
+- **Public profiles and leaderboards** (the website, `matchmaker/src/players.js`). Every player has a page on the
+  website, `/player/<callsign>`: their rank, XP and record, their place on the all-time board, and (unless they
+  keep them to themselves) their career and every battle on their service record, each with its after-action
+  report, every commander rated as the game's stats screen rates them. The figures in a battle are that player's
+  own game's word, and the page says so; they're never ranked. The **leaderboards** rank XP, which only the
+  accounts database writes, timed on its own clock: all time, this month and this week (what was earned since the
+  first, or since Monday, UTC), with a signed-in player's own row marked or added at the foot. A player can find
+  any other by callsign.
+  - **Your picture** on the website is your insignia, or the picture on your GitHub account (copied from GitHub at
+    each sign-in; only GitHub's own image host is taken). No uploads, so nothing to moderate.
+  - **Keeping your battles to yourself** (your profile, "Show my battles") takes your battles and career off your
+    page; your rank, XP and record stay public, and the game still shows you your service record.
+  - **A battle counts on the record** (battles fought, won) only if it earned XP: two minutes or more on the
+    database's clock. Before, a "win" reported a moment after starting counted as a battle won.
+  - **Moderation**: a player marked `hidden` in the database is on no board and has no page
+    (`matchmaker/README.md`).
+- **Ranks and insignia** (`ui/insignia.gd`, `ui/insignia_art.gd`, `matchmaker/src/ranks.js`). Signed in, every
+  battle you fight earns XP, and you climb 50 ranks from Recruit to General of the Army (Private I-V, Corporal,
+  Sergeant, Staff Sergeant, Master Sergeant, Lieutenant, Captain, Major and Colonel I-V, then the five grades of
+  general). Each rank takes 20 XP more than the last: 150 for the first, 32,000 in all.
+  - **XP.** A point for every six seconds of battle, up to 45 minutes; a win is worth half as much again, leaving
+    before the end half as much. A battle under two minutes earns nothing. Watching a battle (or a test
+    scenario) doesn't count. There's no game server to referee (players host), so each game reports its own
+    battle, but the matchmaker times it on its own clock, from the battle getting under way to its end: a
+    modified game can't claim more time than really passed. Players can't write their XP to the database
+    directly; it changes only through functions that act on the caller's own row (`supabase/migrations/`).
+  - **Insignia.** 160 of them, all drawn as SVG by the game from short descriptions: ten starter patches every
+    account has (the branches: infantry, armour, artillery...), a patch for each rank (subdued training patches
+    at the bottom, lettered company patches, tabbed patches, special forces arrowheads, then bullion and the
+    generals' stars at the top), and 100 shown but locked for now: medals, badges and ribbon racks, and company
+    and squadron patches in the style of the Vietnam war and of the battlefield's own units. They're original
+    designs in the style of real ones, not copies.
+  - **Where you see them.** Your insignia sits on the account card at the top right of the main menu, with your
+    rank and how far through it you are; click it for the collection, where the unlocked can be worn and the
+    locked say what unlocks them. The after-action report's header says what the battle earned, and a promotion
+    shows the new patch. In the lobby each signed-in player's insignia is beside their name, and on the website beside the host of a listed battle. The
+    website has the same collection, and picking one there is picking it in the game: it's kept on the account.
+- **Error reports.** When something goes wrong in a release build (an engine error, a shader the graphics driver
+  rejects, a crash), the game tells the matchmaker what failed and where in its code, with the GDScript calls that
+  led there, so the developers hear about it without anyone writing in (`autoload/errors.gd`). A crash is sent by the
+  next launch, from the log the engine left. A report carries the game's version, the operating system, the graphics
+  card and driver, and whether it happened in the menus or a battle; paths on the player's machine, addresses and
+  emails are taken out, and nothing says who sent it. Settings > Interface > Send error reports switches it off.
+- **Co-op:** everyone on the battle's side, and the AI takes the other. **Versus:** players pick sides ("The AI
+  takes a side nobody plays" fills an empty one). "AI commands alongside players" gives either an AI teammate.
 - If a player leaves, a teammate inherits their squads, or the AI takes over if nobody is left on that side.
+- **Rejoining** (`net.gd`, `World._on_player_rejoined`): a player who drops out (a lost connection, a crash, Leave
+  Battle) can come back for the rest of the battle, even one closed to drop-ins, full or behind a password (they were
+  let in before, so it isn't asked again). Each copy of the game makes itself a
+  random token and registers with it; the host keeps a departed player's place by token (side, colour) and the
+  squads and vehicles they commanded, and hands back whatever is still fighting from whoever held it. Units they had
+  queued that came out while they were away go to the stand-in and back to them too. An AI that only stood in for a
+  side left without commanders steps down and hands over everything it held; an AI ally the lobby asked for stays.
+  In a mission they get their share back (or, if it's all gone, a share like a newcomer). Their after-action record
+  (`BattleStats.rejoined`) carries on under their new peer id, and a player back after the end gets the report and
+  the end screen. The host never passes the token on, so nobody else can claim a player's place.
+  - **The client remembers the battle** in `user://rejoin.cfg` (address and port, the matchmaker listing, the host's
+    name, the token), kept fresh while playing, so after a lost connection or a restart the main menu shows a
+    "Battle in progress" card with **Rejoin** (and Forget) for two hours. Rejoin goes through the matchmaker again if
+    the battle was listed (its router may need punching afresh), else, or if it's gone from the list, to the address
+    it had. The record is dropped when the battle is decided, when nobody answers, or when the host is back in a lobby.
+  - **A crash**: the host can't tell a dead link from a quiet one for 45-90 s (the long ENet timeouts), so when the
+    same token connects again it lets the old link go at once and the new one takes the place.
 - **Co-commanders** (`co_command.gd`, `ui/hud_coop.gd`, `ui/hud_coop_roster.gd`): you see what the other
   commanders on your side are doing, as they do it, the way officers in one command post see each other's
   map markings and hear what each is calling for.
@@ -134,16 +252,88 @@ they're doing). The observer bar at the top has pause, speed (0.25x to 4x), dire
     sketches and the Command Net stay).
 - **Drop-in:** friends can join a battle that's already running (lobby option, on by default). They join the
   side with human players (the smaller side in PvP), get the current world, and receive a rifle squad and engineers at their FOB.
+- **Joining** (`World._client_ready`, "joining" in `world.gd`): a client's world starts empty and the host sends it
+  the battle as it stands in a few compressed messages (a few hundred kB for a whole town): the ground first (the
+  water's shapes, the roads, the set dressing and the host's own ground kinds, so paving and bridge decks are road
+  on every peer), then every entity it may know of, a structure only with what differs from a new one. The client
+  lays the ground out on a worker thread while the rest arrives, then builds the entities and works out the cover
+  map a slice of each frame at a time, answering the connection every frame. The loading screen stays up, saying
+  how far it has got, until all of it is built, so play starts on the whole battlefield with no backlog.
 - **Fog of war is enforced by the host.** A client is only told about enemy units and buildings its side has spotted,
   gets a "hidden" marker instead of positions once they're out of sight, and never receives enemy supply, production
   or team stats. Enemy HQs and starting FOBs are revealed to everyone, like start locations in most RTS games. Each
   player's game draws the fog from its own side's units (which it always knows), so nothing extra crosses the wire
   but the strips a recon flight has just photographed.
 
+## In a browser
+
+Every release also comes as a browser build (WebAssembly and WebGL 2), the same game with nothing to install. It
+plays alone: **Play vs AI**, **Missions** and **Watch AI Battle**, the Field Manual and Settings, and signing in for
+a service record. Multiplayer needs the desktop game, since a browser can't make the direct connections a battle
+between players runs over; the menu links to the downloads instead. It looks a little different (no screen-space
+lighting, volumetric fog or particle trails, which the browser's renderer doesn't have) and, with no threads to
+spread the work over, the map takes about 30 seconds to lay out, a stage at a time behind the loading screen. The
+simulation runs about as fast as on the desktop. The first battle also waits while the browser compiles the game's
+shaders (it keeps them, so only the first time); to keep that short, lighting is worked out per vertex, particles
+run on the processor, and explosions, muzzle flashes and fires don't cast light.
+
+## The console: finding out why it's slow
+
+The key under Esc (**`** or **~**, rebindable in Settings > Controls) drops a console down from the top of the
+screen, in a battle or in the menus. Its commands are mostly about one question: why is the game slow? Tab
+inserts a command or its argument from a scrollable dropdown. With an empty prompt, the dropdown lists every
+command and its description; typing ranks prefixes, partial spellings and small typos. Up/Down chooses a
+suggestion, Tab or a click inserts it, and Enter inserts an explicitly chosen suggestion without running it.
+Otherwise Enter runs the prompt as typed. Ctrl+Up/Down browses command history; Esc dismisses the dropdown,
+then closes the console. Completion works at the caret and preserves arguments after it. `help` lists everything.
+
+Select output with the mouse, double-click words, or focus it and use Ctrl+A; Ctrl+C copies the selection
+without colour markup. Both output and prompt have right-click menus. Ctrl+V (or Ctrl+Shift+V) pastes into
+the prompt for editing; Enter is still required to run it. The prompt supports selection, cut, undo/redo,
+and word/caret movement. Ctrl+Shift+C copies selected output, or all output when nothing is selected.
+The toolbar also has **Copy all** and **Save text** (`save`), which writes a timestamped text file in the
+game's user-data directory and prints its full path.
+
+Ctrl+F searches scrollback, ignoring case; Enter/Shift+Enter jumps to the next/previous match with wraparound.
+Esc dismisses search first. PgUp/PgDn scroll, Ctrl+Home/End jump to the oldest/latest output, and **Latest**
+returns to the live output. Ctrl+L clears output without losing command history. Ctrl+C with no selection
+clears the prompt and stops an active benchmark, restoring its settings. Ctrl+plus/minus changes text size,
+Ctrl+0 resets it. Scrollback is bounded to 600 paragraphs and command history to 60 entries.
+
+- **`why`** reads the last five seconds and says what's holding the frame rate back: the screen's refresh or the
+  frame limit (not a problem), the graphics card (with the resolution it's drawing at), or the processor, and then
+  which part of it: the battle's game logic (its biggest systems, and whether the simulation keeps up with the
+  clock), the view's scripts, the renderer's draw calls. It adds the stutters of the last minute and what they
+  were, a flood of engine errors, an integrated graphics chip, a slow connection to the host.
+- **`bench`** (about a minute, or `bench quick`) turns each graphics setting down in turn, times the frames, and
+  lists what each saves, the most first. Vsync and the frame limit are off while it runs so a saving shows; your
+  own settings are measured again every few steps, so a battle that changes as it runs doesn't skew the answer,
+  and the middle frame of each measure is taken, so the stutter of a setting rebuilding (water, grass) doesn't
+  count against it. It also tries the battle paused (how much of each frame is the battle itself) and the
+  interface hidden, and puts everything back at the end.
+- **`graph`** pins a panel of every frame of the last ten seconds, each a column stacked by what its time went on
+  (game logic, view scripts, the renderer, the rest), the GPU's time as a line over it, and each stutter marked.
+- **`hitches`** lists the latest stutters (frames far longer than those round them, or over a threshold you give)
+  with what each was: the game logic catching up several ticks at once, a script, shaders compiling, engine errors.
+- **`top`** the costliest systems, game logic per tick and view scripts per frame, on average and at their worst;
+  **`render`** draw calls for the scene, the shadows and the interface; **`sys`** the computer (graphics card and
+  driver, processor, memory, screen, renderer); **`net`** the round trip and packet loss; **`errors`** what the
+  engine has logged.
+- **`perf 0-3`** and **`fps`** set the performance overlay (F3 cycles it); **`set`**, **`settings`** and
+  **`preset`** change settings as the Settings screen would (`set shadows off`, `set scale 77%`); **`pause`**
+  pauses a battle you play alone; **`draw overdraw`** and its kin show the scene's debug views.
+- **`report`** writes all of it (and the last bench) to `perf_report.txt` in the game's user folder and copies it
+  to the clipboard, to send to whoever is helping.
+
+Every frame is measured (`scripts/ui/perf_probe.gd`) for the overlay and the console: how long it took, the game
+logic and view scripts run in it, the renderer's CPU and GPU time, shader compilations and engine errors, kept
+frame by frame for ten seconds. Each system's own frame-by-frame cost (its worst frame, which system a stutter was
+in) starts being kept when the console first opens, since it costs a little every frame.
+
 ## Missions
 
 Short operations, about five minutes each, played alone or in co-op (**Missions** on the main menu; **Host Co-op**
-opens a lobby, and friends join with Join Game). Each is built around something the game does well:
+sets one up as a listed battle, and friends join it from the server browser). Each is built around something the game does well:
 
 | Mission | Side | What it shows off |
 |---|---|---|
@@ -167,15 +357,15 @@ opens a lobby, and friends join with Join Game). Each is built around something 
 - The end screen says what happened and what it cost (time, objectives, men lost, enemy killed), with **Try Again**.
 
 The code: `scripts/game/mission_director.gd` (the machinery), `scripts/game/missions.gd` (the content),
-`scripts/ui/hud_objectives.gd` (the panel). Adding a mission is a catalogue entry in `Missions.LIST`, a setup
-function and an autopilot function.
+`scripts/game/mission_list.gd` (the catalogue), `scripts/ui/hud_objectives.gd` (the panel). Adding a mission is a
+catalogue entry in `MissionList.LIST`, a setup function and an autopilot function.
 
 ## The systems
 
 **Soldier AI** (`scripts/game/soldier.gd`, `soldier_brain.gd`, `bt.gd`, `combat.gd`)
-- **A behaviour tree decides what each man does** (`bt.gd`, `soldier_brain.gd`): one tree, shared by every
-  soldier and walked each time he thinks. Reflexes come first, most urgent first; then, if he's free, the
-  fight. The leaf that acted is kept on the soldier (`bt_path`) for debugging and the stats.
+- **Priority decisions govern each man** (`soldier_brain.gd`): reflexes come first, most urgent first;
+  then, if he's free, the fight. Direct checks avoid dispatching a tree of callbacks for every soldier.
+  The action that won is kept on the soldier (`bt_path`) for debugging and the stats.
 - **"Grenade!"** The first man to see it yells, and everyone near it picks one of, in order: *smother it* -
   when it's too late to throw and it's among men who can't get away (a wounded man being treated, a crowded
   bay), the man beside it may throw himself on it: it kills him and barely reaches anyone else; *throw it
@@ -333,7 +523,7 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
 - **Hierarchical A\* (HPA\*)** over both grids: the map is cut into 16 x 16 m clusters with entrances wherever
   neighbouring clusters connect (and wherever a road crosses), true costs inside each cluster precomputed. Long
   trips plan on the abstract graph, then refine cluster by cluster. When walls go up or are blown down only the
-  touched clusters are rebuilt.
+  touched clusters are rebuilt, and of those only the borders and links the change can reach.
 - **Danger maps:** every second each side marks the clusters its spotted enemies cover (MG nests, bunkers and
   armour count for more). Ordinary moves skirt them, retreats keep well clear.
 - **Cover map:** every 1 m cell knows its cover level (heavy, light, none, exposed) and which way it faces, updated
@@ -363,15 +553,23 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   the shallows (fords, the edge of the beach) - slowly, and exposed. The beds are carved into the ground, so a
   man wading sinks to his knees. Bridges and the harbour are key points the AI fights over. The water is laid
   out on the server as a few shapes and rasterized identically on every client.
-- **How the water looks** (`water_view.gd`). The surface is drawn in tiles only where there's water. A swell
-  of a few long wave trains rolls in off the open sea in groups, dying away as the water shoals; breakers spill
-  unevenly along the beach and each one surges up the sand and drains back, leaving it dark and wet. The bed
-  shows through the water, bent by the ripples and dimmed with depth (red light dies first, so sand under the
-  sea turns turquoise and the open sea goes deep blue; fresh water is peaty green-brown), and the sky and its
-  clouds are reflected, more the flatter you look across it. The sun glitters off every ripple (a moon path at
-  night, only a sheen under cloud), rain dimples the water with rings, the wind's chop roughens in gusts, and
-  foam gathers wherever the water meets a bank, a hull or a pile, with whitecaps on the biggest waves. Boats
-  ride the same swell the player sees (the CPU samples the waves the shader draws).
+- **How the water looks** (`water_view.gd`). The surface is drawn in tiles only where there's water. The sea
+  runs two wave systems that cross: a swell from weather far out at sea, long and regular and coming in sets
+  (its heading a little different on each map), and the wind's own shorter, steeper sea running offshore with
+  the wind that carries the smoke. They're Gerstner waves, so the crests come up sharp and the troughs broad,
+  and they build up over the first 35 m out from the beach. The weather sets the sea: glassy at dawn, dusk and
+  golden hour, moderate by day, choppy under cloud, a storm sea in the rain with whitecaps breaking off the
+  crests and streaks of foam laid down the wind. Breakers rise as they shoal, spill unevenly along the beach and
+  surge up the sand, leaving it dark and wet. The bed shows through the water, bent by the ripples and dimmed
+  with depth (red light dies first, so sand under the sea turns turquoise and the open sea goes deep blue; fresh
+  water is peaty green-brown), with the light the ripples focus dancing on it in the shallows, and the sky and
+  its clouds are reflected, more the flatter you look across it. The sun glitters off every ripple (a moon path
+  at night, only a sheen under cloud), rain dimples the water with rings, the chop roughens in gusts, and foam
+  gathers wherever the water meets a bank, a hull or a pile. Boats ride the same waves the player sees (the
+  CPU samples the waves the shader draws). **Water quality** (Settings > Graphics) trades this against speed:
+  Low draws no see-through water (copying the screen for it is the costly part, most of all in a browser) and
+  fewer waves on a coarser grid; Medium is the full surface; High adds the light on the bed and the wind's
+  streaks; Ultra a finer grid for the swell.
 - On the 1 km map, country lanes branch off the main road to a village in each quarter (mirrored between the
   sides), and on the west the lanes run on over the river - each on its own bridge - to farming villages on
   the far bank: three bridges and two fords across the river in all.
@@ -394,6 +592,7 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   dappled shadows. A tree that is shelled or run over falls away from what hit it and stays down.
 
 **Terrain** (`terrain.gd`, `mapgen.gd`)
+- Capturing towns updates only changed supply-road geometry; unchanged roads and their drawings are retained. Road terrain painting checks the strip beside each segment, preserving the same ground and cover cells.
 - Country roads wind from HQ to HQ through the town, with a crossroad through the middle. On a road you're
   fast (vehicles +35%) but exposed. Mud slows everyone (vehicles badly) and leaves you exposed. Woods conceal you
   and give light cover. Vehicles strongly prefer roads.
@@ -440,19 +639,62 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   mines, trucks on the road, production, attack plans), shown in the message log with a map ping.
 
 **Interface**
-- A living topographic map lies behind everything outside a battle: one shader, ground that slowly folds and
-  drifts, contour lines (every fifth an index contour) lit in colours that turn round a wheel of brass, ember,
-  rose, violet, blue and jade over a minute and a half, a map grid with corner crosses. The ground rises in a hill
-  under the cursor, and a click sends a ripple out across it. Every copy shares one clock and cursor, so the
-  title, the menu and the loading screen hand over to each other without a seam.
+- A living topographic map lies behind everything outside a battle, drawn like a survey sheet of hill country
+  seen from high up: fine contours on land that climbs gently across the sheet, valleys cut into V's, every fifth
+  contour a heavier index contour lettered with its height (the line broken under the figure), spot heights on
+  the summits, and a map grid with corner crosses, its numbers and a ruler round the margins. One shader draws the
+  ground, which folds and drifts over minutes, its lines tinted in colours that turn round a wheel of brass,
+  ember, rose, violet, blue and jade over three minutes. To letter it, `TopoSurvey` works the same ground out
+  again on the CPU (the shader's noise uses an integer hash, so the two agree to the pixel) and surveys it every
+  half second on a worker thread, carrying the figures along as the ground drifts. It stays a backdrop: awake, it
+  is only a little brighter than the boot splash's map. The whole sheet leans a few pixels after the cursor, and
+  a click sends a faint ring out across it. The view pans slowly to the right over the sheet (the ground, its
+  grid and its figures drift left, and new ground is surveyed in from the right), and clouds drift over it,
+  nearer than the ground: they slide faster, lean further after the cursor and cast soft shadows. On the
+  title and the menu the map is at work: every 11 s a band of interference races across the screen in about
+  a second (the map in it torn into rows shifted sideways, static, rows dropping out, a cyan and magenta
+  fringe), and what it passes over turns up for nine seconds before fading: a contact (a hostile frame, a ring as it's found, its grid square bracketed and its
+  six-figure grid reference), a friendly unit moving off along a dashed track, or an axis of advance pencilled
+  in to a named objective. It's all a pure function of the map's clock, so it repeats exactly in screenshots,
+  and none of it shows over a battle or on the loading screen. Every copy shares one clock, cursor and survey,
+  so the title, the menu and the loading screen hand over to each other without a seam.
+- **Themes** (Settings > Interface), each named for what a soldier looks at the war through: Field Brass (the
+  original), Night Vision (phosphor greens), Thermal (an ironbow of violet, red, orange and white-hot), Arctic
+  (ice and intelligence blues) and Dusk (violet and rose). A theme sets the accent, the text, the panels and the
+  six colours the map's contours turn through; the colours that mean something (good, bad, warning, intel) stay
+  the same in all of them. It changes live: the interface recolours at once and the map's colours flow into the
+  new ones over a second or so.
+- **Signal** ([UI.md](UI.md)): the interface is a battle management display laid onto the scene. The HUD sits
+  on the battlefield over scrims that darken toward the screen's edges, with no boxes: 1 px rules under rows and
+  corner ticks where a region needs marking, everything square. Names and labels are condensed capitals, every
+  figure and code is mono (`SUP 2115 +230/M`, `PINNED · TO SPT D4`, `T+04:31`, `RDY`), and prose is kept for
+  sentences. One accent colour marks what's selected, active or primary. Short choices in the settings are rows
+  of segments, amounts are counted bars, keys are drawn as key boxes. Things cut, type on, count or flicker
+  rather than glide or glow, and Settings > Interface > Reduce motion makes all of it cut.
+- In a battle, the map comes back see-through behind the Esc menu, the help, the settings and the end of the
+  battle (where a wave from the middle of the screen wakes it), with the battlefield showing through it.
 - Boot splash and title: the splash is the title's first frame (the map asleep under the emblem and the name).
   A wave runs out of the emblem's dot, wakes the map and lights the letters as it passes; then the title rises
-  away and the menu glides in on the same map. A click or a key skips it.
-- Main menu: grouped entries that say what they do, and a New Operation panel to pick a side (Coalition, Rebels
-  or Observe, with each side's doctrine) and the time of day.
-- Loading screen before each battle: the operation's name, mission, side, area and conditions, a field note and
-  the build's stages, over the map with a survey beam sweeping across it and the view closing in on the ground.
+  away and the menu glides in on the same map. A click or a key skips it. Only the scripts the title and the
+  menu need compile before the splash gives way: the rest of the game (`World` and everything it reaches)
+  compiles on a worker thread while the title plays (`scripts/game_scripts.gd`), and a battle or the Field
+  Manual wanted before it's done waits for it. The Field Manual and the Settings are built the first time
+  they're opened.
+- Main menu: grouped entries in capitals, each with a square marker that lights while its panel is open and a
+  line saying what it does beside the one under the cursor, and a New Operation panel to pick a side (Coalition,
+  Rebels or Observe, with each side's doctrine as a line of codes) and the time of day as one row of segments.
+- Loading screen before each battle: the operation's name, then mission, side, area and conditions as label and
+  code rows, a field note under a rule and the build's stages as a row of counted steps, over the map with a survey beam sweeping across it and the view closing in on the ground.
   It holds while the first frames compile behind it, then dives into the map as the battlefield fades up.
+- **Shared allied command:** every player can select and order any squad, vehicle or individual soldier on
+  their side, regardless of who recruited it. Click, drag-select, control groups and the order-of-battle list
+  all use the same allied selection. Other commanders' current selections still show in their colours;
+  these are coordination cues, not ownership locks. Enemy and neutral troops cannot be commanded, and
+  observers can inspect but cannot issue orders. A human order takes an AI-controlled unit out of the
+  strategic AI's allocation so it does not overwrite the player's orders. Orders between human allies leave
+  recruitment attribution intact. Construction can assign an allied engineer, and tunnel orders move allied
+  passengers, without requiring the issuing commander to own them. Supply convoys and supply helicopters
+  continue their automatic routes rather than taking troop orders.
 - **Order of battle** (O): every unit down the left, grouped into infantry, support teams and vehicles, each
   with its symbol, callsign, a pip per man, what it has been told to do and where an attack has got to ("Base of
   fire on D3", "Assaulting D3"), and alerts for contact, pinned, casualties and low ammunition. Click to select
@@ -515,13 +757,16 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   Alt+middle-drag grabs the map like a sheet of paper (a setting swaps them), Page Up / Down tilt. The pitch comes
   from the zoom, low and level close in and steep from high up, and the player's tilt is added to it; close in it
   stops before the lens goes into the hedges. Keyboard and edge panning ease in and out, and Shift pans faster.
+  On a Mac's trackpad (which scrolls in gestures, not wheel clicks) two fingers grab the map at the middle of the
+  screen, a pinch zooms toward the fingers, and Option + two fingers turn and tilt; a setting, shown only on a
+  Mac, makes two fingers zoom instead, for a Magic Mouse.
   Jumps (the last alert, a base, a group, a unit in the order of battle, a saved view) glide rather than cut.
   Backspace turns back to the heading the battle started on, Ctrl+F follows the selection until you pan away,
   and Ctrl+F5..F8 save views that F5..F8 glide back to.
 - **The minimap** (`hud_minimap.gd`): the ground, water, roads (main roads light with a dark edge, supply
   tracks thinner), woods and every house's footprint (light while its roof stands, dark once it's a ruin) are
   baked into a texture. Over it go the fog of war (darker where your side can't see), every man you can see as a
-  dot (yours brightest, the selection white), vehicles by their map symbols, where the enemy was last seen, aircraft
+  dot (allies brightest, the selection white), vehicles by their map symbols, where the enemy was last seen, aircraft
   overhead (yours with the ground they can see), bases, objectives and alerts, each town as a flag in its holder's
   colour inside the ring of ground that takes it (with how far a capture has got round the ring), and an orange
   ring pulsing wherever men are firing. The camera's view is a lit wedge with a line back to where the camera stands, and a compass needle
@@ -560,8 +805,31 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   their draft, pitch and roll over the swell, lift their bows as they get on the plane, heel into turns and
   throw spray off the bow going hard. Each leaves a wake on the water: white water churned up astern in streaks
   that spread and fade into a smooth streak, and the bow wave running out in a V at the Kelvin angle (a wake
-  hides with a boat hidden in the fog of war). Men board a boat lying off a beach or bank by wading out to it,
-  and go ashore over the side wherever it stops by land at the end of a trip. A boat that's sunk blows up and
+  hides with a boat hidden in the fog of war).
+  **A boat handles like a boat, not a car** (`Vehicle._hull_tick`, the coxswain in `_con`): nothing grips the
+  road, so her hull slides through the water - in a hard turn she skids, bow inside the circle she's making
+  and stern swinging out, and the skid costs her way. There are no brakes: the water's drag takes her way off,
+  hard when she's fast and hardly at all once she's slow, and to stop she goes astern (an RHIB needs some 40 m
+  from full speed, a patrol ship 60 m and more). Her rudder or jets turn her only with water going past them -
+  her own way, or the wash of the engines going ahead, which is how she turns from lying stopped - and going
+  astern she hardly steers. Engines, helm and hull answer after a moment, a big hull's after a long one, so
+  the coxswain starts a turn early, meets her with opposite helm as she comes round, and slows for the bends
+  he sees coming as far off as she'd need to; at speed she can't be turned as tight as she can going slow. A
+  river carries a boat down with it (it runs south, fastest in mid-stream), and he steers the course she's
+  really making, current and skid and all. The Gun Trawler, a deep displacement hull, is the slowest of all to
+  answer, needs half as much water again to turn, and heels out of a turn where the planing boats bank into it.
+  On an attack a boat fights at a steady speed rather than stop dead for the shot, as a tank would; she lies
+  to only to fight it out with an enemy abaft her beam, rather than steam away from it.
+  A big hull needs a lot of water to turn round in (the patrol ship's turning circle is over 50 m across):
+  coming about for somewhere astern, she goes round towards her course, or the other way, out to sea, when
+  the shore's in the way; she backs into a spot not far behind rather than swing out in a loop for it (an
+  RHIB, which spins round in her own length, comes about and runs in bow first); and once she's round she
+  picks her route up further on instead of going back for its first points. A boat that runs onto the bank
+  goes astern off it, swinging her bow round towards her course, and tries again (sent close in by the shore,
+  she settles as near as she can get); where her route rounds a point of land she doesn't cut the corner
+  over it.
+  Men board a boat lying off a beach or bank by wading out to it, and go ashore over the side wherever it stops
+  by land at the end of a trip. A boat that's sunk blows up and
   founders: she floods, lists over and goes down by the head or the stern, burning till the water closes over
   the fire, foam boiling up along her as the air comes out, and leaves a rainbowed oil slick with wreckage
   drifting in it; whoever's aboard swims for the nearest bank. Shells landing in the water throw up a column of
@@ -571,7 +839,8 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   stop where he's sent. Wheeled vehicles steer like cars: a real turning circle from their wheelbase and
   steering lock, no turning on the spot, so a truck needs room to turn round. Tracked vehicles skid-steer:
   they pivot where they stand for a sharp turn but turn wider the faster they go. Weight sets how hard they
-  accelerate and brake. A spot close behind is backed into rather than reached by a loop; a vehicle keeps its
+  accelerate and brake. A spot close behind is backed into rather than reached by a loop; for one further
+  back the driver comes round on full lock (boats have handling of their own: see above); a vehicle keeps its
   distance behind one going its way, drives round one standing in the road and passes oncoming traffic on
   the right; supply trucks keep to the right-hand side of the road. Hung up on something, it backs off, turns
   and plans again. (Trucks are slower on the road than they were, so each load carries more.)
@@ -611,6 +880,15 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   their side (the armed ones fire missiles); recon vehicles see further. New weapons: 40 mm grenade machine
   guns, 20/30/40 mm cannon, twin 35 mm, miniguns, each with its own sound; main guns by the vehicle (125 mm,
   120 mm, a railgun, recoilless rifles).
+- **Rotorcraft flight.** Attack, transport and supply helicopters share a flight controller: momentum
+  carries through turns and new orders, the pilot accelerates and brakes gradually, and the nose and
+  bank follow the acceleration rather than pretending the aircraft is a road vehicle. Yaw has its own
+  turn rate, so gunships can keep their nose on a target while moving sideways. Climbs and descents
+  ease in and out; transports settle into a low-speed hover before landing or attaching a sling.
+  Loads reduce speed, acceleration and yaw response. Stop holds a troop transport in the air without
+  dropping its sling load; a new move resumes the flight, even during a landing. The host simulates
+  flight and sends pitch and bank with its snapshots; clients only interpolate the view. Drones and
+  ground vehicles keep their existing movement systems.
 - **Boarding:** select infantry and right-click your truck, APC, Slammer or a landed helicopter: they climb in
   (as many as fit) and ride until they dismount or it arrives.
 - Tanks smash through walls, trees and cars. Small arms ricochet off them. Frontal rockets can bounce,
@@ -732,12 +1010,32 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
 - Everything can be shot up and repaired. Any FOB can be captured by whoever walks in and holds it. Lose your last FOB and you lose, but a side's last FOB is a last stand and takes four times as long to capture, and HQ sends a free reserve squad every 75 s to a side that is down to its last few soldiers.
 - Fog of war, drawn on the ground and the minimap, with intel pings and last-known enemy positions.
 
-**Look and feel** (`atmosphere.gd`, `mats.gd`, `vehicle_models.gd`, `vfx.gd`, `gunfx.gd`, `grass.gd`, `ui/`)
+**Look and feel** (`atmosphere.gd`, `mats.gd`, `vehicle_models.gd`, `vfx.gd`, `gunfx.gd`, `grass.gd`, `wildlife.gd`, `ui/`)
 - Eight lighting moods (midday, golden hour, dawn, dusk, overcast, hazy, **night**, **rain & thunder**) with a
   procedural sky, AgX tonemapping, cloud shadows drifting over the ground, volumetric haze and a subtle film look.
   At night the sky fills with stars and illumination flares drift down on parachutes over the fighting, throwing
   moving shadows. In the rain, streaks fall around the camera, splashes hit the ground, puddles reflect the sky and
   lightning flashes are followed by thunder.
+- **Wildlife** (`wildlife.gd`), drawn only on each player's own screen and never simulated or sent by the server,
+  so it can't change a battle or its seed. Flocks of sparrows and starlings (pigeons about the town) feed on bare
+  ground - tracks, yards, pavements, mud, shell holes, where the grass doesn't hide them - hopping and pecking,
+  and move on now and then; hares graze in the open; rats run along the walls in town and keep to their own
+  stretch of it; crows and buzzards turn circles overhead (gulls along the coast), throwing shadows; fish swim
+  under the surface of the rivers and ponds and sometimes jump; mallards paddle and upend to feed; dolphins
+  cruise the open sea, rolling up through the swell to breathe and now and then leaping clear. At night the
+  small and soaring birds roost, bats come out and so do more rats; in the rain fewer birds fly. They take
+  fright at gunfire, shells and rockets (Fx tells them), rounds cracking past or striking near, grass fires,
+  falling trees, low helicopters, a death among them and at the men and vehicles the local player can see coming
+  near - never at a hidden enemy - and a flock goes up with a rush of wings (the flocks nearby going up after
+  it), a rat runs for a hole in the nearest wall, a hare zigzags off, fish dart away, crows and gulls make off.
+  They can be killed, only for the eye: every shot's path is tested against the animals round it (group first,
+  then each), and a round through one, or a blast close by, kills it in a puff of blood and feathers - the round
+  flies on as it would have. Birds tumble out of the air, the dead lie on their sides where they fell (up to 30,
+  cleared out of sight later), fish stunned by a shell in the water float up belly-up. Synthesised calls: birdsong, a coo, caws, a gull's cry, a
+  squeak, the splash of a fish or a dolphin. Only the camera's surroundings are alive: whatever falls behind is
+  moved on ahead out of sight (birds fly in), so the cost doesn't grow with the map. Each kind is one MultiMesh
+  written in one go a frame, with wings, tails and flukes moved in the shader; groups off the screen aren't
+  drawn. Settings > Graphics > Wildlife: Plenty, Some or Off (Off on the Low preset).
 - Ambient sound: wind that grows as you zoom out (air rushing past and a hollow howl, in irregular gusts), and
   a distant battle (far-off artillery thumps, machine-gun bursts) that swells with the fighting.
 - Music (`music.gd`), synthesised like everything else: a small orchestra (strings, low strings, horns, a wordless
@@ -778,21 +1076,25 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   throw a fountain of earth high into the air that rains back down, fling burning fragments out in arcs that
   burn on where they land, leave flames licking about the crater for a moment, and clods land around the
   crater once the debris has fallen.
-- **Gunfire** (`gunfx.gd`): every round leaves the muzzle in a flash - a white-hot star, a tongue of flame thrown
-  out ahead and split sideways by the flash hider, bigger and longer for a .50 or an autocannon - with a moment's
-  light on everything round it (striking at night), a breath of smoke, and the case spinning out of the ejection
-  port to lie in the grass (brass piles up round a machine gun). The weapon kicks with each shot: the rifle back
-  into the shoulder and the muzzle up, the mounted gun on its pintle, the turret back on its ring when the main gun
-  fires. One round in so many is a tracer, red for the Coalition and green for the Rebels (Soviet-pattern
-  ammunition), never thinner than a pixel or two however far out the camera is. What a round hits decides what
-  flies: earth spurting up with clods raining out of it, grey grit and stone chips blown off a wall, a dry burst
-  of sand off sandbags, splinters, leaves fluttering down, sparks and a glint off steel, a dark mist off a man, a
-  white column and drops off water - shown when the round gets there, not when it's fired. Now and then one skips
-  off steel, stone or the ground and goes wailing away. A tank's gun fires with a blinding flash, a fireball
-  thrown out ahead, burning flecks, a cloud of smoke rolling out round the muzzle and the blast driving dust off
-  the ground; a rocket's back-blast kicks up the ground behind the launcher. All of it is drawn on the GPU, each
-  kind in a single draw call, with nothing moved from script once it's spawned, so a heavy firefight costs about
-  what a light one did.
+- **Gunfire** (`gunfx.gd`), sized to life: a rifle's muzzle flash is a hand's breadth of flame gone in a frame,
+  a .50's a forearm's, an autocannon's a man's height - a hot core and a short jet split into petals by the flash
+  hider (thrown out sideways by a heavy gun's muzzle brake), with a moment's light on everything round it
+  (striking at night). The gas that follows the round out glows for an instant and cools into a breath of smoke,
+  and the case spins out of the ejection port to lie in the grass (brass piles up round a machine gun). However
+  small, a flash never shrinks below a few pixels, so you can still see who's firing from high up. The weapon
+  kicks with each shot: the rifle back into the shoulder and the muzzle up, the mounted gun on its pintle, the
+  turret back on its ring when the main gun fires. One round in so many is a tracer, red for the Coalition and
+  green for the Rebels (Soviet-pattern ammunition): a thin bright thread at night, fainter and shorter by day,
+  never thinner than a pixel or two. What a round hits decides what flies, small and quick as in real footage: a
+  crown of dust and soil thrown up out of the ground, a puff of stone dust and chips off a wall, a dry burst of
+  sand off sandbags, splinters, leaves fluttering down, sparks and a glint off steel, a dark mist off a man, a
+  spout off water - shown when the round gets there, not when it's fired. Now and then one skips off steel, stone
+  or the ground. A tank's gun throws out a fireball of burning gas that's full size within a frame or two and
+  rolls into a cloud of smoke left hanging in front of the gun, with burning flecks and the blast driving dust
+  off the ground; a rocket's back-blast burns into a cloud behind the launcher. The smoke is shaded as a volume
+  from a warped density field - lit on the sun's side, in its own shadow on the far one, its thin edges glowing
+  against the sun - so no two puffs come out round. All of it is drawn on the GPU, each kind in a single draw
+  call, with nothing moved from script once it's spawned, so a heavy firefight costs about what a light one did.
 - **Physics** (`physics_fx.gd`, `ragdoll.gd`, Jolt): the dead become ragdolls - eleven jointed bodies with
   anatomical limits (knees and elbows bend one way). A bullet knocks a man back and he folds; a blast throws him
   limbs flailing and he tumbles to a stop, into a trench if that's where he lands. Later blasts throw the bodies
@@ -809,14 +1111,15 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   drifting cloud over the target. Smoke is shaded like a volume (sun, sky, self-shadowing) and fades
   softly where it meets the ground. Burning wrecks burn, then smoulder (see Fire). Smoke screens are real volumetric fog when
   volumetric fog is on. All effect shaders are compiled during loading, so the first explosion doesn't hitch.
-- A minimal HUD: resources top-left, fading notifications, a terrain minimap, and selection / command panels that
-  only appear when something is selected. Zoom in and every soldier shows what he's doing ("Bandaging Doyle",
+- A minimal HUD: the status line along the top, the order of battle and the ready fire missions down the left,
+  the latest radio lines top right, a terrain minimap, and the selection and its orders along the bottom only when
+  something is selected. Zoom in and every soldier shows what he's doing ("Bandaging Doyle",
   "Pinned down", "Manning the .50 Cal Nest", "Dragging Hakim to safety"); hover one for a small card.
 - The main menu sits over a live 3D scene: a .50 cal crew at golden hour with a burning wreck and shelling on the horizon.
 
 **Field Manual** (`ui/field_manual.gd`; main menu, Esc menu or F4): every soldier, squad, weapon, vehicle, building,
 defence, fire mission and upgrade, with what it is modelled on (M4A1, PKM, M2HB, Bradley, BTR-80, AC-130J...), its
-numbers read live from the game's tables with bars against the rest of its kind, derived figures (rate of fire,
+numbers read live from the game's tables with counted bars against the rest of its kind, derived figures (rate of fire,
 sustained damage, squad firepower, km/h), what carries or trains it, and a 3D model to turn over and zoom.
 A **Cover** chapter covers every kind of battlefield cover - stone and brick walls, hedges, sandbags, cars,
 crates, wrecks, rubble, tall walls, windows, trenches, craters and woods - with what it stops, how much blast
@@ -855,144 +1158,53 @@ digs forward tunnel entrances and moves its attack waves through them. AI-vs-AI 
 batches of six games (from 5–1 one way to 5–1 the other with small parameter changes), so the sides are close
 but balance needs real playtesting. With the base defenses, most games last 10–23 minutes.
 
-### Shared unit motion prototype
+### Imported rifleman and shared impacts
 
-Soldiers share keyed walk/run poses, weight shifts on acceleration and turns, and
-directional hit recovery. Ragdolls preserve travel momentum and use a shared human
-joint/mass profile; coherent blast spin replaces random per-limb spinning. Vehicles
-use the same bounded impact spring, scaled down for heavy armour. These are visual
-responses; combat and movement remain authoritative on the host.
+The optional skinned rifleman uses imported rifle locomotion, a captured kneel-to-prone transition, contact IK, hand-attached weapons, moving reloads with a separate magazine, directional hit recovery, and a thirteen-body constrained ragdoll. The shared motion and impact helpers also serve the procedural soldiers and tank. Damage and movement remain server-authoritative; the skin is presentation.
 
-The one-rifleman/one-tank lab and the plan for imported skeletal animations are in
-[UNIT_MOTION.md](UNIT_MOTION.md). Battlefield units still use procedural articulated
-models. A separate [MCO evaluation scene](../tests/mocap/README.md) compares imported
-rifle mocap on that rig and a skinned mannequin, including articulated ragdoll handoff.
-Skinned battlefield units and physical get-up actions are not included.
+With the separately installed local evaluation assets, `--skinned-units --swat-units` enables the military character for Coalition riflemen in ordinary battles. Other units and missing-asset installations retain their procedural models. The viewer supports clip selection, scrubbing, bones, wireframes and projectile impacts; the playable controller exercises terrain, walking, crouching, jumping and reloads. Setup and exact limitations are in [the evaluation guide](../tests/mocap/SKINNED.md). Imported models, textures and animation sources are excluded from Git and releases.
 
-### Imported rifleman evaluation
+Soldiers check space for the whole kneel-to-prone transition. If a wall blocks it, a stationary soldier can take a short backward step into clear space, settle the feet, and then lower into prone. The retreat is collision-swept, navigation-checked and bounded to 1.8 metres. New movement orders or a new obstruction cancel it. If no safe space exists, the soldier remains crouched. This authoritative movement is replicated normally.
 
-With local MCO sample assets and the Vanguard character installed, `--skinned-units`
-uses the skinned character for Coalition riflemen in ordinary battles. Rifle idle,
-walk and jog retarget by rest orientation while retaining the model's skin weights
-and bone lengths. Planted-foot IK adjusts the pelvis and ankles; both arms solve
-to fixed weapon grips. Replicated hits layer recovery onto the spine, and fatal
-impacts transfer the current pose to thirteen constrained physics bodies and a
-separate dropped rifle. Cover and terrain collisions use the existing physics
-layers and active-ragdoll cap. Other actions retain procedural poses on the skin.
-Local MCO preparation enables texture mipmaps, and the rifle material follows the player's anisotropic-filtering setting. The military model retains its supplied normal maps at full strength; the FBX importer otherwise loads them with zero strength. This remains an opt-in art evaluation, not a complete production animation set.
-See [setup and captures](../tests/mocap/SKINNED.md). The interactive
-`tests/mocap/viewer.tscn` scene lists installed sample clips, supports scrubbing
-and slow playback, and lets you click the character to test projectile hits,
-ragdolls, and wall impacts. Launch with `play_skinned.ps1 -Viewer`. Its model inspector shows live bones,
-joint names, triangle wireframes, and base-mesh statistics for either character.
+Captured contact IK anchors low supporting feet in world space, blends the ankle/forefoot support for running, and releases overstretched contacts. Ragdolls retain bounded limb and root momentum, anatomical joint limits and dropped-weapon collision cleanup. The optional skinned mode runs physics contacts at 120 Hz; the battle simulation retains the current 30 Hz cadence, including when physics runs faster.
 
-With the locally installed Mixamo downloads, add `--swat-units` to use the SWAT
-character for this evaluation. `play_skinned.ps1 -Viewer -Swat` also exposes the
-Mixamo shooter clips and kneel-to-prone transition on their native rig, alongside
-the MCO retargeting comparison. These additional action clips are viewer previews;
-battle action transitions retain their existing fallback until explicitly mapped.
+This is an opt-in evaluation, not a complete production animation library. Authored directional crouch, precise finger wrapping, mounted reloads, vehicle boarding/seating, prone get-up, final art quality and large-crowd performance still need work. The M2 fixture passes; mounted M240 and original-model DShK reach/clearance are known remaining issues.
 
+### Large battles and shared AI work
 
-The imported rifleman samples ground height independently at each foot contact.
-Captured/procedural pose changes blend before foot and weapon contact solving,
-so stance handoffs do not interpolate away from their final grip targets.
+Desktop skirmishes and observer games can select 1,024, 2,048 or 3,072 metre maps.
+Solo games and missions launch a private headless simulation with the same game
+executable. The visible game sends commands and draws interpolated snapshots;
+the simulation remains authoritative for every soldier, including off-screen units.
+Pause, resume and returning to the menu control the owned simulation process.
+Web retains the in-process host path.
 
-The optional SWAT motion lab also includes a playable camera-relative rifle controller: walking, running, strafing, jumping, crouching, and moving reloads, with the same inspector and projectile ragdolls. Its shared pose driver accepts movement/action state independently of keyboard controls. The reload now separates the supplied M4 magazine and follows removal/insertion hand contacts. This remains an evaluation scene; RTS action routing is unchanged.
+Squads stagger their planning and share nearby threat assessments (up to 0.25 s)
+and building contacts (up to 0.75 s, invalidated by new contacts). Men separated
+from the squad assess their own sectors. Individual line of sight, weapon fire,
+damage and urgent reactions still run independently. Land orders queue through
+bounded path work; destroyed obstacles trigger incremental graph rebuilding.
 
-The optional playable motion lab includes rolling terrain with matching mesh collision, per-foot slope alignment and pelvis reach correction. Its reload magazine hides while stowed in the kit and returns when the replacement is drawn. These terrain changes are limited to the inspection demo.
+Distant soldiers use shared baked poses of their procedural models, including
+standing, crouching, prone and walking poses. Nearby soldiers retain articulated
+animation. Distant palette variation and subtle gestures are simplified.
+Distant vehicles use a single material surface per moving part beyond 100 m;
+turrets, wheels and rotors keep their pivots. Near vehicles retain their original
+materials. Wrecks retain their original materials to avoid baking meshes during
+combat. Squad overview status refreshes at 10 Hz; selection remains immediate.
+The battlefield overlay retains drawings between 30 Hz refreshes when the camera
+and pointer are still. Camera movement, pointer movement and input refresh it
+immediately. Smoke sight checks visit smoke grenades directly rather than every
+projectile; cloud growth, movement and dissipation still take effect immediately.
 
-The optional skinned motion prototype keeps a slung rifle attached to the procedural back socket during hands-free idle activities. Its local viewer also exposes downloaded work, seated, and vehicle animation candidates; these do not yet replace gameplay boarding or construction.
+Clients build nearby scenery first and cache visited models; distant models and
+cosmetic collision bodies remain inactive. The server still simulates the complete
+map. Nearby movement orders can reuse a checked route corridor, with separate
+destinations and invalidation when terrain or danger changes.
 
-Opt-in SWAT riflemen now use the motion-lab directional locomotion driver in live battles while standing. This remains dependent on locally installed prototype assets; other postures and actions retain their existing fallback.
+Grass, bushes and stones are generated around the camera, beyond their visible
+fade distance. Panning reuses nearby chunks and evicts distant ones; returning
+to an area recreates the same vegetation from its seed.
 
-Standing opt-in SWAT riflemen also play a captured reload synchronized to the rifle reload duration, including magazine stowing and replacement. Crouched reloads layer the captured upper body over the existing grounded stance; prone reloads retain their fallback poses.
-
-The optional skinned crouch presentation now corrects the planted boot and trailing toe against ground height before applying upper-body reloads, with contact influence blended around movement.
-
-Skinned mounted gunners now lean into the weapon and solve both arms to its existing world-space grip anchors after pose blending. `tests/mocap/mounted_grips.tscn` checks kneeling M2 palm contact during traverse and recoil; mounted entry restores saved grip fingers after a rifle reload. Fitted finger wrapping and mounted reload choreography still need work; the original-rig DShK reach and military M240 platform clearance also remain unvalidated by the passing M2 check.
-
-The mounted kneel uses a side-set supporting boot to clear the tripod platform. Its focused test uses `Structure.crew_stance`, the platform dimensions, and the full permitted traverse arc, with checks for leg-segment clearance and grip contact.
-
-Skinned posture changes capture the previous corrected bone pose, including foot IK, when switching between procedural stances. Whole-body transitions use a 0.65-second blend, including interruptions; ordinary aiming retains its shorter crossfade. `tests/mocap/gameplay_stances.tscn` checks standing, kneeling, prone, and interrupted changes through SoldierModel. The procedural prone aiming pose remains unfinished.
-
-Stationary prone idle/shooting in the optional SWAT gameplay path now plays the downloaded `Rifle Kneel To Prone` clip and holds its final supported pose. The shared driver handles interruptions and weapon attachment. `gameplay_stances.tscn` verifies that the captured branch is used and the settled head remains above 23 cm on flat ground. Crawling, prone reloads, over-cover aiming, slope fitting, and an authored get-up remain separate work. `prone_capture.tscn` previews the unmodified captured clip for comparison.
-
-Skinned ragdoll joint attachment positions now come from the captured death pose, accounting for intermediate shoulder/spine bones. Their angular reference frames retain the bind-pose anatomy. Initial anchor alignment and first-second dynamic separation are measured separately from settled collision/joint checks. Early solver separation remains unfinished.
-
-The skinned death path preserves bullet, blast, and collapse types. Bullets transfer more velocity to the chest than the limbs; blasts throw the whole body; collapse retains travel without an added hit. The viewer and showcase use the same distinction.
-
-Skinned knee constraints align their hinge axis with the thigh/shin bend plane captured at death, retaining the anatomical flexion and sideways limits. Nearly straight legs retain the rest-frame fallback.
-
-Skinned ragdolls inherit sampled limb and weapon motion from the final corrected living pose. Root travel remains supplied by gameplay so it is not counted twice. Linear velocity accounts for each collider's center of mass; sampling resets after revival, viewer scrubbing, and invalid or greater-than-100-ms pose intervals. Per-part animation velocity is bounded to 8 m/s and angular velocity to 12 rad/s to limit discontinuities.
-
-A visible magazine detached during the skinned reload becomes a separate physical prop on death, preserving its pose and sampled motion. Seated magazines stay with the rifle and stowed magazines stay hidden. The prop shares ragdoll collision-layer updates and cleanup; revival restores it to the rifle.
-
-Dropped rifles and magazines temporarily ignore initial owner overlaps. A shape query with a 2 cm clearance margin restores each excluded collision once the prop clears that part; it does not use a fixed timer that could enable collision inside a hand or torso. Queries stop once all exceptions are removed.
-
-Ragdoll drawing now preserves captured local bone positions, drives the pelvis from physics, and aims simulated body segments toward their child bodies while retaining twist. This prevents solver separation from stretching the skin. The tests check bone-length error below 1 mm and settled skin-to-collider origin offset below 5 cm. SWAT idle/crouch/prone and the older character idle fixture pass; early physical separation is unchanged and remains separately reported.
-
-The prototype uses ten Jolt position-solving steps to improve landing contacts. The jogging-blast fixture now passes its existing settled overlap limit without changing collision shapes or widening assertions; early transient joint separation is still unfinished.
-
-Skinned knee and elbow hinge limits now use the Godot/Jolt angular sign convention and captured bend plane. An isolated hinge regression checks that valid flexion is retained. Physics contacts advance at 120 Hz while the authoritative battle simulation retains 60 updates per second. Host model interpolation follows the battle clock rather than restarting on each physics tick. This gives fast ragdoll impacts smaller steps without doubling AI, spatial queries or snapshot scheduling; accelerated and slowed time still apply to the battle step. Contact quality and crowded-battle performance are checked separately.
-
-The shared native rifle controller retains each imported locomotion clip's horizontal root travel before making it in-place. Playback phase follows movement speed divided by the blended authored stride, rather than using one distance for walking, running and both strafe directions. Moving-foot planting is still incomplete.
-
-Grounded native rifle movement briefly anchors a low foot, fades the anchor on lift-off or excessive reach, and waits for the next swing before replanting. Jumping and controller resets clear both plants. This improves backward and lateral contact; forward running remains incomplete.
-
-The native rifle controller preserves the sampled gait instead of low-pass filtering every bone each frame. Velocity, posture and action transitions still blend. This reduces effective stride shortening and the resulting contact drift.
-
-Horizontal rifle foot correction follows the world plant target with a bounded adjustment rate, avoiding a second exponential delay while limiting abrupt anchor changes. Vertical terrain correction stays smoothed; residual ankle and toe sliding remains under review.
-
-Captured rifle movement, prone and preview poses apply firing recoil to the upper chest before placing the hand-attached weapon, keeping both captured grips together while leaving lower-body contacts unchanged.
-
-Blast-driven skinned ragdolls receive coherent angular motion around their captured center of mass: each limb gets both spin and its matching tangential velocity. This avoids introducing artificial joint-anchor velocity disagreements at the animation-to-physics handoff.
-
-The opt-in captured rifle controller preserves the idle support-hand grip through locomotion blends using arm IK, with gradual release for reloads and jumps. Authored arm lengths and the current elbow bend plane are retained.
-
-Captured crouch blends compensate the spine for the borrowed pelvis rotation, preserving rifle aim. Captured reloads and the gameplay crouched-reload overlay likewise resolve their upper-body pose against the receiving pelvis.
-
-Opt-in skinned riflemen now use the shared captured controller while moving in crouch. Stopping returns them to the grounded kneel, with its captured reload overlay. Crouch sampling preserves the active posture transition, and the support-hand constraint fades in with that transition.
-
-The shared combat slide uses a low, feet-first pose with a folded trailing knee, including when transferred to the opt-in skinned rifleman.
-
-Slide entry and exit blend independently of the crouch/standing posture. The original mocap solver limits horizontal foot-contact correction changes during plant release, and actor resets discard old anchors and offsets.
-
-Skinned death effects survive delayed alive snapshots; only a transition from downed/dead back to alive revives the skin. Ragdoll distance culling uses the active viewport camera, including close-up inspection views.
-
-The shared captured rifle controller blends its foot support from ankle to forefoot with running speed. The ankle can roll around a planted toe; terrain clearance and the captured foot rotation remain active.
-
-Captured rifle contact timing uses the same ankle-to-forefoot blend as the foot support position, so a running toe can plant before the heel finishes descending.
-
-Captured crouch movement retargets only its lower-body source bones; the retained rifle upper body is left untouched. Inactive hit reactions advance their spring without rewriting spine poses.
-
-Fully crouched poses skip the standing diagonal-foot solve that their lower-body animation replaces. The crouch-foot-path fixture compares all local bone transforms against the unskipped path through a full turn and both stance transitions.
-
-Fallback weapon fitting exits its bounded reach-projection loop once a full pass moves neither hand target. Arm IK and grip checks still run, while unconverged poses retain all three fitting passes.
-
-After a skinned rifleman loads successfully, its hidden procedural root releases leaf mesh nodes while retaining pose and attachment pivots. The geometry fixture checks procedural-only, original-skinned and SWAT configurations through the real unit construction path.
-
-Mixed native rifle locomotion uses a shared AnimationTree blend graph with per-soldier parameters and explicit phase sampling. Single active clips retain direct sampling. The independence fixture checks that advancing one soldier does not alter another's weights or pose. Intermediate forward/backward speeds are covered by the stride fixture; diagonal foot sliding remains an open quality issue.
-
-Diagonal blends preserve sampled local foot/toe trajectories with leg IK before ground contact, avoiding the collapsed swing produced by rotation blending alone. Trajectories are cached per model, and correction fades in near cardinal directions. Stride timing uses the magnitude of blended directional travel. Four diagonal contact cases supplement the existing stride guards; residual sliding remains.
-
-The network animation fixture checks a rendered client's crouch-to-diagonal transition, support-hand grip, hit reaction and persistent skeletal ragdoll against a separate host.
-
-Diagonal contacts anchor the toe using the same directional fade as the trajectory correction, while retaining the existing lift-based contact timing. They hold full horizontal reach weight until the bounded stretch release. The stride fixture checks tighter diagonal toe-drift limits and a continuous turn through cardinal/diagonal boundaries.
-
-The opt-in skinned controller also detects toe-first diagonal landings before the ankle settles. Diagonal anchors allow the longer planted step and follow its contact correction; straight movement keeps its previous contact parameters. The stride fixture bounds all four diagonal contact-drift means at 2 mm/s; terrain and grip checks cover the shared controller.
-
-The diagonal contact solver uses the faster correction while planted and the gentler existing return speed after release. The stride regression also covers a 30 Hz turn to bound knee and ankle movement between poses.
-
-Jolt speculative contact distance is 0.04 m so fast ragdoll limbs begin collision response earlier. The wall-impact fixture checks initial, first-second and settled self-overlap, anchor separation, wall contact and skin stretch. The first-second self-overlap ceiling is 0.04 m; the transient anchor-gap ceiling remains 0.06 m.
-
-Opt-in skinned riflemen layer the supplied frontal hit clip's spine/head rotations over the directional spring response. Incoming direction gates the clip so it does not push side/rear hits backward; locomotion, feet and grip solving remain shared.
-
-Downloaded rifle clips are converted into the receiving skeleton rest space before caching. Non-pelvis translations retain the receiving bone lengths; pelvis motion and stride travel use its coordinate axes and scale. This supports the original centimeter/Z-up character and the meter/Y-up SWAT rig through the same controller.
-
-Standing rifle locomotion rejects low, fast-moving swing feet as landing candidates and gives those swings clearance before contact. Diagonal toe contacts remain independent of the ankle landing speed.
-
-Retargeted pelvis displacement and root-travel distance scale with receiving rest-pelvis height. Foot contact acquisition is immediate at a new zero-error anchor; release corrections are bounded per pose update as well as per second.
-
-The rifle controller caches the pre-contact crouch sample while both phase and actor transform are unchanged. It still solves terrain contacts, blends the stance, updates weapon contacts and applies impacts each pose update. Reset invalidates the sample.
-
-Prone entry reserves the full kneel-to-prone body sweep against cover collision on the server. If the space is blocked, the soldier remains crouched; clients receive that posture. Stationary clearance checks are reused for up to 0.2 seconds and refreshed immediately after a position or facing change. This conservative check does not automatically move the soldier away from the obstacle.
+See [SIMULATION_SCALING.md](SIMULATION_SCALING.md) for the native perception
+boundary, measurement results and remaining limits.

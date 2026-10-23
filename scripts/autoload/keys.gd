@@ -97,6 +97,7 @@ const ACTIONS := [
 	["hide_hud", "Hide the interface", "Interface", "ui", KEY_F2, NONE, ""],
 	["perf", "Performance overlay", "Interface", "ui", KEY_F3, NONE, "Off, FPS, compact, full breakdown."],
 	["manual", "Field Manual", "Interface", "ui", KEY_F4, NONE, ""],
+	["console", "Console", "Interface", "ui", KEY_QUOTELEFT, NONE, "Type commands: why the game is slow (why), what each setting costs (bench), frame graphs. help lists them."],
 	["director", "Director camera", "Observer", "obs", KEY_C, NONE, "The camera follows the fighting by itself."],
 	["pause", "Pause", "Observer", "obs", KEY_P, NONE, ""],
 	["slower", "Slower", "Observer", "obs", KEY_BRACKETLEFT, NONE, ""],
@@ -127,6 +128,7 @@ const MODS := KEY_MASK_SHIFT | KEY_MASK_CTRL | KEY_MASK_ALT | KEY_MASK_META
 
 var binds := {}  # id -> [code, code]
 var capturing := false  # the Controls page is waiting for a key: the game leaves the keys alone
+var console_open := false  # the keys are going into the console: the game leaves them alone too
 var _info := {}  # id -> its row in ACTIONS
 
 
@@ -337,18 +339,25 @@ static func name_of(code: int) -> String:
 	if c & KEY_MASK_ALT:
 		parts.append("Alt")
 	if c & KEY_MASK_META:
-		parts.append("Win" if OS.get_name() == "Windows" else "Meta")
+		parts.append(meta_name())
 	var base := c & KEY_CODE_MASK
 	if code < 0:
 		parts.append({MOUSE_BUTTON_MIDDLE: "Middle mouse", MOUSE_BUTTON_XBUTTON1: "Mouse 4", MOUSE_BUTTON_XBUTTON2: "Mouse 5",
 			MOUSE_BUTTON_LEFT: "Left mouse", MOUSE_BUTTON_RIGHT: "Right mouse"}.get(base, "Mouse %d" % base))
 	elif KEY_NAMES.has(base):
 		parts.append(KEY_NAMES[base])
+	elif base == KEY_META:
+		parts.append(meta_name())
 	elif base >= KEY_KP_0 and base <= KEY_KP_9:
 		parts.append("Num %d" % (base - KEY_KP_0))
 	else:
 		parts.append(OS.get_keycode_string(base))
 	return " + ".join(parts)
+
+
+## What the key beside Alt is called here: the Windows key, a Mac's Command key.
+static func meta_name() -> String:
+	return {"Windows": "Win", "macOS": "Cmd"}.get(OS.get_name(), "Meta")
 
 
 ## An action's keys for a hint ("X", "Ctrl + F", "W / Up"); "" if unbound.

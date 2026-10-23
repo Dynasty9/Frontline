@@ -21,18 +21,19 @@ godot --path .
 
 ## Before you open a pull request
 
-Everything in the game is code: models, effects, sounds and AI. There are no asset pipelines to set up. Please check two things before opening a pull request:
+Everything in the game is code: models, effects, sounds and AI. There are no asset pipelines to set up. Please check three things before opening a pull request:
 
 1. **Every script compiles.** This prints nothing if all is well:
    ```
    godot --headless --path . --import 2>&1 | grep -E "SCRIPT ERROR|Parse Error"
    ```
-2. **The game still runs headless.** Run a couple of scenarios and a short AI-vs-AI game, and look for `SCRIPT ERROR` in the output:
+2. **The game still runs headless.** Run a couple of scenarios and a short AI-vs-AI game. Each exits with code 1 (and prints `SCRIPT ERROR`) if a script went wrong:
    ```
-   godot --headless --path . -- --scenario=attack --stats=60 --quit-after=60 --port=7901
-   godot --headless --path . -- --aivai --timescale=6 --stats=300 --quit-after=900 --port=7902
+   godot --headless --fixed-fps 30 --path . -- --scenario=attack --seed=3 --stats=60 --quit-after=60
+   godot --headless --fixed-fps 30 --path . -- --aivai --seed=3 --stats=300 --quit-after=600
    ```
    [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) lists every scenario and test flag. If you touch multiplayer, also run a host and a client (see "Host / client" there).
+3. **The tests pass.** `npm test` in `tests/`, with `GODOT` set to your Godot executable. They drive the game through its test port ("The test port" in DEVELOPMENT.md); add one for a behaviour you add or fix.
 
 CI runs the same checks on every push and pull request.
 

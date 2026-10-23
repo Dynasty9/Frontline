@@ -177,15 +177,15 @@ class Hull:
 
 
 ## The hull as a solid.
-static func _hull(k: VehicleModels, p: Node3D, h: Hull, key: String, mat: String, col = null, grow := 0.0) -> MeshInstance3D:
+static func _hull(k: VehicleModels, p: Node3D, h: Hull, key: String, mat: String, col = null, grow := 0.0) -> Variant:
 	return k._add(p, h.mesh(key, grow), mat, col, Vector3.ZERO)
 
 
 ## A patch on the hull, on the right (sx 1), the left (-1) or both (0).
 static func _patch(k: VehicleModels, p: Node3D, h: Hull, key: String, z0: float, z1: float, t0: float, t1: float, mat: String, col = null, grow := 0.012, depth := 0.03, sx := 0.0) -> void:
 	for s in ([1.0, -1.0] if sx == 0.0 else [sx]):
-		var mi := k._add(p, h.patch("%s%s" % [key, "r" if s > 0.0 else "l"], z0, z1, t0, t1, grow, depth, s), mat, col, Vector3.ZERO)
-		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		var mi: Variant = k._add(p, h.patch("%s%s" % [key, "r" if s > 0.0 else "l"], z0, z1, t0, t1, grow, depth, s), mat, col, Vector3.ZERO)
+		k._unshadow(mi)
 
 
 ## A ring of points (x, y pairs) in the XY plane at z.
@@ -197,7 +197,7 @@ static func _rz(pts: Array, z: float) -> PackedVector3Array:
 
 
 ## A cylinder from a to b (radius ra at a, rb at b).
-static func _tube(k: VehicleModels, p: Node3D, a: Vector3, b: Vector3, ra: float, mat: String, col = null, segs := 8, rb := -1.0, shadow := true) -> MeshInstance3D:
+static func _tube(k: VehicleModels, p: Node3D, a: Vector3, b: Vector3, ra: float, mat: String, col = null, segs := 8, rb := -1.0, shadow := true) -> Variant:
 	var d := b - a
 	var l := d.length()
 	if l < 1e-4:
@@ -217,7 +217,7 @@ static func _path(k: VehicleModels, p: Node3D, pts: Array, r: float, mat: String
 
 ## A box in a rotated frame (base, about origin) without a pivot node of its
 ## own, so it merges with the rest of its parent: blades round a hub.
-static func _rbox(k: VehicleModels, p: Node3D, base: Basis, s: Vector3, lpos: Vector3, mat: String, col = null, lrot := Vector3.ZERO, shadow := true, origin := Vector3.ZERO) -> MeshInstance3D:
+static func _rbox(k: VehicleModels, p: Node3D, base: Basis, s: Vector3, lpos: Vector3, mat: String, col = null, lrot := Vector3.ZERO, shadow := true, origin := Vector3.ZERO) -> Variant:
 	return k._box(p, s, origin + base * lpos, mat, col, (base * Basis.from_euler(lrot)).get_euler(), shadow)
 
 

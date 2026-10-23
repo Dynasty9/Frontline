@@ -14,6 +14,8 @@ const meta = {
     launched: false,
     onLaunch: fn(),
     onDismissLaunch: fn(),
+    invite: null,
+    onDismissInvite: fn(),
   },
 } satisfies Meta<typeof Battles>
 
@@ -37,6 +39,41 @@ export const Live: Story = {
     await expect(join[0]).toHaveAttribute("href", `frontline://join/${lobbyDropIn.id}`)
     await userEvent.click(join[0])
     await expect(args.onLaunch).toHaveBeenCalledOnce()
+  },
+}
+
+/** What each battle is, and a padlock on the one that wants a password. */
+export const Modes: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await expect(canvas.getAllByText("Mission · Bridgehead")[0]).toBeInTheDocument()
+    await expect(canvas.getAllByText("Versus · 3 v 2")[0]).toBeInTheDocument()
+    await expect(canvas.getAllByText("Co-op vs AI · Rebels")[0]).toBeInTheDocument()
+    await expect(canvas.getAllByLabelText("Password")).toHaveLength(1)
+  },
+}
+
+/** A friend's invite link (?join=ID): their battle up top, with a Join button. */
+export const Invited: Story = {
+  args: { invite: lobbyOpen.id },
+  play: async ({ args, canvasElement }) => {
+    const canvas = within(canvasElement)
+    await expect(canvas.getByText("Raven invited you to Bridgehead at dawn")).toBeVisible()
+    const join = canvas.getByRole("link", { name: "Join Raven's battle" })
+    await expect(join).toHaveAttribute("href", `frontline://join/${lobbyOpen.id}`)
+    await userEvent.click(join)
+    await expect(args.onLaunch).toHaveBeenCalledOnce()
+  },
+}
+
+/** An invite to a battle that has since closed. */
+export const InviteEnded: Story = {
+  args: { invite: "0000deadbeef" },
+  play: async ({ args, canvasElement }) => {
+    const canvas = within(canvasElement)
+    await expect(canvas.getByText("That battle has ended")).toBeVisible()
+    await userEvent.click(canvas.getByRole("button", { name: "Dismiss" }))
+    await expect(args.onDismissInvite).toHaveBeenCalledOnce()
   },
 }
 

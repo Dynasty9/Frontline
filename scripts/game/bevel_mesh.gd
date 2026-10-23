@@ -61,6 +61,7 @@ static func make(s: Vector3, b: float) -> BevelMesh:
 	var m := BevelMesh.new()
 	m.size = s
 	m.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+	Mats.keep_arrays(m, arrays)
 	return m
 
 

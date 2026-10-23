@@ -6,6 +6,8 @@ config_version=5
 
 [application]
 
+run/flush_stdout_on_print=true
+
 config/name="Frontline"
 config/description="Squad-based multiplayer RTS with thinking soldiers."
 config/version="0.0.0-dev"
@@ -20,6 +22,7 @@ boot_splash/use_filter=true
 
 [autoload]
 
+Errors="*res://scripts/autoload/errors.gd"
 Links="*res://scripts/autoload/links.gd"
 Defs="*res://scripts/autoload/defs.gd"
 Net="*res://scripts/autoload/net.gd"
@@ -29,6 +32,11 @@ Keys="*res://scripts/autoload/keys.gd"
 Music="*res://scripts/autoload/music.gd"
 Online="*res://scripts/autoload/online.gd"
 Updater="*res://scripts/autoload/updater.gd"
+LocalServer="*res://scripts/autoload/local_server.gd"
+
+[debug]
+
+settings/gdscript/always_track_call_stacks=true
 
 [display]
 
@@ -41,14 +49,18 @@ window/size/viewport_height=900
 jolt_physics_3d/simulation/position_steps=10
 jolt_physics_3d/simulation/speculative_contact_distance=0.04
 jolt_physics_3d/simulation/penetration_slop=0.005
-common/physics_ticks_per_second=120
-common/max_physics_steps_per_frame=12
+common/physics_ticks_per_second=30
+common/max_physics_steps_per_frame=6
+jolt_physics_3d/limits/max_bodies=65536
+jolt_physics_3d/limits/world_boundary_shape_size=8192.0
 
 [rendering]
 
 limits/global_shader_variables/buffer_size=2097152
 anti_aliasing/quality/msaa_3d=2
 lights_and_shadows/directional_shadow/size=4096
+shading/overrides/force_vertex_shading.web=true
+textures/vram_compression/import_etc2_astc=true
 
 [shader_globals]
 

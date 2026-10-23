@@ -354,6 +354,7 @@ static func _dmesh(vs: PackedVector3Array) -> ArrayMesh:
 	arr[Mesh.ARRAY_NORMAL] = ns
 	var am := ArrayMesh.new()
 	am.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arr)
+	Mats.keep_arrays(am, arr)
 	return am
 
 

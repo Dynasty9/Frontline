@@ -7,9 +7,53 @@ extends RefCounted
 
 var world: World
 var rng: RandomNumberGenerator
-var placed: Array = []  # [Vector2 center, Vector2 half, yaw]
+var placed: Array = []  # [Vector2 center, Vector2 half, yaw] (add with _place)
 var doors_shut := -1  # houses' doors: -1 some shut (most), 1 all shut, 0 all open
-var clear: Array = []  # [Vector2 center, radius]
+var clear: Array = []  # [Vector2 center, radius] (add with _keep_clear)
+## The same, filed by the 16 m square their middles are in, so a look for room
+## (_is_free) goes through only what's near it; the few big ones (a town, a
+## yard) are looked through every time.
+const GRID := 16.0
+const BIG := 12.0  # (half diagonal, radius) bigger than this is filed as big
+var _placed_at := {}  # Vector2i -> [placed entries]
+var _placed_big: Array = []
+var _clear_at := {}
+var _clear_big: Array = []
+
+
+func _place(e: Array) -> void:
+	placed.append(e)
+	if (e[1] as Vector2).length() > BIG:
+		_placed_big.append(e)
+		return
+	var key := Vector2i(floori(e[0].x / GRID), floori(e[0].y / GRID))
+	var a = _placed_at.get(key)
+	if a == null:
+		a = []
+		_placed_at[key] = a
+	a.append(e)
+
+
+## Takes back the last thing placed.
+func _unplace_last() -> void:
+	var e: Array = placed.pop_back()
+	if (e[1] as Vector2).length() > BIG:
+		_placed_big.pop_back()
+	else:
+		(_placed_at[Vector2i(floori(e[0].x / GRID), floori(e[0].y / GRID))] as Array).pop_back()
+
+
+func _keep_clear(e: Array) -> void:
+	clear.append(e)
+	if float(e[1]) > BIG:
+		_clear_big.append(e)
+		return
+	var key := Vector2i(floori(e[0].x / GRID), floori(e[0].y / GRID))
+	var a = _clear_at.get(key)
+	if a == null:
+		a = []
+		_clear_at[key] = a
+	a.append(e)
 
 
 func _init(w: World) -> void:
@@ -22,6 +66,9 @@ func generate() -> void:
 	var H := MapDims.HALF
 	var k := H / 128.0  # how much bigger than the original 256 m field each way
 	var area := k * k
+	# nothing asks the way until the ground's laid out: the routes hear of
+	# each cell it changes once, when it's done (see TerrainMap.hold_nav)
+	world.terrain.hold_nav()
 	var d0 := _spawn("depot", Vector3(0, 0, H - 12.0), 0.0, 0)
 	var d1 := _spawn("depot", Vector3(0, 0, -(H - 12.0)), PI, 1)
 	r.depots = [d0, d1]
@@ -34,28 +81,33 @@ func generate() -> void:
 	for st in [d0, d1, f0, f1]:
 		st.seen_mask = 3  # start locations are common knowledge
 	for p in [d0.position, d1.position]:
-		clear.append([Vector2(p.x, p.z), 26.0])
+		_keep_clear([Vector2(p.x, p.z), 26.0])
 	for f in [f0, f1]:
-		clear.append([Vector2(f.position.x, f.position.z), 30.0])
+		_keep_clear([Vector2(f.position.x, f.position.z), 30.0])
 	# keep the lane between HQ and starting FOB open
 	for t in 2:
 		var a: Vector3 = [d0, d1][t].position
 		var b: Vector3 = [f0, f1][t].position
 		for i in 5:
 			var p := a.lerp(b, i / 4.0)
-			clear.append([Vector2(p.x, p.z), 10.0])
+			_keep_clear([Vector2(p.x, p.z), 10.0])
 
+	await world._breathe("Surveying the rivers", 0.18)
 	_lay_water()
+	await world._breathe("Laying out the town", 0.26)
 	# the town, its roads and everything that hangs off them (see TownGen)
 	var tg := TownGen.new(self)
 	tg.plan_town(TrenchNet.snap_pos(Vector3(rng.randf_range(-26, 26), 0, rng.randf_range(-8, 8))))
 	world.roads[2] = tg.build_roads(d0.position, d1.position)
 	_lanes(tg)
+	await world._breathe("Laying out the town", 0.32)
 	_roads_meet_water(tg)
 	world._rebuild_roads()
+	await world._breathe("Laying out the town", 0.38)
 	tg.streetscape()
 	tg.lots()
 	tg.hamlet_houses()
+	await world._breathe("Farms and fields", 0.44)
 	tg.farms(int(rng.randi_range(2, 3) * area * 0.6))
 	tg.country_power()
 	tg.fields(int(rng.randi_range(7, 10) * area * 0.6))
@@ -67,6 +119,7 @@ func generate() -> void:
 	world.key_points.append({"pos": tg.center, "kind": "town"})
 	for hm in tg.hamlets:
 		world.key_points.append({"pos": hm.c, "kind": "village"})
+	await world._breathe("Hedges, woods and old trenches", 0.48)
 	for i in int(rng.randi_range(3, 4) * area * 0.6):
 		_hedgerow()
 	for i in int(rng.randi_range(1, 2) * k):
@@ -81,6 +134,8 @@ func generate() -> void:
 	for i in int(40 * area * 0.75):
 		_try("tree", Vector3(rng.randf_range(-(H - 8.0), H - 8.0), 0, rng.randf_range(-(H - 10.0), H - 10.0)), 0.0, -1)
 
+	world.terrain.release_nav()
+	await world._breathe("Mustering the forces", 0.53)
 	# starting forces (a mission brings its own: see MissionDirector)
 	if String(world.settings.get("mission", "")) != "":
 		r.rebuild_network(0)
@@ -206,7 +261,7 @@ func _dump_spot(tg, c: Vector3, d: Vector3) -> Array:
 			for s in [1.0, -1.0]:
 				var p: Vector3 = c + d * t + n * (s * off)
 				var yaw := Defs.yaw_of(-n * s)
-				if not _is_free(p, half, yaw, 0.3, false) or tg._road_dist(p) < off - 0.6:
+				if not _is_free(p, half, yaw, 0.3, false) or tg._road_dist(p, off) < off - 0.6:
 					continue
 				var crowded := false
 				for e in tg.decor:
@@ -308,7 +363,7 @@ func _roads_meet_water(tg) -> void:
 		var b: Vector3 = br[1]
 		var d := Defs.flat(b - a)
 		_spawn("bridge", (a + b) * 0.5, Defs.yaw_of(d), -1, {"size": Vector3(float(br[2]) * 2.0, 0, d.length()), "variant": 1 if br.size() > 3 and br[3] == "quay" else 0})
-		placed.append([Vector2((a.x + b.x) * 0.5, (a.z + b.z) * 0.5), Vector2(float(br[2]) + 1.0, d.length() * 0.5 + 1.0), Defs.yaw_of(d)])
+		_place([Vector2((a.x + b.x) * 0.5, (a.z + b.z) * 0.5), Vector2(float(br[2]) + 1.0, d.length() * 0.5 + 1.0), Defs.yaw_of(d)])
 	w.carve()
 	world.nav.build_boat_grid(w)
 	if OS.has_environment("FL_DEBUG_WATER"):
@@ -381,6 +436,7 @@ func scenario(sname: String) -> void:
 						man.take_damage(300.0, null, Vector3.BACK, "explosion")
 						world.stat("motion_demo_blast")
 						break)
+		"stress": StressBattle.populate(world)
 		"air":
 			var hp2 := _spawn("helipad", Vector3(0, 0, 60), 0.0, 0)
 			var gs: Vehicle = world.spawn("vehicle", {"vkind": "gunship", "team": 0, "owner": a, "pos": Vector3(0, 20, 50), "yaw": 0.0})
@@ -727,7 +783,7 @@ func scenario(sname: String) -> void:
 						if OS.has_environment("FL_DEBUG_SLING"):
 							print("SLING t=%.0f mohawk=%s ph=%d humvee=%s btr=%s" % [world.time, mh.position.snapped(Vector3.ONE * 0.1), mh.lift_phase, hv.position.snapped(Vector3.ONE * 0.1), bt.position.snapped(Vector3.ONE * 0.1)]))
 		"naval":
-			# boats on the sea: a Coalition RHIB lands a squad on a beach the
+			# boats on the sea: a Coalition RHIB lands a squad on the coast the
 			# Rebels hold, its patrol ship covering it; Rebel boats come out to fight
 			_lay_water()
 			var w: WaterMap = world.water
@@ -749,7 +805,11 @@ func scenario(sname: String) -> void:
 			bq.order_defend(Vector3(w.coast_x(-30.0) - 18.0, 0, -30.0), Vector3(1, 0, 0))
 			if not world.settings.get("static", false):
 				world.get_tree().create_timer(2.0, true, true).timeout.connect(func():
-					rh.order_move(Vector3(w.coast_x(-5.0) - 4.0, 0, -5.0))
+					# the beach up the coast from the Rebels' cell, under the patrol
+					# ship's guns: an open boat run in on the cell itself is shot to
+					# pieces by its rifles before it touches the sand (a raid lands
+					# away from them too: NavalAI._launch)
+					rh.order_move(Vector3(w.coast_x(40.0) - 4.0, 0, 40.0))
 					sb.order_assault(Vector3(w.coast_x(40.0) + 40.0, 0, 40.0))
 					mb.order_assault(Vector3(w.coast_x(20.0) + 25.0, 0, 20.0)))
 		"tactics":
@@ -876,6 +936,8 @@ func scenario(sname: String) -> void:
 					var off := Vector3(world.rng.randf_range(-1.5, 1.5), 0, world.rng.randf_range(-1.5, 1.5))
 					world.spawn("projectile", {"ptype": "frag", "team": 1, "pos": c + off + Vector3(0, 0.3, 0), "vel": Vector3(0, 0.5, 0), "thrower": 0,
 						"fuse": world.rng.randf_range(1.2, 3.4)}))
+		_:
+			push_error("Unknown scenario: %s" % sname)
 	r.rebuild_network(0)
 	r.rebuild_network(1)
 
@@ -896,7 +958,7 @@ func _spawn(kind: String, pos: Vector3, yaw: float, team: int, extra := {}) -> S
 	var props := {"skind": kind, "pos": pos, "yaw": yaw, "team": team}
 	props.merge(extra, true)
 	var st: Structure = world.spawn("structure", props)
-	placed.append([Vector2(pos.x, pos.z), st.foot, yaw])
+	_place([Vector2(pos.x, pos.z), st.foot, yaw])
 	return st
 
 
@@ -931,15 +993,37 @@ func _is_free(pos: Vector3, half: Vector2, yaw: float, margin := 0.6, use_clear 
 				return false
 	var c := Vector2(pos.x, pos.z)
 	if use_clear:
-		for cl in clear:
-			if c.distance_to(cl[0]) < cl[1] + half.length():
+		var hl := half.length()
+		for cl in _clear_big:
+			if c.distance_to(cl[0]) < cl[1] + hl:
 				return false
+		# (the rest are no bigger than BIG: only those filed within reach can be in the way)
+		var reach := hl + BIG + 1.0
+		for gx in range(floori((c.x - reach) / GRID), floori((c.x + reach) / GRID) + 1):
+			for gz in range(floori((c.y - reach) / GRID), floori((c.y + reach) / GRID) + 1):
+				var a = _clear_at.get(Vector2i(gx, gz))
+				if a == null:
+					continue
+				for cl in a:
+					if c.distance_to(cl[0]) < cl[1] + hl:
+						return false
 	var h := half + Vector2(margin, margin)
-	for p in placed:
+	for p in _placed_big:
 		if c.distance_to(p[0]) > h.length() + p[1].length() + 1.0:
 			continue
 		if Defs.obb_overlap(c, h, yaw, p[0], p[1], p[2]):
 			return false
+	var reach2 := h.length() + BIG + 2.0
+	for gx in range(floori((c.x - reach2) / GRID), floori((c.x + reach2) / GRID) + 1):
+		for gz in range(floori((c.y - reach2) / GRID), floori((c.y + reach2) / GRID) + 1):
+			var a = _placed_at.get(Vector2i(gx, gz))
+			if a == null:
+				continue
+			for p in a:
+				if c.distance_to(p[0]) > h.length() + p[1].length() + 1.0:
+					continue
+				if Defs.obb_overlap(c, h, yaw, p[0], p[1], p[2]):
+					return false
 	return true
 
 
@@ -991,8 +1075,8 @@ func _house(c: Vector3, w: float, d: float, axis: float, street_side: float, yar
 	var color := rng.randi() % Structure.HOUSE_COLORS.size()
 	var ruined := rng.randf() < ruin_p
 	_spawn("floor", c, axis, -1, {"size": Vector3(w, 0.06, d)})
-	placed.pop_back()
-	placed.append([Vector2(c.x, c.z), half, axis])
+	_unplace_last()
+	_place([Vector2(c.x, c.z), half, axis])
 	# four walls: front faces the street
 	var sides := [
 		[Vector3(0, 0, -d * 0.5), w, 0.0],
