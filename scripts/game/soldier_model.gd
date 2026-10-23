@@ -1195,11 +1195,11 @@ func pose(dt: float, life: int, posture: int, act: int, speed: float, backwards:
 				t_thr = Vector3(-0.4, 0, 0)
 				k = 18.0
 			Soldier.Act.BUILD:
+				_sling()
 				_kneel()
 				t_torso = Vector3(-0.45, 0, 0)
 				t_arr = Vector3(1.0 + sin(act_time * 11.0) * 0.8, 0, 0.1)
 				t_arl = Vector3(0.9, 0, -0.2)
-				show_gun = false
 			Soldier.Act.HEAL:
 				_kneel()
 				t_torso = Vector3(-0.55, 0, 0)
@@ -1358,9 +1358,14 @@ func pose(dt: float, life: int, posture: int, act: int, speed: float, backwards:
 			# A death effect can arrive before its snapshot; an old alive state is not a revival.
 			if revived: skinned.revive()
 			var captured_walk := posture == Soldier.Post.STAND or (posture == Soldier.Post.CROUCH and rifle_driver != null and not over_wall)
+			var activity := "mixamo_activities__Smoking" if act == Soldier.Act.IDLE_SMOKE else ("mixamo_activities__Digging" if act == Soldier.Act.BUILD else "")
+			var captured_activity := speed < 0.1 and not crew and skinned.native_player != null and not activity.is_empty() and skinned.native_player.has_animation(activity)
 			var captured_prone := rifle_driver != null and posture == Soldier.Post.PRONE and speed < 0.1 and act in [Soldier.Act.IDLE, Soldier.Act.SHOOT] and not crew and not over_wall and skinned.native_player.has_animation(rifle_driver.PRONE_CLIP)
 			if not captured_prone: _native_prone = false
-			if captured_prone:
+			if captured_activity:
+				_native_locomotion = false
+				skinned.pose_activity(dt, activity)
+			elif captured_prone:
 				if not _native_prone: rifle_driver.prone_time = 0.0
 				_native_prone = true
 				_native_locomotion = false

@@ -28,8 +28,6 @@ var soldier_script: Script
 
 func _ready() -> void:
 	super._ready()
-	soldier_script = GameScripts.load_script("res://scripts/game/soldier.gd")
-	fx_script = GameScripts.load_script("res://scripts/game/fx.gd")
 	if args.has("host"):
 		Net.set_setting("scenario", "motion")
 		Net.set_setting("ai_fill", false)
@@ -38,6 +36,9 @@ func _ready() -> void:
 func _process(dt: float) -> void:
 	super._process(dt)
 	if not is_instance_valid(world): return
+	if soldier_script == null:
+		soldier_script = GameScripts.load_script("res://scripts/game/soldier.gd")
+		fx_script = GameScripts.load_script("res://scripts/game/fx.gd")
 	if world.srv:
 		var moving = world.entity(target_id)
 		if moving != null and moving.get_script() == soldier_script and moving.life == soldier_script.Life.ALIVE and not requested_cover and (not requested_stop or requested_stand):

@@ -14,6 +14,7 @@ var pose_modes := {"locomotion":0.0, "prone":0.0, "fallback":0.0}
 var fallback_states := {}
 
 var soldier_script: Script
+var counted := false
 
 func _ready() -> void:
 	super._ready()
@@ -28,15 +29,24 @@ func _process(dt: float) -> void:
 	if not is_instance_valid(world) or world.time < 0.2: return
 	if not populated:
 		populated = true
+		var inspection := Camera3D.new()
+		world.add_child(inspection)
+		inspection.position = Vector3(0, 45, 70)
+		inspection.look_at(Vector3(0, 0, 10))
+		inspection.make_current()
 		var started := Time.get_ticks_msec()
 		for i in 12:
 			var at := Vector3(-18 + (i % 4) * 12, 0, 12 + (i / 4) * 10)
 			world.rules.spawn_squad("rifle_squad", 0, -1, at, at + Vector3(0,0,-12))
+		print("SCALING spawn_ms=", Time.get_ticks_msec()-started)
+	# Detailed models are acquired over several rendered frames, not during spawn.
+	if world.time >= 5.0 and not counted:
+		counted = true
 		var native := 0
 		for man in world.soldiers:
 			if man.model != null and man.model.skinned != null: native += 1
 		if "--skinned-units" in OS.get_cmdline_user_args(): assert(native >= 48)
-		print("SCALING soldiers=", world.soldiers.size(), " skinned=", native, " spawn_ms=", Time.get_ticks_msec()-started)
+		print("SCALING soldiers=", world.soldiers.size(), " skinned=", native)
 	if world.time < 5.0 or Engine.time_scale != 1.0: return
 	if measured_at == 0:
 		measured_at = Time.get_ticks_msec()
@@ -55,8 +65,8 @@ func _process(dt: float) -> void:
 		if pose_times.has(man.eid) and elapsed > float(pose_times[man.eid]): updated += 1
 		pose_times[man.eid] = elapsed
 	pose_updates.append(updated)
-	for key in overlay._view_avg:
-		view_ms[key] = float(view_ms.get(key, 0.0)) + float(overlay._view_avg[key])
+	for key in overlay.probe.view_avg:
+		view_ms[key] = float(view_ms.get(key, 0.0)) + float(overlay.probe.view_avg[key])
 	var viewport := get_viewport().get_viewport_rid()
 	render_cpu_ms += RenderingServer.viewport_get_measured_render_time_cpu(viewport)
 	render_gpu_ms += RenderingServer.viewport_get_measured_render_time_gpu(viewport)

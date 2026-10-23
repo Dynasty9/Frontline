@@ -1208,3 +1208,5 @@ to an area recreates the same vegetation from its seed.
 
 See [SIMULATION_SCALING.md](SIMULATION_SCALING.md) for the native perception
 boundary, measurement results and remaining limits.
+
+Captured digging and smoking play when the optional rifleman's local activity clips are installed. The rifle follows a torso sling anchor, digging uses a hand-aligned shovel, and a lethal hit releases both rifle and shovel into physics. Sling transitions still blend between poses rather than use an authored handoff.

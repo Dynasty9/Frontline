@@ -26,6 +26,7 @@ var bone_directions := {}
 var follow_bones := {}
 var weapon_body: RigidBody3D
 var magazine_body: RigidBody3D
+var tool_body: RigidBody3D
 var handoff_error := 0.0
 var contact_count := 0
 var done := false
@@ -192,6 +193,26 @@ func build(character: SkinnedRifleman, travel: Vector3, impulse: Vector3, kind :
 	if kind == 1: weapon_body.angular_velocity += Vector3(1.2, 0.7, 0.4)
 	# Ignore the initial grip overlap; restore each collision after separation.
 	for body in bodies.values(): weapon_body.add_collision_exception_with(body)
+	if actor.shovel != null and actor.shovel.visible:
+		tool_body = RigidBody3D.new()
+		tool_body.mass = 1.8
+		tool_body.collision_layer = collision_layer
+		tool_body.collision_mask = collision_mask | collision_layer
+		tool_body.continuous_cd = true
+		tool_body.physics_material_override = material
+		var tool_shape := CollisionShape3D.new()
+		var tool_box := BoxShape3D.new()
+		tool_box.size = Vector3(0.22, 1.35, 0.05)
+		tool_shape.shape = tool_box
+		tool_shape.position.y = -0.115
+		tool_body.add_child(tool_shape)
+		add_child(tool_body)
+		tool_body.global_transform = actor.shovel.global_transform
+		actor.shovel.reparent(tool_body)
+		tool_body.linear_velocity = ImpactResponse.death_velocity(travel, impulse * 0.7, kind, "tool") + actor.limb_velocity.get("tool", Vector3.ZERO)
+		tool_body.angular_velocity = actor.limb_spin.get("tool", Vector3.ZERO)
+		for body in bodies.values(): tool_body.add_collision_exception_with(body)
+		tool_body.add_collision_exception_with(weapon_body)
 	if actor.magazine.mesh != null and actor.magazine.mesh.visible and actor.magazine.detached_weight > 0.001:
 		var mesh: MeshInstance3D = actor.magazine.mesh
 		magazine_body = RigidBody3D.new()
@@ -250,6 +271,7 @@ func _physics_process(dt: float) -> void:
 		return
 	elapsed += dt
 	_release_contacts(weapon_body)
+	if is_instance_valid(tool_body): _release_contacts(tool_body)
 	if is_instance_valid(magazine_body): _release_contacts(magazine_body)
 	draw()
 	if elapsed > 9.0: finish()
@@ -290,6 +312,7 @@ func finish() -> void:
 	done = true
 	if is_instance_valid(actor) and is_instance_valid(actor.weapon):
 		actor.weapon.reparent(actor)
+		if is_instance_valid(tool_body): actor.shovel.reparent(actor)
 		if is_instance_valid(magazine_body): actor.magazine.mesh.reparent(actor.magazine.receiver)
 	queue_free()
 
@@ -302,6 +325,9 @@ func set_collision_layers(layer: int, mask: int) -> void:
 		body.collision_mask = mask | layer
 	weapon_body.collision_layer = layer
 	weapon_body.collision_mask = mask | layer
+	if is_instance_valid(tool_body):
+		tool_body.collision_layer = layer
+		tool_body.collision_mask = mask | layer
 	if is_instance_valid(magazine_body):
 		magazine_body.collision_layer = layer
 		magazine_body.collision_mask = mask | layer

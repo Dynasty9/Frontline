@@ -56,6 +56,9 @@ var procedural_corrections := {}
 var recoil := ImpactResponse.new()
 var solve_contacts := true
 var hold_weapon := true
+var _activity_clip := ""
+var _sling_socket := Transform3D.IDENTITY
+var shovel: Node3D
 
 
 func build(clips: Dictionary = MocapCharacter.CLIPS) -> bool:
@@ -393,6 +396,12 @@ func capture_motion(dt: float) -> void:
 		motion_poses.erase("magazine")
 		limb_velocity.erase("magazine")
 		limb_spin.erase("magazine")
+	if shovel != null and shovel.visible:
+		_sample_motion("tool", shovel.global_transform, dt)
+	else:
+		motion_poses.erase("tool")
+		limb_velocity.erase("tool")
+		limb_spin.erase("tool")
 
 
 func _sample_motion(name: String, pose: Transform3D, dt: float) -> void:
@@ -421,6 +430,8 @@ func bind_procedural(model) -> void:
 		procedural_corrections[key] = rest.inverse() * target_rest[int(bones[name])].basis
 	model.arm_l.rotation = old_l
 	model.arm_r.rotation = old_r
+	var slung: Transform3D = model.torso.global_transform * Transform3D(Basis.from_euler(Vector3(0.8, PI * 0.5, 0)) * Basis(Vector3.UP, PI), Vector3(0, 0.32, 0.2))
+	_sling_socket = (global_transform * target_rest[int(bones["Spine2"])]).affine_inverse() * slung
 
 
 func pose_procedural(model, dt: float, posture := -1) -> void:
@@ -513,6 +524,7 @@ func fire_kick(strength: float) -> void:
 
 
 func _begin_pose(mode: int) -> void:
+	if shovel != null: shovel.visible = mode == 21
 	if mode == _pose_mode: return
 	foot_offsets = [Vector2.ZERO, Vector2.ZERO]
 	if _pose_mode >= 0:
@@ -586,6 +598,54 @@ func pose_native(dt: float, clip: String) -> void:
 	weapon.global_transform = hand_pose * native_sockets.get(clip, native_socket)
 	weapon.visible = hold_weapon
 	magazine.update(native_player.current_animation_position, "reloading" in clip)
+	last_velocity = Vector3.ZERO
+
+
+func pose_activity(dt: float, clip: String) -> void:
+	_begin_pose(21 if clip.ends_with("Digging") else 20)
+	if _activity_clip != clip or native_player.current_animation != clip:
+		native_player.play(clip, 0.0)
+		_activity_clip = clip
+	native_player.advance(dt)
+	_apply_hit(dt)
+	_blend_pose(dt)
+	_ground_feet(0.0, dt)
+	# The sling follows the captured torso, leaving both hands free.
+	weapon.global_transform = joint("Spine2") * _sling_socket
+	weapon.visible = true
+	if clip.ends_with("Digging"):
+		if shovel == null:
+			shovel = Node3D.new()
+			add_child(shovel)
+			var shaft := MeshInstance3D.new()
+			var handle := CylinderMesh.new()
+			handle.top_radius = 0.014
+			handle.bottom_radius = 0.014
+			handle.height = 1.1
+			shaft.mesh = handle
+			var wood := StandardMaterial3D.new()
+			wood.albedo_color = Color(0.22, 0.13, 0.06)
+			wood.roughness = 0.85
+			shaft.material_override = wood
+			shovel.add_child(shaft)
+			var blade := MeshInstance3D.new()
+			var spade := BoxMesh.new()
+			spade.size = Vector3(0.2, 0.28, 0.025)
+			blade.mesh = spade
+			blade.position.y = -0.64
+			var steel := StandardMaterial3D.new()
+			steel.albedo_color = Color(0.13, 0.15, 0.14)
+			steel.metallic = 0.65
+			steel.roughness = 0.6
+			blade.material_override = steel
+			shovel.add_child(blade)
+		var right := joint("RightHandMiddle1").origin
+		var left := joint("LeftHandMiddle1").origin
+		var up := (right - left).normalized()
+		var forward := global_basis.z.slide(up).normalized()
+		if forward.length_squared() < 0.01: forward = global_basis.x.slide(up).normalized()
+		shovel.global_transform = Transform3D(Basis(up.cross(forward).normalized(), up, forward), right - up * 0.22)
+	magazine.update(0.0, false)
 	last_velocity = Vector3.ZERO
 
 
