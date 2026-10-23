@@ -5,11 +5,11 @@ kind = "improved"
 
 [[screenshots]]
 file = "before.jpg"
-caption = "Before: soldiers spread across separate walls."
+caption = "Before: one squad spreads across all three walls while seeking cover. Enemies are beyond the walls, outside this view."
 
 [[screenshots]]
 file = "after.jpg"
-caption = "After: the squad gathers at the same wall, with room between soldiers."
+caption = "After: four soldiers take cover on the near side of the middle wall; the fifth stays close behind. Same scenario, seed, time and camera as before."
 +++
 
 - Move and defend orders keep soldiers in a compact circle instead of a long line.
