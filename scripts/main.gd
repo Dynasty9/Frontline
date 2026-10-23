@@ -212,7 +212,17 @@ func _ready() -> void:
 		var tp: Node = tps.new()
 		tp.set("main", self)
 		add_child(tp)
-	if args.has("local-server"):
+	if OS.has_feature("web"):
+		var replay_url = JavaScriptBridge.eval("new URLSearchParams(location.search).get('replay') || ''")
+		if replay_url is String and not replay_url.is_empty():
+			args["replay"] = replay_url
+	if args.has("replay-test"):
+		var replay_test: Node = GameScripts.load_script("res://scripts/test/replay_test.gd").new()
+		replay_test.main = self
+		add_child(replay_test)
+	elif args.has("replay"):
+		open_replay(String(args.replay))
+	elif args.has("local-server"):
 		var options := {"ai_fill": not args.has("scenario"), "fixed_seed": int(args.get("seed", 3)), "stress_units": int(args.get("units", 500)), "stress_mode": String(args.get("stress-mode", "combat")), "stress_scenery": int(args.get("scenery", 200))}
 		options["map_size"] = int(args.get("map-size", 1024))
 		options["benchmark_output"] = String(args.get("perf-json", ""))
@@ -427,6 +437,8 @@ func _on_game_start(s: Dictionary) -> void:
 		menu.visible = false
 	Settings.set_ui_menu(false)
 	if world:
+		if world.recording:
+			world.recording.finish()
 		world.name = "OldWorld"
 		world.queue_free()
 	world = GameScripts.load_script(GameScripts.WORLD).new()
@@ -735,6 +747,10 @@ func _warm_up(cur: Curtain) -> void:
 
 
 func return_to_menu(msg: String) -> void:
+	if is_instance_valid(replay_viewer):
+		replay_viewer.queue_free()
+		replay_viewer = null
+
 	if args.has("perf-json"):
 		push_error("Benchmark interrupted: " + msg)
 		get_tree().quit(1)
@@ -746,6 +762,8 @@ func return_to_menu(msg: String) -> void:
 	if world and Online.battle_open():
 		Online.battle_end("left", world.time)
 	if world:
+		if world.recording:
+			world.recording.finish()
 		world.name = "OldWorld"
 		world.queue_free()
 		world = null
@@ -1314,3 +1332,26 @@ func _process(_dt: float) -> void:
 		if not world.coop.peers.is_empty() or int(world.coop.stats.get("sent", 0)) > 0:
 			print("COOP ", world.coop.summary())
 		TestRun.quit(get_tree())
+
+
+var replay_viewer: Node
+
+
+func open_replay(source: String) -> Node:
+	LocalServer.stop()
+	if is_instance_valid(replay_viewer):
+		replay_viewer.queue_free()
+	Net.leave()
+	_curtains = false
+	for curtain in _curtain_layer.get_children():
+		curtain.queue_free()
+	if menu:
+		menu.visible = false
+	var player: Node = GameScripts.load_script("res://scripts/game/replay_player.gd").new()
+	replay_viewer = player
+	player.main = self
+	player.source = source
+	if OS.has_feature("web"):
+		Settings.apply_preset("low", false)
+	add_child(player)
+	return player

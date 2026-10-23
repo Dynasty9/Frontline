@@ -5,6 +5,7 @@
 //
 // No dependencies beyond Node itself (20 or newer).
 
+import { Replays, ReplayError, REPLAY_BODY } from './replays.js';
 import { timingSafeEqual } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import http from 'node:http';
@@ -18,7 +19,7 @@ import { careerOf, cleanRecord, isUuid, MAX_BODY as MAX_RECORD, RecordError } fr
 
 const MAX_BODY = 8 * 1024;
 // routes that take more than that: a battle's after-action report, a batch of error reports
-const BODY_LIMITS = { 'POST /me/battles': MAX_RECORD, 'POST /errors': MAX_ERRORS };
+const BODY_LIMITS = { 'POST /me/battles': MAX_RECORD, 'POST /errors': MAX_ERRORS, 'POST /replays/:id/chunks': REPLAY_BODY };
 
 // What anyone may see (players.js): the website's leaderboards and player
 // pages. The same for everyone who asks, so an answer is kept for half a
@@ -155,6 +156,7 @@ export function createServer({
 	release = loadRelease(),
 	log = console.log,
 	errors = new ErrorLog({ log }),
+	replays = new Replays({ dir: env.REPLAY_DIR }),
 } = {}) {
 	const trustProxy = env.TRUST_PROXY ? env.TRUST_PROXY === '1' : !!(env.RAILWAY_ENVIRONMENT_NAME || env.RAILWAY_ENVIRONMENT);
 	const limits = new RateLimit();
@@ -180,6 +182,15 @@ export function createServer({
 
 	const routes = {
 		'GET /health': async () => ({ ok: true, accounts: auth ? auth.name : 'off', release: release?.version ?? null, ...lobbies.stats() }),
+
+		'GET /replays': async () => ({ enabled: !!replays.dir, replays: replays.list() }),
+		'POST /replays': async ({ req, ip, body }) => {
+			limits.hit('replay-create', ip, 6);
+			return replays.create(lobbies.owned(String(body.lobby || ''), lobbyToken(req)), body);
+		},
+		'GET /replays/:id': async ({ params }) => replays.view(replays.get(params.id)),
+		'GET /replays/:id/chunks/:sequence': async ({ params }) => replays.chunk(params.id, params.sequence),
+		'POST /replays/:id/chunks': async ({ req, params, body }) => replays.append(params.id, bearer(req), body),
 
 		'GET /release': async () => {
 			if (!release) throw new HttpError(404, 'No release has been published yet.');
@@ -490,7 +501,14 @@ export function createServer({
 			const key = `${req.method} ${url.pathname}?${[...url.searchParams].toSorted().join('&')}`.toLowerCase();
 			send(res, 200, await memo.get(key, run), `public, max-age=${PUBLIC_S}`);
 		} catch (e) {
-			if (e instanceof HttpError || e instanceof AuthError || e instanceof RecordError || e instanceof ReportError || e instanceof PlayerError)
+			if (
+				e instanceof ReplayError ||
+				e instanceof HttpError ||
+				e instanceof AuthError ||
+				e instanceof RecordError ||
+				e instanceof ReportError ||
+				e instanceof PlayerError
+			)
 				return send(res, e.status, { error: e.message });
 			log(`error on ${req.method} ${req.url}: ${e && e.stack ? e.stack : e}`);
 			send(res, 500, { error: 'Server error.' });

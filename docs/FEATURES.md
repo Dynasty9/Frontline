@@ -1163,7 +1163,12 @@ digs forward tunnel entrances and moves its attack waves through them. AI-vs-AI 
 batches of six games (from 5–1 one way to 5–1 the other with small parameter changes), so the sides are close
 but balance needs real playtesting. With the base defenses, most games last 10–23 minutes.
 
-### Large battles and shared AI work
+
+## Battle recordings and browser spectators
+
+Hosts save seekable observer recordings. Listed public battles can broadcast only a few seconds behind play; the website lists broadcasts and seven days of replays when persistent recording storage is enabled. The browser uses the game renderer, with camera controls, pause, speed and a timeline. Private battles stay local. Recordings are not independently verified. See [REPLAYS.md](REPLAYS.md) for the format, deployment and limitations.
+
+## Large battles and shared AI work
 
 Desktop skirmishes and observer games can select 1,024, 2,048 or 3,072 metre maps.
 Solo games and missions launch a private headless simulation with the same game

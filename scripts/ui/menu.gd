@@ -156,6 +156,8 @@ func _ready() -> void:
 		main_box.add_child(_big("Host a Battle", "Co-op against the AI, versus, or a mission with friends", func(): _open_host({}),
 			func() -> bool: return host_panel.visible))
 		main_box.add_child(_big("Find Match", "Straight into the best open battle, or host one to be found", _find_match))
+	if not OS.has_feature("web"):
+		main_box.add_child(_big("Replays", "Watch a battle saved on this computer", _open_replay))
 	main_box.add_child(_section("Reference"))
 	main_box.add_child(_big("Field Manual", "Every soldier, weapon, vehicle and work, with its numbers", func(): open_manual(),
 		func() -> bool: return manual != null and manual.visible))
@@ -2054,3 +2056,17 @@ class StepBar extends Range:
 		var span := max_value - min_value
 		var frac := 0.0 if span <= 0.0 else (value - min_value) / span
 		UiKit.steps(self, Vector2(0, (size.y - step_h) * 0.5), frac * count, count, UiKit.ACCENT, step_w, step_h)
+
+
+func _open_replay() -> void:
+	var dialog := FileDialog.new()
+	dialog.title = "Open battle recording"
+	dialog.file_mode = FileDialog.FILE_MODE_OPEN_DIR
+	dialog.access = FileDialog.ACCESS_FILESYSTEM
+	dialog.current_dir = ProjectSettings.globalize_path("user://replays")
+	dialog.dir_selected.connect(func(path: String):
+		get_tree().root.get_node("Main").open_replay(path)
+		dialog.queue_free())
+	dialog.canceled.connect(dialog.queue_free)
+	add_child(dialog)
+	dialog.popup_centered_ratio(0.7)

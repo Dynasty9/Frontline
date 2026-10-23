@@ -1,0 +1,32 @@
+# Build the viewer and the website from the same checkout. Use repository-root
+# context and this Dockerfile for the Railway web service.
+FROM debian:bookworm-slim AS viewer
+ARG GODOT_VERSION=4.7.2
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates curl unzip python3 && rm -rf /var/lib/apt/lists/*
+RUN curl -fSL "https://github.com/godotengine/godot-builds/releases/download/${GODOT_VERSION}-stable/Godot_v${GODOT_VERSION}-stable_linux.x86_64.zip" -o /tmp/godot.zip \
+ && unzip -j /tmp/godot.zip -d /usr/local/bin && mv /usr/local/bin/Godot* /usr/local/bin/godot \
+ && curl -fSL "https://github.com/godotengine/godot-builds/releases/download/${GODOT_VERSION}-stable/Godot_v${GODOT_VERSION}-stable_export_templates.tpz" -o /tmp/templates.tpz \
+ && mkdir -p /root/.local/share/godot/export_templates/${GODOT_VERSION}.stable \
+ && unzip -j /tmp/templates.tpz templates/web_nothreads_release.zip templates/version.txt -d /root/.local/share/godot/export_templates/${GODOT_VERSION}.stable \
+ && rm /tmp/godot.zip /tmp/templates.tpz
+WORKDIR /src
+COPY . .
+RUN mkdir -p /viewer && godot --headless --path . --import \
+ && godot --headless --path . --export-release Web /viewer/index.html \
+ && python3 .github/scripts/viewer_manifest.py /viewer
+
+FROM node:24-bookworm-slim AS site
+WORKDIR /src/web
+COPY web/package*.json ./
+RUN npm ci
+COPY web/ ./
+COPY --from=viewer /viewer ./public/game
+ARG VITE_MATCHMAKER_URL=https://matchmaker-production-a53e.up.railway.app
+ENV VITE_MATCHMAKER_URL=$VITE_MATCHMAKER_URL
+RUN npm run build
+
+FROM nginx:stable-alpine
+COPY web/nginx.conf /etc/nginx/templates/default.conf.template
+COPY --from=site /src/web/dist /usr/share/nginx/html
+ENV PORT=8080
+EXPOSE 8080

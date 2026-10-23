@@ -768,7 +768,12 @@ jump: run at 1920x1080 with `--curtain --intro-at=0 --menu-shot=assets/splash.pn
 which keeps the PNG small).
 
 
-### Additional scaling diagnostics
+
+## Recording and replay tests
+
+Use `--record-replay=FOLDER` to save a test battle, and `--replay=FOLDER` to watch it. `--replay=URL` opens the recording API in the same observer. `--replay-test` checks forward and backward seeks against recorded state; `tests/replay.test.mjs` includes it in the game suite. See [REPLAYS.md](REPLAYS.md).
+
+## Additional scaling diagnostics
 
 `tests/structure_view_test.tscn` checks deferred scenery construction, camera-cell
 changes, removal, and construction finishing outside the visible region.

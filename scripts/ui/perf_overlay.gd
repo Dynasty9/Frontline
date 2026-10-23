@@ -62,7 +62,7 @@ func _fps_col(fps: float) -> Color:
 
 func _draw_overlay() -> void:
 	var lvl := int(Settings.get_v("perf"))
-	var vs := canvas.get_viewport_rect().size
+	var vs := canvas.size
 	var fps := Engine.get_frames_per_second()
 	var ft := 1000.0 / maxf(1.0, fps)
 	if lvl == 1:

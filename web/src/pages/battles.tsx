@@ -1,5 +1,6 @@
 import { useState } from "react"
 import { useSearchParams } from "react-router"
+import { Replays } from "@/components/replays"
 import { Battles } from "@/components/battles"
 import { usePageTitle } from "@/hooks/use-page-title"
 import { usePoll } from "@/hooks/use-poll"
@@ -26,6 +27,7 @@ export default function BattlesPage() {
         invite={invite}
         onDismissInvite={() => setSearch({}, { replace: true })}
       />
+      <Replays />
     </div>
   )
 }

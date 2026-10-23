@@ -311,3 +311,7 @@ takes the verified account's confirmed email, generates and consumes a magic lin
 email, and checks the returned user ID. The public key and player bearer still authorize all database calls.
 Never put this secret in the website's Vite variables or game. Without it, automatic handoff reports a
 configuration error and the existing GitHub sign-in remains available.
+
+## Battle recordings
+
+Mount a persistent volume and set `REPLAY_DIR` to enable delayed public broadcasts and seven-day replay storage. Without it, the service reports recording disabled. The recording HTTP API is independent of accounts; uploads require a public active lobby owner. See [REPLAYS.md](../docs/REPLAYS.md) for endpoints, capacity limits and deployment.

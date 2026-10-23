@@ -199,3 +199,7 @@ Signed in, every battle you fight earns XP (a win more), and you climb 50 ranks 
 Frontline is free and open source under the [MIT License](LICENSE). © 2026 Alexander Dines.
 
 Many vehicle names nod to the fictional vehicles of Bohemia Interactive's *Arma 3*. Frontline is an independent fan project. It is not affiliated with or endorsed by Bohemia Interactive, and all its models are original, built in code from real-world references.
+
+### Watch and replay
+
+The host saves recordings that you can open from **Replays** in the desktop menu. Public battles can also be watched in the browser, with a delayed feed and a seekable timeline, when the website and matchmaker have [recording support enabled](docs/REPLAYS.md). Host recordings are not independently verified results.

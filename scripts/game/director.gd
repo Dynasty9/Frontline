@@ -157,6 +157,19 @@ func _pick_shot() -> void:
 	for s in world.soldiers:
 		if s.life == Soldier.Life.ALIVE and s.visible and Defs.flat(s.position - _target).length() < 18.0:
 			near.append(s)
-	if not near.is_empty() and randf() < 0.6:
+	# Missed rounds can land far beyond the fighters. A replay should show
+	# the people fighting, even when the hottest impacts are on empty ground.
+	if near.is_empty() and world.settings.get("replay", false):
+		var closest: Soldier = null
+		var distance := INF
+		for s in world.soldiers:
+			if s.life == Soldier.Life.ALIVE and s.visible:
+				var d: float = s.position.distance_squared_to(_target)
+				if d < distance:
+					distance = d
+					closest = s
+		if closest:
+			near.append(closest)
+	if not near.is_empty() and (world.settings.get("replay", false) or randf() < 0.6):
 		_subject = near[randi() % near.size()]
 		_zoom = randf_range(18.0, 32.0)

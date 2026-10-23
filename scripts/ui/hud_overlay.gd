@@ -191,7 +191,7 @@ func _draw() -> void:
 		var side: String = Defs.TEAM_NAMES[sj.team] if sj.team >= 0 else ""
 		var act := sj.doing_text()
 		var cw := maxf(UiKit.caps_w(cap, 15) + UiKit.caps_w(side, 11) + 14.0, UiKit.caps_w(act, 12)) + 36.0
-		var cr := Rect2(vs.x * 0.5 - cw * 0.5, vs.y - 92, cw, 50.0 if act != "" else 32.0)
+		var cr := Rect2(vs.x * 0.5 - cw * 0.5, vs.y - 92 - float(w.settings.get("replay_controls_height", 0.0)), cw, 50.0 if act != "" else 32.0)
 		draw_rect(cr, UiKit.fa(UiKit.INK, 0.82))
 		UiKit.ticks(self, cr, UiKit.RULE2, UiKit.TICK_ARM, 0.0)
 		var cx := cr.position.x + 18.0 + UiKit.caps_at(self, Vector2(cr.position.x + 18, cr.position.y + 22), cap, 15, UiKit.TEXT)

@@ -25,6 +25,7 @@ export const routes: RouteObject[] = [
         children: [
           { index: true, Component: Home },
           { path: "play", lazy: page(() => import("@/pages/play")) },
+          { path: "watch/:id", lazy: page(() => import("@/pages/watch")) },
           { path: "battles", lazy: page(() => import("@/pages/battles")) },
           { path: "ranks", lazy: page(() => import("@/pages/ranks")) },
           { path: "leaderboards", lazy: page(() => import("@/pages/leaderboards")) },
