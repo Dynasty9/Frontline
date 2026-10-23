@@ -48,4 +48,3 @@ func _physics_process(dt: float) -> void:
 		assert(plant_seconds > 1.0 and plant_distance / plant_seconds < 0.002, "Crouched planted feet slid")
 		assert(worst / dt < 4.5, "Crouch transition snapped a leg joint")
 		get_tree().quit()
-

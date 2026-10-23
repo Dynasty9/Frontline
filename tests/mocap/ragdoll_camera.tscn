@@ -2,4 +2,3 @@
 [ext_resource type="Script" path="res://tests/mocap/ragdoll_camera.gd" id="1"]
 [node name="RagdollCameraProbe" type="Node3D"]
 script = ExtResource("1")
-

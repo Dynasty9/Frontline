@@ -469,4 +469,3 @@ func _contacts(speed: float, dt: float) -> void:
 			worst_contact_time = elapsed
 		previous_corrections[side] = correction
 	contacts_sampled = true
-

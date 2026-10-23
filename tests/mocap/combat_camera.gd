@@ -161,4 +161,3 @@ func _smoke_depth(focus: Vector3, eye: Vector3, smokes: Array) -> float:
 		var half := sqrt(half_squared)
 		depth += maxf(0.0, minf(length, along + half) - maxf(0.0, along - half))
 	return depth
-

@@ -65,4 +65,3 @@ func _physics_process(dt: float) -> void:
 		else:
 			print("GAMEPLAY RELOAD baseline render complete")
 		get_tree().quit()
-

@@ -211,4 +211,3 @@ func _process(_dt: float) -> void:
 		await RenderingServer.frame_post_draw
 		get_viewport().get_texture().get_image().save_png(path)
 		print("MOCAP_DEMO screenshot ", path)
-
