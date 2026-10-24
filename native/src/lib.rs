@@ -1,6 +1,8 @@
 use godot::prelude::*;
 use std::collections::HashMap;
 
+mod route_graph;
+
 struct FrontlineSimulation;
 #[gdextension]
 unsafe impl ExtensionLibrary for FrontlineSimulation {}

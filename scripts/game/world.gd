@@ -437,6 +437,8 @@ func despawn(e: Entity) -> void:
 		if structure_view:
 			structure_view.remove(e)
 		structures.erase(e)
+		if recording:
+			recording.dirty_static(e.eid)
 		owned_structures.erase(e)
 		_dirty_static.erase(e.eid)
 		sim_structures.erase(e)
@@ -733,6 +735,7 @@ func _physics_process(dt: float) -> void:
 	tp = _p("AI commanders", tp)
 	if recording:
 		recording.after_tick()
+	tp = _p("replay recording", tp)
 	_snap_t -= dt
 	if _snap_t <= 0.0:
 		_snap_t = 1.0 / 15.0
@@ -950,6 +953,8 @@ func _initial_spawn(e: Entity, view: int) -> Array:
 
 
 func mark_static_dirty(e: Entity) -> void:
+	if recording and not recording.stopped:
+		recording.dirty_static(e.eid)
 	if srv and not e.gone and not ready_peers.is_empty():
 		_dirty_static[e.eid] = e
 

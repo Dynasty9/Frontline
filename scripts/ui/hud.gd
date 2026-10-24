@@ -151,6 +151,11 @@ var _menu_clock: Label  # the pause dialog's battle clock
 var _menu_ctx: Label  # ...and what battle this is
 
 
+func _input(event: InputEvent) -> void:
+	if overlay:
+		overlay._input(event)
+
+
 func _ready() -> void:
 	layer = 5
 	Online.battle_reported.connect(_on_battle_reported)
@@ -173,7 +178,23 @@ func _ready() -> void:
 	overlay.hud = self
 	overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	root.add_child(overlay)
+	# Reuse the tactical drawing between updates instead of replaying every stroke.
+	var overlay_view := SubViewport.new()
+	overlay_view.disable_3d = true
+	overlay_view.transparent_bg = true
+	overlay_view.gui_disable_input = true
+	overlay_view.size = Vector2i(get_viewport().get_visible_rect().size)
+	overlay_view.render_target_update_mode = SubViewport.UPDATE_DISABLED
+	add_child(overlay_view)
+	overlay.raster = overlay_view
+	overlay.theme = root.theme
+	overlay_view.add_child(overlay)
+	var overlay_image := TextureRect.new()
+	overlay_image.texture = overlay_view.get_texture()
+	overlay_image.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	overlay_image.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	overlay_image.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	root.add_child(overlay_image)
 
 	# co-commanders: their views, cursors, selections, plans and pings
 	coop = HudCoop.new()

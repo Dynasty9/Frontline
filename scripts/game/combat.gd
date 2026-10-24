@@ -10,6 +10,7 @@ var world: World
 var _space: PhysicsDirectSpaceState3D
 var _space_frame := -1
 var _reveal := {}  # eid -> time
+var _blocked_sight := {}
 
 
 func _init(w: World) -> void:
@@ -72,10 +73,60 @@ func can_see(s: Soldier, e: Entity) -> bool:
 
 func can_see_from(eye: Vector3, e: Entity, ex: Array) -> bool:
 	var ex2 := ex + e.get_exclude()
-	for pt in e.exposed_points():
-		if clear_line(eye, pt, ex2):
-			return true
+	var pts := e.exposed_points()
+	var key := [eye, e.get_instance_id()]
+	var previous: Array = _blocked_sight.get(key, [])
+	if not previous.is_empty() and pts == previous[0] and ex2 == previous[1] and _blockers_unchanged(previous[2]):
+		_blocked_sight.erase(key)
+		_blocked_sight[key] = previous
+		world.stat("perception_blocked_reused")
+		return false
+	var blockers := {}
+	var cacheable := true
+	for pt in pts:
+		var hit := ray(eye, pt, ex2)
+		if hit.is_empty():
+			if not smoke_blocks(eye, pt):
+				_blocked_sight.erase(key)
+				return true
+			cacheable = false
+		elif cacheable:
+			var body = hit.collider
+			if not body is StaticBody3D:
+				cacheable = false
+				continue
+			var shape = body.shape_owner_get_owner(body.shape_find_owner(hit.shape))
+			if not shape is CollisionShape3D or not shape.shape is BoxShape3D:
+				cacheable = false
+				continue
+			if not blockers.has(shape):
+				blockers[shape] = [body, shape, shape.global_transform, shape.shape, shape.shape.size, shape.shape.margin]
+	# An unchanged wall crossing every ray proves obstruction without a timeout.
+	# Smoke still needs fresh checks as its clouds grow and drift.
+	if cacheable and not blockers.is_empty():
+		if not _blocked_sight.has(key) and _blocked_sight.size() >= 4096:
+			var oldest = null
+			for old in _blocked_sight:
+				oldest = old
+				break
+			_blocked_sight.erase(oldest)
+		_blocked_sight[key] = [pts, ex2, blockers.values()]
+	else:
+		_blocked_sight.erase(key)
 	return false
+
+
+func _blockers_unchanged(blockers: Array) -> bool:
+	for blocker: Array in blockers:
+		var body = blocker[0]
+		var shape = blocker[1]
+		if not is_instance_valid(body) or not is_instance_valid(shape) or not shape.is_inside_tree():
+			return false
+		if not body.can_process() or (body.collision_layer & MASK) == 0 or shape.disabled or shape.get_parent() != body:
+			return false
+		if shape.global_transform != blocker[2] or shape.shape != blocker[3] or shape.shape.size != blocker[4] or shape.shape.margin != blocker[5]:
+			return false
+	return true
 
 
 func sees_structure(eye: Vector3, st: Entity) -> bool:

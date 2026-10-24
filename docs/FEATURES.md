@@ -1166,7 +1166,7 @@ but balance needs real playtesting. With the base defenses, most games last 10â€
 
 ## Battle recordings and browser spectators
 
-Hosts save seekable observer recordings. Listed public battles can broadcast only a few seconds behind play; the website lists broadcasts and seven days of replays when persistent recording storage is enabled. The browser uses the game renderer, with camera controls, pause, speed and a timeline. Private battles stay local. Recordings are not independently verified. See [REPLAYS.md](REPLAYS.md) for the format, deployment and limitations.
+Hosts save seekable observer recordings. Unchanged scenery is cached and completed chunks are encoded on a worker so recording does less work on the simulation thread. Listed public battles can broadcast only a few seconds behind play; the website lists broadcasts and seven days of replays when persistent recording storage is enabled. The browser uses the game renderer, with camera controls, pause, speed and a timeline. Private battles stay local. Recordings are not independently verified. See [REPLAYS.md](REPLAYS.md) for the format, deployment and limitations.
 
 ## Large battles and shared AI work
 
@@ -1182,20 +1182,27 @@ and building contacts (up to 0.75 s, invalidated by new contacts). Men separated
 from the squad assess their own sectors. Individual line of sight, weapon fire,
 damage and urgent reactions still run independently. Land orders queue through
 bounded path work; destroyed obstacles trigger incremental graph rebuilding.
+Native route search skips intermediate cost nodes while preserving their costs
+and waypoints; platforms without the extension retain Godot route search.
+Repeated blocked sight checks reuse their result only while both endpoints,
+exclusions and every blocking collision box remain unchanged. Opening a door,
+moving, resizing, disabling or removing a blocker invalidates the result;
+smoke and positive visibility are checked afresh. Detection timing is unchanged.
 
 Distant soldiers use shared baked poses of their procedural models, including
 standing, crouching, prone and walking poses. Nearby soldiers retain articulated
-animation. Distant palette variation and subtle gestures are simplified.
+animation. Distant batches outside the camera frustum and its shadow margin do
+not upload transforms; panning restores them immediately. Distant palette variation and subtle gestures are simplified.
 Distant vehicles use a single material surface per moving part beyond 100 m;
 turrets, wheels and rotors keep their pivots. Near vehicles retain their original
 materials. Wrecks retain their original materials to avoid baking meshes during
 combat. Squad overview status refreshes at 10 Hz; selection remains immediate.
-The battlefield overlay retains drawings between 30 Hz refreshes when the camera
+The battlefield overlay retains a rasterized image between 15 Hz refreshes when the camera
 and pointer are still. Camera movement, pointer movement and input refresh it
-immediately. Smoke sight checks visit smoke grenades directly rather than every
+immediately; hiding the HUD also stops its raster updates. Smoke sight checks visit smoke grenades directly rather than every
 projectile; cloud growth, movement and dissipation still take effect immediately.
 
-Clients build nearby scenery first and cache visited models; distant models and
+Clients build scenery in and around the camera's view first and cache visited models; distant models and
 cosmetic collision bodies remain inactive. The server still simulates the complete
 map. Nearby movement orders can reuse a checked route corridor, with separate
 destinations and invalidation when terrain or danger changes.

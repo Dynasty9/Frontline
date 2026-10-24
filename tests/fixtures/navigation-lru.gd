@@ -21,6 +21,7 @@ class ReferenceNav extends HNav:
 		return lg
 
 func _ready() -> void:
+	check_raster()
 	for cluster in [16, 32]:
 		check_cache(cluster)
 	print("NAV_LRU passed")
@@ -59,9 +60,42 @@ func check_cache(cluster: int) -> void:
 		current.local_grid(i)
 	assert(not current._local.has(0))
 	assert(current.local_grid(0).is_point_solid(cell) and current.local_grid(0).get_point_weight_scale(cell) == 2.5)
+	current.built = true
+	grid.set_point_weight_scale(cell, 1.4)
+	current.mark_dirty(cell)
+	var revision := current.terrain_revision
+	current.mark_dirty(cell)
+	assert(current.terrain_revision == revision, "An unchanged fractional cost must not invalidate routes because of float precision")
+	for i in range(1, capacity + 2):
+		current.local_grid(i)
+	assert(current.local_grid(0).get_point_weight_scale(cell) == grid.get_point_weight_scale(cell), "Eviction must preserve the original cost precision")
+
 	for repeat in 3:
 		for nav in [old, current]:
 			var start := Time.get_ticks_usec()
 			for i in 2500:
 				nav.local_grid(i % 1024)
 			print("NAV_LRU cluster=%d reference=%s ms=%.3f" % [cluster, nav == old, (Time.get_ticks_usec() - start) / 1000.0])
+
+func check_raster() -> void:
+	var raster := NavRaster.new(32)
+	var reference := raster.reference_grid()
+	var random := RandomNumberGenerator.new()
+	random.seed = 491
+	for i in 2000:
+		var cell := Vector2i(random.randi_range(0, 31), random.randi_range(0, 31))
+		var solid := random.randf() < 0.3
+		var weight := random.randf_range(0.3, 8.0)
+		for grid in [raster, reference]:
+			grid.set_point_solid(cell, solid)
+			grid.set_point_weight_scale(cell, weight)
+	var restored := raster.reference_grid()
+	for y in 32:
+		for x in 32:
+			var cell := Vector2i(x, y)
+			assert(raster.is_point_solid(cell) == reference.is_point_solid(cell))
+			assert(raster.get_point_weight_scale(cell) == reference.get_point_weight_scale(cell))
+			assert(restored.is_point_solid(cell) == reference.is_point_solid(cell))
+			assert(restored.get_point_weight_scale(cell) == reference.get_point_weight_scale(cell))
+	assert(not raster.is_in_boundsv(Vector2i(-1, 0)) and raster.is_point_solid(Vector2i(-1, 0)))
+	assert(not raster.is_in_boundsv(Vector2i(32, 0)) and raster.is_point_solid(Vector2i(32, 0)))

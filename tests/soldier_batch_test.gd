@@ -46,6 +46,36 @@ func _ready() -> void:
 	world.time = 6.0
 	batch._process(0.016)
 	check(batch.groups.is_empty(), "Unused spatial batches must release their render resources")
+	var viewport := SubViewport.new()
+	viewport.size = Vector2i(1280, 720)
+	add_child(viewport)
+	var camera := Camera3D.new()
+	camera.far = 300.0
+	viewport.add_child(camera)
+	camera.position = Vector3(0, 50, 100)
+	camera.look_at(Vector3.ZERO)
+	var planes := camera.get_frustum()
+	check(not SoldierViewBatch._cell_visible(Vector2i(0, 20), planes), "Cells behind the camera must skip render uploads")
+	for x in range(-300, 301, 20):
+		for z in range(-300, 301, 20):
+			for height in [-4.0, 2.0, 12.0]:
+				var point := Vector3(x, height, z)
+				if camera.is_position_in_frustum(point):
+					var cell := Vector2i(floori(x / SoldierViewBatch.CELL), floori(z / SoldierViewBatch.CELL))
+					check(SoldierViewBatch._cell_visible(cell, planes), "Visible soldiers must keep their batch through cell boundaries")
+	world.cam = RtsCamera.new()
+	world.cam.cam = camera
+	for s: Soldier in world.soldiers:
+		s.gone = false
+	batch._process(0.016)
+	check(batch._active.size() == 1 and batch._active[0].count == 20, "Off-screen men must not be uploaded into visible batches")
+	camera.position.z += 640.0
+	camera.look_at(Vector3(0, 0, 640))
+	batch._process(0.016)
+	check(batch._active.size() == 1 and batch._active[0].origin.z == 640.0 and batch._active[0].count == 20, "Panning must restore the other cell's complete batch")
+	world.cam.free()
+	world.cam = null
+	viewport.free()
 	batch.free()
 	world.free()
 	print("SOLDIER_BATCH_TEST failures=%d lod_levels=%d" % [failures, levels])

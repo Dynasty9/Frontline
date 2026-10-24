@@ -29,6 +29,37 @@ var uploading := false
 var uploaded := 0
 var retry_at := 0
 var detached := false
+var static_blocks := {}
+var dirty_blocks := {}
+var encoder: Thread
+
+func dirty_static(id: int) -> void:
+	dirty_blocks[id / 64] = true
+
+func _static_state() -> Dictionary:
+	# Buildings keep changing without moving; scenery changes through net_dirty.
+	for e in world.sim_structures:
+		dirty_static(e.eid)
+	for block: int in dirty_blocks:
+		var records := []
+		var entities := []
+		for id in range(block * 64, (block + 1) * 64):
+			var e = world.entities.get(id)
+			if e is Structure and not e.gone:
+				records.append([id, e.ekind(), e.get_props().duplicate(true)])
+				entities.append(e)
+		static_blocks[block] = {"entities": records, "snapshots": world._build_snapshot(entities, -1)}
+	dirty_blocks.clear()
+	var records := []
+	var packets := []
+	for block: Dictionary in static_blocks.values():
+		records.append_array(block.entities)
+		for packet: PackedByteArray in block.snapshots:
+			var current := packet.duplicate()
+			current.encode_float(0, world.time)
+			packets.append(current)
+	return {"entities": records, "snapshots": packets}
+
 
 func _ready() -> void:
 	var main := get_tree().root.get_node("Main")
@@ -41,21 +72,30 @@ func _ready() -> void:
 		return
 	manifest = {"format": FORMAT, "protocol": Net.NET_VERSION, "version": Updater.version,
 		"name": String(world.settings.get("name", "")).strip_edges() if not String(world.settings.get("name", "")).is_empty() else "Frontline battle", "verified": false, "chunks": [], "duration": 0.0, "status": "live"}
+	for e in world.structures:
+		dirty_static(e.eid)
 	checkpoint = capture()
 	initial_map = {"map_size": MapDims.N, "n": checkpoint.entities.size(), "water": world.water.to_dict().duplicate(true), "roads": world.roads.duplicate(true),
 		"decor": world.decor.duplicate(true), "town": world.town_rect, "kinds": world.terrain.base.duplicate()}
 	_save_manifest()
 
 func capture() -> Dictionary:
-	var records: Array = []
+	var stamp := Time.get_ticks_usec() if world.measure_details else 0
+	var scenery := _static_state()
+	var records: Array = scenery.entities
 	var entities: Array = []
-	for e in world.entities.values():
+	for e in world.soldiers + world.vehicles + world.projectiles + world.drones:
 		if not e.gone:
 			records.append([e.eid, e.ekind(), e.get_props().duplicate(true)])
 			entities.append(e)
-	return {"time": world.time, "entities": records, "snapshots": world._build_snapshot(entities, -1),
+	var packets: Array = scenery.snapshots
+	packets.append_array(world._build_snapshot(entities, -1))
+	var result := {"time": world.time, "entities": records, "snapshots": packets,
 		"team": world.team_info.duplicate(true), "mission": world.mission_info.duplicate(true), "winner": world.winner,
 		"report": world.report.duplicate(true), "roads": world.roads.duplicate(true)}
+	if world.measure_details:
+		world.detail("replay checkpoint", stamp)
+	return result
 
 func before_tick() -> void:
 	tick += 1
@@ -66,21 +106,29 @@ func changed(id: int, values: Dictionary) -> void:
 	if not props.has(id):
 		props[id] = {}
 	(props[id] as Dictionary).merge(values.duplicate(true), true)
+	if world.entities.get(id) is Structure:
+		dirty_static(id)
 
 func after_tick() -> void:
 	if stopped or world.time < sample_at:
 		return
+	var stamp := Time.get_ticks_usec() if world.measure_details else 0
 	sample_at = world.time + 0.1
 	var moving: Array = []
 	var include_static := world.time >= static_at
 	if include_static:
 		static_at = world.time + 1.0
-	for e in world.entities.values():
+	for e in world.soldiers + world.vehicles + world.projectiles + world.drones:
 		if not e.gone and (not e.is_static() or include_static):
 			moving.append(e)
+	var packets := world._build_snapshot(moving, -1)
+	if include_static:
+		packets.append_array(_static_state().snapshots)
 	frames.append({"time": world.time, "spawn": births, "despawn": deaths, "props": props,
-		"fx": events, "snapshots": world._build_snapshot(moving, -1), "team": world.team_info.duplicate(true),
+		"fx": events, "snapshots": packets, "team": world.team_info.duplicate(true),
 		"mission": world.mission_info.duplicate(true), "winner": world.winner, "report": world.report.duplicate(true)})
+	if world.measure_details:
+		world.detail("replay sample", stamp)
 	births = []; deaths = []; props = {}; events = []
 	if world.time - float(checkpoint.time) >= CHUNK_SECONDS or world.winner >= 0:
 		flush(world.winner >= 0)
@@ -90,6 +138,7 @@ func order(peer: int, command: Dictionary) -> void:
 		commands.append({"tick": tick, "order": commands.size(), "peer": peer, "command": command.duplicate(true)})
 
 func flush(final := false) -> void:
+	_finish_encoding(true)
 	if stopped or (frames.is_empty() and not final):
 		return
 	var content := {"format": FORMAT, "protocol": Net.NET_VERSION, "checkpoint": checkpoint,
@@ -98,12 +147,38 @@ func flush(final := false) -> void:
 	if sequence == 0:
 		content["settings"] = world.settings.duplicate(true)
 		content["map"] = initial_map
+	# A single detached chunk bounds memory; shutdown joins it before publishing.
+	encoder = Thread.new()
+	var task := _encode.bind(content, sequence, float(checkpoint.time), world.time, final)
+	var error := encoder.start(task)
+	frames = []; commands = []
+	stopped = final
+	if error != OK:
+		encoder = null
+		_publish(task.call())
+	elif final:
+		_finish_encoding(true)
+	if not stopped:
+		checkpoint = capture()
+
+static func _encode(content: Dictionary, seq: int, start: float, end: float, final: bool) -> Dictionary:
 	var raw := var_to_bytes(content)
-	var body := {"sequence": sequence, "start": checkpoint.time, "end": world.time, "final": final,
+	var body := {"sequence": seq, "start": start, "end": end, "final": final,
 		"size": raw.size(), "data": Marshalls.raw_to_base64(raw.compress(FileAccess.COMPRESSION_ZSTD))}
-	var json := JSON.stringify(body)
+	return {"body": body, "json": JSON.stringify(body)}
+
+func _finish_encoding(wait: bool) -> void:
+	if encoder == null or (not wait and encoder.is_alive()):
+		return
+	var result: Dictionary = encoder.wait_to_finish()
+	encoder = null
+	_publish(result)
+
+func _publish(result: Dictionary) -> void:
+	var body: Dictionary = result.body
+	var json: String = result.json
 	bytes += json.length()
-	if bytes > MAX_BYTES or json.length() > 12 * 1024 * 1024 - 1024 or world.time > 14400:
+	if bytes > MAX_BYTES or json.length() > 12 * 1024 * 1024 - 1024 or float(body.end) > 14400:
 		stopped = true
 		manifest.status = "interrupted"
 		_save_manifest()
@@ -120,15 +195,11 @@ func flush(final := false) -> void:
 		push_warning("The replay could not be saved: check available disk space.")
 		return
 	file.close()
-	manifest.chunks.append({"sequence": sequence, "start": checkpoint.time, "end": world.time})
-	manifest.duration = world.time
-	manifest.status = "complete" if final else "live"
+	manifest.chunks.append({"sequence": sequence, "start": body.start, "end": body.end})
+	manifest.duration = body.end
+	manifest.status = "complete" if body.final else "live"
 	_save_manifest()
 	sequence += 1
-	frames = []; commands = []
-	stopped = final
-	if not final:
-		checkpoint = capture()
 
 func _save_manifest() -> void:
 	var f := FileAccess.open(folder.path_join("index.json"), FileAccess.WRITE)
@@ -136,6 +207,7 @@ func _save_manifest() -> void:
 		f.store_string(JSON.stringify(manifest))
 
 func _process(_dt: float) -> void:
+	_finish_encoding(false)
 	if detached and not uploading and (uploaded >= sequence or replay_id.is_empty()):
 		queue_free()
 		return
