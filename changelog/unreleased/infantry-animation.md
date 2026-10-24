@@ -17,3 +17,4 @@ caption = "The optional imported rifleman after stepping back to clear the wall"
 - A playable controller and animation inspector support terrain, skeleton inspection and projectile impacts. Tank recoil and impact motion are included in the battle preview.
 - Imported characters and animations require separately installed local assets; they are not included in downloads. Other units keep their procedural appearance. This remains a preview, with unfinished activity animations and vehicle interactions.
 - With local activity clips installed, riflemen use captured digging and smoking poses, keep their rifle slung, and drop the shovel physically when killed while digging.
+- Recorded battles accept the new hit-reaction events, so combat recordings can load and seek correctly.
