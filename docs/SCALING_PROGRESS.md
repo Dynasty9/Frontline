@@ -348,3 +348,51 @@ remains enabled. Artifact: `build/bench-no-stacks`. The final retained sight
 cache also checks collision margins and disabled-body state; its targeted physics
 fixture and final import pass. The final raster/replay revision passed 84 tests;
 the discarded moving-sight experiment separately passed the same 84-test suite.
+
+
+### Further navigation experiments (not retained)
+
+Other applications remained running throughout these measurements. The retained
+2 km export averaged 51.84 FPS, with frame p99 33.46 ms and tick
+p50/p95/p99/max 26.05/44.41/57.39/69.13 ms. Peak server RSS was 1262 MiB;
+435 soldiers survived. This also misses the minimum 60 FPS target.
+Artifact: `build/bench-replay-2km`.
+
+A deterministic work quota counted native graph visits and bounded local-grid
+work, allowing at least one indivisible search to progress each tick. A 65,536
+work quota reduced the worst sampled tick from 150.78 to 69.96 ms, but maximum
+path wait increased from 3862 to 6258 ms. It passed all 84 gameplay tests, but
+that order-latency tradeoff was not accepted.
+
+Allowing cached results through without consuming graph-search slots reduced
+maximum wait to 5266 ms, still worse than the retained control. A looser 131,072
+quota also failed to demonstrate a better tradeoff:
+
+| Experiment | FPS | Tick p50 / p95 / p99 / max (ms) | Max path wait (ms) |
+| --- | ---: | --- | ---: |
+| Retained replay/formation candidate | 44.56 | 28.96 / 55.50 / 76.16 / 150.78 | 3862 |
+| 65,536 work quota | 44.85 | 27.27 / 50.00 / 62.18 / 69.96 | 6258 |
+| Same quota, cached deliveries bypass search slots | 44.55 | 29.86 / 50.97 / 70.87 / 88.87 | 5266 |
+| 131,072 quota, cached deliveries bypass search slots | 36.57 | 33.74 / 62.20 / 81.31 / 185.06 | 5227 |
+
+These are sequential desktop measurements, not isolated causal estimates. The
+last run's worst tick was dominated by squads (142.08 ms), not pathing (13.67 ms).
+Artifacts: `build/bench-quota-final`, `build/bench-quota-bypass`,
+`build/bench-quota128`. All quota and search-counter changes were removed.
+
+A separate corridor-cache experiment retained routes across unrelated terrain
+and danger changes, invalidated their crossed clusters immediately, and expired
+them after 30 scheduler steps. Focused invalidation tests passed, but the broad
+suite passed only 83/84: the breach scenario left a defender fighting after the
+house-clearing drill. Removing cached-delivery acceleration did not fix it;
+restoring the original global invalidation did. This experiment was removed,
+without relaxing the gameplay assertion.
+
+Remaining measured costs are soldier simulation and client rendering/submission.
+The retained detailed sample spent 19.39 seconds of aggregate simulation-thread
+time in soldiers across 839 ticks; nested fighting and thinking costs overlap
+that total. The retained client reported about 4400 draw calls, render CPU p50
+5.23 ms and GPU p50 4.64 ms. Combining tree geometry needs to retain per-tree
+material coordinates, wind, charring and falling; no tree batching or visual
+simplification was introduced in this pass. Neither a server-language rewrite
+nor fewer perception candidates is established as a safe solution by this data.
