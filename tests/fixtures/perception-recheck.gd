@@ -54,6 +54,12 @@ func _ready() -> void:
 	wall.position.z = 0
 	await sync_physics()
 	assert(not sight.can_see_from(eye, enemy, []), "Positive visibility is never cached")
+	before = sight.queries
+	box.margin = 0.2
+	await sync_physics()
+	assert(not sight.can_see_from(eye, enemy, []) and sight.queries > before, "Changed collision margins invalidate obstruction")
+	box.margin = 0.04
+	await sync_physics()
 	box.size.y = 0.1
 	await sync_physics()
 	assert(sight.can_see_from(eye, enemy, []), "Resizing collision geometry must invalidate obstruction")
@@ -65,6 +71,12 @@ func _ready() -> void:
 	await sync_physics()
 	assert(sight.can_see_from(eye, enemy, []), "Disabled collision layers must invalidate obstruction")
 	wall.collision_layer = Combat.MASK
+	await sync_physics()
+	assert(not sight.can_see_from(eye, enemy, []))
+	wall.process_mode = Node.PROCESS_MODE_DISABLED
+	await sync_physics()
+	assert(sight.can_see_from(eye, enemy, []), "Bodies removed from physics by process mode invalidate obstruction")
+	wall.process_mode = Node.PROCESS_MODE_INHERIT
 	await sync_physics()
 	assert(not sight.can_see_from(eye, enemy, []))
 	shape.disabled = true

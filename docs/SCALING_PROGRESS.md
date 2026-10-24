@@ -318,3 +318,33 @@ cannot be attributed to a single algorithm from wall-clock timing alone. These
 runs do not meet 60 FPS; desktop contention remains uncontrolled by request.
 Artifacts: `build/bench-integration-base`, `build/bench-integration-route`,
 `build/bench-integration-formation`, `build/bench-integration-replay`.
+
+The final uninstrumented replay/raster comparison ran the candidate first and
+current main second, sequentially with other apps running:
+
+| Build | FPS | Frame p50 / p95 / p99 | Tick p50 / p95 / p99 / max | Server ticks | Peak client / server RSS |
+| --- | ---: | --- | --- | ---: | --- |
+| Current main `de6bff8` | 38.96 | 24.83 / 35.54 / 45.90 ms | 31.86 / 92.41 / 451.87 / 682.50 ms | 628 | 2984 / 4117 MiB |
+| `c3e8f89` | 44.56 | 21.14 / 34.86 / 47.74 ms | 28.96 / 55.50 / 76.16 / 150.78 ms | 863 | 2822 / 2534 MiB |
+
+Average rendering improves 14.4%, server p99 falls 83.1%, and peak server RSS
+falls 38.4%. Frame p99 does not improve; the 60 FPS target remains open. This
+comparison has 449/446 surviving soldiers respectively. All 84 local tests and
+PR CI passed for this revision. Artifacts: `build/bench-replay-base-final` and
+`build/bench-replay-final`.
+
+A further moving-observer obstruction experiment passed 3000 comparisons against
+fresh physics rays and halved an isolated moving-eye benchmark. It increased
+lifetime blocked-result reuse from 49,349 to 165,054, but the exported control
+measured 40.92 FPS, tick p50 28.84 ms and p99 86.80 ms. Soldier work per sampled
+tick did not improve. The added geometric proof/cache sharing was removed;
+only collision-margin and disabled-body invalidation checks were retained.
+Artifact: `build/bench-sight-final`.
+
+An export with script stack tracking disabled measured 33.73 FPS after the sight
+experiment's 40.92 FPS. This uncontrolled desktop comparison does not establish
+the setting's causal cost; no improvement was demonstrated, and stack tracking
+remains enabled. Artifact: `build/bench-no-stacks`. The final retained sight
+cache also checks collision margins and disabled-body state; its targeted physics
+fixture and final import pass. The final raster/replay revision passed 84 tests;
+the discarded moving-sight experiment separately passed the same 84-test suite.

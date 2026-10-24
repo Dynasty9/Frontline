@@ -100,7 +100,7 @@ func can_see_from(eye: Vector3, e: Entity, ex: Array) -> bool:
 				cacheable = false
 				continue
 			if not blockers.has(shape):
-				blockers[shape] = [body, shape, shape.global_transform, shape.shape, shape.shape.size]
+				blockers[shape] = [body, shape, shape.global_transform, shape.shape, shape.shape.size, shape.shape.margin]
 	# An unchanged wall crossing every ray proves obstruction without a timeout.
 	# Smoke still needs fresh checks as its clouds grow and drift.
 	if cacheable and not blockers.is_empty():
@@ -122,9 +122,9 @@ func _blockers_unchanged(blockers: Array) -> bool:
 		var shape = blocker[1]
 		if not is_instance_valid(body) or not is_instance_valid(shape) or not shape.is_inside_tree():
 			return false
-		if (body.collision_layer & MASK) == 0 or shape.disabled or shape.get_parent() != body:
+		if not body.can_process() or (body.collision_layer & MASK) == 0 or shape.disabled or shape.get_parent() != body:
 			return false
-		if shape.global_transform != blocker[2] or shape.shape != blocker[3] or shape.shape.size != blocker[4]:
+		if shape.global_transform != blocker[2] or shape.shape != blocker[3] or shape.shape.size != blocker[4] or shape.shape.margin != blocker[5]:
 			return false
 	return true
 
