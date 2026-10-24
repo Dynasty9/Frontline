@@ -12,6 +12,9 @@ desktop.ini
 
 # agent worktrees
 .claude/worktrees/
+
+# Locally licensed animation evaluation assets
+assets/local_mocap/
 native/target/
 bin/native/
 frontline_sim.gdextension

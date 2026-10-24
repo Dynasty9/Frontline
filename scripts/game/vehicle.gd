@@ -85,6 +85,7 @@ var uav_dest := Vector3.INF
 var _orbit := 0.0
 var _elev_v := 0.0  # (view) barrel / launcher elevation
 var model: Node3D
+var impact_response := ImpactResponse.new()
 var knock_v := Vector3.ZERO  # shoved by a blast: slides it across the ground (server)
 var _last_blast: Array = []  # [pos, size, time] of the last explosion that hit it
 # sling loads (see _sling_tick): a lift helicopter carrying a vehicle on a cable
@@ -1469,6 +1470,9 @@ func take_damage(amount: float, _src) -> void:
 		return
 	if world.battle:
 		world.battle.vehicle_hit(self, amount, _src)
+	if amount > 0.0 and _src is Node3D and is_instance_valid(_src):
+		world.fx_event([Fx.UNIT_HIT, eid, (position - _src.global_position).normalized(), clampf(amount / 250.0, 0.01, 1.0)])
+		world.stat("vehicle_hit_reaction")
 	if OS.has_environment("FL_DEBUG_DMG"):
 		print("DMG %s hp=%.0f -%.1f from %s t=%.1f" % [vkind, hp, amount, _src.display_name() if _src else "?", world.time])
 	hp -= amount
@@ -2103,6 +2107,15 @@ func gun_kick(k: float) -> void:
 		_gun_kick = minf(_gun_kick + k, 0.32)
 
 
+## Incoming rounds rock the hull; heavy armour resists the same impact.
+func impact_react(direction: Vector3, strength: float) -> void:
+	if is_air() or is_boat():
+		return
+	var local := global_basis.inverse() * direction.normalized()
+	var resistance := 0.35 if weight() >= 2 else 1.0
+	impact_response.kick(Vector3(local.z, -local.x, 0.0) * strength * resistance * 2.0)
+
+
 ## The main gun's kick rocks the hull back from the shot.
 func recoil(dir: Vector3) -> void:
 	var fwd := Defs.dir_of(rotation.y)
@@ -2141,7 +2154,8 @@ func _suspension(dt: float) -> void:
 	if _vel_s.length() > 1.0:
 		var tt := Time.get_ticks_msec() / 1000.0
 		rumble = (sin(tt * 31.0 + eid) * 0.5 + sin(tt * 47.0) * 0.5) * (0.004 if heavy else 0.006) * minf(_vel_s.length() / 6.0, 1.0)
-	var sus := Transform3D(Basis.from_euler(Vector3(_sus.x + rumble, 0.0, _sus.y + rumble * 0.6)), Vector3(0, _sus.z, 0))
+	var hit := impact_response.step(dt, 9.0 if heavy else 12.0)
+	var sus := Transform3D(Basis.from_euler(Vector3(_sus.x + rumble + hit.x, 0.0, _sus.y + rumble * 0.6 + hit.y)), Vector3(0, _sus.z, 0))
 	var pose := (ip_offset() if srv else Transform3D.IDENTITY) * sus
 	if model.transform != pose:
 		model.transform = pose

@@ -22,6 +22,7 @@ const DIE := 15
 const FIRE := 16  # a grass fire: [FIRE, pos, radius, seconds]
 const BURNT_OUT := 17  # something burnt through falls in: [BURNT_OUT, pos, half extents, yaw]
 const SINK := 18  # a boat founders: [SINK, eid, pos]
+const UNIT_HIT := 19  # [UNIT_HIT, eid, world direction, normalized strength]
 
 ## What a round struck, as a SHOT event carries it: it decides what flies off.
 const HIT_DIRT := 1
@@ -129,7 +130,16 @@ func play(ev: Array) -> void:
 		DIE:
 			var ds = world.entity(int(ev[1]))
 			if ds is Soldier and world.phys:
-				world.phys.ragdoll(ds, ev[2], int(ev[3]))
+				world.phys.ragdoll(ds, ev[2], int(ev[3]), ev[4] if ev.size() > 4 else Vector3.ZERO)
+		UNIT_HIT:
+			var victim = world.entity(int(ev[1]))
+			if victim is Soldier and victim.model and victim.visible:
+				victim.model.motion.react(victim.global_basis.inverse() * (ev[2] as Vector3), float(ev[3]))
+				if victim.model.skinned:
+					victim.model.skinned.hit(ev[2], float(ev[3]))
+					world.stat("skinned_hit")
+			elif victim is Vehicle and victim.visible:
+				victim.impact_react(ev[2], float(ev[3]))
 		RIFLE_DROP:
 			_rifle_drop(ev[1], ev[2])
 		DEBRIS:

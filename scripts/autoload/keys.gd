@@ -30,6 +30,10 @@ const CATEGORIES := ["Camera", "Saved views", "Orders", "Abilities & fire suppor
 
 ## [id, label, category, context, default, default (second), what it does]
 const ACTIONS := [
+	["motion_jump", "Jump (motion lab)", "Observer", "motion", KEY_SPACE, NONE, ""],
+	["motion_crouch", "Crouch (motion lab)", "Observer", "motion", KEY_C, KEY_CTRL, ""],
+	["motion_reload", "Reload (motion lab)", "Observer", "motion", KEY_R, NONE, ""],
+	["motion_reset", "Reset (motion lab)", "Observer", "motion", KEY_HOME, NONE, ""],
 	["cam_up", "Pan forward", "Camera", "cam", KEY_W, KEY_UP, "Hold to move the camera the way it faces."],
 	["cam_down", "Pan back", "Camera", "cam", KEY_S, KEY_DOWN, ""],
 	["cam_left", "Pan left", "Camera", "cam", KEY_A, KEY_LEFT, ""],
