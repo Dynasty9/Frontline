@@ -5,6 +5,12 @@ class Overlay extends HudOverlay:
 	func _draw() -> void:
 		draws += 1
 
+class HudStub extends Hud:
+	func _ready() -> void:
+		pass
+	func _process(_dt: float) -> void:
+		pass
+
 func _ready() -> void:
 	var overlay := HudOverlay.new()
 	overlay._groups[7] = {}
@@ -44,10 +50,10 @@ func _ready() -> void:
 	await get_tree().process_frame
 	await get_tree().process_frame
 	assert(refreshed.draws == before, "A stationary overlay should retain its drawing between refreshes")
-	refreshed.refresh_for_view(0.024, Transform3D.IDENTITY, Vector2.ZERO)
+	refreshed.refresh_for_view(0.057, Transform3D.IDENTITY, Vector2.ZERO)
 	await get_tree().process_frame
 	await get_tree().process_frame
-	assert(refreshed.draws == before + 1, "Stationary status and animations still refresh at 30 Hz")
+	assert(refreshed.draws == before + 1, "Stationary status and animations still refresh at 15 Hz")
 	var moved := Transform3D.IDENTITY.translated(Vector3(1, 0, 0))
 	refreshed.refresh_for_view(0.0, moved, Vector2.ZERO)
 	await get_tree().process_frame
@@ -67,7 +73,47 @@ func _ready() -> void:
 		refreshed.refresh_for_view(1.0 / 42.0, moved, Vector2(10, 5))
 		await get_tree().process_frame
 		await get_tree().process_frame
-	assert(refreshed.draws - before >= 29 and refreshed.draws - before <= 31, "Refresh cadence must retain elapsed time between uneven frames")
+	assert(refreshed.draws - before >= 14 and refreshed.draws - before <= 16, "Refresh cadence must retain elapsed time between uneven frames")
 	refreshed.free()
+	var hud := HudStub.new()
+	add_child(hud)
+	hud.root = Control.new()
+	hud.add_child(hud.root)
+	var raster := SubViewport.new()
+	raster.disable_3d = true
+	raster.transparent_bg = true
+	raster.gui_disable_input = true
+	raster.render_target_update_mode = SubViewport.UPDATE_DISABLED
+	hud.add_child(raster)
+	var cached := Overlay.new()
+	cached.hud = hud
+	cached.raster = raster
+	hud.overlay = cached
+	raster.add_child(cached)
+	cached.refresh_for_view(0.0, Transform3D.IDENTITY, Vector2.ZERO)
+	assert(raster.size == Vector2i(get_viewport().get_visible_rect().size))
+	assert(raster.render_target_update_mode == SubViewport.UPDATE_ONCE)
+	await get_tree().process_frame
+	await get_tree().process_frame
+	before = cached.draws
+	cached.refresh_for_view(0.01, Transform3D.IDENTITY, Vector2.ZERO)
+	await get_tree().process_frame
+	await get_tree().process_frame
+	assert(cached.draws == before, "Cached overlay pixels must be reused between updates")
+	hud._input(InputEventKey.new())
+	cached.refresh_for_view(0.0, Transform3D.IDENTITY, Vector2.ZERO)
+	await get_tree().process_frame
+	await get_tree().process_frame
+	assert(cached.draws == before + 1, "Main viewport input must invalidate the cached overlay")
+	raster.size = Vector2i(20, 20)
+	cached.refresh_for_view(0.0, Transform3D.IDENTITY, Vector2.ZERO)
+	assert(raster.size == Vector2i(get_viewport().get_visible_rect().size), "The cache must follow viewport resizing")
+	hud.root.hide()
+	cached.refresh_for_view(0.1, Transform3D.IDENTITY, Vector2.ZERO)
+	assert(raster.render_target_update_mode == SubViewport.UPDATE_DISABLED, "Hidden HUDs must stop the extra viewport")
+	hud.root.show()
+	cached.refresh_for_view(0.0, Transform3D.IDENTITY, Vector2.ZERO)
+	assert(raster.render_target_update_mode == SubViewport.UPDATE_ONCE, "Showing the HUD must refresh immediately")
+	hud.free()
 	print("MAP_LABELS passed")
 	get_tree().quit()

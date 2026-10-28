@@ -18,11 +18,13 @@ extends RefCounted
 ## every cell near it, and a sandbag only infantry notice still queues the
 ## vehicles' cluster), so most rebuilds now do next to nothing.
 ##
-## Costs stay inside the native AStar3D (no script callbacks): every intra-cluster
+## Costs stay inside native search (no script callbacks): every intra-cluster
 ## edge runs through a "mid" node whose weight makes the two halves add up to
 ## the true cost. There are three copies of the graph: a plain one, and one per
 ## side whose weights are scaled by that side's danger map (the clusters its
-## spotted enemies cover), so careful moves route around known fire.
+## spotted enemies cover), so careful moves route around known fire. RouteGraph
+## skips degree-two search states while retaining both edge costs and waypoints;
+## platforms without the extension use the same graph through AStar3D.
 
 static var C := 16
 static var NC := 64
@@ -33,10 +35,10 @@ const UNKNOWN := -2.0  # a cost not worked out yet (-1 is "no way through")
 ## place up here rather than work it out with / and % (see build_all).
 static var _corner: Array[Vector2i] = _corners()
 
-var grid: AStarGrid2D
+var grid: Object
 var vehicle := false
 var graphs: Array = []  # [plain, team 0 view, team 1 view]
-var g_team: Array[AStar3D] = []  # (the last two again)
+var g_team: Array = []  # (the last two again)
 ## Small grids covering one cluster each, for the searches inside it. Kept
 ## for every cluster (4096 on a full map) they came to 77 MB a graph, copies
 ## of what the full grid holds, so a cluster's is made when it's wanted and
@@ -79,13 +81,13 @@ var danger_n := PackedInt32Array()  # per side, per cluster: goes up whenever it
 var border_dn := {}  # _bkey -> Vector4i: the danger_n of each side when its entrances were last weighted
 
 
-func _init(g: AStarGrid2D, is_vehicle: bool) -> void:
+func _init(g: Object, is_vehicle: bool) -> void:
 	NCC = NC * NC
 	_corner = _corners()
 	grid = g
 	vehicle = is_vehicle
 	for i in 3:
-		graphs.append(AStar3D.new())
+		graphs.append(ClassDB.instantiate("RouteGraph") if ClassDB.class_exists("RouteGraph") else AStar3D.new())
 	g_team = [graphs[1], graphs[2]]
 	for t in 2:
 		danger[t].resize(NCC)
@@ -168,8 +170,8 @@ static func _key(a: int, b: int) -> int:
 ## (Nav reports every cell it sets, from the start: see _solid.)
 func mark_dirty(c: Vector2i) -> void:
 	var ci := cluster_of(c)
-	var solid := grid.is_point_solid(c)
-	var w := grid.get_point_weight_scale(c)
+	var solid: bool = grid.is_point_solid(c)
+	var w: float = grid.get_point_weight_scale(c)
 	var i := c.y * MapDims.N + c.x
 	if (_solid[i] != 0) == solid and _weight[i] == w:
 		return
@@ -204,8 +206,8 @@ func build() -> void:
 ## Whole graphs, for a new map: the slow part of starting a battle (tens of
 ## thousands of entrances on each, and a few hundred small searches inside
 ## every cluster to cost them). The infantry and vehicle graphs share
-## nothing, so each is built on a thread of its own, and the searches, every
-## cluster's on its own local grid, are shared out across all the threads.
+## nothing; searches on each cluster's own local grid are shared across workers.
+## Graph assembly stays on the main thread for the native extension bindings.
 ## Each graph is still put together in one fixed order, so its ids, and every
 ## route planned on it, come out exactly as they would with no threads at all.
 ##
@@ -226,8 +228,9 @@ func build() -> void:
 ## and each graph's clusters go to the workers as tasks of their own rather
 ## than numbered across both graphs and divided back out.
 static func build_all(navs: Array) -> void:
-	var t := WorkerThreadPool.add_group_task(func(i: int): (navs[i] as HNav)._prepare(), navs.size(), -1, true, "Nav: entrances")
-	WorkerThreadPool.wait_for_group_task_completion(t)
+	# The extension bindings belong to the main thread; local-grid costing stays parallel.
+	for h: HNav in navs:
+		h._prepare()
 	var tasks := PackedInt64Array()
 	for h: HNav in navs:
 		tasks.append(WorkerThreadPool.add_group_task(h._cluster_key, NCC, -1, true, "Nav: cluster keys"))
@@ -266,11 +269,11 @@ static func build_all(navs: Array) -> void:
 		(navs[d / NCC] as HNav).costs[d % NCC] = (navs[r / NCC] as HNav).costs[r % NCC]
 	for h: HNav in navs:
 		h._keys = []
-	t = WorkerThreadPool.add_group_task(func(i: int): (navs[i] as HNav)._link_all(), navs.size(), -1, true, "Nav: graph")
-	WorkerThreadPool.wait_for_group_task_completion(t)
+	for h: HNav in navs:
+		h._link_all()
 
 
-## (On a worker thread.) The entrances along every border.
+## The entrances along every border.
 func _prepare() -> void:
 	for cz in NC:
 		for cx in NC:
@@ -315,7 +318,7 @@ func _cluster_costs(ci: int) -> void:
 	costs[ci] = _pair_costs(ci, _local_from(ci, _solid, _weight))
 
 
-## (On a worker thread.) Every cluster's links, in order.
+## Every cluster's links, in order, on the main thread.
 func _link_all() -> void:
 	for ci in NCC:
 		_intra(ci)
@@ -499,7 +502,7 @@ func _set_link(a: int, b: int, ca: Vector2i, cb: Vector2i, c: float, k: int) -> 
 		_link(a, b, c, k, null)
 	elif w != float(node_base[m]):
 		node_base[m] = w
-		(graphs[PLAIN] as AStar3D).set_point_weight_scale(m, w)
+		graphs[PLAIN].set_point_weight_scale(m, w)
 		for t in 2:
 			g_team[t].set_point_weight_scale(m, w * mid_f[t * NCC + k])  # (today's: see _fresh_danger)
 
@@ -512,7 +515,7 @@ func _fresh_danger(k: int) -> void:
 		if mid_f[t * NCC + k] == f:
 			continue
 		mid_f[t * NCC + k] = f
-		var g := g_team[t]
+		var g = g_team[t]
 		for m: int in cl_mids[k]:
 			g.set_point_weight_scale(m, float(node_base[m]) * f)
 
@@ -522,13 +525,13 @@ func _fresh_danger(k: int) -> void:
 ## (Each team's copy weighs a node by that side's danger where it stands.)
 func _g_add(id: int, pos: Vector3, ci: int, base := 1.0) -> void:
 	node_cl[id] = ci
-	(graphs[PLAIN] as AStar3D).add_point(id, pos, base)
+	graphs[PLAIN].add_point(id, pos, base)
 	g_team[0].add_point(id, pos, base * (1.0 + float(danger[0][ci])))
 	g_team[1].add_point(id, pos, base * (1.0 + float(danger[1][ci])))
 
 
 func _g_connect(a: int, b: int) -> void:
-	(graphs[PLAIN] as AStar3D).connect_points(a, b)
+	graphs[PLAIN].connect_points(a, b)
 	g_team[0].connect_points(a, b)
 	g_team[1].connect_points(a, b)
 
@@ -537,15 +540,15 @@ func _g_remove(id: int) -> void:
 	node_cl.erase(id)
 	node_base.erase(id)
 	for g in graphs:
-		if (g as AStar3D).has_point(id):
-			(g as AStar3D).remove_point(id)
+		if g.has_point(id):
+			g.remove_point(id)
 
 
 ## Joins a and b through a mid node so that walking a -> mid -> b costs `c`.
 func _link(a: int, b: int, c: float, ci: int, temp) -> void:
-	var g0: AStar3D = graphs[PLAIN]
-	var pa := g0.get_point_position(a)
-	var pb := g0.get_point_position(b)
+	var g0 = graphs[PLAIN]
+	var pa: Vector3 = g0.get_point_position(a)
+	var pb: Vector3 = g0.get_point_position(b)
 	var l := pa.distance_to(pb)
 	if l < 0.5:
 		_g_connect(a, b)
@@ -697,9 +700,9 @@ func _intra(ci: int) -> void:
 	var n := nodes.size()
 	if n < 2:
 		return
-	var g0: AStar3D = graphs[PLAIN]
-	var g1 := g_team[0]
-	var g2 := g_team[1]
+	var g0 = graphs[PLAIN]
+	var g1 = g_team[0]
+	var g2 = g_team[1]
 	var f1 := 1.0 + float(danger[0][ci])
 	var f2 := 1.0 + float(danger[1][ci])
 	var own: Dictionary = cl_mids[ci]
@@ -787,7 +790,7 @@ func set_danger(team: int, values: PackedFloat32Array) -> void:
 	danger[team] = values
 	if not built:
 		return
-	var g: AStar3D = graphs[team + 1]
+	var g = graphs[team + 1]
 	for ci in NCC:
 		if old[ci] != values[ci]:
 			danger_n[team * NCC + ci] += 1
@@ -812,7 +815,7 @@ func route(a: Vector2i, b: Vector2i, team: int, care: float) -> Array[Vector2i]:
 	if not built:
 		build()
 	var gi := team + 1 if care > 0.0 and team >= 0 and team < 2 else PLAIN
-	var g: AStar3D = graphs[gi]
+	var g = graphs[gi]
 	var ca := cluster_of(a)
 	var cb := cluster_of(b)
 	var s_id := next_id
@@ -835,7 +838,7 @@ func route(a: Vector2i, b: Vector2i, team: int, care: float) -> Array[Vector2i]:
 		var c3 := _local_cost(la, a, b)
 		if c3 >= 0.0:
 			_link(s_id, g_id, c3, ca, temp)
-	var ids := g.get_id_path(s_id, g_id)
+	var ids: PackedInt64Array = g.get_id_path(s_id, g_id)
 	for id in ids:
 		if id == s_id:
 			out.append(a)
@@ -851,7 +854,7 @@ func route(a: Vector2i, b: Vector2i, team: int, care: float) -> Array[Vector2i]:
 
 
 func stats() -> String:
-	return "%d entrances, %d nodes" % [node_cell.size(), (graphs[PLAIN] as AStar3D).get_point_count()]
+	return "%d entrances, %d nodes" % [node_cell.size(), graphs[PLAIN].get_point_count()]
 
 
 func has_work() -> bool:

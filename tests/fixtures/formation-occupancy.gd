@@ -1,5 +1,16 @@
 extends Node
 
+class UncachedTerrain extends TerrainMap:
+	func group_spot_cached(p: Vector3, c: Vector3, radius: float, normal: Vector3, _search: Dictionary) -> bool:
+		return group_spot(p, c, radius, normal)
+
+	func occupied_count(p: Vector3, radius: float, taken: Array, _search: Dictionary) -> int:
+		var count := 0
+		for t in taken:
+			if Defs.flat((t as Vector3) - p).length() < radius:
+				count += 1
+		return count
+
 func _ready() -> void:
 	var w := World.new()
 	w.has_view = false
@@ -34,12 +45,21 @@ func _ready() -> void:
 		w._register(st)
 		w._shash_add(st)
 		w.add_child(st)
+	var reference := UncachedTerrain.new(w)
+	reference.cov = fast.cov
+	reference.cdir = fast.cdir
+	reference.solid = fast.solid
+	reference.trench = fast.trench
 	var cases := 0
 	for wide in [false, true]:
-		for count in [1, 8, 32, 96]:
+		for count in [1, 8, 32, 96, 200]:
 			for center in [Vector3.ZERO, Vector3(MapDims.HALF - 2, 0, MapDims.HALF - 2)]:
 				var face := Vector3(rng.randf_range(-1, 1), 0, rng.randf_range(-1, 1)).normalized()
 				var slots := fast.slots(center, face, count, wide)
+				w.terrain = reference
+				var expected := reference.slots(center, face, count, wide)
+				w.terrain = fast
+				assert(slots == expected, "cached formation matches exhaustive cover selection")
 				assert(slots.size() == count, "each man receives a position")
 				assert(slots == fast.slots(center, face, count, wide), "cover selection is deterministic")
 				for sl in slots:
