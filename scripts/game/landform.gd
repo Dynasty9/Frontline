@@ -214,3 +214,36 @@ func fits(p: Vector3, footprint: Vector2, yaw: float, tolerance := 0.35) -> bool
 			if absf(height(p + basis * Vector3(x * footprint.x, 0, z * footprint.y)) - h) > tolerance:
 				return false
 	return true
+
+
+## Bake sky visibility, concavity and distant sun occlusion; crater normals stay live.
+func bake_surface(sun_direction := Vector3.UP) -> Image:
+	var size := ceili(half * 2.0 / 8.0)
+	var img := Image.create(size, size, false, Image.FORMAT_RGB8)
+	var toward_sun := Vector3(sun_direction.x, 0, sun_direction.z)
+	var sun_slope := sun_direction.y / maxf(toward_sun.length(), 0.001)
+	toward_sun = toward_sun.normalized()
+	var directions: Array[Vector3] = []
+	for i in 8:
+		directions.append(Vector3(cos(i * TAU / 8.0), 0, sin(i * TAU / 8.0)))
+	for z in size:
+		for x in size:
+			var p := Vector3((x + 0.5) * 8.0 - half, 0, (z + 0.5) * 8.0 - half)
+			var h := height(p)
+			var occlusion := 0.0
+			var basin := 0.0
+			for direction in directions:
+				var horizon := 0.0
+				for distance in [8.0, 16.0, 32.0, 64.0, 128.0]:
+					var rise := height(p + direction * distance) - h
+					horizon = maxf(horizon, rise / distance)
+					if distance == 16.0:
+						basin += rise
+				occlusion += horizon / sqrt(1.0 + horizon * horizon)
+			var sun_horizon := 0.0
+			for distance in [8.0, 16.0, 32.0, 48.0, 64.0, 96.0, 128.0, 192.0, 256.0, 384.0, 512.0]:
+				sun_horizon = maxf(sun_horizon, (height(p + toward_sun * distance) - h - 0.5) / distance)
+			var sunlight := 1.0 - smoothstep(sun_slope - 0.035, sun_slope + 0.035, sun_horizon)
+			img.set_pixel(x, z, Color(1.0 - occlusion / 8.0 * 0.75, clampf(0.5 + basin / 128.0, 0.0, 1.0), sunlight))
+	img.generate_mipmaps()
+	return img

@@ -250,6 +250,7 @@ func set_trench_mask(t: Texture2D) -> void:
 var deform_tex: Texture2DArray
 var _deform_tiles: TerrainTexture
 var _deform_t := 0.0
+var _surface_baked := false
 var GROUND_HALF := MapDims.HALF + 8.0
 var GROUND_CHUNKS := ceili(GROUND_HALF * 2.0 / 64.0)
 const GROUND_LOD := 170.0  # beyond this from the camera a chunk is drawn on a coarser grid
@@ -265,12 +266,15 @@ func _build_ground() -> void:
 	ground_mat.shader = sh
 	ground_mat.set_shader_parameter("biome_tex", biome_tex)
 	ground_mat.set_shader_parameter("detail_tex", detail_tex)
-	ground_mat.set_shader_parameter("rock_color", preload("res://assets/terrain/aerial_rocks_02_diff_2k.jpg"))
-	ground_mat.set_shader_parameter("rock_normal", preload("res://assets/terrain/aerial_rocks_02_nor_gl_2k.jpg"))
+	ground_mat.set_shader_parameter("cliff_color", preload("res://assets/terrain/aerial_rocks_02_diff_2k.jpg"))
+	ground_mat.set_shader_parameter("cliff_normal", preload("res://assets/terrain/aerial_rocks_02_nor_gl_2k.jpg"))
+	ground_mat.set_shader_parameter("rock_color", preload("res://assets/terrain/rock_face_03_diff_2k.jpg"))
+	ground_mat.set_shader_parameter("rock_normal", preload("res://assets/terrain/rock_face_03_nor_gl_2k.jpg"))
 	ground_mat.set_shader_parameter("moss_color", preload("res://assets/terrain/aerial_grass_rock_diff_2k.jpg"))
 	ground_mat.set_shader_parameter("moss_normal", preload("res://assets/terrain/aerial_grass_rock_nor_gl_2k.jpg"))
 	ground_mat.set_shader_parameter("cloud_strength", float(_d.clouds))
 	ground_mat.set_shader_parameter("sun_tint", _d.sun)
+	ground_mat.set_shader_parameter("air_color", _d.fog)
 	ground_mat.set_shader_parameter("wet", 1.0 if mood == "rain" else 0.0)
 	ground_mat.set_shader_parameter("trench_mask", _blank_mask)
 	ground.material_override = ground_mat
@@ -536,6 +540,7 @@ func apply_mood(m: String) -> void:
 		return
 	mood = m
 	_d = MOODS[m]
+	_surface_baked = false
 	sky_mat.set_shader_parameter("zenith", _d.zenith)
 	sky_mat.set_shader_parameter("horizon", _d.horizon)
 	sky_mat.set_shader_parameter("sun_col", _d.sun)
@@ -557,6 +562,7 @@ func apply_mood(m: String) -> void:
 	rim.light_energy = 0.28 if mood != "overcast" else 0.12
 	ground_mat.set_shader_parameter("cloud_strength", float(_d.clouds))
 	ground_mat.set_shader_parameter("sun_tint", _d.sun)
+	ground_mat.set_shader_parameter("air_color", _d.fog)
 	if water_view:
 		water_view.apply_mood(_d, mood)
 	if world.fx and world.fx.vfx:
@@ -779,6 +785,9 @@ func build_water(w: WaterMap) -> void:
 		water_view = WaterView.new(world)
 		add_child(water_view)
 	water_view.build(w, detail_tex)
+	if world.terrain.landform.peak > 1.0:
+		water_view.mat.set_shader_parameter("fresh_tint", Color(0.1, 0.32, 0.30))
+		water_view.mat.set_shader_parameter("fresh_absorb", Vector3(0.85, 0.32, 0.28))
 	water_view.apply_mood(_d, mood)
 	if grass:
 		grass.request_rebuild(0.5)
@@ -790,8 +799,16 @@ func _update_deform(dt: float) -> void:
 	var tm = world.terrain
 	if tm == null or tm.deform_img == null:
 		return
+	if not _surface_baked and not tm.landform.heights.is_empty():
+		ground_mat.set_shader_parameter("surface_bake", ImageTexture.create_from_image(tm.landform.bake_surface(sun.basis.z)))
+		ground_mat.set_shader_parameter("sun_direction", sun.basis.z)
+		_surface_baked = true
+		var post := post_rect.material as ShaderMaterial
+		post.set_shader_parameter("fringe", 0.00015)
+		post.set_shader_parameter("grain", 0.006)
+		post.set_shader_parameter("vignette", 0.15)
 	if not tm.deform_dirty.is_empty() and _deform_t <= 0.0:
-		ground_mat.set_shader_parameter("snow_line", maxf(25.0, tm.landform.peak * 0.48) if tm.landform.peak > 1.0 else 10000.0)
+		ground_mat.set_shader_parameter("snow_line", maxf(25.0, tm.landform.peak * 0.36) if tm.landform.peak > 1.0 else 10000.0)
 		_deform_t = 0.22
 		for rect: Rect2i in tm.deform_dirty:
 			_deform_tiles.mark_dirty(rect)
@@ -901,6 +918,11 @@ const GROUND_SHADER := """
 shader_type spatial;
 render_mode specular_schlick_ggx;
 
+uniform vec3 sun_direction = vec3(0.0, 1.0, 0.0);
+uniform vec3 air_color : source_color = vec3(0.5, 0.6, 0.7);
+uniform sampler2D surface_bake : hint_default_white, filter_linear_mipmap, repeat_disable;
+uniform sampler2D cliff_color : source_color, filter_linear_mipmap_anisotropic, repeat_enable;
+uniform sampler2D cliff_normal : hint_normal, filter_linear_mipmap_anisotropic, repeat_enable;
 uniform sampler2D rock_color : source_color, filter_linear_mipmap_anisotropic, repeat_enable;
 uniform sampler2D moss_color : source_color, filter_linear_mipmap_anisotropic, repeat_enable;
 uniform sampler2D rock_normal : hint_normal, filter_linear_mipmap_anisotropic, repeat_enable;
@@ -925,6 +947,7 @@ uniform float sea_x = 1e9;
 
 varying vec3 wpos;
 varying float puddle;
+varying float terrain_sun;
 
 float backdrop(vec2 p) {
 	float edge = max(abs(p.x), abs(p.y)) - __MAP_HALF__;
@@ -1029,25 +1052,45 @@ void fragment() {
 	vec3 geometric = normalize(vec3(-rx, 1.0, -rz));
 	vec3 weights = pow(abs(geometric), vec3(4.0));
 	weights /= weights.x + weights.y + weights.z;
-	vec3 rock = surface_color(rock_color, wpos / 48.0, weights);
-	rock = mix(rock, surface_color(rock_color, wpos / 117.0 + 0.37, weights), 0.3);
+	// Broad mineral bands read as rock strata at altitude; fine grain resolves nearby.
+	vec3 rock = surface_color(rock_color, wpos / 32.0, weights);
+	vec3 rock_macro = surface_color(cliff_color, wpos / 110.0 + 0.37, weights);
+	float stone = dot(rock, vec3(0.2126, 0.7152, 0.0722));
+	float mineral = dot(rock_macro, vec3(0.2126, 0.7152, 0.0722));
+	float strata = sin(wpos.y * 0.28 + p.x * 0.025 + p.y * 0.018 + (d1 - 0.5) * 2.0);
+	rock = vec3(0.75, 0.79, 0.83) * (0.025 + pow(mineral, 0.82) * 0.85) * (0.65 + stone * 1.2);
+	rock *= 0.95 + strata * 0.05;
 	vec3 moss = surface_color(moss_color, wpos / 24.0, weights);
-	moss = mix(moss, surface_color(moss_color, wpos / 71.0 + 0.23, weights), 0.3);
+	float grass_detail = dot(moss, vec3(0.2126, 0.7152, 0.0722));
+	moss = mix(vec3(0.055, 0.092, 0.034), vec3(0.14, 0.18, 0.075), d1) * (0.65 + grass_detail * 1.1);
 	float elevation = smoothstep(0.0, snow_line, geology);
-	moss = mix(moss, vec3(dot(moss, vec3(0.2126, 0.7152, 0.0722))), 0.4);
-	moss *= mix(vec3(0.58, 0.80, 0.51), vec3(0.86, 0.87, 0.78), elevation);
-	rock *= mix(vec3(0.72, 0.68, 0.58), vec3(0.92, 0.93, 0.95), elevation);
-	float cavity = clamp((dfm(p + vec2(4, 0)) + dfm(p - vec2(4, 0)) + dfm(p + vec2(0, 4)) + dfm(p - vec2(0, 4)) - 4.0 * geology) * 0.3, -1.0, 1.0);
-	float exposed = smoothstep(0.30, 0.95, slope + (d1 - 0.5) * 0.25 - cavity * 0.12);
+	vec3 baked = texture(surface_bake, (p + __MAP_HALF__) / __MAP_SIZE__).rgb;
+	terrain_sun = baked.b;
+	float cavity = (baked.g - 0.5) * 2.0;
+	float sky = baked.r;
+	if (max(abs(p.x), abs(p.y)) >= __MAP_HALF__) {
+		cavity = clamp((dfm(p + vec2(16, 0)) + dfm(p - vec2(16, 0)) + dfm(p + vec2(0, 16)) + dfm(p - vec2(0, 16)) - 4.0 * geology) / 32.0, -1.0, 1.0);
+		sky = 1.0 - max(cavity, 0.0) * 0.45;
+		terrain_sun = 1.0;
+	}
+	float exposed = smoothstep(0.28, 0.85, slope + elevation * 0.24 + (d1 - 0.5) * 0.12);
 	vec3 alpine = mix(moss, rock, exposed);
-	alpine *= 1.0 - max(cavity, 0.0) * 0.3;
-	col = mix(col, alpine, (1.0 - wm.g) * (1.0 - wm.a) * (1.0 - clamp(bowl, 0.0, 1.0)));
-	// Snow gathers in sheltered gullies; winds scour the rock ribs between them.
-	float snow = smoothstep(snow_line - 18.0, snow_line + 12.0, geology + cavity * 14.0 - rx * 9.0 + (d1 - 0.5) * 18.0);
-	snow *= 1.0 - smoothstep(0.9, 2.8, slope - cavity * 0.25);
-	snow *= 1.0 - clamp(bowl, 0.0, 1.0);
-	col = mix(col, mix(vec3(0.68, 0.77, 0.85), vec3(0.94, 0.96, 0.98), d2), snow);
-	ALBEDO = col;
+	float clean = (1.0 - wm.g) * (1.0 - wm.a) * (1.0 - clamp(bowl, 0.0, 1.0));
+	col = mix(col, alpine, clean);
+	// Connected snowfields collect in sheltered bowls, leaving dark ribs and cliff faces.
+	float snow_field = (geology - snow_line) / 35.0 + cavity * 0.8 - geometric.x * 0.25 + (d1 - 0.5) * 0.3;
+	snow_field -= min(3.0, max(0.0, slope - 0.75)) * 0.18;
+	snow_field += (mineral - 0.3) * 0.9;
+	float snow = smoothstep(-0.06, 0.08, snow_field) * (1.0 - smoothstep(3.0, 8.0, slope));
+	snow *= clean;
+	col = mix(col, vec3(0.82, 0.87, 0.91) * (0.97 + d3 * 0.03), snow);
+	AO = sky;
+	AO_LIGHT_AFFECT = 0.25;
+	col *= mix(vec3(0.72, 0.80, 0.90), vec3(1.0), sky);
+
+	float aerial = smoothstep(__MAP_HALF__ + 80.0, __MAP_HALF__ + 1300.0, max(abs(p.x), abs(p.y))) * 0.35;
+	ALBEDO = col * (1.0 - aerial);
+	EMISSION = air_color * aerial * 0.22;
 	ROUGHNESS = mix(mix(0.96, 0.82, dirt_m), 0.55, wet * 0.5);
 	ROUGHNESS = mix(ROUGHNESS, 0.45, max(wm.a * 0.8, wet_sand * 0.6));
 	ROUGHNESS = mix(ROUGHNESS, 0.16, puddle);
@@ -1063,8 +1106,8 @@ void fragment() {
 	float gx = (dfm(p + vec2(de, 0.0)) - dfm(p - vec2(de, 0.0))) / (2.0 * de);
 	float gz = (dfm(p + vec2(0.0, de)) - dfm(p - vec2(0.0, de))) / (2.0 * de);
 	n = normalize(n + vec3(-gx, 0.0, -gz));
-	vec3 mapped = mix(surface_normal(moss_normal, wpos / 24.0, weights, geometric), surface_normal(rock_normal, wpos / 48.0, weights, geometric), exposed);
-	n = normalize(mix(n, mapped, 0.4 * (1.0 - snow) * (1.0 - wm.a)));
+	vec3 mapped = mix(surface_normal(moss_normal, wpos / 24.0, weights, geometric), normalize(mix(surface_normal(cliff_normal, wpos / 110.0 + 0.37, weights, geometric), surface_normal(rock_normal, wpos / 32.0, weights, geometric), 0.25)), exposed);
+	n = normalize(mix(n, mapped, 0.48 * (1.0 - snow) * (1.0 - wm.a)));
 	n = normalize(mix(n, vec3(0.0, 1.0, 0.0), puddle * 0.9));
 	NORMAL = normalize((VIEW_MATRIX * vec4(n, 0.0)).xyz);
 }
@@ -1075,6 +1118,9 @@ void light() {
 		vec2 cp = wpos.xz / 512.0 * 1.7 + vec2(TIME * 0.0016, TIME * 0.0007);
 		float c = texture(biome_tex, cp).r;
 		cloud = 1.0 - cloud_strength * smoothstep(0.48, 0.72, c);
+		if (dot(LIGHT, normalize((VIEW_MATRIX * vec4(sun_direction, 0.0)).xyz)) > 0.95) {
+			cloud *= terrain_sun;
+		}
 	}
 	float ndl = clamp(dot(NORMAL, LIGHT), 0.0, 1.0);
 	DIFFUSE_LIGHT += ndl * ATTENUATION * LIGHT_COLOR / PI * cloud;

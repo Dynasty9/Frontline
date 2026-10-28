@@ -792,8 +792,12 @@ thermal material transfer and seeded hydraulic droplet erosion. Rain cuts gullie
 reserve level corridors before the final erosion pass. This keeps existing bridge, supply and town layouts
 connected. The river network is planned for gameplay before erosion, rather than derived from the erosion simulation.
 
-Ground materials blend bundled CC0 aerial rock and moss photographs with triplanar normal maps, slope,
-elevation and curvature-driven snow. Keep mipmaps enabled in their import settings. Credits and hashes
+Ground materials blend bundled CC0 aerial rock, fractured stone and moss photographs with triplanar normal
+maps and connected snowfields. `Landform.bake_surface()` samples eight horizon bearings out to 128 m
+on an 8 m grid, baking sky visibility and broad concavity. A third channel traces toward the sun out to
+512 m, extending ridge shadows beyond the live shadow cascades. The bake rebuilds when the lighting
+mood changes and never changes geology or simulation data. Moving-object shadows, weather and crater
+normals remain live. Keep mipmaps enabled in their import settings. Credits and hashes
 are in `assets/terrain/`. Outside the playable boundary a coarse, non-interactive mountain backdrop blends
 into the map edge; it is scenery only and does not enter navigation, replication or combat.
 

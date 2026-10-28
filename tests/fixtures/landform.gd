@@ -42,7 +42,15 @@ func _ready() -> void:
 		for x in 17:
 			var wx := x * 4.0 - 32.0
 			heights[z * 17 + x] = 12.0 * maxf(0.0, 1.0 - absf(wx) / 12.0)
+	var flat := Landform.new(64).bake_surface()
+	assert(flat.get_pixel(3, 3).r > 0.99 and absf(flat.get_pixel(3, 3).g - 0.5) < 0.01, "Flat terrain has open sky and no concavity")
 	world.terrain.install_landform(heights)
+	var baked := world.terrain.landform.bake_surface()
+	assert(baked.get_data() == world.terrain.landform.bake_surface().get_data(), "Surface baking is deterministic")
+	assert(world.terrain.landform.heights == heights, "Baking must not change gameplay geography")
+	assert(baked.get_pixel(2, 4).r < 0.97, "A nearby ridge reduces valley sky light")
+	var low_sun := world.terrain.landform.bake_surface(Vector3(1, 0.3, 0).normalized())
+	assert(low_sun.get_pixel(2, 4).b < 0.1 and low_sun.get_pixel(6, 4).b > 0.9, "Baked sunlight casts a ridge shadow on its sheltered side")
 	assert(is_equal_approx(world.ground_y(Vector3.ZERO), 11.75))
 	var hit := world.terrain.ray_ground(Vector3(-20, 1.5, 0), Vector3(20, 1.5, 0))
 	assert(not hit.is_empty() and hit.position.x < 0.0, "A ridge must block sight and bullets")

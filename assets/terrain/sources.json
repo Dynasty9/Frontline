@@ -22,5 +22,17 @@
     "source": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/aerial_grass_rock/aerial_grass_rock_nor_gl_2k.jpg",
     "md5": "0c5423ce365169df7c242933b5137696",
     "sha256": "c6aa14b042ce243f93a6ca807f46a085711c23ad316b104578e92df7770ee285"
+  },
+  {
+    "file": "rock_face_03_diff_2k.jpg",
+    "source": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/rock_face_03/rock_face_03_diff_2k.jpg",
+    "md5": "657add9e8a8dffaeed19bdfc58078b59",
+    "sha256": "644ee79df7ffbf5f6afc330b64dd3f33794bab8820915fe61ffe0c88ecfd7ece"
+  },
+  {
+    "file": "rock_face_03_nor_gl_2k.jpg",
+    "source": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/rock_face_03/rock_face_03_nor_gl_2k.jpg",
+    "md5": "279b33e71ae6275cafa24e6597024c98",
+    "sha256": "a498cef4ba6191f6959b6d03fb835263c77271948264a289af24497ab7111dec"
   }
 ]

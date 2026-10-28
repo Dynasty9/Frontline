@@ -3,6 +3,9 @@
 [Aerial Rocks 02](https://polyhaven.com/a/aerial_rocks_02) and
 [Aerial Grass Rock](https://polyhaven.com/a/aerial_grass_rock), by Rob Tuytel / Poly Haven.
 
+[Rock Face 03](https://polyhaven.com/a/rock_face_03), photographed by Dario Barresi
+and processed by Rico Cilliers / Poly Haven.
+
 Licensed under [CC0 1.0 Universal](https://creativecommons.org/publicdomain/zero/1.0/).
 Poly Haven license: https://polyhaven.com/license
 
