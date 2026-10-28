@@ -81,8 +81,11 @@ darkens toward that edge (`UiScrim`), so it reads over any ground without a box:
 
 - **Top** (the **Status** line): the side, `SUP` and its rate, `UNITS`, `FOB`, `TOWNS`, and the clock. A line under
   it for each FOB says what its trucks are doing.
-- **Left**: the ORBAT (one ruled line per squad and vehicle) and under it FIRES (the ready missions; the rest
-  folded into one line). The minimap and its tool column at the bottom.
+- **Left**: a task bar switches between **Battle**, **Squads**, **Map**, and **Fires**. Battle starts with the
+  tools closed. Squads opens a searchable roster (callsign, symbol role, or vehicle name); click to select and
+  locate, Shift-click to add, double-click to zoom. Map opens a larger minimap and its layer controls. Fires
+  shows off-map support. Only one task is visible at a time; Battle clears the tools. The roster binding toggles
+  Squads, and Escape backs out of an open task after cancelling orders and selection.
 - **Bottom**: the selection (the squad's name, its codes, the plan's stages, a cell per man) and the orders as keys.
   The bottom scrim only darkens while there's something selected.
 - **Right**: the **Log** and the mission's objectives; in co-op the command net.
@@ -152,6 +155,8 @@ The message history (L by default) opens in their place on a lighter ink.
 
 ## Marks on the battlefield
 
+In Battle view, routine soldier names, activity icons and speech belong to selected troops. Suppression
+warnings, squad symbols and hover inspection remain available; the other tasks retain the detailed overlays.
 Names over bases and towns are capitals with the world-text outline and a small square in the owner's colour, no
 box; a selected vehicle wears accent corner ticks; hover cards are ink with ticks and counted health and ammunition;
 order tags, grid letters and how long ago an enemy was seen are mono; a cursor hint says what the click will do in

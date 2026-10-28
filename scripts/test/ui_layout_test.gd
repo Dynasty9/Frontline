@@ -236,6 +236,31 @@ func _run() -> void:
 	await get_tree().create_timer(0.3).timeout
 	_check("delayed arrival becomes visible after its delay", stagger_row.modulate.a == 1.0)
 	menu.free()
+	# Task switching must release battlefield space and preserve the selection.
+	hud.orbat = HudOrbat.new()
+	hud.minimap = HudMinimap.new()
+	hud.minimap_panel = PanelContainer.new()
+	hud.layers_ui = HudLayers.new()
+	hud.support_box = VBoxContainer.new()
+	hud.chat_edit = LineEdit.new()
+	hud.tint = ColorRect.new()
+	hud._build_workspaces()
+	_check("battle starts with commander tools closed", not hud.orbat.visible and not hud.minimap_panel.visible and not hud.support_box.visible)
+	hud.toggle_orbat()
+	_check("roster shortcut opens squad search", hud.orbat.visible and hud.squad_search.visible)
+	hud.squad_search.text = "Charlie"
+	hud.squad_search.text_changed.emit("Charlie")
+	_check("typing filters the roster", hud.orbat.query == "Charlie")
+	hud.set_workspace("map")
+	_check("map replaces roster with map controls", hud.minimap_panel.visible and hud.layers_ui.visible and not hud.orbat.visible and not hud.squad_search.visible)
+	_check("map reserves space beside selection", hud.minimap_right() > 200.0)
+	hud.set_workspace("fires")
+	_check("fires replaces map", hud.support_box.visible and not hud.minimap_panel.visible and not hud.layers_ui.visible)
+	hud.toggle_menu()
+	_check("escape returns to battle", hud.workspace == "battle" and not hud.support_box.visible)
+	_check("battle returns map space to selection", hud.minimap_right() == 14.0)
+	for control: Control in [hud.orbat, hud.minimap, hud.minimap_panel, hud.layers_ui, hud.support_box, hud.chat_edit, hud.tint]:
+		control.free()
 	hud.free()
 	battle.free()
 

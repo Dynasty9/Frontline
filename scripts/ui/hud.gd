@@ -27,8 +27,10 @@ const MINIMAP_PAD := 5.0
 
 func minimap_side() -> float:
 	var s: float = MINIMAP_PX[clampi(int(Settings.get_v("minimap_size")), 0, MINIMAP_PX.size() - 1)]
+	if workspace == "map":
+		s = maxf(s, 380.0)
 	# a short screen (a big interface scale) keeps room above it for the support buttons
-	return minf(s, maxf(160.0, root.size.y * 0.4)) if root and root.size.y > 0.0 else s
+	return minf(s, maxf(160.0, root.size.y * 0.48)) if root and root.size.y > 0.0 else s
 
 
 ## Lays out the bottom-left corner round the minimap's size: the map, its
@@ -49,8 +51,11 @@ func layout_minimap() -> void:
 	layers_ui.offset_top = -14 - lh
 	var above := -14 - outer - 16
 	support_box.offset_right = 14 + maxf(outer, 300.0)
-	support_box.offset_bottom = above
-	support_box.offset_top = above
+	support_box.anchor_top = 0.0
+	support_box.anchor_bottom = 0.0
+	support_box.grow_vertical = Control.GROW_DIRECTION_END
+	support_box.offset_top = 150
+	support_box.offset_bottom = 150
 	chat_edit.offset_bottom = above
 	chat_edit.offset_top = above - 34
 
@@ -62,7 +67,7 @@ const CARD_BTN := Vector2(136, 26)
 
 ## Where the bottom-left cluster (minimap and layer column) ends on the right.
 func minimap_right() -> float:
-	return 14 + minimap_side() + MINIMAP_PAD * 2.0 + 6 + HudLayers.S
+	return 14.0 if workspace != "map" else 14 + minimap_side() + MINIMAP_PAD * 2.0 + 6 + HudLayers.S
 
 
 ## How the map is drawn (each toggled from the layer column by the minimap).
@@ -71,6 +76,10 @@ const PHASE_NAMES := {"plan": "Planning", "move": "Moving into position", "fix":
 
 var world: World
 var typing := false
+var workspace := "battle"
+var task_bar: HBoxContainer
+var squad_search: LineEdit
+var _task_buttons := {}
 var tactical := false
 ## sid -> [order, where, facing, order number, team, msec the order came in (-1: already standing), attack plan or null]
 var orders := {}
@@ -139,7 +148,7 @@ var _over_row: HBoxContainer  # the report's footer: its note and buttons come i
 var _stats_t := 0.0
 var support_box: VBoxContainer
 var _support_btns := {}  # kind -> Button
-var _support_key := ""
+var _support_key := "unbuilt"
 var demo_panel: PanelContainer
 var _inspect: Entity = null
 var _inspect_t := 0.0
@@ -312,6 +321,7 @@ func _ready() -> void:
 	chat_edit.text_submitted.connect(_on_chat)
 	chat_edit.focus_exited.connect(func(): _close_chat())
 	root.add_child(chat_edit)
+	_build_workspaces()
 	layout_minimap()
 	Settings.changed.connect(layout_minimap)
 	_theme_rev = UiKit.theme_rev
@@ -442,6 +452,60 @@ func _ready() -> void:
 	else:
 		add_message("system", "Battle started. You command the %s. %sEsc for the menu." % [Defs.TEAM_NAMES[world.local_team] if world.local_team >= 0 else "camera (observer)", how])
 	_keys_changed()
+
+
+## Commander tasks occupy one edge at a time; returning to Battle clears it.
+func _build_workspaces() -> void:
+	task_bar = HBoxContainer.new()
+	task_bar.add_theme_constant_override("separation", 4)
+	root.add_child(task_bar)
+	for item in [["battle", "Battle"], ["squads", "Squads"], ["map", "Map"], ["fires", "Fires"]]:
+		var key: String = item[0]
+		var b := UiKit.button(item[1])
+		b.custom_minimum_size = Vector2(76, 30)
+		b.focus_mode = Control.FOCUS_NONE
+		b.toggle_mode = true
+		b.tooltip_text = {"battle": "Clear the commander tools and watch the battle.", "squads": "Find a squad or vehicle. Click to select and locate; Shift-click adds to selection.", "map": "Observe the battle on the minimap. Click to move the camera; use the layer controls beside it.", "fires": "Choose off-map support and place its target on the battlefield."}[key]
+		b.pressed.connect(func(): set_workspace(key))
+		task_bar.add_child(b)
+		_task_buttons[key] = b
+	squad_search = LineEdit.new()
+	squad_search.size = Vector2(HudOrbat.W, 32)
+	squad_search.placeholder_text = "Find callsign, role or vehicle…"
+	squad_search.clear_button_enabled = true
+	var search_ink := UiKit.underline(UiKit.RULE2, 8.0, 6.0)
+	search_ink.bg_color = UiKit.PANEL
+	squad_search.add_theme_stylebox_override("normal", search_ink)
+	squad_search.text_changed.connect(func(value: String): orbat.query = value; orbat.queue_redraw())
+	squad_search.focus_entered.connect(func(): typing = true)
+	squad_search.focus_exited.connect(func(): typing = false)
+	squad_search.gui_input.connect(func(event: InputEvent):
+		if event is InputEventKey and event.pressed and event.keycode == KEY_ESCAPE:
+			squad_search.release_focus()
+			set_workspace("battle")
+			squad_search.accept_event())
+	root.add_child(squad_search)
+	set_workspace("battle")
+
+
+func set_workspace(value: String) -> void:
+	workspace = value
+	orbat.visible = value == "squads"
+	orbat.open = true
+	squad_search.visible = value == "squads"
+	if not squad_search.visible and squad_search.has_focus():
+		squad_search.release_focus()
+	minimap_panel.visible = value == "map"
+	layers_ui.visible = value == "map"
+	support_box.visible = value == "fires"
+	layout_minimap()
+	for key in _task_buttons:
+		(_task_buttons[key] as Button).set_pressed_no_signal(key == value)
+	# Tactical symbols belong to map observation; returning to another task
+	# restores the scene immediately.
+	if value != "map" and tactical:
+		tactical = false
+		tint.visible = false
 
 
 func _build_observer_bar() -> void:
@@ -784,6 +848,9 @@ func toggle_manual() -> void:
 
 
 func toggle_menu() -> void:
+	if workspace != "battle":
+		set_workspace("battle")
+		return
 	if stats_panel.visible:
 		close_stats()
 		return
@@ -827,12 +894,14 @@ func set_map_layer(key: String, on: bool) -> void:
 func toggle_tactical() -> void:
 	tactical = not tactical
 	tint.visible = tactical
+	if tactical:
+		set_workspace("map")
 	layers_ui.queue_redraw()
 	Sfx.ui("click")
 
 
 func toggle_orbat() -> void:
-	orbat.toggle()
+	set_workspace("battle" if workspace == "squads" else "squads")
 
 
 ## Tracks every squad's orders from the team summary; a new order number means
@@ -1434,14 +1503,16 @@ func _view_process(dt: float) -> void:
 		if _stats_t >= 2.0:
 			_stats_t = 0.0
 			world.request_report()
-	# the order of battle fits its contents, down to the support buttons at
-	# most, below however many FOB and town lines there are
-	orbat.position.y = maxf(100.0, top.position.y + top.content_h + 8.0) if world.local_team >= 0 else 100.0
-	var limit := minimap_panel.position.y - 10.0
-	if support_box.get_child_count() > 0:
-		limit = support_box.global_position.y - 10.0
-	var want := HudOrbat.HEAD_H if not orbat.open else orbat.content_h()
-	orbat.size = Vector2(HudOrbat.W, clampf(want, HudOrbat.HEAD_H, maxf(HudOrbat.HEAD_H, limit - orbat.position.y)))
+	var task_y := maxf(96.0, top.position.y + top.content_h + 8.0)
+	task_bar.position = Vector2(14, task_y)
+	squad_search.position = Vector2(14, task_y + 38.0)
+	orbat.position = Vector2(14, task_y + 80.0)
+	var limit := root.size.y - 230.0
+	orbat.size = Vector2(HudOrbat.W, maxf(70.0, limit - orbat.position.y))
+	support_box.offset_top = task_y + 42.0
+	support_box.offset_bottom = task_y + 42.0
+	var left_scrim: UiScrim = _scrims["left"]
+	left_scrim.visible = workspace != "battle"
 	# on a narrow screen (a big interface scale) the command card gives up
 	# columns before the selection panel beside it is squeezed
 	var room := root.size.x - minimap_right() - 10.0 - SEL_MIN_W - 12.0 - 14.0
@@ -1563,6 +1634,8 @@ func _update_support() -> void:
 		for c in support_box.get_children():
 			c.queue_free()
 		_support_btns.clear()
+		if kinds.is_empty():
+			support_box.add_child(UiKit.caps("No support on call", 12, UiKit.DIM))
 		if not kinds.is_empty():
 			support_box.add_child(UiKit.header("Fires", "%02d" % kinds.size()))
 		for k in kinds:
@@ -1574,6 +1647,7 @@ func _update_support() -> void:
 			_support_btns[k] = b
 		_fires_more = _fire_row("", "Show every fire mission", func(): _fires_open = not _fires_open)
 		support_box.add_child(_fires_more)
+		_fires_more.visible = not kinds.is_empty()
 	if kinds.is_empty():
 		return
 	var sup: Dictionary = world.team_info[world.local_team].get("sup", {}) if world.local_team >= 0 else {}

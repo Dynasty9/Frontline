@@ -697,6 +697,8 @@ func _speech(cam: Camera3D, vs: Vector2, a_close: float, a_mid: float) -> void:
 	for it in items:
 		var e: Entity = it[0]
 		var kind: String = it[3]
+		if hud.workspace == "battle" and e is Soldier and not e.selected:
+			continue
 		# a squad leader shouting orders: you see the word go out to his men
 		if a_close > 0.0 and e is Soldier and ((e as Soldier).flags & Soldier.F_LEADER) != 0 and kind == "shout" and float(it[4]) < 1.5:
 			_command_fan(cam, e, (1.5 - float(it[4])) / 1.5 * a_close)
@@ -791,6 +793,8 @@ func _bubble(anchor: Vector2, text: String, kind: String, a: float, fs: int, wma
 func _name_tags(men: Array, a: float, zoom: float, lt: int) -> void:
 	for i in mini(men.size(), 40):
 		var s: Soldier = men[i][1]
+		if hud.workspace == "battle" and not s.selected:
+			continue  # names belong to the selection; hover still reveals anyone
 		var txt := s.doing_text()
 		var cat := s.doing_cat()
 		# routine states only right up close; the interesting ones a little further out
@@ -832,6 +836,8 @@ func _status_icons(men: Array, a: float) -> void:
 		if s.life == Soldier.Life.DOWNED:
 			continue  # the red cross over him says it
 		var gk := _glyph_of(s)
+		if hud.workspace == "battle" and not s.selected and gk != "pinned":
+			continue
 		if gk in ["", "cover", "smoke", "eye"]:
 			continue
 		var col: Color = Hud.CAT_COLORS.get(s.doing_cat(), UiKit.DIM)

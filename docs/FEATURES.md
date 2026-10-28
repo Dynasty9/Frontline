@@ -1127,10 +1127,11 @@ catalogue entry in `MissionList.LIST`, a setup function and an autopilot functio
   drifting cloud over the target. Smoke is shaded like a volume (sun, sky, self-shadowing) and fades
   softly where it meets the ground. Burning wrecks burn, then smoulder (see Fire). Smoke screens are real volumetric fog when
   volumetric fog is on. All effect shaders are compiled during loading, so the first explosion doesn't hitch.
-- A minimal HUD: the status line along the top, the order of battle and the ready fire missions down the left,
-  the latest radio lines top right, a terrain minimap, and the selection and its orders along the bottom only when
-  something is selected. Zoom in and every soldier shows what he's doing ("Bandaging Doyle",
-  "Pinned down", "Manning the .50 Cal Nest", "Dragging Hakim to safety"); hover one for a small card.
+- A task-based HUD: **Battle** keeps the scene clear; **Squads** opens a searchable roster with click-to-locate;
+  **Map** opens the larger minimap and its layer controls; **Fires** opens off-map support. One task is visible
+  at a time. The status line and radio remain available, with selection and orders along the bottom when needed.
+  In Battle, routine soldier names, activity icons and speech appear for selected troops; suppression warnings
+  and squad markers remain. Hover any soldier for his details.
 - The main menu sits over a live 3D scene: a .50 cal crew at golden hour with a burning wreck and shelling on the horizon.
 
 **Field Manual** (`ui/field_manual.gd`; main menu, Esc menu or F4): every soldier, squad, weapon, vehicle, building,

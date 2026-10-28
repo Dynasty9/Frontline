@@ -1314,10 +1314,12 @@ func _process(_dt: float) -> void:
 		if world.coop.peers.has(wid):
 			set_meta("coop_watched", true)
 			world.cam.toggle_shadow(wid)
-	# --hud-panel=settings|help|menu|log|over: open one of the battle's panels (layout
+	# --hud-panel=battle|squads|map|fires|settings|help|menu|log|over: open one of the battle's panels (layout
 	# checks; "over" is the end of the battle, won by your side)
 	if args.has("hud-panel") and world.hud and world.time > 1.0 and not has_meta("hud_panel"):
 		set_meta("hud_panel", true)
+		if String(args["hud-panel"]) in ["battle", "squads", "map", "fires"]:
+			world.hud.set_workspace(String(args["hud-panel"]))
 		if String(args["hud-panel"]) == "over":
 			world.hud.show_game_over(maxi(world.local_team, 0))
 		var hp: Control = {"settings": world.hud.settings_panel, "help": world.hud.help_panel, "menu": world.hud.menu_panel, "log": world.hud.log_panel}.get(String(args["hud-panel"]))

@@ -14,6 +14,7 @@ const W := 320.0
 
 var hud: Hud
 var open := true
+var query := ""
 var _scroll := 0.0
 var _content_h := 0.0
 var _rows: Array = []  # [Rect2, kind ("sq"/"veh"), id, commandable]
@@ -69,8 +70,7 @@ func content_h() -> float:
 
 
 func toggle() -> void:
-	open = not open
-	Settings.v["orbat"] = open
+	hud.set_workspace("battle")
 	Sfx.ui("click")
 	queue_redraw()
 
@@ -129,6 +129,7 @@ func _draw_content() -> void:
 	if w == null or w.input == null:
 		return
 	_rows.clear()
+	_scroll = clampf(_scroll, 0.0, maxf(0.0, _content_h - size.y))
 	var lt: int = w.local_team
 	var teams: Array = [lt] if lt >= 0 else [0, 1]
 	# gather: squads by sid, vehicles
@@ -146,15 +147,18 @@ func _draw_content() -> void:
 		for s in mem:
 			if s.life == Soldier.Life.ALIVE or s.life == Soldier.Life.HIDDEN or s.life == Soldier.Life.DOWNED:
 				alive += 1
-		if alive > 0:
+		var search_text := Squad.callsign_of(mem[0].team, int(sid))
+		var symbol: Array = MapSymbols.squad_symbol(mem)
+		search_text += " " + String(symbol[0]) + " " + String(symbol[1])
+		if alive > 0 and (query.strip_edges().is_empty() or search_text.to_lower().contains(query.strip_edges().to_lower())):
 			sqs.append(sid)
 	var vehs := []
 	for v in w.vehicles:
-		if v.team in teams and v.vkind != "truck" and not v.gone:
+		if v.team in teams and v.vkind != "truck" and not v.gone and (query.strip_edges().is_empty() or String(v.display_name()).to_lower().contains(query.strip_edges().to_lower())):
 			vehs.append(v)
 	# header: the word, the count, a rule; the key (and whether it's open) at the end
 	_head = Rect2(0, 0, W, HEAD_H)
-	var x := UiKit.caps_at(self, Vector2(0, 15), "Orbat", 11, UiKit.DIM)
+	var x := UiKit.caps_at(self, Vector2(0, 15), "Squads", 11, UiKit.DIM)
 	x += 8.0 + UiKit.mono_at(self, Vector2(x + 8.0, 15), "%02d" % (sqs.size() + vehs.size()), 11, UiKit.FAINT)
 	var ok := Keys.label("orbat")
 	var end := ("[%s] " % ok if ok != "" else "") + ("-" if open else "+")
@@ -162,6 +166,10 @@ func _draw_content() -> void:
 	UiKit.mono_at(self, Vector2(W - ew, 15), end, 11, UiKit.FAINT)
 	UiKit.rule(self, Vector2(x + 8.0, 11.5), Vector2(W - ew - 8.0, 11.5))
 	if not open:
+		return
+	if sqs.is_empty() and vehs.is_empty():
+		UiKit.caps_at(self, Vector2(0, HEAD_H + 24), "No matching units", 12, UiKit.DIM)
+		_scroll = 0.0
 		return
 	# body (scrolling, clipped)
 	var y := HEAD_H + 2.0 - _scroll
