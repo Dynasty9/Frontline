@@ -46,11 +46,7 @@ scenarioTests([
       f.atLeast("room_entry", 1, "and went in room by room");
       f.atLeast("house_cleared", 1, "and called the house clear");
       const cell = await f.soldiers({ team: 1 });
-      const survivors = cell.filter(fighting);
-      // Clearing the houses does not require chasing a wounded medic across the map.
-      assert.ok(survivors.every((s) => s.type === "r_medic"), "every defending fighter is out of action");
-      assert.ok(survivors.every((s) => dist(s.pos, [0, -30]) > 12 && dist(s.pos, [14, -32]) > 12),
-        "no surviving defender remains in or near either cleared house");
+      assert.equal(cell.filter(fighting).length, 0, "nobody in the house is still fighting");
     },
   },
   {
