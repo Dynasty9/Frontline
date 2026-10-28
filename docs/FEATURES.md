@@ -1126,7 +1126,7 @@ catalogue entry in `MissionList.LIST`, a setup function and an autopilot functio
 **Field Manual** (`ui/field_manual.gd`; main menu, Esc menu or F4): every soldier, squad, weapon, vehicle, building,
 defence, fire mission and upgrade, with what it is modelled on (M4A1, PKM, M2HB, Bradley, BTR-80, AC-130J...), its
 numbers read live from the game's tables with counted bars against the rest of its kind, derived figures (rate of fire,
-sustained damage, squad firepower, km/h), what carries or trains it, and a 3D model to turn over and zoom.
+sustained damage, squad firepower, km/h), what carries or trains it, and a 3D model to turn over and zoom. The Vehicles page on the website embeds this same model stage in a native web roster: the model, lighting, rotation and zoom come from the manual; the search, filters, details and accessible camera buttons use the site UI.
 A **Cover** chapter covers every kind of battlefield cover - stone and brick walls, hedges, sandbags, cars,
 crates, wrecks, rubble, tall walls, windows, trenches, craters and woods - with what it stops, how much blast
 gets through, how a man fights from it, and a diorama of a soldier doing so. **Drills & reflexes** shows what a

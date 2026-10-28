@@ -10,6 +10,9 @@ extends PanelContainer
 
 signal closed
 
+var embedded := false  # the website supplies the roster and details around the model
+var _home_view := Vector3.ZERO
+
 const CATS := [
 	["infantry", "Infantry"], ["squads", "Squads & teams"], ["weapons", "Weapons"],
 	["veh_light", "Light vehicles"], ["veh_armour", "Armour"], ["veh_support", "Support & logistics"], ["veh_air", "Helicopters & drones"],
@@ -176,6 +179,11 @@ func _ready() -> void:
 	theme = UiKit.theme()
 	add_theme_stylebox_override("panel", UiKit.frame(Color(-1, 0, 0), 14.0, 0.0, UiKit.TICK_ARM, 0.97))
 	_entries = _build_entries()
+	if embedded:
+		add_theme_stylebox_override("panel", StyleBoxEmpty.new())
+		add_child(_make_view())
+		_svc.custom_minimum_size = Vector2.ZERO
+		return
 	var vb := VBoxContainer.new()
 	vb.add_theme_constant_override("separation", 10)
 	add_child(vb)
@@ -310,6 +318,21 @@ func _ready() -> void:
 ## Opens on a page: a category, optionally an entry, optionally one side.
 func open(cat: String, key := "", side := -1) -> void:
 	visible = true
+	if embedded:
+		for e in _entries:
+			if e.key == key:
+				_cat = String(e.cat)
+				_sel = key
+				_show_model(e)
+				return
+		open("entry", "tank")  # an invalid link still opens a useful model
+		return
+	if cat == "entry":
+		cat = "veh_armour"
+		for e in _entries:
+			if e.key == key:
+				cat = String(e.cat)
+				break
 	if cat == "vehicles":
 		# (the old single vehicles page): whichever page that vehicle is on now
 		cat = "veh_armour"
@@ -705,7 +728,7 @@ func _process(dt: float) -> void:
 	if _cam == null:
 		return
 	_idle_t -= dt
-	if _idle_t <= 0.0 and not _drag:
+	if _idle_t <= 0.0 and not _drag and not embedded:
 		_yaw += dt * 0.28  # a slow turntable when left alone
 	var off := Basis(Vector3.UP, _yaw) * Basis(Vector3.RIGHT, _pitch) * Vector3(0, 0, _dist)
 	_cam.position = _focus + off
@@ -764,6 +787,20 @@ func _show_model(e: Dictionary) -> void:
 	elif String(e.cat) == "drills":
 		_yaw = 0.55 if e.key in ["d_house", "d_door"] else (PI - 0.62 if String(e.key).begins_with("v_") else PI - 1.25)  # the doorway from outside, the vehicle three-quarter, or the man side-on
 	_idle_t = 4.0  # hold the opening view a moment before the turntable starts
+	_home_view = Vector3(_yaw, _pitch, _dist)
+
+
+## The website's keyboard-accessible buttons operate the same camera as dragging.
+func control_model(action: String) -> void:
+	match action:
+		"left": _yaw -= PI / 8.0
+		"right": _yaw += PI / 8.0
+		"zoom-in": _dist = maxf(_dist * 0.85, 0.6)
+		"zoom-out": _dist = minf(_dist / 0.85, 80.0)
+		"reset":
+			_yaw = _home_view.x
+			_pitch = _home_view.y
+			_dist = _home_view.z
 
 
 func _all_visuals(n: Node) -> Array:

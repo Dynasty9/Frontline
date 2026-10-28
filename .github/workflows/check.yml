@@ -47,7 +47,7 @@ jobs:
       - name: Simulation scaling regressions
         run: |
           set -o pipefail
-          for test in structure_index perception_index navigation_budget client_loading update_sidecars terrain_updates squad_assessment map_placement snapshot_index terrain_cover soldier_batch structure_view grass_stream; do
+          for test in structure_index perception_index navigation_budget client_loading update_sidecars terrain_updates squad_assessment map_placement snapshot_index terrain_cover soldier_batch structure_view grass_stream field_manual_entry; do
             timeout 120 ~/godot/godot --headless --path . res://tests/${test}_test.tscn 2>&1 | tee ${test}.log
             if grep -E "SCRIPT ERROR|Parse Error|failures=[1-9]" ${test}.log; then exit 1; fi
           done

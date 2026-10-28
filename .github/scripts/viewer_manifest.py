@@ -9,4 +9,4 @@ protocol = re.search(r"const NET_VERSION := (\d+)", (root / "scripts/autoload/ne
 assert protocol, "NET_VERSION missing"
 destination = pathlib.Path(sys.argv[1])
 assert (destination / "index.wasm").is_file() and (destination / "index.pck").is_file(), "Export the game first"
-(destination / "viewer.json").write_text(json.dumps({"format": 1, "protocol": int(protocol[1])}) + "\n")
+(destination / "viewer.json").write_text(json.dumps({"format": 1, "protocol": int(protocol[1]), "manual": 1}) + "\n")
