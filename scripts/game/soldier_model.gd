@@ -1357,7 +1357,7 @@ func pose(dt: float, life: int, posture: int, act: int, speed: float, backwards:
 		if life == Soldier.Life.ALIVE:
 			# A death effect can arrive before its snapshot; an old alive state is not a revival.
 			if revived: skinned.revive()
-			var captured_walk := posture == Soldier.Post.STAND or (posture == Soldier.Post.CROUCH and rifle_driver != null and not over_wall)
+			var captured_walk := not over_wall and (posture == Soldier.Post.STAND or (posture == Soldier.Post.CROUCH and rifle_driver != null))
 			var activity := "mixamo_activities__Smoking" if act == Soldier.Act.IDLE_SMOKE else ("mixamo_activities__Digging" if act == Soldier.Act.BUILD else "")
 			var captured_activity := speed < 0.1 and not crew and skinned.native_player != null and not activity.is_empty() and skinned.native_player.has_animation(activity)
 			var captured_prone := rifle_driver != null and posture == Soldier.Post.PRONE and speed < 0.1 and act in [Soldier.Act.IDLE, Soldier.Act.SHOOT] and not crew and not over_wall and skinned.native_player.has_animation(rifle_driver.PRONE_CLIP)

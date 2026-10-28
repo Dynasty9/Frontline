@@ -302,7 +302,7 @@ func ground_cover(dt: float, planted: bool) -> void:
 		set_world(int(bones[prefix + "Foot"]), foot)
 
 
-func _seat_weapon(dt: float, authored_gun: Node3D = null) -> void:
+func _seat_weapon(dt: float, authored_gun: Node3D = null, minimum_muzzle_y := -INF) -> void:
 	var hand_pose := joint("RightHand")
 	if not _socket_ready:
 		if native_player != null:
@@ -329,6 +329,8 @@ func _seat_weapon(dt: float, authored_gun: Node3D = null) -> void:
 		set_world(int(bones["RightHand"]), hand_pose)
 	var gun_pose := hand_pose * socket
 	gun_pose.origin += global_basis * recoil.step(dt)
+	# The receiving arms differ from the procedural rig; keep the barrel above its cover.
+	gun_pose.origin.y = maxf(gun_pose.origin.y, minimum_muzzle_y - (gun_pose.basis * Vector3(0, 0.03, 0.6)).y)
 	var left := joint("LeftHand")
 	left.basis = gun_pose.basis * support_basis
 	set_world(int(bones["LeftHand"]), left)
@@ -493,7 +495,7 @@ func pose_procedural(model, dt: float, posture := -1) -> void:
 			# A back-mounted rifle must not pull either hand out of the activity pose.
 			weapon.global_transform = model.gun.global_transform * Transform3D(Basis(Vector3.UP, PI), Vector3.ZERO)
 		else:
-			_seat_weapon(dt, model.gun)
+			_seat_weapon(dt, model.gun, global_position.y + model.cover_h + 0.05 if model.over_wall else -INF)
 
 
 func revive() -> void:
