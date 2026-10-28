@@ -33,6 +33,41 @@ export const OlderRelease: Story = {
   args: { latest: false },
 }
 
+export const WithVideo: Story = {
+  args: {
+    release: {
+      ...release,
+      entries: [
+        {
+          ...release.entries[0],
+          videos: [{ url: "/media/fires.mp4", poster: "/media/fires.jpg", caption: "Fire spreads across the grass." }],
+        },
+      ],
+    },
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    const video = canvas.getByLabelText("Fire spreads across the grass.") as HTMLVideoElement
+    await expect(video).toBeVisible()
+    await expect(video).toHaveAttribute("controls")
+    await expect(video).toHaveAttribute("preload", "none")
+    await expect(video).toHaveAttribute("poster", "/media/fires.jpg")
+    await expect(video).not.toHaveAttribute("autoplay")
+    await expect(video.muted).toBe(true)
+    await expect(video.loop).toBe(true)
+    video.scrollIntoView()
+    await waitFor(() => expect(video.currentTime).toBeGreaterThan(0))
+    // Move it fully off screen so leaving the viewport stops playback.
+    video.style.transform = "translateY(200vh)"
+    await waitFor(() => expect(video.paused).toBe(true))
+    video.style.transform = ""
+    video.scrollIntoView()
+    await waitFor(() => expect(video.paused).toBe(false))
+    video.pause()
+    await expect(video.paused).toBe(true)
+  },
+}
+
 /** The newest release in the site's own changelog (src/changelog.json). */
 export const LatestRelease: Story = {
   args: { release: releases[0] },

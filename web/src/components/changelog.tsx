@@ -1,6 +1,6 @@
 import { ArrowRightIcon, ArrowSquareOutIcon } from "@phosphor-icons/react"
 import { marked } from "marked"
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { SectionLabel } from "@/components/battles"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -15,6 +15,9 @@ import {
   releases,
   screenshotsOf,
 } from "@/lib/changelog"
+import { useInView } from "@/hooks/use-in-view"
+import { useReducedMotion } from "@/hooks/use-reduced-motion"
+import { saveData } from "@/lib/media"
 import { cn } from "@/lib/utils"
 
 const KIND_STYLE: Record<Kind, string> = {
@@ -85,6 +88,38 @@ function Screens({ shots, large = false }: { shots: Shot[]; large?: boolean }) {
   )
 }
 
+function Video({ video }: { video: NonNullable<Entry["videos"]>[number] }) {
+  const [ref, inView] = useInView<HTMLVideoElement>({ threshold: 0.2 })
+  const reduced = useReducedMotion()
+
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return
+    if (inView && !reduced && !saveData()) el.play().catch(() => {})
+    else el.pause()
+  }, [inView, reduced, ref])
+
+  return (
+    <figure className="mt-4">
+      <video
+        ref={ref}
+        loop
+        src={video.url}
+        poster={video.poster}
+        controls
+        playsInline
+        muted
+        preload="none"
+        aria-label={video.caption}
+        className="aspect-video w-full object-contain ring-1 ring-white/10"
+      >
+        <a href={video.url}>Watch: {video.caption}</a>
+      </video>
+      <figcaption className="mt-1.5 text-xs text-muted-foreground">{video.caption}</figcaption>
+    </figure>
+  )
+}
+
 function EntryBlock({ entry }: { entry: Entry }) {
   return (
     <article className="border-t pt-6 first:border-t-0 first:pt-0" id={entry.slug}>
@@ -94,6 +129,9 @@ function EntryBlock({ entry }: { entry: Entry }) {
       </div>
       <p className="mt-2 text-sm leading-relaxed">{entry.summary}</p>
       <Screens shots={entry.screenshots} />
+      {entry.videos?.map((video) => (
+        <Video key={video.url} video={video} />
+      ))}
       <Details body={entry.body} />
     </article>
   )

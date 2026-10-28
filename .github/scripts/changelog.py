@@ -47,6 +47,7 @@ KINDS = {"new": "New", "improved": "Improved", "fixed": "Fixed"}
 KIND_ORDER = list(KINDS)
 IMAGE_EXT = {".jpg", ".jpeg", ".png", ".webp"}
 MAX_IMAGE = 1_500_000
+MAX_VIDEO = 15_000_000
 # what the game is made of: the same list as the release workflow's
 GAME = re.compile(r"^(scripts/|assets/|project\.godot$|main\.tscn$|export_presets\.cfg$|icon\.svg$)")
 SLUG = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
@@ -78,6 +79,7 @@ def read_entry(path: Path) -> dict:
         "headline": bool(meta.get("headline", False)),
         "release_name": str(meta.get("release_name", "")).strip(),
         "screenshots": [],
+        "videos": [],
         "body": m.group(2).strip(),
         "path": path,
     }
@@ -100,6 +102,26 @@ def read_entry(path: Path) -> dict:
         if f.stat().st_size > MAX_IMAGE:
             problems.append(f"{f.name} is {f.stat().st_size // 1000} KB: keep screenshots under {MAX_IMAGE // 1000} KB (a JPEG at quality 80)")
         entry["screenshots"].append({"file": f.name, "caption": str(s.get("caption", "")).strip()})
+    videos = meta.get("videos", [])
+    if not isinstance(videos, list) or any(not isinstance(v, dict) for v in videos):
+        problems.append("videos must use [[videos]] tables")
+        videos = []
+    for v in videos:
+        media = {}
+        for key, extensions, limit in [("file", {".mp4"}, MAX_VIDEO), ("poster", IMAGE_EXT, MAX_IMAGE)]:
+            name = str(v.get(key, ""))
+            f = path.parent / slug / name
+            if not name or any(c in name for c in "/\\:") or not f.is_file():
+                problems.append(f"video {key} {name!r} must be a file in {rel(path.parent / slug)}/")
+            elif f.suffix.lower() not in extensions:
+                problems.append(f"{name}: video {key} must be one of {', '.join(sorted(extensions))}")
+            elif f.stat().st_size > limit:
+                problems.append(f"{name}: keep video {key} under {limit // 1000} KB")
+            media[key] = name
+        media["caption"] = str(v.get("caption", "")).strip()
+        if not media["caption"]:
+            problems.append("videos need a caption describing what the clip shows")
+        entry["videos"].append(media)
     if problems:
         raise EntryError(f"{rel(path)}:\n  - " + "\n  - ".join(problems))
     return entry
@@ -197,6 +219,8 @@ def build() -> None:
                         "summary": e["summary"],
                         "body": e["body"],
                         "screenshots": [{"url": image_url(r, e, s), "caption": s["caption"]} for s in e["screenshots"]],
+                        "videos": [{"url": image_url(r, e, v), "poster": image_url(r, e, {"file": v["poster"]}),
+                                    "caption": v["caption"]} for v in e["videos"]],
                     }
                     for e in r["entries"]
                 ],
@@ -227,6 +251,8 @@ def build() -> None:
                 md += [f"#### {e['title']}", "", e["summary"], ""]
                 for s in e["screenshots"]:
                     md += [f"![{s['caption']}](changelog/{r['tag']}/{e['slug']}/{s['file']})", ""]
+                for v in e["videos"]:
+                    md += [f"[Watch: {v['caption']}]({WEBSITE}/changelog/#{r['tag']})", ""]
                 if e["body"]:
                     md += [e["body"], ""]
     CHANGELOG_MD.write_text("\n".join(md).rstrip() + "\n", encoding="utf-8", newline="\n")
@@ -248,6 +274,8 @@ def notes(version: str) -> str:
             out += [f"### {e['title']}", "", e["summary"], ""]
             for s in e["screenshots"]:
                 out += [f"![{s['caption']}]({image_url(r, e, s)})", ""]
+            for v in e["videos"]:
+                out += [f"[Watch: {v['caption']}]({WEBSITE}/changelog/#{r['tag']})", ""]
             if e["body"]:
                 out += [e["body"], ""]
     out += [
