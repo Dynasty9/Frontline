@@ -485,7 +485,7 @@ func carve() -> void:
 		# (view) the heights' texture, where they were lowered
 		var dh: PackedFloat32Array = tm.dh
 		for i in changed:
-			img.set_pixel(i % TerrainMap.DN, i / TerrainMap.DN, Color(dh[i], 0, 0))
+			img.set_pixel(i % TerrainMap.DN, i / TerrainMap.DN, Color(dh[i], world.terrain.landform.height(Vector3((i % TerrainMap.DN + 0.5) / TerrainMap.DRES - MapDims.HALF, 0, (i / TerrainMap.DN + 0.5) / TerrainMap.DRES - MapDims.HALF)), 0))
 	if img:
 		tm.deform_dirty.clear()
 		tm.deform_dirty.append(Rect2i(0, 0, TerrainMap.DN, TerrainMap.DN))

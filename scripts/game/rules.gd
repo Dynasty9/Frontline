@@ -384,6 +384,7 @@ func try_place(peer: int, team: int, kind: String, pos: Vector3, yaw: float, sqs
 		notify(peer, team, "Not enough supply at a nearby FOB for %s (%d)." % [def.name, def.cost])
 		return null
 	world.battle.spent(peer, team, int(def.cost))
+	pos.y = world.terrain.landform.height(pos) if world.terrain != null else 0.0
 	var props := {"skind": kind, "team": team, "owner": peer, "pos": pos, "yaw": yaw, "built": false, "progress": 0.0}
 	if size != Vector3.ZERO:
 		props["size"] = size
@@ -1192,8 +1193,8 @@ func _visibility() -> void:
 		for i in range(mk.size() - 1, -1, -1):
 			if (mk[i] as Vector4).w < world.time:
 				mk.remove_at(i)
-		for e in Vision.eyes(world, t, mk, own[t]):
-			_add_obs(cells[t], Vector3(e.x, 0, e.y), e.z)
+		for e in Vision.observers(world, t, mk, own[t]):
+			_add_obs(cells[t], Vector3(e.x, e.y, e.z), e.w)
 	for s in world.soldiers:
 		_vis_ent(s, cells)
 	for v in world.vehicles:
@@ -1258,7 +1259,7 @@ func _vis_ent(e: Entity, cells: Array) -> void:
 		if obs == null:
 			continue
 		for o in obs:
-			if Defs.flat(o[0] - e.position).length_squared() <= o[1] * hide * hide:
+			if Defs.flat(o[0] - e.position).length_squared() <= o[1] * hide * hide and world.terrain.ray_ground(o[0], e.center_point()).is_empty():
 				m |= 1 << t
 				break
 	if e is Structure and e.skind == "mines":

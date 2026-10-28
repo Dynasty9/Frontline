@@ -603,7 +603,7 @@ func mount_pos() -> Vector3:
 			var lp := mg_pivot_local() + Vector3(0, 0, (g.grip_r as Vector3).z + (0.34 if variant == 1 else 0.5))
 			var mp := position + b * Vector3(lp.x, 0, lp.z)
 			if variant == 1:
-				mp.y = TrenchNet.FLOOR_Y + 0.15
+				mp.y = world.terrain.landform.height(mp) + TrenchNet.FLOOR_Y + 0.15
 			return mp
 	return position + b * Vector3(0, 0, -0.5)
 

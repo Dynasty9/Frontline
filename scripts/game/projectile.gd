@@ -94,6 +94,8 @@ func get_props() -> Dictionary:
 
 
 func on_spawned() -> void:
+	if srv and is_shell():
+		target.y = maxf(target.y, world.ground_y(target))
 	if ptype in ["grad", "arty", "ac105", "ac40", "ac25"]:
 		position = origin
 	net_pos = position
@@ -133,6 +135,7 @@ func sim(dt: float) -> void:
 ## high-drag bombs timed so they land across it.
 func _jet(dt: float) -> void:
 	position += vel * dt
+	position.y = maxf(position.y, world.terrain.landform.height(position + Defs.flat(vel)) + 60.0)
 	var dirn := Defs.flat(vel).normalized()
 	var along := Defs.flat(position - target).dot(dirn)
 	if _bombs0 < 0.0:
@@ -157,9 +160,12 @@ const BOMB_THROW := 70.0
 func _bomb(dt: float) -> void:
 	vel = _bomb_step(vel, dt)
 	var np := position + vel * dt
-	if np.y <= 0.3:
+	var ground := world.terrain.ray_ground(position, np)
+	if not ground.is_empty():
+		np = ground.position
+	if not ground.is_empty() or np.y <= world.ground_y(np) + 0.3:
 		var src: Entity = world.entity(thrower_id) if thrower_id != 0 else null
-		world.combat.explode(Vector3(np.x, 0.3, np.z), {"dmg": 220.0, "radius": 10.0, "fling": 15.0, "at": 300.0, "top": true, "src": src, "team": team, "by": by, "size": 2.6, "track": 0.6, "struct_mult": 3.0})
+		world.combat.explode(Vector3(np.x, world.ground_y(np) + 0.3, np.z), {"dmg": 220.0, "radius": 10.0, "fling": 15.0, "at": 300.0, "top": true, "src": src, "team": team, "by": by, "size": 2.6, "track": 0.6, "struct_mult": 3.0})
 		world.despawn(self)
 		return
 	position = np
@@ -189,8 +195,8 @@ func _ballistic(dt: float) -> void:
 			var n: Vector3 = r.normal
 			vel = vel.bounce(n) * 0.35
 			np = r.position + n * 0.06
-		if np.y <= 0.06:
-			np.y = 0.06
+		if np.y <= world.ground_y(np) + 0.06:
+			np.y = world.ground_y(np) + 0.06
 			if vel.y < 0.0:
 				vel.y = -vel.y * 0.25
 				vel.x *= 0.5
@@ -225,8 +231,8 @@ func _rocket(dt: float) -> void:
 	var boom := Vector3.INF
 	if not r.is_empty():
 		boom = r.position
-	elif np.y <= 0.05:
-		boom = Vector3(np.x, 0.1, np.z)
+	elif np.y <= world.ground_y(np) + 0.05:
+		boom = Vector3(np.x, world.ground_y(np) + 0.1, np.z)
 	elif life_t > 2.5:
 		boom = np
 	if boom != Vector3.INF:
@@ -252,8 +258,12 @@ func is_shell() -> bool:
 func _shell() -> void:
 	var k := life_t / maxf(0.1, shell_t)
 	if k < 1.0:
-		position = shell_pos(k)
-		return
+		var next := shell_pos(k)
+		var ground := world.terrain.ray_ground(position, next)
+		if ground.is_empty():
+			position = next
+			return
+		target = ground.position
 	var src: Entity = world.entity(thrower_id) if thrower_id != 0 else null
 	match ptype:
 		"grad":
@@ -313,8 +323,8 @@ func _atgm(dt: float) -> void:
 	var boom := Vector3.INF
 	if not r.is_empty():
 		boom = r.position
-	elif np.y <= 0.05:
-		boom = Vector3(np.x, 0.1, np.z)
+	elif np.y <= world.ground_y(np) + 0.05:
+		boom = Vector3(np.x, world.ground_y(np) + 0.1, np.z)
 	elif life_t > 7.0 or position.distance_to(target) < 0.8:
 		boom = np
 	if boom != Vector3.INF:
@@ -338,9 +348,12 @@ func _sam(dt: float) -> void:
 	var spd := minf(95.0, vel.length() + 50.0 * dt)
 	vel = cur * spd
 	var np := position + vel * dt
+	var ground := world.terrain.ray_ground(position, np)
+	if not ground.is_empty():
+		np = ground.position
 	var src: Entity = world.entity(thrower_id)
-	var near := tgt != null and not tgt.gone and np.distance_to(target) < 3.2
-	if near or life_t > 6.0 or np.y < 0.1:
+	var near := ground.is_empty() and tgt != null and not tgt.gone and np.distance_to(target) < 3.2
+	if not ground.is_empty() or near or life_t > 6.0 or np.y < world.ground_y(np) + 0.1:
 		world.combat.explode(target if near else np, {"dmg": 60.0, "radius": 4.0, "fling": 2.0, "at": 620.0 if near else 0.0, "src": src, "team": team, "by": by, "size": 0.9, "struct_mult": 0.5})
 		world.despawn(self)
 		return
@@ -374,7 +387,7 @@ func kick(s: Soldier, v: Vector3) -> void:
 	flying = true
 	vel = v
 	thrown_back += 1
-	position.y = maxf(position.y, 0.15)
+	position.y = maxf(position.y, world.ground_y(position) + 0.15)
 	smothered_by = null
 
 
@@ -620,7 +633,7 @@ func _a10(dt: float) -> void:
 	var dirn := Defs.flat(vel).normalized()
 	position += dirn * A10_SPEED * dt
 	var along := Defs.flat(position - target).dot(dirn)
-	position.y = a10_alt(along)
+	position.y = world.terrain.landform.height(position) + a10_alt(along)
 	vel = dirn * A10_SPEED + Vector3(0, (a10_alt(along + 1.0) - a10_alt(along)) * A10_SPEED, 0)
 	if along >= A10_FIRE_AT and _fire_el < A10_BURST:
 		if _fire_el < 0.0:
@@ -631,7 +644,7 @@ func _a10(dt: float) -> void:
 		for i in n:
 			var k := clampf(_fire_el / A10_BURST, 0.0, 1.0)
 			var aim := target + dirn * lerpf(-A10_STRIP, A10_STRIP, k) + side * world.rng.randf_range(-3.0, 3.0) + dirn * world.rng.randf_range(-2.0, 2.0)
-			aim.y = 0.15
+			aim.y = world.ground_y(aim) + 0.15
 			_hits.append([world.time + position.distance_to(aim) / 950.0, aim])
 		_fire_el += dt
 	for i in range(_hits.size() - 1, -1, -1):
@@ -650,7 +663,7 @@ func _a10_view(dt: float) -> void:
 		position = position.lerp(net_pos, 1.0 - exp(-dt * 10.0)) if position.distance_to(net_pos) < 25.0 else net_pos
 	var along := Defs.flat(position - target).dot(dirn)
 	if not srv:
-		position.y = a10_alt(along)
+		position.y = world.terrain.landform.height(position) + a10_alt(along)
 	var fw := (dirn * A10_SPEED + Vector3(0, (a10_alt(along + 1.0) - a10_alt(along)) * A10_SPEED, 0)).normalized()
 	if absf(fw.y) < 0.98:
 		model.look_at(model.global_position + fw, Vector3.UP)
@@ -696,7 +709,9 @@ func on_station() -> float:
 
 func _ac_pos(t: float) -> Vector3:
 	var a := fuse - t * AC_SPEED / AC_R  # a left-hand orbit: the target off the port wing, where the guns are
-	return target + Vector3(cos(a) * AC_R, AC_ALT, sin(a) * AC_R)
+	var p := target + Vector3(cos(a) * AC_R, AC_ALT, sin(a) * AC_R)
+	p.y = maxf(p.y, world.terrain.landform.peak + AC_ALT)
+	return p
 
 
 ## Other orbiting aircraft's weapons: a VTOL gunship's 30 mm and rockets, an
@@ -739,7 +754,7 @@ func _ac130(dt: float) -> void:
 		var aim := _ac_aim()
 		var spread: float = gd.spread
 		aim += Vector3(world.rng.randf_range(-spread, spread), 0, world.rng.randf_range(-spread, spread))
-		aim.y = 0.15
+		aim.y = world.ground_y(aim) + 0.15
 		var muzzle := position + Vector3(0, -1.5, 0)
 		world.spawn("projectile", {"ptype": g, "team": team, "pos": muzzle, "origin": muzzle, "target": aim, "T": float(gd.T) * world.rng.randf_range(0.9, 1.1), "thrower": 0, "by": by})
 		if String(gd.snd) != "":

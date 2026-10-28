@@ -40,7 +40,9 @@ func ray(from: Vector3, to: Vector3, ex: Array = []) -> Dictionary:
 		var t: Array[RID] = []
 		t.assign(ex)
 		_q.exclude = t
-	return space().intersect_ray(_q)
+	var hit := space().intersect_ray(_q)
+	var ground: Dictionary = world.terrain.ray_ground(from, hit.position if not hit.is_empty() else to) if world.terrain != null else {}
+	return ground if not ground.is_empty() else hit
 
 
 func ent_of(col) -> Entity:
@@ -241,11 +243,11 @@ func fire_bullet(shooter: Entity, muzzle: Vector3, aim: Vector3, tgt: Entity, w:
 			world.stat("t%d_hits" % shooter.team)
 		if not r.is_empty() and tgt is Soldier and not hit:
 			world.stat("t%d_blocked" % shooter.team)
-	if w.has("he") and (impact != 0 or hit or end.y < 0.2):
+	if w.has("he") and (impact != 0 or hit or end.y < world.ground_y(end) + 0.2):
 		var hep: Vector3 = tgt.center_point() if hit and tgt and not (tgt is Drone) else end
 		if w.get("airburst", false) and tgt is Soldier and world.terrain.in_trench(tgt.position) and Defs.flat(end - tgt.position).length() < 3.0:
 			# programmed airburst: the round bursts right over the trench
-			hep = Vector3(tgt.position.x, 1.4, tgt.position.z) + Vector3(world.rng.randf_range(-0.8, 0.8), 0, world.rng.randf_range(-0.8, 0.8))
+			hep = Vector3(tgt.position.x, world.terrain.landform.height(tgt.position) + 1.4, tgt.position.z) + Vector3(world.rng.randf_range(-0.8, 0.8), 0, world.rng.randf_range(-0.8, 0.8))
 		explode(hep, {"dmg": float(w.dmg) * 1.6, "radius": float(w.he), "fling": 4.0, "at": 0.0, "src": shooter, "team": shooter.team, "size": 0.38, "struct_mult": 1.5, "veh_mult": 0.1})
 	_suppress(muzzle, end, shooter.team, float(w.supp), tgt if hit else null)
 	var now := world.time

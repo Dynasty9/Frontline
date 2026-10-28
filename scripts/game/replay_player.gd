@@ -487,6 +487,8 @@ func _valid_points(points: Variant) -> bool:
 
 func _valid_map(value: Dictionary) -> bool:
 	var metres: int = int(value.get("map_size", 1024))
+	if not Landform.valid(value.get("landform", PackedFloat32Array()), metres):
+		return false
 	if not metres in [1024, 2048, 3072]:
 		return false
 	if not value.get("kinds") is PackedByteArray or value.kinds.size() != metres * metres or not _valid_roads(value.get("roads")):

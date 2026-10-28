@@ -216,7 +216,7 @@ func is_auto() -> bool:
 
 
 func is_air() -> bool:
-	return is_heli() and position.y > 3.0
+	return is_heli() and (position.y - world.ground_y(position)) > 3.0
 
 
 func is_boat() -> bool:
@@ -305,7 +305,7 @@ func order_move(p: Vector3) -> void:
 	if base() == "lift_heli":
 		lift_dest = _landing_spot(p)
 		if lift_phase in [3, 4, 7]:
-			lift_phase = 2 if position.y > 3.0 else 1
+			lift_phase = 2 if (position.y - world.ground_y(position)) > 3.0 else 1
 		return
 	if base() == "uav":
 		uav_dest = Vector3(p.x, 0.0, p.z)
@@ -360,7 +360,7 @@ func seats_free() -> int:
 
 ## A soldier climbs in (he's hidden inside until it dismounts him).
 func board(s: Soldier) -> bool:
-	if seats_free() <= 0 or (is_heli() and position.y > 1.0) or gone:
+	if seats_free() <= 0 or (is_heli() and (position.y - world.ground_y(position)) > 1.0) or gone:
 		return false
 	passengers.append(s)
 	s.riding = self
@@ -465,7 +465,7 @@ func order_sling(v: Vehicle) -> void:
 	sling_target = v
 	lift_dest = Vector3.INF
 	_sling_t = 0.0
-	lift_phase = 5 if position.y > 3.0 else 1
+	lift_phase = 5 if (position.y - world.ground_y(position)) > 3.0 else 1
 	world.stat("sling_order")
 
 
@@ -509,7 +509,7 @@ func order_stop() -> void:
 		sling_target = null
 		lift_dest = Vector3.INF
 		_flight_hold = position
-		lift_phase = 7 if position.y > 0.6 else 0
+		lift_phase = 7 if (position.y - world.ground_y(position)) > 0.6 else 0
 	if base() == "uav":
 		uav_dest = Vector3(position.x, 0.0, position.z)
 	if base() == "attack_heli":
@@ -522,6 +522,8 @@ func order_stop() -> void:
 # --- simulation ----------------------------------------------------------------------
 
 func sim(dt: float) -> void:
+	if slung_by == null and not is_boat() and not is_heli() and base() != "uav":
+		position.y = world.terrain.landform.height(position)
 	if slung_by != null:
 		if not is_instance_valid(slung_by) or slung_by.gone or slung_by.sling_cargo != self:
 			_drop_from_sling()
@@ -580,7 +582,7 @@ func sim(dt: float) -> void:
 			smash_t = 0.15
 			_smash()
 	var laid := _salvo > 0 or (vdef.has("art") and world.time - last_fire_t < 4.0)
-	var grounded := is_heli() and position.y < 0.6
+	var grounded := is_heli() and (position.y - world.ground_y(position)) < 0.6
 	flags = (F_TRACK if track_broken else 0) | (F_FIRE if world.time - last_fire_t < 0.3 else 0) | (F_BLOCKED if blocked_t > 2.0 else 0) \
 		| (F_ELEV if laid else 0) | (F_GROUND if grounded else 0)
 
@@ -642,7 +644,7 @@ func _traffic_limit(fwd: Vector3, vmax: float) -> float:
 	var side := fwd.cross(Vector3.UP)
 	var me := _hull_size()
 	for v in world.vehicles_near(position + fwd * look * 0.5, look):
-		if v == self or v.gone or v.is_air() or v.position.y > 1.0:
+		if v == self or v.gone or v.is_air() or (v.position.y - world.ground_y(v.position)) > 1.0:
 			continue
 		if Defs.dir_of(v.rotation.y).dot(fwd) < 0.3 or absf(v.speed) < 0.8:
 			continue  # oncoming, or standing: steered round (see _avoid)
@@ -673,7 +675,7 @@ func _avoid(la: Vector3, fwd: Vector3) -> Vector3:
 	var best := INF
 	var out := la
 	for v in world.vehicles_near(position + fwd * look * 0.5, look):
-		if v == self or v.gone or v.is_air() or v.position.y > 1.0:
+		if v == self or v.gone or v.is_air() or (v.position.y - world.ground_y(v.position)) > 1.0:
 			continue
 		var rel := Defs.flat(v.position - position)
 		var ahead := rel.dot(fwd)
@@ -803,7 +805,8 @@ func _move_by(v: Vector3, dt: float) -> void:
 			_sway *= 0.4
 			yaw_rate *= 0.5
 		return
-	if base() == "supply" or world.nav.vkind_at(np) != Nav.SOLID:
+	np.y = world.terrain.landform.height(np)
+	if (base() == "supply" and world.terrain.slope_at(np) <= 0.48) or world.nav.vkind_at(np) != Nav.SOLID:
 		position = np
 	else:
 		# scrape along whatever we hit instead of stopping dead
@@ -1162,10 +1165,19 @@ func _service_tick(dt: float) -> void:
 
 ## Every rotorcraft phase uses the same dynamics, including vertical flight.
 func _fly_to(goal: Vector3, dt: float, face := INF) -> bool:
+	var requested := goal
+	var ahead := position + Defs.flat(goal - position).limit_length(40.0)
+	var clearance := world.ground_y(ahead) + LIFT_ALT
+	if Defs.flat(goal - position).length() > 8.0:
+		goal.y = maxf(goal.y, clearance)
+		if position.y < clearance - 3.0:
+			goal.x = position.x
+			goal.z = position.z
 	flight.step(self, goal, dt, face)
+	position.y = maxf(position.y, _flight_ground(position))
 	flight_pitch = flight.pitch
 	flight_roll = flight.roll
-	return flight.settled(self, goal)
+	return flight.settled(self, requested)
 
 
 func _flight_ground(p: Vector3) -> float:
@@ -1181,7 +1193,7 @@ func _landing_spot(p: Vector3) -> Vector3:
 		var n := 1 if ring == 0.0 else 8
 		for i in n:
 			var q: Vector3 = Vector3(p.x, 0.0, p.z) + Vector3(cos(i * TAU / n), 0, sin(i * TAU / n)) * ring
-			if not Defs.in_map(q, 8.0) or world.nav.vkind_at(q) != Nav.FREE:
+			if not Defs.in_map(q, 8.0) or world.nav.vkind_at(q) != Nav.FREE or not world.terrain.landform.fits(q, Vector2(5, 5), 0.0):
 				continue
 			var clear := true
 			for st in world.structures_near(q, 6.0):
@@ -1227,6 +1239,7 @@ func _release_sling() -> void:
 		return
 	v.slung_by = null
 	v.position = world.nav.nearest_walkable(Vector3(v.position.x, 0, v.position.z), true)
+	v.position.y = world.terrain.landform.height(v.position)
 	v.velocity = Vector3.ZERO
 	world.stat("sling_delivered")
 	if not is_auto():
@@ -1235,9 +1248,10 @@ func _release_sling() -> void:
 
 ## (cargo) The helicopter's gone (shot down, say): it falls.
 func _drop_from_sling() -> void:
-	var h := position.y
+	var h := position.y - world.ground_y(position)
 	slung_by = null
 	position = world.nav.nearest_walkable(Vector3(position.x, 0, position.z), true)
+	position.y = world.terrain.landform.height(position)
 	velocity = Vector3.ZERO
 	if h > 3.0:
 		take_damage(max_hp * clampf(h / 30.0, 0.15, 0.9), null)
@@ -1273,7 +1287,7 @@ func _lift_tick(dt: float) -> void:
 	if scan_t <= 0.0:
 		scan_t = 0.5
 		_scan()
-	if _target_ok() and position.y > 3.0:
+	if _target_ok() and (position.y - world.ground_y(position)) > 3.0:
 		turret_yaw = Defs.yaw_of(Defs.flat(target.position - position)) - rotation.y  # door guns cover all round
 		_fire_tick()
 	match lift_phase:
@@ -1282,14 +1296,14 @@ func _lift_tick(dt: float) -> void:
 			if lift_dest != Vector3.INF and Defs.flat(lift_dest - position).length() > 0.7:
 				lift_phase = 1
 		1:
-			var climb := Vector3(position.x, LIFT_ALT, position.z)
+			var climb := Vector3(position.x, world.ground_y(position) + LIFT_ALT, position.z)
 			if _fly_to(climb, dt):
 				if sling_target != null:
 					lift_phase = 5
 				elif lift_dest != Vector3.INF:
 					lift_phase = 2
 		2:
-			var cruise := Vector3(lift_dest.x, LIFT_ALT, lift_dest.z)
+			var cruise := Vector3(lift_dest.x, world.ground_y(lift_dest) + LIFT_ALT, lift_dest.z)
 			if _fly_to(cruise, dt):
 				lift_phase = 3
 		3:
@@ -1317,7 +1331,7 @@ func _lift_tick(dt: float) -> void:
 				sling_target = null
 				lift_phase = 1
 				return
-			if _fly_to(Vector3(tv.position.x, LIFT_ALT, tv.position.z), dt):
+			if _fly_to(Vector3(tv.position.x, tv.position.y + LIFT_ALT, tv.position.z), dt):
 				_sling_t = 0.0
 				lift_phase = 6
 		6:
@@ -1368,7 +1382,7 @@ func _uav_tick(dt: float) -> void:
 	var fl := Defs.flat(want - position)
 	velocity = velocity.move_toward(fl.normalized() * minf(spd, fl.length() * 1.5), 6.0 * dt)
 	position += velocity * dt
-	position.y = move_toward(position.y, alt, 4.0 * dt)
+	position.y = maxf(world.ground_y(position) + 4.0, move_toward(position.y, world.terrain.landform.height(position + velocity * 2.0) + alt, 4.0 * dt))
 	if velocity.length() > 0.3:
 		rotation.y = lerp_angle(rotation.y, Defs.yaw_of(velocity), minf(1.0, 3.0 * dt))
 	if _target_ok():
@@ -1392,8 +1406,8 @@ func _fire_cannon() -> void:
 	var dir := (aim - from).normalized()
 	var r := world.combat.ray(from, aim + dir * 3.0, get_exclude())
 	var hit_pos: Vector3 = r.position if not r.is_empty() else aim
-	if hit_pos.y < 0.1:
-		hit_pos.y = 0.1
+	if hit_pos.y < world.ground_y(hit_pos) + 0.1:
+		hit_pos.y = world.ground_y(hit_pos) + 0.1
 	world.fx_event([Fx.CANNON, from, hit_pos, eid])
 	world.stat("cannon")
 	last_fire_t = world.time
@@ -2158,12 +2172,15 @@ func _suspension(dt: float) -> void:
 	var hf := _ground_h(position + fwd * hs.z * 0.38)
 	var hr := _ground_h(position - fwd * hs.z * 0.38)
 	tgt.x += atan2(hf - hr, hs.z * 0.76)
+	var hl := _ground_h(position - side * hs.x * 0.4)
+	var hh := _ground_h(position + side * hs.x * 0.4)
+	tgt.y += atan2(hl - hh, hs.x * 0.8)
 	tgt.z += (hf + hr) * 0.5
 	var spring := 55.0 if heavy else 80.0
 	var damp := 8.0 if heavy else 6.5
 	_sus_v += ((tgt - _sus) * spring - _sus_v * damp) * dt
 	_sus += _sus_v * dt
-	_sus = Vector3(clampf(_sus.x, -0.35, 0.35), clampf(_sus.y, -0.35, 0.35), clampf(_sus.z, -0.6, 0.5))
+	_sus = Vector3(clampf(_sus.x, -0.5, 0.5), clampf(_sus.y, -0.5, 0.5), clampf(_sus.z, -0.6, 0.5))
 	var rumble := 0.0
 	if _vel_s.length() > 1.0:
 		var tt := Time.get_ticks_msec() / 1000.0
@@ -2179,8 +2196,9 @@ func _ground_h(p: Vector3) -> float:
 	if world.water and world.water.on_deck(p):
 		return 0.06
 	if world.in_trench(p):
-		return -0.3 if is_tracked() else -0.55
-	return world.terrain.deform_at(p) * 0.85 if world.terrain else 0.0
+		return world.terrain.landform.height(p) - position.y + (-0.3 if is_tracked() else -0.55)
+	var base_h := world.terrain.landform.height(p)
+	return base_h - position.y + (world.terrain.deform_at(p) - base_h) * 0.85
 
 
 # --- attack helicopter ------------------------------------------------------------------
@@ -2211,7 +2229,7 @@ func _gunship_tick(dt: float) -> void:
 			want = gs_dest
 	elif gs_dest != Vector3.INF:
 		want = gs_dest
-	want.y = GS_ALT if hp > max_hp * 0.25 else GS_ALT * 0.7
+	want.y = world.ground_y(want) + (GS_ALT if hp > max_hp * 0.25 else GS_ALT * 0.7)
 	var face := Defs.yaw_of(Defs.flat(target.position - position)) if has_t else INF
 	_fly_to(want, dt, face)
 	_turret_tick(dt)
@@ -2267,7 +2285,7 @@ func _heli_tick(dt: float) -> void:
 				return
 			heli_phase = 1
 		1, 4:  # climb
-			if _fly_to(Vector3(position.x, HELI_ALT, position.z), dt):
+			if _fly_to(Vector3(position.x, world.ground_y(position) + HELI_ALT, position.z), dt):
 				heli_phase += 1
 		2, 5:  # cruise
 			var goal: Vector3
@@ -2278,7 +2296,7 @@ func _heli_tick(dt: float) -> void:
 				goal = heli_dest.position + Vector3(9.0, 0, 0)
 			else:
 				goal = home.position if home else world.rules.depots[team].position + Vector3(0, 0, -12)
-			goal.y = HELI_ALT
+			goal.y = world.ground_y(goal) + HELI_ALT
 			if _fly_to(goal, dt):
 				_flight_hold = Vector3(goal.x, _flight_ground(goal), goal.z)
 				heli_phase += 1
@@ -2422,7 +2440,7 @@ func _view_process(dt: float) -> void:
 		if _vm.elev.rotation != elevation:
 			_vm.elev.rotation = elevation
 	if rotor:
-		var want := 30.0 if position.y > 0.3 or (flags & F_FIRE) != 0 else (9.0 if (flags & F_GROUND) == 0 or base() != "lift_heli" else 14.0)
+		var want := 30.0 if (position.y - world.ground_y(position)) > 0.3 or (flags & F_FIRE) != 0 else (9.0 if (flags & F_GROUND) == 0 or base() != "lift_heli" else 14.0)
 		_rotor_spd = move_toward(_rotor_spd, want, dt * 12.0)
 		rotor.rotation.y += dt * _rotor_spd
 		if tail_rotor:
@@ -2486,8 +2504,8 @@ func _view_process(dt: float) -> void:
 	_sling_view()
 	if ring:
 		ring.visible = selected
-		if selected and position.y > 0.5:
-			ring.global_position = Vector3(position.x, 0.06, position.z)
+		if selected and (position.y - world.ground_y(position)) > 0.5:
+			ring.global_position = Vector3(position.x, world.ground_y(position) + 0.06, position.z)
 
 
 var _cables: MeshInstance3D

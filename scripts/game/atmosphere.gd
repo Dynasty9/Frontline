@@ -125,6 +125,9 @@ func biome_at(p: Vector3) -> float:
 
 
 func grass_amount(p: Vector3) -> float:
+	if world.terrain.landform.peak > 1.0:
+		if world.terrain.landform.height(p) > world.terrain.landform.peak * 0.58 or world.terrain.slope_at(p) > 0.5:
+			return 0.0
 	var b := biome_at(p)
 	return 1.0 - smoothstep(0.62, 0.74, b)
 
@@ -214,7 +217,7 @@ func _build_env() -> void:
 	sun.shadow_normal_bias = 1.2
 	sun.shadow_blur = 1.2
 	sun.directional_shadow_mode = DirectionalLight3D.SHADOW_PARALLEL_4_SPLITS
-	sun.directional_shadow_max_distance = 220.0
+	sun.directional_shadow_max_distance = 800.0
 	sun.directional_shadow_blend_splits = true
 	sun.directional_shadow_fade_start = 0.85
 	sun.light_volumetric_fog_energy = 0.8
@@ -255,18 +258,23 @@ const GROUND_LOD := 170.0  # beyond this from the camera a chunk is drawn on a c
 func _build_ground() -> void:
 	_blank_mask = ImageTexture.create_from_image(Image.create(4, 4, false, Image.FORMAT_R8))
 	ground = MeshInstance3D.new()
-	ground.mesh = _ground_ring(GROUND_HALF, MapDims.HALF + 132.0)
+	ground.mesh = _ground_ring(GROUND_HALF, MapDims.HALF + 1800.0)
 	ground_mat = ShaderMaterial.new()
 	var sh := Shader.new()
 	sh.code = MapDims.shader(GROUND_SHADER)
 	ground_mat.shader = sh
 	ground_mat.set_shader_parameter("biome_tex", biome_tex)
 	ground_mat.set_shader_parameter("detail_tex", detail_tex)
+	ground_mat.set_shader_parameter("rock_color", preload("res://assets/terrain/aerial_rocks_02_diff_2k.jpg"))
+	ground_mat.set_shader_parameter("rock_normal", preload("res://assets/terrain/aerial_rocks_02_nor_gl_2k.jpg"))
+	ground_mat.set_shader_parameter("moss_color", preload("res://assets/terrain/aerial_grass_rock_diff_2k.jpg"))
+	ground_mat.set_shader_parameter("moss_normal", preload("res://assets/terrain/aerial_grass_rock_nor_gl_2k.jpg"))
 	ground_mat.set_shader_parameter("cloud_strength", float(_d.clouds))
 	ground_mat.set_shader_parameter("sun_tint", _d.sun)
 	ground_mat.set_shader_parameter("wet", 1.0 if mood == "rain" else 0.0)
 	ground_mat.set_shader_parameter("trench_mask", _blank_mask)
 	ground.material_override = ground_mat
+	ground.custom_aabb = AABB(Vector3(-MapDims.HALF - 1800.0, -5.0, -MapDims.HALF - 1800.0), Vector3(MapDims.SIZE + 3600.0, 517.0, MapDims.SIZE + 3600.0))
 	ground.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	add_child(ground)
 	# the battlefield itself: chunks of fine grid (culled one by one), all
@@ -289,10 +297,10 @@ func _build_ground() -> void:
 				var mi := MeshInstance3D.new()
 				mi.mesh = cm_far if far else cm
 				mi.material_override = ground_mat
-				mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+				mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
 				mi.position = Vector3(-GROUND_HALF + (cx + 0.5) * cs, 0, -GROUND_HALF + (cz + 0.5) * cs)
 				# room for the displacement in the culling box
-				mi.extra_cull_margin = 2.0
+				mi.custom_aabb = AABB(Vector3(-cs * 0.5, -5.0, -cs * 0.5), Vector3(cs, 517.0, cs))
 				if far:
 					mi.visibility_range_begin = GROUND_LOD
 				else:
@@ -420,8 +428,8 @@ func _setup_rain() -> void:
 
 func _rain_tick(dt: float) -> void:
 	var f := world.cam.focus_pos
-	_rain.global_position = Vector3(f.x, 34.0, f.z)
-	_splash.global_position = Vector3(f.x, 0.05, f.z)
+	_rain.global_position = Vector3(f.x, world.ground_y(f) + 34.0, f.z)
+	_splash.global_position = Vector3(f.x, world.ground_y(f) + 0.05, f.z)
 	# lightning: a double flash lighting the clouds, thunder a moment later
 	_bolt_t -= dt
 	if _bolt_t <= 0.0:
@@ -480,7 +488,7 @@ func _flares_tick(dt: float) -> void:
 		var root: Node3D = f[0]
 		var age: float = f[2]
 		var life: float = f[3]
-		root.position.y = maxf(6.0, root.position.y - dt * 1.3)
+		root.position.y = maxf(world.ground_y(root.position) + 6.0, root.position.y - dt * 1.3)
 		root.position.x += sin(age * 0.7) * dt * 0.8
 		var fade := clampf((life - age) / 3.0, 0.0, 1.0) * clampf(age * 2.0, 0.0, 1.0)
 		var l: OmniLight3D = f[1]
@@ -494,7 +502,7 @@ func _flares_tick(dt: float) -> void:
 func _spawn_flare(p: Vector3) -> void:
 	var root := Node3D.new()
 	add_child(root)
-	root.position = Vector3(p.x, 36.0, p.z)
+	root.position = Vector3(p.x, world.ground_y(p) + 36.0, p.z)
 	var l := OmniLight3D.new()
 	l.light_color = Color(1.0, 0.86, 0.62)
 	l.omni_range = 70.0
@@ -589,11 +597,11 @@ func apply_settings() -> void:
 			sun.light_angular_distance = 0.0
 		2:
 			sun.directional_shadow_mode = DirectionalLight3D.SHADOW_PARALLEL_4_SPLITS
-			sun.directional_shadow_max_distance = 220.0
+			sun.directional_shadow_max_distance = 800.0
 			sun.light_angular_distance = minf(float(_d.soft), 1.0)
 		3:
 			sun.directional_shadow_mode = DirectionalLight3D.SHADOW_PARALLEL_4_SPLITS
-			sun.directional_shadow_max_distance = 260.0
+			sun.directional_shadow_max_distance = 1200.0
 			sun.light_angular_distance = float(_d.soft)
 	RenderingServer.directional_soft_shadow_filter_set_quality(
 		[RenderingServer.SHADOW_QUALITY_HARD, RenderingServer.SHADOW_QUALITY_SOFT_LOW, RenderingServer.SHADOW_QUALITY_SOFT_MEDIUM, RenderingServer.SHADOW_QUALITY_SOFT_HIGH][sh])
@@ -729,20 +737,26 @@ func _grid_mesh(size: float, step: float) -> ArrayMesh:
 	return m
 
 
-## Flat ground outside the battlefield: a square ring around it.
+## Scenery beyond the playable boundary; its shader blends into the level map edge.
 func _ground_ring(inner: float, outer: float) -> ArrayMesh:
 	var st := SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
 	var rects := [Rect2(-outer, -outer, outer * 2.0, outer - inner), Rect2(-outer, inner, outer * 2.0, outer - inner),
 		Rect2(-outer, -inner, outer - inner, inner * 2.0), Rect2(inner, -inner, outer - inner, inner * 2.0)]
 	for r in rects:
-		var a := Vector3(r.position.x, 0, r.position.y)
-		var b := Vector3(r.end.x, 0, r.position.y)
-		var c := Vector3(r.end.x, 0, r.end.y)
-		var d := Vector3(r.position.x, 0, r.end.y)
-		for p in [a, b, c, a, c, d]:
-			st.set_normal(Vector3.UP)
-			st.add_vertex(p)
+		var nx := ceili(r.size.x / 24.0)
+		var nz := ceili(r.size.y / 24.0)
+		for z in nz:
+			for x in nx:
+				var lo: Vector2 = r.position + r.size * Vector2(float(x) / nx, float(z) / nz)
+				var hi: Vector2 = r.position + r.size * Vector2(float(x + 1) / nx, float(z + 1) / nz)
+				var a := Vector3(lo.x, 0, lo.y)
+				var b := Vector3(hi.x, 0, lo.y)
+				var c := Vector3(hi.x, 0, hi.y)
+				var d := Vector3(lo.x, 0, hi.y)
+				for p in [a, b, c, a, c, d]:
+					st.set_normal(Vector3.UP)
+					st.add_vertex(p)
 	return st.commit()
 
 
@@ -777,6 +791,7 @@ func _update_deform(dt: float) -> void:
 	if tm == null or tm.deform_img == null:
 		return
 	if not tm.deform_dirty.is_empty() and _deform_t <= 0.0:
+		ground_mat.set_shader_parameter("snow_line", maxf(25.0, tm.landform.peak * 0.48) if tm.landform.peak > 1.0 else 10000.0)
 		_deform_t = 0.22
 		for rect: Rect2i in tm.deform_dirty:
 			_deform_tiles.mark_dirty(rect)
@@ -886,16 +901,21 @@ const GROUND_SHADER := """
 shader_type spatial;
 render_mode specular_schlick_ggx;
 
+uniform sampler2D rock_color : source_color, filter_linear_mipmap_anisotropic, repeat_enable;
+uniform sampler2D moss_color : source_color, filter_linear_mipmap_anisotropic, repeat_enable;
+uniform sampler2D rock_normal : hint_normal, filter_linear_mipmap_anisotropic, repeat_enable;
+uniform sampler2D moss_normal : hint_normal, filter_linear_mipmap_anisotropic, repeat_enable;
 uniform sampler2D biome_tex : filter_linear, repeat_enable;
 uniform sampler2D detail_tex : filter_linear_mipmap, repeat_enable;
-uniform vec3 grass_a : source_color = vec3(0.14, 0.2, 0.07);
-uniform vec3 grass_b : source_color = vec3(0.24, 0.29, 0.1);
+uniform vec3 grass_a : source_color = vec3(0.24, 0.29, 0.19);
+uniform vec3 grass_b : source_color = vec3(0.32, 0.36, 0.24);
 uniform vec3 dry : source_color = vec3(0.36, 0.33, 0.19);
 uniform vec3 dirt : source_color = vec3(0.3, 0.26, 0.2);
 uniform vec3 mud : source_color = vec3(0.19, 0.16, 0.12);
 uniform vec3 sun_tint : source_color = vec3(1.0);
 uniform float cloud_strength = 0.3;
-uniform float bump = 1.4;
+uniform float bump = 0.85;
+uniform float snow_line = 10000.0;
 uniform float wet = 0.0;
 uniform sampler2D trench_mask : hint_default_black, filter_linear, repeat_disable;
 uniform sampler2DArray deform_tex : filter_linear, repeat_disable;
@@ -906,7 +926,17 @@ uniform float sea_x = 1e9;
 varying vec3 wpos;
 varying float puddle;
 
+float backdrop(vec2 p) {
+	float edge = max(abs(p.x), abs(p.y)) - __MAP_HALF__;
+	float coast = 1.0 - smoothstep(sea_x - 90.0, sea_x, p.x);
+	float ridge = 1.0 - abs(textureLod(detail_tex, p / 8000.0, 0.0).r * 2.0 - 1.0);
+	float hills = pow(ridge, 3.0) * 260.0 + textureLod(detail_tex, p / 2000.0, 0.0).r * 35.0;
+	return hills * smoothstep(8.0, 300.0, edge) * coast * (1.0 - step(9999.0, snow_line))
+		- 3.2 * smoothstep(sea_x, sea_x + 30.0, p.x);
+}
+
 float dfm(vec2 p) {
+	if (max(abs(p.x), abs(p.y)) >= __MAP_HALF__) { return backdrop(p); }
 	return terrain_height(deform_tex, (p + __MAP_HALF__) / __MAP_SIZE__);
 }
 
@@ -916,9 +946,8 @@ void vertex() {
 		float d = dfm(wpos.xz);
 		VERTEX.y += d;
 		wpos.y += d;
-	} else if (wpos.x > sea_x) {
-		// past the edge of the map the sea runs on to the horizon
-		float d = -3.2 * smoothstep(sea_x, sea_x + 30.0, wpos.x);
+	} else {
+		float d = backdrop(wpos.xz);
 		VERTEX.y += d;
 		wpos.y += d;
 	}
@@ -926,6 +955,23 @@ void vertex() {
 
 float hgt(vec2 p) {
 	return texture(detail_tex, p / 9.0).r * 0.6 + texture(detail_tex, p / 2.3 + 0.31).r * 0.4;
+}
+
+vec3 surface_color(sampler2D tex, vec3 p, vec3 weights) {
+	return texture(tex, p.zy).rgb * weights.x + texture(tex, p.xz).rgb * weights.y + texture(tex, p.xy).rgb * weights.z;
+}
+
+vec3 surface_normal(sampler2D tex, vec3 p, vec3 weights, vec3 geometric) {
+	vec3 x = texture(tex, p.zy).xyz * 2.0 - 1.0;
+	vec3 y = texture(tex, p.xz).xyz * 2.0 - 1.0;
+	vec3 z = texture(tex, p.xy).xyz * 2.0 - 1.0;
+	// BC5 normal maps retain XY only; reconstruct the upward component.
+	x.z = sqrt(max(0.0, 1.0 - dot(x.xy, x.xy)));
+	y.z = sqrt(max(0.0, 1.0 - dot(y.xy, y.xy)));
+	z.z = sqrt(max(0.0, 1.0 - dot(z.xy, z.xy)));
+	return normalize(vec3(x.z * sign(geometric.x), x.y, x.x) * weights.x
+		+ vec3(y.x, y.z, y.y) * weights.y
+		+ vec3(z.x, z.y, z.z * sign(geometric.z)) * weights.z);
 }
 
 void fragment() {
@@ -967,7 +1013,9 @@ void fragment() {
 	// (the water over it darkens the sea's sand as it deepens: see WaterView)
 	col = mix(col, shore_col * mix(0.5, 0.85, wm.b), wm.a);
 	// shell holes: churned dark earth in the bowl, dry thrown soil on the rim
-	float hd = dfm(p);
+	float geology = terrain_geology(deform_tex, (p + __MAP_HALF__) / __MAP_SIZE__);
+	if (max(abs(p.x), abs(p.y)) >= __MAP_HALF__) { geology = dfm(p); }
+	float hd = dfm(p) - geology;
 	float bowl = smoothstep(-0.03, -0.35, hd) * (1.0 - wm.g);
 	float lip = smoothstep(0.02, 0.12, hd) * (1.0 - wm.g);
 	// (linear colours: freshly turned earth is dark, the bottom blackened)
@@ -975,6 +1023,30 @@ void fragment() {
 	col = mix(col, churn, clamp(bowl * 1.1, 0.0, 1.0));
 	col = mix(col, vec3(0.018, 0.016, 0.014), smoothstep(-0.3, -0.75, hd) * 0.55);
 	col = mix(col, mix(dirt, vec3(0.085, 0.066, 0.047), 0.6) * (0.85 + 0.3 * d3), lip * 0.75);
+	float rx = (dfm(p + vec2(1.0, 0.0)) - dfm(p - vec2(1.0, 0.0))) * 0.5;
+	float rz = (dfm(p + vec2(0.0, 1.0)) - dfm(p - vec2(0.0, 1.0))) * 0.5;
+	float slope = length(vec2(rx, rz));
+	vec3 geometric = normalize(vec3(-rx, 1.0, -rz));
+	vec3 weights = pow(abs(geometric), vec3(4.0));
+	weights /= weights.x + weights.y + weights.z;
+	vec3 rock = surface_color(rock_color, wpos / 48.0, weights);
+	rock = mix(rock, surface_color(rock_color, wpos / 117.0 + 0.37, weights), 0.3);
+	vec3 moss = surface_color(moss_color, wpos / 24.0, weights);
+	moss = mix(moss, surface_color(moss_color, wpos / 71.0 + 0.23, weights), 0.3);
+	float elevation = smoothstep(0.0, snow_line, geology);
+	moss = mix(moss, vec3(dot(moss, vec3(0.2126, 0.7152, 0.0722))), 0.4);
+	moss *= mix(vec3(0.58, 0.80, 0.51), vec3(0.86, 0.87, 0.78), elevation);
+	rock *= mix(vec3(0.72, 0.68, 0.58), vec3(0.92, 0.93, 0.95), elevation);
+	float cavity = clamp((dfm(p + vec2(4, 0)) + dfm(p - vec2(4, 0)) + dfm(p + vec2(0, 4)) + dfm(p - vec2(0, 4)) - 4.0 * geology) * 0.3, -1.0, 1.0);
+	float exposed = smoothstep(0.30, 0.95, slope + (d1 - 0.5) * 0.25 - cavity * 0.12);
+	vec3 alpine = mix(moss, rock, exposed);
+	alpine *= 1.0 - max(cavity, 0.0) * 0.3;
+	col = mix(col, alpine, (1.0 - wm.g) * (1.0 - wm.a) * (1.0 - clamp(bowl, 0.0, 1.0)));
+	// Snow gathers in sheltered gullies; winds scour the rock ribs between them.
+	float snow = smoothstep(snow_line - 18.0, snow_line + 12.0, geology + cavity * 14.0 - rx * 9.0 + (d1 - 0.5) * 18.0);
+	snow *= 1.0 - smoothstep(0.9, 2.8, slope - cavity * 0.25);
+	snow *= 1.0 - clamp(bowl, 0.0, 1.0);
+	col = mix(col, mix(vec3(0.68, 0.77, 0.85), vec3(0.94, 0.96, 0.98), d2), snow);
 	ALBEDO = col;
 	ROUGHNESS = mix(mix(0.96, 0.82, dirt_m), 0.55, wet * 0.5);
 	ROUGHNESS = mix(ROUGHNESS, 0.45, max(wm.a * 0.8, wet_sand * 0.6));
@@ -987,10 +1059,12 @@ void fragment() {
 	float bm = bump * mix(0.6, 1.4, dirt_m) * (1.0 + bowl * 1.5);
 	vec3 n = normalize(vec3((hc - hx) * bm / e * 0.1, 1.0, (hc - hz) * bm / e * 0.1));
 	// the crater's own slopes
-	float de = 0.25;
+	float de = 2.0;
 	float gx = (dfm(p + vec2(de, 0.0)) - dfm(p - vec2(de, 0.0))) / (2.0 * de);
 	float gz = (dfm(p + vec2(0.0, de)) - dfm(p - vec2(0.0, de))) / (2.0 * de);
 	n = normalize(n + vec3(-gx, 0.0, -gz));
+	vec3 mapped = mix(surface_normal(moss_normal, wpos / 24.0, weights, geometric), surface_normal(rock_normal, wpos / 48.0, weights, geometric), exposed);
+	n = normalize(mix(n, mapped, 0.4 * (1.0 - snow) * (1.0 - wm.a)));
 	n = normalize(mix(n, vec3(0.0, 1.0, 0.0), puddle * 0.9));
 	NORMAL = normalize((VIEW_MATRIX * vec4(n, 0.0)).xyz);
 }
@@ -1023,13 +1097,17 @@ uniform sampler2DArray deform_tex : filter_linear, repeat_disable;
 // TERRAIN_TEXTURE_HELPER
 instance uniform float country = 0.0;
 varying vec3 wpos;
-void vertex() { wpos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz; }
+void vertex() {
+	wpos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
+	float h = terrain_geology(deform_tex, (wpos.xz + __MAP_HALF__) / __MAP_SIZE__);
+	VERTEX.y += h; wpos.y += h;
+}
 void fragment() {
 	if (texture(trench_mask, (wpos.xz + __MAP_HALF__) / __MAP_SIZE__).r > 0.5) {
 		discard;
 	}
 	// a shell hole punches through the road surface
-	if (terrain_height(deform_tex, (wpos.xz + __MAP_HALF__) / __MAP_SIZE__) < -0.07) {
+	if (terrain_height(deform_tex, (wpos.xz + __MAP_HALF__) / __MAP_SIZE__) - terrain_geology(deform_tex, (wpos.xz + __MAP_HALF__) / __MAP_SIZE__) < -0.07) {
 		discard;
 	}
 	float x = UV.x;

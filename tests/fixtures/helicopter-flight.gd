@@ -47,6 +47,7 @@ func _ready() -> void:
 	TestRun.watch()
 	field = Field.new()
 	add_child(field)
+	field.terrain = TerrainMap.new(field)
 	field.rules = FlightRules.new(field)
 	field.nav = FlightNav.new()
 	for hz in [30, 60]:

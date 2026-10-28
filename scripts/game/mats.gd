@@ -823,7 +823,7 @@ void vertex() {
 void fragment() {
 	if (crater_cut) {
 		vec2 cuv = (wpos.xz + crater_half) / (crater_half * 2.0);
-		if (terrain_height(crater_tex, cuv) < -0.07 || texture(trench_tex, cuv).r > 0.5) {
+		if (terrain_height(crater_tex, cuv) - terrain_geology(crater_tex, cuv) < -0.07 || texture(trench_tex, cuv).r > 0.5) {
 			discard;
 		}
 	}

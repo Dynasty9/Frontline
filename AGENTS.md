@@ -4,7 +4,7 @@ Notes for AI coding agents (Claude Code, Codex, Copilot and the like) working on
 
 ## The project in one paragraph
 
-Frontline is a squad-level military RTS written entirely in **GDScript for Godot 4.7** (standard build, not .NET). There is no build step and no asset pipeline: every model, effect, texture and sound is generated in code at runtime. Multiplayer is server-authoritative. The host simulates everything, including the AI, and clients only draw what they're sent.
+Frontline is a squad-level military RTS written entirely in **GDScript for Godot 4.7** (standard build, not .NET). Models, effects and sounds are generated in code at runtime. Ground materials use bundled CC0 photographs (credits in `assets/terrain/LICENSE.md`). Multiplayer is server-authoritative. The host simulates everything, including the AI, and clients only draw what they're sent.
 
 ## Where things are
 
@@ -83,7 +83,7 @@ CI (`.github/workflows/check.yml`) runs steps 1 to 3 on every push and pull requ
 - **Release builds swallow GDScript's own runtime errors.** In an exported build a null dereference or an out-of-range index prints nothing: the call just returns null and play goes on. Only engine errors and `push_error` reach the players' error reports (`autoload/errors.gd`), so script bugs have to be caught in dev runs and CI.
 - **Worker threads** (`WorkerThreadPool`) pay off when each task works on objects of its own: many threads calling into one shared object (all reading the same `AStarGrid2D`, say) ran slower than a single thread. Never resize an Array or add to a Dictionary from a worker (filling pre-sized slots is fine), and give each worker its own `RandomNumberGenerator`, since the global `randf()` isn't thread-safe. Put anything gameplay depends on back together in a fixed order, so a seed still gives the same result (see `HNav.build_all`). Code that two threads can run at the same time must keep to typed values and must not divide whole numbers with `/` or `%`. An operator on an untyped value or an object (`x == null`), and in exported builds every `int / int` and `int % int`, rewrites its own bytecode the first time it runs, and a second thread reaching that line at that moment can crash the game (godotengine/godot#124010; debug builds and CI only ever hit the first kind). Look values up or shift instead (`HNav._corner`, `>> 1`).
 - **Ground and water shader colours are linear**, not sRGB. A colour that looks right in a picker comes out far too bright on the ground.
-- **The terrain is flat** (y = 0, plus a deformation height field for craters, trenches and riverbeds). Buildings, trenches and line of sight all assume it, so adding hills is a large change, not a tweak.
+- **Standard terrain is elevated.** `Landform` stores immutable geology; `TerrainMap.dh` includes it plus deformation. Use `world.ground_y` for ground contact, `landform.height` for foundations and `ray_ground` for terrain obstruction. Scenario maps may still be flat. Never interpret absolute Y as height above ground.
 - **The browser build draws with the Compatibility renderer** (WebGL 2), not Forward+. Per-object shader values go
   through `Mats.set_inst`, never `set_instance_shader_parameter`; a particle emitter goes into the scene through
   `Vfx.part` (it becomes CPU particles there) and is handled with `Vfx`'s helpers, not as a `GPUParticles3D`; and

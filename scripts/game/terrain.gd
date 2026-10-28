@@ -46,10 +46,13 @@ static var DN := 1024 * DRES
 var dh := PackedFloat32Array()
 var deform_dirty: Array[Rect2i] = []  # keep distant blasts separate instead of dirtying the ground between them
 var deform_img: Image  # (view only) the same heights as a texture
+var landform: Landform
+var slopes := PackedFloat32Array()
 
 
 func _init(w) -> void:
 	world = w
+	landform = Landform.new(N)
 	for a in [base, crater, rubble, woods, cdir, solid, trench, netted]:
 		a.resize(N * N)
 	cov.resize(N * N)
@@ -62,8 +65,68 @@ func _init(w) -> void:
 		_dirs.append(Vector2(cos(ang), sin(ang)))
 	dh.resize(DN * DN)
 	if w.has_view:
-		deform_img = Image.create(DN, DN, false, Image.FORMAT_RH)  # half floats: half the upload of a 1 km map at 50 cm
+		deform_img = Image.create(DN, DN, false, Image.FORMAT_RGH)  # surface height and undisturbed geology
 	_make_biome()
+
+
+func install_landform(samples: PackedFloat32Array) -> void:
+	landform.heights = samples
+	landform.peak = 0.0
+	for h in samples:
+		landform.peak = maxf(landform.peak, h)
+	if samples.is_empty():
+		return
+	slopes.resize(N * N)
+	for z in N:
+		for x in N:
+			var i := z * N + x
+			slopes[i] = landform.slope(Vector3(x + 0.5 - H, 0, z + 0.5 - H))
+			_nav_refresh(i)
+	for z in DN:
+		for x in DN:
+			var i := z * DN + x
+			var h := landform.height(Vector3((x + 0.5) / DRES - H, 0, (z + 0.5) / DRES - H))
+			dh[i] += h
+			if deform_img:
+				deform_img.set_pixel(x, z, Color(dh[i], h, 0))
+	if deform_img:
+		deform_dirty.append(Rect2i(0, 0, DN, DN))
+	version += 1
+
+
+func slope_at(p: Vector3) -> float:
+	return slopes[idx_of(p)] if not slopes.is_empty() else 0.0
+
+
+## Server sight and ballistics use the same ground even without a renderer.
+func ray_ground(a: Vector3, b: Vector3) -> Dictionary:
+	if landform.heights.is_empty() or minf(a.y, b.y) > landform.peak + 0.6:
+		return {}
+	var count := maxi(1, ceili(Defs.flat(b - a).length() / 1.0))
+	var previous := 0.0
+	for i in range(1, count + 1):
+		var t := float(i) / count
+		var p := a.lerp(b, t)
+		if absf(p.x) <= H and absf(p.z) <= H and p.y < _ray_height(p):
+			var lo := previous
+			var hi := t
+			for iteration in 8:
+				var mid := (lo + hi) * 0.5
+				var q := a.lerp(b, mid)
+				if q.y < _ray_height(q):
+					hi = mid
+				else:
+					lo = mid
+			p = a.lerp(b, hi)
+			var dx := deform_at(p + Vector3.RIGHT * 0.5) - deform_at(p - Vector3.RIGHT * 0.5)
+			var dz := deform_at(p + Vector3.BACK * 0.5) - deform_at(p - Vector3.BACK * 0.5)
+			return {"position": p, "normal": Vector3(-dx, 1.0, -dz).normalized(), "collider": null, "shape": -1}
+		previous = t
+	return {}
+
+
+func _ray_height(p: Vector3) -> float:
+	return world.ground_y(p) if trench[idx_of(p)] > 0 else deform_at(p)
 
 
 ## The last seed's biome and the mud it lays (a test loads battle after battle,
@@ -161,6 +224,10 @@ static func ground_cover(cr: int, ru: int, wo: int, ba: int) -> int:
 
 
 func speed_mul(p: Vector3, vehicle: bool, tracked := true) -> float:
+	return _surface_speed(p, vehicle, tracked) / (1.0 + slope_at(p) * (2.4 if vehicle else 1.3))
+
+
+func _surface_speed(p: Vector3, vehicle: bool, tracked: bool) -> float:
 	match kind_at(p):
 		TRENCH:
 			# tracks claw across a trench; wheels drop in and stick
@@ -230,6 +297,11 @@ func net_cover(p: Vector3) -> float:
 
 
 func nav_weight(idx: int, vehicle: bool) -> float:
+	var slope := slopes[idx] if not slopes.is_empty() else 0.0
+	return _surface_weight(idx, vehicle) * (1.0 + slope * (3.0 if vehicle else 1.5))
+
+
+func _surface_weight(idx: int, vehicle: bool) -> float:
 	if trench[idx] > 0:
 		return 7.0 if vehicle else 0.7  # infantry move along the trenches: covered all the way
 	if crater[idx] > 0:
@@ -848,7 +920,7 @@ func release_nav() -> void:
 func add_crater(p: Vector3, size: float) -> void:
 	if base[idx_of(p)] >= WATER:
 		return  # a fountain of water, not a hole
-	if p.y > 1.6:
+	if p.y > landform.height(p) + 1.6:
 		return
 	if size >= 0.55:
 		_stamp_crater(p, size)
@@ -868,7 +940,7 @@ func add_crater(p: Vector3, size: float) -> void:
 	version += 1
 
 
-## Ground height at p (bilinear between samples): 0 is the undisturbed field.
+## Total ground height at p, bilinear between samples, including geology and craters.
 func deform_at(p: Vector3) -> float:
 	var fx := (p.x + H) * DRES - 0.5
 	var fz := (p.z + H) * DRES - 0.5
@@ -917,16 +989,17 @@ func _stamp_crater(p: Vector3, size: float) -> void:
 			var ang := atan2(dz, dx)
 			var rr := r / (rad * (1.0 + amp * sin(ang * k1 + ph1) + amp * 0.5 * sin(ang * (k1 + 2.0) + ph2)))
 			var i := z * DN + x
-			var cur := dh[i]
+			var ground := landform.height(Vector3(wx, 0, wz))
+			var cur := dh[i] - ground
 			var nh := cur
 			if rr < 1.0:
 				var bowl := -depth * pow(1.0 - rr * rr, 1.25)
 				# fresh hole: at least this deep; an old one gets deeper still
 				nh = minf(cur + bowl * 0.35, bowl + cur * 0.25)
 			nh += rim_h * exp(-pow((rr - 1.02) / 0.3, 2.0)) * (1.0 + 0.35 * sin(ang * 7.0 + ph2))
-			dh[i] = clampf(nh, -1.4, 0.55)
+			dh[i] = ground + clampf(nh, -1.4, 0.55)
 			if deform_img:
-				deform_img.set_pixel(x, z, Color(dh[i], 0, 0))
+				deform_img.set_pixel(x, z, Color(dh[i], ground, 0))
 	var rect := Rect2i(x0, z0, x1 - x0 + 1, z1 - z0 + 1)
 	if deform_img:
 		deform_dirty.append(rect)

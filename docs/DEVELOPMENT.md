@@ -784,3 +784,30 @@ Benchmark JSON includes loading-stage timings, route-cache hits and path queue
 waiting time. `--require-target` makes the benchmark fail when any measured rendered
 frame exceeds 16.67 ms or any simulation tick exceeds 33.33 ms; ordinary runs retain
 these budget results without treating an unfinished optimization as a harness error.
+
+## Generated elevation
+
+`Landform` produces immutable 4 m geology samples using seeded, domain-warped ridged simplex noise,
+thermal material transfer and seeded hydraulic droplet erosion. Rain cuts gullies and deposits sediment downhill. Planned roads, rivers, towns and bases
+reserve level corridors before the final erosion pass. This keeps existing bridge, supply and town layouts
+connected. The river network is planned for gameplay before erosion, rather than derived from the erosion simulation.
+
+Ground materials blend bundled CC0 aerial rock and moss photographs with triplanar normal maps, slope,
+elevation and curvature-driven snow. Keep mipmaps enabled in their import settings. Credits and hashes
+are in `assets/terrain/`. Outside the playable boundary a coarse, non-interactive mountain backdrop blends
+into the map edge; it is scenery only and does not enter navigation, replication or combat.
+
+`TerrainMap.dh` stores total height on the existing 50 cm deformation grid. The rendering texture carries
+surface height in R and immutable geology in G; crater shading subtracts the latter. Use `world.ground_y`
+for a soldier or touchdown (including trench floors and bridge decks), `landform.height` for foundations,
+and `ray_ground` for terrain occlusion. Do not treat world Y as altitude above ground.
+
+Navigation blocks slopes over 0.85 rise/run for infantry and 0.48 for vehicles. Remaining slopes increase
+travel costs and reduce speed. Building and landing footprints sample their corners and edges for levelness.
+Enemy visibility uses sampled terrain rays; the visual fog uses a cached pixel-resolution horizon sweep.
+
+The host transmits elevation samples with the static map and recordings save them. Protocol 12 prevents
+older builds from joining elevated maps. Empty samples preserve flat scenarios and older recordings.
+`tests/landform.test.mjs` checks deterministic generation, malformed samples, sight, navigation, craters,
+infantry grounding, truck slope limits, helicopter crossings/landings and serialization. Replay tests exercise
+both flat scenarios and generated mountains. Run the full scenario suite and the long mission suite too.

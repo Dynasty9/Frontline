@@ -8,6 +8,7 @@ func reference(w: World, p: Vector3) -> bool:
 
 func _ready() -> void:
 	var w := World.new()
+	w.terrain = TerrainMap.new(w)
 	var objects: Array[Structure] = []
 	for i in 500:
 		var st := Structure.new()

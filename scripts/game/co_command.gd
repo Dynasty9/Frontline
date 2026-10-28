@@ -602,7 +602,7 @@ func _add_ping(from: int, kind: String, pos: Vector3, eid: int) -> void:
 	var pg := Ping.new()
 	pg.peer = from
 	pg.kind = kind
-	pg.pos = pos
+	pg.pos = Vector3(pos.x, world.ground_y(pos), pos.z)
 	pg.eid = eid
 	pg.born = Time.get_ticks_msec()
 	pg.life = PING_LIFE_ENEMY if kind == "enemy" else PING_LIFE
@@ -721,7 +721,9 @@ func _add_sketch(from: int, pts: PackedVector2Array) -> void:
 	sk.peer = from
 	sk.born = Time.get_ticks_msec()
 	for q in pts:
-		sk.pts.append(Vector3(q.x, 0.0, q.y))
+		var point := Vector3(q.x, 0.0, q.y)
+		point.y = world.ground_y(point)
+		sk.pts.append(point)
 	var mine := 0
 	for i in range(sketches.size() - 1, -1, -1):
 		if (sketches[i] as Sketch).peer == from:

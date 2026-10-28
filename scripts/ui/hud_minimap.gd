@@ -207,6 +207,14 @@ func _make_base() -> void:
 			var b := at.biome_at(wp)
 			var c := Color(0.37, 0.32, 0.23).lerp(Color(0.25, 0.34, 0.16), g)
 			c = c.lerp(Color(0.34, 0.34, 0.21), clampf((b - 0.45) * 2.0, 0.0, 0.35) * g)
+			var relief: Landform = w.terrain.landform
+			if relief.peak > 1.0:
+				var elevation := relief.height(wp)
+				var slope := relief.slope(wp)
+				c = c.lerp(Color(0.48, 0.49, 0.45), smoothstep(0.22, 0.72, slope))
+				c = c.lerp(Color(0.82, 0.86, 0.86), smoothstep(relief.peak * 0.58, relief.peak * 0.8, elevation))
+				var shade := (relief.height(wp + Vector3(4, 0, 4)) - relief.height(wp - Vector3(4, 0, 4))) / 8.0
+				c = c.darkened(clampf(0.1 + shade * 0.3, 0.0, 0.45))
 			img.set_pixel(x, y, c.darkened(0.1))
 	img.resize(N, N, Image.INTERPOLATE_BILINEAR)
 	if w.water and w.water.mask:

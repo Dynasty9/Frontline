@@ -81,7 +81,7 @@ func _ready() -> void:
 	cam = Camera3D.new()
 	cam.fov = clampf(float(Settings.get_v("fov")), 35.0, 75.0)
 	cam.near = 0.3
-	cam.far = 700.0
+	cam.far = maxf(4000.0, MapDims.SIZE * 2.0)
 	add_child(cam)
 	cam.current = true
 	_apply()
@@ -406,8 +406,12 @@ static func pitch_for(d: float, t: float) -> float:
 
 func _apply() -> void:
 	position = focus_pos
+	if world != null:
+		position.y = maxf(position.y, world.ground_y(focus_pos))
 	rotation = Vector3(deg_to_rad(pitch()), yaw, 0)
 	cam.position = Vector3(0, 0, dist)
+	if world != null:
+		position.y += maxf(0.0, world.ground_y(cam.global_position) + MIN_HEIGHT - cam.global_position.y)
 	if _shake > 0.0:
 		cam.h_offset = randf_range(-1, 1) * _shake * 0.4
 		cam.v_offset = randf_range(-1, 1) * _shake * 0.4
@@ -467,4 +471,6 @@ func ground_point(screen: Vector2) -> Vector3:
 	var d := cam.project_ray_normal(screen)
 	d.y = minf(d.y, -MIN_RAY_DIP)
 	var t := -o.y / d.y
-	return Vector3(o.x + d.x * t, 0.0, o.z + d.z * t)
+	var end := o + d * maxf(t, 0.0)
+	var hit: Dictionary = world.terrain.ray_ground(o, end - Vector3.UP * 2.0) if world != null and world.terrain != null else {}
+	return hit.position if not hit.is_empty() else end
