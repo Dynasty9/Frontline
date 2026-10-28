@@ -11,6 +11,8 @@ on:
   push:
     branches: [main]
     paths:
+      - scripts/autoload/defs.gd
+      - scripts/game/vehicle_roster.gd
       - web/**
       - Dockerfile.web
       - .dockerignore
@@ -18,6 +20,8 @@ on:
       - .github/workflows/web.yml
   pull_request:
     paths:
+      - scripts/autoload/defs.gd
+      - scripts/game/vehicle_roster.gd
       - web/**
       - Dockerfile.web
       - .dockerignore

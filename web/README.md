@@ -14,7 +14,7 @@ The game's website. Its pages (`src/pages/`, routed by React Router in `src/rout
 | `/profile`                     | signed in, your rank and record, your callsign (rename it), your picture, whether your battles are public, the insignia you wear, and signing out everywhere |
 | `/changelog`                   | every release, with its changes and screenshots                                                                                                              |
 
-The header keeps four destinations: **The game**, **Battles**, **Commanders** and **Updates**, plus **Play** and the account menu. Commanders groups the leaderboards and rank guide under a shared secondary navigation. GitHub and project links live in the footer. Personal settings and insignia selection live in the profile; the account menu also links the public record.
+The header keeps five destinations: **The game**, **Vehicles**, **Battles**, **Commanders** and **Updates**, plus **Play** and the account menu. Commanders groups the leaderboards and rank guide under a shared secondary navigation. GitHub and project links live in the footer. Personal settings and insignia selection live in the profile; the account menu also links the public record.
 
 Everything public (players, boards, battles) comes from the
 matchmaker's public routes (`src/lib/players.ts`; `matchmaker/src/players.js`), fetched with TanStack Query, so going
@@ -129,3 +129,5 @@ Railway builds it with `npm run build` and serves `dist/` as a static site.
 ## Battle viewer
 
 `/battles` lists live broadcasts and recordings; `/watch/:id` embeds the actual Godot observer. Build `Dockerfile.web` with repository-root context to include the browser export at `/game/`. The existing static-only build still works, but correctly reports the viewer unavailable. See [recording deployment](../docs/REPLAYS.md).
+
+The **Vehicles** page (/vehicles) reads the literal game tables in scripts/autoload/defs.gd and scripts/game/vehicle_roster.gd at build time. It lists units, support aircraft and Field Manual reference vehicles, with search and availability filters. Keep the source checkout available when building the site; Docker copies these two inputs explicitly. The roster unit test checks every entry is represented. Changes to the table format need a matching update to src/lib/vehicles.ts.
