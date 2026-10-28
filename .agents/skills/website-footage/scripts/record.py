@@ -139,7 +139,8 @@ def record(godot: str, proj: Path, out: Path, name: str, take: dict, common: lis
         f.write(" ".join(cmd) + "\n\n")
         f.flush()
         try:
-            subprocess.run(cmd, stdout=f, stderr=subprocess.STDOUT, timeout=300 + frames * 0.8)
+            subprocess.run(cmd, stdout=f, stderr=subprocess.STDOUT, timeout=300 + frames * 0.8,
+                           env={**os.environ, **take.get("env", {})})
         except subprocess.TimeoutExpired:
             return f"{name}: TIMED OUT after {time.time() - t0:.0f} s (see {log})"
     text = log.read_text(encoding="utf-8", errors="replace")
@@ -151,7 +152,7 @@ def record(godot: str, proj: Path, out: Path, name: str, take: dict, common: lis
     n = len(Avi(avi))
     # what game this was: later, `git log COMMIT..HEAD -- scripts assets` says what's changed since
     stamp = {"take": name, "frames": n, "recorded": time.strftime("%Y-%m-%d %H:%M"), "commit": commit(),
-             "args": take["args"], "common_args": common}
+             "args": take["args"], "common_args": common, "env": take.get("env", {})}
     (out / f"{name}.json").write_text(json.dumps(stamp, indent=2) + "\n", encoding="utf-8")
     note = f", {len(errors)} script errors in the log" if errors else ""
     return f"{name}: {n} frames ({n / 30:.1f} s) in {time.time() - t0:.0f} s -> {avi}{note}"

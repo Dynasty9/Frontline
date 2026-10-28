@@ -51,14 +51,22 @@ class Videos(unittest.TestCase):
         self.assertEqual(changelog.read_entry(self.entry)["videos"], [])
 
     def test_rejects_missing_unsupported_or_escaped_media_and_empty_caption(self):
-        (self.folder / "clip.gif").write_bytes(b"gif")
-        for old, new in [("clip.mp4", "missing.mp4"), ("clip.mp4", "clip.gif"),
+        (self.folder / "clip.avi").write_bytes(b"avi")
+        for old, new in [("clip.mp4", "missing.mp4"), ("clip.mp4", "clip.avi"),
                          ("clip.mp4", "../fire/clip.mp4"), ("poster.jpg", "missing.jpg"),
                          ("Flames spread.", "")]:
             with self.subTest(new=new):
                 self.write(self.media.replace(old, new))
                 with self.assertRaises(changelog.EntryError):
                     changelog.read_entry(self.entry)
+
+    def test_accepts_webm_and_gif(self):
+        for extension in ["webm", "gif"]:
+            with self.subTest(extension=extension):
+                name = f"clip.{extension}"
+                (self.folder / name).write_bytes(b"media fixture")
+                self.write(self.media.replace("clip.mp4", name))
+                self.assertEqual(changelog.read_entry(self.entry)["videos"][0]["file"], name)
 
     def test_rejects_oversized_clip(self):
         with patch.object(changelog, "MAX_VIDEO", 1):

@@ -10,6 +10,11 @@ caption = "Before: a transport changes direction directly toward its new destina
 [[screenshots]]
 file = "after.jpg"
 caption = "After: the same mid-flight order produces a banked turn while momentum carries through."
+
+[[videos]]
+file = "helicopter-turn.mp4"
+poster = "helicopter-turn-poster.jpg"
+caption = "A Mohawk banks and settles over its sling pickup. Recorded in the current build, October 2026."
 +++
 
 - Attack, troop and supply helicopters accelerate, brake, climb and descend smoothly instead of instantly changing direction or vertical speed.

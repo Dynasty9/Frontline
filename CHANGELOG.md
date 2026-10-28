@@ -108,6 +108,8 @@ Rotorcraft carry momentum through turns, bank and pitch as they accelerate, and 
 
 ![After: the same mid-flight order produces a banked turn while momentum carries through.](changelog/v1.0.11/helicopter-flight/after.jpg)
 
+[Watch: A Mohawk banks and settles over its sling pickup. Recorded in the current build, October 2026.](https://web-production-5a4c1.up.railway.app/changelog/#v1.0.11)
+
 - Attack, troop and supply helicopters accelerate, brake, climb and descend smoothly instead of instantly changing direction or vertical speed.
 - Aircraft lean into the force of a turn and raise their noses to brake. Gunships can move sideways while keeping their guns on target.
 - Transports settle before putting down troops or picking up a sling load. Heavy loads make flight more deliberate.
@@ -529,6 +531,8 @@ The game now comes with an installer on Windows and a disk image on the Mac, so 
 
 Boats no longer drive like cars on water. They slide through it, skid in a hard turn, have no brakes, answer the helm after a moment and are carried by a river's current, and their coxswains handle them like it.
 
+[Watch: An RHIB turns toward the beach, trailing a curved wake as it comes ashore. Recorded in the current build, October 2026.](https://web-production-5a4c1.up.railway.app/changelog/#v1.0.5)
+
 - **No brakes:** a boat slows on the water's drag and goes astern to stop. An RHIB at full speed needs some
   40 m to stop, a patrol ship 60 m and more, so they ease off well before where they're going.
 - **Skidding:** in a hard turn a boat slides, her bow pointing inside the turn and her stern swinging out,
@@ -668,11 +672,11 @@ A shell landing in the water, a boat going down and rounds hitting the sea leave
 
 The battlefield has life of its own now. Birds feed in the fields and burst up at gunfire, crows and gulls wheel overhead, rats run along the walls in town, fish jump in the rivers, ducks paddle on the ponds and dolphins roll through the swell offshore. Settings > Graphics > Wildlife turns it down, or off.
 
-![A dolphin leaping clear of the swell off the beach](changelog/v1.0.3/wildlife/dolphin-leap.jpg)
-
 ![Mallards on a pond, one upending to feed](changelog/v1.0.3/wildlife/ducks.jpg)
 
-![A pair coming up to breathe](changelog/v1.0.3/wildlife/dolphins.jpg)
+[Watch: Fish swim together beneath the river surface. Recorded in the current build, October 2026.](https://web-production-5a4c1.up.railway.app/changelog/#v1.0.3)
+
+[Watch: Dolphins surface and leap through the ocean swell. Recorded in the current build, October 2026.](https://web-production-5a4c1.up.railway.app/changelog/#v1.0.3)
 
 - **In the fields:** flocks of sparrows and starlings feed on the tracks, yards and mud, hopping and pecking, and
   move on now and then. Pigeons gather about the town. Hares sit out in the grass and graze.
@@ -790,13 +794,13 @@ Real waves roll in off the sea now: a long swell crossed by the wind's chop, whi
 
 ![The patrol ship riding a sunlit swell, the sun's glitter broken up along the waves](changelog/v1.0.2/ocean-swell/swell.jpg)
 
-![Swells rolling in under a grey sky, whitecaps breaking off their crests](changelog/v1.0.2/ocean-swell/rolling-swell.jpg)
-
 ![A storm sea in the rain](changelog/v1.0.2/ocean-swell/storm.jpg)
 
 ![Glassy water at dawn](changelog/v1.0.2/ocean-swell/calm-dawn.jpg)
 
 ![Before and after: a sunny sea and an overcast one](changelog/v1.0.2/ocean-swell/before-after.jpg)
+
+[Watch: A patrol ship pitches and rolls as waves pass beneath it. Recorded in the current build, October 2026.](https://web-production-5a4c1.up.railway.app/changelog/#v1.0.2)
 
 - **Waves you can see:** a long swell rolls in off the open sea in sets, and the wind's own shorter waves run across it. The crests come up sharp and the troughs broad, and boats rise, pitch and roll on the same waves.
 - **The weather sets the sea:** glassy at dawn, dusk and golden hour, a moderate sea by day, choppy under cloud, and a storm sea in the rain, with whitecaps tearing off the crests and streaks of foam down the wind.
@@ -1119,13 +1123,13 @@ The sea rolls in and breaks on the beach, you can see the sand through the shall
 
 ![Gunboats off the beach: their wakes, the swell, and the shallows going from turquoise to deep blue](changelog/v1.0.0/water-and-sea-battles/sea-battle.jpg)
 
-![A boat going down burning, her hull still showing under the water](changelog/v1.0.0/water-and-sea-battles/sinking.jpg)
-
 ![The patrol ship lying off the beach while a boat burns in the surf](changelog/v1.0.0/water-and-sea-battles/patrol-ship.jpg)
 
 ![The harbour: clear shallows over the sand, surf running up the beach](changelog/v1.0.0/water-and-sea-battles/harbour.jpg)
 
 ![Before and after: the harbour and the river](changelog/v1.0.0/water-and-sea-battles/before-after.jpg)
+
+[Watch: A burning boat settles into the sea as foam spreads around its hull. Recorded in the current build, October 2026.](https://web-production-5a4c1.up.railway.app/changelog/#v1.0.0)
 
 - **The sea:** a swell rolls in off the open sea, and boats rise and roll on the waves you see. Breakers spill along the beach, run up the sand and drain back, leaving it dark and wet.
 - **See into the water:** sand shows through the shallows and the sea turns turquoise, then deep blue farther out. Rivers and ponds are murky.

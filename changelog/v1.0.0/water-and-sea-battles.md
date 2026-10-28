@@ -9,10 +9,6 @@ file = "sea-battle.jpg"
 caption = "Gunboats off the beach: their wakes, the swell, and the shallows going from turquoise to deep blue"
 
 [[screenshots]]
-file = "sinking.jpg"
-caption = "A boat going down burning, her hull still showing under the water"
-
-[[screenshots]]
 file = "patrol-ship.jpg"
 caption = "The patrol ship lying off the beach while a boat burns in the surf"
 
@@ -23,6 +19,11 @@ caption = "The harbour: clear shallows over the sand, surf running up the beach"
 [[screenshots]]
 file = "before-after.jpg"
 caption = "Before and after: the harbour and the river"
+
+[[videos]]
+file = "boat-sinking.mp4"
+poster = "boat-sinking-poster.jpg"
+caption = "A burning boat settles into the sea as foam spreads around its hull. Recorded in the current build, October 2026."
 +++
 
 - **The sea:** a swell rolls in off the open sea, and boats rise and roll on the waves you see. Breakers spill along the beach, run up the sand and drain back, leaving it dark and wet.

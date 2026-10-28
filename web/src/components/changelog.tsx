@@ -88,7 +88,37 @@ function Screens({ shots, large = false }: { shots: Shot[]; large?: boolean }) {
   )
 }
 
-function Video({ video }: { video: NonNullable<Entry["videos"]>[number] }) {
+type MotionClip = NonNullable<Entry["videos"]>[number]
+
+function Gif({ video }: { video: MotionClip }) {
+  const [ref, inView] = useInView<HTMLElement>({ threshold: 0.2 })
+  const reduced = useReducedMotion()
+  const [playing, setPlaying] = useState<boolean | null>(null)
+  const active = inView && (playing ?? (!reduced && !saveData()))
+  return (
+    <figure ref={ref} className="mt-4">
+      <img
+        src={active ? video.url : video.poster}
+        alt={video.caption}
+        loading="lazy"
+        className="aspect-video w-full object-contain ring-1 ring-white/10"
+      />
+      <figcaption className="mt-1.5 flex items-center justify-between gap-3 text-xs text-muted-foreground">
+        {video.caption}
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setPlaying(!active)}
+          aria-label={`${active ? "Pause" : "Play"} animation: ${video.caption}`}
+        >
+          {active ? "Pause animation" : "Play animation"}
+        </Button>
+      </figcaption>
+    </figure>
+  )
+}
+
+function Video({ video }: { video: MotionClip }) {
   const [ref, inView] = useInView<HTMLVideoElement>({ threshold: 0.2 })
   const reduced = useReducedMotion()
 
@@ -129,9 +159,13 @@ function EntryBlock({ entry }: { entry: Entry }) {
       </div>
       <p className="mt-2 text-sm leading-relaxed">{entry.summary}</p>
       <Screens shots={entry.screenshots} />
-      {entry.videos?.map((video) => (
-        <Video key={video.url} video={video} />
-      ))}
+      {entry.videos?.map((video) =>
+        /\.gif(?:[?#]|$)/i.test(video.url) ? (
+          <Gif key={video.url} video={video} />
+        ) : (
+          <Video key={video.url} video={video} />
+        )
+      )}
       <Details body={entry.body} />
     </article>
   )

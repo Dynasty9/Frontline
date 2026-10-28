@@ -4,16 +4,18 @@ summary = "The battlefield has life of its own now. Birds feed in the fields and
 kind = "new"
 
 [[screenshots]]
-file = "dolphin-leap.jpg"
-caption = "A dolphin leaping clear of the swell off the beach"
-
-[[screenshots]]
 file = "ducks.jpg"
 caption = "Mallards on a pond, one upending to feed"
 
-[[screenshots]]
-file = "dolphins.jpg"
-caption = "A pair coming up to breathe"
+[[videos]]
+file = "fish-swimming.webm"
+poster = "fish-swimming-poster.jpg"
+caption = "Fish swim together beneath the river surface. Recorded in the current build, October 2026."
+
+[[videos]]
+file = "dolphin-leap.webm"
+poster = "dolphin-leap-poster.jpg"
+caption = "Dolphins surface and leap through the ocean swell. Recorded in the current build, October 2026."
 +++
 
 - **In the fields:** flocks of sparrows and starlings feed on the tracks, yards and mud, hopping and pecking, and
