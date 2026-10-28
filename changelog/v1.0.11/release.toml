@@ -1,0 +1,4 @@
+version = "1.0.11"
+name = "Watch battles and revisit the action"
+date = "2026-10-28"
+pull_requests = [89, 91, 92, 93, 94, 95, 96, 97, 99, 100, 101]
