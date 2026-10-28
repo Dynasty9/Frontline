@@ -361,3 +361,59 @@ physics is not retained. A per-slot transform cache for distant soldiers also fa
 to improve the alternating 500-soldier microbenchmark (1.34-1.52 ms/frame original,
 1.38-1.58 ms cached), so it was removed. The final code remains unchanged, and all
 checks passed on commit 449af9e. These experiments do not establish a 60 FPS result.
+
+
+### Working backward from the frame cost (28 October)
+
+Fresh source-build function profiles used the 3072 m generated battle, seed 3,
+480 starting infantry, 20 vehicles and commanders. Client and standalone headless
+server profiles ran sequentially, with other applications left running. Profiling
+started after the warm-up report. The first five profiler frames were discarded:
+the transition frame incorrectly attributed pre-profile elapsed time to one active
+function. Server costs are normalized by simulation ticks, not idle frames, which
+can contain several catch-up ticks. These debug timings rank work; they are not
+release-build capacity measurements.
+
+| Client work | Mean inclusive time per rendered frame |
+| --- | --- |
+| Shared soldier view update, including batches and smoothing | 4.93 ms |
+| Tactical status overlay | 3.00 ms |
+| Minimap | 1.57 ms |
+| Snapshot decode | 1.48 ms |
+
+The soldier batch loop alone has 2.48 ms self time. These are inclusive timings:
+child calls must not be added to their parent. The profile contains 481 frames.
+
+| Server work | Mean inclusive time per simulation tick |
+| --- | --- |
+| Complete world tick | 33.09 ms |
+| Soldier simulation | 23.03 ms |
+| Soldier movement helper | 4.05 ms |
+| Soldier weapon helper | 4.23 ms |
+| Sight queries | 2.81 ms |
+| Nearby-unit queries | 1.87 ms |
+
+The latter four rows are nested work, not disjoint slices of soldier simulation.
+The server profile contains 397 ticks. This standalone profile excludes peer
+snapshot transmission and replay recording present in the managed local server.
+
+Release-build alternating diagnostics then separated model drawing from update
+work. Hiding distant soldier meshes reduced roughly 400-500 draw calls but did
+not consistently improve FPS (visible 54.32/49.28/51.62; hidden 44.82/54.19).
+Freezing the entire soldier display update, with models still visible and the
+server still running, measured 54.04/61.16 FPS against 36.95/39.07/40.69 enabled.
+A narrower experiment retained per-soldier smoothing and froze only batch
+rebuilding/uploads: enabled 54.05/56.04/57.19 FPS, frozen 69.17/70.88 FPS.
+The frozen images are deliberately incorrect diagnostics, not a shippable change.
+The narrow result identifies batch rebuilding and its downstream render work as
+the first client optimization target; it does not justify deleting soldier models
+or establish that a real implementation sustains 60 FPS.
+
+
+A native bulk-buffer packing prototype preserved 200 rotated/scaled transforms
+in a focused check, but did not improve the real rendered comparison consistently:
+individual uploads 52.81/54.64/57.60 FPS; bulk uploads 53.75/54.20 FPS. Its headless
+500-soldier microbenchmark was also slower. The prototype was removed, including
+its native class. Merely translating the upload packing to Rust is not enough;
+the next change must eliminate repeated batch planning or move the complete
+working set across the native boundary, rather than add another conversion stage.
