@@ -322,3 +322,33 @@ API directly; no new native physics binding or scan-cadence change is required.
 
 Serial scene culling was also tested without reducing visible geometry. It measured
 55.60 FPS (p95 28.05 ms), so the default threaded-culling threshold remains unchanged.
+
+
+### Exact PR build validation
+
+After removing diagnostics and retaining the ray-query change, sequential exported
+runs (same seed, 480 starting infantry + 20 vehicles, commanders, full HUD, low preset,
+30-second warm-up and sample, other applications left running) produced:
+
+| Map | Average FPS | Frame p50 / p95 / p99 | Server tick p50 / p95 / p99 |
+| --- | --- | --- | --- |
+| 3072 m | 50.93 | 18.44 / 30.74 / 39.84 ms | 27.17 / 54.14 / 67.54 ms |
+| 2048 m | 54.00 | 17.74 / 27.80 / 31.97 ms | 25.85 / 47.78 / 60.59 ms |
+
+Both runs reported no runtime errors, but **neither meets 60 FPS**. The earlier
+57.83 FPS run is not a stable capacity result. Component improvements are supported
+by alternating measurements; these full runs cannot establish a precise overall
+speedup while background load and battle progression vary. The remaining server
+cost is predominantly soldier simulation, with occasional pathing and vehicle spikes.
+
+The final Node regression suite passed 87 tests, and all 24 simulation fingerprints
+still matched the pre-change main build after the sight-query change. CI caught one
+standalone soldier-batch fixture with its old Dictionary type; it now uses DrawGroup.
+
+
+Rendered checks passed 55/55 key/input assertions and 20/20 camera assertions. Before
+and after cover-preview screenshots at 150% interface scale retain aligned positions.
+Those short visual checks are not FPS benchmarks. Both baseline and changed visual
+runs retain the existing two-resource shutdown warning; no script errors occurred.
+The corrected standalone batch, structure index, terrain cover/update and map placement
+tests also passed locally, and CI passed on the code commit.
