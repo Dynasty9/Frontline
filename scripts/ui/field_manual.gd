@@ -638,7 +638,9 @@ func _make_view() -> Control:
 	svc.mouse_filter = Control.MOUSE_FILTER_STOP
 	svc.gui_input.connect(_view_input)
 	_view = SubViewport.new()
-	_view.own_world_3d = true
+	# The standalone browser viewer shares the sound pool's world for spatial effects.
+	_view.own_world_3d = not embedded
+	_view.audio_listener_enable_3d = embedded
 	_view.msaa_3d = Viewport.MSAA_4X
 	_view.render_target_update_mode = SubViewport.UPDATE_WHEN_VISIBLE
 	svc.add_child(_view)

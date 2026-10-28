@@ -11,6 +11,7 @@ func _ready() -> void:
 	var manual := FieldManual.new()
 	manual.embedded = true
 	add_child(manual)
+	check(manual._view.find_world_3d() == get_viewport().find_world_3d() and manual._view.audio_listener_enable_3d, "Embedded support must hear the game's spatial sound pool")
 	for entry in [["hunter", "veh_light"], ["slammer", "veh_armour"], ["rhib", "boats"], ["hatchback", "civilian"], ["wipeout", "aircraft"], ["ac130", "support"]]:
 		manual.open("entry", entry[0])
 		check(manual._cat == entry[1], "Wrong manual category for " + entry[0])
