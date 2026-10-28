@@ -470,3 +470,34 @@ pay those crossings. The measured native upload-packing and persistent-slot tria
 do not justify such a port. A further native step should batch a complete numeric
 working set and preserve decision ordering, rather than claim that the language
 change itself fixes the remaining 60 FPS deficit.
+
+
+After rebasing onto main `fa56e4f`, the exact exported follow-up build ran the
+3072 m generated battle for a 30-second measurement after a 30-second warm-up,
+with commanders, seed 3, low preset, full HUD and the separate local server.
+It averaged **54.85 FPS**, frame p50 **17.06 ms**, p95 **26.55 ms**, p99 **32.07 ms**,
+and maximum **56.37 ms**. Adjacent-frame absolute differences were p50 **4.31 ms**,
+p95 **12.52 ms**, p99 **18.34 ms**. There were 452 living soldiers at the report;
+480 starting infantry plus 20 vehicles is not 500 surviving active units.
+The server's 874 measured ticks had p50 **27.20 ms**, p95 **56.06 ms** and
+maximum **85.82 ms**. Both the minimum-60-FPS and consistent-30-Hz simulation
+budgets remain unmet. Other applications stayed running throughout.
+
+Mean client script costs were 1.96 ms/frame for distant batch work, 1.19 ms for
+soldier view/smoothing, and 0.87 ms for minimap drawing. Renderer CPU p50 was
+4.15 ms and GPU p50 4.47 ms; these overlapping pipeline timings are not additive.
+The previous 50.93 FPS run used an older main and different background activity,
+so the difference is not an isolated percentage improvement.
+
+Validation: 88 broad-suite checks passed; a new timing fixture initially passed
+untyped arrays to a typed helper, was corrected, and passed in isolation. All seven
+focused checks passed after rebasing, including minimap lifecycle/scheduling,
+smoothing/timing equivalence, soldier batching and main's new tank-operation test.
+Import and release export had no script errors. Long full-mission playthroughs
+were not repeated for these client-only changes.
+
+Rendered verification passed 55/55 input assertions and 20/20 camera assertions.
+Before/after screenshots at 150% interface scale preserve the map appearance;
+a rotated-map screenshot also confirms aligned symbols, grid and camera wedge.
+The short visual runs retain the baseline two-resource shutdown warning, with no
+script errors. These screenshots and input tests are not FPS measurements.
