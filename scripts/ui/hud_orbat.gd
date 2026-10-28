@@ -128,6 +128,7 @@ func _draw_content() -> void:
 	var w := hud.world
 	if w == null or w.input == null:
 		return
+	draw_rect(Rect2(Vector2(-6, -4), size + Vector2(12, 8)), UiKit.PANEL)
 	_rows.clear()
 	_scroll = clampf(_scroll, 0.0, maxf(0.0, _content_h - size.y))
 	var lt: int = w.local_team

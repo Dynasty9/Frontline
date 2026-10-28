@@ -81,11 +81,13 @@ darkens toward that edge (`UiScrim`), so it reads over any ground without a box:
 
 - **Top** (the **Status** line): the side, `SUP` and its rate, `UNITS`, `FOB`, `TOWNS`, and the clock. A line under
   it for each FOB says what its trucks are doing.
-- **Left**: a task bar switches between **Battle**, **Squads**, **Map**, and **Fires**. Battle starts with the
-  tools closed. Squads opens a searchable roster (callsign, symbol role, or vehicle name); click to select and
-  locate, Shift-click to add, double-click to zoom. Map opens a larger minimap and its layer controls. Fires
-  shows off-map support. Only one task is visible at a time; Battle clears the tools. The roster binding toggles
-  Squads, and Escape backs out of an open task after cancelling orders and selection.
+- **Left**: a persistent minimap sits above four compact, labelled icon buttons: **View**, **Squads**,
+  **Expand**, and **Support**. View closes the current tool; Squads opens a searchable roster with
+  click-to-locate, Shift-click to add and double-click to zoom. Expand enlarges the map and reveals its layer
+  controls. Support opens a scrollable list of off-map artillery and air strikes. Commanders see costs and
+  cooldowns; spectators see clearly marked free demos. One tool opens at a time, and the map stays visible.
+  A mode heading and short contextual instructions explain commanding versus observing. The roster binding
+  toggles Squads; Escape backs out after cancelling orders and selection.
 - **Bottom**: the selection (the squad's name, its codes, the plan's stages, a cell per man) and the orders as keys.
   The bottom scrim only darkens while there's something selected.
 - **Right**: the **Log** and the mission's objectives; in co-op the command net.
