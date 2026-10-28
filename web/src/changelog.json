@@ -1,6 +1,283 @@
 {
   "releases": [
     {
+      "version": "1.0.11",
+      "tag": "v1.0.11",
+      "name": "Watch battles and revisit the action",
+      "date": "2026-10-28",
+      "summary": "Watch public battles in the browser, or revisit saved battles with camera controls and a seekable timeline.",
+      "url": "https://github.com/Dynasty9/Frontline/releases/tag/v1.0.11",
+      "pull_requests": [
+        89,
+        91,
+        92,
+        93,
+        94,
+        95,
+        96,
+        97,
+        99,
+        100,
+        101
+      ],
+      "entries": [
+        {
+          "slug": "battle-viewer",
+          "title": "Watch battles and revisit the action",
+          "kind": "new",
+          "summary": "Watch public battles in the browser, or revisit saved battles with camera controls and a seekable timeline.",
+          "body": "Public battles can now broadcast to a browser viewer, using Frontline's own\n3D battlefield. Open **Battles → Watch** on the website, move the camera, or\nlet the observer camera follow the fighting. Public broadcasts aim to stay only a few seconds behind the players; password-protected and unlisted battles stay private.\n\nThe host also saves a replay locally. Open **Replays** in the desktop menu and\nchoose a recording folder to watch it again, pause, change speed, or drag the\ntimeline back to an earlier moment. Public recordings remain available on the\nwebsite for seven days when the server's recording storage is enabled.\n\nSaved replays load fully before playback starts. Loading progress and all replay\ncontrols, including the scrubber, live inside the game itself.\n\nThese are host recordings, not independently verified results. Recordings made\nbefore this feature cannot be reconstructed from an old after-action report.\n\nThe browser battlefield fills the available window, keeping the FPS meter clear of the site header. Replay controls use the desktop Signal interface and sit beside the minimap, with the director caption above the timeline.",
+          "screenshots": [
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.11/battle-viewer/browser.jpg",
+              "caption": "A recorded test battle running in the browser, with the game's own camera and a seekable timeline."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.11/battle-viewer/mobile.jpg",
+              "caption": "Find recordings from the Battles page. The 3D viewer works best on a desktop."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.11/battle-viewer/loading.jpg",
+              "caption": "Saved replays load completely before playback, with progress and controls inside the game."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.11/battle-viewer/fitted.png",
+              "caption": "The fitted browser player keeps the FPS meter visible and integrates replay controls beside the desktop minimap."
+            }
+          ],
+          "videos": []
+        },
+        {
+          "slug": "website-field-manual",
+          "title": "Inspect vehicles on the website",
+          "kind": "new",
+          "summary": "Explore vehicles directly on the website, with an interactive model preview using the Field Manual's models, lighting, rotation and zoom.",
+          "body": "- Search vehicles by name, faction or role and filter by availability.\n- Switch vehicles without restarting the 3D viewer. Compressed browser assets reduce the first download.\n- Inspect models in a new slate survey bay, with a fading grid, warm corner markings and clearer lighting, shared by the website and the in-game Field Manual.\n- Quiet digital interference occasionally passes through the survey grid; reduced-motion settings keep it still.\n- Watch armed support aircraft perform their real gun run, bombing pass or orbit in the embedded training range. Replay resets the aircraft and targets without rebuilding the range; return to model inspection at any time.\n- Select a vehicle to inspect its 3D model directly beside the roster. Drag to turn it, scroll to zoom, or use the camera buttons with a keyboard. The page uses the site's familiar styling around the game's own model stage.",
+          "screenshots": [
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.11/website-field-manual/desktop.jpg",
+              "caption": "Browse the roster and inspect the game's vehicle models on the website."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.11/website-field-manual/manual.jpg",
+              "caption": "The in-game Field Manual shares the new slate survey bay and model lighting."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.11/website-field-manual/gun-run.jpg",
+              "caption": "Watch the aircraft's actual attack sequence in a training range inside the page."
+            }
+          ],
+          "videos": []
+        },
+        {
+          "slug": "battle-hotpaths",
+          "title": "Less work during busy battles",
+          "kind": "improved",
+          "summary": "Pathfinding spends less time maintaining its cache, and animated combat markers reuse their geometry.",
+          "body": "- Long routes no longer scan the entire local navigation cache when replacing an old entry.\n- Combat markers keep the same pulsing, rotating shape with less work per frame.\n\nThese changes reduce specific costs; they do not establish 60 FPS support for 500-unit battles on large maps.",
+          "screenshots": [],
+          "videos": []
+        },
+        {
+          "slug": "battle-work-budget",
+          "title": "Less repeated work in large battles",
+          "kind": "improved",
+          "summary": "Scenery follows the camera's view, and soldiers avoid repeating sight checks against unchanged walls.",
+          "body": "- Scenery loads around what the camera can see, including a margin for roofs and screen edges.\n- Large maps store navigation cells compactly, saving about 1.25 GiB across the two 3 km land grids.\n- Replay recording reuses unchanged scenery and encodes completed chunks in the background to reduce battle stalls.\n- Formation planning reuses nearby cover checks while retaining the same selected positions.\n- Native path search skips intermediate cost nodes while retaining terrain and danger costs.\n- Soldiers reuse confirmed obstruction by an unchanged wall. Opening a door or changing the blocking geometry immediately requires a fresh check; smoke remains live.\n\n- Distant soldiers outside the camera view no longer rebuild render batches.\n- Tactical symbols retain their image between 15 Hz updates while the camera and pointer are still; camera movement and input refresh them immediately.\n\nLarge-map performance is still being measured. These changes do not establish 60 FPS support for 500-unit battles.",
+          "screenshots": [
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.11/battle-work-budget/before.png",
+              "caption": "Before: the generated 3 km battlefield at command zoom."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.11/battle-work-budget/after.png",
+              "caption": "After: the same map and camera, with visibility-aware rendering and native routes. Combat evolves independently between runs."
+            }
+          ],
+          "videos": []
+        },
+        {
+          "slug": "clearer-battlefield",
+          "title": "See the troops you command",
+          "kind": "improved",
+          "summary": "Lighter atmospheric haze and translucent battlefield markers keep soldiers, vehicles and terrain readable, even when zoomed out.",
+          "body": "- Atmospheric haze is much lighter in every weather preset and continues thinning as the camera pulls back. Fog of war, enemy visibility and combat smoke are unchanged.\n- Squad and vehicle symbols are translucent outlines over the battlefield. Solid counters remain in the tactical map, minimap and roster.\n- Squad symbols fade in with distance instead of stacking over nearby soldiers. Individual status icons lose their opaque backplates, and squad-strength pips replace overlapping per-soldier bars at squad zoom.\n- Teammate view frames and selection rings are thinner and quieter. A teammate's selection is a coordination hint, not an exclusive ownership badge.",
+          "screenshots": [
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.11/clearer-battlefield/battlefield-before.jpg",
+              "caption": "Before: hazy weather and solid squad markers compete with the troops."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.11/clearer-battlefield/battlefield-after.jpg",
+              "caption": "After: thinner haze, transparent symbols and quieter commander markers leave the troops visible."
+            }
+          ],
+          "videos": []
+        },
+        {
+          "slug": "helicopter-flight",
+          "title": "Helicopters fly like helicopters",
+          "kind": "improved",
+          "summary": "Rotorcraft carry momentum through turns, bank and pitch as they accelerate, and flare into a stable hover before landing.",
+          "body": "- Attack, troop and supply helicopters accelerate, brake, climb and descend smoothly instead of instantly changing direction or vertical speed.\n- Aircraft lean into the force of a turn and raise their noses to brake. Gunships can move sideways while keeping their guns on target.\n- Transports settle before putting down troops or picking up a sling load. Heavy loads make flight more deliberate.\n- Stop holds a troop transport in the air, including with a vehicle on its sling. Give a new move order to carry on; new orders also interrupt an approach to land.\n- Flight remains controlled by the host, with the same bank and pitch sent to every player. Ground vehicles and drones keep their existing movement.",
+          "screenshots": [
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.11/helicopter-flight/before.jpg",
+              "caption": "Before: a transport changes direction directly toward its new destination."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.11/helicopter-flight/after.jpg",
+              "caption": "After: the same mid-flight order produces a banked turn while momentum carries through."
+            }
+          ],
+          "videos": [
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.11/helicopter-flight/helicopter-turn.mp4",
+              "poster": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.11/helicopter-flight/helicopter-turn-poster.jpg",
+              "caption": "A Mohawk banks and settles over its sling pickup. Recorded in the current build, October 2026."
+            }
+          ]
+        },
+        {
+          "slug": "homepage-story",
+          "title": "A new introduction to Frontline",
+          "kind": "improved",
+          "summary": "Discover the game through battlefield decisions, combined-arms footage and selectable operation briefings.",
+          "body": "- The homepage builds from squad tactics to armour, fire support and amphibious operations, with varied layouts and quieter motion inspired by the game's Signal interface.\n- Browse mission briefings one at a time, with the force details available on mobile as well as desktop.\n- Gameplay comes straight after the opening footage, without the repeating tickers and statistics grid.",
+          "screenshots": [
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.11/homepage-story/after-desktop.jpg",
+              "caption": "From your first tactical decision to a combined-arms battle."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.11/homepage-story/after-missions.jpg",
+              "caption": "Choose an operation to see its briefing and your starting force."
+            }
+          ],
+          "videos": []
+        },
+        {
+          "slug": "large-battle-drawing",
+          "title": "Smoother large battles",
+          "kind": "improved",
+          "summary": "Large battles draw buildings and squad symbols with less repeated work, while damage, cover and individual soldiers keep their existing behavior.",
+          "body": "- Static buildings share drawing work. A damaged or moved structure updates immediately without rebuilding its neighbors.\n- Soldiers share frame-update bookkeeping while retaining individual movement smoothing, poses and selection.\n- Squad counters keep a clear screen position as nearby units move, reducing clutter and repeated layout work.\n- Firing markers reuse their star geometry, and the minimap refreshes damaged buildings gradually while keeping the previous map visible.\n- Moving soldiers avoid recording sight checks they cannot reuse; soldiers standing still, including those waiting for a route, retain their obstruction cache.",
+          "screenshots": [
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.11/large-battle-drawing/before.jpg",
+              "caption": "The large-map battle before scenery drawing is combined."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.11/large-battle-drawing/after.jpg",
+              "caption": "Combined scenery drawing preserves the buildings and their shadows during combat."
+            }
+          ],
+          "videos": []
+        },
+        {
+          "slug": "shared-allied-command",
+          "title": "Command all allied troops",
+          "kind": "improved",
+          "summary": "All commanders on a side can select and order every allied squad, vehicle and individual soldier, without ownership locks.",
+          "body": "- Click, drag-select and use the order-of-battle list to command any allied unit, including troops recruited by a teammate.\n- Giving an AI-controlled unit an order brings it under human command so the AI does not overwrite it. Teammates can all keep commanding it.\n- Allied engineers can build for any commander, and tunnel orders work for all allied passengers.\n- Current teammate selections remain coordination cues, not control restrictions. Enemies and neutral units still cannot be commanded; observers can inspect but cannot issue orders.",
+          "screenshots": [],
+          "videos": []
+        },
+        {
+          "slug": "simulation-working-sets",
+          "title": "Large-battle simulation and rendering improvements",
+          "kind": "improved",
+          "summary": "Desktop solo battles run simulation separately, share more AI work, and draw distant soldiers more efficiently. Skirmishes offer maps up to 3,072 metres across.",
+          "body": "- Static scenery no longer runs an empty building simulation every tick. Fire and combat still affect it.\n- Supply and unit-cap checks search the bases directly, including changes from construction, capture and destruction.\n- Performance diagnostics now distinguish sustained simulation cost from occasional slow ticks.\n- Updating nearby cover no longer rebuilds routes through ground whose movement cost has not changed.\n- Desktop solo battles and missions run their simulation separately from drawing, with pause, resume and reconnect support.\n- Skirmish setup offers 1,024, 2,048 and 3,072 metre square maps. Larger maps need more memory.\n- Squad members share threat assessments and building contacts; individual weapons, visibility and damage still work independently.\n- Distant soldiers share simpler animated poses, while close-up soldiers retain detailed movement.\n- Movement orders spread pathfinding work across ticks, including when buildings are destroyed or routes are blocked.\n- Updates include the native simulation helper as well as the game executable.\n\n- Explosions update nearby terrain textures and cosmetic ground collision instead of rebuilding the entire map.\n- Large maps load without drawing the partly built battlefield; the private simulation waits until loading finishes.\n- Static scenery replication and map placement avoid repeated whole-map searches.\n- Nearby scenery loads first; distant scenery is cached as you explore the map.\n- Cosmetic grass, bushes and stones build around the camera rather than across the whole map during play.\n- Nearby units can reuse checked movement corridors, while keeping their own destinations.\n- Short unobstructed moves respond immediately, including dashes into cover.\n- Squads retry an unvisited house when a rifleman becomes available to clear it.\n- Soldiers checking buildings search house floors directly, skipping unrelated nearby scenery.\n- Emplaced gunners choose targets their gun can reach instead of fixating on enemies outside its firing arc.\n- Soldiers evaluate the same reaction priorities with less decision-processing overhead.\n- Squad callsigns and order labels reuse their drawings while tracking the camera, reducing interface work in large battles.\n- Stationary units avoid redundant model-transform updates, and distant soldier batches avoid rebuilding string keys each frame.\n- Radio notifications reuse unchanged text drawings between their arrival flashes and fade-out.\n- Distant vehicles simplify material surfaces while retaining their moving parts; close-up vehicles keep their detailed materials.\n- Distant soldier rendering visits active pose batches instead of every cached pose each frame.\n- Squad status markers share a short overview refresh, and empty selections avoid scanning every soldier.\n- The minimap keeps distant fighting markers separate on larger maps.\n- Stationary vehicles avoid repeatedly updating unchanged hull, turret and wheel transforms.\n- The battlefield overlay reuses its drawing between status updates while the camera and pointer are still; interaction redraws immediately.\n- Visibility checks skip unrelated projectiles and reuse each soldier's observation point within a scan.\n- Capturing towns updates only changed supply roads instead of repainting the whole map; long diagonal roads check only nearby ground cells.\n- Squads checking for enemy buildings use the owned-building index instead of searching unrelated scenery.\n- The battle clock follows the simulation server, excluding loading time and stopping when the host pauses.\n- Large assault formations check only nearby squadmates when choosing cover, retaining the same positions with fewer comparisons.",
+          "screenshots": [
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.11/simulation-working-sets/before.png",
+              "caption": "The earlier 500-soldier rendering test on a 1,024 metre map."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.11/simulation-working-sets/after.png",
+              "caption": "A full generated 3,072 metre battlefield, started with 480 soldiers and 20 vehicles. The 60 FPS target remains under validation."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.11/simulation-working-sets/vehicle-before.png",
+              "caption": "Detailed vehicle materials at distant camera range, magnified for comparison."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.11/simulation-working-sets/vehicle-after.png",
+              "caption": "Distant vehicles share simpler material surfaces while retaining their silhouettes and moving turrets."
+            }
+          ],
+          "videos": []
+        },
+        {
+          "slug": "site-journeys",
+          "title": "A clearer way around Frontline",
+          "kind": "improved",
+          "summary": "A simpler site menu, a returning-player home, and a dedicated rank guide make it easier to find your next battle.",
+          "body": "- The menu now separates the game tour, live battles, commanders and updates. Account actions stay in the account menu; project links stay in the footer.\n- Signed-in players get a compact home with play shortcuts, progress and recent updates. Visitors still see the gameplay introduction.\n- New devices see Download first. After the browser has opened Frontline before, Launch becomes the primary action.\n- The rank guide explains experience and unlocks. Choose your personal insignia in your profile.\n- Signing in keeps your place, including a friend's battle invitation. An account remains optional to play.",
+          "screenshots": [
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.11/site-journeys/player-home.jpg",
+              "caption": "Signed in: play shortcuts, your progress and the latest updates. Preview shown with sample player data."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.11/site-journeys/guest-play.jpg",
+              "caption": "New here: download the game and follow three steps to your first battle."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.11/site-journeys/rank-guide.jpg",
+              "caption": "Leaderboards and the rank guide now live together under Commanders."
+            }
+          ],
+          "videos": []
+        },
+        {
+          "slug": "squad-cohesion",
+          "title": "Squads stick together",
+          "kind": "improved",
+          "summary": "Squads move in tighter groups and choose nearby cover on the same side of walls.",
+          "body": "- Move and defend orders keep soldiers in a compact circle instead of a long line.\n- Soldiers favor cover beside their squad instead of spreading out across walls.\n- When a tall wall's front row is full, soldiers stack a pace behind it instead of lying farther out in the open. The rear row still benefits from the wall blocking fire, but lacks the close-cover protection of hugging it.\n- Travelling squads follow their leader through gaps, and the leader slows for stragglers.",
+          "screenshots": [
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.11/squad-cohesion/before.jpg",
+              "caption": "Before: one squad spreads across all three walls while seeking cover. Enemies are beyond the walls, outside this view."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.11/squad-cohesion/after.jpg",
+              "caption": "After: four soldiers take cover against the middle wall; the fifth stacks in a second row 1.5 metres behind them, with reduced protection. Same scenario, seed, time and camera as before."
+            }
+          ],
+          "videos": []
+        },
+        {
+          "slug": "large-interface-layouts",
+          "title": "Keep large interfaces within reach",
+          "kind": "fixed",
+          "summary": "Pause menus, controls, lobby rosters and the server browser stay usable at maximum interface scale and in small windows.",
+          "body": "- Pause and controls dialogs scroll when their contents cannot fit, with focused buttons brought into view.\n- Full eight-player lobby rosters scroll without pushing Join, Ready, Start or Leave out of reach.\n- Server-browser filters and direct-connect fields wrap instead of forcing the screen wider than the window.\n- Repeatedly opening a dialog no longer shifts its resting position. Resizing during its opening animation keeps it centered.",
+          "screenshots": [
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.11/large-interface-layouts/lobby-before.jpg",
+              "caption": "Before: a full co-op roster pushes the lobby actions into the bottom edge."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.11/large-interface-layouts/lobby-after.jpg",
+              "caption": "After: the roster scrolls while Start and Close stay clearly in view."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.11/large-interface-layouts/controls-before.jpg",
+              "caption": "Before: maximum interface scale pushes the Controls dialog beyond the window."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.11/large-interface-layouts/controls-after.jpg",
+              "caption": "After: the dialog fits the window and its contents can be scrolled."
+            }
+          ],
+          "videos": []
+        }
+      ]
+    },
+    {
       "version": "1.0.10",
       "tag": "v1.0.10",
       "name": "Console tools and fuzzy completion",
@@ -24,7 +301,8 @@
               "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.10/console-completion/after.jpg",
               "caption": "Browse the full command list without leaving the console."
             }
-          ]
+          ],
+          "videos": []
         },
         {
           "slug": "text-console",
@@ -37,7 +315,8 @@
               "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.10/text-console/after.jpg",
               "caption": "Console tools for copying, finding and saving output."
             }
-          ]
+          ],
+          "videos": []
         },
         {
           "slug": "existing-website-login",
@@ -45,7 +324,8 @@
           "kind": "fixed",
           "summary": "Already signed into the website? Signing in from the game now uses that account and returns you to Frontline automatically.",
           "body": "The website no longer asks you to sign in with GitHub again when you're already signed in.\nYour game and website keep separate sessions, so both stay signed in. If the browser blocks opening the game\nautomatically, use **Open Frontline** to return.",
-          "screenshots": []
+          "screenshots": [],
+          "videos": []
         }
       ]
     },
@@ -109,7 +389,8 @@
               "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.9/signal-interface/pause-menu.jpg",
               "caption": "The Esc menu"
             }
-          ]
+          ],
+          "videos": []
         },
         {
           "slug": "battle-loads-without-freezing",
@@ -117,7 +398,8 @@
           "kind": "improved",
           "summary": "A battle no longer freezes for several seconds after it has loaded, it's ready to play sooner, and the loading bar keeps moving while the battlefield is laid out instead of sitting still.",
           "body": "- **No freeze after loading:** the long stop between the loading bar filling and the battle starting is gone.\n- **Ready sooner:** buildings, trees, vehicles and the town's street furniture are put together much faster, so you're\n  playing several seconds earlier.\n- **A window that answers:** the loading bar moves stage by stage, and Windows no longer calls the game \"Not\n  Responding\" while a battle loads.\n- Everything looks and plays exactly as before.",
-          "screenshots": []
+          "screenshots": [],
+          "videos": []
         },
         {
           "slug": "joining-loads-first",
@@ -130,7 +412,8 @@
               "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.9/joining-loads-first/loading-screen.jpg",
               "caption": "Joining a running battle: the loading screen waits while the battlefield goes up"
             }
-          ]
+          ],
+          "videos": []
         }
       ]
     },
@@ -173,7 +456,8 @@
               "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.8/signal-interface/pause-menu.jpg",
               "caption": "The Esc menu"
             }
-          ]
+          ],
+          "videos": []
         },
         {
           "slug": "links-claimed-again",
@@ -181,7 +465,8 @@
           "kind": "fixed",
           "summary": "If the links from the website were taken away (uninstalling another copy of Frontline, or a registry cleaner), the game never claimed them back, so Join, Find Match and signing in on the website did nothing. Starting the game sets them up again now.",
           "body": "- Each time it starts, the game checks that your system still opens website links with it, and sets them up again\n  if not.\n- With more than one copy of the game, links open the one you started last.",
-          "screenshots": []
+          "screenshots": [],
+          "videos": []
         }
       ]
     },
@@ -202,7 +487,8 @@
           "kind": "fixed",
           "summary": "Signing in on the website, or pressing Join or Find Match there, could start a second copy of the game instead of going to the one you had open. It happened after the game had updated itself. The link goes to the open game now.",
           "body": "- The same happened to a game started while another copy of it was still running, once that other copy had closed.",
-          "screenshots": []
+          "screenshots": [],
+          "videos": []
         }
       ]
     },
@@ -224,7 +510,8 @@
           "kind": "improved",
           "summary": "The title and the menu come up seconds sooner after you launch the game. The rest of the game gets ready behind the title while it plays, instead of before anything shows.",
           "body": "- **The title shows sooner:** the game used to prepare everything it would need for a battle before showing\n  anything at all. Now it shows the title and the menu as soon as they're ready, and prepares the battle behind\n  them while the title plays.\n- **Starting a battle straight away** (in the first few seconds) waits behind the loading screen for that to\n  finish; after that, battles start as quickly as before.\n- **The Field Manual and the Settings** are put together the first time you open them, not every time the game\n  starts.",
-          "screenshots": []
+          "screenshots": [],
+          "videos": []
         },
         {
           "slug": "faster-map-generation",
@@ -232,7 +519,8 @@
           "kind": "improved",
           "summary": "Laying out a new battlefield - the rivers and the sea, the roads, the cover the ground gives - is several times quicker, so a battle or a mission starts several seconds sooner. The ground comes out exactly as it did.",
           "body": "- **Why:** the water, the roads and the cover were worked out cell by cell over far more of the map than they\n  touch, and some of it two or three times over. Now each is worked out only where it reaches, once, and the\n  water and the cover are shared out over all your processor's cores.\n- **What didn't change:** the battlefield. Every river, road, house, hedge and tree is where it was, the cover and\n  the routes are the same, and a replayed battle plays out the same.",
-          "screenshots": []
+          "screenshots": [],
+          "videos": []
         }
       ]
     },
@@ -274,7 +562,8 @@
               "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.5/leaderboards-and-public-profiles/battle.jpg",
               "caption": "A battle's after-action report on the website, every commander rated as the game rates them"
             }
-          ]
+          ],
+          "videos": []
         },
         {
           "slug": "in-game-console",
@@ -291,7 +580,8 @@
               "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.5/in-game-console/frame-graph.jpg",
               "caption": "graph: every frame of the last few seconds, split into what its time went on, stutters marked in red"
             }
-          ]
+          ],
+          "videos": []
         },
         {
           "slug": "installers",
@@ -304,7 +594,8 @@
               "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.5/installers/windows-setup.jpg",
               "caption": "The Windows installer: no administrator rights needed"
             }
-          ]
+          ],
+          "videos": []
         },
         {
           "slug": "boats-handle-like-boats",
@@ -312,7 +603,14 @@
           "kind": "improved",
           "summary": "Boats no longer drive like cars on water. They slide through it, skid in a hard turn, have no brakes, answer the helm after a moment and are carried by a river's current, and their coxswains handle them like it.",
           "body": "- **No brakes:** a boat slows on the water's drag and goes astern to stop. An RHIB at full speed needs some\n  40 m to stop, a patrol ship 60 m and more, so they ease off well before where they're going.\n- **Skidding:** in a hard turn a boat slides, her bow pointing inside the turn and her stern swinging out,\n  and loses speed doing it. At speed she can't turn as tight as she can going slow.\n- **Steering needs water past the rudder:** a boat stopped turns by going ahead on her engines, and going\n  astern she hardly steers.\n- **A moment to answer:** engines and helm take a moment, a patrol ship a long one, so her coxswain puts the\n  helm over early and meets her with opposite helm as she comes round.\n- **Rivers have a current:** it runs south, fastest in mid-stream, and carries a boat with it.\n- **The Gun Trawler** is a deep, slow fishing hull: the slowest to answer, the widest turner, and she heels\n  out of a turn where the speedboats bank into it.\n- **Fighting on the move:** on an attack a boat keeps going at a steady speed instead of stopping dead to shoot,\n  and only lies to to fight it out with an enemy that's dropped astern of her.\n- **Coming about:** an RHIB with its beach just behind it spins round and runs in bow first.",
-          "screenshots": []
+          "screenshots": [],
+          "videos": [
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.5/boats-handle-like-boats/boat-turn.mp4",
+              "poster": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.5/boats-handle-like-boats/boat-turn-poster.jpg",
+              "caption": "An RHIB turns toward the beach, trailing a curved wake as it comes ashore. Recorded in the current build, October 2026."
+            }
+          ]
         },
         {
           "slug": "wildlife-in-the-fighting",
@@ -325,7 +623,8 @@
               "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.5/wildlife-in-the-fighting/stunned-fish.jpg",
               "caption": "Fish stunned by a shell in the water, floating up belly-up"
             }
-          ]
+          ],
+          "videos": []
         },
         {
           "slug": "battle-start-crash",
@@ -333,7 +632,8 @@
           "kind": "fixed",
           "summary": "Starting a battle could, once in a long while, crash the game while it worked out the routes across the map. It no longer can.",
           "body": "- The crash came while the loading screen read \"Plotting the routes\", in the first battle after starting the game.\n- The same fault could, even more rarely, crash the game as it started up and made its sounds.",
-          "screenshots": []
+          "screenshots": [],
+          "videos": []
         },
         {
           "slug": "big-ships-come-about",
@@ -341,7 +641,8 @@
           "kind": "fixed",
           "summary": "A patrol ship sent somewhere astern now turns the way it has room for and joins its route further on, instead of circling back to where it started and running up the beach. A boat that touches the shore backs off it.",
           "body": "- A patrol ship (or a gun trawler) needs a lot of water to turn round. Sent somewhere behind it, it used to come\n  round, then turn back for the start of its route next to where it had begun, go round again and end up on\n  the beach. Now it picks its route up further on once it's round, and reaches where it was sent.\n- It comes about towards where it's going, and if the shore is in the way on that side, it turns the other way,\n  out to sea.\n- It backs into a spot not far behind it instead of swinging out in a wide loop.\n- A boat that runs onto a bank or beach goes astern off it, swings its bow round and carries on, instead of\n  sitting on the sand. Sent somewhere close in by the shore, it settles as near as it can get instead of\n  backing off and trying again for ever.\n- Where its route rounds a point of land, a boat no longer cuts the corner over it.\n- A boat steering round another one standing in its way now keeps to the open water side.",
-          "screenshots": []
+          "screenshots": [],
+          "videos": []
         },
         {
           "slug": "lost-squad-crash",
@@ -349,7 +650,8 @@
           "kind": "fixed",
           "summary": "A battle could crash when a squad was wiped out partway through a planned attack and the attack dragged on for minutes after. The lost squad now drops out of the attack the moment it's gone.",
           "body": "- The rest of the attack carries on exactly as before. When it ends, only the squads still in the field get their new orders.",
-          "screenshots": []
+          "screenshots": [],
+          "videos": []
         },
         {
           "slug": "roads-under-smoke",
@@ -362,7 +664,8 @@
               "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.5/roads-under-smoke/before-after.jpg",
               "caption": "Before and after: shells bursting at a crossroads in town"
             }
-          ]
+          ],
+          "videos": []
         },
         {
           "slug": "website-links-on-windows",
@@ -375,7 +678,8 @@
               "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.5/website-links-on-windows/game-sign-in.jpg",
               "caption": "Signing in from the game: the steps, and the one you're on"
             }
-          ]
+          ],
+          "videos": []
         }
       ]
     },
@@ -398,7 +702,8 @@
           "kind": "improved",
           "summary": "Working out the routes across a new battlefield now takes about half the time and far less of your processor, so a scenario is ready in about half the time and a full battle a second or so sooner.",
           "body": "- **Why:** most of a battlefield is open ground much like the rest of it. The way across each patch is now worked\n  out once for every patch that's just the same, instead of for each in turn.\n- **What didn't change:** the routes. Soldiers and vehicles go exactly the way they did before, and a replayed battle\n  plays out the same.",
-          "screenshots": []
+          "screenshots": [],
+          "videos": []
         },
         {
           "slug": "website-sign-in-and-pages",
@@ -415,7 +720,8 @@
               "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.4/website-sign-in-and-pages/ranks.jpg",
               "caption": "The ranks and every insignia, on a page of their own"
             }
-          ]
+          ],
+          "videos": []
         },
         {
           "slug": "foam-rings",
@@ -428,7 +734,8 @@
               "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.4/foam-rings/before-after.jpg",
               "caption": "Before and after: a shell's splash in the sea"
             }
-          ]
+          ],
+          "videos": []
         }
       ]
     },
@@ -452,16 +759,20 @@
           "body": "- **In the fields:** flocks of sparrows and starlings feed on the tracks, yards and mud, hopping and pecking, and\n  move on now and then. Pigeons gather about the town. Hares sit out in the grass and graze.\n- **Overhead:** crows and buzzards turn circles in the sky, gulls along the coast, and their shadows sweep over\n  the ground. At night bats flit about low down instead.\n- **In the water:** fish swim under the surface of the rivers and ponds and now and then jump, ducks paddle about\n  and upend to feed, and out at sea a pod of dolphins rolls up through the surface to breathe, one sometimes\n  leaping clear.\n- **They take fright:** a burst of fire or a shell landing sends the birds up all at once with a rush of wings,\n  and soldiers and vehicles coming near flush them too. Rats bolt for a hole in the nearest wall, hares zigzag\n  away across the field, fish dart off and ducks take to the air. Animals only react to the troops you can see,\n  so they never give away a hidden enemy.\n- **You can hear them:** birdsong, a pigeon's coo, crows and gulls calling, the rush of a flock going up, a rat's\n  squeak and the splash of a jumping fish, on the ambience volume.\n- **The time of day matters:** small birds and the soaring ones roost at night, when more rats come out. Fewer\n  birds fly in the rain.\n- **It costs little and is yours to set:** only the area round your camera is alive, so a bigger map costs no\n  more. **Settings > Graphics > Wildlife** sets it to Plenty, Some or Off, and the quality presets choose for you\n  (Off on Low, Some on Medium, Plenty on High and Ultra).",
           "screenshots": [
             {
-              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.3/wildlife/dolphin-leap.jpg",
-              "caption": "A dolphin leaping clear of the swell off the beach"
-            },
-            {
               "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.3/wildlife/ducks.jpg",
               "caption": "Mallards on a pond, one upending to feed"
+            }
+          ],
+          "videos": [
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.3/wildlife/fish-swimming.webm",
+              "poster": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.3/wildlife/fish-swimming-poster.jpg",
+              "caption": "Fish swim together beneath the river surface. Recorded in the current build, October 2026."
             },
             {
-              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.3/wildlife/dolphins.jpg",
-              "caption": "A pair coming up to breathe"
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.3/wildlife/dolphin-leap.webm",
+              "poster": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.3/wildlife/dolphin-leap-poster.jpg",
+              "caption": "Dolphins surface and leap through the ocean swell. Recorded in the current build, October 2026."
             }
           ]
         },
@@ -480,7 +791,8 @@
               "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.3/website-pages/account.jpg",
               "caption": "Your account: your rank, your callsign and the insignia you wear"
             }
-          ]
+          ],
+          "videos": []
         }
       ]
     },
@@ -510,7 +822,8 @@
           "kind": "new",
           "summary": "Frontline now comes for macOS too, on Apple silicon and Intel Macs: the whole game, multiplayer included, and it keeps itself up to date like the others. On a MacBook, the trackpad drives the camera.",
           "body": "- **Getting it:** download it from the website, unzip it and move Frontline into Applications, where it can update\n  itself.\n- **The first time:** Apple hasn't notarized the game yet, so macOS won't open it at first. Open System Settings >\n  Privacy & Security and choose **Open Anyway**; after that it opens like any other app.\n- **Join links** on the website open the Mac game too.\n- **On a trackpad:** scroll with two fingers to drag the map, pinch to zoom, and hold Option to turn and tilt the view\n  instead. Shift and two fingers turn what you're placing. On a Magic Mouse, **Settings > Interface > Two-finger\n  scroll** makes scrolling zoom instead.\n- Keys are named the Mac way: the Command key shows as **Cmd**.\n- Needs macOS 13 or later on Apple silicon, or macOS 11 or later on an Intel Mac.",
-          "screenshots": []
+          "screenshots": [],
+          "videos": []
         },
         {
           "slug": "play-in-a-browser",
@@ -527,7 +840,8 @@
               "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.2/play-in-a-browser/browser-menu.jpg",
               "caption": "The menu in the browser: multiplayer points you to the desktop game"
             }
-          ]
+          ],
+          "videos": []
         },
         {
           "slug": "sign-in-with-github",
@@ -540,7 +854,8 @@
               "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.2/sign-in-with-github/sign-in.jpg",
               "caption": "Sign in with GitHub sends you to the website, and waits for you there"
             }
-          ]
+          ],
+          "videos": []
         },
         {
           "slug": "faster-route-repairs",
@@ -548,7 +863,8 @@
           "kind": "improved",
           "summary": "When walls go up, buildings come down or fires take hold, the host now updates the map soldiers and vehicles plan their routes on about ten times faster, so a big battle spends far less of each moment on it.",
           "body": "- **What changed:** every change to the ground used to cost the host several milliseconds of re-planning, on about\n  a third of all of the game's updates in a big battle. It now redoes only what the change can reach: a fraction of\n  a millisecond as a rule.\n- **What didn't:** the routes. Soldiers and vehicles go exactly the way they did before, and a replayed battle plays\n  out the same.",
-          "screenshots": []
+          "screenshots": [],
+          "videos": []
         },
         {
           "slug": "lighter-pathfinding",
@@ -556,7 +872,8 @@
           "kind": "improved",
           "summary": "Route planning keeps much less of the map in memory at once, so a battle needs about 120 MB less. Units find exactly the same routes as before.",
           "body": "- A battle now takes about 120 MB less memory, which matters most in the browser, where a page can't use more than\n  2 GB.\n- Units take exactly the same routes as before.",
-          "screenshots": []
+          "screenshots": [],
+          "videos": []
         },
         {
           "slug": "ocean-swell",
@@ -570,10 +887,6 @@
               "caption": "The patrol ship riding a sunlit swell, the sun's glitter broken up along the waves"
             },
             {
-              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.2/ocean-swell/rolling-swell.jpg",
-              "caption": "Swells rolling in under a grey sky, whitecaps breaking off their crests"
-            },
-            {
               "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.2/ocean-swell/storm.jpg",
               "caption": "A storm sea in the rain"
             },
@@ -584,6 +897,13 @@
             {
               "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.2/ocean-swell/before-after.jpg",
               "caption": "Before and after: a sunny sea and an overcast one"
+            }
+          ],
+          "videos": [
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.2/ocean-swell/ocean-swell.mp4",
+              "poster": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.2/ocean-swell/ocean-swell-poster.jpg",
+              "caption": "A patrol ship pitches and rolls as waves pass beneath it. Recorded in the current build, October 2026."
             }
           ]
         },
@@ -610,7 +930,8 @@
               "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.2/realistic-gunfire/night.jpg",
               "caption": "At night every shot lights up what's round it"
             }
-          ]
+          ],
+          "videos": []
         },
         {
           "slug": "survey-map",
@@ -639,7 +960,8 @@
               "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.2/survey-map/loading.jpg",
               "caption": "The loading screen"
             }
-          ]
+          ],
+          "videos": []
         },
         {
           "slug": "boats-come-about",
@@ -647,7 +969,8 @@
           "kind": "fixed",
           "summary": "A boat sent somewhere straight behind it now turns round and goes there, instead of sailing off the other way with its men still aboard. Wheeled vehicles turn round sooner for a point behind them too.",
           "body": "- An RHIB, gunboat or patrol ship lying still and sent back the way its stern points could hold its course and keep\n  going the wrong way for good, so a landing party never reached its beach. Now it puts the helm over and comes\n  round, the enemy's boats as well as yours.\n- Trucks, cars and other wheeled vehicles sent somewhere behind them turn round on full lock straight away, rather\n  than rolling on ahead before they start to turn.",
-          "screenshots": []
+          "screenshots": [],
+          "videos": []
         },
         {
           "slug": "field-manual-on-top",
@@ -660,7 +983,8 @@
               "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.2/field-manual-on-top/field-manual.jpg",
               "caption": "The Field Manual from the menu, its search and Close button in the clear"
             }
-          ]
+          ],
+          "videos": []
         }
       ]
     },
@@ -697,7 +1021,8 @@
               "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.1/ranks-and-insignia/all-insignia.jpg",
               "caption": "All 160: starter and rank patches, then the awards and unit patches still locked"
             }
-          ]
+          ],
+          "videos": []
         },
         {
           "slug": "error-reports",
@@ -710,7 +1035,8 @@
               "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.1/error-reports/send-error-reports.jpg",
               "caption": "The switch, at the bottom of Settings > Interface"
             }
-          ]
+          ],
+          "videos": []
         },
         {
           "slug": "rejoin-a-battle",
@@ -723,7 +1049,8 @@
               "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.1/rejoin-a-battle/rejoin-card.jpg",
               "caption": "Back on the main menu after dropping out: Rejoin gets you back into the battle"
             }
-          ]
+          ],
+          "videos": []
         },
         {
           "slug": "server-browser",
@@ -748,7 +1075,8 @@
               "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.1/server-browser/lobby.jpg",
               "caption": "The lobby: both sides, the seats still open, who's ready, and an invite link"
             }
-          ]
+          ],
+          "videos": []
         },
         {
           "slug": "faster-start",
@@ -756,7 +1084,8 @@
           "kind": "improved",
           "summary": "The host lays out a new battle about a second faster, and the game is ready about half a second sooner after you launch it.",
           "body": "- **New battles:** the routes soldiers and vehicles plan across the map are now worked out on all of your\n  processor's cores at once, instead of one.\n- **Launching the game:** its sounds are made in the background while the menu comes up, instead of holding it up.\n  Each sound is now the same every time you play.",
-          "screenshots": []
+          "screenshots": [],
+          "videos": []
         }
       ]
     },
@@ -807,7 +1136,8 @@
               "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.0/after-action-report/battle-statistics.jpg",
               "caption": "Hold Tab in a battle for your side's figures so far"
             }
-          ]
+          ],
+          "videos": []
         },
         {
           "slug": "changelog",
@@ -820,7 +1150,8 @@
               "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.0/changelog/whats-new.jpg",
               "caption": "An update downloaded and ready, with a link to what's in it"
             }
-          ]
+          ],
+          "videos": []
         },
         {
           "slug": "field-defences",
@@ -849,7 +1180,8 @@
               "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.0/field-defences/gun-nests.jpg",
               "caption": "MG and .50 cal nests"
             }
-          ]
+          ],
+          "videos": []
         },
         {
           "slug": "rebindable-controls",
@@ -862,7 +1194,8 @@
               "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.0/rebindable-controls/controls.jpg",
               "caption": "Settings > Controls: every action by category, with two keys each"
             }
-          ]
+          ],
+          "videos": []
         },
         {
           "slug": "gunfire-effects",
@@ -887,7 +1220,8 @@
               "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.0/gunfire-effects/before-after-night.jpg",
               "caption": "The same moment before and after"
             }
-          ]
+          ],
+          "videos": []
         },
         {
           "slug": "water-and-sea-battles",
@@ -901,10 +1235,6 @@
               "caption": "Gunboats off the beach: their wakes, the swell, and the shallows going from turquoise to deep blue"
             },
             {
-              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.0/water-and-sea-battles/sinking.jpg",
-              "caption": "A boat going down burning, her hull still showing under the water"
-            },
-            {
               "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.0/water-and-sea-battles/patrol-ship.jpg",
               "caption": "The patrol ship lying off the beach while a boat burns in the surf"
             },
@@ -915,6 +1245,13 @@
             {
               "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.0/water-and-sea-battles/before-after.jpg",
               "caption": "Before and after: the harbour and the river"
+            }
+          ],
+          "videos": [
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.0/water-and-sea-battles/boat-sinking.mp4",
+              "poster": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.0/water-and-sea-battles/boat-sinking-poster.jpg",
+              "caption": "A burning boat settles into the sea as foam spreads around its hull. Recorded in the current build, October 2026."
             }
           ]
         },
@@ -941,7 +1278,8 @@
               "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.0/interface-themes/settings.jpg",
               "caption": "Choosing a theme in Settings > Interface (Dusk)"
             }
-          ]
+          ],
+          "videos": []
         },
         {
           "slug": "living-map",
@@ -962,7 +1300,8 @@
               "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.0/living-map/loading.jpg",
               "caption": "The loading screen, closing in on the ground"
             }
-          ]
+          ],
+          "videos": []
         },
         {
           "slug": "service-record",
@@ -983,7 +1322,8 @@
               "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.0/service-record/past-report.jpg",
               "caption": "Any battle's after-action report, opened again"
             }
-          ]
+          ],
+          "videos": []
         },
         {
           "slug": "towns-in-help",
@@ -991,7 +1331,8 @@
           "kind": "improved",
           "summary": "The in-game help (F1) now explains towns: how to take one, what holding it gives you, and that you can click a dump for its details.",
           "body": "- **F1 help:** a new Towns line covers taking a town, what it gives you, and clicking its dump. The Supply line points at the income shown in the top bar.\n- **Loading screen:** two new tips point new players at the villages, and warn that a town shelled to ruins gives far less.",
-          "screenshots": []
+          "screenshots": [],
+          "videos": []
         },
         {
           "slug": "joins-with-more-players",
@@ -999,7 +1340,8 @@
           "kind": "fixed",
           "summary": "In a battle with three or more players, everyone else's game reported a network error each time another player joined. It no longer does.",
           "body": "- **More players:** a third or later player joining no longer sets off an error on the other players' games.\n- **Long map builds:** every player's connection to the host still waits patiently while the host lays out the map,\n  so nobody is dropped before the battle starts.",
-          "screenshots": []
+          "screenshots": [],
+          "videos": []
         }
       ]
     },
@@ -1025,7 +1367,8 @@
               "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v0.1.8/co-commanders/co-commanders.jpg",
               "caption": "Two commanders: one aiming artillery, one digging a trench line, with their views, pings and the Command Net"
             }
-          ]
+          ],
+          "videos": []
         },
         {
           "slug": "pings",
@@ -1033,7 +1376,8 @@
           "kind": "new",
           "summary": "Mark an enemy, a unit or a spot with a ping, pick a call from the ping wheel, or draw on the map for your side.",
           "body": "- **Ping:** Alt + click on the battlefield or the minimap. A ping on an enemy sticks to him while he's in sight.\n- **Ping wheel:** hold Alt and the left button, then let go on attack, on my way, need support, danger, defend or look. \"On my way\" draws a line from your units to the spot.\n- **Sketch:** Alt + right-drag draws a line your side can see, on the battlefield or the minimap.\n- **Space** jumps to the newest alert or ping. Pings chime and go in the message log.",
-          "screenshots": []
+          "screenshots": [],
+          "videos": []
         }
       ]
     },
@@ -1063,7 +1407,8 @@
               "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v0.1.7/window-size/ultrawide.jpg",
               "caption": "An ultrawide screen at the largest scale"
             }
-          ]
+          ],
+          "videos": []
         },
         {
           "slug": "squad-card",
@@ -1071,7 +1416,8 @@
           "kind": "fixed",
           "summary": "At the largest interface scale, an attack's PLAN › MOVE › ASSAULT › SECURE steps were drawn over the squad's orders. Now they move to a line of their own when there's no room.",
           "body": "",
-          "screenshots": []
+          "screenshots": [],
+          "videos": []
         }
       ]
     },
@@ -1105,7 +1451,8 @@
               "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v0.1.6/towns/town-square.jpg",
               "caption": "The town square, before and after"
             }
-          ]
+          ],
+          "videos": []
         },
         {
           "slug": "supply-picture",
@@ -1113,7 +1460,8 @@
           "kind": "improved",
           "summary": "The top bar shows your income per minute and how many towns you hold, and the order of battle lists each town's stock, rate and truck.",
           "body": "- **Top bar:** income per minute beside your supply, and **TOWNS 3 / 11**.\n- **Town lines** beside the FOB lines show each town's stock and rate and where its truck is going. A town being taken, or whose truck was destroyed or blocked, gets a red line of its own.\n- **On the minimap** each town is a flag in its holder's colour inside its ring, and the ring fills with the colour of whoever is taking it.\n- **On the battlefield** each town has a name plate, its ring is drawn on the ground when the camera is near, and a capture bar shows over the dump.",
-          "screenshots": []
+          "screenshots": [],
+          "videos": []
         }
       ]
     },
@@ -1134,7 +1482,8 @@
           "kind": "fixed",
           "summary": "Burning buildings had the same rolling-surf sound the wind used to have. Now a fire is a steady roar with crackles on top.",
           "body": "- The roar sits in the middle of the range instead of a low rumble, at the same loudness as before.\n- It loops without a dip or a jump.",
-          "screenshots": []
+          "screenshots": [],
+          "videos": []
         },
         {
           "slug": "explosion-clipping",
@@ -1142,7 +1491,8 @@
           "kind": "fixed",
           "summary": "When several explosions went off at once the sound could clip. A limiter on the master volume now holds it just under the top, and everyday levels are unchanged.",
           "body": "",
-          "screenshots": []
+          "screenshots": [],
+          "videos": []
         }
       ]
     },
@@ -1172,7 +1522,8 @@
               "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v0.1.4/fog-of-war/before.jpg",
               "caption": "The same moment before: nothing showed where your vision ended"
             }
-          ]
+          ],
+          "videos": []
         },
         {
           "slug": "recon-flights",
@@ -1189,7 +1540,8 @@
               "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v0.1.4/recon-flights/spotter-plane.jpg",
               "caption": "The Caesar spotter plane"
             }
-          ]
+          ],
+          "videos": []
         }
       ]
     },
@@ -1210,7 +1562,8 @@
           "kind": "new",
           "summary": "Music, made in code like everything else: a theme for the menu, and a battle score that builds as the fighting heats up and eases off in the lulls.",
           "body": "- **Instruments:** strings, horns, a wordless choir, piano, timpani, a war drum and a snare, played through a concert-hall reverb.\n- **The menu** has a two-minute theme in D minor.\n- **In battle** the score comes in layers: strings and a few piano notes when it's calm; a low-strings pulse, drums and horns as the fighting grows. After a long stretch at full intensity it eases off, and in quiet spells it rests.\n- **Victory and defeat** each get a short sting.",
-          "screenshots": []
+          "screenshots": [],
+          "videos": []
         },
         {
           "slug": "audio-settings",
@@ -1223,7 +1576,8 @@
               "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v0.1.3/audio-settings/audio-settings.jpg",
               "caption": "Settings > Audio"
             }
-          ]
+          ],
+          "videos": []
         },
         {
           "slug": "wind",
@@ -1231,7 +1585,8 @@
           "kind": "fixed",
           "summary": "The ambience used to sound like waves breaking. Now it's rushing air with gusts that come and go, over far-off artillery and gunfire.",
           "body": "- The wind no longer swells and fades on a fixed four-second cycle, or gets louder as you zoom out.\n- The distant battle is far-off thumps and bursts instead of a low rumble.\n- Wind, rain and the distant battle loop without a seam.",
-          "screenshots": []
+          "screenshots": [],
+          "videos": []
         }
       ]
     },
@@ -1261,7 +1616,8 @@
               "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v0.1.2/fire/fire-night.jpg",
               "caption": "The same fires at night"
             }
-          ]
+          ],
+          "videos": []
         },
         {
           "slug": "explosions-and-smoke",
@@ -1274,7 +1630,8 @@
               "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v0.1.2/explosions-and-smoke/before-and-after.jpg",
               "caption": "Explosions before and after"
             }
-          ]
+          ],
+          "videos": []
         }
       ]
     },
@@ -1304,7 +1661,8 @@
               "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v0.1.1/interface-scale/largest.jpg",
               "caption": "The largest scale, with Settings open"
             }
-          ]
+          ],
+          "videos": []
         }
       ]
     },
@@ -1333,7 +1691,8 @@
               "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v0.1.0/online-play/join-a-battle.jpg",
               "caption": "Join Game: the battles being hosted, and connect by address"
             }
-          ]
+          ],
+          "videos": []
         },
         {
           "slug": "missions",
@@ -1346,7 +1705,8 @@
               "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v0.1.0/missions/kingpin.jpg",
               "caption": "Kingpin, one of the missions"
             }
-          ]
+          ],
+          "videos": []
         },
         {
           "slug": "self-updating",
@@ -1359,7 +1719,8 @@
               "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v0.1.0/self-updating/update-ready.jpg",
               "caption": "An update downloaded and ready"
             }
-          ]
+          ],
+          "videos": []
         },
         {
           "slug": "website",
@@ -1367,7 +1728,8 @@
           "kind": "new",
           "summary": "The battles being hosted right now, a Join button that opens the game and connects you, and the latest download.",
           "body": "- **Join from the browser:** click Join on any battle and the game opens (or the one you have open takes over) and connects you.\n- **Downloads** for Windows and Linux, always the latest version.\n- Start the game once after downloading, so your computer knows how to open the site's Join links.",
-          "screenshots": []
+          "screenshots": [],
+          "videos": []
         },
         {
           "slug": "camera-and-minimap",
@@ -1384,7 +1746,8 @@
               "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v0.1.0/camera-and-minimap/minimap.jpg",
               "caption": "The minimap before and after"
             }
-          ]
+          ],
+          "videos": []
         },
         {
           "slug": "restyled-soldiers",
@@ -1392,7 +1755,8 @@
           "kind": "improved",
           "summary": "Soldiers have a new look, after the early Metal Gear Solid games: chunkier, clearer silhouettes that read well from the battle camera.",
           "body": "- New proportions and gear for both sides, so riflemen, gunners and engineers are easier to tell apart at a glance.",
-          "screenshots": []
+          "screenshots": [],
+          "videos": []
         }
       ]
     }

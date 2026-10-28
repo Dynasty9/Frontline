@@ -20,6 +20,8 @@ WORKDIR /src/web
 COPY web/package*.json ./
 RUN npm ci
 COPY web/ ./
+COPY scripts/autoload/defs.gd /src/scripts/autoload/defs.gd
+COPY scripts/game/vehicle_roster.gd /src/scripts/game/vehicle_roster.gd
 COPY --from=viewer /viewer ./public/game
 ARG VITE_MATCHMAKER_URL=https://matchmaker-production-a53e.up.railway.app
 ENV VITE_MATCHMAKER_URL=$VITE_MATCHMAKER_URL

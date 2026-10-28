@@ -14,9 +14,11 @@ class Observer extends Soldier:
 
 class Sight extends Combat:
 	var checks := 0
-	func can_see_from(eye: Vector3, e: Entity, ex: Array) -> bool:
+	var caches := []
+	func can_see_from(eye: Vector3, e: Entity, ex: Array, _cache_obstruction := true) -> bool:
 		assert(eye == Vector3(2, 1, 3) and ex.is_empty())
 		checks += 1
+		caches.append(_cache_obstruction)
 		return e.eid % 2 == 0
 
 func reference(w: World, a: Vector3, b: Vector3) -> bool:
@@ -78,6 +80,16 @@ func _ready() -> void:
 	observer.target = observer.candidates[5][1]
 	observer._scan_work()
 	assert(observer.target.eid == 6, "The current target keeps its existing preference")
+	observer.path = PackedVector3Array([Vector3(10, 0, 0)])
+	observer.path_i = 0
+	observer._path_pending = false
+	sight.caches.clear()
+	observer._scan_work()
+	assert(not sight.caches.has(true), "Walking observers skip exact-position cache bookkeeping")
+	observer._path_pending = true
+	sight.caches.clear()
+	observer._scan_work()
+	assert(not sight.caches.has(false), "Men waiting for a route retain stationary obstruction caching")
 	w.free()
 	print("VISIBILITY_WORKING_SET passed")
 	get_tree().quit()

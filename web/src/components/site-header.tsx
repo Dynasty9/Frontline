@@ -11,6 +11,7 @@ import { cn } from "@/lib/utils"
 // Keep the same destinations in both states. Personal actions belong to the account menu.
 const NAV = [
   { label: "The game", to: "/#intel", paths: ["/"] },
+  { label: "Vehicles", to: "/vehicles", paths: ["/vehicles"] },
   { label: "Battles", to: "/battles", paths: ["/battles"] },
   { label: "Commanders", to: "/leaderboards", paths: ["/leaderboards", "/ranks", "/player/"] },
   { label: "Updates", to: "/changelog", paths: ["/changelog"] },

@@ -28,6 +28,9 @@ export function SiteFooter({ accounts }: { accounts?: string }) {
             <Link className="block hover:text-primary" to="/changelog">
               Updates
             </Link>
+            <Link className="block hover:text-primary" to="/vehicles">
+              Vehicles
+            </Link>
           </div>
           <div className="space-y-3">
             <p className="font-mono text-xs text-muted-foreground uppercase">Take part</p>

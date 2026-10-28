@@ -11,6 +11,9 @@ on:
   push:
     branches: [main]
     paths:
+      - scripts/autoload/defs.gd
+      - scripts/game/vehicle_roster.gd
+      - scripts/ui/field_manual.gd
       - web/**
       - Dockerfile.web
       - .dockerignore
@@ -18,6 +21,9 @@ on:
       - .github/workflows/web.yml
   pull_request:
     paths:
+      - scripts/autoload/defs.gd
+      - scripts/game/vehicle_roster.gd
+      - scripts/ui/field_manual.gd
       - web/**
       - Dockerfile.web
       - .dockerignore
@@ -48,7 +54,14 @@ jobs:
         run: docker build -f Dockerfile.web -t frontline-web .
       - name: Validate nginx configuration
         working-directory: .
-        run: docker run --rm frontline-web nginx -t
+        run: |
+          docker run --rm frontline-web nginx -t
+          docker run -d --name viewer-check -p 8080:8080 frontline-web
+          trap 'docker rm -f viewer-check' EXIT
+          curl --fail --retry 5 --retry-all-errors --retry-delay 1 --compressed -D /tmp/viewer-headers http://localhost:8080/game/index.wasm -o /tmp/compressed.wasm
+          grep -qi '^Content-Encoding: gzip' /tmp/viewer-headers
+          curl --fail -H 'Accept-Encoding: identity' http://localhost:8080/game/index.wasm -o /tmp/plain.wasm
+          cmp /tmp/compressed.wasm /tmp/plain.wasm
 
   check:
     name: Lint, types, unit tests, build

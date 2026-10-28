@@ -947,29 +947,74 @@ func best_cover_near(p: Vector3, r: float, from: Vector3, taken: Array) -> Vecto
 func best_spot_near(p: Vector3, r: float, from: Vector3, taken: Array, group_center := Vector3.INF, group_radius := 0.0, search: Dictionary = {}) -> Array:
 	var best := p if group_center == Vector3.INF else group_center
 	var bs := -1e9
-	var c := idx_of(p if group_center == Vector3.INF else group_center)
-	var cx := c % N
-	var cz := c / N
-	var ri := int(ceil(r if group_center == Vector3.INF else group_radius))
+	if search.has("native_ground"):
+		var result: PackedFloat64Array = search.native_ground.best(p)
+		if result[0] >= 0.0:
+			best = search.ground[int(result[0])][0]
+			bs = result[1]
+	elif search.has("ground"):
+		for candidate: Array in search.ground:
+			var q: Vector3 = candidate[0]
+			var d := Defs.flat(q - p).length()
+			var sc: float = candidate[1] - d * 0.6 + candidate[2]
+			for occupied in occupied_count(q, 1.4, taken, search):
+				sc -= 100.0
+			if sc > bs:
+				bs = sc
+				best = q
+	else:
+		var c := idx_of(p if group_center == Vector3.INF else group_center)
+		var cx := c % N
+		var cz := c / N
+		var ri := int(ceil(r if group_center == Vector3.INF else group_radius))
+		for z in range(maxi(0, cz - ri), mini(N, cz + ri + 1)):
+			for x in range(maxi(0, cx - ri), mini(N, cx + ri + 1)):
+				var i := z * N + x
+				if solid[i] > 0:
+					continue
+				var q := center(i)
+				var d := Defs.flat(q - p).length()
+				if (group_center == Vector3.INF and d > r) or (group_center != Vector3.INF and not group_spot_cached(q, group_center, group_radius, Vector3.ZERO, search)):
+					continue
+				var sc := cover_vs(q, from) * 3.0 - d * 0.6 + (2.5 if trench[i] > 0 else 0.0)
+				for occupied in occupied_count(q, 1.4, taken, search):
+					sc -= 100.0 if group_center != Vector3.INF else 5.0
+				if sc > bs:
+					bs = sc
+					best = q
+	var an := Cover.best_near(world, p, r + 0.8 if group_center == Vector3.INF else group_radius * 2.0, from, taken, group_center, group_radius, search)
+	if not an.is_empty() and float(an[1]) + 0.5 >= bs:
+		return [an[0], Cover.level_of(int(an[2].mat)), an[2]]
+	return [best, cover_vs(best, from), {}]
+
+
+
+## All men in one order consider the same ground against the same threat.
+func _formation_ground(c: Vector3, radius: float, from: Vector3, search: Dictionary) -> Array:
+	var candidates := []
+	var cell := idx_of(c)
+	var cx := cell % N
+	var cz := cell / N
+	var ri := ceili(radius)
 	for z in range(maxi(0, cz - ri), mini(N, cz + ri + 1)):
 		for x in range(maxi(0, cx - ri), mini(N, cx + ri + 1)):
 			var i := z * N + x
 			if solid[i] > 0:
 				continue
 			var q := center(i)
-			var d := Defs.flat(q - p).length()
-			if (group_center == Vector3.INF and d > r) or (group_center != Vector3.INF and not group_spot_cached(q, group_center, group_radius, Vector3.ZERO, search)):
-				continue
-			var sc := cover_vs(q, from) * 3.0 - d * 0.6 + (2.5 if trench[i] > 0 else 0.0)
-			for occupied in occupied_count(q, 1.4, taken, search):
-				sc -= 100.0 if group_center != Vector3.INF else 5.0
-			if sc > bs:
-				bs = sc
-				best = q
-	var an := Cover.best_near(world, p, r + 0.8 if group_center == Vector3.INF else group_radius * 2.0, from, taken, group_center, group_radius, search)
-	if not an.is_empty() and float(an[1]) + 0.5 >= bs:
-		return [an[0], Cover.level_of(int(an[2].mat)), an[2]]
-	return [best, cover_vs(best, from), {}]
+			if group_spot_cached(q, c, radius, Vector3.ZERO, search):
+				candidates.append([q, cover_vs(q, from) * 3.0, 2.5 if trench[i] > 0 else 0.0])
+	if ClassDB.class_exists("FormationGround"):
+		var points := PackedVector3Array()
+		var scores := PackedFloat64Array()
+		for candidate: Array in candidates:
+			points.append(candidate[0])
+			scores.append(candidate[1])
+			scores.append(candidate[2])
+		var scorer: Object = ClassDB.instantiate("FormationGround")
+		if scorer.prepare(points, scores):
+			search.native_ground = scorer
+	return candidates
 
 
 ## One formation shares geometry checks and only counts newly assigned neighbours.
@@ -1021,12 +1066,16 @@ func slots(c: Vector3, face: Vector3, n: int, wide := false) -> Array:
 	var out := []
 	var radius := 6.5 if wide else 5.5
 	var search := {}
+	if n > 0:
+		search.ground = _formation_ground(c, radius, threat, search)
 	for i in n:
 		var angle := i * 2.399963
 		var spread := minf(4.5 if wide else 3.5, sqrt(float(i)) * 1.5)
 		var p := c + (side * cos(angle) + face * sin(angle)) * spread
 		var sp := best_spot_near(p, 3.4 if wide else 2.6, threat, taken, c, radius, search)
 		taken.append(sp[0])
+		if search.has("native_ground"):
+			search.native_ground.add_taken(sp[0])
 		out.append(sp)
 	return out
 

@@ -465,6 +465,12 @@ func get_props() -> Dictionary:
 		"squad": sid, "max_hp": max_hp, "life": life, "posture": posture}
 
 
+func _ready() -> void:
+	super()
+	if world and world.soldier_view and world.entities.get(eid) == self:
+		set_process(false)
+
+
 func on_spawned() -> void:
 	udef = Defs.UNITS[utype]
 	wdef = Defs.WEAPONS.get(udef.weapon, {})
@@ -1118,12 +1124,13 @@ func _scan_work() -> void:
 	var checked := 0
 	var eye := scan_eye()
 	var exclude := get_exclude()
+	var cache_sight := _path_pending or not is_moving()
 	for it in arr:
 		if checked >= 7:
 			break
 		checked += 1
 		var e: Entity = it[1]
-		if world.combat.can_see_from(eye, e, exclude):
+		if world.combat.can_see_from(eye, e, exclude, cache_sight):
 			vis_targets.append(e)
 			if squad:
 				squad.report(e)
@@ -1247,7 +1254,7 @@ func _has_los_now(e: Entity) -> bool:
 		elif e is Drone:
 			los_ok = world.combat.clear_line(eye_pos(), e.position)
 		else:
-			los_ok = world.combat.can_see_from(eye_pos(), e, get_exclude())
+			los_ok = world.combat.can_see_from(eye_pos(), e, get_exclude(), _path_pending or not is_moving())
 	return los_ok
 
 

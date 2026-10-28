@@ -1,6 +1,6 @@
 import { ArrowRightIcon, ArrowSquareOutIcon } from "@phosphor-icons/react"
 import { marked } from "marked"
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { SectionLabel } from "@/components/battles"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -15,6 +15,9 @@ import {
   releases,
   screenshotsOf,
 } from "@/lib/changelog"
+import { useInView } from "@/hooks/use-in-view"
+import { useReducedMotion } from "@/hooks/use-reduced-motion"
+import { saveData } from "@/lib/media"
 import { cn } from "@/lib/utils"
 
 const KIND_STYLE: Record<Kind, string> = {
@@ -85,6 +88,68 @@ function Screens({ shots, large = false }: { shots: Shot[]; large?: boolean }) {
   )
 }
 
+type MotionClip = NonNullable<Entry["videos"]>[number]
+
+function Gif({ video }: { video: MotionClip }) {
+  const [ref, inView] = useInView<HTMLElement>({ threshold: 0.2 })
+  const reduced = useReducedMotion()
+  const [playing, setPlaying] = useState<boolean | null>(null)
+  const active = inView && (playing ?? (!reduced && !saveData()))
+  return (
+    <figure ref={ref} className="mt-4">
+      <img
+        src={active ? video.url : video.poster}
+        alt={video.caption}
+        loading="lazy"
+        className="aspect-video w-full object-contain ring-1 ring-white/10"
+      />
+      <figcaption className="mt-1.5 flex items-center justify-between gap-3 text-xs text-muted-foreground">
+        {video.caption}
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setPlaying(!active)}
+          aria-label={`${active ? "Pause" : "Play"} animation: ${video.caption}`}
+        >
+          {active ? "Pause animation" : "Play animation"}
+        </Button>
+      </figcaption>
+    </figure>
+  )
+}
+
+function Video({ video }: { video: MotionClip }) {
+  const [ref, inView] = useInView<HTMLVideoElement>({ threshold: 0.2 })
+  const reduced = useReducedMotion()
+
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return
+    if (inView && !reduced && !saveData()) el.play().catch(() => {})
+    else el.pause()
+  }, [inView, reduced, ref])
+
+  return (
+    <figure className="mt-4">
+      <video
+        ref={ref}
+        loop
+        src={video.url}
+        poster={video.poster}
+        controls
+        playsInline
+        muted
+        preload="none"
+        aria-label={video.caption}
+        className="aspect-video w-full object-contain ring-1 ring-white/10"
+      >
+        <a href={video.url}>Watch: {video.caption}</a>
+      </video>
+      <figcaption className="mt-1.5 text-xs text-muted-foreground">{video.caption}</figcaption>
+    </figure>
+  )
+}
+
 function EntryBlock({ entry }: { entry: Entry }) {
   return (
     <article className="border-t pt-6 first:border-t-0 first:pt-0" id={entry.slug}>
@@ -94,6 +159,13 @@ function EntryBlock({ entry }: { entry: Entry }) {
       </div>
       <p className="mt-2 text-sm leading-relaxed">{entry.summary}</p>
       <Screens shots={entry.screenshots} />
+      {entry.videos?.map((video) =>
+        /\.gif(?:[?#]|$)/i.test(video.url) ? (
+          <Gif key={video.url} video={video} />
+        ) : (
+          <Video key={video.url} video={video} />
+        )
+      )}
       <Details body={entry.body} />
     </article>
   )

@@ -68,12 +68,26 @@ func clear_line(a: Vector3, b: Vector3, ex: Array = []) -> bool:
 
 
 func can_see(s: Soldier, e: Entity) -> bool:
-	return can_see_from(s.scan_eye(), e, s.get_exclude())
+	return can_see_from(s.scan_eye(), e, s.get_exclude(), s._path_pending or not s.is_moving())
 
 
-func can_see_from(eye: Vector3, e: Entity, ex: Array) -> bool:
+func can_see_from(eye: Vector3, e: Entity, ex: Array, cache_obstruction := true) -> bool:
 	var ex2 := ex + e.get_exclude()
 	var pts := e.exposed_points()
+	# Walking changes the exact sight line every tick; recording those misses costs more than casting.
+	if not cache_obstruction:
+		# One target shares the origin and exclusions across all exposed points.
+		_q.from = eye
+		_q.collision_mask = MASK
+		var excluded: Array[RID] = []
+		excluded.assign(ex2)
+		_q.exclude = excluded
+		var sight_space := space()
+		for pt: Vector3 in pts:
+			_q.to = pt
+			if sight_space.intersect_ray(_q).is_empty() and not smoke_blocks(eye, pt):
+				return true
+		return false
 	var key := [eye, e.get_instance_id()]
 	var previous: Array = _blocked_sight.get(key, [])
 	if not previous.is_empty() and pts == previous[0] and ex2 == previous[1] and _blockers_unchanged(previous[2]):

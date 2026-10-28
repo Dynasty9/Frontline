@@ -37,6 +37,9 @@ var _static: ImageTexture  # + woods and buildings (they burn and fall)
 var _road_sig := -1
 var _static_sig := -1
 var _sig_t := 0.0
+var _static_dirty := true
+var _baking := false
+var _bake_generation := 0
 var _hover := Vector2(-1, -1)
 var _xf := Transform2D.IDENTITY  # map pixels -> the control (turning with the camera when set to)
 var _fight := {}  # grid cell -> where men are firing in it, rebuilt each redraw
@@ -55,7 +58,8 @@ func rebake(all := false) -> void:
 	if all:
 		_base = null
 		_ground = null
-	_static = null
+	_static_dirty = true
+	_bake_generation += 1
 
 
 # --- input --------------------------------------------------------------------------------
@@ -256,21 +260,38 @@ func _make_ground() -> void:
 ## roof still stands and dark where it is a ruin; walls round yards and
 ## compounds as lines.
 func _bake_static() -> void:
+	if _baking:
+		return
 	var w := hud.world
 	if _ground == null:
 		_make_ground()
 	if _ground == null:
 		return
+	_baking = true
+	var generation := _bake_generation
+	var structures := w.structures.duplicate()
 	var t0 := Time.get_ticks_usec()
+	var slice := t0
+	var visited := 0
 	var img: Image = _ground.duplicate()
 	var k := N / MapDims.SIZE
 	var roofs := {}
-	for st in w.structures:
-		if not st.gone and st.team < 0 and st.skind == "roof":
+	for st in structures:
+		visited += 1
+		if _static != null and visited % 128 == 0 and Time.get_ticks_usec() - slice >= 1000:
+			w.vp("minimap baking", slice)
+			await get_tree().process_frame
+			slice = Time.get_ticks_usec()
+		if is_instance_valid(st) and not st.gone and st.team < 0 and st.skind == "roof":
 			roofs[Vector2i(roundi(st.position.x), roundi(st.position.z))] = true
 	for pass_i in 2:
-		for st in w.structures:
-			if st.gone or st.team >= 0:
+		for st in structures:
+			visited += 1
+			if _static != null and visited % 128 == 0 and Time.get_ticks_usec() - slice >= 1000:
+				w.vp("minimap baking", slice)
+				await get_tree().process_frame
+				slice = Time.get_ticks_usec()
+			if not is_instance_valid(st) or st.gone or st.team >= 0:
 				continue
 			var px := int((st.position.x + MapDims.HALF) * k)
 			var pz := int((st.position.z + MapDims.HALF) * k)
@@ -295,8 +316,11 @@ func _bake_static() -> void:
 					_stamp(img, st.position, Vector2(maxf(st.foot.x, 0.6 / k), maxf(st.foot.y, 0.6 / k)), st.yaw, C_WALL, k)
 	img.generate_mipmaps()
 	_static = ImageTexture.create_from_image(img)
+	_static_dirty = generation != _bake_generation
+	_baking = false
+	w.vp("minimap baking", slice)
 	if OS.has_environment("FL_DEBUG_MINIMAP"):
-		print("minimap: baked %d structures (%d roofs) in %.1f ms" % [w.structures.size(), roofs.size(), (Time.get_ticks_usec() - t0) / 1000.0])
+		print("minimap: baked %d structures (%d roofs) over %.1f ms" % [structures.size(), roofs.size(), (Time.get_ticks_usec() - t0) / 1000.0])
 
 
 ## Fills a turned rectangle (centre, half extents in metres, heading) on the
@@ -337,8 +361,12 @@ func _stamp(img: Image, c: Vector3, h: Vector2, yaw: float, col: Color, k: float
 ## next one), so a tank in a wood doesn't keep the map rebaking.
 func _check_bake() -> void:
 	var w := hud.world
+	if w.client_loading():
+		return  # Do not repeatedly paint partially received maps behind the loading screen.
 	_sig_t -= 1.0 / 15.0
-	if _static != null and _sig_t > 0.0:
+	if _sig_t > 0.0:
+		if _static_dirty:
+			_bake_static()
 		return
 	_sig_t = 2.0
 	var rs := 0
@@ -347,7 +375,7 @@ func _check_bake() -> void:
 	if rs != _road_sig:
 		_road_sig = rs
 		_ground = null
-		_static = null
+		rebake()
 	var drawn := 0
 	var roofs := 0
 	for st in w.structures:
@@ -361,8 +389,9 @@ func _check_bake() -> void:
 	var sig := drawn * 7919 + roofs
 	if sig != _static_sig:
 		_static_sig = sig
-		_static = null
-	if _static == null:
+		rebake()
+	# Keep the last complete image while destruction is painted in small slices.
+	if _static_dirty:
 		_bake_static()
 
 

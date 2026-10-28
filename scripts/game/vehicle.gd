@@ -12,6 +12,9 @@ const F_GROUND := 16  # a helicopter sitting on the ground (rotor idling)
 var vkind := "tank"
 var vdef: Dictionary = {}
 var turret_yaw := 0.0
+var _traverse := 0.0
+var _aim_time := 0.0
+var _aim_target := 0
 var speed := 0.0
 var velocity := Vector3.ZERO
 var track_broken := false
@@ -561,7 +564,10 @@ func sim(dt: float) -> void:
 			_scan()
 			if VehicleBrain.applies(self):
 				VehicleBrain.think(self)
+		var hull_yaw := rotation.y
 		_drive(dt)
+		if b == "tank" and _target_ok():
+			turret_yaw = wrapf(turret_yaw - wrapf(rotation.y - hull_yaw, -PI, PI), -PI, PI)
 		_dismount_check(dt)
 		if vdef.has("art"):
 			_arty_tick(dt)
@@ -757,7 +763,8 @@ func _follow(pts: PackedVector3Array, i: int, dt: float, vmax: float, may_revers
 			pivot = true
 			v_t = minf(v_t, 0.8)
 		var ymax: float = float(vdef.turn) * (1.0 - 0.45 * clampf(absf(speed) / maxf(vmax, 0.1), 0.0, 1.0))
-		yaw_rate = clampf(signf(e) * float(vdef.turn) * 0.75 if pivot else kappa * absf(speed), -ymax, ymax)
+		var turn := clampf(signf(e) * float(vdef.turn) * 0.75 if pivot else kappa * absf(speed), -ymax, ymax)
+		yaw_rate = move_toward(yaw_rate, turn, float(vdef.turn) * dt) if base() == "tank" else turn
 	else:
 		# steered wheels: no tighter than full lock; slow right down for a hairpin
 		var wb := _wheelbase()
@@ -877,7 +884,8 @@ func _face(dt: float) -> void:
 		return
 	var step := clampf(e, -float(vdef.turn) * 0.6 * dt, float(vdef.turn) * 0.6 * dt)
 	rotation.y += step
-	turret_yaw -= step  # the gun stays on its target while the hull swings under it
+	if base() != "tank":
+		turret_yaw -= step  # tanks stabilize across every driving manoeuvre in sim()
 
 
 func _smash() -> void:
@@ -953,7 +961,7 @@ func _scan() -> void:
 
 
 func _target_ok() -> bool:
-	if target == null or target.gone:
+	if not is_instance_valid(target) or target.gone:
 		return false
 	if target is Soldier:
 		return target.life == Soldier.Life.ALIVE
@@ -963,6 +971,28 @@ func _target_ok() -> bool:
 
 
 func _turret_tick(dt: float) -> void:
+	if base() == "tank":
+		var has_target := _target_ok()
+		var want := Defs.yaw_of(Defs.flat(target.position - position)) - rotation.y if has_target else 0.0
+		var err := wrapf(want - turret_yaw, -PI, PI)
+		# The traverse motor builds speed, then brakes before reaching the gunner's bearing.
+		var rate := 0.7 if has_target else 0.35
+		_traverse = move_toward(_traverse, signf(err) * minf(rate, sqrt(2.0 * absf(err))), dt)
+		var step := _traverse * dt
+		if signf(step) == signf(err) and absf(step) >= absf(err):
+			step = err
+			_traverse = 0.0
+		turret_yaw = wrapf(turret_yaw + step, -PI, PI)
+		var target_id := target.eid if has_target else 0
+		if target_id != _aim_target:
+			_aim_time = 0.0
+			_aim_target = target_id
+		# Hold a firing solution briefly; crossing a target during a slew isn't a shot.
+		if has_target and _aim_err() < 0.025 and absf(_traverse) < 0.12:
+			_aim_time += dt
+		else:
+			_aim_time = 0.0
+		return
 	if not _target_ok():
 		turret_yaw = move_toward(turret_yaw, 0.0, dt * 0.6)
 		return
@@ -985,7 +1015,7 @@ func _fire_tick() -> void:
 	var dist := Defs.flat(target.position - position).length()
 	if _try_missiles(err, dist):
 		return
-	if vdef.cannon and cannon_t <= 0.0 and err < 0.05:
+	if vdef.cannon and cannon_t <= 0.0 and err < 0.05 and (base() != "tank" or _aim_time >= 0.3):
 		var worth := target is Vehicle or target is Structure
 		if target is Soldier:
 			var n := 0
@@ -1538,10 +1568,7 @@ func _destroyed() -> void:
 	world.despawn(self)
 	var wst = w.spawn("structure", props)
 	if props.has("toss"):
-		w.get_tree().create_timer(3.0).timeout.connect(func():
-			if is_instance_valid(wst) and not wst.gone:
-				wst.toss = null
-				w.push_props(wst, {"toss": null}))
+		w.get_tree().create_timer(3.0).timeout.connect(wst.finish_toss)
 
 
 ## A boat going down: a blast, debris, and she founders (Vfx.sink); whoever's

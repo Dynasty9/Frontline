@@ -471,6 +471,8 @@ catalogue entry in `MissionList.LIST`, a setup function and an autopilot functio
   Orders place the men within 5.5 metres of their destination (6.5 when defending), favoring cover on
   the same side of walls. Fighting men search within 3 metres of their assigned place without crossing
   a barrier; detached soldiers, emergency dives and casualty rescue retain their own freedom.
+  Formation placement shares ground candidates across the order; native builds score them in Rust,
+  with a GDScript fallback preserving the same destinations and cover rules.
   When the leader goes down, the next man steps up and says so.
 - The AI commander's orders go out over the command net ("Command: Jackal 1, Lion 2, assault D7.") and the squad
   leaders acknowledge them.
@@ -779,6 +781,8 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   ring pulsing wherever men are firing. The camera's view is a lit wedge with a line back to where the camera stands, and a compass needle
   shows where north lies in the view (click it to square up). Hovering gives the grid square under the cursor.
   Three sizes, and it can turn with the camera so the way you face is always up (Settings > Interface).
+  Building destruction is painted across several frames, keeping the previous map visible while it updates;
+  moving units, selection and minimap controls continue to update normally.
   In co-op each other commander's view is a wedge in their colour with their initial at their camera, with
   their cursor, rings round what they've selected, their pings and sketches.
 - **Interface scale** (Settings > Interface): the interface grows with the window, so at 100% it takes the same
@@ -851,6 +855,10 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   distance behind one going its way, drives round one standing in the road and passes oncoming traffic on
   the right; supply trucks keep to the right-hand side of the road. Hung up on something, it backs off, turns
   and plans again. (Trucks are slower on the road than they were, so each load carries more.)
+- **Tank gun handling.** Tank drivers build into turns. Turrets accelerate into a traverse and brake onto
+  the target, holding their world bearing as the hull turns underneath. The gunner holds a steady aim
+  for 0.3 seconds before firing, and reacquires when switching targets. Without a target, the turret
+  returns forward by the shortest arc.
 - **Crews think for themselves** (`vehicle_brain.gd`): tanks, IFVs, APCs and armed cars have a behaviour tree,
   walked twice a second. *Smoke and back out*: a missile or rocket launched at it, the crew fires its smoke
   dischargers and reverses out of the line of fire, front armour still towards the shooter, then carries on
@@ -1127,7 +1135,8 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
 **Field Manual** (`ui/field_manual.gd`; main menu, Esc menu or F4): every soldier, squad, weapon, vehicle, building,
 defence, fire mission and upgrade, with what it is modelled on (M4A1, PKM, M2HB, Bradley, BTR-80, AC-130J...), its
 numbers read live from the game's tables with counted bars against the rest of its kind, derived figures (rate of fire,
-sustained damage, squad firepower, km/h), what carries or trains it, and a 3D model to turn over and zoom.
+sustained damage, squad firepower, km/h), what carries or trains it, and a 3D model to turn over and zoom. The Vehicles page on the website embeds this same model stage in a native web roster: the model, lighting, rotation and zoom come from the manual; the search, filters, details and accessible camera buttons use the site UI.
+The shared survey grid has occasional subtle interference, disabled by reduced-motion settings. Armed support aircraft have a demonstration button: a stationary training range runs the real support command, aircraft flight, weapons and impacts inside the viewer. Replay retains the prepared range and resets its aircraft and targets; returning to inspection releases the simulation.
 A **Cover** chapter covers every kind of battlefield cover - stone and brick walls, hedges, sandbags, cars,
 crates, wrecks, rubble, tall walls, windows, trenches, craters and woods - with what it stops, how much blast
 gets through, how a man fights from it, and a diorama of a soldier doing so. **Drills & reflexes** shows what a
@@ -1211,9 +1220,11 @@ Distant vehicles use a single material surface per moving part beyond 100 m;
 turrets, wheels and rotors keep their pivots. Near vehicles retain their original
 materials. Wrecks retain their original materials to avoid baking meshes during
 combat. Squad overview status refreshes at 10 Hz; selection remains immediate.
-The battlefield overlay retains a rasterized image between 15 Hz refreshes when the camera
-and pointer are still. Camera movement, pointer movement and input refresh it
-immediately; hiding the HUD also stops its raster updates. Smoke sight checks visit smoke grenades directly rather than every
+The battlefield status overlay retains a rasterized image between 15 Hz refreshes when the camera
+is still. Panning, zooming and command input refresh it immediately; blast shake does not
+invalidate this cache. Cursor hints, selection boxes and placement previews draw in a separate
+layer each frame, so moving the pointer does not rebuild all squad counters. Hiding the HUD
+also stops its raster updates. Smoke sight checks visit smoke grenades directly rather than every
 projectile; cloud growth, movement and dissipation still take effect immediately.
 
 Clients build scenery in and around the camera's view first and cache visited models; distant models and

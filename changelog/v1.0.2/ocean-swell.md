@@ -8,10 +8,6 @@ file = "swell.jpg"
 caption = "The patrol ship riding a sunlit swell, the sun's glitter broken up along the waves"
 
 [[screenshots]]
-file = "rolling-swell.jpg"
-caption = "Swells rolling in under a grey sky, whitecaps breaking off their crests"
-
-[[screenshots]]
 file = "storm.jpg"
 caption = "A storm sea in the rain"
 
@@ -22,6 +18,11 @@ caption = "Glassy water at dawn"
 [[screenshots]]
 file = "before-after.jpg"
 caption = "Before and after: a sunny sea and an overcast one"
+
+[[videos]]
+file = "ocean-swell.mp4"
+poster = "ocean-swell-poster.jpg"
+caption = "A patrol ship pitches and rolls as waves pass beneath it. Recorded in the current build, October 2026."
 +++
 
 - **Waves you can see:** a long swell rolls in off the open sea in sets, and the wind's own shorter waves run across it. The crests come up sharp and the troughs broad, and boats rise, pitch and roll on the same waves.

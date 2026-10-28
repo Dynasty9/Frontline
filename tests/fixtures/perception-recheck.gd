@@ -40,6 +40,8 @@ func _ready() -> void:
 	assert(not sight.can_see_from(eye, enemy, []))
 	var before := sight.queries
 	assert(not sight.can_see_from(eye, enemy, []) and sight.queries == before, "Unchanged blocking geometry should reuse its result")
+	assert(not sight.can_see_from(eye, enemy, [], false), "Moving observers still test the wall")
+	before = sight.queries
 	enemy.height = 1.2
 	sight.can_see_from(eye, enemy, [])
 	assert(sight.queries > before, "A changed target posture must be checked")
@@ -47,10 +49,12 @@ func _ready() -> void:
 	sight.can_see_from(eye + Vector3.UP * 0.1, enemy, [])
 	assert(sight.queries > before, "A changed observer position must be checked")
 	assert(sight.can_see_from(eye, enemy, [wall.get_rid()]), "Changed exclusions must take effect immediately")
+	assert(sight.can_see_from(eye, enemy, [wall.get_rid()], false), "Moving sight respects exclusions")
 	assert(not sight.can_see_from(eye, enemy, []))
 	wall.position.z = 10
 	await sync_physics()
 	assert(sight.can_see_from(eye, enemy, []), "Moving a blocker must clear cached obstruction")
+	assert(sight.can_see_from(eye, enemy, [], false), "Moving sight sees past moved blockers")
 	wall.position.z = 0
 	await sync_physics()
 	assert(not sight.can_see_from(eye, enemy, []), "Positive visibility is never cached")
@@ -95,10 +99,12 @@ func _ready() -> void:
 	await sync_physics()
 	assert(sight.can_see_from(eye, enemy, []), "Freed blockers must not leave stale references")
 	world.fires.smokes.append([Vector3(5, 1, 0), 4.0])
+	assert(not sight.can_see_from(eye, enemy, [], false), "Moving sight still checks smoke")
 	assert(not sight.can_see_from(eye, enemy, []))
 	before = sight.queries
 	assert(not sight.can_see_from(eye, enemy, []) and sight.queries > before, "Smoke obstruction must never be cached")
 	world.fires.smokes.clear()
+	assert(sight.can_see_from(eye, enemy, [], false), "Moving sight sees immediately after smoke clears")
 	assert(sight.can_see_from(eye, enemy, []), "Dissipated smoke restores visibility immediately")
 	world.free()
 	print("PERCEPTION_RECHECK passed")

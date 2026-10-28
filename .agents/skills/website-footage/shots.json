@@ -102,6 +102,116 @@
       "args": ["--mission=skyhook", "--pitch=-24"],
       "shows": ["helicopter", "sling load", "river and bridge", "outpost", "overcast"],
       "about": "Overcast. The Mohawk lifts off right by the camera about 2.7-4.5 s in; the Nyx crosses the river on its sling about 35 s."
+    },
+    "changelog-boats": {
+      "frames": 1050,
+      "args": [
+        "--scenario=naval",
+        "--seed=3",
+        "--focus-vehicle=rhib",
+        "--zoom=65",
+        "--pitch=-38",
+        "--cam-yaw=0.6"
+      ],
+      "shows": [
+        "boat movement",
+        "wakes",
+        "ocean swell"
+      ],
+      "about": "Changelog motion capture from current main; choose cuts from contact sheets."
+    },
+    "changelog-helicopter": {
+      "frames": 1050,
+      "args": [
+        "--scenario=sling",
+        "--seed=3",
+        "--focus=-25,0",
+        "--zoom=80",
+        "--pitch=-28",
+        "--cam-yaw=0.6"
+      ],
+      "shows": [
+        "helicopter lift",
+        "banking",
+        "sling load"
+      ],
+      "about": "Changelog motion capture from current main; choose cuts from contact sheets."
+    },
+    "changelog-tank-wide": {
+      "frames": 900,
+      "args": [
+        "--scenario=tank",
+        "--seed=3",
+        "--focus=2,-20",
+        "--zoom=52",
+        "--pitch=-48",
+        "--cam-yaw=0",
+        "--mood=clear"
+      ],
+      "shows": [
+        "tank movement",
+        "turret traverse",
+        "gunfire"
+      ],
+      "about": "Changelog motion capture from current main; choose cuts from contact sheets."
+    },
+    "changelog-dolphins-close": {
+      "frames": 900,
+      "args": [
+        "--mission=beachhead",
+        "--seed=3",
+        "--focus-vehicle=patrol_ship",
+        "--zoom=9",
+        "--pitch=-36",
+        "--set=wildlife:2"
+      ],
+      "shows": [
+        "dolphins",
+        "ocean swell"
+      ],
+      "about": "Changelog motion capture from current main; choose cuts from contact sheets.",
+      "env": {
+        "FL_WILDLIFE_FOLLOW": "dolphins",
+        "FL_DEBUG_WILDLIFE": "1"
+      }
+    },
+    "changelog-swell": {
+      "frames": 600,
+      "args": [
+        "--scenario=naval",
+        "--seed=3",
+        "--static",
+        "--focus-vehicle=patrol_ship",
+        "--zoom=40",
+        "--pitch=-22",
+        "--mood=overcast"
+      ],
+      "shows": [
+        "ocean swell",
+        "boat pitch and roll"
+      ],
+      "about": "Stationary patrol ship riding the sea; fixed close camera."
+    },
+    "changelog-fish-close": {
+      "frames": 900,
+      "args": [
+        "--mission=bridgehead",
+        "--seed=3",
+        "--zoom=4",
+        "--pitch=-60",
+        "--focus=-254,4",
+        "--set=wildlife:2",
+        "--mood=day"
+      ],
+      "shows": [
+        "fish swimming",
+        "fish jumping"
+      ],
+      "about": "Changelog motion capture from current main; choose cuts from contact sheets.",
+      "env": {
+        "FL_WILDLIFE_FOLLOW": "fish",
+        "FL_DEBUG_WILDLIFE": "1"
+      }
     }
   },
   "outputs": {
@@ -212,6 +322,160 @@
         },
         { "take": "ac130-night", "from": 15.8, "to": 19.0, "caption": "[AC-130 cannon fire over the town at night]" },
         { "take": "night-barrage", "from": 12.2, "to": 17.8, "caption": "[A rocket barrage slams into the town]" }
+      ]
+    },
+    "changelog-tank-motion": {
+      "use": "Changelog: unreleased/tank-operation. Captured at 1a925b4 on 2026-10-28; current-build demonstration, not historical footage.",
+      "size": [
+        1280,
+        720
+      ],
+      "kbps": 1400,
+      "max_kb": 2500,
+      "audio": false,
+      "fade": 0,
+      "loop_fade": 0,
+      "grade": {
+        "brightness": 1.15
+      },
+      "cuts": [
+        {
+          "take": "changelog-tank-wide",
+          "from": 15,
+          "to": 27
+        }
+      ]
+    },
+    "changelog-boat-turn": {
+      "use": "Changelog: v1.0.5/boats-handle-like-boats. Captured at 1a925b4 on 2026-10-28; current-build demonstration, not historical footage.",
+      "size": [
+        1280,
+        720
+      ],
+      "kbps": 1400,
+      "max_kb": 2500,
+      "audio": false,
+      "fade": 0,
+      "loop_fade": 0,
+      "grade": {
+        "brightness": 1.1
+      },
+      "cuts": [
+        {
+          "take": "changelog-boats",
+          "from": 2,
+          "to": 11
+        }
+      ]
+    },
+    "changelog-boat-sinking": {
+      "use": "Changelog: v1.0.0/water-and-sea-battles. Captured at 1a925b4 on 2026-10-28; current-build demonstration, not historical footage.",
+      "size": [
+        1280,
+        720
+      ],
+      "kbps": 1400,
+      "max_kb": 2500,
+      "audio": false,
+      "fade": 0,
+      "loop_fade": 0,
+      "grade": {
+        "brightness": 1.1
+      },
+      "cuts": [
+        {
+          "take": "changelog-boats",
+          "from": 24,
+          "to": 35
+        }
+      ]
+    },
+    "changelog-ocean-swell": {
+      "use": "Changelog: v1.0.2/ocean-swell. Captured at 1a925b4 on 2026-10-28; current-build demonstration, not historical footage.",
+      "size": [
+        1280,
+        720
+      ],
+      "kbps": 1400,
+      "max_kb": 2500,
+      "audio": false,
+      "fade": 0,
+      "loop_fade": 0,
+      "grade": {
+        "brightness": 1.0
+      },
+      "cuts": [
+        {
+          "take": "changelog-swell",
+          "from": 2,
+          "to": 12
+        }
+      ]
+    },
+    "changelog-fish-swimming": {
+      "use": "Changelog: v1.0.3/wildlife. Captured at 1a925b4 on 2026-10-28; current-build demonstration, not historical footage.",
+      "size": [
+        1280,
+        720
+      ],
+      "kbps": 1400,
+      "max_kb": 2500,
+      "audio": false,
+      "fade": 0,
+      "loop_fade": 0,
+      "grade": {
+        "brightness": 1.4
+      },
+      "cuts": [
+        {
+          "take": "changelog-fish-close",
+          "from": 17,
+          "to": 23
+        }
+      ]
+    },
+    "changelog-dolphin-leap": {
+      "use": "Changelog: v1.0.3/wildlife. Captured at 1a925b4 on 2026-10-28; current-build demonstration, not historical footage.",
+      "size": [
+        1280,
+        720
+      ],
+      "kbps": 1400,
+      "max_kb": 2500,
+      "audio": false,
+      "fade": 0,
+      "loop_fade": 0,
+      "grade": {
+        "brightness": 1.15
+      },
+      "cuts": [
+        {
+          "take": "changelog-dolphins-close",
+          "from": 8,
+          "to": 16
+        }
+      ]
+    },
+    "changelog-helicopter-turn": {
+      "use": "Changelog: v1.0.11/helicopter-flight. Captured at 1a925b4 on 2026-10-28; current-build demonstration, not historical footage.",
+      "size": [
+        1280,
+        720
+      ],
+      "kbps": 1400,
+      "max_kb": 2500,
+      "audio": false,
+      "fade": 0,
+      "loop_fade": 0,
+      "grade": {
+        "brightness": 1.15
+      },
+      "cuts": [
+        {
+          "take": "changelog-helicopter",
+          "from": 3,
+          "to": 15
+        }
       ]
     }
   },
