@@ -471,6 +471,8 @@ catalogue entry in `MissionList.LIST`, a setup function and an autopilot functio
   Orders place the men within 5.5 metres of their destination (6.5 when defending), favoring cover on
   the same side of walls. Fighting men search within 3 metres of their assigned place without crossing
   a barrier; detached soldiers, emergency dives and casualty rescue retain their own freedom.
+  Formation placement shares ground candidates across the order; native builds score them in Rust,
+  with a GDScript fallback preserving the same destinations and cover rules.
   When the leader goes down, the next man steps up and says so.
 - The AI commander's orders go out over the command net ("Command: Jackal 1, Lion 2, assault D7.") and the squad
   leaders acknowledge them.
@@ -1200,9 +1202,11 @@ Distant vehicles use a single material surface per moving part beyond 100 m;
 turrets, wheels and rotors keep their pivots. Near vehicles retain their original
 materials. Wrecks retain their original materials to avoid baking meshes during
 combat. Squad overview status refreshes at 10 Hz; selection remains immediate.
-The battlefield overlay retains a rasterized image between 15 Hz refreshes when the camera
-and pointer are still. Camera movement, pointer movement and input refresh it
-immediately; hiding the HUD also stops its raster updates. Smoke sight checks visit smoke grenades directly rather than every
+The battlefield status overlay retains a rasterized image between 15 Hz refreshes when the camera
+is still. Panning, zooming and command input refresh it immediately; blast shake does not
+invalidate this cache. Cursor hints, selection boxes and placement previews draw in a separate
+layer each frame, so moving the pointer does not rebuild all squad counters. Hiding the HUD
+also stops its raster updates. Smoke sight checks visit smoke grenades directly rather than every
 projectile; cloud growth, movement and dissipation still take effect immediately.
 
 Clients build scenery in and around the camera's view first and cache visited models; distant models and

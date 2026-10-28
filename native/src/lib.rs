@@ -1,6 +1,7 @@
 use godot::prelude::*;
 use std::collections::HashMap;
 
+mod formation_ground;
 mod route_graph;
 
 struct FrontlineSimulation;

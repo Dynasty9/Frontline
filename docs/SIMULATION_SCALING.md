@@ -225,3 +225,100 @@ work; compare reports with the same `detailed_timing` setting. The managed local
 server receives the same profiling mode as its renderer.
 
 Whole-map land navigation uses `NavRaster` byte solidity and float32 weights; AStarGrid2D search storage is allocated only for local clusters (or the explicit flat-grid diagnostic). At 3072 m, one raster allocates 45 MiB versus 686 MiB for a full AStarGrid2D. Seeded mutation and conversion tests compare both representations, including fractional weights. Formation selection caches geometry and incremental occupancy only within one synchronous `slots` call; no decisions survive terrain changes or later orders. Exhaustive-reference tests retain identical selections through 200-person groups.
+
+## Overlay refresh isolation, 28 October 2026
+
+The cached status overlay previously refreshed on every camera-offset or pointer change.
+Blast shake and pointer movement could therefore bypass its 15 Hz limit. Status refresh
+now uses the camera's unshaken transform. A separate pointer layer retains immediate
+selection boxes, hover cards and order previews; camera panning, zooming and command
+input still invalidate status immediately. The authoritative simulation is unchanged.
+
+Exported Windows comparisons used a generated 3072 m map, 480 starting infantry and
+20 starting vehicles, active commanders, seed 3, low graphics and the complete HUD at
+1280 x 720. Other applications remained running. Alternating phases within one battle
+reduce, but do not eliminate, background-load and battle-progression differences.
+
+| Comparison | Control FPS | Changed FPS |
+| --- | --- | --- |
+| Natural blast shake, first phases | 41.60 / 45.59 | 48.61 |
+| Natural blast shake, repeated phases | 45.59 / 47.57 | 51.30 |
+| Continuously injected shake (diagnostic, not normal gameplay) | 38.72 / 42.54 | 55.93 |
+| Moving pointer, first phases | 34.81 / 34.89 | 45.90 |
+| Moving pointer, repeated phases | 34.89 / 36.64 | 48.99 |
+
+The pointer comparison reproduces the former per-frame status invalidation while
+keeping the pointer layer active in both phases. Status redraws fell from 120 per
+120 measured frames to 37-39. The continuous-shake diagnostic fell from 120 to 32.
+A separate 30-second full-battle run measured **47.47 FPS**, p50 **19.88 ms**, p95
+**32.47 ms**, p99 **40.32 ms** and maximum **73.45 ms**. This does **not** meet the
+60 FPS target. These results are workload-specific, not a capacity guarantee.
+
+Rejected experiments included same-pixel minimap aggregation (slower with dispersed
+units), rasterizing the whole minimap, larger soldier batch cells and collapsing
+occluded counters (no repeatable full-frame improvement). Two-worker exports measured
+40.74 and 34.63 FPS around a 33.12 FPS default-worker run; that variation does not
+justify changing the default worker pool. No AI reactions or perception candidates
+were removed to obtain these rendering results.
+
+
+### Shared formation candidates
+
+Each formation now prepares eligible ground cells and cover scores once. The optional
+`FormationGround` native class scores those candidates and incrementally tracks occupied
+positions; the GDScript fallback uses the same prepared candidates. Both preserve scan
+order, strict comparisons, distance arithmetic and repeated occupancy subtraction.
+The snapshot belongs to one synchronous order, so later terrain changes are evaluated
+afresh. Cover anchors still use the existing selection rules.
+
+The exhaustive placement fixture compares native and fallback paths through 200 men,
+including trench cover, wall anchors and map boundaries. Alternating microbenchmarks
+measured 200-person formation selection at **5.76-6.35 ms** with native scoring versus
+**94.52-101.90 ms** before candidate preparation; the prepared GDScript path previously
+measured **40.41-50.92 ms**. These are component timings, not whole-game speedups.
+
+A first full rendered run using the workload above measured **54.25 FPS**, frame p50
+**17.35 ms**, p95 **27.59 ms**, p99 **35.22 ms**, maximum **52.21 ms**. Server tick p50
+was **26.33 ms**, p95 **52.20 ms**, p99 **65.86 ms**, maximum **93.61 ms**. It still
+misses both the 60 FPS rendering target and the 30 Hz simulation tail budget. Separate
+runs are affected by background load and battle progression, so this is not a controlled
+14 percent speedup claim. Other applications remained running.
+
+
+Ground-height and trench-containment checks now use a trench-only spatial index, updated
+by the existing structure insertion/removal lifecycle. Exact segment tests, completed
+construction checks and bridge precedence remain unchanged. A 6,000-point fixture
+compares the original query through relocation, construction and removal. In consecutive
+45-second detailed simulation runs, ground-query time fell from 1,594.55 to 496.97 ms;
+tick p50/p95 moved from 24.59/49.05 to 23.66/47.38 ms. These runs retain profiling overhead.
+The previous 189 ms movement outlier did not reproduce; detailed movement maxima were
+0.32 and 5.13 ms, so there is no evidence for blaming normal movement on that outlier.
+
+Typed distant-soldier batch records replace string-key lookups in the frame loop.
+Alternating 500-soldier microbenchmarks measured 1.36-1.46 ms/frame before and
+1.26-1.33 ms/frame after, with the same poses, grouping and instance transforms.
+
+
+With the trench index and typed soldier batches, a subsequent full rendered run measured
+**57.83 FPS**, p50 **16.18 ms**, p95 **25.88 ms**, p99 **32.57 ms**, maximum **45.67 ms**.
+It still does not satisfy a minimum-60-FPS or p99 frame budget. All **24 simulation
+fingerprints** matched main across attack, breach, trenches, tactics, grenade drills
+and fire (seed 3, four samples per 60-second scenario).
+
+Caching the roster into a texture reduced draw calls but did not improve alternating
+FPS phases (direct 49.52/46.39/51.03, cached 45.34/47.28), so it was removed. A trial
+half-frequency search for soldiers without a target retained reflexes but measured
+49.93 FPS and 18.05 ms of soldier work per tick versus the prior 17.77 ms. Background
+load and changed battle progression prevent a causal comparison; without a convincing
+benefit, the original perception cadence was restored.
+
+
+Moving-observer sight checks prepare the shared ray origin, mask and exclusions once
+per target. Physics intersections and per-point smoke checks remain unchanged, including
+early exit on the first visible point. Alternating 10,000-query microbenchmarks measured
+blocked sight at 5.71-5.82 us before / 4.62-4.80 us after, clear sight at 2.57-2.63 /
+2.34-2.37 us, and smoke at 5.17-5.21 / 4.03-4.07 us. This uses the existing physics
+API directly; no new native physics binding or scan-cadence change is required.
+
+Serial scene culling was also tested without reducing visible geometry. It measured
+55.60 FPS (p95 28.05 ms), so the default threaded-culling threshold remains unchanged.
