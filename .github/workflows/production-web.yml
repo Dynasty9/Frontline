@@ -1,0 +1,45 @@
+name: Production website
+
+on:
+  status:
+  schedule:
+    - cron: '17 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  railway:
+    name: Railway deployment result
+    if: >-
+      github.event_name == 'status' &&
+      github.event.context == 'frontline - web' &&
+      (github.event.state == 'failure' || github.event.state == 'error')
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Surface the failed deployment
+        env:
+          DEPLOY_SHA: ${{ github.event.sha }}
+          DEPLOY_STATE: ${{ github.event.state }}
+        run: |
+          echo "::error::Railway web deployment $DEPLOY_STATE for $DEPLOY_SHA. The previous website may still be online."
+          echo "Railway web deployment **$DEPLOY_STATE** for commit \`$DEPLOY_SHA\`. Check the commit's Railway status link for build logs." >> "$GITHUB_STEP_SUMMARY"
+          exit 1
+
+  smoke:
+    name: Production website and viewer
+    if: >-
+      github.event_name != 'status' ||
+      (github.event.context == 'frontline - web' && github.event.state == 'success' &&
+      !contains(github.event.description, 'watched paths not modified'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+      - name: Check the actual production responses
+        run: node .github/scripts/production_web_smoke.mjs
