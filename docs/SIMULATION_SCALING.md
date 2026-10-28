@@ -352,3 +352,12 @@ Those short visual checks are not FPS benchmarks. Both baseline and changed visu
 runs retain the existing two-resource shutdown warning; no script errors occurred.
 The corrected standalone batch, structure index, terrain cover/update and map placement
 tests also passed locally, and CI passed on the code commit.
+
+
+Follow-up diagnostics left other applications running. Alternating client-physics
+phases measured 49.08/53.92/57.10 FPS enabled and 51.85/59.09 disabled. The upward
+trend prevents attributing that whole difference to physics; disabling cosmetic
+physics is not retained. A per-slot transform cache for distant soldiers also failed
+to improve the alternating 500-soldier microbenchmark (1.34-1.52 ms/frame original,
+1.38-1.58 ms cached), so it was removed. The final code remains unchanged, and all
+checks passed on commit 449af9e. These experiments do not establish a 60 FPS result.
