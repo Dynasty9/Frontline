@@ -345,8 +345,9 @@ func _structure_labels(cam: Camera3D, vs: Vector2, zoom: float) -> void:
 
 ## Each squad's orders drawn on the ground: dashed arrows for moves, a bold
 ## axis of advance and an objective ring for assaults, a defended arc for
-## positions to hold. Zoomed out: every squad; closer in, the ones you've
-## selected. The whole route shows for selected squads and fresh orders
+## positions to hold. Normal play shows selected squads; the tactical
+## workspace reveals all plans when the orders layer is enabled. The whole
+## route shows for selected squads and fresh orders
 ## (drawing itself in as the order goes out); otherwise a short arrow
 ## points the way, so a zoomed-out map stays readable.
 func _order_graphics(lt: int, a_far: float) -> void:
@@ -357,6 +358,8 @@ func _order_graphics(lt: int, a_far: float) -> void:
 		if g.is_empty() or int(g["n"]) == 0:
 			continue
 		var sel := _sel_sids.has(sid)
+		if not hud.show_order_for(sel):
+			continue
 		var a := maxf(a_far, 0.7) if sel else a_far
 		if not sel and hud.map_layer("orders") and (int(o[4]) == lt or lt < 0):
 			a = maxf(a, 0.6)
@@ -885,11 +888,12 @@ func _nato_markers(cam: Camera3D, lt: int, a: float) -> void:
 		var mem: Array = g["mem"]
 		var sym: Array = g.symbol
 		var sel := _sel_sids.has(sid)
-		var sz := (30.0 if sel else 26.0) if hud.tactical else (26.0 if sel else 23.0)
+		var detail := sel or hud.tactical or hud.workspace == "map"
+		var sz := (30.0 if sel else 26.0) if hud.tactical else (26.0 if sel else 19.0)
 		var hw := sz * 0.5
 		var o: Array = hud.orders.get(sid, [])
 		var age := 1e9 if o.is_empty() or int(o[5]) < 0 else (now - int(o[5])) / 1000.0
-		if age < 1.6:
+		if age < 1.6 and detail:
 			var k := age / 1.6
 			draw_arc(sp, 16.0 + k * 28.0, 0.0, TAU, 32, Color(1, 1, 1, (1.0 - k) * 0.85 * a), 2.0, true)
 		var firing: int = g.firing
@@ -905,25 +909,28 @@ func _nato_markers(cam: Camera3D, lt: int, a: float) -> void:
 			draw_arc(sp, hw + 7.0, 0.0, TAU, 28, HudCoop._a(Net.player_color(by), 0.55 * a), 1.3, true)
 			_owner_tab(sp + Vector2(hw + 1.0, -sz * 0.34 - 12.0), by, a)
 		if firing > 0:
-			_contact_burst(sp + Vector2(-hw - 3.0, -hw * 0.62), a)
+			if detail:
+				_contact_burst(sp + Vector2(-hw - 3.0, -hw * 0.62), a)
+			else:
+				draw_circle(sp + Vector2(-hw - 3.0, -hw * 0.62), 2.5, UiKit.fa(UiKit.WARN, a))
 		if supp * 2 >= maxi(1, alive) and alive > 0:
 			MapSymbols.glyph(self, "supp", sp + Vector2(-hw - 5.0, hw * 0.5), 6.5, UiKit.WARN, a)
-		if not o.is_empty():
+		if detail and not o.is_empty():
 			var og: String = MapSymbols.ORDER_GLYPH.get(String(o[0]), "")
 			if og != "":
 				MapSymbols.glyph(self, og, sp + Vector2(hw + 10.0, -1.0), 7.5, MapSymbols.ORDER_COLORS.get(String(o[0]), UiKit.TEXT), a)
 		# strength: a pip per man (white standing, red down, grey lost)
 		var py := sp.y + hw * 0.68 + 4.0
 		var px := sp.x - mem.size() * 2.5
-		for pc: Color in g.pips:
+		for pc: Color in (g.pips if detail else []):
 			draw_rect(Rect2(px - 0.5, py - 0.5, 5, 4), Color(0, 0, 0, 0.6 * a))
 			draw_rect(Rect2(px, py, 4, 3), Color(pc.r, pc.g, pc.b, a))
 			px += 5.0
 		var ty := py + 15.0
-		if mine:
+		if mine and (detail or hud.workspace == "squads"):
 			_map_text(Vector2i(int(sid), 0), Vector2(sp.x, ty), g.callsign, UiKit.cond(600, 1), 10, UiKit.fa(UiKit.TEXT, 0.85 * a))
 			ty += 12.0
-		if age < 6.0:
+		if detail and age < 6.0:
 			var tag := _order_tag(o)
 			var ta := clampf((6.0 - age) * 1.5, 0.0, 1.0) * a
 			var tcol := UiKit.ACCENT
@@ -1042,6 +1049,8 @@ func _command_links(cam: Camera3D, a: float) -> void:
 		if st.skind == "depot" and st.team >= 0:
 			hq[st.team] = st.position
 	for sid in hud.orders:
+		if not hud.show_order_for(_sel_sids.has(sid)):
+			continue
 		var o: Array = hud.orders[sid]
 		if int(o[5]) < 0 or not hq.has(int(o[4])):
 			continue

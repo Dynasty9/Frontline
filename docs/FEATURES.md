@@ -1127,12 +1127,14 @@ catalogue entry in `MissionList.LIST`, a setup function and an autopilot functio
   drifting cloud over the target. Smoke is shaded like a volume (sun, sky, self-shadowing) and fades
   softly where it meets the ground. Burning wrecks burn, then smoulder (see Fire). Smoke screens are real volumetric fog when
   volumetric fog is on. All effect shaders are compiled during loading, so the first explosion doesn't hitch.
-- A persistent minimap with a compact icon dock: **View** closes tools, **Squads** opens a searchable roster,
-  **Expand** enlarges the map and exposes layers, and **Support** opens off-map artillery and air strikes.
-  One tool opens at a time above the map. Commander mode explains selection and orders; observer mode explains
-  inspection and camera control, with clearly labelled free support demos. Selection and orders appear along
-  the bottom when needed. Routine soldier labels belong to selected troops; suppression warnings, squad
-  markers, and hover inspection remain available.
+- A persistent minimap anchors a compact command station with **Units**, **Map**, and **Support** icon buttons.
+  Units opens a searchable roster with Infantry, Vehicles and Attention filters. The last finds pinned,
+  routing, wounded, low-ammo and heavily damaged units. Map expands the overview and exposes layers.
+  Support opens artillery and air strikes, with supply costs for commanders and labelled free demos for
+  spectators. One drawer opens directly above the map at a time, with instructions for the current mode.
+  Selection details and orders appear along the bottom. Normal battle views show selected squad plans;
+  the tactical workspace reveals the wider army's plans. Routine counters stay compact while suppression
+  warnings, unit symbols and hover inspection remain available.
 - The main menu sits over a live 3D scene: a .50 cal crew at golden hour with a burning wreck and shelling on the horizon.
 
 **Field Manual** (`ui/field_manual.gd`; main menu, Esc menu or F4): every soldier, squad, weapon, vehicle, building,

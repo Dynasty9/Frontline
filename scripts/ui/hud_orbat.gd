@@ -3,7 +3,7 @@ extends Control
 ## Order of battle: every allied unit, grouped (infantry, support teams,
 ## vehicles), a line each (docs/UI.md, Row): its symbol, callsign, what it's
 ## doing as a code (MOV D8, PINNED · DEF E4) and its strength in pips. It sits
-## on the left scrim with no box: a header, then rows with a rule under each.
+## in the Units drawer: a header, then rows with a rule under each.
 ## Click a row to select the unit and look at it, Shift+click to add it to
 ## the selection, double-click to zoom in on it. Observers see both sides.
 
@@ -15,11 +15,32 @@ const W := 320.0
 var hud: Hud
 var open := true
 var query := ""
+var filter_kind := "all"
 var _scroll := 0.0
 var _content_h := 0.0
 var _rows: Array = []  # [Rect2, kind ("sq"/"veh"), id, commandable]
 var _head := Rect2()
 var _hover := -1
+
+
+func set_query(value: String) -> void:
+	query = value.strip_edges().to_lower()
+	_scroll = 0.0
+	queue_redraw()
+
+
+func set_filter(value: String) -> void:
+	filter_kind = value
+	_scroll = 0.0
+	queue_redraw()
+
+
+func matches_unit(search_text: String, category: String, attention: bool) -> bool:
+	if filter_kind == "attention" and not attention:
+		return false
+	if filter_kind in ["infantry", "vehicles"] and category != filter_kind:
+		return false
+	return query.is_empty() or search_text.to_lower().contains(query)
 
 
 func _ready() -> void:
@@ -128,7 +149,6 @@ func _draw_content() -> void:
 	var w := hud.world
 	if w == null or w.input == null:
 		return
-	draw_rect(Rect2(Vector2(-6, -4), size + Vector2(12, 8)), UiKit.PANEL)
 	_rows.clear()
 	_scroll = clampf(_scroll, 0.0, maxf(0.0, _content_h - size.y))
 	var lt: int = w.local_team
@@ -151,15 +171,20 @@ func _draw_content() -> void:
 		var search_text := Squad.callsign_of(mem[0].team, int(sid))
 		var symbol: Array = MapSymbols.squad_symbol(mem)
 		search_text += " " + String(symbol[0]) + " " + String(symbol[1])
-		if alive > 0 and (query.strip_edges().is_empty() or search_text.to_lower().contains(query.strip_edges().to_lower())):
+		var attention := false
+		if not query.is_empty() or filter_kind == "attention":
+			var state: Dictionary = hud.squad_state(int(sid), mem)
+			search_text += " " + String(state.code) + (" low ammo" if state.low_ammo else "")
+			attention = state.pinned or state.low_ammo or int(state.wounded) > 0 or int(state.mstate) >= 3
+		if alive > 0 and matches_unit(search_text, "infantry", attention):
 			sqs.append(sid)
 	var vehs := []
 	for v in w.vehicles:
-		if v.team in teams and v.vkind != "truck" and not v.gone and (query.strip_edges().is_empty() or String(v.display_name()).to_lower().contains(query.strip_edges().to_lower())):
+		if v.team in teams and v.vkind != "truck" and not v.gone and matches_unit(String(v.display_name()), "vehicles", v.health_frac() < 0.6 or (v.flags & Vehicle.F_TRACK) != 0):
 			vehs.append(v)
 	# header: the word, the count, a rule; the key (and whether it's open) at the end
 	_head = Rect2(0, 0, W, HEAD_H)
-	var x := UiKit.caps_at(self, Vector2(0, 15), "Squads", 11, UiKit.DIM)
+	var x := UiKit.caps_at(self, Vector2(0, 15), "Results", 11, UiKit.DIM)
 	x += 8.0 + UiKit.mono_at(self, Vector2(x + 8.0, 15), "%02d" % (sqs.size() + vehs.size()), 11, UiKit.FAINT)
 	var ok := Keys.label("orbat")
 	var end := ("[%s] " % ok if ok != "" else "") + ("-" if open else "+")

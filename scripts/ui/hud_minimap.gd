@@ -585,7 +585,9 @@ func _draw_fighting(w: World, sc: float) -> void:
 	for s in w.soldiers:
 		if not s.visible or s.life != Soldier.Life.ALIVE or (s.flags & Soldier.F_SHOOTING) == 0:
 			continue
-		var key := Vector2i(floori((s.position.x + MapDims.HALF) / 24.0), floori((s.position.z + MapDims.HALF) / 24.0))
+		# Cluster in screen space so a dense battle cannot fill the overview with rings.
+		var map_pos := _pt(s.position)
+		var key := Vector2i(floori(map_pos.x / (14.0 * sc)), floori(map_pos.y / (14.0 * sc)))
 		if not _fight.has(key):
 			_fight[key] = s.position
 	var ph := fmod(Time.get_ticks_msec() / 1000.0 * 1.4, 1.0)
@@ -626,7 +628,12 @@ func _draw_units(w: World, sc: float) -> void:
 		var vp := _pt(v.position)
 		if v.selected:
 			_ink.draw_arc(vp, 8.5 * sc, 0, TAU, 20, Color(1, 1, 1, 0.9), 1.4, true)
-		MapSymbols.nato(_ink, vp, 11.0 * sc, v.team == w.local_team or w.local_team < 0, v.team, vs2[0])
+		if hud.workspace == "map" or v.selected:
+			MapSymbols.nato(_ink, vp, 11.0 * sc, v.team == w.local_team or w.local_team < 0, v.team, vs2[0])
+		else:
+			var marker := Rect2(vp - Vector2.ONE * 2.3 * sc, Vector2.ONE * 4.6 * sc)
+			_ink.draw_rect(marker.grow(0.8), edge)
+			_ink.draw_rect(marker, Defs.TEAM_COLORS[v.team])
 	for d in w.drones:
 		if d.visible:
 			_ink.draw_circle(_pt(d.position), 2.0, Color(1, 1, 0.3))

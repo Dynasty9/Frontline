@@ -81,13 +81,16 @@ darkens toward that edge (`UiScrim`), so it reads over any ground without a box:
 
 - **Top** (the **Status** line): the side, `SUP` and its rate, `UNITS`, `FOB`, `TOWNS`, and the clock. A line under
   it for each FOB says what its trucks are doing.
-- **Left**: a persistent minimap sits above four compact, labelled icon buttons: **View**, **Squads**,
-  **Expand**, and **Support**. View closes the current tool; Squads opens a searchable roster with
-  click-to-locate, Shift-click to add and double-click to zoom. Expand enlarges the map and reveals its layer
-  controls. Support opens a scrollable list of off-map artillery and air strikes. Commanders see costs and
-  cooldowns; spectators see clearly marked free demos. One tool opens at a time, and the map stays visible.
-  A mode heading and short contextual instructions explain commanding versus observing. The roster binding
-  toggles Squads; Escape backs out after cancelling orders and selection.
+- **Left**: one compact command station keeps the minimap visible above three labelled icon buttons:
+  **Units**, **Map**, and **Support**. Clicking the active tool again closes it. Units opens a drawer directly
+  above the map with search and All / Infantry / Vehicles / Attention filters; Attention finds pinned,
+  routing, wounded, low-ammo and heavily damaged units. Click to locate, Shift-click to add and double-click
+  to zoom. Map enlarges the minimap and reveals its layer controls. Support opens artillery and air strikes,
+  with supply costs and cooldowns for commanders and clearly marked free demos for spectators.
+  Each drawer has a close button and instructions for the current mode. The roster binding toggles Units;
+  Escape backs out after cancelling orders and selection. Frames darken only the occupied tool area.
+  Normal battlefield views show selected squad plans; tactical views reveal other plans through the Orders
+  layer. Routine counters remain compact, with names and status details revealed by selection or inspection.
 - **Bottom**: the selection (the squad's name, its codes, the plan's stages, a cell per man) and the orders as keys.
   The bottom scrim only darkens while there's something selected.
 - **Right**: the **Log** and the mission's objectives; in co-op the command net.
