@@ -49,8 +49,8 @@ static func profile(kind: String, definition: Dictionary) -> Dictionary:
 
 ## Motor accelerates, brakes before the bearing, and takes the shortest arc.
 ## Returns [angle, angular velocity]; neither depends on rendering or wall time.
-static func slew(angle: float, velocity: float, wanted: float, rate: float, accel: float, dt: float) -> Vector2:
-	var error := wrapf(wanted - angle, -PI, PI)
+static func slew(angle: float, velocity: float, wanted: float, rate: float, accel: float, dt: float, shortest_arc := true) -> Vector2:
+	var error := wrapf(wanted - angle, -PI, PI) if shortest_arc else wanted - angle
 	var demand := signf(error) * minf(rate, maxf(0.0, sqrt(2.0 * accel * absf(error)) - accel * dt))
 	velocity = move_toward(velocity, demand, accel * dt)
 	var step := velocity * dt

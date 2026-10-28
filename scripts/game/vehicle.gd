@@ -1000,7 +1000,13 @@ func _target_ok() -> bool:
 func _slew_turret(wanted: float, dt: float, returning := false) -> void:
 	var p := motion_profile()
 	var next := VehicleMotion.slew(turret_yaw, _traverse, wanted,
-		maxf(0.0, float(p.traverse) * (0.5 if returning else 1.0) - _stabilization_rate), float(p.traverse_accel), dt)
+		maxf(0.0, float(p.traverse) * (0.5 if returning else 1.0) - _stabilization_rate), float(p.traverse_accel), dt, base() != "attack_heli")
+	# A chin gun must traverse through the nose, never through the rear stop.
+	if base() == "attack_heli":
+		var limit := deg_to_rad(110.0)
+		if absf(next.x) > limit:
+			next.x = clampf(next.x, -limit, limit)
+			next.y = 0.0
 	turret_yaw = next.x
 	_traverse = next.y
 

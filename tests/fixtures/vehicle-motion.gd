@@ -29,6 +29,19 @@ func _ready() -> void:
 				previous = v._traverse
 			check(absf(v.turret_yaw - PI * 0.5) < 0.01, kind + " settles on bearing")
 			v.free()
+	# Crossing from one chin-gun stop to the other must go through the nose.
+	for hz in [30, 60]:
+		var heli := Vehicle.new()
+		heli.vkind = "gunship"
+		heli.vdef = Defs.VEHICLES.gunship
+		heli.turret_yaw = deg_to_rad(110.0)
+		for tick in hz * 6:
+			var before := heli.turret_yaw
+			heli._slew_turret(deg_to_rad(-110.0), 1.0 / hz)
+			check(absf(heli.turret_yaw) <= deg_to_rad(110.0) + 0.00001, "chin gun stays inside mechanical stops")
+			check(heli.turret_yaw <= before + 0.00001, "chin gun crosses the forward arc")
+		check(absf(heli.turret_yaw - deg_to_rad(-110.0)) < 0.01, "chin gun reaches opposite stop")
+		heli.free()
 	var old_tank := VehicleMotion.profile("old_tank", Defs.VEHICLES.old_tank)
 	var modern := VehicleMotion.profile("tank", Defs.VEHICLES.tank)
 	check(float(old_tank.traverse) < float(modern.traverse) * 0.5, "older drive is substantially slower")
