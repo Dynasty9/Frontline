@@ -117,6 +117,8 @@ var hold_pos := Vector3.ZERO
 var hold_face := Vector3.FORWARD
 var leash := 9.0
 var vaulting := false
+var _view_vault := false
+var _view_vault_lift := 0.0
 var slide_t := 0.0
 var slide_cd := 0.0
 var _sep := Vector3.ZERO
@@ -3976,6 +3978,7 @@ func _view_process(dt: float) -> void:
 	model.over_wall = (flags & F_OVERWALL) != 0
 	model.cover_h = cover_h_view() if life == Life.ALIVE else 0.0
 	model.blind = blind_view()
+	if model.skinned != null: model.position.y -= _view_vault_lift
 	var on_gun := false
 	if cm != null:
 		cm.crew_aim(rotation.y, (flags & F_SHOOTING) != 0, pdt)
@@ -3995,5 +3998,13 @@ func _view_process(dt: float) -> void:
 		elif _was_on_gun:
 			model.transform = Transform3D.IDENTITY
 	_was_on_gun = on_gun
-	model.pose(pdt, life, posture, act, _view_speed, back, (flags & F_SHOOTING) != 0)
+	var view_act := act
+	if model.skinned != null:
+		# Keep the knees tucked until the body clears the wall, without changing combat timing.
+		_view_vault = life == Life.ALIVE and not on_gun and (act == Act.VAULT or (_view_vault and act in [Act.WALK, Act.RUN] and world.nav.kind_at(position) == Nav.LOW))
+		var lift := maxf(0.0, _ground() + base_y + 0.5 - position.y) if _view_vault else 0.0
+		_view_vault_lift = move_toward(_view_vault_lift, lift, pdt * 4.0)
+		model.position.y += _view_vault_lift
+		if _view_vault: view_act = Act.VAULT
+	model.pose(pdt, life, posture, view_act, _view_speed, back, (flags & F_SHOOTING) != 0)
 	ring.visible = selected

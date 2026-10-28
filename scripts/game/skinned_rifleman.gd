@@ -58,6 +58,11 @@ var solve_contacts := true
 var hold_weapon := true
 var _activity_clip := ""
 var _sling_socket := Transform3D.IDENTITY
+var weapon_stowed := false
+var equip_time := 1.0
+var equip_previous := Transform3D.IDENTITY
+var equip_start := Transform3D.IDENTITY
+var equip_poses: Array[Transform3D] = []
 var shovel: Node3D
 
 
@@ -302,7 +307,7 @@ func ground_cover(dt: float, planted: bool) -> void:
 		set_world(int(bones[prefix + "Foot"]), foot)
 
 
-func _seat_weapon(dt: float, authored_gun: Node3D = null, minimum_muzzle_y := -INF) -> void:
+func _seat_weapon(dt: float, authored_gun: Node3D = null, minimum_muzzle_y := -INF, support_held := true) -> void:
 	var hand_pose := joint("RightHand")
 	if not _socket_ready:
 		if native_player != null:
@@ -328,6 +333,8 @@ func _seat_weapon(dt: float, authored_gun: Node3D = null, minimum_muzzle_y := -I
 		hand_pose.basis = _transition_gun.slerp(desired, weight) * socket.basis.inverse()
 		set_world(int(bones["RightHand"]), hand_pose)
 	var gun_pose := hand_pose * socket
+	if authored_gun != null:
+		gun_pose.origin = authored_gun.global_position
 	gun_pose.origin += global_basis * recoil.step(dt)
 	# The receiving arms differ from the procedural rig; keep the barrel above its cover.
 	gun_pose.origin.y = maxf(gun_pose.origin.y, minimum_muzzle_y - (gun_pose.basis * Vector3(0, 0.03, 0.6)).y)
@@ -342,7 +349,7 @@ func _seat_weapon(dt: float, authored_gun: Node3D = null, minimum_muzzle_y := -I
 	for iteration in 3:
 		var shifted := false
 		var support := gun_pose * Vector3(0, 0.055, 0.26) - finger_offset
-		for side in ["Left", "Right"]:
+		for side in (["Left", "Right"] if support_held else ["Right"]):
 			var shoulder := joint(side + "Arm").origin
 			var elbow := joint(side + "ForeArm").origin
 			var wrist := joint(side + "Hand").origin
@@ -357,6 +364,7 @@ func _seat_weapon(dt: float, authored_gun: Node3D = null, minimum_muzzle_y := -I
 		if not shifted: break
 	solve_limb("RightArm", "RightForeArm", "RightHand", right_goal, global_basis * Vector3(1,-0.5,0.2))
 	weapon.global_transform = joint("RightHand") * socket
+	if not support_held: return
 	var support := weapon.global_transform * Vector3(0, 0.055, 0.26)
 	solve_limb("LeftArm", "LeftForeArm", "LeftHand", support - finger_offset, global_basis * Vector3(-1, -0.5, 0.2))
 	grip_error = joint("LeftHand").origin.distance_to(support - finger_offset)
@@ -443,7 +451,7 @@ func pose_procedural(model, dt: float, posture := -1) -> void:
 	if dead: return
 	# A posture change must blend from the corrected skin, including contact IK.
 	# A slide changes the whole body even when the gameplay posture remains crouched.
-	_begin_pose(20 + posture if model.last_act == Soldier.Act.SLIDE else (3 + posture if posture >= 0 else 1))
+	_begin_pose(22 if model.last_act == Soldier.Act.VAULT else (20 + posture if model.last_act == Soldier.Act.SLIDE else (3 + posture if posture >= 0 else 1)))
 	if magazine != null: magazine.update(0.0, false)
 	last_velocity = (global_position - _last_position) / maxf(dt, 0.001)
 	_last_position = global_position
@@ -495,7 +503,52 @@ func pose_procedural(model, dt: float, posture := -1) -> void:
 			# A back-mounted rifle must not pull either hand out of the activity pose.
 			weapon.global_transform = model.gun.global_transform * Transform3D(Basis(Vector3.UP, PI), Vector3.ZERO)
 		else:
-			_seat_weapon(dt, model.gun, global_position.y + model.cover_h + 0.05 if model.over_wall else -INF)
+			_seat_weapon(dt, model.gun, global_position.y + model.cover_h + 0.05 if model.over_wall else global_position.y + 0.10, model.last_act != Soldier.Act.VAULT)
+
+
+func finish_equipment(dt: float, stow: bool, urgent := false) -> void:
+	if native_player == null or dead: return
+	if stow != weapon_stowed:
+		weapon_stowed = stow
+		equip_time = 0.0
+		equip_start = equip_previous
+	var duration := (0.12 if urgent else 0.65) if stow else 0.45
+	if equip_time >= duration:
+		equip_previous = global_transform.affine_inverse() * weapon.global_transform
+		return
+	if shovel != null: shovel.visible = false
+	equip_time = minf(equip_time + dt, duration)
+	var fraction := equip_time / duration
+	var clip := "mixamo_transition__Grab_Rifle_From_Back"
+	if not native_player.has_animation(clip): return
+	equip_poses.resize(skeleton.get_bone_count())
+	for i in equip_poses.size(): equip_poses[i] = skeleton.get_bone_pose(i)
+	native_player.play(clip, 0.0)
+	native_player.seek(native_player.get_animation(clip).length * (1.0 - fraction if stow else fraction), true)
+	# Keep the gameplay legs and torso; only the arms reach for the sling.
+	var weight := 0.0 if urgent else smoothstep(0.0, 0.15, fraction) * (1.0 - smoothstep(0.75, 1.0, fraction))
+	for name in bones:
+		var i: int = bones[name]
+		var arm: bool = "Arm" in name or "Hand" in name or "Shoulder" in name
+		var target := skeleton.get_bone_pose(i)
+		skeleton.set_bone_pose(i, equip_poses[i].interpolate_with(target, weight) if arm else equip_poses[i])
+	var held := joint("RightHand") * native_socket
+	var back := joint("Spine2") * _sling_socket
+	var goal := back if stow else held
+	weapon.global_transform = (global_transform * equip_start).interpolate_with(goal, smoothstep(0.0, 1.0, fraction))
+	weapon.visible = true
+	# The hand carries the rifle until the sling takes its weight (and on draw).
+	var carrying := 1.0 - smoothstep(0.6, 0.9, fraction) if stow else smoothstep(0.1, 0.4, fraction)
+	if urgent:
+		equip_previous = global_transform.affine_inverse() * weapon.global_transform
+		return
+	var hand := joint("RightHand")
+	var grip := weapon.global_transform * native_socket.affine_inverse()
+	solve_limb("RightArm", "RightForeArm", "RightHand", hand.origin.lerp(grip.origin, carrying), global_basis * Vector3(1, -0.3, 0))
+	hand = joint("RightHand")
+	hand.basis = hand.basis.slerp(grip.basis, carrying)
+	set_world(int(bones["RightHand"]), hand)
+	equip_previous = global_transform.affine_inverse() * weapon.global_transform
 
 
 func revive() -> void:
@@ -510,6 +563,9 @@ func revive() -> void:
 
 
 func reset_motion() -> void:
+	weapon_stowed = false
+	equip_time = 1.0
+	if weapon != null: equip_previous = global_transform.affine_inverse() * weapon.global_transform
 	foot_offsets = [Vector2.ZERO, Vector2.ZERO]
 	for foot in feet: foot.locked = false
 	motion_poses.clear()
@@ -534,7 +590,7 @@ func _begin_pose(mode: int) -> void:
 	foot_offsets = [Vector2.ZERO, Vector2.ZERO]
 	if _pose_mode >= 0:
 		# Lowering or lifting the whole body needs longer than an aiming crossfade.
-		_transition_duration = 0.65 if mode >= 3 or _pose_mode >= 3 else TRANSITION_SECONDS
+		_transition_duration = 0.16 if mode == 22 or _pose_mode == 22 else (0.65 if mode >= 3 or _pose_mode >= 3 else TRANSITION_SECONDS)
 		_transition_pose.resize(skeleton.get_bone_count())
 		for i in skeleton.get_bone_count():
 			_transition_pose[i] = skeleton.get_bone_pose(i)

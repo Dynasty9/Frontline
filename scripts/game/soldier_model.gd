@@ -1078,6 +1078,7 @@ func pose(dt: float, life: int, posture: int, act: int, speed: float, backwards:
 				_flung(dt)
 				return
 			Soldier.Act.DIVE:
+				_prone()
 				t_root_r = Vector3(-PI * 0.5, 0, 0)
 				t_root_p = Vector3(0, 0.25, 0.8)
 				t_arl = Vector3(2.8, 0, -0.2)
@@ -1098,7 +1099,10 @@ func pose(dt: float, life: int, posture: int, act: int, speed: float, backwards:
 				t_thr = Vector3(0.9, 0, 0)
 				t_shr = Vector3(-1.4, 0, 0)
 				t_torso = Vector3(-0.45, 0, 0)
-				t_arl = Vector3(0.4, 0, -0.2)
+				t_arl = Vector3(1.4, 0, -0.2)
+				t_fal = Vector3(0.3, 0, 0)
+				t_gun_p = Vector3(0.16, 0.36, -0.2)
+				t_gun_r = Vector3(0.45, 0.0, 0.2)
 				k = 18.0
 			Soldier.Act.DAZED:
 				var wob := sin(act_time * 2.4)
@@ -1120,6 +1124,8 @@ func pose(dt: float, life: int, posture: int, act: int, speed: float, backwards:
 				t_arl = Vector3(2.5, 0, -0.6)
 				t_arr = Vector3(2.5, 0, 0.6)
 				t_head = Vector3(-0.4, 0, 0)
+				t_gun_p = Vector3(0.13, 0.4, -0.22)
+				t_gun_r = Vector3(0.55, 0, 0)
 				k = 20.0
 			Soldier.Act.THROW:
 				var a := act_time / 0.6
@@ -1328,6 +1334,9 @@ func pose(dt: float, life: int, posture: int, act: int, speed: float, backwards:
 				k = 6.0
 			_:
 				_posture_pose(posture, act, moving, sp, cp, speed, lean_shoot)
+	if life == Soldier.Life.ALIVE and act in [Soldier.Act.THROW, Soldier.Act.COOK, Soldier.Act.HEAL, Soldier.Act.DRAG, Soldier.Act.CARRY, Soldier.Act.CRAWL, Soldier.Act.CLIMB, Soldier.Act.SMOTHER]:
+		_sling()
+		show_gun = has_gun
 	_launch_grips = false
 	if tube:
 		# from the back socket to the shoulder and back again, turning as one
@@ -1357,10 +1366,10 @@ func pose(dt: float, life: int, posture: int, act: int, speed: float, backwards:
 		if life == Soldier.Life.ALIVE:
 			# A death effect can arrive before its snapshot; an old alive state is not a revival.
 			if revived: skinned.revive()
-			var captured_walk := not over_wall and (posture == Soldier.Post.STAND or (posture == Soldier.Post.CROUCH and rifle_driver != null))
+			var captured_walk := not over_wall and not (cover_h > Cover.KNEEL_MAX and speed < 0.1) and (posture == Soldier.Post.STAND or (posture == Soldier.Post.CROUCH and rifle_driver != null))
 			var activity := "mixamo_activities__Smoking" if act == Soldier.Act.IDLE_SMOKE else ("mixamo_activities__Digging" if act == Soldier.Act.BUILD else "")
 			var captured_activity := speed < 0.1 and not crew and skinned.native_player != null and not activity.is_empty() and skinned.native_player.has_animation(activity)
-			var captured_prone := rifle_driver != null and posture == Soldier.Post.PRONE and speed < 0.1 and act in [Soldier.Act.IDLE, Soldier.Act.SHOOT] and not crew and not over_wall and skinned.native_player.has_animation(rifle_driver.PRONE_CLIP)
+			var captured_prone := rifle_driver != null and posture == Soldier.Post.PRONE and speed < 0.1 and act in [Soldier.Act.IDLE, Soldier.Act.SHOOT, Soldier.Act.RELOAD] and not crew and not over_wall and skinned.native_player.has_animation(rifle_driver.PRONE_CLIP)
 			if not captured_prone: _native_prone = false
 			if captured_activity:
 				_native_locomotion = false
@@ -1371,6 +1380,7 @@ func pose(dt: float, life: int, posture: int, act: int, speed: float, backwards:
 				_native_locomotion = false
 				skinned._begin_pose(10) # Captured prone, distinct from procedural posture modes.
 				rifle_driver.advance_prone(dt)
+				if act == Soldier.Act.RELOAD: rifle_driver.reload_in_place(act_time / float(Defs.WEAPONS["rifle"].reload))
 			elif captured_walk and act in [Soldier.Act.IDLE, Soldier.Act.WALK, Soldier.Act.RUN, Soldier.Act.SHOOT, Soldier.Act.RELOAD] and not crew and (act != Soldier.Act.RELOAD or rifle_driver != null):
 				if rifle_driver != null:
 					if not _native_locomotion: rifle_driver.reset()
@@ -1395,13 +1405,15 @@ func pose(dt: float, life: int, posture: int, act: int, speed: float, backwards:
 					skinned.ground_cover(dt, speed < 0.1)
 				if rifle_driver != null:
 					rifle_driver.action = ""
-					if posture == Soldier.Post.CROUCH and act == Soldier.Act.RELOAD and not crew:
-						rifle_driver.overlay_reload(act_time / float(Defs.WEAPONS["rifle"].reload))
+					if act == Soldier.Act.RELOAD and not crew:
+						rifle_driver.reload_in_place(act_time / float(Defs.WEAPONS["rifle"].reload))
 		elif not skinned.dead:
 			_native_prone = false
 			# The replicated death effect supplies the impulse and world collision layers.
 			skinned.pose_procedural(self, dt, posture)
-		if life == Soldier.Life.ALIVE: skinned.capture_motion(dt)
+		if life == Soldier.Life.ALIVE:
+			skinned.finish_equipment(dt, weapon_slung, act in [Soldier.Act.THROW, Soldier.Act.COOK])
+			skinned.capture_motion(dt)
 
 
 func _posture_pose(posture: int, act: int, moving: bool, sp: float, cp: float, speed: float, lean_shoot: bool) -> void:
@@ -1451,7 +1463,7 @@ func _posture_pose(posture: int, act: int, moving: bool, sp: float, cp: float, s
 			if lean_shoot or aiming:
 				# step out and tilt round the corner, weapon still on the shoulder
 				t_torso = Vector3(-0.08, 0, s * 0.42)
-				t_hips_p = Vector3(-s * 0.16, H0 - 0.08, 0)
+				t_hips_p = Vector3(-s * 0.46, H0 - 0.08, 0)
 				t_head = Vector3(-0.1, 0.1, -s * 0.26)
 				t_thl = Vector3(0.18, 0, 0.12 if s > 0.0 else -0.05)
 				t_thr = Vector3(-0.1, 0, 0.05 if s > 0.0 else -0.12)

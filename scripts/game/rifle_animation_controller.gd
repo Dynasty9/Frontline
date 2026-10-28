@@ -355,6 +355,19 @@ func advance_prone(dt: float) -> void:
 	actor.magazine.update(0.0, false)
 	actor.last_velocity = Vector3.ZERO
 
+func reload_in_place(progress: float) -> void:
+	# Low cover and prone reloads keep the firing shoulder and grounded body.
+	var seconds := clampf(progress, 0.0, 1.0) * actor.native_player.get_animation(PACK + "reloading").length
+	var hand := actor.joint("LeftHand")
+	var fingers := actor.joint("LeftHandMiddle1").origin - hand.origin
+	var magwell := actor.weapon.global_transform * Vector3(0, -0.035, 0.145) - fingers
+	var pouch := actor.joint("Hips").origin + actor.global_basis * Vector3(-0.19, 0.12, -0.12)
+	var reach := smoothstep(0.0, 0.25, seconds) * (1.0 - smoothstep(2.1, 2.55, seconds))
+	var stow := smoothstep(0.4, 0.75, seconds) * (1.0 - smoothstep(1.12, 1.85, seconds))
+	var target := hand.origin.lerp(magwell.lerp(pouch, stow), reach)
+	actor.solve_limb("LeftArm", "LeftForeArm", "LeftHand", target, actor.global_basis * Vector3(-1, -0.3, 0.1))
+	actor.magazine.update(seconds, true)
+
 func overlay_reload(progress: float) -> void:
 	# Preserve the grounded crouch; only the captured upper body handles the rifle.
 	for i in poses.size(): poses[i] = actor.skeleton.get_bone_pose(i)

@@ -227,7 +227,13 @@ func _test_key(action: String) -> void:
 
 func _floor_hit(point: Vector3) -> Dictionary:
 	var query := PhysicsRayQueryParameters3D.create(point + Vector3.UP * 2.0, point - Vector3.UP * 4.0, 1)
-	return get_world_3d().direct_space_state.intersect_ray(query)
+	var hit := get_world_3d().direct_space_state.intersect_ray(query)
+	if hit.is_empty():
+		# A ray exactly on a shared triangle edge can miss both triangles.
+		query.from += Vector3(0.001, 0, 0.001)
+		query.to += Vector3(0.001, 0, 0.001)
+		hit = get_world_3d().direct_space_state.intersect_ray(query)
+	return hit
 
 func _floor_height(point: Vector3) -> float:
 	var hit := _floor_hit(point)
