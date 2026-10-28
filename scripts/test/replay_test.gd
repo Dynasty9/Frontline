@@ -23,9 +23,23 @@ func _run() -> void:
 			return
 		Online.lobby_id = listing.data.id
 		Online._lobby_token = listing.data.token
+	_check_capture(world)
+	var st: Structure = world.structures[0]
+	var hp := st.hp
+	st.hp *= 0.5
+	st.net_dirty = true
+	_check_capture(world)
+	st.hp = hp
+	st.net_dirty = true
+	world.push_props(st, {"hp": hp})
+	var transient: Entity = world.spawn("structure", {"skind": "low_wall", "pos": Vector3(80, 0, 80)})
+	_check_capture(world)
+	world.despawn(transient)
+	_check_capture(world)
 	world.execute_cmd(1, {"t": "move", "squads": [1], "pos": Vector3(0, 0, -20)})
 	while world.time < 22:
 		await get_tree().physics_frame
+	_check_capture(world)
 	world.recording.flush()
 	world.recording.flush(true)
 	check(world.recording.manifest.status == "complete", "finishes at an exact chunk boundary")
@@ -100,3 +114,27 @@ func _run() -> void:
 	check(not await player._download_recording() and player.failed, "incomplete downloads do not start playback")
 	print("REPLAY TEST complete: record, commands, forward seek, rewind, state, validation")
 	TestRun.quit(get_tree())
+
+func _check_capture(world: World) -> void:
+	var cached := world.recording.capture()
+	var records := {}
+	for record: Array in cached.entities:
+		records[record[0]] = record
+	var live := []
+	for e in world.entities.values():
+		if not e.gone:
+			live.append(e)
+			check(records.get(e.eid) == [e.eid, e.ekind(), e.get_props()], "cached checkpoint props match live entity %d" % e.eid)
+	check(records.size() == live.size(), "checkpoint drops despawned structures")
+	check(_packet_records(cached.snapshots) == _packet_records(world._build_snapshot(live, -1)), "cached checkpoint bytes match complete observer snapshot")
+
+func _packet_records(packets: Array) -> Dictionary:
+	var result := {}
+	for packet: PackedByteArray in packets:
+		var offset := 4
+		while offset < packet.size():
+			var id := packet.decode_u32(offset)
+			var size := packet[offset + 4]
+			result[id] = packet.slice(offset + 5, offset + 5 + size)
+			offset += 5 + size
+	return result

@@ -944,7 +944,7 @@ func best_cover_near(p: Vector3, r: float, from: Vector3, taken: Array) -> Vecto
 ## The same as [pos, cover level, fighting position or {}]: a fighting
 ## position on a wall, the sandbags or a car (see Cover) beats the bare cells
 ## beside it, since that's exactly where a man would kneel or stand to fire.
-func best_spot_near(p: Vector3, r: float, from: Vector3, taken: Array, group_center := Vector3.INF, group_radius := 0.0) -> Array:
+func best_spot_near(p: Vector3, r: float, from: Vector3, taken: Array, group_center := Vector3.INF, group_radius := 0.0, search: Dictionary = {}) -> Array:
 	var best := p if group_center == Vector3.INF else group_center
 	var bs := -1e9
 	var c := idx_of(p if group_center == Vector3.INF else group_center)
@@ -958,19 +958,37 @@ func best_spot_near(p: Vector3, r: float, from: Vector3, taken: Array, group_cen
 				continue
 			var q := center(i)
 			var d := Defs.flat(q - p).length()
-			if (group_center == Vector3.INF and d > r) or (group_center != Vector3.INF and not group_spot(q, group_center, group_radius)):
+			if (group_center == Vector3.INF and d > r) or (group_center != Vector3.INF and not group_spot_cached(q, group_center, group_radius, Vector3.ZERO, search)):
 				continue
 			var sc := cover_vs(q, from) * 3.0 - d * 0.6 + (2.5 if trench[i] > 0 else 0.0)
-			for t in taken:
-				if Defs.flat((t as Vector3) - q).length() < 1.4:
-					sc -= 100.0 if group_center != Vector3.INF else 5.0
+			for occupied in occupied_count(q, 1.4, taken, search):
+				sc -= 100.0 if group_center != Vector3.INF else 5.0
 			if sc > bs:
 				bs = sc
 				best = q
-	var an := Cover.best_near(world, p, r + 0.8 if group_center == Vector3.INF else group_radius * 2.0, from, taken, group_center, group_radius)
+	var an := Cover.best_near(world, p, r + 0.8 if group_center == Vector3.INF else group_radius * 2.0, from, taken, group_center, group_radius, search)
 	if not an.is_empty() and float(an[1]) + 0.5 >= bs:
 		return [an[0], Cover.level_of(int(an[2].mat)), an[2]]
 	return [best, cover_vs(best, from), {}]
+
+
+## One formation shares geometry checks and only counts newly assigned neighbours.
+func group_spot_cached(p: Vector3, c: Vector3, radius: float, normal: Vector3, search: Dictionary) -> bool:
+	var key := [p, normal]
+	if not search.has(key):
+		search[key] = group_spot(p, c, radius, normal)
+	return search[key]
+
+
+func occupied_count(p: Vector3, radius: float, taken: Array, search: Dictionary) -> int:
+	var key := [p, radius]
+	var state: Vector2i = search.get(key, Vector2i.ZERO)
+	for i in range(state.x, taken.size()):
+		if Defs.flat((taken[i] as Vector3) - p).length() < radius:
+			state.y += 1
+	state.x = taken.size()
+	search[key] = state
+	return state.y
 
 
 ## A squad shares open ground; better cover across a wall must not split it.
@@ -1002,11 +1020,12 @@ func slots(c: Vector3, face: Vector3, n: int, wide := false) -> Array:
 	var taken := []
 	var out := []
 	var radius := 6.5 if wide else 5.5
+	var search := {}
 	for i in n:
 		var angle := i * 2.399963
 		var spread := minf(4.5 if wide else 3.5, sqrt(float(i)) * 1.5)
 		var p := c + (side * cos(angle) + face * sin(angle)) * spread
-		var sp := best_spot_near(p, 3.4 if wide else 2.6, threat, taken, c, radius)
+		var sp := best_spot_near(p, 3.4 if wide else 2.6, threat, taken, c, radius, search)
 		taken.append(sp[0])
 		out.append(sp)
 	return out

@@ -5,10 +5,12 @@ How the code is laid out, and the command-line modes used to test it. See also [
 ## Scaling and the optional native extension
 
 Gameplay remains GDScript. A Rust GDExtension accelerates nearest-enemy candidate
-selection using numeric snapshots; individual visibility and combat stay in Godot.
+selection using numeric snapshots and contracts degree-two navigation search states.
+Individual visibility and combat stay in Godot. Native graph assembly runs on the
+main thread; local-grid costing still uses workers.
 Install Rust 1.94.0 (`rustup toolchain install 1.94.0 --profile minimal`), then run
 `python tools/build_native.py` from the root. Re-import Godot afterward. A checkout
-without the generated extension uses the GDScript reference query. Release CI builds
+without the generated extension uses GDScript perception and Godot AStar3D routes. Release CI builds
 and includes native Windows/Linux libraries. Do not commit generated binaries.
 
 `--local-server` launches a private headless child using the current executable.
@@ -116,7 +118,7 @@ game/cover.gd           fighting positions on everything solid, what each materi
 game/rules.gd           supply network, trucks, cap, placement, capture, prisoners/intel, fog, victory
 game/vision.gd          every eye a side has (men, vehicles, towers, drones, aircraft) as circles of sight
 game/fog_view.gd        the fog of war drawn on the battlefield and the minimap (a sight map + a full-screen pass)
-game/nav.gd             two AStarGrid2D layers (infantry: vaultable/slow cells; vehicles: smashable cells)
+game/nav.gd             two compact NavRaster layers (infantry: vaultable/slow cells; vehicles: smashable cells)
 game/hnav.gd            hierarchical A* (clusters, entrances, danger-weighted abstract graphs)
 game/terrain.gd         ground types, cover map, craters, speed / hit / concealment modifiers
 game/trench_net.gd      the dug trench network (mask, walls, spoil, duckboards)

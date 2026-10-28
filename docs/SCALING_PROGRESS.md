@@ -235,3 +235,164 @@ Do not interpret an unchecked gate or a headless result as validated 60 FPS supp
   implementation transforms the cached vertices in native code and submits
   the same world-space polygon command as before, without canvas state changes.
   Earlier marker timings above describe the discarded canvas-transform version.
+
+
+## Work-budget follow-up (23 October)
+
+The following controls use the pre-cohesion/replay base `5adeda0`. Later integration
+must be checked separately. Other applications remain running at the user's request.
+
+- Camera-frustum scenery residency replaces the fixed square, retaining a margin
+  for roofs and shadows. Sampled visibility tests cover camera angles, aspect ratios,
+  FOV and heights. Distant soldier batches skip cells outside a conservative view
+  margin; camera-pan and visible-point tests pass.
+- Blocked sight checks reuse obstruction only with unchanged endpoints, exclusions
+  and blocking collision boxes. Tests cover movement, posture, collision layers,
+  shape disabling/resizing, door removal, freed blockers and smoke dissipation.
+  A repeated blocked-query control took 43-44 ms cached versus 73-75 ms fresh for
+  10,000 calls. Positive sight and smoke remain live. This is not a whole-game claim.
+- The tactical overlay retains a raster between 15 Hz stationary updates. Camera,
+  pointer and input invalidate immediately; resizing and hide/show have tests.
+  Reducing soldiers' candidate budget regressed infantry scenarios and was removed.
+  A minimap raster experiment changed FPS by less than 1% and was also removed.
+- Rust RouteGraph contracts degree-two search states while preserving directional
+  edge costs and reconstructed waypoints. 900 seeded comparisons (excluding deleted
+  endpoints) cover danger changes and removals; navigation rebuild/order tests pass.
+  On a synthetic 120,000-node graph, 120 nearby searches took 6.2-11.2 ms versus
+  22.1-23.5 ms with AStar3D. On a generated 3 km map, 100 complete path requests took
+  349-384 ms versus 437-489 ms; maximum requests were 19.7-21.0 versus 38.9-41.5 ms.
+  Equal-cost route choices can differ: smoothed total distance differed by 0.27%,
+  with individual differences from -1.54% to +6.53%. All 80 gameplay tests pass.
+  Graph assembly now runs on the main thread because the Rust binding requires it;
+  local-grid costing remains parallel. The generated graph build took about 7 s.
+- Sequential exported Forward+ controls: 3072 m generated map, 480 soldiers,
+  20 vehicles, commanders, seed 3, low preset, 1280x720, 30 s warmup + 30 s sample.
+
+| Build | Average FPS | Frame p50 / p95 / p99 (ms) | Tick p50 / p95 / max (ms) |
+| --- | --- | --- | --- |
+| `5adeda0` baseline | 35.73 | 26.88 / 40.85 / 52.65 | 27.03 / 57.06 / 108.23 |
+| Rendering + exact sight cache + native routes | 43.17 | 21.98 / 35.48 / 50.04 | 29.53 / 62.93 / 111.18 |
+
+This pair is about 21% faster on average rendering, but simulation timing did not
+improve and all strict acceptance gates still fail. Battles evolve differently;
+439-456 soldiers survived the later sample windows, so these are not sustained
+500-alive acceptance runs. Peak observed server RSS was 4027/3723 MiB. Earlier
+controls ranged from 20 to 43 FPS as desktop contention changed; do not attribute
+that whole range to code changes. Before/after rendered images were inspected.
+Local artifacts: `build/bench-work-budget-base-control`,
+`build/bench-work-budget-route`, `build/route-generated.log`, and
+`build/native-route-all-tests2.log`. The 60 FPS goal remains open.
+
+## Current-main integration and replay stalls
+
+Rebased onto `de6bff8` (cohesion and replay recording included). Sequential
+exported controls with the same workload above measured 38.65 FPS on current main
+and 45.57 FPS with rendering/native-route changes, before the changes below.
+Both had server p99 around 445 ms and maxima around 662 ms. The worst tick spent
+613-637 ms selecting squad positions; snapshot-stage totals included recording.
+
+Further changes preserve exhaustive formation choices through 200-man groups,
+replace full-map AStarGrid2D storage with compact land rasters, and cache unchanged
+replay scenery in entity-ID blocks. Recording samples visit the moving registry;
+completed immutable chunks are encoded by one bounded worker. Checkpoint tests
+compare live properties and observer packet bytes after damage, spawn/despawn,
+and continued combat, and the existing forward/backward seek test passes.
+
+Detailed-profile controls (timing instrumentation enabled, other apps running):
+
+| Stage | Formation/raster only | Plus replay changes |
+| --- | ---: | ---: |
+| Server ticks in sample | 618 | 839 |
+| Replay main-thread total | 8307 ms | 850 ms |
+| Checkpoint total / max | 2145 / 230 ms | 182 / 27 ms |
+| Replay sampling total / max | 4296 / 81 ms | 662 / 19 ms |
+| Tick p50 / p95 / p99 | 34.77 / 96.57 / 445.29 ms | 30.89 / 59.69 / 75.08 ms |
+| Tick maximum | 463.30 ms | 365.59 ms |
+| Client average FPS | 47.76 | 43.15 |
+
+The worker encoding cost still exists off the simulation thread. Recording's
+main-thread reduction is about 90%; it is not a 90% whole-game speedup. The faster
+server advances further (463 versus 450 surviving soldiers), changing the battle
+phase. The later outlier spans soldier scanning and snapshot transmission and
+cannot be attributed to a single algorithm from wall-clock timing alone. These
+runs do not meet 60 FPS; desktop contention remains uncontrolled by request.
+Artifacts: `build/bench-integration-base`, `build/bench-integration-route`,
+`build/bench-integration-formation`, `build/bench-integration-replay`.
+
+The final uninstrumented replay/raster comparison ran the candidate first and
+current main second, sequentially with other apps running:
+
+| Build | FPS | Frame p50 / p95 / p99 | Tick p50 / p95 / p99 / max | Server ticks | Peak client / server RSS |
+| --- | ---: | --- | --- | ---: | --- |
+| Current main `de6bff8` | 38.96 | 24.83 / 35.54 / 45.90 ms | 31.86 / 92.41 / 451.87 / 682.50 ms | 628 | 2984 / 4117 MiB |
+| `c3e8f89` | 44.56 | 21.14 / 34.86 / 47.74 ms | 28.96 / 55.50 / 76.16 / 150.78 ms | 863 | 2822 / 2534 MiB |
+
+Average rendering improves 14.4%, server p99 falls 83.1%, and peak server RSS
+falls 38.4%. Frame p99 does not improve; the 60 FPS target remains open. This
+comparison has 449/446 surviving soldiers respectively. All 84 local tests and
+PR CI passed for this revision. Artifacts: `build/bench-replay-base-final` and
+`build/bench-replay-final`.
+
+A further moving-observer obstruction experiment passed 3000 comparisons against
+fresh physics rays and halved an isolated moving-eye benchmark. It increased
+lifetime blocked-result reuse from 49,349 to 165,054, but the exported control
+measured 40.92 FPS, tick p50 28.84 ms and p99 86.80 ms. Soldier work per sampled
+tick did not improve. The added geometric proof/cache sharing was removed;
+only collision-margin and disabled-body invalidation checks were retained.
+Artifact: `build/bench-sight-final`.
+
+An export with script stack tracking disabled measured 33.73 FPS after the sight
+experiment's 40.92 FPS. This uncontrolled desktop comparison does not establish
+the setting's causal cost; no improvement was demonstrated, and stack tracking
+remains enabled. Artifact: `build/bench-no-stacks`. The final retained sight
+cache also checks collision margins and disabled-body state; its targeted physics
+fixture and final import pass. The final raster/replay revision passed 84 tests;
+the discarded moving-sight experiment separately passed the same 84-test suite.
+
+
+### Further navigation experiments (not retained)
+
+Other applications remained running throughout these measurements. The retained
+2 km export averaged 51.84 FPS, with frame p99 33.46 ms and tick
+p50/p95/p99/max 26.05/44.41/57.39/69.13 ms. Peak server RSS was 1262 MiB;
+435 soldiers survived. This also misses the minimum 60 FPS target.
+Artifact: `build/bench-replay-2km`.
+
+A deterministic work quota counted native graph visits and bounded local-grid
+work, allowing at least one indivisible search to progress each tick. A 65,536
+work quota reduced the worst sampled tick from 150.78 to 69.96 ms, but maximum
+path wait increased from 3862 to 6258 ms. It passed all 84 gameplay tests, but
+that order-latency tradeoff was not accepted.
+
+Allowing cached results through without consuming graph-search slots reduced
+maximum wait to 5266 ms, still worse than the retained control. A looser 131,072
+quota also failed to demonstrate a better tradeoff:
+
+| Experiment | FPS | Tick p50 / p95 / p99 / max (ms) | Max path wait (ms) |
+| --- | ---: | --- | ---: |
+| Retained replay/formation candidate | 44.56 | 28.96 / 55.50 / 76.16 / 150.78 | 3862 |
+| 65,536 work quota | 44.85 | 27.27 / 50.00 / 62.18 / 69.96 | 6258 |
+| Same quota, cached deliveries bypass search slots | 44.55 | 29.86 / 50.97 / 70.87 / 88.87 | 5266 |
+| 131,072 quota, cached deliveries bypass search slots | 36.57 | 33.74 / 62.20 / 81.31 / 185.06 | 5227 |
+
+These are sequential desktop measurements, not isolated causal estimates. The
+last run's worst tick was dominated by squads (142.08 ms), not pathing (13.67 ms).
+Artifacts: `build/bench-quota-final`, `build/bench-quota-bypass`,
+`build/bench-quota128`. All quota and search-counter changes were removed.
+
+A separate corridor-cache experiment retained routes across unrelated terrain
+and danger changes, invalidated their crossed clusters immediately, and expired
+them after 30 scheduler steps. Focused invalidation tests passed, but the broad
+suite passed only 83/84: the breach scenario left a defender fighting after the
+house-clearing drill. Removing cached-delivery acceleration did not fix it;
+restoring the original global invalidation did. This experiment was removed,
+without relaxing the gameplay assertion.
+
+Remaining measured costs are soldier simulation and client rendering/submission.
+The retained detailed sample spent 19.39 seconds of aggregate simulation-thread
+time in soldiers across 839 ticks; nested fighting and thinking costs overlap
+that total. The retained client reported about 4400 draw calls, render CPU p50
+5.23 ms and GPU p50 4.64 ms. Combining tree geometry needs to retain per-tree
+material coordinates, wind, charring and falling; no tree batching or visual
+simplification was introduced in this pass. Neither a server-language rewrite
+nor fewer perception candidates is established as a safe solution by this data.

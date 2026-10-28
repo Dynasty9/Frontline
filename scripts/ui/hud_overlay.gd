@@ -2,6 +2,7 @@ class_name HudOverlay
 extends Control
 
 var hud: Hud
+var raster: SubViewport
 var _placed: Array = []
 var _groups := {}  # sid -> {"mem": [...], "c": centroid of the living, "n": living, "team": t, "lead": squad leader}
 var _sel_sids := {}
@@ -25,13 +26,24 @@ func _input(event: InputEvent) -> void:
 
 
 func refresh_for_view(dt: float, view: Transform3D, pointer: Vector2) -> void:
+	if raster:
+		if not hud.root.is_visible_in_tree():
+			raster.render_target_update_mode = SubViewport.UPDATE_DISABLED
+			_refresh_left = 0.0
+			return
+		var pixels := Vector2i(hud.get_viewport().get_visible_rect().size)
+		if raster.size != pixels:
+			raster.size = pixels
+			_refresh_left = 0.0
 	_refresh_left -= dt
 	if _refresh_left > 0.0 and view == _refresh_view and pointer == _refresh_pointer:
 		return
-	_refresh_left = maxf(0.0, _refresh_left + 1.0 / 30.0) if _refresh_left <= 0.0 else 1.0 / 30.0
+	_refresh_left = maxf(0.0, _refresh_left + 1.0 / 15.0) if _refresh_left <= 0.0 else 1.0 / 15.0
 	_refresh_view = view
 	_refresh_pointer = pointer
 	queue_redraw()
+	if raster:
+		raster.render_target_update_mode = SubViewport.UPDATE_ONCE
 
 func _draw() -> void:
 	_label_epoch += 1
@@ -42,7 +54,7 @@ func _draw() -> void:
 	var cam := w.cam.cam
 	var vs := get_viewport().get_visible_rect().size
 	if inp.lmb and inp.dragging:
-		var r := Rect2(inp.drag_start, Vector2.ZERO).expand(get_viewport().get_mouse_position())
+		var r := Rect2(inp.drag_start, Vector2.ZERO).expand(hud.root.get_global_mouse_position())
 		draw_rect(r, Color(0.6, 1.0, 0.6, 0.1))
 		draw_rect(r, Color(0.6, 1.0, 0.6, 0.75), false, 1.0)
 	var lt := w.local_team

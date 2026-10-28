@@ -274,7 +274,7 @@ static func anchor_mat(st, i: int) -> int:
 ## The best anchor within r of p to fight from against a threat at `from`,
 ## as [pos, terrain cover level, info] - or [] if none faces that way.
 ## Shared by the server's formation slots and the client's move preview.
-static func best_near(world, p: Vector3, r: float, from: Vector3, taken: Array, group_center := Vector3.INF, group_radius := 0.0) -> Array:
+static func best_near(world, p: Vector3, r: float, from: Vector3, taken: Array, group_center := Vector3.INF, group_radius := 0.0, search: Dictionary = {}) -> Array:
 	var best := []
 	var bs := -1e9
 	for st in world.structures_near(p, r + 2.0):
@@ -284,7 +284,7 @@ static func best_near(world, p: Vector3, r: float, from: Vector3, taken: Array, 
 			var m := anchor_mat(st, i)
 			var q: Vector3 = st.anc_p[i]
 			var d := Defs.flat(q - p).length()
-			if d > r or (group_center != Vector3.INF and not world.terrain.group_spot(q, group_center, group_radius, st.anc_n[i])):
+			if d > r or (group_center != Vector3.INF and not world.terrain.group_spot_cached(q, group_center, group_radius, st.anc_n[i], search)):
 				continue
 			var to := Defs.flat(from - q)
 			if to.length() < 0.5 or st.anc_n[i].dot(to.normalized()) < 0.3:
@@ -297,9 +297,8 @@ static func best_near(world, p: Vector3, r: float, from: Vector3, taken: Array, 
 				sc -= 2.5
 			elif k == OVER and stance(st.anc_h[i]) == PRONE:
 				sc -= 0.5
-			for t in taken:
-				if Defs.flat((t as Vector3) - q).length() < 1.15:
-					sc -= 100.0 if group_center != Vector3.INF else 6.0
+			for occupied in world.terrain.occupied_count(q, 1.15, taken, search):
+				sc -= 100.0 if group_center != Vector3.INF else 6.0
 			if sc > bs:
 				bs = sc
 				best = [q, sc, {"n": st.anc_n[i], "h": st.anc_h[i], "k": k, "mat": m, "eid": st.eid}]

@@ -61,9 +61,19 @@ func _process(_dt: float) -> void:
 	_active = []
 	for group: Dictionary in previous_groups:
 		group.count = 0
+	var planes: Array[Plane] = []
+	if world.cam:
+		planes = world.cam.cam.get_frustum()
+	var visible_cells := {}
 	for s: Soldier in world.soldiers:
 		if not s.view_lod or not s.visible or s.gone:
 			continue
+		var cell := Vector2i(floori(s.position.x / CELL), floori(s.position.z / CELL))
+		if not planes.is_empty() and absf(s.position.y) < 60.0:
+			if not visible_cells.has(cell):
+				visible_cells[cell] = _cell_visible(cell, planes)
+			if not visible_cells[cell]:
+				continue
 		var posture := s.posture
 		if s.life in [Soldier.Life.DEAD, Soldier.Life.DOWNED]:
 			posture = Soldier.Post.PRONE
@@ -79,7 +89,6 @@ func _process(_dt: float) -> void:
 			key = base
 			if not poses.has(key):
 				continue
-		var cell := Vector2i(floori(s.position.x / CELL), floori(s.position.z / CELL))
 		var group := _group_for(key, cell)
 		var mm: MultiMesh = group.mm
 		var slot: int = group.count
@@ -115,6 +124,17 @@ func _process(_dt: float) -> void:
 				(group.node as MultiMeshInstance3D).queue_free()
 				groups.erase(key)
 	world.vp("distant soldiers", started)
+
+
+static func _cell_visible(cell: Vector2i, planes: Array[Plane]) -> bool:
+	# Keep a full neighbouring cell for edge shadows, but do not upload men
+	# across the rest of the map merely for the renderer to discard them.
+	var center := Vector3((cell.x + 0.5) * CELL, 0, (cell.y + 0.5) * CELL)
+	var extent := Vector3(CELL * 1.5, 64, CELL * 1.5)
+	for plane: Plane in planes:
+		if plane.distance_to(center) > plane.normal.abs().dot(extent):
+			return false
+	return true
 
 
 func _make_pose(key: int, unit: String, team: int, posture: int, frame: int) -> void:
