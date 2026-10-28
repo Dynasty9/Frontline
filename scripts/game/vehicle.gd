@@ -1534,10 +1534,7 @@ func _destroyed() -> void:
 	world.despawn(self)
 	var wst = w.spawn("structure", props)
 	if props.has("toss"):
-		w.get_tree().create_timer(3.0).timeout.connect(func():
-			if is_instance_valid(wst) and not wst.gone:
-				wst.toss = null
-				w.push_props(wst, {"toss": null}))
+		w.get_tree().create_timer(3.0).timeout.connect(wst.finish_toss)
 
 
 ## A boat going down: a blast, debris, and she founders (Vfx.sink); whoever's

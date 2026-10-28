@@ -51,6 +51,7 @@ var _perf_process: Array[float] = []
 var _battle_pending := false  # the rank's battle clock starts once the world is running
 var _curtains := false  # intro and loading screens (normal launches; tests skip them)
 var _curtain_layer: CanvasLayer
+var _model_callback: JavaScriptObject
 
 
 func _sample_report(values: Array[float]) -> Dictionary:
@@ -71,6 +72,48 @@ func _ready() -> void:
 		if s.begins_with("--"):
 			var kv := s.substr(2).split("=", true, 1)
 			args[kv[0]] = kv[1] if kv.size() > 1 else "1"
+	if OS.has_feature("web"):
+		var manual_key = JavaScriptBridge.eval("new URLSearchParams(location.search).get('manual') || ''")
+		if manual_key is String and not manual_key.is_empty():
+			args["web-manual"] = manual_key
+	if args.has("web-manual"):
+		# The website reuses the manual's model stage, with its own HTML roster and details.
+		Settings.no_save = true
+		var manual_layer := CanvasLayer.new()
+		add_child(manual_layer)
+		var field_manual: Control = GameScripts.load_script(GameScripts.FIELD_MANUAL).new()
+		field_manual.set("embedded", true)
+		manual_layer.add_child(field_manual)
+		field_manual.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		# The iframe sizes its model stage directly; desktop UI scaling fights that on resize.
+		get_tree().root.size_changed.disconnect(Settings.apply_ui_scale)
+		get_tree().root.content_scale_factor = 1.0
+		await get_tree().process_frame
+		if OS.has_feature("web"):
+			_model_callback = JavaScriptBridge.create_callback(func(values: Array):
+				if values.is_empty() or not values[0] is String:
+					return
+				if values[0] == "select" and values.size() > 1 and values[1] is String:
+					var key: String = values[1]
+					await field_manual.stop_support()
+					field_manual.open("entry", key)
+					await RenderingServer.frame_post_draw
+					JavaScriptBridge.eval("parent.postMessage({type: 'frontline-model-ready', key: %s}, location.origin)" % JSON.stringify(key))
+				elif values[0] == "demo" and values.size() > 1 and values[1] is String:
+					var key: String = values[1]
+					if await field_manual.play_support(key):
+						JavaScriptBridge.eval("parent.postMessage({type: 'frontline-demo-ready', key: %s}, location.origin)" % JSON.stringify(key))
+				else:
+					field_manual.control_model(String(values[0])))
+			JavaScriptBridge.get_interface("window").frontlineModelControl = _model_callback
+			JavaScriptBridge.eval("window.addEventListener('message', function(e) { if (e.origin === location.origin && e.source === parent && e.data && e.data.type === 'frontline-model') window.frontlineModelControl(e.data.action, e.data.key); });")
+			JavaScriptBridge.eval("const motion = matchMedia('(prefers-reduced-motion: reduce)'); const syncMotion = () => window.frontlineModelControl(motion.matches ? 'reduce-motion' : 'allow-motion'); motion.addEventListener('change', syncMotion); syncMotion();")
+			JavaScriptBridge.eval("parent.postMessage({type: 'frontline-model-loaded'}, location.origin)")
+			field_manual.demo_finished.connect(func(): JavaScriptBridge.eval("parent.postMessage({type: 'frontline-demo-ended'}, location.origin)"))
+		else:
+			field_manual.open("entry", String(args["web-manual"]))
+		set_process(false)
+		return
 	if not args.is_empty():
 		# a test run: script errors fail it (its exit code; see TestRun)
 		TestRun.watch()

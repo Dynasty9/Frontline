@@ -14,7 +14,7 @@ The game's website. Its pages (`src/pages/`, routed by React Router in `src/rout
 | `/profile`                     | signed in, your rank and record, your callsign (rename it), your picture, whether your battles are public, the insignia you wear, and signing out everywhere |
 | `/changelog`                   | every release, with its changes and screenshots                                                                                                              |
 
-The header keeps four destinations: **The game**, **Battles**, **Commanders** and **Updates**, plus **Play** and the account menu. Commanders groups the leaderboards and rank guide under a shared secondary navigation. GitHub and project links live in the footer. Personal settings and insignia selection live in the profile; the account menu also links the public record.
+The header keeps five destinations: **The game**, **Vehicles**, **Battles**, **Commanders** and **Updates**, plus **Play** and the account menu. Commanders groups the leaderboards and rank guide under a shared secondary navigation. GitHub and project links live in the footer. Personal settings and insignia selection live in the profile; the account menu also links the public record.
 
 Everything public (players, boards, battles) comes from the
 matchmaker's public routes (`src/lib/players.ts`; `matchmaker/src/players.js`), fetched with TanStack Query, so going
@@ -129,3 +129,9 @@ Railway builds it with `npm run build` and serves `dist/` as a static site.
 ## Battle viewer
 
 `/battles` lists live broadcasts and recordings; `/watch/:id` embeds the actual Godot observer. Build `Dockerfile.web` with repository-root context to include the browser export at `/game/`. The existing static-only build still works, but correctly reports the viewer unavailable. See [recording deployment](../docs/REPLAYS.md).
+
+The **Vehicles** page (/vehicles) reads the literal game tables in scripts/autoload/defs.gd and scripts/game/vehicle_roster.gd at build time. It lists units, support aircraft and Field Manual reference vehicles, with search and availability filters. Keep the source checkout available when building the site; Docker copies these two inputs explicitly. The roster unit test checks every entry is represented. Changes to the table format need a matching update to src/lib/vehicles.ts.
+
+The page embeds one model at a time in the roster. Search, filters, details and camera buttons are React/CSS; the iframe renders only the Field Manual's model stage, using its existing models, lighting and camera. The browser build accepts `?manual=<entry key>` and skips the menu and battlefield. `/game/viewer.json` advertises `manual: 2`; older or missing exports keep the text roster usable. Build the Web export and run `.github/scripts/viewer_manifest.py web/public/game` from the repository root to enable it locally. Camera messages are accepted only from the same-origin parent, and readiness messages only from the selected iframe. Embedded models remain still until dragged or rotated with the buttons.
+
+The model viewer stays mounted across selection and empty search results. Once ready, it receives the latest selection through the same-origin message bridge and acknowledges the rendered vehicle key. The export packaging script precompresses WASM, PCK and JavaScript; nginx serves these gzip files when supported, retaining cache revalidation across deployments.

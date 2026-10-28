@@ -28,6 +28,7 @@ export const routes: RouteObject[] = [
           { path: "watch/:id", lazy: page(() => import("@/pages/watch")) },
           { path: "battles", lazy: page(() => import("@/pages/battles")) },
           { path: "ranks", lazy: page(() => import("@/pages/ranks")) },
+          { path: "vehicles", lazy: page(() => import("@/pages/vehicles")) },
           { path: "leaderboards", lazy: page(() => import("@/pages/leaderboards")) },
           { path: "player/:callsign", lazy: page(() => import("@/pages/player")) },
           { path: "player/:callsign/battle/:id", lazy: page(() => import("@/pages/battle")) },

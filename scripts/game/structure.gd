@@ -1336,12 +1336,14 @@ func toss_from(bp: Vector3, bsize: float) -> void:
 	if world.has_view:
 		_apply_tilt()
 		_start_toss()
-	var w := world
-	var me := self
-	w.get_tree().create_timer(3.0).timeout.connect(func():
-		if is_instance_valid(me) and not me.gone:
-			me.toss = null
-			w.push_props(me, {"toss": null}))
+	world.get_tree().create_timer(3.0).timeout.connect(finish_toss)
+
+
+func finish_toss() -> void:
+	# A bound callback disconnects if its wreck or the preview is freed early.
+	if not gone:
+		toss = null
+		world.push_props(self, {"toss": null})
 
 
 ## Destroyed. quiet: it burnt away (the fire's own collapse is the effect, no
