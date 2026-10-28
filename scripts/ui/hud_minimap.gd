@@ -29,6 +29,17 @@ const C_FIGHT := Color(1.0, 0.6, 0.24)
 const C_INTEL := Color(1.0, 0.42, 0.36)
 const C_RECON := Color(0.5, 0.88, 1.0)
 
+class DrawLayer extends Control:
+	var map: HudMinimap
+	var phase := 0
+	func _draw() -> void:
+		map._draw_layer(self, phase)
+
+var _layers: Array[DrawLayer] = []
+var _phase := 0
+var _layer_xf := Transform2D.IDENTITY
+var _layer_size := Vector2.ZERO
+var _ink: CanvasItem = self
 var hud: Hud
 var _drag := false
 var _base: Image  # the ground and the water: baked once (again when the water arrives)
@@ -36,7 +47,8 @@ var _ground: Image  # + the roads (FOBs lay new ones as the battle goes)
 var _static: ImageTexture  # + woods and buildings (they burn and fall)
 var _road_sig := -1
 var _static_sig := -1
-var _sig_t := 0.0
+var _next_sig_ms := 0
+var _checking := false
 var _static_dirty := true
 var _baking := false
 var _bake_generation := 0
@@ -51,6 +63,37 @@ func _ready() -> void:
 	clip_contents = true
 	texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
 	mouse_filter = Control.MOUSE_FILTER_STOP
+
+
+func prepare_layers() -> void:
+	for phase in range(1, 5):
+		var layer := DrawLayer.new()
+		layer.map = self
+		layer.phase = phase
+		layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		layer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		add_child(layer)
+		_layers.append(layer)
+
+
+func refresh_layers() -> void:
+	if not is_visible_in_tree():
+		return
+	_update_xf()
+	if _xf != _layer_xf or size != _layer_size:
+		# Rotating or resizing changes every layer's coordinate system together.
+		_layer_xf = _xf
+		_layer_size = size
+		queue_redraw()
+		for layer in _layers:
+			layer.queue_redraw()
+		return
+	if _phase == 0:
+		queue_redraw()
+	else:
+		_layers[_phase - 1].queue_redraw()
+	_layers[3].queue_redraw()
+	_phase = (_phase + 1) % 4
 
 
 ## Bakes the map again: the buildings and roads, or (all) the ground and water too.
@@ -363,12 +406,12 @@ func _check_bake() -> void:
 	var w := hud.world
 	if w.client_loading():
 		return  # Do not repeatedly paint partially received maps behind the loading screen.
-	_sig_t -= 1.0 / 15.0
-	if _sig_t > 0.0:
+	if _checking or Time.get_ticks_msec() < _next_sig_ms:
 		if _static_dirty:
 			_bake_static()
 		return
-	_sig_t = 2.0
+	_next_sig_ms = Time.get_ticks_msec() + 2000
+	_checking = true
 	var rs := 0
 	for t in 3:
 		rs = rs * 7919 + (w.roads[t] as Array).size()
@@ -378,14 +421,21 @@ func _check_bake() -> void:
 		rebake()
 	var drawn := 0
 	var roofs := 0
-	for st in w.structures:
-		if st.gone or st.team >= 0:
+	var slice := Time.get_ticks_usec()
+	var visited := 0
+	for st in w.structures.duplicate():
+		visited += 1
+		if visited % 128 == 0 and Time.get_ticks_usec() - slice >= 250:
+			await get_tree().process_frame
+			slice = Time.get_ticks_usec()
+		if not is_instance_valid(st) or st.gone or st.team >= 0:
 			continue
 		match st.skind:
 			"roof":
 				roofs += 1
 			"floor", "bridge", "tall_wall":
 				drawn += 1
+	_checking = false
 	var sig := drawn * 7919 + roofs
 	if sig != _static_sig:
 		_static_sig = sig
@@ -398,39 +448,51 @@ func _check_bake() -> void:
 # --- drawing ------------------------------------------------------------------------------
 
 func _draw() -> void:
+	if _layers.is_empty():
+		_draw_content()
+	else:
+		_draw_layer(self, 0)
+
+
+func _draw_layer(canvas: CanvasItem, phase: int) -> void:
 	var started := Time.get_ticks_usec()
-	_draw_content()
+	_ink = canvas
+	_draw_content(phase)
+	_ink = self
 	if hud and hud.world:
 		hud.world.vp("minimap drawing", started)
 
 
-func _draw_content() -> void:
+func _draw_content(phase := -1) -> void:
 	var w := hud.world
-	_check_bake()
 	_update_xf()
-	# the backdrop shows round the edges when the map turns
-	draw_rect(Rect2(Vector2.ZERO, size), Color(0.05, 0.075, 0.08))
-	if _static:
-		draw_set_transform_matrix(_xf)
-		draw_texture_rect(_static, Rect2(Vector2.ZERO, size), false)
-		if w.fog and w.fog.active:
-			# the fog of war: darker wherever your side can't see right now
-			draw_texture_rect_region(w.fog.dark_tex, Rect2(Vector2.ZERO, size), w.fog.map_region(), Color(1, 1, 1, 0.55))
-		draw_set_transform_matrix(Transform2D.IDENTITY)
-	_draw_grid()
 	var sc := clampf(size.x / 240.0, 0.85, 1.35)
-	_draw_objectives(w)
-	_draw_structures(w, sc)
-	if hud.map_layer("intel"):
-		_draw_intel(w, sc)
-	_draw_fighting(w, sc)
-	_draw_units(w, sc)
-	_draw_aircraft(w, sc)
-	_draw_pings(w)
-	_draw_coop(w, sc)
-	_draw_view(w)
-	_draw_compass(w)
-	_draw_hover()
+	if phase <= 0:
+		_check_bake()
+		_ink.draw_rect(Rect2(Vector2.ZERO, size), Color(0.05, 0.075, 0.08))
+		if _static:
+			_ink.draw_set_transform_matrix(_xf)
+			_ink.draw_texture_rect(_static, Rect2(Vector2.ZERO, size), false)
+			if w.fog and w.fog.active:
+				_ink.draw_texture_rect_region(w.fog.dark_tex, Rect2(Vector2.ZERO, size), w.fog.map_region(), Color(1, 1, 1, 0.55))
+			_ink.draw_set_transform_matrix(Transform2D.IDENTITY)
+		_draw_grid()
+		_draw_objectives(w)
+		_draw_structures(w, sc)
+		if hud.map_layer("intel"):
+			_draw_intel(w, sc)
+	if phase == -1 or phase == 1:
+		_draw_fighting(w, sc)
+	if phase == -1 or phase == 2:
+		_draw_units(w, sc)
+		_draw_aircraft(w, sc)
+	if phase == -1 or phase == 3:
+		_draw_pings(w)
+		_draw_coop(w, sc)
+	if phase == -1 or phase == 4:
+		_draw_view(w)
+		_draw_compass(w)
+		_draw_hover()
 
 
 ## The same grid the radio calls use (A-H across, 1-8 down), labelled along
@@ -440,8 +502,8 @@ func _draw_grid() -> void:
 	var gc := Color(1, 1, 1, 0.08)
 	for i in range(1, gn):
 		var f := float(i) / gn
-		draw_line(_xf * Vector2(size.x * f, 0), _xf * Vector2(size.x * f, size.y), gc, 1.0)
-		draw_line(_xf * Vector2(0, size.y * f), _xf * Vector2(size.x, size.y * f), gc, 1.0)
+		_ink.draw_line(_xf * Vector2(size.x * f, 0), _xf * Vector2(size.x * f, size.y), gc, 1.0)
+		_ink.draw_line(_xf * Vector2(0, size.y * f), _xf * Vector2(size.x, size.y * f), gc, 1.0)
 	var fs := 10 if size.x >= 240.0 else 9
 	var lc := Color(1, 1, 1, 0.55)
 	for i in gn:
@@ -452,7 +514,7 @@ func _draw_grid() -> void:
 
 ## A grid letter or number centred on a point, in mono (docs/UI.md, Two voices).
 func _label(c: Vector2, s: String, fs: int, col: Color) -> void:
-	UiKit.mono_at(self, c + Vector2(-UiKit.mono_w(s, fs) * 0.5, fs * 0.36), s, fs, col)
+	UiKit.mono_at(_ink, c + Vector2(-UiKit.mono_w(s, fs) * 0.5, fs * 0.36), s, fs, col)
 
 
 ## A mission's objectives, by their letters.
@@ -465,9 +527,9 @@ func _draw_objectives(w: World) -> void:
 		var op := _pt(o[4])
 		var orad := float(o[5]) * size.x / MapDims.SIZE
 		if orad > 3.0:
-			draw_circle(op, orad, Color(UiKit.ACCENT.r, UiKit.ACCENT.g, UiKit.ACCENT.b, 0.08))
-			draw_arc(op, orad, 0, TAU, 32, Color(UiKit.ACCENT.r, UiKit.ACCENT.g, UiKit.ACCENT.b, 0.6), 1.0, true)
-		HudObjectives.diamond(self, op, 7.0, String(o[0]), UiKit.ACCENT, 1.0)
+			_ink.draw_circle(op, orad, Color(UiKit.ACCENT.r, UiKit.ACCENT.g, UiKit.ACCENT.b, 0.08))
+			_ink.draw_arc(op, orad, 0, TAU, 32, Color(UiKit.ACCENT.r, UiKit.ACCENT.g, UiKit.ACCENT.b, 0.6), 1.0, true)
+		HudObjectives.diamond(_ink, op, 7.0, String(o[0]), UiKit.ACCENT, 1.0)
 
 
 ## What the sides have built: FOBs and depots as squares, the rest as small
@@ -488,12 +550,12 @@ func _draw_structures(w: World, sc: float) -> void:
 		var c: Color = Defs.TEAM_COLORS[st.team]
 		if st.skind == "fob" or st.skind == "depot":
 			var hs := 5.5 * sc
-			draw_rect(Rect2(p - Vector2(hs + 1.0, hs + 1.0), Vector2(hs * 2.0 + 2.0, hs * 2.0 + 2.0)), Color(0, 0, 0, 0.8))
-			draw_rect(Rect2(p - Vector2(hs, hs), Vector2(hs * 2.0, hs * 2.0)), c)
+			_ink.draw_rect(Rect2(p - Vector2(hs + 1.0, hs + 1.0), Vector2(hs * 2.0 + 2.0, hs * 2.0 + 2.0)), Color(0, 0, 0, 0.8))
+			_ink.draw_rect(Rect2(p - Vector2(hs, hs), Vector2(hs * 2.0, hs * 2.0)), c)
 			if st.skind == "fob":
-				draw_rect(Rect2(p - Vector2(hs * 0.4, hs * 0.4), Vector2(hs * 0.8, hs * 0.8)), Color(0, 0, 0, 0.55))
+				_ink.draw_rect(Rect2(p - Vector2(hs * 0.4, hs * 0.4), Vector2(hs * 0.8, hs * 0.8)), Color(0, 0, 0, 0.55))
 		else:
-			draw_rect(Rect2(p - Vector2(1.5, 1.5), Vector2(3, 3)), Color(c.r, c.g, c.b, 0.7).darkened(0.2))
+			_ink.draw_rect(Rect2(p - Vector2(1.5, 1.5), Vector2(3, 3)), Color(c.r, c.g, c.b, 0.7).darkened(0.2))
 
 
 ## A town or village: its ground as a faint ring in its holder's colour (the
@@ -503,17 +565,17 @@ func _draw_town(st: Structure, sc: float) -> void:
 	var c := _pt(st.zone_c if st.zone_c != Vector3.INF else st.position)
 	var r := maxf(3.0, st.zone_r * size.x / MapDims.SIZE)
 	var col: Color = Defs.TEAM_COLORS[st.team] if st.team >= 0 else Structure.C_TOWN_FLAG
-	draw_circle(c, r, Color(col.r, col.g, col.b, 0.1))
-	draw_arc(c, r, 0, TAU, 28, Color(col.r, col.g, col.b, 0.55), 1.0, true)
+	_ink.draw_circle(c, r, Color(col.r, col.g, col.b, 0.1))
+	_ink.draw_arc(c, r, 0, TAU, 28, Color(col.r, col.g, col.b, 0.55), 1.0, true)
 	if st.cap_team >= 0 and st.cap_prog > 0.0:
-		draw_arc(c, r + 1.6, -PI * 0.5, -PI * 0.5 + TAU * st.cap_prog / 100.0, 28, Defs.TEAM_COLORS[st.cap_team], 2.2, true)
+		_ink.draw_arc(c, r + 1.6, -PI * 0.5, -PI * 0.5 + TAU * st.cap_prog / 100.0, 28, Defs.TEAM_COLORS[st.cap_team], 2.2, true)
 	var p := _pt(st.position)
 	var h := (8.0 if st.variant == 1 else 6.5) * sc
-	draw_line(p + Vector2(0, h * 0.35), p - Vector2(0, h), Color(0, 0, 0, 0.8), 2.6)
-	draw_line(p + Vector2(0, h * 0.35), p - Vector2(0, h), Color(0.92, 0.92, 0.88), 1.2)
+	_ink.draw_line(p + Vector2(0, h * 0.35), p - Vector2(0, h), Color(0, 0, 0, 0.8), 2.6)
+	_ink.draw_line(p + Vector2(0, h * 0.35), p - Vector2(0, h), Color(0.92, 0.92, 0.88), 1.2)
 	var fr := Rect2(p + Vector2(0.6, -h), Vector2(h * 0.85, h * 0.55))
-	draw_rect(fr.grow(0.8), Color(0, 0, 0, 0.8))
-	draw_rect(fr, col)
+	_ink.draw_rect(fr.grow(0.8), Color(0, 0, 0, 0.8))
+	_ink.draw_rect(fr, col)
 
 
 ## Where men are firing: a ring pulses over each patch of the fight, so a
@@ -529,8 +591,8 @@ func _draw_fighting(w: World, sc: float) -> void:
 	var ph := fmod(Time.get_ticks_msec() / 1000.0 * 1.4, 1.0)
 	for key in _fight:
 		var p := _pt(_fight[key])
-		draw_arc(p, (3.5 + ph * 5.0) * sc, 0, TAU, 14, Color(C_FIGHT.r, C_FIGHT.g, C_FIGHT.b, 0.85 * (1.0 - ph)), 1.6, true)
-		draw_circle(p, 1.6 * sc, Color(C_FIGHT.r, C_FIGHT.g, C_FIGHT.b, 0.5))
+		_ink.draw_arc(p, (3.5 + ph * 5.0) * sc, 0, TAU, 14, Color(C_FIGHT.r, C_FIGHT.g, C_FIGHT.b, 0.85 * (1.0 - ph)), 1.6, true)
+		_ink.draw_circle(p, 1.6 * sc, Color(C_FIGHT.r, C_FIGHT.g, C_FIGHT.b, 0.5))
 
 
 ## Every man you can see as a dot with a dark edge (allies brightest, the
@@ -555,19 +617,19 @@ func _draw_units(w: World, sc: float) -> void:
 		if s.life == Soldier.Life.DOWNED:
 			c.a = 0.55
 		var p := _pt(s.position)
-		draw_rect(Rect2(p - Vector2(rr + 0.9, rr + 0.9), Vector2(rr * 2.0 + 1.8, rr * 2.0 + 1.8)), edge)
-		draw_rect(Rect2(p - Vector2(rr, rr), Vector2(rr * 2.0, rr * 2.0)), c)
+		_ink.draw_rect(Rect2(p - Vector2(rr + 0.9, rr + 0.9), Vector2(rr * 2.0 + 1.8, rr * 2.0 + 1.8)), edge)
+		_ink.draw_rect(Rect2(p - Vector2(rr, rr), Vector2(rr * 2.0, rr * 2.0)), c)
 	for v in w.vehicles:
 		if not v.visible or v.team < 0:
 			continue
 		var vs2: Array = MapSymbols.vehicle_symbol(v.vkind)
 		var vp := _pt(v.position)
 		if v.selected:
-			draw_arc(vp, 8.5 * sc, 0, TAU, 20, Color(1, 1, 1, 0.9), 1.4, true)
-		MapSymbols.nato(self, vp, 11.0 * sc, v.team == w.local_team or w.local_team < 0, v.team, vs2[0])
+			_ink.draw_arc(vp, 8.5 * sc, 0, TAU, 20, Color(1, 1, 1, 0.9), 1.4, true)
+		MapSymbols.nato(_ink, vp, 11.0 * sc, v.team == w.local_team or w.local_team < 0, v.team, vs2[0])
 	for d in w.drones:
 		if d.visible:
-			draw_circle(_pt(d.position), 2.0, Color(1, 1, 0.3))
+			_ink.draw_circle(_pt(d.position), 2.0, Color(1, 1, 0.3))
 
 
 ## Where the enemy was last seen (by your men, towers, drones or a recon
@@ -584,8 +646,8 @@ func _draw_intel(w: World, sc: float) -> void:
 		var p := _pt(it[0])
 		var hs := (2.6 if String(it[1]) == "inf" else 3.6) * sc
 		var d := PackedVector2Array([p + Vector2(0, -hs), p + Vector2(hs, 0), p + Vector2(0, hs), p + Vector2(-hs, 0), p + Vector2(0, -hs)])
-		draw_polyline(d, Color(0, 0, 0, 0.55 * a), 2.6, true)
-		draw_polyline(d, Color(C_INTEL.r, C_INTEL.g, C_INTEL.b, a), 1.2, true)
+		_ink.draw_polyline(d, Color(0, 0, 0, 0.55 * a), 2.6, true)
+		_ink.draw_polyline(d, Color(C_INTEL.r, C_INTEL.g, C_INTEL.b, a), 1.2, true)
 
 
 ## Aircraft over the battlefield (you hear and see them, whoever's they are): a
@@ -601,17 +663,17 @@ func _draw_aircraft(w: World, sc: float) -> void:
 			var eyes := PackedVector3Array()
 			p.add_eyes(eyes)
 			for e in eyes:
-				draw_arc(_pt(Vector3(e.x, 0, e.y)), e.z * size.x / MapDims.SIZE, 0, TAU, 28, Color(C_RECON.r, C_RECON.g, C_RECON.b, 0.45), 1.0, true)
+				_ink.draw_arc(_pt(Vector3(e.x, 0, e.y)), e.z * size.x / MapDims.SIZE, 0, TAU, 28, Color(C_RECON.r, C_RECON.g, C_RECON.b, 0.45), 1.0, true)
 		var fw3: Vector3 = p.heading()
 		var fw := (_pt(p.position + fw3) - pp).normalized() if fw3.length() > 0.1 else Vector2(0, -1)
 		var sd := Vector2(-fw.y, fw.x)
 		var s := 4.5 * sc
 		var tri := PackedVector2Array([pp + fw * s, pp - fw * s * 0.6 + sd * s * 0.75, pp - fw * s * 0.25, pp - fw * s * 0.6 - sd * s * 0.75])
-		MapSymbols.poly(self, tri, Color(0, 0, 0, 0.6))
+		MapSymbols.poly(_ink, tri, Color(0, 0, 0, 0.6))
 		var tri2 := PackedVector2Array()
 		for q in tri:
 			tri2.append(pp + (q - pp) * 0.72)
-		MapSymbols.poly(self, tri2, c)
+		MapSymbols.poly(_ink, tri2, c)
 
 
 ## Alerts and intelligence reports, pulsing until they expire.
@@ -622,7 +684,7 @@ func _draw_pings(w: World) -> void:
 			continue
 		var pp := _pt(pg[0])
 		var r := 4.0 + fmod(now * 2.0, 1.0) * 6.0
-		draw_arc(pp, r, 0, TAU, 16, Color(0.5, 0.9, 1.0) if pg[2] == "intel" else Color(1, 0.5, 0.3), 1.5, true)
+		_ink.draw_arc(pp, r, 0, TAU, 16, Color(0.5, 0.9, 1.0) if pg[2] == "intel" else Color(1, 0.5, 0.3), 1.5, true)
 
 
 ## The other commanders on our side: each one's view as a wedge in his colour
@@ -642,31 +704,31 @@ func _draw_coop(w: World, sc: float) -> void:
 				for q in p.s_quad:
 					pts.append(_pt(q))
 				var eye := _pt(p.eye())
-				draw_line(eye, pts[3], Color(col.r, col.g, col.b, 0.32 * a), 1.0, true)
-				draw_line(eye, pts[2], Color(col.r, col.g, col.b, 0.32 * a), 1.0, true)
+				_ink.draw_line(eye, pts[3], Color(col.r, col.g, col.b, 0.32 * a), 1.0, true)
+				_ink.draw_line(eye, pts[2], Color(col.r, col.g, col.b, 0.32 * a), 1.0, true)
 				if absf((pts[2] - pts[0]).cross(pts[3] - pts[1])) > 8.0:
-					draw_colored_polygon(pts, Color(col.r, col.g, col.b, 0.09 * a))
+					_ink.draw_colored_polygon(pts, Color(col.r, col.g, col.b, 0.09 * a))
 				pts.append(pts[0])
-				draw_polyline(pts, Color(col.r, col.g, col.b, 0.9 * a), 1.4, true)
-				draw_rect(Rect2(eye - Vector2(5.5, 5.5) * sc, Vector2(11, 11) * sc), Color(0, 0, 0, 0.6 * a))
-				draw_rect(Rect2(eye - Vector2(4.6, 4.6) * sc, Vector2(9.2, 9.2) * sc), Color(col.r, col.g, col.b, a))
+				_ink.draw_polyline(pts, Color(col.r, col.g, col.b, 0.9 * a), 1.4, true)
+				_ink.draw_rect(Rect2(eye - Vector2(5.5, 5.5) * sc, Vector2(11, 11) * sc), Color(0, 0, 0, 0.6 * a))
+				_ink.draw_rect(Rect2(eye - Vector2(4.6, 4.6) * sc, Vector2(9.2, 9.2) * sc), Color(col.r, col.g, col.b, a))
 				var ini := co.initials(p.peer).substr(0, 1)
 				var fs := 8 if sc < 1.1 else 9
-				draw_string(UiKit.mono(500), eye + Vector2(-UiKit.mono_w(ini, fs) * 0.5, fs * 0.36), ini, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, HudCoop.INK)
+				_ink.draw_string(UiKit.mono(500), eye + Vector2(-UiKit.mono_w(ini, fs) * 0.5, fs * 0.36), ini, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, HudCoop.INK)
 			for sid in p.sq:
 				var g: Dictionary = groups.get(sid, {})
 				if not g.is_empty() and int(g["n"]) > 0:
-					draw_arc(_pt(g["c"]), 4.8 * sc, 0.0, TAU, 16, Color(col.r, col.g, col.b, 0.95), 1.4, true)
+					_ink.draw_arc(_pt(g["c"]), 4.8 * sc, 0.0, TAU, 16, Color(col.r, col.g, col.b, 0.95), 1.4, true)
 			for id in p.veh:
 				var v = w.entity(id)
 				if v is Vehicle and v.visible:
-					draw_arc(_pt(v.position), 8.5 * sc, 0.0, TAU, 20, Color(col.r, col.g, col.b, 0.95), 1.4, true)
+					_ink.draw_arc(_pt(v.position), 8.5 * sc, 0.0, TAU, 20, Color(col.r, col.g, col.b, 0.95), 1.4, true)
 			if p.cur_on:
 				var cp := _pt(p.s_cur)
 				var arrow := PackedVector2Array([cp, cp + Vector2(0, 9) * sc, cp + Vector2(2.5, 7) * sc, cp + Vector2(6.5, 6.5) * sc])
-				MapSymbols.poly(self, arrow, Color(col.r, col.g, col.b, a))
+				MapSymbols.poly(_ink, arrow, Color(col.r, col.g, col.b, a))
 				arrow.append(arrow[0])
-				draw_polyline(arrow, Color(0, 0, 0, 0.7 * a), 1.0, true)
+				_ink.draw_polyline(arrow, Color(0, 0, 0, 0.7 * a), 1.0, true)
 	var now := Time.get_ticks_msec()
 	for pg in co.pings:
 		var age := (now - int(pg.born)) / 1000.0
@@ -675,9 +737,9 @@ func _draw_coop(w: World, sc: float) -> void:
 		var col: Color = co.color(pg.peer)
 		var mark: Color = CoCommand.PING_COLORS.get(pg.kind, Color(0.96, 0.97, 0.94))
 		var ph := fmod(age * 1.6, 1.0)
-		draw_arc(pp, (3.0 + ph * 8.0) * sc, 0.0, TAU, 18, Color(col.r, col.g, col.b, (1.0 - ph) * fade), 1.8, true)
-		draw_circle(pp, 3.4 * sc, Color(0, 0, 0, 0.7 * fade))
-		draw_circle(pp, 2.5 * sc, Color(mark.r, mark.g, mark.b, fade))
+		_ink.draw_arc(pp, (3.0 + ph * 8.0) * sc, 0.0, TAU, 18, Color(col.r, col.g, col.b, (1.0 - ph) * fade), 1.8, true)
+		_ink.draw_circle(pp, 3.4 * sc, Color(0, 0, 0, 0.7 * fade))
+		_ink.draw_circle(pp, 2.5 * sc, Color(mark.r, mark.g, mark.b, fade))
 	# lines drawn for the side, and the one being drawn now
 	for sk in co.sketches:
 		var sage := (now - int(sk.born)) / 1000.0
@@ -696,14 +758,14 @@ func _sketch_line(pts: PackedVector3Array, col: Color, a: float, grow: float) ->
 	var sp := PackedVector2Array()
 	for i in mini(pts.size(), maxi(2, ceili(pts.size() * grow))):
 		sp.append(_pt(pts[i]))
-	draw_polyline(sp, Color(0, 0, 0, 0.6 * a), 3.6, true)
-	draw_polyline(sp, Color(col.r, col.g, col.b, a), 1.9, true)
+	_ink.draw_polyline(sp, Color(0, 0, 0, 0.6 * a), 3.6, true)
+	_ink.draw_polyline(sp, Color(col.r, col.g, col.b, a), 1.9, true)
 	var tip := sp[sp.size() - 1]
 	var back := sp[maxi(0, sp.size() - 3)]
 	if grow >= 1.0 and tip.distance_to(back) > 2.0:
 		var dv := (tip - back).normalized()
 		var nv := Vector2(-dv.y, dv.x)
-		MapSymbols.poly(self, PackedVector2Array([tip + dv * 4.5, tip - dv * 2.5 + nv * 3.8, tip - dv * 2.5 - nv * 3.8]), Color(col.r, col.g, col.b, a))
+		MapSymbols.poly(_ink, PackedVector2Array([tip + dv * 4.5, tip - dv * 2.5 + nv * 3.8, tip - dv * 2.5 - nv * 3.8]), Color(col.r, col.g, col.b, a))
 
 
 ## What the camera sees: the patch of ground on screen, lit, and faint lines
@@ -717,16 +779,16 @@ func _draw_view(w: World) -> void:
 	for sp in [Vector2(0, 0), Vector2(vs.x, 0), vs, Vector2(0, vs.y)]:
 		pts.append(_pt(cam.ground_point(sp)))
 	var eye := _pt(cam.cam.global_position)
-	draw_line(eye, pts[3], Color(1, 1, 1, 0.3), 1.0, true)
-	draw_line(eye, pts[2], Color(1, 1, 1, 0.3), 1.0, true)
+	_ink.draw_line(eye, pts[3], Color(1, 1, 1, 0.3), 1.0, true)
+	_ink.draw_line(eye, pts[2], Color(1, 1, 1, 0.3), 1.0, true)
 	# a quad seen edge-on (a window shrunk to nothing) won't triangulate
 	var area := (pts[2] - pts[0]).cross(pts[3] - pts[1])
 	if absf(area) > 8.0:
-		draw_colored_polygon(pts, Color(1, 1, 1, 0.1))
+		_ink.draw_colored_polygon(pts, Color(1, 1, 1, 0.1))
 	pts.append(pts[0])
-	draw_polyline(pts, Color(1, 1, 1, 0.85), 1.4, true)
-	draw_circle(eye, 2.4, Color(1, 1, 1, 0.95))
-	draw_circle(_pt(cam.focus_pos), 1.5, Color(1, 1, 1, 0.7))
+	_ink.draw_polyline(pts, Color(1, 1, 1, 0.85), 1.4, true)
+	_ink.draw_circle(eye, 2.4, Color(1, 1, 1, 0.95))
+	_ink.draw_circle(_pt(cam.focus_pos), 1.5, Color(1, 1, 1, 0.7))
 
 
 ## North as the camera sees it: straight up when it looks north, turning as
@@ -734,15 +796,15 @@ func _draw_view(w: World) -> void:
 func _draw_compass(w: World) -> void:
 	var c := _compass_c()
 	var hot := _hover.x >= 0.0 and _on_compass(_hover)
-	draw_circle(c, COMPASS_R, UiKit.fa(UiKit.INK, 0.82))
-	draw_arc(c, COMPASS_R, 0, TAU, 28, UiKit.ACCENT if hot else UiKit.RULE2, 1.0, true)
+	_ink.draw_circle(c, COMPASS_R, UiKit.fa(UiKit.INK, 0.82))
+	_ink.draw_arc(c, COMPASS_R, 0, TAU, 28, UiKit.ACCENT if hot else UiKit.RULE2, 1.0, true)
 	var yaw: float = w.cam.yaw if w.cam else 0.0
 	var n := Vector2(sin(yaw), -cos(yaw))
 	var side := Vector2(-n.y, n.x) * 3.2
 	var tip := c + n * (COMPASS_R - 2.5)
 	var tail := c - n * (COMPASS_R - 2.5)
-	draw_colored_polygon(PackedVector2Array([tip, c + side, c - side]), Color(0.95, 0.32, 0.26))
-	draw_colored_polygon(PackedVector2Array([tail, c - side, c + side]), Color(0.86, 0.86, 0.8))
+	_ink.draw_colored_polygon(PackedVector2Array([tip, c + side, c - side]), Color(0.95, 0.32, 0.26))
+	_ink.draw_colored_polygon(PackedVector2Array([tail, c - side, c + side]), Color(0.86, 0.86, 0.8))
 
 
 ## The grid square under the cursor, beside it.
@@ -753,4 +815,4 @@ func _draw_hover() -> void:
 	var p := _hover + Vector2(10, -6)
 	p.x = minf(p.x, size.x - UiKit.mono_w(g, 12) - 4.0)
 	p.y = maxf(p.y, 14.0)
-	UiKit.mono_at(self, p, g, 12, UiKit.TEXT)
+	UiKit.mono_at(_ink, p, g, 12, UiKit.TEXT)

@@ -3776,7 +3776,7 @@ func _process(dt: float) -> void:
 		world.vp("soldiers", _t0)
 
 
-func _view_process(dt: float) -> void:
+func _view_process(dt: float, blend := -1.0) -> void:
 	if not world.has_view:
 		return
 	# a body that has come to rest only needs a look now and then
@@ -3786,11 +3786,13 @@ func _view_process(dt: float) -> void:
 			return
 		_corpse_t = 0.4
 	if not srv:
+		if blend < 0.0:
+			blend = 1.0 - exp(-dt * 14.0)
 		if absf(net_pos.y - position.y) > 0.01 or position.distance_to(net_pos) > 0.01:
-			net_smooth(dt)
+			net_smooth(dt, blend)
 		else:
 			var facing := rotation
-			facing.y = lerp_angle(facing.y, net_yaw, 1.0 - exp(-dt * 14.0))
+			facing.y = lerp_angle(facing.y, net_yaw, blend)
 			if facing != rotation:
 				rotation = facing
 	var v := life != Life.HIDDEN and seen_by_local()

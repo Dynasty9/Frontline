@@ -781,7 +781,9 @@ catalogue entry in `MissionList.LIST`, a setup function and an autopilot functio
   shows where north lies in the view (click it to square up). Hovering gives the grid square under the cursor.
   Three sizes, and it can turn with the camera so the way you face is always up (Settings > Interface).
   Building destruction is painted across several frames, keeping the previous map visible while it updates;
-  moving units, selection and minimap controls continue to update normally.
+  moving units, selection and minimap controls continue to update normally. Its map, fighting,
+  unit and co-op layers take turns refreshing across four frames, while the camera wedge and pointer
+  refresh each frame. Rotating or resizing refreshes all layers together to keep their positions aligned.
   In co-op each other commander's view is a wedge in their colour with their initial at their camera, with
   their cursor, rings round what they've selected, their pings and sketches.
 - **Interface scale** (Settings > Interface): the interface grows with the window, so at 100% it takes the same

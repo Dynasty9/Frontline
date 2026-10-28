@@ -64,6 +64,13 @@ func _sample_report(values: Array[float]) -> Dictionary:
 		"p99_ms": sorted[mini(sorted.size() - 1, ceili(sorted.size() * 0.99) - 1)], "max_ms": sorted.back()}
 
 
+func _frame_change_report(values: Array[float]) -> Dictionary:
+	var changes: Array[float] = []
+	for i in range(1, values.size()):
+		changes.append(absf(values[i] - values[i - 1]))
+	return _sample_report(changes)
+
+
 func _ready() -> void:
 	if "--startup-trace" in OS.get_cmdline_user_args():
 		print("STARTUP main._ready at %d ms" % Time.get_ticks_msec())
@@ -1029,11 +1036,11 @@ func _process(_dt: float) -> void:
 			print("PERF fps=%.1f server_tick_ms=%.2f entities=%d soldiers_alive=%d total_soldiers=%d vehicles=%d" % [fps, world.tick_ms, world.entities.size(), alive, world.soldiers.size(), world.vehicles.size()])
 			print("PERF systems_ms=", JSON.stringify(world.prof))
 			print("PERF nested_total_ms=", JSON.stringify(world.measured_details))
-			_perf_frame_samples.sort()
 			var report := {"rendered": DisplayServer.get_name() != "headless", "fps": fps,
 				"worker_threads": ProjectSettings.get_setting("threading/worker_pool/max_threads"),
 				"render_thread_mode": ProjectSettings.get_setting("rendering/driver/threads/thread_model"),
-				"detailed_timing": world.measure_details, "frames": _sample_report(_perf_frame_samples), "ticks": _sample_report(world.measured_ticks),
+				"detailed_timing": world.measure_details, "frames": _sample_report(_perf_frame_samples),
+				"frame_changes": _frame_change_report(_perf_frame_samples), "ticks": _sample_report(world.measured_ticks),
 				"render_cpu": _sample_report(_perf_render_cpu), "render_gpu": _sample_report(_perf_render_gpu), "process_cpu": _sample_report(_perf_process), "physics_cpu": _sample_report(_perf_physics),
 				"static_memory_bytes": Performance.get_monitor(Performance.MEMORY_STATIC),
 				"nodes": Performance.get_monitor(Performance.OBJECT_NODE_COUNT), "map_m": int(world.settings.get("map_size", 1024)),

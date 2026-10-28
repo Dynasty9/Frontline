@@ -76,7 +76,6 @@ var tactical := false
 var orders := {}
 var orbat: HudOrbat
 var _slow_t := 0.0
-var _map_t := 0.0
 var layers_ui: HudLayers
 var tint: ColorRect
 var root: Control
@@ -273,6 +272,7 @@ func _ready() -> void:
 	root.add_child(minimap_panel)
 	minimap = HudMinimap.new()
 	minimap.hud = self
+	minimap.prepare_layers()
 	minimap_panel.add_child(minimap)
 
 	# map layers: a column of toggles beside the minimap
@@ -1525,10 +1525,7 @@ func _view_process(dt: float) -> void:
 			toasts.offset_top = ty
 			toasts.offset_bottom = tb
 	toasts.tick(rdt)
-	_map_t -= rdt
-	if _map_t <= 0.0:
-		_map_t = 1.0 / 15.0
-		minimap.queue_redraw()
+	minimap.refresh_layers()
 	if world.cam:
 		overlay.refresh_for_view(rdt, world.cam.cam)
 	pointer_overlay.queue_redraw()
