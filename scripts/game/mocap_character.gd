@@ -1,7 +1,7 @@
 class_name MocapCharacter
 extends Node3D
-## Local evaluation adapter for the MotusMan v55 source rig. One AnimationTree
-## blends the shared clips; the server would supply speed, never bone transforms.
+## Source-rig adapter for Mixamo SWAT and the legacy mannequin evaluator.
+## Shared local clips never affect the authoritative simulation.
 
 const BASE := "res://assets/local_mocap/FBX/"
 const CLIPS := {
@@ -13,7 +13,16 @@ const CLIPS := {
 	"crouch": "Animation/Mobility/IPC/MOB1_CrouchWalk_F_IPC.fbx",
 }
 
-static var shared_library: AnimationLibrary
+const MIXAMO_BASE := "res://assets/local_mocap/mixamo/"
+const MIXAMO_CLIPS := {
+	"idle": "basic_shooter/rifle aiming idle.fbx",
+	"walk": "basic_shooter/walking.fbx",
+	"jog": "basic_shooter/rifle run.fbx",
+	"relax": "basic_shooter/rifle aiming idle.fbx",
+	"relaxed": "basic_shooter/rifle aiming idle.fbx",
+	"crouch": "Rifle Crouch Walk.fbx",
+}
+static var shared_libraries := {}
 
 var skeleton: Skeleton3D
 var player: AnimationPlayer
@@ -28,9 +37,12 @@ var weapon_socket := Transform3D.IDENTITY
 
 
 func build(clips: Dictionary = CLIPS) -> bool:
-	var asset := BASE + "MotusMan/MotusMan_v55.fbx"
+	var mixamo := "--swat-units" in OS.get_cmdline_user_args()
+	var base := MIXAMO_BASE if mixamo else BASE
+	if mixamo: clips = MIXAMO_CLIPS
+	var asset := MIXAMO_BASE + "Swat.fbx" if mixamo else BASE + "MotusMan/MotusMan_v55.fbx"
 	if not ResourceLoader.exists(asset):
-		push_error("Run tests/mocap/prepare_assets.py with the demo ZIP, then import the project.")
+		push_error("Character source missing: " + asset)
 		return false
 	character = (load(asset) as PackedScene).instantiate()
 	for camera in character.find_children("*", "Camera3D", true, false):
@@ -39,26 +51,35 @@ func build(clips: Dictionary = CLIPS) -> bool:
 	character.rotation.y = PI  # the vendor faces +Z; Frontline faces -Z
 	skeleton = character.find_children("*", "Skeleton3D", true, false)[0]
 	for i in skeleton.get_bone_count():
+		if mixamo:
+			skeleton.set_bone_name(i, String(skeleton.get_bone_name(i)).replace("mixamorig_", "").replace("mixamorig:", ""))
 		bone_map[skeleton.get_bone_name(i)] = i
 		rest_global[skeleton.get_bone_name(i)] = skeleton.get_bone_global_rest(i)
+	if mixamo:
+		for mesh in character.find_children("*", "MeshInstance3D", true, false):
+			if mesh.skin == null: continue
+			mesh.skin = mesh.skin.duplicate()
+			for bind in mesh.skin.get_bind_count():
+				mesh.skin.set_bind_name(bind, String(mesh.skin.get_bind_name(bind)).replace("mixamorig_", "").replace("mixamorig:", ""))
 	# The FBX contains old absolute texture paths. Bind the supplied texture
 	# explicitly instead of depending on the artist's original folder layout.
-	var material := StandardMaterial3D.new()
-	material.albedo_texture = load(BASE + "MotusMan/MotusMan_v55.fbm/MCG_diff.jpg")
-	material.roughness = 0.72
-	for mesh in character.find_children("*", "MeshInstance3D", true, false):
-		(mesh as MeshInstance3D).material_override = material
+	if not mixamo:
+		var material := StandardMaterial3D.new()
+		material.albedo_texture = load(BASE + "MotusMan/MotusMan_v55.fbm/MCG_diff.jpg")
+		material.roughness = 0.72
+		for mesh in character.find_children("*", "MeshInstance3D", true, false):
+			(mesh as MeshInstance3D).material_override = material
 	for old in character.find_children("*", "AnimationPlayer", true, false):
 		(old as AnimationPlayer).stop()
 		old.queue_free()
 	player = AnimationPlayer.new()
 	player.name = "Clips"
 	add_child(player)
-	var library: AnimationLibrary = shared_library if clips == CLIPS else null
+	var library: AnimationLibrary = shared_libraries.get(base) if clips == CLIPS or mixamo else null
 	if library == null:
 		library = AnimationLibrary.new()
 		for key in clips:
-			var source := (load(BASE + clips[key]) as PackedScene).instantiate()
+			var source := (load(base + clips[key]) as PackedScene).instantiate()
 			var players := source.find_children("*", "AnimationPlayer", true, false)
 			if players.is_empty():
 				push_error("No animation in " + clips[key])
@@ -76,7 +97,7 @@ func build(clips: Dictionary = CLIPS) -> bool:
 				return false
 			for track in range(animation.get_track_count() - 1, -1, -1):
 				var path := animation.track_get_path(track)
-				var bone := String(path.get_concatenated_subnames())
+				var bone := String(path.get_concatenated_subnames()).replace("mixamorig_", "").replace("mixamorig:", "")
 				if not bone_map.has(bone):
 					animation.remove_track(track)
 					continue
@@ -93,6 +114,8 @@ func build(clips: Dictionary = CLIPS) -> bool:
 			# fingers/shoulders silently inherit the target mesh's T pose.
 			for bone_name in bone_map:
 				var source_index := source_skeleton.find_bone(bone_name)
+				if source_index < 0: source_index = source_skeleton.find_bone("mixamorig_" + bone_name)
+				if source_index < 0: source_index = source_skeleton.find_bone("mixamorig:" + bone_name)
 				if source_index < 0:
 					continue
 				var path := NodePath(String(get_path_to(skeleton)) + ":" + bone_name)
@@ -108,8 +131,8 @@ func build(clips: Dictionary = CLIPS) -> bool:
 			animation.loop_mode = Animation.LOOP_NONE if key == "relax" else Animation.LOOP_LINEAR
 			library.add_animation(key, animation)
 			source.free()
-		if clips == CLIPS:
-			shared_library = library
+		if clips == CLIPS or mixamo:
+			shared_libraries[base] = library
 	player.add_animation_library("", library)
 	var blend := AnimationNodeBlendSpace1D.new()
 	blend.min_space = 0.0
@@ -126,21 +149,9 @@ func build(clips: Dictionary = CLIPS) -> bool:
 	tree.callback_mode_process = AnimationMixer.ANIMATION_CALLBACK_MODE_PROCESS_MANUAL
 	tree.active = true
 	player.callback_mode_process = AnimationMixer.ANIMATION_CALLBACK_MODE_PROCESS_MANUAL
-	var gun_asset := (load(BASE + "Animation/Rifle/M4/M4_Rifle_01.fbx") as PackedScene).instantiate()
-	weapon = gun_asset
-	for camera in weapon.find_children("*", "Camera3D", true, false):
-		camera.free()
+	weapon = load("res://scripts/game/rifle_asset.gd").instantiate()
+	if weapon == null: return false
 	add_child(weapon)
-	var gun_material := StandardMaterial3D.new()
-	gun_material.albedo_texture = load(BASE + "Animation/Rifle/M4/M4_Rifle_01.fbm/M4DF2048.jpg")
-	gun_material.roughness = 0.68
-	gun_material.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS_ANISOTROPIC
-	gun_material.normal_enabled = true
-	gun_material.normal_texture = load(BASE + "Animation/Rifle/M4/M4_Rifle_01.fbm/M4NM2048.jpg")
-	gun_material.ao_enabled = true
-	gun_material.ao_texture = load(BASE + "Animation/Rifle/M4/M4_Rifle_01.fbm/M4AO2048.jpg")
-	for mesh in weapon.find_children("*", "MeshInstance3D", true, false):
-		(mesh as MeshInstance3D).material_override = gun_material
 	hand = skeleton.find_bone("RightHandMiddle1")
 	_calibrate_weapon_socket()
 	if OS.has_environment("FL_DEBUG_MOCAP"):

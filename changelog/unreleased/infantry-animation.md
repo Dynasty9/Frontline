@@ -26,6 +26,9 @@ caption = "A quiet-sector smoking idle, with the rifle slung"
 [[screenshots]]
 file = "ragdoll.jpg"
 caption = "A staged blast demonstrates physical falls and dropped weapons"
+[[screenshots]]
+file = "mixamo-crouch.png"
+caption = "The SWAT rifleman settles into cover using the Mixamo crouch cycle and baked rifle"
 +++
 
 - Soldiers check the space needed to go prone, take a short backward step when possible, settle their feet, then lower themselves. If the rear path is blocked, they stay crouched.
@@ -34,3 +37,6 @@ caption = "A staged blast demonstrates physical falls and dropped weapons"
 - Imported characters and animations require separately installed local assets; they are not included in downloads. Other units keep their procedural appearance. This remains a preview, with unfinished activity animations and vehicle interactions.
 - With local activity clips installed, riflemen use captured digging and smoking poses, keep their rifle slung, and drop the shovel physically when killed while digging.
 - Recorded battles accept the new hit-reaction events, so combat recordings can load and seek correctly.
+
+- The local rifle can be baked into a binary game resource with its textures embedded, preserving weapon grips and magazine handling without loading the original rifle FBX at runtime.
+- The SWAT preview now uses a Mixamo source rig and crouch-walk cycle. Its animation viewer also discovers locally installed Rifle 8-Way Locomotion and Pro Rifle packs, plus the prone-to-kneel transition.

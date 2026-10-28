@@ -867,3 +867,17 @@ Validation for prone clearance: full import and seed-3 attack scenario (60 simul
 ## PR gameplay recordings
 
 The PR includes `changelog/unreleased/infantry-animation/gameplay.mp4`, captured from the ordinary `--scenario=motion --seed=3 --skinned-units --swat-units --motion-camera` battle, plus `game-activities.mp4`. The latter uses `tests/mocap/activities_game.tscn` with the same scenario and asset flags: it stages a normal sandbag work order and smoking idle choice, then applies a lethal hit. Its assertions require both activity states to occur. Use `--fixed-fps 60 --write-movie build/activities.avi` before `--` to record it. Local source assets are required. Recorded fixed-step movies do not measure real-time frame rate. The activity run reports ObjectDB instances at shutdown; cleanup remains unverified.
+
+
+### Mixamo-only SWAT source and rifle bake
+
+Use `--swat-units` with the locally installed `Swat.fbx`, Basic Shooter clips,
+and `Rifle Crouch Walk.fbx`. This route no longer loads MotusMan or MoCap
+animation clips. `prepare_mixamo.py` also installs the optional 49-clip Rifle
+8-Way Locomotion and Pro Rifle packs, plus downloaded prone/stow transitions.
+The viewer lists these separately; they are not all wired to gameplay actions.
+
+Bake the separately licensed M4 using `tests/mocap/bake_rifle.gd` after importing
+its source files. See `RIFLE_PACK.md`. Game exports include the baked binary
+resource and exclude legacy MoCap FBX sources. Keep all licensed source and
+baked assets out of public Git.

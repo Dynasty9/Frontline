@@ -269,7 +269,7 @@ func build(utype: String, team: int, seed: int) -> void:
 		if j:
 			Mats.merge_static(j, [], false, false, true)
 	# Opt-in until the character source assets are installed for a release.
-	if is_inside_tree() and get_parent() is Soldier and utype == "rifleman" and "--skinned-units" in OS.get_cmdline_user_args() and ResourceLoader.exists("res://assets/local_mocap/character/Soldier.glb"):
+	if is_inside_tree() and get_parent() is Soldier and utype == "rifleman" and "--skinned-units" in OS.get_cmdline_user_args() and ResourceLoader.exists("res://assets/local_mocap/mixamo/Swat.fbx" if "--swat-units" in OS.get_cmdline_user_args() else "res://assets/local_mocap/character/Soldier.glb"):
 		skinned = SkinnedRifleman.new()
 		add_child(skinned)
 		if skinned.build():

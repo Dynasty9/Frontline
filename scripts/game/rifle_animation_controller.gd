@@ -249,8 +249,7 @@ func advance(dt: float, velocity: Vector3, crouching: bool, grounded: bool, relo
 	_blend_foot_paths()
 	state = "Run" if run > 0.5 else ("Move" if speed > 0.1 else "Idle")
 	if crouch_weight > 0.0:
-		# The sample pack has an unarmed crouch walk. Borrow only its pelvis
-		# and legs; preserve the rifle animation above the waist.
+		# Keep the crouch pelvis and legs while preserving directional rifle aim.
 		var hips: int = actor.bones["Hips"]
 		var spine: int = actor.bones["Spine"]
 		var aim_basis := poses[hips].basis * poses[spine].basis
@@ -299,7 +298,8 @@ func advance(dt: float, velocity: Vector3, crouching: bool, grounded: bool, relo
 	for i in poses.size(): actor.skeleton.set_bone_pose(i, poses[i])
 	actor._blend_pose(dt)
 	# Settle into cover at rest; retain the authored leg clearance while walking.
-	var settle := 0.12 * crouch_weight * (1.0 - smoothstep(0.05, 0.35, Vector2(velocity.x, velocity.z).length()))
+	var cover_drop := maxf(0.12, actor.joint("Hips").origin.y - actor.global_position.y - 0.62)
+	var settle := cover_drop * crouch_weight * (1.0 - smoothstep(0.05, 0.35, Vector2(velocity.x, velocity.z).length()))
 	crouch_drop = move_toward(crouch_drop, settle, dt * 0.4)
 	if crouch_drop > 0.0:
 		var pelvis := actor.joint("Hips")

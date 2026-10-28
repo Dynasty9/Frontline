@@ -71,7 +71,7 @@ func _ready() -> void:
 	canvas.add_child(caption)
 	var footer := Label.new()
 	footer.position = Vector2(42,840)
-	footer.text = "Mixamo character • MCO rifle motion • Rest-space retargeting + contact IK + skeletal physics"
+	footer.text = "Mixamo character and motion • Baked MCO rifle • Contact IK + skeletal physics" if "--swat-units" in OS.get_cmdline_user_args() else "Mixamo character • MCO rifle motion • Rest-space retargeting + contact IK + skeletal physics"
 	footer.add_theme_font_size_override("font_size",17)
 	canvas.add_child(footer)
 	ready_to_run = true

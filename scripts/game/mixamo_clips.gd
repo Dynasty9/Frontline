@@ -5,13 +5,14 @@ const ROOT := "res://assets/local_mocap/mixamo/"
 
 static func files() -> Dictionary:
 	var result := {}
-	for folder in ["shooter", "basic_shooter", "activities"]:
+	for folder in ["shooter", "basic_shooter", "activities", "rifle_locomotion", "pro_rifle"]:
 		for file in DirAccess.get_files_at(ROOT + folder):
 			file = file.trim_suffix(".remap")
 			if file.to_lower().ends_with(".fbx"):
 				result["mixamo_" + folder + "__" + file.get_basename().replace(" ", "_")] = ROOT + folder + "/" + file
-	if ResourceLoader.exists(ROOT + "Rifle Kneel To Prone.fbx"):
-		result["mixamo_transition__Rifle_Kneel_To_Prone"] = ROOT + "Rifle Kneel To Prone.fbx"
+	for file in ["Rifle Kneel To Prone.fbx", "Rifle Prone To Kneel.fbx", "Rifle Crouch Walk.fbx", "Rifle Put Away.fbx", "Grab Rifle From Back.fbx", "Put Back Rifle.fbx"]:
+		if ResourceLoader.exists(ROOT + file):
+			result["mixamo_transition__" + file.get_basename().replace(" ", "_")] = ROOT + file
 	return result
 
 static func install(actor: SkinnedRifleman, gameplay := false) -> Dictionary:

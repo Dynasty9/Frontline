@@ -1229,3 +1229,5 @@ See [SIMULATION_SCALING.md](SIMULATION_SCALING.md) for the native perception
 boundary, measurement results and remaining limits.
 
 Captured digging and smoking play when the optional rifleman's local activity clips are installed. The rifle follows a torso sling anchor, digging uses a hand-aligned shovel, and a lethal hit releases both rifle and shovel into physics. Sling transitions still blend between poses rather than use an authored handoff.
+
+The optional SWAT preview uses locally installed Mixamo source and movement clips, including crouch locomotion. Its M4 mesh/textures are baked with `tests/mocap/bake_rifle.gd` into a binary resource; the legacy MoCap FBX sources are excluded from exports. Local rifle locomotion packs and prone/stow clips appear in the animation inspector; catalog availability does not automatically add new gameplay actions.

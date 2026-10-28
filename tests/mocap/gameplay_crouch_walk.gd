@@ -1,5 +1,11 @@
 extends "res://tests/mocap/gameplay_stances.gd"
 
+func _ready() -> void:
+	super._ready()
+	if "--swat-units" in OS.get_cmdline_user_args():
+		assert(soldier.source.character.scene_file_path == "res://assets/local_mocap/mixamo/Swat.fbx")
+		assert(soldier.source.player.has_animation("crouch"))
+
 var moving_crouch_seen := false
 var stationary_crouch_seen := false
 var reload_seen := false

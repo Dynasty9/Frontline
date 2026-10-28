@@ -35,6 +35,7 @@ var catalog_index := -1
 var catalog_until := 0.0
 
 func _animation_clips() -> Dictionary:
+	if "--swat-units" in OS.get_cmdline_user_args(): return MocapCharacter.MIXAMO_CLIPS
 	var clips := MocapCharacter.CLIPS.duplicate()
 	_scan(MocapCharacter.BASE + "Animation/Rifle/Animation", clips)
 	_scan(MocapCharacter.BASE + "Animation/Mobility", clips)
@@ -82,7 +83,7 @@ func _ready() -> void:
 	_build_ui()
 	_build_inspection_ui()
 	_update_camera()
-	_select_clip(clip_keys.find("W2_Stand_Aim_Idle_v2"))
+	_select_clip(clip_keys.find("mixamo_basic_shooter__rifle_aiming_idle" if "--swat-units" in OS.get_cmdline_user_args() else "W2_Stand_Aim_Idle_v2"))
 	if "--record-catalog" in OS.get_cmdline_user_args():
 		_catalog_next()
 	for arg in OS.get_cmdline_user_args():
@@ -382,7 +383,7 @@ func _test_sequence() -> void:
 				push_error("Mixamo prone clip is not lowering the body; check take selection")
 				get_tree().quit(1)
 				return
-		_select_clip(clip_keys.find("W2_Stand_Aim_Idle_v2"))
+		_select_clip(clip_keys.find("mixamo_basic_shooter__rifle_aiming_idle" if "--swat-units" in OS.get_cmdline_user_args() else "W2_Stand_Aim_Idle_v2"))
 		test_step = 1
 	if time > 2 and test_step == 1:
 		_shoot(camera.unproject_position(soldier.joint("Spine2").origin))

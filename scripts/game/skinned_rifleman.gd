@@ -103,6 +103,9 @@ func build(clips: Dictionary = MocapCharacter.CLIPS) -> bool:
 			correction = sr.basis.orthonormalized().inverse() * rest.basis
 		corrections.append(correction)
 	ratio = target_rest[int(bones["Hips"])].origin.y / source.skeleton.get_bone_global_rest(int(source.bone_map["Hips"])).origin.y
+	if model_asset.ends_with("Swat.fbx"):
+		var source_hip := source.global_transform.affine_inverse() * source.skeleton.global_transform * source.skeleton.get_bone_global_rest(int(source.bone_map["Hips"]))
+		ratio = target_rest[int(bones["Hips"])].origin.y / source_hip.origin.y
 	weapon = source.weapon
 	weapon.reparent(self)
 	weapon.visible = true
