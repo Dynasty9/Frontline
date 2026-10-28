@@ -852,6 +852,10 @@ catalogue entry in `MissionList.LIST`, a setup function and an autopilot functio
   distance behind one going its way, drives round one standing in the road and passes oncoming traffic on
   the right; supply trucks keep to the right-hand side of the road. Hung up on something, it backs off, turns
   and plans again. (Trucks are slower on the road than they were, so each load carries more.)
+- **Tank gun handling.** Tank drivers build into turns. Turrets accelerate into a traverse and brake onto
+  the target, holding their world bearing as the hull turns underneath. The gunner holds a steady aim
+  for 0.3 seconds before firing, and reacquires when switching targets. Without a target, the turret
+  returns forward by the shortest arc.
 - **Crews think for themselves** (`vehicle_brain.gd`): tanks, IFVs, APCs and armed cars have a behaviour tree,
   walked twice a second. *Smoke and back out*: a missile or rocket launched at it, the crew fires its smoke
   dischargers and reverses out of the line of fire, front armour still towards the shooter, then carries on
