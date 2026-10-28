@@ -118,13 +118,29 @@ through it, with the flags that make good footage.
 
 ## Deploying
 
-It's the `web` service in the Railway project `frontline`, next to the matchmaker. From this directory:
+The `web` service in Railway's `frontline` project builds **from the repository root**,
+using the Dockerfile builder with `/Dockerfile.web`. Do not set the root to `/web`:
+the roster imports game tables outside that directory, and the image exports the
+Godot browser viewer before building the site. Railway's old static build omits both.
 
-```bash
-railway up --service web --ci
-```
+Keep these service settings together:
 
-Railway builds it with `npm run build` and serves `dist/` as a static site.
+- Root directory: `/`; Dockerfile path: `/Dockerfile.web`.
+- Watch paths: `/**` (the embedded viewer uses the game source).
+- Wait for CI: enabled; the Website workflow builds and checks the same image.
+- Healthcheck path: `/game/viewer.json`; no custom build or start command.
+
+Pushes to `main` deploy automatically. For a manual upload, run
+`railway up --service web --ci` **from the repository root**.
+
+The **Production website** workflow reports Railway's failed/error web status as a
+failed Actions run, even while the previous website remains online. It also checks
+the production HTML, viewer manifest, and WASM after a successful deploy and hourly.
+Skipped deployments do not count as successful updates. In GitHub notification
+settings, enable Actions notifications for failed workflows; delivery follows each
+user's notification preferences. Railway workspace deployment-failure notifications
+provide another independent alert. An HTTP 200 from the homepage alone does not
+prove the latest deployment succeeded.
 
 ## Battle viewer
 
