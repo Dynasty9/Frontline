@@ -13,6 +13,7 @@ on:
     paths:
       - scripts/autoload/defs.gd
       - scripts/game/vehicle_roster.gd
+      - scripts/ui/field_manual.gd
       - web/**
       - Dockerfile.web
       - .dockerignore
@@ -22,6 +23,7 @@ on:
     paths:
       - scripts/autoload/defs.gd
       - scripts/game/vehicle_roster.gd
+      - scripts/ui/field_manual.gd
       - web/**
       - Dockerfile.web
       - .dockerignore

@@ -638,19 +638,25 @@ func _make_view() -> Control:
 	svc.add_child(_view)
 	_stage = Node3D.new()
 	_view.add_child(_stage)
-	# a dark studio: warm key light, a cold rim from behind that outlines the
-	# silhouette, a faint fill, and a matte floor with a tactical grid that
-	# fades into the dark
+	# A survey bay: soft light on the model, measured floor markings below it.
+	# The same procedural stage serves the game and the browser without textures.
 	var env := Environment.new()
-	env.background_mode = Environment.BG_COLOR
-	env.background_color = Color(0.028, 0.032, 0.036)
+	env.background_mode = Environment.BG_SKY
+	var sky_mat := ProceduralSkyMaterial.new()
+	sky_mat.sky_top_color = Color(0.025, 0.035, 0.045)
+	sky_mat.sky_horizon_color = Color(0.13, 0.16, 0.18)
+	sky_mat.ground_horizon_color = sky_mat.sky_horizon_color
+	sky_mat.ground_bottom_color = Color(0.035, 0.045, 0.055)
+	sky_mat.sun_angle_max = 0.0
+	env.sky = Sky.new()
+	env.sky.sky_material = sky_mat
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
 	env.ambient_light_color = Color(0.66, 0.65, 0.62)
-	env.ambient_light_energy = 0.16
-	if ProjectSettings.get_setting("rendering/shading/overrides/force_vertex_shading", false):
+	env.ambient_light_energy = 0.5
+	if ProjectSettings.get_setting_with_override("rendering/shading/overrides/force_vertex_shading"):
 		# lit per vertex (the browser build), the floor loses the key light's
 		# sheen and the model much of its modelling: more fill makes up for it
-		env.ambient_light_energy = 0.55
+		env.ambient_light_energy = 0.7
 	env.tonemap_mode = Environment.TONE_MAPPER_AGX  # as in the game
 	env.tonemap_exposure = 0.85
 	env.ssao_enabled = true
@@ -680,20 +686,18 @@ func _make_view() -> Control:
 	_stage.add_child(rim)
 	var fill := DirectionalLight3D.new()
 	fill.rotation = Vector3(deg_to_rad(-10), deg_to_rad(70), 0)
-	fill.light_energy = 0.35
+	fill.light_energy = 0.85
 	fill.light_color = Color(0.85, 0.88, 0.95)
 	_stage.add_child(fill)
 	_floor = MeshInstance3D.new()
 	var fm := PlaneMesh.new()
-	fm.size = Vector2(80, 80)
+	fm.size = Vector2(2000, 2000)  # no visible platform edge when inspecting a large aircraft
 	_floor.mesh = fm
 	var fsh := Shader.new()
 	fsh.code = FLOOR_SHADER
 	_floor_mat = ShaderMaterial.new()
 	_floor_mat.shader = fsh
 	_floor.material_override = _floor_mat
-	if ProjectSettings.get_setting("rendering/shading/overrides/force_vertex_shading", false):
-		_floor_mat.set_shader_parameter("sheen", 1.0)
 	_stage.add_child(_floor)
 	_turn = Node3D.new()
 	_stage.add_child(_turn)
@@ -779,6 +783,8 @@ func _show_model(e: Dictionary) -> void:
 	var span := maxf(wide, ab.size.y)
 	_floor_mat.set_shader_parameter("radius", maxf(1.6, span * 1.3))
 	_floor_mat.set_shader_parameter("cell", 1.0 if span > 3.0 else (0.5 if span > 1.2 else 0.25))
+	_floor_mat.set_shader_parameter("centre", Vector2(_focus.x, _focus.z))
+	_floor_mat.set_shader_parameter("bay", Vector2(ab.size.x, ab.size.z) * 0.65 + Vector2.ONE * maxf(0.15, span * 0.08))
 	# a front three-quarter view (models face -z)
 	# (soldiers more side-on, so a raised rifle isn't pointing at the lens)
 	_yaw = PI - (1.05 if String(e.cat) in ["infantry", "squads"] else 0.62)
@@ -1196,24 +1202,41 @@ shader_type spatial;
 render_mode specular_schlick_ggx;
 uniform float radius = 6.0;
 uniform float cell = 1.0;
-uniform float sheen = 0.0;  // the key light's sheen, painted on where lighting is per vertex
+uniform vec2 centre = vec2(0.0);
+uniform vec2 bay = vec2(3.0, 4.0);
 varying vec3 wp;
 void vertex() { wp = VERTEX; }
 void fragment() {
-	float r = length(wp.xz);
-	vec2 q = wp.xz / cell;
+	vec2 p = wp.xz - centre;
+	float r = length(p);
+	vec2 q = p / cell;
 	vec2 g = abs(fract(q) - 0.5);
-	float w = fwidth(q.x) * 1.2;
+	float w = max(length(fwidth(q)), 0.0001);
 	float ln = 1.0 - smoothstep(0.0, w, 0.5 - max(g.x, g.y));
 	vec2 g10 = abs(fract(q / 5.0) - 0.5);
 	float ln2 = 1.0 - smoothstep(0.0, w * 0.2, 0.5 - max(g10.x, g10.y));
-	vec3 c = vec3(0.034, 0.037, 0.04);
-	c = mix(c, vec3(0.06, 0.075, 0.08), max(ln * 0.5, ln2 * 0.8));
-	float fade = 1.0 - smoothstep(radius * 0.3, radius, r);
-	ALBEDO = c * fade;
-	EMISSION = vec3(0.3, 0.26, 0.21) * sheen * (1.0 - smoothstep(0.0, radius * 1.6, length(wp.xz + vec2(0.0, radius * 0.5))));
-	ROUGHNESS = 0.62;
-	SPECULAR = 0.35;
+	float fade = 1.0 - smoothstep(radius * 0.4, radius * 1.8, r);
+	float pool = exp(-dot(p / radius, p / radius) * 1.5);
+	vec3 c = mix(vec3(0.008, 0.013, 0.018), vec3(0.035, 0.047, 0.055), pool);
+	c += vec3(0.025, 0.035, 0.04) * max(ln * 0.16, ln2 * 0.5) * fade;
+	// Short corners locate the model without putting a bright frame around it.
+	vec2 edge = abs(abs(p) - bay);
+	float aa = max(length(fwidth(p)), 0.001);
+	float stroke = max(cell * 0.035, aa * 0.65);
+	float corner = max((1.0 - smoothstep(stroke, stroke + aa, edge.x)) * (1.0 - smoothstep(cell * 0.55, cell * 0.7, edge.y)),
+		(1.0 - smoothstep(stroke, stroke + aa, edge.y)) * (1.0 - smoothstep(cell * 0.55, cell * 0.7, edge.x)));
+	corner *= 1.0 - smoothstep(stroke, stroke + aa, max(abs(p.x) - bay.x, abs(p.y) - bay.y));
+	vec3 marks = vec3(0.22, 0.135, 0.045) * corner;
+	ALBEDO = c + marks;
+	// A little baked-in fill keeps the floor legible with browser vertex lighting.
+	EMISSION = c * 0.4 + marks * 0.4;
+	// Compatibility writes sRGB directly; Forward+ converts linear output for us.
+	if (OUTPUT_IS_SRGB) {
+		ALBEDO = pow(ALBEDO, vec3(1.0 / 2.2));
+		EMISSION = pow(EMISSION, vec3(1.0 / 2.2));
+	}
+	ROUGHNESS = 0.9;
+	SPECULAR = 0.15;
 }
 """
 
