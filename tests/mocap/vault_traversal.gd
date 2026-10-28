@@ -6,6 +6,7 @@ var next_shot := 0.0
 var shots := 0
 var vault_frames := 0
 var continued := false
+var checked_clearance := false
 func _ready() -> void:
 	super._ready()
 	RenderingServer.frame_post_draw.connect(capture)
@@ -40,9 +41,13 @@ func _process(dt: float) -> void:
 	subject._choose_act(moving)
 	if subject.vaulting: vault_frames += 1
 	continued = continued or (subject._view_vault and not subject.vaulting)
+	if absf(subject.position.z + 7.0) < 0.25 and subject.model.skinned != null:
+		checked_clearance = true
+		for foot in ["LeftFoot", "RightFoot"]:
+			assert(subject.model.skinned.joint(foot).origin.y > 0.75, "Vault foot intersected the wall")
 	if elapsed > 9.0:
 		assert(vault_frames > 0 and subject.position.z < -9.4, "Actual soldier did not traverse low wall")
-		assert(continued and not subject._view_vault and subject._view_vault_lift < 0.001, "Visual vault did not continue and settle")
+		assert(checked_clearance and continued and not subject._view_vault and subject._view_vault_lift < 0.001, "Visual vault did not continue and settle")
 		print("LIVE VAULT PASS frames=",vault_frames," end=",subject.position)
 		get_tree().quit()
 func capture() -> void:
