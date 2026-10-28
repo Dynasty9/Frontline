@@ -12,6 +12,12 @@ signal closed
 
 var embedded := false  # the website supplies the roster and details around the model
 var _home_view := Vector3.ZERO
+var _studio_clock := 0.0
+var _web_reduce_motion := false
+var _demo: Node3D
+var _demo_building := false
+var _demo_cancelled := false
+signal demo_finished
 
 const CATS := [
 	["infantry", "Infantry"], ["squads", "Squads & teams"], ["weapons", "Weapons"],
@@ -708,6 +714,8 @@ func _make_view() -> Control:
 
 
 func _view_input(ev: InputEvent) -> void:
+	if _demo:
+		return
 	if ev is InputEventMouseButton:
 		var mb := ev as InputEventMouseButton
 		if mb.button_index == MOUSE_BUTTON_LEFT:
@@ -729,10 +737,13 @@ func _view_input(ev: InputEvent) -> void:
 
 
 func _process(dt: float) -> void:
-	if _cam == null:
+	if _cam == null or _demo:
 		return
+	var reduced: bool = Settings.v.reduce_motion or _web_reduce_motion
+	_studio_clock = 0.0 if reduced else fmod(_studio_clock + dt, 18.0)
+	_floor_mat.set_shader_parameter("clock", _studio_clock)
 	_idle_t -= dt
-	if _idle_t <= 0.0 and not _drag and not embedded:
+	if _idle_t <= 0.0 and not _drag and not embedded and not reduced:
 		_yaw += dt * 0.28  # a slow turntable when left alone
 	var off := Basis(Vector3.UP, _yaw) * Basis(Vector3.RIGHT, _pitch) * Vector3(0, 0, _dist)
 	_cam.position = _focus + off
@@ -799,6 +810,8 @@ func _show_model(e: Dictionary) -> void:
 ## The website's keyboard-accessible buttons operate the same camera as dragging.
 func control_model(action: String) -> void:
 	match action:
+		"reduce-motion": _web_reduce_motion = true
+		"allow-motion": _web_reduce_motion = false
 		"left": _yaw -= PI / 8.0
 		"right": _yaw += PI / 8.0
 		"zoom-in": _dist = maxf(_dist * 0.85, 0.6)
@@ -807,6 +820,46 @@ func control_model(action: String) -> void:
 			_yaw = _home_view.x
 			_pitch = _home_view.y
 			_dist = _home_view.z
+
+
+func play_support(kind: String) -> bool:
+	if not embedded or _demo_building or not Defs.SUPPORT.has(kind):
+		return false
+	if String(Defs.SUPPORT[kind].get("fly", "")) not in ["a10", "jet", "orbit"]:
+		return false
+	if is_instance_valid(_demo) and _demo.support_kind == kind:
+		_demo_building = true
+		await _demo.replay()
+		_demo_building = false
+		return not _demo_cancelled
+	await stop_support()
+	_demo_cancelled = false
+	_demo_building = true
+	await get_tree().process_frame
+	_turn.visible = false
+	_floor_mat.set_shader_parameter("radius", 180.0)
+	_floor_mat.set_shader_parameter("cell", 10.0)
+	_floor_mat.set_shader_parameter("centre", Vector2.ZERO)
+	_floor_mat.set_shader_parameter("bay", Vector2(40, 18))
+	_demo = load("res://scripts/ui/support_demo.gd").new()
+	_demo.set("settings", {"map_size": 1024, "seed": 7, "scenario": "support_preview", "mood": "day"})
+	_demo.process_mode = Node.PROCESS_MODE_DISABLED
+	_view.add_child(_demo)
+	_demo.connect("finished", func(): demo_finished.emit())
+	await _demo.prepare(kind)
+	_demo_building = false
+	return not _demo_cancelled
+
+
+func stop_support() -> void:
+	_demo_cancelled = true
+	while _demo_building:
+		await get_tree().process_frame
+	if is_instance_valid(_demo):
+		_demo.free()
+		_demo = null
+		_turn.visible = true
+		_cam.make_current()
 
 
 func _all_visuals(n: Node) -> Array:
@@ -1204,12 +1257,20 @@ uniform float radius = 6.0;
 uniform float cell = 1.0;
 uniform vec2 centre = vec2(0.0);
 uniform vec2 bay = vec2(3.0, 4.0);
+uniform float clock = 0.0;
 varying vec3 wp;
 void vertex() { wp = VERTEX; }
 void fragment() {
 	vec2 p = wp.xz - centre;
 	float r = length(p);
 	vec2 q = p / cell;
+	// An occasional quiet registration error in the survey, never in the model.
+	float active = smoothstep(2.0, 3.0, clock) * (1.0 - smoothstep(5.0, 6.0, clock));
+	float scan_y = mix(-1.3, 1.3, clamp((clock - 2.0) / 4.0, 0.0, 1.0)) * radius;
+	float band = (1.0 - smoothstep(radius * 0.025, radius * 0.12, abs(p.y - scan_y))) * active;
+	float row = floor(q.y * 2.0);
+	float jitter = fract(sin(row * 12.9898 + floor(clock * 6.0)) * 43758.5453) - 0.5;
+	q.x += jitter * band * 0.06;
 	vec2 g = abs(fract(q) - 0.5);
 	float w = max(length(fwidth(q)), 0.0001);
 	float ln = 1.0 - smoothstep(0.0, w, 0.5 - max(g.x, g.y));
@@ -1219,6 +1280,7 @@ void fragment() {
 	float pool = exp(-dot(p / radius, p / radius) * 1.5);
 	vec3 c = mix(vec3(0.008, 0.013, 0.018), vec3(0.035, 0.047, 0.055), pool);
 	c += vec3(0.025, 0.035, 0.04) * max(ln * 0.16, ln2 * 0.5) * fade;
+	c += vec3(0.004, 0.006, 0.007) * band * ln2 * fade;
 	// Short corners locate the model without putting a bright frame around it.
 	vec2 edge = abs(abs(p) - bay);
 	float aa = max(length(fwidth(p)), 0.001);

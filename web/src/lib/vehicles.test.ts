@@ -25,4 +25,10 @@ describe("game vehicle roster", () => {
     expect(vehicle("ac130")?.availability).toBe("Air support")
     expect(vehicle("hatchback")?.availability).toBe("Field Manual only")
   })
+  it("maps demonstrations to real armed support commands", () => {
+    expect(vehicle("wipeout")?.support).toEqual({ id: "wipeout", shape: "strafe" })
+    expect(vehicle("blackwasp")?.support).toEqual({ id: "airstrike", shape: "line" })
+    expect(vehicle("ac130")?.support).toEqual({ id: "ac130", shape: "orbit" })
+    expect(vehicle("hunter")?.support).toBeUndefined()
+  })
 })

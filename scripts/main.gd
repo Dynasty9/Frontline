@@ -95,14 +95,21 @@ func _ready() -> void:
 					return
 				if values[0] == "select" and values.size() > 1 and values[1] is String:
 					var key: String = values[1]
+					await field_manual.stop_support()
 					field_manual.open("entry", key)
 					await RenderingServer.frame_post_draw
 					JavaScriptBridge.eval("parent.postMessage({type: 'frontline-model-ready', key: %s}, location.origin)" % JSON.stringify(key))
+				elif values[0] == "demo" and values.size() > 1 and values[1] is String:
+					var key: String = values[1]
+					if await field_manual.play_support(key):
+						JavaScriptBridge.eval("parent.postMessage({type: 'frontline-demo-ready', key: %s}, location.origin)" % JSON.stringify(key))
 				else:
 					field_manual.control_model(String(values[0])))
 			JavaScriptBridge.get_interface("window").frontlineModelControl = _model_callback
 			JavaScriptBridge.eval("window.addEventListener('message', function(e) { if (e.origin === location.origin && e.source === parent && e.data && e.data.type === 'frontline-model') window.frontlineModelControl(e.data.action, e.data.key); });")
+			JavaScriptBridge.eval("const motion = matchMedia('(prefers-reduced-motion: reduce)'); const syncMotion = () => window.frontlineModelControl(motion.matches ? 'reduce-motion' : 'allow-motion'); motion.addEventListener('change', syncMotion); syncMotion();")
 			JavaScriptBridge.eval("parent.postMessage({type: 'frontline-model-loaded'}, location.origin)")
+			field_manual.demo_finished.connect(func(): JavaScriptBridge.eval("parent.postMessage({type: 'frontline-demo-ended'}, location.origin)"))
 		else:
 			field_manual.open("entry", String(args["web-manual"]))
 		set_process(false)

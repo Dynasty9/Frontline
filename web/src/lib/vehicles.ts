@@ -8,6 +8,7 @@ export type Vehicle = {
   role: string
   description: string
   availability: string
+  support?: { id: string; shape: string }
 }
 
 // shortcut: reads the roster's literal data format; update this reader if those tables become computed.
@@ -66,12 +67,16 @@ for (const line of roster.split("\n")) {
   ]
   if (!vehicles.has(id)) vehicles.set(id, { id, name, faction, role, description, availability: "Field Manual only" })
 }
-for (const [, , body] of table("SUPPORT")) {
+for (const [, supportId, body] of table("SUPPORT")) {
   const id = field(body, "model")
   if (!id) continue
   const existing = vehicles.get(id)
+  const support = ["a10", "jet", "orbit"].includes(field(body, "fly"))
+    ? { id: supportId, shape: field(body, "shape") }
+    : undefined
   if (existing) {
     if (existing.availability === "Field Manual only") existing.availability = "Air support"
+    if (support && !existing.support) existing.support = support
     continue
   }
   const team = Number(body.match(/"team": (-?\d+)/)?.[1])
@@ -82,6 +87,7 @@ for (const [, , body] of table("SUPPORT")) {
     role: "Support aircraft",
     description: field(body, "desc"),
     availability: "Air support",
+    ...(support ? { support } : {}),
   })
 }
 

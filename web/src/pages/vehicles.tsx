@@ -130,7 +130,7 @@ export default function VehiclesPage() {
                   </h2>
                 </div>
               </div>
-              <VehiclePreview vehicle={selected} available={viewer.isPending ? null : viewer.data?.manual === 2} />
+              <VehiclePreview vehicle={selected} available={viewer.isPending ? null : viewer.data?.manual === 3} />
               <div className="pt-6">
                 <p className="font-mono text-xs tracking-wider text-primary uppercase">{selected.role}</p>
                 <p className="mt-3 text-base leading-relaxed text-muted-foreground">{selected.description}</p>

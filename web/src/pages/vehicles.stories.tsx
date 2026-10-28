@@ -21,6 +21,11 @@ export const InspectModel: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     const frame = (await canvas.findByTitle(/3D model of/)) as HTMLIFrameElement
+    // Exercise the message protocol without booting an exported game in Storybook.
+    await new Promise<void>((resolve) => {
+      frame.addEventListener("load", () => resolve(), { once: true })
+      frame.src = "about:blank"
+    })
     const initialSrc = frame.getAttribute("src")
     const messages = spyOn(frame.contentWindow!, "postMessage")
     const receive = (type: string, key?: string, source: Window | null = frame.contentWindow) =>
@@ -49,6 +54,47 @@ export const InspectModel: Story = {
     await userEvent.clear(search)
     await expect(canvas.getByTitle(/3D model of/)).toBe(frame)
     await expect(frame).toHaveAttribute("src", initialSrc)
+    messages.mockRestore()
+  },
+}
+export const SupportDemo: Story = {
+  beforeEach: mockMatchmaker({ health, viewer: true, manual: true }),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    const frame = (await canvas.findByTitle(/3D model of/)) as HTMLIFrameElement
+    await new Promise<void>((resolve) => {
+      frame.addEventListener("load", () => resolve(), { once: true })
+      frame.src = "about:blank"
+    })
+    const messages = spyOn(frame.contentWindow!, "postMessage")
+    const receive = (type: string, key?: string) =>
+      window.dispatchEvent(
+        new MessageEvent("message", {
+          origin: window.location.origin,
+          source: frame.contentWindow,
+          data: { type, key },
+        })
+      )
+    receive("frontline-model-loaded")
+    const search = await canvas.findByRole("searchbox", { name: "Vehicle roster" })
+    await userEvent.type(search, "wipeout")
+    receive("frontline-model-ready", "wipeout")
+    const play = await canvas.findByRole("button", { name: "Watch gun run" })
+    await waitFor(() => expect(play).toBeEnabled())
+    await userEvent.click(play)
+    await expect(messages).toHaveBeenCalledWith(
+      { type: "frontline-model", action: "demo", key: "wipeout" },
+      window.location.origin
+    )
+    await expect(canvas.getByRole("button", { name: "Replay sortie" })).toBeDisabled()
+    receive("frontline-demo-ready", "wipeout")
+    await waitFor(() => expect(canvas.getByRole("button", { name: "Replay sortie" })).toBeEnabled())
+    receive("frontline-demo-ended")
+    await expect(await canvas.findByText("Sortie complete")).toBeVisible()
+    await userEvent.click(canvas.getByRole("button", { name: "Back to model" }))
+    receive("frontline-model-ready", "wipeout")
+    await waitFor(() => expect(canvas.getByRole("button", { name: "Zoom in" })).toBeEnabled())
+    await expect(canvas.getByTitle(/3D model of/)).toBe(frame)
     messages.mockRestore()
   },
 }

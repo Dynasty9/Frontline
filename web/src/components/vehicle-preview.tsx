@@ -15,7 +15,11 @@ export function VehiclePreview({ vehicle, available }: { vehicle: Vehicle; avail
   const [initialId] = useState(vehicle.id)
   const [loaded, setLoaded] = useState(false)
   const [shownId, setShownId] = useState<string | null>(null)
-  const ready = shownId === vehicle.id
+  const [demoId, setDemoId] = useState<string | null>(null)
+  const [demoReady, setDemoReady] = useState(false)
+  const [demoEnded, setDemoEnded] = useState(false)
+  const demo = demoId === vehicle.id
+  const ready = demo ? demoReady : shownId === vehicle.id
   const [failedId, setFailedId] = useState<string | null>(null)
   const failed = failedId === vehicle.id && !ready
   const [attempt, setAttempt] = useState(0)
@@ -27,7 +31,10 @@ export function VehiclePreview({ vehicle, available }: { vehicle: Vehicle; avail
       if (event.data?.type === "frontline-model-ready" && typeof event.data.key === "string") {
         setShownId(event.data.key)
         setFailedId(null)
+        setDemoId(null)
       }
+      if (event.data?.type === "frontline-demo-ready") setDemoReady(true)
+      if (event.data?.type === "frontline-demo-ended") setDemoEnded(true)
     }
     window.addEventListener("message", onMessage)
     return () => {
@@ -50,6 +57,16 @@ export function VehiclePreview({ vehicle, available }: { vehicle: Vehicle; avail
   }, [available, ready, vehicle.id, attempt])
   const control = (action: string) =>
     frame.current?.contentWindow?.postMessage({ type: "frontline-model", action }, window.location.origin)
+  const playDemo = () => {
+    if (!vehicle.support) return
+    setDemoId(vehicle.id)
+    setDemoReady(false)
+    setDemoEnded(false)
+    frame.current?.contentWindow?.postMessage(
+      { type: "frontline-model", action: "demo", key: vehicle.support.id },
+      window.location.origin
+    )
+  }
   return (
     <div>
       <div className="relative aspect-[4/3] overflow-hidden bg-[#08090a] sm:aspect-[16/10]">
@@ -61,6 +78,7 @@ export function VehiclePreview({ vehicle, available }: { vehicle: Vehicle; avail
             // The bundled model stage needs same-origin access to its own assets.
             // oxlint-disable-next-line react/iframe-missing-sandbox
             sandbox="allow-scripts allow-same-origin"
+            allow="autoplay"
             className={`absolute inset-0 size-full ${ready ? "opacity-100" : "opacity-0"}`}
             src={`/game/index.html?manual=${encodeURIComponent(initialId)}`}
             tabIndex={-1}
@@ -75,12 +93,16 @@ export function VehiclePreview({ vehicle, available }: { vehicle: Vehicle; avail
                 : available === null
                   ? "Checking 3D preview…"
                   : available
-                    ? "Preparing your vehicle…"
+                    ? demo
+                      ? "Preparing the training range…"
+                      : "Preparing your vehicle…"
                     : "3D preview unavailable"}
             </p>
             {(available || failed) && (
               <p className="max-w-xs text-xs leading-relaxed text-muted-foreground">
-                The first model downloads the 3D assets. A WebGL 2 browser is required.
+                {demo
+                  ? "Resetting the aircraft and range targets."
+                  : "The first model downloads the 3D assets. A WebGL 2 browser is required."}
               </p>
             )}
             {failed && (
@@ -90,6 +112,7 @@ export function VehiclePreview({ vehicle, available }: { vehicle: Vehicle; avail
                   setFailedId(null)
                   setLoaded(false)
                   setShownId(null)
+                  setDemoId(null)
                   setAttempt(attempt + 1)
                 }}
               >
@@ -100,35 +123,68 @@ export function VehiclePreview({ vehicle, available }: { vehicle: Vehicle; avail
         )}
         <HudCorners inset="0.75rem" />
         <div className="pointer-events-none absolute top-4 left-5 font-mono text-[10px] tracking-[0.18em] text-primary uppercase">
-          Model inspection
+          {demo ? "Live training range" : "Model inspection"}
         </div>
+        {demo && ready && (
+          <output className="absolute bottom-4 left-5 rounded-sm bg-background/85 px-3 py-2 font-mono text-[10px] tracking-wider uppercase">
+            {demoEnded ? "Sortie complete" : "Air support inbound"}
+          </output>
+        )}
       </div>
       <div className="flex flex-wrap items-center justify-between gap-3 border-y px-4 py-3">
         <span className="font-mono text-[10px] tracking-wider text-muted-foreground uppercase">
-          Drag to rotate · Scroll to zoom
+          {demo ? "In-game flight, weapons & impacts" : "Drag to rotate · Scroll to zoom"}
         </span>
         <div className="flex gap-1">
-          {(
-            [
-              ["left", "Rotate left", ArrowCounterClockwiseIcon],
-              ["right", "Rotate right", ArrowClockwiseIcon],
-              ["zoom-in", "Zoom in", PlusIcon],
-              ["zoom-out", "Zoom out", MinusIcon],
-              ["reset", "Reset view", ArrowsCounterClockwiseIcon],
-            ] as const
-          ).map(([action, label, Icon]) => (
-            <Button
-              key={action}
-              variant="ghost"
-              size="icon"
-              className="size-11"
-              aria-label={label}
-              disabled={!ready}
-              onClick={() => control(action)}
-            >
-              <Icon className="size-4" />
-            </Button>
-          ))}
+          {demo ? (
+            <>
+              <Button
+                variant="ghost"
+                onClick={() => {
+                  setDemoId(null)
+                  setShownId(null)
+                  frame.current?.contentWindow?.postMessage(
+                    { type: "frontline-model", action: "select", key: vehicle.id },
+                    window.location.origin
+                  )
+                }}
+              >
+                Back to model
+              </Button>
+              <Button variant="outline" disabled={!ready} onClick={playDemo}>
+                Replay sortie
+              </Button>
+            </>
+          ) : (
+            <>
+              {vehicle.support && (
+                <Button variant="outline" disabled={!ready} onClick={playDemo}>
+                  {vehicle.support.shape === "strafe" ? "Watch gun run" : "Watch air support"}
+                </Button>
+              )}
+              {(
+                [
+                  ["left", "Rotate left", ArrowCounterClockwiseIcon],
+                  ["right", "Rotate right", ArrowClockwiseIcon],
+                  ["zoom-in", "Zoom in", PlusIcon],
+                  ["zoom-out", "Zoom out", MinusIcon],
+                  ["reset", "Reset view", ArrowsCounterClockwiseIcon],
+                ] as const
+              ).map(([action, label, Icon]) => (
+                <Button
+                  key={action}
+                  variant="ghost"
+                  size="icon"
+                  className="size-11"
+                  aria-label={label}
+                  disabled={!ready}
+                  onClick={() => control(action)}
+                >
+                  <Icon className="size-4" />
+                </Button>
+              ))}
+            </>
+          )}
         </div>
       </div>
     </div>
