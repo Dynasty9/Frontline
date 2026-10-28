@@ -4,6 +4,7 @@ extends Control
 var hud: Hud
 var raster: SubViewport
 var _placed: Array = []
+var _hud_regions: Array[Rect2] = []
 var _groups := {}  # sid -> {"mem": [...], "c": centroid of the living, "n": living, "team": t, "lead": squad leader}
 var _sel_sids := {}
 var _pt := 0
@@ -89,6 +90,7 @@ func _draw() -> void:
 		for st2 in w.sim_structures:
 			if st2.team < 0 and st2.label_h > 0.0:
 				_team_structs.append(st2)
+	_cache_hud_regions()
 	_clear_placed()
 	_build_groups(inp)
 	_mark("groups")
@@ -856,6 +858,24 @@ func _status_icons(men: Array, a: float) -> void:
 ## Zoomed out: one unit symbol per squad, with what it's been told to do, a
 ## pip per man, a burst when it's in contact and its callsign; a new order
 ## pulses the symbol and shows under it for a few seconds.
+## Cache occupied UI regions once per redraw, in the overlay's pixel coordinates.
+func _cache_hud_regions() -> void:
+	_hud_regions.clear()
+	var pixel_scale := get_viewport().get_visible_rect().size / hud.root.size
+	for control: Control in [hud.station_frame, hud.drawer_frame, hud.obs_bar, hud.sel_panel, hud.card_panel]:
+		if control and control.visible:
+			var rect := control.get_rect().grow(14)
+			_hud_regions.append(Rect2(rect.position * pixel_scale, rect.size * pixel_scale))
+
+
+## Battlefield labels yield to the HUD rather than showing through its text.
+func _under_hud(point: Vector2) -> bool:
+	for region in _hud_regions:
+		if region.has_point(point):
+			return true
+	return false
+
+
 func _nato_markers(cam: Camera3D, lt: int, a: float) -> void:
 	if a <= 0.0:
 		return
@@ -872,6 +892,8 @@ func _nato_markers(cam: Camera3D, lt: int, a: float) -> void:
 		var vsz := get_viewport().get_visible_rect().size
 		if sp.x < -80 or sp.y < -80 or sp.x > vsz.x + 80 or sp.y > vsz.y + 80:
 			continue
+		if _under_hud(sp):
+			continue
 		# squads bunched together: nudge the symbols apart, with a leader line
 		# down to where the squad really is
 		var foot := Rect2(sp + Vector2(-24, -14), Vector2(62, 46))
@@ -883,6 +905,8 @@ func _nato_markers(cam: Camera3D, lt: int, a: float) -> void:
 			draw_line(ground, sp + nudged + Vector2(0, 10), Color(1, 1, 1, 0.45 * a), 1.0, true)
 			draw_circle(ground, 2.5, Color(1, 1, 1, 0.7 * a))
 			sp += nudged
+		if _under_hud(sp):
+			continue
 		var tm: int = g["team"]
 		var mine := tm == lt or lt < 0
 		var mem: Array = g["mem"]
@@ -945,6 +969,8 @@ func _nato_markers(cam: Camera3D, lt: int, a: float) -> void:
 		var vp := cam.unproject_position(p2)
 		var vsz2 := get_viewport().get_visible_rect().size
 		if vp.x < -80 or vp.y < -80 or vp.x > vsz2.x + 80 or vp.y > vsz2.y + 80:
+			continue
+		if _under_hud(vp):
 			continue
 		var vr := Rect2(vp - Vector2(18, 14), Vector2(36, 28))
 		for off in [Vector2.ZERO, Vector2(0, -32), Vector2(40, -16), Vector2(-40, -16)]:
@@ -1223,10 +1249,14 @@ func _plan_graphics(pl: Array, team: int, a: float, sel: bool) -> void:
 		var so := cam.unproject_position(po)
 		_tag(so + Vector2(0, -2), "OBJ " + Defs.grid_ref(obj), tc, a)
 		var pn: String = String(Hud.PHASE_NAMES.get(phase, phase)).to_upper()
+		if _under_hud(so):
+			return
 		UiKit.caps_at(self, so + Vector2(-UiKit.caps_w(pn, 10) * 0.5, 18), pn, 10, UiKit.fa(UiKit.TEXT, 0.85 * a))
 
 
 func _tag(at: Vector2, text: String, col: Color, a: float) -> void:
+	if _under_hud(at):
+		return
 	var tw := UiKit.mono_w(text, 10)
 	var r := Rect2(at.x - tw * 0.5 - 6, at.y - 12, tw + 12, 16)
 	draw_rect(r, UiKit.fa(UiKit.INK, 0.8 * a))

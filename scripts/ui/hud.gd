@@ -20,23 +20,21 @@ func refresh_minimap() -> void:
 		minimap.rebake(true)
 
 
-## The minimap's side in pixels for each size setting, and the panel's margin round it.
+## The minimap size changes only through Interface settings, never through tools.
 const MINIMAP_PX := [220.0, 260.0, 320.0]
 const MINIMAP_PAD := 5.0
 
 
 func minimap_side() -> float:
 	var s: float = MINIMAP_PX[clampi(int(Settings.get_v("minimap_size")), 0, MINIMAP_PX.size() - 1)]
-	if workspace == "map":
-		s = maxf(s, 380.0)
 	# a short screen (a big interface scale) keeps room above it for the support buttons
 	return minf(s, maxf(160.0, root.size.y * 0.48)) if root and root.size.y > 0.0 else s
 
 
-## The persistent map sits above its compact tool dock. Expanding the map
-## exposes the layer controls; chat remains clear of the complete module.
+## The map stays at one size and position. Tools live above it, and layers
+## open beside it; chat remains clear of the complete module.
 func station_width() -> float:
-	return maxf(HudOrbat.W + 16.0, minimap_side() + MINIMAP_PAD * 2.0 + (HudLayers.S + 22.0 if workspace == "map" else 16.0))
+	return maxf(HudOrbat.W + 16.0, minimap_side() + MINIMAP_PAD * 2.0 + HudLayers.S + 14.0)
 
 
 func layout_minimap() -> void:
@@ -44,27 +42,27 @@ func layout_minimap() -> void:
 	var outer := s + MINIMAP_PAD * 2.0
 	minimap.custom_minimum_size = Vector2(s, s)
 	var station_w := station_width()
-	var mx := 22.0 if workspace == "map" else 14.0 + (station_w - outer) * 0.5
+	var mx := 22.0
 	minimap_panel.offset_left = mx
 	minimap_panel.offset_right = mx + outer
-	minimap_panel.offset_bottom = -72
-	minimap_panel.offset_top = -72 - outer
+	minimap_panel.offset_bottom = -22
+	minimap_panel.offset_top = -22 - outer
 	minimap_panel.size = Vector2(outer, outer)
 	var lh := HudLayers.S * HudLayers.ITEMS.size() + 4.0 * (HudLayers.ITEMS.size() - 1)
 	layers_ui.offset_left = mx + outer + 6
 	layers_ui.offset_right = layers_ui.offset_left + HudLayers.S
-	layers_ui.offset_bottom = -72
-	layers_ui.offset_top = -72 - lh
-	var above := -72 - outer - 38
+	layers_ui.offset_bottom = -22
+	layers_ui.offset_top = -22 - lh
+	var above := -22 - outer - 72
 	if task_bar:
-		task_bar.position = Vector2(22, root.size.y - 62)
+		task_bar.position = Vector2(22, root.size.y - outer - 90)
 		for button in task_bar.get_children():
 			button.custom_minimum_size.x = (station_w - 20.0) / 3.0
 	if map_caption:
-		map_caption.position = Vector2(26, root.size.y - 72 - outer - 25)
+		map_caption.position = Vector2(26, root.size.y - outer - 46)
 	if station_frame:
-		station_frame.position = Vector2(14, root.size.y - 72 - outer - 34)
-		station_frame.size = Vector2(station_w, outer + 92)
+		station_frame.position = Vector2(14, root.size.y - outer - 90)
+		station_frame.size = Vector2(station_w, outer + 76)
 	chat_edit.offset_bottom = above
 	chat_edit.offset_top = above - 34
 
@@ -116,6 +114,9 @@ var obs_slower: Button
 var obs_faster: Button
 var _log_head: Label  # the log's header text
 var _log_key: Label  # and, after it, the key that closes it
+var events_toggle: Button
+var events_collapsed := false
+var unread_events := 0
 var toasts: HudToasts
 var objectives: HudObjectives
 var log_panel: PanelContainer
@@ -260,6 +261,7 @@ func _ready() -> void:
 	toasts.offset_bottom = 290
 	toasts.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	root.add_child(toasts)
+	_build_events_toggle()
 
 	# a mission's objectives, top right (the notifications move down under them)
 	objectives = HudObjectives.new()
@@ -475,25 +477,25 @@ func _ready() -> void:
 func _build_workspaces() -> void:
 	station_frame = Panel.new()
 	station_frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	station_frame.add_theme_stylebox_override("panel", UiKit.frame(Color(-1, 0, 0), 0, 0, 6, 0.96))
+	station_frame.add_theme_stylebox_override("panel", UiKit.bare())
 	root.add_child(station_frame)
 	root.move_child(station_frame, minimap_panel.get_index() if minimap_panel.get_parent() == root else 0)
 	drawer_frame = Panel.new()
 	drawer_frame.mouse_filter = Control.MOUSE_FILTER_STOP
-	drawer_frame.add_theme_stylebox_override("panel", UiKit.frame(Color(-1, 0, 0), 0, 0, 6, 0.96))
+	drawer_frame.add_theme_stylebox_override("panel", UiKit.bare())
 	root.add_child(drawer_frame)
 	root.move_child(drawer_frame, orbat.get_index() if orbat.get_parent() == root else 0)
 	task_bar = HBoxContainer.new()
 	task_bar.add_theme_constant_override("separation", 2)
 	root.add_child(task_bar)
-	for item in [["squads", "Units"], ["map", "Map"], ["fires", "Support"]]:
+	for item in [["squads", "Units"], ["fires", "Support"], ["map", "Layers"]]:
 		var key: String = item[0]
 		var b := preload("res://scripts/ui/hud_task_button.gd").new()
 		b.kind = key
 		b.caption = item[1]
 		b.focus_mode = Control.FOCUS_NONE
 		b.toggle_mode = true
-		b.tooltip_text = {"squads": "Find a squad or vehicle. Click to select and locate; Shift-click adds to selection.", "map": "Expand or collapse the minimap. Click the map to move the camera. Layer controls appear when expanded.", "fires": "Support · Off-map artillery and air strikes. Commanders spend supply; spectators can try a free demo."}[key]
+		b.tooltip_text = {"squads": "Find a squad or vehicle. Click to select and locate; Shift-click adds to selection.", "map": "Map layers · Show or hide overlay controls. The map stays fixed.", "fires": "Support · Off-map artillery and air strikes. Commanders spend supply; spectators can try a free demo."}[key]
 		b.pressed.connect(func(): set_workspace("battle" if workspace == key else key))
 		task_bar.add_child(b)
 		_task_buttons[key] = b
@@ -510,11 +512,11 @@ func _build_workspaces() -> void:
 	workspace_hint.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	root.add_child(workspace_hint)
 	map_caption = UiKit.caps("", 10, UiKit.DIM)
-	map_caption.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	map_caption.mouse_filter = Control.MOUSE_FILTER_PASS
 	root.add_child(map_caption)
 	support_scroll = ScrollContainer.new()
 	support_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	support_scroll.add_theme_stylebox_override("panel", UiKit.box(UiKit.PANEL, 0, UiKit.LINE, 0, 8.0))
+	support_scroll.add_theme_stylebox_override("panel", UiKit.bare())
 	root.add_child(support_scroll)
 	if support_box.get_parent():
 		support_box.reparent(support_scroll)
@@ -527,7 +529,7 @@ func _build_workspaces() -> void:
 	squad_search.placeholder_text = "Find callsign, role or vehicle…"
 	squad_search.clear_button_enabled = true
 	var search_ink := UiKit.underline(UiKit.RULE2, 8.0, 6.0)
-	search_ink.bg_color = UiKit.PANEL
+	search_ink.bg_color = UiKit.fa(UiKit.INK, 0.24)
 	squad_search.add_theme_stylebox_override("normal", search_ink)
 	squad_search.text_changed.connect(func(value: String): orbat.set_query(value))
 	squad_search.focus_entered.connect(func(): typing = true)
@@ -588,37 +590,46 @@ func show_order_for(selected: bool) -> bool:
 	return selected or ((tactical or workspace == "map") and map_layer("orders"))
 
 
-## The tool is attached to the map, with bounded rows instead of another screen edge.
+## The tool reads directly on the edge scrim; the map below stays anchored.
 func _layout_workspace() -> void:
 	layout_minimap()
 	var spectator := world.local_team < 0
 	var top_clear := maxf(96.0, top.position.y + top.content_h + 16.0) if top else 96.0
 	var drawer_bottom := station_frame.position.y - 10.0
-	var drawer_h := minf(340.0, maxf(170.0, drawer_bottom - top_clear))
+	var drawer_h := minf(310.0, maxf(170.0, drawer_bottom - top_clear))
 	var drawer_y := maxf(14.0, drawer_bottom - drawer_h)
 	drawer_frame.position = Vector2(14, drawer_y)
 	drawer_frame.size = Vector2(HudOrbat.W + 16.0, drawer_h)
-	workspace_title.position = Vector2(26, drawer_y + 12)
+	workspace_title.position = Vector2(22, drawer_y + 8)
 	drawer_close.position = Vector2(14 + HudOrbat.W - 20, drawer_y + 5)
-	workspace_hint.position = Vector2(26, drawer_y + 36)
-	workspace_title.text = ("FORCES / BOTH SIDES" if spectator else "YOUR FORCES") if workspace == "squads" else ("SUPPORT / DEMO" if spectator else "SUPPORT / ON CALL")
+	workspace_hint.position = Vector2(22, drawer_y + 31)
+	workspace_title.text = ("FORCES · BOTH SIDES" if spectator else "YOUR FORCES") if workspace == "squads" else ("SUPPORT / DEMO" if spectator else "SUPPORT / ON CALL")
 	workspace_hint.text = ("Click to inspect · Double-click to focus" if spectator else "Click to select · Shift-click to add") if workspace == "squads" else ("Free demo · Choose a strike, then its target" if spectator else "Artillery & air strikes · Choose, then target")
-	map_caption.text = ("OBSERVING" if spectator else "COMMAND") + " / " + ("TACTICAL MAP" if workspace == "map" else "OVERVIEW")
+	map_caption.text = "BATTLE MAP"
 	map_caption.tooltip_text = "Click the map to move the camera. The map remains visible while using Units or Support."
-	squad_search.position = Vector2(22, drawer_y + 62)
-	roster_filters.position = Vector2(22, drawer_y + 100)
-	orbat.position = Vector2(22, drawer_y + 132)
-	orbat.size = Vector2(HudOrbat.W, maxf(36.0, drawer_h - 142.0))
+	squad_search.position = Vector2(22, drawer_y + 55)
+	roster_filters.position = Vector2(22, drawer_y + 93)
+	orbat.position = Vector2(22, drawer_y + 124)
+	orbat.size = Vector2(HudOrbat.W, maxf(36.0, drawer_h - 134.0))
 	support_scroll.position = Vector2(22, drawer_y + 66)
 	support_scroll.size = Vector2(HudOrbat.W, maxf(50.0, drawer_h - 76.0))
 	var left_scrim: UiScrim = _scrims.get("left")
 	if left_scrim:
-		left_scrim.visible = false
+		left_scrim.visible = true
+		var shade_top := drawer_y - 34.0 if drawer_frame.visible else station_frame.position.y - 26.0
+		var shade_span := root.size.y * 1.6
+		var shade_reach := station_width() + 160.0
+		if not left_scrim.content_column or left_scrim.offset_top != shade_top or left_scrim.span != shade_span or left_scrim.reach != shade_reach:
+			left_scrim.content_column = true
+			left_scrim.offset_top = shade_top
+			left_scrim.span = shade_span
+			left_scrim.reach = shade_reach
+			left_scrim.queue_redraw()
 
 
 func _build_observer_bar() -> void:
 	obs_bar = PanelContainer.new()
-	obs_bar.add_theme_stylebox_override("panel", UiKit.frame(Color(-1, 0, 0), 6.0, 0.6, 8.0))
+	obs_bar.add_theme_stylebox_override("panel", UiKit.underline(UiKit.LINE, 6.0, 3.0))
 	obs_bar.anchor_left = 0.5
 	obs_bar.anchor_right = 0.5
 	obs_bar.grow_horizontal = Control.GROW_DIRECTION_BOTH
@@ -692,7 +703,7 @@ func _place_obs_bar() -> void:
 
 
 func _small_button(text: String, tip: String, cb: Callable) -> Button:
-	var b := Button.new()
+	var b := UiKit.button(text, "quiet")
 	b.text = text.to_upper()
 	b.tooltip_text = tip
 	b.focus_mode = Control.FOCUS_NONE
@@ -1164,10 +1175,37 @@ func plan_text(pl: Array) -> String:
 	return "Attacking " + obj
 
 
+func _build_events_toggle() -> void:
+	events_toggle = UiKit.button("EVENTS  −", "quiet", 146, 26)
+	events_toggle.alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	events_toggle.pressed.connect(toggle_events)
+	root.add_child(events_toggle)
+	_update_events_toggle()
+
+
+func toggle_events() -> void:
+	events_collapsed = not events_collapsed
+	if events_collapsed:
+		log_panel.hide()
+	else:
+		unread_events = 0
+	toasts.visible = not events_collapsed and not log_panel.visible
+	_update_events_toggle()
+
+
+func _update_events_toggle() -> void:
+	if events_toggle:
+		events_toggle.text = "EVENTS  %s%s" % [("%02d  " % unread_events) if events_collapsed and unread_events > 0 else "", "+" if events_collapsed else "−"]
+		events_toggle.tooltip_text = "Expand events · %d new · Full history: %s" % [unread_events, Keys.label("log")] if events_collapsed else "Minimize events · Full history: " + Keys.label("log")
+
+
 func toggle_log() -> void:
 	log_panel.visible = not log_panel.visible
-	toasts.visible = not log_panel.visible
+	toasts.visible = not log_panel.visible and not events_collapsed
 	if log_panel.visible:
+		events_collapsed = false
+		unread_events = 0
+		_update_events_toggle()
 		_fit_log()
 		UiMotion.arrive(log_panel, Vector2(0, -1))
 
@@ -1203,6 +1241,9 @@ func add_message(kind: String, text: String, toast := true) -> void:
 	log_box.append_text(line + "\n")
 	if toast:
 		toasts.push(kind, text)
+		if events_collapsed:
+			unread_events += 1
+			_update_events_toggle()
 	if kind == "alert":
 		Sfx.ui("click")
 
@@ -1677,12 +1718,23 @@ func _view_process(dt: float) -> void:
 		var ty := 36.0 if objectives.need_h <= 0.0 else 12.0 + objectives.need_h + 10.0
 		if coop_roster.need_h > 0.0:
 			ty = ry + coop_roster.need_h + 10.0
-		var tb := ty + 254.0
+		events_toggle.position = Vector2(root.size.x - 160.0, ty)
+		log_panel.offset_top = ty + 30.0
+		ty += 30.0
+		var tb := ty + 154.0
 		if card_panel.visible:
 			tb = clampf(card_panel.position.y - 10.0, ty + 40.0, tb)
 		if toasts.offset_top != ty or toasts.offset_bottom != tb:
 			toasts.offset_top = ty
 			toasts.offset_bottom = tb
+	if perf_big:
+		events_toggle.position = Vector2(294, 160)
+	toasts.visible = not events_collapsed and not log_panel.visible
+	var right_scrim: UiScrim = _scrims["right"]
+	var right_span := 90.0 if events_collapsed and objectives.need_h <= 0.0 and coop_roster.need_h <= 0.0 else 320.0
+	if right_scrim.span != right_span:
+		right_scrim.span = right_span
+		right_scrim.queue_redraw()
 	toasts.tick(rdt)
 	minimap.refresh_layers()
 	if world.cam:

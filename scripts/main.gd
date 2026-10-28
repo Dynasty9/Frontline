@@ -1308,6 +1308,9 @@ func _process(_dt: float) -> void:
 	if args.has("tactical") and world.hud and not world.hud.tactical and not has_meta("tac"):
 		set_meta("tac", true)
 		world.hud.toggle_tactical()
+	if args.has("events-collapsed") and world.hud and world.time > 1.0 and not has_meta("events_collapsed"):
+		set_meta("events_collapsed", true)
+		world.hud.toggle_events()
 	# --coop-watch[=N]: watch the Nth --coop-demo commander's view live
 	if args.has("coop-watch") and world.cam and world.time > 1.0 and not has_meta("coop_watched"):
 		var wid := 9001 + int(args["coop-watch"])

@@ -1127,14 +1127,13 @@ catalogue entry in `MissionList.LIST`, a setup function and an autopilot functio
   drifting cloud over the target. Smoke is shaded like a volume (sun, sky, self-shadowing) and fades
   softly where it meets the ground. Burning wrecks burn, then smoulder (see Fire). Smoke screens are real volumetric fog when
   volumetric fog is on. All effect shaders are compiled during loading, so the first explosion doesn't hitch.
-- A persistent minimap anchors a compact command station with **Units**, **Map**, and **Support** icon buttons.
-  Units opens a searchable roster with Infantry, Vehicles and Attention filters. The last finds pinned,
-  routing, wounded, low-ammo and heavily damaged units. Map expands the overview and exposes layers.
-  Support opens artillery and air strikes, with supply costs for commanders and labelled free demos for
-  spectators. One drawer opens directly above the map at a time, with instructions for the current mode.
-  Selection details and orders appear along the bottom. Normal battle views show selected squad plans;
-  the tactical workspace reveals the wider army's plans. Routine counters stay compact while suppression
-  warnings, unit symbols and hover inspection remain available.
+- A fixed minimap stays at the bottom left. A slim **Units / Support / Layers** icon strip opens tools
+  without moving, resizing or hiding the map. Units has search and Infantry, Vehicles and Attention
+  filters; Support offers artillery and air strikes with costs for commanders and free demos for observers.
+  Layers reveals the map's overlay switches. Controls sit directly on feathered edge shading in Signal's
+  condensed typography. The upper-right **Events** stream can be minimized; a count tracks new arrivals
+  and the full history remains available. Normal views show selected squad plans, and battlefield markers
+  yield to occupied controls. Observer playback controls use the same quiet, ruled treatment.
 - The main menu sits over a live 3D scene: a .50 cal crew at golden hour with a burning wreck and shelling on the horizon.
 
 **Field Manual** (`ui/field_manual.gd`; main menu, Esc menu or F4): every soldier, squad, weapon, vehicle, building,

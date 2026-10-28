@@ -81,19 +81,18 @@ darkens toward that edge (`UiScrim`), so it reads over any ground without a box:
 
 - **Top** (the **Status** line): the side, `SUP` and its rate, `UNITS`, `FOB`, `TOWNS`, and the clock. A line under
   it for each FOB says what its trucks are doing.
-- **Left**: one compact command station keeps the minimap visible above three labelled icon buttons:
-  **Units**, **Map**, and **Support**. Clicking the active tool again closes it. Units opens a drawer directly
-  above the map with search and All / Infantry / Vehicles / Attention filters; Attention finds pinned,
-  routing, wounded, low-ammo and heavily damaged units. Click to locate, Shift-click to add and double-click
-  to zoom. Map enlarges the minimap and reveals its layer controls. Support opens artillery and air strikes,
-  with supply costs and cooldowns for commanders and clearly marked free demos for spectators.
-  Each drawer has a close button and instructions for the current mode. The roster binding toggles Units;
-  Escape backs out after cancelling orders and selection. Frames darken only the occupied tool area.
+- **Left**: the minimap stays fixed at the bottom left. It never hides, moves or resizes when a tool opens.
+  A 32 px strip of labelled line icons above it opens **Units**, **Support** or **Layers**. The active tool
+  closes when clicked again. Units provides search and All / Infantry / Vehicles / Attention filters.
+  Click to locate, Shift-click to add and double-click to focus. Support provides artillery and air strikes,
+  with supply costs and cooldowns for commanders, clearly marked free demos for observers. Layers reveals
+  the overlay switches beside the map. Tool content sits directly on a feathered edge scrim, with no panel
+  backplates. The roster binding toggles Units; Escape backs out after cancelling orders and selection.
   Normal battlefield views show selected squad plans; tactical views reveal other plans through the Orders
-  layer. Routine counters remain compact, with names and status details revealed by selection or inspection.
+  layer. Unit symbols and plan labels yield to occupied HUD areas so they do not collide with controls.
 - **Bottom**: the selection (the squad's name, its codes, the plan's stages, a cell per man) and the orders as keys.
   The bottom scrim only darkens while there's something selected.
-- **Right**: the **Log** and the mission's objectives; in co-op the command net.
+- **Right**: collapsible **Events** and the mission's objectives; in co-op the command net.
 
 Menus put the title and the entries on the left over the living map, panels in the middle, the account on the
 right. Dialogs stay inside the scaled viewport: long content scrolls, and keyboard focus brings its action into
@@ -104,7 +103,8 @@ and direct-connect controls wrap rather than pushing actions off the right edge.
 
 `UiScrim` is the ink fading in from an edge of the screen: darkest at the edge, nothing a set distance in, and
 fading out along the edge past the part it serves. There's one per edge, behind every HUD part on that edge, never
-one per part; the bottom one darkens only while something is selected.
+one per part; the bottom one darkens only while something is selected. The active left column holds readable
+ink underneath its content and feathers out above and toward the battlefield, without a hard panel edge.
 
 ## Panels
 
@@ -149,14 +149,17 @@ accent, or in a meaning colour when the amount means something (health). A slide
 
 ## Log
 
-The newest messages stay top right on the scrim, a line each: the time in mono, who it's from in capitals, what it
+Up to three recent messages stay top right on the scrim, a line each: the time in mono, who it's from in capitals, what it
 says in prose. They come in three levels:
 
 - a **notice** is just a line;
 - a **caution** (`▲ CAUTION`) is ruled off above and below in `WARN` and flickers on once;
 - a **warning** (`▲ WARNING`) is ruled off in `BAD` and flickers on twice.
 
-The message history (L by default) opens in their place on a lighter ink.
+The **Events −** control minimizes the stream to **Events +**, with a count of new arrivals. Messages
+continue entering history while minimized. Expanding clears the new-arrival count. The message history
+(L by default) opens in their place on a lighter ink and also reopens a minimized stream. Minimizing
+closes history too. The event control stays below objectives and the command net.
 
 ## Marks on the battlefield
 
