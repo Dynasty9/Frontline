@@ -10,6 +10,22 @@ caption = "The earlier procedural rifleman"
 [[screenshots]]
 file = "after.jpg"
 caption = "The optional imported rifleman after stepping back to clear the wall"
+
+[[screenshots]]
+file = "movement.jpg"
+caption = "The optional riflemen moving into cover in an actual battle"
+
+[[screenshots]]
+file = "digging-game.jpg"
+caption = "A rifleman digs during a sandbag construction order"
+
+[[screenshots]]
+file = "smoking-game.jpg"
+caption = "A quiet-sector smoking idle, with the rifle slung"
+
+[[screenshots]]
+file = "ragdoll.jpg"
+caption = "A staged blast demonstrates physical falls and dropped weapons"
 +++
 
 - Soldiers check the space needed to go prone, take a short backward step when possible, settle their feet, then lower themselves. If the rear path is blocked, they stay crouched.
