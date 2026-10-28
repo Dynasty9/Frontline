@@ -881,3 +881,9 @@ Bake the separately licensed M4 using `tests/mocap/bake_rifle.gd` after importin
 its source files. See `RIFLE_PACK.md`. Game exports include the baked binary
 resource and exclude legacy MoCap FBX sources. Keep all licensed source and
 baked assets out of public Git.
+
+### Action-transition regression checks
+
+With the local SWAT/Mixamo assets installed, run `tests/mocap/action_transitions.tscn -- --swat-units` to check sling/draw continuity, free hands, prone/lean reload magazine replacement and dive muzzle clearance. Run `tests/mocap/vault_traversal.tscn -- --scenario=motion --seed=3 --skinned-units --swat-units --no-stun --port=8321` with rendering enabled for a real soldier crossing a low wall. It asserts foot clearance, continued visual vault and settled recovery without extending the simulation vault flag. Use a free port for each run.
+
+The contextual audit distinguishes invalid combinations (for example a rifleman forced to use a pistol action, or surrender with `Life.ALIVE`) from actual gameplay defects. Existing saved reviews/comments remain separate from these automated checks. This pass does not certify vehicle seats, mounted reloads or partner contact.
