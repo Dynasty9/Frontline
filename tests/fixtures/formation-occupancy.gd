@@ -1,6 +1,11 @@
 extends Node
 
 class UncachedTerrain extends TerrainMap:
+	func best_spot_near(p: Vector3, r: float, from: Vector3, taken: Array, group_center := Vector3.INF, group_radius := 0.0, search: Dictionary = {}) -> Array:
+		search.erase("ground")
+		search.erase("native_ground")
+		return super.best_spot_near(p, r, from, taken, group_center, group_radius, search)
+
 	func group_spot_cached(p: Vector3, c: Vector3, radius: float, normal: Vector3, _search: Dictionary) -> bool:
 		return group_spot(p, c, radius, normal)
 
@@ -11,7 +16,30 @@ class UncachedTerrain extends TerrainMap:
 				count += 1
 		return count
 
+class FallbackTerrain extends TerrainMap:
+	func _formation_ground(c: Vector3, radius: float, from: Vector3, search: Dictionary) -> Array:
+		var candidates := super._formation_ground(c, radius, from, search)
+		search.erase("native_ground")
+		return candidates
+
+func _check_native() -> void:
+	if not ClassDB.class_exists("FormationGround"):
+		return
+	var scorer: Object = ClassDB.instantiate("FormationGround")
+	assert(scorer.prepare(PackedVector3Array(), PackedFloat64Array()))
+	assert(scorer.best(Vector3.ZERO)[0] == -1.0, "empty ground has no winner")
+	var points := PackedVector3Array([Vector3.LEFT, Vector3.RIGHT])
+	assert(scorer.prepare(points, PackedFloat64Array([3.0, 0.0, 3.0, 0.0])))
+	assert(scorer.best(Vector3.ZERO)[0] == 0.0, "equal scores keep the first candidate")
+	scorer.add_taken(Vector3.LEFT)
+	assert(scorer.best(Vector3.ZERO)[0] == 1.0, "occupied ground loses priority")
+	assert(not scorer.prepare(points, PackedFloat64Array([3.0])))
+	assert(scorer.best(Vector3.ZERO)[0] == -1.0, "invalid preparation clears old candidates")
+	assert(not scorer.prepare(points, PackedFloat64Array([NAN, 0.0, 3.0, 0.0])))
+	print("FORMATION_NATIVE passed")
+
 func _ready() -> void:
+	_check_native()
 	var w := World.new()
 	w.has_view = false
 	var fast := TerrainMap.new(w)
@@ -50,6 +78,11 @@ func _ready() -> void:
 	reference.cdir = fast.cdir
 	reference.solid = fast.solid
 	reference.trench = fast.trench
+	var fallback := FallbackTerrain.new(w)
+	fallback.cov = fast.cov
+	fallback.cdir = fast.cdir
+	fallback.solid = fast.solid
+	fallback.trench = fast.trench
 	var cases := 0
 	for wide in [false, true]:
 		for count in [1, 8, 32, 96, 200]:
@@ -58,7 +91,10 @@ func _ready() -> void:
 				var slots := fast.slots(center, face, count, wide)
 				w.terrain = reference
 				var expected := reference.slots(center, face, count, wide)
+				w.terrain = fallback
+				var fallback_slots := fallback.slots(center, face, count, wide)
 				w.terrain = fast
+				assert(fallback_slots == expected, "prepared GDScript ground matches exhaustive selection")
 				assert(slots == expected, "cached formation matches exhaustive cover selection")
 				assert(slots.size() == count, "each man receives a position")
 				assert(slots == fast.slots(center, face, count, wide), "cover selection is deterministic")

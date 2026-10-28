@@ -3,6 +3,13 @@ extends Node3D
 ## Distant men share baked poses of the same models used close up. Their
 ## simulation, selection and visibility still belong to each Soldier.
 
+class DrawGroup:
+	var mm: MultiMesh
+	var node: MultiMeshInstance3D
+	var origin: Vector3
+	var count := 0
+	var last_used := 0.0
+
 var world: World
 const CELL := 64.0
 var groups := {}
@@ -13,7 +20,7 @@ var _next_pose := 0
 var _warmup: Array = []
 var _detail_frame := -1
 var _detail_count := 0
-var _active: Array = []
+var _active: Array[DrawGroup] = []
 var _expires_at := 0.0
 
 
@@ -66,7 +73,7 @@ func _process(dt: float) -> void:
 		_make_pose(pose[0], pose[1], pose[2], pose[3], pose[4])
 	var previous_groups := _active
 	_active = []
-	for group: Dictionary in previous_groups:
+	for group: DrawGroup in previous_groups:
 		group.count = 0
 	var planes: Array[Plane] = []
 	if world.cam:
@@ -117,18 +124,18 @@ func _process(dt: float) -> void:
 		mm.set_instance_transform(slot, transform)
 		group.count = slot + 1
 		group.last_used = world.time
-	for group: Dictionary in previous_groups:
+	for group: DrawGroup in previous_groups:
 		if group.count == 0:
-			(group.mm as MultiMesh).visible_instance_count = 0
-	for group: Dictionary in _active:
-		(group.mm as MultiMesh).visible_instance_count = group.count
+			group.mm.visible_instance_count = 0
+	for group: DrawGroup in _active:
+		group.mm.visible_instance_count = group.count
 	# Old walking poses stay cached briefly, but need no per-frame visits.
 	if world.time >= _expires_at:
 		_expires_at = world.time + 1.0
 		for key in groups.keys():
-			var group: Dictionary = groups[key]
-			if group.count == 0 and world.time - float(group.last_used) > 5.0:
-				(group.node as MultiMeshInstance3D).queue_free()
+			var group: DrawGroup = groups[key]
+			if group.count == 0 and world.time - group.last_used > 5.0:
+				group.node.queue_free()
 				groups.erase(key)
 	world.vp("distant soldiers", started)
 
@@ -163,7 +170,7 @@ func _make_pose(key: int, unit: String, team: int, posture: int, frame: int) -> 
 	poses[key] = mesh
 
 
-func _group_for(pose: int, cell: Vector2i) -> Dictionary:
+func _group_for(pose: int, cell: Vector2i) -> DrawGroup:
 	var key := Vector3i(cell.x, cell.y, pose)
 	if groups.has(key):
 		return groups[key]
@@ -179,6 +186,10 @@ func _group_for(pose: int, cell: Vector2i) -> Dictionary:
 	node.multimesh = mm
 	node.position = Vector3(cell.x * CELL, 0, cell.y * CELL)
 	add_child(node)
-	var group := {"mm": mm, "node": node, "origin": node.position, "count": 0, "last_used": world.time}
+	var group := DrawGroup.new()
+	group.mm = mm
+	group.node = node
+	group.origin = node.position
+	group.last_used = world.time
 	groups[key] = group
 	return group

@@ -76,8 +76,16 @@ func can_see_from(eye: Vector3, e: Entity, ex: Array, cache_obstruction := true)
 	var pts := e.exposed_points()
 	# Walking changes the exact sight line every tick; recording those misses costs more than casting.
 	if not cache_obstruction:
+		# One target shares the origin and exclusions across all exposed points.
+		_q.from = eye
+		_q.collision_mask = MASK
+		var excluded: Array[RID] = []
+		excluded.assign(ex2)
+		_q.exclude = excluded
+		var sight_space := space()
 		for pt: Vector3 in pts:
-			if clear_line(eye, pt, ex2):
+			_q.to = pt
+			if sight_space.intersect_ray(_q).is_empty() and not smoke_blocks(eye, pt):
 				return true
 		return false
 	var key := [eye, e.get_instance_id()]

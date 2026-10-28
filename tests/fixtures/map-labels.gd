@@ -10,6 +10,21 @@ class Overlay extends HudOverlay:
 		assert(_contact_mesh == first, "Firing markers must reuse their triangulated geometry")
 		assert(first.surface_get_array_len(0) == 16 and first.surface_get_array_index_len(0) == 42)
 
+class PointerInput extends PlayerInput:
+	var point := Vector2(20, 20)
+	func _mouse() -> Vector2:
+		return point
+
+class PointerProbe extends HudPointerOverlay:
+	var draws := 0
+	var hint_point := Vector2.ZERO
+	func _draw() -> void:
+		draws += 1
+		super._draw()
+	func _hint(mp: Vector2, what: String, code: String, col: Color) -> void:
+		hint_point = mp
+		super._hint(mp, what, code, col)
+
 class HudStub extends Hud:
 	func _ready() -> void:
 		pass
@@ -56,40 +71,50 @@ func _ready() -> void:
 	assert(overlay._marker_offsets.is_empty(), "Removed squads must release their placement cache")
 	await get_tree().process_frame
 	overlay.free()
+	var camera := Camera3D.new()
+	add_child(camera)
 	var refreshed := Overlay.new()
 	add_child(refreshed)
-	refreshed.refresh_for_view(0.0, Transform3D.IDENTITY, Vector2.ZERO)
+	refreshed.refresh_for_view(0.0, camera)
 	await get_tree().process_frame
 	await get_tree().process_frame
 	var before := refreshed.draws
-	refreshed.refresh_for_view(0.01, Transform3D.IDENTITY, Vector2.ZERO)
+	refreshed.refresh_for_view(0.01, camera)
 	await get_tree().process_frame
 	await get_tree().process_frame
 	assert(refreshed.draws == before, "A stationary overlay should retain its drawing between refreshes")
-	refreshed.refresh_for_view(0.057, Transform3D.IDENTITY, Vector2.ZERO)
+	refreshed.refresh_for_view(0.057, camera)
 	await get_tree().process_frame
 	await get_tree().process_frame
 	assert(refreshed.draws == before + 1, "Stationary status and animations still refresh at 15 Hz")
-	var moved := Transform3D.IDENTITY.translated(Vector3(1, 0, 0))
-	refreshed.refresh_for_view(0.0, moved, Vector2.ZERO)
+	camera.position.x = 1.0
+	refreshed.refresh_for_view(0.0, camera)
 	await get_tree().process_frame
 	await get_tree().process_frame
 	assert(refreshed.draws == before + 2, "Camera motion must redraw immediately")
-	refreshed.refresh_for_view(0.0, moved, Vector2(10, 5))
+	refreshed.refresh_for_view(0.0, camera)
 	await get_tree().process_frame
 	await get_tree().process_frame
-	assert(refreshed.draws == before + 3, "Pointer motion must redraw immediately")
+	assert(refreshed.draws == before + 2, "Unchanged status must stay cached while the pointer layer draws independently")
 	refreshed._input(InputEventKey.new())
-	refreshed.refresh_for_view(0.0, moved, Vector2(10, 5))
+	refreshed.refresh_for_view(0.0, camera)
 	await get_tree().process_frame
 	await get_tree().process_frame
-	assert(refreshed.draws == before + 4, "Selection and commands must redraw on input without waiting for the timer")
+	assert(refreshed.draws == before + 3, "Selection and commands must redraw on input without waiting for the timer")
 	before = refreshed.draws
 	for i in 42:
-		refreshed.refresh_for_view(1.0 / 42.0, moved, Vector2(10, 5))
+		refreshed.refresh_for_view(1.0 / 42.0, camera)
 		await get_tree().process_frame
 		await get_tree().process_frame
 	assert(refreshed.draws - before >= 14 and refreshed.draws - before <= 16, "Refresh cadence must retain elapsed time between uneven frames")
+	before = refreshed.draws
+	for i in 42:
+		camera.h_offset = 0.2 if i % 2 == 0 else -0.2
+		camera.v_offset = camera.h_offset
+		refreshed.refresh_for_view(1.0 / 42.0, camera)
+		await get_tree().process_frame
+		await get_tree().process_frame
+	assert(refreshed.draws - before >= 14 and refreshed.draws - before <= 16, "Blast shake must keep the status cadence instead of redrawing every frame")
 	refreshed.free()
 	var hud := HudStub.new()
 	add_child(hud)
@@ -106,30 +131,57 @@ func _ready() -> void:
 	cached.raster = raster
 	hud.overlay = cached
 	raster.add_child(cached)
-	cached.refresh_for_view(0.0, Transform3D.IDENTITY, Vector2.ZERO)
+	cached.refresh_for_view(0.0, camera)
 	assert(raster.size == Vector2i(get_viewport().get_visible_rect().size))
 	assert(raster.render_target_update_mode == SubViewport.UPDATE_ONCE)
 	await get_tree().process_frame
 	await get_tree().process_frame
 	before = cached.draws
-	cached.refresh_for_view(0.01, Transform3D.IDENTITY, Vector2.ZERO)
+	cached.refresh_for_view(0.01, camera)
 	await get_tree().process_frame
 	await get_tree().process_frame
 	assert(cached.draws == before, "Cached overlay pixels must be reused between updates")
 	hud._input(InputEventKey.new())
-	cached.refresh_for_view(0.0, Transform3D.IDENTITY, Vector2.ZERO)
+	cached.refresh_for_view(0.0, camera)
 	await get_tree().process_frame
 	await get_tree().process_frame
 	assert(cached.draws == before + 1, "Main viewport input must invalidate the cached overlay")
 	raster.size = Vector2i(20, 20)
-	cached.refresh_for_view(0.0, Transform3D.IDENTITY, Vector2.ZERO)
+	cached.refresh_for_view(0.0, camera)
 	assert(raster.size == Vector2i(get_viewport().get_visible_rect().size), "The cache must follow viewport resizing")
 	hud.root.hide()
-	cached.refresh_for_view(0.1, Transform3D.IDENTITY, Vector2.ZERO)
+	cached.refresh_for_view(0.1, camera)
 	assert(raster.render_target_update_mode == SubViewport.UPDATE_DISABLED, "Hidden HUDs must stop the extra viewport")
 	hud.root.show()
-	cached.refresh_for_view(0.0, Transform3D.IDENTITY, Vector2.ZERO)
+	cached.refresh_for_view(0.0, camera)
 	assert(raster.render_target_update_mode == SubViewport.UPDATE_ONCE, "Showing the HUD must refresh immediately")
+	var world := World.new()
+	hud.world = world
+	world.cam = RtsCamera.new()
+	world.cam.cam = camera
+	var input := PointerInput.new()
+	input.world = world
+	input.ability = "smoke"
+	world.input = input
+	var pointer := PointerProbe.new()
+	pointer.hud = hud
+	hud.root.add_child(pointer)
+	await get_tree().process_frame
+	await get_tree().process_frame
+	before = cached.draws
+	var pointer_before := pointer.draws
+	for i in 8:
+		input.point += Vector2(5, 3)
+		pointer.queue_redraw()
+		cached.refresh_for_view(0.0, camera)
+		await get_tree().process_frame
+		await get_tree().process_frame
+		assert(pointer.hint_point == input.point, "Ability feedback must follow the pointer each frame")
+	assert(pointer.draws == pointer_before + 8 and cached.draws == before, "Pointer movement must not rebuild the cached army display")
+	world.cam.free()
+	input.free()
+	world.free()
 	hud.free()
+	camera.free()
 	print("MAP_LABELS passed")
 	get_tree().quit()

@@ -116,6 +116,7 @@ var sel_info: HudSelInfo
 var minimap: HudMinimap
 var minimap_panel: PanelContainer
 var overlay: HudOverlay
+var pointer_overlay: HudPointerOverlay
 var coop: HudCoop  # the other commanders on our side, over the battlefield
 var coop_roster: HudCoopRoster  # ...and listed top right
 var alert_label: Label
@@ -195,6 +196,11 @@ func _ready() -> void:
 	overlay_image.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	overlay_image.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	root.add_child(overlay_image)
+	pointer_overlay = HudPointerOverlay.new()
+	pointer_overlay.hud = self
+	pointer_overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	pointer_overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	root.add_child(pointer_overlay)
 
 	# co-commanders: their views, cursors, selections, plans and pings
 	coop = HudCoop.new()
@@ -1524,7 +1530,8 @@ func _view_process(dt: float) -> void:
 		_map_t = 1.0 / 15.0
 		minimap.queue_redraw()
 	if world.cam:
-		overlay.refresh_for_view(rdt, world.cam.cam.get_camera_transform(), root.get_global_mouse_position())
+		overlay.refresh_for_view(rdt, world.cam.cam)
+	pointer_overlay.queue_redraw()
 	coop.queue_redraw()
 
 

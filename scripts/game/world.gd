@@ -112,6 +112,7 @@ func client_loading() -> bool:
 const SCELL := 16.0
 var _shash := {}
 var _house_hash := {}
+var _trench_hash := {}
 
 
 func _ready() -> void:
@@ -506,8 +507,8 @@ func entity(id: int) -> Entity:
 func ground_y(p: Vector3) -> float:
 	if water and not water.deck.is_empty() and water.on_deck(p):
 		return 0.06  # on a bridge deck, over the water
-	for st in structures_near(p, 4.0):
-		if st.skind == "trench" and st.built and TrenchNet.inside(st, p, 0.05):
+	for st: Structure in _trenches_at(p):
+		if is_instance_valid(st) and not st.gone and st.built and TrenchNet.inside(st, p, 0.05):
 			return TrenchNet.FLOOR_Y + 0.15
 	return terrain.deform_at(p) if terrain else 0.0
 
@@ -541,8 +542,8 @@ func trench_mount_spot(pos: Vector3, yaw: float) -> Dictionary:
 
 
 func in_trench(p: Vector3) -> bool:
-	for st in structures_near(p, 4.0):
-		if st.skind == "trench" and st.built and TrenchNet.inside(st, p, 0.05):
+	for st: Structure in _trenches_at(p):
+		if is_instance_valid(st) and not st.gone and st.built and TrenchNet.inside(st, p, 0.05):
 			return true
 	return false
 
@@ -1845,6 +1846,10 @@ func _shash_add(e: Structure) -> void:
 			if not _house_hash.has(k):
 				_house_hash[k] = []
 			(_house_hash[k] as Array).append(e)
+		if e.skind == "trench":
+			if not _trench_hash.has(k):
+				_trench_hash[k] = []
+			(_trench_hash[k] as Array).append(e)
 
 
 func _shash_remove(e: Structure) -> void:
@@ -1856,7 +1861,16 @@ func _shash_remove(e: Structure) -> void:
 			(_house_hash[k] as Array).erase(e)
 			if (_house_hash[k] as Array).is_empty():
 				_house_hash.erase(k)
+		if _trench_hash.has(k):
+			(_trench_hash[k] as Array).erase(e)
+			if (_trench_hash[k] as Array).is_empty():
+				_trench_hash.erase(k)
 	e.hash_cells = []
+
+
+## Trench bounds already occupy every cell they cross, including their ends.
+func _trenches_at(p: Vector3) -> Array:
+	return _trench_hash.get(Vector2i(floori(p.x / SCELL), floori(p.z / SCELL)), [])
 
 
 func structures_near(p: Vector3, r: float, floors_only := false) -> Array:
