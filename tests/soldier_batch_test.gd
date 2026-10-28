@@ -35,7 +35,7 @@ func _ready() -> void:
 		world.soldiers.append(s)
 	batch._process(0.016)
 	check(batch.groups.size() == 2, "Widely separated men must use separate spatial batches")
-	for group: Dictionary in batch.groups.values():
+	for group: SoldierViewBatch.DrawGroup in batch.groups.values():
 		var mm: MultiMesh = group.mm
 		check(group.count == 20 and mm.visible_instance_count == 20, "Every soldier must survive a batch capacity increase")
 		if DisplayServer.get_name() != "headless":
