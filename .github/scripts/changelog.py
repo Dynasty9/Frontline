@@ -108,7 +108,7 @@ def read_entry(path: Path) -> dict:
         videos = []
     for v in videos:
         media = {}
-        for key, extensions, limit in [("file", {".mp4"}, MAX_VIDEO), ("poster", IMAGE_EXT, MAX_IMAGE)]:
+        for key, extensions, limit in [("file", {".mp4", ".webm", ".gif"}, MAX_VIDEO), ("poster", IMAGE_EXT, MAX_IMAGE)]:
             name = str(v.get(key, ""))
             f = path.parent / slug / name
             if not name or any(c in name for c in "/\\:") or not f.is_file():

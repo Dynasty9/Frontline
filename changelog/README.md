@@ -48,11 +48,13 @@ Check your entry with `python .github/scripts/changelog.py check`.
 
 ## Gameplay clips
 
-Use **MP4 (H.264, yuv420p)** for motion instead of GIF: it keeps gameplay clips compact and gives players
-pause, seek and fullscreen controls. Clips loop muted while on screen and pause when scrolled away.
+Use **MP4 (H.264, yuv420p)** or **WebM (VP9)** for gameplay clips: both have pause, seek and fullscreen
+controls. **GIF** also works in a `[[videos]]` block, with a button to switch between animation and its still
+poster (restarting the GIF when played again). Clips loop muted while on screen and pause when scrolled away.
 Reduced-motion and Data Saver preferences disable autoplay; players can still start clips with the controls.
 Keep them short
-(about 5–15 seconds), silent, at 720p or 900p, under 15 MB, and export with fast start enabled.
+(about 5–15 seconds), silent, at 720p or 900p, under 15 MB, and enable fast start for MP4.
+Prefer video for detailed gameplay; reserve GIF for small, short loops.
 Describe the visible change in the caption and entry text so the clip is not the only explanation.
 
 Put the clip and a JPEG poster beside the entry's screenshots, and add this inside its `+++` block:

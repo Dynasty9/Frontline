@@ -3,6 +3,8 @@ import { expect, screen, userEvent, waitFor, within } from "storybook/test"
 import { KindBadge, ReleaseCard, WhatsNew } from "@/components/changelog"
 import { releases } from "@/lib/changelog"
 import { release } from "@/test/fixtures"
+import gif from "@/test/animation.gif"
+import webm from "@/test/animation.webm"
 
 const meta = {
   title: "Site/Changelog",
@@ -65,6 +67,47 @@ export const WithVideo: Story = {
     await waitFor(() => expect(video.paused).toBe(false))
     video.pause()
     await expect(video.paused).toBe(true)
+  },
+}
+
+export const WithWebM: Story = {
+  ...WithVideo,
+  args: {
+    release: {
+      ...release,
+      entries: [
+        {
+          ...release.entries[0],
+          videos: [{ url: webm, poster: "/media/fires.jpg", caption: "Fire spreads across the grass." }],
+        },
+      ],
+    },
+  },
+}
+
+export const WithGif: Story = {
+  args: {
+    release: {
+      ...release,
+      entries: [
+        { ...release.entries[0], videos: [{ url: gif, poster: "/media/fires.jpg", caption: "Animated GIF example." }] },
+      ],
+    },
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    const img = canvas.getByRole("img", { name: "Animated GIF example." }) as HTMLImageElement
+    img.scrollIntoView()
+    await waitFor(() => expect(img).toHaveAttribute("src", gif))
+    await waitFor(() => expect(img.naturalWidth).toBe(120))
+    await userEvent.click(canvas.getByRole("button", { name: "Pause animation: Animated GIF example." }))
+    await expect(img).toHaveAttribute("src", "/media/fires.jpg")
+    await userEvent.click(canvas.getByRole("button", { name: "Play animation: Animated GIF example." }))
+    await expect(img).toHaveAttribute("src", gif)
+    // Visibility is tracked on the figure, so move the whole figure out of view.
+    img.closest("figure")!.style.transform = "translateY(200vh)"
+    await waitFor(() => expect(img).toHaveAttribute("src", "/media/fires.jpg"))
+    img.closest("figure")!.style.transform = ""
   },
 }
 

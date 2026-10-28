@@ -2,6 +2,11 @@
 title = "Boats handle like boats"
 summary = "Boats no longer drive like cars on water. They slide through it, skid in a hard turn, have no brakes, answer the helm after a moment and are carried by a river's current, and their coxswains handle them like it."
 kind = "improved"
+
+[[videos]]
+file = "boat-turn.mp4"
+poster = "boat-turn-poster.jpg"
+caption = "An RHIB turns toward the beach, trailing a curved wake as it comes ashore. Recorded in the current build, October 2026."
 +++
 
 - **No brakes:** a boat slows on the water's drag and goes astern to stop. An RHIB at full speed needs some
