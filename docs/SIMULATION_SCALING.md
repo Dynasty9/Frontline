@@ -417,3 +417,56 @@ individual uploads 52.81/54.64/57.60 FPS; bulk uploads 53.75/54.20 FPS. Its head
 its native class. Merely translating the upload packing to Rust is not enough;
 the next change must eliminate repeated batch planning or move the complete
 working set across the native boundary, rather than add another conversion stage.
+
+
+### Progressive frame work (28 October follow-up)
+
+The retained minimap uses Godot's cached CanvasItem draw commands: map/intelligence,
+fighting, units/aircraft, and co-op/pings refresh on successive frames. Camera and
+pointer indicators refresh every frame. At 60 FPS, each of the four other layers
+refreshes at 15 Hz. Rotation and resizing invalidate all layers together so symbols
+cannot use different map coordinate systems. The two-second structure signature
+scan yields after small groups instead of scanning a large map in one redraw.
+This follows [Godot's retained custom-drawing model](https://docs.godotengine.org/en/stable/tutorials/2d/custom_drawing_in_2d.html).
+
+An exported 3072 m, seed 3, 480 infantry/20 vehicle local-server battle alternated
+120-frame samples, with eight settling frames between phases and other apps running.
+Both modes used the same sliced signature scan; the control redrew the whole map
+at 15 Hz, while the changed mode staggered layers. These short samples isolate the
+redraw mechanism, not sustained capacity:
+
+| Mode | FPS | Frame p95 | Adjacent-frame absolute difference p95 | Minimap maximum draw CPU |
+| --- | ---: | ---: | ---: | ---: |
+| Whole map | 39.70 | 46.40 ms | 21.86 ms | 5.96 ms |
+| Progressive | 51.91 | 28.94 ms | 15.35 ms | 1.83 ms |
+| Whole map | 55.81 | 27.77 ms | 14.64 ms | 3.53 ms |
+| Progressive | 55.54 | 28.00 ms | 14.13 ms | 1.54 ms |
+| Whole map | 49.28 | 30.83 ms | 16.12 ms | 4.96 ms |
+
+The consistent result is a smaller minimap redraw spike, not a demonstrated average
+FPS gain. Its mean CPU was 0.86-0.88 ms/frame in progressive mode versus 0.66-1.25 ms
+in the control: smooth camera feedback does additional work. These timings cover
+CPU command generation; they do not include the GPU's execution of those commands.
+`--perf-at` now reports `frame_changes` separately from frame-duration percentiles,
+preserving chronological samples when computing absolute adjacent differences.
+
+Soldier smoothing also reuses one exponential blend coefficient for the shared
+frame interval; the interpolation equation, teleport threshold and angle wrapping
+are unchanged. This is a small reduction in repeated arithmetic, not a claim of
+a major speedup. Snapshot interpolation remains as before; see the tradeoffs in
+[Gaffer's snapshot interpolation article](https://gafferongames.com/post/snapshot_interpolation/).
+
+A persistent dense-slot MultiMesh prototype was rejected. Although it avoided
+rebuilding membership, animation changes required slot migration and buffer reads.
+It measured 41.02/43.40 FPS against interleaved rebuilt batches at
+43.89/53.29/52.34 FPS; its headless microbenchmark also regressed. Only the shared
+smoothing coefficient remains. Spatial batching and capacity reuse already follow
+[Godot's MultiMesh guidance](https://docs.godotengine.org/en/stable/tutorials/performance/using_multimesh.html).
+
+The simulation inspection found existing Rust kernels for perception, route graphs
+and formation scoring. Movement and weapon ticks mix decisions with live Godot
+objects and physics queries, so a function-by-function Rust translation would still
+pay those crossings. The measured native upload-packing and persistent-slot trials
+do not justify such a port. A further native step should batch a complete numeric
+working set and preserve decision ordering, rather than claim that the language
+change itself fixes the remaining 60 FPS deficit.

@@ -19,6 +19,7 @@ test("performance reports attribute the worst measured tick including terrain wo
   assert.doesNotMatch(stdout + stderr, /SCRIPT ERROR|Parse Error/);
   const data = JSON.parse(await readFile(report, "utf8"));
   assert.ok(data.ticks.count > 0);
+  assert.equal(data.frame_changes.count, Math.max(0, data.frames.count - 1));
   assert.equal(data.worst_tick.total_ms, data.ticks.max_ms);
   assert.ok(data.worst_tick.systems_ms["terrain + cleanup"] >= 0);
   const attributed = Object.values(data.worst_tick.systems_ms).reduce((a, b) => a + b, 0);

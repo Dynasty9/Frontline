@@ -1,7 +1,7 @@
 extends Node
 
 class FightingMap extends HudMinimap:
-	func _draw_content() -> void:
+	func _draw_content(_phase := -1) -> void:
 		_draw_fighting(hud.world, 1.0)
 
 func _ready() -> void:

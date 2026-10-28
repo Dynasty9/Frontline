@@ -135,12 +135,14 @@ func ip_offset() -> Transform3D:
 	return transform.affine_inverse() * g
 
 
-func net_smooth(dt: float) -> void:
+func net_smooth(dt: float, blend := -1.0) -> void:
 	if not net_init:
 		return
-	var next_pos := net_pos if position.distance_to(net_pos) > 8.0 else position.lerp(net_pos, 1.0 - exp(-dt * 14.0))
+	if blend < 0.0:
+		blend = 1.0 - exp(-dt * 14.0)
+	var next_pos := net_pos if position.distance_to(net_pos) > 8.0 else position.lerp(net_pos, blend)
 	var next_rotation := rotation
-	next_rotation.y = lerp_angle(rotation.y, net_yaw, 1.0 - exp(-dt * 14.0))
+	next_rotation.y = lerp_angle(rotation.y, net_yaw, blend)
 	# Unchanged transforms still dirty every child model in the scene tree.
 	if next_pos != position:
 		position = next_pos

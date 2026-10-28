@@ -61,9 +61,10 @@ func _process(dt: float) -> void:
 	var started := Time.get_ticks_usec()
 	# Keep individual smoothing and poses, but pay frame bookkeeping once per army.
 	if world.has_view and world.soldier_view == self:
+		var blend := 1.0 - exp(-dt * 14.0)
 		for soldier: Soldier in world.soldiers:
 			if not soldier.gone:
-				soldier._view_process(dt)
+				soldier._view_process(dt, blend)
 		world.vp("soldiers", started)
 		started = Time.get_ticks_usec()
 	# Bake one pose per frame while loading, rather than baking a whole new
