@@ -9,3 +9,5 @@ caption = "Source clips and gameplay cases have separate saved approval decision
 +++
 
 The motion review scene includes slow playback, bone and mesh inspection, projectile hits, and a queue of unreviewed animations. Review feedback persists between sessions; changed animation assets need a fresh review.
+
+Comments can also be saved independently, without approving or rejecting an animation.

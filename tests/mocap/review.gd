@@ -85,9 +85,13 @@ func _build_review_ui() -> void:
 	review_state = _label(column, "", 14)
 	review_state.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	notes = TextEdit.new()
-	notes.placeholder_text = "What needs fixing? Notes save with your decision."
+	notes.placeholder_text = "Leave a comment about this animation..."
 	notes.custom_minimum_size.y = 75
 	column.add_child(notes)
+	var save_comment := Button.new()
+	save_comment.text = "Save comment (keep current decision)"
+	save_comment.pressed.connect(func(): _decide(_decision(_identity())))
+	column.add_child(save_comment)
 	var row := HBoxContainer.new()
 	column.add_child(row)
 	for decision in ["Approved", "Rejected", "Unreviewed"]:
@@ -239,6 +243,14 @@ func _review_test() -> void:
 	_next_unreviewed()
 	if _identity() == "clip/" + clip_keys[0]:
 		push_error("Review queue did not advance")
+		get_tree().quit(1)
+		return
+	_decide("Unreviewed")
+	notes.text = "Comment without approval"
+	_decide(_decision(_identity()))
+	saved.load(review_path)
+	if saved.get_value(_identity(), "notes", "") != notes.text or _decision(_identity()) != "Unreviewed":
+		push_error("Comment-only save changed decision or lost text")
 		get_tree().quit(1)
 		return
 	_decide("Approved")
