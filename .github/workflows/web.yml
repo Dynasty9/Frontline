@@ -46,6 +46,7 @@ jobs:
           grep -qi '^Content-Encoding: gzip' /tmp/viewer-headers
           curl --fail -H 'Accept-Encoding: identity' http://localhost:8080/game/index.wasm -o /tmp/plain.wasm
           cmp /tmp/compressed.wasm /tmp/plain.wasm
+          WEB_ORIGIN=http://localhost:8080 node .github/scripts/production_web_smoke.mjs
 
   check:
     name: Lint, types, unit tests, build
