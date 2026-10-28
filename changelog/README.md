@@ -46,6 +46,28 @@ caption = "A grass fire creeping out from a shell hole"
 
 Check your entry with `python .github/scripts/changelog.py check`.
 
+## Gameplay clips
+
+Use **MP4 (H.264, yuv420p)** for motion instead of GIF: it keeps gameplay clips compact and gives players
+pause, seek and fullscreen controls. Clips loop muted while on screen and pause when scrolled away.
+Reduced-motion and Data Saver preferences disable autoplay; players can still start clips with the controls.
+Keep them short
+(about 5–15 seconds), silent, at 720p or 900p, under 15 MB, and export with fast start enabled.
+Describe the visible change in the caption and entry text so the clip is not the only explanation.
+
+Put the clip and a JPEG poster beside the entry's screenshots, and add this inside its `+++` block:
+
+```toml
+[[videos]]
+file = "grass-fire.mp4"
+poster = "grass-fire.jpg"
+caption = "Fire spreads from the shell hole into the surrounding grass."
+```
+
+The poster follows the screenshot format and size limits above. Both names must refer to files directly in
+the entry's folder. Multiple `[[videos]]` blocks appear in order below the screenshots. The website plays
+them inline; GitHub release notes and `CHANGELOG.md` link to the release on the website.
+
 ## What happens at release
 
 Releasing is **Actions > Release > Run workflow** on `main` (pick `patch`, `minor` or `major`, and optionally a

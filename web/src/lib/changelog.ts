@@ -13,6 +13,7 @@ export type Entry = {
   summary: string
   body: string
   screenshots: { url: string; caption: string }[]
+  videos?: { url: string; poster: string; caption: string }[]
 }
 
 export type Release = {
