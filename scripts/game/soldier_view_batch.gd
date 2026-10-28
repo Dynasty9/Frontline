@@ -50,8 +50,15 @@ func _ready() -> void:
 	process_priority = 10
 
 
-func _process(_dt: float) -> void:
+func _process(dt: float) -> void:
 	var started := Time.get_ticks_usec()
+	# Keep individual smoothing and poses, but pay frame bookkeeping once per army.
+	if world.has_view and world.soldier_view == self:
+		for soldier: Soldier in world.soldiers:
+			if not soldier.gone:
+				soldier._view_process(dt)
+		world.vp("soldiers", started)
+		started = Time.get_ticks_usec()
 	# Bake one pose per frame while loading, rather than baking a whole new
 	# stance for hundreds of men on the frame they first take cover.
 	if not _warmup.is_empty():

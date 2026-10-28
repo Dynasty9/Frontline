@@ -56,9 +56,18 @@ Platforms without the extension use AStar3D. This is not a full Rust server rewr
   empty batches expire after five to six seconds. Close models are
   created when needed. Distant color variation and subtle gestures are simplified.
   Hidden units never enter the batch. Selection stays on the individual soldier.
+  Registered soldiers update their individual views in one loop, once per frame,
+  avoiding hundreds of separate timing and profiling updates. Standalone preview
+  soldiers retain their own frame callback.
 - Vehicles retain articulated pivots and use one material surface per part beyond
   100 m. Near materials remain detailed. Wrecks skip this extra baking work during
   combat. This reduces draw submissions but adds work when a new vehicle loads.
+- Neutral walls, floors and crates share drawing surfaces in 64 m cells. Changing
+  an object removes only its triangles and restores its individual meshes; the
+  rest of the cell stays batched. Original collision and entity state are retained.
+- Walking observers bypass obstruction-cache bookkeeping for sight lines they
+  cannot reuse. Stationary men, including men waiting for a route, retain the
+  exact-line cache. Sight candidates, ray tests and weapon timing are unchanged.
 - Squad marker status shares the existing 10 Hz overview refresh. Empty selection
   clears only previously marked soldiers; membership and ownership changes still
   apply immediately. Squad existence checks stop at the first living member
@@ -77,6 +86,10 @@ Platforms without the extension use AStar3D. This is not a full Rust server rewr
   advancing combat. Individual close models also have a construction quota.
 - Solid order arrows use two projected endpoints, dashed lines use batched draw
   calls, and squad overview groups refresh at 10 Hz while selection is immediate.
+- Squad counters retain their last clear placement and firing stars share a
+  triangulated mesh. The minimap paints structure changes in roughly 1 ms slices,
+  keeping its previous complete image visible. Destruction may take additional
+  frames to appear on the minimap; unit markers and input continue to update.
 - Grass queues at most 225 nearby 32 m chunks, with a two-chunk/1 ms construction
   budget per frame and a two-chunk retention margin. This covers its longest
   170 m fade distance without generating all 9,216 chunks of a 3 km map.
@@ -131,6 +144,20 @@ The short 3 km rendered window meets the 60 FPS budget at the 99th percentile,
 but contains a large hitch. It does not prove an unconditional 60 FPS minimum,
 long-run stability, or the same performance in a dense city. Generated-world,
 close-camera, mixed-unit and longer-run checks are tracked in SCALING_PROGRESS.md.
+
+## Follow-up measurements, 27 October 2026
+
+These changes do **not** establish sustained 60 FPS with the full HUD on the
+generated 3 km battlefield. Other applications remain running. Prefer the paired
+comparisons below over FPS from separate runs with different background load.
+
+| Comparison | Result |
+| --- | --- |
+| Same battle, original scenery then shared surfaces, low preset, 480 soldiers and 20 vehicles initially | 38.06 to 44.32 FPS; repeated phases 42.54 to 46.55 FPS. About 1,000 draw submissions removed. |
+| Same battle with shared scenery, HUD hidden then restored | 65.83 to 43.17 FPS. This isolates HUD cost; it is not a playable 60 FPS result. |
+| Isolated 100-squad marker refresh, triangulated stars | 6.07 to 4.25 ms per refresh; star drawing itself 1.72 to 0.21 ms. Full-battle gains are smaller because not every squad is firing. |
+| Alternating 500-soldier view-update microbenchmark | Individual callbacks 4.29/4.16/3.81 ms; shared loop 3.43/3.28/2.96 ms. Smoothing and poses still run for each soldier each frame. |
+| Minimap rebuilding after roof destruction, before slicing | 100–134 ms synchronous rebuilds observed. Rebuilds now yield between groups of structures and retain the last complete image; the change targets hitches, not simulation throughput. |
 
 ## Verification and reproduction
 

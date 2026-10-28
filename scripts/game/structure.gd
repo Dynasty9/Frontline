@@ -131,6 +131,8 @@ func is_player_building() -> bool:
 
 
 func apply_props(d: Dictionary) -> void:
+	if world and world.structure_view:
+		world.structure_view.unbatch(self)
 	if d.has("skind"):
 		skind = d.skind
 	if d.has("team"):
@@ -251,6 +253,8 @@ func on_spawned() -> void:
 
 
 func set_view_active(value: bool) -> void:
+	if world and world.structure_view:
+		world.structure_view.unbatch(self, not value)
 	view_active = value
 	if value and not srv and built and body == null:
 		_make_body()
@@ -970,6 +974,8 @@ const DOOR_Z := 0.08
 ## The doors flung open - kicked in, blown in, or pushed open by a man who
 ## isn't expecting trouble. They stop hiding the room and stopping rounds.
 func open_door(by: Entity, kicked: bool) -> void:
+	if world and world.structure_view:
+		world.structure_view.unbatch(self)
 	if not door_shut:
 		return
 	door_shut = false
@@ -1992,6 +1998,8 @@ func char_out() -> void:
 
 ## (view) A tree or a car rebuilt as what the fire left of it.
 func _rebuild_model() -> void:
+	if world and world.structure_view:
+		world.structure_view.unbatch(self)
 	if not skind in ["tree", "car"]:
 		return
 	model.queue_free()
@@ -2076,6 +2084,8 @@ var _glow_set := -1.0
 ## (view) Lays the char (and the glow of the embers in it) over the model:
 ## leaves brown, blacken and burn away; wood, cloth and paint go black.
 func _apply_char(glow: float) -> void:
+	if world and world.structure_view:
+		world.structure_view.unbatch(self)
 	if model == null:
 		return
 	_char_set = _char
@@ -2110,6 +2120,8 @@ func _apply_char(glow: float) -> void:
 
 
 func _update_visual() -> void:
+	if world and world.structure_view:
+		world.structure_view.unbatch(self)
 	if model == null:
 		return
 	if skind == "trench":
@@ -2219,6 +2231,8 @@ func _build_scaffold(h: float) -> void:
 
 
 func _recolor() -> void:
+	if world and world.structure_view:
+		world.structure_view.unbatch(self)
 	if world.has_view and view_active and model != null and team >= 0:
 		set_process(true)  # a captured neutral site now has ownership and fog to draw
 	if _flag:

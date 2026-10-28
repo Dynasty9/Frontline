@@ -40,6 +40,8 @@ func _ready() -> void:
 	assert(not sight.can_see_from(eye, enemy, []))
 	var before := sight.queries
 	assert(not sight.can_see_from(eye, enemy, []) and sight.queries == before, "Unchanged blocking geometry should reuse its result")
+	assert(not sight.can_see_from(eye, enemy, [], false) and sight.queries > before, "Moving observers use fresh physics without cache bookkeeping")
+	before = sight.queries
 	enemy.height = 1.2
 	sight.can_see_from(eye, enemy, [])
 	assert(sight.queries > before, "A changed target posture must be checked")
