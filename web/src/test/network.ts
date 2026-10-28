@@ -72,7 +72,7 @@ export function mockMatchmaker(answers: Answers) {
         return Response.json(replay ?? { error: "Not found" }, { status: replay ? 200 : 404 })
       }
       if (url.pathname === "/game/viewer.json")
-        return Response.json(answers.viewer ? { format: 1, protocol: 9, manual: answers.manual ? 1 : undefined } : {}, {
+        return Response.json(answers.viewer ? { format: 1, protocol: 9, manual: answers.manual ? 2 : undefined } : {}, {
           status: answers.viewer ? 200 : 404,
         })
       const pub = method === "GET" ? publicAnswer(answers, url) : undefined

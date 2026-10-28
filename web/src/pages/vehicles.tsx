@@ -26,7 +26,7 @@ export default function VehiclesPage() {
       (availability === "All" || v.availability.startsWith(availability)) &&
       `${v.name} ${v.faction} ${v.role} ${v.description}`.toLowerCase().includes(query.trim().toLowerCase())
   )
-  const selected = shown.find((v) => v.id === selectedId) ?? shown[0]
+  const selected = shown.find((v) => v.id === selectedId) ?? shown[0] ?? VEHICLES.find((v) => v.id === selectedId)!
   return (
     <div className="topo">
       <section className="mx-auto max-w-6xl px-4 pt-12 pb-24 sm:px-6">
@@ -119,7 +119,7 @@ export default function VehiclesPage() {
             )}
           </div>
           {selected && (
-            <article aria-label="Selected vehicle" className="min-w-0 lg:sticky lg:top-24">
+            <article hidden={shown.length === 0} aria-label="Selected vehicle" className="min-w-0 lg:sticky lg:top-24">
               <div className="mb-5 flex items-start justify-between gap-4">
                 <div>
                   <p className="font-mono text-[10px] tracking-[0.16em] text-primary uppercase">
@@ -130,11 +130,7 @@ export default function VehiclesPage() {
                   </h2>
                 </div>
               </div>
-              <VehiclePreview
-                key={selected.id}
-                vehicle={selected}
-                available={viewer.isPending ? null : viewer.data?.manual === 1}
-              />
+              <VehiclePreview vehicle={selected} available={viewer.isPending ? null : viewer.data?.manual === 2} />
               <div className="pt-6">
                 <p className="font-mono text-xs tracking-wider text-primary uppercase">{selected.role}</p>
                 <p className="mt-3 text-base leading-relaxed text-muted-foreground">{selected.description}</p>

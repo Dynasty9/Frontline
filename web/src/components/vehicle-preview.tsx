@@ -12,32 +12,42 @@ import type { Vehicle } from "@/lib/vehicles"
 
 export function VehiclePreview({ vehicle, available }: { vehicle: Vehicle; available: boolean | null }) {
   const frame = useRef<HTMLIFrameElement>(null)
-  const [ready, setReady] = useState(false)
-  const [failed, setFailed] = useState(false)
+  const [initialId] = useState(vehicle.id)
+  const [loaded, setLoaded] = useState(false)
+  const [shownId, setShownId] = useState<string | null>(null)
+  const ready = shownId === vehicle.id
+  const [failedId, setFailedId] = useState<string | null>(null)
+  const failed = failedId === vehicle.id && !ready
   const [attempt, setAttempt] = useState(0)
   useEffect(() => {
     if (!available) return
-    const timer = window.setTimeout(() => setFailed(true), 90_000)
     const onMessage = (event: MessageEvent) => {
-      if (
-        event.origin !== window.location.origin ||
-        event.source !== frame.current?.contentWindow ||
-        event.data?.type !== "frontline-model-ready" ||
-        event.data.key !== vehicle.id
-      )
-        return
-      window.clearTimeout(timer)
-      setReady(true)
-      setFailed(false)
+      if (event.origin !== window.location.origin || event.source !== frame.current?.contentWindow) return
+      if (event.data?.type === "frontline-model-loaded") setLoaded(true)
+      if (event.data?.type === "frontline-model-ready" && typeof event.data.key === "string") {
+        setShownId(event.data.key)
+        setFailedId(null)
+      }
     }
     window.addEventListener("message", onMessage)
     return () => {
-      window.clearTimeout(timer)
       window.removeEventListener("message", onMessage)
     }
+  }, [available])
+  useEffect(() => {
+    if (!loaded) return
+    frame.current?.contentWindow?.postMessage(
+      { type: "frontline-model", action: "select", key: vehicle.id },
+      window.location.origin
+    )
+  }, [loaded, vehicle.id])
+  useEffect(() => {
+    if (!available || ready) return
+    const timer = window.setTimeout(() => setFailedId(vehicle.id), 90_000)
+    return () => window.clearTimeout(timer)
     // A retry mounts a new frame, so its readiness timeout must restart too.
     // oxlint-disable-next-line react/exhaustive-effect-dependencies
-  }, [available, vehicle.id, attempt])
+  }, [available, ready, vehicle.id, attempt])
   const control = (action: string) =>
     frame.current?.contentWindow?.postMessage({ type: "frontline-model", action }, window.location.origin)
   return (
@@ -52,7 +62,7 @@ export function VehiclePreview({ vehicle, available }: { vehicle: Vehicle; avail
             // oxlint-disable-next-line react/iframe-missing-sandbox
             sandbox="allow-scripts allow-same-origin"
             className={`absolute inset-0 size-full ${ready ? "opacity-100" : "opacity-0"}`}
-            src={`/game/index.html?manual=${encodeURIComponent(vehicle.id)}`}
+            src={`/game/index.html?manual=${encodeURIComponent(initialId)}`}
             tabIndex={-1}
           />
         )}
@@ -77,8 +87,9 @@ export function VehiclePreview({ vehicle, available }: { vehicle: Vehicle; avail
               <Button
                 variant="outline"
                 onClick={() => {
-                  setFailed(false)
-                  setReady(false)
+                  setFailedId(null)
+                  setLoaded(false)
+                  setShownId(null)
                   setAttempt(attempt + 1)
                 }}
               >

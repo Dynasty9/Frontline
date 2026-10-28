@@ -89,15 +89,22 @@ func _ready() -> void:
 		get_tree().root.size_changed.disconnect(Settings.apply_ui_scale)
 		get_tree().root.content_scale_factor = 1.0
 		await get_tree().process_frame
-		field_manual.open("entry", String(args["web-manual"]))
 		if OS.has_feature("web"):
 			_model_callback = JavaScriptBridge.create_callback(func(values: Array):
-				if not values.is_empty() and values[0] is String:
+				if values.is_empty() or not values[0] is String:
+					return
+				if values[0] == "select" and values.size() > 1 and values[1] is String:
+					var key: String = values[1]
+					field_manual.open("entry", key)
+					await RenderingServer.frame_post_draw
+					JavaScriptBridge.eval("parent.postMessage({type: 'frontline-model-ready', key: %s}, location.origin)" % JSON.stringify(key))
+				else:
 					field_manual.control_model(String(values[0])))
 			JavaScriptBridge.get_interface("window").frontlineModelControl = _model_callback
-			JavaScriptBridge.eval("window.addEventListener('message', function(e) { if (e.origin === location.origin && e.source === parent && e.data && e.data.type === 'frontline-model') window.frontlineModelControl(e.data.action); });")
-			await RenderingServer.frame_post_draw
-			JavaScriptBridge.eval("parent.postMessage({type: 'frontline-model-ready', key: new URLSearchParams(location.search).get('manual')}, location.origin)")
+			JavaScriptBridge.eval("window.addEventListener('message', function(e) { if (e.origin === location.origin && e.source === parent && e.data && e.data.type === 'frontline-model') window.frontlineModelControl(e.data.action, e.data.key); });")
+			JavaScriptBridge.eval("parent.postMessage({type: 'frontline-model-loaded'}, location.origin)")
+		else:
+			field_manual.open("entry", String(args["web-manual"]))
 		set_process(false)
 		return
 	if not args.is_empty():
