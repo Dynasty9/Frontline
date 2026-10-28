@@ -31,6 +31,8 @@ var bone_picker: OptionButton
 var inspection_mode: OptionButton
 var bones_toggle: CheckButton
 var names_toggle: CheckButton
+var catalog_index := -1
+var catalog_until := 0.0
 
 func _animation_clips() -> Dictionary:
 	var clips := MocapCharacter.CLIPS.duplicate()
@@ -81,6 +83,8 @@ func _ready() -> void:
 	_build_inspection_ui()
 	_update_camera()
 	_select_clip(clip_keys.find("W2_Stand_Aim_Idle_v2"))
+	if "--record-catalog" in OS.get_cmdline_user_args():
+		_catalog_next()
 	for arg in OS.get_cmdline_user_args():
 		if arg.begins_with("--preview-clip="):
 			_select_clip(clip_keys.find(arg.trim_prefix("--preview-clip=")))
@@ -263,7 +267,22 @@ func _physics_process(dt: float) -> void:
 	clock_label.text = "%.2f / %.2f s     %.1fx" % [timeline.value, animation.length, speed_slider.value]
 	updating_timeline = false
 	if test_mode: _test_sequence()
+	if catalog_index >= 0 and time >= catalog_until:
+		_catalog_next()
 	if ("--source-preview" in OS.get_cmdline_user_args() or "--inspection-preview" in OS.get_cmdline_user_args()) and time > 3.0: get_tree().quit()
+
+func _catalog_next() -> void:
+	catalog_index += 1
+	if catalog_index == clip_keys.size():
+		print("CATALOG PASS clips=", catalog_index)
+		get_tree().quit()
+		return
+	_select_clip(catalog_index)
+	var seconds := maxf(2.0, _active_player().get_animation(selected).length) + 0.4
+	catalog_until = time + seconds
+	print("CATALOG %.2f %.2f %s" % [time, catalog_until, selected])
+	status.text = "CLIP %d / %d — %s\nIsolated playback; not proof of gameplay routing" % [catalog_index + 1, clip_keys.size(), selected]
+
 
 func _input(event: InputEvent) -> void:
 	# Automated screen-ray tests must not receive clicks intended for another

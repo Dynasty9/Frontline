@@ -2,6 +2,11 @@
 
 ## Current demo
 
+To record every locally installed clip once (at least two seconds per clip), run:
+`godot --path . --fixed-fps 30 --write-movie build/catalog.avi tests/mocap/viewer.tscn -- --swat-units --record-catalog`.
+The viewer labels each clip and prints its start/end times and `CATALOG PASS clips=N` on completion.
+This is isolated animation playback; vehicle entry, seating and other available clips are not necessarily routed into gameplay.
+
 Latest integration recording: `build/backstep-in-game-final.mp4` (8 seconds). A real server-controlled rifleman backs away from a wall, settles, and goes prone. The rendered regression measures 0.980 m retreat, 0.000093 m/s fully planted support drift and a 0.050 m maximum sampled joint step. Both character rigs also pass the isolated backstep fixture. Blocked rear paths and cancelled orders are covered without imported assets.
 
 The default battle clock remains 30 Hz. Opt-in skinned characters use 120 Hz physics while simulation remains 30 Hz. The active inspection camera now controls detail selection, and animation movement uses the interpolated rendered position to avoid stepping through false sideways poses when reversing. Earlier battle/controller recordings and measurements below are development history, not final validation of this merge. WAN latency/loss and final art quality remain unverified.
