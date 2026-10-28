@@ -10,6 +10,7 @@ var _pt := 0
 var _team_structs: Array = []
 var _ts_t := 0
 var _map_labels := {}
+var _marker_offsets := {}
 var _label_epoch := 0
 var _groups_at := -1000
 const CLOSE_Z := 22.0
@@ -17,7 +18,7 @@ const FAR_Z := 42.0
 var _refresh_left := 0.0
 var _refresh_view := Transform3D.IDENTITY
 var _refresh_pointer := Vector2.INF
-static var _contact_shape := PackedVector2Array()
+static var _contact_mesh: ArrayMesh
 
 
 func _input(event: InputEvent) -> void:
@@ -1031,11 +1032,8 @@ func _nato_markers(cam: Camera3D, lt: int, a: float) -> void:
 		# squads bunched together: nudge the symbols apart, with a leader line
 		# down to where the squad really is
 		var foot := Rect2(sp + Vector2(-24, -14), Vector2(62, 46))
-		var nudged := Vector2.ZERO
-		for off in [Vector2.ZERO, Vector2(0, -38), Vector2(46, -22), Vector2(-46, -22), Vector2(0, -76), Vector2(92, -22), Vector2(-92, -22), Vector2(46, -60), Vector2(-46, -60)]:
-			if not _overlaps(Rect2(foot.position + off, foot.size)):
-				nudged = off
-				break
+		var nudged := _marker_offset(int(sid), foot)
+		_marker_offsets[int(sid)] = nudged
 		_place_rect(Rect2(foot.position + nudged, foot.size))
 		if nudged != Vector2.ZERO:
 			var ground := cam.unproject_position(g["c"] as Vector3)
@@ -1118,6 +1116,18 @@ func _nato_markers(cam: Camera3D, lt: int, a: float) -> void:
 			draw_arc(vp, 21.0, 0.0, TAU, 28, HudCoop._a(Net.player_color(vby), 0.55 * a), 1.3, true)
 			_owner_tab(vp + Vector2(6.0, -22.5), vby, a)
 
+func _marker_offset(sid: int, foot: Rect2) -> Vector2:
+	# Keep a clear placement as units move, avoiding jitter and repeated searches.
+	if _marker_offsets.has(sid):
+		var previous: Vector2 = _marker_offsets[sid]
+		if not _overlaps(Rect2(foot.position + previous, foot.size)):
+			return previous
+	for offset in [Vector2.ZERO, Vector2(0, -38), Vector2(46, -22), Vector2(-46, -22), Vector2(0, -76), Vector2(92, -22), Vector2(-92, -22), Vector2(46, -60), Vector2(-46, -60)]:
+		if not _overlaps(Rect2(foot.position + offset, foot.size)):
+			return offset
+	return Vector2.ZERO
+
+
 ## Retain shaped text and drawing commands while the camera moves its anchor.
 class MapLabel extends Node2D:
 	var text := ""
@@ -1154,6 +1164,9 @@ func _map_text(key: Vector2i, anchor: Vector2, text: String, face: Font, pixels:
 
 
 func _finish_map_labels() -> void:
+	for sid in _marker_offsets.keys():
+		if not _groups.has(sid):
+			_marker_offsets.erase(sid)
 	for key in _map_labels.keys():
 		var label: MapLabel = _map_labels[key]
 		label.visible = label.epoch == _label_epoch
@@ -1222,15 +1235,22 @@ func _command_links(cam: Camera3D, a: float) -> void:
 func _contact_burst(c: Vector2, a: float) -> void:
 	if not c.is_finite() or absf(c.x) > 19990.0 or absf(c.y) > 19990.0:
 		return
-	if _contact_shape.is_empty():
+	if _contact_mesh == null:
+		var shape := PackedVector2Array()
 		for i in 16:
 			var angle := TAU * i / 16.0
-			_contact_shape.append(Vector2(cos(angle), sin(angle)) * (1.0 if i % 2 == 0 else 0.45))
+			shape.append(Vector2(cos(angle), sin(angle)) * (1.0 if i % 2 == 0 else 0.45))
+		var arrays := []
+		arrays.resize(Mesh.ARRAY_MAX)
+		arrays[Mesh.ARRAY_VERTEX] = shape
+		arrays[Mesh.ARRAY_INDEX] = Geometry2D.triangulate_polygon(shape)
+		_contact_mesh = ArrayMesh.new()
+		_contact_mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays, [], {}, Mesh.ARRAY_FLAG_USE_2D_VERTICES)
 	var t := Time.get_ticks_msec() / 1000.0
 	var r := 6.5 + sin(t * 11.0) * 1.3
-	# The same star pulses and turns; its vertices need not be rebuilt per squad.
+	# Triangulate once; every firing squad shares the same pulsing star.
 	var transform := Transform2D(t, Vector2(r, r), 0.0, c)
-	draw_colored_polygon(transform * _contact_shape, Color(1.0, 0.55, 0.2, 0.95 * a))
+	draw_mesh(_contact_mesh, null, transform, Color(1.0, 0.55, 0.2, 0.95 * a))
 
 func _hover_card(s: Soldier, mp: Vector2) -> void:
 	var nm := s.display_name()

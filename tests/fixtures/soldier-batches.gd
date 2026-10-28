@@ -1,5 +1,14 @@
 extends Node
 
+class TrackedSoldier extends Soldier:
+	var frames := {}
+	var elapsed := 0.0
+	func _view_process(dt: float) -> void:
+		var frame := Engine.get_process_frames()
+		assert(not frames.has(frame), "A registered soldier must update only once per frame")
+		frames[frame] = true
+		elapsed += dt
+
 func _ready() -> void:
 	var world := World.new()
 	var view := SoldierViewBatch.new()
@@ -53,6 +62,29 @@ func _ready() -> void:
 	world.soldiers.clear()
 	a.free()
 	b.free()
+	view.free()
+	world.free()
+	world = World.new()
+	view = SoldierViewBatch.new()
+	view.world = world
+	world.soldier_view = view
+	add_child(view)
+	var tracked := TrackedSoldier.new()
+	tracked.world = world
+	tracked.eid = 1
+	world._register(tracked)
+	add_child(tracked)
+	view._warmup.clear()
+	assert(not tracked.is_processing(), "The shared view loop replaces individual frame callbacks")
+	for i in 4:
+		await get_tree().process_frame
+	assert(tracked.frames.size() >= 2 and tracked.elapsed > 0.0)
+	var updates := tracked.frames.size()
+	tracked.gone = true
+	for i in 2:
+		await get_tree().process_frame
+	assert(tracked.frames.size() == updates, "Despawned soldiers must stop receiving view updates")
+	tracked.free()
 	view.free()
 	world.free()
 	print("SOLDIER_BATCHES passed")

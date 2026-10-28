@@ -1,7 +1,7 @@
 extends Node
 
 class VisibleCombat extends Combat:
-	func can_see_from(_eye: Vector3, _entity: Entity, _exclude: Array) -> bool:
+	func can_see_from(_eye: Vector3, _entity: Entity, _exclude: Array, _cache_obstruction := true) -> bool:
 		return true
 
 class Gunner extends Soldier:

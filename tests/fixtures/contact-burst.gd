@@ -36,7 +36,9 @@ func _ready() -> void:
 		if DisplayServer.get_name() != "headless":
 			await RenderingServer.frame_post_draw
 			get_viewport().get_texture().get_image().save_png("res://build/contact-burst-%s.png" % reference)
-	assert(HudOverlay._contact_shape.size() == 16)
+	var shape = HudOverlay._contact_mesh.surface_get_arrays(0)[Mesh.ARRAY_VERTEX]
+	assert(shape.size() == 16)
+	assert(HudOverlay._contact_mesh.surface_get_array_index_len(0) == 42)
 	for step in 100:
 		var t := step * 0.373
 		var r := 6.5 + sin(t * 11.0) * 1.3
@@ -45,7 +47,8 @@ func _ready() -> void:
 		for j in 16:
 			var angle := TAU * j / 16.0 + t
 			var expected := c + Vector2(cos(angle), sin(angle)) * (r if j % 2 == 0 else r * 0.45)
-			assert(expected.distance_to(transform * HudOverlay._contact_shape[j]) < 0.00004)
+			var point := Vector2(shape[j].x, shape[j].y)
+			assert(expected.distance_to(transform * point) < 0.00004)
 	print("CONTACT_BURST passed")
 	while Music._task >= 0:
 		await get_tree().process_frame

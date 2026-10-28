@@ -4,6 +4,11 @@ class Overlay extends HudOverlay:
 	var draws := 0
 	func _draw() -> void:
 		draws += 1
+		_contact_burst(Vector2(40, 40), 1.0)
+		var first := _contact_mesh
+		_contact_burst(Vector2(80, 40), 0.5)
+		assert(_contact_mesh == first, "Firing markers must reuse their triangulated geometry")
+		assert(first.surface_get_array_len(0) == 16 and first.surface_get_array_index_len(0) == 42)
 
 class HudStub extends Hud:
 	func _ready() -> void:
@@ -35,9 +40,20 @@ func _ready() -> void:
 	overlay._label_epoch += 1
 	overlay._finish_map_labels()
 	assert(not label.visible)
+	var footprint := Rect2(100, 100, 30, 20)
+	overlay._clear_placed()
+	overlay._place_rect(footprint)
+	var offset := overlay._marker_offset(7, footprint)
+	assert(offset == Vector2(0, -38))
+	overlay._marker_offsets[7] = offset
+	overlay._clear_placed()
+	assert(overlay._marker_offset(7, footprint) == offset, "Clear counters keep their placement instead of jittering")
+	overlay._place_rect(Rect2(footprint.position + offset, footprint.size))
+	assert(overlay._marker_offset(7, footprint) == Vector2.ZERO, "New overlaps must find a clear placement")
 	overlay._groups.clear()
 	overlay._finish_map_labels()
 	assert(overlay._map_labels.is_empty() and label.is_queued_for_deletion())
+	assert(overlay._marker_offsets.is_empty(), "Removed squads must release their placement cache")
 	await get_tree().process_frame
 	overlay.free()
 	var refreshed := Overlay.new()
