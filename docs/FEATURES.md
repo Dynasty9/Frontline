@@ -856,7 +856,10 @@ catalogue entry in `MissionList.LIST`, a setup function and an autopilot functio
   distance behind one going its way, drives round one standing in the road and passes oncoming traffic on
   the right; supply trucks keep to the right-hand side of the road. Hung up on something, it backs off, turns
   and plans again. (Trucks are slower on the road than they were, so each load carries more.)
-- **Tank gun handling.** Tank drivers build into turns. Turrets accelerate into a traverse and brake onto
+- **Vehicle gun handling.** Old tanks, modern MBTs, IFVs, AA mounts, artillery and aircraft
+  have distinct traverse, acceleration and braking profiles ([rates and complete roster audit](VEHICLE_HANDLING.md)).
+  Mounted machine guns must traverse onto the bearing before firing. Vehicle and gunship shots leave the
+  actual model barrels, including separately positioned gunship guns. Tank drivers build into turns. Turrets accelerate into a traverse and brake onto
   the target, holding their world bearing as the hull turns underneath. The gunner holds a steady aim
   for 0.3 seconds before firing, and reacquires when switching targets. Without a target, the turret
   returns forward by the shortest arc.

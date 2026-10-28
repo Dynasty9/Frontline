@@ -13,6 +13,8 @@ var vkind := "tank"
 var vdef: Dictionary = {}
 var turret_yaw := 0.0
 var _traverse := 0.0
+var _motion_profile := {}
+var _stabilization_rate := 0.0
 var _aim_time := 0.0
 var _aim_target := 0
 var speed := 0.0
@@ -273,8 +275,18 @@ func turret_pos() -> Vector3:
 	return position + Vector3(0, float(vdef.get("gun_h", 2.2)), 0)
 
 
+func weapon_muzzle(weapon: String) -> Vector3:
+	var local := VehicleSockets.point(vkind, weapon, turret_yaw)
+	if local == Vector3.INF:
+		return turret_pos() + Defs.dir_of(rotation.y + turret_yaw) * (4.2 if weapon == "gun" else 1.0)
+	var pose := Basis(Vector3.UP, rotation.y)
+	if is_heli():
+		pose *= Basis.from_euler(Vector3(flight_pitch, 0, flight_roll))
+	return position + pose * local
+
+
 func barrel_tip() -> Vector3:
-	return turret_pos() + Defs.dir_of(rotation.y + turret_yaw) * 4.2
+	return weapon_muzzle("gun")
 
 
 # --- orders --------------------------------------------------------------------------
@@ -535,6 +547,7 @@ func sim(dt: float) -> void:
 		else:
 			knock_v = Vector3.ZERO
 		knock_v = knock_v.move_toward(Vector3.ZERO, 7.0 * dt)
+	_stabilization_rate = 0.0
 	var b := base()
 	if b == "supply":
 		_truck_tick(dt)
@@ -566,7 +579,10 @@ func sim(dt: float) -> void:
 		var hull_yaw := rotation.y
 		_drive(dt)
 		if b == "tank" and _target_ok():
-			turret_yaw = wrapf(turret_yaw - wrapf(rotation.y - hull_yaw, -PI, PI), -PI, PI)
+			var available := maxf(0.0, float(motion_profile().traverse) - absf(_traverse)) * dt
+			var correction := clampf(wrapf(rotation.y - hull_yaw, -PI, PI), -available, available)
+			turret_yaw = wrapf(turret_yaw - correction, -PI, PI)
+			_stabilization_rate = absf(correction) / maxf(dt, 0.00001)
 		_dismount_check(dt)
 		if vdef.has("art"):
 			_arty_tick(dt)
@@ -601,14 +617,16 @@ var yaw_rate := 0.0  # how fast it's turning (rad/s, + to the left)
 var _rev := false  # backing up to where it's going
 
 
-## [acceleration, braking (m/s²), cornering grip (m/s² sideways), reverse speed (fraction)]
+## Resolve one handling/actuator profile per vehicle, outside the tick hot path.
+func motion_profile() -> Dictionary:
+	if _motion_profile.is_empty():
+		_motion_profile = VehicleMotion.profile(vkind, vdef)
+	return _motion_profile
+
+
+## [acceleration, braking (m/s²), cornering grip (m/s² sideways), reverse fraction]
 func _handling() -> Array:
-	match weight():
-		0:
-			return [3.0, 6.5, 4.0, 0.4]
-		1:
-			return [1.9, 5.0, 3.0, 0.35]
-	return [1.2, 4.0, 2.2, 0.32]
+	return motion_profile().handling
 
 
 func _wheelbase() -> float:
@@ -761,9 +779,9 @@ func _follow(pts: PackedVector3Array, i: int, dt: float, vmax: float, may_revers
 		if absf(e) > 0.9:
 			pivot = true
 			v_t = minf(v_t, 0.8)
-		var ymax: float = float(vdef.turn) * (1.0 - 0.45 * clampf(absf(speed) / maxf(vmax, 0.1), 0.0, 1.0))
-		var turn := clampf(signf(e) * float(vdef.turn) * 0.75 if pivot else kappa * absf(speed), -ymax, ymax)
-		yaw_rate = move_toward(yaw_rate, turn, float(vdef.turn) * dt) if base() == "tank" else turn
+		var ymax: float = float(motion_profile().hull_turn) * (1.0 - 0.45 * clampf(absf(speed) / maxf(vmax, 0.1), 0.0, 1.0))
+		var turn := clampf(signf(e) * float(motion_profile().hull_turn) * 0.75 if pivot else kappa * absf(speed), -ymax, ymax)
+		yaw_rate = move_toward(yaw_rate, turn, float(motion_profile().hull_accel) * dt)
 	else:
 		# steered wheels: no tighter than full lock; slow right down for a hairpin
 		var wb := _wheelbase()
@@ -771,7 +789,10 @@ func _follow(pts: PackedVector3Array, i: int, dt: float, vmax: float, may_revers
 		if absf(e) > 1.0:
 			# the road doubles back: round on full lock, as fast as the tyres hold it
 			v_t = minf(v_t, sqrt(float(h[2]) / kmax))
-		yaw_rate = clampf(kappa, -kmax, kmax) * absf(speed)
+		var turn := clampf(kappa, -kmax, kmax) * absf(speed)
+		yaw_rate = move_toward(yaw_rate, turn, float(motion_profile().hull_accel) * dt)
+		# A wheeled hull cannot pivot as its speed crosses zero.
+		yaw_rate = clampf(yaw_rate, -kmax * absf(speed), kmax * absf(speed))
 	if not _rev:
 		v_t = minf(minf(v_t, _avoid_cap), _traffic_limit(Defs.dir_of(rotation.y), v_t))
 	var want := -v_t if _rev else v_t
@@ -839,7 +860,11 @@ func _drive(dt: float) -> void:
 	if _unstick_t > 0.0:
 		_unstick_t -= dt
 		speed = move_toward(speed, -2.6, 8.0 * dt)
-		rotation.y += _unstick_dir * float(vdef.turn) * 0.5 * dt
+		yaw_rate = move_toward(yaw_rate, _unstick_dir * float(motion_profile().hull_turn) * 0.5, float(motion_profile().hull_accel) * dt)
+		if not is_tracked():
+			var limit := absf(speed) * tan(_max_steer()) / _wheelbase()
+			yaw_rate = clampf(yaw_rate, -limit, limit)
+		rotation.y += yaw_rate * dt
 		velocity = Defs.dir_of(rotation.y) * speed
 		var bp := position + velocity * dt
 		if world.nav.vkind_at(bp) != Nav.SOLID:
@@ -881,7 +906,10 @@ func _face(dt: float) -> void:
 	var e := wrapf(face_yaw - rotation.y, -PI, PI)
 	if absf(e) < 0.12:
 		return
-	var step := clampf(e, -float(vdef.turn) * 0.6 * dt, float(vdef.turn) * 0.6 * dt)
+	var next := VehicleMotion.slew(rotation.y, yaw_rate, face_yaw,
+		float(motion_profile().hull_turn) * 0.6, float(motion_profile().hull_accel), dt)
+	var step := wrapf(next.x - rotation.y, -PI, PI)
+	yaw_rate = next.y
 	rotation.y += step
 	if base() != "tank":
 		turret_yaw -= step  # tanks stabilize across every driving manoeuvre in sim()
@@ -969,35 +997,28 @@ func _target_ok() -> bool:
 	return true
 
 
+func _slew_turret(wanted: float, dt: float, returning := false) -> void:
+	var p := motion_profile()
+	var next := VehicleMotion.slew(turret_yaw, _traverse, wanted,
+		maxf(0.0, float(p.traverse) * (0.5 if returning else 1.0) - _stabilization_rate), float(p.traverse_accel), dt)
+	turret_yaw = next.x
+	_traverse = next.y
+
+
 func _turret_tick(dt: float) -> void:
-	if base() == "tank":
-		var has_target := _target_ok()
-		var want := Defs.yaw_of(Defs.flat(target.position - position)) - rotation.y if has_target else 0.0
-		var err := wrapf(want - turret_yaw, -PI, PI)
-		# The traverse motor builds speed, then brakes before reaching the gunner's bearing.
-		var rate := 0.7 if has_target else 0.35
-		_traverse = move_toward(_traverse, signf(err) * minf(rate, sqrt(2.0 * absf(err))), dt)
-		var step := _traverse * dt
-		if signf(step) == signf(err) and absf(step) >= absf(err):
-			step = err
-			_traverse = 0.0
-		turret_yaw = wrapf(turret_yaw + step, -PI, PI)
-		var target_id := target.eid if has_target else 0
-		if target_id != _aim_target:
-			_aim_time = 0.0
-			_aim_target = target_id
-		# Hold a firing solution briefly; crossing a target during a slew isn't a shot.
-		if has_target and _aim_err() < 0.025 and absf(_traverse) < 0.12:
-			_aim_time += dt
-		else:
-			_aim_time = 0.0
-		return
-	if not _target_ok():
-		turret_yaw = move_toward(turret_yaw, 0.0, dt * 0.6)
-		return
-	var want := Defs.yaw_of(Defs.flat(target.position - position)) - rotation.y
-	var rate := 1.2 if vdef.cannon else 3.0
-	turret_yaw += clampf(wrapf(want - turret_yaw, -PI, PI), -rate * dt, rate * dt)
+	var has_target := _target_ok()
+	var want := Defs.yaw_of(Defs.flat(target.position - position)) - rotation.y if has_target else 0.0
+	if base() == "attack_heli":
+		want = clampf(wrapf(want, -PI, PI), -deg_to_rad(110.0), deg_to_rad(110.0))
+	_slew_turret(want, dt, not has_target)
+	var target_id := target.eid if has_target else 0
+	if target_id != _aim_target:
+		_aim_time = 0.0
+		_aim_target = target_id
+	if has_target and _aim_err() < 0.025 and absf(_traverse) < 0.12:
+		_aim_time += dt
+	else:
+		_aim_time = 0.0
 
 
 func _aim_err() -> float:
@@ -1034,8 +1055,7 @@ func _fire_tick() -> void:
 		if mg_burst <= 0:
 			mg_burst = world.rng.randi_range(w.burst.x, w.burst.y)
 		mg_burst -= 1
-		var roof := is_light() or gs
-		var muzzle := turret_pos() + Defs.dir_of(rotation.y + turret_yaw) * (0.8 if roof else 2.0) + Vector3(0, (-0.1 if gs else 0.2) if roof else -0.3, 0)
+		var muzzle := weapon_muzzle("mg")
 		var aim: Vector3 = target.exposed_points()[0] if target is Soldier else target.center_point()
 		world.combat.fire_bullet(self, muzzle, aim, target, w, 1.0)
 		last_fire_t = world.time
@@ -1080,7 +1100,7 @@ func _arty_tick(dt: float) -> void:
 	var a: Dictionary = vdef.art
 	if _salvo > 0:
 		var want := Defs.yaw_of(Defs.flat(_salvo_at - position)) - rotation.y
-		turret_yaw += clampf(wrapf(want - turret_yaw, -PI, PI), -dt * 0.9, dt * 0.9)
+		_slew_turret(want, dt)
 		_lay_yaw = want
 		_salvo_t -= dt
 		if _salvo_t <= 0.0 and absf(wrapf(want - turret_yaw, -PI, PI)) < 0.06:
@@ -1274,7 +1294,7 @@ func _lift_tick(dt: float) -> void:
 		scan_t = 0.5
 		_scan()
 	if _target_ok() and position.y > 3.0:
-		turret_yaw = Defs.yaw_of(Defs.flat(target.position - position)) - rotation.y  # door guns cover all round
+		_turret_tick(dt)  # traverse before the door gunner can fire
 		_fire_tick()
 	match lift_phase:
 		0:
@@ -1370,9 +1390,12 @@ func _uav_tick(dt: float) -> void:
 	position += velocity * dt
 	position.y = move_toward(position.y, alt, 4.0 * dt)
 	if velocity.length() > 0.3:
-		rotation.y = lerp_angle(rotation.y, Defs.yaw_of(velocity), minf(1.0, 3.0 * dt))
+		var p := motion_profile()
+		var next := VehicleMotion.slew(rotation.y, yaw_rate, Defs.yaw_of(velocity), float(p.hull_turn), float(p.hull_accel), dt)
+		rotation.y = next.x
+		yaw_rate = next.y
 	if _target_ok():
-		turret_yaw = Defs.yaw_of(Defs.flat(target.position - position)) - rotation.y
+		_turret_tick(dt)
 		_fire_tick()
 
 
@@ -2636,7 +2659,12 @@ func muzzle_world(main_gun := false) -> Vector3:
 	if _vm == null or model == null or not model.is_visible_in_tree():
 		return Vector3.INF
 	var tip: Node3D = _vm.gun_tip if main_gun else _vm.mg_tip
-	return tip.global_position if tip else Vector3.INF
+	if tip == null:
+		return Vector3.INF
+	# Effects can arrive before this frame's vehicle drawing callback.
+	if turret:
+		turret.rotation.y = turret_yaw
+	return tip.global_position
 
 
 func _build_model() -> void:

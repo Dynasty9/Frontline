@@ -1513,17 +1513,20 @@ static func _blackfish(k: VehicleModels, team: int, armed: bool) -> void:
 			rod(k, m, Vector3(-1.75, 1.98, -6.15) + o, Vector3(-2.85, 1.9, -6.15) + o, 0.024, "gunmetal_w", null, 6, -1.0, false)
 		k._cyl(m, 0.11, 0.11, 0.06, Vector3(-2.55, 1.92, -6.15), Vector3(0, 0, PI / 2 - 0.07), "gunmetal_w", null, 10, false)
 		k.mg_tip = k._tip(m, Vector3(-2.9, 1.9, -6.15))
+		k.weapon_tips["ac25"] = k.mg_tip
 		# the 40 mm Bofors: a mount on the side, the long barrel and flash hider
 		k._box(m, Vector3(0.24, 0.8, 0.8), Vector3(-1.58, 2.55, 2.6), A, c.darkened(0.15))
 		rod(k, m, Vector3(-1.6, 2.55, 2.6), Vector3(-2.2, 2.54, 2.6), 0.17, "gunmetal_w", null, 12)
 		rod(k, m, Vector3(-1.6, 2.55, 2.6), Vector3(-3.7, 2.5, 2.6), 0.085, "gunmetal_w", null, 10)
 		rod(k, m, Vector3(-3.5, 2.5, 2.6), Vector3(-4.0, 2.49, 2.6), 0.12, "gunmetal_w", null, 10, 0.08)
+		k.weapon_tips["ac40"] = k._tip(m, Vector3(-4.01, 2.49, 2.6))
 		# the 105 mm howitzer: a mantlet plate, the recoil sleeve, the barrel and muzzle brake
 		k._box(m, Vector3(0.26, 1.2, 1.4), Vector3(-1.58, 2.55, 5.4), A, c.darkened(0.15))
 		rod(k, m, Vector3(-1.6, 2.55, 5.4), Vector3(-4.4, 2.48, 5.4), 0.15, "gunmetal_w", null, 12)
 		rod(k, m, Vector3(-1.6, 2.55, 5.4), Vector3(-2.6, 2.53, 5.4), 0.26, "gunmetal_w", null, 12)
 		k._box(m, Vector3(0.5, 0.38, 0.42), Vector3(-4.55, 2.47, 5.4), "gunmetal_w")
 		k.gun_tip = k._tip(m, Vector3(-4.82, 2.47, 5.4))
+		k.weapon_tips["ac105"] = k.gun_tip
 		# a second sensor turret on the gun side
 		k._add(m, Res.sphere(0.3, 14), "paint", Color(0.5, 0.51, 0.5), Vector3(-1.25, 0.95, -7.6))
 		k._add(m, Res.sphere(0.13, 10), "glass", null, Vector3(-1.5, 0.9, -7.6), Vector3.ZERO, Vector3(0.5, 1, 1))
