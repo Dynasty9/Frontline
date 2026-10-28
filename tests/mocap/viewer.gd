@@ -243,8 +243,7 @@ func _physics_process(dt: float) -> void:
 	if not ready_to_run or picker == null: return
 	time += dt
 	var step := dt * speed_slider.value if playing else 0.0
-	if _is_native(): soldier.pose_native(step, selected)
-	else: soldier.pose(step, _clip_speed(), selected)
+	_pose_preview(step)
 	soldier.capture_motion(dt)
 	soldier.weapon.visible = soldier.hold_weapon
 	if preview_source: soldier.source.update_weapon()
@@ -271,6 +270,10 @@ func _physics_process(dt: float) -> void:
 	if catalog_index >= 0 and time >= catalog_until:
 		_catalog_next()
 	if ("--source-preview" in OS.get_cmdline_user_args() or "--inspection-preview" in OS.get_cmdline_user_args()) and time > 3.0: get_tree().quit()
+
+func _pose_preview(step: float) -> void:
+	if _is_native(): soldier.pose_native(step, selected)
+	else: soldier.pose(step, _clip_speed(), selected)
 
 func _catalog_next() -> void:
 	catalog_index += 1
