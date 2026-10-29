@@ -75,7 +75,7 @@ var _painted_roads: Array = [[], [], []]
 var _road_meshes: Array = [null, null, null]
 var pings: Array = []  # [pos, expire, kind]
 var winner := -1
-var rng := RandomNumberGenerator.new()
+var rng := SimulationRandom.new()
 var focused := false
 var director: Director
 var structure_view: StructureView
@@ -196,6 +196,7 @@ func build() -> void:
 		_load_mark("navigation grids ready")
 		nav.terrain = terrain
 		combat = Combat.new(self)
+		combat.enable_native_collision()
 		rules = Rules.new(self)
 		battle = BattleStats.new(self)
 		fires = Fires.new(self)
@@ -365,6 +366,8 @@ func spawn(kind: String, props: Dictionary) -> Entity:
 	_register(e)
 	add_child(e)
 	e.on_spawned()
+	if combat and (e is Structure or e is Vehicle):
+		combat.dirty_collision(e.eid)
 	if e is Vehicle and battle:
 		battle.vehicle_fielded(e)
 	if e is Structure:
@@ -423,6 +426,8 @@ func refresh_smoke_projectile(e: Projectile) -> void:
 func despawn(e: Entity) -> void:
 	if e == null or e.gone:
 		return
+	if combat and (e is Structure or e is Vehicle):
+		combat.retire_collision(e.eid)
 	e.gone = true
 	entities.erase(e.eid)
 	for pending: Dictionary in _unrevealed.values():
@@ -758,6 +763,7 @@ func _physics_process(dt: float) -> void:
 	if _reveal_t <= 0.0:
 		_reveal_t = 0.4
 		_reveal_pass()
+	combat.finish_tick()
 	tp = _p("team + reveal", tp)
 	tick_ms = lerpf(tick_ms, (Time.get_ticks_usec() - t0) / 1000.0, 0.05)
 	prof["TOTAL"] = tick_ms

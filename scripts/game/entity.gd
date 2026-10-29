@@ -31,9 +31,17 @@ var hit_by: Array = []  # (server) the last enemy to hurt it: [owner, team, unit
 
 
 func _ready() -> void:
+	if srv and (self is Structure or self is Vehicle):
+		set_notify_transform(true)
+		set_notify_local_transform(true)
 	# Entity frame callbacks only draw; authority advances them through sim().
 	if world != null and not world.has_view:
 		set_process(false)
+
+
+func _notification(what: int) -> void:
+	if (what == NOTIFICATION_TRANSFORM_CHANGED or what == NOTIFICATION_LOCAL_TRANSFORM_CHANGED) and srv and world != null and world.combat:
+		world.combat.dirty_collision(eid)
 
 
 func ekind() -> String:

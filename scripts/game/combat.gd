@@ -11,10 +11,98 @@ var _space: PhysicsDirectSpaceState3D
 var _space_frame := -1
 var _reveal := {}  # eid -> time
 var _blocked_sight := {}
+var _collision: RefCounted
+var _collision_dirty := {}
+var _collision_bodies := {}
+var _collision_rids := {}
+var _rid_entities := {}
+var _collision_excluded := PackedInt64Array()
+var _collision_retired: Array[int] = []
 
 
 func _init(w: World) -> void:
 	world = w
+
+
+func enable_native_collision() -> void:
+	if ClassDB.class_exists("CollisionIndexCore") and not world.settings.get("gdscript_collision", false):
+		_collision = ClassDB.instantiate("CollisionIndexCore")
+
+
+func dirty_collision(eid: int) -> void:
+	if _collision and not _collision_retired.has(eid):
+		_collision_dirty[eid] = true
+
+
+## A destroyed body still shields later shots in this tick, as in Godot's deferred removal.
+func retire_collision(eid: int) -> void:
+	_sync_collision()
+	if _collision and _collision_bodies.has(eid):
+		_collision_dirty.erase(eid)
+		_collision_retired.append(eid)
+
+
+func finish_tick() -> void:
+	for eid in _collision_retired:
+		remove_collision(eid)
+	_collision_retired.clear()
+
+
+func remove_collision(eid: int) -> void:
+	_collision_dirty.erase(eid)
+	if _collision:
+		_collision.remove_body(eid)
+	if _collision_rids.has(eid):
+		_rid_entities.erase(_collision_rids[eid])
+		_collision_rids.erase(eid)
+	_collision_bodies.erase(eid)
+
+
+func _use_godot_collision(reason: String) -> void:
+	push_warning(reason + "; using Godot collision for this battle")
+	_collision = null
+	_collision_dirty.clear()
+	_collision_bodies.clear()
+	_collision_rids.clear()
+	_rid_entities.clear()
+
+
+func _sync_collision() -> void:
+	if _collision_dirty.is_empty():
+		return
+	var pending := _collision_dirty
+	_collision_dirty = {}
+	for id: int in pending:
+		var e := world.entity(id)
+		if e == null or e.gone or not (e is Structure or e is Vehicle):
+			remove_collision(id)
+			continue
+		var body: StaticBody3D = e.get("body")
+		if body == null or not body.is_inside_tree() or (body.collision_layer & MASK) == 0:
+			remove_collision(id)
+			continue
+		var rows := PackedFloat32Array()
+		for owner: int in body.get_shape_owners():
+			var shape = body.shape_owner_get_owner(owner)
+			if not shape is CollisionShape3D or shape.disabled:
+				continue
+			if not shape.shape is BoxShape3D:
+				_use_godot_collision("Native collision requires battlefield box geometry")
+				return
+			var changed := dirty_collision.bind(id)
+			if not shape.shape.changed.is_connected(changed):
+				shape.shape.changed.connect(changed)
+			var t: Transform3D = shape.global_transform
+			var h: Vector3 = shape.shape.size * 0.5
+			rows.append_array(PackedFloat32Array([t.origin.x,t.origin.y,t.origin.z,t.basis.x.x,t.basis.x.y,t.basis.x.z,t.basis.y.x,t.basis.y.y,t.basis.y.z,t.basis.z.x,t.basis.z.y,t.basis.z.z,h.x,h.y,h.z,body.shape_owner_get_shape_index(owner, 0)]))
+		if not _collision.replace_body(id, rows):
+			_use_godot_collision("Invalid native battlefield collision geometry")
+			return
+		_collision_bodies[id] = body
+		if _collision_rids.has(id):
+			_rid_entities.erase(_collision_rids[id])
+		_collision_rids[id] = body.get_rid()
+		_rid_entities[body.get_rid()] = id
 
 
 func space() -> PhysicsDirectSpaceState3D:
@@ -30,6 +118,18 @@ var _no_ex: Array[RID] = []
 
 
 func ray(from: Vector3, to: Vector3, ex: Array = []) -> Dictionary:
+	if _collision:
+		_sync_collision()
+		if _collision:
+			_collision_excluded.clear()
+			for rid: RID in ex:
+				if _rid_entities.has(rid):
+					_collision_excluded.append(int(_rid_entities[rid]))
+			var hit: PackedFloat64Array = _collision.ray(from, to, _collision_excluded)
+			if hit.is_empty():
+				return {}
+			var body: StaticBody3D = _collision_bodies[int(hit[0])]
+			return {"collider": body, "collider_id": body.get_instance_id(), "rid": body.get_rid(), "shape": int(hit[1]), "position": Vector3(hit[2],hit[3],hit[4]), "normal": Vector3(hit[5],hit[6],hit[7])}
 	# one query object reused for every ray (hundreds a tick)
 	_q.from = from
 	_q.to = to
@@ -76,6 +176,11 @@ func can_see_from(eye: Vector3, e: Entity, ex: Array, cache_obstruction := true)
 	var pts := e.exposed_points()
 	# Walking changes the exact sight line every tick; recording those misses costs more than casting.
 	if not cache_obstruction:
+		if _collision:
+			for pt: Vector3 in pts:
+				if ray(eye, pt, ex2).is_empty() and not smoke_blocks(eye, pt):
+					return true
+			return false
 		# One target shares the origin and exclusions across all exposed points.
 		_q.from = eye
 		_q.collision_mask = MASK

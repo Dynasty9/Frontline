@@ -580,6 +580,8 @@ func _make_body() -> void:
 		any = true
 	if any:
 		add_child(body)
+		if srv and world.combat:
+			world.combat.dirty_collision(eid)
 	else:
 		body.free()
 		body = null
@@ -989,6 +991,8 @@ func open_door(by: Entity, kicked: bool) -> void:
 		if dn:
 			body.remove_child(dn)
 			dn.queue_free()
+	if srv and world.combat:
+		world.combat.dirty_collision(eid)
 	_swing_leaves(kicked)
 	if srv:
 		world.remove_door(self)

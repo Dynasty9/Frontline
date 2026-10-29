@@ -48,6 +48,8 @@ var model: Node3D
 var smoke_fx: Node3D
 var trail: GeometryInstance3D
 var _vis := true
+var _flight: RefCounted
+var _shell_flight := false
 
 
 func ekind() -> String:
@@ -94,8 +96,11 @@ func get_props() -> Dictionary:
 
 
 func on_spawned() -> void:
+	if srv and ClassDB.class_exists("ProjectileFlightCore") and ptype in ["frag", "smoke", "rocket", "recoilless", "mortar", "mortar_smoke", "grad", "arty", "ac105", "ac40", "ac25", "bomb"]:
+		_flight = ClassDB.instantiate("ProjectileFlightCore")
 	if ptype in ["grad", "arty", "ac105", "ac40", "ac25"]:
 		position = origin
+	_reset_flight()
 	net_pos = position
 	net_init = true
 	if srv and ptype in ["rocket", "atgm", "recoilless"]:
@@ -107,6 +112,16 @@ func on_spawned() -> void:
 
 
 func sim(dt: float) -> void:
+	if _shell_flight:
+		var next: Vector4 = _flight.advance_shell(dt)
+		assert(next.w >= 0.0, "Invalid native shell state")
+		position = Vector3(next.x, next.y, next.z)
+		life_t += dt
+		if next.w == 1.0:
+			_shell_impact()
+		return
+	if _flight and _native_flight(dt):
+		return
 	life_t += dt
 	match ptype:
 		"frag", "smoke":
@@ -127,6 +142,79 @@ func sim(dt: float) -> void:
 			_ac130(dt)
 		"bomb":
 			_bomb(dt)
+
+
+func _reset_flight() -> void:
+	if not _flight:
+		return
+	_shell_flight = is_shell()
+	var state := PackedFloat64Array([position.x, position.y, position.z, vel.x, vel.y, vel.z,
+		origin.x, origin.y, origin.z, target.x, target.y, target.z, fuse, 1.0 if flying else 0.0,
+		life_t, smoke_t, smoke_r, shell_t])
+	var valid: bool = _flight.reset(ptype, state)
+	assert(valid, "Invalid projectile flight state")
+
+
+## Holders and impact effects stay in the adapter until their entity systems migrate.
+func _native_flight(dt: float) -> bool:
+	var holder := 0
+	var held_position := Vector3.ZERO
+	var collision := PackedVector3Array()
+	if ptype in ["frag", "smoke"] and held_by != null:
+		if not is_instance_valid(held_by) or held_by.gone or held_by.life != Soldier.Life.ALIVE:
+			holder = 2
+			held_by = null
+		else:
+			holder = 1
+			held_position = held_by.position + Vector3(0, 1.3, 0) + Defs.dir_of(held_by.rotation.y) * 0.3
+	var result := PackedFloat64Array()
+	var combat := world.combat
+	combat._sync_collision()
+	if combat._collision:
+		var excluded := PackedInt64Array()
+		if ptype in ["rocket", "recoilless"]:
+			var source := world.entity(thrower_id)
+			if source:
+				for rid: RID in source.get_exclude():
+					if combat._rid_entities.has(rid):
+						excluded.append(int(combat._rid_entities[rid]))
+		result = _flight.advance_in_world(dt, holder, held_position, combat._collision, excluded)
+	elif (holder == 0 and ptype in ["frag", "smoke"] and flying) or ptype in ["rocket", "recoilless"]:
+		var sweep_velocity := vel
+		var exclude: Array = []
+		if ptype in ["rocket", "recoilless"]:
+			sweep_velocity.y -= 1.5 * dt
+			var source := world.entity(thrower_id)
+			if source:
+				exclude = source.get_exclude()
+		var hit := world.combat.ray(position, position + sweep_velocity * dt, exclude)
+		if not hit.is_empty():
+			collision = PackedVector3Array([hit.position, hit.normal])
+	if not combat._collision:
+		result = _flight.advance(dt, holder, held_position, collision)
+	if result.size() != 15:
+		push_error("Invalid projectile state passed to Rust flight simulation")
+		return false
+	position = Vector3(result[0], result[1], result[2])
+	vel = Vector3(result[3], result[4], result[5])
+	fuse = result[6]
+	flying = result[7] != 0.0
+	life_t = result[8]
+	smoke_t = result[9]
+	smoke_r = result[10]
+	if result[11] == 2.0:
+		world.despawn(self)
+	elif result[11] == 1.0:
+		var impact := Vector3(result[12], result[13], result[14])
+		if is_shell():
+			_shell_impact()
+		elif ptype == "frag":
+			_frag_impact()
+		elif ptype == "bomb":
+			_bomb_impact(impact)
+		else:
+			_rocket_impact(impact)
+	return true
 
 
 ## Ground-attack jet: flies straight over the target and releases a stick of
@@ -158,11 +246,15 @@ func _bomb(dt: float) -> void:
 	vel = _bomb_step(vel, dt)
 	var np := position + vel * dt
 	if np.y <= 0.3:
-		var src: Entity = world.entity(thrower_id) if thrower_id != 0 else null
-		world.combat.explode(Vector3(np.x, 0.3, np.z), {"dmg": 220.0, "radius": 10.0, "fling": 15.0, "at": 300.0, "top": true, "src": src, "team": team, "by": by, "size": 2.6, "track": 0.6, "struct_mult": 3.0})
-		world.despawn(self)
+		_bomb_impact(Vector3(np.x, 0.3, np.z))
 		return
 	position = np
+
+
+func _bomb_impact(at: Vector3) -> void:
+	var src: Entity = world.entity(thrower_id) if thrower_id != 0 else null
+	world.combat.explode(at, {"dmg": 220.0, "radius": 10.0, "fling": 15.0, "at": 300.0, "top": true, "src": src, "team": team, "by": by, "size": 2.6, "track": 0.6, "struct_mult": 3.0})
+	world.despawn(self)
 
 
 static func _bomb_step(v: Vector3, dt: float) -> Vector3:
@@ -202,9 +294,7 @@ func _ballistic(dt: float) -> void:
 	if ptype == "frag":
 		fuse -= dt
 		if fuse <= 0.0:
-			if not SoldierBrain.smothered(self):
-				world.combat.explode(position, {"dmg": 150.0, "radius": 6.0, "fling": 9.0, "at": 0.0, "src": world.entity(thrower_id), "team": team, "by": by, "size": 1.0})
-			world.despawn(self)
+			_frag_impact()
 	else:
 		if not flying or life_t > 1.6:
 			smoke_t += dt
@@ -214,6 +304,12 @@ func _ballistic(dt: float) -> void:
 				smoke_r = maxf(0.0, smoke_r - dt * 1.5)
 			if smoke_t > 27.0:
 				world.despawn(self)
+
+
+func _frag_impact() -> void:
+	if not SoldierBrain.smothered(self):
+		world.combat.explode(position, {"dmg": 150.0, "radius": 6.0, "fling": 9.0, "at": 0.0, "src": world.entity(thrower_id), "team": team, "by": by, "size": 1.0})
+	world.despawn(self)
 
 
 func _rocket(dt: float) -> void:
@@ -230,11 +326,16 @@ func _rocket(dt: float) -> void:
 	elif life_t > 2.5:
 		boom = np
 	if boom != Vector3.INF:
-		var at := 450.0 if ptype == "recoilless" else 380.0
-		world.combat.explode(boom, {"dmg": 110.0, "radius": 4.0, "fling": 8.0, "at": at, "dir": vel.normalized(), "track": 0.25 if ptype == "recoilless" else 0.2, "src": src, "team": team, "by": by, "size": 1.0, "struct_mult": 2.0})
-		world.despawn(self)
+		_rocket_impact(boom)
 		return
 	position = np
+
+
+func _rocket_impact(boom: Vector3) -> void:
+	var src := world.entity(thrower_id)
+	var at := 450.0 if ptype == "recoilless" else 380.0
+	world.combat.explode(boom, {"dmg": 110.0, "radius": 4.0, "fling": 8.0, "at": at, "dir": vel.normalized(), "track": 0.25 if ptype == "recoilless" else 0.2, "src": src, "team": team, "by": by, "size": 1.0, "struct_mult": 2.0})
+	world.despawn(self)
 
 
 func shell_pos(k: float) -> Vector3:
@@ -254,6 +355,10 @@ func _shell() -> void:
 	if k < 1.0:
 		position = shell_pos(k)
 		return
+	_shell_impact()
+
+
+func _shell_impact() -> void:
 	var src: Entity = world.entity(thrower_id) if thrower_id != 0 else null
 	match ptype:
 		"grad":
@@ -367,6 +472,7 @@ func pick_up(s: Soldier) -> void:
 	held_by = s
 	flying = false
 	vel = Vector3.ZERO
+	_reset_flight()
 
 
 ## Kicked away along the ground.
@@ -376,6 +482,7 @@ func kick(s: Soldier, v: Vector3) -> void:
 	thrown_back += 1
 	position.y = maxf(position.y, 0.15)
 	smothered_by = null
+	_reset_flight()
 
 
 func release_throw(s: Soldier, pos: Vector3) -> void:
@@ -387,6 +494,7 @@ func release_throw(s: Soldier, pos: Vector3) -> void:
 	var from := s.position + Vector3(0, 1.7, 0)
 	position = from
 	vel = world.combat.ballistic_vel(from, pos)
+	_reset_flight()
 
 
 func write_state(b: StreamPeerBuffer) -> void:

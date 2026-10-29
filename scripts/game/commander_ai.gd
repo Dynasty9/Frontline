@@ -7,7 +7,7 @@ extends RefCounted
 var world: World
 var team := 0
 var peer := -1
-var rng := RandomNumberGenerator.new()
+var rng := SimulationRandom.new()
 var think_t := 4.0
 var attack_target: Structure = null
 var roles := {}  # sid -> {"role": String, "t": float}

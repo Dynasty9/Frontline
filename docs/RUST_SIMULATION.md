@@ -2,7 +2,8 @@
 
 Status: **in progress; the game still requires Godot to simulate a battle.**
 The engine-independent crate currently contains perception candidate selection,
-formation scoring and contracted route search. It is not a complete server, a
+formation scoring, contracted route search, gameplay randomness and ballistic
+projectile flight state and battlefield box raycasts. It is not a complete server, a
 full-state save format, or a battle verifier. Existing recordings remain unverified.
 
 ## Ownership
@@ -15,11 +16,14 @@ graphics, network access or a wall clock.
 | Component | Destination | Current implementation |
 | --- | --- | --- |
 | Perception candidates, formation scoring, route graph | `frontline_core` | Extracted; Godot bindings call the core |
+| Gameplay RNG, including commander streams | `frontline_core` | Seeded PCG stream matches Godot 4.7; cosmetic RNG stays in Godot |
+| Grenade, smoke, rocket, bomb and shell flight | `frontline_core` | Rust retains and advances flight state and queries native geometry; the adapter supplies holders and applies impacts |
 | Entity registry, stable IDs, spawn/despawn | Rust | `world.gd`, `entity.gd` |
 | Infantry movement, weapons, injuries, special tasks | Rust | `soldier.gd`, `soldier_brain.gd` |
 | Squads, tactics, commander and naval decisions | Rust | Squad, tactics, commander and naval scripts |
-| Vehicles, crews, drones, projectiles | Rust | Entity scripts and Godot spatial queries |
-| Terrain, collision, cover, line of sight, path jobs | Rust | Terrain/nav/combat scripts and Godot physics |
+| Vehicles, crews, drones, guided missiles and support aircraft | Rust | Entity scripts and Godot spatial queries |
+| Battlefield box raycasts | `frontline_core` | Spatial grid with deterministic hit ties; Godot supplies geometry updates |
+| Terrain, cover evaluation, smoke visibility, path jobs | Rust | Terrain/nav/combat scripts |
 | Supply, construction, upgrades, prisoners, victory | Rust | `rules.gd`, structures and battle scripts |
 | Missions, scripted events, initial map generation | Rust or immutable versioned input data | Map generators and mission director |
 | Models, animation, smoothing, particles, camera, minimap | Godot | Existing presentation code |
@@ -53,8 +57,7 @@ cannot determine battle outcomes.
 
 Rendering must never advance gameplay randomness. The fallback debris renderer
 previously consumed `world.rng`; it now uses cosmetic randomness. Other state
-coupling, random streams (including commanders), caches, queue positions and
-physics queries still need auditing before whole-game determinism is claimed.
+coupling, caches, queue positions and physics queries still need auditing before whole-game determinism is claimed.
 
 ## Commands and observations
 
@@ -132,3 +135,71 @@ The route-graph, formation-occupancy and perception fixtures check the bindings
 against gameplay/reference behavior. `tests/cosmetic-random.test.mjs` verifies
 that visible fallback debris leaves the gameplay RNG state and sequence unchanged.
 These checks do not yet verify a complete battle.
+
+## Migrated authoritative state
+
+`SimulationRandom` owns the world and commander random streams in Rust. The
+GDScript adapter retains the old seeded API and uses Godot only in engine-only
+checkouts. `random.rs` fixes PCG stream selection and the standard-build float
+mapping; changes to either require a replay rules version change. The reference
+is [Godot 4.7 RandomPCG](https://github.com/godotengine/godot/blob/4.7/core/math/random_pcg.h).
+The compatibility fixture compares 70,000 mixed draws and every intermediate
+state, including reversed/equal integer bounds and the full signed 32-bit range.
+
+`Flight` owns ballistic projectile position, velocity, timers, fuse, smoke and
+trajectory endpoints. Godot keeps observation mirrors for existing gameplay
+callers. Pickup, kick and rethrow reset the Rust state explicitly; each tick
+provides holder inputs; Rust queries its collision world directly. Guided missiles and support aircraft have
+not migrated. Battlefield box raycasts now run in Rust, while geometry updates, damage,
+smothering, creation and removal remain Godot responsibilities. Thus this is not an autonomous battle simulator.
+
+Flight checkpoints have a strict versioned little-endian encoding of every
+field, preserving floating-point bits. The decoder rejects unknown versions,
+truncation, trailing data, invalid tags/flags and nonfinite values without changing
+live state. Tests restore these checkpoints mid-flight and compare subsequent
+states and outcomes. This verifies component resume, not a battle result or the
+authenticity of an input history. Bomb drag still uses floating-point `exp`, so
+cross-platform bit identity is not yet guaranteed.
+
+The 144-case flight fixture compares Rust against the retained GDScript reference
+at 30 Hz, 60 Hz and coarser ticks, including impacts, held/dropped/kicked/rethrown
+grenades, smoke expiry and checkpoint restores. Position tolerance is 1 mm and
+velocity tolerance is 0.1 mm/s; gameplay scalar fields and impact parameters must
+match exactly. The full default suite and the opt-in mission suite remain the
+integration gates.
+
+## Battlefield collision
+
+`CollisionWorld` owns numeric box transforms and extents, indexed in 32 m X/Z
+cells. Segment traversal visits only crossed cells, deduplicates boxes without
+per-query allocations, and resolves exact ties by entity/shape ID. The adapter
+updates moving entities, rebuilt shapes and opened doors before queries. Destroyed
+bodies remain until the tick ends, preserving the former deferred-removal behavior.
+Shape-resource edits invalidate the native copy as well. The retained Godot
+reference can be selected with the internal `gdscript_collision` test setting.
+Unsupported geometry disables native collision for that battle with a warning;
+this compatibility fallback must disappear before standalone-server completion.
+
+Native exhaustive tests cover index traversal, edits, exclusions and stable ties.
+A 3,000-ray integration fixture compares hits and normals against Godot for 150
+rotated boxes. Lifecycle tests check immediate movement, shape edits and removal,
+including shielding by a destroyed body through the end of its final tick.
+This migrates the ray query, not all combat decisions or terrain state.
+
+## Validation limits from this migration
+
+The opt-in mission suite currently wins bridgehead and beachhead, but loses
+skyhook, ambush and kingpin. These same three
+losses reproduce at the same simulation times on the pre-port `f1ec9a0` commit
+(230, 250 and 360 seconds respectively). They are baseline failures, not evidence
+that the full mission completion gate is met. Keep reporting them until resolved.
+The integrated default suite passes 95 tests, including multiplayer authority,
+combat, breaching and seed reproducibility. All 14 standalone core tests pass in
+debug and release. These checks do not cover full battle checkpoints or replay verification.
+
+A focused shell benchmark (100 shells, 100 ticks, headless, no collision queries)
+measured about 14.6 ms for the GDScript path versus 4.6–5.6 ms for retained Rust
+flight state. This is not an FPS measurement. The transitional GDScript RNG
+adapter costs more per draw than the engine RNG (about 0.4 versus 0.15–0.23 µs in
+a 100,000-draw check); direct Rust callers avoid that adapter. Whole-battle scaling
+still needs measurement, and the 60 FPS completion gate remains open.

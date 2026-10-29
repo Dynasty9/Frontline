@@ -566,7 +566,7 @@ func _line_free(a: Vector3, b: Vector3, vehicle: bool) -> bool:
 
 
 ## Debug: compare hierarchical and flat routes on random trips.
-func benchmark(rng: RandomNumberGenerator) -> void:
+func benchmark(rng: SimulationRandom) -> void:
 	for vehicle in [false, true]:
 		var g := veh if vehicle else inf
 		var flat := g.reference_grid()

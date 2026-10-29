@@ -1225,7 +1225,9 @@ fade distance. Panning reuses nearby chunks and evicts distant ones; returning
 to an area recreates the same vegetation from its seed.
 
 The native perception, formation and route algorithms now share an engine-independent
-Rust crate with standalone tests. The full authoritative Rust server and deterministic
+Rust crate with standalone tests. Gameplay random streams and ballistic projectile
+flight now run in that core too, with restorable flight checkpoints. The full
+authoritative Rust server and deterministic
 battle verifier are still in progress; see [RUST_SIMULATION.md](RUST_SIMULATION.md).
 
 See [SIMULATION_SCALING.md](SIMULATION_SCALING.md) for the native perception

@@ -1,7 +1,10 @@
 use godot::prelude::*;
 
+mod collision_index;
 mod formation_ground;
+mod projectile_flight;
 mod route_graph;
+mod simulation_random;
 
 struct FrontlineSimulation;
 #[gdextension]

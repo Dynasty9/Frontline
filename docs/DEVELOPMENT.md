@@ -4,9 +4,10 @@ How the code is laid out, and the command-line modes used to test it. See also [
 
 ## Scaling and the optional native extension
 
-Gameplay remains GDScript. A Rust GDExtension accelerates nearest-enemy candidate
-selection using numeric snapshots and contracts degree-two navigation search states.
-Individual visibility and combat stay in Godot. Native graph assembly runs on the
+Most gameplay remains GDScript. A Rust GDExtension owns gameplay random streams
+and ballistic projectile flight, accelerates nearest-enemy candidate selection
+using numeric snapshots and contracts degree-two navigation search states.
+Battlefield box raycasts also run in Rust; visibility policy and damage stay in Godot. Native graph assembly runs on the
 main thread; local-grid costing still uses workers.
 The numeric algorithms live in the engine-independent `native/core` crate;
 `native/src` contains the Godot bindings. Run their standalone tests with
