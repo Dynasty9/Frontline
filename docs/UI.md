@@ -81,18 +81,25 @@ darkens toward that edge (`UiScrim`), so it reads over any ground without a box:
 
 - **Top** (the **Status** line): the side, `SUP` and its rate, `UNITS`, `FOB`, `TOWNS`, and the clock. A line under
   it for each FOB says what its trucks are doing.
-- **Left**: the minimap stays fixed at the bottom left. It never hides, moves or resizes when a tool opens.
-  A 32 px strip of labelled line icons above it opens **Units**, **Support** or **Layers**. The active tool
-  closes when clicked again. Units provides search and All / Infantry / Vehicles / Attention filters.
-  Click to locate, Shift-click to add and double-click to focus. Support provides artillery and air strikes,
-  with supply costs and cooldowns for commanders, clearly marked free demos for observers. Layers reveals
-  the overlay switches beside the map. Tool content sits directly on a feathered edge scrim, with no panel
-  backplates. The roster binding toggles Units; Escape backs out after cancelling orders and selection.
-  Normal battlefield views show selected squad plans; tactical views reveal other plans through the Orders
-  layer. Unit symbols and plan labels yield to occupied HUD areas so they do not collide with controls.
-- **Bottom**: the selection (the squad's name, its codes, the plan's stages, a cell per man) and the orders as keys.
-  The bottom scrim only darkens while there's something selected.
-- **Right**: collapsible **Events** and the mission's objectives; in co-op the command net.
+- **Left**: the minimap is a fixed navigation anchor. Opening tools never hides, moves or resizes it.
+  A 32 px line-icon strip opens **Units**, **Support** or **Layers**. Layers reveals switches beside the map.
+- **Right**: Units and Support open a task workspace on the opposite edge, with enough height to scan a
+  roster or compare support. It sits below objectives and above the contextual command card. On short
+  viewports, objectives and the command net yield temporarily to keep the task controls clear of orders. The recent
+  Events stream yields while a task is open and returns with its previous minimized state when it closes.
+  Units focuses search on opening; search accepts callsigns, role names and vehicle names. Arrow keys browse
+  the full result list and scroll the active row into view. Click selects without moving the camera;
+  Shift-click adds. Enter, double-click or **Focus selected** focuses the unit and closes the workspace.
+  Two-line 40 px rows separate names and strength from status, avoiding cramped code truncation.
+  Support explains availability and supply requirements; choosing a strike closes the workspace so its target
+  can be placed on the battlefield. Observer actions are clearly labelled demos.
+- **Bottom**: selection details and the contextual order card stay available while comparing units.
+  Escape cancels an active targeting action, then closes an open workspace before clearing selection.
+  The bottom scrim only darkens while something is selected.
+
+Normal battlefield views show selected squad plans; tactical views reveal other plans through the Orders
+layer. Unit symbols and plan labels yield to occupied HUD areas. All task content follows Signal's condensed
+typography, rules and feathered edge shading, with no enclosing panel backplates.
 
 Menus put the title and the entries on the left over the living map, panels in the middle, the account on the
 right. Dialogs stay inside the scaled viewport: long content scrolls, and keyboard focus brings its action into

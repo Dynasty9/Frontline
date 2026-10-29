@@ -1127,13 +1127,15 @@ catalogue entry in `MissionList.LIST`, a setup function and an autopilot functio
   drifting cloud over the target. Smoke is shaded like a volume (sun, sky, self-shadowing) and fades
   softly where it meets the ground. Burning wrecks burn, then smoulder (see Fire). Smoke screens are real volumetric fog when
   volumetric fog is on. All effect shaders are compiled during loading, so the first explosion doesn't hitch.
-- A fixed minimap stays at the bottom left. A slim **Units / Support / Layers** icon strip opens tools
-  without moving, resizing or hiding the map. Units has search and Infantry, Vehicles and Attention
-  filters; Support offers artillery and air strikes with costs for commanders and free demos for observers.
-  Layers reveals the map's overlay switches. Controls sit directly on feathered edge shading in Signal's
-  condensed typography. The upper-right **Events** stream can be minimized; a count tracks new arrivals
-  and the full history remains available. Normal views show selected squad plans, and battlefield markers
-  yield to occupied controls. Observer playback controls use the same quiet, ruled treatment.
+- A fixed minimap stays at the bottom left. **Units / Support / Layers** opens tools without moving or
+  hiding it. Units and Support use a separate workspace on the right; Events yields temporarily.
+  Search focuses immediately and accepts callsigns, full role names and vehicles. Arrow keys browse results;
+  a click selects without moving the camera. Enter, double-click or Focus selected returns to the battle
+  focused on that unit, with orders available. Escape closes the workspace before clearing selection.
+  Infantry, Vehicles and Attention filters narrow large rosters. Support shows costs, cooldowns and
+  insufficient-supply states; choosing a strike closes the workspace for targeting. Observers get demos.
+  The upper-right Events stream minimizes independently, preserving full history and counting new arrivals.
+  Signal typography, two-line roster rows and feathered edge shading keep the hierarchy consistent.
 - The main menu sits over a live 3D scene: a .50 cal crew at golden hour with a burning wreck and shelling on the horizon.
 
 **Field Manual** (`ui/field_manual.gd`; main menu, Esc menu or F4): every soldier, squad, weapon, vehicle, building,

@@ -34,7 +34,7 @@ func minimap_side() -> float:
 ## The map stays at one size and position. Tools live above it, and layers
 ## open beside it; chat remains clear of the complete module.
 func station_width() -> float:
-	return maxf(HudOrbat.W + 16.0, minimap_side() + MINIMAP_PAD * 2.0 + HudLayers.S + 14.0)
+	return maxf(336.0, minimap_side() + MINIMAP_PAD * 2.0 + HudLayers.S + 14.0)
 
 
 func layout_minimap() -> void:
@@ -95,6 +95,9 @@ var support_scroll: ScrollContainer
 var station_frame: Panel
 var drawer_frame: Panel
 var drawer_close: Button
+var drawer_footer: Label
+var focus_unit: Button
+var task_scrim: UiScrim
 var roster_filters: HBoxContainer
 var tactical := false
 ## sid -> [order, where, facing, order number, team, msec the order came in (-1: already standing), attack plan or null]
@@ -317,7 +320,7 @@ func _ready() -> void:
 	orbat.size = Vector2(HudOrbat.W, 300)
 	root.add_child(orbat)
 
-	# off-map support: one button per power, stacked above the minimap
+	# off-map support: one button per power in the task workspace
 	support_box = VBoxContainer.new()
 	support_box.anchor_top = 1.0
 	support_box.anchor_bottom = 1.0
@@ -473,13 +476,17 @@ func _ready() -> void:
 	_keys_changed()
 
 
-## The map stays in view. Compact tools open one task above it at a time.
+## Navigation stays on the left; one temporary task workspace opens on the right.
 func _build_workspaces() -> void:
 	station_frame = Panel.new()
 	station_frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	station_frame.add_theme_stylebox_override("panel", UiKit.bare())
 	root.add_child(station_frame)
 	root.move_child(station_frame, minimap_panel.get_index() if minimap_panel.get_parent() == root else 0)
+	task_scrim = UiScrim.make("right", HudOrbat.W + 180.0)
+	task_scrim.content_column = true
+	root.add_child(task_scrim)
+	root.move_child(task_scrim, orbat.get_index() if orbat.get_parent() == root else 0)
 	drawer_frame = Panel.new()
 	drawer_frame.mouse_filter = Control.MOUSE_FILTER_STOP
 	drawer_frame.add_theme_stylebox_override("panel", UiKit.bare())
@@ -495,11 +502,11 @@ func _build_workspaces() -> void:
 		b.caption = item[1]
 		b.focus_mode = Control.FOCUS_NONE
 		b.toggle_mode = true
-		b.tooltip_text = {"squads": "Find a squad or vehicle. Click to select and locate; Shift-click adds to selection.", "map": "Map layers · Show or hide overlay controls. The map stays fixed.", "fires": "Support · Off-map artillery and air strikes. Commanders spend supply; spectators can try a free demo."}[key]
+		b.tooltip_text = {"squads": "Find a squad or vehicle. Type to search. Click to select without moving the camera; Enter or double-click to focus and return to battle.", "map": "Map layers · Show or hide overlay controls. The map stays fixed.", "fires": "Support · Off-map artillery and air strikes. Commanders spend supply; spectators can try a free demo."}[key]
 		b.pressed.connect(func(): set_workspace("battle" if workspace == key else key))
 		task_bar.add_child(b)
 		_task_buttons[key] = b
-	workspace_title = UiKit.caps("", 14, UiKit.TEXT)
+	workspace_title = UiKit.caps("", 20, UiKit.TEXT)
 	workspace_title.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	root.add_child(workspace_title)
 	drawer_close = UiKit.button("×", "quiet", 28, 26)
@@ -511,6 +518,16 @@ func _build_workspaces() -> void:
 	workspace_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	workspace_hint.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	root.add_child(workspace_hint)
+	drawer_footer = UiKit.mono_label("↑ ↓ BROWSE · ENTER FOCUS · ESC CLOSE", 10, UiKit.DIM)
+	drawer_footer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	root.add_child(drawer_footer)
+	focus_unit = UiKit.button("Focus selected ↗", "primary", 152, 30)
+	focus_unit.pressed.connect(func():
+		if squad_search.has_focus():
+			orbat.activate_cursor()
+		else:
+			orbat.focus_selected())
+	root.add_child(focus_unit)
 	map_caption = UiKit.caps("", 10, UiKit.DIM)
 	map_caption.mouse_filter = Control.MOUSE_FILTER_PASS
 	root.add_child(map_caption)
@@ -535,9 +552,15 @@ func _build_workspaces() -> void:
 	squad_search.focus_entered.connect(func(): typing = true)
 	squad_search.focus_exited.connect(func(): typing = false)
 	squad_search.gui_input.connect(func(event: InputEvent):
-		if event is InputEventKey and event.pressed and event.keycode == KEY_ESCAPE:
-			squad_search.release_focus()
-			set_workspace("battle")
+		if event is InputEventKey and event.pressed:
+			if event.keycode == KEY_ESCAPE:
+				set_workspace("battle")
+			elif event.keycode in [KEY_DOWN, KEY_UP]:
+				orbat.move_cursor(1 if event.keycode == KEY_DOWN else -1)
+			elif event.keycode in [KEY_ENTER, KEY_KP_ENTER]:
+				orbat.activate_cursor()
+			else:
+				return
 			squad_search.accept_event())
 	root.add_child(squad_search)
 	roster_filters = HBoxContainer.new()
@@ -545,7 +568,7 @@ func _build_workspaces() -> void:
 	root.add_child(roster_filters)
 	for choice in [["all", "All"], ["infantry", "Infantry"], ["vehicles", "Vehicles"], ["attention", "Attention"]]:
 		var filter_key: String = choice[0]
-		var filter_button := UiKit.button(choice[1], "quiet", 78, 25)
+		var filter_button := UiKit.button(choice[1], "quiet", (HudOrbat.W - 6.0) / 4.0, 28)
 		filter_button.toggle_mode = true
 		filter_button.set_pressed_no_signal(filter_key == "all")
 		filter_button.tooltip_text = "Pinned, routing, wounded, low-ammo or damaged units" if filter_key == "attention" else "Show " + String(choice[1]).to_lower() + " units"
@@ -568,7 +591,19 @@ func set_workspace(value: String) -> void:
 	drawer_close.visible = drawer_open
 	workspace_title.visible = drawer_open
 	workspace_hint.visible = drawer_open
-	if not squad_search.visible and squad_search.has_focus():
+	drawer_footer.visible = value == "squads"
+	focus_unit.visible = value == "squads"
+	task_scrim.visible = drawer_open
+	if not drawer_open:
+		if objectives:
+			objectives.modulate.a = 1.0
+		if coop_roster:
+			coop_roster.modulate.a = 1.0
+			coop_roster.mouse_filter = Control.MOUSE_FILTER_STOP
+	if squad_search.visible:
+		squad_search.grab_focus()
+		squad_search.select_all()
+	elif squad_search.has_focus():
 		squad_search.release_focus()
 	minimap_panel.visible = true
 	layers_ui.visible = value == "map"
@@ -590,33 +625,60 @@ func show_order_for(selected: bool) -> bool:
 	return selected or ((tactical or workspace == "map") and map_layer("orders"))
 
 
-## The tool reads directly on the edge scrim; the map below stays anchored.
+## The task workspace stays clear of the fixed map and contextual command card.
 func _layout_workspace() -> void:
 	layout_minimap()
 	var spectator := world.local_team < 0
-	var top_clear := maxf(96.0, top.position.y + top.content_h + 16.0) if top else 96.0
-	var drawer_bottom := station_frame.position.y - 10.0
-	var drawer_h := minf(310.0, maxf(170.0, drawer_bottom - top_clear))
-	var drawer_y := maxf(14.0, drawer_bottom - drawer_h)
-	drawer_frame.position = Vector2(14, drawer_y)
-	drawer_frame.size = Vector2(HudOrbat.W + 16.0, drawer_h)
-	workspace_title.position = Vector2(22, drawer_y + 8)
-	drawer_close.position = Vector2(14 + HudOrbat.W - 20, drawer_y + 5)
-	workspace_hint.position = Vector2(22, drawer_y + 31)
-	workspace_title.text = ("FORCES · BOTH SIDES" if spectator else "YOUR FORCES") if workspace == "squads" else ("SUPPORT / DEMO" if spectator else "SUPPORT / ON CALL")
-	workspace_hint.text = ("Click to inspect · Double-click to focus" if spectator else "Click to select · Shift-click to add") if workspace == "squads" else ("Free demo · Choose a strike, then its target" if spectator else "Artillery & air strikes · Choose, then target")
+	# The map is navigation; the opposite edge is the temporary task workspace.
+	# Reserve the command card below, so selecting a unit never hides its orders.
+	var drawer_y := maxf(92.0, 24.0 + objectives.need_h) if objectives else 92.0
+	if coop_roster and coop_roster.need_h > 0:
+		drawer_y = maxf(drawer_y, coop_roster.position.y + coop_roster.need_h + 18.0)
+	var drawer_bottom := root.size.y - 152.0
+	if card_panel and card_panel.visible:
+		drawer_bottom = minf(drawer_bottom, card_panel.position.y - 18.0)
+	# On a short viewport the task takes priority over the right-edge briefing.
+	# Keep its controls above orders; restore objectives/net as soon as it closes.
+	var brief_yields := drawer_frame.visible and drawer_bottom - drawer_y < 284.0
+	if brief_yields:
+		drawer_y = maxf(36.0, drawer_bottom - 284.0)
+	if objectives:
+		objectives.modulate.a = 0.0 if brief_yields else 1.0
+	if coop_roster:
+		coop_roster.modulate.a = 0.0 if brief_yields else 1.0
+		coop_roster.mouse_filter = Control.MOUSE_FILTER_IGNORE if brief_yields else Control.MOUSE_FILTER_STOP
+	var drawer_h := maxf(284.0, drawer_bottom - drawer_y)
+	if workspace == "squads" and orbat.content_h() > 0:
+		drawer_h = minf(drawer_h, maxf(284.0, orbat.content_h() + 204.0))
+	var drawer_x := root.size.x - HudOrbat.W - 30.0
+	drawer_frame.position = Vector2(drawer_x - 12, drawer_y)
+	drawer_frame.size = Vector2(HudOrbat.W + 24.0, drawer_h)
+	task_scrim.offset_top = drawer_y - 44.0
+	if task_scrim.span != drawer_h * 1.6:
+		task_scrim.span = drawer_h * 1.6
+		task_scrim.queue_redraw()
+	workspace_title.position = Vector2(drawer_x, drawer_y + 8)
+	drawer_close.position = Vector2(drawer_x + HudOrbat.W - 28, drawer_y + 4)
+	workspace_hint.position = Vector2(drawer_x, drawer_y + 38)
+	workspace_hint.size.x = HudOrbat.W
+	workspace_title.text = ("BATTLE FORCES" if spectator else "YOUR FORCES") if workspace == "squads" else ("SUPPORT DEMOS" if spectator else "FIRE SUPPORT")
+	workspace_hint.text = ("Select to inspect · Double-click to focus" if spectator else "Select to command · Double-click to focus") if workspace == "squads" else ("Choose a demo, then click its target" if spectator else "Choose a strike, then click its target")
 	map_caption.text = "BATTLE MAP"
-	map_caption.tooltip_text = "Click the map to move the camera. The map remains visible while using Units or Support."
-	squad_search.position = Vector2(22, drawer_y + 55)
-	roster_filters.position = Vector2(22, drawer_y + 93)
-	orbat.position = Vector2(22, drawer_y + 124)
-	orbat.size = Vector2(HudOrbat.W, maxf(36.0, drawer_h - 134.0))
-	support_scroll.position = Vector2(22, drawer_y + 66)
-	support_scroll.size = Vector2(HudOrbat.W, maxf(50.0, drawer_h - 76.0))
+	map_caption.tooltip_text = "Click or drag to move the camera. Right-click to order selected units."
+	squad_search.position = Vector2(drawer_x, drawer_y + 67)
+	roster_filters.position = Vector2(drawer_x, drawer_y + 108)
+	orbat.position = Vector2(drawer_x, drawer_y + 147)
+	orbat.size = Vector2(HudOrbat.W, maxf(80.0, drawer_h - 204.0))
+	drawer_footer.position = Vector2(drawer_x, drawer_y + drawer_h - 18)
+	focus_unit.position = Vector2(drawer_x + HudOrbat.W - focus_unit.size.x, drawer_y + drawer_h - 53)
+	focus_unit.text = "FOCUS RESULT ↗" if squad_search.has_focus() else "FOCUS SELECTED ↗"
+	focus_unit.disabled = orbat._entries.is_empty() if squad_search.has_focus() else (world.input == null or not world.input.has_units())
+	support_scroll.position = Vector2(drawer_x, drawer_y + 78)
+	support_scroll.size = Vector2(HudOrbat.W, maxf(80.0, drawer_h - 90.0))
 	var left_scrim: UiScrim = _scrims.get("left")
 	if left_scrim:
 		left_scrim.visible = true
-		var shade_top := drawer_y - 34.0 if drawer_frame.visible else station_frame.position.y - 26.0
+		var shade_top := station_frame.position.y - 26.0
 		var shade_span := root.size.y * 1.6
 		var shade_reach := station_width() + 160.0
 		if not left_scrim.content_column or left_scrim.offset_top != shade_top or left_scrim.span != shade_span or left_scrim.reach != shade_reach:
@@ -924,6 +986,8 @@ static func list_item(text: String, key: String, cb: Callable, danger := false) 
 	b.add_child(row)
 	var l := UiKit.caps(text, 14, UiKit.BAD if danger else UiKit.TEXT, 600, 1)
 	l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	l.clip_text = true
+	l.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	row.add_child(l)
@@ -1200,6 +1264,8 @@ func _update_events_toggle() -> void:
 
 
 func toggle_log() -> void:
+	if drawer_frame and drawer_frame.visible:
+		set_workspace("battle")
 	log_panel.visible = not log_panel.visible
 	toasts.visible = not log_panel.visible and not events_collapsed
 	if log_panel.visible:
@@ -1729,7 +1795,10 @@ func _view_process(dt: float) -> void:
 			toasts.offset_bottom = tb
 	if perf_big:
 		events_toggle.position = Vector2(294, 160)
-	toasts.visible = not events_collapsed and not log_panel.visible
+	events_toggle.visible = not drawer_frame.visible
+	toasts.visible = not events_collapsed and not log_panel.visible and not drawer_frame.visible
+	if drawer_frame.visible:
+		log_panel.hide()
 	var right_scrim: UiScrim = _scrims["right"]
 	var right_span := 90.0 if events_collapsed and objectives.need_h <= 0.0 and coop_roster.need_h <= 0.0 else 320.0
 	if right_scrim.span != right_span:
@@ -1782,7 +1851,8 @@ func _update_support() -> void:
 			var kk: String = k
 			var b := _fire_row(fire_short(String(Defs.SUPPORT[k].name)), "%s\n%s" % [Defs.SUPPORT[k].name, Defs.SUPPORT[k].desc], func():
 				world.input.cancel_modes()
-				world.input.ability = ("support:" if world.local_team >= 0 else "demo:") + kk)
+				world.input.ability = ("support:" if world.local_team >= 0 else "demo:") + kk
+				set_workspace("battle"))
 			support_box.add_child(b)
 			_support_btns[k] = b
 		_fires_more = _fire_row("", "Show every fire mission", func(): _fires_open = not _fires_open)
@@ -1799,7 +1869,8 @@ func _update_support() -> void:
 			continue
 		var sd: Dictionary = Defs.SUPPORT[k]
 		var left := float(sup.get(k, Defs.support_from(k))) - world.time if world.local_team >= 0 else 0.0
-		b.disabled = left > 0.0
+		var affordable := world.local_team < 0 or float(world.team_info[world.local_team].get("supply", 0)) >= float(sd.cost)
+		b.disabled = left > 0.0 or not affordable
 		var state: Label = b.get_meta("state")
 		var nm: Label = b.get_meta("name")
 		if left <= 0.0:
@@ -1807,9 +1878,12 @@ func _update_support() -> void:
 			state.text = ("[%s] RDY · %d" % [zk.to_upper(), int(sd.cost)]) if first and zk != "" else ("RDY · %d" % int(sd.cost))
 			if world.local_team < 0:
 				state.text = "DEMO"
-			state.add_theme_color_override("font_color", UiKit.GOOD)
+			if not affordable:
+				state.text = "NEED %d SUP" % int(sd.cost)
+			state.add_theme_color_override("font_color", UiKit.GOOD if affordable else UiKit.FAINT)
 			nm.add_theme_color_override("font_color", UiKit.TEXT)
-			first = false
+			if affordable:
+				first = false
 			b.visible = true
 		else:
 			state.text = "%dS" % int(ceil(left))
@@ -1831,7 +1905,7 @@ func _update_support() -> void:
 func _fire_row(name: String, tip: String, cb: Callable) -> Button:
 	var b := Button.new()
 	b.focus_mode = Control.FOCUS_NONE
-	b.custom_minimum_size = Vector2(0, 24)
+	b.custom_minimum_size = Vector2(0, 34)
 	b.tooltip_text = tip
 	var n := UiKit.box(Color(0, 0, 0, 0), 0, UiKit.LINE, 0, 0.0)
 	n.border_width_bottom = 1
@@ -1852,6 +1926,8 @@ func _fire_row(name: String, tip: String, cb: Callable) -> Button:
 	b.add_child(row)
 	var l := UiKit.caps(name, 12, UiKit.TEXT, 600, 1)
 	l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	l.clip_text = true
+	l.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	row.add_child(l)

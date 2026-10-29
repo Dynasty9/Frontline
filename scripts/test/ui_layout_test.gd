@@ -238,6 +238,7 @@ func _run() -> void:
 	menu.free()
 	# Task switching must release battlefield space and preserve the selection.
 	hud.orbat = HudOrbat.new()
+	hud.orbat.hud = hud
 	hud.minimap = HudMinimap.new()
 	hud.minimap_panel = PanelContainer.new()
 	hud.layers_ui = HudLayers.new()
@@ -254,6 +255,8 @@ func _run() -> void:
 	hud.orbat.set_query("  medic  ")
 	hud.orbat.set_filter("infantry")
 	_check("search and category combine", hud.orbat.matches_unit("charlie medic", "infantry", false) and not hud.orbat.matches_unit("medic carrier", "vehicles", false))
+	hud.orbat.set_query("medic charlie")
+	_check("search terms match in either order", hud.orbat.matches_unit("Charlie 1 rifle squad medic", "infantry", false))
 	hud.orbat.set_query("")
 	hud.orbat.set_filter("attention")
 	_check("attention filters healthy units", hud.orbat.matches_unit("charlie", "infantry", true) and not hud.orbat.matches_unit("alpha", "infantry", false))
@@ -262,15 +265,29 @@ func _run() -> void:
 	hud.drawer_close.pressed.emit()
 	_check("drawer close returns to observation", not hud.drawer_frame.visible and hud.minimap_panel.visible)
 	_check("normal battle shows only selected plans", hud.show_order_for(true) and not hud.show_order_for(false))
-	for viewport_size in [Vector2(1422, 800), Vector2(960, 640)]:
+	for viewport_size in [Vector2(1422, 800), Vector2(960, 640), Vector2(960, 540)]:
 		stage.size = viewport_size
 		hud.set_workspace("squads")
 		hud._layout_workspace()
 		_check("command station fits %s" % viewport_size, _inside(hud.station_frame, stage.get_global_rect()))
 		_check("unit drawer fits %s" % viewport_size, _inside(hud.drawer_frame, stage.get_global_rect()))
-		_check("drawer clears map %s" % viewport_size, hud.drawer_frame.get_rect().end.y < hud.station_frame.position.y)
+		_check("drawer clears map %s" % viewport_size, not hud.drawer_frame.get_rect().intersects(hud.station_frame.get_rect()))
 		_check("roster stays in drawer %s" % viewport_size, hud.orbat.get_rect().end.y <= hud.drawer_frame.get_rect().end.y)
+	# A briefing and command card must not squeeze the workspace into overlap.
+	hud.objectives = HudObjectives.new()
+	hud.objectives.need_h = 200.0
+	hud.card_panel = PanelContainer.new()
+	hud.card_panel.position = Vector2(700, 370)
+	hud.card_panel.size = Vector2(240, 156)
+	hud._layout_workspace()
+	_check("short view keeps task above orders", hud.drawer_frame.get_rect().end.y <= hud.card_panel.position.y - 18.0)
+	_check("crowded briefing yields to task", hud.objectives.modulate.a == 0.0)
 	hud.set_workspace("battle")
+	_check("closing task restores briefing", hud.objectives.modulate.a == 1.0)
+	hud.objectives.free()
+	hud.objectives = null
+	hud.card_panel.free()
+	hud.card_panel = null
 	var compact_map := hud.minimap_side()
 	var fixed_map := hud.minimap_panel.get_rect()
 	hud.set_workspace("map")
@@ -292,6 +309,50 @@ func _run() -> void:
 	hud._update_support()
 	_check("spectators have demo support available", hud._support_btns.size() == Defs.DEMO_SUPPORT.size())
 	_check("spectator support is labelled demo", hud._support_btns.values().all(func(button): return (button.get_meta("state") as Label).text == "DEMO"))
+	# The actual roster selection/camera path, with lightweight live entities.
+	battle.input = PlayerInput.new()
+	battle.input.world = battle
+	battle.hud = hud
+	battle.cam = RtsCamera.new()
+	battle.cam.world = battle
+	var troop := Soldier.new()
+	troop.sid = 77
+	troop.team = 0
+	troop.position = Vector3(60, 0, 80)
+	battle.soldiers.append(troop)
+	hud.set_workspace("squads")
+	hud.orbat._pick("sq", 77, true, false, false)
+	_check("single click selects without moving the camera", battle.input.sel_squads == [77] and not battle.cam._gliding and hud.workspace == "squads")
+	var escape := InputEventKey.new()
+	escape.keycode = KEY_ESCAPE
+	escape.pressed = true
+	battle.input._key(escape)
+	_check("escape closes tools before clearing selection", hud.workspace == "battle" and battle.input.sel_squads == [77])
+	hud.set_workspace("squads")
+	hud.orbat._entries = [[Rect2(0, 24, HudOrbat.W, 40), "sq", 77, true], [Rect2(0, 800, HudOrbat.W, 40), "sq", 77, true]]
+	hud.orbat.move_cursor(1)
+	_check("arrow navigation reveals results outside the scroll window", hud.orbat._cursor == 1 and hud.orbat._scroll > 0)
+	hud.orbat.activate_cursor()
+	_check("enter focuses the unit and restores battlefield control", battle.cam._gliding and battle.cam._g_pos[1] == troop.position and hud.workspace == "battle" and not hud.typing and battle.input.sel_squads == [77])
+	hud.set_workspace("fires")
+	var demo_key: String = Defs.DEMO_SUPPORT[0]
+	(hud._support_btns[demo_key] as Button).pressed.emit()
+	_check("choosing support clears the workspace for targeting", battle.input.ability == "demo:" + demo_key and hud.workspace == "battle")
+	battle.local_team = 0
+	battle.mission_info = {}
+	battle.time = 100000.0
+	battle.team_info[0] = {"supply": 0, "sup": {}}
+	hud._update_support()
+	_check("unaffordable support explains why it is unavailable", hud._support_btns.values().all(func(button): return button.disabled and (button.get_meta("state") as Label).text.begins_with("NEED")))
+	battle.team_info[0].supply = 999999
+	hud._update_support()
+	_check("support becomes available when supply arrives", hud._support_btns.values().all(func(button): return not button.disabled))
+	battle.soldiers.clear()
+	troop.free()
+	battle.cam.free()
+	battle.cam = null
+	battle.input.free()
+	battle.input = null
 	var marker_overlay := HudOverlay.new()
 	marker_overlay.hud = hud
 	stage.add_child(marker_overlay)

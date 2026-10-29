@@ -1311,6 +1311,10 @@ func _process(_dt: float) -> void:
 	if args.has("events-collapsed") and world.hud and world.time > 1.0 and not has_meta("events_collapsed"):
 		set_meta("events_collapsed", true)
 		world.hud.toggle_events()
+	# Reproduce the search -> Enter -> focus flow in off-screen UX captures.
+	if args.has("hud-focus-at") and world.hud and world.time > float(args["hud-focus-at"]) and not has_meta("hud_focused"):
+		set_meta("hud_focused", true)
+		world.hud.orbat.activate_cursor()
 	# --coop-watch[=N]: watch the Nth --coop-demo commander's view live
 	if args.has("coop-watch") and world.cam and world.time > 1.0 and not has_meta("coop_watched"):
 		var wid := 9001 + int(args["coop-watch"])
@@ -1323,6 +1327,9 @@ func _process(_dt: float) -> void:
 		set_meta("hud_panel", true)
 		if String(args["hud-panel"]) in ["battle", "squads", "map", "fires"]:
 			world.hud.set_workspace(String(args["hud-panel"]))
+			if args.has("hud-query"):
+				world.hud.squad_search.text = String(args["hud-query"])
+				world.hud.squad_search.text_changed.emit(String(args["hud-query"]))
 		if String(args["hud-panel"]) == "over":
 			world.hud.show_game_over(maxi(world.local_team, 0))
 		var hp: Control = {"settings": world.hud.settings_panel, "help": world.hud.help_panel, "menu": world.hud.menu_panel, "log": world.hud.log_panel}.get(String(args["hud-panel"]))

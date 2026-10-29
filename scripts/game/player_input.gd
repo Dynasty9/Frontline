@@ -278,6 +278,8 @@ func _key(ev: InputEvent) -> void:
 			sketch_pts = PackedVector3Array()
 		elif place_kind != "" or ability != "" or order_mode != "":
 			cancel_modes()
+		elif world.hud and world.hud.workspace != "battle":
+			world.hud.set_workspace("battle")
 		elif has_units() or sel_structure != 0:
 			clear_selection()
 		elif world.hud:
@@ -316,9 +318,13 @@ func _key(ev: InputEvent) -> void:
 			if world.local_team >= 0:
 				var sup: Dictionary = world.team_info[world.local_team].get("sup", {})
 				for sk in Defs.supports_for(world.local_team):
-					if float(sup.get(sk, Defs.support_from(sk))) <= world.time:
+					if not world.mission_info.is_empty() and not sk in world.mission_info.get("sup", []):
+						continue
+					if float(sup.get(sk, Defs.support_from(sk))) <= world.time and float(world.team_info[world.local_team].get("supply", 0)) >= float(Defs.SUPPORT[sk].cost):
 						cancel_modes()
 						ability = "support:" + String(sk)
+						if world.hud:
+							world.hud.set_workspace("battle")
 						break
 		"grenade":
 			if has_infantry():

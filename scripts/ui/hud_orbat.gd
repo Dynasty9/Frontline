@@ -4,35 +4,72 @@ extends Control
 ## vehicles), a line each (docs/UI.md, Row): its symbol, callsign, what it's
 ## doing as a code (MOV D8, PINNED · DEF E4) and its strength in pips. It sits
 ## in the Units drawer: a header, then rows with a rule under each.
-## Click a row to select the unit and look at it, Shift+click to add it to
-## the selection, double-click to zoom in on it. Observers see both sides.
+## Click selects without moving the camera; Shift-click adds. Double-click
+## or Enter focuses the unit and returns to battle. Observers see both sides.
 
-const ROW_H := 26.0
+const ROW_H := 40.0
 const HEAD_H := 22.0
 const SEC_H := 20.0
-const W := 320.0
+const W := 344.0
 
 var hud: Hud
 var open := true
 var query := ""
+var _terms := PackedStringArray()
 var filter_kind := "all"
 var _scroll := 0.0
 var _content_h := 0.0
 var _rows: Array = []  # [Rect2, kind ("sq"/"veh"), id, commandable]
+var _entries: Array = []  # every result, including those outside the scroll window
+var _cursor := 0
 var _head := Rect2()
 var _hover := -1
 
 
 func set_query(value: String) -> void:
 	query = value.strip_edges().to_lower()
+	_terms = query.split(" ", false)
 	_scroll = 0.0
+	_cursor = 0
+	_entries.clear()
+	_rows.clear()
 	queue_redraw()
 
 
 func set_filter(value: String) -> void:
 	filter_kind = value
 	_scroll = 0.0
+	_cursor = 0
+	_entries.clear()
+	_rows.clear()
 	queue_redraw()
+
+
+func move_cursor(step: int) -> void:
+	if _entries.is_empty():
+		return
+	_cursor = clampi(_cursor + step, 0, _entries.size() - 1)
+	var r: Rect2 = _entries[_cursor][0]
+	if r.position.y - _scroll < HEAD_H:
+		_scroll = r.position.y - HEAD_H
+	elif r.end.y - _scroll > size.y:
+		_scroll = r.end.y - size.y
+	queue_redraw()
+
+
+func activate_cursor() -> void:
+	if _entries.is_empty():
+		return
+	var entry: Array = _entries[clampi(_cursor, 0, _entries.size() - 1)]
+	_pick(String(entry[1]), int(entry[2]), bool(entry[3]), false, true)
+
+
+func focus_selected() -> void:
+	var inp = hud.world.input
+	if not inp.sel_squads.is_empty():
+		_pick("sq", int(inp.sel_squads[0]), true, false, true)
+	elif not inp.sel_vehicles.is_empty():
+		_pick("veh", int(inp.sel_vehicles[0]), true, false, true)
 
 
 func matches_unit(search_text: String, category: String, attention: bool) -> bool:
@@ -40,7 +77,11 @@ func matches_unit(search_text: String, category: String, attention: bool) -> boo
 		return false
 	if filter_kind in ["infantry", "vehicles"] and category != filter_kind:
 		return false
-	return query.is_empty() or search_text.to_lower().contains(query)
+	var text := search_text.to_lower()
+	for term in _terms:
+		if not text.contains(term):
+			return false
+	return true
 
 
 func _ready() -> void:
@@ -68,10 +109,6 @@ func _gui_input(ev: InputEvent) -> void:
 			accept_event()
 			return
 		if mb.button_index != MOUSE_BUTTON_LEFT:
-			return
-		if _head.has_point(mb.position):
-			toggle()
-			accept_event()
 			return
 		for r in _rows:
 			if (r[0] as Rect2).has_point(mb.position):
@@ -106,11 +143,12 @@ func _pick(kind: String, id: int, mine: bool, add: bool, dbl: bool) -> void:
 		var c := Vector3.ZERO
 		var n := 0
 		for s in w.soldiers:
-			if s.sid == id and s.life != Soldier.Life.DEAD and s.life != Soldier.Life.HIDDEN:
-				c += s.position
+			if s.sid == id and not s.gone and s.life != Soldier.Life.DEAD:
+				c += s.riding.position if is_instance_valid(s.riding) else s.position
 				n += 1
-		if n > 0:
-			at = c / n
+		if n == 0:
+			return
+		at = c / n
 		if mine or w.local_team < 0:
 			if not add:
 				inp.clear_selection()
@@ -120,8 +158,9 @@ func _pick(kind: String, id: int, mine: bool, add: bool, dbl: bool) -> void:
 				inp.sel_squads.append(id)
 	else:
 		var v = w.entity(id)
-		if v:
-			at = v.position
+		if v == null or v.gone:
+			return
+		at = v.position
 		if mine or w.local_team < 0:
 			if not add:
 				inp.clear_selection()
@@ -130,8 +169,10 @@ func _pick(kind: String, id: int, mine: bool, add: bool, dbl: bool) -> void:
 			else:
 				inp.sel_vehicles.append(id)
 	Sfx.ui("click")
-	if at != Vector3.INF and w.cam:
-		w.cam.glide_to(at, 22.0 if dbl else -1.0)
+	hud.squad_search.release_focus()
+	if dbl and at != Vector3.INF and w.cam:
+		w.cam.glide_to(at, 32.0)
+		hud.set_workspace("battle")
 		if w.director:
 			w.director.active = false
 
@@ -150,6 +191,7 @@ func _draw_content() -> void:
 	if w == null or w.input == null:
 		return
 	_rows.clear()
+	_entries.clear()
 	_scroll = clampf(_scroll, 0.0, maxf(0.0, _content_h - size.y))
 	var lt: int = w.local_team
 	var teams: Array = [lt] if lt >= 0 else [0, 1]
@@ -171,6 +213,9 @@ func _draw_content() -> void:
 		var search_text := Squad.callsign_of(mem[0].team, int(sid))
 		var symbol: Array = MapSymbols.squad_symbol(mem)
 		search_text += " " + String(symbol[0]) + " " + String(symbol[1])
+		if not query.is_empty():
+			for soldier in mem:
+				search_text += " " + String(soldier.udef.get("name", ""))
 		var attention := false
 		if not query.is_empty() or filter_kind == "attention":
 			var state: Dictionary = hud.squad_state(int(sid), mem)
@@ -187,7 +232,7 @@ func _draw_content() -> void:
 	var x := UiKit.caps_at(self, Vector2(0, 15), "Results", 11, UiKit.DIM)
 	x += 8.0 + UiKit.mono_at(self, Vector2(x + 8.0, 15), "%02d" % (sqs.size() + vehs.size()), 11, UiKit.FAINT)
 	var ok := Keys.label("orbat")
-	var end := ("[%s] " % ok if ok != "" else "") + ("-" if open else "+")
+	var end := "[%s]" % ok if ok != "" else ""
 	var ew := UiKit.mono_w(end, 11)
 	UiKit.mono_at(self, Vector2(W - ew, 15), end, 11, UiKit.FAINT)
 	UiKit.rule(self, Vector2(x + 8.0, 11.5), Vector2(W - ew - 8.0, 11.5))
@@ -196,6 +241,7 @@ func _draw_content() -> void:
 	if sqs.is_empty() and vehs.is_empty():
 		UiKit.caps_at(self, Vector2(0, HEAD_H + 24), "No matching units", 12, UiKit.DIM)
 		_scroll = 0.0
+		_content_h = HEAD_H + 42.0
 		return
 	# body (scrolling, clipped)
 	var y := HEAD_H + 2.0 - _scroll
@@ -260,8 +306,8 @@ func _section(y: float, label: String, top: float, bottom: float) -> float:
 
 ## A row's ground: the selected one washed with the accent fading out across
 ## it, the one under the cursor faintly lit; a rule under every one.
-func _row_bg(r: Rect2, sel: bool, idx: int) -> void:
-	if sel:
+func _row_bg(r: Rect2, sel: bool, idx: int, keyboard := false) -> void:
+	if sel or keyboard:
 		var a := UiKit.fa(UiKit.ACCENT, 0.22)
 		var b := UiKit.fa(UiKit.ACCENT, 0.05)
 		draw_polygon(PackedVector2Array([r.position, Vector2(r.end.x, r.position.y), r.end, Vector2(r.position.x, r.end.y)]), PackedColorArray([a, b, b, a]))
@@ -282,15 +328,17 @@ func _code_col(st: Dictionary, sel: bool) -> Color:
 
 func _squad_row(y: float, sid: int, mem: Array, top: float, bottom: float) -> float:
 	var w := hud.world
+	var mine: bool = w.input.is_mine(mem[0])
+	_entries.append([Rect2(0, y + _scroll, W, ROW_H), "sq", sid, mine])
+	var keyboard := _entries.size() - 1 == _cursor and hud.squad_search.has_focus()
 	if not _visible_row(y, ROW_H, top, bottom):
 		return y + ROW_H
 	var r := Rect2(0, y, W, ROW_H)
 	var team: int = mem[0].team
-	var mine: bool = w.input.is_mine(mem[0])
 	var idx := _rows.size()
 	var sel: bool = sid in w.input.sel_squads
 	_rows.append([r, "sq", sid, mine])
-	_row_bg(r, sel, idx)
+	_row_bg(r, sel, idx, keyboard)
 	var st: Dictionary = hud.squad_state(sid, mem)
 	var sym: Array = MapSymbols.squad_symbol(mem)
 	MapSymbols.nato(self, Vector2(11, y + ROW_H * 0.5), 17.0, team == w.local_team or w.local_team < 0, team, sym[0], "", 1.0)
@@ -313,27 +361,29 @@ func _squad_row(y: float, sid: int, mem: Array, top: float, bottom: float) -> fl
 	var pw := mem.size() * 5.0 - 2.0
 	UiKit.pips(self, Vector2(W - pw - 2.0, y + 8), alive, hurt, mem.size() - alive - hurt)
 	# what it's doing, as a code, cut to fit
-	var cx := maxf(x + 12.0, 128.0)
+	var cx := 26.0
 	var code := String(st.code)
 	if st.low_ammo:
 		code += " · LOW AMMO"
-	var maxw := W - pw - 12.0 - cx
+	var maxw := W - cx - 12.0
 	while code.length() > 3 and UiKit.mono_w(code, 12) > maxw:
 		code = code.substr(0, code.length() - 2)
-	UiKit.mono_at(self, Vector2(cx, y + 17), code, 12, _code_col(st, sel))
+	UiKit.mono_at(self, Vector2(cx, y + 33), code, 12, _code_col(st, sel))
 	return y + ROW_H
 
 
 func _vehicle_row(y: float, v, top: float, bottom: float) -> float:
 	var w := hud.world
+	var mine: bool = w.input.is_mine(v)
+	_entries.append([Rect2(0, y + _scroll, W, ROW_H), "veh", v.eid, mine])
+	var keyboard := _entries.size() - 1 == _cursor and hud.squad_search.has_focus()
 	if not _visible_row(y, ROW_H, top, bottom):
 		return y + ROW_H
 	var r := Rect2(0, y, W, ROW_H)
-	var mine: bool = w.input.is_mine(v)
 	var idx := _rows.size()
 	var sel: bool = v.eid in w.input.sel_vehicles
 	_rows.append([r, "veh", v.eid, mine])
-	_row_bg(r, sel, idx)
+	_row_bg(r, sel, idx, keyboard)
 	var vs: Array = MapSymbols.vehicle_symbol(v.vkind)
 	MapSymbols.nato(self, Vector2(11, y + ROW_H * 0.5), 17.0, v.team == w.local_team or w.local_team < 0, v.team, vs[0], "", 1.0)
 	var by := int(w.coop.sel_veh.get(v.eid, 0)) if w.coop else 0
@@ -355,5 +405,5 @@ func _vehicle_row(y: float, v, top: float, bottom: float) -> float:
 		col = UiKit.BAD
 	elif Defs.flat(v.position - v._last_pos).length() > 0.02:
 		code = "MOVING"
-	UiKit.mono_at(self, Vector2(maxf(x + 12.0, 128.0), y + 17), code, 12, col)
+	UiKit.mono_at(self, Vector2(26, y + 33), code, 12, col)
 	return y + ROW_H

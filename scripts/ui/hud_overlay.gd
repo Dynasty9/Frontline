@@ -981,7 +981,7 @@ func _nato_markers(cam: Camera3D, lt: int, a: float) -> void:
 				vr.position += off
 				break
 		_place_rect(vr)
-		MapSymbols.nato(self, vp, 28.0 if hud.tactical else 24.0, v.team == lt or lt < 0, v.team, vs3[0], vs3[1], a, not hud.tactical)
+		MapSymbols.nato(self, vp, 28.0 if hud.tactical else 24.0, v.team == lt or lt < 0, v.team, vs3[0], vs3[1] if v.selected or hud.tactical or hud.workspace == "map" else "", a, not hud.tactical)
 		if v.selected:
 			UiKit.ticks(self, Rect2(vp - Vector2(17, 13), Vector2(34, 26)), UiKit.fa(UiKit.ACCENT, a), 5.0, 2.0, 1.5)
 		var vby := int(w.coop.sel_veh.get(v.eid, 0)) if w.coop else 0
