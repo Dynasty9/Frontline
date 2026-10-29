@@ -70,7 +70,7 @@ func _build_review_ui() -> void:
 	panel.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_RIGHT)
 	panel.offset_left = -370
 	panel.offset_right = -20
-	panel.offset_top = -470
+	panel.offset_top = -510
 	panel.offset_bottom = -20
 	canvas.add_child(panel)
 	var column := VBoxContainer.new()
@@ -108,6 +108,10 @@ func _build_review_ui() -> void:
 	folder.text = "Open saved review folder"
 	folder.pressed.connect(func(): OS.shell_open(ProjectSettings.globalize_path(review_path).get_base_dir()))
 	column.add_child(folder)
+	var playground := Button.new()
+	playground.text = "Return to playable terrain playground"
+	playground.pressed.connect(func(): get_tree().change_scene_to_file("res://tests/mocap/playground.tscn"))
+	column.add_child(playground)
 
 func _select_clip(index: int) -> void:
 	current_case = -1

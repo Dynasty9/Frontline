@@ -119,7 +119,7 @@ func _physics_process(dt: float) -> void:
 	if controller_test:
 		input = _test_input()
 		running = (time >= 2.5 and time < 4.5) or (time >= 8.5 and time < 12.0)
-	var speed := 1.0 if crouching else (3.4 if running else 1.4)
+	var speed := _movement_speed(running)
 	var heading := PI - yaw
 	if not soldier.dead: body.rotation.y = lerp_angle(body.rotation.y, heading, 1.0 - exp(-12.0 * dt))
 	var desired := Basis(Vector3.UP, heading) * Vector3(input.x, 0, input.y) * speed
@@ -136,12 +136,12 @@ func _physics_process(dt: float) -> void:
 	if not body.is_on_floor(): body.velocity.y -= dt * 12.0
 	var collision: CollisionShape3D = body.get_child(0)
 	var capsule: CapsuleShape3D = collision.shape
-	capsule.height = move_toward(capsule.height, 1.3 if crouching else 1.8, dt * 3.0)
+	capsule.height = move_toward(capsule.height, _collision_height(), dt * 3.0)
 	collision.position.y = capsule.height * 0.5
 	body.move_and_slide()
 	soldier.ground_y = body.global_position.y
 	peak = maxf(peak, body.position.y)
-	driver.advance(dt, soldier.global_basis.inverse() * body.velocity, crouching, body.is_on_floor())
+	_animate_character(dt)
 	soldier.capture_motion(dt)
 	if controller_test and not soldier.dead:
 		var floor_y := _floor_height(body.global_position)
@@ -242,3 +242,12 @@ func _floor_height(point: Vector3) -> float:
 func _floor_normal(point: Vector3) -> Vector3:
 	var hit := _floor_hit(point)
 	return hit.normal if not hit.is_empty() else Vector3.UP
+
+func _movement_speed(running: bool) -> float:
+	return 1.0 if crouching else (3.4 if running else 1.4)
+
+func _animate_character(dt: float) -> void:
+	driver.advance(dt, soldier.global_basis.inverse() * body.velocity, crouching, body.is_on_floor())
+
+func _collision_height() -> float:
+	return 1.3 if crouching else 1.8

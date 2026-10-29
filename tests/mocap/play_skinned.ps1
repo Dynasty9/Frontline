@@ -1,4 +1,4 @@
-param([switch]$Controller, [switch]$Swat, [switch]$Viewer, [switch]$Showcase, [string]$Godot = "")
+param([switch]$Playground, [switch]$Controller, [switch]$Swat, [switch]$Viewer, [switch]$Showcase, [string]$Godot = "")
 $ErrorActionPreference = "Stop"
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot "../..")).Path
 if (-not $Godot) {
@@ -14,7 +14,9 @@ if (-not $Godot) {
 if (-not $Godot) { throw "Pass -Godot with the path to Godot 4.7.2 console executable." }
 $characterArgs = @()
 if ($Swat) { $characterArgs += "--swat-units" }
-if ($Controller) {
+if ($Playground) {
+    & $Godot --path $repoRoot tests/mocap/playground.tscn -- --swat-units
+} elseif ($Controller) {
     & $Godot --path $repoRoot tests/mocap/controller.tscn -- @characterArgs
 } elseif ($Viewer) {
     & $Godot --path $repoRoot tests/mocap/viewer.tscn -- @characterArgs
