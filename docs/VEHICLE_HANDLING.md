@@ -219,3 +219,22 @@ checks navigation, backing, stopping, skid and beach landings on actual coastlin
 
 Measured time to 90% cruise from rest at 60 Hz: RHIB 11.68 s, motorboat 12.43 s,
 both riverine craft 15.40 s, patrol ship 23.65 s and trawler 24.58 s.
+
+## Reproducing the animated comparisons
+
+`tests/fixtures/vehicle-motion-clips.tscn` records deterministic model renders,
+using the actual turret and hull integration methods. Run the same fixture on
+`origin/main` and this branch, with identical arguments except the label/output:
+
+```sh
+godot --path . --rendering-method gl_compatibility --position -10000,-10000 \
+  --resolution 1280x720 res://tests/fixtures/vehicle-motion-clips.tscn -- \
+  --clip=boats --label=AFTER --frames=/absolute/path/boats-after
+```
+
+Repeat for `tanks` and `aircraft`. Each sequence contains 144 frames at 12 fps,
+with five 60 Hz physics steps per captured vehicle frame. Join the before/after
+sequences horizontally and encode VP9/yuv420p WebM; GIF previews are for GitHub.
+These controlled comparisons hold tanks' hulls fixed and give boats identical
+throttle/helm commands in open water. The aircraft clip visualizes authoritative
+launch sockets using coloured pulses, not live weapon cadence or damage.

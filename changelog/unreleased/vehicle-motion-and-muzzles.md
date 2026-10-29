@@ -3,21 +3,20 @@ title = "Weight behind the gun"
 summary = "Older tanks, modern armour, aircraft and mounted weapons turn and acquire targets at distinct, deliberate rates. Vehicle and gunship rounds begin at their own barrels."
 kind = "improved"
 
-[[screenshots]]
-file = "tanks-before.jpg"
-caption = "Before: the old and modern tank share the same traverse; the IFV has already swung 90 degrees."
+[[videos]]
+file = "tanks-comparison.webm"
+poster = "tanks-comparison.jpg"
+caption = "Before / after, real time: the old tank, modern tank and IFV acquire the same target 90 degrees to their right. Older drives take longer to settle."
 
-[[screenshots]]
-file = "tanks-after.jpg"
-caption = "After the same two seconds: the old tank has traversed 27 degrees, the modern tank 66, and the IFV 77."
+[[videos]]
+file = "boats-comparison.webm"
+poster = "boats-comparison.jpg"
+caption = "Before / after, real time: RHIB, patrol ship and trawler receive six seconds of full ahead, four seconds hard right, then a stop order. Course dots show the different turns."
 
-[[screenshots]]
-file = "aircraft-before.jpg"
-caption = "Before: the orbiting gunship's round starts underneath the fuselage."
-
-[[screenshots]]
-file = "aircraft-after.jpg"
-caption = "After: the 105 mm round starts at its own barrel; the smaller guns have separate launch points."
+[[videos]]
+file = "aircraft-comparison.webm"
+poster = "aircraft-comparison.jpg"
+caption = "Before / after launch-origin visualization: coloured pulses mark the actual 25, 40 and 105 mm launch points. Each gun now starts at its own barrel instead of below the fuselage."
 +++
 
 - Tank, IFV, anti-aircraft, artillery, light vehicle and helicopter weapons have different traverse rates, with acceleration and braking onto the target.
