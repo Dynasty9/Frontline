@@ -19,7 +19,7 @@ caption = "Looking inland through the coastal valley with Mountain reflections e
 
 - Mountains, hills and valleys generate from the battle seed. Towns, starting bases, roads and river crossings retain usable valley corridors, with forests on lower ground.
 - Layered photographic rock, cool shaded gullies and connected snowfields give the mountains an Alpine appearance. Sky visibility and distant ridge shadows are baked into the terrain, updating when the lighting mood changes.
-- Fractured bedrock, tilted shelves and weathered ledges break up the mountain faces; snow now leaves more exposed rock below the peaks.
+- Fractured bedrock, tilted shelves and weathered ledges break up the mountain faces. Larger photographic slabs catch the light above smaller scree, while snow settles on gentler shelves and leaves steep cliffs exposed. Finer distant silhouettes keep the horizon from looking angular.
 - Standard-battle woods grow in denser clusters. Tree bark and foliage share spatial drawing batches while individual trees still burn and fall.
 - Alpine rivers have blue-green water. Optional Alpine distance haze separates the mountain ranges, and optional Mountain reflections capture distant terrain in the water without rendering the whole battle twice.
 - Troops and vehicles follow the terrain and avoid slopes they cannot climb. Ridges obstruct shots and observation; helicopters clear rising ground and land at the correct elevation.

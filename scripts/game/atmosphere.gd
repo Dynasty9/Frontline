@@ -783,8 +783,8 @@ func _ground_ring(inner: float, outer: float) -> ArrayMesh:
 	var rects := [Rect2(-outer, -outer, outer * 2.0, outer - inner), Rect2(-outer, inner, outer * 2.0, outer - inner),
 		Rect2(-outer, -inner, outer - inner, inner * 2.0), Rect2(inner, -inner, outer - inner, inner * 2.0)]
 	for r in rects:
-		var nx := ceili(r.size.x / 24.0)
-		var nz := ceili(r.size.y / 24.0)
+		var nx := ceili(r.size.x / 16.0)
+		var nz := ceili(r.size.y / 16.0)
 		for z in nz:
 			for x in nx:
 				var lo: Vector2 = r.position + r.size * Vector2(float(x) / nx, float(z) / nz)
@@ -1015,7 +1015,16 @@ float hgt(vec2 p) {
 }
 
 vec3 surface_color(sampler2D tex, vec3 p, vec3 weights) {
-	return texture(tex, p.zy).rgb * weights.x + texture(tex, p.xz).rgb * weights.y + texture(tex, p.xy).rgb * weights.z;
+	vec3 x = texture(tex, p.zy).rgb;
+	vec3 y = texture(tex, p.xz).rgb;
+	vec3 z = texture(tex, p.xy).rgb;
+	// Compatibility samples photographs in sRGB; mineral masks need the same linear values.
+	if (OUTPUT_IS_SRGB) {
+		x = mix(x / 12.92, pow((x + 0.055) / 1.055, vec3(2.4)), step(vec3(0.04045), x));
+		y = mix(y / 12.92, pow((y + 0.055) / 1.055, vec3(2.4)), step(vec3(0.04045), y));
+		z = mix(z / 12.92, pow((z + 0.055) / 1.055, vec3(2.4)), step(vec3(0.04045), z));
+	}
+	return x * weights.x + y * weights.y + z * weights.z;
 }
 
 vec3 surface_normal(sampler2D tex, vec3 p, vec3 weights, vec3 geometric) {
@@ -1086,14 +1095,16 @@ void fragment() {
 	vec3 geometric = normalize(vec3(-rx, 1.0, -rz));
 	vec3 weights = pow(abs(geometric), vec3(4.0));
 	weights /= weights.x + weights.y + weights.z;
-	// Broad mineral bands read as rock strata at altitude; fine grain resolves nearby.
-	vec3 rock = surface_color(rock_color, wpos / 32.0, weights);
-	vec3 rock_macro = surface_color(cliff_color, wpos / 110.0 + 0.37, weights);
+	// Large fractured slabs retain their relief at the battle camera; scree breaks up their feet.
+	vec3 rock = surface_color(rock_color, wpos / 90.0, weights);
+	vec3 rock_macro = surface_color(cliff_color, wpos / 38.0 + 0.37, weights);
 	float stone = dot(rock, vec3(0.2126, 0.7152, 0.0722));
 	float mineral = dot(rock_macro, vec3(0.2126, 0.7152, 0.0722));
 	float bed = wpos.y / 14.0 + p.x * 0.006 + p.y * 0.003;
 	float strata = smoothstep(0.04, 0.15, abs(fract(bed + (d1 - 0.5) * 0.35) - 0.5));
-	rock = vec3(0.75, 0.79, 0.83) * (0.025 + pow(mineral, 0.82) * 0.85) * (0.65 + stone * 1.2);
+	rock = mix(vec3(stone), rock, 0.18) * vec3(1.7, 1.67, 1.6);
+	rock = mix(rock, vec3(mineral) * vec3(0.95, 0.98, 1.0), (1.0 - smoothstep(0.25, 0.8, slope)) * 0.65);
+	rock *= mix(0.65, 1.25, smoothstep(0.06, 0.4, stone));
 	rock *= 0.85 + strata * 0.15;
 	vec3 moss = surface_color(moss_color, wpos / 24.0, weights);
 	float grass_detail = dot(moss, vec3(0.2126, 0.7152, 0.0722));
@@ -1117,7 +1128,7 @@ void fragment() {
 	float snow_field = (geology - local_snow_line) / 35.0 + cavity * 0.8 - geometric.x * 0.25 + (d1 - 0.5) * 0.3;
 	snow_field -= min(3.0, max(0.0, slope - 0.75)) * 0.18;
 	snow_field += (mineral - 0.3) * 0.9;
-	float snow = smoothstep(-0.06, 0.08, snow_field) * (1.0 - smoothstep(3.0, 8.0, slope));
+	float snow = smoothstep(-0.06, 0.12, snow_field) * (1.0 - smoothstep(0.9, 2.4, slope));
 	snow *= clean;
 	col = mix(col, vec3(0.82, 0.87, 0.91) * (0.97 + d3 * 0.03), snow);
 	AO = sky;
@@ -1142,8 +1153,8 @@ void fragment() {
 	float gx = (dfm(p + vec2(de, 0.0)) - dfm(p - vec2(de, 0.0))) / (2.0 * de);
 	float gz = (dfm(p + vec2(0.0, de)) - dfm(p - vec2(0.0, de))) / (2.0 * de);
 	n = normalize(n + vec3(-gx, 0.0, -gz));
-	vec3 mapped = mix(surface_normal(moss_normal, wpos / 24.0, weights, geometric), normalize(mix(surface_normal(cliff_normal, wpos / 110.0 + 0.37, weights, geometric), surface_normal(rock_normal, wpos / 32.0, weights, geometric), 0.25)), exposed);
-	n = normalize(mix(n, mapped, 0.48 * (1.0 - snow) * (1.0 - wm.a)));
+	vec3 mapped = mix(surface_normal(moss_normal, wpos / 24.0, weights, geometric), normalize(mix(surface_normal(cliff_normal, wpos / 38.0 + 0.37, weights, geometric), surface_normal(rock_normal, wpos / 90.0, weights, geometric), 0.8)), exposed);
+	n = normalize(mix(n, mapped, 0.72 * (1.0 - snow) * (1.0 - wm.a)));
 	n = normalize(mix(n, vec3(0.0, 1.0, 0.0), puddle * 0.9));
 	NORMAL = normalize((VIEW_MATRIX * vec4(n, 0.0)).xyz);
 }
