@@ -1,0 +1,11 @@
+[package]
+name = "frontline_core"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.94"
+
+[lib]
+path = "src/lib.rs"
+
+[dependencies]
+glam = "=0.32.1"

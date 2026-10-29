@@ -8,6 +8,11 @@ Gameplay remains GDScript. A Rust GDExtension accelerates nearest-enemy candidat
 selection using numeric snapshots and contracts degree-two navigation search states.
 Individual visibility and combat stay in Godot. Native graph assembly runs on the
 main thread; local-grid costing still uses workers.
+The numeric algorithms live in the engine-independent `native/core` crate;
+`native/src` contains the Godot bindings. Run their standalone tests with
+`cargo +1.94.0 test --locked --manifest-path native/Cargo.toml -p frontline_core`.
+See [RUST_SIMULATION.md](RUST_SIMULATION.md) for the migration boundary and
+the outstanding requirements for deterministic battle verification.
 Install Rust 1.94.0 (`rustup toolchain install 1.94.0 --profile minimal`), then run
 `python tools/build_native.py` from the root. Re-import Godot afterward. A checkout
 without the generated extension uses GDScript perception and Godot AStar3D routes. Release CI builds
