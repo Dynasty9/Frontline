@@ -1,94 +1,27 @@
-extends SubViewportContainer
-## One static render of the selected unit's actual procedural model, rebuilt on identity changes.
-var _view: SubViewport
-var _stage: Node3D
-var _camera: Camera3D
-var _model: Node3D
+extends UiModelPreview
+## Adapter from a selected entity to the reusable, simulation-free preview stage.
 var _key := ""
-var _environment: Environment
-var _rim: DirectionalLight3D
-
-
-func _ready() -> void:
-	mouse_filter = Control.MOUSE_FILTER_IGNORE
-	stretch = true
-	_view = SubViewport.new()
-	_view.size = Vector2i(144, 160)
-	_view.own_world_3d = true
-	_view.render_target_update_mode = SubViewport.UPDATE_DISABLED
-	_view.msaa_3d = Viewport.MSAA_2X
-	add_child(_view)
-	_stage = Node3D.new()
-	_view.add_child(_stage)
-	_environment = Environment.new()
-	_environment.background_mode = Environment.BG_COLOR
-	_environment.background_color = UiKit.INK.lightened(0.04)
-	_environment.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
-	_environment.ambient_light_color = UiKit.TEXT
-	_environment.ambient_light_energy = 0.8
-	var we := WorldEnvironment.new()
-	we.environment = _environment
-	_stage.add_child(we)
-	var light := DirectionalLight3D.new()
-	light.rotation_degrees = Vector3(-25, -35, 0)
-	light.light_energy = 1.8
-	_stage.add_child(light)
-	_rim = DirectionalLight3D.new()
-	_rim.rotation_degrees = Vector3(-20, 145, 0)
-	_rim.light_color = UiKit.ACCENT
-	_rim.light_energy = 1.5
-	_stage.add_child(_rim)
-	_camera = Camera3D.new()
-	_camera.projection = Camera3D.PROJECTION_ORTHOGONAL
-	_stage.add_child(_camera)
-	resized.connect(func(): _view.render_target_update_mode = SubViewport.UPDATE_ONCE)
 
 
 func show_entity(entity: Entity) -> void:
-	if entity == null or _view == null:
+	if not is_instance_valid(entity) or _view == null:
 		return
 	var soldier := entity is Soldier
 	var kind: String = entity.utype if soldier else (entity.vkind if entity is Vehicle else "")
 	if kind.is_empty():
 		hide()
 		return
-	var key := "%s:%s:%s:%s" % [soldier, kind, entity.team, UiKit.theme_rev]
+	var key := "%s:%s:%s" % [soldier, kind, entity.team]
 	if key == _key:
 		return
 	_key = key
-	_environment.background_color = UiKit.INK.lightened(0.04)
-	_environment.ambient_light_color = UiKit.TEXT
-	_rim.light_color = UiKit.ACCENT
-	if _model:
-		_model.free()
+	var model: Node3D
 	if soldier:
-		var model := SoldierModel.new()
-		model.build(kind, entity.team, 7)
+		var figure := SoldierModel.new()
+		figure.build(kind, entity.team, 7)
 		for i in 6:
-			model.pose(0.5, 0, Soldier.Post.STAND, Soldier.Act.IDLE, 0.0, false, false)
-		_model = model
+			figure.pose(0.5, 0, Soldier.Post.STAND, Soldier.Act.IDLE, 0.0, false, false)
+		model = figure
 	else:
-		_model = VehicleModels.build(kind, entity.team, 7).root
-	_stage.add_child(_model)
-	var bounds := _bounds(_model)
-	var focus := bounds.get_center()
-	var span := maxf(bounds.size.x, maxf(bounds.size.y, bounds.size.z))
-	if soldier:
-		focus.y = bounds.position.y + bounds.size.y * 0.7
-		_camera.size = bounds.size.y * 0.7
-	else:
-		_camera.size = span * 1.35
-	_camera.position = focus + Vector3(0.7, 0.3, -1.0).normalized() * maxf(3, span * 3)
-	_camera.look_at(focus)
-	_view.render_target_update_mode = SubViewport.UPDATE_ONCE
-
-
-func _bounds(node: Node3D) -> AABB:
-	var result := AABB()
-	var found := false
-	for child in node.find_children("*", "VisualInstance3D", true, false):
-		var visual := child as VisualInstance3D
-		var b: AABB = visual.global_transform * visual.get_aabb()
-		result = result.merge(b) if found else b
-		found = true
-	return result if found else AABB(Vector3.ZERO, Vector3.ONE)
+		model = VehicleModels.build(kind, entity.team, 7).root
+	set_model(model, soldier)

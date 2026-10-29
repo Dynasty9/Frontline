@@ -71,7 +71,7 @@ func layout_minimap() -> void:
 
 ## The narrowest the selection panel gets, and an order in the orders grid.
 const SEL_MIN_W := 240.0
-const CARD_BTN := Vector2(100, 52)
+const CARD_BTN := UiDeckAction.DEFAULT_SIZE
 
 
 ## Where the bottom-left cluster (minimap and layer column) ends on the right.
@@ -135,7 +135,7 @@ var card_panel: PanelContainer
 var card: GridContainer
 var card_title: Label
 var card_scroll: ScrollContainer
-var _command_tile_width := CARD_BTN.x
+var command_grid: UiDeckGrid
 var _card_key := ""
 var _card_page := "main"
 var _page_base := ""  # the card a production page was opened on
@@ -486,8 +486,8 @@ func _build_workspaces() -> void:
 	root.add_child(task_bar)
 	for item in [["squads", "Units"], ["fires", "Support"], ["map", "Layers"]]:
 		var key: String = item[0]
-		var b := preload("res://scripts/ui/hud_task_button.gd").new()
-		b.kind = key
+		var b := UiDeckNav.new()
+		b.icon_id = {"squads": "units", "fires": "support", "map": "layers"}[key]
 		b.caption = item[1]
 		b.focus_mode = Control.FOCUS_NONE
 		b.toggle_mode = true
@@ -888,15 +888,9 @@ func _kr(first: String, last: String) -> Array:
 
 ## A key in its box, for the key reference.
 static func _key_box(k: String) -> PanelContainer:
-	var p := PanelContainer.new()
-	var sb := UiKit.box(Color(0, 0, 0, 0), 0, UiKit.RULE2, 1, 0.0)
-	sb.content_margin_left = 5
-	sb.content_margin_right = 5
-	sb.content_margin_top = 1
-	sb.content_margin_bottom = 1
-	p.add_theme_stylebox_override("panel", sb)
-	p.add_child(UiKit.mono_label(k, 11, UiKit.TEXT))
-	return p
+	var keycap := UiDeckKeycap.new()
+	keycap.set_binding(k, 0)
+	return keycap
 
 
 ## Everything on screen that names a key, again after a key has been changed.
@@ -2023,10 +2017,7 @@ func _update_card() -> void:
 	if key == _card_key:
 		return
 	_card_key = key
-	if card_scroll:
-		card_scroll.scroll_vertical = 0
-	for c in card.get_children():
-		c.queue_free()
+	command_grid.clear_actions()
 	card_title.text = ""
 	var lt := world.local_team
 	if lt < 0:
@@ -2162,109 +2153,31 @@ func _prod_cat(item: String) -> String:
 ## in capitals, and (for a build, a train or a page) its cost or a mark at the
 ## end. A key fills with the accent while its order is the one in hand.
 func _build_command_card() -> void:
-	# command card, bottom-right
-	card_panel = PanelContainer.new()
-	card_panel.anchor_left = 1.0
-	card_panel.anchor_right = 1.0
-	card_panel.anchor_top = 1.0
-	card_panel.anchor_bottom = 1.0
-	card_panel.grow_horizontal = Control.GROW_DIRECTION_BEGIN
-	card_panel.grow_vertical = Control.GROW_DIRECTION_BEGIN
-	card_panel.offset_right = -14
-	card_panel.offset_bottom = -14
-	card_panel.offset_left = -14
-	card_panel.offset_top = -14
-	card_panel.custom_minimum_size.y = 184
-	card_panel.add_theme_stylebox_override("panel", UiKit.bare(12.0))
-	root.add_child(card_panel)
-	var cv := VBoxContainer.new()
-	cv.add_theme_constant_override("separation", 4)
-	card_panel.add_child(cv)
-	var ch := UiKit.header("Orders")
-	card_title = ch.get_node("Text") as Label
-	card_title.clip_text = true  # the keys set the card's width, not the title
-	card_title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	cv.add_child(ch)
-	card = GridContainer.new()
-	card.columns = 3
-	card.add_theme_constant_override("h_separation", 6)
-	card.add_theme_constant_override("v_separation", 6)
-	card_scroll = ScrollContainer.new()
-	card_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	card_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
-	card_scroll.custom_minimum_size.x = CARD_BTN.x * 3 + 24
-	cv.add_child(card_scroll)
-	card_scroll.add_child(card)
+	command_grid = UiDeckGrid.new()
+	card_panel = command_grid
+	root.add_child(command_grid)
+	card_title = command_grid.title
+	card_scroll = command_grid.scroll
+	card = command_grid.grid
 
 
-## Long build and training pages scroll inside the deck instead of covering the battle.
 func _layout_command_card() -> void:
 	var room := root.size.x - minimap_right() - 8 - SEL_MIN_W - 12 - 14
-	var tile_width := clampf(floorf((room - 48) / 3.0), 80, CARD_BTN.x)
-	if tile_width != _command_tile_width:
-		_command_tile_width = tile_width
-		for button: Button in card.get_children():
-			button.custom_minimum_size.x = tile_width
-	card_scroll.custom_minimum_size.x = tile_width * 3 + 24
-	var rows := clampi(ceili(card.get_child_count() / 3.0), 1, 3)
-	var height := rows * (CARD_BTN.y + 6) - 6
-	if card_scroll.custom_minimum_size.y != height:
-		card_scroll.custom_minimum_size.y = height
+	command_grid.fit_width(room)
 	card_panel.size = card_panel.get_combined_minimum_size()
 	card_panel.position = root.size - card_panel.size - Vector2(14, 14)
 
 
 func _button(text: String, sub: String, tip: String, cb: Callable) -> Button:
-	var b := preload("res://scripts/ui/hud_order_button.gd").new()
-	b.order = text
-	b.tooltip_text = tip
-	b.custom_minimum_size = Vector2(_command_tile_width, CARD_BTN.y)
-	b.focus_mode = Control.FOCUS_NONE
-	for state in ["normal", "disabled", "focus", "hover", "pressed", "hover_pressed"]:
-		b.add_theme_stylebox_override(state, StyleBoxEmpty.new())
 	var is_key := sub != "" and not sub.is_valid_int() and sub != "Build" and sub != "‹" and not sub.begins_with("tier ") and not sub.ends_with(" types")
-	var kb: PanelContainer = null
-	if is_key:
-		kb = _key_box(sub.to_upper())
-		var key_label := kb.get_child(0) as Label
-		key_label.custom_minimum_size.x = minf(54, key_label.get_combined_minimum_size().x)
-		key_label.clip_text = true
-		key_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-		b.tooltip_text += "\nShortcut: " + sub
-		kb.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		b.add_child(kb)
-		kb.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
-		kb.grow_horizontal = Control.GROW_DIRECTION_BEGIN
-		kb.offset_left = -6
-		kb.offset_right = -6
-		kb.offset_top = 5
-		kb.offset_bottom = 5
-	var danger := text in ["Retreat", "Fall back", "Cancel"]
-	var label := UiKit.caps(text, 11, UiKit.BAD if danger else UiKit.TEXT, 600, 0)
-	label.position = Vector2(8, 26)
-	label.clip_text = true
-	label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	b.add_child(label)
-	label.size = Vector2(CARD_BTN.x - 16, 24)
-	# Font metrics settle after the tile inherits its theme. Constrain long names then.
-	label.set_deferred("size", Vector2(_command_tile_width - 16, 24))
-	b.resized.connect(func(): label.size.x = maxf(1, b.size.x - 16))
-	if sub != "" and not is_key and sub != "Build":
-		var cost := UiKit.mono_label(sub, 10, UiKit.DIM)
-		cost.position = Vector2(42, 7)
-		cost.clip_text = true
-		cost.size = Vector2(_command_tile_width - 48, 14)
-		cost.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-		cost.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		b.add_child(cost)
-		b.resized.connect(func(): cost.size.x = maxf(1, b.size.x - 48))
-	b.set_meta("name", label)
-	if kb:
-		b.set_meta("key", kb)
-	b.set_meta("order", text)
-	b.pressed.connect(func(): Sfx.ui("click"); cb.call(); _card_key = "")
-	card.add_child(b)
+	var icons := {"Attack-move": "attack", "Defend": "defend", "Hold": "hold", "Retreat": "back", "Fall back": "back", "Back": "back", "Cancel": "back",
+		"Grenade": "grenade", "Smoke": "smoke", "Mortar smoke": "smoke", "Fire smoke": "smoke", "Dismount": "exit", "Exit here": "exit", "Base": "build", "Defenses": "defenses",
+		"Mortar HE": "target", "Fire mission": "target", "Fire HE": "target", "Squad": "units"}
+	var b := command_grid.add_action({"id": text, "label": text, "icon": icons.get(text, "build"),
+		"key": sub if is_key else "", "value": sub if not is_key and sub != "Build" else "",
+		"dangerous": text in ["Retreat", "Fall back", "Cancel"], "tooltip": tip},
+		func(): Sfx.ui("click"); cb.call(); _card_key = "")
+	b.focus_mode = Control.FOCUS_NONE
 	return b
 
 
@@ -2277,20 +2190,5 @@ func _card_active() -> void:
 	var hand := {"Attack-move": inp.order_mode == "assault", "Defend": inp.order_mode == "defend", "Grenade": inp.ability == "frag",
 		"Smoke": inp.ability == "smoke", "Mortar HE": inp.ability == "mortar_he", "Mortar smoke": inp.ability == "mortar_smoke",
 		"Fire mission": inp.ability == "arty_he", "Fire HE": inp.ability == "pit_he", "Fire smoke": inp.ability == "pit_smoke"}
-	for b in card.get_children():
-		if not b.has_meta("key"):
-			continue
-		var on: bool = hand.get(String(b.get_meta("order")), false)
-		if on == b.get_meta("on", false):
-			continue
-		b.set_meta("on", on)
-		b.queue_redraw()
-		var kb: PanelContainer = b.get_meta("key")
-		var sb := UiKit.box(UiKit.ACCENT if on else Color(0, 0, 0, 0), 0, UiKit.ACCENT if on else UiKit.RULE2, 1, 0.0)
-		sb.content_margin_left = 5
-		sb.content_margin_right = 5
-		sb.content_margin_top = 1
-		sb.content_margin_bottom = 1
-		kb.add_theme_stylebox_override("panel", sb)
-		(kb.get_child(0) as Label).add_theme_color_override("font_color", UiKit.ON_ACCENT if on else UiKit.TEXT)
-		(b.get_meta("name") as Label).add_theme_color_override("font_color", UiKit.ACCENT if on else UiKit.TEXT)
+	for b: UiDeckAction in card.get_children():
+		b.set_active(hand.get(b.action_id, false))

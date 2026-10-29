@@ -396,9 +396,9 @@ func _run() -> void:
 	var smoke := hud._button("Smoke", "Ctrl+Shift+T", "Smoke", func(): orders.append("smoke"))
 	hud._layout_command_card()
 	await _settle()
-	for button: Button in [attack, smoke]:
-		_check("command key stays inside %s tile" % button.order, _inside(button.get_meta("key"), button.get_global_rect()))
-		_check("command caption stays inside %s tile" % button.order, _inside(button.get_meta("name"), button.get_global_rect()))
+	for button: UiDeckAction in [attack, smoke]:
+		_check("command key stays inside %s tile" % button.action_id, _inside(button.keycap, button.get_global_rect()))
+		_check("command caption stays inside %s tile" % button.action_id, _inside(button.caption, button.get_global_rect()))
 	attack.pressed.emit()
 	smoke.pressed.emit()
 	_check("command tiles retain their distinct actions", orders == ["attack", "smoke"])

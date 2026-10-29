@@ -160,11 +160,11 @@ func _ready() -> void:
 			pt.run()
 		TestRun.quit(get_tree())
 		return
-	if args.has("ui-gallery"):
+	if args.has("ui-gallery") or args.has("deck-gallery"):
 		# every interface component in each of its states, saved as an image (docs/UI.md)
 		var gl := CanvasLayer.new()
 		add_child(gl)
-		var gal: Control = preload("res://scripts/test/ui_gallery.gd").new()
+		var gal: Control = preload("res://scripts/test/deck_gallery.gd").new() if args.has("deck-gallery") else preload("res://scripts/test/ui_gallery.gd").new()
 		gal.set("args", args)
 		gl.add_child(gal)
 		return

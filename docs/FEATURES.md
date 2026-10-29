@@ -1139,6 +1139,8 @@ catalogue entry in `MissionList.LIST`, a setup function and an autopilot functio
   Selected soldiers and vehicles have portraits rendered from their actual models. Orders form a stable
   three-column grid with pictograms and bound-key hints. Narrow layouts omit the portrait and compact
   task headings so roster rows remain visible. The observer's director caption stays above the deck.
+  The HUD is composed from the reusable [command deck component library](UI_COMPONENTS.md), with an interactive
+  `--deck-gallery` workbench for checking shared controls, themes and responsive layouts without a battle.
 - The main menu sits over a live 3D scene: a .50 cal crew at golden hour with a burning wreck and shelling on the horizon.
 
 **Field Manual** (`ui/field_manual.gd`; main menu, Esc menu or F4): every soldier, squad, weapon, vehicle, building,

@@ -122,10 +122,10 @@ not wash out the battlefield beyond the controls. The fixed map housing supplies
 
 ## Command deck
 
-`hud_command_deck.gd` draws the map, resource, event, task and selection housings together beneath their
-interactive controls. `hud_order_button.gd` draws the command pictograms; names and keycaps remain native
-controls. `hud_unit_portrait.gd` uses an isolated viewport and the existing soldier/vehicle models, with no
-simulation entities or continuous portrait animation. Theme tokens and interface scale apply throughout.
+The [component library and workbench](UI_COMPONENTS.md) defines reusable surfaces, semantic icons, navigation,
+keycaps, action tiles, bounded command grids, empty states and model previews. The HUD composes these same
+controls; it supplies gameplay state and callbacks rather than duplicating styling. `UiKit` still owns the
+palette and typography. Run `--deck-gallery` to inspect and exercise the production components without a battle.
 
 ## Panels
 
