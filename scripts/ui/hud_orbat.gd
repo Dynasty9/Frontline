@@ -169,7 +169,8 @@ func _pick(kind: String, id: int, mine: bool, add: bool, dbl: bool) -> void:
 			else:
 				inp.sel_vehicles.append(id)
 	Sfx.ui("click")
-	hud.squad_search.release_focus()
+	if hud.squad_search:
+		hud.squad_search.release_focus()
 	if dbl and at != Vector3.INF and w.cam:
 		w.cam.glide_to(at, 32.0)
 		hud.set_workspace("battle")
@@ -227,15 +228,11 @@ func _draw_content() -> void:
 	for v in w.vehicles:
 		if v.team in teams and v.vkind != "truck" and not v.gone and matches_unit(String(v.display_name()), "vehicles", v.health_frac() < 0.6 or (v.flags & Vehicle.F_TRACK) != 0):
 			vehs.append(v)
-	# header: the word, the count, a rule; the key (and whether it's open) at the end
+	# One hierarchy: result count, section, unit name, then its status.
 	_head = Rect2(0, 0, W, HEAD_H)
 	var x := UiKit.caps_at(self, Vector2(0, 15), "Results", 11, UiKit.DIM)
-	x += 8.0 + UiKit.mono_at(self, Vector2(x + 8.0, 15), "%02d" % (sqs.size() + vehs.size()), 11, UiKit.FAINT)
-	var ok := Keys.label("orbat")
-	var end := "[%s]" % ok if ok != "" else ""
-	var ew := UiKit.mono_w(end, 11)
-	UiKit.mono_at(self, Vector2(W - ew, 15), end, 11, UiKit.FAINT)
-	UiKit.rule(self, Vector2(x + 8.0, 11.5), Vector2(W - ew - 8.0, 11.5))
+	x += 8.0 + UiKit.mono_at(self, Vector2(x + 8.0, 15), "%02d" % (sqs.size() + vehs.size()), 11, UiKit.TEXT)
+	UiKit.rule(self, Vector2(x + 10.0, 11.5), Vector2(W, 11.5))
 	if not open:
 		return
 	if sqs.is_empty() and vehs.is_empty():
@@ -346,7 +343,7 @@ func _squad_row(y: float, sid: int, mem: Array, top: float, bottom: float) -> fl
 	if by != 0:
 		# a co-commander has it selected: his colour down the row's edge
 		draw_rect(Rect2(0, y + 3, 2, ROW_H - 6), Net.player_color(by))
-	var x := 26.0 + UiKit.caps_at(self, Vector2(26, y + 17), Squad.callsign_of(team, sid), 13, UiKit.ACCENT if sel else UiKit.TEXT)
+	var x := 26.0 + UiKit.caps_at(self, Vector2(26, y + 17), Squad.callsign_of(team, sid), 14, UiKit.ACCENT if sel else UiKit.TEXT)
 	var tag := String(sym[1])
 	if tag != "":
 		x += 5.0 + UiKit.caps_at(self, Vector2(x + 5.0, y + 17), tag, 10, UiKit.FAINT)
@@ -366,9 +363,9 @@ func _squad_row(y: float, sid: int, mem: Array, top: float, bottom: float) -> fl
 	if st.low_ammo:
 		code += " · LOW AMMO"
 	var maxw := W - cx - 12.0
-	while code.length() > 3 and UiKit.mono_w(code, 12) > maxw:
+	while code.length() > 3 and UiKit.mono_w(code, 11) > maxw:
 		code = code.substr(0, code.length() - 2)
-	UiKit.mono_at(self, Vector2(cx, y + 33), code, 12, _code_col(st, sel))
+	UiKit.mono_at(self, Vector2(cx, y + 33), code, 11, _code_col(st, sel))
 	return y + ROW_H
 
 
@@ -389,7 +386,14 @@ func _vehicle_row(y: float, v, top: float, bottom: float) -> float:
 	var by := int(w.coop.sel_veh.get(v.eid, 0)) if w.coop else 0
 	if by != 0:
 		draw_rect(Rect2(0, y + 3, 2, ROW_H - 6), Net.player_color(by))
-	var x := 26.0 + UiKit.caps_at(self, Vector2(26, y + 17), String(v.display_name()), 13, UiKit.ACCENT if sel else UiKit.TEXT)
+	# A long vehicle name must never run into its health readout.
+	var name: String = v.display_name()
+	var limit := W - 26.0 - 52.0
+	if UiKit.caps_w(name, 14) > limit:
+		while name.length() > 1 and UiKit.caps_w(name + "…", 14) > limit:
+			name = name.left(-1)
+		name += "…"
+	UiKit.caps_at(self, Vector2(26, y + 17), name, 14, UiKit.ACCENT if sel else UiKit.TEXT)
 	var hf: float = v.health_frac()
 	UiKit.steps(self, Vector2(W - 40, y + 8), hf * 6.0, 6, UiKit.GOOD if hf > 0.6 else (UiKit.WARN if hf > 0.3 else UiKit.BAD), 5.0, 9.0)
 	var code := "HOLD"
@@ -405,5 +409,5 @@ func _vehicle_row(y: float, v, top: float, bottom: float) -> float:
 		col = UiKit.BAD
 	elif Defs.flat(v.position - v._last_pos).length() > 0.02:
 		code = "MOVING"
-	UiKit.mono_at(self, Vector2(26, y + 33), code, 12, col)
+	UiKit.mono_at(self, Vector2(26, y + 33), code, 11, col)
 	return y + ROW_H

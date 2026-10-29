@@ -5,7 +5,7 @@ var caption := "View"
 
 
 func _ready() -> void:
-	custom_minimum_size = Vector2(94, 32)
+	custom_minimum_size = Vector2(72, 32)
 	focus_mode = Control.FOCUS_NONE
 	toggle_mode = true
 	for state in ["normal", "hover", "pressed", "hover_pressed", "focus"]:
@@ -48,4 +48,4 @@ func _draw() -> void:
 			draw_arc(c + Vector2(0, -5), 10, -PI * 0.8, -PI * 0.2, 18, col, 1.4, true)
 			draw_line(c + Vector2(-6, 9), c + Vector2(6, 9), col, 1.4, true)
 	draw_set_transform(Vector2.ZERO)
-	UiKit.caps_at(self, Vector2(33, 20), caption, 11, col)
+	UiKit.caps_at(self, Vector2(28, 20), caption, 11, col)

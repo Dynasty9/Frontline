@@ -32,4 +32,4 @@ caption = "Support: artillery and air strikes, clearly marked as free demos for 
 - Click selects without moving your camera. Double-click, Enter or Focus selected brings the unit into view and returns you to the battle, with orders ready. Escape closes the workspace before clearing selection.
 - Taller roster rows separate names and strength from status. Support shows costs and cooldowns, explains insufficient supply, and closes when you choose a strike so you can place its target.
 - Events yields while you use a task workspace and restores your previous preference afterward. It can also be minimized independently without losing history.
-- Signal's typography, fine rules and feathered shading connect the tools to the game's existing design. Battlefield labels stay clear of controls.
+- Signal's typography, fine rules and feathered shading connect the tools to the game's existing design. The compact tool strip aligns with the map; stronger unit names, quieter status text and active filter rules make lists easier to scan. Battlefield labels stay clear of controls and resource readouts.

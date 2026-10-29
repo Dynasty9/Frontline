@@ -862,6 +862,10 @@ func _status_icons(men: Array, a: float) -> void:
 func _cache_hud_regions() -> void:
 	_hud_regions.clear()
 	var pixel_scale := get_viewport().get_visible_rect().size / hud.root.size
+	if hud.top and hud.top.visible:
+		var width := HudTopInfo.OBS_W if hud.world.local_team < 0 else hud.top.size.x
+		var rect := Rect2(hud.top.position, Vector2(width, hud.top.content_h)).grow(14)
+		_hud_regions.append(Rect2(rect.position * pixel_scale, rect.size * pixel_scale))
 	for control: Control in [hud.station_frame, hud.drawer_frame, hud.obs_bar, hud.sel_panel, hud.card_panel]:
 		if control and control.visible:
 			var rect := control.get_rect().grow(14)

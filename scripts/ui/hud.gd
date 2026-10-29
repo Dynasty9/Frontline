@@ -53,16 +53,17 @@ func layout_minimap() -> void:
 	layers_ui.offset_right = layers_ui.offset_left + HudLayers.S
 	layers_ui.offset_bottom = -22
 	layers_ui.offset_top = -22 - lh
-	var above := -22 - outer - 72
+	var above := -22 - outer - 64
 	if task_bar:
-		task_bar.position = Vector2(22, root.size.y - outer - 90)
+		task_bar.position = Vector2(22, root.size.y - outer - 82)
 		for button in task_bar.get_children():
-			button.custom_minimum_size.x = (station_w - 20.0) / 3.0
+			button.custom_minimum_size.x = (outer - 4.0) / 3.0
+		task_bar.size = Vector2(outer, 32)
 	if map_caption:
-		map_caption.position = Vector2(26, root.size.y - outer - 46)
+		map_caption.position = Vector2(26, root.size.y - outer - 42)
 	if station_frame:
-		station_frame.position = Vector2(14, root.size.y - outer - 90)
-		station_frame.size = Vector2(station_w, outer + 76)
+		station_frame.position = Vector2(14, root.size.y - outer - 82)
+		station_frame.size = Vector2(station_w, outer + 68)
 	chat_edit.offset_bottom = above
 	chat_edit.offset_top = above - 34
 
@@ -503,13 +504,16 @@ func _build_workspaces() -> void:
 		b.focus_mode = Control.FOCUS_NONE
 		b.toggle_mode = true
 		b.tooltip_text = {"squads": "Find a squad or vehicle. Type to search. Click to select without moving the camera; Enter or double-click to focus and return to battle.", "map": "Map layers · Show or hide overlay controls. The map stays fixed.", "fires": "Support · Off-map artillery and air strikes. Commanders spend supply; spectators can try a free demo."}[key]
+		b.set_meta("base_tooltip", b.tooltip_text)
 		b.pressed.connect(func(): set_workspace("battle" if workspace == key else key))
 		task_bar.add_child(b)
 		_task_buttons[key] = b
 	workspace_title = UiKit.caps("", 20, UiKit.TEXT)
 	workspace_title.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	root.add_child(workspace_title)
-	drawer_close = UiKit.button("×", "quiet", 28, 26)
+	drawer_close = UiKit.button("×", "quiet", 28, 28)
+	drawer_close.add_theme_font_override("font", UiKit.font())
+	drawer_close.add_theme_font_size_override("font_size", 20)
 	drawer_close.tooltip_text = "Close this tool; keep the map visible"
 	drawer_close.pressed.connect(func(): set_workspace("battle"))
 	root.add_child(drawer_close)
@@ -521,7 +525,7 @@ func _build_workspaces() -> void:
 	drawer_footer = UiKit.mono_label("↑ ↓ BROWSE · ENTER FOCUS · ESC CLOSE", 10, UiKit.DIM)
 	drawer_footer.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	root.add_child(drawer_footer)
-	focus_unit = UiKit.button("Focus selected ↗", "primary", 152, 30)
+	focus_unit = UiKit.primary_button("Focus selected", 148, 32, 12)
 	focus_unit.pressed.connect(func():
 		if squad_search.has_focus():
 			orbat.activate_cursor()
@@ -569,6 +573,10 @@ func _build_workspaces() -> void:
 	for choice in [["all", "All"], ["infantry", "Infantry"], ["vehicles", "Vehicles"], ["attention", "Attention"]]:
 		var filter_key: String = choice[0]
 		var filter_button := UiKit.button(choice[1], "quiet", (HudOrbat.W - 6.0) / 4.0, 28)
+		var selected_rule := UiKit.underline(UiKit.ACCENT, 4.0, 6.0)
+		selected_rule.bg_color = UiKit.fa(UiKit.ACCENT, 0.06)
+		filter_button.add_theme_stylebox_override("pressed", selected_rule)
+		filter_button.add_theme_stylebox_override("hover_pressed", selected_rule)
 		filter_button.toggle_mode = true
 		filter_button.set_pressed_no_signal(filter_key == "all")
 		filter_button.tooltip_text = "Pinned, routing, wounded, low-ammo or damaged units" if filter_key == "attention" else "Show " + String(choice[1]).to_lower() + " units"
@@ -671,7 +679,7 @@ func _layout_workspace() -> void:
 	orbat.size = Vector2(HudOrbat.W, maxf(80.0, drawer_h - 204.0))
 	drawer_footer.position = Vector2(drawer_x, drawer_y + drawer_h - 18)
 	focus_unit.position = Vector2(drawer_x + HudOrbat.W - focus_unit.size.x, drawer_y + drawer_h - 53)
-	focus_unit.text = "FOCUS RESULT ↗" if squad_search.has_focus() else "FOCUS SELECTED ↗"
+	focus_unit.text = "FOCUS RESULT" if squad_search.has_focus() else "FOCUS SELECTED"
 	focus_unit.disabled = orbat._entries.is_empty() if squad_search.has_focus() else (world.input == null or not world.input.has_units())
 	support_scroll.position = Vector2(drawer_x, drawer_y + 78)
 	support_scroll.size = Vector2(HudOrbat.W, maxf(80.0, drawer_h - 90.0))
@@ -906,6 +914,9 @@ func _keys_changed() -> void:
 	_build_help()
 	_card_key = ""
 	_support_key = ""
+	if _task_buttons.has("squads"):
+		var units: Button = _task_buttons["squads"]
+		units.tooltip_text = String(units.get_meta("base_tooltip")) + _kt("orbat")
 	if obs_pause:
 		obs_pause.tooltip_text = "Pause / resume%s" % _kt("pause")
 		obs_slower.tooltip_text = "Slower%s" % _kt("slower")
@@ -1828,8 +1839,8 @@ static func fire_short(name: String) -> String:
 	return " ".join(out).to_upper()
 
 
-## FIRES (docs/UI.md, Layout): the fire missions on call, a row each above the
-## minimap. The ready ones are listed; the ones cooling down fold into a last
+## Support (docs/UI.md, Layout): the fire missions on call, a row in the task
+## workspace. The ready ones are listed; the ones cooling down fold into a last
 ## row (+9 ON COOLDOWN · NEXT 81S) that opens them.
 func _update_support() -> void:
 	var kinds: Array = Defs.supports_for(world.local_team) if world.local_team >= 0 else Defs.DEMO_SUPPORT.duplicate()
@@ -1846,7 +1857,7 @@ func _update_support() -> void:
 		if kinds.is_empty():
 			support_box.add_child(UiKit.caps("No support on call", 12, UiKit.DIM))
 		if not kinds.is_empty():
-			support_box.add_child(UiKit.header("Support", "%02d" % kinds.size()))
+			support_box.add_child(UiKit.header("On call" if world.local_team >= 0 else "Available demos", "%02d" % kinds.size()))
 		for k in kinds:
 			var kk: String = k
 			var b := _fire_row(fire_short(String(Defs.SUPPORT[k].name)), "%s\n%s" % [Defs.SUPPORT[k].name, Defs.SUPPORT[k].desc], func():
@@ -1880,7 +1891,7 @@ func _update_support() -> void:
 				state.text = "DEMO"
 			if not affordable:
 				state.text = "NEED %d SUP" % int(sd.cost)
-			state.add_theme_color_override("font_color", UiKit.GOOD if affordable else UiKit.FAINT)
+			state.add_theme_color_override("font_color", (UiKit.DIM if world.local_team < 0 else UiKit.GOOD) if affordable else UiKit.FAINT)
 			nm.add_theme_color_override("font_color", UiKit.TEXT)
 			if affordable:
 				first = false
@@ -1905,7 +1916,7 @@ func _update_support() -> void:
 func _fire_row(name: String, tip: String, cb: Callable) -> Button:
 	var b := Button.new()
 	b.focus_mode = Control.FOCUS_NONE
-	b.custom_minimum_size = Vector2(0, 34)
+	b.custom_minimum_size = Vector2(0, 38)
 	b.tooltip_text = tip
 	var n := UiKit.box(Color(0, 0, 0, 0), 0, UiKit.LINE, 0, 0.0)
 	n.border_width_bottom = 1
@@ -1924,14 +1935,14 @@ func _fire_row(name: String, tip: String, cb: Callable) -> Button:
 	row.offset_right = -2
 	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	b.add_child(row)
-	var l := UiKit.caps(name, 12, UiKit.TEXT, 600, 1)
+	var l := UiKit.caps(name, 13, UiKit.TEXT, 600, 1)
 	l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	l.clip_text = true
 	l.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	row.add_child(l)
-	var st := UiKit.mono_label("", 12, UiKit.FAINT)
+	var st := UiKit.mono_label("", 11, UiKit.FAINT)
 	st.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	st.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	row.add_child(st)

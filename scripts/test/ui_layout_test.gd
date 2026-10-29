@@ -356,10 +356,17 @@ func _run() -> void:
 	var marker_overlay := HudOverlay.new()
 	marker_overlay.hud = hud
 	stage.add_child(marker_overlay)
+	hud.top = HudTopInfo.new()
+	hud.top.position = Vector2(14, 12)
+	hud.top.size = Vector2(520, 160)
+	hud.top.content_h = 65.0
 	marker_overlay._cache_hud_regions()
 	var scale_to_overlay := marker_overlay.get_viewport().get_visible_rect().size / stage.size
 	_check("world markers yield to the map controls", marker_overlay._under_hud(hud.station_frame.get_rect().get_center() * scale_to_overlay))
 	_check("world markers remain in the open battlefield", not marker_overlay._under_hud(Vector2(stage.size.x * 0.7, stage.size.y * 0.5) * scale_to_overlay))
+	_check("world markers yield to resource and observer readouts", marker_overlay._under_hud(Vector2(80, 40) * scale_to_overlay))
+	hud.top.free()
+	hud.top = null
 	marker_overlay.free()
 	hud.toasts = HudToasts.new()
 	hud.toasts.hud = hud

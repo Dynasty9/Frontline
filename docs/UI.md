@@ -82,7 +82,7 @@ darkens toward that edge (`UiScrim`), so it reads over any ground without a box:
 - **Top** (the **Status** line): the side, `SUP` and its rate, `UNITS`, `FOB`, `TOWNS`, and the clock. A line under
   it for each FOB says what its trucks are doing.
 - **Left**: the minimap is a fixed navigation anchor. Opening tools never hides, moves or resizes it.
-  A 32 px line-icon strip opens **Units**, **Support** or **Layers**. Layers reveals switches beside the map.
+  A 32 px line-icon strip aligned to the map width opens **Units**, **Support** or **Layers**. Layers reveals switches beside the map.
 - **Right**: Units and Support open a task workspace on the opposite edge, with enough height to scan a
   roster or compare support. It sits below objectives and above the contextual command card. On short
   viewports, objectives and the command net yield temporarily to keep the task controls clear of orders. The recent
@@ -90,7 +90,8 @@ darkens toward that edge (`UiScrim`), so it reads over any ground without a box:
   Units focuses search on opening; search accepts callsigns, role names and vehicle names. Arrow keys browse
   the full result list and scroll the active row into view. Click selects without moving the camera;
   Shift-click adds. Enter, double-click or **Focus selected** focuses the unit and closes the workspace.
-  Two-line 40 px rows separate names and strength from status, avoiding cramped code truncation.
+  Two-line 40 px rows use 14 px names and 11 px status codes; long vehicle names truncate before the health
+  readout. A fine accent rule marks the active filter, and support demo states use neutral text.
   Support explains availability and supply requirements; choosing a strike closes the workspace so its target
   can be placed on the battlefield. Observer actions are clearly labelled demos.
 - **Bottom**: selection details and the contextual order card stay available while comparing units.
