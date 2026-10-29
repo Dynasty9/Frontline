@@ -25,3 +25,5 @@ caption = "After: the 105 mm round starts at its own barrel; the smaller guns ha
 - Mounted machine guns, mortars and anti-tank posts must lay onto their bearing before firing.
 - Tracked hulls build into pivots, wheeled vehicles cannot spin in place while reversing, and heavy-lift helicopters answer more slowly than lighter airframes.
 - Vehicle and gunship rounds leave the correct model barrels, including scaled helicopter mounts and each of the gunship's separately positioned guns.
+
+- Boats now have hull-specific cruise speeds, acceleration, engine and helm response, turning circles and astern thrust: quick RHIBs, heavier riverine craft, a deliberate jet patrol ship and a slow steel trawler.

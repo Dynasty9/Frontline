@@ -1,5 +1,11 @@
 extends Node
 
+# Open water removes shoreline/pathfinding from the physical response test.
+class OpenWaterBoat extends Vehicle:
+	func _move_by(v: Vector3, dt: float) -> void:
+		velocity = v
+		position += v * dt
+
 class MountCombat extends Combat:
 	var mortars := 0
 	var rockets := 0
@@ -14,6 +20,7 @@ func check(ok: bool, message: String) -> void:
 
 func _ready() -> void:
 	TestRun.watch()
+	_boat_profiles()
 	for hz in [30, 60]:
 		for kind: String in Defs.VEHICLES:
 			var v := Vehicle.new()
@@ -146,3 +153,50 @@ func _ready() -> void:
 			file.store_string(JSON.stringify(audit, "\t", true, true))
 	print("VEHICLE_MOTION failures=%d" % failures)
 	get_tree().quit(1 if failures else 0)
+
+func _boat_profiles() -> void:
+	var results := {}
+	for kind: String in Vehicle.BOAT_HULLS:
+		var samples := []
+		for hz in [30, 60]:
+			var boat := OpenWaterBoat.new()
+			boat.vkind = kind
+			boat.vdef = Defs.VEHICLES[kind]
+			var dt: float = 1.0 / hz
+			var t90 := 0.0
+			for tick in hz * 120:
+				boat._hull_tick(dt, 1.0, 0.0, false)
+				if t90 == 0.0 and boat.speed >= float(boat.vdef.speed) * 0.9:
+					t90 = (tick + 1) * dt
+			check(t90 > 0.0 and boat.speed <= float(boat.vdef.speed) * 1.001, kind + " reaches but does not exceed cruise cap")
+			var start := boat.position
+			for tick in hz * 3:
+				boat._hull_tick(dt, 0.0, 0.0, false)
+			check(boat.position.distance_to(start) > float(boat.vdef.speed), kind + " carries momentum at idle")
+			boat.speed = float(boat.vdef.speed)
+			boat._throttle = 1.0
+			for tick in hz * 10:
+				boat._hull_tick(dt, 1.0, 1.0, false)
+			check(boat.yaw_rate > 0.0 and boat.speed < float(boat.vdef.speed) * 0.99, kind + " turns with speed loss")
+			samples.append([t90, boat.yaw_rate, boat.speed])
+			boat._rudder = 0.0
+			for tick in hz * 120:
+				boat._lie_to(dt)
+			check(absf(boat.speed) < 0.1, kind + " can stop using astern thrust")
+			for tick in hz * 120:
+				boat._hull_tick(dt, -1.0, 0.0, false)
+			check(boat.speed < -0.5 and absf(boat.speed) < float(boat.vdef.speed) * 0.5, kind + " astern speed stays below half cruise")
+			boat.speed = 0.0
+			boat.yaw_rate = 0.0
+			boat._sway = 0.0
+			boat._throttle = 0.0
+			boat._hull_tick(dt, 0.0, 1.0, false)
+			check(boat.yaw_rate == 0.0, kind + " cannot pivot without water flow")
+			boat.free()
+		check(absf(samples[0][0] - samples[1][0]) < 0.1, kind + " acceleration stable at 30/60 Hz")
+		check(absf(samples[0][1] - samples[1][1]) < 0.01, kind + " turning stable at 30/60 Hz")
+		results[kind] = samples[1]
+		print("BOAT_PROFILE %s t90=%.2fs turn=%.2fdeg/s speed=%.2fm/s" % [kind, samples[1][0], rad_to_deg(samples[1][1]), samples[1][2]])
+	check(results.rhib[0] < results.patrol_ship[0], "RHIB gathers way faster than patrol ship")
+	check(results.motorboat[0] < results.gun_trawler[0], "runabout gathers way faster than trawler")
+	check(results.gun_trawler[1] < results.patrol_ship[1], "trawler comes around more slowly than jet patrol ship")

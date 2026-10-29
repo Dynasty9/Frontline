@@ -1634,8 +1634,16 @@ func _sink() -> void:
 ## to answer the throttle (s), the helm to go hard over from amidships (s), how
 ## hard she'll turn at speed (m/s² sideways)]: light boats quick in all of it,
 ## a patrol ship slower, a deep displacement hull slowest of all
-const HULL := [[2.8, 2.6, 0.35, 0.5, 0.5, 5.0], [2.0, 1.8, 0.7, 0.9, 0.8, 3.6], [0.85, 1.1, 1.5, 2.2, 1.6, 2.4]]
-const HULL_DISPLACEMENT := [0.7, 0.7, 2.6, 3.0, 2.5, 1.2]
+# Last three values: low-speed radius / length, ahead prop-wash / top speed,
+# astern thrust / ahead thrust. Shared riverine hulls deliberately match.
+const BOAT_HULLS := {
+	"rhib": [2.5, 2.6, 0.45, 0.65, 0.6, 4.2, 0.85, 0.28, 0.45],
+	"motorboat": [2.1, 2.2, 0.55, 0.8, 0.7, 3.6, 0.95, 0.25, 0.4],
+	"speedboat_minigun": [1.6, 1.8, 0.85, 1.2, 1.0, 3.0, 1.1, 0.30, 0.5],
+	"speedboat_hmg": [1.6, 1.8, 0.85, 1.2, 1.0, 3.0, 1.1, 0.30, 0.5],
+	"patrol_ship": [0.95, 1.1, 1.6, 2.4, 1.7, 2.0, 1.06, 0.30, 0.55],
+	"gun_trawler": [0.35, 0.7, 3.2, 4.0, 3.0, 0.65, 1.8, 0.18, 0.35],
+}
 
 var _sway := 0.0  # how fast she's sliding sideways through the water (m/s, + to her left)
 var _throttle := 0.0  # her engines as they've answered: -1 full astern .. 1 full ahead
@@ -1656,14 +1664,14 @@ var _tries_t := -INF  # (when she last did)
 
 
 func _hull_k() -> Array:
-	return HULL_DISPLACEMENT if vdef.get("displacement", false) else HULL[clampi(weight(), 0, 2)]
+	return BOAT_HULLS.get(vkind, BOAT_HULLS.gun_trawler)
 
 
 ## The radius of the circle she turns in hard over, going slow: about her own
-## length for a boat or a patrol ship on jets, half as much again for a
+## length for a boat or a patrol ship on jets, nearly twice that for a
 ## displacement hull with one screw and a rudder.
 func _turn_radius() -> float:
-	return _hull_size().z * (1.6 if vdef.get("displacement", false) else (0.81 if weight() == 0 else 1.06))
+	return _hull_size().z * float(_hull_k()[6])
 
 
 ## How close behind her a spot has to be for her to back into it rather than
@@ -1687,7 +1695,7 @@ func _drag(u: float) -> float:
 ## screws (or jets) going ahead, which counts for most when she's slow.
 func _rudder_flow(u: float) -> float:
 	var vmax := float(vdef.speed)
-	var wash := 0.35 * vmax * maxf(_throttle, 0.0) * clampf(1.0 - u / (0.5 * vmax), 0.0, 1.0)
+	var wash := float(_hull_k()[7]) * vmax * maxf(_throttle, 0.0) * clampf(1.0 - u / (0.5 * vmax), 0.0, 1.0)
 	return (u if u >= 0.0 else u * 0.5) + wash
 
 
@@ -1699,7 +1707,7 @@ func _hull_tick(dt: float, throttle: float, helm: float, carried := true) -> voi
 	_throttle = move_toward(_throttle, clampf(throttle, -1.0, 1.0), dt / float(k[3]))
 	_rudder = move_toward(_rudder, clampf(helm, -1.0, 1.0), dt / float(k[4]))
 	var u := speed
-	var thrust: float = float(k[0]) * (_throttle if _throttle > 0.0 else _throttle * 0.5)
+	var thrust: float = float(k[0]) * (_throttle if _throttle > 0.0 else _throttle * float(k[8]))
 	# the helm turns her as fast as the water past it will - and at speed no
 	# harder than the hull will take
 	var turn := _rudder * _rudder_flow(u) / _turn_radius()
@@ -1743,7 +1751,7 @@ func _con(dt: float, to: Vector3, want: float) -> void:
 	# and the engines: what holds that speed against the drag, more to gather
 	# way, astern to take it off
 	var vmax := float(vdef.speed)
-	var hold := _drag(want) / float(_hull_k()[0]) * (2.0 if astern else 1.0)
+	var hold := _drag(want) / float(_hull_k()[0]) * (1.0 / float(_hull_k()[8]) if astern else 1.0)
 	_hull_tick(dt, hold + (want - speed) * 3.0 / vmax, helm)
 
 

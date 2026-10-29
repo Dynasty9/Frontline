@@ -818,18 +818,20 @@ catalogue entry in `MissionList.LIST`, a setup function and an autopilot functio
   throw spray off the bow going hard. Each leaves a wake on the water: white water churned up astern in streaks
   that spread and fade into a smooth streak, and the bow wave running out in a V at the Kelvin angle (a wake
   hides with a boat hidden in the fog of war).
+  Each boat has a tuned cruise cap, thrust, engine/helm response and turning profile;
+  matching riverine hulls share their handling (see [the naval audit](VEHICLE_HANDLING.md#boat-movement-audit)).
   **A boat handles like a boat, not a car** (`Vehicle._hull_tick`, the coxswain in `_con`): nothing grips the
   road, so her hull slides through the water - in a hard turn she skids, bow inside the circle she's making
   and stern swinging out, and the skid costs her way. There are no brakes: the water's drag takes her way off,
   hard when she's fast and hardly at all once she's slow, and to stop she goes astern (an RHIB needs some 40 m
-  from full speed, a patrol ship 60 m and more). Her rudder or jets turn her only with water going past them -
+  from a fast approach, with larger hulls carrying farther). Her rudder or jets turn her only with water going past them -
   her own way, or the wash of the engines going ahead, which is how she turns from lying stopped - and going
   astern she hardly steers. Engines, helm and hull answer after a moment, a big hull's after a long one, so
   the coxswain starts a turn early, meets her with opposite helm as she comes round, and slows for the bends
   he sees coming as far off as she'd need to; at speed she can't be turned as tight as she can going slow. A
   river carries a boat down with it (it runs south, fastest in mid-stream), and he steers the course she's
   really making, current and skid and all. The Gun Trawler, a deep displacement hull, is the slowest of all to
-  answer, needs half as much water again to turn, and heels out of a turn where the planing boats bank into it.
+  answer, needs a wide turn, and heels out of a turn where the planing boats bank into it.
   On an attack a boat fights at a steady speed rather than stop dead for the shot, as a tank would; she lies
   to only to fight it out with an enemy abaft her beam, rather than steam away from it.
   A big hull needs a lot of water to turn round in (the patrol ship's turning circle is over 50 m across):
