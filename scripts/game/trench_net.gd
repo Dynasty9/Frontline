@@ -284,10 +284,15 @@ func _inside_w(p: Vector3) -> bool:
 
 ## World position of mask corner (x, z): texel centres.
 func _wp(x: float, z: float) -> Vector3:
-	return Vector3((x + 0.5) / RES - MapDims.HALF, 0.0, (z + 0.5) / RES - MapDims.HALF)
+	var p := Vector3((x + 0.5) / RES - MapDims.HALF, 0.0, (z + 0.5) / RES - MapDims.HALF)
+	p.y = world.terrain.landform.height(p)
+	return p
 
 
 func _build_meshes(tiles: Dictionary, segs: Array) -> void:
+	var fst := SurfaceTool.new()
+	fst.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var floors := 0
 	var wst := SurfaceTool.new()
 	wst.begin(Mesh.PRIMITIVE_TRIANGLES)
 	var bst := SurfaceTool.new()
@@ -304,6 +309,12 @@ func _build_meshes(tiles: Dictionary, segs: Array) -> void:
 				var v2 := _val(x + 1, z + 1)
 				var v3 := _val(x, z + 1)
 				var idx := int(v0 > 127.5) | (int(v1 > 127.5) << 1) | (int(v2 > 127.5) << 2) | (int(v3 > 127.5) << 3)
+				if idx != 0:
+					var floor_corners := [_wp(x, z), _wp(x + 1, z), _wp(x + 1, z + 1), _wp(x, z + 1)]
+					fst.set_normal(Vector3.UP)
+					for k in [0, 2, 1, 0, 3, 2]:
+						fst.add_vertex(floor_corners[k])
+					floors += 1
 				if idx == 0 or idx == 15:
 					continue
 				# crossings interpolated on each edge: smooth contours, not a staircase
@@ -325,6 +336,7 @@ func _build_meshes(tiles: Dictionary, segs: Array) -> void:
 					contour.append([q0, q1, inside_c])
 					nw += 1
 	_berms(bst, contour)
+	floor_mi.mesh = fst.commit() if floors > 0 else null
 	walls.mesh = wst.commit() if nw > 0 else null
 	berms.mesh = bst.commit() if nw > 0 else null
 	# duckboards down the middle of every segment

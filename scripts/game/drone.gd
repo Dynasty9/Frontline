@@ -92,11 +92,11 @@ func sim(dt: float) -> void:
 	match phase:
 		0:
 			vel = vel.lerp(Vector3(0, 6.0, 0) + Defs.flat(target_pos - position).normalized() * 6.0, 1.0 - exp(-dt * 3.0))
-			if position.y > 6.5:
+			if position.y > world.ground_y(position) + 6.5:
 				phase = 1
 		1:
 			var want := Defs.flat(target_pos - position).normalized() * 21.0
-			want.y = (7.5 - position.y) * 1.5
+			want.y = (world.terrain.landform.height(position + want * 2.0) + 7.5 - position.y) * 1.5
 			vel = vel.lerp(want, 1.0 - exp(-dt * 2.5))
 			if hd < 24.0:
 				phase = 2
@@ -119,7 +119,7 @@ func sim(dt: float) -> void:
 	position = np
 	if vel.length() > 0.5:
 		rotation.y = Defs.yaw_of(Defs.flat(vel)) if Defs.flat(vel).length() > 0.3 else rotation.y
-	if position.y < 0.25 or life_t > 50.0 or not Defs.in_map(position, 0.0):
+	if position.y < world.ground_y(position) + 0.25 or life_t > 50.0 or not Defs.in_map(position, 0.0):
 		detonate()
 
 

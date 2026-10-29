@@ -76,7 +76,7 @@ func _ready() -> void:
 		dirty_static(e.eid)
 	checkpoint = capture()
 	initial_map = {"map_size": MapDims.N, "n": checkpoint.entities.size(), "water": world.water.to_dict().duplicate(true), "roads": world.roads.duplicate(true),
-		"decor": world.decor.duplicate(true), "town": world.town_rect, "kinds": world.terrain.base.duplicate()}
+		"decor": world.decor.duplicate(true), "town": world.town_rect, "kinds": world.terrain.base.duplicate(), "landform": world.terrain.landform.heights.duplicate()}
 	_save_manifest()
 
 func capture() -> Dictionary:

@@ -797,7 +797,7 @@ func _order(screen: Vector2, shift: bool, face_in := Vector3.ZERO, kind := "") -
 				Sfx.ui("click")
 				return
 	if tgt is Vehicle and tgt.team == lt and not sel_squads.is_empty() and tgt.seats() > 0 and tgt.health_frac() > 0.3 \
-			and not (tgt.is_heli() and tgt.position.y > 1.0) and not _has_engineers():
+			and not (tgt.is_heli() and tgt.position.y - world.ground_y(tgt.position) > 1.0) and not _has_engineers():
 		world.send_cmd({"t": "board", "squads": sel_squads, "target": tgt.eid})
 		_marker(tgt.position, Color(0.6, 0.9, 1.0))
 		Sfx.ui("click")
@@ -1081,8 +1081,9 @@ func _view_process(dt: float) -> void:
 	if place_kind != "" and ghost:
 		var gp := world.cam.ground_point(_mouse())
 		gp = TrenchNet.snap_pos(gp) if place_drag else TrenchNet.snap_foot(gp, place_kind, place_yaw)
+		gp.y = world.terrain.landform.height(gp)
 		if build_grid:
-			build_grid.position = Vector3(round(gp.x), 0.04, round(gp.z))
+			build_grid.position = Vector3(round(gp.x), gp.y + 0.04, round(gp.z))
 		var h: float = Res.box_size(ghost.mesh).y
 		ghost.position = gp + Vector3(0, h * 0.5, 0)
 		ghost.rotation.y = place_yaw

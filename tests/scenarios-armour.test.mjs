@@ -58,7 +58,8 @@ scenarioTests([
   {
     scenario: "trenches",
     seed: 2,
-    secs: 90,
+    // Grenades now settle on trench floors instead of bouncing at sea level.
+    secs: 120,
     does: "tanks, IFVs and two rifle squads assault a Rebel trench system and break into it",
     check: async (f) => {
       f.atLeast("plan_assault", 1, "the infantry put in an assault");

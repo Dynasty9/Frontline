@@ -539,7 +539,20 @@ catalogue entry in `MissionList.LIST`, a setup function and an autopilot functio
   style) and soldiers look for craters, rubble and woods when there's no wall to hide behind.
 - Stuck watchdogs: infantry re-plan if they stop making progress; vehicles back off, turn and re-plan.
 
-**The map** (`mapgen.gd`, `towngen.gd`, `decor.gd`)
+**The map** (`mapgen.gd`, `landform.gd`, `towngen.gd`, `decor.gd`)
+- Standard battlefields have seeded mountain belts, hills, valleys and rivers. Domain-warped ridged noise,
+  jointed bedrock shelves, thermal weathering and seeded rainfall erosion shape the relief. Roads, bridges, starting bases and settlements
+  occupy graded valley corridors; forests stay below the snow line and off steep faces.
+- Moss and soil blend into exposed stone on slopes, with layered rock detail and snow on high sheltered ground.
+  Baked sky visibility and distant sun shadows deepen the gullies, rebuilding when the lighting mood changes.
+  Optional alpine haze adds atmospheric depth; cached terrain reflections exclude moving units and refresh with lighting.
+  Standard-battle woods are denser and share spatial bark and foliage batches; changed trees recover their individual models.
+  Campaign missions retain their previous geology and woodland layout to preserve authored routes and cover.
+  Infantry and vehicles follow the ground, slow on slopes, and route around faces too steep to cross.
+  Ridges block shots and enemy detection. Helicopters anticipate rising ground and land relative to the surface.
+- Construction requires a sufficiently level footprint. Trenches, shell holes, fires, selection and targeting
+  use local ground height. The host sends the exact elevation samples to joiners and recordings retain them,
+  including backward seeks; older recordings and dedicated flat test scenarios remain supported.
 - A town in the middle, laid out on a street grid: two main streets crossing at the centre, side streets closing
   some of the blocks, asphalt with a dashed centre line, curbs and sidewalks, zebra crossings at the crossroads.
   Houses stand on lots facing the street with their door to it; behind them, gardens closed off by hedges or

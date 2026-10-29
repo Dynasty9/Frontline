@@ -137,7 +137,7 @@ func _height(x: int, z: int) -> float:
 		var pz := clampi(z * TrenchNet.RES, 0, n - 1)
 		var px := clampi(x * TrenchNet.RES, 0, n - 1)
 		if _mask[pz * n + px] > 150:
-			return TrenchNet.FLOOR_Y
+			return world.terrain.landform.height(Vector3(x - MapDims.HALF, 0, z - MapDims.HALF)) + TrenchNet.FLOOR_Y
 	return world.terrain.deform_at(Vector3(x - MapDims.HALF, 0, z - MapDims.HALF)) if world.terrain else 0.0
 
 

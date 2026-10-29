@@ -3,6 +3,7 @@ extends Node
 
 func _ready() -> void:
 	var world := World.new()
+	world.terrain = TerrainMap.new(world)
 	world.water = WaterMap.new(world)
 	var generator := MapGen.new(world)
 	var rng := RandomNumberGenerator.new()

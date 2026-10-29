@@ -354,6 +354,10 @@ func _raster(st: Structure, part: Dictionary) -> void:
 func _recompute(idx: int) -> void:
 	var ik := 0
 	var vk := 0
+	if terrain and not terrain.slopes.is_empty():
+		var slope: float = terrain.slopes[idx]
+		ik = SOLID if slope > 0.85 else FREE
+		vk = SOLID if slope > 0.48 else FREE
 	for o in cell_objs.get(idx, []):
 		ik = maxi(ik, o[1])
 		vk = maxi(vk, o[2])

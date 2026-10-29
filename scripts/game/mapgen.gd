@@ -102,6 +102,13 @@ func generate() -> void:
 	_lanes(tg)
 	await world._breathe("Laying out the town", 0.32)
 	_roads_meet_water(tg)
+	await world._breathe("Weathering the mountain ridges", 0.34)
+	var sites := [[tg.center, minf(85.0 * k, 130.0)], [d0.position, 60.0], [d1.position, 60.0], [f0.position, 55.0], [f1.position, 55.0]]
+	for hamlet in tg.hamlets:
+		sites.append([hamlet.c, 42.0])
+	# Campaign routes retain the geology and woodland density they were authored against.
+	world.terrain.landform.generate(int(world.settings.get("seed", 1)), world.roads, world.water, sites, String(world.settings.get("mission", "")) == "")
+	world.terrain.install_landform(world.terrain.landform.heights)
 	world._rebuild_roads()
 	await world._breathe("Laying out the town", 0.38)
 	tg.streetscape()
@@ -130,7 +137,7 @@ func generate() -> void:
 	for i in int(rng.randi_range(3, 5) * k):
 		_old_position(Vector3(rng.randf_range(-(H - 38.0), H - 38.0), 0, rng.randf_range(-35.0, 35.0) * k))
 	for i in int(rng.randi_range(7, 10) * area * 0.85):
-		_woods(Vector3(rng.randf_range(-(H - 13.0), H - 13.0), 0, rng.randf_range(-(H - 28.0), H - 28.0)), rng.randi_range(6, 14))
+		_woods(Vector3(rng.randf_range(-(H - 13.0), H - 13.0), 0, rng.randf_range(-(H - 28.0), H - 28.0)), rng.randi_range(6, 14) if String(world.settings.get("mission", "")) != "" else rng.randi_range(12, 26))
 	for i in int(40 * area * 0.75):
 		_try("tree", Vector3(rng.randf_range(-(H - 8.0), H - 8.0), 0, rng.randf_range(-(H - 10.0), H - 10.0)), 0.0, -1)
 
@@ -907,6 +914,7 @@ func _trench_line(a: Vector3, b: Vector3, team: int, zig := true) -> void:
 
 
 func _spawn(kind: String, pos: Vector3, yaw: float, team: int, extra := {}) -> Structure:
+	pos.y += world.terrain.landform.height(pos)
 	var props := {"skind": kind, "pos": pos, "yaw": yaw, "team": team}
 	props.merge(extra, true)
 	var st: Structure = world.spawn("structure", props)
@@ -935,6 +943,8 @@ func _foot_of(kind: String, extra: Dictionary) -> Vector2:
 
 func _is_free(pos: Vector3, half: Vector2, yaw: float, margin := 0.6, use_clear := true) -> bool:
 	if not Defs.in_map(pos, 6.0):
+		return false
+	if not world.terrain.landform.fits(pos, half, yaw):
 		return false
 	if not world.water.is_empty():
 		# not in the water, nor on a bridge
@@ -980,6 +990,8 @@ func _is_free(pos: Vector3, half: Vector2, yaw: float, margin := 0.6, use_clear 
 
 
 func _try(kind: String, pos: Vector3, yaw: float, team: int, extra := {}) -> Structure:
+	if kind == "tree" and world.terrain.landform.height(pos) > world.terrain.landform.peak * 0.58 and world.terrain.landform.peak > 1.0:
+		return null
 	var half := _foot_of(kind, extra)
 	if not _is_free(pos, half, yaw):
 		return null

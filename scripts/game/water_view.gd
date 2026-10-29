@@ -74,6 +74,7 @@ var foam_tex: NoiseTexture2D
 var _tiles: Array = []
 var _mask: Image
 var _sea_x := 1e9
+var _terrain_reflections := false
 var quality := -1  # the Water quality the surface is built for
 var sea := Vector2(0.85, 0.6)  # how big the swell and the wind sea run (SEA_STATE)
 var _waves: Array = []  # [direction, k, omega, height, phase, group] per wave
@@ -167,11 +168,17 @@ func build(w: WaterMap, detail: Texture2D) -> void:
 func _settings_changed() -> void:
 	if mat == null or _mask == null:
 		return
+	var reflect_terrain := bool(Settings.get_v("terrain_reflections"))
+	mat.set_shader_parameter("terrain_reflections", reflect_terrain)
 	var wq := clampi(int(Settings.get_v("water")), 0, 3)
-	if wq == quality:
+	if wq == quality and reflect_terrain == _terrain_reflections:
 		return
 	quality = wq
-	mat.shader.code = _code(WATER_SHADER.replace("__WQ__", str(wq)), MOVING_LOW if wq == 0 else MOVING)
+	_terrain_reflections = reflect_terrain
+	var surface := WATER_SHADER.replace("__WQ__", str(wq))
+	if reflect_terrain:
+		surface = surface.replace(", ambient_light_disabled", "")
+	mat.shader.code = _code(surface, MOVING_LOW if wq == 0 else MOVING)
 	_lay_tiles()
 
 
@@ -571,6 +578,7 @@ render_mode blend_mix, depth_draw_always, cull_back, ambient_light_disabled;
 #define WQ __WQ__
 
 global uniform float water_time;
+uniform bool terrain_reflections = false;
 uniform sampler2D water_mask : hint_default_transparent, filter_linear, repeat_disable;
 uniform sampler2D detail_tex : filter_linear_mipmap, repeat_enable;
 uniform sampler2D chop_tex : hint_normal, filter_linear_mipmap_anisotropic, repeat_enable;
@@ -830,7 +838,9 @@ void fragment() {
 	vec2 cuv = r.xz / (r.y + 0.18) * 0.09 + vec2(water_time * 0.0015, water_time * 0.0007);
 	float cl = smoothstep(1.0 - clouds - 0.15, 1.0 - clouds + 0.35, texture(detail_tex, cuv).r) * smoothstep(0.0, 0.2, r.y);
 	sky = mix(sky, mix(horizon * 0.95, vec3(1.0), 0.55), cl * 0.8);
-	vec3 amb = mix(horizon, zenith, 0.5) * ambient;
+	if (terrain_reflections) { sky = vec3(0.0); }
+	SPECULAR = terrain_reflections ? 0.25 : 0.0;
+	vec3 amb = terrain_reflections ? vec3(0.0) : mix(horizon, zenith, 0.5) * ambient;
 #if WQ >= 1
 	vec3 scatter = tint * (1.0 - tr);
 	ALBEDO = mix(scatter * (1.0 - fres), foam_col, foam);

@@ -784,3 +784,54 @@ Benchmark JSON includes loading-stage timings, route-cache hits and path queue
 waiting time. `--require-target` makes the benchmark fail when any measured rendered
 frame exceeds 16.67 ms or any simulation tick exceeds 33.33 ms; ordinary runs retain
 these budget results without treating an unfinished optimization as a harness error.
+
+## Generated elevation
+
+`Landform` produces immutable 4 m geology samples using seeded, domain-warped ridged simplex noise,
+thermal material transfer and seeded hydraulic droplet erosion. Rain cuts gullies and deposits sediment downhill. Planned roads, rivers, towns and bases
+reserve level corridors before the final erosion pass. This keeps existing bridge, supply and town layouts
+connected. The river network is planned for gameplay before erosion, rather than derived from the erosion simulation.
+
+Ground materials blend bundled CC0 aerial rock, fractured stone and moss photographs with triplanar normal
+maps and connected snowfields. Cliff slabs use a larger scale than loose scree; steep faces shed snow.
+Photographic samples are converted from sRGB in Compatibility before computing the shared linear mineral masks.
+`Landform.bake_surface()` samples eight horizon bearings out to 128 m
+on an 8 m grid, baking sky visibility and broad concavity. A third channel traces toward the sun out to
+512 m, extending ridge shadows beyond the live shadow cascades. The bake rebuilds when the lighting
+mood changes and never changes geology or simulation data. Moving-object shadows, weather and crater
+normals remain live. Keep mipmaps enabled in their import settings. Credits and hashes
+are in `assets/terrain/`. Outside the playable boundary a 16 m, non-interactive mountain backdrop blends
+into the map edge; it is scenery only and does not enter navigation, replication or combat.
+
+`TerrainMap.dh` stores total height on the existing 50 cm deformation grid. The rendering texture carries
+surface height in R and immutable geology in G; crater shading subtracts the latter. Use `world.ground_y`
+for a soldier or touchdown (including trench floors and bridge decks), `landform.height` for foundations,
+and `ray_ground` for terrain occlusion. Do not treat world Y as altitude above ground.
+
+Navigation blocks slopes over 0.85 rise/run for infantry and 0.48 for vehicles. Remaining slopes increase
+travel costs and reduce speed. Building and landing footprints sample their corners and edges for levelness.
+Enemy visibility uses sampled terrain rays; the visual fog uses a cached pixel-resolution horizon sweep.
+
+The host transmits elevation samples with the static map and recordings save them. Protocol 12 prevents
+older builds from joining elevated maps. Empty samples preserve flat scenarios and older recordings.
+`tests/landform.test.mjs` checks deterministic generation, malformed samples, sight, navigation, craters,
+infantry grounding, truck slope limits, helicopter crossings/landings and serialization. Replay tests exercise
+both flat scenarios and generated mountains. Run the full scenario suite and the long mission suite too.
+
+### Alpine rendering options
+
+`alpine_haze` retains distant atmospheric depth on elevated maps (High/Ultra defaults),
+fading the extra haze as the camera tilts down to preserve command-view readability;
+Low/Medium keep the thinner command-camera haze. `terrain_reflections` is opt-in on all
+presets. A single UPDATE_ONCE ReflectionProbe captures only terrain on layer 3 (mask 4),
+with shadows disabled, after surface baking. A lighting mood change rebuilds the capture;
+turning the setting off releases it. Water uses environment specular instead of its synthetic
+sky reflection while enabled. It approximates distant mountains, not nearby shoreline parallax
+or moving boats. Ground remains visible on layer 1 as well. No capture includes hidden troops.
+
+Campaigns retain their previous geology recipe and woodland density to preserve authored routes and cover.
+Standard battles add bedrock fractures and denser woods.
+
+Terrain beyond 170 m uses a 4 m grid matching the immutable geology samples; nearby
+terrain retains the fine deformation grid. Woodland bark and foliage can join the existing
+64 m scenery batches, with destruction and fire restoring only the affected tree.
