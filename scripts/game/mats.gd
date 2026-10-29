@@ -534,7 +534,7 @@ static func _collect(node: Node, xf: Transform3D, groups: Dictionary, victims: A
 				var m0 = mi.material_override if mi.material_override else mi.get_active_material(si0)
 				var sm0 := base_of(m0) as ShaderMaterial
 				var vc0: bool = sm0 != null and sm0.get_shader_parameter("use_vcolor") == true
-				if sm0 == null or not (sm0.shader == shader() or sm0 == _foliage or (vc0 and sm0.shader == shader())) or (vc0 and not remerge):
+				if sm0 == null or not (sm0.shader == shader() or sm0 == _foliage or (vc0 and (sm0.shader == shader() or sm0.shader == foliage().shader))) or (vc0 and not remerge):
 					ok = false
 					break
 				mats.append(sm0)

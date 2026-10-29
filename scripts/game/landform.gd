@@ -30,7 +30,7 @@ func _init(size: int) -> void:
 	half = size * 0.5
 
 
-func generate(seed_value: int, roads: Array, water, settlements: Array) -> void:
+func generate(seed_value: int, roads: Array, water, settlements: Array, fractured := true) -> void:
 	heights.resize(n * n)
 	reserve.resize(n * n)
 	reserve.fill(1.0)
@@ -52,7 +52,23 @@ func generate(seed_value: int, roads: Array, water, settlements: Array) -> void:
 			var ridge := clampf((noise.get_noise_2d(wx, wz) + 1.0) * 0.5, 0.0, 1.0)
 			# A broad mountain belt, not a field of unrelated cones.
 			var belt := 0.55 + 0.45 * sin(wx / half * 3.1 + sin(wz / half * 2.6 + seed_value * 0.1))
-			heights[z * n + x] = amplitude * pow(ridge, 1.8) * belt
+			heights[z * n + x] = amplitude * pow(ridge, 1.2 if fractured else 1.8) * belt
+	if fractured:
+		# Jointed bedrock forms shelves and buttresses before weathering loosens its edges.
+		var joints := FastNoiseLite.new()
+		joints.seed = seed_value + 331
+		joints.frequency = 0.018
+		joints.fractal_octaves = 3
+		for z in n:
+			for x in n:
+				var i := z * n + x
+				var h := heights[i]
+				var wx := x * STEP - half
+				var wz := z * STEP - half
+				var fracture := joints.get_noise_2d(wx, wz)
+				var bedding := h / 14.0 + wx * 0.006 + wz * 0.003 + fracture * 1.4
+				var shelf := (smoothstep(0.22, 0.78, fposmod(bedding, 1.0)) - fposmod(bedding, 1.0)) * 14.0
+				heights[i] = maxf(0.0, h + (shelf * 0.65 + fracture * 11.0) * smoothstep(12.0, 45.0, h))
 	# Thermal weathering moves loose material down the steepest face, conserving volume.
 	for iteration in 6:
 		var delta := PackedFloat32Array()

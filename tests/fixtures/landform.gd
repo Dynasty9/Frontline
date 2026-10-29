@@ -17,6 +17,23 @@ func _ready() -> void:
 	world.settings = {"seed": 3}
 	world.terrain = TerrainMap.new(world)
 	world.water = WaterMap.new(world)
+	var atmosphere := Atmosphere.new()
+	atmosphere.world = world
+	atmosphere._surface_baked = true
+	var reflections_before: bool = Settings.get_v("terrain_reflections")
+	Settings.v.terrain_reflections = true
+	atmosphere._update_terrain_probe()
+	var capture := atmosphere._terrain_probe
+	assert(capture != null and capture.cull_mask == 4 and capture.update_mode == ReflectionProbe.UPDATE_ONCE, "Reflections capture static terrain once")
+	atmosphere._update_terrain_probe()
+	assert(atmosphere._terrain_probe == capture, "Steady settings reuse the capture")
+	atmosphere._update_terrain_probe(true)
+	assert(atmosphere._terrain_probe != capture, "Lighting changes refresh the capture")
+	Settings.v.terrain_reflections = false
+	atmosphere._update_terrain_probe()
+	assert(atmosphere._terrain_probe == null, "Disabling reflections releases the probe")
+	Settings.v.terrain_reflections = reflections_before
+	atmosphere.free()
 	var geology := Landform.new(64)
 	geology.generate(3, [[], [], []], world.water, [])
 	var repeat := Landform.new(64)
@@ -25,6 +42,9 @@ func _ready() -> void:
 	repeat.generate(9, [[], [], []], world.water, [])
 	assert(geology.heights != repeat.heights, "Seeds must produce different terrain")
 	assert(Landform.valid(geology.heights, 64))
+	var campaign := Landform.new(64)
+	campaign.generate(3, [[], [], []], world.water, [], false)
+	assert(campaign.heights != geology.heights and Landform.valid(campaign.heights, 64), "Campaigns retain their authored relief recipe")
 	assert(not Landform.valid(PackedFloat32Array([NAN]), 64))
 	var invalid := geology.heights.duplicate()
 	invalid[0] = INF

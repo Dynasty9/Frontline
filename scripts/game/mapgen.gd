@@ -106,7 +106,8 @@ func generate() -> void:
 	var sites := [[tg.center, minf(85.0 * k, 130.0)], [d0.position, 60.0], [d1.position, 60.0], [f0.position, 55.0], [f1.position, 55.0]]
 	for hamlet in tg.hamlets:
 		sites.append([hamlet.c, 42.0])
-	world.terrain.landform.generate(int(world.settings.get("seed", 1)), world.roads, world.water, sites)
+	# Campaign routes retain the geology and woodland density they were authored against.
+	world.terrain.landform.generate(int(world.settings.get("seed", 1)), world.roads, world.water, sites, String(world.settings.get("mission", "")) == "")
 	world.terrain.install_landform(world.terrain.landform.heights)
 	world._rebuild_roads()
 	await world._breathe("Laying out the town", 0.38)
@@ -136,7 +137,7 @@ func generate() -> void:
 	for i in int(rng.randi_range(3, 5) * k):
 		_old_position(Vector3(rng.randf_range(-(H - 38.0), H - 38.0), 0, rng.randf_range(-35.0, 35.0) * k))
 	for i in int(rng.randi_range(7, 10) * area * 0.85):
-		_woods(Vector3(rng.randf_range(-(H - 13.0), H - 13.0), 0, rng.randf_range(-(H - 28.0), H - 28.0)), rng.randi_range(6, 14))
+		_woods(Vector3(rng.randf_range(-(H - 13.0), H - 13.0), 0, rng.randf_range(-(H - 28.0), H - 28.0)), rng.randi_range(6, 14) if String(world.settings.get("mission", "")) != "" else rng.randi_range(12, 26))
 	for i in int(40 * area * 0.75):
 		_try("tree", Vector3(rng.randf_range(-(H - 8.0), H - 8.0), 0, rng.randf_range(-(H - 10.0), H - 10.0)), 0.0, -1)
 

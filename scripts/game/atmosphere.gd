@@ -146,7 +146,7 @@ func _build_env() -> void:
 	sky_mat.set_shader_parameter("horizon", _d.horizon)
 	sky_mat.set_shader_parameter("ground_col", Color(0.24, 0.23, 0.2))
 	sky_mat.set_shader_parameter("sun_col", _d.sun)
-	sky_mat.set_shader_parameter("cloudiness", 1.0 if mood in ["overcast", "rain"] else 0.55)
+	sky_mat.set_shader_parameter("cloudiness", 1.0 if mood in ["overcast", "rain"] else (0.3 if mood == "day" else 0.55))
 	sky_mat.set_shader_parameter("stars", 1.0 if mood == "night" else 0.0)
 	sky.sky_material = sky_mat
 	sky.radiance_size = Sky.RADIANCE_SIZE_128
@@ -251,6 +251,7 @@ var deform_tex: Texture2DArray
 var _deform_tiles: TerrainTexture
 var _deform_t := 0.0
 var _surface_baked := false
+var _terrain_probe: ReflectionProbe
 var GROUND_HALF := MapDims.HALF + 8.0
 var GROUND_CHUNKS := ceili(GROUND_HALF * 2.0 / 64.0)
 const GROUND_LOD := 170.0  # beyond this from the camera a chunk is drawn on a coarser grid
@@ -279,6 +280,7 @@ func _build_ground() -> void:
 	ground_mat.set_shader_parameter("trench_mask", _blank_mask)
 	ground.material_override = ground_mat
 	ground.custom_aabb = AABB(Vector3(-MapDims.HALF - 1800.0, -5.0, -MapDims.HALF - 1800.0), Vector3(MapDims.SIZE + 3600.0, 517.0, MapDims.SIZE + 3600.0))
+	ground.layers = 5  # terrain-only capture layer for cached water reflections
 	ground.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	add_child(ground)
 	# the battlefield itself: chunks of fine grid (culled one by one), all
@@ -294,13 +296,14 @@ func _build_ground() -> void:
 	var cs := GROUND_HALF * 2.0 / GROUND_CHUNKS
 	var cm := _grid_mesh(cs, step)
 	# far off, a chunk is drawn on a 2 m grid (the craters there are specks)
-	var cm_far := _grid_mesh(cs, maxf(step, 2.0))
+	var cm_far := _grid_mesh(cs, maxf(step, 4.0))
 	for cx in GROUND_CHUNKS:
 		for cz in GROUND_CHUNKS:
 			for far in [false, true]:
 				var mi := MeshInstance3D.new()
 				mi.mesh = cm_far if far else cm
 				mi.material_override = ground_mat
+				mi.layers = 5
 				mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
 				mi.position = Vector3(-GROUND_HALF + (cx + 0.5) * cs, 0, -GROUND_HALF + (cz + 0.5) * cs)
 				# room for the displacement in the culling box
@@ -544,7 +547,7 @@ func apply_mood(m: String) -> void:
 	sky_mat.set_shader_parameter("zenith", _d.zenith)
 	sky_mat.set_shader_parameter("horizon", _d.horizon)
 	sky_mat.set_shader_parameter("sun_col", _d.sun)
-	sky_mat.set_shader_parameter("cloudiness", 1.0 if mood in ["overcast", "rain"] else 0.55)
+	sky_mat.set_shader_parameter("cloudiness", 1.0 if mood in ["overcast", "rain"] else (0.3 if mood == "day" else 0.55))
 	sky_mat.set_shader_parameter("stars", 1.0 if mood == "night" else 0.0)
 	env.ambient_light_energy = float(_d.ambient)
 	ground_mat.set_shader_parameter("wet", 1.0 if mood == "rain" else 0.0)
@@ -578,6 +581,7 @@ func apply_settings() -> void:
 		_mood_asked = want
 		if MOODS.has(want) and want != mood:
 			apply_mood(want)
+	_update_terrain_probe()
 	env.ssao_enabled = s.get_v("ssao")
 	env.ssr_enabled = s.get_v("ssr")
 	env.ssr_max_steps = 48 if int(s.get_v("ao_q")) >= 2 else 24
@@ -692,10 +696,39 @@ static func haze_distance_factor(distance: float) -> float:
 	return minf(1.0, HAZE_DISTANCE / maxf(1.0, distance))
 
 
+## Capture immutable terrain once; moving units and water never enter the capture.
+func _update_terrain_probe(refresh := false) -> void:
+	var enabled := bool(Settings.get_v("terrain_reflections"))
+	if not enabled:
+		if is_instance_valid(_terrain_probe):
+			_terrain_probe.queue_free()
+			_terrain_probe = null
+		return
+	if not _surface_baked:
+		return
+	if refresh and is_instance_valid(_terrain_probe):
+		_terrain_probe.queue_free()
+		_terrain_probe = null
+	if not is_instance_valid(_terrain_probe):
+		_terrain_probe = ReflectionProbe.new()
+		_terrain_probe.size = Vector3(MapDims.SIZE * 2.0, 1200.0, MapDims.SIZE * 2.0)
+		_terrain_probe.position = Vector3(0, 4, 0)
+		_terrain_probe.max_distance = MapDims.SIZE + 1800.0
+		_terrain_probe.cull_mask = 4
+		_terrain_probe.enable_shadows = false
+		_terrain_probe.ambient_mode = ReflectionProbe.AMBIENT_DISABLED
+		_terrain_probe.update_mode = ReflectionProbe.UPDATE_ONCE
+		add_child(_terrain_probe)
+
+
 func _apply_haze(distance: float) -> void:
 	var k := haze_distance_factor(distance)
+	var volume_k := k
+	if bool(Settings.get_v("alpine_haze")) and world != null and world.terrain and world.terrain.landform.peak > 1.0:
+		var downward := absf(sin(world.cam.rotation.x)) if world.cam else 0.0
+		k = maxf(k, 0.45 * pow(1.0 - downward, 2.0))
 	env.fog_density = float(_d.fog_d) * HAZE_STRENGTH * k
-	env.volumetric_fog_density = (0.0011 if mood != "hazy" else 0.003) * VOLUME_STRENGTH * k
+	env.volumetric_fog_density = (0.0011 if mood != "hazy" else 0.003) * VOLUME_STRENGTH * volume_k
 
 
 ## Builds the road strip mesh for a team (called by World when roads change).
@@ -803,12 +836,13 @@ func _update_deform(dt: float) -> void:
 		ground_mat.set_shader_parameter("surface_bake", ImageTexture.create_from_image(tm.landform.bake_surface(sun.basis.z)))
 		ground_mat.set_shader_parameter("sun_direction", sun.basis.z)
 		_surface_baked = true
+		_update_terrain_probe(true)
 		var post := post_rect.material as ShaderMaterial
 		post.set_shader_parameter("fringe", 0.00015)
 		post.set_shader_parameter("grain", 0.006)
 		post.set_shader_parameter("vignette", 0.15)
 	if not tm.deform_dirty.is_empty() and _deform_t <= 0.0:
-		ground_mat.set_shader_parameter("snow_line", maxf(25.0, tm.landform.peak * 0.36) if tm.landform.peak > 1.0 else 10000.0)
+		ground_mat.set_shader_parameter("snow_line", maxf(25.0, tm.landform.peak * 0.55) if tm.landform.peak > 1.0 else 10000.0)
 		_deform_t = 0.22
 		for rect: Rect2i in tm.deform_dirty:
 			_deform_tiles.mark_dirty(rect)
@@ -1057,9 +1091,10 @@ void fragment() {
 	vec3 rock_macro = surface_color(cliff_color, wpos / 110.0 + 0.37, weights);
 	float stone = dot(rock, vec3(0.2126, 0.7152, 0.0722));
 	float mineral = dot(rock_macro, vec3(0.2126, 0.7152, 0.0722));
-	float strata = sin(wpos.y * 0.28 + p.x * 0.025 + p.y * 0.018 + (d1 - 0.5) * 2.0);
+	float bed = wpos.y / 14.0 + p.x * 0.006 + p.y * 0.003;
+	float strata = smoothstep(0.04, 0.15, abs(fract(bed + (d1 - 0.5) * 0.35) - 0.5));
 	rock = vec3(0.75, 0.79, 0.83) * (0.025 + pow(mineral, 0.82) * 0.85) * (0.65 + stone * 1.2);
-	rock *= 0.95 + strata * 0.05;
+	rock *= 0.85 + strata * 0.15;
 	vec3 moss = surface_color(moss_color, wpos / 24.0, weights);
 	float grass_detail = dot(moss, vec3(0.2126, 0.7152, 0.0722));
 	moss = mix(vec3(0.055, 0.092, 0.034), vec3(0.14, 0.18, 0.075), d1) * (0.65 + grass_detail * 1.1);
@@ -1078,7 +1113,8 @@ void fragment() {
 	float clean = (1.0 - wm.g) * (1.0 - wm.a) * (1.0 - clamp(bowl, 0.0, 1.0));
 	col = mix(col, alpine, clean);
 	// Connected snowfields collect in sheltered bowls, leaving dark ribs and cliff faces.
-	float snow_field = (geology - snow_line) / 35.0 + cavity * 0.8 - geometric.x * 0.25 + (d1 - 0.5) * 0.3;
+	float local_snow_line = max(abs(p.x), abs(p.y)) >= __MAP_HALF__ ? max(150.0, snow_line * 1.5) : snow_line;
+	float snow_field = (geology - local_snow_line) / 35.0 + cavity * 0.8 - geometric.x * 0.25 + (d1 - 0.5) * 0.3;
 	snow_field -= min(3.0, max(0.0, slope - 0.75)) * 0.18;
 	snow_field += (mineral - 0.3) * 0.9;
 	float snow = smoothstep(-0.06, 0.08, snow_field) * (1.0 - smoothstep(3.0, 8.0, slope));

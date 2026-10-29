@@ -541,10 +541,13 @@ catalogue entry in `MissionList.LIST`, a setup function and an autopilot functio
 
 **The map** (`mapgen.gd`, `landform.gd`, `towngen.gd`, `decor.gd`)
 - Standard battlefields have seeded mountain belts, hills, valleys and rivers. Domain-warped ridged noise,
-  thermal weathering and seeded rainfall erosion shape the relief. Roads, bridges, starting bases and settlements
+  jointed bedrock shelves, thermal weathering and seeded rainfall erosion shape the relief. Roads, bridges, starting bases and settlements
   occupy graded valley corridors; forests stay below the snow line and off steep faces.
 - Moss and soil blend into exposed stone on slopes, with layered rock detail and snow on high sheltered ground.
   Baked sky visibility and distant sun shadows deepen the gullies, rebuilding when the lighting mood changes.
+  Optional alpine haze adds atmospheric depth; cached terrain reflections exclude moving units and refresh with lighting.
+  Standard-battle woods are denser and share spatial bark and foliage batches; changed trees recover their individual models.
+  Campaign missions retain their previous geology and woodland layout to preserve authored routes and cover.
   Infantry and vehicles follow the ground, slow on slopes, and route around faces too steep to cross.
   Ridges block shots and enemy detection. Helicopters anticipate rising ground and land relative to the surface.
 - Construction requires a sufficiently level footprint. Trenches, shell holes, fires, selection and targeting

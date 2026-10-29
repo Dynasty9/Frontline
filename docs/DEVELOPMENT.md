@@ -815,3 +815,21 @@ older builds from joining elevated maps. Empty samples preserve flat scenarios a
 `tests/landform.test.mjs` checks deterministic generation, malformed samples, sight, navigation, craters,
 infantry grounding, truck slope limits, helicopter crossings/landings and serialization. Replay tests exercise
 both flat scenarios and generated mountains. Run the full scenario suite and the long mission suite too.
+
+### Alpine rendering options
+
+`alpine_haze` retains distant atmospheric depth on elevated maps (High/Ultra defaults),
+fading the extra haze as the camera tilts down to preserve command-view readability;
+Low/Medium keep the thinner command-camera haze. `terrain_reflections` is opt-in on all
+presets. A single UPDATE_ONCE ReflectionProbe captures only terrain on layer 3 (mask 4),
+with shadows disabled, after surface baking. A lighting mood change rebuilds the capture;
+turning the setting off releases it. Water uses environment specular instead of its synthetic
+sky reflection while enabled. It approximates distant mountains, not nearby shoreline parallax
+or moving boats. Ground remains visible on layer 1 as well. No capture includes hidden troops.
+
+Campaigns retain their previous geology recipe and woodland density to preserve authored routes and cover.
+Standard battles add bedrock fractures and denser woods.
+
+Terrain beyond 170 m uses a 4 m grid matching the immutable geology samples; nearby
+terrain retains the fine deformation grid. Woodland bark and foliage can join the existing
+64 m scenery batches, with destruction and fire restoring only the affected tree.
