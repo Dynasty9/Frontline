@@ -11,10 +11,10 @@ one screen (over a battle scene, if you give it one) and quits.
 
 1. **Signal over noise.** Show what helps a decision now; cut the rest. A panel that's empty says nothing rather
    than drawing a box around nothing.
-2. **Data on the scene.** Lists and readouts sit on the battlefield over an edge scrim, not in boxed panels. A
-   dialog or a sheet is flat ink.
-3. **Lines, not frames.** A 1 px rule under a row or beside a header; four corner ticks to mark a region. Everything
-   is square: no rounded corners, no shadows, no bevels.
+2. **Give instruments a home.** The battle HUD uses dark command-deck housings to separate controls from the
+   terrain. World labels remain on the scene. Menus and dialogs retain their flat Signal treatment.
+3. **Restrained edges.** Use 1 px rules within a panel. The command deck has an 8 px cut corner, a fine outline,
+   a quiet top highlight and a short accent index. No rounded cards, heavy bevels or decorative glow.
 4. **Two voices.** Condensed capitals for labels and names; mono for figures and codes. Prose only for sentences.
 5. **Concise.** Codes, not phrases: `MOV D8`, `PINNED · DEF E4`, `SUP 615 +174/M`, `T+04:31`, `RDY`, `261S`.
 6. **One signal colour.** The accent means selected, active, primary or live, and nothing else. The colours that
@@ -76,8 +76,9 @@ The HUD's states, as the ORBAT and the selection show them:
 
 ## Layout
 
-The battle keeps the middle of the screen for the battle. Everything else sits on an edge, over a scrim that
-darkens toward that edge (`UiScrim`), so it reads over any ground without a box:
+The battle keeps the middle of the screen for the battle. The command deck gives the instruments an opaque,
+near-black home at the edges, using Signal's existing ink, type and semantic colours. A subtle vertical tonal
+change and cut corners give the housings depth without competing with the terrain:
 
 - **Top** (the **Status** line): the side, `SUP` and its rate, `UNITS`, `FOB`, `TOWNS`, and the clock. A line under
   it for each FOB says what its trucks are doing.
@@ -94,13 +95,18 @@ darkens toward that edge (`UiScrim`), so it reads over any ground without a box:
   readout. A fine accent rule marks the active filter, and support demo states use neutral text.
   Support explains availability and supply requirements; choosing a strike closes the workspace so its target
   can be placed on the battlefield. Observer actions are clearly labelled demos.
-- **Bottom**: selection details and the contextual order card stay available while comparing units.
-  Escape cancels an active targeting action, then closes an open workspace before clearing selection.
-  The bottom scrim only darkens while something is selected.
+- **Bottom**: the selected unit's actual model appears in a lit portrait beside its name, strength, condition and
+  members. The portrait renders only when its model or size changes and yields on narrow layouts. Orders use
+  a stable three-column grid of pictograms, names and bound-key hints; the active targeting order lights up.
+  Selection and orders remain available while comparing units. Empty selection shows concise camera and
+  selection guidance. Escape cancels targeting, then closes tools before clearing selection.
+- **Observer**: the same housings and type hierarchy serve balance-of-forces, camera controls and inspection.
+  The director caption sits above the deck. Observer support actions are labelled demos; command orders stay
+  exclusive to commanders. At large interface scales, task headings compress to keep real roster rows visible.
 
 Normal battlefield views show selected squad plans; tactical views reveal other plans through the Orders
-layer. Unit symbols and plan labels yield to occupied HUD areas. All task content follows Signal's condensed
-typography, rules and feathered edge shading, with no enclosing panel backplates.
+layer. Unit symbols and plan labels yield to occupied HUD areas. The map never becomes a tab or disappears
+when tools open. Upper-right Events minimizes to a compact control with an unread count, preserving history.
 
 Menus put the title and the entries on the left over the living map, panels in the middle, the account on the
 right. Dialogs stay inside the scaled viewport: long content scrolls, and keyboard focus brings its action into
@@ -111,8 +117,15 @@ and direct-connect controls wrap rather than pushing actions off the right edge.
 
 `UiScrim` is the ink fading in from an edge of the screen: darkest at the edge, nothing a set distance in, and
 fading out along the edge past the part it serves. There's one per edge, behind every HUD part on that edge, never
-one per part; the bottom one darkens only while something is selected. The active left column holds readable
-ink underneath its content and feathers out above and toward the battlefield, without a hard panel edge.
+one per part. In battle, scrims are secondary to the command-deck housings: keep their strength low so they do
+not wash out the battlefield beyond the controls. The fixed map housing supplies its own contrast.
+
+## Command deck
+
+`hud_command_deck.gd` draws the map, resource, event, task and selection housings together beneath their
+interactive controls. `hud_order_button.gd` draws the command pictograms; names and keycaps remain native
+controls. `hud_unit_portrait.gd` uses an isolated viewport and the existing soldier/vehicle models, with no
+simulation entities or continuous portrait animation. Theme tokens and interface scale apply throughout.
 
 ## Panels
 

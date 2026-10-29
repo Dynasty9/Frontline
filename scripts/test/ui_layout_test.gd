@@ -387,6 +387,38 @@ func _run() -> void:
 	_check("history shortcut reopens minimized event log", hud.log_panel.visible and not hud.events_collapsed and not hud.toasts.visible)
 	hud.toggle_events()
 	_check("minimize also closes history", not hud.log_panel.visible and hud.events_collapsed)
+	# Bound labels stay inside their command tiles, including a wide rebound key.
+	if is_instance_valid(hud.card_panel):
+		hud.card_panel.free()
+	hud._build_command_card()
+	var orders: Array = []
+	var attack := hud._button("Attack-move", "X", "Attack", func(): orders.append("attack"))
+	var smoke := hud._button("Smoke", "Ctrl+Shift+T", "Smoke", func(): orders.append("smoke"))
+	hud._layout_command_card()
+	await _settle()
+	for button: Button in [attack, smoke]:
+		_check("command key stays inside %s tile" % button.order, _inside(button.get_meta("key"), button.get_global_rect()))
+		_check("command caption stays inside %s tile" % button.order, _inside(button.get_meta("name"), button.get_global_rect()))
+	attack.pressed.emit()
+	smoke.pressed.emit()
+	_check("command tiles retain their distinct actions", orders == ["attack", "smoke"])
+	for i in 12:
+		hud._button("Build", "100", "Build", func(): pass)
+	hud._layout_command_card()
+	await _settle()
+	hud._layout_command_card()
+	_check("long command pages fit inside the viewport", _inside(hud.card_panel, stage.get_global_rect()))
+	_check("long command pages scroll within the deck", hud.card.size.y > hud.card_scroll.size.y and hud.card_scroll.get_v_scroll_bar().visible)
+	var prior_map_size: int = Settings.v.minimap_size
+	Settings.v.minimap_size = 2
+	stage.size = Vector2(960, 640)
+	hud.layout_minimap()
+	hud._layout_command_card()
+	await _settle()
+	hud._layout_command_card()
+	_check("large map leaves room for selection and three command columns", hud.card_panel.position.x >= hud.minimap_right() + 8 + Hud.SEL_MIN_W + 12)
+	Settings.v.minimap_size = prior_map_size
+	hud.card_panel.free()
 	hud.toasts.free()
 	hud.log_panel.free()
 	for control: Control in [hud.orbat, hud.minimap, hud.minimap_panel, hud.layers_ui, hud.support_box, hud.chat_edit, hud.tint]:

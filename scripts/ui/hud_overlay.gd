@@ -202,7 +202,11 @@ func _draw() -> void:
 		var side: String = Defs.TEAM_NAMES[sj.team] if sj.team >= 0 else ""
 		var act := sj.doing_text()
 		var cw := maxf(UiKit.caps_w(cap, 15) + UiKit.caps_w(side, 11) + 14.0, UiKit.caps_w(act, 12)) + 36.0
-		var cr := Rect2(vs.x * 0.5 - cw * 0.5, vs.y - 92 - float(w.settings.get("replay_controls_height", 0.0)), cw, 50.0 if act != "" else 32.0)
+		var caption_y := vs.y - 92 - float(w.settings.get("replay_controls_height", 0.0))
+		var deck: Control = hud.sel_panel if hud.sel_panel.visible else (hud.command_deck.idle_panel if hud.command_deck else null)
+		if deck and deck.visible:
+			caption_y = minf(caption_y, deck.position.y * vs.y / hud.root.size.y - 66.0)
+		var cr := Rect2(vs.x * 0.5 - cw * 0.5, caption_y, cw, 50.0 if act != "" else 32.0)
 		draw_rect(cr, UiKit.fa(UiKit.INK, 0.82))
 		UiKit.ticks(self, cr, UiKit.RULE2, UiKit.TICK_ARM, 0.0)
 		var cx := cr.position.x + 18.0 + UiKit.caps_at(self, Vector2(cr.position.x + 18, cr.position.y + 22), cap, 15, UiKit.TEXT)
@@ -862,6 +866,9 @@ func _status_icons(men: Array, a: float) -> void:
 func _cache_hud_regions() -> void:
 	_hud_regions.clear()
 	var pixel_scale := get_viewport().get_visible_rect().size / hud.root.size
+	if hud.command_deck and hud.command_deck.idle_panel and hud.command_deck.idle_panel.visible:
+		var idle: Rect2 = hud.command_deck.idle_panel.get_rect().grow(8)
+		_hud_regions.append(Rect2(idle.position * pixel_scale, idle.size * pixel_scale))
 	if hud.top and hud.top.visible:
 		var width := HudTopInfo.OBS_W if hud.world.local_team < 0 else hud.top.size.x
 		var rect := Rect2(hud.top.position, Vector2(width, hud.top.content_h)).grow(14)

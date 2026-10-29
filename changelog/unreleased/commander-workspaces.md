@@ -1,6 +1,6 @@
 +++
-title = "A clearer commander view"
-summary = "A fixed map and dedicated task workspace make it faster to find, focus and command units."
+title = "A new command deck"
+summary = "A cinematic command deck with unit portraits, illustrated orders, a fixed tactical map and focused tools for managing large battles."
 kind = "improved"
 
 [[screenshots]]
@@ -10,6 +10,10 @@ caption = "Before: the roster and minimap share the battlefield edge."
 [[screenshots]]
 file = "after.jpg"
 caption = "Find a squad, press Enter, and return to the battle focused and ready to command."
+
+[[screenshots]]
+file = "observer.jpg"
+caption = "Observe a large battle with fixed navigation and separate camera controls."
 
 [[screenshots]]
 file = "map.jpg"
@@ -32,4 +36,6 @@ caption = "Support: artillery and air strikes, clearly marked as free demos for 
 - Click selects without moving your camera. Double-click, Enter or Focus selected brings the unit into view and returns you to the battle, with orders ready. Escape closes the workspace before clearing selection.
 - Taller roster rows separate names and strength from status. Support shows costs and cooldowns, explains insufficient supply, and closes when you choose a strike so you can place its target.
 - Events yields while you use a task workspace and restores your previous preference afterward. It can also be minimized independently without losing history.
-- Signal's typography, fine rules and feathered shading connect the tools to the game's existing design. The compact tool strip aligns with the map; stronger unit names, quieter status text and active filter rules make lists easier to scan. Battlefield labels stay clear of controls and resource readouts.
+- A dark command deck gives the map, unit details, orders and task tools a consistent home. Cut corners, restrained highlights and Signal typography keep the controls readable against busy terrain.
+- Selected soldiers and vehicles appear in portraits drawn from their in-game models. A three-column command grid pairs action icons with names and keyboard shortcuts; active targeting orders are highlighted.
+- Observer controls share the same design. Empty selection explains camera and selection controls. At large interface scales, portraits yield and task headings compact so unit rows remain usable. Battlefield labels and director captions stay clear of the deck.

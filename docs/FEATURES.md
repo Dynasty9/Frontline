@@ -673,8 +673,8 @@ catalogue entry in `MissionList.LIST`, a setup function and an autopilot functio
   the same in all of them. It changes live: the interface recolours at once and the map's colours flow into the
   new ones over a second or so.
 - **Signal** ([UI.md](UI.md)): the interface is a battle management display laid onto the scene. The HUD sits
-  on the battlefield over scrims that darken toward the screen's edges, with no boxes: 1 px rules under rows and
-  corner ticks where a region needs marking, everything square. Names and labels are condensed capitals, every
+  in dark command-deck housings at the screen's edges: cut corners, fine outlines and 1 px rules under rows.
+  Menus keep their flat panels and corner ticks. Names and labels are condensed capitals, every
   figure and code is mono (`SUP 2115 +230/M`, `PINNED · TO SPT D4`, `T+04:31`, `RDY`), and prose is kept for
   sentences. One accent colour marks what's selected, active or primary. Short choices in the settings are rows
   of segments, amounts are counted bars, keys are drawn as key boxes. Things cut, type on, count or flicker
@@ -1135,7 +1135,10 @@ catalogue entry in `MissionList.LIST`, a setup function and an autopilot functio
   Infantry, Vehicles and Attention filters narrow large rosters. Support shows costs, cooldowns and
   insufficient-supply states; choosing a strike closes the workspace for targeting. Observers get demos.
   The upper-right Events stream minimizes independently, preserving full history and counting new arrivals.
-  Signal typography, two-line roster rows and feathered edge shading keep the hierarchy consistent.
+  Dark command-deck housings, Signal typography and two-line roster rows keep the hierarchy consistent.
+  Selected soldiers and vehicles have portraits rendered from their actual models. Orders form a stable
+  three-column grid with pictograms and bound-key hints. Narrow layouts omit the portrait and compact
+  task headings so roster rows remain visible. The observer's director caption stays above the deck.
 - The main menu sits over a live 3D scene: a .50 cal crew at golden hour with a burning wreck and shelling on the horizon.
 
 **Field Manual** (`ui/field_manual.gd`; main menu, Esc menu or F4): every soldier, squad, weapon, vehicle, building,
