@@ -2499,8 +2499,13 @@ func _react_grenade(dive_only: bool) -> bool:
 
 
 func _dive_from(p: Vector3) -> void:
-	var d := Defs.flat(position - p)
-	dive_dir = d.normalized() if d.length() > 0.1 else Defs.dir_of(world.rng.randf() * TAU)
+	if SoldierBrain._native(self):
+		var direction = SoldierBrain._core(self).dive_direction(position, p, world.rng._backend)
+		assert(direction is Vector3, "Invalid dive direction")
+		dive_dir = direction
+	else:
+		var d := Defs.flat(position - p)
+		dive_dir = d.normalized() if d.length() > 0.1 else Defs.dir_of(world.rng.randf() * TAU)
 	_face_now(dive_dir)
 	dive_t = 0.5
 	act = Act.DIVE
@@ -2552,6 +2557,9 @@ func _react_drones() -> void:
 
 
 func _gpick_tick(dt: float) -> void:
+	if SoldierBrain._native_task(self):
+		SoldierBrain._task_native(self, dt, 2)
+		return
 	var g := task_ent as Projectile
 	if g == null or g.gone or (g.held_by != null and g.held_by != self):
 		task = ""

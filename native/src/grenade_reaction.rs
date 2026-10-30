@@ -1,7 +1,9 @@
+use crate::path_planner::PathPlannerCore;
 use crate::{collision_index::CollisionIndexCore, simulation_random::SimulationRandomCore};
 use frontline_core::grenade_reaction::{
     self as grenade, Grenade, GrenadeMemory, Mate, Reaction, Soldier,
 };
+use frontline_core::grenade_task::{self, Input as TaskInput, Task};
 use frontline_core::infantry_pose::Posture;
 use frontline_core::infantry_vitals::Life;
 use godot::prelude::*;
@@ -81,6 +83,94 @@ fn mates(rows: &Array<Variant>) -> Option<Vec<Mate>> {
 
 #[godot_api]
 impl GrenadeReactionCore {
+    #[func]
+    fn advance(
+        &self,
+        kind: i32,
+        context: PackedFloat64Array,
+        target: Array<Variant>,
+        held_by_self: bool,
+        planner: Gd<PathPlannerCore>,
+    ) -> Array<Variant> {
+        let task = match kind {
+            0 => Task::Smother,
+            1 => Task::Kick,
+            2 => Task::Pickup,
+            _ => return Array::new(),
+        };
+        let v = context.as_slice();
+        if v.len() != 11 || v.iter().any(|x| !x.is_finite()) || v[10] < -1.0 {
+            return Array::new();
+        }
+        let p =
+            |i| frontline_core::vector::Vector3::new(v[i] as f32, v[i + 1] as f32, v[i + 2] as f32);
+        let grenade = if target.is_empty() {
+            None
+        } else {
+            let Some(g) = round(&target) else {
+                return Array::new();
+            };
+            Some(grenade_task::Grenade {
+                position: g.position,
+                fuse: g.fuse,
+                gone: g.gone,
+                held: g.held,
+                held_by_self,
+            })
+        };
+        let input = TaskInput {
+            task,
+            position: p(0),
+            yaw: v[3],
+            time: v[4],
+            started: v[5],
+            dt: v[6],
+            grenade,
+            mount: if v[10] == -1.0 {
+                None
+            } else {
+                Some((p(7), v[10]))
+            },
+        };
+        let planner = planner.bind();
+        let Some(nav) = planner.core.as_ref() else {
+            return Array::new();
+        };
+        let Ok(result) = grenade_task::advance(input, nav) else {
+            return Array::new();
+        };
+        varray![
+            Vector3::new(result.position.x, result.position.y, result.position.z),
+            result.yaw,
+            result.action as u8 as i32
+        ]
+    }
+
+    #[func]
+    fn dive_direction(
+        &self,
+        position: Vector3,
+        from: Vector3,
+        mut rng: Gd<SimulationRandomCore>,
+    ) -> Variant {
+        match grenade_task::dive_direction(
+            crate::point(position),
+            crate::point(from),
+            &mut rng.bind_mut().core,
+        ) {
+            Ok(v) => Vector3::new(v.x, v.y, v.z).to_variant(),
+            Err(_) => Variant::nil(),
+        }
+    }
+
+    #[func]
+    fn covers_grenade(&self, position: Vector3, yaw: f64, target: Vector3) -> Variant {
+        match grenade_task::covers_grenade(crate::point(position), yaw, crate::point(target)) {
+            Ok(covers) => covers.to_variant(),
+            Err(_) => Variant::nil(),
+        }
+    }
+
     #[func]
     fn checkpoint(&self) -> PackedByteArray {
         self.core.checkpoint().as_slice().into()

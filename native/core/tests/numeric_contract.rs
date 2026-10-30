@@ -5,6 +5,7 @@ use frontline_core::collision::{BoxShape, CollisionWorld, Mat3};
 use frontline_core::cover::{generate, Part};
 use frontline_core::drone::{DroneFlight, Phase};
 use frontline_core::grenade_reaction as reflex;
+use frontline_core::grenade_task;
 use frontline_core::guided::{GuidedFlight, Kind as GuidedKind};
 use frontline_core::infantry_aim::{AimInput, InfantryAim, Target, TargetKind};
 use frontline_core::infantry_motion::{InfantryMotion, MoveInput};
@@ -57,6 +58,87 @@ fn golden(name: &str, actual: &[u8]) {
     {
         panic!("{name}: first differing byte {i}: actual {a:02x}, expected {b:02x}");
     }
+}
+
+#[test]
+fn grenade_task_motion_is_identical_across_platforms() {
+    let mut bytes = Vec::new();
+    let mut nav = PathPlanner::new(64).unwrap();
+    let kinds: Vec<u8> = (0..4096).map(|i| if i % 7 == 0 { 3 } else { 0 }).collect();
+    nav.load_cells(&kinds, &[0; 4096], &[0; 4096]);
+    for case in 0..128 {
+        let mut rng = SimulationRandom::new(case + 913);
+        let mut input = grenade_task::Input {
+            task: [
+                grenade_task::Task::Smother,
+                grenade_task::Task::Kick,
+                grenade_task::Task::Pickup,
+            ][case as usize % 3],
+            position: Vector3::new((case % 7) as f32 - 3.0, 0.0, ((case / 7) % 7) as f32 - 3.0),
+            yaw: (case % 20) as f64 * 0.13,
+            time: 0.0,
+            started: 0.0,
+            dt: [1.0 / 30.0, 0.02, 0.08][case as usize % 3],
+            grenade: None,
+            mount: (case % 11 == 0).then_some((Vector3::ZERO, 0.61)),
+        };
+        input.grenade = Some(grenade_task::Grenade {
+            position: input.position + Vector3::new(0.4 + (case % 8) as f32 * 0.7, 0.1, 0.2),
+            fuse: [0.3, 0.5, 0.8, 2.0, 4.0][case as usize % 5],
+            gone: false,
+            held: case % 17 == 0 || case % 19 == 0,
+            held_by_self: case % 17 == 0,
+        });
+        for tick in 0..120 {
+            input.time += input.dt;
+            let g = input.grenade.as_mut().unwrap();
+            g.fuse -= input.dt;
+            g.gone = g.fuse <= 0.0;
+            let result = grenade_task::advance(input, &nav).unwrap();
+            input.position = result.position;
+            input.yaw = result.yaw;
+            let terminal = matches!(
+                result.action,
+                grenade_task::Action::Cancel
+                    | grenade_task::Action::DiveAway
+                    | grenade_task::Action::Kick
+                    | grenade_task::Action::Pickup
+            );
+            if tick % 7 == 0 || terminal {
+                point(&mut bytes, result.position);
+                bytes.extend_from_slice(&result.yaw.to_le_bytes());
+                bytes.push(result.action as u8);
+                bytes.push(u8::from(
+                    grenade_task::covers_grenade(
+                        result.position,
+                        result.yaw,
+                        input.grenade.unwrap().position,
+                    )
+                    .unwrap(),
+                ));
+            }
+            if result.action == grenade_task::Action::DiveAway {
+                point(
+                    &mut bytes,
+                    grenade_task::dive_direction(
+                        result.position,
+                        input.grenade.unwrap().position,
+                        &mut rng,
+                    )
+                    .unwrap(),
+                );
+            }
+            if terminal {
+                break;
+            }
+        }
+        point(
+            &mut bytes,
+            grenade_task::dive_direction(input.position, input.position, &mut rng).unwrap(),
+        );
+        bytes.extend_from_slice(&rng.state().to_le_bytes());
+    }
+    golden("grenade_tasks", &bytes);
 }
 
 #[test]

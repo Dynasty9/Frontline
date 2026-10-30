@@ -154,6 +154,55 @@ static func _react_native(s: Soldier) -> void:
 			s.bt_path = "dive clear"
 
 
+static func _native_task(s: Soldier) -> bool:
+	return _native(s) and s.world.nav != null and s.world.nav._planner != null
+
+
+static func _task_native(s: Soldier, dt: float, kind: int) -> void:
+	var g := s.task_ent as Projectile
+	if not is_instance_valid(g):
+		g = null
+	var mount_pos := Vector3.ZERO
+	var mount_rate := -1.0
+	if is_instance_valid(s.mounted) and not s.mounted.gone and s.mounted.skind in ["mg_nest", "hmg_nest", "mortar_pit", "at_post"]:
+		mount_pos = s.mounted.mount_pos()
+		mount_rate = deg_to_rad(float({"mg_nest": 55.0, "hmg_nest": 35.0, "mortar_pit": 12.0, "at_post": 20.0}[s.mounted.skind]))
+	var context := PackedFloat64Array([s.position.x, s.position.y, s.position.z, s.rotation.y, s.world.time, s.task_t, dt, mount_pos.x, mount_pos.y, mount_pos.z, mount_rate])
+	var result: Array = _core(s).advance(kind, context, _round(g) if g != null else [], g != null and g.held_by == s, s.world.nav._planner)
+	assert(result.size() == 3, "Invalid grenade task step")
+	s.position = result[0]
+	s.rotation.y = float(result[1])
+	match int(result[2]):
+		0:
+			s.task = ""
+			if kind == 0:
+				s.task_ent = null
+				s.posture = Soldier.Post.PRONE
+				s.act = Soldier.Act.IDLE
+		1:
+			s.task = ""
+			s._dive_from(g.position)
+		2:
+			s.posture = Soldier.Post.PRONE
+			s.act = Soldier.Act.SMOTHER
+		3:
+			s.posture = Soldier.Post.PRONE
+			s.act = Soldier.Act.DIVE
+		4:
+			s.posture = Soldier.Post.STAND
+			s.task = ""
+			s._begin_action("kick", 0.3, {"g": g, "v": kick_vel(s, g)})
+		5:
+			s.act = Soldier.Act.RUN
+			s.posture = Soldier.Post.STAND
+			g.pick_up(s)
+			s.task = ""
+			s._begin_action("pickup", 0.2, {"g": g})
+		6:
+			s.act = Soldier.Act.RUN
+			s.posture = Soldier.Post.STAND
+
+
 ## A live grenade near him he hasn't reacted to yet (kept in s.bt_g).
 static func grenade_close(s: Soldier) -> bool:
 	s.bt_g = null
@@ -250,6 +299,9 @@ static func smother(s: Soldier) -> int:
 
 ## Diving onto it: his chest over it, his arms and knees tucked round it.
 static func smother_tick(s: Soldier, dt: float) -> void:
+	if _native_task(s):
+		_task_native(s, dt, 0)
+		return
 	var g := s.task_ent as Projectile
 	if g == null or g.gone or (g.held_by != null and g.held_by != s):
 		s.task = ""
@@ -275,8 +327,15 @@ static func smothered(g: Projectile) -> bool:
 	var s: Soldier = g.smothered_by
 	if s == null or not is_instance_valid(s) or s.gone or s.life != Soldier.Life.ALIVE or s.task != "smother":
 		return false
-	var chest := s.position + Defs.dir_of(s.rotation.y) * 0.75
-	if Defs.flat(chest - g.position).length() > 0.9:
+	var covered := false
+	if _native(s):
+		var result = _core(s).covers_grenade(s.position, s.rotation.y, g.position)
+		assert(result != null, "Invalid grenade covering pose")
+		covered = bool(result)
+	else:
+		var chest := s.position + Defs.dir_of(s.rotation.y) * 0.75
+		covered = Defs.flat(chest - g.position).length() <= 0.9
+	if not covered:
 		return false
 	var src: Entity = g.world.entity(g.thrower_id)
 	s.take_damage(900.0, src, Vector3.UP, "explosion")
@@ -320,6 +379,9 @@ static func kick(s: Soldier) -> int:
 
 
 static func gkick_tick(s: Soldier, dt: float) -> void:
+	if _native_task(s):
+		_task_native(s, dt, 1)
+		return
 	var g := s.task_ent as Projectile
 	if g == null or g.gone or g.held_by != null or g.fuse < 0.35:
 		s.task = ""
