@@ -10,6 +10,7 @@ signal report_updated
 signal build_stage(text: String, frac: float)
 
 var settings: Dictionary = {}
+var _breach_queries: RefCounted
 var recording: BattleRecording
 var srv := false
 var has_view := true

@@ -103,6 +103,11 @@ fn breach_checkpoints_resume_and_reject_invalid_state_without_consuming_randomne
         assert_eq!(s.advance(input(), &mut rng), copy.advance(input(), &mut r2));
         assert_eq!(s, copy);
         assert_eq!(rng, r2);
+        let mut invalid_team = input();
+        invalid_team.team = 2;
+        assert!(s.advance(invalid_team, &mut rng).is_err());
+        assert_eq!(s, copy);
+        assert_eq!(rng, r2);
         for n in 0..bytes.len() {
             assert!(Breach::restore(&bytes[..n]).is_err());
         }

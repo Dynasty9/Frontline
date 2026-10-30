@@ -110,6 +110,21 @@ impl PathPlanner {
         self.kinds[usize::from(vehicle)][self.index(self.cell(point))]
     }
 
+    pub fn nearest_walkable(&self, point: Vector3) -> Option<Vector3> {
+        if !point.is_finite() {
+            return None;
+        }
+        let cell = self.cell(point);
+        let kinds = &self.kinds[0];
+        if kinds[self.index(cell)] != 3 {
+            return Some(point);
+        }
+        let free = nearest_free(cell, |p| {
+            p.into_iter().all(|v| v >= 0 && v < self.side as i32) && kinds[self.index(p)] != 3
+        });
+        Some(self.center(free))
+    }
+
     pub fn line_free(&self, from: Vector3, to: Vector3, vehicle: bool) -> bool {
         if !from.is_finite() || !to.is_finite() {
             return false;
@@ -179,11 +194,11 @@ impl PathPlanner {
         let mut a = self.cell(from);
         let mut b = self.cell(to);
         if graph.is_solid(a) {
-            a = nearest_free(graph, a);
+            a = nearest_free(a, |p| !graph.is_solid(p));
         }
         let end_exact = !graph.is_solid(b);
         if !end_exact {
-            b = nearest_free(graph, b);
+            b = nearest_free(b, |p| !graph.is_solid(p));
         }
         let end = self.center(b);
         let near_end = f64::from(flat(end - to).length()) < 1.7;
@@ -449,12 +464,12 @@ fn flat(mut point: Vector3) -> Vector3 {
     point
 }
 
-fn nearest_free(graph: &Hierarchy, cell: [i32; 2]) -> [i32; 2] {
+fn nearest_free(cell: [i32; 2], is_free: impl Fn([i32; 2]) -> bool) -> [i32; 2] {
     for radius in 1..10 {
         for dx in -radius..=radius {
             for dz in [-radius, radius] {
                 for point in [[cell[0] + dx, cell[1] + dz], [cell[0] + dz, cell[1] + dx]] {
-                    if !graph.is_solid(point) {
+                    if is_free(point) {
                         return point;
                     }
                 }

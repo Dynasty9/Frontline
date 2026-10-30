@@ -64,7 +64,12 @@ impl Breach {
         i: Input,
         rng: &mut SimulationRandom,
     ) -> Result<Decision, &'static str> {
-        if !self.valid() || !scalar(i.time) || !scalar(i.distance) || i.distance < 0.0 {
+        if !self.valid()
+            || !scalar(i.time)
+            || !scalar(i.distance)
+            || i.distance < 0.0
+            || !(-1..=1).contains(&i.team)
+        {
             return Err("invalid breach input");
         }
         Ok(match self.phase {

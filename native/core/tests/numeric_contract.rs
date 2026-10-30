@@ -1,6 +1,7 @@
 //! Exact persisted bytes, shared by Windows, Linux and ARM CI, without tolerance comparisons.
 use frontline_core::blast::{Blast, Infantry, Protection as BlastProtection};
 use frontline_core::breach::{self, Breach, Decision, Input as BreachInput};
+use frontline_core::breach_selection as buildings;
 use frontline_core::bullet::{self, Body, Bullet, TargetEffect, ThroughContact};
 use frontline_core::collision::{BoxShape, CollisionWorld, Mat3};
 use frontline_core::cover::{generate, Part};
@@ -110,6 +111,101 @@ fn house_entry_tasks_are_identical_across_platforms() {
         );
     }
     golden("breach", &out);
+}
+
+#[test]
+fn house_and_opening_choices_are_identical_across_platforms() {
+    let mut out = Vec::new();
+    let mut nav = PathPlanner::new(64).unwrap();
+    let kinds: Vec<_> = (0..4096)
+        .map(|i| if (i / 64 + i % 64) % 7 == 0 { 3 } else { 0 })
+        .collect();
+    nav.load_cells(&kinds, &kinds, &[0; 4096]);
+    for case in 0..512 {
+        let h = buildings::Building {
+            id: 1,
+            position: Vector3::ZERO,
+            size: Vector3::new(8.0, 0.2, 6.0),
+            yaw: (case % 37) as f64 * 0.17,
+            kind: 0,
+            gone: case % 13 == 0,
+            wrecked: false,
+        };
+        let c = libm::cosf(h.yaw as f32);
+        let s = libm::sinf(h.yaw as f32);
+        let basis = Mat3::from_cols(
+            Vector3::new(c, 0.0, -s),
+            Vector3::Y,
+            Vector3::new(s, 0.0, c),
+        );
+        let walls: Vec<_> = (0..3)
+            .map(|side| buildings::Building {
+                id: side + 3,
+                position: basis * Vector3::new((side as f32 - 1.0) * 2.0, 0.0, 3.0),
+                yaw: h.yaw + side as f64 * std::f64::consts::PI,
+                kind: if (case + side) % 3 == 0 { 1 } else { 2 },
+                gone: (case + side) % 17 == 0,
+                wrecked: (case + side) % 19 == 0,
+                ..h
+            })
+            .collect();
+        let openings = buildings::openings(h, &walls).unwrap();
+        out.extend_from_slice(&(openings.len() as u64).to_le_bytes());
+        for o in &openings {
+            out.extend_from_slice(&o.id.to_le_bytes());
+            point(&mut out, o.center);
+            point(&mut out, o.normal);
+            out.push(o.door.into());
+        }
+        for offset in [
+            Vector3::ZERO,
+            Vector3::new(3.9, 0.0, 2.9),
+            Vector3::X * 4.1,
+            Vector3::Z * 3.1,
+        ] {
+            out.extend_from_slice(
+                &buildings::house_at(basis * offset, &[h])
+                    .unwrap()
+                    .unwrap_or(0)
+                    .to_le_bytes(),
+            );
+        }
+        let contacts = [buildings::Contact {
+            house: h,
+            enemy_alive: case % 53 != 0,
+            openings,
+        }];
+        let mate = buildings::Mate {
+            position: Vector3::ZERO,
+            other: true,
+            alive: case % 5 != 0,
+            idle: case % 7 != 0,
+            frags: (case % 2) as i32,
+            mounted: case % 4 == 0,
+        };
+        let p = Vector3::new(
+            -9.0 + (case % 35) as f32,
+            0.0,
+            3.0 + (case / 35 % 25) as f32,
+        );
+        let choice = buildings::choose(
+            p,
+            Vector3::ZERO,
+            (case % 13 == 0).then_some(1),
+            &contacts,
+            &[mate],
+            &nav,
+        )
+        .unwrap();
+        let indices = choice
+            .map(|(a, b)| [a as i64, b as i64])
+            .unwrap_or([-1, -1]);
+        for v in indices {
+            out.extend_from_slice(&v.to_le_bytes());
+        }
+        point(&mut out, nav.nearest_walkable(p).unwrap());
+    }
+    golden("breach_selection", &out);
 }
 
 fn point(out: &mut Vec<u8>, p: Vector3) {

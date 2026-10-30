@@ -39,7 +39,8 @@ graphics, network access or a wall clock.
 | Wounded infantry and corpse timers | `frontline_core` | Bleeding, rescue/medicine modifiers, speech/pistol/crawl schedules and corpse collection decisions extracted; rescuer links, targeting and task effects remain in Godot |
 | Grenade reflex decisions | `frontline_core` | Notice memory, protection of nearby casualties, throwback/kick priority, shelter queries, kick direction and cooking time extracted; Godot still owns task application and grenade handlers |
 | Grenade task movement | `frontline_core` | Smother, pickup and kick approaches, covering geometry and dive direction extracted; Godot still applies action callbacks and holder links |
-| House-entry task phases | `frontline_core` | Stack/door/grenade/entry transitions, deadlines, cooking and room targets extracted with component checkpoints; Godot still owns contact selection, movement callbacks and squad entry effects |
+| House-entry task phases | `frontline_core` | Stack/door/grenade/entry transitions, deadlines, cooking and room targets extracted with component checkpoints; Godot still owns movement callbacks and squad entry effects |
+| House occupancy and breach selection | `frontline_core` | Floor containment, ordered openings, nearest walkable stack positions and competing squadmates extracted; Godot still supplies spatial candidates, squad contacts and decision timers |
 | Injury behavior and special tasks | Rust | `soldier.gd`, `soldier_brain.gd`, `combat.gd` |
 | Squads, tactics, commander and naval decisions | Rust | Squad, tactics, commander and naval scripts |
 | Vehicles and crews | Rust | Entity scripts and Godot spatial queries |
@@ -203,13 +204,13 @@ Component checkpoint headers contain a four-byte component tag, a little-endian
 rules rather than silently continuing with changed arithmetic. The separate
 integer RNG stream remains unchanged.
 
-`native/core/tests/numeric_contract.rs` compares 669,112 committed bytes without
+`native/core/tests/numeric_contract.rs` compares 749,105 committed bytes without
 tolerances: fixed-tick flight state, support events and RNG cursors, carved water,
 craters, rotated box hits, cover anchors, spherical interpolation and infantry
 movement, infantry cover fire, postures, ammunition, burst recovery, vitals, aiming,
 combat poses, bullet resolution, blast exposure, knockback recovery and wounded
 infantry schedules, grenade reflexes, grenade task movement and house-entry
-phases. CI runs
+phases and building selection. CI runs
 the same fixtures in debug and release on Windows x64, Linux
 x64, Linux ARM64 and macOS ARM64. A mismatch reports the first different byte.
 These fixtures guard the covered trajectories; they are not a proof for all
@@ -425,7 +426,7 @@ flag until Rust owns the actors.
 
 The shock fixture compares 92,160 reference steps, including mounted turning,
 blocked terrain, carried casualties and task interruption. The full default suite
-passes 121 tests; 125 core tests pass in debug and release.
+passes 122 tests; 129 core tests pass in debug and release.
 
 ## Grenade reflexes
 
@@ -462,6 +463,16 @@ The 46,080-step reference fixture checks phase state, routes, action callbacks,
 door opening, throws, buddy orders, speech, squad claims and RNG cursors. It also
 exercises abandoned contacts, destroyed doors, stalled paths and changed orders.
 Numeric CI adds 148,944 bytes of phase state, geometry, decisions and RNG cursors.
+
+The building-query core tests floor containment and doorway/window geometry in
+the same encounter order as the host. Breach selection compares the nearest
+walkable stack positions, retains the window penalty and yields immediately if a
+better-positioned squadmate could take the first suitable contact. The adapter
+still supplies the spatial candidates and the squad's cached contacts. Native
+nearest-walkable searches share the existing path planner's ordered ring search.
+A 2,048-case reference fixture compares breach choices and 16,384 occupancy
+queries, with rotated houses, openings, blocked ground and squadmate competition.
+Numeric CI adds a 79,993-byte building and doorway transcript.
 
 ## Battlefield collision
 

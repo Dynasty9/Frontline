@@ -563,6 +563,13 @@ static func _breach_tick_native(s: Soldier, dt: float, wall: Structure, h: Struc
 
 ## The house (its floor) that p is in, or null.
 static func house_at(w: World, p: Vector3) -> Structure:
+	if _native_buildings(w):
+		var houses := []
+		for st: Structure in w.structures_near(p, 9.0, true):
+			houses.append(_building(st))
+		var result = _building_core(w).house_at(p, houses)
+		assert(result != null, "Invalid house occupancy query")
+		return w.entity(int(result)) as Structure if int(result) != 0 else null
 	for st in w.structures_near(p, 9.0, true):
 		if st.skind != "floor" or st.gone:
 			continue
@@ -576,6 +583,15 @@ static func house_at(w: World, p: Vector3) -> Structure:
 static func openings(w: World, house: Structure) -> Array:
 	var out := []
 	var reach := maxf(house.size.x, house.size.z) * 0.5 + 1.5
+	if _native_buildings(w):
+		var walls := []
+		for st: Structure in w.structures_near(house.position, reach):
+			walls.append(_building(st))
+		var result = _building_core(w).openings(_building(house), walls)
+		assert(result is Array, "Invalid building openings query")
+		for row: Array in result:
+			out.append([w.entity(int(row[0])), row[1], row[2], row[3]])
+		return out
 	for st in w.structures_near(house.position, reach):
 		if st.skind != "house_wall" or st.gone or st.wrecked or not (st.variant in [1, 2]):
 			continue
@@ -625,6 +641,8 @@ static func can_breach(s: Soldier) -> bool:
 	if cl != null and is_instance_valid(cl) and cl != s and not cl.gone and cl.life == Soldier.Life.ALIVE and cl.task == "breach":
 		return false
 	var mine := house_at(s.world, s.position)
+	if _native_breach(s) and s.world.nav != null and s.world.nav._planner:
+		return _choose_breach_native(s, mine)
 	for contact in s.squad.building_contacts():
 		var e: Soldier = contact[0]
 		var h: Structure = contact[1]
@@ -651,6 +669,51 @@ static func can_breach(s: Soldier) -> bool:
 		s.bt_breach = [h, best, e]
 		return true
 	return false
+
+
+static func _native_buildings(w: World) -> bool:
+	return w.settings.get("rust_infantry", false) and ClassDB.class_exists("BreachCore")
+
+
+static func _building_core(w: World) -> RefCounted:
+	if w._breach_queries == null:
+		w._breach_queries = ClassDB.instantiate("BreachCore")
+	return w._breach_queries
+
+
+static func _building(st: Structure) -> Array:
+	var kind := 3
+	if st.skind == "floor":
+		kind = 0
+	elif st.skind == "house_wall" and st.variant in [1, 2]:
+		kind = st.variant
+	return [st.eid, st.position, st.size, st.yaw, kind, st.gone, st.wrecked]
+
+
+static func _choose_breach_native(s: Soldier, mine: Structure) -> bool:
+	var contacts := []
+	var choices := []
+	for contact: Array in s.squad.building_contacts():
+		var e: Soldier = contact[0]
+		var h: Structure = contact[1]
+		if not is_instance_valid(e) or not is_instance_valid(h) or e.gone or h.gone or e.life != Soldier.Life.ALIVE:
+			continue
+		var doors := openings(s.world, h)
+		var rows := []
+		for o: Array in doors:
+			rows.append([o[0].eid, o[1], o[2], o[3]])
+		contacts.append([_building(h), true, rows])
+		choices.append([h, doors, e])
+	var mates := []
+	for m: Soldier in s.squad.members:
+		mates.append([m.position, m != s, m.life == Soldier.Life.ALIVE, m.task == "", m.frags, m.mounted != null])
+	var result: PackedInt64Array = _breach_core(s).choose(s.position, s.hold_pos, mine.eid if mine else 0, contacts, mates, s.world.nav._planner)
+	assert(result.size() == 2, "Invalid breach selection")
+	if result[0] < 0:
+		return false
+	var choice: Array = choices[result[0]]
+	s.bt_breach = [choice[0], choice[1][result[1]], choice[2]]
+	return true
 
 
 static func breach(s: Soldier, clear := false) -> int:

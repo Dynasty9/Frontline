@@ -3,6 +3,7 @@
 pub const NUMERIC_VERSION: u16 = 1;
 pub mod blast;
 pub mod breach;
+pub mod breach_selection;
 pub mod bullet;
 pub mod collision;
 pub mod cover;

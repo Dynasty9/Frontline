@@ -31,7 +31,7 @@ pub struct Part {
     pub blocks_navigation: bool,
 }
 
-fn rotation(yaw: f64) -> Mat3 {
+pub(crate) fn rotation(yaw: f64) -> Mat3 {
     let c = libm::cosf(yaw as f32);
     let s = libm::sinf(yaw as f32);
     Mat3::from_cols(
@@ -41,7 +41,7 @@ fn rotation(yaw: f64) -> Mat3 {
     )
 }
 
-fn transform(basis: Mat3, p: Vector3) -> Vector3 {
+pub(crate) fn transform(basis: Mat3, p: Vector3) -> Vector3 {
     // Match Basis's row dot products, including the order of float rounding.
     let rows = basis.transpose();
     Vector3::new(rows.x_axis.dot(p), rows.y_axis.dot(p), rows.z_axis.dot(p))
