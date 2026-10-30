@@ -1,5 +1,6 @@
 use godot::prelude::*;
 
+mod blast;
 mod bullet;
 mod collision_index;
 mod cover_geometry;
@@ -10,6 +11,7 @@ mod hierarchy;
 mod infantry_aim;
 mod infantry_motion;
 mod infantry_pose;
+mod infantry_shock;
 mod infantry_vitals;
 mod infantry_weapon;
 mod navigation_grid;

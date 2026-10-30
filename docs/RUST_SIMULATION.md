@@ -34,6 +34,8 @@ graphics, network access or a wall clock.
 | Infantry combat geometry | `frontline_core` | Eyes, exposed points, hit factors and cover postures extracted with reference tests; the adapter still supplies actor state |
 | Infantry aim selection and sight cache | `frontline_core` | Target, blind and area-fire aiming extracted and reference-tested; the test adapter supplies posed target points and last-known squad contacts |
 | Bullet resolution | `frontline_core` | Accuracy, scatter, penetration, hit damage, explosive-round placement and near-miss suppression extracted with ordered stages; Godot still applies actor damage and explosion effects |
+| Blast exposure | `frontline_core` | Infantry and structure damage, shelter, fling strength and flinch radius extracted; Godot still owns victims, vehicle armour and effect application |
+| Blast knockback and disorientation | `frontline_core` | Fling trajectories, obstacle bounces, landings, flinching and dazed movement extracted with component checkpoints; Godot still applies task cleanup and speech |
 | Injury behavior and special tasks | Rust | `soldier.gd`, `soldier_brain.gd`, `combat.gd` |
 | Squads, tactics, commander and naval decisions | Rust | Squad, tactics, commander and naval scripts |
 | Vehicles and crews | Rust | Entity scripts and Godot spatial queries |
@@ -197,10 +199,11 @@ Component checkpoint headers contain a four-byte component tag, a little-endian
 rules rather than silently continuing with changed arithmetic. The separate
 integer RNG stream remains unchanged.
 
-`native/core/tests/numeric_contract.rs` compares 242,589 committed bytes without
+`native/core/tests/numeric_contract.rs` compares 348,189 committed bytes without
 tolerances: fixed-tick flight state, support events and RNG cursors, carved water,
 craters, rotated box hits, cover anchors, spherical interpolation and infantry
-movement, infantry cover fire, postures, ammunition, burst recovery, vitals, aiming, combat poses and bullet resolution. CI runs
+movement, infantry cover fire, postures, ammunition, burst recovery, vitals, aiming,
+combat poses, bullet resolution, blast exposure and knockback recovery. CI runs
 the same fixtures in debug and release on Windows x64, Linux
 x64, Linux ARM64 and macOS ARM64. A mismatch reports the first different byte.
 These fixtures guard the covered trajectories; they are not a proof for all
@@ -379,7 +382,33 @@ battle comparisons also cover tank and grenade-drill scenarios, alongside attack
 breach, trenches and fire. Numeric CI adds 38,470 bytes of bullet transcripts.
 Actor damage, vehicle armour responses, blast effects and spatial-query ownership
 still live in Godot, so this is neither a standalone server nor a full verifier.
-The full default suite passes 115 tests; 98 core tests pass in debug and release.
+
+## Blast exposure
+
+`Blast` computes infantry and structure exposure, preserving cover materials,
+trench shelter, prone protection, falloff, fling strength and near-blast flinching.
+Each victim receives damage before fling and flinch, so a death changes the later
+reactions in the same order as before. Vehicles, drones, loose props, fire and
+crater effects still run in Godot; this does not transfer actor ownership.
+
+The reference fixture covers 2,048 blasts, exact effect order, vectors and RNG
+cursors. Pinned software power differs from Godot's platform power by at most
+4.27e-14 health in that fixture; its damage comparison allows 1e-10, while the
+Rust cross-platform contract compares all 31,104 transcript bytes exactly.
+Six native/reference battles also preserve their fingerprints and counters.
+
+`InfantryShock` advances knockback, low-obstacle bounces, landings, flinching and
+dazed wandering. It shares infantry turning rules with normal route movement.
+The adapter keeps task cleanup and speech in their original order and retains
+the same random cursor. The `FLIS` component checkpoint contains fling velocity,
+flinging, dazed time and flinch time; position, tasks and other actor state still
+need the complete world checkpoint. Numeric CI adds 74,496 bytes of shock state
+and movement transcripts. These ports remain behind the infantry compatibility
+flag until Rust owns the actors.
+
+The shock fixture compares 92,160 reference steps, including mounted turning,
+blocked terrain, carried casualties and task interruption. The full default suite
+passes 117 tests; 107 core tests pass in debug and release.
 
 ## Battlefield collision
 

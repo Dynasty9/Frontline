@@ -3187,12 +3187,35 @@ func revive(full := false) -> void:
 	say(_pick(["Thanks, doc.", "I'm good, I'm good!", "Back in the fight.", "Ugh... let's go."]), true)
 
 
+var _shock_core: RefCounted
+
+
+func _shock_state() -> PackedFloat64Array:
+	if _shock_core == null:
+		_shock_core = ClassDB.instantiate("InfantryShockCore")
+	return PackedFloat64Array([int(flinging), fling_v.x, fling_v.y, fling_v.z, dazed_t, flinch_t])
+
+
+func _read_shock_state(state: PackedFloat64Array) -> void:
+	assert(state.size() == 6, "Invalid infantry shock state")
+	flinging = bool(state[0])
+	fling_v = Vector3(state[1], state[2], state[3])
+	dazed_t = state[4]
+	flinch_t = state[5]
+
+
 func fling_from(c: Vector3, power: float) -> void:
 	if life == Life.HIDDEN or power <= 0.8 or not carried_by.is_empty() or flinging:
 		return
-	var d := Defs.flat(position - c)
-	var dir := d.normalized() if d.length() > 0.05 else Defs.dir_of(world.rng.randf() * TAU)
-	fling_v = dir * power + Vector3.UP * (2.5 + power * 0.45)
+	if world.settings.get("rust_infantry", false) and ClassDB.class_exists("InfantryShockCore"):
+		var state := _shock_state()
+		var result: Array = _shock_core.fling(state, position, c, power, life, not carried_by.is_empty(), world.rng._backend)
+		assert(result.size() == 2 and result[1], "Invalid infantry fling")
+		_read_shock_state(result[0])
+	else:
+		var d := Defs.flat(position - c)
+		var dir := d.normalized() if d.length() > 0.05 else Defs.dir_of(world.rng.randf() * TAU)
+		fling_v = dir * power + Vector3.UP * (2.5 + power * 0.45)
 	world.stat("flung")
 	flinging = true
 	act = Act.FLUNG
@@ -3205,6 +3228,21 @@ func fling_from(c: Vector3, power: float) -> void:
 
 func _fling_tick(dt: float) -> void:
 	act = Act.FLUNG
+	if world.settings.get("rust_infantry", false) and ClassDB.class_exists("InfantryShockCore"):
+		var state := _shock_state()
+		var result: Array = _shock_core.fling_step(state, position, life, dt, world.nav._planner, world.rng._backend)
+		assert(result.size() == 5, "Invalid infantry fling step")
+		_read_shock_state(result[0])
+		position = result[1]
+		if result[2]:
+			act = Act.IDLE
+		if result[3]:
+			world.stat("dazed")
+			posture = Post.STAND
+			task_t = 0.0
+			if result[4]:
+				say(_pick(["...my ears...", "What... what happened?", "Ugh..."]), true)
+		return
 	var np := position + fling_v * dt
 	if not world.nav.walkable(np) and np.y < 1.5:
 		fling_v.x = -fling_v.x * 0.2
@@ -3228,6 +3266,16 @@ func _fling_tick(dt: float) -> void:
 func flinch_from(_c: Vector3, dist: float, max_r: float) -> void:
 	if life != Life.ALIVE or flinging or dazed_t > 0.0:
 		return
+	if world.settings.get("rust_infantry", false) and ClassDB.class_exists("InfantryShockCore"):
+		var state := _shock_state()
+		var busy := act_t > 0.0 or dive_t > 0.0 or task == "stretcher" or (task == "rescue" and task_phase >= 1)
+		var result: Array = _shock_core.flinch(state, suppression, life, dist, max_r, busy)
+		assert(result.size() == 3, "Invalid infantry flinch")
+		_read_shock_state(result[0])
+		suppression = float(result[1])
+		if result[2]:
+			act = Act.FLINCH
+		return
 	suppression = minf(100.0, suppression + 45.0 * (1.0 - dist / max_r))
 	if dist < max_r * 0.75 and act_t <= 0.0 and dive_t <= 0.0 and task != "stretcher" and not (task == "rescue" and task_phase >= 1):
 		flinch_t = 0.5
@@ -3235,6 +3283,28 @@ func flinch_from(_c: Vector3, dist: float, max_r: float) -> void:
 
 
 func _dazed_tick(dt: float) -> void:
+	if world.settings.get("rust_infantry", false) and ClassDB.class_exists("InfantryShockCore"):
+		var state := _shock_state()
+		var mount_pos := Vector3.ZERO
+		var mount_rate := -1.0
+		if is_instance_valid(mounted) and not mounted.gone and mounted.skind in ["mg_nest", "hmg_nest", "mortar_pit", "at_post"]:
+			mount_pos = mounted.mount_pos()
+			mount_rate = deg_to_rad(float({"mg_nest": 55.0, "hmg_nest": 35.0, "mortar_pit": 12.0, "at_post": 20.0}[mounted.skind]))
+		var context := PackedFloat64Array([position.x, position.y, position.z, rotation.y, task_t, dive_dir.x, dive_dir.y, dive_dir.z, dt, mount_pos.x, mount_pos.y, mount_pos.z, mount_rate])
+		var result: Array = _shock_core.stagger(state, context, world.nav._planner, world.rng._backend)
+		assert(result.size() == 5, "Invalid dazed infantry step")
+		_read_shock_state(result[0])
+		position = result[1]
+		rotation.y = float(result[2])
+		task_t = float(result[3])
+		dive_dir = result[4]
+		act = Act.DAZED
+		posture = Post.STAND
+		if dazed_t <= 0.0:
+			act = Act.IDLE
+			at_cover = false
+			next_cover_eval = 0.0
+		return
 	dazed_t -= dt
 	act = Act.DAZED
 	posture = Post.STAND

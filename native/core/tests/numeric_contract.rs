@@ -1,4 +1,5 @@
 //! Exact persisted bytes, shared by Windows, Linux and ARM CI, without tolerance comparisons.
+use frontline_core::blast::{Blast, Infantry, Protection as BlastProtection};
 use frontline_core::bullet::{self, Body, Bullet, TargetEffect, ThroughContact};
 use frontline_core::collision::{BoxShape, CollisionWorld, Mat3};
 use frontline_core::cover::{generate, Part};
@@ -7,6 +8,7 @@ use frontline_core::guided::{GuidedFlight, Kind as GuidedKind};
 use frontline_core::infantry_aim::{AimInput, InfantryAim, Target, TargetKind};
 use frontline_core::infantry_motion::{InfantryMotion, MoveInput};
 use frontline_core::infantry_pose::{InfantryPose, Posture};
+use frontline_core::infantry_shock::{InfantryShock, Stagger};
 use frontline_core::infantry_vitals::{
     DamageResult, FatigueInput, InfantryVitals, Life, Protection,
 };
@@ -54,6 +56,143 @@ fn golden(name: &str, actual: &[u8]) {
     {
         panic!("{name}: first differing byte {i}: actual {a:02x}, expected {b:02x}");
     }
+}
+
+#[test]
+fn infantry_shock_transcripts_are_identical_across_platforms() {
+    let mut bytes = Vec::new();
+    let mut nav = PathPlanner::new(32).unwrap();
+    let kinds: Vec<u8> = (0..1024).map(|i| if i % 7 == 0 { 3 } else { 0 }).collect();
+    assert!(nav.load_cells(&kinds, &[0; 1024], &[0; 1024]));
+    for seed in 0..64 {
+        let mut rng = SimulationRandom::new(seed + 731);
+        let mut shock = InfantryShock::default();
+        let life = Life::try_from((seed % 6) as u8).unwrap();
+        let mut state = Stagger {
+            position: Vector3::new(1.13, 0.0, -2.73),
+            yaw: 0.71,
+            task_timer: 0.0,
+            direction: Vector3::ZERO,
+        };
+        let mut suppression = seed as f64;
+        let center = if seed % 2 == 0 {
+            state.position
+        } else {
+            Vector3::new(-0.13, 0.0, -1.11)
+        };
+        shock
+            .fling(
+                state.position,
+                center,
+                1.0 + (seed % 20) as f64,
+                life,
+                seed % 17 == 0,
+                &mut rng,
+            )
+            .unwrap();
+        for tick in 0..240 {
+            if tick % 11 == 0 {
+                shock
+                    .flinch(
+                        &mut suppression,
+                        life,
+                        (seed % 9) as f64,
+                        10.0,
+                        seed % 7 == 0,
+                    )
+                    .unwrap();
+            }
+            if shock.flinging {
+                let result = shock
+                    .fling_step(state.position, life, 1.0 / 30.0, &nav, &mut rng)
+                    .unwrap();
+                state.position = result.position;
+                if result.dazed {
+                    state.task_timer = 0.0;
+                }
+                if result.speak {
+                    rng.randi();
+                }
+            } else if shock.dazed_timer > 0.0 {
+                let mount = (seed % 2 == 0).then_some((Vector3::ZERO, 0.61));
+                state = shock
+                    .stagger(state, 1.0 / 30.0, mount, &nav, &mut rng)
+                    .unwrap();
+            }
+            if tick == 100 {
+                shock = InfantryShock::restore(&shock.checkpoint()).unwrap();
+            }
+            if tick % 20 == 0 {
+                block(&mut bytes, &shock.checkpoint());
+                point(&mut bytes, state.position);
+                point(&mut bytes, state.direction);
+                for v in [state.yaw, state.task_timer, suppression] {
+                    bytes.extend_from_slice(&v.to_le_bytes());
+                }
+                bytes.extend_from_slice(&rng.state().to_le_bytes());
+            }
+        }
+    }
+    golden("shock", &bytes);
+}
+
+#[test]
+fn blast_exposure_transcripts_are_identical_across_platforms() {
+    let mut bytes = Vec::new();
+    for case in 0..512 {
+        let blast = Blast {
+            position: Vector3::new(13.35, 0.1, -24.04),
+            damage: 20.0 + f64::from(case % 150),
+            radius: if case % 31 == 0 {
+                0.0
+            } else {
+                0.25 + f64::from(case % 12) * 0.8
+            },
+            fling: if case % 4 == 0 { 0.0 } else { 7.0 },
+            in_trench: case % 3 == 0,
+        };
+        let center = blast.position
+            + Vector3::new((case % 9) as f32 * 0.6, 0.73, (case % 7) as f32 * 0.4 - 2.0);
+        let result = blast
+            .infantry(
+                Infantry {
+                    center,
+                    life: Life::try_from((case % 6) as u8).unwrap(),
+                    posture: Posture::try_from((case % 5) as u8).unwrap(),
+                    in_trench: case % 2 == 0,
+                    terrain_multiplier: 0.45 + f64::from((case / 7) % 3) * 0.2,
+                },
+                BlastProtection {
+                    blocked: case % 2 == 0,
+                    material: (case % 3 != 0).then_some(((case / 7) % 4) as u8),
+                },
+            )
+            .unwrap();
+        for value in [
+            result.damage,
+            result.fling,
+            result.distance,
+            result.flinch_radius,
+            result.before_posture,
+        ] {
+            bytes.extend_from_slice(&value.to_le_bytes());
+        }
+        point(&mut bytes, result.direction);
+        bytes.extend_from_slice(&[u8::from(result.sheltered), u8::from(result.blocked)]);
+        let damage = blast
+            .structure(
+                center,
+                0.5 + f64::from(case % 4) * 0.5,
+                case % 7 == 0,
+                1.0 + f64::from(case % 3) * 0.25,
+            )
+            .unwrap();
+        bytes.push(u8::from(damage.is_some()));
+        if let Some(damage) = damage {
+            bytes.extend_from_slice(&damage.to_le_bytes());
+        }
+    }
+    golden("blast", &bytes);
 }
 
 #[test]

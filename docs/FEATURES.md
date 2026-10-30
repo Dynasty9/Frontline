@@ -1257,7 +1257,10 @@ fire, firing through cover and last-known positions. Combat pose calculations
 (eyes, exposed points and hit factors) are also checked against pure Rust
 geometry, independent of animated models. Bullet accuracy, scatter, penetration,
 damage rolls and near-miss suppression have Rust compatibility checks too,
-preserving the order of damage, explosions and random draws. The full
+preserving the order of damage, explosions and random draws. Blast exposure
+checks also preserve cover, trench shelter, prone protection and the order of
+damage, knockback and flinching. Knockback trajectories, obstacle bounces,
+landings and dazed movement also have checkpointed Rust state. The full
 authoritative Rust server and deterministic
 battle verifier are still in progress; see [RUST_SIMULATION.md](RUST_SIMULATION.md).
 

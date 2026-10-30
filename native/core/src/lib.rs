@@ -1,6 +1,7 @@
 //! Engine-independent simulation code. No scene objects, wall clock or global RNG.
 /// Pinned scalar math and geometry rules; incompatible checkpoints must fail closed.
 pub const NUMERIC_VERSION: u16 = 1;
+pub mod blast;
 pub mod bullet;
 pub mod collision;
 pub mod cover;
@@ -11,6 +12,7 @@ pub mod hierarchy;
 pub mod infantry_aim;
 pub mod infantry_motion;
 pub mod infantry_pose;
+pub mod infantry_shock;
 pub mod infantry_vitals;
 pub mod infantry_weapon;
 pub mod navigation_grid;

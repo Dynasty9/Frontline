@@ -4,8 +4,8 @@ use crate::path_planner::PathPlanner;
 use crate::random::SimulationRandom;
 use crate::state_codec::{Reader, Writer};
 use crate::terrain::Terrain;
-use crate::vector::Vector3;
-use std::f64::consts::{PI, TAU};
+use crate::vector::{turn_yaw, Vector3};
+use std::f64::consts::TAU;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct InfantryMotion {
@@ -294,20 +294,14 @@ impl InfantryMotion {
             + (target_y - f64::from(self.position.y)) * (1.0 - libm::exp(-input.dt * 12.0)))
             as f32;
         if !input.backwards {
-            let target = yaw_of(direction);
-            if let Some((_, rate)) = input
-                .mount
-                .filter(|(p, _)| f64::from(flat(self.position - *p).length()) < 0.8)
-            {
-                let difference = target - self.yaw;
-                let wrapped = difference - TAU * ((difference + PI) / TAU).floor();
-                self.yaw += wrapped.clamp(-rate * input.dt, rate * input.dt);
-            } else {
-                let difference = (target - self.yaw) % TAU;
-                let distance = (2.0 * difference) % TAU - difference;
-                self.yaw += distance * (1.0 - libm::exp(-input.dt * 10.0));
-            }
-            self.yaw = f64::from(self.yaw as f32);
+            self.yaw = turn_yaw(
+                self.yaw,
+                direction,
+                self.position,
+                input.dt,
+                10.0,
+                input.mount,
+            );
         }
         if input.cover_goal
             && input.move_mode >= 1

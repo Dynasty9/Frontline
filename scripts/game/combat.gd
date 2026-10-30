@@ -673,8 +673,16 @@ func _explode(pos: Vector3, d: Dictionary) -> void:
 	var src = d.get("src")
 	var fr := r * 2.4
 	var blast_in_trench := world.terrain.in_trench(pos)
+	var core: RefCounted
+	if world.settings.get("rust_infantry", false) and ClassDB.class_exists("BlastCore"):
+		core = ClassDB.instantiate("BlastCore")
+		var valid: bool = core.configure(pos, dmg, r, fling, blast_in_trench)
+		assert(valid, "Invalid blast parameters")
 	for s in world.soldiers_near(pos, fr):
 		if s.life == Soldier.Life.HIDDEN:
+			continue
+		if core:
+			_blast_infantry_native(core, s, pos, r, blast_in_trench, src)
 			continue
 		var c: Vector3 = s.center_point()
 		var dist := pos.distance_to(c)
@@ -705,6 +713,13 @@ func _explode(pos: Vector3, d: Dictionary) -> void:
 	for st in world.structures_near(pos, r + 1.0):
 		if st.gone:
 			continue
+		if core:
+			var result: Array = core.structure(st.position, st.radius, st.skind in ["wire", "mines"], float(d.get("struct_mult", 1.0)))
+			assert(result.size() == 1, "Invalid structure blast exposure")
+			if result[0] != null:
+				st.hit_from = pos
+				st.take_damage(float(result[0]), src)
+			continue
 		var sd: float = Defs.flat(st.position - pos).length() - st.radius * 0.5
 		if sd < r:
 			var f2 := clampf(1.0 - sd / r, 0.2, 1.0)
@@ -726,6 +741,32 @@ func _explode(pos: Vector3, d: Dictionary) -> void:
 	world.fires.blast(pos, bsize, r)
 	world.fx_event([Fx.EXPLODE, pos, float(d.get("size", 1.0))])
 	world.terrain.add_crater(pos, float(d.get("size", 1.0)))
+
+
+func _blast_infantry_native(core: RefCounted, s: Soldier, pos: Vector3, radius: float, blast_in_trench: bool, src) -> void:
+	var center := s.center_point()
+	var dist := pos.distance_to(center)
+	var blocked := false
+	var material := -1
+	if dist < radius:
+		var rb := ray(pos + Vector3(0, 0.35, 0), center)
+		blocked = not rb.is_empty()
+		if blocked:
+			var structure := ent_of(rb.collider)
+			if structure is Structure:
+				material = Cover.mat_of(structure)
+	var in_trench: bool = dist < radius and world.terrain.in_trench(s.position)
+	var terrain_multiplier: float = world.terrain.blast_mul(s.position) if dist < radius else 1.0
+	var result: Array = core.infantry(center, s.life, s.posture, in_trench, terrain_multiplier, blocked, material)
+	assert(result.size() == 8, "Invalid infantry blast exposure")
+	if dist < radius and OS.has_environment("FL_DEBUG_BLAST") and world.terrain.in_trench(s.position):
+		print("BLAST on %s dist=%.1f pos=%s blast_in_trench=%s blocked=%s sheltered=%s dd=%.0f hp=%.0f" % [s.sname, dist, str(pos.snapped(Vector3.ONE * 0.1)), str(blast_in_trench), str(result[5]), str(result[6]), float(result[7]), s.hp])
+	if float(result[0]) > 0.0:
+		s.take_damage(float(result[0]), src, result[1], "explosion")
+	if float(result[2]) > 0.0:
+		s.fling_from(pos, float(result[2]))
+	if float(result[4]) > 0.0:
+		s.flinch_from(pos, float(result[3]), float(result[4]))
 
 
 # --- cover ----------------------------------------------------------------------------
