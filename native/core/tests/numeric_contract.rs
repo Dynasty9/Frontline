@@ -36,6 +36,142 @@ fn block(out: &mut Vec<u8>, bytes: &[u8]) {
 }
 
 #[test]
+fn cover_search_is_identical_across_platforms() {
+    use frontline_core::cover::{Anchor, AnchorKind};
+    use frontline_core::cover_search::{self, Input, NearbyClaim, Scene, SquadClaim, Structure};
+    use frontline_core::terrain::{COVER, CRATER, RUBBLE, WOODS};
+    let mut bytes = Vec::new();
+    let mut collision = CollisionWorld::default();
+    collision.replace(
+        10,
+        &[BoxShape {
+            body: 10,
+            shape: 0,
+            center: Vector3::new(0.0, 0.6, 1.0),
+            basis: Mat3::IDENTITY,
+            half: Vector3::new(8.0, 0.6, 0.2),
+        }],
+    );
+    for case in 0..512 {
+        let mut terrain = Terrain::blank(64).unwrap();
+        let mut nav = PathPlanner::new(64).unwrap();
+        let mut kinds = vec![0; 4096];
+        let mut heat = vec![0; 289];
+        for (i, kind) in kinds.iter_mut().enumerate() {
+            if (i + case) % 37 == 0 {
+                *kind = 3;
+            }
+            if (i + case) % 7 == 0 {
+                terrain.layers[COVER][i] = 2;
+                terrain.layers[[CRATER, RUBBLE, WOODS][case % 3]][i] = 1;
+            }
+        }
+        for (i, value) in heat.iter_mut().enumerate() {
+            *value = u8::from((i + case) % 17 == 0);
+        }
+        assert!(nav.load_cells(&kinds, &[0; 4096], &[0; 4096]));
+        let structures = [Structure {
+            id: 10,
+            built: case % 13 != 0,
+            burn: if case % 17 == 0 { 1.0 } else { 0.0 },
+            material: (case % 4) as u8,
+            positions: (0..(case % 64 + 1))
+                .map(|i| Anchor {
+                    position: Vector3::new(
+                        if case % 5 == 0 {
+                            0.0
+                        } else {
+                            (i % 21) as f32 * 0.7 - 7.0
+                        },
+                        0.0,
+                        0.0,
+                    ),
+                    normal: Vector3::Z,
+                    height: 1.2,
+                    kind: [
+                        AnchorKind::Over,
+                        AnchorKind::EdgeLeft,
+                        AnchorKind::EdgeRight,
+                        AnchorKind::Shelter,
+                        AnchorKind::Stack,
+                    ][case % 5],
+                })
+                .collect(),
+        }];
+        let claims = [SquadClaim {
+            id: 2,
+            alive: case % 3 != 0,
+            covering: case % 2 == 0,
+            position: Vector3::new(case as f32 % 5.0, 0.0, 0.0),
+        }];
+        let nearby = [NearbyClaim {
+            id: 3,
+            team: (case % 2) as i32,
+            alive: case % 3 != 1,
+            gone: false,
+            position: Vector3::new(-1.0, 0.0, 0.0),
+            cover_position: Vector3::ZERO,
+            cell: if case % 5 == 0 { [10, 10] } else { [-1, 0] },
+        }];
+        let input = Input {
+            id: 1,
+            team: 0,
+            position: Vector3::new(0.0, 0.0, (case % 7) as f32 * 0.3),
+            anchor: Vector3::ZERO,
+            radius: [0.0, 3.0, 8.0, 16.0][case % 4],
+            grouped: case % 3 == 0,
+            prone: case % 2 == 0,
+            unarmed: case % 7 == 0,
+            weapon_range: if case % 3 == 0 { 8.0 } else { 50.0 },
+            current_structure: 10,
+            current_anchor: (case % 32) as i32,
+        };
+        let threats = [
+            Vector3::new((case % 7) as f32 - 3.0, 1.6, 20.0),
+            Vector3::new(-13.7, 1.7, -3.1),
+        ];
+        let result = cover_search::find(
+            input,
+            &threats[..case % 3],
+            &mut Scene {
+                terrain: &terrain,
+                navigation: &nav,
+                collision: &mut collision,
+                heat: &heat,
+                deck: &[],
+                structures: &structures,
+                squad_claims: &claims,
+                nearby_claims: &nearby,
+            },
+        )
+        .unwrap();
+        bytes.extend_from_slice(&(result.candidates as u32).to_le_bytes());
+        bytes.extend_from_slice(&(result.evaluations as u32).to_le_bytes());
+        bytes.push(u8::from(result.choice.is_some()));
+        if let Some(c) = result.choice {
+            bytes.extend_from_slice(&c.structure.to_le_bytes());
+            bytes.extend_from_slice(&c.anchor.to_le_bytes());
+            bytes.extend_from_slice(&[
+                c.material,
+                c.evaluation.kind as u8,
+                u8::from(c.evaluation.fire),
+            ]);
+            for v in [
+                c.position,
+                c.normal,
+                c.evaluation.lean,
+                c.evaluation.threat_direction,
+            ] {
+                point(&mut bytes, v);
+            }
+            bytes.extend_from_slice(&c.height.to_le_bytes());
+            bytes.extend_from_slice(&c.evaluation.protection.to_le_bytes());
+        }
+    }
+    golden("cover_search", &bytes);
+}
+
+#[test]
 fn infantry_supply_is_identical_across_platforms() {
     use frontline_core::infantry_supply::{
         self as supply, Body, Cache, Depot, Search, SupplyTimers,

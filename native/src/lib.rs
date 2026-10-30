@@ -5,6 +5,7 @@ mod breach;
 mod bullet;
 mod collision_index;
 mod cover_geometry;
+mod cover_search;
 mod drone_flight;
 mod drone_reaction;
 mod formation_ground;

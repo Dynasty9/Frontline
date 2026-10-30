@@ -13,6 +13,7 @@ var _reveal := {}  # eid -> time
 var _blocked_sight := {}
 var _collision: RefCounted
 var _visibility: RefCounted
+var _cover_search: RefCounted
 var _collision_dirty := {}
 var _collision_bodies := {}
 var _collision_rids := {}
@@ -776,6 +777,57 @@ func _blast_infantry_native(core: RefCounted, s: Soldier, pos: Vector3, radius: 
 ## what stops the most, where he can shoot back, close by and not taken - or
 ## a fold in the ground (a crater, a rubble heap, the woods).
 func find_cover(s: Soldier, anchor: Vector3, radius: float, threats: Array, prone: bool) -> Dictionary:
+	if threats.is_empty():
+		return {}
+	if not world.settings.get("gdscript_cover_search", false) and world.terrain._native and world.nav._planner and _collision and ClassDB.class_exists("CoverSearchCore"):
+		_sync_collision()
+		if _collision:
+			return _find_cover_native(s, anchor, radius, threats, prone)
+	return _find_cover_reference(s, anchor, radius, threats, prone)
+
+
+func _find_cover_native(s: Soldier, anchor: Vector3, radius: float, threats: Array, prone: bool) -> Dictionary:
+	if _cover_search == null:
+		_cover_search = ClassDB.instantiate("CoverSearchCore")
+	var grouped := s.squad != null and not s.detached and not prone
+	if grouped:
+		radius = minf(radius, 3.0)
+	var structures := []
+	for st in world.structures_near(anchor, radius + 4.0):
+		if st.provides_cover() and st.burn <= 0.0:
+			structures.append([st.eid, st.built, st.burn, Cover.mat_of(st), st.anc_p, st.anc_n, st.anc_h, st.anc_k])
+	var mates := []
+	if s.squad:
+		for o: Soldier in s.squad.members:
+			mates.append([o.eid, o.life == Soldier.Life.ALIVE, o.at_cover or o.goal_kind == "cover", o.cover_pos])
+	# Preserve membership from the last spatial rebuild, even if someone has moved this tick.
+	var nearby := []
+	var reach := radius + 1.3
+	for x in range(floori((anchor.x - reach) / World.HCELL), floori((anchor.x + reach) / World.HCELL) + 1):
+		for z in range(floori((anchor.z - reach) / World.HCELL), floori((anchor.z + reach) / World.HCELL) + 1):
+			var cell := Vector2i(x, z)
+			for o: Entity in world._uhash.get(cell, []):
+				if o is Soldier and o != s and o.team == s.team and o.life == Soldier.Life.ALIVE and not o.gone:
+					nearby.append([o.eid, o.team, true, false, o.position, o.cover_pos, cell])
+	var weapon := s.cur_weapon()
+	var input := [s.eid, s.team, s.position, anchor, radius, grouped, prone, weapon.is_empty() or s.is_bearer(),
+		float(weapon.get("range", 50.0)), s.cover_st.eid if is_instance_valid(s.cover_st) else 0, s.cover_ai]
+	var deck: PackedByteArray = world.water.deck if world.water else PackedByteArray()
+	var result: Array = _cover_search.find(input, PackedVector3Array(threats), structures, mates, nearby,
+		world.fires.hot, deck, world.terrain._native, world.nav._planner, _collision)
+	assert(result.size() == 3, "Invalid cover search scene")
+	var choice: Array = result[2]
+	var best := {}
+	if not choice.is_empty():
+		best = {"type": choice[0], "prot": choice[1], "fire": choice[2], "lean": choice[3], "tdir": choice[4],
+			"pos": choice[5], "n": choice[6], "h": choice[7], "mat": choice[8], "st": world.entity(choice[9]), "ai": choice[10]}
+	if result[0] > 0 and world.settings.get("debug_cover", false):
+		print("COVER %s anchor=%s threats=%d cands=%d best=%s mat=%s h=%s" % [s.sname, str(anchor.round()), threats.size(), result[0],
+			str(best.get("type", -1)), str(best.get("mat", -1)), str(best.get("h", -1))])
+	return best
+
+
+func _find_cover_reference(s: Soldier, anchor: Vector3, radius: float, threats: Array, prone: bool) -> Dictionary:
 	# Without an approach to shelter from, no candidate can pass the protection
 	# test. Keep his existing quiet-sector behaviour without surveying the town.
 	if threats.is_empty():

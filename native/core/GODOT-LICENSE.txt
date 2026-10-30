@@ -1,6 +1,9 @@
 NavigationGrid search, heap behavior and vector interpolation are adapted from Godot 4.7:
 https://github.com/godotengine/godot/tree/4.7/core
 
+Cover candidate sorting is adapted from Godot's SortArray:
+https://github.com/godotengine/godot/blob/4.6-stable/core/templates/sort_array.h
+
 Copyright (c) 2014-present Godot Engine contributors (see AUTHORS.md).
 Copyright (c) 2007-2014 Juan Linietsky, Ariel Manzur.
 

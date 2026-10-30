@@ -44,6 +44,8 @@ AI, and `--units=480 --vehicles=20` for a mixed force. `--width=1920 --height=10
 sets the render resolution; `--preset=high` is the runner's non-persistent default.
 For direct runs use `--scenario=stress --units=500 --map-size=2048 --seed=3`,
 `--perf-at=15 --perf-duration=10 --perf-json=ABSOLUTE_PATH`, and a unique `--port`.
+Add `--gdscript-cover-search` to a direct scenario run to measure the reference
+cover search against the native default with the same scene and seed.
 
 Regression scenes: `tests/structure_index_test.tscn`,
 `tests/perception_index_test.tscn`, `tests/navigation_budget_test.tscn`, and

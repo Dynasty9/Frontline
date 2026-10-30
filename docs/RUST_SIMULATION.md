@@ -44,6 +44,7 @@ graphics, network access or a wall clock.
 | Drone hearing and avoidance | `frontline_core` | Ordered hearing memory, warning choices and dive chances extracted with component checkpoints; Godot applies speech and dive effects |
 | Infantry special attacks | `frontline_core` | Rocket and melee priority, mortar fire admission, drone launch decisions, ammunition and cooldowns extracted; Godot supplies contacts, mortar/drone target queries and applies actions |
 | Infantry supply decisions | `frontline_core` | Scavenging, nearest-body/depot choices, search timers and refill arithmetic extracted; Godot supplies spatial candidates and applies shared-store transfers, reloads and movement |
+| Complete fighting-position search | `frontline_core` | Candidate enumeration, reachability, protection, occupancy and final scoring run in one call; Godot supplies nearby structure and soldier records |
 | House-entry task phases | `frontline_core` | Stack/door/grenade/entry transitions, deadlines, cooking and room targets extracted with component checkpoints; Godot still owns movement callbacks and squad entry effects |
 | House occupancy and breach selection | `frontline_core` | Floor containment, ordered openings, nearest walkable stack positions and competing squadmates extracted; Godot still supplies spatial candidates, squad contacts and decision timers |
 | Injury behavior and special tasks | Rust | `soldier.gd`, `soldier_brain.gd`, `combat.gd` |
@@ -209,14 +210,14 @@ Component checkpoint headers contain a four-byte component tag, a little-endian
 rules rather than silently continuing with changed arithmetic. The separate
 integer RNG stream remains unchanged.
 
-`native/core/tests/numeric_contract.rs` compares 1,355,631 committed bytes without
+`native/core/tests/numeric_contract.rs` compares 1,384,650 committed bytes without
 tolerances: fixed-tick flight state, support events and RNG cursors, carved water,
 craters, rotated box hits, cover anchors, spherical interpolation and infantry
 movement, infantry cover fire, postures, ammunition, burst recovery, vitals, aiming,
 combat poses, bullet resolution, blast exposure, knockback recovery and wounded
 infantry schedules, grenade reflexes, grenade task movement and house-entry
 phases, building selection, automatic grenade attacks, incoming shells and drone
-reactions, special attacks and infantry supply. CI runs
+reactions, special attacks, infantry supply and complete cover searches. CI runs
 the same fixtures in debug and release on Windows x64, Linux
 x64, Linux ARM64 and macOS ARM64. A mismatch reports the first different byte.
 These fixtures guard the covered trajectories; they are not a proof for all
@@ -432,7 +433,7 @@ flag until Rust owns the actors.
 
 The shock fixture compares 92,160 reference steps, including mounted turning,
 blocked terrain, carried casualties and task interruption. The full default suite
-passes 127 tests; 154 core tests pass in debug and release.
+passes 128 tests; 161 core tests pass in debug and release.
 
 ## Grenade and drone reflexes
 
@@ -693,6 +694,44 @@ An alternating-order comparison of the 9,216-cell cover repair fixture measured
 GDScript samples of 12.65–17.57 ms versus 4.09–4.21 ms through Rust, including the
 adapter's changed-cell copies (six samples each after two warm-up rounds). Other
 apps stayed running. This measures cover repair, not a 500-unit battle or FPS.
+
+## Complete cover search
+
+`cover_search::find` collects structure and ground candidates, preserves Godot's
+candidate tie order, checks navigation and group reachability, evaluates shelter,
+penalizes occupied positions and chooses the final fighting position in one call.
+The limit remains 20 reachable structure evaluations; ground candidates do not
+consume that limit. Claims use the world's existing spatial membership, which can
+precede a soldier's movement in the current tick. Terrain, navigation and collision
+are borrowed from their retained core state; heat and deck arrays are borrowed
+without copying the map. Nearby actor and structure records still come from Godot.
+
+The native path is active by default; platforms without the module keep GDScript.
+The fixture compares 4,270 searches, including equal-score candidates across the
+sort threshold, burning/unbuilt cover, ground cover, group limits, occupied spots
+and stale spatial membership. Six battle fixtures retain identical fingerprints
+and behavior counters. Numeric CI adds 29,019 exact result bytes.
+
+An alternating comparison measured 1,000 searches at 659–687 ms through GDScript
+versus 61–65 ms through Rust, including scene packing (six samples after two warm-up
+rounds, other apps running). This is roughly 10–11 times faster for this fixture,
+not a whole-game FPS result.
+
+Four headless 500-unit combat runs on a 2,048 m map used reference/native/native/
+reference order, a 15-second warm-up and a 10-second observation window. Other apps
+stayed running; 495 soldiers remained alive in every window. Tick milliseconds:
+
+| Run | Median | p95 | p99 | Maximum |
+| --- | ---: | ---: | ---: | ---: |
+| Reference 1 | 17.897 | 27.289 | 35.188 | 36.982 |
+| Native 1 | 17.728 | 25.265 | 27.676 | 31.585 |
+| Native 2 | 18.018 | 26.218 | 28.546 | 38.569 |
+| Reference 2 | 17.848 | 26.204 | 29.226 | 31.942 |
+
+The median did not improve measurably in this case. Tail samples varied and do not
+establish a consistent battle-wide gain. The test still spends most of its time
+in soldier ticks; a cheaper cover search does not by itself meet the rendering
+target. Raw local reports: `build/rust-cover-search-500-2048/`.
 
 ## Water and joining terrain
 

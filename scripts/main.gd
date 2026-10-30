@@ -358,6 +358,7 @@ func start_local(a: Dictionary) -> void:
 		"stress_vehicles": int(a.get("vehicles", 0)), "stress_generated": a.has("stress-generated"),
 		"stress_mode": String(a.get("stress-mode", "combat")), "stress_scenery": int(a.get("scenery", 200)),
 		"gdscript_perception": a.has("gdscript-perception"),
+		"gdscript_cover_search": a.has("gdscript-cover-search"),
 		"rust_infantry": args.has("test-port") and a.has("rust-infantry")})
 	Net.set_setting("verbose", a.has("verbose"))
 	Net.set_setting("debug_trucks", a.has("debug-trucks"))
