@@ -47,16 +47,21 @@ func _ready() -> void:
 	w.terrain = fast
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 701
+	var changed := PackedInt32Array()
 	for i in 12000:
 		var cell := rng.randi_range(0, fast.base.size() - 1)
-		fast.cov[cell] = rng.randi_range(0, 4)
+		changed.append(cell)
+		fast.cov[cell] = rng.randi_range(0, 3)
 		fast.cdir[cell] = rng.randi_range(0, 8)
 		fast.solid[cell] = 1 if i % 7 == 0 else 0
 	for x in range(-70, 71):
 		for z in range(-24, 25, 8):
 			var cell := fast.idx_of(Vector3(x, 0, z))
+			changed.append(cell)
 			fast.trench[cell] = 1
-			fast.cov[cell] = 4
+			fast.cov[cell] = 3
+	if fast._native:
+		fast._native_import(changed)
 	for i in 35:
 		var st := Structure.new()
 		st.world = w
@@ -73,6 +78,7 @@ func _ready() -> void:
 		w._register(st)
 		w._shash_add(st)
 		w.add_child(st)
+	w.settings.gdscript_terrain = true
 	var reference := UncachedTerrain.new(w)
 	reference.cov = fast.cov
 	reference.cdir = fast.cdir

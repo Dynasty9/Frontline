@@ -1454,7 +1454,7 @@ func _load_tick() -> void:
 				if _join_end:
 					if _load_cells == 0:
 						_load_mark("entities")
-					_load_cells = maxi(1, terrain._queue.size() - terrain._qhead)
+					_load_cells = maxi(1, terrain.pending_count())
 					_load_step = 4
 			_load_stage("Moving in", 0.2 + 0.7 * minf(1.0, float(_load_built) / maxf(1.0, _join_n)))
 		4:
@@ -1466,14 +1466,14 @@ func _load_tick() -> void:
 			# big batch may be shared out over the worker threads)
 			if _cover_min < 0:
 				_cover_min = int(terrain.get_script().get_script_constant_map().get("THREAD_CELLS", 0))
-			while terrain._qhead < terrain._queue.size() and Time.get_ticks_usec() - t0 < LOAD_SLICE_US:
+			while terrain.pending_count() > 0 and Time.get_ticks_usec() - t0 < LOAD_SLICE_US:
 				var c0 := Time.get_ticks_usec()
 				terrain.tick(maxi(_cover_batch, _cover_min))
 				var took := maxi(1, Time.get_ticks_usec() - c0)
 				_cover_batch = clampi(int(_cover_batch * (LOAD_SLICE_US / 3.0) / took), 128, 1 << 16)
-			var left: int = terrain._queue.size() - terrain._qhead
+			var left: int = terrain.pending_count()
 			_load_stage("Taking cover", 0.9 + 0.1 * (1.0 - float(left) / _load_cells))
-			if terrain._queue.is_empty():
+			if terrain.pending_count() == 0:
 				_load_done()
 
 
@@ -1507,6 +1507,7 @@ func _load_mark(what: String) -> void:
 func _lay_ground() -> void:
 	_ground_water = WaterMap.new(self)
 	_ground_water.from_dict(water.to_dict())
+	terrain.begin_ground_import()
 	_ground_task = WorkerThreadPool.add_task(_ground_job, false, "Laying out the ground")
 
 
@@ -1529,6 +1530,7 @@ func _ground_done() -> void:
 	if _ground_task >= 0:
 		WorkerThreadPool.wait_for_task_completion(_ground_task)
 		_ground_task = -1
+	terrain.end_ground_import()
 	var w := _ground_water
 	_ground_water = null
 	_join_kinds = PackedByteArray()
@@ -1860,9 +1862,13 @@ func _shash_add(e: Structure) -> void:
 			if not _trench_hash.has(k):
 				_trench_hash[k] = []
 			(_trench_hash[k] as Array).append(e)
+	if terrain:
+		terrain.sync_structure(e, true)
 
 
 func _shash_remove(e: Structure) -> void:
+	if terrain:
+		terrain.remove_structure(e.eid)
 	for k in e.hash_cells:
 		var a = _shash.get(k)
 		if a:

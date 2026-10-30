@@ -1234,7 +1234,8 @@ Rust crate with standalone tests. Gameplay random streams and ballistic projecti
 flight, missile guidance, FPV drone flight and support-aircraft attack schedules
 now run in that core too, with restorable component checkpoints. Local weighted
 navigation grids, boat routes, hierarchical map repairs, route smoothing and
-movement-order queues also use Rust. The full
+movement-order queues also use Rust. Ground cells, crater deformation and queued
+cover repairs use the same core, with numeric terrain edits and queries. The
 geometric sight test and smoke screens use the same core, with unchanged walls
 reused as obstruction proofs and moving smoke checked immediately. The full
 authoritative Rust server and deterministic

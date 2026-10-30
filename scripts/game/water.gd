@@ -480,6 +480,7 @@ func carve() -> void:
 	if tm == null or is_empty():
 		return
 	var changed := _pass(TerrainMap.DRES, true, _decks(TerrainMap.DRES, 0.6), PackedByteArray())
+	tm.sync_deformation()
 	var img: Image = tm.deform_img
 	if img:
 		# (view) the heights' texture, where they were lowered

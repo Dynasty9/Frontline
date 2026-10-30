@@ -190,6 +190,8 @@ func apply_props(d: Dictionary) -> void:
 		burnt = d.burnt
 		if burnt and not was and model:
 			_rebuild_model()  # the snag or the shell the fire left
+	if world and world.terrain:
+		world.terrain.sync_structure(self)
 
 
 func get_props() -> Dictionary:
@@ -986,6 +988,8 @@ func open_door(by: Entity, kicked: bool) -> void:
 	for i in range(parts.size() - 1, -1, -1):
 		if parts[i].get("door", false):
 			parts.remove_at(i)
+	if world and world.terrain:
+		world.terrain.sync_structure(self)
 	if body:
 		var dn := body.get_node_or_null("Door")
 		if dn:

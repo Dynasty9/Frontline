@@ -4,7 +4,8 @@ Status: **in progress; the game still requires Godot to simulate a battle.**
 The engine-independent crate currently contains perception candidate selection,
 formation scoring, contracted route search, gameplay randomness and ballistic
 projectile flight state, drone and support-aircraft behavior, missile guidance,
-weighted navigation grids, route planning, smoke and geometric visibility. It is not a complete server, a
+weighted navigation grids, route planning, smoke, geometric visibility and terrain
+cell/deformation state. It is not a complete server, a
 full-state save format, or a battle verifier. Existing recordings remain unverified.
 
 ## Ownership
@@ -20,6 +21,7 @@ graphics, network access or a wall clock.
 | Gameplay RNG, including commander streams | `frontline_core` | Seeded PCG stream matches Godot 4.7; cosmetic RNG stays in Godot |
 | Grenade, smoke, rocket, bomb and shell flight | `frontline_core` | Rust retains and advances flight state and queries native geometry; the adapter supplies holders and applies impacts |
 | Weighted grid paths and cluster pair costs | `frontline_core` | Exact Godot route tie behavior; native cluster workers return costs in deterministic order |
+| Ground cells, crater heights and queued cover repairs | `frontline_core` | Rust retains terrain and ordered structure geometry, and performs edits, queries and cover repairs; Godot imports biome/water generation and forwards navigation notifications |
 | Hierarchical route assembly, repairs and danger weights | `frontline_core` | Rust owns graph slots, borders, cost tables, repair order and terrain/danger revisions |
 | FPV drone flight | `frontline_core` | Climb, cruise, dive, loss of control and collision; Godot supplies targets and applies damage |
 | Guided missiles and support aircraft | `frontline_core` | Flight, target-lock loss, bomb release, burst schedules, pending hits and random draws; Godot supplies contacts and applies events |
@@ -30,7 +32,7 @@ graphics, network access or a wall clock.
 | Battlefield box raycasts | `frontline_core` | Spatial grid with deterministic hit ties; Godot supplies geometry updates |
 | Smoke volumes and geometric visibility | `frontline_core` | Rust checks exposed points against collision and smoke, retaining reusable obstruction proofs; Godot supplies target posture and scene changes |
 | Route refinement, smoothing, corridor reuse and path requests | `frontline_core` | Native planner retains corridor history and request order; Godot supplies unit positions and delivers completed orders |
-| Terrain and cover evaluation | Rust | Terrain/nav/combat scripts |
+| Cover anchors and fighting-position selection | Rust | Cover/combat scripts |
 | Supply, construction, upgrades, prisoners, victory | Rust | `rules.gd`, structures and battle scripts |
 | Missions, scripted events, initial map generation | Rust or immutable versioned input data | Map generators and mission director |
 | Models, animation, smoothing, particles, camera, minimap | Godot | Existing presentation code |
@@ -266,6 +268,35 @@ checks default and model-specific sockets and shell ownership after the current
 vehicle-handling changes on `main`. These are component
 checkpoints; they do not include the whole battle or verify its conclusion.
 
+## Terrain state
+
+`Terrain` retains the nine terrain layers, crater height samples and pending cover
+repair order. Roads, rectangles, trees, camouflage nets and craters update those
+arrays in the core. Cover reconstruction uses numeric structure geometry and
+preserves spatial encounter order and equal-cover tie rules. Structures register
+their numeric geometry when added, moved or changed; the core retains the index
+instead of rebuilding it from scene objects each batch. GDScript mirrors changed
+cells for the renderer and remaining gameplay callers. Biome and water generation
+still run in Godot and import their
+numeric output; these are outstanding standalone-server dependencies.
+
+Terrain checkpoints preserve every layer and height sample, fresh-ground behavior,
+the revision, ordered structure geometry and the remaining repair queue. Reference
+coverage compares 3,500 query positions, entire cell arrays, partial repair batches,
+moved/completed/removed structures, doors, replicated properties, worker-thread
+ground imports, edge/overlapping craters and restores between edits. The loading
+worker only changes plain arrays; the main thread imports them into Rust while
+retaining queued repairs and structure order.
+Heights use a 1 micrometre comparison tolerance; cell data and gameplay
+multipliers match exactly. This is component validation, not a full battle replay.
+Godot's position hash and PCG stream are retained for crater shape generation;
+the trigonometric/exponential arithmetic still needs platform equivalence checks.
+
+An alternating-order comparison of the 9,216-cell cover repair fixture measured
+GDScript samples of 12.65–17.57 ms versus 4.09–4.21 ms through Rust, including the
+adapter's changed-cell copies (six samples each after two warm-up rounds). Other
+apps stayed running. This measures cover repair, not a 500-unit battle or FPS.
+
 ## Validation limits from this migration
 
 The opt-in mission suite currently wins bridgehead and beachhead, but loses
@@ -279,6 +310,8 @@ including multiplayer authority, combat, breaching and seed reproducibility.
 The later visibility port passes all 102 default integration tests and its
 mission run reproduces the same baseline outcomes. These checks do not
 cover full battle checkpoints or replay verification.
+The terrain port passes all 105 default integration tests, 47 core tests in both
+debug and release, and the cover-region and terrain texture/collision seam checks.
 
 A focused shell benchmark (100 shells, 100 ticks, headless, no collision queries)
 measured about 14.6 ms for the GDScript path versus 4.6–5.6 ms for retained Rust

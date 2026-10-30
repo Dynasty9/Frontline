@@ -10,7 +10,9 @@ weighted navigation grids, hierarchical routing, route smoothing and path reques
 queues. It also accelerates nearest-enemy
 candidate selection using numeric snapshots. Battlefield box raycasts, smoke
 volumes and geometric visibility run in Rust; perception policy and damage stay
-in Godot. Hierarchical graph assembly and repair
+in Godot. Terrain cells, crater deformation and queued cover reconstruction also
+run in the core; Godot still supplies structure geometry and generated biome/water
+data and mirrors changed cells. Hierarchical graph assembly and repair
 use engine-independent state; local-grid costing uses Rust workers.
 The numeric algorithms live in the engine-independent `native/core` crate;
 `native/src` contains the Godot bindings. Run their standalone tests with
