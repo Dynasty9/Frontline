@@ -7,6 +7,7 @@ mod collision_index;
 mod cover_geometry;
 mod drone_flight;
 mod formation_ground;
+mod grenade_attack;
 mod grenade_reaction;
 mod guided_flight;
 mod hierarchy;

@@ -208,6 +208,7 @@ var flinging := false
 var _sector := Vector3.ZERO  # where he watches at a halt (zero: not on a war footing)
 var seen_grenades := {}
 var _grenade_core: RefCounted
+var _grenade_attack: RefCounted
 var _breach_core: RefCounted
 var heard_drones := {}
 var low_ammo_said := false
@@ -2365,6 +2366,8 @@ func _try_grenade() -> bool:
 		return false
 	if is_moving():
 		return false
+	if SoldierBrain._native(self) and ClassDB.class_exists("GrenadeAttackCore"):
+		return _try_grenade_native()
 	grenade_cd = world.time + 2.5
 	var best: Soldier = null
 	var best_n := 0
@@ -2395,6 +2398,36 @@ func _try_grenade() -> bool:
 	var tp := best.position + Vector3(world.rng.randf_range(-1, 1), 0, world.rng.randf_range(-1, 1)) * d2 * 0.07
 	frags -= 1
 	grenade_cd = world.time + world.rng.randf_range(12.0, 20.0)
+	return _auto_grenade_action(best, tp, d2)
+
+
+func _try_grenade_native() -> bool:
+	if _grenade_attack == null:
+		_grenade_attack = ClassDB.instantiate("GrenadeAttackCore")
+	var contacts := []
+	for k: Dictionary in squad.known.values():
+		var e = k.e
+		if not is_instance_valid(e) or not (e is Soldier):
+			continue
+		var neighbors := 0
+		for o: Soldier in world.soldiers_near(e.position, 4.0):
+			if o != e and o.team == e.team and o.life == Life.ALIVE:
+				neighbors += 1
+		contacts.append([e.eid, e.position, not e.gone and e.life == Life.ALIVE, world.time - float(k.t),
+			e in vis_targets, e.posture, e.at_cover and e.cover_mat >= Cover.HARD, neighbors])
+	var context := PackedFloat64Array([position.x, position.y, position.z, world.time, suppression,
+		int(squad != null), int(squad != null and squad.ambush), int(is_moving())])
+	var result: Array = _grenade_attack.advance(frags, grenade_cd, context, contacts, world.rng._backend)
+	assert(result.size() == 5, "Invalid automatic grenade attack")
+	frags = int(result[0])
+	grenade_cd = float(result[1])
+	if int(result[2]) == 0:
+		return false
+	var best: Soldier = world.entity(int(result[2])) as Soldier
+	return _auto_grenade_action(best, result[3], float(result[4]))
+
+
+func _auto_grenade_action(best: Soldier, tp: Vector3, d2: float) -> bool:
 	world.stat("frag_auto")
 	var ck := SoldierBrain.cook_time(self, best, d2)
 	if ck > 0.0:

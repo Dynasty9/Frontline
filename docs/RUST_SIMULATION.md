@@ -39,6 +39,7 @@ graphics, network access or a wall clock.
 | Wounded infantry and corpse timers | `frontline_core` | Bleeding, rescue/medicine modifiers, speech/pistol/crawl schedules and corpse collection decisions extracted; rescuer links, targeting and task effects remain in Godot |
 | Grenade reflex decisions | `frontline_core` | Notice memory, protection of nearby casualties, throwback/kick priority, shelter queries, kick direction and cooking time extracted; Godot still owns task application and grenade handlers |
 | Grenade task movement | `frontline_core` | Smother, pickup and kick approaches, covering geometry and dive direction extracted; Godot still applies action callbacks and holder links |
+| Automatic grenade attacks | `frontline_core` | Contact scores, range/posture gates, throw scatter, ammunition and cooldowns extracted; Godot still supplies squad contacts and nearby groups and applies the throw/cook actions |
 | House-entry task phases | `frontline_core` | Stack/door/grenade/entry transitions, deadlines, cooking and room targets extracted with component checkpoints; Godot still owns movement callbacks and squad entry effects |
 | House occupancy and breach selection | `frontline_core` | Floor containment, ordered openings, nearest walkable stack positions and competing squadmates extracted; Godot still supplies spatial candidates, squad contacts and decision timers |
 | Injury behavior and special tasks | Rust | `soldier.gd`, `soldier_brain.gd`, `combat.gd` |
@@ -204,13 +205,13 @@ Component checkpoint headers contain a four-byte component tag, a little-endian
 rules rather than silently continuing with changed arithmetic. The separate
 integer RNG stream remains unchanged.
 
-`native/core/tests/numeric_contract.rs` compares 749,105 committed bytes without
+`native/core/tests/numeric_contract.rs` compares 816,645 committed bytes without
 tolerances: fixed-tick flight state, support events and RNG cursors, carved water,
 craters, rotated box hits, cover anchors, spherical interpolation and infantry
 movement, infantry cover fire, postures, ammunition, burst recovery, vitals, aiming,
 combat poses, bullet resolution, blast exposure, knockback recovery and wounded
 infantry schedules, grenade reflexes, grenade task movement and house-entry
-phases and building selection. CI runs
+phases, building selection and automatic grenade attacks. CI runs
 the same fixtures in debug and release on Windows x64, Linux
 x64, Linux ARM64 and macOS ARM64. A mismatch reports the first different byte.
 These fixtures guard the covered trajectories; they are not a proof for all
@@ -426,7 +427,7 @@ flag until Rust owns the actors.
 
 The shock fixture compares 92,160 reference steps, including mounted turning,
 blocked terrain, carried casualties and task interruption. The full default suite
-passes 122 tests; 129 core tests pass in debug and release.
+passes 123 tests; 135 core tests pass in debug and release.
 
 ## Grenade reflexes
 
@@ -440,6 +441,11 @@ random draws, kick vectors and cooking times. It includes held rounds, other
 handlers, cover, suppression and wounded teammates. `FLGR` checkpoints only the
 notice memory; task and handler ownership still require the whole actor/world
 port. Numeric CI adds a 75,432-byte reflex transcript.
+Mortar warnings share this memory, so it can exceed 25 entries before a new nearby
+grenade causes eviction. The adapter and checkpoint reader accept that history;
+long histories use a lookup set while retaining encounter order. A 65-shell
+regression checks the real warning path, checkpoint restoration and the next
+grenade's warning and eviction behavior.
 
 Grenade task movement also runs in the core: closing on a round, the fuse
 deadlines for pickup and kicking, the one-second smother approach, chest-cover
@@ -448,6 +454,15 @@ with the existing code, including blocked approaches, mounted turns, changing
 holders, disappearing rounds and the subsequent pickup, rethrow and kick action
 callbacks. Those callbacks and entity links remain in Godot until actor ownership
 moves. Numeric CI adds a 16,090-byte movement transcript.
+
+`GrenadeAttack` retains grenade inventory and the next check/throw deadline in an
+`FLGA` checkpoint. It ranks the squad's contacts by nearby enemies and hard cover,
+preserves the first tie and applies the same range, posture and contact-age gates.
+It consumes the chance, scatter and cooldown draws before the existing cooking
+and action callbacks. Godot still supplies squad memory and nearby-group counts.
+The reference fixture compares 12,288 decisions, including cooking, queued throws,
+speech, ammunition, cooldowns, random draws and contact selection.
+Numeric CI adds 67,540 bytes of attack state, throws and RNG cursors.
 
 ## House entry
 

@@ -191,7 +191,7 @@ impl GrenadeReactionCore {
         rounds: Array<Variant>,
         skip_gone: bool,
     ) -> Array<Variant> {
-        if seen.len() > 25 || rounds.len() > 100_000 {
+        if seen.len() > grenade::MAX_REMEMBERED_ROUNDS || rounds.len() > 100_000 {
             return Array::new();
         }
         let Some(seen) = seen

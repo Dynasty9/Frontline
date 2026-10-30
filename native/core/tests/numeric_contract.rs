@@ -6,6 +6,9 @@ use frontline_core::bullet::{self, Body, Bullet, TargetEffect, ThroughContact};
 use frontline_core::collision::{BoxShape, CollisionWorld, Mat3};
 use frontline_core::cover::{generate, Part};
 use frontline_core::drone::{DroneFlight, Phase};
+use frontline_core::grenade_attack::{
+    Contact as GrenadeContact, GrenadeAttack, Input as GrenadeInput,
+};
 use frontline_core::grenade_reaction as reflex;
 use frontline_core::grenade_task;
 use frontline_core::guided::{GuidedFlight, Kind as GuidedKind};
@@ -206,6 +209,56 @@ fn house_and_opening_choices_are_identical_across_platforms() {
         point(&mut out, nav.nearest_walkable(p).unwrap());
     }
     golden("breach_selection", &out);
+}
+
+#[test]
+fn automatic_grenade_attacks_are_identical_across_platforms() {
+    let mut out = Vec::new();
+    for case in 0..512 {
+        let mut s = GrenadeAttack {
+            frags: (case % 5) as i32,
+            cooldown: if case % 7 == 0 { 11.0 } else { 0.0 },
+        };
+        let mut rng = SimulationRandom::new(case + 2291);
+        let contacts: Vec<_> = (3..8)
+            .map(|id| GrenadeContact {
+                id,
+                position: Vector3::new(
+                    7.0 + (case % 24) as f32 + (id as f32 - 3.0) * 0.6,
+                    0.0,
+                    (id as f32 - 5.0) * 0.5,
+                ),
+                alive: (case + id) % 5 != 0 && (case + id) % 19 != 0,
+                age: ((case + id) % 8) as f64,
+                visible: (case + id) % 3 == 0,
+                posture: Posture::try_from(((case + id) % 5) as u8).unwrap(),
+                hard_cover: (case + id) % 3 == 0,
+                nearby_allies: ((case + id) % 5) as u32,
+            })
+            .collect();
+        for time in [10.0, 13.0, 43.0] {
+            let i = GrenadeInput {
+                position: Vector3::ZERO,
+                time,
+                suppression: (case % 90) as f64,
+                squad: case % 13 != 0,
+                ambush: case % 17 == 0,
+                moving: case % 11 == 0,
+            };
+            let t = s.advance(i, &contacts, &mut rng).unwrap();
+            block(&mut out, &s.checkpoint());
+            out.extend_from_slice(&rng.state().to_le_bytes());
+            if let Some(t) = t {
+                out.extend_from_slice(&t.target.to_le_bytes());
+                point(&mut out, t.position);
+                out.extend_from_slice(&t.distance.to_le_bytes());
+            } else {
+                out.extend_from_slice(&0_u64.to_le_bytes());
+            }
+            assert_eq!(GrenadeAttack::restore(&s.checkpoint()).unwrap(), s);
+        }
+    }
+    golden("grenade_attack", &out);
 }
 
 fn point(out: &mut Vec<u8>, p: Vector3) {

@@ -6,6 +6,9 @@ use crate::random::SimulationRandom;
 use crate::state_codec::{Reader, Writer};
 use crate::vector::{normalized, Vector3};
 
+// Mortar warnings share this memory and only a new nearby grenade evicts it.
+pub const MAX_REMEMBERED_ROUNDS: usize = 100_000;
+
 #[derive(Clone, Copy, Debug)]
 pub struct Grenade {
     pub id: u64,
@@ -97,13 +100,28 @@ impl Mate {
 
 impl GrenadeMemory {
     pub fn valid(&self) -> bool {
-        self.seen.len() <= 25
-            && self.seen.iter().copied().all(id)
-            && self
-                .seen
+        if self.seen.len() > MAX_REMEMBERED_ROUNDS || !self.seen.iter().copied().all(id) {
+            return false;
+        }
+        if self.seen.len() <= 25 {
+            self.seen
                 .iter()
                 .enumerate()
                 .all(|(i, id)| !self.seen[..i].contains(id))
+        } else {
+            self.seen_index().is_some()
+        }
+    }
+
+    fn seen_index(&self) -> Option<std::collections::HashSet<u64>> {
+        if self.seen.len() > MAX_REMEMBERED_ROUNDS {
+            return None;
+        }
+        let mut unique = std::collections::HashSet::with_capacity(self.seen.len());
+        self.seen
+            .iter()
+            .all(|v| id(*v) && unique.insert(*v))
+            .then_some(unique)
     }
 
     pub fn notice(
@@ -112,20 +130,27 @@ impl GrenadeMemory {
         grenades: &[Grenade],
         skip_gone: bool,
     ) -> Result<Option<u64>, &'static str> {
-        if !self.valid()
-            || !point(position)
-            || grenades.len() > 100_000
-            || grenades.iter().any(|g| !g.valid())
-        {
+        if !point(position) || grenades.len() > 100_000 || grenades.iter().any(|g| !g.valid()) {
             return Err("invalid grenade notice input");
         }
+        // Long mortar histories need one lookup set, not a history scan for every grenade.
+        let index = if self.seen.len() > 25 {
+            Some(self.seen_index().ok_or("invalid grenade notice memory")?)
+        } else {
+            if !self.valid() {
+                return Err("invalid grenade notice memory");
+            }
+            None
+        };
         for g in grenades {
             if g.held || (skip_gone && g.gone) {
                 continue;
             }
             let distance = f64::from(flat(g.position - position).length());
             if distance > 7.5
-                || self.seen.contains(&g.id)
+                || index
+                    .as_ref()
+                    .map_or_else(|| self.seen.contains(&g.id), |seen| seen.contains(&g.id))
                 || (g.flying && g.fuse > 2.2 && distance > 4.0)
             {
                 continue;
@@ -151,7 +176,7 @@ impl GrenadeMemory {
     pub fn restore(bytes: &[u8]) -> Result<Self, &'static str> {
         let mut input = Reader::new(bytes, b"FLGR\x01\0\0\0")?;
         let count = input.u32()? as usize;
-        if count > 25 {
+        if count > MAX_REMEMBERED_ROUNDS {
             return Err("too many remembered grenades");
         }
         let mut seen = Vec::with_capacity(count);

@@ -1271,6 +1271,8 @@ House-entry phases also have Rust checkpoints, preserving the stack, door kick,
 grenade cooking, retreat and entry sequence while task effects remain in Godot.
 Building and breach-selection checks preserve rotated floors, doors, windows,
 blocked stacking positions and yielding to a better-positioned squadmate.
+Automatic grenade targeting also has Rust state for inventory and cooldowns,
+preserving contact scores, throw scatter and the following cook/throw sequence.
 The full
 authoritative Rust server and deterministic
 battle verifier are still in progress; see [RUST_SIMULATION.md](RUST_SIMULATION.md).

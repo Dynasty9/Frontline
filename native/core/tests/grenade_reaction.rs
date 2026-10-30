@@ -37,6 +37,39 @@ fn round() -> Grenade {
 }
 
 #[test]
+fn mortar_warning_history_can_exceed_the_grenade_eviction_threshold() {
+    let mut memory = GrenadeMemory {
+        seen: (100..165).collect(),
+    };
+    assert_eq!(
+        GrenadeMemory::restore(&memory.checkpoint()).unwrap(),
+        memory
+    );
+    let before = memory.clone();
+    let remembered = Grenade { id: 100, ..round() };
+    let distant = Grenade {
+        position: V::X * 20.0,
+        ..round()
+    };
+    assert_eq!(
+        memory
+            .notice(V::ZERO, &[remembered, distant], true)
+            .unwrap(),
+        None
+    );
+    assert_eq!(memory, before);
+    assert_eq!(memory.notice(V::ZERO, &[round()], true).unwrap(), Some(2));
+    assert_eq!(memory.seen, vec![2]);
+    let mut duplicate = before;
+    duplicate.seen.push(100);
+    assert!(!duplicate.valid());
+    assert!(GrenadeMemory::restore(&duplicate.checkpoint()).is_err());
+    let mut excess = memory.checkpoint();
+    excess[8..12].copy_from_slice(&((grenade::MAX_REMEMBERED_ROUNDS + 1) as u32).to_le_bytes());
+    assert!(GrenadeMemory::restore(&excess).is_err());
+}
+
+#[test]
 fn notice_preserves_projectile_order_flight_distance_and_memory_eviction() {
     let mut memory = GrenadeMemory::default();
     let distant = Grenade {
