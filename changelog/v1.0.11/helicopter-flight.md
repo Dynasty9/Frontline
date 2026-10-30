@@ -1,21 +1,29 @@
 +++
 title = "Helicopters fly like helicopters"
-summary = "Rotorcraft carry momentum through turns, bank and pitch as they accelerate, and flare into a stable hover before landing."
+summary = "Helicopters carry momentum, bank through turns and flare into a hover before landing."
 kind = "improved"
-
-[[screenshots]]
-file = "before.jpg"
-caption = "Before: a transport changes direction directly toward its new destination."
 
 [[screenshots]]
 file = "after.jpg"
 caption = "After: the same mid-flight order produces a banked turn while momentum carries through."
 
+[[screenshots]]
+file = "before.jpg"
+caption = "Before: a transport changes direction directly toward its new destination."
+
+
 [[videos]]
 file = "helicopter-turn.mp4"
 poster = "helicopter-turn-poster.jpg"
 caption = "A Mohawk banks and settles over its sling pickup. Recorded in the current build, October 2026."
+
+[layout_comparison]
+before = "layout-before.jpg"
+after = "layout-after.jpg"
+caption = "Changelog presentation comparison, not gameplay: the top 1,000 pixels of this entry at the same 900-pixel viewport width. Open either image to inspect it."
 +++
+
+Rotorcraft carry momentum through turns, bank and pitch as they accelerate, and flare into a stable hover before landing.
 
 - Attack, troop and supply helicopters accelerate, brake, climb and descend smoothly instead of instantly changing direction or vertical speed.
 - Aircraft lean into the force of a turn and raise their noses to brake. Gunships can move sideways while keeping their guns on target.

@@ -49,7 +49,9 @@ scenarioTests([
       const armour = (await f.vehicles({ team: 1 })).filter((v) => v.kind !== "truck");
       assert.ok(armour.every((v) => v.hp < v.max_hp * 0.5 && v.pos[1] < -70),
         "enemy armour is destroyed or badly damaged and driven back beyond the attack");
-      const inside = (await f.soldiers({ team: 1 })).filter((s) => fighting(s) && s.pos[1] > -15);
+      // The works occupy x=-20..18. A withdrawn/flanking cell 75 m west
+      // is outside the position even if it crosses the front trench's z line.
+      const inside = (await f.soldiers({ team: 1 })).filter((s) => fighting(s) && Math.abs(s.pos[0]) < 35 && s.pos[1] > -15);
       assert.equal(inside.length, 0, "no Rebel got into the position");
       const lost = (await f.soldiers({ team: 0 })).filter(out).length;
       assert.ok(lost <= 5, `the defenders held on (${lost} of 16 lost)`);

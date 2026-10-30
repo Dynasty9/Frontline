@@ -1,7 +1,8 @@
 +++
 title = "A tactical survey map behind the menus"
-summary = "The living map behind the title, menu and loading screen is now a tactical survey sheet with lettered contours, spot heights and a numbered grid. It's calmer, the view pans slowly as clouds drift over, and now and then a burst of interference turns up a contact or a plan."
+summary = "Menus sit over a calmer tactical map with labelled contours, heights and a numbered grid."
 kind = "improved"
+
 
 [[screenshots]]
 file = "before-and-after.jpg"
@@ -22,7 +23,14 @@ caption = "The title, just after the map wakes"
 [[screenshots]]
 file = "loading.jpg"
 caption = "The loading screen"
+
+[layout_comparison]
+before = "layout-before.jpg"
+after = "layout-after.jpg"
+caption = "Changelog presentation comparison, not gameplay: the top 1,000 pixels of this entry at the same 900-pixel viewport width. Open either image to inspect it."
 +++
+
+The living map behind the title, menu and loading screen is now a tactical survey sheet with lettered contours, spot heights and a numbered grid. It's calmer, the view pans slowly as clouds drift over, and now and then a burst of interference turns up a contact or a plan.
 
 - **A survey sheet:** the map is drawn like a military survey of hill country seen from high up. Fine contours with a heavier index contour every fifth line, lettered with its height; spot heights on the summits; and the map grid numbered round the edges, with a ruler in the margins.
 - **Calmer:** the lines are about as faint as the map on the splash screen, and the ground drifts at a quarter of its old speed, so it stays in the background.

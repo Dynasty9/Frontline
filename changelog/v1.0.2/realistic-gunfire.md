@@ -1,7 +1,8 @@
 +++
 title = "Gunfire that looks like the real thing"
-summary = "Muzzle flashes, tracers, bullet impacts and gun smoke are now sized and timed to life: small, quick, bright flashes, thin tracers that glow at night, and smoke that billows and shades itself instead of hanging in round puffs."
+summary = "Gunfire uses quicker flashes, finer tracers and more natural smoke to make the action easier to read."
 kind = "improved"
+
 
 [[screenshots]]
 file = "rifles-before-after.jpg"
@@ -18,7 +19,14 @@ caption = "The smoke a tank's gun leaves: round puffs before, one billowing clou
 [[screenshots]]
 file = "night.jpg"
 caption = "At night every shot lights up what's round it"
+
+[layout_comparison]
+before = "layout-before.jpg"
+after = "layout-after.jpg"
+caption = "Changelog presentation comparison, not gameplay: the top 1,000 pixels of this entry at the same 900-pixel viewport width. Open either image to inspect it."
 +++
+
+Muzzle flashes, tracers, bullet impacts and gun smoke are now sized and timed to life: small, quick, bright flashes, thin tracers that glow at night, and smoke that billows and shades itself instead of hanging in round puffs.
 
 - **Muzzle flashes at real size:** a rifle's is a hand's breadth of flame, a .50's a forearm's, an autocannon's a
   man's height, each gone in a frame and split into petals by the flash hider (or thrown out sideways by a heavy

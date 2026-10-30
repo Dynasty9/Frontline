@@ -1,12 +1,20 @@
 +++
 title = "A console you can copy, search and save"
-summary = "Select and copy console output, paste commands, search scrollback and save transcripts, with familiar terminal shortcuts."
+summary = "Copy, search and save console output, and paste commands using familiar shortcuts."
 kind = "improved"
+
 
 [[screenshots]]
 file = "after.jpg"
 caption = "Console tools for copying, finding and saving output."
+
+[layout_comparison]
+before = "layout-before.jpg"
+after = "layout-after.jpg"
+caption = "Changelog presentation comparison, not gameplay: the top 1,000 pixels of this entry at the same 900-pixel viewport width. Open either image to inspect it."
 +++
+
+Select and copy console output, paste commands, search scrollback and save transcripts, with familiar terminal shortcuts.
 
 - Select text and copy it with Ctrl+C or the right-click menu. Paste into the command prompt with Ctrl+V or Ctrl+Shift+V.
 - Copy all output or save a plain-text transcript with the toolbar.

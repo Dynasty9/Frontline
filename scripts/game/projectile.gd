@@ -50,6 +50,8 @@ var guns := ""  # an orbiting gunship's weapons (GUNSETS)
 var sight := 0.0  # a recon flight: how far either side of its track its camera sees (0: an ordinary sortie)
 var stay := 0.0  # a recon pass: how far on it flies; an orbit: how long it stays on station (0: the default)
 var _mark_t := 0.0
+var _visual_launch_offset := Vector3.ZERO
+var _visual_launch_bound := false
 
 var model: Node3D
 var smoke_fx: Node3D
@@ -645,6 +647,13 @@ func _view_process(dt: float) -> void:
 		_ac130_view(dt)
 		return
 	if is_shell():
+		if ptype in ["ac105", "ac40", "ac25"] and not _visual_launch_bound:
+			_visual_launch_bound = true
+			var aircraft = world.entity(thrower_id)
+			if aircraft is Projectile:
+				var muzzle: Vector3 = aircraft.muzzle_world(ptype)
+				if muzzle != Vector3.INF:
+					_visual_launch_offset = muzzle - origin
 		if not srv:
 			life_t += dt
 			position = shell_pos(clampf(life_t / maxf(0.1, shell_t), 0.0, 1.0))
@@ -655,6 +664,7 @@ func _view_process(dt: float) -> void:
 			else:
 				Sfx.play("whistle", target, 2.0 if ptype == "mortar" else 4.0, 1.0 if ptype == "mortar" else 0.8)
 		var k := clampf(life_t / maxf(0.1, shell_t), 0.0, 1.0)
+		model.position = _visual_launch_offset * (1.0 - k)
 		var nxt := shell_pos(minf(1.0, k + 0.02))
 		if nxt.distance_to(position) > 0.01:
 			model.look_at(nxt, Vector3.UP if absf((nxt - position).normalized().y) < 0.98 else Vector3.RIGHT)
@@ -958,8 +968,8 @@ func _ac130(dt: float) -> void:
 		var spread: float = gd.spread
 		aim += Vector3(world.rng.randf_range(-spread, spread), 0, world.rng.randf_range(-spread, spread))
 		aim.y = 0.15
-		var muzzle := position + Vector3(0, -1.5, 0)
-		world.spawn("projectile", {"ptype": g, "team": team, "pos": muzzle, "origin": muzzle, "target": aim, "T": float(gd.T) * world.rng.randf_range(0.9, 1.1), "thrower": 0, "by": by})
+		var muzzle := aircraft_muzzle(String(g))
+		world.spawn("projectile", {"ptype": g, "team": team, "pos": muzzle, "origin": muzzle, "target": aim, "T": float(gd.T) * world.rng.randf_range(0.9, 1.1), "thrower": eid, "by": by})
 		if String(gd.snd) != "":
 			world.fx_event([Fx.FAR_SOUND, String(gd.snd), float(gd.vol), target])
 		elif int(nx[1]) == 0:
@@ -995,6 +1005,29 @@ func _ac_aim() -> Vector3:
 	return target + Vector3(cos(a) * r, 0, sin(a) * r)
 
 
+## The same bank and heading as the rendered airframe, also available headless.
+func aircraft_pose() -> Transform3D:
+	var fw := heading()
+	var basis := Basis.looking_at(fw, Vector3.UP)
+	var bank := atan2(AC_SPEED * AC_SPEED, AC_R * 9.81)
+	return Transform3D(basis * Basis(Vector3.BACK, bank), position)
+
+
+func aircraft_muzzle(weapon: String) -> Vector3:
+	var kind := mk if mk != "" else "ac130"
+	var local := VehicleSockets.point(kind, weapon)
+	if local == Vector3.INF:
+		local = VehicleSockets.point(kind, "mg" if weapon == "ac25" else "gun")
+	return aircraft_pose() * local if local != Vector3.INF else position
+
+
+func muzzle_world(weapon: String) -> Vector3:
+	if _vm == null or model == null or not model.is_visible_in_tree():
+		return Vector3.INF
+	var tip: Node3D = _vm.weapon_tips.get(weapon, _vm.mg_tip if weapon == "ac25" else _vm.gun_tip)
+	return tip.global_position if tip else Vector3.INF
+
+
 func _ac130_view(dt: float) -> void:
 	if not srv:
 		life_t += dt
@@ -1002,7 +1035,7 @@ func _ac130_view(dt: float) -> void:
 	var fw := (_ac_pos(life_t + 0.1) - _ac_pos(life_t)).normalized()
 	if absf(fw.y) < 0.98:
 		model.look_at(model.global_position + fw, Vector3.UP)
-		model.rotate_object_local(Vector3(0, 0, 1), 0.42)  # banked left into the turn, the guns on the target
+		model.rotate_object_local(Vector3(0, 0, 1), atan2(AC_SPEED * AC_SPEED, AC_R * 9.81))  # banked left into the turn, the guns on the target
 	if _vm:
 		for w in _vm.wheels:
 			(w as Node3D).rotate_object_local(Vector3(0, 0, 1), dt * 40.0)

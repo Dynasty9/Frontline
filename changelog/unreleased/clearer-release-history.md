@@ -1,0 +1,57 @@
++++
+title = "Release notes you can scan, then explore"
+summary = "See what changed at a glance, with a focused visual and expandable detail. The full release history now uses the same clearer presentation."
+kind = "improved"
+
+[[screenshots]]
+file = "overview.jpg"
+caption = "After: a short outcome and one lead visual, with original notes and captures under Explore this change."
+
+[[screenshots]]
+file = "before.jpg"
+caption = "Before: the same release opens with all supporting screenshots and full notes."
+
+[[screenshots]]
+file = "phone.jpg"
+caption = "The overview and detail control remain readable on a narrow phone screen. Images open at full size."
+
+[[screenshots]]
+file = "details.jpg"
+caption = "Expand the original notes and supporting gallery without leaving the release."
+
+[[screenshots]]
+file = "phone-entry.jpg"
+caption = "On phones, the same explanation and uncropped image stack into one readable column."
+
+[[screenshots]]
+file = "layout-review-ui.jpg"
+caption = "Compare changelog layouts opens an entry-specific old/new presentation review, with both captures available at full size."
+
+[layout_comparison]
+before = "layout-before.jpg"
+after = "layout-after.jpg"
+caption = "Changelog presentation comparison, not gameplay: the top 1,000 pixels of this entry at the same 900-pixel viewport width. Open either image to inspect it. This entry is new; its content is rendered through both layouts for comparison."
++++
+
+All 87 published entries now begin with a concise player-facing summary. Archived
+images appear directly in the site’s brass-and-ink layout; existing motion clips keep their
+playback controls and attribution. Expand **Explore this change** for the original
+notes, screenshots and supporting clips. Original release dates and feature claims
+are preserved.
+
+Motion is shown with video when recorded evidence exists. Interface changes use
+stills; invisible fixes and unrecorded sound or performance changes use text.
+Historical screenshots remain historical evidence, and current-build demonstrations
+are labelled as such.
+
+The same overview/detail structure is used in the generated repository changelog
+and future release notes. Reusable capture stages, media-selection guidance and
+an evidence audit make this part of preparing each new change.
+
+The page shares the main site’s condensed headings, thin rules and shadcn/Radix
+components. Desktop entries place an explanation beside uncropped media; narrow
+screens stack the same content. Supporting notes expand beneath each entry.
+
+Every existing entry includes **Compare changelog layouts**: a separate, collapsed
+old/new presentation review. Both views use the same viewport and can be enlarged.
+These compare the release-note layout itself, independently of the feature media.

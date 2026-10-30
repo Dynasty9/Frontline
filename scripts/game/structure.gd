@@ -669,7 +669,7 @@ func crew_aim(aim_yaw: float, _firing: bool, dt: float) -> void:
 		return
 	var rel := clampf(wrapf(aim_yaw - yaw, -PI, PI), -MG_ARC, MG_ARC)
 	var tr: Node3D = _mg.traverse
-	tr.rotation.y = lerp_angle(tr.rotation.y, rel, 1.0 - exp(-dt * 7.0))
+	tr.rotation.y = rel  # the replicated gunner bearing already obeys the mount traverse limit
 	# each round kicks it back on its mount (crew_kick); it runs forward again between them
 	var body: Node3D = _mg.body
 	var el: Node3D = _mg.elev

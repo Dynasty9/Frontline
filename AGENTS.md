@@ -106,3 +106,13 @@ CI (`.github/workflows/check.yml`) runs steps 1 to 3 on every push and pull requ
 - **Every change to the game adds a changelog entry** for players: `changelog/unreleased/<what-changed>.md`, with its screenshots in `changelog/unreleased/<what-changed>/` ([changelog/README.md](changelog/README.md) shows the format). It waits there until the next release, which files it under that version's changelog on the website and GitHub. Never edit a version number, `CHANGELOG.md`, `web/src/changelog.json` or a `release.json`: the release writes those. CI fails a pull request that changes the game without an entry; label it `no changelog` if players needn't hear about it. Check it with `python .github/scripts/changelog.py check`.
 - If you add a unit, behaviour or system, update the matching section of [docs/FEATURES.md](docs/FEATURES.md), and the README if players would notice it.
 - For visual changes, include before and after screenshots, rendered off-screen. Put the ones players should see in the changelog entry's folder; the pull request can show them from the branch (`https://github.com/Dynasty9/Frontline/blob/<branch>/changelog/unreleased/<entry>/<file>.jpg?raw=true`), so there's no need for a separate assets branch.
+
+### Presenting changes
+
+For changelog and PR presentation, read [.agents/skills/changelog-presentation/SKILL.md](.agents/skills/changelog-presentation/SKILL.md).
+Choose the medium that demonstrates the change: stills for layout, controlled clips
+for motion, audible recordings for sound, measured evidence for performance, and
+concise text for invisible fixes. Use the reusable stages and audit in
+`tools/showcase/`; lead with the player outcome and keep deeper detail available.
+When explicitly refreshing historical presentation, regenerate derived changelog
+outputs from the source entries without changing release versions or dates.

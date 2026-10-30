@@ -1,0 +1,23 @@
+{
+  "tanks": {
+    "scene": "tests/fixtures/vehicle-motion-clips.tscn",
+    "seconds": 12,
+    "fps": 12,
+    "simulation_hz": 60,
+    "cue": "Watch the old tank, modern tank and IFV acquire a target 90 degrees to their right."
+  },
+  "boats": {
+    "scene": "tests/fixtures/vehicle-motion-clips.tscn",
+    "seconds": 12,
+    "fps": 12,
+    "simulation_hz": 60,
+    "cue": "Compare progress after six seconds of throttle, four seconds of helm, then a stop order."
+  },
+  "aircraft": {
+    "scene": "tests/fixtures/vehicle-motion-clips.tscn",
+    "seconds": 12,
+    "fps": 12,
+    "simulation_hz": 60,
+    "cue": "Coloured pulses identify the three actual gunship launch sockets; they do not represent firing cadence."
+  }
+}

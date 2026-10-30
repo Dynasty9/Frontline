@@ -1,7 +1,8 @@
 +++
 title = "Watch battles and revisit the action"
-summary = "Watch public battles in the browser, or revisit saved battles with camera controls and a seekable timeline."
+summary = "Watch public battles in the browser and revisit saved action with camera and timeline controls."
 kind = "new"
+
 
 [[screenshots]]
 file = "browser.jpg"
@@ -17,7 +18,14 @@ caption = "Saved replays load completely before playback, with progress and cont
 [[screenshots]]
 file = "fitted.png"
 caption = "The fitted browser player keeps the FPS meter visible and integrates replay controls beside the desktop minimap."
+
+[layout_comparison]
+before = "layout-before.jpg"
+after = "layout-after.jpg"
+caption = "Changelog presentation comparison, not gameplay: the top 1,000 pixels of this entry at the same 900-pixel viewport width. Open either image to inspect it."
 +++
+
+Watch public battles in the browser, or revisit saved battles with camera controls and a seekable timeline.
 
 Public battles can now broadcast to a browser viewer, using Frontline's own
 3D battlefield. Open **Battles → Watch** on the website, move the camera, or
