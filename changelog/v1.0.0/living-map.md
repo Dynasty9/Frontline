@@ -15,6 +15,11 @@ caption = "The main menu, with a hill rising under the cursor"
 [[screenshots]]
 file = "loading.jpg"
 caption = "The loading screen, closing in on the ground"
+
+[layout_comparison]
+before = "layout-before.jpg"
+after = "layout-after.jpg"
+caption = "Changelog presentation comparison, not gameplay: the top 1,000 pixels of this entry at the same 900-pixel viewport width. Open either image to inspect it."
 +++
 
 The title screen, the main menu and the loading screen now sit on a living topographic map: its ground slowly shifts, its contour lines glow in changing colours, and it reacts to your cursor.

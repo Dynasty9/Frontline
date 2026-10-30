@@ -7,6 +7,11 @@ kind = "new"
 [[screenshots]]
 file = "sign-in.jpg"
 caption = "Sign in with GitHub sends you to the website, and waits for you there"
+
+[layout_comparison]
+before = "layout-before.jpg"
+after = "layout-after.jpg"
+caption = "Changelog presentation comparison, not gameplay: the top 1,000 pixels of this entry at the same 900-pixel viewport width. Open either image to inspect it."
 +++
 
 Sign in with your GitHub account: the game opens the Frontline website, you sign in with GitHub there, and the game signs in by itself. The first time makes your account, named after you on GitHub.

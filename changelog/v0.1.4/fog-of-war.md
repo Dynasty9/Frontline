@@ -12,6 +12,11 @@ caption = "The fog of war in a bridgehead battle"
 [[screenshots]]
 file = "before.jpg"
 caption = "The same moment before: nothing showed where your vision ended"
+
+[layout_comparison]
+before = "layout-before.jpg"
+after = "layout-after.jpg"
+caption = "Changelog presentation comparison, not gameplay: the top 1,000 pixels of this entry at the same 900-pixel viewport width. Open either image to inspect it."
 +++
 
 Ground your side can't see right now is drawn darker on the battlefield and the minimap, so you know where your vision ends and where you need eyes.

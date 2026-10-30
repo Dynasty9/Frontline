@@ -16,6 +16,11 @@ caption = "A promotion in the after-action report, and the patch that comes with
 [[screenshots]]
 file = "all-insignia.jpg"
 caption = "All 160: starter and rank patches, then the awards and unit patches still locked"
+
+[layout_comparison]
+before = "layout-before.jpg"
+after = "layout-after.jpg"
+caption = "Changelog presentation comparison, not gameplay: the top 1,000 pixels of this entry at the same 900-pixel viewport width. Open either image to inspect it."
 +++
 
 Sign in and every battle you fight earns XP. Climb 50 ranks from Recruit to General of the Army, and each one unlocks a military patch to wear beside your callsign.

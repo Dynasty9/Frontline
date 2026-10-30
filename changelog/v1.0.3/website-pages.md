@@ -11,6 +11,11 @@ caption = "Play: launch the game, find a match, or download it"
 [[screenshots]]
 file = "account.jpg"
 caption = "Your account: your rank, your callsign and the insignia you wear"
+
+[layout_comparison]
+before = "layout-before.jpg"
+after = "layout-after.jpg"
+caption = "Changelog presentation comparison, not gameplay: the top 1,000 pixels of this entry at the same 900-pixel viewport width. Open either image to inspect it."
 +++
 
 The Frontline website is more than one long page now: Play opens the game on your computer (or gets it for you), the live battles have a page of their own, and your account page is where you rename yourself and pick your insignia.

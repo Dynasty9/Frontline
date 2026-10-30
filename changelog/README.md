@@ -97,3 +97,22 @@ Invisible fixes often need only a clear explanation. Register the decision in
 `tools/showcase/catalog.json` and run `python3 tools/showcase/audit.py` with the
 usual changelog check. A clip must remain understandable when paused or when
 reduced motion prevents autoplay. Label current-build reenactments of old features.
+
+### Comparing changelog presentation
+
+For a requested presentation review, attach captures of the entry rendered through
+both layouts. Keep these separate from evidence of a gameplay change:
+
+```toml
+[layout_comparison]
+before = "layout-before.jpg"
+after = "layout-after.jpg"
+caption = "Changelog layout comparison, not gameplay. Top 1,000 pixels at a matched 900-pixel width."
+```
+
+Both files live beside the entry's other media. The website exposes them through
+**Compare changelog layouts**, independently of the gameplay notes. They remain
+collapsed and lazy-loaded until requested. Record the two source revisions and
+viewport in the presentation catalog; newly added entries must say when the old
+layout is a reconstruction using their new content. These captures are review
+artifacts, not substitutes for the entry's actual feature evidence.

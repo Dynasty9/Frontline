@@ -3,6 +3,11 @@ title = "A soundtrack that follows the fighting"
 summary = "The score builds with the fighting, relaxes during quieter moments, and responds to victory or defeat."
 kind = "new"
 headline = true
+
+[layout_comparison]
+before = "layout-before.jpg"
+after = "layout-after.jpg"
+caption = "Changelog presentation comparison, not gameplay: the top 1,000 pixels of this entry at the same 900-pixel viewport width. Open either image to inspect it."
 +++
 
 Music, made in code like everything else: a theme for the menu, and a battle score that builds as the fighting heats up and eases off in the lulls.

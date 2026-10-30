@@ -7,6 +7,11 @@ kind = "new"
 [[screenshots]]
 file = "kingpin.jpg"
 caption = "Kingpin, one of the missions"
+
+[layout_comparison]
+before = "layout-before.jpg"
+after = "layout-after.jpg"
+caption = "Changelog presentation comparison, not gameplay: the top 1,000 pixels of this entry at the same 900-pixel viewport width. Open either image to inspect it."
 +++
 
 Five short operations with objectives and radio traffic, to play alone or in co-op.

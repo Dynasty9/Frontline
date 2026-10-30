@@ -7,6 +7,11 @@ kind = "new"
 [[screenshots]]
 file = "rejoin-card.jpg"
 caption = "Back on the main menu after dropping out: Rejoin gets you back into the battle"
+
+[layout_comparison]
+before = "layout-before.jpg"
+after = "layout-after.jpg"
+caption = "Changelog presentation comparison, not gameplay: the top 1,000 pixels of this entry at the same 900-pixel viewport width. Open either image to inspect it."
 +++
 
 Lost your connection, crashed or left by mistake? The main menu now offers Rejoin for as long as the battle lasts, and you're back on your side with whatever of your force is still fighting.

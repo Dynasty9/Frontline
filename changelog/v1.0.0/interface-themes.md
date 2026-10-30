@@ -19,6 +19,11 @@ caption = "The end of a battle (Thermal)"
 [[screenshots]]
 file = "settings.jpg"
 caption = "Choosing a theme in Settings > Interface (Dusk)"
+
+[layout_comparison]
+before = "layout-before.jpg"
+after = "layout-after.jpg"
+caption = "Changelog presentation comparison, not gameplay: the top 1,000 pixels of this entry at the same 900-pixel viewport width. Open either image to inspect it."
 +++
 
 Pick a theme for the whole interface in Settings > Interface: Field Brass, Night Vision, Thermal, Arctic or Dusk. Panels get a new tactical frame, and the living map now shows through behind the menus in a battle.

@@ -23,6 +23,11 @@ caption = "Before and after: a sunny sea and an overcast one"
 file = "ocean-swell.mp4"
 poster = "ocean-swell-poster.jpg"
 caption = "A patrol ship pitches and rolls as waves pass beneath it. Recorded in the current build, October 2026."
+
+[layout_comparison]
+before = "layout-before.jpg"
+after = "layout-after.jpg"
+caption = "Changelog presentation comparison, not gameplay: the top 1,000 pixels of this entry at the same 900-pixel viewport width. Open either image to inspect it."
 +++
 
 Real waves roll in off the sea now: a long swell crossed by the wind's chop, which boats ride. The weather sets the sea, from glassy at dawn to a storm in the rain, and a new Water quality setting keeps it quick on slower machines and in the browser.

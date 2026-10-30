@@ -18,6 +18,11 @@ caption = "Saved replays load completely before playback, with progress and cont
 [[screenshots]]
 file = "fitted.png"
 caption = "The fitted browser player keeps the FPS meter visible and integrates replay controls beside the desktop minimap."
+
+[layout_comparison]
+before = "layout-before.jpg"
+after = "layout-after.jpg"
+caption = "Changelog presentation comparison, not gameplay: the top 1,000 pixels of this entry at the same 900-pixel viewport width. Open either image to inspect it."
 +++
 
 Watch public battles in the browser, or revisit saved battles with camera controls and a seekable timeline.

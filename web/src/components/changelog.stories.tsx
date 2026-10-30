@@ -168,3 +168,48 @@ export const Phone: Story = {
     await expect(canvasElement.scrollWidth).toBeLessThanOrEqual(document.documentElement.clientWidth)
   },
 }
+
+/** Layout review is separate from feature evidence and starts collapsed. */
+export const LayoutComparison: Story = {
+  args: {
+    release: {
+      ...release,
+      entries: [
+        {
+          ...release.entries[0],
+          layoutComparison: {
+            before: "/shots/river_bridge.jpg",
+            after: "/shots/battle.jpg",
+            caption: "Changelog layout comparison, not gameplay. Matched viewport size.",
+          },
+        },
+      ],
+    },
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    const summary = [...canvasElement.querySelectorAll("summary")].find((element) =>
+      element.textContent?.startsWith("Compare changelog layouts")
+    )!
+    const details = summary.closest("details")!
+    await expect(details).not.toHaveAttribute("open")
+    await userEvent.click(summary)
+    await expect(details).toHaveAttribute("open")
+    await expect(canvas.getByText("Changelog layout comparison, not gameplay. Matched viewport size.")).toBeVisible()
+    const after = within(details).getByRole("button", {
+      name: `Enlarge: After: new changelog layout — ${release.entries[0].title}`,
+    })
+    await expect(after).toBeVisible()
+    await userEvent.click(after)
+    await waitFor(() => expect(screen.getByRole("dialog")).toBeVisible())
+    await userEvent.keyboard("{Escape}")
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull())
+    await userEvent.click(summary)
+    await expect(details).not.toHaveAttribute("open")
+  },
+}
+
+export const LayoutComparisonPhone: Story = {
+  ...LayoutComparison,
+  globals: { viewport: { value: "mobile1", isRotated: false } },
+}

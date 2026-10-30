@@ -7,6 +7,11 @@ kind = "fixed"
 [[screenshots]]
 file = "loading-screen.jpg"
 caption = "Joining a running battle: the loading screen waits while the battlefield goes up"
+
+[layout_comparison]
+before = "layout-before.jpg"
+after = "layout-after.jpg"
+caption = "Changelog presentation comparison, not gameplay: the top 1,000 pixels of this entry at the same 900-pixel viewport width. Open either image to inspect it."
 +++
 
 When you join someone else's battle, the loading screen now stays up until the whole battlefield has arrived and been built, and it arrives in a second or two, so you no longer drop into a half-built map that freezes for seconds at a time.

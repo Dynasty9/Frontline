@@ -7,6 +7,11 @@ kind = "improved"
 [[screenshots]]
 file = "after.jpg"
 caption = "Browse the full command list without leaving the console."
+
+[layout_comparison]
+before = "layout-before.jpg"
+after = "layout-after.jpg"
+caption = "Changelog presentation comparison, not gameplay: the top 1,000 pixels of this entry at the same 900-pixel viewport width. Open either image to inspect it."
 +++
 
 A scrollable command dropdown lists every command, then narrows to fuzzy matches and argument suggestions as you type.

@@ -203,6 +203,29 @@ function EntryBlock({ entry, releaseTag, headline }: { entry: Entry; releaseTag:
           </div>
         </details>
       )}
+      {entry.layoutComparison && (
+        <details className="group mt-3 border-t border-dashed pt-3">
+          <summary
+            className={cn(
+              buttonVariants({ variant: "ghost", size: "sm" }),
+              "cursor-pointer list-none gap-2 px-0 text-muted-foreground hover:bg-transparent [&::-webkit-details-marker]:hidden"
+            )}
+          >
+            <CaretDownIcon className="group-open:rotate-180" />
+            Compare changelog layouts<span className="sr-only">: {entry.title}</span>
+          </summary>
+          <p className="mt-3 max-w-prose text-xs leading-relaxed text-muted-foreground">
+            {entry.layoutComparison.caption}
+          </p>
+          <Screens
+            shots={[
+              { url: entry.layoutComparison.before, caption: `Before: old changelog layout — ${entry.title}` },
+              { url: entry.layoutComparison.after, caption: `After: new changelog layout — ${entry.title}` },
+            ]}
+            large
+          />
+        </details>
+      )}
     </article>
   )
 }

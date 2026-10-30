@@ -13,6 +13,11 @@ file = "before.jpg"
 caption = "Before: one squad spreads across all three walls while seeking cover. Enemies are beyond the walls, outside this view."
 
 
+
+[layout_comparison]
+before = "layout-before.jpg"
+after = "layout-after.jpg"
+caption = "Changelog presentation comparison, not gameplay: the top 1,000 pixels of this entry at the same 900-pixel viewport width. Open either image to inspect it."
 +++
 
 Squads move in tighter groups and choose nearby cover on the same side of walls.

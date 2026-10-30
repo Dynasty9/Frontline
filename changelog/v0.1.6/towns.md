@@ -16,6 +16,11 @@ caption = "Selecting a dump: who holds it, its stock, and its truck"
 [[screenshots]]
 file = "town-square.jpg"
 caption = "The town square, before and after"
+
+[layout_comparison]
+before = "layout-before.jpg"
+after = "layout-after.jpg"
+caption = "Changelog presentation comparison, not gameplay: the top 1,000 pixels of this entry at the same 900-pixel viewport width. Open either image to inspect it."
 +++
 
 Each village and the town has a named supply dump. Hold the ground round it and the place is yours: it produces supply, and its own truck drives it to your nearest FOB.

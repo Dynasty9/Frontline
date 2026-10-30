@@ -7,6 +7,11 @@ kind = "fixed"
 [[screenshots]]
 file = "field-manual.jpg"
 caption = "The Field Manual from the menu, its search and Close button in the clear"
+
+[layout_comparison]
+before = "layout-before.jpg"
+after = "layout-after.jpg"
+caption = "Changelog presentation comparison, not gameplay: the top 1,000 pixels of this entry at the same 900-pixel viewport width. Open either image to inspect it."
 +++
 
 Opened from the menu, the Field Manual and Settings now cover everything behind them, so the account card no longer hides the manual's side filter, search and Close button.

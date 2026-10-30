@@ -11,6 +11,11 @@ caption = "why: what's holding the frame rate back, and the stutters of the last
 [[screenshots]]
 file = "frame-graph.jpg"
 caption = "graph: every frame of the last few seconds, split into what its time went on, stutters marked in red"
+
+[layout_comparison]
+before = "layout-before.jpg"
+after = "layout-after.jpg"
+caption = "Changelog presentation comparison, not gameplay: the top 1,000 pixels of this entry at the same 900-pixel viewport width. Open either image to inspect it."
 +++
 
 Press the key under Esc (` or ~) for a console. Type why and it works out what's holding your frame rate back; bench measures what each graphics setting costs you; graph shows every frame and its stutters.

@@ -46,6 +46,17 @@ The browser battlefield fills the available window, keeping the FPS meter clear 
 
 </details>
 
+<details>
+<summary>Compare changelog layouts</summary>
+
+Changelog presentation comparison, not gameplay: the top 1,000 pixels of this entry at the same 900-pixel viewport width. Open either image to inspect it.
+
+![Before: old changelog layout](changelog/v1.0.11/battle-viewer/layout-before.jpg)
+
+![After: new changelog layout](changelog/v1.0.11/battle-viewer/layout-after.jpg)
+
+</details>
+
 #### Inspect vehicles on the website
 
 Inspect vehicle models on the website with rotation and zoom controls.
@@ -70,6 +81,17 @@ Explore vehicles directly on the website, with an interactive model preview usin
 
 </details>
 
+<details>
+<summary>Compare changelog layouts</summary>
+
+Changelog presentation comparison, not gameplay: the top 1,000 pixels of this entry at the same 900-pixel viewport width. Open either image to inspect it.
+
+![Before: old changelog layout](changelog/v1.0.11/website-field-manual/layout-before.jpg)
+
+![After: new changelog layout](changelog/v1.0.11/website-field-manual/layout-after.jpg)
+
+</details>
+
 ### Improved
 
 #### Less work during busy battles
@@ -85,6 +107,17 @@ Pathfinding spends less time maintaining its cache, and animated combat markers 
 - Combat markers keep the same pulsing, rotating shape with less work per frame.
 
 These changes reduce specific costs; they do not establish 60 FPS support for 500-unit battles on large maps.
+
+</details>
+
+<details>
+<summary>Compare changelog layouts</summary>
+
+Changelog presentation comparison, not gameplay: the top 1,000 pixels of this entry at the same 900-pixel viewport width. Open either image to inspect it.
+
+![Before: old changelog layout](changelog/v1.0.11/battle-hotpaths/layout-before.jpg)
+
+![After: new changelog layout](changelog/v1.0.11/battle-hotpaths/layout-after.jpg)
 
 </details>
 
@@ -115,6 +148,17 @@ Large-map performance is still being measured. These changes do not establish 60
 
 </details>
 
+<details>
+<summary>Compare changelog layouts</summary>
+
+Changelog presentation comparison, not gameplay: the top 1,000 pixels of this entry at the same 900-pixel viewport width. Open either image to inspect it.
+
+![Before: old changelog layout](changelog/v1.0.11/battle-work-budget/layout-before.jpg)
+
+![After: new changelog layout](changelog/v1.0.11/battle-work-budget/layout-after.jpg)
+
+</details>
+
 #### See the troops you command
 
 See troops and terrain more clearly through lighter haze and translucent battlefield markers.
@@ -132,6 +176,17 @@ Lighter atmospheric haze and translucent battlefield markers keep soldiers, vehi
 - Teammate view frames and selection rings are thinner and quieter. A teammate's selection is a coordination hint, not an exclusive ownership badge.
 
 ![Before: hazy weather and solid squad markers compete with the troops.](changelog/v1.0.11/clearer-battlefield/battlefield-before.jpg)
+
+</details>
+
+<details>
+<summary>Compare changelog layouts</summary>
+
+Changelog presentation comparison, not gameplay: the top 1,000 pixels of this entry at the same 900-pixel viewport width. Open either image to inspect it.
+
+![Before: old changelog layout](changelog/v1.0.11/clearer-battlefield/layout-before.jpg)
+
+![After: new changelog layout](changelog/v1.0.11/clearer-battlefield/layout-after.jpg)
 
 </details>
 
@@ -158,6 +213,17 @@ Rotorcraft carry momentum through turns, bank and pitch as they accelerate, and 
 
 </details>
 
+<details>
+<summary>Compare changelog layouts</summary>
+
+Changelog presentation comparison, not gameplay: the top 1,000 pixels of this entry at the same 900-pixel viewport width. Open either image to inspect it.
+
+![Before: old changelog layout](changelog/v1.0.11/helicopter-flight/layout-before.jpg)
+
+![After: new changelog layout](changelog/v1.0.11/helicopter-flight/layout-after.jpg)
+
+</details>
+
 #### A new introduction to Frontline
 
 Discover Frontline through tactical decisions, combined-arms footage and operation briefings.
@@ -174,6 +240,17 @@ Discover the game through battlefield decisions, combined-arms footage and selec
 - Gameplay comes straight after the opening footage, without the repeating tickers and statistics grid.
 
 ![Choose an operation to see its briefing and your starting force.](changelog/v1.0.11/homepage-story/after-missions.jpg)
+
+</details>
+
+<details>
+<summary>Compare changelog layouts</summary>
+
+Changelog presentation comparison, not gameplay: the top 1,000 pixels of this entry at the same 900-pixel viewport width. Open either image to inspect it.
+
+![Before: old changelog layout](changelog/v1.0.11/homepage-story/layout-before.jpg)
+
+![After: new changelog layout](changelog/v1.0.11/homepage-story/layout-after.jpg)
 
 </details>
 
@@ -198,6 +275,17 @@ Large battles draw buildings and squad symbols with less repeated work, while da
 
 </details>
 
+<details>
+<summary>Compare changelog layouts</summary>
+
+Changelog presentation comparison, not gameplay: the top 1,000 pixels of this entry at the same 900-pixel viewport width. Open either image to inspect it.
+
+![Before: old changelog layout](changelog/v1.0.11/large-battle-drawing/layout-before.jpg)
+
+![After: new changelog layout](changelog/v1.0.11/large-battle-drawing/layout-after.jpg)
+
+</details>
+
 #### Command all allied troops
 
 Coordinate freely with teammates by selecting and ordering any allied troop or vehicle.
@@ -211,6 +299,17 @@ All commanders on a side can select and order every allied squad, vehicle and in
 - Giving an AI-controlled unit an order brings it under human command so the AI does not overwrite it. Teammates can all keep commanding it.
 - Allied engineers can build for any commander, and tunnel orders work for all allied passengers.
 - Current teammate selections remain coordination cues, not control restrictions. Enemies and neutral units still cannot be commanded; observers can inspect but cannot issue orders.
+
+</details>
+
+<details>
+<summary>Compare changelog layouts</summary>
+
+Changelog presentation comparison, not gameplay: the top 1,000 pixels of this entry at the same 900-pixel viewport width. Open either image to inspect it.
+
+![Before: old changelog layout](changelog/v1.0.11/shared-allied-command/layout-before.jpg)
+
+![After: new changelog layout](changelog/v1.0.11/shared-allied-command/layout-after.jpg)
 
 </details>
 
@@ -270,6 +369,17 @@ Desktop solo battles run simulation separately, share more AI work, and draw dis
 
 </details>
 
+<details>
+<summary>Compare changelog layouts</summary>
+
+Changelog presentation comparison, not gameplay: the top 1,000 pixels of this entry at the same 900-pixel viewport width. Open either image to inspect it.
+
+![Before: old changelog layout](changelog/v1.0.11/simulation-working-sets/layout-before.jpg)
+
+![After: new changelog layout](changelog/v1.0.11/simulation-working-sets/layout-after.jpg)
+
+</details>
+
 #### A clearer way around Frontline
 
 Find your next battle, account and rank information through clearer website navigation.
@@ -293,6 +403,17 @@ A simpler site menu, a returning-player home, and a dedicated rank guide make it
 
 </details>
 
+<details>
+<summary>Compare changelog layouts</summary>
+
+Changelog presentation comparison, not gameplay: the top 1,000 pixels of this entry at the same 900-pixel viewport width. Open either image to inspect it.
+
+![Before: old changelog layout](changelog/v1.0.11/site-journeys/layout-before.jpg)
+
+![After: new changelog layout](changelog/v1.0.11/site-journeys/layout-after.jpg)
+
+</details>
+
 #### Squads stick together
 
 Squads stay closer together and choose cover on the same side of walls.
@@ -310,6 +431,17 @@ Squads move in tighter groups and choose nearby cover on the same side of walls.
 - Travelling squads follow their leader through gaps, and the leader slows for stragglers.
 
 ![Before: one squad spreads across all three walls while seeking cover. Enemies are beyond the walls, outside this view.](changelog/v1.0.11/squad-cohesion/before.jpg)
+
+</details>
+
+<details>
+<summary>Compare changelog layouts</summary>
+
+Changelog presentation comparison, not gameplay: the top 1,000 pixels of this entry at the same 900-pixel viewport width. Open either image to inspect it.
+
+![Before: old changelog layout](changelog/v1.0.11/squad-cohesion/layout-before.jpg)
+
+![After: new changelog layout](changelog/v1.0.11/squad-cohesion/layout-after.jpg)
 
 </details>
 
@@ -339,6 +471,17 @@ Pause menus, controls, lobby rosters and the server browser stay usable at maxim
 
 </details>
 
+<details>
+<summary>Compare changelog layouts</summary>
+
+Changelog presentation comparison, not gameplay: the top 1,000 pixels of this entry at the same 900-pixel viewport width. Open either image to inspect it.
+
+![Before: old changelog layout](changelog/v1.0.11/large-interface-layouts/layout-before.jpg)
+
+![After: new changelog layout](changelog/v1.0.11/large-interface-layouts/layout-after.jpg)
+
+</details>
+
 ## v1.0.10: Console tools and fuzzy completion
 
 *17 October 2026* · [Release on GitHub](https://github.com/Dynasty9/Frontline/releases/tag/v1.0.10)
@@ -364,6 +507,17 @@ A scrollable command dropdown lists every command, then narrows to fuzzy matches
 
 </details>
 
+<details>
+<summary>Compare changelog layouts</summary>
+
+Changelog presentation comparison, not gameplay: the top 1,000 pixels of this entry at the same 900-pixel viewport width. Open either image to inspect it.
+
+![Before: old changelog layout](changelog/v1.0.10/console-completion/layout-before.jpg)
+
+![After: new changelog layout](changelog/v1.0.10/console-completion/layout-after.jpg)
+
+</details>
+
 #### A console you can copy, search and save
 
 Copy, search and save console output, and paste commands using familiar shortcuts.
@@ -384,6 +538,17 @@ Select and copy console output, paste commands, search scrollback and save trans
 
 </details>
 
+<details>
+<summary>Compare changelog layouts</summary>
+
+Changelog presentation comparison, not gameplay: the top 1,000 pixels of this entry at the same 900-pixel viewport width. Open either image to inspect it.
+
+![Before: old changelog layout](changelog/v1.0.10/text-console/layout-before.jpg)
+
+![After: new changelog layout](changelog/v1.0.10/text-console/layout-after.jpg)
+
+</details>
+
 ### Fixed
 
 #### Sign in to the game from your website login
@@ -398,6 +563,17 @@ Already signed into the website? Signing in from the game now uses that account 
 The website no longer asks you to sign in with GitHub again when you're already signed in.
 Your game and website keep separate sessions, so both stay signed in. If the browser blocks opening the game
 automatically, use **Open Frontline** to return.
+
+</details>
+
+<details>
+<summary>Compare changelog layouts</summary>
+
+Changelog presentation comparison, not gameplay: the top 1,000 pixels of this entry at the same 900-pixel viewport width. Open either image to inspect it.
+
+![Before: old changelog layout](changelog/v1.0.10/existing-website-login/layout-before.jpg)
+
+![After: new changelog layout](changelog/v1.0.10/existing-website-login/layout-after.jpg)
 
 </details>
 
@@ -466,6 +642,17 @@ Every screen now reads like a battle management display: the battle's interface 
 
 </details>
 
+<details>
+<summary>Compare changelog layouts</summary>
+
+Changelog presentation comparison, not gameplay: the top 1,000 pixels of this entry at the same 900-pixel viewport width. Open either image to inspect it.
+
+![Before: old changelog layout](changelog/v1.0.9/signal-interface/layout-before.jpg)
+
+![After: new changelog layout](changelog/v1.0.9/signal-interface/layout-after.jpg)
+
+</details>
+
 #### Battles load sooner, and without freezing
 
 Enter battles sooner with a responsive loading screen and no long freeze after loading finishes.
@@ -481,6 +668,17 @@ A battle no longer freezes for several seconds after it has loaded, it's ready t
 - **A window that answers:** the loading bar moves stage by stage, and Windows no longer calls the game "Not
   Responding" while a battle loads.
 - Everything looks and plays exactly as before.
+
+</details>
+
+<details>
+<summary>Compare changelog layouts</summary>
+
+Changelog presentation comparison, not gameplay: the top 1,000 pixels of this entry at the same 900-pixel viewport width. Open either image to inspect it.
+
+![Before: old changelog layout](changelog/v1.0.9/battle-loads-without-freezing/layout-before.jpg)
+
+![After: new changelog layout](changelog/v1.0.9/battle-loads-without-freezing/layout-after.jpg)
 
 </details>
 
@@ -506,6 +704,17 @@ When you join someone else's battle, the loading screen now stays up until the w
 - **The ground matches the host's**: the paving in the town squares and the ground under bridges and the harbour
   quay were open ground on a joining player's map, though they're road in the battle itself; they're road now.
 - Host and players must update together: a game with this change can't join a battle hosted by an older one.
+
+</details>
+
+<details>
+<summary>Compare changelog layouts</summary>
+
+Changelog presentation comparison, not gameplay: the top 1,000 pixels of this entry at the same 900-pixel viewport width. Open either image to inspect it.
+
+![Before: old changelog layout](changelog/v1.0.9/joining-loads-first/layout-before.jpg)
+
+![After: new changelog layout](changelog/v1.0.9/joining-loads-first/layout-after.jpg)
 
 </details>
 
@@ -552,6 +761,17 @@ The battle's interface now reads like a battle management display laid onto the 
 
 </details>
 
+<details>
+<summary>Compare changelog layouts</summary>
+
+Changelog presentation comparison, not gameplay: the top 1,000 pixels of this entry at the same 900-pixel viewport width. Open either image to inspect it.
+
+![Before: old changelog layout](changelog/v1.0.8/signal-interface/layout-before.jpg)
+
+![After: new changelog layout](changelog/v1.0.8/signal-interface/layout-after.jpg)
+
+</details>
+
 ### Fixed
 
 #### Website links work again after an uninstall
@@ -566,6 +786,17 @@ If the links from the website were taken away (uninstalling another copy of Fron
 - Each time it starts, the game checks that your system still opens website links with it, and sets them up again
   if not.
 - With more than one copy of the game, links open the one you started last.
+
+</details>
+
+<details>
+<summary>Compare changelog layouts</summary>
+
+Changelog presentation comparison, not gameplay: the top 1,000 pixels of this entry at the same 900-pixel viewport width. Open either image to inspect it.
+
+![Before: old changelog layout](changelog/v1.0.8/links-claimed-again/layout-before.jpg)
+
+![After: new changelog layout](changelog/v1.0.8/links-claimed-again/layout-after.jpg)
 
 </details>
 
@@ -585,6 +816,17 @@ Website sign-in and join links reach the running game instead of opening another
 Signing in on the website, or pressing Join or Find Match there, could start a second copy of the game instead of going to the one you had open. It happened after the game had updated itself. The link goes to the open game now.
 
 - The same happened to a game started while another copy of it was still running, once that other copy had closed.
+
+</details>
+
+<details>
+<summary>Compare changelog layouts</summary>
+
+Changelog presentation comparison, not gameplay: the top 1,000 pixels of this entry at the same 900-pixel viewport width. Open either image to inspect it.
+
+![Before: old changelog layout](changelog/v1.0.7/links-reach-the-open-game/layout-before.jpg)
+
+![After: new changelog layout](changelog/v1.0.7/links-reach-the-open-game/layout-after.jpg)
 
 </details>
 
@@ -613,6 +855,17 @@ The title and the menu come up seconds sooner after you launch the game. The res
 
 </details>
 
+<details>
+<summary>Compare changelog layouts</summary>
+
+Changelog presentation comparison, not gameplay: the top 1,000 pixels of this entry at the same 900-pixel viewport width. Open either image to inspect it.
+
+![Before: old changelog layout](changelog/v1.0.6/faster-launch/layout-before.jpg)
+
+![After: new changelog layout](changelog/v1.0.6/faster-launch/layout-after.jpg)
+
+</details>
+
 #### Battlefields are laid out faster
 
 Spend less time preparing terrain, roads and cover before entering a battle.
@@ -627,6 +880,17 @@ Laying out a new battlefield - the rivers and the sea, the roads, the cover the 
   water and the cover are shared out over all your processor's cores.
 - **What didn't change:** the battlefield. Every river, road, house, hedge and tree is where it was, the cover and
   the routes are the same, and a replayed battle plays out the same.
+
+</details>
+
+<details>
+<summary>Compare changelog layouts</summary>
+
+Changelog presentation comparison, not gameplay: the top 1,000 pixels of this entry at the same 900-pixel viewport width. Open either image to inspect it.
+
+![Before: old changelog layout](changelog/v1.0.6/faster-map-generation/layout-before.jpg)
+
+![After: new changelog layout](changelog/v1.0.6/faster-map-generation/layout-after.jpg)
 
 </details>
 
@@ -657,6 +921,17 @@ The website ranks the commanders with the most experience, of all time, this mon
 ![A commander's page: their rank and record, their career and their battles](changelog/v1.0.5/leaderboards-and-public-profiles/player.jpg)
 
 ![A battle's after-action report on the website, every commander rated as the game rates them](changelog/v1.0.5/leaderboards-and-public-profiles/battle.jpg)
+
+</details>
+
+<details>
+<summary>Compare changelog layouts</summary>
+
+Changelog presentation comparison, not gameplay: the top 1,000 pixels of this entry at the same 900-pixel viewport width. Open either image to inspect it.
+
+![Before: old changelog layout](changelog/v1.0.5/leaderboards-and-public-profiles/layout-before.jpg)
+
+![After: new changelog layout](changelog/v1.0.5/leaderboards-and-public-profiles/layout-after.jpg)
 
 </details>
 
@@ -693,6 +968,17 @@ Press the key under Esc (` or ~) for a console. Type why and it works out what's
 
 </details>
 
+<details>
+<summary>Compare changelog layouts</summary>
+
+Changelog presentation comparison, not gameplay: the top 1,000 pixels of this entry at the same 900-pixel viewport width. Open either image to inspect it.
+
+![Before: old changelog layout](changelog/v1.0.5/in-game-console/layout-before.jpg)
+
+![After: new changelog layout](changelog/v1.0.5/in-game-console/layout-after.jpg)
+
+</details>
+
 #### Installers for Windows and the Mac
 
 Install Frontline with a Windows setup wizard or Mac disk image, in a location that supports updates.
@@ -711,6 +997,17 @@ The game now comes with an installer on Windows and a disk image on the Mac, so 
   before you've even started the game.
 - The zips are still there, a link under each download button, to run the game from anywhere without installing it.
   Linux keeps its zip.
+
+</details>
+
+<details>
+<summary>Compare changelog layouts</summary>
+
+Changelog presentation comparison, not gameplay: the top 1,000 pixels of this entry at the same 900-pixel viewport width. Open either image to inspect it.
+
+![Before: old changelog layout](changelog/v1.0.5/installers/layout-before.jpg)
+
+![After: new changelog layout](changelog/v1.0.5/installers/layout-after.jpg)
 
 </details>
 
@@ -744,6 +1041,17 @@ Boats no longer drive like cars on water. They slide through it, skid in a hard 
 
 </details>
 
+<details>
+<summary>Compare changelog layouts</summary>
+
+Changelog presentation comparison, not gameplay: the top 1,000 pixels of this entry at the same 900-pixel viewport width. Open either image to inspect it.
+
+![Before: old changelog layout](changelog/v1.0.5/boats-handle-like-boats/layout-before.jpg)
+
+![After: new changelog layout](changelog/v1.0.5/boats-handle-like-boats/layout-after.jpg)
+
+</details>
+
 #### Wildlife caught in the fighting
 
 Wildlife flees nearby danger and can be caught in the fighting without changing combat outcomes.
@@ -767,6 +1075,17 @@ The animals run from more of the battle now, and can be killed by it: a round th
 
 </details>
 
+<details>
+<summary>Compare changelog layouts</summary>
+
+Changelog presentation comparison, not gameplay: the top 1,000 pixels of this entry at the same 900-pixel viewport width. Open either image to inspect it.
+
+![Before: old changelog layout](changelog/v1.0.5/wildlife-in-the-fighting/layout-before.jpg)
+
+![After: new changelog layout](changelog/v1.0.5/wildlife-in-the-fighting/layout-after.jpg)
+
+</details>
+
 ### Fixed
 
 #### A rare crash at the start of a battle
@@ -780,6 +1099,17 @@ Starting a battle could, once in a long while, crash the game while it worked ou
 
 - The crash came while the loading screen read "Plotting the routes", in the first battle after starting the game.
 - The same fault could, even more rarely, crash the game as it started up and made its sounds.
+
+</details>
+
+<details>
+<summary>Compare changelog layouts</summary>
+
+Changelog presentation comparison, not gameplay: the top 1,000 pixels of this entry at the same 900-pixel viewport width. Open either image to inspect it.
+
+![Before: old changelog layout](changelog/v1.0.5/battle-start-crash/layout-before.jpg)
+
+![After: new changelog layout](changelog/v1.0.5/battle-start-crash/layout-after.jpg)
 
 </details>
 
@@ -806,6 +1136,17 @@ A patrol ship sent somewhere astern now turns the way it has room for and joins 
 
 </details>
 
+<details>
+<summary>Compare changelog layouts</summary>
+
+Changelog presentation comparison, not gameplay: the top 1,000 pixels of this entry at the same 900-pixel viewport width. Open either image to inspect it.
+
+![Before: old changelog layout](changelog/v1.0.5/big-ships-come-about/layout-before.jpg)
+
+![After: new changelog layout](changelog/v1.0.5/big-ships-come-about/layout-after.jpg)
+
+</details>
+
 #### No more crash when an attack outlasts a squad it lost
 
 An attack continues safely when one of its squads is wiped out, instead of crashing later.
@@ -816,6 +1157,17 @@ An attack continues safely when one of its squads is wiped out, instead of crash
 A battle could crash when a squad was wiped out partway through a planned attack and the attack dragged on for minutes after. The lost squad now drops out of the attack the moment it's gone.
 
 - The rest of the attack carries on exactly as before. When it ends, only the squads still in the field get their new orders.
+
+</details>
+
+<details>
+<summary>Compare changelog layouts</summary>
+
+Changelog presentation comparison, not gameplay: the top 1,000 pixels of this entry at the same 900-pixel viewport width. Open either image to inspect it.
+
+![Before: old changelog layout](changelog/v1.0.5/lost-squad-crash/layout-before.jpg)
+
+![After: new changelog layout](changelog/v1.0.5/lost-squad-crash/layout-after.jpg)
 
 </details>
 
@@ -832,6 +1184,17 @@ Smoke, flames and dust from a blast on or near a road now cover the road like th
 
 - Smoke drifting over a road no longer stops in a sharp line at the road's edges.
 - Flames on a road now burn over the whole road, not just over the stripes of a zebra crossing.
+
+</details>
+
+<details>
+<summary>Compare changelog layouts</summary>
+
+Changelog presentation comparison, not gameplay: the top 1,000 pixels of this entry at the same 900-pixel viewport width. Open either image to inspect it.
+
+![Before: old changelog layout](changelog/v1.0.5/roads-under-smoke/layout-before.jpg)
+
+![After: new changelog layout](changelog/v1.0.5/roads-under-smoke/layout-after.jpg)
 
 </details>
 
@@ -858,6 +1221,17 @@ On Windows the website's Launch, Join and Find Match buttons, and its sign-in fo
 
 </details>
 
+<details>
+<summary>Compare changelog layouts</summary>
+
+Changelog presentation comparison, not gameplay: the top 1,000 pixels of this entry at the same 900-pixel viewport width. Open either image to inspect it.
+
+![Before: old changelog layout](changelog/v1.0.5/website-links-on-windows/layout-before.jpg)
+
+![After: new changelog layout](changelog/v1.0.5/website-links-on-windows/layout-after.jpg)
+
+</details>
+
 ## v1.0.4: Touchups
 
 *17 October 2026* · [Release on GitHub](https://github.com/Dynasty9/Frontline/releases/tag/v1.0.4)
@@ -877,6 +1251,17 @@ Working out the routes across a new battlefield now takes about half the time an
   out once for every patch that's just the same, instead of for each in turn.
 - **What didn't change:** the routes. Soldiers and vehicles go exactly the way they did before, and a replayed battle
   plays out the same.
+
+</details>
+
+<details>
+<summary>Compare changelog layouts</summary>
+
+Changelog presentation comparison, not gameplay: the top 1,000 pixels of this entry at the same 900-pixel viewport width. Open either image to inspect it.
+
+![Before: old changelog layout](changelog/v1.0.4/sooner-battle-start/layout-before.jpg)
+
+![After: new changelog layout](changelog/v1.0.4/sooner-battle-start/layout-after.jpg)
 
 </details>
 
@@ -902,6 +1287,17 @@ Sign in, in the website's header, opens a sign-in window over whatever page you'
 
 </details>
 
+<details>
+<summary>Compare changelog layouts</summary>
+
+Changelog presentation comparison, not gameplay: the top 1,000 pixels of this entry at the same 900-pixel viewport width. Open either image to inspect it.
+
+![Before: old changelog layout](changelog/v1.0.4/website-sign-in-and-pages/layout-before.jpg)
+
+![After: new changelog layout](changelog/v1.0.4/website-sign-in-and-pages/layout-after.jpg)
+
+</details>
+
 ### Fixed
 
 #### Splashes leave rings of foam again
@@ -918,6 +1314,17 @@ A shell landing in the water, a boat going down and rounds hitting the sea leave
 - A shell bursting in the water throws up its column and leaves a ring of foam running outward and breaking up,
   with white water boiling where the column fell back.
 - A sinking boat churns the water white as she goes down, and leaves a slick of oil spreading where she sank.
+
+</details>
+
+<details>
+<summary>Compare changelog layouts</summary>
+
+Changelog presentation comparison, not gameplay: the top 1,000 pixels of this entry at the same 900-pixel viewport width. Open either image to inspect it.
+
+![Before: old changelog layout](changelog/v1.0.4/foam-rings/layout-before.jpg)
+
+![After: new changelog layout](changelog/v1.0.4/foam-rings/layout-after.jpg)
 
 </details>
 
@@ -963,6 +1370,17 @@ The battlefield has life of its own now. Birds feed in the fields and burst up a
 
 </details>
 
+<details>
+<summary>Compare changelog layouts</summary>
+
+Changelog presentation comparison, not gameplay: the top 1,000 pixels of this entry at the same 900-pixel viewport width. Open either image to inspect it.
+
+![Before: old changelog layout](changelog/v1.0.3/wildlife/layout-before.jpg)
+
+![After: new changelog layout](changelog/v1.0.3/wildlife/layout-after.jpg)
+
+</details>
+
 ### Improved
 
 #### The website gets a Play button, and a page for your account
@@ -982,6 +1400,17 @@ The Frontline website is more than one long page now: Play opens the game on you
 - On a phone, the site's links fold into a menu, and the Play page tells you the game needs a computer.
 
 ![Your account: your rank, your callsign and the insignia you wear](changelog/v1.0.3/website-pages/account.jpg)
+
+</details>
+
+<details>
+<summary>Compare changelog layouts</summary>
+
+Changelog presentation comparison, not gameplay: the top 1,000 pixels of this entry at the same 900-pixel viewport width. Open either image to inspect it.
+
+![Before: old changelog layout](changelog/v1.0.3/website-pages/layout-before.jpg)
+
+![After: new changelog layout](changelog/v1.0.3/website-pages/layout-after.jpg)
 
 </details>
 
@@ -1010,6 +1439,17 @@ Frontline now comes for macOS too, on Apple silicon and Intel Macs: the whole ga
   scroll** makes scrolling zoom instead.
 - Keys are named the Mac way: the Command key shows as **Cmd**.
 - Needs macOS 13 or later on Apple silicon, or macOS 11 or later on an Intel Mac.
+
+</details>
+
+<details>
+<summary>Compare changelog layouts</summary>
+
+Changelog presentation comparison, not gameplay: the top 1,000 pixels of this entry at the same 900-pixel viewport width. Open either image to inspect it.
+
+![Before: old changelog layout](changelog/v1.0.2/mac-build/layout-before.jpg)
+
+![After: new changelog layout](changelog/v1.0.2/mac-build/layout-after.jpg)
 
 </details>
 
@@ -1043,6 +1483,17 @@ Frontline now comes as a browser build too: the same game, played alone, with no
 
 </details>
 
+<details>
+<summary>Compare changelog layouts</summary>
+
+Changelog presentation comparison, not gameplay: the top 1,000 pixels of this entry at the same 900-pixel viewport width. Open either image to inspect it.
+
+![Before: old changelog layout](changelog/v1.0.2/play-in-a-browser/layout-before.jpg)
+
+![After: new changelog layout](changelog/v1.0.2/play-in-a-browser/layout-after.jpg)
+
+</details>
+
 #### Sign in with GitHub
 
 Use GitHub to create an account and sign into the game through the Frontline website.
@@ -1059,6 +1510,17 @@ Sign in with your GitHub account: the game opens the Frontline website, you sign
 - **The website has it too**: sign in there with GitHub to see your rank and pick your insignia.
 - **The game and the website sign in separately**, so signing out of one leaves the other signed in.
 - **Closed the game while you were signing in?** The website starts it again, signed in.
+
+</details>
+
+<details>
+<summary>Compare changelog layouts</summary>
+
+Changelog presentation comparison, not gameplay: the top 1,000 pixels of this entry at the same 900-pixel viewport width. Open either image to inspect it.
+
+![Before: old changelog layout](changelog/v1.0.2/sign-in-with-github/layout-before.jpg)
+
+![After: new changelog layout](changelog/v1.0.2/sign-in-with-github/layout-after.jpg)
 
 </details>
 
@@ -1081,6 +1543,17 @@ When walls go up, buildings come down or fires take hold, the host now updates t
 
 </details>
 
+<details>
+<summary>Compare changelog layouts</summary>
+
+Changelog presentation comparison, not gameplay: the top 1,000 pixels of this entry at the same 900-pixel viewport width. Open either image to inspect it.
+
+![Before: old changelog layout](changelog/v1.0.2/faster-route-repairs/layout-before.jpg)
+
+![After: new changelog layout](changelog/v1.0.2/faster-route-repairs/layout-after.jpg)
+
+</details>
+
 #### Battles use less memory
 
 Battles use less memory for route planning while units follow the same routes.
@@ -1093,6 +1566,17 @@ Route planning keeps much less of the map in memory at once, so a battle needs a
 - A battle now takes about 120 MB less memory, which matters most in the browser, where a page can't use more than
   2 GB.
 - Units take exactly the same routes as before.
+
+</details>
+
+<details>
+<summary>Compare changelog layouts</summary>
+
+Changelog presentation comparison, not gameplay: the top 1,000 pixels of this entry at the same 900-pixel viewport width. Open either image to inspect it.
+
+![Before: old changelog layout](changelog/v1.0.2/lighter-pathfinding/layout-before.jpg)
+
+![After: new changelog layout](changelog/v1.0.2/lighter-pathfinding/layout-after.jpg)
 
 </details>
 
@@ -1121,6 +1605,17 @@ Real waves roll in off the sea now: a long swell crossed by the wind's chop, whi
 ![Glassy water at dawn](changelog/v1.0.2/ocean-swell/calm-dawn.jpg)
 
 ![Before and after: a sunny sea and an overcast one](changelog/v1.0.2/ocean-swell/before-after.jpg)
+
+</details>
+
+<details>
+<summary>Compare changelog layouts</summary>
+
+Changelog presentation comparison, not gameplay: the top 1,000 pixels of this entry at the same 900-pixel viewport width. Open either image to inspect it.
+
+![Before: old changelog layout](changelog/v1.0.2/ocean-swell/layout-before.jpg)
+
+![After: new changelog layout](changelog/v1.0.2/ocean-swell/layout-after.jpg)
 
 </details>
 
@@ -1154,6 +1649,17 @@ Muzzle flashes, tracers, bullet impacts and gun smoke are now sized and timed to
 
 </details>
 
+<details>
+<summary>Compare changelog layouts</summary>
+
+Changelog presentation comparison, not gameplay: the top 1,000 pixels of this entry at the same 900-pixel viewport width. Open either image to inspect it.
+
+![Before: old changelog layout](changelog/v1.0.2/realistic-gunfire/layout-before.jpg)
+
+![After: new changelog layout](changelog/v1.0.2/realistic-gunfire/layout-after.jpg)
+
+</details>
+
 #### A tactical survey map behind the menus
 
 Menus sit over a calmer tactical map with labelled contours, heights and a numbered grid.
@@ -1181,6 +1687,17 @@ The living map behind the title, menu and loading screen is now a tactical surve
 
 </details>
 
+<details>
+<summary>Compare changelog layouts</summary>
+
+Changelog presentation comparison, not gameplay: the top 1,000 pixels of this entry at the same 900-pixel viewport width. Open either image to inspect it.
+
+![Before: old changelog layout](changelog/v1.0.2/survey-map/layout-before.jpg)
+
+![After: new changelog layout](changelog/v1.0.2/survey-map/layout-after.jpg)
+
+</details>
+
 ### Fixed
 
 #### Boats come about for a destination astern
@@ -1200,6 +1717,17 @@ A boat sent somewhere straight behind it now turns round and goes there, instead
 
 </details>
 
+<details>
+<summary>Compare changelog layouts</summary>
+
+Changelog presentation comparison, not gameplay: the top 1,000 pixels of this entry at the same 900-pixel viewport width. Open either image to inspect it.
+
+![Before: old changelog layout](changelog/v1.0.2/boats-come-about/layout-before.jpg)
+
+![After: new changelog layout](changelog/v1.0.2/boats-come-about/layout-after.jpg)
+
+</details>
+
 #### The Field Manual opens over the account card
 
 The Field Manual and Settings stay above the account card, keeping their controls accessible.
@@ -1213,6 +1741,17 @@ Opened from the menu, the Field Manual and Settings now cover everything behind 
 
 - The account card and the menu's notices sat on top of the Field Manual and Settings when they were open from the
   main menu. Both now come to the front as they open (a join invitation still shows over them).
+
+</details>
+
+<details>
+<summary>Compare changelog layouts</summary>
+
+Changelog presentation comparison, not gameplay: the top 1,000 pixels of this entry at the same 900-pixel viewport width. Open either image to inspect it.
+
+![Before: old changelog layout](changelog/v1.0.2/field-manual-on-top/layout-before.jpg)
+
+![After: new changelog layout](changelog/v1.0.2/field-manual-on-top/layout-after.jpg)
 
 </details>
 
@@ -1245,6 +1784,17 @@ Sign in and every battle you fight earns XP. Climb 50 ranks from Recruit to Gene
 
 </details>
 
+<details>
+<summary>Compare changelog layouts</summary>
+
+Changelog presentation comparison, not gameplay: the top 1,000 pixels of this entry at the same 900-pixel viewport width. Open either image to inspect it.
+
+![Before: old changelog layout](changelog/v1.0.1/ranks-and-insignia/layout-before.jpg)
+
+![After: new changelog layout](changelog/v1.0.1/ranks-and-insignia/layout-after.jpg)
+
+</details>
+
 #### Error reports
 
 Optional automatic error reports help developers diagnose failures and crashes.
@@ -1262,6 +1812,17 @@ When something goes wrong in the game, or it crashes, it now tells the developer
   anything is sent.
 - **Crashes** are sent the next time you start the game.
 - **To turn it off:** Settings > Interface > Send error reports.
+
+</details>
+
+<details>
+<summary>Compare changelog layouts</summary>
+
+Changelog presentation comparison, not gameplay: the top 1,000 pixels of this entry at the same 900-pixel viewport width. Open either image to inspect it.
+
+![Before: old changelog layout](changelog/v1.0.1/error-reports/layout-before.jpg)
+
+![After: new changelog layout](changelog/v1.0.1/error-reports/layout-after.jpg)
 
 </details>
 
@@ -1285,6 +1846,17 @@ Lost your connection, crashed or left by mistake? The main menu now offers Rejoi
 - **After a crash** you can rejoin straight away: the host lets your old connection go as soon as you're back, instead of waiting a minute or more for it to time out.
 - **HQ reserves** go to a commander who is still in the battle, not to one who has left.
 - Playing online needs this version on every computer in the battle.
+
+</details>
+
+<details>
+<summary>Compare changelog layouts</summary>
+
+Changelog presentation comparison, not gameplay: the top 1,000 pixels of this entry at the same 900-pixel viewport width. Open either image to inspect it.
+
+![Before: old changelog layout](changelog/v1.0.1/rejoin-a-battle/layout-before.jpg)
+
+![After: new changelog layout](changelog/v1.0.1/rejoin-a-battle/layout-after.jpg)
 
 </details>
 
@@ -1323,6 +1895,17 @@ Find any battle being hosted, online or on your own network, in a proper server 
 
 </details>
 
+<details>
+<summary>Compare changelog layouts</summary>
+
+Changelog presentation comparison, not gameplay: the top 1,000 pixels of this entry at the same 900-pixel viewport width. Open either image to inspect it.
+
+![Before: old changelog layout](changelog/v1.0.1/server-browser/layout-before.jpg)
+
+![After: new changelog layout](changelog/v1.0.1/server-browser/layout-after.jpg)
+
+</details>
+
 ### Improved
 
 #### Battles and the game start sooner
@@ -1338,6 +1921,17 @@ The host lays out a new battle about a second faster, and the game is ready abou
   processor's cores at once, instead of one.
 - **Launching the game:** its sounds are made in the background while the menu comes up, instead of holding it up.
   Each sound is now the same every time you play.
+
+</details>
+
+<details>
+<summary>Compare changelog layouts</summary>
+
+Changelog presentation comparison, not gameplay: the top 1,000 pixels of this entry at the same 900-pixel viewport width. Open either image to inspect it.
+
+![Before: old changelog layout](changelog/v1.0.1/faster-start/layout-before.jpg)
+
+![After: new changelog layout](changelog/v1.0.1/faster-start/layout-after.jpg)
 
 </details>
 
@@ -1377,6 +1971,17 @@ Hold Tab for your side's figures as the battle goes. When it ends, the result sl
 
 </details>
 
+<details>
+<summary>Compare changelog layouts</summary>
+
+Changelog presentation comparison, not gameplay: the top 1,000 pixels of this entry at the same 900-pixel viewport width. Open either image to inspect it.
+
+![Before: old changelog layout](changelog/v1.0.0/after-action-report/layout-before.jpg)
+
+![After: new changelog layout](changelog/v1.0.0/after-action-report/layout-after.jpg)
+
+</details>
+
 #### A changelog for every release
 
 Find out what each release changes through notes on the website, linked from the game's update notice.
@@ -1392,6 +1997,17 @@ Every release now comes with a changelog: what changed and why it matters, with 
 - **What's new in the game:** the update notice has a button that opens the changelog for the version it's installing.
 - **The release notes on GitHub** are the same changelog.
 - **Updates check the Frontline server first** for the latest version, so the game, the website and the server always agree on what's current.
+
+</details>
+
+<details>
+<summary>Compare changelog layouts</summary>
+
+Changelog presentation comparison, not gameplay: the top 1,000 pixels of this entry at the same 900-pixel viewport width. Open either image to inspect it.
+
+![Before: old changelog layout](changelog/v1.0.0/changelog/layout-before.jpg)
+
+![After: new changelog layout](changelog/v1.0.0/changelog/layout-after.jpg)
 
 </details>
 
@@ -1426,6 +2042,17 @@ Sandbags, wire, tank traps, minefields, walls, nests, pits, bunkers and towers a
 
 </details>
 
+<details>
+<summary>Compare changelog layouts</summary>
+
+Changelog presentation comparison, not gameplay: the top 1,000 pixels of this entry at the same 900-pixel viewport width. Open either image to inspect it.
+
+![Before: old changelog layout](changelog/v1.0.0/field-defences/layout-before.jpg)
+
+![After: new changelog layout](changelog/v1.0.0/field-defences/layout-after.jpg)
+
+</details>
+
 #### Change any key
 
 Find and change any keyboard action, with two bindings per action and individual resets.
@@ -1443,6 +2070,17 @@ Every key the game uses can now be changed in Settings > Controls: grouped by ca
 - **Search** for an action or a key, reset one action, or reset everything.
 - **The hints follow your keys:** the command card, the controls help (F1), tooltips and the loading screen's tips all show the keys as you've set them.
 - **Two new optional keys:** one to ping at the cursor (hold it for the ping wheel), and one to step through your co-commanders' views.
+
+</details>
+
+<details>
+<summary>Compare changelog layouts</summary>
+
+Changelog presentation comparison, not gameplay: the top 1,000 pixels of this entry at the same 900-pixel viewport width. Open either image to inspect it.
+
+![Before: old changelog layout](changelog/v1.0.0/rebindable-controls/layout-before.jpg)
+
+![After: new changelog layout](changelog/v1.0.0/rebindable-controls/layout-after.jpg)
 
 </details>
 
@@ -1470,6 +2108,17 @@ Pick a theme for the whole interface in Settings > Interface: Field Brass, Night
 
 </details>
 
+<details>
+<summary>Compare changelog layouts</summary>
+
+Changelog presentation comparison, not gameplay: the top 1,000 pixels of this entry at the same 900-pixel viewport width. Open either image to inspect it.
+
+![Before: old changelog layout](changelog/v1.0.0/interface-themes/layout-before.jpg)
+
+![After: new changelog layout](changelog/v1.0.0/interface-themes/layout-after.jpg)
+
+</details>
+
 #### A living map behind the title and menu
 
 A moving topographic map brings the title, menus and loading screen to life.
@@ -1494,6 +2143,17 @@ The title screen, the main menu and the loading screen now sit on a living topog
 
 </details>
 
+<details>
+<summary>Compare changelog layouts</summary>
+
+Changelog presentation comparison, not gameplay: the top 1,000 pixels of this entry at the same 900-pixel viewport width. Open either image to inspect it.
+
+![Before: old changelog layout](changelog/v1.0.0/living-map/layout-before.jpg)
+
+![After: new changelog layout](changelog/v1.0.0/living-map/layout-after.jpg)
+
+</details>
+
 #### A service record, and a sign-in you can find
 
 Sign in from the main menu to keep a battle history and reopen past after-action reports.
@@ -1513,6 +2173,17 @@ Sign in from the account card at the top right of the main menu. Signed in, ever
 ![Your service record: your career, and every battle](changelog/v1.0.0/service-record/service-record.jpg)
 
 ![Any battle's after-action report, opened again](changelog/v1.0.0/service-record/past-report.jpg)
+
+</details>
+
+<details>
+<summary>Compare changelog layouts</summary>
+
+Changelog presentation comparison, not gameplay: the top 1,000 pixels of this entry at the same 900-pixel viewport width. Open either image to inspect it.
+
+![Before: old changelog layout](changelog/v1.0.0/service-record/layout-before.jpg)
+
+![After: new changelog layout](changelog/v1.0.0/service-record/layout-after.jpg)
 
 </details>
 
@@ -1551,6 +2222,17 @@ Muzzle flashes, tracers, recoil and bullet impacts are rebuilt from scratch: eve
 
 </details>
 
+<details>
+<summary>Compare changelog layouts</summary>
+
+Changelog presentation comparison, not gameplay: the top 1,000 pixels of this entry at the same 900-pixel viewport width. Open either image to inspect it.
+
+![Before: old changelog layout](changelog/v1.0.0/gunfire-effects/layout-before.jpg)
+
+![After: new changelog layout](changelog/v1.0.0/gunfire-effects/layout-after.jpg)
+
+</details>
+
 #### Water that looks like water, and sea battles to match
 
 Fight across rolling water with breaking surf, boat wakes and vessels that visibly sink when destroyed.
@@ -1579,6 +2261,17 @@ The sea rolls in and breaks on the beach, you can see the sand through the shall
 
 </details>
 
+<details>
+<summary>Compare changelog layouts</summary>
+
+Changelog presentation comparison, not gameplay: the top 1,000 pixels of this entry at the same 900-pixel viewport width. Open either image to inspect it.
+
+![Before: old changelog layout](changelog/v1.0.0/water-and-sea-battles/layout-before.jpg)
+
+![After: new changelog layout](changelog/v1.0.0/water-and-sea-battles/layout-after.jpg)
+
+</details>
+
 #### Towns in the help and loading tips
 
 Learn how towns are captured and supplied through in-game help and loading tips.
@@ -1590,6 +2283,17 @@ The in-game help (F1) now explains towns: how to take one, what holding it gives
 
 - **F1 help:** a new Towns line covers taking a town, what it gives you, and clicking its dump. The Supply line points at the income shown in the top bar.
 - **Loading screen:** two new tips point new players at the villages, and warn that a town shelled to ruins gives far less.
+
+</details>
+
+<details>
+<summary>Compare changelog layouts</summary>
+
+Changelog presentation comparison, not gameplay: the top 1,000 pixels of this entry at the same 900-pixel viewport width. Open either image to inspect it.
+
+![Before: old changelog layout](changelog/v1.0.0/towns-in-help/layout-before.jpg)
+
+![After: new changelog layout](changelog/v1.0.0/towns-in-help/layout-after.jpg)
 
 </details>
 
@@ -1607,6 +2311,17 @@ In a battle with three or more players, everyone else's game reported a network 
 - **More players:** a third or later player joining no longer sets off an error on the other players' games.
 - **Long map builds:** every player's connection to the host still waits patiently while the host lays out the map,
   so nobody is dropped before the battle starts.
+
+</details>
+
+<details>
+<summary>Compare changelog layouts</summary>
+
+Changelog presentation comparison, not gameplay: the top 1,000 pixels of this entry at the same 900-pixel viewport width. Open either image to inspect it.
+
+![Before: old changelog layout](changelog/v1.0.0/joins-with-more-players/layout-before.jpg)
+
+![After: new changelog layout](changelog/v1.0.0/joins-with-more-players/layout-after.jpg)
 
 </details>
 
@@ -1638,6 +2353,17 @@ Each commander on your side gets a colour, and you see where they're looking, th
 
 </details>
 
+<details>
+<summary>Compare changelog layouts</summary>
+
+Changelog presentation comparison, not gameplay: the top 1,000 pixels of this entry at the same 900-pixel viewport width. Open either image to inspect it.
+
+![Before: old changelog layout](changelog/v0.1.8/co-commanders/layout-before.jpg)
+
+![After: new changelog layout](changelog/v0.1.8/co-commanders/layout-after.jpg)
+
+</details>
+
 #### Pings and map sketches
 
 Point out threats, request help and sketch plans directly on the shared battlefield and minimap.
@@ -1651,6 +2377,17 @@ Mark an enemy, a unit or a spot with a ping, pick a call from the ping wheel, or
 - **Ping wheel:** hold Alt and the left button, then let go on attack, on my way, need support, danger, defend or look. "On my way" draws a line from your units to the spot.
 - **Sketch:** Alt + right-drag draws a line your side can see, on the battlefield or the minimap.
 - **Space** jumps to the newest alert or ping. Pings chime and go in the message log.
+
+</details>
+
+<details>
+<summary>Compare changelog layouts</summary>
+
+Changelog presentation comparison, not gameplay: the top 1,000 pixels of this entry at the same 900-pixel viewport width. Open either image to inspect it.
+
+![Before: old changelog layout](changelog/v0.1.8/pings/layout-before.jpg)
+
+![After: new changelog layout](changelog/v0.1.8/pings/layout-after.jpg)
 
 </details>
 
@@ -1680,6 +2417,17 @@ Settings > Display > Window size was saved but ignored at launch, so the game al
 
 </details>
 
+<details>
+<summary>Compare changelog layouts</summary>
+
+Changelog presentation comparison, not gameplay: the top 1,000 pixels of this entry at the same 900-pixel viewport width. Open either image to inspect it.
+
+![Before: old changelog layout](changelog/v0.1.7/window-size/layout-before.jpg)
+
+![After: new changelog layout](changelog/v0.1.7/window-size/layout-after.jpg)
+
+</details>
+
 #### The squad card fits a narrow panel
 
 Attack stages and squad orders remain readable together at the largest interface scale.
@@ -1688,6 +2436,17 @@ Attack stages and squad orders remain readable together at the largest interface
 <summary>Explore this change</summary>
 
 At the largest interface scale, an attack's PLAN › MOVE › ASSAULT › SECURE steps were drawn over the squad's orders. Now they move to a line of their own when there's no room.
+
+</details>
+
+<details>
+<summary>Compare changelog layouts</summary>
+
+Changelog presentation comparison, not gameplay: the top 1,000 pixels of this entry at the same 900-pixel viewport width. Open either image to inspect it.
+
+![Before: old changelog layout](changelog/v0.1.7/squad-card/layout-before.jpg)
+
+![After: new changelog layout](changelog/v0.1.7/squad-card/layout-after.jpg)
 
 </details>
 
@@ -1723,6 +2482,17 @@ Each village and the town has a named supply dump. Hold the ground round it and 
 
 </details>
 
+<details>
+<summary>Compare changelog layouts</summary>
+
+Changelog presentation comparison, not gameplay: the top 1,000 pixels of this entry at the same 900-pixel viewport width. Open either image to inspect it.
+
+![Before: old changelog layout](changelog/v0.1.6/towns/layout-before.jpg)
+
+![After: new changelog layout](changelog/v0.1.6/towns/layout-after.jpg)
+
+</details>
+
 ### Improved
 
 #### A clearer supply picture
@@ -1738,6 +2508,17 @@ The top bar shows your income per minute and how many towns you hold, and the or
 - **Town lines** beside the FOB lines show each town's stock and rate and where its truck is going. A town being taken, or whose truck was destroyed or blocked, gets a red line of its own.
 - **On the minimap** each town is a flag in its holder's colour inside its ring, and the ring fills with the colour of whoever is taking it.
 - **On the battlefield** each town has a name plate, its ring is drawn on the ground when the camera is near, and a capture bar shows over the dump.
+
+</details>
+
+<details>
+<summary>Compare changelog layouts</summary>
+
+Changelog presentation comparison, not gameplay: the top 1,000 pixels of this entry at the same 900-pixel viewport width. Open either image to inspect it.
+
+![Before: old changelog layout](changelog/v0.1.6/supply-picture/layout-before.jpg)
+
+![After: new changelog layout](changelog/v0.1.6/supply-picture/layout-after.jpg)
 
 </details>
 
@@ -1763,6 +2544,17 @@ Burning buildings had the same rolling-surf sound the wind used to have. Now a f
 
 </details>
 
+<details>
+<summary>Compare changelog layouts</summary>
+
+Changelog presentation comparison, not gameplay: the top 1,000 pixels of this entry at the same 900-pixel viewport width. Open either image to inspect it.
+
+![Before: old changelog layout](changelog/v0.1.5/fire-sound/layout-before.jpg)
+
+![After: new changelog layout](changelog/v0.1.5/fire-sound/layout-after.jpg)
+
+</details>
+
 #### No more distortion when shells land together
 
 Overlapping explosions no longer overload the sound output and distort.
@@ -1771,6 +2563,17 @@ Overlapping explosions no longer overload the sound output and distort.
 <summary>Explore this change</summary>
 
 When several explosions went off at once the sound could clip. A limiter on the master volume now holds it just under the top, and everyday levels are unchanged.
+
+</details>
+
+<details>
+<summary>Compare changelog layouts</summary>
+
+Changelog presentation comparison, not gameplay: the top 1,000 pixels of this entry at the same 900-pixel viewport width. Open either image to inspect it.
+
+![Before: old changelog layout](changelog/v0.1.5/explosion-clipping/layout-before.jpg)
+
+![After: new changelog layout](changelog/v0.1.5/explosion-clipping/layout-after.jpg)
 
 </details>
 
@@ -1802,6 +2605,17 @@ Ground your side can't see right now is drawn darker on the battlefield and the 
 
 </details>
 
+<details>
+<summary>Compare changelog layouts</summary>
+
+Changelog presentation comparison, not gameplay: the top 1,000 pixels of this entry at the same 900-pixel viewport width. Open either image to inspect it.
+
+![Before: old changelog layout](changelog/v0.1.4/fog-of-war/layout-before.jpg)
+
+![After: new changelog layout](changelog/v0.1.4/fog-of-war/layout-after.jpg)
+
+</details>
+
 #### Aircraft that spot, recon flights and overwatch drones
 
 Use aircraft and overwatch drones to reveal ground ahead of your troops.
@@ -1821,6 +2635,17 @@ Every aircraft now reveals the ground it flies over. New fire-support calls fly 
 - The enemy is warned when a recon flight or overwatch drone comes over, and the AI calls recon flights before it attacks ground it can't see.
 
 ![The Caesar spotter plane](changelog/v0.1.4/recon-flights/spotter-plane.jpg)
+
+</details>
+
+<details>
+<summary>Compare changelog layouts</summary>
+
+Changelog presentation comparison, not gameplay: the top 1,000 pixels of this entry at the same 900-pixel viewport width. Open either image to inspect it.
+
+![Before: old changelog layout](changelog/v0.1.4/recon-flights/layout-before.jpg)
+
+![After: new changelog layout](changelog/v0.1.4/recon-flights/layout-after.jpg)
 
 </details>
 
@@ -1848,6 +2673,17 @@ Music, made in code like everything else: a theme for the menu, and a battle sco
 
 </details>
 
+<details>
+<summary>Compare changelog layouts</summary>
+
+Changelog presentation comparison, not gameplay: the top 1,000 pixels of this entry at the same 900-pixel viewport width. Open either image to inspect it.
+
+![Before: old changelog layout](changelog/v0.1.3/soundtrack/layout-before.jpg)
+
+![After: new changelog layout](changelog/v0.1.3/soundtrack/layout-after.jpg)
+
+</details>
+
 ### Improved
 
 #### A volume slider for each kind of sound
@@ -1868,6 +2704,17 @@ Settings > Audio has separate sliders for music, effects, ambience and the inter
 
 </details>
 
+<details>
+<summary>Compare changelog layouts</summary>
+
+Changelog presentation comparison, not gameplay: the top 1,000 pixels of this entry at the same 900-pixel viewport width. Open either image to inspect it.
+
+![Before: old changelog layout](changelog/v0.1.3/audio-settings/layout-before.jpg)
+
+![After: new changelog layout](changelog/v0.1.3/audio-settings/layout-after.jpg)
+
+</details>
+
 ### Fixed
 
 #### Wind that sounds like wind, not surf
@@ -1882,6 +2729,17 @@ The ambience used to sound like waves breaking. Now it's rushing air with gusts 
 - The wind no longer swells and fades on a fixed four-second cycle, or gets louder as you zoom out.
 - The distant battle is far-off thumps and bursts instead of a low rumble.
 - Wind, rain and the distant battle loop without a seam.
+
+</details>
+
+<details>
+<summary>Compare changelog layouts</summary>
+
+Changelog presentation comparison, not gameplay: the top 1,000 pixels of this entry at the same 900-pixel viewport width. Open either image to inspect it.
+
+![Before: old changelog layout](changelog/v0.1.3/wind/layout-before.jpg)
+
+![After: new changelog layout](changelog/v0.1.3/wind/layout-after.jpg)
 
 </details>
 
@@ -1913,6 +2771,17 @@ Shells, bombs and burning wrecks set things alight. Fires take hold, roar, sprea
 
 </details>
 
+<details>
+<summary>Compare changelog layouts</summary>
+
+Changelog presentation comparison, not gameplay: the top 1,000 pixels of this entry at the same 900-pixel viewport width. Open either image to inspect it.
+
+![Before: old changelog layout](changelog/v0.1.2/fire/layout-before.jpg)
+
+![After: new changelog layout](changelog/v0.1.2/fire/layout-after.jpg)
+
+</details>
+
 ### Improved
 
 #### Bigger explosions and smoke
@@ -1928,6 +2797,17 @@ Explosions throw a proper fireball and debris, and smoke rises as one billowing 
 
 - Fireballs last long enough to see, and the bigger the round, the bigger the blast.
 - Smoke from fires and wrecks rises as a continuous column and drifts with the wind.
+
+</details>
+
+<details>
+<summary>Compare changelog layouts</summary>
+
+Changelog presentation comparison, not gameplay: the top 1,000 pixels of this entry at the same 900-pixel viewport width. Open either image to inspect it.
+
+![Before: old changelog layout](changelog/v0.1.2/explosions-and-smoke/layout-before.jpg)
+
+![After: new changelog layout](changelog/v0.1.2/explosions-and-smoke/layout-after.jpg)
 
 </details>
 
@@ -1960,6 +2840,17 @@ Interface scale now follows the size of your window, text and symbols stay crisp
 
 </details>
 
+<details>
+<summary>Compare changelog layouts</summary>
+
+Changelog presentation comparison, not gameplay: the top 1,000 pixels of this entry at the same 900-pixel viewport width. Open either image to inspect it.
+
+![Before: old changelog layout](changelog/v0.1.1/interface-scale/layout-before.jpg)
+
+![After: new changelog layout](changelog/v0.1.1/interface-scale/layout-after.jpg)
+
+</details>
+
 ## v0.1.0: First Release
 
 *16 October 2026* · [Release on GitHub](https://github.com/Dynasty9/Frontline/releases/tag/v0.1.0)
@@ -1987,6 +2878,17 @@ Press Find Match to drop into an open battle, or host one for the next player to
 
 </details>
 
+<details>
+<summary>Compare changelog layouts</summary>
+
+Changelog presentation comparison, not gameplay: the top 1,000 pixels of this entry at the same 900-pixel viewport width. Open either image to inspect it.
+
+![Before: old changelog layout](changelog/v0.1.0/online-play/layout-before.jpg)
+
+![After: new changelog layout](changelog/v0.1.0/online-play/layout-after.jpg)
+
+</details>
+
 #### Missions
 
 Play five objective-driven operations alone or with friends, with radio updates guiding the action.
@@ -2000,6 +2902,17 @@ Five short operations with objectives and radio traffic, to play alone or in co-
 
 - Each mission sets a side, a goal and a time of day, and ends in **Mission accomplished** or **Mission failed**.
 - Play them alone, or host one for friends to join in co-op.
+
+</details>
+
+<details>
+<summary>Compare changelog layouts</summary>
+
+Changelog presentation comparison, not gameplay: the top 1,000 pixels of this entry at the same 900-pixel viewport width. Open either image to inspect it.
+
+![Before: old changelog layout](changelog/v0.1.0/missions/layout-before.jpg)
+
+![After: new changelog layout](changelog/v0.1.0/missions/layout-after.jpg)
 
 </details>
 
@@ -2021,6 +2934,17 @@ When a new version comes out, the game downloads it in the background, checks it
 
 </details>
 
+<details>
+<summary>Compare changelog layouts</summary>
+
+Changelog presentation comparison, not gameplay: the top 1,000 pixels of this entry at the same 900-pixel viewport width. Open either image to inspect it.
+
+![Before: old changelog layout](changelog/v0.1.0/self-updating/layout-before.jpg)
+
+![After: new changelog layout](changelog/v0.1.0/self-updating/layout-after.jpg)
+
+</details>
+
 #### The Frontline website
 
 Find live battles, join them in the game, and download Frontline from one website.
@@ -2033,6 +2957,17 @@ The battles being hosted right now, a Join button that opens the game and connec
 - **Join from the browser:** click Join on any battle and the game opens (or the one you have open takes over) and connects you.
 - **Downloads** for Windows and Linux, always the latest version.
 - Start the game once after downloading, so your computer knows how to open the site's Join links.
+
+</details>
+
+<details>
+<summary>Compare changelog layouts</summary>
+
+Changelog presentation comparison, not gameplay: the top 1,000 pixels of this entry at the same 900-pixel viewport width. Open either image to inspect it.
+
+![Before: old changelog layout](changelog/v0.1.0/website/layout-before.jpg)
+
+![After: new changelog layout](changelog/v0.1.0/website/layout-after.jpg)
 
 </details>
 
@@ -2060,6 +2995,17 @@ The mouse wheel zooms towards the cursor, middle-drag turns and tilts, and the m
 
 </details>
 
+<details>
+<summary>Compare changelog layouts</summary>
+
+Changelog presentation comparison, not gameplay: the top 1,000 pixels of this entry at the same 900-pixel viewport width. Open either image to inspect it.
+
+![Before: old changelog layout](changelog/v0.1.0/camera-and-minimap/layout-before.jpg)
+
+![After: new changelog layout](changelog/v0.1.0/camera-and-minimap/layout-after.jpg)
+
+</details>
+
 #### Restyled soldiers
 
 Recognize soldiers and their roles more easily from the battle camera, with clearer silhouettes and equipment.
@@ -2070,5 +3016,16 @@ Recognize soldiers and their roles more easily from the battle camera, with clea
 Soldiers have a new look, after the early Metal Gear Solid games: chunkier, clearer silhouettes that read well from the battle camera.
 
 - New proportions and gear for both sides, so riflemen, gunners and engineers are easier to tell apart at a glance.
+
+</details>
+
+<details>
+<summary>Compare changelog layouts</summary>
+
+Changelog presentation comparison, not gameplay: the top 1,000 pixels of this entry at the same 900-pixel viewport width. Open either image to inspect it.
+
+![Before: old changelog layout](changelog/v0.1.0/restyled-soldiers/layout-before.jpg)
+
+![After: new changelog layout](changelog/v0.1.0/restyled-soldiers/layout-after.jpg)
 
 </details>

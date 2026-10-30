@@ -20,6 +20,11 @@ caption = "Rounds landing in a field: earth spurting up, grit flying, dust hangi
 [[screenshots]]
 file = "before-after-night.jpg"
 caption = "The same moment before and after"
+
+[layout_comparison]
+before = "layout-before.jpg"
+after = "layout-after.jpg"
+caption = "Changelog presentation comparison, not gameplay: the top 1,000 pixels of this entry at the same 900-pixel viewport width. Open either image to inspect it."
 +++
 
 Muzzle flashes, tracers, recoil and bullet impacts are rebuilt from scratch: every shot flashes and kicks, tracers glow in each side's colour, and what a round hits decides what flies off it.

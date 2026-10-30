@@ -16,6 +16,11 @@ caption = "Fish swim together beneath the river surface. Recorded in the current
 file = "dolphin-leap.webm"
 poster = "dolphin-leap-poster.jpg"
 caption = "Dolphins surface and leap through the ocean swell. Recorded in the current build, October 2026."
+
+[layout_comparison]
+before = "layout-before.jpg"
+after = "layout-after.jpg"
+caption = "Changelog presentation comparison, not gameplay: the top 1,000 pixels of this entry at the same 900-pixel viewport width. Open either image to inspect it."
 +++
 
 The battlefield has life of its own now. Birds feed in the fields and burst up at gunfire, crows and gulls wheel overhead, rats run along the walls in town, fish jump in the rivers, ducks paddle on the ponds and dolphins roll through the swell offshore. Settings > Graphics > Wildlife turns it down, or off.

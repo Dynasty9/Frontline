@@ -13,6 +13,11 @@ file = "before.png"
 caption = "Before: the generated 3 km battlefield at command zoom."
 
 
+
+[layout_comparison]
+before = "layout-before.jpg"
+after = "layout-after.jpg"
+caption = "Changelog presentation comparison, not gameplay: the top 1,000 pixels of this entry at the same 900-pixel viewport width. Open either image to inspect it."
 +++
 
 Scenery follows the camera's view, and soldiers avoid repeating sight checks against unchanged walls.

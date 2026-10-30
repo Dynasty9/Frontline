@@ -8,6 +8,11 @@ headline = true
 [[screenshots]]
 file = "co-commanders.jpg"
 caption = "Two commanders: one aiming artillery, one digging a trench line, with their views, pings and the Command Net"
+
+[layout_comparison]
+before = "layout-before.jpg"
+after = "layout-after.jpg"
+caption = "Changelog presentation comparison, not gameplay: the top 1,000 pixels of this entry at the same 900-pixel viewport width. Open either image to inspect it."
 +++
 
 Each commander on your side gets a colour, and you see where they're looking, their cursor, what they control and what they're about to commit to, so two of you don't shell the same wood or storm the same house.

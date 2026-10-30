@@ -13,6 +13,11 @@ file = "before.jpg"
 caption = "The large-map battle before scenery drawing is combined."
 
 
+
+[layout_comparison]
+before = "layout-before.jpg"
+after = "layout-after.jpg"
+caption = "Changelog presentation comparison, not gameplay: the top 1,000 pixels of this entry at the same 900-pixel viewport width. Open either image to inspect it."
 +++
 
 Large battles draw buildings and squad symbols with less repeated work, while damage, cover and individual soldiers keep their existing behavior.

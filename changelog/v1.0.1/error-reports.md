@@ -7,6 +7,11 @@ kind = "new"
 [[screenshots]]
 file = "send-error-reports.jpg"
 caption = "The switch, at the bottom of Settings > Interface"
+
+[layout_comparison]
+before = "layout-before.jpg"
+after = "layout-after.jpg"
+caption = "Changelog presentation comparison, not gameplay: the top 1,000 pixels of this entry at the same 900-pixel viewport width. Open either image to inspect it."
 +++
 
 When something goes wrong in the game, or it crashes, it now tells the developers what failed and where, so it can be fixed. Nothing about you is sent, and Settings turns it off.

@@ -59,6 +59,27 @@ class Videos(unittest.TestCase):
             self.assertIn("Details.", details)
             self.assertIn("</details>", details)
 
+    def test_layout_comparison_follows_release_filing_and_publication(self):
+        (self.folder / "before.jpg").write_bytes(b"old layout")
+        self.write(self.media + '\n[layout_comparison]\nbefore="before.jpg"\nafter="poster.jpg"\ncaption="Same viewport, different layouts."\n')
+        with patch.object(changelog, "pr_of", return_value=None):
+            changelog.release("9.9.9")
+        layout = json.loads(changelog.WEB_JSON.read_text())["releases"][0]["entries"][0]["layoutComparison"]
+        self.assertTrue(layout["before"].endswith("/v9.9.9/fire/before.jpg"))
+        self.assertTrue(layout["after"].endswith("/v9.9.9/fire/poster.jpg"))
+        for text in [changelog.notes("9.9.9"), changelog.CHANGELOG_MD.read_text()]:
+            self.assertIn("Compare changelog layouts", text)
+            self.assertIn("Same viewport, different layouts.", text)
+            self.assertIn("Before: old changelog layout", text)
+            self.assertIn("After: new changelog layout", text)
+
+    def test_rejects_missing_escaped_or_identical_layout_images(self):
+        for before, after in [("missing.jpg", "poster.jpg"), ("../poster.jpg", "poster.jpg"), ("poster.jpg", "poster.jpg")]:
+            with self.subTest(before=before):
+                self.write(self.media + f'\n[layout_comparison]\nbefore="{before}"\nafter="{after}"\ncaption="Layout comparison."\n')
+                with self.assertRaises(changelog.EntryError):
+                    changelog.read_entry(self.entry)
+
     def test_old_entries_need_no_video(self):
         self.write("")
         self.assertEqual(changelog.read_entry(self.entry)["videos"], [])

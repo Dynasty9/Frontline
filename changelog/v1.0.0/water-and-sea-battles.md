@@ -24,6 +24,11 @@ caption = "Before and after: the harbour and the river"
 file = "boat-sinking.mp4"
 poster = "boat-sinking-poster.jpg"
 caption = "A burning boat settles into the sea as foam spreads around its hull. Recorded in the current build, October 2026."
+
+[layout_comparison]
+before = "layout-before.jpg"
+after = "layout-after.jpg"
+caption = "Changelog presentation comparison, not gameplay: the top 1,000 pixels of this entry at the same 900-pixel viewport width. Open either image to inspect it."
 +++
 
 The sea rolls in and breaks on the beach, you can see the sand through the shallows, and boats leave real wakes. A boat that's sunk now goes down burning and leaves an oil slick, instead of just vanishing.

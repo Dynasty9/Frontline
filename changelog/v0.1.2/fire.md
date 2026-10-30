@@ -12,6 +12,11 @@ caption = "A hedgerow and a grass fire, with smoke drifting downwind"
 [[screenshots]]
 file = "fire-night.jpg"
 caption = "The same fires at night"
+
+[layout_comparison]
+before = "layout-before.jpg"
+after = "layout-after.jpg"
+caption = "Changelog presentation comparison, not gameplay: the top 1,000 pixels of this entry at the same 900-pixel viewport width. Open either image to inspect it."
 +++
 
 Shells, bombs and burning wrecks set things alight. Fires take hold, roar, spread to whatever will burn nearby (much more readily downwind), and burn themselves out.

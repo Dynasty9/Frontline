@@ -20,6 +20,11 @@ caption = "Detailed vehicle materials at distant camera range, magnified for com
 [[screenshots]]
 file = "vehicle-after.png"
 caption = "Distant vehicles share simpler material surfaces while retaining their silhouettes and moving turrets."
+
+[layout_comparison]
+before = "layout-before.jpg"
+after = "layout-after.jpg"
+caption = "Changelog presentation comparison, not gameplay: the top 1,000 pixels of this entry at the same 900-pixel viewport width. Open either image to inspect it."
 +++
 
 Desktop solo battles run simulation separately, share more AI work, and draw distant soldiers more efficiently. Skirmishes offer maps up to 3,072 metres across.

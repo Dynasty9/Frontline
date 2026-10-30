@@ -24,6 +24,11 @@ caption = "F1 is now a key reference you can take in at a glance"
 [[screenshots]]
 file = "pause-menu.jpg"
 caption = "The Esc menu"
+
+[layout_comparison]
+before = "layout-before.jpg"
+after = "layout-after.jpg"
+caption = "Changelog presentation comparison, not gameplay: the top 1,000 pixels of this entry at the same 900-pixel viewport width. Open either image to inspect it."
 +++
 
 The battle's interface now reads like a battle management display laid onto the battlefield: no more boxes, short codes instead of sentences, every figure lined up in mono, and one colour for what's selected.

@@ -8,6 +8,11 @@ headline = true
 [[screenshots]]
 file = "controls.jpg"
 caption = "Settings > Controls: every action by category, with two keys each"
+
+[layout_comparison]
+before = "layout-before.jpg"
+after = "layout-after.jpg"
+caption = "Changelog presentation comparison, not gameplay: the top 1,000 pixels of this entry at the same 900-pixel viewport width. Open either image to inspect it."
 +++
 
 Every key the game uses can now be changed in Settings > Controls: grouped by category, two keys per action, with a search box and a reset for each.

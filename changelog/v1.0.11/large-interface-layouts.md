@@ -20,6 +20,11 @@ caption = "Before: maximum interface scale pushes the Controls dialog beyond the
 [[screenshots]]
 file = "controls-after.jpg"
 caption = "After: the dialog fits the window and its contents can be scrolled."
+
+[layout_comparison]
+before = "layout-before.jpg"
+after = "layout-after.jpg"
+caption = "Changelog presentation comparison, not gameplay: the top 1,000 pixels of this entry at the same 900-pixel viewport width. Open either image to inspect it."
 +++
 
 Pause menus, controls, lobby rosters and the server browser stay usable at maximum interface scale and in small windows.

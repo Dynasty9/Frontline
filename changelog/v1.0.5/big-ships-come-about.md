@@ -2,6 +2,11 @@
 title = "Big ships come about without running aground"
 summary = "Large boats use the space available to turn, rejoin their route and back away from the shore."
 kind = "fixed"
+
+[layout_comparison]
+before = "layout-before.jpg"
+after = "layout-after.jpg"
+caption = "Changelog presentation comparison, not gameplay: the top 1,000 pixels of this entry at the same 900-pixel viewport width. Open either image to inspect it."
 +++
 
 A patrol ship sent somewhere astern now turns the way it has room for and joins its route further on, instead of circling back to where it started and running up the beach. A boat that touches the shore backs off it.

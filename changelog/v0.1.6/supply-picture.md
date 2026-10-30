@@ -2,6 +2,11 @@
 title = "A clearer supply picture"
 summary = "See which towns support your force, how much they produce, and where their delivery trucks are going."
 kind = "improved"
+
+[layout_comparison]
+before = "layout-before.jpg"
+after = "layout-after.jpg"
+caption = "Changelog presentation comparison, not gameplay: the top 1,000 pixels of this entry at the same 900-pixel viewport width. Open either image to inspect it."
 +++
 
 The top bar shows your income per minute and how many towns you hold, and the order of battle lists each town's stock, rate and truck.

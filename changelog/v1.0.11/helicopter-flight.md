@@ -16,6 +16,11 @@ caption = "Before: a transport changes direction directly toward its new destina
 file = "helicopter-turn.mp4"
 poster = "helicopter-turn-poster.jpg"
 caption = "A Mohawk banks and settles over its sling pickup. Recorded in the current build, October 2026."
+
+[layout_comparison]
+before = "layout-before.jpg"
+after = "layout-after.jpg"
+caption = "Changelog presentation comparison, not gameplay: the top 1,000 pixels of this entry at the same 900-pixel viewport width. Open either image to inspect it."
 +++
 
 Rotorcraft carry momentum through turns, bank and pitch as they accelerate, and flare into a stable hover before landing.

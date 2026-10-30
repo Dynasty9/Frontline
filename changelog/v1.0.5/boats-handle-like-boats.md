@@ -7,6 +7,11 @@ kind = "improved"
 file = "boat-turn.mp4"
 poster = "boat-turn-poster.jpg"
 caption = "An RHIB turns toward the beach, trailing a curved wake as it comes ashore. Recorded in the current build, October 2026."
+
+[layout_comparison]
+before = "layout-before.jpg"
+after = "layout-after.jpg"
+caption = "Changelog presentation comparison, not gameplay: the top 1,000 pixels of this entry at the same 900-pixel viewport width. Open either image to inspect it."
 +++
 
 Boats no longer drive like cars on water. They slide through it, skid in a hard turn, have no brakes, answer the helm after a moment and are carried by a river's current, and their coxswains handle them like it.

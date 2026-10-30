@@ -81,6 +81,7 @@ def read_entry(path: Path) -> dict:
         "screenshots": [],
         "videos": [],
         "body": m.group(2).strip(),
+        "layout_comparison": None,
         "path": path,
     }
     problems = []
@@ -122,6 +123,24 @@ def read_entry(path: Path) -> dict:
         if not media["caption"]:
             problems.append("videos need a caption describing what the clip shows")
         entry["videos"].append(media)
+    layout = meta.get("layout_comparison")
+    if layout is not None:
+        if not isinstance(layout, dict):
+            problems.append("layout_comparison must be a table")
+        else:
+            for key in ["before", "after"]:
+                name = layout.get(key, "")
+                if not isinstance(name, str) or not name or any(c in name for c in "/\\:"):
+                    problems.append(f"layout_comparison {key} must be a local image filename")
+                    continue
+                image = path.parent / slug / name
+                if not image.is_file() or image.suffix.lower() not in IMAGE_EXT or image.stat().st_size > MAX_IMAGE:
+                    problems.append(f"layout_comparison {key} is missing, unsupported or oversized")
+            if layout.get("before") == layout.get("after"):
+                problems.append("layout_comparison needs two distinct images")
+            if not str(layout.get("caption", "")).strip():
+                problems.append("layout_comparison needs an explanatory caption")
+            entry["layout_comparison"] = {key: str(layout.get(key, "")) for key in ["before", "after", "caption"]}
     if problems:
         raise EntryError(f"{rel(path)}:\n  - " + "\n  - ".join(problems))
     return entry
@@ -218,6 +237,7 @@ def build() -> None:
                         "kind": e["kind"],
                         "summary": e["summary"],
                         "body": e["body"],
+                        "layoutComparison": ({key: value if key == "caption" else image_url(r, e, {"file": value}) for key, value in e["layout_comparison"].items()} if e["layout_comparison"] else None),
                         "screenshots": [{"url": image_url(r, e, s), "caption": s["caption"]} for s in e["screenshots"]],
                         "videos": [{"url": image_url(r, e, v), "poster": image_url(r, e, {"file": v["poster"]}),
                                     "caption": v["caption"]} for v in e["videos"]],
@@ -262,6 +282,11 @@ def build() -> None:
                     for video in e["videos"][1:]:
                         md += [f"[Watch: {video['caption']}]({WEBSITE}/changelog/#{r['tag']})", ""]
                     md += ["</details>", ""]
+                if e["layout_comparison"]:
+                    layout = e["layout_comparison"]
+                    md += ["<details>", "<summary>Compare changelog layouts</summary>", "", layout["caption"], "",
+                           f"![Before: old changelog layout](changelog/{r['tag']}/{e['slug']}/{layout['before']})", "",
+                           f"![After: new changelog layout](changelog/{r['tag']}/{e['slug']}/{layout['after']})", "", "</details>", ""]
     CHANGELOG_MD.write_text("\n".join(md).rstrip() + "\n", encoding="utf-8", newline="\n")
 
 
@@ -291,6 +316,11 @@ def notes(version: str) -> str:
                 for video in e["videos"][1:]:
                     out += [f"[Watch: {video['caption']}]({WEBSITE}/changelog/#{r['tag']})", ""]
                 out += ["</details>", ""]
+            if e["layout_comparison"]:
+                layout = e["layout_comparison"]
+                out += ["<details>", "<summary>Compare changelog layouts</summary>", "", layout["caption"], "",
+                        f"![Before: old changelog layout]({image_url(r, e, {'file': layout['before']})})", "",
+                        f"![After: new changelog layout]({image_url(r, e, {'file': layout['after']})})", "", "</details>", ""]
     out += [
         "## Get it",
         "",

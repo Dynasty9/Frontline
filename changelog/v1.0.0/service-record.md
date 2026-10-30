@@ -15,6 +15,11 @@ caption = "Your service record: your career, and every battle"
 [[screenshots]]
 file = "past-report.jpg"
 caption = "Any battle's after-action report, opened again"
+
+[layout_comparison]
+before = "layout-before.jpg"
+after = "layout-after.jpg"
+caption = "Changelog presentation comparison, not gameplay: the top 1,000 pixels of this entry at the same 900-pixel viewport width. Open either image to inspect it."
 +++
 
 Sign in from the account card at the top right of the main menu. Signed in, every battle you fight goes on your service record, and you can open any of their after-action reports again.

@@ -22,6 +22,15 @@ caption = "Expand the original notes and supporting gallery without leaving the 
 [[screenshots]]
 file = "phone-entry.jpg"
 caption = "On phones, the same explanation and uncropped image stack into one readable column."
+
+[[screenshots]]
+file = "layout-review-ui.jpg"
+caption = "Compare changelog layouts opens an entry-specific old/new presentation review, with both captures available at full size."
+
+[layout_comparison]
+before = "layout-before.jpg"
+after = "layout-after.jpg"
+caption = "Changelog presentation comparison, not gameplay: the top 1,000 pixels of this entry at the same 900-pixel viewport width. Open either image to inspect it. This entry is new; its content is rendered through both layouts for comparison."
 +++
 
 All 87 published entries now begin with a concise player-facing summary. Archived
@@ -42,3 +51,7 @@ an evidence audit make this part of preparing each new change.
 The page shares the main site’s condensed headings, thin rules and shadcn/Radix
 components. Desktop entries place an explanation beside uncropped media; narrow
 screens stack the same content. Supporting notes expand beneath each entry.
+
+Every existing entry includes **Compare changelog layouts**: a separate, collapsed
+old/new presentation review. Both views use the same viewport and can be enlarged.
+These compare the release-note layout itself, independently of the feature media.

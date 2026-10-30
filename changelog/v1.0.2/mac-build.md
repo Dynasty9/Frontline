@@ -2,6 +2,11 @@
 title = "Frontline on the Mac"
 summary = "Play Frontline on Apple silicon and Intel Macs, with multiplayer, updates and trackpad camera controls."
 kind = "new"
+
+[layout_comparison]
+before = "layout-before.jpg"
+after = "layout-after.jpg"
+caption = "Changelog presentation comparison, not gameplay: the top 1,000 pixels of this entry at the same 900-pixel viewport width. Open either image to inspect it."
 +++
 
 Frontline now comes for macOS too, on Apple silicon and Intel Macs: the whole game, multiplayer included, and it keeps itself up to date like the others. On a MacBook, the trackpad drives the camera.

@@ -56,3 +56,9 @@ and presentation audit, and exercise the website's disclosure/media controls.
 Keep source media available in the detail view. Choose the clearest artifact for
 the overview, not an indiscriminate gallery. Give changed UI a small-window and
 reduced-motion pass. Never make autoplay the only way to understand an entry.
+
+When reviewing changes to the changelog itself, distinguish layout comparisons
+from gameplay evidence. Use `[layout_comparison]` for entry-specific old/new layout
+captures, under a separate collapsed disclosure. Render actual components at a
+matched viewport, record revisions and label cropped viewport captures. If an
+entry is new, label its old-layout render as a reconstruction using current content.

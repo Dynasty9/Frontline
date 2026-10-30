@@ -17,6 +17,11 @@ caption = "Before / after, real time: RHIB, patrol ship and trawler receive six 
 file = "aircraft-comparison.webm"
 poster = "aircraft-comparison.jpg"
 caption = "Before / after launch-origin visualization: coloured pulses mark the actual 25, 40 and 105 mm launch points. Each gun now starts at its own barrel instead of below the fuselage."
+
+[layout_comparison]
+before = "layout-before.jpg"
+after = "layout-after.jpg"
+caption = "Changelog presentation comparison, not gameplay: the top 1,000 pixels of this entry at the same 900-pixel viewport width. Open either image to inspect it."
 +++
 
 - Tank, IFV, anti-aircraft, artillery, light vehicle and helicopter weapons have different traverse rates, with acceleration and braking onto the target.

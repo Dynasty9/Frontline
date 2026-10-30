@@ -2,6 +2,11 @@
 title = "Pings and map sketches"
 summary = "Point out threats, request help and sketch plans directly on the shared battlefield and minimap."
 kind = "new"
+
+[layout_comparison]
+before = "layout-before.jpg"
+after = "layout-after.jpg"
+caption = "Changelog presentation comparison, not gameplay: the top 1,000 pixels of this entry at the same 900-pixel viewport width. Open either image to inspect it."
 +++
 
 Mark an enemy, a unit or a spot with a ping, pick a call from the ping wheel, or draw on the map for your side.

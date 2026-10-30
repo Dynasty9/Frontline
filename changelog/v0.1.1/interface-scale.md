@@ -12,6 +12,11 @@ caption = "Before and after, at 1080p"
 [[screenshots]]
 file = "largest.jpg"
 caption = "The largest scale, with Settings open"
+
+[layout_comparison]
+before = "layout-before.jpg"
+after = "layout-after.jpg"
+caption = "Changelog presentation comparison, not gameplay: the top 1,000 pixels of this entry at the same 900-pixel viewport width. Open either image to inspect it."
 +++
 
 Interface scale now follows the size of your window, text and symbols stay crisp at any scale, and it goes much bigger without the panels overlapping.

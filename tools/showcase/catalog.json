@@ -13,6 +13,16 @@
           "file": "changelog/v0.1.0/camera-and-minimap/camera.jpg",
           "sha256": "2b29b01dcfa05ae545d442c72f6bf6ecb1706bcc4841e8c928bc4573e1e132fe",
           "caption": "The new camera, tilted over a village"
+        },
+        {
+          "file": "changelog/v0.1.0/camera-and-minimap/layout-before.jpg",
+          "sha256": "73e3fa1b35c278d36ef4dd45351356c6c8eb87a2e745daa5a0e04cde447ee5b2",
+          "caption": "Before changelog layout, 900 × 1000 viewport"
+        },
+        {
+          "file": "changelog/v0.1.0/camera-and-minimap/layout-after.jpg",
+          "sha256": "d3a2f71c8b465e6466a13a794e968adddd80cc110e73ed0a53b284f78b0a3049",
+          "caption": "After changelog layout, 900 × 1000 viewport"
         }
       ],
       "output": null,
@@ -33,6 +43,16 @@
           "file": "changelog/v0.1.0/missions/kingpin.jpg",
           "sha256": "456e9be6bc56bd14b90e8cfad8b64a5c28b66b915d4b76bcb154b8bdbd312b24",
           "caption": "Kingpin, one of the missions"
+        },
+        {
+          "file": "changelog/v0.1.0/missions/layout-before.jpg",
+          "sha256": "dcc7dbc6329be546c8a531b04666c0957c2253942b0f7280b077e2ba33a14aa2",
+          "caption": "Before changelog layout, 900 × 1000 viewport"
+        },
+        {
+          "file": "changelog/v0.1.0/missions/layout-after.jpg",
+          "sha256": "3d5b6da2a8a5385f0d19d56a9c059dfee4b23714630ab8bc433f2f264bd090e7",
+          "caption": "After changelog layout, 900 × 1000 viewport"
         }
       ],
       "output": null,
@@ -53,6 +73,16 @@
           "file": "changelog/v0.1.0/online-play/join-a-battle.jpg",
           "sha256": "d4a3696542ef25c5ea4da6cebc2cbc93105b22535aa53ab843fcfa7e90672b6c",
           "caption": "Join Game: the battles being hosted, and connect by address"
+        },
+        {
+          "file": "changelog/v0.1.0/online-play/layout-before.jpg",
+          "sha256": "57bb1ccd7639ae974fbe5b1ab68a41d96a65f40916dfe94536134501236cbe99",
+          "caption": "Before changelog layout, 900 × 1000 viewport"
+        },
+        {
+          "file": "changelog/v0.1.0/online-play/layout-after.jpg",
+          "sha256": "b0c3cd68dcfcec237ba82ceb44569e4812b6d23ab27e3ff3f55c22757640210f",
+          "caption": "After changelog layout, 900 × 1000 viewport"
         }
       ],
       "output": null,
@@ -68,7 +98,18 @@
       "stage": "text",
       "rationale": "Concise text explains the outcome without inventing footage or benchmark/audio evidence.",
       "source_ref": "4d4de4a",
-      "sources": [],
+      "sources": [
+        {
+          "file": "changelog/v0.1.0/restyled-soldiers/layout-before.jpg",
+          "sha256": "888ff7d99fffd684f9d4720670845f711cbea48a9cd8245337f2c46ae5473107",
+          "caption": "Before changelog layout, 900 × 1000 viewport"
+        },
+        {
+          "file": "changelog/v0.1.0/restyled-soldiers/layout-after.jpg",
+          "sha256": "6ce400667f2b08da8d807879afd5585a735cbf3ad6c42389cb616f789509b3f4",
+          "caption": "After changelog layout, 900 × 1000 viewport"
+        }
+      ],
       "output": null,
       "title": "Restyled soldiers",
       "version": "v0.1.0",
@@ -87,6 +128,16 @@
           "file": "changelog/v0.1.0/self-updating/update-ready.jpg",
           "sha256": "61f02e052aa06b637108021081a2c36c47983f0f02693cf5e6840fd4b777384c",
           "caption": "An update downloaded and ready"
+        },
+        {
+          "file": "changelog/v0.1.0/self-updating/layout-before.jpg",
+          "sha256": "5ca324eeb8dbf2ba19c883336dc4eb3a8330803681ca9e82bcd19ebefa5544f2",
+          "caption": "Before changelog layout, 900 × 1000 viewport"
+        },
+        {
+          "file": "changelog/v0.1.0/self-updating/layout-after.jpg",
+          "sha256": "2b194b04a2413d44cb88dfe12249d359079d3468cc3d47c7199a3c5c3c2b3286",
+          "caption": "After changelog layout, 900 × 1000 viewport"
         }
       ],
       "output": null,
@@ -102,7 +153,18 @@
       "stage": "text",
       "rationale": "Concise text explains the outcome without inventing footage or benchmark/audio evidence.",
       "source_ref": "4d4de4a",
-      "sources": [],
+      "sources": [
+        {
+          "file": "changelog/v0.1.0/website/layout-before.jpg",
+          "sha256": "78920a2086312561ebf8cbe177b1459dd98b20c4f1457fd5492a8573c3a5685b",
+          "caption": "Before changelog layout, 900 × 1000 viewport"
+        },
+        {
+          "file": "changelog/v0.1.0/website/layout-after.jpg",
+          "sha256": "fde7315f6d9bef203c5db0ea4f236613e745b753c09331703bdb74f3611aacee",
+          "caption": "After changelog layout, 900 × 1000 viewport"
+        }
+      ],
       "output": null,
       "title": "The Frontline website",
       "version": "v0.1.0",
@@ -121,6 +183,16 @@
           "file": "changelog/v0.1.1/interface-scale/before-and-after.jpg",
           "sha256": "35ed98e2fb228689ca5bc943aa67ee795ea2563ad55fa71f21504771edc30335",
           "caption": "Before and after, at 1080p"
+        },
+        {
+          "file": "changelog/v0.1.1/interface-scale/layout-before.jpg",
+          "sha256": "f7d578be7e91e5b40d5313239130fbd35b43c86fff72460421909e0570878805",
+          "caption": "Before changelog layout, 900 × 1000 viewport"
+        },
+        {
+          "file": "changelog/v0.1.1/interface-scale/layout-after.jpg",
+          "sha256": "d90e99726852a8cddead79d7b4a0f533c249102677129ea1748e87b8e299f80d",
+          "caption": "After changelog layout, 900 × 1000 viewport"
         }
       ],
       "output": null,
@@ -141,6 +213,16 @@
           "file": "changelog/v0.1.2/explosions-and-smoke/before-and-after.jpg",
           "sha256": "a9ebf5be516ba75061e98162b98376ec19a8d6dbb43d63f6ffe56fe63d82ae4d",
           "caption": "Explosions before and after"
+        },
+        {
+          "file": "changelog/v0.1.2/explosions-and-smoke/layout-before.jpg",
+          "sha256": "ac8e61cae303a31d6b8b714409b43ea70aa55da1f229821084c97f87016825d0",
+          "caption": "Before changelog layout, 900 × 1000 viewport"
+        },
+        {
+          "file": "changelog/v0.1.2/explosions-and-smoke/layout-after.jpg",
+          "sha256": "3070f1e1aeb92d2f689055fa0507b82899d9681509330de9b37b8e98d4ff94e8",
+          "caption": "After changelog layout, 900 × 1000 viewport"
         }
       ],
       "output": null,
@@ -161,6 +243,16 @@
           "file": "changelog/v0.1.2/fire/fire-day.jpg",
           "sha256": "636eaf7ecb4b87f7d13c07a3c9887129280fa68d1a2f9e57862cf2de5c2e2dd0",
           "caption": "A hedgerow and a grass fire, with smoke drifting downwind"
+        },
+        {
+          "file": "changelog/v0.1.2/fire/layout-before.jpg",
+          "sha256": "7d67e5d6bd398f46a4f649267d2f133dea97b31fbd13834312b35fa55a5cdc31",
+          "caption": "Before changelog layout, 900 × 1000 viewport"
+        },
+        {
+          "file": "changelog/v0.1.2/fire/layout-after.jpg",
+          "sha256": "61ea2cba33d6e1c207d78490a61c32d375a8ba82f95978f1fc2d2fab7a956d50",
+          "caption": "After changelog layout, 900 × 1000 viewport"
         }
       ],
       "output": null,
@@ -181,6 +273,16 @@
           "file": "changelog/v0.1.3/audio-settings/audio-settings.jpg",
           "sha256": "9d17ef9d815d0a3b38971bc19e25ffabd80a50276e935ff453dcf4013af69e92",
           "caption": "Settings > Audio"
+        },
+        {
+          "file": "changelog/v0.1.3/audio-settings/layout-before.jpg",
+          "sha256": "4f11aa45cccc8e38686f3fe654fbb0481ba8cfcdd8d52b5916f3110e42807fb1",
+          "caption": "Before changelog layout, 900 × 1000 viewport"
+        },
+        {
+          "file": "changelog/v0.1.3/audio-settings/layout-after.jpg",
+          "sha256": "f2fd0c17089996fef335f010f6fce43686024fa7783cf7de4e62b5fd562f2b16",
+          "caption": "After changelog layout, 900 × 1000 viewport"
         }
       ],
       "output": null,
@@ -196,7 +298,18 @@
       "stage": "text",
       "rationale": "Concise text explains the outcome without inventing footage or benchmark/audio evidence.",
       "source_ref": "4d4de4a",
-      "sources": [],
+      "sources": [
+        {
+          "file": "changelog/v0.1.3/soundtrack/layout-before.jpg",
+          "sha256": "5d67b8775ecd35e3665aa05f21b8c75fcbbb140843e78eab4f51fba57955422a",
+          "caption": "Before changelog layout, 900 × 1000 viewport"
+        },
+        {
+          "file": "changelog/v0.1.3/soundtrack/layout-after.jpg",
+          "sha256": "c9320a43bdc6c485c92b86ee07396658d3053074a2b2ddc2cfcb6343df5de558",
+          "caption": "After changelog layout, 900 × 1000 viewport"
+        }
+      ],
       "output": null,
       "title": "A soundtrack that follows the fighting",
       "version": "v0.1.3",
@@ -210,7 +323,18 @@
       "stage": "text",
       "rationale": "Concise text explains the outcome without inventing footage or benchmark/audio evidence.",
       "source_ref": "4d4de4a",
-      "sources": [],
+      "sources": [
+        {
+          "file": "changelog/v0.1.3/wind/layout-before.jpg",
+          "sha256": "3e8d2739d42b31038c507c058d2720e4ae91ca5a84de794b38459d84d7c22ad4",
+          "caption": "Before changelog layout, 900 × 1000 viewport"
+        },
+        {
+          "file": "changelog/v0.1.3/wind/layout-after.jpg",
+          "sha256": "d5974970e93be38820ae7b9da7ef7d76d3895ff683029774c32a2081e7790fa8",
+          "caption": "After changelog layout, 900 × 1000 viewport"
+        }
+      ],
       "output": null,
       "title": "Wind that sounds like wind, not surf",
       "version": "v0.1.3",
@@ -229,6 +353,16 @@
           "file": "changelog/v0.1.4/fog-of-war/fog-of-war.jpg",
           "sha256": "252b4706b9da4725e2927b401cee5ba632d173d39ade0b6d22b9000aabfdf9b5",
           "caption": "The fog of war in a bridgehead battle"
+        },
+        {
+          "file": "changelog/v0.1.4/fog-of-war/layout-before.jpg",
+          "sha256": "e6ade82a12a72550fcb9696c65e39d62a671c37dfb82dbb1107820e75d2c5f97",
+          "caption": "Before changelog layout, 900 × 1000 viewport"
+        },
+        {
+          "file": "changelog/v0.1.4/fog-of-war/layout-after.jpg",
+          "sha256": "9b88c2551267002a591d096027ea17d8b379ef7f8080f66c13709c48a4c1ba4f",
+          "caption": "After changelog layout, 900 × 1000 viewport"
         }
       ],
       "output": null,
@@ -249,6 +383,16 @@
           "file": "changelog/v0.1.4/recon-flights/recon-pass.jpg",
           "sha256": "6e82a145cef75cefe55e73dc8959a10ccfdfa61688f0c830405c37b4f823db2b",
           "caption": "A recon pass lights a strip over the Rebel positions"
+        },
+        {
+          "file": "changelog/v0.1.4/recon-flights/layout-before.jpg",
+          "sha256": "4d2f3dbf4a8d0e5584e73b49b04f337e0464d4ee963806a86059bccd32191af9",
+          "caption": "Before changelog layout, 900 × 1000 viewport"
+        },
+        {
+          "file": "changelog/v0.1.4/recon-flights/layout-after.jpg",
+          "sha256": "17cfb395d6e26b3774f313337b5e1180821279e3bc2e411c99435e159c5a553f",
+          "caption": "After changelog layout, 900 × 1000 viewport"
         }
       ],
       "output": null,
@@ -264,7 +408,18 @@
       "stage": "text",
       "rationale": "Concise text explains the outcome without inventing footage or benchmark/audio evidence.",
       "source_ref": "4d4de4a",
-      "sources": [],
+      "sources": [
+        {
+          "file": "changelog/v0.1.5/explosion-clipping/layout-before.jpg",
+          "sha256": "e6a4fbe84818b59d2641b0659b39f69af332b09ad05d3c58f3161ae1b402e3e8",
+          "caption": "Before changelog layout, 900 × 1000 viewport"
+        },
+        {
+          "file": "changelog/v0.1.5/explosion-clipping/layout-after.jpg",
+          "sha256": "ca7ba5b62d3c5c6f36dcb74cd0715c91ee7dce3c9f4452144e64d8f127efea1c",
+          "caption": "After changelog layout, 900 × 1000 viewport"
+        }
+      ],
       "output": null,
       "title": "No more distortion when shells land together",
       "version": "v0.1.5",
@@ -278,7 +433,18 @@
       "stage": "text",
       "rationale": "Concise text explains the outcome without inventing footage or benchmark/audio evidence.",
       "source_ref": "4d4de4a",
-      "sources": [],
+      "sources": [
+        {
+          "file": "changelog/v0.1.5/fire-sound/layout-before.jpg",
+          "sha256": "1b7803cdbdc506f947f8958e22d283ddd8cf4173d87aca755679a686946f3dc3",
+          "caption": "Before changelog layout, 900 × 1000 viewport"
+        },
+        {
+          "file": "changelog/v0.1.5/fire-sound/layout-after.jpg",
+          "sha256": "e04a7604792b250b1bf75e080b2ecbd11946cb98b3793bc9a0ee6b50a20a283c",
+          "caption": "After changelog layout, 900 × 1000 viewport"
+        }
+      ],
       "output": null,
       "title": "Fires roar instead of surging",
       "version": "v0.1.5",
@@ -292,7 +458,18 @@
       "stage": "text",
       "rationale": "Concise text explains the outcome without inventing footage or benchmark/audio evidence.",
       "source_ref": "4d4de4a",
-      "sources": [],
+      "sources": [
+        {
+          "file": "changelog/v0.1.6/supply-picture/layout-before.jpg",
+          "sha256": "5c97f0b02a3f05e301fc5dc49839c388a5940b83c62394eec8764ce61b8e2aec",
+          "caption": "Before changelog layout, 900 × 1000 viewport"
+        },
+        {
+          "file": "changelog/v0.1.6/supply-picture/layout-after.jpg",
+          "sha256": "42ba1e0dcea888907575706af792aaf28900917e79173edc8f7143778cdaaff3",
+          "caption": "After changelog layout, 900 × 1000 viewport"
+        }
+      ],
       "output": null,
       "title": "A clearer supply picture",
       "version": "v0.1.6",
@@ -311,6 +488,16 @@
           "file": "changelog/v0.1.6/towns/village-dump.jpg",
           "sha256": "aabd81ee2644fe7990cb1314404a08d2a08fa0a5397ea0a9e01f8a87d17c8590",
           "caption": "A village's supply dump, flying the holder's colours"
+        },
+        {
+          "file": "changelog/v0.1.6/towns/layout-before.jpg",
+          "sha256": "145b68063bdd7da8e13c612347836e15297321b51309f7f6c4ab90e54915ac06",
+          "caption": "Before changelog layout, 900 × 1000 viewport"
+        },
+        {
+          "file": "changelog/v0.1.6/towns/layout-after.jpg",
+          "sha256": "09b4833ccd75ea81546b7aed31ef1e0fb1a8453e12518f9002c1aa54d6a1e560",
+          "caption": "After changelog layout, 900 × 1000 viewport"
         }
       ],
       "output": null,
@@ -326,7 +513,18 @@
       "stage": "text",
       "rationale": "Concise text explains the outcome without inventing footage or benchmark/audio evidence.",
       "source_ref": "4d4de4a",
-      "sources": [],
+      "sources": [
+        {
+          "file": "changelog/v0.1.7/squad-card/layout-before.jpg",
+          "sha256": "67f4d7f4125063d5f713a7823a6f47f3fb0c8750b081c6ef9f9aeeba894280a8",
+          "caption": "Before changelog layout, 900 × 1000 viewport"
+        },
+        {
+          "file": "changelog/v0.1.7/squad-card/layout-after.jpg",
+          "sha256": "1ec1ec84eaef50bc7404a72aa6dd3e1330f248a5e89c6888c18f3585017df5a6",
+          "caption": "After changelog layout, 900 × 1000 viewport"
+        }
+      ],
       "output": null,
       "title": "The squad card fits a narrow panel",
       "version": "v0.1.7",
@@ -345,6 +543,16 @@
           "file": "changelog/v0.1.7/window-size/four-three.jpg",
           "sha256": "3b76f0b7787a3469fb003a2daffb84ee30e3841673cbc68717d1a28e72029f23",
           "caption": "A 4:3 screen at the default and largest scales"
+        },
+        {
+          "file": "changelog/v0.1.7/window-size/layout-before.jpg",
+          "sha256": "c986d01330c5ae05e12f42b62fc471a80816a629cfb4bd64f949c9df4a445a01",
+          "caption": "Before changelog layout, 900 × 1000 viewport"
+        },
+        {
+          "file": "changelog/v0.1.7/window-size/layout-after.jpg",
+          "sha256": "d13346b95b5aa33dd3a05616528c5f8f4ac3808ba1ecb0428f00465ea7b0ec32",
+          "caption": "After changelog layout, 900 × 1000 viewport"
         }
       ],
       "output": null,
@@ -365,6 +573,16 @@
           "file": "changelog/v0.1.8/co-commanders/co-commanders.jpg",
           "sha256": "b40e5a2c4c41d82e2098ef211b865f146305573d93d106bc4810b72637fe7e85",
           "caption": "Two commanders: one aiming artillery, one digging a trench line, with their views, pings and the Command Net"
+        },
+        {
+          "file": "changelog/v0.1.8/co-commanders/layout-before.jpg",
+          "sha256": "e4f51d6732b77d983dc845d3c2ab3c83c8bea3f4fcf17f826b4b292500c5f210",
+          "caption": "Before changelog layout, 900 × 1000 viewport"
+        },
+        {
+          "file": "changelog/v0.1.8/co-commanders/layout-after.jpg",
+          "sha256": "41672df8eaf807c5540dae3242106ea98126e576199bf1a38b303c1bec1c53d2",
+          "caption": "After changelog layout, 900 × 1000 viewport"
         }
       ],
       "output": null,
@@ -380,7 +598,18 @@
       "stage": "text",
       "rationale": "Concise text explains the outcome without inventing footage or benchmark/audio evidence.",
       "source_ref": "4d4de4a",
-      "sources": [],
+      "sources": [
+        {
+          "file": "changelog/v0.1.8/pings/layout-before.jpg",
+          "sha256": "f57845a01bebed6016a085270965881a24df9f3bebad99401a19d83367e0fda7",
+          "caption": "Before changelog layout, 900 × 1000 viewport"
+        },
+        {
+          "file": "changelog/v0.1.8/pings/layout-after.jpg",
+          "sha256": "2950117f8fb80cd18e37d5a49fdc4e6d8761885d38c374b8ca7666868de145e7",
+          "caption": "After changelog layout, 900 × 1000 viewport"
+        }
+      ],
       "output": null,
       "title": "Pings and map sketches",
       "version": "v0.1.8",
@@ -399,6 +628,16 @@
           "file": "changelog/v1.0.0/after-action-report/victory.jpg",
           "sha256": "b90a4ae80c0c0a541de62ff4edb02db442cf02d0d8d5c0889f188b06877cc93e",
           "caption": "The end of a battle: the result, and your rating"
+        },
+        {
+          "file": "changelog/v1.0.0/after-action-report/layout-before.jpg",
+          "sha256": "b200058ea34725afd5e17cfd8ab933c107c6e6a0fbfaa9d1c28ddc3c31401125",
+          "caption": "Before changelog layout, 900 × 1000 viewport"
+        },
+        {
+          "file": "changelog/v1.0.0/after-action-report/layout-after.jpg",
+          "sha256": "9a65522be2ff33ef34cbd10a19665cd7f238742a1a4921ac9b06ba8e93b7dd20",
+          "caption": "After changelog layout, 900 × 1000 viewport"
         }
       ],
       "output": null,
@@ -419,6 +658,16 @@
           "file": "changelog/v1.0.0/changelog/whats-new.jpg",
           "sha256": "00959a2733ae4dd369a50af6350162af6ae030e6d1ec8f3ddccc0290395b15d3",
           "caption": "An update downloaded and ready, with a link to what's in it"
+        },
+        {
+          "file": "changelog/v1.0.0/changelog/layout-before.jpg",
+          "sha256": "98d6eaaa1c1f48d58246d1d0351e259e4e41401b9fc01160def0d6e1d1c16cca",
+          "caption": "Before changelog layout, 900 × 1000 viewport"
+        },
+        {
+          "file": "changelog/v1.0.0/changelog/layout-after.jpg",
+          "sha256": "827ce01fceb809a321cddc3a8dc89effbb510a75b323141f8886629d44e0ae31",
+          "caption": "After changelog layout, 900 × 1000 viewport"
         }
       ],
       "output": null,
@@ -439,6 +688,16 @@
           "file": "changelog/v1.0.0/field-defences/before-and-after.jpg",
           "sha256": "47468bfed0e1661b1e9bd3a57f5df9ea28640f17f6b2c5796b24c013e6b21692",
           "caption": "Wire, tank traps, minefields and concrete walls, before and after"
+        },
+        {
+          "file": "changelog/v1.0.0/field-defences/layout-before.jpg",
+          "sha256": "190585c475443f01627107ec7ee1ded5779134001f29335d46e9cc7ed5875a5a",
+          "caption": "Before changelog layout, 900 × 1000 viewport"
+        },
+        {
+          "file": "changelog/v1.0.0/field-defences/layout-after.jpg",
+          "sha256": "b0fafe4587ce74bda5a5c15498d77052966b611235023f711628b5a3ca476d48",
+          "caption": "After changelog layout, 900 × 1000 viewport"
         }
       ],
       "output": null,
@@ -459,6 +718,16 @@
           "file": "changelog/v1.0.0/gunfire-effects/night-armour.jpg",
           "sha256": "d592005c175655d1d13ed73ade4faf970b4fd135bd907d48c1ff71a5fd889715",
           "caption": "A tank and an IFV firing at night: the flashes light up the vehicles and the ground, and the shell's tracer streaks to its target"
+        },
+        {
+          "file": "changelog/v1.0.0/gunfire-effects/layout-before.jpg",
+          "sha256": "b59dd46fca272f4130e139710ecb1419b410a27da1006912f024a1593f054278",
+          "caption": "Before changelog layout, 900 × 1000 viewport"
+        },
+        {
+          "file": "changelog/v1.0.0/gunfire-effects/layout-after.jpg",
+          "sha256": "a549dcc9cdaefd92fef4ec5c3df7a18094b894847a1d2da7cac48484f350cb45",
+          "caption": "After changelog layout, 900 × 1000 viewport"
         }
       ],
       "output": null,
@@ -479,6 +748,16 @@
           "file": "changelog/v1.0.0/interface-themes/themes.jpg",
           "sha256": "74c367de02bbfa4ed50beed0ee4ac78c2500915d897b96235b9b2a80379274c0",
           "caption": "Night Vision, Thermal, Arctic and Dusk"
+        },
+        {
+          "file": "changelog/v1.0.0/interface-themes/layout-before.jpg",
+          "sha256": "3893585432a933e6610bb42248185d2d96435fcebee547739c5440afa6f67854",
+          "caption": "Before changelog layout, 900 × 1000 viewport"
+        },
+        {
+          "file": "changelog/v1.0.0/interface-themes/layout-after.jpg",
+          "sha256": "3fb6d0a4383770569f3a8b8ca73b18520e52f5ec78733190a59e5deec36dc3b0",
+          "caption": "After changelog layout, 900 × 1000 viewport"
         }
       ],
       "output": null,
@@ -494,7 +773,18 @@
       "stage": "text",
       "rationale": "Concise text explains the outcome without inventing footage or benchmark/audio evidence.",
       "source_ref": "4d4de4a",
-      "sources": [],
+      "sources": [
+        {
+          "file": "changelog/v1.0.0/joins-with-more-players/layout-before.jpg",
+          "sha256": "35a39351ad1493fd0de49b828d9657aec3123261e619e4c5e7514e8e95d36f43",
+          "caption": "Before changelog layout, 900 × 1000 viewport"
+        },
+        {
+          "file": "changelog/v1.0.0/joins-with-more-players/layout-after.jpg",
+          "sha256": "fe5db29373c40a0fa35850ea2056d3f9e61d6320a0aee43e61f1d118c583ae36",
+          "caption": "After changelog layout, 900 × 1000 viewport"
+        }
+      ],
       "output": null,
       "title": "No network error when more players join",
       "version": "v1.0.0",
@@ -513,6 +803,16 @@
           "file": "changelog/v1.0.0/living-map/title.jpg",
           "sha256": "512094f21cbd9738f88094022fa78d7a1627d9c297830b5b793ed9783673e83c",
           "caption": "The title, just after the wave has woken the map"
+        },
+        {
+          "file": "changelog/v1.0.0/living-map/layout-before.jpg",
+          "sha256": "7d9a383fa8d3e8cfa942a0d3cf91065e2dabe6115d3353f7e7e4400b8d00132e",
+          "caption": "Before changelog layout, 900 × 1000 viewport"
+        },
+        {
+          "file": "changelog/v1.0.0/living-map/layout-after.jpg",
+          "sha256": "9b608a05bd4d5ee108ac73825c43bf63de269dff04cbad6cc6558bb4f1bfc90a",
+          "caption": "After changelog layout, 900 × 1000 viewport"
         }
       ],
       "output": null,
@@ -533,6 +833,16 @@
           "file": "changelog/v1.0.0/rebindable-controls/controls.jpg",
           "sha256": "7876de9df78cddceb3908290edb16f05c3d25c8a0407dd291d4102fe93f7b6b8",
           "caption": "Settings > Controls: every action by category, with two keys each"
+        },
+        {
+          "file": "changelog/v1.0.0/rebindable-controls/layout-before.jpg",
+          "sha256": "447c8e63b26992d8ac9ff70c31fae96ce4743d51a75ff1056ea729e8ae98671f",
+          "caption": "Before changelog layout, 900 × 1000 viewport"
+        },
+        {
+          "file": "changelog/v1.0.0/rebindable-controls/layout-after.jpg",
+          "sha256": "56e98a4cc734bb591e7a6b2da17160e3bf0114d4f0fdc83e4fbe1426956159ec",
+          "caption": "After changelog layout, 900 × 1000 viewport"
         }
       ],
       "output": null,
@@ -553,6 +863,16 @@
           "file": "changelog/v1.0.0/service-record/account-card.jpg",
           "sha256": "39b5c6e73c45da7ceecadb25f671f53e5a5183f380369860a481a7ee4b1e7e51",
           "caption": "The account card on the main menu"
+        },
+        {
+          "file": "changelog/v1.0.0/service-record/layout-before.jpg",
+          "sha256": "254fe76e54b0f2db4c59f55bee7414cb5f33392830ba2958c83c453ad2fa9a1b",
+          "caption": "Before changelog layout, 900 × 1000 viewport"
+        },
+        {
+          "file": "changelog/v1.0.0/service-record/layout-after.jpg",
+          "sha256": "5749109a48cc3f75b732b796e4e774b6b5c11ab859335e5f66767052da42f868",
+          "caption": "After changelog layout, 900 × 1000 viewport"
         }
       ],
       "output": null,
@@ -568,7 +888,18 @@
       "stage": "text",
       "rationale": "Concise text explains the outcome without inventing footage or benchmark/audio evidence.",
       "source_ref": "4d4de4a",
-      "sources": [],
+      "sources": [
+        {
+          "file": "changelog/v1.0.0/towns-in-help/layout-before.jpg",
+          "sha256": "8d23f46f6fd272de712e5c66c97babd528f4c064c95014f0f6700e8c0767a6bb",
+          "caption": "Before changelog layout, 900 × 1000 viewport"
+        },
+        {
+          "file": "changelog/v1.0.0/towns-in-help/layout-after.jpg",
+          "sha256": "0a0e3d01d3d02aa87265b592da54f445963156f9e1ea65c3168cf502088167c2",
+          "caption": "After changelog layout, 900 × 1000 viewport"
+        }
+      ],
       "output": null,
       "title": "Towns in the help and loading tips",
       "version": "v1.0.0",
@@ -587,6 +918,16 @@
           "file": "changelog/v1.0.0/water-and-sea-battles/boat-sinking-poster.jpg",
           "sha256": "5eeb2d61e8e52cfe52f9ece6dc086933e1472f2886a8b0378e776342bd360569",
           "caption": "A burning boat settles into the sea as foam spreads around its hull. Recorded in the current build, October 2026."
+        },
+        {
+          "file": "changelog/v1.0.0/water-and-sea-battles/layout-before.jpg",
+          "sha256": "961b69cad59092bc66bcb29e743c7d74b46686eb31a2371d2c02b4fa50b9bfe6",
+          "caption": "Before changelog layout, 900 × 1000 viewport"
+        },
+        {
+          "file": "changelog/v1.0.0/water-and-sea-battles/layout-after.jpg",
+          "sha256": "d1b8757e462bb22b14e5b7d6cd77fbf3b7e3def419e312c4fe75573bd93a377f",
+          "caption": "After changelog layout, 900 × 1000 viewport"
         }
       ],
       "output": null,
@@ -607,6 +948,16 @@
           "file": "changelog/v1.0.1/error-reports/send-error-reports.jpg",
           "sha256": "26dc96776f57a03e68116f08a581e1ff620f3a8860b0496230bee2327193a6ad",
           "caption": "The switch, at the bottom of Settings > Interface"
+        },
+        {
+          "file": "changelog/v1.0.1/error-reports/layout-before.jpg",
+          "sha256": "015748e11e1487757d9a79db054f039de49de70cd4644c64ec8c7a29a45051b6",
+          "caption": "Before changelog layout, 900 × 1000 viewport"
+        },
+        {
+          "file": "changelog/v1.0.1/error-reports/layout-after.jpg",
+          "sha256": "cb69b2ecf65094d904c3d1754012812bb02a750b336a349964b27f4ca77bc96e",
+          "caption": "After changelog layout, 900 × 1000 viewport"
         }
       ],
       "output": null,
@@ -622,7 +973,18 @@
       "stage": "text",
       "rationale": "Concise text explains the outcome without inventing footage or benchmark/audio evidence.",
       "source_ref": "4d4de4a",
-      "sources": [],
+      "sources": [
+        {
+          "file": "changelog/v1.0.1/faster-start/layout-before.jpg",
+          "sha256": "e078fc38b45d7fe4fd04ae63fcc2b3a28a29ec172a31d1cdfa51f0d8e3b68912",
+          "caption": "Before changelog layout, 900 × 1000 viewport"
+        },
+        {
+          "file": "changelog/v1.0.1/faster-start/layout-after.jpg",
+          "sha256": "f5f3b2b1707f57dd2bb8b27099d6b77a4da6a262e2479ae8a89ea84a63205bb8",
+          "caption": "After changelog layout, 900 × 1000 viewport"
+        }
+      ],
       "output": null,
       "title": "Battles and the game start sooner",
       "version": "v1.0.1",
@@ -641,6 +1003,16 @@
           "file": "changelog/v1.0.1/ranks-and-insignia/collection.jpg",
           "sha256": "0199f069e132e9a6ee966d226d6ca189554d4a1a96653d08fc3e9f31b0a5062a",
           "caption": "Your insignia: the patches you've unlocked, and the ones still to come"
+        },
+        {
+          "file": "changelog/v1.0.1/ranks-and-insignia/layout-before.jpg",
+          "sha256": "0a8c94bee313b3d641d913597634e034114f76fafaa4adc9d4c222f988f94bc2",
+          "caption": "Before changelog layout, 900 × 1000 viewport"
+        },
+        {
+          "file": "changelog/v1.0.1/ranks-and-insignia/layout-after.jpg",
+          "sha256": "aa1f81cd8e30ca4e1e2c3e5da3d2336d646c60fc67c71e54790099d79264127d",
+          "caption": "After changelog layout, 900 × 1000 viewport"
         }
       ],
       "output": null,
@@ -661,6 +1033,16 @@
           "file": "changelog/v1.0.1/rejoin-a-battle/rejoin-card.jpg",
           "sha256": "0872c773e57bddb121606a4a3521cc0f3e3e552b9fe5c4cf27568f0236c48a54",
           "caption": "Back on the main menu after dropping out: Rejoin gets you back into the battle"
+        },
+        {
+          "file": "changelog/v1.0.1/rejoin-a-battle/layout-before.jpg",
+          "sha256": "d51a007cd8405d2a13f634145c50703aabe1b8b3294fd3224cad82f06bd7730f",
+          "caption": "Before changelog layout, 900 × 1000 viewport"
+        },
+        {
+          "file": "changelog/v1.0.1/rejoin-a-battle/layout-after.jpg",
+          "sha256": "075c1733b99233037e3c30987c312df87c917cc55b162dc8453fa57d5de2bd86",
+          "caption": "After changelog layout, 900 × 1000 viewport"
         }
       ],
       "output": null,
@@ -681,6 +1063,16 @@
           "file": "changelog/v1.0.1/server-browser/before-and-after.jpg",
           "sha256": "3d653a91d2d173ef99693b4e12608ea5d70fb6d2542a39d81e6df60cdee778d2",
           "caption": "Joining a battle and the lobby, before and after"
+        },
+        {
+          "file": "changelog/v1.0.1/server-browser/layout-before.jpg",
+          "sha256": "0a1a501e8b8dd79f185883f5fdd8ca62d54cbdaabf36b2f77734bf22e52c7380",
+          "caption": "Before changelog layout, 900 × 1000 viewport"
+        },
+        {
+          "file": "changelog/v1.0.1/server-browser/layout-after.jpg",
+          "sha256": "739fbddded6572fccd23e2d406c33acd0f0520f857a8283cf7b96651f9bec68a",
+          "caption": "After changelog layout, 900 × 1000 viewport"
         }
       ],
       "output": null,
@@ -701,6 +1093,16 @@
           "file": "changelog/v1.0.10/console-completion/after.jpg",
           "sha256": "81e4d46061acbf74d29bd018bdd426603ce3b1504ecd45528b445c2e15abc8b6",
           "caption": "Browse the full command list without leaving the console."
+        },
+        {
+          "file": "changelog/v1.0.10/console-completion/layout-before.jpg",
+          "sha256": "1a25cf8577259417c5155a6c64ea05793c1589a3656fb934b50aa87a20f13e71",
+          "caption": "Before changelog layout, 900 × 1000 viewport"
+        },
+        {
+          "file": "changelog/v1.0.10/console-completion/layout-after.jpg",
+          "sha256": "cc49d074621f4eb3cd095c6ec89e813656830a00b245a79f5f62d5f7840866a5",
+          "caption": "After changelog layout, 900 × 1000 viewport"
         }
       ],
       "output": null,
@@ -716,7 +1118,18 @@
       "stage": "text",
       "rationale": "Concise text explains the outcome without inventing footage or benchmark/audio evidence.",
       "source_ref": "4d4de4a",
-      "sources": [],
+      "sources": [
+        {
+          "file": "changelog/v1.0.10/existing-website-login/layout-before.jpg",
+          "sha256": "882566127c6796ee4edda12ec7ef3201224601f796ad93fb20c8dd335ac3507e",
+          "caption": "Before changelog layout, 900 × 1000 viewport"
+        },
+        {
+          "file": "changelog/v1.0.10/existing-website-login/layout-after.jpg",
+          "sha256": "6fa6c8a8adfbe9c687e3cd71f66e0dc445631fbc6575b93e8b2792ff168e6090",
+          "caption": "After changelog layout, 900 × 1000 viewport"
+        }
+      ],
       "output": null,
       "title": "Sign in to the game from your website login",
       "version": "v1.0.10",
@@ -735,6 +1148,16 @@
           "file": "changelog/v1.0.10/text-console/after.jpg",
           "sha256": "56320704afb31fa88344367dc0878a98912879a45bc15f5026a4f1a2df2faf01",
           "caption": "Console tools for copying, finding and saving output."
+        },
+        {
+          "file": "changelog/v1.0.10/text-console/layout-before.jpg",
+          "sha256": "0d8f02c65b48bb1306eacc2fd80ff1981721e685b0f46a03d0091090c9f9537a",
+          "caption": "Before changelog layout, 900 × 1000 viewport"
+        },
+        {
+          "file": "changelog/v1.0.10/text-console/layout-after.jpg",
+          "sha256": "ad68c7abf18ca4a505fdf0845befcc0ada8d4bac54a252b9b4dfa135da40f04c",
+          "caption": "After changelog layout, 900 × 1000 viewport"
         }
       ],
       "output": null,
@@ -750,7 +1173,18 @@
       "stage": "text",
       "rationale": "Concise text explains the outcome without inventing footage or benchmark/audio evidence.",
       "source_ref": "4d4de4a",
-      "sources": [],
+      "sources": [
+        {
+          "file": "changelog/v1.0.11/battle-hotpaths/layout-before.jpg",
+          "sha256": "d4e7a674618ce8efd64200d6ba088d600ba4f245d598964e7df8da3e31ff5606",
+          "caption": "Before changelog layout, 900 × 1000 viewport"
+        },
+        {
+          "file": "changelog/v1.0.11/battle-hotpaths/layout-after.jpg",
+          "sha256": "c7814558f0418fefc5a0077c5d65752877a41321c5a01eeb47eaa07200e4209b",
+          "caption": "After changelog layout, 900 × 1000 viewport"
+        }
+      ],
       "output": null,
       "title": "Less work during busy battles",
       "version": "v1.0.11",
@@ -769,6 +1203,16 @@
           "file": "changelog/v1.0.11/battle-viewer/browser.jpg",
           "sha256": "c52ef1b05122ef8775402fbefc10f273341fb15e2fd15dd6f32a915a9a4f0bba",
           "caption": "A recorded test battle running in the browser, with the game's own camera and a seekable timeline."
+        },
+        {
+          "file": "changelog/v1.0.11/battle-viewer/layout-before.jpg",
+          "sha256": "5614b2593d722f73d806878120cd50f108a4c63b1b71a574fdab27798361077e",
+          "caption": "Before changelog layout, 900 × 1000 viewport"
+        },
+        {
+          "file": "changelog/v1.0.11/battle-viewer/layout-after.jpg",
+          "sha256": "439b4ce869eab02352f0db1bf94c036b902d202724e64a1c3142605a5adbf898",
+          "caption": "After changelog layout, 900 × 1000 viewport"
         }
       ],
       "output": null,
@@ -794,6 +1238,16 @@
           "file": "changelog/v1.0.11/battle-work-budget/after.png",
           "sha256": "3b9c9f7b414f349daf6edc8b2a61aa6809710918610fc14e8e69f7e5921434e7",
           "caption": "After: the same map and camera, with visibility-aware rendering and native routes. Combat evolves independently between runs."
+        },
+        {
+          "file": "changelog/v1.0.11/battle-work-budget/layout-before.jpg",
+          "sha256": "24e2150dfad88dc73b15c611fbf25c0b3d77bc77ac080500b9238e7901641514",
+          "caption": "Before changelog layout, 900 × 1000 viewport"
+        },
+        {
+          "file": "changelog/v1.0.11/battle-work-budget/layout-after.jpg",
+          "sha256": "49fd4f1c15580e579762b1037fe68f0f5f5b0a8094c4e3e3095f21cbf5762f40",
+          "caption": "After changelog layout, 900 × 1000 viewport"
         }
       ],
       "output": null,
@@ -820,6 +1274,16 @@
           "file": "changelog/v1.0.11/clearer-battlefield/battlefield-after.jpg",
           "sha256": "1c62bcc990acce96a0763274e917170671319a0183283bf699ee0729457b0dff",
           "caption": "After: thinner haze, transparent symbols and quieter commander markers leave the troops visible."
+        },
+        {
+          "file": "changelog/v1.0.11/clearer-battlefield/layout-before.jpg",
+          "sha256": "073df04577f0dde39afd60c0f6b15719166f39a7906d4f15fb6f7da58b9a7b69",
+          "caption": "Before changelog layout, 900 × 1000 viewport"
+        },
+        {
+          "file": "changelog/v1.0.11/clearer-battlefield/layout-after.jpg",
+          "sha256": "687cd6c76a5aaade769bdb82d20d6df470b246818e6294e3417afafe8d7fafba",
+          "caption": "After changelog layout, 900 × 1000 viewport"
         }
       ],
       "output": null,
@@ -846,6 +1310,16 @@
           "file": "changelog/v1.0.11/helicopter-flight/after.jpg",
           "sha256": "4cad11e649b3857afb22a34e829b2000c621d5236ddad3c8bdf7412fd8ce610d",
           "caption": "After: the same mid-flight order produces a banked turn while momentum carries through."
+        },
+        {
+          "file": "changelog/v1.0.11/helicopter-flight/layout-before.jpg",
+          "sha256": "56b7de06e9702c29df606027927677c5ad33cf46092d2cc41ba0f365918b4b47",
+          "caption": "Before changelog layout, 900 × 1000 viewport"
+        },
+        {
+          "file": "changelog/v1.0.11/helicopter-flight/layout-after.jpg",
+          "sha256": "814e4f996311aa285e96d64241323efdff5352f2ff407406dec1534e865e6360",
+          "caption": "After changelog layout, 900 × 1000 viewport"
         }
       ],
       "output": null,
@@ -867,6 +1341,16 @@
           "file": "changelog/v1.0.11/homepage-story/after-desktop.jpg",
           "sha256": "1b3442c6903c4195a918740eeb78b613f041da9f05290707be69a47c2f60088a",
           "caption": "From your first tactical decision to a combined-arms battle."
+        },
+        {
+          "file": "changelog/v1.0.11/homepage-story/layout-before.jpg",
+          "sha256": "275e434a9fffd1030214d630cf15649724539e120e4120169f1fab67e0e6b0b1",
+          "caption": "Before changelog layout, 900 × 1000 viewport"
+        },
+        {
+          "file": "changelog/v1.0.11/homepage-story/layout-after.jpg",
+          "sha256": "9b952293c857cd47f3f16d87a238b3911175cdf3ebb47bbc0f6e8f9a1b5c20d1",
+          "caption": "After changelog layout, 900 × 1000 viewport"
         }
       ],
       "output": null,
@@ -892,6 +1376,16 @@
           "file": "changelog/v1.0.11/large-battle-drawing/after.jpg",
           "sha256": "e439f293096b35992ffee5eb8df9d6701bbd0697220dc4d62f13cd1282093881",
           "caption": "Combined scenery drawing preserves the buildings and their shadows during combat."
+        },
+        {
+          "file": "changelog/v1.0.11/large-battle-drawing/layout-before.jpg",
+          "sha256": "2870f7b5fa6ace77ea57f8af3eb0999fce094431802fc7808ced175227317384",
+          "caption": "Before changelog layout, 900 × 1000 viewport"
+        },
+        {
+          "file": "changelog/v1.0.11/large-battle-drawing/layout-after.jpg",
+          "sha256": "0b636a9b255202fafddd45631b60dfc34d62fbdf7c5d367a48d96598ce51da30",
+          "caption": "After changelog layout, 900 × 1000 viewport"
         }
       ],
       "output": null,
@@ -918,6 +1412,16 @@
           "file": "changelog/v1.0.11/large-interface-layouts/lobby-after.jpg",
           "sha256": "18c9eeb0718b5e99cc64f2f21c4772393094834f03ed46614f81785d826607dd",
           "caption": "After: the roster scrolls while Start and Close stay clearly in view."
+        },
+        {
+          "file": "changelog/v1.0.11/large-interface-layouts/layout-before.jpg",
+          "sha256": "de340190bef36228035e3413843c591ccda2e57d89cdbe13aaa8fcde829a6b7c",
+          "caption": "Before changelog layout, 900 × 1000 viewport"
+        },
+        {
+          "file": "changelog/v1.0.11/large-interface-layouts/layout-after.jpg",
+          "sha256": "5197ea2c3278c34b3d34184343f5e08e0fb5b8d49a63ddda7acf45fa86860da7",
+          "caption": "After changelog layout, 900 × 1000 viewport"
         }
       ],
       "output": null,
@@ -934,7 +1438,18 @@
       "stage": "text",
       "rationale": "Concise text explains the outcome without inventing footage or benchmark/audio evidence.",
       "source_ref": "4d4de4a",
-      "sources": [],
+      "sources": [
+        {
+          "file": "changelog/v1.0.11/shared-allied-command/layout-before.jpg",
+          "sha256": "62402dcbbfbfc53a628241fb4906235d68255ab6f886afca8a5bb29cfd27ae6c",
+          "caption": "Before changelog layout, 900 × 1000 viewport"
+        },
+        {
+          "file": "changelog/v1.0.11/shared-allied-command/layout-after.jpg",
+          "sha256": "01548253a158ce91e5f112277c67a73562f592970fdaef7ba16178bcf1a85bf9",
+          "caption": "After changelog layout, 900 × 1000 viewport"
+        }
+      ],
       "output": null,
       "title": "Command all allied troops",
       "version": "v1.0.11",
@@ -953,6 +1468,16 @@
           "file": "changelog/v1.0.11/simulation-working-sets/after.png",
           "sha256": "aa34e5ae0763f9a713b6511ad6190b7790f61c1f6e991e8c9206639bced1a5dd",
           "caption": "A full generated 3,072 metre battlefield, started with 480 soldiers and 20 vehicles. The 60 FPS target remains under validation."
+        },
+        {
+          "file": "changelog/v1.0.11/simulation-working-sets/layout-before.jpg",
+          "sha256": "46758d8087ee57630505e915093bdd9d0519937f27a5b42f0e12b0163d03d934",
+          "caption": "Before changelog layout, 900 × 1000 viewport"
+        },
+        {
+          "file": "changelog/v1.0.11/simulation-working-sets/layout-after.jpg",
+          "sha256": "ac6bf57d89c17f69ec2fcac3c15fed325a76481d1986d9f78d8c2952178c6ad9",
+          "caption": "After changelog layout, 900 × 1000 viewport"
         }
       ],
       "output": null,
@@ -974,6 +1499,16 @@
           "file": "changelog/v1.0.11/site-journeys/player-home.jpg",
           "sha256": "4a8131cf1c85701ec82174870ad8fa1ca2663dc048d66ee54d00708581632deb",
           "caption": "Signed in: play shortcuts, your progress and the latest updates. Preview shown with sample player data."
+        },
+        {
+          "file": "changelog/v1.0.11/site-journeys/layout-before.jpg",
+          "sha256": "da5d2eb75cf66087c6af620174c37ea3dd5a73b0060a3a46d307053d95930ef1",
+          "caption": "Before changelog layout, 900 × 1000 viewport"
+        },
+        {
+          "file": "changelog/v1.0.11/site-journeys/layout-after.jpg",
+          "sha256": "29ff7c2c89aa078550166f772f0652f80f3fc1f4c0917dc74cd52a4f01cf9b93",
+          "caption": "After changelog layout, 900 × 1000 viewport"
         }
       ],
       "output": null,
@@ -999,6 +1534,16 @@
           "file": "changelog/v1.0.11/squad-cohesion/after.jpg",
           "sha256": "c5c3d0db3eabc82bae218f0ac2b141ff05c82920419748de4a1ada454225d97c",
           "caption": "After: four soldiers take cover against the middle wall; the fifth stacks in a second row 1.5 metres behind them, with reduced protection. Same scenario, seed, time and camera as before."
+        },
+        {
+          "file": "changelog/v1.0.11/squad-cohesion/layout-before.jpg",
+          "sha256": "0d025e89adcf842b5d262f853afd5f81ab2b993f00658b66df0981229b72050d",
+          "caption": "Before changelog layout, 900 × 1000 viewport"
+        },
+        {
+          "file": "changelog/v1.0.11/squad-cohesion/layout-after.jpg",
+          "sha256": "922f45b0c3f53dd1bd3dceb85e02398c1186e61cbeee15d07db7cad1f2c5b271",
+          "caption": "After changelog layout, 900 × 1000 viewport"
         }
       ],
       "output": null,
@@ -1020,6 +1565,16 @@
           "file": "changelog/v1.0.11/website-field-manual/desktop.jpg",
           "sha256": "c29a0d8e022ebfa44f130c9027720aaeef6e6f95969a2a8938b2550c10abab6c",
           "caption": "Browse the roster and inspect the game's vehicle models on the website."
+        },
+        {
+          "file": "changelog/v1.0.11/website-field-manual/layout-before.jpg",
+          "sha256": "70462cba5d0369cff7e0d177e69919230992ad9db0dffbda9ea2fea3d13cb258",
+          "caption": "Before changelog layout, 900 × 1000 viewport"
+        },
+        {
+          "file": "changelog/v1.0.11/website-field-manual/layout-after.jpg",
+          "sha256": "62ec9306e587ec4b938709abb5ebbf4bf4230c472c9c906d3684956a77ef183d",
+          "caption": "After changelog layout, 900 × 1000 viewport"
         }
       ],
       "output": null,
@@ -1035,7 +1590,18 @@
       "stage": "text",
       "rationale": "Concise text explains the outcome without inventing footage or benchmark/audio evidence.",
       "source_ref": "4d4de4a",
-      "sources": [],
+      "sources": [
+        {
+          "file": "changelog/v1.0.2/boats-come-about/layout-before.jpg",
+          "sha256": "ad56a464e6df403d572708e5f529a04d93d6ed3d08bb5ff6896b9212cfd56787",
+          "caption": "Before changelog layout, 900 × 1000 viewport"
+        },
+        {
+          "file": "changelog/v1.0.2/boats-come-about/layout-after.jpg",
+          "sha256": "0cc573a1b888c93f90c5eee213a933c48207ed580f33f3f1d0e66fb3288ce35d",
+          "caption": "After changelog layout, 900 × 1000 viewport"
+        }
+      ],
       "output": null,
       "title": "Boats come about for a destination astern",
       "version": "v1.0.2",
@@ -1049,7 +1615,18 @@
       "stage": "text",
       "rationale": "Concise text explains the outcome without inventing footage or benchmark/audio evidence.",
       "source_ref": "4d4de4a",
-      "sources": [],
+      "sources": [
+        {
+          "file": "changelog/v1.0.2/faster-route-repairs/layout-before.jpg",
+          "sha256": "66aad5f9c3b69c148abf72cb6189448c3e6e2339b6ad16dcedfbe4c847e11350",
+          "caption": "Before changelog layout, 900 × 1000 viewport"
+        },
+        {
+          "file": "changelog/v1.0.2/faster-route-repairs/layout-after.jpg",
+          "sha256": "c2322a169037dcb904e9bfc3e7c793fb5d2ea5f754465550fd3d3bd675252d4b",
+          "caption": "After changelog layout, 900 × 1000 viewport"
+        }
+      ],
       "output": null,
       "title": "Smoother battles as the ground changes",
       "version": "v1.0.2",
@@ -1068,6 +1645,16 @@
           "file": "changelog/v1.0.2/field-manual-on-top/field-manual.jpg",
           "sha256": "74608ed2fbd9cab0164aa3aede057aff2097b2b6fd7a315b9f9d196944e8391c",
           "caption": "The Field Manual from the menu, its search and Close button in the clear"
+        },
+        {
+          "file": "changelog/v1.0.2/field-manual-on-top/layout-before.jpg",
+          "sha256": "2adbd58cc48621bf7fc34b41ffcc2bf9500f03892698dda5fb60644dafbf4559",
+          "caption": "Before changelog layout, 900 × 1000 viewport"
+        },
+        {
+          "file": "changelog/v1.0.2/field-manual-on-top/layout-after.jpg",
+          "sha256": "d6c2a1831be982ce2af08087f0eb15681e74157233d15822eb459257464117e4",
+          "caption": "After changelog layout, 900 × 1000 viewport"
         }
       ],
       "output": null,
@@ -1083,7 +1670,18 @@
       "stage": "text",
       "rationale": "Concise text explains the outcome without inventing footage or benchmark/audio evidence.",
       "source_ref": "4d4de4a",
-      "sources": [],
+      "sources": [
+        {
+          "file": "changelog/v1.0.2/lighter-pathfinding/layout-before.jpg",
+          "sha256": "5ed6f6fee917d66183e12db98e7ae12b44b6e3ba73b521cbb67d16a66b590af9",
+          "caption": "Before changelog layout, 900 × 1000 viewport"
+        },
+        {
+          "file": "changelog/v1.0.2/lighter-pathfinding/layout-after.jpg",
+          "sha256": "2faa14d2d42251a8bbc5dd595085b6e7432b81c9d3be83b6fe35e9de13fd5e26",
+          "caption": "After changelog layout, 900 × 1000 viewport"
+        }
+      ],
       "output": null,
       "title": "Battles use less memory",
       "version": "v1.0.2",
@@ -1097,7 +1695,18 @@
       "stage": "text",
       "rationale": "Concise text explains the outcome without inventing footage or benchmark/audio evidence.",
       "source_ref": "4d4de4a",
-      "sources": [],
+      "sources": [
+        {
+          "file": "changelog/v1.0.2/mac-build/layout-before.jpg",
+          "sha256": "d4a0b7c41f1619cfa094d362f6029a492fc864d8de74effaa1ef6ea7ae2f0f08",
+          "caption": "Before changelog layout, 900 × 1000 viewport"
+        },
+        {
+          "file": "changelog/v1.0.2/mac-build/layout-after.jpg",
+          "sha256": "5984c90b2f32a9055479c61877c6a5afa081172cd41cc60ff431537433846482",
+          "caption": "After changelog layout, 900 × 1000 viewport"
+        }
+      ],
       "output": null,
       "title": "Frontline on the Mac",
       "version": "v1.0.2",
@@ -1116,6 +1725,16 @@
           "file": "changelog/v1.0.2/ocean-swell/ocean-swell-poster.jpg",
           "sha256": "c081035e4f06bea0262e9be2ce410ab47710c594676fd16627c81172589756e6",
           "caption": "A patrol ship pitches and rolls as waves pass beneath it. Recorded in the current build, October 2026."
+        },
+        {
+          "file": "changelog/v1.0.2/ocean-swell/layout-before.jpg",
+          "sha256": "90163a82f2981fe57ae2db9a114c29e14f87eecd32bd143f0b4982a20560be2f",
+          "caption": "Before changelog layout, 900 × 1000 viewport"
+        },
+        {
+          "file": "changelog/v1.0.2/ocean-swell/layout-after.jpg",
+          "sha256": "0e470f276443c595778685914cca7327d4968bf9e3dac770fe1a4c8dc4ce0ab5",
+          "caption": "After changelog layout, 900 × 1000 viewport"
         }
       ],
       "output": null,
@@ -1136,6 +1755,16 @@
           "file": "changelog/v1.0.2/play-in-a-browser/browser-battle.jpg",
           "sha256": "498aac6c180c743438870a4f319366ef1fe60965c5735825c6744be9acd52aa0",
           "caption": "An AI battle in a browser tab"
+        },
+        {
+          "file": "changelog/v1.0.2/play-in-a-browser/layout-before.jpg",
+          "sha256": "a1979c200a8c89f20e315ceca73fea63cbd6c662e7365cf18d687e7e64b1c095",
+          "caption": "Before changelog layout, 900 × 1000 viewport"
+        },
+        {
+          "file": "changelog/v1.0.2/play-in-a-browser/layout-after.jpg",
+          "sha256": "df1c993af6bcbdb966871fbc0e12c085d2f60db40b0c352e39aad9fc8bb1f28b",
+          "caption": "After changelog layout, 900 × 1000 viewport"
         }
       ],
       "output": null,
@@ -1156,6 +1785,16 @@
           "file": "changelog/v1.0.2/realistic-gunfire/rifles-before-after.jpg",
           "sha256": "267bff656ad692da5589f1ad18e0a25138bf97ab382b7c13af9aa8e7879d08e2",
           "caption": "Rifles firing over a wall: before, every round threw up a big white cloud; now a tight flash that lights the wall and a quick puff of stone dust"
+        },
+        {
+          "file": "changelog/v1.0.2/realistic-gunfire/layout-before.jpg",
+          "sha256": "993fa49595d5daec1a4073685d235869b1d96180eea1ae42527e3597c303f3e7",
+          "caption": "Before changelog layout, 900 × 1000 viewport"
+        },
+        {
+          "file": "changelog/v1.0.2/realistic-gunfire/layout-after.jpg",
+          "sha256": "2fdbafb436d0a40747748304f586fcf41d0a3b65cfab95d9f6aed8bd788ca117",
+          "caption": "After changelog layout, 900 × 1000 viewport"
         }
       ],
       "output": null,
@@ -1176,6 +1815,16 @@
           "file": "changelog/v1.0.2/sign-in-with-github/sign-in.jpg",
           "sha256": "e819f933f7f6dba0a8aa50b7175d804564c1da76125664234771439ff75c394d",
           "caption": "Sign in with GitHub sends you to the website, and waits for you there"
+        },
+        {
+          "file": "changelog/v1.0.2/sign-in-with-github/layout-before.jpg",
+          "sha256": "fe2e2c3426ee532bf2d67667b2385f033fc492c232837ec692cb5e535c23d2be",
+          "caption": "Before changelog layout, 900 × 1000 viewport"
+        },
+        {
+          "file": "changelog/v1.0.2/sign-in-with-github/layout-after.jpg",
+          "sha256": "d21149a283fe0cb63c775d33dbb123774a5aa54c3794b89d9e61512811f16367",
+          "caption": "After changelog layout, 900 × 1000 viewport"
         }
       ],
       "output": null,
@@ -1196,6 +1845,16 @@
           "file": "changelog/v1.0.2/survey-map/before-and-after.jpg",
           "sha256": "a970a32d91f4b10c73d80a2c2dc76b22ae6522591b41a64d6eb37718f19e249a",
           "caption": "The main menu in v1.0.0 (left) and now"
+        },
+        {
+          "file": "changelog/v1.0.2/survey-map/layout-before.jpg",
+          "sha256": "710142f26fdd1588bd3dda8cb8ed95cb410d72e4bbb60dbbf70e57fc92e4d287",
+          "caption": "Before changelog layout, 900 × 1000 viewport"
+        },
+        {
+          "file": "changelog/v1.0.2/survey-map/layout-after.jpg",
+          "sha256": "47bce028b9fb48f33c20cd299230dd2d99adfc537ebf0f6f73aeedad3b622cf6",
+          "caption": "After changelog layout, 900 × 1000 viewport"
         }
       ],
       "output": null,
@@ -1216,6 +1875,16 @@
           "file": "changelog/v1.0.3/website-pages/play.jpg",
           "sha256": "9cba94381b406df9cfe8a5be7b28de2f80a50193965af4a5cca79a3ea8e6451c",
           "caption": "Play: launch the game, find a match, or download it"
+        },
+        {
+          "file": "changelog/v1.0.3/website-pages/layout-before.jpg",
+          "sha256": "c0a7162b944a4e6ff8aa6f430710c938b257f0754d6bff6bf2ed6c62c59eb2b3",
+          "caption": "Before changelog layout, 900 × 1000 viewport"
+        },
+        {
+          "file": "changelog/v1.0.3/website-pages/layout-after.jpg",
+          "sha256": "7a4ad07313c8a903d0b5b2600861c69a500e8e419e084fe6928ef441027e17d5",
+          "caption": "After changelog layout, 900 × 1000 viewport"
         }
       ],
       "output": null,
@@ -1236,6 +1905,16 @@
           "file": "changelog/v1.0.3/wildlife/fish-swimming-poster.jpg",
           "sha256": "c604f68eca63aa6761382c58580f9e25570d775b02b1116d7d68ae4dfad68016",
           "caption": "Fish swim together beneath the river surface. Recorded in the current build, October 2026."
+        },
+        {
+          "file": "changelog/v1.0.3/wildlife/layout-before.jpg",
+          "sha256": "37d13c468e3ca2f2df47e37413abc1e03dfcbeb9a9ecc0872a6f4b82dc9ddf62",
+          "caption": "Before changelog layout, 900 × 1000 viewport"
+        },
+        {
+          "file": "changelog/v1.0.3/wildlife/layout-after.jpg",
+          "sha256": "154506991d623ab964104f8767d0218a4099cd451cd3939862e371f4dc4ef02d",
+          "caption": "After changelog layout, 900 × 1000 viewport"
         }
       ],
       "output": null,
@@ -1256,6 +1935,16 @@
           "file": "changelog/v1.0.4/foam-rings/before-after.jpg",
           "sha256": "7a3e364d900c4b830cc5e24a2d9ae5928e206f82da6c15b1e7ac96c230c00141",
           "caption": "Before and after: a shell's splash in the sea"
+        },
+        {
+          "file": "changelog/v1.0.4/foam-rings/layout-before.jpg",
+          "sha256": "9aab8b0257b219b1f90ad3070c2d497f4922a993a33c7415d3d27667bd116477",
+          "caption": "Before changelog layout, 900 × 1000 viewport"
+        },
+        {
+          "file": "changelog/v1.0.4/foam-rings/layout-after.jpg",
+          "sha256": "278dd1b0202a76c972a24b654bc169b068fcea45450a9d3d6d8d6b18ee52426a",
+          "caption": "After changelog layout, 900 × 1000 viewport"
         }
       ],
       "output": null,
@@ -1271,7 +1960,18 @@
       "stage": "text",
       "rationale": "Concise text explains the outcome without inventing footage or benchmark/audio evidence.",
       "source_ref": "4d4de4a",
-      "sources": [],
+      "sources": [
+        {
+          "file": "changelog/v1.0.4/sooner-battle-start/layout-before.jpg",
+          "sha256": "d07cc079c24d5ab917f91e857fab3e4d9833ef323141045920269c86a73d1df1",
+          "caption": "Before changelog layout, 900 × 1000 viewport"
+        },
+        {
+          "file": "changelog/v1.0.4/sooner-battle-start/layout-after.jpg",
+          "sha256": "e9f7b60b1827a78da403109c17b4b99d64fcae5779b84a36829dc571a375c8ba",
+          "caption": "After changelog layout, 900 × 1000 viewport"
+        }
+      ],
       "output": null,
       "title": "Scenarios and battles start sooner",
       "version": "v1.0.4",
@@ -1290,6 +1990,16 @@
           "file": "changelog/v1.0.4/website-sign-in-and-pages/sign-in.jpg",
           "sha256": "53db478558e6cb78a26ab37ca607a73d32af38449095bf51a53cae50fdb060c1",
           "caption": "Sign in opens over the page you're on"
+        },
+        {
+          "file": "changelog/v1.0.4/website-sign-in-and-pages/layout-before.jpg",
+          "sha256": "a970fbbf672ce92063f82d9b8265cc03246113e7df8d725ccacbc1ca7c5b7765",
+          "caption": "Before changelog layout, 900 × 1000 viewport"
+        },
+        {
+          "file": "changelog/v1.0.4/website-sign-in-and-pages/layout-after.jpg",
+          "sha256": "f9a86aed6bfa0bcef82e7b04ae453532ac8fb67c055810c96e95ed3ea9a3ee56",
+          "caption": "After changelog layout, 900 × 1000 viewport"
         }
       ],
       "output": null,
@@ -1305,7 +2015,18 @@
       "stage": "text",
       "rationale": "Concise text explains the outcome without inventing footage or benchmark/audio evidence.",
       "source_ref": "4d4de4a",
-      "sources": [],
+      "sources": [
+        {
+          "file": "changelog/v1.0.5/battle-start-crash/layout-before.jpg",
+          "sha256": "fa787d03125b4a89a289bd21ab273f487a1ee548fef952cc8bc9573b424a1221",
+          "caption": "Before changelog layout, 900 × 1000 viewport"
+        },
+        {
+          "file": "changelog/v1.0.5/battle-start-crash/layout-after.jpg",
+          "sha256": "ea920113aba3039105b79c5215ead42725d5e6cae221b6f465dfeb557fced5a7",
+          "caption": "After changelog layout, 900 × 1000 viewport"
+        }
+      ],
       "output": null,
       "title": "A rare crash at the start of a battle",
       "version": "v1.0.5",
@@ -1319,7 +2040,18 @@
       "stage": "text",
       "rationale": "Concise text explains the outcome without inventing footage or benchmark/audio evidence.",
       "source_ref": "4d4de4a",
-      "sources": [],
+      "sources": [
+        {
+          "file": "changelog/v1.0.5/big-ships-come-about/layout-before.jpg",
+          "sha256": "29594d460916d64b38638e8ac74d222a2dd138789433b90c69c90955d1573839",
+          "caption": "Before changelog layout, 900 × 1000 viewport"
+        },
+        {
+          "file": "changelog/v1.0.5/big-ships-come-about/layout-after.jpg",
+          "sha256": "0e85ef8fe9f09543351457fd3733db53eb10d4170d0e3217b5847b5d54c98589",
+          "caption": "After changelog layout, 900 × 1000 viewport"
+        }
+      ],
       "output": null,
       "title": "Big ships come about without running aground",
       "version": "v1.0.5",
@@ -1338,6 +2070,16 @@
           "file": "changelog/v1.0.5/boats-handle-like-boats/boat-turn-poster.jpg",
           "sha256": "acd4ea53dc02a8a6f15aca8e8b4851a9228e6bd7683fc7578b1d43f6b34c215f",
           "caption": "An RHIB turns toward the beach, trailing a curved wake as it comes ashore. Recorded in the current build, October 2026."
+        },
+        {
+          "file": "changelog/v1.0.5/boats-handle-like-boats/layout-before.jpg",
+          "sha256": "ce23365f741c5e9a9e97c8110f989419e6c26df7710691f72189c8c967d14324",
+          "caption": "Before changelog layout, 900 × 1000 viewport"
+        },
+        {
+          "file": "changelog/v1.0.5/boats-handle-like-boats/layout-after.jpg",
+          "sha256": "2ecdd7740939b355a1164d16210e074006f9ceb00d39d0620fb9f5ec569ed3fc",
+          "caption": "After changelog layout, 900 × 1000 viewport"
         }
       ],
       "output": null,
@@ -1358,6 +2100,16 @@
           "file": "changelog/v1.0.5/in-game-console/console-why.jpg",
           "sha256": "89793b2f2a9b28f06610cf1bb93a03a45af42dd15ec766f7c477e3f3021f50ff",
           "caption": "why: what's holding the frame rate back, and the stutters of the last minute"
+        },
+        {
+          "file": "changelog/v1.0.5/in-game-console/layout-before.jpg",
+          "sha256": "785b300e2692150d71056d5cd18defe2148ba97bf41b13d88206ad6dbdde696d",
+          "caption": "Before changelog layout, 900 × 1000 viewport"
+        },
+        {
+          "file": "changelog/v1.0.5/in-game-console/layout-after.jpg",
+          "sha256": "00798c7407d8e2a0653f832b7306e94a9264795987e6ba49da4b32c69403ab75",
+          "caption": "After changelog layout, 900 × 1000 viewport"
         }
       ],
       "output": null,
@@ -1378,6 +2130,16 @@
           "file": "changelog/v1.0.5/installers/windows-setup.jpg",
           "sha256": "a283d880c2f136101374edd27b4d3086ea5aadb28f5f1a5f787e474ff3acf5b1",
           "caption": "The Windows installer: no administrator rights needed"
+        },
+        {
+          "file": "changelog/v1.0.5/installers/layout-before.jpg",
+          "sha256": "5fa39b805daa8d50f335afeeee3587e5102f4376e4f1a8f46bab40632a6f8a3b",
+          "caption": "Before changelog layout, 900 × 1000 viewport"
+        },
+        {
+          "file": "changelog/v1.0.5/installers/layout-after.jpg",
+          "sha256": "ccf7582d96719c4bee6677c33cb7433179fc4a2dbf9c45535de0d1f2eb54eaee",
+          "caption": "After changelog layout, 900 × 1000 viewport"
         }
       ],
       "output": null,
@@ -1398,6 +2160,16 @@
           "file": "changelog/v1.0.5/leaderboards-and-public-profiles/leaderboards.jpg",
           "sha256": "592172657148d4e5d1f53e02ee00a152c54af28c071802921f9d8ebc490dcafd",
           "caption": "The leaderboards: experience of all time, this month and this week, with you marked"
+        },
+        {
+          "file": "changelog/v1.0.5/leaderboards-and-public-profiles/layout-before.jpg",
+          "sha256": "511f0bd7f51e70e415335f2f7992bad8a6609623f471076bda7e2d09d99779fe",
+          "caption": "Before changelog layout, 900 × 1000 viewport"
+        },
+        {
+          "file": "changelog/v1.0.5/leaderboards-and-public-profiles/layout-after.jpg",
+          "sha256": "3933a83591d9a4dad5ac3dca767faf13e806a734f0c7608acad9e905e4619e34",
+          "caption": "After changelog layout, 900 × 1000 viewport"
         }
       ],
       "output": null,
@@ -1413,7 +2185,18 @@
       "stage": "text",
       "rationale": "Concise text explains the outcome without inventing footage or benchmark/audio evidence.",
       "source_ref": "4d4de4a",
-      "sources": [],
+      "sources": [
+        {
+          "file": "changelog/v1.0.5/lost-squad-crash/layout-before.jpg",
+          "sha256": "c2d92221fdcfeb9ae872297fe7b246d35db492d2cc03842957d3762eb08be868",
+          "caption": "Before changelog layout, 900 × 1000 viewport"
+        },
+        {
+          "file": "changelog/v1.0.5/lost-squad-crash/layout-after.jpg",
+          "sha256": "abbcda2a7dd25b18d1324a2e26f85c511c6d6b0a9a29953d98aae0fcd2beffea",
+          "caption": "After changelog layout, 900 × 1000 viewport"
+        }
+      ],
       "output": null,
       "title": "No more crash when an attack outlasts a squad it lost",
       "version": "v1.0.5",
@@ -1432,6 +2215,16 @@
           "file": "changelog/v1.0.5/roads-under-smoke/before-after.jpg",
           "sha256": "fcfb211f3cc0c1c574300e519a48ee136abd43421eae70af16f3cb5c9a0714d2",
           "caption": "Before and after: shells bursting at a crossroads in town"
+        },
+        {
+          "file": "changelog/v1.0.5/roads-under-smoke/layout-before.jpg",
+          "sha256": "c19d18035516fdf1764bf72c113f92c8087cef68b6e84927974d93e5fe56cb76",
+          "caption": "Before changelog layout, 900 × 1000 viewport"
+        },
+        {
+          "file": "changelog/v1.0.5/roads-under-smoke/layout-after.jpg",
+          "sha256": "a6d8e939ba00e0757765c444fe2d47b2838cd18255583f067daa7b147546affd",
+          "caption": "After changelog layout, 900 × 1000 viewport"
         }
       ],
       "output": null,
@@ -1452,6 +2245,16 @@
           "file": "changelog/v1.0.5/website-links-on-windows/game-sign-in.jpg",
           "sha256": "a524cf1e032e92b9406e5df156c348eaed3e8247b5879092db188207b03db8ad",
           "caption": "Signing in from the game: the steps, and the one you're on"
+        },
+        {
+          "file": "changelog/v1.0.5/website-links-on-windows/layout-before.jpg",
+          "sha256": "e533784250b5d13980631d8fdbcefc8b74faa5c48ec5648f2e940e267d42f516",
+          "caption": "Before changelog layout, 900 × 1000 viewport"
+        },
+        {
+          "file": "changelog/v1.0.5/website-links-on-windows/layout-after.jpg",
+          "sha256": "5244417d150918e48c20abe29cd8a67cf11782926486cad8d13860532523ec7c",
+          "caption": "After changelog layout, 900 × 1000 viewport"
         }
       ],
       "output": null,
@@ -1472,6 +2275,16 @@
           "file": "changelog/v1.0.5/wildlife-in-the-fighting/stunned-fish.jpg",
           "sha256": "6a22d82281535cfe1e79bafad5b259ef5977a7de0d94c405a1d6f2f877ee55d6",
           "caption": "Fish stunned by a shell in the water, floating up belly-up"
+        },
+        {
+          "file": "changelog/v1.0.5/wildlife-in-the-fighting/layout-before.jpg",
+          "sha256": "9a96b3f0ebb49fc68d1822ae887156b0324d38fc2c43712a09eb08cce5d03f8b",
+          "caption": "Before changelog layout, 900 × 1000 viewport"
+        },
+        {
+          "file": "changelog/v1.0.5/wildlife-in-the-fighting/layout-after.jpg",
+          "sha256": "c649c637f4d55109c620ccc21f754250ccf081d3f0646c82a3f205a37a52e165",
+          "caption": "After changelog layout, 900 × 1000 viewport"
         }
       ],
       "output": null,
@@ -1487,7 +2300,18 @@
       "stage": "text",
       "rationale": "Concise text explains the outcome without inventing footage or benchmark/audio evidence.",
       "source_ref": "4d4de4a",
-      "sources": [],
+      "sources": [
+        {
+          "file": "changelog/v1.0.6/faster-launch/layout-before.jpg",
+          "sha256": "95a99b106362c1f31a3413a5edfaf504ca8792c9275686a716f3825068e0a248",
+          "caption": "Before changelog layout, 900 × 1000 viewport"
+        },
+        {
+          "file": "changelog/v1.0.6/faster-launch/layout-after.jpg",
+          "sha256": "c93253f126e1e4e9d1eb15e0765762549cb001c1f9f261df95517b2f25b718e7",
+          "caption": "After changelog layout, 900 × 1000 viewport"
+        }
+      ],
       "output": null,
       "title": "The game opens faster",
       "version": "v1.0.6",
@@ -1501,7 +2325,18 @@
       "stage": "text",
       "rationale": "Concise text explains the outcome without inventing footage or benchmark/audio evidence.",
       "source_ref": "4d4de4a",
-      "sources": [],
+      "sources": [
+        {
+          "file": "changelog/v1.0.6/faster-map-generation/layout-before.jpg",
+          "sha256": "db1c9ba3cc445f1754c6701411b43f4ec78cc001fca25965196aeca6e569ffc9",
+          "caption": "Before changelog layout, 900 × 1000 viewport"
+        },
+        {
+          "file": "changelog/v1.0.6/faster-map-generation/layout-after.jpg",
+          "sha256": "8ee63abe1308f8c49bbdd2b431ee83cfa92764b1b8a003a37f89387cbb67f8d3",
+          "caption": "After changelog layout, 900 × 1000 viewport"
+        }
+      ],
       "output": null,
       "title": "Battlefields are laid out faster",
       "version": "v1.0.6",
@@ -1515,7 +2350,18 @@
       "stage": "text",
       "rationale": "Concise text explains the outcome without inventing footage or benchmark/audio evidence.",
       "source_ref": "4d4de4a",
-      "sources": [],
+      "sources": [
+        {
+          "file": "changelog/v1.0.7/links-reach-the-open-game/layout-before.jpg",
+          "sha256": "2dd8ec5a1f6f25af957326b4cc0ed69f99efd7f000fbb2dc9b839e4a1862963d",
+          "caption": "Before changelog layout, 900 × 1000 viewport"
+        },
+        {
+          "file": "changelog/v1.0.7/links-reach-the-open-game/layout-after.jpg",
+          "sha256": "e5bf6381fc1b864323e180f858d325a5f79120975f632dd7f6c1f929765aebe0",
+          "caption": "After changelog layout, 900 × 1000 viewport"
+        }
+      ],
       "output": null,
       "title": "Website links reach the game you have open",
       "version": "v1.0.7",
@@ -1529,7 +2375,18 @@
       "stage": "text",
       "rationale": "Concise text explains the outcome without inventing footage or benchmark/audio evidence.",
       "source_ref": "4d4de4a",
-      "sources": [],
+      "sources": [
+        {
+          "file": "changelog/v1.0.8/links-claimed-again/layout-before.jpg",
+          "sha256": "650a9b93c3b370fb064733f049ec09fb018a56c0eb38daca4b2f75d3b8bf2f3f",
+          "caption": "Before changelog layout, 900 × 1000 viewport"
+        },
+        {
+          "file": "changelog/v1.0.8/links-claimed-again/layout-after.jpg",
+          "sha256": "c5793f13fa41f0f98e8de56fcefa14247a201ef6bc2cd0de752712344d8d2d81",
+          "caption": "After changelog layout, 900 × 1000 viewport"
+        }
+      ],
       "output": null,
       "title": "Website links work again after an uninstall",
       "version": "v1.0.8",
@@ -1548,6 +2405,16 @@
           "file": "changelog/v1.0.8/signal-interface/battle-hud.jpg",
           "sha256": "419d2fab1ccc343dc0faf85f0ad08a90385301aedfbb266b55ac566f6f789a1c",
           "caption": "The battle's interface sits straight on the battlefield"
+        },
+        {
+          "file": "changelog/v1.0.8/signal-interface/layout-before.jpg",
+          "sha256": "6a20376a83d936e3b022c6921387fa9138ffafd6327083cc6643ff2bfd0b968e",
+          "caption": "Before changelog layout, 900 × 1000 viewport"
+        },
+        {
+          "file": "changelog/v1.0.8/signal-interface/layout-after.jpg",
+          "sha256": "53e85a8718b2e04d30827d91c9151ce571ddb2b3affc3fc884c7a3286083ed4c",
+          "caption": "After changelog layout, 900 × 1000 viewport"
         }
       ],
       "output": null,
@@ -1563,7 +2430,18 @@
       "stage": "text",
       "rationale": "Concise text explains the outcome without inventing footage or benchmark/audio evidence.",
       "source_ref": "4d4de4a",
-      "sources": [],
+      "sources": [
+        {
+          "file": "changelog/v1.0.9/battle-loads-without-freezing/layout-before.jpg",
+          "sha256": "e581915ad0634d56c17d3aeeed9ba57f22ff91f868db233fe4b91ea1bc9ace7d",
+          "caption": "Before changelog layout, 900 × 1000 viewport"
+        },
+        {
+          "file": "changelog/v1.0.9/battle-loads-without-freezing/layout-after.jpg",
+          "sha256": "becd8ff8d2ab097426b4f496bb9a5c56c9e0fbcf2964fe8b812abcea0465e3d2",
+          "caption": "After changelog layout, 900 × 1000 viewport"
+        }
+      ],
       "output": null,
       "title": "Battles load sooner, and without freezing",
       "version": "v1.0.9",
@@ -1582,6 +2460,16 @@
           "file": "changelog/v1.0.9/joining-loads-first/loading-screen.jpg",
           "sha256": "66d76a56fe23fc240af4d4a3cd73ce7573aafefa6e3cc54615d065da1ad9a13d",
           "caption": "Joining a running battle: the loading screen waits while the battlefield goes up"
+        },
+        {
+          "file": "changelog/v1.0.9/joining-loads-first/layout-before.jpg",
+          "sha256": "f42e6a69cf9657b88ed8b052d4faa469560fa20b5c82502a91b13eef3df80657",
+          "caption": "Before changelog layout, 900 × 1000 viewport"
+        },
+        {
+          "file": "changelog/v1.0.9/joining-loads-first/layout-after.jpg",
+          "sha256": "e583b4f4674798800a6a22ace00adf58276089b927370c1e821a651e50e11c7c",
+          "caption": "After changelog layout, 900 × 1000 viewport"
         }
       ],
       "output": null,
@@ -1607,6 +2495,16 @@
           "file": "changelog/v1.0.9/signal-interface/battle-hud.jpg",
           "sha256": "419d2fab1ccc343dc0faf85f0ad08a90385301aedfbb266b55ac566f6f789a1c",
           "caption": "The battle's interface sits straight on the battlefield"
+        },
+        {
+          "file": "changelog/v1.0.9/signal-interface/layout-before.jpg",
+          "sha256": "d41578d7c8f87d381f0656abdbe1e29204e91764851a8e4fae0690b852cb6ae4",
+          "caption": "Before changelog layout, 900 × 1000 viewport"
+        },
+        {
+          "file": "changelog/v1.0.9/signal-interface/layout-after.jpg",
+          "sha256": "49377b29920c2ad9e4b11ff01a5ad68c2190608b281c49beab7bc5850f8ada22",
+          "caption": "After changelog layout, 900 × 1000 viewport"
         }
       ],
       "output": null,
@@ -1622,7 +2520,18 @@
       "stage": "existing-evidence",
       "rationale": "Use the entry’s existing matched evidence; this entry has not been released.",
       "source_ref": "4d4de4a",
-      "sources": [],
+      "sources": [
+        {
+          "file": "changelog/unreleased/combat-overlay-refresh/layout-before.jpg",
+          "sha256": "50d58929141ce9fdf35c0788ea55aef9243451120045007e214783e3f11e89e1",
+          "caption": "Before changelog layout, 900 × 1000 viewport"
+        },
+        {
+          "file": "changelog/unreleased/combat-overlay-refresh/layout-after.jpg",
+          "sha256": "a963ed6a770c0bc1e4b1e5d17f98c8508cb200aff007d2029b94dc2ca5457b3e",
+          "caption": "After changelog layout, 900 × 1000 viewport"
+        }
+      ],
       "output": null
     },
     {
@@ -1632,7 +2541,18 @@
       "stage": "existing-evidence",
       "rationale": "Use the entry’s existing matched evidence; this entry has not been released.",
       "source_ref": "4d4de4a",
-      "sources": [],
+      "sources": [
+        {
+          "file": "changelog/unreleased/progressive-minimap/layout-before.jpg",
+          "sha256": "3d794fffbd1addd88cbf10eb8d2c1b4d680ca40c0bb25cc400fd30f0b97977a2",
+          "caption": "Before changelog layout, 900 × 1000 viewport"
+        },
+        {
+          "file": "changelog/unreleased/progressive-minimap/layout-after.jpg",
+          "sha256": "36432f1c8d6cb979ad1a9328377b0ba1d356459e33f06d62b3ca3cb0571cf144",
+          "caption": "After changelog layout, 900 × 1000 viewport"
+        }
+      ],
       "output": null
     },
     {
@@ -1642,7 +2562,18 @@
       "stage": "existing-evidence",
       "rationale": "Use the entry’s existing matched evidence; this entry has not been released.",
       "source_ref": "4d4de4a",
-      "sources": [],
+      "sources": [
+        {
+          "file": "changelog/unreleased/tank-operation/layout-before.jpg",
+          "sha256": "498a716dac09d9ecfc041222646c10eff8b7afa7c1ac74642d0d2de86815e364",
+          "caption": "Before changelog layout, 900 × 1000 viewport"
+        },
+        {
+          "file": "changelog/unreleased/tank-operation/layout-after.jpg",
+          "sha256": "47ebef9ec36c2b836411c1db02324007bb517a3edeeea6fbcb2baea7ad2b4d9f",
+          "caption": "After changelog layout, 900 × 1000 viewport"
+        }
+      ],
       "output": null
     },
     {
@@ -1652,7 +2583,18 @@
       "stage": "controlled-motion",
       "rationale": "Use the entry’s existing matched evidence; this entry has not been released.",
       "source_ref": "PR #111",
-      "sources": [],
+      "sources": [
+        {
+          "file": "changelog/unreleased/vehicle-motion-and-muzzles/layout-before.jpg",
+          "sha256": "52fda3a5bed9bfa4cfcf611b16d3f85da6b1efa7248cd7893399f748421d1de9",
+          "caption": "Before changelog layout, 900 × 1000 viewport"
+        },
+        {
+          "file": "changelog/unreleased/vehicle-motion-and-muzzles/layout-after.jpg",
+          "sha256": "8a12ece8ccaa03515cf501f9ebfd8751eda0abd64a0d7d9fe1a6ae496c2c1fc0",
+          "caption": "After changelog layout, 900 × 1000 viewport"
+        }
+      ],
       "output": null
     },
     {
@@ -1686,9 +2628,34 @@
           "file": "changelog/unreleased/clearer-release-history/phone.jpg",
           "sha256": "afab1dfdd953cf87bda9f67c3780ba223319620f840c8ba310292535f7b204c3",
           "caption": "phone"
+        },
+        {
+          "file": "changelog/unreleased/clearer-release-history/layout-before.jpg",
+          "sha256": "bc2a187a5b6b2d2c3f88476304219e1c26afbfd98146dd47cdbe4e74520df9d8",
+          "caption": "Before changelog layout, 900 × 1000 viewport"
+        },
+        {
+          "file": "changelog/unreleased/clearer-release-history/layout-after.jpg",
+          "sha256": "6ba248f7bf06a497fdd67c9b0a744e09f452da63b142484be5bb9e0aceec9c41",
+          "caption": "After changelog layout, 900 × 1000 viewport"
+        },
+        {
+          "file": "changelog/unreleased/clearer-release-history/layout-review-ui.jpg",
+          "sha256": "4143448a18a5301adf96eef6c2de2dbee0a6820befb94330c765da4c69f433e2",
+          "caption": "Expanded layout review in the changelog"
         }
       ],
       "output": null
     }
-  ]
+  ],
+  "layout_capture": {
+    "before_ref": "1cc34e3",
+    "after_ref": "c9ee75d",
+    "viewport": {
+      "width": 900,
+      "height": 1000
+    },
+    "renderer": "Actual ReleaseCard components, one entry per release context; reduced motion; top viewport only. New entries use current content in both components.",
+    "entries": 92
+  }
 }

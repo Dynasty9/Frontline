@@ -2,6 +2,11 @@
 title = "Command all allied troops"
 summary = "Coordinate freely with teammates by selecting and ordering any allied troop or vehicle."
 kind = "improved"
+
+[layout_comparison]
+before = "layout-before.jpg"
+after = "layout-after.jpg"
+caption = "Changelog presentation comparison, not gameplay: the top 1,000 pixels of this entry at the same 900-pixel viewport width. Open either image to inspect it."
 +++
 
 All commanders on a side can select and order every allied squad, vehicle and individual soldier, without ownership locks.
