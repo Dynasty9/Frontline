@@ -163,10 +163,12 @@ impl Flight {
             _ => false,
         };
         let hit = if sweeps {
-            world.ray(self.position, self.sweep_end(dt), excluded).map(|hit| Hit {
-                position: hit.position,
-                normal: hit.normal,
-            })
+            world
+                .ray(self.position, self.sweep_end(dt), excluded)
+                .map(|hit| Hit {
+                    position: hit.position,
+                    normal: hit.normal,
+                })
         } else {
             None
         };

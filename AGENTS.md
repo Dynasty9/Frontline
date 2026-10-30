@@ -4,7 +4,7 @@ Notes for AI coding agents (Claude Code, Codex, Copilot and the like) working on
 
 ## The project in one paragraph
 
-Frontline is a squad-level military RTS written entirely in **GDScript for Godot 4.7** (standard build, not .NET). There is no build step and no asset pipeline: every model, effect, texture and sound is generated in code at runtime. Multiplayer is server-authoritative. The host simulates everything, including the AI, and clients only draw what they're sent.
+Frontline is a squad-level military RTS using **Godot 4.7** (standard build, not .NET) and a Rust simulation core. Gameplay is being migrated from GDScript; the full Rust server and battle replay verifier remain unfinished (see `docs/RUST_SIMULATION.md`). Models, effects, textures and sounds are generated in code at runtime. Multiplayer is server-authoritative: the host simulates the battle and clients draw observations.
 
 ## Where things are
 
@@ -21,6 +21,8 @@ scripts/game/mapgen.gd         map generation and the --scenario test setups; to
 scripts/game/missions.gd       the missions (content); mission_director.gd runs them (objectives, events, the end)
 scripts/game/co_command.gd     co-commanders: each player's view, cursor and plans, pings, sketches (relayed to their side only)
 scripts/game/terrain.gd, nav.gd, hnav.gd   ground kinds, cover map, pathfinding grids (HPA*)
+native/core/                  engine-independent Rust simulation state and algorithms
+native/src/                   Godot bindings; keep scene objects out of native/core
 scripts/ui/                    HUD, minimap, Field Manual, menus
 scripts/test/                  test runs: their exit code (test_run.gd), the test port (test_port.gd), the camera and key tests
 tests/                         tests that drive the game through its test port (Node, no dependencies; lib/game.mjs the client)
@@ -46,6 +48,8 @@ Data lives in tables: units, weapons, squads, buildings and upgrades in `scripts
 ## Checking your work
 
 Run every command from the repository root. `godot` means your Godot 4.7.x executable; on Windows use the `_console.exe` build so output reaches the terminal.
+
+For Rust changes, run `cargo +1.94.0 test --locked --manifest-path native/Cargo.toml -p frontline_core`, then `python tools/build_native.py` before importing Godot. Generated libraries are ignored; release CI builds them. Do not stage a new Windows library while a test process has the old one loaded.
 
 1. **Everything compiles.** This prints nothing when all is well:
    ```

@@ -1,3 +1,4 @@
+use crate::state_codec::{Reader, Writer};
 use crate::vector::Vector3;
 use std::cmp::Ordering;
 use std::collections::{BinaryHeap, HashMap};
@@ -47,6 +48,126 @@ pub struct RouteGraph {
 }
 
 impl RouteGraph {
+    /// Slot reuse and neighbor order break equal-cost ties, so both are authoritative.
+    pub fn checkpoint(&self) -> Vec<u8> {
+        let mut out = Writer::new(b"FLRG\x01\0\0\0");
+        out.f64(self.minimum_weight);
+        out.u32(self.points.len() as u32);
+        for point in &self.points {
+            out.byte(u8::from(point.is_some()));
+            if let Some(point) = point {
+                out.u64(point.id as u64);
+                out.point(point.position);
+                out.f64(point.weight);
+                out.u32(point.edges.len() as u32);
+                for &(next, _) in &point.edges {
+                    out.u32(next as u32);
+                }
+            }
+        }
+        out.u32(self.free.len() as u32);
+        for &slot in &self.free {
+            out.u32(slot as u32);
+        }
+        out.0
+    }
+
+    pub fn restore(bytes: &[u8]) -> Result<Self, &'static str> {
+        let mut input = Reader::new(bytes, b"FLRG\x01\0\0\0")?;
+        let minimum_weight = input.f64()?;
+        if minimum_weight < 0.0 {
+            return Err("negative route heuristic");
+        }
+        let count = input.u32()? as usize;
+        if count > 1_000_000 || count > bytes.len() {
+            return Err("too many route slots");
+        }
+        let mut graph = Self::new();
+        graph.minimum_weight = minimum_weight;
+        let mut edges = std::collections::HashSet::new();
+        for index in 0..count {
+            let point = if input.boolean()? {
+                let id = input.u64()?;
+                if id > i64::MAX as u64 || graph.ids.insert(id as i64, index).is_some() {
+                    return Err("invalid or duplicate route ID");
+                }
+                let position = input.point()?;
+                let weight = input.f64()?;
+                if weight < minimum_weight {
+                    return Err("invalid route weight");
+                }
+                let n = input.u32()? as usize;
+                if n >= count || edges.len() + n > 8_000_000 {
+                    return Err("too many route edges");
+                }
+                let mut neighbors = Vec::new();
+                for _ in 0..n {
+                    let next = input.u32()? as usize;
+                    if next >= count || next == index || !edges.insert((index, next)) {
+                        return Err("invalid or duplicate route edge");
+                    }
+                    neighbors.push((next, 0.0));
+                }
+                Some(Point {
+                    id: id as i64,
+                    position,
+                    weight,
+                    edges: neighbors,
+                })
+            } else {
+                None
+            };
+            graph.points.push(point);
+        }
+        let free = input.u32()? as usize;
+        if free != count - graph.ids.len() {
+            return Err("invalid route free list size");
+        }
+        let mut seen = vec![false; count];
+        for _ in 0..free {
+            let slot = input.u32()? as usize;
+            if slot >= count || graph.points[slot].is_some() || seen[slot] {
+                return Err("invalid route free slot");
+            }
+            seen[slot] = true;
+            graph.free.push(slot);
+        }
+        input.finish()?;
+        for &(from, to) in &edges {
+            if graph.points[to].is_none() || !edges.contains(&(to, from)) {
+                return Err("asymmetric route edge");
+            }
+        }
+        for index in 0..count {
+            if let Some(point) = &graph.points[index] {
+                let position = point.position;
+                let distances: Vec<_> = point
+                    .edges
+                    .iter()
+                    .map(|(next, _)| {
+                        position.distance(graph.points[*next].as_ref().unwrap().position) as f64
+                    })
+                    .collect();
+                if distances.iter().any(|d| !d.is_finite()) {
+                    return Err("nonfinite route length");
+                }
+                for (edge, distance) in graph.points[index]
+                    .as_mut()
+                    .unwrap()
+                    .edges
+                    .iter_mut()
+                    .zip(distances)
+                {
+                    edge.1 = distance;
+                }
+            }
+        }
+        graph.costs.resize(count, 0.0);
+        graph.parents.resize(count, (0, None));
+        graph.visited.resize(count, 0);
+        Ok(graph)
+    }
+
     pub fn new() -> Self {
         Self {
             minimum_weight: 1.0,

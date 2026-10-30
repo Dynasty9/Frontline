@@ -136,12 +136,29 @@ fn rocket_collision_precedes_timeout_and_ground_impact() {
 fn collision_and_flight_advance_without_engine_callbacks() {
     use frontline_core::collision::{BoxShape, CollisionWorld, Mat3};
     let mut world = CollisionWorld::default();
-    assert!(world.replace(91, &[BoxShape {
-        body: 91, shape: 0, center: Vector3::new(2.0, 2.0, 0.0),
-        basis: Mat3::IDENTITY, half: Vector3::new(0.1, 3.0, 3.0),
-    }]));
-    for kind in [Kind::Frag, Kind::Smoke, Kind::Rocket, Kind::Recoilless, Kind::Bomb, Kind::Arty] {
-        for held in [Holder::Free, Holder::Alive(Vector3::new(5.0, 2.0, 0.0)), Holder::Dropped] {
+    assert!(world.replace(
+        91,
+        &[BoxShape {
+            body: 91,
+            shape: 0,
+            center: Vector3::new(2.0, 2.0, 0.0),
+            basis: Mat3::IDENTITY,
+            half: Vector3::new(0.1, 3.0, 3.0),
+        }]
+    ));
+    for kind in [
+        Kind::Frag,
+        Kind::Smoke,
+        Kind::Rocket,
+        Kind::Recoilless,
+        Kind::Bomb,
+        Kind::Arty,
+    ] {
+        for held in [
+            Holder::Free,
+            Holder::Alive(Vector3::new(5.0, 2.0, 0.0)),
+            Holder::Dropped,
+        ] {
             for excluded in [vec![], vec![91]] {
                 let mut flight = grenade();
                 flight.kind = kind;
@@ -154,9 +171,15 @@ fn collision_and_flight_advance_without_engine_callbacks() {
                     _ => false,
                 };
                 let hit = if sweeps {
-                    world.ray(flight.position, flight.sweep_end(0.1), &excluded)
-                        .map(|hit| Hit { position: hit.position, normal: hit.normal })
-                } else { None };
+                    world
+                        .ray(flight.position, flight.sweep_end(0.1), &excluded)
+                        .map(|hit| Hit {
+                            position: hit.position,
+                            normal: hit.normal,
+                        })
+                } else {
+                    None
+                };
                 let expected = reference.advance(0.1, held, hit);
                 let actual = flight.advance_in_world(0.1, held, &mut world, &excluded);
                 assert_eq!(actual, expected);

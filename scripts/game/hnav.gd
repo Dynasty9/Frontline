@@ -36,6 +36,20 @@ const UNKNOWN := -2.0  # a cost not worked out yet (-1 is "no way through")
 static var _corner: Array[Vector2i] = _corners()
 
 var grid: Object
+var _core: RefCounted
+var _use_native := true
+
+class NativeLocalGrid extends RefCounted:
+	# Inspection tools keep the grid API; gameplay calls local_path directly.
+	var core: RefCounted
+	var source: Object
+	var cluster: int
+	func get_id_path(a: Vector2i, b: Vector2i) -> Array[Vector2i]:
+		return core.local_path(cluster, a, b)
+	func is_point_solid(c: Vector2i) -> bool:
+		return source.is_point_solid(c)
+	func get_point_weight_scale(c: Vector2i) -> float:
+		return source.get_point_weight_scale(c)
 var vehicle := false
 var graphs: Array = []  # [plain, team 0 view, team 1 view]
 var g_team: Array = []  # (the last two again)
@@ -81,10 +95,11 @@ var danger_n := PackedInt32Array()  # per side, per cluster: goes up whenever it
 var border_dn := {}  # _bkey -> Vector4i: the danger_n of each side when its entrances were last weighted
 
 
-func _init(g: Object, is_vehicle: bool) -> void:
+func _init(g: Object, is_vehicle: bool, use_native := true) -> void:
 	NCC = NC * NC
 	_corner = _corners()
 	grid = g
+	_use_native = use_native
 	vehicle = is_vehicle
 	for i in 3:
 		graphs.append(ClassDB.instantiate("RouteGraph") if ClassDB.class_exists("RouteGraph") else AStar3D.new())
@@ -107,8 +122,14 @@ func _init(g: Object, is_vehicle: bool) -> void:
 
 
 ## Cluster ci's own grid, its cells as the full grid has them now.
-func local_grid(ci: int) -> AStarGrid2D:
-	var cached: AStarGrid2D = _local.get(ci)
+func local_grid(ci: int) -> Object:
+	if _core:
+		var view := NativeLocalGrid.new()
+		view.core = _core
+		view.source = grid
+		view.cluster = ci
+		return view
+	var cached: Object = _local.get(ci)
 	if cached != null:
 		# Dictionary insertion order keeps eviction independent of cache size.
 		_local.erase(ci)
@@ -128,18 +149,21 @@ func local_grid(ci: int) -> AStarGrid2D:
 ## A grid for cluster ci with the cells `solid` and `weight` (full-map arrays)
 ## give it. Only those unlike a fresh grid's (open, weight 1) need setting:
 ## walls, water and roads.
-static func _local_from(ci: int, solid: PackedByteArray, weight: PackedFloat32Array) -> AStarGrid2D:
+static func _local_from(ci: int, solid: PackedByteArray, weight: PackedFloat32Array) -> Object:
 	var o := _corner[ci]
-	var lg := AStarGrid2D.new()
-	lg.region = Rect2i(o, Vector2i(C, C))
-	lg.cell_size = Vector2(1, 1)
-	lg.diagonal_mode = AStarGrid2D.DIAGONAL_MODE_ONLY_IF_NO_OBSTACLES
-	lg.default_compute_heuristic = AStarGrid2D.HEURISTIC_OCTILE
-	lg.default_estimate_heuristic = AStarGrid2D.HEURISTIC_OCTILE
-	lg.update()
+	var lg := make_grid(Rect2i(o, Vector2i(C, C)))
 	var n := MapDims.N
 	var x0 := o.x
 	var z0 := o.y
+	if lg.has_method("load_cells"):
+		var cells := PackedByteArray()
+		var weights := PackedFloat32Array()
+		for z in range(z0, z0 + C):
+			cells.append_array(solid.slice(z * n + x0, z * n + x0 + C))
+			weights.append_array(weight.slice(z * n + x0, z * n + x0 + C))
+		var valid: bool = lg.load_cells(cells, weights)
+		assert(valid, "Invalid navigation cells")
+		return lg
 	for z in range(z0, z0 + C):
 		var row := z * n
 		for x in range(x0, x0 + C):
@@ -149,6 +173,22 @@ static func _local_from(ci: int, solid: PackedByteArray, weight: PackedFloat32Ar
 			if w != 1.0:
 				lg.set_point_weight_scale(Vector2i(x, z), w)
 	return lg
+
+
+static func make_grid(region: Rect2i, cell_size := Vector2.ONE) -> Object:
+	if ClassDB.class_exists("NavigationGridCore"):
+		var core: RefCounted = ClassDB.instantiate("NavigationGridCore")
+		if core.configure(region, cell_size):
+			return core
+		push_error("Invalid native navigation grid dimensions")
+	var grid := AStarGrid2D.new()
+	grid.region = region
+	grid.cell_size = cell_size
+	grid.diagonal_mode = AStarGrid2D.DIAGONAL_MODE_ONLY_IF_NO_OBSTACLES
+	grid.default_compute_heuristic = AStarGrid2D.HEURISTIC_OCTILE
+	grid.default_estimate_heuristic = AStarGrid2D.HEURISTIC_OCTILE
+	grid.update()
+	return grid
 
 
 func cluster_of(c: Vector2i) -> int:
@@ -169,6 +209,11 @@ static func _key(a: int, b: int) -> int:
 ## Nav changed a cell's solidity / weight: mirror it and queue the cluster.
 ## (Nav reports every cell it sets, from the start: see _solid.)
 func mark_dirty(c: Vector2i) -> void:
+	if _core:
+		var valid: bool = _core.set_cell(c, grid.is_point_solid(c), grid.get_point_weight_scale(c))
+		assert(valid, "Invalid hierarchical terrain edit")
+		terrain_revision = _core.terrain_revision()
+		return
 	var ci := cluster_of(c)
 	var solid: bool = grid.is_point_solid(c)
 	var w: float = grid.get_point_weight_scale(c)
@@ -191,7 +236,7 @@ func mark_dirty(c: Vector2i) -> void:
 			edge_ver[ci * 4 + 3] += 1
 	_solid[i] = 1 if solid else 0
 	_weight[i] = w
-	var lg: AStarGrid2D = _local.get(ci)
+	var lg: Object = _local.get(ci)
 	if lg != null:
 		lg.set_point_solid(c, solid)
 		lg.set_point_weight_scale(c, w)
@@ -228,6 +273,29 @@ func build() -> void:
 ## and each graph's clusters go to the workers as tasks of their own rather
 ## than numbered across both graphs and divided back out.
 static func build_all(navs: Array) -> void:
+	if ClassDB.class_exists("HierarchyCore") and navs.all(func(h: HNav) -> bool: return h._use_native):
+		for h: HNav in navs:
+			h._core = ClassDB.instantiate("HierarchyCore")
+			var configured: bool = h._core.configure(MapDims.N, C)
+			var loaded: bool = h._core.load_cells(h._solid, h._weight)
+			assert(configured and loaded, "Invalid hierarchical terrain")
+			for team in 2:
+				var valid: bool = h._core.set_danger(team, h.danger[team])
+				assert(valid, "Invalid initial danger map")
+		if navs.size() == 2:
+			var built_pair: bool = navs[0]._core.build_with(navs[1]._core)
+			assert(built_pair, "Native hierarchy build failed")
+		else:
+			for h: HNav in navs:
+				var built_one: bool = h._core.build()
+				assert(built_one, "Native hierarchy build failed")
+		for h: HNav in navs:
+			h.built = true
+			h._solid.clear()
+			h._weight.clear()
+			h._local.clear()
+			h.dirty.clear()
+		return
 	# The extension bindings belong to the main thread; local-grid costing stays parallel.
 	for h: HNav in navs:
 		h._prepare()
@@ -260,7 +328,24 @@ static func build_all(navs: Array) -> void:
 		var h: HNav = navs[i]
 		var cls := todo[i]
 		if not cls.is_empty():
-			tasks.append(WorkerThreadPool.add_group_task(func(j: int): h._cluster_costs(cls[j]), cls.size(), -1, true, "Nav: entrance costs"))
+			if ClassDB.class_exists("NavigationGridCore"):
+				var batch: RefCounted = ClassDB.instantiate("NavigationGridCore")
+				var origins: Array[Vector2i] = []
+				var entrances: Array[PackedInt32Array] = []
+				for ci in cls:
+					origins.append(_corner[ci])
+					var cells := PackedInt32Array()
+					for id: int in h.cl_nodes[ci]:
+						var p: Vector2i = h.node_cell[id]
+						cells.append(p.x)
+						cells.append(p.y)
+					entrances.append(cells)
+				var results: Array = batch.cluster_costs(MapDims.N, C, h._solid, h._weight, origins, entrances)
+				assert(results.size() == cls.size(), "Native cluster cost calculation failed")
+				for j in cls.size():
+					h.costs[cls[j]] = results[j]
+			else:
+				tasks.append(WorkerThreadPool.add_group_task(func(j: int): h._cluster_costs(cls[j]), cls.size(), -1, true, "Nav: entrance costs"))
 	for g in tasks:
 		WorkerThreadPool.wait_for_group_task_completion(g)
 	for q in range(0, alike.size(), 2):
@@ -309,7 +394,9 @@ func _cluster_key(ci: int) -> void:
 	key.append_array(wts.to_byte_array())
 	for id: int in nodes:
 		var c: Vector2i = node_cell[id]
-		key.append((c.y - z0) * C + c.x - x0)
+		# A 32 m cluster has more than 256 cells: one byte aliases different entrances.
+		key.append(c.x - x0)
+		key.append(c.y - z0)
 	_keys[ci] = key
 
 
@@ -331,6 +418,10 @@ func _link_all() -> void:
 
 ## Rebuild queued clusters (a few per call, so a collapsing house never stalls a tick).
 func update(budget := 3) -> void:
+	if _core:
+		var valid: bool = _core.update(budget)
+		assert(valid, "Invalid native hierarchy update")
+		return
 	if not built:
 		build()
 		return
@@ -455,7 +546,7 @@ func _relink(k: int, before: Array) -> void:
 		bas = nodes.duplicate()
 		basis[k] = bas
 	var nbas := bas.size()
-	var lg: AStarGrid2D = null  # (made only if something needs searching)
+	var lg: Object = null  # (made only if something needs searching)
 	for i in n:
 		var oi := at[i]
 		var row := bp[i] * nbas
@@ -751,7 +842,7 @@ func _intra(ci: int) -> void:
 ## graph, and searches only lg, this cluster's own grid, so clusters can be
 ## done side by side. With fewer than two entrances there's nothing to search
 ## and lg may be null (it isn't checked for null: see build_all).
-func _pair_costs(ci: int, lg: AStarGrid2D) -> PackedFloat64Array:
+func _pair_costs(ci: int, lg: Object) -> PackedFloat64Array:
 	var nodes: Array = cl_nodes[ci]
 	var n := nodes.size()
 	var out := PackedFloat64Array()
@@ -759,13 +850,20 @@ func _pair_costs(ci: int, lg: AStarGrid2D) -> PackedFloat64Array:
 	out.fill(UNKNOWN)
 	if n < 2:
 		return out
+	if lg.has_method("pair_costs"):
+		var cells: Array[Vector2i] = []
+		for id: int in nodes:
+			cells.append(node_cell[id])
+		return lg.pair_costs(cells)
 	for i in n:
 		for j in range(i + 1, n):
 			out[i * n + j] = _local_cost(lg, node_cell[nodes[i]], node_cell[nodes[j]])
 	return out
 
 
-func _local_cost(lg: AStarGrid2D, a: Vector2i, b: Vector2i) -> float:
+func _local_cost(lg: Object, a: Vector2i, b: Vector2i) -> float:
+	if lg.has_method("path_cost"):
+		return lg.path_cost(a, b)
 	if a == b:
 		return 0.0
 	if lg.is_point_solid(a) or lg.is_point_solid(b):
@@ -786,6 +884,12 @@ func _local_cost(lg: AStarGrid2D, a: Vector2i, b: Vector2i) -> float:
 
 ## Each side's danger map (0..4 per cluster); reweights only the clusters that changed.
 func set_danger(team: int, values: PackedFloat32Array) -> void:
+	if _core:
+		var valid: bool = _core.set_danger(team, values)
+		assert(valid, "Invalid native danger map")
+		danger[team] = values
+		danger_revision[team] = _core.danger_revision(team)
+		return
 	var old: PackedFloat32Array = danger[team]
 	danger[team] = values
 	if not built:
@@ -811,9 +915,13 @@ func set_danger(team: int, values: PackedFloat32Array) -> void:
 ## or an empty array if they are not connected. Any care > 0 plans on the
 ## team's danger-weighted graph.
 func route(a: Vector2i, b: Vector2i, team: int, care: float) -> Array[Vector2i]:
+	if _core:
+		return _core.route(a, b, team, care)
 	var out: Array[Vector2i] = []
 	if not built:
 		build()
+		if _core:
+			return _core.route(a, b, team, care)
 	var gi := team + 1 if care > 0.0 and team >= 0 and team < 2 else PLAIN
 	var g = graphs[gi]
 	var ca := cluster_of(a)
@@ -854,8 +962,17 @@ func route(a: Vector2i, b: Vector2i, team: int, care: float) -> Array[Vector2i]:
 
 
 func stats() -> String:
+	if _core:
+		var counts: Vector2i = _core.counts()
+		return "%d entrances, %d nodes" % [counts.x, counts.y]
 	return "%d entrances, %d nodes" % [node_cell.size(), graphs[PLAIN].get_point_count()]
 
 
 func has_work() -> bool:
+	if _core:
+		return _core.has_work()
 	return not dirty.is_empty()
+
+
+func local_path(ci: int, a: Vector2i, b: Vector2i) -> Array[Vector2i]:
+	return _core.local_path(ci, a, b) if _core else local_grid(ci).get_id_path(a, b)

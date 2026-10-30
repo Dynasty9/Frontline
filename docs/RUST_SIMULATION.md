@@ -3,7 +3,8 @@
 Status: **in progress; the game still requires Godot to simulate a battle.**
 The engine-independent crate currently contains perception candidate selection,
 formation scoring, contracted route search, gameplay randomness and ballistic
-projectile flight state and battlefield box raycasts. It is not a complete server, a
+projectile flight state, drone and support-aircraft behavior, missile guidance,
+weighted navigation grids and battlefield box raycasts. It is not a complete server, a
 full-state save format, or a battle verifier. Existing recordings remain unverified.
 
 ## Ownership
@@ -18,12 +19,17 @@ graphics, network access or a wall clock.
 | Perception candidates, formation scoring, route graph | `frontline_core` | Extracted; Godot bindings call the core |
 | Gameplay RNG, including commander streams | `frontline_core` | Seeded PCG stream matches Godot 4.7; cosmetic RNG stays in Godot |
 | Grenade, smoke, rocket, bomb and shell flight | `frontline_core` | Rust retains and advances flight state and queries native geometry; the adapter supplies holders and applies impacts |
+| Weighted grid paths and cluster pair costs | `frontline_core` | Exact Godot route tie behavior; native cluster workers return costs in deterministic order |
+| Hierarchical route assembly, repairs and danger weights | `frontline_core` | Rust owns graph slots, borders, cost tables, repair order and terrain/danger revisions |
+| FPV drone flight | `frontline_core` | Climb, cruise, dive, loss of control and collision; Godot supplies targets and applies damage |
+| Guided missiles and support aircraft | `frontline_core` | Flight, target-lock loss, bomb release, burst schedules, pending hits and random draws; Godot supplies contacts and applies events |
 | Entity registry, stable IDs, spawn/despawn | Rust | `world.gd`, `entity.gd` |
 | Infantry movement, weapons, injuries, special tasks | Rust | `soldier.gd`, `soldier_brain.gd` |
 | Squads, tactics, commander and naval decisions | Rust | Squad, tactics, commander and naval scripts |
-| Vehicles, crews, drones, guided missiles and support aircraft | Rust | Entity scripts and Godot spatial queries |
+| Vehicles and crews | Rust | Entity scripts and Godot spatial queries |
 | Battlefield box raycasts | `frontline_core` | Spatial grid with deterministic hit ties; Godot supplies geometry updates |
-| Terrain, cover evaluation, smoke visibility, path jobs | Rust | Terrain/nav/combat scripts |
+| Route refinement, smoothing, corridor reuse and path requests | `frontline_core` | Native planner retains corridor history and request order; Godot supplies unit positions and delivers completed orders |
+| Terrain, cover evaluation, smoke visibility | Rust | Terrain/nav/combat scripts |
 | Supply, construction, upgrades, prisoners, victory | Rust | `rules.gd`, structures and battle scripts |
 | Missions, scripted events, initial map generation | Rust or immutable versioned input data | Map generators and mission director |
 | Models, animation, smoothing, particles, camera, minimap | Godot | Existing presentation code |
@@ -149,8 +155,8 @@ state, including reversed/equal integer bounds and the full signed 32-bit range.
 `Flight` owns ballistic projectile position, velocity, timers, fuse, smoke and
 trajectory endpoints. Godot keeps observation mirrors for existing gameplay
 callers. Pickup, kick and rethrow reset the Rust state explicitly; each tick
-provides holder inputs; Rust queries its collision world directly. Guided missiles and support aircraft have
-not migrated. Battlefield box raycasts now run in Rust, while geometry updates, damage,
+provides holder inputs; Rust queries its collision world directly.
+Battlefield box raycasts now run in Rust, while geometry updates, damage,
 smothering, creation and removal remain Godot responsibilities. Thus this is not an autonomous battle simulator.
 
 Flight checkpoints have a strict versioned little-endian encoding of every
@@ -186,6 +192,60 @@ rotated boxes. Lifecycle tests check immediate movement, shape edits and removal
 including shielding by a destroyed body through the end of its final tick.
 This migrates the ray query, not all combat decisions or terrain state.
 
+## Grid navigation and aircraft
+
+`NavigationGrid` replaces engine AStarGrid2D for local cluster searches and boat
+routes. Its weighted octile search preserves Godot's neighbor order and heap tie
+behavior. Cluster cost builds run on Rust workers over immutable numeric data;
+engine objects stay on the calling thread and results retain input order.
+Terrain cells have versioned checkpoints; temporary search scratch is rebuilt.
+`Hierarchy` owns HPA graph assembly, incremental repairs, cost-table reuse and
+danger weighting. Its checkpoints retain graph slots, neighbor order, ID cursors,
+pending repairs and all versions/cost tables; local search scratch is rebuilt.
+Restored graphs keep returning identical routes as terrain and danger change.
+`PathPlanner` refines abstract routes, string-pulls waypoints, shares checked
+corridors between nearby orders and retains the deterministic request queue.
+It preserves the original short-move shortcut, fire avoidance, padded-wall
+destinations, per-team danger invalidation and fixed completion quotas. A route
+starts from the unit's position when its job executes, not when it was queued.
+Its checkpoints include cached corridors because they can change later paths,
+and include cancelled queue slots, replacements and the current batch boundary.
+Elapsed-time diagnostics are excluded. Godot still resolves unit IDs and delivers
+the results to soldier/vehicle tasks; that adapter must move into the Rust entity
+registry with those systems.
+The reference fixture compares 3,840 paths, mutations and pair costs against
+Godot, and core tests compare costs across different worker counts.
+The hierarchical fixture compares 2,880 routes with terrain edits, danger changes,
+partial repairs and checkpoint resumes on 16 m and 32 m clusters. Entrance-cache
+keys now retain both coordinates; the former single-byte key could alias different
+entrances in a 32 m cluster.
+
+The path-planner reference fixture compares 5,760 complete routes, including
+fire and terrain edits, shared corridors, per-team danger changes and restored
+planner checkpoints. It also compares callback order under fixed quotas,
+replacements and cancellations, including orders queued during map generation.
+One Windows run with other applications and the integration suite running took
+9,770 ms in the retained GDScript planner and 4,186 ms in the native planner for
+those same queries, alternating which implementation ran first. Both used the
+native local-grid kernels. This is a small-map route workload, not a 500-unit
+battle, an isolated benchmark or evidence of 60 FPS.
+
+`DroneFlight` and `GuidedFlight` retain their timers, steering and targeting state.
+They query `CollisionWorld` without engine callbacks. The Godot adapters supply
+live targets and operator/smoke inputs, then apply damage and entity removal.
+Reference fixtures cover 72 FPV flights and 96 guided missile flights, including
+lost targets, loss of control, smoke, shoot-downs and proximity impacts. Steering
+uses Godot's normalization and rotation arithmetic; a different algebraically
+equivalent matrix caused accumulated trajectory drift in the reference test.
+
+`SupportFlight` owns jet bomb releases, A-10 pending rounds, orbiting gun schedules
+and recon-mark timing. Its 42-case fixture compares every tick's observations,
+events, damage parameters and RNG state for all five orbiting weapon sets,
+empty and occupied target areas, and three tick rates. It preserves the original
+order of random draws and pending impacts. Core resume tests include mid-burst
+checkpoints and restore the accompanying RNG stream. These are component
+checkpoints; they do not include the whole battle or verify its conclusion.
+
 ## Validation limits from this migration
 
 The opt-in mission suite currently wins bridgehead and beachhead, but loses
@@ -193,9 +253,13 @@ skyhook, ambush and kingpin. These same three
 losses reproduce at the same simulation times on the pre-port `f1ec9a0` commit
 (230, 250 and 360 seconds respectively). They are baseline failures, not evidence
 that the full mission completion gate is met. Keep reporting them until resolved.
-The integrated default suite passes 95 tests, including multiplayer authority,
-combat, breaching and seed reproducibility. All 14 standalone core tests pass in
-debug and release. These checks do not cover full battle checkpoints or replay verification.
+The integrated default suite passed 100 tests after the aircraft, grid and
+hierarchical planner ports, including multiplayer authority, combat, breaching
+and seed reproducibility. The later refinement/smoothing and request-queue port
+passed its reference, navigation-budget and attack-lifecycle checks; its full
+integration suite is running. The 37 standalone core tests pass in debug and
+release. These checks do not
+cover full battle checkpoints or replay verification.
 
 A focused shell benchmark (100 shells, 100 ticks, headless, no collision queries)
 measured about 14.6 ms for the GDScript path versus 4.6–5.6 ms for retained Rust

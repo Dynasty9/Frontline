@@ -291,7 +291,10 @@ mod tests {
         assert!(world.ray(Vec3::ZERO, Vec3::X * -100.0, &[]).is_some());
         invalid.half = Vec3::splat(1e-20);
         invalid.basis = Mat3::from_diagonal(Vec3::splat(1e20));
-        assert!(!world.replace(2, &[invalid]), "Overflowing inverse must not enter the index");
+        assert!(
+            !world.replace(2, &[invalid]),
+            "Overflowing inverse must not enter the index"
+        );
         assert!(world.ray(Vec3::ZERO, Vec3::X * -100.0, &[]).is_some());
     }
 

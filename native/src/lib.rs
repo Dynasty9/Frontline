@@ -1,10 +1,16 @@
 use godot::prelude::*;
 
 mod collision_index;
+mod drone_flight;
 mod formation_ground;
+mod guided_flight;
+mod hierarchy;
+mod navigation_grid;
+mod path_planner;
 mod projectile_flight;
 mod route_graph;
 mod simulation_random;
+mod support_flight;
 
 struct FrontlineSimulation;
 #[gdextension]

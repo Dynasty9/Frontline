@@ -2,9 +2,9 @@ use godot::prelude::*;
 
 #[derive(GodotClass)]
 #[class(base=RefCounted, init)]
-struct SimulationRandomCore {
+pub(crate) struct SimulationRandomCore {
     base: Base<RefCounted>,
-    core: frontline_core::random::SimulationRandom,
+    pub(crate) core: frontline_core::random::SimulationRandom,
 }
 
 #[godot_api]

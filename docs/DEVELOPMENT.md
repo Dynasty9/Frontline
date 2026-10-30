@@ -5,10 +5,12 @@ How the code is laid out, and the command-line modes used to test it. See also [
 ## Scaling and the optional native extension
 
 Most gameplay remains GDScript. A Rust GDExtension owns gameplay random streams
-and ballistic projectile flight, accelerates nearest-enemy candidate selection
-using numeric snapshots and contracts degree-two navigation search states.
-Battlefield box raycasts also run in Rust; visibility policy and damage stay in Godot. Native graph assembly runs on the
-main thread; local-grid costing still uses workers.
+and projectile/drone flight, guided missiles, support-aircraft attack schedules,
+weighted navigation grids, hierarchical routing, route smoothing and path request
+queues. It also accelerates nearest-enemy
+candidate selection using numeric snapshots. Battlefield box raycasts run in Rust;
+visibility policy and damage stay in Godot. Hierarchical graph assembly and repair
+use engine-independent state; local-grid costing uses Rust workers.
 The numeric algorithms live in the engine-independent `native/core` crate;
 `native/src` contains the Godot bindings. Run their standalone tests with
 `cargo +1.94.0 test --locked --manifest-path native/Cargo.toml -p frontline_core`.

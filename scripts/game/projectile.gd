@@ -49,6 +49,8 @@ var smoke_fx: Node3D
 var trail: GeometryInstance3D
 var _vis := true
 var _flight: RefCounted
+var _guided: RefCounted
+var _support: RefCounted
 var _shell_flight := false
 
 
@@ -96,6 +98,13 @@ func get_props() -> Dictionary:
 
 
 func on_spawned() -> void:
+	if srv and ClassDB.class_exists("SupportFlightCore") and ptype in ["jet", "a10", "ac130"]:
+		_support = ClassDB.instantiate("SupportFlightCore")
+		_reset_support()
+	if srv and ClassDB.class_exists("GuidedFlightCore") and ptype in ["atgm", "sam"]:
+		_guided = ClassDB.instantiate("GuidedFlightCore")
+		var valid: bool = _guided.reset(ptype == "atgm", position, vel, target, life_t, tgt_id != 0)
+		assert(valid, "Invalid guided missile initial state")
 	if srv and ClassDB.class_exists("ProjectileFlightCore") and ptype in ["frag", "smoke", "rocket", "recoilless", "mortar", "mortar_smoke", "grad", "arty", "ac105", "ac40", "ac25", "bomb"]:
 		_flight = ClassDB.instantiate("ProjectileFlightCore")
 	if ptype in ["grad", "arty", "ac105", "ac40", "ac25"]:
@@ -112,6 +121,13 @@ func on_spawned() -> void:
 
 
 func sim(dt: float) -> void:
+	if _support:
+		_native_support(dt)
+		return
+	if _guided:
+		if _native_guided(dt):
+			return
+		_guided = null
 	if _shell_flight:
 		var next: Vector4 = _flight.advance_shell(dt)
 		assert(next.w >= 0.0, "Invalid native shell state")
@@ -142,6 +158,82 @@ func sim(dt: float) -> void:
 			_ac130(dt)
 		"bomb":
 			_bomb(dt)
+
+
+func _reset_support() -> void:
+	var state := PackedFloat64Array([position.x, position.y, position.z, vel.x, vel.y, vel.z,
+		target.x, target.y, target.z, life_t, fuse, stay, sight, _mark_t])
+	var valid: bool = _support.reset(ptype, guns, state)
+	assert(valid, "Invalid support aircraft initial state")
+
+
+func _native_support(dt: float) -> void:
+	var candidates := _ac_candidates() if _support.needs_candidates(dt) else PackedVector3Array()
+	var result: Dictionary = _support.advance(dt, world.time, team, MapDims.HALF, candidates, world.rng._backend)
+	if result.is_empty():
+		push_error("Invalid support aircraft state passed to Rust")
+		return
+	var state: PackedFloat64Array = result.state
+	position = Vector3(state[0], state[1], state[2])
+	vel = Vector3(state[3], state[4], state[5])
+	life_t = state[6]
+	fuse = state[7]
+	_fire_el = state[8]
+	_bombs0 = state[9]
+	_mark_t = state[10]
+	for event: Array in result.events:
+		match int(event[0]):
+			0:
+				world.spawn("projectile", {"ptype": "bomb", "team": team, "pos": event[1], "vel": event[2], "thrower": thrower_id, "by": by})
+			1:
+				world.stat("a10_run")
+			2:
+				_gunrun_impact(event[1])
+			3:
+				world.spawn("projectile", {"ptype": event[1], "team": team, "pos": event[2], "origin": event[2], "target": event[3], "T": event[4], "thrower": 0, "by": by})
+			4:
+				world.fx_event([Fx.FAR_SOUND, event[1], event[2], target])
+			5:
+				world.rules.add_mark(team, position, sight, PHOTO_LINGER)
+			6:
+				world.despawn(self)
+
+
+func _native_guided(dt: float) -> bool:
+	var combat := world.combat
+	combat._sync_collision()
+	if not combat._collision:
+		return false
+	var tgt := world.entity(tgt_id)
+	var have_target := tgt != null and not tgt.gone
+	var target_point := tgt.center_point() if have_target else target
+	var src := world.entity(thrower_id)
+	var smoke := false
+	if have_target and _guided.checks_smoke(dt) and src != null and not src.gone:
+		smoke = combat.smoke_blocks(src.position + Vector3(0, 1.5, 0), target_point)
+	var excluded := PackedInt64Array()
+	if src:
+		for rid: RID in src.get_exclude():
+			if combat._rid_entities.has(rid):
+				excluded.append(int(combat._rid_entities[rid]))
+	var result: PackedFloat64Array = _guided.advance(dt, have_target, target_point, smoke, combat._collision, excluded)
+	if result.size() != 16:
+		push_error("Invalid guided missile state passed to Rust")
+		return false
+	position = Vector3(result[0], result[1], result[2])
+	vel = Vector3(result[3], result[4], result[5])
+	target = Vector3(result[6], result[7], result[8])
+	life_t = result[9]
+	if tgt_id != 0 and result[10] == 0.0:
+		tgt_id = 0
+		world.stat("atgm_lost_in_smoke")
+	if result[11] != 0.0:
+		var impact := Vector3(result[12], result[13], result[14])
+		if ptype == "atgm":
+			_atgm_impact(impact)
+		else:
+			_sam_impact(impact, result[15] != 0.0)
+	return true
 
 
 func _reset_flight() -> void:
@@ -423,10 +515,14 @@ func _atgm(dt: float) -> void:
 	elif life_t > 7.0 or position.distance_to(target) < 0.8:
 		boom = np
 	if boom != Vector3.INF:
-		world.combat.explode(boom, {"dmg": 90.0, "radius": 3.5, "fling": 7.0, "at": 520.0, "dir": vel.normalized(), "top": vel.y < -0.3, "track": 0.25, "src": src, "team": team, "by": by, "size": 1.1, "struct_mult": 2.0})
-		world.despawn(self)
+		_atgm_impact(boom)
 		return
 	position = np
+
+
+func _atgm_impact(boom: Vector3) -> void:
+	world.combat.explode(boom, {"dmg": 90.0, "radius": 3.5, "fling": 7.0, "at": 520.0, "dir": vel.normalized(), "top": vel.y < -0.3, "track": 0.25, "src": world.entity(thrower_id), "team": team, "by": by, "size": 1.1, "struct_mult": 2.0})
+	world.despawn(self)
 
 
 ## Surface-to-air missile: fast, it turns hard onto the aircraft and bursts
@@ -443,13 +539,16 @@ func _sam(dt: float) -> void:
 	var spd := minf(95.0, vel.length() + 50.0 * dt)
 	vel = cur * spd
 	var np := position + vel * dt
-	var src: Entity = world.entity(thrower_id)
 	var near := tgt != null and not tgt.gone and np.distance_to(target) < 3.2
 	if near or life_t > 6.0 or np.y < 0.1:
-		world.combat.explode(target if near else np, {"dmg": 60.0, "radius": 4.0, "fling": 2.0, "at": 620.0 if near else 0.0, "src": src, "team": team, "by": by, "size": 0.9, "struct_mult": 0.5})
-		world.despawn(self)
+		_sam_impact(target if near else np, near)
 		return
 	position = np
+
+
+func _sam_impact(boom: Vector3, near: bool) -> void:
+	world.combat.explode(boom, {"dmg": 60.0, "radius": 4.0, "fling": 2.0, "at": 620.0 if near else 0.0, "src": world.entity(thrower_id), "team": team, "by": by, "size": 0.9, "struct_mult": 0.5})
+	world.despawn(self)
 
 
 ## Whatever armour it's coming at sees the launch (and pops smoke).
@@ -746,9 +845,13 @@ func _a10(dt: float) -> void:
 		var h: Array = _hits[i]
 		if world.time >= float(h[0]):
 			_hits.remove_at(i)
-			world.combat.explode(h[1], {"dmg": 75.0, "radius": 2.6, "fling": 5.0, "at": 170.0, "top": true, "src": null, "team": team, "by": by, "size": 0.68, "struct_mult": 1.6})
+			_gunrun_impact(h[1])
 	if along > 420.0:
 		world.despawn(self)
+
+
+func _gunrun_impact(at: Vector3) -> void:
+	world.combat.explode(at, {"dmg": 75.0, "radius": 2.6, "fling": 5.0, "at": 170.0, "top": true, "src": null, "team": team, "by": by, "size": 0.68, "struct_mult": 1.6})
 
 
 func _a10_view(dt: float) -> void:
@@ -864,8 +967,8 @@ func _ac130(dt: float) -> void:
 
 ## Something worth shooting near the target: soldiers and vehicles of the other
 ## side (any side, for an observer's demo), else the ground near the centre.
-func _ac_aim() -> Vector3:
-	var cands := []
+func _ac_candidates() -> PackedVector3Array:
+	var cands := PackedVector3Array()
 	for s in world.soldiers_near(target, 38.0):
 		if s.life == Soldier.Life.ALIVE and (team < 0 or s.team != team):
 			cands.append(s.position)
@@ -873,6 +976,11 @@ func _ac_aim() -> Vector3:
 		if team < 0 or v.team != team:
 			cands.append(v.position)
 			cands.append(v.position)
+	return cands
+
+
+func _ac_aim() -> Vector3:
+	var cands := _ac_candidates()
 	if not cands.is_empty():
 		return cands[world.rng.randi() % cands.size()]
 	var a := world.rng.randf() * TAU
