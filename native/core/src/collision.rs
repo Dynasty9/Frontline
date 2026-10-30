@@ -1,11 +1,12 @@
 //! Segment queries against the battlefield's box colliders, independent of physics frames.
+use crate::state_codec::{Reader, Writer};
 pub use glam::Mat3;
 use glam::Vec3;
 use std::collections::HashMap;
 
 const CELL: f32 = 32.0;
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub struct BoxShape {
     pub body: i64,
     pub shape: i32,
@@ -40,6 +41,90 @@ pub struct CollisionWorld {
 }
 
 impl CollisionWorld {
+    pub fn shape(&self, body: i64, shape: i32) -> Option<BoxShape> {
+        self.bodies
+            .get(&body)?
+            .iter()
+            .filter_map(|index| self.boxes[*index].as_ref())
+            .find(|entry| entry.shape.shape == shape)
+            .map(|entry| entry.shape)
+    }
+
+    pub fn checkpoint(&self) -> Vec<u8> {
+        let mut out = Writer::new(b"FLCW\x01\0\0\0");
+        let mut bodies: Vec<_> = self.bodies.keys().copied().collect();
+        bodies.sort_unstable();
+        out.u32(bodies.len() as u32);
+        for body in bodies {
+            out.u64(body as u64);
+            let mut shapes: Vec<_> = self.bodies[&body]
+                .iter()
+                .map(|index| self.boxes[*index].as_ref().unwrap().shape)
+                .collect();
+            shapes.sort_unstable_by_key(|shape| shape.shape);
+            out.u32(shapes.len() as u32);
+            for shape in shapes {
+                out.u32(shape.shape as u32);
+                out.point(shape.center);
+                for axis in [shape.basis.x_axis, shape.basis.y_axis, shape.basis.z_axis] {
+                    out.point(axis);
+                }
+                out.point(shape.half);
+            }
+        }
+        out.0
+    }
+
+    pub fn restore(bytes: &[u8]) -> Result<Self, &'static str> {
+        let mut input = Reader::new(bytes, b"FLCW\x01\0\0\0")?;
+        let count = input.u32()? as usize;
+        if count > 1_000_000 {
+            return Err("too many collision bodies");
+        }
+        let mut world = Self::default();
+        let mut last_body = None;
+        let mut total_shapes = 0;
+        let mut total_cells = 0;
+        for _ in 0..count {
+            let body = input.u64()?;
+            if body > i64::MAX as u64 || last_body.is_some_and(|last| body <= last) {
+                return Err("invalid collision body order");
+            }
+            last_body = Some(body);
+            let count = input.u32()? as usize;
+            total_shapes += count;
+            if count > 4096 || total_shapes > 1_000_000 {
+                return Err("too many collision shapes");
+            }
+            let mut shapes = Vec::new();
+            let mut last_shape = None;
+            for _ in 0..count {
+                let shape = input.u32()?;
+                if shape > i32::MAX as u32 || last_shape.is_some_and(|last| shape <= last) {
+                    return Err("invalid collision shape order");
+                }
+                last_shape = Some(shape);
+                let value = BoxShape {
+                    body: body as i64,
+                    shape: shape as i32,
+                    center: input.point()?,
+                    basis: Mat3::from_cols(input.point()?, input.point()?, input.point()?),
+                    half: input.point()?,
+                };
+                total_cells += registration_cells(&value).ok_or("invalid collision geometry")?;
+                if total_cells > 16_777_216 {
+                    return Err("collision index exceeds limit");
+                }
+                shapes.push(value);
+            }
+            if !world.replace(body as i64, &shapes) {
+                return Err("invalid collision geometry");
+            }
+        }
+        input.finish()?;
+        Ok(world)
+    }
+
     pub fn remove(&mut self, body: i64) {
         if let Some(indices) = self.bodies.remove(&body) {
             for index in indices {
@@ -63,19 +148,16 @@ impl CollisionWorld {
 
     pub fn replace(&mut self, body: i64, shapes: &[BoxShape]) -> bool {
         // Bound registration before mutating the live world.
+        let mut ids = std::collections::HashSet::new();
+        let mut cells = 0;
         if body < 0
+            || shapes.len() > 4096
             || shapes.iter().any(|s| {
-                s.body != body
-                    || s.shape < 0
-                    || !s.center.is_finite()
-                    || !s.basis.is_finite()
-                    || !s.half.is_finite()
-                    || s.half.min_element() <= 0.0
-                    || !s.basis.determinant().is_finite()
-                    || s.basis.determinant().abs() < 1e-8
-                    || !s.basis.inverse().is_finite()
-                    || (s.basis.abs() * s.half).max_element() > 4096.0
-                    || s.center.abs().max_element() > 1_000_000.0
+                let Some(count) = registration_cells(s) else {
+                    return true;
+                };
+                cells += count;
+                s.body != body || !ids.insert(s.shape) || cells > 1_048_576
             })
         {
             return false;
@@ -197,6 +279,28 @@ impl CollisionWorld {
         }
         best
     }
+}
+
+fn registration_cells(shape: &BoxShape) -> Option<usize> {
+    if shape.shape < 0
+        || !shape.center.is_finite()
+        || !shape.basis.is_finite()
+        || !shape.half.is_finite()
+        || shape.half.min_element() <= 0.0
+        || !shape.basis.determinant().is_finite()
+        || shape.basis.determinant().abs() < 1e-8
+        || !shape.basis.inverse().is_finite()
+        || shape.center.abs().max_element() > 1_000_000.0
+    {
+        return None;
+    }
+    let extent = shape.basis.abs() * shape.half;
+    if !extent.is_finite() || extent.max_element() > 4096.0 {
+        return None;
+    }
+    let low = shape.center - extent;
+    let high = shape.center + extent;
+    Some((cell(high.x) - cell(low.x) + 1) as usize * (cell(high.z) - cell(low.z) + 1) as usize)
 }
 
 fn cell(value: f32) -> i32 {

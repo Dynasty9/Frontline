@@ -4,7 +4,7 @@ Status: **in progress; the game still requires Godot to simulate a battle.**
 The engine-independent crate currently contains perception candidate selection,
 formation scoring, contracted route search, gameplay randomness and ballistic
 projectile flight state, drone and support-aircraft behavior, missile guidance,
-weighted navigation grids and battlefield box raycasts. It is not a complete server, a
+weighted navigation grids, route planning, smoke and geometric visibility. It is not a complete server, a
 full-state save format, or a battle verifier. Existing recordings remain unverified.
 
 ## Ownership
@@ -28,8 +28,9 @@ graphics, network access or a wall clock.
 | Squads, tactics, commander and naval decisions | Rust | Squad, tactics, commander and naval scripts |
 | Vehicles and crews | Rust | Entity scripts and Godot spatial queries |
 | Battlefield box raycasts | `frontline_core` | Spatial grid with deterministic hit ties; Godot supplies geometry updates |
+| Smoke volumes and geometric visibility | `frontline_core` | Rust checks exposed points against collision and smoke, retaining reusable obstruction proofs; Godot supplies target posture and scene changes |
 | Route refinement, smoothing, corridor reuse and path requests | `frontline_core` | Native planner retains corridor history and request order; Godot supplies unit positions and delivers completed orders |
-| Terrain, cover evaluation, smoke visibility | Rust | Terrain/nav/combat scripts |
+| Terrain and cover evaluation | Rust | Terrain/nav/combat scripts |
 | Supply, construction, upgrades, prisoners, victory | Rust | `rules.gd`, structures and battle scripts |
 | Missions, scripted events, initial map generation | Rust or immutable versioned input data | Map generators and mission director |
 | Models, animation, smoothing, particles, camera, minimap | Godot | Existing presentation code |
@@ -192,6 +193,21 @@ rotated boxes. Lifecycle tests check immediate movement, shape edits and removal
 including shielding by a destroyed body through the end of its final tick.
 This migrates the ray query, not all combat decisions or terrain state.
 
+`Visibility` owns smoke volumes keyed by projectile ID and the smoke from burning
+terrain. Radius, position, type and despawn changes update those volumes before
+the next query. Multi-point sight checks run against the core's collision world;
+stationary observers can reuse obstruction only while the same numeric box
+geometry blocks every exposed point. Visible results and smoke-only obstruction
+are always checked again. The bounded proof cache can be reconstructed after
+loading because it only eliminates equivalent queries.
+
+Collision and smoke checkpoints retain sorted stable IDs and exact geometry,
+with bounded decoding and no engine references. The native fixture compares
+3,000 visibility cases with Godot, including repeated/moving queries, posture,
+exclusions, moving/resized geometry, smoke changes and component restores. Core
+tests cover proof eviction, invalid input and resume. These are still component
+checkpoints, not a complete battle save.
+
 ## Grid navigation and aircraft
 
 `NavigationGrid` replaces engine AStarGrid2D for local cluster searches and boat
@@ -253,12 +269,12 @@ skyhook, ambush and kingpin. These same three
 losses reproduce at the same simulation times on the pre-port `f1ec9a0` commit
 (230, 250 and 360 seconds respectively). They are baseline failures, not evidence
 that the full mission completion gate is met. Keep reporting them until resolved.
-The integrated default suite passed 100 tests after the aircraft, grid and
-hierarchical planner ports, including multiplayer authority, combat, breaching
-and seed reproducibility. The later refinement/smoothing and request-queue port
-passed its reference, navigation-budget and attack-lifecycle checks; its full
-integration suite is running. The 37 standalone core tests pass in debug and
-release. These checks do not
+The integrated default suite passed 101 tests after the aircraft, grid,
+hierarchical planner, route refinement/smoothing and request-queue ports,
+including multiplayer authority, combat, breaching and seed reproducibility.
+The later visibility port passes its five focused integration checks and its
+mission run reproduces the same baseline outcomes; its full integration suite
+is running. These checks do not
 cover full battle checkpoints or replay verification.
 
 A focused shell benchmark (100 shells, 100 ticks, headless, no collision queries)

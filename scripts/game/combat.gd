@@ -12,6 +12,7 @@ var _space_frame := -1
 var _reveal := {}  # eid -> time
 var _blocked_sight := {}
 var _collision: RefCounted
+var _visibility: RefCounted
 var _collision_dirty := {}
 var _collision_bodies := {}
 var _collision_rids := {}
@@ -27,6 +28,33 @@ func _init(w: World) -> void:
 func enable_native_collision() -> void:
 	if ClassDB.class_exists("CollisionIndexCore") and not world.settings.get("gdscript_collision", false):
 		_collision = ClassDB.instantiate("CollisionIndexCore")
+		if ClassDB.class_exists("VisibilityCore"):
+			_visibility = ClassDB.instantiate("VisibilityCore")
+			for projectile: Projectile in world.smoke_projectiles:
+				update_smoke(projectile)
+			if world.fires:
+				update_fire_smoke(world.fires.smokes)
+
+
+func update_smoke(projectile: Projectile) -> void:
+	if not _visibility:
+		return
+	if projectile.ptype != "smoke" or projectile.gone:
+		_visibility.remove_projectile(projectile.eid)
+		return
+	var valid: bool = _visibility.set_projectile(projectile.eid, projectile.position + Vector3(0, 1.4, 0), projectile.smoke_r)
+	assert(valid, "Invalid projectile smoke volume")
+
+
+func update_fire_smoke(smokes: Array) -> void:
+	if not _visibility:
+		return
+	var rows := PackedFloat64Array()
+	for smoke: Array in smokes:
+		var p: Vector3 = smoke[0]
+		rows.append_array(PackedFloat64Array([p.x, p.y, p.z, smoke[1]]))
+	var valid: bool = _visibility.set_fires(rows)
+	assert(valid, "Invalid fire smoke volume")
 
 
 func dirty_collision(eid: int) -> void:
@@ -150,6 +178,8 @@ func ent_of(col) -> Entity:
 
 
 func smoke_blocks(a: Vector3, b: Vector3) -> bool:
+	if _visibility:
+		return _visibility.smoke_blocks(a, b)
 	for p: Projectile in world.smoke_projectiles:
 		if p.smoke_r > 0.8:
 			if Defs.seg_sphere(a, b, p.position + Vector3(0, 1.4, 0), p.smoke_r):
@@ -174,6 +204,18 @@ func can_see(s: Soldier, e: Entity) -> bool:
 func can_see_from(eye: Vector3, e: Entity, ex: Array, cache_obstruction := true) -> bool:
 	var ex2 := ex + e.get_exclude()
 	var pts := e.exposed_points()
+	if _visibility and _collision:
+		_sync_collision()
+		if _collision:
+			_collision_excluded.clear()
+			for rid: RID in ex2:
+				if _rid_entities.has(rid):
+					_collision_excluded.append(int(_rid_entities[rid]))
+			var result: int = _visibility.can_see(_collision, eye, e.eid, PackedVector3Array(pts), _collision_excluded, cache_obstruction)
+			if result == 2:
+				world.stat("perception_blocked_reused")
+			assert(result >= 0, "Invalid native visibility query")
+			return result == 1
 	# Walking changes the exact sight line every tick; recording those misses costs more than casting.
 	if not cache_obstruction:
 		if _collision:

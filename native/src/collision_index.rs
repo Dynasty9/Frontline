@@ -11,6 +11,20 @@ pub(crate) struct CollisionIndexCore {
 #[godot_api]
 impl CollisionIndexCore {
     #[func]
+    fn checkpoint(&self) -> PackedByteArray {
+        self.core.checkpoint().as_slice().into()
+    }
+
+    #[func]
+    fn restore(&mut self, bytes: PackedByteArray) -> bool {
+        let Ok(core) = CollisionWorld::restore(bytes.as_slice()) else {
+            return false;
+        };
+        self.core = core;
+        true
+    }
+
+    #[func]
     fn replace_body(&mut self, body: i64, rows: PackedFloat32Array) -> bool {
         let data = rows.as_slice();
         if data.len() % 16 != 0 || !data.iter().all(|v| v.is_finite()) {

@@ -13,3 +13,4 @@ pub mod route_graph;
 mod state_codec;
 pub mod support;
 pub mod vector;
+pub mod visibility;

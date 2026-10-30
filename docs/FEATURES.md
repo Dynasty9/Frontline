@@ -1230,6 +1230,8 @@ flight, missile guidance, FPV drone flight and support-aircraft attack schedules
 now run in that core too, with restorable component checkpoints. Local weighted
 navigation grids, boat routes, hierarchical map repairs, route smoothing and
 movement-order queues also use Rust. The full
+geometric sight test and smoke screens use the same core, with unchanged walls
+reused as obstruction proofs and moving smoke checked immediately. The full
 authoritative Rust server and deterministic
 battle verifier are still in progress; see [RUST_SIMULATION.md](RUST_SIMULATION.md).
 

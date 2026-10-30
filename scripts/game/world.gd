@@ -421,6 +421,8 @@ func refresh_smoke_projectile(e: Projectile) -> void:
 			smoke_projectiles.append(e)
 	else:
 		smoke_projectiles.erase(e)
+	if combat:
+		combat.update_smoke(e)
 
 
 func despawn(e: Entity) -> void:
@@ -455,6 +457,8 @@ func despawn(e: Entity) -> void:
 	elif e is Projectile:
 		projectiles.erase(e)
 		smoke_projectiles.erase(e)
+		if combat:
+			combat.update_smoke(e)
 	elif e is Drone:
 		drones.erase(e)
 	e.on_despawn()

@@ -7,6 +7,7 @@ kind = "fixed"
 - Cosmetic debris no longer consumes gameplay randomness when cosmetic physics is unavailable.
 - Grenade, smoke, rocket, bomb and shell flight now use the shared simulation core, preserving flight behavior, pickup, kicking and rethrowing.
 - Battlefield raycasts now use the shared simulation core, updating when vehicles move, doors open and structures change.
+- Sight checks and smoke screens now run in Rust, retaining immediate smoke changes and reusing obstruction only while the blocking geometry stays unchanged.
 - Local navigation grids and boat routes now use Rust, preserving weighted paths and corner-blocking rules.
 - Hierarchical routes, danger weighting and map repairs now run in Rust. Large-cluster route caches distinguish entrances that previously shared a truncated key.
 - Route refinement, smoothing, shared corridors and queued movement orders also run in Rust, retaining fire avoidance and order completion quotas.

@@ -11,6 +11,7 @@ mod projectile_flight;
 mod route_graph;
 mod simulation_random;
 mod support_flight;
+mod visibility;
 
 struct FrontlineSimulation;
 #[gdextension]

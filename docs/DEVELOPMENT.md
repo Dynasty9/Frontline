@@ -8,8 +8,9 @@ Most gameplay remains GDScript. A Rust GDExtension owns gameplay random streams
 and projectile/drone flight, guided missiles, support-aircraft attack schedules,
 weighted navigation grids, hierarchical routing, route smoothing and path request
 queues. It also accelerates nearest-enemy
-candidate selection using numeric snapshots. Battlefield box raycasts run in Rust;
-visibility policy and damage stay in Godot. Hierarchical graph assembly and repair
+candidate selection using numeric snapshots. Battlefield box raycasts, smoke
+volumes and geometric visibility run in Rust; perception policy and damage stay
+in Godot. Hierarchical graph assembly and repair
 use engine-independent state; local-grid costing uses Rust workers.
 The numeric algorithms live in the engine-independent `native/core` crate;
 `native/src` contains the Godot bindings. Run their standalone tests with

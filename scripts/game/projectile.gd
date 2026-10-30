@@ -11,6 +11,9 @@ var ptype := "frag":
 	set(value):
 		ptype = value
 		if world and world.entities.get(eid) == self:
+			if srv:
+				set_notify_transform(ptype == "smoke")
+				set_notify_local_transform(ptype == "smoke")
 			world.refresh_smoke_projectile(self)
 var vel := Vector3.ZERO
 var fuse := 3.4
@@ -21,7 +24,11 @@ var smothered_by: Soldier = null  # a man lying on it (see SoldierBrain)
 var handler: Soldier = null  # the one man dealing with it (throwing it back, kicking it, lying on it)
 var flying := true
 var thrown_back := 0
-var smoke_r := 0.0
+var smoke_r := 0.0:
+	set(value):
+		smoke_r = value
+		if ptype == "smoke" and world and world.combat and world.entities.get(eid) == self:
+			world.combat.update_smoke(self)
 var smoke_t := 0.0
 var life_t := 0.0
 var origin := Vector3.ZERO
