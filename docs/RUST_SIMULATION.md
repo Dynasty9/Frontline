@@ -31,6 +31,7 @@ graphics, network access or a wall clock.
 | Infantry route movement | `frontline_core` | Route progress, vaulting, sliding, doors and ground caches extracted and reference-tested; the per-soldier adapter remains test-only because it is slower than GDScript |
 | Infantry weapon cycles | `frontline_core` | Cover fire, postures, firing permissions, ammunition and burst recovery extracted with compatibility tests; adapters remain test-only until Rust owns the actor |
 | Infantry health, suppression and fatigue | `frontline_core` | Numeric recovery, damage outcomes and down/death/revive transitions extracted with component checkpoints; actor cleanup, squad reactions and damage attribution remain Godot effects |
+| Infantry combat geometry | `frontline_core` | Eyes, exposed points, hit factors and cover postures extracted with reference tests; the adapter still supplies actor state |
 | Infantry aim selection and sight cache | `frontline_core` | Target, blind and area-fire aiming extracted and reference-tested; the test adapter supplies posed target points and last-known squad contacts |
 | Bullet resolution, injury behavior and special tasks | Rust | `soldier.gd`, `soldier_brain.gd`, `combat.gd` |
 | Squads, tactics, commander and naval decisions | Rust | Squad, tactics, commander and naval scripts |
@@ -195,10 +196,10 @@ Component checkpoint headers contain a four-byte component tag, a little-endian
 rules rather than silently continuing with changed arithmetic. The separate
 integer RNG stream remains unchanged.
 
-`native/core/tests/numeric_contract.rs` compares 181,655 committed bytes without
+`native/core/tests/numeric_contract.rs` compares 204,119 committed bytes without
 tolerances: fixed-tick flight state, support events and RNG cursors, carved water,
 craters, rotated box hits, cover anchors, spherical interpolation and infantry
-movement, infantry cover fire, postures, ammunition, burst recovery, vitals and aiming. CI runs
+movement, infantry cover fire, postures, ammunition, burst recovery, vitals, aiming and combat poses. CI runs
 the same fixtures in debug and release on Windows x64, Linux
 x64, Linux ARM64 and macOS ARM64. A mismatch reports the first different byte.
 These fixtures guard the covered trajectories; they are not a proof for all
@@ -336,10 +337,26 @@ including moving blockers, smoke, all soldier postures, drones, vehicles,
 structures, invalid targets, contact expiry, RNG order and checkpoint resumes.
 The existing attack, breach, trenches and fire battle comparisons also enable
 this controller alongside native weapon and vitals logic. The numeric corpus
-adds an 18,792-byte aiming transcript. Posed target geometry, squad contact
+adds an 18,792-byte aiming transcript. Squad contact
 selection, bullet resolution and damage effects still require Godot; this is not
 a complete actor or independently replayable battle. The full default suite passes
 113 tests after this extraction; 87 core tests pass in debug and release.
+
+## Infantry combat poses
+
+The simulation's eyes, exposed body points, center, hit factors and over-cover
+posture now have pure Rust calculations. They depend on gameplay pose, life,
+cover, mount and movement state, with no animated skeleton or scene query.
+Exposed points fit a two-element stack buffer. Direct target aiming, including
+a wounded soldier's pistol fire, uses the shared Rust aim-point selection too.
+
+The test-only infantry adapter compares 19,200 pose combinations and random
+cursors with Godot, covering cover-height boundaries, all six life states,
+all five postures, mounted guns and fire steps, movement, trenches and blind
+fire. The exact numeric corpus adds 22,464 bytes of pose geometry. This removes
+the geometry calculation's Godot dependency; full actor ownership, callbacks
+for damage and the battle verifier are still migration work. The full default
+suite passes 114 tests; 91 core tests pass in debug and release.
 
 ## Battlefield collision
 

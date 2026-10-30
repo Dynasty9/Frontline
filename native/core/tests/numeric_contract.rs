@@ -5,6 +5,7 @@ use frontline_core::drone::{DroneFlight, Phase};
 use frontline_core::guided::{GuidedFlight, Kind as GuidedKind};
 use frontline_core::infantry_aim::{AimInput, InfantryAim, Target, TargetKind};
 use frontline_core::infantry_motion::{InfantryMotion, MoveInput};
+use frontline_core::infantry_pose::{InfantryPose, Posture};
 use frontline_core::infantry_vitals::{
     DamageResult, FatigueInput, InfantryVitals, Life, Protection,
 };
@@ -52,6 +53,44 @@ fn golden(name: &str, actual: &[u8]) {
     {
         panic!("{name}: first differing byte {i}: actual {a:02x}, expected {b:02x}");
     }
+}
+
+#[test]
+fn infantry_pose_geometry_is_identical_across_platforms() {
+    let mut bytes = Vec::new();
+    for case in 0..360 {
+        let p = InfantryPose {
+            position: Vector3::new(30.17, -1.12, -44.32),
+            posture: Posture::try_from((case % 5) as u8).unwrap(),
+            life: Life::try_from((case % 6) as u8).unwrap(),
+            at_cover: case % 3 != 0,
+            cover_kind: (case % 4) as u8,
+            cover_height: [0.0, 0.619999, 0.62, 0.8, 1.119999, 1.12][(case / 7) % 6],
+            cover_normal: Vector3::new(0.3, 0.0, -0.7),
+            lean_direction: Vector3::new(-0.7, 0.0, -0.3),
+            mounted: case % 7 == 0,
+            gun_mount: case % 14 == 0,
+            tower_mount: case % 28 == 0,
+            peek_up: case % 2 == 0,
+            blind: case % 11 == 0,
+            moving: case % 13 != 0,
+            move_mode: (case % 3) as i32,
+            ground: if case % 2 == 0 { -1.0 } else { 0.0 },
+        };
+        assert!(p.valid());
+        point(&mut bytes, p.eye());
+        point(&mut bytes, p.scan_eye());
+        point(&mut bytes, p.center());
+        let exposed = p.exposed_points();
+        bytes.push(exposed.as_slice().len() as u8);
+        for p in exposed.as_slice() {
+            point(&mut bytes, *p);
+        }
+        bytes.extend_from_slice(&p.hit_factor().to_le_bytes());
+        bytes.push(p.cover_posture(false) as u8);
+        bytes.push(p.cover_posture(true) as u8);
+    }
+    golden("infantry_pose", &bytes);
 }
 
 #[test]

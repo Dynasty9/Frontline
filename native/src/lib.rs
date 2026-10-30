@@ -8,6 +8,7 @@ mod guided_flight;
 mod hierarchy;
 mod infantry_aim;
 mod infantry_motion;
+mod infantry_pose;
 mod infantry_vitals;
 mod infantry_weapon;
 mod navigation_grid;

@@ -522,7 +522,24 @@ func _pick(arr: Array) -> String:
 
 # --- geometry helpers ------------------------------------------------------------
 
+var _pose_core: RefCounted
+
+
+func _pose_query(kind: int):
+	# shortcut: the test adapter supplies pose until the Rust actor owns it.
+	if _pose_core == null:
+		_pose_core = ClassDB.instantiate("InfantryPoseCore")
+	var gun: bool = mounted != null and mounted.skind in ["mg_nest", "hmg_nest"]
+	var values := [position, posture, life, at_cover, cover_type, cover_h, cover_n, lean_dir,
+		mounted != null, gun, gun and mounted.variant == 1, peek_up, blind, is_moving(), move_mode, _gy]
+	var result = _pose_core.query(values, kind)
+	assert(result != null, "Invalid infantry combat pose")
+	return result
+
+
 func eye_pos() -> Vector3:
+	if world != null and world.settings.get("rust_infantry", false) and ClassDB.class_exists("InfantryPoseCore"):
+		return _pose_query(0)
 	if posture == Post.STAND and mounted and mounted.variant == 1 and mounted.skind in ["mg_nest", "hmg_nest"]:
 		return position + Vector3(0, 1.62, 0)  # on the fire step, sighting along the gun
 	if _over() and peek_up and not blind:
@@ -541,6 +558,8 @@ func eye_pos() -> Vector3:
 
 ## The eye the soldier would shoot from (peeking over low cover or around a corner).
 func scan_eye() -> Vector3:
+	if world != null and world.settings.get("rust_infantry", false) and ClassDB.class_exists("InfantryPoseCore"):
+		return _pose_query(1)
 	if life == Life.DOWNED:
 		return position + Vector3(0, 0.4, 0)
 	if _over():
@@ -553,6 +572,8 @@ func scan_eye() -> Vector3:
 
 
 func exposed_points() -> Array:
+	if world != null and world.settings.get("rust_infantry", false) and ClassDB.class_exists("InfantryPoseCore"):
+		return _pose_query(2)
 	if life == Life.DOWNED or life == Life.DEAD:
 		return [position + Vector3(0, 0.22, 0)]
 	if _over():
@@ -577,6 +598,8 @@ func exposed_points() -> Array:
 
 
 func center_point() -> Vector3:
+	if world != null and world.settings.get("rust_infantry", false) and ClassDB.class_exists("InfantryPoseCore"):
+		return _pose_query(3)
 	match posture:
 		Post.PRONE:
 			return position + Vector3(0, 0.25, 0)
@@ -588,6 +611,8 @@ func center_point() -> Vector3:
 
 
 func hit_factor() -> float:
+	if world != null and world.settings.get("rust_infantry", false) and ClassDB.class_exists("InfantryPoseCore"):
+		return _pose_query(4)
 	var f := 1.0
 	match posture:
 		Post.CROUCH:
@@ -620,6 +645,8 @@ func _over() -> bool:
 ## kneeling behind sandbags or a car, standing behind a chest-high wall - and
 ## when he ducks, low enough that it covers him.
 func _over_post(up: bool) -> int:
+	if world != null and world.settings.get("rust_infantry", false) and ClassDB.class_exists("InfantryPoseCore"):
+		return _pose_query(6 if up else 5)
 	match Cover.stance(cover_h):
 		Cover.PRONE:
 			return Post.PRONE
@@ -1183,6 +1210,12 @@ func _has_los_now(e: Entity) -> bool:
 
 
 func _aim_point(e: Entity) -> Vector3:
+	if world.settings.get("rust_infantry", false) and ClassDB.class_exists("InfantryAimCore"):
+		if _aim_core == null:
+			_aim_core = ClassDB.instantiate("InfantryAimCore")
+		var point = _aim_core.aim_point(_aim_contact(e), PackedVector3Array(e.exposed_points()), world.rng._backend)
+		assert(point is Vector3, "Invalid infantry aim point")
+		return point
 	if e is Soldier and e._over() and world.rng.randf() < 0.35:
 		# at the middle of him, through whatever he's behind
 		return e.position + Vector3(0, minf(e.cover_h - 0.12, 1.0), 0)
@@ -1961,6 +1994,11 @@ var _aim_core: RefCounted
 var _aim_ent: Entity
 
 
+func _aim_contact(e: Entity) -> Array:
+	var kind := 1 if e is Soldier else (2 if e is Drone else (3 if e is Structure else 0))
+	return [e.eid, kind, e._over() if e is Soldier else false, e.cover_h if e is Soldier else 0.0, e.position, e.center_point()]
+
+
 func _weapon_aim(have_target: bool, cf: bool, cfp: Vector3, weapon_range: float) -> Vector3:
 	# shortcut: the parity fixture packs state until Rust owns the complete actor.
 	if world.settings.get("rust_infantry", false) and ClassDB.class_exists("InfantryAimCore") and world.combat._collision and world.combat._visibility:
@@ -1972,8 +2010,7 @@ func _weapon_aim(have_target: bool, cf: bool, cfp: Vector3, weapon_range: float)
 			var points := PackedVector3Array()
 			var excluded := PackedInt64Array()
 			if have_target:
-				var kind := 1 if target is Soldier else (2 if target is Drone else (3 if target is Structure else 0))
-				contact = [target.eid, kind, target._over() if target is Soldier else false, target.cover_h if target is Soldier else 0.0, target.position, target.center_point()]
+				contact = _aim_contact(target)
 				points = PackedVector3Array(target.exposed_points())
 				for rid: RID in get_exclude() + target.get_exclude():
 					if world.combat._rid_entities.has(rid):

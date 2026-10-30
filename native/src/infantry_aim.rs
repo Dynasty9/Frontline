@@ -27,8 +27,55 @@ fn optional_point(
     }
 }
 
+fn read_target<'a>(
+    target: &Array<Variant>,
+    points: &'a [frontline_core::vector::Vector3],
+    excluded: &'a [i64],
+) -> Option<Target<'a>> {
+    if target.len() != 6 || points.len() > 256 || excluded.len() > 4096 {
+        return None;
+    }
+    Some(Target {
+        id: u64::try_from(read::<i64>(target, 0)?).ok()?,
+        kind: match read::<i32>(target, 1)? {
+            0 => TargetKind::Other,
+            1 => TargetKind::Infantry {
+                over_cover: read(target, 2)?,
+                cover_height: read(target, 3)?,
+            },
+            2 => TargetKind::Drone,
+            3 => TargetKind::Structure,
+            _ => return None,
+        },
+        position: crate::point(read(target, 4)?),
+        center: crate::point(read(target, 5)?),
+        points,
+        excluded,
+    })
+}
+
 #[godot_api]
 impl InfantryAimCore {
+    #[func]
+    fn aim_point(
+        &self,
+        target: Array<Variant>,
+        points: PackedVector3Array,
+        mut rng: Gd<SimulationRandomCore>,
+    ) -> Variant {
+        if points.len() > 256 {
+            return Variant::nil();
+        }
+        let points: Vec<_> = points.as_slice().iter().map(|p| crate::point(*p)).collect();
+        let Some(target) = read_target(&target, &points, &[]) else {
+            return Variant::nil();
+        };
+        let Ok(point) = target.aim_point(&mut rng.bind_mut().core) else {
+            return Variant::nil();
+        };
+        Vector3::new(point.x, point.y, point.z).to_variant()
+    }
+
     #[func]
     fn checkpoint(&self) -> PackedByteArray {
         self.core.checkpoint().as_slice().into()
@@ -99,23 +146,7 @@ impl InfantryAimCore {
         let target = if target.is_empty() {
             None
         } else {
-            Some(Target {
-                id: u64::try_from(read::<i64>(target, 0)?).ok()?,
-                kind: match read::<i32>(target, 1)? {
-                    0 => TargetKind::Other,
-                    1 => TargetKind::Infantry {
-                        over_cover: read(target, 2)?,
-                        cover_height: read(target, 3)?,
-                    },
-                    2 => TargetKind::Drone,
-                    3 => TargetKind::Structure,
-                    _ => return None,
-                },
-                position: crate::point(read(target, 4)?),
-                center: crate::point(read(target, 5)?),
-                points: &points,
-                excluded: excluded.as_slice(),
-            })
+            Some(read_target(target, &points, excluded.as_slice())?)
         };
         let input = AimInput {
             time: read(inputs, 0)?,

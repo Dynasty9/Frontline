@@ -54,6 +54,47 @@ fn point(p: Vector3) -> bool {
     p.is_finite() && p.abs().max_element() <= 1_000_000.0
 }
 
+impl Target<'_> {
+    fn valid(self) -> bool {
+        self.id > 0
+            && self.id <= i64::MAX as u64
+            && point(self.position)
+            && point(self.center)
+            && self.points.len() <= 256
+            && self.points.iter().all(|p| point(*p))
+            && self.excluded.len() <= 4096
+            && self.excluded.iter().all(|id| *id >= 0)
+            && match self.kind {
+                TargetKind::Infantry { cover_height, .. } => {
+                    !self.points.is_empty()
+                        && cover_height.is_finite()
+                        && cover_height.abs() <= 1_000_000.0
+                }
+                _ => true,
+            }
+    }
+
+    pub fn aim_point(self, rng: &mut SimulationRandom) -> Result<Vector3, &'static str> {
+        if !self.valid() {
+            return Err("invalid infantry aim target");
+        }
+        Ok(match self.kind {
+            TargetKind::Infantry {
+                over_cover,
+                cover_height,
+            } => {
+                if over_cover && f64::from(rng.randf()) < 0.35 {
+                    self.position + Vector3::new(0.0, (cover_height - 0.12).min(1.0) as f32, 0.0)
+                } else {
+                    self.points[rng.randi() as usize % self.points.len()]
+                }
+            }
+            TargetKind::Drone => self.position,
+            _ => self.center,
+        })
+    }
+}
+
 impl InfantryAim {
     pub fn valid(self) -> bool {
         self.sight_target <= i64::MAX as u64
@@ -68,24 +109,6 @@ impl InfantryAim {
         visibility: &mut Visibility,
         rng: &mut SimulationRandom,
     ) -> Result<AimResult, &'static str> {
-        let target_valid = input.target.is_none_or(|t| {
-            t.id > 0
-                && t.id <= i64::MAX as u64
-                && point(t.position)
-                && point(t.center)
-                && t.points.len() <= 256
-                && t.points.iter().all(|p| point(*p))
-                && t.excluded.len() <= 4096
-                && t.excluded.iter().all(|id| *id >= 0)
-                && match t.kind {
-                    TargetKind::Infantry { cover_height, .. } => {
-                        !t.points.is_empty()
-                            && cover_height.is_finite()
-                            && cover_height.abs() <= 1_000_000.0
-                    }
-                    _ => true,
-                }
-        });
         if !self.valid()
             || !input.time.is_finite()
             || input.time.abs() > 1e12 - 1.0
@@ -95,7 +118,7 @@ impl InfantryAim {
             || !(0.0..=1_000_000.0).contains(&input.weapon_range)
             || input.cover_fire.is_some_and(|p| !point(p))
             || input.last_known.is_some_and(|p| !point(p))
-            || !target_valid
+            || input.target.is_some_and(|t| !t.valid())
         {
             return Err("invalid infantry aim input");
         }
@@ -142,21 +165,7 @@ impl InfantryAim {
             }
             if self.visible {
                 result.target = target.id;
-                result.point = Some(match target.kind {
-                    TargetKind::Infantry {
-                        over_cover,
-                        cover_height,
-                    } => {
-                        if over_cover && f64::from(rng.randf()) < 0.35 {
-                            target.position
-                                + Vector3::new(0.0, (cover_height - 0.12).min(1.0) as f32, 0.0)
-                        } else {
-                            target.points[rng.randi() as usize % target.points.len()]
-                        }
-                    }
-                    TargetKind::Drone => target.position,
-                    _ => target.center,
-                });
+                result.point = Some(target.aim_point(rng)?);
                 return Ok(result);
             }
         }

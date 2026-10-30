@@ -1253,7 +1253,9 @@ actor ownership moves. Infantry health, suppression and fatigue rules also have
 restorable Rust state and
 comparisons covering damage credit, squad responses and repeat wounds. Aim selection
 and its short sight cache also have Rust compatibility checks, including blind
-fire, firing through cover and last-known positions. The full
+fire, firing through cover and last-known positions. Combat pose calculations
+(eyes, exposed points and hit factors) are also checked against pure Rust
+geometry, independent of animated models. The full
 authoritative Rust server and deterministic
 battle verifier are still in progress; see [RUST_SIMULATION.md](RUST_SIMULATION.md).
 
