@@ -1,8 +1,10 @@
 +++
 title = "Frontline on the Mac"
-summary = "Frontline now comes for macOS too, on Apple silicon and Intel Macs: the whole game, multiplayer included, and it keeps itself up to date like the others. On a MacBook, the trackpad drives the camera."
+summary = "Play Frontline on Apple silicon and Intel Macs, with multiplayer, updates and trackpad camera controls."
 kind = "new"
 +++
+
+Frontline now comes for macOS too, on Apple silicon and Intel Macs: the whole game, multiplayer included, and it keeps itself up to date like the others. On a MacBook, the trackpad drives the camera.
 
 - **Getting it:** download it from the website, unzip it and move Frontline into Applications, where it can update
   itself.

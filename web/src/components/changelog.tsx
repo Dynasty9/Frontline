@@ -70,7 +70,7 @@ function Screens({ shots, large = false }: { shots: Shot[]; large?: boolean }) {
                 src={s.url}
                 alt={s.caption}
                 loading="lazy"
-                className="aspect-video w-full object-cover transition-transform duration-300 group-hover:scale-[1.02]"
+                className="aspect-video w-full object-contain transition-transform duration-300 group-hover:scale-[1.02]"
               />
             </button>
             {s.caption && <figcaption className="mt-1.5 text-xs text-muted-foreground">{s.caption}</figcaption>}
@@ -150,23 +150,41 @@ function Video({ video }: { video: MotionClip }) {
   )
 }
 
-function EntryBlock({ entry }: { entry: Entry }) {
+function Clip({ video }: { video: MotionClip }) {
+  return /\.gif(?:[?#]|$)/i.test(video.url) ? <Gif video={video} /> : <Video video={video} />
+}
+
+function EntryBlock({ entry, releaseTag }: { entry: Entry; releaseTag: string }) {
+  const leadClip = entry.videos?.[0]
+  const extraShots = leadClip ? entry.screenshots : entry.screenshots.slice(1)
+  const extraClips = entry.videos?.slice(1) ?? []
+  const hasDetails = !!entry.body || extraShots.length > 0 || extraClips.length > 0
   return (
-    <article className="border-t pt-6 first:border-t-0 first:pt-0" id={entry.slug}>
+    <article className="scroll-mt-24 border-t pt-6 first:border-t-0 first:pt-0" id={`${releaseTag}-${entry.slug}`}>
       <div className="flex flex-wrap items-center gap-2">
         <KindBadge kind={entry.kind} />
         <h3 className="text-lg font-semibold">{entry.title}</h3>
       </div>
-      <p className="mt-2 text-sm leading-relaxed">{entry.summary}</p>
-      <Screens shots={entry.screenshots} />
-      {entry.videos?.map((video) =>
-        /\.gif(?:[?#]|$)/i.test(video.url) ? (
-          <Gif key={video.url} video={video} />
-        ) : (
-          <Video key={video.url} video={video} />
-        )
+      <p className="mt-2 max-w-prose text-base leading-relaxed">{entry.summary}</p>
+      {leadClip ? <Clip video={leadClip} /> : <Screens shots={entry.screenshots.slice(0, 1)} large />}
+      {hasDetails && (
+        <details className="group mt-4 border-l-2 border-primary/30 pl-4">
+          <summary className="cursor-pointer py-2 text-sm font-medium text-primary outline-offset-4 focus-visible:outline-2">
+            Explore this change<span className="sr-only">: {entry.title}</span>
+          </summary>
+          <Details body={entry.body} />
+          <Screens shots={extraShots} />
+          {extraClips.map((video) => (
+            <Clip key={video.url} video={video} />
+          ))}
+          <a
+            href={`#${releaseTag}-${entry.slug}`}
+            className="mt-4 inline-block text-xs text-muted-foreground underline underline-offset-4"
+          >
+            Link to this change
+          </a>
+        </details>
       )}
-      <Details body={entry.body} />
     </article>
   )
 }
@@ -199,7 +217,7 @@ export function ReleaseCard({ release, latest = false }: { release: Release; lat
       )}
       <div className="mt-8 space-y-6">
         {entries.map((e) => (
-          <EntryBlock key={e.slug} entry={e} />
+          <EntryBlock key={e.slug} entry={e} releaseTag={release.tag} />
         ))}
       </div>
     </section>

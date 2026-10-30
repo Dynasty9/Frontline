@@ -1,6 +1,6 @@
 +++
 title = "Water that looks like water, and sea battles to match"
-summary = "The sea rolls in and breaks on the beach, you can see the sand through the shallows, and boats leave real wakes. A boat that's sunk now goes down burning and leaves an oil slick, instead of just vanishing."
+summary = "Fight across rolling water with breaking surf, boat wakes and vessels that visibly sink when destroyed."
 kind = "improved"
 headline = true
 
@@ -22,9 +22,11 @@ caption = "Before and after: the harbour and the river"
 
 [[videos]]
 file = "boat-sinking.mp4"
-poster = "boat-sinking-poster.jpg"
+poster = "overview.jpg"
 caption = "A burning boat settles into the sea as foam spreads around its hull. Recorded in the current build, October 2026."
 +++
+
+The sea rolls in and breaks on the beach, you can see the sand through the shallows, and boats leave real wakes. A boat that's sunk now goes down burning and leaves an oil slick, instead of just vanishing.
 
 - **The sea:** a swell rolls in off the open sea, and boats rise and roll on the waves you see. Breakers spill along the beach, run up the sand and drain back, leaving it dark and wet.
 - **See into the water:** sand shows through the shallows and the sea turns turquoise, then deep blue farther out. Rivers and ponds are murky.

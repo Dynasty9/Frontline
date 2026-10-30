@@ -1,12 +1,18 @@
 +++
 title = "Error reports"
-summary = "When something goes wrong in the game, or it crashes, it now tells the developers what failed and where, so it can be fixed. Nothing about you is sent, and Settings turns it off."
+summary = "Optional automatic error reports help developers diagnose failures and crashes."
 kind = "new"
+
+[[screenshots]]
+file = "overview.jpg"
+caption = "Archived view. Open to enlarge; original captures are in the details."
 
 [[screenshots]]
 file = "send-error-reports.jpg"
 caption = "The switch, at the bottom of Settings > Interface"
 +++
+
+When something goes wrong in the game, or it crashes, it now tells the developers what failed and where, so it can be fixed. Nothing about you is sent, and Settings turns it off.
 
 - **What's sent:** what went wrong and where in the game's code, the game's version, your operating system and
   graphics card, and whether you were in the menus or a battle.

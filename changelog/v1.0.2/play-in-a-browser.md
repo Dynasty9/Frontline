@@ -1,7 +1,11 @@
 +++
 title = "Play in your browser"
-summary = "Frontline now comes as a browser build too: the same game, played alone, with nothing to download or install. Multiplayer still needs the desktop game."
+summary = "Play solo Frontline in your browser without installing the game; multiplayer remains on desktop."
 kind = "new"
+
+[[screenshots]]
+file = "overview.jpg"
+caption = "Archived view. Open to enlarge; original captures are in the details."
 
 [[screenshots]]
 file = "browser-battle.jpg"
@@ -11,6 +15,8 @@ caption = "An AI battle in a browser tab"
 file = "browser-menu.jpg"
 caption = "The menu in the browser: multiplayer points you to the desktop game"
 +++
+
+Frontline now comes as a browser build too: the same game, played alone, with nothing to download or install. Multiplayer still needs the desktop game.
 
 - **What you can play:** Play vs AI, Missions and Watch AI Battle, plus the Field Manual, Settings, and signing in to
   keep your service record.

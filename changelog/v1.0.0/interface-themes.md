@@ -1,7 +1,11 @@
 +++
 title = "Interface themes, and the living map in battle"
-summary = "Pick a theme for the whole interface in Settings > Interface: Field Brass, Night Vision, Thermal, Arctic or Dusk. Panels get a new tactical frame, and the living map now shows through behind the menus in a battle."
+summary = "Choose an interface palette that suits you, with matching menus and a tactical frame over the battlefield."
 kind = "new"
+
+[[screenshots]]
+file = "overview.jpg"
+caption = "Archived view. Open to enlarge; original captures are in the details."
 
 [[screenshots]]
 file = "themes.jpg"
@@ -19,6 +23,8 @@ caption = "The end of a battle (Thermal)"
 file = "settings.jpg"
 caption = "Choosing a theme in Settings > Interface (Dusk)"
 +++
+
+Pick a theme for the whole interface in Settings > Interface: Field Brass, Night Vision, Thermal, Arctic or Dusk. Panels get a new tactical frame, and the living map now shows through behind the menus in a battle.
 
 - **Five themes:** Field Brass (the original), Night Vision, Thermal, Arctic and Dusk. Each recolours the interface and the living map's contour lines; green, red and yellow still mean what they always did.
 - **Changes live:** the interface recolours as soon as you pick a theme, and the map's colours flow into the new ones.

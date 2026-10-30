@@ -46,6 +46,19 @@ class Videos(unittest.TestCase):
         for text in [changelog.notes("9.9.9"), changelog.CHANGELOG_MD.read_text(encoding="utf-8")]:
             self.assertIn(f"[Watch: Flames spread.]({changelog.WEBSITE}/changelog/#v9.9.9)", text)
 
+    def test_overview_precedes_expandable_detail_in_both_publications(self):
+        self.write(self.media + '\n[[screenshots]]\nfile = "poster.jpg"\ncaption = "Source still."\n')
+        with patch.object(changelog, "pr_of", return_value=None):
+            changelog.release("9.9.9")
+        for text in [changelog.notes("9.9.9"), changelog.CHANGELOG_MD.read_text()]:
+            before, details = text.split("<details>", 1)
+            self.assertIn("Fire spreads.", before)
+            self.assertIn("[Watch: Flames spread.]", before)
+            self.assertNotIn("Source still.", before)
+            self.assertIn("Source still.", details)
+            self.assertIn("Details.", details)
+            self.assertIn("</details>", details)
+
     def test_old_entries_need_no_video(self):
         self.write("")
         self.assertEqual(changelog.read_entry(self.entry)["videos"], [])

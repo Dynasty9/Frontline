@@ -1,8 +1,10 @@
 +++
 title = "Boats come about for a destination astern"
-summary = "A boat sent somewhere straight behind it now turns round and goes there, instead of sailing off the other way with its men still aboard. Wheeled vehicles turn round sooner for a point behind them too."
+summary = "Boats ordered behind themselves turn toward the destination instead of continuing the wrong way."
 kind = "fixed"
 +++
+
+A boat sent somewhere straight behind it now turns round and goes there, instead of sailing off the other way with its men still aboard. Wheeled vehicles turn round sooner for a point behind them too.
 
 - An RHIB, gunboat or patrol ship lying still and sent back the way its stern points could hold its course and keep
   going the wrong way for good, so a landing party never reached its beach. Now it puts the helm over and comes

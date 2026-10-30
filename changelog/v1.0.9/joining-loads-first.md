@@ -1,12 +1,18 @@
 +++
 title = "Joining a battle loads it before it starts"
-summary = "When you join someone else's battle, the loading screen now stays up until the whole battlefield has arrived and been built, and it arrives in a second or two, so you no longer drop into a half-built map that freezes for seconds at a time."
+summary = "Joining waits for the whole battlefield to arrive and load, avoiding a half-built map and long freezes."
 kind = "fixed"
+
+[[screenshots]]
+file = "overview.jpg"
+caption = "Archived view. Open to enlarge; original captures are in the details."
 
 [[screenshots]]
 file = "loading-screen.jpg"
 caption = "Joining a running battle: the loading screen waits while the battlefield goes up"
 +++
+
+When you join someone else's battle, the loading screen now stays up until the whole battlefield has arrived and been built, and it arrives in a second or two, so you no longer drop into a half-built map that freezes for seconds at a time.
 
 - **The loading screen waits for the battle**: it shows how far it has got (the water, the town, every building
   and tree, the cover) and only lifts once it's all there, instead of lifting on an empty field.

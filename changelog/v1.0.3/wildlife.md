@@ -1,6 +1,6 @@
 +++
 title = "Wildlife: birds, rats, hares, fish, ducks and dolphins"
-summary = "The battlefield has life of its own now. Birds feed in the fields and burst up at gunfire, crows and gulls wheel overhead, rats run along the walls in town, fish jump in the rivers, ducks paddle on the ponds and dolphins roll through the swell offshore. Settings > Graphics > Wildlife turns it down, or off."
+summary = "Birds, land animals and marine life inhabit the battlefield and react to nearby fighting."
 kind = "new"
 
 [[screenshots]]
@@ -9,7 +9,7 @@ caption = "Mallards on a pond, one upending to feed"
 
 [[videos]]
 file = "fish-swimming.webm"
-poster = "fish-swimming-poster.jpg"
+poster = "overview.jpg"
 caption = "Fish swim together beneath the river surface. Recorded in the current build, October 2026."
 
 [[videos]]
@@ -17,6 +17,8 @@ file = "dolphin-leap.webm"
 poster = "dolphin-leap-poster.jpg"
 caption = "Dolphins surface and leap through the ocean swell. Recorded in the current build, October 2026."
 +++
+
+The battlefield has life of its own now. Birds feed in the fields and burst up at gunfire, crows and gulls wheel overhead, rats run along the walls in town, fish jump in the rivers, ducks paddle on the ponds and dolphins roll through the swell offshore. Settings > Graphics > Wildlife turns it down, or off.
 
 - **In the fields:** flocks of sparrows and starlings feed on the tracks, yards and mud, hopping and pecking, and
   move on now and then. Pigeons gather about the town. Hares sit out in the grass and graze.

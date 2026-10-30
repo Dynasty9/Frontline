@@ -1,13 +1,15 @@
 +++
 title = "Boats handle like boats"
-summary = "Boats no longer drive like cars on water. They slide through it, skid in a hard turn, have no brakes, answer the helm after a moment and are carried by a river's current, and their coxswains handle them like it."
+summary = "Boats carry momentum, slide through turns and use reverse thrust to stop instead of braking like cars."
 kind = "improved"
 
 [[videos]]
 file = "boat-turn.mp4"
-poster = "boat-turn-poster.jpg"
+poster = "overview.jpg"
 caption = "An RHIB turns toward the beach, trailing a curved wake as it comes ashore. Recorded in the current build, October 2026."
 +++
+
+Boats no longer drive like cars on water. They slide through it, skid in a hard turn, have no brakes, answer the helm after a moment and are carried by a river's current, and their coxswains handle them like it.
 
 - **No brakes:** a boat slows on the water's drag and goes astern to stop. An RHIB at full speed needs some
   40 m to stop, a patrol ship 60 m and more, so they ease off well before where they're going.

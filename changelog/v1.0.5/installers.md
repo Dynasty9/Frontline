@@ -1,12 +1,18 @@
 +++
 title = "Installers for Windows and the Mac"
-summary = "The game now comes with an installer on Windows and a disk image on the Mac, so it lands where it can keep itself up to date, with a shortcut to start it from."
+summary = "Install Frontline with a Windows setup wizard or Mac disk image, in a location that supports updates."
 kind = "new"
+
+[[screenshots]]
+file = "overview.jpg"
+caption = "Archived view. Open to enlarge; original captures are in the details."
 
 [[screenshots]]
 file = "windows-setup.jpg"
 caption = "The Windows installer: no administrator rights needed"
 +++
+
+The game now comes with an installer on Windows and a disk image on the Mac, so it lands where it can keep itself up to date, with a shortcut to start it from.
 
 - **Windows:** the download is a setup wizard. It needs no administrator rights, puts Frontline in your Start menu
   (and on the desktop, if you like), and uninstalls from Settings > Apps.

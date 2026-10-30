@@ -1,8 +1,10 @@
 +++
 title = "Scenarios and battles start sooner"
-summary = "Working out the routes across a new battlefield now takes about half the time and far less of your processor, so a scenario is ready in about half the time and a full battle a second or so sooner."
+summary = "Scenarios and battles become ready sooner by reusing route calculations across similar ground."
 kind = "improved"
 +++
+
+Working out the routes across a new battlefield now takes about half the time and far less of your processor, so a scenario is ready in about half the time and a full battle a second or so sooner.
 
 - **Why:** most of a battlefield is open ground much like the rest of it. The way across each patch is now worked
   out once for every patch that's just the same, instead of for each in turn.

@@ -1,0 +1,1677 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "entry": "changelog/v0.1.0/camera-and-minimap.md",
+      "summary": "Keep your focus while zooming, orbit the battlefield, and use the whole minimap without buttons covering its edges.",
+      "medium": "still",
+      "stage": "archive-plate",
+      "rationale": "An archived still shows the layout or appearance; timing and interactions are explained in the notes.",
+      "source_ref": "4d4de4a",
+      "sources": [
+        {
+          "file": "changelog/v0.1.0/camera-and-minimap/camera.jpg",
+          "sha256": "2b29b01dcfa05ae545d442c72f6bf6ecb1706bcc4841e8c928bc4573e1e132fe",
+          "caption": "The new camera, tilted over a village"
+        }
+      ],
+      "output": "changelog/v0.1.0/camera-and-minimap/overview.jpg",
+      "title": "Camera controls from other RTS games, and a clearer minimap",
+      "version": "v0.1.0",
+      "kind": "improved",
+      "attribution": "Archived illustration; original screenshots remain in the details."
+    },
+    {
+      "entry": "changelog/v0.1.0/missions.md",
+      "summary": "Play five objective-driven operations alone or with friends, with radio updates guiding the action.",
+      "medium": "still",
+      "stage": "archive-plate",
+      "rationale": "An archived still shows the layout or appearance; timing and interactions are explained in the notes.",
+      "source_ref": "4d4de4a",
+      "sources": [
+        {
+          "file": "changelog/v0.1.0/missions/kingpin.jpg",
+          "sha256": "456e9be6bc56bd14b90e8cfad8b64a5c28b66b915d4b76bcb154b8bdbd312b24",
+          "caption": "Kingpin, one of the missions"
+        }
+      ],
+      "output": "changelog/v0.1.0/missions/overview.jpg",
+      "title": "Missions",
+      "version": "v0.1.0",
+      "kind": "new",
+      "attribution": "Archived illustration; original screenshots remain in the details."
+    },
+    {
+      "entry": "changelog/v0.1.0/online-play.md",
+      "summary": "Find an open battle or host one for others to join, usually without configuring your router.",
+      "medium": "still",
+      "stage": "archive-plate",
+      "rationale": "An archived still shows the layout or appearance; timing and interactions are explained in the notes.",
+      "source_ref": "4d4de4a",
+      "sources": [
+        {
+          "file": "changelog/v0.1.0/online-play/join-a-battle.jpg",
+          "sha256": "d4a3696542ef25c5ea4da6cebc2cbc93105b22535aa53ab843fcfa7e90672b6c",
+          "caption": "Join Game: the battles being hosted, and connect by address"
+        }
+      ],
+      "output": "changelog/v0.1.0/online-play/overview.jpg",
+      "title": "Online play: Find Match and a list of battles",
+      "version": "v0.1.0",
+      "kind": "new",
+      "attribution": "Archived illustration; original screenshots remain in the details."
+    },
+    {
+      "entry": "changelog/v0.1.0/restyled-soldiers.md",
+      "summary": "Recognize soldiers and their roles more easily from the battle camera, with clearer silhouettes and equipment.",
+      "medium": "text",
+      "stage": "text",
+      "rationale": "Concise text explains the outcome without inventing footage or benchmark/audio evidence.",
+      "source_ref": "4d4de4a",
+      "sources": [],
+      "output": null,
+      "title": "Restyled soldiers",
+      "version": "v0.1.0",
+      "kind": "improved",
+      "attribution": "Archived illustration; original screenshots remain in the details."
+    },
+    {
+      "entry": "changelog/v0.1.0/self-updating.md",
+      "summary": "Get new versions in the background and restart when you are ready to play them.",
+      "medium": "still",
+      "stage": "archive-plate",
+      "rationale": "An archived still shows the layout or appearance; timing and interactions are explained in the notes.",
+      "source_ref": "4d4de4a",
+      "sources": [
+        {
+          "file": "changelog/v0.1.0/self-updating/update-ready.jpg",
+          "sha256": "61f02e052aa06b637108021081a2c36c47983f0f02693cf5e6840fd4b777384c",
+          "caption": "An update downloaded and ready"
+        }
+      ],
+      "output": "changelog/v0.1.0/self-updating/overview.jpg",
+      "title": "The game keeps itself up to date",
+      "version": "v0.1.0",
+      "kind": "new",
+      "attribution": "Archived illustration; original screenshots remain in the details."
+    },
+    {
+      "entry": "changelog/v0.1.0/website.md",
+      "summary": "Find live battles, join them in the game, and download Frontline from one website.",
+      "medium": "text",
+      "stage": "text",
+      "rationale": "Concise text explains the outcome without inventing footage or benchmark/audio evidence.",
+      "source_ref": "4d4de4a",
+      "sources": [],
+      "output": null,
+      "title": "The Frontline website",
+      "version": "v0.1.0",
+      "kind": "new",
+      "attribution": "Archived illustration; original screenshots remain in the details."
+    },
+    {
+      "entry": "changelog/v0.1.1/interface-scale.md",
+      "summary": "Make the interface larger without blurring text or pushing essential controls into one another.",
+      "medium": "still",
+      "stage": "archive-plate",
+      "rationale": "An archived still shows the layout or appearance; timing and interactions are explained in the notes.",
+      "source_ref": "4d4de4a",
+      "sources": [
+        {
+          "file": "changelog/v0.1.1/interface-scale/before-and-after.jpg",
+          "sha256": "35ed98e2fb228689ca5bc943aa67ee795ea2563ad55fa71f21504771edc30335",
+          "caption": "Before and after, at 1080p"
+        }
+      ],
+      "output": "changelog/v0.1.1/interface-scale/overview.jpg",
+      "title": "An interface that's big enough, and stays sharp",
+      "version": "v0.1.1",
+      "kind": "improved",
+      "attribution": "Archived illustration; original screenshots remain in the details."
+    },
+    {
+      "entry": "changelog/v0.1.2/explosions-and-smoke.md",
+      "summary": "See the force of an explosion in its fireball and debris, followed by a continuous column of drifting smoke.",
+      "medium": "still",
+      "stage": "archive-plate",
+      "rationale": "An archived still shows the layout or appearance; timing and interactions are explained in the notes.",
+      "source_ref": "4d4de4a",
+      "sources": [
+        {
+          "file": "changelog/v0.1.2/explosions-and-smoke/before-and-after.jpg",
+          "sha256": "a9ebf5be516ba75061e98162b98376ec19a8d6dbb43d63f6ffe56fe63d82ae4d",
+          "caption": "Explosions before and after"
+        }
+      ],
+      "output": "changelog/v0.1.2/explosions-and-smoke/overview.jpg",
+      "title": "Bigger explosions and smoke",
+      "version": "v0.1.2",
+      "kind": "improved",
+      "attribution": "Archived illustration; original screenshots remain in the details."
+    },
+    {
+      "entry": "changelog/v0.1.2/fire.md",
+      "summary": "Fire spreads through nearby flammable scenery, with the wind influencing where it takes hold next.",
+      "medium": "still",
+      "stage": "archive-plate",
+      "rationale": "An archived still shows the layout or appearance; timing and interactions are explained in the notes.",
+      "source_ref": "4d4de4a",
+      "sources": [
+        {
+          "file": "changelog/v0.1.2/fire/fire-day.jpg",
+          "sha256": "636eaf7ecb4b87f7d13c07a3c9887129280fa68d1a2f9e57862cf2de5c2e2dd0",
+          "caption": "A hedgerow and a grass fire, with smoke drifting downwind"
+        }
+      ],
+      "output": "changelog/v0.1.2/fire/overview.jpg",
+      "title": "Fire that spreads",
+      "version": "v0.1.2",
+      "kind": "new",
+      "attribution": "Archived illustration; original screenshots remain in the details."
+    },
+    {
+      "entry": "changelog/v0.1.3/audio-settings.md",
+      "summary": "Balance music, effects, ambience and interface sounds separately, or mute the game while it is in the background.",
+      "medium": "still",
+      "stage": "archive-plate",
+      "rationale": "An archived still shows the layout or appearance; timing and interactions are explained in the notes.",
+      "source_ref": "4d4de4a",
+      "sources": [
+        {
+          "file": "changelog/v0.1.3/audio-settings/audio-settings.jpg",
+          "sha256": "9d17ef9d815d0a3b38971bc19e25ffabd80a50276e935ff453dcf4013af69e92",
+          "caption": "Settings > Audio"
+        }
+      ],
+      "output": "changelog/v0.1.3/audio-settings/overview.jpg",
+      "title": "A volume slider for each kind of sound",
+      "version": "v0.1.3",
+      "kind": "improved",
+      "attribution": "Archived illustration; original screenshots remain in the details."
+    },
+    {
+      "entry": "changelog/v0.1.3/soundtrack.md",
+      "summary": "The score builds with the fighting, relaxes during quieter moments, and responds to victory or defeat.",
+      "medium": "text",
+      "stage": "text",
+      "rationale": "Concise text explains the outcome without inventing footage or benchmark/audio evidence.",
+      "source_ref": "4d4de4a",
+      "sources": [],
+      "output": null,
+      "title": "A soundtrack that follows the fighting",
+      "version": "v0.1.3",
+      "kind": "new",
+      "attribution": "Archived illustration; original screenshots remain in the details."
+    },
+    {
+      "entry": "changelog/v0.1.3/wind.md",
+      "summary": "Hear irregular gusts and distant fighting instead of a repeating surf-like ambience.",
+      "medium": "text",
+      "stage": "text",
+      "rationale": "Concise text explains the outcome without inventing footage or benchmark/audio evidence.",
+      "source_ref": "4d4de4a",
+      "sources": [],
+      "output": null,
+      "title": "Wind that sounds like wind, not surf",
+      "version": "v0.1.3",
+      "kind": "fixed",
+      "attribution": "Archived illustration; original screenshots remain in the details."
+    },
+    {
+      "entry": "changelog/v0.1.4/fog-of-war.md",
+      "summary": "See where your side has eyes on the ground and where enemy positions are only last-known reports.",
+      "medium": "still",
+      "stage": "archive-plate",
+      "rationale": "An archived still shows the layout or appearance; timing and interactions are explained in the notes.",
+      "source_ref": "4d4de4a",
+      "sources": [
+        {
+          "file": "changelog/v0.1.4/fog-of-war/fog-of-war.jpg",
+          "sha256": "252b4706b9da4725e2927b401cee5ba632d173d39ade0b6d22b9000aabfdf9b5",
+          "caption": "The fog of war in a bridgehead battle"
+        }
+      ],
+      "output": "changelog/v0.1.4/fog-of-war/overview.jpg",
+      "title": "A fog of war you can see",
+      "version": "v0.1.4",
+      "kind": "new",
+      "attribution": "Archived illustration; original screenshots remain in the details."
+    },
+    {
+      "entry": "changelog/v0.1.4/recon-flights.md",
+      "summary": "Use aircraft and overwatch drones to reveal ground ahead of your troops.",
+      "medium": "still",
+      "stage": "archive-plate",
+      "rationale": "An archived still shows the layout or appearance; timing and interactions are explained in the notes.",
+      "source_ref": "4d4de4a",
+      "sources": [
+        {
+          "file": "changelog/v0.1.4/recon-flights/recon-pass.jpg",
+          "sha256": "6e82a145cef75cefe55e73dc8959a10ccfdfa61688f0c830405c37b4f823db2b",
+          "caption": "A recon pass lights a strip over the Rebel positions"
+        }
+      ],
+      "output": "changelog/v0.1.4/recon-flights/overview.jpg",
+      "title": "Aircraft that spot, recon flights and overwatch drones",
+      "version": "v0.1.4",
+      "kind": "new",
+      "attribution": "Archived illustration; original screenshots remain in the details."
+    },
+    {
+      "entry": "changelog/v0.1.5/explosion-clipping.md",
+      "summary": "Overlapping explosions no longer overload the sound output and distort.",
+      "medium": "text",
+      "stage": "text",
+      "rationale": "Concise text explains the outcome without inventing footage or benchmark/audio evidence.",
+      "source_ref": "4d4de4a",
+      "sources": [],
+      "output": null,
+      "title": "No more distortion when shells land together",
+      "version": "v0.1.5",
+      "kind": "fixed",
+      "attribution": "Archived illustration; original screenshots remain in the details."
+    },
+    {
+      "entry": "changelog/v0.1.5/fire-sound.md",
+      "summary": "Burning buildings produce a steady roar and crackle instead of a repeated swell and fade.",
+      "medium": "text",
+      "stage": "text",
+      "rationale": "Concise text explains the outcome without inventing footage or benchmark/audio evidence.",
+      "source_ref": "4d4de4a",
+      "sources": [],
+      "output": null,
+      "title": "Fires roar instead of surging",
+      "version": "v0.1.5",
+      "kind": "fixed",
+      "attribution": "Archived illustration; original screenshots remain in the details."
+    },
+    {
+      "entry": "changelog/v0.1.6/supply-picture.md",
+      "summary": "See which towns support your force, how much they produce, and where their delivery trucks are going.",
+      "medium": "text",
+      "stage": "text",
+      "rationale": "Concise text explains the outcome without inventing footage or benchmark/audio evidence.",
+      "source_ref": "4d4de4a",
+      "sources": [],
+      "output": null,
+      "title": "A clearer supply picture",
+      "version": "v0.1.6",
+      "kind": "improved",
+      "attribution": "Archived illustration; original screenshots remain in the details."
+    },
+    {
+      "entry": "changelog/v0.1.6/towns.md",
+      "summary": "Capture settlements to produce supplies, then protect the trucks bringing them back to your FOB.",
+      "medium": "still",
+      "stage": "archive-plate",
+      "rationale": "An archived still shows the layout or appearance; timing and interactions are explained in the notes.",
+      "source_ref": "4d4de4a",
+      "sources": [
+        {
+          "file": "changelog/v0.1.6/towns/village-dump.jpg",
+          "sha256": "aabd81ee2644fe7990cb1314404a08d2a08fa0a5397ea0a9e01f8a87d17c8590",
+          "caption": "A village's supply dump, flying the holder's colours"
+        }
+      ],
+      "output": "changelog/v0.1.6/towns/overview.jpg",
+      "title": "Capturable towns that give supply",
+      "version": "v0.1.6",
+      "kind": "new",
+      "attribution": "Archived illustration; original screenshots remain in the details."
+    },
+    {
+      "entry": "changelog/v0.1.7/squad-card.md",
+      "summary": "Attack stages and squad orders remain readable together at the largest interface scale.",
+      "medium": "text",
+      "stage": "text",
+      "rationale": "Concise text explains the outcome without inventing footage or benchmark/audio evidence.",
+      "source_ref": "4d4de4a",
+      "sources": [],
+      "output": null,
+      "title": "The squad card fits a narrow panel",
+      "version": "v0.1.7",
+      "kind": "fixed",
+      "attribution": "Archived illustration; original screenshots remain in the details."
+    },
+    {
+      "entry": "changelog/v0.1.7/window-size.md",
+      "summary": "Frontline opens at your chosen window size, or maximizes when that size will not fit your screen.",
+      "medium": "still",
+      "stage": "archive-plate",
+      "rationale": "An archived still shows the layout or appearance; timing and interactions are explained in the notes.",
+      "source_ref": "4d4de4a",
+      "sources": [
+        {
+          "file": "changelog/v0.1.7/window-size/four-three.jpg",
+          "sha256": "3b76f0b7787a3469fb003a2daffb84ee30e3841673cbc68717d1a28e72029f23",
+          "caption": "A 4:3 screen at the default and largest scales"
+        }
+      ],
+      "output": "changelog/v0.1.7/window-size/overview.jpg",
+      "title": "The game opens at the window size you chose",
+      "version": "v0.1.7",
+      "kind": "fixed",
+      "attribution": "Archived illustration; original screenshots remain in the details."
+    },
+    {
+      "entry": "changelog/v0.1.8/co-commanders.md",
+      "summary": "See teammates' selections, attention and planned actions so you can coordinate attacks and fire support.",
+      "medium": "still",
+      "stage": "archive-plate",
+      "rationale": "An archived still shows the layout or appearance; timing and interactions are explained in the notes.",
+      "source_ref": "4d4de4a",
+      "sources": [
+        {
+          "file": "changelog/v0.1.8/co-commanders/co-commanders.jpg",
+          "sha256": "b40e5a2c4c41d82e2098ef211b865f146305573d93d106bc4810b72637fe7e85",
+          "caption": "Two commanders: one aiming artillery, one digging a trench line, with their views, pings and the Command Net"
+        }
+      ],
+      "output": "changelog/v0.1.8/co-commanders/overview.jpg",
+      "title": "See what your co-commanders are doing",
+      "version": "v0.1.8",
+      "kind": "new",
+      "attribution": "Archived illustration; original screenshots remain in the details."
+    },
+    {
+      "entry": "changelog/v0.1.8/pings.md",
+      "summary": "Point out threats, request help and sketch plans directly on the shared battlefield and minimap.",
+      "medium": "text",
+      "stage": "text",
+      "rationale": "Concise text explains the outcome without inventing footage or benchmark/audio evidence.",
+      "source_ref": "4d4de4a",
+      "sources": [],
+      "output": null,
+      "title": "Pings and map sketches",
+      "version": "v0.1.8",
+      "kind": "new",
+      "attribution": "Archived illustration; original screenshots remain in the details."
+    },
+    {
+      "entry": "changelog/v1.0.0/after-action-report.md",
+      "summary": "Review the battle at a glance, then explore commanders, units and the moments that changed the fight.",
+      "medium": "still",
+      "stage": "archive-plate",
+      "rationale": "An archived still shows the layout or appearance; timing and interactions are explained in the notes.",
+      "source_ref": "4d4de4a",
+      "sources": [
+        {
+          "file": "changelog/v1.0.0/after-action-report/victory.jpg",
+          "sha256": "b90a4ae80c0c0a541de62ff4edb02db442cf02d0d8d5c0889f188b06877cc93e",
+          "caption": "The end of a battle: the result, and your rating"
+        }
+      ],
+      "output": "changelog/v1.0.0/after-action-report/overview.jpg",
+      "title": "Battle statistics and the after-action report",
+      "version": "v1.0.0",
+      "kind": "new",
+      "attribution": "Archived illustration; original screenshots remain in the details."
+    },
+    {
+      "entry": "changelog/v1.0.0/changelog.md",
+      "summary": "Find out what each release changes through notes on the website, linked from the game's update notice.",
+      "medium": "still",
+      "stage": "archive-plate",
+      "rationale": "An archived still shows the layout or appearance; timing and interactions are explained in the notes.",
+      "source_ref": "4d4de4a",
+      "sources": [
+        {
+          "file": "changelog/v1.0.0/changelog/whats-new.jpg",
+          "sha256": "00959a2733ae4dd369a50af6350162af6ae030e6d1ec8f3ddccc0290395b15d3",
+          "caption": "An update downloaded and ready, with a link to what's in it"
+        }
+      ],
+      "output": "changelog/v1.0.0/changelog/overview.jpg",
+      "title": "A changelog for every release",
+      "version": "v1.0.0",
+      "kind": "new",
+      "attribution": "Archived illustration; original screenshots remain in the details."
+    },
+    {
+      "entry": "changelog/v1.0.0/field-defences.md",
+      "summary": "Build more recognizable fieldworks, including new HESCO walls, barricades, camouflage nets and ammo caches.",
+      "medium": "still",
+      "stage": "archive-plate",
+      "rationale": "An archived still shows the layout or appearance; timing and interactions are explained in the notes.",
+      "source_ref": "4d4de4a",
+      "sources": [
+        {
+          "file": "changelog/v1.0.0/field-defences/before-and-after.jpg",
+          "sha256": "47468bfed0e1661b1e9bd3a57f5df9ea28640f17f6b2c5796b24c013e6b21692",
+          "caption": "Wire, tank traps, minefields and concrete walls, before and after"
+        }
+      ],
+      "output": "changelog/v1.0.0/field-defences/overview.jpg",
+      "title": "Field defences rebuilt, and four new ones",
+      "version": "v1.0.0",
+      "kind": "new",
+      "attribution": "Archived illustration; original screenshots remain in the details."
+    },
+    {
+      "entry": "changelog/v1.0.0/gunfire-effects.md",
+      "summary": "Read a firefight through muzzle flashes, recoil, tracers and impacts that respond to the surface they hit.",
+      "medium": "still",
+      "stage": "archive-plate",
+      "rationale": "An archived still shows the layout or appearance; timing and interactions are explained in the notes.",
+      "source_ref": "4d4de4a",
+      "sources": [
+        {
+          "file": "changelog/v1.0.0/gunfire-effects/night-armour.jpg",
+          "sha256": "d592005c175655d1d13ed73ade4faf970b4fd135bd907d48c1ff71a5fd889715",
+          "caption": "A tank and an IFV firing at night: the flashes light up the vehicles and the ground, and the shell's tracer streaks to its target"
+        }
+      ],
+      "output": "changelog/v1.0.0/gunfire-effects/overview.jpg",
+      "title": "Gunfire that hits hard",
+      "version": "v1.0.0",
+      "kind": "improved",
+      "attribution": "Archived illustration; original screenshots remain in the details."
+    },
+    {
+      "entry": "changelog/v1.0.0/interface-themes.md",
+      "summary": "Choose an interface palette that suits you, with matching menus and a tactical frame over the battlefield.",
+      "medium": "still",
+      "stage": "archive-plate",
+      "rationale": "An archived still shows the layout or appearance; timing and interactions are explained in the notes.",
+      "source_ref": "4d4de4a",
+      "sources": [
+        {
+          "file": "changelog/v1.0.0/interface-themes/themes.jpg",
+          "sha256": "74c367de02bbfa4ed50beed0ee4ac78c2500915d897b96235b9b2a80379274c0",
+          "caption": "Night Vision, Thermal, Arctic and Dusk"
+        }
+      ],
+      "output": "changelog/v1.0.0/interface-themes/overview.jpg",
+      "title": "Interface themes, and the living map in battle",
+      "version": "v1.0.0",
+      "kind": "new",
+      "attribution": "Archived illustration; original screenshots remain in the details."
+    },
+    {
+      "entry": "changelog/v1.0.0/joins-with-more-players.md",
+      "summary": "Additional players can join a multiplayer battle without triggering network errors for everyone else.",
+      "medium": "text",
+      "stage": "text",
+      "rationale": "Concise text explains the outcome without inventing footage or benchmark/audio evidence.",
+      "source_ref": "4d4de4a",
+      "sources": [],
+      "output": null,
+      "title": "No network error when more players join",
+      "version": "v1.0.0",
+      "kind": "fixed",
+      "attribution": "Archived illustration; original screenshots remain in the details."
+    },
+    {
+      "entry": "changelog/v1.0.0/living-map.md",
+      "summary": "A moving topographic map brings the title, menus and loading screen to life.",
+      "medium": "still",
+      "stage": "archive-plate",
+      "rationale": "An archived still shows the layout or appearance; timing and interactions are explained in the notes.",
+      "source_ref": "4d4de4a",
+      "sources": [
+        {
+          "file": "changelog/v1.0.0/living-map/title.jpg",
+          "sha256": "512094f21cbd9738f88094022fa78d7a1627d9c297830b5b793ed9783673e83c",
+          "caption": "The title, just after the wave has woken the map"
+        }
+      ],
+      "output": "changelog/v1.0.0/living-map/overview.jpg",
+      "title": "A living map behind the title and menu",
+      "version": "v1.0.0",
+      "kind": "new",
+      "attribution": "Archived illustration; original screenshots remain in the details."
+    },
+    {
+      "entry": "changelog/v1.0.0/rebindable-controls.md",
+      "summary": "Find and change any keyboard action, with two bindings per action and individual resets.",
+      "medium": "still",
+      "stage": "archive-plate",
+      "rationale": "An archived still shows the layout or appearance; timing and interactions are explained in the notes.",
+      "source_ref": "4d4de4a",
+      "sources": [
+        {
+          "file": "changelog/v1.0.0/rebindable-controls/controls.jpg",
+          "sha256": "7876de9df78cddceb3908290edb16f05c3d25c8a0407dd291d4102fe93f7b6b8",
+          "caption": "Settings > Controls: every action by category, with two keys each"
+        }
+      ],
+      "output": "changelog/v1.0.0/rebindable-controls/overview.jpg",
+      "title": "Change any key",
+      "version": "v1.0.0",
+      "kind": "new",
+      "attribution": "Archived illustration; original screenshots remain in the details."
+    },
+    {
+      "entry": "changelog/v1.0.0/service-record.md",
+      "summary": "Sign in from the main menu to keep a battle history and reopen past after-action reports.",
+      "medium": "still",
+      "stage": "archive-plate",
+      "rationale": "An archived still shows the layout or appearance; timing and interactions are explained in the notes.",
+      "source_ref": "4d4de4a",
+      "sources": [
+        {
+          "file": "changelog/v1.0.0/service-record/account-card.jpg",
+          "sha256": "39b5c6e73c45da7ceecadb25f671f53e5a5183f380369860a481a7ee4b1e7e51",
+          "caption": "The account card on the main menu"
+        }
+      ],
+      "output": "changelog/v1.0.0/service-record/overview.jpg",
+      "title": "A service record, and a sign-in you can find",
+      "version": "v1.0.0",
+      "kind": "new",
+      "attribution": "Archived illustration; original screenshots remain in the details."
+    },
+    {
+      "entry": "changelog/v1.0.0/towns-in-help.md",
+      "summary": "Learn how towns are captured and supplied through in-game help and loading tips.",
+      "medium": "text",
+      "stage": "text",
+      "rationale": "Concise text explains the outcome without inventing footage or benchmark/audio evidence.",
+      "source_ref": "4d4de4a",
+      "sources": [],
+      "output": null,
+      "title": "Towns in the help and loading tips",
+      "version": "v1.0.0",
+      "kind": "improved",
+      "attribution": "Archived illustration; original screenshots remain in the details."
+    },
+    {
+      "entry": "changelog/v1.0.0/water-and-sea-battles.md",
+      "summary": "Fight across rolling water with breaking surf, boat wakes and vessels that visibly sink when destroyed.",
+      "medium": "motion",
+      "stage": "archive-plate",
+      "rationale": "Motion is demonstrated by the existing recorded clip; preserve its original capture attribution.",
+      "source_ref": "4d4de4a",
+      "sources": [
+        {
+          "file": "changelog/v1.0.0/water-and-sea-battles/boat-sinking-poster.jpg",
+          "sha256": "5eeb2d61e8e52cfe52f9ece6dc086933e1472f2886a8b0378e776342bd360569",
+          "caption": "A burning boat settles into the sea as foam spreads around its hull. Recorded in the current build, October 2026."
+        }
+      ],
+      "output": "changelog/v1.0.0/water-and-sea-battles/overview.jpg",
+      "title": "Water that looks like water, and sea battles to match",
+      "version": "v1.0.0",
+      "kind": "improved",
+      "attribution": "A burning boat settles into the sea as foam spreads around its hull. Recorded in the current build, October 2026."
+    },
+    {
+      "entry": "changelog/v1.0.1/error-reports.md",
+      "summary": "Optional automatic error reports help developers diagnose failures and crashes.",
+      "medium": "still",
+      "stage": "archive-plate",
+      "rationale": "An archived still shows the layout or appearance; timing and interactions are explained in the notes.",
+      "source_ref": "4d4de4a",
+      "sources": [
+        {
+          "file": "changelog/v1.0.1/error-reports/send-error-reports.jpg",
+          "sha256": "26dc96776f57a03e68116f08a581e1ff620f3a8860b0496230bee2327193a6ad",
+          "caption": "The switch, at the bottom of Settings > Interface"
+        }
+      ],
+      "output": "changelog/v1.0.1/error-reports/overview.jpg",
+      "title": "Error reports",
+      "version": "v1.0.1",
+      "kind": "new",
+      "attribution": "Archived illustration; original screenshots remain in the details."
+    },
+    {
+      "entry": "changelog/v1.0.1/faster-start.md",
+      "summary": "Spend less time waiting for the game to launch and for the host to prepare a battle.",
+      "medium": "text",
+      "stage": "text",
+      "rationale": "Concise text explains the outcome without inventing footage or benchmark/audio evidence.",
+      "source_ref": "4d4de4a",
+      "sources": [],
+      "output": null,
+      "title": "Battles and the game start sooner",
+      "version": "v1.0.1",
+      "kind": "improved",
+      "attribution": "Archived illustration; original screenshots remain in the details."
+    },
+    {
+      "entry": "changelog/v1.0.1/ranks-and-insignia.md",
+      "summary": "Earn experience in signed-in battles, climb 50 ranks and unlock patches for your callsign.",
+      "medium": "still",
+      "stage": "archive-plate",
+      "rationale": "An archived still shows the layout or appearance; timing and interactions are explained in the notes.",
+      "source_ref": "4d4de4a",
+      "sources": [
+        {
+          "file": "changelog/v1.0.1/ranks-and-insignia/collection.jpg",
+          "sha256": "0199f069e132e9a6ee966d226d6ca189554d4a1a96653d08fc3e9f31b0a5062a",
+          "caption": "Your insignia: the patches you've unlocked, and the ones still to come"
+        }
+      ],
+      "output": "changelog/v1.0.1/ranks-and-insignia/overview.jpg",
+      "title": "Ranks and insignia",
+      "version": "v1.0.1",
+      "kind": "new",
+      "attribution": "Archived illustration; original screenshots remain in the details."
+    },
+    {
+      "entry": "changelog/v1.0.1/rejoin-a-battle.md",
+      "summary": "Return to your side and surviving force after a dropped connection, crash or accidental departure.",
+      "medium": "still",
+      "stage": "archive-plate",
+      "rationale": "An archived still shows the layout or appearance; timing and interactions are explained in the notes.",
+      "source_ref": "4d4de4a",
+      "sources": [
+        {
+          "file": "changelog/v1.0.1/rejoin-a-battle/rejoin-card.jpg",
+          "sha256": "0872c773e57bddb121606a4a3521cc0f3e3e552b9fe5c4cf27568f0236c48a54",
+          "caption": "Back on the main menu after dropping out: Rejoin gets you back into the battle"
+        }
+      ],
+      "output": "changelog/v1.0.1/rejoin-a-battle/overview.jpg",
+      "title": "Rejoin a battle you dropped out of",
+      "version": "v1.0.1",
+      "kind": "new",
+      "attribution": "Archived illustration; original screenshots remain in the details."
+    },
+    {
+      "entry": "changelog/v1.0.1/server-browser.md",
+      "summary": "Browse online and local battles, then see teams, available seats and player readiness before starting.",
+      "medium": "still",
+      "stage": "archive-plate",
+      "rationale": "An archived still shows the layout or appearance; timing and interactions are explained in the notes.",
+      "source_ref": "4d4de4a",
+      "sources": [
+        {
+          "file": "changelog/v1.0.1/server-browser/before-and-after.jpg",
+          "sha256": "3d653a91d2d173ef99693b4e12608ea5d70fb6d2542a39d81e6df60cdee778d2",
+          "caption": "Joining a battle and the lobby, before and after"
+        }
+      ],
+      "output": "changelog/v1.0.1/server-browser/overview.jpg",
+      "title": "A server browser, and a lobby that shows who's coming",
+      "version": "v1.0.1",
+      "kind": "new",
+      "attribution": "Archived illustration; original screenshots remain in the details."
+    },
+    {
+      "entry": "changelog/v1.0.10/console-completion.md",
+      "summary": "Find console commands and their arguments through suggestions that narrow as you type.",
+      "medium": "still",
+      "stage": "archive-plate",
+      "rationale": "An archived still shows the layout or appearance; timing and interactions are explained in the notes.",
+      "source_ref": "4d4de4a",
+      "sources": [
+        {
+          "file": "changelog/v1.0.10/console-completion/after.jpg",
+          "sha256": "81e4d46061acbf74d29bd018bdd426603ce3b1504ecd45528b445c2e15abc8b6",
+          "caption": "Browse the full command list without leaving the console."
+        }
+      ],
+      "output": "changelog/v1.0.10/console-completion/overview.jpg",
+      "title": "Find console commands as you type",
+      "version": "v1.0.10",
+      "kind": "improved",
+      "attribution": "Archived illustration; original screenshots remain in the details."
+    },
+    {
+      "entry": "changelog/v1.0.10/existing-website-login.md",
+      "summary": "Use your existing website session to sign into Frontline without repeating the GitHub login.",
+      "medium": "text",
+      "stage": "text",
+      "rationale": "Concise text explains the outcome without inventing footage or benchmark/audio evidence.",
+      "source_ref": "4d4de4a",
+      "sources": [],
+      "output": null,
+      "title": "Sign in to the game from your website login",
+      "version": "v1.0.10",
+      "kind": "fixed",
+      "attribution": "Archived illustration; original screenshots remain in the details."
+    },
+    {
+      "entry": "changelog/v1.0.10/text-console.md",
+      "summary": "Copy, search and save console output, and paste commands using familiar shortcuts.",
+      "medium": "still",
+      "stage": "archive-plate",
+      "rationale": "An archived still shows the layout or appearance; timing and interactions are explained in the notes.",
+      "source_ref": "4d4de4a",
+      "sources": [
+        {
+          "file": "changelog/v1.0.10/text-console/after.jpg",
+          "sha256": "56320704afb31fa88344367dc0878a98912879a45bc15f5026a4f1a2df2faf01",
+          "caption": "Console tools for copying, finding and saving output."
+        }
+      ],
+      "output": "changelog/v1.0.10/text-console/overview.jpg",
+      "title": "A console you can copy, search and save",
+      "version": "v1.0.10",
+      "kind": "improved",
+      "attribution": "Archived illustration; original screenshots remain in the details."
+    },
+    {
+      "entry": "changelog/v1.0.11/battle-hotpaths.md",
+      "summary": "Busy battles spend less time maintaining routes and rebuilding animated combat markers.",
+      "medium": "text",
+      "stage": "text",
+      "rationale": "Concise text explains the outcome without inventing footage or benchmark/audio evidence.",
+      "source_ref": "4d4de4a",
+      "sources": [],
+      "output": null,
+      "title": "Less work during busy battles",
+      "version": "v1.0.11",
+      "kind": "improved",
+      "attribution": "Archived illustration; original screenshots remain in the details."
+    },
+    {
+      "entry": "changelog/v1.0.11/battle-viewer.md",
+      "summary": "Watch public battles in the browser and revisit saved action with camera and timeline controls.",
+      "medium": "still",
+      "stage": "archive-plate",
+      "rationale": "An archived still shows the layout or appearance; timing and interactions are explained in the notes.",
+      "source_ref": "4d4de4a",
+      "sources": [
+        {
+          "file": "changelog/v1.0.11/battle-viewer/browser.jpg",
+          "sha256": "c52ef1b05122ef8775402fbefc10f273341fb15e2fd15dd6f32a915a9a4f0bba",
+          "caption": "A recorded test battle running in the browser, with the game's own camera and a seekable timeline."
+        }
+      ],
+      "output": "changelog/v1.0.11/battle-viewer/overview.jpg",
+      "title": "Watch battles and revisit the action",
+      "version": "v1.0.11",
+      "kind": "new",
+      "attribution": "Archived illustration; original screenshots remain in the details."
+    },
+    {
+      "entry": "changelog/v1.0.11/battle-work-budget.md",
+      "summary": "Large battles avoid repeated scenery and visibility work while keeping the battlefield responsive.",
+      "medium": "still",
+      "stage": "archive-pair",
+      "rationale": "An archived still shows the layout or appearance; timing and interactions are explained in the notes.",
+      "source_ref": "4d4de4a",
+      "sources": [
+        {
+          "file": "changelog/v1.0.11/battle-work-budget/before.png",
+          "sha256": "b9b1238d3577e2f02c584747f4cbf3b1f58ec3bdee9fbd13f2ba955b38f5c18d",
+          "caption": "Before: the generated 3 km battlefield at command zoom."
+        },
+        {
+          "file": "changelog/v1.0.11/battle-work-budget/after.png",
+          "sha256": "3b9c9f7b414f349daf6edc8b2a61aa6809710918610fc14e8e69f7e5921434e7",
+          "caption": "After: the same map and camera, with visibility-aware rendering and native routes. Combat evolves independently between runs."
+        }
+      ],
+      "output": "changelog/v1.0.11/battle-work-budget/overview.jpg",
+      "title": "Less repeated work in large battles",
+      "version": "v1.0.11",
+      "kind": "improved",
+      "attribution": "Archived illustration; original screenshots remain in the details."
+    },
+    {
+      "entry": "changelog/v1.0.11/clearer-battlefield.md",
+      "summary": "See troops and terrain more clearly through lighter haze and translucent battlefield markers.",
+      "medium": "still",
+      "stage": "archive-pair",
+      "rationale": "An archived still shows the layout or appearance; timing and interactions are explained in the notes.",
+      "source_ref": "4d4de4a",
+      "sources": [
+        {
+          "file": "changelog/v1.0.11/clearer-battlefield/battlefield-before.jpg",
+          "sha256": "2aa8db443960b82b9437ec05657f0b207a3c4435204860915c6de44c6432947c",
+          "caption": "Before: hazy weather and solid squad markers compete with the troops."
+        },
+        {
+          "file": "changelog/v1.0.11/clearer-battlefield/battlefield-after.jpg",
+          "sha256": "1c62bcc990acce96a0763274e917170671319a0183283bf699ee0729457b0dff",
+          "caption": "After: thinner haze, transparent symbols and quieter commander markers leave the troops visible."
+        }
+      ],
+      "output": "changelog/v1.0.11/clearer-battlefield/overview.jpg",
+      "title": "See the troops you command",
+      "version": "v1.0.11",
+      "kind": "improved",
+      "attribution": "Archived illustration; original screenshots remain in the details."
+    },
+    {
+      "entry": "changelog/v1.0.11/helicopter-flight.md",
+      "summary": "Helicopters carry momentum, bank through turns and flare into a hover before landing.",
+      "medium": "motion",
+      "stage": "archive-pair",
+      "rationale": "Motion is demonstrated by the existing recorded clip; preserve its original capture attribution.",
+      "source_ref": "4d4de4a",
+      "sources": [
+        {
+          "file": "changelog/v1.0.11/helicopter-flight/before.jpg",
+          "sha256": "9e9318b540168ac66b50acfc2860552f41d8328492c832debcdb37ffabaf68c0",
+          "caption": "Before: a transport changes direction directly toward its new destination."
+        },
+        {
+          "file": "changelog/v1.0.11/helicopter-flight/after.jpg",
+          "sha256": "4cad11e649b3857afb22a34e829b2000c621d5236ddad3c8bdf7412fd8ce610d",
+          "caption": "After: the same mid-flight order produces a banked turn while momentum carries through."
+        }
+      ],
+      "output": "changelog/v1.0.11/helicopter-flight/overview.jpg",
+      "title": "Helicopters fly like helicopters",
+      "version": "v1.0.11",
+      "kind": "improved",
+      "attribution": "A Mohawk banks and settles over its sling pickup. Recorded in the current build, October 2026."
+    },
+    {
+      "entry": "changelog/v1.0.11/homepage-story.md",
+      "summary": "Discover Frontline through tactical decisions, combined-arms footage and operation briefings.",
+      "medium": "still",
+      "stage": "archive-plate",
+      "rationale": "An archived still shows the layout or appearance; timing and interactions are explained in the notes.",
+      "source_ref": "4d4de4a",
+      "sources": [
+        {
+          "file": "changelog/v1.0.11/homepage-story/after-desktop.jpg",
+          "sha256": "1b3442c6903c4195a918740eeb78b613f041da9f05290707be69a47c2f60088a",
+          "caption": "From your first tactical decision to a combined-arms battle."
+        }
+      ],
+      "output": "changelog/v1.0.11/homepage-story/overview.jpg",
+      "title": "A new introduction to Frontline",
+      "version": "v1.0.11",
+      "kind": "improved",
+      "attribution": "Archived illustration; original screenshots remain in the details."
+    },
+    {
+      "entry": "changelog/v1.0.11/large-battle-drawing.md",
+      "summary": "Large battles draw scenery and squad symbols more efficiently while preserving combat behavior.",
+      "medium": "still",
+      "stage": "archive-pair",
+      "rationale": "An archived still shows the layout or appearance; timing and interactions are explained in the notes.",
+      "source_ref": "4d4de4a",
+      "sources": [
+        {
+          "file": "changelog/v1.0.11/large-battle-drawing/before.jpg",
+          "sha256": "a6e7a27ce45b970662ae5681594d2fc82c36ed6459df05075392cfd5c3333524",
+          "caption": "The large-map battle before scenery drawing is combined."
+        },
+        {
+          "file": "changelog/v1.0.11/large-battle-drawing/after.jpg",
+          "sha256": "e439f293096b35992ffee5eb8df9d6701bbd0697220dc4d62f13cd1282093881",
+          "caption": "Combined scenery drawing preserves the buildings and their shadows during combat."
+        }
+      ],
+      "output": "changelog/v1.0.11/large-battle-drawing/overview.jpg",
+      "title": "Smoother large battles",
+      "version": "v1.0.11",
+      "kind": "improved",
+      "attribution": "Archived illustration; original screenshots remain in the details."
+    },
+    {
+      "entry": "changelog/v1.0.11/large-interface-layouts.md",
+      "summary": "Keep menus, controls and multiplayer rosters reachable in small windows and at large interface scales.",
+      "medium": "still",
+      "stage": "archive-pair",
+      "rationale": "An archived still shows the layout or appearance; timing and interactions are explained in the notes.",
+      "source_ref": "4d4de4a",
+      "sources": [
+        {
+          "file": "changelog/v1.0.11/large-interface-layouts/lobby-before.jpg",
+          "sha256": "13af02090824f47d3327a4c8a2de538e8f6b8199243a2267c0e99b7bb991d887",
+          "caption": "Before: a full co-op roster pushes the lobby actions into the bottom edge."
+        },
+        {
+          "file": "changelog/v1.0.11/large-interface-layouts/lobby-after.jpg",
+          "sha256": "18c9eeb0718b5e99cc64f2f21c4772393094834f03ed46614f81785d826607dd",
+          "caption": "After: the roster scrolls while Start and Close stay clearly in view."
+        }
+      ],
+      "output": "changelog/v1.0.11/large-interface-layouts/overview.jpg",
+      "title": "Keep large interfaces within reach",
+      "version": "v1.0.11",
+      "kind": "fixed",
+      "attribution": "Archived illustration; original screenshots remain in the details."
+    },
+    {
+      "entry": "changelog/v1.0.11/shared-allied-command.md",
+      "summary": "Coordinate freely with teammates by selecting and ordering any allied troop or vehicle.",
+      "medium": "text",
+      "stage": "text",
+      "rationale": "Concise text explains the outcome without inventing footage or benchmark/audio evidence.",
+      "source_ref": "4d4de4a",
+      "sources": [],
+      "output": null,
+      "title": "Command all allied troops",
+      "version": "v1.0.11",
+      "kind": "improved",
+      "attribution": "Archived illustration; original screenshots remain in the details."
+    },
+    {
+      "entry": "changelog/v1.0.11/simulation-working-sets.md",
+      "summary": "Play larger skirmishes with less repeated simulation work and more efficient distant-unit drawing.",
+      "medium": "still",
+      "stage": "archive-plate",
+      "rationale": "The earlier image uses a different map size, so it is not a controlled performance comparison. Show the larger-map capability; preserve both originals in details.",
+      "source_ref": "4d4de4a",
+      "sources": [
+        {
+          "file": "changelog/v1.0.11/simulation-working-sets/after.png",
+          "sha256": "aa34e5ae0763f9a713b6511ad6190b7790f61c1f6e991e8c9206639bced1a5dd",
+          "caption": "A full generated 3,072 metre battlefield, started with 480 soldiers and 20 vehicles. The 60 FPS target remains under validation."
+        }
+      ],
+      "output": "changelog/v1.0.11/simulation-working-sets/overview.jpg",
+      "title": "Large-battle simulation and rendering improvements",
+      "version": "v1.0.11",
+      "kind": "improved",
+      "attribution": "Archived illustration; original screenshots remain in the details."
+    },
+    {
+      "entry": "changelog/v1.0.11/site-journeys.md",
+      "summary": "Find your next battle, account and rank information through clearer website navigation.",
+      "medium": "still",
+      "stage": "archive-plate",
+      "rationale": "An archived still shows the layout or appearance; timing and interactions are explained in the notes.",
+      "source_ref": "4d4de4a",
+      "sources": [
+        {
+          "file": "changelog/v1.0.11/site-journeys/player-home.jpg",
+          "sha256": "4a8131cf1c85701ec82174870ad8fa1ca2663dc048d66ee54d00708581632deb",
+          "caption": "Signed in: play shortcuts, your progress and the latest updates. Preview shown with sample player data."
+        }
+      ],
+      "output": "changelog/v1.0.11/site-journeys/overview.jpg",
+      "title": "A clearer way around Frontline",
+      "version": "v1.0.11",
+      "kind": "improved",
+      "attribution": "Archived illustration; original screenshots remain in the details."
+    },
+    {
+      "entry": "changelog/v1.0.11/squad-cohesion.md",
+      "summary": "Squads stay closer together and choose cover on the same side of walls.",
+      "medium": "still",
+      "stage": "archive-pair",
+      "rationale": "An archived still shows the layout or appearance; timing and interactions are explained in the notes.",
+      "source_ref": "4d4de4a",
+      "sources": [
+        {
+          "file": "changelog/v1.0.11/squad-cohesion/before.jpg",
+          "sha256": "fffab0652566f01c5ded08caed3c02735b7c6afbc88712f9e61c0702106d3659",
+          "caption": "Before: one squad spreads across all three walls while seeking cover. Enemies are beyond the walls, outside this view."
+        },
+        {
+          "file": "changelog/v1.0.11/squad-cohesion/after.jpg",
+          "sha256": "c5c3d0db3eabc82bae218f0ac2b141ff05c82920419748de4a1ada454225d97c",
+          "caption": "After: four soldiers take cover against the middle wall; the fifth stacks in a second row 1.5 metres behind them, with reduced protection. Same scenario, seed, time and camera as before."
+        }
+      ],
+      "output": "changelog/v1.0.11/squad-cohesion/overview.jpg",
+      "title": "Squads stick together",
+      "version": "v1.0.11",
+      "kind": "improved",
+      "attribution": "Archived illustration; original screenshots remain in the details."
+    },
+    {
+      "entry": "changelog/v1.0.11/website-field-manual.md",
+      "summary": "Inspect vehicle models on the website with rotation and zoom controls.",
+      "medium": "still",
+      "stage": "archive-plate",
+      "rationale": "An archived still shows the layout or appearance; timing and interactions are explained in the notes.",
+      "source_ref": "4d4de4a",
+      "sources": [
+        {
+          "file": "changelog/v1.0.11/website-field-manual/desktop.jpg",
+          "sha256": "c29a0d8e022ebfa44f130c9027720aaeef6e6f95969a2a8938b2550c10abab6c",
+          "caption": "Browse the roster and inspect the game's vehicle models on the website."
+        }
+      ],
+      "output": "changelog/v1.0.11/website-field-manual/overview.jpg",
+      "title": "Inspect vehicles on the website",
+      "version": "v1.0.11",
+      "kind": "new",
+      "attribution": "Archived illustration; original screenshots remain in the details."
+    },
+    {
+      "entry": "changelog/v1.0.2/boats-come-about.md",
+      "summary": "Boats ordered behind themselves turn toward the destination instead of continuing the wrong way.",
+      "medium": "text",
+      "stage": "text",
+      "rationale": "Concise text explains the outcome without inventing footage or benchmark/audio evidence.",
+      "source_ref": "4d4de4a",
+      "sources": [],
+      "output": null,
+      "title": "Boats come about for a destination astern",
+      "version": "v1.0.2",
+      "kind": "fixed",
+      "attribution": "Archived illustration; original screenshots remain in the details."
+    },
+    {
+      "entry": "changelog/v1.0.2/faster-route-repairs.md",
+      "summary": "Changing terrain causes less disruption as the host updates routes around new walls, damage and fire.",
+      "medium": "text",
+      "stage": "text",
+      "rationale": "Concise text explains the outcome without inventing footage or benchmark/audio evidence.",
+      "source_ref": "4d4de4a",
+      "sources": [],
+      "output": null,
+      "title": "Smoother battles as the ground changes",
+      "version": "v1.0.2",
+      "kind": "improved",
+      "attribution": "Archived illustration; original screenshots remain in the details."
+    },
+    {
+      "entry": "changelog/v1.0.2/field-manual-on-top.md",
+      "summary": "The Field Manual and Settings stay above the account card, keeping their controls accessible.",
+      "medium": "still",
+      "stage": "archive-plate",
+      "rationale": "An archived still shows the layout or appearance; timing and interactions are explained in the notes.",
+      "source_ref": "4d4de4a",
+      "sources": [
+        {
+          "file": "changelog/v1.0.2/field-manual-on-top/field-manual.jpg",
+          "sha256": "74608ed2fbd9cab0164aa3aede057aff2097b2b6fd7a315b9f9d196944e8391c",
+          "caption": "The Field Manual from the menu, its search and Close button in the clear"
+        }
+      ],
+      "output": "changelog/v1.0.2/field-manual-on-top/overview.jpg",
+      "title": "The Field Manual opens over the account card",
+      "version": "v1.0.2",
+      "kind": "fixed",
+      "attribution": "Archived illustration; original screenshots remain in the details."
+    },
+    {
+      "entry": "changelog/v1.0.2/lighter-pathfinding.md",
+      "summary": "Battles use less memory for route planning while units follow the same routes.",
+      "medium": "text",
+      "stage": "text",
+      "rationale": "Concise text explains the outcome without inventing footage or benchmark/audio evidence.",
+      "source_ref": "4d4de4a",
+      "sources": [],
+      "output": null,
+      "title": "Battles use less memory",
+      "version": "v1.0.2",
+      "kind": "improved",
+      "attribution": "Archived illustration; original screenshots remain in the details."
+    },
+    {
+      "entry": "changelog/v1.0.2/mac-build.md",
+      "summary": "Play Frontline on Apple silicon and Intel Macs, with multiplayer, updates and trackpad camera controls.",
+      "medium": "text",
+      "stage": "text",
+      "rationale": "Concise text explains the outcome without inventing footage or benchmark/audio evidence.",
+      "source_ref": "4d4de4a",
+      "sources": [],
+      "output": null,
+      "title": "Frontline on the Mac",
+      "version": "v1.0.2",
+      "kind": "new",
+      "attribution": "Archived illustration; original screenshots remain in the details."
+    },
+    {
+      "entry": "changelog/v1.0.2/ocean-swell.md",
+      "summary": "Boats ride waves shaped by the weather, with water quality options for less powerful hardware.",
+      "medium": "motion",
+      "stage": "archive-plate",
+      "rationale": "Motion is demonstrated by the existing recorded clip; preserve its original capture attribution.",
+      "source_ref": "4d4de4a",
+      "sources": [
+        {
+          "file": "changelog/v1.0.2/ocean-swell/ocean-swell-poster.jpg",
+          "sha256": "c081035e4f06bea0262e9be2ce410ab47710c594676fd16627c81172589756e6",
+          "caption": "A patrol ship pitches and rolls as waves pass beneath it. Recorded in the current build, October 2026."
+        }
+      ],
+      "output": "changelog/v1.0.2/ocean-swell/overview.jpg",
+      "title": "An ocean that swells, and a sea for every weather",
+      "version": "v1.0.2",
+      "kind": "improved",
+      "attribution": "A patrol ship pitches and rolls as waves pass beneath it. Recorded in the current build, October 2026."
+    },
+    {
+      "entry": "changelog/v1.0.2/play-in-a-browser.md",
+      "summary": "Play solo Frontline in your browser without installing the game; multiplayer remains on desktop.",
+      "medium": "still",
+      "stage": "archive-plate",
+      "rationale": "An archived still shows the layout or appearance; timing and interactions are explained in the notes.",
+      "source_ref": "4d4de4a",
+      "sources": [
+        {
+          "file": "changelog/v1.0.2/play-in-a-browser/browser-battle.jpg",
+          "sha256": "498aac6c180c743438870a4f319366ef1fe60965c5735825c6744be9acd52aa0",
+          "caption": "An AI battle in a browser tab"
+        }
+      ],
+      "output": "changelog/v1.0.2/play-in-a-browser/overview.jpg",
+      "title": "Play in your browser",
+      "version": "v1.0.2",
+      "kind": "new",
+      "attribution": "Archived illustration; original screenshots remain in the details."
+    },
+    {
+      "entry": "changelog/v1.0.2/realistic-gunfire.md",
+      "summary": "Gunfire uses quicker flashes, finer tracers and more natural smoke to make the action easier to read.",
+      "medium": "still",
+      "stage": "archive-plate",
+      "rationale": "An archived still shows the layout or appearance; timing and interactions are explained in the notes.",
+      "source_ref": "4d4de4a",
+      "sources": [
+        {
+          "file": "changelog/v1.0.2/realistic-gunfire/rifles-before-after.jpg",
+          "sha256": "267bff656ad692da5589f1ad18e0a25138bf97ab382b7c13af9aa8e7879d08e2",
+          "caption": "Rifles firing over a wall: before, every round threw up a big white cloud; now a tight flash that lights the wall and a quick puff of stone dust"
+        }
+      ],
+      "output": "changelog/v1.0.2/realistic-gunfire/overview.jpg",
+      "title": "Gunfire that looks like the real thing",
+      "version": "v1.0.2",
+      "kind": "improved",
+      "attribution": "Archived illustration; original screenshots remain in the details."
+    },
+    {
+      "entry": "changelog/v1.0.2/sign-in-with-github.md",
+      "summary": "Use GitHub to create an account and sign into the game through the Frontline website.",
+      "medium": "still",
+      "stage": "archive-plate",
+      "rationale": "An archived still shows the layout or appearance; timing and interactions are explained in the notes.",
+      "source_ref": "4d4de4a",
+      "sources": [
+        {
+          "file": "changelog/v1.0.2/sign-in-with-github/sign-in.jpg",
+          "sha256": "e819f933f7f6dba0a8aa50b7175d804564c1da76125664234771439ff75c394d",
+          "caption": "Sign in with GitHub sends you to the website, and waits for you there"
+        }
+      ],
+      "output": "changelog/v1.0.2/sign-in-with-github/overview.jpg",
+      "title": "Sign in with GitHub",
+      "version": "v1.0.2",
+      "kind": "new",
+      "attribution": "Archived illustration; original screenshots remain in the details."
+    },
+    {
+      "entry": "changelog/v1.0.2/survey-map.md",
+      "summary": "Menus sit over a calmer tactical map with labelled contours, heights and a numbered grid.",
+      "medium": "still",
+      "stage": "archive-plate",
+      "rationale": "An archived still shows the layout or appearance; timing and interactions are explained in the notes.",
+      "source_ref": "4d4de4a",
+      "sources": [
+        {
+          "file": "changelog/v1.0.2/survey-map/before-and-after.jpg",
+          "sha256": "a970a32d91f4b10c73d80a2c2dc76b22ae6522591b41a64d6eb37718f19e249a",
+          "caption": "The main menu in v1.0.0 (left) and now"
+        }
+      ],
+      "output": "changelog/v1.0.2/survey-map/overview.jpg",
+      "title": "A tactical survey map behind the menus",
+      "version": "v1.0.2",
+      "kind": "improved",
+      "attribution": "Archived illustration; original screenshots remain in the details."
+    },
+    {
+      "entry": "changelog/v1.0.3/website-pages.md",
+      "summary": "Launch the game, browse live battles and manage your account from dedicated website pages.",
+      "medium": "still",
+      "stage": "archive-plate",
+      "rationale": "An archived still shows the layout or appearance; timing and interactions are explained in the notes.",
+      "source_ref": "4d4de4a",
+      "sources": [
+        {
+          "file": "changelog/v1.0.3/website-pages/play.jpg",
+          "sha256": "9cba94381b406df9cfe8a5be7b28de2f80a50193965af4a5cca79a3ea8e6451c",
+          "caption": "Play: launch the game, find a match, or download it"
+        }
+      ],
+      "output": "changelog/v1.0.3/website-pages/overview.jpg",
+      "title": "The website gets a Play button, and a page for your account",
+      "version": "v1.0.3",
+      "kind": "improved",
+      "attribution": "Archived illustration; original screenshots remain in the details."
+    },
+    {
+      "entry": "changelog/v1.0.3/wildlife.md",
+      "summary": "Birds, land animals and marine life inhabit the battlefield and react to nearby fighting.",
+      "medium": "motion",
+      "stage": "archive-plate",
+      "rationale": "Motion is demonstrated by the existing recorded clip; preserve its original capture attribution.",
+      "source_ref": "4d4de4a",
+      "sources": [
+        {
+          "file": "changelog/v1.0.3/wildlife/fish-swimming-poster.jpg",
+          "sha256": "c604f68eca63aa6761382c58580f9e25570d775b02b1116d7d68ae4dfad68016",
+          "caption": "Fish swim together beneath the river surface. Recorded in the current build, October 2026."
+        }
+      ],
+      "output": "changelog/v1.0.3/wildlife/overview.jpg",
+      "title": "Wildlife: birds, rats, hares, fish, ducks and dolphins",
+      "version": "v1.0.3",
+      "kind": "new",
+      "attribution": "Fish swim together beneath the river surface. Recorded in the current build, October 2026."
+    },
+    {
+      "entry": "changelog/v1.0.4/foam-rings.md",
+      "summary": "Water impacts and sinking boats leave spreading foam instead of flat square artifacts.",
+      "medium": "still",
+      "stage": "archive-plate",
+      "rationale": "An archived still shows the layout or appearance; timing and interactions are explained in the notes.",
+      "source_ref": "4d4de4a",
+      "sources": [
+        {
+          "file": "changelog/v1.0.4/foam-rings/before-after.jpg",
+          "sha256": "7a3e364d900c4b830cc5e24a2d9ae5928e206f82da6c15b1e7ac96c230c00141",
+          "caption": "Before and after: a shell's splash in the sea"
+        }
+      ],
+      "output": "changelog/v1.0.4/foam-rings/overview.jpg",
+      "title": "Splashes leave rings of foam again",
+      "version": "v1.0.4",
+      "kind": "fixed",
+      "attribution": "Archived illustration; original screenshots remain in the details."
+    },
+    {
+      "entry": "changelog/v1.0.4/sooner-battle-start.md",
+      "summary": "Scenarios and battles become ready sooner by reusing route calculations across similar ground.",
+      "medium": "text",
+      "stage": "text",
+      "rationale": "Concise text explains the outcome without inventing footage or benchmark/audio evidence.",
+      "source_ref": "4d4de4a",
+      "sources": [],
+      "output": null,
+      "title": "Scenarios and battles start sooner",
+      "version": "v1.0.4",
+      "kind": "improved",
+      "attribution": "Archived illustration; original screenshots remain in the details."
+    },
+    {
+      "entry": "changelog/v1.0.4/website-sign-in-and-pages.md",
+      "summary": "Sign in from any website page, then go straight to your profile and record.",
+      "medium": "still",
+      "stage": "archive-plate",
+      "rationale": "An archived still shows the layout or appearance; timing and interactions are explained in the notes.",
+      "source_ref": "4d4de4a",
+      "sources": [
+        {
+          "file": "changelog/v1.0.4/website-sign-in-and-pages/sign-in.jpg",
+          "sha256": "53db478558e6cb78a26ab37ca607a73d32af38449095bf51a53cae50fdb060c1",
+          "caption": "Sign in opens over the page you're on"
+        }
+      ],
+      "output": "changelog/v1.0.4/website-sign-in-and-pages/overview.jpg",
+      "title": "Signing in on the website, in one click",
+      "version": "v1.0.4",
+      "kind": "improved",
+      "attribution": "Archived illustration; original screenshots remain in the details."
+    },
+    {
+      "entry": "changelog/v1.0.5/battle-start-crash.md",
+      "summary": "A rare crash while preparing a battlefield's routes has been fixed.",
+      "medium": "text",
+      "stage": "text",
+      "rationale": "Concise text explains the outcome without inventing footage or benchmark/audio evidence.",
+      "source_ref": "4d4de4a",
+      "sources": [],
+      "output": null,
+      "title": "A rare crash at the start of a battle",
+      "version": "v1.0.5",
+      "kind": "fixed",
+      "attribution": "Archived illustration; original screenshots remain in the details."
+    },
+    {
+      "entry": "changelog/v1.0.5/big-ships-come-about.md",
+      "summary": "Large boats use the space available to turn, rejoin their route and back away from the shore.",
+      "medium": "text",
+      "stage": "text",
+      "rationale": "Concise text explains the outcome without inventing footage or benchmark/audio evidence.",
+      "source_ref": "4d4de4a",
+      "sources": [],
+      "output": null,
+      "title": "Big ships come about without running aground",
+      "version": "v1.0.5",
+      "kind": "fixed",
+      "attribution": "Archived illustration; original screenshots remain in the details."
+    },
+    {
+      "entry": "changelog/v1.0.5/boats-handle-like-boats.md",
+      "summary": "Boats carry momentum, slide through turns and use reverse thrust to stop instead of braking like cars.",
+      "medium": "motion",
+      "stage": "archive-plate",
+      "rationale": "Motion is demonstrated by the existing recorded clip; preserve its original capture attribution.",
+      "source_ref": "4d4de4a",
+      "sources": [
+        {
+          "file": "changelog/v1.0.5/boats-handle-like-boats/boat-turn-poster.jpg",
+          "sha256": "acd4ea53dc02a8a6f15aca8e8b4851a9228e6bd7683fc7578b1d43f6b34c215f",
+          "caption": "An RHIB turns toward the beach, trailing a curved wake as it comes ashore. Recorded in the current build, October 2026."
+        }
+      ],
+      "output": "changelog/v1.0.5/boats-handle-like-boats/overview.jpg",
+      "title": "Boats handle like boats",
+      "version": "v1.0.5",
+      "kind": "improved",
+      "attribution": "An RHIB turns toward the beach, trailing a curved wake as it comes ashore. Recorded in the current build, October 2026."
+    },
+    {
+      "entry": "changelog/v1.0.5/in-game-console.md",
+      "summary": "Use the console to investigate slow frames, compare graphics settings and inspect stutters.",
+      "medium": "still",
+      "stage": "archive-plate",
+      "rationale": "An archived still shows the layout or appearance; timing and interactions are explained in the notes.",
+      "source_ref": "4d4de4a",
+      "sources": [
+        {
+          "file": "changelog/v1.0.5/in-game-console/console-why.jpg",
+          "sha256": "89793b2f2a9b28f06610cf1bb93a03a45af42dd15ec766f7c477e3f3021f50ff",
+          "caption": "why: what's holding the frame rate back, and the stutters of the last minute"
+        }
+      ],
+      "output": "changelog/v1.0.5/in-game-console/overview.jpg",
+      "title": "A console that tells you why the game is slow",
+      "version": "v1.0.5",
+      "kind": "new",
+      "attribution": "Archived illustration; original screenshots remain in the details."
+    },
+    {
+      "entry": "changelog/v1.0.5/installers.md",
+      "summary": "Install Frontline with a Windows setup wizard or Mac disk image, in a location that supports updates.",
+      "medium": "still",
+      "stage": "archive-plate",
+      "rationale": "An archived still shows the layout or appearance; timing and interactions are explained in the notes.",
+      "source_ref": "4d4de4a",
+      "sources": [
+        {
+          "file": "changelog/v1.0.5/installers/windows-setup.jpg",
+          "sha256": "a283d880c2f136101374edd27b4d3086ea5aadb28f5f1a5f787e474ff3acf5b1",
+          "caption": "The Windows installer: no administrator rights needed"
+        }
+      ],
+      "output": "changelog/v1.0.5/installers/overview.jpg",
+      "title": "Installers for Windows and the Mac",
+      "version": "v1.0.5",
+      "kind": "new",
+      "attribution": "Archived illustration; original screenshots remain in the details."
+    },
+    {
+      "entry": "changelog/v1.0.5/leaderboards-and-public-profiles.md",
+      "summary": "Compare commander rankings and explore players' records, battle histories and after-action reports.",
+      "medium": "still",
+      "stage": "archive-plate",
+      "rationale": "An archived still shows the layout or appearance; timing and interactions are explained in the notes.",
+      "source_ref": "4d4de4a",
+      "sources": [
+        {
+          "file": "changelog/v1.0.5/leaderboards-and-public-profiles/leaderboards.jpg",
+          "sha256": "592172657148d4e5d1f53e02ee00a152c54af28c071802921f9d8ebc490dcafd",
+          "caption": "The leaderboards: experience of all time, this month and this week, with you marked"
+        }
+      ],
+      "output": "changelog/v1.0.5/leaderboards-and-public-profiles/overview.jpg",
+      "title": "Leaderboards, and a page for every commander",
+      "version": "v1.0.5",
+      "kind": "new",
+      "attribution": "Archived illustration; original screenshots remain in the details."
+    },
+    {
+      "entry": "changelog/v1.0.5/lost-squad-crash.md",
+      "summary": "An attack continues safely when one of its squads is wiped out, instead of crashing later.",
+      "medium": "text",
+      "stage": "text",
+      "rationale": "Concise text explains the outcome without inventing footage or benchmark/audio evidence.",
+      "source_ref": "4d4de4a",
+      "sources": [],
+      "output": null,
+      "title": "No more crash when an attack outlasts a squad it lost",
+      "version": "v1.0.5",
+      "kind": "fixed",
+      "attribution": "Archived illustration; original screenshots remain in the details."
+    },
+    {
+      "entry": "changelog/v1.0.5/roads-under-smoke.md",
+      "summary": "Smoke, flames and blast dust now cover roads naturally instead of leaving sharp road-shaped gaps.",
+      "medium": "still",
+      "stage": "archive-plate",
+      "rationale": "An archived still shows the layout or appearance; timing and interactions are explained in the notes.",
+      "source_ref": "4d4de4a",
+      "sources": [
+        {
+          "file": "changelog/v1.0.5/roads-under-smoke/before-after.jpg",
+          "sha256": "fcfb211f3cc0c1c574300e519a48ee136abd43421eae70af16f3cb5c9a0714d2",
+          "caption": "Before and after: shells bursting at a crossroads in town"
+        }
+      ],
+      "output": "changelog/v1.0.5/roads-under-smoke/overview.jpg",
+      "title": "Roads no longer show through smoke and explosions",
+      "version": "v1.0.5",
+      "kind": "fixed",
+      "attribution": "Archived illustration; original screenshots remain in the details."
+    },
+    {
+      "entry": "changelog/v1.0.5/website-links-on-windows.md",
+      "summary": "Website launch and join links reach Frontline on Windows, and sign-in shows its progress clearly.",
+      "medium": "still",
+      "stage": "archive-plate",
+      "rationale": "An archived still shows the layout or appearance; timing and interactions are explained in the notes.",
+      "source_ref": "4d4de4a",
+      "sources": [
+        {
+          "file": "changelog/v1.0.5/website-links-on-windows/game-sign-in.jpg",
+          "sha256": "a524cf1e032e92b9406e5df156c348eaed3e8247b5879092db188207b03db8ad",
+          "caption": "Signing in from the game: the steps, and the one you're on"
+        }
+      ],
+      "output": "changelog/v1.0.5/website-links-on-windows/overview.jpg",
+      "title": "The website opens the game on Windows, and signing in says what's happening",
+      "version": "v1.0.5",
+      "kind": "fixed",
+      "attribution": "Archived illustration; original screenshots remain in the details."
+    },
+    {
+      "entry": "changelog/v1.0.5/wildlife-in-the-fighting.md",
+      "summary": "Wildlife flees nearby danger and can be caught in the fighting without changing combat outcomes.",
+      "medium": "still",
+      "stage": "archive-plate",
+      "rationale": "An archived still shows the layout or appearance; timing and interactions are explained in the notes.",
+      "source_ref": "4d4de4a",
+      "sources": [
+        {
+          "file": "changelog/v1.0.5/wildlife-in-the-fighting/stunned-fish.jpg",
+          "sha256": "6a22d82281535cfe1e79bafad5b259ef5977a7de0d94c405a1d6f2f877ee55d6",
+          "caption": "Fish stunned by a shell in the water, floating up belly-up"
+        }
+      ],
+      "output": "changelog/v1.0.5/wildlife-in-the-fighting/overview.jpg",
+      "title": "Wildlife caught in the fighting",
+      "version": "v1.0.5",
+      "kind": "improved",
+      "attribution": "Archived illustration; original screenshots remain in the details."
+    },
+    {
+      "entry": "changelog/v1.0.6/faster-launch.md",
+      "summary": "The title and menu appear sooner while the rest of the game prepares in the background.",
+      "medium": "text",
+      "stage": "text",
+      "rationale": "Concise text explains the outcome without inventing footage or benchmark/audio evidence.",
+      "source_ref": "4d4de4a",
+      "sources": [],
+      "output": null,
+      "title": "The game opens faster",
+      "version": "v1.0.6",
+      "kind": "improved",
+      "attribution": "Archived illustration; original screenshots remain in the details."
+    },
+    {
+      "entry": "changelog/v1.0.6/faster-map-generation.md",
+      "summary": "Spend less time preparing terrain, roads and cover before entering a battle.",
+      "medium": "text",
+      "stage": "text",
+      "rationale": "Concise text explains the outcome without inventing footage or benchmark/audio evidence.",
+      "source_ref": "4d4de4a",
+      "sources": [],
+      "output": null,
+      "title": "Battlefields are laid out faster",
+      "version": "v1.0.6",
+      "kind": "improved",
+      "attribution": "Archived illustration; original screenshots remain in the details."
+    },
+    {
+      "entry": "changelog/v1.0.7/links-reach-the-open-game.md",
+      "summary": "Website sign-in and join links reach the running game instead of opening another copy after an update.",
+      "medium": "text",
+      "stage": "text",
+      "rationale": "Concise text explains the outcome without inventing footage or benchmark/audio evidence.",
+      "source_ref": "4d4de4a",
+      "sources": [],
+      "output": null,
+      "title": "Website links reach the game you have open",
+      "version": "v1.0.7",
+      "kind": "fixed",
+      "attribution": "Archived illustration; original screenshots remain in the details."
+    },
+    {
+      "entry": "changelog/v1.0.8/links-claimed-again.md",
+      "summary": "Starting Frontline restores its website links if another uninstall or system cleanup removed them.",
+      "medium": "text",
+      "stage": "text",
+      "rationale": "Concise text explains the outcome without inventing footage or benchmark/audio evidence.",
+      "source_ref": "4d4de4a",
+      "sources": [],
+      "output": null,
+      "title": "Website links work again after an uninstall",
+      "version": "v1.0.8",
+      "kind": "fixed",
+      "attribution": "Archived illustration; original screenshots remain in the details."
+    },
+    {
+      "entry": "changelog/v1.0.8/signal-interface.md",
+      "summary": "A clearer battle overlay puts concise unit states, aligned figures and selected actions directly over the field.",
+      "medium": "still",
+      "stage": "archive-plate",
+      "rationale": "An archived still shows the layout or appearance; timing and interactions are explained in the notes.",
+      "source_ref": "4d4de4a",
+      "sources": [
+        {
+          "file": "changelog/v1.0.8/signal-interface/battle-hud.jpg",
+          "sha256": "419d2fab1ccc343dc0faf85f0ad08a90385301aedfbb266b55ac566f6f789a1c",
+          "caption": "The battle's interface sits straight on the battlefield"
+        }
+      ],
+      "output": "changelog/v1.0.8/signal-interface/overview.jpg",
+      "title": "A new look for the battle's interface",
+      "version": "v1.0.8",
+      "kind": "improved",
+      "attribution": "Archived illustration; original screenshots remain in the details."
+    },
+    {
+      "entry": "changelog/v1.0.9/battle-loads-without-freezing.md",
+      "summary": "Enter battles sooner with a responsive loading screen and no long freeze after loading finishes.",
+      "medium": "text",
+      "stage": "text",
+      "rationale": "Concise text explains the outcome without inventing footage or benchmark/audio evidence.",
+      "source_ref": "4d4de4a",
+      "sources": [],
+      "output": null,
+      "title": "Battles load sooner, and without freezing",
+      "version": "v1.0.9",
+      "kind": "improved",
+      "attribution": "Archived illustration; original screenshots remain in the details."
+    },
+    {
+      "entry": "changelog/v1.0.9/joining-loads-first.md",
+      "summary": "Joining waits for the whole battlefield to arrive and load, avoiding a half-built map and long freezes.",
+      "medium": "still",
+      "stage": "archive-plate",
+      "rationale": "An archived still shows the layout or appearance; timing and interactions are explained in the notes.",
+      "source_ref": "4d4de4a",
+      "sources": [
+        {
+          "file": "changelog/v1.0.9/joining-loads-first/loading-screen.jpg",
+          "sha256": "66d76a56fe23fc240af4d4a3cd73ce7573aafefa6e3cc54615d065da1ad9a13d",
+          "caption": "Joining a running battle: the loading screen waits while the battlefield goes up"
+        }
+      ],
+      "output": "changelog/v1.0.9/joining-loads-first/overview.jpg",
+      "title": "Joining a battle loads it before it starts",
+      "version": "v1.0.9",
+      "kind": "fixed",
+      "attribution": "Archived illustration; original screenshots remain in the details."
+    },
+    {
+      "entry": "changelog/v1.0.9/signal-interface.md",
+      "summary": "A consistent tactical interface makes battle controls, menus, the Field Manual and reports easier to scan.",
+      "medium": "still",
+      "stage": "archive-pair",
+      "rationale": "An archived still shows the layout or appearance; timing and interactions are explained in the notes.",
+      "source_ref": "4d4de4a",
+      "sources": [
+        {
+          "file": "changelog/v1.0.9/signal-interface/battle-hud-before.jpg",
+          "sha256": "d6c39ef7f2b4bfae07c51d0c5bf07245add978da88003609b5938abb52af8c7f",
+          "caption": "The same moment before"
+        },
+        {
+          "file": "changelog/v1.0.9/signal-interface/battle-hud.jpg",
+          "sha256": "419d2fab1ccc343dc0faf85f0ad08a90385301aedfbb266b55ac566f6f789a1c",
+          "caption": "The battle's interface sits straight on the battlefield"
+        }
+      ],
+      "output": "changelog/v1.0.9/signal-interface/overview.jpg",
+      "title": "A new look for the whole interface",
+      "version": "v1.0.9",
+      "kind": "improved",
+      "attribution": "Archived illustration; original screenshots remain in the details."
+    },
+    {
+      "entry": "changelog/unreleased/combat-overlay-refresh.md",
+      "summary": "Large formation orders take less work, and pointer feedback updates independently of squad counters.",
+      "medium": "still",
+      "stage": "existing-evidence",
+      "rationale": "Use the entry’s existing matched evidence; this entry has not been released.",
+      "source_ref": "4d4de4a",
+      "sources": [],
+      "output": null
+    },
+    {
+      "entry": "changelog/unreleased/progressive-minimap.md",
+      "summary": "Minimap drawing is spread across frames while camera and pointer feedback stays responsive.",
+      "medium": "still",
+      "stage": "existing-evidence",
+      "rationale": "Use the entry’s existing matched evidence; this entry has not been released.",
+      "source_ref": "4d4de4a",
+      "sources": [],
+      "output": null
+    },
+    {
+      "entry": "changelog/unreleased/tank-operation.md",
+      "summary": "Tank turrets accelerate and settle onto targets, hold their bearing through hull turns, and acquire a steady aim before firing.",
+      "medium": "motion",
+      "stage": "existing-evidence",
+      "rationale": "Use the entry’s existing matched evidence; this entry has not been released.",
+      "source_ref": "4d4de4a",
+      "sources": [],
+      "output": null
+    },
+    {
+      "entry": "changelog/unreleased/vehicle-motion-and-muzzles.md",
+      "summary": "Older tanks, modern armour, aircraft and mounted weapons turn and acquire targets at distinct, deliberate rates. Vehicle and gunship rounds begin at their own barrels.",
+      "medium": "motion",
+      "stage": "controlled-motion",
+      "rationale": "Use the entry’s existing matched evidence; this entry has not been released.",
+      "source_ref": "PR #111",
+      "sources": [],
+      "output": null
+    },
+    {
+      "entry": "changelog/unreleased/clearer-release-history.md",
+      "medium": "still",
+      "stage": "website-desktop-and-phone",
+      "rationale": "Static layout and disclosure affordance are clear in stills; interaction is verified by keyboard and browser tests.",
+      "source_ref": "Before: 1cc34e3; after: PR #111 presentation refresh",
+      "sources": [
+        {
+          "file": "changelog/unreleased/clearer-release-history/before.jpg",
+          "sha256": "944f44ee0b7a73ef7e4c1855a8da74a175169e1f3eb68b4fd166b124ebcaca4c",
+          "caption": "before"
+        },
+        {
+          "file": "changelog/unreleased/clearer-release-history/overview.jpg",
+          "sha256": "89f45d0c88684c51f31274743ea496acc17bca8cb8db6fbef897a0d38f507c3f",
+          "caption": "overview"
+        },
+        {
+          "file": "changelog/unreleased/clearer-release-history/phone.jpg",
+          "sha256": "f9da51ae078c9dfea0debfffd45351188fd7fe67962dc66e78c62bccce2c7d09",
+          "caption": "phone"
+        }
+      ],
+      "output": null
+    }
+  ]
+}

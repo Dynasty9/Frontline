@@ -1,12 +1,18 @@
 +++
 title = "Wildlife caught in the fighting"
-summary = "The animals run from more of the battle now, and can be killed by it: a round through a flock or a shell among them brings them down in a puff of blood and feathers. It's only for the eye, so a round that hits a bird flies on exactly as it would have."
+summary = "Wildlife flees nearby danger and can be caught in the fighting without changing combat outcomes."
 kind = "improved"
+
+[[screenshots]]
+file = "overview.jpg"
+caption = "Archived view. Open to enlarge; original captures are in the details."
 
 [[screenshots]]
 file = "stunned-fish.jpg"
 caption = "Fish stunned by a shell in the water, floating up belly-up"
 +++
+
+The animals run from more of the battle now, and can be killed by it: a round through a flock or a shell among them brings them down in a puff of blood and feathers. It's only for the eye, so a round that hits a bird flies on exactly as it would have.
 
 - **They can be killed:** a round through a bird, a rat, a hare or a dolphin, or into the water right over a
   fish, kills it in a puff of blood (and feathers, from a bird), and a shell kills whatever is close and throws

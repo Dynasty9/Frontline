@@ -1,7 +1,11 @@
 +++
 title = "Aircraft that spot, recon flights and overwatch drones"
-summary = "Every aircraft now reveals the ground it flies over. New fire-support calls fly recon passes along a line you draw, or put a drone overhead to watch one spot."
+summary = "Use aircraft and overwatch drones to reveal ground ahead of your troops."
 kind = "new"
+
+[[screenshots]]
+file = "overview.jpg"
+caption = "Archived view. Open to enlarge; original captures are in the details."
 
 [[screenshots]]
 file = "recon-pass.jpg"
@@ -11,6 +15,8 @@ caption = "A recon pass lights a strip over the Rebel positions"
 file = "spotter-plane.jpg"
 caption = "The Caesar spotter plane"
 +++
+
+Every aircraft now reveals the ground it flies over. New fire-support calls fly recon passes along a line you draw, or put a drone overhead to watch one spot.
 
 - **Aircraft spot as they fly:** bomb runs, gun runs, gunships and armed drones all reveal what's around them. The minimap shows every aircraft.
 - **Recon passes** (from minute two): the Coalition's A-149 Gryphon flies fast and high, the Rebels' Caesar spotter flies slow and low. Drag out a line; the strip they fly over stays lit for six seconds.

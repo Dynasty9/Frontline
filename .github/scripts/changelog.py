@@ -249,12 +249,19 @@ def build() -> None:
             md += [f"### {label}", ""]
             for e in group:
                 md += [f"#### {e['title']}", "", e["summary"], ""]
-                for s in e["screenshots"]:
-                    md += [f"![{s['caption']}](changelog/{r['tag']}/{e['slug']}/{s['file']})", ""]
-                for v in e["videos"]:
-                    md += [f"[Watch: {v['caption']}]({WEBSITE}/changelog/#{r['tag']})", ""]
-                if e["body"]:
-                    md += [e["body"], ""]
+                lead_shots = [] if e["videos"] else e["screenshots"][:1]
+                for shot in lead_shots:
+                    md += [f"![{shot['caption']}](changelog/{r['tag']}/{e['slug']}/{shot['file']})", ""]
+                for video in e["videos"][:1]:
+                    md += [f"[Watch: {video['caption']}]({WEBSITE}/changelog/#{r['tag']})", ""]
+                extra_shots = e["screenshots"] if e["videos"] else e["screenshots"][1:]
+                if e["body"] or extra_shots or len(e["videos"]) > 1:
+                    md += ["<details>", "<summary>Explore this change</summary>", "", e["body"], ""]
+                    for shot in extra_shots:
+                        md += [f"![{shot['caption']}](changelog/{r['tag']}/{e['slug']}/{shot['file']})", ""]
+                    for video in e["videos"][1:]:
+                        md += [f"[Watch: {video['caption']}]({WEBSITE}/changelog/#{r['tag']})", ""]
+                    md += ["</details>", ""]
     CHANGELOG_MD.write_text("\n".join(md).rstrip() + "\n", encoding="utf-8", newline="\n")
 
 
@@ -272,12 +279,18 @@ def notes(version: str) -> str:
         out += [f"## {label}", ""]
         for e in group:
             out += [f"### {e['title']}", "", e["summary"], ""]
-            for s in e["screenshots"]:
-                out += [f"![{s['caption']}]({image_url(r, e, s)})", ""]
-            for v in e["videos"]:
-                out += [f"[Watch: {v['caption']}]({WEBSITE}/changelog/#{r['tag']})", ""]
-            if e["body"]:
-                out += [e["body"], ""]
+            for shot in ([] if e["videos"] else e["screenshots"][:1]):
+                out += [f"![{shot['caption']}]({image_url(r, e, shot)})", ""]
+            for video in e["videos"][:1]:
+                out += [f"[Watch: {video['caption']}]({WEBSITE}/changelog/#{r['tag']})", ""]
+            extra_shots = e["screenshots"] if e["videos"] else e["screenshots"][1:]
+            if e["body"] or extra_shots or len(e["videos"]) > 1:
+                out += ["<details>", "<summary>Explore this change</summary>", "", e["body"], ""]
+                for shot in extra_shots:
+                    out += [f"![{shot['caption']}]({image_url(r, e, shot)})", ""]
+                for video in e["videos"][1:]:
+                    out += [f"[Watch: {video['caption']}]({WEBSITE}/changelog/#{r['tag']})", ""]
+                out += ["</details>", ""]
     out += [
         "## Get it",
         "",

@@ -1,8 +1,10 @@
 +++
 title = "Less work during busy battles"
-summary = "Pathfinding spends less time maintaining its cache, and animated combat markers reuse their geometry."
+summary = "Busy battles spend less time maintaining routes and rebuilding animated combat markers."
 kind = "improved"
 +++
+
+Pathfinding spends less time maintaining its cache, and animated combat markers reuse their geometry.
 
 - Long routes no longer scan the entire local navigation cache when replacing an old entry.
 - Combat markers keep the same pulsing, rotating shape with less work per frame.

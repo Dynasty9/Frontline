@@ -1,9 +1,13 @@
 +++
 title = "Field defences rebuilt, and four new ones"
-summary = "Sandbags, wire, tank traps, minefields, walls, nests, pits, bunkers and towers all look like the real thing now. New: HESCO walls, Rebel barricades, camouflage nets and ammo caches."
+summary = "Build more recognizable fieldworks, including new HESCO walls, barricades, camouflage nets and ammo caches."
 kind = "new"
 headline = true
 release_name = "Dig In"
+
+[[screenshots]]
+file = "overview.jpg"
+caption = "Archived view. Open to enlarge; original captures are in the details."
 
 [[screenshots]]
 file = "before-and-after.jpg"
@@ -25,6 +29,8 @@ caption = "An ammo cache behind a minefield's marker tape, beside an MG nest"
 file = "gun-nests.jpg"
 caption = "MG and .50 cal nests"
 +++
+
+Sandbags, wire, tank traps, minefields, walls, nests, pits, bunkers and towers all look like the real thing now. New: HESCO walls, Rebel barricades, camouflage nets and ammo caches.
 
 - **Sandbags** are stacked the way soldiers really lay them, and each side fills its own: tan and olive bags for the Coalition, hessian and white feed sacks for the Rebels.
 - **Barbed wire** is now three coils of razor wire on steel pickets (wooden stakes for the Rebels). **Tank traps** are steel hedgehogs standing on three legs.

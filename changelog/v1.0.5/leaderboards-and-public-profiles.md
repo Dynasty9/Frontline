@@ -1,8 +1,12 @@
 +++
 title = "Leaderboards, and a page for every commander"
-summary = "The website ranks the commanders with the most experience, of all time, this month and this week, and every player has a page of their own: their rank, their record, and the battles they've fought, after-action reports and all."
+summary = "Compare commander rankings and explore players' records, battle histories and after-action reports."
 kind = "new"
 headline = true
+
+[[screenshots]]
+file = "overview.jpg"
+caption = "Archived view. Open to enlarge; original captures are in the details."
 
 [[screenshots]]
 file = "leaderboards.jpg"
@@ -16,6 +20,8 @@ caption = "A commander's page: their rank and record, their career and their bat
 file = "battle.jpg"
 caption = "A battle's after-action report on the website, every commander rated as the game rates them"
 +++
+
+The website ranks the commanders with the most experience, of all time, this month and this week, and every player has a page of their own: their rank, their record, and the battles they've fought, after-action reports and all.
 
 - **Leaderboards** on the website rank experience, all time, this month and this week. Signed in, you'll find yourself marked on it, wherever you are. Experience is timed on the matchmaker's clock, so nobody can claim more than they've played.
 - **Every commander has a page**: their rank, experience, battles won and place on the board, their career, and every battle they've fought signed in, each with its after-action report and every commander in it rated the way the game rates them. Find anyone by callsign; a host's name in the battle list leads to theirs.

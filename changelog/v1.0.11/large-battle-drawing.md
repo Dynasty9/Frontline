@@ -1,7 +1,11 @@
 +++
 title = "Smoother large battles"
-summary = "Large battles draw buildings and squad symbols with less repeated work, while damage, cover and individual soldiers keep their existing behavior."
+summary = "Large battles draw scenery and squad symbols more efficiently while preserving combat behavior."
 kind = "improved"
+
+[[screenshots]]
+file = "overview.jpg"
+caption = "Archived view. Open to enlarge; original captures are in the details."
 
 [[screenshots]]
 file = "before.jpg"
@@ -11,6 +15,8 @@ caption = "The large-map battle before scenery drawing is combined."
 file = "after.jpg"
 caption = "Combined scenery drawing preserves the buildings and their shadows during combat."
 +++
+
+Large battles draw buildings and squad symbols with less repeated work, while damage, cover and individual soldiers keep their existing behavior.
 
 - Static buildings share drawing work. A damaged or moved structure updates immediately without rebuilding its neighbors.
 - Soldiers share frame-update bookkeeping while retaining individual movement smoothing, poses and selection.

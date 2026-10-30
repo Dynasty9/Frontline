@@ -136,3 +136,35 @@ export const KindBadges: Story = {
     </div>
   ),
 }
+
+/** The overview stays concise; detailed notes and source images remain available. */
+export const ProgressiveDetails: Story = {
+  play: async ({ canvasElement }) => {
+    const entry = release.entries[0]
+    const disclosure = canvasElement.querySelector("summary")!
+    await expect(disclosure).toHaveTextContent(entry.title)
+    const details = disclosure.closest("details")!
+    await expect(details).not.toHaveAttribute("open")
+    if (entry.screenshots[1]) {
+      await expect(
+        within(details).getByRole("button", { name: `Enlarge: ${entry.screenshots[1].caption}`, hidden: true })
+      ).not.toBeVisible()
+    }
+    await userEvent.click(disclosure)
+    await expect(details).toHaveAttribute("open")
+    if (entry.screenshots[1]) {
+      await expect(
+        within(details).getByRole("button", { name: `Enlarge: ${entry.screenshots[1].caption}` })
+      ).toBeVisible()
+    }
+    await userEvent.click(disclosure)
+    await expect(details).not.toHaveAttribute("open")
+  },
+}
+
+export const Phone: Story = {
+  globals: { viewport: { value: "mobile1", isRotated: false } },
+  play: async ({ canvasElement }) => {
+    await expect(canvasElement.scrollWidth).toBeLessThanOrEqual(document.documentElement.clientWidth)
+  },
+}

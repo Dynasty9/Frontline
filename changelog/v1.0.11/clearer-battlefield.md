@@ -1,7 +1,11 @@
 +++
 title = "See the troops you command"
-summary = "Lighter atmospheric haze and translucent battlefield markers keep soldiers, vehicles and terrain readable, even when zoomed out."
+summary = "See troops and terrain more clearly through lighter haze and translucent battlefield markers."
 kind = "improved"
+
+[[screenshots]]
+file = "overview.jpg"
+caption = "Archived view. Open to enlarge; original captures are in the details."
 
 [[screenshots]]
 file = "battlefield-before.jpg"
@@ -11,6 +15,8 @@ caption = "Before: hazy weather and solid squad markers compete with the troops.
 file = "battlefield-after.jpg"
 caption = "After: thinner haze, transparent symbols and quieter commander markers leave the troops visible."
 +++
+
+Lighter atmospheric haze and translucent battlefield markers keep soldiers, vehicles and terrain readable, even when zoomed out.
 
 - Atmospheric haze is much lighter in every weather preset and continues thinning as the camera pulls back. Fog of war, enemy visibility and combat smoke are unchanged.
 - Squad and vehicle symbols are translucent outlines over the battlefield. Solid counters remain in the tactical map, minimap and roster.

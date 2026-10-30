@@ -1,8 +1,12 @@
 +++
 title = "Battle statistics and the after-action report"
-summary = "Hold Tab for your side's figures as the battle goes. When it ends, the result slams onto the screen, your rating fills its bar, and the after-action report shows the whole battle: both sides head to head, every commander rated, every unit, and how the fight swung."
+summary = "Review the battle at a glance, then explore commanders, units and the moments that changed the fight."
 kind = "new"
 headline = true
+
+[[screenshots]]
+file = "overview.jpg"
+caption = "Archived view. Open to enlarge; original captures are in the details."
 
 [[screenshots]]
 file = "victory.jpg"
@@ -24,6 +28,8 @@ caption = "How the battle swung"
 file = "battle-statistics.jpg"
 caption = "Hold Tab in a battle for your side's figures so far"
 +++
+
+Hold Tab for your side's figures as the battle goes. When it ends, the result slams onto the screen, your rating fills its bar, and the after-action report shows the whole battle: both sides head to head, every commander rated, every unit, and how the fight swung.
 
 - **Hold Tab** for the battle statistics; a tap still opens the tactical map. **Esc > Battle Statistics** keeps them open. Until the battle is over, the enemy's figures are classified.
 - **The end of a battle** greys out the battlefield behind a banner: VICTORY or DEFEAT lands with a hit, your rating fills its bar, and the report rises into place. Click to skip.

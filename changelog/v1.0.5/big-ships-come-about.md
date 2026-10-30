@@ -1,8 +1,10 @@
 +++
 title = "Big ships come about without running aground"
-summary = "A patrol ship sent somewhere astern now turns the way it has room for and joins its route further on, instead of circling back to where it started and running up the beach. A boat that touches the shore backs off it."
+summary = "Large boats use the space available to turn, rejoin their route and back away from the shore."
 kind = "fixed"
 +++
+
+A patrol ship sent somewhere astern now turns the way it has room for and joins its route further on, instead of circling back to where it started and running up the beach. A boat that touches the shore backs off it.
 
 - A patrol ship (or a gun trawler) needs a lot of water to turn round. Sent somewhere behind it, it used to come
   round, then turn back for the start of its route next to where it had begun, go round again and end up on

@@ -1,12 +1,18 @@
 +++
 title = "Find console commands as you type"
-summary = "A scrollable command dropdown lists every command, then narrows to fuzzy matches and argument suggestions as you type."
+summary = "Find console commands and their arguments through suggestions that narrow as you type."
 kind = "improved"
+
+[[screenshots]]
+file = "overview.jpg"
+caption = "Archived view. Open to enlarge; original captures are in the details."
 
 [[screenshots]]
 file = "after.jpg"
 caption = "Browse the full command list without leaving the console."
 +++
+
+A scrollable command dropdown lists every command, then narrows to fuzzy matches and argument suggestions as you type.
 
 - An empty prompt shows every command with its description in a scrollable dropdown.
 - Typing finds close matches, including partial spellings and small typos. Arguments get suggestions too.

@@ -1,8 +1,10 @@
 +++
 title = "Battlefields are laid out faster"
-summary = "Laying out a new battlefield - the rivers and the sea, the roads, the cover the ground gives - is several times quicker, so a battle or a mission starts several seconds sooner. The ground comes out exactly as it did."
+summary = "Spend less time preparing terrain, roads and cover before entering a battle."
 kind = "improved"
 +++
+
+Laying out a new battlefield - the rivers and the sea, the roads, the cover the ground gives - is several times quicker, so a battle or a mission starts several seconds sooner. The ground comes out exactly as it did.
 
 - **Why:** the water, the roads and the cover were worked out cell by cell over far more of the map than they
   touch, and some of it two or three times over. Now each is worked out only where it reaches, once, and the

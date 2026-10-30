@@ -1,7 +1,11 @@
 +++
 title = "A server browser, and a lobby that shows who's coming"
-summary = "Find any battle being hosted, online or on your own network, in a proper server browser. Hosting sets up co-op, versus or a mission (with a password if you like), and the lobby shows who's on which side, the seats left, who's connecting and who's ready."
+summary = "Browse online and local battles, then see teams, available seats and player readiness before starting."
 kind = "new"
+
+[[screenshots]]
+file = "overview.jpg"
+caption = "Archived view. Open to enlarge; original captures are in the details."
 
 [[screenshots]]
 file = "before-and-after.jpg"
@@ -19,6 +23,8 @@ caption = "Hosting: co-op against the AI, versus or a mission, and who can join"
 file = "lobby.jpg"
 caption = "The lobby: both sides, the seats still open, who's ready, and an invite link"
 +++
+
+Find any battle being hosted, online or on your own network, in a proper server browser. Hosting sets up co-op, versus or a mission (with a password if you like), and the lobby shows who's on which side, the seats left, who's connecting and who's ready.
 
 - **Server Browser** (it replaces Join Game) lists every battle being hosted: its name, host, mode (and side or
   mission), players and seats, whether it's waiting in the lobby or already running, and how good the connection

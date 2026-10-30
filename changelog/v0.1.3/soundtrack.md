@@ -1,9 +1,11 @@
 +++
 title = "A soundtrack that follows the fighting"
-summary = "Music, made in code like everything else: a theme for the menu, and a battle score that builds as the fighting heats up and eases off in the lulls."
+summary = "The score builds with the fighting, relaxes during quieter moments, and responds to victory or defeat."
 kind = "new"
 headline = true
 +++
+
+Music, made in code like everything else: a theme for the menu, and a battle score that builds as the fighting heats up and eases off in the lulls.
 
 - **Instruments:** strings, horns, a wordless choir, piano, timpani, a war drum and a snare, played through a concert-hall reverb.
 - **The menu** has a two-minute theme in D minor.

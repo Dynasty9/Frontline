@@ -1,7 +1,11 @@
 +++
 title = "Large-battle simulation and rendering improvements"
-summary = "Desktop solo battles run simulation separately, share more AI work, and draw distant soldiers more efficiently. Skirmishes offer maps up to 3,072 metres across."
+summary = "Play larger skirmishes with less repeated simulation work and more efficient distant-unit drawing."
 kind = "improved"
+
+[[screenshots]]
+file = "overview.jpg"
+caption = "Archived view. Open to enlarge; original captures are in the details."
 
 [[screenshots]]
 file = "before.png"
@@ -19,6 +23,8 @@ caption = "Detailed vehicle materials at distant camera range, magnified for com
 file = "vehicle-after.png"
 caption = "Distant vehicles share simpler material surfaces while retaining their silhouettes and moving turrets."
 +++
+
+Desktop solo battles run simulation separately, share more AI work, and draw distant soldiers more efficiently. Skirmishes offer maps up to 3,072 metres across.
 
 - Static scenery no longer runs an empty building simulation every tick. Fire and combat still affect it.
 - Supply and unit-cap checks search the bases directly, including changes from construction, capture and destruction.

@@ -1,8 +1,12 @@
 +++
 title = "Ranks and insignia"
-summary = "Sign in and every battle you fight earns XP. Climb 50 ranks from Recruit to General of the Army, and each one unlocks a military patch to wear beside your callsign."
+summary = "Earn experience in signed-in battles, climb 50 ranks and unlock patches for your callsign."
 kind = "new"
 headline = true
+
+[[screenshots]]
+file = "overview.jpg"
+caption = "Archived view. Open to enlarge; original captures are in the details."
 
 [[screenshots]]
 file = "collection.jpg"
@@ -16,6 +20,8 @@ caption = "A promotion in the after-action report, and the patch that comes with
 file = "all-insignia.jpg"
 caption = "All 160: starter and rank patches, then the awards and unit patches still locked"
 +++
+
+Sign in and every battle you fight earns XP. Climb 50 ranks from Recruit to General of the Army, and each one unlocks a military patch to wear beside your callsign.
 
 - **XP:** every battle you fight while signed in counts, the longer the better, and a win is worth half as much again. Leaving early still earns half. Battles under two minutes, and battles you only watch, don't count.
 - **50 ranks:** Private, Corporal, Sergeant, Staff Sergeant, Master Sergeant, Lieutenant, Captain, Major and Colonel, five grades each, then the five grades of general. The first comes in a battle or two.

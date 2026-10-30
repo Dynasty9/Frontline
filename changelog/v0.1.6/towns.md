@@ -1,8 +1,12 @@
 +++
 title = "Capturable towns that give supply"
-summary = "Each village and the town has a named supply dump. Hold the ground round it and the place is yours: it produces supply, and its own truck drives it to your nearest FOB."
+summary = "Capture settlements to produce supplies, then protect the trucks bringing them back to your FOB."
 kind = "new"
 headline = true
+
+[[screenshots]]
+file = "overview.jpg"
+caption = "Archived view. Open to enlarge; original captures are in the details."
 
 [[screenshots]]
 file = "village-dump.jpg"
@@ -16,6 +20,8 @@ caption = "Selecting a dump: who holds it, its stock, and its truck"
 file = "town-square.jpg"
 caption = "The town square, before and after"
 +++
+
+Each village and the town has a named supply dump. Hold the ground round it and the place is yours: it produces supply, and its own truck drives it to your nearest FOB.
 
 - **Eleven places to take:** the town and ten villages, each with a name. Nobody holds them at the start.
 - **Taking one:** have men inside its ring with none of the enemy's. A squad takes a village in about 30 seconds and the town in about 50, faster with more men. With both sides inside, the capture freezes, and the holder is warned as soon as the enemy starts.

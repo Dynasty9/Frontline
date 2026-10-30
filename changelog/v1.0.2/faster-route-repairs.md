@@ -1,8 +1,10 @@
 +++
 title = "Smoother battles as the ground changes"
-summary = "When walls go up, buildings come down or fires take hold, the host now updates the map soldiers and vehicles plan their routes on about ten times faster, so a big battle spends far less of each moment on it."
+summary = "Changing terrain causes less disruption as the host updates routes around new walls, damage and fire."
 kind = "improved"
 +++
+
+When walls go up, buildings come down or fires take hold, the host now updates the map soldiers and vehicles plan their routes on about ten times faster, so a big battle spends far less of each moment on it.
 
 - **What changed:** every change to the ground used to cost the host several milliseconds of re-planning, on about
   a third of all of the game's updates in a big battle. It now redoes only what the change can reach: a fraction of
