@@ -1,7 +1,8 @@
 +++
 title = "Camera controls from other RTS games, and a clearer minimap"
-summary = "The mouse wheel zooms towards the cursor, middle-drag turns and tilts, and the minimap's edges aren't hidden under buttons any more."
+summary = "Keep your focus while zooming, orbit the battlefield, and use the whole minimap without buttons covering its edges."
 kind = "improved"
+
 
 [[screenshots]]
 file = "camera.jpg"
@@ -10,7 +11,14 @@ caption = "The new camera, tilted over a village"
 [[screenshots]]
 file = "minimap.jpg"
 caption = "The minimap before and after"
+
+[layout_comparison]
+before = "layout-before.jpg"
+after = "layout-after.jpg"
+caption = "Changelog presentation comparison, not gameplay: the top 1,000 pixels of this entry at the same 900-pixel viewport width. Open either image to inspect it."
 +++
+
+The mouse wheel zooms towards the cursor, middle-drag turns and tilts, and the minimap's edges aren't hidden under buttons any more.
 
 - **Zoom toward the cursor:** whatever you aim at stays under the mouse.
 - **Middle-drag** turns (left and right) and tilts (up and down). **Alt + middle-drag** grabs and drags the map.

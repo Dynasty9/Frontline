@@ -1,7 +1,8 @@
 +++
 title = "A clearer way around Frontline"
-summary = "A simpler site menu, a returning-player home, and a dedicated rank guide make it easier to find your next battle."
+summary = "Find your next battle, account and rank information through clearer website navigation."
 kind = "improved"
+
 
 [[screenshots]]
 file = "player-home.jpg"
@@ -14,7 +15,14 @@ caption = "New here: download the game and follow three steps to your first batt
 [[screenshots]]
 file = "rank-guide.jpg"
 caption = "Leaderboards and the rank guide now live together under Commanders."
+
+[layout_comparison]
+before = "layout-before.jpg"
+after = "layout-after.jpg"
+caption = "Changelog presentation comparison, not gameplay: the top 1,000 pixels of this entry at the same 900-pixel viewport width. Open either image to inspect it."
 +++
+
+A simpler site menu, a returning-player home, and a dedicated rank guide make it easier to find your next battle.
 
 - The menu now separates the game tour, live battles, commanders and updates. Account actions stay in the account menu; project links stay in the footer.
 - Signed-in players get a compact home with play shortcuts, progress and recent updates. Visitors still see the gameplay introduction.

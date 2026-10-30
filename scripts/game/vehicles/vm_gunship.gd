@@ -655,6 +655,7 @@ static func _ac130_guns(k: VehicleModels, m: Node3D, st: Array, c: Color) -> voi
 	for f: float in [0.35, 0.95]:
 		k._add(m, Res.cyl(0.11, 0.11, 0.07, 12), "gunmetal_w", null, g25 + dn * float(f), Vector3(0, 0, PI / 2 + dep))
 	k.mg_tip = k._tip(m, g25 + dn * 1.2)
+	k.weapon_tips["ac25"] = k.mg_tip
 	# the 40 mm L/60 Bofors
 	_patch(k, m, "gs_ac_p40", st, 1.45, 2.3, 1.15, 2.2, true, "plain_dark", null, 0.008)
 	var g40 := Vector3(-_half_w(VmPlane.st_at(st, 1.88), 1.66), 1.66, 1.88)
@@ -665,6 +666,7 @@ static func _ac130_guns(k: VehicleModels, m: Node3D, st: Array, c: Color) -> voi
 	VmPlane.rod(k, m, g40, g40 + dn * 1.9, 0.065, "gunmetal_w", null, 10)
 	VmPlane.rod(k, m, g40 + dn * 1.75, g40 + dn * 2.45, 0.08, "gunmetal_w", null, 12, 0.15)
 	k._add(m, Res.cyl(0.13, 0.13, 0.02, 12), "plain_dark", null, g40 + dn * 2.455, Vector3(0, 0, PI / 2 + dep), Vector3.ONE, false)
+	k.weapon_tips["ac40"] = k._tip(m, g40 + dn * 2.465)
 	# the 105 mm M102 howitzer
 	_patch(k, m, "gs_ac_p105", st, 2.4, 3.6, 0.95, 2.85, true, "plain_dark", null, 0.008)
 	var g105 := Vector3(-_half_w(VmPlane.st_at(st, 3.0), 1.92), 1.92, 3.0)
@@ -679,6 +681,7 @@ static func _ac130_guns(k: VehicleModels, m: Node3D, st: Array, c: Color) -> voi
 	for f: float in [-0.12, 0.12]:
 		k._box(m, Vector3(0.13, 0.22, 0.412), mb + dn * f, "plain_dark", null, Vector3(0, 0, dep), false)
 	k.gun_tip = k._tip(m, mb + dn * 0.25)
+	k.weapon_tips["ac105"] = k.gun_tip
 	# the AN/AAQ-117 infrared turret under the nose, the ALLTV turret in the
 	# front of the left sponson
 	for tp in [[Vector3(-0.95, 0.66, -9.15), 0.36], [Vector3(-2.18, 0.86, -5.25), 0.3]]:
@@ -919,6 +922,7 @@ static func _bf_guns(k: VehicleModels, m: Node3D, st: Array, c: Color) -> void:
 	VmPlane.rod(k, m, g40, g40 + dn * 0.95, 0.11, "gunmetal_w", null, 12)
 	VmPlane.rod(k, m, g40, g40 + dn * 2.35, 0.065, "gunmetal_w", null, 10)
 	VmPlane.rod(k, m, g40 + dn * 2.2, g40 + dn * 2.65, 0.09, "gunmetal_w", null, 12, 0.1)
+	k.weapon_tips["ac40"] = k._tip(m, g40 + dn * 2.66)
 	# the 105 mm and the 20 mm in the aft mount
 	var zg := 3.75
 	var yg := 2.6
@@ -935,6 +939,7 @@ static func _bf_guns(k: VehicleModels, m: Node3D, st: Array, c: Color) -> void:
 	for f: float in [-0.12, 0.12]:
 		k._box(m, Vector3(0.13, 0.24, 0.432), mb + dn * f, "plain_dark", null, Vector3(0, 0, dep), false)
 	k.gun_tip = k._tip(m, mb + dn * 0.28)
+	k.weapon_tips["ac105"] = k.gun_tip
 	var g20 := Vector3(-xg - 0.42, yg - 0.38, zg)
 	k._box(m, Vector3(0.46, 0.3, 0.32), g20, "gunmetal_w", c.darkened(0.4), Vector3(0, 0, dep))
 	for i in 6:
@@ -944,6 +949,7 @@ static func _bf_guns(k: VehicleModels, m: Node3D, st: Array, c: Color) -> void:
 	for f: float in [0.6, 1.4]:
 		k._add(m, Res.cyl(0.11, 0.11, 0.06, 12), "gunmetal_w", null, g20 + dn * f, Vector3(0, 0, PI / 2 + dep))
 	k.mg_tip = k._tip(m, g20 + dn * 1.6)
+	k.weapon_tips["ac25"] = k.mg_tip
 	# the gunners' second sensor turret
 	k._add(m, Res.sphere(0.3, 14), "paint", Color(0.46, 0.47, 0.48), Vector3(-1.45, 1.05, -8.3))
 	k._add(m, Res.sphere(0.13, 10), "glass", null, Vector3(-1.7, 0.98, -8.3), Vector3.ZERO, Vector3(0.5, 1, 1), false)

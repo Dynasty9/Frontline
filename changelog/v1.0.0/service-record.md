@@ -1,7 +1,8 @@
 +++
 title = "A service record, and a sign-in you can find"
-summary = "Sign in from the account card at the top right of the main menu. Signed in, every battle you fight goes on your service record, and you can open any of their after-action reports again."
+summary = "Sign in from the main menu to keep a battle history and reopen past after-action reports."
 kind = "new"
+
 
 [[screenshots]]
 file = "account-card.jpg"
@@ -14,7 +15,14 @@ caption = "Your service record: your career, and every battle"
 [[screenshots]]
 file = "past-report.jpg"
 caption = "Any battle's after-action report, opened again"
+
+[layout_comparison]
+before = "layout-before.jpg"
+after = "layout-after.jpg"
+caption = "Changelog presentation comparison, not gameplay: the top 1,000 pixels of this entry at the same 900-pixel viewport width. Open either image to inspect it."
 +++
+
+Sign in from the account card at the top right of the main menu. Signed in, every battle you fight goes on your service record, and you can open any of their after-action reports again.
 
 - **Signing in** is now at the top right of the main menu, with **Create account** beside it. The end of a battle offers it too. You still don't need an account to play.
 - **Your service record** keeps every battle you fight as a commander: what it was, your side, the result and length, your rating, kills and losses.

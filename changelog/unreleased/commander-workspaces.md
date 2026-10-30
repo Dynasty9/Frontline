@@ -4,12 +4,12 @@ summary = "A cleaner battle interface with compact unit details, illustrated ord
 kind = "improved"
 
 [[screenshots]]
-file = "before.jpg"
-caption = "Before: the roster and minimap share the battlefield edge."
-
-[[screenshots]]
 file = "after.jpg"
 caption = "Find a squad, press Enter, and return to the battle focused and ready to command."
+
+[[screenshots]]
+file = "before.jpg"
+caption = "Before: the roster and minimap share the battlefield edge."
 
 [[screenshots]]
 file = "base.jpg"

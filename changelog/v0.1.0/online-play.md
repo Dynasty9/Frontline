@@ -1,13 +1,21 @@
 +++
 title = "Online play: Find Match and a list of battles"
-summary = "Press Find Match to drop into an open battle, or host one for the next player to find. Join Game lists every battle being hosted, and most home routers need no setup."
+summary = "Find an open battle or host one for others to join, usually without configuring your router."
 kind = "new"
 headline = true
+
 
 [[screenshots]]
 file = "join-a-battle.jpg"
 caption = "Join Game: the battles being hosted, and connect by address"
+
+[layout_comparison]
+before = "layout-before.jpg"
+after = "layout-after.jpg"
+caption = "Changelog presentation comparison, not gameplay: the top 1,000 pixels of this entry at the same 900-pixel viewport width. Open either image to inspect it."
 +++
+
+Press Find Match to drop into an open battle, or host one for the next player to find. Join Game lists every battle being hosted, and most home routers need no setup.
 
 - **Find Match** joins the best open battle (ones still in the lobby first, then the fullest). If there isn't one, it hosts a battle and lists it for others.
 - **Join Game** shows every battle being hosted: its commander, how many are in it, and whether it's still in the lobby or already fighting.
