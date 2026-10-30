@@ -3,9 +3,6 @@ title = "Rejoin a battle you dropped out of"
 summary = "Return to your side and surviving force after a dropped connection, crash or accidental departure."
 kind = "new"
 
-[[screenshots]]
-file = "overview.jpg"
-caption = "Archived view. Open to enlarge; original captures are in the details."
 
 [[screenshots]]
 file = "rejoin-card.jpg"

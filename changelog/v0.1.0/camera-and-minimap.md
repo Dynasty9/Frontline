@@ -3,9 +3,6 @@ title = "Camera controls from other RTS games, and a clearer minimap"
 summary = "Keep your focus while zooming, orbit the battlefield, and use the whole minimap without buttons covering its edges."
 kind = "improved"
 
-[[screenshots]]
-file = "overview.jpg"
-caption = "Archived view. Open to enlarge; original captures are in the details."
 
 [[screenshots]]
 file = "camera.jpg"

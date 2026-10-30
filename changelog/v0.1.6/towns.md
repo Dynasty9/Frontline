@@ -4,9 +4,6 @@ summary = "Capture settlements to produce supplies, then protect the trucks brin
 kind = "new"
 headline = true
 
-[[screenshots]]
-file = "overview.jpg"
-caption = "Archived view. Open to enlarge; original captures are in the details."
 
 [[screenshots]]
 file = "village-dump.jpg"

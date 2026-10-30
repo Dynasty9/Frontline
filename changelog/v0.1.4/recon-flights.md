@@ -3,9 +3,6 @@ title = "Aircraft that spot, recon flights and overwatch drones"
 summary = "Use aircraft and overwatch drones to reveal ground ahead of your troops."
 kind = "new"
 
-[[screenshots]]
-file = "overview.jpg"
-caption = "Archived view. Open to enlarge; original captures are in the details."
 
 [[screenshots]]
 file = "recon-pass.jpg"

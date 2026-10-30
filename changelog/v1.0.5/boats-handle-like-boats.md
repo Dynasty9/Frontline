@@ -5,7 +5,7 @@ kind = "improved"
 
 [[videos]]
 file = "boat-turn.mp4"
-poster = "overview.jpg"
+poster = "boat-turn-poster.jpg"
 caption = "An RHIB turns toward the beach, trailing a curved wake as it comes ashore. Recorded in the current build, October 2026."
 +++
 

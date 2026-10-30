@@ -3,9 +3,6 @@ title = "Play in your browser"
 summary = "Play solo Frontline in your browser without installing the game; multiplayer remains on desktop."
 kind = "new"
 
-[[screenshots]]
-file = "overview.jpg"
-caption = "Archived view. Open to enlarge; original captures are in the details."
 
 [[screenshots]]
 file = "browser-battle.jpg"

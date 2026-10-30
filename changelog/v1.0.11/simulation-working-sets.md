@@ -3,9 +3,6 @@ title = "Large-battle simulation and rendering improvements"
 summary = "Play larger skirmishes with less repeated simulation work and more efficient distant-unit drawing."
 kind = "improved"
 
-[[screenshots]]
-file = "overview.jpg"
-caption = "Archived view. Open to enlarge; original captures are in the details."
 
 [[screenshots]]
 file = "before.png"

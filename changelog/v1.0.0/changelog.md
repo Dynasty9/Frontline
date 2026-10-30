@@ -5,9 +5,6 @@ kind = "new"
 headline = true
 release_name = "What's New"
 
-[[screenshots]]
-file = "overview.jpg"
-caption = "Archived view. Open to enlarge; original captures are in the details."
 
 [[screenshots]]
 file = "whats-new.jpg"

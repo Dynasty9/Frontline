@@ -3,9 +3,6 @@ title = "The Field Manual opens over the account card"
 summary = "The Field Manual and Settings stay above the account card, keeping their controls accessible."
 kind = "fixed"
 
-[[screenshots]]
-file = "overview.jpg"
-caption = "Archived view. Open to enlarge; original captures are in the details."
 
 [[screenshots]]
 file = "field-manual.jpg"

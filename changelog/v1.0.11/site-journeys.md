@@ -3,9 +3,6 @@ title = "A clearer way around Frontline"
 summary = "Find your next battle, account and rank information through clearer website navigation."
 kind = "improved"
 
-[[screenshots]]
-file = "overview.jpg"
-caption = "Archived view. Open to enlarge; original captures are in the details."
 
 [[screenshots]]
 file = "player-home.jpg"

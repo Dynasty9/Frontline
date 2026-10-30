@@ -9,7 +9,7 @@ caption = "Mallards on a pond, one upending to feed"
 
 [[videos]]
 file = "fish-swimming.webm"
-poster = "overview.jpg"
+poster = "fish-swimming-poster.jpg"
 caption = "Fish swim together beneath the river surface. Recorded in the current build, October 2026."
 
 [[videos]]

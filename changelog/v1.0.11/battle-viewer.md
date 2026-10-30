@@ -3,9 +3,6 @@ title = "Watch battles and revisit the action"
 summary = "Watch public battles in the browser and revisit saved action with camera and timeline controls."
 kind = "new"
 
-[[screenshots]]
-file = "overview.jpg"
-caption = "Archived view. Open to enlarge; original captures are in the details."
 
 [[screenshots]]
 file = "browser.jpg"

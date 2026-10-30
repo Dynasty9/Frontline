@@ -3,9 +3,6 @@ title = "See the troops you command"
 summary = "See troops and terrain more clearly through lighter haze and translucent battlefield markers."
 kind = "improved"
 
-[[screenshots]]
-file = "overview.jpg"
-caption = "Archived view. Open to enlarge; original captures are in the details."
 
 [[screenshots]]
 file = "battlefield-before.jpg"

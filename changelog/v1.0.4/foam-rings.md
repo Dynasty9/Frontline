@@ -3,9 +3,6 @@ title = "Splashes leave rings of foam again"
 summary = "Water impacts and sinking boats leave spreading foam instead of flat square artifacts."
 kind = "fixed"
 
-[[screenshots]]
-file = "overview.jpg"
-caption = "Archived view. Open to enlarge; original captures are in the details."
 
 [[screenshots]]
 file = "before-after.jpg"

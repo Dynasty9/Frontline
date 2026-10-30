@@ -4,9 +4,6 @@ summary = "Find and change any keyboard action, with two bindings per action and
 kind = "new"
 headline = true
 
-[[screenshots]]
-file = "overview.jpg"
-caption = "Archived view. Open to enlarge; original captures are in the details."
 
 [[screenshots]]
 file = "controls.jpg"

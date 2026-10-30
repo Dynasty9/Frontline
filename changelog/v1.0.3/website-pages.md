@@ -3,9 +3,6 @@ title = "The website gets a Play button, and a page for your account"
 summary = "Launch the game, browse live battles and manage your account from dedicated website pages."
 kind = "improved"
 
-[[screenshots]]
-file = "overview.jpg"
-caption = "Archived view. Open to enlarge; original captures are in the details."
 
 [[screenshots]]
 file = "play.jpg"

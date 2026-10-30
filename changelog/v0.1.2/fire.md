@@ -4,9 +4,6 @@ summary = "Fire spreads through nearby flammable scenery, with the wind influenc
 kind = "new"
 headline = true
 
-[[screenshots]]
-file = "overview.jpg"
-caption = "Archived view. Open to enlarge; original captures are in the details."
 
 [[screenshots]]
 file = "fire-day.jpg"

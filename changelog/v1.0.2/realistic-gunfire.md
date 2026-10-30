@@ -3,9 +3,6 @@ title = "Gunfire that looks like the real thing"
 summary = "Gunfire uses quicker flashes, finer tracers and more natural smoke to make the action easier to read."
 kind = "improved"
 
-[[screenshots]]
-file = "overview.jpg"
-caption = "Archived view. Open to enlarge; original captures are in the details."
 
 [[screenshots]]
 file = "rifles-before-after.jpg"

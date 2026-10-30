@@ -3,9 +3,6 @@ title = "Squads stick together"
 summary = "Squads stay closer together and choose cover on the same side of walls."
 kind = "improved"
 
-[[screenshots]]
-file = "overview.jpg"
-caption = "Archived view. Open to enlarge; original captures are in the details."
 
 [[screenshots]]
 file = "before.jpg"

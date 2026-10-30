@@ -3,9 +3,6 @@ title = "Inspect vehicles on the website"
 summary = "Inspect vehicle models on the website with rotation and zoom controls."
 kind = "new"
 
-[[screenshots]]
-file = "overview.jpg"
-caption = "Archived view. Open to enlarge; original captures are in the details."
 
 [[screenshots]]
 file = "desktop.jpg"

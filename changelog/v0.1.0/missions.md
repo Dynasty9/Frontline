@@ -3,9 +3,6 @@ title = "Missions"
 summary = "Play five objective-driven operations alone or with friends, with radio updates guiding the action."
 kind = "new"
 
-[[screenshots]]
-file = "overview.jpg"
-caption = "Archived view. Open to enlarge; original captures are in the details."
 
 [[screenshots]]
 file = "kingpin.jpg"

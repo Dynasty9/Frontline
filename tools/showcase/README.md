@@ -10,11 +10,17 @@ lead artifact; original notes and supporting media remain under **Explore this c
 
 | Stage | Use | Inputs |
 | --- | --- | --- |
-| Archive plate | Layout, appearance, historical evidence | Title, takeaway, source image, attribution |
+| Native media | Website changelog; source images with HTML captions | Shared shadcn Card, Button, Badge and Dialog |
+| Archive plate | Standalone exports only, not embedded website cards | Title, takeaway, source image, attribution |
 | Archive pair | A genuine, matched before/after view | Explicitly reviewed pair, same subject and conditions |
 | Controlled motion | Traverse, propulsion and muzzle geometry | `tests/fixtures/vehicle-motion-clips.tscn`; matched main/PR recordings |
 | Controlled capture presets | Tanks, boats and aircraft | `stages.json`: fixture, duration, simulation rate and cue |
 | Text | Reliability, compatibility, unrecorded sound or unmeasured performance | Short player outcome and original detail |
+
+The website uses the main site’s Signal tokens and shadcn/Radix components.
+Do not embed a branded presentation frame inside the changelog layout: it duplicates
+headings and makes the evidence too small. Source media, HTML captions and thin rules
+provide the presentation. Archive plates are opt-in standalone exports.
 
 Archive stages use HTML/CSS to compose the original evidence without retouching it.
 Images are contained, not cropped. The render checks text overflow and loads the
@@ -24,7 +30,7 @@ map sizes, populations or machines are not controlled performance comparisons.
 
 ```sh
 # npm ci and npx playwright install chromium in web/ first
-node tools/showcase/render-archive.mjs              # every registered archive plate
+node tools/showcase/render-archive.mjs              # registered standalone exports (none by default)
 node tools/showcase/render-archive.mjs fog-of-war   # optional entry-path filter
 python3 tools/showcase/audit.py
 ```

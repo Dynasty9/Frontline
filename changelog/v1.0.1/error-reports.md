@@ -3,9 +3,6 @@ title = "Error reports"
 summary = "Optional automatic error reports help developers diagnose failures and crashes."
 kind = "new"
 
-[[screenshots]]
-file = "overview.jpg"
-caption = "Archived view. Open to enlarge; original captures are in the details."
 
 [[screenshots]]
 file = "send-error-reports.jpg"

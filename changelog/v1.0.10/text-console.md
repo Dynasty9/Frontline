@@ -3,9 +3,6 @@ title = "A console you can copy, search and save"
 summary = "Copy, search and save console output, and paste commands using familiar shortcuts."
 kind = "improved"
 
-[[screenshots]]
-file = "overview.jpg"
-caption = "Archived view. Open to enlarge; original captures are in the details."
 
 [[screenshots]]
 file = "after.jpg"

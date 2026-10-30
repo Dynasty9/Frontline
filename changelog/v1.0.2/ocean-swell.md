@@ -21,7 +21,7 @@ caption = "Before and after: a sunny sea and an overcast one"
 
 [[videos]]
 file = "ocean-swell.mp4"
-poster = "overview.jpg"
+poster = "ocean-swell-poster.jpg"
 caption = "A patrol ship pitches and rolls as waves pass beneath it. Recorded in the current build, October 2026."
 +++
 

@@ -4,9 +4,6 @@ summary = "Frontline opens at your chosen window size, or maximizes when that si
 kind = "fixed"
 headline = true
 
-[[screenshots]]
-file = "overview.jpg"
-caption = "Archived view. Open to enlarge; original captures are in the details."
 
 [[screenshots]]
 file = "four-three.jpg"

@@ -3,9 +3,6 @@ title = "The game keeps itself up to date"
 summary = "Get new versions in the background and restart when you are ready to play them."
 kind = "new"
 
-[[screenshots]]
-file = "overview.jpg"
-caption = "Archived view. Open to enlarge; original captures are in the details."
 
 [[screenshots]]
 file = "update-ready.jpg"

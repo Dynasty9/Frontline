@@ -3,9 +3,6 @@ title = "Installers for Windows and the Mac"
 summary = "Install Frontline with a Windows setup wizard or Mac disk image, in a location that supports updates."
 kind = "new"
 
-[[screenshots]]
-file = "overview.jpg"
-caption = "Archived view. Open to enlarge; original captures are in the details."
 
 [[screenshots]]
 file = "windows-setup.jpg"

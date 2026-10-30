@@ -3,9 +3,6 @@ title = "A service record, and a sign-in you can find"
 summary = "Sign in from the main menu to keep a battle history and reopen past after-action reports."
 kind = "new"
 
-[[screenshots]]
-file = "overview.jpg"
-caption = "Archived view. Open to enlarge; original captures are in the details."
 
 [[screenshots]]
 file = "account-card.jpg"

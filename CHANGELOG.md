@@ -14,7 +14,7 @@ the pull request that makes it.
 
 Watch public battles in the browser and revisit saved action with camera and timeline controls.
 
-![Archived view. Open to enlarge; original captures are in the details.](changelog/v1.0.11/battle-viewer/overview.jpg)
+![A recorded test battle running in the browser, with the game's own camera and a seekable timeline.](changelog/v1.0.11/battle-viewer/browser.jpg)
 
 <details>
 <summary>Explore this change</summary>
@@ -38,8 +38,6 @@ before this feature cannot be reconstructed from an old after-action report.
 
 The browser battlefield fills the available window, keeping the FPS meter clear of the site header. Replay controls use the desktop Signal interface and sit beside the minimap, with the director caption above the timeline.
 
-![A recorded test battle running in the browser, with the game's own camera and a seekable timeline.](changelog/v1.0.11/battle-viewer/browser.jpg)
-
 ![Find recordings from the Battles page. The 3D viewer works best on a desktop.](changelog/v1.0.11/battle-viewer/mobile.jpg)
 
 ![Saved replays load completely before playback, with progress and controls inside the game.](changelog/v1.0.11/battle-viewer/loading.jpg)
@@ -52,7 +50,7 @@ The browser battlefield fills the available window, keeping the FPS meter clear 
 
 Inspect vehicle models on the website with rotation and zoom controls.
 
-![Archived view. Open to enlarge; original captures are in the details.](changelog/v1.0.11/website-field-manual/overview.jpg)
+![Browse the roster and inspect the game's vehicle models on the website.](changelog/v1.0.11/website-field-manual/desktop.jpg)
 
 <details>
 <summary>Explore this change</summary>
@@ -65,8 +63,6 @@ Explore vehicles directly on the website, with an interactive model preview usin
 - Quiet digital interference occasionally passes through the survey grid; reduced-motion settings keep it still.
 - Watch armed support aircraft perform their real gun run, bombing pass or orbit in the embedded training range. Replay resets the aircraft and targets without rebuilding the range; return to model inspection at any time.
 - Select a vehicle to inspect its 3D model directly beside the roster. Drag to turn it, scroll to zoom, or use the camera buttons with a keyboard. The page uses the site's familiar styling around the game's own model stage.
-
-![Browse the roster and inspect the game's vehicle models on the website.](changelog/v1.0.11/website-field-manual/desktop.jpg)
 
 ![The in-game Field Manual shares the new slate survey bay and model lighting.](changelog/v1.0.11/website-field-manual/manual.jpg)
 
@@ -96,7 +92,7 @@ These changes reduce specific costs; they do not establish 60 FPS support for 50
 
 Large battles avoid repeated scenery and visibility work while keeping the battlefield responsive.
 
-![Archived view. Open to enlarge; original captures are in the details.](changelog/v1.0.11/battle-work-budget/overview.jpg)
+![Before: the generated 3 km battlefield at command zoom.](changelog/v1.0.11/battle-work-budget/before.png)
 
 <details>
 <summary>Explore this change</summary>
@@ -115,8 +111,6 @@ Scenery follows the camera's view, and soldiers avoid repeating sight checks aga
 
 Large-map performance is still being measured. These changes do not establish 60 FPS support for 500-unit battles.
 
-![Before: the generated 3 km battlefield at command zoom.](changelog/v1.0.11/battle-work-budget/before.png)
-
 ![After: the same map and camera, with visibility-aware rendering and native routes. Combat evolves independently between runs.](changelog/v1.0.11/battle-work-budget/after.png)
 
 </details>
@@ -125,7 +119,7 @@ Large-map performance is still being measured. These changes do not establish 60
 
 See troops and terrain more clearly through lighter haze and translucent battlefield markers.
 
-![Archived view. Open to enlarge; original captures are in the details.](changelog/v1.0.11/clearer-battlefield/overview.jpg)
+![Before: hazy weather and solid squad markers compete with the troops.](changelog/v1.0.11/clearer-battlefield/battlefield-before.jpg)
 
 <details>
 <summary>Explore this change</summary>
@@ -136,8 +130,6 @@ Lighter atmospheric haze and translucent battlefield markers keep soldiers, vehi
 - Squad and vehicle symbols are translucent outlines over the battlefield. Solid counters remain in the tactical map, minimap and roster.
 - Squad symbols fade in with distance instead of stacking over nearby soldiers. Individual status icons lose their opaque backplates, and squad-strength pips replace overlapping per-soldier bars at squad zoom.
 - Teammate view frames and selection rings are thinner and quieter. A teammate's selection is a coordination hint, not an exclusive ownership badge.
-
-![Before: hazy weather and solid squad markers compete with the troops.](changelog/v1.0.11/clearer-battlefield/battlefield-before.jpg)
 
 ![After: thinner haze, transparent symbols and quieter commander markers leave the troops visible.](changelog/v1.0.11/clearer-battlefield/battlefield-after.jpg)
 
@@ -170,7 +162,7 @@ Rotorcraft carry momentum through turns, bank and pitch as they accelerate, and 
 
 Discover Frontline through tactical decisions, combined-arms footage and operation briefings.
 
-![Archived view. Open to enlarge; original captures are in the details.](changelog/v1.0.11/homepage-story/overview.jpg)
+![From your first tactical decision to a combined-arms battle.](changelog/v1.0.11/homepage-story/after-desktop.jpg)
 
 <details>
 <summary>Explore this change</summary>
@@ -181,8 +173,6 @@ Discover the game through battlefield decisions, combined-arms footage and selec
 - Browse mission briefings one at a time, with the force details available on mobile as well as desktop.
 - Gameplay comes straight after the opening footage, without the repeating tickers and statistics grid.
 
-![From your first tactical decision to a combined-arms battle.](changelog/v1.0.11/homepage-story/after-desktop.jpg)
-
 ![Choose an operation to see its briefing and your starting force.](changelog/v1.0.11/homepage-story/after-missions.jpg)
 
 </details>
@@ -191,7 +181,7 @@ Discover the game through battlefield decisions, combined-arms footage and selec
 
 Large battles draw scenery and squad symbols more efficiently while preserving combat behavior.
 
-![Archived view. Open to enlarge; original captures are in the details.](changelog/v1.0.11/large-battle-drawing/overview.jpg)
+![The large-map battle before scenery drawing is combined.](changelog/v1.0.11/large-battle-drawing/before.jpg)
 
 <details>
 <summary>Explore this change</summary>
@@ -203,8 +193,6 @@ Large battles draw buildings and squad symbols with less repeated work, while da
 - Squad counters keep a clear screen position as nearby units move, reducing clutter and repeated layout work.
 - Firing markers reuse their star geometry, and the minimap refreshes damaged buildings gradually while keeping the previous map visible.
 - Moving soldiers avoid recording sight checks they cannot reuse; soldiers standing still, including those waiting for a route, retain their obstruction cache.
-
-![The large-map battle before scenery drawing is combined.](changelog/v1.0.11/large-battle-drawing/before.jpg)
 
 ![Combined scenery drawing preserves the buildings and their shadows during combat.](changelog/v1.0.11/large-battle-drawing/after.jpg)
 
@@ -230,7 +218,7 @@ All commanders on a side can select and order every allied squad, vehicle and in
 
 Play larger skirmishes with less repeated simulation work and more efficient distant-unit drawing.
 
-![Archived view. Open to enlarge; original captures are in the details.](changelog/v1.0.11/simulation-working-sets/overview.jpg)
+![The earlier 500-soldier rendering test on a 1,024 metre map.](changelog/v1.0.11/simulation-working-sets/before.png)
 
 <details>
 <summary>Explore this change</summary>
@@ -274,8 +262,6 @@ Desktop solo battles run simulation separately, share more AI work, and draw dis
 - The battle clock follows the simulation server, excluding loading time and stopping when the host pauses.
 - Large assault formations check only nearby squadmates when choosing cover, retaining the same positions with fewer comparisons.
 
-![The earlier 500-soldier rendering test on a 1,024 metre map.](changelog/v1.0.11/simulation-working-sets/before.png)
-
 ![A full generated 3,072 metre battlefield, started with 480 soldiers and 20 vehicles. The 60 FPS target remains under validation.](changelog/v1.0.11/simulation-working-sets/after.png)
 
 ![Detailed vehicle materials at distant camera range, magnified for comparison.](changelog/v1.0.11/simulation-working-sets/vehicle-before.png)
@@ -288,7 +274,7 @@ Desktop solo battles run simulation separately, share more AI work, and draw dis
 
 Find your next battle, account and rank information through clearer website navigation.
 
-![Archived view. Open to enlarge; original captures are in the details.](changelog/v1.0.11/site-journeys/overview.jpg)
+![Signed in: play shortcuts, your progress and the latest updates. Preview shown with sample player data.](changelog/v1.0.11/site-journeys/player-home.jpg)
 
 <details>
 <summary>Explore this change</summary>
@@ -301,8 +287,6 @@ A simpler site menu, a returning-player home, and a dedicated rank guide make it
 - The rank guide explains experience and unlocks. Choose your personal insignia in your profile.
 - Signing in keeps your place, including a friend's battle invitation. An account remains optional to play.
 
-![Signed in: play shortcuts, your progress and the latest updates. Preview shown with sample player data.](changelog/v1.0.11/site-journeys/player-home.jpg)
-
 ![New here: download the game and follow three steps to your first battle.](changelog/v1.0.11/site-journeys/guest-play.jpg)
 
 ![Leaderboards and the rank guide now live together under Commanders.](changelog/v1.0.11/site-journeys/rank-guide.jpg)
@@ -313,7 +297,7 @@ A simpler site menu, a returning-player home, and a dedicated rank guide make it
 
 Squads stay closer together and choose cover on the same side of walls.
 
-![Archived view. Open to enlarge; original captures are in the details.](changelog/v1.0.11/squad-cohesion/overview.jpg)
+![Before: one squad spreads across all three walls while seeking cover. Enemies are beyond the walls, outside this view.](changelog/v1.0.11/squad-cohesion/before.jpg)
 
 <details>
 <summary>Explore this change</summary>
@@ -325,8 +309,6 @@ Squads move in tighter groups and choose nearby cover on the same side of walls.
 - When a tall wall's front row is full, soldiers stack a pace behind it instead of lying farther out in the open. The rear row still benefits from the wall blocking fire, but lacks the close-cover protection of hugging it.
 - Travelling squads follow their leader through gaps, and the leader slows for stragglers.
 
-![Before: one squad spreads across all three walls while seeking cover. Enemies are beyond the walls, outside this view.](changelog/v1.0.11/squad-cohesion/before.jpg)
-
 ![After: four soldiers take cover against the middle wall; the fifth stacks in a second row 1.5 metres behind them, with reduced protection. Same scenario, seed, time and camera as before.](changelog/v1.0.11/squad-cohesion/after.jpg)
 
 </details>
@@ -337,7 +319,7 @@ Squads move in tighter groups and choose nearby cover on the same side of walls.
 
 Keep menus, controls and multiplayer rosters reachable in small windows and at large interface scales.
 
-![Archived view. Open to enlarge; original captures are in the details.](changelog/v1.0.11/large-interface-layouts/overview.jpg)
+![Before: a full co-op roster pushes the lobby actions into the bottom edge.](changelog/v1.0.11/large-interface-layouts/lobby-before.jpg)
 
 <details>
 <summary>Explore this change</summary>
@@ -348,8 +330,6 @@ Pause menus, controls, lobby rosters and the server browser stay usable at maxim
 - Full eight-player lobby rosters scroll without pushing Join, Ready, Start or Leave out of reach.
 - Server-browser filters and direct-connect fields wrap instead of forcing the screen wider than the window.
 - Repeatedly opening a dialog no longer shifts its resting position. Resizing during its opening animation keeps it centered.
-
-![Before: a full co-op roster pushes the lobby actions into the bottom edge.](changelog/v1.0.11/large-interface-layouts/lobby-before.jpg)
 
 ![After: the roster scrolls while Start and Close stay clearly in view.](changelog/v1.0.11/large-interface-layouts/lobby-after.jpg)
 
@@ -369,7 +349,7 @@ Pause menus, controls, lobby rosters and the server browser stay usable at maxim
 
 Find console commands and their arguments through suggestions that narrow as you type.
 
-![Archived view. Open to enlarge; original captures are in the details.](changelog/v1.0.10/console-completion/overview.jpg)
+![Browse the full command list without leaving the console.](changelog/v1.0.10/console-completion/after.jpg)
 
 <details>
 <summary>Explore this change</summary>
@@ -382,15 +362,13 @@ A scrollable command dropdown lists every command, then narrows to fuzzy matches
 - Ctrl+Up/Down browses your command history. Esc dismisses suggestions before closing the console.
 - Completing in the middle of a line keeps the arguments that follow it.
 
-![Browse the full command list without leaving the console.](changelog/v1.0.10/console-completion/after.jpg)
-
 </details>
 
 #### A console you can copy, search and save
 
 Copy, search and save console output, and paste commands using familiar shortcuts.
 
-![Archived view. Open to enlarge; original captures are in the details.](changelog/v1.0.10/text-console/overview.jpg)
+![Console tools for copying, finding and saving output.](changelog/v1.0.10/text-console/after.jpg)
 
 <details>
 <summary>Explore this change</summary>
@@ -403,8 +381,6 @@ Select and copy console output, paste commands, search scrollback and save trans
 - Clear output with Ctrl+L, jump through scrollback with Ctrl+Home/End, and adjust text size with Ctrl+plus/minus.
 - Ctrl+C with nothing selected clears the prompt and safely stops a running benchmark.
 - Command history, Tab completion, undo/redo and normal text editing remain available.
-
-![Console tools for copying, finding and saving output.](changelog/v1.0.10/text-console/after.jpg)
 
 </details>
 
@@ -435,7 +411,7 @@ automatically, use **Open Frontline** to return.
 
 A consistent tactical interface makes battle controls, menus, the Field Manual and reports easier to scan.
 
-![Archived view. Open to enlarge; original captures are in the details.](changelog/v1.0.9/signal-interface/overview.jpg)
+![The battle's interface sits straight on the battlefield](changelog/v1.0.9/signal-interface/battle-hud.jpg)
 
 <details>
 <summary>Explore this change</summary>
@@ -469,8 +445,6 @@ Every screen now reads like a battle management display: the battle's interface 
 - **The message history (L)** opens in place of the latest messages, only as tall as what's in it.
 - **Fixed:** the sign-in panel could open as an empty strip down the screen, and the Missions and Insignia panels
   could run off the bottom of it.
-
-![The battle's interface sits straight on the battlefield](changelog/v1.0.9/signal-interface/battle-hud.jpg)
 
 ![The same moment before](changelog/v1.0.9/signal-interface/battle-hud-before.jpg)
 
@@ -516,7 +490,7 @@ A battle no longer freezes for several seconds after it has loaded, it's ready t
 
 Joining waits for the whole battlefield to arrive and load, avoiding a half-built map and long freezes.
 
-![Archived view. Open to enlarge; original captures are in the details.](changelog/v1.0.9/joining-loads-first/overview.jpg)
+![Joining a running battle: the loading screen waits while the battlefield goes up](changelog/v1.0.9/joining-loads-first/loading-screen.jpg)
 
 <details>
 <summary>Explore this change</summary>
@@ -533,8 +507,6 @@ When you join someone else's battle, the loading screen now stays up until the w
   quay were open ground on a joining player's map, though they're road in the battle itself; they're road now.
 - Host and players must update together: a game with this change can't join a battle hosted by an older one.
 
-![Joining a running battle: the loading screen waits while the battlefield goes up](changelog/v1.0.9/joining-loads-first/loading-screen.jpg)
-
 </details>
 
 ## v1.0.8: UI and more!
@@ -547,7 +519,7 @@ When you join someone else's battle, the loading screen now stays up until the w
 
 A clearer battle overlay puts concise unit states, aligned figures and selected actions directly over the field.
 
-![Archived view. Open to enlarge; original captures are in the details.](changelog/v1.0.8/signal-interface/overview.jpg)
+![The battle's interface sits straight on the battlefield](changelog/v1.0.8/signal-interface/battle-hud.jpg)
 
 <details>
 <summary>Explore this change</summary>
@@ -569,8 +541,6 @@ The battle's interface now reads like a battle management display laid onto the 
   flickering in.
 - **F1** is a key reference in three columns, using your own key bindings, instead of a page of paragraphs.
 - **The message history (L)** opens in place of the latest messages, only as tall as what's in it.
-
-![The battle's interface sits straight on the battlefield](changelog/v1.0.8/signal-interface/battle-hud.jpg)
 
 ![The same moment before](changelog/v1.0.8/signal-interface/battle-hud-before.jpg)
 
@@ -670,7 +640,7 @@ Laying out a new battlefield - the rivers and the sea, the roads, the cover the 
 
 Compare commander rankings and explore players' records, battle histories and after-action reports.
 
-![Archived view. Open to enlarge; original captures are in the details.](changelog/v1.0.5/leaderboards-and-public-profiles/overview.jpg)
+![The leaderboards: experience of all time, this month and this week, with you marked](changelog/v1.0.5/leaderboards-and-public-profiles/leaderboards.jpg)
 
 <details>
 <summary>Explore this change</summary>
@@ -684,8 +654,6 @@ The website ranks the commanders with the most experience, of all time, this mon
 - **Sign out everywhere** on your profile signs your account out of every game and browser it's signed in to.
 - **A battle counts on your record** (battles fought and won) only if it earned experience: two minutes or more. A battle abandoned in its first minute no longer counts as fought, or won.
 
-![The leaderboards: experience of all time, this month and this week, with you marked](changelog/v1.0.5/leaderboards-and-public-profiles/leaderboards.jpg)
-
 ![A commander's page: their rank and record, their career and their battles](changelog/v1.0.5/leaderboards-and-public-profiles/player.jpg)
 
 ![A battle's after-action report on the website, every commander rated as the game rates them](changelog/v1.0.5/leaderboards-and-public-profiles/battle.jpg)
@@ -696,7 +664,7 @@ The website ranks the commanders with the most experience, of all time, this mon
 
 Use the console to investigate slow frames, compare graphics settings and inspect stutters.
 
-![Archived view. Open to enlarge; original captures are in the details.](changelog/v1.0.5/in-game-console/overview.jpg)
+![why: what's holding the frame rate back, and the stutters of the last minute](changelog/v1.0.5/in-game-console/console-why.jpg)
 
 <details>
 <summary>Explore this change</summary>
@@ -721,8 +689,6 @@ Press the key under Esc (` or ~) for a console. Type why and it works out what's
 - The compact performance overlay (F3) no longer draws its GPU bar over its first line, or its last line
   below the panel.
 
-![why: what's holding the frame rate back, and the stutters of the last minute](changelog/v1.0.5/in-game-console/console-why.jpg)
-
 ![graph: every frame of the last few seconds, split into what its time went on, stutters marked in red](changelog/v1.0.5/in-game-console/frame-graph.jpg)
 
 </details>
@@ -731,7 +697,7 @@ Press the key under Esc (` or ~) for a console. Type why and it works out what's
 
 Install Frontline with a Windows setup wizard or Mac disk image, in a location that supports updates.
 
-![Archived view. Open to enlarge; original captures are in the details.](changelog/v1.0.5/installers/overview.jpg)
+![The Windows installer: no administrator rights needed](changelog/v1.0.5/installers/windows-setup.jpg)
 
 <details>
 <summary>Explore this change</summary>
@@ -745,8 +711,6 @@ The game now comes with an installer on Windows and a disk image on the Mac, so 
   before you've even started the game.
 - The zips are still there, a link under each download button, to run the game from anywhere without installing it.
   Linux keeps its zip.
-
-![The Windows installer: no administrator rights needed](changelog/v1.0.5/installers/windows-setup.jpg)
 
 </details>
 
@@ -784,7 +748,7 @@ Boats no longer drive like cars on water. They slide through it, skid in a hard 
 
 Wildlife flees nearby danger and can be caught in the fighting without changing combat outcomes.
 
-![Archived view. Open to enlarge; original captures are in the details.](changelog/v1.0.5/wildlife-in-the-fighting/overview.jpg)
+![Fish stunned by a shell in the water, floating up belly-up](changelog/v1.0.5/wildlife-in-the-fighting/stunned-fish.jpg)
 
 <details>
 <summary>Explore this change</summary>
@@ -800,8 +764,6 @@ The animals run from more of the battle now, and can be killed by it: a round th
 - **They run from more:** rounds cracking past or striking nearby, a grass fire (they keep clear while it burns),
   a tree coming down, a helicopter flying low, and one of their own killed. Crows, gulls and bats now make off
   instead of circling on, and a fright spreads: when one flock goes up, the flocks feeding nearby follow.
-
-![Fish stunned by a shell in the water, floating up belly-up](changelog/v1.0.5/wildlife-in-the-fighting/stunned-fish.jpg)
 
 </details>
 
@@ -861,7 +823,7 @@ A battle could crash when a squad was wiped out partway through a planned attack
 
 Smoke, flames and blast dust now cover roads naturally instead of leaving sharp road-shaped gaps.
 
-![Archived view. Open to enlarge; original captures are in the details.](changelog/v1.0.5/roads-under-smoke/overview.jpg)
+![Before and after: shells bursting at a crossroads in town](changelog/v1.0.5/roads-under-smoke/before-after.jpg)
 
 <details>
 <summary>Explore this change</summary>
@@ -871,15 +833,13 @@ Smoke, flames and dust from a blast on or near a road now cover the road like th
 - Smoke drifting over a road no longer stops in a sharp line at the road's edges.
 - Flames on a road now burn over the whole road, not just over the stripes of a zebra crossing.
 
-![Before and after: shells bursting at a crossroads in town](changelog/v1.0.5/roads-under-smoke/before-after.jpg)
-
 </details>
 
 #### The website opens the game on Windows, and signing in says what's happening
 
 Website launch and join links reach Frontline on Windows, and sign-in shows its progress clearly.
 
-![Archived view. Open to enlarge; original captures are in the details.](changelog/v1.0.5/website-links-on-windows/overview.jpg)
+![Signing in from the game: the steps, and the one you're on](changelog/v1.0.5/website-links-on-windows/game-sign-in.jpg)
 
 <details>
 <summary>Explore this change</summary>
@@ -895,8 +855,6 @@ On Windows the website's Launch, Join and Find Match buttons, and its sign-in fo
   with a Try again button.
 - **On the website**, after you sign in for the game it shows the two steps, and whether your browser opened the
   game. If it didn't, it says what to do, with a button to open it again.
-
-![Signing in from the game: the steps, and the one you're on](changelog/v1.0.5/website-links-on-windows/game-sign-in.jpg)
 
 </details>
 
@@ -926,7 +884,7 @@ Working out the routes across a new battlefield now takes about half the time an
 
 Sign in from any website page, then go straight to your profile and record.
 
-![Archived view. Open to enlarge; original captures are in the details.](changelog/v1.0.4/website-sign-in-and-pages/overview.jpg)
+![Sign in opens over the page you're on](changelog/v1.0.4/website-sign-in-and-pages/sign-in.jpg)
 
 <details>
 <summary>Explore this change</summary>
@@ -940,8 +898,6 @@ Sign in, in the website's header, opens a sign-in window over whatever page you'
   have a page of their own, in the header.
 - Old links still work: the game's Download button goes to the downloads, and `/account` to your profile.
 
-![Sign in opens over the page you're on](changelog/v1.0.4/website-sign-in-and-pages/sign-in.jpg)
-
 ![The ranks and every insignia, on a page of their own](changelog/v1.0.4/website-sign-in-and-pages/ranks.jpg)
 
 </details>
@@ -952,7 +908,7 @@ Sign in, in the website's header, opens a sign-in window over whatever page you'
 
 Water impacts and sinking boats leave spreading foam instead of flat square artifacts.
 
-![Archived view. Open to enlarge; original captures are in the details.](changelog/v1.0.4/foam-rings/overview.jpg)
+![Before and after: a shell's splash in the sea](changelog/v1.0.4/foam-rings/before-after.jpg)
 
 <details>
 <summary>Explore this change</summary>
@@ -962,8 +918,6 @@ A shell landing in the water, a boat going down and rounds hitting the sea leave
 - A shell bursting in the water throws up its column and leaves a ring of foam running outward and breaking up,
   with white water boiling where the column fell back.
 - A sinking boat churns the water white as she goes down, and leaves a slick of oil spreading where she sank.
-
-![Before and after: a shell's splash in the sea](changelog/v1.0.4/foam-rings/before-after.jpg)
 
 </details>
 
@@ -1015,7 +969,7 @@ The battlefield has life of its own now. Birds feed in the fields and burst up a
 
 Launch the game, browse live battles and manage your account from dedicated website pages.
 
-![Archived view. Open to enlarge; original captures are in the details.](changelog/v1.0.3/website-pages/overview.jpg)
+![Play: launch the game, find a match, or download it](changelog/v1.0.3/website-pages/play.jpg)
 
 <details>
 <summary>Explore this change</summary>
@@ -1026,8 +980,6 @@ The Frontline website is more than one long page now: Play opens the game on you
 - **Live battles** have their own page, and the header says how many are on. A friend's invite link from the game opens it, with their battle at the top.
 - **Your account** shows your rank and record, lets you change your callsign, and holds your insignia collection. The menu on your insignia in the header takes you there, or signs you out.
 - On a phone, the site's links fold into a menu, and the Play page tells you the game needs a computer.
-
-![Play: launch the game, find a match, or download it](changelog/v1.0.3/website-pages/play.jpg)
 
 ![Your account: your rank, your callsign and the insignia you wear](changelog/v1.0.3/website-pages/account.jpg)
 
@@ -1065,7 +1017,7 @@ Frontline now comes for macOS too, on Apple silicon and Intel Macs: the whole ga
 
 Play solo Frontline in your browser without installing the game; multiplayer remains on desktop.
 
-![Archived view. Open to enlarge; original captures are in the details.](changelog/v1.0.2/play-in-a-browser/overview.jpg)
+![An AI battle in a browser tab](changelog/v1.0.2/play-in-a-browser/browser-battle.jpg)
 
 <details>
 <summary>Explore this change</summary>
@@ -1087,8 +1039,6 @@ Frontline now comes as a browser build too: the same game, played alone, with no
   their surroundings, so nothing stalls the battle the first time it happens.
 - Each release comes with the browser build alongside the Windows, Mac and Linux downloads.
 
-![An AI battle in a browser tab](changelog/v1.0.2/play-in-a-browser/browser-battle.jpg)
-
 ![The menu in the browser: multiplayer points you to the desktop game](changelog/v1.0.2/play-in-a-browser/browser-menu.jpg)
 
 </details>
@@ -1097,7 +1047,7 @@ Frontline now comes as a browser build too: the same game, played alone, with no
 
 Use GitHub to create an account and sign into the game through the Frontline website.
 
-![Archived view. Open to enlarge; original captures are in the details.](changelog/v1.0.2/sign-in-with-github/overview.jpg)
+![Sign in with GitHub sends you to the website, and waits for you there](changelog/v1.0.2/sign-in-with-github/sign-in.jpg)
 
 <details>
 <summary>Explore this change</summary>
@@ -1109,8 +1059,6 @@ Sign in with your GitHub account: the game opens the Frontline website, you sign
 - **The website has it too**: sign in there with GitHub to see your rank and pick your insignia.
 - **The game and the website sign in separately**, so signing out of one leaves the other signed in.
 - **Closed the game while you were signing in?** The website starts it again, signed in.
-
-![Sign in with GitHub sends you to the website, and waits for you there](changelog/v1.0.2/sign-in-with-github/sign-in.jpg)
 
 </details>
 
@@ -1180,7 +1128,7 @@ Real waves roll in off the sea now: a long swell crossed by the wind's chop, whi
 
 Gunfire uses quicker flashes, finer tracers and more natural smoke to make the action easier to read.
 
-![Archived view. Open to enlarge; original captures are in the details.](changelog/v1.0.2/realistic-gunfire/overview.jpg)
+![Rifles firing over a wall: before, every round threw up a big white cloud; now a tight flash that lights the wall and a quick puff of stone dust](changelog/v1.0.2/realistic-gunfire/rifles-before-after.jpg)
 
 <details>
 <summary>Explore this change</summary>
@@ -1198,8 +1146,6 @@ Muzzle flashes, tracers, bullet impacts and gun smoke are now sized and timed to
 - **Smoke billows:** gun smoke and dust are shaded as clouds, lit on the sun's side and in their own shadow on the
   other, and no two come out round.
 
-![Rifles firing over a wall: before, every round threw up a big white cloud; now a tight flash that lights the wall and a quick puff of stone dust](changelog/v1.0.2/realistic-gunfire/rifles-before-after.jpg)
-
 ![A tank's main gun: a fireball of burning gas that rolls into smoke](changelog/v1.0.2/realistic-gunfire/tank-fireball.jpg)
 
 ![The smoke a tank's gun leaves: round puffs before, one billowing cloud now](changelog/v1.0.2/realistic-gunfire/tank-smoke-before-after.jpg)
@@ -1212,7 +1158,7 @@ Muzzle flashes, tracers, bullet impacts and gun smoke are now sized and timed to
 
 Menus sit over a calmer tactical map with labelled contours, heights and a numbered grid.
 
-![Archived view. Open to enlarge; original captures are in the details.](changelog/v1.0.2/survey-map/overview.jpg)
+![The main menu in v1.0.0 (left) and now](changelog/v1.0.2/survey-map/before-and-after.jpg)
 
 <details>
 <summary>Explore this change</summary>
@@ -1224,8 +1170,6 @@ The living map behind the title, menu and loading screen is now a tactical surve
 - **The view pans:** the map slides slowly by as the view moves east, new ground is surveyed in from the right, and clouds drift over it, casting soft shadows.
 - **It follows you:** instead of a hill rising under the cursor, the whole map leans a little after it. A click sends a faint ring across the map instead of a ripple.
 - **The map at work:** every few seconds a burst of interference flashes across the map, and what it passes turns up for a few seconds: an enemy contact with its grid reference, a unit moving off along its track, or an axis of advance pencilled in to an objective.
-
-![The main menu in v1.0.0 (left) and now](changelog/v1.0.2/survey-map/before-and-after.jpg)
 
 ![The main menu, after a survey has turned up a contact, a unit and an axis of advance](changelog/v1.0.2/survey-map/menu.jpg)
 
@@ -1260,7 +1204,7 @@ A boat sent somewhere straight behind it now turns round and goes there, instead
 
 The Field Manual and Settings stay above the account card, keeping their controls accessible.
 
-![Archived view. Open to enlarge; original captures are in the details.](changelog/v1.0.2/field-manual-on-top/overview.jpg)
+![The Field Manual from the menu, its search and Close button in the clear](changelog/v1.0.2/field-manual-on-top/field-manual.jpg)
 
 <details>
 <summary>Explore this change</summary>
@@ -1269,8 +1213,6 @@ Opened from the menu, the Field Manual and Settings now cover everything behind 
 
 - The account card and the menu's notices sat on top of the Field Manual and Settings when they were open from the
   main menu. Both now come to the front as they open (a join invitation still shows over them).
-
-![The Field Manual from the menu, its search and Close button in the clear](changelog/v1.0.2/field-manual-on-top/field-manual.jpg)
 
 </details>
 
@@ -1284,7 +1226,7 @@ Opened from the menu, the Field Manual and Settings now cover everything behind 
 
 Earn experience in signed-in battles, climb 50 ranks and unlock patches for your callsign.
 
-![Archived view. Open to enlarge; original captures are in the details.](changelog/v1.0.1/ranks-and-insignia/overview.jpg)
+![Your insignia: the patches you've unlocked, and the ones still to come](changelog/v1.0.1/ranks-and-insignia/collection.jpg)
 
 <details>
 <summary>Explore this change</summary>
@@ -1297,8 +1239,6 @@ Sign in and every battle you fight earns XP. Climb 50 ranks from Recruit to Gene
 - **Wear one:** click the patch on the account card at the top right of the main menu to open your collection and pick one. Players in the lobby see it beside your name, and the after-action report shows what each battle earned.
 - **On the website:** the Insignia section shows the same collection, and lets you pick your insignia there too.
 
-![Your insignia: the patches you've unlocked, and the ones still to come](changelog/v1.0.1/ranks-and-insignia/collection.jpg)
-
 ![A promotion in the after-action report, and the patch that comes with it](changelog/v1.0.1/ranks-and-insignia/promotion.jpg)
 
 ![All 160: starter and rank patches, then the awards and unit patches still locked](changelog/v1.0.1/ranks-and-insignia/all-insignia.jpg)
@@ -1309,7 +1249,7 @@ Sign in and every battle you fight earns XP. Climb 50 ranks from Recruit to Gene
 
 Optional automatic error reports help developers diagnose failures and crashes.
 
-![Archived view. Open to enlarge; original captures are in the details.](changelog/v1.0.1/error-reports/overview.jpg)
+![The switch, at the bottom of Settings > Interface](changelog/v1.0.1/error-reports/send-error-reports.jpg)
 
 <details>
 <summary>Explore this change</summary>
@@ -1323,15 +1263,13 @@ When something goes wrong in the game, or it crashes, it now tells the developer
 - **Crashes** are sent the next time you start the game.
 - **To turn it off:** Settings > Interface > Send error reports.
 
-![The switch, at the bottom of Settings > Interface](changelog/v1.0.1/error-reports/send-error-reports.jpg)
-
 </details>
 
 #### Rejoin a battle you dropped out of
 
 Return to your side and surviving force after a dropped connection, crash or accidental departure.
 
-![Archived view. Open to enlarge; original captures are in the details.](changelog/v1.0.1/rejoin-a-battle/overview.jpg)
+![Back on the main menu after dropping out: Rejoin gets you back into the battle](changelog/v1.0.1/rejoin-a-battle/rejoin-card.jpg)
 
 <details>
 <summary>Explore this change</summary>
@@ -1348,15 +1286,13 @@ Lost your connection, crashed or left by mistake? The main menu now offers Rejoi
 - **HQ reserves** go to a commander who is still in the battle, not to one who has left.
 - Playing online needs this version on every computer in the battle.
 
-![Back on the main menu after dropping out: Rejoin gets you back into the battle](changelog/v1.0.1/rejoin-a-battle/rejoin-card.jpg)
-
 </details>
 
 #### A server browser, and a lobby that shows who's coming
 
 Browse online and local battles, then see teams, available seats and player readiness before starting.
 
-![Archived view. Open to enlarge; original captures are in the details.](changelog/v1.0.1/server-browser/overview.jpg)
+![Joining a battle and the lobby, before and after](changelog/v1.0.1/server-browser/before-and-after.jpg)
 
 <details>
 <summary>Explore this change</summary>
@@ -1378,8 +1314,6 @@ Find any battle being hosted, online or on your own network, in a proper server 
 - **Joining shows each step** as it happens, asks for the password if there is one, and says plainly what went wrong
   if it can't get in.
 - Players with the same name get a number, so two "Commander"s can tell themselves apart.
-
-![Joining a battle and the lobby, before and after](changelog/v1.0.1/server-browser/before-and-after.jpg)
 
 ![The server browser: every battle being hosted, with its mode, players, status and connection](changelog/v1.0.1/server-browser/browser.jpg)
 
@@ -1417,7 +1351,7 @@ The host lays out a new battle about a second faster, and the game is ready abou
 
 Review the battle at a glance, then explore commanders, units and the moments that changed the fight.
 
-![Archived view. Open to enlarge; original captures are in the details.](changelog/v1.0.0/after-action-report/overview.jpg)
+![The end of a battle: the result, and your rating](changelog/v1.0.0/after-action-report/victory.jpg)
 
 <details>
 <summary>Explore this change</summary>
@@ -1433,8 +1367,6 @@ Hold Tab for your side's figures as the battle goes. When it ends, the result sl
 - Every tab comes in row by row: numbers count up, bars and dials fill, honours land one at a time, and the lines draw themselves.
 - Kills go to whoever did them, fire support and mines included, even when a wounded man bleeds out later.
 
-![The end of a battle: the result, and your rating](changelog/v1.0.0/after-action-report/victory.jpg)
-
 ![The after-action report: head to head, honours and the soldiers who stood out](changelog/v1.0.0/after-action-report/report-summary.jpg)
 
 ![Every commander rated, and what the rating is made of](changelog/v1.0.0/after-action-report/report-commanders.jpg)
@@ -1449,7 +1381,7 @@ Hold Tab for your side's figures as the battle goes. When it ends, the result sl
 
 Find out what each release changes through notes on the website, linked from the game's update notice.
 
-![Archived view. Open to enlarge; original captures are in the details.](changelog/v1.0.0/changelog/overview.jpg)
+![An update downloaded and ready, with a link to what's in it](changelog/v1.0.0/changelog/whats-new.jpg)
 
 <details>
 <summary>Explore this change</summary>
@@ -1461,15 +1393,13 @@ Every release now comes with a changelog: what changed and why it matters, with 
 - **The release notes on GitHub** are the same changelog.
 - **Updates check the Frontline server first** for the latest version, so the game, the website and the server always agree on what's current.
 
-![An update downloaded and ready, with a link to what's in it](changelog/v1.0.0/changelog/whats-new.jpg)
-
 </details>
 
 #### Field defences rebuilt, and four new ones
 
 Build more recognizable fieldworks, including new HESCO walls, barricades, camouflage nets and ammo caches.
 
-![Archived view. Open to enlarge; original captures are in the details.](changelog/v1.0.0/field-defences/overview.jpg)
+![Wire, tank traps, minefields and concrete walls, before and after](changelog/v1.0.0/field-defences/before-and-after.jpg)
 
 <details>
 <summary>Explore this change</summary>
@@ -1486,8 +1416,6 @@ Sandbags, wire, tank traps, minefields, walls, nests, pits, bunkers and towers a
 - **New: Ammo cache** (both sides): men within 7 m top up their rounds, grenades and rockets until it runs dry, and soldiers out of ammo head for it before the FOB. If it's destroyed, it explodes, and rounds keep going off for a few seconds.
 - The computer opponent builds all four.
 
-![Wire, tank traps, minefields and concrete walls, before and after](changelog/v1.0.0/field-defences/before-and-after.jpg)
-
 ![Two new chest-high walls: the Coalition's HESCO barrier and the Rebels' barricade](changelog/v1.0.0/field-defences/hesco-and-barricade.jpg)
 
 ![A camouflage net over a parked car](changelog/v1.0.0/field-defences/camouflage-net.jpg)
@@ -1502,7 +1430,7 @@ Sandbags, wire, tank traps, minefields, walls, nests, pits, bunkers and towers a
 
 Find and change any keyboard action, with two bindings per action and individual resets.
 
-![Archived view. Open to enlarge; original captures are in the details.](changelog/v1.0.0/rebindable-controls/overview.jpg)
+![Settings > Controls: every action by category, with two keys each](changelog/v1.0.0/rebindable-controls/controls.jpg)
 
 <details>
 <summary>Explore this change</summary>
@@ -1516,15 +1444,13 @@ Every key the game uses can now be changed in Settings > Controls: grouped by ca
 - **The hints follow your keys:** the command card, the controls help (F1), tooltips and the loading screen's tips all show the keys as you've set them.
 - **Two new optional keys:** one to ping at the cursor (hold it for the ping wheel), and one to step through your co-commanders' views.
 
-![Settings > Controls: every action by category, with two keys each](changelog/v1.0.0/rebindable-controls/controls.jpg)
-
 </details>
 
 #### Interface themes, and the living map in battle
 
 Choose an interface palette that suits you, with matching menus and a tactical frame over the battlefield.
 
-![Archived view. Open to enlarge; original captures are in the details.](changelog/v1.0.0/interface-themes/overview.jpg)
+![Night Vision, Thermal, Arctic and Dusk](changelog/v1.0.0/interface-themes/themes.jpg)
 
 <details>
 <summary>Explore this change</summary>
@@ -1535,8 +1461,6 @@ Pick a theme for the whole interface in Settings > Interface: Field Brass, Night
 - **Changes live:** the interface recolours as soon as you pick a theme, and the map's colours flow into the new ones.
 - **A tactical frame:** panels have accent brackets on their corners, like the crosses on the map's grid, and a faint glow. The button under the cursor glows too.
 - **The map in battle:** the Esc menu, the help, the settings and the end of the battle sit over a see-through version of the living map, with the battlefield showing through. At the end of a battle a wave wakes it from the middle of the screen.
-
-![Night Vision, Thermal, Arctic and Dusk](changelog/v1.0.0/interface-themes/themes.jpg)
 
 ![The Esc menu in a battle, over the map (Night Vision)](changelog/v1.0.0/interface-themes/battle-menu.jpg)
 
@@ -1550,7 +1474,7 @@ Pick a theme for the whole interface in Settings > Interface: Field Brass, Night
 
 A moving topographic map brings the title, menus and loading screen to life.
 
-![Archived view. Open to enlarge; original captures are in the details.](changelog/v1.0.0/living-map/overview.jpg)
+![The title, just after the wave has woken the map](changelog/v1.0.0/living-map/title.jpg)
 
 <details>
 <summary>Explore this change</summary>
@@ -1564,8 +1488,6 @@ The title screen, the main menu and the loading screen now sit on a living topog
 - **The loading screen:** a survey beam sweeps the map and the view closes in on the ground, then dives into it as the battle fades in.
 - The menu's 3D gun position is gone; the map replaces it.
 
-![The title, just after the wave has woken the map](changelog/v1.0.0/living-map/title.jpg)
-
 ![The main menu, with a hill rising under the cursor](changelog/v1.0.0/living-map/menu.jpg)
 
 ![The loading screen, closing in on the ground](changelog/v1.0.0/living-map/loading.jpg)
@@ -1576,7 +1498,7 @@ The title screen, the main menu and the loading screen now sit on a living topog
 
 Sign in from the main menu to keep a battle history and reopen past after-action reports.
 
-![Archived view. Open to enlarge; original captures are in the details.](changelog/v1.0.0/service-record/overview.jpg)
+![The account card on the main menu](changelog/v1.0.0/service-record/account-card.jpg)
 
 <details>
 <summary>Explore this change</summary>
@@ -1587,8 +1509,6 @@ Sign in from the account card at the top right of the main menu. Signed in, ever
 - **Your service record** keeps every battle you fight as a commander: what it was, your side, the result and length, your rating, kills and losses.
 - **Service Record** on the main menu shows your career (battles, wins, kills, K/D, average rating and time in battle) and every battle, newest first. Click one for its after-action report.
 - **Battles fought signed out** or offline wait on your computer (the last ten) and go on your record when you sign in.
-
-![The account card on the main menu](changelog/v1.0.0/service-record/account-card.jpg)
 
 ![Your service record: your career, and every battle](changelog/v1.0.0/service-record/service-record.jpg)
 
@@ -1602,7 +1522,7 @@ Sign in from the account card at the top right of the main menu. Signed in, ever
 
 Read a firefight through muzzle flashes, recoil, tracers and impacts that respond to the surface they hit.
 
-![Archived view. Open to enlarge; original captures are in the details.](changelog/v1.0.0/gunfire-effects/overview.jpg)
+![A tank and an IFV firing at night: the flashes light up the vehicles and the ground, and the shell's tracer streaks to its target](changelog/v1.0.0/gunfire-effects/night-armour.jpg)
 
 <details>
 <summary>Explore this change</summary>
@@ -1622,8 +1542,6 @@ Muzzle flashes, tracers, recoil and bullet impacts are rebuilt from scratch: eve
 - **Tank guns** fire with a blinding flash, a fireball, burning flecks, a rolling cloud of smoke and dust blasted
   off the ground. **Rockets** kick up a back-blast behind the launcher.
 - Heavy firefights run about as fast as they did before.
-
-![A tank and an IFV firing at night: the flashes light up the vehicles and the ground, and the shell's tracer streaks to its target](changelog/v1.0.0/gunfire-effects/night-armour.jpg)
 
 ![A tank's main gun by day](changelog/v1.0.0/gunfire-effects/tank-gun.jpg)
 
@@ -1704,7 +1622,7 @@ In co-op you can see what the other commanders on your side are doing: where the
 
 See teammates' selections, attention and planned actions so you can coordinate attacks and fire support.
 
-![Archived view. Open to enlarge; original captures are in the details.](changelog/v0.1.8/co-commanders/overview.jpg)
+![Two commanders: one aiming artillery, one digging a trench line, with their views, pings and the Command Net](changelog/v0.1.8/co-commanders/co-commanders.jpg)
 
 <details>
 <summary>Explore this change</summary>
@@ -1717,8 +1635,6 @@ Each commander on your side gets a colour, and you see where they're looking, th
 - **What they're about to do:** the building they're placing, the line they're dragging out, or a fire mission's target area with a hazard sign.
 - **The Command Net** (top right) lists each teammate's latest move, with buttons to look at their view or follow it live.
 - When a teammate builds, calls in support, trains a unit or starts research, the rest of the side is told, so everyone knows where the shared supply went. Settings > Interface can turn all of this off.
-
-![Two commanders: one aiming artillery, one digging a trench line, with their views, pings and the Command Net](changelog/v0.1.8/co-commanders/co-commanders.jpg)
 
 </details>
 
@@ -1750,7 +1666,7 @@ The game opens at the window size you chose, and the squad card fits even at the
 
 Frontline opens at your chosen window size, or maximizes when that size will not fit your screen.
 
-![Archived view. Open to enlarge; original captures are in the details.](changelog/v0.1.7/window-size/overview.jpg)
+![A 4:3 screen at the default and largest scales](changelog/v0.1.7/window-size/four-three.jpg)
 
 <details>
 <summary>Explore this change</summary>
@@ -1759,8 +1675,6 @@ Settings > Display > Window size was saved but ignored at launch, so the game al
 
 - The window opens at the size you picked, so the interface (which follows the window) is the size you expect from the start.
 - If the size doesn't fit your screen with its title bar, the window is maximised instead of being pushed off the top.
-
-![A 4:3 screen at the default and largest scales](changelog/v0.1.7/window-size/four-three.jpg)
 
 ![An ultrawide screen at the largest scale](changelog/v0.1.7/window-size/ultrawide.jpg)
 
@@ -1789,7 +1703,7 @@ The town and every village now have a supply dump worth fighting for. Hold one a
 
 Capture settlements to produce supplies, then protect the trucks bringing them back to your FOB.
 
-![Archived view. Open to enlarge; original captures are in the details.](changelog/v0.1.6/towns/overview.jpg)
+![A village's supply dump, flying the holder's colours](changelog/v0.1.6/towns/village-dump.jpg)
 
 <details>
 <summary>Explore this change</summary>
@@ -1802,8 +1716,6 @@ Each village and the town has a named supply dump. Hold the ground round it and 
 - **The town's truck** drives each load to your nearest FOB on a road of its own, which can be ambushed or blocked like any supply road. A destroyed truck loses its load.
 - **More reasons to hold them:** you can build a FOB near a town you hold, your men refill ammunition at its dump, and it gives you sight around it. Prisoners can tell you about towns and their trucks.
 - **The AI goes for them too:** it sends squads to take towns from the start, holds them, and counts enemy-held towns as targets.
-
-![A village's supply dump, flying the holder's colours](changelog/v0.1.6/towns/village-dump.jpg)
 
 ![Selecting a dump: who holds it, its stock, and its truck](changelog/v0.1.6/towns/village-selected.jpg)
 
@@ -1874,7 +1786,7 @@ You can see what your side can see: the fog of war is drawn on the battlefield a
 
 See where your side has eyes on the ground and where enemy positions are only last-known reports.
 
-![Archived view. Open to enlarge; original captures are in the details.](changelog/v0.1.4/fog-of-war/overview.jpg)
+![The fog of war in a bridgehead battle](changelog/v0.1.4/fog-of-war/fog-of-war.jpg)
 
 <details>
 <summary>Explore this change</summary>
@@ -1886,8 +1798,6 @@ Ground your side can't see right now is drawn darker on the battlefield and the 
 - **Last-known positions:** an enemy anyone on your side has seen stays marked where it was last seen for 90 seconds, with how long ago.
 - The new eye button in the map layers turns the fog off.
 
-![The fog of war in a bridgehead battle](changelog/v0.1.4/fog-of-war/fog-of-war.jpg)
-
 ![The same moment before: nothing showed where your vision ended](changelog/v0.1.4/fog-of-war/before.jpg)
 
 </details>
@@ -1896,7 +1806,7 @@ Ground your side can't see right now is drawn darker on the battlefield and the 
 
 Use aircraft and overwatch drones to reveal ground ahead of your troops.
 
-![Archived view. Open to enlarge; original captures are in the details.](changelog/v0.1.4/recon-flights/overview.jpg)
+![A recon pass lights a strip over the Rebel positions](changelog/v0.1.4/recon-flights/recon-pass.jpg)
 
 <details>
 <summary>Explore this change</summary>
@@ -1909,8 +1819,6 @@ Every aircraft now reveals the ground it flies over. New fire-support calls fly 
 - **Watchtowers** see further, and further still with a lookout up them. Placing one shows its reach.
 - **The Rebels get a drone too:** the AR-2 Tayran quadcopter, at the Helipad.
 - The enemy is warned when a recon flight or overwatch drone comes over, and the AI calls recon flights before it attacks ground it can't see.
-
-![A recon pass lights a strip over the Rebel positions](changelog/v0.1.4/recon-flights/recon-pass.jpg)
 
 ![The Caesar spotter plane](changelog/v0.1.4/recon-flights/spotter-plane.jpg)
 
@@ -1946,7 +1854,7 @@ Music, made in code like everything else: a theme for the menu, and a battle sco
 
 Balance music, effects, ambience and interface sounds separately, or mute the game while it is in the background.
 
-![Archived view. Open to enlarge; original captures are in the details.](changelog/v0.1.3/audio-settings/overview.jpg)
+![Settings > Audio](changelog/v0.1.3/audio-settings/audio-settings.jpg)
 
 <details>
 <summary>Explore this change</summary>
@@ -1957,8 +1865,6 @@ Settings > Audio has separate sliders for music, effects, ambience and the inter
 - **Music in battle** can be switched off while keeping the menu music.
 - **Mute in the background** silences the game when you switch away.
 - The sliders follow your ears: halfway sounds about half as loud.
-
-![Settings > Audio](changelog/v0.1.3/audio-settings/audio-settings.jpg)
 
 </details>
 
@@ -1991,7 +1897,7 @@ Things catch fire now: woods, hedgerows, timber roofs and wrecks burn and spread
 
 Fire spreads through nearby flammable scenery, with the wind influencing where it takes hold next.
 
-![Archived view. Open to enlarge; original captures are in the details.](changelog/v0.1.2/fire/overview.jpg)
+![A hedgerow and a grass fire, with smoke drifting downwind](changelog/v0.1.2/fire/fire-day.jpg)
 
 <details>
 <summary>Explore this change</summary>
@@ -2003,8 +1909,6 @@ Shells, bombs and burning wrecks set things alight. Fires take hold, roar, sprea
 - **Grass fires:** a heavy round in long grass or undergrowth can start a ring of low flames creeping outward over blackened ground.
 - **Spreading:** at full blaze a fire jumps to what's nearby, so a hedgerow or a wood can go up one tree after another.
 
-![A hedgerow and a grass fire, with smoke drifting downwind](changelog/v0.1.2/fire/fire-day.jpg)
-
 ![The same fires at night](changelog/v0.1.2/fire/fire-night.jpg)
 
 </details>
@@ -2015,7 +1919,7 @@ Shells, bombs and burning wrecks set things alight. Fires take hold, roar, sprea
 
 See the force of an explosion in its fireball and debris, followed by a continuous column of drifting smoke.
 
-![Archived view. Open to enlarge; original captures are in the details.](changelog/v0.1.2/explosions-and-smoke/overview.jpg)
+![Explosions before and after](changelog/v0.1.2/explosions-and-smoke/before-and-after.jpg)
 
 <details>
 <summary>Explore this change</summary>
@@ -2024,8 +1928,6 @@ Explosions throw a proper fireball and debris, and smoke rises as one billowing 
 
 - Fireballs last long enough to see, and the bigger the round, the bigger the blast.
 - Smoke from fires and wrecks rises as a continuous column and drifts with the wind.
-
-![Explosions before and after](changelog/v0.1.2/explosions-and-smoke/before-and-after.jpg)
 
 </details>
 
@@ -2041,7 +1943,7 @@ The interface grows with your window, stays sharp at any size, and can go much b
 
 Make the interface larger without blurring text or pushing essential controls into one another.
 
-![Archived view. Open to enlarge; original captures are in the details.](changelog/v0.1.1/interface-scale/overview.jpg)
+![Before and after, at 1080p](changelog/v0.1.1/interface-scale/before-and-after.jpg)
 
 <details>
 <summary>Explore this change</summary>
@@ -2053,8 +1955,6 @@ Interface scale now follows the size of your window, text and symbols stay crisp
 - **Goes bigger:** the slider reaches the largest scale your window has room for (2× at 1080p, 2.67× at 1440p).
 - **No collisions:** the minimap, selection panel and command card make room for each other, and the Field Manual and observer bar stay on screen.
 - It follows window resizes and fullscreen switches as they happen.
-
-![Before and after, at 1080p](changelog/v0.1.1/interface-scale/before-and-after.jpg)
 
 ![The largest scale, with Settings open](changelog/v0.1.1/interface-scale/largest.jpg)
 
@@ -2072,7 +1972,7 @@ The first build you can download and play: the whole game as it stands, now with
 
 Find an open battle or host one for others to join, usually without configuring your router.
 
-![Archived view. Open to enlarge; original captures are in the details.](changelog/v0.1.0/online-play/overview.jpg)
+![Join Game: the battles being hosted, and connect by address](changelog/v0.1.0/online-play/join-a-battle.jpg)
 
 <details>
 <summary>Explore this change</summary>
@@ -2085,15 +1985,13 @@ Press Find Match to drop into an open battle, or host one for the next player to
 - **Join by address** still works for LAN and VPN games.
 - **Accounts are optional.** Sign in beside your callsign and it's yours: no one else can register it, and battles you host show a tick.
 
-![Join Game: the battles being hosted, and connect by address](changelog/v0.1.0/online-play/join-a-battle.jpg)
-
 </details>
 
 #### Missions
 
 Play five objective-driven operations alone or with friends, with radio updates guiding the action.
 
-![Archived view. Open to enlarge; original captures are in the details.](changelog/v0.1.0/missions/overview.jpg)
+![Kingpin, one of the missions](changelog/v0.1.0/missions/kingpin.jpg)
 
 <details>
 <summary>Explore this change</summary>
@@ -2103,15 +2001,13 @@ Five short operations with objectives and radio traffic, to play alone or in co-
 - Each mission sets a side, a goal and a time of day, and ends in **Mission accomplished** or **Mission failed**.
 - Play them alone, or host one for friends to join in co-op.
 
-![Kingpin, one of the missions](changelog/v0.1.0/missions/kingpin.jpg)
-
 </details>
 
 #### The game keeps itself up to date
 
 Get new versions in the background and restart when you are ready to play them.
 
-![Archived view. Open to enlarge; original captures are in the details.](changelog/v0.1.0/self-updating/overview.jpg)
+![An update downloaded and ready](changelog/v0.1.0/self-updating/update-ready.jpg)
 
 <details>
 <summary>Explore this change</summary>
@@ -2122,8 +2018,6 @@ When a new version comes out, the game downloads it in the background, checks it
 - Every download is checked against the checksum published with the release before it's installed.
 - If the game's folder can't be written to, it links to the download instead.
 - The version you're running is shown at the bottom right of the menu.
-
-![An update downloaded and ready](changelog/v0.1.0/self-updating/update-ready.jpg)
 
 </details>
 
@@ -2148,7 +2042,7 @@ The battles being hosted right now, a Join button that opens the game and connec
 
 Keep your focus while zooming, orbit the battlefield, and use the whole minimap without buttons covering its edges.
 
-![Archived view. Open to enlarge; original captures are in the details.](changelog/v0.1.0/camera-and-minimap/overview.jpg)
+![The new camera, tilted over a village](changelog/v0.1.0/camera-and-minimap/camera.jpg)
 
 <details>
 <summary>Explore this change</summary>
@@ -2161,8 +2055,6 @@ The mouse wheel zooms towards the cursor, middle-drag turns and tilts, and the m
 - **Backspace** (or the compass on the minimap) resets the view, **Ctrl + F** follows the selection, and **Ctrl + F5 to F8** save views that **F5 to F8** recall.
 - Jumps to alerts, bases and groups glide instead of cutting.
 - The minimap's buttons moved off the map, so its top row and right-hand column are visible.
-
-![The new camera, tilted over a village](changelog/v0.1.0/camera-and-minimap/camera.jpg)
 
 ![The minimap before and after](changelog/v0.1.0/camera-and-minimap/minimap.jpg)
 

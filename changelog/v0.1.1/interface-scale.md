@@ -4,9 +4,6 @@ summary = "Make the interface larger without blurring text or pushing essential 
 kind = "improved"
 headline = true
 
-[[screenshots]]
-file = "overview.jpg"
-caption = "Archived view. Open to enlarge; original captures are in the details."
 
 [[screenshots]]
 file = "before-and-after.jpg"

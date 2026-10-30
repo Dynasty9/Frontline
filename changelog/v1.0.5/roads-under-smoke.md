@@ -3,9 +3,6 @@ title = "Roads no longer show through smoke and explosions"
 summary = "Smoke, flames and blast dust now cover roads naturally instead of leaving sharp road-shaped gaps."
 kind = "fixed"
 
-[[screenshots]]
-file = "overview.jpg"
-caption = "Archived view. Open to enlarge; original captures are in the details."
 
 [[screenshots]]
 file = "before-after.jpg"

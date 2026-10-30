@@ -14,10 +14,18 @@ caption = "Before: the same release opens with all supporting screenshots and fu
 [[screenshots]]
 file = "phone.jpg"
 caption = "The overview and detail control remain readable on a narrow phone screen. Images open at full size."
+
+[[screenshots]]
+file = "details.jpg"
+caption = "Expand the original notes and supporting gallery without leaving the release."
+
+[[screenshots]]
+file = "phone-entry.jpg"
+caption = "On phones, the same explanation and uncropped image stack into one readable column."
 +++
 
 All 87 published entries now begin with a concise player-facing summary. Archived
-images have consistent presentation frames; existing motion clips keep their
+images appear directly in the site’s brass-and-ink layout; existing motion clips keep their
 playback controls and attribution. Expand **Explore this change** for the original
 notes, screenshots and supporting clips. Original release dates and feature claims
 are preserved.
@@ -30,3 +38,7 @@ are labelled as such.
 The same overview/detail structure is used in the generated repository changelog
 and future release notes. Reusable capture stages, media-selection guidance and
 an evidence audit make this part of preparing each new change.
+
+The page shares the main site’s condensed headings, thin rules and shadcn/Radix
+components. Desktop entries place an explanation beside uncropped media; narrow
+screens stack the same content. Supporting notes expand beneath each entry.

@@ -19,11 +19,19 @@ Choose the medium by what proves the change:
 - Reliability, compatibility and invisible fixes: text is often the best medium.
   Do not add decorative gameplay just to give every entry a picture.
 
-Use reusable stages in `tools/showcase/`: archive plates for release evidence,
+Use reusable stages in `tools/showcase/`: source media for release evidence,
 controlled motion stages for side-by-side physics, and the game's scenario/UI
 capture flags for actual gameplay and interactions. Consult `tools/showcase/README.md`
 and `changelog/README.md` from the repository root. Prefer extending a stage's
 configuration over making another one-off scene.
+
+Before designing presentation, inspect the main site and its shared components.
+Use its shadcn/Radix primitives, theme tokens, condensed display headings, brass
+accent and thin rules. On the website, show source media directly with HTML
+headings and captions. Do not nest a branded poster or screenshot of a card inside
+another card, repeat the title inside the image, or introduce a separate palette.
+Keep screenshots uncropped and legible; let the layout supply the framing.
+Reserve composed archive plates for standalone exports that need their own context.
 
 A stage should establish context, cue the action, hold the result, then loop
 without a jarring unexplained cut. Keep camera, seed, duration, controls and scale

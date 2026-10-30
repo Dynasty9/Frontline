@@ -3,9 +3,6 @@ title = "Smoother large battles"
 summary = "Large battles draw scenery and squad symbols more efficiently while preserving combat behavior."
 kind = "improved"
 
-[[screenshots]]
-file = "overview.jpg"
-caption = "Archived view. Open to enlarge; original captures are in the details."
 
 [[screenshots]]
 file = "before.jpg"

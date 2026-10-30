@@ -3,9 +3,6 @@ title = "A server browser, and a lobby that shows who's coming"
 summary = "Browse online and local battles, then see teams, available seats and player readiness before starting."
 kind = "new"
 
-[[screenshots]]
-file = "overview.jpg"
-caption = "Archived view. Open to enlarge; original captures are in the details."
 
 [[screenshots]]
 file = "before-and-after.jpg"

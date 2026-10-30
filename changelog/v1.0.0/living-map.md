@@ -3,9 +3,6 @@ title = "A living map behind the title and menu"
 summary = "A moving topographic map brings the title, menus and loading screen to life."
 kind = "new"
 
-[[screenshots]]
-file = "overview.jpg"
-caption = "Archived view. Open to enlarge; original captures are in the details."
 
 [[screenshots]]
 file = "title.jpg"

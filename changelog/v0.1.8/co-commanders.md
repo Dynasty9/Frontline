@@ -4,9 +4,6 @@ summary = "See teammates' selections, attention and planned actions so you can c
 kind = "new"
 headline = true
 
-[[screenshots]]
-file = "overview.jpg"
-caption = "Archived view. Open to enlarge; original captures are in the details."
 
 [[screenshots]]
 file = "co-commanders.jpg"

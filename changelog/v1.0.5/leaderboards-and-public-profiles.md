@@ -4,9 +4,6 @@ summary = "Compare commander rankings and explore players' records, battle histo
 kind = "new"
 headline = true
 
-[[screenshots]]
-file = "overview.jpg"
-caption = "Archived view. Open to enlarge; original captures are in the details."
 
 [[screenshots]]
 file = "leaderboards.jpg"

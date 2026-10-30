@@ -3,9 +3,6 @@ title = "A tactical survey map behind the menus"
 summary = "Menus sit over a calmer tactical map with labelled contours, heights and a numbered grid."
 kind = "improved"
 
-[[screenshots]]
-file = "overview.jpg"
-caption = "Archived view. Open to enlarge; original captures are in the details."
 
 [[screenshots]]
 file = "before-and-after.jpg"

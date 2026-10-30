@@ -4,9 +4,6 @@ summary = "Read a firefight through muzzle flashes, recoil, tracers and impacts 
 kind = "improved"
 headline = true
 
-[[screenshots]]
-file = "overview.jpg"
-caption = "Archived view. Open to enlarge; original captures are in the details."
 
 [[screenshots]]
 file = "night-armour.jpg"

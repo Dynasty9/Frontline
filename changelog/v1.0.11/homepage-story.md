@@ -3,9 +3,6 @@ title = "A new introduction to Frontline"
 summary = "Discover Frontline through tactical decisions, combined-arms footage and operation briefings."
 kind = "improved"
 
-[[screenshots]]
-file = "overview.jpg"
-caption = "Archived view. Open to enlarge; original captures are in the details."
 
 [[screenshots]]
 file = "after-desktop.jpg"

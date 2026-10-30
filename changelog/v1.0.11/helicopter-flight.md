@@ -13,7 +13,7 @@ caption = "After: the same mid-flight order produces a banked turn while momentu
 
 [[videos]]
 file = "helicopter-turn.mp4"
-poster = "overview.jpg"
+poster = "helicopter-turn-poster.jpg"
 caption = "A Mohawk banks and settles over its sling pickup. Recorded in the current build, October 2026."
 +++
 

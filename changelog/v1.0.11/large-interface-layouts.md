@@ -3,9 +3,6 @@ title = "Keep large interfaces within reach"
 summary = "Keep menus, controls and multiplayer rosters reachable in small windows and at large interface scales."
 kind = "fixed"
 
-[[screenshots]]
-file = "overview.jpg"
-caption = "Archived view. Open to enlarge; original captures are in the details."
 
 [[screenshots]]
 file = "lobby-before.jpg"

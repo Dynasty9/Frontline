@@ -4,9 +4,6 @@ summary = "See where your side has eyes on the ground and where enemy positions 
 kind = "new"
 headline = true
 
-[[screenshots]]
-file = "overview.jpg"
-caption = "Archived view. Open to enlarge; original captures are in the details."
 
 [[screenshots]]
 file = "fog-of-war.jpg"

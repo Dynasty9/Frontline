@@ -3,9 +3,6 @@ title = "A volume slider for each kind of sound"
 summary = "Balance music, effects, ambience and interface sounds separately, or mute the game while it is in the background."
 kind = "improved"
 
-[[screenshots]]
-file = "overview.jpg"
-caption = "Archived view. Open to enlarge; original captures are in the details."
 
 [[screenshots]]
 file = "audio-settings.jpg"

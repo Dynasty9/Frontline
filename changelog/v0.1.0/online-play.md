@@ -4,9 +4,6 @@ summary = "Find an open battle or host one for others to join, usually without c
 kind = "new"
 headline = true
 
-[[screenshots]]
-file = "overview.jpg"
-caption = "Archived view. Open to enlarge; original captures are in the details."
 
 [[screenshots]]
 file = "join-a-battle.jpg"

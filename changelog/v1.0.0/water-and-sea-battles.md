@@ -22,7 +22,7 @@ caption = "Before and after: the harbour and the river"
 
 [[videos]]
 file = "boat-sinking.mp4"
-poster = "overview.jpg"
+poster = "boat-sinking-poster.jpg"
 caption = "A burning boat settles into the sea as foam spreads around its hull. Recorded in the current build, October 2026."
 +++
 

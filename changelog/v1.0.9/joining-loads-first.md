@@ -3,9 +3,6 @@ title = "Joining a battle loads it before it starts"
 summary = "Joining waits for the whole battlefield to arrive and load, avoiding a half-built map and long freezes."
 kind = "fixed"
 
-[[screenshots]]
-file = "overview.jpg"
-caption = "Archived view. Open to enlarge; original captures are in the details."
 
 [[screenshots]]
 file = "loading-screen.jpg"

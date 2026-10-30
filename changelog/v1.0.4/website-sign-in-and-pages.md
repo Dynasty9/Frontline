@@ -3,9 +3,6 @@ title = "Signing in on the website, in one click"
 summary = "Sign in from any website page, then go straight to your profile and record."
 kind = "improved"
 
-[[screenshots]]
-file = "overview.jpg"
-caption = "Archived view. Open to enlarge; original captures are in the details."
 
 [[screenshots]]
 file = "sign-in.jpg"

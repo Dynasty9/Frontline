@@ -3,9 +3,6 @@ title = "Interface themes, and the living map in battle"
 summary = "Choose an interface palette that suits you, with matching menus and a tactical frame over the battlefield."
 kind = "new"
 
-[[screenshots]]
-file = "overview.jpg"
-caption = "Archived view. Open to enlarge; original captures are in the details."
 
 [[screenshots]]
 file = "themes.jpg"

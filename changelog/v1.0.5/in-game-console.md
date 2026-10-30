@@ -3,9 +3,6 @@ title = "A console that tells you why the game is slow"
 summary = "Use the console to investigate slow frames, compare graphics settings and inspect stutters."
 kind = "new"
 
-[[screenshots]]
-file = "overview.jpg"
-caption = "Archived view. Open to enlarge; original captures are in the details."
 
 [[screenshots]]
 file = "console-why.jpg"

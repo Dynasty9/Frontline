@@ -4,9 +4,6 @@ summary = "Earn experience in signed-in battles, climb 50 ranks and unlock patch
 kind = "new"
 headline = true
 
-[[screenshots]]
-file = "overview.jpg"
-caption = "Archived view. Open to enlarge; original captures are in the details."
 
 [[screenshots]]
 file = "collection.jpg"

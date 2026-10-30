@@ -3,9 +3,6 @@ title = "Less repeated work in large battles"
 summary = "Large battles avoid repeated scenery and visibility work while keeping the battlefield responsive."
 kind = "improved"
 
-[[screenshots]]
-file = "overview.jpg"
-caption = "Archived view. Open to enlarge; original captures are in the details."
 
 [[screenshots]]
 file = "before.png"

@@ -4,9 +4,6 @@ summary = "A clearer battle overlay puts concise unit states, aligned figures an
 kind = "improved"
 headline = true
 
-[[screenshots]]
-file = "overview.jpg"
-caption = "Archived view. Open to enlarge; original captures are in the details."
 
 [[screenshots]]
 file = "battle-hud.jpg"

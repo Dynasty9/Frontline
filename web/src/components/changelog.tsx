@@ -1,9 +1,10 @@
-import { ArrowRightIcon, ArrowSquareOutIcon } from "@phosphor-icons/react"
+import { ArrowRightIcon, ArrowSquareOutIcon, CaretDownIcon } from "@phosphor-icons/react"
 import { marked } from "marked"
 import { useEffect, useMemo, useState } from "react"
 import { SectionLabel } from "@/components/battles"
 import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
+import { Button, buttonVariants } from "@/components/ui/button"
+import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog"
 import {
   type Entry,
@@ -52,25 +53,21 @@ function Screens({ shots, large = false }: { shots: Shot[]; large?: boolean }) {
   return (
     <>
       <div
-        className={cn(
-          "mt-4 grid gap-3",
-          shots.length > 1 && "sm:grid-cols-2",
-          large && shots.length === 1 && "max-w-3xl"
-        )}
+        className={cn("mt-4 grid gap-3", shots.length > 1 && "sm:grid-cols-2", large && shots.length === 1 && "mt-0")}
       >
         {shots.map((s) => (
           <figure key={s.url}>
             <button
               type="button"
               onClick={() => setOpen(s)}
-              className="group block w-full overflow-hidden ring-1 ring-white/10"
+              className="group block w-full overflow-hidden bg-background focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-primary"
               aria-label={`Enlarge: ${s.caption}`}
             >
               <img
                 src={s.url}
                 alt={s.caption}
                 loading="lazy"
-                className="aspect-video w-full object-contain transition-transform duration-300 group-hover:scale-[1.02]"
+                className={cn("w-full object-contain", large ? "max-h-[460px]" : "aspect-video")}
               />
             </button>
             {s.caption && <figcaption className="mt-1.5 text-xs text-muted-foreground">{s.caption}</figcaption>}
@@ -154,72 +151,96 @@ function Clip({ video }: { video: MotionClip }) {
   return /\.gif(?:[?#]|$)/i.test(video.url) ? <Gif video={video} /> : <Video video={video} />
 }
 
-function EntryBlock({ entry, releaseTag }: { entry: Entry; releaseTag: string }) {
+function EntryBlock({ entry, releaseTag, headline }: { entry: Entry; releaseTag: string; headline: boolean }) {
   const leadClip = entry.videos?.[0]
   const extraShots = leadClip ? entry.screenshots : entry.screenshots.slice(1)
   const extraClips = entry.videos?.slice(1) ?? []
+  const hasMedia = !!leadClip || entry.screenshots.length > 0
   const hasDetails = !!entry.body || extraShots.length > 0 || extraClips.length > 0
   return (
-    <article className="scroll-mt-24 border-t pt-6 first:border-t-0 first:pt-0" id={`${releaseTag}-${entry.slug}`}>
-      <div className="flex flex-wrap items-center gap-2">
-        <KindBadge kind={entry.kind} />
-        <h3 className="text-lg font-semibold">{entry.title}</h3>
+    <article className="scroll-mt-24 border-t py-8 first:border-t-0 first:pt-0" id={`${releaseTag}-${entry.slug}`}>
+      <div
+        className={cn(
+          "grid items-start gap-6",
+          hasMedia && "md:grid-cols-[minmax(0,0.85fr)_minmax(0,1.35fr)] md:gap-8"
+        )}
+      >
+        <div>
+          <KindBadge kind={entry.kind} />
+          <h3 className={cn("mt-3 font-display text-3xl leading-tight font-bold uppercase", headline && "sr-only")}>
+            {entry.title}
+          </h3>
+          <p className="mt-3 max-w-prose text-base leading-relaxed text-muted-foreground">{entry.summary}</p>
+        </div>
+        {hasMedia && (
+          <div className="min-w-0 [&>figure]:mt-0">
+            {leadClip ? <Clip video={leadClip} /> : <Screens shots={entry.screenshots.slice(0, 1)} large />}
+          </div>
+        )}
       </div>
-      <p className="mt-2 max-w-prose text-base leading-relaxed">{entry.summary}</p>
-      {leadClip ? <Clip video={leadClip} /> : <Screens shots={entry.screenshots.slice(0, 1)} large />}
       {hasDetails && (
-        <details className="group mt-4 border-l-2 border-primary/30 pl-4">
-          <summary className="cursor-pointer py-2 text-sm font-medium text-primary outline-offset-4 focus-visible:outline-2">
+        <details className="group mt-5">
+          <summary
+            className={cn(
+              buttonVariants({ variant: "ghost", size: "sm" }),
+              "cursor-pointer list-none gap-2 px-0 text-primary hover:bg-transparent [&::-webkit-details-marker]:hidden"
+            )}
+          >
+            <CaretDownIcon className="group-open:rotate-180" />
             Explore this change<span className="sr-only">: {entry.title}</span>
           </summary>
-          <Details body={entry.body} />
-          <Screens shots={extraShots} />
-          {extraClips.map((video) => (
-            <Clip key={video.url} video={video} />
-          ))}
-          <a
-            href={`#${releaseTag}-${entry.slug}`}
-            className="mt-4 inline-block text-xs text-muted-foreground underline underline-offset-4"
-          >
-            Link to this change
-          </a>
+          <div className="mt-4 border-l border-primary/30 pl-5 sm:pl-6">
+            <Details body={entry.body} />
+            <Screens shots={extraShots} />
+            {extraClips.map((video) => (
+              <Clip key={video.url} video={video} />
+            ))}
+            <Button variant="link" size="sm" asChild className="mt-4 px-0 text-muted-foreground">
+              <a href={`#${releaseTag}-${entry.slug}`}>
+                Link to this change <ArrowRightIcon />
+              </a>
+            </Button>
+          </div>
         </details>
       )}
     </article>
   )
 }
 
-/** One release: its name and summary, then each change, grouped by kind. */
+/** The site's shared shadcn Card primitives, styled with Signal's rules instead of nested frames. */
 export function ReleaseCard({ release, latest = false }: { release: Release; latest?: boolean }) {
   const entries = KINDS.flatMap((k) => release.entries.filter((e) => e.kind === k))
   return (
-    <section id={release.tag} className="scroll-mt-20 border bg-card/60 p-5 sm:p-8">
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-        <span className="font-mono text-sm text-primary">{release.tag}</span>
-        {latest && (
-          <Badge variant="outline" className="border-good/40 text-good">
-            Latest
-          </Badge>
-        )}
-        <span className="text-sm text-muted-foreground">{formatDate(release.date)}</span>
-        <a
-          href={release.url}
-          className="ml-auto inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
-        >
-          Release on GitHub
-          <ArrowSquareOutIcon className="size-3.5" />
-        </a>
-      </div>
-      <h2 className="mt-2 text-3xl font-semibold tracking-tight">{release.name}</h2>
-      {/* a release's own summary, unless it only repeats its one change's */}
-      {release.summary && !release.entries.some((e) => e.summary === release.summary) && (
-        <p className="mt-3 max-w-3xl text-base leading-relaxed text-muted-foreground">{release.summary}</p>
-      )}
-      <div className="mt-8 space-y-6">
-        {entries.map((e) => (
-          <EntryBlock key={e.slug} entry={e} releaseTag={release.tag} />
-        ))}
-      </div>
+    <section id={release.tag} className="scroll-mt-24 border-t border-primary/30">
+      <Card className="gap-0 overflow-visible bg-transparent py-0 ring-0">
+        <CardHeader className="gap-4 px-0 pt-6 pb-8">
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+            <span className="font-mono text-xs tracking-wider text-primary">{release.tag}</span>
+            {latest && (
+              <Badge variant="outline" className="border-primary/40 text-primary">
+                Latest
+              </Badge>
+            )}
+            <span className="text-xs text-muted-foreground">{formatDate(release.date)}</span>
+            <Button variant="ghost" size="sm" asChild className="ml-auto h-auto px-0 text-xs text-muted-foreground">
+              <a href={release.url}>
+                Release on GitHub <ArrowSquareOutIcon />
+              </a>
+            </Button>
+          </div>
+          <h2 className="max-w-2xl font-display text-4xl leading-none font-bold uppercase sm:text-5xl">
+            {release.name}
+          </h2>
+          {release.summary && !release.entries.some((e) => e.summary === release.summary) && (
+            <p className="max-w-2xl text-base leading-relaxed text-muted-foreground">{release.summary}</p>
+          )}
+        </CardHeader>
+        <CardContent className="px-0">
+          {entries.map((e) => (
+            <EntryBlock key={e.slug} entry={e} releaseTag={release.tag} headline={e.title === release.name} />
+          ))}
+        </CardContent>
+      </Card>
     </section>
   )
 }

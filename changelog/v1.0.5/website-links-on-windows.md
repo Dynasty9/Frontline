@@ -3,9 +3,6 @@ title = "The website opens the game on Windows, and signing in says what's happe
 summary = "Website launch and join links reach Frontline on Windows, and sign-in shows its progress clearly."
 kind = "fixed"
 
-[[screenshots]]
-file = "overview.jpg"
-caption = "Archived view. Open to enlarge; original captures are in the details."
 
 [[screenshots]]
 file = "game-sign-in.jpg"

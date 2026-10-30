@@ -3,9 +3,6 @@ title = "Wildlife caught in the fighting"
 summary = "Wildlife flees nearby danger and can be caught in the fighting without changing combat outcomes."
 kind = "improved"
 
-[[screenshots]]
-file = "overview.jpg"
-caption = "Archived view. Open to enlarge; original captures are in the details."
 
 [[screenshots]]
 file = "stunned-fish.jpg"
