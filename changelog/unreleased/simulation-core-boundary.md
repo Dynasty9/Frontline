@@ -27,6 +27,7 @@ kind = "fixed"
 - Wounded-soldier checks preserve bleeding, medicine, rescue, pistol timing and corpse collection. A wounded soldier also safely releases a rescuer that has been removed.
 - Grenade reflex checks preserve protecting wounded squadmates, throwing grenades back, kicking them away, ducking behind cover and cooking a throw.
 - Grenade task checks preserve approaching, picking up and kicking a grenade, smothering it and diving clear, including blocked ground and fuse deadlines.
+- House-entry checks preserve stacking, kicking closed doors, cooking and throwing into the room, taking cover for the explosion and entering with a buddy.
 - The extracted simulation uses pinned numeric rules, with exact checkpoint comparisons across platforms as replay verification work continues.
 - Guided missiles keep a consistent turn after overshooting their aim point, instead of letting rounding choose an erratic turn direction.
 - This is groundwork for the server migration. Battles still use the existing simulation, and recordings are not yet independently verified.

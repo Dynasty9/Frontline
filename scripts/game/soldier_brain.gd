@@ -472,6 +472,95 @@ static func cook_time(s: Soldier, target: Entity, d: float) -> float:
 
 # --- clearing a house ---------------------------------------------------------------
 
+static func _native_breach(s: Soldier) -> bool:
+	return _native(s) and ClassDB.class_exists("BreachCore")
+
+
+static func _breach_core(s: Soldier) -> RefCounted:
+	if s._breach_core == null:
+		s._breach_core = ClassDB.instantiate("BreachCore")
+	return s._breach_core
+
+
+static func _breach_state(s: Soldier) -> PackedFloat64Array:
+	return PackedFloat64Array([s.task_phase, s.task_t, s.bt_wait, s.bt_cook_t0, int(s.bt_clear), int(s.bt_nofrag)])
+
+
+static func _breach_tick_native(s: Soldier, dt: float, wall: Structure, h: Structure) -> void:
+	var core: RefCounted = _breach_core(s)
+	var c: Vector3 = s.bt_door[1]
+	var n: Vector3 = s.bt_door[2]
+	var moving := false
+	var distance := 0.0
+	match s.task_phase:
+		0:
+			moving = s._move_tick(dt, s._speed())
+			s._weapon_tick(dt, moving, "normal")
+			distance = Defs.flat(s.task_pos - s.position).length()
+			if distance < 5.0:
+				s.posture = Soldier.Post.CROUCH
+			s._choose_act(moving)
+		1:
+			s.posture = Soldier.Post.CROUCH
+			s.act = Soldier.Act.IDLE
+			s._face(Defs.flat(c - s.position).normalized(), dt, 8.0)
+		2:
+			moving = s._move_tick(dt, s._speed())
+			s.posture = Soldier.Post.STAND
+			s._choose_act(moving)
+			distance = Defs.flat(s.task_pos2 - s.position).length()
+		3:
+			var retreat = core.retreat(Defs.flat(s.position - s.task_pos).length(), s.is_moving(), s.bt_breach_g != null)
+			assert(retreat != null, "Invalid breach retreat")
+			if int(retreat) == 1:
+				s.go_to(s.task_pos, "task", 2)
+			elif int(retreat) == 2:
+				s.stop_moving()
+			moving = s._move_tick(dt, s._speed())
+			s.posture = Soldier.Post.CROUCH
+			s._choose_act(moving)
+		4:
+			s.posture = Soldier.Post.CROUCH
+	var enemy: Soldier = _anyone_inside(s, h) if s.task_phase < 2 else null
+	var exploded: bool = s.bt_breach_g != null and (not is_instance_valid(s.bt_breach_g) or s.bt_breach_g.gone)
+	var context := PackedFloat64Array([s.world.time, int(moving), distance, int(enemy != null), int(wall.door_shut),
+		s.frags, s.team, int(enemy != null and enemy.at_cover and enemy.cover_mat >= Cover.HARD), int(exploded), int(s.bt_reordered), 1])
+	var result: Array = core.advance(_breach_state(s), context, s.world.rng._backend)
+	assert(result.size() == 4, "Invalid breach decision")
+	var state: PackedFloat64Array = result[0]
+	s.task_phase = int(state[0])
+	s.bt_wait = state[2]
+	s.bt_cook_t0 = state[3]
+	s.bt_nofrag = bool(state[5])
+	var action: int = result[1]
+	if action in [5, 6, 7]:
+		s.stop_moving()
+	match action:
+		1:
+			end_breach(s)
+		2:
+			s.go_to(s.task_pos, "task", 1)
+		3:
+			s.stop_moving()
+		4:
+			if float(result[2]) > 0.0:
+				s._begin_action("cook", float(result[2]), {})
+			s.task_pos2 = s.world.nav.nearest_walkable(c + n * float(result[3]))
+			s.go_to(s.task_pos2, "task", 1)
+		5:
+			s._begin_action("door_kick", 0.45, {"door": wall, "pos": c})
+			s.world.stat("breach_door_kick")
+		7:
+			s.frags -= 1
+			s.world.stat("breach_frag_in")
+			s._begin_action("throw_in", 0.4, {"pos": _room_target(s, h), "kind": "frag", "fuse": float(result[2])})
+			s.say(_pick(s, ["Frag out!", "Fire in the hole!", "Grenade in!"]), true)
+		8:
+			end_breach(s)
+			s.go_to(s.hold_pos, "slot", 1)
+		9:
+			_enter_room(s, c, n)
+
 ## The house (its floor) that p is in, or null.
 static func house_at(w: World, p: Vector3) -> Structure:
 	for st in w.structures_near(p, 9.0, true):
@@ -504,6 +593,10 @@ static func openings(w: World, house: Structure) -> Array:
 static func _stack_spot(s: Soldier, o: Array) -> Vector3:
 	var c: Vector3 = o[1]
 	var n: Vector3 = o[2]
+	if _native_breach(s):
+		var result = _breach_core(s).stack_spot(s.position, c, n, bool(o[3]))
+		assert(result != null, "Invalid breach stack position")
+		return s.world.nav.nearest_walkable(result)
 	var along := Vector3(n.z, 0, -n.x)
 	var side := 1.0 if (s.position - c).dot(along) >= 0.0 else -1.0
 	var half := 0.95 if o[3] else 0.65
@@ -624,6 +717,10 @@ static func _room_target(s: Soldier, h: Structure) -> Vector3:
 	var n: Vector3 = o[2]
 	var along := Vector3(n.z, 0, -n.x)
 	var e: Soldier = s.task_ent2 if s.task_ent2 is Soldier and not s.task_ent2.gone and s.task_ent2.life == Soldier.Life.ALIVE else _anyone_inside(s, h)
+	if _native_breach(s):
+		var result = _breach_core(s).room_target(c, n, e.position if e else h.position)
+		assert(result != null, "Invalid breach grenade target")
+		return result
 	var t := (e.position if e else h.position) - c
 	var depth := clampf(t.dot(-n), 1.2, 3.6)
 	var lat := clampf(t.dot(along), -1.4, 1.4)
@@ -633,8 +730,17 @@ static func _room_target(s: Soldier, h: Structure) -> Vector3:
 static func breach_tick(s: Soldier, dt: float) -> void:
 	var wall := s.task_ent as Structure
 	var h: Structure = s.bt_house
-	if wall == null or wall.gone or h == null or h.gone or s.world.time - s.task_t > 45.0:
+	var valid: bool = is_instance_valid(wall) and not wall.gone and is_instance_valid(h) and not h.gone
+	var expired: bool = not valid or s.world.time - s.task_t > 45.0
+	if _native_breach(s):
+		var result = _breach_core(s).expired(_breach_state(s), s.world.time, valid)
+		assert(result != null, "Invalid breach deadline")
+		expired = bool(result)
+	if expired:
 		end_breach(s)
+		return
+	if _native_breach(s):
+		_breach_tick_native(s, dt, wall, h)
 		return
 	var o: Array = s.bt_door
 	var c: Vector3 = o[1]
@@ -731,35 +837,39 @@ static func breach_tick(s: Soldier, dt: float) -> void:
 				end_breach(s)
 				s.go_to(s.hold_pos, "slot", 1)
 				return
-			var inside := s.world.nav.nearest_walkable(c - n * 2.2)
-			s.say(_pick(s, ["Go! Go! Go!", "Moving in!", "In! In!", "Clear the room!"]), true)
-			if s.bt_clear and s.squad:
-				s.squad.clear_call = [s, s.world.time + 2.5]
-			end_breach(s)
-			s.hold_pos = inside
-			s.hold_face = -n
-			s.leash = 2.5
-			s.at_cover = false
-			s.next_cover_eval = 0.0
-			s.go_to(inside, "slot", 2)
-			s.world.stat("room_entry")
-			var buddy: Soldier = null
-			var bd := 14.0
-			if s.squad:
-				for m in s.squad.members:
-					if m == s or m.life != Soldier.Life.ALIVE or m.task != "" or m.mounted != null:
-						continue
-					var d := Defs.flat(m.position - c).length()
-					if d < bd:
-						bd = d
-						buddy = m
-			if buddy:
-				var along := Vector3(n.z, 0, -n.x)
-				var p2 := s.world.nav.nearest_walkable(c - n * 2.0 + along * 1.4)
-				buddy.hold_pos = p2
-				buddy.hold_face = -n
-				buddy.leash = 2.5
-				buddy.at_cover = false
-				buddy.next_cover_eval = 0.0
-				buddy.go_to(p2, "slot", 2)
-				buddy.say(_pick(s, ["Right behind you!", "With you!", "Going in!"]), true)
+			_enter_room(s, c, n)
+
+
+static func _enter_room(s: Soldier, c: Vector3, n: Vector3) -> void:
+	var inside := s.world.nav.nearest_walkable(c - n * 2.2)
+	s.say(_pick(s, ["Go! Go! Go!", "Moving in!", "In! In!", "Clear the room!"]), true)
+	if s.bt_clear and s.squad:
+		s.squad.clear_call = [s, s.world.time + 2.5]
+	end_breach(s)
+	s.hold_pos = inside
+	s.hold_face = -n
+	s.leash = 2.5
+	s.at_cover = false
+	s.next_cover_eval = 0.0
+	s.go_to(inside, "slot", 2)
+	s.world.stat("room_entry")
+	var buddy: Soldier = null
+	var bd := 14.0
+	if s.squad:
+		for m in s.squad.members:
+			if m == s or m.life != Soldier.Life.ALIVE or m.task != "" or m.mounted != null:
+				continue
+			var d := Defs.flat(m.position - c).length()
+			if d < bd:
+				bd = d
+				buddy = m
+	if buddy:
+		var along := Vector3(n.z, 0, -n.x)
+		var p2 := s.world.nav.nearest_walkable(c - n * 2.0 + along * 1.4)
+		buddy.hold_pos = p2
+		buddy.hold_face = -n
+		buddy.leash = 2.5
+		buddy.at_cover = false
+		buddy.next_cover_eval = 0.0
+		buddy.go_to(p2, "slot", 2)
+		buddy.say(_pick(s, ["Right behind you!", "With you!", "Going in!"]), true)

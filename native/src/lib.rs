@@ -1,6 +1,7 @@
 use godot::prelude::*;
 
 mod blast;
+mod breach;
 mod bullet;
 mod collision_index;
 mod cover_geometry;

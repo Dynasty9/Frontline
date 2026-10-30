@@ -2,6 +2,7 @@
 /// Pinned scalar math and geometry rules; incompatible checkpoints must fail closed.
 pub const NUMERIC_VERSION: u16 = 1;
 pub mod blast;
+pub mod breach;
 pub mod bullet;
 pub mod collision;
 pub mod cover;

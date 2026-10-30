@@ -1267,6 +1267,8 @@ Grenade reflex checks preserve protection of wounded squadmates, throwback and
 kick priority, shelter decisions, kick direction and cooking time.
 Grenade task checks also cover approaches, pickup and kick deadlines, smothering
 and dives, including the existing action callbacks and rethrows.
+House-entry phases also have Rust checkpoints, preserving the stack, door kick,
+grenade cooking, retreat and entry sequence while task effects remain in Godot.
 The full
 authoritative Rust server and deterministic
 battle verifier are still in progress; see [RUST_SIMULATION.md](RUST_SIMULATION.md).

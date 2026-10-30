@@ -1,5 +1,6 @@
 //! Exact persisted bytes, shared by Windows, Linux and ARM CI, without tolerance comparisons.
 use frontline_core::blast::{Blast, Infantry, Protection as BlastProtection};
+use frontline_core::breach::{self, Breach, Decision, Input as BreachInput};
 use frontline_core::bullet::{self, Body, Bullet, TargetEffect, ThroughContact};
 use frontline_core::collision::{BoxShape, CollisionWorld, Mat3};
 use frontline_core::cover::{generate, Part};
@@ -28,6 +29,87 @@ use std::path::PathBuf;
 fn block(out: &mut Vec<u8>, bytes: &[u8]) {
     out.extend_from_slice(&(bytes.len() as u32).to_le_bytes());
     out.extend_from_slice(bytes);
+}
+
+#[test]
+fn house_entry_tasks_are_identical_across_platforms() {
+    let mut out = Vec::new();
+    for case in 0..256 {
+        let mut rng = SimulationRandom::new(209 + case);
+        let mut task = Breach {
+            started: 0.0,
+            cook_started: -1.0,
+            clear: case % 2 == 0,
+            ..Default::default()
+        };
+        let mut time = 0.0;
+        let mut distance = 6.0;
+        let mut shut = case % 3 == 0;
+        for tick in 0..180 {
+            time += [0.1, 0.3, 0.5][case as usize % 3];
+            distance = (distance - 0.3_f64).max(0.0);
+            let i = BreachInput {
+                time,
+                moving: distance > 0.0,
+                distance,
+                enemy_inside: case % 7 != 0,
+                door_shut: shut,
+                frags: if case % 5 == 0 { 0 } else { 2 },
+                team: (case % 2) as i32,
+                enemy_hard_cover: case % 4 == 0,
+                exploded: tick > 60,
+                reordered: case % 13 == 0,
+            };
+            let decision = task.advance(i, &mut rng).unwrap();
+            let (action, value) = match decision {
+                Decision::Wait => (0, 0.0),
+                Decision::Cancel => (1, 0.0),
+                Decision::RetryStack => (2, 0.0),
+                Decision::Stacked => (3, 0.0),
+                Decision::ApproachDoor {
+                    cook,
+                    distance: next,
+                } => {
+                    distance = f64::from(next);
+                    (4, cook)
+                }
+                Decision::KickDoor => {
+                    shut = false;
+                    (5, 0.0)
+                }
+                Decision::EnterWait => (6, 0.0),
+                Decision::Throw { fuse } => (7, fuse),
+                Decision::FollowSquad => (8, 0.0),
+                Decision::Enter => (9, 0.0),
+            };
+            if tick % 7 == 0 || action != 0 {
+                block(&mut out, &task.checkpoint());
+                out.push(action);
+                out.extend_from_slice(&value.to_le_bytes());
+                out.extend_from_slice(&rng.state().to_le_bytes());
+                assert_eq!(Breach::restore(&task.checkpoint()).unwrap(), task);
+            }
+            if matches!(
+                decision,
+                Decision::Cancel | Decision::Enter | Decision::FollowSquad
+            ) {
+                break;
+            }
+        }
+        let yaw = case as f64 * 0.17;
+        let normal = Vector3::new(libm::sin(yaw) as f32, 0.0, libm::cos(yaw) as f32);
+        let center = Vector3::new(1.3, 0.0, -2.1);
+        let target = Vector3::new(case as f32 * 0.1 - 12.0, 0.0, -8.0);
+        point(
+            &mut out,
+            breach::room_target(center, normal, target).unwrap(),
+        );
+        point(
+            &mut out,
+            breach::stack_spot(target, center, normal, case % 4 != 0).unwrap(),
+        );
+    }
+    golden("breach", &out);
 }
 
 fn point(out: &mut Vec<u8>, p: Vector3) {
