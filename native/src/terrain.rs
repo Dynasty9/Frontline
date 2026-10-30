@@ -27,7 +27,11 @@ fn packed(cells: Vec<u32>) -> PackedInt32Array {
     cells.into_iter().map(|i| i as i32).collect()
 }
 
-fn ground(n: i32, layers: Array<Variant>, heights: PackedFloat32Array) -> Option<Terrain> {
+pub(crate) fn ground(
+    n: i32,
+    layers: Array<Variant>,
+    heights: PackedFloat32Array,
+) -> Option<Terrain> {
     if !(2..=3072).contains(&n) || layers.len() != 9 {
         return None;
     }

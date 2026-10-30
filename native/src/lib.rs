@@ -14,6 +14,7 @@ mod simulation_random;
 mod support_flight;
 mod terrain;
 mod visibility;
+mod water_raster;
 
 struct FrontlineSimulation;
 #[gdextension]

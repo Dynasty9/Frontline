@@ -4,8 +4,8 @@ Status: **in progress; the game still requires Godot to simulate a battle.**
 The engine-independent crate currently contains perception candidate selection,
 formation scoring, contracted route search, gameplay randomness and ballistic
 projectile flight state, drone and support-aircraft behavior, missile guidance,
-weighted navigation grids, route planning, smoke, geometric visibility and terrain
-cell/deformation state. It is not a complete server, a
+weighted navigation grids, route planning, smoke, geometric visibility, fighting
+positions, water geometry and terrain cell/deformation state. It is not a complete server, a
 full-state save format, or a battle verifier. Existing recordings remain unverified.
 
 ## Ownership
@@ -22,7 +22,8 @@ graphics, network access or a wall clock.
 | Gameplay RNG, including commander streams | `frontline_core` | Seeded PCG stream matches Godot 4.7; cosmetic RNG stays in Godot |
 | Grenade, smoke, rocket, bomb and shell flight | `frontline_core` | Rust retains and advances flight state and queries native geometry; the adapter supplies holders and applies impacts |
 | Weighted grid paths and cluster pair costs | `frontline_core` | Exact Godot route tie behavior; native cluster workers return costs in deterministic order |
-| Ground cells, crater heights and queued cover repairs | `frontline_core` | Rust retains terrain and ordered structure geometry, and performs edits, queries and cover repairs; Godot imports biome/water generation and forwards navigation notifications |
+| Ground cells, crater heights and queued cover repairs | `frontline_core` | Rust retains terrain and ordered structure geometry, and performs edits, queries and cover repairs; Godot imports biome generation and forwards navigation notifications |
+| Water shapes, bridge decks and water terrain rasterization | `frontline_core` | Ordered numeric rasterization; a Rust worker also applies the joining host's ground overrides; Godot still generates the initial shapes |
 | Hierarchical route assembly, repairs and danger weights | `frontline_core` | Rust owns graph slots, borders, cost tables, repair order and terrain/danger revisions |
 | FPV drone flight | `frontline_core` | Climb, cruise, dive, loss of control and collision; Godot supplies targets and applies damage |
 | Guided missiles and support aircraft | `frontline_core` | Flight, target-lock loss, bomb release, burst schedules, pending hits and random draws; Godot supplies contacts and applies events |
@@ -33,7 +34,7 @@ graphics, network access or a wall clock.
 | Battlefield box raycasts | `frontline_core` | Spatial grid with deterministic hit ties; Godot supplies geometry updates |
 | Smoke volumes and geometric visibility | `frontline_core` | Rust checks exposed points against collision and smoke, retaining reusable obstruction proofs; Godot supplies target posture and scene changes |
 | Route refinement, smoothing, corridor reuse and path requests | `frontline_core` | Native planner retains corridor history and request order; Godot supplies unit positions and delivers completed orders |
-| Cover anchors and fighting-position selection | Rust | Cover/combat scripts |
+| Cover anchors and fighting-position selection | Rust | Rust generates anchors and evaluates protection/firing lanes; candidate search, claims and soldier state remain in cover/combat scripts |
 | Supply, construction, upgrades, prisoners, victory | Rust | `rules.gd`, structures and battle scripts |
 | Missions, scripted events, initial map generation | Rust or immutable versioned input data | Map generators and mission director |
 | Models, animation, smoothing, particles, camera, minimap | Godot | Existing presentation code |
@@ -327,7 +328,7 @@ arrays in the core. Cover reconstruction uses numeric structure geometry and
 preserves spatial encounter order and equal-cover tie rules. Structures register
 their numeric geometry when added, moved or changed; the core retains the index
 instead of rebuilding it from scene objects each batch. GDScript mirrors changed
-cells for the renderer and remaining gameplay callers. Biome and water generation
+cells for the renderer and remaining gameplay callers. Biome and initial water-shape generation
 still run in Godot and import their numeric output; these are outstanding
 standalone-server dependencies. Exact trench containment, ground height and
 enfilade queries also use the retained geometry, including first-bay order at
@@ -350,6 +351,30 @@ GDScript samples of 12.65–17.57 ms versus 4.09–4.21 ms through Rust, includi
 adapter's changed-cell copies (six samples each after two warm-up rounds). Other
 apps stayed running. This measures cover repair, not a 500-unit battle or FPS.
 
+## Water and joining terrain
+
+`Water` retains coast, river, pond, ford and bridge shapes in a bounded versioned
+checkpoint. Numeric queries reproduce shoreline curves, currents and bridge spans.
+Painting and carving preserve sea/river-segment/pond order, shore and depth masks,
+ford shelves, quay occlusion, bridge decks and the order of changed cells. Godot
+still creates the initial shapes and uses its existing per-point water queries;
+the runtime raster passes now run in Rust.
+
+Joining terrain loads on a Rust worker over owned numeric arrays. It paints water,
+applies the host's ground-kind overrides, refreshes terrain cover, then carves beds.
+The main thread installs the result and updates existing image resources. No Godot
+binding is called on a worker. The retained GDScript reference handles the legacy
+loading path when the native module is unavailable. Leaving a loading world joins
+its owned worker before releasing the adapter.
+
+Reference coverage compares 13 raster results and 2,400 shoreline/current/bridge
+queries, including overlapping shapes, repeated edits, checkpoints and worker loads.
+Terrain kinds, decks, water masks and loaded height textures match exactly; height
+samples use a 1 micrometre tolerance. A 9,216-cell paint/carve comparison including
+adapter and image updates measured 29.45–33.54 ms through GDScript and 12.68–13.42 ms
+through Rust (alternating order, six samples after warm-up, other apps running).
+This is small-map loading work, not an FPS or large-map scaling measurement.
+
 ## Validation limits from this migration
 
 The opt-in mission suite currently wins bridgehead and beachhead, but loses
@@ -371,6 +396,8 @@ checks covering infantry, armour, ground changes, helicopter flight and 6,000
 trench query positions through building, movement and removal.
 The subsequent fighting-position generation/evaluation port passes all 107 default
 integration tests and 55 core tests in debug and release.
+Water rasterization and Rust loading workers pass all 108 default integration
+tests, 59 core tests in debug and release, and the delayed client-loading fixture.
 
 A focused shell benchmark (100 shells, 100 ticks, headless, no collision queries)
 measured about 14.6 ms for the GDScript path versus 4.6–5.6 ms for retained Rust

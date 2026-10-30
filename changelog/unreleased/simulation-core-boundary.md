@@ -11,6 +11,7 @@ kind = "fixed"
 - Infantry contact evaluation now shares a Rust scan, preserving weapon priorities, mounted-gun arcs, drone reactions, forced targets and squad reports.
 - Fighting positions and their protection checks now use Rust, retaining low cover, leaning fire and second-row shelter while avoiding redundant firing-lane checks.
 - Ground edits, crater deformation and cover repairs now use Rust, preserving road speed, directional cover, camouflage and shell holes.
+- Water terrain and bridge decks now use Rust. Joining a battle prepares its ground on a Rust worker while preserving fords, quays and the host's ground changes.
 - Local navigation grids and boat routes now use Rust, preserving weighted paths and corner-blocking rules.
 - Hierarchical routes, danger weighting and map repairs now run in Rust. Large-cluster route caches distinguish entrances that previously shared a truncated key.
 - Route refinement, smoothing, shared corridors and queued movement orders also run in Rust, retaining fire avoidance and order completion quotas.

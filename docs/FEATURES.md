@@ -562,7 +562,8 @@ catalogue entry in `MissionList.LIST`, a setup function and an autopilot functio
   banks. A pond lies in each half. Deep water is impassable on foot or in a vehicle; men and vehicles can wade
   the shallows (fords, the edge of the beach) - slowly, and exposed. The beds are carved into the ground, so a
   man wading sinks to his knees. Bridges and the harbour are key points the AI fights over. The water is laid
-  out on the server as a few shapes and rasterized identically on every client.
+  out on the server as a few shapes and rasterized identically on every client by the shared Rust core.
+  Joining a battle paints and carves the ground on a Rust worker before the main thread installs its arrays and textures.
 - **How the water looks** (`water_view.gd`). The surface is drawn in tiles only where there's water. The sea
   runs two wave systems that cross: a swell from weather far out at sea, long and regular and coming in sets
   (its heading a little different on each map), and the wind's own shorter, steeper sea running offshore with

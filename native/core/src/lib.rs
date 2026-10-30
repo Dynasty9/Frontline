@@ -19,3 +19,4 @@ pub mod terrain_cover;
 pub mod terrain_scene;
 pub mod vector;
 pub mod visibility;
+pub mod water;

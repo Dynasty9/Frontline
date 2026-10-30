@@ -498,6 +498,7 @@ func _sweep_graveyard() -> void:
 
 
 func _exit_tree() -> void:
+	_ground_native = null
 	if _ground_task >= 0:
 		# (left while the ground was still being laid out: it works on this world's maps)
 		WorkerThreadPool.wait_for_task_completion(_ground_task)
@@ -1297,6 +1298,7 @@ var _load_t0 := 0
 var _load_marks: Array = []  # (FL_DEBUG_NET) when each stage was done
 var _ground_task := -1
 var _ground_water: WaterMap  # the water laid out off the main thread, then handed over
+var _ground_native: RefCounted
 
 
 ## One entity as the join stream carries it: [eid, its kind (ENT_KINDS), props].
@@ -1439,7 +1441,7 @@ func _load_tick() -> void:
 			_load_step = 2
 			_load_stage("Charting the water", 0.1)
 		2:
-			if _ground_task >= 0 and not WorkerThreadPool.is_task_completed(_ground_task):
+			if (_ground_native and not _ground_native.loading_ready()) or (_ground_task >= 0 and not WorkerThreadPool.is_task_completed(_ground_task)):
 				_load_stage("Charting the water", 0.1 + 0.08 * minf(1.0, (t0 - _load_t0) / 4000000.0))
 				return
 			_ground_done()
@@ -1514,6 +1516,9 @@ func _lay_ground() -> void:
 	_ground_water = WaterMap.new(self)
 	_ground_water.from_dict(water.to_dict())
 	terrain.begin_ground_import()
+	_ground_native = _ground_water.begin_loading(_join_kinds)
+	if _ground_native:
+		return
 	_ground_task = WorkerThreadPool.add_task(_ground_job, false, "Laying out the ground")
 
 
@@ -1533,6 +1538,9 @@ func _ground_job() -> void:
 
 
 func _ground_done() -> void:
+	if _ground_native:
+		_ground_water.finish_loading(_ground_native)
+		_ground_native = null
 	if _ground_task >= 0:
 		WorkerThreadPool.wait_for_task_completion(_ground_task)
 		_ground_task = -1
