@@ -19,6 +19,11 @@ fn pending_rounds_bursts_and_rng_resume_exactly() {
                 Vector3::ZERO,
             );
             flight.gunset = set;
+            flight.muzzles = [
+                Vector3::new(-3.0, -0.6, 2.0),
+                Vector3::new(-2.0, -0.9, -1.0),
+                Vector3::new(0.0, 0.3, -4.0),
+            ];
             flight.sight = 65.0;
             let mut rng = SimulationRandom::new(1234);
             let mut time = 42.0;
@@ -88,7 +93,7 @@ fn support_checkpoints_reject_malformed_state_without_allocating_unbounded_hits(
     for end in 0..bytes.len() {
         assert!(SupportFlight::restore(&bytes[..end]).is_err());
     }
-    for (i, value) in [(4, 2), (8, 3), (9, 5), (10, 2), (103, 2)] {
+    for (i, value) in [(4, 1), (8, 3), (9, 5), (10, 2), (103, 2)] {
         let mut bad = bytes.clone();
         bad[i] = value;
         assert!(SupportFlight::restore(&bad).is_err());

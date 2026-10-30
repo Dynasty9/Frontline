@@ -259,7 +259,11 @@ and recon-mark timing. Its 42-case fixture compares every tick's observations,
 events, damage parameters and RNG state for all five orbiting weapon sets,
 empty and occupied target areas, and three tick rates. It preserves the original
 order of random draws and pending impacts. Core resume tests include mid-burst
-checkpoints and restore the accompanying RNG stream. These are component
+checkpoints and restore the accompanying RNG stream. Aircraft weapon sockets
+are supplied as immutable model data; Rust computes banked muzzle positions and
+retains them in the version 2 support-flight checkpoint. The reference fixture
+checks default and model-specific sockets and shell ownership after the current
+vehicle-handling changes on `main`. These are component
 checkpoints; they do not include the whole battle or verify its conclusion.
 
 ## Validation limits from this migration
@@ -272,9 +276,8 @@ that the full mission completion gate is met. Keep reporting them until resolved
 The integrated default suite passed 101 tests after the aircraft, grid,
 hierarchical planner, route refinement/smoothing and request-queue ports,
 including multiplayer authority, combat, breaching and seed reproducibility.
-The later visibility port passes its five focused integration checks and its
-mission run reproduces the same baseline outcomes; its full integration suite
-is running. These checks do not
+The later visibility port passes all 102 default integration tests and its
+mission run reproduces the same baseline outcomes. These checks do not
 cover full battle checkpoints or replay verification.
 
 A focused shell benchmark (100 shells, 100 ticks, headless, no collision queries)

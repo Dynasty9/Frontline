@@ -187,6 +187,7 @@ pub struct SupportFlight {
     pub fire_elapsed: f64,
     pub bombs_initial: f64,
     pub mark_time: f64,
+    pub muzzles: [Vector3; 3],
     hits: Vec<(f64, Vector3)>,
     next: [Option<(f64, u32)>; 3],
     pub dead: bool,
@@ -207,6 +208,7 @@ impl SupportFlight {
             fire_elapsed: -1.0,
             bombs_initial: -1.0,
             mark_time: 0.0,
+            muzzles: [Vector3::ZERO; 3],
             hits: Vec::new(),
             next: [None; 3],
             dead: false,
@@ -242,6 +244,24 @@ impl SupportFlight {
                 88.0,
                 (angle.sin() * 165.0) as f32,
             )
+    }
+
+    pub fn muzzle(&self, index: usize) -> Vector3 {
+        let forward = normalized(flat(
+            self.orbit_position(self.life + 0.1) - self.orbit_position(self.life),
+        ));
+        let z = -normalized(forward);
+        let x = normalized(Vector3::Y.cross(z));
+        let y = z.cross(x);
+        let bank = (52.0_f64 * 52.0).atan2(165.0 * 9.81) as f32;
+        let c = bank.cos();
+        let s = bank.sin();
+        // Match Godot's composed basis before transforming the weapon socket.
+        let bx = x * c + y * s + z * 0.0;
+        let by = x * -s + y * c + z * 0.0;
+        let bz = x * 0.0 + y * 0.0 + z;
+        let p = self.muzzles[index];
+        self.position + (bx * p.x + by * p.y + bz * p.z)
     }
 
     pub fn advance(
@@ -347,7 +367,7 @@ impl SupportFlight {
                         aim.y = 0.15;
                         events.push(Event::Shell {
                             kind: gun.kind,
-                            position: self.position + Vector3::new(0.0, -1.5, 0.0),
+                            position: self.muzzle(index),
                             target: aim,
                             duration: gun.duration * f64::from(rng.randf_range(0.9, 1.1)),
                         });
@@ -396,7 +416,7 @@ impl SupportFlight {
     }
 
     pub fn checkpoint(&self) -> Vec<u8> {
-        let mut out = Writer::new(b"FLSF\x01\0\0\0");
+        let mut out = Writer::new(b"FLSF\x02\0\0\0");
         out.byte(self.kind as u8);
         out.byte(self.gunset as u8);
         out.byte(u8::from(self.dead));
@@ -426,11 +446,14 @@ impl SupportFlight {
             out.f64(time);
             out.point(point);
         }
+        for muzzle in self.muzzles {
+            out.point(muzzle);
+        }
         out.0
     }
 
     pub fn restore(bytes: &[u8]) -> Result<Self, &'static str> {
-        let mut input = Reader::new(bytes, b"FLSF\x01\0\0\0")?;
+        let mut input = Reader::new(bytes, b"FLSF\x02\0\0\0")?;
         let kind = *[Kind::Jet, Kind::GunRun, Kind::Orbit]
             .get(input.byte()? as usize)
             .ok_or("invalid support kind")?;
@@ -470,6 +493,9 @@ impl SupportFlight {
         }
         for _ in 0..count {
             state.hits.push((input.f64()?, input.point()?));
+        }
+        for muzzle in &mut state.muzzles {
+            *muzzle = input.point()?;
         }
         input.finish()?;
         Ok(state)

@@ -68,7 +68,9 @@ func _ready() -> void:
 			var target := Vector3(2, 0, -5)
 			var direction := Vector3(1, 0, 0.5).normalized()
 			var props := {"ptype": setup[0], "guns": setup[1], "team": 0, "pos": target - direction * 420.0 + Vector3(0, 62, 0), "vel": direction * 58.0, "target": target, "fuse": 4.0, "by": 77, "sight": 65.0, "stay": 15.0 if setup[0] == "ac130" and trial % 2 == 0 else 0.0}
+			props.mk = setup[1] if trial % 2 == 1 else ""
 			for i in 2:
+				pair[i].eid = 29
 				worlds[i].has_view = false
 				worlds[i].rng.seed = 8972 + trial
 				worlds[i].combat = SupportCombat.new(worlds[i])
@@ -85,7 +87,7 @@ func _ready() -> void:
 					var checkpoint: PackedByteArray = pair[1]._support.checkpoint()
 					assert(pair[1]._support.restore(checkpoint))
 					var bad := checkpoint.duplicate()
-					bad[4] = 2
+					bad[4] = 3
 					assert(not pair[1]._support.restore(bad))
 					assert(pair[1]._support.checkpoint() == checkpoint)
 				for i in 2:

@@ -172,7 +172,15 @@ func sim(dt: float) -> void:
 func _reset_support() -> void:
 	var state := PackedFloat64Array([position.x, position.y, position.z, vel.x, vel.y, vel.z,
 		target.x, target.y, target.z, life_t, fuse, stay, sight, _mark_t])
-	var valid: bool = _support.reset(ptype, guns, state)
+	var muzzles := PackedVector3Array()
+	if ptype == "ac130":
+		for gun in GUNSETS.get(guns, AC_GUNS):
+			var kind := mk if mk != "" else "ac130"
+			var socket := VehicleSockets.point(kind, String(gun))
+			if socket == Vector3.INF:
+				socket = VehicleSockets.point(kind, "mg" if gun == "ac25" else "gun")
+			muzzles.append(socket if socket != Vector3.INF else Vector3.ZERO)
+	var valid: bool = _support.reset(ptype, guns, state, muzzles)
 	assert(valid, "Invalid support aircraft initial state")
 
 
@@ -199,7 +207,7 @@ func _native_support(dt: float) -> void:
 			2:
 				_gunrun_impact(event[1])
 			3:
-				world.spawn("projectile", {"ptype": event[1], "team": team, "pos": event[2], "origin": event[2], "target": event[3], "T": event[4], "thrower": 0, "by": by})
+				world.spawn("projectile", {"ptype": event[1], "team": team, "pos": event[2], "origin": event[2], "target": event[3], "T": event[4], "thrower": eid, "by": by})
 			4:
 				world.fx_event([Fx.FAR_SOUND, event[1], event[2], target])
 			5:

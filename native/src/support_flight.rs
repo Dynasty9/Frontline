@@ -11,7 +11,13 @@ struct SupportFlightCore {
 #[godot_api]
 impl SupportFlightCore {
     #[func]
-    fn reset(&mut self, kind: GString, guns: GString, state: PackedFloat64Array) -> bool {
+    fn reset(
+        &mut self,
+        kind: GString,
+        guns: GString,
+        state: PackedFloat64Array,
+        muzzles: PackedVector3Array,
+    ) -> bool {
         let kind = match kind.to_string().as_str() {
             "jet" => Kind::Jet,
             "a10" => Kind::GunRun,
@@ -29,6 +35,17 @@ impl SupportFlightCore {
             |i| frontline_core::vector::Vector3::new(s[i] as f32, s[i + 1] as f32, s[i + 2] as f32);
         let mut core = SupportFlight::new(kind, point(0), point(3), point(6));
         core.gunset = Gunset::parse(&guns.to_string());
+        let count = if kind == Kind::Orbit {
+            frontline_core::support::guns(core.gunset).len()
+        } else {
+            0
+        };
+        if muzzles.len() != count || !muzzles.as_slice().iter().all(|p| p.is_finite()) {
+            return false;
+        }
+        for (slot, point) in core.muzzles.iter_mut().zip(muzzles.as_slice()) {
+            *slot = crate::point(*point);
+        }
         core.life = s[9];
         core.fuse = s[10];
         core.stay = s[11];
