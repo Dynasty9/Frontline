@@ -1,8 +1,9 @@
 +++
 title = "A new look for the battle's interface"
-summary = "The battle's interface now reads like a battle management display laid onto the battlefield: no more boxes, short codes instead of sentences, every figure lined up in mono, and one colour for what's selected."
+summary = "A clearer battle overlay puts concise unit states, aligned figures and selected actions directly over the field."
 kind = "improved"
 headline = true
+
 
 [[screenshots]]
 file = "battle-hud.jpg"
@@ -23,7 +24,14 @@ caption = "F1 is now a key reference you can take in at a glance"
 [[screenshots]]
 file = "pause-menu.jpg"
 caption = "The Esc menu"
+
+[layout_comparison]
+before = "layout-before.jpg"
+after = "layout-after.jpg"
+caption = "Changelog presentation comparison, not gameplay: the top 1,000 pixels of this entry at the same 900-pixel viewport width. Open either image to inspect it."
 +++
+
+The battle's interface now reads like a battle management display laid onto the battlefield: no more boxes, short codes instead of sentences, every figure lined up in mono, and one colour for what's selected.
 
 - **No more boxes:** the status line, the order of battle, fire support, the selection and the orders sit on the
   battlefield over a soft darkening at the screen's edges, with thin rules between rows.

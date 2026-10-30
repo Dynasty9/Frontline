@@ -1,7 +1,14 @@
 +++
 title = "Website links reach the game you have open"
-summary = "Signing in on the website, or pressing Join or Find Match there, could start a second copy of the game instead of going to the one you had open. It happened after the game had updated itself. The link goes to the open game now."
+summary = "Website sign-in and join links reach the running game instead of opening another copy after an update."
 kind = "fixed"
+
+[layout_comparison]
+before = "layout-before.jpg"
+after = "layout-after.jpg"
+caption = "Changelog presentation comparison, not gameplay: the top 1,000 pixels of this entry at the same 900-pixel viewport width. Open either image to inspect it."
 +++
+
+Signing in on the website, or pressing Join or Find Match there, could start a second copy of the game instead of going to the one you had open. It happened after the game had updated itself. The link goes to the open game now.
 
 - The same happened to a game started while another copy of it was still running, once that other copy had closed.

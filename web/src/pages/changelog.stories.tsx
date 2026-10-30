@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite"
-import { expect, within } from "storybook/test"
+import { expect, within, screen, userEvent, waitFor } from "storybook/test"
 import { releases } from "@/lib/changelog"
 import { health } from "@/test/fixtures"
 import { mockMatchmaker } from "@/test/network"
@@ -43,5 +43,21 @@ export const NotFound: Story = {
   args: { path: "/no/such/page" },
   play: async ({ canvasElement }) => {
     await expect(await within(canvasElement).findByRole("heading", { level: 1, name: /Off the map/ })).toBeVisible()
+  },
+}
+
+/** Mobile navigation uses the shared Radix menu and preserves release anchors. */
+export const PhoneNavigation: Story = {
+  globals: { viewport: { value: "mobile1", isRotated: false } },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    const trigger = await canvas.findByRole("button", { name: "Jump to a release" })
+    await userEvent.click(trigger)
+    const menu = await screen.findByRole("menu")
+    const first = within(menu).getAllByRole("menuitem")[0]
+    await expect(first).toHaveAttribute("href", `#${releases[0].tag}`)
+    await userEvent.keyboard("{Escape}")
+    await waitFor(() => expect(trigger).toHaveFocus())
+    await expect(canvasElement.scrollWidth).toBeLessThanOrEqual(document.documentElement.clientWidth)
   },
 }

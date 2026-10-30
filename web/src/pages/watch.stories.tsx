@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite"
-import { expect, userEvent, within } from "storybook/test"
+import { expect, userEvent, waitFor, within } from "storybook/test"
 import { mockMatchmaker } from "@/test/network"
 import { health } from "@/test/fixtures"
 import { loadPage } from "@/test/load-page"
@@ -46,9 +46,10 @@ export const Player: Story = {
     const page = within(canvasElement.ownerDocument.body)
     await userEvent.click(await canvas.findByRole("button", { name: "Open battlefield" }))
     const player = await page.findByRole("dialog", { name: replay.name })
-    await expect(within(player).getByTitle(`Frontline battle: ${replay.name}`)).toBeVisible()
+    // Mounting precedes the dialog opening animation. Wait for actual visibility.
+    await waitFor(() => expect(within(player).getByTitle(`Frontline battle: ${replay.name}`)).toBeVisible())
     await userEvent.click(within(player).getByRole("button", { name: /^Close$/ }))
-    await expect(page.queryByRole("dialog")).not.toBeInTheDocument()
+    await waitFor(() => expect(page.queryByRole("dialog")).not.toBeInTheDocument())
     await expect(canvas.getByRole("button", { name: "Open battlefield" })).toBeEnabled()
   },
 }

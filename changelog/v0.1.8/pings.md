@@ -1,8 +1,15 @@
 +++
 title = "Pings and map sketches"
-summary = "Mark an enemy, a unit or a spot with a ping, pick a call from the ping wheel, or draw on the map for your side."
+summary = "Point out threats, request help and sketch plans directly on the shared battlefield and minimap."
 kind = "new"
+
+[layout_comparison]
+before = "layout-before.jpg"
+after = "layout-after.jpg"
+caption = "Changelog presentation comparison, not gameplay: the top 1,000 pixels of this entry at the same 900-pixel viewport width. Open either image to inspect it."
 +++
+
+Mark an enemy, a unit or a spot with a ping, pick a call from the ping wheel, or draw on the map for your side.
 
 - **Ping:** Alt + click on the battlefield or the minimap. A ping on an enemy sticks to him while he's in sight.
 - **Ping wheel:** hold Alt and the left button, then let go on attack, on my way, need support, danger, defend or look. "On my way" draws a line from your units to the spot.

@@ -1,16 +1,26 @@
 +++
 title = "Less repeated work in large battles"
-summary = "Scenery follows the camera's view, and soldiers avoid repeating sight checks against unchanged walls."
+summary = "Large battles avoid repeated scenery and visibility work while keeping the battlefield responsive."
 kind = "improved"
+
+
+[[screenshots]]
+file = "after.png"
+caption = "After: the same map and camera, with visibility-aware rendering and native routes. Combat evolves independently between runs."
 
 [[screenshots]]
 file = "before.png"
 caption = "Before: the generated 3 km battlefield at command zoom."
 
-[[screenshots]]
-file = "after.png"
-caption = "After: the same map and camera, with visibility-aware rendering and native routes. Combat evolves independently between runs."
+
+
+[layout_comparison]
+before = "layout-before.jpg"
+after = "layout-after.jpg"
+caption = "Changelog presentation comparison, not gameplay: the top 1,000 pixels of this entry at the same 900-pixel viewport width. Open either image to inspect it."
 +++
+
+Scenery follows the camera's view, and soldiers avoid repeating sight checks against unchanged walls.
 
 - Scenery loads around what the camera can see, including a margin for roofs and screen edges.
 - Large maps store navigation cells compactly, saving about 1.25 GiB across the two 3 km land grids.

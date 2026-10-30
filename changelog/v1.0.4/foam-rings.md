@@ -1,12 +1,20 @@
 +++
 title = "Splashes leave rings of foam again"
-summary = "A shell landing in the water, a boat going down and rounds hitting the sea leave rings and boils of foam on the water again, instead of flat white squares that turned blue as the swell rolled over them."
+summary = "Water impacts and sinking boats leave spreading foam instead of flat square artifacts."
 kind = "fixed"
+
 
 [[screenshots]]
 file = "before-after.jpg"
 caption = "Before and after: a shell's splash in the sea"
+
+[layout_comparison]
+before = "layout-before.jpg"
+after = "layout-after.jpg"
+caption = "Changelog presentation comparison, not gameplay: the top 1,000 pixels of this entry at the same 900-pixel viewport width. Open either image to inspect it."
 +++
+
+A shell landing in the water, a boat going down and rounds hitting the sea leave rings and boils of foam on the water again, instead of flat white squares that turned blue as the swell rolled over them.
 
 - A shell bursting in the water throws up its column and leaves a ring of foam running outward and breaking up,
   with white water boiling where the column fell back.

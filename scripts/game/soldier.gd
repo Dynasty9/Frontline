@@ -257,6 +257,11 @@ var tent_dead := false
 var home: Structure = null
 var dead_t := 0.0
 var mounted: Structure = null
+var _pit_aim := Vector3.INF
+var _pit_kind := "he"
+var _pit_delay := 5.0
+var _mount_target: Vehicle
+var _mount_scan_t := 0.0
 var intel_left := 0
 var intel_t := 0.0
 var prison_dest: Structure = null
@@ -728,7 +733,11 @@ func _shift_along() -> bool:
 func _face(dir: Vector3, dt: float, rate := 9.0) -> void:
 	if dir.length_squared() < 0.0001:
 		return
-	rotation.y = lerp_angle(rotation.y, Defs.yaw_of(dir), 1.0 - exp(-dt * rate))
+	if mounted != null and not mounted.gone and mounted.skind in ["mg_nest", "hmg_nest", "mortar_pit", "at_post"] and Defs.flat(position - mounted.mount_pos()).length() < 0.8:
+		var limit := deg_to_rad(float({"mg_nest": 55.0, "hmg_nest": 35.0, "mortar_pit": 12.0, "at_post": 20.0}[mounted.skind]))
+		rotation.y += clampf(wrapf(Defs.yaw_of(dir) - rotation.y, -PI, PI), -limit * dt, limit * dt)
+	else:
+		rotation.y = lerp_angle(rotation.y, Defs.yaw_of(dir), 1.0 - exp(-dt * rate))
 
 
 func _face_now(dir: Vector3) -> void:
@@ -1822,7 +1831,7 @@ func _weapon_tick_work(dt: float, moving: bool, mode: String) -> void:
 		want = Post.PRONE
 		shoot_ok = false
 	posture = want
-	if not shoot_ok or reload_t > 0.0 or fire_t > 0.0 or w.is_empty():
+	if not shoot_ok or reload_t > 0.0 or w.is_empty() or (fire_t > 0.0 and crew_mount() == null):
 		return
 	if suppression >= 88.0 and mode != "escort":
 		return
@@ -1850,7 +1859,14 @@ func _weapon_tick_work(dt: float, moving: bool, mode: String) -> void:
 	if mode != "escort" and not (posture == Post.LEAN_L or posture == Post.LEAN_R):
 		if blind and cover_n != Vector3.ZERO and aim_dir.dot(cover_n) < 0.5:
 			return  # he can't hold it over the wall that far round
-		_face_now(aim_dir)
+		if crew_mount() != null:
+			_face(aim_dir, dt)
+			if absf(wrapf(Defs.yaw_of(aim_dir) - rotation.y, -PI, PI)) > 0.035:
+				return
+		else:
+			_face_now(aim_dir)
+	if fire_t > 0.0:
+		return
 	_shoot(aim_pt, aim_ent, moving, cf)
 
 
@@ -3425,6 +3441,9 @@ func start_man(st: Structure) -> void:
 
 
 func release_mount() -> void:
+	_pit_aim = Vector3.INF
+	_mount_target = null
+	_mount_scan_t = 0.0
 	var st := mounted
 	mounted = null
 	gun_override = {}
@@ -3503,49 +3522,57 @@ func _mortar_pit_tick(dt: float, st: Structure) -> void:
 	act = Act.LAUNCH if world.time - last_shot_t < 0.7 else Act.IDLE
 	if world.time < mortar_cd:
 		return
-	var tp := Vector3.INF
-	var kind := "he"
-	if not st.fire_queue.is_empty():
-		var fm: Array = st.fire_queue.pop_front()
-		tp = fm[0]
-		kind = fm[1]
-		mortar_cd = world.time + 2.2
-	else:
-		mortar_cd = world.time + 2.0
-		tp = world.rules.mortar_target(team, st.position, 30.0, 160.0)
-		if tp == Vector3.INF:
+	if _pit_aim == Vector3.INF:
+		_pit_kind = "he"
+		_pit_delay = 2.2 if not st.fire_queue.is_empty() else 5.0
+		if not st.fire_queue.is_empty():
+			var fm: Array = st.fire_queue.pop_front()
+			_pit_aim = fm[0]
+			_pit_kind = fm[1]
+		else:
+			_pit_aim = world.rules.mortar_target(team, st.position, 30.0, 160.0)
+		if _pit_aim == Vector3.INF:
+			mortar_cd = world.time + 2.0
 			_face(st.front_dir(), dt, 3.0)
 			return
-		mortar_cd = world.time + 5.0
-	_face_now(Defs.flat(tp - position))
+	var dir := Defs.flat(_pit_aim - position)
+	_face(dir, dt)
+	if absf(wrapf(Defs.yaw_of(dir) - rotation.y, -PI, PI)) > 0.035:
+		return
+	mortar_cd = world.time + _pit_delay
 	last_shot_t = world.time
-	world.combat.fire_mortar(self, st.position + Vector3(0, 1.0, 0), tp, kind)
+	world.combat.fire_mortar(self, st.position + Vector3(0, 1.0, 0), _pit_aim, _pit_kind)
+	_pit_aim = Vector3.INF
 
 
-func _at_post_tick(_dt: float, st: Structure) -> void:
+func _at_post_tick(dt: float, st: Structure) -> void:
 	posture = Post.CROUCH
 	act = Act.LAUNCH if world.time - last_shot_t < 1.0 else Act.IDLE
-	if world.time < rocket_cd:
-		return
-	rocket_cd = world.time + 0.7
 	var eye := st.position + Vector3(0, 1.3, 0)
-	var best: Vehicle = null
-	var bd := 130.0
-	for v in world.vehicles:
-		if v.team == team or v.team < 0 or not v.visible_to_team(team):
-			continue
-		var d: float = Defs.flat(v.position - st.position).length()
-		if d > bd or not world.combat.can_see_from(eye, v, []):
-			continue
-		bd = d
-		best = v
-	if best == null:
+	_mount_scan_t -= dt
+	if _mount_scan_t <= 0.0:
+		_mount_scan_t = 0.7
+		_mount_target = null
+		var bd := 130.0
+		for v in world.vehicles:
+			if v.team == team or v.team < 0 or not v.visible_to_team(team):
+				continue
+			var d: float = Defs.flat(v.position - st.position).length()
+			if d > bd or not world.combat.can_see_from(eye, v, []):
+				continue
+			bd = d
+			_mount_target = v
+	if not is_instance_valid(_mount_target) or _mount_target.gone:
 		return
-	var dir := Defs.flat(best.position - st.position).normalized()
-	_face_now(dir)
+	var dir := Defs.flat(_mount_target.position - st.position).normalized()
+	_face(dir, dt)
+	if world.time < rocket_cd or absf(wrapf(Defs.yaw_of(dir) - rotation.y, -PI, PI)) > 0.035:
+		return
+	if not world.combat.can_see_from(eye, _mount_target, []):
+		return
 	rocket_cd = world.time + 7.0
 	last_shot_t = world.time
-	world.combat.fire_at(self, eye + dir * 0.9, best, team == Defs.ARMY)
+	world.combat.fire_at(self, eye + dir * 0.9, _mount_target, team == Defs.ARMY)
 	say("Missile away!" if team == Defs.ARMY else "Recoilless, fire!")
 
 
