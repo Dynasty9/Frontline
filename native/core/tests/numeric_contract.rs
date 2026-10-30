@@ -4,6 +4,7 @@ use frontline_core::bullet::{self, Body, Bullet, TargetEffect, ThroughContact};
 use frontline_core::collision::{BoxShape, CollisionWorld, Mat3};
 use frontline_core::cover::{generate, Part};
 use frontline_core::drone::{DroneFlight, Phase};
+use frontline_core::grenade_reaction as reflex;
 use frontline_core::guided::{GuidedFlight, Kind as GuidedKind};
 use frontline_core::infantry_aim::{AimInput, InfantryAim, Target, TargetKind};
 use frontline_core::infantry_motion::{InfantryMotion, MoveInput};
@@ -56,6 +57,107 @@ fn golden(name: &str, actual: &[u8]) {
     {
         panic!("{name}: first differing byte {i}: actual {a:02x}, expected {b:02x}");
     }
+}
+
+#[test]
+fn grenade_reflex_transcripts_are_identical_across_platforms() {
+    let mut bytes = Vec::new();
+    for case in 0..512 {
+        let mut rng = SimulationRandom::new(case + 317);
+        let mut memory = reflex::GrenadeMemory::default();
+        if case % 31 == 0 {
+            memory.seen = (100..125).collect();
+        }
+        let actor = reflex::Soldier {
+            id: 1,
+            position: Vector3::ZERO,
+            center: Vector3::Y,
+            yaw: case as f64 * 0.13,
+            team: (case % 2) as i32,
+            suppression: (case % 90) as f64,
+            posture: Posture::try_from((case % 5) as u8).unwrap(),
+            squad: case % 11 != 0,
+            mounted: case % 17 == 0,
+            riding: case % 23 == 0,
+            armed: case % 7 != 0,
+        };
+        let grenade = reflex::Grenade {
+            id: 2,
+            position: Vector3::new((case % 9) as f32 * 0.7, (case % 3) as f32 * 0.2, 0.0),
+            fuse: 0.4 + (case % 12) as f64 * 0.25,
+            held: case % 31 == 0,
+            gone: case % 29 == 0,
+            flying: case % 3 == 0,
+            free: case % 37 != 0,
+            smothered: case % 41 == 0,
+            thrown_back: u32::from(case % 11 == 0),
+        };
+        let rounds = [
+            grenade,
+            reflex::Grenade {
+                id: 3,
+                position: Vector3::new(5.5, 0.4, 0.0),
+                ..grenade
+            },
+        ];
+        let mates: Vec<_> = (4..8)
+            .map(|id| reflex::Mate {
+                id,
+                position: Vector3::new(2.0, 0.0, (id - 4) as f32 * 0.2),
+                center: Vector3::new(2.0, 0.3, (id - 4) as f32 * 0.2),
+                team: 0,
+                life: if (case + id) % 3 == 0 {
+                    Life::Downed
+                } else {
+                    Life::Alive
+                },
+                helpless: case % 3 == 0,
+            })
+            .collect();
+        let mut collision = CollisionWorld::default();
+        if case % 3 == 0 {
+            collision.replace(
+                10,
+                &[BoxShape {
+                    body: 10,
+                    shape: 0,
+                    center: Vector3::new(1.0, 1.0, 0.0),
+                    basis: Mat3::IDENTITY,
+                    half: Vector3::new(0.1, 1.0, 2.0),
+                }],
+            );
+        }
+        for _ in 0..3 {
+            if let Some(id) = memory.notice(actor.position, &rounds, true).unwrap() {
+                rng.randi();
+                let g = *rounds.iter().find(|g| g.id == id).unwrap();
+                let result = reflex::react(actor, g, &mates, &mut collision, &mut rng).unwrap();
+                let (kind, body): (u8, i64) = match result {
+                    reflex::Reaction::Smother => (0, 0),
+                    reflex::Reaction::ThrowBack => (1, 0),
+                    reflex::Reaction::Kick => (2, 0),
+                    reflex::Reaction::Shelter(id) => (3, id),
+                    reflex::Reaction::Dive => (4, 0),
+                };
+                bytes.push(kind);
+                bytes.extend_from_slice(&body.to_le_bytes());
+            }
+            block(&mut bytes, &memory.checkpoint());
+        }
+        let velocity = reflex::kick_velocity(
+            actor,
+            grenade,
+            &mates,
+            (case % 2 == 0).then_some(Vector3::new(11.3, 0.0, -4.7)),
+        )
+        .unwrap();
+        point(&mut bytes, velocity);
+        let cooking =
+            reflex::cook_time(actor.team, (case % 31) as f64, case % 2 == 0, &mut rng).unwrap();
+        bytes.extend_from_slice(&cooking.to_le_bytes());
+        bytes.extend_from_slice(&rng.state().to_le_bytes());
+    }
+    golden("grenade_reflex", &bytes);
 }
 
 #[test]

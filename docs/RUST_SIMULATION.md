@@ -37,6 +37,7 @@ graphics, network access or a wall clock.
 | Blast exposure | `frontline_core` | Infantry and structure damage, shelter, fling strength and flinch radius extracted; Godot still owns victims, vehicle armour and effect application |
 | Blast knockback and disorientation | `frontline_core` | Fling trajectories, obstacle bounces, landings, flinching and dazed movement extracted with component checkpoints; Godot still applies task cleanup and speech |
 | Wounded infantry and corpse timers | `frontline_core` | Bleeding, rescue/medicine modifiers, speech/pistol/crawl schedules and corpse collection decisions extracted; rescuer links, targeting and task effects remain in Godot |
+| Grenade reflex decisions | `frontline_core` | Notice memory, protection of nearby casualties, throwback/kick priority, shelter queries, kick direction and cooking time extracted; Godot still owns task application and grenade handlers |
 | Injury behavior and special tasks | Rust | `soldier.gd`, `soldier_brain.gd`, `combat.gd` |
 | Squads, tactics, commander and naval decisions | Rust | Squad, tactics, commander and naval scripts |
 | Vehicles and crews | Rust | Entity scripts and Godot spatial queries |
@@ -200,12 +201,12 @@ Component checkpoint headers contain a four-byte component tag, a little-endian
 rules rather than silently continuing with changed arithmetic. The separate
 integer RNG stream remains unchanged.
 
-`native/core/tests/numeric_contract.rs` compares 428,646 committed bytes without
+`native/core/tests/numeric_contract.rs` compares 504,078 committed bytes without
 tolerances: fixed-tick flight state, support events and RNG cursors, carved water,
 craters, rotated box hits, cover anchors, spherical interpolation and infantry
 movement, infantry cover fire, postures, ammunition, burst recovery, vitals, aiming,
 combat poses, bullet resolution, blast exposure, knockback recovery and wounded
-infantry schedules. CI runs
+infantry schedules and grenade reflexes. CI runs
 the same fixtures in debug and release on Windows x64, Linux
 x64, Linux ARM64 and macOS ARM64. A mismatch reports the first different byte.
 These fixtures guard the covered trajectories; they are not a proof for all
@@ -421,7 +422,20 @@ flag until Rust owns the actors.
 
 The shock fixture compares 92,160 reference steps, including mounted turning,
 blocked terrain, carried casualties and task interruption. The full default suite
-passes 118 tests; 111 core tests pass in debug and release.
+passes 119 tests; 116 core tests pass in debug and release.
+
+## Grenade reflexes
+
+`GrenadeMemory` retains noticed rounds in encounter order, with the same eviction
+threshold as the existing AI. The Rust grenade decision checks nearby casualties,
+attempts to smother, throw back or kick in order, then queries shelter before a
+dive. The owning world classifies the blocking body's kind. The warning precedes
+reaction randomness; task cleanup and speech still run after the decision.
+The 4,096-case reference fixture compares actions, handlers, memory, effects,
+random draws, kick vectors and cooking times. It includes held rounds, other
+handlers, cover, suppression and wounded teammates. `FLGR` checkpoints only the
+notice memory; task and handler ownership still require the whole actor/world
+port. Numeric CI adds a 75,432-byte reflex transcript.
 
 ## Battlefield collision
 

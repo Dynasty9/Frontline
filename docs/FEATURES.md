@@ -1263,6 +1263,8 @@ damage, knockback and flinching. Knockback trajectories, obstacle bounces,
 landings and dazed movement also have checkpointed Rust state.
 Wounded timers and corpse collection decisions also have Rust compatibility
 checks, including rescue, medicine and the order of speech and pistol effects.
+Grenade reflex checks preserve protection of wounded squadmates, throwback and
+kick priority, shelter decisions, kick direction and cooking time.
 The full
 authoritative Rust server and deterministic
 battle verifier are still in progress; see [RUST_SIMULATION.md](RUST_SIMULATION.md).

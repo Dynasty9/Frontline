@@ -26,6 +26,9 @@ static func think(s: Soldier) -> void:
 			s.bt_path = "dive from a shell"
 		return
 	if grenade_close(s):
+		if _native(s):
+			_react_native(s)
+			return
 		if can_smother(s):
 			smother(s)
 			s.bt_path = "throw himself on it"
@@ -98,9 +101,78 @@ static func drone(s: Soldier) -> int:
 
 # --- grenades ------------------------------------------------------------------------
 
+static func _native(s: Soldier) -> bool:
+	return s.world.settings.get("rust_infantry", false) and ClassDB.class_exists("GrenadeReactionCore") and s.world.combat != null and s.world.combat._collision != null
+
+
+static func _core(s: Soldier) -> RefCounted:
+	if s._grenade_core == null:
+		s._grenade_core = ClassDB.instantiate("GrenadeReactionCore")
+	return s._grenade_core
+
+
+static func _round(g: Projectile) -> Array:
+	return [g.eid, g.position, g.fuse, g.held_by != null, g.gone, g.flying, _free(g), g.smothered_by != null, g.thrown_back]
+
+
+static func _actor(s: Soldier) -> Array:
+	return [s.eid, s.position, s.center_point(), s.rotation.y, s.team, s.suppression, s.posture, s.squad != null, s.mounted != null, s.riding != null, not s.wdef.is_empty()]
+
+
+static func _mates(s: Soldier, g: Projectile, radius: float) -> Array:
+	var out := []
+	for other in s.world.soldiers_near(g.position, radius):
+		out.append([other.eid, other.position, other.center_point(), other.team, other.life,
+			other.dragged_by != null or other.task in ["rescue", "heal", "stretcher"] or other.mounted != null])
+	return out
+
+
+static func _react_native(s: Soldier) -> void:
+	s.world.combat._sync_collision()
+	var result: PackedInt64Array = _core(s).react(_actor(s), _round(s.bt_g), _mates(s, s.bt_g, 4.5), s.world.combat._collision, s.world.rng._backend)
+	assert(result.size() == 2, "Invalid grenade reaction")
+	match result[0]:
+		0:
+			smother(s)
+			s.bt_path = "throw himself on it"
+		1:
+			throw_back(s)
+			s.bt_path = "pick it up"
+		2:
+			kick(s)
+			s.bt_path = "kick it away"
+		3:
+			var body = s.world.combat._collision_bodies.get(result[1])
+			if is_instance_valid(body) and s.world.combat.ent_of(body) is Structure:
+				duck(s)
+				s.bt_path = "get down behind it"
+			else:
+				dive_clear(s)
+				s.bt_path = "dive clear"
+		_:
+			dive_clear(s)
+			s.bt_path = "dive clear"
+
+
 ## A live grenade near him he hasn't reacted to yet (kept in s.bt_g).
 static func grenade_close(s: Soldier) -> bool:
 	s.bt_g = null
+	if _native(s):
+		var rounds := []
+		for g: Projectile in s.world.projectiles:
+			if g.ptype == "frag":
+				rounds.append(_round(g))
+		var result: Array = _core(s).notice(s.position, PackedInt64Array(s.seen_grenades.keys()), rounds, true)
+		assert(result.size() == 2, "Invalid grenade notice")
+		s.seen_grenades.clear()
+		for id: int in result[1]:
+			s.seen_grenades[id] = true
+		if int(result[0]) == 0:
+			return false
+		s.say(_pick(s, ["GRENADE!", "Grenade! Get down!", "Frag!"]), true)
+		s.bt_g = s.world.entity(int(result[0])) as Projectile
+		assert(s.bt_g != null, "Missing noticed grenade")
+		return true
 	for g in s.world.projectiles:
 		if g.ptype != "frag" or g.held_by != null or g.gone:
 			continue
@@ -268,6 +340,12 @@ static func gkick_tick(s: Soldier, dt: float) -> void:
 
 
 static func kick_vel(s: Soldier, g: Projectile) -> Vector3:
+	if _native(s):
+		var thrower: Entity = s.world.entity(g.thrower_id)
+		var from = thrower.position if thrower != null and not thrower.gone and thrower.team != s.team else null
+		var result = _core(s).kick_velocity(_actor(s), _round(g), _mates(s, g, 6.0), from)
+		assert(result is Vector3, "Invalid grenade kick velocity")
+		return result
 	var dir := Defs.flat(g.position - s.position).normalized()
 	if dir.length() < 0.5:
 		dir = Defs.dir_of(s.rotation.y)
@@ -315,6 +393,11 @@ static func dive_clear(s: Soldier) -> int:
 ## second or so after the spoon flies - so it goes off before they can throw
 ## it back. How long he holds it.
 static func cook_time(s: Soldier, target: Entity, d: float) -> float:
+	if _native(s):
+		var hard_cover: bool = target is Soldier and target.at_cover and target.cover_mat >= Cover.HARD
+		var result = _core(s).cook_time(s.team, d, hard_cover, s.world.rng._backend)
+		assert(result != null, "Invalid grenade cook time")
+		return float(result)
 	if d > 20.0:
 		return 0.0
 	var p := 0.3 if s.team == 1 else 0.45

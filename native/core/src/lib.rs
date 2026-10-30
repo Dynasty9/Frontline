@@ -7,6 +7,7 @@ pub mod collision;
 pub mod cover;
 pub mod drone;
 pub mod formation;
+pub mod grenade_reaction;
 pub mod guided;
 pub mod hierarchy;
 pub mod infantry_aim;

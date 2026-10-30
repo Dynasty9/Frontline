@@ -207,6 +207,7 @@ var _hit_kind := ""
 var flinging := false
 var _sector := Vector3.ZERO  # where he watches at a halt (zero: not on a war footing)
 var seen_grenades := {}
+var _grenade_core: RefCounted
 var heard_drones := {}
 var low_ammo_said := false
 var out_said := false
