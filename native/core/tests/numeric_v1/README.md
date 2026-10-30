@@ -11,6 +11,8 @@ different byte rather than dumping the fixture.
   spherical interpolation, cover anchors and infantry movement checkpoints.
 - `infantry_weapon.bin`: cover-fire decisions, postures, ammunition and burst
   recovery, checkpoint state and RNG cursors, including draws between shots and recovery.
+- `infantry_vitals.bin`: suppression, recovery, fatigue, damage outcomes and
+  repeated wounds/revivals, checkpoint state and RNG cursors.
 
 Rust 1.94.0, glam 0.32.1 with `libm`, and libm 0.2.16 with `force-soft-floats`
 define this contract. No fast-math is enabled. Existing component resume tests

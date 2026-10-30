@@ -30,7 +30,8 @@ graphics, network access or a wall clock.
 | Entity registry, stable IDs, spawn/despawn | Rust | `world.gd`, `entity.gd` |
 | Infantry route movement | `frontline_core` | Route progress, vaulting, sliding, doors and ground caches extracted and reference-tested; the per-soldier adapter remains test-only because it is slower than GDScript |
 | Infantry weapon cycles | `frontline_core` | Cover fire, postures, firing permissions, ammunition and burst recovery extracted with compatibility tests; adapters remain test-only until Rust owns the actor |
-| Infantry aim selection, bullet damage, injuries and special tasks | Rust | `soldier.gd`, `soldier_brain.gd`, `combat.gd` |
+| Infantry health, suppression and fatigue | `frontline_core` | Numeric recovery, damage outcomes and down/death/revive transitions extracted with component checkpoints; actor cleanup, squad reactions and damage attribution remain Godot effects |
+| Infantry aim selection, bullet resolution, injury behavior and special tasks | Rust | `soldier.gd`, `soldier_brain.gd`, `combat.gd` |
 | Squads, tactics, commander and naval decisions | Rust | Squad, tactics, commander and naval scripts |
 | Vehicles and crews | Rust | Entity scripts and Godot spatial queries |
 | Battlefield box raycasts | `frontline_core` | Spatial grid with deterministic hit ties; Godot supplies geometry updates |
@@ -193,10 +194,10 @@ Component checkpoint headers contain a four-byte component tag, a little-endian
 rules rather than silently continuing with changed arithmetic. The separate
 integer RNG stream remains unchanged.
 
-`native/core/tests/numeric_contract.rs` compares 117,767 committed bytes without
+`native/core/tests/numeric_contract.rs` compares 162,863 committed bytes without
 tolerances: fixed-tick flight state, support events and RNG cursors, carved water,
 craters, rotated box hits, cover anchors, spherical interpolation and infantry
-movement, infantry cover fire, postures, ammunition and burst recovery. CI runs
+movement, infantry cover fire, postures, ammunition, burst recovery and vitals. CI runs
 the same fixtures in debug and release on Windows x64, Linux
 x64, Linux ARM64 and macOS ARM64. A mismatch reports the first different byte.
 These fixtures guard the covered trajectories; they are not a proof for all
@@ -287,7 +288,7 @@ aim selection, damage, life state, tasks and squad ownership still live in Godot
 The reference fixture compares 168,960 controller steps, including five postures,
 cover shifts, squadmate responses, weapon changes during damage, finite/infinite
 ammunition, scarce-round bursts, speech and exact RNG cursors. The test-port-only
-`rust_infantry_weapon` option runs the native controller through real attack,
+`rust_infantry` option runs the native controller through real attack,
 breach, trenches and fire scenarios, comparing existing battle fingerprints and
 behavior counters every 15 seconds for 60 seconds. Those fingerprints are an
 integration regression check, not cryptographic replay verification. Normal play
@@ -296,6 +297,29 @@ gain is claimed from this per-soldier test adapter.
 The full default suite passes 111 tests after this extraction, and all 75 core
 tests pass in both debug and release. Cross-platform CI also compares the new
 52,037-byte weapon transcript against one shared committed fixture.
+
+## Infantry vitals
+
+`InfantryVitals` retains health, repeated-wound count, suppression and recovery
+timers, fatigue, bleed state and down/death timing. Damage decides survival,
+downing or death without applying the actor transition early: battle damage
+credit and squad notifications must observe the same life state as before. The
+actor still performs task/mount cleanup, squad casualty reactions, visual events
+and replicated health changes in their existing order. Suppression retains
+cover-material caps, trench and retreat modifiers, reporting cadence and speech
+draws. Fatigue preserves movement/carrying costs and posture-dependent recovery.
+
+The `FLIV` checkpoint covers these numeric fields, not task state, rescuer links,
+injury movement or the complete soldier. The test-only `rust_infantry` setting
+enables weapon and vitals adapters together. The vitals reference fixture checks
+92,160 steps across every life state, including repeat wounds/revivals, bearers,
+prisoners, damage attribution, squad morale, speech, properties and RNG cursors.
+The four battle comparisons now exercise both controllers together. Core checks
+also restore state between recovery/fatigue steps and reject malformed input.
+The numeric CI corpus includes a 45,096-byte vitals transcript.
+The full default suite passes 112 tests after this extraction; 81 core tests pass
+in debug and release. These adapters remain test-only and do not establish a
+complete soldier checkpoint or a 60 FPS performance result.
 
 ## Battlefield collision
 

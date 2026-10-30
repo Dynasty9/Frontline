@@ -8,6 +8,7 @@ pub mod formation;
 pub mod guided;
 pub mod hierarchy;
 pub mod infantry_motion;
+pub mod infantry_vitals;
 pub mod infantry_weapon;
 pub mod navigation_grid;
 pub mod path_planner;

@@ -51,7 +51,7 @@ func make_world() -> Scene:
 	var w := Scene.new()
 	w.srv = true
 	w.has_view = false
-	w.settings = {"rust_infantry_weapon": true, "debug": true}
+	w.settings = {"rust_infantry": true, "debug": true}
 	add_child(w)
 	return w
 
@@ -102,7 +102,7 @@ func observe(a: Trooper, b: Trooper, label: String) -> void:
 func shots(worlds: Array) -> void:
 	for w in worlds:
 		w.combat = ShotCapture.new(w)
-	worlds[0].settings.rust_infantry_weapon = false
+	worlds[0].settings.rust_infantry = false
 	var count := 0
 	var low_ammo := false
 	var weapons: Array = Defs.WEAPONS.values()

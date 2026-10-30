@@ -780,16 +780,7 @@ func sim(dt: float) -> void:
 	if _doing_t <= 0.0:
 		_doing_t = 0.25
 		_update_doing()
-	if suppression > 0.0 and world.time - _supp_t > 1.4:
-		var rec := 8.0 if suppression > 50.0 else 13.0
-		if at_cover and cover_type != Cov.NONE:
-			rec *= 1.15
-		suppression = maxf(0.0, suppression - dt * rec)
-	if at_cover and cover_mat >= 0 and not peek_up and suppression > Cover.SUPP_CAP[cover_mat]:
-		suppression = move_toward(suppression, Cover.SUPP_CAP[cover_mat], dt * 16.0)
-	say_cd -= dt
-	if hit_dirt_t > 0.0:
-		hit_dirt_t -= dt
+	_recover_tick(dt)
 	if flinging:
 		_fling_tick(dt)
 	else:
@@ -806,6 +797,23 @@ func sim(dt: float) -> void:
 				_hidden(dt)
 	_posture_sanity(dt)
 	_update_flags()
+
+
+func _recover_tick(dt: float) -> void:
+	if world.settings.get("rust_infantry", false) and ClassDB.class_exists("InfantryVitalsCore"):
+		var state := _vitals_state()
+		_read_vitals_state(_vitals_core.recover(state, dt, world.time, _vitals_protection()))
+		return
+	if suppression > 0.0 and world.time - _supp_t > 1.4:
+		var rec := 8.0 if suppression > 50.0 else 13.0
+		if at_cover and cover_type != Cov.NONE:
+			rec *= 1.15
+		suppression = maxf(0.0, suppression - dt * rec)
+	if at_cover and cover_mat >= 0 and not peek_up and suppression > Cover.SUPP_CAP[cover_mat]:
+		suppression = move_toward(suppression, Cover.SUPP_CAP[cover_mat], dt * 16.0)
+	say_cd -= dt
+	if hit_dirt_t > 0.0:
+		hit_dirt_t -= dt
 
 
 ## Nobody glides across the ground: a man who is moving is on his feet (or
@@ -862,6 +870,11 @@ func _update_flags_work() -> void:
 ## Out of breath: rushes, sprints and dragging a man wear him down; a breather
 ## (lower down, sooner) brings it back.
 func _fatigue_tick(dt: float) -> void:
+	if world.settings.get("rust_infantry", false) and ClassDB.class_exists("InfantryVitalsCore"):
+		var state := _vitals_state()
+		_read_vitals_state(_vitals_core.fatigue(state, dt, PackedInt32Array([int(is_moving() or dive_t > 0.0), move_mode, int(act == Act.CRAWL),
+			int(task in ["rescue", "stretcher", "smother"]), int(task == "stretcher" or act in [Act.DRAG, Act.CARRY]), int(posture == Post.STAND)])))
+		return
 	var drain := 0.0
 	if is_moving() or dive_t > 0.0:
 		drain = [0.0, 0.022, 0.045][clampi(move_mode, 0, 2)]
@@ -1764,7 +1777,7 @@ func _lean_post() -> int:
 ## waits for the fire to slacken, a fighter may hold his rifle up over the
 ## wall and fire blind.
 func _cover_cycle(dt: float, w: Dictionary, want_fire: bool, pinned: bool) -> void:
-	if world.settings.get("rust_infantry_weapon", false) and ClassDB.class_exists("InfantryWeaponCore"):
+	if world.settings.get("rust_infantry", false) and ClassDB.class_exists("InfantryWeaponCore"):
 		_native_cover_cycle(dt, w, want_fire, pinned)
 		return
 	_cover_cycle_reference(dt, w, want_fire, pinned)
@@ -1900,7 +1913,7 @@ func _weapon_tick(dt: float, moving: bool, mode: String) -> void:
 
 
 func _advance_weapon_timers(dt: float) -> void:
-	if world.settings.get("rust_infantry_weapon", false) and ClassDB.class_exists("InfantryWeaponCore"):
+	if world.settings.get("rust_infantry", false) and ClassDB.class_exists("InfantryWeaponCore"):
 		var state := _weapon_state()
 		var w := cur_weapon()
 		_read_weapon_state(_weapon_core.advance_timers(state, dt, PackedFloat64Array([w.get("ammo", 0), w.get("mag", 30), w.get("reload", 2.0)])))
@@ -1958,7 +1971,7 @@ func _weapon_tick_work(dt: float, moving: bool, mode: String) -> void:
 
 func _weapon_stance(dt: float, moving: bool, mode: String, w: Dictionary, pinned: bool, danger: bool, have_target: bool, cf: bool) -> bool:
 	# shortcut: fixture adapter packs state; the Rust actor will keep it between ticks.
-	if world.settings.get("rust_infantry_weapon", false) and ClassDB.class_exists("InfantryWeaponCore"):
+	if world.settings.get("rust_infantry", false) and ClassDB.class_exists("InfantryWeaponCore"):
 		var cycle := mode == "normal" and not moving and at_cover and cover_type in [Cov.LOW, Cov.LEAN] and not (cover_type == Cov.LOW and cover_h <= 0.0 and mounted == null)
 		if cycle:
 			_native_cover_cycle(dt, w, have_target or cf, pinned)
@@ -2056,7 +2069,7 @@ func _weapon_stance_reference(dt: float, moving: bool, mode: String, w: Dictiona
 
 
 func _shoot(aim_pt: Vector3, aim_ent: Entity, moving: bool, cover_fire: bool) -> void:
-	if world.settings.get("rust_infantry_weapon", false) and ClassDB.class_exists("InfantryWeaponCore"):
+	if world.settings.get("rust_infantry", false) and ClassDB.class_exists("InfantryWeaponCore"):
 		_native_shoot(aim_pt, aim_ent, moving, cover_fire)
 		return
 	_shoot_reference(aim_pt, aim_ent, moving, cover_fire)
@@ -2808,8 +2821,54 @@ func _retreat_tick(dt: float) -> void:
 
 # --- damage / states ---------------------------------------------------------------------
 
+var _vitals_core: RefCounted
+
+
+func _vitals_state() -> PackedFloat64Array:
+	if _vitals_core == null:
+		_vitals_core = ClassDB.instantiate("InfantryVitalsCore")
+	return PackedFloat64Array([life, times_downed, hp, max_hp, base_hp, suppression, _supp_t, reveal_t, bleed, bleed_max,
+		stamina, say_cd, hit_dirt_t, downed_t, dead_t, scream_t, pistol_t, crawl_t])
+
+
+func _read_vitals_state(state: PackedFloat64Array) -> void:
+	assert(state.size() == 18, "Invalid infantry vitals state")
+	life = int(state[0])
+	times_downed = int(state[1])
+	hp = state[2]
+	max_hp = state[3]
+	base_hp = state[4]
+	suppression = state[5]
+	_supp_t = state[6]
+	reveal_t = state[7]
+	bleed = state[8]
+	bleed_max = state[9]
+	stamina = state[10]
+	say_cd = state[11]
+	hit_dirt_t = state[12]
+	downed_t = state[13]
+	dead_t = state[14]
+	scream_t = state[15]
+	pistol_t = state[16]
+	crawl_t = state[17]
+
+
+func _vitals_protection() -> PackedInt32Array:
+	return PackedInt32Array([int(at_cover), cover_type, cover_mat, int(peek_up), int(mounted != null and mounted.skind != "watchtower"), int(_gy < -0.6)])
+
+
 func add_suppression(amount: float, from_pos: Vector3) -> void:
 	if life != Life.ALIVE:
+		return
+	if world.settings.get("rust_infantry", false) and ClassDB.class_exists("InfantryVitalsCore"):
+		var state := _vitals_state()
+		var result: Array = _vitals_core.suppress(state, amount, world.time, task == "retreat", squad != null, _vitals_protection(), world.rng._backend)
+		assert(result.size() == 3, "Invalid infantry suppression result")
+		_read_vitals_state(result[0])
+		if result[1]:
+			squad.report_pos(from_pos)
+		if int(result[2]) >= 0:
+			say(["I'm pinned!", "Can't move!", "Heads down!", "They've got us pinned!"][result[2]])
 		return
 	if task == "retreat":
 		amount *= 0.5  # running for it: heads down, legs going
@@ -2843,13 +2902,24 @@ func take_damage(amount: float, src, _dir: Vector3, kind := "bullet") -> void:
 		world.battle.soldier_hit(self, amount, src)
 	_hit_dir = _dir
 	_hit_kind = kind
+	var result: Array = []
+	if world.settings.get("rust_infantry", false) and ClassDB.class_exists("InfantryVitalsCore"):
+		var state := _vitals_state()
+		result = _vitals_core.damage(state, amount, kind == "explosion", is_bearer(), world.rng._backend)
+		assert(result.size() == 3, "Invalid infantry damage result")
+		_read_vitals_state(result[0])
 	if life == Life.DOWNED:
-		bleed -= amount * 0.3
-		if (kind == "explosion" and amount > 45.0) or bleed <= 0.0 or world.rng.randf() < amount / 300.0:
-			_die()
+		if not result.is_empty():
+			if int(result[1]) == 3:
+				_die()
+		else:
+			bleed -= amount * 0.3
+			if (kind == "explosion" and amount > 45.0) or bleed <= 0.0 or world.rng.randf() < amount / 300.0:
+				_die()
 		return
-	hp -= amount
-	suppression = minf(100.0, suppression + 22.0)
+	if result.is_empty():
+		hp -= amount
+		suppression = minf(100.0, suppression + 22.0)
 	if src is Entity and squad and not src.gone:
 		squad.report(src)
 	if hp <= 0.0 and OS.has_environment("FL_DEBUG_DEATH"):
@@ -2867,6 +2937,14 @@ func take_damage(amount: float, src, _dir: Vector3, kind := "bullet") -> void:
 		world.stat("t%d_hit_by_%s_%s" % [team, who, kind])
 	if hp <= 0.0 and src is Soldier and src.squad and src.team != team and life == Life.ALIVE:
 		src.squad.morale = minf(100.0, src.squad.morale + 3.0)  # winning the firefight
+	if not result.is_empty():
+		if int(result[1]) == 3:
+			_die()
+		elif int(result[1]) == 2:
+			_go_down()
+		elif int(result[2]) >= 0:
+			say(["I'm hit!", "Argh!", "Took one!", "Hit! I'm hit!"][result[2]])
+		return
 	if hp <= 0.0:
 		if life == Life.SURRENDER or life == Life.CAPTIVE or is_bearer() and world.rng.randf() < 0.3:
 			_die()
@@ -2885,20 +2963,26 @@ func take_damage(amount: float, src, _dir: Vector3, kind := "bullet") -> void:
 
 func _go_down() -> void:
 	_hit_kind = ""
-	life = Life.DOWNED
+	var native: bool = world.settings.get("rust_infantry", false) and ClassDB.class_exists("InfantryVitalsCore")
+	if native:
+		var state := _vitals_state()
+		_read_vitals_state(_vitals_core.transition(state, 0, world.time, false))
+	else:
+		life = Life.DOWNED
+		hp = 0.0
+		bleed_max = [50.0, 38.0, 26.0, 16.0][mini(times_downed, 3)]
+		bleed = bleed_max
 	act = Act.IDLE
-	hp = 0.0
-	bleed_max = [50.0, 38.0, 26.0, 16.0][mini(times_downed, 3)]
-	bleed = bleed_max
 	posture = Post.PRONE
 	peek_up = false
 	blind = false
 	_release_all()
 	stop_moving()
-	scream_t = 0.4
-	pistol_t = 2.5
-	crawl_t = 1.5
-	downed_t = world.time
+	if not native:
+		scream_t = 0.4
+		pistol_t = 2.5
+		crawl_t = 1.5
+		downed_t = world.time
 	world.stat("downed")
 	if world.battle:
 		world.battle.soldier_down(self)
@@ -2913,10 +2997,14 @@ func _die() -> void:
 		return
 	if world.battle:
 		world.battle.soldier_died(self)
-	life = Life.DEAD
+	if world.settings.get("rust_infantry", false) and ClassDB.class_exists("InfantryVitalsCore"):
+		var state := _vitals_state()
+		_read_vitals_state(_vitals_core.transition(state, 1, world.time, false))
+	else:
+		life = Life.DEAD
+		hp = 0.0
+		dead_t = world.time
 	act = Act.IDLE
-	hp = 0.0
-	dead_t = world.time
 	loot = 0
 	world.stat("killed")
 	if not wdef.is_empty() and int(wdef.ammo) < 9000:
@@ -2981,17 +3069,24 @@ func _release_all() -> void:
 
 
 func revive(full := false) -> void:
-	times_downed += 1
+	var native: bool = world.settings.get("rust_infantry", false) and ClassDB.class_exists("InfantryVitalsCore")
+	if native:
+		var state := _vitals_state()
+		_read_vitals_state(_vitals_core.transition(state, 2, world.time, full))
+	else:
+		times_downed += 1
 	world.stat("revived")
 	if world.battle:
 		world.battle.revived(self)
-	life = Life.ALIVE
-	var mult: float = [1.0, 0.8, 0.62, 0.45, 0.35][mini(times_downed, 4)]
-	max_hp = base_hp * mult
-	hp = max_hp * (1.0 if full else 0.85)
+	if not native:
+		life = Life.ALIVE
+		var mult: float = [1.0, 0.8, 0.62, 0.45, 0.35][mini(times_downed, 4)]
+		max_hp = base_hp * mult
+		hp = max_hp * (1.0 if full else 0.85)
 	act = Act.IDLE
 	posture = Post.CROUCH
-	suppression = 25.0
+	if not native:
+		suppression = 25.0
 	dragged_by = null
 	rescue_claimed = null
 	carried_by.clear()

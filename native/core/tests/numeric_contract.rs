@@ -4,6 +4,9 @@ use frontline_core::cover::{generate, Part};
 use frontline_core::drone::{DroneFlight, Phase};
 use frontline_core::guided::{GuidedFlight, Kind as GuidedKind};
 use frontline_core::infantry_motion::{InfantryMotion, MoveInput};
+use frontline_core::infantry_vitals::{
+    DamageResult, FatigueInput, InfantryVitals, Life, Protection,
+};
 use frontline_core::infantry_weapon::{CoverInput, InfantryWeapon, ShotInput, StanceInput, Weapon};
 use frontline_core::path_planner::PathPlanner;
 use frontline_core::projectile::{Flight, Holder, Kind};
@@ -47,6 +50,87 @@ fn golden(name: &str, actual: &[u8]) {
     {
         panic!("{name}: first differing byte {i}: actual {a:02x}, expected {b:02x}");
     }
+}
+
+#[test]
+fn infantry_vitals_transcripts_are_identical_across_platforms() {
+    let mut bytes = Vec::new();
+    for seed in 0..24 {
+        let mut rng = SimulationRandom::new(seed);
+        let mut state = InfantryVitals {
+            life: Life::try_from((seed % 6) as u8).unwrap(),
+            bleed: 45.0,
+            times_downed: (seed % 4) as u32,
+            hit_dirt_timer: 0.3,
+            ..Default::default()
+        };
+        let cover = Protection {
+            at_cover: seed % 3 != 0,
+            cover_kind: 1,
+            material: Some((seed % 4) as u8),
+            in_trench: seed % 5 == 0,
+            peek_up: seed % 2 == 0,
+            protected_mount: seed % 7 == 0,
+        };
+        for tick in 0..120 {
+            let time = 10.0 + f64::from(tick) * 0.1;
+            state.recover(0.1, time, cover).unwrap();
+            state
+                .fatigue(
+                    0.1,
+                    FatigueInput {
+                        moving_or_diving: tick % 3 != 0,
+                        move_mode: tick % 3,
+                        crawling: seed % 3 == 0,
+                        heavy_task: seed % 4 == 0,
+                        carrying: false,
+                        standing: tick % 2 == 0,
+                    },
+                )
+                .unwrap();
+            if tick % 7 == 0 {
+                let result = state
+                    .suppress(48.0, time, seed % 2 == 0, true, cover, &mut rng)
+                    .unwrap();
+                bytes.extend_from_slice(&[
+                    u8::from(result.report_position),
+                    result.speech.unwrap_or(255),
+                ]);
+            }
+            if tick % 19 == 0 {
+                let outcome = state
+                    .damage(
+                        f64::from(tick % 50) + 7.0,
+                        seed % 3 == 0,
+                        seed % 7 == 0,
+                        &mut rng,
+                    )
+                    .unwrap();
+                let event = match outcome {
+                    DamageResult::Ignored => 0,
+                    DamageResult::Survived(s) => s.map_or(1, |s| 4 + s),
+                    DamageResult::Down => 2,
+                    DamageResult::Die => 3,
+                };
+                bytes.push(event);
+                match outcome {
+                    DamageResult::Down => state.go_down(time).unwrap(),
+                    DamageResult::Die => state.die(time).unwrap(),
+                    _ => {}
+                }
+            }
+            if tick % 37 == 0 && state.life == Life::Downed {
+                state.revive(seed % 2 == 0).unwrap();
+            }
+            if tick % 10 == 0 {
+                let saved = state.checkpoint();
+                assert_eq!(state, InfantryVitals::restore(&saved).unwrap());
+                block(&mut bytes, &saved);
+                bytes.extend_from_slice(&rng.state().to_le_bytes());
+            }
+        }
+    }
+    golden("infantry_vitals", &bytes);
 }
 
 #[test]

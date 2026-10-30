@@ -1249,7 +1249,9 @@ its per-soldier adapter stays disabled because copying state across that boundar
 is slower than the existing movement. Cover-fire cycles, weapon postures,
 ammunition and burst timing also have checkpointed Rust implementations under
 compatibility tests; normal games still use the existing weapon controller while
-actor ownership moves. The full
+actor ownership moves. Infantry health, suppression and fatigue rules also have
+restorable Rust state and
+comparisons covering damage credit, squad responses and repeat wounds. The full
 authoritative Rust server and deterministic
 battle verifier are still in progress; see [RUST_SIMULATION.md](RUST_SIMULATION.md).
 

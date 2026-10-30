@@ -13,14 +13,14 @@ test("Rust infantry cover fire preserves peeking, reloads, buddy cover and rando
   assert.match(stdout, /INFANTRY_SHOTS rounds=/);
 });
 
-test("Rust weapon decisions preserve infantry battle fingerprints and events", async () => {
+test("Rust weapons and vitals preserve infantry battle fingerprints and events", async () => {
   const game = await Game.start();
   try {
     for (const scenario of ["attack", "breach", "trenches", "fire"]) {
       const runs = [];
       for (const native of [false, true]) {
-        const loaded = await game.load({ scenario, seed: 3, rust_infantry_weapon: native });
-        assert.equal(loaded.rust_infantry_weapon, native);
+        const loaded = await game.load({ scenario, seed: 3, rust_infantry: native });
+        assert.equal(loaded.rust_infantry, native);
         const samples = [];
         for (let t = 0; t < 60; t += 15) {
           await game.step(15);
@@ -29,7 +29,7 @@ test("Rust weapon decisions preserve infantry battle fingerprints and events", a
         assert.equal(game.errors, 0, game.output.join("\n"));
         runs.push(samples);
       }
-      assert.deepEqual(runs[1], runs[0], `${scenario}: Rust and GDScript weapon behavior`);
+      assert.deepEqual(runs[1], runs[0], `${scenario}: Rust and GDScript infantry behavior`);
     }
   } finally {
     assert.equal(await game.close(), 0);

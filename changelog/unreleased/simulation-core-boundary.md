@@ -18,6 +18,7 @@ kind = "fixed"
 - FPV drones, guided missiles and support-aircraft attack schedules now use Rust, preserving target loss, smoke countermeasures, bomb runs, gun bursts and reconnaissance.
 - Infantry movement has a Rust compatibility test covering doors, vaults and cover slides. The faster existing movement remains active while actor state is migrated.
 - Rust weapon compatibility checks preserve cover fire, firing postures, ammunition and burst timing, including squadmates covering a reload. These checks run alongside the existing controller as soldier state is migrated.
+- Health, suppression and fatigue also have Rust compatibility checks, covering wounded soldiers, repeated revivals, prisoners, damage credit and squad reactions.
 - The extracted simulation uses pinned numeric rules, with exact checkpoint comparisons across platforms as replay verification work continues.
 - Guided missiles keep a consistent turn after overshooting their aim point, instead of letting rounding choose an erratic turn direction.
 - This is groundwork for the server migration. Battles still use the existing simulation, and recordings are not yet independently verified.
