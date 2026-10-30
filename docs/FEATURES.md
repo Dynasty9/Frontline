@@ -1233,7 +1233,8 @@ fade distance. Panning reuses nearby chunks and evicts distant ones; returning
 to an area recreates the same vegetation from its seed.
 
 The native perception, formation and route algorithms now share an engine-independent
-Rust crate with standalone tests. Gameplay random streams and ballistic projectile
+Rust crate with standalone tests and a versioned numeric contract. Exact checkpoint
+fixtures run on Windows, Linux and ARM to catch differing arithmetic. Gameplay random streams and ballistic projectile
 flight, missile guidance, FPV drone flight and support-aircraft attack schedules
 now run in that core too, with restorable component checkpoints. Local weighted
 navigation grids, boat routes, hierarchical map repairs, route smoothing and

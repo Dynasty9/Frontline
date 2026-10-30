@@ -112,7 +112,7 @@ impl NavigationGrid {
     /// Only terrain state is saved; search scratch is reset before every query.
     pub fn checkpoint(&self) -> Vec<u8> {
         let mut bytes = Vec::with_capacity(24 + self.solid.len() * 5);
-        bytes.extend_from_slice(b"FLNG\x01\0\0\0");
+        bytes.extend_from_slice(&crate::state_codec::header(b"FLNG\x01\0\0\0"));
         for value in [
             self.origin[0],
             self.origin[1],
@@ -129,7 +129,7 @@ impl NavigationGrid {
     }
 
     pub fn restore(bytes: &[u8]) -> Result<Self, &'static str> {
-        if bytes.len() < 24 || &bytes[..8] != b"FLNG\x01\0\0\0" {
+        if bytes.len() < 24 || bytes[..8] != crate::state_codec::header(b"FLNG\x01\0\0\0") {
             return Err("incompatible navigation checkpoint");
         }
         let read = |i| i32::from_le_bytes(bytes[i..i + 4].try_into().unwrap());

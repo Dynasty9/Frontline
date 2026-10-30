@@ -240,9 +240,9 @@ impl SupportFlight {
         let angle = self.fuse - time * 52.0 / 165.0;
         self.target
             + Vector3::new(
-                (angle.cos() * 165.0) as f32,
+                (libm::cos(angle) * 165.0) as f32,
                 88.0,
-                (angle.sin() * 165.0) as f32,
+                (libm::sin(angle) * 165.0) as f32,
             )
     }
 
@@ -253,9 +253,9 @@ impl SupportFlight {
         let z = -normalized(forward);
         let x = normalized(Vector3::Y.cross(z));
         let y = z.cross(x);
-        let bank = (52.0_f64 * 52.0).atan2(165.0 * 9.81) as f32;
-        let c = bank.cos();
-        let s = bank.sin();
+        let bank = libm::atan2(52.0_f64 * 52.0, 165.0 * 9.81) as f32;
+        let c = libm::cosf(bank);
+        let s = libm::sinf(bank);
         // Match Godot's composed basis before transforming the weapon socket.
         let bx = x * c + y * s + z * 0.0;
         let by = x * -s + y * c + z * 0.0;
@@ -406,12 +406,12 @@ impl SupportFlight {
             return candidates[rng.randi() as usize % candidates.len()];
         }
         let angle = f64::from(rng.randf()) * std::f64::consts::TAU;
-        let radius = f64::from(rng.randf()).sqrt() * 25.0;
+        let radius = libm::sqrt(f64::from(rng.randf())) * 25.0;
         self.target
             + Vector3::new(
-                (angle.cos() * radius) as f32,
+                (libm::cos(angle) * radius) as f32,
                 0.0,
-                (angle.sin() * radius) as f32,
+                (libm::sin(angle) * radius) as f32,
             )
     }
 

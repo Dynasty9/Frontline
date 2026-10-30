@@ -1,5 +1,4 @@
-// Same geometry implementation as the Godot binding, without engine objects.
-// Floating-point geometry is not yet a cross-platform replay guarantee.
+// Pinned glam/libm arithmetic without platform fast-math; checkpoint goldens guard the contract.
 pub use glam::Vec3 as Vector3;
 
 pub fn normalized(value: Vector3) -> Vector3 {
@@ -19,18 +18,18 @@ pub fn slerp(from: Vector3, to: Vector3, weight: f32) -> Vector3 {
     if start_squared == 0.0 || end_squared == 0.0 || axis_squared == 0.0 {
         return from + (to - from) * weight;
     }
-    let axis_length = axis_squared.sqrt();
+    let axis_length = libm::sqrtf(axis_squared);
     axis = Vector3::new(
         axis.x / axis_length,
         axis.y / axis_length,
         axis.z / axis_length,
     );
-    let start = start_squared.sqrt();
-    let length = start + (end_squared.sqrt() - start) * weight;
-    let angle = from.cross(to).length().atan2(from.dot(to));
+    let start = libm::sqrtf(start_squared);
+    let length = start + (libm::sqrtf(end_squared) - start) * weight;
+    let angle = libm::atan2f(from.cross(to).length(), from.dot(to));
     let angle = angle * weight;
-    let cosine = angle.cos();
-    let sine = angle.sin();
+    let cosine = libm::cosf(angle);
+    let sine = libm::sinf(angle);
     let squared = axis * axis;
     let t = 1.0 - cosine;
     let xy = axis.x * axis.y * t;

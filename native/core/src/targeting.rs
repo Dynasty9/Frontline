@@ -112,14 +112,15 @@ pub fn scan(
         }
         output.visible.push(contact.id);
         let delta = contact.position - observer.position;
-        if observer
-            .mount_forward
-            .is_some_and(|forward| f64::from(normalized(flat(delta)).dot(forward)) <= 1.3_f64.cos())
-        {
+        if observer.mount_forward.is_some_and(|forward| {
+            f64::from(normalized(flat(delta)).dot(forward)) <= libm::cos(1.3)
+        }) {
             continue;
         }
         // GDScript squares the float-vector components using scalar doubles.
-        let mut score = -(f64::from(delta.x).powi(2) + f64::from(delta.z).powi(2)).sqrt();
+        let dx = f64::from(delta.x);
+        let dz = f64::from(delta.z);
+        let mut score = -libm::sqrt(dx * dx + dz * dz);
         match contact.kind {
             TargetKind::Infantry {
                 downed,

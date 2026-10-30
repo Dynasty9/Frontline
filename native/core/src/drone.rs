@@ -62,7 +62,9 @@ impl DroneFlight {
         match self.phase {
             Phase::Climb => {
                 let want = Vector3::Y * 6.0 + horizontal.normalize_or_zero() * 6.0;
-                self.velocity = self.velocity.lerp(want, (1.0 - (-dt * 3.0).exp()) as f32);
+                self.velocity = self
+                    .velocity
+                    .lerp(want, (1.0 - libm::exp(-dt * 3.0)) as f32);
                 if self.position.y > 6.5 {
                     self.phase = Phase::Cruise;
                 }
@@ -70,7 +72,9 @@ impl DroneFlight {
             Phase::Cruise => {
                 let mut want = horizontal.normalize_or_zero() * 21.0;
                 want.y = ((7.5 - f64::from(self.position.y)) * 1.5) as f32;
-                self.velocity = self.velocity.lerp(want, (1.0 - (-dt * 2.5).exp()) as f32);
+                self.velocity = self
+                    .velocity
+                    .lerp(want, (1.0 - libm::exp(-dt * 2.5)) as f32);
                 if horizontal.length() < 24.0 {
                     self.phase = Phase::Dive;
                     self.diving = true;
@@ -78,7 +82,9 @@ impl DroneFlight {
             }
             Phase::Dive => {
                 let want = to.normalize_or_zero() * 26.0;
-                self.velocity = self.velocity.lerp(want, (1.0 - (-dt * 5.0).exp()) as f32);
+                self.velocity = self
+                    .velocity
+                    .lerp(want, (1.0 - libm::exp(-dt * 5.0)) as f32);
                 if to.length() < 1.4 {
                     self.dead = true;
                     return true;
@@ -98,8 +104,10 @@ impl DroneFlight {
         self.position = next;
         let horizontal_velocity = Vector3::new(self.velocity.x, 0.0, self.velocity.z);
         if self.velocity.length() > 0.5 && horizontal_velocity.length() > 0.3 {
-            self.yaw =
-                f64::from(-horizontal_velocity.x).atan2(f64::from(-horizontal_velocity.z)) as f32;
+            self.yaw = libm::atan2(
+                f64::from(-horizontal_velocity.x),
+                f64::from(-horizontal_velocity.z),
+            ) as f32;
         }
         if self.position.y < 0.25
             || self.life > 50.0
@@ -113,7 +121,7 @@ impl DroneFlight {
 
     pub fn checkpoint(&self) -> Vec<u8> {
         let mut bytes = Vec::with_capacity(59);
-        bytes.extend_from_slice(b"FLDF\x01\0\0\0");
+        bytes.extend_from_slice(&crate::state_codec::header(b"FLDF\x01\0\0\0"));
         bytes.extend_from_slice(&[self.phase as u8, u8::from(self.diving), u8::from(self.dead)]);
         for point in [self.position, self.velocity, self.target] {
             for value in point.to_array() {
@@ -126,7 +134,7 @@ impl DroneFlight {
     }
 
     pub fn restore(bytes: &[u8]) -> Result<Self, &'static str> {
-        if bytes.len() != 59 || &bytes[..8] != b"FLDF\x01\0\0\0" {
+        if bytes.len() != 59 || bytes[..8] != crate::state_codec::header(b"FLDF\x01\0\0\0") {
             return Err("incompatible drone checkpoint");
         }
         if bytes[8] > 3 || bytes[9] > 1 || bytes[10] > 1 {

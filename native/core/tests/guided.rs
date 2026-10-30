@@ -2,6 +2,62 @@ use frontline_core::collision::{BoxShape, CollisionWorld, Mat3};
 use frontline_core::guided::{GuidedFlight, Kind};
 use frontline_core::vector::{slerp, Vector3};
 
+#[test]
+fn overshooting_a_target_keeps_a_stable_turn_plane_and_turn_rate() {
+    let mut collision = CollisionWorld::default();
+    for direction in [
+        Vector3::X,
+        Vector3::Y,
+        Vector3::new(0.83, -0.32, -0.43).normalize(),
+    ] {
+        let mut headings = Vec::new();
+        for jitter in [-0.000001, 0.0, 0.000001] {
+            let position = Vector3::new(0.0, 70.0, 0.0);
+            let target = position - direction * 40.0 + Vector3::new(jitter, 0.0, -jitter);
+            let mut missile = GuidedFlight {
+                kind: Kind::SurfaceToAir,
+                position,
+                velocity: direction * 20.0,
+                target,
+                life: 0.0,
+                locked: true,
+                dead: false,
+            };
+            assert!(missile
+                .advance(1.0 / 30.0, Some(target), false, &mut collision, &[])
+                .is_none());
+            let heading = missile.velocity.normalize();
+            let angle = libm::atan2f(direction.cross(heading).length(), direction.dot(heading));
+            assert!(
+                (angle - 4.2 / 30.0).abs() < 0.000001,
+                "turn rate changed: {angle}"
+            );
+            headings.push(heading);
+        }
+        assert!(headings[0].distance(headings[1]) < 0.000001);
+        assert!(headings[1].distance(headings[2]) < 0.000001);
+    }
+}
+
+#[test]
+fn a_target_within_the_turn_limit_gets_its_exact_heading() {
+    let mut collision = CollisionWorld::default();
+    let position = Vector3::new(0.0, 70.0, 0.0);
+    let target = position + Vector3::new(100.0, 3.0, 2.0);
+    let mut missile = GuidedFlight {
+        kind: Kind::SurfaceToAir,
+        position,
+        velocity: Vector3::X * 20.0,
+        target,
+        life: 0.0,
+        locked: true,
+        dead: false,
+    };
+    missile.advance(1.0 / 30.0, Some(target), false, &mut collision, &[]);
+    let desired = frontline_core::vector::normalized(target - position);
+    assert_eq!(missile.velocity, desired * (20.0 + 50.0 / 30.0) as f32);
+}
+
 fn missile(kind: Kind) -> GuidedFlight {
     GuidedFlight {
         kind,

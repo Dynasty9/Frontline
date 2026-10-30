@@ -56,9 +56,10 @@ breaching, vehicles or missions with simplified behavior to make the port run.
 
 Godot bindings belong in `native/src`; engine-independent state and algorithms
 belong in `native/core`. The core must not depend on Godot types or objects.
-The current core uses the same pinned `glam` geometry implementation as the
-binding. That preserves the extraction's arithmetic, but is not a promise of
-cross-platform floating-point determinism.
+The core pins `glam` geometry and software `libm` transcendental functions; see
+the numeric contract below. Godot reference checks and cross-platform checkpoint
+checks are separate gates. Neither establishes whole-battle determinism while
+authoritative state remains in GDScript.
 
 Use stable entity IDs instead of object pointers. Preserve explicit update and
 tie-break order. Hash tables may support lookup, but their iteration must not
@@ -168,6 +169,40 @@ These checks do not yet verify a complete battle.
 
 ## Migrated authoritative state
 
+### Numeric contract
+
+Numeric version 1 pins Rust 1.94.0, glam 0.32.1 with its `libm` feature and libm
+0.2.16 with `force-soft-floats`. Scalar transcendental functions use the same
+implementation on every platform instead of the host system's math library.
+Glam also prefers libm when Godot enables its `std` feature. Fast-math is disabled.
+These choices follow [glam's math features](https://docs.rs/glam/0.32.1/glam/#optional-features)
+and [libm's software-only override](https://github.com/rust-lang/compiler-builtins/blob/libm-v0.2.16/libm/Cargo.toml).
+
+Component checkpoint headers contain a four-byte component tag, a little-endian
+16-bit schema version and a 16-bit numeric version. They reject earlier numeric
+rules rather than silently continuing with changed arithmetic. The separate
+integer RNG stream remains unchanged.
+
+`native/core/tests/numeric_contract.rs` compares 65,730 committed bytes without
+tolerances: fixed-tick flight state, support events and RNG cursors, carved water,
+craters, rotated box hits, cover anchors, spherical interpolation and infantry
+movement. CI runs the same fixtures in debug and release on Windows x64, Linux
+x64, Linux ARM64 and macOS ARM64. A mismatch reports the first different byte.
+These fixtures guard the covered trajectories; they are not a proof for all
+floating-point inputs or a substitute for full-world replay verification.
+
+The numeric port exposed an unstable missile turn when its desired heading is
+almost the reverse of its velocity. Both implementations now choose a fixed
+perpendicular turn plane in that narrow case and retain the same turn-rate limit.
+Tests perturb the aim point on either side of exact reversal, including vertical
+flight. This is an intentional correction to the old rounding-sensitive behavior.
+When a target is already within the permitted turn, steering reaches its heading
+directly instead of accumulating interpolation error. Across the 96 guided-flight
+reference cases, observed maximum position/velocity differences are 3.04 mm and
+6.94 mm/s; the compatibility bounds are 5 mm and 10 mm/s. Impact frames, lock
+changes and event data still match. Cross-platform Rust checkpoint checks use no
+tolerance.
+
 `SimulationRandom` owns the world and commander random streams in Rust. The
 GDScript adapter retains the old seeded API and uses Godot only in engine-only
 checkouts. `random.rs` fixes PCG stream selection and the standard-build float
@@ -188,8 +223,8 @@ field, preserving floating-point bits. The decoder rejects unknown versions,
 truncation, trailing data, invalid tags/flags and nonfinite values without changing
 live state. Tests restore these checkpoints mid-flight and compare subsequent
 states and outcomes. This verifies component resume, not a battle result or the
-authenticity of an input history. Bomb drag still uses floating-point `exp`, so
-cross-platform bit identity is not yet guaranteed.
+authenticity of an input history. Bomb drag uses the pinned software `exp` under
+the numeric contract, and its checkpoints participate in exact-byte CI checks.
 
 The 144-case flight fixture compares Rust against the retained GDScript reference
 at 30 Hz, 60 Hz and coarser ticks, including impacts, held/dropped/kicked/rethrown

@@ -32,8 +32,8 @@ pub struct Part {
 }
 
 fn rotation(yaw: f64) -> Mat3 {
-    let c = (yaw as f32).cos();
-    let s = (yaw as f32).sin();
+    let c = libm::cosf(yaw as f32);
+    let s = libm::sinf(yaw as f32);
     Mat3::from_cols(
         Vector3::new(c, 0.0, -s),
         Vector3::Y,
@@ -136,7 +136,7 @@ pub fn generate(
         .map(|p| {
             let center = position + transform(basis, p.position);
             let angle = yaw + p.yaw;
-            let (s, c) = (angle.sin() as f32, angle.cos() as f32);
+            let (s, c) = (libm::sin(angle) as f32, libm::cos(angle) as f32);
             (
                 Vec2::new(center.x, center.z),
                 Vec2::new(

@@ -103,11 +103,11 @@ fn valid_point(p: Vector3) -> bool {
     p.is_finite() && p.abs().max_element() <= 1_000_000.0
 }
 fn yaw_of(p: Vector3) -> f64 {
-    (-f64::from(p.x)).atan2(-f64::from(p.z))
+    libm::atan2(-f64::from(p.x), -f64::from(p.z))
 }
 fn door_blocks(door: Door, p: Vector3, direction: Vector3) -> bool {
     let angle = (-door.yaw) as f32;
-    let (s, c) = (angle.sin(), angle.cos());
+    let (s, c) = (libm::sinf(angle), libm::cosf(angle));
     let local = |p: Vector3| {
         Vector3::new(
             c * p.x + 0.0 * p.y + s * p.z,
@@ -291,7 +291,7 @@ impl InfantryMotion {
             target_y += self.ground;
         }
         self.position.y = (f64::from(self.position.y)
-            + (target_y - f64::from(self.position.y)) * (1.0 - (-input.dt * 12.0).exp()))
+            + (target_y - f64::from(self.position.y)) * (1.0 - libm::exp(-input.dt * 12.0)))
             as f32;
         if !input.backwards {
             let target = yaw_of(direction);
@@ -305,7 +305,7 @@ impl InfantryMotion {
             } else {
                 let difference = (target - self.yaw) % TAU;
                 let distance = (2.0 * difference) % TAU - difference;
-                self.yaw += distance * (1.0 - (-input.dt * 10.0).exp());
+                self.yaw += distance * (1.0 - libm::exp(-input.dt * 10.0));
             }
             self.yaw = f64::from(self.yaw as f32);
         }

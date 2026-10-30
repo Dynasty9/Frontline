@@ -8,4 +8,5 @@ rust-version = "1.94"
 path = "src/lib.rs"
 
 [dependencies]
-glam = "=0.32.1"
+glam = { version = "=0.32.1", features = ["libm"] }
+libm = { version = "=0.2.16", default-features = false, features = ["force-soft-floats"] }

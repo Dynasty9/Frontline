@@ -61,14 +61,24 @@ impl GuidedFlight {
         }
         let want = normalized(aim - self.position);
         let mut direction = normalized(self.velocity);
-        let angle = direction.cross(want).length().atan2(direction.dot(want));
+        let angle = libm::atan2f(direction.cross(want).length(), direction.dot(want));
         if angle > 0.001 {
             let turn = if anti_tank { 2.2 } else { 4.2 };
-            direction = slerp(
-                direction,
-                want,
-                (turn * dt / f64::from(angle)).clamp(0.0, 1.0) as f32,
-            );
+            let weight = (turn * dt / f64::from(angle)).clamp(0.0, 1.0) as f32;
+            // Past the aim point, an almost-opposite cross product cannot choose a reliable turn plane.
+            direction = if weight >= 1.0 {
+                want
+            } else if direction.dot(want) < 0.0 && direction.cross(want).length_squared() < 0.001 {
+                let reference = if direction.y.abs() < 0.9 {
+                    Vector3::Y
+                } else {
+                    Vector3::X
+                };
+                let axis = normalized(direction.cross(reference));
+                glam::Mat3::from_axis_angle(axis, angle * weight) * direction
+            } else {
+                slerp(direction, want, weight)
+            };
         }
         let (acceleration, maximum) = if anti_tank {
             (20.0, 48.0)
@@ -114,7 +124,7 @@ impl GuidedFlight {
 
     pub fn checkpoint(&self) -> Vec<u8> {
         let mut bytes = Vec::with_capacity(55);
-        bytes.extend_from_slice(b"FLGF\x01\0\0\0");
+        bytes.extend_from_slice(&crate::state_codec::header(b"FLGF\x01\0\0\0"));
         bytes.extend_from_slice(&[self.kind as u8, u8::from(self.locked), u8::from(self.dead)]);
         for point in [self.position, self.velocity, self.target] {
             for value in point.to_array() {
@@ -126,7 +136,7 @@ impl GuidedFlight {
     }
 
     pub fn restore(bytes: &[u8]) -> Result<Self, &'static str> {
-        if bytes.len() != 55 || &bytes[..8] != b"FLGF\x01\0\0\0" {
+        if bytes.len() != 55 || bytes[..8] != crate::state_codec::header(b"FLGF\x01\0\0\0") {
             return Err("incompatible guided flight checkpoint");
         }
         if bytes[8..11].iter().any(|v| *v > 1) {

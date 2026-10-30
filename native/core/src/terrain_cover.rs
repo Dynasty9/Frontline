@@ -156,8 +156,8 @@ impl CoverLayout {
                                 let wx = lv.x as f64 * part.cosine + lv.y as f64 * part.sine;
                                 let wz = -(lv.x as f64) * part.sine + lv.y as f64 * part.cosine;
                                 level = part.level;
-                                facing = ((wz.atan2(wx) / (std::f64::consts::TAU / 8.0)).round()
-                                    as i32)
+                                facing = ((libm::atan2(wz, wx) / (std::f64::consts::TAU / 8.0))
+                                    .round() as i32)
                                     .rem_euclid(8) as u8;
                             }
                             if level > best {

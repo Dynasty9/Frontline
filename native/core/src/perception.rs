@@ -55,7 +55,9 @@ impl PerceptionSearch {
                         if c.team < 0 || c.team == team {
                             continue;
                         }
-                        let d2 = (c.x - x).powi(2) + (c.z - z).powi(2);
+                        let dx = c.x - x;
+                        let dz = c.z - z;
+                        let d2 = dx * dx + dz * dz;
                         let range = if c.vehicle { radius } else { sight } * c.factor;
                         if d2 > range * range {
                             continue;

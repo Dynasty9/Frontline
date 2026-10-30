@@ -497,6 +497,16 @@ func _shell_impact() -> void:
 	world.despawn(self)
 
 
+## Beyond the aim point, rounding must not decide which plane the missile turns in.
+static func _guided_turn(cur: Vector3, want: Vector3, angle: float, weight: float) -> Vector3:
+	if weight >= 1.0:
+		return want
+	if cur.dot(want) < 0.0 and cur.cross(want).length_squared() < 0.001:
+		var reference := Vector3.UP if absf(cur.y) < 0.9 else Vector3.RIGHT
+		return cur.rotated(cur.cross(reference).normalized(), angle * weight)
+	return cur.slerp(want, weight)
+
+
 ## Guided missile: lofts for a top attack and steers onto the target.
 func _atgm(dt: float) -> void:
 	var tgt: Entity = world.entity(tgt_id)
@@ -518,7 +528,7 @@ func _atgm(dt: float) -> void:
 	var cur := vel.normalized()
 	var ang := cur.angle_to(want)
 	if ang > 0.001:
-		cur = cur.slerp(want, clampf(2.2 * dt / ang, 0.0, 1.0))
+		cur = _guided_turn(cur, want, ang, clampf(2.2 * dt / ang, 0.0, 1.0))
 	var spd := minf(48.0, vel.length() + 20.0 * dt)
 	vel = cur * spd
 	var np := position + vel * dt
@@ -552,7 +562,7 @@ func _sam(dt: float) -> void:
 	var cur := vel.normalized()
 	var ang := cur.angle_to(want)
 	if ang > 0.001:
-		cur = cur.slerp(want, clampf(4.2 * dt / ang, 0.0, 1.0))
+		cur = _guided_turn(cur, want, ang, clampf(4.2 * dt / ang, 0.0, 1.0))
 	var spd := minf(95.0, vel.length() + 50.0 * dt)
 	vel = cur * spd
 	var np := position + vel * dt

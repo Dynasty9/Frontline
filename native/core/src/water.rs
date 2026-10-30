@@ -148,9 +148,9 @@ impl Water {
 
     pub fn coast_x(&self, z: f64) -> f64 {
         self.coast.map_or(f64::INFINITY, |[x, s]| {
-            x + 22.0 * (z * 0.0105 + s).sin()
-                + 9.0 * (z * 0.031 + s * 2.3).sin()
-                + 4.0 * (z * 0.077 + s * 0.7).sin()
+            x + 22.0 * libm::sin(z * 0.0105 + s)
+                + 9.0 * libm::sin(z * 0.031 + s * 2.3)
+                + 4.0 * libm::sin(z * 0.077 + s * 0.7)
         })
     }
 
@@ -208,7 +208,7 @@ impl Water {
             }
             let px = x - f64::from(b.a.x) - dx * t;
             let pz = z - f64::from(b.a.z) - dz * t;
-            (px * px + pz * pz).sqrt() < b.half_width + pad
+            libm::sqrt(px * px + pz * pz) < b.half_width + pad
         })
     }
 
@@ -315,7 +315,7 @@ impl Water {
                         .clamp(0.0, 1.0);
                     let px = wx - f64::from(a.x) - dx * t;
                     let pz = wz - f64::from(a.z) - dz * t;
-                    let into = hw - (px * px + pz * pz).sqrt();
+                    let into = hw - libm::sqrt(px * px + pz * pz);
                     if into < -5.0 {
                         continue;
                     }
@@ -353,11 +353,11 @@ impl Water {
                         (wx - f64::from(pond.center.x)) as f32,
                         (wz - f64::from(pond.center.z)) as f32,
                     );
-                    let angle = f64::from(rel.y.atan2(rel.x));
+                    let angle = f64::from(libm::atan2f(rel.y, rel.x));
                     let into = pond.radius
                         * (1.0
-                            + 0.18 * (angle * 3.0 + pond.seed).sin()
-                            + 0.1 * (angle * 5.0 + pond.seed * 1.7).sin())
+                            + 0.18 * libm::sin(angle * 3.0 + pond.seed)
+                            + 0.1 * libm::sin(angle * 5.0 + pond.seed * 1.7))
                         - f64::from(rel.length());
                     if into >= -6.0 {
                         write(

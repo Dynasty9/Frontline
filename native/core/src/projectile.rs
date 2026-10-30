@@ -76,8 +76,7 @@ impl Flight {
     /// Exact little-endian state; changing the layout requires a new version.
     pub fn checkpoint(&self) -> Vec<u8> {
         let mut bytes = Vec::with_capacity(98);
-        bytes.extend_from_slice(b"FLPF");
-        bytes.extend_from_slice(&1u32.to_le_bytes());
+        bytes.extend_from_slice(&crate::state_codec::header(b"FLPF\x01\0\0\0"));
         bytes.extend_from_slice(&[self.kind as u8, u8::from(self.flying)]);
         for point in [self.position, self.velocity, self.origin, self.target] {
             for value in point.to_array() {
@@ -97,7 +96,7 @@ impl Flight {
     }
 
     pub fn restore(bytes: &[u8]) -> Result<Self, &'static str> {
-        if bytes.len() != 98 || &bytes[..8] != b"FLPF\x01\0\0\0" {
+        if bytes.len() != 98 || bytes[..8] != crate::state_codec::header(b"FLPF\x01\0\0\0") {
             return Err("incompatible projectile checkpoint");
         }
         let kinds = [
@@ -216,7 +215,7 @@ impl Flight {
             }
             Kind::Bomb => {
                 self.velocity.y = (f64::from(self.velocity.y) - 9.8 * dt) as f32;
-                let drag = (-1.25 * dt).exp();
+                let drag = libm::exp(-1.25 * dt);
                 self.velocity.x = (f64::from(self.velocity.x) * drag) as f32;
                 self.velocity.z = (f64::from(self.velocity.z) * drag) as f32;
                 let next = self.position + self.velocity * dt as f32;

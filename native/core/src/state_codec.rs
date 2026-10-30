@@ -1,10 +1,16 @@
 use crate::vector::Vector3;
 
+pub(crate) fn header(schema: &[u8; 8]) -> [u8; 8] {
+    let mut header = *schema;
+    header[6..8].copy_from_slice(&crate::NUMERIC_VERSION.to_le_bytes());
+    header
+}
+
 pub(crate) struct Writer(pub Vec<u8>);
 
 impl Writer {
-    pub fn new(header: &[u8; 8]) -> Self {
-        Self(header.to_vec())
+    pub fn new(schema: &[u8; 8]) -> Self {
+        Self(header(schema).to_vec())
     }
     pub fn byte(&mut self, value: u8) {
         self.0.push(value);
@@ -35,9 +41,9 @@ impl Writer {
 pub(crate) struct Reader<'a>(&'a [u8]);
 
 impl<'a> Reader<'a> {
-    pub fn new(bytes: &'a [u8], header: &[u8; 8]) -> Result<Self, &'static str> {
+    pub fn new(bytes: &'a [u8], schema: &[u8; 8]) -> Result<Self, &'static str> {
         bytes
-            .strip_prefix(header)
+            .strip_prefix(&header(schema))
             .map(Self)
             .ok_or("incompatible checkpoint version")
     }

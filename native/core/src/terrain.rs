@@ -129,7 +129,7 @@ impl Terrain {
             return level;
         }
         let angle = std::f64::consts::TAU * f64::from(dir) / 8.0;
-        let direction = Vec2::new(angle.cos() as f32, angle.sin() as f32);
+        let direction = Vec2::new(libm::cos(angle) as f32, libm::sin(angle) as f32);
         let length = to.length();
         let toward = Vec2::new(to.x / length, to.y / length);
         if direction.dot(toward) > 0.25 {
@@ -359,8 +359,8 @@ impl Terrain {
             ],
             1,
         );
-        let ax = Vec2::new(yaw.cos() as f32, -yaw.sin() as f32);
-        let az = Vec2::new(yaw.sin() as f32, yaw.cos() as f32);
+        let ax = Vec2::new(libm::cos(yaw) as f32, -libm::sin(yaw) as f32);
+        let az = Vec2::new(libm::sin(yaw) as f32, libm::cos(yaw) as f32);
         let mut changed = Vec::new();
         for z in z0..=z1 {
             for x in x0..=x1 {
@@ -569,26 +569,26 @@ impl Terrain {
             for x in x0..=x1 {
                 let dx = (x as f64 + 0.5) / DRES as f64 - self.half() - f64::from(p.x);
                 let dz = (z as f64 + 0.5) / DRES as f64 - self.half() - f64::from(p.z);
-                let r = (dx * dx + dz * dz).sqrt();
+                let r = libm::sqrt(dx * dx + dz * dz);
                 if r > extent {
                     continue;
                 }
-                let angle = dz.atan2(dx);
+                let angle = libm::atan2(dz, dx);
                 let rr = r
                     / (radius
                         * (1.0
-                            + amp * (angle * k + phase1).sin()
-                            + amp * 0.5 * (angle * (k + 2.0) + phase2).sin()));
+                            + amp * libm::sin(angle * k + phase1)
+                            + amp * 0.5 * libm::sin(angle * (k + 2.0) + phase2)));
                 let i = z as usize * n + x as usize;
                 let old = f64::from(self.heights[i]);
                 let mut height = old;
                 if rr < 1.0 {
-                    let bowl = -depth * (1.0 - rr * rr).powf(1.25);
+                    let bowl = -depth * libm::pow(1.0 - rr * rr, 1.25);
                     height = (old + bowl * 0.35).min(bowl + old * 0.25);
                 }
                 height += rim
-                    * (-((rr - 1.02) / 0.3).powf(2.0)).exp()
-                    * (1.0 + 0.35 * (angle * 7.0 + phase2).sin());
+                    * libm::exp(-libm::pow((rr - 1.02) / 0.3, 2.0))
+                    * (1.0 + 0.35 * libm::sin(angle * 7.0 + phase2));
                 self.heights[i] = height.clamp(-1.4, 0.55) as f32;
             }
         }
