@@ -1260,7 +1260,10 @@ damage rolls and near-miss suppression have Rust compatibility checks too,
 preserving the order of damage, explosions and random draws. Blast exposure
 checks also preserve cover, trench shelter, prone protection and the order of
 damage, knockback and flinching. Knockback trajectories, obstacle bounces,
-landings and dazed movement also have checkpointed Rust state. The full
+landings and dazed movement also have checkpointed Rust state.
+Wounded timers and corpse collection decisions also have Rust compatibility
+checks, including rescue, medicine and the order of speech and pistol effects.
+The full
 authoritative Rust server and deterministic
 battle verifier are still in progress; see [RUST_SIMULATION.md](RUST_SIMULATION.md).
 

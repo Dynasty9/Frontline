@@ -59,6 +59,74 @@ fn golden(name: &str, actual: &[u8]) {
 }
 
 #[test]
+fn wounded_infantry_transcripts_are_identical_across_platforms() {
+    let mut bytes = Vec::new();
+    for seed in 0..32 {
+        let mut rng = SimulationRandom::new(seed + 831);
+        let mut state = InfantryVitals {
+            life: Life::Downed,
+            bleed: [0.05, 50.0, 10.0, 3.0][seed as usize % 4],
+            bleed_max: 50.0,
+            ..Default::default()
+        };
+        let mut height = 2.0f32;
+        let mut crawling = false;
+        for tick in 0..480 {
+            let time = tick as f64 / 30.0;
+            let carried = seed % 3 == 1 && tick < 90;
+            let dragged = seed % 3 == 0 && tick < 120;
+            if state.life == Life::Downed {
+                if state
+                    .bleed_step(1.0 / 30.0, carried || dragged, seed % 2 == 0)
+                    .unwrap()
+                {
+                    state.die(time).unwrap();
+                } else {
+                    if state.scream_step(1.0 / 30.0, &mut rng).unwrap() {
+                        rng.randi();
+                    }
+                    if !carried {
+                        if state.pistol_step(1.0 / 30.0, &mut rng).unwrap() {
+                            rng.randf();
+                        }
+                        if !dragged && !crawling {
+                            crawling = state.crawl_step(1.0 / 30.0).unwrap();
+                        }
+                    }
+                }
+            } else {
+                let result = state
+                    .corpse_step(
+                        height,
+                        -0.65,
+                        time + 300.0,
+                        carried,
+                        tick < 80,
+                        seed % 13 == 0,
+                    )
+                    .unwrap();
+                height = result.height;
+                bytes.extend_from_slice(&[
+                    u8::from(result.carried),
+                    u8::from(result.clear_carriers),
+                    u8::from(result.despawn),
+                ]);
+            }
+            if tick == 200 {
+                state = InfantryVitals::restore(&state.checkpoint()).unwrap();
+            }
+            if tick % 40 == 0 {
+                block(&mut bytes, &state.checkpoint());
+                bytes.extend_from_slice(&height.to_le_bytes());
+                bytes.extend_from_slice(&rng.state().to_le_bytes());
+                bytes.push(u8::from(crawling));
+            }
+        }
+    }
+    golden("wounded", &bytes);
+}
+
+#[test]
 fn infantry_shock_transcripts_are_identical_across_platforms() {
     let mut bytes = Vec::new();
     let mut nav = PathPlanner::new(32).unwrap();

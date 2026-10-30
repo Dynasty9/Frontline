@@ -107,6 +107,14 @@ pub enum DamageResult {
     Die,
 }
 
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct CorpseStep {
+    pub height: f32,
+    pub carried: bool,
+    pub clear_carriers: bool,
+    pub despawn: bool,
+}
+
 #[derive(Clone, Copy, Debug, Default)]
 pub struct FatigueInput {
     pub moving_or_diving: bool,
@@ -341,6 +349,100 @@ impl InfantryVitals {
         self.crawl_timer = 1.5;
         self.downed_at = time;
         Ok(())
+    }
+
+    pub fn bleed_step(
+        &mut self,
+        dt: f64,
+        rescued: bool,
+        medicine: bool,
+    ) -> Result<bool, &'static str> {
+        if !self.valid() || !step(dt) {
+            return Err("invalid infantry bleeding step");
+        }
+        let rate = if rescued { 0.35 } else { 1.0 } * if medicine { 0.67 } else { 1.0 };
+        let bleed = self.bleed - dt * rate;
+        if !scalar(bleed) {
+            return Err("infantry bleeding exceeds limit");
+        }
+        self.bleed = bleed;
+        Ok(self.bleed <= 0.0)
+    }
+
+    // These stages straddle speech, pistol fire and movement; their effects may consume RNG.
+    pub fn scream_step(
+        &mut self,
+        dt: f64,
+        rng: &mut SimulationRandom,
+    ) -> Result<bool, &'static str> {
+        if !self.valid() || !step(dt) || !scalar(self.scream_timer - dt) {
+            return Err("invalid wounded infantry speech step");
+        }
+        self.scream_timer -= dt;
+        let speak = self.scream_timer <= 0.0;
+        if speak {
+            self.scream_timer = f64::from(rng.randf_range(4.0, 8.0));
+        }
+        Ok(speak)
+    }
+
+    pub fn pistol_step(
+        &mut self,
+        dt: f64,
+        rng: &mut SimulationRandom,
+    ) -> Result<bool, &'static str> {
+        if !self.valid() || !step(dt) || !scalar(self.pistol_timer - dt) {
+            return Err("invalid wounded infantry pistol step");
+        }
+        self.pistol_timer -= dt;
+        let fire = self.pistol_timer <= 0.0;
+        if fire {
+            self.pistol_timer = f64::from(rng.randf_range(0.9, 1.7));
+        }
+        Ok(fire)
+    }
+
+    pub fn crawl_step(&mut self, dt: f64) -> Result<bool, &'static str> {
+        if !self.valid() || !step(dt) || !scalar(self.crawl_timer - dt) {
+            return Err("invalid wounded infantry crawl step");
+        }
+        self.crawl_timer -= dt;
+        if self.crawl_timer <= 0.0 {
+            self.crawl_timer = 3.0;
+            return Ok(self.bleed > self.bleed_max * 0.5);
+        }
+        Ok(false)
+    }
+
+    pub fn corpse_step(
+        self,
+        height: f32,
+        ground: f64,
+        time: f64,
+        carried: bool,
+        carrier_alive: bool,
+        stretcher_claimed: bool,
+    ) -> Result<CorpseStep, &'static str> {
+        if !self.valid()
+            || !height.is_finite()
+            || height.abs() > 1_000_000.0
+            || !ground.is_finite()
+            || ground.abs() > 1_000_000.0
+            || !scalar(time)
+        {
+            return Err("invalid infantry corpse step");
+        }
+        let height = if carried {
+            height
+        } else {
+            (f64::from(height) + (ground - f64::from(height)) * 0.2) as f32
+        };
+        Ok(CorpseStep {
+            height,
+            carried: carried && carrier_alive,
+            clear_carriers: carried && !carrier_alive,
+            despawn: !carried && !stretcher_claimed && time - self.dead_at > 300.0,
+        })
     }
 
     pub fn die(&mut self, time: f64) -> Result<(), &'static str> {

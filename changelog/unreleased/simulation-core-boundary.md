@@ -24,6 +24,7 @@ kind = "fixed"
 - Bullet compatibility checks preserve accuracy, penetration, damage order, explosive rounds and near-miss suppression in the Rust core.
 - Blast compatibility checks preserve cover and trench protection, prone shelter, knockback and flinching in the Rust core.
 - Knockback and recovery checks preserve obstacle bounces, landings, flinching and dazed movement, including carried casualties and task interruption.
+- Wounded-soldier checks preserve bleeding, medicine, rescue, pistol timing and corpse collection. A wounded soldier also safely releases a rescuer that has been removed.
 - The extracted simulation uses pinned numeric rules, with exact checkpoint comparisons across platforms as replay verification work continues.
 - Guided missiles keep a consistent turn after overshooting their aim point, instead of letting rounding choose an erratic turn direction.
 - This is groundwork for the server migration. Battles still use the existing simulation, and recordings are not yet independently verified.

@@ -223,6 +223,66 @@ impl InfantryVitalsCore {
     }
 
     #[func]
+    fn wounded_step(
+        &mut self,
+        values: PackedFloat64Array,
+        stage: i32,
+        dt: f64,
+        rescued: bool,
+        medicine: bool,
+        mut random: Gd<SimulationRandomCore>,
+    ) -> Array<Variant> {
+        let Some(mut state) = decode(values.as_slice()) else {
+            return Array::new();
+        };
+        let result = match stage {
+            0 => state.bleed_step(dt, rescued, medicine),
+            1 => state.scream_step(dt, &mut random.bind_mut().core),
+            2 => state.pistol_step(dt, &mut random.bind_mut().core),
+            3 => state.crawl_step(dt),
+            _ => Err("invalid wounded infantry stage"),
+        };
+        let Ok(event) = result else {
+            return Array::new();
+        };
+        self.core = state;
+        varray![&observation(state), event]
+    }
+
+    #[func]
+    fn corpse_step(
+        &mut self,
+        values: PackedFloat64Array,
+        height: f32,
+        ground: f64,
+        time: f64,
+        carried: bool,
+        carrier_alive: bool,
+        stretcher_claimed: bool,
+    ) -> Array<Variant> {
+        let Some(state) = decode(values.as_slice()) else {
+            return Array::new();
+        };
+        let Ok(result) = state.corpse_step(
+            height,
+            ground,
+            time,
+            carried,
+            carrier_alive,
+            stretcher_claimed,
+        ) else {
+            return Array::new();
+        };
+        self.core = state;
+        varray![
+            result.height,
+            result.carried,
+            result.clear_carriers,
+            result.despawn
+        ]
+    }
+
+    #[func]
     fn transition(
         &mut self,
         values: PackedFloat64Array,

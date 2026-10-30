@@ -4,6 +4,99 @@ use frontline_core::infantry_vitals::{
 use frontline_core::random::SimulationRandom;
 
 #[test]
+fn wounded_stages_preserve_rescue_bleeding_and_intervening_random_draws() {
+    for (rescued, medicine, expected) in [
+        (false, false, 9.0),
+        (true, false, 9.65),
+        (false, true, 9.33),
+        (true, true, 9.7655),
+    ] {
+        let mut state = InfantryVitals {
+            life: Life::Downed,
+            bleed: 10.0,
+            ..Default::default()
+        };
+        assert!(!state.bleed_step(1.0, rescued, medicine).unwrap());
+        assert_eq!(state.bleed, expected);
+    }
+    let mut state = InfantryVitals {
+        life: Life::Downed,
+        bleed: 45.0,
+        ..Default::default()
+    };
+    let mut rng = SimulationRandom::new(19);
+    let mut expected = rng;
+    assert!(state.scream_step(0.1, &mut rng).unwrap());
+    assert_eq!(
+        state.scream_timer,
+        f64::from(expected.randf_range(4.0, 8.0))
+    );
+    assert_eq!(rng.randi() % 6, expected.randi() % 6);
+    assert!(state.pistol_step(0.1, &mut rng).unwrap());
+    assert_eq!(
+        state.pistol_timer,
+        f64::from(expected.randf_range(0.9, 1.7))
+    );
+    assert_eq!(rng, expected);
+    assert!(state.crawl_step(0.1).unwrap());
+    assert_eq!(state.crawl_timer, 3.0);
+    state.bleed = state.bleed_max * 0.5;
+    assert!(!state.crawl_step(3.0).unwrap());
+    assert_eq!(state.crawl_timer, 3.0);
+    assert_eq!(InfantryVitals::restore(&state.checkpoint()).unwrap(), state);
+    state.bleed = 0.1;
+    assert!(state.bleed_step(0.1, false, false).unwrap());
+}
+
+#[test]
+fn losing_corpse_carriers_defers_ground_settling_and_despawn_to_next_tick() {
+    let state = InfantryVitals {
+        life: Life::Dead,
+        dead_at: 10.0,
+        ..Default::default()
+    };
+    let carried = state
+        .corpse_step(2.0, 0.0, 400.0, true, true, false)
+        .unwrap();
+    assert!(carried.carried && !carried.clear_carriers && !carried.despawn);
+    assert_eq!(carried.height, 2.0);
+    let dropped = state
+        .corpse_step(2.0, 0.0, 400.0, true, false, false)
+        .unwrap();
+    assert!(dropped.clear_carriers && !dropped.carried && !dropped.despawn);
+    assert_eq!(dropped.height, 2.0);
+    let ground = state
+        .corpse_step(2.0, 0.0, 400.0, false, false, false)
+        .unwrap();
+    assert!(ground.despawn);
+    assert_eq!(ground.height, 1.6);
+    assert!(
+        !state
+            .corpse_step(2.0, 0.0, 310.0, false, false, false)
+            .unwrap()
+            .despawn
+    );
+    assert!(
+        !state
+            .corpse_step(2.0, 0.0, 400.0, false, false, true)
+            .unwrap()
+            .despawn
+    );
+}
+
+#[test]
+fn malformed_wounded_steps_leave_state_and_randomness_untouched() {
+    let mut state = InfantryVitals::default();
+    let mut rng = SimulationRandom::new(17);
+    let before = (state, rng);
+    assert!(state.bleed_step(f64::NAN, true, true).is_err());
+    assert!(state.scream_step(-1.0, &mut rng).is_err());
+    assert!(state.pistol_step(f64::INFINITY, &mut rng).is_err());
+    assert!(state.crawl_step(11.0).is_err());
+    assert_eq!((state, rng), before);
+}
+
+#[test]
 fn protection_caps_suppression_without_erasing_existing_pressure() {
     let mut state = InfantryVitals::default();
     let mut rng = SimulationRandom::new(19);

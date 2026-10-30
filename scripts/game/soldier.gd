@@ -3344,17 +3344,31 @@ func surrender() -> void:
 
 # --- downed / dead / captive / hidden -------------------------------------------------------
 
+func _wounded_step_native(stage: int, dt: float, rescued := false, medicine := false) -> bool:
+	var state := _vitals_state()
+	var result: Array = _vitals_core.wounded_step(state, stage, dt, rescued, medicine, world.rng._backend)
+	assert(result.size() == 2, "Invalid wounded infantry step")
+	_read_vitals_state(result[0])
+	return bool(result[1])
+
+
 func _downed(dt: float) -> void:
-	var rate := 1.0
-	if dragged_by or not carried_by.is_empty():
-		rate = 0.35
-	if world.rules.has_upgrade(team, "medicine"):
-		rate *= 0.67
-	bleed -= dt * rate
-	if bleed <= 0.0:
+	var native: bool = world.settings.get("rust_infantry", false) and ClassDB.class_exists("InfantryVitalsCore")
+	var bled_out := false
+	if native:
+		bled_out = _wounded_step_native(0, dt, is_instance_valid(dragged_by) or not carried_by.is_empty(), world.rules.has_upgrade(team, "medicine"))
+	else:
+		var rate := 1.0
+		if is_instance_valid(dragged_by) or not carried_by.is_empty():
+			rate = 0.35
+		if world.rules.has_upgrade(team, "medicine"):
+			rate *= 0.67
+		bleed -= dt * rate
+		bled_out = bleed <= 0.0
+	if bled_out:
 		_die()
 		return
-	if dragged_by and (dragged_by.gone or dragged_by.life != Life.ALIVE or dragged_by.task != "rescue"):
+	if dragged_by != null and (not is_instance_valid(dragged_by) or dragged_by.gone or dragged_by.life != Life.ALIVE or dragged_by.task != "rescue"):
 		dragged_by = null
 	if not carried_by.is_empty():
 		var ok := false
@@ -3363,16 +3377,28 @@ func _downed(dt: float) -> void:
 				ok = true
 		if not ok:
 			carried_by.clear()
-	scream_t -= dt
-	if scream_t <= 0.0:
-		scream_t = world.rng.randf_range(4.0, 8.0)
+	var scream := false
+	if native:
+		scream = _wounded_step_native(1, dt)
+	else:
+		scream_t -= dt
+		scream = scream_t <= 0.0
+		if scream:
+			scream_t = world.rng.randf_range(4.0, 8.0)
+	if scream:
 		say(_pick(["MEDIC!", "I'm hit! Medic!", "Help me!", "Medic! Over here!", "Argh! I'm hit!", "Somebody help!"]), true)
 	if not carried_by.is_empty():
 		act = Act.CARRIED
 		return
-	pistol_t -= dt
-	if pistol_t <= 0.0:
-		pistol_t = world.rng.randf_range(0.9, 1.7)
+	var pistol := false
+	if native:
+		pistol = _wounded_step_native(2, dt)
+	else:
+		pistol_t -= dt
+		pistol = pistol_t <= 0.0
+		if pistol:
+			pistol_t = world.rng.randf_range(0.9, 1.7)
+	if pistol:
 		_pistol_fire()
 	if dragged_by:
 		act = Act.DRAGGED
@@ -3383,16 +3409,21 @@ func _downed(dt: float) -> void:
 		_move_tick(dt, 0.55)
 		return
 	act = Act.PISTOL if world.time - last_shot_t < 0.6 else Act.IDLE
-	crawl_t -= dt
-	if crawl_t <= 0.0:
-		crawl_t = 3.0
-		if bleed > bleed_max * 0.5:
-			var threats := _threats()
-			if world.combat.prot_at(position, threats, 0.3) < 0.99:
-				var res: Dictionary = world.combat.find_cover(self, position, 8.0, threats, true)
-				if not res.is_empty() and Defs.flat(res.pos - position).length() > 0.8:
-					go_to(res.pos, "crawl", 0)
-					world.stat("crawl_to_cover")
+	var crawl := false
+	if native:
+		crawl = _wounded_step_native(3, dt)
+	else:
+		crawl_t -= dt
+		if crawl_t <= 0.0:
+			crawl_t = 3.0
+			crawl = bleed > bleed_max * 0.5
+	if crawl:
+		var threats := _threats()
+		if world.combat.prot_at(position, threats, 0.3) < 0.99:
+			var res: Dictionary = world.combat.find_cover(self, position, 8.0, threats, true)
+			if not res.is_empty() and Defs.flat(res.pos - position).length() > 0.8:
+				go_to(res.pos, "crawl", 0)
+				world.stat("crawl_to_cover")
 
 
 func _pistol_fire() -> void:
@@ -3416,6 +3447,22 @@ func _pistol_fire() -> void:
 
 
 func _dead(_dt: float) -> void:
+	if world.settings.get("rust_infantry", false) and ClassDB.class_exists("InfantryVitalsCore"):
+		var state := _vitals_state()
+		var carrier_alive := false
+		for bearer in carried_by:
+			if is_instance_valid(bearer) and not bearer.gone and bearer.life == Life.ALIVE:
+				carrier_alive = true
+		var ground: float = _ground() if carried_by.is_empty() else position.y
+		var result: Array = _vitals_core.corpse_step(state, position.y, ground, world.time, not carried_by.is_empty(), carrier_alive, stretcher_claimed)
+		assert(result.size() == 4, "Invalid infantry corpse step")
+		position.y = float(result[0])
+		act = Act.CARRIED if result[1] else Act.IDLE
+		if result[2]:
+			carried_by.clear()
+		if result[3]:
+			world.despawn(self)
+		return
 	position.y = lerpf(position.y, _ground(), 0.2) if carried_by.is_empty() else position.y
 	if not carried_by.is_empty():
 		act = Act.CARRIED
