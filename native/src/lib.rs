@@ -6,6 +6,7 @@ mod drone_flight;
 mod formation_ground;
 mod guided_flight;
 mod hierarchy;
+mod infantry_aim;
 mod infantry_motion;
 mod infantry_vitals;
 mod infantry_weapon;

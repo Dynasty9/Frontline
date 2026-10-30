@@ -31,7 +31,8 @@ graphics, network access or a wall clock.
 | Infantry route movement | `frontline_core` | Route progress, vaulting, sliding, doors and ground caches extracted and reference-tested; the per-soldier adapter remains test-only because it is slower than GDScript |
 | Infantry weapon cycles | `frontline_core` | Cover fire, postures, firing permissions, ammunition and burst recovery extracted with compatibility tests; adapters remain test-only until Rust owns the actor |
 | Infantry health, suppression and fatigue | `frontline_core` | Numeric recovery, damage outcomes and down/death/revive transitions extracted with component checkpoints; actor cleanup, squad reactions and damage attribution remain Godot effects |
-| Infantry aim selection, bullet resolution, injury behavior and special tasks | Rust | `soldier.gd`, `soldier_brain.gd`, `combat.gd` |
+| Infantry aim selection and sight cache | `frontline_core` | Target, blind and area-fire aiming extracted and reference-tested; the test adapter supplies posed target points and last-known squad contacts |
+| Bullet resolution, injury behavior and special tasks | Rust | `soldier.gd`, `soldier_brain.gd`, `combat.gd` |
 | Squads, tactics, commander and naval decisions | Rust | Squad, tactics, commander and naval scripts |
 | Vehicles and crews | Rust | Entity scripts and Godot spatial queries |
 | Battlefield box raycasts | `frontline_core` | Spatial grid with deterministic hit ties; Godot supplies geometry updates |
@@ -194,10 +195,10 @@ Component checkpoint headers contain a four-byte component tag, a little-endian
 rules rather than silently continuing with changed arithmetic. The separate
 integer RNG stream remains unchanged.
 
-`native/core/tests/numeric_contract.rs` compares 162,863 committed bytes without
+`native/core/tests/numeric_contract.rs` compares 181,655 committed bytes without
 tolerances: fixed-tick flight state, support events and RNG cursors, carved water,
 craters, rotated box hits, cover anchors, spherical interpolation and infantry
-movement, infantry cover fire, postures, ammunition, burst recovery and vitals. CI runs
+movement, infantry cover fire, postures, ammunition, burst recovery, vitals and aiming. CI runs
 the same fixtures in debug and release on Windows x64, Linux
 x64, Linux ARM64 and macOS ARM64. A mismatch reports the first different byte.
 These fixtures guard the covered trajectories; they are not a proof for all
@@ -311,7 +312,7 @@ draws. Fatigue preserves movement/carrying costs and posture-dependent recovery.
 
 The `FLIV` checkpoint covers these numeric fields, not task state, rescuer links,
 injury movement or the complete soldier. The test-only `rust_infantry` setting
-enables weapon and vitals adapters together. The vitals reference fixture checks
+enables weapon, vitals and aim adapters together. The vitals reference fixture checks
 92,160 steps across every life state, including repeat wounds/revivals, bearers,
 prisoners, damage attribution, squad morale, speech, properties and RNG cursors.
 The four battle comparisons now exercise both controllers together. Core checks
@@ -320,6 +321,25 @@ The numeric CI corpus includes a 45,096-byte vitals transcript.
 The full default suite passes 112 tests after this extraction; 81 core tests pass
 in debug and release. These adapters remain test-only and do not establish a
 complete soldier checkpoint or a 60 FPS performance result.
+
+## Infantry aiming
+
+`InfantryAim` owns the short sight cache and firing-point selection. It preserves
+blind scatter, the strict 0.3-second sight refresh, structure and drone sight
+rules, the chance of aiming through low cover, suppression fire and last-known
+positions. It shares the retained collision and smoke world. Input validation
+precedes cache changes and random draws; the component checkpoint records the
+cached target, expiry and result.
+
+The Godot comparison checks 20,480 decisions against the existing implementation,
+including moving blockers, smoke, all soldier postures, drones, vehicles,
+structures, invalid targets, contact expiry, RNG order and checkpoint resumes.
+The existing attack, breach, trenches and fire battle comparisons also enable
+this controller alongside native weapon and vitals logic. The numeric corpus
+adds an 18,792-byte aiming transcript. Posed target geometry, squad contact
+selection, bullet resolution and damage effects still require Godot; this is not
+a complete actor or independently replayable battle. The full default suite passes
+113 tests after this extraction; 87 core tests pass in debug and release.
 
 ## Battlefield collision
 

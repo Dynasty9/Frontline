@@ -1251,7 +1251,9 @@ ammunition and burst timing also have checkpointed Rust implementations under
 compatibility tests; normal games still use the existing weapon controller while
 actor ownership moves. Infantry health, suppression and fatigue rules also have
 restorable Rust state and
-comparisons covering damage credit, squad responses and repeat wounds. The full
+comparisons covering damage credit, squad responses and repeat wounds. Aim selection
+and its short sight cache also have Rust compatibility checks, including blind
+fire, firing through cover and last-known positions. The full
 authoritative Rust server and deterministic
 battle verifier are still in progress; see [RUST_SIMULATION.md](RUST_SIMULATION.md).
 

@@ -6,9 +6,9 @@ use godot::prelude::*;
 
 #[derive(GodotClass)]
 #[class(base=RefCounted, init)]
-struct VisibilityCore {
+pub(crate) struct VisibilityCore {
     base: Base<RefCounted>,
-    core: Visibility,
+    pub(crate) core: Visibility,
     points: Vec<Point>,
 }
 

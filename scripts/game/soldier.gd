@@ -1936,20 +1936,8 @@ func _weapon_tick_work(dt: float, moving: bool, mode: String) -> void:
 	var cfp: Vector3 = cf_pos if own_cf else (squad.cover_fire_pos if squad else Vector3.ZERO)
 	if not _weapon_stance(dt, moving, mode, w, pinned, danger, have_target, cf):
 		return
-	var aim_ent: Entity = null
-	var aim_pt := Vector3.INF
-	if blind and have_target:
-		aim_ent = target  # roughly where he last saw him, head down
-		aim_pt = target.position + Vector3(world.rng.randf_range(-1.5, 1.5), world.rng.randf_range(0.5, 1.8), world.rng.randf_range(-1.5, 1.5))
-	elif have_target and _has_los_now(target):
-		aim_ent = target
-		aim_pt = _aim_point(target)
-	elif cf and Defs.flat(cfp - position).length() < float(w.range) * 1.1:
-		aim_pt = cfp + Vector3(world.rng.randf_range(-2.5, 2.5), world.rng.randf_range(0.6, 1.4), world.rng.randf_range(-2.5, 2.5))
-	elif squad and (utype in ["mg_gunner", "pkm"] or not gun_override.is_empty()):
-		var lk: Dictionary = squad.last_known_near(position, float(w.range), 5.0)
-		if not lk.is_empty():
-			aim_pt = lk.pos + Vector3(world.rng.randf_range(-1.5, 1.5), 1.0, world.rng.randf_range(-1.5, 1.5))
+	var aim_pt := _weapon_aim(have_target, cf, cfp, float(w.range))
+	var aim_ent := _aim_ent
 	if aim_pt == Vector3.INF:
 		return
 	var aim_dir := Defs.flat(aim_pt - position).normalized()
@@ -1967,6 +1955,64 @@ func _weapon_tick_work(dt: float, moving: bool, mode: String) -> void:
 	if fire_t > 0.0:
 		return
 	_shoot(aim_pt, aim_ent, moving, cf)
+
+
+var _aim_core: RefCounted
+var _aim_ent: Entity
+
+
+func _weapon_aim(have_target: bool, cf: bool, cfp: Vector3, weapon_range: float) -> Vector3:
+	# shortcut: the parity fixture packs state until Rust owns the complete actor.
+	if world.settings.get("rust_infantry", false) and ClassDB.class_exists("InfantryAimCore") and world.combat._collision and world.combat._visibility:
+		world.combat._sync_collision()
+		if world.combat._collision:
+			if _aim_core == null:
+				_aim_core = ClassDB.instantiate("InfantryAimCore")
+			var contact := []
+			var points := PackedVector3Array()
+			var excluded := PackedInt64Array()
+			if have_target:
+				var kind := 1 if target is Soldier else (2 if target is Drone else (3 if target is Structure else 0))
+				contact = [target.eid, kind, target._over() if target is Soldier else false, target.cover_h if target is Soldier else 0.0, target.position, target.center_point()]
+				points = PackedVector3Array(target.exposed_points())
+				for rid: RID in get_exclude() + target.get_exclude():
+					if world.combat._rid_entities.has(rid):
+						excluded.append(int(world.combat._rid_entities[rid]))
+			var known = null
+			if squad and (utype in ["mg_gunner", "pkm"] or not gun_override.is_empty()):
+				var lk: Dictionary = squad.last_known_near(position, weapon_range, 5.0)
+				if not lk.is_empty():
+					known = lk.pos
+			var state := [los_ent.eid if is_instance_valid(los_ent) else 0, los_t, los_ok]
+			var inputs := [world.time, position, eye_pos(), blind, _path_pending or not is_moving(), cfp if cf else null, known, weapon_range]
+			var result: Array = _aim_core.choose(world.combat._collision, world.combat._visibility, world.rng._backend, state, inputs, contact, points, excluded)
+			assert(result.size() == 6, "Invalid infantry aim selection")
+			los_ent = world.entity(int(result[2]))
+			los_t = float(result[3])
+			los_ok = bool(result[4])
+			if result[5]:
+				world.stat("perception_blocked_reused")
+			_aim_ent = world.entity(int(result[1]))
+			return result[0] if result[0] != null else Vector3.INF
+	return _weapon_aim_reference(have_target, cf, cfp, weapon_range)
+
+
+func _weapon_aim_reference(have_target: bool, cf: bool, cfp: Vector3, weapon_range: float) -> Vector3:
+	_aim_ent = null
+	var aim_pt := Vector3.INF
+	if blind and have_target:
+		_aim_ent = target  # roughly where he last saw him, head down
+		aim_pt = target.position + Vector3(world.rng.randf_range(-1.5, 1.5), world.rng.randf_range(0.5, 1.8), world.rng.randf_range(-1.5, 1.5))
+	elif have_target and _has_los_now(target):
+		_aim_ent = target
+		aim_pt = _aim_point(target)
+	elif cf and Defs.flat(cfp - position).length() < weapon_range * 1.1:
+		aim_pt = cfp + Vector3(world.rng.randf_range(-2.5, 2.5), world.rng.randf_range(0.6, 1.4), world.rng.randf_range(-2.5, 2.5))
+	elif squad and (utype in ["mg_gunner", "pkm"] or not gun_override.is_empty()):
+		var lk: Dictionary = squad.last_known_near(position, weapon_range, 5.0)
+		if not lk.is_empty():
+			aim_pt = lk.pos + Vector3(world.rng.randf_range(-1.5, 1.5), 1.0, world.rng.randf_range(-1.5, 1.5))
+	return aim_pt
 
 
 func _weapon_stance(dt: float, moving: bool, mode: String, w: Dictionary, pinned: bool, danger: bool, have_target: bool, cf: bool) -> bool:

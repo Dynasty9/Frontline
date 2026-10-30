@@ -3,6 +3,7 @@ use frontline_core::collision::{BoxShape, CollisionWorld, Mat3};
 use frontline_core::cover::{generate, Part};
 use frontline_core::drone::{DroneFlight, Phase};
 use frontline_core::guided::{GuidedFlight, Kind as GuidedKind};
+use frontline_core::infantry_aim::{AimInput, InfantryAim, Target, TargetKind};
 use frontline_core::infantry_motion::{InfantryMotion, MoveInput};
 use frontline_core::infantry_vitals::{
     DamageResult, FatigueInput, InfantryVitals, Life, Protection,
@@ -14,6 +15,7 @@ use frontline_core::random::SimulationRandom;
 use frontline_core::support::{Event, Kind as SupportKind, SupportFlight};
 use frontline_core::terrain::{Terrain, BASE, MUD};
 use frontline_core::vector::{slerp, Vector3};
+use frontline_core::visibility::{Smoke, Visibility};
 use frontline_core::water::{Pond, River, Water};
 use std::path::PathBuf;
 
@@ -50,6 +52,83 @@ fn golden(name: &str, actual: &[u8]) {
     {
         panic!("{name}: first differing byte {i}: actual {a:02x}, expected {b:02x}");
     }
+}
+
+#[test]
+fn infantry_aim_transcripts_are_identical_across_platforms() {
+    let mut bytes = Vec::new();
+    for seed in 0..12 {
+        let mut rng = SimulationRandom::new(seed);
+        let mut aim = InfantryAim::default();
+        let mut collision = CollisionWorld::default();
+        let mut sight = Visibility::default();
+        for tick in 0..48 {
+            let position = Vector3::new(31.17, 0.0, (tick % 3) as f32 * 1.1);
+            let points = [position + Vector3::Y * 1.16, position + Vector3::Y * 1.68];
+            let kind = match seed % 4 {
+                0 => TargetKind::Infantry {
+                    over_cover: true,
+                    cover_height: 0.73,
+                },
+                1 => TargetKind::Drone,
+                2 => TargetKind::Structure,
+                _ => TargetKind::Other,
+            };
+            assert!(collision.replace(
+                8,
+                &[BoxShape {
+                    body: 8,
+                    shape: 0,
+                    center: Vector3::new(15.0, 1.0, if tick % 16 < 8 { 0.0 } else { 40.0 }),
+                    basis: Mat3::IDENTITY,
+                    half: Vector3::new(1.0, 3.0, 4.0)
+                }]
+            ));
+            assert!(sight.set_projectile(
+                9,
+                Smoke {
+                    center: Vector3::new(5.0, 1.0, 0.0),
+                    radius: if tick % 7 == 0 { 4.0 } else { 0.0 }
+                }
+            ));
+            let result = aim
+                .choose(
+                    AimInput {
+                        time: f64::from(tick) * 0.1,
+                        position: Vector3::ZERO,
+                        eye: Vector3::Y * 1.45,
+                        target: (tick % 3 != 0).then_some(Target {
+                            id: 5,
+                            kind,
+                            position,
+                            center: position + Vector3::Y * 0.72,
+                            points: &points,
+                            excluded: &[],
+                        }),
+                        blind: tick % 5 == 0,
+                        cache_obstruction: true,
+                        cover_fire: (tick % 2 == 0).then_some(Vector3::new(20.0, 0.0, -5.0)),
+                        last_known: Some(Vector3::new(15.0, 0.0, 9.0)),
+                        weapon_range: 50.0,
+                    },
+                    &mut collision,
+                    &mut sight,
+                    &mut rng,
+                )
+                .unwrap();
+            bytes.push(u8::from(result.point.is_some()));
+            if let Some(p) = result.point {
+                point(&mut bytes, p);
+            }
+            bytes.extend_from_slice(&result.target.to_le_bytes());
+            bytes.extend_from_slice(&rng.state().to_le_bytes());
+            if tick % 8 == 0 {
+                block(&mut bytes, &aim.checkpoint());
+                aim = InfantryAim::restore(&aim.checkpoint()).unwrap();
+            }
+        }
+    }
+    golden("infantry_aim", &bytes);
 }
 
 #[test]

@@ -13,7 +13,7 @@ test("Rust infantry cover fire preserves peeking, reloads, buddy cover and rando
   assert.match(stdout, /INFANTRY_SHOTS rounds=/);
 });
 
-test("Rust weapons and vitals preserve infantry battle fingerprints and events", async () => {
+test("Rust weapons, vitals and aiming preserve infantry battle fingerprints and events", async () => {
   const game = await Game.start();
   try {
     for (const scenario of ["attack", "breach", "trenches", "fire"]) {
