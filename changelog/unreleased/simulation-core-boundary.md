@@ -16,4 +16,5 @@ kind = "fixed"
 - Hierarchical routes, danger weighting and map repairs now run in Rust. Large-cluster route caches distinguish entrances that previously shared a truncated key.
 - Route refinement, smoothing, shared corridors and queued movement orders also run in Rust, retaining fire avoidance and order completion quotas.
 - FPV drones, guided missiles and support-aircraft attack schedules now use Rust, preserving target loss, smoke countermeasures, bomb runs, gun bursts and reconnaissance.
+- Infantry movement has a Rust compatibility test covering doors, vaults and cover slides. The faster existing movement remains active while actor state is migrated.
 - This is groundwork for the server migration. Battles still use the existing simulation, and recordings are not yet independently verified.

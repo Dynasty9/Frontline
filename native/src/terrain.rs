@@ -4,9 +4,9 @@ use godot::prelude::*;
 
 #[derive(GodotClass)]
 #[class(base=RefCounted, init)]
-struct TerrainCore {
+pub(crate) struct TerrainCore {
     base: Base<RefCounted>,
-    core: Option<Terrain>,
+    pub(crate) core: Option<Terrain>,
 }
 
 fn valid_point(p: Vector3) -> bool {

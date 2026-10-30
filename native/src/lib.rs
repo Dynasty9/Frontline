@@ -6,6 +6,7 @@ mod drone_flight;
 mod formation_ground;
 mod guided_flight;
 mod hierarchy;
+mod infantry_motion;
 mod navigation_grid;
 mod path_planner;
 mod projectile_flight;

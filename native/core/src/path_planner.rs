@@ -102,6 +102,14 @@ impl PathPlanner {
         cell[1] as usize * self.side + cell[0] as usize
     }
 
+    pub fn side(&self) -> usize {
+        self.side
+    }
+
+    pub fn kind_at(&self, point: Vector3, vehicle: bool) -> u8 {
+        self.kinds[usize::from(vehicle)][self.index(self.cell(point))]
+    }
+
     pub fn line_free(&self, from: Vector3, to: Vector3, vehicle: bool) -> bool {
         if !from.is_finite() || !to.is_finite() {
             return false;

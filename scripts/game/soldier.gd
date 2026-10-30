@@ -1361,6 +1361,84 @@ func _move_tick(dt: float, speed: float) -> bool:
 
 func _move_tick_work(dt: float, speed: float) -> bool:
 	if _path_pending:
+		return true
+	if path_i >= path.size():
+		return false
+	# shortcut: per-soldier state packing is slower; enable when the Rust actor owns these fields.
+	if world.settings.get("rust_infantry_motion", false) and ClassDB.class_exists("InfantryMotionCore") and world.nav._planner and world.terrain._native and world.combat._collision:
+		world.combat._sync_collision()
+		if world.combat._collision:
+			return _native_move_tick(dt, speed)
+	return _move_tick_reference(dt, speed)
+
+
+var _motion_core: RefCounted
+
+
+func _native_move_tick(dt: float, speed: float) -> bool:
+	if _motion_core == null:
+		_motion_core = ClassDB.instantiate("InfantryMotionCore")
+	var values := PackedFloat64Array([position.x, position.y, position.z, rotation.y, path_i,
+		_stuck_p.x, _stuck_p.y, _stuck_p.z, _stuck_t, slide_t, slide_cd, int(vaulting),
+		_last_dir.x, _last_dir.y, _last_dir.z, _bar_t, int(_bar), _gy_t, _gy, door_wait, _door_t, int(door_kick)])
+	var mount_point := Vector3.ZERO
+	var turn_rate := 0.0
+	if mounted != null and not mounted.gone and mounted.skind in ["mg_nest", "hmg_nest", "mortar_pit", "at_post"]:
+		mount_point = mounted.mount_pos()
+		turn_rate = deg_to_rad(float({"mg_nest": 55.0, "hmg_nest": 35.0, "mortar_pit": 12.0, "at_post": 20.0}[mounted.skind]))
+	var waiting_door: int = door_st.eid if is_instance_valid(door_st) and not door_st.gone else 0
+	var candidates := []
+	if door_wait <= 0.0 and world.time > _door_t:
+		for st in world.door_cells.get(Vector2i(floori(position.x / 1.5), floori(position.z / 1.5)), []):
+			if is_instance_valid(st) and not st.gone:
+				candidates.append([st.eid, st.position, st.yaw])
+	var inputs := PackedFloat64Array([dt, world.time, speed, base_y, int(life == Life.ALIVE), int(_path_pending), int(goal_kind == "cover"), move_mode,
+		suppression, int(backwards), int(not candidates.is_empty() and _danger()), int(not world.door_cells.is_empty()), int(waiting_door != 0 and door_st.door_shut), int(turn_rate > 0.0),
+		mount_point.x, mount_point.y, mount_point.z, turn_rate])
+	var decks: PackedByteArray = world.water.deck if world.water else PackedByteArray()
+	var output: Array = _motion_core.advance(values, path, waiting_door, inputs, candidates, world.nav._planner, world.terrain._native, world.combat._collision, world.rng._backend, decks)
+	assert(output.size() == 5, "Invalid infantry movement result")
+	var state: PackedFloat64Array = output[0]
+	var ids: PackedInt64Array = output[1]
+	var progress: int = output[2]
+	path_i = int(state[4])
+	_stuck_p = Vector3(state[5], state[6], state[7])
+	_stuck_t = state[8]
+	slide_t = state[9]
+	slide_cd = state[10]
+	vaulting = state[11] != 0.0
+	_last_dir = Vector3(state[12], state[13], state[14])
+	_bar_t = state[15]
+	_bar = state[16] != 0.0
+	_gy_t = state[17]
+	_gy = state[18]
+	door_wait = state[19]
+	_door_t = state[20]
+	door_kick = state[21] != 0.0
+	door_st = world.entity(ids[0]) as Structure if ids[0] != 0 else null
+	if ids[1] != 0:
+		var opened: Structure = world.entity(ids[1]) as Structure
+		if opened and not opened.gone:
+			opened.open_door(self, door_kick)
+	var next_position := Vector3(state[0], state[1], state[2])
+	if next_position != position:
+		position = next_position
+	if state[3] != rotation.y:
+		rotation.y = state[3]
+	if int(output[3]) >= 0:
+		say(["Breaching!", "Door!", "Kicking it in!"][int(output[3])], true)
+	if output[4]:
+		world.stat("slide")
+	if progress == 3:
+		world.stat("repath")
+		go_to(path[path.size() - 1], goal_kind, move_mode)
+	elif progress == 2:
+		_arrived()
+	return progress == 1 or progress == 3
+
+
+func _move_tick_reference(dt: float, speed: float) -> bool:
+	if _path_pending:
 		return true  # callers must not finish a task while its route is queued
 	if path_i >= path.size():
 		return false

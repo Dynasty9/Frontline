@@ -28,7 +28,8 @@ graphics, network access or a wall clock.
 | FPV drone flight | `frontline_core` | Climb, cruise, dive, loss of control and collision; Godot supplies targets and applies damage |
 | Guided missiles and support aircraft | `frontline_core` | Flight, target-lock loss, bomb release, burst schedules, pending hits and random draws; Godot supplies contacts and applies events |
 | Entity registry, stable IDs, spawn/despawn | Rust | `world.gd`, `entity.gd` |
-| Infantry movement, weapons, injuries, special tasks | Rust | `soldier.gd`, `soldier_brain.gd` |
+| Infantry route movement | `frontline_core` | Route progress, vaulting, sliding, doors and ground caches extracted and reference-tested; the per-soldier adapter remains test-only because it is slower than GDScript |
+| Infantry weapons, injuries, special tasks | Rust | `soldier.gd`, `soldier_brain.gd` |
 | Squads, tactics, commander and naval decisions | Rust | Squad, tactics, commander and naval scripts |
 | Vehicles and crews | Rust | Entity scripts and Godot spatial queries |
 | Battlefield box raycasts | `frontline_core` | Spatial grid with deterministic hit ties; Godot supplies geometry updates |
@@ -196,6 +197,28 @@ grenades, smoke expiry and checkpoint restores. Position tolerance is 1 mm and
 velocity tolerance is 0.1 mm/s; gameplay scalar fields and impact parameters must
 match exactly. The full default suite and the opt-in mission suite remain the
 integration gates.
+
+## Infantry movement
+
+`InfantryMotion` advances route waypoints, stuck detection, barrier vaulting,
+cover slides, ground-height caches and door waits against native navigation,
+terrain and collision. Door decisions preserve speech RNG draws and opening
+order. Mounted weapon turn limits use the post-move position. Its `FLIM` checkpoint
+retains the route and every movement timer, including pending door identity.
+Arrival and repath events still return to the Godot actor; this is not a full
+infantry checkpoint.
+
+The reference fixture compares 18,000 steps against the original movement at
+30 Hz, 60 Hz and coarse ticks, including opening another soldier's door, route
+replanning, duplicate waypoints, cover arrival and mounted turning. Events and
+RNG cursors match exactly; poses allow 10 micrometres of floating-point rounding.
+
+The temporary `rust_infantry_motion` world setting is only enabled by the fixture.
+With other applications running, 1,000 moving steps took 3.27–3.95 ms in GDScript
+and 8.48–9.51 ms through the native adapter (six alternating-order samples after
+warmup). Packing and mirroring each actor is more expensive than this small
+calculation. Normal play retains the faster existing path until the complete
+Rust actor owns its state. These numbers are neither server throughput nor FPS.
 
 ## Battlefield collision
 

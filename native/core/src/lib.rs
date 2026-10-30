@@ -5,6 +5,7 @@ pub mod drone;
 pub mod formation;
 pub mod guided;
 pub mod hierarchy;
+pub mod infantry_motion;
 pub mod navigation_grid;
 pub mod path_planner;
 pub mod perception;

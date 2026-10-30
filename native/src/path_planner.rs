@@ -5,9 +5,9 @@ use godot::prelude::*;
 
 #[derive(GodotClass)]
 #[class(base=RefCounted, init)]
-struct PathPlannerCore {
+pub(crate) struct PathPlannerCore {
     base: Base<RefCounted>,
-    core: Option<PathPlanner>,
+    pub(crate) core: Option<PathPlanner>,
 }
 
 fn point(p: Vector3) -> Point {
