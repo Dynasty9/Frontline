@@ -29,7 +29,8 @@ graphics, network access or a wall clock.
 | Guided missiles and support aircraft | `frontline_core` | Flight, target-lock loss, bomb release, burst schedules, pending hits and random draws; Godot supplies contacts and applies events |
 | Entity registry, stable IDs, spawn/despawn | Rust | `world.gd`, `entity.gd` |
 | Infantry route movement | `frontline_core` | Route progress, vaulting, sliding, doors and ground caches extracted and reference-tested; the per-soldier adapter remains test-only because it is slower than GDScript |
-| Infantry weapons, injuries, special tasks | Rust | `soldier.gd`, `soldier_brain.gd` |
+| Infantry weapon cycles | `frontline_core` | Cover fire, postures, firing permissions, ammunition and burst recovery extracted with compatibility tests; adapters remain test-only until Rust owns the actor |
+| Infantry aim selection, bullet damage, injuries and special tasks | Rust | `soldier.gd`, `soldier_brain.gd`, `combat.gd` |
 | Squads, tactics, commander and naval decisions | Rust | Squad, tactics, commander and naval scripts |
 | Vehicles and crews | Rust | Entity scripts and Godot spatial queries |
 | Battlefield box raycasts | `frontline_core` | Spatial grid with deterministic hit ties; Godot supplies geometry updates |
@@ -111,6 +112,15 @@ as the Rust server's interoperability contract
 ([SceneMultiplayer documentation](https://docs.godotengine.org/en/stable/classes/class_scenemultiplayer.html)).
 The standalone transport and whole-world simulation remain to be implemented.
 
+Keep those application messages independent of ENet. The browser export cannot
+open UDP sockets and must carry the same messages through a supported transport,
+such as WebSocket; [Godot supports it on native and web exports](https://docs.godotengine.org/en/stable/tutorials/networking/websocket.html).
+Admission, visibility filtering and replay ordering still run in the same Rust
+server. A slow reliable connection needs bounded observation queues and a fresh
+baseline when it falls behind, not an accumulating backlog of obsolete states.
+Offline browser play also needs an explicit migration path (the Rust core in a
+browser worker); it cannot launch the desktop server executable.
+
 ## Deterministic replay contract
 
 A simulation replay needs all of the following, separate from Format 1 observer
@@ -183,10 +193,11 @@ Component checkpoint headers contain a four-byte component tag, a little-endian
 rules rather than silently continuing with changed arithmetic. The separate
 integer RNG stream remains unchanged.
 
-`native/core/tests/numeric_contract.rs` compares 65,730 committed bytes without
+`native/core/tests/numeric_contract.rs` compares 117,767 committed bytes without
 tolerances: fixed-tick flight state, support events and RNG cursors, carved water,
 craters, rotated box hits, cover anchors, spherical interpolation and infantry
-movement. CI runs the same fixtures in debug and release on Windows x64, Linux
+movement, infantry cover fire, postures, ammunition and burst recovery. CI runs
+the same fixtures in debug and release on Windows x64, Linux
 x64, Linux ARM64 and macOS ARM64. A mismatch reports the first different byte.
 These fixtures guard the covered trajectories; they are not a proof for all
 floating-point inputs or a substitute for full-world replay verification.
@@ -254,6 +265,37 @@ and 8.48–9.51 ms through the native adapter (six alternating-order samples aft
 warmup). Packing and mirroring each actor is more expensive than this small
 calculation. Normal play retains the faster existing path until the complete
 Rust actor owns its state. These numbers are neither server throughput nor FPS.
+
+## Infantry weapon controller
+
+`InfantryWeapon` retains peek/watch/blind-fire state, firing and reload timers,
+burst and ammunition counts, last-shot time and the low-ammunition announcement.
+The core decides firing postures and permissions for moving soldiers, low cover,
+leaning cover, gun crews, escorts, ambushes and pinned troops. Cover events retain
+their order: the adapter applies reload speech, buddy cover and movement to a new
+anchor before selecting posture. A new anchor can have a different height.
+
+Shot preparation, combat resolution and shot recovery remain ordered stages.
+Bullet damage consumes randomness and can change the shooter before recovery;
+the adapter releases the RNG borrow before combat and uses the current reload
+specification afterward. The existing partial-magazine rule is preserved: a
+reload adds available rounds rather than replacing the rounds already loaded.
+The `FLIW` checkpoint preserves the controller's state and rejects malformed or
+incompatible input without changing live state. It is not an actor checkpoint:
+aim selection, damage, life state, tasks and squad ownership still live in Godot.
+
+The reference fixture compares 168,960 controller steps, including five postures,
+cover shifts, squadmate responses, weapon changes during damage, finite/infinite
+ammunition, scarce-round bursts, speech and exact RNG cursors. The test-port-only
+`rust_infantry_weapon` option runs the native controller through real attack,
+breach, trenches and fire scenarios, comparing existing battle fingerprints and
+behavior counters every 15 seconds for 60 seconds. Those fingerprints are an
+integration regression check, not cryptographic replay verification. Normal play
+keeps the existing weapon controller until Rust owns actor state; no performance
+gain is claimed from this per-soldier test adapter.
+The full default suite passes 111 tests after this extraction, and all 75 core
+tests pass in both debug and release. Cross-platform CI also compares the new
+52,037-byte weapon transcript against one shared committed fixture.
 
 ## Battlefield collision
 

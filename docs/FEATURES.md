@@ -1246,7 +1246,10 @@ contact evaluation also runs in Rust, preserving weapon priorities, mounted-gun
 arcs, drone reactions, forced targets and squad reports. Infantry route movement
 also has a checkpointed Rust implementation and tick-by-tick compatibility tests;
 its per-soldier adapter stays disabled because copying state across that boundary
-is slower than the existing movement. The full
+is slower than the existing movement. Cover-fire cycles, weapon postures,
+ammunition and burst timing also have checkpointed Rust implementations under
+compatibility tests; normal games still use the existing weapon controller while
+actor ownership moves. The full
 authoritative Rust server and deterministic
 battle verifier are still in progress; see [RUST_SIMULATION.md](RUST_SIMULATION.md).
 

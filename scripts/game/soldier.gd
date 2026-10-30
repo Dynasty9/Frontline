@@ -1764,6 +1764,62 @@ func _lean_post() -> int:
 ## waits for the fire to slacken, a fighter may hold his rifle up over the
 ## wall and fire blind.
 func _cover_cycle(dt: float, w: Dictionary, want_fire: bool, pinned: bool) -> void:
+	if world.settings.get("rust_infantry_weapon", false) and ClassDB.class_exists("InfantryWeaponCore"):
+		_native_cover_cycle(dt, w, want_fire, pinned)
+		return
+	_cover_cycle_reference(dt, w, want_fire, pinned)
+
+
+var _weapon_core: RefCounted
+
+
+func _weapon_state() -> PackedFloat64Array:
+	if _weapon_core == null:
+		_weapon_core = ClassDB.instantiate("InfantryWeaponCore")
+	return PackedFloat64Array([peek_t, _peek_from, _up_supp, reload_t, int(peek_up), int(_stayed), int(_watching), int(blind), burst_left, mag, reserve, fire_t, last_shot_t, int(low_ammo_said)])
+
+
+func _read_weapon_state(state: PackedFloat64Array) -> void:
+	assert(state.size() == 14, "Invalid infantry weapon state")
+	peek_t = state[0]
+	_peek_from = state[1]
+	_up_supp = state[2]
+	reload_t = state[3]
+	peek_up = state[4] != 0.0
+	_stayed = state[5] != 0.0
+	_watching = state[6] != 0.0
+	blind = state[7] != 0.0
+	burst_left = int(state[8])
+	mag = int(state[9])
+	reserve = int(state[10])
+	fire_t = state[11]
+	last_shot_t = state[12]
+	low_ammo_said = state[13] != 0.0
+
+
+func _native_cover_cycle(dt: float, w: Dictionary, want_fire: bool, pinned: bool) -> void:
+	var state := _weapon_state()
+	var inputs := PackedFloat64Array([dt, world.time, team, suppression, _supp_t, hit_dirt_t, _gy, cover_type, cover_h, cover_mat,
+		int(want_fire), int(pinned), int(_target_valid(target)), int(_buddy_up()), w.get("ammo", -1), w.get("mag", 30), w.get("reload", 2.0)])
+	var output: Array = _weapon_core.cover_cycle(state, inputs, world.rng._backend)
+	assert(output.size() == 2, "Invalid infantry firing result")
+	_read_weapon_state(output[0])
+	var events: PackedInt32Array = output[1]
+	if events[0] and world.settings.get("debug", false):
+		world.stat("t%d_drew" % team)
+	if events[1] and world.settings.get("debug", false):
+		world.stat("t%d_peek" % team)
+	if events[2]:
+		world.stat("blind_fire")
+	if events[3] >= 0:
+		say(["Reloading!", "Changing mag!", "Cover me, reloading!"][events[3]])
+	if events[4]:
+		_call_cover()
+	if events[5]:
+		_shift_along()
+
+
+func _cover_cycle_reference(dt: float, w: Dictionary, want_fire: bool, pinned: bool) -> void:
 	peek_t -= dt
 	# nothing to shoot at and nobody shooting at him: up over the top keeping
 	# watch, the weapon on the wall - not curled up behind it. The first round
@@ -1843,12 +1899,21 @@ func _weapon_tick(dt: float, moving: bool, mode: String) -> void:
 		world.detail("_weapon_tick", stamp)
 
 
-func _weapon_tick_work(dt: float, moving: bool, mode: String) -> void:
+func _advance_weapon_timers(dt: float) -> void:
+	if world.settings.get("rust_infantry_weapon", false) and ClassDB.class_exists("InfantryWeaponCore"):
+		var state := _weapon_state()
+		var w := cur_weapon()
+		_read_weapon_state(_weapon_core.advance_timers(state, dt, PackedFloat64Array([w.get("ammo", 0), w.get("mag", 30), w.get("reload", 2.0)])))
+		return
 	fire_t -= dt
 	if reload_t > 0.0:
 		reload_t -= dt
 		if reload_t <= 0.0:
 			_finish_reload()
+
+
+func _weapon_tick_work(dt: float, moving: bool, mode: String) -> void:
+	_advance_weapon_timers(dt)
 	var w := cur_weapon()
 	var pinned := suppression >= (squad.pin_at() if squad else 60.0)  # a shaken squad is pinned sooner
 	var danger := _danger()
@@ -1856,6 +1921,66 @@ func _weapon_tick_work(dt: float, moving: bool, mode: String) -> void:
 	var own_cf := cf_until > world.time
 	var cf := own_cf or (squad != null and squad.cover_fire_until > world.time)
 	var cfp: Vector3 = cf_pos if own_cf else (squad.cover_fire_pos if squad else Vector3.ZERO)
+	if not _weapon_stance(dt, moving, mode, w, pinned, danger, have_target, cf):
+		return
+	var aim_ent: Entity = null
+	var aim_pt := Vector3.INF
+	if blind and have_target:
+		aim_ent = target  # roughly where he last saw him, head down
+		aim_pt = target.position + Vector3(world.rng.randf_range(-1.5, 1.5), world.rng.randf_range(0.5, 1.8), world.rng.randf_range(-1.5, 1.5))
+	elif have_target and _has_los_now(target):
+		aim_ent = target
+		aim_pt = _aim_point(target)
+	elif cf and Defs.flat(cfp - position).length() < float(w.range) * 1.1:
+		aim_pt = cfp + Vector3(world.rng.randf_range(-2.5, 2.5), world.rng.randf_range(0.6, 1.4), world.rng.randf_range(-2.5, 2.5))
+	elif squad and (utype in ["mg_gunner", "pkm"] or not gun_override.is_empty()):
+		var lk: Dictionary = squad.last_known_near(position, float(w.range), 5.0)
+		if not lk.is_empty():
+			aim_pt = lk.pos + Vector3(world.rng.randf_range(-1.5, 1.5), 1.0, world.rng.randf_range(-1.5, 1.5))
+	if aim_pt == Vector3.INF:
+		return
+	var aim_dir := Defs.flat(aim_pt - position).normalized()
+	if mode == "crew" and mounted and not mounted.mg_covers(aim_dir):
+		return  # outside the gun's arc
+	if mode != "escort" and not (posture == Post.LEAN_L or posture == Post.LEAN_R):
+		if blind and cover_n != Vector3.ZERO and aim_dir.dot(cover_n) < 0.5:
+			return  # he can't hold it over the wall that far round
+		if crew_mount() != null:
+			_face(aim_dir, dt)
+			if absf(wrapf(Defs.yaw_of(aim_dir) - rotation.y, -PI, PI)) > 0.035:
+				return
+		else:
+			_face_now(aim_dir)
+	if fire_t > 0.0:
+		return
+	_shoot(aim_pt, aim_ent, moving, cf)
+
+
+func _weapon_stance(dt: float, moving: bool, mode: String, w: Dictionary, pinned: bool, danger: bool, have_target: bool, cf: bool) -> bool:
+	# shortcut: fixture adapter packs state; the Rust actor will keep it between ticks.
+	if world.settings.get("rust_infantry_weapon", false) and ClassDB.class_exists("InfantryWeaponCore"):
+		var cycle := mode == "normal" and not moving and at_cover and cover_type in [Cov.LOW, Cov.LEAN] and not (cover_type == Cov.LOW and cover_h <= 0.0 and mounted == null)
+		if cycle:
+			_native_cover_cycle(dt, w, have_target or cf, pinned)
+		var state := _weapon_state()
+		var inputs := PackedFloat64Array([world.time, ["normal", "escort", "crew"].find(mode), int(moving), int(_crawling()),
+			int(goal_kind == "cover" and Defs.flat(goal - position).length() < 4.0), move_mode, int(_shifting), int(at_cover), cover_type, cover_h,
+			int(mounted != null), int(mounted != null and mounted.variant == 1), int(danger), int(pinned), suppression, hit_dirt_t,
+			int(_sector != Vector3.ZERO), int(utype in ["mg_gunner", "pkm"]), int(have_target), int(cf), int(crew_mount() != null), int(not w.is_empty()),
+			int(squad != null and squad.ambush), int(forced_target != null), rotation.y, int(cycle)])
+		var result: Array = _weapon_core.stance(state, inputs, eid, cover_threat, lean_dir)
+		assert(result.size() == 4, "Invalid infantry stance result")
+		_read_weapon_state(result[0])
+		if int(result[3]) == 1:
+			_face(cover_threat, dt, 3.0)
+		elif int(result[3]) == 2:
+			_face_now(cover_threat)
+		posture = int(result[1])
+		return result[2]
+	return _weapon_stance_reference(dt, moving, mode, w, pinned, danger, have_target, cf)
+
+
+func _weapon_stance_reference(dt: float, moving: bool, mode: String, w: Dictionary, pinned: bool, danger: bool, have_target: bool, cf: bool) -> bool:
 	var want_fire := have_target or cf
 	var want := Post.STAND
 	var shoot_ok := false
@@ -1922,45 +2047,57 @@ func _weapon_tick_work(dt: float, moving: bool, mode: String) -> void:
 		shoot_ok = false
 	posture = want
 	if not shoot_ok or reload_t > 0.0 or w.is_empty() or (fire_t > 0.0 and crew_mount() == null):
-		return
+		return false
 	if suppression >= 88.0 and mode != "escort":
-		return
+		return false
 	if squad and squad.ambush and mode == "normal" and forced_target == null:
-		return  # holding fire till the leader springs it
-	var aim_ent: Entity = null
-	var aim_pt := Vector3.INF
-	if blind and have_target:
-		aim_ent = target  # roughly where he last saw him, head down
-		aim_pt = target.position + Vector3(world.rng.randf_range(-1.5, 1.5), world.rng.randf_range(0.5, 1.8), world.rng.randf_range(-1.5, 1.5))
-	elif have_target and _has_los_now(target):
-		aim_ent = target
-		aim_pt = _aim_point(target)
-	elif cf and Defs.flat(cfp - position).length() < float(w.range) * 1.1:
-		aim_pt = cfp + Vector3(world.rng.randf_range(-2.5, 2.5), world.rng.randf_range(0.6, 1.4), world.rng.randf_range(-2.5, 2.5))
-	elif squad and (utype in ["mg_gunner", "pkm"] or not gun_override.is_empty()):
-		var lk: Dictionary = squad.last_known_near(position, float(w.range), 5.0)
-		if not lk.is_empty():
-			aim_pt = lk.pos + Vector3(world.rng.randf_range(-1.5, 1.5), 1.0, world.rng.randf_range(-1.5, 1.5))
-	if aim_pt == Vector3.INF:
-		return
-	var aim_dir := Defs.flat(aim_pt - position).normalized()
-	if mode == "crew" and mounted and not mounted.mg_covers(aim_dir):
-		return  # outside the gun's arc
-	if mode != "escort" and not (posture == Post.LEAN_L or posture == Post.LEAN_R):
-		if blind and cover_n != Vector3.ZERO and aim_dir.dot(cover_n) < 0.5:
-			return  # he can't hold it over the wall that far round
-		if crew_mount() != null:
-			_face(aim_dir, dt)
-			if absf(wrapf(Defs.yaw_of(aim_dir) - rotation.y, -PI, PI)) > 0.035:
-				return
-		else:
-			_face_now(aim_dir)
-	if fire_t > 0.0:
-		return
-	_shoot(aim_pt, aim_ent, moving, cf)
+		return false  # holding fire till the leader springs it
+	return true
 
 
 func _shoot(aim_pt: Vector3, aim_ent: Entity, moving: bool, cover_fire: bool) -> void:
+	if world.settings.get("rust_infantry_weapon", false) and ClassDB.class_exists("InfantryWeaponCore"):
+		_native_shoot(aim_pt, aim_ent, moving, cover_fire)
+		return
+	_shoot_reference(aim_pt, aim_ent, moving, cover_fire)
+
+
+func _native_shoot(aim_pt: Vector3, aim_ent: Entity, moving: bool, cover_fire: bool) -> void:
+	var state := _weapon_state()
+	var w := cur_weapon()
+	var b: Vector2i = w.burst
+	var inputs := PackedFloat64Array([w.ammo, w.get("mag", 30), w.get("reload", 2.0), b.x, b.y, world.time, stamina,
+		int(moving), int(not gun_override.is_empty()), squad.acc_mult() if squad else 1.0, int(squad != null and squad.ambush_t > world.time)])
+	var result: Array = _weapon_core.prepare_shot(state, inputs, world.rng._backend)
+	assert(result.size() == 6, "Invalid infantry shot result")
+	_read_weapon_state(result[0])
+	if int(result[4]) >= 0:
+		say(["Reloading!", "Changing mag!", "Cover me, reloading!"][result[4]])
+	if not result[1]:
+		return
+	if result[3]:
+		world.stat("low_ammo")
+		say("Low on ammo!", true)
+	act = Act.SHOOT
+	world.combat.fire_bullet(self, _bullet_origin(), aim_pt, aim_ent, w, result[5])
+	# Damage can consume randomness and change the shooter before burst recovery.
+	var recovery: Array = _weapon_core.finish_shot(_weapon_state(), PackedFloat64Array([w.ammo, w.get("mag", 30), cur_weapon().get("reload", 2.0), w.interval, suppression, int(result[2]), int(cover_fire)]), world.rng._backend)
+	assert(recovery.size() == 2, "Invalid infantry shot recovery")
+	_read_weapon_state(recovery[0])
+	if int(recovery[1]) >= 0:
+		say(["Reloading!", "Changing mag!", "Cover me, reloading!"][recovery[1]])
+
+
+func _bullet_origin() -> Vector3:
+	var muzzle := eye_pos() + Defs.dir_of(rotation.y) * 0.55 - Vector3(0, 0.08, 0)
+	if crew_mount() != null:
+		muzzle = mounted.mg_muzzle(rotation.y)
+	if blind:
+		muzzle = position + cover_n * 0.55 + Vector3(0, cover_h + 0.12, 0)
+	return muzzle
+
+
+func _shoot_reference(aim_pt: Vector3, aim_ent: Entity, moving: bool, cover_fire: bool) -> void:
 	var w := cur_weapon()
 	var infinite := int(w.ammo) >= 9000
 	if mag <= 0 and not infinite:
@@ -1979,13 +2116,10 @@ func _shoot(aim_pt: Vector3, aim_ent: Entity, moving: bool, cover_fire: bool) ->
 	burst_left -= 1
 	last_shot_t = world.time
 	act = Act.SHOOT
-	var muzzle := eye_pos() + Defs.dir_of(rotation.y) * 0.55 - Vector3(0, 0.08, 0)
-	if crew_mount() != null:
-		muzzle = mounted.mg_muzzle(rotation.y)
+	var muzzle := _bullet_origin()
 	var accm := 1.0
 	if blind:
 		# the weapon held up over the top, nobody looking down the sights
-		muzzle = position + cover_n * 0.55 + Vector3(0, cover_h + 0.12, 0)
 		accm *= 0.12
 	if moving:
 		accm *= 0.55

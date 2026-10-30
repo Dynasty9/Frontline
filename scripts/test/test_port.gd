@@ -221,7 +221,8 @@ func _load_args(req: Dictionary) -> Variant:
 func _loaded() -> Dictionary:
 	var w: World = main.world
 	return {"t": w.time, "seed": int(w.settings.get("seed", 0)), "soldiers": w.soldiers.size(), "vehicles": w.vehicles.size(),
-		"structures": w.structures.size(), "squads": w.squads.size()}
+		"structures": w.structures.size(), "squads": w.squads.size(),
+		"rust_infantry_weapon": w.settings.get("rust_infantry_weapon", false)}
 
 
 func _stepped() -> Dictionary:

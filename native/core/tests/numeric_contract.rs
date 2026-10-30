@@ -4,6 +4,7 @@ use frontline_core::cover::{generate, Part};
 use frontline_core::drone::{DroneFlight, Phase};
 use frontline_core::guided::{GuidedFlight, Kind as GuidedKind};
 use frontline_core::infantry_motion::{InfantryMotion, MoveInput};
+use frontline_core::infantry_weapon::{CoverInput, InfantryWeapon, ShotInput, StanceInput, Weapon};
 use frontline_core::path_planner::PathPlanner;
 use frontline_core::projectile::{Flight, Holder, Kind};
 use frontline_core::random::SimulationRandom;
@@ -46,6 +47,117 @@ fn golden(name: &str, actual: &[u8]) {
     {
         panic!("{name}: first differing byte {i}: actual {a:02x}, expected {b:02x}");
     }
+}
+
+#[test]
+fn infantry_weapon_transcripts_are_identical_across_platforms() {
+    let mut bytes = Vec::new();
+    let weapon = Weapon {
+        ammunition: 210,
+        magazine: 30,
+        reload_time: 2.4,
+    };
+    for seed in 0..16 {
+        let mut state = InfantryWeapon {
+            magazine: 6,
+            reserve: 60,
+            ..Default::default()
+        };
+        let mut rng = SimulationRandom::new(seed);
+        for tick in 0..240 {
+            let time = 10.0 + f64::from(tick) / 30.0;
+            let suppression = [0.0, 40.0, 75.0, 95.0][(tick as usize / 60) % 4];
+            state.advance_timers(1.0 / 30.0, weapon).unwrap();
+            let events = state
+                .cover_cycle(
+                    CoverInput {
+                        dt: 1.0 / 30.0,
+                        time,
+                        team: (seed % 2) as i32,
+                        suppression,
+                        last_suppression: time - 0.1,
+                        hit_dirt_timer: 0.0,
+                        ground: -0.7,
+                        cover_kind: 1,
+                        cover_height: 0.9,
+                        cover_material: 2,
+                        want_fire: true,
+                        pinned: suppression >= 60.0,
+                        target_valid: true,
+                        buddy_up: seed % 3 == 0,
+                        weapon: Some(weapon),
+                    },
+                    &mut rng,
+                )
+                .unwrap();
+            bytes.extend_from_slice(&[
+                u8::from(events.drew_fire),
+                u8::from(events.peeked),
+                u8::from(events.blind_fire),
+                events.reload_speech.unwrap_or(255),
+                u8::from(events.call_cover),
+                u8::from(events.shift_along),
+            ]);
+            let pose = state
+                .stance(
+                    StanceInput {
+                        time,
+                        entity: seed + 1,
+                        at_cover: true,
+                        cover_kind: if seed % 3 == 0 { 2 } else { 1 },
+                        cover_height: 0.9,
+                        suppression,
+                        pinned: suppression >= 60.0,
+                        armed: true,
+                        threat: Vector3::new(0.3, 0.0, -0.8),
+                        lean_direction: Vector3::new(0.8, 0.0, 0.3),
+                        ..Default::default()
+                    },
+                    true,
+                )
+                .unwrap();
+            bytes.extend_from_slice(&[pose.posture, u8::from(pose.can_aim), pose.face_threat]);
+            if pose.can_aim {
+                let shot = state
+                    .prepare_shot(
+                        ShotInput {
+                            weapon,
+                            burst_min: 2,
+                            burst_max: 4,
+                            time,
+                            stamina: f64::from(tick % 20) * 0.03,
+                            moving: false,
+                            gun_override: false,
+                            squad_accuracy: 0.85,
+                            ambush: tick < 30,
+                        },
+                        &mut rng,
+                    )
+                    .unwrap();
+                bytes.extend_from_slice(&shot.accuracy.to_le_bytes());
+                bytes.extend_from_slice(&[
+                    u8::from(shot.fired),
+                    u8::from(shot.low_ammo),
+                    u8::from(shot.announce_low_ammo),
+                    shot.reload_speech.unwrap_or(255),
+                ]);
+                if shot.fired {
+                    rng.randf(); // Combat has its own draws between shot and recovery.
+                    let speech = state
+                        .finish_shot(weapon, 0.12, suppression, shot.low_ammo, true, &mut rng)
+                        .unwrap();
+                    bytes.push(speech.unwrap_or(255));
+                }
+            }
+            if tick % 20 == 0 {
+                let saved = state.checkpoint();
+                assert_eq!(state, InfantryWeapon::restore(&saved).unwrap());
+                block(&mut bytes, &saved);
+                bytes.extend_from_slice(&rng.state().to_le_bytes());
+            }
+        }
+    }
+    golden("infantry_weapon", &bytes);
 }
 
 #[test]
