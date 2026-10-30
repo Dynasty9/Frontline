@@ -13,7 +13,7 @@ var max_rows := 3
 func _init() -> void:
 	super()
 	accented = true
-	custom_minimum_size.y = 184
+	custom_minimum_size.y = 0
 	var column := VBoxContainer.new()
 	column.add_theme_constant_override("separation", 4)
 	add_child(column)

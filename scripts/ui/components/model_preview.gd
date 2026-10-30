@@ -15,6 +15,7 @@ func _ready() -> void:
 	_view = SubViewport.new()
 	_view.size = Vector2i(144, 160)
 	_view.own_world_3d = true
+	_view.transparent_bg = true
 	_view.render_target_update_mode = SubViewport.UPDATE_DISABLED
 	_view.msaa_3d = Viewport.MSAA_2X
 	add_child(_view)
@@ -22,7 +23,7 @@ func _ready() -> void:
 	_view.add_child(_stage)
 	_environment = Environment.new()
 	_environment.background_mode = Environment.BG_COLOR
-	_environment.background_color = UiKit.INK.lightened(0.04)
+	_environment.background_color = UiKit.fa(UiKit.INK, 0.0)
 	_environment.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
 	_environment.ambient_light_color = UiKit.TEXT
 	_environment.ambient_light_energy = 0.8
@@ -53,7 +54,7 @@ func set_model(model: Node3D, bust := false) -> void:
 
 
 func refresh_theme() -> void:
-	_environment.background_color = UiKit.INK.lightened(0.04)
+	_environment.background_color = UiKit.fa(UiKit.INK, 0.0)
 	_environment.ambient_light_color = UiKit.TEXT
 	_rim.light_color = UiKit.ACCENT
 	_view.render_target_update_mode = SubViewport.UPDATE_ONCE

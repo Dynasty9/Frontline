@@ -11,10 +11,10 @@ one screen (over a battle scene, if you give it one) and quits.
 
 1. **Signal over noise.** Show what helps a decision now; cut the rest. A panel that's empty says nothing rather
    than drawing a box around nothing.
-2. **Give instruments a home.** The battle HUD uses dark command-deck housings to separate controls from the
-   terrain. World labels remain on the scene. Menus and dialogs retain their flat Signal treatment.
-3. **Restrained edges.** Use 1 px rules within a panel. The command deck has an 8 px cut corner, a fine outline,
-   a quiet top highlight and a short accent index. No rounded cards, heavy bevels or decorative glow.
+2. **Share the menus’ visual language.** Flat ink, open edges and fine rules group actionable controls.
+   Status, observer controls and lightweight guidance sit directly on the scene over soft edge shading.
+3. **Restrained edges.** Use 1 px rules within a panel. Avoid enclosing every control: no cut corners,
+   perimeter outlines, bevels or decorative glow. Accent marks a state, not a frame.
 4. **Two voices.** Condensed capitals for labels and names; mono for figures and codes. Prose only for sentences.
 5. **Concise.** Codes, not phrases: `MOV D8`, `PINNED · DEF E4`, `SUP 615 +174/M`, `T+04:31`, `RDY`, `261S`.
 6. **One signal colour.** The accent means selected, active, primary or live, and nothing else. The colours that
@@ -76,9 +76,9 @@ The HUD's states, as the ORBAT and the selection show them:
 
 ## Layout
 
-The battle keeps the middle of the screen for the battle. The command deck gives the instruments an opaque,
-near-black home at the edges, using Signal's existing ink, type and semantic colours. A subtle vertical tonal
-change and cut corners give the housings depth without competing with the terrain:
+The battle keeps the middle of the screen for the battle. The command deck uses the menus’ flat ink, type
+and semantic colours. Quiet translucent surfaces support the map, selection and actions; status and
+observation controls sit on edge shading. No beveled or outlined housings compete with the terrain:
 
 - **Top** (the **Status** line): the side, `SUP` and its rate, `UNITS`, `FOB`, `TOWNS`, and the clock. A line under
   it for each FOB says what its trucks are doing.
@@ -98,9 +98,10 @@ change and cut corners give the housings depth without competing with the terrai
 - **Bottom**: the selected unit's actual model appears in a lit portrait beside its name, strength, condition and
   members. The portrait renders only when its model or size changes and yields on narrow layouts. Orders use
   a stable three-column grid of pictograms, names and bound-key hints; the active targeting order lights up.
-  Selection and orders remain available while comparing units. Empty selection shows concise camera and
-  selection guidance. Escape cancels targeting, then closes tools before clearing selection.
-- **Observer**: the same housings and type hierarchy serve balance-of-forces, camera controls and inspection.
+  A single-unit selection panel is capped at 520 logical pixels and sizes to its content rather than
+  matching the height of the orders. Selection and orders remain available while comparing units. Empty
+  selection shows a compact, unboxed hint that does not intercept battlefield clicks. Escape cancels targeting, then closes tools before clearing selection.
+- **Observer**: the same flat treatment and type hierarchy serve balance-of-forces, camera controls and inspection.
   The director caption sits above the deck. Observer support actions are labelled demos; command orders stay
   exclusive to commanders. At large interface scales, task headings compress to keep real roster rows visible.
 
@@ -117,8 +118,8 @@ and direct-connect controls wrap rather than pushing actions off the right edge.
 
 `UiScrim` is the ink fading in from an edge of the screen: darkest at the edge, nothing a set distance in, and
 fading out along the edge past the part it serves. There's one per edge, behind every HUD part on that edge, never
-one per part. In battle, scrims are secondary to the command-deck housings: keep their strength low so they do
-not wash out the battlefield beyond the controls. The fixed map housing supplies its own contrast.
+one per part. In battle, the top scrim supports status and observer controls, while the bottom stays light. The fixed
+map and actionable panels supply their own contrast; do not extend their surfaces across empty space.
 
 ## Command deck
 
@@ -150,7 +151,8 @@ an optional count in mono, and a rule running on to the end of the column.
 ## Keys
 
 A key is its name in mono in a square hairline of `RULE2` (`UiKit.key`, `Hud._key_box`), filled with the accent
-when it's the order being given. The orders card is a grid of keyed rows: `[X] ATTACK-MOVE`, `[B] DEFEND`; the ones
+when it's the order being given. Battle shortcuts use a quiet tint at rest and fill with the accent only while active; focus gets a clear
+outline. The orders card is a grid of keyed actions: `[X] ATTACK-MOVE`, `[B] DEFEND`; the ones
 that fall back are in `BAD`.
 
 ## Options

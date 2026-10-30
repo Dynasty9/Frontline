@@ -7,14 +7,14 @@ None of these components depends on `Hud`, `World`, `Soldier` or `Vehicle`.
 
 | Component | Use | Public interface |
 | --- | --- | --- |
-| `UiDeckSurface` | Cut-corner housing with normal/accented states | Add one layout container child; set `accented`. `paint(canvas, rect, accented)` supplies identical chrome to custom-drawn HUD regions. |
+| `UiDeckSurface` | Flat ink surface with a fine top rule | Add one layout container child; set `accented`. `paint(canvas, rect, accented)` supplies identical chrome to custom-drawn HUD regions. |
 | `UiDeckIcons` | Shared vector icon vocabulary | `IDS`, `paint(canvas, icon_id, center, colour)`; semantic IDs are independent of translated captions. |
 | `UiDeckNav` | Compact icon-and-label tool switch | `icon_id`, `caption`, native `pressed`/`toggled` signals, `button_pressed`, `disabled`. |
 | `UiDeckKeycap` | Shortcut hint with optional width limit | `set_binding(text, max_width=54)`, `set_active(bool)`; zero width limit shows the complete binding. |
 | `UiDeckAction` | Illustrated action, cost, shortcut and targeting state | `configure(spec)`, `set_active(bool)`, native `pressed`, `disabled`; supports native keyboard focus outside battle. |
 | `UiDeckGrid` | Three-column command group with bounded scrolling | `title`, `add_action(spec, callback)`, `clear_actions()`, `fit_width(available_width)`, `max_rows`. |
-| `UiDeckEmptyState` | Contextual empty-state and help panel | `configure({eyebrow, title, body, code, help_title, help_lines})`; the optional three-line help column yields below 580 px. Keep copy concise. |
-| `UiModelPreview` | Static lit model in an isolated viewport | Add to the scene tree, then `set_model(detached_node, bust=false)`. Takes ownership and frees the previous model. `frame_model()` reframes an edited model; resize/theme changes request a fresh render. |
+| `UiDeckEmptyState` | Contextual empty-state and help panel | `configure({surface, eyebrow, title, body, code, help_title, help_lines})`; 76 px compact presentation; `surface=false` omits the backdrop. Extra code/help needs at least 100 px height, and the help column yields below 580 px. Keep copy concise. |
+| `UiModelPreview` | Static lit model in an isolated transparent viewport | Add to the scene tree, then `set_model(detached_node, bust=false)`. Takes ownership and frees the previous model. `frame_model()` reframes an edited model; resize/theme changes request a fresh render. |
 
 ![The command deck component workbench](images/command-deck-components.jpg)
 

@@ -37,10 +37,10 @@ func _notification(what: int) -> void:
 
 func _sync_style() -> void:
 	_theme_rev = UiKit.theme_rev
-	var sb := UiKit.box(UiKit.ACCENT if active else Color.TRANSPARENT, 0, UiKit.ACCENT if active else UiKit.RULE2, 1, 0)
+	var sb := UiKit.box(UiKit.ACCENT if active else UiKit.fa(UiKit.TEXT, 0.045), 0, Color.TRANSPARENT, 0, 0)
 	sb.content_margin_left = 5
 	sb.content_margin_right = 5
 	sb.content_margin_top = 1
 	sb.content_margin_bottom = 1
 	add_theme_stylebox_override("panel", sb)
-	caption.add_theme_color_override("font_color", UiKit.ON_ACCENT if active else UiKit.TEXT)
+	caption.add_theme_color_override("font_color", UiKit.ON_ACCENT if active else UiKit.DIM)

@@ -1,7 +1,7 @@
 class_name UiDeckAction
 extends Button
 ## Presentation only: the caller supplies an ID, icon and callback, never a World.
-const DEFAULT_SIZE := Vector2(100, 52)
+const DEFAULT_SIZE := Vector2(100, 46)
 var action_id := ""
 var icon_id := "target"
 var dangerous := false
@@ -19,7 +19,7 @@ func _init() -> void:
 	caption = UiKit.caps("", 11, UiKit.TEXT, 600, 0)
 	caption.clip_text = true
 	caption.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-	caption.position = Vector2(8, 26)
+	caption.position = Vector2(8, 23)
 	caption.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(caption)
 	keycap = UiDeckKeycap.new()
@@ -71,7 +71,7 @@ func set_active(value: bool) -> void:
 
 
 func _layout() -> void:
-	caption.size = Vector2(maxf(1, size.x - 16), 24)
+	caption.size = Vector2(maxf(1, size.x - 16), 22)
 	value_label.size = Vector2(maxf(1, size.x - 48), 20)
 
 
@@ -93,9 +93,15 @@ func _draw() -> void:
 	var col := UiKit.BAD if dangerous else (UiKit.ACCENT if active or hover else UiKit.TEXT)
 	if disabled:
 		col = UiKit.FAINT
-	var ink := UiKit.fa(UiKit.ACCENT, 0.16) if active else UiKit.fa(UiKit.TEXT, 0.08 if hover else 0.025)
+	var ink := UiKit.fa(UiKit.ACCENT, 0.10) if active else UiKit.fa(UiKit.TEXT, 0.06 if hover else 0.015)
 	draw_rect(Rect2(Vector2.ZERO, size), ink)
-	draw_rect(Rect2(Vector2(0.5, 0.5), size - Vector2.ONE), UiKit.ACCENT if active or has_focus() else UiKit.LINE, false)
+	draw_line(Vector2(8, size.y - 1), Vector2(size.x - 8, size.y - 1), UiKit.LINE)
+	if active:
+		draw_rect(Rect2(0, 5, 2, size.y - 10), UiKit.ACCENT)
+	if has_focus():
+		draw_rect(Rect2(Vector2(0.5, 0.5), size - Vector2.ONE), UiKit.ACCENT, false)
 	for child: Control in [caption, keycap, value_label]:
 		child.modulate.a = 0.4 if disabled else 1.0
-	UiDeckIcons.paint(self, icon_id, Vector2(18, 15), col)
+	draw_set_transform(Vector2(3, 2), 0, Vector2(0.85, 0.85))
+	UiDeckIcons.paint(self, icon_id, Vector2(18, 13), col)
+	draw_set_transform(Vector2.ZERO)

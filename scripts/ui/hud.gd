@@ -55,15 +55,15 @@ func layout_minimap() -> void:
 	layers_ui.offset_top = -22 - lh
 	var above := -22 - outer - 64
 	if task_bar:
-		task_bar.position = Vector2(22, root.size.y - outer - 82)
+		task_bar.position = Vector2(22, root.size.y - outer - 66)
 		for button in task_bar.get_children():
 			button.custom_minimum_size.x = (outer - 4.0) / 3.0
 		task_bar.size = Vector2(outer, 32)
 	if map_caption:
 		map_caption.position = Vector2(26, root.size.y - outer - 42)
 	if station_frame:
-		station_frame.position = Vector2(14, root.size.y - outer - 82)
-		station_frame.size = Vector2(station_w, outer + 68)
+		station_frame.position = Vector2(14, root.size.y - outer - 66)
+		station_frame.size = Vector2(station_w, outer + 52)
 	chat_edit.offset_bottom = above
 	chat_edit.offset_top = above - 34
 
@@ -247,7 +247,7 @@ func _ready() -> void:
 
 	# the edge scrims: the ink fading in from the screen's edges, so the HUD
 	# reads over the battlefield without a box round anything
-	for e in [["top", 96.0, 0.0], ["left", 400.0, 640.0], ["right", 560.0, 320.0], ["bottom", 250.0, 0.0]]:
+	for e in [["top", 156.0, 0.0], ["left", 400.0, 640.0], ["right", 560.0, 320.0], ["bottom", 250.0, 0.0]]:
 		var sc := UiScrim.make(e[0], e[1], e[2])
 		_scrims[e[0]] = sc
 		root.add_child(sc)
@@ -660,6 +660,7 @@ func _layout_workspace() -> void:
 	workspace_title.text = ("BATTLE FORCES" if spectator else "YOUR FORCES") if workspace == "squads" else ("SUPPORT DEMOS" if spectator else "FIRE SUPPORT")
 	workspace_hint.text = ("Select to inspect · Double-click to focus" if spectator else "Select to command · Double-click to focus") if workspace == "squads" else ("Choose a demo, then click its target" if spectator else "Choose a strike, then click its target")
 	map_caption.text = "BATTLE MAP"
+	map_caption.visible = false  # the persistent map does not need a repeated heading
 	map_caption.tooltip_text = "Click or drag to move the camera. Right-click to order selected units."
 	var compact := drawer_h < 320.0
 	workspace_hint.visible = drawer_frame.visible and not compact
@@ -1716,8 +1717,10 @@ func _view_process(dt: float) -> void:
 	if has_sel:
 		var left := minimap_right() + 8.0
 		var right := root.size.x - 14.0 - (card_panel.size.x + 12.0 if card_panel.visible else 0.0)
-		var width := maxf(SEL_MIN_W, right - left)
-		if width >= 580 and (world.input.sel_unit != 0 or world.input.sel_squads.size() + world.input.sel_vehicles.size() == 1):
+		var one_unit := world.input.sel_unit != 0 or world.input.sel_squads.size() + world.input.sel_vehicles.size() == 1
+		var width := maxf(SEL_MIN_W, minf(right - left, 520.0) if one_unit else right - left)
+		left = right - width
+		if width >= 500 and (world.input.sel_unit != 0 or world.input.sel_squads.size() + world.input.sel_vehicles.size() == 1):
 			if slow or not is_instance_valid(_portrait_entity):
 				_portrait_entity = null
 				if world.input.sel_unit != 0:
@@ -1732,14 +1735,14 @@ func _view_process(dt: float) -> void:
 			if is_instance_valid(_portrait_entity) and not _portrait_entity.gone:
 				portrait_entity = _portrait_entity
 		var portrait_on := portrait_entity != null
-		var inset := 148.0 if portrait_on else 16.0
+		var inset := 120.0 if portrait_on else 16.0
 		if inset != _portrait_inset:
 			_portrait_inset = inset
 			var style := UiKit.bare(16.0)
 			style.content_margin_left = inset
 			sel_panel.add_theme_stylebox_override("panel", style)
 		var sb := 14.0 + (obs_bar.size.y + 8.0 if obs_bar.visible and _obs_low else 0.0)
-		var height := maxf(maxf(184.0, card_panel.size.y if card_panel.visible else 0.0), sel_info.need_h + 32.0)
+		var height := maxf(144.0 if portrait_on else 104.0, sel_info.need_h + 32.0)
 		sel_panel.anchor_left = 0.0
 		sel_panel.anchor_right = 0.0
 		sel_panel.offset_left = left
@@ -1751,7 +1754,7 @@ func _view_process(dt: float) -> void:
 			sel_info.queue_redraw()
 		if portrait_on:
 			unit_portrait.position = Vector2(left + 12, root.size.y - sb - height + 12)
-			unit_portrait.size = Vector2(120, minf(160, height - 24))
+			unit_portrait.size = Vector2(96, minf(128, height - 24))
 			unit_portrait.show_entity(portrait_entity)
 	unit_portrait.visible = portrait_entity != null
 	card_panel.visible = card.get_child_count() > 0

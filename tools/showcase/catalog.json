@@ -1,0 +1,198 @@
+{
+  "version": 1,
+  "entries": [
+    {
+      "id": "commander-workspaces",
+      "date": "2026-10-29",
+      "rationale": "A still shows hierarchy, panel footprint and the fixed map. Commander is the overview; observer and task states are supporting evidence.",
+      "captures": [
+        {
+          "asset": "changelog/unreleased/commander-workspaces/after.jpg",
+          "medium": "still",
+          "stage": "Godot scenario/UI capture",
+          "source_ref": "the commit containing this catalog revision",
+          "renderer": "Forward+",
+          "resolution": [
+            1600,
+            900
+          ],
+          "arguments": [
+            "--offscreen",
+            "--seed=3",
+            "--perf=0",
+            "--shot-at=4",
+            "--quit-after=5",
+            "--scenario=attack",
+            "--play",
+            "--hud-panel=squads",
+            "--hud-query=charlie",
+            "--hud-focus-at=2",
+            "--events-collapsed"
+          ],
+          "evidence": "Rendered game UI, visually inspected at full size.",
+          "reviewed": true
+        },
+        {
+          "asset": "changelog/unreleased/commander-workspaces/observer.jpg",
+          "medium": "still",
+          "stage": "Godot scenario/UI capture",
+          "source_ref": "the commit containing this catalog revision",
+          "renderer": "Compatibility",
+          "resolution": [
+            1600,
+            900
+          ],
+          "arguments": [
+            "--offscreen",
+            "--seed=3",
+            "--perf=0",
+            "--shot-at=4",
+            "--quit-after=5",
+            "--scenario=stress",
+            "--units=180",
+            "--vehicles=8",
+            "--scenery=100",
+            "--focus=0,0",
+            "--zoom=160",
+            "--events-collapsed"
+          ],
+          "evidence": "Rendered game UI, visually inspected at full size.",
+          "reviewed": true
+        },
+        {
+          "asset": "changelog/unreleased/commander-workspaces/search.jpg",
+          "medium": "still",
+          "stage": "Godot scenario/UI capture",
+          "source_ref": "the commit containing this catalog revision",
+          "renderer": "Forward+",
+          "resolution": [
+            1600,
+            900
+          ],
+          "arguments": [
+            "--offscreen",
+            "--seed=3",
+            "--perf=0",
+            "--shot-at=4",
+            "--quit-after=5",
+            "--scenario=attack",
+            "--play",
+            "--hud-panel=squads",
+            "--hud-query=charlie",
+            "--events-collapsed"
+          ],
+          "evidence": "Rendered game UI, visually inspected at full size.",
+          "reviewed": true
+        },
+        {
+          "asset": "changelog/unreleased/commander-workspaces/squads.jpg",
+          "medium": "still",
+          "stage": "Godot scenario/UI capture",
+          "source_ref": "the commit containing this catalog revision",
+          "renderer": "Compatibility",
+          "resolution": [
+            1600,
+            900
+          ],
+          "arguments": [
+            "--offscreen",
+            "--seed=3",
+            "--perf=0",
+            "--shot-at=4",
+            "--quit-after=5",
+            "--scenario=stress",
+            "--units=180",
+            "--vehicles=8",
+            "--scenery=100",
+            "--focus=0,0",
+            "--zoom=160",
+            "--hud-panel=squads"
+          ],
+          "evidence": "Rendered game UI, visually inspected at full size.",
+          "reviewed": true
+        },
+        {
+          "asset": "changelog/unreleased/commander-workspaces/support.jpg",
+          "medium": "still",
+          "stage": "Godot scenario/UI capture",
+          "source_ref": "the commit containing this catalog revision",
+          "renderer": "Compatibility",
+          "resolution": [
+            1600,
+            900
+          ],
+          "arguments": [
+            "--offscreen",
+            "--seed=3",
+            "--perf=0",
+            "--shot-at=4",
+            "--quit-after=5",
+            "--scenario=stress",
+            "--units=180",
+            "--vehicles=8",
+            "--scenery=100",
+            "--focus=0,0",
+            "--zoom=160",
+            "--hud-panel=fires"
+          ],
+          "evidence": "Rendered game UI, visually inspected at full size.",
+          "reviewed": true
+        },
+        {
+          "asset": "changelog/unreleased/commander-workspaces/map.jpg",
+          "medium": "still",
+          "stage": "Godot scenario/UI capture",
+          "source_ref": "the commit containing this catalog revision",
+          "renderer": "Compatibility",
+          "resolution": [
+            1600,
+            900
+          ],
+          "arguments": [
+            "--offscreen",
+            "--seed=3",
+            "--perf=0",
+            "--shot-at=4",
+            "--quit-after=5",
+            "--scenario=stress",
+            "--units=180",
+            "--vehicles=8",
+            "--scenery=100",
+            "--focus=0,0",
+            "--zoom=160",
+            "--hud-panel=map",
+            "--events-collapsed"
+          ],
+          "evidence": "Rendered game UI, visually inspected at full size.",
+          "reviewed": true
+        },
+        {
+          "asset": "changelog/unreleased/commander-workspaces/previous-deck.jpg",
+          "medium": "still",
+          "stage": "Godot scenario/UI capture",
+          "source_ref": "4bcd477f15b77470b47f30efac42687f1d6a24ee",
+          "renderer": "Forward+",
+          "resolution": [
+            1600,
+            900
+          ],
+          "arguments": [
+            "--offscreen",
+            "--seed=3",
+            "--perf=0",
+            "--shot-at=4",
+            "--quit-after=5",
+            "--scenario=attack",
+            "--play",
+            "--hud-panel=squads",
+            "--hud-query=charlie",
+            "--hud-focus-at=2",
+            "--events-collapsed"
+          ],
+          "evidence": "Archived previous deck capture; same scenario, seed and UI focus sequence. Live simulation timing can vary slightly.",
+          "reviewed": true
+        }
+      ]
+    }
+  ]
+}
