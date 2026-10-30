@@ -41,6 +41,7 @@ graphics, network access or a wall clock.
 | Grenade task movement | `frontline_core` | Smother, pickup and kick approaches, covering geometry and dive direction extracted; Godot still applies action callbacks and holder links |
 | Automatic grenade attacks | `frontline_core` | Contact scores, range/posture gates, throw scatter, ammunition and cooldowns extracted; Godot still supplies squad contacts and nearby groups and applies the throw/cook actions |
 | Incoming mortars and busy-soldier grenade notices | `frontline_core` | Ordered warning, range/fuse gates, memory and dive decisions extracted; Godot applies warning, suppression, duck and dive effects |
+| Drone hearing and avoidance | `frontline_core` | Ordered hearing memory, warning choices and dive chances extracted with component checkpoints; Godot applies speech and dive effects |
 | House-entry task phases | `frontline_core` | Stack/door/grenade/entry transitions, deadlines, cooking and room targets extracted with component checkpoints; Godot still owns movement callbacks and squad entry effects |
 | House occupancy and breach selection | `frontline_core` | Floor containment, ordered openings, nearest walkable stack positions and competing squadmates extracted; Godot still supplies spatial candidates, squad contacts and decision timers |
 | Injury behavior and special tasks | Rust | `soldier.gd`, `soldier_brain.gd`, `combat.gd` |
@@ -206,13 +207,14 @@ Component checkpoint headers contain a four-byte component tag, a little-endian
 rules rather than silently continuing with changed arithmetic. The separate
 integer RNG stream remains unchanged.
 
-`native/core/tests/numeric_contract.rs` compares 909,133 committed bytes without
+`native/core/tests/numeric_contract.rs` compares 1,005,643 committed bytes without
 tolerances: fixed-tick flight state, support events and RNG cursors, carved water,
 craters, rotated box hits, cover anchors, spherical interpolation and infantry
 movement, infantry cover fire, postures, ammunition, burst recovery, vitals, aiming,
 combat poses, bullet resolution, blast exposure, knockback recovery and wounded
 infantry schedules, grenade reflexes, grenade task movement and house-entry
-phases, building selection, automatic grenade attacks and incoming shells. CI runs
+phases, building selection, automatic grenade attacks, incoming shells and drone
+reactions. CI runs
 the same fixtures in debug and release on Windows x64, Linux
 x64, Linux ARM64 and macOS ARM64. A mismatch reports the first different byte.
 These fixtures guard the covered trajectories; they are not a proof for all
@@ -428,9 +430,19 @@ flag until Rust owns the actors.
 
 The shock fixture compares 92,160 reference steps, including mounted turning,
 blocked terrain, carried casualties and task interruption. The full default suite
-passes 124 tests; 137 core tests pass in debug and release.
+passes 125 tests; 141 core tests pass in debug and release.
 
-## Grenade reflexes
+## Grenade and drone reflexes
+
+Drone hearing and avoidance also run in the core. `DroneMemory` preserves hearing
+order, its 17-entry eviction rule, altitude-aware distance, warning choices and
+the chance to dive from a close attack. Warning RNG draws remain between their
+corresponding dive checks; the adapter delivers the resulting cosmetic speech
+events before applying a dive. `World.say` only emits a cosmetic event and does
+not consume gameplay randomness. The dive's direction draw remains afterward.
+A 20,480-step reference fixture compares real warning events, ordered memory,
+dive state, movement cancellation and final RNG cursors. `FLDM` checkpoints
+retain hearing memory; numeric CI adds 96,510 exact transcript bytes.
 
 `GrenadeMemory` retains noticed rounds in encounter order, with the same eviction
 threshold as the existing AI. The Rust grenade decision checks nearby casualties,

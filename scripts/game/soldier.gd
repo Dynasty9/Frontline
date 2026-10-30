@@ -211,6 +211,7 @@ var _grenade_core: RefCounted
 var _grenade_attack: RefCounted
 var _breach_core: RefCounted
 var heard_drones := {}
+var _drone_reaction: RefCounted
 var low_ammo_said := false
 var out_said := false
 var drone_ctrl: Drone = null
@@ -2556,6 +2557,23 @@ func flee_fire(from: Vector3) -> void:
 
 
 func _react_drones() -> void:
+	if world.settings.get("rust_infantry", false) and ClassDB.class_exists("DroneReactionCore"):
+		if _drone_reaction == null:
+			_drone_reaction = ClassDB.instantiate("DroneReactionCore")
+		var drones := []
+		for d: Drone in world.drones:
+			drones.append([d.eid, d.position, d.target_pos, d.team, d.dead, d.diving])
+		var result: Array = _drone_reaction.react(position, team, PackedInt64Array(heard_drones.keys()), drones, world.rng._backend)
+		assert(result.size() == 3, "Invalid drone reaction")
+		heard_drones.clear()
+		for id: int in result[0]:
+			heard_drones[id] = true
+		# Speech only emits a cosmetic event; its choices were drawn between dive checks.
+		for variant: int in result[1]:
+			say(["Drone! Drone!", "I hear a drone!", "FPV inbound!"][variant], true)
+		if result[2] != null:
+			_dive_from(result[2])
+		return
 	for d in world.drones:
 		if d.team == team or d.dead:
 			continue

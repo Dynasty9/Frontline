@@ -6,6 +6,7 @@ mod bullet;
 mod collision_index;
 mod cover_geometry;
 mod drone_flight;
+mod drone_reaction;
 mod formation_ground;
 mod grenade_attack;
 mod grenade_reaction;

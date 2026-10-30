@@ -8,6 +8,7 @@ pub mod bullet;
 pub mod collision;
 pub mod cover;
 pub mod drone;
+pub mod drone_reaction;
 pub mod formation;
 pub mod grenade_attack;
 pub mod grenade_reaction;

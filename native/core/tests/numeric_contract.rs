@@ -36,6 +36,55 @@ fn block(out: &mut Vec<u8>, bytes: &[u8]) {
 }
 
 #[test]
+fn drone_reactions_are_identical_across_platforms() {
+    use frontline_core::drone_reaction::{Drone, DroneMemory};
+    let mut bytes = Vec::new();
+    for case in 0..256 {
+        let mut rng = SimulationRandom::new(case + 337);
+        let mut state = DroneMemory {
+            heard: if case % 7 == 0 {
+                (100..117).collect()
+            } else {
+                vec![]
+            },
+        };
+        let mut drones: Vec<Drone> = (1..11)
+            .map(|id| Drone {
+                id,
+                position: Vector3::new(
+                    [0.0, 8.99, 9.0, 44.99, 45.0, 45.01][(case + id) as usize % 6],
+                    ((case + id) % 3) as f32,
+                    0.0,
+                ),
+                target: Vector3::new([0.0, 5.49, 5.5][(case + id) as usize % 3], 200.0, 0.0),
+                team: ((case + id) % 2) as i32,
+                dead: (case + id) % 11 == 0,
+                diving: (case + id) % 3 != 0,
+            })
+            .collect();
+        for _ in 0..5 {
+            let result = state.react(Vector3::ZERO, 0, &drones, &mut rng).unwrap();
+            block(&mut bytes, &state.checkpoint());
+            bytes.extend_from_slice(&rng.state().to_le_bytes());
+            bytes.extend_from_slice(&(result.warnings.len() as u32).to_le_bytes());
+            for w in result.warnings {
+                bytes.extend_from_slice(&w.drone.to_le_bytes());
+                bytes.push(w.variant);
+            }
+            bytes.push(u8::from(result.dive_from.is_some()));
+            if let Some(origin) = result.dive_from {
+                point(&mut bytes, origin);
+            }
+            state = DroneMemory::restore(&state.checkpoint()).unwrap();
+            for d in &mut drones {
+                d.position.x -= 0.3;
+            }
+        }
+    }
+    golden("drone_reaction", &bytes);
+}
+
+#[test]
 fn house_entry_tasks_are_identical_across_platforms() {
     let mut out = Vec::new();
     for case in 0..256 {
