@@ -5,12 +5,14 @@ kind = "improved"
 
 
 [[screenshots]]
+file = "after.jpg"
+caption = "After: four soldiers take cover against the middle wall; the fifth stacks in a second row 1.5 metres behind them, with reduced protection. Same scenario, seed, time and camera as before."
+
+[[screenshots]]
 file = "before.jpg"
 caption = "Before: one squad spreads across all three walls while seeking cover. Enemies are beyond the walls, outside this view."
 
-[[screenshots]]
-file = "after.jpg"
-caption = "After: four soldiers take cover against the middle wall; the fifth stacks in a second row 1.5 metres behind them, with reduced protection. Same scenario, seed, time and camera as before."
+
 +++
 
 Squads move in tighter groups and choose nearby cover on the same side of walls.

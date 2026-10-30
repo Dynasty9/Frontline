@@ -5,12 +5,14 @@ kind = "improved"
 
 
 [[screenshots]]
+file = "after.jpg"
+caption = "Combined scenery drawing preserves the buildings and their shadows during combat."
+
+[[screenshots]]
 file = "before.jpg"
 caption = "The large-map battle before scenery drawing is combined."
 
-[[screenshots]]
-file = "after.jpg"
-caption = "Combined scenery drawing preserves the buildings and their shadows during combat."
+
 +++
 
 Large battles draw buildings and squad symbols with less repeated work, while damage, cover and individual soldiers keep their existing behavior.

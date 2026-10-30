@@ -86,12 +86,12 @@
           "body": "Scenery follows the camera's view, and soldiers avoid repeating sight checks against unchanged walls.\n\n- Scenery loads around what the camera can see, including a margin for roofs and screen edges.\n- Large maps store navigation cells compactly, saving about 1.25 GiB across the two 3 km land grids.\n- Replay recording reuses unchanged scenery and encodes completed chunks in the background to reduce battle stalls.\n- Formation planning reuses nearby cover checks while retaining the same selected positions.\n- Native path search skips intermediate cost nodes while retaining terrain and danger costs.\n- Soldiers reuse confirmed obstruction by an unchanged wall. Opening a door or changing the blocking geometry immediately requires a fresh check; smoke remains live.\n\n- Distant soldiers outside the camera view no longer rebuild render batches.\n- Tactical symbols retain their image between 15 Hz updates while the camera and pointer are still; camera movement and input refresh them immediately.\n\nLarge-map performance is still being measured. These changes do not establish 60 FPS support for 500-unit battles.",
           "screenshots": [
             {
-              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.11/battle-work-budget/before.png",
-              "caption": "Before: the generated 3 km battlefield at command zoom."
-            },
-            {
               "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.11/battle-work-budget/after.png",
               "caption": "After: the same map and camera, with visibility-aware rendering and native routes. Combat evolves independently between runs."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.11/battle-work-budget/before.png",
+              "caption": "Before: the generated 3 km battlefield at command zoom."
             }
           ],
           "videos": []
@@ -104,12 +104,12 @@
           "body": "Lighter atmospheric haze and translucent battlefield markers keep soldiers, vehicles and terrain readable, even when zoomed out.\n\n- Atmospheric haze is much lighter in every weather preset and continues thinning as the camera pulls back. Fog of war, enemy visibility and combat smoke are unchanged.\n- Squad and vehicle symbols are translucent outlines over the battlefield. Solid counters remain in the tactical map, minimap and roster.\n- Squad symbols fade in with distance instead of stacking over nearby soldiers. Individual status icons lose their opaque backplates, and squad-strength pips replace overlapping per-soldier bars at squad zoom.\n- Teammate view frames and selection rings are thinner and quieter. A teammate's selection is a coordination hint, not an exclusive ownership badge.",
           "screenshots": [
             {
-              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.11/clearer-battlefield/battlefield-before.jpg",
-              "caption": "Before: hazy weather and solid squad markers compete with the troops."
-            },
-            {
               "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.11/clearer-battlefield/battlefield-after.jpg",
               "caption": "After: thinner haze, transparent symbols and quieter commander markers leave the troops visible."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.11/clearer-battlefield/battlefield-before.jpg",
+              "caption": "Before: hazy weather and solid squad markers compete with the troops."
             }
           ],
           "videos": []
@@ -122,12 +122,12 @@
           "body": "Rotorcraft carry momentum through turns, bank and pitch as they accelerate, and flare into a stable hover before landing.\n\n- Attack, troop and supply helicopters accelerate, brake, climb and descend smoothly instead of instantly changing direction or vertical speed.\n- Aircraft lean into the force of a turn and raise their noses to brake. Gunships can move sideways while keeping their guns on target.\n- Transports settle before putting down troops or picking up a sling load. Heavy loads make flight more deliberate.\n- Stop holds a troop transport in the air, including with a vehicle on its sling. Give a new move order to carry on; new orders also interrupt an approach to land.\n- Flight remains controlled by the host, with the same bank and pitch sent to every player. Ground vehicles and drones keep their existing movement.",
           "screenshots": [
             {
-              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.11/helicopter-flight/before.jpg",
-              "caption": "Before: a transport changes direction directly toward its new destination."
-            },
-            {
               "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.11/helicopter-flight/after.jpg",
               "caption": "After: the same mid-flight order produces a banked turn while momentum carries through."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.11/helicopter-flight/before.jpg",
+              "caption": "Before: a transport changes direction directly toward its new destination."
             }
           ],
           "videos": [
@@ -164,12 +164,12 @@
           "body": "Large battles draw buildings and squad symbols with less repeated work, while damage, cover and individual soldiers keep their existing behavior.\n\n- Static buildings share drawing work. A damaged or moved structure updates immediately without rebuilding its neighbors.\n- Soldiers share frame-update bookkeeping while retaining individual movement smoothing, poses and selection.\n- Squad counters keep a clear screen position as nearby units move, reducing clutter and repeated layout work.\n- Firing markers reuse their star geometry, and the minimap refreshes damaged buildings gradually while keeping the previous map visible.\n- Moving soldiers avoid recording sight checks they cannot reuse; soldiers standing still, including those waiting for a route, retain their obstruction cache.",
           "screenshots": [
             {
-              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.11/large-battle-drawing/before.jpg",
-              "caption": "The large-map battle before scenery drawing is combined."
-            },
-            {
               "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.11/large-battle-drawing/after.jpg",
               "caption": "Combined scenery drawing preserves the buildings and their shadows during combat."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.11/large-battle-drawing/before.jpg",
+              "caption": "The large-map battle before scenery drawing is combined."
             }
           ],
           "videos": []
@@ -191,12 +191,12 @@
           "body": "Desktop solo battles run simulation separately, share more AI work, and draw distant soldiers more efficiently. Skirmishes offer maps up to 3,072 metres across.\n\n- Static scenery no longer runs an empty building simulation every tick. Fire and combat still affect it.\n- Supply and unit-cap checks search the bases directly, including changes from construction, capture and destruction.\n- Performance diagnostics now distinguish sustained simulation cost from occasional slow ticks.\n- Updating nearby cover no longer rebuilds routes through ground whose movement cost has not changed.\n- Desktop solo battles and missions run their simulation separately from drawing, with pause, resume and reconnect support.\n- Skirmish setup offers 1,024, 2,048 and 3,072 metre square maps. Larger maps need more memory.\n- Squad members share threat assessments and building contacts; individual weapons, visibility and damage still work independently.\n- Distant soldiers share simpler animated poses, while close-up soldiers retain detailed movement.\n- Movement orders spread pathfinding work across ticks, including when buildings are destroyed or routes are blocked.\n- Updates include the native simulation helper as well as the game executable.\n\n- Explosions update nearby terrain textures and cosmetic ground collision instead of rebuilding the entire map.\n- Large maps load without drawing the partly built battlefield; the private simulation waits until loading finishes.\n- Static scenery replication and map placement avoid repeated whole-map searches.\n- Nearby scenery loads first; distant scenery is cached as you explore the map.\n- Cosmetic grass, bushes and stones build around the camera rather than across the whole map during play.\n- Nearby units can reuse checked movement corridors, while keeping their own destinations.\n- Short unobstructed moves respond immediately, including dashes into cover.\n- Squads retry an unvisited house when a rifleman becomes available to clear it.\n- Soldiers checking buildings search house floors directly, skipping unrelated nearby scenery.\n- Emplaced gunners choose targets their gun can reach instead of fixating on enemies outside its firing arc.\n- Soldiers evaluate the same reaction priorities with less decision-processing overhead.\n- Squad callsigns and order labels reuse their drawings while tracking the camera, reducing interface work in large battles.\n- Stationary units avoid redundant model-transform updates, and distant soldier batches avoid rebuilding string keys each frame.\n- Radio notifications reuse unchanged text drawings between their arrival flashes and fade-out.\n- Distant vehicles simplify material surfaces while retaining their moving parts; close-up vehicles keep their detailed materials.\n- Distant soldier rendering visits active pose batches instead of every cached pose each frame.\n- Squad status markers share a short overview refresh, and empty selections avoid scanning every soldier.\n- The minimap keeps distant fighting markers separate on larger maps.\n- Stationary vehicles avoid repeatedly updating unchanged hull, turret and wheel transforms.\n- The battlefield overlay reuses its drawing between status updates while the camera and pointer are still; interaction redraws immediately.\n- Visibility checks skip unrelated projectiles and reuse each soldier's observation point within a scan.\n- Capturing towns updates only changed supply roads instead of repainting the whole map; long diagonal roads check only nearby ground cells.\n- Squads checking for enemy buildings use the owned-building index instead of searching unrelated scenery.\n- The battle clock follows the simulation server, excluding loading time and stopping when the host pauses.\n- Large assault formations check only nearby squadmates when choosing cover, retaining the same positions with fewer comparisons.",
           "screenshots": [
             {
-              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.11/simulation-working-sets/before.png",
-              "caption": "The earlier 500-soldier rendering test on a 1,024 metre map."
-            },
-            {
               "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.11/simulation-working-sets/after.png",
               "caption": "A full generated 3,072 metre battlefield, started with 480 soldiers and 20 vehicles. The 60 FPS target remains under validation."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.11/simulation-working-sets/before.png",
+              "caption": "The earlier 500-soldier rendering test on a 1,024 metre map."
             },
             {
               "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.11/simulation-working-sets/vehicle-before.png",
@@ -239,12 +239,12 @@
           "body": "Squads move in tighter groups and choose nearby cover on the same side of walls.\n\n- Move and defend orders keep soldiers in a compact circle instead of a long line.\n- Soldiers favor cover beside their squad instead of spreading out across walls.\n- When a tall wall's front row is full, soldiers stack a pace behind it instead of lying farther out in the open. The rear row still benefits from the wall blocking fire, but lacks the close-cover protection of hugging it.\n- Travelling squads follow their leader through gaps, and the leader slows for stragglers.",
           "screenshots": [
             {
-              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.11/squad-cohesion/before.jpg",
-              "caption": "Before: one squad spreads across all three walls while seeking cover. Enemies are beyond the walls, outside this view."
-            },
-            {
               "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.11/squad-cohesion/after.jpg",
               "caption": "After: four soldiers take cover against the middle wall; the fifth stacks in a second row 1.5 metres behind them, with reduced protection. Same scenario, seed, time and camera as before."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.11/squad-cohesion/before.jpg",
+              "caption": "Before: one squad spreads across all three walls while seeking cover. Enemies are beyond the walls, outside this view."
             }
           ],
           "videos": []
@@ -257,12 +257,12 @@
           "body": "Pause menus, controls, lobby rosters and the server browser stay usable at maximum interface scale and in small windows.\n\n- Pause and controls dialogs scroll when their contents cannot fit, with focused buttons brought into view.\n- Full eight-player lobby rosters scroll without pushing Join, Ready, Start or Leave out of reach.\n- Server-browser filters and direct-connect fields wrap instead of forcing the screen wider than the window.\n- Repeatedly opening a dialog no longer shifts its resting position. Resizing during its opening animation keeps it centered.",
           "screenshots": [
             {
-              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.11/large-interface-layouts/lobby-before.jpg",
-              "caption": "Before: a full co-op roster pushes the lobby actions into the bottom edge."
-            },
-            {
               "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.11/large-interface-layouts/lobby-after.jpg",
               "caption": "After: the roster scrolls while Start and Close stay clearly in view."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.11/large-interface-layouts/lobby-before.jpg",
+              "caption": "Before: a full co-op roster pushes the lobby actions into the bottom edge."
             },
             {
               "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.11/large-interface-layouts/controls-before.jpg",

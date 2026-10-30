@@ -5,12 +5,14 @@ kind = "improved"
 
 
 [[screenshots]]
+file = "battlefield-after.jpg"
+caption = "After: thinner haze, transparent symbols and quieter commander markers leave the troops visible."
+
+[[screenshots]]
 file = "battlefield-before.jpg"
 caption = "Before: hazy weather and solid squad markers compete with the troops."
 
-[[screenshots]]
-file = "battlefield-after.jpg"
-caption = "After: thinner haze, transparent symbols and quieter commander markers leave the troops visible."
+
 +++
 
 Lighter atmospheric haze and translucent battlefield markers keep soldiers, vehicles and terrain readable, even when zoomed out.

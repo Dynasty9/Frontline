@@ -800,7 +800,8 @@
       "title": "Less repeated work in large battles",
       "version": "v1.0.11",
       "kind": "improved",
-      "attribution": "Archived illustration; original screenshots remain in the details."
+      "attribution": "Archived illustration; original screenshots remain in the details.",
+      "lead_source": "after.png"
     },
     {
       "entry": "changelog/v1.0.11/clearer-battlefield.md",
@@ -825,7 +826,8 @@
       "title": "See the troops you command",
       "version": "v1.0.11",
       "kind": "improved",
-      "attribution": "Archived illustration; original screenshots remain in the details."
+      "attribution": "Archived illustration; original screenshots remain in the details.",
+      "lead_source": "battlefield-after.jpg"
     },
     {
       "entry": "changelog/v1.0.11/helicopter-flight.md",
@@ -850,7 +852,8 @@
       "title": "Helicopters fly like helicopters",
       "version": "v1.0.11",
       "kind": "improved",
-      "attribution": "A Mohawk banks and settles over its sling pickup. Recorded in the current build, October 2026."
+      "attribution": "A Mohawk banks and settles over its sling pickup. Recorded in the current build, October 2026.",
+      "lead_source": "after.jpg"
     },
     {
       "entry": "changelog/v1.0.11/homepage-story.md",
@@ -895,7 +898,8 @@
       "title": "Smoother large battles",
       "version": "v1.0.11",
       "kind": "improved",
-      "attribution": "Archived illustration; original screenshots remain in the details."
+      "attribution": "Archived illustration; original screenshots remain in the details.",
+      "lead_source": "after.jpg"
     },
     {
       "entry": "changelog/v1.0.11/large-interface-layouts.md",
@@ -920,7 +924,8 @@
       "title": "Keep large interfaces within reach",
       "version": "v1.0.11",
       "kind": "fixed",
-      "attribution": "Archived illustration; original screenshots remain in the details."
+      "attribution": "Archived illustration; original screenshots remain in the details.",
+      "lead_source": "lobby-after.jpg"
     },
     {
       "entry": "changelog/v1.0.11/shared-allied-command.md",
@@ -954,7 +959,8 @@
       "title": "Large-battle simulation and rendering improvements",
       "version": "v1.0.11",
       "kind": "improved",
-      "attribution": "Archived illustration; original screenshots remain in the details."
+      "attribution": "Archived illustration; original screenshots remain in the details.",
+      "lead_source": "after.png"
     },
     {
       "entry": "changelog/v1.0.11/site-journeys.md",
@@ -999,7 +1005,8 @@
       "title": "Squads stick together",
       "version": "v1.0.11",
       "kind": "improved",
-      "attribution": "Archived illustration; original screenshots remain in the details."
+      "attribution": "Archived illustration; original screenshots remain in the details.",
+      "lead_source": "after.jpg"
     },
     {
       "entry": "changelog/v1.0.11/website-field-manual.md",

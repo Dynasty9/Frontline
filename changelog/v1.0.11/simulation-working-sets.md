@@ -5,12 +5,13 @@ kind = "improved"
 
 
 [[screenshots]]
+file = "after.png"
+caption = "A full generated 3,072 metre battlefield, started with 480 soldiers and 20 vehicles. The 60 FPS target remains under validation."
+
+[[screenshots]]
 file = "before.png"
 caption = "The earlier 500-soldier rendering test on a 1,024 metre map."
 
-[[screenshots]]
-file = "after.png"
-caption = "A full generated 3,072 metre battlefield, started with 480 soldiers and 20 vehicles. The 60 FPS target remains under validation."
 
 [[screenshots]]
 file = "vehicle-before.png"

@@ -4,12 +4,13 @@ summary = "Helicopters carry momentum, bank through turns and flare into a hover
 kind = "improved"
 
 [[screenshots]]
+file = "after.jpg"
+caption = "After: the same mid-flight order produces a banked turn while momentum carries through."
+
+[[screenshots]]
 file = "before.jpg"
 caption = "Before: a transport changes direction directly toward its new destination."
 
-[[screenshots]]
-file = "after.jpg"
-caption = "After: the same mid-flight order produces a banked turn while momentum carries through."
 
 [[videos]]
 file = "helicopter-turn.mp4"

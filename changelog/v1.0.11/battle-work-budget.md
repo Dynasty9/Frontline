@@ -5,12 +5,14 @@ kind = "improved"
 
 
 [[screenshots]]
+file = "after.png"
+caption = "After: the same map and camera, with visibility-aware rendering and native routes. Combat evolves independently between runs."
+
+[[screenshots]]
 file = "before.png"
 caption = "Before: the generated 3 km battlefield at command zoom."
 
-[[screenshots]]
-file = "after.png"
-caption = "After: the same map and camera, with visibility-aware rendering and native routes. Combat evolves independently between runs."
+
 +++
 
 Scenery follows the camera's view, and soldiers avoid repeating sight checks against unchanged walls.

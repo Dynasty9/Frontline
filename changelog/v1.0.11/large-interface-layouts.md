@@ -5,12 +5,13 @@ kind = "fixed"
 
 
 [[screenshots]]
+file = "lobby-after.jpg"
+caption = "After: the roster scrolls while Start and Close stay clearly in view."
+
+[[screenshots]]
 file = "lobby-before.jpg"
 caption = "Before: a full co-op roster pushes the lobby actions into the bottom edge."
 
-[[screenshots]]
-file = "lobby-after.jpg"
-caption = "After: the roster scrolls while Start and Close stay clearly in view."
 
 [[screenshots]]
 file = "controls-before.jpg"

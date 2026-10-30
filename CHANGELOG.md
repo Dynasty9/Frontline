@@ -92,7 +92,7 @@ These changes reduce specific costs; they do not establish 60 FPS support for 50
 
 Large battles avoid repeated scenery and visibility work while keeping the battlefield responsive.
 
-![Before: the generated 3 km battlefield at command zoom.](changelog/v1.0.11/battle-work-budget/before.png)
+![After: the same map and camera, with visibility-aware rendering and native routes. Combat evolves independently between runs.](changelog/v1.0.11/battle-work-budget/after.png)
 
 <details>
 <summary>Explore this change</summary>
@@ -111,7 +111,7 @@ Scenery follows the camera's view, and soldiers avoid repeating sight checks aga
 
 Large-map performance is still being measured. These changes do not establish 60 FPS support for 500-unit battles.
 
-![After: the same map and camera, with visibility-aware rendering and native routes. Combat evolves independently between runs.](changelog/v1.0.11/battle-work-budget/after.png)
+![Before: the generated 3 km battlefield at command zoom.](changelog/v1.0.11/battle-work-budget/before.png)
 
 </details>
 
@@ -119,7 +119,7 @@ Large-map performance is still being measured. These changes do not establish 60
 
 See troops and terrain more clearly through lighter haze and translucent battlefield markers.
 
-![Before: hazy weather and solid squad markers compete with the troops.](changelog/v1.0.11/clearer-battlefield/battlefield-before.jpg)
+![After: thinner haze, transparent symbols and quieter commander markers leave the troops visible.](changelog/v1.0.11/clearer-battlefield/battlefield-after.jpg)
 
 <details>
 <summary>Explore this change</summary>
@@ -131,7 +131,7 @@ Lighter atmospheric haze and translucent battlefield markers keep soldiers, vehi
 - Squad symbols fade in with distance instead of stacking over nearby soldiers. Individual status icons lose their opaque backplates, and squad-strength pips replace overlapping per-soldier bars at squad zoom.
 - Teammate view frames and selection rings are thinner and quieter. A teammate's selection is a coordination hint, not an exclusive ownership badge.
 
-![After: thinner haze, transparent symbols and quieter commander markers leave the troops visible.](changelog/v1.0.11/clearer-battlefield/battlefield-after.jpg)
+![Before: hazy weather and solid squad markers compete with the troops.](changelog/v1.0.11/clearer-battlefield/battlefield-before.jpg)
 
 </details>
 
@@ -152,9 +152,9 @@ Rotorcraft carry momentum through turns, bank and pitch as they accelerate, and 
 - Stop holds a troop transport in the air, including with a vehicle on its sling. Give a new move order to carry on; new orders also interrupt an approach to land.
 - Flight remains controlled by the host, with the same bank and pitch sent to every player. Ground vehicles and drones keep their existing movement.
 
-![Before: a transport changes direction directly toward its new destination.](changelog/v1.0.11/helicopter-flight/before.jpg)
-
 ![After: the same mid-flight order produces a banked turn while momentum carries through.](changelog/v1.0.11/helicopter-flight/after.jpg)
+
+![Before: a transport changes direction directly toward its new destination.](changelog/v1.0.11/helicopter-flight/before.jpg)
 
 </details>
 
@@ -181,7 +181,7 @@ Discover the game through battlefield decisions, combined-arms footage and selec
 
 Large battles draw scenery and squad symbols more efficiently while preserving combat behavior.
 
-![The large-map battle before scenery drawing is combined.](changelog/v1.0.11/large-battle-drawing/before.jpg)
+![Combined scenery drawing preserves the buildings and their shadows during combat.](changelog/v1.0.11/large-battle-drawing/after.jpg)
 
 <details>
 <summary>Explore this change</summary>
@@ -194,7 +194,7 @@ Large battles draw buildings and squad symbols with less repeated work, while da
 - Firing markers reuse their star geometry, and the minimap refreshes damaged buildings gradually while keeping the previous map visible.
 - Moving soldiers avoid recording sight checks they cannot reuse; soldiers standing still, including those waiting for a route, retain their obstruction cache.
 
-![Combined scenery drawing preserves the buildings and their shadows during combat.](changelog/v1.0.11/large-battle-drawing/after.jpg)
+![The large-map battle before scenery drawing is combined.](changelog/v1.0.11/large-battle-drawing/before.jpg)
 
 </details>
 
@@ -218,7 +218,7 @@ All commanders on a side can select and order every allied squad, vehicle and in
 
 Play larger skirmishes with less repeated simulation work and more efficient distant-unit drawing.
 
-![The earlier 500-soldier rendering test on a 1,024 metre map.](changelog/v1.0.11/simulation-working-sets/before.png)
+![A full generated 3,072 metre battlefield, started with 480 soldiers and 20 vehicles. The 60 FPS target remains under validation.](changelog/v1.0.11/simulation-working-sets/after.png)
 
 <details>
 <summary>Explore this change</summary>
@@ -262,7 +262,7 @@ Desktop solo battles run simulation separately, share more AI work, and draw dis
 - The battle clock follows the simulation server, excluding loading time and stopping when the host pauses.
 - Large assault formations check only nearby squadmates when choosing cover, retaining the same positions with fewer comparisons.
 
-![A full generated 3,072 metre battlefield, started with 480 soldiers and 20 vehicles. The 60 FPS target remains under validation.](changelog/v1.0.11/simulation-working-sets/after.png)
+![The earlier 500-soldier rendering test on a 1,024 metre map.](changelog/v1.0.11/simulation-working-sets/before.png)
 
 ![Detailed vehicle materials at distant camera range, magnified for comparison.](changelog/v1.0.11/simulation-working-sets/vehicle-before.png)
 
@@ -297,7 +297,7 @@ A simpler site menu, a returning-player home, and a dedicated rank guide make it
 
 Squads stay closer together and choose cover on the same side of walls.
 
-![Before: one squad spreads across all three walls while seeking cover. Enemies are beyond the walls, outside this view.](changelog/v1.0.11/squad-cohesion/before.jpg)
+![After: four soldiers take cover against the middle wall; the fifth stacks in a second row 1.5 metres behind them, with reduced protection. Same scenario, seed, time and camera as before.](changelog/v1.0.11/squad-cohesion/after.jpg)
 
 <details>
 <summary>Explore this change</summary>
@@ -309,7 +309,7 @@ Squads move in tighter groups and choose nearby cover on the same side of walls.
 - When a tall wall's front row is full, soldiers stack a pace behind it instead of lying farther out in the open. The rear row still benefits from the wall blocking fire, but lacks the close-cover protection of hugging it.
 - Travelling squads follow their leader through gaps, and the leader slows for stragglers.
 
-![After: four soldiers take cover against the middle wall; the fifth stacks in a second row 1.5 metres behind them, with reduced protection. Same scenario, seed, time and camera as before.](changelog/v1.0.11/squad-cohesion/after.jpg)
+![Before: one squad spreads across all three walls while seeking cover. Enemies are beyond the walls, outside this view.](changelog/v1.0.11/squad-cohesion/before.jpg)
 
 </details>
 
@@ -319,7 +319,7 @@ Squads move in tighter groups and choose nearby cover on the same side of walls.
 
 Keep menus, controls and multiplayer rosters reachable in small windows and at large interface scales.
 
-![Before: a full co-op roster pushes the lobby actions into the bottom edge.](changelog/v1.0.11/large-interface-layouts/lobby-before.jpg)
+![After: the roster scrolls while Start and Close stay clearly in view.](changelog/v1.0.11/large-interface-layouts/lobby-after.jpg)
 
 <details>
 <summary>Explore this change</summary>
@@ -331,7 +331,7 @@ Pause menus, controls, lobby rosters and the server browser stay usable at maxim
 - Server-browser filters and direct-connect fields wrap instead of forcing the screen wider than the window.
 - Repeatedly opening a dialog no longer shifts its resting position. Resizing during its opening animation keeps it centered.
 
-![After: the roster scrolls while Start and Close stay clearly in view.](changelog/v1.0.11/large-interface-layouts/lobby-after.jpg)
+![Before: a full co-op roster pushes the lobby actions into the bottom edge.](changelog/v1.0.11/large-interface-layouts/lobby-before.jpg)
 
 ![Before: maximum interface scale pushes the Controls dialog beyond the window.](changelog/v1.0.11/large-interface-layouts/controls-before.jpg)
 
