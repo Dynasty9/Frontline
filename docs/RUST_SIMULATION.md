@@ -18,6 +18,7 @@ graphics, network access or a wall clock.
 | Component | Destination | Current implementation |
 | --- | --- | --- |
 | Perception candidates, formation scoring, route graph | `frontline_core` | Extracted; Godot bindings call the core |
+| Infantry target acquisition | `frontline_core` | Visibility, mounted-gun arcs, weapon priorities, drone reactions and forced targets in one numeric scan; Godot supplies current contact poses and applies squad reports |
 | Gameplay RNG, including commander streams | `frontline_core` | Seeded PCG stream matches Godot 4.7; cosmetic RNG stays in Godot |
 | Grenade, smoke, rocket, bomb and shell flight | `frontline_core` | Rust retains and advances flight state and queries native geometry; the adapter supplies holders and applies impacts |
 | Weighted grid paths and cluster pair costs | `frontline_core` | Exact Godot route tie behavior; native cluster workers return costs in deterministic order |
@@ -88,6 +89,24 @@ Only extract a standalone transport when the whole authoritative tick can run
 without callbacks into scene objects. The final local server must retain current
 loopback authentication, version checks and owner-exit cleanup. A process split
 alone does not reduce simulation cost or guarantee 60 FPS.
+
+The process boundary is a socket carrying commands toward the server and
+tick-stamped observations/events toward each renderer. Local play connects over
+loopback; remote players use the same protocol and authority checks. Internal
+perception, navigation and combat queries stay inside the Rust process. The
+GDScript-to-Rust calls used during migration are not the future network protocol.
+The current launcher still starts a headless Godot server with native components.
+
+Use versioned binary application messages over ENet/UDP, with reliable orders and
+lifecycle changes and sequenced state updates. A snapshot that needs an earlier
+baseline must identify it; joining and reconnecting clients need a reliable full
+baseline, and loss must trigger recovery rather than partial state. Each peer gets
+only the state allowed by team visibility. The raw packet layer is supported by
+[ENetConnection](https://docs.godotengine.org/en/stable/classes/class_enetconnection.html);
+Godot's scene RPC protocol is explicitly an engine implementation detail, unsuitable
+as the Rust server's interoperability contract
+([SceneMultiplayer documentation](https://docs.godotengine.org/en/stable/classes/class_scenemultiplayer.html)).
+The standalone transport and whole-world simulation remain to be implemented.
 
 ## Deterministic replay contract
 
@@ -268,6 +287,23 @@ checks default and model-specific sockets and shell ownership after the current
 vehicle-handling changes on `main`. These are component
 checkpoints; they do not include the whole battle or verify its conclusion.
 
+## Infantry target acquisition
+
+Infantry target acquisition uses the shared numeric visibility and collision world
+in one call. It preserves the first seven candidates, first-wins score ties,
+machine-gunner and downed-target priorities, armor/rocket rules, mounted-gun arcs,
+drone override order and forced structure attacks. Flanking contacts are still
+reported even when a mounted gun cannot engage them; drones retain their existing
+separate reporting behavior. The 600-case reference fixture checks current poses,
+smoke, changed vehicle colliders, repeated scans and restored geometry. Contact
+poses, behavior tasks and squad state are still supplied by Godot.
+
+The fixture's 1,000-scan comparison includes preparation and report application:
+GDScript samples were 42.56–45.16 ms and the packed native path 41.42–43.68 ms.
+These overlapping ranges establish no large targeting speedup. The migration
+removes repeated dictionary conversion, but retaining entity state inside the Rust
+server is still needed to remove the intermediate contact-copy boundary.
+
 ## Terrain state
 
 `Terrain` retains the nine terrain layers, crater height samples and pending cover
@@ -277,8 +313,10 @@ preserves spatial encounter order and equal-cover tie rules. Structures register
 their numeric geometry when added, moved or changed; the core retains the index
 instead of rebuilding it from scene objects each batch. GDScript mirrors changed
 cells for the renderer and remaining gameplay callers. Biome and water generation
-still run in Godot and import their
-numeric output; these are outstanding standalone-server dependencies.
+still run in Godot and import their numeric output; these are outstanding
+standalone-server dependencies. Exact trench containment, ground height and
+enfilade queries also use the retained geometry, including first-bay order at
+junctions. Bridge occupancy is still supplied by the Godot water map.
 
 Terrain checkpoints preserve every layer and height sample, fresh-ground behavior,
 the revision, ordered structure geometry and the remaining repair queue. Reference
@@ -312,6 +350,10 @@ mission run reproduces the same baseline outcomes. These checks do not
 cover full battle checkpoints or replay verification.
 The terrain port passes all 105 default integration tests, 47 core tests in both
 debug and release, and the cover-region and terrain texture/collision seam checks.
+Infantry acquisition passes the full 106-test suite. After adding exact trench
+queries, 51 core tests pass in debug and release, as do 24 relevant integration
+checks covering infantry, armour, ground changes, helicopter flight and 6,000
+trench query positions through building, movement and removal.
 
 A focused shell benchmark (100 shells, 100 ticks, headless, no collision queries)
 measured about 14.6 ms for the GDScript path versus 4.6–5.6 ms for retained Rust

@@ -1,6 +1,7 @@
 use crate::state_codec::{Reader, Writer};
 use crate::terrain::Terrain;
-use crate::terrain_cover::{CoverLayout, CoverPart, CoverStructure};
+use crate::terrain_cover::{trench_distance, CoverLayout, CoverPart, CoverStructure};
+use crate::vector::{normalized, Vector3};
 use glam::Vec2;
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -54,6 +55,56 @@ fn valid(shape: &CoverStructure) -> bool {
 }
 
 impl CoverScene {
+    pub fn in_trench(&self, p: Vector3, margin: f64) -> bool {
+        let cell = (
+            (f64::from(p.x) / 16.0).floor() as i32,
+            (f64::from(p.z) / 16.0).floor() as i32,
+        );
+        self.buckets.get(&cell).is_some_and(|bucket| {
+            bucket.iter().any(|id| {
+                let shape = &self.entries[id].shape;
+                shape.dug && trench_distance(shape.trench[0], shape.trench[1], p) < -margin
+            })
+        })
+    }
+
+    pub fn trench_enfiladed(&self, p: Vector3, from: Vector3) -> bool {
+        let flat = |p: Vector3| Vector3::new(p.x, 0.0, p.z);
+        let to = flat(p - from);
+        if to.length() < 1.0 {
+            return true;
+        }
+        let to = normalized(to);
+        let mut seen = BTreeSet::new();
+        for x in ((f64::from(p.x) - 4.0) / 16.0).floor() as i32
+            ..=((f64::from(p.x) + 4.0) / 16.0).floor() as i32
+        {
+            for z in ((f64::from(p.z) - 4.0) / 16.0).floor() as i32
+                ..=((f64::from(p.z) + 4.0) / 16.0).floor() as i32
+            {
+                let Some(bucket) = self.buckets.get(&(x, z)) else {
+                    continue;
+                };
+                for id in bucket {
+                    if !seen.insert(*id) {
+                        continue;
+                    }
+                    let s = &self.entries[id].shape;
+                    if s.dug
+                        && f64::from(flat(s.position - p).length()) <= 4.0 + s.radius
+                        && trench_distance(s.trench[0], s.trench[1], p) < 0.0
+                    {
+                        // At a junction the first registered bay decides the firing direction.
+                        return f64::from(
+                            normalized(flat(s.trench[1] - s.trench[0])).dot(to).abs(),
+                        ) > 0.95;
+                    }
+                }
+            }
+        }
+        false
+    }
+
     pub fn register(&mut self, id: u64, shape: CoverStructure, cells: Vec<(i32, i32)>) -> bool {
         let old = self.entries.get(&id).map_or(0, |e| e.cells.len());
         let old_parts = self.entries.get(&id).map_or(0, |e| e.shape.parts.len());

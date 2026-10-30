@@ -1,6 +1,6 @@
 +++
-title = "Move navigation and aircraft behavior into the Rust simulation core"
-summary = "Navigation grids, aircraft attack schedules, missile guidance, projectile flight and battlefield raycasts now use the shared Rust core as the standalone server migration continues."
+title = "Move terrain, targeting, navigation and flight into Rust"
+summary = "Terrain cover, infantry target acquisition, navigation and aircraft behavior now use the shared Rust core as the standalone server migration continues."
 kind = "fixed"
 +++
 
@@ -8,6 +8,7 @@ kind = "fixed"
 - Grenade, smoke, rocket, bomb and shell flight now use the shared simulation core, preserving flight behavior, pickup, kicking and rethrowing.
 - Battlefield raycasts now use the shared simulation core, updating when vehicles move, doors open and structures change.
 - Sight checks and smoke screens now run in Rust, retaining immediate smoke changes and reusing obstruction only while the blocking geometry stays unchanged.
+- Infantry contact evaluation now shares a Rust scan, preserving weapon priorities, mounted-gun arcs, drone reactions, forced targets and squad reports.
 - Ground edits, crater deformation and cover repairs now use Rust, preserving road speed, directional cover, camouflage and shell holes.
 - Local navigation grids and boat routes now use Rust, preserving weighted paths and corner-blocking rules.
 - Hierarchical routes, danger weighting and map repairs now run in Rust. Large-cluster route caches distinguish entrances that previously shared a truncated key.

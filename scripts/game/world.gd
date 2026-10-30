@@ -514,6 +514,8 @@ func entity(id: int) -> Entity:
 
 ## Ground height at p: the duckboards, a metre down, inside a finished trench.
 func ground_y(p: Vector3) -> float:
+	if terrain and terrain._native:
+		return float(terrain._native.ground_y(p, water != null and not water.deck.is_empty() and water.on_deck(p)))
 	if water and not water.deck.is_empty() and water.on_deck(p):
 		return 0.06  # on a bridge deck, over the water
 	for st: Structure in _trenches_at(p):
@@ -551,6 +553,8 @@ func trench_mount_spot(pos: Vector3, yaw: float) -> Dictionary:
 
 
 func in_trench(p: Vector3) -> bool:
+	if terrain and terrain._native:
+		return bool(terrain._native.in_trench(p))
 	for st: Structure in _trenches_at(p):
 		if is_instance_valid(st) and not st.gone and st.built and TrenchNet.inside(st, p, 0.05):
 			return true
@@ -560,6 +564,8 @@ func in_trench(p: Vector3) -> bool:
 ## True when a shooter at `from` is looking along the trench bay that `p` is in
 ## (enfilade): the zig-zag keeps that to one short bay at a time.
 func trench_enfiladed(p: Vector3, from: Vector3) -> bool:
+	if terrain and terrain._native:
+		return bool(terrain._native.trench_enfiladed(p, from))
 	var to := Defs.flat(p - from)
 	if to.length() < 1.0:
 		return true

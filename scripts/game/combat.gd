@@ -201,6 +201,55 @@ func can_see(s: Soldier, e: Entity) -> bool:
 	return can_see_from(s.scan_eye(), e, s.get_exclude(), s._path_pending or not s.is_moving())
 
 
+## One numeric scan keeps sight checks and target priorities in the simulation.
+func scan_targets(s: Soldier, candidates: Array) -> PackedInt64Array:
+	if not _visibility or not _collision or world.settings.get("gdscript_targeting", false):
+		return PackedInt64Array()
+	_sync_collision()
+	if not _collision:
+		return PackedInt64Array()
+	# Per contact: id, kind, infantry flags or armour, point count, exclusion count.
+	var contacts := PackedInt64Array()
+	var points := PackedVector3Array()
+	var excluded := PackedInt64Array()
+	var exclude := s.get_exclude()
+	for i in mini(7, candidates.size()):
+		var e: Entity = candidates[i][1]
+		var first := excluded.size()
+		for rid: RID in exclude + e.get_exclude():
+			if _rid_entities.has(rid):
+				excluded.append(int(_rid_entities[rid]))
+		var exposed := e.exposed_points()
+		points.append(e.position)
+		points.append_array(PackedVector3Array(exposed))
+		var kind := 0
+		var flags := 0
+		if e is Soldier:
+			kind = 1
+			flags = int(e.life == Soldier.Life.DOWNED) | (int(e.utype in ["mg_gunner", "pkm"]) << 1)
+		elif e is Vehicle:
+			kind = 2
+			flags = int(e.vdef.get("armor", 1))
+		contacts.append_array(PackedInt64Array([e.eid, kind, flags, exposed.size(), excluded.size() - first]))
+	var drone_meta := PackedInt64Array()
+	var drone_positions := PackedVector3Array()
+	for d: Drone in world.drones:
+		drone_meta.append_array(PackedInt64Array([d.eid, d.team, int(d.dead), int(d.diving)]))
+		drone_positions.append(d.position)
+	var w := s.cur_weapon()
+	var forced: Entity = s.forced_target if is_instance_valid(s.forced_target) and not s.forced_target.gone else null
+	var mounted: bool = s.task == "man" and s.task_phase == 2 and s.mounted != null and s.mounted.skind in ["mg_nest", "hmg_nest"]
+	var observer := [s.position, s.scan_eye(), s.team,
+		s.target.eid if is_instance_valid(s.target) else 0, forced.eid if forced else 0,
+		forced.position if forced is Structure else null, s.mounted.front_dir() if mounted else null,
+		float(w.get("range", 50.0)), s.rockets > 0, bool(w.get("ap", false)), s._path_pending or not s.is_moving()]
+	var result: PackedInt64Array = _visibility.scan_contacts(_collision, observer, contacts, points, excluded, drone_meta, drone_positions)
+	assert(not result.is_empty(), "Invalid infantry scan")
+	for i in result[2]:
+		world.stat("perception_blocked_reused")
+	return result
+
+
 func can_see_from(eye: Vector3, e: Entity, ex: Array, cache_obstruction := true) -> bool:
 	var ex2 := ex + e.get_exclude()
 	var pts := e.exposed_points()

@@ -120,6 +120,33 @@ impl TerrainCore {
     }
 
     #[func]
+    fn ground_y(&self, p: Vector3, on_deck: bool) -> f64 {
+        self.core
+            .as_ref()
+            .filter(|_| valid_point(p))
+            .map_or(0.0, |t| t.ground_y(crate::point(p), on_deck))
+    }
+
+    #[func]
+    fn in_trench(&self, p: Vector3) -> bool {
+        valid_point(p)
+            && self
+                .core
+                .as_ref()
+                .is_some_and(|t| t.scene.in_trench(crate::point(p), 0.05))
+    }
+
+    #[func]
+    fn trench_enfiladed(&self, p: Vector3, from: Vector3) -> bool {
+        valid_point(p)
+            && valid_point(from)
+            && self.core.as_ref().is_some_and(|t| {
+                t.scene
+                    .trench_enfiladed(crate::point(p), crate::point(from))
+            })
+    }
+
+    #[func]
     fn rows(&self, cells: PackedInt32Array) -> PackedByteArray {
         let Some(core) = &self.core else {
             return PackedByteArray::new();

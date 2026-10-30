@@ -190,7 +190,7 @@ impl CoverLayout {
     }
 }
 
-fn trench_distance(a: Vector3, b: Vector3, p: Vector3) -> f64 {
+pub(crate) fn trench_distance(a: Vector3, b: Vector3, p: Vector3) -> f64 {
     let flat = |v: Vector3| Vector3::new(v.x, 0.0, v.z);
     let mut d = flat(b - a);
     let len = d.length();

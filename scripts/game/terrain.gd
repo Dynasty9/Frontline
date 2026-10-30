@@ -863,6 +863,9 @@ func _lay_out(cells: PackedInt32Array) -> CoverLay:
 func sync_structure(st, reindex := false) -> void:
 	if not _native or st.hash_cells.is_empty():
 		return
+	if st.gone:
+		_native.remove_structure(st.eid)
+		return
 	var lay := CoverLay.new()
 	_add_slot(lay, st)
 	var data := {"pos": lay.pos, "rad": lay.rad, "kind": lay.kind, "rub": lay.rub, "dug": lay.dug,

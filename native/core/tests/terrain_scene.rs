@@ -92,3 +92,47 @@ fn cover_scene_rejects_invalid_data_atomically_and_bounded_checkpoints() {
     bad.push(0);
     assert!(CoverScene::restore(&bad).is_err());
 }
+
+#[test]
+fn exact_trench_ground_and_enfilade_follow_geometry_and_registration_order() {
+    let mut terrain = Terrain::blank(32).unwrap();
+    let cells = vec![(-1, -1), (-1, 0), (0, -1), (0, 0)];
+    let mut trench = wall(0.0);
+    trench.kind = 2;
+    trench.dug = true;
+    trench.position = Vector3::ZERO;
+    trench.trench = [Vector3::X * -4.0, Vector3::X * 4.0];
+    assert!(terrain.scene.register(5, trench.clone(), cells.clone()));
+    assert!(terrain.scene.in_trench(Vector3::ZERO, 0.05));
+    assert!(terrain.scene.in_trench(Vector3::new(0.0, 0.0, 0.669), 0.05));
+    assert!(!terrain.scene.in_trench(Vector3::new(0.0, 0.0, 0.671), 0.05));
+    assert_eq!(terrain.ground_y(Vector3::ZERO, false), -1.2 + 0.15);
+    assert_eq!(terrain.ground_y(Vector3::ZERO, true), 0.06);
+    assert!(terrain
+        .scene
+        .trench_enfiladed(Vector3::ZERO, Vector3::X * 20.0));
+    assert!(!terrain
+        .scene
+        .trench_enfiladed(Vector3::ZERO, Vector3::Z * 20.0));
+    let mut crossing = trench.clone();
+    crossing.trench = [Vector3::Z * -4.0, Vector3::Z * 4.0];
+    assert!(terrain.scene.register(1, crossing, cells.clone()));
+    let saved = terrain.checkpoint();
+    terrain = Terrain::restore(&saved).unwrap();
+    assert!(!terrain
+        .scene
+        .trench_enfiladed(Vector3::ZERO, Vector3::Z * 20.0));
+    terrain.scene.remove(5);
+    assert!(terrain.scene.register(5, trench.clone(), cells));
+    assert!(terrain
+        .scene
+        .trench_enfiladed(Vector3::ZERO, Vector3::Z * 20.0));
+    terrain.scene.remove(1);
+    trench.dug = false;
+    assert!(terrain.scene.update(5, trench));
+    assert!(!terrain.scene.in_trench(Vector3::ZERO, 0.05));
+    assert_eq!(terrain.ground_y(Vector3::ZERO, false), 0.0);
+    assert!(terrain
+        .scene
+        .trench_enfiladed(Vector3::ZERO, Vector3::X * 0.5));
+}

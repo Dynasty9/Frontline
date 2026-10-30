@@ -503,6 +503,16 @@ impl Terrain {
         lerp(a, b, tz)
     }
 
+    pub fn ground_y(&self, p: Vector3, on_deck: bool) -> f64 {
+        if on_deck {
+            0.06
+        } else if self.scene.in_trench(p, 0.05) {
+            -1.2 + 0.15
+        } else {
+            self.deform_at(p)
+        }
+    }
+
     pub fn crater(&mut self, p: Vector3, size: f64) -> (Vec<u32>, Option<[i32; 4]>) {
         if self.layers[BASE][self.index(p)] >= WATER || f64::from(p.y) > 1.6 {
             return (Vec::new(), None);

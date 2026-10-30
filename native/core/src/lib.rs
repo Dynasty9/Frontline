@@ -12,6 +12,7 @@ pub mod random;
 pub mod route_graph;
 mod state_codec;
 pub mod support;
+pub mod targeting;
 pub mod terrain;
 pub mod terrain_cover;
 pub mod terrain_scene;

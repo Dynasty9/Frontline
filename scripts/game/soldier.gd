@@ -1019,6 +1019,18 @@ func _scan_work() -> void:
 	if phase:
 		world.detail("scan candidates", phase)
 		phase = Time.get_ticks_usec()
+	var native: PackedInt64Array = world.combat.scan_targets(self, arr)
+	if not native.is_empty():
+		# Header: selected target, ground contacts to report, reused obstruction count.
+		for i in range(3, native.size()):
+			var e: Entity = world.entity(native[i])
+			vis_targets.append(e)
+			if squad and i - 3 < native[1]:
+				squad.report(e)
+		target = world.entity(native[0])
+		if phase:
+			world.detail("scan LOS", phase)
+		return
 	var best_s := -1e9
 	var checked := 0
 	var eye := scan_eye()

@@ -46,6 +46,9 @@ func compare(label: String) -> void:
 		assert(a.cover_vs(p, source) == b.cover_vs(p, source), "Directional cover after " + label)
 		assert(a.hit_mul(p, source) == b.hit_mul(p, source), "Ground hit after " + label)
 		assert(absf(a.deform_at(p) - b.deform_at(p)) < 0.000001, "Ground height after " + label)
+		assert(absf(pair[0].ground_y(p) - pair[1].ground_y(p)) < 0.000001, "Ground surface after " + label)
+		assert(pair[0].in_trench(p) == pair[1].in_trench(p), "Exact trench containment after " + label)
+		assert(pair[0].trench_enfiladed(p, source) == pair[1].trench_enfiladed(p, source), "Trench firing direction after " + label)
 		for vehicle in [false, true]:
 			for tracked in [false, true]:
 				assert(a.speed_mul(p, vehicle, tracked) == b.speed_mul(p, vehicle, tracked))

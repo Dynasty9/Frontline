@@ -1237,7 +1237,9 @@ navigation grids, boat routes, hierarchical map repairs, route smoothing and
 movement-order queues also use Rust. Ground cells, crater deformation and queued
 cover repairs use the same core, with numeric terrain edits and queries. The
 geometric sight test and smoke screens use the same core, with unchanged walls
-reused as obstruction proofs and moving smoke checked immediately. The full
+reused as obstruction proofs and moving smoke checked immediately. Infantry
+contact evaluation also runs in Rust, preserving weapon priorities, mounted-gun
+arcs, drone reactions, forced targets and squad reports. The full
 authoritative Rust server and deterministic
 battle verifier are still in progress; see [RUST_SIMULATION.md](RUST_SIMULATION.md).
 
