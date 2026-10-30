@@ -1,5 +1,6 @@
 use godot::prelude::*;
 
+mod bullet;
 mod collision_index;
 mod cover_geometry;
 mod drone_flight;

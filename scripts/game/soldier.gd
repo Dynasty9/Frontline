@@ -529,9 +529,10 @@ func _pose_query(kind: int):
 	# shortcut: the test adapter supplies pose until the Rust actor owns it.
 	if _pose_core == null:
 		_pose_core = ClassDB.instantiate("InfantryPoseCore")
-	var gun: bool = mounted != null and mounted.skind in ["mg_nest", "hmg_nest"]
+	var mount_valid := is_instance_valid(mounted)
+	var gun: bool = mount_valid and mounted.skind in ["mg_nest", "hmg_nest"]
 	var values := [position, posture, life, at_cover, cover_type, cover_h, cover_n, lean_dir,
-		mounted != null, gun, gun and mounted.variant == 1, peek_up, blind, is_moving(), move_mode, _gy]
+		mount_valid, gun, gun and mounted.variant == 1, peek_up, blind, is_moving(), move_mode, _gy]
 	var result = _pose_core.query(values, kind)
 	assert(result != null, "Invalid infantry combat pose")
 	return result

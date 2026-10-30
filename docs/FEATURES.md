@@ -1255,7 +1255,9 @@ comparisons covering damage credit, squad responses and repeat wounds. Aim selec
 and its short sight cache also have Rust compatibility checks, including blind
 fire, firing through cover and last-known positions. Combat pose calculations
 (eyes, exposed points and hit factors) are also checked against pure Rust
-geometry, independent of animated models. The full
+geometry, independent of animated models. Bullet accuracy, scatter, penetration,
+damage rolls and near-miss suppression have Rust compatibility checks too,
+preserving the order of damage, explosions and random draws. The full
 authoritative Rust server and deterministic
 battle verifier are still in progress; see [RUST_SIMULATION.md](RUST_SIMULATION.md).
 

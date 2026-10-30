@@ -38,6 +38,15 @@ func _ready() -> void:
 							checks += 1
 	var core: RefCounted = ClassDB.instantiate("InfantryPoseCore")
 	assert(core.query([], 0) == null and core.query(["invalid"], 0) == null)
+	var centers := []
+	for w in worlds:
+		var s: Soldier = w.entity(1)
+		s.mounted = w.entity(5)
+		s.mounted.free()
+		w.entities.erase(5)
+		centers.append(s.center_point())
+		s.mounted = null
+	assert(centers[0] == centers[1], "A removed mount must not break body-center queries")
 	for w in worlds:
 		w.free()
 	print("INFANTRY_POSE passed cases=", checks)

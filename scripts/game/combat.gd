@@ -350,6 +350,62 @@ func sees_structure(eye: Vector3, st: Entity) -> bool:
 # --- shooting ------------------------------------------------------------------------
 
 func fire_bullet(shooter: Entity, muzzle: Vector3, aim: Vector3, tgt: Entity, w: Dictionary, accm := 1.0) -> void:
+	if world.settings.get("rust_infantry", false) and ClassDB.class_exists("BulletCore") and _collision and _visibility:
+		_sync_collision()
+		if _collision:
+			_fire_bullet_native(shooter, muzzle, aim, tgt, w, accm)
+			return
+	_fire_bullet_reference(shooter, muzzle, aim, tgt, w, accm)
+
+
+func _fire_bullet_native(shooter: Entity, muzzle: Vector3, aim: Vector3, tgt: Entity, w: Dictionary, accm: float) -> void:
+	# shortcut: compatibility adapter; the Rust world will apply these ordered effects.
+	var core: RefCounted = ClassDB.instantiate("BulletCore")
+	var target := PackedFloat64Array()
+	if tgt:
+		var kind := 0 if tgt is Soldier else (1 if tgt is Drone else (2 if tgt is Vehicle and tgt.is_air() else 3))
+		target = PackedFloat64Array([kind, tgt.hit_factor(), world.terrain.hit_mul(tgt.position, muzzle) if tgt is Soldier else 1.0,
+			int(tgt is Soldier and tgt._gy < -0.6 and not world.trench_enfiladed(tgt.position, muzzle))])
+	var values := PackedFloat64Array([w.acc, w.range, w.dmg, int(w.get("aa", false)), Cover.pen_class(w),
+		0.08 if String(w.snd) == "hmg" else (0.045 if String(w.snd) == "mg" else 0.03), w.get("he", -1.0), int(w.get("airburst", false)),
+		accm, shooter.suppression if shooter is Soldier else -1.0, int(world.rules.has_upgrade(shooter.team, "optics"))])
+	var excluded := PackedInt64Array()
+	for rid: RID in shooter.get_exclude():
+		if _rid_entities.has(rid):
+			excluded.append(int(_rid_entities[rid]))
+	var valid: bool = core.fire(_collision, _visibility, world.rng._backend, muzzle, aim, values, target, excluded)
+	assert(valid, "Invalid bullet trace")
+	var state: Array = core.state()
+	var hit_body := int(state[4])
+	var hp: Vector3 = state[5]
+	var dir: Vector3 = state[2]
+	var ent := world.entity(hit_body)
+	var effects: Array = core.resolve_obstacle(1 if ent is Structure else (2 if ent is Vehicle else 0), Cover.mat_of(ent) if ent is Structure else 0, world.rng._backend)
+	assert(effects.size() == 6, "Invalid bullet obstacle")
+	if effects[0]:
+		ent.take_damage(float(effects[1]), shooter)
+		if world.settings.get("debug", false):
+			world.stat("t%d_pen" % shooter.team)
+		if effects[2] != null:
+			_through_hits(shooter, hp, effects[2], w, float(core.state()[6]), core)
+	if effects[4]:
+		valid = core.set_surface((ent as Vehicle).bullet_hit(hp, dir, w, shooter))
+		assert(valid, "Invalid vehicle bullet surface")
+	elif effects[5]:
+		ent.take_damage(float(effects[3]), shooter)
+		valid = core.set_surface(Fx.surface_of(ent, hp))
+		assert(valid, "Invalid structure bullet surface")
+	var damage: Array = core.finish_target(world.rng._backend)
+	assert(damage.size() == 2, "Invalid bullet damage")
+	if int(damage[0]) == 1:
+		(tgt as Soldier).take_damage(float(damage[1]), shooter, dir, "bullet")
+	elif int(damage[0]) == 2:
+		(tgt as Drone).shot_down()
+	state = core.state()
+	_finish_bullet(shooter, muzzle, state[1], bool(state[0]), int(state[3]), tgt, w, hit_body != 0, core)
+
+
+func _fire_bullet_reference(shooter: Entity, muzzle: Vector3, aim: Vector3, tgt: Entity, w: Dictionary, accm := 1.0) -> void:
 	var dist := muzzle.distance_to(aim)
 	var hit := false
 	if tgt:
@@ -428,6 +484,10 @@ func fire_bullet(shooter: Entity, muzzle: Vector3, aim: Vector3, tgt: Entity, w:
 		elif tgt is Drone:
 			tgt.shot_down()
 			impact = 3
+	_finish_bullet(shooter, muzzle, end, hit, impact, tgt, w, not r.is_empty())
+
+
+func _finish_bullet(shooter: Entity, muzzle: Vector3, end: Vector3, hit: bool, impact: int, tgt: Entity, w: Dictionary, blocked: bool, core: RefCounted = null) -> void:
 	world.battle.shot(shooter, hit)
 	if world.settings.get("debug", false):
 		world.stat("t%d_shots" % shooter.team)
@@ -435,15 +495,21 @@ func fire_bullet(shooter: Entity, muzzle: Vector3, aim: Vector3, tgt: Entity, w:
 			world.stat("t%d_aimed" % shooter.team)
 		if hit:
 			world.stat("t%d_hits" % shooter.team)
-		if not r.is_empty() and tgt is Soldier and not hit:
+		if blocked and tgt is Soldier and not hit:
 			world.stat("t%d_blocked" % shooter.team)
-	if w.has("he") and (impact != 0 or hit or end.y < 0.2):
+	if core:
+		var location := [tgt.position, tgt.center_point(), tgt is Soldier and world.terrain.in_trench(tgt.position)] if tgt else []
+		var explosion: Array = core.explosion(location, world.rng._backend)
+		assert(not explosion.is_empty(), "Invalid bullet explosion")
+		if explosion[0] != null:
+			explode(explosion[0], {"dmg": float(explosion[1]), "radius": float(explosion[2]), "fling": 4.0, "at": 0.0, "src": shooter, "team": shooter.team, "size": 0.38, "struct_mult": 1.5, "veh_mult": 0.1})
+	elif w.has("he") and (impact != 0 or hit or end.y < 0.2):
 		var hep: Vector3 = tgt.center_point() if hit and tgt and not (tgt is Drone) else end
 		if w.get("airburst", false) and tgt is Soldier and world.terrain.in_trench(tgt.position) and Defs.flat(end - tgt.position).length() < 3.0:
 			# programmed airburst: the round bursts right over the trench
 			hep = Vector3(tgt.position.x, 1.4, tgt.position.z) + Vector3(world.rng.randf_range(-0.8, 0.8), 0, world.rng.randf_range(-0.8, 0.8))
 		explode(hep, {"dmg": float(w.dmg) * 1.6, "radius": float(w.he), "fling": 4.0, "at": 0.0, "src": shooter, "team": shooter.team, "size": 0.38, "struct_mult": 1.5, "veh_mult": 0.1})
-	_suppress(muzzle, end, shooter.team, float(w.supp), tgt if hit else null)
+	_suppress(muzzle, end, shooter.team, float(w.supp), tgt if hit else null, core)
 	var now := world.time
 	if now > float(_reveal.get(shooter.eid, 0.0)):
 		_reveal[shooter.eid] = now + 1.5
@@ -456,9 +522,22 @@ func fire_bullet(shooter: Entity, muzzle: Vector3, aim: Vector3, tgt: Entity, w:
 ## A round that went through soft cover can still find someone sheltering
 ## behind it (a burst into a hedge, through a car, a wall a machine gun is
 ## chewing up).
-func _through_hits(shooter: Entity, hp: Vector3, end: Vector3, w: Dictionary, dmg_k: float) -> void:
+func _through_hits(shooter: Entity, hp: Vector3, end: Vector3, w: Dictionary, dmg_k: float, core: RefCounted = null) -> void:
 	var dir := (end - hp).normalized()
 	var far := hp + dir * 3.0
+	if core:
+		var meta := PackedInt64Array()
+		var centers := PackedVector3Array()
+		for s: Soldier in world.soldiers_near((hp + far) * 0.5, 2.0):
+			meta.append_array(PackedInt64Array([s.eid, s.team, int(s.life == Soldier.Life.ALIVE)]))
+			centers.append(s.center_point())
+		var result: Array = core.through_hit(end, meta, centers, shooter.team, world.rng._backend)
+		assert(result.size() == 3, "Invalid penetrating bullet result")
+		if int(result[0]) != 0:
+			var soldier: Soldier = world.entity(int(result[0]))
+			soldier.take_damage(float(result[1]), shooter, result[2], "bullet")
+			world.stat("through_hit")
+		return
 	for s in world.soldiers_near((hp + far) * 0.5, 2.0):
 		if s.team == shooter.team or s.life != Soldier.Life.ALIVE:
 			continue
@@ -470,9 +549,21 @@ func _through_hits(shooter: Entity, hp: Vector3, end: Vector3, w: Dictionary, dm
 		return
 
 
-func _suppress(a: Vector3, b: Vector3, team: int, amount: float, hit_tgt: Entity) -> void:
+func _suppress(a: Vector3, b: Vector3, team: int, amount: float, hit_tgt: Entity, core: RefCounted = null) -> void:
 	var mid := (a + b) * 0.5
 	var half := a.distance_to(b) * 0.5 + 3.0
+	if core:
+		var soldiers: Array = world.soldiers_near(mid, half)
+		var positions := PackedVector3Array()
+		for s: Soldier in soldiers:
+			positions.append(s.position)
+		var amounts: PackedFloat64Array = core.suppression(positions, amount)
+		assert(amounts.size() == soldiers.size(), "Invalid bullet suppression")
+		for i in soldiers.size():
+			var s: Soldier = soldiers[i]
+			if s.team != team and s.life == Soldier.Life.ALIVE and s != hit_tgt and amounts[i] >= 0.0:
+				s.add_suppression(amounts[i], a)
+		return
 	for s in world.soldiers_near(mid, half):
 		if s.team == team or s.life != Soldier.Life.ALIVE or s == hit_tgt:
 			continue

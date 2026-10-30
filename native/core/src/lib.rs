@@ -1,6 +1,7 @@
 //! Engine-independent simulation code. No scene objects, wall clock or global RNG.
 /// Pinned scalar math and geometry rules; incompatible checkpoints must fail closed.
 pub const NUMERIC_VERSION: u16 = 1;
+pub mod bullet;
 pub mod collision;
 pub mod cover;
 pub mod drone;

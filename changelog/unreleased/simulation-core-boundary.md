@@ -21,6 +21,7 @@ kind = "fixed"
 - Health, suppression and fatigue also have Rust compatibility checks, covering wounded soldiers, repeated revivals, prisoners, damage credit and squad reactions.
 - Infantry aim compatibility checks cover smoke, blocked sight, blind fire, firing through cover and last-known positions.
 - Combat pose compatibility checks preserve eye heights, exposed body points, mounted-gun positions and hit factors in Rust, independently of the visual models.
+- Bullet compatibility checks preserve accuracy, penetration, damage order, explosive rounds and near-miss suppression in the Rust core.
 - The extracted simulation uses pinned numeric rules, with exact checkpoint comparisons across platforms as replay verification work continues.
 - Guided missiles keep a consistent turn after overshooting their aim point, instead of letting rounding choose an erratic turn direction.
 - This is groundwork for the server migration. Battles still use the existing simulation, and recordings are not yet independently verified.

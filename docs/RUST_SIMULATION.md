@@ -33,7 +33,8 @@ graphics, network access or a wall clock.
 | Infantry health, suppression and fatigue | `frontline_core` | Numeric recovery, damage outcomes and down/death/revive transitions extracted with component checkpoints; actor cleanup, squad reactions and damage attribution remain Godot effects |
 | Infantry combat geometry | `frontline_core` | Eyes, exposed points, hit factors and cover postures extracted with reference tests; the adapter still supplies actor state |
 | Infantry aim selection and sight cache | `frontline_core` | Target, blind and area-fire aiming extracted and reference-tested; the test adapter supplies posed target points and last-known squad contacts |
-| Bullet resolution, injury behavior and special tasks | Rust | `soldier.gd`, `soldier_brain.gd`, `combat.gd` |
+| Bullet resolution | `frontline_core` | Accuracy, scatter, penetration, hit damage, explosive-round placement and near-miss suppression extracted with ordered stages; Godot still applies actor damage and explosion effects |
+| Injury behavior and special tasks | Rust | `soldier.gd`, `soldier_brain.gd`, `combat.gd` |
 | Squads, tactics, commander and naval decisions | Rust | Squad, tactics, commander and naval scripts |
 | Vehicles and crews | Rust | Entity scripts and Godot spatial queries |
 | Battlefield box raycasts | `frontline_core` | Spatial grid with deterministic hit ties; Godot supplies geometry updates |
@@ -196,10 +197,10 @@ Component checkpoint headers contain a four-byte component tag, a little-endian
 rules rather than silently continuing with changed arithmetic. The separate
 integer RNG stream remains unchanged.
 
-`native/core/tests/numeric_contract.rs` compares 204,119 committed bytes without
+`native/core/tests/numeric_contract.rs` compares 242,589 committed bytes without
 tolerances: fixed-tick flight state, support events and RNG cursors, carved water,
 craters, rotated box hits, cover anchors, spherical interpolation and infantry
-movement, infantry cover fire, postures, ammunition, burst recovery, vitals, aiming and combat poses. CI runs
+movement, infantry cover fire, postures, ammunition, burst recovery, vitals, aiming, combat poses and bullet resolution. CI runs
 the same fixtures in debug and release on Windows x64, Linux
 x64, Linux ARM64 and macOS ARM64. A mismatch reports the first different byte.
 These fixtures guard the covered trajectories; they are not a proof for all
@@ -338,7 +339,7 @@ structures, invalid targets, contact expiry, RNG order and checkpoint resumes.
 The existing attack, breach, trenches and fire battle comparisons also enable
 this controller alongside native weapon and vitals logic. The numeric corpus
 adds an 18,792-byte aiming transcript. Squad contact
-selection, bullet resolution and damage effects still require Godot; this is not
+selection and actor damage effects still require Godot; this is not
 a complete actor or independently replayable battle. The full default suite passes
 113 tests after this extraction; 87 core tests pass in debug and release.
 
@@ -357,6 +358,28 @@ fire. The exact numeric corpus adds 22,464 bytes of pose geometry. This removes
 the geometry calculation's Godot dependency; full actor ownership, callbacks
 for damage and the battle verifier are still migration work. The full default
 suite passes 114 tests; 91 core tests pass in debug and release.
+
+## Bullet resolution
+
+`Bullet` calculates accuracy, misses, obstacle penetration, target damage,
+explosive-round placement and near-miss suppression. The stages preserve
+intervening gameplay effects: penetrating damage and stray hits precede surface
+damage; target damage precedes reading the target's new body center for an
+explosion. Each stage returns effects and releases the RNG borrow before the
+adapter applies them. A round that misses through a penetrable wall preserves
+the existing two wall-damage calls and only considers the first eligible man
+behind it. These instantaneous shots finish within one tick; their temporary
+state is not a saved battle checkpoint.
+
+The reference fixture compares 12,288 shots, exact vectors, ordered damage and
+explosion callbacks, statistics and RNG cursors. It covers infantry, vehicles,
+drones, all four cover materials, smoke, optics, trenches, suppression, missed
+penetrating rounds and life/pose changes during damage. The native infantry
+battle comparisons also cover tank and grenade-drill scenarios, alongside attack,
+breach, trenches and fire. Numeric CI adds 38,470 bytes of bullet transcripts.
+Actor damage, vehicle armour responses, blast effects and spatial-query ownership
+still live in Godot, so this is neither a standalone server nor a full verifier.
+The full default suite passes 115 tests; 98 core tests pass in debug and release.
 
 ## Battlefield collision
 

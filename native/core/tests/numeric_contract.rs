@@ -1,4 +1,5 @@
 //! Exact persisted bytes, shared by Windows, Linux and ARM CI, without tolerance comparisons.
+use frontline_core::bullet::{self, Body, Bullet, TargetEffect, ThroughContact};
 use frontline_core::collision::{BoxShape, CollisionWorld, Mat3};
 use frontline_core::cover::{generate, Part};
 use frontline_core::drone::{DroneFlight, Phase};
@@ -53,6 +54,163 @@ fn golden(name: &str, actual: &[u8]) {
     {
         panic!("{name}: first differing byte {i}: actual {a:02x}, expected {b:02x}");
     }
+}
+
+#[test]
+fn bullet_resolution_transcripts_are_identical_across_platforms() {
+    let mut bytes = Vec::new();
+    for case in 0..512 {
+        let mut rng = SimulationRandom::new(case);
+        let mut collision = CollisionWorld::default();
+        let mut sight = Visibility::default();
+        if case % 3 != 0 {
+            assert!(collision.replace(
+                1,
+                &[BoxShape {
+                    body: 1,
+                    shape: 0,
+                    center: Vector3::new(8.0, 1.0, 4.0),
+                    basis: Mat3::IDENTITY,
+                    half: Vector3::new(1.12, 4.0, 12.0)
+                }]
+            ));
+        }
+        if case % 11 == 0 {
+            assert!(sight.set_projectile(
+                4,
+                Smoke {
+                    center: Vector3::new(4.0, 1.0, 2.0),
+                    radius: 3.5
+                }
+            ));
+        }
+        let target = (case % 5 != 0).then_some(bullet::Target {
+            kind: match case % 4 {
+                0 => bullet::TargetKind::Infantry,
+                1 => bullet::TargetKind::Drone,
+                2 => bullet::TargetKind::AirVehicle,
+                _ => bullet::TargetKind::Other,
+            },
+            hit_factor: 0.75,
+            terrain_multiplier: 0.7,
+            trench_protected: case % 3 == 0,
+        });
+        let mut shot = Bullet::fire(
+            bullet::ShotInput {
+                muzzle: Vector3::new(-2.1, 1.6, 0.35),
+                aim: Vector3::new(22.4, if case % 7 == 0 { -0.4 } else { 0.85 }, 12.39),
+                target,
+                weapon: bullet::Weapon {
+                    accuracy: 0.95,
+                    range: 80.0,
+                    damage: 36.0,
+                    anti_air: case % 7 == 0,
+                    penetration: (case % 4) as u8,
+                    drone_accuracy: [0.03, 0.045, 0.08][(case % 3) as usize],
+                    explosive_radius: (case % 2 == 0).then_some(2.4),
+                    airburst: case % 4 == 0,
+                },
+                accuracy_multiplier: 1.15,
+                soldier_suppression: (case % 2 == 0).then_some((case % 100) as f64),
+                optics: case % 3 == 0,
+                excluded: if case % 13 == 0 { &[1] } else { &[] },
+            },
+            &mut collision,
+            &sight,
+            &mut rng,
+        )
+        .unwrap();
+        point(&mut bytes, shot.direction);
+        let effects = shot
+            .resolve_obstacle(
+                if case % 7 == 0 {
+                    Body::Vehicle
+                } else {
+                    Body::Structure {
+                        material: ((case / 4) % 4) as u8,
+                    }
+                },
+                &mut rng,
+            )
+            .unwrap();
+        bytes.extend_from_slice(&[
+            u8::from(effects.penetrated),
+            u8::from(effects.structure_surface),
+            u8::from(effects.vehicle_hit),
+        ]);
+        bytes.extend_from_slice(&effects.penetration_damage.to_le_bytes());
+        if effects.penetrated {
+            rng.randi();
+        }
+        if let Some(end) = effects.through_end {
+            let from = shot.ray.unwrap().position;
+            let contacts = [ThroughContact {
+                id: 2,
+                team: 1,
+                alive: true,
+                center: from + frontline_core::vector::normalized(end - from),
+            }];
+            let hit = bullet::through_hit(
+                from,
+                end,
+                &contacts,
+                0,
+                shot.damage(),
+                shot.penetration_multiplier(),
+                &mut rng,
+            )
+            .unwrap();
+            bytes.push(u8::from(hit.is_some()));
+            if let Some(hit) = hit {
+                bytes.extend_from_slice(&hit.damage.to_le_bytes());
+                point(&mut bytes, hit.direction);
+                rng.randi();
+            }
+        }
+        if effects.structure_surface || effects.vehicle_hit {
+            rng.randi();
+            shot.set_surface(if effects.vehicle_hit { 3 } else { 5 })
+                .unwrap();
+        }
+        match shot.finish_target(&mut rng).unwrap() {
+            TargetEffect::None => bytes.push(0),
+            TargetEffect::Damage(damage) => {
+                bytes.push(1);
+                bytes.extend_from_slice(&damage.to_le_bytes());
+                rng.randi();
+            }
+            TargetEffect::DownDrone => {
+                bytes.push(2);
+                rng.randi();
+            }
+        }
+        let location = target.map(|_| bullet::TargetLocation {
+            position: Vector3::new(22.4, 0.0, 12.39),
+            center: Vector3::new(22.4, 0.2, 12.39),
+            in_trench: case % 3 == 0,
+        });
+        let explosion = shot.explosion(location, &mut rng).unwrap();
+        bytes.push(u8::from(explosion.is_some()));
+        if let Some(e) = explosion {
+            point(&mut bytes, e.position);
+            bytes.extend_from_slice(&e.damage.to_le_bytes());
+            bytes.extend_from_slice(&e.radius.to_le_bytes());
+        }
+        bytes.extend_from_slice(&[u8::from(shot.hit), shot.impact]);
+        point(&mut bytes, shot.end);
+        for amount in bullet::suppression(
+            shot.muzzle(),
+            shot.end,
+            &[Vector3::new(1.3, 0.0, 1.4), Vector3::new(10.5, 0.0, 7.8)],
+            18.0,
+        )
+        .unwrap()
+        {
+            bytes.extend_from_slice(&amount.to_le_bytes());
+        }
+        bytes.extend_from_slice(&rng.state().to_le_bytes());
+    }
+    golden("bullet", &bytes);
 }
 
 #[test]
