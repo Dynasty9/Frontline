@@ -2445,6 +2445,62 @@ func _auto_grenade_action(best: Soldier, tp: Vector3, d2: float) -> bool:
 
 
 var _queued_throw: Dictionary = {}  # the throw that follows cooking it
+var _arsenal: RefCounted
+
+
+func _native_arsenal() -> bool:
+	return world.settings.get("rust_infantry", false) and ClassDB.class_exists("InfantryArsenalCore")
+
+
+func _arsenal_core() -> RefCounted:
+	if _arsenal == null:
+		_arsenal = ClassDB.instantiate("InfantryArsenalCore")
+	return _arsenal
+
+
+func _arsenal_state() -> Array:
+	return [rockets, rocket_cd, drones_left, drone_cd, mortar_rounds, mortar_cd, melee_cd]
+
+
+func _read_arsenal_state(state: Array) -> void:
+	rockets = int(state[0])
+	rocket_cd = float(state[1])
+	drones_left = int(state[2])
+	drone_cd = float(state[3])
+	mortar_rounds = int(state[4])
+	mortar_cd = float(state[5])
+	melee_cd = float(state[6])
+
+
+func _try_rocket_native() -> bool:
+	var visible := []
+	var reported := []
+	var have_visible := false
+	for e in vis_targets:
+		if e is Vehicle:
+			visible.append([e.eid, e.position, e.position, e.gone, 0.0, PackedInt64Array()])
+			have_visible = have_visible or Defs.flat(e.position - position).length() < 75.0
+	var eye := position
+	if not have_visible and squad:
+		# Ground caching only advances when the existing reported-target path needs it.
+		eye += Vector3(0, 1.6 + _ground(), 0)
+		for k in squad.known.values():
+			var e = k.e
+			if not e is Vehicle:
+				continue
+			var excluded := PackedInt64Array()
+			for rid: RID in get_exclude() + e.get_exclude():
+				if world.combat._rid_entities.has(rid):
+					excluded.append(int(world.combat._rid_entities[rid]))
+			reported.append([e.eid, e.position, e.center_point(), e.gone, world.time - float(k.t), excluded])
+	var forced := []
+	if forced_target is Structure:
+		forced = [forced_target.eid, forced_target.position, forced_target.position, forced_target.gone, 0.0, PackedInt64Array()]
+	var result: Array = _arsenal_core().rocket(_arsenal_state(), [world.time, position, eye, squad != null and squad.ambush], visible, reported, forced, world.combat._collision, world.combat._visibility)
+	assert(result.size() == 2, "Invalid rocket decision")
+	_read_arsenal_state(result[0])
+	var tgt := world.entity(int(result[1]))
+	return _rocket_action(tgt) if tgt != null else false
 
 
 func _try_rocket() -> bool:
@@ -2452,6 +2508,10 @@ func _try_rocket() -> bool:
 		return false
 	if squad and squad.ambush:
 		return false
+	if _native_arsenal() and world.combat._collision and world.combat._visibility:
+		world.combat._sync_collision()
+		if world.combat._collision:
+			return _try_rocket_native()
 	var tgt: Entity = null
 	for e in vis_targets:
 		if e is Vehicle and Defs.flat(e.position - position).length() < 75.0:
@@ -2473,6 +2533,10 @@ func _try_rocket() -> bool:
 		return false
 	rockets -= 1
 	rocket_cd = world.time + 4.5
+	return _rocket_action(tgt)
+
+
+func _rocket_action(tgt: Entity) -> bool:
 	world.stat("rocket")
 	_begin_action("launch", 0.8, {"target": tgt})
 	say("RPG!" if team == 1 else "Rocket out! Backblast clear!", true)
@@ -2482,12 +2546,22 @@ func _try_rocket() -> bool:
 func _try_drone() -> bool:
 	if drones_left <= 0 or world.time < drone_cd or drone_ctrl != null:
 		return false
+	var state: Array = _arsenal_state() if _native_arsenal() else []
 	drone_cd = world.time + 3.0
 	var tgt: Entity = world.rules.fpv_target(team, position, 230.0)
+	if not state.is_empty():
+		var result: Array = _arsenal_core().drone(state, world.time, false, tgt.eid if tgt != null else 0, world.rng._backend)
+		assert(result.size() == 2, "Invalid drone launch decision")
+		_read_arsenal_state(result[0])
+		return _drone_action(tgt) if int(result[1]) != 0 else false
 	if tgt == null:
 		return false
 	drones_left -= 1
 	drone_cd = world.time + world.rng.randf_range(18.0, 26.0)
+	return _drone_action(tgt)
+
+
+func _drone_action(tgt: Entity) -> bool:
 	world.stat("drone_launch")
 	_begin_action("launch_drone", 1.4, {"target": tgt})
 	say("Drone up.", true)
@@ -2497,14 +2571,27 @@ func _try_drone() -> bool:
 func _try_melee() -> bool:
 	if world.time < melee_cd or wdef.is_empty():
 		return false
+	if _native_arsenal():
+		var nearby := []
+		for e: Soldier in world.soldiers_near(position, 1.9):
+			nearby.append([e.eid, e.team, e.life, e.flinging])
+		var result: Array = _arsenal_core().melee(_arsenal_state(), world.time, team, true, nearby)
+		assert(result.size() == 2, "Invalid melee decision")
+		_read_arsenal_state(result[0])
+		var tgt := world.entity(int(result[1]))
+		return _melee_action(tgt) if tgt != null else false
 	for e in world.soldiers_near(position, 1.9):
 		if e.team == team or e.team < 0 or e.life != Life.ALIVE or e.flinging:
 			continue
 		melee_cd = world.time + 1.4
-		world.stat("melee")
-		_begin_action("melee", 0.55, {"target": e})
-		return true
+		return _melee_action(e)
 	return false
+
+
+func _melee_action(tgt: Entity) -> bool:
+	world.stat("melee")
+	_begin_action("melee", 0.55, {"target": tgt})
+	return true
 
 
 func _react_grenade() -> bool:
@@ -4143,6 +4230,8 @@ func _at_post_tick(dt: float, st: Structure) -> void:
 func _try_mortar() -> bool:
 	if mortar_rounds <= 0 or world.time < mortar_cd or is_moving() or squad == null:
 		return false
+	if _native_arsenal():
+		return _try_mortar_native()
 	var tp := Vector3.INF
 	var kind := "he"
 	if not squad.fire_queue.is_empty():
@@ -4161,10 +4250,36 @@ func _try_mortar() -> bool:
 			return false
 	mortar_rounds -= 1
 	mortar_cd = world.time + 3.5
+	return _mortar_action(tp, kind)
+
+
+func _mortar_action(tp: Vector3, kind: String) -> bool:
 	_begin_action("mortar", 1.0, {"pos": tp, "kind": kind})
 	if world.rng.randf() < 0.4:
 		say(_pick(["Rounds out!", "Firing for effect!", "Hang it!"]))
 	return true
+
+
+func _try_mortar_native() -> bool:
+	var state := _arsenal_state()
+	var queued := not squad.fire_queue.is_empty()
+	var tp := Vector3.INF
+	var kind := "he"
+	if queued:
+		var fm: Array = squad.fire_queue.pop_front()
+		tp = fm[0]
+		kind = fm[1]
+	else:
+		mortar_cd = world.time + 2.0
+		tp = world.rules.mortar_target(team, position, 30.0, 130.0)
+	var result: Array = _arsenal_core().mortar(state, world.time, position, false, true, queued, tp if tp != Vector3.INF else null)
+	assert(result.size() == 2, "Invalid mortar decision")
+	_read_arsenal_state(result[0])
+	if int(result[1]) == 1:
+		squad.fire_queue.clear()
+		say("Target's out of range!", true)
+		return false
+	return _mortar_action(tp, kind) if int(result[1]) == 2 else false
 
 
 ## Incoming mortar rounds whistle: duck, or dive if it's landing right here.

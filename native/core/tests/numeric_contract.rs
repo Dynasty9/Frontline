@@ -36,6 +36,130 @@ fn block(out: &mut Vec<u8>, bytes: &[u8]) {
 }
 
 #[test]
+fn infantry_special_attacks_are_identical_across_platforms() {
+    use frontline_core::infantry_arsenal::{
+        InfantryArsenal, MeleeContact, MortarDecision, MortarTarget, RocketContact, RocketInput,
+    };
+    let mut bytes = Vec::new();
+    let mut collision = CollisionWorld::default();
+    collision.replace(
+        100,
+        &[BoxShape {
+            body: 100,
+            shape: 0,
+            center: Vector3::new(15.0, 1.6, 0.0),
+            basis: Mat3::IDENTITY,
+            half: Vector3::ONE,
+        }],
+    );
+    let mut visibility = Visibility::default();
+    visibility.set_projectile(
+        101,
+        Smoke {
+            center: Vector3::new(10.0, 1.6, 20.0),
+            radius: 3.0,
+        },
+    );
+    for case in 0..256 {
+        let mut rng = SimulationRandom::new(case + 691);
+        let mut state = InfantryArsenal {
+            rockets: (case % 4) as i32,
+            drones: (case % 3) as i32,
+            mortar_rounds: (case % 5) as i32,
+            rocket_ready: (case % 17) as f64,
+            drone_ready: (case % 19) as f64,
+            mortar_ready: (case % 7) as f64,
+            melee_ready: (case % 13) as f64,
+        };
+        for step in 0..6 {
+            let now = 10.0 + step as f64 * 5.0;
+            let contacts: Vec<_> = (1..7)
+                .map(|id| RocketContact {
+                    id,
+                    position: Vector3::new(
+                        [20.0, 60.0, 69.99, 70.0, 74.99, 75.0][(case + id + step) as usize % 6],
+                        0.0,
+                        ((case + id) % 3) as f32 * 10.0,
+                    ),
+                    center: Vector3::new(50.0, 1.6, ((case + id) % 3) as f32 * 10.0),
+                    gone: (case + id) % 11 == 0,
+                    age: ((case + id) % 8) as f64,
+                    excluded: if case % 3 == 0 { vec![100] } else { vec![] },
+                })
+                .collect();
+            let visible = if case % 3 == 0 { &contacts[..2] } else { &[] };
+            let rocket = state
+                .rocket(
+                    RocketInput {
+                        time: now,
+                        position: Vector3::ZERO,
+                        eye: Vector3::new(0.0, 1.6, 0.0),
+                        ambush: case % 7 == 0,
+                        visible,
+                        reported: &contacts[2..],
+                        forced: (case % 5 == 0).then(|| contacts[0].clone()),
+                    },
+                    &mut collision,
+                    &visibility,
+                )
+                .unwrap();
+            bytes.extend_from_slice(&rocket.unwrap_or(0).to_le_bytes());
+            let melee: Vec<_> = (1..7)
+                .map(|id| MeleeContact {
+                    id,
+                    team: ((case + id) % 3) as i32 - 1,
+                    life: if (case + id) % 4 == 0 {
+                        Life::Downed
+                    } else {
+                        Life::Alive
+                    },
+                    flinging: (case + id) % 5 == 0,
+                })
+                .collect();
+            bytes.extend_from_slice(
+                &state
+                    .melee(now, 0, case % 11 != 0, &melee)
+                    .unwrap()
+                    .unwrap_or(0)
+                    .to_le_bytes(),
+            );
+            bytes.extend_from_slice(
+                &state
+                    .drone(now, case % 13 == 0, (case % 5 != 0).then_some(2), &mut rng)
+                    .unwrap()
+                    .unwrap_or(0)
+                    .to_le_bytes(),
+            );
+            let p = Vector3::new(
+                [24.99, 25.0, 80.0, 140.0, 140.01][case as usize % 5],
+                20.0,
+                0.0,
+            );
+            let target = if case % 2 == 0 {
+                MortarTarget::Queued(p)
+            } else {
+                MortarTarget::Automatic((case % 3 != 0).then_some(p))
+            };
+            let result = state
+                .mortar(now, Vector3::ZERO, case % 17 == 0, case % 19 != 0, target)
+                .unwrap();
+            bytes.push(match result {
+                MortarDecision::Wait => 0,
+                MortarDecision::CancelQueue => 1,
+                MortarDecision::Fire(_) => 2,
+            });
+            if let MortarDecision::Fire(p) = result {
+                point(&mut bytes, p);
+            }
+            block(&mut bytes, &state.checkpoint());
+            bytes.extend_from_slice(&rng.state().to_le_bytes());
+            state = InfantryArsenal::restore(&state.checkpoint()).unwrap();
+        }
+    }
+    golden("infantry_arsenal", &bytes);
+}
+
+#[test]
 fn drone_reactions_are_identical_across_platforms() {
     use frontline_core::drone_reaction::{Drone, DroneMemory};
     let mut bytes = Vec::new();

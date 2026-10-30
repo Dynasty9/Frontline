@@ -42,6 +42,7 @@ graphics, network access or a wall clock.
 | Automatic grenade attacks | `frontline_core` | Contact scores, range/posture gates, throw scatter, ammunition and cooldowns extracted; Godot still supplies squad contacts and nearby groups and applies the throw/cook actions |
 | Incoming mortars and busy-soldier grenade notices | `frontline_core` | Ordered warning, range/fuse gates, memory and dive decisions extracted; Godot applies warning, suppression, duck and dive effects |
 | Drone hearing and avoidance | `frontline_core` | Ordered hearing memory, warning choices and dive chances extracted with component checkpoints; Godot applies speech and dive effects |
+| Infantry special attacks | `frontline_core` | Rocket and melee priority, mortar fire admission, drone launch decisions, ammunition and cooldowns extracted; Godot supplies contacts, mortar/drone target queries and applies actions |
 | House-entry task phases | `frontline_core` | Stack/door/grenade/entry transitions, deadlines, cooking and room targets extracted with component checkpoints; Godot still owns movement callbacks and squad entry effects |
 | House occupancy and breach selection | `frontline_core` | Floor containment, ordered openings, nearest walkable stack positions and competing squadmates extracted; Godot still supplies spatial candidates, squad contacts and decision timers |
 | Injury behavior and special tasks | Rust | `soldier.gd`, `soldier_brain.gd`, `combat.gd` |
@@ -207,14 +208,14 @@ Component checkpoint headers contain a four-byte component tag, a little-endian
 rules rather than silently continuing with changed arithmetic. The separate
 integer RNG stream remains unchanged.
 
-`native/core/tests/numeric_contract.rs` compares 1,005,643 committed bytes without
+`native/core/tests/numeric_contract.rs` compares 1,145,695 committed bytes without
 tolerances: fixed-tick flight state, support events and RNG cursors, carved water,
 craters, rotated box hits, cover anchors, spherical interpolation and infantry
 movement, infantry cover fire, postures, ammunition, burst recovery, vitals, aiming,
 combat poses, bullet resolution, blast exposure, knockback recovery and wounded
 infantry schedules, grenade reflexes, grenade task movement and house-entry
 phases, building selection, automatic grenade attacks, incoming shells and drone
-reactions. CI runs
+reactions and special attacks. CI runs
 the same fixtures in debug and release on Windows x64, Linux
 x64, Linux ARM64 and macOS ARM64. A mismatch reports the first different byte.
 These fixtures guard the covered trajectories; they are not a proof for all
@@ -430,9 +431,23 @@ flag until Rust owns the actors.
 
 The shock fixture compares 92,160 reference steps, including mounted turning,
 blocked terrain, carried casualties and task interruption. The full default suite
-passes 125 tests; 141 core tests pass in debug and release.
+passes 126 tests; 148 core tests pass in debug and release.
 
 ## Grenade and drone reflexes
+
+`InfantryArsenal` retains rocket, drone and mortar ammunition and their cooldowns,
+plus melee recovery. Rocket targeting preserves visible-vehicle priority,
+reported vehicle age/range gates, native collision/smoke checks and forced
+structure fallback. Melee retains the world's ordered nearby-soldier query.
+Mortars preserve queued fire missions, queue cancellation outside 25–140 m,
+automatic search delays and firing intervals. Drone launches retain their
+controller gate, search delay and randomized recovery. The test adapter still
+asks Godot rules for mortar/drone targets and applies the existing action effects;
+this is not complete infantry ownership. `FLAR` checkpoints contain ammunition
+and cooldowns. Numeric CI adds 140,052 exact transcript bytes.
+The 32,768-decision reference fixture checks targets, cover, smoke, inventory,
+cooldowns, queue consumption, action effects and their random cursors. It also
+checks the ground-cache update and the state visible to target-query callbacks.
 
 Drone hearing and avoidance also run in the core. `DroneMemory` preserves hearing
 order, its 17-entry eviction rule, altitude-aware distance, warning choices and

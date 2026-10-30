@@ -13,6 +13,7 @@ mod grenade_reaction;
 mod guided_flight;
 mod hierarchy;
 mod infantry_aim;
+mod infantry_arsenal;
 mod infantry_motion;
 mod infantry_pose;
 mod infantry_shock;
