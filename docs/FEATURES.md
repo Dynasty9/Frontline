@@ -673,8 +673,8 @@ catalogue entry in `MissionList.LIST`, a setup function and an autopilot functio
   the same in all of them. It changes live: the interface recolours at once and the map's colours flow into the
   new ones over a second or so.
 - **Signal** ([UI.md](UI.md)): the interface is a battle management display laid onto the scene. The HUD sits
-  on the battlefield over scrims that darken toward the screen's edges, with no boxes: 1 px rules under rows and
-  corner ticks where a region needs marking, everything square. Names and labels are condensed capitals, every
+  on flat translucent surfaces at the screen's edges, with fine rules and open edges like the menus.
+  Status and observer controls sit on soft edge shading. Names and labels are condensed capitals, every
   figure and code is mono (`SUP 2115 +230/M`, `PINNED · TO SPT D4`, `T+04:31`, `RDY`), and prose is kept for
   sentences. One accent colour marks what's selected, active or primary. Short choices in the settings are rows
   of segments, amounts are counted bars, keys are drawn as key boxes. Things cut, type on, count or flicker
@@ -1132,10 +1132,25 @@ catalogue entry in `MissionList.LIST`, a setup function and an autopilot functio
   drifting cloud over the target. Smoke is shaded like a volume (sun, sky, self-shadowing) and fades
   softly where it meets the ground. Burning wrecks burn, then smoulder (see Fire). Smoke screens are real volumetric fog when
   volumetric fog is on. All effect shaders are compiled during loading, so the first explosion doesn't hitch.
-- A minimal HUD: the status line along the top, the order of battle and the ready fire missions down the left,
-  the latest radio lines top right, a terrain minimap, and the selection and its orders along the bottom only when
-  something is selected. Zoom in and every soldier shows what he's doing ("Bandaging Doyle",
-  "Pinned down", "Manning the .50 Cal Nest", "Dragging Hakim to safety"); hover one for a small card.
+- A fixed minimap stays at the bottom left. **Units / Support / Layers** opens tools without moving or
+  hiding it. Units and Support use a separate workspace on the right; Events yields temporarily.
+  Search focuses immediately and accepts callsigns, full role names and vehicles. Arrow keys browse results;
+  a click selects without moving the camera. Enter, double-click or Focus selected returns to the battle
+  focused on that unit, with orders available. Escape closes the workspace before clearing selection.
+  Infantry, Vehicles and Attention filters narrow large rosters. Support shows costs, cooldowns and
+  insufficient-supply states; choosing a strike closes the workspace for targeting. Observers get demos.
+  The upper-right Events stream minimizes independently, preserving full history and counting new arrivals.
+  Flat ink surfaces, Signal typography and two-line roster rows keep the hierarchy consistent.
+  Single-unit panels fit their content; a compact unboxed hint replaces the empty-selection banner.
+  Selected soldiers and vehicles have portraits rendered from their actual models. Orders form a stable
+  three-column grid with pictograms and bound-key hints. Base is the highlighted first command (`C`);
+  every order has a rebindable shortcut. Construction, training, research and tunnel destinations use
+  nine-slot pages (`Alt+1–9`, `[` / `]` to change page, `\` to return), preserving ordinary control groups.
+  Supply costs stay visible below each action. Military coordinate rails label the fixed map’s actual
+  A–H / 01–08 grid, with cell size and north/track orientation. Narrow layouts omit the portrait and compact
+  task headings so roster rows remain visible. The observer's director caption stays above the deck.
+  The HUD is composed from the reusable [command deck component library](UI_COMPONENTS.md), with an interactive
+  `--deck-gallery` workbench for checking shared controls, themes and responsive layouts without a battle.
 - The main menu sits over a live 3D scene: a .50 cal crew at golden hour with a burning wreck and shelling on the horizon.
 
 **Field Manual** (`ui/field_manual.gd`; main menu, Esc menu or F4): every soldier, squad, weapon, vehicle, building,

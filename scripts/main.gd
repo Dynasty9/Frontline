@@ -160,11 +160,11 @@ func _ready() -> void:
 			pt.run()
 		TestRun.quit(get_tree())
 		return
-	if args.has("ui-gallery"):
+	if args.has("ui-gallery") or args.has("deck-gallery"):
 		# every interface component in each of its states, saved as an image (docs/UI.md)
 		var gl := CanvasLayer.new()
 		add_child(gl)
-		var gal: Control = preload("res://scripts/test/ui_gallery.gd").new()
+		var gal: Control = preload("res://scripts/test/deck_gallery.gd").new() if args.has("deck-gallery") else preload("res://scripts/test/ui_gallery.gd").new()
 		gal.set("args", args)
 		gl.add_child(gal)
 		return
@@ -1303,21 +1303,38 @@ func _process(_dt: float) -> void:
 			if s.owner_peer == world.local_peer and s.sid != 0:
 				world.input.sel_squads.append(s.sid)
 				break
+	# Capture a construction page through its real command shortcut callback.
+	if args.has("hud-orders") and world.hud and world.time > 2.5 and not has_meta("hud_orders"):
+		set_meta("hud_orders", true)
+		world.hud._update_card()
+		world.hud.activate_card_action("build_base" if String(args["hud-orders"]) == "base" else "build_defenses")
 	if args.has("nohud") and world.hud and world.hud.root.visible:
 		world.hud.root.visible = false
 	if args.has("tactical") and world.hud and not world.hud.tactical and not has_meta("tac"):
 		set_meta("tac", true)
 		world.hud.toggle_tactical()
+	if args.has("events-collapsed") and world.hud and world.time > 1.0 and not has_meta("events_collapsed"):
+		set_meta("events_collapsed", true)
+		world.hud.toggle_events()
+	# Reproduce the search -> Enter -> focus flow in off-screen UX captures.
+	if args.has("hud-focus-at") and world.hud and world.time > float(args["hud-focus-at"]) and not has_meta("hud_focused"):
+		set_meta("hud_focused", true)
+		world.hud.orbat.activate_cursor()
 	# --coop-watch[=N]: watch the Nth --coop-demo commander's view live
 	if args.has("coop-watch") and world.cam and world.time > 1.0 and not has_meta("coop_watched"):
 		var wid := 9001 + int(args["coop-watch"])
 		if world.coop.peers.has(wid):
 			set_meta("coop_watched", true)
 			world.cam.toggle_shadow(wid)
-	# --hud-panel=settings|help|menu|log|over: open one of the battle's panels (layout
+	# --hud-panel=battle|squads|map|fires|settings|help|menu|log|over: open one of the battle's panels (layout
 	# checks; "over" is the end of the battle, won by your side)
 	if args.has("hud-panel") and world.hud and world.time > 1.0 and not has_meta("hud_panel"):
 		set_meta("hud_panel", true)
+		if String(args["hud-panel"]) in ["battle", "squads", "map", "fires"]:
+			world.hud.set_workspace(String(args["hud-panel"]))
+			if args.has("hud-query"):
+				world.hud.squad_search.text = String(args["hud-query"])
+				world.hud.squad_search.text_changed.emit(String(args["hud-query"]))
 		if String(args["hud-panel"]) == "over":
 			world.hud.show_game_over(maxi(world.local_team, 0))
 		var hp: Control = {"settings": world.hud.settings_panel, "help": world.hud.help_panel, "menu": world.hud.menu_panel, "log": world.hud.log_panel}.get(String(args["hud-panel"]))

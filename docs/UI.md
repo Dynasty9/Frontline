@@ -11,10 +11,10 @@ one screen (over a battle scene, if you give it one) and quits.
 
 1. **Signal over noise.** Show what helps a decision now; cut the rest. A panel that's empty says nothing rather
    than drawing a box around nothing.
-2. **Data on the scene.** Lists and readouts sit on the battlefield over an edge scrim, not in boxed panels. A
-   dialog or a sheet is flat ink.
-3. **Lines, not frames.** A 1 px rule under a row or beside a header; four corner ticks to mark a region. Everything
-   is square: no rounded corners, no shadows, no bevels.
+2. **Share the menus’ visual language.** Flat ink, open edges and fine rules group actionable controls.
+   Status, observer controls and lightweight guidance sit directly on the scene over soft edge shading.
+3. **Restrained edges.** Use 1 px rules within a panel. Avoid enclosing every control: no cut corners,
+   perimeter outlines, bevels or decorative glow. Accent marks a state, not a frame.
 4. **Two voices.** Condensed capitals for labels and names; mono for figures and codes. Prose only for sentences.
 5. **Concise.** Codes, not phrases: `MOV D8`, `PINNED · DEF E4`, `SUP 615 +174/M`, `T+04:31`, `RDY`, `261S`.
 6. **One signal colour.** The accent means selected, active, primary or live, and nothing else. The colours that
@@ -76,16 +76,38 @@ The HUD's states, as the ORBAT and the selection show them:
 
 ## Layout
 
-The battle keeps the middle of the screen for the battle. Everything else sits on an edge, over a scrim that
-darkens toward that edge (`UiScrim`), so it reads over any ground without a box:
+The battle keeps the middle of the screen for the battle. The command deck uses the menus’ flat ink, type
+and semantic colours. Quiet translucent surfaces support the map, selection and actions; status and
+observation controls sit on edge shading. No beveled or outlined housings compete with the terrain:
 
 - **Top** (the **Status** line): the side, `SUP` and its rate, `UNITS`, `FOB`, `TOWNS`, and the clock. A line under
   it for each FOB says what its trucks are doing.
-- **Left**: the ORBAT (one ruled line per squad and vehicle) and under it FIRES (the ready missions; the rest
-  folded into one line). The minimap and its tool column at the bottom.
-- **Bottom**: the selection (the squad's name, its codes, the plan's stages, a cell per man) and the orders as keys.
-  The bottom scrim only darkens while there's something selected.
-- **Right**: the **Log** and the mission's objectives; in co-op the command net.
+- **Left**: the minimap is a fixed navigation anchor. Opening tools never hides, moves or resizes it.
+  A 32 px strip with uniform 20 px icon slots and optically centered icon/label groups opens **Units**, **Support** or **Layers**. Layers reveals switches beside the map. Coordinate rails place A–H / 01–08 outside the terrain; the caption states cell size and north/track orientation.
+- **Right**: Units and Support open a task workspace on the opposite edge, with enough height to scan a
+  roster or compare support. It sits below objectives and above the contextual command card. On short
+  viewports, objectives and the command net yield temporarily to keep the task controls clear of orders. The recent
+  Events stream yields while a task is open and returns with its previous minimized state when it closes.
+  Units focuses search on opening; search accepts callsigns, role names and vehicle names. Arrow keys browse
+  the full result list and scroll the active row into view. Click selects without moving the camera;
+  Shift-click adds. Enter, double-click or **Focus selected** focuses the unit and closes the workspace.
+  Two-line 40 px rows use 14 px names and 11 px status codes; long vehicle names truncate before the health
+  readout. A fine accent rule marks the active filter, and support demo states use neutral text.
+  Support explains availability and supply requirements; choosing a strike closes the workspace so its target
+  can be placed on the battlefield. Observer actions are clearly labelled demos.
+- **Bottom**: the selected unit's actual model appears in a lit portrait beside its name, strength, condition and
+  members. The portrait renders only when its model or size changes and yields on narrow layouts. Orders use
+  a stable three-column grid of pictograms, names and bound-key hints; the active targeting order lights up.
+  A single-unit selection panel is capped at 520 logical pixels and sizes to its content rather than
+  matching the height of the orders. Selection and orders remain available while comparing units. Empty
+  selection shows a compact, unboxed hint that does not intercept battlefield clicks. Escape cancels targeting, then closes tools before clearing selection.
+- **Observer**: the same flat treatment and type hierarchy serve balance-of-forces, camera controls and inspection.
+  The director caption sits above the deck. Observer support actions are labelled demos; command orders stay
+  exclusive to commanders. At large interface scales, task headings compress to keep real roster rows visible.
+
+Normal battlefield views show selected squad plans; tactical views reveal other plans through the Orders
+layer. Unit symbols and plan labels yield to occupied HUD areas. The map never becomes a tab or disappears
+when tools open. Upper-right Events minimizes to a compact control with an unread count, preserving history.
 
 Menus put the title and the entries on the left over the living map, panels in the middle, the account on the
 right. Dialogs stay inside the scaled viewport: long content scrolls, and keyboard focus brings its action into
@@ -96,7 +118,15 @@ and direct-connect controls wrap rather than pushing actions off the right edge.
 
 `UiScrim` is the ink fading in from an edge of the screen: darkest at the edge, nothing a set distance in, and
 fading out along the edge past the part it serves. There's one per edge, behind every HUD part on that edge, never
-one per part; the bottom one darkens only while something is selected.
+one per part. In battle, the top scrim supports status and observer controls, while the bottom stays light. The fixed
+map and actionable panels supply their own contrast; do not extend their surfaces across empty space.
+
+## Command deck
+
+The [component library and workbench](UI_COMPONENTS.md) defines reusable surfaces, semantic icons, navigation,
+keycaps, action tiles, bounded command grids, empty states and model previews. The HUD composes these same
+controls; it supplies gameplay state and callbacks rather than duplicating styling. `UiKit` still owns the
+palette and typography. Run `--deck-gallery` to inspect and exercise the production components without a battle.
 
 ## Panels
 
@@ -121,8 +151,9 @@ an optional count in mono, and a rule running on to the end of the column.
 ## Keys
 
 A key is its name in mono in a square hairline of `RULE2` (`UiKit.key`, `Hud._key_box`), filled with the accent
-when it's the order being given. The orders card is a grid of keyed rows: `[X] ATTACK-MOVE`, `[B] DEFEND`; the ones
-that fall back are in `BAD`.
+when it's the order being given. Battle shortcuts use a quiet tint at rest and fill with the accent while active or primary; focus gets a clear
+outline. The orders card is a grid of keyed actions: `[X] ATTACK-MOVE`, `[B] DEFEND`; the ones
+that fall back are in `BAD`. Base is the primary first action (`C`), followed by field orders. Every action has a rebindable shortcut, including construction, training, research and tunnels. Dynamic pages use `Alt+1–9`; `[` / `]` changes pages and `\` returns. Escape cancels targeting, closes tools, then returns to the main orders before clearing selection. Supply costs remain below the caption, separate from the key.
 
 ## Options
 
@@ -141,17 +172,22 @@ accent, or in a meaning colour when the amount means something (health). A slide
 
 ## Log
 
-The newest messages stay top right on the scrim, a line each: the time in mono, who it's from in capitals, what it
+Up to three recent messages stay top right on the scrim, a line each: the time in mono, who it's from in capitals, what it
 says in prose. They come in three levels:
 
 - a **notice** is just a line;
 - a **caution** (`▲ CAUTION`) is ruled off above and below in `WARN` and flickers on once;
 - a **warning** (`▲ WARNING`) is ruled off in `BAD` and flickers on twice.
 
-The message history (L by default) opens in their place on a lighter ink.
+The **Events −** control minimizes the stream to **Events +**, with a count of new arrivals. Messages
+continue entering history while minimized. Expanding clears the new-arrival count. The message history
+(L by default) opens in their place on a lighter ink and also reopens a minimized stream. Minimizing
+closes history too. The event control stays below objectives and the command net.
 
 ## Marks on the battlefield
 
+In Battle view, routine soldier names, activity icons and speech belong to selected troops. Suppression
+warnings, squad symbols and hover inspection remain available; the other tasks retain the detailed overlays.
 Names over bases and towns are capitals with the world-text outline and a small square in the owner's colour, no
 box; a selected vehicle wears accent corner ticks; hover cards are ink with ticks and counted health and ammunition;
 order tags, grid letters and how long ago an enemy was seen are mono; a cursor hint says what the click will do in

@@ -2646,6 +2646,280 @@
         }
       ],
       "output": null
+    },
+    {
+      "entry": "changelog/unreleased/commander-workspaces.md",
+      "summary": "A cleaner battle interface with compact unit details, illustrated orders, a fixed tactical map and focused tools for managing large battles.",
+      "medium": "still",
+      "stage": "native-media",
+      "rationale": "Rendered battle states show fixed military grid navigation, aligned tools and contextual orders. The construction capture demonstrates separate shortcuts and supply costs; commander, observer and task states show their hierarchy in play.",
+      "source_ref": "56fe0ae0617f209ceb493457b5978cba21c48a2d; original HUD archived in 9212dee; previous framed HUD at 4bcd477",
+      "sources": [
+        {
+          "file": "changelog/unreleased/commander-workspaces/after.jpg",
+          "sha256": "c03460443d68b1615b0830c1f12f9c27492b85e29e7717926062c24b2540230b",
+          "caption": "Find a squad, press Enter, and return to the battle focused and ready to command."
+        },
+        {
+          "file": "changelog/unreleased/commander-workspaces/before.jpg",
+          "sha256": "10660d643ce6bde684b9a9e35aeb7f6dd9ebbf1510e4125dc38d0f9b100db2b9",
+          "caption": "Before: the roster and minimap share the battlefield edge."
+        },
+        {
+          "file": "changelog/unreleased/commander-workspaces/base.jpg",
+          "sha256": "2a5f6d5c707f280128c6f1511077db87a3659edf101e5e3abc7820ff1b16756c",
+          "caption": "Base is one key away. Construction keeps supply costs separate from shortcuts."
+        },
+        {
+          "file": "changelog/unreleased/commander-workspaces/observer.jpg",
+          "sha256": "a5157757d356c3833d16589ae45e697af19c936f34da4c54ea6dfb96111c8955",
+          "caption": "Observe a large battle with fixed navigation and separate camera controls."
+        },
+        {
+          "file": "changelog/unreleased/commander-workspaces/map.jpg",
+          "sha256": "4f42e2a2cec5fb6ea59bbf3cecb5f75ffcf7faf34d04bd54115cd3e13c930623",
+          "caption": "Layers: overlay controls beside the fixed minimap."
+        },
+        {
+          "file": "changelog/unreleased/commander-workspaces/squads.jpg",
+          "sha256": "f9111f55fb1101b111816c75b47dc59f8467c9a6d88ad8c8f21afcb439227dbc",
+          "caption": "The right-side unit workspace keeps the fixed map and center battlefield clear."
+        },
+        {
+          "file": "changelog/unreleased/commander-workspaces/search.jpg",
+          "sha256": "ebf371d8674e8e1fde041f1a0dcffea437a9d60a49699576afd5ecb4f70ac43c",
+          "caption": "Search focuses immediately; arrow keys browse and Enter focuses the highlighted result."
+        },
+        {
+          "file": "changelog/unreleased/commander-workspaces/support.jpg",
+          "sha256": "ec44e294e65e7c24805443534b661db3df52afae06704ce7871fb1a2fef9b526",
+          "caption": "Support: artillery and air strikes, clearly marked as free demos for spectators."
+        },
+        {
+          "file": "changelog/unreleased/commander-workspaces/previous-deck.jpg",
+          "sha256": "85ebf403d8b9c03952e87e06dc80b27109c8f1a86b098f6bbfbf55c725b9671a",
+          "caption": "Previous framed HUD at 4bcd477"
+        },
+        {
+          "file": "docs/images/command-deck-components.jpg",
+          "sha256": "cffe3ff1eb9415fce7c5fcf73c7e4c8ee1f1ea088c636474ede1f1a16fb9dc8c",
+          "caption": "Shared command deck components at 56fe0ae"
+        }
+      ],
+      "output": null,
+      "captures": [
+        {
+          "asset": "changelog/unreleased/commander-workspaces/after.jpg",
+          "medium": "still",
+          "stage": "Godot scenario/UI capture",
+          "source_ref": "56fe0ae0617f209ceb493457b5978cba21c48a2d",
+          "renderer": "Forward+",
+          "resolution": [
+            1600,
+            900
+          ],
+          "arguments": [
+            "--offscreen",
+            "--seed=3",
+            "--perf=0",
+            "--shot-at=4",
+            "--quit-after=5",
+            "--scenario=attack",
+            "--play",
+            "--hud-panel=squads",
+            "--hud-query=charlie",
+            "--hud-focus-at=2",
+            "--events-collapsed"
+          ],
+          "evidence": "Rendered game UI, visually inspected at full size.",
+          "reviewed": true
+        },
+        {
+          "asset": "changelog/unreleased/commander-workspaces/base.jpg",
+          "medium": "still",
+          "stage": "Godot scenario/UI capture",
+          "source_ref": "56fe0ae0617f209ceb493457b5978cba21c48a2d",
+          "renderer": "Forward+",
+          "resolution": [
+            1600,
+            900
+          ],
+          "arguments": [
+            "--offscreen",
+            "--seed=3",
+            "--perf=0",
+            "--shot-at=4",
+            "--quit-after=5",
+            "--scenario=attack",
+            "--play",
+            "--select-first",
+            "--hud-orders=base",
+            "--events-collapsed"
+          ],
+          "evidence": "Rendered game UI, visually inspected at full size.",
+          "reviewed": true
+        },
+        {
+          "asset": "changelog/unreleased/commander-workspaces/observer.jpg",
+          "medium": "still",
+          "stage": "Godot scenario/UI capture",
+          "source_ref": "56fe0ae0617f209ceb493457b5978cba21c48a2d",
+          "renderer": "Compatibility",
+          "resolution": [
+            1600,
+            900
+          ],
+          "arguments": [
+            "--offscreen",
+            "--seed=3",
+            "--perf=0",
+            "--shot-at=4",
+            "--quit-after=5",
+            "--scenario=stress",
+            "--units=180",
+            "--vehicles=8",
+            "--scenery=100",
+            "--focus=0,0",
+            "--zoom=160",
+            "--events-collapsed"
+          ],
+          "evidence": "Rendered game UI, visually inspected at full size.",
+          "reviewed": true
+        },
+        {
+          "asset": "changelog/unreleased/commander-workspaces/search.jpg",
+          "medium": "still",
+          "stage": "Godot scenario/UI capture",
+          "source_ref": "56fe0ae0617f209ceb493457b5978cba21c48a2d",
+          "renderer": "Forward+",
+          "resolution": [
+            1600,
+            900
+          ],
+          "arguments": [
+            "--offscreen",
+            "--seed=3",
+            "--perf=0",
+            "--shot-at=4",
+            "--quit-after=5",
+            "--scenario=attack",
+            "--play",
+            "--hud-panel=squads",
+            "--hud-query=charlie",
+            "--events-collapsed"
+          ],
+          "evidence": "Rendered game UI, visually inspected at full size.",
+          "reviewed": true
+        },
+        {
+          "asset": "changelog/unreleased/commander-workspaces/squads.jpg",
+          "medium": "still",
+          "stage": "Godot scenario/UI capture",
+          "source_ref": "56fe0ae0617f209ceb493457b5978cba21c48a2d",
+          "renderer": "Compatibility",
+          "resolution": [
+            1600,
+            900
+          ],
+          "arguments": [
+            "--offscreen",
+            "--seed=3",
+            "--perf=0",
+            "--shot-at=4",
+            "--quit-after=5",
+            "--scenario=stress",
+            "--units=180",
+            "--vehicles=8",
+            "--scenery=100",
+            "--focus=0,0",
+            "--zoom=160",
+            "--hud-panel=squads"
+          ],
+          "evidence": "Rendered game UI, visually inspected at full size.",
+          "reviewed": true
+        },
+        {
+          "asset": "changelog/unreleased/commander-workspaces/support.jpg",
+          "medium": "still",
+          "stage": "Godot scenario/UI capture",
+          "source_ref": "56fe0ae0617f209ceb493457b5978cba21c48a2d",
+          "renderer": "Compatibility",
+          "resolution": [
+            1600,
+            900
+          ],
+          "arguments": [
+            "--offscreen",
+            "--seed=3",
+            "--perf=0",
+            "--shot-at=4",
+            "--quit-after=5",
+            "--scenario=stress",
+            "--units=180",
+            "--vehicles=8",
+            "--scenery=100",
+            "--focus=0,0",
+            "--zoom=160",
+            "--hud-panel=fires"
+          ],
+          "evidence": "Rendered game UI, visually inspected at full size.",
+          "reviewed": true
+        },
+        {
+          "asset": "changelog/unreleased/commander-workspaces/map.jpg",
+          "medium": "still",
+          "stage": "Godot scenario/UI capture",
+          "source_ref": "56fe0ae0617f209ceb493457b5978cba21c48a2d",
+          "renderer": "Compatibility",
+          "resolution": [
+            1600,
+            900
+          ],
+          "arguments": [
+            "--offscreen",
+            "--seed=3",
+            "--perf=0",
+            "--shot-at=4",
+            "--quit-after=5",
+            "--scenario=stress",
+            "--units=180",
+            "--vehicles=8",
+            "--scenery=100",
+            "--focus=0,0",
+            "--zoom=160",
+            "--hud-panel=map",
+            "--events-collapsed"
+          ],
+          "evidence": "Rendered game UI, visually inspected at full size.",
+          "reviewed": true
+        },
+        {
+          "asset": "changelog/unreleased/commander-workspaces/previous-deck.jpg",
+          "medium": "still",
+          "stage": "Godot scenario/UI capture",
+          "source_ref": "4bcd477f15b77470b47f30efac42687f1d6a24ee",
+          "renderer": "Forward+",
+          "resolution": [
+            1600,
+            900
+          ],
+          "arguments": [
+            "--offscreen",
+            "--seed=3",
+            "--perf=0",
+            "--shot-at=4",
+            "--quit-after=5",
+            "--scenario=attack",
+            "--play",
+            "--hud-panel=squads",
+            "--hud-query=charlie",
+            "--hud-focus-at=2",
+            "--events-collapsed"
+          ],
+          "evidence": "Archived previous deck capture; same scenario, seed and UI focus sequence. Live simulation timing can vary slightly.",
+          "reviewed": true
+        }
+      ]
     }
   ],
   "layout_capture": {

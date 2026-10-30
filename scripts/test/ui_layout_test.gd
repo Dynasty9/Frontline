@@ -236,6 +236,197 @@ func _run() -> void:
 	await get_tree().create_timer(0.3).timeout
 	_check("delayed arrival becomes visible after its delay", stagger_row.modulate.a == 1.0)
 	menu.free()
+	# Task switching must release battlefield space and preserve the selection.
+	hud.orbat = HudOrbat.new()
+	hud.orbat.hud = hud
+	hud.minimap = HudMinimap.new()
+	hud.minimap_panel = PanelContainer.new()
+	hud.layers_ui = HudLayers.new()
+	hud.support_box = VBoxContainer.new()
+	hud.chat_edit = LineEdit.new()
+	hud.tint = ColorRect.new()
+	hud._build_workspaces()
+	_check("battle keeps map visible with tools closed", not hud.orbat.visible and hud.minimap_panel.visible and not hud.support_box.visible)
+	hud.toggle_orbat()
+	_check("roster shortcut opens squad search", hud.orbat.visible and hud.squad_search.visible)
+	hud.squad_search.text = "Charlie"
+	hud.squad_search.text_changed.emit("Charlie")
+	_check("typing filters the roster", hud.orbat.query == "charlie")
+	hud.orbat.set_query("  medic  ")
+	hud.orbat.set_filter("infantry")
+	_check("search and category combine", hud.orbat.matches_unit("charlie medic", "infantry", false) and not hud.orbat.matches_unit("medic carrier", "vehicles", false))
+	hud.orbat.set_query("medic charlie")
+	_check("search terms match in either order", hud.orbat.matches_unit("Charlie 1 rifle squad medic", "infantry", false))
+	hud.orbat.set_query("")
+	hud.orbat.set_filter("attention")
+	_check("attention filters healthy units", hud.orbat.matches_unit("charlie", "infantry", true) and not hud.orbat.matches_unit("alpha", "infantry", false))
+	hud.orbat.set_filter("all")
+	_check("closing drawer preserves the map", hud.drawer_frame.visible and hud.roster_filters.visible)
+	hud.drawer_close.pressed.emit()
+	_check("drawer close returns to observation", not hud.drawer_frame.visible and hud.minimap_panel.visible)
+	_check("normal battle shows only selected plans", hud.show_order_for(true) and not hud.show_order_for(false))
+	for viewport_size in [Vector2(1422, 800), Vector2(960, 640), Vector2(960, 540)]:
+		stage.size = viewport_size
+		hud.set_workspace("squads")
+		hud._layout_workspace()
+		_check("command station fits %s" % viewport_size, _inside(hud.station_frame, stage.get_global_rect()))
+		_check("unit drawer fits %s" % viewport_size, _inside(hud.drawer_frame, stage.get_global_rect()))
+		_check("drawer clears map %s" % viewport_size, not hud.drawer_frame.get_rect().intersects(hud.station_frame.get_rect()))
+		_check("roster stays in drawer %s" % viewport_size, hud.orbat.get_rect().end.y <= hud.drawer_frame.get_rect().end.y)
+	# A briefing and command card must not squeeze the workspace into overlap.
+	hud.objectives = HudObjectives.new()
+	hud.objectives.need_h = 200.0
+	hud.card_panel = PanelContainer.new()
+	hud.card_panel.position = Vector2(700, 370)
+	hud.card_panel.size = Vector2(240, 156)
+	hud._layout_workspace()
+	_check("short view keeps task above orders", hud.drawer_frame.get_rect().end.y <= hud.card_panel.position.y - 18.0)
+	_check("crowded briefing yields to task", hud.objectives.modulate.a == 0.0)
+	hud.card_panel.position.y = 304
+	hud._layout_workspace()
+	_check("shortest task still shows a complete unit row", hud.orbat.size.y >= HudOrbat.HEAD_H + HudOrbat.SEC_H + HudOrbat.ROW_H + 4)
+	_check("compact roster clears its focus button", hud.orbat.get_rect().end.y <= hud.focus_unit.position.y)
+	hud.set_workspace("battle")
+	_check("closing task restores briefing", hud.objectives.modulate.a == 1.0)
+	hud.objectives.free()
+	hud.objectives = null
+	hud.card_panel.free()
+	hud.card_panel = null
+	var compact_map := hud.minimap_side()
+	var fixed_map := hud.minimap_panel.get_rect()
+	hud.set_workspace("map")
+	_check("layers never resize or move the map", hud.minimap_side() == compact_map and hud.minimap_panel.get_rect() == fixed_map)
+	_check("map replaces roster with map controls", hud.minimap_panel.visible and hud.layers_ui.visible and not hud.orbat.visible and not hud.squad_search.visible)
+	_check("map reserves space beside selection", hud.minimap_right() > 200.0)
+	var previous_orders: bool = Settings.get_v("lyr_orders")
+	Settings.v.lyr_orders = true
+	_check("tactical workspace reveals army plans", hud.show_order_for(false))
+	Settings.v.lyr_orders = false
+	_check("orders layer hides unselected plans", not hud.show_order_for(false) and hud.show_order_for(true))
+	Settings.v.lyr_orders = previous_orders
+	hud.set_workspace("fires")
+	_check("support keeps map fixed", hud.minimap_panel.get_rect() == fixed_map and hud.support_box.visible and hud.minimap_panel.visible and not hud.layers_ui.visible)
+	hud.toggle_menu()
+	_check("escape returns to battle", hud.workspace == "battle" and not hud.support_box.visible)
+	_check("battle reserves persistent map space", hud.minimap_right() > 200.0)
+	battle.local_team = -1
+	hud._update_support()
+	_check("spectators have demo support available", hud._support_btns.size() == Defs.DEMO_SUPPORT.size())
+	_check("spectator support is labelled demo", hud._support_btns.values().all(func(button): return (button.get_meta("state") as Label).text == "DEMO"))
+	# The actual roster selection/camera path, with lightweight live entities.
+	battle.input = PlayerInput.new()
+	battle.input.world = battle
+	battle.hud = hud
+	battle.cam = RtsCamera.new()
+	battle.cam.world = battle
+	var troop := Soldier.new()
+	troop.sid = 77
+	troop.team = 0
+	troop.position = Vector3(60, 0, 80)
+	battle.soldiers.append(troop)
+	hud.set_workspace("squads")
+	hud.orbat._pick("sq", 77, true, false, false)
+	_check("single click selects without moving the camera", battle.input.sel_squads == [77] and not battle.cam._gliding and hud.workspace == "squads")
+	var escape := InputEventKey.new()
+	escape.keycode = KEY_ESCAPE
+	escape.pressed = true
+	battle.input._key(escape)
+	_check("escape closes tools before clearing selection", hud.workspace == "battle" and battle.input.sel_squads == [77])
+	hud.set_workspace("squads")
+	hud.orbat._entries = [[Rect2(0, 24, HudOrbat.W, 40), "sq", 77, true], [Rect2(0, 800, HudOrbat.W, 40), "sq", 77, true]]
+	hud.orbat.move_cursor(1)
+	_check("arrow navigation reveals results outside the scroll window", hud.orbat._cursor == 1 and hud.orbat._scroll > 0)
+	hud.orbat.activate_cursor()
+	_check("enter focuses the unit and restores battlefield control", battle.cam._gliding and battle.cam._g_pos[1] == troop.position and hud.workspace == "battle" and not hud.typing and battle.input.sel_squads == [77])
+	hud.set_workspace("fires")
+	var demo_key: String = Defs.DEMO_SUPPORT[0]
+	(hud._support_btns[demo_key] as Button).pressed.emit()
+	_check("choosing support clears the workspace for targeting", battle.input.ability == "demo:" + demo_key and hud.workspace == "battle")
+	battle.local_team = 0
+	battle.mission_info = {}
+	battle.time = 100000.0
+	battle.team_info[0] = {"supply": 0, "sup": {}}
+	hud._update_support()
+	_check("unaffordable support explains why it is unavailable", hud._support_btns.values().all(func(button): return button.disabled and (button.get_meta("state") as Label).text.begins_with("NEED")))
+	battle.team_info[0].supply = 999999
+	hud._update_support()
+	_check("support becomes available when supply arrives", hud._support_btns.values().all(func(button): return not button.disabled))
+	battle.soldiers.clear()
+	troop.free()
+	battle.cam.free()
+	battle.cam = null
+	battle.input.free()
+	battle.input = null
+	var marker_overlay := HudOverlay.new()
+	marker_overlay.hud = hud
+	stage.add_child(marker_overlay)
+	hud.top = HudTopInfo.new()
+	hud.top.position = Vector2(14, 12)
+	hud.top.size = Vector2(520, 160)
+	hud.top.content_h = 65.0
+	marker_overlay._cache_hud_regions()
+	var scale_to_overlay := marker_overlay.get_viewport().get_visible_rect().size / stage.size
+	_check("world markers yield to the map controls", marker_overlay._under_hud(hud.station_frame.get_rect().get_center() * scale_to_overlay))
+	_check("world markers remain in the open battlefield", not marker_overlay._under_hud(Vector2(stage.size.x * 0.7, stage.size.y * 0.5) * scale_to_overlay))
+	_check("world markers yield to resource and observer readouts", marker_overlay._under_hud(Vector2(80, 40) * scale_to_overlay))
+	hud.top.free()
+	hud.top = null
+	marker_overlay.free()
+	hud.toasts = HudToasts.new()
+	hud.toasts.hud = hud
+	hud.log_panel = PanelContainer.new()
+	hud.log_panel.hide()
+	hud.log_box = RichTextLabel.new()
+	stage.add_child(hud.log_panel)
+	hud.log_panel.add_child(hud.log_box)
+	hud._build_events_toggle()
+	hud.events_toggle.pressed.emit()
+	hud.add_message("info", "Alpha: Contact east")
+	_check("minimized events stay hidden and count new arrivals", hud.events_collapsed and not hud.toasts.visible and hud.unread_events == 1)
+	_check("minimizing preserves message history", hud.log_box.get_parsed_text().contains("Contact east"))
+	hud.events_toggle.pressed.emit()
+	_check("expanding events clears unread count", hud.toasts.visible and hud.unread_events == 0)
+	hud.toggle_events()
+	hud.toggle_log()
+	_check("history shortcut reopens minimized event log", hud.log_panel.visible and not hud.events_collapsed and not hud.toasts.visible)
+	hud.toggle_events()
+	_check("minimize also closes history", not hud.log_panel.visible and hud.events_collapsed)
+	# Bound labels stay inside their command tiles, including a wide rebound key.
+	if is_instance_valid(hud.card_panel):
+		hud.card_panel.free()
+	hud._build_command_card()
+	var orders: Array = []
+	var attack := hud._button("Attack-move", "X", "Attack", func(): orders.append("attack"))
+	var smoke := hud._button("Smoke", "Ctrl+Shift+T", "Smoke", func(): orders.append("smoke"))
+	hud._layout_command_card()
+	await _settle()
+	for button: UiDeckAction in [attack, smoke]:
+		_check("command key stays inside %s tile" % button.action_id, _inside(button.keycap, button.get_global_rect()))
+		_check("command caption stays inside %s tile" % button.action_id, _inside(button.caption, button.get_global_rect()))
+	attack.pressed.emit()
+	smoke.pressed.emit()
+	_check("command tiles retain their distinct actions", orders == ["attack", "smoke"])
+	for i in 12:
+		hud._button("Build", "100", "Build", func(): pass)
+	hud._layout_command_card()
+	await _settle()
+	hud._layout_command_card()
+	_check("long command pages fit inside the viewport", _inside(hud.card_panel, stage.get_global_rect()))
+	_check("long command pages scroll within the deck", hud.card.size.y > hud.card_scroll.size.y and hud.card_scroll.get_v_scroll_bar().visible)
+	var prior_map_size: int = Settings.v.minimap_size
+	Settings.v.minimap_size = 2
+	stage.size = Vector2(960, 640)
+	hud.layout_minimap()
+	hud._layout_command_card()
+	await _settle()
+	hud._layout_command_card()
+	_check("large map leaves room for selection and three command columns", hud.card_panel.position.x >= hud.minimap_right() + 8 + Hud.SEL_MIN_W + 12)
+	Settings.v.minimap_size = prior_map_size
+	hud.card_panel.free()
+	hud.toasts.free()
+	hud.log_panel.free()
+	for control: Control in [hud.orbat, hud.minimap, hud.minimap_panel, hud.layers_ui, hud.support_box, hud.chat_edit, hud.tint]:
+		control.free()
 	hud.free()
 	battle.free()
 

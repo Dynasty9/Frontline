@@ -77,3 +77,16 @@ python3 -m unittest discover -s .github/scripts -p 'test_changelog.py'
 Normal feature work adds an unreleased entry; it does not edit release versions,
 dates or historical claims. Preview the website at desktop and phone widths,
 check keyboard disclosure, media controls, reduced motion and source-image zoom.
+
+## Commander HUD captures
+
+The `commander-workspaces` entry retains its per-image `captures` records alongside
+hashed sources. These record the renderer, resolution, scenario, seed, camera and
+capture arguments. Current HUD evidence comes from `56fe0ae`; archived original and
+previous-deck screenshots retain their own provenance. No historical image was reconstructed.
+
+Render with Godot 4.7.2 from the repository root: `godot --path . --` followed by
+the record's `arguments` and `--screenshot=out.png`. For Compatibility add
+`--rendering-method gl_compatibility` before `--`. Inspect the uncropped output and
+convert it to JPEG for the changelog. Live simulation can vary slightly between
+frames, so these stills demonstrate layout rather than simulation determinism.

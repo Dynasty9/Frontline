@@ -191,7 +191,7 @@ func _draw_content() -> void:
 			if v.team >= 0 and v.team < 2:
 				veh[v.team] += 1
 		var x0 := _caps(0, 22, "Battle", 11, UiKit.FAINT) + 8.0
-		_mono(x0, 23, clock, 15, UiKit.TEXT)
+		var clock_end := x0 + _mono(x0, 23, clock, 15, UiKit.TEXT)
 		for t in 2:
 			var y2 := 46.0 + t * 19.0
 			var ti2: Dictionary = w.team_info[t]
@@ -204,5 +204,7 @@ func _draw_content() -> void:
 		var s0 := float(sold[0] + veh[0] * 4) + 0.01
 		var s1 := float(sold[1] + veh[1] * 4) + 0.01
 		var n0 := roundi(40.0 * s0 / (s0 + s1))
+		var balance_x := clock_end + 16.0
+		var step := (OBS_W - balance_x) / 40.0
 		for i in 40:
-			draw_rect(Rect2(110 + i * 7.0, 13, 5, 8), Defs.TEAM_COLORS[0] if i < n0 else Defs.TEAM_COLORS[1])
+			draw_rect(Rect2(balance_x + i * step, 13, step - 2.0, 8), Defs.TEAM_COLORS[0] if i < n0 else Defs.TEAM_COLORS[1])

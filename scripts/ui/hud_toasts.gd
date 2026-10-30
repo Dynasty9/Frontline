@@ -59,7 +59,8 @@ func _draw() -> void:
 func _draw_content() -> void:
 	var y := 0.0
 	var w := size.x
-	for it in items:
+	for i in mini(3, items.size()):
+		var it: Array = items[i]
 		var kind: String = it[0]
 		var age: float = it[2]
 		# arrive at once, leave quickly; an alert flickers as it lands
