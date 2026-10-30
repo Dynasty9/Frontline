@@ -23,6 +23,22 @@ pub struct Grenade {
 }
 
 #[derive(Clone, Copy, Debug)]
+pub struct Shell {
+    pub id: u64,
+    pub target: Vector3,
+    pub flight_time: f64,
+    pub age: f64,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct ShellNotice {
+    pub id: u64,
+    pub target: Vector3,
+    pub force_warning: bool,
+    pub dive: bool,
+}
+
+#[derive(Clone, Copy, Debug)]
 pub struct Soldier {
     pub id: u64,
     pub position: Vector3,
@@ -162,6 +178,49 @@ impl GrenadeMemory {
             return Ok(Some(g.id));
         }
         Ok(None)
+    }
+
+    pub fn incoming_shells(
+        &mut self,
+        position: Vector3,
+        shells: &[Shell],
+        dive_only: bool,
+    ) -> Result<Vec<ShellNotice>, &'static str> {
+        if !point(position)
+            || shells.len() > 100_000
+            || shells
+                .iter()
+                .any(|s| !id(s.id) || !point(s.target) || !scalar(s.flight_time) || !scalar(s.age))
+        {
+            return Err("invalid incoming shell query");
+        }
+        let mut seen = self.seen_index().ok_or("invalid incoming shell memory")?;
+        let mut notices = Vec::new();
+        for s in shells {
+            if seen.contains(&s.id) || s.flight_time - s.age > 1.6 {
+                continue;
+            }
+            let distance = f64::from(flat(s.target - position).length());
+            if distance > 14.0 {
+                continue;
+            }
+            if seen.len() == MAX_REMEMBERED_ROUNDS {
+                return Err("too many remembered rounds");
+            }
+            seen.insert(s.id);
+            let dive = distance < 4.5 && !dive_only;
+            notices.push(ShellNotice {
+                id: s.id,
+                target: s.target,
+                force_warning: distance < 8.0,
+                dive,
+            });
+            if dive {
+                break;
+            }
+        }
+        self.seen.extend(notices.iter().map(|n| n.id));
+        Ok(notices)
     }
 
     pub fn checkpoint(&self) -> Vec<u8> {

@@ -1,7 +1,7 @@
 use crate::path_planner::PathPlannerCore;
 use crate::{collision_index::CollisionIndexCore, simulation_random::SimulationRandomCore};
 use frontline_core::grenade_reaction::{
-    self as grenade, Grenade, GrenadeMemory, Mate, Reaction, Soldier,
+    self as grenade, Grenade, GrenadeMemory, Mate, Reaction, Shell, Soldier,
 };
 use frontline_core::grenade_task::{self, Input as TaskInput, Task};
 use frontline_core::infantry_pose::Posture;
@@ -81,8 +81,72 @@ fn mates(rows: &Array<Variant>) -> Option<Vec<Mate>> {
         .collect()
 }
 
+fn memory(seen: &PackedInt64Array) -> Option<GrenadeMemory> {
+    if seen.len() > grenade::MAX_REMEMBERED_ROUNDS {
+        return None;
+    }
+    let seen = seen
+        .as_slice()
+        .iter()
+        .map(|v| u64::try_from(*v).ok())
+        .collect::<Option<Vec<_>>>()?;
+    Some(GrenadeMemory { seen })
+}
+
 #[godot_api]
 impl GrenadeReactionCore {
+    #[func]
+    fn incoming_shells(
+        &mut self,
+        position: Vector3,
+        seen: PackedInt64Array,
+        rounds: Array<Variant>,
+        dive_only: bool,
+    ) -> Array<Variant> {
+        if rounds.len() > 100_000 {
+            return Array::new();
+        }
+        let Some(mut core) = memory(&seen) else {
+            return Array::new();
+        };
+        let rounds = rounds
+            .iter_shared()
+            .map(|row| {
+                let v: Array<Variant> = row.try_to().ok()?;
+                if v.len() != 4 {
+                    return None;
+                }
+                Some(Shell {
+                    id: id(v.get(0)?)?,
+                    target: crate::point(v.get(1)?.try_to().ok()?),
+                    flight_time: v.get(2)?.try_to().ok()?,
+                    age: v.get(3)?.try_to().ok()?,
+                })
+            })
+            .collect::<Option<Vec<_>>>();
+        let Some(rounds) = rounds else {
+            return Array::new();
+        };
+        let Ok(notices) = core.incoming_shells(crate::point(position), &rounds, dive_only) else {
+            return Array::new();
+        };
+        let seen: PackedInt64Array = core.seen.iter().map(|v| *v as i64).collect();
+        let notices: Array<Variant> = notices
+            .into_iter()
+            .map(|n| {
+                varray![
+                    n.id as i64,
+                    Vector3::new(n.target.x, n.target.y, n.target.z),
+                    n.force_warning,
+                    n.dive
+                ]
+                .to_variant()
+            })
+            .collect();
+        self.core = core;
+        varray![&seen, &notices]
+    }
+
     #[func]
     fn advance(
         &self,
@@ -191,15 +255,10 @@ impl GrenadeReactionCore {
         rounds: Array<Variant>,
         skip_gone: bool,
     ) -> Array<Variant> {
-        if seen.len() > grenade::MAX_REMEMBERED_ROUNDS || rounds.len() > 100_000 {
+        if rounds.len() > 100_000 {
             return Array::new();
         }
-        let Some(seen) = seen
-            .as_slice()
-            .iter()
-            .map(|id| u64::try_from(*id).ok())
-            .collect::<Option<Vec<_>>>()
-        else {
+        let Some(mut core) = memory(&seen) else {
             return Array::new();
         };
         let Some(rounds) = rounds
@@ -209,7 +268,6 @@ impl GrenadeReactionCore {
         else {
             return Array::new();
         };
-        let mut core = GrenadeMemory { seen };
         let Ok(id) = core.notice(crate::point(position), &rounds, skip_gone) else {
             return Array::new();
         };

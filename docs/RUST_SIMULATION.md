@@ -40,6 +40,7 @@ graphics, network access or a wall clock.
 | Grenade reflex decisions | `frontline_core` | Notice memory, protection of nearby casualties, throwback/kick priority, shelter queries, kick direction and cooking time extracted; Godot still owns task application and grenade handlers |
 | Grenade task movement | `frontline_core` | Smother, pickup and kick approaches, covering geometry and dive direction extracted; Godot still applies action callbacks and holder links |
 | Automatic grenade attacks | `frontline_core` | Contact scores, range/posture gates, throw scatter, ammunition and cooldowns extracted; Godot still supplies squad contacts and nearby groups and applies the throw/cook actions |
+| Incoming mortars and busy-soldier grenade notices | `frontline_core` | Ordered warning, range/fuse gates, memory and dive decisions extracted; Godot applies warning, suppression, duck and dive effects |
 | House-entry task phases | `frontline_core` | Stack/door/grenade/entry transitions, deadlines, cooking and room targets extracted with component checkpoints; Godot still owns movement callbacks and squad entry effects |
 | House occupancy and breach selection | `frontline_core` | Floor containment, ordered openings, nearest walkable stack positions and competing squadmates extracted; Godot still supplies spatial candidates, squad contacts and decision timers |
 | Injury behavior and special tasks | Rust | `soldier.gd`, `soldier_brain.gd`, `combat.gd` |
@@ -205,13 +206,13 @@ Component checkpoint headers contain a four-byte component tag, a little-endian
 rules rather than silently continuing with changed arithmetic. The separate
 integer RNG stream remains unchanged.
 
-`native/core/tests/numeric_contract.rs` compares 816,645 committed bytes without
+`native/core/tests/numeric_contract.rs` compares 909,133 committed bytes without
 tolerances: fixed-tick flight state, support events and RNG cursors, carved water,
 craters, rotated box hits, cover anchors, spherical interpolation and infantry
 movement, infantry cover fire, postures, ammunition, burst recovery, vitals, aiming,
 combat poses, bullet resolution, blast exposure, knockback recovery and wounded
 infantry schedules, grenade reflexes, grenade task movement and house-entry
-phases, building selection and automatic grenade attacks. CI runs
+phases, building selection, automatic grenade attacks and incoming shells. CI runs
 the same fixtures in debug and release on Windows x64, Linux
 x64, Linux ARM64 and macOS ARM64. A mismatch reports the first different byte.
 These fixtures guard the covered trajectories; they are not a proof for all
@@ -427,7 +428,7 @@ flag until Rust owns the actors.
 
 The shock fixture compares 92,160 reference steps, including mounted turning,
 blocked terrain, carried casualties and task interruption. The full default suite
-passes 123 tests; 135 core tests pass in debug and release.
+passes 124 tests; 137 core tests pass in debug and release.
 
 ## Grenade reflexes
 
@@ -446,6 +447,17 @@ grenade causes eviction. The adapter and checkpoint reader accept that history;
 long histories use a lookup set while retaining encounter order. A 65-shell
 regression checks the real warning path, checkpoint restoration and the next
 grenade's warning and eviction behavior.
+
+Incoming mortar decisions now use the same core memory. They retain the projectile
+order, urgent-warning distance, suppression/duck sequence and early exit on a
+dive. Busy soldiers retain their existing duck-only mortar response. The busy
+grenade reflex shares the ordinary notice implementation, with its existing
+gone-round handling; its unused alternate throwback branch has been removed.
+The adapter applies warnings and dives in order, preserving intervening speech
+and dive random draws. Numeric CI adds a 92,488-byte shell-notice transcript.
+A 12,288-step reference fixture checks both duty modes, warning order, shared
+memory, suppression, ducking, dive directions, path cancellation and RNG cursors.
+The busy-grenade path is also compared with the previous implementation.
 
 Grenade task movement also runs in the core: closing on a round, the fuse
 deadlines for pickup and kicking, the one-second smother approach, chest-cover

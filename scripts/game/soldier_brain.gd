@@ -20,7 +20,7 @@ static func think(s: Soldier) -> void:
 	if s.task == "smother":
 		return
 	if busy(s):
-		if s._react_grenade(true):
+		if s._react_grenade():
 			s.bt_path = "dive from a grenade"
 		elif s._react_shells(true):
 			s.bt_path = "dive from a shell"
@@ -206,24 +206,29 @@ static func _task_native(s: Soldier, dt: float, kind: int) -> void:
 ## A live grenade near him he hasn't reacted to yet (kept in s.bt_g).
 static func grenade_close(s: Soldier) -> bool:
 	s.bt_g = null
+	s.bt_g = notice_grenade(s, true)
+	return s.bt_g != null
+
+
+static func notice_grenade(s: Soldier, skip_gone: bool) -> Projectile:
 	if _native(s):
 		var rounds := []
 		for g: Projectile in s.world.projectiles:
 			if g.ptype == "frag":
 				rounds.append(_round(g))
-		var result: Array = _core(s).notice(s.position, PackedInt64Array(s.seen_grenades.keys()), rounds, true)
+		var result: Array = _core(s).notice(s.position, PackedInt64Array(s.seen_grenades.keys()), rounds, skip_gone)
 		assert(result.size() == 2, "Invalid grenade notice")
 		s.seen_grenades.clear()
 		for id: int in result[1]:
 			s.seen_grenades[id] = true
 		if int(result[0]) == 0:
-			return false
+			return null
 		s.say(_pick(s, ["GRENADE!", "Grenade! Get down!", "Frag!"]), true)
-		s.bt_g = s.world.entity(int(result[0])) as Projectile
-		assert(s.bt_g != null, "Missing noticed grenade")
-		return true
+		var g: Projectile = s.world.entity(int(result[0])) as Projectile
+		assert(g != null, "Missing noticed grenade")
+		return g
 	for g in s.world.projectiles:
-		if g.ptype != "frag" or g.held_by != null or g.gone:
+		if g.ptype != "frag" or g.held_by != null or (skip_gone and g.gone):
 			continue
 		var d := Defs.flat(g.position - s.position).length()
 		if d > 7.5 or s.seen_grenades.has(g.eid):
@@ -234,9 +239,8 @@ static func grenade_close(s: Soldier) -> bool:
 			s.seen_grenades.clear()  # old rounds are long gone
 		s.seen_grenades[g.eid] = true
 		s.say(_pick(s, ["GRENADE!", "Grenade! Get down!", "Frag!"]), true)
-		s.bt_g = g
-		return true
-	return false
+		return g
+	return null
 
 
 ## Nobody else is already dealing with it.

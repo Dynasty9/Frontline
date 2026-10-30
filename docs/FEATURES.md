@@ -1273,6 +1273,8 @@ Building and breach-selection checks preserve rotated floors, doors, windows,
 blocked stacking positions and yielding to a better-positioned squadmate.
 Automatic grenade targeting also has Rust state for inventory and cooldowns,
 preserving contact scores, throw scatter and the following cook/throw sequence.
+Incoming-round checks preserve warning order, shared grenade/mortar memory,
+suppression, ducking and dive priority, including busy soldiers.
 The full
 authoritative Rust server and deterministic
 battle verifier are still in progress; see [RUST_SIMULATION.md](RUST_SIMULATION.md).

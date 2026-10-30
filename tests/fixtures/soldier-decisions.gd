@@ -6,7 +6,7 @@ class Man extends Soldier:
 	func record(key: String) -> bool:
 		calls.append(key)
 		return win == key
-	func _react_grenade(_only: bool) -> bool: return record("grenade")
+	func _react_grenade() -> bool: return record("grenade")
 	func _react_shells(_only: bool) -> bool: return record("shell")
 	func _react_drones() -> void: dive_t = 1.0 if record("drone") else 0.0
 	func _try_melee() -> bool: return record("melee")
@@ -52,7 +52,7 @@ func reference_tree() -> BT.Branch:
 		BT.seq("busy", [
 			BT.cond("busy", func(s): return SoldierBrain.busy(s)),
 			BT.always(BT.sel("save himself", [
-				BT.act("dive from a grenade", func(s): return SoldierBrain.ok(s._react_grenade(true))),
+				BT.act("dive from a grenade", func(s): return SoldierBrain.ok(s._react_grenade())),
 				BT.act("dive from a shell", func(s): return SoldierBrain.ok(s._react_shells(true))),
 			])),
 		]),

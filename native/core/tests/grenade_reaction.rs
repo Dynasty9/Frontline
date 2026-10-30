@@ -1,6 +1,6 @@
 use frontline_core::collision::{BoxShape, CollisionWorld, Mat3};
 use frontline_core::grenade_reaction::{
-    self as grenade, Grenade, GrenadeMemory, Mate, Reaction, Soldier,
+    self as grenade, Grenade, GrenadeMemory, Mate, Reaction, Shell, Soldier,
 };
 use frontline_core::infantry_pose::Posture;
 use frontline_core::infantry_vitals::Life;
@@ -67,6 +67,56 @@ fn mortar_warning_history_can_exceed_the_grenade_eviction_threshold() {
     let mut excess = memory.checkpoint();
     excess[8..12].copy_from_slice(&((grenade::MAX_REMEMBERED_ROUNDS + 1) as u32).to_le_bytes());
     assert!(GrenadeMemory::restore(&excess).is_err());
+}
+
+#[test]
+fn shell_warnings_keep_order_and_stop_after_the_first_dive() {
+    let shells: Vec<_> = [20.0, 14.0, 8.0, 4.5, 4.49, 2.0]
+        .into_iter()
+        .enumerate()
+        .map(|(i, x)| Shell {
+            id: i as u64 + 1,
+            target: V::new(x, 0.0, 0.0),
+            flight_time: 1.6,
+            age: 0.0,
+        })
+        .collect();
+    let mut memory = GrenadeMemory::default();
+    let notices = memory.incoming_shells(V::ZERO, &shells, false).unwrap();
+    assert_eq!(memory.seen, vec![2, 3, 4, 5]);
+    assert_eq!(
+        notices.iter().map(|n| n.force_warning).collect::<Vec<_>>(),
+        [false, false, true, true]
+    );
+    assert_eq!(
+        notices.iter().map(|n| n.dive).collect::<Vec<_>>(),
+        [false, false, false, true]
+    );
+    let mut busy = GrenadeMemory::default();
+    assert!(busy
+        .incoming_shells(V::ZERO, &shells, true)
+        .unwrap()
+        .iter()
+        .all(|n| !n.dive));
+    assert_eq!(busy.seen, vec![2, 3, 4, 5, 6]);
+    assert!(busy
+        .incoming_shells(V::ZERO, &shells, true)
+        .unwrap()
+        .is_empty());
+    let before = busy.clone();
+    let invalid = Shell {
+        id: 10,
+        target: V::NAN,
+        ..shells[0]
+    };
+    assert!(busy.incoming_shells(V::ZERO, &[invalid], false).is_err());
+    assert_eq!(busy, before);
+    let mut full = GrenadeMemory {
+        seen: (100..100 + grenade::MAX_REMEMBERED_ROUNDS as u64).collect(),
+    };
+    let before = full.checkpoint();
+    assert!(full.incoming_shells(V::ZERO, &shells, true).is_err());
+    assert_eq!(full.checkpoint(), before);
 }
 
 #[test]

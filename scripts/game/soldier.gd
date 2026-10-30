@@ -2506,30 +2506,12 @@ func _try_melee() -> bool:
 	return false
 
 
-func _react_grenade(dive_only: bool) -> bool:
-	for g in world.projectiles:
-		if g.ptype != "frag" or g.held_by != null:
-			continue
-		var d := Defs.flat(g.position - position).length()
-		if d > 7.5:
-			continue
-		if seen_grenades.has(g.eid):
-			continue
-		if g.flying and g.fuse > 2.2 and d > 4.0:
-			continue
-		if seen_grenades.size() > 24:
-			seen_grenades.clear()  # old rounds are long gone
-		seen_grenades[g.eid] = true
-		say(_pick(["GRENADE!", "Grenade! Get down!", "Frag!"]), true)
-		if not dive_only and d < 3.8 and g.fuse > 1.8 and g.thrown_back < 1 and suppression < 75.0 and world.rng.randf() < 0.25 and not wdef.is_empty():
-			task = "grenade_pickup"
-			world.stat("grenade_pickup")
-			task_ent = g
-			stop_moving()
-			return true
-		_dive_from(g.position)
-		return true
-	return false
+func _react_grenade() -> bool:
+	var g := SoldierBrain.notice_grenade(self, false)
+	if g == null:
+		return false
+	_dive_from(g.position)
+	return true
 
 
 func _dive_from(p: Vector3) -> void:
@@ -4169,6 +4151,24 @@ func _try_mortar() -> bool:
 
 ## Incoming mortar rounds whistle: duck, or dive if it's landing right here.
 func _react_shells(dive_only: bool) -> bool:
+	if SoldierBrain._native(self):
+		var rounds := []
+		for g: Projectile in world.projectiles:
+			if g.ptype == "mortar":
+				rounds.append([g.eid, g.target, g.shell_t, g.life_t])
+		var result: Array = SoldierBrain._core(self).incoming_shells(position, PackedInt64Array(seen_grenades.keys()), rounds, dive_only)
+		assert(result.size() == 2, "Invalid incoming shell query")
+		seen_grenades.clear()
+		for id: int in result[0]:
+			seen_grenades[id] = true
+		for warning: Array in result[1]:
+			say(_pick(["Incoming!", "INCOMING!", "Mortars! Get down!"]), bool(warning[2]))
+			suppression = minf(100.0, suppression + 20.0)
+			if bool(warning[3]):
+				_dive_from(warning[1])
+				return true
+			hit_dirt_t = 2.5
+		return false
 	for g in world.projectiles:
 		if g.ptype != "mortar" or seen_grenades.has(g.eid):
 			continue

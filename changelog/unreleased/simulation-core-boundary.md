@@ -31,6 +31,7 @@ kind = "fixed"
 - Building checks preserve which house a contact occupies, usable doorways and windows, blocked stacking positions and the squadmate best placed to breach.
 - Automatic grenade checks preserve target groups, hard-cover priorities, throw scatter, ammunition, cooldowns and cooking before a throw.
 - Rust grenade warnings preserve the shared incoming-shell history after a prolonged bombardment, then discard it when a new grenade is noticed nearby.
+- Incoming-round checks preserve warning order, suppression, ducking and dive priority, including soldiers busy rescuing or carrying casualties.
 - The extracted simulation uses pinned numeric rules, with exact checkpoint comparisons across platforms as replay verification work continues.
 - Guided missiles keep a consistent turn after overshooting their aim point, instead of letting rounding choose an erratic turn direction.
 - This is groundwork for the server migration. Battles still use the existing simulation, and recordings are not yet independently verified.

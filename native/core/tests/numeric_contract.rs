@@ -261,6 +261,53 @@ fn automatic_grenade_attacks_are_identical_across_platforms() {
     golden("grenade_attack", &out);
 }
 
+#[test]
+fn incoming_shell_notices_are_identical_across_platforms() {
+    let mut out = Vec::new();
+    for case in 0..128 {
+        let mut memory = reflex::GrenadeMemory {
+            seen: if case % 7 == 0 {
+                (200..265).collect()
+            } else {
+                vec![]
+            },
+        };
+        let mut shells: Vec<_> = (100..110)
+            .map(|id| reflex::Shell {
+                id,
+                target: Vector3::new(
+                    [0.0, 4.49, 4.5, 7.99, 8.0, 14.0, 14.01, 20.0][(case + id) as usize % 8],
+                    (case % 3) as f32,
+                    0.0,
+                ),
+                flight_time: [1.6, 1.61, 2.2][(case + id) as usize % 3],
+                age: 0.0,
+            })
+            .collect();
+        for _ in 0..4 {
+            let notices = memory
+                .incoming_shells(Vector3::ZERO, &shells, case % 2 == 0)
+                .unwrap();
+            block(&mut out, &memory.checkpoint());
+            out.extend_from_slice(&(notices.len() as u32).to_le_bytes());
+            for n in notices {
+                out.extend_from_slice(&n.id.to_le_bytes());
+                point(&mut out, n.target);
+                out.push(n.force_warning.into());
+                out.push(n.dive.into());
+            }
+            assert_eq!(
+                reflex::GrenadeMemory::restore(&memory.checkpoint()).unwrap(),
+                memory
+            );
+            for s in &mut shells {
+                s.age += 0.3;
+            }
+        }
+    }
+    golden("incoming_shells", &out);
+}
+
 fn point(out: &mut Vec<u8>, p: Vector3) {
     for v in p.to_array() {
         out.extend_from_slice(&v.to_le_bytes());
