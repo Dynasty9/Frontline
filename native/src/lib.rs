@@ -1,6 +1,7 @@
 use godot::prelude::*;
 
 mod collision_index;
+mod cover_geometry;
 mod drone_flight;
 mod formation_ground;
 mod guided_flight;

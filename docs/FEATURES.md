@@ -396,6 +396,8 @@ catalogue entry in `MissionList.LIST`, a setup function and an autopilot functio
   overflow soldiers shelter there when the front row is occupied. Physical wall blocking still applies,
   but their effective cover rating is one tier lower (less shelter from near misses), and they
   cannot lean around an edge from that row. The wall itself retains its normal bullet resistance.
+  Anchor generation and protection/firing-lane evaluation use the shared Rust core;
+  protection still considers every threat, while firing-lane checks stop once a clear shot is found.
 - **What it's made of matters.** Hedges, tents and single crates are *soft*: they hide you, but rounds go
   through (a burst into a hedge finds whoever is behind it). Cars, house walls and stacked crates are *medium*:
   they stop a rifle, not a machine gun. Stone, brick, concrete, sandbags, earth and wrecks are *hard*: only a

@@ -306,6 +306,21 @@ server is still needed to remove the intermediate contact-copy boundary.
 
 ## Terrain state
 
+The cover core generates fighting positions from numeric structure parts and
+evaluates protection/firing lanes against its collision world. It preserves face
+and anchor order, height thresholds, overflow rows, trench fire steps, map limits
+and rejection of positions inside other parts. Evaluation retains all threats in
+the protection score and stops firing-lane queries after finding one clear lane.
+The reference fixture compares 400 structures (8,043 anchors) and 3,000 evaluations
+against Godot, including rotated overlapping parts, material classes, prone men,
+changed/disabled shapes, raised or lowered ground and collision restores.
+Position tolerance is 20 micrometres; normal/direction tolerance is 0.000001.
+Anchor kinds, heights, protection fractions and firing decisions match exactly.
+The fixture's alternating-order 1,000-evaluation comparison measured 21.16–23.08 ms
+through GDScript versus 4.84–5.23 ms through Rust, including adapter work, with
+other apps running. This is not a whole-battle FPS measurement. Candidate search,
+claims and soldier state still live in Godot and remain migration work.
+
 `Terrain` retains the nine terrain layers, crater height samples and pending cover
 repair order. Roads, rectangles, trees, camouflage nets and craters update those
 arrays in the core. Cover reconstruction uses numeric structure geometry and
@@ -354,6 +369,8 @@ Infantry acquisition passes the full 106-test suite. After adding exact trench
 queries, 51 core tests pass in debug and release, as do 24 relevant integration
 checks covering infantry, armour, ground changes, helicopter flight and 6,000
 trench query positions through building, movement and removal.
+The subsequent fighting-position generation/evaluation port passes all 107 default
+integration tests and 55 core tests in debug and release.
 
 A focused shell benchmark (100 shells, 100 ticks, headless, no collision queries)
 measured about 14.6 ms for the GDScript path versus 4.6–5.6 ms for retained Rust

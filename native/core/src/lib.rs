@@ -1,5 +1,6 @@
 //! Engine-independent simulation code. No scene objects, wall clock or global RNG.
 pub mod collision;
+pub mod cover;
 pub mod drone;
 pub mod formation;
 pub mod guided;

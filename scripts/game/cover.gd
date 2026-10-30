@@ -92,6 +92,19 @@ static func mat_of(st) -> int:
 
 ## Fills st.anc_* with the fighting positions round its parts.
 static func build(st) -> void:
+	if ClassDB.class_exists("CoverGeometry"):
+		var geometry: RefCounted = ClassDB.instantiate("CoverGeometry")
+		var anchors: Array = geometry.generate(st.skind, st.variant, st.position, st.yaw, st.size, st.parts, MapDims.HALF)
+		if anchors.size() == 4:
+			st.anc_p = anchors[0]
+			st.anc_n = anchors[1]
+			st.anc_h = anchors[2]
+			st.anc_k = anchors[3]
+			return
+	_build_reference(st)
+
+
+static func _build_reference(st) -> void:
 	st.anc_p = PackedVector3Array()
 	st.anc_n = PackedVector3Array()
 	st.anc_h = PackedFloat32Array()
@@ -221,6 +234,22 @@ static func _blocked_near(world, from: Vector3, to: Vector3) -> bool:
 ## gives no protection from any of them. "fire" is whether he can shoot back
 ## from it (over the top or round the edge) at at least one of them.
 static func evaluate(world, st, i: int, threats: Array, prone := false) -> Dictionary:
+	if world.combat._collision:
+		world.combat._sync_collision()
+		if world.combat._collision:
+			var p: Vector3 = st.anc_p[i]
+			var n: Vector3 = st.anc_n[i]
+			var h: float = st.anc_h[i]
+			var result: PackedFloat64Array = world.combat._collision.evaluate_cover(p, n, h, st.anc_k[i], world.ground_y(p), PackedVector3Array(threats), prone)
+			if result.is_empty():
+				return {}
+			return {"type": int(result[0]), "prot": result[1], "fire": result[2] != 0.0,
+				"lean": Vector3(result[3], result[4], result[5]), "tdir": Vector3(result[6], result[7], result[8]),
+				"pos": p, "n": n, "h": h, "mat": anchor_mat(st, i), "st": st, "ai": i}
+	return _evaluate_reference(world, st, i, threats, prone)
+
+
+static func _evaluate_reference(world, st, i: int, threats: Array, prone := false) -> Dictionary:
 	var p: Vector3 = st.anc_p[i]
 	var n: Vector3 = st.anc_n[i]
 	var h: float = st.anc_h[i]
