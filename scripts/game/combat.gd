@@ -538,7 +538,7 @@ func find_cover(s: Soldier, anchor: Vector3, radius: float, threats: Array, pron
 		if not prone and not threats.is_empty() and Defs.flat(threats[0] - p).length() > rng_w:
 			sc -= 3.0
 		if _claimed(p, s):
-			sc -= 12.0
+			continue  # An occupied firing position cannot fit a second body.
 		if world.ground_y(p) < -0.1:
 			sc += 6.0  # inside a dug trench: far better than lying behind anything
 		if sc > best_s:

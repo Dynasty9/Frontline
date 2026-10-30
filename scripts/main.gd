@@ -79,6 +79,9 @@ func _ready() -> void:
 		if s.begins_with("--"):
 			var kv := s.substr(2).split("=", true, 1)
 			args[kv[0]] = kv[1] if kv.size() > 1 else "1"
+	if args.has("skinned-units") or args.has("swat-units"):
+		Engine.physics_ticks_per_second = 120
+		Engine.max_physics_steps_per_frame = 12
 	if OS.has_feature("web"):
 		var manual_key = JavaScriptBridge.eval("new URLSearchParams(location.search).get('manual') || ''")
 		if manual_key is String and not manual_key.is_empty():
@@ -241,7 +244,6 @@ func _ready() -> void:
 		Settings.apply_global()
 	if args.has("timescale"):
 		Engine.time_scale = float(args.timescale)
-		Engine.physics_ticks_per_second = 30
 		Engine.max_physics_steps_per_frame = 16
 	if args.has("quit-after"):
 		_quit_at = float(args["quit-after"])

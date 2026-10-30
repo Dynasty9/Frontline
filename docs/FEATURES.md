@@ -12,7 +12,7 @@ The long version: how each system works and why. For the short version, see the 
 
 ## Full controls reference
 
-These are the default keys. **Settings → Controls** (`scripts/autoload/keys.gd`, `scripts/ui/controls_page.gd`)
+These are the default keys. **Settings â†’ Controls** (`scripts/autoload/keys.gd`, `scripts/ui/controls_page.gd`)
 changes any of them:
 
 - **By category:** camera, saved views, orders, abilities and fire support, building, control groups,
@@ -527,7 +527,8 @@ catalogue entry in `MissionList.LIST`, a setup function and an autopilot functio
 - **The AI** sends a recon flight over when the picture's thin: before an attack on ground it can't see, or when it
   has next to nothing of the enemy in sight. It builds a watchtower at each FOB and an early recon drone.
 
-**Pathfinding and tactics** (`nav.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
+**Pathfinding and tactics** (
+av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
 - **Hierarchical A\* (HPA\*)** over both grids: the map is cut into 16 x 16 m clusters with entrances wherever
   neighbouring clusters connect (and wherever a road crosses), true costs inside each cluster precomputed. Long
   trips plan on the abstract graph, then refine cluster by cluster. When walls go up or are blown down only the
@@ -1163,7 +1164,8 @@ point back from the road, then into an L - the assault line 20-odd metres off th
 firing down the killing zone, a man watching the flank - and holds its fire until they're in it. A short,
 violent burst, then smoke and away (the Rebels, more often ambushers, simply melt away); an ambush nobody
 walks into is given up after a few minutes, and one bumped on the way is called off. Its **navy**
-(`naval_ai.gd`): once it has a factory it builds a dock on its stretch of coast and keeps a gunboat or two -
+(
+aval_ai.gd`): once it has a factory it builds a dock on its stretch of coast and keeps a gunboat or two -
 going after whatever of the enemy it can see near the water, else patrolling off the front - and a ferry that
 runs raids, picking up a reserve squad at the shore and landing it on a beach near an enemy FOB or whatever's
 being attacked. Spending draws on all of a side's FOBs (nearest first), so a big purchase - a tank, a dock -
@@ -1178,6 +1180,18 @@ garrisons, answers attacks on its bases, sends waves at your FOBs and ambushes y
 digs forward tunnel entrances and moves its attack waves through them. AI-vs-AI results swing a lot between
 batches of six games (from 5–1 one way to 5–1 the other with small parameter changes), so the sides are close
 but balance needs real playtesting. With the base defenses, most games last 10–23 minutes.
+
+### Imported rifleman and shared impacts
+
+The optional skinned rifleman uses imported rifle locomotion, a captured kneel-to-prone transition, contact IK, hand-attached weapons, moving reloads with a separate magazine, directional hit recovery, and a thirteen-body constrained ragdoll. The shared motion and impact helpers also serve the procedural soldiers and tank. Damage and movement remain server-authoritative; the skin is presentation.
+
+With the separately installed local evaluation assets, `--skinned-units --swat-units` enables the military character for Coalition riflemen in ordinary battles. Other units and missing-asset installations retain their procedural models. The viewer supports clip selection, scrubbing, bones, wireframes and projectile impacts; the playable controller exercises terrain, walking, crouching, jumping and reloads. Setup and exact limitations are in [the evaluation guide](../tests/mocap/SKINNED.md). Imported models, textures and animation sources are excluded from Git and releases.
+
+Soldiers check space for the whole kneel-to-prone transition. If a wall blocks it, a stationary soldier can take a short backward step into clear space, settle the feet, and then lower into prone. The retreat is collision-swept, navigation-checked and bounded to 1.8 metres. New movement orders or a new obstruction cancel it. If no safe space exists, the soldier remains crouched. This authoritative movement is replicated normally.
+
+Captured contact IK anchors low supporting feet in world space, blends the ankle/forefoot support for running, and releases overstretched contacts. Ragdolls retain bounded limb and root momentum, anatomical joint limits and dropped-weapon collision cleanup. The optional skinned mode runs physics contacts at 120 Hz; the battle simulation retains the current 30 Hz cadence, including when physics runs faster.
+
+This is an opt-in evaluation, not a complete production animation library. Authored directional crouch, precise finger wrapping, mounted reloads, vehicle boarding/seating, prone get-up, final art quality and large-crowd performance still need work. The M2 fixture passes; mounted M240 and original-model DShK reach/clearance are known remaining issues.
 
 
 ## Battle recordings and browser spectators
@@ -1231,3 +1245,11 @@ to an area recreates the same vegetation from its seed.
 
 See [SIMULATION_SCALING.md](SIMULATION_SCALING.md) for the native perception
 boundary, measurement results and remaining limits.
+
+Captured digging and smoking play when the optional rifleman's local activity clips are installed. The rifle follows a torso sling anchor, digging uses a hand-aligned shovel, and a lethal hit releases both rifle and shovel into physics. Sling transitions still blend between poses rather than use an authored handoff.
+
+The optional SWAT preview uses locally installed Mixamo source and movement clips, including crouch locomotion. Its M4 mesh/textures are baked with `tests/mocap/bake_rifle.gd` into a binary resource; the legacy MoCap FBX sources are excluded from exports. Local rifle locomotion packs and prone/stow clips appear in the animation inspector; catalog availability does not automatically add new gameplay actions.
+
+The SWAT action transitions keep the rifle slung during free-hand work, blend the existing back-reach clip into stow/draw, and preserve prone/leaning body poses during magazine handling. A visual-only low-wall continuation holds the tucked-knee pose until the model clears the barrier; simulation speed and vault timing are unchanged. `tests/mocap/action_transitions.tscn` checks equipment continuity, magazine replacement and dive clearance; `tests/mocap/vault_traversal.tscn` checks the actual soldier crossing in the motion scenario.
+
+The local **Character Playground.cmd** launcher opens a controllable terrain lab using the shared soldier renderer. WASD/Shift/Space/C/Z move, run, jump, crouch and go prone; left mouse fires, R reloads, F toggles work, G throws and H tests the selected impact. Movement cancels work. Every gameplay action is available in a pose dropdown; the linked review screen contains all installed source clips and retains comment/approval storage. This lab requires the local SWAT assets and is not an exported game mode.

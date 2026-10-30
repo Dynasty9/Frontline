@@ -44,6 +44,16 @@ jobs:
           ~/godot/godot --headless --path . --import 2>&1 | tee import.log
           if grep -E "SCRIPT ERROR|Parse Error" import.log; then exit 1; fi
 
+      - name: Animation movement regressions (no licensed assets)
+        run: |
+          set -o pipefail
+          for scene in backstep_safety simulation_clock; do
+            timeout 120 ~/godot/godot --headless --path . --quit-after 600 tests/mocap/${scene}.tscn 2>&1 | tee ${scene}.log
+            if grep -E "SCRIPT ERROR|Parse Error|ERROR:" ${scene}.log || ! grep -q "PASS" ${scene}.log; then exit 1; fi
+          done
+          timeout 180 ~/godot/godot --headless --path . --fixed-fps 30 tests/mocap/backstep_game.tscn -- --scenario=motion --seed=3 --no-stun --quit-after=20 2>&1 | tee backstep_game.log
+          if grep -E "SCRIPT ERROR|Parse Error|ERROR:" backstep_game.log || ! grep -q "GAME BACKSTEP.*pass=true" backstep_game.log; then exit 1; fi
+
       - name: Simulation scaling regressions
         run: |
           set -o pipefail
