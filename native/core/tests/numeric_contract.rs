@@ -36,6 +36,90 @@ fn block(out: &mut Vec<u8>, bytes: &[u8]) {
 }
 
 #[test]
+fn infantry_supply_is_identical_across_platforms() {
+    use frontline_core::infantry_supply::{
+        self as supply, Body, Cache, Depot, Search, SupplyTimers,
+    };
+    let mut bytes = Vec::new();
+    for case in 0..256 {
+        let mut rng = SimulationRandom::new(case + 991);
+        let mut timers = SupplyTimers::default();
+        let mut stock = [0; 5];
+        let mut reserve = (case % 75) as i32;
+        let capacity = (case % 250) as i32;
+        let position = Vector3::new((case % 7) as f32 * 0.7, 0.0, (case % 9) as f32 * 0.3);
+        let mut bodies: Vec<_> = (1..7)
+            .map(|id| Body {
+                id,
+                position: Vector3::new(
+                    (case % 20) as f32 * 1.2 + id as f32 * 0.13,
+                    0.0,
+                    (case % 7) as f32,
+                ),
+                dead: (case + id) % 3 != 0,
+                loot: ((case + id) % 40) as i32,
+            })
+            .collect();
+        for step in 0..8 {
+            let now = step as f64 * 1.5;
+            let result = timers
+                .scavenge(now, reserve, Some(capacity), &bodies)
+                .unwrap();
+            bytes.extend_from_slice(&result.map_or(0, |t| t.body).to_le_bytes());
+            bytes.extend_from_slice(&result.map_or(0, |t| t.rounds).to_le_bytes());
+            if let Some(t) = result {
+                bodies.iter_mut().find(|b| b.id == t.body).unwrap().loot -= t.rounds;
+                reserve += t.rounds;
+            }
+            let found = timers.search_bodies(now, position, &bodies).unwrap();
+            let code = match found {
+                Search::Wait => 0,
+                Search::Depots => 1,
+                Search::Body(id) => id + 1,
+            };
+            bytes.extend_from_slice(&code.to_le_bytes());
+            let fob = (case % 3 != 0).then_some(Depot {
+                id: 100,
+                position: Vector3::new((case % 100) as f32, 0.0, 5.3),
+            });
+            let caches: Vec<_> = (200..204)
+                .map(|id| Cache {
+                    depot: Depot {
+                        id,
+                        position: Vector3::new((case % 40) as f32, 0.0, (id - 200) as f32 * 4.1),
+                    },
+                    team: ((case + id) % 2) as i32,
+                    built: (case + id) % 3 != 0,
+                    gone: (case + id) % 7 == 0,
+                    ammo_cache: true,
+                })
+                .collect();
+            let destination = supply::choose_depot(position, 0, fob, &caches, &mut rng).unwrap();
+            bytes.push(u8::from(destination.is_some()));
+            if let Some(d) = destination {
+                bytes.extend_from_slice(&d.depot.to_le_bytes());
+                bytes.push(u8::from(d.cache));
+                point(&mut bytes, d.position);
+            }
+            let dt = [0.0, 0.5, 1.0][case as usize % 3];
+            let (new_reserve, refilled) = supply::refill_reserve(capacity, 0, reserve, dt).unwrap();
+            reserve = new_reserve;
+            bytes.push(u8::from(refilled));
+            bytes.extend_from_slice(&reserve.to_le_bytes());
+            rng.randi();
+            supply::refill_special(&mut stock, [2, 3, 4, 5, 6], dt, &mut rng).unwrap();
+            for rounds in stock {
+                bytes.extend_from_slice(&rounds.to_le_bytes());
+            }
+            bytes.extend_from_slice(&rng.state().to_le_bytes());
+            block(&mut bytes, &timers.checkpoint());
+            timers = SupplyTimers::restore(&timers.checkpoint()).unwrap();
+        }
+    }
+    golden("infantry_supply", &bytes);
+}
+
+#[test]
 fn infantry_special_attacks_are_identical_across_platforms() {
     use frontline_core::infantry_arsenal::{
         InfantryArsenal, MeleeContact, MortarDecision, MortarTarget, RocketContact, RocketInput,

@@ -20,6 +20,7 @@ pub mod infantry_arsenal;
 pub mod infantry_motion;
 pub mod infantry_pose;
 pub mod infantry_shock;
+pub mod infantry_supply;
 pub mod infantry_vitals;
 pub mod infantry_weapon;
 pub mod navigation_grid;

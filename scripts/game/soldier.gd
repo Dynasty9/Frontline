@@ -186,6 +186,7 @@ var reveal_t := 0.0
 var melee_cd := 0.0
 var scav_t := 0.0
 var resupply_t := 0.0
+var _supply: RefCounted
 var think_t := 0.0
 var _path_pending := false
 var _path_revision := 0
@@ -2703,31 +2704,66 @@ func _gpick_tick(dt: float) -> void:
 	_face(to, dt, 14.0)
 
 
+func _native_supply() -> bool:
+	return world.settings.get("rust_infantry", false) and ClassDB.class_exists("InfantrySupplyCore")
+
+
+func _supply_core() -> RefCounted:
+	if _supply == null:
+		_supply = ClassDB.instantiate("InfantrySupplyCore")
+	return _supply
+
+
+func _supply_bodies(radius: float) -> Array:
+	var bodies := []
+	for s: Soldier in world.soldiers_near(position, radius):
+		bodies.append([s.eid, s.position, s.life == Life.DEAD, s.loot])
+	return bodies
+
+
+func _read_supply_times(times: PackedFloat64Array) -> void:
+	scav_t = times[0]
+	resupply_t = times[1]
+
+
 func _scavenge() -> void:
 	if wdef.is_empty() or world.time < scav_t or int(wdef.ammo) >= 9000:
 		return
 	if total_ammo() >= int(wdef.ammo * 0.65):
+		return
+	if _native_supply():
+		var result: Array = _supply_core().scavenge(PackedFloat64Array([scav_t, resupply_t]), world.time, total_ammo(), int(wdef.ammo), _supply_bodies(3.2))
+		assert(result.size() == 3, "Invalid scavenging decision")
+		_read_supply_times(result[0])
+		if int(result[1]) != 0:
+			_scavenged(world.entity(int(result[1])), int(result[2]))
 		return
 	scav_t = world.time + 1.5
 	for s in world.soldiers_near(position, 3.2):
 		if s.life == Life.DEAD and s.loot > 0:
 			var need := int(wdef.ammo) - total_ammo()
 			var take := mini(need, s.loot)
-			s.loot -= take
-			reserve += take
-			out_said = false
-			world.stat("scavenge")
-			low_ammo_said = false
-			if world.rng.randf() < 0.6:
-				say(_pick(["Grabbing ammo.", "Taking his mags.", "He won't need these."]))
-			if mag <= 0:
-				_start_reload()
+			_scavenged(s, take)
 			return
+
+
+func _scavenged(body: Soldier, take: int) -> void:
+	body.loot -= take
+	reserve += take
+	out_said = false
+	world.stat("scavenge")
+	low_ammo_said = false
+	if world.rng.randf() < 0.6:
+		say(_pick(["Grabbing ammo.", "Taking his mags.", "He won't need these."]))
+	if mag <= 0:
+		_start_reload()
 
 
 func _seek_resupply() -> bool:
 	if world.time < resupply_t:
 		return false
+	if _native_supply():
+		return _seek_resupply_native()
 	resupply_t = world.time + 6.0
 	var best: Soldier = null
 	var bd := 25.0
@@ -2738,11 +2774,7 @@ func _seek_resupply() -> bool:
 				bd = d
 				best = s
 	if best:
-		task = "resupply"
-		world.stat("resupply_body")
-		task_ent = best
-		go_to(best.position, "task", 1)
-		return true
+		return _seek_supply_body(best)
 	var f: Structure = world.rules.nearest_fob(team, position)
 	var fd := Defs.flat(f.position - position).length() if f else INF
 	# a forward ammo cache, if there's one nearer than the FOB
@@ -2754,20 +2786,45 @@ func _seek_resupply() -> bool:
 				fd = d
 				cache = st
 	if cache:
-		task = "resupply"
-		task_ent = cache
-		go_to(cache.position + Defs.flat(position - cache.position).normalized() * 2.2 + Vector3(world.rng.randf_range(-1, 1), 0, world.rng.randf_range(-1, 1)), "task", 1)
-		say("Back to the ammo cache!", true)
-		world.stat("resupply_cache")
-		return true
+		return _seek_supply_depot(cache, cache.position + Defs.flat(position - cache.position).normalized() * 2.2 + Vector3(world.rng.randf_range(-1, 1), 0, world.rng.randf_range(-1, 1)), true)
 	if f and fd < 90.0:
-		task = "resupply"
-		task_ent = f
-		go_to(f.position + Vector3(world.rng.randf_range(-4, 4), 0, world.rng.randf_range(-4, 4)), "task", 1)
-		say("Falling back for ammo!", true)
-		world.stat("resupply_fob")
-		return true
+		return _seek_supply_depot(f, f.position + Vector3(world.rng.randf_range(-4, 4), 0, world.rng.randf_range(-4, 4)), false)
 	return false
+
+
+func _seek_supply_body(body: Soldier) -> bool:
+	task = "resupply"
+	world.stat("resupply_body")
+	task_ent = body
+	go_to(body.position, "task", 1)
+	return true
+
+
+func _seek_supply_depot(depot: Structure, destination: Vector3, cache: bool) -> bool:
+	task = "resupply"
+	task_ent = depot
+	go_to(destination, "task", 1)
+	say("Back to the ammo cache!" if cache else "Falling back for ammo!", true)
+	world.stat("resupply_cache" if cache else "resupply_fob")
+	return true
+
+
+func _seek_resupply_native() -> bool:
+	var result: Array = _supply_core().search_bodies(PackedFloat64Array([scav_t, resupply_t]), world.time, position, _supply_bodies(25.0))
+	assert(result.size() == 2, "Invalid supply search")
+	_read_supply_times(result[0])
+	if int(result[1]) < 0:
+		return false
+	if int(result[1]) > 0:
+		return _seek_supply_body(world.entity(int(result[1])))
+	var f: Structure = world.rules.nearest_fob(team, position)
+	var fd := Defs.flat(f.position - position).length() if f else INF
+	var caches := []
+	for st: Structure in world.structures_near(position, minf(fd, 70.0)):
+		caches.append([st.eid, st.position, st.team, st.built, st.gone, st.skind == "ammo_cache"])
+	var chosen: Array = _supply_core().choose_depot(position, team, [f.eid, f.position] if f else [], caches, world.rng._backend)
+	assert(chosen.size() == 3, "Invalid supply depot decision")
+	return _seek_supply_depot(world.entity(int(chosen[0])), chosen[2], bool(chosen[1])) if int(chosen[0]) != 0 else false
 
 
 func _resupply_tick(dt: float) -> void:
@@ -2793,6 +2850,9 @@ func _resupply_tick(dt: float) -> void:
 func resupply(dt: float) -> void:
 	if wdef.is_empty() or int(wdef.ammo) >= 9000:
 		return
+	if _native_supply():
+		_resupply_native(dt)
+		return
 	var mx := int(wdef.ammo)
 	if total_ammo() < mx:
 		reserve = mini(mx - mag, reserve + int(60.0 * dt) + 1)
@@ -2809,6 +2869,26 @@ func resupply(dt: float) -> void:
 		drones_left = mini(int(udef.get("drones", 0)), drones_left + 1)
 	if world.rng.randf() < dt * 0.2:
 		mortar_rounds = mini(int(udef.get("mortar", 0)), mortar_rounds + 1)
+
+
+func _resupply_native(dt: float) -> void:
+	var result: PackedInt64Array = _supply_core().refill_reserve(int(wdef.ammo), mag, reserve, dt)
+	assert(result.size() == 2, "Invalid ammunition refill")
+	reserve = int(result[0])
+	if result[1] != 0:
+		out_said = false
+		low_ammo_said = false
+		if mag <= 0:
+			_start_reload()
+	# Reload speech uses the gameplay stream before any special-ammunition draws.
+	var capacity := PackedInt32Array([int(udef.frags) + (1 if world.rules.has_upgrade(team, "grenades") else 0), int(udef.smokes), int(udef.get("rockets", 0)), int(udef.get("drones", 0)), int(udef.get("mortar", 0))])
+	var stock: PackedInt32Array = _supply_core().refill_special(PackedInt32Array([frags, smokes, rockets, drones_left, mortar_rounds]), capacity, dt, world.rng._backend)
+	assert(stock.size() == 5, "Invalid special ammunition refill")
+	frags = stock[0]
+	smokes = stock[1]
+	rockets = stock[2]
+	drones_left = stock[3]
+	mortar_rounds = stock[4]
 
 
 func _return_to_hold() -> void:

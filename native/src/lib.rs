@@ -17,6 +17,7 @@ mod infantry_arsenal;
 mod infantry_motion;
 mod infantry_pose;
 mod infantry_shock;
+mod infantry_supply;
 mod infantry_vitals;
 mod infantry_weapon;
 mod navigation_grid;

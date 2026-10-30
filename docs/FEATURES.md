@@ -1279,6 +1279,8 @@ Drone-avoidance checks preserve hearing memory, warning choices, dive priority
 and altitude-aware distance, with the same gameplay random draws.
 Special-attack checks preserve rocket and melee target priority, queued mortar
 orders, drone launch timing, ammunition, cooldowns and the following actions.
+Supply checks preserve scavenging, nearby-body priority, cache and FOB choices,
+refill rates, special-ammunition draws and reload order.
 The full
 authoritative Rust server and deterministic
 battle verifier are still in progress; see [RUST_SIMULATION.md](RUST_SIMULATION.md).

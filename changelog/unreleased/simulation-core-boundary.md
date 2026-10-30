@@ -34,6 +34,7 @@ kind = "fixed"
 - Incoming-round checks preserve warning order, suppression, ducking and dive priority, including soldiers busy rescuing or carrying casualties.
 - Drone-avoidance checks preserve which aircraft soldiers hear, their warnings and the chance to dive from a close attack.
 - Special-weapon checks preserve rocket and melee targets, mortar fire orders, drone launch timing, ammunition and cooldowns in Rust.
+- Supply checks preserve scavenging, nearby bodies, ammo-cache and FOB destinations, refill rates and reload order.
 - The extracted simulation uses pinned numeric rules, with exact checkpoint comparisons across platforms as replay verification work continues.
 - Guided missiles keep a consistent turn after overshooting their aim point, instead of letting rounding choose an erratic turn direction.
 - This is groundwork for the server migration. Battles still use the existing simulation, and recordings are not yet independently verified.

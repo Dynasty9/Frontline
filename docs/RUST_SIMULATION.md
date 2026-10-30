@@ -43,6 +43,7 @@ graphics, network access or a wall clock.
 | Incoming mortars and busy-soldier grenade notices | `frontline_core` | Ordered warning, range/fuse gates, memory and dive decisions extracted; Godot applies warning, suppression, duck and dive effects |
 | Drone hearing and avoidance | `frontline_core` | Ordered hearing memory, warning choices and dive chances extracted with component checkpoints; Godot applies speech and dive effects |
 | Infantry special attacks | `frontline_core` | Rocket and melee priority, mortar fire admission, drone launch decisions, ammunition and cooldowns extracted; Godot supplies contacts, mortar/drone target queries and applies actions |
+| Infantry supply decisions | `frontline_core` | Scavenging, nearest-body/depot choices, search timers and refill arithmetic extracted; Godot supplies spatial candidates and applies shared-store transfers, reloads and movement |
 | House-entry task phases | `frontline_core` | Stack/door/grenade/entry transitions, deadlines, cooking and room targets extracted with component checkpoints; Godot still owns movement callbacks and squad entry effects |
 | House occupancy and breach selection | `frontline_core` | Floor containment, ordered openings, nearest walkable stack positions and competing squadmates extracted; Godot still supplies spatial candidates, squad contacts and decision timers |
 | Injury behavior and special tasks | Rust | `soldier.gd`, `soldier_brain.gd`, `combat.gd` |
@@ -208,14 +209,14 @@ Component checkpoint headers contain a four-byte component tag, a little-endian
 rules rather than silently continuing with changed arithmetic. The separate
 integer RNG stream remains unchanged.
 
-`native/core/tests/numeric_contract.rs` compares 1,145,695 committed bytes without
+`native/core/tests/numeric_contract.rs` compares 1,355,631 committed bytes without
 tolerances: fixed-tick flight state, support events and RNG cursors, carved water,
 craters, rotated box hits, cover anchors, spherical interpolation and infantry
 movement, infantry cover fire, postures, ammunition, burst recovery, vitals, aiming,
 combat poses, bullet resolution, blast exposure, knockback recovery and wounded
 infantry schedules, grenade reflexes, grenade task movement and house-entry
 phases, building selection, automatic grenade attacks, incoming shells and drone
-reactions and special attacks. CI runs
+reactions, special attacks and infantry supply. CI runs
 the same fixtures in debug and release on Windows x64, Linux
 x64, Linux ARM64 and macOS ARM64. A mismatch reports the first different byte.
 These fixtures guard the covered trajectories; they are not a proof for all
@@ -431,9 +432,20 @@ flag until Rust owns the actors.
 
 The shock fixture compares 92,160 reference steps, including mounted turning,
 blocked terrain, carried casualties and task interruption. The full default suite
-passes 126 tests; 148 core tests pass in debug and release.
+passes 127 tests; 154 core tests pass in debug and release.
 
 ## Grenade and drone reflexes
+
+`SupplyTimers` retains scavenge and destination-search deadlines. Scavenging
+preserves the ordered nearby-body query and the truncated 65-percent ammunition
+threshold. Destination searches preserve body priority, strict distance ties,
+cache/FOB preferences and destination scatter. Replenishment keeps integer
+magazine-reserve increments and four ordered special-ammunition draws; reload
+and its speech finish before those draws. Shared corpse stores, movement and
+the resupply arrival task still belong to Godot. `FLSU` checkpoints contain the
+two search deadlines. A 16,384-step reference fixture compares ammunition,
+corpse loot, destinations, reloads, callbacks and RNG cursors; numeric CI adds
+209,936 exact transcript bytes.
 
 `InfantryArsenal` retains rocket, drone and mortar ammunition and their cooldowns,
 plus melee recovery. Rocket targeting preserves visible-vehicle priority,
