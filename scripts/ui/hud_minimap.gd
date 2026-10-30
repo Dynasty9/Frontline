@@ -504,6 +504,10 @@ func _draw_grid() -> void:
 		var f := float(i) / gn
 		_ink.draw_line(_xf * Vector2(size.x * f, 0), _xf * Vector2(size.x * f, size.y), gc, 1.0)
 		_ink.draw_line(_xf * Vector2(0, size.y * f), _xf * Vector2(size.x, size.y * f), gc, 1.0)
+	# North-up labels live in the outside coordinate rails. A rotating map
+	# keeps its labels attached to its transformed grid, never on false axes.
+	if not bool(Settings.get_v("minimap_rotate")):
+		return
 	var fs := 10 if size.x >= 240.0 else 9
 	var lc := Color(1, 1, 1, 0.55)
 	for i in gn:

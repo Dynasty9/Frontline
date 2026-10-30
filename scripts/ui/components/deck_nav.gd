@@ -32,11 +32,16 @@ func _draw() -> void:
 		draw_rect(Rect2(Vector2.ZERO, size), UiKit.fa(UiKit.ACCENT if active else UiKit.TEXT, 0.12 if active else 0.05))
 	if active:
 		draw_rect(Rect2(8, size.y - 2, size.x - 16, 2), UiKit.ACCENT)
-	var c := Vector2(15, 15)
-	draw_set_transform(Vector2(4, 4), 0, Vector2(0.72, 0.72))
-	UiDeckIcons.paint(self, icon_id, c, col)
-	draw_set_transform(Vector2.ZERO)
-	UiKit.caps_at(self, Vector2(28, 20), caption, 11, col)
+	# Center each icon/label group from its actual font metrics. All icons share
+	# the same 20 px slot and baseline, including at the smallest map setting.
+	var font := UiKit.cond(600, 1)
+	var fs := 11
+	var label_width := UiKit.caps_w(caption, fs)
+	var start := floorf((size.x - label_width - 26) * 0.5)
+	UiDeckIcons.paint(self, icon_id, Vector2(start + 10, floorf(size.y * 0.5)), col)
+	var baseline := floorf((size.y - font.get_height(fs)) * 0.5 + font.get_ascent(fs))
+	UiKit.caps_at(self, Vector2(start + 26, baseline), caption, fs, col, false)
+
 
 
 func _notification(what: int) -> void:

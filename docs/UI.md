@@ -83,7 +83,7 @@ observation controls sit on edge shading. No beveled or outlined housings compet
 - **Top** (the **Status** line): the side, `SUP` and its rate, `UNITS`, `FOB`, `TOWNS`, and the clock. A line under
   it for each FOB says what its trucks are doing.
 - **Left**: the minimap is a fixed navigation anchor. Opening tools never hides, moves or resizes it.
-  A 32 px line-icon strip aligned to the map width opens **Units**, **Support** or **Layers**. Layers reveals switches beside the map.
+  A 32 px strip with uniform 20 px icon slots and optically centered icon/label groups opens **Units**, **Support** or **Layers**. Layers reveals switches beside the map. Coordinate rails place A–H / 01–08 outside the terrain; the caption states cell size and north/track orientation.
 - **Right**: Units and Support open a task workspace on the opposite edge, with enough height to scan a
   roster or compare support. It sits below objectives and above the contextual command card. On short
   viewports, objectives and the command net yield temporarily to keep the task controls clear of orders. The recent
@@ -151,9 +151,9 @@ an optional count in mono, and a rule running on to the end of the column.
 ## Keys
 
 A key is its name in mono in a square hairline of `RULE2` (`UiKit.key`, `Hud._key_box`), filled with the accent
-when it's the order being given. Battle shortcuts use a quiet tint at rest and fill with the accent only while active; focus gets a clear
+when it's the order being given. Battle shortcuts use a quiet tint at rest and fill with the accent while active or primary; focus gets a clear
 outline. The orders card is a grid of keyed actions: `[X] ATTACK-MOVE`, `[B] DEFEND`; the ones
-that fall back are in `BAD`.
+that fall back are in `BAD`. Base is the primary first action (`C`), followed by field orders. Every action has a rebindable shortcut, including construction, training, research and tunnels. Dynamic pages use `Alt+1–9`; `[` / `]` changes pages and `\` returns. Escape cancels targeting, closes tools, then returns to the main orders before clearing selection. Supply costs remain below the caption, separate from the key.
 
 ## Options
 

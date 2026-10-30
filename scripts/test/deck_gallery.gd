@@ -136,17 +136,18 @@ func _section(parent: Control, heading: String, width: float) -> VBoxContainer:
 
 func _populate() -> void:
 	_grid.clear_actions()
+	_grid.paged = _long
 	var specs := [
 		{"id": "attack", "label": "Attack-move", "icon": "attack", "key": "X", "active": true},
 		{"id": "defend", "label": "Defend", "icon": "defend", "key": "B"},
-		{"id": "base", "label": "Base", "icon": "build", "value": "150"},
+		{"id": "base", "label": "Base", "icon": "build", "key": "C", "primary": true},
 		{"id": "grenade", "label": "Grenade", "icon": "grenade", "key": "G", "disabled": true, "tooltip": "Unavailable: no grenades remaining."},
 		{"id": "smoke", "label": "Smoke", "icon": "smoke", "key": "Ctrl+Shift+T"},
 		{"id": "hold", "label": "Hold", "icon": "hold", "key": "H"},
 		{"id": "retreat", "label": "Retreat", "icon": "back", "key": "R", "dangerous": true}]
 	if _long:
 		for i in 9:
-			specs.append({"id": "build_%d" % i, "label": "Building %d" % (i + 1), "icon": "build", "value": str(100 + i * 25)})
+			specs.append({"id": "build_%d" % i, "label": "Building %d" % (i + 1), "icon": "build", "value": str(100 + i * 25), "key": "Alt + %d" % (i + 1)})
 	for spec in specs:
 		var button := _grid.add_action(spec)
 		button.pressed.connect(func():

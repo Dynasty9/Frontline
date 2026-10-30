@@ -34,6 +34,7 @@ func _draw() -> void:
 		return
 	var map_rect := hud.minimap_panel.get_rect()
 	UiDeckSurface.paint(self, Rect2(Vector2(map_rect.position.x - 8, hud.task_bar.position.y - 8), Vector2(map_rect.size.x + 16, map_rect.end.y - hud.task_bar.position.y + 16)), true)
+	UiMapGridFrame.paint(self, Rect2(hud.minimap_panel.position + hud.minimap.position, hud.minimap.size), MapDims.GRID, bool(Settings.get_v("minimap_rotate")))
 	if hud.drawer_frame.visible:
 		UiDeckSurface.paint(self, hud.drawer_frame.get_rect().grow(4), true)
 		var r := hud.drawer_frame.get_rect()

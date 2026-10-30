@@ -4,7 +4,7 @@
     {
       "id": "commander-workspaces",
       "date": "2026-10-29",
-      "rationale": "A still shows hierarchy, panel footprint and the fixed map. Commander is the overview; observer and task states are supporting evidence.",
+      "rationale": "Rendered battle states show fixed military grid navigation, aligned tools and contextual orders. The construction capture demonstrates separate shortcuts and supply costs; commander, observer and task states show their hierarchy in play.",
       "captures": [
         {
           "asset": "changelog/unreleased/commander-workspaces/after.jpg",
@@ -27,6 +27,31 @@
             "--hud-panel=squads",
             "--hud-query=charlie",
             "--hud-focus-at=2",
+            "--events-collapsed"
+          ],
+          "evidence": "Rendered game UI, visually inspected at full size.",
+          "reviewed": true
+        },
+        {
+          "asset": "changelog/unreleased/commander-workspaces/base.jpg",
+          "medium": "still",
+          "stage": "Godot scenario/UI capture",
+          "source_ref": "the commit containing this catalog revision",
+          "renderer": "Forward+",
+          "resolution": [
+            1600,
+            900
+          ],
+          "arguments": [
+            "--offscreen",
+            "--seed=3",
+            "--perf=0",
+            "--shot-at=4",
+            "--quit-after=5",
+            "--scenario=attack",
+            "--play",
+            "--select-first",
+            "--hud-orders=base",
             "--events-collapsed"
           ],
           "evidence": "Rendered game UI, visually inspected at full size.",

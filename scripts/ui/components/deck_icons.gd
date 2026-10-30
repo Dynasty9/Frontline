@@ -39,22 +39,19 @@ static func paint(canvas: CanvasItem, icon_id: String, c: Vector2, col: Color) -
 			for d in [Vector2.LEFT, Vector2.RIGHT, Vector2.UP, Vector2.DOWN]:
 				canvas.draw_line(c + d * 5, c + d * 11, col, 1.4, true)
 		"units":
-			for x in [-8.0, 0.0, 8.0]:
-				var p: Vector2 = c + Vector2(x, -2 if x == 0.0 else 1)
-				canvas.draw_circle(p + Vector2(0, -4), 2.5, col, false, 1.4, true)
-				canvas.draw_polyline(PackedVector2Array([p + Vector2(-4, 7), p + Vector2(-4, 3), p + Vector2(4, 3), p + Vector2(4, 7)]), col, 1.4, true)
+			canvas.draw_rect(Rect2(c - Vector2(8, 6), Vector2(16, 12)), col, false, w)
+			canvas.draw_line(c + Vector2(-7, -5), c + Vector2(7, 5), col, w, true)
+			canvas.draw_line(c + Vector2(-7, 5), c + Vector2(7, -5), col, w, true)
+			canvas.draw_line(c + Vector2(-2, -8), c + Vector2(2, -8), col, w, true)
 		"layers":
-			for row in 3:
-				var y := c.y - 7.0 + row * 7.0
-				canvas.draw_line(Vector2(c.x - 9, y), Vector2(c.x + 9, y), col, 1.4, true)
-				var x := c.x + (-3.0 if row == 1 else 4.0)
-				canvas.draw_rect(Rect2(x - 1.5, y - 3, 3, 6), col)
+			canvas.draw_polyline(PackedVector2Array([c + Vector2(-8, -3), c + Vector2(0, -8), c + Vector2(8, -3), c + Vector2(0, 2), c + Vector2(-8, -3)]), col, w, true)
+			canvas.draw_polyline(PackedVector2Array([c + Vector2(-8, 2), c + Vector2(0, 7), c + Vector2(8, 2)]), col, w, true)
 		"support":
-			canvas.draw_line(c + Vector2(0, -4), c + Vector2(0, 9), col, 1.4, true)
-			canvas.draw_circle(c + Vector2(0, -5), 2, col)
-			canvas.draw_arc(c + Vector2(0, -5), 6, -PI * 0.8, -PI * 0.2, 14, col, 1.4, true)
-			canvas.draw_arc(c + Vector2(0, -5), 10, -PI * 0.8, -PI * 0.2, 18, col, 1.4, true)
-			canvas.draw_line(c + Vector2(-6, 9), c + Vector2(6, 9), col, 1.4, true)
+			canvas.draw_line(c + Vector2(0, -2), c + Vector2(0, 8), col, w, true)
+			canvas.draw_circle(c + Vector2(0, -3), 1.7, col)
+			canvas.draw_arc(c + Vector2(0, -2), 4, -PI * 0.85, -PI * 0.15, 12, col, w, true)
+			canvas.draw_arc(c + Vector2(0, -2), 8, -PI * 0.85, -PI * 0.15, 16, col, w, true)
+			canvas.draw_line(c + Vector2(-6, 8), c + Vector2(6, 8), col, w, true)
 		_:
 			canvas.draw_circle(c, 6, col, false, w, true)
 			canvas.draw_line(c + Vector2(-10, 0), c + Vector2(10, 0), col, w, true)

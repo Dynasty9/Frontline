@@ -76,6 +76,20 @@ func _ready() -> void:
 	var new_action := grid.add_action({"id": "replacement", "label": "New", "icon": "build"}, func(): called.append("new"))
 	new_action.pressed.emit()
 	_check("recomposing does not retain stale callbacks", called == ["attack", "new"])
+	grid.clear_actions()
+	grid.paged = true
+	for i in 14:
+		grid.add_action({"id": str(i), "label": "Build", "key": "Alt + 1", "value": "150"})
+	await _settle()
+	_check("pages expose only nine actions at a time", grid.page_count() == 2 and grid.grid.get_child(8).visible and not grid.grid.get_child(9).visible)
+	grid.turn_page(1)
+	_check("next page replaces the visible actions", not grid.grid.get_child(0).visible and grid.grid.get_child(13).visible and grid.next.disabled and not grid.previous.disabled)
+	var priced := grid.grid.get_child(13) as UiDeckAction
+	_check("cost and shortcut have separate readable space", priced.keycap.visible and priced.value_label.visible and not priced.caption.get_rect().intersects(priced.value_label.get_rect()))
+	grid.turn_page(1)
+	_check("paging stops at the last page", grid.page == 1)
+	grid.clear_actions()
+	_check("new selection resets paging", grid.page == 0 and not grid.pager.visible)
 	stage.queue_free()
 	await _settle()
 	while Music._task >= 0:

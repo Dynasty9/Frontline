@@ -282,6 +282,10 @@ func _run() -> void:
 	hud._layout_workspace()
 	_check("short view keeps task above orders", hud.drawer_frame.get_rect().end.y <= hud.card_panel.position.y - 18.0)
 	_check("crowded briefing yields to task", hud.objectives.modulate.a == 0.0)
+	hud.card_panel.position.y = 304
+	hud._layout_workspace()
+	_check("shortest task still shows a complete unit row", hud.orbat.size.y >= HudOrbat.HEAD_H + HudOrbat.SEC_H + HudOrbat.ROW_H + 4)
+	_check("compact roster clears its focus button", hud.orbat.get_rect().end.y <= hud.focus_unit.position.y)
 	hud.set_workspace("battle")
 	_check("closing task restores briefing", hud.objectives.modulate.a == 1.0)
 	hud.objectives.free()

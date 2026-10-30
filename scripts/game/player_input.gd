@@ -280,13 +280,21 @@ func _key(ev: InputEvent) -> void:
 			cancel_modes()
 		elif world.hud and world.hud.workspace != "battle":
 			world.hud.set_workspace("battle")
+		elif world.hud and world.hud.back_to_orders():
+			pass
 		elif has_units() or sel_structure != 0:
 			clear_selection()
 		elif world.hud:
 			world.hud.toggle_menu()
 		return
-	var act := Keys.action_for(ev, (PLACE_ACTIONS + KEY_ACTIONS) if place_kind != "" else KEY_ACTIONS)
+	var actions := KEY_ACTIONS.duplicate()
+	if world.hud and can_command():
+		world.hud._update_card()
+		actions = world.hud.card_key_actions() + actions
+	var act := Keys.action_for(ev, (PLACE_ACTIONS + actions) if place_kind != "" else actions)
 	if act == "":
+		return
+	if place_kind == "" and world.hud and world.hud.activate_card_action(act):
 		return
 	if act.begins_with("group_set_"):
 		var n := int(act.right(1))

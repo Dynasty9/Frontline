@@ -12,8 +12,9 @@ None of these components depends on `Hud`, `World`, `Soldier` or `Vehicle`.
 | `UiDeckNav` | Compact icon-and-label tool switch | `icon_id`, `caption`, native `pressed`/`toggled` signals, `button_pressed`, `disabled`. |
 | `UiDeckKeycap` | Shortcut hint with optional width limit | `set_binding(text, max_width=54)`, `set_active(bool)`; zero width limit shows the complete binding. |
 | `UiDeckAction` | Illustrated action, cost, shortcut and targeting state | `configure(spec)`, `set_active(bool)`, native `pressed`, `disabled`; supports native keyboard focus outside battle. |
-| `UiDeckGrid` | Three-column command group with bounded scrolling | `title`, `add_action(spec, callback)`, `clear_actions()`, `fit_width(available_width)`, `max_rows`. |
+| `UiDeckGrid` | Three-column command group with scrolling or nine-slot pages | `title`, `add_action(spec, callback)`, `clear_actions()`, `fit_width(available_width)`, `max_rows`, `paged`, `page_count()`, `turn_page(direction)`. |
 | `UiDeckEmptyState` | Contextual empty-state and help panel | `configure({surface, eyebrow, title, body, code, help_title, help_lines})`; 76 px compact presentation; `surface=false` omits the backdrop. Extra code/help needs at least 100 px height, and the help column yields below 580 px. Keep copy concise. |
+| `UiMapGridFrame` | Coordinate rails and registration marks | `paint(canvas, map_rect, divisions, rotating=false)`; the host supplies scenario grid dimensions. Rotating maps keep coordinates inside the map. |
 | `UiModelPreview` | Static lit model in an isolated transparent viewport | Add to the scene tree, then `set_model(detached_node, bust=false)`. Takes ownership and frees the previous model. `frame_model()` reframes an edited model; resize/theme changes request a fresh render. |
 
 ![The command deck component workbench](images/command-deck-components.jpg)
@@ -39,7 +40,7 @@ orders.fit_width(348)
 ```
 
 Action specifications accept `id`, `label`, `icon`, `key`, `value`, `tooltip`, `dangerous`, `disabled` and
-`active`. A key takes precedence over a value. Complete rebound keys remain in the action tooltip when the
+`active`, `primary` and `shortcut_id`. Cost and shortcut occupy separate rows. Complete rebound keys remain in the action tooltip when the
 keycap truncates. Calling `configure` replaces the entire presentation state; it does not attach callbacks.
 Use `pressed.connect` or the grid's callback argument to bind behaviour once. `clear_actions` detaches old
 controls immediately and releases them at the end of the frame, so rebuilding cannot leave stale visible
@@ -47,7 +48,7 @@ commands. Decide whether an action is affordable/authorized in the host and set 
 
 `fit_width` reserves room for the scrollbar and reduces tiles from 100 to 80 logical pixels while retaining
 three predictable columns. The minimum supported grid width is 288 logical pixels. Longer lists scroll after
-three rows by default. Screens own positioning; the HUD reserves the fixed map and selection region before
+three rows by default. Set `paged=true` for nine visible slots with previous/next controls; changing selection resets the page. Screens own positioning; the HUD reserves the fixed map and selection region before
 passing available width to the grid.
 
 `hud.gd` adapts selection, key bindings and callbacks into these controls. `hud_command_deck.gd` places shared
@@ -85,7 +86,8 @@ GODOT=godot node --test tests/deck-components.test.mjs tests/ui-layout.test.mjs
 ```
 
 Component contracts cover theme changes, native keyboard activation, label/icon independence, reconfiguration,
-long key bounds, resize bounds, model ownership and callback replacement. HUD layout tests exercise the
+long key bounds, resize bounds, model ownership, page isolation and callback replacement.
+Run `godot --path . -- --scenario=attack --play --keys-test=orders --offscreen` to exercise actual command shortcuts, rebinding, disabled actions, paging and input guards. HUD layout tests exercise the
 composed controls with fixed-map geometry, long command lists, task workspaces and narrow viewports.
 Also render commander and observer states after changing components; a passing isolated test does not prove
 the whole battle composition remains readable.

@@ -1303,6 +1303,11 @@ func _process(_dt: float) -> void:
 			if s.owner_peer == world.local_peer and s.sid != 0:
 				world.input.sel_squads.append(s.sid)
 				break
+	# Capture a construction page through its real command shortcut callback.
+	if args.has("hud-orders") and world.hud and world.time > 2.5 and not has_meta("hud_orders"):
+		set_meta("hud_orders", true)
+		world.hud._update_card()
+		world.hud.activate_card_action("build_base" if String(args["hud-orders"]) == "base" else "build_defenses")
 	if args.has("nohud") and world.hud and world.hud.root.visible:
 		world.hud.root.visible = false
 	if args.has("tactical") and world.hud and not world.hud.tactical and not has_meta("tac"):

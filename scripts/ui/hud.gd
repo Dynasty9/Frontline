@@ -22,13 +22,17 @@ func refresh_minimap() -> void:
 
 ## The minimap size changes only through Interface settings, never through tools.
 const MINIMAP_PX := [220.0, 260.0, 320.0]
-const MINIMAP_PAD := 5.0
+const MINIMAP_PAD := 18.0
 
 
 func minimap_side() -> float:
 	var s: float = MINIMAP_PX[clampi(int(Settings.get_v("minimap_size")), 0, MINIMAP_PX.size() - 1)]
-	# a short screen (a big interface scale) keeps room above it for the support buttons
-	return minf(s, maxf(160.0, root.size.y * 0.48)) if root and root.size.y > 0.0 else s
+	if root and root.size.y > 0.0:
+		# Reserve a readable selection and three orders even with the largest map.
+		# This depends on the viewport, never on which tool or unit is selected.
+		var available := root.size.x - SEL_MIN_W - 288.0 - 48.0 - MINIMAP_PAD * 2.0 - HudLayers.S - 14.0
+		s = minf(s, maxf(160.0, minf(root.size.y * 0.48, available)))
+	return s
 
 
 ## The map stays at one size and position. Tools live above it, and layers
@@ -55,15 +59,15 @@ func layout_minimap() -> void:
 	layers_ui.offset_top = -22 - lh
 	var above := -22 - outer - 64
 	if task_bar:
-		task_bar.position = Vector2(22, root.size.y - outer - 66)
+		task_bar.position = Vector2(22, root.size.y - outer - 82)
 		for button in task_bar.get_children():
 			button.custom_minimum_size.x = (outer - 4.0) / 3.0
 		task_bar.size = Vector2(outer, 32)
 	if map_caption:
 		map_caption.position = Vector2(26, root.size.y - outer - 42)
 	if station_frame:
-		station_frame.position = Vector2(14, root.size.y - outer - 66)
-		station_frame.size = Vector2(station_w, outer + 52)
+		station_frame.position = Vector2(14, root.size.y - outer - 82)
+		station_frame.size = Vector2(station_w, outer + 68)
 	chat_edit.offset_bottom = above
 	chat_edit.offset_top = above - 34
 
@@ -137,6 +141,7 @@ var card_title: Label
 var card_scroll: ScrollContainer
 var command_grid: UiDeckGrid
 var _card_key := ""
+var _card_identity := ""
 var _card_page := "main"
 var _page_base := ""  # the card a production page was opened on
 ## Production categories: [label, tooltip].
@@ -659,17 +664,20 @@ func _layout_workspace() -> void:
 	workspace_hint.size.x = HudOrbat.W
 	workspace_title.text = ("BATTLE FORCES" if spectator else "YOUR FORCES") if workspace == "squads" else ("SUPPORT DEMOS" if spectator else "FIRE SUPPORT")
 	workspace_hint.text = ("Select to inspect · Double-click to focus" if spectator else "Select to command · Double-click to focus") if workspace == "squads" else ("Choose a demo, then click its target" if spectator else "Choose a strike, then click its target")
-	map_caption.text = "BATTLE MAP"
-	map_caption.visible = false  # the persistent map does not need a repeated heading
+	map_caption.text = "GRID %d M  /  %s" % [int(MapDims.CELL), "TRACK UP" if Settings.get_v("minimap_rotate") else "NORTH UP"]
+	map_caption.visible = true
 	map_caption.tooltip_text = "Click or drag to move the camera. Right-click to order selected units."
 	var compact := drawer_h < 320.0
+	workspace_title.add_theme_font_size_override("font_size", 16 if compact else 20)
 	workspace_hint.visible = drawer_frame.visible and not compact
-	squad_search.position = Vector2(drawer_x, drawer_y + (44 if compact else 67))
-	roster_filters.position = Vector2(drawer_x, drawer_y + (82 if compact else 108))
-	orbat.position = Vector2(drawer_x, drawer_y + (118 if compact else 147))
-	orbat.size = Vector2(HudOrbat.W, maxf(80.0, drawer_h - (175.0 if compact else 204.0)))
-	drawer_footer.position = Vector2(drawer_x, drawer_y + drawer_h - 18)
-	focus_unit.position = Vector2(drawer_x + HudOrbat.W - focus_unit.size.x, drawer_y + drawer_h - 53)
+	squad_search.position = Vector2(drawer_x, drawer_y + (40 if compact else 67))
+	roster_filters.position = Vector2(drawer_x, drawer_y + (76 if compact else 108))
+	orbat.position = Vector2(drawer_x, drawer_y + (112 if compact else 147))
+	# Even the shortest drawer must show its result header, section and a full row.
+	orbat.size = Vector2(HudOrbat.W, maxf(88.0, drawer_h - (156.0 if compact else 204.0)))
+	drawer_footer.text = "ENTER TO FOCUS" if compact else "↑ ↓ BROWSE · ENTER FOCUS · ESC CLOSE"
+	drawer_footer.position = Vector2(drawer_x, drawer_y + drawer_h - (30 if compact else 18))
+	focus_unit.position = Vector2(drawer_x + HudOrbat.W - focus_unit.size.x, drawer_y + drawer_h - (38 if compact else 53))
 	focus_unit.text = "FOCUS RESULT" if squad_search.has_focus() else "FOCUS SELECTED"
 	focus_unit.disabled = orbat._entries.is_empty() if squad_search.has_focus() else (world.input == null or not world.input.has_units())
 	support_scroll.position = Vector2(drawer_x, drawer_y + (54 if compact else 78))
@@ -898,6 +906,9 @@ static func _key_box(k: String) -> PanelContainer:
 func _keys_changed() -> void:
 	_build_help()
 	_card_key = ""
+	if command_grid:
+		command_grid.previous.text = Keys.label("orders_previous") + "  ‹"
+		command_grid.next.text = "›  " + Keys.label("orders_next")
 	_support_key = ""
 	if _task_buttons.has("squads"):
 		var units: Button = _task_buttons["squads"]
@@ -2020,7 +2031,10 @@ func _update_card() -> void:
 	if key == _card_key:
 		return
 	_card_key = key
+	var previous_page := command_grid.page if key == _card_identity else 0
+	_card_identity = key
 	command_grid.clear_actions()
+	command_grid.paged = _card_page != "main" or st != null
 	card_title.text = ""
 	var lt := world.local_team
 	if lt < 0:
@@ -2039,10 +2053,10 @@ func _update_card() -> void:
 				inp.sel_squads.append(s2.sid))
 	elif key.begins_with("units:inf"):
 		if _card_page == "main":
-			card_title.text = "Orders"
+			card_title.text = "Command"
+			_button("Base", "Build", "Base construction: FOBs, barracks, factory, medic tent and research.", func(): _card_page = "base")
 			_button("Attack-move", Keys.label("attack_move"), "Push to a spot in bounds, one fire team moving while the other covers. They stop to fight anything they meet, then dig in at the objective. (Ctrl+right-click)", func(): inp.cancel_modes(); inp.order_mode = "assault")
 			_button("Defend", Keys.label("defend"), "Hold an area: the squad spreads into the best cover there facing the way you drag, and stays put.", func(): inp.cancel_modes(); inp.order_mode = "defend")
-			_button("Base", "Build", "FOBs, barracks, factory, medic tent, research...", func(): _card_page = "base")
 			_button("Defenses", "Build", "Trenches, sandbags, wire, mines, nests, mortar pits, bunkers...", func(): _card_page = "def")
 			if key.contains(":mortar"):
 				_button("Mortar HE", Keys.label("fire_mission"), "Fire mission: 4 high-explosive rounds (25-140 m).", func(): inp.ability = "mortar_he")
@@ -2131,6 +2145,7 @@ func _update_card() -> void:
 				if t.skind == "tunnel" and t.team == lt and t.built and t != st:
 					var ex: int = t.eid
 					_button("Exit " + Defs.grid_ref(t.position), "", "Move everyone inside to the entrance at %s." % Defs.grid_ref(t.position), func(): world.send_cmd({"t": "tunnel_exit", "building": st.eid, "exit": ex}))
+	command_grid.turn_page(previous_page)
 
 
 ## Which production page an item is on.
@@ -2162,6 +2177,8 @@ func _build_command_card() -> void:
 	card_title = command_grid.title
 	card_scroll = command_grid.scroll
 	card = command_grid.grid
+	command_grid.previous.text = Keys.label("orders_previous") + "  ‹"
+	command_grid.next.text = "›  " + Keys.label("orders_next")
 
 
 func _layout_command_card() -> void:
@@ -2176,12 +2193,71 @@ func _button(text: String, sub: String, tip: String, cb: Callable) -> Button:
 	var icons := {"Attack-move": "attack", "Defend": "defend", "Hold": "hold", "Retreat": "back", "Fall back": "back", "Back": "back", "Cancel": "back",
 		"Grenade": "grenade", "Smoke": "smoke", "Mortar smoke": "smoke", "Fire smoke": "smoke", "Dismount": "exit", "Exit here": "exit", "Base": "build", "Defenses": "defenses",
 		"Mortar HE": "target", "Fire mission": "target", "Fire HE": "target", "Squad": "units"}
+	var bindings := {"Base": "build_base", "Defenses": "build_defenses", "Dismount": "dismount", "Squad": "select_squad", "Back": "orders_back", "Cancel": "cancel_production",
+		"Attack-move": "attack_move", "Defend": "defend", "Hold": "hold", "Retreat": "retreat", "Fall back": "retreat", "Grenade": "grenade", "Smoke": "smoke",
+		"Mortar HE": "fire_mission", "Fire mission": "fire_mission", "Fire HE": "fire_mission", "Mortar smoke": "fire_smoke", "Fire smoke": "fire_smoke", "Exit here": "tunnel_exit"}
+	var shortcut: String = bindings.get(text, "order_slot_%d" % (card.get_child_count() % UiDeckGrid.PAGE_SIZE + 1))
 	var b := command_grid.add_action({"id": text, "label": text, "icon": icons.get(text, "build"),
-		"key": sub if is_key else "", "value": sub if not is_key and sub != "Build" else "",
+		"key": (sub if is_key else Keys.label(shortcut)), "shortcut_id": shortcut, "primary": text == "Base",
+		"value": sub if not is_key and sub != "Build" and sub != "‹" else "",
 		"dangerous": text in ["Retreat", "Fall back", "Cancel"], "tooltip": tip},
-		func(): Sfx.ui("click"); cb.call(); _card_key = "")
+		func():
+			Sfx.ui("click"); cb.call(); _card_key = "")
 	b.focus_mode = Control.FOCUS_NONE
 	return b
+
+
+## Contextual shortcuts share the actual button callback, including disabled state.
+func card_key_actions() -> Array:
+	var ids: Array = []
+	if not command_grid:
+		return ids
+	for button: UiDeckAction in card.get_children():
+		if button.visible:
+			ids.append(button.shortcut_id)
+	if command_grid.paged:
+		# Empty slots must consume Alt+number too, rather than recall a control group.
+		for slot in UiDeckGrid.PAGE_SIZE:
+			ids.append("order_slot_%d" % (slot + 1))
+	if command_grid.page_count() > 1:
+		ids.append_array(["orders_previous", "orders_next"])
+	if _card_page != "main":
+		ids.append("orders_back")
+	return ids
+
+
+func back_to_orders() -> bool:
+	if _card_page == "main":
+		return false
+	_card_page = "main"
+	_card_key = ""
+	_update_card()
+	return true
+
+
+func activate_card_action(id: String) -> bool:
+	if not command_grid or not world.input.can_command() or typing or (menu_panel and menu_panel.visible):
+		return false
+	if id == "orders_back":
+		return back_to_orders()
+	if id in ["orders_previous", "orders_next"] and command_grid.page_count() > 1:
+		command_grid.turn_page(1 if id == "orders_next" else -1)
+		return true
+	if command_grid.paged and id.begins_with("order_slot_"):
+		var index := command_grid.page * UiDeckGrid.PAGE_SIZE + int(id.trim_prefix("order_slot_")) - 1
+		if index >= 0 and index < card.get_child_count():
+			var button := card.get_child(index) as UiDeckAction
+			if not button.disabled:
+				button.pressed.emit()
+				_update_card()
+		return true
+	for button: UiDeckAction in card.get_children():
+		if button.visible and button.shortcut_id == id:
+			if not button.disabled:
+				button.pressed.emit()
+				_update_card()
+			return true
+	return false
 
 
 ## Which order is in hand (attack-move, defend, a grenade, a fire mission):

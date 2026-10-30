@@ -1,11 +1,14 @@
 class_name UiDeckAction
 extends Button
 ## Presentation only: the caller supplies an ID, icon and callback, never a World.
-const DEFAULT_SIZE := Vector2(100, 46)
+const DEFAULT_SIZE := Vector2(100, 56)
 var action_id := ""
+var shortcut_id := ""
+var primary := false
 var icon_id := "target"
 var dangerous := false
 var active := false
+var _binding := ""
 var _theme_rev := -1
 var caption: Label
 var keycap: UiDeckKeycap
@@ -34,8 +37,8 @@ func _init() -> void:
 	keycap.hide()
 	value_label = UiKit.mono_label("", 10, UiKit.DIM)
 	value_label.clip_text = true
-	value_label.position = Vector2(42, 7)
-	value_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	value_label.position = Vector2(8, 39)
+	value_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 	value_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(value_label)
 	resized.connect(_layout)
@@ -47,16 +50,19 @@ func _init() -> void:
 
 func configure(spec: Dictionary) -> void:
 	action_id = spec.get("id", "")
+	shortcut_id = spec.get("shortcut_id", "")
+	primary = spec.get("primary", false)
 	icon_id = spec.get("icon", "target")
 	dangerous = spec.get("dangerous", false)
 	active = spec.get("active", false)
 	disabled = spec.get("disabled", false)
 	caption.text = spec.get("label", "")
 	var binding: String = spec.get("key", "")
+	_binding = binding
 	keycap.visible = not binding.is_empty()
 	keycap.set_binding(binding)
 	value_label.text = spec.get("value", "")
-	value_label.visible = binding.is_empty() and not value_label.text.is_empty()
+	value_label.visible = not value_label.text.is_empty()
 	tooltip_text = spec.get("tooltip", caption.text)
 	if not binding.is_empty():
 		tooltip_text += "\nShortcut: " + binding
@@ -71,8 +77,11 @@ func set_active(value: bool) -> void:
 
 
 func _layout() -> void:
-	caption.size = Vector2(maxf(1, size.x - 16), 22)
-	value_label.size = Vector2(maxf(1, size.x - 48), 20)
+	caption.size = Vector2(maxf(1, size.x - 16), 16)
+	value_label.size = Vector2(maxf(1, size.x - 16), 16)
+	# Reserve the icon's slot even at the narrowest three-column layout.
+	keycap.set_binding(_binding.replace(" + ", "+"), maxf(20, size.x - 42))
+	keycap.tooltip_text = _binding
 
 
 func _notification(what: int) -> void:
@@ -82,21 +91,21 @@ func _notification(what: int) -> void:
 
 func _sync_style() -> void:
 	_theme_rev = UiKit.theme_rev
-	caption.add_theme_color_override("font_color", UiKit.BAD if dangerous else (UiKit.ACCENT if active else UiKit.TEXT))
+	caption.add_theme_color_override("font_color", UiKit.BAD if dangerous else (UiKit.ACCENT if active or primary else UiKit.TEXT))
 	value_label.add_theme_color_override("font_color", UiKit.DIM)
-	keycap.set_active(active)
+	keycap.set_active(active or primary)
 	queue_redraw()
 
 
 func _draw() -> void:
 	var hover := (is_hovered() or has_focus()) and not disabled
-	var col := UiKit.BAD if dangerous else (UiKit.ACCENT if active or hover else UiKit.TEXT)
+	var col := UiKit.BAD if dangerous else (UiKit.ACCENT if active or hover or primary else UiKit.TEXT)
 	if disabled:
 		col = UiKit.FAINT
-	var ink := UiKit.fa(UiKit.ACCENT, 0.10) if active else UiKit.fa(UiKit.TEXT, 0.06 if hover else 0.015)
+	var ink := UiKit.fa(UiKit.ACCENT, 0.10) if active or primary else UiKit.fa(UiKit.TEXT, 0.06 if hover else 0.025)
 	draw_rect(Rect2(Vector2.ZERO, size), ink)
 	draw_line(Vector2(8, size.y - 1), Vector2(size.x - 8, size.y - 1), UiKit.LINE)
-	if active:
+	if active or primary:
 		draw_rect(Rect2(0, 5, 2, size.y - 10), UiKit.ACCENT)
 	if has_focus():
 		draw_rect(Rect2(Vector2(0.5, 0.5), size - Vector2.ONE), UiKit.ACCENT, false)

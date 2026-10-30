@@ -1138,7 +1138,11 @@ catalogue entry in `MissionList.LIST`, a setup function and an autopilot functio
   Flat ink surfaces, Signal typography and two-line roster rows keep the hierarchy consistent.
   Single-unit panels fit their content; a compact unboxed hint replaces the empty-selection banner.
   Selected soldiers and vehicles have portraits rendered from their actual models. Orders form a stable
-  three-column grid with pictograms and bound-key hints. Narrow layouts omit the portrait and compact
+  three-column grid with pictograms and bound-key hints. Base is the highlighted first command (`C`);
+  every order has a rebindable shortcut. Construction, training, research and tunnel destinations use
+  nine-slot pages (`Alt+1–9`, `[` / `]` to change page, `\` to return), preserving ordinary control groups.
+  Supply costs stay visible below each action. Military coordinate rails label the fixed map’s actual
+  A–H / 01–08 grid, with cell size and north/track orientation. Narrow layouts omit the portrait and compact
   task headings so roster rows remain visible. The observer's director caption stays above the deck.
   The HUD is composed from the reusable [command deck component library](UI_COMPONENTS.md), with an interactive
   `--deck-gallery` workbench for checking shared controls, themes and responsive layouts without a battle.
