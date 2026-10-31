@@ -17,6 +17,7 @@ mod hierarchy;
 mod infantry_action;
 mod infantry_aim;
 mod infantry_arsenal;
+mod infantry_control;
 mod infantry_duties;
 mod infantry_medicine;
 mod infantry_motion;

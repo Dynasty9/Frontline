@@ -1301,6 +1301,9 @@ anti-tank target selection, including smoke, distance ties and removed mounts.
 Action checks preserve cooking and queued throws, grenade pickup/rethrow/kicks,
 door kicks, melee, rockets, drones and mortar launches, including callback order
 and targets removed before the action completes.
+Lifecycle checks preserve hidden vehicle/tunnel duties, treatment deadlines,
+drone operators, moving postures and status flags. Removed tents, tunnels,
+vehicles and drones are safely released.
 The Rust core now allocates authoritative entity IDs and retains their lifecycle
 order. Retired IDs stay retired, and restored lifecycle checkpoints continue the
 same allocation sequence; clients use the server's IDs for their visual objects.

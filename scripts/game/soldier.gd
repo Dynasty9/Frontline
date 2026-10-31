@@ -848,9 +848,34 @@ func _recover_tick(dt: float) -> void:
 		hit_dirt_t -= dt
 
 
+var _control_core: RefCounted
+
+
+func _native_control() -> bool:
+	return world.settings.get("rust_infantry", false) and ClassDB.class_exists("InfantryControlCore")
+
+
+func _controls() -> RefCounted:
+	if _control_core == null:
+		_control_core = ClassDB.instantiate("InfantryControlCore")
+	return _control_core
+
+
 ## Nobody glides across the ground: a man who is moving is on his feet (or
 ## crawling, deliberately) and moving his legs.
 func _posture_sanity(dt: float) -> void:
+	if _native_control():
+		var out: PackedInt32Array = _controls().motion_posture(_sim_prev, position, dt, life, posture, act)
+		assert(out.size() == 3, "Invalid infantry motion posture")
+		_sim_prev = position
+		posture = out[0]
+		act = out[1]
+		if out[2] and OS.has_environment("FL_DEBUG_PRONE"):
+			var fixed := "prone" if out[2] & 1 else ""
+			if out[2] & 2:
+				fixed += "idle"
+			world.stat("posture_fix_%s_%s_%s" % [fixed, task, goal_kind])
+		return
 	if life != Life.ALIVE or dt <= 0.0:
 		_sim_prev = position
 		return
@@ -877,6 +902,16 @@ func _update_flags() -> void:
 
 
 func _update_flags_work() -> void:
+	if _native_control():
+		var weapon := cur_weapon()
+		var ammo := PackedInt32Array()
+		if not weapon.is_empty() and int(weapon.ammo) < 9000:
+			ammo = PackedInt32Array([int(weapon.ammo), total_ammo()])
+		var result: int = _controls().status([suppression, ammo, world.time, last_shot_t, life,
+			squad != null and squad.leader == self, at_cover, cover_type, peek_up, blind, cover_h, posture])
+		assert(result >= 0, "Invalid infantry status")
+		flags = result
+		return
 	var f := 0
 	if suppression > 25.0:
 		f |= F_SUPP
@@ -3868,6 +3903,29 @@ func unhide(p: Vector3) -> void:
 
 
 func _hidden(dt: float) -> void:
+	if _native_control():
+		var reason := ["", "tunnel_wait", "vehicle", "tent", "tunnel_travel", "interrogation", "held"].find(hidden_reason)
+		var vehicle := PackedVector3Array()
+		if hidden_reason == "vehicle" and is_instance_valid(riding) and not riding.gone:
+			vehicle.append(riding.position)
+		var out: Array = _controls().hidden_step(maxi(0, reason), hidden_t, dt, vehicle)
+		assert(out.size() == 3, "Invalid hidden infantry")
+		hidden_t = out[0]
+		match int(out[1]):
+			1:
+				position = out[2]
+			2:
+				riding = null
+				unhide(position)
+			3:
+				_leave_tent()
+			4:
+				if is_instance_valid(hidden_in):
+					hidden_in.inside.erase(self)
+				unhide(task_pos)
+			5:
+				world.rules.prisoner_done(self)
+		return
 	if hidden_reason == "vehicle":
 		if riding != null and is_instance_valid(riding) and not riding.gone:
 			position = riding.position
@@ -3883,7 +3941,7 @@ func _hidden(dt: float) -> void:
 		"tent":
 			_leave_tent()
 		"tunnel_travel":
-			if hidden_in and is_instance_valid(hidden_in):
+			if is_instance_valid(hidden_in):
 				hidden_in.inside.erase(self)
 			unhide(task_pos)
 		"interrogation", "held":
@@ -3905,7 +3963,7 @@ func _leave_tent() -> void:
 	world.stat("out_of_tent")
 	life = Life.ALIVE
 	revive(true)
-	var p: Vector3 = tent.exit_pos() if tent and not tent.gone else position
+	var p: Vector3 = tent.exit_pos() if is_instance_valid(tent) and not tent.gone else position
 	unhide(p)
 	var f: Structure = world.rules.nearest_fob(team, position)
 	task = "limp"
@@ -4976,7 +5034,19 @@ func _tunnel_tick(dt: float) -> void:
 func _pilot_tick(dt: float) -> void:
 	posture = Post.CROUCH
 	act = Act.LAUNCH
-	if drone_ctrl == null or drone_ctrl.gone or drone_ctrl.dead:
+	if _native_control():
+		var drone := PackedVector3Array()
+		if is_instance_valid(drone_ctrl) and not drone_ctrl.gone and not drone_ctrl.dead:
+			drone.append(drone_ctrl.position)
+		var out: Array = _controls().pilot(position, rotation.y, dt, drone, _mount_turn())
+		assert(out.size() == 2, "Invalid drone operator pose")
+		if out[0]:
+			rotation.y = out[1]
+		else:
+			drone_ctrl = null
+			task = ""
+		return
+	if not is_instance_valid(drone_ctrl) or drone_ctrl.gone or drone_ctrl.dead:
 		drone_ctrl = null
 		task = ""
 		return

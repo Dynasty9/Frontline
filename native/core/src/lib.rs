@@ -21,6 +21,7 @@ pub mod hierarchy;
 pub mod infantry_action;
 pub mod infantry_aim;
 pub mod infantry_arsenal;
+pub mod infantry_control;
 pub mod infantry_duties;
 pub mod infantry_medicine;
 pub mod infantry_motion;

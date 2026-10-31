@@ -36,6 +36,74 @@ fn block(out: &mut Vec<u8>, bytes: &[u8]) {
 }
 
 #[test]
+fn infantry_control_is_identical_across_platforms() {
+    use frontline_core::infantry_control::{
+        self as control, Control, Hidden, HiddenReason, Status,
+    };
+    let mut bytes = Vec::new();
+    for trial in 0..4096 {
+        let mut state = Control {
+            hidden: HiddenReason::try_from((trial % 7) as u8).unwrap(),
+            hidden_timer: [0.0, 0.01, 0.2, 9999.0][trial % 4],
+            previous_position: Vector3::new(0.3, 0.0, -1.7),
+        };
+        let position =
+            state.previous_position + Vector3::X * [0.0, 0.01, 0.3, 3.2, 3.21][trial % 5];
+        let dt = [0.0, 1.0 / 30.0, 0.1, 1.0][trial % 4];
+        let hidden = state
+            .hidden_step(dt, (trial % 3 == 0).then_some(position))
+            .unwrap();
+        bytes.push(match hidden {
+            Hidden::Wait => 0,
+            Hidden::FollowVehicle(_) => 1,
+            Hidden::BailOut => 2,
+            Hidden::LeaveTent => 3,
+            Hidden::LeaveTunnel => 4,
+            Hidden::PrisonerDone => 5,
+        });
+        if let Hidden::FollowVehicle(p) = hidden {
+            point(&mut bytes, p);
+        }
+        let posture = Posture::try_from((trial % 5) as u8).unwrap();
+        let life = Life::try_from((trial % 6) as u8).unwrap();
+        let result = state
+            .motion_posture(dt, position, life, posture, (trial % 37) as u8)
+            .unwrap();
+        bytes.extend_from_slice(&[result.posture as u8, result.activity, result.corrected]);
+        let flags = control::flags(Status {
+            suppression: [0.0, 25.0, 25.01, 59.99, 60.0, 100.0][trial % 6],
+            ammunition: (trial % 3 != 0)
+                .then_some(([30, 100, 8999, 9000][trial % 4], (trial % 31) as i32)),
+            time: 10.0,
+            last_shot: [0.0, 9.4, 9.40001, 10.1][trial % 4],
+            life,
+            leader: trial % 2 == 0,
+            at_cover: trial % 3 != 0,
+            cover_kind: (trial % 4) as u8,
+            peeking: trial % 2 == 0,
+            blind: trial % 7 == 0,
+            cover_height: [-0.1, 0.0, 0.1][trial % 3],
+            posture,
+        })
+        .unwrap();
+        bytes.push(flags);
+        let yaw = control::pilot_yaw(
+            position,
+            trial as f64 * 0.17,
+            dt,
+            (trial % 7 != 0).then_some(Vector3::new(-3.7, 4.2, -9.1)),
+            (trial % 3 != 0).then_some((position, 0.3490658503988659)),
+        )
+        .unwrap();
+        bytes.push(u8::from(yaw.is_some()));
+        bytes.extend_from_slice(&yaw.unwrap_or(0.0).to_le_bytes());
+        block(&mut bytes, &state.checkpoint());
+        assert_eq!(Control::restore(&state.checkpoint()).unwrap(), state);
+    }
+    golden("infantry_control", &bytes);
+}
+
+#[test]
 fn infantry_action_is_identical_across_platforms() {
     use frontline_core::infantry_action::{Action, ActionState, Context, Related, Round, Throw};
     let mut bytes = Vec::new();
