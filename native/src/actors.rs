@@ -830,6 +830,72 @@ impl ActorStateCore {
     }
 
     #[func]
+    fn rejoin_infantry(
+        &mut self,
+        id: u32,
+        now: f64,
+        players: PackedInt32Array,
+        squads: Array<Gd<crate::squad::SquadStateCore>>,
+        next_squad: i64,
+        mut battle: Gd<crate::battle_stats::BattleStatsCore>,
+        new_squad_name: GString,
+    ) -> Array<Variant> {
+        let (Some(mut state), Ok(mut next)) = (read_squads(&squads), u64::try_from(next_squad))
+        else {
+            return Array::new();
+        };
+        if players.len() % 2 != 0 || players.len() > 200_000 {
+            return Array::new();
+        }
+        let peers: Result<Vec<_>, _> = players
+            .as_slice()
+            .chunks_exact(2)
+            .map(|p| i8::try_from(p[1]).map(|team| (p[0], team)))
+            .collect();
+        let Ok(peers) = peers else {
+            return Array::new();
+        };
+        let out = self.core.rejoin_infantry(
+            id,
+            now,
+            &peers,
+            &mut state,
+            &mut next,
+            &mut battle.bind_mut().core,
+            &new_squad_name.to_string(),
+        );
+        let Ok(out) = out else {
+            return Array::new();
+        };
+        let new_squad = if out.created {
+            match state.last().unwrap().checkpoint() {
+                Ok(bytes) => PackedByteArray::from(bytes.as_slice()),
+                Err(_) => return Array::new(),
+            }
+        } else {
+            PackedByteArray::new()
+        };
+        write_squads(squads, state);
+        let owner = out
+            .owner_changed
+            .map_or_else(Variant::nil, |id| id.to_variant());
+        let routes = travel_events(
+            out.route
+                .into_iter()
+                .map(frontline_core::infantry_travel_owned::Event::Route)
+                .collect(),
+        );
+        varray![
+            out.squad as i64,
+            out.created,
+            next as i64,
+            &owner,
+            &new_squad,
+            &routes
+        ]
+    }
+
+    #[func]
     fn advance_infantry_idle(
         &mut self,
         id: u32,

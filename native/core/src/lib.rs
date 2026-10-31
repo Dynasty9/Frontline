@@ -54,6 +54,7 @@ pub mod infantry_orders;
 pub mod infantry_pose;
 pub mod infantry_prison_owned;
 pub mod infantry_reflex;
+pub mod infantry_rejoin;
 pub mod infantry_scan;
 pub mod infantry_shock;
 pub mod infantry_spawn;

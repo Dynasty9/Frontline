@@ -75,6 +75,7 @@ kind = "fixed"
 - Shared Rust prisoner checks preserve capture credit, escort orders and delivery to bases or tunnels. Prison arrival also handles a destination that was removed during the march.
 - Downtime checks preserve idle choices, conversations, laughter and interruptions. Removed conversation partners and targets no longer interrupt the soldier update with a stale-reference error.
 - Shared Rust downtime updates both conversation partners and the team's cooldown together, preserving speech, interruptions and random continuation.
+- Rust squad-rejoining checks preserve nearby squad selection, returning soldiers' ownership and battle records, including commanders who disconnected.
 - Scheduling checks preserve interruptions, dives, scanning and thinking deadlines, and which orders a busy soldier can accept.
 - Authoritative entity IDs now come from Rust, preserving creation order and keeping removed units' IDs from being reused as the server migration continues.
 - Shared actor checks preserve rescue and stretcher claims when a carrier falls, and FPV drones lose control when their operator is lost while retaining their last target position.

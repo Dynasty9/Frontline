@@ -1448,6 +1448,9 @@ still need integration.
 Construction, town income, capture and production transitions match the existing
 game; shared rule effects, destruction and the full building dispatcher still need
 migration before Rust owns the complete battle.
+Retained rejoining now selects or creates squads, transfers disconnected ownership
+and updates membership, battle records and return routes. Recovery and prisoner
+rule dispatch still need to call this from the complete Rust world loop.
 Squad-state checks preserve shared contact reports, briefing timing, leader
 succession and casualty morale against the existing game. Squad checkpoints retain
 orders, formation slots, queued fire missions and plan links; the full squad

@@ -206,6 +206,23 @@ fn valid_pairs(v: &[(u32, f64)]) -> bool {
 }
 
 impl Squad {
+    pub fn callsign(&self) -> String {
+        let names = if self.team == 1 {
+            [
+                "Lion", "Hawk", "Wolf", "Viper", "Scorpion", "Falcon", "Jackal", "Cobra",
+            ]
+        } else {
+            [
+                "Alpha", "Bravo", "Charlie", "Delta", "Echo", "Foxtrot", "Golf", "Hotel",
+            ]
+        };
+        format!(
+            "{} {}",
+            names[self.id as usize % names.len()],
+            self.id / names.len() as u32 + 1
+        )
+    }
+
     pub fn new(id: u32, team: i8, owner: i32, kind: String) -> Result<Self, &'static str> {
         let q = Self {
             id,

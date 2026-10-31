@@ -36,6 +36,100 @@ fn block(out: &mut Vec<u8>, bytes: &[u8]) {
 }
 
 #[test]
+fn infantry_rejoining_is_identical_across_platforms() {
+    use frontline_core::actors::{Actor, Actors};
+    use frontline_core::battle_stats::{BattleStats, Unit};
+    use frontline_core::infantry::Infantry as Soldier;
+    use frontline_core::squad::Squad;
+    let mut bytes = vec![];
+    for team in 0..2 {
+        for trial in 0..128 {
+            let mut s = Soldier::default();
+            s.identity.id = 1;
+            s.identity.unit = "rifleman".into();
+            s.identity.team = team;
+            s.identity.owner = [0, 7, 8, -1 - i32::from(team)][trial % 4];
+            s.cover.at_cover = true;
+            s.cover.evaluate_at = 20.0;
+            let players = match trial % 3 {
+                0 => vec![(7, team), (9, 1 - team), (6, team)],
+                1 => vec![(9, 1 - team), (6, team)],
+                _ => vec![],
+            };
+            let mut squads = vec![];
+            let mut battle = BattleStats::default();
+            for i in 0..4 {
+                let q = Squad {
+                    id: [12, 11, 13, 14][i],
+                    team: if i == 2 { 1 - team } else { team },
+                    owner: [s.identity.owner, 6, -1 - i32::from(team), 8][i],
+                    kind: "rifle_squad".into(),
+                    order_position: Vector3::X
+                        * ([3.0, 3.01, 39.99, 40.0, 89.99, 90.0, 95.0][trial % 7]
+                            * if i == 1 { -1.0 } else { 1.0 }),
+                    members: if i == 0 && trial % 3 == 0 {
+                        vec![2, 3, 4, 5, 6, 7]
+                    } else {
+                        vec![]
+                    },
+                    ..Default::default()
+                };
+                battle
+                    .register_unit(Unit {
+                        key: format!("s{}", q.id),
+                        name: q.callsign(),
+                        kind: "Squad".into(),
+                        team: q.team,
+                        owner: q.owner,
+                        ended: -1.0,
+                        ..Default::default()
+                    })
+                    .unwrap();
+                squads.push(q);
+            }
+            let mut a = Actors::from_entries(100, vec![Actor::Soldier(Box::new(s))]).unwrap();
+            let mut next = 100;
+            for step in 0..3 {
+                let out = a
+                    .rejoin_infantry(
+                        1,
+                        10.0 + step as f64 * 0.1,
+                        &players,
+                        &mut squads,
+                        &mut next,
+                        &mut battle,
+                        "Rifle Squad",
+                    )
+                    .unwrap();
+                bytes.extend_from_slice(&out.squad.to_le_bytes());
+                bytes.push(u8::from(out.created));
+                bytes.extend_from_slice(&out.owner_changed.unwrap_or(-3).to_le_bytes());
+                bytes.extend_from_slice(&next.to_le_bytes());
+                if let Some(route) = out.route {
+                    bytes.push(1);
+                    bytes.extend_from_slice(&route.revision.to_le_bytes());
+                    point(&mut bytes, route.job.destination);
+                    bytes.extend_from_slice(&route.job.care.to_le_bytes());
+                } else {
+                    bytes.push(0);
+                }
+                block(&mut bytes, &a.checkpoint().unwrap());
+                block(&mut bytes, &battle.checkpoint());
+                bytes.extend_from_slice(&(squads.len() as u32).to_le_bytes());
+                for q in &mut squads {
+                    let checkpoint = q.checkpoint().unwrap();
+                    block(&mut bytes, &checkpoint);
+                    *q = Squad::restore(&checkpoint).unwrap();
+                }
+                a = Actors::restore(&a.checkpoint().unwrap()).unwrap();
+                battle = BattleStats::restore(&battle.checkpoint()).unwrap();
+            }
+        }
+    }
+    golden("infantry_rejoin", &bytes);
+}
+
+#[test]
 fn shared_infantry_downtime_is_identical_across_platforms() {
     use frontline_core::actors::{Actor, Actors};
     use frontline_core::infantry::Infantry as Soldier;

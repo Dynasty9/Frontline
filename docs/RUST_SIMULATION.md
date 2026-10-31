@@ -537,7 +537,7 @@ Component checkpoint headers contain a four-byte component tag, a little-endian
 rules rather than silently continuing with changed arithmetic. The separate
 integer RNG stream remains unchanged.
 
-`native/core/tests/numeric_contract.rs` compares 114,091,453 committed bytes without
+`native/core/tests/numeric_contract.rs` compares 117,041,647 committed bytes without
 tolerances: fixed-tick flight state, support events and RNG cursors, carved water,
 craters, rotated box hits, cover anchors, spherical interpolation and infantry
 movement, infantry cover fire, postures, ammunition, burst recovery, vitals, aiming,
@@ -1742,3 +1742,18 @@ Five core regressions and 4,608 Godot actor-state comparisons cover shared claim
 interruption, ordered speech, strict deadlines, squad caches and rejected clocks.
 Numeric CI adds 3,326,032 exact bytes with checkpoint
 continuation. The full fighting loop and live world dispatcher remain unfinished.
+
+## Returning soldiers and squad membership
+
+Retained rejoining selects the nearest section with the same side and commander,
+using existing centroid caches, the six-member limit and registration-order ties.
+If the commander disconnected, control passes to the last remaining teammate in
+roster order, or the side's AI. When no section is close enough, Rust allocates its
+identity, staggered planning timer and battle-record entry together. Membership,
+hold position, cover reset and return routes preserve the existing thresholds.
+
+Six regressions and 2,048 Godot actor-state comparisons cover ownership succession,
+full sections, duplicate membership, new identities, strict distances and invalid
+inputs, with complete squad and battle-record comparisons. Numeric CI adds 2,950,194
+exact bytes with checkpoint continuation. The operation is ready for recovery and
+prisoner-rule dispatch; the complete Rust world loop still needs integration.
