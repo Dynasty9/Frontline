@@ -24,6 +24,7 @@ graphics, network access or a wall clock.
 | Retained projectile actors and impacts | `frontline_core` | Ballistic, guided and support actors retain ownership, holder/handler links and attribution with flight checkpoints; ordered impact, spawn, smoke, recon and sound effects still await the Rust world dispatcher |
 | Shared actor storage and FPV ownership | `frontline_core` | Ordered infantry/projectile/drone state, allocation and shared casualty links are retained together; drones resolve living targets and operators inside Rust. Structures, vehicles, squads and complete world dispatch remain unfinished |
 | Squad state and shared knowledge | `frontline_core` | Orders, contact caches, plan links and tactical state have retained checkpoints; centroid, contact reports, threats, succession and casualty morale operate on owned actors. Squad orders, drills and the full squad tick still run in Godot |
+| Retained buildings and economy transitions | `frontline_core` | Geometry, links, queues and timers have retained checkpoints; construction, capture, town income and production transitions match Godot. Shared rule effects, destruction, crews and the complete building dispatcher remain unfinished |
 | Weighted grid paths and cluster pair costs | `frontline_core` | Exact Godot route tie behavior; native cluster workers return costs in deterministic order |
 | Ground cells, crater heights and queued cover repairs | `frontline_core` | Rust retains terrain and ordered structure geometry, and performs edits, queries and cover repairs; Godot imports biome generation and forwards navigation notifications |
 | Water shapes, bridge decks and water terrain rasterization | `frontline_core` | Ordered numeric rasterization; a Rust worker also applies the joining host's ground overrides; Godot still generates the initial shapes |
@@ -181,11 +182,11 @@ the Rust identity order and cursor agree with the current scene registry.
 
 ## Shared actor ownership
 
-`Actors` retains infantry, projectile and FPV actors alongside the ordered entity
+`Actors` retains infantry, projectile, FPV and structure actors alongside the ordered entity
 registry. Allocation, removal and checkpoints use the same stable IDs; hash-table
 iteration never chooses update or serialization order. Restoring rejects mismatched
 IDs/kinds, duplicate identities, oversized blocks and unsupported actor kinds.
-It does not yet contain structures, vehicles, squads or the whole match state.
+It does not yet contain vehicles, squads or the whole match state.
 
 Casualty transitions update rescue claims, stretcher carriers and controlled
 drones in this collection. An obsolete rescue release cannot clear another man's
@@ -221,6 +222,27 @@ Live captures also preserve squads in eleven battle scenarios at 0/10/30 seconds
 and on the 500-soldier, 2,048 m map. Seven core tests cover strict decoding,
 continuation and shared decisions; numeric CI adds 3,320,016 bytes. Full squad
 orders, tactics, morale upkeep and battle-drill dispatch still need migration.
+
+## Retained structures
+
+`Structure` retains building state, collision/navigation parts, cover anchors,
+spatial membership, supply/capture state, pending production, crew/passenger links,
+fire state and private work timers. Scene objects, model colours, network dirtiness
+and cosmetic toss animation are not authoritative state. The ordered actor
+collection accepts structure checkpoints alongside soldiers and projectiles.
+
+Construction, repairs, extinguishing, doors, charred variants, staggered building
+clocks, town income/house loss, capture and production transitions have Godot
+comparisons. Last-FOB capture slowdown, contested towns, alert cooldowns, research
+ignoring the unit cap and the existing production-fraction cadence are preserved.
+Results return capture/completion effects for the world dispatcher to apply.
+
+The fixture compares 1,152 complete structure states, including checkpoint
+restoration and actor registration. Live imports also preserve structures in
+eleven battle scenarios and the 500-soldier, 2,048 m map. Nine core tests cover
+state decoding, actor ownership and transition boundaries; numeric CI adds
+1,873,704 exact bytes. Destruction, shared economy effects, crew assignment,
+pending cache explosions and the full building dispatcher remain in progress.
 
 ## Deterministic replay contract
 
@@ -294,7 +316,7 @@ Component checkpoint headers contain a four-byte component tag, a little-endian
 rules rather than silently continuing with changed arithmetic. The separate
 integer RNG stream remains unchanged.
 
-`native/core/tests/numeric_contract.rs` compares 18,436,394 committed bytes without
+`native/core/tests/numeric_contract.rs` compares 20,310,098 committed bytes without
 tolerances: fixed-tick flight state, support events and RNG cursors, carved water,
 craters, rotated box hits, cover anchors, spherical interpolation and infantry
 movement, infantry cover fire, postures, ammunition, burst recovery, vitals, aiming,
@@ -518,7 +540,7 @@ flag until Rust owns the actors.
 
 The shock fixture compares 92,160 reference steps, including mounted turning,
 blocked terrain, carried casualties and task interruption. The full default suite
-passes 151 tests; 293 core tests pass in debug and release.
+passes 152 tests; 303 core tests pass in debug and release.
 
 ## Retained projectiles and impacts
 

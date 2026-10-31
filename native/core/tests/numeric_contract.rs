@@ -36,6 +36,117 @@ fn block(out: &mut Vec<u8>, bytes: &[u8]) {
 }
 
 #[test]
+fn structure_construction_capture_and_production_are_identical_across_platforms() {
+    use frontline_core::structure::{Production, Structure, Tick, TownEconomy};
+    let mut bytes = Vec::new();
+    for trial in 0..48 {
+        let mut s = Structure {
+            id: 7,
+            team: trial % 2,
+            kind: "town".into(),
+            position: Vector3::new(3.1, 0.7, -17.3),
+            size: Vector3::new(5.1, 3.0, 7.9),
+            yaw: f64::from(trial) * 0.137 - 2.71,
+            variant: i32::from(trial % 2),
+            hp: 37.3,
+            max_hp: 150.0,
+            built: false,
+            progress: 0.13,
+            burn: 0.7,
+            fuel: 51.9,
+            fuel_max: 70.0,
+            ..Default::default()
+        };
+        let economy = TownEconomy {
+            stock: 180.0,
+            yield_per_minute: 24.0,
+            capture_pace: 0.6,
+        };
+        point(&mut bytes, s.front());
+        point(&mut bytes, s.exit());
+        bytes.push(u8::from(
+            s.door_blocks(Vector3::new(3.2, 0.7, -17.0), Vector3::NEG_Z),
+        ));
+        for tick in 0..120 {
+            let work = s.add_work(0.37, Some(12.1)).unwrap();
+            bytes.extend([
+                u8::from(work.worked),
+                u8::from(work.completed),
+                u8::from(work.repaired_fob),
+            ]);
+            let now = 31.7 + f64::from(tick) * 0.13;
+            match s.begin_tick(0.13, economy).unwrap() {
+                Tick::Town { count_houses } => {
+                    if count_houses {
+                        bytes.push(u8::from(s.count_houses((tick % 7) as u32).unwrap()));
+                    }
+                    let counts = match (tick + i32::from(trial)) % 4 {
+                        0 => [0, 3],
+                        1 => [2, 0],
+                        2 => [2, 2],
+                        _ => [0, 0],
+                    };
+                    let r = s.town_capture(counts, now, economy).unwrap();
+                    bytes.extend([
+                        u8::from(r.changed),
+                        u8::from(r.warning),
+                        r.captured_by.unwrap_or(-1) as u8,
+                        u8::from(r.resupply),
+                    ]);
+                }
+                Tick::Fob => {
+                    let r = s.fob_capture([0, 3], trial % 3 == 0).unwrap();
+                    bytes.extend([
+                        u8::from(r.changed),
+                        u8::from(r.warning),
+                        u8::from(r.last_stand),
+                        r.captured_by.unwrap_or(-1) as u8,
+                        u8::from(r.resupply),
+                    ]);
+                }
+                Tick::Production => {
+                    let r = s.produce(0.13, tick % 3 != 0).unwrap();
+                    bytes.extend([
+                        u8::from(r.fraction_changed),
+                        u8::from(r.cap_warning),
+                        u8::from(r.item.is_some()),
+                    ]);
+                }
+                _ => {}
+            }
+            block(&mut bytes, &s.checkpoint().unwrap());
+            if tick % 17 == 0 {
+                s = Structure::restore(&s.checkpoint().unwrap()).unwrap();
+            }
+            if tick == 49 {
+                s.kind = "fob".into();
+                s.capture_team = 1 - s.team;
+                s.capture_progress = 98.7;
+            }
+            if tick == 79 {
+                s.kind = if trial % 2 == 0 {
+                    "barracks"
+                } else {
+                    "research"
+                }
+                .into();
+                s.queue = vec![Production {
+                    item: "rifles".into(),
+                    remaining: 1.13,
+                    total: 7.9,
+                    owner: 123,
+                    cost: 71,
+                }];
+            }
+        }
+        s.kind = if trial % 2 == 0 { "tree" } else { "car" }.into();
+        bytes.push(u8::from(s.char_out().unwrap()));
+        block(&mut bytes, &s.checkpoint().unwrap());
+    }
+    golden("structure", &bytes);
+}
+
+#[test]
 fn squad_memory_and_shared_casualties_are_identical_across_platforms() {
     use frontline_core::actors::{Actor, Actors};
     use frontline_core::infantry::Infantry;

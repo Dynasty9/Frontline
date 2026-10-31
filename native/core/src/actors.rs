@@ -7,6 +7,7 @@ use crate::infantry_vitals::Life;
 use crate::projectile_actor::{Explosion, Projectile};
 use crate::random::SimulationRandom;
 use crate::state_codec::{Reader, Writer};
+use crate::structure::Structure;
 use crate::vector::Vector3;
 use std::collections::HashMap;
 
@@ -15,6 +16,7 @@ pub enum Actor {
     Soldier(Box<Infantry>),
     Projectile(Projectile),
     Drone(Drone),
+    Structure(Box<Structure>),
 }
 
 impl Actor {
@@ -32,6 +34,10 @@ impl Actor {
                 id: d.id,
                 kind: Kind::Drone,
             },
+            Self::Structure(s) => Identity {
+                id: s.id,
+                kind: Kind::Structure,
+            },
         }
     }
     fn set_id(&mut self, id: u32) {
@@ -39,6 +45,7 @@ impl Actor {
             Self::Soldier(s) => s.identity.id = id,
             Self::Projectile(p) => p.id = id,
             Self::Drone(d) => d.id = id,
+            Self::Structure(s) => s.id = id,
         }
     }
     fn valid(&self) -> bool {
@@ -46,6 +53,7 @@ impl Actor {
             Self::Soldier(s) => !s.identity.gone && s.valid(),
             Self::Projectile(p) => p.valid(),
             Self::Drone(d) => d.valid(),
+            Self::Structure(s) => !s.gone && s.valid(),
         }
     }
     pub fn checkpoint(&self) -> Result<Vec<u8>, &'static str> {
@@ -53,6 +61,7 @@ impl Actor {
             Self::Soldier(s) => s.checkpoint(),
             Self::Projectile(p) => p.checkpoint(),
             Self::Drone(d) => d.checkpoint(),
+            Self::Structure(s) => s.checkpoint(),
         }
     }
     pub fn restore(kind: Kind, bytes: &[u8]) -> Result<Self, &'static str> {
@@ -60,6 +69,7 @@ impl Actor {
             Kind::Soldier => Ok(Self::Soldier(Box::new(Infantry::restore(bytes)?))),
             Kind::Projectile => Ok(Self::Projectile(Projectile::restore(bytes)?)),
             Kind::Drone => Ok(Self::Drone(Drone::restore(bytes)?)),
+            Kind::Structure => Ok(Self::Structure(Box::new(Structure::restore(bytes)?))),
             _ => Err("actor kind has not migrated"),
         }
     }
@@ -98,6 +108,12 @@ impl Actors {
     pub(crate) fn soldier_mut(&mut self, id: u32) -> Option<&mut Infantry> {
         match self.values.get_mut(&id)? {
             Actor::Soldier(s) => Some(s),
+            _ => None,
+        }
+    }
+    pub fn structure(&self, id: u32) -> Option<&Structure> {
+        match self.get(id)? {
+            Actor::Structure(s) => Some(s),
             _ => None,
         }
     }

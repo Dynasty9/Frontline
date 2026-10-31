@@ -52,6 +52,7 @@ pub mod random;
 pub mod route_graph;
 pub mod squad;
 mod state_codec;
+pub mod structure;
 pub mod support;
 pub mod targeting;
 pub mod terrain;

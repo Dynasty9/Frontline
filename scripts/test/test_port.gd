@@ -192,6 +192,8 @@ func _answer(cmd: String, req: Dictionary) -> Variant:
 			return _infantry_checkpoints(w)
 		"squad_checkpoints":
 			return _squad_checkpoints(w)
+		"structure_checkpoints":
+			return _structure_checkpoints(w)
 	return {"ok": false, "error": "unknown command: %s" % cmd}
 
 
@@ -422,3 +424,24 @@ func _squad_checkpoints(w: World) -> Dictionary:
 		bytes += saved.size()
 	assert(w.rng.state == rng_before, "Capturing squad state must not consume gameplay randomness")
 	return {"squads": count, "bytes": bytes, "plans": plans.size()}
+
+
+func _structure_checkpoints(w: World) -> Dictionary:
+	var core: RefCounted = ClassDB.instantiate("StructureStateCore")
+	var restored: RefCounted = ClassDB.instantiate("StructureStateCore")
+	var count := 0
+	var bytes := 0
+	var rng_before: int = w.rng.state
+	for s: Structure in w.structures:
+		var values := StructureState.capture(s)
+		if not core.load_state(values):
+			return {"ok": false, "error": "Invalid structure state: %d (%s)" % [s.eid, s.skind]}
+		if core.values() != values:
+			return {"ok": false, "error": "Structure import lost fields: %d" % s.eid}
+		var saved: PackedByteArray = core.checkpoint()
+		if not restored.restore(saved) or restored.values() != values or restored.checkpoint() != saved:
+			return {"ok": false, "error": "Structure checkpoint lost fields: %d" % s.eid}
+		count += 1
+		bytes += saved.size()
+	assert(w.rng.state == rng_before, "Capturing structure state must not consume gameplay randomness")
+	return {"structures": count, "bytes": bytes}
