@@ -262,6 +262,108 @@ fn write_squads(
 #[godot_api]
 impl ActorStateCore {
     #[func]
+    fn advance_infantry_travel(
+        &mut self,
+        id: u32,
+        context: PackedFloat64Array,
+        gun: PackedFloat64Array,
+        squads: Array<Gd<crate::squad::SquadStateCore>>,
+        deck: PackedByteArray,
+        terrain: Gd<crate::terrain::TerrainCore>,
+        nav: Gd<crate::path_planner::PathPlannerCore>,
+        units: Gd<crate::spatial::SpatialIndexCore>,
+        structures: Gd<crate::spatial::SpatialIndexCore>,
+        doors: Gd<crate::spatial::SpatialIndexCore>,
+        mut collision: Gd<crate::collision_index::CollisionIndexCore>,
+        mut rng: Gd<crate::simulation_random::SimulationRandomCore>,
+    ) -> Array<Variant> {
+        use frontline_core::infantry_cover::CoverWorld;
+        use frontline_core::infantry_travel_owned::{Event, Transport};
+        if context.len() != 6
+            || [2, 3, 4, 5]
+                .into_iter()
+                .any(|i| !context[i].is_finite() || context[i].fract() != 0.0)
+            || !(-1.0..=1_000_000.0).contains(&context[2])
+            || !(0.0..=1000.0).contains(&context[3])
+            || !(0.0..=1.0).contains(&context[4])
+            || !(0.0..=1.0).contains(&context[5])
+        {
+            return Array::new();
+        }
+        let (Ok(gun), Some(mut state)) = (mounted_gun(&gun), read_squads(&squads)) else {
+            return Array::new();
+        };
+        let terrain = terrain.bind();
+        let nav = nav.bind();
+        let units = units.bind();
+        let structures = structures.bind();
+        let doors = doors.bind();
+        let (Some(terrain), Some(nav), Some(units), Some(structures), Some(doors)) = (
+            &terrain.core,
+            &nav.core,
+            &units.core,
+            &structures.core,
+            &doors.core,
+        ) else {
+            return Array::new();
+        };
+        let mut collision = collision.bind_mut();
+        let result = self.core.advance_infantry_travel(
+            id,
+            context[0],
+            context[1],
+            (context[2] >= 0.0).then_some(context[2] as i32),
+            gun,
+            |_| Transport {
+                seats: context[3] as u32,
+                helicopter: context[4] != 0.0,
+                boat: context[5] != 0.0,
+            },
+            &mut state,
+            &mut CoverWorld {
+                terrain,
+                nav,
+                units,
+                structures,
+                collision: &mut collision.core,
+                heat: &[],
+                deck: deck.as_slice(),
+            },
+            doors,
+            &mut rng.bind_mut().core,
+        );
+        match result {
+            Ok(events) => {
+                write_squads(squads, state);
+                let events: Array<Variant> = events
+                    .into_iter()
+                    .map(|event| {
+                        match event {
+                            Event::Route(r) => varray![
+                                0,
+                                r.revision as i64,
+                                r.job.id as i64,
+                                vector(r.job.destination),
+                                r.job.care
+                            ],
+                            Event::CancelPath => varray![1],
+                            Event::Door { id, kicked } => varray![2, id as i64, kicked],
+                            Event::PrisonArrival => varray![3],
+                            Event::BreachSpeech(c) => varray![4, c as i32],
+                            Event::ThrowSpeech(r) => varray![5, r as i32],
+                            Event::GotAmmo => varray![6],
+                            Event::Stat(s) => varray![7, s],
+                        }
+                        .to_variant()
+                    })
+                    .collect();
+                varray![&events]
+            }
+            Err(_) => Array::new(),
+        }
+    }
+
+    #[func]
     fn complete_infantry_action(
         &mut self,
         id: u32,

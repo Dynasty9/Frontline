@@ -1411,6 +1411,9 @@ exceptions are compared against the complete existing weapon tick.
 Retained action completion updates shared grenade holders, melee casualties,
 opened doors, launched rounds and drone pilots. Rocket warnings preserve vehicle
 smoke and crew evasion in the same event and random order.
+Retained travel tasks connect movement to retreat, grenade orders, boarding,
+tunnel entry, drone operation and resupply, including shared seats, occupants and
+finite ammunition. The complete world dispatcher is still being migrated.
 Construction, town income, capture and production transitions match the existing
 game; shared rule effects, destruction and the full building dispatcher still need
 migration before Rust owns the complete battle.

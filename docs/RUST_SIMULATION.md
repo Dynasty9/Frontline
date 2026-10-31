@@ -1560,3 +1560,21 @@ scan cadence, disappearing targets, report filtering, moved neighbors and invali
 context rejection. Four affected Godot fixtures pass. Numeric CI adds 1,565,992
 exact bytes and retains the prior acquisition transcript unchanged. The live
 controller and whole-world dispatch remain in Godot during migration.
+
+## Retained travel tasks
+
+`Actors.advance_infantry_travel` connects retreat, ordered grenades, boarding,
+tunnel entry, drone operation and resupply to retained movement and shared actors.
+Boarding claims seats and hides the passenger together; arriving soldiers consume
+the same finite body ammunition. Tunnel entry records occupancy and the hidden
+soldier's destination. Movement preserves pending-route waits, replanning, speed,
+activity, door opening and enemy squad alerts. The returned ordered events retain
+path requests, speech, counters and the door geometry refresh needed by the world.
+
+Nine core regressions cover last-seat contention, boat and helicopter limits,
+grenade fuses, missing drones, body stock, tunnel checkpoints and shared door
+alerts. The Godot reference compares 14,336 actor states plus squads, structure
+occupants, vehicle passengers, routes, speech, counters and random continuation.
+Numeric CI adds 1,978,559 exact transcript bytes. Other tasks, the complete soldier
+tick and the world event dispatcher still need integration; this is not a running
+Rust match server or verified whole-battle replay.

@@ -55,6 +55,7 @@ pub mod infantry_special;
 pub mod infantry_supply;
 pub mod infantry_tactics;
 pub mod infantry_travel;
+pub mod infantry_travel_owned;
 pub mod infantry_update;
 pub mod infantry_vitals;
 pub mod infantry_weapon;

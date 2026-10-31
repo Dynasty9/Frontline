@@ -36,6 +36,234 @@ fn block(out: &mut Vec<u8>, bytes: &[u8]) {
 }
 
 #[test]
+fn retained_infantry_travel_is_identical_across_platforms() {
+    use frontline_core::actors::{Actor, Actors};
+    use frontline_core::drone_actor::Drone;
+    use frontline_core::infantry::{Goal, Infantry as Soldier};
+    use frontline_core::infantry_action::Round;
+    use frontline_core::infantry_controller::Task;
+    use frontline_core::infantry_cover::CoverWorld;
+    use frontline_core::infantry_travel_owned::{Event, Transport};
+    use frontline_core::spatial::{SpatialIndex, DOOR_CELL, STRUCTURE_CELL, UNIT_CELL};
+    use frontline_core::squad::Squad;
+    use frontline_core::structure::Structure;
+    use frontline_core::vehicle::Vehicle;
+    let terrain = Terrain::blank(128).unwrap();
+    let nav = PathPlanner::new(128).unwrap();
+    let structures = SpatialIndex::new(STRUCTURE_CELL).unwrap();
+    let mut bytes = Vec::new();
+    for (mode, task) in [
+        Task::Retreat,
+        Task::Throw,
+        Task::Throw,
+        Task::Board,
+        Task::Tunnel,
+        Task::Pilot,
+        Task::Resupply,
+    ]
+    .into_iter()
+    .enumerate()
+    {
+        for trial in 0..16 {
+            let mut s = Soldier::default();
+            s.identity.id = 1;
+            s.identity.unit = "rifleman".into();
+            s.identity.weapon = "rifle".into();
+            s.identity.squad = 9;
+            s.duty.kind = task;
+            s.duty.entity = if mode == 6 {
+                2
+            } else if mode == 3 {
+                10
+            } else {
+                20
+            };
+            s.duty.position = Vector3::X * [24.99, 25.0, 25.01, 40.0][trial % 4];
+            s.duty.throw_kind = if mode == 2 { Round::Smoke } else { Round::Frag };
+            s.grenades.frags = (trial % 3) as i32;
+            s.fight.smokes = (trial % 3) as i32;
+            s.fight.controlled_drone = if trial % 5 == 0 { 0 } else { 30 };
+            s.motion.yaw = [0.0f32, 1.3, -2.5][trial % 3].into();
+            s.posture = Posture::try_from((trial % 5) as u8).unwrap();
+            s.motion.path = if trial % 4 >= 2 {
+                vec![Vector3::X * 8.0]
+            } else {
+                vec![]
+            };
+            s.motion.stuck_timer = if trial % 13 == 0 { 3.1 } else { 0.0 };
+            s.orders.pending_path = trial % 11 == 0;
+            s.orders.goal = Vector3::X * 8.0;
+            s.orders.purpose = Goal::Task;
+            s.orders.move_mode = (trial % 3) as u8;
+            s.orders.hold_position = Vector3::NEG_X * 25.0;
+            s.vitals.suppression = [0.0, 6.0, 71.0][trial % 3];
+            s.vitals.stamina = [0.1, 0.3, 0.349, 0.8][trial % 4];
+            s.vitals.speech_cooldown = if trial % 2 == 0 { 0.0 } else { 5.0 };
+            s.weapon.last_shot = if trial % 9 == 0 { 9.8 } else { -10.0 };
+            s.weapon.reload_timer = if trial % 11 == 0 { 1.0 } else { 0.0 };
+            s.weapon.magazine = 7;
+            s.weapon.reserve = 23;
+            let mut other = Soldier::default();
+            other.identity.id = 2;
+            other.identity.unit = "rifleman".into();
+            other.identity.weapon = "rifle".into();
+            other.identity.team = 1;
+            other.identity.squad = 10;
+            other.vitals.life = if mode == 6 { Life::Dead } else { Life::Alive };
+            other.motion.position.x = 0.3;
+            other.fight.loot = 15 + trial as i32;
+            let kicked = trial % 16 == 2;
+            let closed = mode == 0 && trial % 8 == 2;
+            if closed {
+                s.motion.door = 20;
+                s.motion.door_wait = 0.05;
+                s.motion.door_kick = kicked;
+            }
+            let st = Structure {
+                id: 20,
+                kind: if mode == 4 { "tunnel" } else { "house_wall" }.into(),
+                position: Vector3::X * [2.49, 2.5, 2.51, 12.0][trial % 4],
+                built: trial % 7 != 0,
+                door_closed: closed,
+                ..Default::default()
+            };
+            let transport = Transport {
+                seats: 1,
+                helicopter: trial % 4 == 1,
+                boat: trial % 4 == 2,
+            };
+            let v = Vehicle {
+                id: 10,
+                position: Vector3::new(
+                    [3.59, 3.6, 7.9, 17.9, 18.0, 40.0][trial % 6],
+                    if transport.helicopter && trial % 3 == 0 {
+                        1.01
+                    } else {
+                        0.0
+                    },
+                    0.0,
+                ),
+                passengers: if trial % 7 == 0 { vec![2] } else { vec![] },
+                ..Default::default()
+            };
+            let mut flight = DroneFlight::new(Vector3::new(10.0, 3.0, -7.0), 0.0);
+            flight.dead = trial % 3 == 0;
+            let drone = Drone {
+                id: 30,
+                team: 0,
+                operator: 0,
+                operator_at_spawn: 0,
+                target: 0,
+                target_at_spawn: 0,
+                warhead: 1.0,
+                flight,
+            };
+            let mut doors = SpatialIndex::new(DOOR_CELL).unwrap();
+            if closed {
+                doors.insert_door(20, st.position).unwrap();
+            }
+            let mut a = Actors::from_entries(
+                100,
+                vec![
+                    Actor::Soldier(Box::new(s)),
+                    Actor::Soldier(Box::new(other)),
+                    Actor::Vehicle(Box::new(v)),
+                    Actor::Structure(Box::new(st)),
+                    Actor::Drone(drone),
+                ],
+            )
+            .unwrap();
+            let mut units = SpatialIndex::new(UNIT_CELL).unwrap();
+            a.rebuild_units(&mut units).unwrap();
+            let mut collision = CollisionWorld::default();
+            let mut squads = vec![
+                Squad {
+                    id: 9,
+                    members: vec![1],
+                    ..Default::default()
+                },
+                Squad {
+                    id: 10,
+                    team: 1,
+                    members: vec![2],
+                    ..Default::default()
+                },
+            ];
+            let mut rng = SimulationRandom::new(47969 + trial as u64);
+            for step in 0..8 {
+                let events = if a.soldier(1).unwrap().duty.kind == task {
+                    a.advance_infantry_travel(
+                        1,
+                        0.1,
+                        10.0 + step as f64 * 0.1,
+                        Some(210),
+                        None,
+                        |_| transport,
+                        &mut squads,
+                        &mut CoverWorld {
+                            terrain: &terrain,
+                            nav: &nav,
+                            collision: &mut collision,
+                            units: &units,
+                            structures: &structures,
+                            heat: &[],
+                            deck: &[],
+                        },
+                        &doors,
+                        &mut rng,
+                    )
+                    .unwrap()
+                } else {
+                    vec![]
+                };
+                bytes.extend_from_slice(&(events.len() as u32).to_le_bytes());
+                for event in events {
+                    match event {
+                        Event::Route(r) => {
+                            bytes.push(0);
+                            bytes.extend_from_slice(&r.revision.to_le_bytes());
+                            bytes.extend_from_slice(&r.job.id.to_le_bytes());
+                            point(&mut bytes, r.job.destination);
+                            bytes.extend_from_slice(&r.job.care.to_le_bytes());
+                        }
+                        Event::CancelPath => bytes.push(1),
+                        Event::Door { id, kicked } => {
+                            bytes.push(2);
+                            bytes.extend_from_slice(&id.to_le_bytes());
+                            bytes.push(kicked as u8);
+                            assert!(doors.remove(id));
+                        }
+                        Event::PrisonArrival => bytes.push(3),
+                        Event::BreachSpeech(c) => bytes.extend_from_slice(&[4, c]),
+                        Event::ThrowSpeech(r) => bytes.extend_from_slice(&[5, r as u8]),
+                        Event::GotAmmo => bytes.push(6),
+                        Event::Stat(s) => {
+                            bytes.push(7);
+                            block(&mut bytes, s.as_bytes());
+                        }
+                    }
+                }
+                if step % 2 == 1 {
+                    block(&mut bytes, &a.checkpoint().unwrap());
+                    for q in &squads {
+                        block(&mut bytes, &q.checkpoint().unwrap());
+                    }
+                }
+                bytes.extend_from_slice(&rng.state().to_le_bytes());
+                if step == 3 {
+                    a = Actors::restore(&a.checkpoint().unwrap()).unwrap();
+                    for q in &mut squads {
+                        *q = Squad::restore(&q.checkpoint().unwrap()).unwrap();
+                    }
+                    doors = SpatialIndex::restore(&doors.checkpoint()).unwrap();
+                }
+            }
+        }
+    }
+    golden("infantry_travel_owned", &bytes);
+}
+
+#[test]
 fn completed_infantry_actions_are_identical_across_platforms() {
     use frontline_core::actors::{Actor, Actors};
     use frontline_core::infantry::Infantry as Soldier;
