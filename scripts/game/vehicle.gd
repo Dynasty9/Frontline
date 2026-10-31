@@ -162,6 +162,9 @@ func on_spawned() -> void:
 	if base() in ["attack_heli", "lift_heli"]:
 		flight = HelicopterFlight.new()
 	if srv:
+		if base() == "supply":
+			position = world.nav.nearest_walkable(position, true)
+			position.y = world.ground_y(position)
 		max_hp = float(vdef.hp)
 		hp = max_hp
 		body = StaticBody3D.new()
@@ -693,7 +696,7 @@ func _avoid(la: Vector3, fwd: Vector3) -> Vector3:
 			go = -signf(lat) if absf(lat) > 0.3 else 1.0
 			var past := position + fwd * ahead + side * go * clear
 			# (a boat's room is open water - which is no way at all for anything on wheels)
-			if (not world.nav.boat_ok(past)) if is_boat() else world.nav.vkind_at(past) == Nav.SOLID:
+			if (not world.nav.boat_ok(past)) if is_boat() else world.nav.vkind_at(past, is_tracked()) == Nav.SOLID:
 				go = -go
 			_avoid_cap = 3.0
 		best = ahead
@@ -806,17 +809,17 @@ func _move_by(v: Vector3, dt: float) -> void:
 			yaw_rate *= 0.5
 		return
 	np.y = world.terrain.landform.height(np)
-	if (base() == "supply" and world.terrain.slope_at(np) <= 0.48) or world.nav.vkind_at(np) != Nav.SOLID:
+	if world.nav.can_step(position, np, true, is_tracked()):
 		position = np
 	else:
 		# scrape along whatever we hit instead of stopping dead
 		var sx := position + Vector3(velocity.x * dt, 0, 0)
 		var sz := position + Vector3(0, 0, velocity.z * dt)
-		if absf(velocity.x) > absf(velocity.z) and world.nav.vkind_at(sx) != Nav.SOLID:
+		if absf(velocity.x) > absf(velocity.z) and world.nav.can_step(position, sx, true, is_tracked()):
 			position = sx
-		elif world.nav.vkind_at(sz) != Nav.SOLID:
+		elif world.nav.can_step(position, sz, true, is_tracked()):
 			position = sz
-		elif world.nav.vkind_at(sx) != Nav.SOLID:
+		elif world.nav.can_step(position, sx, true, is_tracked()):
 			position = sx
 		speed *= 0.6
 
@@ -845,7 +848,7 @@ func _drive(dt: float) -> void:
 		rotation.y += _unstick_dir * float(vdef.turn) * 0.5 * dt
 		velocity = Defs.dir_of(rotation.y) * speed
 		var bp := position + velocity * dt
-		if world.nav.vkind_at(bp) != Nav.SOLID:
+		if world.nav.can_step(position, bp, true, is_tracked()):
 			position = bp
 		if _unstick_t <= 0.0:
 			_request_ground_path(path[path.size() - 1], 0.0)
@@ -1193,7 +1196,7 @@ func _landing_spot(p: Vector3) -> Vector3:
 		var n := 1 if ring == 0.0 else 8
 		for i in n:
 			var q: Vector3 = Vector3(p.x, 0.0, p.z) + Vector3(cos(i * TAU / n), 0, sin(i * TAU / n)) * ring
-			if not Defs.in_map(q, 8.0) or world.nav.vkind_at(q) != Nav.FREE or not world.terrain.landform.fits(q, Vector2(5, 5), 0.0):
+			if not Defs.in_map(q, 8.0) or world.nav.vkind_at(q, is_tracked()) != Nav.FREE or not world.terrain.landform.fits(q, Vector2(5, 5), 0.0):
 				continue
 			var clear := true
 			for st in world.structures_near(q, 6.0):
@@ -1238,7 +1241,7 @@ func _release_sling() -> void:
 	if v == null or v.gone:
 		return
 	v.slung_by = null
-	v.position = world.nav.nearest_walkable(Vector3(v.position.x, 0, v.position.z), true)
+	v.position = world.nav.nearest_walkable(Vector3(v.position.x, 0, v.position.z), true, v.is_tracked())
 	v.position.y = world.terrain.landform.height(v.position)
 	v.velocity = Vector3.ZERO
 	world.stat("sling_delivered")
@@ -1250,7 +1253,7 @@ func _release_sling() -> void:
 func _drop_from_sling() -> void:
 	var h := position.y - world.ground_y(position)
 	slung_by = null
-	position = world.nav.nearest_walkable(Vector3(position.x, 0, position.z), true)
+	position = world.nav.nearest_walkable(Vector3(position.x, 0, position.z), true, is_tracked())
 	position.y = world.terrain.landform.height(position)
 	velocity = Vector3.ZERO
 	if h > 3.0:
@@ -2337,7 +2340,6 @@ func _truck_tick(dt: float) -> void:
 			return
 		world.rules.truck_home(self)
 		return
-	var tgt := route[route_i]
 	if _road_blocked():
 		blocked_t += dt
 		speed = 0.0
@@ -2346,7 +2348,7 @@ func _truck_tick(dt: float) -> void:
 			world.rules.truck_blocked(self)
 		return
 	blocked_t = 0.0
-	route_i = _follow(route, route_i, dt, float(vdef.speed), false, 1.6)
+	route_i = _follow(route, route_i, dt, float(vdef.speed))
 
 
 func _road_blocked() -> bool:

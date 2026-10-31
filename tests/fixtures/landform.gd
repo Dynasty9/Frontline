@@ -115,11 +115,23 @@ func _ready() -> void:
 	world.nav.terrain_changed(world.terrain.idx_of(Vector3(-11, 0, 0)))
 	truck._move_by(Vector3(2, 0, 0), 1.0)
 	assert(truck.position.x <= -12.0, "Supply trucks cannot bypass an impassable mountain slope")
+	# Give the hull a real elevated plateau, rather than a knife-edge ridge.
+	var plateau := World.new()
+	plateau.settings = {"seed": 3}
+	plateau.terrain = TerrainMap.new(plateau)
+	plateau.water = WaterMap.new(plateau)
+	var level := heights.duplicate()
+	level.fill(12.0)
+	plateau.terrain.install_landform(level)
+	plateau.nav = Nav.new()
+	plateau.nav.terrain = plateau.terrain
+	truck.world = plateau
 	truck.position = Vector3(0, 12, 0)
-	world.nav.terrain_changed(world.terrain.idx_of(Vector3(0, 0, 2)))
+	plateau.nav.terrain_changed(plateau.terrain.idx_of(Vector3(0, 0, 2)))
 	truck._move_by(Vector3(0, 0, 2), 1.0)
 	assert(truck.position.z > 1.9 and is_equal_approx(truck.position.y, 12.0), "Vehicles traverse level elevated ground")
 	truck.free()
+	plateau.free()
 	var heli := Vehicle.new()
 	heli.world = world
 	heli.vkind = "hummingbird"

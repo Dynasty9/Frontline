@@ -808,7 +808,7 @@ surface height in R and immutable geology in G; crater shading subtracts the lat
 for a soldier or touchdown (including trench floors and bridge decks), `landform.height` for foundations,
 and `ray_ground` for terrain occlusion. Do not treat world Y as altitude above ground.
 
-Navigation blocks slopes over 0.85 rise/run for infantry and 0.48 for vehicles. Remaining slopes increase
+Navigation blocks slopes over 0.85 rise/run for infantry, 0.48 for wheels and 0.65 for tracks. Remaining slopes increase
 travel costs and reduce speed. Building and landing footprints sample their corners and edges for levelness.
 Enemy visibility uses sampled terrain rays; the visual fog uses a cached pixel-resolution horizon sweep.
 
@@ -835,3 +835,26 @@ Standard battles add bedrock fractures and denser woods.
 Terrain beyond 170 m uses a 4 m grid matching the immutable geology samples; nearby
 terrain retains the fine deformation grid. Woodland bark and foliage can join the existing
 64 m scenery batches, with destruction and fire restoring only the affected tree.
+
+
+### Terrain traversal
+
+`Nav` keeps infantry, wheeled and tracked rasters and HPA graphs. The public vehicle flag defaults to
+wheels; vehicle requests select tracks from `Vehicle.is_tracked()`. Both vehicle classes retain structure
+clearance. `TerrainMap.vehicle_slopes` caches the maximum geology slope over a conservative eight-metre
+envelope. Limits apply in every direction, including cross-slope turns; this is not an oriented vehicle
+rollover simulation. Terrain weights continue to prefer roads and discourage mud, craters and slopes.
+
+`NavRaster.build_regions()` labels connectivity during finalization. Opening cells merges labels immediately;
+closing a passage may leave a false positive, which the current HPA graph resolves. It never causes a false
+unreachable result. Rebuild work rotates between the three movement classes with a deterministic quota.
+Existing solid structure nav parts supply no-go footprints for rock geometry; their visual and combat
+geometry must still agree. No disconnected decorative collision layer is introduced.
+
+`WaterMap.depth_at` compares the actual deformed bed to the water surface and exempts bridge decks.
+Shallow-labelled cells deeper than 55 cm are blocked too, with corner samples for shoreline cells.
+`Nav.can_step` sweeps movement at half-metre intervals, checks the endpoint and prevents diagonal corner
+cutting. Infantry use it for walking, diving, separation and other ground movement; vehicles use it for
+movement and recovery. Living men cannot go prone while wading. Invalid water spawns/disembarks and men
+stranded by a removed deck recover to safe ground rather than starting an underwater walking state.
+`tests/traversal.test.mjs` covers class-specific routes, footprints, water depth, fords, decks and connectivity.

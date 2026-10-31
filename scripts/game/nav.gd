@@ -1,7 +1,6 @@
 class_name Nav
 extends RefCounted
-## Two 1 m grids over the whole map (MapDims): one for infantry (low walls are vaultable,
-## wire is slow), one for vehicles (walls are smashable, tank traps solid).
+## Infantry, wheeled and tracked 1 m grids share obstacles but have different terrain limits.
 
 static var N := 1024
 static var H := 512.0
@@ -11,16 +10,23 @@ const SLOW := 2
 const SOLID := 3
 const PAD_INF := 0.25
 const PAD_VEH := 1.7
+const INF_SLOPE := 0.85  # about 40 degrees
+const WHEEL_SLOPE := 0.48  # about 26 degrees
+const TRACK_SLOPE := 0.65  # about 33 degrees
 
 var inf := NavRaster.new(N)
 var veh := NavRaster.new(N)
+var tracked := NavRaster.new(N)
 var ikind := PackedByteArray()
 var vkind := PackedByteArray()
+var tkind := PackedByteArray()
 var cell_objs := {}  # idx -> Array of [eid, ikind, vkind]
 var heat := PackedByteArray()  # per cell: how many fires burn close enough to hurt (see Fires); routes go round
 var terrain: TerrainMap
-var hnav_i = null  # hierarchical graphs over the two grids (see hnav.gd)
+var hnav_i = null  # hierarchical graphs over the three grids (see hnav.gd)
 var hnav_v = null
+var hnav_t = null
+var _hier_next := 0
 var _path_jobs := {}
 var _path_order: Array[int] = []
 var _path_head := 0
@@ -33,19 +39,20 @@ const ROUTE_CACHE_LIMIT := 128
 
 func request_path(unit: Entity, destination: Vector3, vehicle: bool, team: int, care: float, done: Callable) -> void:
 	var id := unit.eid
+	var tracks: bool = vehicle and unit is Vehicle and unit.is_tracked()
 	# A short clear step needs no graph search, especially a dash into cover.
-	var grid := veh if vehicle else inf
-	var hierarchy: HNav = hnav_v if vehicle else hnav_i
+	var grid := tracked if tracks else (veh if vehicle else inf)
+	var hierarchy: HNav = hnav_t if tracks else (hnav_v if vehicle else hnav_i)
 	var from := cell_of(unit.position)
 	var to := cell_of(destination)
 	var local_policy := care <= 0.0 or hierarchy.cluster_of(from) == hierarchy.cluster_of(to)
-	if local_policy and unit.position.distance_squared_to(destination) <= 16.0 * 16.0 and not grid.is_point_solid(from) and not grid.is_point_solid(to) and _line_free(unit.position, destination, vehicle):
+	if local_policy and unit.position.distance_squared_to(destination) <= 16.0 * 16.0 and not grid.is_point_solid(from) and not grid.is_point_solid(to) and _line_free(unit.position, destination, vehicle, tracks):
 		cancel_path(id)
 		done.call(PackedVector3Array([Vector3(destination.x, 0, destination.z)]))
 		return
 	if not _path_jobs.has(id):
 		_path_order.append(id)
-	_path_jobs[id] = [weakref(unit), destination, vehicle, team, care, done, Time.get_ticks_msec()]
+	_path_jobs[id] = [weakref(unit), destination, vehicle, team, care, done, Time.get_ticks_msec(), tracks]
 	path_queue_peak = maxi(path_queue_peak, _path_jobs.size())
 
 
@@ -69,9 +76,9 @@ func process_paths(max_jobs := 4) -> void:
 		if unit == null or unit.gone:
 			continue
 		path_wait_max_ms = maxf(path_wait_max_ms, Time.get_ticks_msec() - int(job[6]))
-		var result := find_path(unit.position, job[1], job[2], job[3], job[4])
+		var result := find_path(unit.position, job[1], job[2], job[3], job[4], job[7])
 		count += 1
-		var hierarchy: HNav = hnav_v if job[2] else hnav_i
+		var hierarchy: HNav = hnav_t if job[7] else (hnav_v if job[2] else hnav_i)
 		if result.is_empty() and hierarchy.has_work():
 			# Missing edges during rebuilding do not mean unreachable. Retry
 			# next tick, while unaffected orders can still make progress.
@@ -90,16 +97,20 @@ func process_paths(max_jobs := 4) -> void:
 func _init() -> void:
 	ikind.resize(N * N)
 	vkind.resize(N * N)
+	tkind.resize(N * N)
 	heat.resize(N * N)
 	hnav_i = HNav.new(inf, false)
 	hnav_v = HNav.new(veh, true)
+	hnav_t = HNav.new(tracked, true)
 	# keep vehicles off the outer rim (every cell set is passed on to the
 	# hierarchical graphs, which keep their own copy: see HNav._solid)
 	for i in N:
 		for j in [0, 1, 2, N - 3, N - 2, N - 1]:
 			for c: Vector2i in [Vector2i(i, j), Vector2i(j, i)]:
 				veh.set_point_solid(c, true)
+				tracked.set_point_solid(c, true)
 				hnav_v.mark_dirty(c)
+				hnav_t.mark_dirty(c)
 
 
 # --- boats --------------------------------------------------------------------------
@@ -255,10 +266,12 @@ func find_boat_path(from: Vector3, to: Vector3) -> PackedVector3Array:
 
 ## Builds the abstract graphs once the map is laid out.
 func finalize() -> void:
-	HNav.build_all([hnav_i, hnav_v])
+	HNav.build_all([hnav_i, hnav_v, hnav_t])
+	for grid in [inf, veh, tracked]:
+		grid.build_regions()
 
 
-## Re-links clusters whose walls changed, a few a tick, infantry's first (a road
+## Re-links clusters whose walls changed, sharing the quota between movement classes (a road
 ## being laid or a village flattened dirties dozens at once). Counted, not
 ## timed: if how much gets re-linked each tick hung on how fast this computer
 ## is, one seed would route men differently from one run to the next. (It was
@@ -267,11 +280,15 @@ func finalize() -> void:
 ## well under a millisecond as a rule.)
 func update_hier(clusters := 1) -> void:
 	for i in clusters:
-		if not hnav_i.dirty.is_empty():
-			hnav_i.update(1)
-		elif not hnav_v.dirty.is_empty():
-			hnav_v.update(1)
-		else:
+		var found := false
+		for attempt in 3:
+			var h: HNav = hnav_i if _hier_next == 0 else (hnav_v if _hier_next == 1 else hnav_t)
+			_hier_next = (_hier_next + 1) % 3
+			if h.has_work():
+				h.update(1)
+				found = true
+				break
+		if not found:
 			return
 
 
@@ -288,13 +305,13 @@ func kind_at(p: Vector3) -> int:
 	return ikind[c.y * N + c.x]
 
 
-func vkind_at(p: Vector3) -> int:
+func vkind_at(p: Vector3, tracks := false) -> int:
 	var c := cell_of(p)
-	return vkind[c.y * N + c.x]
+	return tkind[c.y * N + c.x] if tracks else vkind[c.y * N + c.x]
 
 
 func walkable(p: Vector3) -> bool:
-	return kind_at(p) != SOLID
+	return kind_at(p) != SOLID and (not terrain or not terrain.world.water or not terrain.world.water.too_deep(p))
 
 
 func add_structure(st: Structure) -> void:
@@ -354,18 +371,24 @@ func _raster(st: Structure, part: Dictionary) -> void:
 func _recompute(idx: int) -> void:
 	var ik := 0
 	var vk := 0
+	var tk := 0
 	if terrain and not terrain.slopes.is_empty():
 		var slope: float = terrain.slopes[idx]
-		ik = SOLID if slope > 0.85 else FREE
-		vk = SOLID if slope > 0.48 else FREE
+		ik = SOLID if slope > INF_SLOPE else FREE
+		var footprint: float = terrain.vehicle_slopes[idx] if not terrain.vehicle_slopes.is_empty() else slope
+		vk = SOLID if footprint > WHEEL_SLOPE else FREE
+		tk = SOLID if footprint > TRACK_SLOPE else FREE
 	for o in cell_objs.get(idx, []):
 		ik = maxi(ik, o[1])
 		vk = maxi(vk, o[2])
-	if terrain and terrain.base[idx] == TerrainMap.WATER and not terrain.world.water.on_deck_i(idx):
+		tk = maxi(tk, o[2])
+	if terrain and terrain.world.water and terrain.world.water.cell_too_deep(terrain.center(idx)):
 		ik = SOLID  # deep water: nobody walks or drives through it (boats have their own grid)
 		vk = SOLID
+		tk = SOLID
 	ikind[idx] = ik
 	vkind[idx] = vk
+	tkind[idx] = tk
 	var c := Vector2i(idx % N, idx / N)
 	var ti := terrain.nav_weight(idx, false) if terrain else 1.0
 	var tv := terrain.nav_weight(idx, true) if terrain else 1.0
@@ -379,10 +402,14 @@ func _recompute(idx: int) -> void:
 	var rim := c.x < 3 or c.y < 3 or c.x >= N - 3 or c.y >= N - 3
 	veh.set_point_solid(c, vk == SOLID or rim)
 	veh.set_point_weight_scale(c, (1.0 if vk == FREE else 9.0) * tv)
+	tracked.set_point_solid(c, tk == SOLID or rim)
+	tracked.set_point_weight_scale(c, (1.0 if tk == FREE else 9.0) * tv)
 	if hnav_i:
 		hnav_i.mark_dirty(c)
 	if hnav_v:
 		hnav_v.mark_dirty(c)
+	if hnav_t:
+		hnav_t.mark_dirty(c)
 
 
 func terrain_changed(idx: int) -> void:
@@ -405,25 +432,25 @@ func stamp_heat(p: Vector3, r: float, d: int) -> void:
 				_recompute(idx)
 
 
-func _nearest_free(g: NavRaster, c: Vector2i) -> Vector2i:
-	for r in range(1, 10):
+func _nearest_free(g: NavRaster, c: Vector2i, radius := 9) -> Vector2i:
+	for r in range(1, radius + 1):
 		for dx in range(-r, r + 1):
 			for dz in [-r, r]:
 				var a := Vector2i(c.x + dx, c.y + dz)
-				if g.is_in_boundsv(a) and not g.is_point_solid(a):
+				if g.is_in_boundsv(a) and not g.is_point_solid(a) and (not terrain or not terrain.world.water or not terrain.world.water.too_deep(center(a))):
 					return a
 				var b := Vector2i(c.x + dz, c.y + dx)
-				if g.is_in_boundsv(b) and not g.is_point_solid(b):
+				if g.is_in_boundsv(b) and not g.is_point_solid(b) and (not terrain or not terrain.world.water or not terrain.world.water.too_deep(center(b))):
 					return b
 	return c
 
 
-func nearest_walkable(p: Vector3, vehicle := false) -> Vector3:
-	var g := veh if vehicle else inf
+func nearest_walkable(p: Vector3, vehicle := false, tracks := false) -> Vector3:
+	var g := tracked if tracks else (veh if vehicle else inf)
 	var c := cell_of(p)
-	if not g.is_point_solid(c):
+	if not g.is_point_solid(c) and (not terrain or not terrain.world.water or not terrain.world.water.too_deep(p)):
 		return p
-	return center(_nearest_free(g, c))
+	return center(_nearest_free(g, c, N if terrain and terrain.world.water and terrain.world.water.too_deep(p) else 9))
 
 
 ## Optional diagnostics for the --perf-at measurement window.
@@ -436,11 +463,11 @@ var path_fallbacks := 0
 
 ## `team` and `care` (0 = shortest, 1+ = keep well clear of known enemy fire)
 ## feed the tactical cost of the hierarchical planner used for longer trips.
-func find_path(from: Vector3, to: Vector3, vehicle := false, team := -1, care := 0.0) -> PackedVector3Array:
+func find_path(from: Vector3, to: Vector3, vehicle := false, team := -1, care := 0.0, tracks := false) -> PackedVector3Array:
 	if not profile_paths:
-		return _find_path(from, to, vehicle, team, care)
+		return _find_path(from, to, vehicle, team, care, tracks)
 	var start := Time.get_ticks_usec()
-	var result := _find_path(from, to, vehicle, team, care)
+	var result := _find_path(from, to, vehicle, team, care, tracks)
 	var elapsed := Time.get_ticks_usec() - start
 	path_calls += 1
 	path_usec += elapsed
@@ -448,8 +475,8 @@ func find_path(from: Vector3, to: Vector3, vehicle := false, team := -1, care :=
 	return result
 
 
-func _find_path(from: Vector3, to: Vector3, vehicle: bool, team: int, care: float) -> PackedVector3Array:
-	var g := veh if vehicle else inf
+func _find_path(from: Vector3, to: Vector3, vehicle: bool, team: int, care: float, tracks: bool) -> PackedVector3Array:
+	var g := tracked if tracks else (veh if vehicle else inf)
 	var a := cell_of(from)
 	var b := cell_of(to)
 	var end_exact := true
@@ -459,12 +486,14 @@ func _find_path(from: Vector3, to: Vector3, vehicle: bool, team: int, care: floa
 		b = _nearest_free(g, b)
 		end_exact = false
 	var out := PackedVector3Array()
+	if g.is_point_solid(a) or g.is_point_solid(b) or g.disconnected(a, b):
+		return out
 	if a == b:
-		out.append(to if end_exact or Defs.flat(center(b) - to).length() < 1.7 else center(b))
+		out.append(to if end_exact or can_step(center(b), to, vehicle, tracks) else center(b))
 		return out
 	var ids: Array[Vector2i] = []
-	var h: HNav = hnav_v if vehicle else hnav_i
-	var graph := 1 if vehicle else 0
+	var h: HNav = hnav_t if tracks else (hnav_v if vehicle else hnav_i)
+	var graph := 2 if tracks else (1 if vehicle else 0)
 	var policy := team if care > 0.0 and team >= 0 and team < 2 else -1
 	# One side's changing threat picture does not invalidate the other side's
 	# routes, or a short move that never considered danger in the first place.
@@ -474,7 +503,7 @@ func _find_path(from: Vector3, to: Vector3, vehicle: bool, team: int, care: floa
 		var cached: PackedVector3Array = _route_cache[cache_key]
 		var last_from: Vector3 = from if cached.size() == 1 else cached[cached.size() - 2]
 		var first_to: Vector3 = to if cached.size() == 1 else cached[0]
-		if _line_free(from, first_to, vehicle) and _line_free(last_from, to, vehicle):
+		if _line_free(from, first_to, vehicle, tracks) and _line_free(last_from, to, vehicle, tracks):
 			var reused := cached.duplicate()
 			reused[reused.size() - 1] = Vector3(to.x, 0, to.z)
 			path_cache_hits += 1
@@ -495,7 +524,7 @@ func _find_path(from: Vector3, to: Vector3, vehicle: bool, team: int, care: floa
 		pts.append(center(c))
 	if end_exact and ids[ids.size() - 1] == b:
 		pts[pts.size() - 1] = Vector3(to.x, 0.0, to.z)
-	elif not end_exact and ids[ids.size() - 1] == b and Defs.flat(center(b) - to).length() < 1.7:
+	elif not end_exact and ids[ids.size() - 1] == b and Defs.flat(center(b) - to).length() < 1.7 and can_step(center(b), to, vehicle, tracks):
 		# goal sits in a padded cell next to a wall (e.g. a cover spot): finish with a short direct step
 		pts.append(Vector3(to.x, 0.0, to.z))
 	# string-pull smoothing through free cells
@@ -503,7 +532,7 @@ func _find_path(from: Vector3, to: Vector3, vehicle: bool, team: int, care: floa
 	var last := pts.size() - 1
 	while i < last:
 		var j := mini(last, i + 14)
-		while j > i + 1 and not _line_free(pts[i], pts[j], vehicle):
+		while j > i + 1 and not _line_free(pts[i], pts[j], vehicle, tracks):
 			j -= 1
 		out.append(pts[j])
 		i = j
@@ -551,10 +580,10 @@ func _hier_path(h: HNav, g: NavRaster, a: Vector2i, b: Vector2i, team: int, care
 	return out
 
 
-func _line_free(a: Vector3, b: Vector3, vehicle: bool) -> bool:
+func _line_free(a: Vector3, b: Vector3, vehicle: bool, tracks := false) -> bool:
 	var d := b - a
 	var steps := int(d.length() / 0.5) + 1
-	var arr := vkind if vehicle else ikind
+	var arr := tkind if tracks else (vkind if vehicle else ikind)
 	# (smoothing mustn't cut back through a fire the route went round - unless
 	# it starts in one, when the way out is the way out)
 	var ca := cell_of(a)
@@ -563,6 +592,8 @@ func _line_free(a: Vector3, b: Vector3, vehicle: bool) -> bool:
 		var p := a + d * (float(s) / steps)
 		var c := cell_of(p)
 		if arr[c.y * N + c.x] != FREE:
+			return false
+		if terrain and terrain.world.water and terrain.world.water.too_deep(p):
 			return false
 		if mind_fire and heat[c.y * N + c.x] > 0:
 			return false
@@ -621,3 +652,55 @@ func _plen(p: Array[Vector2i]) -> float:
 	for i in range(1, p.size()):
 		l += Vector2(p[i] - p[i - 1]).length()
 	return l
+
+
+## Swept checks prevent fast steps, sliding and old routes from crossing a blocked strip.
+func can_step(a: Vector3, b: Vector3, vehicle := false, tracks := false) -> bool:
+	if absf(b.x) >= H or absf(b.z) >= H:
+		return false
+	var distance := Vector2(b.x - a.x, b.z - a.z).length()
+	var steps := maxi(1, ceili(distance * 2.0))
+	var previous := cell_of(a)
+	var previous_point := a
+	for j in range(1, steps + 1):
+		var p := a.lerp(b, float(j) / steps)
+		var c := cell_of(p)
+		if terrain and terrain.world.water and terrain.world.water.too_deep(p):
+			return false
+		if (vkind_at(p, tracks) == SOLID) if vehicle else not _foot_clear(p):
+			return false
+		if c.x != previous.x and c.y != previous.y:
+			var x := center(Vector2i(c.x, previous.y))
+			var z := center(Vector2i(previous.x, c.y))
+			if vehicle:
+				if vkind_at(x, tracks) == SOLID or vkind_at(z, tracks) == SOLID:
+					return false
+			elif not _foot_clear(Vector3(p.x, 0, previous_point.z)) or not _foot_clear(Vector3(previous_point.x, 0, p.z)):
+				return false
+		previous = c
+		previous_point = p
+	return true
+
+
+## Cover anchors may enter a wall's planning padding, but never the wall itself.
+func _foot_clear(p: Vector3) -> bool:
+	if walkable(p):
+		return true
+	if not terrain or (not terrain.slopes.is_empty() and terrain.slope_at(p) > INF_SLOPE):
+		return false
+	if terrain.world.water and terrain.world.water.too_deep(p):
+		return false
+	var c := cell_of(p)
+	var objects: Array = cell_objs.get(c.y * N + c.x, [])
+	if objects.is_empty():
+		return false
+	for object in objects:
+		if object[1] != SOLID:
+			continue
+		var st: Structure = terrain.world.entities.get(object[0])
+		if not is_instance_valid(st):
+			return false
+		for part: Dictionary in st.nav_parts():
+			if part.i == SOLID and Defs.point_in_obb(Vector2(p.x, p.z), part.c, part.h, part.yaw):
+				return false
+	return true

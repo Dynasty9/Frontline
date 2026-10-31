@@ -1151,6 +1151,7 @@ func _danger_maps() -> void:
 			dm[i] = minf(dm[i], 4.0)
 		nav.hnav_i.set_danger(t, dm)
 		nav.hnav_v.set_danger(t, dm)
+		nav.hnav_t.set_danger(t, dm)
 
 
 func _threat(dm: PackedFloat32Array, p: Vector3, r: float, w: float) -> void:

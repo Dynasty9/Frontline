@@ -48,6 +48,7 @@ var deform_dirty: Array[Rect2i] = []  # keep distant blasts separate instead of 
 var deform_img: Image  # (view only) the same heights as a texture
 var landform: Landform
 var slopes := PackedFloat32Array()
+var vehicle_slopes := PackedFloat32Array()
 
 
 func _init(w) -> void:
@@ -81,7 +82,23 @@ func install_landform(samples: PackedFloat32Array) -> void:
 		for x in N:
 			var i := z * N + x
 			slopes[i] = landform.slope(Vector3(x + 0.5 - H, 0, z + 0.5 - H))
-			_nav_refresh(i)
+	# A conservative eight-metre envelope stays safe when a hull turns across a slope.
+	var horizontal := PackedFloat32Array()
+	horizontal.resize(N * N)
+	vehicle_slopes.resize(N * N)
+	for z in N:
+		for x in N:
+			var steep := 0.0
+			for xx in range(maxi(0, x - 4), mini(N, x + 5)):
+				steep = maxf(steep, slopes[z * N + xx])
+			horizontal[z * N + x] = steep
+	for z in N:
+		for x in N:
+			var steep := 0.0
+			for zz in range(maxi(0, z - 4), mini(N, z + 5)):
+				steep = maxf(steep, horizontal[zz * N + x])
+			vehicle_slopes[z * N + x] = steep
+			_nav_refresh(z * N + x)
 	for z in DN:
 		for x in DN:
 			var i := z * DN + x

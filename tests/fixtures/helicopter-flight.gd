@@ -2,10 +2,10 @@ extends Node
 ## Exercise real flight and vehicle phases without map generation or rendering.
 
 class FlightNav extends Nav:
-	func vkind_at(_p: Vector3) -> int:
+	func vkind_at(_p: Vector3, _tracks := false) -> int:
 		return Nav.FREE
 
-	func nearest_walkable(p: Vector3, _vehicle := false) -> Vector3:
+	func nearest_walkable(p: Vector3, _vehicle := false, _tracks := false) -> Vector3:
 		return p
 
 

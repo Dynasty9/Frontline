@@ -549,6 +549,9 @@ catalogue entry in `MissionList.LIST`, a setup function and an autopilot functio
   Standard-battle woods are denser and share spatial bark and foliage batches; changed trees recover their individual models.
   Campaign missions retain their previous geology and woodland layout to preserve authored routes and cover.
   Infantry and vehicles follow the ground, slow on slopes, and route around faces too steep to cross.
+  Infantry, wheels and tracks have separate traversal limits (about 40, 26 and 33 degrees). Vehicle slopes
+  use an eight-metre envelope so a flat centre cannot conceal a cliff under the hull. Routes favour roads;
+  blocked rock/structure footprints retain clearance, and precomputed connectivity rejects separated regions.
   Ridges block shots and enemy detection. Helicopters anticipate rising ground and land relative to the surface.
 - Construction requires a sufficiently level footprint. Trenches, shell holes, fires, selection and targeting
   use local ground height. The host sends the exact elevation samples to joiners and recordings retain them,
@@ -572,7 +575,10 @@ catalogue entry in `MissionList.LIST`, a setup function and an autopilot functio
   flank from edge to edge: a concrete road bridge where the cross road crosses it, a ford in each half, muddy
   banks. A pond lies in each half. Deep water is impassable on foot or in a vehicle; men and vehicles can wade
   the shallows (fords, the edge of the beach) - slowly, and exposed. The beds are carved into the ground, so a
-  man wading sinks to his knees. Bridges and the harbour are key points the AI fights over. The water is laid
+  man wading sinks to his knees. Actual depth is limited to 55 cm, including shore-cell edges;
+  living men stay upright while wading. Movement checks the whole step, so old routes, dives, separation
+  and knockback cannot carry a man through deep water. Spawns and disembarking find safe ground;
+  a living man stranded by a removed crossing is repositioned to the nearest safe bank. Bridges and the harbour are key points the AI fights over. The water is laid
   out on the server as a few shapes and rasterized identically on every client.
 - **How the water looks** (`water_view.gd`). The surface is drawn in tiles only where there's water. The sea
   runs two wave systems that cross: a swell from weather far out at sea, long and regular and coming in sets
