@@ -63,6 +63,7 @@ pub mod terrain_scene;
 pub mod vector;
 pub mod vehicle;
 pub mod vehicle_brain;
+pub mod vehicle_flight;
 pub mod vehicle_motion;
 pub mod visibility;
 pub mod water;

@@ -4,6 +4,7 @@ use crate::terrain::TerrainCore;
 use frontline_core::infantry::Credit;
 use frontline_core::vehicle::{LastBlast, Resume, Route, Vehicle};
 use frontline_core::vehicle_brain::{Contact, CrewEvent, CrewProfile, Perception, UnitKind};
+use frontline_core::vehicle_flight::FlightProfile;
 use frontline_core::vehicle_motion::{GroundProfile, Traffic};
 use godot::prelude::*;
 #[derive(GodotClass)]
@@ -465,6 +466,19 @@ fn ground_profile(a: &Array<Variant>) -> Option<GroundProfile> {
         handling: [r[3], r[4], r[5], r[6]],
     })
 }
+fn flight_profile(a: &PackedFloat64Array) -> Option<FlightProfile> {
+    if a.len() != 5 {
+        return None;
+    }
+    let p = a.as_slice();
+    Some(FlightProfile {
+        speed: p[0],
+        accel: p[1],
+        brake: p[2],
+        turn: p[3],
+        turn_accel: p[4],
+    })
+}
 fn traffic(a: &Array<Variant>) -> Option<Vec<Traffic>> {
     if a.len() > 100_000 {
         return None;
@@ -527,6 +541,51 @@ fn crew_contacts(rows: &Array<Variant>) -> Option<Vec<Contact>> {
 }
 #[godot_api]
 impl VehicleStateCore {
+    #[func]
+    fn fly_to(
+        &mut self,
+        goal: Vector3,
+        dt: f64,
+        face: PackedFloat64Array,
+        profile: PackedFloat64Array,
+        terrain: Gd<TerrainCore>,
+        deck: PackedByteArray,
+    ) -> i32 {
+        let Some(p) = flight_profile(&profile) else {
+            return -1;
+        };
+        if face.len() > 1 {
+            return -1;
+        }
+        let terrain = terrain.bind();
+        let (Some(v), Some(terrain)) = (self.core.as_mut(), terrain.core.as_ref()) else {
+            return -1;
+        };
+        v.fly_to(
+            crate::point(goal),
+            dt,
+            face.as_slice().first().copied(),
+            p,
+            terrain,
+            deck.as_slice(),
+        )
+        .map_or(-1, i32::from)
+    }
+    #[func]
+    fn fly_uav(
+        &mut self,
+        dt: f64,
+        altitude: f64,
+        radius: f64,
+        profile: PackedFloat64Array,
+    ) -> bool {
+        let Some(p) = flight_profile(&profile) else {
+            return false;
+        };
+        self.core
+            .as_mut()
+            .is_some_and(|v| v.fly_uav(dt, altitude, radius, p).is_ok())
+    }
     #[func]
     fn crew_step(
         &mut self,

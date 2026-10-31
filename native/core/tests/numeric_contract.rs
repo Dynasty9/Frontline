@@ -36,6 +36,80 @@ fn block(out: &mut Vec<u8>, bytes: &[u8]) {
 }
 
 #[test]
+fn vehicle_flight_momentum_and_orbits_are_identical_across_platforms() {
+    use frontline_core::vehicle::Vehicle;
+    use frontline_core::vehicle_flight::FlightProfile;
+    let mut terrain = Terrain::blank(64).unwrap();
+    let mut deck = vec![0; 64 * 64];
+    for z in 0..64 {
+        for x in 0..64 {
+            deck[z * 64 + x] = u8::from((27..31).contains(&x));
+        }
+    }
+    for z in 0..128 {
+        for x in 0..128 {
+            terrain.heights[z * 128 + x] =
+                (libm::sin(x as f64 * 0.13) * libm::cos(z as f64 * 0.07) * 0.7) as f32;
+        }
+    }
+    let mut bytes = Vec::new();
+    for trial in 0..32 {
+        let mut v = Vehicle {
+            id: 7,
+            position: Vector3::new(-7.3, 0.15 + (trial % 5) as f32, 11.7),
+            yaw: (trial % 7) as f64 * 0.37,
+            velocity: if trial % 2 == 0 {
+                Vector3::ZERO
+            } else {
+                Vector3::new(1.7, -0.1, -0.3)
+            },
+            flight: Some([0.0; 3]),
+            sling_cargo: if trial % 4 == 0 { 99 } else { 0 },
+            uav_destination: Some(Vector3::new(12.3, 0.0, -13.7)),
+            ..Default::default()
+        };
+        let p = FlightProfile {
+            speed: 22.0,
+            accel: 5.0,
+            brake: 6.0,
+            turn: 0.7,
+            turn_accel: 0.95,
+        };
+        let mut goal = Vector3::new(21.3, 14.0, -19.7);
+        for step in 0..360 {
+            let dt = [1.0 / 30.0, 1.0 / 60.0, 0.1, 0.2][trial % 4];
+            if step == 160 {
+                goal = Vector3::new(-12.3, 0.15, 7.7);
+                v.sling_cargo = 0;
+                v.uav_destination = Some(Vector3::new(-17.3, 0.0, 15.7));
+            }
+            if trial % 5 == 0 {
+                v.fly_uav(dt, 20.0, 16.0, p).unwrap();
+            } else {
+                bytes.push(u8::from(
+                    v.fly_to(
+                        goal,
+                        dt,
+                        (trial % 3 == 0).then_some(1.3),
+                        p,
+                        &terrain,
+                        &deck,
+                    )
+                    .unwrap(),
+                ));
+            }
+            if step % 17 == 0 {
+                block(&mut bytes, &v.checkpoint().unwrap());
+            }
+            if step == 213 {
+                v = Vehicle::restore(&v.checkpoint().unwrap()).unwrap();
+            }
+        }
+    }
+    golden("vehicle_flight", &bytes);
+}
+
+#[test]
 fn vehicle_crews_preserve_orders_and_random_choices_across_platforms() {
     use frontline_core::vehicle::{Resume, Route, Vehicle};
     use frontline_core::vehicle_brain::*;
