@@ -479,6 +479,26 @@ fn flight_profile(a: &PackedFloat64Array) -> Option<FlightProfile> {
         turn_accel: p[4],
     })
 }
+pub(crate) fn muzzle_profile(a: &Array<Variant>) -> Option<frontline_core::vehicle_cannon::Muzzle> {
+    use frontline_core::vehicle_cannon::{Muzzle, Socket};
+    if a.len() != 3 {
+        return None;
+    }
+    let flags: PackedByteArray = read(a, 0)?;
+    let points: PackedVector3Array = read(a, 2)?;
+    if flags.len() != 2 || flags.as_slice().iter().any(|&v| v > 1) || points.len() > 2 {
+        return None;
+    }
+    Some(Muzzle {
+        helicopter: flags[0] != 0,
+        gunship: flags[1] != 0,
+        gun_height: read(a, 1)?,
+        socket: points.as_slice().first().map(|&p| Socket {
+            point: crate::point(p),
+            pivot: points.as_slice().get(1).copied().map(crate::point),
+        }),
+    })
+}
 fn armor_profile(a: &Array<Variant>) -> Option<frontline_core::vehicle_damage::Armor> {
     if a.len() != 2 {
         return None;
@@ -623,6 +643,16 @@ fn crew_contacts(rows: &Array<Variant>) -> Option<Vec<Contact>> {
 }
 #[godot_api]
 impl VehicleStateCore {
+    #[func]
+    fn weapon_muzzle(&self, profile: Array<Variant>, main_gun: bool) -> PackedVector3Array {
+        let (Some(v), Some(p)) = (self.core.as_ref(), muzzle_profile(&profile)) else {
+            return PackedVector3Array::new();
+        };
+        v.weapon_muzzle(p, main_gun).map_or_else(
+            |_| PackedVector3Array::new(),
+            |p| [vector(p)].as_slice().into(),
+        )
+    }
     #[func]
     fn choose_weapon(
         &mut self,

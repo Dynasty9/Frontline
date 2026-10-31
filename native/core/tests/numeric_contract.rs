@@ -36,6 +36,98 @@ fn block(out: &mut Vec<u8>, bytes: &[u8]) {
 }
 
 #[test]
+fn vehicle_cannon_geometry_and_impacts_are_identical_across_platforms() {
+    use frontline_core::actors::{Actor, Actors};
+    use frontline_core::infantry::Infantry;
+    use frontline_core::terrain::TRENCH;
+    use frontline_core::vehicle::Vehicle;
+    use frontline_core::vehicle_cannon::{CannonProfile, Muzzle, Socket};
+    let mut bytes = Vec::new();
+    for trial in 0..128 {
+        let mut terrain = Terrain::blank(128).unwrap();
+        if trial % 2 == 0 {
+            for z in 32..37 {
+                for x in 62..67 {
+                    terrain.layers[TRENCH][z * 128 + x] = 1;
+                }
+            }
+        }
+        let mut collision = CollisionWorld::default();
+        if trial % 4 == 0 {
+            collision.replace(
+                99,
+                &[BoxShape {
+                    body: 99,
+                    shape: 0,
+                    center: Vector3::new(0.0, 1.0, -20.0),
+                    basis: Mat3::IDENTITY,
+                    half: Vector3::new(20.0, 10.0, 0.5),
+                }],
+            );
+        }
+        let mut s = Infantry::default();
+        s.identity.id = 2;
+        s.identity.unit = "rifleman".into();
+        s.identity.weapon = "rifle".into();
+        s.posture = [Posture::Stand, Posture::Crouch, Posture::Prone][trial % 3];
+        s.motion.position = Vector3::new(0.0, if trial % 2 == 0 { -1.0 } else { 0.0 }, -30.0);
+        let mut a = Actors::from_entries(
+            3,
+            vec![
+                Actor::Vehicle(Box::new(Vehicle {
+                    id: 1,
+                    team: 0,
+                    position: Vector3::new(1.3, if trial % 5 == 0 { 14.0 } else { 0.0 }, -2.7),
+                    yaw: trial as f64 * 0.37,
+                    turret_yaw: trial as f64 * -0.17,
+                    flight_pitch: trial as f64 * 0.037,
+                    flight_roll: trial as f64 * -0.017,
+                    ..Default::default()
+                })),
+                Actor::Soldier(Box::new(s)),
+            ],
+        )
+        .unwrap();
+        let p = CannonProfile {
+            muzzle: Muzzle {
+                socket: (trial % 3 != 0).then_some(Socket {
+                    point: Vector3::new(1.3, 2.1, -4.7),
+                    pivot: (trial % 3 == 1).then_some(Vector3::new(0.0, 1.2, -0.3)),
+                }),
+                helicopter: trial % 5 == 0,
+                gunship: trial % 5 == 0,
+                gun_height: 2.2,
+            },
+            damage: 160.0,
+            radius: 5.5,
+            anti_tank: 320.0,
+            size: 1.4,
+        };
+        let mut rng = SimulationRandom::new(trial as u64 + 137);
+        for i in 0..3 {
+            let shot = a
+                .fire_vehicle_cannon(1, 2, 7.1 + i as f64, p, &terrain, &mut collision, &mut rng)
+                .unwrap();
+            point(&mut bytes, shot.from);
+            point(&mut bytes, shot.blast.position);
+            point(&mut bytes, shot.blast.direction.unwrap());
+            for n in [
+                shot.blast.damage,
+                shot.blast.radius,
+                shot.blast.antitank,
+                shot.blast.size,
+            ] {
+                bytes.extend_from_slice(&n.to_le_bytes());
+            }
+            block(&mut bytes, &a.checkpoint().unwrap());
+            bytes.extend_from_slice(&rng.state().to_le_bytes());
+            a = Actors::restore(&a.checkpoint().unwrap()).unwrap();
+        }
+    }
+    golden("vehicle_cannon", &bytes);
+}
+
+#[test]
 fn gunship_attack_guidance_is_identical_across_platforms() {
     use frontline_core::vehicle::Vehicle;
     use frontline_core::vehicle_flight::FlightProfile;

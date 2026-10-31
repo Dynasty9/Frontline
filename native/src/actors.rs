@@ -72,6 +72,51 @@ fn artillery_profile(
 #[godot_api]
 impl ActorStateCore {
     #[func]
+    fn fire_vehicle_cannon(
+        &mut self,
+        vehicle: u32,
+        target: u32,
+        now: f64,
+        muzzle: Array<Variant>,
+        gun: PackedFloat64Array,
+        terrain: Gd<crate::terrain::TerrainCore>,
+        mut collision: Gd<crate::collision_index::CollisionIndexCore>,
+        mut rng: Gd<crate::simulation_random::SimulationRandomCore>,
+    ) -> Array<Variant> {
+        let Some(muzzle) = crate::vehicle::muzzle_profile(&muzzle) else {
+            return Array::new();
+        };
+        if gun.len() != 4 {
+            return Array::new();
+        }
+        let p = frontline_core::vehicle_cannon::CannonProfile {
+            muzzle,
+            damage: gun[0],
+            radius: gun[1],
+            anti_tank: gun[2],
+            size: gun[3],
+        };
+        let terrain = terrain.bind();
+        let Some(terrain) = terrain.core.as_ref() else {
+            return Array::new();
+        };
+        match self.core.fire_vehicle_cannon(
+            vehicle,
+            target,
+            now,
+            p,
+            terrain,
+            &mut collision.bind_mut().core,
+            &mut rng.bind_mut().core,
+        ) {
+            Ok(s) => varray![
+                vector(s.from),
+                &crate::projectile_actor::events(vec![Event::Explosion(s.blast)])
+            ],
+            Err(_) => Array::new(),
+        }
+    }
+    #[func]
     fn artillery_needs_target(&self, vehicle: u32, now: f64) -> i32 {
         self.core
             .artillery_needs_target(vehicle, now)

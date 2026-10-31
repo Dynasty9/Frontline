@@ -1360,6 +1360,8 @@ Shared transport checks preserve passenger exits, boat landing gates and the
 exiting squad's next order request in retained Rust actor state.
 Vehicle missile and smoke launches now create retained Rust projectile state;
 reference checks preserve warning order, smoke ammunition and random continuation.
+Cannon checks preserve barrel sockets, aircraft attitude, blocked shots and
+trench-lip impacts, including firing along a trench instead of across its lip.
 Artillery checks preserve queued fire missions, aiming delays, salvos and shell
 scatter. Gunship checks preserve attack orbits, damaged-aircraft altitude, rocket
 firing gates and smoke responses between successive rocket launches.

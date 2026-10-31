@@ -339,6 +339,16 @@ guidance fixture. Nine core tests cover these artillery/rocket/gunship operation
 numeric CI adds 6,184,235 exact transcript bytes. Target selection, shared combat
 effects and the whole vehicle/world dispatcher still need full integration.
 
+Cannon shots resolve target posture, barrel sockets, turret pivots and aircraft
+attitude from retained actors. The shot uses Rust terrain and collision, including
+trench-lip impacts and enfilade, and emits the muzzle event before shared damage.
+The reference fixture compares 1,320 muzzle/shot states across the roster,
+including unmapped-model fallbacks, blocked rays, trench geometry and checkpoint
+resumes. Six core tests cover those cases, shared RNG continuation and invalid
+input without mutation. Numeric CI adds 772,224 exact transcript bytes. This
+retains the shot calculation; the shared blast/destruction dispatcher is still
+being connected to the owned world.
+
 ## Retained squads
 
 `Squad` retains ordered membership, known/heard contacts, briefing and centroid
@@ -477,7 +487,7 @@ Component checkpoint headers contain a four-byte component tag, a little-endian
 rules rather than silently continuing with changed arithmetic. The separate
 integer RNG stream remains unchanged.
 
-`native/core/tests/numeric_contract.rs` compares 39,140,251 committed bytes without
+`native/core/tests/numeric_contract.rs` compares 39,912,475 committed bytes without
 tolerances: fixed-tick flight state, support events and RNG cursors, carved water,
 craters, rotated box hits, cover anchors, spherical interpolation and infantry
 movement, infantry cover fire, postures, ammunition, burst recovery, vitals, aiming,
@@ -701,7 +711,7 @@ flag until Rust owns the actors.
 
 The shock fixture compares 92,160 reference steps, including mounted turning,
 blocked terrain, carried casualties and task interruption. The full default suite
-passes 166 tests; 396 core tests pass in debug and release.
+passes 167 tests; 403 core tests pass in debug and release.
 
 ## Spatial query state
 

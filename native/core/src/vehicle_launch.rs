@@ -73,7 +73,7 @@ impl Actors {
             velocity,
         })
     }
-    fn actor_center(&self, id: u32) -> Option<Vector3> {
+    pub(crate) fn actor_center(&self, id: u32) -> Option<Vector3> {
         Some(match self.get(id)? {
             Actor::Soldier(s) => {
                 crate::infantry_pose::center(s.motion.position, s.posture, s.vitals.life)

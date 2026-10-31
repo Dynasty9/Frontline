@@ -18,6 +18,7 @@ kind = "fixed"
 - Grenade, smoke, rocket, bomb and shell flight now use the shared simulation core, preserving flight behavior, pickup, kicking and rethrowing.
 - Rust projectile-actor checks preserve grenade holders and throwbacks, impact damage, smoke, guided-missile lock loss, recon and support-aircraft attribution through saved-state resumes.
 - Battlefield raycasts now use the shared simulation core, updating when vehicles move, doors open and structures change.
+- Rust cannon checks preserve model-specific barrel positions, blocked shots and trench protection as shared combat moves into the server.
 - Sight checks and smoke screens now run in Rust, retaining immediate smoke changes and reusing obstruction only while the blocking geometry stays unchanged.
 - Infantry contact evaluation now shares a Rust scan, preserving weapon priorities, mounted-gun arcs, drone reactions, forced targets and squad reports.
 - Fighting positions and their protection checks now use Rust, retaining low cover, leaning fire and second-row shelter while avoiding redundant firing-lane checks.
