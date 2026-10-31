@@ -196,6 +196,8 @@ func _answer(cmd: String, req: Dictionary) -> Variant:
 			return _structure_checkpoints(w)
 		"spatial_checkpoints":
 			return _spatial_checkpoints(w)
+		"vehicle_checkpoints":
+			return _vehicle_checkpoints(w)
 	return {"ok": false, "error": "unknown command: %s" % cmd}
 
 
@@ -458,10 +460,28 @@ func _spatial_cells(cells: Dictionary) -> Array:
 	return rows
 
 
+func _vehicle_checkpoints(w: World) -> Dictionary:
+	var core: RefCounted = ClassDB.instantiate("VehicleStateCore")
+	var restored: RefCounted = ClassDB.instantiate("VehicleStateCore")
+	var count := 0
+	var bytes := 0
+	for v: Vehicle in w.vehicles:
+		var values := VehicleState.capture(v)
+		if not core.load_state(values) or core.values() != values:
+			return {"ok": false, "error": "Vehicle import lost fields: %d (%s)" % [v.eid, v.vkind]}
+		var saved: PackedByteArray = core.checkpoint()
+		if not restored.restore(saved) or restored.values() != values or restored.checkpoint() != saved:
+			return {"ok": false, "error": "Vehicle checkpoint lost fields: %d" % v.eid}
+		count += 1
+		bytes += saved.size()
+	return {"vehicles": count, "bytes": bytes}
+
+
 func _spatial_checkpoints(w: World) -> Dictionary:
 	var actors: RefCounted = ClassDB.instantiate("ActorStateCore")
 	var infantry: RefCounted = ClassDB.instantiate("InfantryStateCore")
 	var structure: RefCounted = ClassDB.instantiate("StructureStateCore")
+	var vehicle: RefCounted = ClassDB.instantiate("VehicleStateCore")
 	var units: RefCounted = ClassDB.instantiate("SpatialIndexCore")
 	var structures: RefCounted = ClassDB.instantiate("SpatialIndexCore")
 	var doors: RefCounted = ClassDB.instantiate("SpatialIndexCore")
@@ -482,6 +502,11 @@ func _spatial_checkpoints(w: World) -> Dictionary:
 			if not core.load_state(StructureState.capture(e)):
 				return {"ok": false, "error": "Invalid spatial structure: %d" % e.eid}
 			kinds.append(1)
+		elif e is Vehicle:
+			core = vehicle
+			if not core.load_state(VehicleState.capture(e)):
+				return {"ok": false, "error": "Invalid spatial vehicle: %d" % e.eid}
+			kinds.append(2)
 		if core != null:
 			blocks.append(core.checkpoint())
 	if not actors.load_state(w.next_eid, kinds, blocks):
@@ -505,8 +530,7 @@ func _spatial_checkpoints(w: World) -> Dictionary:
 	for p in positions:
 		for radius: float in [1.0, 16.0, 75.0, 200.0]:
 			for enemy in [-1, 0, 1]:
-				# Vehicle actors have not migrated yet; compare the retained infantry subset.
-				var expected := w.units_near(p, radius, enemy).filter(func(e): return e is Soldier)
+				var expected := w.units_near(p, radius, enemy)
 				var actual: Array = units.units_near(actors, p, radius, enemy)
 				if actual.size() != 1 or actual[0] != InfantryState.entity_ids(expected):
 					return {"ok": false, "error": "Spatial infantry query differs"}

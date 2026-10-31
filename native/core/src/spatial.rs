@@ -243,6 +243,9 @@ impl Actors {
                     index.bounds(s.motion.position, 0.0)?;
                 }
             }
+            if let Actor::Vehicle(v) = actor {
+                index.bounds(v.position, 0.0)?;
+            }
         }
         for ids in index.cells.values_mut() {
             ids.clear();
@@ -261,6 +264,15 @@ impl Actors {
                 }
             }
         }
+        // World registers soldiers first, then vehicles, even when their entity IDs interleave.
+        for actor in self.iter() {
+            if let Actor::Vehicle(v) = actor {
+                let (key, _) = index.bounds(v.position, 0.0).unwrap();
+                index.cells.entry(key).or_default().push(v.id);
+                index.membership.entry(v.id).or_default().push(key);
+                index.entries += 1;
+            }
+        }
         index.cells.retain(|_, ids| !ids.is_empty());
         index.membership.retain(|_, keys| !keys.is_empty());
         Ok(())
@@ -277,14 +289,16 @@ impl Actors {
         }
         let mut found = Vec::new();
         for id in index.candidates(p, r)? {
-            let Some(Actor::Soldier(s)) = self.get(id) else {
-                continue;
+            let (position, team) = match self.get(id) {
+                Some(Actor::Soldier(s)) => (s.motion.position, s.identity.team),
+                Some(Actor::Vehicle(v)) => (v.position, v.team),
+                _ => continue,
             };
-            if enemy_of >= 0 && (s.identity.team == enemy_of || s.identity.team < 0) {
+            if enemy_of >= 0 && (team == enemy_of || team < 0) {
                 continue;
             }
-            let dx = f64::from(s.motion.position.x) - f64::from(p.x);
-            let dz = f64::from(s.motion.position.z) - f64::from(p.z);
+            let dx = f64::from(position.x) - f64::from(p.x);
+            let dz = f64::from(position.z) - f64::from(p.z);
             if dx * dx + dz * dz <= r * r {
                 found.push(id);
             }

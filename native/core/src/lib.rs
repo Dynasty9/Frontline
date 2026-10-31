@@ -61,5 +61,6 @@ pub mod terrain;
 pub mod terrain_cover;
 pub mod terrain_scene;
 pub mod vector;
+pub mod vehicle;
 pub mod visibility;
 pub mod water;

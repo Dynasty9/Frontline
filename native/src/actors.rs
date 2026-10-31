@@ -98,6 +98,12 @@ impl ActorStateCore {
         self.core.remove(id).is_some()
     }
     #[func]
+    fn board(&mut self, vehicle: u32, soldier: u32, seats: u32, helicopter: bool) -> i32 {
+        self.core
+            .board(vehicle, soldier, seats, helicopter)
+            .map_or(-1, i32::from)
+    }
+    #[func]
     fn checkpoint(&self) -> PackedByteArray {
         self.core
             .checkpoint()

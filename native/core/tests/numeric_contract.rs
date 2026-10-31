@@ -36,6 +36,82 @@ fn block(out: &mut Vec<u8>, bytes: &[u8]) {
 }
 
 #[test]
+fn vehicle_orders_repairs_and_turret_state_are_identical_across_platforms() {
+    use frontline_core::vehicle::{LastBlast, Resume, Vehicle};
+    let mut bytes = Vec::new();
+    for trial in 0..32 {
+        let mut v = Vehicle {
+            id: 7,
+            team: (trial % 2) as i8,
+            owner: if trial % 3 == 0 { -1 } else { 1 },
+            position: Vector3::new(trial as f32 * 1.3, trial as f32 % 7.0, -13.7),
+            yaw: trial as f64 * 0.371,
+            turret_yaw: -0.37,
+            traverse: 0.09,
+            max_hp: 900.0,
+            hp: 170.0,
+            track_broken: true,
+            track_fix: trial as f64 % 5.0,
+            passengers: vec![8, 9],
+            sling_cargo: 10,
+            cargo: 120,
+            flight: Some([0.19, -0.03, 0.17]),
+            resume: Some(Resume {
+                destination: Some(Vector3::X * 70.0),
+                assault: true,
+                assault_destination: Some(Vector3::Z * 90.0),
+            }),
+            last_blast: Some(LastBlast {
+                position: Vector3::ZERO,
+                size: 2.2,
+                time: 31.7,
+            }),
+            ..Default::default()
+        };
+        let base = ["tank", "boat", "lift_heli", "attack_heli", "uav", "supply"][trial % 6];
+        v.avoid_cap = (trial % 3 == 0).then_some(3.0);
+        v.brain_state = if trial % 3 == 0 {
+            "withdraw".into()
+        } else {
+            String::new()
+        };
+        v.order_assault(
+            Vector3::new(33.1, 0.0, -19.7),
+            base,
+            Vector3::new(34.1, 0.0, -18.7),
+        )
+        .unwrap();
+        block(&mut bytes, &v.checkpoint().unwrap());
+        v.order_attack(17, Vector3::new(-90.7, 3.0, 71.9), base)
+            .unwrap();
+        block(&mut bytes, &v.checkpoint().unwrap());
+        v.order_stop(base, false).unwrap();
+        for tick in 0..240 {
+            if tick % 17 == 0 {
+                v.repair(0.15).unwrap();
+                v.rearm(2, 4).unwrap();
+            }
+            let target = if (tick / 50) % 2 == 0 {
+                Some((17, Vector3::new(-90.7, 3.0, 71.9)))
+            } else {
+                None
+            };
+            v.turret_tick(target, 1.0 / 30.0, base == "attack_heli", 0.721, 0.917)
+                .unwrap();
+            v.update_flags(tick as f64 / 30.0, base == "lift_heli", trial % 3 == 0)
+                .unwrap();
+            if tick % 11 == 0 {
+                block(&mut bytes, &v.checkpoint().unwrap());
+            }
+            if tick == 117 {
+                v = Vehicle::restore(&v.checkpoint().unwrap()).unwrap();
+            }
+        }
+    }
+    golden("vehicle", &bytes);
+}
+
+#[test]
 fn spatial_membership_and_actor_queries_are_identical_across_platforms() {
     use frontline_core::actors::{Actor, Actors};
     use frontline_core::infantry::Infantry;

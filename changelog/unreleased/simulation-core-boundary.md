@@ -59,6 +59,7 @@ kind = "fixed"
 - Authoritative entity IDs now come from Rust, preserving creation order and keeping removed units' IDs from being reused as the server migration continues.
 - Shared actor checks preserve rescue and stretcher claims when a carrier falls, and FPV drones lose control when their operator is lost while retaining their last target position.
 - Squad checks preserve shared contact briefings, leader succession and casualty morale as squad state moves into Rust.
+- Vehicle checks preserve crew order gates, repairs, turret aiming, passenger boarding and saved transport state as vehicle ownership moves into Rust.
 - Nearby-infantry, building and door checks preserve query ordering through movement and checkpoint restoration as shared world state moves into Rust.
 - The extracted simulation uses pinned numeric rules, with exact checkpoint comparisons across platforms as replay verification work continues.
 - Guided missiles keep a consistent turn after overshooting their aim point, instead of letting rounding choose an erratic turn direction.

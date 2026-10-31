@@ -22,11 +22,11 @@ graphics, network access or a wall clock.
 | Gameplay RNG, including commander streams | `frontline_core` | Seeded PCG stream matches Godot 4.7; cosmetic RNG stays in Godot |
 | Grenade, smoke, rocket, bomb and shell flight | `frontline_core` | Rust retains and advances flight state and queries native geometry; the adapter supplies holders and applies impacts |
 | Retained projectile actors and impacts | `frontline_core` | Ballistic, guided and support actors retain ownership, holder/handler links and attribution with flight checkpoints; ordered impact, spawn, smoke, recon and sound effects still await the Rust world dispatcher |
-| Shared actor storage and FPV ownership | `frontline_core` | Ordered infantry/projectile/drone state, allocation and shared casualty links are retained together; drones resolve living targets and operators inside Rust. Structures, vehicles, squads and complete world dispatch remain unfinished |
+| Shared actor storage and FPV ownership | `frontline_core` | Infantry, buildings, vehicles, projectiles and drones retain identities, state and shared casualty/transport links together; drones resolve living targets and operators inside Rust. Squad integration and complete world dispatch remain unfinished |
 | Squad state and shared knowledge | `frontline_core` | Orders, contact caches, plan links and tactical state have retained checkpoints; centroid, contact reports, threats, succession and casualty morale operate on owned actors. Squad orders, drills and the full squad tick still run in Godot |
 | Retained buildings and economy transitions | `frontline_core` | Geometry, links, queues and timers have retained checkpoints; construction, capture, town income and production transitions match Godot. Shared rule effects, destruction, crews and the complete building dispatcher remain unfinished |
 | Deferred damage and rubble | `frontline_core` | The live world uses checkpointed explosion deadlines and pending rubble spawns, with an engine-only fallback. Godot still applies the resulting damage and creates structures |
-| Spatial bucket ownership | `frontline_core` | Infantry, building and closed-door queries use retained actor IDs and preserve cell/registration order through checkpoints; vehicle query ownership awaits the vehicle port |
+| Spatial bucket ownership | `frontline_core` | Infantry, vehicle, building and closed-door queries use retained actor IDs and preserve cell/registration order through checkpoints |
 | Weighted grid paths and cluster pair costs | `frontline_core` | Exact Godot route tie behavior; native cluster workers return costs in deterministic order |
 | Ground cells, crater heights and queued cover repairs | `frontline_core` | Rust retains terrain and ordered structure geometry, and performs edits, queries and cover repairs; Godot imports biome generation and forwards navigation notifications |
 | Water shapes, bridge decks and water terrain rasterization | `frontline_core` | Ordered numeric rasterization; a Rust worker also applies the joining host's ground overrides; Godot still generates the initial shapes |
@@ -70,7 +70,7 @@ graphics, network access or a wall clock.
 | House occupancy and breach selection | `frontline_core` | Floor containment, ordered openings, nearest walkable stack positions and competing squadmates extracted; Godot still supplies spatial candidates, squad contacts and decision timers |
 | Injury behavior and special tasks | Rust | `soldier.gd`, `soldier_brain.gd`, `combat.gd` |
 | Squads, tactics, commander and naval decisions | Rust | Squad, tactics, commander and naval scripts |
-| Vehicles and crews | Rust | Entity scripts and Godot spatial queries |
+| Vehicles and crews | `frontline_core` | Retained vehicle state, orders, repairs, turret aiming and shared boarding are reference-tested; driving, flight, crew decisions and combat dispatch still run in Godot |
 | Battlefield box raycasts | `frontline_core` | Spatial grid with deterministic hit ties; Godot supplies geometry updates |
 | Smoke volumes and geometric visibility | `frontline_core` | Rust checks exposed points against collision and smoke, retaining reusable obstruction proofs; Godot supplies target posture and scene changes |
 | Route refinement, smoothing, corridor reuse and path requests | `frontline_core` | Native planner retains corridor history and request order; Godot supplies unit positions and delivers completed orders |
@@ -184,16 +184,16 @@ the Rust identity order and cursor agree with the current scene registry.
 
 ## Shared actor ownership
 
-`Actors` retains infantry, projectile, FPV and structure actors alongside the ordered entity
+`Actors` retains infantry, vehicle, projectile, FPV and structure actors alongside the ordered entity
 registry. Allocation, removal and checkpoints use the same stable IDs; hash-table
 iteration never chooses update or serialization order. Restoring rejects mismatched
 IDs/kinds, duplicate identities, oversized blocks and unsupported actor kinds.
-It does not yet contain vehicles, squads or the whole match state.
+It does not yet contain squads or the whole match state.
 
 Casualty transitions update rescue claims, stretcher carriers and controlled
 drones in this collection. An obsolete rescue release cannot clear another man's
 newer claim. Squad breach claims still need the squad owner. FPV flight resolves
-its operator and living infantry target directly from owned actors, preserves its
+its operator and infantry/vehicle target directly from owned actors, preserves its
 last aim point when a target disappears, and keeps spawn-time IDs separate from
 current links. Detonation and shoot-down remain distinct, idempotent outcomes;
 the complete world must apply their damage, notifications and removals.
@@ -203,6 +203,26 @@ The Godot comparison covers 384 shared release/down/death/fling transitions and
 shoot-downs and repeated checkpoint restores. Eight Rust tests cover allocation
 churn, shared cleanup, continuation, attribution and malformed input; numeric CI
 adds 751,072 exact bytes. This collection is not a standalone match server.
+
+## Retained vehicles
+
+Vehicle checkpoints retain crew interruptions and saved orders, passenger and
+sling links, ground/boat routes, flight controls, weapons, repair progress,
+artillery queues, avoidance limits and naval recovery timers. Visual suspension,
+models and interpolation caches are excluded. Nonfinite sentinels become typed
+optional values; NaN is rejected rather than silently treated as absent.
+
+Vehicle move/assault/attack/stop orders preserve crew withdrawal gates and stale
+route rejection. Repairs, missile rearming, observation flags, turret drive limits
+and settled aiming operate on retained state. Shared boarding updates both the
+vehicle and the soldier, including hidden duties and occupied seats. Unit buckets
+keep soldiers before vehicles, even when their entity registrations interleave.
+
+The fixture compares 25,315 vehicle states across the roster, repairs, orders,
+target changes, turret steps, shared boarding and checkpoint resumes. Live imports
+also cover roster battles, naval movement, helicopter supply and sling operations.
+Numeric CI adds 543,888 bytes. Full vehicle driving, crew AI, flight and combat
+dispatch still need to move before the Rust world can run the complete battle.
 
 ## Retained squads
 
@@ -342,7 +362,7 @@ Component checkpoint headers contain a four-byte component tag, a little-endian
 rules rather than silently continuing with changed arithmetic. The separate
 integer RNG stream remains unchanged.
 
-`native/core/tests/numeric_contract.rs` compares 21,900,964 committed bytes without
+`native/core/tests/numeric_contract.rs` compares 22,444,852 committed bytes without
 tolerances: fixed-tick flight state, support events and RNG cursors, carved water,
 craters, rotated box hits, cover anchors, spherical interpolation and infantry
 movement, infantry cover fire, postures, ammunition, burst recovery, vitals, aiming,
@@ -566,7 +586,7 @@ flag until Rust owns the actors.
 
 The shock fixture compares 92,160 reference steps, including mounted turning,
 blocked terrain, carried casualties and task interruption. The full default suite
-passes 154 tests; 315 core tests pass in debug and release.
+passes 155 tests; 323 core tests pass in debug and release.
 
 ## Spatial query state
 
@@ -580,8 +600,8 @@ cells rather than enumerating an unbounded empty rectangle.
 
 The fixture compares 8,192 query cases across movement, removal and checkpoint
 restoration. Live snapshots compare infantry, building, floor and door queries in
-eleven battle scenarios and the 500-soldier, 2,048 m map. Vehicle actors are not yet
-retained, so live unit comparisons explicitly filter to soldiers. Numeric CI adds
+fourteen battle scenarios and the 500-soldier, 2,048 m map. Unit queries include
+retained vehicles in the same ordering as the Godot world. Numeric CI adds
 665,896 bytes of index state and ordered results. This is shared query ownership,
 not the complete Rust tick or a new live-game performance claim.
 

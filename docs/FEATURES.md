@@ -1338,9 +1338,12 @@ Ammo-cache cook-offs use a saved simulation-time explosion queue, so damage wait
 for the battle to advance and does not depend on render callbacks.
 Destroyed buildings queue their rubble in the same owned state; ruins register
 after deferred blasts and before the next simulation step.
-Spatial checkpoint checks preserve nearby infantry, building and door query order,
-including units that moved after the step's buckets were built. Vehicles still need
-to join the retained actor set before Rust owns every unit query.
+Spatial checkpoint checks preserve nearby infantry, vehicle, building and door
+query order, including units that moved after the step's buckets were built.
+Vehicle checkpoints retain orders, passenger/sling links, weapon and flight state,
+repair progress and naval timers. Repairs, turret aiming, order transitions and
+shared boarding match the existing game; driving, flight and combat dispatch still
+need to join the full Rust world loop.
 Construction, town income, capture and production transitions match the existing
 game; shared rule effects, destruction and the full building dispatcher still need
 migration before Rust owns the complete battle.

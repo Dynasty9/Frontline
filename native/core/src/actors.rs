@@ -9,6 +9,7 @@ use crate::random::SimulationRandom;
 use crate::state_codec::{Reader, Writer};
 use crate::structure::Structure;
 use crate::vector::Vector3;
+use crate::vehicle::Vehicle;
 use std::collections::HashMap;
 
 #[derive(Clone, Debug, PartialEq)]
@@ -17,6 +18,7 @@ pub enum Actor {
     Projectile(Projectile),
     Drone(Drone),
     Structure(Box<Structure>),
+    Vehicle(Box<Vehicle>),
 }
 
 impl Actor {
@@ -38,6 +40,10 @@ impl Actor {
                 id: s.id,
                 kind: Kind::Structure,
             },
+            Self::Vehicle(v) => Identity {
+                id: v.id,
+                kind: Kind::Vehicle,
+            },
         }
     }
     fn set_id(&mut self, id: u32) {
@@ -46,6 +52,7 @@ impl Actor {
             Self::Projectile(p) => p.id = id,
             Self::Drone(d) => d.id = id,
             Self::Structure(s) => s.id = id,
+            Self::Vehicle(v) => v.id = id,
         }
     }
     fn valid(&self) -> bool {
@@ -54,6 +61,7 @@ impl Actor {
             Self::Projectile(p) => p.valid(),
             Self::Drone(d) => d.valid(),
             Self::Structure(s) => !s.gone && s.valid(),
+            Self::Vehicle(v) => !v.gone && v.valid(),
         }
     }
     pub fn checkpoint(&self) -> Result<Vec<u8>, &'static str> {
@@ -62,6 +70,7 @@ impl Actor {
             Self::Projectile(p) => p.checkpoint(),
             Self::Drone(d) => d.checkpoint(),
             Self::Structure(s) => s.checkpoint(),
+            Self::Vehicle(v) => v.checkpoint(),
         }
     }
     pub fn restore(kind: Kind, bytes: &[u8]) -> Result<Self, &'static str> {
@@ -70,7 +79,7 @@ impl Actor {
             Kind::Projectile => Ok(Self::Projectile(Projectile::restore(bytes)?)),
             Kind::Drone => Ok(Self::Drone(Drone::restore(bytes)?)),
             Kind::Structure => Ok(Self::Structure(Box::new(Structure::restore(bytes)?))),
-            _ => Err("actor kind has not migrated"),
+            Kind::Vehicle => Ok(Self::Vehicle(Box::new(Vehicle::restore(bytes)?))),
         }
     }
 }
@@ -119,6 +128,43 @@ impl Actors {
     }
     pub fn iter(&self) -> impl Iterator<Item = &Actor> {
         self.entities.iter().map(|entry| &self.values[&entry.id])
+    }
+    pub fn vehicle(&self, id: u32) -> Option<&Vehicle> {
+        match self.get(id)? {
+            Actor::Vehicle(v) => Some(v),
+            _ => None,
+        }
+    }
+    pub fn board(
+        &mut self,
+        vehicle: u32,
+        soldier: u32,
+        seats: u32,
+        helicopter: bool,
+    ) -> Result<bool, &'static str> {
+        if seats > 100_000 {
+            return Err("invalid vehicle capacity");
+        }
+        let v = self.vehicle(vehicle).ok_or("missing transport")?;
+        if v.passengers.len() >= 100_000 {
+            return Err("vehicle passenger limit exceeded");
+        }
+        let occupied = v
+            .passengers
+            .iter()
+            .filter(|&&id| self.get(id).is_some())
+            .count();
+        if occupied >= seats as usize || (helicopter && v.position.y > 1.0) {
+            return Ok(false);
+        }
+        let s = self.soldier_mut(soldier).ok_or("missing passenger")?;
+        s.hide_in(crate::infantry_control::HiddenReason::Vehicle, 9999.0, None)?;
+        s.links.vehicle = u64::from(vehicle);
+        let Some(Actor::Vehicle(v)) = self.values.get_mut(&vehicle) else {
+            unreachable!()
+        };
+        v.passengers.push(soldier);
+        Ok(true)
     }
     pub fn spawn(&mut self, mut actor: Actor) -> Result<u32, &'static str> {
         let id = u32::try_from(self.entities.next_id()).map_err(|_| "entity registry exhausted")?;
@@ -222,10 +268,13 @@ impl Actors {
         let alive = self
             .soldier(drone.operator)
             .is_some_and(|s| s.vitals.life == Life::Alive);
-        let target = self
-            .soldier(drone.target)
-            .filter(|s| s.vitals.life == Life::Alive)
-            .map(|s| crate::infantry_pose::center(s.motion.position, s.posture, s.vitals.life));
+        let target = match self.get(drone.target) {
+            Some(Actor::Soldier(s)) if s.vitals.life == Life::Alive => Some(
+                crate::infantry_pose::center(s.motion.position, s.posture, s.vitals.life),
+            ),
+            Some(Actor::Vehicle(v)) => Some(v.position + Vector3::Y * 2.0),
+            _ => None,
+        };
         let Some(Actor::Drone(drone)) = self.values.get_mut(&id) else {
             unreachable!()
         };

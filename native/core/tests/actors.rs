@@ -221,6 +221,36 @@ fn drone_reads_living_target_and_operator_from_owned_actors() {
     assert_eq!(d.flight.target, Vector3::new(10.0, 1.1, 3.0));
     assert_eq!(d.flight.phase, Phase::Uncontrolled);
     assert_eq!(actors.soldier(2).unwrap().vitals.life, Life::Dead);
+    let vehicle = frontline_core::vehicle::Vehicle {
+        id: 2,
+        position: Vector3::new(30.0, 0.4, -12.0),
+        ..Default::default()
+    };
+    let mut actors = Actors::from_entries(
+        4,
+        vec![
+            Actor::Soldier(Box::new(soldier(1))),
+            Actor::Vehicle(Box::new(vehicle)),
+            Actor::Drone(drone(3)),
+        ],
+    )
+    .unwrap();
+    actors
+        .step_drone(3, 1.0 / 30.0, &mut collision, 512.0)
+        .unwrap();
+    let Some(Actor::Drone(d)) = actors.get(3) else {
+        panic!()
+    };
+    assert_eq!(d.flight.target, Vector3::new(30.0, 2.4, -12.0));
+    actors.remove(2);
+    actors
+        .step_drone(3, 1.0 / 30.0, &mut collision, 512.0)
+        .unwrap();
+    let Some(Actor::Drone(d)) = actors.get(3) else {
+        panic!()
+    };
+    assert_eq!(d.target, 0);
+    assert_eq!(d.flight.target, Vector3::new(30.0, 2.4, -12.0));
 }
 
 #[test]

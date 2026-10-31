@@ -43,6 +43,7 @@ mod squad;
 mod structure;
 mod support_flight;
 mod terrain;
+mod vehicle;
 mod visibility;
 mod water_raster;
 
