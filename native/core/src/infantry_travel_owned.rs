@@ -36,7 +36,7 @@ pub enum Event {
 }
 
 impl Actors {
-    fn travel_danger(&self, id: u32, now: f64, squads: &mut [Squad]) -> bool {
+    pub(crate) fn infantry_danger(&self, id: u32, now: f64, squads: &mut [Squad]) -> bool {
         let s = self.soldier(id).unwrap();
         s.vitals.suppression > 5.0
             || !s.fight.visible_targets.is_empty()
@@ -52,7 +52,7 @@ impl Actors {
             && s.cover.shifting
             && s.cover.height > 0.0
             && s.cover.height < 1.12
-            && self.travel_danger(id, now, squads)
+            && self.infantry_danger(id, now, squads)
     }
     pub(crate) fn infantry_speed(&self, id: u32, now: f64, squads: &mut [Squad]) -> f64 {
         self.soldier(id)
@@ -137,7 +137,7 @@ impl Actors {
             dt,
             time: now,
             speed,
-            danger: !candidates.is_empty() && self.travel_danger(id, now, squads),
+            danger: !candidates.is_empty() && self.infantry_danger(id, now, squads),
             has_doors: doors.cells().next().is_some(),
             door_still_closed: self
                 .structure(s.motion.door as u32)

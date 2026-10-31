@@ -830,6 +830,55 @@ impl ActorStateCore {
     }
 
     #[func]
+    fn advance_infantry_idle(
+        &mut self,
+        id: u32,
+        dt: f64,
+        now: f64,
+        moving: bool,
+        squads: Array<Gd<crate::squad::SquadStateCore>>,
+        last_chat: PackedFloat64Array,
+        units: Gd<crate::spatial::SpatialIndexCore>,
+        mut rng: Gd<crate::simulation_random::SimulationRandomCore>,
+    ) -> Array<Variant> {
+        use frontline_core::infantry_idle_owned::Event;
+        let (Some(mut squads_state), Ok(mut chat)) = (
+            read_squads(&squads),
+            <[f64; 2]>::try_from(last_chat.as_slice()),
+        ) else {
+            return Array::new();
+        };
+        let units = units.bind();
+        let Some(units) = &units.core else {
+            return Array::new();
+        };
+        let result = self.core.advance_infantry_idle(
+            id,
+            dt,
+            now,
+            moving,
+            &mut squads_state,
+            &mut chat,
+            units,
+            &mut rng.bind_mut().core,
+        );
+        match result {
+            Ok(events) => {
+                write_squads(squads, squads_state);
+                let events: Array<Variant> = events
+                    .into_iter()
+                    .map(|event| match event {
+                        Event::Banter => varray![0].to_variant(),
+                        Event::Speech(text) => varray![1, text.as_str()].to_variant(),
+                    })
+                    .collect();
+                varray![&events, &PackedFloat64Array::from(chat.as_slice())]
+            }
+            Err(_) => Array::new(),
+        }
+    }
+
+    #[func]
     fn advance_infantry_captor(
         &mut self,
         id: u32,

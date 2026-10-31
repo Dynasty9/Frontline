@@ -36,6 +36,100 @@ fn block(out: &mut Vec<u8>, bytes: &[u8]) {
 }
 
 #[test]
+fn shared_infantry_downtime_is_identical_across_platforms() {
+    use frontline_core::actors::{Actor, Actors};
+    use frontline_core::infantry::Infantry as Soldier;
+    use frontline_core::infantry_idle::{Line, CHAT};
+    use frontline_core::infantry_idle_owned::Event;
+    use frontline_core::spatial::{SpatialIndex, UNIT_CELL};
+    use frontline_core::squad::Squad;
+    let mut bytes = vec![];
+    for team in 0..2 {
+        for trial in 0..32 {
+            let entries = [1u32, 3, 2].map(|id| {
+                let mut s = Soldier::default();
+                s.identity.id = id;
+                s.identity.unit = "rifleman".into();
+                s.identity.name = format!("Soldier {id}");
+                s.identity.team = team;
+                s.identity.squad = 9;
+                s.motion.position = Vector3::X * (id as f32 * 2.0);
+                s.motion.yaw = f64::from([0.0f32, 1.3, -2.5][trial % 3]);
+                s.weapon.last_shot = -99.0;
+                s.vitals.speech_cooldown = if trial % 3 == 0 { 3.0 } else { 0.0 };
+                s.idle.calm = [4.9, 5.0, 11.9, 12.0][(trial + id as usize) % 4];
+                s.idle.until = 100.0;
+                if trial % 3 == 0 {
+                    s.idle.activity = CHAT;
+                    s.idle.partner = if id == 1 { 3 } else { 1 };
+                    s.idle.lines = [
+                        Line {
+                            at: 19.0,
+                            text: "First".into(),
+                        },
+                        Line {
+                            at: 20.0,
+                            text: "!laugh".into(),
+                        },
+                        Line {
+                            at: 20.0,
+                            text: "Last".into(),
+                        },
+                    ]
+                    .into();
+                }
+                Actor::Soldier(Box::new(s))
+            });
+            let mut a = Actors::from_entries(100, entries.into()).unwrap();
+            let mut units = SpatialIndex::new(UNIT_CELL).unwrap();
+            a.rebuild_units(&mut units).unwrap();
+            let mut squads = vec![Squad {
+                id: 9,
+                members: vec![1, 3, 2],
+                ..Default::default()
+            }];
+            let mut last_chat = [-99.0; 2];
+            let mut rng = SimulationRandom::new(7931 + trial as u64);
+            for step in 0..12 {
+                let events = a
+                    .advance_infantry_idle(
+                        [1, 3, 2][step % 3],
+                        0.1,
+                        20.0 + step as f64 * 2.8,
+                        step >= 10 && trial % 7 == 0,
+                        &mut squads,
+                        &mut last_chat,
+                        &units,
+                        &mut rng,
+                    )
+                    .unwrap();
+                bytes.extend_from_slice(&(events.len() as u32).to_le_bytes());
+                for event in events {
+                    match event {
+                        Event::Banter => bytes.push(0),
+                        Event::Speech(text) => {
+                            bytes.push(1);
+                            block(&mut bytes, text.as_bytes());
+                        }
+                    }
+                }
+                block(&mut bytes, &a.checkpoint().unwrap());
+                block(&mut bytes, &squads[0].checkpoint().unwrap());
+                for time in last_chat {
+                    bytes.extend_from_slice(&time.to_le_bytes());
+                }
+                bytes.extend_from_slice(&rng.state().to_le_bytes());
+                if step == 3 {
+                    a = Actors::restore(&a.checkpoint().unwrap()).unwrap();
+                    squads[0] = Squad::restore(&squads[0].checkpoint().unwrap()).unwrap();
+                }
+            }
+        }
+    }
+    golden("infantry_idle_owned", &bytes);
+}
+
+#[test]
 fn prisoner_capture_and_delivery_are_identical_across_platforms() {
     use frontline_core::actors::{Actor, Actors};
     use frontline_core::battle_stats::BattleStats;

@@ -1324,6 +1324,8 @@ and targets removed before the action completes.
 Lifecycle checks preserve hidden vehicle/tunnel duties, treatment deadlines,
 drone operators, moving postures and status flags. Removed tents, tunnels,
 vehicles and drones are safely released.
+Retained downtime also updates both conversation partners and team cooldowns,
+including interruptions and timed speech, before another soldier acts.
 Downtime checks preserve calm timers, idle choices, conversation partners,
 scheduled dialogue, laughter and interruptions, including gameplay random draws.
 Target validation also safely rejects a unit that has already been removed.
