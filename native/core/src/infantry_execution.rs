@@ -27,7 +27,7 @@ fn related_valid(r: Option<Related>) -> bool {
     })
 }
 
-fn action_id(action: Action) -> u64 {
+pub(crate) fn action_id(action: Action) -> u64 {
     match action {
         Action::Rethrow { grenade, .. }
         | Action::Kick { grenade, .. }

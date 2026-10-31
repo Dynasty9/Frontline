@@ -1405,6 +1405,9 @@ The retained weapon sequence advances timers, ducks and reloads, asks for cover,
 shifts along reachable unclaimed positions, chooses posture and lays the gun in
 the same order. Mounted traverse and firing arcs, suppression and escort/crew
 exceptions are compared against the complete existing weapon tick.
+Retained action completion updates shared grenade holders, melee casualties,
+opened doors, launched rounds and drone pilots. Rocket warnings preserve vehicle
+smoke and crew evasion in the same event and random order.
 Construction, town income, capture and production transitions match the existing
 game; shared rule effects, destruction and the full building dispatcher still need
 migration before Rust owns the complete battle.

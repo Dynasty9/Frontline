@@ -36,6 +36,286 @@ fn block(out: &mut Vec<u8>, bytes: &[u8]) {
 }
 
 #[test]
+fn completed_infantry_actions_are_identical_across_platforms() {
+    use frontline_core::actors::{Actor, Actors};
+    use frontline_core::infantry::Infantry as Soldier;
+    use frontline_core::infantry_action::{Action, Round, Throw};
+    use frontline_core::infantry_action_owned::{Defense, Event};
+    use frontline_core::projectile_actor::{ballistic, Motion, Projectile};
+    use frontline_core::spatial::{SpatialIndex, UNIT_CELL};
+    use frontline_core::squad::{Contact, Report, Squad};
+    use frontline_core::structure::Structure;
+    use frontline_core::vehicle::{Route, Vehicle};
+    use frontline_core::vehicle_brain::CrewProfile;
+    use frontline_core::vehicle_launch::SmokeProfile;
+    let mut bytes = Vec::new();
+    let nav = PathPlanner::new(128).unwrap();
+    for mode in 0..12 {
+        for trial in 0..16 {
+            let target = Vector3::new(20.7, 0.06, -3.2);
+            let mut entries = Vec::new();
+            for id in [1, 7, 8] {
+                let mut s = Soldier::default();
+                s.identity.id = id;
+                s.identity.unit = "rifleman".into();
+                s.identity.weapon = "rifle".into();
+                s.identity.team = i8::from(id != 1);
+                s.identity.squad = if id == 1 { 9 } else { 10 };
+                s.motion.position.x = if id == 1 {
+                    0.0
+                } else if mode == 8 {
+                    [1.0, 2.4, 2.401][trial % 3] + (id - 7) as f32 * 2.0
+                } else {
+                    15.0 + (id - 7) as f32 * 2.0
+                };
+                s.motion.yaw = [0.0f32, 1.3, -2.5][trial % 3].into();
+                s.vitals.hp = if id == 7 {
+                    [1.0, 45.0, 100.0][trial % 3]
+                } else {
+                    100.0
+                };
+                s.vitals.speech_cooldown = if trial % 2 == 0 { 0.0 } else { 5.0 };
+                s.motion.path = vec![Vector3::new(12.0, 0.0, 12.0)];
+                if id == 1 {
+                    s.action.current = match mode {
+                        0 => Action::Cook,
+                        1 | 2 => Action::Throw(Throw {
+                            position: target,
+                            round: if mode == 1 { Round::Frag } else { Round::Smoke },
+                            fuse: 1.2,
+                        }),
+                        3 => Action::ThrowIn {
+                            position: target,
+                            fuse: 1.2,
+                        },
+                        4 => Action::Kick {
+                            grenade: 30,
+                            velocity: Vector3::new(8.1, 3.0, -0.4),
+                        },
+                        5 => Action::Pickup { grenade: 30 },
+                        6 => Action::Rethrow {
+                            grenade: 30,
+                            position: target,
+                        },
+                        7 => Action::DoorKick {
+                            door: 20,
+                            position: Vector3::X * 10.0,
+                        },
+                        8 => Action::Melee { target: 7 },
+                        9 => Action::Launch { target: 10 },
+                        10 => Action::Mortar {
+                            position: target,
+                            round: if trial % 2 == 0 {
+                                Round::Smoke
+                            } else {
+                                Round::HighExplosive
+                            },
+                        },
+                        _ => Action::LaunchDrone { target: 7 },
+                    };
+                    if mode == 0 && trial % 3 != 0 {
+                        s.action.queued_throw = Some(Throw {
+                            position: Vector3::X * 19.0,
+                            round: Round::Frag,
+                            fuse: 1.8,
+                        });
+                    }
+                    s.action.remaining = if trial % 7 == 0 { 0.1 } else { 0.0 };
+                }
+                entries.push(Actor::Soldier(Box::new(s)));
+            }
+            entries.push(Actor::Vehicle(Box::new(Vehicle {
+                id: 10,
+                team: 1,
+                kind: "tank".into(),
+                owner: -2,
+                position: Vector3::X * 35.0,
+                velocity: Vector3::new(1.3, 0.0, -0.7),
+                smoke_left: 2,
+                smoke_until: if trial % 7 == 0 { 20.0 } else { 0.0 },
+                ..Default::default()
+            })));
+            entries.push(Actor::Structure(Box::new(Structure {
+                id: 20,
+                kind: "house_wall".into(),
+                position: Vector3::X * 10.0,
+                door_closed: trial % 2 == 0,
+                ..Default::default()
+            })));
+            let mut round = ballistic(
+                Kind::Frag,
+                Vector3::new([0.7, 1.4, 1.401][trial % 3], 0.05, 0.0),
+                Vector3::ZERO,
+            );
+            round.fuse = 1.1;
+            entries.push(Actor::Projectile(Projectile {
+                id: 30,
+                team: 1,
+                thrower: [7, 1, 99][trial % 3],
+                called_by: 0,
+                held_by: if matches!(mode, 5 | 6) {
+                    1
+                } else if trial % 5 == 0 {
+                    7
+                } else {
+                    0
+                },
+                smothered_by: 0,
+                handler: 1,
+                thrown_back: 0,
+                target_id: 0,
+                motion: Motion::Ballistic(round),
+            }));
+            let mut actors = Actors::from_entries(100, entries).unwrap();
+            let mut units = SpatialIndex::new(UNIT_CELL).unwrap();
+            actors.rebuild_units(&mut units).unwrap();
+            let mut squads = vec![
+                Squad {
+                    id: 9,
+                    members: vec![1],
+                    morale: 75.0,
+                    known: vec![Contact {
+                        id: 7,
+                        report: Report {
+                            position: Vector3::new(20.0, 0.0, 10.0),
+                            time: 5.0,
+                        },
+                    }],
+                    ..Default::default()
+                },
+                Squad {
+                    id: 10,
+                    team: 1,
+                    members: vec![7, 8],
+                    morale: 75.0,
+                    ..Default::default()
+                },
+            ];
+            let mut rng = SimulationRandom::new(43853 + trial as u64);
+            for step in 0..4 {
+                let out = actors
+                    .complete_infantry_action(
+                        1,
+                        10.0 + step as f64,
+                        1.3,
+                        &mut squads,
+                        &units,
+                        &nav,
+                        |_| (Some(210), false),
+                        |_| Defense {
+                            smoke: SmokeProfile {
+                                armor: 3,
+                                helicopter: false,
+                                gun_height: 2.2,
+                            },
+                            crew: CrewProfile {
+                                base: "tank",
+                                helicopter: false,
+                                automatic: false,
+                                artillery: false,
+                                tracked: true,
+                                armor: 3,
+                            },
+                        },
+                        &mut rng,
+                    )
+                    .unwrap();
+                bytes.extend_from_slice(&[out.cancel_path as u8, out.speech.unwrap_or(255)]);
+                bytes.extend_from_slice(&(out.events.len() as u32).to_le_bytes());
+                for event in out.events {
+                    match event {
+                        Event::Spawn(id) => {
+                            bytes.push(0);
+                            bytes.extend_from_slice(&id.to_le_bytes());
+                        }
+                        Event::Launch {
+                            position,
+                            direction,
+                        } => {
+                            bytes.push(1);
+                            point(&mut bytes, position);
+                            point(&mut bytes, direction);
+                        }
+                        Event::Mortar(position) => {
+                            bytes.push(2);
+                            point(&mut bytes, position);
+                        }
+                        Event::Door(id) => {
+                            bytes.push(3);
+                            bytes.extend_from_slice(&id.to_le_bytes());
+                        }
+                        Event::Melee {
+                            target,
+                            position,
+                            hit,
+                        } => {
+                            bytes.push(4);
+                            bytes.extend_from_slice(&target.to_le_bytes());
+                            point(&mut bytes, position);
+                            bytes.push(hit.previous_life as u8);
+                            bytes.push(match hit.result {
+                                DamageResult::Ignored => 0,
+                                DamageResult::Survived(_) => 1,
+                                DamageResult::Down => 2,
+                                DamageResult::Die => 3,
+                            });
+                            bytes.push(hit.speech.unwrap_or(255));
+                            bytes.extend_from_slice(&hit.damage_credited.to_le_bytes());
+                            bytes.extend_from_slice(
+                                &hit.casualty_speech.map_or(0, |s| s.soldier).to_le_bytes(),
+                            );
+                            bytes.push(hit.casualty_speech.map_or(255, |s| s.cue));
+                        }
+                        Event::Smoke {
+                            vehicle,
+                            route,
+                            manual,
+                        } => {
+                            bytes.push(5);
+                            bytes.extend_from_slice(&vehicle.to_le_bytes());
+                            bytes.push(manual as u8);
+                            match route {
+                                Route::None => bytes.push(0),
+                                Route::Ground {
+                                    destination,
+                                    care,
+                                    revision,
+                                } => {
+                                    bytes.push(1);
+                                    point(&mut bytes, destination);
+                                    bytes.extend_from_slice(&care.to_le_bytes());
+                                    bytes.extend_from_slice(&revision.to_le_bytes());
+                                }
+                                Route::Boat { destination } => {
+                                    bytes.push(2);
+                                    point(&mut bytes, destination);
+                                }
+                            }
+                        }
+                    }
+                }
+                bytes.extend_from_slice(&(out.stats.len() as u32).to_le_bytes());
+                for stat in out.stats {
+                    block(&mut bytes, stat.as_bytes());
+                }
+                block(&mut bytes, &actors.checkpoint().unwrap());
+                for q in &squads {
+                    block(&mut bytes, &q.checkpoint().unwrap());
+                }
+                bytes.extend_from_slice(&rng.state().to_le_bytes());
+                if step == 1 {
+                    actors = Actors::restore(&actors.checkpoint().unwrap()).unwrap();
+                    for q in &mut squads {
+                        *q = Squad::restore(&q.checkpoint().unwrap()).unwrap();
+                    }
+                }
+            }
+        }
+    }
+    golden("infantry_action_owned", &bytes);
+}
+
+#[test]
 fn retained_infantry_decisions_are_identical_across_platforms() {
     use frontline_core::actors::{Actor, Actors};
     use frontline_core::infantry::Infantry as Soldier;

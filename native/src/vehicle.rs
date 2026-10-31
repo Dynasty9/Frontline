@@ -428,7 +428,7 @@ fn values(v: &Vehicle) -> Array<Variant> {
         &credit
     ]
 }
-fn route(r: Result<Route, &'static str>) -> Array<Variant> {
+pub(crate) fn route(r: Result<Route, &'static str>) -> Array<Variant> {
     match r {
         Ok(Route::None) => varray![0, Vector3::ZERO, 0.0, 0],
         Ok(Route::Ground {

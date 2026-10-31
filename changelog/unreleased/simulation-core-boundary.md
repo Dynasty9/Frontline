@@ -18,6 +18,7 @@ kind = "fixed"
 - Destroyed buildings create rubble at a consistent point in the simulation, including ruins left by those delayed explosions.
 - Grenade, smoke, rocket, bomb and shell flight now use the shared simulation core, preserving flight behavior, pickup, kicking and rethrowing.
 - Rust grenade-duty checks preserve approach, smothering, pickup, kicking and diving away while keeping the soldier and shared projectile state together.
+- Rust action-completion checks preserve cooked throws, shared grenade handling, melee casualties, door kicks and weapon launches, including vehicle smoke and crew reactions.
 - Rust projectile-actor checks preserve grenade holders and throwbacks, impact damage, smoke, guided-missile lock loss, recon and support-aircraft attribution through saved-state resumes.
 - Battlefield raycasts now use the shared simulation core, updating when vehicles move, doors open and structures change.
 - Rust cannon checks preserve model-specific barrel positions, blocked shots and trench protection as shared combat moves into the server.

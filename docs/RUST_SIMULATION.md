@@ -58,7 +58,7 @@ graphics, network access or a wall clock.
 | Construction, stretchers and prisoners | `frontline_core` | Construction priorities/timers, paired carrying stages, bearer takeover and prisoner escort geometry extracted; Godot still applies work, shared casualty links, tent delivery and capture effects |
 | Infantry arrival tasks | `frontline_core` | Boarding ranges, tunnel arrival, corpse/depot completion and ordered-throw inventory decisions extracted; Godot still applies boarding, tunnel membership, shared ammunition transfers and throws |
 | Mounted infantry | `frontline_core` | Approach/climbing stages, scan clocks, anti-tank target selection and gun traverse extracted; Godot still owns mount links, fire queues and weapon effects |
-| Infantry action state | `frontline_core` | Typed pending actions, queued cooked throws, poses and completion admission extracted; Godot still advances the actor controller and applies throws, strikes, launches and door effects |
+| Infantry action state | `frontline_core` | Retained actors complete cooked throws, shared grenade handling, melee, door kicks, rockets, mortars and drones, including vehicle warning/smoke responses; the live world dispatcher still runs in Godot |
 | Infantry hidden duties and status | `frontline_core` | Hidden-duty deadlines, moving posture, status flags and drone-operator turns extracted; Godot still applies treatment, tunnel and prisoner callbacks |
 | Infantry downtime | `frontline_core` | Calm timers, idle choices, conversation partners, timed speech and laughter extracted with checkpoints and random cursor comparisons; Godot still applies the actor's speech effects |
 | Infantry scheduling | `frontline_core` | Activity/scan/think clocks, interruption priority, dive movement and order/duty gates extracted; Godot still dispatches task callbacks and the remaining decision loop |
@@ -1524,3 +1524,21 @@ personal versus mounted weapon definitions. Numeric CI adds 2,174,751 exact
 transcript bytes. Scan/separation scheduling, task execution, completed combat
 effects and the whole-world dispatcher still need to be connected; this is not
 a complete standalone server or a whole-battle verification claim.
+
+## Shared infantry action completion
+
+`Actors.complete_infantry_action` applies completed actions to the retained actor
+collection. Throws and launches allocate match identities in order; grenade
+pickup and throwback retain the round's fuse and update its holder and attribution.
+Melee uses the shared casualty path and squad responses. Door kicks remove the
+door leaf and warn nearby enemy squads. Rockets trigger vehicle smoke and crew
+evasion before the launch event, preserving random consumption and spawn order.
+Drone launches link the pilot and target to the new aircraft.
+
+Ten core regressions cover these effects, queued cooking, stale rounds, checkpoint
+resumes and rejected grenade updates. The Godot reference compares 12,288 actor
+states plus squads, projectile/drone state, counters, speech, events and random
+continuation. All six affected Godot fixtures pass. Numeric CI adds 4,535,997
+exact transcript bytes. The complete world still needs to dispatch the returned
+events, refresh door geometry and run every actor without Godot; this is not
+whole-battle replay verification or an FPS result.

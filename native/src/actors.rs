@@ -115,6 +115,28 @@ fn released(r: Released) -> PackedInt64Array {
         .as_slice()
         .into()
 }
+fn infantry_hit(r: frontline_core::infantry_effects::InfantryHit) -> Array<Variant> {
+    use frontline_core::infantry_vitals::DamageResult;
+    let code = match r.result {
+        DamageResult::Ignored => 0,
+        DamageResult::Survived(_) => 1,
+        DamageResult::Down => 2,
+        DamageResult::Die => 3,
+    };
+    let credit = r.credited.map_or_else(Array::new, |c| {
+        varray![c.owner, c.team as i32, c.unit.as_str(), c.soldier as i64]
+    });
+    varray![
+        code,
+        r.previous_life as i32,
+        r.speech.map_or(-1, i32::from),
+        r.casualty_speech.map_or(0, |s| i64::from(s.soldier)),
+        r.casualty_speech.map_or(-1, |s| i32::from(s.cue)),
+        &released(r.released.unwrap_or_default()),
+        &credit,
+        r.damage_credited
+    ]
+}
 fn impact(r: Result<Option<Explosion>, &'static str>) -> Array<Variant> {
     match r {
         Ok(e) => varray![&crate::projectile_actor::events(
@@ -213,6 +235,165 @@ fn write_squads(
 
 #[godot_api]
 impl ActorStateCore {
+    #[func]
+    fn complete_infantry_action(
+        &mut self,
+        id: u32,
+        now: f64,
+        warhead: f64,
+        stocks: PackedInt64Array,
+        defenses: Array<Variant>,
+        squads: Array<Gd<crate::squad::SquadStateCore>>,
+        units: Gd<crate::spatial::SpatialIndexCore>,
+        nav: Gd<crate::path_planner::PathPlannerCore>,
+        mut rng: Gd<crate::simulation_random::SimulationRandomCore>,
+    ) -> Array<Variant> {
+        use frontline_core::infantry_action_owned::{Defense, Event};
+        use frontline_core::vehicle_brain::CrewProfile;
+        use frontline_core::vehicle_launch::SmokeProfile;
+        if stocks.len() % 3 != 0 || stocks.len() > 300_000 || defenses.len() > 100_000 {
+            return Array::new();
+        }
+        let mut ammunition = HashMap::new();
+        for row in stocks.as_slice().chunks_exact(3) {
+            let Ok(id) = u32::try_from(row[0]) else {
+                return Array::new();
+            };
+            if id == 0
+                || !(-1..=1_000_000).contains(&row[1])
+                || ![0, 1].contains(&row[2])
+                || ammunition
+                    .insert(id, ((row[1] >= 0).then_some(row[1] as i32), row[2] != 0))
+                    .is_some()
+            {
+                return Array::new();
+            }
+        }
+        let mut profiles = HashMap::new();
+        for row in defenses.iter_shared() {
+            let Ok(row) = row.try_to::<Array<Variant>>() else {
+                return Array::new();
+            };
+            if row.len() != 5 {
+                return Array::new();
+            }
+            let Some((id, base, flags, armor, height)) = (|| {
+                Some((
+                    row.get(0)?.try_to::<u32>().ok()?,
+                    row.get(1)?.try_to::<GString>().ok()?.to_string(),
+                    row.get(2)?.try_to::<PackedByteArray>().ok()?,
+                    row.get(3)?.try_to::<u8>().ok()?,
+                    row.get(4)?.try_to::<f64>().ok()?,
+                ))
+            })() else {
+                return Array::new();
+            };
+            if id == 0
+                || base.len() > 128
+                || base.contains('\0')
+                || flags.len() != 4
+                || flags.as_slice().iter().any(|&v| v > 1)
+                || armor > 3
+                || !height.is_finite()
+                || !(0.0..=1000.0).contains(&height)
+                || profiles.insert(id, (base, flags, armor, height)).is_some()
+            {
+                return Array::new();
+            }
+        }
+        if self
+            .core
+            .iter_kind(Kind::Soldier)
+            .any(|a| !ammunition.contains_key(&a.identity().id))
+            || self
+                .core
+                .iter_kind(Kind::Vehicle)
+                .any(|a| !profiles.contains_key(&a.identity().id))
+        {
+            return Array::new();
+        }
+        let Some(mut state) = read_squads(&squads) else {
+            return Array::new();
+        };
+        let units = units.bind();
+        let nav = nav.bind();
+        let (Some(units), Some(nav)) = (&units.core, &nav.core) else {
+            return Array::new();
+        };
+        let result = self.core.complete_infantry_action(
+            id,
+            now,
+            warhead,
+            &mut state,
+            units,
+            nav,
+            |s| ammunition[&s.identity.id],
+            |v| {
+                let (base, flags, armor, height) = &profiles[&v.id];
+                Defense {
+                    smoke: SmokeProfile {
+                        armor: *armor,
+                        helicopter: flags[0] != 0,
+                        gun_height: *height,
+                    },
+                    crew: CrewProfile {
+                        base,
+                        helicopter: flags[0] != 0,
+                        automatic: flags[1] != 0,
+                        artillery: flags[2] != 0,
+                        tracked: flags[3] != 0,
+                        armor: *armor,
+                    },
+                }
+            },
+            &mut rng.bind_mut().core,
+        );
+        match result {
+            Ok(out) => {
+                write_squads(squads, state);
+                let events: Array<Variant> = out
+                    .events
+                    .into_iter()
+                    .map(|e| {
+                        match e {
+                            Event::Spawn(id) => varray![0, id as i64],
+                            Event::Launch {
+                                position,
+                                direction,
+                            } => varray![1, vector(position), vector(direction)],
+                            Event::Mortar(position) => varray![2, vector(position)],
+                            Event::Door(id) => varray![3, id as i64],
+                            Event::Melee {
+                                target,
+                                position,
+                                hit,
+                            } => varray![4, target as i64, vector(position), &infantry_hit(hit)],
+                            Event::Smoke {
+                                vehicle,
+                                route,
+                                manual,
+                            } => varray![
+                                5,
+                                vehicle as i64,
+                                &crate::vehicle::route(Ok(route)),
+                                manual
+                            ],
+                        }
+                        .to_variant()
+                    })
+                    .collect();
+                let stats: Array<GString> = out.stats.into_iter().map(GString::from).collect();
+                varray![
+                    &events,
+                    &stats,
+                    out.speech.map_or(-1, i32::from),
+                    out.cancel_path
+                ]
+            }
+            Err(_) => Array::new(),
+        }
+    }
+
     #[func]
     fn think_infantry(
         &mut self,
@@ -692,7 +873,6 @@ impl ActorStateCore {
     ) -> Array<Variant> {
         use frontline_core::infantry::Credit;
         use frontline_core::infantry_effects::Damage;
-        use frontline_core::infantry_vitals::DamageResult;
         if values.len() != 4
             || !values[2].is_finite()
             || values[2].fract() != 0.0
@@ -740,25 +920,7 @@ impl ActorStateCore {
         {
             Ok(r) => {
                 write_squads(squads, state);
-                let code = match r.result {
-                    DamageResult::Ignored => 0,
-                    DamageResult::Survived(_) => 1,
-                    DamageResult::Down => 2,
-                    DamageResult::Die => 3,
-                };
-                let credit = r.credited.map_or_else(Array::new, |c| {
-                    varray![c.owner, c.team as i32, c.unit.as_str(), c.soldier as i64]
-                });
-                varray![
-                    code,
-                    r.previous_life as i32,
-                    r.speech.map_or(-1, i32::from),
-                    r.casualty_speech.map_or(0, |s| i64::from(s.soldier)),
-                    r.casualty_speech.map_or(-1, |s| i32::from(s.cue)),
-                    &released(r.released.unwrap_or_default()),
-                    &credit,
-                    r.damage_credited
-                ]
+                infantry_hit(r)
             }
             Err(_) => Array::new(),
         }
