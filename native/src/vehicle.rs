@@ -479,6 +479,88 @@ fn flight_profile(a: &PackedFloat64Array) -> Option<FlightProfile> {
         turn_accel: p[4],
     })
 }
+fn armor_profile(a: &Array<Variant>) -> Option<frontline_core::vehicle_damage::Armor> {
+    if a.len() != 2 {
+        return None;
+    }
+    let flags: PackedInt32Array = read(a, 0)?;
+    if flags.len() != 4 || flags.as_slice()[1..].iter().any(|&v| v != 0 && v != 1) {
+        return None;
+    }
+    Some(frontline_core::vehicle_damage::Armor {
+        level: flags[0].try_into().ok()?,
+        helicopter: flags[1] != 0,
+        boat: flags[2] != 0,
+        supply: flags[3] != 0,
+        toss: read(a, 1)?,
+    })
+}
+fn fire_profile<'a>(
+    a: &Array<Variant>,
+    base: &'a str,
+    gun: &'a str,
+) -> Option<frontline_core::vehicle_weapon::FireProfile<'a>> {
+    if a.len() != 6 {
+        return None;
+    }
+    let burst: PackedInt32Array = read(a, 4)?;
+    let rates: PackedFloat64Array = read(a, 5)?;
+    if burst.len() != 2 || rates.len() != 6 {
+        return None;
+    }
+    Some(frontline_core::vehicle_weapon::FireProfile {
+        base,
+        cannon: read(a, 1)?,
+        armor: read(a, 2)?,
+        machine_gun: gun,
+        burst: [burst[0], burst[1]],
+        interval: rates[0],
+        cannon_cooldown: rates[1],
+        sam_cooldown: rates[2],
+        sam_range: rates[3],
+        atgm_cooldown: rates[4],
+        atgm_range: rates[5],
+    })
+}
+fn fire_target(a: &Array<Variant>) -> Option<Option<frontline_core::vehicle_weapon::Target>> {
+    use frontline_core::vehicle_weapon::{Target, TargetKind};
+    if a.is_empty() {
+        return Some(None);
+    }
+    if a.len() != 3 {
+        return None;
+    }
+    let kind: i32 = read(a, 1)?;
+    let flags: PackedInt32Array = read(a, 2)?;
+    let f = flags.as_slice();
+    let bit = |v: i32| -> Option<bool> {
+        match v {
+            0 => Some(false),
+            1 => Some(true),
+            _ => None,
+        }
+    };
+    let kind = match kind {
+        0 if f.len() == 3 => TargetKind::Soldier {
+            nearby: f[0].try_into().ok()?,
+            rockets: bit(f[1])?,
+            mounted: bit(f[2])?,
+        },
+        1 if f.len() == 2 => TargetKind::Vehicle {
+            air: bit(f[0])?,
+            armor: f[1].try_into().ok()?,
+        },
+        2 if f.len() == 1 => TargetKind::Structure {
+            fortified: bit(f[0])?,
+        },
+        3 if f.is_empty() => TargetKind::Other,
+        _ => return None,
+    };
+    Some(Some(Target {
+        position: crate::point(read(a, 0)?),
+        kind,
+    }))
+}
 fn traffic(a: &Array<Variant>) -> Option<Vec<Traffic>> {
     if a.len() > 100_000 {
         return None;
@@ -541,6 +623,151 @@ fn crew_contacts(rows: &Array<Variant>) -> Option<Vec<Contact>> {
 }
 #[godot_api]
 impl VehicleStateCore {
+    #[func]
+    fn choose_weapon(
+        &mut self,
+        now: f64,
+        profile: Array<Variant>,
+        target: Array<Variant>,
+        mut random: Gd<SimulationRandomCore>,
+    ) -> i32 {
+        use frontline_core::vehicle_weapon::Fire;
+        let (Some(base), Some(gun)) = (text(&profile, 0), text(&profile, 3)) else {
+            return -1;
+        };
+        let (Some(p), Some(t), Some(v)) = (
+            fire_profile(&profile, &base, &gun),
+            fire_target(&target),
+            self.core.as_mut(),
+        ) else {
+            return -1;
+        };
+        match v.choose_weapon(now, p, t, &mut random.bind_mut().core) {
+            Ok(Fire::None) => 0,
+            Ok(Fire::Sam) => 1,
+            Ok(Fire::Atgm) => 2,
+            Ok(Fire::Cannon) => 3,
+            Ok(Fire::MachineGun) => 4,
+            Err(_) => -1,
+        }
+    }
+    #[func]
+    fn finish_weapon(
+        &mut self,
+        shot: i32,
+        now: f64,
+        profile: Array<Variant>,
+        mut random: Gd<SimulationRandomCore>,
+    ) -> bool {
+        use frontline_core::vehicle_weapon::Fire;
+        let shot = match shot {
+            0 => Fire::None,
+            1 => Fire::Sam,
+            2 => Fire::Atgm,
+            3 => Fire::Cannon,
+            4 => Fire::MachineGun,
+            _ => return false,
+        };
+        let (Some(base), Some(gun)) = (text(&profile, 0), text(&profile, 3)) else {
+            return false;
+        };
+        let (Some(p), Some(v)) = (fire_profile(&profile, &base, &gun), self.core.as_mut()) else {
+            return false;
+        };
+        v.finish_weapon(shot, now, p, &mut random.bind_mut().core)
+            .is_ok()
+    }
+    #[func]
+    fn bullet_damage(
+        &self,
+        armor: Array<Variant>,
+        damage: f64,
+        piercing: bool,
+        anti_air: bool,
+    ) -> PackedFloat64Array {
+        let (Some(v), Some(a)) = (self.core.as_ref(), armor_profile(&armor)) else {
+            return PackedFloat64Array::new();
+        };
+        v.bullet_damage(a, damage, piercing, anti_air)
+            .map_or_else(|_| PackedFloat64Array::new(), |d| [d].as_slice().into())
+    }
+    #[func]
+    fn bullet_ricochet(
+        &self,
+        armor: Array<Variant>,
+        position: Vector3,
+        direction: Vector3,
+        mut random: Gd<SimulationRandomCore>,
+    ) -> Array<Variant> {
+        let (Some(v), Some(a)) = (self.core.as_ref(), armor_profile(&armor)) else {
+            return Array::new();
+        };
+        match v.bullet_ricochet(
+            a,
+            crate::point(position),
+            crate::point(direction),
+            &mut random.bind_mut().core,
+        ) {
+            Ok(p) => varray![&opt_point(p)],
+            Err(_) => Array::new(),
+        }
+    }
+    #[func]
+    fn explosion_hit(
+        &mut self,
+        now: f64,
+        armor: Array<Variant>,
+        blast: Array<Variant>,
+        mut random: Gd<SimulationRandomCore>,
+    ) -> PackedFloat64Array {
+        let parse = || -> Option<frontline_core::vehicle_damage::Blast> {
+            if blast.len() != 9 {
+                return None;
+            }
+            Some(frontline_core::vehicle_damage::Blast {
+                position: crate::point(read(&blast, 0)?),
+                size: read(&blast, 1)?,
+                anti_tank: read(&blast, 2)?,
+                direction: read_opt(&blast, 3)?,
+                top: read(&blast, 4)?,
+                track: read(&blast, 5)?,
+                radius: read(&blast, 6)?,
+                damage: read(&blast, 7)?,
+                vehicle_multiplier: read(&blast, 8)?,
+            })
+        };
+        let (Some(v), Some(a), Some(b)) = (self.core.as_mut(), armor_profile(&armor), parse())
+        else {
+            return PackedFloat64Array::new();
+        };
+        match v.explosion_hit(now, a, b, &mut random.bind_mut().core) {
+            Ok(h) => [
+                h.damage,
+                f64::from(h.anti_tank),
+                f64::from(h.bounced),
+                f64::from(h.track_broken),
+            ]
+            .as_slice()
+            .into(),
+            Err(_) => PackedFloat64Array::new(),
+        }
+    }
+    #[func]
+    fn take_damage(&mut self, amount: f64, now: f64, automatic: bool) -> PackedByteArray {
+        let Some(v) = self.core.as_mut() else {
+            return PackedByteArray::new();
+        };
+        match v.take_damage(amount, now, automatic) {
+            Ok(d) => [
+                u8::from(d.applied),
+                u8::from(d.alert),
+                u8::from(d.destroyed),
+            ]
+            .as_slice()
+            .into(),
+            Err(_) => PackedByteArray::new(),
+        }
+    }
     #[func]
     fn lift_guidance(
         &mut self,

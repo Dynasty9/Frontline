@@ -36,6 +36,178 @@ fn block(out: &mut Vec<u8>, bytes: &[u8]) {
 }
 
 #[test]
+fn vehicle_weapon_cycles_are_identical_across_platforms() {
+    use frontline_core::vehicle::Vehicle;
+    use frontline_core::vehicle_weapon::{Fire, FireProfile, Target, TargetKind};
+    let mut bytes = Vec::new();
+    for trial in 0..96 {
+        let mut v = Vehicle {
+            id: 7,
+            aim_time: 1.0,
+            sam_left: 12,
+            atgm_left: 12,
+            ..Default::default()
+        };
+        let p = FireProfile {
+            base: ["tank", "attack_heli", "spaa", "car"][trial % 4],
+            cannon: trial % 3 != 0,
+            armor: (trial % 3) as u8,
+            machine_gun: if trial % 5 == 0 { "chaingun" } else { "mg" },
+            burst: [2, 6],
+            interval: 0.13,
+            cannon_cooldown: 5.5,
+            sam_cooldown: 8.0,
+            sam_range: 160.0,
+            atgm_cooldown: 12.0,
+            atgm_range: 125.0,
+        };
+        let mut rng = SimulationRandom::new(trial as u64 + 137);
+        for step in 0..120 {
+            v.cannon_timer -= 0.1;
+            v.mg_timer -= 0.1;
+            let now = 31.7 + step as f64 * 0.1;
+            let target = Target {
+                position: Vector3::new(
+                    if trial % 7 == 0 { 10.3 } else { 0.0 },
+                    0.0,
+                    -[21.9, 40.3, 75.7, 123.9][trial % 4],
+                ),
+                kind: match (trial + step) % 5 {
+                    0 => TargetKind::Vehicle {
+                        air: true,
+                        armor: 1,
+                    },
+                    1 => TargetKind::Vehicle {
+                        air: false,
+                        armor: 2,
+                    },
+                    2 => TargetKind::Soldier {
+                        nearby: 1,
+                        rockets: trial % 11 == 0,
+                        mounted: trial % 9 == 0,
+                    },
+                    3 => TargetKind::Structure {
+                        fortified: trial % 2 == 0,
+                    },
+                    _ => TargetKind::Other,
+                },
+            };
+            let shot = v.choose_weapon(now, p, Some(target), &mut rng).unwrap();
+            bytes.push(match shot {
+                Fire::None => 0,
+                Fire::Sam => 1,
+                Fire::Atgm => 2,
+                Fire::Cannon => 3,
+                Fire::MachineGun => 4,
+            });
+            if shot != Fire::None {
+                for _ in 0..4 {
+                    rng.randf();
+                }
+            }
+            v.finish_weapon(shot, now, p, &mut rng).unwrap();
+            if step % 13 == 0 {
+                block(&mut bytes, &v.checkpoint().unwrap());
+                bytes.extend_from_slice(&rng.state().to_le_bytes());
+            }
+            if step == 57 {
+                v = Vehicle::restore(&v.checkpoint().unwrap()).unwrap();
+            }
+        }
+    }
+    golden("vehicle_weapon", &bytes);
+}
+
+#[test]
+fn vehicle_armor_damage_and_knockback_are_identical_across_platforms() {
+    use frontline_core::vehicle::Vehicle;
+    use frontline_core::vehicle_damage::{Armor, Blast};
+    let mut bytes = Vec::new();
+    for trial in 0..128 {
+        let mut v = Vehicle {
+            id: 7,
+            position: Vector3::new(0.3, if trial % 3 == 0 { 5.0 } else { 0.0 }, 1.7),
+            yaw: trial as f64 * 0.37,
+            hp: 100.0,
+            max_hp: 100.0,
+            ..Default::default()
+        };
+        let a = Armor {
+            level: trial % 4,
+            helicopter: trial % 3 == 0,
+            boat: trial % 5 == 0,
+            supply: trial % 7 == 0,
+            toss: [0.3, 0.9, 2.2][trial as usize % 3],
+        };
+        let mut rng = SimulationRandom::new(trial as u64 + 137);
+        let angle = trial as f64 * 0.73;
+        let impact = v.position
+            + Vector3::new(-libm::sin(angle) as f32, 0.0, -libm::cos(angle) as f32)
+                * [0.0, 2.2, 4.5, 8.3][trial as usize % 4];
+        for step in 0..12 {
+            let damage = v
+                .bullet_damage(a, 37.3, trial % 2 == 0, trial % 3 == 1)
+                .unwrap();
+            bytes.extend_from_slice(&damage.to_le_bytes());
+            // Shared destruction effects can consume draws between AP damage and ricochet.
+            if a.level < 2 || trial % 2 == 0 {
+                for _ in 0..4 {
+                    rng.randf();
+                }
+            }
+            match v
+                .bullet_ricochet(a, impact, Vector3::new(0.3, 0.1, -0.7), &mut rng)
+                .unwrap()
+            {
+                Some(p) => {
+                    bytes.push(1);
+                    point(&mut bytes, p);
+                }
+                None => bytes.push(0),
+            }
+            let hit = v
+                .explosion_hit(
+                    31.7 + step as f64,
+                    a,
+                    Blast {
+                        position: impact,
+                        size: [0.7, 1.2, 2.1, 4.3][trial as usize % 4],
+                        anti_tank: if trial % 3 == 0 { 0.0 } else { 320.0 },
+                        direction: (trial % 2 == 0).then_some(Vector3::Z),
+                        top: trial % 5 == 1,
+                        track: 0.7,
+                        radius: 5.5,
+                        damage: 137.3,
+                        vehicle_multiplier: 0.8,
+                    },
+                    &mut rng,
+                )
+                .unwrap();
+            bytes.extend_from_slice(&hit.damage.to_le_bytes());
+            bytes.extend_from_slice(&[
+                u8::from(hit.anti_tank),
+                u8::from(hit.bounced),
+                u8::from(hit.track_broken),
+            ]);
+            let damage = v
+                .take_damage(hit.damage, 31.7 + step as f64, a.supply)
+                .unwrap();
+            bytes.extend_from_slice(&[
+                u8::from(damage.applied),
+                u8::from(damage.alert),
+                u8::from(damage.destroyed),
+            ]);
+            block(&mut bytes, &v.checkpoint().unwrap());
+            bytes.extend_from_slice(&rng.state().to_le_bytes());
+            if step == 5 {
+                v = Vehicle::restore(&v.checkpoint().unwrap()).unwrap();
+            }
+        }
+    }
+    golden("vehicle_damage", &bytes);
+}
+
+#[test]
 fn transport_flight_phases_are_identical_across_platforms() {
     use frontline_core::vehicle::Vehicle;
     use frontline_core::vehicle_air::{HomeLanding, LiftEvent, SlingTarget, SupplyPoint};

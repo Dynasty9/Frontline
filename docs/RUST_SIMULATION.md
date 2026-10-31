@@ -280,6 +280,24 @@ transitions and shared sling links; numeric CI adds 1,004,404 exact transcript
 bytes, including checkpoint continuation. These operations await live integration
 with the Rust world and economy.
 
+Vehicle armour and firing cycles operate on retained state. Bullet and blast
+damage preserve soft/light/heavy armour, anti-air fire, front/rear/top hits,
+ricochets, blast shove, track breaks, alerts and the destruction trigger. Shared
+destruction remains a world effect: heavy-armour ricochet draws happen after AP
+damage, so escaping passengers can consume randomness first.
+
+Weapon selection preserves SAM/ATGM priority and deadlines, settled tank aim,
+cannon worthiness, machine-gun range/armour restrictions and burst lengths.
+Shot completion runs after shared effects, preserving the burst-recovery draw
+after bullet damage. The world still needs projectile creation, cannon geometry,
+shared damage/crew effects and the complete firing dispatcher.
+
+Godot fixtures compare 7,392 damage states and 21,120 firing cycles across the
+roster. They compare ordered requests, random cursors and checkpointed state;
+controlled shared-effect draws expose sequencing mistakes without claiming full
+vehicle destruction coverage. Twelve core tests cover these rules and rejection
+without mutation. Numeric CI adds 1,627,548 exact transcript bytes.
+
 ## Retained squads
 
 `Squad` retains ordered membership, known/heard contacts, briefing and centroid
@@ -418,7 +436,7 @@ Component checkpoint headers contain a four-byte component tag, a little-endian
 rules rather than silently continuing with changed arithmetic. The separate
 integer RNG stream remains unchanged.
 
-`native/core/tests/numeric_contract.rs` compares 25,731,273 committed bytes without
+`native/core/tests/numeric_contract.rs` compares 27,358,821 committed bytes without
 tolerances: fixed-tick flight state, support events and RNG cursors, carved water,
 craters, rotated box hits, cover anchors, spherical interpolation and infantry
 movement, infantry cover fire, postures, ammunition, burst recovery, vitals, aiming,
@@ -642,7 +660,7 @@ flag until Rust owns the actors.
 
 The shock fixture compares 92,160 reference steps, including mounted turning,
 blocked terrain, carried casualties and task interruption. The full default suite
-passes 160 tests; 359 core tests pass in debug and release.
+passes 162 tests; 373 core tests pass in debug and release.
 
 ## Spatial query state
 

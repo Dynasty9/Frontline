@@ -1353,6 +1353,9 @@ resumes. Paired sling checks preserve pickup, swing, release and dropped cargo;
 pilot checks preserve pickup hover, touchdown, unloading, supply destinations
 and return flights. Aircraft combat and shared delivery effects still need to
 join the Rust world dispatcher.
+Vehicle combat checks preserve armour, blast shove, ricochets, track breaks,
+damage alerts, missile priority, cannon aim gates and machine-gun burst timing.
+Projectile creation and shared destruction effects still need full integration.
 Construction, town income, capture and production transitions match the existing
 game; shared rule effects, destruction and the full building dispatcher still need
 migration before Rust owns the complete battle.
