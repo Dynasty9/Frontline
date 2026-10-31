@@ -36,6 +36,176 @@ fn block(out: &mut Vec<u8>, bytes: &[u8]) {
 }
 
 #[test]
+fn retained_vehicle_losses_are_identical_across_platforms() {
+    use frontline_core::actors::{Actor, Actors};
+    use frontline_core::infantry::{Credit, Infantry as Soldier};
+    use frontline_core::infantry_spawn::Loadout;
+    use frontline_core::spatial::{SpatialIndex, UNIT_CELL};
+    use frontline_core::squad::Squad;
+    use frontline_core::vehicle::{LastBlast, Vehicle};
+    use frontline_core::vehicle_loss::Crew;
+    let mut bytes = vec![];
+    let names = ["Taylor", "Jones", "Perez"].map(String::from);
+    for weight in 0..3 {
+        for trial in 0..64 {
+            let boat = trial % 3 == 1;
+            let mut nav = PathPlanner::new(64).unwrap();
+            let position = Vector3::new(if trial % 7 == 0 { 27.8 } else { 0.3 }, 0.0, -1.7);
+            let credit = Credit {
+                owner: 8,
+                team: 1,
+                unit: "v9".into(),
+                soldier: 0,
+            };
+            let vehicle = Vehicle {
+                id: 20,
+                kind: "tank".into(),
+                team: 0,
+                owner: 7,
+                hp: -37.3,
+                max_hp: 100.0,
+                position,
+                yaw: f64::from((trial as f64 * 0.137) as f32),
+                passengers: vec![1, 999, 2, 3],
+                hit_by: Some(credit.clone()),
+                last_blast: (trial % 4 != 0).then_some(LastBlast {
+                    position: if trial % 5 == 0 {
+                        position
+                    } else {
+                        position + Vector3::new(-1.3, 1.0, 0.7)
+                    },
+                    size: 0.5 + (trial % 9) as f64,
+                    time: 20.1 - [0.0, 0.599, 0.601][trial % 3],
+                }),
+                ..Default::default()
+            };
+            let mut entries = vec![Actor::Vehicle(Box::new(vehicle))];
+            for id in 1..=4 {
+                let mut s = Soldier::default();
+                s.identity.id = id;
+                s.identity.unit = "rifleman".into();
+                s.identity.weapon = "rifle".into();
+                s.identity.squad = 9;
+                s.vitals.life = if id < 4 { Life::Hidden } else { Life::Alive };
+                s.vitals.times_downed = trial as u32 % 4;
+                s.motion.position = position + Vector3::X * (id as f32 * 0.4);
+                s.posture = (id as u8 % 5).try_into().unwrap();
+                s.links.vehicle = if id < 4 { 20 } else { 0 };
+                entries.push(Actor::Soldier(Box::new(s)));
+            }
+            let mut a = Actors::from_entries(100, entries).unwrap();
+            let mut units = SpatialIndex::new(UNIT_CELL).unwrap();
+            a.rebuild_units(&mut units).unwrap();
+            let mut squads = vec![Squad {
+                id: 9,
+                members: vec![1, 2, 3, 4],
+                morale: 73.0,
+                ..Default::default()
+            }];
+            let mut rng = SimulationRandom::new(62219 + trial as u64);
+            let hits = a
+                .evacuate_destroyed_vehicle(
+                    20,
+                    boat,
+                    20.1,
+                    None,
+                    &nav,
+                    &units,
+                    &mut squads,
+                    |_| (Some(120), false),
+                    &mut rng,
+                )
+                .unwrap();
+            for h in hits {
+                bytes.extend_from_slice(&h.soldier.to_le_bytes());
+                bytes.push(h.hit.previous_life as u8);
+                bytes.push(match h.hit.result {
+                    DamageResult::Ignored => 0,
+                    DamageResult::Survived(_) => 1,
+                    DamageResult::Down => 2,
+                    DamageResult::Die => 3,
+                });
+                bytes.push(h.hit.speech.unwrap_or(255));
+                bytes.extend_from_slice(&h.hit.damage_credited.to_le_bytes());
+                bytes.extend_from_slice(
+                    &h.hit.casualty_speech.map_or(0, |s| s.soldier).to_le_bytes(),
+                );
+                bytes.push(h.hit.casualty_speech.map_or(255, |s| s.cue));
+            }
+            block(&mut bytes, &a.checkpoint().unwrap());
+            block(&mut bytes, &squads[0].checkpoint().unwrap());
+            bytes.extend_from_slice(&rng.state().to_le_bytes());
+            a = Actors::restore(&a.checkpoint().unwrap()).unwrap();
+            nav = PathPlanner::restore(&nav.checkpoint()).unwrap();
+            let saved_rng = rng.state();
+            rng = SimulationRandom::new(rng.seed());
+            rng.set_state(saved_rng);
+            if !boat {
+                let p = a
+                    .vehicle(20)
+                    .unwrap()
+                    .wreck_plan(weight, 20.1, &nav, &mut rng)
+                    .unwrap();
+                for v in [p.position, p.velocity, p.spin] {
+                    for c in [v.x, v.y, v.z] {
+                        bytes.extend_from_slice(&c.to_le_bytes());
+                    }
+                }
+                bytes.extend_from_slice(&p.yaw.to_le_bytes());
+                for c in p.tilt {
+                    bytes.extend_from_slice(&c.to_le_bytes());
+                }
+            }
+            let mut next = 17;
+            let crew = a
+                .bail_out_vehicle(
+                    20,
+                    [35.0, 35.00001, 90.0][trial % 3],
+                    Crew {
+                        base: if boat { "boat" } else { "tank" },
+                        helicopter: trial % 11 == 0,
+                        automatic: trial % 13 == 0,
+                        count: if trial % 5 == 0 { Some(5) } else { None },
+                        cost: 500.0,
+                        armor_upgrade: trial % 2 != 0,
+                        grenade_upgrade: trial % 4 >= 2,
+                    },
+                    &Loadout {
+                        unit: "crewman".into(),
+                        weapon: "smg".into(),
+                        hp: 90.0,
+                        magazine: 30,
+                        ammunition: 120,
+                        grenades: 0,
+                        smokes: 1,
+                        rockets: 0,
+                        mortar_rounds: 0,
+                        drones: 0,
+                        bearer: false,
+                    },
+                    &names,
+                    &mut next,
+                    &nav,
+                    &mut rng,
+                )
+                .unwrap();
+            bytes.push(u8::from(crew.attempted));
+            bytes.extend_from_slice(&crew.crew.to_le_bytes());
+            bytes.extend_from_slice(&next.to_le_bytes());
+            block(
+                &mut bytes,
+                &crew
+                    .squad
+                    .map_or_else(Vec::new, |q| q.checkpoint().unwrap()),
+            );
+            block(&mut bytes, &a.checkpoint().unwrap());
+            bytes.extend_from_slice(&rng.state().to_le_bytes());
+        }
+    }
+    golden("vehicle_loss", &bytes);
+}
+
+#[test]
 fn retained_infantry_births_are_identical_across_platforms() {
     use frontline_core::actors::Actors;
     use frontline_core::infantry_spawn::{random_name, Loadout, Spawn};

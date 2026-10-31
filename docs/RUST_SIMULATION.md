@@ -1630,3 +1630,23 @@ fixed and random names, duplicate recruitment and checkpoint resumes: 1,536
 complete actor-state checks plus squad state and RNG. The numeric contract adds
 760,644 exact bytes. Live spawning, squad ledger callbacks and whole-world
 dispatch still run in Godot while the migration continues.
+
+## Passenger evacuation, crew escape and wreck placement
+
+Rust now resolves destroyed-vehicle passenger exits and injuries in stored order,
+including shared casualty links, squad reactions and the difference between a
+sinking boat's surrounding damage credit and a land vehicle's last attacker.
+Nearby soldiers flinch after land-vehicle evacuation. Crew escape interleaves each
+survival roll with that survivor's name, birth delay and injury roll before trying
+the next man. Surviving crews retain their squad, refund and first speaker.
+Wreck plans preserve blast age, weight, flip chances and blocked/map-edge landing
+positions; their motion description remains an observation for Godot.
+
+Seven core regressions and the Godot reference check 185 newly born crew members,
+1,536 passenger/bystander states and 256 wreck plans, plus squad state and random
+continuation. The reference captures the newly formed crew immediately before its
+return-order callback. Numeric CI adds 2,634,965 exact bytes with restored state
+between evacuation and crew births. These operations do not yet perform the full
+vehicle destruction dispatch: recursive sling damage, ledger/rule callbacks,
+crew return orders, authoritative wreck creation and geometry updates remain to
+be connected in the Rust world.

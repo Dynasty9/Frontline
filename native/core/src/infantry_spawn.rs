@@ -111,11 +111,14 @@ impl Infantry {
     }
 }
 
+pub(crate) fn valid_names(names: &[String]) -> bool {
+    !names.is_empty()
+        && names.len() <= 4096
+        && names.iter().all(|n| n.len() <= 1024 && !n.contains('\0'))
+}
+
 pub fn random_name(names: &[String], rng: &mut SimulationRandom) -> Result<String, &'static str> {
-    if names.is_empty()
-        || names.len() > 4096
-        || names.iter().any(|n| n.len() > 1024 || n.contains('\0'))
-    {
+    if !valid_names(names) {
         return Err("invalid soldier names");
     }
     Ok(names[rng.randi() as usize % names.len()].clone())

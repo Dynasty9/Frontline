@@ -8,6 +8,26 @@ use frontline_core::vehicle_sling::SlingSpec;
 use godot::prelude::*;
 use std::collections::HashMap;
 
+fn birth_loadout(loadout: &Array<Variant>) -> Option<frontline_core::infantry_spawn::Loadout> {
+    use frontline_core::infantry_spawn::Loadout;
+    if loadout.len() != 11 {
+        return None;
+    }
+    Some(Loadout {
+        unit: loadout.at(0).try_to::<GString>().ok()?.to_string(),
+        weapon: loadout.at(1).try_to::<GString>().ok()?.to_string(),
+        hp: loadout.at(2).try_to().ok()?,
+        magazine: loadout.at(3).try_to().ok()?,
+        ammunition: loadout.at(4).try_to().ok()?,
+        grenades: loadout.at(5).try_to().ok()?,
+        smokes: loadout.at(6).try_to().ok()?,
+        rockets: loadout.at(7).try_to().ok()?,
+        mortar_rounds: loadout.at(8).try_to().ok()?,
+        drones: loadout.at(9).try_to().ok()?,
+        bearer: loadout.at(10).try_to().ok()?,
+    })
+}
+
 fn damage_stock(rows: &PackedInt64Array) -> Option<HashMap<u32, (Option<i32>, bool)>> {
     if rows.len() % 3 != 0 || rows.len() > 300_000 {
         return None;
@@ -358,19 +378,7 @@ impl ActorStateCore {
                     armor_upgrade: birth.at(8).try_to().ok()?,
                     grenade_upgrade: birth.at(9).try_to().ok()?,
                 },
-                Loadout {
-                    unit: loadout.at(0).try_to::<GString>().ok()?.to_string(),
-                    weapon: loadout.at(1).try_to::<GString>().ok()?.to_string(),
-                    hp: loadout.at(2).try_to().ok()?,
-                    magazine: loadout.at(3).try_to().ok()?,
-                    ammunition: loadout.at(4).try_to().ok()?,
-                    grenades: loadout.at(5).try_to().ok()?,
-                    smokes: loadout.at(6).try_to().ok()?,
-                    rockets: loadout.at(7).try_to().ok()?,
-                    mortar_rounds: loadout.at(8).try_to().ok()?,
-                    drones: loadout.at(9).try_to().ok()?,
-                    bearer: loadout.at(10).try_to().ok()?,
-                },
+                birth_loadout(&loadout)?,
             ))
         };
         let Some((birth, loadout)) = parsed() else {
@@ -399,6 +407,145 @@ impl ActorStateCore {
         )
         .map(|s| GString::from(s.as_str()))
         .unwrap_or_default()
+    }
+    #[func]
+    fn vehicle_wreck_plan(
+        &self,
+        id: u32,
+        weight: u8,
+        now: f64,
+        nav: Gd<crate::path_planner::PathPlannerCore>,
+        mut rng: Gd<crate::simulation_random::SimulationRandomCore>,
+    ) -> Array<Variant> {
+        let nav = nav.bind();
+        let (Some(nav), Some(v)) = (nav.core.as_ref(), self.core.vehicle(id)) else {
+            return Array::new();
+        };
+        let Ok(p) = v.wreck_plan(weight, now, nav, &mut rng.bind_mut().core) else {
+            return Array::new();
+        };
+        varray![
+            Vector3::new(p.position.x, p.position.y, p.position.z),
+            p.yaw,
+            Vector2::new(p.tilt[0], p.tilt[1]),
+            Vector3::new(p.velocity.x, p.velocity.y, p.velocity.z),
+            Vector3::new(p.spin.x, p.spin.y, p.spin.z)
+        ]
+    }
+    #[func]
+    fn bail_out_vehicle(
+        &mut self,
+        id: u32,
+        overkill: f64,
+        values: Array<Variant>,
+        loadout: Array<Variant>,
+        names: PackedStringArray,
+        next_squad: i64,
+        nav: Gd<crate::path_planner::PathPlannerCore>,
+        mut rng: Gd<crate::simulation_random::SimulationRandomCore>,
+    ) -> Array<Variant> {
+        use frontline_core::vehicle_loss::Crew;
+        if values.len() != 7 || names.len() > 4096 || next_squad < 1 {
+            return Array::new();
+        }
+        let Ok(base) = values.at(0).try_to::<GString>() else {
+            return Array::new();
+        };
+        let base = base.to_string();
+        let parsed = || -> Option<Crew<'_>> {
+            let count: i64 = values.at(3).try_to().ok()?;
+            if !(-1..=4096).contains(&count) {
+                return None;
+            }
+            Some(Crew {
+                base: &base,
+                helicopter: values.at(1).try_to().ok()?,
+                automatic: values.at(2).try_to().ok()?,
+                count: (count >= 0).then_some(count as u32),
+                cost: values.at(4).try_to().ok()?,
+                armor_upgrade: values.at(5).try_to().ok()?,
+                grenade_upgrade: values.at(6).try_to().ok()?,
+            })
+        };
+        let nav = nav.bind();
+        let (Some(nav), Some(crew), Some(loadout)) =
+            (nav.core.as_ref(), parsed(), birth_loadout(&loadout))
+        else {
+            return Array::new();
+        };
+        let mut next = next_squad as u64;
+        let result = self.core.bail_out_vehicle(
+            id,
+            overkill,
+            crew,
+            &loadout,
+            &names
+                .as_slice()
+                .iter()
+                .map(ToString::to_string)
+                .collect::<Vec<_>>(),
+            &mut next,
+            nav,
+            &mut rng.bind_mut().core,
+        );
+        let Ok(result) = result else {
+            return Array::new();
+        };
+        let bytes = result
+            .squad
+            .map_or_else(Vec::new, |q| q.checkpoint().unwrap());
+        varray![
+            result.attempted,
+            result.crew as i64,
+            next as i64,
+            &PackedByteArray::from(bytes.as_slice())
+        ]
+    }
+    #[func]
+    fn evacuate_destroyed_vehicle(
+        &mut self,
+        id: u32,
+        boat: bool,
+        now: f64,
+        blame: Array<Variant>,
+        stocks: PackedInt64Array,
+        nav: Gd<crate::path_planner::PathPlannerCore>,
+        units: Gd<crate::spatial::SpatialIndexCore>,
+        squads: Array<Gd<crate::squad::SquadStateCore>>,
+        mut rng: Gd<crate::simulation_random::SimulationRandomCore>,
+    ) -> Array<Variant> {
+        let (Ok(blame), Some(stock), Some(mut state)) = (
+            damage_credit(&blame),
+            damage_stock(&stocks),
+            read_squads(&squads),
+        ) else {
+            return Array::new();
+        };
+        let nav = nav.bind();
+        let units = units.bind();
+        let (Some(nav), Some(units)) = (&nav.core, &units.core) else {
+            return Array::new();
+        };
+        let result = self.core.evacuate_destroyed_vehicle(
+            id,
+            boat,
+            now,
+            blame.as_ref(),
+            nav,
+            units,
+            &mut state,
+            |s| stock.get(&s.identity.id).copied().unwrap_or((None, false)),
+            &mut rng.bind_mut().core,
+        );
+        let Ok(hits) = result else {
+            return Array::new();
+        };
+        write_squads(squads, state);
+        let events: Array<Variant> = hits
+            .into_iter()
+            .map(|h| varray![h.soldier as i64, &infantry_hit(h.hit)].to_variant())
+            .collect();
+        varray![&events]
     }
     #[func]
     fn damage_structure(

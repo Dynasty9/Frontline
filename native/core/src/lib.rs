@@ -88,6 +88,7 @@ pub mod vehicle_damage;
 pub mod vehicle_flight;
 pub mod vehicle_gunship;
 pub mod vehicle_launch;
+pub mod vehicle_loss;
 pub mod vehicle_motion;
 pub mod vehicle_scan;
 pub mod vehicle_service;

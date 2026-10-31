@@ -1423,6 +1423,9 @@ still needs to apply their geometry, heat, battle-record and rule effects.
 Retained infantry births preserve every unit loadout, upgrades, initial cooldowns,
 names and squad recruitment. Live spawning and squad ledger callbacks remain in
 Godot until the shared world dispatcher owns them.
+Retained vehicle-loss operations preserve passenger injuries, nearby flinching,
+crew survival and births, and final wreck placement. Shared destruction callbacks,
+crew return orders and wreck creation still need world-level integration.
 Construction, town income, capture and production transitions match the existing
 game; shared rule effects, destruction and the full building dispatcher still need
 migration before Rust owns the complete battle.

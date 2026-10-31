@@ -19,6 +19,8 @@ different byte rather than dumping the fixture.
   actors, shared occupants, mount cleanup, ignition and deferred explosions/rubble.
 - `infantry_spawn.bin`: unit loadouts, upgrades, initial cooldowns, names, squad
   recruitment and allocation order through resumed births.
+- `vehicle_loss.bin`: ordered passenger injuries, shared squad responses, crew
+  survival/births and wreck placement, with resumed actor state and random draws.
 
 Rust 1.94.0, glam 0.32.1 with `libm`, and libm 0.2.16 with `force-soft-floats`
 define this contract. No fast-math is enabled. Existing component resume tests
