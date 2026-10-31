@@ -3,6 +3,7 @@ use crate::simulation_random::SimulationRandomCore;
 use crate::terrain::TerrainCore;
 use frontline_core::infantry::Credit;
 use frontline_core::vehicle::{LastBlast, Resume, Route, Vehicle};
+use frontline_core::vehicle_brain::{Contact, CrewEvent, CrewProfile, Perception, UnitKind};
 use frontline_core::vehicle_motion::{GroundProfile, Traffic};
 use godot::prelude::*;
 #[derive(GodotClass)]
@@ -485,8 +486,145 @@ fn traffic(a: &Array<Variant>) -> Option<Vec<Traffic>> {
         })
         .collect()
 }
+fn crew_contacts(rows: &Array<Variant>) -> Option<Vec<Contact>> {
+    if rows.len() > 100_000 {
+        return None;
+    }
+    rows.iter_shared()
+        .map(|row| {
+            let a = row.try_to::<Array<Variant>>().ok()?;
+            if a.len() != 7 {
+                return None;
+            }
+            let kind: u8 = read(&a, 5)?;
+            let fields: PackedInt64Array = read(&a, 6)?;
+            let f = fields.as_slice();
+            let boolean = |i: usize| f.get(i).filter(|&&v| v == 0 || v == 1).map(|&v| v == 1);
+            let kind = match kind {
+                0 if f.len() == 4 => UnitKind::Soldier {
+                    alive: boolean(0)?,
+                    rockets: f[1].try_into().ok()?,
+                    antitank: boolean(2)?,
+                    riding: boolean(3)?,
+                },
+                1 if f.len() == 3 => UnitKind::Vehicle {
+                    air: boolean(0)?,
+                    cannon: boolean(1)?,
+                    missiles: f[2].try_into().ok()?,
+                },
+                _ => return None,
+            };
+            Some(Contact {
+                id: read(&a, 0)?,
+                position: crate::point(read(&a, 1)?),
+                team: read(&a, 2)?,
+                visible: read(&a, 3)?,
+                gone: read(&a, 4)?,
+                kind,
+            })
+        })
+        .collect()
+}
 #[godot_api]
 impl VehicleStateCore {
+    #[func]
+    fn crew_step(
+        &mut self,
+        now: f64,
+        profile: Array<Variant>,
+        nearby: Array<Variant>,
+        fob: Array<Variant>,
+        mission: bool,
+        planner: Gd<PathPlannerCore>,
+        mut random: Gd<SimulationRandomCore>,
+        threat: PackedVector3Array,
+    ) -> Array<Variant> {
+        if profile.len() != 3
+            || nearby.len() != 3
+            || !matches!(fob.len(), 0 | 2)
+            || threat.len() > 1
+        {
+            return Array::new();
+        }
+        let Some(base) = text(&profile, 0) else {
+            return Array::new();
+        };
+        let Some(flags) = read::<PackedByteArray>(&profile, 1) else {
+            return Array::new();
+        };
+        if flags.len() != 4 || flags.as_slice().iter().any(|v| *v > 1) {
+            return Array::new();
+        }
+        let Some(armor) = read(&profile, 2) else {
+            return Array::new();
+        };
+        let f = flags.as_slice();
+        let profile = CrewProfile {
+            base: &base,
+            helicopter: f[0] != 0,
+            automatic: f[1] != 0,
+            artillery: f[2] != 0,
+            tracked: f[3] != 0,
+            armor,
+        };
+        let mut sets = Vec::with_capacity(3);
+        for row in nearby.iter_shared() {
+            let Ok(rows) = row.try_to::<Array<Variant>>() else {
+                return Array::new();
+            };
+            let Some(contacts) = crew_contacts(&rows) else {
+                return Array::new();
+            };
+            sets.push(contacts);
+        }
+        let fob = if fob.is_empty() {
+            None
+        } else {
+            let (Some(id), Some(p)) = (read(&fob, 0), read(&fob, 1)) else {
+                return Array::new();
+            };
+            Some((id, crate::point(p)))
+        };
+        let nav = planner.bind();
+        let (Some(v), Some(nav)) = (self.core.as_mut(), nav.core.as_ref()) else {
+            return Array::new();
+        };
+        let out = if let Some(&from) = threat.as_slice().first() {
+            v.crew_threat(
+                now,
+                crate::point(from),
+                profile,
+                nav,
+                &mut random.bind_mut().core,
+            )
+        } else {
+            v.crew_think(
+                now,
+                profile,
+                Perception {
+                    threats: &sets[0],
+                    ahead: &sets[1],
+                    support: &sets[2],
+                    fob,
+                    mission,
+                },
+                nav,
+            )
+        };
+        match out {
+            Ok(out) => {
+                let (event, id) = match out.event {
+                    None => (0, 0),
+                    Some(CrewEvent::Withdraw(id)) => (1, id),
+                    Some(CrewEvent::PatchedUp) => (2, 0),
+                    Some(CrewEvent::WaitInfantry) => (3, 0),
+                    Some(CrewEvent::Evade) => (4, 0),
+                };
+                varray![&route(Ok(out.route)), event, id, out.repaired_track]
+            }
+            Err(_) => Array::new(),
+        }
+    }
     #[func]
     fn ground_tick(
         &mut self,

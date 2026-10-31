@@ -1344,7 +1344,9 @@ Vehicle checkpoints retain orders, passenger/sling links, weapon and flight stat
 repair progress and naval timers. Repairs, turret aiming, order transitions and
 shared boarding match the existing game. Ground-driving checks preserve steering,
 traffic spacing, braking, reversing and recovery from obstacles across saved-state
-resumes. Flight and combat dispatch still need to join the full Rust world loop.
+resumes. Crew checks preserve withdrawal for repairs, missile evasion, waiting
+for infantry and resuming saved orders. Flight and combat dispatch still need to
+join the full Rust world loop.
 Construction, town income, capture and production transitions match the existing
 game; shared rule effects, destruction and the full building dispatcher still need
 migration before Rust owns the complete battle.

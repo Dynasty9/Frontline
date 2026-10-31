@@ -36,6 +36,133 @@ fn block(out: &mut Vec<u8>, bytes: &[u8]) {
 }
 
 #[test]
+fn vehicle_crews_preserve_orders_and_random_choices_across_platforms() {
+    use frontline_core::vehicle::{Resume, Route, Vehicle};
+    use frontline_core::vehicle_brain::*;
+    let mut nav = PathPlanner::new(128).unwrap();
+    let mut cells = vec![0; 128 * 128];
+    for z in 0..128 {
+        for x in 0..128 {
+            if !(3..125).contains(&x)
+                || !(3..125).contains(&z)
+                || ((51..54).contains(&x) && (61..69).contains(&z))
+            {
+                cells[z * 128 + x] = 3;
+            }
+        }
+    }
+    assert!(nav.load_cells(&vec![0; 128 * 128], &cells, &vec![0; 128 * 128]));
+    let mut bytes = Vec::new();
+    for trial in 0..40 {
+        let profile = CrewProfile {
+            base: "tank",
+            helicopter: false,
+            automatic: trial % 7 == 0,
+            artillery: false,
+            tracked: trial % 3 != 0,
+            armor: 2,
+        };
+        let mut v = Vehicle {
+            id: 7,
+            team: 0,
+            owner: if trial % 11 == 0 { 1 } else { -1 },
+            max_hp: 1000.0,
+            hp: [300.0, 790.0, 900.0, 1000.0][trial % 4],
+            position: Vector3::new(0.3, 0.0, 0.7),
+            path: vec![Vector3::NEG_Z * 50.0],
+            path_pending: trial % 5 == 0,
+            path_destination: Some(Vector3::NEG_Z * 50.0),
+            assault: true,
+            assault_destination: Some(Vector3::NEG_Z * 50.0),
+            brain_state: ["", "withdraw", "", "wait", "evade", "", "", ""][trial % 8].into(),
+            brain_overruled: trial % 8 == 5,
+            track_broken: trial % 8 == 6,
+            track_fix: if trial % 8 == 6 { 5.8 } else { 0.0 },
+            ..Default::default()
+        };
+        if trial % 8 == 4 {
+            v.resume = Some(Resume {
+                destination: Some(Vector3::X * 30.0),
+                assault: true,
+                assault_destination: Some(Vector3::NEG_Z * 50.0),
+            });
+        }
+        let mut rng = SimulationRandom::new(trial as u64 + 177);
+        let fob = Some((2, Vector3::X * [80.0, 10.0, 200.0, 240.0][trial % 4]));
+        let mut threat = Contact {
+            id: 9,
+            position: Vector3::new(3.7, 0.0, -25.1),
+            team: 1,
+            visible: trial % 3 != 0,
+            gone: false,
+            kind: UnitKind::Soldier {
+                alive: true,
+                rockets: 1,
+                antitank: false,
+                riding: false,
+            },
+        };
+        for step in 0..128 {
+            let now = step as f64 * 0.5;
+            let mut outputs = Vec::new();
+            if trial % 8 == 2 && step == 2 {
+                outputs.push(
+                    v.crew_threat(now, Vector3::new(19.3, 0.0, -27.1), profile, &nav, &mut rng)
+                        .unwrap(),
+                );
+            }
+            if step == 32 {
+                threat.visible = true;
+            }
+            let contacts = [threat];
+            let perception = Perception {
+                threats: &contacts,
+                ahead: &contacts,
+                support: &[],
+                fob,
+                mission: trial % 3 == 0,
+            };
+            outputs.push(v.crew_think(now, profile, perception, &nav).unwrap());
+            for out in outputs {
+                match out.route {
+                    Route::None => bytes.push(0),
+                    Route::Ground {
+                        destination,
+                        care,
+                        revision,
+                    } => {
+                        bytes.push(1);
+                        point(&mut bytes, destination);
+                        bytes.extend_from_slice(&care.to_le_bytes());
+                        bytes.extend_from_slice(&revision.to_le_bytes());
+                    }
+                    Route::Boat { .. } => panic!("combat crew requested a boat route"),
+                }
+                match out.event {
+                    None => bytes.push(0),
+                    Some(CrewEvent::Withdraw(id)) => {
+                        bytes.push(1);
+                        bytes.extend_from_slice(&id.to_le_bytes());
+                    }
+                    Some(CrewEvent::PatchedUp) => bytes.push(2),
+                    Some(CrewEvent::WaitInfantry) => bytes.push(3),
+                    Some(CrewEvent::Evade) => bytes.push(4),
+                }
+                bytes.push(u8::from(out.repaired_track));
+            }
+            if step % 7 == 0 {
+                block(&mut bytes, &v.checkpoint().unwrap());
+                bytes.extend_from_slice(&rng.state().to_le_bytes());
+            }
+            if step == 53 {
+                v = Vehicle::restore(&v.checkpoint().unwrap()).unwrap();
+            }
+        }
+    }
+    golden("vehicle_brain", &bytes);
+}
+
+#[test]
 fn vehicle_driving_and_recovery_are_identical_across_platforms() {
     use frontline_core::vehicle::{Route, Vehicle};
     use frontline_core::vehicle_motion::{GroundProfile, Traffic};

@@ -233,10 +233,23 @@ Turret and hull motors share the same acceleration/braking calculation.
 The driving fixture compares 26,880 steps across the ground roster with moving
 traffic, impassable ground, trenches, interrupted movement and checkpoint resumes.
 Six core tests cover continued trajectories, recovery, invalid inputs and turning
-constraints; numeric CI adds 1,304,492 bytes. Boat/aircraft driving, crew AI, shared
+constraints; numeric CI adds 1,304,492 bytes. Boat/aircraft driving, shared
 collision effects and full vehicle combat dispatch still need to move before the
 Rust world can run the complete battle. This adapter is a reference test, not a
 new per-vehicle runtime boundary.
+
+Combat crews now decide directly against retained vehicle state and borrowed
+contacts/navigation. Withdrawal, repair at a FOB, missile evasion, saved-order
+resumption, waiting for friendly infantry and facing nearby threats preserve
+the existing priority, deadlines and player override. Crew-owned moves do not
+discard the saved order. Notifications, counters and route requests return as
+ordered effects for the world dispatcher; no Godot callbacks run in the core.
+
+The crew fixture compares 12,288 steps with the existing behavior tree, including
+mission retreat limits, missing FOBs, hidden threats, mounted infantry, resumed
+orders and checkpoints. Seven core tests cover priority, support, deadlines,
+continuation and rejected input. Numeric CI adds 515,853 bytes. The live vehicle
+dispatcher still uses Godot while flight, combat and shared effects migrate.
 
 ## Retained squads
 
@@ -376,7 +389,7 @@ Component checkpoint headers contain a four-byte component tag, a little-endian
 rules rather than silently continuing with changed arithmetic. The separate
 integer RNG stream remains unchanged.
 
-`native/core/tests/numeric_contract.rs` compares 23,749,344 committed bytes without
+`native/core/tests/numeric_contract.rs` compares 24,265,197 committed bytes without
 tolerances: fixed-tick flight state, support events and RNG cursors, carved water,
 craters, rotated box hits, cover anchors, spherical interpolation and infantry
 movement, infantry cover fire, postures, ammunition, burst recovery, vitals, aiming,
@@ -600,7 +613,7 @@ flag until Rust owns the actors.
 
 The shock fixture compares 92,160 reference steps, including mounted turning,
 blocked terrain, carried casualties and task interruption. The full default suite
-passes 156 tests; 330 core tests pass in debug and release.
+passes 157 tests; 338 core tests pass in debug and release.
 
 ## Spatial query state
 

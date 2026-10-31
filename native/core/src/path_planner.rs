@@ -111,11 +111,15 @@ impl PathPlanner {
     }
 
     pub fn nearest_walkable(&self, point: Vector3) -> Option<Vector3> {
+        self.nearest_walkable_for(point, false)
+    }
+
+    pub fn nearest_walkable_for(&self, point: Vector3, vehicle: bool) -> Option<Vector3> {
         if !point.is_finite() {
             return None;
         }
         let cell = self.cell(point);
-        let kinds = &self.kinds[0];
+        let kinds = &self.kinds[usize::from(vehicle)];
         if kinds[self.index(cell)] != 3 {
             return Some(point);
         }
