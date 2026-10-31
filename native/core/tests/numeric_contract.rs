@@ -36,6 +36,117 @@ fn block(out: &mut Vec<u8>, bytes: &[u8]) {
 }
 
 #[test]
+fn retained_infantry_commands_are_identical_across_platforms() {
+    use frontline_core::infantry::{Goal, Identity, Infantry};
+    use frontline_core::infantry_action::Round;
+    use frontline_core::infantry_commands::{Command, Release};
+    use frontline_core::infantry_controller::Task;
+    let nav = PathPlanner::new(32).unwrap();
+    let mut bytes = Vec::new();
+    for trial in 0..960 {
+        let mut s = Infantry {
+            identity: Identity {
+                id: 1,
+                unit: "rifleman".into(),
+                squad: 7,
+                ..Default::default()
+            },
+            ..Default::default()
+        };
+        s.motion.position = Vector3::new(1.3, -0.4, -2.7);
+        s.motion.path = vec![Vector3::new(8.0, 0.0, 2.1)];
+        s.orders.goal = s.motion.path[0];
+        s.orders.purpose = Goal::Cover;
+        s.orders.pending_path = trial % 2 == 0;
+        s.orders.hold_position = Vector3::new(-10.0, 0.0, -10.0);
+        s.orders.backwards = true;
+        s.orders.base_y = if trial % 3 == 0 { 4.25 } else { 0.0 };
+        s.orders.path_revision = trial as u64;
+        s.duty.kind = Task::try_from((trial / 8 % 20) as u8).unwrap();
+        s.duty.phase = (trial / 160 % 4) as u8;
+        s.vitals.life = Life::try_from((trial / 160 % 6) as u8).unwrap();
+        s.duty.entity = 3;
+        s.duty.partner = 4;
+        s.emplacement.structure = if s.duty.kind == Task::Man && trial % 3 != 0 {
+            10
+        } else {
+            0
+        };
+        s.emplacement.mortar_aim = Some(Vector3::new(8.0, 0.0, 12.0));
+        s.cover.at_cover = true;
+        s.cover.kind = 2;
+        s.cover.height = 1.2;
+        s.cover.normal = Vector3::X;
+        s.cover.material = 2;
+        s.cover.shifting = true;
+        s.weapon.peek_up = true;
+        s.weapon.blind = true;
+        let p = s.motion.position + Vector3::X * [12.0, 24.0, 24.01, 30.0, 60.0][trial % 5];
+        let face = [
+            Vector3::ZERO,
+            Vector3::X * 0.05,
+            Vector3::new(0.3, 0.0, -0.8),
+        ][trial % 3];
+        let mode = (trial % 3) as u8;
+        let order = match trial % 8 {
+            0 => Command::Move {
+                slot: p,
+                mode,
+                face,
+            },
+            1 => Command::Halt { face },
+            2 => Command::Follow {
+                position: s.orders.goal + Vector3::X * [2.99, 3.0, 3.01][trial % 3],
+                mode,
+                face,
+            },
+            3 => Command::Attack {
+                target: 3,
+                position: Vector3::new(3.4, 0.0, 13.1),
+                slot: p,
+            },
+            4 => Command::Retreat { position: p },
+            5 => Command::Throw {
+                position: p,
+                round: if trial / 8 % 2 == 0 {
+                    Round::Frag
+                } else {
+                    Round::Smoke
+                },
+            },
+            6 => Command::Stop,
+            _ => Command::ReturnToHold,
+        };
+        let mount = (s.emplacement.structure != 0).then_some(Vector3::new(2.1, 0.0, 3.7));
+        let before = s.checkpoint().unwrap();
+        let result = s.command(order, &nav, mount).unwrap();
+        bytes.extend_from_slice(&[u8::from(result.accepted), u8::from(result.cancel_path)]);
+        match result.release {
+            None => bytes.push(0),
+            Some(Release::Rescue(id)) => {
+                bytes.push(1);
+                bytes.extend_from_slice(&id.to_le_bytes());
+            }
+            Some(Release::Breach(id)) => {
+                bytes.push(2);
+                bytes.extend_from_slice(&id.to_le_bytes());
+            }
+        }
+        bytes.push(u8::from(result.route.is_some()));
+        if let Some(route) = result.route {
+            bytes.extend_from_slice(&route.revision.to_le_bytes());
+            point(&mut bytes, route.job.destination);
+            bytes.extend_from_slice(&route.job.care.to_le_bytes());
+        }
+        block(&mut bytes, &s.checkpoint().unwrap());
+        let mut resumed = Infantry::restore(&before).unwrap();
+        assert_eq!(resumed.command(order, &nav, mount).unwrap(), result);
+        assert_eq!(resumed, s);
+    }
+    golden("infantry_commands", &bytes);
+}
+
+#[test]
 fn retained_infantry_updates_are_identical_across_platforms() {
     use frontline_core::infantry::{Goal, Identity, Infantry};
     use frontline_core::infantry_controller::Task;

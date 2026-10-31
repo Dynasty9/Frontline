@@ -1321,6 +1321,9 @@ behavior. These operations still await the complete Rust world loop.
 Connected actor-update checks preserve recovery, fatigue, route progress,
 automatic replanning, arrivals, stationary movement and the posture and activity
 codes shown to players. Shared effects still await the Rust world implementation.
+Retained squad-order checks preserve order gates, rescue and breach claims,
+mount release, formation route reuse and grenade-throw approaches. A breacher
+holding a cooked grenade still completes that commitment before moving on.
 The Rust core now allocates authoritative entity IDs and retains their lifecycle
 order. Retired IDs stay retired, and restored lifecycle checkpoints continue the
 same allocation sequence; clients use the server's IDs for their visual objects.

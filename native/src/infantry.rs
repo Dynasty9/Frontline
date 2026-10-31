@@ -5,6 +5,7 @@ use frontline_core::grenade_reaction::GrenadeMemory;
 use frontline_core::infantry::*;
 use frontline_core::infantry_action::{Action, ActionState, Round, Throw};
 use frontline_core::infantry_aim::InfantryAim;
+use frontline_core::infantry_commands::{Command, Release};
 use frontline_core::infantry_control::Control;
 use frontline_core::infantry_orders::{Arrival, PathFinish};
 use frontline_core::infantry_tactics::{CoverRequest, Shelter};
@@ -536,6 +537,70 @@ fn encode(s: &Infantry) -> Array<Variant> {
 
 #[godot_api]
 impl InfantryStateCore {
+    #[func]
+    fn command(
+        &mut self,
+        input: Array<Variant>,
+        navigation: Gd<crate::path_planner::PathPlannerCore>,
+        mounted: PackedVector3Array,
+    ) -> Array<Variant> {
+        let Some(s) = self.core.as_mut() else {
+            return Array::new();
+        };
+        if mounted.len() > 1 {
+            return Array::new();
+        }
+        let result = (|| {
+            let order = match (read::<u8>(&input, 0)?, input.len()) {
+                (0, 4) => Command::Move {
+                    slot: point(&input, 1)?,
+                    mode: read(&input, 2)?,
+                    face: point(&input, 3)?,
+                },
+                (1, 2) => Command::Halt {
+                    face: point(&input, 1)?,
+                },
+                (2, 4) => Command::Follow {
+                    position: point(&input, 1)?,
+                    mode: read(&input, 2)?,
+                    face: point(&input, 3)?,
+                },
+                (3, 4) => Command::Attack {
+                    target: read(&input, 1)?,
+                    position: point(&input, 2)?,
+                    slot: point(&input, 3)?,
+                },
+                (4, 2) => Command::Retreat {
+                    position: point(&input, 1)?,
+                },
+                (5, 3) => Command::Throw {
+                    position: point(&input, 1)?,
+                    round: round(&input, 2)?,
+                },
+                (6, 1) => Command::Stop,
+                (7, 1) => Command::ReturnToHold,
+                _ => return None,
+            };
+            let navigation = navigation.bind();
+            s.command(
+                order,
+                navigation.core.as_ref()?,
+                mounted.as_slice().first().copied().map(crate::point),
+            )
+            .ok()
+        })();
+        result.map_or_else(Array::new, |out| {
+            let release = out.release.map_or_else(Array::new, |r| match r {
+                Release::Rescue(id) => varray![1, i64::from(id)],
+                Release::Breach(id) => varray![2, i64::from(id)],
+            });
+            let route = out.route.map_or_else(Array::new, |r| {
+                varray![r.revision as i64, vector(r.job.destination), r.job.care]
+            });
+            varray![out.accepted, &release, out.cancel_path, &route]
+        })
+    }
+
     #[func]
     fn recover(&mut self, dt: f64, now: f64) -> bool {
         self.core
