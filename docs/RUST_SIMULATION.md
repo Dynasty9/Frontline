@@ -77,6 +77,7 @@ graphics, network access or a wall clock.
 | Route refinement, smoothing, corridor reuse and path requests | `frontline_core` | Native planner retains corridor history and request order; Godot supplies unit positions and delivers completed orders |
 | Cover anchors and fighting-position selection | Rust | Rust generates anchors and evaluates protection/firing lanes; candidate search, claims and soldier state remain in cover/combat scripts |
 | Supply, construction, upgrades, prisoners, victory | Rust | `rules.gd`, structures and battle scripts |
+| Battle ledger and report privacy | `frontline_core` | Retained credit, casualties, captures, commander rejoins, unit/hero history, timeline and team-filtered reports are reference-tested; the live game still updates its Godot ledger |
 | Missions, scripted events, initial map generation | Rust or immutable versioned input data | Map generators and mission director |
 | Models, animation, smoothing, particles, camera, minimap | Godot | Existing presentation code |
 | Input, selection and order previews | Godot | Existing UI; server validates all commands |
@@ -535,7 +536,7 @@ Component checkpoint headers contain a four-byte component tag, a little-endian
 rules rather than silently continuing with changed arithmetic. The separate
 integer RNG stream remains unchanged.
 
-`native/core/tests/numeric_contract.rs` compares 63,696,366 committed bytes without
+`native/core/tests/numeric_contract.rs` compares 65,860,206 committed bytes without
 tolerances: fixed-tick flight state, support events and RNG cursors, carved water,
 craters, rotated box hits, cover anchors, spherical interpolation and infantry
 movement, infantry cover fire, postures, ammunition, burst recovery, vitals, aiming,
@@ -759,7 +760,7 @@ flag until Rust owns the actors.
 
 The shock fixture compares 92,160 reference steps, including mounted turning,
 blocked terrain, carried casualties and task interruption. The full default suite
-passes 177 tests; 485 core tests pass in debug and release.
+passes 178 tests; 494 core tests pass in debug and release.
 
 ## Spatial query state
 
@@ -1233,8 +1234,7 @@ friendly, dead and directly hit soldiers. Muted speech still consumes the same
 random draws. The Godot comparison checks 18,432 complete actor states and squad
 states, speech, counters and damage credit. Seven core tests cover shared effects
 and atomic rejection; numeric CI adds 1,689,413 bytes with checkpoint resumes.
-Battle report aggregation, full bullet/blast dispatch and the world loop remain
-unfinished.
+Full bullet/blast dispatch and the world loop remain unfinished.
 
 Cover searches and reevaluation now use retained squad contacts, nearby soldiers
 and borrowed building anchors. They preserve stale spatial membership until its
@@ -1244,6 +1244,22 @@ boundaries and atomic rejection. The Godot fixture checks 27,648 complete actor
 states, squad state, routes and RNG continuation; numeric CI adds 726,912 bytes.
 This removes anchor-array packing from the owned operation; it is not a measured
 whole-battle speedup, and the live soldier dispatcher still runs in Godot.
+
+## Battle ledger
+
+`BattleStats` retains commander and side totals, unit and hero records, attribution,
+capture credit, event history and the thinned strength/supply timeline. Report
+filtering preserves the current visibility rules: enemy strength, stock, spending,
+unit records and support calls remain private during the battle. Tied hero scores
+use the same ordering as Godot. Sampling only visits actors when a sample is due.
+
+Rejoining merges commander totals without recounting the side. Configured names
+survive checkpoints, including delayed credit under the previous peer identity.
+The Godot comparison checks 8,192 ledger updates plus filtered reports and saved
+state resumes. Eight core tests cover attribution, neutral sources, prisoners,
+capture ties, sample thinning, rejoining, visibility and malformed checkpoints.
+Numeric CI adds 2,163,840 exact bytes. The live ledger remains in Godot pending the
+complete Rust dispatcher; this is not yet a verified battle conclusion.
 
 ## Infantry target acquisition
 

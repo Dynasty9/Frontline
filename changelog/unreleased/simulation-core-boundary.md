@@ -77,6 +77,7 @@ kind = "fixed"
 - Infantry firing checks preserve aim, covering-fire responses, morale, mounted guns, ammunition and reload timing as those decisions move into retained Rust state.
 - The full weapon sequence checks preserve ducking, shifting along cover, posture and mounted-gun alignment before firing.
 - Cover-decision checks preserve squad reports, occupied cover, destroyed walls and when soldiers reassess their positions as state moves into Rust.
+- Battle-record checks preserve commander credit, rejoins, prisoners, unit history and private reports as the ledger moves into Rust for replay verification.
 - Artillery and gunship checks preserve fire missions, aiming delays, salvos, attack orbits and smoke responses between rocket launches.
 - Nearby-infantry, building and door checks preserve query ordering through movement and checkpoint restoration as shared world state moves into Rust.
 - The extracted simulation uses pinned numeric rules, with exact checkpoint comparisons across platforms as replay verification work continues.

@@ -108,6 +108,9 @@ impl Actors {
     pub fn get(&self, id: u32) -> Option<&Actor> {
         self.values.get(&id)
     }
+    pub(crate) fn get_mut(&mut self, id: u32) -> Option<&mut Actor> {
+        self.values.get_mut(&id)
+    }
     pub fn soldier(&self, id: u32) -> Option<&Infantry> {
         match self.get(id)? {
             Actor::Soldier(s) => Some(s),

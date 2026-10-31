@@ -1288,6 +1288,9 @@ orders, preserving stock contention and cooldowns across saved-state resumes.
 Shared infantry combat now also updates retained casualties, rescue/breach
 claims, last-attacker credit, squad contacts, morale and near-miss suppression
 in their existing order. Whole-world dispatch still runs in Godot.
+Battle-record checks preserve commander credit and rejoins, casualties, prisoners,
+unit history, timeline thinning and report privacy while the ledger moves into
+Rust. Complete battle replay verification remains unfinished.
 Complete cover searches run in Rust, including reachable candidates, protection,
 occupied positions and final scoring. Equal candidate scores retain their existing
 order and the same 20-position evaluation budget; 4,270 reference searches compare

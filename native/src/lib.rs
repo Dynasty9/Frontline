@@ -1,6 +1,7 @@
 use godot::prelude::*;
 
 mod actors;
+mod battle_stats;
 mod blast;
 mod boat_navigation;
 mod breach;

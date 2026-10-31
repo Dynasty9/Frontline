@@ -36,6 +36,163 @@ fn block(out: &mut Vec<u8>, bytes: &[u8]) {
 }
 
 #[test]
+fn retained_battle_ledger_is_identical_across_platforms() {
+    use frontline_core::actors::{Actor, Actors};
+    use frontline_core::battle_stats::{BattleStats, Event, Unit};
+    use frontline_core::infantry::Infantry as Soldier;
+    use frontline_core::spatial::{SpatialIndex, UNIT_CELL};
+    use frontline_core::squad::Squad;
+    use frontline_core::structure::Structure;
+    use frontline_core::vehicle::Vehicle;
+    let mut bytes = Vec::new();
+    for trial in 0..48 {
+        let mut a = Soldier::default();
+        a.identity.id = 1;
+        a.identity.unit = "rifleman".into();
+        a.identity.name = "First".into();
+        a.identity.owner = 5;
+        a.identity.squad = 9;
+        let mut b = a.clone();
+        b.identity.id = 2;
+        b.identity.owner = 6;
+        b.identity.name = "Second".into();
+        b.identity.team = 1;
+        b.identity.squad = 10;
+        b.vitals.hp = trial as f64 * 2.37;
+        b.vitals.life = (trial % 6).try_into().unwrap();
+        let mut actors = Actors::from_entries(
+            100,
+            vec![
+                Actor::Soldier(Box::new(a)),
+                Actor::Soldier(Box::new(b)),
+                Actor::Vehicle(Box::new(Vehicle {
+                    id: 3,
+                    team: 1,
+                    owner: 6,
+                    kind: "truck".into(),
+                    hp: 77.7,
+                    ..Default::default()
+                })),
+                Actor::Structure(Box::new(Structure {
+                    id: 4,
+                    team: 1,
+                    owner: 6,
+                    kind: "fob".into(),
+                    ..Default::default()
+                })),
+            ],
+        )
+        .unwrap();
+        let mut stats = BattleStats::default();
+        stats.joined(5, 0, "First commander").unwrap();
+        stats.joined(6, 1, "Second commander").unwrap();
+        let mut qs = vec![
+            Squad {
+                id: 9,
+                owner: 5,
+                members: vec![1],
+                ..Default::default()
+            },
+            Squad {
+                id: 10,
+                owner: 6,
+                members: vec![2],
+                ..Default::default()
+            },
+        ];
+        for (key, team, owner) in [("s9", 0, 5), ("s10", 1, 6), ("v3", 1, 6)] {
+            stats
+                .register_unit(Unit {
+                    key: key.into(),
+                    name: key.into(),
+                    team,
+                    owner,
+                    ended: -1.0,
+                    ..Default::default()
+                })
+                .unwrap();
+        }
+        let mut units = SpatialIndex::new(UNIT_CELL).unwrap();
+        actors.rebuild_units(&mut units).unwrap();
+        for step in 0..300 {
+            let now = step as f64 * 1.01;
+            match step % 12 {
+                0 => stats.shot(5, 0, trial % 2 == 0).unwrap(),
+                1 => stats.record_hit(2, 1, 80.1, &mut actors).unwrap(),
+                2 => stats
+                    .soldier_down(actors.soldier(2).unwrap(), trial % 7 == 0)
+                    .unwrap(),
+                3 => stats
+                    .soldier_died(
+                        actors.soldier(2).unwrap(),
+                        (trial % 6).try_into().unwrap(),
+                        trial % 7 == 0,
+                        37.0 / 3.0,
+                        &actors,
+                        "Rifleman",
+                    )
+                    .unwrap(),
+                4 => stats
+                    .prisoner(
+                        actors.soldier(2).unwrap(),
+                        actors.soldier(1).unwrap(),
+                        37.0 / 3.0,
+                    )
+                    .unwrap(),
+                5 => stats.record_hit(3, 1, 90.9, &mut actors).unwrap(),
+                6 => stats
+                    .vehicle_destroyed(3, 199.7, now, "Truck lost", "Rifleman", &actors)
+                    .unwrap(),
+                7 => stats.record_hit(4, 1, 77.0, &mut actors).unwrap(),
+                8 => stats
+                    .building_destroyed(4, 200.0, now, "FOB wrecked", &actors)
+                    .unwrap(),
+                9 => stats.add(5, 0, 14 + trial as usize % 11, 19.71).unwrap(),
+                10 => {
+                    let owner = stats
+                        .taker(Vector3::ZERO, 10.0, 0, &actors, &units)
+                        .unwrap();
+                    stats.add(owner, 0, 20, 1.0).unwrap();
+                    stats
+                        .event(Event {
+                            time: now,
+                            team: 0,
+                            kind: "town".into(),
+                            text: "Captured".into(),
+                        })
+                        .unwrap();
+                }
+                _ => {
+                    stats
+                        .rejoined(if step == 11 { 5 } else { 7 }, 7, 0, "Returned")
+                        .unwrap();
+                    qs[0].owner = 7;
+                }
+            }
+            stats
+                .tick(1.01, now, [77.1, 99.9], &actors, |_| false)
+                .unwrap();
+            if step % 60 == 59 {
+                let row = stats.row(now, [77.1, 99.9], &actors, |_| false).unwrap();
+                let report = stats
+                    .report((trial % 3) as i8 - 1, step == 299, row, &qs, &actors)
+                    .unwrap();
+                for row in report.timeline {
+                    for n in row {
+                        bytes.extend_from_slice(&n.to_le_bytes());
+                    }
+                }
+                block(&mut bytes, &stats.checkpoint());
+                block(&mut bytes, &actors.checkpoint().unwrap());
+                stats = BattleStats::restore(&stats.checkpoint()).unwrap();
+                actors = Actors::restore(&actors.checkpoint().unwrap()).unwrap();
+            }
+        }
+    }
+    golden("battle_stats", &bytes);
+}
+
+#[test]
 fn retained_infantry_cover_is_identical_across_platforms() {
     use frontline_core::actors::{Actor, Actors};
     use frontline_core::cover::{Anchor, AnchorKind};

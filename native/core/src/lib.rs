@@ -2,6 +2,7 @@
 /// Pinned scalar math and geometry rules; incompatible checkpoints must fail closed.
 pub const NUMERIC_VERSION: u16 = 1;
 pub mod actors;
+pub mod battle_stats;
 pub mod blast;
 pub mod boat_navigation;
 pub mod breach;
