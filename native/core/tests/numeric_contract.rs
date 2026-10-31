@@ -36,6 +36,164 @@ fn block(out: &mut Vec<u8>, bytes: &[u8]) {
 }
 
 #[test]
+fn retained_infantry_special_attacks_are_identical_across_platforms() {
+    use frontline_core::actors::{Actor, Actors};
+    use frontline_core::fire_targets;
+    use frontline_core::infantry::Infantry as Soldier;
+    use frontline_core::spatial::{SpatialIndex, UNIT_CELL};
+    use frontline_core::squad::{Contact, Report, Squad};
+    use frontline_core::structure::Structure;
+    use frontline_core::vehicle::Vehicle;
+    let mut bytes = Vec::new();
+    let terrain = Terrain::blank(64).unwrap();
+    for mode in 0..4 {
+        for trial in 0..64 {
+            let mut entries = Vec::new();
+            for id in 1..=6 {
+                let mut s = Soldier::default();
+                s.identity.id = id;
+                s.identity.unit = "rifleman".into();
+                s.identity.team = if id == 1 { 0 } else { 1 };
+                s.identity.visible = trial % 4;
+                s.identity.squad = 9;
+                s.motion.position.x = if id == 1 {
+                    0.0
+                } else if mode == 0 {
+                    1.8
+                } else {
+                    50.0 + (id % 3) as f32 * 0.7
+                };
+                s.cover.at_cover = trial % 2 == 0;
+                s.arsenal.rockets = i32::from(trial % 4);
+                s.arsenal.drones = i32::from(trial % 3);
+                s.arsenal.mortar_rounds = i32::from(trial % 5);
+                s.motion.ground_until = if trial % 7 == 0 { 11.0 } else { 0.0 };
+                s.vitals.speech_cooldown = if trial % 3 == 0 { 7.0 } else { 0.0 };
+                s.fight.visible_targets = if trial % 3 == 0 { vec![10, 11] } else { vec![] };
+                s.fight.forced_target = if trial % 7 == 0 { 20 } else { 0 };
+                entries.push(Actor::Soldier(Box::new(s)));
+            }
+            for id in 10..12 {
+                entries.push(Actor::Vehicle(Box::new(Vehicle {
+                    id,
+                    kind: "tank".into(),
+                    team: 1,
+                    visible: trial % 4,
+                    hp: 100.0,
+                    position: Vector3::new(
+                        30.0 + (trial % 5) as f32 * 11.3,
+                        0.0,
+                        (id - 10) as f32 * 5.0,
+                    ),
+                    ..Default::default()
+                })));
+            }
+            entries.push(Actor::Structure(Box::new(Structure {
+                id: 20,
+                kind: "bunker".into(),
+                team: 1,
+                seen: trial % 4,
+                built: true,
+                position: Vector3::new(-59.9, 0.0, 0.0),
+                ..Default::default()
+            })));
+            let mut actors = Actors::from_entries(100, entries).unwrap();
+            let mut units = SpatialIndex::new(UNIT_CELL).unwrap();
+            actors.rebuild_units(&mut units).unwrap();
+            if trial % 7 == 0 {
+                units.remove(2);
+                units.insert(2, Vector3::X * 90.0, 0.0).unwrap();
+            }
+            let mut q = Squad {
+                id: 9,
+                ambush: trial % 17 == 0,
+                known: vec![Contact {
+                    id: 11,
+                    report: Report {
+                        position: Vector3::ZERO,
+                        time: 9.0,
+                    },
+                }],
+                fire_queue: if trial % 2 == 0 {
+                    vec![
+                        (
+                            Vector3::X * [24.99, 25.0, 140.0, 140.01][trial as usize / 2 % 4],
+                            true,
+                        ),
+                        (Vector3::X * 100.0, false),
+                    ]
+                } else {
+                    vec![]
+                },
+                ..Default::default()
+            };
+            let mut collision = CollisionWorld::default();
+            if trial % 5 == 0 {
+                assert!(collision.replace(
+                    20,
+                    &[BoxShape {
+                        body: 20,
+                        shape: 0,
+                        center: Vector3::new(20.0, 1.0, 0.0),
+                        half: Vector3::new(0.3, 2.0, 7.0),
+                        basis: Mat3::IDENTITY
+                    }]
+                ));
+            }
+            let visibility = Visibility::default();
+            let mut rng = SimulationRandom::new(u64::from(trial) + 20179);
+            for step in 0..8 {
+                let now = 10.0 + step as f64 * [0.1, 2.1, 6.1, 20.1][trial as usize % 4];
+                let mortar =
+                    fire_targets::mortar(&actors, &units, &[20], 0, Vector3::ZERO, 30.0, 130.0)
+                        .unwrap();
+                bytes.push(mortar.is_some() as u8);
+                if let Some(p) = mortar {
+                    point(&mut bytes, p);
+                }
+                bytes.extend_from_slice(
+                    &fire_targets::fpv(&actors, &units, 0, Vector3::ZERO, 230.0, |_| 2, |_| false)
+                        .unwrap()
+                        .unwrap_or(0)
+                        .to_le_bytes(),
+                );
+                let q = if trial % 13 == 0 { None } else { Some(&mut q) };
+                let out = match mode {
+                    0 => actors.try_infantry_melee(1, now, trial % 11 != 0, &units),
+                    1 => actors.try_infantry_rocket(
+                        1,
+                        now,
+                        q.as_deref(),
+                        &terrain,
+                        &[],
+                        &mut collision,
+                        &visibility,
+                    ),
+                    2 => actors.try_infantry_drone(1, now, &units, |_| 2, |_| false, &mut rng),
+                    _ => actors.try_infantry_mortar(1, now, q, &units, &[20], &mut rng),
+                }
+                .unwrap();
+                bytes.extend_from_slice(&[
+                    out.started as u8,
+                    out.cleared_mission as u8,
+                    out.speech.unwrap_or(255),
+                ]);
+                block(
+                    &mut bytes,
+                    &actors.soldier(1).unwrap().checkpoint().unwrap(),
+                );
+                bytes.extend_from_slice(&rng.state().to_le_bytes());
+                if step == 3 {
+                    actors = Actors::restore(&actors.checkpoint().unwrap()).unwrap();
+                }
+            }
+            block(&mut bytes, &q.checkpoint().unwrap());
+        }
+    }
+    golden("infantry_special", &bytes);
+}
+
+#[test]
 fn retained_battle_ledger_is_identical_across_platforms() {
     use frontline_core::actors::{Actor, Actors};
     use frontline_core::battle_stats::{BattleStats, Event, Unit};

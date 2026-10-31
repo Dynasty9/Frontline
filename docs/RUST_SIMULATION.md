@@ -51,7 +51,7 @@ graphics, network access or a wall clock.
 | Automatic grenade attacks | `frontline_core` | Contact scores, range/posture gates, throw scatter, ammunition and cooldowns extracted; Godot still supplies squad contacts and nearby groups and applies the throw/cook actions |
 | Incoming mortars and busy-soldier grenade notices | `frontline_core` | Ordered warning, range/fuse gates, memory and dive decisions extracted; Godot applies warning, suppression, duck and dive effects |
 | Drone hearing and avoidance | `frontline_core` | Ordered hearing memory, warning choices and dive chances extracted with component checkpoints; Godot applies speech and dive effects |
-| Infantry special attacks | `frontline_core` | Rocket and melee priority, mortar fire admission, drone launch decisions, ammunition and cooldowns extracted; Godot supplies contacts, mortar/drone target queries and applies actions |
+| Infantry special attacks | `frontline_core` | Owned actors select melee, rocket, mortar and drone targets and retain ammunition, cooldowns, pending actions and squad fire queues; the live dispatcher and completed weapon effects remain in Godot |
 | Infantry supply decisions | `frontline_core` | Scavenging, nearest-body/depot choices, search timers and refill arithmetic extracted; Godot supplies spatial candidates and applies shared-store transfers, reloads and movement |
 | Infantry medical tasks | `frontline_core` | Rescue/healing stages, treatment deadlines, safe-anchor selection, dragging poses and escort movement extracted; Godot still owns patient links, movement requests and recovery effects |
 | Construction, stretchers and prisoners | `frontline_core` | Construction priorities/timers, paired carrying stages, bearer takeover and prisoner escort geometry extracted; Godot still applies work, shared casualty links, tent delivery and capture effects |
@@ -536,7 +536,7 @@ Component checkpoint headers contain a four-byte component tag, a little-endian
 rules rather than silently continuing with changed arithmetic. The separate
 integer RNG stream remains unchanged.
 
-`native/core/tests/numeric_contract.rs` compares 65,860,206 committed bytes without
+`native/core/tests/numeric_contract.rs` compares 68,644,649 committed bytes without
 tolerances: fixed-tick flight state, support events and RNG cursors, carved water,
 craters, rotated box hits, cover anchors, spherical interpolation and infantry
 movement, infantry cover fire, postures, ammunition, burst recovery, vitals, aiming,
@@ -760,7 +760,7 @@ flag until Rust owns the actors.
 
 The shock fixture compares 92,160 reference steps, including mounted turning,
 blocked terrain, carried casualties and task interruption. The full default suite
-passes 178 tests; 494 core tests pass in debug and release.
+passes 179 tests; 507 core tests pass in debug and release.
 
 ## Spatial query state
 
@@ -1244,6 +1244,24 @@ boundaries and atomic rejection. The Godot fixture checks 27,648 complete actor
 states, squad state, routes and RNG continuation; numeric CI adds 726,912 bytes.
 This removes anchor-array packing from the owned operation; it is not a measured
 whole-battle speedup, and the live soldier dispatcher still runs in Godot.
+
+## Owned special attacks
+
+Melee, rockets, FPV launches and mortar missions now read retained actors and
+spatial membership directly. Mortar selection keeps friendly clearance, enemy
+clusters and the explicit ownership order of emplacements. FPVs retain vehicle
+priority, armour scores, visibility exceptions and infantry cluster checks.
+Rocket reports use retained ground caches and collision geometry. Accepted
+attacks update the soldier's pending action, route revision, ammunition and
+cooldown; queued mortar missions update the shared squad. Rejected actions leave
+the actor, queue and random stream unchanged.
+
+The Godot fixture compares 32,768 complete actor states, target queries, squad
+queues, speech, navigation cancellations, counters and random continuation. It
+covers range boundaries, stale spatial cells, blocked rays, active drone
+operators, missing squads, muted speech and checkpoint resumes. Twelve core tests
+cover target ties, friendly clearance and rejection; numeric CI adds 2,784,443
+bytes. The live soldier dispatcher and completed strikes/launches remain in Godot.
 
 ## Battle ledger
 

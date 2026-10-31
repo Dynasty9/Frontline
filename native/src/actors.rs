@@ -16,6 +16,19 @@ type ServiceStock = HashMap<
         i32,
     ),
 >;
+fn armor_ratings(values: &PackedInt64Array) -> Option<HashMap<u32, i32>> {
+    if values.len() % 2 != 0 || values.len() > 200_000 {
+        return None;
+    }
+    let mut ratings = HashMap::new();
+    for row in values.as_slice().chunks_exact(2) {
+        let id = u32::try_from(row[0]).ok()?;
+        if id == 0 || !(0..=16).contains(&row[1]) || ratings.insert(id, row[1] as i32).is_some() {
+            return None;
+        }
+    }
+    Some(ratings)
+}
 fn service_stock(rows: Array<Variant>) -> Option<ServiceStock> {
     use frontline_core::infantry_supply::Loadout;
     use frontline_core::infantry_weapon::Weapon;
@@ -175,6 +188,142 @@ fn write_squads(
 
 #[godot_api]
 impl ActorStateCore {
+    #[func]
+    fn fire_targets(
+        &self,
+        team: i8,
+        origin: Vector3,
+        ranges: PackedFloat64Array,
+        owned: PackedInt64Array,
+        units: Gd<crate::spatial::SpatialIndexCore>,
+        armor: PackedInt64Array,
+        bearers: PackedInt64Array,
+    ) -> Array<Variant> {
+        if ranges.len() != 3 || owned.len() > 100_000 || bearers.len() > 100_000 {
+            return Array::new();
+        }
+        let Some(armor) = armor_ratings(&armor) else {
+            return Array::new();
+        };
+        let Some(owned) = owned
+            .as_slice()
+            .iter()
+            .map(|&id| u32::try_from(id).ok())
+            .collect::<Option<Vec<_>>>()
+        else {
+            return Array::new();
+        };
+        let units = units.bind();
+        let Some(units) = &units.core else {
+            return Array::new();
+        };
+        let mortar = frontline_core::fire_targets::mortar(
+            &self.core,
+            units,
+            &owned,
+            team,
+            crate::point(origin),
+            ranges[0],
+            ranges[1],
+        );
+        let drone = frontline_core::fire_targets::fpv(
+            &self.core,
+            units,
+            team,
+            crate::point(origin),
+            ranges[2],
+            |v| *armor.get(&v.id).unwrap_or(&1),
+            |s| bearers.as_slice().contains(&i64::from(s.identity.id)),
+        );
+        match (mortar, drone) {
+            (Ok(m), Ok(d)) => varray![
+                &m.map_or(Variant::nil(), |p| vector(p).to_variant()),
+                i64::from(d.unwrap_or(0))
+            ],
+            _ => Array::new(),
+        }
+    }
+    #[func]
+    fn try_infantry_special(
+        &mut self,
+        soldier: u32,
+        kind: u8,
+        now: f64,
+        armed: bool,
+        mut squad: Option<Gd<crate::squad::SquadStateCore>>,
+        owned: PackedInt64Array,
+        units: Gd<crate::spatial::SpatialIndexCore>,
+        terrain: Gd<crate::terrain::TerrainCore>,
+        deck: PackedByteArray,
+        mut collision: Gd<crate::collision_index::CollisionIndexCore>,
+        visibility: Gd<crate::visibility::VisibilityCore>,
+        armor: PackedInt64Array,
+        bearers: PackedInt64Array,
+        mut rng: Gd<crate::simulation_random::SimulationRandomCore>,
+    ) -> Array<Variant> {
+        if kind > 3 || owned.len() > 100_000 || bearers.len() > 100_000 {
+            return Array::new();
+        }
+        let Some(armor) = armor_ratings(&armor) else {
+            return Array::new();
+        };
+        let Some(owned) = owned
+            .as_slice()
+            .iter()
+            .map(|&id| u32::try_from(id).ok())
+            .collect::<Option<Vec<_>>>()
+        else {
+            return Array::new();
+        };
+        let units = units.bind();
+        let terrain = terrain.bind();
+        let (Some(units), Some(terrain)) = (&units.core, &terrain.core) else {
+            return Array::new();
+        };
+        let mut squad = squad.as_mut().map(Gd::bind_mut);
+        if squad.as_ref().is_some_and(|q| q.core.is_none()) {
+            return Array::new();
+        }
+        let squad = squad.as_mut().and_then(|q| q.core.as_mut());
+        let out = match kind {
+            0 => self.core.try_infantry_melee(soldier, now, armed, units),
+            1 => self.core.try_infantry_rocket(
+                soldier,
+                now,
+                squad.as_deref(),
+                terrain,
+                deck.as_slice(),
+                &mut collision.bind_mut().core,
+                &visibility.bind().core,
+            ),
+            2 => self.core.try_infantry_drone(
+                soldier,
+                now,
+                units,
+                |v| *armor.get(&v.id).unwrap_or(&1),
+                |s| bearers.as_slice().contains(&i64::from(s.identity.id)),
+                &mut rng.bind_mut().core,
+            ),
+            _ => self.core.try_infantry_mortar(
+                soldier,
+                now,
+                squad,
+                units,
+                &owned,
+                &mut rng.bind_mut().core,
+            ),
+        };
+        out.map_or_else(
+            |_| Array::new(),
+            |r| {
+                varray![
+                    r.started,
+                    r.cleared_mission,
+                    r.speech.map_or(-1i64, i64::from)
+                ]
+            },
+        )
+    }
     #[func]
     fn decide_infantry_cover(
         &mut self,
@@ -799,21 +948,12 @@ impl ActorStateCore {
             || [profile[0], profile[2]]
                 .into_iter()
                 .any(|v| v != 0.0 && v != 1.0)
-            || armor.len() % 2 != 0
-            || armor.len() > 200_000
         {
             return Array::new();
         }
-        let mut ratings = HashMap::new();
-        for row in armor.as_slice().chunks_exact(2) {
-            let Ok(id) = u32::try_from(row[0]) else {
-                return Array::new();
-            };
-            if id == 0 || !(0..=16).contains(&row[1]) || ratings.insert(id, row[1] as i32).is_some()
-            {
-                return Array::new();
-            }
-        }
+        let Some(ratings) = armor_ratings(&armor) else {
+            return Array::new();
+        };
         let p = frontline_core::infantry_scan::ScanProfile {
             bearer: profile[0] != 0.0,
             weapon_range: profile[1],
