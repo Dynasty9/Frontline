@@ -19,8 +19,9 @@ test("Rust infantry ports preserve battle fingerprints and events", async () => 
     for (const scenario of ["attack", "breach", "trenches", "fire", "tank", "gdrill"]) {
       const runs = [];
       for (const native of [false, true]) {
-        const loaded = await game.load({ scenario, seed: 3, rust_infantry: native, gdscript_cover_search: !native });
+        const loaded = await game.load({ scenario, seed: 3, rust_infantry: native, gdscript_cover_search: !native, gdscript_entity_registry: !native });
         assert.equal(loaded.rust_infantry, native);
+        assert.equal(loaded.rust_entities, native);
         const samples = [];
         for (let t = 0; t < 60; t += 15) {
           await game.step(15);

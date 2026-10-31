@@ -20,6 +20,7 @@ var time := 0.0
 var _snapshot_time := 0.0
 var entities := {}
 var next_eid := 1
+var _entity_core: RefCounted
 var ready_peers: Array = []
 ## (server) What each player who has left commanded, by the peer id they had:
 ## {"squads": {sid: true}, "vehicles": {eid: true}}. Teammates or the AI
@@ -356,11 +357,41 @@ func _make(kind: String) -> Entity:
 	return Entity.new()
 
 
+func _start_entity_registry() -> bool:
+	if _entity_core != null or settings.get("gdscript_entity_registry", false) or not ClassDB.class_exists("EntityRegistryCore"):
+		return true
+	var core: RefCounted = ClassDB.instantiate("EntityRegistryCore")
+	var ids := PackedInt64Array()
+	var kinds := PackedStringArray()
+	for existing: Entity in entities.values():
+		ids.append(existing.eid)
+		kinds.append(existing.ekind())
+	if not core.initialize(next_eid, ids, kinds):
+		push_error("Invalid initial entity registry")
+		return false
+	_entity_core = core
+	return true
+
+
 func spawn(kind: String, props: Dictionary) -> Entity:
+	if not _start_entity_registry():
+		return null
 	var e := _make(kind)
 	e.world = self
-	e.eid = next_eid
-	next_eid += 1
+	if _entity_core:
+		if next_eid != _entity_core.next_id():
+			push_error("Entity allocation cursor changed outside the simulation")
+			e.free()
+			return null
+		e.eid = _entity_core.spawn(kind)
+		if e.eid == 0:
+			push_error("Entity registry rejected spawn: " + kind)
+			e.free()
+			return null
+		next_eid = _entity_core.next_id()
+	else:
+		e.eid = next_eid
+		next_eid += 1
 	e.srv = true
 	e.apply_props(props)
 	e.name = "E%d" % e.eid
@@ -428,6 +459,9 @@ func refresh_smoke_projectile(e: Projectile) -> void:
 
 func despawn(e: Entity) -> void:
 	if e == null or e.gone:
+		return
+	if _entity_core and not _entity_core.remove(e.eid):
+		push_error("Entity registry rejected removal: %d" % e.eid)
 		return
 	if combat and (e is Structure or e is Vehicle):
 		combat.retire_collision(e.eid)

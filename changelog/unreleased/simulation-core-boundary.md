@@ -38,6 +38,7 @@ kind = "fixed"
 - Complete cover searches now run in Rust, preserving preferred positions, squad spacing, burning ground and the existing search limit.
 - Stationary-movement checks preserve giving nearby troops room, settling onto terrain, moving into a cover position and watching a sector.
 - Medical-task checks preserve rescue, dragging, treatment timing and escorts. Soldiers also safely abandon these tasks when a patient or rescuer has been removed.
+- Authoritative entity IDs now come from Rust, preserving creation order and keeping removed units' IDs from being reused as the server migration continues.
 - The extracted simulation uses pinned numeric rules, with exact checkpoint comparisons across platforms as replay verification work continues.
 - Guided missiles keep a consistent turn after overshooting their aim point, instead of letting rounding choose an erratic turn direction.
 - This is groundwork for the server migration. Battles still use the existing simulation, and recordings are not yet independently verified.

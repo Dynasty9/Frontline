@@ -222,7 +222,7 @@ func _loaded() -> Dictionary:
 	var w: World = main.world
 	return {"t": w.time, "seed": int(w.settings.get("seed", 0)), "soldiers": w.soldiers.size(), "vehicles": w.vehicles.size(),
 		"structures": w.structures.size(), "squads": w.squads.size(),
-		"rust_infantry": w.settings.get("rust_infantry", false)}
+		"rust_infantry": w.settings.get("rust_infantry", false), "rust_entities": w._entity_core != null}
 
 
 func _stepped() -> Dictionary:
@@ -343,6 +343,9 @@ func _plain(v: Variant) -> Variant:
 ## squad, the clock and the dice. Two runs from one seed must agree on it tick
 ## for tick; where they part is where something escaped the seed.
 func _hash(w: World) -> String:
+	if w._entity_core:
+		assert(w._entity_core.ids() == PackedInt64Array(w.entities.keys()), "Entity registration order diverged")
+		assert(w._entity_core.next_id() == w.next_eid, "Entity allocation cursor diverged")
 	var parts := PackedStringArray()
 	parts.append("%.4f|%d|%d" % [w.time, w.next_eid, w.rng.state])
 	var eids: Array = w.entities.keys()

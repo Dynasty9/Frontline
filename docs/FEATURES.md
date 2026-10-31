@@ -1290,6 +1290,9 @@ and watch-sector or mounted turns, including overlap randomness and cache deadli
 Medical-task checks preserve approaching and claiming a casualty, dragging him to
 safety, treatment timing, medicine and the escort's movement and firing. Rescue,
 healing and escort also safely release patients or rescuers removed from the world.
+The Rust core now allocates authoritative entity IDs and retains their lifecycle
+order. Retired IDs stay retired, and restored lifecycle checkpoints continue the
+same allocation sequence; clients use the server's IDs for their visual objects.
 The full
 authoritative Rust server and deterministic
 battle verifier are still in progress; see [RUST_SIMULATION.md](RUST_SIMULATION.md).

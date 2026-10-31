@@ -27,7 +27,8 @@ graphics, network access or a wall clock.
 | Hierarchical route assembly, repairs and danger weights | `frontline_core` | Rust owns graph slots, borders, cost tables, repair order and terrain/danger revisions |
 | FPV drone flight | `frontline_core` | Climb, cruise, dive, loss of control and collision; Godot supplies targets and applies damage |
 | Guided missiles and support aircraft | `frontline_core` | Flight, target-lock loss, bomb release, burst schedules, pending hits and random draws; Godot supplies contacts and applies events |
-| Entity registry, stable IDs, spawn/despawn | Rust | `world.gd`, `entity.gd` |
+| Entity identities and lifecycle order | `frontline_core` | Rust allocates authoritative IDs and retains ordered live identities through spawn/despawn; Godot still owns the corresponding actor state and scene objects |
+| Entity state and full actor updates | Rust | `world.gd`, `entity.gd` and entity scripts |
 | Infantry route movement | `frontline_core` | Route progress, vaulting, sliding, doors and ground caches extracted and reference-tested; the per-soldier adapter remains test-only because it is slower than GDScript |
 | Stationary infantry movement | `frontline_core` | Neighbor separation, terrain settling, cover alignment and watch-sector/mounted turns extracted; the adapter remains test-only pending actor ownership |
 | Infantry weapon cycles | `frontline_core` | Cover fire, postures, firing permissions, ammunition and burst recovery extracted with compatibility tests; adapters remain test-only until Rust owns the actor |
@@ -139,6 +140,29 @@ server. A slow reliable connection needs bounded observation queues and a fresh
 baseline when it falls behind, not an accumulating backlog of obsolete states.
 Offline browser play also needs an explicit migration path (the Rust core in a
 browser worker); it cannot launch the desktop server executable.
+
+## Entity identity ownership
+
+Authoritative `World.spawn` obtains IDs from `Entities`; removal retires the
+identity without recycling it. Lookup uses a hash table, while simulation and
+checkpoint iteration retain registration order independently of that table.
+Expired slots are compacted in order so prolonged projectile churn does not
+accumulate a slot for every entity ever created. Allocation stops before the
+existing 32-bit wire ID can wrap. Imported registries reject duplicate IDs,
+unknown kinds and an allocation cursor that could overwrite a live identity.
+
+The `FLEN` checkpoint contains the next ID and ordered live identities, including
+their kinds. This is lifecycle state only, not an actor or battle checkpoint.
+Godot still owns actor fields and the per-kind simulation lists. Clients build
+presentation objects using the server's IDs and do not allocate authoritative
+ones. The adapter is enabled by default; the test port can retain the GDScript
+allocator for reference comparisons. Platforms without the module retain it too.
+
+Core tests cover 20,000 allocations/removals, survivor order through compaction,
+checkpoint continuation, exhausted IDs and malformed input. The Godot fixture
+compares 4,096 live spawns against the reference lifecycle, checks callbacks and
+restores checkpoints between operations. Battle fingerprints also verify that
+the Rust identity order and cursor agree with the current scene registry.
 
 ## Deterministic replay contract
 
@@ -436,7 +460,7 @@ flag until Rust owns the actors.
 
 The shock fixture compares 92,160 reference steps, including mounted turning,
 blocked terrain, carried casualties and task interruption. The full default suite
-passes 130 tests; 172 core tests pass in debug and release.
+passes 131 tests; 176 core tests pass in debug and release.
 
 ## Infantry tasks and reflexes
 

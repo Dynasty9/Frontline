@@ -8,6 +8,7 @@ mod cover_geometry;
 mod cover_search;
 mod drone_flight;
 mod drone_reaction;
+mod entities;
 mod formation_ground;
 mod grenade_attack;
 mod grenade_reaction;

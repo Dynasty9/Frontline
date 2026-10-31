@@ -10,6 +10,7 @@ pub mod cover;
 pub mod cover_search;
 pub mod drone;
 pub mod drone_reaction;
+pub mod entities;
 pub mod formation;
 mod godot_sort;
 pub mod grenade_attack;
