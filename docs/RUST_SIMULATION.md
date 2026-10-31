@@ -255,13 +255,30 @@ Rotorcraft guidance now updates retained position, velocity, heading, cyclic
 pitch/roll and pilot yaw rate against Rust terrain and bridge decks. Momentum,
 hover braking, ground clearance, cargo handling and fixed integration substeps
 match the existing pilot. UAV guidance retains orbit phase, course changes and
-turning limits. The controllers still need their scan/fire and mission phases.
+turning limits. The aircraft controllers still need their scan/fire dispatch.
 
 The flight fixture compares 24,000 steps across the aircraft roster, including
 course changes, sling loading, landing, bridge decks, terrain height and saved
 state. Six core tests cover hover settling, coarse steps, clearance, loaded
 handling, checkpoint continuation and invalid input; numeric CI adds 461,672
 bytes. Godot still dispatches flight during a live battle.
+
+Sling operations now update the helicopter and cargo in the same retained actor
+collection: admission, pickup orders, hooking, swing, release and cleanup when
+either actor disappears. A dropped load returns its fall-damage and impact event;
+the complete vehicle combat dispatcher must still apply that damage in Rust.
+The reference fixture compares 9,117 states, including capacity/type/team gates,
+blocked landing cells, removed actors, gentle drops and damaging falls.
+
+Transport pilot phases retain climb, cruise, touchdown, stable pickup hover,
+unloading delays, holding and return-to-pad orders. Supply pilots retain ordered
+destination scoring, captured/destroyed-destination handling, delivery requests
+and return flights. The 76,800-step reference fixture compares the pilots' state
+and ordered cargo/delivery requests, with shared effects checked separately. It
+does not claim a complete aircraft combat tick. Twelve core tests cover these
+transitions and shared sling links; numeric CI adds 1,004,404 exact transcript
+bytes, including checkpoint continuation. These operations await live integration
+with the Rust world and economy.
 
 ## Retained squads
 
@@ -401,7 +418,7 @@ Component checkpoint headers contain a four-byte component tag, a little-endian
 rules rather than silently continuing with changed arithmetic. The separate
 integer RNG stream remains unchanged.
 
-`native/core/tests/numeric_contract.rs` compares 24,726,869 committed bytes without
+`native/core/tests/numeric_contract.rs` compares 25,731,273 committed bytes without
 tolerances: fixed-tick flight state, support events and RNG cursors, carved water,
 craters, rotated box hits, cover anchors, spherical interpolation and infantry
 movement, infantry cover fire, postures, ammunition, burst recovery, vitals, aiming,
@@ -625,7 +642,7 @@ flag until Rust owns the actors.
 
 The shock fixture compares 92,160 reference steps, including mounted turning,
 blocked terrain, carried casualties and task interruption. The full default suite
-passes 158 tests; 345 core tests pass in debug and release.
+passes 160 tests; 359 core tests pass in debug and release.
 
 ## Spatial query state
 

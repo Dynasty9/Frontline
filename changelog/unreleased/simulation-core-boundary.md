@@ -63,6 +63,7 @@ kind = "fixed"
 - Driving checks preserve tracked and wheeled steering, traffic gaps, reversing, truck lanes and getting unstuck through saved-state resumes.
 - Crew checks preserve withdrawing for repairs, evading missiles, waiting for infantry support and resuming saved orders.
 - Flight checks preserve helicopter momentum, hover braking, landing clearance, sling-load handling and UAV orbits across saved-state resumes.
+- Transport checks preserve sling pickup, swing, release and dropped cargo, plus pilots' landing, unloading, supply-destination and return-flight decisions.
 - Nearby-infantry, building and door checks preserve query ordering through movement and checkpoint restoration as shared world state moves into Rust.
 - The extracted simulation uses pinned numeric rules, with exact checkpoint comparisons across platforms as replay verification work continues.
 - Guided missiles keep a consistent turn after overshooting their aim point, instead of letting rounding choose an erratic turn direction.

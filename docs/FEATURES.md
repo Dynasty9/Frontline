@@ -1349,7 +1349,10 @@ for infantry and resuming saved orders. Flight and combat dispatch still need to
 join the full Rust world loop.
 Rotorcraft and UAV guidance checks preserve momentum, hover braking, ground
 clearance, sling-load handling, orbit phase and flight attitude across saved-state
-resumes; aircraft missions and combat still use the existing dispatcher.
+resumes. Paired sling checks preserve pickup, swing, release and dropped cargo;
+pilot checks preserve pickup hover, touchdown, unloading, supply destinations
+and return flights. Aircraft combat and shared delivery effects still need to
+join the Rust world dispatcher.
 Construction, town income, capture and production transitions match the existing
 game; shared rule effects, destruction and the full building dispatcher still need
 migration before Rust owns the complete battle.

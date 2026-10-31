@@ -36,6 +36,162 @@ fn block(out: &mut Vec<u8>, bytes: &[u8]) {
 }
 
 #[test]
+fn transport_flight_phases_are_identical_across_platforms() {
+    use frontline_core::vehicle::Vehicle;
+    use frontline_core::vehicle_air::{HomeLanding, LiftEvent, SlingTarget, SupplyPoint};
+    use frontline_core::vehicle_flight::FlightProfile;
+    let terrain = Terrain::blank(128).unwrap();
+    let p = FlightProfile {
+        speed: 22.0,
+        accel: 5.0,
+        brake: 6.0,
+        turn: 0.7,
+        turn_accel: 0.95,
+    };
+    let home = HomeLanding {
+        position: Vector3::new(-31.3, 0.0, 7.1),
+        landing: Vector3::new(-31.0, 0.0, 6.4),
+    };
+    let mut bytes = Vec::new();
+    for trial in 0..32 {
+        let mut v = Vehicle {
+            id: 7,
+            position: Vector3::new(-7.3, 0.15, 11.7),
+            yaw: (trial % 7) as f64 * 0.37,
+            flight: Some([0.0; 3]),
+            heli_phase: (trial / 2) % 8,
+            heli_destination: 51,
+            heli_timer: 0.3,
+            flight_hold: Some(Vector3::new(9.1, 0.15, -3.7)),
+            lift_phase: (trial / 2) % 8,
+            lift_destination: Some(Vector3::new(13.7, 0.0, -11.3)),
+            lift_timer: 0.3,
+            sling_target: if matches!((trial / 2) % 8, 5 | 6) {
+                99
+            } else {
+                0
+            },
+            sling_cargo: if trial % 7 == 3 { 99 } else { 0 },
+            passengers: if trial % 3 == 2 { vec![98] } else { vec![] },
+            ..Default::default()
+        };
+        let fobs = [
+            SupplyPoint {
+                id: 51,
+                position: Vector3::new(12.7, 0.0, -19.3),
+                supply: 20.0,
+            },
+            SupplyPoint {
+                id: 52,
+                position: Vector3::new(-12.7, 0.0, -19.3),
+                supply: 20.0,
+            },
+        ];
+        for step in 0..1200 {
+            let dt = [1.0 / 30.0, 0.1, 0.2][trial as usize % 3];
+            if trial % 2 == 0 {
+                let destination = fobs.iter().find(|f| f.id == v.heli_destination).copied();
+                let delivered = v
+                    .supply_guidance(dt, p, &terrain, &[], &fobs, destination, home.position)
+                    .unwrap();
+                bytes.extend_from_slice(&delivered.unwrap_or(0).to_le_bytes());
+            } else {
+                let target = (v.sling_target != 0).then_some(SlingTarget {
+                    id: 99,
+                    position: Vector3::new(17.3, 0.0, -13.7),
+                    height: 2.2,
+                });
+                let event = v
+                    .lift_guidance(dt, p, &terrain, &[], 2.2, target, Some(home))
+                    .unwrap();
+                match event {
+                    LiftEvent::None => bytes.push(0),
+                    LiftEvent::Hook(id) => {
+                        bytes.push(1);
+                        bytes.extend_from_slice(&id.to_le_bytes());
+                    }
+                    LiftEvent::Release => bytes.push(2),
+                    LiftEvent::Dismount => bytes.push(3),
+                }
+            }
+            if step % 67 == 0 {
+                block(&mut bytes, &v.checkpoint().unwrap());
+            }
+            if step == 731 {
+                v = Vehicle::restore(&v.checkpoint().unwrap()).unwrap();
+            }
+        }
+    }
+    golden("vehicle_air", &bytes);
+}
+
+#[test]
+fn paired_sling_motion_and_drops_are_identical_across_platforms() {
+    use frontline_core::actors::{Actor, Actors};
+    use frontline_core::vehicle::Vehicle;
+    use frontline_core::vehicle_sling::SlingSpec;
+    let mut nav = PathPlanner::new(64).unwrap();
+    let kinds: Vec<u8> = (0..4096).map(|i| if i % 7 == 0 { 3 } else { 0 }).collect();
+    assert!(nav.load_cells(&[0; 4096], &kinds, &[0; 4096]));
+    let mut bytes = Vec::new();
+    for trial in 0..32 {
+        let mut actors = Actors::from_entries(
+            3,
+            vec![
+                Actor::Vehicle(Box::new(Vehicle {
+                    id: 1,
+                    position: Vector3::new(-7.3, 10.0 + (trial % 5) as f32 * 3.0, 11.7),
+                    velocity: Vector3::new(2.1, -0.1, -3.7),
+                    yaw: trial as f64 * 0.37,
+                    ..Default::default()
+                })),
+                Actor::Vehicle(Box::new(Vehicle {
+                    id: 2,
+                    yaw: trial as f64 * 0.31,
+                    max_hp: 1000.0,
+                    hp: 1000.0,
+                    ..Default::default()
+                })),
+            ],
+        )
+        .unwrap();
+        let spec = SlingSpec {
+            lift: true,
+            capacity: 2,
+            cargo_weight: 2,
+            cargo_helicopter: false,
+            cargo_boat: false,
+            cargo_automatic: false,
+        };
+        assert!(actors.order_sling(1, 2, spec).unwrap());
+        block(&mut bytes, &actors.checkpoint().unwrap());
+        assert!(actors.hook_sling(1, 2, spec).unwrap());
+        for step in 0..240 {
+            assert!(actors
+                .step_sling(1, [1.0 / 30.0, 1.0 / 60.0, 0.1][trial % 3], 2.2)
+                .unwrap());
+            if step % 23 == 0 {
+                block(&mut bytes, &actors.checkpoint().unwrap());
+            }
+            if step == 97 {
+                actors = Actors::restore(&actors.checkpoint().unwrap()).unwrap();
+            }
+        }
+        if trial % 2 == 0 {
+            assert_eq!(actors.release_sling(1, &nav).unwrap(), Some(2));
+        } else {
+            actors.remove(1).unwrap();
+            let drop = actors.drop_sling(2, &nav).unwrap();
+            point(&mut bytes, drop.position);
+            bytes.extend_from_slice(&drop.damage.to_le_bytes());
+            bytes.push(u8::from(drop.impact));
+        }
+        block(&mut bytes, &actors.checkpoint().unwrap());
+    }
+    golden("vehicle_sling", &bytes);
+}
+
+#[test]
 fn vehicle_flight_momentum_and_orbits_are_identical_across_platforms() {
     use frontline_core::vehicle::Vehicle;
     use frontline_core::vehicle_flight::FlightProfile;

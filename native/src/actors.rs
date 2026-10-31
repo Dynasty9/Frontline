@@ -4,6 +4,7 @@ use frontline_core::drone_actor::Drone;
 use frontline_core::entities::Kind;
 use frontline_core::infantry_casualty::Released;
 use frontline_core::projectile_actor::{Event, Explosion};
+use frontline_core::vehicle_sling::SlingSpec;
 use godot::prelude::*;
 
 #[derive(GodotClass)]
@@ -29,9 +30,76 @@ fn impact(r: Result<Option<Explosion>, &'static str>) -> Array<Variant> {
 fn vector(p: frontline_core::vector::Vector3) -> Vector3 {
     Vector3::new(p.x, p.y, p.z)
 }
+fn sling_spec(a: &PackedInt32Array) -> Result<SlingSpec, &'static str> {
+    let a = a.as_slice();
+    if a.len() != 6 || [0, 3, 4, 5].into_iter().any(|i| a[i] != 0 && a[i] != 1) {
+        return Err("invalid sling profile");
+    }
+    Ok(SlingSpec {
+        lift: a[0] != 0,
+        capacity: a[1].try_into().map_err(|_| "invalid capacity")?,
+        cargo_weight: a[2].try_into().map_err(|_| "invalid weight")?,
+        cargo_helicopter: a[3] != 0,
+        cargo_boat: a[4] != 0,
+        cargo_automatic: a[5] != 0,
+    })
+}
 
 #[godot_api]
 impl ActorStateCore {
+    #[func]
+    fn can_sling(&self, helicopter: u32, cargo: u32, spec: PackedInt32Array) -> i32 {
+        sling_spec(&spec)
+            .and_then(|s| self.core.can_sling(helicopter, cargo, s))
+            .map_or(-1, i32::from)
+    }
+    #[func]
+    fn order_sling(&mut self, helicopter: u32, cargo: u32, spec: PackedInt32Array) -> i32 {
+        sling_spec(&spec)
+            .and_then(|s| self.core.order_sling(helicopter, cargo, s))
+            .map_or(-1, i32::from)
+    }
+    #[func]
+    fn hook_sling(&mut self, helicopter: u32, cargo: u32, spec: PackedInt32Array) -> i32 {
+        sling_spec(&spec)
+            .and_then(|s| self.core.hook_sling(helicopter, cargo, s))
+            .map_or(-1, i32::from)
+    }
+    #[func]
+    fn step_sling(&mut self, helicopter: u32, dt: f64, height: f64) -> i32 {
+        self.core
+            .step_sling(helicopter, dt, height)
+            .map_or(-1, i32::from)
+    }
+    #[func]
+    fn release_sling(
+        &mut self,
+        helicopter: u32,
+        planner: Gd<crate::path_planner::PathPlannerCore>,
+    ) -> i64 {
+        let nav = planner.bind();
+        let Some(nav) = nav.core.as_ref() else {
+            return -1;
+        };
+        self.core
+            .release_sling(helicopter, nav)
+            .map_or(-1, |v| i64::from(v.unwrap_or(0)))
+    }
+    #[func]
+    fn drop_sling(
+        &mut self,
+        cargo: u32,
+        planner: Gd<crate::path_planner::PathPlannerCore>,
+    ) -> Array<Variant> {
+        let nav = planner.bind();
+        let Some(nav) = nav.core.as_ref() else {
+            return Array::new();
+        };
+        match self.core.drop_sling(cargo, nav) {
+            Ok(drop) => varray![vector(drop.position), drop.damage, drop.impact],
+            Err(_) => Array::new(),
+        }
+    }
     #[func]
     fn load_state(&mut self, next_id: i64, kinds: PackedByteArray, blocks: Array<Variant>) -> bool {
         if kinds.len() != blocks.len() || blocks.len() > frontline_core::entities::MAX_ENTITIES {

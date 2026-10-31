@@ -41,7 +41,7 @@ fn ground(p: Vector3, terrain: &Terrain, deck: &[u8]) -> f64 {
         .max(0.0)
 }
 impl FlightProfile {
-    fn valid(self) -> bool {
+    pub(crate) fn valid(self) -> bool {
         [
             self.speed,
             self.accel,

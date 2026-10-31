@@ -542,6 +542,112 @@ fn crew_contacts(rows: &Array<Variant>) -> Option<Vec<Contact>> {
 #[godot_api]
 impl VehicleStateCore {
     #[func]
+    fn lift_guidance(
+        &mut self,
+        dt: f64,
+        profile: PackedFloat64Array,
+        terrain: Gd<TerrainCore>,
+        deck: PackedByteArray,
+        cargo_height: f64,
+        target: Array<Variant>,
+        home: PackedVector3Array,
+    ) -> PackedInt64Array {
+        use frontline_core::vehicle_air::{HomeLanding, LiftEvent, SlingTarget};
+        let parse = || -> Option<(FlightProfile, Option<SlingTarget>, Option<HomeLanding>)> {
+            if !matches!(target.len(), 0 | 3) || !matches!(home.len(), 0 | 2) {
+                return None;
+            }
+            let t = if target.is_empty() {
+                None
+            } else {
+                Some(SlingTarget {
+                    id: read(&target, 0)?,
+                    position: crate::point(read(&target, 1)?),
+                    height: read(&target, 2)?,
+                })
+            };
+            let h = if home.is_empty() {
+                None
+            } else {
+                Some(HomeLanding {
+                    position: crate::point(home[0]),
+                    landing: crate::point(home[1]),
+                })
+            };
+            Some((flight_profile(&profile)?, t, h))
+        };
+        let Some((p, target, home)) = parse() else {
+            return PackedInt64Array::new();
+        };
+        let terrain = terrain.bind();
+        let (Some(v), Some(terrain)) = (self.core.as_mut(), terrain.core.as_ref()) else {
+            return PackedInt64Array::new();
+        };
+        match v.lift_guidance(dt, p, terrain, deck.as_slice(), cargo_height, target, home) {
+            Ok(LiftEvent::None) => [0, 0].as_slice().into(),
+            Ok(LiftEvent::Hook(id)) => [1, i64::from(id)].as_slice().into(),
+            Ok(LiftEvent::Release) => [2, 0].as_slice().into(),
+            Ok(LiftEvent::Dismount) => [3, 0].as_slice().into(),
+            Err(_) => PackedInt64Array::new(),
+        }
+    }
+    #[func]
+    fn supply_guidance(
+        &mut self,
+        dt: f64,
+        profile: PackedFloat64Array,
+        terrain: Gd<TerrainCore>,
+        deck: PackedByteArray,
+        fobs: Array<Variant>,
+        destination: Array<Variant>,
+        home: Vector3,
+    ) -> i64 {
+        use frontline_core::vehicle_air::SupplyPoint;
+        let parse = |row: &Array<Variant>| -> Option<SupplyPoint> {
+            if row.len() != 3 {
+                return None;
+            }
+            Some(SupplyPoint {
+                id: read(row, 0)?,
+                position: crate::point(read(row, 1)?),
+                supply: read(row, 2)?,
+            })
+        };
+        if fobs.len() > 100_000 {
+            return -1;
+        }
+        let fobs: Option<Vec<_>> = fobs
+            .iter_shared()
+            .map(|v| parse(&v.try_to::<Array<Variant>>().ok()?))
+            .collect();
+        let destination = if destination.is_empty() {
+            None
+        } else {
+            let Some(v) = parse(&destination) else {
+                return -1;
+            };
+            Some(v)
+        };
+        let (Some(fobs), Some(p)) = (fobs, flight_profile(&profile)) else {
+            return -1;
+        };
+        let terrain = terrain.bind();
+        let (Some(v), Some(terrain)) = (self.core.as_mut(), terrain.core.as_ref()) else {
+            return -1;
+        };
+        v.supply_guidance(
+            dt,
+            p,
+            terrain,
+            deck.as_slice(),
+            &fobs,
+            destination,
+            crate::point(home),
+        )
+        .map_or(-1, |id| i64::from(id.unwrap_or(0)))
+    }
+
+    #[func]
     fn fly_to(
         &mut self,
         goal: Vector3,

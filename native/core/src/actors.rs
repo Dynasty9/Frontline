@@ -135,6 +135,12 @@ impl Actors {
             _ => None,
         }
     }
+    pub(crate) fn vehicle_mut(&mut self, id: u32) -> Option<&mut Vehicle> {
+        match self.values.get_mut(&id) {
+            Some(Actor::Vehicle(v)) => Some(v),
+            _ => None,
+        }
+    }
     pub fn board(
         &mut self,
         vehicle: u32,
