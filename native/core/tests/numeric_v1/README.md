@@ -7,6 +7,8 @@ different byte rather than dumping the fixture.
 
 - `flight.bin`: projectile, drone, guided and support-aircraft checkpoints, support
   events and RNG cursors over fixed ticks.
+- `fires.bin`: connected ignition, spread, casualties, escape paths, smoke, building
+  destruction and geometry checkpoints with random cursors across resumed updates.
 - `geometry.bin`: water/carved terrain, craters, rotated geometry and ray hits,
   spherical interpolation, cover anchors and infantry movement checkpoints.
 - `infantry_weapon.bin`: cover-fire decisions, postures, ammunition and burst

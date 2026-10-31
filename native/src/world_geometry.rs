@@ -4,9 +4,9 @@ use godot::prelude::*;
 
 #[derive(GodotClass)]
 #[class(base=RefCounted, init)]
-struct WorldGeometryCore {
+pub(crate) struct WorldGeometryCore {
     base: Base<RefCounted>,
-    core: Option<WorldGeometry>,
+    pub(crate) core: Option<WorldGeometry>,
 }
 #[godot_api]
 impl WorldGeometryCore {

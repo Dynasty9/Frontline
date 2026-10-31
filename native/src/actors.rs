@@ -376,7 +376,7 @@ fn artillery_profile(
     })
 }
 
-fn read_squads(
+pub(crate) fn read_squads(
     nodes: &Array<Gd<crate::squad::SquadStateCore>>,
 ) -> Option<Vec<frontline_core::squad::Squad>> {
     if nodes.len() > 100_000 {
@@ -392,7 +392,7 @@ fn read_squads(
         })
         .collect()
 }
-fn write_squads(
+pub(crate) fn write_squads(
     nodes: Array<Gd<crate::squad::SquadStateCore>>,
     state: Vec<frontline_core::squad::Squad>,
 ) {

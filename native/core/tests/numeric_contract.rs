@@ -30,6 +30,150 @@ use frontline_core::visibility::{Smoke, Visibility};
 use frontline_core::water::{Pond, River, Water};
 use std::path::PathBuf;
 
+#[path = "fixtures/fires_world.rs"]
+mod fires_world;
+
+#[test]
+fn fires_and_shared_casualties_are_identical_across_platforms() {
+    use fires_world::*;
+    use frontline_core::actors::Actor;
+    use frontline_core::fires::{Event as FireEvent, Fires};
+    let mut bytes = vec![];
+    for trial in 0..12 {
+        let mut entries = vec![];
+        for (i, kind) in [
+            "tree",
+            "hedge",
+            "crates",
+            "watchtower",
+            "medic_tent",
+            "barracks",
+            "log_bunker",
+            "roof",
+            "car",
+            "wreck",
+            "camo_net",
+            "barricade",
+        ]
+        .into_iter()
+        .enumerate()
+        {
+            let mut st = structure(100 + i as u32, kind, (i % 4) as f32 * 3.3 - 5.0);
+            st.position.z = (i / 4) as f32 * 4.1 - 4.0;
+            st.yaw = (i % 3) as f64 * 0.37;
+            if i == trial {
+                st.hp = 0.01;
+            }
+            entries.push(actor(st));
+        }
+        for id in 1..=12 {
+            let life = [
+                Life::Alive,
+                Life::Downed,
+                Life::Surrender,
+                Life::Captive,
+                Life::Dead,
+                Life::Hidden,
+            ][(id as usize + trial) % 6];
+            let mut s = soldier(id, (id % 4) as f32 * 3.1 - 4.3, life);
+            s.motion.position.z = (id / 4) as f32 * 3.3 - 3.7;
+            s.vitals.hp = 20.0 + id as f64;
+            s.vitals.bleed = 1.0 + id as f64;
+            entries.push(Actor::Soldier(Box::new(s)));
+        }
+        let mut world = Battle::new(entries);
+        world.rng = SimulationRandom::new(91733 + trial as u64);
+        let mut fires = Fires::new(32, trial % 3 == 0).unwrap();
+        for i in 0..12 {
+            if i % 3 == trial % 3 || i == trial {
+                fires
+                    .ignite(100 + i as u32, 0.9, &mut world.context(), &mut vec![])
+                    .unwrap();
+            }
+        }
+        fires
+            .start_patch(
+                Vector3::new(4.0, 2.0, 5.0),
+                2.5,
+                15.0,
+                0,
+                &mut world.geometry,
+                &mut vec![],
+            )
+            .unwrap();
+        for tick in 0..192 {
+            let dt = [0.1, 0.27, 0.5, 1.1][(tick + trial) % 4];
+            world.now += dt;
+            if tick % 13 == 0 {
+                fires
+                    .blast(
+                        Vector3::new(
+                            (tick % 5) as f32 * 3.0 - 7.0,
+                            [0.0, 1.6, 2.0][trial % 3],
+                            0.0,
+                        ),
+                        2.7,
+                        11.3,
+                        &mut world.context(),
+                    )
+                    .unwrap();
+            }
+            let events = fires.tick(dt, &mut world.context()).unwrap();
+            for event in events {
+                match event {
+                    FireEvent::Scorched {
+                        soldier,
+                        hit,
+                        escape,
+                    } => {
+                        bytes.push(0);
+                        bytes.extend_from_slice(&soldier.to_le_bytes());
+                        bytes.extend_from_slice(&hit.damage_credited.to_le_bytes());
+                        bytes.push(escape.is_some() as u8);
+                    }
+                    FireEvent::BurnedDown { structure, .. } => {
+                        bytes.push(1);
+                        bytes.extend_from_slice(&structure.to_le_bytes());
+                    }
+                    FireEvent::Charred { structure, variant } => {
+                        bytes.push(2);
+                        bytes.extend_from_slice(&structure.to_le_bytes());
+                        bytes.extend_from_slice(&variant.to_le_bytes());
+                    }
+                    FireEvent::Ignited { structure, .. } => {
+                        bytes.push(3);
+                        bytes.extend_from_slice(&structure.to_le_bytes());
+                    }
+                    FireEvent::Grass(p) => {
+                        bytes.push(4);
+                        point(&mut bytes, p.position);
+                        bytes.extend_from_slice(&p.radius.to_le_bytes());
+                        bytes.extend_from_slice(&p.life.to_le_bytes());
+                    }
+                    FireEvent::GrassLit => bytes.push(5),
+                    FireEvent::GrassSpread => bytes.push(6),
+                }
+            }
+            bytes.extend_from_slice(&world.rng.state().to_le_bytes());
+            if tick % 23 == 0 || tick == 191 {
+                block(&mut bytes, &fires.checkpoint());
+                block(&mut bytes, &world.actors.checkpoint().unwrap());
+                block(&mut bytes, &world.geometry.checkpoint());
+                block(&mut bytes, &world.battle.checkpoint());
+                block(&mut bytes, &world.visibility.checkpoint());
+                block(&mut bytes, &world.deferred.checkpoint());
+                let restored = world.resume();
+                world.compare(&restored);
+                world = restored;
+                fires = Fires::restore(&fires.checkpoint()).unwrap();
+            }
+            world.geometry.tick_cover(17).unwrap();
+            world.geometry.finish_tick();
+        }
+    }
+    golden("fires", &bytes);
+}
+
 fn block(out: &mut Vec<u8>, bytes: &[u8]) {
     out.extend_from_slice(&(bytes.len() as u32).to_le_bytes());
     out.extend_from_slice(bytes);

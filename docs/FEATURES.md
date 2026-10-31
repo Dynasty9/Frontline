@@ -1441,9 +1441,11 @@ integration.
 Retained corpse cleanup checks shared carrier state and ground caches before
 removing expired bodies; captive movement keeps the existing route speed and
 hands-up posture. Wounded behavior and the full world dispatcher remain unfinished.
-Retained fire escape preserves committed duties, strict cooldowns, cover reset,
-walkable retreat destinations and warnings. Shared burning and scorch damage still
-need to call it from the full Rust fire dispatcher.
+Retained fires connect ignition, spreading, heat, smoke, casualties and escape
+orders to shared actors and navigation. Burned structures update the battle record
+and retire their geometry before later fire victims act. Checkpoints preserve
+burning lists, grass patches, heat counts and update timers. The live world still
+calls Godot's fire loop until the complete Rust dispatcher is ready.
 Retained navigation owns each structure's overlapping obstacle cells together with
 the infantry and vehicle route hierarchies. Fire counts, bridge decks, terrain
 costs and obstacle removal preserve incremental repair order and pending routes

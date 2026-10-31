@@ -26,6 +26,7 @@ graphics, network access or a wall clock.
 | Squad state and shared knowledge | `frontline_core` | Orders, contact caches, plan links and tactical state have retained checkpoints; centroid, contact reports, threats, succession and casualty morale operate on owned actors. Squad orders, drills and the full squad tick still run in Godot |
 | Retained buildings and economy transitions | `frontline_core` | Geometry, links, queues and timers have retained checkpoints; construction, capture, town income and production transitions match Godot. Shared rule effects, destruction, crews and the complete building dispatcher remain unfinished |
 | Deferred damage and rubble | `frontline_core` | The live world uses checkpointed explosion deadlines and pending rubble spawns, with an engine-only fallback. Godot still applies the resulting damage and creates structures |
+| Fire, smoke and burning destruction | `frontline_core` | Retained fires apply ignition, spread, scorch damage, escape routes, battle records and geometry removal together; the live game still invokes Godot's fire loop |
 | Spatial bucket ownership | `frontline_core` | Infantry, vehicle, building and closed-door queries use retained actor IDs and preserve cell/registration order through checkpoints |
 | Weighted grid paths and cluster pair costs | `frontline_core` | Exact Godot route tie behavior; native cluster workers return costs in deterministic order |
 | Boat navigation and driving | `frontline_core` | Water-cell construction, connected bodies, shore searches, routes, currents, steering, traffic, coming about and grounding recovery operate on retained state; the live dispatcher remains in Godot |
@@ -1793,8 +1794,8 @@ random direction and forced warning draws remain in their original order.
 
 Four regressions and 3,072 complete Godot soldier-state comparisons cover the
 restrictions, exact deadlines, blocked ground, routes, speech and rejected input.
-Numeric CI adds 3,009,688 exact bytes with checkpoint resumes. The shared fire
-dispatcher still needs migration before these operations run without Godot.
+Numeric CI adds 3,009,688 exact bytes with checkpoint resumes. These operations
+are also called by the retained fire dispatcher described below.
 
 ## Shared navigation edits
 
@@ -1809,8 +1810,8 @@ work keeps its fixed quota and infantry-first order.
 Five core regressions cover ownership, bridges, heat counts, rejected edits and
 checkpoint continuation. A Godot reference fixture compares 392 complete navigation
 states and 1,536 routes, including edits while repairs are pending. Numeric CI adds
-3,365,734 exact bytes. The shared world dispatcher must still connect structure
-destruction, terrain changes and the full fire loop to these retained operations.
+3,365,734 exact bytes. Retained fire destruction now invokes these operations;
+the complete world dispatcher remains unfinished.
 
 ## Structure geometry retirement
 
@@ -1829,5 +1830,19 @@ queries. Ground cells, repair queues, navigation, collision, indexes and other
 checkpoint fields compare exactly. Only stored double-precision sine/cosine cover
 coefficients allow a 1e-15 Godot comparison tolerance: platform trig and pinned libm
 can differ in their last bits. Rust numeric CI compares 1,474,524 exact bytes with
-no tolerance. The full fire/combat and world dispatchers still need to invoke the
-combined retirement operation.
+no tolerance. Fire invokes the combined retirement operation; the complete combat
+and world dispatchers remain unfinished.
+
+## Connected fire loop
+
+Rust owns the complete fire update: ignition and blast flashes, wind-driven spread,
+rain, grass patches, heat stamps, smoke, fuel and charring. Scorch damage updates
+shared casualties, squads and battle records before issuing escape paths. Burning
+destruction retires geometry immediately, so a later victim can use a newly opened
+route in the same update. Collision remains until the tick boundary as above.
+
+Five regressions and 4,608 complete Godot fire updates compare retained actors,
+squads, ledger, navigation, geometry, smoke and random cursors, including checkpoint
+resumes. The exact numeric corpus adds 9,628,857 bytes. All 673 debug core tests
+pass. This loop is still reference-tested separately: the complete Rust world tick,
+socket server and whole-battle replay verifier remain unfinished.
