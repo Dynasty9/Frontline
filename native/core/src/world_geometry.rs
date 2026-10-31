@@ -1,6 +1,6 @@
 //! Geometry leaves navigation immediately, but shields shots until the current tick ends.
 use crate::actors::{Actor, Actors};
-use crate::collision::CollisionWorld;
+use crate::collision::{BoxShape, CollisionWorld};
 use crate::cover::{rotation, transform};
 use crate::navigation_scene::NavigationScene;
 use crate::random::SimulationRandom;
@@ -11,6 +11,7 @@ use crate::structure_birth::BuildingProfile;
 use crate::terrain::Terrain;
 use crate::terrain_cover::{CoverPart, CoverStructure};
 use crate::vector::{normalized, Vector3};
+use crate::vehicle::Vehicle;
 use glam::Vec2;
 use std::collections::HashSet;
 
@@ -48,6 +49,35 @@ impl WorldGeometry {
     }
     pub fn pending_removals(&self) -> &[u32] {
         &self.retired
+    }
+
+    pub fn refresh_vehicle_collision(
+        &mut self,
+        vehicle: &Vehicle,
+        hull: Vector3,
+    ) -> Result<(), &'static str> {
+        if !vehicle.valid()
+            || vehicle.gone
+            || !hull.is_finite()
+            || hull.min_element() <= 0.0
+            || hull.max_element() > 4096.0
+            || self.retired.contains(&vehicle.id)
+        {
+            return Err("invalid vehicle collision state");
+        }
+        if !self.collision.replace(
+            i64::from(vehicle.id),
+            &[BoxShape {
+                body: i64::from(vehicle.id),
+                shape: 0,
+                center: vehicle.position + Vector3::Y * (hull.y * 0.5),
+                basis: rotation(vehicle.yaw),
+                half: hull * 0.5,
+            }],
+        ) {
+            return Err("vehicle collision exceeds world limits");
+        }
+        Ok(())
     }
 
     pub fn toss_structure(
@@ -251,6 +281,18 @@ impl WorldGeometry {
         for id in self.retired.drain(..) {
             self.collision.remove(i64::from(id));
         }
+    }
+    pub fn retire_collision(&mut self, id: u32) -> Result<(), &'static str> {
+        if id == 0 {
+            return Err("invalid retired collision identity");
+        }
+        if self.collision.contains(i64::from(id)) && !self.retired.contains(&id) {
+            if self.retired.len() >= 1_000_000 {
+                return Err("retired collision limit exceeded");
+            }
+            self.retired.push(id);
+        }
+        Ok(())
     }
     pub fn sync_structure(&mut self, st: &Structure, reindex: bool) -> Result<(), &'static str> {
         if !st.valid() || st.parts.iter().any(|p| p.size.min_element() < 0.0) {

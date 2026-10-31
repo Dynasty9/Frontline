@@ -136,10 +136,12 @@ func world_save(w: World) -> PackedByteArray:
 func check_geometry(w: World, core: RefCounted, where: String) -> void:
 	var expected := states(w); var actual: Array = core.inspect()
 	assert(terrain_equal(expected[0], actual[0]), "geometry terrain " + where)
-	for i in range(1, 5):
+	assert(collision_equal(expected[2],actual[2]), "geometry collision " + where + ": " + collision_difference(expected[2],actual[2]))
+	for i in [1,3,4]:
 		assert(expected[i] == actual[i], "geometry state %s part %d" % [where, i])
 	var expected_world := header("FLWG"); expected_world.append_array(block(actual[0]))
-	expected_world.append_array(world_save(w).slice(12 + expected[0].size()))
+	expected_world.append_array(block(expected[1])); expected_world.append_array(block(actual[2]))
+	expected_world.append_array(world_save(w).slice(20 + expected[0].size() + expected[1].size() + expected[2].size()))
 	assert(expected_world == core.checkpoint(), "full geometry " + where)
 	checks += 1
 

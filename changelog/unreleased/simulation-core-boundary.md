@@ -103,6 +103,7 @@ kind = "fixed"
 - Passenger checks preserve dismount timing, exits onto shore and the section's next orders, including removed passengers.
 - Infantry birth checks preserve unit loadouts, upgrades, names, initial cooldowns and squad membership as entity creation moves into Rust.
 - Vehicle-loss checks preserve passenger casualties, crew survival and final wreck positions, including random choices between each survivor's escape.
+- Connected vehicle-destruction checks preserve dropped sling cargo, battle credit, supply-truck replacement, crew return orders and burning wrecks in their original order.
 - Launch checks preserve vehicle missiles, defensive smoke, warning order and random choices across saved-state resumes.
 - Vehicle targeting checks preserve infantry exposure, aircraft priorities, fog-hidden buildings, forced targets and nearby squad reports as combat decisions move into Rust.
 - Infantry targeting checks preserve concealment, wounded firing, mounted-gun arcs, drone reactions and contact-report order as soldiers begin reading shared Rust actor state.

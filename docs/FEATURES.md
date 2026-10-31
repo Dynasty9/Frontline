@@ -1432,9 +1432,11 @@ still needs to apply their geometry, heat, battle-record and rule effects.
 Retained infantry births preserve every unit loadout, upgrades, initial cooldowns,
 names and squad recruitment. Live spawning and squad ledger callbacks remain in
 Godot until the shared world dispatcher owns them.
-Retained vehicle-loss operations preserve passenger injuries, nearby flinching,
-crew survival and births, and final wreck placement. Shared destruction callbacks,
-crew return orders and wreck creation still need world-level integration.
+Retained vehicle destruction connects passenger injuries, nearby flinching,
+crew survival and births, battle credit, supply-truck replacement timers and
+recursive sling-cargo damage. Crew return orders and refunds happen before wreck
+creation, shared geometry registration and ignition. The live game still uses
+the Godot dispatcher until the complete Rust world loop is ready.
 Retained medical duties update shared rescue claims, shelter routes, dragging,
 healing and revival, so later soldiers immediately see a claimed or recovered
 patient. Squad rejoining, battle-record callbacks and live dispatch still need

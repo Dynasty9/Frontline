@@ -29,9 +29,9 @@ struct State {
 }
 #[derive(GodotClass)]
 #[class(base=RefCounted, init)]
-struct FiresCore {
+pub(crate) struct FiresCore {
     base: Base<RefCounted>,
-    core: Option<Fires>,
+    pub(crate) core: Option<Fires>,
     state: Option<State>,
 }
 impl FiresCore {

@@ -8,7 +8,9 @@ use frontline_core::vehicle_sling::SlingSpec;
 use godot::prelude::*;
 use std::collections::HashMap;
 
-fn birth_loadout(loadout: &Array<Variant>) -> Option<frontline_core::infantry_spawn::Loadout> {
+pub(crate) fn birth_loadout(
+    loadout: &Array<Variant>,
+) -> Option<frontline_core::infantry_spawn::Loadout> {
     use frontline_core::infantry_spawn::Loadout;
     if loadout.len() != 11 {
         return None;

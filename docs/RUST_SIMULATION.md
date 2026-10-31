@@ -1647,10 +1647,8 @@ Seven core regressions and the Godot reference check 185 newly born crew members
 1,536 passenger/bystander states and 256 wreck plans, plus squad state and random
 continuation. The reference captures the newly formed crew immediately before its
 return-order callback. Numeric CI adds 2,634,965 exact bytes with restored state
-between evacuation and crew births. These operations do not yet perform the full
-vehicle destruction dispatch: recursive sling damage, ledger/rule callbacks,
-crew return orders, authoritative wreck creation and geometry updates remain to
-be connected in the Rust world.
+between evacuation and crew births. The connected destruction operation below
+now applies the ledger, sling, crew-return and wreck-creation effects together.
 
 ## Shared rescue and healing duties
 
@@ -1963,3 +1961,28 @@ record changed bytes separately to avoid repeating unchanged map grids; comparis
 remains exact and uses no hashes or floating-point tolerance.
 The live game still uses the Godot squad dispatcher; these comparisons establish
 compatibility of the retained operation, not a whole-battle performance result.
+
+## Connected vehicle destruction
+
+Retained vehicle damage now records the hit, updates health and alerts, then
+finishes destruction before another world hit can run. A carrier's sling cargo
+falls and takes damage recursively before its own passengers evacuate. Each
+passenger casualty updates battle credit before the next passenger is injured;
+sinking boats preserve the surrounding credit scope and produce no land wreck.
+Supply losses update the source town or destination FOB's truck and replacement
+timer. Wreck-placement draws precede crew survival, and surviving crews receive
+their return order or immediate FOB refund before the burning wreck is created.
+The wreck registers collision, navigation, spatial cells and cover, while the old
+vehicle's collision remains until the tick boundary. Dropped sling cargo updates
+its collision to the landing position before applying impact damage. Messages retain the lost
+vehicle's name, team and position after its actor is removed.
+
+Seven regressions check damage credit, duplicate hits, refunds, supply losses,
+sinking, recursive sling destruction, invalid input and complete checkpoint
+continuation. The Godot reference compares 192 destruction cases and 384 world
+geometry states across the vehicle roster, including passenger and crew states,
+route queues, squads, the battle ledger, burning lists and random cursors.
+The numeric transcript adds 2,522,922 exact bytes for connected destruction and
+resumed nonfatal/fatal hits. The live dispatcher and whole-battle replay verifier
+are still unfinished; this is a connected operation in the engine-independent
+world, not a claim that the standalone server is ready.

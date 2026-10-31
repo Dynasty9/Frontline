@@ -5,15 +5,6 @@ class TossWorld extends World:
 		set_process(false); set_physics_process(false)
 	func fx_event(_event: Array) -> void: pass
 
-func check_geometry(w: World, core: RefCounted, where: String) -> void:
-	var expected := states(w); var actual: Array = core.inspect()
-	assert(terrain_equal(expected[0],actual[0]), "toss terrain " + where)
-	assert(collision_equal(expected[2],actual[2]), "toss collision " + where + ": " + collision_difference(expected[2],actual[2]))
-	var full := header("FLWG"); full.append_array(block(actual[0])); full.append_array(block(expected[1])); full.append_array(block(actual[2]))
-	full.append_array(world_save(w).slice(20 + expected[0].size() + expected[1].size() + expected[2].size()))
-	assert(full == core.checkpoint(), "toss full geometry " + where)
-	checks += 1
-
 func _ready() -> void:
 	MapDims.N = 64; MapDims.SIZE = 64.0; MapDims.HALF = 32.0; MapDims.BIOME = 64; Defs.MAP_HALF = 32.0
 	Nav.N = 64; Nav.H = 32.0; HNav.C = 16; HNav.NC = 4; HNav.NCC = 16; HNav._corner = HNav._corners()

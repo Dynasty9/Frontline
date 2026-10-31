@@ -63,6 +63,33 @@ impl Actors {
         ammunition: impl Fn(&Infantry) -> (Option<i32>, bool),
         rng: &mut SimulationRandom,
     ) -> Result<Vec<PassengerHit>, &'static str> {
+        self.evacuate_destroyed_vehicle_with(
+            id,
+            boat,
+            now,
+            surrounding_blame,
+            nav,
+            units,
+            squads,
+            |s, _| ammunition(s),
+            |_, _, _| Ok(()),
+            rng,
+        )
+    }
+
+    pub(crate) fn evacuate_destroyed_vehicle_with(
+        &mut self,
+        id: u32,
+        boat: bool,
+        now: f64,
+        surrounding_blame: Option<&Credit>,
+        nav: &PathPlanner,
+        units: &SpatialIndex,
+        squads: &mut [Squad],
+        ammunition: impl Fn(&Infantry, &[Squad]) -> (Option<i32>, bool),
+        mut after_hit: impl FnMut(&Actors, &[Squad], &PassengerHit) -> Result<(), &'static str>,
+        rng: &mut SimulationRandom,
+    ) -> Result<Vec<PassengerHit>, &'static str> {
         if units.cell_size() != UNIT_CELL
             || !now.is_finite()
             || now.abs() > 1e12 - 10.0
@@ -95,7 +122,7 @@ impl Actors {
             let Some(s) = self.soldier(who).filter(|s| s.vitals.life == Life::Hidden) else {
                 continue;
             };
-            let (stock, bearer) = ammunition(s);
+            let (stock, bearer) = ammunition(s, squads);
             let spread = if boat { 3.0 } else { 2.5 };
             let exit = shore
                 + Vector3::new(
@@ -131,7 +158,10 @@ impl Actors {
                 squads,
                 rng,
             )?;
-            hits.push(PassengerHit { soldier: who, hit });
+            let hit = PassengerHit { soldier: who, hit };
+            // A casualty can also be the next passenger's credited attacker.
+            after_hit(self, squads, &hit)?;
+            hits.push(hit);
         }
         self.vehicle_mut(id).unwrap().passengers.clear();
         if !boat {

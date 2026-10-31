@@ -39,6 +39,14 @@ mod structure_birth_world;
 #[path = "fixtures/squad_movement_world.rs"]
 mod squad_movement_world;
 
+#[path = "fixtures/vehicle_loss_world.rs"]
+mod vehicle_loss_world;
+
+#[test]
+fn connected_vehicle_destruction_is_identical_across_platforms() {
+    golden("vehicle_loss_world", &vehicle_loss_world::transcript());
+}
+
 #[test]
 fn shared_squad_movement_is_identical_across_platforms() {
     golden("squad_movement", &squad_movement_world::transcript());

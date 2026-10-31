@@ -37,6 +37,8 @@ different byte rather than dumping the fixture.
   recruitment and allocation order through resumed births.
 - `vehicle_loss.bin`: ordered passenger injuries, shared squad responses, crew
   survival/births and wreck placement, with resumed actor state and random draws.
+- `vehicle_loss_world.bin`: connected damage, passenger credit, crew return, truck
+  loss, burning wreck creation and shared world state across resumed fatal hits.
 
 - `navigation_scene.bin`: overlapping obstacle ownership, terrain and bridge edits,
   fire costs, pending hierarchy repairs and route continuation across resumes.
