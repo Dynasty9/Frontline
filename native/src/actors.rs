@@ -16,6 +16,31 @@ type ServiceStock = HashMap<
         i32,
     ),
 >;
+fn infantry_stock(
+    stock: &PackedFloat64Array,
+) -> Result<Option<(i32, frontline_core::infantry_weapon::Weapon)>, ()> {
+    Ok(if stock.is_empty() {
+        None
+    } else {
+        if stock.len() != 4
+            || [0, 1, 2].into_iter().any(|i| {
+                !stock[i].is_finite()
+                    || stock[i].fract() != 0.0
+                    || !(0.0..=1_000_000.0).contains(&stock[i])
+            })
+        {
+            return Err(());
+        }
+        Some((
+            stock[0] as i32,
+            frontline_core::infantry_weapon::Weapon {
+                ammunition: stock[1] as i32,
+                magazine: stock[2] as i32,
+                reload_time: stock[3],
+            },
+        ))
+    })
+}
 fn armor_ratings(values: &PackedInt64Array) -> Option<HashMap<u32, i32>> {
     if values.len() % 2 != 0 || values.len() > 200_000 {
         return None;
@@ -188,6 +213,156 @@ fn write_squads(
 
 #[godot_api]
 impl ActorStateCore {
+    #[func]
+    fn think_infantry(
+        &mut self,
+        id: u32,
+        context: Array<Variant>,
+        mut squad: Option<Gd<crate::squad::SquadStateCore>>,
+        heat: PackedByteArray,
+        deck: PackedByteArray,
+        terrain: Gd<crate::terrain::TerrainCore>,
+        nav: Gd<crate::path_planner::PathPlannerCore>,
+        units: Gd<crate::spatial::SpatialIndexCore>,
+        structures: Gd<crate::spatial::SpatialIndexCore>,
+        mut collision: Gd<crate::collision_index::CollisionIndexCore>,
+        visibility: Gd<crate::visibility::VisibilityCore>,
+        mut rng: Gd<crate::simulation_random::SimulationRandomCore>,
+    ) -> Array<Variant> {
+        use frontline_core::infantry_cover::CoverWorld;
+        use frontline_core::infantry_decision::{Profile, Speech};
+        if context.len() != 7 {
+            return Array::new();
+        }
+        let Some((now, stock, weapon, bearer, owned, armor, bearers)) = (|| {
+            Some((
+                context.get(0)?.try_to::<f64>().ok()?,
+                context.get(1)?.try_to::<PackedFloat64Array>().ok()?,
+                context.get(2)?.try_to::<PackedFloat64Array>().ok()?,
+                context.get(3)?.try_to::<bool>().ok()?,
+                context.get(4)?.try_to::<PackedInt64Array>().ok()?,
+                context.get(5)?.try_to::<PackedInt64Array>().ok()?,
+                context.get(6)?.try_to::<PackedInt64Array>().ok()?,
+            ))
+        })() else {
+            return Array::new();
+        };
+        if !(weapon.is_empty()
+            || weapon.len() == 2
+                && weapon[1].is_finite()
+                && weapon[1].fract() == 0.0
+                && (0.0..=1_000_000.0).contains(&weapon[1]))
+            || owned.len() > 100_000
+            || bearers.len() > 100_000
+        {
+            return Array::new();
+        }
+        let (Ok(stock), Some(armor)) = (infantry_stock(&stock), armor_ratings(&armor)) else {
+            return Array::new();
+        };
+        let Some(owned) = owned
+            .as_slice()
+            .iter()
+            .map(|&id| u32::try_from(id).ok().filter(|id| *id != 0))
+            .collect::<Option<Vec<_>>>()
+        else {
+            return Array::new();
+        };
+        if bearers
+            .as_slice()
+            .iter()
+            .any(|&id| id <= 0 || id > u32::MAX as i64)
+        {
+            return Array::new();
+        }
+        let profile = Profile {
+            stock,
+            weapon_range: (!weapon.is_empty()).then(|| weapon[0]),
+            weapon_ammunition: if weapon.is_empty() {
+                0
+            } else {
+                weapon[1] as i32
+            },
+            bearer,
+        };
+        let terrain = terrain.bind();
+        let nav = nav.bind();
+        let units = units.bind();
+        let structures = structures.bind();
+        let (Some(terrain), Some(nav), Some(units), Some(structures)) =
+            (&terrain.core, &nav.core, &units.core, &structures.core)
+        else {
+            return Array::new();
+        };
+        let mut squad = squad.as_mut().map(Gd::bind_mut);
+        if squad.as_ref().is_some_and(|q| q.core.is_none()) {
+            return Array::new();
+        }
+        let squad = squad.as_mut().and_then(|q| q.core.as_mut());
+        let mut collision = collision.bind_mut();
+        let mut world = CoverWorld {
+            terrain,
+            nav,
+            units,
+            structures,
+            collision: &mut collision.core,
+            heat: heat.as_slice(),
+            deck: deck.as_slice(),
+        };
+        self.core
+            .think_infantry(
+                id,
+                now,
+                profile,
+                squad,
+                &mut world,
+                &visibility.bind().core,
+                &owned,
+                |v| *armor.get(&v.id).unwrap_or(&1),
+                |s| bearers.as_slice().contains(&i64::from(s.identity.id)),
+                &mut rng.bind_mut().core,
+            )
+            .map_or_else(
+                |_| Array::new(),
+                |out| {
+                    let route = out.route.map_or_else(Array::new, |r| {
+                        varray![
+                            r.revision as i64,
+                            r.job.id as i64,
+                            vector(r.job.destination),
+                            r.job.care
+                        ]
+                    });
+                    let speech: Array<Variant> = out
+                        .speech
+                        .into_iter()
+                        .map(|s| {
+                            let (kind, cue) = match s {
+                                Speech::Reflex(c) => (0, c),
+                                Speech::Scavenge(c) => (1, c),
+                                Speech::Reload(c) => (2, c),
+                                Speech::Special(c) => (3, c),
+                                Speech::Cook(c) => (4, c),
+                                Speech::Throw(c) => (5, c),
+                                Speech::Breach(c) => (6, c),
+                                Speech::OutOfAmmo => (7, 0),
+                                Speech::Supply(cache) => (8, u8::from(cache)),
+                            };
+                            varray![kind, i32::from(cue)].to_variant()
+                        })
+                        .collect();
+                    let stats: Array<GString> = out.stats.into_iter().map(GString::from).collect();
+                    varray![
+                        &speech,
+                        &stats,
+                        &route,
+                        out.cancel_path,
+                        i32::from(out.reflex_leaf)
+                    ]
+                },
+            )
+    }
+
     #[func]
     fn advance_infantry_grenade_task(
         &mut self,
@@ -690,26 +865,8 @@ impl ActorStateCore {
         units: Gd<crate::spatial::SpatialIndexCore>,
         mut rng: Gd<crate::simulation_random::SimulationRandomCore>,
     ) -> Array<Variant> {
-        let stock = if stock.is_empty() {
-            None
-        } else {
-            if stock.len() != 4
-                || [0, 1, 2].into_iter().any(|i| {
-                    !stock[i].is_finite()
-                        || stock[i].fract() != 0.0
-                        || !(0.0..=1_000_000.0).contains(&stock[i])
-                })
-            {
-                return Array::new();
-            }
-            Some((
-                stock[0] as i32,
-                frontline_core::infantry_weapon::Weapon {
-                    ammunition: stock[1] as i32,
-                    magazine: stock[2] as i32,
-                    reload_time: stock[3],
-                },
-            ))
+        let Ok(stock) = infantry_stock(&stock) else {
+            return Array::new();
         };
         let units = units.bind();
         let Some(units) = units.core.as_ref() else {

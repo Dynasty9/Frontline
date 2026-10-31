@@ -9,6 +9,7 @@ kind = "fixed"
 - Starting a different-sized map with the same seed now rebuilds its terrain correctly instead of reusing the previous map's ground grid.
 - Infantry checkpoint checks now cover pending paths, actions, conversations, casualty links and weapon duties as the server migration continues. Whole-battle replay verification remains unfinished.
 - Retained Rust soldier checks preserve movement orders, late path results, cover arrivals, shelter changes, flank and rear watching, crawling and fatigue-dependent speed.
+- Connected Rust AI checks preserve the priority of immediate danger, melee, scavenging, building entry, special weapons, supply, cover and sector watching, including shared squad claims and grenade state.
 - Connected Rust actor checks preserve recovery, fatigue, movement, replanning, arrivals and activity labels, including resumes from a saved soldier state.
 - Rust squad-order checks preserve busy soldiers' order gates, rescue and breach commitments, leaving mounted guns, formation movement and grenade approaches.
 - Retained Rust actor checks now connect action interruptions, cooking and throws, diving, blast recovery, casualty links, death and revival, hidden transport and corpse cleanup.

@@ -47,10 +47,11 @@ graphics, network access or a wall clock.
 | Blast knockback and disorientation | `frontline_core` | Fling trajectories, obstacle bounces, landings, flinching and dazed movement extracted with component checkpoints; Godot still applies task cleanup and speech |
 | Wounded infantry and corpse timers | `frontline_core` | Bleeding, rescue/medicine modifiers, speech/pistol/crawl schedules and corpse collection decisions extracted; rescuer links, targeting and task effects remain in Godot |
 | Grenade reflex decisions | `frontline_core` | Owned actors retain notice memory, grenade claims, rescue/breach cleanup, task changes, shelter and dives; the live decision loop and task dispatcher remain in Godot |
-| Grenade task movement | `frontline_core` | Smother, pickup and kick approaches, covering geometry and dive direction extracted; Godot still applies action callbacks and holder links |
-| Automatic grenade attacks | `frontline_core` | Contact scores, range/posture gates, throw scatter, ammunition and cooldowns extracted; Godot still supplies squad contacts and nearby groups and applies the throw/cook actions |
+| Grenade task movement | `frontline_core` | Owned smother, pickup and kick duties update the shared soldier/projectile state, including holder links; completed strikes and the live dispatcher remain in Godot |
+| Automatic grenade attacks | `frontline_core` | Shared squad contacts and spatial groups drive retained throw/cook actions, ammunition and cooldowns; completed throws and the live dispatcher remain in Godot |
 | Incoming mortars and busy-soldier grenade notices | `frontline_core` | Shared rounds drive retained warnings, memory, suppression, ducking and dives; the live dispatcher remains in Godot |
 | Drone hearing and avoidance | `frontline_core` | Owned aircraft drive retained hearing memory, warnings and dives with the same random continuation; the live dispatcher remains in Godot |
+| Infantry decision loop | `frontline_core` | Owned reflex priority, scavenging, building-entry selection and claims, special attacks, supply/cover decisions and sector watching; scan/separation scheduling and the live world dispatcher remain in Godot |
 | Infantry special attacks | `frontline_core` | Owned actors select melee, rocket, mortar and drone targets and retain ammunition, cooldowns, pending actions and squad fire queues; the live dispatcher and completed weapon effects remain in Godot |
 | Infantry supply decisions | `frontline_core` | Scavenging, nearest-body/depot choices, search timers and refill arithmetic extracted; Godot supplies spatial candidates and applies shared-store transfers, reloads and movement |
 | Infantry medical tasks | `frontline_core` | Rescue/healing stages, treatment deadlines, safe-anchor selection, dragging poses and escort movement extracted; Godot still owns patient links, movement requests and recovery effects |
@@ -536,7 +537,7 @@ Component checkpoint headers contain a four-byte component tag, a little-endian
 rules rather than silently continuing with changed arithmetic. The separate
 integer RNG stream remains unchanged.
 
-`native/core/tests/numeric_contract.rs` compares 73,108,306 committed bytes without
+`native/core/tests/numeric_contract.rs` compares 75,283,057 committed bytes without
 tolerances: fixed-tick flight state, support events and RNG cursors, carved water,
 craters, rotated box hits, cover anchors, spherical interpolation and infantry
 movement, infantry cover fire, postures, ammunition, burst recovery, vitals, aiming,
@@ -760,8 +761,8 @@ flag until Rust owns the actors.
 
 The shock fixture compares 92,160 reference steps, including mounted turning,
 blocked terrain, carried casualties and task interruption. The full default suite
-passed 180 tests at `1453d2c`. The grenade-duty change passes 524 core tests
-in debug, plus the 82 affected/reflex/numeric tests in release; its five affected
+passed 180 tests at `1453d2c`. The connected infantry-decision change passes 533 core tests
+in debug, plus 110 affected and numeric tests in release; its seven affected
 Godot fixtures pass. The full game and cross-platform suites also run in CI.
 
 ## Actor-kind iteration
@@ -1503,3 +1504,23 @@ The Godot reference compares 23,040 actor states plus projectile bytes, path
 cancellations, dive counters and random continuation. Numeric CI adds 860,276
 exact transcript bytes. These operations still await the complete Rust world
 dispatcher; they do not establish whole-battle replay verification.
+
+## Connected infantry decisions
+
+`Actors.think_infantry` runs the soldier's existing decision priority from retained
+state: busy-duty reflexes, grenades, incoming shells, diving drones, melee,
+scavenging, house entry, mortar/rocket/drone/grenade attacks, supply or cover, then
+sector watching. It uses the shared squad's building-contact cache and breach
+claim, live spatial membership, current actor positions and existing action
+state. Personal-weapon stock still controls scavenging capacity, while the active
+weapon controls reload duration, fighting range and ammunition rules. Returned speech, counters
+and route requests preserve their order.
+
+Eight core regressions cover overlapping priorities, shared claims and ammo,
+cooking, checkpoint continuation and invalid-context rejection. The Godot
+reference compares 32,256 actor states plus squad caches, projectile claims,
+speech, counters, path requests/cancellations and random continuation, including
+personal versus mounted weapon definitions. Numeric CI adds 2,174,751 exact
+transcript bytes. Scan/separation scheduling, task execution, completed combat
+effects and the whole-world dispatcher still need to be connected; this is not
+a complete standalone server or a whole-battle verification claim.
