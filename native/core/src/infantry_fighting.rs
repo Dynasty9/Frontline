@@ -204,7 +204,7 @@ impl Actors {
         s.cover.shifting = true;
         Ok(Some(route))
     }
-    fn mount_turn(
+    pub(crate) fn mount_turn(
         &self,
         s: &Infantry,
         gun: Option<MountedGun>,

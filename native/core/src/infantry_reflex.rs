@@ -55,17 +55,28 @@ fn dive(
     rng: &mut SimulationRandom,
     out: &mut Response,
 ) -> Result<(), &'static str> {
-    let direction = crate::grenade_task::dive_direction(s.motion.position, from, rng)?;
-    s.stop_moving()?;
-    s.controller.dive_direction = direction;
-    s.controller.dive_timer = 0.5;
-    face(s, direction);
-    s.activity = 15;
-    s.cover.at_cover = false;
-    s.weapon.peek_up = false;
+    s.start_dive(from, rng)?;
     out.cancel_path = true;
     out.stats.push("dive");
     Ok(())
+}
+
+impl Infantry {
+    pub(crate) fn start_dive(
+        &mut self,
+        from: Vector3,
+        rng: &mut SimulationRandom,
+    ) -> Result<(), &'static str> {
+        let direction = crate::grenade_task::dive_direction(self.motion.position, from, rng)?;
+        self.stop_moving()?;
+        self.controller.dive_direction = direction;
+        self.controller.dive_timer = 0.5;
+        face(self, direction);
+        self.activity = 15;
+        self.cover.at_cover = false;
+        self.weapon.peek_up = false;
+        Ok(())
+    }
 }
 
 impl Actors {

@@ -189,6 +189,30 @@ fn write_squads(
 #[godot_api]
 impl ActorStateCore {
     #[func]
+    fn advance_infantry_grenade_task(
+        &mut self,
+        id: u32,
+        dt: f64,
+        now: f64,
+        gun: PackedFloat64Array,
+        units: Gd<crate::spatial::SpatialIndexCore>,
+        nav: Gd<crate::path_planner::PathPlannerCore>,
+        mut rng: Gd<crate::simulation_random::SimulationRandomCore>,
+    ) -> Array<Variant> {
+        let Ok(gun) = mounted_gun(&gun) else {
+            return Array::new();
+        };
+        let units = units.bind();
+        let nav = nav.bind();
+        let (Some(units), Some(nav)) = (&units.core, &nav.core) else {
+            return Array::new();
+        };
+        self.core
+            .advance_infantry_grenade_task(id, dt, now, gun, units, nav, &mut rng.bind_mut().core)
+            .map_or_else(|_| Array::new(), |out| varray![out.cancel_path, out.dived])
+    }
+
+    #[func]
     fn react_infantry(
         &mut self,
         id: u32,

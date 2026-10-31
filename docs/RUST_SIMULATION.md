@@ -536,7 +536,7 @@ Component checkpoint headers contain a four-byte component tag, a little-endian
 rules rather than silently continuing with changed arithmetic. The separate
 integer RNG stream remains unchanged.
 
-`native/core/tests/numeric_contract.rs` compares 72,248,030 committed bytes without
+`native/core/tests/numeric_contract.rs` compares 73,108,306 committed bytes without
 tolerances: fixed-tick flight state, support events and RNG cursors, carved water,
 craters, rotated box hits, cover anchors, spherical interpolation and infantry
 movement, infantry cover fire, postures, ammunition, burst recovery, vitals, aiming,
@@ -760,7 +760,9 @@ flag until Rust owns the actors.
 
 The shock fixture compares 92,160 reference steps, including mounted turning,
 blocked terrain, carried casualties and task interruption. The full default suite
-passes 180 tests; 515 core tests pass in debug and release.
+passed 180 tests at `1453d2c`. The grenade-duty change passes 524 core tests
+in debug, plus the 82 affected/reflex/numeric tests in release; its five affected
+Godot fixtures pass. The full game and cross-platform suites also run in CI.
 
 ## Actor-kind iteration
 
@@ -1485,3 +1487,19 @@ flight state. This is not an FPS measurement. The transitional GDScript RNG
 adapter costs more per draw than the engine RNG (about 0.4 versus 0.15–0.23 µs in
 a 100,000-draw check); direct Rust callers avoid that adapter. Whole-battle scaling
 still needs measurement, and the 60 FPS completion gate remains open.
+
+## Retained grenade duties
+
+`Actors.advance_infantry_grenade_task` advances approach, kicking, pickup and
+smothering against the shared projectile collection. Picking up a round changes
+its holder and stops its flight in the same operation as the soldier's action;
+kicking schedules the existing strike rather than moving the round early. Missing
+rounds, other holders, strict fuse thresholds, mounted turns and blocked approach
+steps keep their current behavior. Dive initiation shares the urgent-reflex path.
+
+Six core regressions cover shared-state updates, expired targets, checkpoint
+resumes and rejected route changes without partial pickup or random consumption.
+The Godot reference compares 23,040 actor states plus projectile bytes, path
+cancellations, dive counters and random continuation. Numeric CI adds 860,276
+exact transcript bytes. These operations still await the complete Rust world
+dispatcher; they do not establish whole-battle replay verification.

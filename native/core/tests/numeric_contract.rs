@@ -36,6 +36,108 @@ fn block(out: &mut Vec<u8>, bytes: &[u8]) {
 }
 
 #[test]
+fn retained_grenade_tasks_are_identical_across_platforms() {
+    use frontline_core::actors::{Actor, Actors};
+    use frontline_core::infantry::Infantry as Soldier;
+    use frontline_core::infantry_controller::Task;
+    use frontline_core::projectile_actor::{ballistic, Motion, Projectile};
+    use frontline_core::spatial::{SpatialIndex, UNIT_CELL};
+    let mut bytes = Vec::new();
+    for task in [Task::Smother, Task::GrenadeKick, Task::GrenadePickup] {
+        for trial in 0..32 {
+            let mut entries = Vec::new();
+            for id in 1..=3 {
+                let mut s = Soldier::default();
+                s.identity.id = id;
+                s.identity.unit = "rifleman".into();
+                s.identity.weapon = "rifle".into();
+                s.identity.team = if id == 3 { 1 } else { 0 };
+                s.motion.position = if id == 1 {
+                    Vector3::ZERO
+                } else {
+                    Vector3::new((id - 1) as f32 * 2.0, 0.0, 1.3)
+                };
+                s.motion.yaw = [-1.7f32, 0.0, 1.3][trial % 3].into();
+                if id == 1 {
+                    s.duty.kind = task;
+                    s.duty.entity = 10;
+                    s.duty.timer = 10.0;
+                }
+                entries.push(Actor::Soldier(Box::new(s)));
+            }
+            let mut f = ballistic(
+                Kind::Frag,
+                Vector3::new(
+                    [0.0, 0.69, 0.7, 0.89, 0.9, 3.1][trial % 6],
+                    0.05,
+                    (trial % 3) as f32 * 0.2,
+                ),
+                Vector3::new(1.0, 2.0, 3.0),
+            );
+            f.fuse = [0.349, 0.35, 0.699, 0.7, 1.9][trial % 5];
+            f.flying = trial % 2 == 0;
+            entries.push(Actor::Projectile(Projectile {
+                id: 10,
+                team: 1,
+                thrower: if trial % 3 == 0 { 2 } else { 3 },
+                called_by: 0,
+                held_by: if trial % 7 == 0 { 2 } else { 0 },
+                smothered_by: 0,
+                handler: 1,
+                thrown_back: 0,
+                target_id: 0,
+                motion: Motion::Ballistic(f),
+            }));
+            let mut actors = Actors::from_entries(100, entries).unwrap();
+            if trial % 13 == 0 {
+                actors.remove(10);
+            }
+            let mut units = SpatialIndex::new(UNIT_CELL).unwrap();
+            actors.rebuild_units(&mut units).unwrap();
+            let mut nav = PathPlanner::new(32).unwrap();
+            let mut kinds = vec![0; 1024];
+            if trial % 5 == 0 {
+                kinds[16 * 32 + 17] = 3;
+            }
+            nav.load_cells(&kinds, &[0; 1024], &[0; 1024]);
+            let mut rng = SimulationRandom::new(trial as u64 + 31253);
+            let dt = [1.0 / 30.0, 0.1, 0.3][trial % 3];
+            for step in 0..20 {
+                if actors.soldier(1).unwrap().duty.kind == Task::Fight {
+                    break;
+                }
+                let out = actors
+                    .advance_infantry_grenade_task(
+                        1,
+                        dt,
+                        10.0 + step as f64 * dt,
+                        None,
+                        &units,
+                        &nav,
+                        &mut rng,
+                    )
+                    .unwrap();
+                bytes.extend_from_slice(&[out.cancel_path as u8, out.dived as u8]);
+                block(
+                    &mut bytes,
+                    &actors.soldier(1).unwrap().checkpoint().unwrap(),
+                );
+                if let Some(p) = actors.get(10) {
+                    block(&mut bytes, &p.checkpoint().unwrap());
+                } else {
+                    block(&mut bytes, &[]);
+                }
+                bytes.extend_from_slice(&rng.state().to_le_bytes());
+                if step == 4 {
+                    actors = Actors::restore(&actors.checkpoint().unwrap()).unwrap();
+                }
+            }
+        }
+    }
+    golden("infantry_grenade_owned", &bytes);
+}
+
+#[test]
 fn retained_infantry_reflexes_are_identical_across_platforms() {
     use frontline_core::actors::{Actor, Actors};
     use frontline_core::drone::DroneFlight;
