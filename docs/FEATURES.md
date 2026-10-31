@@ -360,6 +360,8 @@ The code: `scripts/game/mission_director.gd` (the machinery), `scripts/game/miss
 `scripts/game/mission_list.gd` (the catalogue), `scripts/ui/hud_objectives.gd` (the panel). Adding a mission is a
 catalogue entry in `MissionList.LIST`, a setup function and an autopilot function.
 
+Ambush Alley autoplay can call its existing mortar support against spotted, stopped convoy vehicles before extracting; player resources and mission objectives are unchanged.
+
 ## The systems
 
 **Soldier AI** (`scripts/game/soldier.gd`, `soldier_brain.gd`, `bt.gd`, `combat.gd`)

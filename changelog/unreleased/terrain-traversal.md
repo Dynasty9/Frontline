@@ -9,3 +9,4 @@ kind = "improved"
 - Soldiers can wade through water up to 55 cm deep. Deeper water is blocked even if an old terrain label calls it shallow; bridge decks remain usable.
 - Movement checks the whole step, including dives, separation and vehicle recovery. Old routes cannot carry units through newly blocked ground or deep water.
 - Living soldiers stay upright while wading. Spawning and disembarking use safe ground; soldiers stranded by a removed crossing recover to a safe bank.
+- Ambush Alley autoplay uses its available mortars against spotted convoy vehicles stopped on the road, so it can finish the ambush under the updated movement rules.
