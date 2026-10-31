@@ -24,7 +24,7 @@ func collision_equal(expected: PackedByteArray, actual: PackedByteArray) -> bool
 func check_geometry(w: World, core: RefCounted, where: String) -> void:
 	var expected := states(w); var actual: Array = core.inspect()
 	assert(terrain_equal(expected[0],actual[0]), "toss terrain " + where)
-	assert(collision_equal(expected[2],actual[2]), "toss collision " + where)
+	assert(collision_equal(expected[2],actual[2]), "toss collision " + where + ": " + collision_difference(expected[2],actual[2]))
 	var full := header("FLWG"); full.append_array(block(actual[0])); full.append_array(block(expected[1])); full.append_array(block(actual[2]))
 	full.append_array(world_save(w).slice(20 + expected[0].size() + expected[1].size() + expected[2].size()))
 	assert(full == core.checkpoint(), "toss full geometry " + where)

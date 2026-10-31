@@ -13,7 +13,7 @@ func compare_collision(w: World, core: RefCounted, st: Structure, label: String)
 	w.combat._sync_collision()
 	var actual: PackedByteArray = core.inspect()[2]
 	var expected: PackedByteArray = w.combat._collision.checkpoint()
-	assert(actual == expected, "structure collision geometry " + label)
+	assert(actual == expected, "structure collision geometry " + label + ": " + collision_difference(expected,actual))
 	for n in 24:
 		var a := st.position + Vector3(-12, float(n % 6) * 0.53, (n / 6) * 3 - 4)
 		var b := st.position + Vector3(12, float(n % 6) * 0.53, -(n / 6) * 3 + 4)

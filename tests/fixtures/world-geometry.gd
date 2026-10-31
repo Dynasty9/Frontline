@@ -2,6 +2,21 @@ extends Node
 
 var checks := 0
 
+func collision_difference(expected: PackedByteArray, actual: PackedByteArray) -> String:
+	if expected.size() != actual.size(): return "bytes %d / %d" % [expected.size(),actual.size()]
+	var differences := []; var cursor := 12
+	for body in expected.decode_u32(8):
+		var id := expected.decode_u64(cursor); var count := expected.decode_u32(cursor + 8); cursor += 12
+		for shape in count:
+			for component in range(1,16):
+				var at := cursor + component * 4
+				if expected.decode_u32(at) != actual.decode_u32(at):
+					var field := "center" if component < 4 else "basis" if component < 13 else "half"
+					differences.append("body=%d shape=%d %s[%d] %.12f / %.12f bits=%d/%d" % [id,shape,field,component,expected.decode_float(at),actual.decode_float(at),expected.decode_u32(at),actual.decode_u32(at)])
+					if differences.size() == 16: return "; ".join(differences)
+			cursor += 64
+	return "; ".join(differences) if not differences.is_empty() else "collision metadata differs"
+
 func _ready() -> void:
 	var rng := RandomNumberGenerator.new(); rng.seed = 591773
 	var core: RefCounted = ClassDB.instantiate("WorldGeometryCore")
