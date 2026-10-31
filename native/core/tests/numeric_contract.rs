@@ -36,6 +36,85 @@ fn block(out: &mut Vec<u8>, bytes: &[u8]) {
 }
 
 #[test]
+fn owned_vehicle_launches_are_identical_across_platforms() {
+    use frontline_core::actors::{Actor, Actors};
+    use frontline_core::vehicle::Vehicle;
+    use frontline_core::vehicle_launch::SmokeProfile;
+    let mut bytes = Vec::new();
+    for trial in 0..128 {
+        let mut actors = Actors::from_entries(
+            3,
+            vec![
+                Actor::Vehicle(Box::new(Vehicle {
+                    id: 1,
+                    team: 0,
+                    position: Vector3::new(1.3, (trial % 5) as f32, -2.7),
+                    yaw: trial as f64 * 0.37,
+                    turret_yaw: trial as f64 * -0.17,
+                    ..Default::default()
+                })),
+                Actor::Vehicle(Box::new(Vehicle {
+                    id: 2,
+                    team: 1,
+                    position: Vector3::new(37.1, (trial % 7) as f32, -21.7),
+                    smoke_left: 2,
+                    smoke_until: if trial % 11 == 0 { 100.0 } else { 0.0 },
+                    ..Default::default()
+                })),
+            ],
+        )
+        .unwrap();
+        let mut rng = SimulationRandom::new(trial as u64 + 137);
+        let profile = SmokeProfile {
+            armor: (trial % 3) as u8,
+            helicopter: trial % 5 == 0,
+            gun_height: 1.3 + trial as f64 * 0.01,
+        };
+        for (i, kind) in [
+            GuidedKind::AntiTank,
+            GuidedKind::SurfaceToAir,
+            GuidedKind::AntiTank,
+        ]
+        .into_iter()
+        .enumerate()
+        {
+            let launch = actors
+                .launch_vehicle_missile(1, 2, kind, trial % 4 == 0, 2.2)
+                .unwrap();
+            bytes.extend_from_slice(&launch.id.to_le_bytes());
+            point(&mut bytes, launch.position);
+            point(&mut bytes, launch.velocity);
+            let target = actors
+                .projectile_warning_target(launch.id)
+                .unwrap()
+                .unwrap_or(0);
+            bytes.extend_from_slice(&target.to_le_bytes());
+            if target != 0 {
+                let smoke = actors
+                    .launch_vehicle_smoke(
+                        target,
+                        10.3 + i as f64 * 30.0,
+                        launch.position,
+                        profile,
+                        &mut rng,
+                    )
+                    .unwrap();
+                bytes.push(smoke.len() as u8);
+                for l in smoke {
+                    bytes.extend_from_slice(&l.id.to_le_bytes());
+                    point(&mut bytes, l.position);
+                    point(&mut bytes, l.velocity);
+                }
+            }
+            block(&mut bytes, &actors.checkpoint().unwrap());
+            bytes.extend_from_slice(&rng.state().to_le_bytes());
+            actors = Actors::restore(&actors.checkpoint().unwrap()).unwrap();
+        }
+    }
+    golden("vehicle_launch", &bytes);
+}
+
+#[test]
 fn shared_transport_exits_are_identical_across_platforms() {
     use frontline_core::actors::{Actor, Actors};
     use frontline_core::infantry::Infantry;

@@ -289,7 +289,7 @@ damage, so escaping passengers can consume randomness first.
 Weapon selection preserves SAM/ATGM priority and deadlines, settled tank aim,
 cannon worthiness, machine-gun range/armour restrictions and burst lengths.
 Shot completion runs after shared effects, preserving the burst-recovery draw
-after bullet damage. The world still needs projectile creation, cannon geometry,
+after bullet damage. The world still needs cannon geometry,
 shared damage/crew effects and the complete firing dispatcher.
 
 Godot fixtures compare 7,392 damage states and 21,120 firing cycles across the
@@ -308,6 +308,18 @@ requests. Five core tests cover exits, repeated passenger entries, retained orde
 landing gates and invalid steps; numeric CI adds 4,823,547 exact transcript bytes.
 The existing bounded nearest-cell fallback is preserved, including its result
 when a boat's local search finds no bank.
+
+Guided vehicle launches and defensive smoke create owned projectile state and
+allocate stable identities inside Rust. Launch warnings preserve named targets
+and the first eligible vehicle in registration order. Smoke preserves ammunition,
+cooldowns, four grenade trajectories and random continuation. Weapon completion
+remains after synchronous launch warnings; smoke precedes the crew response.
+The launch fixture compares 1,816 vehicle/projectile states and warning checks,
+including aircraft launch positions, removed targets and checkpoint restoration.
+It isolates projectile creation from crew evasion, which has separate reference
+coverage; the complete shared firing dispatcher remains unfinished. Five core
+tests cover creation, warning order, continuation and rejection without mutation.
+Numeric CI adds 773,648 exact launch transcript bytes.
 
 ## Retained squads
 
@@ -447,7 +459,7 @@ Component checkpoint headers contain a four-byte component tag, a little-endian
 rules rather than silently continuing with changed arithmetic. The separate
 integer RNG stream remains unchanged.
 
-`native/core/tests/numeric_contract.rs` compares 32,182,368 committed bytes without
+`native/core/tests/numeric_contract.rs` compares 32,956,016 committed bytes without
 tolerances: fixed-tick flight state, support events and RNG cursors, carved water,
 craters, rotated box hits, cover anchors, spherical interpolation and infantry
 movement, infantry cover fire, postures, ammunition, burst recovery, vitals, aiming,
@@ -671,7 +683,7 @@ flag until Rust owns the actors.
 
 The shock fixture compares 92,160 reference steps, including mounted turning,
 blocked terrain, carried casualties and task interruption. The full default suite
-passes 163 tests; 379 core tests pass in debug and release.
+passes 164 tests; 385 core tests pass in debug and release.
 
 ## Spatial query state
 

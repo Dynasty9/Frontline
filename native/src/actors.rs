@@ -48,6 +48,67 @@ fn sling_spec(a: &PackedInt32Array) -> Result<SlingSpec, &'static str> {
 #[godot_api]
 impl ActorStateCore {
     #[func]
+    fn launch_vehicle_missile(
+        &mut self,
+        vehicle: u32,
+        target: u32,
+        anti_tank: bool,
+        gunship: bool,
+        gun_height: f64,
+    ) -> Array<Variant> {
+        let kind = if anti_tank {
+            frontline_core::guided::Kind::AntiTank
+        } else {
+            frontline_core::guided::Kind::SurfaceToAir
+        };
+        match self
+            .core
+            .launch_vehicle_missile(vehicle, target, kind, gunship, gun_height)
+        {
+            Ok(l) => varray![l.id, vector(l.position), vector(l.velocity)],
+            Err(_) => Array::new(),
+        }
+    }
+    #[func]
+    fn projectile_warning_target(&self, projectile: u32) -> i64 {
+        self.core
+            .projectile_warning_target(projectile)
+            .map_or(-1, |id| i64::from(id.unwrap_or(0)))
+    }
+    #[func]
+    fn launch_vehicle_smoke(
+        &mut self,
+        vehicle: u32,
+        now: f64,
+        from: Vector3,
+        armor: u8,
+        helicopter: bool,
+        gun_height: f64,
+        mut rng: Gd<crate::simulation_random::SimulationRandomCore>,
+    ) -> Array<Variant> {
+        let profile = frontline_core::vehicle_launch::SmokeProfile {
+            armor,
+            helicopter,
+            gun_height,
+        };
+        match self.core.launch_vehicle_smoke(
+            vehicle,
+            now,
+            crate::point(from),
+            profile,
+            &mut rng.bind_mut().core,
+        ) {
+            Ok(launches) => {
+                let launches: Array<Variant> = launches
+                    .into_iter()
+                    .map(|l| varray![l.id, vector(l.position), vector(l.velocity)].to_variant())
+                    .collect();
+                varray![&launches]
+            }
+            Err(_) => Array::new(),
+        }
+    }
+    #[func]
     fn dismount(
         &mut self,
         vehicle: u32,
