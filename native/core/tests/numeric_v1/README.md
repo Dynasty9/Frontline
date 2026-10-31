@@ -9,6 +9,8 @@ different byte rather than dumping the fixture.
   events and RNG cursors over fixed ticks.
 - `fires.bin`: connected ignition, spread, casualties, escape paths, smoke, building
   destruction and geometry checkpoints with random cursors across resumed updates.
+- `world_routes.bin`: shared soldier/vehicle route completions, queued repairs,
+  cancelled orders and retained navigation/actor state across resumed batches.
 - `geometry.bin`: water/carved terrain, craters, rotated geometry and ray hits,
   spherical interpolation, cover anchors and infantry movement checkpoints.
 - `infantry_weapon.bin`: cover-fire decisions, postures, ammunition and burst

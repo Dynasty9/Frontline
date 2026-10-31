@@ -108,3 +108,4 @@ pub mod vehicle_weapon;
 pub mod visibility;
 pub mod water;
 pub mod world_geometry;
+pub mod world_routes;

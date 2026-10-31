@@ -17,6 +17,7 @@ kind = "fixed"
 - Ammo-cache explosions now follow battle time instead of frame callbacks, keeping their damage and scatter while retaining pending blasts for the replay migration.
 - Destroyed buildings create rubble at a consistent point in the simulation, including ruins left by those delayed explosions.
 - Connected Rust fire checks preserve spreading, rain, smoke, casualties and escape routes, including paths opened by a building burning down in the same update.
+- Shared Rust path checks preserve soldier and vehicle orders, cancellation and retries while navigation changes, including saved queues resumed during fires.
 - Grenade, smoke, rocket, bomb and shell flight now use the shared simulation core, preserving flight behavior, pickup, kicking and rethrowing.
 - Rust grenade-duty checks preserve approach, smothering, pickup, kicking and diving away while keeping the soldier and shared projectile state together.
 - Rust action-completion checks preserve cooked throws, shared grenade handling, melee casualties, door kicks and weapon launches, including vehicle smoke and crew reactions.

@@ -16,6 +16,10 @@ class Wall extends Structure:
 	func _ready() -> void:
 		set_process(false); set_physics_process(false)
 
+class Truck extends Vehicle:
+	func _ready() -> void:
+		set_process(false); set_physics_process(false)
+
 func fire_values(f: Fires) -> Array:
 	var burning := []
 	for b: Array in f.burning: burning.append([b[0].eid, b[1], b[2]])
@@ -30,6 +34,7 @@ func _ready() -> void:
 	var units: RefCounted = ClassDB.instantiate("SpatialIndexCore")
 	var structure: RefCounted = ClassDB.instantiate("StructureStateCore")
 	var soldier: RefCounted = ClassDB.instantiate("InfantryStateCore")
+	var vehicle: RefCounted = ClassDB.instantiate("VehicleStateCore")
 	var ledger: RefCounted = ClassDB.instantiate("BattleStatsCore")
 	var deferred: RefCounted = ClassDB.instantiate("DeferredEffectsCore")
 	var visibility: RefCounted = ClassDB.instantiate("VisibilityCore")
@@ -74,12 +79,19 @@ func _ready() -> void:
 			s.position = walls[(id + trial) % 12].position + Vector3(0.7, 0, 0.3)
 			s.squad = w.squads[s.team + 1]; s.sid = s.squad.sid; s.squad.members.append(s)
 			w.add_child(s); w._register(s)
+		for id in range(50, 54):
+			var v := Truck.new(); v.world = w; v.srv = true; v.eid = id; v.team = id % 2; v.vkind = "truck"; v.vdef = Defs.VEHICLES.truck
+			v.position = Vector3(-20, 0, (id - 50) * 3 - 6); v.hp = 0 if id == 53 else 100
+			w.add_child(v); w._register(v); v._request_ground_path(Vector3(20, 0, v.position.z), 0.5)
 		w._rebuild_uhash(); w.terrain.tick(4096); w.nav.finalize()
 		var types := PackedByteArray(); var blocks := []; var profiles := []
 		for e: Entity in w.entities.values():
 			if e is Soldier:
 				assert(soldier.load_state(InfantryState.capture(e))); types.append(0); blocks.append(soldier.checkpoint())
 				profiles.append([e.eid, e.is_bearer(), int(e.wdef.ammo) if not e.wdef.is_empty() else -1, BattleStats.man_value(e), false, 0.0, String(e.udef.get("name", e.utype))])
+			elif e is Vehicle:
+				assert(vehicle.load_state(VehicleState.capture(e))); types.append(2); blocks.append(vehicle.checkpoint())
+				profiles.append([e.eid, false, -1, 0.0, false, 0.0, ""])
 			else:
 				assert(structure.load_state(StructureState.capture(e))); types.append(1); blocks.append(structure.checkpoint())
 				profiles.append([e.eid, false, -1, 0.0, e.is_player_building(), float(Defs.BUILDINGS.get(e.skind, {}).get("cost", 0)), ""])
@@ -97,6 +109,8 @@ func _ready() -> void:
 		for step in 192:
 			var label := "%d/%d" % [trial, step]
 			var dt: float = [0.1, 0.27, 0.5, 1.1][(step + trial) % 4]; w.time += dt
+			w.nav.update_hier(1); assert(geometry.update_hierarchy(1))
+			w.nav.process_paths(3); assert(geometry.process_paths(actors, 3, w.time, random._backend))
 			if step % 13 == 0:
 				var at := Vector3((step % 5) * 3 - 7, [0.0, 1.6, 2.0][trial % 3], 0)
 				w.fires.blast(at, 2.7, 11.3); assert(fires.blast(at, 2.7, 11.3, w.time, w.town_rect))
@@ -113,6 +127,8 @@ func _ready() -> void:
 					if st.burnt: seen.charred = true
 			for s: Soldier in w.soldiers:
 				assert(soldier.restore(actors.actor_state(s.eid))); infantry.check_state(s, soldier, "fire soldier %s/%d" % [label, s.eid])
+			for v: Vehicle in w.vehicles:
+				assert(vehicle.restore(actors.actor_state(v.eid))); assert(vehicle.values() == VehicleState.capture(v), "fire vehicle route %s/%d" % [label, v.eid])
 			for qcore in qs: assert(qcore.values() == SquadState.capture(w.squads[qcore.values()[0][0]]), "fire squad " + label)
 			compare.compare_ledger(w.battle, ledger, "fire ledger " + label)
 			assert(visibility.checkpoint() == w.combat._visibility.checkpoint(), "fire visibility " + label)

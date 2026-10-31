@@ -1846,3 +1846,19 @@ squads, ledger, navigation, geometry, smoke and random cursors, including checkp
 resumes. The exact numeric corpus adds 9,628,857 bytes. All 673 debug core tests
 pass. This loop is still reference-tested separately: the complete Rust world tick,
 socket server and whole-battle replay verifier remain unfinished.
+
+## Shared path completion
+
+Retained navigation applies direct steps and queued results to soldiers and
+vehicles without Godot callbacks. Replacing an order replaces its queued job;
+stale direct submissions are ignored. Removed and stopped actors do not consume
+the fixed job quota. Empty results during hierarchy repairs retry once per batch;
+only a completed hierarchy can establish that a destination is unreachable.
+Infantry cover failures and arrivals retain their existing state changes and
+random draws, and return prison-arrival effects for the world to dispatch.
+
+Five regressions cover replacements, cancellations, mixed actor queues, retries,
+checkpoint continuation and rejected inputs. The connected fire fixture now also
+processes hierarchy repairs and pending soldier/vehicle routes during its 4,608
+Godot comparisons. Numeric CI adds 3,445,891 exact bytes for shared completions.
+The complete world dispatcher remains unfinished.

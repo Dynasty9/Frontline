@@ -11,6 +11,36 @@ pub(crate) struct WorldGeometryCore {
 #[godot_api]
 impl WorldGeometryCore {
     #[func]
+    fn update_hierarchy(&mut self, clusters: i32) -> bool {
+        clusters >= 0
+            && self
+                .core
+                .as_mut()
+                .is_some_and(|g| g.navigation.update_hierarchy(clusters as usize))
+    }
+    #[func]
+    fn process_paths(
+        &mut self,
+        mut actors: Gd<ActorStateCore>,
+        max_jobs: i32,
+        now: f64,
+        mut rng: Gd<crate::simulation_random::SimulationRandomCore>,
+    ) -> bool {
+        if max_jobs < 0 {
+            return false;
+        }
+        self.core.as_mut().is_some_and(|g| {
+            g.navigation
+                .process_paths(
+                    &mut actors.bind_mut().core,
+                    max_jobs as usize,
+                    now,
+                    &mut rng.bind_mut().core,
+                )
+                .is_ok()
+        })
+    }
+    #[func]
     fn restore(&mut self, bytes: PackedByteArray) -> bool {
         let Ok(core) = WorldGeometry::restore(bytes.as_slice()) else {
             return false;

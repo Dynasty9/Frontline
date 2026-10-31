@@ -1449,7 +1449,10 @@ calls Godot's fire loop until the complete Rust dispatcher is ready.
 Retained navigation owns each structure's overlapping obstacle cells together with
 the infantry and vehicle route hierarchies. Fire counts, bridge decks, terrain
 costs and obstacle removal preserve incremental repair order and pending routes
-through checkpoints. The shared world dispatcher still needs to call these edits.
+through checkpoints. Retained path completion now applies results to soldiers and
+vehicles with a fixed job quota. Missing or stopped units do not use that quota;
+routes blocked during hierarchy repairs remain queued for a later update. The
+complete world dispatcher still needs to call these operations for every duty.
 Retained structure removal now connects terrain, navigation, spatial membership
 and doors. Collision bodies remain until tick end, preserving shielding for later
 shots in the same update. Tree cover changes immediately; other cover repairs keep

@@ -765,16 +765,9 @@ impl Fires {
             let s = c.actors.soldier_mut(id).unwrap();
             let escape = s.flee_fire(p, c.now, &c.geometry.navigation.planner, c.rng)?;
             if let Some(escape) = escape {
-                let nav = &mut c.geometry.navigation;
-                if let Some(path) =
-                    nav.planner
-                        .direct_path(&nav.infantry, s.motion.position, escape.route.job)
-                {
-                    nav.planner.cancel(u64::from(id));
-                    s.accept_path(escape.route.revision, path, c.now, c.rng)?;
-                } else if !nav.planner.request(escape.route.job) {
-                    return Err("fire escape route limit exceeded");
-                }
+                c.geometry
+                    .navigation
+                    .submit_infantry(s, escape.route, c.now, c.rng)?;
             }
             out.push(Event::Scorched {
                 soldier: id,

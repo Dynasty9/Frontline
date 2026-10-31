@@ -34,6 +34,79 @@ use std::path::PathBuf;
 mod fires_world;
 
 #[test]
+fn shared_route_completions_are_identical_across_platforms() {
+    use frontline_core::actors::{Actor, Actors};
+    use frontline_core::infantry::Goal;
+    use frontline_core::navigation_scene::NavigationScene;
+    use frontline_core::path_planner::PathJob;
+    use frontline_core::terrain::WATER;
+    use frontline_core::vehicle::{Route, Vehicle};
+    let mut bytes = vec![];
+    for trial in 0..8 {
+        let mut terrain = Terrain::blank(32).unwrap();
+        let mut nav = NavigationScene::new(&terrain, &[], 16).unwrap();
+        assert!(nav.finalize(1));
+        let mut entries = vec![];
+        let mut rng = SimulationRandom::new(771 + trial);
+        for id in 1..=24 {
+            let destination = Vector3::new(12.0, 0.0, (id % 10) as f32 - 5.0);
+            let job = if id % 2 == 0 {
+                let mut v = Vehicle {
+                    id,
+                    position: Vector3::new(-12.0, 0.0, (id % 7) as f32 - 3.0),
+                    hp: if id == 24 { 0.0 } else { 100.0 },
+                    ..Default::default()
+                };
+                let Route::Ground { care, .. } = v.request_path(destination, 0.5).unwrap() else {
+                    panic!()
+                };
+                entries.push(Actor::Vehicle(Box::new(v)));
+                PathJob {
+                    id: u64::from(id),
+                    destination,
+                    vehicle: true,
+                    team: -1,
+                    care,
+                }
+            } else {
+                let mut s = fires_world::soldier(id, -12.0, Life::Alive);
+                let route = s.go_to(destination, Goal::Cover, 0).unwrap();
+                if id == 3 {
+                    s.stop_moving().unwrap();
+                }
+                entries.push(Actor::Soldier(Box::new(s)));
+                route.job
+            };
+            assert!(nav.planner.request(job));
+        }
+        let mut actors = Actors::from_entries(30, entries).unwrap();
+        actors.remove(1);
+        for tick in 0..24 {
+            if tick == 0 || tick == 12 {
+                for z in 0..32 {
+                    let index = z * 32 + 16;
+                    terrain.layers[BASE][index] = if tick == 0 { WATER } else { 0 };
+                    nav.terrain_changed(index, &terrain, &[]).unwrap();
+                }
+            }
+            assert!(nav.update_hierarchy((tick + trial as usize) % 3));
+            let completed = nav
+                .process_paths(&mut actors, (tick % 4) + 1, tick as f64 * 0.17, &mut rng)
+                .unwrap();
+            bytes.extend_from_slice(&(completed.len() as u32).to_le_bytes());
+            bytes.extend_from_slice(&rng.state().to_le_bytes());
+            if tick % 3 == 0 || tick == 23 {
+                block(&mut bytes, &actors.checkpoint().unwrap());
+                block(&mut bytes, &nav.checkpoint());
+                actors = Actors::restore(&actors.checkpoint().unwrap()).unwrap();
+                nav = NavigationScene::restore(&nav.checkpoint()).unwrap();
+            }
+        }
+    }
+    golden("world_routes", &bytes);
+}
+
+#[test]
 fn fires_and_shared_casualties_are_identical_across_platforms() {
     use fires_world::*;
     use frontline_core::actors::Actor;
