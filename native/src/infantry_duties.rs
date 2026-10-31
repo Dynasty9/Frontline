@@ -3,6 +3,7 @@ use crate::simulation_random::SimulationRandomCore;
 use frontline_core::infantry_duties::{
     self as duties, Build, Captor, Carry, Duty, Guard, Stretcher,
 };
+use frontline_core::infantry_travel::{self as travel, AfterBoarding, Boarding, Throw, Tunnel};
 use godot::prelude::*;
 
 #[derive(GodotClass)]
@@ -51,6 +52,105 @@ fn result(state: Duty, code: u8) -> PackedFloat64Array {
 
 #[godot_api]
 impl InfantryDutiesCore {
+    #[func]
+    fn boarding(
+        &self,
+        valid: bool,
+        position: Vector3,
+        vehicle: Vector3,
+        seats: i32,
+        helicopter: bool,
+        boat: bool,
+        moving: bool,
+    ) -> i32 {
+        match travel::boarding(
+            valid,
+            crate::point(position),
+            crate::point(vehicle),
+            seats,
+            helicopter,
+            boat,
+            moving,
+        ) {
+            Ok(Boarding::Cancel) => 0,
+            Ok(Boarding::Enter) => 1,
+            Ok(Boarding::Move) => 2,
+            Err(_) => -1,
+        }
+    }
+
+    #[func]
+    fn after_boarding_move(
+        &self,
+        position: Vector3,
+        vehicle: Vector3,
+        goal: Vector3,
+        boat: bool,
+        moved: bool,
+    ) -> i32 {
+        match travel::after_boarding_move(
+            crate::point(position),
+            crate::point(vehicle),
+            crate::point(goal),
+            boat,
+            moved,
+        ) {
+            Ok(AfterBoarding::Enter) => 2,
+            Ok(AfterBoarding::Continue { repath }) => i32::from(repath),
+            Err(_) => -1,
+        }
+    }
+
+    #[func]
+    fn tunnel_arrival(&self, position: Vector3, entrance: Vector3, moved: bool) -> i32 {
+        match travel::tunnel_arrival(crate::point(position), crate::point(entrance), moved) {
+            Ok(Tunnel::Move) => 0,
+            Ok(Tunnel::Approach) => 1,
+            Ok(Tunnel::Enter) => 2,
+            Err(_) => -1,
+        }
+    }
+
+    #[func]
+    fn ordered_throw(
+        &self,
+        position: Vector3,
+        target: Vector3,
+        inventory: i32,
+    ) -> PackedInt32Array {
+        match travel::ordered_throw(crate::point(position), crate::point(target), inventory) {
+            Ok(Throw::Move) => [0, inventory].as_slice().into(),
+            Ok(Throw::Cancel) => [1, inventory].as_slice().into(),
+            Ok(Throw::Release { remaining }) => [2, remaining].as_slice().into(),
+            Err(_) => PackedInt32Array::new(),
+        }
+    }
+
+    #[func]
+    fn supply_arrival(
+        &self,
+        capacity: i32,
+        magazine: i32,
+        reserve: i32,
+        loot: i32,
+    ) -> PackedInt32Array {
+        if loot < -1 {
+            return PackedInt32Array::new();
+        }
+        let Ok(arrival) =
+            travel::supply_arrival(capacity, magazine, reserve, (loot >= 0).then_some(loot))
+        else {
+            return PackedInt32Array::new();
+        };
+        [
+            arrival.rounds,
+            i32::from(arrival.announce),
+            i32::from(arrival.return_to_hold),
+        ]
+        .as_slice()
+        .into()
+    }
+
     #[func]
     fn build(
         &self,

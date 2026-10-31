@@ -48,6 +48,7 @@ graphics, network access or a wall clock.
 | Infantry supply decisions | `frontline_core` | Scavenging, nearest-body/depot choices, search timers and refill arithmetic extracted; Godot supplies spatial candidates and applies shared-store transfers, reloads and movement |
 | Infantry medical tasks | `frontline_core` | Rescue/healing stages, treatment deadlines, safe-anchor selection, dragging poses and escort movement extracted; Godot still owns patient links, movement requests and recovery effects |
 | Construction, stretchers and prisoners | `frontline_core` | Construction priorities/timers, paired carrying stages, bearer takeover and prisoner escort geometry extracted; Godot still applies work, shared casualty links, tent delivery and capture effects |
+| Infantry arrival tasks | `frontline_core` | Boarding ranges, tunnel arrival, corpse/depot completion and ordered-throw inventory decisions extracted; Godot still applies boarding, tunnel membership, shared ammunition transfers and throws |
 | Complete fighting-position search | `frontline_core` | Candidate enumeration, reachability, protection, occupancy and final scoring run in one call; Godot supplies nearby structure and soldier records |
 | House-entry task phases | `frontline_core` | Stack/door/grenade/entry transitions, deadlines, cooking and room targets extracted with component checkpoints; Godot still owns movement callbacks and squad entry effects |
 | House occupancy and breach selection | `frontline_core` | Floor containment, ordered openings, nearest walkable stack positions and competing squadmates extracted; Godot still supplies spatial candidates, squad contacts and decision timers |
@@ -237,14 +238,14 @@ Component checkpoint headers contain a four-byte component tag, a little-endian
 rules rather than silently continuing with changed arithmetic. The separate
 integer RNG stream remains unchanged.
 
-`native/core/tests/numeric_contract.rs` compares 2,937,034 committed bytes without
+`native/core/tests/numeric_contract.rs` compares 2,990,282 committed bytes without
 tolerances: fixed-tick flight state, support events and RNG cursors, carved water,
 craters, rotated box hits, cover anchors, spherical interpolation and infantry
 movement, infantry cover fire, postures, ammunition, burst recovery, vitals, aiming,
 combat poses, bullet resolution, blast exposure, knockback recovery and wounded
 infantry schedules, grenade reflexes, grenade task movement and house-entry
 phases, building selection, automatic grenade attacks, incoming shells and drone
-reactions, special attacks, infantry supply, medical/work duties, complete cover searches and stationary
+reactions, special attacks, infantry supply, medical/work duties, arrival tasks, complete cover searches and stationary
 infantry movement. CI runs
 the same fixtures in debug and release on Windows x64, Linux
 x64, Linux ARM64 and macOS ARM64. A mismatch reports the first different byte.
@@ -461,9 +462,25 @@ flag until Rust owns the actors.
 
 The shock fixture compares 92,160 reference steps, including mounted turning,
 blocked terrain, carried casualties and task interruption. The full default suite
-passes 132 tests; 182 core tests pass in debug and release.
+passes 133 tests; 188 core tests pass in debug and release.
 
 ## Infantry tasks and reflexes
+
+`infantry_travel` preserves boarding ranges, helicopter height gates, boat pickup
+after reaching the water's edge, route refreshes, tunnel entry and ordered throws.
+Supply arrival preserves shared corpse transfers and the depot's completion
+threshold, including the existing signed transfer if another refill happened on
+the way. Effects still run in Godot and the adapter remains test-only.
+
+A 24,576-step frozen-reference fixture checks positions, routes, inventories,
+vehicle seats, tunnel membership, callbacks and RNG cursors. Removed destinations
+are checked before casting their old references. Unknown grenade types are
+rejected before command ownership or tasks change; frag and smoke orders retain
+their existing behavior. Numeric CI adds 53,248 exact arrival-decision bytes.
+Naval and tunnel scenarios also join the native/reference battle comparisons.
+The tunnel comparison exposed a shared conversation cooldown that survived a
+new match and changed subsequent random draws even in two reference runs. That
+cooldown now belongs to the world; the reload regression exercises actual banter.
 
 `Duty` retains construction sound deadlines and stretcher/captor stages. Work
 preserves completion, suppression, movement and nearby-threat priorities. Paired

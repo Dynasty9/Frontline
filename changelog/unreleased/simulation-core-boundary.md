@@ -5,6 +5,7 @@ kind = "fixed"
 +++
 
 - Cosmetic debris no longer consumes gameplay randomness when cosmetic physics is unavailable.
+- Idle-conversation cooldowns reset with each battle, so replaying a seed is unaffected by the previous match.
 - Grenade, smoke, rocket, bomb and shell flight now use the shared simulation core, preserving flight behavior, pickup, kicking and rethrowing.
 - Battlefield raycasts now use the shared simulation core, updating when vehicles move, doors open and structures change.
 - Sight checks and smoke screens now run in Rust, retaining immediate smoke changes and reusing obstruction only while the blocking geometry stays unchanged.
@@ -39,6 +40,7 @@ kind = "fixed"
 - Stationary-movement checks preserve giving nearby troops room, settling onto terrain, moving into a cover position and watching a sector.
 - Medical-task checks preserve rescue, dragging, treatment timing and escorts. Soldiers also safely abandon these tasks when a patient or rescuer has been removed.
 - Construction, stretcher and prisoner-escort checks preserve work priorities, paired carrying and solo takeover. These tasks also safely handle removed casualties, partners, tents, prisoners and work targets.
+- Arrival checks preserve boarding, tunnels, ammunition collection and ordered throws. Invalid grenade types no longer interrupt troops or change command ownership, and removed destinations are handled safely.
 - Authoritative entity IDs now come from Rust, preserving creation order and keeping removed units' IDs from being reused as the server migration continues.
 - The extracted simulation uses pinned numeric rules, with exact checkpoint comparisons across platforms as replay verification work continues.
 - Guided missiles keep a consistent turn after overshooting their aim point, instead of letting rounding choose an erratic turn direction.

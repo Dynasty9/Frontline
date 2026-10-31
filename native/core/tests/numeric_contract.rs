@@ -36,6 +36,66 @@ fn block(out: &mut Vec<u8>, bytes: &[u8]) {
 }
 
 #[test]
+fn infantry_travel_is_identical_across_platforms() {
+    use frontline_core::infantry_travel::{self as travel, AfterBoarding, Throw};
+    let mut out = Vec::new();
+    let distances = [0.0f32, 2.5, 3.6, 8.0, 18.0, 25.0, 30.0];
+    for case in 0..4096 {
+        let boundary = distances[case % distances.len()];
+        let d = if boundary == 0.0 {
+            0.0
+        } else {
+            f32::from_bits((boundary.to_bits() as i64 + (case % 3) as i64 - 1) as u32)
+        };
+        let position = Vector3::new((case % 47) as f32 - 23.0, 0.0, (case % 31) as f32 - 15.0);
+        let target = position + Vector3::new(d, if case % 2 == 0 { 1.0 } else { 1.01 }, 0.0);
+        let boat = case % 2 == 0;
+        let moved = case % 3 == 0;
+        out.push(
+            travel::boarding(
+                case % 13 != 0,
+                position,
+                target,
+                (case % 4) as i32 - 1,
+                case % 5 == 0,
+                boat,
+                moved,
+            )
+            .unwrap() as u8,
+        );
+        let after = travel::after_boarding_move(
+            position,
+            target,
+            target + Vector3::Z * (case % 5) as f32,
+            boat,
+            moved,
+        )
+        .unwrap();
+        out.push(match after {
+            AfterBoarding::Enter => 2,
+            AfterBoarding::Continue { repath } => u8::from(repath),
+        });
+        out.push(travel::tunnel_arrival(position, target, moved).unwrap() as u8);
+        let remaining = match travel::ordered_throw(position, target, (case % 5) as i32).unwrap() {
+            Throw::Move => -2,
+            Throw::Cancel => -1,
+            Throw::Release { remaining } => remaining,
+        };
+        out.extend_from_slice(&remaining.to_le_bytes());
+        let supply = travel::supply_arrival(
+            120,
+            (case % 32) as i32,
+            (case % 128) as i32,
+            (case % 2 == 0).then_some((case % 80) as i32),
+        )
+        .unwrap();
+        out.extend_from_slice(&supply.rounds.to_le_bytes());
+        out.extend_from_slice(&[u8::from(supply.announce), u8::from(supply.return_to_hold)]);
+    }
+    golden("infantry_travel", &out);
+}
+
+#[test]
 fn infantry_duties_are_identical_across_platforms() {
     use frontline_core::infantry_duties::{self as duties, Captor, Duty, Guard, Stretcher};
     let mut out = Vec::new();

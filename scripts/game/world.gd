@@ -78,6 +78,7 @@ var _road_meshes: Array = [null, null, null]
 var pings: Array = []  # [pos, expire, kind]
 var winner := -1
 var rng := SimulationRandom.new()
+var last_chat := [-99.0, -99.0]  # side-wide conversation cooldowns belong to this battle
 var focused := false
 var director: Director
 var structure_view: StructureView
@@ -2084,6 +2085,8 @@ func execute_cmd(peer: int, d: Dictionary) -> void:
 	if not team in [0, 1] or winner >= 0:
 		return
 	var t: String = d.get("t", "")
+	if (t == "throw" or (t == "unit" and String(d.get("o", "move")) == "throw")) and not String(d.get("kind", "frag")) in ["frag", "smoke"]:
+		return
 	var sqs := _command_squads(peer, d.get("squads", []))
 	var vehs := _command_vehicles(peer, d.get("vehicles", []))
 	# a routed squad runs whatever it's told, until it has rallied

@@ -1293,6 +1293,9 @@ healing and escort also safely release patients or rescuers removed from the wor
 Construction, stretcher and prisoner-escort checks preserve work priorities,
 paired pickup, casualty delivery, solo takeover and escort spacing. Removed
 casualties, partners, tents, prisoners and work targets are handled safely.
+Arrival checks preserve boarding boats and helicopters, entering tunnels,
+collecting ammunition and ordered frag/smoke throws. Removed destinations are
+handled safely, and unknown grenade types are rejected before changing orders.
 The Rust core now allocates authoritative entity IDs and retains their lifecycle
 order. Retired IDs stay retired, and restored lifecycle checkpoints continue the
 same allocation sequence; clients use the server's IDs for their visual objects.

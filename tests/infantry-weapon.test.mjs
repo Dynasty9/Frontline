@@ -16,7 +16,7 @@ test("Rust infantry cover fire preserves peeking, reloads, buddy cover and rando
 test("Rust infantry ports preserve battle fingerprints and events", async () => {
   const game = await Game.start();
   try {
-    for (const scenario of ["attack", "breach", "trenches", "fire", "tank", "gdrill"]) {
+    for (const scenario of ["attack", "breach", "trenches", "fire", "tank", "gdrill", "naval", "tunnel"]) {
       const runs = [];
       for (const native of [false, true]) {
         const loaded = await game.load({ scenario, seed: 3, rust_infantry: native, gdscript_cover_search: !native, gdscript_entity_registry: !native });

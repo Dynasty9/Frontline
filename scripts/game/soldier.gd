@@ -158,7 +158,6 @@ var idle_next := 0.0
 var chat_with = null  # untyped: the other man may be freed
 var _banter: Array = []  # [time, text]
 var _laugh_until := 0.0
-static var _last_chat := [-99.0, -99.0]  # one new conversation per side every few seconds
 var peek_up := false
 var peek_t := 0.0
 
@@ -1753,7 +1752,7 @@ func _idle_tick(dt: float, moving: bool) -> void:
 func _start_idle() -> void:
 	idle_next = world.time + world.rng.randf_range(6.0, 16.0)
 	var ti := 1 if team == 1 else 0
-	if world.rng.randf() < 0.35 and world.time - float(_last_chat[ti]) > 8.0:
+	if world.rng.randf() < 0.35 and world.time - float(world.last_chat[ti]) > 8.0:
 		var mate := _chat_mate()
 		if mate:
 			_start_chat(mate)
@@ -1795,7 +1794,7 @@ func _start_chat(mate: Soldier) -> void:
 	var listener: Soldier = mate if ex.size() % 2 == 1 else self
 	listener._banter.append([world.time + ex.size() * 2.8 - 0.6, "!laugh"])
 	world.stat("banter")
-	_last_chat[1 if team == 1 else 0] = world.time
+	world.last_chat[1 if team == 1 else 0] = world.time
 
 
 func _banter_tick() -> void:
@@ -2876,13 +2875,23 @@ func _seek_resupply_native() -> bool:
 
 func _resupply_tick(dt: float) -> void:
 	var t := task_ent
-	if t == null or t.gone:
+	if not is_instance_valid(t) or t.gone:
 		task = ""
 		return
 	if _move_tick(dt, _speed()):
 		_choose_act(true)
 		return
 	act = Act.IDLE
+	if _native_duties():
+		var result: PackedInt32Array = _duties_core().supply_arrival(int(wdef.ammo), mag, reserve, t.loot if t is Soldier else -1)
+		assert(result.size() == 3, "Invalid supply arrival")
+		if result[1] != 0:
+			t.loot -= result[0]
+			reserve += result[0]
+			say("Got ammo.")
+		if result[2] != 0:
+			_return_to_hold()
+		return
 	if t is Soldier:
 		if t.loot > 0:
 			var take := mini(int(wdef.ammo) - total_ammo(), t.loot)
@@ -3037,7 +3046,7 @@ func cmd_retreat(p: Vector3) -> void:
 
 
 func cmd_throw(p: Vector3, kind: String) -> void:
-	if not can_take_orders():
+	if not kind in ["frag", "smoke"] or not can_take_orders():
 		return
 	_clear_task()
 	task = "throw"
@@ -3073,6 +3082,8 @@ func unit_order(d: Dictionary) -> void:
 			cmd_attack(t, world.nav.nearest_walkable(slot))
 		"throw":
 			var kind := String(d.get("kind", "frag"))
+			if not kind in ["frag", "smoke"]:
+				return
 			if kind == "smoke" and smokes <= 0 or kind == "frag" and frags <= 0:
 				say("I'm out!", true)
 				return
@@ -3129,20 +3140,40 @@ func _clear_task() -> void:
 
 
 func _throw_tick(dt: float) -> void:
+	if not throw_kind in ["frag", "smoke"]:
+		task = ""
+		return
+	var inventory := smokes if throw_kind == "smoke" else frags
+	if _native_duties():
+		var result: PackedInt32Array = _duties_core().ordered_throw(position, task_pos, inventory)
+		assert(result.size() == 2, "Invalid ordered throw")
+		match result[0]:
+			0: _throw_approach(dt)
+			1: task = ""
+			2: _release_ordered_throw(result[1])
+		return
 	if Defs.flat(task_pos - position).length() <= 25.0:
-		var kind := throw_kind
-		if kind == "smoke" and smokes <= 0 or kind == "frag" and frags <= 0:
+		if inventory <= 0:
 			task = ""
 			return
-		if kind == "smoke":
-			smokes -= 1
-			world.stat("smoke")
-		else:
-			frags -= 1
-		task = ""
-		_begin_action("throw", 0.6, {"pos": task_pos, "kind": kind})
-		say("Smoke out!" if kind == "smoke" else "Frag out!", true)
+		_release_ordered_throw(inventory - 1)
 		return
+	_throw_approach(dt)
+
+
+func _release_ordered_throw(remaining: int) -> void:
+	var kind := throw_kind
+	if kind == "smoke":
+		smokes = remaining
+		world.stat("smoke")
+	else:
+		frags = remaining
+	task = ""
+	_begin_action("throw", 0.6, {"pos": task_pos, "kind": kind})
+	say("Smoke out!" if kind == "smoke" else "Frag out!", true)
+
+
+func _throw_approach(dt: float) -> void:
 	if not _move_tick(dt, _speed()):
 		task = ""
 	_choose_act(true)
@@ -4706,17 +4737,41 @@ func order_board(v: Vehicle) -> void:
 
 
 func _board_tick(dt: float) -> void:
-	var v := task_ent as Vehicle
-	if v == null or v.gone or v.seats_free() <= 0 or (v.is_heli() and v.position.y > 1.0):
+	var v: Vehicle = task_ent as Vehicle if is_instance_valid(task_ent) else null
+	if v == null or v.gone:
+		task = ""
+		return
+	var seats := v.seats_free()
+	if seats <= 0:
+		task = ""
+		return
+	var helicopter := v.is_heli()
+	if helicopter and v.position.y > 1.0:
 		task = ""
 		return
 	var d := Defs.flat(v.position - position).length()
 	var boat := v.is_boat()
-	if d < 3.6 or (boat and (d < 8.0 or (d < 18.0 and not is_moving()))):
+	var enter := d < 3.6 or (boat and (d < 8.0 or (d < 18.0 and not is_moving())))
+	if _native_duties():
+		var result: int = _duties_core().boarding(true, position, v.position, seats, helicopter, boat, is_moving())
+		assert(result in [1, 2], "Invalid boarding decision")
+		enter = result == 1
+	if enter:
 		task = ""
 		v.board(self)
 		return
 	var moving := _move_tick(dt, _speed())
+	if _native_duties():
+		var result: int = _duties_core().after_boarding_move(position, v.position, goal, boat, moving)
+		assert(result >= 0, "Invalid boarding arrival")
+		if result == 2:
+			task = ""
+			v.board(self)
+			return
+		if result == 1:
+			go_to(v.position, "task", 1)
+		_choose_act(true)
+		return
 	if boat and not moving and Defs.flat(v.position - position).length() < 18.0:
 		# waded out as far as he can: hauled over the side
 		task = ""
@@ -4737,14 +4792,21 @@ func order_tunnel(st: Structure) -> void:
 
 
 func _tunnel_tick(dt: float) -> void:
-	var st := task_ent as Structure
+	var st: Structure = task_ent as Structure if is_instance_valid(task_ent) else null
 	if st == null or st.gone or not st.built:
 		task = ""
 		return
-	if _move_tick(dt, _speed()):
+	var moved := _move_tick(dt, _speed())
+	var arrival: int
+	if _native_duties():
+		arrival = _duties_core().tunnel_arrival(position, st.position, moved)
+		assert(arrival >= 0, "Invalid tunnel arrival")
+	else:
+		arrival = 0 if moved else (1 if Defs.flat(st.position - position).length() > 2.5 else 2)
+	if arrival == 0:
 		_choose_act(true)
 		return
-	if Defs.flat(st.position - position).length() > 2.5:
+	if arrival == 1:
 		go_to(st.position, "task", 1)
 		return
 	task = ""
