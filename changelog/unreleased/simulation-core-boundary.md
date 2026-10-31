@@ -39,6 +39,7 @@ kind = "fixed"
 - Connected wounded-soldier checks preserve bleeding, rescue links, pistol hits, crawling to cover and death credit through saved-state resumes.
 - Connected fighting checks preserve movement, shifts along cover, firing, reloads, escort fire and downtime in the same order as the existing game.
 - Connected house-entry checks preserve approach fire, door kicks, grenade preparation, retreat and buddy orders against shared battlefield state.
+- Connected engineer checks preserve construction, repairs, completed cover, supply roads and squad completion calls against shared battlefield state.
 - Rust destruction checks preserve repairable FOBs, tunnel evacuation, gunner dismounts, car fires and delayed ammunition-cache explosions as shared combat moves into Rust.
 - Fighting positions and their protection checks now use Rust, retaining low cover, leaning fire and second-row shelter while avoiding redundant firing-lane checks.
 - Ground edits, crater deformation and cover repairs now use Rust, preserving road speed, directional cover, camouflage and shell holes.

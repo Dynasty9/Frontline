@@ -54,6 +54,7 @@ impl Profile<'_> {
 #[derive(Clone, Debug, PartialEq)]
 pub enum Event {
     World(world_combat::Event),
+    Construction(crate::infantry_build_world::Construction),
     Speech { id: u32, text: String },
     Movement { id: u32, event: Movement },
 }

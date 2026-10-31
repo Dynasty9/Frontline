@@ -321,6 +321,20 @@ impl WorldGeometry {
             Err("invalid registered structure geometry")
         }
     }
+    pub fn complete_structure(&mut self, id: u32, actors: &Actors) -> Result<(), &'static str> {
+        let st = actors
+            .structure(id)
+            .filter(|st| st.built && !st.gone)
+            .ok_or("missing completed structure")?;
+        self.sync_structure(st, false)?;
+        let nets = nearby_nets(st, actors, &self.structures, true)?;
+        for i in change_ground(&mut self.terrain, st, true, &nets) {
+            self.navigation
+                .terrain_changed(i as usize, &self.terrain, &self.deck)?;
+        }
+        self.refresh_structure_collision(st)
+    }
+
     pub fn tick_cover(&mut self, budget: usize) -> Result<Vec<u32>, &'static str> {
         let cells = self.terrain.tick_cover(budget);
         for &i in &cells {

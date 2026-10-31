@@ -17,6 +17,8 @@ different byte rather than dumping the fixture.
   burst recovery, escort fire and downtime through resumed world updates.
 - `infantry_breach_world.bin`: approach movement, door kicks, grenade preparation,
   retreat, room entry and buddy orders through resumed shared world updates.
+- `infantry_build_world.bin`: construction, repairs, cover/collision completion,
+  battle credit, squad orders and work sounds through resumed shared updates.
 - `world_routes.bin`: shared soldier/vehicle route completions, queued repairs,
   cancelled orders and retained navigation/actor state across resumed batches.
 - `structure_collision.bin`: structure collision boxes, rotated parts, construction,

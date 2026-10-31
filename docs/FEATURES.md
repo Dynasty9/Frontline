@@ -1468,6 +1468,10 @@ effects, reloads and downtime against that retained state. Connected house entry
 uses those same movement and firing paths, then applies door kicks, grenade
 preparation, retreat and the buddy's room-entry order. The production world loop
 and remaining infantry, vehicle and emplacement duties still need integration.
+Connected construction preserves engineers stopping work under fire, approach
+routes, building completion, cover and collision changes, repairable FOBs, supply
+roads, vehicle tracks and squad completion calls. These operations still await
+the production Rust dispatcher.
 Retained navigation owns each structure's overlapping obstacle cells together with
 the infantry and vehicle route hierarchies. Fire counts, bridge decks, terrain
 costs and obstacle removal preserve incremental repair order and pending routes

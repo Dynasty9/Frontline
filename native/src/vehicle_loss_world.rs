@@ -98,7 +98,7 @@ enum Operation {
     Deferred(Gd<SupplyNetworkCore>, Vec<Report>),
     Bullet(Array<Variant>, Gd<SupplyNetworkCore>, Vec<Report>),
     Wounded(u32, WoundedInput, Gd<SupplyNetworkCore>, Vec<Report>),
-    Fighting(bool, Array<Variant>, Gd<SupplyNetworkCore>, Vec<Report>),
+    Infantry(u8, Array<Variant>, Gd<SupplyNetworkCore>, Vec<Report>),
 }
 #[derive(GodotClass)]
 #[class(base=RefCounted, init)]
@@ -365,7 +365,7 @@ impl VehicleLossWorldCore {
             visibility,
             rng,
             config,
-            Operation::Fighting(false, input, network, reports),
+            Operation::Infantry(0, input, network, reports),
         )
     }
     #[func]
@@ -399,7 +399,41 @@ impl VehicleLossWorldCore {
             visibility,
             rng,
             config,
-            Operation::Fighting(true, input, network, reports),
+            Operation::Infantry(1, input, network, reports),
+        )
+    }
+    #[func]
+    fn advance_build(
+        &mut self,
+        actors: Gd<ActorStateCore>,
+        geometry: Gd<WorldGeometryCore>,
+        units: Gd<SpatialIndexCore>,
+        nodes: Array<Gd<SquadStateCore>>,
+        fires: Gd<FiresCore>,
+        battle: Gd<BattleStatsCore>,
+        deferred: Gd<DeferredEffectsCore>,
+        visibility: Gd<VisibilityCore>,
+        rng: Gd<SimulationRandomCore>,
+        config: Array<Variant>,
+        input: Array<Variant>,
+        network: Gd<SupplyNetworkCore>,
+        impacts: Array<Variant>,
+    ) -> Array<Variant> {
+        let Some(reports) = read_impacts(&impacts) else {
+            return Array::new();
+        };
+        self.run(
+            actors,
+            geometry,
+            units,
+            nodes,
+            fires,
+            battle,
+            deferred,
+            visibility,
+            rng,
+            config,
+            Operation::Infantry(2, input, network, reports),
         )
     }
     #[func]
@@ -616,6 +650,8 @@ impl VehicleLossWorldCore {
         let mut reports = None;
         let mut cries: Option<Array<Variant>> = None;
         let mut chat_state: Option<PackedFloat64Array> = None;
+        let mut construction: Option<Array<Variant>> = None;
+        let mut construction_stats = PackedStringArray::new();
         let armor = |v: &frontline_core::vehicle::Vehicle| {
             let p = &vehicles[&v.id];
             Armor {
@@ -627,9 +663,9 @@ impl VehicleLossWorldCore {
             }
         };
         let result = match operation {
-            Operation::Fighting(breach, input, mut network, mut impacts) => {
+            Operation::Infantry(mode, input, mut network, mut impacts) => {
                 let parse = || -> Option<_> {
-                    if input.len() != 6 {
+                    if input.len() != if mode == 2 { 8 } else { 6 } {
                         return None;
                     }
                     let id: u32 = read(&input, 0)?;
@@ -729,7 +765,33 @@ impl VehicleLossWorldCore {
                         piercing: p.5,
                     })
                 };
-                let result = if breach {
+                let result = if mode == 2 {
+                    let Some(rate) = read::<f64>(&input, 6) else {
+                        return Array::new();
+                    };
+                    let time = input.at(7);
+                    let build_time = if time.is_nil() {
+                        None
+                    } else {
+                        let Ok(time) = time.try_to::<f64>() else {
+                            return Array::new();
+                        };
+                        Some(time)
+                    };
+                    context.advance_build(
+                        id,
+                        dt,
+                        rate,
+                        build_time,
+                        gun,
+                        &profile,
+                        &mut self.gunfire,
+                        &mut network.bind_mut().core,
+                        &mut impacts,
+                        &armor,
+                        &|v| vehicles[&v.id].hit,
+                    )
+                } else if mode == 1 {
                     context.advance_breach(
                         id,
                         dt,
@@ -758,6 +820,22 @@ impl VehicleLossWorldCore {
                 reports = Some(impacts);
                 chat_state = Some(PackedFloat64Array::from(chat.as_slice()));
                 result.map(|events| {
+                    if mode == 2 {
+                        use frontline_core::infantry_build_world::Construction;
+                        construction = Some(events.iter().filter_map(|e| {
+                            let fighting::Event::Construction(event) = e else { return None };
+                            Some(match event {
+                                Construction::Completed { id, kind } => {
+                                    construction_stats.push("built");
+                                    construction_stats.push(&GString::from(&format!("built_{kind}")));
+                                    varray!["completed", *id, &GString::from(kind.as_str())].to_variant()
+                                },
+                                Construction::FobRestored { id } => varray!["restored", *id].to_variant(),
+                                Construction::TrackRepaired { id } => varray!["track", *id].to_variant(),
+                                Construction::Sound { position } => varray!["sound", vector(*position)].to_variant(),
+                            })
+                        }).collect());
+                    }
                     cries = Some(
                         events
                             .iter()
@@ -934,7 +1012,7 @@ impl VehicleLossWorldCore {
             .collect();
         let original = nodes.len();
         write_squads(nodes, squads.into_iter().take(original).collect());
-        let stats: PackedStringArray = events
+        let mut stats: PackedStringArray = events
             .iter()
             .filter_map(|e| match e {
                 world_combat::Event::Stat(s)
@@ -951,6 +1029,7 @@ impl VehicleLossWorldCore {
                 _ => None,
             })
             .collect();
+        stats.extend_array(&construction_stats);
         let mut out = varray![next as i64, &states, &stats];
         if let Some(reports) = reports {
             let rows: Array<Variant> = reports
@@ -1007,6 +1086,9 @@ impl VehicleLossWorldCore {
         }
         if let Some(chat) = chat_state {
             out.push(&chat.to_variant());
+        }
+        if let Some(construction) = construction {
+            out.push(&construction.to_variant());
         }
         out
     }
