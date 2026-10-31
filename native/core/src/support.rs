@@ -415,6 +415,33 @@ impl SupportFlight {
             )
     }
 
+    pub fn valid(&self) -> bool {
+        let point = |p: Vector3| p.is_finite() && p.abs().max_element() <= 1_000_000.0;
+        let time = |t: f64| t.is_finite() && t.abs() <= 1e12;
+        [self.position, self.velocity, self.target]
+            .into_iter()
+            .all(point)
+            && self.muzzles.into_iter().all(point)
+            && [
+                self.life,
+                self.fuse,
+                self.stay,
+                self.sight,
+                self.fire_elapsed,
+                self.bombs_initial,
+                self.mark_time,
+            ]
+            .into_iter()
+            .all(time)
+            && self.hits.len() <= 1024
+            && self.hits.iter().all(|(t, p)| time(*t) && point(*p))
+            && self.next.iter().enumerate().all(|(i, next)| {
+                next.is_none_or(|(at, count)| {
+                    time(at) && guns(self.gunset).get(i).is_some_and(|g| count < g.burst)
+                })
+            })
+    }
+
     pub fn checkpoint(&self) -> Vec<u8> {
         let mut out = Writer::new(b"FLSF\x02\0\0\0");
         out.byte(self.kind as u8);

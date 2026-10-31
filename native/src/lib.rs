@@ -32,6 +32,7 @@ mod infantry_vitals;
 mod infantry_weapon;
 mod navigation_grid;
 mod path_planner;
+mod projectile_actor;
 mod projectile_flight;
 mod route_graph;
 mod simulation_random;

@@ -45,6 +45,7 @@ pub mod navigation_grid;
 pub mod path_planner;
 pub mod perception;
 pub mod projectile;
+pub mod projectile_actor;
 pub mod random;
 pub mod route_graph;
 mod state_codec;

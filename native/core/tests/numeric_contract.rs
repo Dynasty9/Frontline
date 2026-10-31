@@ -36,6 +36,225 @@ fn block(out: &mut Vec<u8>, bytes: &[u8]) {
 }
 
 #[test]
+fn retained_projectiles_and_impact_events_are_identical_across_platforms() {
+    use frontline_core::projectile_actor::{
+        ballistic, Event as ImpactEvent, Motion, Projectile, Spawn, Step,
+    };
+    use frontline_core::support::Gunset;
+    fn event_bytes(out: &mut Vec<u8>, event: &ImpactEvent) {
+        match event {
+            ImpactEvent::Explosion(e) => {
+                out.push(0);
+                point(out, e.position);
+                for value in [
+                    e.damage,
+                    e.radius,
+                    e.fling,
+                    e.antitank,
+                    e.track,
+                    e.size,
+                    e.structure_multiplier,
+                ] {
+                    out.extend_from_slice(&value.to_le_bytes());
+                }
+                out.push(u8::from(e.direction.is_some()));
+                if let Some(direction) = e.direction {
+                    point(out, direction);
+                }
+                out.extend_from_slice(&[u8::from(e.top), e.team as u8]);
+                out.extend_from_slice(&e.source.to_le_bytes());
+                out.extend_from_slice(&e.called_by.to_le_bytes());
+            }
+            ImpactEvent::Spawn(s) => {
+                out.extend_from_slice(&[1, s.team as u8]);
+                out.extend_from_slice(&s.thrower.to_le_bytes());
+                out.extend_from_slice(&s.called_by.to_le_bytes());
+                block(out, &s.flight.checkpoint());
+            }
+            ImpactEvent::DamageSmotherer { soldier, source } => {
+                out.push(2);
+                out.extend_from_slice(&soldier.to_le_bytes());
+                out.extend_from_slice(&source.to_le_bytes());
+            }
+            ImpactEvent::SmotherNotice(id) => {
+                out.push(3);
+                out.extend_from_slice(&id.to_le_bytes());
+            }
+            ImpactEvent::Photograph {
+                team,
+                position,
+                radius,
+                linger,
+            } => {
+                out.extend_from_slice(&[4, *team as u8]);
+                point(out, *position);
+                out.extend_from_slice(&radius.to_le_bytes());
+                out.extend_from_slice(&linger.to_le_bytes());
+            }
+            ImpactEvent::Sound {
+                name,
+                volume,
+                position,
+            } => {
+                out.push(5);
+                block(out, name.as_bytes());
+                out.extend_from_slice(&volume.to_le_bytes());
+                point(out, *position);
+            }
+            ImpactEvent::Stat(name) => {
+                out.push(6);
+                block(out, name.as_bytes());
+            }
+            ImpactEvent::Despawn => out.push(7),
+        }
+    }
+    let kinds = [
+        Kind::Frag,
+        Kind::Smoke,
+        Kind::Rocket,
+        Kind::Recoilless,
+        Kind::Mortar,
+        Kind::MortarSmoke,
+        Kind::Grad,
+        Kind::Arty,
+        Kind::Ac105,
+        Kind::Ac40,
+        Kind::Ac25,
+        Kind::Bomb,
+    ];
+    let mut bytes = Vec::new();
+    for kind in 0..21 {
+        for trial in 0..4 {
+            let mut actor = Projectile::from_spawn(
+                17,
+                Spawn {
+                    flight: ballistic(
+                        kinds[kind.min(11)],
+                        Vector3::new(0.3, 2.1, -0.7),
+                        Vector3::new(12.7, 1.1, -3.6),
+                    ),
+                    team: 0,
+                    thrower: 7,
+                    called_by: 42,
+                },
+            )
+            .unwrap();
+            if let Motion::Ballistic(f) = &mut actor.motion {
+                f.origin = f.position;
+                f.target = Vector3::new(37.4, 0.0, -12.7);
+                f.shell_duration = 2.7;
+            }
+            if kind == 12 || kind == 13 {
+                actor.target_id = 8;
+                actor.motion = Motion::Guided(GuidedFlight {
+                    kind: if kind == 12 {
+                        GuidedKind::AntiTank
+                    } else {
+                        GuidedKind::SurfaceToAir
+                    },
+                    position: Vector3::new(0.3, 2.1, -0.7),
+                    velocity: Vector3::new(12.7, 1.1, -3.6),
+                    target: Vector3::new(37.4, 0.0, -12.7),
+                    life: 0.0,
+                    locked: true,
+                    dead: false,
+                });
+            } else if kind >= 14 {
+                let mut f = SupportFlight::new(
+                    if kind == 14 {
+                        SupportKind::Jet
+                    } else if kind == 15 {
+                        SupportKind::GunRun
+                    } else {
+                        SupportKind::Orbit
+                    },
+                    Vector3::new(-420.0, 62.0, 0.0),
+                    Vector3::X * 58.0,
+                    Vector3::new(37.4, 0.0, -12.7),
+                );
+                f.gunset = [
+                    Gunset::Ac130,
+                    Gunset::Blackfish,
+                    Gunset::Xian,
+                    Gunset::Greyhawk,
+                    Gunset::Unarmed,
+                ][kind.saturating_sub(16)];
+                f.life = 2.8;
+                f.sight = 65.0;
+                f.stay = 8.0;
+                f.muzzles = [
+                    Vector3::new(-2.0, 1.3, 0.1),
+                    Vector3::new(-2.0, 0.7, -3.1),
+                    Vector3::new(-1.7, 0.3, 4.1),
+                ];
+                actor.motion = Motion::Support(f);
+            }
+            let mut rng = SimulationRandom::new(trial + 137);
+            let mut scene = CollisionWorld::default();
+            let mut restored_scene = CollisionWorld::default();
+            for tick in 0..120 {
+                if kind < 2 && tick == 2 {
+                    actor.pick_up(8).unwrap();
+                }
+                if kind < 2 && tick == 5 && trial % 2 == 0 {
+                    actor
+                        .release_throw(
+                            8,
+                            1,
+                            Vector3::new(1.3, 0.0, 2.7),
+                            Vector3::new(15.4, 0.0, 7.1),
+                        )
+                        .unwrap();
+                }
+                let held = if actor.held_by == 0 {
+                    Holder::Free
+                } else if tick < 7 {
+                    Holder::Alive(Vector3::new(1.3, 1.3, 2.4))
+                } else {
+                    Holder::Dropped
+                };
+                let i = Step {
+                    dt: [1.0 / 30.0, 0.1, 0.07][trial as usize % 3],
+                    time: 100.0 + tick as f64 * 0.1,
+                    map_half: 512.0,
+                    holder: held,
+                    target: if actor.target_id != 0 && tick < 19 {
+                        Some(Vector3::new(37.4, 20.0, -12.7 + tick as f32 * 0.2))
+                    } else {
+                        None
+                    },
+                    smoke: trial % 2 == 0 && tick >= 8,
+                    smotherer: None,
+                    candidates: &[Vector3::new(30.1, 0.0, 14.7)],
+                    excluded: &[],
+                };
+                let mut restored = Projectile::restore(&actor.checkpoint().unwrap()).unwrap();
+                let mut resumed_rng = rng;
+                let events = actor.advance(i, &mut scene, &mut rng).unwrap();
+                assert_eq!(
+                    restored
+                        .advance(i, &mut restored_scene, &mut resumed_rng)
+                        .unwrap(),
+                    events
+                );
+                assert_eq!(restored, actor);
+                assert_eq!(resumed_rng, rng);
+                block(&mut bytes, &actor.checkpoint().unwrap());
+                bytes.extend_from_slice(&rng.state().to_le_bytes());
+                bytes.extend_from_slice(&(events.len() as u32).to_le_bytes());
+                for event in &events {
+                    event_bytes(&mut bytes, event);
+                }
+                if events.contains(&ImpactEvent::Despawn) {
+                    break;
+                }
+            }
+        }
+    }
+    golden("projectile_actor", &bytes);
+}
+
+#[test]
 fn retained_infantry_casualties_are_identical_across_platforms() {
     use frontline_core::infantry::{Identity, Infantry};
     use frontline_core::infantry_action::{Action, Round, Throw};

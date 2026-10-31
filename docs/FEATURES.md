@@ -363,6 +363,7 @@ catalogue entry in `MissionList.LIST`, a setup function and an autopilot functio
 ## The systems
 
 **Soldier AI** (`scripts/game/soldier.gd`, `soldier_brain.gd`, `bt.gd`, `combat.gd`)
+- Rust projectile actors retain grenade handlers, missile targets and player credit through checkpoint resumes, preserving impact, smoke and support-aircraft effects. The shared world dispatcher is still being migrated.
 - The Rust migration also retains action interruptions and casualty transitions, including rescue/stretcher claims, pending throws, blast recovery, loot and revival. Shared world effects still run in Godot while the complete simulation is being moved.
 - **Priority decisions govern each man** (`soldier_brain.gd`): reflexes come first, most urgent first;
   then, if he's free, the fight. Direct checks avoid dispatching a tree of callbacks for every soldier.

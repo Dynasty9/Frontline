@@ -13,6 +13,7 @@ kind = "fixed"
 - Rust squad-order checks preserve busy soldiers' order gates, rescue and breach commitments, leaving mounted guns, formation movement and grenade approaches.
 - Retained Rust actor checks now connect action interruptions, cooking and throws, diving, blast recovery, casualty links, death and revival, hidden transport and corpse cleanup.
 - Grenade, smoke, rocket, bomb and shell flight now use the shared simulation core, preserving flight behavior, pickup, kicking and rethrowing.
+- Rust projectile-actor checks preserve grenade holders and throwbacks, impact damage, smoke, guided-missile lock loss, recon and support-aircraft attribution through saved-state resumes.
 - Battlefield raycasts now use the shared simulation core, updating when vehicles move, doors open and structures change.
 - Sight checks and smoke screens now run in Rust, retaining immediate smoke changes and reusing obstruction only while the blocking geometry stays unchanged.
 - Infantry contact evaluation now shares a Rust scan, preserving weapon priorities, mounted-gun arcs, drone reactions, forced targets and squad reports.

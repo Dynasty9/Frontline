@@ -21,6 +21,7 @@ graphics, network access or a wall clock.
 | Infantry target acquisition | `frontline_core` | Visibility, mounted-gun arcs, weapon priorities, drone reactions and forced targets in one numeric scan; Godot supplies current contact poses and applies squad reports |
 | Gameplay RNG, including commander streams | `frontline_core` | Seeded PCG stream matches Godot 4.7; cosmetic RNG stays in Godot |
 | Grenade, smoke, rocket, bomb and shell flight | `frontline_core` | Rust retains and advances flight state and queries native geometry; the adapter supplies holders and applies impacts |
+| Retained projectile actors and impacts | `frontline_core` | Ballistic, guided and support actors retain ownership, holder/handler links and attribution with flight checkpoints; ordered impact, spawn, smoke, recon and sound effects still await the Rust world dispatcher |
 | Weighted grid paths and cluster pair costs | `frontline_core` | Exact Godot route tie behavior; native cluster workers return costs in deterministic order |
 | Ground cells, crater heights and queued cover repairs | `frontline_core` | Rust retains terrain and ordered structure geometry, and performs edits, queries and cover repairs; Godot imports biome generation and forwards navigation notifications |
 | Water shapes, bridge decks and water terrain rasterization | `frontline_core` | Ordered numeric rasterization; a Rust worker also applies the joining host's ground overrides; Godot still generates the initial shapes |
@@ -248,7 +249,7 @@ Component checkpoint headers contain a four-byte component tag, a little-endian
 rules rather than silently continuing with changed arithmetic. The separate
 integer RNG stream remains unchanged.
 
-`native/core/tests/numeric_contract.rs` compares 13,078,364 committed bytes without
+`native/core/tests/numeric_contract.rs` compares 14,365,306 committed bytes without
 tolerances: fixed-tick flight state, support events and RNG cursors, carved water,
 craters, rotated box hits, cover anchors, spherical interpolation and infantry
 movement, infantry cover fire, postures, ammunition, burst recovery, vitals, aiming,
@@ -472,7 +473,24 @@ flag until Rust owns the actors.
 
 The shock fixture compares 92,160 reference steps, including mounted turning,
 blocked terrain, carried casualties and task interruption. The full default suite
-passes 148 tests; 265 core tests pass in debug and release.
+passes 149 tests; 276 core tests pass in debug and release.
+
+## Retained projectiles and impacts
+
+`Projectile` combines the existing ballistic, guided and support flight states
+with thrower/player credit, target identity, holders, handlers and throwback
+counts. Pickup, kicking, rethrowing and lost holders mutate that same state.
+The impact stage preserves blast profiles, armour direction, smoke rounds,
+smothering, missile lock loss and support-aircraft child-round attribution.
+Smothering is tested at the grenade's position after its final flight step.
+
+Impacts return ordered effects for the world: injury, explosion, spawned round,
+recon mark, sound, notice, counter and removal. The world still needs to apply
+them to its complete actor set. The Godot fixture compares 168 cases and 46,825
+steps, including effect order, all flight variants, handler changes, RNG and
+checkpoint continuation. Numeric CI adds 1,286,942 exact state/effect bytes.
+Actor checkpoints and returned effects do not replace the unfinished battle
+checkpoint, command replay or standalone server.
 
 ## Retained infantry actions and casualties
 
