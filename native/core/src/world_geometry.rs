@@ -3,13 +3,14 @@ use crate::actors::{Actor, Actors};
 use crate::collision::CollisionWorld;
 use crate::cover::{rotation, transform};
 use crate::navigation_scene::NavigationScene;
+use crate::random::SimulationRandom;
 use crate::spatial::{SpatialIndex, DOOR_CELL, STRUCTURE_CELL};
 use crate::state_codec::{Reader, Writer};
 use crate::structure::Structure;
 use crate::structure_birth::BuildingProfile;
 use crate::terrain::Terrain;
 use crate::terrain_cover::{CoverPart, CoverStructure};
-use crate::vector::Vector3;
+use crate::vector::{normalized, Vector3};
 use glam::Vec2;
 use std::collections::HashSet;
 
@@ -21,6 +22,15 @@ pub struct WorldGeometry {
     pub doors: SpatialIndex,
     pub deck: Vec<u8>,
     retired: Vec<u32>,
+}
+
+/// The renderer animates the flight; its final cover position is authoritative immediately.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Toss {
+    pub origin: Vector3,
+    pub yaw: f64,
+    pub velocity: Vector3,
+    pub spin: Vector3,
 }
 
 impl WorldGeometry {
@@ -38,6 +48,103 @@ impl WorldGeometry {
     }
     pub fn pending_removals(&self) -> &[u32] {
         &self.retired
+    }
+
+    pub fn toss_structure(
+        &mut self,
+        actors: &mut Actors,
+        id: u32,
+        blast: Vector3,
+        size: f64,
+        rng: &mut SimulationRandom,
+    ) -> Result<Option<Toss>, &'static str> {
+        if !blast.is_finite()
+            || blast.abs().max_element() > 1_000_000.0
+            || !size.is_finite()
+            || !(0.0..=1000.0).contains(&size)
+        {
+            return Err("invalid structure toss");
+        }
+        let Some(st) = actors.structure(id) else {
+            return Ok(None);
+        };
+        if st.gone || !matches!(st.kind.as_str(), "car" | "crates") {
+            return Ok(None);
+        }
+        if self.retired.contains(&id)
+            || st.hash_cells.is_empty()
+            || self.navigation.planner.side() != self.terrain.n
+        {
+            return Err("invalid tossed structure geometry");
+        }
+        let mut away = st.position - blast;
+        away.y = 0.0;
+        let distance = f64::from(away.length());
+        away = if distance > 0.1 {
+            normalized(away)
+        } else {
+            let angle = f64::from(rng.randf()) * std::f64::consts::TAU;
+            Vector3::new(-libm::sin(angle) as f32, 0.0, -libm::cos(angle) as f32)
+        };
+        let power = (size * (1.0 - distance / (4.0 + size * 3.0)) / 2.6).clamp(0.0, 1.0);
+        if power < 0.15 {
+            return Ok(None);
+        }
+        let light = st.kind == "crates";
+        let up = 3.0 + ((if light { 9.0 } else { 7.0 }) - 3.0) * power;
+        let out = 2.0 + ((if light { 7.0 } else { 5.0 }) - 2.0) * power;
+        let air_time = 2.0 * up / 19.6;
+        let destination = st.position + away * out as f32 * air_time as f32;
+        let bound = self.terrain.n as f64 * 0.5 - 4.0;
+        if f64::from(destination.x.abs()) >= bound
+            || f64::from(destination.z.abs()) >= bound
+            || self.navigation.planner.kind_at(destination, false) == 3
+        {
+            return Ok(None);
+        }
+        let mut moved = st.clone();
+        let pitch = f64::from(rng.randf_range(-0.08, 0.08));
+        let mut roll = f64::from(rng.randf_range(-0.08, 0.08));
+        let r = f64::from(rng.randf());
+        if r < 0.35 * power {
+            roll = std::f64::consts::PI;
+        } else if r < 0.7 * power {
+            roll = std::f64::consts::PI * 0.5 * if rng.randf() < 0.5 { 1.0 } else { -1.0 };
+        }
+        let dyaw = f64::from(rng.randf_range(-1.3, 1.3)) * power;
+        let origin = moved.position;
+        let yaw = moved.yaw;
+        self.navigation
+            .remove_structure(&mut moved, &self.terrain, &self.deck)?;
+        change_ground(&mut self.terrain, &moved, false, &[]);
+        self.structures.remove(id);
+        self.terrain.scene.remove(u64::from(id));
+        moved.position = Vector3::new(destination.x, 0.0, destination.z);
+        moved.yaw = yaw + dyaw;
+        moved.tilt = [pitch as f32, roll as f32];
+        self.structures.insert(id, moved.position, moved.radius)?;
+        moved.hash_cells = self
+            .structures
+            .membership(id)
+            .iter()
+            .map(|&(x, z)| [x, z])
+            .collect();
+        self.sync_structure(&moved, true)?;
+        self.navigation
+            .add_structure(&mut moved, &self.terrain, &self.deck)?;
+        change_ground(&mut self.terrain, &moved, true, &[]);
+        moved.refresh_anchors(self.terrain.n as f64 * 0.5)?;
+        self.refresh_structure_collision(&moved)?;
+        *actors.get_mut(id).unwrap() = Actor::Structure(Box::new(moved));
+        let axis = normalized(away.cross(Vector3::Y));
+        let denominator = air_time.max(0.35) as f32;
+        Ok(Some(Toss {
+            origin,
+            yaw,
+            velocity: away * out as f32 + Vector3::Y * up as f32,
+            spin: -axis * (roll.abs() + 1.0) as f32 / denominator
+                + Vector3::Y * dyaw as f32 / denominator,
+        }))
     }
 
     /// A spawned wreck's ignition is dispatched immediately afterwards, in the caller's fire order.

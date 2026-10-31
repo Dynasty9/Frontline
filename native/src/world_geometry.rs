@@ -11,6 +11,36 @@ pub(crate) struct WorldGeometryCore {
 #[godot_api]
 impl WorldGeometryCore {
     #[func]
+    fn toss_structure(
+        &mut self,
+        mut actors: Gd<ActorStateCore>,
+        id: u32,
+        blast: Vector3,
+        size: f64,
+        mut rng: Gd<crate::simulation_random::SimulationRandomCore>,
+    ) -> Array<Variant> {
+        let Some(g) = &mut self.core else {
+            return Array::new();
+        };
+        match g.toss_structure(
+            &mut actors.bind_mut().core,
+            id,
+            crate::point(blast),
+            size,
+            &mut rng.bind_mut().core,
+        ) {
+            Ok(None) => varray![false],
+            Ok(Some(t)) => varray![
+                true,
+                Vector3::new(t.origin.x, t.origin.y, t.origin.z),
+                t.yaw,
+                Vector3::new(t.velocity.x, t.velocity.y, t.velocity.z),
+                Vector3::new(t.spin.x, t.spin.y, t.spin.z)
+            ],
+            Err(_) => Array::new(),
+        }
+    }
+    #[func]
     fn spawn_structure(
         &mut self,
         mut actors: Gd<ActorStateCore>,

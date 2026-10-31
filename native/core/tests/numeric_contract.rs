@@ -37,6 +37,62 @@ mod fires_world;
 mod structure_birth_world;
 
 #[test]
+fn shared_structure_tosses_are_identical_across_platforms() {
+    use frontline_core::actors::Actors;
+    use frontline_core::structure::Structure;
+    use frontline_core::world_geometry::WorldGeometry;
+    let mut bytes = vec![];
+    for trial in 0..64 {
+        let mut geometry = WorldGeometry::new(Terrain::blank(32).unwrap(), vec![], 16).unwrap();
+        let mut actors = Actors::default();
+        let mut rng = SimulationRandom::new(73241 + trial);
+        let st = Structure {
+            kind: if trial % 2 == 0 { "car" } else { "crates" }.into(),
+            variant: trial as i32 % 3,
+            yaw: trial as f64 * 0.17,
+            ..Default::default()
+        };
+        geometry.spawn_structure(&mut actors, st, None).unwrap();
+        for step in 0..16 {
+            let p = actors.structure(1).unwrap().position
+                + Vector3::new(
+                    if step % 3 == 0 {
+                        0.0
+                    } else if step % 2 == 0 {
+                        -1.7
+                    } else {
+                        1.7
+                    },
+                    0.0,
+                    if step % 3 == 0 { 0.0 } else { 0.37 },
+                );
+            let size = [0.0, 0.3, 1.0, 1.6, 2.3, 3.7, 8.0, 20.0][step % 8];
+            if let Some(t) = geometry
+                .toss_structure(&mut actors, 1, p, size, &mut rng)
+                .unwrap()
+            {
+                bytes.push(1);
+                point(&mut bytes, t.origin);
+                bytes.extend_from_slice(&t.yaw.to_le_bytes());
+                point(&mut bytes, t.velocity);
+                point(&mut bytes, t.spin);
+            } else {
+                bytes.push(0);
+            }
+            block(&mut bytes, &actors.checkpoint().unwrap());
+            bytes.extend_from_slice(&rng.state().to_le_bytes());
+            if step % 4 == 3 {
+                geometry.tick_cover(43).unwrap();
+                block(&mut bytes, &geometry.checkpoint());
+                geometry = WorldGeometry::restore(&geometry.checkpoint()).unwrap();
+                actors = Actors::restore(&actors.checkpoint().unwrap()).unwrap();
+            }
+        }
+    }
+    golden("structure_toss", &bytes);
+}
+
+#[test]
 fn shared_structure_creation_is_identical_across_platforms() {
     golden("structure_birth", &structure_birth_world::transcript());
 }

@@ -1895,3 +1895,23 @@ dimensions, construction states, cover repairs and deferred removal. Numeric CI
 adds 2,514,876 exact bytes for creation and destruction continuations. These are
 component checks; the whole world dispatcher, automatic spawn effects and battle
 replay verifier remain unfinished.
+
+## Blast-tossed structures
+
+Retained cars and crates now resolve blast strength, landing admission, tilt and
+spin without scene nodes. An accepted throw immediately removes the old navigation
+and cover, registers the new geometry and moves the actor. The returned origin,
+velocity and spin let Godot animate the visual flight without controlling shelter.
+Weak throws and blocked/out-of-map landings preserve the original draw order,
+including the direction draw for an explosion directly underneath the object.
+
+Four regressions cover collision/navigation movement, rejected throws, random
+continuation and checkpoint resumes. The Godot reference fixture compares 1,024
+attempts (674 accepted), 1,280 complete geometry states and 24,576 ray hit identities.
+At yaw 9.59068653375644, Godot's platform cosine and portable libm differ by one
+float step (5.96e-8). Only the reference collision rotation coefficients allow one
+float step; actor state, random cursors, ray hit identities and other collision
+fields remain exact. The existing double cover-coefficient tolerance is unchanged.
+Rust continuation and the 11,562,980-byte numeric transcript use no tolerance.
+The full combat dispatcher still needs to call this operation between destruction
+and fire ignition; the live game still uses the Godot toss method.
