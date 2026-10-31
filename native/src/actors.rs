@@ -198,6 +198,43 @@ fn infantry_hit(r: frontline_core::infantry_effects::InfantryHit) -> Array<Varia
         r.damage_credited
     ]
 }
+fn structure_damage(
+    result: Result<frontline_core::structure_damage::Damage, &'static str>,
+) -> Array<Variant> {
+    use frontline_core::structure_damage::Event;
+    let Ok(result) = result else {
+        return Array::new();
+    };
+    let removed = match result.removed {
+        Some(st) => match st.checkpoint() {
+            Ok(bytes) => PackedByteArray::from(bytes.as_slice()),
+            Err(_) => return Array::new(),
+        },
+        None => PackedByteArray::new(),
+    };
+    let events: Array<Variant> = result
+        .events
+        .into_iter()
+        .map(|e| {
+            match e {
+                Event::Door => varray![0],
+                Event::UnderAttack => varray![1],
+                Event::BuildingLost => varray![2],
+                Event::FobWrecked => varray![3],
+                Event::Unhidden(id) => varray![4, id as i64],
+                Event::ReleasedGunner(id) => varray![5, id as i64],
+                Event::CacheCookOff(n) => varray![6, n as i64],
+                Event::Debris(n) => varray![7, n as i32],
+                Event::TreeFall(yaw) => varray![8, yaw],
+                Event::Rubble => varray![9],
+                Event::DestroyedAlert => varray![10],
+                Event::IgnitedCar => varray![11],
+            }
+            .to_variant()
+        })
+        .collect();
+    varray![result.applied, &events, &removed]
+}
 fn impact(r: Result<Option<Explosion>, &'static str>) -> Array<Variant> {
     match r {
         Ok(e) => varray![&crate::projectile_actor::events(
@@ -296,6 +333,69 @@ fn write_squads(
 
 #[godot_api]
 impl ActorStateCore {
+    #[func]
+    fn damage_structure(
+        &mut self,
+        id: u32,
+        values: PackedFloat64Array,
+        source: u32,
+        blame: Array<Variant>,
+        nav: Gd<crate::path_planner::PathPlannerCore>,
+        mut deferred: Gd<crate::deferred_effects::DeferredEffectsCore>,
+        mut rng: Gd<crate::simulation_random::SimulationRandomCore>,
+    ) -> Array<Variant> {
+        if values.len() != 4
+            || ![0.0, 1.0].contains(&values[2])
+            || !values[3].is_finite()
+            || !(values[3] == -1.0 || (0.0..=1_000_000.0).contains(&values[3]))
+        {
+            return Array::new();
+        }
+        let Ok(blame) = damage_credit(&blame) else {
+            return Array::new();
+        };
+        let nav = nav.bind();
+        let Some(nav) = nav.core.as_ref() else {
+            return Array::new();
+        };
+        structure_damage(self.core.damage_structure(
+            id,
+            values[0],
+            source,
+            blame.as_ref(),
+            values[1],
+            values[2] != 0.0,
+            (values[3] >= 0.0).then_some(values[3]),
+            nav,
+            &mut deferred.bind_mut().core,
+            &mut rng.bind_mut().core,
+        ))
+    }
+    #[func]
+    fn destroy_structure(
+        &mut self,
+        id: u32,
+        quiet: bool,
+        now: f64,
+        player_building: bool,
+        nav: Gd<crate::path_planner::PathPlannerCore>,
+        mut deferred: Gd<crate::deferred_effects::DeferredEffectsCore>,
+        mut rng: Gd<crate::simulation_random::SimulationRandomCore>,
+    ) -> Array<Variant> {
+        let nav = nav.bind();
+        let Some(nav) = nav.core.as_ref() else {
+            return Array::new();
+        };
+        structure_damage(self.core.destroy_structure(
+            id,
+            quiet,
+            now,
+            player_building,
+            nav,
+            &mut deferred.bind_mut().core,
+            &mut rng.bind_mut().core,
+        ))
+    }
     #[func]
     fn advance_infantry_travel(
         &mut self,

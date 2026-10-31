@@ -241,25 +241,7 @@ impl Infantry {
             Task::Rescue if self.duty.entity != 0 => Some(Release::Rescue(self.duty.entity as u32)),
             Task::Breach if self.identity.squad != 0 => Some(Release::Breach(self.identity.squad)),
             Task::Man if self.emplacement.structure != 0 => {
-                self.emplacement.mortar_aim = None;
-                self.emplacement.target = 0;
-                self.emplacement.scan_timer = 0.0;
-                self.emplacement.structure = 0;
-                self.identity.mounted_weapon.clear();
-                if self.orders.base_y > 0.0 {
-                    if let Some(position) = mount_position {
-                        self.motion.position =
-                            nav.nearest_walkable(position + Vector3::X * 2.0).unwrap();
-                    }
-                }
-                self.orders.base_y = 0.0;
-                self.motion.position.y = 0.0;
-                self.duty.kind = Task::Fight;
-                self.duty.entity = 0;
-                self.cover.at_cover = false;
-                self.cover.kind = 0;
-                self.clear_cover();
-                self.cover.evaluate_at = 0.0;
+                self.release_mount(nav, mount_position).unwrap();
                 return None;
             }
             _ => None,
@@ -269,5 +251,43 @@ impl Infantry {
         self.duty.partner = 0;
         self.orders.backwards = false;
         release
+    }
+
+    pub fn release_mount(
+        &mut self,
+        nav: &PathPlanner,
+        mount_position: Option<Vector3>,
+    ) -> Result<(), &'static str> {
+        if !self.valid() || mount_position.is_some_and(|p| !point(p)) {
+            return Err("invalid infantry mount release");
+        }
+        let exit = if self.orders.base_y > 0.0 {
+            match mount_position {
+                Some(position) => Some(
+                    nav.nearest_walkable(position + Vector3::X * 2.0)
+                        .ok_or("invalid gunner exit")?,
+                ),
+                None => None,
+            }
+        } else {
+            None
+        };
+        self.emplacement.mortar_aim = None;
+        self.emplacement.target = 0;
+        self.emplacement.scan_timer = 0.0;
+        self.emplacement.structure = 0;
+        self.identity.mounted_weapon.clear();
+        if let Some(position) = exit {
+            self.motion.position = position;
+        }
+        self.orders.base_y = 0.0;
+        self.motion.position.y = 0.0;
+        self.duty.kind = Task::Fight;
+        self.duty.entity = 0;
+        self.cover.at_cover = false;
+        self.cover.kind = 0;
+        self.clear_cover();
+        self.cover.evaluate_at = 0.0;
+        Ok(())
     }
 }

@@ -70,6 +70,7 @@ pub mod spatial;
 pub mod squad;
 mod state_codec;
 pub mod structure;
+pub mod structure_damage;
 pub mod support;
 pub mod targeting;
 pub mod terrain;

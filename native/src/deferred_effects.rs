@@ -5,9 +5,9 @@ use godot::prelude::*;
 
 #[derive(GodotClass)]
 #[class(base=RefCounted, init)]
-struct DeferredEffectsCore {
+pub(crate) struct DeferredEffectsCore {
     base: Base<RefCounted>,
-    core: DeferredEffects,
+    pub(crate) core: DeferredEffects,
 }
 #[godot_api]
 impl DeferredEffectsCore {

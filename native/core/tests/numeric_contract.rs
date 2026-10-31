@@ -36,6 +36,171 @@ fn block(out: &mut Vec<u8>, bytes: &[u8]) {
 }
 
 #[test]
+fn retained_structure_damage_is_identical_across_platforms() {
+    use frontline_core::actors::{Actor, Actors};
+    use frontline_core::deferred_effects::DeferredEffects;
+    use frontline_core::infantry::{Credit, Infantry as Soldier};
+    use frontline_core::infantry_controller::Task;
+    use frontline_core::structure::Structure;
+    use frontline_core::structure_damage::Event as DamageEvent;
+    let mut bytes = Vec::new();
+    let nav = PathPlanner::new(32).unwrap();
+    for kind in [
+        "fob",
+        "tunnel",
+        "mg_nest",
+        "watchtower",
+        "hmg_nest",
+        "ammo_cache",
+        "tree",
+        "house_wall",
+        "barracks",
+        "car",
+        "concrete_wall",
+        "crates",
+    ] {
+        for trial in 0..16 {
+            let mut st = Structure {
+                id: 20,
+                kind: kind.into(),
+                team: trial % 3 - 1,
+                owner: 7,
+                position: Vector3::new(0.3, 0.0, 0.7),
+                yaw: 0.731,
+                hp: if kind == "car" { 60.0 } else { 100.0 },
+                max_hp: 100.0,
+                size: Vector3::new(
+                    if trial % 3 == 0 { 2.9 } else { 6.3 },
+                    3.0,
+                    if trial % 2 == 0 { 4.7 } else { 1.9 },
+                ),
+                indestructible: trial % 9 == 0,
+                built: trial % 11 != 0,
+                wrecked: kind == "fob" && trial % 5 == 0,
+                burnt: trial % 13 == 0,
+                variant: if kind == "car" {
+                    trial as i32 % 9
+                } else {
+                    trial as i32 % 4
+                },
+                door_closed: trial % 4 == 0,
+                supply: trial as f64 * 7.3,
+                alert_time: if trial % 3 == 0 { 10.0 } else { 0.0 },
+                hit_from: (trial % 3 == 0).then_some(Vector3::new(-2.0, 1.0, -4.0)),
+                ..Default::default()
+            };
+            let mut entries = vec![];
+            for id in 1..=3 {
+                let mut s = Soldier::default();
+                s.identity.id = id;
+                s.identity.team = if id < 3 { 0 } else { 1 };
+                s.identity.owner = -1 - s.identity.team as i32;
+                s.identity.unit = "rifleman".into();
+                s.motion.position = Vector3::new(id as f32 * 2.0, 0.0, 0.0);
+                if id < 3 && kind == "tunnel" {
+                    s.vitals.life = Life::Hidden;
+                    s.control.hidden = frontline_core::infantry_control::HiddenReason::TunnelWait;
+                    s.links.hidden_in = 20;
+                    st.inside.push(id);
+                }
+                if id == 1 && ["mg_nest", "watchtower", "hmg_nest"].contains(&kind) {
+                    s.emplacement.structure = 20;
+                    s.emplacement.mortar_aim = Some(Vector3::new(1.0, 0.0, -12.0));
+                    s.identity.mounted_weapon = "mg".into();
+                    s.duty.kind = Task::Man;
+                    s.duty.entity = 20;
+                    s.orders.base_y = if kind == "watchtower" { 4.0 } else { 0.0 };
+                    s.motion.position.y = s.orders.base_y as f32;
+                    s.cover.at_cover = true;
+                    s.cover.kind = 1;
+                    st.gunner = id;
+                }
+                entries.push(Actor::Soldier(Box::new(s)));
+            }
+            entries.push(Actor::Structure(Box::new(st)));
+            let mut actors = Actors::from_entries(100, entries).unwrap();
+            let mut queue = DeferredEffects::default();
+            let mut rng = SimulationRandom::new(57317 + trial as u64);
+            let credit = Credit {
+                owner: -2,
+                team: 1,
+                unit: "v9".into(),
+                soldier: 0,
+            };
+            for step in 0..4 {
+                let now = 10.0 + step as f64 * 13.0;
+                let building = !["tree", "house_wall", "car", "crates"].contains(&kind);
+                let out = if trial % 4 == 1 && step == 0 {
+                    actors.destroy_structure(
+                        20,
+                        trial % 8 == 1,
+                        now,
+                        building,
+                        &nav,
+                        &mut queue,
+                        &mut rng,
+                    )
+                } else {
+                    actors.damage_structure(
+                        20,
+                        [17.1, 31.7, 70.0, 300.0][step],
+                        if trial % 5 == 0 {
+                            0
+                        } else {
+                            [3, 2, 1][trial as usize % 3]
+                        },
+                        (trial % 5 == 0).then_some(&credit),
+                        now,
+                        building,
+                        (trial % 7 != 0).then_some(55.0),
+                        &nav,
+                        &mut queue,
+                        &mut rng,
+                    )
+                }
+                .unwrap();
+                bytes.push(u8::from(out.applied));
+                bytes.extend_from_slice(&(out.events.len() as u32).to_le_bytes());
+                for e in out.events {
+                    let (code, value) = match e {
+                        DamageEvent::Door => (0, 0.0),
+                        DamageEvent::UnderAttack => (1, 0.0),
+                        DamageEvent::BuildingLost => (2, 0.0),
+                        DamageEvent::FobWrecked => (3, 0.0),
+                        DamageEvent::Unhidden(id) => (4, id as f64),
+                        DamageEvent::ReleasedGunner(id) => (5, id as f64),
+                        DamageEvent::CacheCookOff(n) => (6, n as f64),
+                        DamageEvent::Debris(n) => (7, n as f64),
+                        DamageEvent::TreeFall(yaw) => (8, yaw),
+                        DamageEvent::Rubble => (9, 0.0),
+                        DamageEvent::DestroyedAlert => (10, 0.0),
+                        DamageEvent::IgnitedCar => (11, 0.0),
+                    };
+                    bytes.push(code);
+                    bytes.extend_from_slice(&value.to_le_bytes());
+                }
+                block(
+                    &mut bytes,
+                    &out.removed
+                        .map_or_else(Vec::new, |s| s.checkpoint().unwrap()),
+                );
+                block(&mut bytes, &actors.checkpoint().unwrap());
+                block(&mut bytes, &queue.checkpoint());
+                bytes.extend_from_slice(&rng.state().to_le_bytes());
+                if step == 1 {
+                    actors = Actors::restore(&actors.checkpoint().unwrap()).unwrap();
+                    queue = DeferredEffects::restore(&queue.checkpoint()).unwrap();
+                    let cursor = rng.state();
+                    rng = SimulationRandom::new(rng.seed());
+                    rng.set_state(cursor);
+                }
+            }
+        }
+    }
+    golden("structure_damage", &bytes);
+}
+
+#[test]
 fn retained_infantry_blasts_are_identical_across_platforms() {
     use frontline_core::actors::{Actor, Actors};
     use frontline_core::infantry::{Credit, Infantry as Soldier};

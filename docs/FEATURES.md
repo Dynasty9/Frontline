@@ -1417,6 +1417,9 @@ finite ammunition. The complete world dispatcher is still being migrated.
 Retained infantry blasts apply cover, casualties, shared carrier links, squad
 reactions, knockback and flinching in victim order. Vehicle/building destruction,
 fire and whole-world explosion dispatch still need integration.
+Retained structure damage preserves doors, repairable wrecked FOBs, tunnel exits,
+gunner dismounts, car ignition and delayed cache explosions and rubble. The world
+still needs to apply their geometry, heat, battle-record and rule effects.
 Construction, town income, capture and production transitions match the existing
 game; shared rule effects, destruction and the full building dispatcher still need
 migration before Rust owns the complete battle.

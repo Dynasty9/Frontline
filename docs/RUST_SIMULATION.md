@@ -1596,3 +1596,21 @@ CI instead compares all 4,378,182 new transcript bytes exactly, with restored
 actors, terrain, spatial membership, collision, squads and RNG. Vehicle/structure
 destruction, fire, terrain effects and the complete world dispatcher remain open;
 this is neither whole-battle verification nor a frame-rate measurement.
+
+## Shared structure damage and destruction
+
+`Actors.damage_structure` retains hit attribution, door and alert thresholds,
+car ignition and damage immunity. `Actors.destroy_structure` keeps wrecked FOBs
+registered for repair, releases tunnel occupants and mounted gunners, schedules
+cache cook-offs and rubble, and removes destroyed actors. The returned ordered
+events and removed geometry let the world apply observations, ledger/rule effects,
+fire heat, collision and navigation changes before continuing combat. Mount
+release shares the same implementation with infantry commands.
+
+Seven core regressions cover these transitions, shared links, credit, checkpoint
+continuation and invalid damage. The Godot reference compares 6,144 soldier and
+structure states over twelve structure kinds, including event order, complete
+delayed-explosion parameters, rubble and RNG. Numeric CI adds 3,219,786 exact
+bytes, including retained and removed actors, deferred effects and resumed random
+state. The world dispatcher still needs to consume those effects; fire heat,
+geometry refresh and battle-record updates are not completed by this operation.

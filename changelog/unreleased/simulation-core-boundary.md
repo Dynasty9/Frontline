@@ -27,6 +27,7 @@ kind = "fixed"
 - Retained Rust perception checks preserve scan scheduling, immediate reacquisition and separation, with sight reports updating shared squad knowledge.
 - Rust travel-task checks preserve retreat, grenade orders, boarding, tunnels, drone operation and resupply, including shared seats, occupants and ammunition.
 - Rust blast checks preserve cover, injuries, carrier/patient links, squad reactions and knockback in the same victim order as the existing game.
+- Rust destruction checks preserve repairable FOBs, tunnel evacuation, gunner dismounts, car fires and delayed ammunition-cache explosions as shared combat moves into Rust.
 - Fighting positions and their protection checks now use Rust, retaining low cover, leaning fire and second-row shelter while avoiding redundant firing-lane checks.
 - Ground edits, crater deformation and cover repairs now use Rust, preserving road speed, directional cover, camouflage and shell holes.
 - Water terrain and bridge decks now use Rust. Joining a battle prepares its ground on a Rust worker while preserving fords, quays and the host's ground changes.
