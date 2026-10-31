@@ -36,6 +36,113 @@ fn block(out: &mut Vec<u8>, bytes: &[u8]) {
 }
 
 #[test]
+fn infantry_duties_are_identical_across_platforms() {
+    use frontline_core::infantry_duties::{self as duties, Captor, Duty, Guard, Stretcher};
+    let mut out = Vec::new();
+    let mut nav = PathPlanner::new(64).unwrap();
+    let kinds: Vec<_> = (0..4096).map(|i| if i % 13 == 0 { 3 } else { 0 }).collect();
+    assert!(nav.load_cells(&kinds, &[0; 4096], &[0; 4096]));
+    for case in 0..256 {
+        let mut duty = Duty {
+            phase: (case % 4) as u8,
+            timer: f64::from(case % 17) * 0.13 - 1.0,
+            build_sound: f64::from(case % 11) / 19.0,
+        };
+        let mut rng = SimulationRandom::new(783 + case as u64);
+        let mut position = Vector3::new(
+            (case % 31) as f32 - 15.0,
+            (case % 5) as f32 / 3.0,
+            (case % 23) as f32 - 11.0,
+        );
+        let mut yaw = f64::from(case) * 0.23 - 15.0;
+        for tick in 0..32 {
+            let dt = [0.0, 1.0 / 30.0, 0.1, 0.5][(case + tick) as usize % 4];
+            let casualty = position + Vector3::new((case % 7) as f32 - 3.0, 2.0, (tick % 5) as f32);
+            let target = (case % 3 != 0).then_some(casualty);
+            out.push(
+                duties::build(
+                    case % 13 == 0,
+                    f64::from((case + tick) % 101),
+                    tick % 4 == 0,
+                    position,
+                    casualty,
+                    target,
+                )
+                .unwrap() as u8,
+            );
+            out.push(u8::from(duty.finish_build(dt, &mut rng).unwrap()));
+            out.push(
+                duty.stretcher(Stretcher {
+                    valid: case % 17 != 0,
+                    position,
+                    casualty,
+                    moving: tick % 5 == 0,
+                    partner_phase: (case % 3 != 0).then_some((tick % 4) as u8),
+                    front: case % 2 == 0,
+                    dt,
+                })
+                .unwrap() as u8,
+            );
+            let mount = (case % 3 == 0).then_some((position + Vector3::X * 0.3, 0.7));
+            out.extend_from_slice(
+                &duties::build_pose(position, yaw, casualty, dt, mount)
+                    .unwrap()
+                    .to_le_bytes(),
+            );
+            let last_direction = frontline_core::vector::normalized(Vector3::new(
+                (case % 7) as f32 - 3.0,
+                0.0,
+                -2.0,
+            ));
+            let carried =
+                duties::carry_pose(position, yaw, last_direction, dt, case % 2 == 0, mount)
+                    .unwrap();
+            out.extend_from_slice(&carried.yaw.to_le_bytes());
+            point(&mut out, carried.casualty);
+            out.extend_from_slice(&carried.casualty_yaw.to_le_bytes());
+            point(
+                &mut out,
+                duties::follow_bearer(position, casualty, yaw, dt).unwrap(),
+            );
+            let action = duty
+                .captor(case % 11 != 0, position, casualty, tick % 2 == 0)
+                .unwrap();
+            out.push(match action {
+                Captor::Cancel => 0,
+                Captor::Approach { repath: false } => 1,
+                Captor::Approach { repath: true } => 2,
+                Captor::Claim => 3,
+                Captor::Guard => 4,
+                Captor::Wait => 5,
+            });
+            let guard = duties::guard(
+                Guard {
+                    position,
+                    yaw,
+                    prisoner: casualty,
+                    dt,
+                    mount,
+                },
+                &nav,
+                &mut rng,
+            )
+            .unwrap();
+            position = guard.position;
+            yaw = guard.yaw;
+            point(&mut out, position);
+            out.extend_from_slice(&yaw.to_le_bytes());
+            out.push(u8::from(guard.walking));
+            out.extend_from_slice(&rng.state().to_le_bytes());
+            block(&mut out, &duty.checkpoint());
+            if tick == 15 {
+                duty = Duty::restore(&duty.checkpoint()).unwrap();
+            }
+        }
+    }
+    golden("infantry_duties", &out);
+}
+
+#[test]
 fn infantry_medicine_is_identical_across_platforms() {
     use frontline_core::infantry_medicine::{
         self as medicine, EscortInput, Heal, Rescue, Treatment,

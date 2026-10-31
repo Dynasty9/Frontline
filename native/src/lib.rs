@@ -16,6 +16,7 @@ mod guided_flight;
 mod hierarchy;
 mod infantry_aim;
 mod infantry_arsenal;
+mod infantry_duties;
 mod infantry_medicine;
 mod infantry_motion;
 mod infantry_pose;

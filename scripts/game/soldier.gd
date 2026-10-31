@@ -4126,36 +4126,86 @@ func _work_spot(st: Entity) -> Vector3:
 	return world.nav.nearest_walkable(st.position + d.normalized().rotated(Vector3.UP, world.rng.randf_range(-0.8, 0.8)) * r)
 
 
+var _duties: RefCounted
+
+
+func _native_duties() -> bool:
+	return world.settings.get("rust_infantry", false) and ClassDB.class_exists("InfantryDutiesCore") and world.nav != null and world.nav._planner != null
+
+
+func _duties_core() -> RefCounted:
+	if _duties == null:
+		_duties = ClassDB.instantiate("InfantryDutiesCore")
+	return _duties
+
+
+func _duty_state() -> PackedFloat64Array:
+	return PackedFloat64Array([task_phase, task_t, build_snd_t])
+
+
+func _read_duty(state: PackedFloat64Array) -> void:
+	task_phase = int(state[0])
+	task_t = state[1]
+	build_snd_t = state[2]
+
+
+func _build_decision(done: bool) -> int:
+	if _native_duties():
+		var contacts := PackedVector3Array()
+		if not done and suppression <= 55.0 and not is_moving() and Defs.flat(position - task_pos).length() <= 1.6 and is_instance_valid(target) and _target_valid(target):
+			contacts.append(target.position)
+		var decision: int = _duties_core().build(done, suppression, is_moving(), position, task_pos, contacts)
+		assert(decision >= 0, "Invalid construction decision")
+		return decision
+	if done:
+		return 0
+	if suppression > 55.0:
+		return 1
+	if is_moving():
+		return 2
+	if Defs.flat(position - task_pos).length() > 1.6:
+		return 3
+	if is_instance_valid(target) and _target_valid(target) and Defs.flat(target.position - position).length() < 18.0:
+		return 4
+	return 5
+
+
 func _build_tick(dt: float) -> void:
-	var st := task_ent
+	var st: Entity = task_ent if is_instance_valid(task_ent) else null
 	var done := st == null or st.gone
 	if not done:
 		if st is Structure:
 			done = not st.needs_work()
 		elif st is Vehicle:
 			done = not st.needs_repair()
-	if done:
+	var decision := _build_decision(done)
+	if decision == 0:
 		task = ""
 		if squad:
 			squad.on_build_done(st)
 		return
-	if suppression > 55.0:
+	if decision == 1:
 		posture = Post.CROUCH
 		act = Act.IDLE
 		_weapon_tick(dt, false, "normal")
 		return
-	if is_moving():
+	if decision == 2:
 		_move_tick(dt, _speed())
 		_choose_act(true)
 		return
-	if Defs.flat(position - task_pos).length() > 1.6:
+	if decision == 3:
 		go_to(task_pos, "task", 1)
 		return
-	if _target_valid(target) and Defs.flat(target.position - position).length() < 18.0:
+	if decision == 4:
 		_weapon_tick(dt, false, "normal")
 		_choose_act(false)
 		return
-	_face(Defs.flat(st.position - position), dt, 8.0)
+	if _native_duties():
+		var pose: PackedFloat64Array = _duties_core().build_pose(position, rotation.y, st.position, dt, _mount_turn())
+		assert(pose.size() == 1, "Invalid construction pose")
+		rotation.y = pose[0]
+	else:
+		_face(Defs.flat(st.position - position), dt, 8.0)
 	act = Act.BUILD
 	posture = Post.CROUCH
 	var rate := float(udef.get("build", 1.0))
@@ -4163,9 +4213,18 @@ func _build_tick(dt: float) -> void:
 		st.add_work(rate * dt)
 	elif st is Vehicle:
 		st.repair(rate * dt)
-	build_snd_t -= dt
-	if build_snd_t <= 0.0:
-		build_snd_t = world.rng.randf_range(0.5, 0.9)
+	var sound: bool
+	if _native_duties():
+		var result: PackedFloat64Array = _duties_core().finish_build(_duty_state(), dt, world.rng._backend)
+		assert(result.size() == 4, "Invalid construction timer")
+		_read_duty(result)
+		sound = result[3] != 0.0
+	else:
+		build_snd_t -= dt
+		sound = build_snd_t <= 0.0
+		if sound:
+			build_snd_t = world.rng.randf_range(0.5, 0.9)
+	if sound:
 		world.fx_event([Fx.SOUND, "build", position])
 
 
@@ -4193,13 +4252,30 @@ func _stretcher_valid(cas: Soldier) -> bool:
 
 
 func _stretcher_tick(dt: float) -> void:
-	var cas := task_ent as Soldier
-	var partner := task_ent2 as Soldier
+	var cas: Soldier = task_ent as Soldier if is_instance_valid(task_ent) else null
+	var partner: Soldier = task_ent2 as Soldier if is_instance_valid(task_ent2) else null
 	var partner_ok := partner != null and not partner.gone and partner.life == Life.ALIVE and partner.task == "stretcher" and partner.task_ent == cas
-	if home == null or home.gone or not _stretcher_valid(cas):
+	if not is_instance_valid(home) or home.gone or not _stretcher_valid(cas):
 		_end_stretcher(false)
 		return
 	posture = Post.STAND
+	if _native_duties():
+		var result: PackedFloat64Array = _duties_core().stretcher(_duty_state(), true, position, cas.position, is_moving(), partner.task_phase if partner_ok else -1, is_front, dt)
+		assert(result.size() == 4, "Invalid stretcher decision")
+		_read_duty(result)
+		match int(result[3]):
+			1:
+				_move_tick(dt, 4.4)
+				act = Act.RUN
+			2: go_to(cas.position, "task", 1)
+			4: act = Act.PICKUP
+			5:
+				act = Act.PICKUP
+				_stretcher_lift(cas, partner, partner_ok)
+			6: _stretcher_lead(cas, partner, partner_ok, dt)
+			7: _stretcher_takeover(cas)
+			8: _stretcher_follow(partner, dt)
+		return
 	match task_phase:
 		0:
 			if is_moving():
@@ -4219,53 +4295,77 @@ func _stretcher_tick(dt: float) -> void:
 			if task_t > 0.0:
 				return
 			if is_front or not partner_ok:
-				task_phase = 2
-				cas.carried_by = [self]
-				if partner_ok:
-					cas.carried_by.append(partner)
-					partner.task_phase = 3
-				go_to(home.exit_pos(), "task", 0)
-				say("Lift on three!" if partner_ok else "I've got him!", true)
+				_stretcher_lift(cas, partner, partner_ok)
 		2:
-			var solo := not partner_ok
-			var moved := _move_tick(dt, 0.95 if solo else 1.9)
-			if solo:
-				backwards = true
-				act = Act.DRAG
-				_face(-_last_dir, dt, 10.0)
-				cas.position = position + Defs.dir_of(rotation.y) * 1.5 + Vector3(0, -0.55, 0)
-				cas.rotation.y = rotation.y
-				if cas.carried_by.size() > 1:
-					cas.carried_by = [self]
-					say("Bearer down! I'll drag him!", true)
-			else:
-				backwards = false
-				act = Act.CARRY
-				cas.position = position - _last_dir * 1.15
-				cas.position.y = 0.0
-				cas.rotation.y = Defs.yaw_of(-_last_dir)
-			if not moved:
-				var c := cas
-				_end_stretcher(true)
-				if partner_ok:
-					partner._end_stretcher(true)
-				c.enter_tent(home)
+			_stretcher_lead(cas, partner, partner_ok, dt)
 		3:
 			if not partner_ok or partner.task_phase != 2:
-				task_phase = 2
-				cas.carried_by = [self]
-				go_to(home.exit_pos(), "task", 0)
+				_stretcher_takeover(cas)
 				return
-			var md := Defs.dir_of(partner.rotation.y)
-			var want := partner.position - md * 2.3
-			position = position.lerp(want, 1.0 - exp(-dt * 10.0))
-			position.y = 0.0
-			rotation.y = partner.rotation.y
-			act = Act.CARRY
+			_stretcher_follow(partner, dt)
+
+
+func _stretcher_lift(cas: Soldier, partner: Soldier, partner_ok: bool) -> void:
+	task_phase = 2
+	cas.carried_by = [self]
+	if partner_ok:
+		cas.carried_by.append(partner)
+		partner.task_phase = 3
+	go_to(home.exit_pos(), "task", 0)
+	say("Lift on three!" if partner_ok else "I've got him!", true)
+
+
+func _stretcher_lead(cas: Soldier, partner: Soldier, partner_ok: bool, dt: float) -> void:
+	var solo := not partner_ok
+	var moved := _move_tick(dt, 0.95 if solo else 1.9)
+	backwards = solo
+	act = Act.DRAG if solo else Act.CARRY
+	if _native_duties():
+		var pose: Array = _duties_core().carry_pose(position, rotation.y, _last_dir, dt, solo, _mount_turn())
+		assert(pose.size() == 3, "Invalid casualty carrying pose")
+		rotation.y = float(pose[0])
+		cas.position = pose[1]
+		cas.rotation.y = float(pose[2])
+	elif solo:
+		_face(-_last_dir, dt, 10.0)
+		cas.position = position + Defs.dir_of(rotation.y) * 1.5 + Vector3(0, -0.55, 0)
+		cas.rotation.y = rotation.y
+	else:
+		cas.position = position - _last_dir * 1.15
+		cas.position.y = 0.0
+		cas.rotation.y = Defs.yaw_of(-_last_dir)
+	if solo and cas.carried_by.size() > 1:
+		cas.carried_by = [self]
+		say("Bearer down! I'll drag him!", true)
+	if not moved:
+		_end_stretcher(true)
+		if partner_ok:
+			partner._end_stretcher(true)
+		cas.enter_tent(home)
+
+
+func _stretcher_takeover(cas: Soldier) -> void:
+	task_phase = 2
+	cas.carried_by = [self]
+	go_to(home.exit_pos(), "task", 0)
+
+
+func _stretcher_follow(partner: Soldier, dt: float) -> void:
+	if _native_duties():
+		var pose: PackedVector3Array = _duties_core().follow_bearer(position, partner.position, partner.rotation.y, dt)
+		assert(pose.size() == 1, "Invalid stretcher follower pose")
+		position = pose[0]
+	else:
+		var md := Defs.dir_of(partner.rotation.y)
+		var want := partner.position - md * 2.3
+		position = position.lerp(want, 1.0 - exp(-dt * 10.0))
+		position.y = 0.0
+	rotation.y = partner.rotation.y
+	act = Act.CARRY
 
 
 func _end_stretcher(delivered: bool) -> void:
-	var cas := task_ent as Soldier
+	var cas: Soldier = task_ent as Soldier if is_instance_valid(task_ent) else null
 	if cas and not cas.gone:
 		cas.carried_by.erase(self)
 		if cas.carried_by.is_empty() and not delivered:
@@ -4275,7 +4375,7 @@ func _end_stretcher(delivered: bool) -> void:
 	task_ent = null
 	task_ent2 = null
 	backwards = false
-	if home and not home.gone:
+	if is_instance_valid(home) and not home.gone:
 		go_to(home.exit_pos() + Vector3(world.rng.randf_range(-2, 2), 0, world.rng.randf_range(-2, 2)), "slot", 0)
 
 
@@ -4289,34 +4389,62 @@ func start_captor(p: Soldier) -> void:
 
 
 func _captor_tick(dt: float) -> void:
-	var p := task_ent as Soldier
+	var p: Soldier = task_ent as Soldier if is_instance_valid(task_ent) else null
 	if p == null or p.gone or (p.life != Life.SURRENDER and p.life != Life.CAPTIVE) or p.captor != self:
 		_return_to_hold()
 		return
 	posture = Post.STAND
+	if _native_duties():
+		var result: PackedFloat64Array = _duties_core().captor(_duty_state(), true, position, p.position, is_moving())
+		assert(result.size() == 5, "Invalid prisoner escort decision")
+		_read_duty(result)
+		match int(result[3]):
+			1: _captor_approach(p, dt, result[4] != 0.0)
+			2: _captor_claim(p)
+			3: _captor_guard(p, dt)
+		return
 	match task_phase:
 		0:
 			if Defs.flat(p.position - position).length() < 2.6:
-				task_phase = 1
-				world.rules.take_prisoner(p, self)
-				say(_pick(["Move! Hands where I can see them!", "On your feet! Walk!", "Easy... keep those hands up."]), true)
+				_captor_claim(p)
 				return
-			if not is_moving():
-				go_to(p.position, "task", 1)
-			_move_tick(dt, 4.0)
-			act = Act.RUN
+			_captor_approach(p, dt, not is_moving())
 		1:
-			var d := Defs.flat(p.position - position)
-			if d.length() > 2.3:
-				var np := position + d.normalized() * minf(d.length() - 2.0, 1.9 * dt)
-				if world.nav.walkable(np):
-					position = np
-				else:
-					position = position.lerp(p.position, 0.02)
-				act = Act.WALK
-			else:
-				act = Act.SHOOT if world.rng.randf() < 0.0 else Act.IDLE
-			_face(d, dt, 8.0)
+			_captor_guard(p, dt)
+
+
+func _captor_approach(p: Soldier, dt: float, repath: bool) -> void:
+	if repath:
+		go_to(p.position, "task", 1)
+	_move_tick(dt, 4.0)
+	act = Act.RUN
+
+
+func _captor_claim(p: Soldier) -> void:
+	task_phase = 1
+	world.rules.take_prisoner(p, self)
+	say(_pick(["Move! Hands where I can see them!", "On your feet! Walk!", "Easy... keep those hands up."]), true)
+
+
+func _captor_guard(p: Soldier, dt: float) -> void:
+	if _native_duties():
+		var pose: Array = _duties_core().guard(position, rotation.y, p.position, dt, _mount_turn(), world.nav._planner, world.rng._backend)
+		assert(pose.size() == 3, "Invalid prisoner guard pose")
+		position = pose[0]
+		rotation.y = float(pose[1])
+		act = Act.WALK if bool(pose[2]) else Act.IDLE
+		return
+	var d := Defs.flat(p.position - position)
+	if d.length() > 2.3:
+		var np := position + d.normalized() * minf(d.length() - 2.0, 1.9 * dt)
+		if world.nav.walkable(np):
+			position = np
+		else:
+			position = position.lerp(p.position, 0.02)
+		act = Act.WALK
+	else:
+		act = Act.SHOOT if world.rng.randf() < 0.0 else Act.IDLE
+	_face(d, dt, 8.0)
 
 
 func start_man(st: Structure) -> void:

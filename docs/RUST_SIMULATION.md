@@ -47,6 +47,7 @@ graphics, network access or a wall clock.
 | Infantry special attacks | `frontline_core` | Rocket and melee priority, mortar fire admission, drone launch decisions, ammunition and cooldowns extracted; Godot supplies contacts, mortar/drone target queries and applies actions |
 | Infantry supply decisions | `frontline_core` | Scavenging, nearest-body/depot choices, search timers and refill arithmetic extracted; Godot supplies spatial candidates and applies shared-store transfers, reloads and movement |
 | Infantry medical tasks | `frontline_core` | Rescue/healing stages, treatment deadlines, safe-anchor selection, dragging poses and escort movement extracted; Godot still owns patient links, movement requests and recovery effects |
+| Construction, stretchers and prisoners | `frontline_core` | Construction priorities/timers, paired carrying stages, bearer takeover and prisoner escort geometry extracted; Godot still applies work, shared casualty links, tent delivery and capture effects |
 | Complete fighting-position search | `frontline_core` | Candidate enumeration, reachability, protection, occupancy and final scoring run in one call; Godot supplies nearby structure and soldier records |
 | House-entry task phases | `frontline_core` | Stack/door/grenade/entry transitions, deadlines, cooking and room targets extracted with component checkpoints; Godot still owns movement callbacks and squad entry effects |
 | House occupancy and breach selection | `frontline_core` | Floor containment, ordered openings, nearest walkable stack positions and competing squadmates extracted; Godot still supplies spatial candidates, squad contacts and decision timers |
@@ -236,14 +237,14 @@ Component checkpoint headers contain a four-byte component tag, a little-endian
 rules rather than silently continuing with changed arithmetic. The separate
 integer RNG stream remains unchanged.
 
-`native/core/tests/numeric_contract.rs` compares 2,035,914 committed bytes without
+`native/core/tests/numeric_contract.rs` compares 2,937,034 committed bytes without
 tolerances: fixed-tick flight state, support events and RNG cursors, carved water,
 craters, rotated box hits, cover anchors, spherical interpolation and infantry
 movement, infantry cover fire, postures, ammunition, burst recovery, vitals, aiming,
 combat poses, bullet resolution, blast exposure, knockback recovery and wounded
 infantry schedules, grenade reflexes, grenade task movement and house-entry
 phases, building selection, automatic grenade attacks, incoming shells and drone
-reactions, special attacks, infantry supply, medical tasks, complete cover searches and stationary
+reactions, special attacks, infantry supply, medical/work duties, complete cover searches and stationary
 infantry movement. CI runs
 the same fixtures in debug and release on Windows x64, Linux
 x64, Linux ARM64 and macOS ARM64. A mismatch reports the first different byte.
@@ -460,9 +461,23 @@ flag until Rust owns the actors.
 
 The shock fixture compares 92,160 reference steps, including mounted turning,
 blocked terrain, carried casualties and task interruption. The full default suite
-passes 131 tests; 176 core tests pass in debug and release.
+passes 132 tests; 182 core tests pass in debug and release.
 
 ## Infantry tasks and reflexes
+
+`Duty` retains construction sound deadlines and stretcher/captor stages. Work
+preserves completion, suppression, movement and nearby-threat priorities. Paired
+bearers wait for one another, claim a casualty together and transfer to solo
+dragging if a partner is lost. Prisoner escorts preserve approach distances,
+blocked-ground fallback and the existing idle RNG draw. Work/capture callbacks,
+shared casualty links, tent delivery and return orders still run in Godot, in
+their original order. The adapter remains behind the infantry compatibility flag.
+
+A frozen GDScript reference compares 30,720 duty steps and their effects, including
+RNG-consuming callbacks. Six removed-object cases cover prisoners, casualties,
+partners, tents, work targets and nearby threats. `FLDU` component checkpoints
+retain phase, task timer and construction-sound timer; numeric CI adds 901,120
+exact transcript bytes. These are not complete actor checkpoints.
 
 `Treatment` retains rescue/healing stages and treatment deadlines. Rescue keeps
 the approach range, route refresh, casualty claim, drag and treatment sequence;
