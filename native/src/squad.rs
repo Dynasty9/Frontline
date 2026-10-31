@@ -6,9 +6,9 @@ use godot::prelude::*;
 
 #[derive(GodotClass)]
 #[class(base=RefCounted, init)]
-struct SquadStateCore {
+pub(crate) struct SquadStateCore {
     base: Base<RefCounted>,
-    core: Option<Squad>,
+    pub(crate) core: Option<Squad>,
 }
 
 fn read<T: FromGodot>(a: &Array<Variant>, n: usize) -> Option<T> {

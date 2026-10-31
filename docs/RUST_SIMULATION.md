@@ -535,7 +535,7 @@ Component checkpoint headers contain a four-byte component tag, a little-endian
 rules rather than silently continuing with changed arithmetic. The separate
 integer RNG stream remains unchanged.
 
-`native/core/tests/numeric_contract.rs` compares 47,709,228 committed bytes without
+`native/core/tests/numeric_contract.rs` compares 51,121,534 committed bytes without
 tolerances: fixed-tick flight state, support events and RNG cursors, carved water,
 craters, rotated box hits, cover anchors, spherical interpolation and infantry
 movement, infantry cover fire, postures, ammunition, burst recovery, vitals, aiming,
@@ -759,7 +759,7 @@ flag until Rust owns the actors.
 
 The shock fixture compares 92,160 reference steps, including mounted turning,
 blocked terrain, carried casualties and task interruption. The full default suite
-passes 172 tests; 440 core tests pass in debug and release.
+passes 173 tests; 451 core tests pass in debug and release.
 
 ## Spatial query state
 
@@ -1180,6 +1180,27 @@ retains them in the version 2 support-flight checkpoint. The reference fixture
 checks default and model-specific sockets and shell ownership after the current
 vehicle-handling changes on `main`. These are component
 checkpoints; they do not include the whole battle or verify its conclusion.
+
+## Retained infantry firing
+
+Infantry aiming now resolves target poses, exposed points, recent squad reports
+and covering-fire orders directly from retained Rust actors. The sight deadline
+and obstruction reuse survive checkpoints; blind fire keeps its original random
+draws. Squadmates respond in member order, and muted speech still consumes the
+same draws. Squad morale determines accuracy and pinning thresholds.
+
+Shot preparation retains ammunition, bursts, speech cooldown, activity and last
+shot time. Muzzles come from authoritative pose and catalog mount geometry,
+including trench guns, traverse limits and blind fire. Bullet effects run before
+shot recovery, so their random draws and changes to suppression or weapon affect
+the next burst exactly where they do in Godot. The shared bullet dispatcher and
+full soldier decision loop still need migration.
+
+The fixture compares 12,288 complete actor states, aim selection, speech, random
+cursors and state on both sides of the bullet-effect boundary. Muzzles use a
+10-micrometre Godot comparison tolerance; Rust numeric CI checks 3,412,306 exact
+bytes across firing, aiming and checkpoint continuation. Ten focused core tests
+cover thresholds, suppressed speech, missing content and resumed firing.
 
 ## Infantry target acquisition
 

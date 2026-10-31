@@ -88,6 +88,27 @@ fn impact(r: Result<Option<Explosion>, &'static str>) -> Array<Variant> {
 fn vector(p: frontline_core::vector::Vector3) -> Vector3 {
     Vector3::new(p.x, p.y, p.z)
 }
+fn mounted_gun(
+    a: &PackedFloat64Array,
+) -> Result<Option<frontline_core::infantry_fire::MountedGun>, ()> {
+    if a.is_empty() {
+        return Ok(None);
+    }
+    if a.len() != 5 {
+        return Err(());
+    }
+    let gun = frontline_core::infantry_fire::MountedGun {
+        bore: a[0],
+        muzzle: a[1],
+        grip_z: a[2] as f32,
+        nest_height: a[3],
+        trench_height: a[4],
+    };
+    if !gun.valid() {
+        return Err(());
+    }
+    Ok(Some(gun))
+}
 fn sling_spec(a: &PackedInt32Array) -> Result<SlingSpec, &'static str> {
     let a = a.as_slice();
     if a.len() != 6 || [0, 3, 4, 5].into_iter().any(|i| a[i] != 0 && a[i] != 1) {
@@ -129,6 +150,153 @@ fn artillery_profile(
 
 #[godot_api]
 impl ActorStateCore {
+    #[func]
+    fn aim_infantry(
+        &mut self,
+        soldier: u32,
+        now: f64,
+        range: f64,
+        squad: Option<Gd<crate::squad::SquadStateCore>>,
+        mut collision: Gd<crate::collision_index::CollisionIndexCore>,
+        mut visibility: Gd<crate::visibility::VisibilityCore>,
+        mut rng: Gd<crate::simulation_random::SimulationRandomCore>,
+    ) -> Array<Variant> {
+        let squad = squad.as_ref().map(Gd::bind);
+        if squad.as_ref().is_some_and(|q| q.core.is_none()) {
+            return Array::new();
+        }
+        match self.core.aim_infantry(
+            soldier,
+            now,
+            range,
+            squad.as_ref().and_then(|q| q.core.as_ref()),
+            &mut collision.bind_mut().core,
+            &mut visibility.bind_mut().core,
+            &mut rng.bind_mut().core,
+        ) {
+            Ok(r) => varray![
+                r.point.map_or(Vector3::INF, vector),
+                r.target as i64,
+                r.reused_obstruction
+            ],
+            Err(_) => Array::new(),
+        }
+    }
+    #[func]
+    fn infantry_cover_reply(
+        &mut self,
+        soldier: u32,
+        now: f64,
+        squad: Option<Gd<crate::squad::SquadStateCore>>,
+        mut rng: Gd<crate::simulation_random::SimulationRandomCore>,
+    ) -> Array<Variant> {
+        let squad = squad.as_ref().map(Gd::bind);
+        if squad.as_ref().is_some_and(|q| q.core.is_none()) {
+            return Array::new();
+        }
+        let squad = squad.as_ref().and_then(|q| q.core.as_ref());
+        let Ok(buddy) = self.core.buddy_up(soldier, now, squad) else {
+            return Array::new();
+        };
+        match self
+            .core
+            .call_cover(soldier, squad, &mut rng.bind_mut().core)
+        {
+            Ok(r) => varray![buddy, r.soldier as i64, r.speech.map_or(-1, i32::from)],
+            Err(_) => Array::new(),
+        }
+    }
+    #[func]
+    fn prepare_infantry_shot(
+        &mut self,
+        soldier: u32,
+        now: f64,
+        moving: bool,
+        profile: PackedFloat64Array,
+        gun: PackedFloat64Array,
+        squad: Option<Gd<crate::squad::SquadStateCore>>,
+        mut rng: Gd<crate::simulation_random::SimulationRandomCore>,
+    ) -> Array<Variant> {
+        if profile.len() != 5
+            || [0, 1, 3, 4].into_iter().any(|i| {
+                !profile[i].is_finite()
+                    || profile[i].fract() != 0.0
+                    || !(0.0..=1_000_000.0).contains(&profile[i])
+            })
+        {
+            return Array::new();
+        }
+        let Ok(gun) = mounted_gun(&gun) else {
+            return Array::new();
+        };
+        let squad = squad.as_ref().map(Gd::bind);
+        if squad.as_ref().is_some_and(|q| q.core.is_none()) {
+            return Array::new();
+        }
+        let p = frontline_core::infantry_fire::FireProfile {
+            weapon: frontline_core::infantry_weapon::Weapon {
+                ammunition: profile[0] as i32,
+                magazine: profile[1] as i32,
+                reload_time: profile[2],
+            },
+            burst_min: profile[3] as i32,
+            burst_max: profile[4] as i32,
+        };
+        match self.core.prepare_infantry_shot(
+            soldier,
+            now,
+            moving,
+            p,
+            gun,
+            squad.as_ref().and_then(|q| q.core.as_ref()),
+            &mut rng.bind_mut().core,
+        ) {
+            Ok(r) => varray![
+                r.shot.fired,
+                r.shot.low_ammo,
+                r.shot.announce_low_ammo,
+                r.shot.reload_speech.map_or(-1, i32::from),
+                r.shot.accuracy,
+                r.origin.map_or(Vector3::INF, vector)
+            ],
+            Err(_) => Array::new(),
+        }
+    }
+    #[func]
+    fn finish_infantry_shot(
+        &mut self,
+        soldier: u32,
+        profile: PackedFloat64Array,
+        low_ammo: bool,
+        cover_fire: bool,
+        mut rng: Gd<crate::simulation_random::SimulationRandomCore>,
+    ) -> Array<Variant> {
+        if profile.len() != 4
+            || [0, 1].into_iter().any(|i| {
+                !profile[i].is_finite()
+                    || profile[i].fract() != 0.0
+                    || !(0.0..=1_000_000.0).contains(&profile[i])
+            })
+        {
+            return Array::new();
+        }
+        let w = frontline_core::infantry_weapon::Weapon {
+            ammunition: profile[0] as i32,
+            magazine: profile[1] as i32,
+            reload_time: profile[2],
+        };
+        match self.core.finish_infantry_shot(
+            soldier,
+            w,
+            profile[3],
+            low_ammo,
+            cover_fire,
+            &mut rng.bind_mut().core,
+        ) {
+            Ok(speech) => varray![speech.map_or(-1, i32::from)],
+            Err(_) => Array::new(),
+        }
+    }
     #[func]
     fn scan_infantry(
         &mut self,

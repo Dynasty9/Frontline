@@ -72,6 +72,7 @@ kind = "fixed"
 - Launch checks preserve vehicle missiles, defensive smoke, warning order and random choices across saved-state resumes.
 - Vehicle targeting checks preserve infantry exposure, aircraft priorities, fog-hidden buildings, forced targets and nearby squad reports as combat decisions move into Rust.
 - Infantry targeting checks preserve concealment, wounded firing, mounted-gun arcs, drone reactions and contact-report order as soldiers begin reading shared Rust actor state.
+- Infantry firing checks preserve aim, covering-fire responses, morale, mounted guns, ammunition and reload timing as those decisions move into retained Rust state.
 - Artillery and gunship checks preserve fire missions, aiming delays, salvos, attack orbits and smoke responses between rocket launches.
 - Nearby-infantry, building and door checks preserve query ordering through movement and checkpoint restoration as shared world state moves into Rust.
 - The extracted simulation uses pinned numeric rules, with exact checkpoint comparisons across platforms as replay verification work continues.
