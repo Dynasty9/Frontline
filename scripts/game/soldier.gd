@@ -1226,8 +1226,9 @@ func scan_candidates() -> Array:
 	return out
 
 
-func _target_valid(e: Entity) -> bool:
-	if e == null or e.gone:
+func _target_valid(e) -> bool:
+	# A removed target may survive as a stale reference until the next scan.
+	if not is_instance_valid(e) or not (e is Entity) or e.gone:
 		return false
 	if e is Soldier:
 		return e.life == Life.ALIVE or e.life == Life.DOWNED
@@ -1755,10 +1756,58 @@ func _stationary_reference(dt: float) -> void:
 
 # --- downtime -------------------------------------------------------------------------
 
+var _idle_core: RefCounted
+
+
+func _native_idle() -> bool:
+	return world.settings.get("rust_infantry", false) and ClassDB.class_exists("InfantryIdleCore")
+
+
+func _idle_state_core() -> RefCounted:
+	if _idle_core == null:
+		_idle_core = ClassDB.instantiate("InfantryIdleCore")
+	return _idle_core
+
+
+func _idle_values() -> Array:
+	return [calm_t, idle_act, idle_until, idle_next, chat_with.eid if is_instance_valid(chat_with) else 0, _banter, _laugh_until]
+
+
+func _read_idle(state: Array) -> void:
+	assert(state.size() == 7, "Invalid infantry downtime state")
+	calm_t = state[0]
+	idle_act = state[1]
+	idle_until = state[2]
+	idle_next = state[3]
+	chat_with = world.entity(int(state[4]))
+	_banter = state[5]
+	_laugh_until = state[6]
+
+
 ## When nothing has happened for a while men get bored: they chat and rib each
 ## other, smoke, sit down, stretch, check their kit. Anything at all - an order,
 ## a shot, an enemy seen - and it's over.
 func _idle_tick(dt: float, moving: bool) -> void:
+	if _native_idle():
+		var partner_ok: bool = is_instance_valid(chat_with) and not chat_with.gone and chat_with.chat_with == self and chat_with.life == Life.ALIVE
+		var out: Array = _idle_state_core().step(_idle_values(), [dt, world.time, moving, _danger(), _sector,
+			reload_t, last_shot_t, mounted != null, _target_valid(target), partner_ok])
+		assert(out.size() == 2, "Invalid infantry downtime step")
+		_read_idle(out[0])
+		match int(out[1]):
+			1:
+				_end_idle()
+			2, 3:
+				act = idle_act
+				posture = Post.STAND
+				if int(out[1]) == 3:
+					var yaw = _idle_state_core().facing(position, chat_with.position, rotation.y, dt, _mount_turn())
+					assert(yaw is float, "Invalid conversation facing")
+					rotation.y = yaw
+					_banter_tick()
+			4:
+				_start_idle()
+		return
 	var calm := not moving and not _danger() and _sector == Vector3.ZERO and reload_t <= 0.0 and world.time - last_shot_t > 12.0 and mounted == null and not _target_valid(target)
 	if not calm:
 		calm_t = 0.0
@@ -1785,6 +1834,21 @@ func _idle_tick(dt: float, moving: bool) -> void:
 
 
 func _start_idle() -> void:
+	if _native_idle():
+		var out: Array = _idle_state_core().begin(_idle_values(), world.time, float(world.last_chat[1 if team == 1 else 0]), world.rng._backend)
+		assert(out.size() == 2, "Invalid downtime start")
+		_read_idle(out[0])
+		if out[1]:
+			var mate := _chat_mate()
+			if mate:
+				_start_chat(mate)
+				return
+		out = _idle_state_core().solo(_idle_values(), world.time, team, world.rng._backend)
+		assert(out.size() == 2, "Invalid solo downtime")
+		_read_idle(out[0])
+		if String(out[1]) != "":
+			say(String(out[1]))
+		return
 	idle_next = world.time + world.rng.randf_range(6.0, 16.0)
 	var ti := 1 if team == 1 else 0
 	if world.rng.randf() < 0.35 and world.time - float(world.last_chat[ti]) > 8.0:
@@ -1801,6 +1865,13 @@ func _start_idle() -> void:
 
 
 func _chat_mate() -> Soldier:
+	if _native_idle():
+		var nearby := []
+		for o in world.soldiers_near(position, 6.0):
+			nearby.append([o.eid, o.team, o.life, o.chat_with != null, o.calm_t, o.task == "", o.is_moving()])
+		var id: int = _idle_state_core().mate(eid, team, nearby)
+		assert(id >= 0, "Invalid conversation partners")
+		return world.entity(id) as Soldier
 	for o in world.soldiers_near(position, 6.0):
 		if o == self or o.team != team or o.life != Life.ALIVE or o.chat_with != null or o.calm_t < 5.0 or o.task != "" or o.is_moving():
 			continue
@@ -1809,6 +1880,15 @@ func _chat_mate() -> Soldier:
 
 
 func _start_chat(mate: Soldier) -> void:
+	if _native_idle():
+		var out: Array = _idle_state_core().chat(_idle_values(), mate._idle_values(), PackedInt64Array([eid, mate.eid]),
+			world.time, team, PackedStringArray([sname, mate.sname]), world.rng._backend)
+		assert(out.size() == 2, "Invalid conversation start")
+		_read_idle(out[0])
+		mate._read_idle(out[1])
+		world.stat("banter")
+		world.last_chat[1 if team == 1 else 0] = world.time
+		return
 	var lines: Array = BANTER[1 if team == 1 else 0]
 	var ex: Array = lines[world.rng.randi() % lines.size()]
 	var dur := 3.5 + ex.size() * 2.8
@@ -1833,6 +1913,18 @@ func _start_chat(mate: Soldier) -> void:
 
 
 func _banter_tick() -> void:
+	if _native_idle():
+		while true:
+			var out: Array = _idle_state_core().line(_idle_values(), world.time, world.rng._backend)
+			assert(out.size() == 3, "Invalid conversation line")
+			_read_idle(out[0])
+			if int(out[1]) == 0:
+				break
+			if int(out[1]) == 2:
+				say(String(out[2]), true)
+		if world.time < _laugh_until:
+			act = Act.IDLE_LAUGH
+		return
 	while not _banter.is_empty() and world.time >= float(_banter[0][0]):
 		var e: Array = _banter.pop_front()
 		if String(e[1]) == "!laugh":
@@ -1846,6 +1938,14 @@ func _banter_tick() -> void:
 
 
 func _end_idle() -> void:
+	if _native_idle():
+		var partner = chat_with
+		var out: Array = _idle_state_core().end(_idle_values(), world.time, world.rng._backend)
+		assert(out.size() == 2, "Invalid downtime end")
+		_read_idle(out[0])
+		if is_instance_valid(partner) and partner.chat_with == self:
+			partner.chat_with = null
+		return
 	idle_act = 0
 	_banter.clear()
 	_laugh_until = 0.0

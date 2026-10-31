@@ -52,6 +52,7 @@ graphics, network access or a wall clock.
 | Mounted infantry | `frontline_core` | Approach/climbing stages, scan clocks, anti-tank target selection and gun traverse extracted; Godot still owns mount links, fire queues and weapon effects |
 | Infantry action state | `frontline_core` | Typed pending actions, queued cooked throws, poses and completion admission extracted; Godot still advances the actor controller and applies throws, strikes, launches and door effects |
 | Infantry hidden duties and status | `frontline_core` | Hidden-duty deadlines, moving posture, status flags and drone-operator turns extracted; Godot still applies treatment, tunnel and prisoner callbacks |
+| Infantry downtime | `frontline_core` | Calm timers, idle choices, conversation partners, timed speech and laughter extracted with checkpoints and random cursor comparisons; Godot still applies the actor's speech effects |
 | Complete fighting-position search | `frontline_core` | Candidate enumeration, reachability, protection, occupancy and final scoring run in one call; Godot supplies nearby structure and soldier records |
 | House-entry task phases | `frontline_core` | Stack/door/grenade/entry transitions, deadlines, cooking and room targets extracted with component checkpoints; Godot still owns movement callbacks and squad entry effects |
 | House occupancy and breach selection | `frontline_core` | Floor containment, ordered openings, nearest walkable stack positions and competing squadmates extracted; Godot still supplies spatial candidates, squad contacts and decision timers |
@@ -241,14 +242,14 @@ Component checkpoint headers contain a four-byte component tag, a little-endian
 rules rather than silently continuing with changed arithmetic. The separate
 integer RNG stream remains unchanged.
 
-`native/core/tests/numeric_contract.rs` compares 5,345,793 committed bytes without
+`native/core/tests/numeric_contract.rs` compares 5,675,736 committed bytes without
 tolerances: fixed-tick flight state, support events and RNG cursors, carved water,
 craters, rotated box hits, cover anchors, spherical interpolation and infantry
 movement, infantry cover fire, postures, ammunition, burst recovery, vitals, aiming,
 combat poses, bullet resolution, blast exposure, knockback recovery and wounded
 infantry schedules, grenade reflexes, grenade task movement and house-entry
 phases, building selection, automatic grenade attacks, incoming shells and drone
-reactions, special attacks, infantry supply, medical/work duties, arrival tasks, mounted weapons, action state, hidden duties, complete cover searches and stationary
+reactions, special attacks, infantry supply, medical/work duties, arrival tasks, mounted weapons, action state, hidden duties, downtime, complete cover searches and stationary
 infantry movement. CI runs
 the same fixtures in debug and release on Windows x64, Linux
 x64, Linux ARM64 and macOS ARM64. A mismatch reports the first different byte.
@@ -465,9 +466,19 @@ flag until Rust owns the actors.
 
 The shock fixture compares 92,160 reference steps, including mounted turning,
 blocked terrain, carried casualties and task interruption. The full default suite
-passes 136 tests; 206 core tests pass in debug and release.
+passes 137 tests; 213 core tests pass in debug and release.
 
 ## Infantry tasks and reflexes
+
+`Idle` retains calm time, activity, deadlines, the conversation partner, queued
+lines and laughter in an `FLID` checkpoint. Ordered partner selection, idle
+choices, conversation scripts and random draws preserve the existing behavior.
+Speech is delivered one event at a time, retaining any random draws in callbacks.
+The world still owns the shared team conversation cooldown. A 32,768-step fixture
+compares both speakers, interruption, dialogue, callbacks and RNG, including two
+removed-object cases. Target validation accepts stale references before checking
+their lifetime, so Godot's argument type check cannot abort the update first.
+Numeric CI adds 329,943 bytes. The adapter remains test-only pending actor ownership.
 
 `Control` retains hidden-duty deadlines and the previous simulated position in
 an `FLCT` checkpoint. Vehicle passengers follow their vehicle without advancing

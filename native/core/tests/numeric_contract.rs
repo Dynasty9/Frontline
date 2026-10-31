@@ -1248,6 +1248,81 @@ fn point(out: &mut Vec<u8>, p: Vector3) {
     }
 }
 
+#[test]
+fn infantry_idle_numeric_contract() {
+    use frontline_core::infantry_idle::{self as idle, Calm, Idle};
+    let mut bytes = Vec::new();
+    for trial in 0..1024 {
+        let mut rng = SimulationRandom::new(719 + trial);
+        let mut a = Idle {
+            calm: 11.9,
+            ..Default::default()
+        };
+        let mut b = Idle::default();
+        let now = 31.7 + trial as f64 * 0.13;
+        a.tick(
+            0.1,
+            now,
+            Calm {
+                moving: false,
+                danger: false,
+                sector: Vector3::ZERO,
+                reload: 0.0,
+                last_shot: 0.0,
+                mounted: false,
+                target: false,
+            },
+            true,
+        )
+        .unwrap();
+        bytes.push(a.begin(now, -99.0, &mut rng).unwrap() as u8);
+        if trial % 3 == 0 {
+            a.start_chat(
+                &mut b,
+                1,
+                2,
+                now,
+                (trial % 2) as i32,
+                "Alex",
+                "Mikhail",
+                &mut rng,
+            )
+            .unwrap();
+        } else {
+            if let Some(line) = a.solo(now, (trial % 2) as i32, &mut rng).unwrap() {
+                block(&mut bytes, line.as_bytes());
+            }
+        }
+        block(&mut bytes, &a.checkpoint());
+        block(&mut bytes, &b.checkpoint());
+        for step in 0..15 {
+            let time = now + step as f64;
+            for state in [&mut a, &mut b] {
+                while let Some(line) = state.next_line(time, &mut rng).unwrap() {
+                    if let Some(line) = line {
+                        block(&mut bytes, line.as_bytes());
+                    }
+                    bytes.extend_from_slice(&rng.state().to_le_bytes());
+                }
+            }
+        }
+        let yaw = idle::chat_yaw(
+            Vector3::ZERO,
+            Vector3::new(1.3, 0.0, -0.7),
+            trial as f64 * 0.13,
+            1.0 / 30.0,
+            None,
+        )
+        .unwrap();
+        bytes.extend_from_slice(&yaw.to_le_bytes());
+        a.end(now + 30.0, &mut rng).unwrap();
+        block(&mut bytes, &a.checkpoint());
+        block(&mut bytes, &b.checkpoint());
+        bytes.extend_from_slice(&rng.state().to_le_bytes());
+    }
+    golden("infantry_idle", &bytes);
+}
+
 fn golden(name: &str, actual: &[u8]) {
     let path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("tests/numeric_v1")
