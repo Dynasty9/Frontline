@@ -18,7 +18,7 @@ graphics, network access or a wall clock.
 | Component | Destination | Current implementation |
 | --- | --- | --- |
 | Perception candidates, formation scoring, route graph | `frontline_core` | Extracted; Godot bindings call the core |
-| Infantry target acquisition | `frontline_core` | Visibility, mounted-gun arcs, weapon priorities, drone reactions and forced targets in one numeric scan; Godot supplies current contact poses and applies squad reports |
+| Infantry target acquisition | `frontline_core` | Retained actors build perception snapshots and resolve poses, visibility, mounted-gun arcs, weapon priorities, drones and forced targets; the live adapter and squad-report application still run in Godot |
 | Gameplay RNG, including commander streams | `frontline_core` | Seeded PCG stream matches Godot 4.7; cosmetic RNG stays in Godot |
 | Grenade, smoke, rocket, bomb and shell flight | `frontline_core` | Rust retains and advances flight state and queries native geometry; the adapter supplies holders and applies impacts |
 | Retained projectile actors and impacts | `frontline_core` | Ballistic, guided and support actors retain ownership, holder/handler links and attribution with flight checkpoints; ordered impact, spawn, smoke, recon and sound effects still await the Rust world dispatcher |
@@ -535,7 +535,7 @@ Component checkpoint headers contain a four-byte component tag, a little-endian
 rules rather than silently continuing with changed arithmetic. The separate
 integer RNG stream remains unchanged.
 
-`native/core/tests/numeric_contract.rs` compares 46,724,516 committed bytes without
+`native/core/tests/numeric_contract.rs` compares 47,709,228 committed bytes without
 tolerances: fixed-tick flight state, support events and RNG cursors, carved water,
 craters, rotated box hits, cover anchors, spherical interpolation and infantry
 movement, infantry cover fire, postures, ammunition, burst recovery, vitals, aiming,
@@ -759,7 +759,7 @@ flag until Rust owns the actors.
 
 The shock fixture compares 92,160 reference steps, including mounted turning,
 blocked terrain, carried casualties and task interruption. The full default suite
-passes 171 tests; 432 core tests pass in debug and release.
+passes 172 tests; 440 core tests pass in debug and release.
 
 ## Spatial query state
 
@@ -1190,7 +1190,23 @@ drone override order and forced structure attacks. Flanking contacts are still
 reported even when a mounted gun cannot engage them; drones retain their existing
 separate reporting behavior. The 600-case reference fixture checks current poses,
 smoke, changed vehicle colliders, repeated scans and restored geometry. Contact
-poses, behavior tasks and squad state are still supplied by Godot.
+poses and squad state are still supplied by Godot in the live adapter.
+
+The retained actor path now builds the tick's perception snapshot directly from
+Rust infantry, vehicles and terrain. It reuses occupied bucket storage across
+rebuilds. The snapshot preserves concealment, quiet cover, recent wounded fire,
+netted vehicles and aircraft exceptions; scanning rechecks current casualty
+eligibility without refilling the original seven candidates. Stable IDs retain
+the full unsigned entity range. Infantry then resolves exposed points and mount
+arcs from owned actors and retains its selected and visible contacts. The result
+identifies the ground contacts to report separately from drone observations.
+
+The new fixture compares 18,432 complete infantry states, selected/visible targets,
+report order and obstruction reuse against the actual Godot scan. Seven core
+tests cover snapshot timing, tie order, concealment, removed contacts, mounts,
+bearers, drones, forced structures, invalid input and checkpoint continuation.
+Numeric CI adds 984,712 exact bytes. The full infantry decision loop and shared
+squad/world dispatch remain unfinished.
 
 The fixture's 1,000-scan comparison includes preparation and report application:
 GDScript samples were 42.56–45.16 ms and the packed native path 41.42–43.68 ms.

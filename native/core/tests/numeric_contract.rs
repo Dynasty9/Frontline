@@ -36,6 +36,143 @@ fn block(out: &mut Vec<u8>, bytes: &[u8]) {
 }
 
 #[test]
+fn retained_infantry_acquisition_is_identical_across_platforms() {
+    use frontline_core::actors::{Actor, Actors};
+    use frontline_core::infantry::Infantry as Soldier;
+    use frontline_core::infantry_controller::Task;
+    use frontline_core::infantry_scan::ScanProfile;
+    use frontline_core::perception::PerceptionSearch;
+    use frontline_core::structure::Structure;
+    use frontline_core::vehicle::Vehicle;
+    let mut bytes = Vec::new();
+    let mut rng = SimulationRandom::new(37193);
+    let mut terrain = Terrain::blank(256).unwrap();
+    for i in 0..256 * 256 {
+        terrain.layers[frontline_core::terrain::WOODS][i] = u8::from(i % 11 < 3);
+        terrain.layers[frontline_core::terrain::NETTED][i] = u8::from(i % 13 < 4);
+    }
+    for trial in 0..32 {
+        let mut entries = Vec::new();
+        for id in 1..25 {
+            let mut s = Soldier::default();
+            s.identity.id = id;
+            s.identity.team = (id % 2) as i8;
+            s.identity.unit = if id % 5 == 0 { "pkm" } else { "rifleman" }.into();
+            s.identity.weapon = "rifle".into();
+            s.motion.position = Vector3::new(
+                rng.randf_range(-65.0, 65.0),
+                -0.3,
+                rng.randf_range(-65.0, 65.0),
+            );
+            s.vitals.life = if id % 7 == 0 {
+                Life::Downed
+            } else {
+                Life::Alive
+            };
+            s.weapon.last_shot = if id % 3 == 0 { 19.0 } else { -10.0 };
+            s.posture = Posture::try_from((id % 5) as u8).unwrap();
+            s.cover.at_cover = id % 3 == 0;
+            s.cover.kind = (id % 3) as u8;
+            s.cover.height = 0.8;
+            s.cover.normal = Vector3::Z;
+            s.cover.lean_direction = Vector3::X;
+            s.weapon.peek_up = trial % 2 == 0;
+            s.arsenal.rockets = (id % 3) as i32;
+            s.fight.forced_target = if id % 11 == 0 { 40 } else { 0 };
+            if id % 4 == 0 {
+                s.emplacement.structure = 40;
+                s.duty.kind = Task::Man;
+                s.duty.phase = 2;
+            }
+            entries.push(Actor::Soldier(Box::new(s)));
+        }
+        for id in 25..32 {
+            entries.push(Actor::Vehicle(Box::new(Vehicle {
+                id,
+                team: (id % 2) as i8,
+                kind: "tank".into(),
+                position: Vector3::new(
+                    rng.randf_range(-70.0, 70.0),
+                    0.0,
+                    rng.randf_range(-70.0, 70.0),
+                ),
+                ..Default::default()
+            })));
+        }
+        entries.push(Actor::Structure(Box::new(Structure {
+            id: 40,
+            team: 0,
+            kind: if trial % 2 == 0 {
+                "hmg_nest"
+            } else {
+                "watchtower"
+            }
+            .into(),
+            variant: trial % 2,
+            yaw: trial as f64 * 0.17,
+            ..Default::default()
+        })));
+        let mut a = Actors::from_entries(100, entries).unwrap();
+        let mut search = PerceptionSearch::default();
+        let mut collision = CollisionWorld::default();
+        let mut visibility = Visibility::default();
+        for step in 0..12 {
+            let now = 20.0 + step as f64 * 0.4;
+            if step % 4 == 0 {
+                search.rebuild_actors(&a, &terrain, now, |_| false).unwrap();
+            }
+            if step % 3 == 0 {
+                assert!(collision.replace(
+                    99,
+                    &[BoxShape {
+                        body: 99,
+                        shape: 0,
+                        center: Vector3::new(step as f32 - 5.0, 1.0, -10.0),
+                        basis: Mat3::IDENTITY,
+                        half: Vector3::new(15.0, 3.0, 0.4)
+                    }]
+                ));
+            }
+            assert!(visibility.set_fires(&[Smoke {
+                center: Vector3::new(0.0, 1.0, -20.0),
+                radius: if step % 3 == 0 { 7.0 } else { 0.0 }
+            }]));
+            for id in 1..25 {
+                let result = a
+                    .scan_infantry(
+                        id,
+                        now,
+                        ScanProfile {
+                            bearer: id % 13 == 0,
+                            weapon_range: 50.0,
+                            armor_piercing: id % 5 == 0,
+                        },
+                        &search,
+                        &mut collision,
+                        &mut visibility,
+                        |v| (v.id % 3) as i32,
+                    )
+                    .unwrap();
+                bytes.extend_from_slice(&result.target.to_le_bytes());
+                bytes.extend_from_slice(&(result.visible.len() as u32).to_le_bytes());
+                bytes.extend_from_slice(&(result.reported as u32).to_le_bytes());
+                bytes.extend_from_slice(&(result.reused as u32).to_le_bytes());
+                for target in result.visible {
+                    bytes.extend_from_slice(&target.to_le_bytes());
+                }
+                if step % 4 == 0 && id % 6 == 0 {
+                    block(&mut bytes, &a.soldier(id).unwrap().checkpoint().unwrap());
+                }
+            }
+            if step == 7 {
+                a = Actors::restore(&a.checkpoint().unwrap()).unwrap();
+            }
+        }
+    }
+    golden("infantry_scan", &bytes);
+}
+
+#[test]
 fn owned_vehicle_acquisition_is_identical_across_platforms() {
     use frontline_core::actors::{Actor, Actors};
     use frontline_core::infantry::Infantry as Soldier;

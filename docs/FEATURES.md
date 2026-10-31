@@ -1375,6 +1375,10 @@ of speech and random draws. Missing loadout data leaves the service step unchang
 Vehicle target checks now read retained infantry poses, vehicle positions and
 building visibility directly, preserving aircraft priorities, forced targets and
 squad reports. Unchanged obstacles reuse visibility results; smoke remains live.
+Retained infantry also builds its perception snapshot from Rust actors and terrain,
+preserving concealment, wounded firing, netted vehicles, mounted-gun arcs, drone
+reactions and the seven-contact limit. Selected and visible targets survive saved
+state resumes; the full soldier decision loop still needs the Rust world.
 Construction, town income, capture and production transitions match the existing
 game; shared rule effects, destruction and the full building dispatcher still need
 migration before Rust owns the complete battle.

@@ -66,6 +66,36 @@ struct PerceptionSearch {
 #[godot_api]
 impl PerceptionSearch {
     #[func]
+    fn rebuild_actors(
+        &mut self,
+        actors: Gd<actors::ActorStateCore>,
+        terrain: Gd<terrain::TerrainCore>,
+        now: f64,
+        aircraft: PackedInt64Array,
+    ) -> bool {
+        if aircraft.len() > 100_000 {
+            return false;
+        }
+        let Some(aircraft) = aircraft
+            .as_slice()
+            .iter()
+            .map(|id| u32::try_from(*id).ok().filter(|id| *id != 0))
+            .collect::<Option<std::collections::HashSet<_>>>()
+        else {
+            return false;
+        };
+        let terrain = terrain.bind();
+        let Some(terrain) = terrain.core.as_ref() else {
+            return false;
+        };
+        self.core
+            .rebuild_actors(&actors.bind().core, terrain, now, |v| {
+                aircraft.contains(&v.id)
+            })
+            .is_ok()
+    }
+
+    #[func]
     fn rebuild(&mut self, meta: PackedInt32Array, values: PackedFloat64Array) -> bool {
         self.core.rebuild(meta.as_slice(), values.as_slice())
     }

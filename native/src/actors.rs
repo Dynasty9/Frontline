@@ -130,6 +130,63 @@ fn artillery_profile(
 #[godot_api]
 impl ActorStateCore {
     #[func]
+    fn scan_infantry(
+        &mut self,
+        soldier: u32,
+        now: f64,
+        profile: PackedFloat64Array,
+        search: Gd<crate::PerceptionSearch>,
+        mut collision: Gd<crate::collision_index::CollisionIndexCore>,
+        mut visibility: Gd<crate::visibility::VisibilityCore>,
+        armor: PackedInt64Array,
+    ) -> Array<Variant> {
+        if profile.len() != 3
+            || [profile[0], profile[2]]
+                .into_iter()
+                .any(|v| v != 0.0 && v != 1.0)
+            || armor.len() % 2 != 0
+            || armor.len() > 200_000
+        {
+            return Array::new();
+        }
+        let mut ratings = HashMap::new();
+        for row in armor.as_slice().chunks_exact(2) {
+            let Ok(id) = u32::try_from(row[0]) else {
+                return Array::new();
+            };
+            if id == 0 || !(0..=16).contains(&row[1]) || ratings.insert(id, row[1] as i32).is_some()
+            {
+                return Array::new();
+            }
+        }
+        let p = frontline_core::infantry_scan::ScanProfile {
+            bearer: profile[0] != 0.0,
+            weapon_range: profile[1],
+            armor_piercing: profile[2] != 0.0,
+        };
+        match self.core.scan_infantry(
+            soldier,
+            now,
+            p,
+            &search.bind().core,
+            &mut collision.bind_mut().core,
+            &mut visibility.bind_mut().core,
+            |v| *ratings.get(&v.id).unwrap_or(&1),
+        ) {
+            Ok(scan) => varray![
+                scan.target as i64,
+                scan.reported as i64,
+                scan.reused as i64,
+                &scan
+                    .visible
+                    .into_iter()
+                    .map(|id| id as i64)
+                    .collect::<PackedInt64Array>()
+            ],
+            Err(_) => Array::new(),
+        }
+    }
+    #[func]
     fn scan_vehicle(
         &mut self,
         vehicle: u32,
