@@ -39,11 +39,11 @@ graphics, network access or a wall clock.
 | Infantry route movement | `frontline_core` | Route progress, vaulting, sliding, doors and ground caches extracted and reference-tested; the per-soldier adapter remains test-only because it is slower than GDScript |
 | Stationary infantry movement | `frontline_core` | Neighbor separation, terrain settling, cover alignment and watch-sector/mounted turns extracted; the adapter remains test-only pending actor ownership |
 | Infantry weapon cycles | `frontline_core` | Cover fire, postures, firing permissions, ammunition and burst recovery extracted with compatibility tests; adapters remain test-only until Rust owns the actor |
-| Infantry health, suppression and fatigue | `frontline_core` | Numeric recovery, damage outcomes and down/death/revive transitions extracted with component checkpoints; actor cleanup, squad reactions and damage attribution remain Godot effects |
+| Infantry health, suppression and fatigue | `frontline_core` | Retained damage updates attribution, casualty links and squad reactions together; the live world dispatcher still runs in Godot |
 | Infantry combat geometry | `frontline_core` | Eyes, exposed points, hit factors and cover postures extracted with reference tests; the adapter still supplies actor state |
 | Infantry aim selection and sight cache | `frontline_core` | Target, blind and area-fire aiming extracted and reference-tested; the test adapter supplies posed target points and last-known squad contacts |
 | Bullet resolution | `frontline_core` | Accuracy, scatter, penetration, hit damage, explosive-round placement and near-miss suppression extracted with ordered stages; Godot still applies actor damage and explosion effects |
-| Blast exposure | `frontline_core` | Infantry and structure damage, shelter, fling strength and flinch radius extracted; Godot still owns victims, vehicle armour and effect application |
+| Blast exposure | `frontline_core` | Retained infantry blasts apply shelter, damage, casualty links, squad responses, fling and flinch in victim order; vehicle/structure destruction, fire and world dispatch remain to be connected |
 | Blast knockback and disorientation | `frontline_core` | Fling trajectories, obstacle bounces, landings, flinching and dazed movement extracted with component checkpoints; Godot still applies task cleanup and speech |
 | Wounded infantry and corpse timers | `frontline_core` | Bleeding, rescue/medicine modifiers, speech/pistol/crawl schedules and corpse collection decisions extracted; rescuer links, targeting and task effects remain in Godot |
 | Grenade reflex decisions | `frontline_core` | Owned actors retain notice memory, grenade claims, rescue/breach cleanup, task changes, shelter and dives; the live decision loop and task dispatcher remain in Godot |
@@ -1578,3 +1578,21 @@ occupants, vehicle passengers, routes, speech, counters and random continuation.
 Numeric CI adds 1,978,559 exact transcript bytes. Other tasks, the complete soldier
 tick and the world event dispatcher still need integration; this is not a running
 Rust match server or verified whole-battle replay.
+
+## Shared infantry blast effects
+
+`Actors.blast_infantry` uses the tick's spatial membership and current actor
+positions to apply blast damage, shared casualty cleanup, squad reactions,
+knockback and flinching before advancing to the next victim. This preserves
+carrier/patient dependencies, ignores hidden soldiers, and reads wall materials,
+trench cells and crater shelter from retained geometry and terrain.
+
+Six core regressions cover ordered link release, damage before knockback, cover,
+busy survivors, missing-source credit, checkpoint resumes and invalid geometry.
+The Godot fixture compares 12,288 complete actor states plus squad state, speech,
+counters and random continuation against the existing explosion loop. Health and
+bleeding allow a 1e-9 difference for Godot's platform power function; Rust numeric
+CI instead compares all 4,378,182 new transcript bytes exactly, with restored
+actors, terrain, spatial membership, collision, squads and RNG. Vehicle/structure
+destruction, fire, terrain effects and the complete world dispatcher remain open;
+this is neither whole-battle verification nor a frame-rate measurement.

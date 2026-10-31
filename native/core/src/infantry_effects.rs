@@ -1,12 +1,16 @@
 //! Hits and near misses update soldiers, their shared links and squad knowledge together.
 use crate::actors::{Actor, Actors};
+use crate::blast::{Blast, Infantry as Exposure, Protection as BlastProtection};
+use crate::collision::CollisionWorld;
 use crate::infantry::Credit;
+use crate::infantry::Infantry;
 use crate::infantry_casualty::Released;
 use crate::infantry_controller::Task;
 use crate::infantry_vitals::{DamageResult, Life, Protection};
 use crate::random::SimulationRandom;
 use crate::spatial::{SpatialIndex, UNIT_CELL};
 use crate::squad::{Contact, Report, Speech, Squad};
+use crate::terrain::{Terrain, CRATER, TRENCH};
 use crate::vector::Vector3;
 
 #[derive(Clone, Debug, PartialEq)]
@@ -18,6 +22,13 @@ pub struct InfantryHit {
     pub casualty_speech: Option<Speech>,
     pub credited: Option<Credit>,
     pub damage_credited: f64,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct BlastVictim {
+    pub soldier: u32,
+    pub hit: Option<InfantryHit>,
+    pub flung: bool,
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -78,6 +89,113 @@ impl Actor {
 }
 
 impl Actors {
+    /// A carrier's injury can free the next victim before their exposure is evaluated.
+    pub fn blast_infantry(
+        &mut self,
+        mut blast: Blast,
+        source: u32,
+        now: f64,
+        blame: Option<&Credit>,
+        terrain: &Terrain,
+        units: &SpatialIndex,
+        collision: &mut CollisionWorld,
+        squads: &mut [Squad],
+        ammunition: impl Fn(&Infantry) -> (Option<i32>, bool),
+        rng: &mut SimulationRandom,
+    ) -> Result<Vec<BlastVictim>, &'static str> {
+        if !blast.valid()
+            || !clock(now)
+            || blame.is_some_and(|c| {
+                c.owner < -2
+                    || !(0..=1).contains(&c.team)
+                    || c.unit.len() > 128
+                    || c.unit.contains('\0')
+            })
+        {
+            return Err("invalid retained infantry blast");
+        }
+        let ids = self.units_near(units, blast.position, blast.radius * 2.4, -1)?;
+        blast.in_trench = terrain.layers[TRENCH][terrain.index(blast.position)] > 0;
+        let mut victims = Vec::new();
+        for id in ids {
+            let Some(s) = self.soldier(id).filter(|s| s.vitals.life != Life::Hidden) else {
+                continue;
+            };
+            let center = crate::infantry_pose::center(s.motion.position, s.posture, s.vitals.life);
+            let nearby = f64::from(blast.position.distance(center)) < blast.radius;
+            let ray = if nearby {
+                collision.ray(blast.position + Vector3::new(0.0, 0.35, 0.0), center, &[])
+            } else {
+                None
+            };
+            let cell = terrain.index(s.motion.position);
+            let injury = blast.infantry(
+                Exposure {
+                    center,
+                    life: s.vitals.life,
+                    posture: s.posture,
+                    in_trench: nearby && terrain.layers[TRENCH][cell] > 0,
+                    terrain_multiplier: if nearby && terrain.layers[CRATER][cell] > 0 {
+                        0.6
+                    } else {
+                        1.0
+                    },
+                },
+                BlastProtection {
+                    blocked: ray.is_some(),
+                    material: ray
+                        .and_then(|r| u32::try_from(r.body).ok())
+                        .and_then(|id| self.structure(id))
+                        .map(|st| st.cover_material()),
+                },
+            )?;
+            let hit = if injury.damage > 0.0 {
+                let (stock, bearer) = ammunition(s);
+                Some(self.damage_infantry(
+                    id,
+                    Damage {
+                        amount: injury.damage,
+                        source,
+                        direction: injury.direction,
+                        kind: "explosion",
+                        now,
+                        ammunition: stock,
+                        bearer,
+                        blame,
+                    },
+                    squads,
+                    rng,
+                )?)
+            } else {
+                None
+            };
+            let released = if injury.fling > 0.0 {
+                self.fling_from(id, blast.position, injury.fling, rng)?
+            } else {
+                None
+            };
+            if let Some(released) = released {
+                if let Some(q) = squads
+                    .iter_mut()
+                    .find(|q| q.id == released.squad && q.breach_by == id)
+                {
+                    q.breach_by = 0;
+                }
+            }
+            if injury.flinch_radius > 0.0 {
+                self.soldier_mut(id)
+                    .unwrap()
+                    .flinch_from(injury.distance, injury.flinch_radius)?;
+            }
+            victims.push(BlastVictim {
+                soldier: id,
+                hit,
+                flung: released.is_some(),
+            });
+        }
+        Ok(victims)
+    }
+
     pub fn damage_infantry(
         &mut self,
         id: u32,

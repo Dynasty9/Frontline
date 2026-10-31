@@ -8,6 +8,41 @@ use frontline_core::vehicle_sling::SlingSpec;
 use godot::prelude::*;
 use std::collections::HashMap;
 
+fn damage_stock(rows: &PackedInt64Array) -> Option<HashMap<u32, (Option<i32>, bool)>> {
+    if rows.len() % 3 != 0 || rows.len() > 300_000 {
+        return None;
+    }
+    let mut stocks = HashMap::new();
+    for row in rows.as_slice().chunks_exact(3) {
+        let id = u32::try_from(row[0]).ok()?;
+        if id == 0
+            || !(-1..=1_000_000).contains(&row[1])
+            || ![0, 1].contains(&row[2])
+            || stocks
+                .insert(id, ((row[1] >= 0).then_some(row[1] as i32), row[2] != 0))
+                .is_some()
+        {
+            return None;
+        }
+    }
+    Some(stocks)
+}
+fn damage_credit(row: &Array<Variant>) -> Result<Option<frontline_core::infantry::Credit>, ()> {
+    use frontline_core::infantry::Credit;
+    if row.is_empty() {
+        return Ok(None);
+    }
+    if row.len() != 4 {
+        return Err(());
+    }
+    Ok(Some(Credit {
+        owner: row.at(0).try_to().map_err(|_| ())?,
+        team: row.at(1).try_to().map_err(|_| ())?,
+        unit: row.at(2).try_to::<GString>().map_err(|_| ())?.to_string(),
+        soldier: row.at(3).try_to().map_err(|_| ())?,
+    }))
+}
+
 type ServiceStock = HashMap<
     u32,
     (
@@ -379,24 +414,12 @@ impl ActorStateCore {
         use frontline_core::infantry_action_owned::{Defense, Event};
         use frontline_core::vehicle_brain::CrewProfile;
         use frontline_core::vehicle_launch::SmokeProfile;
-        if stocks.len() % 3 != 0 || stocks.len() > 300_000 || defenses.len() > 100_000 {
+        if defenses.len() > 100_000 {
             return Array::new();
         }
-        let mut ammunition = HashMap::new();
-        for row in stocks.as_slice().chunks_exact(3) {
-            let Ok(id) = u32::try_from(row[0]) else {
-                return Array::new();
-            };
-            if id == 0
-                || !(-1..=1_000_000).contains(&row[1])
-                || ![0, 1].contains(&row[2])
-                || ammunition
-                    .insert(id, ((row[1] >= 0).then_some(row[1] as i32), row[2] != 0))
-                    .is_some()
-            {
-                return Array::new();
-            }
-        }
+        let Some(ammunition) = damage_stock(&stocks) else {
+            return Array::new();
+        };
         let mut profiles = HashMap::new();
         for row in defenses.iter_shared() {
             let Ok(row) = row.try_to::<Array<Variant>>() else {
@@ -988,6 +1011,72 @@ impl ActorStateCore {
         }
     }
     #[func]
+    fn blast_infantry(
+        &mut self,
+        position: Vector3,
+        values: PackedFloat64Array,
+        source: u32,
+        blame: Array<Variant>,
+        stocks: PackedInt64Array,
+        terrain: Gd<crate::terrain::TerrainCore>,
+        units: Gd<crate::spatial::SpatialIndexCore>,
+        mut collision: Gd<crate::collision_index::CollisionIndexCore>,
+        squads: Array<Gd<crate::squad::SquadStateCore>>,
+        mut rng: Gd<crate::simulation_random::SimulationRandomCore>,
+    ) -> Array<Variant> {
+        if values.len() != 4 {
+            return Array::new();
+        }
+        let (Ok(blame), Some(stock), Some(mut state)) = (
+            damage_credit(&blame),
+            damage_stock(&stocks),
+            read_squads(&squads),
+        ) else {
+            return Array::new();
+        };
+        let terrain = terrain.bind();
+        let units = units.bind();
+        let (Some(terrain), Some(units)) = (&terrain.core, &units.core) else {
+            return Array::new();
+        };
+        let result = self.core.blast_infantry(
+            frontline_core::blast::Blast {
+                position: frontline_core::vector::Vector3::new(position.x, position.y, position.z),
+                damage: values[0],
+                radius: values[1],
+                fling: values[2],
+                in_trench: false,
+            },
+            source,
+            values[3],
+            blame.as_ref(),
+            terrain,
+            units,
+            &mut collision.bind_mut().core,
+            &mut state,
+            |s| stock.get(&s.identity.id).copied().unwrap_or((None, false)),
+            &mut rng.bind_mut().core,
+        );
+        match result {
+            Ok(victims) => {
+                write_squads(squads, state);
+                let events: Array<Variant> = victims
+                    .into_iter()
+                    .map(|v| {
+                        varray![
+                            v.soldier as i64,
+                            &v.hit.map_or_else(Array::new, infantry_hit),
+                            v.flung
+                        ]
+                        .to_variant()
+                    })
+                    .collect();
+                varray![&events]
+            }
+            Err(_) => Array::new(),
+        }
+    }
+    #[func]
     fn damage_infantry(
         &mut self,
         soldier: u32,
@@ -999,7 +1088,6 @@ impl ActorStateCore {
         squads: Array<Gd<crate::squad::SquadStateCore>>,
         mut rng: Gd<crate::simulation_random::SimulationRandomCore>,
     ) -> Array<Variant> {
-        use frontline_core::infantry::Credit;
         use frontline_core::infantry_effects::Damage;
         if values.len() != 4
             || !values[2].is_finite()
@@ -1009,24 +1097,8 @@ impl ActorStateCore {
         {
             return Array::new();
         }
-        let blame = if blame.is_empty() {
-            None
-        } else {
-            if blame.len() != 4 {
-                return Array::new();
-            }
-            let parsed = (|| {
-                Some(Credit {
-                    owner: blame.get(0)?.try_to().ok()?,
-                    team: blame.get(1)?.try_to().ok()?,
-                    unit: blame.get(2)?.try_to::<GString>().ok()?.to_string(),
-                    soldier: blame.get(3)?.try_to().ok()?,
-                })
-            })();
-            let Some(c) = parsed else {
-                return Array::new();
-            };
-            Some(c)
+        let Ok(blame) = damage_credit(&blame) else {
+            return Array::new();
         };
         let Some(mut state) = read_squads(&squads) else {
             return Array::new();

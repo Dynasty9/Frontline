@@ -1414,6 +1414,9 @@ smoke and crew evasion in the same event and random order.
 Retained travel tasks connect movement to retreat, grenade orders, boarding,
 tunnel entry, drone operation and resupply, including shared seats, occupants and
 finite ammunition. The complete world dispatcher is still being migrated.
+Retained infantry blasts apply cover, casualties, shared carrier links, squad
+reactions, knockback and flinching in victim order. Vehicle/building destruction,
+fire and whole-world explosion dispatch still need integration.
 Construction, town income, capture and production transitions match the existing
 game; shared rule effects, destruction and the full building dispatcher still need
 migration before Rust owns the complete battle.
