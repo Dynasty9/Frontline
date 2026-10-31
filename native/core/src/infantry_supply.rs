@@ -1,7 +1,74 @@
 //! Ordered scavenging and resupply decisions; movement and shared stores belong to the world.
+use crate::infantry::Infantry;
+use crate::infantry_weapon::Weapon;
 use crate::random::SimulationRandom;
 use crate::state_codec::{Reader, Writer};
 use crate::vector::{normalized, Vector3};
+
+#[derive(Clone, Copy, Debug)]
+pub struct Loadout {
+    pub ammunition: i32,
+    pub special: [i32; 5],
+    pub reload_weapon: Weapon,
+}
+impl Loadout {
+    pub fn valid(self) -> bool {
+        rounds(self.ammunition)
+            && self.special.into_iter().all(rounds)
+            && self.reload_weapon.valid()
+    }
+}
+impl Infantry {
+    pub fn resupply(
+        &mut self,
+        dt: f64,
+        loadout: Option<Loadout>,
+        rng: &mut SimulationRandom,
+    ) -> Result<Option<u8>, &'static str> {
+        if !self.valid()
+            || !dt.is_finite()
+            || !(0.0..=3600.0).contains(&dt)
+            || loadout.is_some_and(|p| !p.valid())
+        {
+            return Err("invalid retained infantry resupply");
+        }
+        let Some(p) = loadout.filter(|p| p.ammunition < 9000) else {
+            return Ok(None);
+        };
+        let mut stock = [
+            self.grenades.frags,
+            self.fight.smokes,
+            self.arsenal.rockets,
+            self.arsenal.drones,
+            self.arsenal.mortar_rounds,
+        ];
+        if !stock.into_iter().all(rounds) {
+            return Err("invalid retained ammunition stock");
+        }
+        let (reserve, changed) =
+            refill_reserve(p.ammunition, self.weapon.magazine, self.weapon.reserve, dt)?;
+        self.weapon.reserve = reserve;
+        let mut speech = None;
+        if changed {
+            self.fight.out_of_ammo_said = false;
+            self.weapon.low_ammo_said = false;
+            if self.weapon.magazine <= 0 {
+                let choice = self.weapon.reload(p.reload_weapon, rng);
+                if choice.is_some() && self.vitals.speech_cooldown <= 0.0 {
+                    self.vitals.speech_cooldown = 2.6;
+                    speech = choice;
+                }
+            }
+        }
+        refill_special(&mut stock, p.special, dt, rng)?;
+        self.grenades.frags = stock[0];
+        self.fight.smokes = stock[1];
+        self.arsenal.rockets = stock[2];
+        self.arsenal.drones = stock[3];
+        self.arsenal.mortar_rounds = stock[4];
+        Ok(speech)
+    }
+}
 
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct SupplyTimers {

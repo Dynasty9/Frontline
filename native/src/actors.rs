@@ -6,6 +6,64 @@ use frontline_core::infantry_casualty::Released;
 use frontline_core::projectile_actor::{Event, Explosion};
 use frontline_core::vehicle_sling::SlingSpec;
 use godot::prelude::*;
+use std::collections::HashMap;
+
+type ServiceStock = HashMap<
+    u32,
+    (
+        Option<frontline_core::infantry_supply::Loadout>,
+        String,
+        i32,
+    ),
+>;
+fn service_stock(rows: Array<Variant>) -> Option<ServiceStock> {
+    use frontline_core::infantry_supply::Loadout;
+    use frontline_core::infantry_weapon::Weapon;
+    if rows.len() > 100_000 {
+        return None;
+    }
+    let mut out = HashMap::new();
+    for row in rows.iter_shared() {
+        let row = row.try_to::<Array<Variant>>().ok()?;
+        if row.len() != 5 {
+            return None;
+        }
+        let id: u32 = row.get(0)?.try_to().ok()?;
+        let stock = row.get(1)?.try_to::<PackedInt32Array>().ok()?;
+        let reload_time: f64 = row.get(2)?.try_to().ok()?;
+        let weapon = row.get(3)?.try_to::<GString>().ok()?.to_string();
+        let magazine: i32 = row.get(4)?.try_to().ok()?;
+        if id == 0
+            || stock.len() != 8
+            || weapon.len() > 128
+            || weapon.contains('\0')
+            || !(0..=1_000_000).contains(&magazine)
+        {
+            return None;
+        }
+        let loadout = if stock[0] == -1 {
+            None
+        } else {
+            let p = Loadout {
+                ammunition: stock[0],
+                special: stock.as_slice()[1..6].try_into().ok()?,
+                reload_weapon: Weapon {
+                    ammunition: stock[6],
+                    magazine: stock[7],
+                    reload_time,
+                },
+            };
+            if !p.valid() {
+                return None;
+            }
+            Some(p)
+        };
+        if out.insert(id, (loadout, weapon, magazine)).is_some() {
+            return None;
+        }
+    }
+    Some(out)
+}
 
 #[derive(GodotClass)]
 #[class(base=RefCounted, init)]
@@ -349,6 +407,97 @@ impl ActorStateCore {
         };
         match self.core.drop_sling(cargo, nav) {
             Ok(drop) => varray![vector(drop.position), drop.damage, drop.impact],
+            Err(_) => Array::new(),
+        }
+    }
+    #[func]
+    fn service_vehicle(
+        &mut self,
+        vehicle: u32,
+        dt: f64,
+        service: GString,
+        units: Gd<crate::spatial::SpatialIndexCore>,
+        mut random: Gd<crate::simulation_random::SimulationRandomCore>,
+        soldiers: Array<Variant>,
+        vehicles: Array<Variant>,
+    ) -> Array<Variant> {
+        use frontline_core::vehicle_service::{Service, ServiceEffect, SoldierSupply};
+        let service = match service.to_string().as_str() {
+            "repair" => Service::Repair,
+            "ammo" => Service::Ammo,
+            "medical" => Service::Medical,
+            _ => return Array::new(),
+        };
+        let Some(stock) = service_stock(soldiers) else {
+            return Array::new();
+        };
+        if vehicles.len() > 100_000 {
+            return Array::new();
+        }
+        let mut missiles = HashMap::new();
+        for row in vehicles.iter_shared() {
+            let Ok(row) = row.try_to::<PackedInt64Array>() else {
+                return Array::new();
+            };
+            if row.len() != 3 {
+                return Array::new();
+            }
+            let (Ok(id), Ok(atgm), Ok(sam)) = (
+                u32::try_from(row[0]),
+                i32::try_from(row[1]),
+                i32::try_from(row[2]),
+            ) else {
+                return Array::new();
+            };
+            if id == 0
+                || !(0..=1_000_000).contains(&atgm)
+                || !(0..=1_000_000).contains(&sam)
+                || missiles.insert(id, [atgm, sam]).is_some()
+            {
+                return Array::new();
+            }
+        }
+        let units = units.bind();
+        let Some(units) = units.core.as_ref() else {
+            return Array::new();
+        };
+        match self.core.service_vehicle(
+            vehicle,
+            dt,
+            service,
+            units,
+            &mut random.bind_mut().core,
+            |s| {
+                stock
+                    .get(&s.identity.id)
+                    .map(|(loadout, key, magazine)| SoldierSupply {
+                        loadout: *loadout,
+                        restored_weapon: (!key.is_empty()).then_some((key.as_str(), *magazine)),
+                    })
+                    .ok_or("missing infantry stock")
+            },
+            |v| missiles.get(&v.id).copied().ok_or("missing vehicle stock"),
+        ) {
+            Ok(events) => {
+                let out: Array<Variant> = events
+                    .into_iter()
+                    .map(|e| {
+                        let row = match e {
+                            ServiceEffect::Repaired { vehicle, track } => {
+                                [0, i64::from(vehicle), i64::from(track)]
+                            }
+                            ServiceEffect::Reload { soldier, speech } => {
+                                [1, i64::from(soldier), i64::from(speech)]
+                            }
+                            ServiceEffect::Revived { soldier, speech } => {
+                                [2, i64::from(soldier), i64::from(speech)]
+                            }
+                        };
+                        PackedInt64Array::from(row.as_slice()).to_variant()
+                    })
+                    .collect();
+                varray![&out]
+            }
             Err(_) => Array::new(),
         }
     }

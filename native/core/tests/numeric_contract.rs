@@ -36,6 +36,120 @@ fn block(out: &mut Vec<u8>, bytes: &[u8]) {
 }
 
 #[test]
+fn retained_vehicle_services_are_identical_across_platforms() {
+    use frontline_core::actors::{Actor, Actors};
+    use frontline_core::infantry::Infantry as Soldier;
+    use frontline_core::infantry_supply::Loadout;
+    use frontline_core::spatial::{SpatialIndex, UNIT_CELL};
+    use frontline_core::vehicle::Vehicle;
+    use frontline_core::vehicle_service::{Service, ServiceEffect, SoldierSupply};
+    let mut bytes = Vec::new();
+    for trial in 0..32 {
+        let source = Vehicle {
+            id: 1,
+            team: 0,
+            speed: if trial % 7 == 0 {
+                2.0
+            } else if trial % 7 == 1 {
+                -2.0
+            } else {
+                0.0
+            },
+            ..Default::default()
+        };
+        let mut entries = vec![Actor::Vehicle(Box::new(source))];
+        for id in 2..14 {
+            let mut s = Soldier::default();
+            s.identity.id = id;
+            s.identity.team = if id % 5 == 0 { 1 } else { 0 };
+            s.identity.unit = "rifleman".into();
+            s.identity.weapon = if id % 4 == 0 { "" } else { "rifle" }.into();
+            s.motion.position = Vector3::new(
+                (id as f32 - 8.3) * 2.0,
+                if id % 3 == 0 { -0.7 } else { 0.0 },
+                (id % 3) as f32 * 1.7 - 2.1,
+            );
+            s.vitals.life =
+                [Life::Alive, Life::Downed, Life::Hidden][(id as usize + trial as usize) % 3];
+            s.vitals.hp = 30.3 + f64::from(id);
+            s.weapon.magazine = if id % 2 == 0 { 0 } else { 7 };
+            s.weapon.reserve = 13;
+            s.vitals.speech_cooldown = if id % 4 == 0 { 3.0 } else { 0.0 };
+            s.fight.out_of_ammo_said = true;
+            s.weapon.low_ammo_said = true;
+            if id % 6 == 0 {
+                s.links.dragged_by = 3;
+            }
+            if id % 7 == 0 {
+                s.links.carried_by = vec![2, 3];
+            }
+            entries.push(Actor::Soldier(Box::new(s)));
+        }
+        for id in 14..16 {
+            entries.push(Actor::Vehicle(Box::new(Vehicle {
+                id,
+                team: if id == 14 { 0 } else { 1 },
+                hp: 37.3,
+                track_broken: true,
+                track_fix: 4.2,
+                ..Default::default()
+            })));
+        }
+        let mut actors = Actors::from_entries(16, entries).unwrap();
+        let mut units = SpatialIndex::new(UNIT_CELL).unwrap();
+        actors.rebuild_units(&mut units).unwrap();
+        let mut random = SimulationRandom::new(713 + trial);
+        for tick in 0..120 {
+            let service = [Service::Repair, Service::Ammo, Service::Medical][trial as usize % 3];
+            let result = actors
+                .service_vehicle(
+                    1,
+                    [0.25, 0.7, 1.1][trial as usize % 3],
+                    service,
+                    &units,
+                    &mut random,
+                    |s| {
+                        Ok(SoldierSupply {
+                            loadout: (!s.identity.weapon.is_empty()).then_some(Loadout {
+                                ammunition: 120,
+                                special: [3, 2, 2, 1, 8],
+                                reload_weapon: Weapon {
+                                    ammunition: 120,
+                                    magazine: 30,
+                                    reload_time: 2.3,
+                                },
+                            }),
+                            restored_weapon: Some(("rifle", 30)),
+                        })
+                    },
+                    |_| Ok([6, 4]),
+                )
+                .unwrap();
+            bytes.extend_from_slice(&(result.len() as u32).to_le_bytes());
+            for e in result {
+                let (tag, id, value) = match e {
+                    ServiceEffect::Repaired { vehicle, track } => (0, vehicle, u8::from(track)),
+                    ServiceEffect::Reload { soldier, speech } => (1, soldier, speech),
+                    ServiceEffect::Revived { soldier, speech } => (2, soldier, speech),
+                };
+                bytes.push(tag);
+                bytes.extend_from_slice(&id.to_le_bytes());
+                bytes.push(value);
+            }
+            bytes.extend_from_slice(&random.state().to_le_bytes());
+            if tick % 17 == 0 {
+                block(&mut bytes, &actors.checkpoint().unwrap());
+            }
+            if tick % 23 == 0 {
+                actors = Actors::restore(&actors.checkpoint().unwrap()).unwrap();
+                units = SpatialIndex::restore(&units.checkpoint()).unwrap();
+            }
+        }
+    }
+    golden("vehicle_service", &bytes);
+}
+
+#[test]
 fn boat_navigation_and_driving_are_identical_across_platforms() {
     use frontline_core::boat_navigation::{BoatNavigation, LEVEL};
     use frontline_core::vehicle::Vehicle;

@@ -1369,6 +1369,9 @@ Boat checks preserve water routes, separate bodies of water, bridge clearance,
 shallow-water costs, current, rudder and engine response, traffic, coming about,
 rejoining a route and backing off the shore. Saved-state resumes preserve the
 same route and driving decisions.
+Support-vehicle checks now update retained recipients together, preserving repair
+progress, ammunition and missile refills, healing, medical revivals and the order
+of speech and random draws. Missing loadout data leaves the service step unchanged.
 Construction, town income, capture and production transitions match the existing
 game; shared rule effects, destruction and the full building dispatcher still need
 migration before Rust owns the complete battle.

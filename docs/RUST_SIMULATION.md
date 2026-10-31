@@ -367,6 +367,21 @@ Twelve core tests and a 2,173,616-byte numeric transcript cover the navigation a
 controller. This does not yet replace the live vehicle/world dispatcher or boat
 destruction and disembarkation effects.
 
+Support vehicles now update retained recipients directly: repair HP and tracks,
+refill rifle/special ammunition and vehicle missiles, heal nearby troops and
+revive uncarried casualties. Infantry follows spatial-bucket order, then vehicles
+follow registration order. Reload speech consumes its random draws before special
+ammunition; revival speech follows the medical chance. The one-second service
+cadence and moving-vehicle gates retain existing behavior. Recipients are staged
+until content checks finish, so a missing loadout cannot leave a partial refill.
+
+The fixture compares 36,864 actor states plus speech, service counters, property
+updates and random cursors against the existing service tick, including disabled
+weapons, opposing teams, hidden/dead men, carried casualties and reverse motion.
+Six core tests cover shared effects, checkpoint continuation and rollback;
+numeric CI adds 4,480,649 exact bytes. Battle statistics and presentation effects
+return to the world dispatcher; the live game still uses the Godot service tick.
+
 ## Retained squads
 
 `Squad` retains ordered membership, known/heard contacts, briefing and centroid
@@ -505,7 +520,7 @@ Component checkpoint headers contain a four-byte component tag, a little-endian
 rules rather than silently continuing with changed arithmetic. The separate
 integer RNG stream remains unchanged.
 
-`native/core/tests/numeric_contract.rs` compares 42,086,091 committed bytes without
+`native/core/tests/numeric_contract.rs` compares 46,566,740 committed bytes without
 tolerances: fixed-tick flight state, support events and RNG cursors, carved water,
 craters, rotated box hits, cover anchors, spherical interpolation and infantry
 movement, infantry cover fire, postures, ammunition, burst recovery, vitals, aiming,
@@ -729,7 +744,7 @@ flag until Rust owns the actors.
 
 The shock fixture compares 92,160 reference steps, including mounted turning,
 blocked terrain, carried casualties and task interruption. The full default suite
-passes 169 tests; 416 core tests pass in debug and release.
+passes 170 tests; 423 core tests pass in debug and release.
 
 ## Spatial query state
 

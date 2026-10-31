@@ -73,6 +73,7 @@ pub mod vehicle_flight;
 pub mod vehicle_gunship;
 pub mod vehicle_launch;
 pub mod vehicle_motion;
+pub mod vehicle_service;
 pub mod vehicle_sling;
 pub mod vehicle_transport;
 pub mod vehicle_weapon;

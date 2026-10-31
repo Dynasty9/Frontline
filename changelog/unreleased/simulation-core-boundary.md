@@ -26,6 +26,7 @@ kind = "fixed"
 - Water terrain and bridge decks now use Rust. Joining a battle prepares its ground on a Rust worker while preserving fords, quays and the host's ground changes.
 - Local navigation grids and boat routes now use Rust, preserving weighted paths and corner-blocking rules.
 - Retained Rust boat checks preserve shoreline clearance, currents, handling, traffic, seaward turns and recovery after grounding as naval simulation moves into the server.
+- Retained Rust support-vehicle checks preserve repairs, ammunition and missile refills, healing and medical revivals, including carried casualties and saved-state resumes.
 - Hierarchical routes, danger weighting and map repairs now run in Rust. Large-cluster route caches distinguish entrances that previously shared a truncated key.
 - Route refinement, smoothing, shared corridors and queued movement orders also run in Rust, retaining fire avoidance and order completion quotas.
 - FPV drones, guided missiles and support-aircraft attack schedules now use Rust, preserving target loss, smoke countermeasures, bomb runs, gun bursts and reconnaissance.

@@ -29,7 +29,7 @@ pub struct Weapon {
 }
 
 impl Weapon {
-    fn valid(self) -> bool {
+    pub(crate) fn valid(self) -> bool {
         (0..=1_000_000).contains(&self.ammunition)
             && (0..=1_000_000).contains(&self.magazine)
             && self.reload_time.is_finite()
@@ -312,7 +312,7 @@ impl InfantryWeapon {
                 .all(|n| (0..=1_000_000).contains(&n))
     }
 
-    fn reload(&mut self, weapon: Weapon, rng: &mut SimulationRandom) -> Option<u8> {
+    pub(crate) fn reload(&mut self, weapon: Weapon, rng: &mut SimulationRandom) -> Option<u8> {
         if self.reserve <= 0 || self.reload_timer > 0.0 {
             return None;
         }
