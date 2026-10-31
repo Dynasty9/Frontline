@@ -1285,6 +1285,9 @@ Supply checks preserve scavenging, nearby-body priority, cache and FOB choices,
 refill rates, special-ammunition draws and reload order. Retained actors now also
 transfer shared corpse stock and own resupply searches, destinations and arrival
 orders, preserving stock contention and cooldowns across saved-state resumes.
+Shared infantry combat now also updates retained casualties, rescue/breach
+claims, last-attacker credit, squad contacts, morale and near-miss suppression
+in their existing order. Whole-world dispatch still runs in Godot.
 Complete cover searches run in Rust, including reachable candidates, protection,
 occupied positions and final scoring. Equal candidate scores retain their existing
 order and the same 20-position evaluation budget; 4,270 reference searches compare

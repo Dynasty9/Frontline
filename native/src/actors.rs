@@ -148,8 +148,190 @@ fn artillery_profile(
     })
 }
 
+fn read_squads(
+    nodes: &Array<Gd<crate::squad::SquadStateCore>>,
+) -> Option<Vec<frontline_core::squad::Squad>> {
+    if nodes.len() > 100_000 {
+        return None;
+    }
+    let mut seen = std::collections::HashSet::new();
+    nodes
+        .iter_shared()
+        .map(|q| {
+            let q = q.bind();
+            let q = q.core.as_ref()?;
+            seen.insert(q.id).then(|| q.clone())
+        })
+        .collect()
+}
+fn write_squads(
+    nodes: Array<Gd<crate::squad::SquadStateCore>>,
+    state: Vec<frontline_core::squad::Squad>,
+) {
+    for (mut node, state) in nodes.iter_shared().zip(state) {
+        node.bind_mut().core = Some(state);
+    }
+}
+
 #[godot_api]
 impl ActorStateCore {
+    #[func]
+    fn damage_infantry(
+        &mut self,
+        soldier: u32,
+        source: u32,
+        direction: Vector3,
+        kind: GString,
+        values: PackedFloat64Array,
+        blame: Array<Variant>,
+        squads: Array<Gd<crate::squad::SquadStateCore>>,
+        mut rng: Gd<crate::simulation_random::SimulationRandomCore>,
+    ) -> Array<Variant> {
+        use frontline_core::infantry::Credit;
+        use frontline_core::infantry_effects::Damage;
+        use frontline_core::infantry_vitals::DamageResult;
+        if values.len() != 4
+            || !values[2].is_finite()
+            || values[2].fract() != 0.0
+            || !(-1.0..=1_000_000.0).contains(&values[2])
+            || ![0.0, 1.0].contains(&values[3])
+        {
+            return Array::new();
+        }
+        let blame = if blame.is_empty() {
+            None
+        } else {
+            if blame.len() != 4 {
+                return Array::new();
+            }
+            let parsed = (|| {
+                Some(Credit {
+                    owner: blame.get(0)?.try_to().ok()?,
+                    team: blame.get(1)?.try_to().ok()?,
+                    unit: blame.get(2)?.try_to::<GString>().ok()?.to_string(),
+                    soldier: blame.get(3)?.try_to().ok()?,
+                })
+            })();
+            let Some(c) = parsed else {
+                return Array::new();
+            };
+            Some(c)
+        };
+        let Some(mut state) = read_squads(&squads) else {
+            return Array::new();
+        };
+        let kind = kind.to_string();
+        let hit = Damage {
+            amount: values[0],
+            now: values[1],
+            ammunition: (values[2] >= 0.0).then_some(values[2] as i32),
+            bearer: values[3] != 0.0,
+            source,
+            direction: frontline_core::vector::Vector3::new(direction.x, direction.y, direction.z),
+            kind: &kind,
+            blame: blame.as_ref(),
+        };
+        match self
+            .core
+            .damage_infantry(soldier, hit, &mut state, &mut rng.bind_mut().core)
+        {
+            Ok(r) => {
+                write_squads(squads, state);
+                let code = match r.result {
+                    DamageResult::Ignored => 0,
+                    DamageResult::Survived(_) => 1,
+                    DamageResult::Down => 2,
+                    DamageResult::Die => 3,
+                };
+                let credit = r.credited.map_or_else(Array::new, |c| {
+                    varray![c.owner, c.team as i32, c.unit.as_str(), c.soldier as i64]
+                });
+                varray![
+                    code,
+                    r.previous_life as i32,
+                    r.speech.map_or(-1, i32::from),
+                    r.casualty_speech.map_or(0, |s| i64::from(s.soldier)),
+                    r.casualty_speech.map_or(-1, |s| i32::from(s.cue)),
+                    &released(r.released.unwrap_or_default()),
+                    &credit,
+                    r.damage_credited
+                ]
+            }
+            Err(_) => Array::new(),
+        }
+    }
+    #[func]
+    fn suppress_infantry(
+        &mut self,
+        soldier: u32,
+        amount: f64,
+        from: Vector3,
+        now: f64,
+        mut squad: Option<Gd<crate::squad::SquadStateCore>>,
+        mut rng: Gd<crate::simulation_random::SimulationRandomCore>,
+    ) -> Array<Variant> {
+        let mut q = squad.as_mut().map(Gd::bind_mut);
+        if q.as_ref().is_some_and(|q| q.core.is_none()) {
+            return Array::new();
+        }
+        match self.core.suppress_infantry(
+            soldier,
+            amount,
+            frontline_core::vector::Vector3::new(from.x, from.y, from.z),
+            now,
+            q.as_mut().and_then(|q| q.core.as_mut()),
+            &mut rng.bind_mut().core,
+        ) {
+            Ok(cue) => varray![cue.map_or(-1, i32::from)],
+            Err(_) => Array::new(),
+        }
+    }
+    #[func]
+    fn suppress_bullet(
+        &mut self,
+        from: Vector3,
+        to: Vector3,
+        team: i32,
+        amount: f64,
+        hit_target: u32,
+        now: f64,
+        units: Gd<crate::spatial::SpatialIndexCore>,
+        squads: Array<Gd<crate::squad::SquadStateCore>>,
+        mut rng: Gd<crate::simulation_random::SimulationRandomCore>,
+    ) -> Array<Variant> {
+        let Ok(team) = i8::try_from(team) else {
+            return Array::new();
+        };
+        let Some(mut state) = read_squads(&squads) else {
+            return Array::new();
+        };
+        let units = units.bind();
+        let Some(units) = units.core.as_ref() else {
+            return Array::new();
+        };
+        match self.core.suppress_bullet(
+            frontline_core::vector::Vector3::new(from.x, from.y, from.z),
+            frontline_core::vector::Vector3::new(to.x, to.y, to.z),
+            team,
+            amount,
+            hit_target,
+            now,
+            units,
+            &mut state,
+            &mut rng.bind_mut().core,
+        ) {
+            Ok(lines) => {
+                write_squads(squads, state);
+                let mut out = PackedInt64Array::new();
+                for line in lines {
+                    out.push(i64::from(line.soldier));
+                    out.push(i64::from(line.cue));
+                }
+                varray![&out]
+            }
+            Err(_) => Array::new(),
+        }
+    }
     #[func]
     fn arrive_infantry_supply(
         &mut self,

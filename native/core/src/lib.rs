@@ -31,6 +31,7 @@ pub mod infantry_commands;
 pub mod infantry_control;
 pub mod infantry_controller;
 pub mod infantry_duties;
+pub mod infantry_effects;
 pub mod infantry_execution;
 pub mod infantry_fighting;
 pub mod infantry_fire;

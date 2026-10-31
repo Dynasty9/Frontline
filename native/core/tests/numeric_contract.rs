@@ -36,6 +36,139 @@ fn block(out: &mut Vec<u8>, bytes: &[u8]) {
 }
 
 #[test]
+fn retained_infantry_effects_are_identical_across_platforms() {
+    use frontline_core::actors::{Actor, Actors};
+    use frontline_core::infantry::Infantry as Soldier;
+    use frontline_core::infantry_controller::Task;
+    use frontline_core::infantry_effects::Damage;
+    use frontline_core::spatial::{SpatialIndex, UNIT_CELL};
+    use frontline_core::squad::Squad;
+    let mut bytes = Vec::new();
+    for trial in 0..96 {
+        let mut entries = vec![];
+        for id in 1..=6 {
+            let mut s = Soldier::default();
+            s.identity.id = id;
+            s.identity.team = if id < 4 { 0 } else { 1 };
+            s.identity.squad = 9 + s.identity.team as u32;
+            s.identity.unit = "rifleman".into();
+            s.identity.weapon = "rifle".into();
+            s.motion.position = Vector3::new(id as f32 * 0.83 - 2.9, 0.0, id as f32 * 0.57 - 1.13);
+            s.vitals.suppression = (trial % 80) as f64;
+            s.vitals.life = if id == 1 {
+                Life::try_from((trial % 6) as u8).unwrap()
+            } else {
+                Life::Alive
+            };
+            s.vitals.bleed = 21.7;
+            s.vitals.times_downed = trial % 4;
+            s.vitals.speech_cooldown = if trial % 2 == 0 { 5.0 } else { 0.0 };
+            s.weapon.magazine = 20;
+            s.weapon.reserve = 100;
+            s.cover.kind = (trial % 4) as u8;
+            s.cover.material = (trial % 5) as i8 - 1;
+            s.cover.at_cover = trial % 2 == 0;
+            s.weapon.peek_up = trial % 3 == 0;
+            s.motion.ground = if trial % 5 == 0 { -1.05 } else { 0.0 };
+            s.duty.kind = if id == 1 { Task::Breach } else { Task::Fight };
+            entries.push(Actor::Soldier(Box::new(s)));
+        }
+        let mut actors = Actors::from_entries(100, entries).unwrap();
+        let mut squads = [
+            Squad {
+                id: 9,
+                members: vec![1, 3, 2],
+                leader: 1,
+                breach_by: 1,
+                morale: 77.0,
+                ..Default::default()
+            },
+            Squad {
+                id: 10,
+                team: 1,
+                members: vec![4, 5, 6],
+                morale: 81.0,
+                ..Default::default()
+            },
+        ];
+        let mut units = SpatialIndex::new(UNIT_CELL).unwrap();
+        actors.rebuild_units(&mut units).unwrap();
+        let mut rng = SimulationRandom::new(trial as u64 + 19761);
+        for step in 0..8 {
+            let now = 10.0 + step as f64 * 0.71;
+            let speech = actors
+                .suppress_bullet(
+                    Vector3::new(-11.3, 1.1, 0.17),
+                    Vector3::new(10.7, 0.83, -0.31),
+                    1,
+                    17.3 + trial as f64 * 0.13,
+                    if step % 3 == 0 { 1 } else { 0 },
+                    now,
+                    &units,
+                    &mut squads,
+                    &mut rng,
+                )
+                .unwrap();
+            bytes.extend_from_slice(&(speech.len() as u32).to_le_bytes());
+            for line in speech {
+                bytes.extend_from_slice(&line.soldier.to_le_bytes());
+                bytes.push(line.cue);
+            }
+            let out = actors
+                .damage_infantry(
+                    1 + step % 3,
+                    Damage {
+                        amount: [1.1, 21.37, 105.9, 48.3][(trial + step) as usize % 4],
+                        source: 4,
+                        direction: Vector3::new(0.71, 0.0, -0.31),
+                        kind: if trial % 3 == 0 {
+                            "explosion"
+                        } else {
+                            "bullet"
+                        },
+                        now,
+                        ammunition: Some(120),
+                        bearer: trial % 7 == 0,
+                        blame: None,
+                    },
+                    &mut squads,
+                    &mut rng,
+                )
+                .unwrap();
+            bytes.push(out.previous_life as u8);
+            bytes.push(match out.result {
+                DamageResult::Ignored => 0,
+                DamageResult::Survived(_) => 1,
+                DamageResult::Down => 2,
+                DamageResult::Die => 3,
+            });
+            bytes.push(out.speech.unwrap_or(255));
+            bytes.extend_from_slice(&out.damage_credited.to_le_bytes());
+            bytes.extend_from_slice(&out.casualty_speech.map_or(0, |s| s.soldier).to_le_bytes());
+            bytes.push(out.casualty_speech.map_or(255, |s| s.cue));
+            bytes.extend_from_slice(&rng.state().to_le_bytes());
+            if step == 3 || step == 7 {
+                block(&mut bytes, &actors.checkpoint().unwrap());
+                for squad in &squads {
+                    block(&mut bytes, &squad.checkpoint().unwrap());
+                }
+            }
+            if step == 3 {
+                actors = Actors::restore(&actors.checkpoint().unwrap()).unwrap();
+                for squad in &mut squads {
+                    *squad = Squad::restore(&squad.checkpoint().unwrap()).unwrap();
+                }
+                units = SpatialIndex::restore(&units.checkpoint()).unwrap();
+                let cursor = rng.state();
+                rng = SimulationRandom::new(rng.seed());
+                rng.set_state(cursor);
+            }
+        }
+    }
+    golden("infantry_effects", &bytes);
+}
+
+#[test]
 fn retained_infantry_logistics_is_identical_across_platforms() {
     use frontline_core::actors::{Actor, Actors};
     use frontline_core::infantry::Infantry as Soldier;

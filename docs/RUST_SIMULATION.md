@@ -535,7 +535,7 @@ Component checkpoint headers contain a four-byte component tag, a little-endian
 rules rather than silently continuing with changed arithmetic. The separate
 integer RNG stream remains unchanged.
 
-`native/core/tests/numeric_contract.rs` compares 61,280,041 committed bytes without
+`native/core/tests/numeric_contract.rs` compares 62,969,454 committed bytes without
 tolerances: fixed-tick flight state, support events and RNG cursors, carved water,
 craters, rotated box hits, cover anchors, spherical interpolation and infantry
 movement, infantry cover fire, postures, ammunition, burst recovery, vitals, aiming,
@@ -759,7 +759,7 @@ flag until Rust owns the actors.
 
 The shock fixture compares 92,160 reference steps, including mounted turning,
 blocked terrain, carried casualties and task interruption. The full default suite
-passes 175 tests; 470 core tests pass in debug and release.
+passes 176 tests; 478 core tests pass in debug and release.
 
 ## Spatial query state
 
@@ -1224,6 +1224,17 @@ cooldown boundaries, ties, missing targets and rejected-route atomicity. The
 Godot comparison checks 13,824 complete actor states and numeric CI adds
 4,517,466 exact bytes, including resumes from saved state. The live dispatcher
 still runs in Godot.
+
+Shared infantry combat effects now update owned recipients, released casualty
+links and both squads together. Damage retains last-enemy attribution, reports,
+winning morale, casualty morale and speech order. Suppression reads retained
+mounts and trench posture; bullet near misses preserve spatial order and skip
+friendly, dead and directly hit soldiers. Muted speech still consumes the same
+random draws. The Godot comparison checks 18,432 complete actor states and squad
+states, speech, counters and damage credit. Seven core tests cover shared effects
+and atomic rejection; numeric CI adds 1,689,413 bytes with checkpoint resumes.
+Battle report aggregation, full bullet/blast dispatch and the world loop remain
+unfinished.
 
 ## Infantry target acquisition
 

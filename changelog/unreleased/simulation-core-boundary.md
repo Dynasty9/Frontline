@@ -62,6 +62,7 @@ kind = "fixed"
 - Scheduling checks preserve interruptions, dives, scanning and thinking deadlines, and which orders a busy soldier can accept.
 - Authoritative entity IDs now come from Rust, preserving creation order and keeping removed units' IDs from being reused as the server migration continues.
 - Shared actor checks preserve rescue and stretcher claims when a carrier falls, and FPV drones lose control when their operator is lost while retaining their last target position.
+- Shared combat checks preserve near-miss suppression, casualty claims, last-attacker credit, squad contacts and morale as these effects move into Rust.
 - Squad checks preserve shared contact briefings, leader succession and casualty morale as squad state moves into Rust.
 - Vehicle checks preserve crew order gates, repairs, turret aiming, passenger boarding and saved transport state as vehicle ownership moves into Rust.
 - Driving checks preserve tracked and wheeled steering, traffic gaps, reversing, truck lanes and getting unstuck through saved-state resumes.
