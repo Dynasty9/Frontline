@@ -36,6 +36,213 @@ fn block(out: &mut Vec<u8>, bytes: &[u8]) {
 }
 
 #[test]
+fn retained_infantry_weapon_sequence_is_identical_across_platforms() {
+    use frontline_core::actors::{Actor, Actors};
+    use frontline_core::cover::{Anchor, AnchorKind};
+    use frontline_core::infantry::Infantry as Soldier;
+    use frontline_core::infantry_fighting::{Mode, WeaponInput};
+    use frontline_core::infantry_fire::{FireProfile, MountedGun};
+    use frontline_core::spatial::{SpatialIndex, UNIT_CELL};
+    use frontline_core::squad::{Contact, Report, Squad};
+    use frontline_core::structure::Structure;
+    let mut bytes = Vec::new();
+    let mut rng = SimulationRandom::new(17391);
+    let nav = PathPlanner::new(64).unwrap();
+    let weapon = Weapon {
+        ammunition: 120,
+        magazine: 30,
+        reload_time: 2.0,
+    };
+    let gun = MountedGun {
+        bore: 0.07,
+        muzzle: 0.78,
+        grip_z: 0.21,
+        nest_height: 0.38,
+        trench_height: 0.3,
+    };
+    let mut fired = 0;
+    let mut shifts = 0;
+    for trial in 0..96 {
+        let mut s = Soldier::default();
+        s.identity.id = 1;
+        s.identity.squad = 9;
+        s.identity.unit = "rifleman".into();
+        s.identity.weapon = "rifle".into();
+        s.weapon.magazine = trial % 25;
+        s.weapon.reserve = 90;
+        s.weapon.peek_up = trial % 2 == 0;
+        s.weapon.peek_from = 5.0;
+        s.weapon.up_suppression = 0.0;
+        s.weapon.peek_timer = 1.7;
+        s.cover.at_cover = trial % 3 == 0;
+        s.cover.kind = if trial % 6 == 0 { 2 } else { 1 };
+        s.cover.height = [0.4, 0.8, 1.3][trial as usize % 3];
+        s.cover.normal = Vector3::NEG_Z;
+        s.cover.threat = Vector3::new(0.3, 0.0, -1.0);
+        s.cover.structure = 8;
+        s.cover.anchor = 0;
+        s.fight.target = 2;
+        s.fight.visible_targets = vec![2];
+        s.vitals.suppression = (trial % 94) as f64;
+        s.vitals.hit_dirt_timer = if trial % 11 == 0 { 1.0 } else { 0.0 };
+        let mut st = Structure {
+            id: 8,
+            kind: if trial % 3 == 2 {
+                "mg_nest"
+            } else {
+                "low_wall"
+            }
+            .into(),
+            variant: trial % 2,
+            ..Default::default()
+        };
+        for (i, x) in [0.0, 2.0, -2.0].into_iter().enumerate() {
+            st.anchors.push(Anchor {
+                position: Vector3::X * x,
+                normal: Vector3::NEG_Z,
+                height: if i == 0 { 1.3 } else { 0.4 },
+                kind: if s.cover.kind == 2 {
+                    if i == 1 {
+                        AnchorKind::EdgeRight
+                    } else {
+                        AnchorKind::EdgeLeft
+                    }
+                } else {
+                    AnchorKind::Over
+                },
+            });
+        }
+        if trial % 3 == 2 {
+            s.emplacement.structure = 8;
+            s.motion.position = st.mg_mount_position(gun);
+        }
+        let mut enemy = Soldier::default();
+        enemy.identity.id = 2;
+        enemy.identity.team = 1;
+        enemy.identity.unit = "rifleman".into();
+        enemy.identity.weapon = "rifle".into();
+        enemy.motion.position = Vector3::new(3.7, 0.0, -25.0);
+        let mut mate = s.clone();
+        mate.identity.id = 3;
+        mate.motion.position = Vector3::X * 4.0;
+        let mut a = Actors::from_entries(
+            100,
+            vec![
+                Actor::Soldier(Box::new(s)),
+                Actor::Soldier(Box::new(enemy)),
+                Actor::Soldier(Box::new(mate)),
+                Actor::Structure(Box::new(st)),
+            ],
+        )
+        .unwrap();
+        let mut q = Squad {
+            id: 9,
+            members: vec![1, 3],
+            morale: (trial % 100) as f64,
+            ambush_time: 12.0,
+            known: vec![Contact {
+                id: 2,
+                report: Report {
+                    position: Vector3::NEG_Z * 25.0,
+                    time: 10.0,
+                },
+            }],
+            ..Default::default()
+        };
+        let mut units = SpatialIndex::new(UNIT_CELL).unwrap();
+        a.rebuild_units(&mut units).unwrap();
+        let mut collision = CollisionWorld::default();
+        let mut visibility = Visibility::default();
+        for step in 0..96 {
+            let now = 10.0 + step as f64 / 30.0;
+            let input = WeaponInput {
+                dt: 1.0 / 30.0,
+                now,
+                moving: trial % 7 == 0,
+                mode: [Mode::Normal, Mode::Escort, Mode::Crew][trial as usize % 3],
+                weapon: Some(weapon),
+                gun: Some(gun),
+            };
+            let ready = a
+                .ready_infantry_weapon(
+                    1,
+                    input,
+                    50.0,
+                    Some(&mut q),
+                    &nav,
+                    &units,
+                    &mut collision,
+                    &mut visibility,
+                    &mut rng,
+                )
+                .unwrap();
+            bytes.extend_from_slice(&[
+                u8::from(ready.aim.point.is_some()),
+                u8::from(ready.aim.reused_obstruction),
+                u8::from(ready.covering),
+                u8::from(ready.cycle.drew_fire),
+                u8::from(ready.cycle.peeked),
+                u8::from(ready.cycle.blind_fire),
+                ready.cycle.reload_speech.unwrap_or(255),
+                ready.reply.speech.unwrap_or(255),
+            ]);
+            bytes.extend_from_slice(&ready.reply.soldier.to_le_bytes());
+            if let Some(p) = ready.aim.point {
+                point(&mut bytes, p);
+                let shot = a
+                    .prepare_infantry_shot(
+                        1,
+                        now,
+                        input.moving,
+                        FireProfile {
+                            weapon,
+                            burst_min: 2,
+                            burst_max: 4,
+                        },
+                        Some(gun),
+                        Some(&q),
+                        &mut rng,
+                    )
+                    .unwrap();
+                if shot.shot.fired {
+                    fired += 1;
+                    point(&mut bytes, shot.origin.unwrap());
+                    rng.randi();
+                    rng.randi();
+                    let speech = a
+                        .finish_infantry_shot(
+                            1,
+                            weapon,
+                            0.1,
+                            shot.shot.low_ammo,
+                            ready.covering,
+                            &mut rng,
+                        )
+                        .unwrap();
+                    bytes.push(speech.unwrap_or(255));
+                }
+            }
+            if let Some(route) = ready.route {
+                shifts += 1;
+                point(&mut bytes, route.job.destination);
+                bytes.extend_from_slice(&route.revision.to_le_bytes());
+            }
+            if step % 8 == 0 {
+                block(&mut bytes, &a.checkpoint().unwrap());
+                block(&mut bytes, &q.checkpoint().unwrap());
+            }
+            bytes.extend_from_slice(&rng.state().to_le_bytes());
+            if step == 47 {
+                a = Actors::restore(&a.checkpoint().unwrap()).unwrap();
+                q = Squad::restore(&q.checkpoint().unwrap()).unwrap();
+            }
+        }
+    }
+    assert!(fired > 100 && shifts > 0);
+    golden("infantry_fighting", &bytes);
+}
+
+#[test]
 fn retained_infantry_firing_is_identical_across_platforms() {
     use frontline_core::actors::{Actor, Actors};
     use frontline_core::infantry::Infantry as Soldier;

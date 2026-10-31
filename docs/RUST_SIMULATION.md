@@ -535,7 +535,7 @@ Component checkpoint headers contain a four-byte component tag, a little-endian
 rules rather than silently continuing with changed arithmetic. The separate
 integer RNG stream remains unchanged.
 
-`native/core/tests/numeric_contract.rs` compares 51,121,534 committed bytes without
+`native/core/tests/numeric_contract.rs` compares 56,762,575 committed bytes without
 tolerances: fixed-tick flight state, support events and RNG cursors, carved water,
 craters, rotated box hits, cover anchors, spherical interpolation and infantry
 movement, infantry cover fire, postures, ammunition, burst recovery, vitals, aiming,
@@ -759,7 +759,7 @@ flag until Rust owns the actors.
 
 The shock fixture compares 92,160 reference steps, including mounted turning,
 blocked terrain, carried casualties and task interruption. The full default suite
-passes 173 tests; 451 core tests pass in debug and release.
+passes 174 tests; 462 core tests pass in debug and release.
 
 ## Spatial query state
 
@@ -1201,6 +1201,20 @@ cursors and state on both sides of the bullet-effect boundary. Muzzles use a
 10-micrometre Godot comparison tolerance; Rust numeric CI checks 3,412,306 exact
 bytes across firing, aiming and checkpoint continuation. Ten focused core tests
 cover thresholds, suppressed speech, missing content and resumed firing.
+
+The retained weapon sequence also advances reload/fire clocks, applies the cover
+cycle and covering responses, moves along eligible unclaimed cover anchors, then
+chooses posture, checks sight and lays the gun. The cover shift uses retained
+structure anchors, squad claims, spatial membership and navigation; its route
+request precedes stance selection. Mounted guns track their target during burst
+cooldowns and fire only within traverse and alignment limits. Normal, escort and
+crew modes retain their suppression, movement and hit-dirt exceptions.
+
+The complete Godot weapon-tick comparison checks 49,152 actor states, including
+shared squad caches, speech, counters, route requests and shot state before and
+after effects. Ten core tests cover ordering, claims, reachability, pinning,
+traverse and invalid inputs. Numeric CI adds 5,641,041 exact bytes. These calls
+are ready for the Rust world loop; the live soldier loop remains in Godot.
 
 ## Infantry target acquisition
 

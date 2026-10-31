@@ -1383,6 +1383,10 @@ Retained firing reads target poses and squad knowledge directly, preserves
 covering-fire responses and morale-dependent accuracy, and derives muzzle positions
 from authoritative poses and mount geometry. Ammunition, speech and burst recovery
 keep their ordering around shared bullet effects and random draws.
+The retained weapon sequence advances timers, ducks and reloads, asks for cover,
+shifts along reachable unclaimed positions, chooses posture and lays the gun in
+the same order. Mounted traverse and firing arcs, suppression and escort/crew
+exceptions are compared against the complete existing weapon tick.
 Construction, town income, capture and production transitions match the existing
 game; shared rule effects, destruction and the full building dispatcher still need
 migration before Rust owns the complete battle.

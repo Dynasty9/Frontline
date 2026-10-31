@@ -151,6 +151,114 @@ fn artillery_profile(
 #[godot_api]
 impl ActorStateCore {
     #[func]
+    fn ready_infantry_weapon(
+        &mut self,
+        soldier: u32,
+        input: PackedFloat64Array,
+        weapon: PackedFloat64Array,
+        gun: PackedFloat64Array,
+        mut squad: Option<Gd<crate::squad::SquadStateCore>>,
+        nav: Gd<crate::path_planner::PathPlannerCore>,
+        units: Gd<crate::spatial::SpatialIndexCore>,
+        mut collision: Gd<crate::collision_index::CollisionIndexCore>,
+        mut visibility: Gd<crate::visibility::VisibilityCore>,
+        mut rng: Gd<crate::simulation_random::SimulationRandomCore>,
+    ) -> Array<Variant> {
+        use frontline_core::infantry_fighting::{Mode, WeaponInput};
+        if input.len() != 5 || (input[2] != 0.0 && input[2] != 1.0) {
+            return Array::new();
+        }
+        let mode = match input[3] {
+            0.0 => Mode::Normal,
+            1.0 => Mode::Escort,
+            2.0 => Mode::Crew,
+            _ => return Array::new(),
+        };
+        let weapon = if weapon.is_empty() {
+            None
+        } else {
+            if weapon.len() != 3
+                || [0, 1].into_iter().any(|i| {
+                    !weapon[i].is_finite()
+                        || weapon[i].fract() != 0.0
+                        || !(0.0..=1_000_000.0).contains(&weapon[i])
+                })
+            {
+                return Array::new();
+            }
+            Some(frontline_core::infantry_weapon::Weapon {
+                ammunition: weapon[0] as i32,
+                magazine: weapon[1] as i32,
+                reload_time: weapon[2],
+            })
+        };
+        let Ok(gun) = mounted_gun(&gun) else {
+            return Array::new();
+        };
+        let mut squad = squad.as_mut().map(Gd::bind_mut);
+        if squad.as_ref().is_some_and(|q| q.core.is_none()) {
+            return Array::new();
+        }
+        let nav = nav.bind();
+        let units = units.bind();
+        let (Some(nav), Some(units)) = (nav.core.as_ref(), units.core.as_ref()) else {
+            return Array::new();
+        };
+        let p = WeaponInput {
+            dt: input[0],
+            now: input[1],
+            moving: input[2] != 0.0,
+            mode,
+            weapon,
+            gun,
+        };
+        match self.core.ready_infantry_weapon(
+            soldier,
+            p,
+            input[4],
+            squad.as_mut().and_then(|q| q.core.as_mut()),
+            nav,
+            units,
+            &mut collision.bind_mut().core,
+            &mut visibility.bind_mut().core,
+            &mut rng.bind_mut().core,
+        ) {
+            Ok(r) => {
+                let route = r.route.map_or_else(Array::new, |r| {
+                    varray![
+                        r.revision as i64,
+                        r.job.id as i64,
+                        vector(r.job.destination),
+                        r.job.vehicle,
+                        r.job.team,
+                        r.job.care
+                    ]
+                });
+                let cycle: PackedInt32Array = [
+                    i32::from(r.cycle.drew_fire),
+                    i32::from(r.cycle.peeked),
+                    i32::from(r.cycle.blind_fire),
+                    r.cycle.reload_speech.map_or(-1, i32::from),
+                    i32::from(r.cycle.call_cover),
+                    i32::from(r.cycle.shift_along),
+                ]
+                .as_slice()
+                .into();
+                varray![
+                    r.aim.point.map_or(Vector3::INF, vector),
+                    r.aim.target as i64,
+                    r.aim.reused_obstruction,
+                    r.covering,
+                    &cycle,
+                    r.reply.soldier as i64,
+                    r.reply.speech.map_or(-1, i32::from),
+                    &route
+                ]
+            }
+            Err(_) => Array::new(),
+        }
+    }
+    #[func]
     fn aim_infantry(
         &mut self,
         soldier: u32,
