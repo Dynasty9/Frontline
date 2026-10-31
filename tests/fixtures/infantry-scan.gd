@@ -27,6 +27,8 @@ func _ready() -> void:
 	var vehicle: RefCounted = ClassDB.instantiate("VehicleStateCore")
 	var structure: RefCounted = ClassDB.instantiate("StructureStateCore")
 	var search: RefCounted = ClassDB.instantiate("PerceptionSearch")
+	var units: RefCounted = ClassDB.instantiate("SpatialIndexCore")
+	var random := SimulationRandom.new()
 	var kinds := Defs.VEHICLES.keys()
 	var infantry := Defs.UNITS.keys()
 	checks = 0
@@ -36,6 +38,8 @@ func _ready() -> void:
 		w.has_view = false
 		w.srv = true
 		w.settings = {"rust_infantry": false, "gdscript_targeting": true}
+		w.rng.seed = 45161 + trial
+		random.seed = 45161 + trial
 		w.terrain = TerrainMap.new(w)
 		w.perception = ClassDB.instantiate("PerceptionSearch")
 		w.combat = ScanCombat.new(w)
@@ -48,18 +52,21 @@ func _ready() -> void:
 			w.terrain.netted[i] = int(i % 13 < 4)
 		assert(w.terrain._native.configure(Nav.N, [w.terrain.base, w.terrain.crater, w.terrain.rubble, w.terrain.woods, w.terrain.cov, w.terrain.cdir, w.terrain.solid, w.terrain.trench, w.terrain.netted], w.terrain.dh))
 		var squads := []
+		var squad_cores: Array[SquadStateCore] = []
 		for i in 4:
 			var sq := ContactSquad.new()
 			sq.world = w
 			sq.sid = 90 + i
 			sq.team = i % 2
 			squads.append(sq)
+			squad_cores.append(ClassDB.instantiate("SquadStateCore"))
 		for id in range(1, 25):
 			var s := make_soldier(w, id, id % 2)
 			s.utype = infantry[(id + trial) % infantry.size()]
 			s.udef = Defs.UNITS[s.utype]
 			s.wdef = Defs.WEAPONS.get(s.udef.weapon, {})
 			s.position = Vector3(layout.randf_range(-60, 60), -0.3, layout.randf_range(-60, 60))
+			if trial % 3 == 0 and (id == 1 or id >= 20): s.position = Vector3(0 if id == 1 else [0, 0.001, 0.84, 0.85, 0.851][id - 20], -0.3, 0)
 			s.life = Soldier.Life.ALIVE if id % 7 else Soldier.Life.DOWNED
 			s.last_shot_t = 19.0 if id % 3 == 0 else -10.0
 			s.posture = (trial + id) % 5
@@ -127,6 +134,8 @@ func _ready() -> void:
 			w.entities[id] = d
 			w.drones.append(d)
 		for s in w.soldiers:
+			s.scan_n = s.eid % 3
+			s._sep = Vector3(0.3, 0, -0.1)
 			if s.eid % 4 == 0:
 				s.mounted = w.entities[33 + s.eid % 3]
 				s.task = "man"
@@ -134,6 +143,9 @@ func _ready() -> void:
 			if s.eid % 11 == 0: s.forced_target = w.entities[33]
 			elif s.eid % 5 == 0: s.forced_target = w.entities[36]
 			s.target = w.entities[25 + s.eid % 8]
+			if s.eid == 22: s.task = "captor"
+			elif s.eid == 23: s.task = "stretcher"
+			elif s.eid == 24: s.dragged_by = w.entities[21]
 		var blocks := []
 		var types := PackedByteArray()
 		for e: Entity in w.entities.values():
@@ -151,10 +163,14 @@ func _ready() -> void:
 				blocks.append(structure.checkpoint())
 				types.append(1)
 		assert(actors.load_state(100, types, blocks))
+		assert(units.load_state(12.0, []))
 		for step in 16:
 			w.time = 20.0 + step * 0.4
+			if step == 8:
+				for i in 4: assert(squad_cores[i].load_state(SquadState.capture(squads[i])))
 			if step % 4 == 0:
 				w._rebuild_uhash()
+				assert(units.rebuild_units(actors))
 				assert(search.rebuild_actors(actors, w.terrain._native, w.time, aircraft))
 				collider(w.combat._collision, 99, Vector3(step * 1.7 - 10.0, 2, -10), Vector3(13, 4, 0.5))
 			var smoke := PackedFloat64Array([0, 2, -8, 8 if step % 3 == 0 else 0])
@@ -163,9 +179,22 @@ func _ready() -> void:
 			for s in w.soldiers:
 				w.reports.clear()
 				w.stats.clear()
-				s._scan_work()
-				var result: Array = actors.scan_infantry(s.eid, w.time, infantry_profile(s), search, w.combat._collision, visibility, armor)
-				assert(result.size() == 4)
+				var result: Array
+				if step < 8:
+					s._scan_work()
+					result = actors.scan_infantry(s.eid, w.time, infantry_profile(s), search, w.combat._collision, visibility, armor)
+					assert(result.size() == 4)
+				else:
+					s.scan_n += 1
+					var due: bool = s.scan_n % 2 == 0 or s.target == null
+					if due: s._scan_work()
+					s._compute_sep_work()
+					result = actors.perceive_infantry(s.eid, w.time, infantry_profile(s), squad_cores[s.eid % 4], units, search, w.combat._collision, visibility, armor, random._backend)
+					assert(result.size() == 5 and result[4] == due, "scan cadence")
+					assert(squad_cores[s.eid % 4].values() == SquadState.capture(s.squad), "shared perception reports")
+					assert(w.rng.state == random.state, "separation random continuation")
+					observed["scheduled" if due else "skipped"] = true
+					if s._sep != Vector3.ZERO: observed["separation"] = true
 				assert(result[0] == InfantryState.entity_id(s.target), "Target %d/%d/%d: %s vs %s" % [trial, step, s.eid, result, s.target])
 				assert(result[3] == InfantryState.entity_ids(s.vis_targets), "Contacts %d/%d/%d" % [trial, step, s.eid])
 				var reports := []
@@ -181,11 +210,13 @@ func _ready() -> void:
 				if s.target is Soldier: observed["soldier"] = true
 				if s.target is Vehicle: observed["vehicle"] = true
 				if s.mounted: observed["mounted"] = true
-			if step == 7:
+			if step in [7, 11]:
 				var saved: PackedByteArray = actors.checkpoint()
 				assert(actors.restore(saved) and actors.checkpoint() == saved)
+				if step == 11:
+					for core in squad_cores: assert(core.restore(core.checkpoint()))
 		w.free()
-	for key in ["cached", "bearer", "drone", "building", "soldier", "vehicle", "mounted"]:
+	for key in ["cached", "bearer", "drone", "building", "soldier", "vehicle", "mounted", "scheduled", "skipped", "separation"]:
 		assert(observed.has(key), "Fixture must exercise " + key)
 	print("INFANTRY_SCAN passed states=%d outcomes=%s" % [checks, observed])
 	get_tree().quit()

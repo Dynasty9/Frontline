@@ -1397,6 +1397,9 @@ Retained infantry also builds its perception snapshot from Rust actors and terra
 preserving concealment, wounded firing, netted vehicles, mounted-gun arcs, drone
 reactions and the seven-contact limit. Selected and visible targets survive saved
 state resumes; the full soldier decision loop still needs the Rust world.
+Retained perception preserves alternating scan deadlines, immediate scans without
+a target, shared squad reports and separation between thoughts, including
+overlapping soldiers and casualty duties.
 Retained firing reads target poses and squad knowledge directly, preserves
 covering-fire responses and morale-dependent accuracy, and derives muzzle positions
 from authoritative poses and mount geometry. Ammunition, speech and burst recovery

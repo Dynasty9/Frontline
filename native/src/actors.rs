@@ -54,6 +54,32 @@ fn armor_ratings(values: &PackedInt64Array) -> Option<HashMap<u32, i32>> {
     }
     Some(ratings)
 }
+fn scan_profile(values: &PackedFloat64Array) -> Option<frontline_core::infantry_scan::ScanProfile> {
+    if values.len() != 3
+        || [values[0], values[2]]
+            .into_iter()
+            .any(|v| v != 0.0 && v != 1.0)
+    {
+        return None;
+    }
+    Some(frontline_core::infantry_scan::ScanProfile {
+        bearer: values[0] != 0.0,
+        weapon_range: values[1],
+        armor_piercing: values[2] != 0.0,
+    })
+}
+fn scan_values(scan: frontline_core::targeting::Scan) -> Array<Variant> {
+    varray![
+        scan.target as i64,
+        scan.reported as i64,
+        scan.reused as i64,
+        &scan
+            .visible
+            .into_iter()
+            .map(|id| id as i64)
+            .collect::<PackedInt64Array>()
+    ]
+}
 fn service_stock(rows: Array<Variant>) -> Option<ServiceStock> {
     use frontline_core::infantry_supply::Loadout;
     use frontline_core::infantry_weapon::Weapon;
@@ -1337,6 +1363,60 @@ impl ActorStateCore {
         }
     }
     #[func]
+    fn perceive_infantry(
+        &mut self,
+        soldier: u32,
+        now: f64,
+        profile: PackedFloat64Array,
+        mut squad: Option<Gd<crate::squad::SquadStateCore>>,
+        units: Gd<crate::spatial::SpatialIndexCore>,
+        search: Gd<crate::PerceptionSearch>,
+        mut collision: Gd<crate::collision_index::CollisionIndexCore>,
+        mut visibility: Gd<crate::visibility::VisibilityCore>,
+        armor: PackedInt64Array,
+        mut rng: Gd<crate::simulation_random::SimulationRandomCore>,
+    ) -> Array<Variant> {
+        let (Some(profile), Some(ratings)) = (scan_profile(&profile), armor_ratings(&armor)) else {
+            return Array::new();
+        };
+        let units = units.bind();
+        let Some(units) = &units.core else {
+            return Array::new();
+        };
+        let mut squad = squad.as_mut().map(Gd::bind_mut);
+        if squad.as_ref().is_some_and(|q| q.core.is_none()) {
+            return Array::new();
+        }
+        match self.core.perceive_infantry(
+            soldier,
+            now,
+            profile,
+            squad.as_mut().and_then(|q| q.core.as_mut()),
+            units,
+            &search.bind().core,
+            &mut collision.bind_mut().core,
+            &mut visibility.bind_mut().core,
+            |v| *ratings.get(&v.id).unwrap_or(&1),
+            &mut rng.bind_mut().core,
+        ) {
+            Ok(scan) => {
+                let due = scan.is_some();
+                let mut out = scan_values(scan.unwrap_or_else(|| {
+                    let s = self.core.soldier(soldier).unwrap();
+                    frontline_core::targeting::Scan {
+                        target: s.fight.target,
+                        visible: s.fight.visible_targets.clone(),
+                        ..Default::default()
+                    }
+                }));
+                out.push(&due.to_variant());
+                out
+            }
+            Err(_) => Array::new(),
+        }
+    }
+
+    #[func]
     fn scan_infantry(
         &mut self,
         soldier: u32,
@@ -1347,20 +1427,8 @@ impl ActorStateCore {
         mut visibility: Gd<crate::visibility::VisibilityCore>,
         armor: PackedInt64Array,
     ) -> Array<Variant> {
-        if profile.len() != 3
-            || [profile[0], profile[2]]
-                .into_iter()
-                .any(|v| v != 0.0 && v != 1.0)
-        {
+        let (Some(p), Some(ratings)) = (scan_profile(&profile), armor_ratings(&armor)) else {
             return Array::new();
-        }
-        let Some(ratings) = armor_ratings(&armor) else {
-            return Array::new();
-        };
-        let p = frontline_core::infantry_scan::ScanProfile {
-            bearer: profile[0] != 0.0,
-            weapon_range: profile[1],
-            armor_piercing: profile[2] != 0.0,
         };
         match self.core.scan_infantry(
             soldier,
@@ -1371,16 +1439,7 @@ impl ActorStateCore {
             &mut visibility.bind_mut().core,
             |v| *ratings.get(&v.id).unwrap_or(&1),
         ) {
-            Ok(scan) => varray![
-                scan.target as i64,
-                scan.reported as i64,
-                scan.reused as i64,
-                &scan
-                    .visible
-                    .into_iter()
-                    .map(|id| id as i64)
-                    .collect::<PackedInt64Array>()
-            ],
+            Ok(scan) => scan_values(scan),
             Err(_) => Array::new(),
         }
     }

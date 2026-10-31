@@ -18,7 +18,7 @@ graphics, network access or a wall clock.
 | Component | Destination | Current implementation |
 | --- | --- | --- |
 | Perception candidates, formation scoring, route graph | `frontline_core` | Extracted; Godot bindings call the core |
-| Infantry target acquisition | `frontline_core` | Retained actors build perception snapshots and resolve poses, visibility, mounted-gun arcs, weapon priorities, drones and forced targets; the live adapter and squad-report application still run in Godot |
+| Infantry target acquisition | `frontline_core` | Retained actors build perception snapshots, schedule scans, resolve poses, visibility, mounted-gun arcs, weapon priorities, drones and forced targets, update shared squad reports and compute separation; the live dispatcher still runs in Godot |
 | Gameplay RNG, including commander streams | `frontline_core` | Seeded PCG stream matches Godot 4.7; cosmetic RNG stays in Godot |
 | Grenade, smoke, rocket, bomb and shell flight | `frontline_core` | Rust retains and advances flight state and queries native geometry; the adapter supplies holders and applies impacts |
 | Retained projectile actors and impacts | `frontline_core` | Ballistic, guided and support actors retain ownership, holder/handler links and attribution with flight checkpoints; ordered impact, spawn, smoke, recon and sound effects still await the Rust world dispatcher |
@@ -1542,3 +1542,21 @@ continuation. All six affected Godot fixtures pass. Numeric CI adds 4,535,997
 exact transcript bytes. The complete world still needs to dispatch the returned
 events, refresh door geometry and run every actor without Godot; this is not
 whole-battle replay verification or an FPS result.
+
+## Perception before decisions
+
+`Actors.perceive_infantry` advances the retained scan clock, refreshes contacts
+when due, reports ground contacts to the shared squad and computes separation.
+It preserves the existing every-other-thought scan while a target exists and
+immediate scans when it does not. Separation still runs on skipped scans, using
+current actor positions in the tick's existing spatial buckets. Overlapping
+soldiers consume the same random draws; dragged soldiers and carrying/prisoner
+duties clear separation without drawing randomness.
+
+The expanded acquisition fixture passes 18,432 complete actor-state comparisons:
+half exercise acquisition directly and half exercise scheduling, shared reports
+and separation, including checkpoint resumes. Five added core regressions cover
+scan cadence, disappearing targets, report filtering, moved neighbors and invalid
+context rejection. Four affected Godot fixtures pass. Numeric CI adds 1,565,992
+exact bytes and retains the prior acquisition transcript unchanged. The live
+controller and whole-world dispatch remain in Godot during migration.

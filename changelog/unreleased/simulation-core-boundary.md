@@ -24,6 +24,7 @@ kind = "fixed"
 - Rust cannon checks preserve model-specific barrel positions, blocked shots and trench protection as shared combat moves into the server.
 - Sight checks and smoke screens now run in Rust, retaining immediate smoke changes and reusing obstruction only while the blocking geometry stays unchanged.
 - Infantry contact evaluation now shares a Rust scan, preserving weapon priorities, mounted-gun arcs, drone reactions, forced targets and squad reports.
+- Retained Rust perception checks preserve scan scheduling, immediate reacquisition and separation, with sight reports updating shared squad knowledge.
 - Fighting positions and their protection checks now use Rust, retaining low cover, leaning fire and second-row shelter while avoiding redundant firing-lane checks.
 - Ground edits, crater deformation and cover repairs now use Rust, preserving road speed, directional cover, camouflage and shell holes.
 - Water terrain and bridge decks now use Rust. Joining a battle prepares its ground on a Rust worker while preserving fords, quays and the host's ground changes.

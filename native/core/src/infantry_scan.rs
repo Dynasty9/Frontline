@@ -2,8 +2,12 @@
 use crate::actors::{Actor, Actors};
 use crate::collision::CollisionWorld;
 use crate::infantry_controller::Task;
+use crate::infantry_motion::Neighbor;
 use crate::infantry_vitals::Life;
 use crate::perception::PerceptionSearch;
+use crate::random::SimulationRandom;
+use crate::spatial::{SpatialIndex, UNIT_CELL};
+use crate::squad::{Contact as SquadContact, Report, Squad};
 use crate::targeting::{self, Contact, DroneContact, Observer, Scan, TargetKind};
 use crate::vehicle::Vehicle;
 use crate::visibility::Visibility;
@@ -15,7 +19,80 @@ pub struct ScanProfile {
     pub armor_piercing: bool,
 }
 
+impl ScanProfile {
+    fn valid(self) -> bool {
+        self.weapon_range.is_finite() && (0.0..=1e6).contains(&self.weapon_range)
+    }
+}
+
 impl Actors {
+    /// Each thought refreshes separation; a retained target permits every other sight scan.
+    pub fn perceive_infantry(
+        &mut self,
+        id: u32,
+        now: f64,
+        profile: ScanProfile,
+        mut squad: Option<&mut Squad>,
+        units: &SpatialIndex,
+        search: &PerceptionSearch,
+        collision: &mut CollisionWorld,
+        visibility: &mut Visibility,
+        armor: impl Fn(&Vehicle) -> i32,
+        rng: &mut SimulationRandom,
+    ) -> Result<Option<Scan>, &'static str> {
+        let s = self.soldier(id).ok_or("missing thinking soldier")?;
+        if !now.is_finite()
+            || now.abs() > 1e12
+            || !profile.valid()
+            || units.cell_size() != UNIT_CELL
+            || squad.as_ref().is_some_and(|q| q.id != s.identity.squad)
+        {
+            return Err("invalid infantry perception context");
+        }
+        let mut clock = s.controller;
+        let due = clock.scan_due(self.get(s.fight.target as u32).is_some())?;
+        let active = s.vitals.life == Life::Alive
+            && s.links.dragged_by == 0
+            && !matches!(s.duty.kind, Task::Stretcher | Task::Captor);
+        let neighbors: Vec<_> = if active {
+            self.units_near(units, s.motion.position, 0.85, -1)?
+                .into_iter()
+                .filter_map(|id| self.soldier(id))
+                .map(|s| Neighbor {
+                    id: s.identity.id.into(),
+                    position: s.motion.position,
+                    life: s.vitals.life,
+                })
+                .collect()
+        } else {
+            Vec::new()
+        };
+        let scan = if due {
+            let scan =
+                self.scan_infantry(id, now, profile, search, collision, visibility, armor)?;
+            if let Some(q) = squad.as_mut() {
+                for &who in scan.visible.iter().take(scan.reported) {
+                    if let Some(actor) = self.get(who as u32) {
+                        q.report(SquadContact {
+                            id: who as u32,
+                            report: Report {
+                                position: actor.position(),
+                                time: now,
+                            },
+                        })?;
+                    }
+                }
+            }
+            Some(scan)
+        } else {
+            None
+        };
+        let s = self.soldier_mut(id).unwrap();
+        s.compute_separation(&neighbors, rng)?;
+        s.controller = clock;
+        Ok(scan)
+    }
+
     pub fn scan_infantry(
         &mut self,
         id: u32,
@@ -26,11 +103,7 @@ impl Actors {
         visibility: &mut Visibility,
         armor: impl Fn(&Vehicle) -> i32,
     ) -> Result<Scan, &'static str> {
-        if !now.is_finite()
-            || now.abs() > 1e12
-            || !profile.weapon_range.is_finite()
-            || !(0.0..=1e6).contains(&profile.weapon_range)
-        {
+        if !now.is_finite() || now.abs() > 1e12 || !profile.valid() {
             return Err("invalid infantry scan profile");
         }
         let s = self.soldier(id).ok_or("missing scanning soldier")?;

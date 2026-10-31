@@ -1934,11 +1934,22 @@ fn retained_infantry_firing_is_identical_across_platforms() {
 
 #[test]
 fn retained_infantry_acquisition_is_identical_across_platforms() {
+    infantry_acquisition_transcript(false);
+}
+
+#[test]
+fn scheduled_infantry_perception_is_identical_across_platforms() {
+    infantry_acquisition_transcript(true);
+}
+
+fn infantry_acquisition_transcript(scheduled: bool) {
     use frontline_core::actors::{Actor, Actors};
     use frontline_core::infantry::Infantry as Soldier;
     use frontline_core::infantry_controller::Task;
     use frontline_core::infantry_scan::ScanProfile;
     use frontline_core::perception::PerceptionSearch;
+    use frontline_core::spatial::{SpatialIndex, UNIT_CELL};
+    use frontline_core::squad::Squad;
     use frontline_core::structure::Structure;
     use frontline_core::vehicle::Vehicle;
     let mut bytes = Vec::new();
@@ -1961,6 +1972,14 @@ fn retained_infantry_acquisition_is_identical_across_platforms() {
                 -0.3,
                 rng.randf_range(-65.0, 65.0),
             );
+            if scheduled {
+                s.identity.squad = 9 + id % 2;
+                s.controller.scan_number = (id % 3).into();
+                if id >= 20 {
+                    s.motion.position =
+                        Vector3::new([0.0, 0.001, 0.84, 0.85, 0.851][id as usize - 20], -0.3, 0.0);
+                }
+            }
             s.vitals.life = if id % 7 == 0 {
                 Life::Downed
             } else {
@@ -1980,6 +1999,14 @@ fn retained_infantry_acquisition_is_identical_across_platforms() {
                 s.emplacement.structure = 40;
                 s.duty.kind = Task::Man;
                 s.duty.phase = 2;
+            }
+            if scheduled {
+                match id {
+                    22 => s.duty.kind = Task::Captor,
+                    23 => s.duty.kind = Task::Stretcher,
+                    24 => s.links.dragged_by = 21,
+                    _ => {}
+                }
             }
             entries.push(Actor::Soldier(Box::new(s)));
         }
@@ -2013,10 +2040,22 @@ fn retained_infantry_acquisition_is_identical_across_platforms() {
         let mut search = PerceptionSearch::default();
         let mut collision = CollisionWorld::default();
         let mut visibility = Visibility::default();
+        let mut units = SpatialIndex::new(UNIT_CELL).unwrap();
+        let mut squads: Vec<_> = (0..2)
+            .map(|team| Squad {
+                id: 9 + team,
+                team: team as i8,
+                members: (1..25).filter(|id| id % 2 == team).collect(),
+                ..Default::default()
+            })
+            .collect();
         for step in 0..12 {
             let now = 20.0 + step as f64 * 0.4;
             if step % 4 == 0 {
                 search.rebuild_actors(&a, &terrain, now, |_| false).unwrap();
+                if scheduled {
+                    a.rebuild_units(&mut units).unwrap();
+                }
             }
             if step % 3 == 0 {
                 assert!(collision.replace(
@@ -2035,21 +2074,47 @@ fn retained_infantry_acquisition_is_identical_across_platforms() {
                 radius: if step % 3 == 0 { 7.0 } else { 0.0 }
             }]));
             for id in 1..25 {
-                let result = a
-                    .scan_infantry(
+                let profile = ScanProfile {
+                    bearer: id % 13 == 0,
+                    weapon_range: 50.0,
+                    armor_piercing: id % 5 == 0,
+                };
+                let result = if scheduled {
+                    let scan = a
+                        .perceive_infantry(
+                            id,
+                            now,
+                            profile,
+                            Some(&mut squads[id as usize % 2]),
+                            &units,
+                            &search,
+                            &mut collision,
+                            &mut visibility,
+                            |v| (v.id % 3) as i32,
+                            &mut rng,
+                        )
+                        .unwrap();
+                    bytes.push(scan.is_some() as u8);
+                    scan.unwrap_or_else(|| {
+                        let s = a.soldier(id).unwrap();
+                        frontline_core::targeting::Scan {
+                            target: s.fight.target,
+                            visible: s.fight.visible_targets.clone(),
+                            ..Default::default()
+                        }
+                    })
+                } else {
+                    a.scan_infantry(
                         id,
                         now,
-                        ScanProfile {
-                            bearer: id % 13 == 0,
-                            weapon_range: 50.0,
-                            armor_piercing: id % 5 == 0,
-                        },
+                        profile,
                         &search,
                         &mut collision,
                         &mut visibility,
                         |v| (v.id % 3) as i32,
                     )
-                    .unwrap();
+                    .unwrap()
+                };
                 bytes.extend_from_slice(&result.target.to_le_bytes());
                 bytes.extend_from_slice(&(result.visible.len() as u32).to_le_bytes());
                 bytes.extend_from_slice(&(result.reported as u32).to_le_bytes());
@@ -2061,12 +2126,31 @@ fn retained_infantry_acquisition_is_identical_across_platforms() {
                     block(&mut bytes, &a.soldier(id).unwrap().checkpoint().unwrap());
                 }
             }
+            if scheduled {
+                for q in &squads {
+                    block(&mut bytes, &q.checkpoint().unwrap());
+                }
+                bytes.extend_from_slice(&rng.state().to_le_bytes());
+            }
             if step == 7 {
                 a = Actors::restore(&a.checkpoint().unwrap()).unwrap();
+                if scheduled {
+                    for q in &mut squads {
+                        *q = Squad::restore(&q.checkpoint().unwrap()).unwrap();
+                    }
+                    units = SpatialIndex::restore(&units.checkpoint()).unwrap();
+                }
             }
         }
     }
-    golden("infantry_scan", &bytes);
+    golden(
+        if scheduled {
+            "infantry_perception"
+        } else {
+            "infantry_scan"
+        },
+        &bytes,
+    );
 }
 
 #[test]

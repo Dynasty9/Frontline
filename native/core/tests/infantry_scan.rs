@@ -63,6 +63,188 @@ fn scan(a: &mut Actors, p: &PerceptionSearch) -> frontline_core::targeting::Scan
     .unwrap()
 }
 
+fn perceive(
+    a: &mut Actors,
+    q: Option<&mut frontline_core::squad::Squad>,
+    units: &frontline_core::spatial::SpatialIndex,
+    rng: &mut frontline_core::random::SimulationRandom,
+) -> Option<frontline_core::targeting::Scan> {
+    let p = search(a, &Terrain::blank(128).unwrap(), 20.0);
+    a.perceive_infantry(
+        1,
+        20.0,
+        profile(),
+        q,
+        units,
+        &p,
+        &mut CollisionWorld::default(),
+        &mut Visibility::default(),
+        |_| 2,
+        rng,
+    )
+    .unwrap()
+}
+
+#[test]
+fn thoughts_skip_alternate_scans_only_while_the_target_still_exists() {
+    use frontline_core::{
+        random::SimulationRandom,
+        spatial::{SpatialIndex, UNIT_CELL},
+    };
+    let mut a = actors(vec![entry(soldier(2, 0.0, -10.0))]);
+    let mut units = SpatialIndex::new(UNIT_CELL).unwrap();
+    a.rebuild_units(&mut units).unwrap();
+    let mut rng = SimulationRandom::new(19);
+    assert!(perceive(&mut a, None, &units, &mut rng).is_some());
+    assert!(perceive(&mut a, None, &units, &mut rng).is_some());
+    assert!(perceive(&mut a, None, &units, &mut rng).is_none());
+    a = Actors::restore(&a.checkpoint().unwrap()).unwrap();
+    assert!(perceive(&mut a, None, &units, &mut rng).is_some());
+    a.remove(2);
+    assert!(perceive(&mut a, None, &units, &mut rng).is_some());
+    assert_eq!(a.soldier(1).unwrap().fight.target, 0);
+    assert_eq!(a.soldier(1).unwrap().controller.scan_number, 5);
+}
+
+#[test]
+fn thought_reports_update_the_shared_squad_but_do_not_report_visible_drones() {
+    use frontline_core::{
+        random::SimulationRandom,
+        spatial::{SpatialIndex, UNIT_CELL},
+        squad::Squad,
+    };
+    let mut s = soldier(1, 0.0, 0.0);
+    s.identity.squad = 9;
+    let drone = Drone {
+        id: 4,
+        team: 1,
+        flight: DroneFlight::new(Vector3::new(5.0, 1.0, 0.0), 0.0),
+        operator: 0,
+        target: 0,
+        operator_at_spawn: 0,
+        target_at_spawn: 0,
+        warhead: 1.0,
+    };
+    let mut a = Actors::from_entries(
+        10,
+        vec![entry(s), entry(soldier(2, 0.0, -10.0)), Actor::Drone(drone)],
+    )
+    .unwrap();
+    let mut units = SpatialIndex::new(UNIT_CELL).unwrap();
+    a.rebuild_units(&mut units).unwrap();
+    let mut q = Squad {
+        id: 9,
+        members: vec![1],
+        ..Default::default()
+    };
+    let out = perceive(&mut a, Some(&mut q), &units, &mut SimulationRandom::new(1)).unwrap();
+    assert!(out.visible.contains(&4));
+    assert_eq!(q.known.len(), 1);
+    assert_eq!(q.known[0].id, 2);
+    assert_eq!(q.known[0].report.time, 20.0);
+    assert_eq!(q.combat_at, 20.0);
+    assert!(q.combat);
+}
+
+#[test]
+fn separation_still_runs_on_skipped_scans_and_uses_current_positions_in_old_buckets() {
+    use frontline_core::{
+        random::SimulationRandom,
+        spatial::{SpatialIndex, UNIT_CELL},
+    };
+    let mut a = actors(vec![
+        entry(soldier(2, 0.0, 0.0)),
+        entry(soldier(3, 0.3, 0.0)),
+    ]);
+    let mut units = SpatialIndex::new(UNIT_CELL).unwrap();
+    a.rebuild_units(&mut units).unwrap();
+    let mut rng = SimulationRandom::new(19);
+    perceive(&mut a, None, &units, &mut rng);
+    perceive(&mut a, None, &units, &mut rng);
+    let before = rng.state();
+    assert!(perceive(&mut a, None, &units, &mut rng).is_none());
+    assert_ne!(rng.state(), before);
+    assert_ne!(a.soldier(1).unwrap().fight.separation, Vector3::ZERO);
+    let entries = a
+        .iter()
+        .cloned()
+        .map(|mut actor| {
+            if let Actor::Soldier(s) = &mut actor {
+                if s.identity.id != 1 {
+                    s.motion.position.x = 40.0;
+                }
+            }
+            actor
+        })
+        .collect();
+    a = Actors::from_entries(4, entries).unwrap();
+    let before = rng.state();
+    perceive(&mut a, None, &units, &mut rng);
+    assert_eq!(rng.state(), before);
+    assert_eq!(a.soldier(1).unwrap().fight.separation, Vector3::ZERO);
+}
+
+#[test]
+fn inactive_separation_clears_without_consuming_randomness() {
+    use frontline_core::{
+        random::SimulationRandom,
+        spatial::{SpatialIndex, UNIT_CELL},
+    };
+    for mode in 0..4 {
+        let mut s = soldier(1, 0.0, 0.0);
+        s.fight.separation = Vector3::X;
+        match mode {
+            0 => s.links.dragged_by = 2,
+            1 => s.duty.kind = Task::Stretcher,
+            2 => s.duty.kind = Task::Captor,
+            _ => s.vitals.life = Life::Downed,
+        }
+        let mut a = Actors::from_entries(3, vec![entry(s), entry(soldier(2, 0.0, 0.0))]).unwrap();
+        let mut units = SpatialIndex::new(UNIT_CELL).unwrap();
+        a.rebuild_units(&mut units).unwrap();
+        let mut rng = SimulationRandom::new(19);
+        let before = rng.state();
+        perceive(&mut a, None, &units, &mut rng);
+        assert_eq!(rng.state(), before);
+        assert_eq!(a.soldier(1).unwrap().fight.separation, Vector3::ZERO);
+    }
+}
+
+#[test]
+fn invalid_thought_context_does_not_advance_the_scan_clock_or_random_stream() {
+    use frontline_core::{
+        random::SimulationRandom,
+        spatial::{SpatialIndex, UNIT_CELL},
+        squad::Squad,
+    };
+    let mut a = actors(vec![entry(soldier(2, 0.0, 0.0))]);
+    let units = SpatialIndex::new(UNIT_CELL).unwrap();
+    let p = search(&a, &Terrain::blank(128).unwrap(), 20.0);
+    let mut rng = SimulationRandom::new(19);
+    let before = a.checkpoint().unwrap();
+    let cursor = rng.state();
+    let mut q = Squad {
+        id: 9,
+        ..Default::default()
+    };
+    assert!(a
+        .perceive_infantry(
+            1,
+            20.0,
+            profile(),
+            Some(&mut q),
+            &units,
+            &p,
+            &mut CollisionWorld::default(),
+            &mut Visibility::default(),
+            |_| 2,
+            &mut rng
+        )
+        .is_err());
+    assert_eq!(a.checkpoint().unwrap(), before);
+    assert_eq!(rng.state(), cursor);
+}
+
 #[test]
 fn nearest_seven_keep_id_ties_and_update_retained_contacts() {
     let mut a = actors(
