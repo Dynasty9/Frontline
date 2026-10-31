@@ -36,6 +36,177 @@ fn block(out: &mut Vec<u8>, bytes: &[u8]) {
 }
 
 #[test]
+fn prisoner_capture_and_delivery_are_identical_across_platforms() {
+    use frontline_core::actors::{Actor, Actors};
+    use frontline_core::battle_stats::BattleStats;
+    use frontline_core::infantry::Infantry as Soldier;
+    use frontline_core::infantry_controller::Task;
+    use frontline_core::infantry_cover::CoverWorld;
+    use frontline_core::infantry_prison_owned::{Event, Profile};
+    use frontline_core::infantry_travel_owned::Event as Movement;
+    use frontline_core::spatial::{SpatialIndex, DOOR_CELL, STRUCTURE_CELL, UNIT_CELL};
+    use frontline_core::structure::Structure;
+    fn events(bytes: &mut Vec<u8>, events: Vec<Event>) {
+        bytes.extend_from_slice(&(events.len() as u32).to_le_bytes());
+        for event in events {
+            match event {
+                Event::Movement(id, movement) => {
+                    bytes.push(0);
+                    bytes.extend_from_slice(&id.to_le_bytes());
+                    match movement {
+                        Movement::Route(r) => {
+                            bytes.push(0);
+                            bytes.extend_from_slice(&r.revision.to_le_bytes());
+                            bytes.extend_from_slice(&r.job.id.to_le_bytes());
+                            point(bytes, r.job.destination);
+                            bytes.extend_from_slice(&r.job.care.to_le_bytes());
+                        }
+                        Movement::CancelPath => bytes.push(1),
+                        Movement::Stat(s) => {
+                            bytes.push(7);
+                            block(bytes, s.as_bytes());
+                        }
+                        _ => panic!("unexpected prisoner movement event"),
+                    }
+                }
+                Event::Taken {
+                    prisoner,
+                    captor,
+                    destination,
+                } => {
+                    bytes.push(1);
+                    for id in [prisoner, captor, destination] {
+                        bytes.extend_from_slice(&id.to_le_bytes());
+                    }
+                }
+                Event::Speech { captor, cue } => {
+                    bytes.push(2);
+                    bytes.extend_from_slice(&captor.to_le_bytes());
+                    bytes.push(cue);
+                }
+                Event::Interrogation {
+                    prisoner,
+                    destination,
+                } => {
+                    bytes.push(3);
+                    for id in [prisoner, destination] {
+                        bytes.extend_from_slice(&id.to_le_bytes());
+                    }
+                }
+                Event::CapturedAlert(id) => {
+                    bytes.push(4);
+                    bytes.extend_from_slice(&id.to_le_bytes());
+                }
+            }
+        }
+    }
+    let terrain = Terrain::blank(64).unwrap();
+    let nav = PathPlanner::new(64).unwrap();
+    let structures = SpatialIndex::new(STRUCTURE_CELL).unwrap();
+    let doors = SpatialIndex::new(DOOR_CELL).unwrap();
+    let mut bytes = vec![];
+    for team in 0..2 {
+        for trial in 0..96 {
+            let mut c = Soldier::default();
+            c.identity.id = 1;
+            c.identity.unit = "rifleman".into();
+            c.identity.team = team;
+            c.identity.owner = -1 - i32::from(team);
+            c.duty.kind = Task::Captor;
+            c.duty.entity = 2;
+            c.duty.phase = if trial % 3 == 0 { 1 } else { 0 };
+            c.motion.yaw = f64::from([0.0f32, 1.3, -2.5][trial % 3]);
+            c.orders.hold_position = Vector3::X * -20.0;
+            c.motion.path = if trial % 5 == 0 {
+                vec![Vector3::X * 8.0]
+            } else {
+                vec![]
+            };
+            c.orders.pending_path = trial % 7 == 0;
+            let mut p = Soldier::default();
+            p.identity.id = 2;
+            p.identity.unit = "rifleman".into();
+            p.identity.team = 1 - team;
+            p.identity.owner = -1 - i32::from(p.identity.team);
+            p.vitals.life = Life::Surrender;
+            p.links.captor = 1;
+            p.links.intel_left = (trial % 5) as i32;
+            p.motion.position = Vector3::new(
+                [0.0, 1.0, 2.29, 2.3, 2.599, 2.6, 4.0, 12.0][trial % 8],
+                0.0,
+                0.13,
+            );
+            let mut entries = vec![Actor::Soldier(Box::new(c)), Actor::Soldier(Box::new(p))];
+            for (id, kind, x) in [
+                (10, "hq", 28.0),
+                (11, "fob", 6.0),
+                (12, "tunnel", 30.0),
+                (13, "fob", -6.0),
+            ] {
+                entries.push(Actor::Structure(Box::new(Structure {
+                    id,
+                    kind: kind.into(),
+                    position: Vector3::X * x,
+                    team,
+                    built: id == 10 || trial % 5 != 0,
+                    ..Default::default()
+                })));
+            }
+            let mut a = Actors::from_entries(100, entries).unwrap();
+            let mut units = SpatialIndex::new(UNIT_CELL).unwrap();
+            a.rebuild_units(&mut units).unwrap();
+            let mut collision = CollisionWorld::default();
+            let mut rng = SimulationRandom::new(37531 + trial as u64);
+            let mut battle = BattleStats::default();
+            for step in 0..4 {
+                events(
+                    &mut bytes,
+                    a.advance_infantry_captor(
+                        1,
+                        0.1,
+                        10.0 + step as f64 * 0.1,
+                        Profile {
+                            value: 20.0,
+                            fallback_depot: 10,
+                            gun: None,
+                        },
+                        &mut battle,
+                        &mut [],
+                        &mut CoverWorld {
+                            terrain: &terrain,
+                            nav: &nav,
+                            units: &units,
+                            structures: &structures,
+                            collision: &mut collision,
+                            heat: &[],
+                            deck: &[],
+                        },
+                        &doors,
+                        &mut rng,
+                    )
+                    .unwrap(),
+                );
+                block(&mut bytes, &a.checkpoint().unwrap());
+                block(&mut bytes, &battle.checkpoint());
+                bytes.extend_from_slice(&rng.state().to_le_bytes());
+                if step == 1 {
+                    a = Actors::restore(&a.checkpoint().unwrap()).unwrap();
+                    battle = BattleStats::restore(&battle.checkpoint()).unwrap();
+                }
+            }
+            if trial % 7 == 0 {
+                a.remove(12);
+                a.remove(11);
+            }
+            events(&mut bytes, a.arrive_infantry_prison(2, 11.0, &nav).unwrap());
+            block(&mut bytes, &a.checkpoint().unwrap());
+            bytes.extend_from_slice(&rng.state().to_le_bytes());
+        }
+    }
+    golden("infantry_prison_owned", &bytes);
+}
+
+#[test]
 fn retained_vehicle_losses_are_identical_across_platforms() {
     use frontline_core::actors::{Actor, Actors};
     use frontline_core::infantry::{Credit, Infantry as Soldier};
@@ -729,6 +900,7 @@ fn inactive_infantry_movement_and_cleanup_are_identical_across_platforms() {
                 } else {
                     Inactive::default()
                 };
+                assert!(out.prison.is_empty());
                 bytes.extend_from_slice(&(out.movement.len() as u32).to_le_bytes());
                 for event in out.movement {
                     match event {

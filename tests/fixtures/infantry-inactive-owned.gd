@@ -79,12 +79,12 @@ func _ready() -> void:
 			for step in 4:
 				w.time = 310.0 + step * 0.1
 				w.spoken.clear(); w.stats.clear(); w.effects.clear(); w.props.clear(); w.nav.jobs.clear()
-				var result := [[], PackedByteArray()]
+				var result := [[], PackedByteArray(), []]
 				if not s.gone:
 					if life == Soldier.Life.DEAD: s._dead(0.1)
 					else: s._captive(0.1)
 					result = actors.advance_infantry_inactive(1, 0.1, w.time, PackedFloat64Array(), cores, w.water.deck, tm._native, w.nav._planner, units, structures, doors, w.combat._collision, random._backend)
-				assert(result.size() == 2, "inactive %d/%d/%d" % [life, trial, step])
+				assert(result.size() == 3 and result[2].is_empty(), "inactive %d/%d/%d" % [life, trial, step])
 				if not result[1].is_empty(): retired = result[1]
 				assert(infantry.restore(retired if s.gone else actors.actor_state(1)))
 				helper.check_state(s, infantry, "inactive %d/%d/%d" % [life, trial, step]); checks += 1

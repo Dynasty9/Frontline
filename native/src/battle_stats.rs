@@ -9,7 +9,7 @@ use godot::prelude::*;
 #[class(base=RefCounted, init)]
 pub(crate) struct BattleStatsCore {
     base: Base<RefCounted>,
-    core: BattleStats,
+    pub(crate) core: BattleStats,
 }
 fn counters(c: &Counters) -> PackedFloat64Array {
     c.as_slice().into()

@@ -36,6 +36,7 @@ fn point(p: Vector3) -> bool {
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct Inactive {
     pub movement: Vec<Movement>,
+    pub prison: Vec<crate::infantry_prison_owned::Event>,
     pub removed: Option<Box<Infantry>>,
 }
 
@@ -117,6 +118,10 @@ impl Actors {
                         rng,
                         &mut out.movement,
                     )?;
+                    if out.movement.last() == Some(&Movement::PrisonArrival) {
+                        out.movement.pop();
+                        out.prison = self.arrive_infantry_prison(id, now, world.nav)?;
+                    }
                 }
             }
             _ => return Err("infantry is not dead or captive"),

@@ -291,6 +291,31 @@ fn travel_events(events: Vec<frontline_core::infantry_travel_owned::Event>) -> A
         })
         .collect()
 }
+fn prison_events(events: Vec<frontline_core::infantry_prison_owned::Event>) -> Array<Variant> {
+    use frontline_core::infantry_prison_owned::Event;
+    events
+        .into_iter()
+        .map(|e| {
+            match e {
+                Event::Movement(id, movement) => {
+                    varray![0, id as i64, &travel_events(vec![movement]).at(0)]
+                }
+                Event::Taken {
+                    prisoner,
+                    captor,
+                    destination,
+                } => varray![1, prisoner as i64, captor as i64, destination as i64],
+                Event::Speech { captor, cue } => varray![2, captor as i64, cue as i32],
+                Event::Interrogation {
+                    prisoner,
+                    destination,
+                } => varray![3, prisoner as i64, destination as i64],
+                Event::CapturedAlert(id) => varray![4, id as i64],
+            }
+            .to_variant()
+        })
+        .collect()
+}
 fn mounted_gun(
     a: &PackedFloat64Array,
 ) -> Result<Option<frontline_core::infantry_fire::MountedGun>, ()> {
@@ -805,6 +830,81 @@ impl ActorStateCore {
     }
 
     #[func]
+    fn advance_infantry_captor(
+        &mut self,
+        id: u32,
+        input: PackedFloat64Array,
+        gun: PackedFloat64Array,
+        mut battle: Gd<crate::battle_stats::BattleStatsCore>,
+        squads: Array<Gd<crate::squad::SquadStateCore>>,
+        deck: PackedByteArray,
+        terrain: Gd<crate::terrain::TerrainCore>,
+        nav: Gd<crate::path_planner::PathPlannerCore>,
+        units: Gd<crate::spatial::SpatialIndexCore>,
+        structures: Gd<crate::spatial::SpatialIndexCore>,
+        doors: Gd<crate::spatial::SpatialIndexCore>,
+        mut collision: Gd<crate::collision_index::CollisionIndexCore>,
+        mut rng: Gd<crate::simulation_random::SimulationRandomCore>,
+    ) -> Array<Variant> {
+        use frontline_core::infantry_cover::CoverWorld;
+        use frontline_core::infantry_prison_owned::Profile;
+        if input.len() != 4
+            || !input[3].is_finite()
+            || input[3].fract() != 0.0
+            || !(0.0..=u32::MAX as f64).contains(&input[3])
+        {
+            return Array::new();
+        }
+        let (Ok(gun), Some(mut state)) = (mounted_gun(&gun), read_squads(&squads)) else {
+            return Array::new();
+        };
+        let terrain = terrain.bind();
+        let nav = nav.bind();
+        let units = units.bind();
+        let structures = structures.bind();
+        let doors = doors.bind();
+        let (Some(terrain), Some(nav), Some(units), Some(structures), Some(doors)) = (
+            &terrain.core,
+            &nav.core,
+            &units.core,
+            &structures.core,
+            &doors.core,
+        ) else {
+            return Array::new();
+        };
+        let result = self.core.advance_infantry_captor(
+            id,
+            input[0],
+            input[1],
+            Profile {
+                value: input[2],
+                fallback_depot: input[3] as u32,
+                gun,
+            },
+            &mut battle.bind_mut().core,
+            &mut state,
+            &mut CoverWorld {
+                terrain,
+                nav,
+                units,
+                structures,
+                collision: &mut collision.bind_mut().core,
+                heat: &[],
+                deck: deck.as_slice(),
+            },
+            doors,
+            &mut rng.bind_mut().core,
+        );
+        match result {
+            Ok(events) => {
+                write_squads(squads, state);
+                varray![&prison_events(events)]
+            }
+            Err(_) => Array::new(),
+        }
+    }
+
+    #[func]
     fn advance_infantry_inactive(
         &mut self,
         id: u32,
@@ -868,7 +968,11 @@ impl ActorStateCore {
             None => PackedByteArray::new(),
         };
         write_squads(squads, state);
-        varray![&travel_events(out.movement), &removed]
+        varray![
+            &travel_events(out.movement),
+            &removed,
+            &prison_events(out.prison)
+        ]
     }
 
     #[func]
