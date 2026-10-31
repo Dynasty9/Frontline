@@ -44,7 +44,7 @@ graphics, network access or a wall clock.
 | Infantry combat geometry | `frontline_core` | Eyes, exposed points, hit factors and cover postures extracted with reference tests; the adapter still supplies actor state |
 | Infantry aim selection and sight cache | `frontline_core` | Target, blind and area-fire aiming extracted and reference-tested; the test adapter supplies posed target points and last-known squad contacts |
 | Bullet resolution | `frontline_core` | Accuracy, scatter, penetration, hit damage, explosive-round placement and near-miss suppression extracted with ordered stages; Godot still applies actor damage and explosion effects |
-| Blast exposure | `frontline_core` | Retained infantry blasts apply shelter, damage, casualty links, squad responses, fling and flinch in victim order; vehicle/structure destruction, fire and world dispatch remain to be connected |
+| Explosions | `frontline_core` | Connected blasts apply casualties, vehicle/structure destruction, supply reroutes, fire, terrain and delayed chain reactions in order; the complete live world dispatcher remains unfinished |
 | Blast knockback and disorientation | `frontline_core` | Fling trajectories, obstacle bounces, landings, flinching and dazed movement extracted with component checkpoints; Godot still applies task cleanup and speech |
 | Wounded infantry and corpse timers | `frontline_core` | Retained corpse cleanup and captive movement preserve carriers, ground caches and shared squad removal; bleeding and speech/pistol/crawl schedules are extracted, while the connected wounded dispatcher remains unfinished |
 | Grenade reflex decisions | `frontline_core` | Owned actors retain notice memory, grenade claims, rescue/breach cleanup, task changes, shelter and dives; the live decision loop and task dispatcher remain in Godot |
@@ -1256,7 +1256,7 @@ friendly, dead and directly hit soldiers. Muted speech still consumes the same
 random draws. The Godot comparison checks 18,432 complete actor states and squad
 states, speech, counters and damage credit. Seven core tests cover shared effects
 and atomic rejection; numeric CI adds 1,689,413 bytes with checkpoint resumes.
-Full bullet/blast dispatch and the world loop remain unfinished.
+Shared bullet dispatch and the complete live world loop remain unfinished.
 
 Cover searches and reevaluation now use retained squad contacts, nearby soldiers
 and borrowed building anchors. They preserve stale spatial membership until its
@@ -1594,9 +1594,10 @@ The Godot fixture compares 12,288 complete actor states plus squad state, speech
 counters and random continuation against the existing explosion loop. Health and
 bleeding allow a 1e-9 difference for Godot's platform power function; Rust numeric
 CI instead compares all 4,378,182 new transcript bytes exactly, with restored
-actors, terrain, spatial membership, collision, squads and RNG. Vehicle/structure
-destruction, fire, terrain effects and the complete world dispatcher remain open;
-this is neither whole-battle verification nor a frame-rate measurement.
+actors, terrain, spatial membership, collision, squads and RNG. The connected
+explosion operation below now applies vehicle/structure destruction, fire and
+terrain effects. The complete live world dispatcher remains open; this is neither
+whole-battle verification nor a frame-rate measurement.
 
 ## Shared structure damage and destruction
 
@@ -1613,8 +1614,8 @@ continuation and invalid damage. The Godot reference compares 6,144 soldier and
 structure states over twelve structure kinds, including event order, complete
 delayed-explosion parameters, rubble and RNG. Numeric CI adds 3,219,786 exact
 bytes, including retained and removed actors, deferred effects and resumed random
-state. The world dispatcher still needs to consume those effects; fire heat,
-geometry refresh and battle-record updates are not completed by this operation.
+state. The connected combat operation below consumes those effects, applying fire
+heat, geometry, battle records and supply-network changes before the next hit.
 
 ## Infantry births and squad recruitment
 
@@ -1915,8 +1916,8 @@ half-extents, actor state, random cursors and ray hit identities remain exact.
 The comparison has rejection checks for larger transforms, changed IDs and sizes.
 The existing double cover-coefficient tolerance is unchanged.
 Rust continuation and the 11,562,980-byte numeric transcript use no tolerance.
-The full combat dispatcher still needs to call this operation between destruction
-and fire ignition; the live game still uses the Godot toss method.
+The connected explosion operation now calls this between destruction and fire
+ignition; the live game still uses the Godot toss method.
 
 ## Shared formation placement
 
@@ -2003,5 +2004,33 @@ depots, route cycles, corrupt checkpoints and resumed rebuilds. A Godot referenc
 checks 256 rebuilds and 512 complete geometry states, exact structure/route state,
 ordered removals and unchanged random cursors. An exact numeric transcript checks
 both sides of collision retirement and repeated checkpoint continuations. The
-combat dispatcher must invoke this when a FOB is wrecked; live rule dispatch,
+connected combat operation invokes this when a FOB is wrecked; live rule dispatch,
 the standalone socket server and whole-battle verification remain unfinished.
+
+## Connected explosions and delayed destruction
+
+An explosion now runs against retained Rust world state from first casualty to
+final crater. Heavy impacts reach squad reports before casualties. Infantry use
+the tick's spatial membership, while vehicles keep their registration order.
+Each injury updates battle credit before the next victim; each vehicle finishes
+passenger evacuation, crew return and wreck registration before the next hit.
+New wrecks can therefore be damaged by the structure phase of the same explosion.
+
+Structure damage opens doors, releases occupants and gunners, updates cover and
+navigation, registers car ignition and rebuilds supply routes immediately when a
+FOB is wrecked. Drone losses, thrown cover, fires and craters follow in their
+original order. A destroyed wall retains its final collision state until tick
+end, including a door blown open by that fatal hit. Missing throwers use the
+caller's battle credit without leaking it into later damage. Due cache explosions
+finish before queued rubble is created; newly scheduled explosions wait for the
+next simulation step.
+
+Eight regressions check connected destruction, ledger scope, supply changes,
+door collision, delayed effects, invalid input and exact restored continuation.
+The Godot comparison covers 64 mixed battles with two blasts and a delayed-effects
+pass each, checking 384 geometry states plus actors, squads, routes, fires, battle
+records, event deadlines, entity allocation and random cursors. It reuses the
+existing blast-health and platform-geometry reference allowances; Rust numeric
+checks remain exact. The new transcript adds 3,344,054 bytes across resumed blasts
+and chain reactions. Shared bullet dispatch, remaining actor/AI updates, the
+standalone server and whole-battle replay verification are still unfinished.

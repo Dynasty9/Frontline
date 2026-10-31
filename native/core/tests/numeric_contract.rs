@@ -45,6 +45,14 @@ mod vehicle_loss_world;
 #[path = "fixtures/supply_network_world.rs"]
 mod supply_network_world;
 
+#[path = "fixtures/world_combat_world.rs"]
+mod world_combat_world;
+
+#[test]
+fn connected_world_explosions_are_identical_across_platforms() {
+    golden("world_combat", &world_combat_world::transcript());
+}
+
 #[test]
 fn supply_network_is_identical_across_platforms() {
     golden("supply_network", &supply_network_world::transcript());

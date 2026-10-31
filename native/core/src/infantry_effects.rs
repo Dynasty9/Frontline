@@ -92,7 +92,7 @@ impl Actors {
     /// A carrier's injury can free the next victim before their exposure is evaluated.
     pub fn blast_infantry(
         &mut self,
-        mut blast: Blast,
+        blast: Blast,
         source: u32,
         now: f64,
         blame: Option<&Credit>,
@@ -101,6 +101,35 @@ impl Actors {
         collision: &mut CollisionWorld,
         squads: &mut [Squad],
         ammunition: impl Fn(&Infantry) -> (Option<i32>, bool),
+        rng: &mut SimulationRandom,
+    ) -> Result<Vec<BlastVictim>, &'static str> {
+        self.blast_infantry_with(
+            blast,
+            source,
+            now,
+            blame,
+            terrain,
+            units,
+            collision,
+            squads,
+            |s, _| ammunition(s),
+            |_, _, _, _| Ok(()),
+            rng,
+        )
+    }
+
+    pub(crate) fn blast_infantry_with(
+        &mut self,
+        mut blast: Blast,
+        source: u32,
+        now: f64,
+        blame: Option<&Credit>,
+        terrain: &Terrain,
+        units: &SpatialIndex,
+        collision: &mut CollisionWorld,
+        squads: &mut [Squad],
+        ammunition: impl Fn(&Infantry, &[Squad]) -> (Option<i32>, bool),
+        mut after_hit: impl FnMut(&Actors, &[Squad], u32, &InfantryHit) -> Result<(), &'static str>,
         rng: &mut SimulationRandom,
     ) -> Result<Vec<BlastVictim>, &'static str> {
         if !blast.valid()
@@ -150,8 +179,8 @@ impl Actors {
                 },
             )?;
             let hit = if injury.damage > 0.0 {
-                let (stock, bearer) = ammunition(s);
-                Some(self.damage_infantry(
+                let (stock, bearer) = ammunition(s, squads);
+                let hit = self.damage_infantry(
                     id,
                     Damage {
                         amount: injury.damage,
@@ -165,7 +194,9 @@ impl Actors {
                     },
                     squads,
                     rng,
-                )?)
+                )?;
+                after_hit(self, squads, id, &hit)?;
+                Some(hit)
             } else {
                 None
             };

@@ -234,7 +234,7 @@ impl Context<'_> {
                 (p.ammunition, p.bearer)
             },
             |actors, squads, victim| {
-                Self::record_passenger(
+                Self::record_infantry_hit(
                     self.battle,
                     actors,
                     victim.soldier,
@@ -386,30 +386,12 @@ impl Context<'_> {
             flight: plan.filter(|p| f64::from(p.velocity.length()) > 0.3),
         });
         let mut fire_events = vec![];
-        self.fires.ignite(
-            wreck_id,
-            1.0,
-            &mut fires::Context {
-                actors: self.actors,
-                geometry: self.geometry,
-                units: self.units,
-                squads: self.squads,
-                battle: self.battle,
-                deferred: self.deferred,
-                visibility: self.visibility,
-                rng: self.rng,
-                now: self.now,
-                town: self.town,
-                man: self.man,
-                building: self.building,
-                role: self.role,
-            },
-            &mut fire_events,
-        )?;
+        let (fires, mut context) = self.fire_context();
+        fires.ignite(wreck_id, 1.0, &mut context, &mut fire_events)?;
         out.extend(fire_events.into_iter().map(Event::Fire));
         Ok(())
     }
-    fn record_passenger(
+    pub(crate) fn record_infantry_hit(
         battle: &mut BattleStats,
         actors: &Actors,
         id: u32,

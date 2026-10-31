@@ -41,6 +41,8 @@ different byte rather than dumping the fixture.
   loss, burning wreck creation and shared world state across resumed fatal hits.
 - `supply_network.bin`: FOB chains, town routes, obstacle clearing, painted roads
   and shared geometry before and after collision retirement across resumed rebuilds.
+- `world_combat.bin`: connected explosions, damage credit, vehicle and structure
+  losses, supply reroutes, ignition, craters and delayed rubble through restored state.
 
 - `navigation_scene.bin`: overlapping obstacle ownership, terrain and bridge edits,
   fire costs, pending hierarchy repairs and route continuation across resumes.

@@ -6,18 +6,45 @@ use crate::fires::FiresCore;
 use crate::simulation_random::SimulationRandomCore;
 use crate::spatial::SpatialIndexCore;
 use crate::squad::SquadStateCore;
+use crate::supply_network::SupplyNetworkCore;
 use crate::visibility::VisibilityCore;
 use crate::world_geometry::WorldGeometryCore;
 use frontline_core::actors::Actor;
 use frontline_core::fires::{BuildingProfile, ManProfile};
+use frontline_core::squad::Report;
 use frontline_core::squad_movement;
+use frontline_core::vehicle_damage::Armor;
 use frontline_core::vehicle_loss::Crew;
 use frontline_core::vehicle_loss_world::{Context, Event, Profile};
+use frontline_core::world_combat::{self, Explosion};
 use godot::prelude::*;
 use std::collections::BTreeMap;
 
 fn read<T: FromGodot>(a: &Array<Variant>, i: usize) -> Option<T> {
     a.get(i)?.try_to().ok()
+}
+fn read_impacts(input: &Array<Variant>) -> Option<Vec<Report>> {
+    if input.len() > 100_000 {
+        return None;
+    }
+    let mut reports = vec![];
+    for value in input.iter_shared() {
+        let r: Array<Variant> = value.try_to().ok()?;
+        if r.len() != 2 {
+            return None;
+        }
+        let position = crate::point(read(&r, 0)?);
+        let time: f64 = read(&r, 1)?;
+        if !position.is_finite()
+            || position.abs().max_element() > 1_000_000.0
+            || !time.is_finite()
+            || time.abs() > 1e12
+        {
+            return None;
+        }
+        reports.push(Report { position, time });
+    }
+    Some(reports)
 }
 struct VehicleProfile {
     name: String,
@@ -30,6 +57,8 @@ struct VehicleProfile {
     grenades: bool,
     weight: u8,
     hull: frontline_core::vector::Vector3,
+    level: u8,
+    toss: f64,
 }
 impl VehicleProfile {
     fn view(&self) -> Profile<'_> {
@@ -54,6 +83,11 @@ struct Man {
     movement: squad_movement::ManProfile,
     role: String,
 }
+enum Operation {
+    Damage(u32, f64, u32),
+    Explosion(Explosion, Gd<SupplyNetworkCore>, Vec<Report>),
+    Deferred(Gd<SupplyNetworkCore>, Vec<Report>),
+}
 #[derive(GodotClass)]
 #[class(base=RefCounted, init)]
 struct VehicleLossWorldCore {
@@ -63,6 +97,136 @@ struct VehicleLossWorldCore {
 impl VehicleLossWorldCore {
     #[func]
     fn damage(
+        &self,
+        actors: Gd<ActorStateCore>,
+        geometry: Gd<WorldGeometryCore>,
+        units: Gd<SpatialIndexCore>,
+        nodes: Array<Gd<SquadStateCore>>,
+        fires: Gd<FiresCore>,
+        battle: Gd<BattleStatsCore>,
+        deferred: Gd<DeferredEffectsCore>,
+        visibility: Gd<VisibilityCore>,
+        rng: Gd<SimulationRandomCore>,
+        config: Array<Variant>,
+        id: u32,
+        amount: f64,
+        source: u32,
+    ) -> Array<Variant> {
+        self.run(
+            actors,
+            geometry,
+            units,
+            nodes,
+            fires,
+            battle,
+            deferred,
+            visibility,
+            rng,
+            config,
+            Operation::Damage(id, amount, source),
+        )
+    }
+    #[func]
+    fn explode(
+        &self,
+        actors: Gd<ActorStateCore>,
+        geometry: Gd<WorldGeometryCore>,
+        units: Gd<SpatialIndexCore>,
+        nodes: Array<Gd<SquadStateCore>>,
+        fires: Gd<FiresCore>,
+        battle: Gd<BattleStatsCore>,
+        deferred: Gd<DeferredEffectsCore>,
+        visibility: Gd<VisibilityCore>,
+        rng: Gd<SimulationRandomCore>,
+        config: Array<Variant>,
+        input: Array<Variant>,
+        network: Gd<SupplyNetworkCore>,
+        impacts: Array<Variant>,
+    ) -> Array<Variant> {
+        let parse = || -> Option<_> {
+            if input.len() != 14 {
+                return None;
+            }
+            let reports = read_impacts(&impacts)?;
+            Some((
+                Explosion {
+                    position: crate::point(read(&input, 0)?),
+                    damage: if input.get(1)?.is_nil() {
+                        None
+                    } else {
+                        Some(read(&input, 1)?)
+                    },
+                    radius: read(&input, 2)?,
+                    fling: read(&input, 3)?,
+                    size: read(&input, 4)?,
+                    anti_tank: read(&input, 5)?,
+                    track: read(&input, 6)?,
+                    top: read(&input, 7)?,
+                    direction: if input.get(8)?.is_nil() {
+                        None
+                    } else {
+                        Some(crate::point(read(&input, 8)?))
+                    },
+                    structure_multiplier: read(&input, 9)?,
+                    vehicle_multiplier: read(&input, 10)?,
+                    source: read(&input, 11)?,
+                    owner: read(&input, 12)?,
+                    team: read(&input, 13)?,
+                },
+                reports,
+            ))
+        };
+        let Some((blast, reports)) = parse() else {
+            return Array::new();
+        };
+        self.run(
+            actors,
+            geometry,
+            units,
+            nodes,
+            fires,
+            battle,
+            deferred,
+            visibility,
+            rng,
+            config,
+            Operation::Explosion(blast, network, reports),
+        )
+    }
+    #[func]
+    fn flush_deferred(
+        &self,
+        actors: Gd<ActorStateCore>,
+        geometry: Gd<WorldGeometryCore>,
+        units: Gd<SpatialIndexCore>,
+        nodes: Array<Gd<SquadStateCore>>,
+        fires: Gd<FiresCore>,
+        battle: Gd<BattleStatsCore>,
+        deferred: Gd<DeferredEffectsCore>,
+        visibility: Gd<VisibilityCore>,
+        rng: Gd<SimulationRandomCore>,
+        config: Array<Variant>,
+        network: Gd<SupplyNetworkCore>,
+        impacts: Array<Variant>,
+    ) -> Array<Variant> {
+        let Some(reports) = read_impacts(&impacts) else {
+            return Array::new();
+        };
+        self.run(
+            actors,
+            geometry,
+            units,
+            nodes,
+            fires,
+            battle,
+            deferred,
+            visibility,
+            rng,
+            config,
+            Operation::Deferred(network, reports),
+        )
+    }
+    fn run(
         &self,
         mut actors: Gd<ActorStateCore>,
         mut geometry: Gd<WorldGeometryCore>,
@@ -74,9 +238,7 @@ impl VehicleLossWorldCore {
         mut visibility: Gd<VisibilityCore>,
         mut rng: Gd<SimulationRandomCore>,
         config: Array<Variant>,
-        id: u32,
-        amount: f64,
-        source: u32,
+        operation: Operation,
     ) -> Array<Variant> {
         let parse = || -> Option<_> {
             if config.len() != 8 {
@@ -111,7 +273,7 @@ impl VehicleLossWorldCore {
             let mut vehicles = BTreeMap::new();
             for row in rows.iter_shared() {
                 let r: Array<Variant> = row.try_to().ok()?;
-                if r.len() != 11 {
+                if ![11, 13].contains(&r.len()) {
                     return None;
                 }
                 let key: u32 = read(&r, 0)?;
@@ -130,6 +292,8 @@ impl VehicleLossWorldCore {
                     grenades: read(&r, 8)?,
                     weight: read(&r, 9)?,
                     hull: crate::point(read(&r, 10)?),
+                    level: if r.len() == 13 { read(&r, 11)? } else { 0 },
+                    toss: if r.len() == 13 { read(&r, 12)? } else { 1.0 },
                 };
                 if vehicles.insert(key, p).is_some() {
                     return None;
@@ -234,7 +398,7 @@ impl VehicleLossWorldCore {
         let mut deferred = deferred.bind_mut();
         let mut visibility = visibility.bind_mut();
         let mut rng = rng.bind_mut();
-        let result = Context {
+        let mut context = Context {
             actors: &mut actors.core,
             geometry,
             units,
@@ -263,8 +427,40 @@ impl VehicleLossWorldCore {
             role: &|s| men[&s.identity.unit].role.clone(),
             automatic: &|k| automatic.iter().any(|v| v == k),
             player_building: &|k| buildings.get(k).is_some_and(|p| p.player),
-        }
-        .damage(id, amount, source);
+        };
+        let mut reports = None;
+        let armor = |v: &frontline_core::vehicle::Vehicle| {
+            let p = &vehicles[&v.id];
+            Armor {
+                level: p.level,
+                helicopter: p.helicopter,
+                boat: p.base == "boat",
+                supply: p.base == "supply",
+                toss: p.toss,
+            }
+        };
+        let result = match operation {
+            Operation::Damage(id, amount, source) => {
+                context.damage(id, amount, source).map(|events| {
+                    events
+                        .into_iter()
+                        .map(world_combat::Event::Vehicle)
+                        .collect()
+                })
+            }
+            Operation::Explosion(blast, mut network, mut impacts) => {
+                let result =
+                    context.explode(blast, &mut network.bind_mut().core, &mut impacts, &armor);
+                reports = Some(impacts);
+                result
+            }
+            Operation::Deferred(mut network, mut impacts) => {
+                let result =
+                    context.flush_deferred(&mut network.bind_mut().core, &mut impacts, &armor);
+                reports = Some(impacts);
+                result
+            }
+        };
         let Ok(events) = result else {
             godot_error!("{}", result.unwrap_err());
             return Array::new();
@@ -278,12 +474,34 @@ impl VehicleLossWorldCore {
         let stats: PackedStringArray = events
             .iter()
             .filter_map(|e| match e {
-                Event::Stat(s) | Event::Squad(squad_movement::Event::Stat(s)) => {
-                    Some(GString::from(*s))
+                world_combat::Event::Stat(s)
+                | world_combat::Event::Vehicle(
+                    Event::Stat(s) | Event::Squad(squad_movement::Event::Stat(s)),
+                ) => Some(GString::from(*s)),
+                world_combat::Event::Structure { damage, .. }
+                    if damage.events.iter().any(|e| {
+                        matches!(e, frontline_core::structure_damage::Event::CacheCookOff(_))
+                    }) =>
+                {
+                    Some(GString::from("cache_cook_off"))
                 }
                 _ => None,
             })
             .collect();
-        varray![next as i64, &states, &stats]
+        let mut out = varray![next as i64, &states, &stats];
+        if let Some(reports) = reports {
+            let rows: Array<Variant> = reports
+                .into_iter()
+                .map(|r| {
+                    varray![
+                        Vector3::new(r.position.x, r.position.y, r.position.z),
+                        r.time
+                    ]
+                    .to_variant()
+                })
+                .collect();
+            out.push(&rows.to_variant());
+        }
+        out
     }
 }

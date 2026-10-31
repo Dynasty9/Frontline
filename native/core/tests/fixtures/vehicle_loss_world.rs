@@ -92,6 +92,9 @@ impl Scene {
         amount: f64,
         source: u32,
     ) -> Result<Vec<Event>, &'static str> {
+        self.context().damage(id, amount, source)
+    }
+    pub fn context(&mut self) -> Context<'_> {
         Context {
             actors: &mut self.world.actors,
             geometry: &mut self.world.geometry,
@@ -127,7 +130,6 @@ impl Scene {
             automatic: &|k| k == "robot",
             player_building: &|k| k == "fob",
         }
-        .damage(id, amount, source)
     }
     pub fn resume(&self) -> Self {
         Self {

@@ -105,6 +105,7 @@ kind = "fixed"
 - Vehicle-loss checks preserve passenger casualties, crew survival and final wreck positions, including random choices between each survivor's escape.
 - Connected vehicle-destruction checks preserve dropped sling cargo, battle credit, supply-truck replacement, crew return orders and burning wrecks in their original order.
 - Rust supply-network checks preserve FOB chains, town deliveries, rerouting after base damage and obstacles cleared by new roads.
+- Connected Rust explosion checks preserve casualties, wrecks, damaged supply bases, ammunition cook-offs, fires and craters in their original order.
 - Launch checks preserve vehicle missiles, defensive smoke, warning order and random choices across saved-state resumes.
 - Vehicle targeting checks preserve infantry exposure, aircraft priorities, fog-hidden buildings, forced targets and nearby squad reports as combat decisions move into Rust.
 - Infantry targeting checks preserve concealment, wounded firing, mounted-gun arcs, drone reactions and contact-report order as soldiers begin reading shared Rust actor state.

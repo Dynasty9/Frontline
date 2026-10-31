@@ -1423,12 +1423,12 @@ smoke and crew evasion in the same event and random order.
 Retained travel tasks connect movement to retreat, grenade orders, boarding,
 tunnel entry, drone operation and resupply, including shared seats, occupants and
 finite ammunition. The complete world dispatcher is still being migrated.
-Retained infantry blasts apply cover, casualties, shared carrier links, squad
-reactions, knockback and flinching in victim order. Vehicle/building destruction,
-fire and whole-world explosion dispatch still need integration.
-Retained structure damage preserves doors, repairable wrecked FOBs, tunnel exits,
-gunner dismounts, car ignition and delayed cache explosions and rubble. The world
-still needs to apply their geometry, heat, battle-record and rule effects.
+Retained explosions connect cover, casualties, shared carrier links, squad
+reactions, knockback, vehicle/building destruction, fire and craters in victim
+order. Structure losses update doors, tunnel occupants, gunners, collision,
+navigation, battle credit and supply routes immediately. Delayed cache explosions
+finish before rubble is registered. The complete live world dispatcher remains
+in Godot while its remaining behavior is migrated.
 Retained infantry births preserve every unit loadout, upgrades, initial cooldowns,
 names and squad recruitment. Live spawning and squad ledger callbacks remain in
 Godot until the shared world dispatcher owns them.
