@@ -5,9 +5,9 @@ use godot::prelude::*;
 
 #[derive(GodotClass)]
 #[class(base=RefCounted, init)]
-struct StructureStateCore {
+pub(crate) struct StructureStateCore {
     base: Base<RefCounted>,
-    core: Option<Structure>,
+    pub(crate) core: Option<Structure>,
 }
 fn read<T: FromGodot>(a: &Array<Variant>, n: usize) -> Option<T> {
     a.get(n)?.try_to().ok()

@@ -56,6 +56,10 @@ impl Hierarchy {
         self.side
     }
 
+    pub fn cluster_side(&self) -> usize {
+        self.cluster_side
+    }
+
     pub fn is_solid(&self, cell: [i32; 2]) -> bool {
         self.index(cell).is_none_or(|index| self.solid[index] != 0)
     }

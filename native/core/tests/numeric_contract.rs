@@ -36,6 +36,120 @@ fn block(out: &mut Vec<u8>, bytes: &[u8]) {
 }
 
 #[test]
+fn shared_navigation_is_identical_across_platforms() {
+    use frontline_core::navigation_scene::NavigationScene;
+    use frontline_core::structure::{Part, Structure};
+    let mut bytes = vec![];
+    let mut rng = SimulationRandom::new(573923);
+    for cluster in [16, 32] {
+        let mut terrain = Terrain::blank(64).unwrap();
+        let mut deck = vec![0; 64 * 64];
+        for i in 0..64 * 64 {
+            terrain.layers[BASE][i] = if i % 7 == 0 {
+                [0, 1, 2, 3, 7, 8][rng.randi() as usize % 6]
+            } else {
+                0
+            };
+            deck[i] = u8::from(i % 5 == 0);
+        }
+        let mut nav = NavigationScene::new(&terrain, &deck, cluster).unwrap();
+        let mut walls = vec![];
+        for id in 1..=12 {
+            let mut st = Structure {
+                id,
+                kind: "sandbags".into(),
+                built: true,
+                position: Vector3::new(
+                    rng.randf_range(-32.0, 32.0),
+                    0.0,
+                    rng.randf_range(-32.0, 32.0),
+                ),
+                yaw: f64::from(rng.randf_range(-3.14, 3.14)),
+                ..Default::default()
+            };
+            for part in 0..3 {
+                st.parts.push(Part {
+                    position: Vector3::new(part as f32 * 0.3, 0.5, part as f32 * -0.7),
+                    size: Vector3::new(rng.randf_range(0.01, 7.0), 1.0, rng.randf_range(0.01, 3.0)),
+                    yaw: f64::from(rng.randf_range(-3.14, 3.14)),
+                    infantry: ((id + part) % 4) as u8,
+                    vehicle: ((id + 3 * part) % 4) as u8,
+                    cover: true,
+                    collision: true,
+                    door: false,
+                });
+            }
+            nav.add_structure(&mut st, &terrain, &deck).unwrap();
+            walls.push(st);
+        }
+        assert!(nav.finalize(2));
+        block(&mut bytes, &nav.checkpoint());
+        for step in 0..48 {
+            let st = &mut walls[(step / 4) % 12];
+            match step % 4 {
+                0 => nav.add_structure(st, &terrain, &deck).unwrap(),
+                1 => nav
+                    .stamp_heat(
+                        st.position + Vector3::new(0.5, 0.0, -0.5),
+                        [0.0, 0.5, 1.0, 2.7, 7.3][(step / 4) % 5],
+                        if step % 3 == 0 { -1 } else { 1 },
+                        &terrain,
+                        &deck,
+                    )
+                    .unwrap(),
+                2 => {
+                    for _ in 0..6 {
+                        let i = rng.randi() as usize % (64 * 64);
+                        terrain.layers[BASE][i] = [0, 1, 2, 3, 7, 8][rng.randi() as usize % 6];
+                        deck[i] = 1 - deck[i];
+                        nav.terrain_changed(i, &terrain, &deck).unwrap();
+                    }
+                }
+                _ => nav.remove_structure(st, &terrain, &deck).unwrap(),
+            }
+            block(&mut bytes, &st.checkpoint().unwrap());
+            assert!(nav.update_hierarchy(step % 5));
+            for query in 0..4 {
+                let from = Vector3::new(
+                    rng.randf_range(-32.0, 32.0),
+                    0.0,
+                    rng.randf_range(-32.0, 32.0),
+                );
+                let to = Vector3::new(
+                    rng.randf_range(-32.0, 32.0),
+                    0.0,
+                    rng.randf_range(-32.0, 32.0),
+                );
+                let vehicle = query % 2 == 0;
+                let graph = if vehicle {
+                    &mut nav.vehicles
+                } else {
+                    &mut nav.infantry
+                };
+                let path = nav.planner.find_path(
+                    graph,
+                    from,
+                    to,
+                    vehicle,
+                    query % 3 - 1,
+                    if query == 3 { 0.0 } else { 1.0 },
+                );
+                bytes.extend_from_slice(&(path.len() as u32).to_le_bytes());
+                for p in path {
+                    point(&mut bytes, p);
+                }
+            }
+            if step % 8 == 0 {
+                block(&mut bytes, &nav.checkpoint());
+                nav = NavigationScene::restore(&nav.checkpoint()).unwrap();
+            }
+        }
+        block(&mut bytes, &nav.checkpoint());
+    }
+    golden("navigation_scene", &bytes);
+}
+
+#[test]
 fn fire_escape_is_identical_across_platforms() {
     use frontline_core::infantry::Infantry as Soldier;
     use frontline_core::infantry_controller::Task;

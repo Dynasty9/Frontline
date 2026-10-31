@@ -68,6 +68,7 @@ pub mod infantry_update;
 pub mod infantry_vitals;
 pub mod infantry_weapon;
 pub mod navigation_grid;
+pub mod navigation_scene;
 pub mod path_planner;
 pub mod perception;
 pub mod prisoner_intelligence;

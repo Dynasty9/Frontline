@@ -1795,3 +1795,19 @@ Four regressions and 3,072 complete Godot soldier-state comparisons cover the
 restrictions, exact deadlines, blocked ground, routes, speech and rejected input.
 Numeric CI adds 3,009,688 exact bytes with checkpoint resumes. The shared fire
 dispatcher still needs migration before these operations run without Godot.
+
+## Shared navigation edits
+
+The retained navigation scene owns obstacle contributions, the path planner and
+both route hierarchies. Removing a structure clears only its contributions,
+including duplicate cells from overlapping parts; remaining walls and deep water
+stay blocked. Bridge decks, vehicle map edges and terrain costs follow the existing
+rules. Overlapping fire stamps retain their saturating counts and queue a repair
+only when the route cost changes. Cluster size remains 16 or 32 metres, and repair
+work keeps its fixed quota and infantry-first order.
+
+Five core regressions cover ownership, bridges, heat counts, rejected edits and
+checkpoint continuation. A Godot reference fixture compares 392 complete navigation
+states and 1,536 routes, including edits while repairs are pending. Numeric CI adds
+3,365,734 exact bytes. The shared world dispatcher must still connect structure
+destruction, terrain changes and the full fire loop to these retained operations.

@@ -1444,6 +1444,10 @@ hands-up posture. Wounded behavior and the full world dispatcher remain unfinish
 Retained fire escape preserves committed duties, strict cooldowns, cover reset,
 walkable retreat destinations and warnings. Shared burning and scorch damage still
 need to call it from the full Rust fire dispatcher.
+Retained navigation owns each structure's overlapping obstacle cells together with
+the infantry and vehicle route hierarchies. Fire counts, bridge decks, terrain
+costs and obstacle removal preserve incremental repair order and pending routes
+through checkpoints. The shared world dispatcher still needs to call these edits.
 Retained captors update capture credit, prison selection and escort movement;
 arrival applies detention and the guard's return order before the next actor.
 Removed prisons are handled safely. Retained prisoner rules now handle guard

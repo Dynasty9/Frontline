@@ -22,6 +22,9 @@ different byte rather than dumping the fixture.
 - `vehicle_loss.bin`: ordered passenger injuries, shared squad responses, crew
   survival/births and wreck placement, with resumed actor state and random draws.
 
+- `navigation_scene.bin`: overlapping obstacle ownership, terrain and bridge edits,
+  fire costs, pending hierarchy repairs and route continuation across resumes.
+
 Rust 1.94.0, glam 0.32.1 with `libm`, and libm 0.2.16 with `force-soft-floats`
 define this contract. No fast-math is enabled. Existing component resume tests
 check continuation, and Godot fixtures separately check gameplay compatibility.

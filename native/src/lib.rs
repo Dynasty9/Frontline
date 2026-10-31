@@ -35,6 +35,7 @@ mod infantry_supply;
 mod infantry_vitals;
 mod infantry_weapon;
 mod navigation_grid;
+mod navigation_scene;
 mod path_planner;
 mod prisoner_intelligence;
 mod projectile_actor;

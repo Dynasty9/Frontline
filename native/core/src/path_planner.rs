@@ -106,6 +106,14 @@ impl PathPlanner {
         self.side
     }
 
+    pub fn cell_state(&self, index: usize) -> Option<[u8; 3]> {
+        Some([
+            *self.kinds[0].get(index)?,
+            self.kinds[1][index],
+            self.heat[index],
+        ])
+    }
+
     pub fn kind_at(&self, point: Vector3, vehicle: bool) -> u8 {
         self.kinds[usize::from(vehicle)][self.index(self.cell(point))]
     }
