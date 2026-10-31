@@ -641,6 +641,157 @@ fn retained_infantry_blasts_are_identical_across_platforms() {
 }
 
 #[test]
+fn shared_stretcher_delivery_is_identical_across_platforms() {
+    use frontline_core::actors::{Actor, Actors};
+    use frontline_core::infantry::Infantry as Soldier;
+    use frontline_core::infantry_carry_owned::Event;
+    use frontline_core::infantry_controller::Task;
+    use frontline_core::infantry_cover::CoverWorld;
+    use frontline_core::infantry_travel_owned::Event as Movement;
+    use frontline_core::spatial::{SpatialIndex, DOOR_CELL, STRUCTURE_CELL, UNIT_CELL};
+    use frontline_core::squad::Squad;
+    use frontline_core::structure::Structure;
+    let terrain = Terrain::blank(128).unwrap();
+    let nav = PathPlanner::new(128).unwrap();
+    let structures = SpatialIndex::new(STRUCTURE_CELL).unwrap();
+    let doors = SpatialIndex::new(DOOR_CELL).unwrap();
+    let mut bytes = Vec::new();
+    for trial in 0..128 {
+        let mut entries = Vec::new();
+        for id in 1..=3 {
+            let mut s = Soldier::default();
+            s.identity.id = id;
+            s.identity.unit = "bearer".into();
+            s.identity.squad = 9;
+            s.motion.position = Vector3::new((id as f32 - 1.0) * 0.3, 0.0, 0.0);
+            s.motion.yaw = [0.0f32, 1.3, -2.5][trial % 3].into();
+            s.motion.last_direction = Vector3::new(0.3, 0.0, -0.9).normalize();
+            if id < 3 {
+                s.duty.kind = Task::Stretcher;
+                s.duty.entity = 3;
+                s.duty.partner = if id == 1 { 2 } else { 1 };
+                s.duty.front = (id == 1) == (trial % 3 != 0);
+                s.duty.phase = ((trial / if id == 1 { 1 } else { 4 }) % 4) as u8;
+                s.duty.timer = [-8.0, -0.1, 0.1, 0.35, 1.0][trial % 5];
+                s.links.home = if trial % 11 == 0 { 0 } else { 10 };
+                s.motion.path = if trial % 5 == 0 {
+                    vec![Vector3::X * 8.0]
+                } else {
+                    vec![]
+                };
+                s.orders.pending_path = trial % 7 == 0;
+                s.orders.goal = Vector3::X * 8.0;
+                if id == 2 && trial % 13 == 0 {
+                    s.vitals.life = Life::Dead;
+                }
+            } else {
+                s.vitals.life = if trial % 2 == 0 {
+                    Life::Dead
+                } else {
+                    Life::Downed
+                };
+                s.links.carried_by = match trial % 3 {
+                    0 => vec![],
+                    1 => vec![1],
+                    _ => vec![1, 2],
+                };
+                s.links.stretcher_claimed = true;
+                s.motion.position.x = [0.0, 1.79, 1.8, 1.81, 10.0][trial % 5];
+            }
+            entries.push(Actor::Soldier(Box::new(s)));
+        }
+        entries.push(Actor::Structure(Box::new(Structure {
+            id: 10,
+            kind: "medic_tent".into(),
+            position: Vector3::X * 15.0,
+            yaw: [0.0f32, 1.3, -2.5][trial % 3].into(),
+            ..Default::default()
+        })));
+        let mut a = Actors::from_entries(100, entries).unwrap();
+        let mut units = SpatialIndex::new(UNIT_CELL).unwrap();
+        a.rebuild_units(&mut units).unwrap();
+        let mut collision = CollisionWorld::default();
+        let mut squads = vec![Squad {
+            id: 9,
+            members: vec![1, 2, 3],
+            ..Default::default()
+        }];
+        let mut rng = SimulationRandom::new(91591 + trial as u64);
+        for step in 0..8 {
+            for id in 1..=2 {
+                let events = if a.soldier(id).unwrap().duty.kind == Task::Stretcher {
+                    a.advance_infantry_stretcher(
+                        id,
+                        0.1,
+                        10.0 + step as f64 * 0.1,
+                        None,
+                        &mut squads,
+                        &mut CoverWorld {
+                            terrain: &terrain,
+                            nav: &nav,
+                            collision: &mut collision,
+                            units: &units,
+                            structures: &structures,
+                            heat: &[],
+                            deck: &[],
+                        },
+                        &doors,
+                        &mut rng,
+                    )
+                    .unwrap()
+                } else {
+                    vec![]
+                };
+                bytes.extend_from_slice(&(events.len() as u32).to_le_bytes());
+                for e in events {
+                    match e {
+                        Event::Movement(id, movement) => {
+                            bytes.push(0);
+                            bytes.extend_from_slice(&id.to_le_bytes());
+                            match movement {
+                                Movement::Route(r) => {
+                                    bytes.push(0);
+                                    bytes.extend_from_slice(&r.revision.to_le_bytes());
+                                    bytes.extend_from_slice(&r.job.id.to_le_bytes());
+                                    point(&mut bytes, r.job.destination);
+                                    bytes.extend_from_slice(&r.job.care.to_le_bytes());
+                                }
+                                Movement::CancelPath => bytes.push(1),
+                                Movement::Stat(s) => {
+                                    bytes.push(7);
+                                    block(&mut bytes, s.as_bytes());
+                                }
+                                _ => panic!("unexpected stretcher movement event"),
+                            }
+                        }
+                        Event::Speech(id, cue) => {
+                            bytes.push(1);
+                            bytes.extend_from_slice(&id.to_le_bytes());
+                            bytes.push(cue as u8);
+                        }
+                        Event::IntoTent { soldier, squad } => {
+                            bytes.push(2);
+                            bytes.extend_from_slice(&soldier.to_le_bytes());
+                            bytes.extend_from_slice(&squad.to_le_bytes());
+                        }
+                    }
+                }
+                bytes.extend_from_slice(&rng.state().to_le_bytes());
+            }
+            if step % 2 == 1 {
+                block(&mut bytes, &a.checkpoint().unwrap());
+                block(&mut bytes, &squads[0].checkpoint().unwrap());
+            }
+            if step == 3 {
+                a = Actors::restore(&a.checkpoint().unwrap()).unwrap();
+                squads[0] = Squad::restore(&squads[0].checkpoint().unwrap()).unwrap();
+            }
+        }
+    }
+    golden("infantry_carry_owned", &bytes);
+}
+
+#[test]
 fn retained_infantry_care_is_identical_across_platforms() {
     use frontline_core::actors::{Actor, Actors};
     use frontline_core::infantry::Infantry as Soldier;

@@ -65,6 +65,7 @@ kind = "fixed"
 - Medical-task checks preserve rescue, dragging, treatment timing and escorts. Soldiers also safely abandon these tasks when a patient or rescuer has been removed.
 - Shared Rust medical duties preserve competing rescue claims, shelter choices, healing upgrades, recovered weapons and limping back after treatment.
 - Construction, stretcher and prisoner-escort checks preserve work priorities, paired carrying and solo takeover. These tasks also safely handle removed casualties, partners, tents, prisoners and work targets.
+- Shared Rust stretcher duties preserve paired pickup, a surviving bearer's solo takeover, cancellation and delivery into treatment.
 - Arrival checks preserve boarding, tunnels, ammunition collection and ordered throws. Invalid grenade types no longer interrupt troops or change command ownership, and removed destinations are handled safely.
 - Mounted-weapon checks preserve climbing towers, manning guns, mortar aim and anti-tank target selection. Removed mounts are safely released.
 - Action checks preserve cooking, throws, grenade handling, door kicks and weapon launches. Pending actions safely handle targets or grenades removed before completion.

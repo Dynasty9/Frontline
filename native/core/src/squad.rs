@@ -241,6 +241,16 @@ impl Squad {
         Ok(true)
     }
 
+    pub fn remove_member(&mut self, id: u32, actors: &mut Actors) -> Result<(), &'static str> {
+        let s = actors.soldier_mut(id).ok_or("missing squad member")?;
+        self.members.retain(|&member| member != id);
+        self.centroid_at = -1.0;
+        if s.identity.squad == self.id {
+            s.identity.squad = 0;
+        }
+        Ok(())
+    }
+
     pub fn valid(&self) -> bool {
         self.id != 0
             && (-1..=1).contains(&self.team)

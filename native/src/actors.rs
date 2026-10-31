@@ -805,6 +805,92 @@ impl ActorStateCore {
     }
 
     #[func]
+    fn advance_infantry_stretcher(
+        &mut self,
+        id: u32,
+        dt: f64,
+        now: f64,
+        gun: PackedFloat64Array,
+        squads: Array<Gd<crate::squad::SquadStateCore>>,
+        deck: PackedByteArray,
+        terrain: Gd<crate::terrain::TerrainCore>,
+        nav: Gd<crate::path_planner::PathPlannerCore>,
+        units: Gd<crate::spatial::SpatialIndexCore>,
+        structures: Gd<crate::spatial::SpatialIndexCore>,
+        doors: Gd<crate::spatial::SpatialIndexCore>,
+        mut collision: Gd<crate::collision_index::CollisionIndexCore>,
+        mut rng: Gd<crate::simulation_random::SimulationRandomCore>,
+    ) -> Array<Variant> {
+        use frontline_core::infantry_carry_owned::{Event, Speech};
+        use frontline_core::infantry_cover::CoverWorld;
+        let (Ok(gun), Some(mut state)) = (mounted_gun(&gun), read_squads(&squads)) else {
+            return Array::new();
+        };
+        let terrain = terrain.bind();
+        let nav = nav.bind();
+        let units = units.bind();
+        let structures = structures.bind();
+        let doors = doors.bind();
+        let (Some(terrain), Some(nav), Some(units), Some(structures), Some(doors)) = (
+            &terrain.core,
+            &nav.core,
+            &units.core,
+            &structures.core,
+            &doors.core,
+        ) else {
+            return Array::new();
+        };
+        let result = self.core.advance_infantry_stretcher(
+            id,
+            dt,
+            now,
+            gun,
+            &mut state,
+            &mut CoverWorld {
+                terrain,
+                nav,
+                units,
+                structures,
+                collision: &mut collision.bind_mut().core,
+                heat: &[],
+                deck: deck.as_slice(),
+            },
+            doors,
+            &mut rng.bind_mut().core,
+        );
+        match result {
+            Ok(events) => {
+                write_squads(squads, state);
+                let events: Array<Variant> = events
+                    .into_iter()
+                    .map(|e| {
+                        match e {
+                            Event::Movement(id, movement) => {
+                                varray![0, id as i64, &travel_events(vec![movement]).at(0)]
+                            }
+                            Event::Speech(id, cue) => varray![
+                                1,
+                                id as i64,
+                                match cue {
+                                    Speech::Lift => 0,
+                                    Speech::Solo => 1,
+                                    Speech::BearerDown => 2,
+                                }
+                            ],
+                            Event::IntoTent { soldier, squad } => {
+                                varray![2, soldier as i64, squad as i64]
+                            }
+                        }
+                        .to_variant()
+                    })
+                    .collect();
+                varray![&events]
+            }
+            Err(_) => Array::new(),
+        }
+    }
+
+    #[func]
     fn complete_infantry_action(
         &mut self,
         id: u32,

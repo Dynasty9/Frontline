@@ -1430,6 +1430,10 @@ Retained medical duties update shared rescue claims, shelter routes, dragging,
 healing and revival, so later soldiers immediately see a claimed or recovered
 patient. Squad rejoining, battle-record callbacks and live dispatch still need
 world-level integration.
+Retained stretcher duties preserve paired pickup, follower movement, solo takeover
+and delivery, including both bearers' return routes and the casualty's removal
+from his squad before treatment. Treatment completion and the full world loop
+still need integration.
 Construction, town income, capture and production transitions match the existing
 game; shared rule effects, destruction and the full building dispatcher still need
 migration before Rust owns the complete battle.
