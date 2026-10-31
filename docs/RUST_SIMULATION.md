@@ -69,7 +69,7 @@ graphics, network access or a wall clock.
 | Retained infantry squad orders | `frontline_core` | Move, halt, follow, attack, retreat, throw, stop and return-to-hold orders mutate the actor and return route/claim effects; player ownership checks and squad/world dispatch remain in Godot |
 | Retained infantry actions and casualties | `frontline_core` | Actor state connects pending actions, interrupted updates, dives, blast recovery, damage, down/death/revive transitions and hidden/corpse state; shared combat, squad and world effects still need the complete Rust world |
 | Complete fighting-position search | `frontline_core` | Candidate enumeration, reachability, protection, occupancy and final scoring run in one call; Godot supplies nearby structure and soldier records |
-| House-entry task phases | `frontline_core` | Stack/door/grenade/entry transitions, deadlines, cooking and room targets extracted with component checkpoints; Godot still owns movement callbacks and squad entry effects |
+| House-entry task phases | `frontline_core` | Connected approach movement and fire, stack/door/grenade/entry transitions, deadlines, cooking, room targets and buddy orders update shared state; the production dispatcher still runs in Godot |
 | House occupancy and breach selection | `frontline_core` | Floor containment, ordered openings, nearest walkable stack positions and competing squadmates extracted; Godot still supplies spatial candidates, squad contacts and decision timers |
 | Injury behavior and special tasks | Rust | `soldier.gd`, `soldier_brain.gd`, `combat.gd` |
 | Squads, tactics, commander and naval decisions | Rust | Squad, tactics, commander and naval scripts |

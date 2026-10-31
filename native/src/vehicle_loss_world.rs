@@ -98,7 +98,7 @@ enum Operation {
     Deferred(Gd<SupplyNetworkCore>, Vec<Report>),
     Bullet(Array<Variant>, Gd<SupplyNetworkCore>, Vec<Report>),
     Wounded(u32, WoundedInput, Gd<SupplyNetworkCore>, Vec<Report>),
-    Fighting(Array<Variant>, Gd<SupplyNetworkCore>, Vec<Report>),
+    Fighting(bool, Array<Variant>, Gd<SupplyNetworkCore>, Vec<Report>),
 }
 #[derive(GodotClass)]
 #[class(base=RefCounted, init)]
@@ -365,7 +365,41 @@ impl VehicleLossWorldCore {
             visibility,
             rng,
             config,
-            Operation::Fighting(input, network, reports),
+            Operation::Fighting(false, input, network, reports),
+        )
+    }
+    #[func]
+    fn advance_breach(
+        &mut self,
+        actors: Gd<ActorStateCore>,
+        geometry: Gd<WorldGeometryCore>,
+        units: Gd<SpatialIndexCore>,
+        nodes: Array<Gd<SquadStateCore>>,
+        fires: Gd<FiresCore>,
+        battle: Gd<BattleStatsCore>,
+        deferred: Gd<DeferredEffectsCore>,
+        visibility: Gd<VisibilityCore>,
+        rng: Gd<SimulationRandomCore>,
+        config: Array<Variant>,
+        input: Array<Variant>,
+        network: Gd<SupplyNetworkCore>,
+        impacts: Array<Variant>,
+    ) -> Array<Variant> {
+        let Some(reports) = read_impacts(&impacts) else {
+            return Array::new();
+        };
+        self.run(
+            actors,
+            geometry,
+            units,
+            nodes,
+            fires,
+            battle,
+            deferred,
+            visibility,
+            rng,
+            config,
+            Operation::Fighting(true, input, network, reports),
         )
     }
     #[func]
@@ -593,7 +627,7 @@ impl VehicleLossWorldCore {
             }
         };
         let result = match operation {
-            Operation::Fighting(input, mut network, mut impacts) => {
+            Operation::Fighting(breach, input, mut network, mut impacts) => {
                 let parse = || -> Option<_> {
                     if input.len() != 6 {
                         return None;
@@ -679,33 +713,48 @@ impl VehicleLossWorldCore {
                 let Some((id, dt, gun, mut chat, optics, profiles)) = parse() else {
                     return Array::new();
                 };
-                let result = context.advance_fighting(
-                    id,
-                    dt,
-                    gun,
-                    &mut chat,
-                    &|s| {
-                        let key = if s.identity.mounted_weapon.is_empty() {
-                            &s.identity.weapon
-                        } else {
-                            &s.identity.mounted_weapon
-                        };
-                        profiles.get(key).map(|p| FightingProfile {
-                            fire: p.0,
-                            bullet: p.1,
-                            interval: p.2,
-                            suppression: p.3,
-                            sound: &p.4,
-                            optics,
-                            piercing: p.5,
-                        })
-                    },
-                    &mut self.gunfire,
-                    &mut network.bind_mut().core,
-                    &mut impacts,
-                    &armor,
-                    &|v| vehicles[&v.id].hit,
-                );
+                let profile = |s: &frontline_core::infantry::Infantry| {
+                    let key = if s.identity.mounted_weapon.is_empty() {
+                        &s.identity.weapon
+                    } else {
+                        &s.identity.mounted_weapon
+                    };
+                    profiles.get(key).map(|p| FightingProfile {
+                        fire: p.0,
+                        bullet: p.1,
+                        interval: p.2,
+                        suppression: p.3,
+                        sound: &p.4,
+                        optics,
+                        piercing: p.5,
+                    })
+                };
+                let result = if breach {
+                    context.advance_breach(
+                        id,
+                        dt,
+                        gun,
+                        &profile,
+                        &mut self.gunfire,
+                        &mut network.bind_mut().core,
+                        &mut impacts,
+                        &armor,
+                        &|v| vehicles[&v.id].hit,
+                    )
+                } else {
+                    context.advance_fighting(
+                        id,
+                        dt,
+                        gun,
+                        &mut chat,
+                        &profile,
+                        &mut self.gunfire,
+                        &mut network.bind_mut().core,
+                        &mut impacts,
+                        &armor,
+                        &|v| vehicles[&v.id].hit,
+                    )
+                };
                 reports = Some(impacts);
                 chat_state = Some(PackedFloat64Array::from(chat.as_slice()));
                 result.map(|events| {
@@ -716,6 +765,9 @@ impl VehicleLossWorldCore {
                                 fighting::Event::Speech { id, text } => {
                                     Some(varray![*id, &GString::from(text.as_str())].to_variant())
                                 }
+                                fighting::Event::Movement { id, event: frontline_core::infantry_travel_owned::Event::BreachSpeech(cue) } => Some(
+                                    varray![*id, ["Breaching!", "Door!", "Kicking it in!"][*cue as usize]].to_variant()
+                                ),
                                 fighting::Event::World(world_combat::Event::InfantryHit {
                                     id,
                                     hit,

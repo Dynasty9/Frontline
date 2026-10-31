@@ -65,7 +65,7 @@ fn reload(id: u32, cue: Option<u8>, out: &mut Vec<Event>) {
         });
     }
 }
-fn valid_step(dt: f64, now: f64, gun: Option<MountedGun>) -> bool {
+pub(crate) fn valid_step(dt: f64, now: f64, gun: Option<MountedGun>) -> bool {
     dt.is_finite()
         && (0.0..=10.0).contains(&dt)
         && now.is_finite()
@@ -74,6 +74,39 @@ fn valid_step(dt: f64, now: f64, gun: Option<MountedGun>) -> bool {
 }
 
 impl Context<'_> {
+    pub(crate) fn move_infantry_world(
+        &mut self,
+        id: u32,
+        dt: f64,
+        speed: f64,
+        gun: Option<MountedGun>,
+    ) -> Result<(bool, Vec<Movement>), &'static str> {
+        let mut events = vec![];
+        let moving = self.actors.move_infantry(
+            id,
+            dt,
+            self.now,
+            speed,
+            gun,
+            self.squads,
+            &mut CoverWorld {
+                terrain: &self.geometry.terrain,
+                nav: &self.geometry.navigation.planner,
+                collision: &mut self.geometry.collision,
+                heat: self.fires.hot(),
+                deck: &self.geometry.deck,
+                units: self.units,
+                structures: &self.geometry.structures,
+            },
+            &self.geometry.doors,
+            self.rng,
+            &mut events,
+        )?;
+        for event in &events {
+            self.apply_infantry_movement(id, *event)?;
+        }
+        Ok((moving, events))
+    }
     pub(crate) fn apply_infantry_movement(
         &mut self,
         id: u32,
@@ -308,29 +341,8 @@ impl Context<'_> {
             pose.walking
         } else {
             let speed = self.actors.infantry_speed(id, self.now, self.squads);
-            let mut movement = vec![];
-            let moving = self.actors.move_infantry(
-                id,
-                dt,
-                self.now,
-                speed,
-                gun,
-                self.squads,
-                &mut CoverWorld {
-                    terrain: &self.geometry.terrain,
-                    nav: &self.geometry.navigation.planner,
-                    collision: &mut self.geometry.collision,
-                    heat: self.fires.hot(),
-                    deck: &self.geometry.deck,
-                    units: self.units,
-                    structures: &self.geometry.structures,
-                },
-                &self.geometry.doors,
-                self.rng,
-                &mut movement,
-            )?;
+            let (moving, movement) = self.move_infantry_world(id, dt, speed, gun)?;
             for event in movement {
-                self.apply_infantry_movement(id, event)?;
                 out.push(Event::Movement { id, event });
             }
             if moving {

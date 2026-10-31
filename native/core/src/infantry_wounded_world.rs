@@ -256,29 +256,8 @@ impl Context<'_> {
         s.motion.position.y = (y + (ground - y) * (1.0 - libm::exp(-input.dt * 8.0))) as f32;
         if s.orders.purpose == Goal::Crawl && s.is_moving() {
             s.activity = 11;
-            let mut movement = vec![];
-            self.actors.move_infantry(
-                id,
-                input.dt,
-                self.now,
-                0.55,
-                input.gun,
-                self.squads,
-                &mut CoverWorld {
-                    terrain: &self.geometry.terrain,
-                    nav: &self.geometry.navigation.planner,
-                    collision: &mut self.geometry.collision,
-                    heat: self.fires.hot(),
-                    deck: &self.geometry.deck,
-                    units: self.units,
-                    structures: &self.geometry.structures,
-                },
-                &self.geometry.doors,
-                self.rng,
-                &mut movement,
-            )?;
+            let (_, movement) = self.move_infantry_world(id, input.dt, 0.55, input.gun)?;
             for event in movement {
-                self.apply_infantry_movement(id, event)?;
                 out.push(Event::Movement { id, event });
             }
             return Ok(out);

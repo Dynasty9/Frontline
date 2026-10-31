@@ -57,6 +57,17 @@ mod infantry_wounded_world;
 #[path = "fixtures/infantry_fight_world.rs"]
 mod infantry_fight_world;
 
+#[path = "fixtures/infantry_breach_world.rs"]
+mod infantry_breach_world;
+
+#[test]
+fn breaching_infantry_world_is_identical_across_platforms() {
+    golden(
+        "infantry_breach_world",
+        &infantry_breach_world::transcript(),
+    );
+}
+
 #[test]
 fn fighting_infantry_world_is_identical_across_platforms() {
     golden("infantry_fight_world", &infantry_fight_world::transcript());
