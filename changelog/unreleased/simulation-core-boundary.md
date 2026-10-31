@@ -117,6 +117,7 @@ kind = "fixed"
 - Infantry firing checks preserve aim, covering-fire responses, morale, mounted guns, ammunition and reload timing as those decisions move into retained Rust state.
 - The full weapon sequence checks preserve ducking, shifting along cover, posture and mounted-gun alignment before firing.
 - Connected gun-crew checks preserve tower climbing, machine-gun fire, mortar orders, anti-tank aiming and defensive smoke as mounted combat moves into Rust.
+- Connected action checks preserve door openings, melee casualty credit, grenade handling and launch warnings against the shared Rust battlefield.
 - Cover-decision checks preserve squad reports, occupied cover, destroyed walls and when soldiers reassess their positions as state moves into Rust.
 - Battle-record checks preserve commander credit, rejoins, prisoners, unit history and private reports as the ledger moves into Rust for replay verification.
 - Artillery and gunship checks preserve fire missions, aiming delays, salvos, attack orbits and smoke responses between rocket launches.

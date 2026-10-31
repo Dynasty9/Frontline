@@ -30,6 +30,7 @@ pub mod hierarchy;
 pub mod infantry;
 pub mod infantry_action;
 pub mod infantry_action_owned;
+pub mod infantry_action_world;
 pub mod infantry_aim;
 pub mod infantry_arsenal;
 pub mod infantry_breach_world;

@@ -1420,6 +1420,8 @@ exceptions are compared against the complete existing weapon tick.
 Retained action completion updates shared grenade holders, melee casualties,
 opened doors, launched rounds and drone pilots. Rocket warnings preserve vehicle
 smoke and crew evasion in the same event and random order.
+Connected action completion applies door geometry, melee battle credit and
+interrupted/evasive routes immediately to the shared world.
 Retained gun crews connect tower climbing, mounted weapon claims, machine-gun
 fire, ordered and autonomous mortar rounds and anti-tank launches. Gun traverse,
 target visibility and vehicle smoke responses preserve the existing sequence.

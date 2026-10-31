@@ -2121,3 +2121,18 @@ angle regression covers the half-turn rounding case. The numeric transcript adds
 and random cursors. It requires actual shots, climbing, mortar rounds, anti-tank
 launches and defensive smoke. The production soldier dispatcher, standalone socket server
 and whole-match replay verification remain unfinished.
+
+## Connected action completion
+
+Pending infantry actions now apply their world effects to retained state. Door
+kicks remove closed-door query entries and update cover and collision before the
+next actor. Melee injuries record damage and casualty credit, cancel interrupted
+routes and emit hit feedback. Cooked throws retain their forced call and delay;
+rocket smoke responses submit evasive vehicle routes before the launch effect.
+
+Five core regressions cover door raycasts, melee credit, cooking, rejected input
+and exact restored continuation. A Godot comparison exercises all twelve action
+forms across 64 worlds and checks 384 geometry states, plus actors, squads,
+ordnance effects, routes, battle records and random cursors. It reuses the
+previously verified action implementation and numeric contract. Production tick
+dispatch, the standalone socket server and whole-match verifier remain unfinished.

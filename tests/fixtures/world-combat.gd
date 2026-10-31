@@ -39,6 +39,8 @@ class ShotWorld extends FireWorld:
 		elif event[0] == Fx.SOUND and event[1] == "build": work_events.append(["sound",event[2]])
 		elif event[0] == Fx.MORTAR: ordnance_fx.append(["mortar",event[1]])
 		elif event[0] == Fx.LAUNCH: ordnance_fx.append(["launch",event[1],event[2]])
+		elif event[0] == Fx.MELEE: ordnance_fx.append(["melee",event[1]])
+		elif event[0] == Fx.SOUND and event[1] == "door_kick": ordnance_fx.append(["door",event[2]])
 
 func _ready() -> void:
 	run(0)
@@ -65,6 +67,7 @@ func run(mode: int) -> void:
 	var breaching := mode == 4
 	var building := mode == 5
 	var mounting := mode == 6
+	var acting := mode == 7
 	MapDims.N = 64; MapDims.SIZE = 64.0; MapDims.HALF = 32.0; MapDims.BIOME = 64; Defs.MAP_HALF = 32.0
 	Nav.N = 64; Nav.H = 32.0; HNav.C = 16; HNav.NC = 4; HNav.NCC = 16; HNav._corner = HNav._corners()
 	TerrainMap.N = 64; TerrainMap.H = 32.0; TerrainMap.DN = 128
@@ -88,6 +91,7 @@ func run(mode: int) -> void:
 	var firing := preload("res://tests/fixtures/infantry-fire.gd").new()
 	var launch_helper := preload("res://tests/fixtures/vehicle-launch.gd").new()
 	var projectile_helper := preload("res://tests/fixtures/projectile-actor.gd").new()
+	var projectile: RefCounted = ClassDB.instantiate("ProjectileActorCore")
 	var weapons := []
 	for key: String in Defs.WEAPONS:
 		var weapon: Dictionary = Defs.WEAPONS[key]
@@ -251,6 +255,29 @@ func run(mode: int) -> void:
 			s.target = w.entities[4]; s.target.team = 1 - s.team; s.target.position = st.position + Vector3(0,0,12.0)
 			s.target.vis_mask = 3; s.vis_targets = [s.target]; s.last_shot_t = -10.0
 			w._rebuild_uhash(); w.combat.dirty_collision(enemy.eid); w.combat._sync_collision()
+		if acting:
+			var s: Soldier = w.entities[3]; var action := trial % 12
+			s.position = Vector3(14,0,-14); s.rotation.y = trial * 0.137; s.say_cd = 5.0
+			var target: Soldier = w.entities[4]; target.position = s.position + Vector3(1.0 if trial % 3 else 2.401,0,0)
+			target.hp = 1.0 if trial % 2 == 0 else 100.0
+			var enemy: Vehicle = w.entities[40]; enemy.position = s.position + Vector3(0,0,24); enemy.smoke_left = 2
+			var p := Projectile.new(); p.world = w; p.srv = true; p.eid = 90; p.ptype = "frag"
+			p.position = s.position + Vector3(0.7,0.05,0); p.fuse = 1.1; p.handler = s; p.thrower_id = target.eid
+			p.held_by = s if action in [5,6] else null
+			w.add_child(p); w._register(p); p.set_process(false); p.set_physics_process(false)
+			s.act_kind = ["cook","throw","throw","throw_in","kick","pickup","rethrow","door_kick","melee","launch","mortar","launch_drone"][action]
+			s.act_t = 0.1 if trial % 7 == 0 else 0.0
+			match action:
+				0: s.act_data = {}; s._queued_throw = {"pos":Vector3(20,0,0),"kind":"frag","fuse":1.8}
+				1,2,3: s.act_data = {"pos":Vector3(20,0.05,0),"kind":"smoke" if action == 2 else "frag","fuse":1.2}
+				4: s.act_data = {"g":p,"v":Vector3(8,3,-0.4)}
+				5: s.act_data = {"g":p}
+				6: s.act_data = {"g":p,"pos":Vector3(20,0,0)}
+				7: s.act_data = {"door":w.entities[104],"pos":w.entities[104].position}
+				8,11: s.act_data = {"target":target}
+				9: s.act_data = {"target":enemy}
+				10: s.act_data = {"pos":Vector3(20,0,0),"kind":"smoke" if (trial / 12) % 2 else "he"}
+			w._rebuild_uhash(); w.combat.dirty_collision(enemy.eid); w.combat._sync_collision()
 		var types := PackedByteArray(); var blocks := []; var vehicles := []; var men := []; var buildings := []
 		for e: Entity in w.entities.values():
 			if e is Soldier:
@@ -260,6 +287,8 @@ func run(mode: int) -> void:
 				vehicles.append([e.eid,e.display_name(),e.base(),e.is_heli(),e.is_auto(),int(e.vdef.get("crew",-1)),float(e.vdef.get("cost",0)),false,false,e.weight(),e._hull_size(),int(e.vdef.armor),float(e._toss_class()[0]),e.hit_factor(),float(e.vdef.get("gun_h",2.0)),e.vdef.has("art"),e.is_tracked()])
 			elif e is Drone:
 				types.append(4); blocks.append(actor_compare.drone_bytes(e,actors))
+			elif e is Projectile:
+				types.append(3); projectile_helper.start(e,projectile); blocks.append(projectile.checkpoint())
 			else:
 				assert(structure.load_state(StructureState.capture(e))); types.append(1); blocks.append(structure.checkpoint())
 		for kind in ["rifleman","crewman","r_crewman"]:
@@ -294,10 +323,13 @@ func run(mode: int) -> void:
 			if trial % 5: data.dmg = 180.0 if step == 0 else 1200.0
 			var input := [p,data.get("dmg"),data.radius,data.fling,data.size,data.at,0.3,data.top,null,1.0,1.0,InfantryState.entity_id(source),8,1]
 			var result: Array
-			if fighting or breaching or building or mounting:
+			if fighting or breaching or building or mounting or acting:
 				var s: Soldier = w.entities[3]
 				var fighting_input := [s.eid,dt,weapons,firing.gun_profile(s.mounted) if s.mounted else PackedFloat64Array(),chat,w.rules.has_upgrade(s.team,"optics")]
-				if mounting:
+				if acting:
+					fighting_input.append(1.0)
+					result = combat.advance_action(actors,geometry,units,qs,fires,ledger,deferred,visibility,random._backend,config,fighting_input,network,impacts)
+				elif mounting:
 					fighting_input.append(InfantryState.entity_ids(w.owned_structures))
 					result = combat.advance_mount(actors,geometry,units,qs,fires,ledger,deferred,visibility,random._backend,config,fighting_input,network,impacts)
 				elif building:
@@ -305,16 +337,19 @@ func run(mode: int) -> void:
 					fighting_input.append_array([float(s.udef.get("build",1.0)),duration])
 					result = combat.advance_build(actors,geometry,units,qs,fires,ledger,deferred,visibility,random._backend,config,fighting_input,network,impacts)
 				else: result = combat.advance_breach(actors,geometry,units,qs,fires,ledger,deferred,visibility,random._backend,config,fighting_input,network,impacts) if breaching else combat.advance_fighting(actors,geometry,units,qs,fires,ledger,deferred,visibility,random._backend,config,fighting_input,network,impacts)
-				assert(result.size() == (8 if building or mounting else 7),"fighting result %d/%d" % [trial,step])
+				assert(result.size() == (8 if building or mounting or acting else 7),"fighting result %d/%d" % [trial,step])
 				w.bullet_fx.clear(); w.spoken.clear(); w.work_events.clear(); w.ordnance_fx.clear()
-				if mounting: s._man_tick(dt)
+				if acting:
+					s._action_tick(dt)
+					if s.act_t <= 0.0: s._action_done()
+				elif mounting: s._man_tick(dt)
 				elif building: s._build_tick(dt)
 				elif breaching: SoldierBrain.breach_tick(s,dt)
 				elif s.task == "escort": s._escort_tick(dt)
 				else: s._fight_tick_work(dt)
 				assert(result[4] == w.bullet_fx,"fighting bullet effects %d/%d" % [trial,step])
 				assert(result[5] == w.spoken,"fighting speech %d/%d: %s / %s" % [trial,step,result[5],w.spoken])
-				if mounting:
+				if mounting or acting:
 					assert(result[7] == w.ordnance_fx,"mounted effects %d/%d: %s / %s" % [trial,step,result[7],w.ordnance_fx])
 					for event: Array in result[7]: seen[event[0]] = true
 					if s.act == Soldier.Act.CLIMB: seen.climb = true
@@ -354,7 +389,7 @@ func run(mode: int) -> void:
 			else:
 				result = combat.explode(actors,geometry,units,qs,fires,ledger,deferred,visibility,random._backend,config,input,network,impacts) if step < 2 else combat.flush_deferred(actors,geometry,units,qs,fires,ledger,deferred,visibility,random._backend,config,network,impacts)
 			var label := "blast %d/%d" % [trial,step]
-			assert(result.size() == (8 if building or mounting else 7 if fighting or breaching else 6 if wounded else 5 if shoot else 4),"combat result " + label)
+			assert(result.size() == (8 if building or mounting or acting else 7 if fighting or breaching else 6 if wounded else 5 if shoot else 4),"combat result " + label)
 			if mode == 0:
 				if step < 2: w.combat.explode(p,data)
 				else: w._run_deferred_effects()
@@ -398,7 +433,7 @@ func run(mode: int) -> void:
 			for retained in [actors,geometry,units,ledger,deferred,visibility,fires,network]: assert(retained.restore(retained.checkpoint()))
 			w.combat.finish_tick(); geometry.finish_tick(); check_geometry(w,geometry,label + " end")
 		w.free()
-	for key in (["mortar","launch","climb","shot","mortar_round","at_launch","veh_smoke"] if mounting else ["completed","restored","track","sound","fob_built","shot"] if building else ["breach_door_kick","breach_frag_in","room_entry"] if breaching else ["shot","reload","escort","idle","shift_along"] if fighting else ["killed","pistol_while_down","crawl_to_cover"] if wounded else ["penetration","through_hit","ricochet","vehicle_destroyed","drone_shot_down"] if shoot else ["vehicle_destroyed","drone_shot_down","door_kicked","cache_cook_off","at_hit"]): assert(seen.has(key),"unexercised combat " + key)
+	for key in (["mortar","launch","melee","door","kicked","throwback","door_kicked","veh_smoke"] if acting else ["mortar","launch","climb","shot","mortar_round","at_launch","veh_smoke"] if mounting else ["completed","restored","track","sound","fob_built","shot"] if building else ["breach_door_kick","breach_frag_in","room_entry"] if breaching else ["shot","reload","escort","idle","shift_along"] if fighting else ["killed","pistol_while_down","crawl_to_cover"] if wounded else ["penetration","through_hit","ricochet","vehicle_destroyed","drone_shot_down"] if shoot else ["vehicle_destroyed","drone_shot_down","door_kicked","cache_cook_off","at_hit"]): assert(seen.has(key),"unexercised combat " + key)
 	compare.free(); infantry.free(); birth.free(); actor_compare.free(); firing.free(); launch_helper.free(); projectile_helper.free()
-	print("MOUNT_WORLD passed states=" if mounting else "BUILD_WORLD passed states=" if building else "BREACH_WORLD passed states=" if breaching else "FIGHTING_WORLD passed states=" if fighting else "WOUNDED_WORLD passed states=" if wounded else "BULLET_WORLD passed states=" if shoot else "WORLD_COMBAT passed states=",checks)
+	print("ACTION_WORLD passed states=" if acting else "MOUNT_WORLD passed states=" if mounting else "BUILD_WORLD passed states=" if building else "BREACH_WORLD passed states=" if breaching else "FIGHTING_WORLD passed states=" if fighting else "WOUNDED_WORLD passed states=" if wounded else "BULLET_WORLD passed states=" if shoot else "WORLD_COMBAT passed states=",checks)
 	get_tree().quit()

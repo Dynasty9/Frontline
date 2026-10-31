@@ -474,6 +474,40 @@ impl VehicleLossWorldCore {
         )
     }
     #[func]
+    fn advance_action(
+        &mut self,
+        actors: Gd<ActorStateCore>,
+        geometry: Gd<WorldGeometryCore>,
+        units: Gd<SpatialIndexCore>,
+        nodes: Array<Gd<SquadStateCore>>,
+        fires: Gd<FiresCore>,
+        battle: Gd<BattleStatsCore>,
+        deferred: Gd<DeferredEffectsCore>,
+        visibility: Gd<VisibilityCore>,
+        rng: Gd<SimulationRandomCore>,
+        config: Array<Variant>,
+        input: Array<Variant>,
+        network: Gd<SupplyNetworkCore>,
+        impacts: Array<Variant>,
+    ) -> Array<Variant> {
+        let Some(reports) = read_impacts(&impacts) else {
+            return Array::new();
+        };
+        self.run(
+            actors,
+            geometry,
+            units,
+            nodes,
+            fires,
+            battle,
+            deferred,
+            visibility,
+            rng,
+            config,
+            Operation::Infantry(4, input, network, reports),
+        )
+    }
+    #[func]
     fn gunfire_reveals(&self) -> VarDictionary {
         let mut out = VarDictionary::new();
         for (id, time) in self.gunfire.reveals() {
@@ -711,7 +745,7 @@ impl VehicleLossWorldCore {
                     if input.len()
                         != match mode {
                             2 => 8,
-                            3 => 7,
+                            3 | 4 => 7,
                             _ => 6,
                         }
                     {
@@ -814,7 +848,30 @@ impl VehicleLossWorldCore {
                         piercing: p.5,
                     })
                 };
-                let result = if mode == 3 {
+                let defense = |v: &frontline_core::vehicle::Vehicle| {
+                    let p = &vehicles[&v.id];
+                    frontline_core::infantry_action_owned::Defense {
+                        smoke: frontline_core::vehicle_launch::SmokeProfile {
+                            armor: p.level,
+                            helicopter: p.helicopter,
+                            gun_height: p.gun_height,
+                        },
+                        crew: frontline_core::vehicle_brain::CrewProfile {
+                            base: &p.base,
+                            helicopter: p.helicopter,
+                            automatic: p.automatic,
+                            artillery: p.artillery,
+                            tracked: p.tracked,
+                            armor: p.level,
+                        },
+                    }
+                };
+                let result = if mode == 4 {
+                    let Some(warhead) = read::<f64>(&input, 6) else {
+                        return Array::new();
+                    };
+                    context.advance_infantry_action(id, warhead, &defense)
+                } else if mode == 3 {
                     let Some(owned) = read::<PackedInt64Array>(&input, 6) else {
                         return Array::new();
                     };
@@ -832,24 +889,7 @@ impl VehicleLossWorldCore {
                         gun,
                         &owned,
                         &profile,
-                        &|v| {
-                            let p = &vehicles[&v.id];
-                            frontline_core::infantry_action_owned::Defense {
-                                smoke: frontline_core::vehicle_launch::SmokeProfile {
-                                    armor: p.level,
-                                    helicopter: p.helicopter,
-                                    gun_height: p.gun_height,
-                                },
-                                crew: frontline_core::vehicle_brain::CrewProfile {
-                                    base: &p.base,
-                                    helicopter: p.helicopter,
-                                    automatic: p.automatic,
-                                    artillery: p.artillery,
-                                    tracked: p.tracked,
-                                    armor: p.level,
-                                },
-                            }
-                        },
+                        &defense,
                         &mut self.gunfire,
                         &mut network.bind_mut().core,
                         &mut impacts,
@@ -911,11 +951,13 @@ impl VehicleLossWorldCore {
                 reports = Some(impacts);
                 chat_state = Some(PackedFloat64Array::from(chat.as_slice()));
                 result.map(|events| {
-                    if mode == 3 {
+                    if mode == 3 || mode == 4 {
                         use frontline_core::infantry_action_owned::Event as Ordnance;
                         construction = Some(events.iter().filter_map(|e| match e {
                             fighting::Event::Ordnance(Ordnance::Mortar(p)) => Some(varray!["mortar", vector(*p)].to_variant()),
                             fighting::Event::Ordnance(Ordnance::Launch { position, direction }) => Some(varray!["launch", vector(*position), vector(*direction)].to_variant()),
+                            fighting::Event::Ordnance(Ordnance::Door(id)) => context.actors.structure(*id).map(|st| varray!["door", vector(st.position + frontline_core::vector::Vector3::Y)].to_variant()),
+                            fighting::Event::Ordnance(Ordnance::Melee { position, .. }) => Some(varray!["melee", vector(*position)].to_variant()),
                             _ => None,
                         }).collect());
                     }
