@@ -188,6 +188,8 @@ func _answer(cmd: String, req: Dictionary) -> Variant:
 			return {"t": w.time, "counters": w.stats, "report": w.battle.summary()}
 		"hash":
 			return {"t": w.time, "hash": _hash(w), "entities": w.entities.size()}
+		"infantry_checkpoints":
+			return _infantry_checkpoints(w)
 	return {"ok": false, "error": "unknown command: %s" % cmd}
 
 
@@ -371,3 +373,24 @@ func _reply(req: Dictionary, r: Dictionary) -> void:
 		r["id"] = req.id
 	if _peer:
 		_peer.put_data((JSON.stringify(_plain(r)) + "\n").to_utf8_buffer())
+
+
+func _infantry_checkpoints(w: World) -> Dictionary:
+	var core: RefCounted = ClassDB.instantiate("InfantryStateCore")
+	var restored: RefCounted = ClassDB.instantiate("InfantryStateCore")
+	var count := 0
+	var bytes := 0
+	var rng_before: int = w.rng.state
+	for s: Soldier in w.soldiers:
+		var values := InfantryState.capture(s)
+		if not core.load_state(values):
+			return {"ok": false, "error": "Invalid infantry state: %d (%s, task %s)" % [s.eid, s.utype, s.task]}
+		if core.values() != values:
+			return {"ok": false, "error": "Infantry import lost fields: %d" % s.eid}
+		var saved: PackedByteArray = core.checkpoint()
+		if not restored.restore(saved) or restored.values() != values or restored.checkpoint() != saved:
+			return {"ok": false, "error": "Infantry checkpoint lost fields: %d" % s.eid}
+		count += 1
+		bytes += saved.size()
+	assert(w.rng.state == rng_before, "Capturing state must not consume gameplay randomness")
+	return {"actors": count, "bytes": bytes}

@@ -16,7 +16,7 @@ struct InfantryControllerCore {
 fn read<T: FromGodot>(v: &Array<Variant>, n: usize) -> Option<T> {
     v.get(n)?.try_to().ok()
 }
-fn state(v: &Array<Variant>) -> Option<Controller> {
+pub(crate) fn state(v: &Array<Variant>) -> Option<Controller> {
     if v.len() != 5 {
         return None;
     }
@@ -29,7 +29,7 @@ fn state(v: &Array<Variant>) -> Option<Controller> {
     };
     s.valid().then_some(s)
 }
-fn encode(s: Controller) -> Array<Variant> {
+pub(crate) fn encode(s: Controller) -> Array<Variant> {
     varray![
         s.think_timer,
         s.scan_number as i64,

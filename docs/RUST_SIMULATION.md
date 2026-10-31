@@ -54,6 +54,7 @@ graphics, network access or a wall clock.
 | Infantry hidden duties and status | `frontline_core` | Hidden-duty deadlines, moving posture, status flags and drone-operator turns extracted; Godot still applies treatment, tunnel and prisoner callbacks |
 | Infantry downtime | `frontline_core` | Calm timers, idle choices, conversation partners, timed speech and laughter extracted with checkpoints and random cursor comparisons; Godot still applies the actor's speech effects |
 | Infantry scheduling | `frontline_core` | Activity/scan/think clocks, interruption priority, dive movement and order/duty gates extracted; Godot still dispatches task callbacks and the remaining decision loop |
+| Retained infantry state | `frontline_core` | A typed actor combines component state, stable links, pending tasks and orders in a validated checkpoint; the live world still owns its Godot soldiers |
 | Complete fighting-position search | `frontline_core` | Candidate enumeration, reachability, protection, occupancy and final scoring run in one call; Godot supplies nearby structure and soldier records |
 | House-entry task phases | `frontline_core` | Stack/door/grenade/entry transitions, deadlines, cooking and room targets extracted with component checkpoints; Godot still owns movement callbacks and squad entry effects |
 | House occupancy and breach selection | `frontline_core` | Floor containment, ordered openings, nearest walkable stack positions and competing squadmates extracted; Godot still supplies spatial candidates, squad contacts and decision timers |
@@ -243,7 +244,7 @@ Component checkpoint headers contain a four-byte component tag, a little-endian
 rules rather than silently continuing with changed arithmetic. The separate
 integer RNG stream remains unchanged.
 
-`native/core/tests/numeric_contract.rs` compares 6,259,237 committed bytes without
+`native/core/tests/numeric_contract.rs` compares 6,425,557 committed bytes without
 tolerances: fixed-tick flight state, support events and RNG cursors, carved water,
 craters, rotated box hits, cover anchors, spherical interpolation and infantry
 movement, infantry cover fire, postures, ammunition, burst recovery, vitals, aiming,
@@ -467,9 +468,29 @@ flag until Rust owns the actors.
 
 The shock fixture compares 92,160 reference steps, including mounted turning,
 blocked terrain, carried casualties and task interruption. The full default suite
-passes 140 tests; 219 core tests pass in debug and release.
+passes 142 tests; 225 core tests pass in debug and release.
 
 ## Infantry tasks and reflexes
+
+`Infantry` combines the retained components with identity, catalogue keys, queued
+paths, fighting positions, duty phases, casualty links, house entry, mounted-gun
+orders and contact memory. Its `FLIN` checkpoint preserves private pending work
+alongside observation fields; visual objects, animation and render timing stay
+outside it. Entity links are bounded stable IDs, and absent actors can be
+represented without retaining a Godot object. The enclosing match checkpoint
+still needs the world's queues, definitions, squads, geometry and random streams.
+
+Import and restore validate types, numeric versions, text, collection limits and
+all embedded component states before replacing a retained actor. Tests cover
+resuming controller draws, ordered links, maximum component blocks, truncation,
+nonfinite values and removed entities. The Godot import uses the same component
+conversions as the compatibility adapters. This import is for transferring state,
+not a new per-frame serialization path. Numeric CI adds 166,320 actor transcript
+bytes; actor checkpoints alone do not verify a complete battle.
+The real-battle checks also cover switching between 1,024 m and 2,048 m maps
+with the same seed. Biome reuse now checks both image and grid dimensions;
+previously a same-seed reload could install the previous map's smaller ground
+array into the larger world.
 
 `Controller` retains activity, scan, think and dive clocks in an `FLSC` checkpoint.
 Its update stages preserve dazed, dive, action and flinch priority before thinking

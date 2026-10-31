@@ -9,7 +9,7 @@ struct InfantrySupplyCore {
     core: SupplyTimers,
 }
 
-fn state(v: &PackedFloat64Array) -> Option<SupplyTimers> {
+pub(crate) fn state(v: &PackedFloat64Array) -> Option<SupplyTimers> {
     if v.len() != 2 {
         return None;
     }
@@ -19,7 +19,7 @@ fn state(v: &PackedFloat64Array) -> Option<SupplyTimers> {
     };
     s.valid().then_some(s)
 }
-fn encode(s: SupplyTimers) -> PackedFloat64Array {
+pub(crate) fn encode(s: SupplyTimers) -> PackedFloat64Array {
     [s.scavenge_at, s.search_at].as_slice().into()
 }
 fn bodies(rows: &Array<Variant>) -> Option<Vec<Body>> {

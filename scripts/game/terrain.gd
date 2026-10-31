@@ -149,7 +149,7 @@ func queue_cells(cells: PackedInt32Array) -> void:
 
 ## The last seed's biome and the mud it lays (a test loads battle after battle,
 ## mostly on one seed): the noise takes a good part of a second to make, and
-## it comes out the same every time for the same seed. Nothing writes to the
+## it comes out the same for the same seed and map dimensions. Nothing writes to the
 ## image; the mud is copied in and out.
 static var _biome_seed := -1
 static var _biome_last: Image = null
@@ -159,7 +159,7 @@ static var _mud_last := PackedByteArray()
 ## Same noise the ground shader paints with, so mud is where the mud looks like it is.
 func _make_biome() -> void:
 	var s := int(world.settings.get("seed", 1)) % 100000
-	if s == _biome_seed and _biome_last != null:
+	if s == _biome_seed and _biome_last != null and _biome_last.get_size() == Vector2i(MapDims.BIOME, MapDims.BIOME) and _mud_last.size() == N * N:
 		biome_img = _biome_last
 		base = _mud_last.duplicate()
 		return

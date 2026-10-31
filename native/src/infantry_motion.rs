@@ -15,7 +15,7 @@ struct InfantryMotionCore {
     core: InfantryMotion,
 }
 
-fn state(values: &[f64], path: PackedVector3Array, door: i64) -> Option<InfantryMotion> {
+pub(crate) fn state(values: &[f64], path: PackedVector3Array, door: i64) -> Option<InfantryMotion> {
     if values.len() != 22
         || values.iter().any(|v| !v.is_finite())
         || door < 0
@@ -120,7 +120,7 @@ fn doors(rows: Array<Variant>) -> Option<Vec<Door>> {
         .collect()
 }
 
-fn observation(s: &InfantryMotion) -> PackedFloat64Array {
+pub(crate) fn observation(s: &InfantryMotion) -> PackedFloat64Array {
     PackedFloat64Array::from(&[
         f64::from(s.position.x),
         f64::from(s.position.y),

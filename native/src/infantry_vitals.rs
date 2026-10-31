@@ -11,7 +11,7 @@ struct InfantryVitalsCore {
     core: InfantryVitals,
 }
 
-fn observation(s: InfantryVitals) -> PackedFloat64Array {
+pub(crate) fn observation(s: InfantryVitals) -> PackedFloat64Array {
     PackedFloat64Array::from(&[
         s.life as u8 as f64,
         f64::from(s.times_downed),
@@ -34,7 +34,7 @@ fn observation(s: InfantryVitals) -> PackedFloat64Array {
     ])
 }
 
-fn decode(v: &[f64]) -> Option<InfantryVitals> {
+pub(crate) fn decode(v: &[f64]) -> Option<InfantryVitals> {
     if v.len() != 18
         || v.iter().any(|x| !x.is_finite())
         || v[0].fract() != 0.0

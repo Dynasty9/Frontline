@@ -33,7 +33,7 @@ fn throw(row: &Array<Variant>) -> Option<Throw> {
     };
     t.valid().then_some(t)
 }
-fn state(values: &Array<Variant>) -> Option<ActionState> {
+pub(crate) fn state(values: &Array<Variant>) -> Option<ActionState> {
     if values.len() != 4 {
         return None;
     }

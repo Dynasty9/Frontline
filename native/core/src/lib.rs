@@ -18,6 +18,7 @@ pub mod grenade_reaction;
 pub mod grenade_task;
 pub mod guided;
 pub mod hierarchy;
+pub mod infantry;
 pub mod infantry_action;
 pub mod infantry_aim;
 pub mod infantry_arsenal;

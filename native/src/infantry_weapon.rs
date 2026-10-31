@@ -9,7 +9,7 @@ struct InfantryWeaponCore {
     core: InfantryWeapon,
 }
 
-fn observation(s: &InfantryWeapon) -> PackedFloat64Array {
+pub(crate) fn observation(s: &InfantryWeapon) -> PackedFloat64Array {
     PackedFloat64Array::from(&[
         s.peek_timer,
         s.peek_from,
@@ -35,7 +35,7 @@ fn integer(value: f64) -> bool {
     value.is_finite() && value.fract() == 0.0 && value.abs() <= 1_000_000.0
 }
 
-fn decode_state(values: &[f64]) -> Option<InfantryWeapon> {
+pub(crate) fn decode_state(values: &[f64]) -> Option<InfantryWeapon> {
     if values.len() != 14
         || values.iter().any(|v| !v.is_finite())
         || !values[4..8].iter().chain(&values[13..14]).all(|v| flag(*v))

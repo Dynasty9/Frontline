@@ -36,6 +36,48 @@ fn block(out: &mut Vec<u8>, bytes: &[u8]) {
 }
 
 #[test]
+fn retained_infantry_is_identical_across_platforms() {
+    use frontline_core::infantry::{Identity, Infantry};
+    use frontline_core::infantry_action::{Action, Round, Throw};
+    use frontline_core::infantry_idle::Line;
+    let mut bytes = Vec::new();
+    let mut rng = SimulationRandom::new(1973);
+    let mut s = Infantry {
+        identity: Identity {
+            id: 73,
+            unit: "rifleman".into(),
+            name: "André".into(),
+            ..Default::default()
+        },
+        ..Default::default()
+    };
+    s.motion.path = vec![Vector3::new(1.2, -3.4, 5.6), Vector3::new(12.3, 4.5, -6.7)];
+    s.idle.lines.push_back(Line {
+        at: 14.2,
+        text: "Ready?".into(),
+    });
+    s.links.carried_by = vec![102, 101];
+    s.grenade_memory.seen = vec![42, 37];
+    s.action.current = Action::Cook;
+    s.action.remaining = 0.1;
+    s.action.queued_throw = Some(Throw {
+        position: Vector3::new(-4.3, 0.0, 1.7),
+        round: Round::Frag,
+        fuse: 1.8,
+    });
+    for _ in 0..120 {
+        s.controller
+            .advance(1.0 / 30.0, &mut s.shock, &mut s.action, &mut rng)
+            .unwrap();
+        let saved = s.checkpoint().unwrap();
+        block(&mut bytes, &saved);
+        bytes.extend_from_slice(&rng.state().to_le_bytes());
+        s = Infantry::restore(&saved).unwrap();
+    }
+    golden("infantry", &bytes);
+}
+
+#[test]
 fn infantry_control_is_identical_across_platforms() {
     use frontline_core::infantry_control::{
         self as control, Control, Hidden, HiddenReason, Status,

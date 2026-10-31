@@ -14,7 +14,7 @@ struct InfantryArsenalCore {
     core: InfantryArsenal,
 }
 
-fn state(v: &Array<Variant>) -> Option<InfantryArsenal> {
+pub(crate) fn state(v: &Array<Variant>) -> Option<InfantryArsenal> {
     if v.len() != 7 {
         return None;
     }
@@ -29,7 +29,7 @@ fn state(v: &Array<Variant>) -> Option<InfantryArsenal> {
     };
     s.valid().then_some(s)
 }
-fn encode(s: InfantryArsenal) -> Array<Variant> {
+pub(crate) fn encode(s: InfantryArsenal) -> Array<Variant> {
     varray![
         s.rockets,
         s.rocket_ready,

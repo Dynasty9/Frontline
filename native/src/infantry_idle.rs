@@ -12,7 +12,7 @@ struct InfantryIdleCore {
 fn read<T: FromGodot>(v: &Array<Variant>, n: usize) -> Option<T> {
     v.get(n)?.try_to().ok()
 }
-fn state(v: &Array<Variant>) -> Option<Idle> {
+pub(crate) fn state(v: &Array<Variant>) -> Option<Idle> {
     if v.len() != 7 {
         return None;
     }
@@ -44,7 +44,7 @@ fn state(v: &Array<Variant>) -> Option<Idle> {
     };
     s.valid().then_some(s)
 }
-fn encode(s: &Idle) -> Array<Variant> {
+pub(crate) fn encode(s: &Idle) -> Array<Variant> {
     let mut lines = Array::<Variant>::new();
     for line in &s.lines {
         lines.push(&varray![line.at, &GString::from(&line.text)].to_variant());

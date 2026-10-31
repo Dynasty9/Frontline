@@ -10,7 +10,7 @@ struct InfantryShockCore {
     core: InfantryShock,
 }
 
-fn decode(v: &[f64]) -> Option<InfantryShock> {
+pub(crate) fn decode(v: &[f64]) -> Option<InfantryShock> {
     if v.len() != 6 || v.iter().any(|x| !x.is_finite()) || (v[0] != 0.0 && v[0] != 1.0) {
         return None;
     }
@@ -22,7 +22,7 @@ fn decode(v: &[f64]) -> Option<InfantryShock> {
     };
     state.valid().then_some(state)
 }
-fn observation(s: InfantryShock) -> PackedFloat64Array {
+pub(crate) fn observation(s: InfantryShock) -> PackedFloat64Array {
     PackedFloat64Array::from(&[
         f64::from(s.flinging),
         f64::from(s.velocity.x),

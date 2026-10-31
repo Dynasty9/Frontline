@@ -1310,6 +1310,10 @@ Target validation also safely rejects a unit that has already been removed.
 Scheduling checks preserve interruption priority, dive movement, scanning and
 thinking deadlines, plus order and busy-duty gates. Dazed, diving and acting men
 retain the same pause in their ordinary tasks.
+Infantry state can also be imported into a retained Rust actor, including pending
+paths, timed actions, conversations, casualty links and mounted-weapon orders.
+Its checkpoint validates the complete soldier state; whole-battle saves still
+need the remaining world state and simulation ownership to move into Rust.
 The Rust core now allocates authoritative entity IDs and retains their lifecycle
 order. Retired IDs stay retired, and restored lifecycle checkpoints continue the
 same allocation sequence; clients use the server's IDs for their visual objects.
