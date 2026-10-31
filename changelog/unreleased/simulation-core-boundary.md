@@ -79,6 +79,7 @@ kind = "fixed"
 - Rust prisoner-rule checks preserve rescue, guard claims, private intelligence reports and which facts each prisoner has already revealed through saved-state resumes.
 - Rust fire-escape checks preserve soldiers leaving burning cover, their committed duties, retreat routes and warnings.
 - Rust navigation checks preserve overlapping walls, bridge crossings, fire avoidance and route repairs through saved-state resumes.
+- Rust destruction checks preserve tree cover, overlapping camouflage nets, door access and the timing of collapsed walls stopping shots.
 - Mission guards safely leave prisoners in place when no nearby prison is available, and prisoners recover safely after their captor is removed.
 - Scheduling checks preserve interruptions, dives, scanning and thinking deadlines, and which orders a busy soldier can accept.
 - Authoritative entity IDs now come from Rust, preserving creation order and keeping removed units' IDs from being reused as the server migration continues.

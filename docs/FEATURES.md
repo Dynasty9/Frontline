@@ -1448,6 +1448,10 @@ Retained navigation owns each structure's overlapping obstacle cells together wi
 the infantry and vehicle route hierarchies. Fire counts, bridge decks, terrain
 costs and obstacle removal preserve incremental repair order and pending routes
 through checkpoints. The shared world dispatcher still needs to call these edits.
+Retained structure removal now connects terrain, navigation, spatial membership
+and doors. Collision bodies remain until tick end, preserving shielding for later
+shots in the same update. Tree cover changes immediately; other cover repairs keep
+their queue order. Pending collision removals survive geometry checkpoints.
 Retained captors update capture credit, prison selection and escort movement;
 arrival applies detention and the guard's return order before the next actor.
 Removed prisons are handled safely. Retained prisoner rules now handle guard

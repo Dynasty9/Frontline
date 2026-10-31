@@ -41,6 +41,10 @@ pub struct CollisionWorld {
 }
 
 impl CollisionWorld {
+    pub fn contains(&self, body: i64) -> bool {
+        self.bodies.contains_key(&body)
+    }
+
     pub fn shape(&self, body: i64, shape: i32) -> Option<BoxShape> {
         self.bodies
             .get(&body)?

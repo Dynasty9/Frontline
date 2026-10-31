@@ -56,6 +56,7 @@ fn water_bridges_and_vehicle_rim_survive_obstacle_removal() {
     let mut deck = vec![0; 32 * 32];
     let center = terrain.index(Vector3::ZERO);
     deck[center] = 1;
+    deck[center - 1] = 2;
     let mut nav = NavigationScene::new(&terrain, &deck, 16).unwrap();
     assert_eq!(nav.planner.cell_state(center), Some([0, 0, 0]));
     assert_eq!(nav.planner.cell_state(center - 1), Some([3, 3, 0]));

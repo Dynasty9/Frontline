@@ -25,7 +25,7 @@ func _ready() -> void:
 			t.base[i] = [0, 1, 2, 3, 7, 8][rng.randi() % 6] if i % 7 == 0 else 0
 			t.trench[i] = int(i % 41 == 0); t.crater[i] = int(i % 31 == 0)
 			t.woods[i] = i % 4 if i % 13 == 0 else 0; t.rubble[i] = int(i % 23 == 0)
-			w.water.deck[i] = int(i % 5 == 0)
+			w.water.deck[i] = 2 if i % 17 == 0 else int(i % 5 == 0)
 			w.nav.terrain_changed(i)
 		assert(ground.configure(MapDims.N, layers(t), t.dh))
 		assert(core.configure(ground, w.water.deck, HNav.C))
@@ -56,7 +56,7 @@ func _ready() -> void:
 					for edit in 6:
 						var index := rng.randi_range(0, t.base.size() - 1)
 						t.base[index] = [0, 1, 2, 3, 7, 8][rng.randi() % 6]
-						w.water.deck[index] = 1 - w.water.deck[index]
+						w.water.deck[index] = (w.water.deck[index] + 1) % 3
 						indices.append(index)
 					assert(ground.replace_ground(layers(t), t.dh))
 					for index in indices:

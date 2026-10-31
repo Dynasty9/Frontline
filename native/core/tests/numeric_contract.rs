@@ -36,6 +36,155 @@ fn block(out: &mut Vec<u8>, bytes: &[u8]) {
 }
 
 #[test]
+fn world_geometry_retirement_is_identical_across_platforms() {
+    use frontline_core::actors::{Actor, Actors};
+    use frontline_core::structure::{Part, Structure};
+    use frontline_core::world_geometry::WorldGeometry;
+    let kinds = [
+        "house_wall",
+        "tree",
+        "camo_net",
+        "trench",
+        "bunker",
+        "rubble",
+        "floor",
+        "wire",
+        "mines",
+        "tank_trap",
+        "tunnel",
+        "helipad",
+        "roof",
+        "low_wall",
+        "sandbags",
+        "barracks",
+    ];
+    let mut bytes = vec![];
+    let mut rng = SimulationRandom::new(591773);
+    for trial in 0..4 {
+        let mut g = WorldGeometry::new(
+            Terrain::blank(32).unwrap(),
+            vec![],
+            if trial % 2 == 0 { 16 } else { 32 },
+        )
+        .unwrap();
+        let mut walls = vec![];
+        for id in 1..=16 {
+            let mut st = Structure {
+                id,
+                kind: kinds[(id as usize + trial) % kinds.len()].into(),
+                built: id % 9 != 0,
+                position: Vector3::new(
+                    rng.randf_range(-13.0, 13.0),
+                    0.0,
+                    rng.randf_range(-13.0, 13.0),
+                ),
+                yaw: f64::from(rng.randf_range(-3.14, 3.14)),
+                size: Vector3::new(rng.randf_range(2.0, 8.0), 2.0, rng.randf_range(1.0, 5.0)),
+                door_closed: id % 3 == 0,
+                ..Default::default()
+            };
+            st.footprint = [st.size.x * 0.5, st.size.z * 0.5];
+            st.radius = f64::from(glam::Vec2::from_array(st.footprint).length());
+            for part in 0..3 {
+                st.parts.push(Part {
+                    position: Vector3::new(part as f32 * 0.3, 0.5, -(part as f32) * 0.7),
+                    size: Vector3::new(
+                        st.size.x,
+                        [0.099, 1.0, 1.7, 2.0][(part + id as usize) % 4],
+                        st.size.z,
+                    ),
+                    yaw: part as f64 * 0.37,
+                    infantry: ((id as usize + part) % 4) as u8,
+                    vehicle: ((id as usize + 3 * part) % 4) as u8,
+                    cover: part % 3 != 2,
+                    collision: true,
+                    door: false,
+                });
+            }
+            g.structures.insert(id, st.position, st.radius).unwrap();
+            st.hash_cells = g
+                .structures
+                .cells()
+                .filter(|(_, ids)| ids.contains(&id))
+                .map(|((x, z), _)| [x, z])
+                .collect();
+            g.sync_structure(&st, true).unwrap();
+            if st.kind == "tree" {
+                for i in g.terrain.tree(st.position, 1) {
+                    g.navigation
+                        .terrain_changed(i as usize, &g.terrain, &[])
+                        .unwrap();
+                }
+            }
+            g.navigation
+                .add_structure(&mut st, &g.terrain, &[])
+                .unwrap();
+            if st.door_closed {
+                g.doors.insert_door(id, st.position).unwrap();
+            }
+            assert!(g.collision.replace(
+                i64::from(id),
+                &[BoxShape {
+                    body: i64::from(id),
+                    shape: 0,
+                    center: st.position + Vector3::Y,
+                    basis: Mat3::IDENTITY,
+                    half: st.size * 0.5
+                }]
+            ));
+            walls.push(st);
+        }
+        g.terrain.queue_rect([-16.0, -16.0, 16.0, 16.0]);
+        g.tick_cover(137).unwrap();
+        assert!(g.navigation.finalize(2));
+        block(&mut bytes, &g.checkpoint());
+        if trial % 2 == 1 {
+            walls.reverse();
+        }
+        for step in 0..16 {
+            let mut st = walls.remove(0);
+            st.gone = true;
+            let actors = Actors::from_entries(
+                1000,
+                walls
+                    .iter()
+                    .cloned()
+                    .map(|s| Actor::Structure(Box::new(s)))
+                    .collect(),
+            )
+            .unwrap();
+            g.retire_structure(&mut st, &actors).unwrap();
+            block(&mut bytes, &st.checkpoint().unwrap());
+            let hit = g.collision.ray(
+                st.position + Vector3::new(0.0, 1.0, -12.0),
+                st.position + Vector3::new(0.0, 1.0, 12.0),
+                &[],
+            );
+            bytes.extend_from_slice(&hit.map_or(0, |h| h.body).to_le_bytes());
+            let changed = g.tick_cover(33).unwrap();
+            block(
+                &mut bytes,
+                &changed
+                    .iter()
+                    .flat_map(|i| i.to_le_bytes())
+                    .collect::<Vec<_>>(),
+            );
+            if step % 4 == 0 {
+                block(&mut bytes, &g.checkpoint());
+                g = WorldGeometry::restore(&g.checkpoint()).unwrap();
+            }
+            if step % 3 == 2 {
+                g.finish_tick();
+            }
+        }
+        g.finish_tick();
+        g.tick_cover(10000).unwrap();
+        block(&mut bytes, &g.checkpoint());
+    }
+    golden("world_geometry", &bytes);
+}
+
+#[test]
 fn shared_navigation_is_identical_across_platforms() {
     use frontline_core::navigation_scene::NavigationScene;
     use frontline_core::structure::{Part, Structure};

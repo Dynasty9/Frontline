@@ -24,6 +24,8 @@ different byte rather than dumping the fixture.
 
 - `navigation_scene.bin`: overlapping obstacle ownership, terrain and bridge edits,
   fire costs, pending hierarchy repairs and route continuation across resumes.
+- `world_geometry.bin`: shared structure retirement, cover geometry, tree and net
+  changes, pending cover repairs and collision removal at the tick boundary.
 
 Rust 1.94.0, glam 0.32.1 with `libm`, and libm 0.2.16 with `force-soft-floats`
 define this contract. No fast-math is enabled. Existing component resume tests

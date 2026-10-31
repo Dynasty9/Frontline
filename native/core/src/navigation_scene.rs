@@ -73,7 +73,7 @@ impl NavigationScene {
             kinds[0] = kinds[0].max(obstacle.infantry);
             kinds[1] = kinds[1].max(obstacle.vehicle);
         }
-        if terrain.layers[BASE][index] == WATER && deck.get(index).copied().unwrap_or(0) == 0 {
+        if terrain.layers[BASE][index] == WATER && deck.get(index) != Some(&1) {
             kinds = [3, 3];
         }
         let heat = self.planner.cell_state(index).unwrap()[2];

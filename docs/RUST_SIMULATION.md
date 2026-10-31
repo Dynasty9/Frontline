@@ -1811,3 +1811,23 @@ checkpoint continuation. A Godot reference fixture compares 392 complete navigat
 states and 1,536 routes, including edits while repairs are pending. Numeric CI adds
 3,365,734 exact bytes. The shared world dispatcher must still connect structure
 destruction, terrain changes and the full fire loop to these retained operations.
+
+## Structure geometry retirement
+
+Retained world geometry connects terrain, navigation, collision and the structure
+and doorway indexes. Once an actor is removed, its navigation contributions and
+spatial membership disappear immediately. Trees update surrounding ground costs;
+camouflage net removal preserves overlapping nets. Other cover changes retain
+their queued cell order. The collision body remains for later shots in the current
+tick, matching Godot's deferred removal, then disappears at the tick boundary.
+Geometry checkpoints include that pending removal list.
+
+Five core regressions cover timing, overlapping ground effects, rejected inputs
+and resumed removals. A Godot fixture compares 438 geometry states through actual
+despawns, cover repairs and tick boundaries, with structure state and collision
+queries. Ground cells, repair queues, navigation, collision, indexes and other
+checkpoint fields compare exactly. Only stored double-precision sine/cosine cover
+coefficients allow a 1e-15 Godot comparison tolerance: platform trig and pinned libm
+can differ in their last bits. Rust numeric CI compares 1,474,524 exact bytes with
+no tolerance. The full fire/combat and world dispatchers still need to invoke the
+combined retirement operation.

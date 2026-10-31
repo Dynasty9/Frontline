@@ -50,6 +50,7 @@ mod terrain;
 mod vehicle;
 mod visibility;
 mod water_raster;
+mod world_geometry;
 
 struct FrontlineSimulation;
 #[gdextension]
