@@ -45,6 +45,7 @@ graphics, network access or a wall clock.
 | Drone hearing and avoidance | `frontline_core` | Ordered hearing memory, warning choices and dive chances extracted with component checkpoints; Godot applies speech and dive effects |
 | Infantry special attacks | `frontline_core` | Rocket and melee priority, mortar fire admission, drone launch decisions, ammunition and cooldowns extracted; Godot supplies contacts, mortar/drone target queries and applies actions |
 | Infantry supply decisions | `frontline_core` | Scavenging, nearest-body/depot choices, search timers and refill arithmetic extracted; Godot supplies spatial candidates and applies shared-store transfers, reloads and movement |
+| Infantry medical tasks | `frontline_core` | Rescue/healing stages, treatment deadlines, safe-anchor selection, dragging poses and escort movement extracted; Godot still owns patient links, movement requests and recovery effects |
 | Complete fighting-position search | `frontline_core` | Candidate enumeration, reachability, protection, occupancy and final scoring run in one call; Godot supplies nearby structure and soldier records |
 | House-entry task phases | `frontline_core` | Stack/door/grenade/entry transitions, deadlines, cooking and room targets extracted with component checkpoints; Godot still owns movement callbacks and squad entry effects |
 | House occupancy and breach selection | `frontline_core` | Floor containment, ordered openings, nearest walkable stack positions and competing squadmates extracted; Godot still supplies spatial candidates, squad contacts and decision timers |
@@ -211,14 +212,14 @@ Component checkpoint headers contain a four-byte component tag, a little-endian
 rules rather than silently continuing with changed arithmetic. The separate
 integer RNG stream remains unchanged.
 
-`native/core/tests/numeric_contract.rs` compares 1,712,330 committed bytes without
+`native/core/tests/numeric_contract.rs` compares 2,035,914 committed bytes without
 tolerances: fixed-tick flight state, support events and RNG cursors, carved water,
 craters, rotated box hits, cover anchors, spherical interpolation and infantry
 movement, infantry cover fire, postures, ammunition, burst recovery, vitals, aiming,
 combat poses, bullet resolution, blast exposure, knockback recovery and wounded
 infantry schedules, grenade reflexes, grenade task movement and house-entry
 phases, building selection, automatic grenade attacks, incoming shells and drone
-reactions, special attacks, infantry supply, complete cover searches and stationary
+reactions, special attacks, infantry supply, medical tasks, complete cover searches and stationary
 infantry movement. CI runs
 the same fixtures in debug and release on Windows x64, Linux
 x64, Linux ARM64 and macOS ARM64. A mismatch reports the first different byte.
@@ -435,9 +436,23 @@ flag until Rust owns the actors.
 
 The shock fixture compares 92,160 reference steps, including mounted turning,
 blocked terrain, carried casualties and task interruption. The full default suite
-passes 129 tests; 166 core tests pass in debug and release.
+passes 130 tests; 172 core tests pass in debug and release.
 
 ## Infantry tasks and reflexes
+
+`Treatment` retains rescue/healing stages and treatment deadlines. Rescue keeps
+the approach range, route refresh, casualty claim, drag and treatment sequence;
+healing keeps medicine modifiers and the shorter treatment for a living patient.
+Escort movement preserves side selection, blocked-ground animation and mounted
+turn limits. Dragging and safe-anchor selection use the same movement and
+navigation core as other infantry tasks. Godot still applies patient links,
+movement requests, speech and recovery effects in their original order.
+
+An 18,432-step reference fixture compares these tasks, including RNG-consuming
+callbacks, pending paths, invalid patients and checkpoint resumes. Four removed-
+entity cases also verify that rescue, healing and escort release stale references
+before casting them. Numeric CI adds 323,584 exact medical transcript bytes.
+The adapter remains test-only pending authoritative actor ownership.
 
 `InfantryMotion::stationary` applies spacing, refreshes the ground cache, settles
 onto terrain/bridge decks, aligns the soldier with cover and turns toward cover

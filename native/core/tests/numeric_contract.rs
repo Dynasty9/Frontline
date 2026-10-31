@@ -36,6 +36,102 @@ fn block(out: &mut Vec<u8>, bytes: &[u8]) {
 }
 
 #[test]
+fn infantry_medicine_is_identical_across_platforms() {
+    use frontline_core::infantry_medicine::{
+        self as medicine, EscortInput, Heal, Rescue, Treatment,
+    };
+    let mut bytes = Vec::new();
+    let mut nav = PathPlanner::new(64).unwrap();
+    let kinds: Vec<_> = (0..4096).map(|i| if i % 17 == 0 { 3 } else { 0 }).collect();
+    assert!(nav.load_cells(&kinds, &[0; 4096], &[0; 4096]));
+    for case in 0..=255 {
+        let mut treatment = Treatment {
+            phase: case % 3,
+            timer: f64::from(case) / 17.0,
+        };
+        let duration = medicine::heal_time(0.5 + f64::from(case) / 31.0, case % 2 == 0).unwrap();
+        let mut position = Vector3::new(f32::from(case % 17) * 0.13, 0.7, -0.3);
+        let patient = Vector3::new(0.6, 0.0, f32::from(case % 7) * 0.21);
+        let mut yaw = f64::from(case) * 0.17;
+        for tick in 0..16 {
+            let decision = treatment
+                .rescue(
+                    case % 5 != 0,
+                    position,
+                    patient,
+                    tick % 2 == 0,
+                    Vector3::ZERO,
+                )
+                .unwrap();
+            bytes.push(match decision {
+                Rescue::Cancel => 0,
+                Rescue::Approach { repath: false } => 1,
+                Rescue::Approach { repath: true } => 2,
+                Rescue::Claim => 3,
+                Rescue::Drag => 4,
+                Rescue::Treat => 5,
+            });
+            bytes.push(u8::from(
+                treatment.finish_drag(tick % 3 == 0, duration).unwrap(),
+            ));
+            let decision = treatment
+                .heal(case % 7 != 0, position, patient, tick % 2 == 0, duration)
+                .unwrap();
+            bytes.push(match decision {
+                Heal::Cancel => 0,
+                Heal::Approach { repath: false } => 1,
+                Heal::Approach { repath: true } => 2,
+                Heal::Start => 3,
+                Heal::Treat => 4,
+            });
+            bytes.push(u8::from(treatment.treat(1.0 / 30.0).unwrap()));
+            let pose = medicine::escort(
+                EscortInput {
+                    position,
+                    yaw,
+                    rescuer: patient,
+                    threat: Vector3::new(0.13, 0.0, -0.71),
+                    dt: 1.0 / 30.0,
+                    mount: (case % 3 == 0).then_some((patient, 0.3)),
+                },
+                &nav,
+            )
+            .unwrap();
+            position = pose.position;
+            yaw = pose.yaw;
+            point(&mut bytes, position);
+            bytes.extend_from_slice(&yaw.to_le_bytes());
+            bytes.extend_from_slice(&[u8::from(pose.walking), u8::from(pose.backwards)]);
+            let dragged = medicine::drag_pose(
+                position,
+                yaw,
+                Vector3::new(0.27, 0.0, 0.4),
+                1.0 / 30.0,
+                None,
+            )
+            .unwrap();
+            point(&mut bytes, dragged.patient);
+            bytes.extend_from_slice(&dragged.yaw.to_le_bytes());
+            point(
+                &mut bytes,
+                medicine::safe_anchor(
+                    patient,
+                    Vector3::Z,
+                    (case % 2 == 0).then_some(Vector3::Z * 19.0),
+                    &nav,
+                )
+                .unwrap(),
+            );
+            block(&mut bytes, &treatment.checkpoint());
+            if tick == 7 {
+                treatment = Treatment::restore(&treatment.checkpoint()).unwrap();
+            }
+        }
+    }
+    golden("infantry_medicine", &bytes);
+}
+
+#[test]
 fn stationary_infantry_is_identical_across_platforms() {
     use frontline_core::infantry_motion::{separation, Neighbor, StationaryInput};
     let mut bytes = Vec::new();

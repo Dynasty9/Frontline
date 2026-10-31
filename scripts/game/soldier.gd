@@ -1433,15 +1433,20 @@ func _motion_values() -> PackedFloat64Array:
 		_last_dir.x, _last_dir.y, _last_dir.z, _bar_t, int(_bar), _gy_t, _gy, door_wait, _door_t, int(door_kick)])
 
 
+func _mount_turn() -> PackedFloat64Array:
+	if is_instance_valid(mounted) and not mounted.gone and mounted.skind in ["mg_nest", "hmg_nest", "mortar_pit", "at_post"]:
+		var p := mounted.mount_pos()
+		return PackedFloat64Array([p.x, p.y, p.z, deg_to_rad(float({"mg_nest": 55.0, "hmg_nest": 35.0, "mortar_pit": 12.0, "at_post": 20.0}[mounted.skind]))])
+	return PackedFloat64Array()
+
+
 func _native_move_tick(dt: float, speed: float) -> bool:
 	if _motion_core == null:
 		_motion_core = ClassDB.instantiate("InfantryMotionCore")
 	var values := _motion_values()
-	var mount_point := Vector3.ZERO
-	var turn_rate := 0.0
-	if mounted != null and not mounted.gone and mounted.skind in ["mg_nest", "hmg_nest", "mortar_pit", "at_post"]:
-		mount_point = mounted.mount_pos()
-		turn_rate = deg_to_rad(float({"mg_nest": 55.0, "hmg_nest": 35.0, "mortar_pit": 12.0, "at_post": 20.0}[mounted.skind]))
+	var mount := _mount_turn()
+	var mount_point := Vector3.ZERO if mount.is_empty() else Vector3(mount[0], mount[1], mount[2])
+	var turn_rate := 0.0 if mount.is_empty() else mount[3]
 	var waiting_door: int = door_st.eid if is_instance_valid(door_st) and not door_st.gone else 0
 	var candidates := []
 	if door_wait <= 0.0 and world.time > _door_t:
@@ -1680,10 +1685,7 @@ func _stationary_tick(dt: float) -> void:
 	if world.settings.get("rust_infantry", false) and ClassDB.class_exists("InfantryMotionCore") and world.nav._planner and world.terrain._native:
 		if _motion_core == null:
 			_motion_core = ClassDB.instantiate("InfantryMotionCore")
-		var mount := PackedFloat64Array()
-		if mounted != null and not mounted.gone and mounted.skind in ["mg_nest", "hmg_nest", "mortar_pit", "at_post"]:
-			var p := mounted.mount_pos()
-			mount = PackedFloat64Array([p.x, p.y, p.z, deg_to_rad(float({"mg_nest": 55.0, "hmg_nest": 35.0, "mortar_pit": 12.0, "at_post": 20.0}[mounted.skind]))])
+		var mount := _mount_turn()
 		var input := [dt, world.time, base_y, _sep, posture == Post.PRONE, at_cover, cover_pos, cover_n,
 			cover_type, last_shot_t, peek_up, _target_valid(target), _sector, mount]
 		var deck: PackedByteArray = world.water.deck if world.water else PackedByteArray()
@@ -3834,56 +3836,130 @@ func start_rescue(w: Soldier) -> void:
 	world.stat("rescue")
 
 
+var _medicine: RefCounted
+
+
+func _native_medicine() -> bool:
+	return world.settings.get("rust_infantry", false) and ClassDB.class_exists("InfantryMedicineCore")
+
+
+func _medicine_core() -> RefCounted:
+	if _medicine == null:
+		_medicine = ClassDB.instantiate("InfantryMedicineCore")
+	return _medicine
+
+
+func _medicine_state() -> PackedFloat64Array:
+	return PackedFloat64Array([task_phase, task_t])
+
+
+func _read_medicine(state: PackedFloat64Array) -> void:
+	task_phase = int(state[0])
+	task_t = state[1]
+
+
 func _rescue_tick(dt: float) -> void:
-	var w := task_ent as Soldier
-	if w == null or w.gone or w.life != Life.DOWNED or (w.dragged_by != null and w.dragged_by != self) or not w.carried_by.is_empty():
+	var w: Soldier = task_ent as Soldier if is_instance_valid(task_ent) else null
+	if not is_instance_valid(w) or w.gone or w.life != Life.DOWNED or (w.dragged_by != null and w.dragged_by != self) or not w.carried_by.is_empty():
 		_end_rescue()
+		return
+	if _native_medicine():
+		var result: PackedFloat64Array = _medicine_core().rescue(_medicine_state(), true, position, w.position, is_moving(), goal)
+		assert(result.size() == 4, "Invalid rescue decision")
+		_read_medicine(result)
+		match int(result[2]):
+			1: _rescue_approach(w, dt, result[3] != 0.0)
+			2: _rescue_claim(w)
+			3: _rescue_drag(w, dt)
+			4: _rescue_treat(w, dt)
 		return
 	match task_phase:
 		0:
-			posture = Post.STAND
 			if Defs.flat(w.position - position).length() < 1.2:
 				task_phase = 1
-				w.dragged_by = self
-				task_pos = _safe_spot(w)
-				world.stat("drag")
-				go_to(task_pos, "task", 0)
-				if path.is_empty():
-					task_phase = 2
-					task_t = heal_time()
-				say(_pick(["I've got you!", "Hang on, I've got you!", "Grab on!", "Moving him!"]), true)
-				return
-			if not is_moving() or w.position.distance_to(goal) > 1.5:
-				go_to(w.position, "task", 2)
-			_move_tick(dt, 4.8)
-			act = Act.RUN
-		1:
-			backwards = true
-			posture = Post.STAND
-			var moved := _move_tick(dt, 1.15)
-			var f := -_last_dir
-			_face(f, dt, 12.0)
-			w.position = position + Defs.dir_of(rotation.y) * 1.05
-			w.position.y = 0.0
-			w.rotation.y = rotation.y
-			act = Act.DRAG
-			if not moved:
-				task_phase = 2
-				task_t = heal_time()
-				backwards = false
-		2:
-			act = Act.HEAL
-			posture = Post.CROUCH
-			w.dragged_by = null
-			_face(Defs.flat(w.position - position), dt, 8.0)
-			task_t -= dt
-			if task_t <= 0.0:
-				w.revive()
-				world.stat("patched_up")
-				_end_rescue()
+				_rescue_claim(w)
+			else:
+				_rescue_approach(w, dt, not is_moving() or w.position.distance_to(goal) > 1.5)
+		1: _rescue_drag(w, dt)
+		2: _rescue_treat(w, dt)
+
+
+func _rescue_approach(w: Soldier, dt: float, repath: bool) -> void:
+	posture = Post.STAND
+	if repath:
+		go_to(w.position, "task", 2)
+	_move_tick(dt, 4.8)
+	act = Act.RUN
+
+
+func _rescue_claim(w: Soldier) -> void:
+	posture = Post.STAND
+	w.dragged_by = self
+	task_pos = _safe_spot(w)
+	world.stat("drag")
+	go_to(task_pos, "task", 0)
+	if path.is_empty():
+		_start_treatment()
+	say(_pick(["I've got you!", "Hang on, I've got you!", "Grab on!", "Moving him!"]), true)
+
+
+func _start_treatment() -> void:
+	task_phase = 2
+	var duration := heal_time()
+	if _native_medicine():
+		var result: PackedFloat64Array = _medicine_core().finish_drag(_medicine_state(), false, duration)
+		assert(result.size() == 3, "Invalid rescue treatment")
+		_read_medicine(result)
+	else:
+		task_t = duration
+
+
+func _rescue_drag(w: Soldier, dt: float) -> void:
+	backwards = true
+	posture = Post.STAND
+	var moved := _move_tick(dt, 1.15)
+	if _native_medicine():
+		var pose: Array = _medicine_core().drag_pose(position, rotation.y, _last_dir, dt, _mount_turn())
+		assert(pose.size() == 2, "Invalid dragging pose")
+		rotation.y = float(pose[0])
+		w.position = pose[1]
+	else:
+		_face(-_last_dir, dt, 12.0)
+		w.position = position + Defs.dir_of(rotation.y) * 1.05
+		w.position.y = 0.0
+	w.rotation.y = rotation.y
+	act = Act.DRAG
+	if not moved:
+		_start_treatment()
+		backwards = false
+
+
+func _treatment_tick(dt: float) -> bool:
+	if _native_medicine():
+		var result: PackedFloat64Array = _medicine_core().treat(_medicine_state(), dt)
+		assert(result.size() == 3, "Invalid treatment timer")
+		_read_medicine(result)
+		return result[2] != 0.0
+	task_t -= dt
+	return task_t <= 0.0
+
+
+func _rescue_treat(w: Soldier, dt: float) -> void:
+	act = Act.HEAL
+	posture = Post.CROUCH
+	w.dragged_by = null
+	_face(Defs.flat(w.position - position), dt, 8.0)
+	if _treatment_tick(dt):
+		w.revive()
+		world.stat("patched_up")
+		_end_rescue()
 
 
 func heal_time() -> float:
+	if _native_medicine():
+		var result: PackedFloat64Array = _medicine_core().duration(float(udef.get("heal", 1.0)), world.rules.has_upgrade(team, "medicine"))
+		assert(result.size() == 1, "Invalid medical training")
+		return result[0]
 	var t := 8.0 / float(udef.get("heal", 1.0))
 	if world.rules.has_upgrade(team, "medicine"):
 		t *= 0.67
@@ -3891,8 +3967,8 @@ func heal_time() -> float:
 
 
 func _end_rescue() -> void:
-	var w := task_ent as Soldier
-	if w:
+	var w: Soldier = task_ent as Soldier if is_instance_valid(task_ent) else null
+	if is_instance_valid(w):
 		if w.dragged_by == self:
 			w.dragged_by = null
 		if w.rescue_claimed == self:
@@ -3907,12 +3983,19 @@ func _end_rescue() -> void:
 func _safe_spot(w: Soldier) -> Vector3:
 	var threats := _threats()
 	var away := -_threat_dir(threats)
-	var anchor := w.position + away * 11.0
-	if squad and squad.members.size() > 0:
-		var c := squad.order_pos
-		if Defs.flat(c - w.position).length() < 22.0 and Defs.flat(c - w.position).dot(away) > 0.0:
-			anchor = c
-	anchor = world.nav.nearest_walkable(anchor)
+	var anchor: Vector3
+	if _native_medicine() and world.nav._planner:
+		var orders := PackedVector3Array([squad.order_pos]) if squad and squad.members.size() > 0 else PackedVector3Array()
+		var result: PackedVector3Array = _medicine_core().safe_anchor(w.position, away, orders, world.nav._planner)
+		assert(result.size() == 1, "Invalid casualty shelter anchor")
+		anchor = result[0]
+	else:
+		anchor = w.position + away * 11.0
+		if squad and squad.members.size() > 0:
+			var c := squad.order_pos
+			if Defs.flat(c - w.position).length() < 22.0 and Defs.flat(c - w.position).dot(away) > 0.0:
+				anchor = c
+		anchor = world.nav.nearest_walkable(anchor)
 	var res: Dictionary = world.combat.find_cover(self, anchor, 8.0, threats, true)
 	if not res.is_empty():
 		return res.pos
@@ -3928,15 +4011,25 @@ func start_escort(w: Soldier, rescuer: Soldier) -> void:
 
 
 func _escort_tick(dt: float) -> void:
-	var r := task_ent2 as Soldier
-	var w := task_ent as Soldier
-	if r == null or r.gone or r.life != Life.ALIVE or r.task != "rescue" or r.task_phase == 2 or w == null or w.gone:
+	var r: Soldier = task_ent2 as Soldier if is_instance_valid(task_ent2) else null
+	var w: Soldier = task_ent as Soldier if is_instance_valid(task_ent) else null
+	if not is_instance_valid(r) or r.gone or r.life != Life.ALIVE or r.task != "rescue" or r.task_phase == 2 or not is_instance_valid(w) or w.gone:
 		task = ""
 		backwards = false
 		at_cover = false
 		next_cover_eval = 0.0
 		return
 	var thr := _threat_dir(_threats())
+	if _native_medicine() and world.nav._planner:
+		var result: Array = _medicine_core().escort(position, rotation.y, r.position, thr, dt, _mount_turn(), world.nav._planner)
+		assert(result.size() == 4, "Invalid escort movement")
+		if result[0] != position:
+			position = result[0]
+		backwards = result[2]
+		rotation.y = float(result[1])
+		_weapon_tick(dt, false, "escort")
+		act = Act.SHOOT if world.time - last_shot_t < 0.35 else (Act.WALK if result[3] else Act.IDLE)
+		return
 	var side := thr.cross(Vector3.UP).normalized()
 	if side.dot(Defs.flat(position - r.position)) < 0.0:
 		side = -side
@@ -3964,9 +4057,27 @@ func start_heal(w: Soldier) -> void:
 
 
 func _heal_tick(dt: float) -> void:
-	var w := task_ent as Soldier
-	if w == null or w.gone or w.life != Life.ALIVE or w.hp >= w.max_hp:
+	var w: Soldier = task_ent as Soldier if is_instance_valid(task_ent) else null
+	if not is_instance_valid(w) or w.gone or w.life != Life.ALIVE or w.hp >= w.max_hp:
 		task = ""
+		return
+	if _native_medicine():
+		var state := _medicine_state()
+		var duration := 0.0
+		if task_phase == 0 and Defs.flat(w.position - position).length() < 1.4:
+			task_phase = 1
+			duration = heal_time()
+		var result: PackedFloat64Array = _medicine_core().heal(state, true, position, w.position, is_moving(), duration)
+		assert(result.size() == 4, "Invalid healing decision")
+		_read_medicine(result)
+		match int(result[2]):
+			1:
+				if result[3] != 0.0:
+					go_to(w.position, "task", 0)
+				_move_tick(dt, _speed())
+				_choose_act(true)
+			2: stop_moving()
+			3: _heal_treat(w, dt)
 		return
 	if task_phase == 0:
 		if Defs.flat(w.position - position).length() < 1.4:
@@ -3979,11 +4090,14 @@ func _heal_tick(dt: float) -> void:
 			_move_tick(dt, _speed())
 			_choose_act(true)
 		return
+	_heal_treat(w, dt)
+
+
+func _heal_treat(w: Soldier, dt: float) -> void:
 	act = Act.HEAL
 	posture = Post.CROUCH
 	_face(Defs.flat(w.position - position), dt, 8.0)
-	task_t -= dt
-	if task_t <= 0.0:
+	if _treatment_tick(dt):
 		w.hp = w.max_hp
 		task = ""
 

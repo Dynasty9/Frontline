@@ -19,6 +19,7 @@ pub mod guided;
 pub mod hierarchy;
 pub mod infantry_aim;
 pub mod infantry_arsenal;
+pub mod infantry_medicine;
 pub mod infantry_motion;
 pub mod infantry_pose;
 pub mod infantry_shock;
