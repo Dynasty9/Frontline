@@ -17,6 +17,8 @@ different byte rather than dumping the fixture.
   connected navigation/cover/collision registration, repairs and destruction.
 - `structure_toss.bin`: blast-driven car/crate movement, landing rejection, spin,
   actor/random state and shared geometry across resumed tosses and cover repairs.
+- `world_formation.bin`: compact/wide group placement, terrain/anchor cover choices,
+  first-choice ties and occupancy against retained, resumed world geometry.
 - `geometry.bin`: water/carved terrain, craters, rotated geometry and ray hits,
   spherical interpolation, cover anchors and infantry movement checkpoints.
 - `infantry_weapon.bin`: cover-fire decisions, postures, ammunition and burst

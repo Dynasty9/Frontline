@@ -1470,6 +1470,10 @@ Blast-tossed cars and crates now update retained cover, navigation, collision an
 spatial membership together. Their final position is authoritative immediately;
 the flight velocity and spin remain presentation events for Godot. Blocked landings,
 map margins and the original random-draw order are preserved.
+Formation placement now queries the retained Rust world directly. A squad shares
+one ground candidate search and reuses anchor approach and occupancy checks;
+cover scores, first-choice ties and the rule against splitting across a wall stay
+the same. The live squad-order dispatcher remains in Godot during migration.
 Retained captors update capture credit, prison selection and escort movement;
 arrival applies detention and the guard's return order before the next actor.
 Removed prisons are handled safely. Retained prisoner rules now handle guard

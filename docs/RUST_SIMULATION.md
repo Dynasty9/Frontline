@@ -1915,3 +1915,18 @@ fields remain exact. The existing double cover-coefficient tolerance is unchange
 Rust continuation and the 11,562,980-byte numeric transcript use no tolerance.
 The full combat dispatcher still needs to call this operation between destruction
 and fire ignition; the live game still uses the Godot toss method.
+
+## Shared formation placement
+
+Formation placement now reads retained terrain, navigation, structures and cover
+anchors in one Rust operation. Ground candidates are prepared once per group;
+anchor approaches and occupancy counts are reused across its slots. Structure
+bucket order, scoring subtraction order, strict ties, map-edge clipping, wall-click
+adjustment and compact/wide spacing preserve the existing placement rules.
+
+Four regressions cover compact spacing, keeping formations on one side of a wall,
+cover choice, invalid inputs and resumed geometry. The Godot reference compares
+1,536 formations with 8,064 positions and their complete cover metadata, using
+unfinished structures, queued terrain repairs, map edges and both formation widths.
+The comparison is exact. Numeric CI adds 126,976 exact placement bytes. Squad
+movement and crew-return dispatch still need to consume these retained placements.

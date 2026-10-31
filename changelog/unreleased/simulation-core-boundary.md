@@ -21,6 +21,7 @@ kind = "fixed"
 - Rust collision-construction checks preserve buildings' cover through construction, movement and opened doors without depending on rendered scene objects.
 - Connected Rust creation checks preserve every structure kind's health, supplies, obstacles and fighting positions, including unfinished buildings and later destruction.
 - Rust blast-toss checks preserve how cars and crates carry their cover and obstacles to a new position, including blocked landings and random continuation.
+- Shared Rust formation checks preserve squad spacing and cover choices while reusing ground searches and keeping soldiers together on the same side of obstacles.
 - Grenade, smoke, rocket, bomb and shell flight now use the shared simulation core, preserving flight behavior, pickup, kicking and rethrowing.
 - Rust grenade-duty checks preserve approach, smothering, pickup, kicking and diving away while keeping the soldier and shared projectile state together.
 - Rust action-completion checks preserve cooked throws, shared grenade handling, melee casualties, door kicks and weapon launches, including vehicle smoke and crew reactions.

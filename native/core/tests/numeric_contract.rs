@@ -37,6 +37,77 @@ mod fires_world;
 mod structure_birth_world;
 
 #[test]
+fn shared_formation_placements_are_identical_across_platforms() {
+    use frontline_core::actors::Actors;
+    use frontline_core::structure::Structure;
+    use frontline_core::world_geometry::WorldGeometry;
+    let mut bytes = vec![];
+    for trial in 0..32 {
+        let mut g = WorldGeometry::new(Terrain::blank(32).unwrap(), vec![], 16).unwrap();
+        let mut actors = Actors::default();
+        for (i, kind) in [
+            "hesco",
+            "trench",
+            "crates",
+            "house_wall",
+            "low_wall",
+            "car",
+            "rubble",
+            "bunker",
+        ]
+        .iter()
+        .enumerate()
+        {
+            g.spawn_structure(
+                &mut actors,
+                Structure {
+                    kind: (*kind).into(),
+                    variant: trial % 3,
+                    size: Vector3::new(5.3, 1.7, 3.1),
+                    position: Vector3::new(
+                        (i % 4) as f32 * 5.13 - 8.0,
+                        0.0,
+                        (i / 4) as f32 * 6.79 - 4.0,
+                    ),
+                    yaw: trial as f64 * 0.317,
+                    ..Default::default()
+                },
+                None,
+            )
+            .unwrap();
+        }
+        g.tick_cover(if trial % 3 == 0 { 73 } else { 10000 })
+            .unwrap();
+        for step in 0..32 {
+            let angle = step as f64 * 0.271;
+            let face = Vector3::new(-libm::sin(angle) as f32, 0.0, -libm::cos(angle) as f32);
+            let slots = g
+                .formation_slots(
+                    &actors,
+                    Vector3::new((step % 7) as f32 - 3.17, 0.0, (step % 5) as f32 - 2.13),
+                    face,
+                    step % 12,
+                    step % 2 == 0,
+                )
+                .unwrap();
+            bytes.extend_from_slice(&(slots.len() as u32).to_le_bytes());
+            for s in slots {
+                point(&mut bytes, s.position);
+                bytes.extend_from_slice(&s.cover.to_le_bytes());
+                let (id, ai) = s.anchor.unwrap_or((0, 0));
+                bytes.extend_from_slice(&id.to_le_bytes());
+                bytes.extend_from_slice(&(ai as u32).to_le_bytes());
+            }
+            if step % 4 == 3 {
+                g = WorldGeometry::restore(&g.checkpoint()).unwrap();
+                actors = Actors::restore(&actors.checkpoint().unwrap()).unwrap();
+            }
+        }
+    }
+    golden("world_formation", &bytes);
+}
+
+#[test]
 fn shared_structure_tosses_are_identical_across_platforms() {
     use frontline_core::actors::Actors;
     use frontline_core::structure::Structure;

@@ -11,6 +11,58 @@ pub(crate) struct WorldGeometryCore {
 #[godot_api]
 impl WorldGeometryCore {
     #[func]
+    fn formation_slots(
+        &self,
+        actors: Gd<ActorStateCore>,
+        center: Vector3,
+        face: Vector3,
+        count: i32,
+        wide: bool,
+    ) -> Array<Variant> {
+        let Some(g) = &self.core else {
+            return Array::new();
+        };
+        if count < 0 {
+            return Array::new();
+        }
+        let actors = actors.bind();
+        let Ok(slots) = g.formation_slots(
+            &actors.core,
+            crate::point(center),
+            crate::point(face),
+            count as usize,
+            wide,
+        ) else {
+            return Array::new();
+        };
+        slots
+            .into_iter()
+            .map(|slot| {
+                let mut info = Dictionary::<Variant, Variant>::new();
+                if let Some((id, ai)) = slot.anchor {
+                    let st = actors.core.structure(id).unwrap();
+                    let a = st.anchors[ai];
+                    let material = if a.kind == frontline_core::cover::AnchorKind::Stack {
+                        st.cover_material().saturating_sub(1)
+                    } else {
+                        st.cover_material()
+                    };
+                    info.set("n", Vector3::new(a.normal.x, a.normal.y, a.normal.z));
+                    info.set("h", a.height);
+                    info.set("k", a.kind as i32);
+                    info.set("mat", material as i32);
+                    info.set("eid", id);
+                }
+                varray![
+                    Vector3::new(slot.position.x, slot.position.y, slot.position.z),
+                    slot.cover,
+                    &info
+                ]
+                .to_variant()
+            })
+            .collect()
+    }
+    #[func]
     fn toss_structure(
         &mut self,
         mut actors: Gd<ActorStateCore>,
