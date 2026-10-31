@@ -42,6 +42,14 @@ mod squad_movement_world;
 #[path = "fixtures/vehicle_loss_world.rs"]
 mod vehicle_loss_world;
 
+#[path = "fixtures/supply_network_world.rs"]
+mod supply_network_world;
+
+#[test]
+fn supply_network_is_identical_across_platforms() {
+    golden("supply_network", &supply_network_world::transcript());
+}
+
 #[test]
 fn connected_vehicle_destruction_is_identical_across_platforms() {
     golden("vehicle_loss_world", &vehicle_loss_world::transcript());

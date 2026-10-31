@@ -47,6 +47,7 @@ mod spatial;
 mod squad;
 mod squad_movement;
 mod structure;
+mod supply_network;
 mod support_flight;
 mod terrain;
 mod vehicle;

@@ -1437,6 +1437,9 @@ crew survival and births, battle credit, supply-truck replacement timers and
 recursive sling-cargo damage. Crew return orders and refunds happen before wreck
 creation, shared geometry registration and ignition. The live game still uses
 the Godot dispatcher until the complete Rust world loop is ready.
+Retained supply routes preserve FOB completion order, town deliveries, wrecked
+base handling and obstacle clearing. Road changes update shared terrain and
+navigation before the next route is calculated, including after saved-state resumes.
 Retained medical duties update shared rescue claims, shelter routes, dragging,
 healing and revival, so later soldiers immediately see a claimed or recovered
 patient. Squad rejoining, battle-record callbacks and live dispatch still need

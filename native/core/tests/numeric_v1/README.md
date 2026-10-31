@@ -39,6 +39,8 @@ different byte rather than dumping the fixture.
   survival/births and wreck placement, with resumed actor state and random draws.
 - `vehicle_loss_world.bin`: connected damage, passenger credit, crew return, truck
   loss, burning wreck creation and shared world state across resumed fatal hits.
+- `supply_network.bin`: FOB chains, town routes, obstacle clearing, painted roads
+  and shared geometry before and after collision retirement across resumed rebuilds.
 
 - `navigation_scene.bin`: overlapping obstacle ownership, terrain and bridge edits,
   fire costs, pending hierarchy repairs and route continuation across resumes.

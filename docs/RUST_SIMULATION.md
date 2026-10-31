@@ -1987,3 +1987,21 @@ The numeric transcript adds 2,522,922 exact bytes for connected destruction and
 resumed nonfatal/fatal hits. The live dispatcher and whole-battle replay verifier
 are still unfinished; this is a connected operation in the engine-independent
 world, not a claim that the standalone server is ready.
+
+## Connected supply routes
+
+Supply-network state retains depot identities, town order, FOB completion order,
+current routes and previously painted roads. Rebuilding chooses parent FOBs in
+completion order and clears neutral obstacles before calculating the next route.
+Towns choose a working FOB, while wrecked FOBs retain their place in the supply
+chain. Changed roads update terrain and navigation immediately; old road cells
+remain as in the existing game. Removed obstacles stop blocking navigation now
+and leave collision at the tick boundary.
+
+Five regressions cover chain order, obstacle retirement, wrecked bases, missing
+depots, route cycles, corrupt checkpoints and resumed rebuilds. A Godot reference
+checks 256 rebuilds and 512 complete geometry states, exact structure/route state,
+ordered removals and unchanged random cursors. An exact numeric transcript checks
+both sides of collision retirement and repeated checkpoint continuations. The
+combat dispatcher must invoke this when a FOB is wrecked; live rule dispatch,
+the standalone socket server and whole-battle verification remain unfinished.
