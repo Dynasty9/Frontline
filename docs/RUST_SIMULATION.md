@@ -28,6 +28,7 @@ graphics, network access or a wall clock.
 | Deferred damage and rubble | `frontline_core` | The live world uses checkpointed explosion deadlines and pending rubble spawns, with an engine-only fallback. Godot still applies the resulting damage and creates structures |
 | Spatial bucket ownership | `frontline_core` | Infantry, vehicle, building and closed-door queries use retained actor IDs and preserve cell/registration order through checkpoints |
 | Weighted grid paths and cluster pair costs | `frontline_core` | Exact Godot route tie behavior; native cluster workers return costs in deterministic order |
+| Boat navigation and driving | `frontline_core` | Water-cell construction, connected bodies, shore searches, routes, currents, steering, traffic, coming about and grounding recovery operate on retained state; the live dispatcher remains in Godot |
 | Ground cells, crater heights and queued cover repairs | `frontline_core` | Rust retains terrain and ordered structure geometry, and performs edits, queries and cover repairs; Godot imports biome generation and forwards navigation notifications |
 | Water shapes, bridge decks and water terrain rasterization | `frontline_core` | Ordered numeric rasterization; a Rust worker also applies the joining host's ground overrides; Godot still generates the initial shapes |
 | Hierarchical route assembly, repairs and danger weights | `frontline_core` | Rust owns graph slots, borders, cost tables, repair order and terrain/danger revisions |
@@ -70,7 +71,7 @@ graphics, network access or a wall clock.
 | House occupancy and breach selection | `frontline_core` | Floor containment, ordered openings, nearest walkable stack positions and competing squadmates extracted; Godot still supplies spatial candidates, squad contacts and decision timers |
 | Injury behavior and special tasks | Rust | `soldier.gd`, `soldier_brain.gd`, `combat.gd` |
 | Squads, tactics, commander and naval decisions | Rust | Squad, tactics, commander and naval scripts |
-| Vehicles and crews | `frontline_core` | Retained vehicle state, orders, repairs, turret aiming and shared boarding are reference-tested; driving, flight, crew decisions and combat dispatch still run in Godot |
+| Vehicles and crews | `frontline_core` | Retained state, orders, repairs, boarding, ground/boat driving, flight, crew decisions and weapon operations are reference-tested; the live dispatcher and shared combat/economy effects still run in Godot |
 | Battlefield box raycasts | `frontline_core` | Spatial grid with deterministic hit ties; Godot supplies geometry updates |
 | Smoke volumes and geometric visibility | `frontline_core` | Rust checks exposed points against collision and smoke, retaining reusable obstruction proofs; Godot supplies target posture and scene changes |
 | Route refinement, smoothing, corridor reuse and path requests | `frontline_core` | Native planner retains corridor history and request order; Godot supplies unit positions and delivers completed orders |
@@ -233,8 +234,8 @@ Turret and hull motors share the same acceleration/braking calculation.
 The driving fixture compares 26,880 steps across the ground roster with moving
 traffic, impassable ground, trenches, interrupted movement and checkpoint resumes.
 Six core tests cover continued trajectories, recovery, invalid inputs and turning
-constraints; numeric CI adds 1,304,492 bytes. Boat/aircraft driving, shared
-collision effects and full vehicle combat dispatch still need to move before the
+constraints; numeric CI adds 1,304,492 bytes. Shared collision effects and full
+vehicle combat dispatch still need to move before the
 Rust world can run the complete battle. This adapter is a reference test, not a
 new per-vehicle runtime boundary.
 
@@ -341,13 +342,30 @@ effects and the whole vehicle/world dispatcher still need full integration.
 
 Cannon shots resolve target posture, barrel sockets, turret pivots and aircraft
 attitude from retained actors. The shot uses Rust terrain and collision, including
-trench-lip impacts and enfilade, and emits the muzzle event before shared damage.
+trench-lip impacts and enfilade, and returns muzzle/blast data for ordered effects.
 The reference fixture compares 1,320 muzzle/shot states across the roster,
 including unmapped-model fallbacks, blocked rays, trench geometry and checkpoint
 resumes. Six core tests cover those cases, shared RNG continuation and invalid
 input without mutation. Numeric CI adds 772,224 exact transcript bytes. This
 retains the shot calculation; the shared blast/destruction dispatcher is still
 being connected to the owned world.
+
+Boat navigation retains weighted water cells and derives connected-water labels
+on loading. Terrain import preserves shallow-water costs, impassable bridges and
+partly dry cells. Shore searches, hull-width clearance and six-metre route
+waypoints retain the existing tie order. The reference fixture compares 3,072
+query sets against Godot's own AStarGrid2D, including disconnected water, bridges,
+shoreline ties, weighted routes and checkpoint restoration.
+
+The complete boat-driving controller now operates on retained vehicle, water and
+navigation state: throttle/rudder response, drag, skid, current, attack speed,
+traffic, backing into close destinations, coming about into open water, rejoining
+routes and backing off a bank. Ground and boat driving share avoidance logic,
+with each using its own passability query. The fixture compares 43,200 steps,
+including grounding, rejoining and seaward turns, across all six boat types.
+Twelve core tests and a 2,173,616-byte numeric transcript cover the navigation and
+controller. This does not yet replace the live vehicle/world dispatcher or boat
+destruction and disembarkation effects.
 
 ## Retained squads
 
@@ -487,7 +505,7 @@ Component checkpoint headers contain a four-byte component tag, a little-endian
 rules rather than silently continuing with changed arithmetic. The separate
 integer RNG stream remains unchanged.
 
-`native/core/tests/numeric_contract.rs` compares 39,912,475 committed bytes without
+`native/core/tests/numeric_contract.rs` compares 42,086,091 committed bytes without
 tolerances: fixed-tick flight state, support events and RNG cursors, carved water,
 craters, rotated box hits, cover anchors, spherical interpolation and infantry
 movement, infantry cover fire, postures, ammunition, burst recovery, vitals, aiming,
@@ -711,7 +729,7 @@ flag until Rust owns the actors.
 
 The shock fixture compares 92,160 reference steps, including mounted turning,
 blocked terrain, carried casualties and task interruption. The full default suite
-passes 167 tests; 403 core tests pass in debug and release.
+passes 169 tests; 416 core tests pass in debug and release.
 
 ## Spatial query state
 

@@ -36,6 +36,144 @@ fn block(out: &mut Vec<u8>, bytes: &[u8]) {
 }
 
 #[test]
+fn boat_navigation_and_driving_are_identical_across_platforms() {
+    use frontline_core::boat_navigation::{BoatNavigation, LEVEL};
+    use frontline_core::vehicle::Vehicle;
+    use frontline_core::vehicle_boat::BoatProfile;
+    use frontline_core::vehicle_motion::Traffic;
+    let mut bytes = Vec::new();
+    let water = Water {
+        side: 256,
+        coast: None,
+        rivers: vec![River {
+            points: vec![
+                Vector3::new(0.0, 0.0, -128.0),
+                Vector3::new(9.0, 0.0, 0.0),
+                Vector3::new(0.0, 0.0, 128.0),
+            ],
+            width: 50.0,
+        }],
+        ponds: vec![],
+        fords: vec![],
+        bridges: vec![],
+    };
+    for trial in 0..48 {
+        let solid: Vec<_> = (0..128 * 128)
+            .map(|i| {
+                u8::from(
+                    i % 128 < 2
+                        || i % 128 > 125
+                        || i / 128 < 2
+                        || i / 128 > 125
+                        || (trial % 4 == 0 && i % 128 < 60 && i / 128 > 50),
+                )
+            })
+            .collect();
+        let weight: Vec<_> = (0..128 * 128)
+            .map(|i| if i % 17 == 0 { 5.0 } else { 1.0 })
+            .collect();
+        let mut nav = BoatNavigation::new(128, &solid, &weight).unwrap();
+        if trial % 12 == 0 {
+            block(&mut bytes, &nav.checkpoint());
+        }
+        let mut random = SimulationRandom::new(713 + trial);
+        for _ in 0..32 {
+            let a = Vector3::new(
+                random.randf_range(-140.0, 140.0),
+                0.0,
+                random.randf_range(-140.0, 140.0),
+            );
+            let b = Vector3::new(
+                random.randf_range(-140.0, 140.0),
+                0.0,
+                random.randf_range(-140.0, 140.0),
+            );
+            bytes.extend_from_slice(&nav.body(a).to_le_bytes());
+            bytes.push(u8::from(nav.line(a, b, (trial % 7) as f64)));
+            let path = nav.path(a, b);
+            bytes.extend_from_slice(&(path.len() as u32).to_le_bytes());
+            for at in path {
+                point(&mut bytes, at);
+            }
+        }
+        let p = BoatProfile {
+            hull: Vector3::new(2.0 + trial as f32 * 0.1, 2.0, 6.0 + trial as f32 * 0.7),
+            speed: 12.0 - trial as f64 * 0.12,
+            response: if trial % 2 == 0 {
+                [2.5, 2.6, 0.45, 0.65, 0.6, 4.2, 0.85, 0.28, 0.45]
+            } else {
+                [0.35, 0.7, 3.2, 4.0, 3.0, 0.65, 1.8, 0.18, 0.35]
+            },
+            cannon: trial % 2 == 0,
+        };
+        let mut v = Vehicle {
+            id: 7,
+            position: Vector3::new(0.3, LEVEL, 1.7),
+            yaw: if trial % 5 == 0 {
+                std::f64::consts::PI
+            } else {
+                0.0
+            },
+            speed: if trial % 3 == 0 { 5.0 } else { 0.0 },
+            path: vec![
+                Vector3::new(-20.3, 0.0, -50.7),
+                Vector3::new(70.7, 0.0, -100.3),
+            ],
+            assault: trial % 3 == 1,
+            stuck_timer: if trial % 11 == 0 { 4.1 } else { 0.0 },
+            ..Default::default()
+        };
+        if trial % 6 == 0 {
+            v.path = vec![Vector3::new(0.3, 0.0, 8.7)];
+        }
+        if trial % 6 == 1 {
+            v.path.clear();
+        }
+        let traffic = [Traffic {
+            id: 8,
+            position: Vector3::new(1.0, LEVEL, -10.0),
+            yaw: 0.0,
+            speed: 0.0,
+            hull: p.hull,
+            air: false,
+        }];
+        for tick in 0..900 {
+            let dt = [1.0 / 30.0, 1.0 / 60.0, 0.1][trial as usize % 3];
+            let target = if trial % 3 == 1 {
+                Some(Vector3::new(0.3, 0.0, 20.7))
+            } else {
+                None
+            };
+            let out = v
+                .boat_drive(
+                    dt,
+                    tick as f64 * dt,
+                    p,
+                    target,
+                    &mut nav,
+                    Some(&water),
+                    &traffic,
+                )
+                .unwrap();
+            bytes.extend_from_slice(&[
+                u8::from(out.unstuck),
+                u8::from(out.aground),
+                u8::from(out.rejoined),
+                u8::from(out.seaward),
+            ]);
+            if tick % 23 == 0 {
+                block(&mut bytes, &v.checkpoint().unwrap());
+            }
+            if tick % 137 == 0 {
+                v = Vehicle::restore(&v.checkpoint().unwrap()).unwrap();
+                nav = BoatNavigation::restore(&nav.checkpoint()).unwrap();
+            }
+        }
+    }
+    golden("vehicle_boat", &bytes);
+}
+
+#[test]
 fn vehicle_cannon_geometry_and_impacts_are_identical_across_platforms() {
     use frontline_core::actors::{Actor, Actors};
     use frontline_core::infantry::Infantry;

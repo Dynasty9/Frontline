@@ -2,6 +2,7 @@ use godot::prelude::*;
 
 mod actors;
 mod blast;
+mod boat_navigation;
 mod breach;
 mod bullet;
 mod collision_index;

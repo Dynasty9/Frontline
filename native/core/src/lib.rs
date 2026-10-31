@@ -3,6 +3,7 @@
 pub const NUMERIC_VERSION: u16 = 1;
 pub mod actors;
 pub mod blast;
+pub mod boat_navigation;
 pub mod breach;
 pub mod breach_selection;
 pub mod bullet;
@@ -64,6 +65,7 @@ pub mod vector;
 pub mod vehicle;
 pub mod vehicle_air;
 pub mod vehicle_artillery;
+pub mod vehicle_boat;
 pub mod vehicle_brain;
 pub mod vehicle_cannon;
 pub mod vehicle_damage;

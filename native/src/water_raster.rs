@@ -4,9 +4,9 @@ use std::thread::JoinHandle;
 
 #[derive(GodotClass)]
 #[class(base=RefCounted, init)]
-struct WaterRaster {
+pub(crate) struct WaterRaster {
     base: Base<RefCounted>,
-    core: Option<Water>,
+    pub(crate) core: Option<Water>,
     loading: Option<JoinHandle<Result<frontline_core::water::GroundLoad, &'static str>>>,
 }
 

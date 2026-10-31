@@ -1105,6 +1105,65 @@ impl VehicleStateCore {
         }
     }
     #[func]
+    fn boat_tick(
+        &mut self,
+        dt: f64,
+        now: f64,
+        profile: Array<Variant>,
+        target: PackedVector3Array,
+        mut navigation: Gd<crate::boat_navigation::BoatNavigationCore>,
+        water: Gd<crate::water_raster::WaterRaster>,
+        nearby: Array<Variant>,
+    ) -> PackedByteArray {
+        if profile.len() != 4 || target.len() > 1 {
+            return PackedByteArray::new();
+        }
+        let (Some(hull), Some(speed), Some(response), Some(cannon)) = (
+            read::<Vector3>(&profile, 0),
+            read::<f64>(&profile, 1),
+            read::<PackedFloat64Array>(&profile, 2),
+            read::<bool>(&profile, 3),
+        ) else {
+            return PackedByteArray::new();
+        };
+        let Ok(response) = response.as_slice().try_into() else {
+            return PackedByteArray::new();
+        };
+        let p = frontline_core::vehicle_boat::BoatProfile {
+            hull: crate::point(hull),
+            speed,
+            response,
+            cannon,
+        };
+        let Some(nearby) = traffic(&nearby) else {
+            return PackedByteArray::new();
+        };
+        let mut nav = navigation.bind_mut();
+        let water = water.bind();
+        let (Some(v), Some(nav)) = (self.core.as_mut(), nav.core.as_mut()) else {
+            return PackedByteArray::new();
+        };
+        match v.boat_drive(
+            dt,
+            now,
+            p,
+            target.as_slice().first().copied().map(crate::point),
+            nav,
+            water.core.as_ref(),
+            &nearby,
+        ) {
+            Ok(e) => [
+                u8::from(e.unstuck),
+                u8::from(e.aground),
+                u8::from(e.rejoined),
+                u8::from(e.seaward),
+            ]
+            .as_slice()
+            .into(),
+            Err(_) => PackedByteArray::new(),
+        }
+    }
+    #[func]
     fn ground_tick(
         &mut self,
         dt: f64,

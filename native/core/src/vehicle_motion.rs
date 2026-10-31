@@ -112,11 +112,8 @@ impl GroundProfile {
         }
     }
 }
-fn valid(dt: f64, p: GroundProfile, traffic: &[Traffic]) -> bool {
-    dt.is_finite()
-        && (0.0..=3600.0).contains(&dt)
-        && p.valid()
-        && traffic.len() <= 100_000
+pub(crate) fn valid_traffic(traffic: &[Traffic]) -> bool {
+    traffic.len() <= 100_000
         && traffic.iter().all(|v| {
             v.id != 0
                 && point(v.position)
@@ -128,8 +125,11 @@ fn valid(dt: f64, p: GroundProfile, traffic: &[Traffic]) -> bool {
                 && v.speed.abs() <= 1e6
         })
 }
+fn valid(dt: f64, p: GroundProfile, traffic: &[Traffic]) -> bool {
+    dt.is_finite() && (0.0..=3600.0).contains(&dt) && p.valid() && valid_traffic(traffic)
+}
 impl Vehicle {
-    fn lookahead(&self, points: &[Vector3], index: usize, look: f64) -> Vector3 {
+    pub(crate) fn lookahead(&self, points: &[Vector3], index: usize, look: f64) -> Vector3 {
         let origin = flat(self.position);
         let mut prev = origin;
         for &q in points.iter().skip(index) {
@@ -144,11 +144,11 @@ impl Vehicle {
         }
         flat(*points.last().unwrap())
     }
-    fn traffic_limit(
+    pub(crate) fn traffic_limit(
         &self,
         forward: Vector3,
         maximum: f64,
-        p: GroundProfile,
+        hull: Vector3,
         traffic: &[Traffic],
     ) -> f64 {
         let mut limit = maximum;
@@ -170,21 +170,21 @@ impl Vehicle {
             let ahead = f64::from(rel.dot(forward));
             if ahead <= 0.0
                 || f64::from(rel.dot(side)).abs()
-                    > (f64::from(p.hull.x) + f64::from(v.hull.x)) * 0.5 + 0.8
+                    > (f64::from(hull.x) + f64::from(v.hull.x)) * 0.5 + 0.8
             {
                 continue;
             }
-            let gap = ahead - (f64::from(p.hull.z) + f64::from(v.hull.z)) * 0.5;
+            let gap = ahead - (f64::from(hull.z) + f64::from(v.hull.z)) * 0.5;
             limit = limit.min((v.speed.abs() * 0.9).max((gap - 2.5) * 0.9));
         }
         limit
     }
-    fn avoid(
+    pub(crate) fn avoid(
         &mut self,
         lookahead: Vector3,
         forward: Vector3,
-        p: GroundProfile,
-        nav: &PathPlanner,
+        hull: Vector3,
+        open: impl Fn(Vector3) -> bool,
         traffic: &[Traffic],
     ) -> Vector3 {
         self.avoid_cap = None;
@@ -211,7 +211,7 @@ impl Vehicle {
                 continue;
             }
             let lat = f64::from(rel.dot(side));
-            let clear = (f64::from(p.hull.x) + f64::from(v.hull.x)) * 0.5 + 1.0;
+            let clear = (f64::from(hull.x) + f64::from(v.hull.x)) * 0.5 + 1.0;
             if lat.abs() > clear {
                 continue;
             }
@@ -219,7 +219,7 @@ impl Vehicle {
             if standing {
                 go = if lat.abs() > 0.3 { -sign(lat) } else { 1.0 };
                 let past = self.position + forward * ahead as f32 + side * go as f32 * clear as f32;
-                if nav.kind_at(past, true) == 3 {
+                if !open(past) {
                     go = -go;
                 }
                 self.avoid_cap = Some(3.0);
@@ -330,7 +330,13 @@ impl Vehicle {
             }
         }
         if !self.reverse {
-            at = self.avoid(at, direction(self.yaw), p, nav, traffic);
+            at = self.avoid(
+                at,
+                direction(self.yaw),
+                p.hull,
+                |at| nav.kind_at(at, true) != 3,
+                traffic,
+            );
         }
         let to = at - flat(self.position);
         let error = wrap(yaw(to) - self.yaw);
@@ -388,7 +394,7 @@ impl Vehicle {
         if !self.reverse {
             desired = desired
                 .min(self.avoid_cap.unwrap_or(f64::INFINITY))
-                .min(self.traffic_limit(direction(self.yaw), desired, p, traffic));
+                .min(self.traffic_limit(direction(self.yaw), desired, p.hull, traffic));
         }
         let wanted = if self.reverse { -desired } else { desired };
         let rate = if wanted.abs() > self.speed.abs()

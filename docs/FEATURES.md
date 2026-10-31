@@ -1365,6 +1365,10 @@ trench-lip impacts, including firing along a trench instead of across its lip.
 Artillery checks preserve queued fire missions, aiming delays, salvos and shell
 scatter. Gunship checks preserve attack orbits, damaged-aircraft altitude, rocket
 firing gates and smoke responses between successive rocket launches.
+Boat checks preserve water routes, separate bodies of water, bridge clearance,
+shallow-water costs, current, rudder and engine response, traffic, coming about,
+rejoining a route and backing off the shore. Saved-state resumes preserve the
+same route and driving decisions.
 Construction, town income, capture and production transitions match the existing
 game; shared rule effects, destruction and the full building dispatcher still need
 migration before Rust owns the complete battle.
