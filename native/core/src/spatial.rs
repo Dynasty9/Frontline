@@ -1,5 +1,6 @@
 //! Bucket membership is retained separately from actor positions: units move within a simulation step.
 use crate::actors::{Actor, Actors};
+use crate::entities::Kind;
 use crate::infantry_vitals::Life;
 use crate::state_codec::{Reader, Writer};
 use crate::vector::Vector3;
@@ -244,7 +245,10 @@ impl Actors {
             return Err("invalid unit grid");
         }
         // Validate before touching live buckets, then reuse their capacity for the next step.
-        for actor in self.iter() {
+        for actor in self
+            .iter_kind(Kind::Soldier)
+            .chain(self.iter_kind(Kind::Vehicle))
+        {
             if let Actor::Soldier(s) = actor {
                 if s.vitals.life != Life::Hidden {
                     index.bounds(s.motion.position, 0.0)?;
@@ -261,7 +265,7 @@ impl Actors {
             keys.clear();
         }
         index.entries = 0;
-        for actor in self.iter() {
+        for actor in self.iter_kind(Kind::Soldier) {
             if let Actor::Soldier(s) = actor {
                 if s.vitals.life != Life::Hidden {
                     let (key, _) = index.bounds(s.motion.position, 0.0).unwrap();
@@ -272,7 +276,7 @@ impl Actors {
             }
         }
         // World registers soldiers first, then vehicles, even when their entity IDs interleave.
-        for actor in self.iter() {
+        for actor in self.iter_kind(Kind::Vehicle) {
             if let Actor::Vehicle(v) = actor {
                 let (key, _) = index.bounds(v.position, 0.0).unwrap();
                 index.cells.entry(key).or_default().push(v.id);

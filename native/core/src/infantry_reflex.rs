@@ -70,7 +70,7 @@ fn dive(
 
 impl Actors {
     fn grenade_contacts(&self) -> Vec<Grenade> {
-        self.iter()
+        self.iter_kind(crate::entities::Kind::Projectile)
             .filter_map(|a| {
                 let Actor::Projectile(p) = a else {
                     return None;
@@ -254,7 +254,7 @@ impl Actors {
             }
             Reflex::Shell | Reflex::BusyShell => {
                 let rounds: Vec<_> = self
-                    .iter()
+                    .iter_kind(crate::entities::Kind::Projectile)
                     .filter_map(|a| {
                         let Actor::Projectile(p) = a else {
                             return None;
@@ -294,7 +294,7 @@ impl Actors {
             }
             Reflex::Drone => {
                 let drones: Vec<_> = self
-                    .iter()
+                    .iter_kind(crate::entities::Kind::Drone)
                     .filter_map(|a| {
                         let Actor::Drone(d) = a else {
                             return None;

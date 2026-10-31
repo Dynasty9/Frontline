@@ -762,6 +762,24 @@ The shock fixture compares 92,160 reference steps, including mounted turning,
 blocked terrain, carried casualties and task interruption. The full default suite
 passes 180 tests; 515 core tests pass in debug and release.
 
+## Actor-kind iteration
+
+Owned actors retain ordered ID lists for soldiers, structures, vehicles,
+projectiles and drones. Spawn/removal maintains them; checkpoint loading derives
+them from the saved registration order. No checkpoint format changes. Projectile
+and drone reactions, fire targeting, resupply, launch warnings, support services
+and unit-grid rebuilds now visit only the relevant kinds. Scenery no longer adds
+hash lookups to each of these scans. Two tests cover interleaved registration,
+non-monotonic IDs, projectile churn, registry compaction and restored ordering.
+
+The reproducible `actor_queries` example compares the old full-collection filter
+with the ordered projectile list. Six paired runs alternate order, with other
+apps running: 10,000 structures, 500 soldiers, 48 projectiles and 2,000 queries.
+The full filter takes 191.662–206.134 ms; the type list takes 0.724–0.778 ms. Every
+run checks the same result checksum. This measures actor lookup, not whole-battle
+simulation or rendering. All 517 core tests pass in debug and release with the
+existing numeric transcripts unchanged.
+
 ## Spatial query state
 
 Spatial indexes retain bucket membership independently from current actor positions.

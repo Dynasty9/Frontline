@@ -226,7 +226,7 @@ impl Actors {
             Search::Depots => {
                 let mut nearest = 1e9;
                 let mut fob = None;
-                for actor in self.iter() {
+                for actor in self.iter_kind(crate::entities::Kind::Structure) {
                     if let Actor::Structure(st) = actor {
                         if st.kind != "fob" || st.team != team || !st.built {
                             continue;

@@ -120,7 +120,7 @@ impl Actors {
         }
         if service != Service::Medical {
             // Vehicles keep registration order; the infantry query above follows the unit buckets.
-            for actor in self.iter() {
+            for actor in self.iter_kind(crate::entities::Kind::Vehicle) {
                 let Actor::Vehicle(v) = actor else {
                     continue;
                 };

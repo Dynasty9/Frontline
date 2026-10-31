@@ -88,6 +88,16 @@ impl Actor {
 pub struct Actors {
     entities: Entities,
     values: HashMap<u32, Actor>,
+    // Scenery must not enlarge every unit, vehicle or projectile scan.
+    by_kind: [Vec<u32>; 5],
+}
+
+fn kind_order(entities: &Entities) -> [Vec<u32>; 5] {
+    let mut order: [Vec<u32>; 5] = Default::default();
+    for identity in entities.iter() {
+        order[identity.kind as usize].push(identity.id);
+    }
+    order
 }
 
 impl Actors {
@@ -98,6 +108,7 @@ impl Actors {
         let identities: Vec<_> = actors.iter().map(Actor::identity).collect();
         let entities = Entities::from_entries(next_id, &identities)?;
         Ok(Self {
+            by_kind: kind_order(&entities),
             entities,
             values: actors.into_iter().map(|a| (a.identity().id, a)).collect(),
         })
@@ -131,6 +142,11 @@ impl Actors {
     }
     pub fn iter(&self) -> impl Iterator<Item = &Actor> {
         self.entities.iter().map(|entry| &self.values[&entry.id])
+    }
+    pub fn iter_kind(&self, kind: Kind) -> impl Iterator<Item = &Actor> {
+        self.by_kind[kind as usize]
+            .iter()
+            .map(|id| &self.values[id])
     }
     pub fn vehicle(&self, id: u32) -> Option<&Vehicle> {
         match self.get(id)? {
@@ -182,6 +198,7 @@ impl Actors {
             return Err("invalid actor spawn");
         }
         let id = self.entities.spawn(actor.identity().kind)?;
+        self.by_kind[actor.identity().kind as usize].push(id);
         self.values.insert(id, actor);
         Ok(id)
     }
@@ -189,7 +206,9 @@ impl Actors {
         if !self.entities.remove(id) {
             return None;
         }
-        self.values.remove(&id)
+        let actor = self.values.remove(&id)?;
+        self.by_kind[actor.identity().kind as usize].retain(|&entry| entry != id);
+        Some(actor)
     }
 
     pub fn release_all(&mut self, id: u32) -> Result<Released, &'static str> {
@@ -331,6 +350,10 @@ impl Actors {
             values.insert(identity.id, actor);
         }
         input.finish()?;
-        Ok(Self { entities, values })
+        Ok(Self {
+            by_kind: kind_order(&entities),
+            entities,
+            values,
+        })
     }
 }

@@ -90,7 +90,7 @@ impl Actors {
             contacts.push(contact);
         }
         let drones: Vec<_> = self
-            .iter()
+            .iter_kind(crate::entities::Kind::Drone)
             .filter_map(|actor| match actor {
                 Actor::Drone(d) => Some(DroneContact {
                     id: d.id.into(),

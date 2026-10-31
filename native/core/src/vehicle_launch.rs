@@ -151,7 +151,7 @@ impl Actors {
         let direction = normalized(velocity);
         let ahead = position + direction * 40.0;
         // The first vehicle in registration order sees the launch, even if another is closer.
-        for actor in self.iter() {
+        for actor in self.iter_kind(crate::entities::Kind::Vehicle) {
             let Actor::Vehicle(v) = actor else {
                 continue;
             };

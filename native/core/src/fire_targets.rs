@@ -52,7 +52,7 @@ pub fn mortar(
     }
     let mut best = None;
     let mut score = 6.0;
-    for actor in actors.iter() {
+    for actor in actors.iter_kind(crate::entities::Kind::Soldier) {
         let Actor::Soldier(s) = actor else {
             continue;
         };
@@ -143,7 +143,7 @@ pub fn fpv(
     }
     let mut best = None;
     let mut score = -1e9;
-    for actor in actors.iter() {
+    for actor in actors.iter_kind(crate::entities::Kind::Vehicle) {
         let Actor::Vehicle(v) = actor else {
             continue;
         };
@@ -160,7 +160,7 @@ pub fn fpv(
             best = Some(v.id);
         }
     }
-    for actor in actors.iter() {
+    for actor in actors.iter_kind(crate::entities::Kind::Soldier) {
         let Actor::Soldier(s) = actor else {
             continue;
         };

@@ -1282,6 +1282,8 @@ and altitude-aware distance, with the same gameplay random draws.
 Retained soldiers now apply grenade, shell and drone reactions from shared Rust
 actors, preserving contested grenade handlers, rescue/breach cleanup, warning
 memory and dives. The live decision loop still runs in Godot.
+Actor-kind lists preserve registration order while keeping scenery out of unit,
+vehicle and projectile scans; checkpoint restores rebuild the lists identically.
 Special-attack checks preserve rocket and melee target priority, queued mortar
 orders, drone launch timing, ammunition, cooldowns and the following actions.
 Retained actors now select these targets directly, preserving friendly mortar
