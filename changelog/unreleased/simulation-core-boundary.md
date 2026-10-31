@@ -11,6 +11,7 @@ kind = "fixed"
 - Retained Rust soldier checks preserve movement orders, late path results, cover arrivals, shelter changes, flank and rear watching, crawling and fatigue-dependent speed.
 - Connected Rust actor checks preserve recovery, fatigue, movement, replanning, arrivals and activity labels, including resumes from a saved soldier state.
 - Rust squad-order checks preserve busy soldiers' order gates, rescue and breach commitments, leaving mounted guns, formation movement and grenade approaches.
+- Retained Rust actor checks now connect action interruptions, cooking and throws, diving, blast recovery, casualty links, death and revival, hidden transport and corpse cleanup.
 - Grenade, smoke, rocket, bomb and shell flight now use the shared simulation core, preserving flight behavior, pickup, kicking and rethrowing.
 - Battlefield raycasts now use the shared simulation core, updating when vehicles move, doors open and structures change.
 - Sight checks and smoke screens now run in Rust, retaining immediate smoke changes and reusing obstruction only while the blocking geometry stays unchanged.

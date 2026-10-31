@@ -36,6 +36,257 @@ fn block(out: &mut Vec<u8>, bytes: &[u8]) {
 }
 
 #[test]
+fn retained_infantry_casualties_are_identical_across_platforms() {
+    use frontline_core::infantry::{Identity, Infantry};
+    use frontline_core::infantry_action::{Action, Round, Throw};
+    use frontline_core::infantry_control::HiddenReason;
+    use frontline_core::infantry_controller::Task;
+    use frontline_core::infantry_vitals::DamageResult;
+    let nav = PathPlanner::new(32).unwrap();
+    let mut bytes = Vec::new();
+    for trial in 0..96 {
+        let mut initial = Infantry {
+            identity: Identity {
+                id: 1,
+                squad: 17,
+                unit: "rifleman".into(),
+                weapon: "rifle".into(),
+                ..Default::default()
+            },
+            ..Default::default()
+        };
+        initial.motion.position = Vector3::new(0.3, -0.4, -1.1);
+        initial.motion.yaw = trial as f64 * 0.37;
+        initial.motion.path = vec![Vector3::new(10.0, 0.0, 1.0)];
+        initial.vitals.life = Life::try_from((trial % 6) as u8).unwrap();
+        initial.vitals.times_downed = (trial % 5) as u32;
+        initial.vitals.dead_at = -400.0;
+        initial.duty.kind = [
+            Task::Fight,
+            Task::Rescue,
+            Task::Stretcher,
+            Task::Breach,
+            Task::Man,
+            Task::Pilot,
+        ][trial as usize % 6];
+        initial.duty.entity = 2;
+        initial.duty.partner = 3;
+        initial.fight.controlled_drone = 8;
+        initial.emplacement.structure = 9;
+        initial.orders.base_y = 4.0;
+        initial.orders.backwards = true;
+        initial.weapon.magazine = (trial % 31) as i32;
+        initial.weapon.reserve = (trial % 130) as i32;
+        initial.links.carried_by = if trial % 7 == 0 { vec![2, 3] } else { vec![] };
+        initial.links.dragged_by = 2;
+        initial.links.rescue_claimed = 3;
+        initial.links.stretcher_claimed = trial % 5 == 0;
+        initial.action.current = Action::Cook;
+        initial.action.remaining = 0.3;
+        initial.action.queued_throw = Some(Throw {
+            position: Vector3::X * 10.0,
+            round: Round::Frag,
+            fuse: 1.1,
+        });
+        initial.hit_direction = Vector3::new(0.3, 0.7, -0.8);
+        initial.hit_kind = ["", "bullet", "explosion", "melee"][trial as usize % 4].into();
+        for operation in 0..9 {
+            let step = |s: &mut Infantry, rng: &mut SimulationRandom| {
+                let mut out = Vec::new();
+                let release = match operation {
+                    0 => Some(s.release_all().unwrap()),
+                    1 => Some(s.go_down(100.0).unwrap()),
+                    2 => s.die(100.0, Some(200)).unwrap(),
+                    3 => {
+                        out.push(s.revive(trial % 2 == 0, Some(("rifle", 30)), rng).unwrap());
+                        None
+                    }
+                    4 => s
+                        .fling_from(
+                            if trial % 2 == 0 {
+                                s.motion.position
+                            } else {
+                                Vector3::ZERO
+                            },
+                            7.0,
+                            rng,
+                        )
+                        .unwrap(),
+                    5 => {
+                        s.hide_in(
+                            HiddenReason::Tent,
+                            0.3,
+                            Some((9, Vector3::new(4.2, 0.0, -3.7))),
+                        )
+                        .unwrap();
+                        None
+                    }
+                    6 => {
+                        s.unhide(Vector3::new(4.2, -1.3, 2.7), &nav).unwrap();
+                        None
+                    }
+                    7 => {
+                        out.push(u8::from(
+                            s.corpse_tick(-0.3, 100.0, trial % 2 == 0).unwrap(),
+                        ));
+                        None
+                    }
+                    _ => {
+                        let result = s
+                            .receive_damage(
+                                [1.0, 30.0, 101.0, 300.0][trial as usize % 4],
+                                Vector3::X,
+                                "explosion",
+                                trial % 2 == 0,
+                                rng,
+                            )
+                            .unwrap();
+                        match result {
+                            DamageResult::Ignored => out.push(0),
+                            DamageResult::Survived(speech) => {
+                                out.extend_from_slice(&[1, speech.unwrap_or(255)])
+                            }
+                            DamageResult::Down => out.push(2),
+                            DamageResult::Die => out.push(3),
+                        }
+                        None
+                    }
+                };
+                out.push(u8::from(release.is_some()));
+                if let Some(r) = release {
+                    for id in [r.patient, r.stretcher, r.squad, r.drone] {
+                        out.extend_from_slice(&id.to_le_bytes());
+                    }
+                }
+                let pose = s.death_pose();
+                out.push(pose.kind);
+                point(&mut out, pose.impulse);
+                out
+            };
+            let mut s = initial.clone();
+            let mut resumed = Infantry::restore(&s.checkpoint().unwrap()).unwrap();
+            let mut rng = SimulationRandom::new(trial + 137);
+            let mut random = rng;
+            let out = step(&mut s, &mut rng);
+            assert_eq!(step(&mut resumed, &mut random), out);
+            assert_eq!(s, resumed);
+            assert_eq!(rng, random);
+            block(&mut bytes, &out);
+            block(&mut bytes, &s.checkpoint().unwrap());
+            bytes.extend_from_slice(&rng.state().to_le_bytes());
+        }
+    }
+    golden("infantry_casualty", &bytes);
+}
+
+#[test]
+fn retained_infantry_execution_is_identical_across_platforms() {
+    use frontline_core::infantry::{Identity, Infantry};
+    use frontline_core::infantry_action::{Action, Related, Round, Throw};
+    use frontline_core::infantry_controller::Stage;
+    let nav = PathPlanner::new(32).unwrap();
+    let mut bytes = Vec::new();
+    for trial in 0..64 {
+        let mut actor = Infantry {
+            identity: Identity {
+                id: 1,
+                unit: "rifleman".into(),
+                ..Default::default()
+            },
+            ..Default::default()
+        };
+        actor.motion.position = Vector3::new(0.3, 0.4, -1.1);
+        actor.motion.yaw = trial as f64 * 0.37;
+        actor.motion.path = vec![Vector3::new(3.0, 0.0, 8.0)];
+        actor.controller.dive_timer = if trial % 3 == 0 { 0.12 } else { 0.0 };
+        actor.controller.dive_direction = Vector3::new(0.7, 0.0, -0.3);
+        actor.shock.dazed_timer = if trial % 5 == 0 { 0.16 } else { 0.0 };
+        actor.shock.flinch_timer = 0.14;
+        actor.posture = Posture::try_from((trial % 5) as u8).unwrap();
+        actor.action.queued_throw = Some(Throw {
+            position: Vector3::new(3.7, 0.1, -13.0),
+            round: Round::Frag,
+            fuse: 1.1,
+        });
+        let related = Some(Related {
+            id: 2,
+            position: Vector3::new(1.2, 1.0, -0.3),
+            gone: trial % 7 == 0,
+            holder: if trial % 2 == 0 { 1 } else { 0 },
+        });
+        let action = match trial % 12 {
+            0 => Action::None,
+            1 => Action::Throw(actor.action.queued_throw.unwrap()),
+            2 => Action::Rethrow {
+                grenade: 2,
+                position: Vector3::Z * 10.0,
+            },
+            3 => Action::ThrowIn {
+                position: Vector3::X * 12.0,
+                fuse: 1.2,
+            },
+            4 => Action::Kick {
+                grenade: 2,
+                velocity: Vector3::new(5.0, 2.0, 1.0),
+            },
+            5 => Action::DoorKick {
+                door: 2,
+                position: Vector3::X,
+            },
+            6 => Action::Cook,
+            7 => Action::Melee { target: 2 },
+            8 => Action::Pickup { grenade: 2 },
+            9 => Action::Launch { target: 2 },
+            10 => Action::LaunchDrone { target: 2 },
+            _ => Action::Mortar {
+                position: Vector3::Z * 40.0,
+                round: Round::HighExplosive,
+            },
+        };
+        actor.begin_action(action, 0.15, related).unwrap();
+        let mut rng = SimulationRandom::new(trial + 137);
+        for tick in 0..24 {
+            let dt = [1.0 / 30.0, 0.1, 0.07][trial as usize % 3];
+            let step = |s: &mut Infantry, random: &mut SimulationRandom| {
+                let stage = s.alive_stage(dt, random).unwrap();
+                let mut out = vec![stage as u8];
+                match stage {
+                    Stage::Dazed => s.dazed_tick(dt, None, &nav, random).unwrap(),
+                    Stage::Dive => s.dive_tick(dt, 100.0 + tick as f64 * dt, &nav).unwrap(),
+                    Stage::Action => {
+                        let effect = s.action_tick(related, random).unwrap();
+                        block(
+                            &mut out,
+                            &frontline_core::infantry_action::ActionState {
+                                current: effect.effect,
+                                ..Default::default()
+                            }
+                            .checkpoint(),
+                        );
+                        out.extend_from_slice(&[
+                            u8::from(effect.cancel_path),
+                            effect.speech.unwrap_or(255),
+                        ]);
+                    }
+                    _ => {}
+                }
+                out
+            };
+            let mut restored = Infantry::restore(&actor.checkpoint().unwrap()).unwrap();
+            let mut resumed_rng = rng;
+            let effect = step(&mut actor, &mut rng);
+            assert_eq!(step(&mut restored, &mut resumed_rng), effect);
+            assert_eq!(restored, actor);
+            assert_eq!(resumed_rng, rng);
+            block(&mut bytes, &effect);
+            block(&mut bytes, &actor.checkpoint().unwrap());
+            bytes.extend_from_slice(&rng.state().to_le_bytes());
+        }
+    }
+    golden("infantry_execution", &bytes);
+}
+
+#[test]
 fn retained_infantry_commands_are_identical_across_platforms() {
     use frontline_core::infantry::{Goal, Identity, Infantry};
     use frontline_core::infantry_action::Round;

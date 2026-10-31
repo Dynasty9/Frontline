@@ -5,8 +5,10 @@ use frontline_core::grenade_reaction::GrenadeMemory;
 use frontline_core::infantry::*;
 use frontline_core::infantry_action::{Action, ActionState, Round, Throw};
 use frontline_core::infantry_aim::InfantryAim;
+use frontline_core::infantry_casualty::Released;
 use frontline_core::infantry_commands::{Command, Release};
 use frontline_core::infantry_control::Control;
+use frontline_core::infantry_control::{Hidden, HiddenReason};
 use frontline_core::infantry_orders::{Arrival, PathFinish};
 use frontline_core::infantry_tactics::{CoverRequest, Shelter};
 use frontline_core::infantry_update::{ActivityContext, Movement};
@@ -39,6 +41,16 @@ fn point(v: &Array<Variant>, i: usize) -> Option<frontline_core::vector::Vector3
 }
 fn vector(p: frontline_core::vector::Vector3) -> Vector3 {
     Vector3::new(p.x, p.y, p.z)
+}
+fn releases(r: Released) -> PackedInt64Array {
+    [
+        i64::from(r.patient),
+        i64::from(r.stretcher),
+        i64::from(r.squad),
+        i64::from(r.drone),
+    ]
+    .as_slice()
+    .into()
 }
 fn mount(
     v: &Array<Variant>,
@@ -537,6 +549,299 @@ fn encode(s: &Infantry) -> Array<Variant> {
 
 #[godot_api]
 impl InfantryStateCore {
+    #[func]
+    fn release_all(&mut self) -> PackedInt64Array {
+        self.core
+            .as_mut()
+            .and_then(|s| s.release_all().ok())
+            .map_or_else(PackedInt64Array::new, releases)
+    }
+
+    #[func]
+    fn go_down(&mut self, now: f64) -> PackedInt64Array {
+        self.core
+            .as_mut()
+            .and_then(|s| s.go_down(now).ok())
+            .map_or_else(PackedInt64Array::new, releases)
+    }
+
+    #[func]
+    fn die(&mut self, now: f64, ammunition: PackedInt32Array) -> Array<Variant> {
+        if ammunition.len() > 1 {
+            return Array::new();
+        }
+        let result = self
+            .core
+            .as_mut()
+            .and_then(|s| s.die(now, ammunition.as_slice().first().copied()).ok());
+        result.map_or_else(Array::new, |r| {
+            varray![r.is_some(), &releases(r.unwrap_or_default())]
+        })
+    }
+
+    #[func]
+    fn revive(
+        &mut self,
+        full: bool,
+        weapon: Array<Variant>,
+        mut rng: Gd<SimulationRandomCore>,
+    ) -> i32 {
+        let result = (|| {
+            let key: String;
+            let restored = if weapon.is_empty() {
+                None
+            } else {
+                if weapon.len() != 2 {
+                    return None;
+                }
+                key = text(&weapon, 0, 128)?;
+                Some((key.as_str(), read(&weapon, 1)?))
+            };
+            self.core
+                .as_mut()?
+                .revive(full, restored, &mut rng.bind_mut().core)
+                .ok()
+        })();
+        result.map_or(-1, i32::from)
+    }
+
+    #[func]
+    fn receive_damage(
+        &mut self,
+        amount: f64,
+        direction: Vector3,
+        kind: GString,
+        bearer: bool,
+        mut rng: Gd<SimulationRandomCore>,
+    ) -> PackedInt32Array {
+        use frontline_core::infantry_vitals::DamageResult;
+        if kind.len() > 128 {
+            return PackedInt32Array::new();
+        }
+        let result = self.core.as_mut().and_then(|s| {
+            s.receive_damage(
+                amount,
+                crate::point(direction),
+                &kind.to_string(),
+                bearer,
+                &mut rng.bind_mut().core,
+            )
+            .ok()
+        });
+        result.map_or_else(PackedInt32Array::new, |r| {
+            let pair = match r {
+                DamageResult::Ignored => [0, -1],
+                DamageResult::Survived(speech) => [1, speech.map_or(-1, i32::from)],
+                DamageResult::Down => [2, -1],
+                DamageResult::Die => [3, -1],
+            };
+            pair.as_slice().into()
+        })
+    }
+
+    #[func]
+    fn fling_from(
+        &mut self,
+        center: Vector3,
+        power: f64,
+        mut rng: Gd<SimulationRandomCore>,
+    ) -> Array<Variant> {
+        let result = self.core.as_mut().and_then(|s| {
+            s.fling_from(crate::point(center), power, &mut rng.bind_mut().core)
+                .ok()
+        });
+        result.map_or_else(Array::new, |r| {
+            varray![r.is_some(), &releases(r.unwrap_or_default())]
+        })
+    }
+
+    #[func]
+    fn death_pose(&self) -> Array<Variant> {
+        self.core.as_ref().map_or_else(Array::new, |s| {
+            let pose = s.death_pose();
+            varray![i32::from(pose.kind), vector(pose.impulse)]
+        })
+    }
+
+    #[func]
+    fn corpse_tick(&mut self, ground: f64, now: f64, carrier_alive: bool) -> i32 {
+        self.core
+            .as_mut()
+            .and_then(|s| s.corpse_tick(ground, now, carrier_alive).ok())
+            .map_or(-1, i32::from)
+    }
+
+    #[func]
+    fn hide_in(&mut self, reason: u8, duration: f64, shelter: Array<Variant>) -> bool {
+        (|| {
+            let reason = HiddenReason::try_from(reason).ok()?;
+            let shelter = if shelter.is_empty() {
+                None
+            } else {
+                if shelter.len() != 2 {
+                    return None;
+                }
+                Some((read(&shelter, 0)?, point(&shelter, 1)?))
+            };
+            self.core.as_mut()?.hide_in(reason, duration, shelter).ok()
+        })()
+        .is_some()
+    }
+
+    #[func]
+    fn unhide(
+        &mut self,
+        position: Vector3,
+        navigation: Gd<crate::path_planner::PathPlannerCore>,
+    ) -> bool {
+        let navigation = navigation.bind();
+        (|| {
+            self.core
+                .as_mut()?
+                .unhide(crate::point(position), navigation.core.as_ref()?)
+                .ok()
+        })()
+        .is_some()
+    }
+
+    #[func]
+    fn hidden_tick(&mut self, dt: f64, vehicle: PackedVector3Array) -> Array<Variant> {
+        if vehicle.len() > 1 {
+            return Array::new();
+        }
+        let result = self.core.as_mut().and_then(|s| {
+            s.hidden_tick(dt, vehicle.as_slice().first().copied().map(crate::point))
+                .ok()
+        });
+        result.map_or_else(Array::new, |r| match r {
+            Hidden::Wait => varray![0, Vector3::ZERO],
+            Hidden::FollowVehicle(p) => varray![1, vector(p)],
+            Hidden::BailOut => varray![2, Vector3::ZERO],
+            Hidden::LeaveTent => varray![3, Vector3::ZERO],
+            Hidden::LeaveTunnel => varray![4, Vector3::ZERO],
+            Hidden::PrisonerDone => varray![5, Vector3::ZERO],
+        })
+    }
+
+    #[func]
+    fn begin_action(&mut self, values: Array<Variant>, related: Array<Variant>) -> bool {
+        let Some(s) = self.core.as_mut() else {
+            return false;
+        };
+        let Some(next) = crate::infantry_action::state(&values) else {
+            return false;
+        };
+        let Some(context) = crate::infantry_action::context(
+            i64::from(s.identity.id),
+            vector(s.motion.position),
+            &related,
+        ) else {
+            return false;
+        };
+        s.begin_action(next.current, next.remaining, context.related)
+            .is_ok()
+    }
+
+    #[func]
+    fn alive_stage(&mut self, dt: f64, mut rng: Gd<SimulationRandomCore>) -> i32 {
+        self.core
+            .as_mut()
+            .and_then(|s| s.alive_stage(dt, &mut rng.bind_mut().core).ok())
+            .map_or(-1, |stage| stage as i32)
+    }
+
+    #[func]
+    fn action_tick(
+        &mut self,
+        related: Array<Variant>,
+        mut rng: Gd<SimulationRandomCore>,
+    ) -> Array<Variant> {
+        let Some(s) = self.core.as_mut() else {
+            return Array::new();
+        };
+        let Some(context) = crate::infantry_action::context(
+            i64::from(s.identity.id),
+            vector(s.motion.position),
+            &related,
+        ) else {
+            return Array::new();
+        };
+        let Ok(out) = s.action_tick(context.related, &mut rng.bind_mut().core) else {
+            return Array::new();
+        };
+        varray![
+            &action(ActionState {
+                current: out.effect,
+                ..Default::default()
+            }),
+            out.cancel_path,
+            out.speech.map_or(-1, i32::from)
+        ]
+    }
+
+    #[func]
+    fn dive_tick(
+        &mut self,
+        dt: f64,
+        now: f64,
+        navigation: Gd<crate::path_planner::PathPlannerCore>,
+    ) -> bool {
+        let Some(s) = self.core.as_mut() else {
+            return false;
+        };
+        let navigation = navigation.bind();
+        navigation
+            .core
+            .as_ref()
+            .is_some_and(|nav| s.dive_tick(dt, now, nav).is_ok())
+    }
+
+    #[func]
+    fn dazed_tick(
+        &mut self,
+        dt: f64,
+        mounted: PackedFloat64Array,
+        navigation: Gd<crate::path_planner::PathPlannerCore>,
+        mut rng: Gd<SimulationRandomCore>,
+    ) -> bool {
+        let Some(s) = self.core.as_mut() else {
+            return false;
+        };
+        let Some(mounted) = mount(&varray![&mounted], 0) else {
+            return false;
+        };
+        let navigation = navigation.bind();
+        navigation.core.as_ref().is_some_and(|nav| {
+            s.dazed_tick(dt, mounted, nav, &mut rng.bind_mut().core)
+                .is_ok()
+        })
+    }
+
+    #[func]
+    fn fling_tick(
+        &mut self,
+        dt: f64,
+        navigation: Gd<crate::path_planner::PathPlannerCore>,
+        mut rng: Gd<SimulationRandomCore>,
+    ) -> Array<Variant> {
+        let result = (|| {
+            let s = self.core.as_mut()?;
+            let navigation = navigation.bind();
+            s.fling_tick(dt, navigation.core.as_ref()?, &mut rng.bind_mut().core)
+                .ok()
+        })();
+        result.map_or_else(Array::new, |(dazed, speech)| {
+            varray![dazed, speech.map_or(-1, i32::from)]
+        })
+    }
+
+    #[func]
+    fn flinch_from(&mut self, distance: f64, radius: f64) -> bool {
+        self.core
+            .as_mut()
+            .is_some_and(|s| s.flinch_from(distance, radius).is_ok())
+    }
+
     #[func]
     fn command(
         &mut self,

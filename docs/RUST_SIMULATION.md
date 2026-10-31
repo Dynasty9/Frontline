@@ -58,6 +58,7 @@ graphics, network access or a wall clock.
 | Retained infantry orders and tactics | `frontline_core` | Actors issue and cancel routes, reject stale path completions, apply arrivals, review shelter, choose cover and derive movement speeds and sectors; the live world still dispatches its Godot soldiers |
 | Retained infantry movement and observations | `frontline_core` | Actor updates connect recovery, fatigue, movement, automatic replanning, arrivals, separation, posture and status/activity codes; shared world effects and the remaining tick dispatch are still being migrated |
 | Retained infantry squad orders | `frontline_core` | Move, halt, follow, attack, retreat, throw, stop and return-to-hold orders mutate the actor and return route/claim effects; player ownership checks and squad/world dispatch remain in Godot |
+| Retained infantry actions and casualties | `frontline_core` | Actor state connects pending actions, interrupted updates, dives, blast recovery, damage, down/death/revive transitions and hidden/corpse state; shared combat, squad and world effects still need the complete Rust world |
 | Complete fighting-position search | `frontline_core` | Candidate enumeration, reachability, protection, occupancy and final scoring run in one call; Godot supplies nearby structure and soldier records |
 | House-entry task phases | `frontline_core` | Stack/door/grenade/entry transitions, deadlines, cooking and room targets extracted with component checkpoints; Godot still owns movement callbacks and squad entry effects |
 | House occupancy and breach selection | `frontline_core` | Floor containment, ordered openings, nearest walkable stack positions and competing squadmates extracted; Godot still supplies spatial candidates, squad contacts and decision timers |
@@ -247,7 +248,7 @@ Component checkpoint headers contain a four-byte component tag, a little-endian
 rules rather than silently continuing with changed arithmetic. The separate
 integer RNG stream remains unchanged.
 
-`native/core/tests/numeric_contract.rs` compares 9,894,637 committed bytes without
+`native/core/tests/numeric_contract.rs` compares 13,078,364 committed bytes without
 tolerances: fixed-tick flight state, support events and RNG cursors, carved water,
 craters, rotated box hits, cover anchors, spherical interpolation and infantry
 movement, infantry cover fire, postures, ammunition, burst recovery, vitals, aiming,
@@ -471,7 +472,23 @@ flag until Rust owns the actors.
 
 The shock fixture compares 92,160 reference steps, including mounted turning,
 blocked terrain, carried casualties and task interruption. The full default suite
-passes 146 tests; 251 core tests pass in debug and release.
+passes 148 tests; 265 core tests pass in debug and release.
+
+## Retained infantry actions and casualties
+
+Retained soldiers now run action starts/poses/completions, cooking into a queued
+throw, fatigue and interruption priority, diving, flinching, blast flight and
+dazed recovery. Returned combat effects still need application by the world;
+they do not call scene objects. The fixture compares 16,896 steps against the
+existing actor, including complete actor state, RNG and checkpoint restoration.
+
+Casualty operations release rescue, stretcher, breach and drone links by stable
+ID, stop routes, retain loot, restore wounded soldiers and preserve shelter,
+vehicle-following and corpse deadlines. The world must apply shared releases
+only when the other actor still belongs to that relationship. The fixture
+compares 3,072 actor transitions, including death impulses and random cursors.
+The numeric corpus adds 2,023,864 action/interruption bytes and 1,159,863 casualty
+bytes. These are actor checks; whole-battle replay verification remains unfinished.
 
 ## Infantry tasks and reflexes
 

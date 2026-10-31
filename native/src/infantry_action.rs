@@ -86,7 +86,7 @@ pub(crate) fn state(values: &Array<Variant>) -> Option<ActionState> {
     };
     state.valid().then_some(state)
 }
-fn context(actor: i64, position: Vector3, related: &Array<Variant>) -> Option<Context> {
+pub(crate) fn context(actor: i64, position: Vector3, related: &Array<Variant>) -> Option<Context> {
     let related = if related.is_empty() {
         None
     } else {
