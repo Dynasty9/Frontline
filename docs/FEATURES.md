@@ -1426,6 +1426,10 @@ Godot until the shared world dispatcher owns them.
 Retained vehicle-loss operations preserve passenger injuries, nearby flinching,
 crew survival and births, and final wreck placement. Shared destruction callbacks,
 crew return orders and wreck creation still need world-level integration.
+Retained medical duties update shared rescue claims, shelter routes, dragging,
+healing and revival, so later soldiers immediately see a claimed or recovered
+patient. Squad rejoining, battle-record callbacks and live dispatch still need
+world-level integration.
 Construction, town income, capture and production transitions match the existing
 game; shared rule effects, destruction and the full building dispatcher still need
 migration before Rust owns the complete battle.

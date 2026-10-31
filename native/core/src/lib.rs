@@ -29,6 +29,7 @@ pub mod infantry_action;
 pub mod infantry_action_owned;
 pub mod infantry_aim;
 pub mod infantry_arsenal;
+pub mod infantry_care_owned;
 pub mod infantry_casualty;
 pub mod infantry_commands;
 pub mod infantry_control;

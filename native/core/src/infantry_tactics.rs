@@ -201,6 +201,18 @@ impl Infantry {
             request.threats,
             scene,
         )?;
+        self.apply_cover_choice(request, search, rng)
+    }
+
+    pub(crate) fn apply_cover_choice(
+        &mut self,
+        request: CoverRequest<'_>,
+        search: SearchResult,
+        rng: &mut SimulationRandom,
+    ) -> Result<CoverOrder, &'static str> {
+        if !self.valid() || !time(request.time) || self.orders.path_revision == i64::MAX as u64 {
+            return Err("invalid retained infantry cover choice");
+        }
         self.cover.evaluate_at = request.time + f64::from(rng.randf_range(3.5, 6.0));
         self.weapon.peek_up = false;
         self.weapon.blind = false;

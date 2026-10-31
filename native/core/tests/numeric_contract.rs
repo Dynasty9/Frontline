@@ -641,6 +641,147 @@ fn retained_infantry_blasts_are_identical_across_platforms() {
 }
 
 #[test]
+fn retained_infantry_care_is_identical_across_platforms() {
+    use frontline_core::actors::{Actor, Actors};
+    use frontline_core::infantry::Infantry as Soldier;
+    use frontline_core::infantry_care_owned::{Care, Profile};
+    use frontline_core::infantry_controller::Task;
+    use frontline_core::infantry_cover::CoverWorld;
+    use frontline_core::infantry_travel_owned::Event;
+    use frontline_core::spatial::{SpatialIndex, DOOR_CELL, STRUCTURE_CELL, UNIT_CELL};
+    use frontline_core::squad::Squad;
+    let terrain = Terrain::blank(128).unwrap();
+    let nav = PathPlanner::new(128).unwrap();
+    let structures = SpatialIndex::new(STRUCTURE_CELL).unwrap();
+    let doors = SpatialIndex::new(DOOR_CELL).unwrap();
+    let mut bytes = Vec::new();
+    for task in [Task::Rescue, Task::Heal, Task::Limp] {
+        for trial in 0..64 {
+            let mut medic = Soldier::default();
+            medic.identity.id = 1;
+            medic.identity.unit = "medic".into();
+            medic.identity.weapon = "rifle".into();
+            medic.identity.squad = 9;
+            medic.duty.kind = task;
+            medic.duty.entity = 2;
+            medic.duty.phase = (trial % if task == Task::Heal { 2 } else { 3 }) as u8;
+            medic.duty.timer = [0.0, 0.1, 0.35, 1.0][trial % 4];
+            medic.motion.yaw = [0.0f32, 1.3, -2.5][trial % 3].into();
+            medic.motion.path = if trial % 4 >= 2 {
+                vec![Vector3::X * 8.0]
+            } else {
+                vec![]
+            };
+            medic.orders.pending_path = trial % 11 == 0;
+            medic.orders.goal = Vector3::X * 8.0;
+            medic.vitals.stamina = [0.1, 0.3, 0.349, 0.8][trial % 4];
+            medic.vitals.suppression = [0.0, 6.0, 71.0][trial % 3];
+            let mut patient = Soldier::default();
+            patient.identity.id = 2;
+            patient.identity.unit = "rifleman".into();
+            patient.identity.weapon = if trial % 3 == 0 { "" } else { "rifle" }.into();
+            patient.identity.squad = 9;
+            patient.vitals.life = if task == Task::Rescue {
+                Life::Downed
+            } else {
+                Life::Alive
+            };
+            patient.vitals.hp = [0.0, 10.0, 99.0, 100.0][trial % 4];
+            patient.vitals.times_downed = (trial % 5) as u32;
+            patient.motion.position =
+                Vector3::X * [0.0, 1.19, 1.2, 1.39, 1.4, 2.0, 10.0][trial % 7];
+            patient.links.rescue_claimed = 1;
+            patient.links.dragged_by = if trial % 13 == 0 { 3 } else { 0 };
+            let mut a = Actors::from_entries(
+                100,
+                vec![
+                    Actor::Soldier(Box::new(medic)),
+                    Actor::Soldier(Box::new(patient)),
+                ],
+            )
+            .unwrap();
+            let mut units = SpatialIndex::new(UNIT_CELL).unwrap();
+            a.rebuild_units(&mut units).unwrap();
+            let mut collision = CollisionWorld::default();
+            let mut squads = vec![Squad {
+                id: 9,
+                members: vec![1, 2],
+                order_position: Vector3::Z * 10.0,
+                ..Default::default()
+            }];
+            let mut rng = SimulationRandom::new(82391 + trial as u64);
+            for step in 0..8 {
+                let out = if a.soldier(1).unwrap().duty.kind == task {
+                    a.advance_infantry_care(
+                        1,
+                        0.1,
+                        10.0 + step as f64 * 0.1,
+                        Profile {
+                            heal_rate: [1.0, 1.8, 2.0][trial % 3],
+                            medicine_upgrade: trial % 2 == 0,
+                            weapon_range: 100.0,
+                            unarmed: false,
+                            gun: None,
+                            restored_weapon: Some(("rifle", 30)),
+                        },
+                        &mut squads,
+                        &mut CoverWorld {
+                            terrain: &terrain,
+                            nav: &nav,
+                            collision: &mut collision,
+                            units: &units,
+                            structures: &structures,
+                            heat: &[],
+                            deck: &[],
+                        },
+                        &doors,
+                        &mut rng,
+                    )
+                    .unwrap()
+                } else {
+                    Care::default()
+                };
+                bytes.extend_from_slice(&[out.drag_speech.unwrap_or(255), out.rejoin as u8]);
+                bytes.extend_from_slice(&out.revived.map_or(0, |r| r.0).to_le_bytes());
+                bytes.push(out.revived.map_or(255, |r| r.1));
+                bytes.extend_from_slice(&(out.movement.len() as u32).to_le_bytes());
+                for event in out.movement {
+                    match event {
+                        Event::Route(r) => {
+                            bytes.push(0);
+                            bytes.extend_from_slice(&r.revision.to_le_bytes());
+                            bytes.extend_from_slice(&r.job.id.to_le_bytes());
+                            point(&mut bytes, r.job.destination);
+                            bytes.extend_from_slice(&r.job.care.to_le_bytes());
+                        }
+                        Event::CancelPath => bytes.push(1),
+                        Event::Stat(s) => {
+                            bytes.push(7);
+                            block(&mut bytes, s.as_bytes());
+                        }
+                        _ => panic!("unexpected medical movement event"),
+                    }
+                }
+                if step % 2 == 1 {
+                    block(&mut bytes, &a.checkpoint().unwrap());
+                    for q in &squads {
+                        block(&mut bytes, &q.checkpoint().unwrap());
+                    }
+                }
+                bytes.extend_from_slice(&rng.state().to_le_bytes());
+                if step == 3 {
+                    a = Actors::restore(&a.checkpoint().unwrap()).unwrap();
+                    for q in &mut squads {
+                        *q = Squad::restore(&q.checkpoint().unwrap()).unwrap();
+                    }
+                }
+            }
+        }
+    }
+    golden("infantry_care_owned", &bytes);
+}
+
+#[test]
 fn retained_infantry_travel_is_identical_across_platforms() {
     use frontline_core::actors::{Actor, Actors};
     use frontline_core::drone_actor::Drone;

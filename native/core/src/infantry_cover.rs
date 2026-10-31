@@ -1,7 +1,7 @@
 //! Cover decisions borrow the world's existing anchors and read its retained occupancy.
 use crate::actors::Actors;
 use crate::collision::CollisionWorld;
-use crate::cover_search::{NearbyClaim, Scene, SquadClaim};
+use crate::cover_search::{self, NearbyClaim, Scene, SearchResult, SquadClaim};
 use crate::infantry::{Goal, Infantry};
 use crate::infantry_tactics::{CoverOrder, CoverRequest, Shelter};
 use crate::infantry_vitals::Life;
@@ -81,15 +81,15 @@ impl Actors {
         Ok(threats)
     }
 
-    fn plan_infantry_cover(
+    pub(crate) fn find_infantry_cover(
         &self,
-        s: &mut Infantry,
+        s: &Infantry,
         intent: CoverIntent,
+        prone: bool,
         threats: &[Vector3],
-        mut squad: Option<&mut Squad>,
+        squad: Option<&Squad>,
         world: &mut CoverWorld<'_>,
-        rng: &mut SimulationRandom,
-    ) -> Result<CoverOrder, &'static str> {
+    ) -> Result<SearchResult, &'static str> {
         if world.units.cell_size() != UNIT_CELL
             || world.structures.cell_size() != STRUCTURE_CELL
             || !intent.radius.is_finite()
@@ -98,7 +98,7 @@ impl Actors {
         {
             return Err("invalid retained cover context");
         }
-        let grouped = squad.is_some() && !s.orders.detached;
+        let grouped = squad.is_some() && !s.orders.detached && !prone;
         let radius = if grouped {
             intent.radius.min(3.0)
         } else {
@@ -148,19 +148,21 @@ impl Actors {
                 cell: [cell.0, cell.1],
             })
             .collect();
-        let own_danger = s.vitals.suppression > 5.0 || !s.fight.visible_targets.is_empty();
-        let danger = own_danger || squad.as_ref().is_some_and(|q| q.combat_status(intent.now));
-        let result = s.seek_cover(
-            CoverRequest {
-                time: intent.now,
+        cover_search::find(
+            cover_search::Input {
+                id: s.identity.id.into(),
+                team: s.identity.team.into(),
+                position: s.motion.position,
                 anchor: intent.anchor,
                 radius: intent.radius,
-                threats,
                 grouped,
+                prone,
                 unarmed: intent.unarmed,
                 weapon_range: intent.weapon_range,
-                danger,
+                current_structure: s.cover.structure,
+                current_anchor: s.cover.anchor,
             },
+            threats,
             &mut Scene {
                 terrain: world.terrain,
                 navigation: world.nav,
@@ -171,6 +173,34 @@ impl Actors {
                 squad_claims: &squad_claims,
                 nearby_claims: &nearby_claims,
             },
+        )
+    }
+
+    fn plan_infantry_cover(
+        &self,
+        s: &mut Infantry,
+        intent: CoverIntent,
+        threats: &[Vector3],
+        mut squad: Option<&mut Squad>,
+        world: &mut CoverWorld<'_>,
+        rng: &mut SimulationRandom,
+    ) -> Result<CoverOrder, &'static str> {
+        let own_danger = s.vitals.suppression > 5.0 || !s.fight.visible_targets.is_empty();
+        let danger = own_danger || squad.as_ref().is_some_and(|q| q.combat_status(intent.now));
+        let search =
+            self.find_infantry_cover(s, intent, false, threats, squad.as_deref(), world)?;
+        let result = s.apply_cover_choice(
+            CoverRequest {
+                time: intent.now,
+                anchor: intent.anchor,
+                radius: intent.radius,
+                threats,
+                grouped: squad.is_some() && !s.orders.detached,
+                unarmed: intent.unarmed,
+                weapon_range: intent.weapon_range,
+                danger,
+            },
+            search,
             rng,
         )?;
         // The legacy short circuit only refreshes this cache when he actually moves to cover.

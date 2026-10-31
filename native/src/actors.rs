@@ -266,6 +266,31 @@ fn impact(r: Result<Option<Explosion>, &'static str>) -> Array<Variant> {
 fn vector(p: frontline_core::vector::Vector3) -> Vector3 {
     Vector3::new(p.x, p.y, p.z)
 }
+fn travel_events(events: Vec<frontline_core::infantry_travel_owned::Event>) -> Array<Variant> {
+    use frontline_core::infantry_travel_owned::Event;
+    events
+        .into_iter()
+        .map(|event| {
+            match event {
+                Event::Route(r) => varray![
+                    0,
+                    r.revision as i64,
+                    r.job.id as i64,
+                    vector(r.job.destination),
+                    r.job.care
+                ],
+                Event::CancelPath => varray![1],
+                Event::Door { id, kicked } => varray![2, id as i64, kicked],
+                Event::PrisonArrival => varray![3],
+                Event::BreachSpeech(c) => varray![4, c as i32],
+                Event::ThrowSpeech(r) => varray![5, r as i32],
+                Event::GotAmmo => varray![6],
+                Event::Stat(s) => varray![7, s],
+            }
+            .to_variant()
+        })
+        .collect()
+}
 fn mounted_gun(
     a: &PackedFloat64Array,
 ) -> Result<Option<frontline_core::infantry_fire::MountedGun>, ()> {
@@ -627,7 +652,7 @@ impl ActorStateCore {
         mut rng: Gd<crate::simulation_random::SimulationRandomCore>,
     ) -> Array<Variant> {
         use frontline_core::infantry_cover::CoverWorld;
-        use frontline_core::infantry_travel_owned::{Event, Transport};
+        use frontline_core::infantry_travel_owned::Transport;
         if context.len() != 6
             || [2, 3, 4, 5]
                 .into_iter()
@@ -684,29 +709,96 @@ impl ActorStateCore {
         match result {
             Ok(events) => {
                 write_squads(squads, state);
-                let events: Array<Variant> = events
-                    .into_iter()
-                    .map(|event| {
-                        match event {
-                            Event::Route(r) => varray![
-                                0,
-                                r.revision as i64,
-                                r.job.id as i64,
-                                vector(r.job.destination),
-                                r.job.care
-                            ],
-                            Event::CancelPath => varray![1],
-                            Event::Door { id, kicked } => varray![2, id as i64, kicked],
-                            Event::PrisonArrival => varray![3],
-                            Event::BreachSpeech(c) => varray![4, c as i32],
-                            Event::ThrowSpeech(r) => varray![5, r as i32],
-                            Event::GotAmmo => varray![6],
-                            Event::Stat(s) => varray![7, s],
-                        }
-                        .to_variant()
-                    })
-                    .collect();
-                varray![&events]
+                varray![&travel_events(events)]
+            }
+            Err(_) => Array::new(),
+        }
+    }
+
+    #[func]
+    fn advance_infantry_care(
+        &mut self,
+        id: u32,
+        context: PackedFloat64Array,
+        restored_weapon: GString,
+        gun: PackedFloat64Array,
+        squads: Array<Gd<crate::squad::SquadStateCore>>,
+        heat: PackedByteArray,
+        deck: PackedByteArray,
+        terrain: Gd<crate::terrain::TerrainCore>,
+        nav: Gd<crate::path_planner::PathPlannerCore>,
+        units: Gd<crate::spatial::SpatialIndexCore>,
+        structures: Gd<crate::spatial::SpatialIndexCore>,
+        doors: Gd<crate::spatial::SpatialIndexCore>,
+        mut collision: Gd<crate::collision_index::CollisionIndexCore>,
+        mut rng: Gd<crate::simulation_random::SimulationRandomCore>,
+    ) -> Array<Variant> {
+        use frontline_core::infantry_care_owned::Profile;
+        use frontline_core::infantry_cover::CoverWorld;
+        if context.len() != 7
+            || [3, 5]
+                .into_iter()
+                .any(|i| context[i] != 0.0 && context[i] != 1.0)
+            || !context[6].is_finite()
+            || context[6].fract() != 0.0
+            || !(0.0..=1_000_000.0).contains(&context[6])
+        {
+            return Array::new();
+        }
+        let (Ok(gun), Some(mut state)) = (mounted_gun(&gun), read_squads(&squads)) else {
+            return Array::new();
+        };
+        let restored = restored_weapon.to_string();
+        let terrain = terrain.bind();
+        let nav = nav.bind();
+        let units = units.bind();
+        let structures = structures.bind();
+        let doors = doors.bind();
+        let (Some(terrain), Some(nav), Some(units), Some(structures), Some(doors)) = (
+            &terrain.core,
+            &nav.core,
+            &units.core,
+            &structures.core,
+            &doors.core,
+        ) else {
+            return Array::new();
+        };
+        let result = self.core.advance_infantry_care(
+            id,
+            context[0],
+            context[1],
+            Profile {
+                heal_rate: context[2],
+                medicine_upgrade: context[3] != 0.0,
+                weapon_range: context[4],
+                unarmed: context[5] != 0.0,
+                gun,
+                restored_weapon: (!restored.is_empty())
+                    .then_some((restored.as_str(), context[6] as i32)),
+            },
+            &mut state,
+            &mut CoverWorld {
+                terrain,
+                nav,
+                units,
+                structures,
+                collision: &mut collision.bind_mut().core,
+                heat: heat.as_slice(),
+                deck: deck.as_slice(),
+            },
+            doors,
+            &mut rng.bind_mut().core,
+        );
+        match result {
+            Ok(out) => {
+                write_squads(squads, state);
+                varray![
+                    &travel_events(out.movement),
+                    out.drag_speech.map_or(-1, i32::from),
+                    out.revived.map_or(0, |r| i64::from(r.0)),
+                    out.revived.map_or(-1, |r| i32::from(r.1)),
+                    out.rejoin
+                ]
             }
             Err(_) => Array::new(),
         }

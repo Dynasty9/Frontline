@@ -54,7 +54,7 @@ graphics, network access or a wall clock.
 | Infantry decision loop | `frontline_core` | Owned reflex priority, scavenging, building-entry selection and claims, special attacks, supply/cover decisions and sector watching; scan/separation scheduling and the live world dispatcher remain in Godot |
 | Infantry special attacks | `frontline_core` | Owned actors select melee, rocket, mortar and drone targets and retain ammunition, cooldowns, pending actions and squad fire queues; the live dispatcher and completed weapon effects remain in Godot |
 | Infantry supply decisions | `frontline_core` | Scavenging, nearest-body/depot choices, search timers and refill arithmetic extracted; Godot supplies spatial candidates and applies shared-store transfers, reloads and movement |
-| Infantry medical tasks | `frontline_core` | Rescue/healing stages, treatment deadlines, safe-anchor selection, dragging poses and escort movement extracted; Godot still owns patient links, movement requests and recovery effects |
+| Infantry medical tasks | `frontline_core` | Retained rescue/healing/limp duties update shared patient claims, shelter, movement and recovery; escort weapon effects, squad rejoining, ledger callbacks and the live dispatcher remain in Godot |
 | Construction, stretchers and prisoners | `frontline_core` | Construction priorities/timers, paired carrying stages, bearer takeover and prisoner escort geometry extracted; Godot still applies work, shared casualty links, tent delivery and capture effects |
 | Infantry arrival tasks | `frontline_core` | Boarding ranges, tunnel arrival, corpse/depot completion and ordered-throw inventory decisions extracted; Godot still applies boarding, tunnel membership, shared ammunition transfers and throws |
 | Mounted infantry | `frontline_core` | Approach/climbing stages, scan clocks, anti-tank target selection and gun traverse extracted; Godot still owns mount links, fire queues and weapon effects |
@@ -537,7 +537,7 @@ Component checkpoint headers contain a four-byte component tag, a little-endian
 rules rather than silently continuing with changed arithmetic. The separate
 integer RNG stream remains unchanged.
 
-`native/core/tests/numeric_contract.rs` compares 75,283,057 committed bytes without
+`native/core/tests/numeric_contract.rs` compares 96,673,573 committed bytes without
 tolerances: fixed-tick flight state, support events and RNG cursors, carved water,
 craters, rotated box hits, cover anchors, spherical interpolation and infantry
 movement, infantry cover fire, postures, ammunition, burst recovery, vitals, aiming,
@@ -1650,3 +1650,21 @@ between evacuation and crew births. These operations do not yet perform the full
 vehicle destruction dispatch: recursive sling damage, ledger/rule callbacks,
 crew return orders, authoritative wreck creation and geometry updates remain to
 be connected in the Rust world.
+
+## Shared rescue and healing duties
+
+Retained medical duties now read and update the same actor registry as combat.
+Rescuers claim casualties immediately, choose prone shelter without applying a
+combat-cover order, drag patients along retained routes and restore them when
+treatment ends. Later medics observe the claim or revival without a state export
+through Godot. Healing preserves its shorter treatment time and medicine upgrade;
+limping soldiers request squad rejoining only after movement finishes.
+
+Six core regressions cover competing medics, revived weapons, checkpoint resumes,
+drag completion, limping and invalid input. The Godot reference compares 9,216
+complete soldier states, squad state, routes, speech, properties and random
+cursors across rescue, heal and limp duties. Shelter selection uses the GDScript
+reference search, including ground cover, occupied positions and burning ground.
+Numeric CI adds 2,316,391 exact bytes, including checkpoint continuation midway
+through each sequence. These operations return ledger and rejoining effects;
+escort firing, the rule callbacks and the live world dispatcher remain unfinished.
