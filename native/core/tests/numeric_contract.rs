@@ -36,6 +36,166 @@ fn block(out: &mut Vec<u8>, bytes: &[u8]) {
 }
 
 #[test]
+fn prisoner_rules_and_intelligence_are_identical_across_platforms() {
+    use frontline_core::actors::{Actor, Actors};
+    use frontline_core::battle_stats::BattleStats;
+    use frontline_core::infantry::Infantry as Soldier;
+    use frontline_core::infantry_control::HiddenReason;
+    use frontline_core::infantry_controller::Task;
+    use frontline_core::infantry_prison_owned::{Custody, CustodyProfile, IntelMode};
+    use frontline_core::prisoner_intelligence::PrisonerIntelligence;
+    use frontline_core::spatial::{SpatialIndex, UNIT_CELL};
+    use frontline_core::structure::{Production, Structure};
+    let mut bytes = vec![];
+    for team in 0..2 {
+        for trial in 0..96 {
+            let mut p = Soldier::default();
+            p.identity.id = 1;
+            p.identity.unit = "rifleman".into();
+            p.identity.team = team;
+            p.identity.owner = 7;
+            p.identity.name = "Captured rifleman".into();
+            p.vitals.life = [Life::Surrender, Life::Captive, Life::Hidden][trial % 3];
+            p.control.hidden = if trial % 2 == 0 {
+                HiddenReason::Held
+            } else {
+                HiddenReason::Interrogation
+            };
+            p.links.captor = if trial % 5 == 0 { 999 } else { 2 };
+            p.links.intel_timer = 10.0;
+            p.links.intel_left = 8;
+            let mut c = Soldier::default();
+            c.identity.id = 2;
+            c.identity.unit = "rifleman".into();
+            c.identity.weapon = "rifle".into();
+            c.identity.team = 1 - team;
+            c.duty.kind = if trial % 4 == 0 {
+                Task::Fight
+            } else {
+                Task::Captor
+            };
+            c.duty.entity = 1;
+            c.motion.position = Vector3::X * [1.0, 34.99, 35.0][trial % 3];
+            let mut friend = Soldier::default();
+            friend.identity.id = 3;
+            friend.identity.unit = "rifleman".into();
+            friend.identity.team = team;
+            friend.motion.position = Vector3::Z * [1.0, 5.99, 6.01, 40.0][trial % 4];
+            let mut entries = vec![
+                Actor::Soldier(Box::new(p)),
+                Actor::Soldier(Box::new(c)),
+                Actor::Soldier(Box::new(friend)),
+            ];
+            for (i, kind) in ["fob", "tunnel", "mg_nest", "barracks", "town"]
+                .iter()
+                .enumerate()
+            {
+                entries.push(Actor::Structure(Box::new(Structure {
+                    id: 10 + i as u32,
+                    team: if i == 1 { 1 - team } else { team },
+                    kind: (*kind).into(),
+                    name: format!("Position {i}"),
+                    position: Vector3::new(
+                        (i as f32 - 2.0) * 15.53,
+                        0.0,
+                        (trial as f32 - 48.0) * 0.47,
+                    ),
+                    supply: trial as f64 * 3.79,
+                    wrecked: i == 0 && trial % 7 == 0,
+                    zone_center: Some(Vector3::new(17.19, 0.0, -37.13)),
+                    queue: vec![Production {
+                        item: "rifle_squad".into(),
+                        remaining: 2.0,
+                        total: 4.0,
+                        owner: 7,
+                        cost: 5,
+                    }],
+                    ..Default::default()
+                })));
+            }
+            let mut a = Actors::from_entries(100, entries).unwrap();
+            let mut units = SpatialIndex::new(UNIT_CELL).unwrap();
+            a.rebuild_units(&mut units).unwrap();
+            let mut squads = vec![];
+            let mut next = 100;
+            let mut battle = BattleStats::default();
+            let mut intel = PrisonerIntelligence::default();
+            let mut rng = SimulationRandom::new(7811 + trial as u64);
+            for step in 0..5 {
+                let out = a
+                    .advance_prisoner(
+                        1,
+                        10.0 + step as f64 * 10.01,
+                        CustodyProfile {
+                            mission: trial % 2 == 0,
+                            depots: [10, 11],
+                            restored_weapon: Some(("rifle", 30)),
+                            squad_name: "Rifle Squad",
+                        },
+                        &[(8, team)],
+                        &mut squads,
+                        &mut next,
+                        &mut battle,
+                        &units,
+                        |_| trial % 7 == 0,
+                    )
+                    .unwrap();
+                block(&mut bytes, format!("{out:?}").as_bytes());
+                if let Custody::Intelligence(mode) = out {
+                    let event = intel
+                        .reveal(
+                            1,
+                            mode,
+                            &a,
+                            &units,
+                            &[14],
+                            &[(team, 10)],
+                            [1024, 2048, 3072][trial % 3],
+                            |_| trial % 7 == 0,
+                            |st| st.name.clone(),
+                            str::to_owned,
+                            &mut rng,
+                        )
+                        .unwrap();
+                    block(&mut bytes, format!("{event:?}").as_bytes());
+                }
+                block(&mut bytes, &a.checkpoint().unwrap());
+                block(&mut bytes, &battle.checkpoint());
+                for q in &squads {
+                    block(&mut bytes, &q.checkpoint().unwrap());
+                }
+                block(&mut bytes, &intel.checkpoint());
+                bytes.extend_from_slice(&next.to_le_bytes());
+                bytes.extend_from_slice(&rng.state().to_le_bytes());
+                a = Actors::restore(&a.checkpoint().unwrap()).unwrap();
+                intel = PrisonerIntelligence::restore(&intel.checkpoint()).unwrap();
+            }
+            for _ in 0..12 {
+                let out = intel
+                    .reveal(
+                        1,
+                        IntelMode::Interrogation,
+                        &a,
+                        &units,
+                        &[14],
+                        &[(team, 10)],
+                        [1024, 2048, 3072][trial % 3],
+                        |_| trial % 7 == 0,
+                        |st| st.name.clone(),
+                        str::to_owned,
+                        &mut rng,
+                    )
+                    .unwrap();
+                block(&mut bytes, format!("{out:?}").as_bytes());
+                block(&mut bytes, &intel.checkpoint());
+                bytes.extend_from_slice(&rng.state().to_le_bytes());
+            }
+        }
+    }
+    golden("prisoner_rules", &bytes);
+}
+
+#[test]
 fn infantry_rejoining_is_identical_across_platforms() {
     use frontline_core::actors::{Actor, Actors};
     use frontline_core::battle_stats::{BattleStats, Unit};

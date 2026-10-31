@@ -933,10 +933,11 @@ func _prisoners() -> void:
 						_free(s)
 						continue
 					var c := _find_captor(s)
-					if c and world.mission != null and Defs.flat(_prison_dest(c.team, s.position).position - s.position).length() > 200.0:
-						# in a mission the nearest FOB is likely the far end of the map:
-						# nobody leaves the fight to walk him there; he sits it out
-						c = null
+					if c and world.mission != null:
+						var prison := _prison_dest(c.team, s.position)
+						# Mission guards keep fighting when there is nowhere nearby to hold him.
+						if not is_instance_valid(prison) or prison.gone or Defs.flat(prison.position - s.position).length() > 200.0:
+							c = null
 					if c:
 						s.captor = c
 						c.start_captor(s)
@@ -958,7 +959,7 @@ func _prisoners() -> void:
 
 func _captor_ok(s: Soldier) -> bool:
 	var c := s.captor
-	return c != null and not c.gone and c.life == Soldier.Life.ALIVE and c.task == "captor" and c.task_ent == s
+	return is_instance_valid(c) and not c.gone and c.life == Soldier.Life.ALIVE and c.task == "captor" and c.task_ent == s
 
 
 func _friend_near(s: Soldier, r: float) -> bool:

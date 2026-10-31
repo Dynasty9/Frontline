@@ -537,7 +537,7 @@ Component checkpoint headers contain a four-byte component tag, a little-endian
 rules rather than silently continuing with changed arithmetic. The separate
 integer RNG stream remains unchanged.
 
-`native/core/tests/numeric_contract.rs` compares 117,041,647 committed bytes without
+`native/core/tests/numeric_contract.rs` compares 124,177,858 committed bytes without
 tolerances: fixed-tick flight state, support events and RNG cursors, carved water,
 craters, rotated box hits, cover anchors, spherical interpolation and infantry
 movement, infantry cover fire, postures, ammunition, burst recovery, vitals, aiming,
@@ -1726,8 +1726,8 @@ actor runs. A removed prison is handled without dereferencing a freed scene obje
 Seven core regressions cover credit, destination ties, missing destinations,
 reassignment, arrival and rejected updates. The 5,120 Godot actor-state comparisons
 also check squads, battle records, routes, speech, messages and random continuation.
-The numeric corpus adds 4,200,640 exact bytes. Prisoner intelligence, freeing,
-squad rejoining and the full world dispatcher still require integration.
+The numeric corpus adds 4,200,640 exact bytes. Prisoner intelligence, freeing and
+squad rejoining are covered below; the full world dispatcher still needs integration.
 
 ## Shared soldier downtime
 
@@ -1757,3 +1757,28 @@ full sections, duplicate membership, new identities, strict distances and invali
 inputs, with complete squad and battle-record comparisons. Numeric CI adds 2,950,194
 exact bytes with checkpoint continuation. The operation is ready for recovery and
 prisoner-rule dispatch; the complete Rust world loop still needs integration.
+
+## Prisoner custody and intelligence
+
+Retained prisoner rules release unguarded soldiers when friends reach them, restore
+their weapon and use the shared squad-rejoining operation. Otherwise, the nearest
+eligible enemy claims the escort. Missions leave prisoners in place when there is
+no prison within 200 metres. Losing a guard cancels the prison route; rescue is
+considered on the next rules pass, matching the existing order.
+
+Marching, held and interrogated prisoners retain their separate strict deadlines.
+Rust builds intelligence from current bases, defenses, production, trucks, towns,
+army strength and commander targets in the existing order. Reports consume the
+same two random draws and are addressed only to the capturing side. A separate
+versioned checkpoint preserves each prisoner's report history, including repeats
+after the available facts are exhausted. The full rules/world dispatcher must
+retain this state and forget a prisoner's history when that actor is removed.
+
+Nine regressions and 6,144 complete Godot actor-state comparisons cover release,
+competing guards, lost escorts, deadlines, report ordering, checkpoint resumes,
+messages, squads, battle records and RNG continuation. Numeric CI adds 7,136,211
+exact bytes. The full authoritative world dispatcher remains unfinished.
+
+The complete local game suite passed 195 tests at `57afd00`. This prisoner update
+passes all 650 core tests, 107 affected/numeric release tests and five focused
+Godot fixtures. Other apps remained running throughout validation.

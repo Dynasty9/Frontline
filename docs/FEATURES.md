@@ -1443,8 +1443,10 @@ removing expired bodies; captive movement keeps the existing route speed and
 hands-up posture. Wounded behavior and the full world dispatcher remain unfinished.
 Retained captors update capture credit, prison selection and escort movement;
 arrival applies detention and the guard's return order before the next actor.
-Removed prisons are handled safely. Intelligence, freeing and the full rules loop
-still need integration.
+Removed prisons are handled safely. Retained prisoner rules now handle guard
+claims, rescue and squad rejoining. Intelligence retains the original fact order,
+private reports, deadlines and random draws, with report history saved for replay
+continuation. The full rules loop still needs integration.
 Construction, town income, capture and production transitions match the existing
 game; shared rule effects, destruction and the full building dispatcher still need
 migration before Rust owns the complete battle.

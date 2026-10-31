@@ -3,6 +3,7 @@ use crate::actors::Actors;
 use crate::battle_stats::BattleStats;
 use crate::entities::Kind;
 use crate::infantry::Goal;
+use crate::infantry::Infantry;
 use crate::infantry_commands::Command;
 use crate::infantry_control::HiddenReason;
 use crate::infantry_controller::Task;
@@ -10,6 +11,7 @@ use crate::infantry_cover::CoverWorld;
 use crate::infantry_duties::{self as duties, Captor, Duty, Guard};
 use crate::infantry_fire::MountedGun;
 use crate::infantry_pose::Posture;
+use crate::infantry_rejoin::Rejoined;
 use crate::infantry_travel_owned::Event as Movement;
 use crate::infantry_vitals::Life;
 use crate::path_planner::PathPlanner;
@@ -23,6 +25,33 @@ pub struct Profile {
     pub value: f64,
     pub fallback_depot: u32,
     pub gun: Option<MountedGun>,
+}
+
+#[derive(Clone, Copy, Debug)]
+pub struct CustodyProfile<'a> {
+    pub mission: bool,
+    pub depots: [u32; 2],
+    pub restored_weapon: Option<(&'a str, i32)>,
+    pub squad_name: &'a str,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum IntelMode {
+    March,
+    Held,
+    Interrogation,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum Custody {
+    Unchanged,
+    Freed(Rejoined),
+    Assigned {
+        captor: u32,
+        route: crate::infantry_orders::RouteOrder,
+    },
+    LostGuard,
+    Intelligence(IntelMode),
 }
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum Event {
@@ -47,6 +76,175 @@ fn flat(p: Vector3) -> Vector3 {
 }
 
 impl Actors {
+    pub fn advance_prisoner(
+        &mut self,
+        id: u32,
+        now: f64,
+        profile: CustodyProfile<'_>,
+        players: &[(i32, i8)],
+        squads: &mut Vec<Squad>,
+        next_squad: &mut u64,
+        battle: &mut BattleStats,
+        units: &SpatialIndex,
+        bearer: impl Fn(&Infantry) -> bool,
+    ) -> Result<Custody, &'static str> {
+        if !now.is_finite()
+            || now.abs() > 1e12 - 100.0
+            || units.cell_size() != UNIT_CELL
+            || profile.restored_weapon.is_some_and(|(key, mag)| {
+                key.is_empty()
+                    || key.len() > 128
+                    || key.contains('\0')
+                    || !(0..=1_000_000).contains(&mag)
+            })
+        {
+            return Err("invalid prisoner custody context");
+        }
+        let p = self.soldier(id).ok_or("missing prisoner")?;
+        if !(0..=1).contains(&p.identity.team) {
+            return Err("prisoner has no side");
+        }
+        let team = p.identity.team;
+        let position = p.motion.position;
+        let guarded = self.soldier(p.links.captor as u32).is_some_and(|c| {
+            c.vitals.life == Life::Alive
+                && c.duty.kind == Task::Captor
+                && c.duty.entity == id.into()
+        });
+        match p.vitals.life {
+            Life::Surrender if !guarded => {
+                let rescued = self
+                    .units_near(units, position, 6.0, -1)?
+                    .into_iter()
+                    .filter_map(|who| self.soldier(who))
+                    .any(|s| {
+                        s.identity.id != id
+                            && s.identity.team == team
+                            && s.vitals.life == Life::Alive
+                            && !bearer(s)
+                    });
+                if rescued {
+                    let previous = p.clone();
+                    let p = self.soldier_mut(id).unwrap();
+                    p.links.captor = 0;
+                    p.vitals.life = Life::Alive;
+                    p.activity = 0;
+                    p.identity.weapon = profile
+                        .restored_weapon
+                        .map_or_else(String::new, |w| w.0.into());
+                    if let Some((_, magazine)) = profile.restored_weapon {
+                        p.weapon.magazine = magazine;
+                        p.weapon.reserve = magazine;
+                    }
+                    p.vitals.speech_cooldown = 2.6;
+                    let joined = self.rejoin_infantry(
+                        id,
+                        now,
+                        players,
+                        squads,
+                        next_squad,
+                        battle,
+                        profile.squad_name,
+                    );
+                    match joined {
+                        Ok(joined) => return Ok(Custody::Freed(joined)),
+                        Err(error) => {
+                            *self.soldier_mut(id).unwrap() = previous;
+                            return Err(error);
+                        }
+                    }
+                }
+                let mut closest = None;
+                let mut distance = 35.0;
+                for who in self.units_near(units, position, 35.0, -1)? {
+                    let Some(c) = self.soldier(who).filter(|c| {
+                        c.identity.team != team
+                            && c.identity.team >= 0
+                            && c.vitals.life == Life::Alive
+                            && c.duty.kind == Task::Fight
+                            && !c.identity.weapon.is_empty()
+                            && !bearer(c)
+                    }) else {
+                        continue;
+                    };
+                    let d = f64::from(flat(c.motion.position - position).length());
+                    if d < distance {
+                        distance = d;
+                        closest = Some(who);
+                    }
+                }
+                if profile.mission {
+                    if let Some(who) = closest {
+                        let c = self.soldier(who).unwrap();
+                        let prison = self
+                            .prison_destination(
+                                c.identity.team,
+                                position,
+                                profile.depots[c.identity.team as usize],
+                            )
+                            .and_then(|destination| self.structure(destination));
+                        if prison.is_none_or(|st| {
+                            f64::from(flat(st.position - position).length()) > 200.0
+                        }) {
+                            closest = None;
+                        }
+                    }
+                }
+                if let Some(who) = closest {
+                    let mut c = self.soldier(who).unwrap().clone();
+                    c.duty.kind = Task::Captor;
+                    c.duty.entity = id.into();
+                    c.duty.partner = 0;
+                    c.duty.phase = 0;
+                    c.orders.backwards = false;
+                    let route = c.go_to(position, Goal::Task, 1)?;
+                    *self.soldier_mut(who).unwrap() = c;
+                    self.soldier_mut(id).unwrap().links.captor = who.into();
+                    Ok(Custody::Assigned { captor: who, route })
+                } else {
+                    self.soldier_mut(id).unwrap().links.captor = 0;
+                    Ok(Custody::Unchanged)
+                }
+            }
+            Life::Captive => {
+                if !guarded {
+                    let mut next = p.clone();
+                    next.links.captor = 0;
+                    next.vitals.life = Life::Surrender;
+                    next.stop_moving()?;
+                    *self.soldier_mut(id).unwrap() = next;
+                    Ok(Custody::LostGuard)
+                } else if p.links.intel_left > 0 && now > p.links.intel_timer {
+                    let p = self.soldier_mut(id).unwrap();
+                    p.links.intel_left -= 1;
+                    p.links.intel_timer = now + 10.0;
+                    Ok(Custody::Intelligence(IntelMode::March))
+                } else {
+                    Ok(Custody::Unchanged)
+                }
+            }
+            Life::Hidden
+                if matches!(
+                    p.control.hidden,
+                    HiddenReason::Held | HiddenReason::Interrogation
+                ) && p.links.intel_left > 0
+                    && now > p.links.intel_timer =>
+            {
+                let p = self.soldier_mut(id).unwrap();
+                p.links.intel_left -= 1;
+                p.links.intel_timer = now + 7.0;
+                Ok(Custody::Intelligence(
+                    if p.control.hidden == HiddenReason::Held {
+                        IntelMode::Held
+                    } else {
+                        IntelMode::Interrogation
+                    },
+                ))
+            }
+            _ => Ok(Custody::Unchanged),
+        }
+    }
+
     fn prison_destination(&self, team: i8, position: Vector3, fallback: u32) -> Option<u32> {
         let mut best = None;
         let mut distance = 1e9;

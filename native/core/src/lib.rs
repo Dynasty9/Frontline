@@ -69,6 +69,7 @@ pub mod infantry_weapon;
 pub mod navigation_grid;
 pub mod path_planner;
 pub mod perception;
+pub mod prisoner_intelligence;
 pub mod projectile;
 pub mod projectile_actor;
 pub mod random;

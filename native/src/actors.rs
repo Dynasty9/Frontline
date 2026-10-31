@@ -830,6 +830,125 @@ impl ActorStateCore {
     }
 
     #[func]
+    fn advance_prisoner(
+        &mut self,
+        id: u32,
+        now: f64,
+        profile: Array<Variant>,
+        players: PackedInt32Array,
+        squads: Array<Gd<crate::squad::SquadStateCore>>,
+        next_squad: i64,
+        mut battle: Gd<crate::battle_stats::BattleStatsCore>,
+        units: Gd<crate::spatial::SpatialIndexCore>,
+        bearer_ids: PackedInt64Array,
+    ) -> Array<Variant> {
+        use frontline_core::infantry_prison_owned::{Custody, CustodyProfile, IntelMode};
+        if profile.len() != 6
+            || players.len() % 2 != 0
+            || players.len() > 200_000
+            || bearer_ids.len() > 1_000_000
+        {
+            return Array::new();
+        }
+        let (Ok(mission), Ok(d0), Ok(d1), Ok(key), Ok(mag), Ok(label)) = (
+            profile.at(0).try_to::<bool>(),
+            profile.at(1).try_to::<u32>(),
+            profile.at(2).try_to::<u32>(),
+            profile.at(3).try_to::<GString>(),
+            profile.at(4).try_to::<i32>(),
+            profile.at(5).try_to::<GString>(),
+        ) else {
+            return Array::new();
+        };
+        let key = key.to_string();
+        let label = label.to_string();
+        let (Some(mut state), Ok(mut next)) = (read_squads(&squads), u64::try_from(next_squad))
+        else {
+            return Array::new();
+        };
+        let peers: Result<Vec<_>, _> = players
+            .as_slice()
+            .chunks_exact(2)
+            .map(|p| i8::try_from(p[1]).map(|team| (p[0], team)))
+            .collect();
+        let bearers: Result<std::collections::HashSet<_>, _> = bearer_ids
+            .as_slice()
+            .iter()
+            .map(|id| u32::try_from(*id))
+            .collect();
+        let (Ok(peers), Ok(bearers)) = (peers, bearers) else {
+            return Array::new();
+        };
+        let units = units.bind();
+        let Some(units) = &units.core else {
+            return Array::new();
+        };
+        let out = self.core.advance_prisoner(
+            id,
+            now,
+            CustodyProfile {
+                mission,
+                depots: [d0, d1],
+                restored_weapon: (!key.is_empty()).then_some((key.as_str(), mag)),
+                squad_name: &label,
+            },
+            &peers,
+            &mut state,
+            &mut next,
+            &mut battle.bind_mut().core,
+            units,
+            |s| bearers.contains(&s.identity.id),
+        );
+        let Ok(out) = out else {
+            return Array::new();
+        };
+        let mut added = PackedByteArray::new();
+        let result = match out {
+            Custody::Unchanged => varray![0],
+            Custody::LostGuard => varray![1],
+            Custody::Assigned { captor, route } => varray![
+                2,
+                captor as i64,
+                &travel_events(vec![frontline_core::infantry_travel_owned::Event::Route(
+                    route
+                )])
+            ],
+            Custody::Intelligence(mode) => varray![
+                3,
+                match mode {
+                    IntelMode::March => 0,
+                    IntelMode::Held => 1,
+                    IntelMode::Interrogation => 2,
+                }
+            ],
+            Custody::Freed(joined) => {
+                if joined.created {
+                    added = state
+                        .last()
+                        .unwrap()
+                        .checkpoint()
+                        .unwrap()
+                        .as_slice()
+                        .into();
+                }
+                let owner = joined
+                    .owner_changed
+                    .map_or_else(Variant::nil, |id| id.to_variant());
+                let routes = travel_events(
+                    joined
+                        .route
+                        .into_iter()
+                        .map(frontline_core::infantry_travel_owned::Event::Route)
+                        .collect(),
+                );
+                varray![4, joined.squad as i64, &owner, &routes]
+            }
+        };
+        write_squads(squads, state);
+        varray![&result, next as i64, &added]
+    }
+
+    #[func]
     fn rejoin_infantry(
         &mut self,
         id: u32,
