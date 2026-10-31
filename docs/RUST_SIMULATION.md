@@ -50,6 +50,7 @@ graphics, network access or a wall clock.
 | Construction, stretchers and prisoners | `frontline_core` | Construction priorities/timers, paired carrying stages, bearer takeover and prisoner escort geometry extracted; Godot still applies work, shared casualty links, tent delivery and capture effects |
 | Infantry arrival tasks | `frontline_core` | Boarding ranges, tunnel arrival, corpse/depot completion and ordered-throw inventory decisions extracted; Godot still applies boarding, tunnel membership, shared ammunition transfers and throws |
 | Mounted infantry | `frontline_core` | Approach/climbing stages, scan clocks, anti-tank target selection and gun traverse extracted; Godot still owns mount links, fire queues and weapon effects |
+| Infantry action state | `frontline_core` | Typed pending actions, queued cooked throws, poses and completion admission extracted; Godot still advances the actor controller and applies throws, strikes, launches and door effects |
 | Complete fighting-position search | `frontline_core` | Candidate enumeration, reachability, protection, occupancy and final scoring run in one call; Godot supplies nearby structure and soldier records |
 | House-entry task phases | `frontline_core` | Stack/door/grenade/entry transitions, deadlines, cooking and room targets extracted with component checkpoints; Godot still owns movement callbacks and squad entry effects |
 | House occupancy and breach selection | `frontline_core` | Floor containment, ordered openings, nearest walkable stack positions and competing squadmates extracted; Godot still supplies spatial candidates, squad contacts and decision timers |
@@ -239,14 +240,14 @@ Component checkpoint headers contain a four-byte component tag, a little-endian
 rules rather than silently continuing with changed arithmetic. The separate
 integer RNG stream remains unchanged.
 
-`native/core/tests/numeric_contract.rs` compares 3,557,125 committed bytes without
+`native/core/tests/numeric_contract.rs` compares 5,150,941 committed bytes without
 tolerances: fixed-tick flight state, support events and RNG cursors, carved water,
 craters, rotated box hits, cover anchors, spherical interpolation and infantry
 movement, infantry cover fire, postures, ammunition, burst recovery, vitals, aiming,
 combat poses, bullet resolution, blast exposure, knockback recovery and wounded
 infantry schedules, grenade reflexes, grenade task movement and house-entry
 phases, building selection, automatic grenade attacks, incoming shells and drone
-reactions, special attacks, infantry supply, medical/work duties, arrival tasks, mounted weapons, complete cover searches and stationary
+reactions, special attacks, infantry supply, medical/work duties, arrival tasks, mounted weapons, action state, complete cover searches and stationary
 infantry movement. CI runs
 the same fixtures in debug and release on Windows x64, Linux
 x64, Linux ARM64 and macOS ARM64. A mismatch reports the first different byte.
@@ -463,9 +464,21 @@ flag until Rust owns the actors.
 
 The shock fixture compares 92,160 reference steps, including mounted turning,
 blocked terrain, carried casualties and task interruption. The full default suite
-passes 134 tests; 194 core tests pass in debug and release.
+passes 135 tests; 200 core tests pass in debug and release.
 
 ## Infantry tasks and reflexes
+
+`ActionState` retains typed action payloads, duration and a queued cooked throw.
+Completion checks the current grenade holder, kick range and target lifetime.
+A failed kick still ducks; cooking starts the queued throw before its speech;
+callbacks run before later state effects such as the kick's duck timer. Action
+poses preserve cooking stance, launcher tracking and instantaneous initial facing.
+
+The 24,576-step frozen-reference fixture compares all action kinds, callback order,
+queued transitions and random cursors. Seven removed-target cases cover rockets,
+drones, melee, doors, pickup, rethrowing and kicking. The `FLAC` checkpoint retains
+the pending action and queue; the Godot adapter still applies actor effects and
+remains test-only. Numeric CI adds 1,593,816 exact bytes.
 
 `Mount` retains climbing phases, the anti-tank scan timer and selected target.
 Gun laying uses the same traverse limits as infantry movement. Anti-tank scans

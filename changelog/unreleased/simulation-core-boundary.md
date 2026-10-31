@@ -42,6 +42,7 @@ kind = "fixed"
 - Construction, stretcher and prisoner-escort checks preserve work priorities, paired carrying and solo takeover. These tasks also safely handle removed casualties, partners, tents, prisoners and work targets.
 - Arrival checks preserve boarding, tunnels, ammunition collection and ordered throws. Invalid grenade types no longer interrupt troops or change command ownership, and removed destinations are handled safely.
 - Mounted-weapon checks preserve climbing towers, manning guns, mortar aim and anti-tank target selection. Removed mounts are safely released.
+- Action checks preserve cooking, throws, grenade handling, door kicks and weapon launches. Pending actions safely handle targets or grenades removed before completion.
 - Authoritative entity IDs now come from Rust, preserving creation order and keeping removed units' IDs from being reused as the server migration continues.
 - The extracted simulation uses pinned numeric rules, with exact checkpoint comparisons across platforms as replay verification work continues.
 - Guided missiles keep a consistent turn after overshooting their aim point, instead of letting rounding choose an erratic turn direction.

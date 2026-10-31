@@ -2307,11 +2307,60 @@ func _finish_reload() -> void:
 
 # --- special attacks ---------------------------------------------------------------
 
+const ACTION_KINDS := ["", "throw", "rethrow", "throw_in", "kick", "door_kick", "cook", "melee", "pickup", "launch", "launch_drone", "mortar"]
+var _action_core: RefCounted
+
+
+func _native_action() -> bool:
+	return world.settings.get("rust_infantry", false) and ClassDB.class_exists("InfantryActionCore")
+
+
+func _actions() -> RefCounted:
+	if _action_core == null:
+		_action_core = ClassDB.instantiate("InfantryActionCore")
+	return _action_core
+
+
+func _action_entity(key: String) -> Entity:
+	var e = act_data.get(key)
+	return e if is_instance_valid(e) and e is Entity else null
+
+
+func _action_payload(kind: String, data: Dictionary) -> Array:
+	var e = data.get("g" if kind in ["kick", "pickup", "rethrow"] else ("door" if kind == "door_kick" else "target"))
+	var round_kind := 1 if data.get("kind", "") == "smoke" else (2 if kind == "mortar" else 0)
+	return [e.eid if is_instance_valid(e) and e is Entity else 0, data.get("pos", Vector3.ZERO), round_kind,
+		float(data.get("fuse", 3.4)), data.get("v", Vector3.ZERO)]
+
+
+func _action_values() -> Array:
+	return [ACTION_KINDS.find(act_kind), act_t, _action_payload(act_kind, act_data),
+		_action_payload("throw", _queued_throw) if not _queued_throw.is_empty() else []]
+
+
+func _action_related() -> Array:
+	var e := _action_entity("g" if act_kind in ["kick", "pickup", "rethrow"] else ("door" if act_kind == "door_kick" else "target"))
+	if e == null:
+		return []
+	var holder := 0
+	if e is Projectile and is_instance_valid(e.held_by):
+		holder = e.held_by.eid
+	return [e.eid, e.position, e.gone, holder]
+
+
 func _begin_action(kind: String, dur: float, data: Dictionary) -> void:
 	act_kind = kind
 	act_t = dur
 	act_data = data
 	stop_moving()
+	if _native_action():
+		var pose: Array = _actions().start_pose(_action_values(), eid, position, _action_related())
+		assert(pose.size() == 2, "Invalid action start")
+		if int(pose[0]) != 0:
+			act = [Act.IDLE, Act.THROW, Act.KICK, Act.COOK, Act.MELEE, Act.PICKUP, Act.LAUNCH][int(pose[0])]
+		if pose[1] != null:
+			rotation.y = float(pose[1])
+		return
 	match kind:
 		"throw", "rethrow", "throw_in":
 			act = Act.THROW
@@ -2327,11 +2376,21 @@ func _begin_action(kind: String, dur: float, data: Dictionary) -> void:
 			act = Act.LAUNCH
 	if data.has("pos"):
 		_face_now(Defs.flat(data.pos - position))
-	elif data.has("target") and data.target is Entity:
-		_face_now(Defs.flat(data.target.position - position))
+	else:
+		var aimed := _action_entity("target")
+		if aimed != null:
+			_face_now(Defs.flat(aimed.position - position))
 
 
 func _action_tick(_dt: float) -> void:
+	if _native_action():
+		var pose: Array = _actions().pose(_action_values(), eid, position, _action_related())
+		assert(pose.size() == 2, "Invalid action pose")
+		if int(pose[0]) >= 0:
+			posture = int(pose[0])
+		if pose[1] != null:
+			rotation.y = float(pose[1])
+		return
 	if act_kind == "mortar":
 		posture = Post.CROUCH
 		return
@@ -2342,19 +2401,29 @@ func _action_tick(_dt: float) -> void:
 		return
 	if act_kind == "launch" or act_kind == "throw" or act_kind == "rethrow" or act_kind == "throw_in":
 		posture = Post.STAND if act_kind != "launch" else Post.CROUCH
-		if act_data.has("target") and act_data.target is Entity and not act_data.target.gone:
-			_face_now(Defs.flat(act_data.target.position - position))
+		var aimed := _action_entity("target")
+		if aimed != null and not aimed.gone:
+			_face_now(Defs.flat(aimed.position - position))
 
 
 func _action_done() -> void:
 	var k := act_kind
+	var decision := PackedInt32Array()
+	if _native_action():
+		decision = _actions().finish(_action_values(), eid, position, _action_related())
+		assert(decision.size() == 3, "Invalid action completion")
 	act_kind = ""
 	act = Act.IDLE
-	if k == "cook" and not _queued_throw.is_empty():
+	var cooked := decision[1] != 0 if not decision.is_empty() else k == "cook" and not _queued_throw.is_empty()
+	if cooked:
 		var qt := _queued_throw
 		_queued_throw = {}
 		_begin_action("throw", 0.6, qt)
 		say(_pick(["Frag out!", "Grenade out!", "Fire in the hole!"]), true)
+		return
+	if not decision.is_empty() and decision[0] == 0:
+		if decision[2] != 0:
+			hit_dirt_t = maxf(hit_dirt_t, 1.6)
 		return
 	match k:
 		"throw":
@@ -2362,36 +2431,36 @@ func _action_done() -> void:
 		"throw_in":
 			bt_breach_g = world.combat.throw_grenade_low(self, act_data.pos, float(act_data.get("fuse", 3.4)))
 		"kick":
-			var kg: Projectile = act_data.get("g")
+			var kg := _action_entity("g") as Projectile
 			if kg and not kg.gone and kg.held_by == null and Defs.flat(kg.position - position).length() < 1.4:
 				kg.kick(self, act_data.v)
 				world.stat("kicked")
 			hit_dirt_t = maxf(hit_dirt_t, 1.6)  # and down
 		"pickup":
-			var g: Projectile = act_data.get("g")
+			var g := _action_entity("g") as Projectile
 			if g and not g.gone and g.held_by == self:
 				var tp := _rethrow_target(g)
 				_begin_action("rethrow", 0.3, {"g": g, "pos": tp})
 		"rethrow":
-			var g: Projectile = act_data.get("g")
+			var g := _action_entity("g") as Projectile
 			if g and not g.gone and g.held_by == self:
 				g.release_throw(self, act_data.pos)
 				world.stat("throwback")
 				say("Throwing it back!", true)
 		"door_kick":
-			var dr: Structure = act_data.get("door")
+			var dr := _action_entity("door") as Structure
 			if dr and not dr.gone:
 				dr.open_door(self, true)
 		"melee":
-			world.combat.melee_hit(self, act_data.get("target"))
+			world.combat.melee_hit(self, _action_entity("target"))
 		"launch":
-			var t: Entity = act_data.get("target")
+			var t := _action_entity("target")
 			if t and not t.gone:
 				world.combat.fire_rocket(self, t)
 		"mortar":
 			world.combat.fire_mortar(self, position + Vector3(0, 1.0, 0), act_data.pos, String(act_data.kind))
 		"launch_drone":
-			var t2: Entity = act_data.get("target")
+			var t2 := _action_entity("target")
 			if t2 and not t2.gone:
 				drone_ctrl = world.combat.launch_drone(self, t2)
 				if drone_ctrl:

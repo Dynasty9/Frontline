@@ -36,6 +36,104 @@ fn block(out: &mut Vec<u8>, bytes: &[u8]) {
 }
 
 #[test]
+fn infantry_action_is_identical_across_platforms() {
+    use frontline_core::infantry_action::{Action, ActionState, Context, Related, Round, Throw};
+    let mut bytes = Vec::new();
+    for trial in 0..1024 {
+        let position = Vector3::new(trial as f32 * 0.07, 0.0, -3.1);
+        let target = Vector3::new(-5.7, 1.1, trial as f32 * -0.03);
+        let throw = Throw {
+            position: target,
+            round: if trial % 2 == 0 {
+                Round::Frag
+            } else {
+                Round::Smoke
+            },
+            fuse: trial as f64 * 0.00017,
+        };
+        let actions = [
+            Action::None,
+            Action::Throw(throw),
+            Action::Rethrow {
+                grenade: 2,
+                position: target,
+            },
+            Action::ThrowIn {
+                position: target,
+                fuse: 0.3,
+            },
+            Action::Kick {
+                grenade: 2,
+                velocity: target,
+            },
+            Action::DoorKick {
+                door: 2,
+                position: target,
+            },
+            Action::Cook,
+            Action::Melee { target: 2 },
+            Action::Pickup { grenade: 2 },
+            Action::Launch { target: 2 },
+            Action::LaunchDrone { target: 2 },
+            Action::Mortar {
+                position: target,
+                round: if trial % 2 == 0 {
+                    Round::Smoke
+                } else {
+                    Round::HighExplosive
+                },
+            },
+        ];
+        for action in actions {
+            let context = Context {
+                actor: 1,
+                position,
+                related: (trial % 7 != 0).then_some(Related {
+                    id: 2,
+                    position: position + Vector3::new([1.0, 1.4, 1.5][trial % 3], 0.0, -0.1),
+                    gone: trial % 11 == 0,
+                    holder: (trial % 3) as u64,
+                }),
+            };
+            let mut state = ActionState {
+                current: action,
+                remaining: trial as f64 * 0.0001,
+                queued_throw: (trial % 2 == 0).then_some(throw),
+            };
+            for yaw in [
+                action.begin_yaw(context).unwrap(),
+                action.pose(context).unwrap().yaw,
+            ] {
+                bytes.push(u8::from(yaw.is_some()));
+                bytes.extend_from_slice(&yaw.unwrap_or(0.0).to_le_bytes());
+            }
+            bytes.push(
+                action
+                    .pose(context)
+                    .unwrap()
+                    .posture
+                    .map_or(255, |p| p as u8),
+            );
+            bytes.push(u8::from(state.advance(1.0 / 30.0).unwrap()));
+            block(&mut bytes, &state.checkpoint());
+            state = ActionState::restore(&state.checkpoint()).unwrap();
+            let done = state.finish(context).unwrap();
+            bytes.extend_from_slice(&[u8::from(done.begin_throw), u8::from(done.duck_after)]);
+            block(
+                &mut bytes,
+                &ActionState {
+                    current: done.effect,
+                    ..Default::default()
+                }
+                .checkpoint(),
+            );
+            block(&mut bytes, &state.checkpoint());
+        }
+    }
+    golden("infantry_action", &bytes);
+}
+
+#[test]
 fn infantry_mount_is_identical_across_platforms() {
     use frontline_core::infantry_mount::{self as crew, GunPose, Mount, Station};
     let mut bytes = Vec::new();
