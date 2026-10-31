@@ -56,7 +56,7 @@ fn ballistic_values(f: Flight) -> PackedFloat64Array {
     .as_slice()
     .into()
 }
-fn events(events: Vec<Event>) -> Array<Variant> {
+pub(crate) fn events(events: Vec<Event>) -> Array<Variant> {
     events
         .into_iter()
         .map(|e| {

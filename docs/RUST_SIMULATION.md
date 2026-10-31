@@ -22,6 +22,7 @@ graphics, network access or a wall clock.
 | Gameplay RNG, including commander streams | `frontline_core` | Seeded PCG stream matches Godot 4.7; cosmetic RNG stays in Godot |
 | Grenade, smoke, rocket, bomb and shell flight | `frontline_core` | Rust retains and advances flight state and queries native geometry; the adapter supplies holders and applies impacts |
 | Retained projectile actors and impacts | `frontline_core` | Ballistic, guided and support actors retain ownership, holder/handler links and attribution with flight checkpoints; ordered impact, spawn, smoke, recon and sound effects still await the Rust world dispatcher |
+| Shared actor storage and FPV ownership | `frontline_core` | Ordered infantry/projectile/drone state, allocation and shared casualty links are retained together; drones resolve living targets and operators inside Rust. Structures, vehicles, squads and complete world dispatch remain unfinished |
 | Weighted grid paths and cluster pair costs | `frontline_core` | Exact Godot route tie behavior; native cluster workers return costs in deterministic order |
 | Ground cells, crater heights and queued cover repairs | `frontline_core` | Rust retains terrain and ordered structure geometry, and performs edits, queries and cover repairs; Godot imports biome generation and forwards navigation notifications |
 | Water shapes, bridge decks and water terrain rasterization | `frontline_core` | Ordered numeric rasterization; a Rust worker also applies the joining host's ground overrides; Godot still generates the initial shapes |
@@ -177,6 +178,28 @@ compares 4,096 live spawns against the reference lifecycle, checks callbacks and
 restores checkpoints between operations. Battle fingerprints also verify that
 the Rust identity order and cursor agree with the current scene registry.
 
+## Shared actor ownership
+
+`Actors` retains infantry, projectile and FPV actors alongside the ordered entity
+registry. Allocation, removal and checkpoints use the same stable IDs; hash-table
+iteration never chooses update or serialization order. Restoring rejects mismatched
+IDs/kinds, duplicate identities, oversized blocks and unsupported actor kinds.
+It does not yet contain structures, vehicles, squads or the whole match state.
+
+Casualty transitions update rescue claims, stretcher carriers and controlled
+drones in this collection. An obsolete rescue release cannot clear another man's
+newer claim. Squad breach claims still need the squad owner. FPV flight resolves
+its operator and living infantry target directly from owned actors, preserves its
+last aim point when a target disappears, and keeps spawn-time IDs separate from
+current links. Detonation and shoot-down remain distinct, idempotent outcomes;
+the complete world must apply their damage, notifications and removals.
+
+The Godot comparison covers 384 shared release/down/death/fling transitions and
+72 flights over 4,523 steps, including operator/target death and removal,
+shoot-downs and repeated checkpoint restores. Eight Rust tests cover allocation
+churn, shared cleanup, continuation, attribution and malformed input; numeric CI
+adds 751,072 exact bytes. This collection is not a standalone match server.
+
 ## Deterministic replay contract
 
 A simulation replay needs all of the following, separate from Format 1 observer
@@ -249,7 +272,7 @@ Component checkpoint headers contain a four-byte component tag, a little-endian
 rules rather than silently continuing with changed arithmetic. The separate
 integer RNG stream remains unchanged.
 
-`native/core/tests/numeric_contract.rs` compares 14,365,306 committed bytes without
+`native/core/tests/numeric_contract.rs` compares 15,116,378 committed bytes without
 tolerances: fixed-tick flight state, support events and RNG cursors, carved water,
 craters, rotated box hits, cover anchors, spherical interpolation and infantry
 movement, infantry cover fire, postures, ammunition, burst recovery, vitals, aiming,
@@ -473,7 +496,7 @@ flag until Rust owns the actors.
 
 The shock fixture compares 92,160 reference steps, including mounted turning,
 blocked terrain, carried casualties and task interruption. The full default suite
-passes 149 tests; 276 core tests pass in debug and release.
+passes 150 tests; 285 core tests pass in debug and release.
 
 ## Retained projectiles and impacts
 

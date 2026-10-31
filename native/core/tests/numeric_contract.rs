@@ -36,6 +36,103 @@ fn block(out: &mut Vec<u8>, bytes: &[u8]) {
 }
 
 #[test]
+fn shared_actor_lifecycles_and_drone_ownership_are_identical_across_platforms() {
+    use frontline_core::actors::{Actor, Actors};
+    use frontline_core::drone_actor::Drone;
+    use frontline_core::infantry::Infantry;
+    use frontline_core::infantry_controller::Task;
+    let mut bytes = Vec::new();
+    for trial in 0..48 {
+        let mut s = Infantry::default();
+        s.identity.id = 1;
+        s.identity.unit = "rifleman".into();
+        s.identity.team = 1;
+        s.motion.position = Vector3::new(-7.1, 0.0, 3.8);
+        s.duty.kind = [Task::Rescue, Task::Stretcher, Task::Breach][trial % 3];
+        s.duty.entity = 2;
+        s.fight.controlled_drone = 3;
+        s.identity.squad = 7;
+        let mut patient = s.clone();
+        patient.identity.id = 2;
+        patient.duty.kind = Task::Fight;
+        patient.duty.entity = 0;
+        patient.fight.controlled_drone = 0;
+        patient.links.dragged_by = 1;
+        patient.links.rescue_claimed = 1;
+        patient.links.carried_by = vec![1, 9];
+        patient.motion.position = Vector3::new(23.4, 0.0, -17.8);
+        let d = Drone {
+            id: 3,
+            team: 1,
+            operator: 1,
+            target: 2,
+            operator_at_spawn: 1,
+            target_at_spawn: 2,
+            warhead: if trial % 2 == 0 { 1.0 } else { 1.5 },
+            flight: DroneFlight::new(Vector3::new(-4.3, 7.2, -2.8), 0.37),
+        };
+        let mut actors = Actors::from_entries(
+            17,
+            vec![
+                Actor::Soldier(Box::new(s)),
+                Actor::Soldier(Box::new(patient)),
+                Actor::Drone(d),
+            ],
+        )
+        .unwrap();
+        let mut collision = CollisionWorld::default();
+        let mut rng = SimulationRandom::new(trial as u64 + 137);
+        block(&mut bytes, &actors.checkpoint().unwrap());
+        for tick in 0..180 {
+            if tick == 13 && trial % 6 < 4 {
+                match trial % 6 {
+                    0 => {
+                        actors.release_all(1).unwrap();
+                    }
+                    1 => {
+                        actors.go_down(1, 100.7).unwrap();
+                    }
+                    2 => {
+                        actors.die(1, 100.7, Some(120)).unwrap();
+                    }
+                    _ => {
+                        actors
+                            .fling_from(1, Vector3::new(-1.3, 0.0, -0.7), 7.3, &mut rng)
+                            .unwrap();
+                    }
+                }
+            }
+            if tick == 23 && trial % 6 == 4 {
+                actors.die(2, 101.7, Some(120)).unwrap();
+            }
+            if tick == 31 && trial % 6 == 5 {
+                actors.remove(1);
+            }
+            let explosion = actors
+                .step_drone(3, [1.0 / 30.0, 0.07, 0.1][trial % 3], &mut collision, 512.0)
+                .unwrap();
+            if tick % 11 == 0 {
+                block(&mut bytes, &actors.checkpoint().unwrap());
+            }
+            bytes.extend_from_slice(&rng.state().to_le_bytes());
+            if let Some(e) = explosion {
+                point(&mut bytes, e.position);
+                bytes.extend_from_slice(&e.source.to_le_bytes());
+                bytes.extend_from_slice(&e.damage.to_le_bytes());
+                bytes.extend_from_slice(&e.antitank.to_le_bytes());
+                actors.remove(3);
+                block(&mut bytes, &actors.checkpoint().unwrap());
+                break;
+            }
+            if tick == 17 {
+                actors = Actors::restore(&actors.checkpoint().unwrap()).unwrap();
+            }
+        }
+    }
+    golden("actors", &bytes);
+}
+
+#[test]
 fn retained_projectiles_and_impact_events_are_identical_across_platforms() {
     use frontline_core::projectile_actor::{
         ballistic, Event as ImpactEvent, Motion, Projectile, Spawn, Step,

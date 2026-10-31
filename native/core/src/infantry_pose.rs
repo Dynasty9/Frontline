@@ -183,13 +183,7 @@ impl InfantryPose {
     }
 
     pub fn center(self) -> Vector3 {
-        let height = match self.posture {
-            Posture::Prone => 0.25,
-            Posture::Crouch => 0.75,
-            _ if !matches!(self.life, Life::Alive | Life::Surrender | Life::Captive) => 0.2,
-            _ => 1.1,
-        };
-        self.position + Vector3::Y * height
+        center(self.position, self.posture, self.life)
     }
 
     pub fn hit_factor(self) -> f64 {
@@ -241,4 +235,14 @@ impl InfantryPose {
             Posture::Crouch
         }
     }
+}
+
+pub fn center(position: Vector3, posture: Posture, life: Life) -> Vector3 {
+    let height = match posture {
+        Posture::Prone => 0.25,
+        Posture::Crouch => 0.75,
+        _ if !matches!(life, Life::Alive | Life::Surrender | Life::Captive) => 0.2,
+        _ => 1.1,
+    };
+    position + Vector3::Y * height
 }

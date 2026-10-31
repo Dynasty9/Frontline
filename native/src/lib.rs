@@ -1,5 +1,6 @@
 use godot::prelude::*;
 
+mod actors;
 mod blast;
 mod breach;
 mod bullet;

@@ -1329,6 +1329,10 @@ holding a cooked grenade still completes that commitment before moving on.
 The Rust core now allocates authoritative entity IDs and retains their lifecycle
 order. Retired IDs stay retired, and restored lifecycle checkpoints continue the
 same allocation sequence; clients use the server's IDs for their visual objects.
+Shared actor checks now keep rescue/stretcher cleanup and controlled FPV drones
+inside one Rust collection. Drones resolve their operator and target from retained
+actors, keeping their last aim point after losing the target. The live battle
+still uses Godot ownership while the other entity types and world loop migrate.
 The full
 authoritative Rust server and deterministic
 battle verifier are still in progress; see [RUST_SIMULATION.md](RUST_SIMULATION.md).
