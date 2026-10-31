@@ -77,6 +77,9 @@ impl SpatialIndex {
     pub fn cells(&self) -> impl Iterator<Item = (Cell, &[u32])> {
         self.cells.iter().map(|(&cell, ids)| (cell, ids.as_slice()))
     }
+    pub fn membership(&self, id: u32) -> &[Cell] {
+        self.membership.get(&id).map_or(&[], Vec::as_slice)
+    }
     pub fn clear(&mut self) {
         self.cells.clear();
         self.membership.clear();

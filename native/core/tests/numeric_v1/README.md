@@ -13,6 +13,8 @@ different byte rather than dumping the fixture.
   cancelled orders and retained navigation/actor state across resumed batches.
 - `structure_collision.bin`: structure collision boxes, rotated parts, construction,
   movement, door removal and ray results from retained structure state.
+- `structure_birth.bin`: all structure kinds, initialized parts and actor state,
+  connected navigation/cover/collision registration, repairs and destruction.
 - `geometry.bin`: water/carved terrain, craters, rotated geometry and ray hits,
   spherical interpolation, cover anchors and infantry movement checkpoints.
 - `infantry_weapon.bin`: cover-fire decisions, postures, ammunition and burst

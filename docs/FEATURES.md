@@ -1461,6 +1461,11 @@ Rust also constructs structure collision directly from retained parts, including
 construction, movement, rotated pieces and opened doors. Cosmetic tilt leaves
 authoritative cover unchanged. Live collision lifecycle calls still come from
 Godot while the complete Rust world dispatcher is being assembled.
+Retained structure creation now generates the gameplay parts, fighting positions,
+default dimensions, health and cache stock inside Rust. Spawning registers the
+same navigation obstacles, doors, collision boxes, spatial cells and terrain
+repairs; it also preserves custom health, unfinished construction and the geometry
+needed by later destruction. Definition values are supplied as match content.
 Retained captors update capture credit, prison selection and escort movement;
 arrival applies detention and the guard's return order before the next actor.
 Removed prisons are handled safely. Retained prisoner rules now handle guard

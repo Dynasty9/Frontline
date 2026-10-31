@@ -1875,5 +1875,23 @@ Four regressions cover construction, movement, shape order, rejected edits and
 retirement resumes. A reference fixture compares 1,296 complete collision states
 and 31,104 rays across 36 structure kinds, including the actual generated parts,
 construction completion, moves and door removal. Numeric CI adds 432,704 exact
-bytes. Structure creation and shared combat still need to invoke this operation
-from the complete world dispatcher; the live game still imports scene collision.
+bytes. Retained structure creation now invokes this operation directly; shared
+combat and the complete world dispatcher remain unfinished. The live game still
+imports scene collision.
+
+## Structure creation
+
+Rust creates all 37 structure kinds from retained properties and immutable building
+definition values. Parts, health, dimensions, fighting positions and ammo-cache
+stock follow the existing spawn behavior. The connected spawn operation allocates
+the actor and registers its navigation, collision, doors, spatial membership and
+terrain repairs. Custom health and supplies survive initialization; unfinished
+structures retain their original navigation and collision behavior.
+
+Four regressions cover defaults, invalid creation, duplicate registration and
+resumed creation/destruction. The Godot reference fixture checks 672 complete
+world-geometry states, including 444 spawns across all kinds, default and explicit
+dimensions, construction states, cover repairs and deferred removal. Numeric CI
+adds 2,514,876 exact bytes for creation and destruction continuations. These are
+component checks; the whole world dispatcher, automatic spawn effects and battle
+replay verifier remain unfinished.

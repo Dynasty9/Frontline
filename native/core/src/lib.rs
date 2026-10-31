@@ -81,6 +81,7 @@ pub mod spatial;
 pub mod squad;
 mod state_codec;
 pub mod structure;
+pub mod structure_birth;
 pub mod structure_collision;
 pub mod structure_damage;
 pub mod support;

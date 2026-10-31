@@ -33,6 +33,14 @@ use std::path::PathBuf;
 #[path = "fixtures/fires_world.rs"]
 mod fires_world;
 
+#[path = "fixtures/structure_birth_world.rs"]
+mod structure_birth_world;
+
+#[test]
+fn shared_structure_creation_is_identical_across_platforms() {
+    golden("structure_birth", &structure_birth_world::transcript());
+}
+
 #[test]
 fn structure_collision_shapes_are_identical_across_platforms() {
     use frontline_core::structure::{Part as BuildingPart, Structure};

@@ -1,11 +1,12 @@
 //! Geometry leaves navigation immediately, but shields shots until the current tick ends.
-use crate::actors::Actors;
+use crate::actors::{Actor, Actors};
 use crate::collision::CollisionWorld;
 use crate::cover::{rotation, transform};
 use crate::navigation_scene::NavigationScene;
 use crate::spatial::{SpatialIndex, DOOR_CELL, STRUCTURE_CELL};
 use crate::state_codec::{Reader, Writer};
 use crate::structure::Structure;
+use crate::structure_birth::BuildingProfile;
 use crate::terrain::Terrain;
 use crate::terrain_cover::{CoverPart, CoverStructure};
 use crate::vector::Vector3;
@@ -37,6 +38,66 @@ impl WorldGeometry {
     }
     pub fn pending_removals(&self) -> &[u32] {
         &self.retired
+    }
+
+    /// A spawned wreck's ignition is dispatched immediately afterwards, in the caller's fire order.
+    pub fn spawn_structure(
+        &mut self,
+        actors: &mut Actors,
+        mut st: Structure,
+        profile: Option<BuildingProfile>,
+    ) -> Result<u32, &'static str> {
+        if actors.entities().len() >= crate::entities::MAX_ENTITIES {
+            return Err("entity registry exhausted");
+        }
+        st.id =
+            u32::try_from(actors.entities().next_id()).map_err(|_| "entity registry exhausted")?;
+        st.initialize(profile, self.terrain.n as f64 * 0.5)?;
+        self.register_structure(&mut st, actors)?;
+        actors.spawn(Actor::Structure(Box::new(st)))
+    }
+
+    pub fn register_structure(
+        &mut self,
+        st: &mut Structure,
+        actors: &Actors,
+    ) -> Result<(), &'static str> {
+        if !st.valid()
+            || st.gone
+            || !st.nav_cells.is_empty()
+            || !st.hash_cells.is_empty()
+            || self.navigation.planner.side() != self.terrain.n
+            || !self.deck.is_empty() && self.deck.len() != self.terrain.n * self.terrain.n
+            || self.structures.cell_size() != STRUCTURE_CELL
+            || self.doors.cell_size() != DOOR_CELL
+            || !self.structures.membership(st.id).is_empty()
+            || !self.doors.membership(st.id).is_empty()
+            || self.collision.contains(i64::from(st.id))
+            || self.retired.contains(&st.id)
+        {
+            return Err("invalid new structure geometry");
+        }
+        st.collision_shapes()?;
+        self.navigation
+            .add_structure(st, &self.terrain, &self.deck)?;
+        self.refresh_structure_collision(st)?;
+        if st.door_closed {
+            self.doors.insert_door(st.id, st.position)?;
+        }
+        self.structures.insert(st.id, st.position, st.radius)?;
+        st.hash_cells = self
+            .structures
+            .membership(st.id)
+            .iter()
+            .map(|&(x, z)| [x, z])
+            .collect();
+        self.sync_structure(st, true)?;
+        let nets = nearby_nets(st, actors, &self.structures, true)?;
+        for i in change_ground(&mut self.terrain, st, true, &nets) {
+            self.navigation
+                .terrain_changed(i as usize, &self.terrain, &self.deck)?;
+        }
+        Ok(())
     }
 
     /// The actor has already been removed; its old cells are needed until all geometry is retired.

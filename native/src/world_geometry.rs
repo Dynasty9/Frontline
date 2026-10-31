@@ -11,6 +11,34 @@ pub(crate) struct WorldGeometryCore {
 #[godot_api]
 impl WorldGeometryCore {
     #[func]
+    fn spawn_structure(
+        &mut self,
+        mut actors: Gd<ActorStateCore>,
+        mut structure: Gd<StructureStateCore>,
+        profile: PackedFloat64Array,
+    ) -> i64 {
+        let profile = match profile.as_slice() {
+            [] => None,
+            [x, z, hp] => Some(frontline_core::structure_birth::BuildingProfile {
+                size: [*x as f32, *z as f32],
+                hp: *hp,
+            }),
+            _ => return 0,
+        };
+        let mut st = structure.bind_mut();
+        let (Some(g), Some(initial)) = (&mut self.core, &st.core) else {
+            return 0;
+        };
+        let mut actors = actors.bind_mut();
+        match g.spawn_structure(&mut actors.core, initial.clone(), profile) {
+            Ok(id) => {
+                st.core = actors.core.structure(id).cloned();
+                i64::from(id)
+            }
+            Err(_) => 0,
+        }
+    }
+    #[func]
     fn refresh_structure_collision(&mut self, structure: Gd<StructureStateCore>) -> bool {
         let st = structure.bind();
         let (Some(g), Some(st)) = (&mut self.core, &st.core) else {
