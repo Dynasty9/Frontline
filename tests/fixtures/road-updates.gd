@@ -95,9 +95,14 @@ func _ready() -> void:
 func check_raster(w: World) -> void:
 	var fast := TerrainMap.new(w)
 	var reference := ReferenceGround.new(w)
+	reference._native = null
+	var changed := PackedInt32Array()
 	for i in range(0, fast.base.size(), 13):
 		fast.base[i] = TerrainMap.WATER
 		reference.base[i] = TerrainMap.WATER
+		changed.append(i)
+	if fast._native:
+		fast._native_import(changed)
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 917
 	var segments := [

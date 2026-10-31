@@ -1031,7 +1031,7 @@ func prisoner_arrived(p: Soldier) -> void:
 	p.captor = null
 	if c and not c.gone and c.task == "captor":
 		c._return_to_hold()
-	var dest := p.prison_dest
+	var dest: Structure = p.prison_dest if is_instance_valid(p.prison_dest) and not p.prison_dest.gone else null
 	if dest and dest.skind == "tunnel":
 		p.intel_left = 4
 		p.intel_t = world.time + 4.0

@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://tests/fixtures/infantry-state.gd" id="1"]
+
+[node name="InfantryStateTest" type="Node"]
+script = ExtResource("1")

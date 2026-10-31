@@ -11,10 +11,127 @@ var _space: PhysicsDirectSpaceState3D
 var _space_frame := -1
 var _reveal := {}  # eid -> time
 var _blocked_sight := {}
+var _collision: RefCounted
+var _visibility: RefCounted
+var _cover_search: RefCounted
+var _collision_dirty := {}
+var _collision_bodies := {}
+var _collision_rids := {}
+var _rid_entities := {}
+var _collision_excluded := PackedInt64Array()
+var _collision_retired: Array[int] = []
 
 
 func _init(w: World) -> void:
 	world = w
+
+
+func enable_native_collision() -> void:
+	if ClassDB.class_exists("CollisionIndexCore") and not world.settings.get("gdscript_collision", false):
+		_collision = ClassDB.instantiate("CollisionIndexCore")
+		if ClassDB.class_exists("VisibilityCore"):
+			_visibility = ClassDB.instantiate("VisibilityCore")
+			for projectile: Projectile in world.smoke_projectiles:
+				update_smoke(projectile)
+			if world.fires:
+				update_fire_smoke(world.fires.smokes)
+
+
+func update_smoke(projectile: Projectile) -> void:
+	if not _visibility:
+		return
+	if projectile.ptype != "smoke" or projectile.gone:
+		_visibility.remove_projectile(projectile.eid)
+		return
+	var valid: bool = _visibility.set_projectile(projectile.eid, projectile.position + Vector3(0, 1.4, 0), projectile.smoke_r)
+	assert(valid, "Invalid projectile smoke volume")
+
+
+func update_fire_smoke(smokes: Array) -> void:
+	if not _visibility:
+		return
+	var rows := PackedFloat64Array()
+	for smoke: Array in smokes:
+		var p: Vector3 = smoke[0]
+		rows.append_array(PackedFloat64Array([p.x, p.y, p.z, smoke[1]]))
+	var valid: bool = _visibility.set_fires(rows)
+	assert(valid, "Invalid fire smoke volume")
+
+
+func dirty_collision(eid: int) -> void:
+	if _collision and not _collision_retired.has(eid):
+		_collision_dirty[eid] = true
+
+
+## A destroyed body still shields later shots in this tick, as in Godot's deferred removal.
+func retire_collision(eid: int) -> void:
+	_sync_collision()
+	if _collision and _collision_bodies.has(eid):
+		_collision_dirty.erase(eid)
+		_collision_retired.append(eid)
+
+
+func finish_tick() -> void:
+	for eid in _collision_retired:
+		remove_collision(eid)
+	_collision_retired.clear()
+
+
+func remove_collision(eid: int) -> void:
+	_collision_dirty.erase(eid)
+	if _collision:
+		_collision.remove_body(eid)
+	if _collision_rids.has(eid):
+		_rid_entities.erase(_collision_rids[eid])
+		_collision_rids.erase(eid)
+	_collision_bodies.erase(eid)
+
+
+func _use_godot_collision(reason: String) -> void:
+	push_warning(reason + "; using Godot collision for this battle")
+	_collision = null
+	_collision_dirty.clear()
+	_collision_bodies.clear()
+	_collision_rids.clear()
+	_rid_entities.clear()
+
+
+func _sync_collision() -> void:
+	if _collision_dirty.is_empty():
+		return
+	var pending := _collision_dirty
+	_collision_dirty = {}
+	for id: int in pending:
+		var e := world.entity(id)
+		if e == null or e.gone or not (e is Structure or e is Vehicle):
+			remove_collision(id)
+			continue
+		var body: StaticBody3D = e.get("body")
+		if body == null or not body.is_inside_tree() or (body.collision_layer & MASK) == 0:
+			remove_collision(id)
+			continue
+		var rows := PackedFloat32Array()
+		for owner: int in body.get_shape_owners():
+			var shape = body.shape_owner_get_owner(owner)
+			if not shape is CollisionShape3D or shape.disabled:
+				continue
+			if not shape.shape is BoxShape3D:
+				_use_godot_collision("Native collision requires battlefield box geometry")
+				return
+			var changed := dirty_collision.bind(id)
+			if not shape.shape.changed.is_connected(changed):
+				shape.shape.changed.connect(changed)
+			var t: Transform3D = shape.global_transform
+			var h: Vector3 = shape.shape.size * 0.5
+			rows.append_array(PackedFloat32Array([t.origin.x,t.origin.y,t.origin.z,t.basis.x.x,t.basis.x.y,t.basis.x.z,t.basis.y.x,t.basis.y.y,t.basis.y.z,t.basis.z.x,t.basis.z.y,t.basis.z.z,h.x,h.y,h.z,body.shape_owner_get_shape_index(owner, 0)]))
+		if not _collision.replace_body(id, rows):
+			_use_godot_collision("Invalid native battlefield collision geometry")
+			return
+		_collision_bodies[id] = body
+		if _collision_rids.has(id):
+			_rid_entities.erase(_collision_rids[id])
+		_collision_rids[id] = body.get_rid()
+		_rid_entities[body.get_rid()] = id
 
 
 func space() -> PhysicsDirectSpaceState3D:
@@ -30,6 +147,18 @@ var _no_ex: Array[RID] = []
 
 
 func ray(from: Vector3, to: Vector3, ex: Array = []) -> Dictionary:
+	if _collision:
+		_sync_collision()
+		if _collision:
+			_collision_excluded.clear()
+			for rid: RID in ex:
+				if _rid_entities.has(rid):
+					_collision_excluded.append(int(_rid_entities[rid]))
+			var hit: PackedFloat64Array = _collision.ray(from, to, _collision_excluded)
+			if hit.is_empty():
+				return {}
+			var body: StaticBody3D = _collision_bodies[int(hit[0])]
+			return {"collider": body, "collider_id": body.get_instance_id(), "rid": body.get_rid(), "shape": int(hit[1]), "position": Vector3(hit[2],hit[3],hit[4]), "normal": Vector3(hit[5],hit[6],hit[7])}
 	# one query object reused for every ray (hundreds a tick)
 	_q.from = from
 	_q.to = to
@@ -50,6 +179,8 @@ func ent_of(col) -> Entity:
 
 
 func smoke_blocks(a: Vector3, b: Vector3) -> bool:
+	if _visibility:
+		return _visibility.smoke_blocks(a, b)
 	for p: Projectile in world.smoke_projectiles:
 		if p.smoke_r > 0.8:
 			if Defs.seg_sphere(a, b, p.position + Vector3(0, 1.4, 0), p.smoke_r):
@@ -71,11 +202,77 @@ func can_see(s: Soldier, e: Entity) -> bool:
 	return can_see_from(s.scan_eye(), e, s.get_exclude(), s._path_pending or not s.is_moving())
 
 
+## One numeric scan keeps sight checks and target priorities in the simulation.
+func scan_targets(s: Soldier, candidates: Array) -> PackedInt64Array:
+	if not _visibility or not _collision or world.settings.get("gdscript_targeting", false):
+		return PackedInt64Array()
+	_sync_collision()
+	if not _collision:
+		return PackedInt64Array()
+	# Per contact: id, kind, infantry flags or armour, point count, exclusion count.
+	var contacts := PackedInt64Array()
+	var points := PackedVector3Array()
+	var excluded := PackedInt64Array()
+	var exclude := s.get_exclude()
+	for i in mini(7, candidates.size()):
+		var e: Entity = candidates[i][1]
+		var first := excluded.size()
+		for rid: RID in exclude + e.get_exclude():
+			if _rid_entities.has(rid):
+				excluded.append(int(_rid_entities[rid]))
+		var exposed := e.exposed_points()
+		points.append(e.position)
+		points.append_array(PackedVector3Array(exposed))
+		var kind := 0
+		var flags := 0
+		if e is Soldier:
+			kind = 1
+			flags = int(e.life == Soldier.Life.DOWNED) | (int(e.utype in ["mg_gunner", "pkm"]) << 1)
+		elif e is Vehicle:
+			kind = 2
+			flags = int(e.vdef.get("armor", 1))
+		contacts.append_array(PackedInt64Array([e.eid, kind, flags, exposed.size(), excluded.size() - first]))
+	var drone_meta := PackedInt64Array()
+	var drone_positions := PackedVector3Array()
+	for d: Drone in world.drones:
+		drone_meta.append_array(PackedInt64Array([d.eid, d.team, int(d.dead), int(d.diving)]))
+		drone_positions.append(d.position)
+	var w := s.cur_weapon()
+	var forced: Entity = s.forced_target if is_instance_valid(s.forced_target) and not s.forced_target.gone else null
+	var mounted: bool = s.task == "man" and s.task_phase == 2 and s.mounted != null and s.mounted.skind in ["mg_nest", "hmg_nest"]
+	var observer := [s.position, s.scan_eye(), s.team,
+		s.target.eid if is_instance_valid(s.target) else 0, forced.eid if forced else 0,
+		forced.position if forced is Structure else null, s.mounted.front_dir() if mounted else null,
+		float(w.get("range", 50.0)), s.rockets > 0, bool(w.get("ap", false)), s._path_pending or not s.is_moving()]
+	var result: PackedInt64Array = _visibility.scan_contacts(_collision, observer, contacts, points, excluded, drone_meta, drone_positions)
+	assert(not result.is_empty(), "Invalid infantry scan")
+	for i in result[2]:
+		world.stat("perception_blocked_reused")
+	return result
+
+
 func can_see_from(eye: Vector3, e: Entity, ex: Array, cache_obstruction := true) -> bool:
 	var ex2 := ex + e.get_exclude()
 	var pts := e.exposed_points()
+	if _visibility and _collision:
+		_sync_collision()
+		if _collision:
+			_collision_excluded.clear()
+			for rid: RID in ex2:
+				if _rid_entities.has(rid):
+					_collision_excluded.append(int(_rid_entities[rid]))
+			var result: int = _visibility.can_see(_collision, eye, e.eid, PackedVector3Array(pts), _collision_excluded, cache_obstruction)
+			if result == 2:
+				world.stat("perception_blocked_reused")
+			assert(result >= 0, "Invalid native visibility query")
+			return result == 1
 	# Walking changes the exact sight line every tick; recording those misses costs more than casting.
 	if not cache_obstruction:
+		if _collision:
+			for pt: Vector3 in pts:
+				if ray(eye, pt, ex2).is_empty() and not smoke_blocks(eye, pt):
+					return true
+			return false
 		# One target shares the origin and exclusions across all exposed points.
 		_q.from = eye
 		_q.collision_mask = MASK
@@ -154,6 +351,62 @@ func sees_structure(eye: Vector3, st: Entity) -> bool:
 # --- shooting ------------------------------------------------------------------------
 
 func fire_bullet(shooter: Entity, muzzle: Vector3, aim: Vector3, tgt: Entity, w: Dictionary, accm := 1.0) -> void:
+	if world.settings.get("rust_infantry", false) and ClassDB.class_exists("BulletCore") and _collision and _visibility:
+		_sync_collision()
+		if _collision:
+			_fire_bullet_native(shooter, muzzle, aim, tgt, w, accm)
+			return
+	_fire_bullet_reference(shooter, muzzle, aim, tgt, w, accm)
+
+
+func _fire_bullet_native(shooter: Entity, muzzle: Vector3, aim: Vector3, tgt: Entity, w: Dictionary, accm: float) -> void:
+	# shortcut: compatibility adapter; the Rust world will apply these ordered effects.
+	var core: RefCounted = ClassDB.instantiate("BulletCore")
+	var target := PackedFloat64Array()
+	if tgt:
+		var kind := 0 if tgt is Soldier else (1 if tgt is Drone else (2 if tgt is Vehicle and tgt.is_air() else 3))
+		target = PackedFloat64Array([kind, tgt.hit_factor(), world.terrain.hit_mul(tgt.position, muzzle) if tgt is Soldier else 1.0,
+			int(tgt is Soldier and tgt._gy < -0.6 and not world.trench_enfiladed(tgt.position, muzzle))])
+	var values := PackedFloat64Array([w.acc, w.range, w.dmg, int(w.get("aa", false)), Cover.pen_class(w),
+		0.08 if String(w.snd) == "hmg" else (0.045 if String(w.snd) == "mg" else 0.03), w.get("he", -1.0), int(w.get("airburst", false)),
+		accm, shooter.suppression if shooter is Soldier else -1.0, int(world.rules.has_upgrade(shooter.team, "optics"))])
+	var excluded := PackedInt64Array()
+	for rid: RID in shooter.get_exclude():
+		if _rid_entities.has(rid):
+			excluded.append(int(_rid_entities[rid]))
+	var valid: bool = core.fire(_collision, _visibility, world.rng._backend, muzzle, aim, values, target, excluded)
+	assert(valid, "Invalid bullet trace")
+	var state: Array = core.state()
+	var hit_body := int(state[4])
+	var hp: Vector3 = state[5]
+	var dir: Vector3 = state[2]
+	var ent := world.entity(hit_body)
+	var effects: Array = core.resolve_obstacle(1 if ent is Structure else (2 if ent is Vehicle else 0), Cover.mat_of(ent) if ent is Structure else 0, world.rng._backend)
+	assert(effects.size() == 6, "Invalid bullet obstacle")
+	if effects[0]:
+		ent.take_damage(float(effects[1]), shooter)
+		if world.settings.get("debug", false):
+			world.stat("t%d_pen" % shooter.team)
+		if effects[2] != null:
+			_through_hits(shooter, hp, effects[2], w, float(core.state()[6]), core)
+	if effects[4]:
+		valid = core.set_surface((ent as Vehicle).bullet_hit(hp, dir, w, shooter))
+		assert(valid, "Invalid vehicle bullet surface")
+	elif effects[5]:
+		ent.take_damage(float(effects[3]), shooter)
+		valid = core.set_surface(Fx.surface_of(ent, hp))
+		assert(valid, "Invalid structure bullet surface")
+	var damage: Array = core.finish_target(world.rng._backend)
+	assert(damage.size() == 2, "Invalid bullet damage")
+	if int(damage[0]) == 1:
+		(tgt as Soldier).take_damage(float(damage[1]), shooter, dir, "bullet")
+	elif int(damage[0]) == 2:
+		(tgt as Drone).shot_down()
+	state = core.state()
+	_finish_bullet(shooter, muzzle, state[1], bool(state[0]), int(state[3]), tgt, w, hit_body != 0, core)
+
+
+func _fire_bullet_reference(shooter: Entity, muzzle: Vector3, aim: Vector3, tgt: Entity, w: Dictionary, accm := 1.0) -> void:
 	var dist := muzzle.distance_to(aim)
 	var hit := false
 	if tgt:
@@ -232,6 +485,10 @@ func fire_bullet(shooter: Entity, muzzle: Vector3, aim: Vector3, tgt: Entity, w:
 		elif tgt is Drone:
 			tgt.shot_down()
 			impact = 3
+	_finish_bullet(shooter, muzzle, end, hit, impact, tgt, w, not r.is_empty())
+
+
+func _finish_bullet(shooter: Entity, muzzle: Vector3, end: Vector3, hit: bool, impact: int, tgt: Entity, w: Dictionary, blocked: bool, core: RefCounted = null) -> void:
 	world.battle.shot(shooter, hit)
 	if world.settings.get("debug", false):
 		world.stat("t%d_shots" % shooter.team)
@@ -239,15 +496,21 @@ func fire_bullet(shooter: Entity, muzzle: Vector3, aim: Vector3, tgt: Entity, w:
 			world.stat("t%d_aimed" % shooter.team)
 		if hit:
 			world.stat("t%d_hits" % shooter.team)
-		if not r.is_empty() and tgt is Soldier and not hit:
+		if blocked and tgt is Soldier and not hit:
 			world.stat("t%d_blocked" % shooter.team)
-	if w.has("he") and (impact != 0 or hit or end.y < 0.2):
+	if core:
+		var location := [tgt.position, tgt.center_point(), tgt is Soldier and world.terrain.in_trench(tgt.position)] if tgt else []
+		var explosion: Array = core.explosion(location, world.rng._backend)
+		assert(not explosion.is_empty(), "Invalid bullet explosion")
+		if explosion[0] != null:
+			explode(explosion[0], {"dmg": float(explosion[1]), "radius": float(explosion[2]), "fling": 4.0, "at": 0.0, "src": shooter, "team": shooter.team, "size": 0.38, "struct_mult": 1.5, "veh_mult": 0.1})
+	elif w.has("he") and (impact != 0 or hit or end.y < 0.2):
 		var hep: Vector3 = tgt.center_point() if hit and tgt and not (tgt is Drone) else end
 		if w.get("airburst", false) and tgt is Soldier and world.terrain.in_trench(tgt.position) and Defs.flat(end - tgt.position).length() < 3.0:
 			# programmed airburst: the round bursts right over the trench
 			hep = Vector3(tgt.position.x, 1.4, tgt.position.z) + Vector3(world.rng.randf_range(-0.8, 0.8), 0, world.rng.randf_range(-0.8, 0.8))
 		explode(hep, {"dmg": float(w.dmg) * 1.6, "radius": float(w.he), "fling": 4.0, "at": 0.0, "src": shooter, "team": shooter.team, "size": 0.38, "struct_mult": 1.5, "veh_mult": 0.1})
-	_suppress(muzzle, end, shooter.team, float(w.supp), tgt if hit else null)
+	_suppress(muzzle, end, shooter.team, float(w.supp), tgt if hit else null, core)
 	var now := world.time
 	if now > float(_reveal.get(shooter.eid, 0.0)):
 		_reveal[shooter.eid] = now + 1.5
@@ -260,9 +523,22 @@ func fire_bullet(shooter: Entity, muzzle: Vector3, aim: Vector3, tgt: Entity, w:
 ## A round that went through soft cover can still find someone sheltering
 ## behind it (a burst into a hedge, through a car, a wall a machine gun is
 ## chewing up).
-func _through_hits(shooter: Entity, hp: Vector3, end: Vector3, w: Dictionary, dmg_k: float) -> void:
+func _through_hits(shooter: Entity, hp: Vector3, end: Vector3, w: Dictionary, dmg_k: float, core: RefCounted = null) -> void:
 	var dir := (end - hp).normalized()
 	var far := hp + dir * 3.0
+	if core:
+		var meta := PackedInt64Array()
+		var centers := PackedVector3Array()
+		for s: Soldier in world.soldiers_near((hp + far) * 0.5, 2.0):
+			meta.append_array(PackedInt64Array([s.eid, s.team, int(s.life == Soldier.Life.ALIVE)]))
+			centers.append(s.center_point())
+		var result: Array = core.through_hit(end, meta, centers, shooter.team, world.rng._backend)
+		assert(result.size() == 3, "Invalid penetrating bullet result")
+		if int(result[0]) != 0:
+			var soldier: Soldier = world.entity(int(result[0]))
+			soldier.take_damage(float(result[1]), shooter, result[2], "bullet")
+			world.stat("through_hit")
+		return
 	for s in world.soldiers_near((hp + far) * 0.5, 2.0):
 		if s.team == shooter.team or s.life != Soldier.Life.ALIVE:
 			continue
@@ -274,9 +550,21 @@ func _through_hits(shooter: Entity, hp: Vector3, end: Vector3, w: Dictionary, dm
 		return
 
 
-func _suppress(a: Vector3, b: Vector3, team: int, amount: float, hit_tgt: Entity) -> void:
+func _suppress(a: Vector3, b: Vector3, team: int, amount: float, hit_tgt: Entity, core: RefCounted = null) -> void:
 	var mid := (a + b) * 0.5
 	var half := a.distance_to(b) * 0.5 + 3.0
+	if core:
+		var soldiers: Array = world.soldiers_near(mid, half)
+		var positions := PackedVector3Array()
+		for s: Soldier in soldiers:
+			positions.append(s.position)
+		var amounts: PackedFloat64Array = core.suppression(positions, amount)
+		assert(amounts.size() == soldiers.size(), "Invalid bullet suppression")
+		for i in soldiers.size():
+			var s: Soldier = soldiers[i]
+			if s.team != team and s.life == Soldier.Life.ALIVE and s != hit_tgt and amounts[i] >= 0.0:
+				s.add_suppression(amounts[i], a)
+		return
 	for s in world.soldiers_near(mid, half):
 		if s.team == team or s.life != Soldier.Life.ALIVE or s == hit_tgt:
 			continue
@@ -386,8 +674,16 @@ func _explode(pos: Vector3, d: Dictionary) -> void:
 	var src = d.get("src")
 	var fr := r * 2.4
 	var blast_in_trench := world.terrain.in_trench(pos)
+	var core: RefCounted
+	if world.settings.get("rust_infantry", false) and ClassDB.class_exists("BlastCore"):
+		core = ClassDB.instantiate("BlastCore")
+		var valid: bool = core.configure(pos, dmg, r, fling, blast_in_trench)
+		assert(valid, "Invalid blast parameters")
 	for s in world.soldiers_near(pos, fr):
 		if s.life == Soldier.Life.HIDDEN:
+			continue
+		if core:
+			_blast_infantry_native(core, s, pos, r, blast_in_trench, src)
 			continue
 		var c: Vector3 = s.center_point()
 		var dist := pos.distance_to(c)
@@ -418,6 +714,13 @@ func _explode(pos: Vector3, d: Dictionary) -> void:
 	for st in world.structures_near(pos, r + 1.0):
 		if st.gone:
 			continue
+		if core:
+			var result: Array = core.structure(st.position, st.radius, st.skind in ["wire", "mines"], float(d.get("struct_mult", 1.0)))
+			assert(result.size() == 1, "Invalid structure blast exposure")
+			if result[0] != null:
+				st.hit_from = pos
+				st.take_damage(float(result[0]), src)
+			continue
 		var sd: float = Defs.flat(st.position - pos).length() - st.radius * 0.5
 		if sd < r:
 			var f2 := clampf(1.0 - sd / r, 0.2, 1.0)
@@ -441,6 +744,32 @@ func _explode(pos: Vector3, d: Dictionary) -> void:
 	world.terrain.add_crater(pos, float(d.get("size", 1.0)))
 
 
+func _blast_infantry_native(core: RefCounted, s: Soldier, pos: Vector3, radius: float, blast_in_trench: bool, src) -> void:
+	var center := s.center_point()
+	var dist := pos.distance_to(center)
+	var blocked := false
+	var material := -1
+	if dist < radius:
+		var rb := ray(pos + Vector3(0, 0.35, 0), center)
+		blocked = not rb.is_empty()
+		if blocked:
+			var structure := ent_of(rb.collider)
+			if structure is Structure:
+				material = Cover.mat_of(structure)
+	var in_trench: bool = dist < radius and world.terrain.in_trench(s.position)
+	var terrain_multiplier: float = world.terrain.blast_mul(s.position) if dist < radius else 1.0
+	var result: Array = core.infantry(center, s.life, s.posture, in_trench, terrain_multiplier, blocked, material)
+	assert(result.size() == 8, "Invalid infantry blast exposure")
+	if dist < radius and OS.has_environment("FL_DEBUG_BLAST") and world.terrain.in_trench(s.position):
+		print("BLAST on %s dist=%.1f pos=%s blast_in_trench=%s blocked=%s sheltered=%s dd=%.0f hp=%.0f" % [s.sname, dist, str(pos.snapped(Vector3.ONE * 0.1)), str(blast_in_trench), str(result[5]), str(result[6]), float(result[7]), s.hp])
+	if float(result[0]) > 0.0:
+		s.take_damage(float(result[0]), src, result[1], "explosion")
+	if float(result[2]) > 0.0:
+		s.fling_from(pos, float(result[2]))
+	if float(result[4]) > 0.0:
+		s.flinch_from(pos, float(result[3]), float(result[4]))
+
+
 # --- cover ----------------------------------------------------------------------------
 
 ## The best place within `radius` of `anchor` for s to fight from against the
@@ -448,6 +777,57 @@ func _explode(pos: Vector3, d: Dictionary) -> void:
 ## what stops the most, where he can shoot back, close by and not taken - or
 ## a fold in the ground (a crater, a rubble heap, the woods).
 func find_cover(s: Soldier, anchor: Vector3, radius: float, threats: Array, prone: bool) -> Dictionary:
+	if threats.is_empty():
+		return {}
+	if not world.settings.get("gdscript_cover_search", false) and world.terrain._native and world.nav._planner and _collision and ClassDB.class_exists("CoverSearchCore"):
+		_sync_collision()
+		if _collision:
+			return _find_cover_native(s, anchor, radius, threats, prone)
+	return _find_cover_reference(s, anchor, radius, threats, prone)
+
+
+func _find_cover_native(s: Soldier, anchor: Vector3, radius: float, threats: Array, prone: bool) -> Dictionary:
+	if _cover_search == null:
+		_cover_search = ClassDB.instantiate("CoverSearchCore")
+	var grouped := s.squad != null and not s.detached and not prone
+	if grouped:
+		radius = minf(radius, 3.0)
+	var structures := []
+	for st in world.structures_near(anchor, radius + 4.0):
+		if st.provides_cover() and st.burn <= 0.0:
+			structures.append([st.eid, st.built, st.burn, Cover.mat_of(st), st.anc_p, st.anc_n, st.anc_h, st.anc_k])
+	var mates := []
+	if s.squad:
+		for o: Soldier in s.squad.members:
+			mates.append([o.eid, o.life == Soldier.Life.ALIVE, o.at_cover or o.goal_kind == "cover", o.cover_pos])
+	# Preserve membership from the last spatial rebuild, even if someone has moved this tick.
+	var nearby := []
+	var reach := radius + 1.3
+	for x in range(floori((anchor.x - reach) / World.HCELL), floori((anchor.x + reach) / World.HCELL) + 1):
+		for z in range(floori((anchor.z - reach) / World.HCELL), floori((anchor.z + reach) / World.HCELL) + 1):
+			var cell := Vector2i(x, z)
+			for o: Entity in world._uhash.get(cell, []):
+				if o is Soldier and o != s and o.team == s.team and o.life == Soldier.Life.ALIVE and not o.gone:
+					nearby.append([o.eid, o.team, true, false, o.position, o.cover_pos, cell])
+	var weapon := s.cur_weapon()
+	var input := [s.eid, s.team, s.position, anchor, radius, grouped, prone, weapon.is_empty() or s.is_bearer(),
+		float(weapon.get("range", 50.0)), s.cover_st.eid if is_instance_valid(s.cover_st) else 0, s.cover_ai]
+	var deck: PackedByteArray = world.water.deck if world.water else PackedByteArray()
+	var result: Array = _cover_search.find(input, PackedVector3Array(threats), structures, mates, nearby,
+		world.fires.hot, deck, world.terrain._native, world.nav._planner, _collision)
+	assert(result.size() == 3, "Invalid cover search scene")
+	var choice: Array = result[2]
+	var best := {}
+	if not choice.is_empty():
+		best = {"type": choice[0], "prot": choice[1], "fire": choice[2], "lean": choice[3], "tdir": choice[4],
+			"pos": choice[5], "n": choice[6], "h": choice[7], "mat": choice[8], "st": world.entity(choice[9]), "ai": choice[10]}
+	if result[0] > 0 and world.settings.get("debug_cover", false):
+		print("COVER %s anchor=%s threats=%d cands=%d best=%s mat=%s h=%s" % [s.sname, str(anchor.round()), threats.size(), result[0],
+			str(best.get("type", -1)), str(best.get("mat", -1)), str(best.get("h", -1))])
+	return best
+
+
+func _find_cover_reference(s: Soldier, anchor: Vector3, radius: float, threats: Array, prone: bool) -> Dictionary:
 	# Without an approach to shelter from, no candidate can pass the protection
 	# test. Keep his existing quiet-sector behaviour without surveying the town.
 	if threats.is_empty():

@@ -4,10 +4,21 @@ How the code is laid out, and the command-line modes used to test it. See also [
 
 ## Scaling and the optional native extension
 
-Gameplay remains GDScript. A Rust GDExtension accelerates nearest-enemy candidate
-selection using numeric snapshots and contracts degree-two navigation search states.
-Individual visibility and combat stay in Godot. Native graph assembly runs on the
-main thread; local-grid costing still uses workers.
+Most gameplay remains GDScript. A Rust GDExtension owns gameplay random streams
+and projectile/drone flight, guided missiles, support-aircraft attack schedules,
+weighted navigation grids, hierarchical routing, route smoothing and path request
+queues. It also accelerates nearest-enemy
+candidate selection using numeric snapshots. Battlefield box raycasts, smoke
+volumes and geometric visibility run in Rust; perception policy and damage stay
+in Godot. Terrain cells, crater deformation and queued cover reconstruction also
+run in the core; Godot still supplies structure geometry and generated biome/water
+data and mirrors changed cells. Hierarchical graph assembly and repair
+use engine-independent state; local-grid costing uses Rust workers.
+The numeric algorithms live in the engine-independent `native/core` crate;
+`native/src` contains the Godot bindings. Run their standalone tests with
+`cargo +1.94.0 test --locked --manifest-path native/Cargo.toml -p frontline_core`.
+See [RUST_SIMULATION.md](RUST_SIMULATION.md) for the migration boundary and
+the outstanding requirements for deterministic battle verification.
 Install Rust 1.94.0 (`rustup toolchain install 1.94.0 --profile minimal`), then run
 `python tools/build_native.py` from the root. Re-import Godot afterward. A checkout
 without the generated extension uses GDScript perception and Godot AStar3D routes. Release CI builds
@@ -33,6 +44,8 @@ AI, and `--units=480 --vehicles=20` for a mixed force. `--width=1920 --height=10
 sets the render resolution; `--preset=high` is the runner's non-persistent default.
 For direct runs use `--scenario=stress --units=500 --map-size=2048 --seed=3`,
 `--perf-at=15 --perf-duration=10 --perf-json=ABSOLUTE_PATH`, and a unique `--port`.
+Add `--gdscript-cover-search` to a direct scenario run to measure the reference
+cover search against the native default with the same scene and seed.
 
 Regression scenes: `tests/structure_index_test.tscn`,
 `tests/perception_index_test.tscn`, `tests/navigation_budget_test.tscn`, and

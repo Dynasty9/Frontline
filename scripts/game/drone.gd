@@ -14,6 +14,7 @@ var dead := false
 var diving := false
 var life_t := 0.0
 var warhead := 1.0
+var _flight: RefCounted
 
 var model: Node3D
 var rotors: Array = []
@@ -50,6 +51,10 @@ func on_spawned() -> void:
 	net_init = true
 	if srv:
 		target_pos = position
+		if ClassDB.class_exists("DroneFlightCore"):
+			_flight = ClassDB.instantiate("DroneFlightCore")
+			var valid: bool = _flight.reset(position, rotation.y)
+			assert(valid, "Invalid drone initial state")
 	if world.has_view:
 		_build_model()
 
@@ -67,6 +72,8 @@ func hit_factor() -> float:
 
 
 func lose_control() -> void:
+	if _flight:
+		_flight.lose_control()
 	if phase != 3:
 		phase = 3
 		operator = null
@@ -76,6 +83,48 @@ func lose_control() -> void:
 func sim(dt: float) -> void:
 	if dead:
 		return
+	if _flight:
+		if _native_sim(dt):
+			return
+		_flight = null
+	_legacy_sim(dt)
+
+
+func _native_sim(dt: float) -> bool:
+	world.combat._sync_collision()
+	if not world.combat._collision:
+		return false
+	if operator and (operator.gone or operator.life != Soldier.Life.ALIVE):
+		lose_control()
+	var have_target := false
+	if target and not target.gone:
+		if target is Soldier and target.life == Soldier.Life.ALIVE:
+			target_pos = target.center_point()
+			have_target = true
+		elif target is Vehicle:
+			target_pos = target.position + Vector3(0, 2.0, 0)
+			have_target = true
+		else:
+			target = null
+	elif target != null:
+		target = null
+	var result: PackedFloat64Array = _flight.advance(dt, have_target, target_pos, world.combat._collision, MapDims.HALF)
+	if result.size() != 15:
+		push_error("Invalid drone state passed to Rust")
+		return false
+	position = Vector3(result[0], result[1], result[2])
+	vel = Vector3(result[3], result[4], result[5])
+	target_pos = Vector3(result[6], result[7], result[8])
+	life_t = result[9]
+	phase = int(result[10])
+	diving = result[11] != 0.0
+	rotation.y = result[12]
+	if result[14] != 0.0:
+		detonate()
+	return true
+
+
+func _legacy_sim(dt: float) -> void:
 	life_t += dt
 	if operator and (operator.gone or operator.life != Soldier.Life.ALIVE):
 		lose_control()
@@ -126,6 +175,8 @@ func sim(dt: float) -> void:
 func detonate() -> void:
 	if dead:
 		return
+	if _flight:
+		_flight.destroy()
 	world.stat("drone_boom")
 	dead = true
 	world.combat.explode(position, {"dmg": 150.0 * warhead, "radius": 5.0, "fling": 9.0, "at": 340.0 * warhead, "top": true, "track": 0.3, "src": operator, "team": team, "size": 1.1, "struct_mult": 1.5})
@@ -135,6 +186,8 @@ func detonate() -> void:
 func shot_down() -> void:
 	if dead:
 		return
+	if _flight:
+		_flight.destroy()
 	world.stat("drone_shot_down")
 	dead = true
 	world.fx_event([Fx.EXPLODE, position, 0.35])

@@ -2,6 +2,15 @@
   "schema": 1,
   "entries": [
     {
+      "entry": "changelog/unreleased/simulation-core-boundary.md",
+      "medium": "text",
+      "stage": "text",
+      "rationale": "The simulation migration preserves gameplay and remains incomplete. Component reference checks and workload-specific timings are documented in docs/RUST_SIMULATION.md; no battle FPS improvement or independently verified replay is claimed.",
+      "source_ref": "codex/rust-simulation",
+      "sources": [],
+      "output": null
+    },
+    {
       "entry": "changelog/v0.1.0/camera-and-minimap.md",
       "summary": "Keep your focus while zooming, orbit the battlefield, and use the whole minimap without buttons covering its edges.",
       "medium": "still",

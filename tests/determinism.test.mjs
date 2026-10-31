@@ -35,11 +35,14 @@ describe("a seed replays the same", { concurrency: true }, () => {
   test("a scenario replays the same from its seed", () =>
     withGames(1, async (game) => {
       // (in one game, one load after another: nothing may carry over from the last)
-      const a = await fingerprints(game, { scenario: "attack", seed: 3 }, 60, 15);
-      const b = await fingerprints(game, { scenario: "attack", seed: 3 }, 60, 15);
-      assert.deepEqual(b, a);
-      const c = await fingerprints(game, { scenario: "attack", seed: 4 }, 15, 15);
-      assert.notEqual(c[0], a[0], "another seed, another fight");
+      for (const scenario of ["attack", "tunnel"]) {
+        const a = await fingerprints(game, { scenario, seed: 3 }, 60, 15);
+        if (scenario === "tunnel") assert.ok((await game.stats()).counters.banter > 0, "exercise the conversation cooldown");
+        const b = await fingerprints(game, { scenario, seed: 3 }, 60, 15);
+        assert.deepEqual(b, a, `${scenario}: reloading starts a fresh battle`);
+        const c = await fingerprints(game, { scenario, seed: 4 }, 15, 15);
+        assert.notEqual(c[0], a[0], "another seed, another fight");
+      }
     }));
 
   test("a battle on a full map replays the same in another process", () =>

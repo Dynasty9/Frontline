@@ -8,6 +8,8 @@ func reference(w: World, p: Vector3) -> bool:
 
 func _ready() -> void:
 	var w := World.new()
+	w.has_view = false
+	w.terrain = TerrainMap.new(w)
 	var objects: Array[Structure] = []
 	for i in 500:
 		var st := Structure.new()
@@ -41,6 +43,10 @@ func _ready() -> void:
 		w._shash_remove(st)
 		st.free()
 	assert(w._trench_hash.is_empty(), "removed trenches leave no stale entries")
+	w.water = WaterMap.new(w)
+	w.water.deck.resize(TerrainMap.N * TerrainMap.N)
+	w.water.deck[w.terrain.idx_of(Vector3.ZERO)] = 1
+	assert(w.ground_y(Vector3.ZERO) == 0.06, "Bridge deck wins over ground geometry")
 	w.free()
 	print("TRENCH_QUERIES passed")
 	get_tree().quit()

@@ -190,6 +190,8 @@ func apply_props(d: Dictionary) -> void:
 		burnt = d.burnt
 		if burnt and not was and model:
 			_rebuild_model()  # the snag or the shell the fire left
+	if world and world.terrain:
+		world.terrain.sync_structure(self)
 
 
 func get_props() -> Dictionary:
@@ -580,6 +582,8 @@ func _make_body() -> void:
 		any = true
 	if any:
 		add_child(body)
+		if srv and world.combat:
+			world.combat.dirty_collision(eid)
 	else:
 		body.free()
 		body = null
@@ -984,11 +988,15 @@ func open_door(by: Entity, kicked: bool) -> void:
 	for i in range(parts.size() - 1, -1, -1):
 		if parts[i].get("door", false):
 			parts.remove_at(i)
+	if world and world.terrain:
+		world.terrain.sync_structure(self)
 	if body:
 		var dn := body.get_node_or_null("Door")
 		if dn:
 			body.remove_child(dn)
 			dn.queue_free()
+	if srv and world.combat:
+		world.combat.dirty_collision(eid)
 	_swing_leaves(kicked)
 	if srv:
 		world.remove_door(self)
@@ -1387,7 +1395,7 @@ func _destroyed(quiet := false) -> void:
 	if not quiet and size.x > 3.0 and skind in ["house_wall", "tall_wall", "barracks", "factory", "research", "concrete_wall", "medic_tent"]:
 		world.fx_event([Fx.EXPLODE, position + Vector3(0, 0.5, 0), 0.6])
 		var rub := Vector3(size.x * 0.8, 0, 1.6 if size.z < 2.0 else size.z * 0.6)
-		world.call_deferred("spawn", "structure", {"skind": "rubble", "pos": position, "yaw": yaw, "size": rub})
+		world.defer_rubble(position, yaw, rub)
 	if team >= 0 and is_player_building():
 		world.send_msg(team, "alert", "%s destroyed at %s." % [display_name(), Defs.grid_ref(position)], position)
 	world.despawn(self)
@@ -1799,19 +1807,8 @@ func _cache_tick() -> void:
 ## Hit hard enough to wreck it, the stores go up: a blast, then rounds and
 ## grenades cooking off in all directions for a while.
 func _cook_off() -> void:
-	var left := clampf(supply / CACHE_STOCK, 0.2, 1.0)
-	var at := position + Vector3(0, 0.6, 0)
 	world.stat("cache_cook_off")
-	var w := world
-	# (once it's gone: the blast mustn't find the cache it came from)
-	for i in int(4 + 5 * left):
-		var big := i == 0
-		var p := at if big else at + Vector3(w.rng.randf_range(-1.5, 1.5), 0.0, w.rng.randf_range(-1.5, 1.5))
-		var d := {"dmg": 90.0 * left + 40.0, "radius": 4.0 + 2.0 * left, "fling": 8.0, "at": 60.0, "src": null, "size": 1.2 + left} if big \
-			else {"dmg": 35.0, "radius": 2.5, "fling": 4.0, "src": null, "size": 0.5}
-		w.get_tree().create_timer(0.05 if big else 0.5 + i * w.rng.randf_range(0.35, 0.9), false).timeout.connect(func():
-			if is_instance_valid(w) and w.combat:
-				w.combat.explode(p, d))
+	world.schedule_cache_cook_off(position, supply)
 
 
 # --- replication ------------------------------------------------------------------

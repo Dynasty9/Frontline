@@ -1,0 +1,104 @@
++++
+title = "Move terrain, targeting, navigation and flight into Rust"
+summary = "Terrain cover, infantry target acquisition, navigation and aircraft behavior now use the shared Rust core as the standalone server migration continues."
+kind = "fixed"
++++
+
+- Cosmetic debris no longer consumes gameplay randomness when cosmetic physics is unavailable.
+- Idle-conversation cooldowns reset with each battle, so replaying a seed is unaffected by the previous match.
+- Starting a different-sized map with the same seed now rebuilds its terrain correctly instead of reusing the previous map's ground grid.
+- Infantry checkpoint checks now cover pending paths, actions, conversations, casualty links and weapon duties as the server migration continues. Whole-battle replay verification remains unfinished.
+- Retained Rust soldier checks preserve movement orders, late path results, cover arrivals, shelter changes, flank and rear watching, crawling and fatigue-dependent speed.
+- Connected Rust AI checks preserve the priority of immediate danger, melee, scavenging, building entry, special weapons, supply, cover and sector watching, including shared squad claims and grenade state.
+- Connected Rust actor checks preserve recovery, fatigue, movement, replanning, arrivals and activity labels, including resumes from a saved soldier state.
+- Rust squad-order checks preserve busy soldiers' order gates, rescue and breach commitments, leaving mounted guns, formation movement and grenade approaches.
+- Retained Rust actor checks now connect action interruptions, cooking and throws, diving, blast recovery, casualty links, death and revival, hidden transport and corpse cleanup.
+- Rust building-state checks preserve geometry, construction and repairs, town income, capture progress and production queues through saved-state resumes as the server migration continues.
+- Ammo-cache explosions now follow battle time instead of frame callbacks, keeping their damage and scatter while retaining pending blasts for the replay migration.
+- Destroyed buildings create rubble at a consistent point in the simulation, including ruins left by those delayed explosions.
+- Grenade, smoke, rocket, bomb and shell flight now use the shared simulation core, preserving flight behavior, pickup, kicking and rethrowing.
+- Rust grenade-duty checks preserve approach, smothering, pickup, kicking and diving away while keeping the soldier and shared projectile state together.
+- Rust action-completion checks preserve cooked throws, shared grenade handling, melee casualties, door kicks and weapon launches, including vehicle smoke and crew reactions.
+- Rust projectile-actor checks preserve grenade holders and throwbacks, impact damage, smoke, guided-missile lock loss, recon and support-aircraft attribution through saved-state resumes.
+- Battlefield raycasts now use the shared simulation core, updating when vehicles move, doors open and structures change.
+- Rust cannon checks preserve model-specific barrel positions, blocked shots and trench protection as shared combat moves into the server.
+- Sight checks and smoke screens now run in Rust, retaining immediate smoke changes and reusing obstruction only while the blocking geometry stays unchanged.
+- Infantry contact evaluation now shares a Rust scan, preserving weapon priorities, mounted-gun arcs, drone reactions, forced targets and squad reports.
+- Retained Rust perception checks preserve scan scheduling, immediate reacquisition and separation, with sight reports updating shared squad knowledge.
+- Rust travel-task checks preserve retreat, grenade orders, boarding, tunnels, drone operation and resupply, including shared seats, occupants and ammunition.
+- Rust blast checks preserve cover, injuries, carrier/patient links, squad reactions and knockback in the same victim order as the existing game.
+- Rust destruction checks preserve repairable FOBs, tunnel evacuation, gunner dismounts, car fires and delayed ammunition-cache explosions as shared combat moves into Rust.
+- Fighting positions and their protection checks now use Rust, retaining low cover, leaning fire and second-row shelter while avoiding redundant firing-lane checks.
+- Ground edits, crater deformation and cover repairs now use Rust, preserving road speed, directional cover, camouflage and shell holes.
+- Water terrain and bridge decks now use Rust. Joining a battle prepares its ground on a Rust worker while preserving fords, quays and the host's ground changes.
+- Local navigation grids and boat routes now use Rust, preserving weighted paths and corner-blocking rules.
+- Retained Rust boat checks preserve shoreline clearance, currents, handling, traffic, seaward turns and recovery after grounding as naval simulation moves into the server.
+- Retained Rust support-vehicle checks preserve repairs, ammunition and missile refills, healing and medical revivals, including carried casualties and saved-state resumes.
+- Hierarchical routes, danger weighting and map repairs now run in Rust. Large-cluster route caches distinguish entrances that previously shared a truncated key.
+- Route refinement, smoothing, shared corridors and queued movement orders also run in Rust, retaining fire avoidance and order completion quotas.
+- FPV drones, guided missiles and support-aircraft attack schedules now use Rust, preserving target loss, smoke countermeasures, bomb runs, gun bursts and reconnaissance.
+- Infantry movement has a Rust compatibility test covering doors, vaults and cover slides. The faster existing movement remains active while actor state is migrated.
+- Rust weapon compatibility checks preserve cover fire, firing postures, ammunition and burst timing, including squadmates covering a reload. These checks run alongside the existing controller as soldier state is migrated.
+- Health, suppression and fatigue also have Rust compatibility checks, covering wounded soldiers, repeated revivals, prisoners, damage credit and squad reactions.
+- Infantry aim compatibility checks cover smoke, blocked sight, blind fire, firing through cover and last-known positions.
+- Combat pose compatibility checks preserve eye heights, exposed body points, mounted-gun positions and hit factors in Rust, independently of the visual models.
+- Bullet compatibility checks preserve accuracy, penetration, damage order, explosive rounds and near-miss suppression in the Rust core.
+- Blast compatibility checks preserve cover and trench protection, prone shelter, knockback and flinching in the Rust core.
+- Knockback and recovery checks preserve obstacle bounces, landings, flinching and dazed movement, including carried casualties and task interruption.
+- Wounded-soldier checks preserve bleeding, medicine, rescue, pistol timing and corpse collection. A wounded soldier also safely releases a rescuer that has been removed.
+- Grenade reflex checks preserve protecting wounded squadmates, throwing grenades back, kicking them away, ducking behind cover and cooking a throw.
+- Grenade task checks preserve approaching, picking up and kicking a grenade, smothering it and diving clear, including blocked ground and fuse deadlines.
+- House-entry checks preserve stacking, kicking closed doors, cooking and throwing into the room, taking cover for the explosion and entering with a buddy.
+- Building checks preserve which house a contact occupies, usable doorways and windows, blocked stacking positions and the squadmate best placed to breach.
+- Automatic grenade checks preserve target groups, hard-cover priorities, throw scatter, ammunition, cooldowns and cooking before a throw.
+- Rust grenade warnings preserve the shared incoming-shell history after a prolonged bombardment, then discard it when a new grenade is noticed nearby.
+- Incoming-round checks preserve warning order, suppression, ducking and dive priority, including soldiers busy rescuing or carrying casualties.
+- Drone-avoidance checks preserve which aircraft soldiers hear, their warnings and the chance to dive from a close attack.
+- Special-weapon checks preserve rocket and melee targets, mortar fire orders, drone launch timing, ammunition and cooldowns in Rust.
+- Rust-owned soldiers now choose those targets from the shared battlefield and retain their pending attacks and squad mortar queues, with reference checks for friendly clearance, visibility and interrupted actions.
+- Shared Rust reaction checks now preserve which soldier handles a grenade, released rescue and breach claims, incoming-shell warnings and drone avoidance through saved-state resumes.
+- Rust actor queries now visit ordered lists of the needed entity kinds, keeping large amounts of scenery out of unit, vehicle and projectile lookups. This is an internal lookup improvement; whole-battle performance still needs the completed server.
+- Supply checks preserve scavenging, nearby bodies, ammo-cache and FOB destinations, refill rates and reload order.
+- Shared supply checks preserve soldiers collecting from the same body, choosing depots and returning to their hold position as stock and orders move into Rust.
+- Complete cover searches now run in Rust, preserving preferred positions, squad spacing, burning ground and the existing search limit.
+- Stationary-movement checks preserve giving nearby troops room, settling onto terrain, moving into a cover position and watching a sector.
+- Medical-task checks preserve rescue, dragging, treatment timing and escorts. Soldiers also safely abandon these tasks when a patient or rescuer has been removed.
+- Shared Rust medical duties preserve competing rescue claims, shelter choices, healing upgrades, recovered weapons and limping back after treatment.
+- Construction, stretcher and prisoner-escort checks preserve work priorities, paired carrying and solo takeover. These tasks also safely handle removed casualties, partners, tents, prisoners and work targets.
+- Shared Rust stretcher duties preserve paired pickup, a surviving bearer's solo takeover, cancellation and delivery into treatment.
+- Arrival checks preserve boarding, tunnels, ammunition collection and ordered throws. Invalid grenade types no longer interrupt troops or change command ownership, and removed destinations are handled safely.
+- Mounted-weapon checks preserve climbing towers, manning guns, mortar aim and anti-tank target selection. Removed mounts are safely released.
+- Action checks preserve cooking, throws, grenade handling, door kicks and weapon launches. Pending actions safely handle targets or grenades removed before completion.
+- Lifecycle checks preserve hidden duties, treatment deadlines, drone operators, moving postures and status flags. Soldiers safely release removed tents, tunnels, vehicles and drones.
+- Shared Rust hidden-state checks preserve passengers, tunnel exits, completed treatment, routes back to base and prisoner departure.
+- Shared Rust lifecycle checks preserve carried bodies, corpse cleanup deadlines and prisoners moving with their hands raised.
+- Shared Rust prisoner checks preserve capture credit, escort orders and delivery to bases or tunnels. Prison arrival also handles a destination that was removed during the march.
+- Downtime checks preserve idle choices, conversations, laughter and interruptions. Removed conversation partners and targets no longer interrupt the soldier update with a stale-reference error.
+- Shared Rust downtime updates both conversation partners and the team's cooldown together, preserving speech, interruptions and random continuation.
+- Rust squad-rejoining checks preserve nearby squad selection, returning soldiers' ownership and battle records, including commanders who disconnected.
+- Scheduling checks preserve interruptions, dives, scanning and thinking deadlines, and which orders a busy soldier can accept.
+- Authoritative entity IDs now come from Rust, preserving creation order and keeping removed units' IDs from being reused as the server migration continues.
+- Shared actor checks preserve rescue and stretcher claims when a carrier falls, and FPV drones lose control when their operator is lost while retaining their last target position.
+- Shared combat checks preserve near-miss suppression, casualty claims, last-attacker credit, squad contacts and morale as these effects move into Rust.
+- Squad checks preserve shared contact briefings, leader succession and casualty morale as squad state moves into Rust.
+- Vehicle checks preserve crew order gates, repairs, turret aiming, passenger boarding and saved transport state as vehicle ownership moves into Rust.
+- Driving checks preserve tracked and wheeled steering, traffic gaps, reversing, truck lanes and getting unstuck through saved-state resumes.
+- Crew checks preserve withdrawing for repairs, evading missiles, waiting for infantry support and resuming saved orders.
+- Flight checks preserve helicopter momentum, hover braking, landing clearance, sling-load handling and UAV orbits across saved-state resumes.
+- Transport checks preserve sling pickup, swing, release and dropped cargo, plus pilots' landing, unloading, supply-destination and return-flight decisions.
+- Vehicle combat checks preserve armour, ricochets, blast shove, broken tracks, damage alerts and missile/cannon/machine-gun firing priorities and timing.
+- Passenger checks preserve dismount timing, exits onto shore and the section's next orders, including removed passengers.
+- Infantry birth checks preserve unit loadouts, upgrades, names, initial cooldowns and squad membership as entity creation moves into Rust.
+- Vehicle-loss checks preserve passenger casualties, crew survival and final wreck positions, including random choices between each survivor's escape.
+- Launch checks preserve vehicle missiles, defensive smoke, warning order and random choices across saved-state resumes.
+- Vehicle targeting checks preserve infantry exposure, aircraft priorities, fog-hidden buildings, forced targets and nearby squad reports as combat decisions move into Rust.
+- Infantry targeting checks preserve concealment, wounded firing, mounted-gun arcs, drone reactions and contact-report order as soldiers begin reading shared Rust actor state.
+- Infantry firing checks preserve aim, covering-fire responses, morale, mounted guns, ammunition and reload timing as those decisions move into retained Rust state.
+- The full weapon sequence checks preserve ducking, shifting along cover, posture and mounted-gun alignment before firing.
+- Cover-decision checks preserve squad reports, occupied cover, destroyed walls and when soldiers reassess their positions as state moves into Rust.
+- Battle-record checks preserve commander credit, rejoins, prisoners, unit history and private reports as the ledger moves into Rust for replay verification.
+- Artillery and gunship checks preserve fire missions, aiming delays, salvos, attack orbits and smoke responses between rocket launches.
+- Nearby-infantry, building and door checks preserve query ordering through movement and checkpoint restoration as shared world state moves into Rust.
+- The extracted simulation uses pinned numeric rules, with exact checkpoint comparisons across platforms as replay verification work continues.
+- Guided missiles keep a consistent turn after overshooting their aim point, instead of letting rounding choose an erratic turn direction.
+- This is groundwork for the server migration. Battles still use the existing simulation, and recordings are not yet independently verified.

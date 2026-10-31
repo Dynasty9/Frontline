@@ -28,11 +28,26 @@ var path_queue_peak := 0
 var path_wait_max_ms := 0.0
 var path_cache_hits := 0
 var _route_cache := {}
+var _planner: RefCounted
+var _use_native := true
 const ROUTE_CACHE_LIMIT := 128
 
 
 func request_path(unit: Entity, destination: Vector3, vehicle: bool, team: int, care: float, done: Callable) -> void:
 	var id := unit.eid
+	if _planner:
+		var graph: HNav = hnav_v if vehicle else hnav_i
+		var direct: PackedVector3Array = _planner.direct_path(graph._core, unit.position, destination, vehicle, care)
+		if not direct.is_empty():
+			cancel_path(id)
+			done.call(direct)
+			return
+		if not _planner.request(id, destination, vehicle, team, care):
+			push_error("Invalid or excessive path request")
+			return
+		_path_jobs[id] = [weakref(unit), done, Time.get_ticks_msec()]
+		path_queue_peak = maxi(path_queue_peak, _planner.queue_peak())
+		return
 	# A short clear step needs no graph search, especially a dash into cover.
 	var grid := veh if vehicle else inf
 	var hierarchy: HNav = hnav_v if vehicle else hnav_i
@@ -50,10 +65,15 @@ func request_path(unit: Entity, destination: Vector3, vehicle: bool, team: int, 
 
 
 func cancel_path(id: int) -> void:
+	if _planner:
+		_planner.cancel(id)
 	_path_jobs.erase(id)
 
 
 func process_paths(max_jobs := 4) -> void:
+	if _planner:
+		_process_native_paths(max_jobs)
+		return
 	# Fixed quotas keep command completion independent of machine speed.
 	# Each query uses bounded local grids and the abstract graph.
 	var count := 0
@@ -87,12 +107,40 @@ func process_paths(max_jobs := 4) -> void:
 		_path_head = 0
 
 
-func _init() -> void:
+func _process_native_paths(max_jobs: int) -> void:
+	_planner.begin_batch()
+	var count := 0
+	while count < max_jobs:
+		var job: Array = _planner.next_job()
+		if job.is_empty():
+			break
+		var id: int = job[0]
+		var observer: Array = _path_jobs.get(id, [])
+		_path_jobs.erase(id)
+		if observer.is_empty():
+			continue
+		var unit: Entity = observer[0].get_ref()
+		if unit == null or unit.gone:
+			continue
+		path_wait_max_ms = maxf(path_wait_max_ms, Time.get_ticks_msec() - int(observer[2]))
+		var result := find_path(unit.position, job[1], job[2], job[3], job[4])
+		count += 1
+		var hierarchy: HNav = hnav_v if job[2] else hnav_i
+		if result.is_empty() and hierarchy.has_work():
+			var accepted: bool = _planner.request(id, job[1], job[2], job[3], job[4])
+			assert(accepted, "A pending path must retain its queue slot")
+			_path_jobs[id] = observer
+			continue
+		(observer[1] as Callable).call(result)
+
+
+func _init(use_native := true) -> void:
+	_use_native = use_native
 	ikind.resize(N * N)
 	vkind.resize(N * N)
 	heat.resize(N * N)
-	hnav_i = HNav.new(inf, false)
-	hnav_v = HNav.new(veh, true)
+	hnav_i = HNav.new(inf, false, use_native)
+	hnav_v = HNav.new(veh, true, use_native)
 	# keep vehicles off the outer rim (every cell set is passed on to the
 	# hierarchical graphs, which keep their own copy: see HNav._solid)
 	for i in N:
@@ -105,7 +153,7 @@ func _init() -> void:
 # --- boats --------------------------------------------------------------------------
 
 const BR := 2  # metres per boat cell
-var boat := AStarGrid2D.new()
+var boat: Object = AStarGrid2D.new()
 var boat_n := 0
 var has_boats := false
 var boat_body := PackedInt32Array()  # which stretch of water each cell is (-1 land): the sea, the river, each pond
@@ -118,13 +166,9 @@ func build_boat_grid(w) -> void:
 	if w == null or w.is_empty():
 		return
 	boat_n = N / BR
-	boat.region = Rect2i(0, 0, boat_n, boat_n)
-	boat.cell_size = Vector2(BR, BR)
-	boat.diagonal_mode = AStarGrid2D.DIAGONAL_MODE_ONLY_IF_NO_OBSTACLES
-	boat.default_compute_heuristic = AStarGrid2D.HEURISTIC_OCTILE
-	boat.default_estimate_heuristic = AStarGrid2D.HEURISTIC_OCTILE
-	boat.update()
-	boat.fill_solid_region(boat.region, true)
+	var region := Rect2i(0, 0, boat_n, boat_n)
+	boat = HNav.make_grid(region, Vector2(BR, BR))
+	boat.fill_solid_region(region, true)
 	var tb: PackedByteArray = terrain.base
 	for bz in boat_n:
 		var row := bz * BR * N
@@ -245,7 +289,7 @@ func find_boat_path(from: Vector3, to: Vector3) -> PackedVector3Array:
 	var b := nearest_boat(to, 160.0, water_body(a))  # (on the water it's on)
 	if a == Vector3.INF or b == Vector3.INF:
 		return out
-	var pts := boat.get_point_path(boat_cell(a), boat_cell(b))
+	var pts: PackedVector2Array = boat.get_point_path(boat_cell(a), boat_cell(b))
 	for i in pts.size():
 		if i % 3 != 0 and i != pts.size() - 1:
 			continue  # (every 6 m is plenty to steer by)
@@ -256,6 +300,28 @@ func find_boat_path(from: Vector3, to: Vector3) -> PackedVector3Array:
 ## Builds the abstract graphs once the map is laid out.
 func finalize() -> void:
 	HNav.build_all([hnav_i, hnav_v])
+	# Preliminary loading-tool routes cannot describe the finished battlefield.
+	_route_cache.clear()
+	path_cache_hits = 0
+	if _planner == null and _use_native and ClassDB.class_exists("PathPlannerCore") and hnav_i._core != null and hnav_v._core != null:
+		_planner = ClassDB.instantiate("PathPlannerCore")
+		var configured: bool = _planner.configure(N)
+		var loaded: bool = _planner.load_cells(ikind, vkind, heat)
+		assert(configured and loaded, "Invalid navigation surface")
+		# Loading tools may have queued orders before the map was finalized.
+		for id: int in _path_order:
+			if not _path_jobs.has(id):
+				continue
+			var job: Array = _path_jobs[id]
+			if job.size() != 7:
+				continue
+			var accepted: bool = _planner.request(id, job[1], job[2], job[3], job[4])
+			assert(accepted)
+			_path_jobs[id] = [job[0], job[5], job[6]]
+		var ordered: bool = _planner.restore_queue_order(PackedInt64Array(_path_order.slice(_path_head)))
+		assert(ordered, "Invalid queued order during map setup")
+		_path_order.clear()
+		_path_head = 0
 
 
 ## Re-links clusters whose walls changed, a few a tick, infantry's first (a road
@@ -267,9 +333,9 @@ func finalize() -> void:
 ## well under a millisecond as a rule.)
 func update_hier(clusters := 1) -> void:
 	for i in clusters:
-		if not hnav_i.dirty.is_empty():
+		if hnav_i.has_work():
 			hnav_i.update(1)
-		elif not hnav_v.dirty.is_empty():
+		elif hnav_v.has_work():
 			hnav_v.update(1)
 		else:
 			return
@@ -362,6 +428,7 @@ func _recompute(idx: int) -> void:
 		vk = SOLID
 	ikind[idx] = ik
 	vkind[idx] = vk
+	_sync_path_cell(idx)
 	var c := Vector2i(idx % N, idx / N)
 	var ti := terrain.nav_weight(idx, false) if terrain else 1.0
 	var tv := terrain.nav_weight(idx, true) if terrain else 1.0
@@ -399,6 +466,14 @@ func stamp_heat(p: Vector3, r: float, d: int) -> void:
 			heat[idx] = clampi(heat[idx] + d, 0, 255)
 			if (heat[idx] > 0) != was:
 				_recompute(idx)
+			else:
+				_sync_path_cell(idx)
+
+
+func _sync_path_cell(idx: int) -> void:
+	if _planner:
+		var valid: bool = _planner.set_cell(idx, ikind[idx], vkind[idx], heat[idx])
+		assert(valid, "Invalid path smoothing cell")
 
 
 func _nearest_free(g: NavRaster, c: Vector2i) -> Vector2i:
@@ -445,6 +520,11 @@ func find_path(from: Vector3, to: Vector3, vehicle := false, team := -1, care :=
 
 
 func _find_path(from: Vector3, to: Vector3, vehicle: bool, team: int, care: float) -> PackedVector3Array:
+	if _planner:
+		var hierarchy: HNav = hnav_v if vehicle else hnav_i
+		var result: PackedVector3Array = _planner.find_path(hierarchy._core, from, to, vehicle, team, care)
+		path_cache_hits = _planner.cache_hits()
+		return result
 	var g := veh if vehicle else inf
 	var a := cell_of(from)
 	var b := cell_of(to)
@@ -483,7 +563,7 @@ func _find_path(from: Vector3, to: Vector3, vehicle: bool, team: int, care: floa
 		# Only loading tools may query before finalization. Keep that search
 		# inside one small cluster; never search the entire map on failure.
 		if h.cluster_of(a) == h.cluster_of(b):
-			ids = h.local_grid(h.cluster_of(a)).get_id_path(a, b)
+			ids = h.local_path(h.cluster_of(a), a, b)
 	if ids.is_empty():
 		return out
 	var pts: Array = []
@@ -518,7 +598,7 @@ func _hier_path(h: HNav, g: NavRaster, a: Vector2i, b: Vector2i, team: int, care
 	# A man shifting a few metres within one cluster can use that small grid.
 	# If a wall divides it, the abstract graph can still find a way around.
 	if h.cluster_of(a) == h.cluster_of(b):
-		out = h.local_grid(h.cluster_of(a)).get_id_path(a, b)
+		out = h.local_path(h.cluster_of(a), a, b)
 		if not out.is_empty():
 			return out
 	var wps: Array[Vector2i] = h.route(a, b, team, care)
@@ -538,7 +618,7 @@ func _hier_path(h: HNav, g: NavRaster, a: Vector2i, b: Vector2i, team: int, care
 		var cp := h.cluster_of(p)
 		var seg: Array[Vector2i] = []
 		if cp == h.cluster_of(q):
-			seg = h.local_grid(cp).get_id_path(p, q)
+			seg = h.local_path(cp, p, q)
 		if seg.is_empty():
 			out.clear()
 			return out
@@ -548,6 +628,8 @@ func _hier_path(h: HNav, g: NavRaster, a: Vector2i, b: Vector2i, team: int, care
 
 
 func _line_free(a: Vector3, b: Vector3, vehicle: bool) -> bool:
+	if _planner:
+		return _planner.line_free(a, b, vehicle)
 	var d := b - a
 	var steps := int(d.length() / 0.5) + 1
 	var arr := vkind if vehicle else ikind
@@ -566,7 +648,7 @@ func _line_free(a: Vector3, b: Vector3, vehicle: bool) -> bool:
 
 
 ## Debug: compare hierarchical and flat routes on random trips.
-func benchmark(rng: RandomNumberGenerator) -> void:
+func benchmark(rng: SimulationRandom) -> void:
 	for vehicle in [false, true]:
 		var g := veh if vehicle else inf
 		var flat := g.reference_grid()

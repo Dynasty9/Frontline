@@ -6,7 +6,7 @@ extends RefCounted
 ## the map's size has room for (MapDims).
 
 var world: World
-var rng: RandomNumberGenerator
+var rng: SimulationRandom
 var placed: Array = []  # [Vector2 center, Vector2 half, yaw] (add with _place)
 var doors_shut := -1  # houses' doors: -1 some shut (most), 1 all shut, 0 all open
 var clear: Array = []  # [Vector2 center, radius] (add with _keep_clear)

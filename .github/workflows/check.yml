@@ -11,6 +11,21 @@ on:
   pull_request:
 
 jobs:
+  numeric-contract:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, ubuntu-24.04-arm, macos-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check identical simulation bytes in debug and release
+        run: |
+          rustup toolchain install 1.94.0 --profile minimal
+          cargo +1.94.0 test --locked --manifest-path native/Cargo.toml -p frontline_core
+          cargo +1.94.0 test --locked --release --manifest-path native/Cargo.toml -p frontline_core
+
   check:
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -22,6 +37,7 @@ jobs:
       - name: Build numeric simulation extension
         run: |
           rustup toolchain install 1.94.0 --profile minimal
+          cargo +1.94.0 test --locked --manifest-path native/Cargo.toml -p frontline_core
           python3 tools/build_native.py
 
       - name: Cache Godot

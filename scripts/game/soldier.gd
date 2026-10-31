@@ -158,7 +158,6 @@ var idle_next := 0.0
 var chat_with = null  # untyped: the other man may be freed
 var _banter: Array = []  # [time, text]
 var _laugh_until := 0.0
-static var _last_chat := [-99.0, -99.0]  # one new conversation per side every few seconds
 var peek_up := false
 var peek_t := 0.0
 
@@ -186,6 +185,7 @@ var reveal_t := 0.0
 var melee_cd := 0.0
 var scav_t := 0.0
 var resupply_t := 0.0
+var _supply: RefCounted
 var think_t := 0.0
 var _path_pending := false
 var _path_revision := 0
@@ -207,7 +207,11 @@ var _hit_kind := ""
 var flinging := false
 var _sector := Vector3.ZERO  # where he watches at a halt (zero: not on a war footing)
 var seen_grenades := {}
+var _grenade_core: RefCounted
+var _grenade_attack: RefCounted
+var _breach_core: RefCounted
 var heard_drones := {}
+var _drone_reaction: RefCounted
 var low_ammo_said := false
 var out_said := false
 var drone_ctrl: Drone = null
@@ -522,7 +526,25 @@ func _pick(arr: Array) -> String:
 
 # --- geometry helpers ------------------------------------------------------------
 
+var _pose_core: RefCounted
+
+
+func _pose_query(kind: int):
+	# shortcut: the test adapter supplies pose until the Rust actor owns it.
+	if _pose_core == null:
+		_pose_core = ClassDB.instantiate("InfantryPoseCore")
+	var mount_valid := is_instance_valid(mounted)
+	var gun: bool = mount_valid and mounted.skind in ["mg_nest", "hmg_nest"]
+	var values := [position, posture, life, at_cover, cover_type, cover_h, cover_n, lean_dir,
+		mount_valid, gun, gun and mounted.variant == 1, peek_up, blind, is_moving(), move_mode, _gy]
+	var result = _pose_core.query(values, kind)
+	assert(result != null, "Invalid infantry combat pose")
+	return result
+
+
 func eye_pos() -> Vector3:
+	if world != null and world.settings.get("rust_infantry", false) and ClassDB.class_exists("InfantryPoseCore"):
+		return _pose_query(0)
 	if posture == Post.STAND and mounted and mounted.variant == 1 and mounted.skind in ["mg_nest", "hmg_nest"]:
 		return position + Vector3(0, 1.62, 0)  # on the fire step, sighting along the gun
 	if _over() and peek_up and not blind:
@@ -541,6 +563,8 @@ func eye_pos() -> Vector3:
 
 ## The eye the soldier would shoot from (peeking over low cover or around a corner).
 func scan_eye() -> Vector3:
+	if world != null and world.settings.get("rust_infantry", false) and ClassDB.class_exists("InfantryPoseCore"):
+		return _pose_query(1)
 	if life == Life.DOWNED:
 		return position + Vector3(0, 0.4, 0)
 	if _over():
@@ -553,6 +577,8 @@ func scan_eye() -> Vector3:
 
 
 func exposed_points() -> Array:
+	if world != null and world.settings.get("rust_infantry", false) and ClassDB.class_exists("InfantryPoseCore"):
+		return _pose_query(2)
 	if life == Life.DOWNED or life == Life.DEAD:
 		return [position + Vector3(0, 0.22, 0)]
 	if _over():
@@ -577,6 +603,8 @@ func exposed_points() -> Array:
 
 
 func center_point() -> Vector3:
+	if world != null and world.settings.get("rust_infantry", false) and ClassDB.class_exists("InfantryPoseCore"):
+		return _pose_query(3)
 	match posture:
 		Post.PRONE:
 			return position + Vector3(0, 0.25, 0)
@@ -588,6 +616,8 @@ func center_point() -> Vector3:
 
 
 func hit_factor() -> float:
+	if world != null and world.settings.get("rust_infantry", false) and ClassDB.class_exists("InfantryPoseCore"):
+		return _pose_query(4)
 	var f := 1.0
 	match posture:
 		Post.CROUCH:
@@ -620,6 +650,8 @@ func _over() -> bool:
 ## kneeling behind sandbags or a car, standing behind a chest-high wall - and
 ## when he ducks, low enough that it covers him.
 func _over_post(up: bool) -> int:
+	if world != null and world.settings.get("rust_infantry", false) and ClassDB.class_exists("InfantryPoseCore"):
+		return _pose_query(6 if up else 5)
 	match Cover.stance(cover_h):
 		Cover.PRONE:
 			return Post.PRONE
@@ -769,6 +801,52 @@ func _danger() -> bool:
 
 # --- main loop -------------------------------------------------------------------
 
+const CONTROLLER_TASKS := ["", "rescue", "escort", "heal", "build", "stretcher", "limp", "captor", "man", "tunnel",
+	"board", "resupply", "grenade_pickup", "smother", "gkick", "breach", "retreat", "throw", "pilot"]
+var _controller: RefCounted
+
+
+func _native_controller() -> bool:
+	return is_instance_valid(world) and world.settings.get("rust_infantry", false) and ClassDB.class_exists("InfantryControllerCore")
+
+
+func _controller_core() -> RefCounted:
+	if _controller == null:
+		_controller = ClassDB.instantiate("InfantryControllerCore")
+	return _controller
+
+
+func _controller_task() -> int:
+	var code := CONTROLLER_TASKS.find(task)
+	return code if code >= 0 else CONTROLLER_TASKS.size()
+
+
+func _controller_values() -> Array:
+	return [think_t, scan_n, _doing_t, dive_t, dive_dir]
+
+
+func _read_controller(state: Array) -> void:
+	assert(state.size() == 5, "Invalid infantry controller state")
+	think_t = state[0]
+	scan_n = state[1]
+	_doing_t = state[2]
+	dive_t = state[3]
+	dive_dir = state[4]
+
+
+func _activity_due(dt: float) -> bool:
+	if _native_controller():
+		var out: Array = _controller_core().activity(_controller_values(), dt)
+		assert(out.size() == 2, "Invalid activity clock")
+		_read_controller(out[0])
+		return out[1]
+	_doing_t -= dt
+	if _doing_t <= 0.0:
+		_doing_t = 0.25
+		return true
+	return false
+
+
 func sim(dt: float) -> void:
 	if not debug_pose.is_empty():
 		posture = int(debug_pose[0])
@@ -776,20 +854,9 @@ func sim(dt: float) -> void:
 		life = int(debug_pose[2])
 		flags = int(debug_pose[4]) if debug_pose.size() > 4 else 0
 		return
-	_doing_t -= dt
-	if _doing_t <= 0.0:
-		_doing_t = 0.25
+	if _activity_due(dt):
 		_update_doing()
-	if suppression > 0.0 and world.time - _supp_t > 1.4:
-		var rec := 8.0 if suppression > 50.0 else 13.0
-		if at_cover and cover_type != Cov.NONE:
-			rec *= 1.15
-		suppression = maxf(0.0, suppression - dt * rec)
-	if at_cover and cover_mat >= 0 and not peek_up and suppression > Cover.SUPP_CAP[cover_mat]:
-		suppression = move_toward(suppression, Cover.SUPP_CAP[cover_mat], dt * 16.0)
-	say_cd -= dt
-	if hit_dirt_t > 0.0:
-		hit_dirt_t -= dt
+	_recover_tick(dt)
 	if flinging:
 		_fling_tick(dt)
 	else:
@@ -808,9 +875,51 @@ func sim(dt: float) -> void:
 	_update_flags()
 
 
+func _recover_tick(dt: float) -> void:
+	if world.settings.get("rust_infantry", false) and ClassDB.class_exists("InfantryVitalsCore"):
+		var state := _vitals_state()
+		_read_vitals_state(_vitals_core.recover(state, dt, world.time, _vitals_protection()))
+		return
+	if suppression > 0.0 and world.time - _supp_t > 1.4:
+		var rec := 8.0 if suppression > 50.0 else 13.0
+		if at_cover and cover_type != Cov.NONE:
+			rec *= 1.15
+		suppression = maxf(0.0, suppression - dt * rec)
+	if at_cover and cover_mat >= 0 and not peek_up and suppression > Cover.SUPP_CAP[cover_mat]:
+		suppression = move_toward(suppression, Cover.SUPP_CAP[cover_mat], dt * 16.0)
+	say_cd -= dt
+	if hit_dirt_t > 0.0:
+		hit_dirt_t -= dt
+
+
+var _control_core: RefCounted
+
+
+func _native_control() -> bool:
+	return world.settings.get("rust_infantry", false) and ClassDB.class_exists("InfantryControlCore")
+
+
+func _controls() -> RefCounted:
+	if _control_core == null:
+		_control_core = ClassDB.instantiate("InfantryControlCore")
+	return _control_core
+
+
 ## Nobody glides across the ground: a man who is moving is on his feet (or
 ## crawling, deliberately) and moving his legs.
 func _posture_sanity(dt: float) -> void:
+	if _native_control():
+		var out: PackedInt32Array = _controls().motion_posture(_sim_prev, position, dt, life, posture, act)
+		assert(out.size() == 3, "Invalid infantry motion posture")
+		_sim_prev = position
+		posture = out[0]
+		act = out[1]
+		if out[2] and OS.has_environment("FL_DEBUG_PRONE"):
+			var fixed := "prone" if out[2] & 1 else ""
+			if out[2] & 2:
+				fixed += "idle"
+			world.stat("posture_fix_%s_%s_%s" % [fixed, task, goal_kind])
+		return
 	if life != Life.ALIVE or dt <= 0.0:
 		_sim_prev = position
 		return
@@ -837,6 +946,16 @@ func _update_flags() -> void:
 
 
 func _update_flags_work() -> void:
+	if _native_control():
+		var weapon := cur_weapon()
+		var ammo := PackedInt32Array()
+		if not weapon.is_empty() and int(weapon.ammo) < 9000:
+			ammo = PackedInt32Array([int(weapon.ammo), total_ammo()])
+		var result: int = _controls().status([suppression, ammo, world.time, last_shot_t, life,
+			squad != null and squad.leader == self, at_cover, cover_type, peek_up, blind, cover_h, posture])
+		assert(result >= 0, "Invalid infantry status")
+		flags = result
+		return
 	var f := 0
 	if suppression > 25.0:
 		f |= F_SUPP
@@ -862,6 +981,11 @@ func _update_flags_work() -> void:
 ## Out of breath: rushes, sprints and dragging a man wear him down; a breather
 ## (lower down, sooner) brings it back.
 func _fatigue_tick(dt: float) -> void:
+	if world.settings.get("rust_infantry", false) and ClassDB.class_exists("InfantryVitalsCore"):
+		var state := _vitals_state()
+		_read_vitals_state(_vitals_core.fatigue(state, dt, PackedInt32Array([int(is_moving() or dive_t > 0.0), move_mode, int(act == Act.CRAWL),
+			int(task in ["rescue", "stretcher", "smother"]), int(task == "stretcher" or act in [Act.DRAG, Act.CARRY]), int(posture == Post.STAND)])))
+		return
 	var drain := 0.0
 	if is_moving() or dive_t > 0.0:
 		drain = [0.0, 0.022, 0.045][clampi(move_mode, 0, 2)]
@@ -879,40 +1003,13 @@ func _fatigue_tick(dt: float) -> void:
 
 func _alive(dt: float) -> void:
 	_fatigue_tick(dt)
-	if dazed_t > 0.0:
-		_dazed_tick(dt)
+	var proceed: bool
+	if _native_controller() and world.nav != null and world.nav._planner != null:
+		proceed = _alive_timers_native(dt)
+	else:
+		proceed = _alive_timers_reference(dt)
+	if not proceed:
 		return
-	if dive_t > 0.0:
-		dive_t -= dt
-		act = Act.DIVE
-		var np := position + dive_dir * 5.5 * dt
-		if world.nav.walkable(np):
-			position = np
-		position.y = maxf(base_y, position.y - dt * 3.0)
-		if dive_t <= 0.0:
-			posture = Post.PRONE
-			act = Act.IDLE
-			at_cover = false
-			next_cover_eval = world.time + 0.8
-		return
-	if act_t > 0.0:
-		act_t -= dt
-		_action_tick(dt)
-		if act_t <= 0.0:
-			_action_done()
-		return
-	if flinch_t > 0.0:
-		flinch_t -= dt
-		act = Act.FLINCH
-		if flinch_t > 0.0:
-			return
-		act = Act.IDLE
-	think_t -= dt
-	if think_t <= 0.0:
-		think_t = 0.24 + world.rng.randf() * 0.1
-		_think()
-		if act_t > 0.0 or dive_t > 0.0 or life != Life.ALIVE:
-			return
 	match task:
 		"":
 			_fight_tick(dt)
@@ -956,6 +1053,85 @@ func _alive(dt: float) -> void:
 			task = ""
 
 
+func _alive_timers_native(dt: float) -> bool:
+	var out: Array = _controller_core().advance(_controller_values(), dt, PackedFloat64Array([dazed_t, flinch_t, act_t]), world.rng._backend)
+	assert(out.size() == 4, "Invalid infantry update clock")
+	_read_controller(out[0])
+	dazed_t = out[1][0]
+	flinch_t = out[1][1]
+	act_t = out[1][2]
+	if out[3]:
+		act = Act.IDLE
+	match int(out[2]):
+		1:
+			_dazed_tick(dt)
+			return false
+		2:
+			out = _controller_core().dive(_controller_values(), position, base_y, dt, world.nav._planner)
+			assert(out.size() == 3, "Invalid infantry dive")
+			_read_controller(out[0])
+			act = Act.DIVE
+			position = out[1]
+			if out[2]:
+				posture = Post.PRONE
+				act = Act.IDLE
+				at_cover = false
+				next_cover_eval = world.time + 0.8
+			return false
+		3:
+			_action_tick(dt)
+			if act_t <= 0.0:
+				_action_done()
+			return false
+		4:
+			act = Act.FLINCH
+			return false
+		5:
+			_think()
+			var proceed: int = _controller_core().continue_after_think(life, act_t, dive_t)
+			assert(proceed >= 0, "Invalid thought completion")
+			return proceed != 0
+	return true
+
+
+func _alive_timers_reference(dt: float) -> bool:
+	if dazed_t > 0.0:
+		_dazed_tick(dt)
+		return false
+	if dive_t > 0.0:
+		dive_t -= dt
+		act = Act.DIVE
+		var np := position + dive_dir * 5.5 * dt
+		if world.nav.walkable(np):
+			position = np
+		position.y = maxf(base_y, position.y - dt * 3.0)
+		if dive_t <= 0.0:
+			posture = Post.PRONE
+			act = Act.IDLE
+			at_cover = false
+			next_cover_eval = world.time + 0.8
+		return false
+	if act_t > 0.0:
+		act_t -= dt
+		_action_tick(dt)
+		if act_t <= 0.0:
+			_action_done()
+		return false
+	if flinch_t > 0.0:
+		flinch_t -= dt
+		act = Act.FLINCH
+		if flinch_t > 0.0:
+			return false
+		act = Act.IDLE
+	think_t -= dt
+	if think_t <= 0.0:
+		think_t = 0.24 + world.rng.randf() * 0.1
+		_think()
+		if act_t > 0.0 or dive_t > 0.0 or life != Life.ALIVE:
+			return false
+	return true
+
+
 ## What he sees, then what he does about it: the reflexes and the fight are
 ## a behaviour tree (SoldierBrain).
 func _think() -> void:
@@ -966,8 +1142,16 @@ func _think() -> void:
 
 
 func _think_work() -> void:
-	scan_n += 1
-	if scan_n % 2 == 0 or target == null:
+	var scan: bool
+	if _native_controller():
+		var out: Array = _controller_core().scan(_controller_values(), target != null)
+		assert(out.size() == 2, "Invalid infantry scan clock")
+		_read_controller(out[0])
+		scan = out[1]
+	else:
+		scan_n += 1
+		scan = scan_n % 2 == 0 or target == null
+	if scan:
 		_scan()
 	_compute_sep()
 	SoldierBrain.think(self)
@@ -1019,6 +1203,18 @@ func _scan_work() -> void:
 	if phase:
 		world.detail("scan candidates", phase)
 		phase = Time.get_ticks_usec()
+	var native: PackedInt64Array = world.combat.scan_targets(self, arr)
+	if not native.is_empty():
+		# Header: selected target, ground contacts to report, reused obstruction count.
+		for i in range(3, native.size()):
+			var e: Entity = world.entity(native[i])
+			vis_targets.append(e)
+			if squad and i - 3 < native[1]:
+				squad.report(e)
+		target = world.entity(native[0])
+		if phase:
+			world.detail("scan LOS", phase)
+		return
 	var best_s := -1e9
 	var checked := 0
 	var eye := scan_eye()
@@ -1134,8 +1330,9 @@ func scan_candidates() -> Array:
 	return out
 
 
-func _target_valid(e: Entity) -> bool:
-	if e == null or e.gone:
+func _target_valid(e) -> bool:
+	# A removed target may survive as a stale reference until the next scan.
+	if not is_instance_valid(e) or not (e is Entity) or e.gone:
 		return false
 	if e is Soldier:
 		return e.life == Life.ALIVE or e.life == Life.DOWNED
@@ -1158,6 +1355,12 @@ func _has_los_now(e: Entity) -> bool:
 
 
 func _aim_point(e: Entity) -> Vector3:
+	if world.settings.get("rust_infantry", false) and ClassDB.class_exists("InfantryAimCore"):
+		if _aim_core == null:
+			_aim_core = ClassDB.instantiate("InfantryAimCore")
+		var point = _aim_core.aim_point(_aim_contact(e), PackedVector3Array(e.exposed_points()), world.rng._backend)
+		assert(point is Vector3, "Invalid infantry aim point")
+		return point
 	if e is Soldier and e._over() and world.rng.randf() < 0.35:
 		# at the middle of him, through whatever he's behind
 		return e.position + Vector3(0, minf(e.cover_h - 0.12, 1.0), 0)
@@ -1349,6 +1552,93 @@ func _move_tick(dt: float, speed: float) -> bool:
 
 func _move_tick_work(dt: float, speed: float) -> bool:
 	if _path_pending:
+		return true
+	if path_i >= path.size():
+		return false
+	# shortcut: per-soldier state packing is slower; enable when the Rust actor owns these fields.
+	if world.settings.get("rust_infantry_motion", false) and ClassDB.class_exists("InfantryMotionCore") and world.nav._planner and world.terrain._native and world.combat._collision:
+		world.combat._sync_collision()
+		if world.combat._collision:
+			return _native_move_tick(dt, speed)
+	return _move_tick_reference(dt, speed)
+
+
+var _motion_core: RefCounted
+
+
+func _motion_values() -> PackedFloat64Array:
+	return PackedFloat64Array([position.x, position.y, position.z, rotation.y, path_i,
+		_stuck_p.x, _stuck_p.y, _stuck_p.z, _stuck_t, slide_t, slide_cd, int(vaulting),
+		_last_dir.x, _last_dir.y, _last_dir.z, _bar_t, int(_bar), _gy_t, _gy, door_wait, _door_t, int(door_kick)])
+
+
+func _mount_turn() -> PackedFloat64Array:
+	if is_instance_valid(mounted) and not mounted.gone and mounted.skind in ["mg_nest", "hmg_nest", "mortar_pit", "at_post"]:
+		var p := mounted.mount_pos()
+		return PackedFloat64Array([p.x, p.y, p.z, deg_to_rad(float({"mg_nest": 55.0, "hmg_nest": 35.0, "mortar_pit": 12.0, "at_post": 20.0}[mounted.skind]))])
+	return PackedFloat64Array()
+
+
+func _native_move_tick(dt: float, speed: float) -> bool:
+	if _motion_core == null:
+		_motion_core = ClassDB.instantiate("InfantryMotionCore")
+	var values := _motion_values()
+	var mount := _mount_turn()
+	var mount_point := Vector3.ZERO if mount.is_empty() else Vector3(mount[0], mount[1], mount[2])
+	var turn_rate := 0.0 if mount.is_empty() else mount[3]
+	var waiting_door: int = door_st.eid if is_instance_valid(door_st) and not door_st.gone else 0
+	var candidates := []
+	if door_wait <= 0.0 and world.time > _door_t:
+		for st in world.door_cells.get(Vector2i(floori(position.x / 1.5), floori(position.z / 1.5)), []):
+			if is_instance_valid(st) and not st.gone:
+				candidates.append([st.eid, st.position, st.yaw])
+	var inputs := PackedFloat64Array([dt, world.time, speed, base_y, int(life == Life.ALIVE), int(_path_pending), int(goal_kind == "cover"), move_mode,
+		suppression, int(backwards), int(not candidates.is_empty() and _danger()), int(not world.door_cells.is_empty()), int(waiting_door != 0 and door_st.door_shut), int(turn_rate > 0.0),
+		mount_point.x, mount_point.y, mount_point.z, turn_rate])
+	var decks: PackedByteArray = world.water.deck if world.water else PackedByteArray()
+	var output: Array = _motion_core.advance(values, path, waiting_door, inputs, candidates, world.nav._planner, world.terrain._native, world.combat._collision, world.rng._backend, decks)
+	assert(output.size() == 5, "Invalid infantry movement result")
+	var state: PackedFloat64Array = output[0]
+	var ids: PackedInt64Array = output[1]
+	var progress: int = output[2]
+	path_i = int(state[4])
+	_stuck_p = Vector3(state[5], state[6], state[7])
+	_stuck_t = state[8]
+	slide_t = state[9]
+	slide_cd = state[10]
+	vaulting = state[11] != 0.0
+	_last_dir = Vector3(state[12], state[13], state[14])
+	_bar_t = state[15]
+	_bar = state[16] != 0.0
+	_gy_t = state[17]
+	_gy = state[18]
+	door_wait = state[19]
+	_door_t = state[20]
+	door_kick = state[21] != 0.0
+	door_st = world.entity(ids[0]) as Structure if ids[0] != 0 else null
+	if ids[1] != 0:
+		var opened: Structure = world.entity(ids[1]) as Structure
+		if opened and not opened.gone:
+			opened.open_door(self, door_kick)
+	var next_position := Vector3(state[0], state[1], state[2])
+	if next_position != position:
+		position = next_position
+	if state[3] != rotation.y:
+		rotation.y = state[3]
+	if int(output[3]) >= 0:
+		say(["Breaching!", "Door!", "Kicking it in!"][int(output[3])], true)
+	if output[4]:
+		world.stat("slide")
+	if progress == 3:
+		world.stat("repath")
+		go_to(path[path.size() - 1], goal_kind, move_mode)
+	elif progress == 2:
+		_arrived()
+	return progress == 1 or progress == 3
+
+
+func _move_tick_reference(dt: float, speed: float) -> bool:
+	if _path_pending:
 		return true  # callers must not finish a task while its route is queued
 	if path_i >= path.size():
 		return false
@@ -1456,6 +1746,16 @@ func _compute_sep_work() -> void:
 	_sep = Vector3.ZERO
 	if life != Life.ALIVE or dragged_by or task in ["stretcher", "captor"]:
 		return
+	if world.settings.get("rust_infantry", false) and ClassDB.class_exists("InfantryMotionCore"):
+		if _motion_core == null:
+			_motion_core = ClassDB.instantiate("InfantryMotionCore")
+		var neighbors := []
+		for o in world.soldiers_near(position, 0.85):
+			neighbors.append([o.eid, o.position, o.life])
+		var result: PackedVector3Array = _motion_core.separation(eid, position, true, neighbors, world.rng._backend)
+		assert(result.size() == 1, "Invalid infantry separation")
+		_sep = result[0]
+		return
 	for o in world.soldiers_near(position, 0.85):
 		if o == self or o.life == Life.HIDDEN or o.life == Life.DEAD:
 			continue
@@ -1512,17 +1812,7 @@ func _fight_tick(dt: float) -> void:
 func _fight_tick_work(dt: float) -> void:
 	var moving := _move_tick(dt, _speed())
 	if not moving:
-		_apply_sep(dt)
-		_settle_y(dt)
-		if at_cover and cover_n != Vector3.ZERO:
-			# tight to the barrier on his spot, watching across it
-			var off := Defs.flat(cover_pos - position)
-			if off.length() > 0.02 and off.length() < 0.9:
-				position += off.limit_length(dt * 1.4)
-			if world.time - last_shot_t > 1.0 and not (peek_up and _target_valid(target)) and cover_type != Cov.LEAN:
-				_face(cover_n, dt, 5.0)
-		elif _sector != Vector3.ZERO and world.time - last_shot_t > 1.2 and not (at_cover and cover_type != Cov.NONE) and not _target_valid(target):
-			_face(_sector, dt, 3.0)
+		_stationary_tick(dt)
 	else:
 		_shuffle = false
 	_weapon_tick(dt, moving, "normal")
@@ -1530,12 +1820,98 @@ func _fight_tick_work(dt: float) -> void:
 	_idle_tick(dt, moving)
 
 
+func _stationary_tick(dt: float) -> void:
+	if world.settings.get("rust_infantry", false) and ClassDB.class_exists("InfantryMotionCore") and world.nav._planner and world.terrain._native:
+		if _motion_core == null:
+			_motion_core = ClassDB.instantiate("InfantryMotionCore")
+		var mount := _mount_turn()
+		var input := [dt, world.time, base_y, _sep, posture == Post.PRONE, at_cover, cover_pos, cover_n,
+			cover_type, last_shot_t, peek_up, _target_valid(target), _sector, mount]
+		var deck: PackedByteArray = world.water.deck if world.water else PackedByteArray()
+		var result: Array = _motion_core.stationary(_motion_values(), path, door_st.eid if is_instance_valid(door_st) else 0,
+			input, world.nav._planner, world.terrain._native, deck)
+		assert(result.size() == 2, "Invalid stationary infantry")
+		var state: PackedFloat64Array = result[0]
+		var next := Vector3(state[0], state[1], state[2])
+		if next != position:
+			position = next
+		if state[3] != rotation.y:
+			rotation.y = state[3]
+		_gy_t = state[17]
+		_gy = state[18]
+		_shuffle = result[1]
+		return
+	_stationary_reference(dt)
+
+
+func _stationary_reference(dt: float) -> void:
+	_apply_sep(dt)
+	_settle_y(dt)
+	if at_cover and cover_n != Vector3.ZERO:
+		# tight to the barrier on his spot, watching across it
+		var off := Defs.flat(cover_pos - position)
+		if off.length() > 0.02 and off.length() < 0.9:
+			position += off.limit_length(dt * 1.4)
+		if world.time - last_shot_t > 1.0 and not (peek_up and _target_valid(target)) and cover_type != Cov.LEAN:
+			_face(cover_n, dt, 5.0)
+	elif _sector != Vector3.ZERO and world.time - last_shot_t > 1.2 and not (at_cover and cover_type != Cov.NONE) and not _target_valid(target):
+		_face(_sector, dt, 3.0)
+
+
 # --- downtime -------------------------------------------------------------------------
+
+var _idle_core: RefCounted
+
+
+func _native_idle() -> bool:
+	return world.settings.get("rust_infantry", false) and ClassDB.class_exists("InfantryIdleCore")
+
+
+func _idle_state_core() -> RefCounted:
+	if _idle_core == null:
+		_idle_core = ClassDB.instantiate("InfantryIdleCore")
+	return _idle_core
+
+
+func _idle_values() -> Array:
+	return [calm_t, idle_act, idle_until, idle_next, chat_with.eid if is_instance_valid(chat_with) else 0, _banter, _laugh_until]
+
+
+func _read_idle(state: Array) -> void:
+	assert(state.size() == 7, "Invalid infantry downtime state")
+	calm_t = state[0]
+	idle_act = state[1]
+	idle_until = state[2]
+	idle_next = state[3]
+	chat_with = world.entity(int(state[4]))
+	_banter = state[5]
+	_laugh_until = state[6]
+
 
 ## When nothing has happened for a while men get bored: they chat and rib each
 ## other, smoke, sit down, stretch, check their kit. Anything at all - an order,
 ## a shot, an enemy seen - and it's over.
 func _idle_tick(dt: float, moving: bool) -> void:
+	if _native_idle():
+		var partner_ok: bool = is_instance_valid(chat_with) and not chat_with.gone and chat_with.chat_with == self and chat_with.life == Life.ALIVE
+		var out: Array = _idle_state_core().step(_idle_values(), [dt, world.time, moving, _danger(), _sector,
+			reload_t, last_shot_t, mounted != null, _target_valid(target), partner_ok])
+		assert(out.size() == 2, "Invalid infantry downtime step")
+		_read_idle(out[0])
+		match int(out[1]):
+			1:
+				_end_idle()
+			2, 3:
+				act = idle_act
+				posture = Post.STAND
+				if int(out[1]) == 3:
+					var yaw = _idle_state_core().facing(position, chat_with.position, rotation.y, dt, _mount_turn())
+					assert(yaw is float, "Invalid conversation facing")
+					rotation.y = yaw
+					_banter_tick()
+			4:
+				_start_idle()
+		return
 	var calm := not moving and not _danger() and _sector == Vector3.ZERO and reload_t <= 0.0 and world.time - last_shot_t > 12.0 and mounted == null and not _target_valid(target)
 	if not calm:
 		calm_t = 0.0
@@ -1562,9 +1938,24 @@ func _idle_tick(dt: float, moving: bool) -> void:
 
 
 func _start_idle() -> void:
+	if _native_idle():
+		var out: Array = _idle_state_core().begin(_idle_values(), world.time, float(world.last_chat[1 if team == 1 else 0]), world.rng._backend)
+		assert(out.size() == 2, "Invalid downtime start")
+		_read_idle(out[0])
+		if out[1]:
+			var mate := _chat_mate()
+			if mate:
+				_start_chat(mate)
+				return
+		out = _idle_state_core().solo(_idle_values(), world.time, team, world.rng._backend)
+		assert(out.size() == 2, "Invalid solo downtime")
+		_read_idle(out[0])
+		if String(out[1]) != "":
+			say(String(out[1]))
+		return
 	idle_next = world.time + world.rng.randf_range(6.0, 16.0)
 	var ti := 1 if team == 1 else 0
-	if world.rng.randf() < 0.35 and world.time - float(_last_chat[ti]) > 8.0:
+	if world.rng.randf() < 0.35 and world.time - float(world.last_chat[ti]) > 8.0:
 		var mate := _chat_mate()
 		if mate:
 			_start_chat(mate)
@@ -1578,6 +1969,13 @@ func _start_idle() -> void:
 
 
 func _chat_mate() -> Soldier:
+	if _native_idle():
+		var nearby := []
+		for o in world.soldiers_near(position, 6.0):
+			nearby.append([o.eid, o.team, o.life, o.chat_with != null, o.calm_t, o.task == "", o.is_moving()])
+		var id: int = _idle_state_core().mate(eid, team, nearby)
+		assert(id >= 0, "Invalid conversation partners")
+		return world.entity(id) as Soldier
 	for o in world.soldiers_near(position, 6.0):
 		if o == self or o.team != team or o.life != Life.ALIVE or o.chat_with != null or o.calm_t < 5.0 or o.task != "" or o.is_moving():
 			continue
@@ -1586,6 +1984,15 @@ func _chat_mate() -> Soldier:
 
 
 func _start_chat(mate: Soldier) -> void:
+	if _native_idle():
+		var out: Array = _idle_state_core().chat(_idle_values(), mate._idle_values(), PackedInt64Array([eid, mate.eid]),
+			world.time, team, PackedStringArray([sname, mate.sname]), world.rng._backend)
+		assert(out.size() == 2, "Invalid conversation start")
+		_read_idle(out[0])
+		mate._read_idle(out[1])
+		world.stat("banter")
+		world.last_chat[1 if team == 1 else 0] = world.time
+		return
 	var lines: Array = BANTER[1 if team == 1 else 0]
 	var ex: Array = lines[world.rng.randi() % lines.size()]
 	var dur := 3.5 + ex.size() * 2.8
@@ -1606,10 +2013,22 @@ func _start_chat(mate: Soldier) -> void:
 	var listener: Soldier = mate if ex.size() % 2 == 1 else self
 	listener._banter.append([world.time + ex.size() * 2.8 - 0.6, "!laugh"])
 	world.stat("banter")
-	_last_chat[1 if team == 1 else 0] = world.time
+	world.last_chat[1 if team == 1 else 0] = world.time
 
 
 func _banter_tick() -> void:
+	if _native_idle():
+		while true:
+			var out: Array = _idle_state_core().line(_idle_values(), world.time, world.rng._backend)
+			assert(out.size() == 3, "Invalid conversation line")
+			_read_idle(out[0])
+			if int(out[1]) == 0:
+				break
+			if int(out[1]) == 2:
+				say(String(out[2]), true)
+		if world.time < _laugh_until:
+			act = Act.IDLE_LAUGH
+		return
 	while not _banter.is_empty() and world.time >= float(_banter[0][0]):
 		var e: Array = _banter.pop_front()
 		if String(e[1]) == "!laugh":
@@ -1623,6 +2042,14 @@ func _banter_tick() -> void:
 
 
 func _end_idle() -> void:
+	if _native_idle():
+		var partner = chat_with
+		var out: Array = _idle_state_core().end(_idle_values(), world.time, world.rng._backend)
+		assert(out.size() == 2, "Invalid downtime end")
+		_read_idle(out[0])
+		if is_instance_valid(partner) and partner.chat_with == self:
+			partner.chat_with = null
+		return
 	idle_act = 0
 	_banter.clear()
 	_laugh_until = 0.0
@@ -1674,6 +2101,62 @@ func _lean_post() -> int:
 ## waits for the fire to slacken, a fighter may hold his rifle up over the
 ## wall and fire blind.
 func _cover_cycle(dt: float, w: Dictionary, want_fire: bool, pinned: bool) -> void:
+	if world.settings.get("rust_infantry", false) and ClassDB.class_exists("InfantryWeaponCore"):
+		_native_cover_cycle(dt, w, want_fire, pinned)
+		return
+	_cover_cycle_reference(dt, w, want_fire, pinned)
+
+
+var _weapon_core: RefCounted
+
+
+func _weapon_state() -> PackedFloat64Array:
+	if _weapon_core == null:
+		_weapon_core = ClassDB.instantiate("InfantryWeaponCore")
+	return PackedFloat64Array([peek_t, _peek_from, _up_supp, reload_t, int(peek_up), int(_stayed), int(_watching), int(blind), burst_left, mag, reserve, fire_t, last_shot_t, int(low_ammo_said)])
+
+
+func _read_weapon_state(state: PackedFloat64Array) -> void:
+	assert(state.size() == 14, "Invalid infantry weapon state")
+	peek_t = state[0]
+	_peek_from = state[1]
+	_up_supp = state[2]
+	reload_t = state[3]
+	peek_up = state[4] != 0.0
+	_stayed = state[5] != 0.0
+	_watching = state[6] != 0.0
+	blind = state[7] != 0.0
+	burst_left = int(state[8])
+	mag = int(state[9])
+	reserve = int(state[10])
+	fire_t = state[11]
+	last_shot_t = state[12]
+	low_ammo_said = state[13] != 0.0
+
+
+func _native_cover_cycle(dt: float, w: Dictionary, want_fire: bool, pinned: bool) -> void:
+	var state := _weapon_state()
+	var inputs := PackedFloat64Array([dt, world.time, team, suppression, _supp_t, hit_dirt_t, _gy, cover_type, cover_h, cover_mat,
+		int(want_fire), int(pinned), int(_target_valid(target)), int(_buddy_up()), w.get("ammo", -1), w.get("mag", 30), w.get("reload", 2.0)])
+	var output: Array = _weapon_core.cover_cycle(state, inputs, world.rng._backend)
+	assert(output.size() == 2, "Invalid infantry firing result")
+	_read_weapon_state(output[0])
+	var events: PackedInt32Array = output[1]
+	if events[0] and world.settings.get("debug", false):
+		world.stat("t%d_drew" % team)
+	if events[1] and world.settings.get("debug", false):
+		world.stat("t%d_peek" % team)
+	if events[2]:
+		world.stat("blind_fire")
+	if events[3] >= 0:
+		say(["Reloading!", "Changing mag!", "Cover me, reloading!"][events[3]])
+	if events[4]:
+		_call_cover()
+	if events[5]:
+		_shift_along()
+
+
+func _cover_cycle_reference(dt: float, w: Dictionary, want_fire: bool, pinned: bool) -> void:
 	peek_t -= dt
 	# nothing to shoot at and nobody shooting at him: up over the top keeping
 	# watch, the weapon on the wall - not curled up behind it. The first round
@@ -1753,12 +2236,21 @@ func _weapon_tick(dt: float, moving: bool, mode: String) -> void:
 		world.detail("_weapon_tick", stamp)
 
 
-func _weapon_tick_work(dt: float, moving: bool, mode: String) -> void:
+func _advance_weapon_timers(dt: float) -> void:
+	if world.settings.get("rust_infantry", false) and ClassDB.class_exists("InfantryWeaponCore"):
+		var state := _weapon_state()
+		var w := cur_weapon()
+		_read_weapon_state(_weapon_core.advance_timers(state, dt, PackedFloat64Array([w.get("ammo", 0), w.get("mag", 30), w.get("reload", 2.0)])))
+		return
 	fire_t -= dt
 	if reload_t > 0.0:
 		reload_t -= dt
 		if reload_t <= 0.0:
 			_finish_reload()
+
+
+func _weapon_tick_work(dt: float, moving: bool, mode: String) -> void:
+	_advance_weapon_timers(dt)
 	var w := cur_weapon()
 	var pinned := suppression >= (squad.pin_at() if squad else 60.0)  # a shaken squad is pinned sooner
 	var danger := _danger()
@@ -1766,6 +2258,116 @@ func _weapon_tick_work(dt: float, moving: bool, mode: String) -> void:
 	var own_cf := cf_until > world.time
 	var cf := own_cf or (squad != null and squad.cover_fire_until > world.time)
 	var cfp: Vector3 = cf_pos if own_cf else (squad.cover_fire_pos if squad else Vector3.ZERO)
+	if not _weapon_stance(dt, moving, mode, w, pinned, danger, have_target, cf):
+		return
+	var aim_pt := _weapon_aim(have_target, cf, cfp, float(w.range))
+	var aim_ent := _aim_ent
+	if aim_pt == Vector3.INF:
+		return
+	var aim_dir := Defs.flat(aim_pt - position).normalized()
+	if mode == "crew" and mounted and not mounted.mg_covers(aim_dir):
+		return  # outside the gun's arc
+	if mode != "escort" and not (posture == Post.LEAN_L or posture == Post.LEAN_R):
+		if blind and cover_n != Vector3.ZERO and aim_dir.dot(cover_n) < 0.5:
+			return  # he can't hold it over the wall that far round
+		if crew_mount() != null:
+			_face(aim_dir, dt)
+			if absf(wrapf(Defs.yaw_of(aim_dir) - rotation.y, -PI, PI)) > 0.035:
+				return
+		else:
+			_face_now(aim_dir)
+	if fire_t > 0.0:
+		return
+	_shoot(aim_pt, aim_ent, moving, cf)
+
+
+var _aim_core: RefCounted
+var _aim_ent: Entity
+
+
+func _aim_contact(e: Entity) -> Array:
+	var kind := 1 if e is Soldier else (2 if e is Drone else (3 if e is Structure else 0))
+	return [e.eid, kind, e._over() if e is Soldier else false, e.cover_h if e is Soldier else 0.0, e.position, e.center_point()]
+
+
+func _weapon_aim(have_target: bool, cf: bool, cfp: Vector3, weapon_range: float) -> Vector3:
+	# shortcut: the parity fixture packs state until Rust owns the complete actor.
+	if world.settings.get("rust_infantry", false) and ClassDB.class_exists("InfantryAimCore") and world.combat._collision and world.combat._visibility:
+		world.combat._sync_collision()
+		if world.combat._collision:
+			if _aim_core == null:
+				_aim_core = ClassDB.instantiate("InfantryAimCore")
+			var contact := []
+			var points := PackedVector3Array()
+			var excluded := PackedInt64Array()
+			if have_target:
+				contact = _aim_contact(target)
+				points = PackedVector3Array(target.exposed_points())
+				for rid: RID in get_exclude() + target.get_exclude():
+					if world.combat._rid_entities.has(rid):
+						excluded.append(int(world.combat._rid_entities[rid]))
+			var known = null
+			if squad and (utype in ["mg_gunner", "pkm"] or not gun_override.is_empty()):
+				var lk: Dictionary = squad.last_known_near(position, weapon_range, 5.0)
+				if not lk.is_empty():
+					known = lk.pos
+			var state := [los_ent.eid if is_instance_valid(los_ent) else 0, los_t, los_ok]
+			var inputs := [world.time, position, eye_pos(), blind, _path_pending or not is_moving(), cfp if cf else null, known, weapon_range]
+			var result: Array = _aim_core.choose(world.combat._collision, world.combat._visibility, world.rng._backend, state, inputs, contact, points, excluded)
+			assert(result.size() == 6, "Invalid infantry aim selection")
+			los_ent = world.entity(int(result[2]))
+			los_t = float(result[3])
+			los_ok = bool(result[4])
+			if result[5]:
+				world.stat("perception_blocked_reused")
+			_aim_ent = world.entity(int(result[1]))
+			return result[0] if result[0] != null else Vector3.INF
+	return _weapon_aim_reference(have_target, cf, cfp, weapon_range)
+
+
+func _weapon_aim_reference(have_target: bool, cf: bool, cfp: Vector3, weapon_range: float) -> Vector3:
+	_aim_ent = null
+	var aim_pt := Vector3.INF
+	if blind and have_target:
+		_aim_ent = target  # roughly where he last saw him, head down
+		aim_pt = target.position + Vector3(world.rng.randf_range(-1.5, 1.5), world.rng.randf_range(0.5, 1.8), world.rng.randf_range(-1.5, 1.5))
+	elif have_target and _has_los_now(target):
+		_aim_ent = target
+		aim_pt = _aim_point(target)
+	elif cf and Defs.flat(cfp - position).length() < weapon_range * 1.1:
+		aim_pt = cfp + Vector3(world.rng.randf_range(-2.5, 2.5), world.rng.randf_range(0.6, 1.4), world.rng.randf_range(-2.5, 2.5))
+	elif squad and (utype in ["mg_gunner", "pkm"] or not gun_override.is_empty()):
+		var lk: Dictionary = squad.last_known_near(position, weapon_range, 5.0)
+		if not lk.is_empty():
+			aim_pt = lk.pos + Vector3(world.rng.randf_range(-1.5, 1.5), 1.0, world.rng.randf_range(-1.5, 1.5))
+	return aim_pt
+
+
+func _weapon_stance(dt: float, moving: bool, mode: String, w: Dictionary, pinned: bool, danger: bool, have_target: bool, cf: bool) -> bool:
+	# shortcut: fixture adapter packs state; the Rust actor will keep it between ticks.
+	if world.settings.get("rust_infantry", false) and ClassDB.class_exists("InfantryWeaponCore"):
+		var cycle := mode == "normal" and not moving and at_cover and cover_type in [Cov.LOW, Cov.LEAN] and not (cover_type == Cov.LOW and cover_h <= 0.0 and mounted == null)
+		if cycle:
+			_native_cover_cycle(dt, w, have_target or cf, pinned)
+		var state := _weapon_state()
+		var inputs := PackedFloat64Array([world.time, ["normal", "escort", "crew"].find(mode), int(moving), int(_crawling()),
+			int(goal_kind == "cover" and Defs.flat(goal - position).length() < 4.0), move_mode, int(_shifting), int(at_cover), cover_type, cover_h,
+			int(mounted != null), int(mounted != null and mounted.variant == 1), int(danger), int(pinned), suppression, hit_dirt_t,
+			int(_sector != Vector3.ZERO), int(utype in ["mg_gunner", "pkm"]), int(have_target), int(cf), int(crew_mount() != null), int(not w.is_empty()),
+			int(squad != null and squad.ambush), int(forced_target != null), rotation.y, int(cycle)])
+		var result: Array = _weapon_core.stance(state, inputs, eid, cover_threat, lean_dir)
+		assert(result.size() == 4, "Invalid infantry stance result")
+		_read_weapon_state(result[0])
+		if int(result[3]) == 1:
+			_face(cover_threat, dt, 3.0)
+		elif int(result[3]) == 2:
+			_face_now(cover_threat)
+		posture = int(result[1])
+		return result[2]
+	return _weapon_stance_reference(dt, moving, mode, w, pinned, danger, have_target, cf)
+
+
+func _weapon_stance_reference(dt: float, moving: bool, mode: String, w: Dictionary, pinned: bool, danger: bool, have_target: bool, cf: bool) -> bool:
 	var want_fire := have_target or cf
 	var want := Post.STAND
 	var shoot_ok := false
@@ -1832,45 +2434,57 @@ func _weapon_tick_work(dt: float, moving: bool, mode: String) -> void:
 		shoot_ok = false
 	posture = want
 	if not shoot_ok or reload_t > 0.0 or w.is_empty() or (fire_t > 0.0 and crew_mount() == null):
-		return
+		return false
 	if suppression >= 88.0 and mode != "escort":
-		return
+		return false
 	if squad and squad.ambush and mode == "normal" and forced_target == null:
-		return  # holding fire till the leader springs it
-	var aim_ent: Entity = null
-	var aim_pt := Vector3.INF
-	if blind and have_target:
-		aim_ent = target  # roughly where he last saw him, head down
-		aim_pt = target.position + Vector3(world.rng.randf_range(-1.5, 1.5), world.rng.randf_range(0.5, 1.8), world.rng.randf_range(-1.5, 1.5))
-	elif have_target and _has_los_now(target):
-		aim_ent = target
-		aim_pt = _aim_point(target)
-	elif cf and Defs.flat(cfp - position).length() < float(w.range) * 1.1:
-		aim_pt = cfp + Vector3(world.rng.randf_range(-2.5, 2.5), world.rng.randf_range(0.6, 1.4), world.rng.randf_range(-2.5, 2.5))
-	elif squad and (utype in ["mg_gunner", "pkm"] or not gun_override.is_empty()):
-		var lk: Dictionary = squad.last_known_near(position, float(w.range), 5.0)
-		if not lk.is_empty():
-			aim_pt = lk.pos + Vector3(world.rng.randf_range(-1.5, 1.5), 1.0, world.rng.randf_range(-1.5, 1.5))
-	if aim_pt == Vector3.INF:
-		return
-	var aim_dir := Defs.flat(aim_pt - position).normalized()
-	if mode == "crew" and mounted and not mounted.mg_covers(aim_dir):
-		return  # outside the gun's arc
-	if mode != "escort" and not (posture == Post.LEAN_L or posture == Post.LEAN_R):
-		if blind and cover_n != Vector3.ZERO and aim_dir.dot(cover_n) < 0.5:
-			return  # he can't hold it over the wall that far round
-		if crew_mount() != null:
-			_face(aim_dir, dt)
-			if absf(wrapf(Defs.yaw_of(aim_dir) - rotation.y, -PI, PI)) > 0.035:
-				return
-		else:
-			_face_now(aim_dir)
-	if fire_t > 0.0:
-		return
-	_shoot(aim_pt, aim_ent, moving, cf)
+		return false  # holding fire till the leader springs it
+	return true
 
 
 func _shoot(aim_pt: Vector3, aim_ent: Entity, moving: bool, cover_fire: bool) -> void:
+	if world.settings.get("rust_infantry", false) and ClassDB.class_exists("InfantryWeaponCore"):
+		_native_shoot(aim_pt, aim_ent, moving, cover_fire)
+		return
+	_shoot_reference(aim_pt, aim_ent, moving, cover_fire)
+
+
+func _native_shoot(aim_pt: Vector3, aim_ent: Entity, moving: bool, cover_fire: bool) -> void:
+	var state := _weapon_state()
+	var w := cur_weapon()
+	var b: Vector2i = w.burst
+	var inputs := PackedFloat64Array([w.ammo, w.get("mag", 30), w.get("reload", 2.0), b.x, b.y, world.time, stamina,
+		int(moving), int(not gun_override.is_empty()), squad.acc_mult() if squad else 1.0, int(squad != null and squad.ambush_t > world.time)])
+	var result: Array = _weapon_core.prepare_shot(state, inputs, world.rng._backend)
+	assert(result.size() == 6, "Invalid infantry shot result")
+	_read_weapon_state(result[0])
+	if int(result[4]) >= 0:
+		say(["Reloading!", "Changing mag!", "Cover me, reloading!"][result[4]])
+	if not result[1]:
+		return
+	if result[3]:
+		world.stat("low_ammo")
+		say("Low on ammo!", true)
+	act = Act.SHOOT
+	world.combat.fire_bullet(self, _bullet_origin(), aim_pt, aim_ent, w, result[5])
+	# Damage can consume randomness and change the shooter before burst recovery.
+	var recovery: Array = _weapon_core.finish_shot(_weapon_state(), PackedFloat64Array([w.ammo, w.get("mag", 30), cur_weapon().get("reload", 2.0), w.interval, suppression, int(result[2]), int(cover_fire)]), world.rng._backend)
+	assert(recovery.size() == 2, "Invalid infantry shot recovery")
+	_read_weapon_state(recovery[0])
+	if int(recovery[1]) >= 0:
+		say(["Reloading!", "Changing mag!", "Cover me, reloading!"][recovery[1]])
+
+
+func _bullet_origin() -> Vector3:
+	var muzzle := eye_pos() + Defs.dir_of(rotation.y) * 0.55 - Vector3(0, 0.08, 0)
+	if crew_mount() != null:
+		muzzle = mounted.mg_muzzle(rotation.y)
+	if blind:
+		muzzle = position + cover_n * 0.55 + Vector3(0, cover_h + 0.12, 0)
+	return muzzle
+
+
+func _shoot_reference(aim_pt: Vector3, aim_ent: Entity, moving: bool, cover_fire: bool) -> void:
 	var w := cur_weapon()
 	var infinite := int(w.ammo) >= 9000
 	if mag <= 0 and not infinite:
@@ -1889,13 +2503,10 @@ func _shoot(aim_pt: Vector3, aim_ent: Entity, moving: bool, cover_fire: bool) ->
 	burst_left -= 1
 	last_shot_t = world.time
 	act = Act.SHOOT
-	var muzzle := eye_pos() + Defs.dir_of(rotation.y) * 0.55 - Vector3(0, 0.08, 0)
-	if crew_mount() != null:
-		muzzle = mounted.mg_muzzle(rotation.y)
+	var muzzle := _bullet_origin()
 	var accm := 1.0
 	if blind:
 		# the weapon held up over the top, nobody looking down the sights
-		muzzle = position + cover_n * 0.55 + Vector3(0, cover_h + 0.12, 0)
 		accm *= 0.12
 	if moving:
 		accm *= 0.55
@@ -1935,11 +2546,60 @@ func _finish_reload() -> void:
 
 # --- special attacks ---------------------------------------------------------------
 
+const ACTION_KINDS := ["", "throw", "rethrow", "throw_in", "kick", "door_kick", "cook", "melee", "pickup", "launch", "launch_drone", "mortar"]
+var _action_core: RefCounted
+
+
+func _native_action() -> bool:
+	return world.settings.get("rust_infantry", false) and ClassDB.class_exists("InfantryActionCore")
+
+
+func _actions() -> RefCounted:
+	if _action_core == null:
+		_action_core = ClassDB.instantiate("InfantryActionCore")
+	return _action_core
+
+
+func _action_entity(key: String) -> Entity:
+	var e = act_data.get(key)
+	return e if is_instance_valid(e) and e is Entity else null
+
+
+func _action_payload(kind: String, data: Dictionary) -> Array:
+	var e = data.get("g" if kind in ["kick", "pickup", "rethrow"] else ("door" if kind == "door_kick" else "target"))
+	var round_kind := 1 if data.get("kind", "") == "smoke" else (2 if kind == "mortar" else 0)
+	return [e.eid if is_instance_valid(e) and e is Entity else 0, data.get("pos", Vector3.ZERO), round_kind,
+		float(data.get("fuse", 3.4)), data.get("v", Vector3.ZERO)]
+
+
+func _action_values() -> Array:
+	return [ACTION_KINDS.find(act_kind), act_t, _action_payload(act_kind, act_data),
+		_action_payload("throw", _queued_throw) if not _queued_throw.is_empty() else []]
+
+
+func _action_related() -> Array:
+	var e := _action_entity("g" if act_kind in ["kick", "pickup", "rethrow"] else ("door" if act_kind == "door_kick" else "target"))
+	if e == null:
+		return []
+	var holder := 0
+	if e is Projectile and is_instance_valid(e.held_by):
+		holder = e.held_by.eid
+	return [e.eid, e.position, e.gone, holder]
+
+
 func _begin_action(kind: String, dur: float, data: Dictionary) -> void:
 	act_kind = kind
 	act_t = dur
 	act_data = data
 	stop_moving()
+	if _native_action():
+		var pose: Array = _actions().start_pose(_action_values(), eid, position, _action_related())
+		assert(pose.size() == 2, "Invalid action start")
+		if int(pose[0]) != 0:
+			act = [Act.IDLE, Act.THROW, Act.KICK, Act.COOK, Act.MELEE, Act.PICKUP, Act.LAUNCH][int(pose[0])]
+		if pose[1] != null:
+			rotation.y = float(pose[1])
+		return
 	match kind:
 		"throw", "rethrow", "throw_in":
 			act = Act.THROW
@@ -1955,11 +2615,21 @@ func _begin_action(kind: String, dur: float, data: Dictionary) -> void:
 			act = Act.LAUNCH
 	if data.has("pos"):
 		_face_now(Defs.flat(data.pos - position))
-	elif data.has("target") and data.target is Entity:
-		_face_now(Defs.flat(data.target.position - position))
+	else:
+		var aimed := _action_entity("target")
+		if aimed != null:
+			_face_now(Defs.flat(aimed.position - position))
 
 
 func _action_tick(_dt: float) -> void:
+	if _native_action():
+		var pose: Array = _actions().pose(_action_values(), eid, position, _action_related())
+		assert(pose.size() == 2, "Invalid action pose")
+		if int(pose[0]) >= 0:
+			posture = int(pose[0])
+		if pose[1] != null:
+			rotation.y = float(pose[1])
+		return
 	if act_kind == "mortar":
 		posture = Post.CROUCH
 		return
@@ -1970,19 +2640,29 @@ func _action_tick(_dt: float) -> void:
 		return
 	if act_kind == "launch" or act_kind == "throw" or act_kind == "rethrow" or act_kind == "throw_in":
 		posture = Post.STAND if act_kind != "launch" else Post.CROUCH
-		if act_data.has("target") and act_data.target is Entity and not act_data.target.gone:
-			_face_now(Defs.flat(act_data.target.position - position))
+		var aimed := _action_entity("target")
+		if aimed != null and not aimed.gone:
+			_face_now(Defs.flat(aimed.position - position))
 
 
 func _action_done() -> void:
 	var k := act_kind
+	var decision := PackedInt32Array()
+	if _native_action():
+		decision = _actions().finish(_action_values(), eid, position, _action_related())
+		assert(decision.size() == 3, "Invalid action completion")
 	act_kind = ""
 	act = Act.IDLE
-	if k == "cook" and not _queued_throw.is_empty():
+	var cooked := decision[1] != 0 if not decision.is_empty() else k == "cook" and not _queued_throw.is_empty()
+	if cooked:
 		var qt := _queued_throw
 		_queued_throw = {}
 		_begin_action("throw", 0.6, qt)
 		say(_pick(["Frag out!", "Grenade out!", "Fire in the hole!"]), true)
+		return
+	if not decision.is_empty() and decision[0] == 0:
+		if decision[2] != 0:
+			hit_dirt_t = maxf(hit_dirt_t, 1.6)
 		return
 	match k:
 		"throw":
@@ -1990,36 +2670,36 @@ func _action_done() -> void:
 		"throw_in":
 			bt_breach_g = world.combat.throw_grenade_low(self, act_data.pos, float(act_data.get("fuse", 3.4)))
 		"kick":
-			var kg: Projectile = act_data.get("g")
+			var kg := _action_entity("g") as Projectile
 			if kg and not kg.gone and kg.held_by == null and Defs.flat(kg.position - position).length() < 1.4:
 				kg.kick(self, act_data.v)
 				world.stat("kicked")
 			hit_dirt_t = maxf(hit_dirt_t, 1.6)  # and down
 		"pickup":
-			var g: Projectile = act_data.get("g")
+			var g := _action_entity("g") as Projectile
 			if g and not g.gone and g.held_by == self:
 				var tp := _rethrow_target(g)
 				_begin_action("rethrow", 0.3, {"g": g, "pos": tp})
 		"rethrow":
-			var g: Projectile = act_data.get("g")
+			var g := _action_entity("g") as Projectile
 			if g and not g.gone and g.held_by == self:
 				g.release_throw(self, act_data.pos)
 				world.stat("throwback")
 				say("Throwing it back!", true)
 		"door_kick":
-			var dr: Structure = act_data.get("door")
+			var dr := _action_entity("door") as Structure
 			if dr and not dr.gone:
 				dr.open_door(self, true)
 		"melee":
-			world.combat.melee_hit(self, act_data.get("target"))
+			world.combat.melee_hit(self, _action_entity("target"))
 		"launch":
-			var t: Entity = act_data.get("target")
+			var t := _action_entity("target")
 			if t and not t.gone:
 				world.combat.fire_rocket(self, t)
 		"mortar":
 			world.combat.fire_mortar(self, position + Vector3(0, 1.0, 0), act_data.pos, String(act_data.kind))
 		"launch_drone":
-			var t2: Entity = act_data.get("target")
+			var t2 := _action_entity("target")
 			if t2 and not t2.gone:
 				drone_ctrl = world.combat.launch_drone(self, t2)
 				if drone_ctrl:
@@ -2042,6 +2722,8 @@ func _try_grenade() -> bool:
 		return false
 	if is_moving():
 		return false
+	if SoldierBrain._native(self) and ClassDB.class_exists("GrenadeAttackCore"):
+		return _try_grenade_native()
 	grenade_cd = world.time + 2.5
 	var best: Soldier = null
 	var best_n := 0
@@ -2072,6 +2754,36 @@ func _try_grenade() -> bool:
 	var tp := best.position + Vector3(world.rng.randf_range(-1, 1), 0, world.rng.randf_range(-1, 1)) * d2 * 0.07
 	frags -= 1
 	grenade_cd = world.time + world.rng.randf_range(12.0, 20.0)
+	return _auto_grenade_action(best, tp, d2)
+
+
+func _try_grenade_native() -> bool:
+	if _grenade_attack == null:
+		_grenade_attack = ClassDB.instantiate("GrenadeAttackCore")
+	var contacts := []
+	for k: Dictionary in squad.known.values():
+		var e = k.e
+		if not is_instance_valid(e) or not (e is Soldier):
+			continue
+		var neighbors := 0
+		for o: Soldier in world.soldiers_near(e.position, 4.0):
+			if o != e and o.team == e.team and o.life == Life.ALIVE:
+				neighbors += 1
+		contacts.append([e.eid, e.position, not e.gone and e.life == Life.ALIVE, world.time - float(k.t),
+			e in vis_targets, e.posture, e.at_cover and e.cover_mat >= Cover.HARD, neighbors])
+	var context := PackedFloat64Array([position.x, position.y, position.z, world.time, suppression,
+		int(squad != null), int(squad != null and squad.ambush), int(is_moving())])
+	var result: Array = _grenade_attack.advance(frags, grenade_cd, context, contacts, world.rng._backend)
+	assert(result.size() == 5, "Invalid automatic grenade attack")
+	frags = int(result[0])
+	grenade_cd = float(result[1])
+	if int(result[2]) == 0:
+		return false
+	var best: Soldier = world.entity(int(result[2])) as Soldier
+	return _auto_grenade_action(best, result[3], float(result[4]))
+
+
+func _auto_grenade_action(best: Soldier, tp: Vector3, d2: float) -> bool:
 	world.stat("frag_auto")
 	var ck := SoldierBrain.cook_time(self, best, d2)
 	if ck > 0.0:
@@ -2088,6 +2800,62 @@ func _try_grenade() -> bool:
 
 
 var _queued_throw: Dictionary = {}  # the throw that follows cooking it
+var _arsenal: RefCounted
+
+
+func _native_arsenal() -> bool:
+	return world.settings.get("rust_infantry", false) and ClassDB.class_exists("InfantryArsenalCore")
+
+
+func _arsenal_core() -> RefCounted:
+	if _arsenal == null:
+		_arsenal = ClassDB.instantiate("InfantryArsenalCore")
+	return _arsenal
+
+
+func _arsenal_state() -> Array:
+	return [rockets, rocket_cd, drones_left, drone_cd, mortar_rounds, mortar_cd, melee_cd]
+
+
+func _read_arsenal_state(state: Array) -> void:
+	rockets = int(state[0])
+	rocket_cd = float(state[1])
+	drones_left = int(state[2])
+	drone_cd = float(state[3])
+	mortar_rounds = int(state[4])
+	mortar_cd = float(state[5])
+	melee_cd = float(state[6])
+
+
+func _try_rocket_native() -> bool:
+	var visible := []
+	var reported := []
+	var have_visible := false
+	for e in vis_targets:
+		if e is Vehicle:
+			visible.append([e.eid, e.position, e.position, e.gone, 0.0, PackedInt64Array()])
+			have_visible = have_visible or Defs.flat(e.position - position).length() < 75.0
+	var eye := position
+	if not have_visible and squad:
+		# Ground caching only advances when the existing reported-target path needs it.
+		eye += Vector3(0, 1.6 + _ground(), 0)
+		for k in squad.known.values():
+			var e = k.e
+			if not e is Vehicle:
+				continue
+			var excluded := PackedInt64Array()
+			for rid: RID in get_exclude() + e.get_exclude():
+				if world.combat._rid_entities.has(rid):
+					excluded.append(int(world.combat._rid_entities[rid]))
+			reported.append([e.eid, e.position, e.center_point(), e.gone, world.time - float(k.t), excluded])
+	var forced := []
+	if forced_target is Structure:
+		forced = [forced_target.eid, forced_target.position, forced_target.position, forced_target.gone, 0.0, PackedInt64Array()]
+	var result: Array = _arsenal_core().rocket(_arsenal_state(), [world.time, position, eye, squad != null and squad.ambush], visible, reported, forced, world.combat._collision, world.combat._visibility)
+	assert(result.size() == 2, "Invalid rocket decision")
+	_read_arsenal_state(result[0])
+	var tgt := world.entity(int(result[1]))
+	return _rocket_action(tgt) if tgt != null else false
 
 
 func _try_rocket() -> bool:
@@ -2095,6 +2863,10 @@ func _try_rocket() -> bool:
 		return false
 	if squad and squad.ambush:
 		return false
+	if _native_arsenal() and world.combat._collision and world.combat._visibility:
+		world.combat._sync_collision()
+		if world.combat._collision:
+			return _try_rocket_native()
 	var tgt: Entity = null
 	for e in vis_targets:
 		if e is Vehicle and Defs.flat(e.position - position).length() < 75.0:
@@ -2116,6 +2888,10 @@ func _try_rocket() -> bool:
 		return false
 	rockets -= 1
 	rocket_cd = world.time + 4.5
+	return _rocket_action(tgt)
+
+
+func _rocket_action(tgt: Entity) -> bool:
 	world.stat("rocket")
 	_begin_action("launch", 0.8, {"target": tgt})
 	say("RPG!" if team == 1 else "Rocket out! Backblast clear!", true)
@@ -2125,12 +2901,22 @@ func _try_rocket() -> bool:
 func _try_drone() -> bool:
 	if drones_left <= 0 or world.time < drone_cd or drone_ctrl != null:
 		return false
+	var state: Array = _arsenal_state() if _native_arsenal() else []
 	drone_cd = world.time + 3.0
 	var tgt: Entity = world.rules.fpv_target(team, position, 230.0)
+	if not state.is_empty():
+		var result: Array = _arsenal_core().drone(state, world.time, false, tgt.eid if tgt != null else 0, world.rng._backend)
+		assert(result.size() == 2, "Invalid drone launch decision")
+		_read_arsenal_state(result[0])
+		return _drone_action(tgt) if int(result[1]) != 0 else false
 	if tgt == null:
 		return false
 	drones_left -= 1
 	drone_cd = world.time + world.rng.randf_range(18.0, 26.0)
+	return _drone_action(tgt)
+
+
+func _drone_action(tgt: Entity) -> bool:
 	world.stat("drone_launch")
 	_begin_action("launch_drone", 1.4, {"target": tgt})
 	say("Drone up.", true)
@@ -2140,45 +2926,45 @@ func _try_drone() -> bool:
 func _try_melee() -> bool:
 	if world.time < melee_cd or wdef.is_empty():
 		return false
+	if _native_arsenal():
+		var nearby := []
+		for e: Soldier in world.soldiers_near(position, 1.9):
+			nearby.append([e.eid, e.team, e.life, e.flinging])
+		var result: Array = _arsenal_core().melee(_arsenal_state(), world.time, team, true, nearby)
+		assert(result.size() == 2, "Invalid melee decision")
+		_read_arsenal_state(result[0])
+		var tgt := world.entity(int(result[1]))
+		return _melee_action(tgt) if tgt != null else false
 	for e in world.soldiers_near(position, 1.9):
 		if e.team == team or e.team < 0 or e.life != Life.ALIVE or e.flinging:
 			continue
 		melee_cd = world.time + 1.4
-		world.stat("melee")
-		_begin_action("melee", 0.55, {"target": e})
-		return true
+		return _melee_action(e)
 	return false
 
 
-func _react_grenade(dive_only: bool) -> bool:
-	for g in world.projectiles:
-		if g.ptype != "frag" or g.held_by != null:
-			continue
-		var d := Defs.flat(g.position - position).length()
-		if d > 7.5:
-			continue
-		if seen_grenades.has(g.eid):
-			continue
-		if g.flying and g.fuse > 2.2 and d > 4.0:
-			continue
-		if seen_grenades.size() > 24:
-			seen_grenades.clear()  # old rounds are long gone
-		seen_grenades[g.eid] = true
-		say(_pick(["GRENADE!", "Grenade! Get down!", "Frag!"]), true)
-		if not dive_only and d < 3.8 and g.fuse > 1.8 and g.thrown_back < 1 and suppression < 75.0 and world.rng.randf() < 0.25 and not wdef.is_empty():
-			task = "grenade_pickup"
-			world.stat("grenade_pickup")
-			task_ent = g
-			stop_moving()
-			return true
-		_dive_from(g.position)
-		return true
-	return false
+func _melee_action(tgt: Entity) -> bool:
+	world.stat("melee")
+	_begin_action("melee", 0.55, {"target": tgt})
+	return true
+
+
+func _react_grenade() -> bool:
+	var g := SoldierBrain.notice_grenade(self, false)
+	if g == null:
+		return false
+	_dive_from(g.position)
+	return true
 
 
 func _dive_from(p: Vector3) -> void:
-	var d := Defs.flat(position - p)
-	dive_dir = d.normalized() if d.length() > 0.1 else Defs.dir_of(world.rng.randf() * TAU)
+	if SoldierBrain._native(self):
+		var direction = SoldierBrain._core(self).dive_direction(position, p, world.rng._backend)
+		assert(direction is Vector3, "Invalid dive direction")
+		dive_dir = direction
+	else:
+		var d := Defs.flat(position - p)
+		dive_dir = d.normalized() if d.length() > 0.1 else Defs.dir_of(world.rng.randf() * TAU)
 	_face_now(dive_dir)
 	dive_t = 0.5
 	act = Act.DIVE
@@ -2213,6 +2999,23 @@ func flee_fire(from: Vector3) -> void:
 
 
 func _react_drones() -> void:
+	if world.settings.get("rust_infantry", false) and ClassDB.class_exists("DroneReactionCore"):
+		if _drone_reaction == null:
+			_drone_reaction = ClassDB.instantiate("DroneReactionCore")
+		var drones := []
+		for d: Drone in world.drones:
+			drones.append([d.eid, d.position, d.target_pos, d.team, d.dead, d.diving])
+		var result: Array = _drone_reaction.react(position, team, PackedInt64Array(heard_drones.keys()), drones, world.rng._backend)
+		assert(result.size() == 3, "Invalid drone reaction")
+		heard_drones.clear()
+		for id: int in result[0]:
+			heard_drones[id] = true
+		# Speech only emits a cosmetic event; its choices were drawn between dive checks.
+		for variant: int in result[1]:
+			say(["Drone! Drone!", "I hear a drone!", "FPV inbound!"][variant], true)
+		if result[2] != null:
+			_dive_from(result[2])
+		return
 	for d in world.drones:
 		if d.team == team or d.dead:
 			continue
@@ -2230,6 +3033,9 @@ func _react_drones() -> void:
 
 
 func _gpick_tick(dt: float) -> void:
+	if SoldierBrain._native_task(self):
+		SoldierBrain._task_native(self, dt, 2)
+		return
 	var g := task_ent as Projectile
 	if g == null or g.gone or (g.held_by != null and g.held_by != self):
 		task = ""
@@ -2252,31 +3058,66 @@ func _gpick_tick(dt: float) -> void:
 	_face(to, dt, 14.0)
 
 
+func _native_supply() -> bool:
+	return world.settings.get("rust_infantry", false) and ClassDB.class_exists("InfantrySupplyCore")
+
+
+func _supply_core() -> RefCounted:
+	if _supply == null:
+		_supply = ClassDB.instantiate("InfantrySupplyCore")
+	return _supply
+
+
+func _supply_bodies(radius: float) -> Array:
+	var bodies := []
+	for s: Soldier in world.soldiers_near(position, radius):
+		bodies.append([s.eid, s.position, s.life == Life.DEAD, s.loot])
+	return bodies
+
+
+func _read_supply_times(times: PackedFloat64Array) -> void:
+	scav_t = times[0]
+	resupply_t = times[1]
+
+
 func _scavenge() -> void:
 	if wdef.is_empty() or world.time < scav_t or int(wdef.ammo) >= 9000:
 		return
 	if total_ammo() >= int(wdef.ammo * 0.65):
+		return
+	if _native_supply():
+		var result: Array = _supply_core().scavenge(PackedFloat64Array([scav_t, resupply_t]), world.time, total_ammo(), int(wdef.ammo), _supply_bodies(3.2))
+		assert(result.size() == 3, "Invalid scavenging decision")
+		_read_supply_times(result[0])
+		if int(result[1]) != 0:
+			_scavenged(world.entity(int(result[1])), int(result[2]))
 		return
 	scav_t = world.time + 1.5
 	for s in world.soldiers_near(position, 3.2):
 		if s.life == Life.DEAD and s.loot > 0:
 			var need := int(wdef.ammo) - total_ammo()
 			var take := mini(need, s.loot)
-			s.loot -= take
-			reserve += take
-			out_said = false
-			world.stat("scavenge")
-			low_ammo_said = false
-			if world.rng.randf() < 0.6:
-				say(_pick(["Grabbing ammo.", "Taking his mags.", "He won't need these."]))
-			if mag <= 0:
-				_start_reload()
+			_scavenged(s, take)
 			return
+
+
+func _scavenged(body: Soldier, take: int) -> void:
+	body.loot -= take
+	reserve += take
+	out_said = false
+	world.stat("scavenge")
+	low_ammo_said = false
+	if world.rng.randf() < 0.6:
+		say(_pick(["Grabbing ammo.", "Taking his mags.", "He won't need these."]))
+	if mag <= 0:
+		_start_reload()
 
 
 func _seek_resupply() -> bool:
 	if world.time < resupply_t:
 		return false
+	if _native_supply():
+		return _seek_resupply_native()
 	resupply_t = world.time + 6.0
 	var best: Soldier = null
 	var bd := 25.0
@@ -2287,11 +3128,7 @@ func _seek_resupply() -> bool:
 				bd = d
 				best = s
 	if best:
-		task = "resupply"
-		world.stat("resupply_body")
-		task_ent = best
-		go_to(best.position, "task", 1)
-		return true
+		return _seek_supply_body(best)
 	var f: Structure = world.rules.nearest_fob(team, position)
 	var fd := Defs.flat(f.position - position).length() if f else INF
 	# a forward ammo cache, if there's one nearer than the FOB
@@ -2303,31 +3140,66 @@ func _seek_resupply() -> bool:
 				fd = d
 				cache = st
 	if cache:
-		task = "resupply"
-		task_ent = cache
-		go_to(cache.position + Defs.flat(position - cache.position).normalized() * 2.2 + Vector3(world.rng.randf_range(-1, 1), 0, world.rng.randf_range(-1, 1)), "task", 1)
-		say("Back to the ammo cache!", true)
-		world.stat("resupply_cache")
-		return true
+		return _seek_supply_depot(cache, cache.position + Defs.flat(position - cache.position).normalized() * 2.2 + Vector3(world.rng.randf_range(-1, 1), 0, world.rng.randf_range(-1, 1)), true)
 	if f and fd < 90.0:
-		task = "resupply"
-		task_ent = f
-		go_to(f.position + Vector3(world.rng.randf_range(-4, 4), 0, world.rng.randf_range(-4, 4)), "task", 1)
-		say("Falling back for ammo!", true)
-		world.stat("resupply_fob")
-		return true
+		return _seek_supply_depot(f, f.position + Vector3(world.rng.randf_range(-4, 4), 0, world.rng.randf_range(-4, 4)), false)
 	return false
+
+
+func _seek_supply_body(body: Soldier) -> bool:
+	task = "resupply"
+	world.stat("resupply_body")
+	task_ent = body
+	go_to(body.position, "task", 1)
+	return true
+
+
+func _seek_supply_depot(depot: Structure, destination: Vector3, cache: bool) -> bool:
+	task = "resupply"
+	task_ent = depot
+	go_to(destination, "task", 1)
+	say("Back to the ammo cache!" if cache else "Falling back for ammo!", true)
+	world.stat("resupply_cache" if cache else "resupply_fob")
+	return true
+
+
+func _seek_resupply_native() -> bool:
+	var result: Array = _supply_core().search_bodies(PackedFloat64Array([scav_t, resupply_t]), world.time, position, _supply_bodies(25.0))
+	assert(result.size() == 2, "Invalid supply search")
+	_read_supply_times(result[0])
+	if int(result[1]) < 0:
+		return false
+	if int(result[1]) > 0:
+		return _seek_supply_body(world.entity(int(result[1])))
+	var f: Structure = world.rules.nearest_fob(team, position)
+	var fd := Defs.flat(f.position - position).length() if f else INF
+	var caches := []
+	for st: Structure in world.structures_near(position, minf(fd, 70.0)):
+		caches.append([st.eid, st.position, st.team, st.built, st.gone, st.skind == "ammo_cache"])
+	var chosen: Array = _supply_core().choose_depot(position, team, [f.eid, f.position] if f else [], caches, world.rng._backend)
+	assert(chosen.size() == 3, "Invalid supply depot decision")
+	return _seek_supply_depot(world.entity(int(chosen[0])), chosen[2], bool(chosen[1])) if int(chosen[0]) != 0 else false
 
 
 func _resupply_tick(dt: float) -> void:
 	var t := task_ent
-	if t == null or t.gone:
+	if not is_instance_valid(t) or t.gone:
 		task = ""
 		return
 	if _move_tick(dt, _speed()):
 		_choose_act(true)
 		return
 	act = Act.IDLE
+	if _native_duties():
+		var result: PackedInt32Array = _duties_core().supply_arrival(int(wdef.ammo), mag, reserve, t.loot if t is Soldier else -1)
+		assert(result.size() == 3, "Invalid supply arrival")
+		if result[1] != 0:
+			t.loot -= result[0]
+			reserve += result[0]
+			say("Got ammo.")
+		if result[2] != 0:
+			_return_to_hold()
+		return
 	if t is Soldier:
 		if t.loot > 0:
 			var take := mini(int(wdef.ammo) - total_ammo(), t.loot)
@@ -2341,6 +3213,9 @@ func _resupply_tick(dt: float) -> void:
 
 func resupply(dt: float) -> void:
 	if wdef.is_empty() or int(wdef.ammo) >= 9000:
+		return
+	if _native_supply():
+		_resupply_native(dt)
 		return
 	var mx := int(wdef.ammo)
 	if total_ammo() < mx:
@@ -2360,6 +3235,26 @@ func resupply(dt: float) -> void:
 		mortar_rounds = mini(int(udef.get("mortar", 0)), mortar_rounds + 1)
 
 
+func _resupply_native(dt: float) -> void:
+	var result: PackedInt64Array = _supply_core().refill_reserve(int(wdef.ammo), mag, reserve, dt)
+	assert(result.size() == 2, "Invalid ammunition refill")
+	reserve = int(result[0])
+	if result[1] != 0:
+		out_said = false
+		low_ammo_said = false
+		if mag <= 0:
+			_start_reload()
+	# Reload speech uses the gameplay stream before any special-ammunition draws.
+	var capacity := PackedInt32Array([int(udef.frags) + (1 if world.rules.has_upgrade(team, "grenades") else 0), int(udef.smokes), int(udef.get("rockets", 0)), int(udef.get("drones", 0)), int(udef.get("mortar", 0))])
+	var stock: PackedInt32Array = _supply_core().refill_special(PackedInt32Array([frags, smokes, rockets, drones_left, mortar_rounds]), capacity, dt, world.rng._backend)
+	assert(stock.size() == 5, "Invalid special ammunition refill")
+	frags = stock[0]
+	smokes = stock[1]
+	rockets = stock[2]
+	drones_left = stock[3]
+	mortar_rounds = stock[4]
+
+
 func _return_to_hold() -> void:
 	task = ""
 	task_ent = null
@@ -2374,6 +3269,10 @@ func _return_to_hold() -> void:
 # --- orders (from Squad) ----------------------------------------------------------------
 
 func can_take_orders() -> bool:
+	if _native_controller():
+		var allowed: int = _controller_core().orders(life, _controller_task(), task_phase, false)
+		assert(allowed >= 0, "Invalid infantry order gate")
+		return allowed != 0
 	if life != Life.ALIVE:
 		return false
 	if task in ["stretcher", "captor", "limp", "tunnel"]:
@@ -2447,8 +3346,16 @@ func cmd_attack(t: Entity, slot: Vector3) -> void:
 	go_to(slot, "slot", 0)
 
 
+func _can_retreat() -> bool:
+	if _native_controller():
+		var allowed: int = _controller_core().orders(life, _controller_task(), task_phase, true)
+		assert(allowed >= 0, "Invalid retreat order gate")
+		return allowed != 0
+	return life == Life.ALIVE and not task in ["stretcher", "captor", "limp", "tunnel"]
+
+
 func cmd_retreat(p: Vector3) -> void:
-	if life != Life.ALIVE or task in ["stretcher", "captor", "limp", "tunnel"]:
+	if not _can_retreat():
 		return
 	_clear_task()
 	task = "retreat"
@@ -2459,7 +3366,7 @@ func cmd_retreat(p: Vector3) -> void:
 
 
 func cmd_throw(p: Vector3, kind: String) -> void:
-	if not can_take_orders():
+	if not kind in ["frag", "smoke"] or not can_take_orders():
 		return
 	_clear_task()
 	task = "throw"
@@ -2495,6 +3402,8 @@ func unit_order(d: Dictionary) -> void:
 			cmd_attack(t, world.nav.nearest_walkable(slot))
 		"throw":
 			var kind := String(d.get("kind", "frag"))
+			if not kind in ["frag", "smoke"]:
+				return
 			if kind == "smoke" and smokes <= 0 or kind == "frag" and frags <= 0:
 				say("I'm out!", true)
 				return
@@ -2551,20 +3460,40 @@ func _clear_task() -> void:
 
 
 func _throw_tick(dt: float) -> void:
+	if not throw_kind in ["frag", "smoke"]:
+		task = ""
+		return
+	var inventory := smokes if throw_kind == "smoke" else frags
+	if _native_duties():
+		var result: PackedInt32Array = _duties_core().ordered_throw(position, task_pos, inventory)
+		assert(result.size() == 2, "Invalid ordered throw")
+		match result[0]:
+			0: _throw_approach(dt)
+			1: task = ""
+			2: _release_ordered_throw(result[1])
+		return
 	if Defs.flat(task_pos - position).length() <= 25.0:
-		var kind := throw_kind
-		if kind == "smoke" and smokes <= 0 or kind == "frag" and frags <= 0:
+		if inventory <= 0:
 			task = ""
 			return
-		if kind == "smoke":
-			smokes -= 1
-			world.stat("smoke")
-		else:
-			frags -= 1
-		task = ""
-		_begin_action("throw", 0.6, {"pos": task_pos, "kind": kind})
-		say("Smoke out!" if kind == "smoke" else "Frag out!", true)
+		_release_ordered_throw(inventory - 1)
 		return
+	_throw_approach(dt)
+
+
+func _release_ordered_throw(remaining: int) -> void:
+	var kind := throw_kind
+	if kind == "smoke":
+		smokes = remaining
+		world.stat("smoke")
+	else:
+		frags = remaining
+	task = ""
+	_begin_action("throw", 0.6, {"pos": task_pos, "kind": kind})
+	say("Smoke out!" if kind == "smoke" else "Frag out!", true)
+
+
+func _throw_approach(dt: float) -> void:
 	if not _move_tick(dt, _speed()):
 		task = ""
 	_choose_act(true)
@@ -2584,8 +3513,54 @@ func _retreat_tick(dt: float) -> void:
 
 # --- damage / states ---------------------------------------------------------------------
 
+var _vitals_core: RefCounted
+
+
+func _vitals_state() -> PackedFloat64Array:
+	if _vitals_core == null:
+		_vitals_core = ClassDB.instantiate("InfantryVitalsCore")
+	return PackedFloat64Array([life, times_downed, hp, max_hp, base_hp, suppression, _supp_t, reveal_t, bleed, bleed_max,
+		stamina, say_cd, hit_dirt_t, downed_t, dead_t, scream_t, pistol_t, crawl_t])
+
+
+func _read_vitals_state(state: PackedFloat64Array) -> void:
+	assert(state.size() == 18, "Invalid infantry vitals state")
+	life = int(state[0])
+	times_downed = int(state[1])
+	hp = state[2]
+	max_hp = state[3]
+	base_hp = state[4]
+	suppression = state[5]
+	_supp_t = state[6]
+	reveal_t = state[7]
+	bleed = state[8]
+	bleed_max = state[9]
+	stamina = state[10]
+	say_cd = state[11]
+	hit_dirt_t = state[12]
+	downed_t = state[13]
+	dead_t = state[14]
+	scream_t = state[15]
+	pistol_t = state[16]
+	crawl_t = state[17]
+
+
+func _vitals_protection() -> PackedInt32Array:
+	return PackedInt32Array([int(at_cover), cover_type, cover_mat, int(peek_up), int(mounted != null and mounted.skind != "watchtower"), int(_gy < -0.6)])
+
+
 func add_suppression(amount: float, from_pos: Vector3) -> void:
 	if life != Life.ALIVE:
+		return
+	if world.settings.get("rust_infantry", false) and ClassDB.class_exists("InfantryVitalsCore"):
+		var state := _vitals_state()
+		var result: Array = _vitals_core.suppress(state, amount, world.time, task == "retreat", squad != null, _vitals_protection(), world.rng._backend)
+		assert(result.size() == 3, "Invalid infantry suppression result")
+		_read_vitals_state(result[0])
+		if result[1]:
+			squad.report_pos(from_pos)
+		if int(result[2]) >= 0:
+			say(["I'm pinned!", "Can't move!", "Heads down!", "They've got us pinned!"][result[2]])
 		return
 	if task == "retreat":
 		amount *= 0.5  # running for it: heads down, legs going
@@ -2619,13 +3594,24 @@ func take_damage(amount: float, src, _dir: Vector3, kind := "bullet") -> void:
 		world.battle.soldier_hit(self, amount, src)
 	_hit_dir = _dir
 	_hit_kind = kind
+	var result: Array = []
+	if world.settings.get("rust_infantry", false) and ClassDB.class_exists("InfantryVitalsCore"):
+		var state := _vitals_state()
+		result = _vitals_core.damage(state, amount, kind == "explosion", is_bearer(), world.rng._backend)
+		assert(result.size() == 3, "Invalid infantry damage result")
+		_read_vitals_state(result[0])
 	if life == Life.DOWNED:
-		bleed -= amount * 0.3
-		if (kind == "explosion" and amount > 45.0) or bleed <= 0.0 or world.rng.randf() < amount / 300.0:
-			_die()
+		if not result.is_empty():
+			if int(result[1]) == 3:
+				_die()
+		else:
+			bleed -= amount * 0.3
+			if (kind == "explosion" and amount > 45.0) or bleed <= 0.0 or world.rng.randf() < amount / 300.0:
+				_die()
 		return
-	hp -= amount
-	suppression = minf(100.0, suppression + 22.0)
+	if result.is_empty():
+		hp -= amount
+		suppression = minf(100.0, suppression + 22.0)
 	if src is Entity and squad and not src.gone:
 		squad.report(src)
 	if hp <= 0.0 and OS.has_environment("FL_DEBUG_DEATH"):
@@ -2643,6 +3629,14 @@ func take_damage(amount: float, src, _dir: Vector3, kind := "bullet") -> void:
 		world.stat("t%d_hit_by_%s_%s" % [team, who, kind])
 	if hp <= 0.0 and src is Soldier and src.squad and src.team != team and life == Life.ALIVE:
 		src.squad.morale = minf(100.0, src.squad.morale + 3.0)  # winning the firefight
+	if not result.is_empty():
+		if int(result[1]) == 3:
+			_die()
+		elif int(result[1]) == 2:
+			_go_down()
+		elif int(result[2]) >= 0:
+			say(["I'm hit!", "Argh!", "Took one!", "Hit! I'm hit!"][result[2]])
+		return
 	if hp <= 0.0:
 		if life == Life.SURRENDER or life == Life.CAPTIVE or is_bearer() and world.rng.randf() < 0.3:
 			_die()
@@ -2661,20 +3655,26 @@ func take_damage(amount: float, src, _dir: Vector3, kind := "bullet") -> void:
 
 func _go_down() -> void:
 	_hit_kind = ""
-	life = Life.DOWNED
+	var native: bool = world.settings.get("rust_infantry", false) and ClassDB.class_exists("InfantryVitalsCore")
+	if native:
+		var state := _vitals_state()
+		_read_vitals_state(_vitals_core.transition(state, 0, world.time, false))
+	else:
+		life = Life.DOWNED
+		hp = 0.0
+		bleed_max = [50.0, 38.0, 26.0, 16.0][mini(times_downed, 3)]
+		bleed = bleed_max
 	act = Act.IDLE
-	hp = 0.0
-	bleed_max = [50.0, 38.0, 26.0, 16.0][mini(times_downed, 3)]
-	bleed = bleed_max
 	posture = Post.PRONE
 	peek_up = false
 	blind = false
 	_release_all()
 	stop_moving()
-	scream_t = 0.4
-	pistol_t = 2.5
-	crawl_t = 1.5
-	downed_t = world.time
+	if not native:
+		scream_t = 0.4
+		pistol_t = 2.5
+		crawl_t = 1.5
+		downed_t = world.time
 	world.stat("downed")
 	if world.battle:
 		world.battle.soldier_down(self)
@@ -2689,10 +3689,14 @@ func _die() -> void:
 		return
 	if world.battle:
 		world.battle.soldier_died(self)
-	life = Life.DEAD
+	if world.settings.get("rust_infantry", false) and ClassDB.class_exists("InfantryVitalsCore"):
+		var state := _vitals_state()
+		_read_vitals_state(_vitals_core.transition(state, 1, world.time, false))
+	else:
+		life = Life.DEAD
+		hp = 0.0
+		dead_t = world.time
 	act = Act.IDLE
-	hp = 0.0
-	dead_t = world.time
 	loot = 0
 	world.stat("killed")
 	if not wdef.is_empty() and int(wdef.ammo) < 9000:
@@ -2757,17 +3761,24 @@ func _release_all() -> void:
 
 
 func revive(full := false) -> void:
-	times_downed += 1
+	var native: bool = world.settings.get("rust_infantry", false) and ClassDB.class_exists("InfantryVitalsCore")
+	if native:
+		var state := _vitals_state()
+		_read_vitals_state(_vitals_core.transition(state, 2, world.time, full))
+	else:
+		times_downed += 1
 	world.stat("revived")
 	if world.battle:
 		world.battle.revived(self)
-	life = Life.ALIVE
-	var mult: float = [1.0, 0.8, 0.62, 0.45, 0.35][mini(times_downed, 4)]
-	max_hp = base_hp * mult
-	hp = max_hp * (1.0 if full else 0.85)
+	if not native:
+		life = Life.ALIVE
+		var mult: float = [1.0, 0.8, 0.62, 0.45, 0.35][mini(times_downed, 4)]
+		max_hp = base_hp * mult
+		hp = max_hp * (1.0 if full else 0.85)
 	act = Act.IDLE
 	posture = Post.CROUCH
-	suppression = 25.0
+	if not native:
+		suppression = 25.0
 	dragged_by = null
 	rescue_claimed = null
 	carried_by.clear()
@@ -2784,12 +3795,35 @@ func revive(full := false) -> void:
 	say(_pick(["Thanks, doc.", "I'm good, I'm good!", "Back in the fight.", "Ugh... let's go."]), true)
 
 
+var _shock_core: RefCounted
+
+
+func _shock_state() -> PackedFloat64Array:
+	if _shock_core == null:
+		_shock_core = ClassDB.instantiate("InfantryShockCore")
+	return PackedFloat64Array([int(flinging), fling_v.x, fling_v.y, fling_v.z, dazed_t, flinch_t])
+
+
+func _read_shock_state(state: PackedFloat64Array) -> void:
+	assert(state.size() == 6, "Invalid infantry shock state")
+	flinging = bool(state[0])
+	fling_v = Vector3(state[1], state[2], state[3])
+	dazed_t = state[4]
+	flinch_t = state[5]
+
+
 func fling_from(c: Vector3, power: float) -> void:
 	if life == Life.HIDDEN or power <= 0.8 or not carried_by.is_empty() or flinging:
 		return
-	var d := Defs.flat(position - c)
-	var dir := d.normalized() if d.length() > 0.05 else Defs.dir_of(world.rng.randf() * TAU)
-	fling_v = dir * power + Vector3.UP * (2.5 + power * 0.45)
+	if world.settings.get("rust_infantry", false) and ClassDB.class_exists("InfantryShockCore"):
+		var state := _shock_state()
+		var result: Array = _shock_core.fling(state, position, c, power, life, not carried_by.is_empty(), world.rng._backend)
+		assert(result.size() == 2 and result[1], "Invalid infantry fling")
+		_read_shock_state(result[0])
+	else:
+		var d := Defs.flat(position - c)
+		var dir := d.normalized() if d.length() > 0.05 else Defs.dir_of(world.rng.randf() * TAU)
+		fling_v = dir * power + Vector3.UP * (2.5 + power * 0.45)
 	world.stat("flung")
 	flinging = true
 	act = Act.FLUNG
@@ -2802,6 +3836,21 @@ func fling_from(c: Vector3, power: float) -> void:
 
 func _fling_tick(dt: float) -> void:
 	act = Act.FLUNG
+	if world.settings.get("rust_infantry", false) and ClassDB.class_exists("InfantryShockCore"):
+		var state := _shock_state()
+		var result: Array = _shock_core.fling_step(state, position, life, dt, world.nav._planner, world.rng._backend)
+		assert(result.size() == 5, "Invalid infantry fling step")
+		_read_shock_state(result[0])
+		position = result[1]
+		if result[2]:
+			act = Act.IDLE
+		if result[3]:
+			world.stat("dazed")
+			posture = Post.STAND
+			task_t = 0.0
+			if result[4]:
+				say(_pick(["...my ears...", "What... what happened?", "Ugh..."]), true)
+		return
 	var np := position + fling_v * dt
 	if not world.nav.walkable(np) and np.y < 1.5:
 		fling_v.x = -fling_v.x * 0.2
@@ -2825,6 +3874,16 @@ func _fling_tick(dt: float) -> void:
 func flinch_from(_c: Vector3, dist: float, max_r: float) -> void:
 	if life != Life.ALIVE or flinging or dazed_t > 0.0:
 		return
+	if world.settings.get("rust_infantry", false) and ClassDB.class_exists("InfantryShockCore"):
+		var state := _shock_state()
+		var busy := act_t > 0.0 or dive_t > 0.0 or task == "stretcher" or (task == "rescue" and task_phase >= 1)
+		var result: Array = _shock_core.flinch(state, suppression, life, dist, max_r, busy)
+		assert(result.size() == 3, "Invalid infantry flinch")
+		_read_shock_state(result[0])
+		suppression = float(result[1])
+		if result[2]:
+			act = Act.FLINCH
+		return
 	suppression = minf(100.0, suppression + 45.0 * (1.0 - dist / max_r))
 	if dist < max_r * 0.75 and act_t <= 0.0 and dive_t <= 0.0 and task != "stretcher" and not (task == "rescue" and task_phase >= 1):
 		flinch_t = 0.5
@@ -2832,6 +3891,28 @@ func flinch_from(_c: Vector3, dist: float, max_r: float) -> void:
 
 
 func _dazed_tick(dt: float) -> void:
+	if world.settings.get("rust_infantry", false) and ClassDB.class_exists("InfantryShockCore"):
+		var state := _shock_state()
+		var mount_pos := Vector3.ZERO
+		var mount_rate := -1.0
+		if is_instance_valid(mounted) and not mounted.gone and mounted.skind in ["mg_nest", "hmg_nest", "mortar_pit", "at_post"]:
+			mount_pos = mounted.mount_pos()
+			mount_rate = deg_to_rad(float({"mg_nest": 55.0, "hmg_nest": 35.0, "mortar_pit": 12.0, "at_post": 20.0}[mounted.skind]))
+		var context := PackedFloat64Array([position.x, position.y, position.z, rotation.y, task_t, dive_dir.x, dive_dir.y, dive_dir.z, dt, mount_pos.x, mount_pos.y, mount_pos.z, mount_rate])
+		var result: Array = _shock_core.stagger(state, context, world.nav._planner, world.rng._backend)
+		assert(result.size() == 5, "Invalid dazed infantry step")
+		_read_shock_state(result[0])
+		position = result[1]
+		rotation.y = float(result[2])
+		task_t = float(result[3])
+		dive_dir = result[4]
+		act = Act.DAZED
+		posture = Post.STAND
+		if dazed_t <= 0.0:
+			act = Act.IDLE
+			at_cover = false
+			next_cover_eval = 0.0
+		return
 	dazed_t -= dt
 	act = Act.DAZED
 	posture = Post.STAND
@@ -2871,17 +3952,31 @@ func surrender() -> void:
 
 # --- downed / dead / captive / hidden -------------------------------------------------------
 
+func _wounded_step_native(stage: int, dt: float, rescued := false, medicine := false) -> bool:
+	var state := _vitals_state()
+	var result: Array = _vitals_core.wounded_step(state, stage, dt, rescued, medicine, world.rng._backend)
+	assert(result.size() == 2, "Invalid wounded infantry step")
+	_read_vitals_state(result[0])
+	return bool(result[1])
+
+
 func _downed(dt: float) -> void:
-	var rate := 1.0
-	if dragged_by or not carried_by.is_empty():
-		rate = 0.35
-	if world.rules.has_upgrade(team, "medicine"):
-		rate *= 0.67
-	bleed -= dt * rate
-	if bleed <= 0.0:
+	var native: bool = world.settings.get("rust_infantry", false) and ClassDB.class_exists("InfantryVitalsCore")
+	var bled_out := false
+	if native:
+		bled_out = _wounded_step_native(0, dt, is_instance_valid(dragged_by) or not carried_by.is_empty(), world.rules.has_upgrade(team, "medicine"))
+	else:
+		var rate := 1.0
+		if is_instance_valid(dragged_by) or not carried_by.is_empty():
+			rate = 0.35
+		if world.rules.has_upgrade(team, "medicine"):
+			rate *= 0.67
+		bleed -= dt * rate
+		bled_out = bleed <= 0.0
+	if bled_out:
 		_die()
 		return
-	if dragged_by and (dragged_by.gone or dragged_by.life != Life.ALIVE or dragged_by.task != "rescue"):
+	if dragged_by != null and (not is_instance_valid(dragged_by) or dragged_by.gone or dragged_by.life != Life.ALIVE or dragged_by.task != "rescue"):
 		dragged_by = null
 	if not carried_by.is_empty():
 		var ok := false
@@ -2890,16 +3985,28 @@ func _downed(dt: float) -> void:
 				ok = true
 		if not ok:
 			carried_by.clear()
-	scream_t -= dt
-	if scream_t <= 0.0:
-		scream_t = world.rng.randf_range(4.0, 8.0)
+	var scream := false
+	if native:
+		scream = _wounded_step_native(1, dt)
+	else:
+		scream_t -= dt
+		scream = scream_t <= 0.0
+		if scream:
+			scream_t = world.rng.randf_range(4.0, 8.0)
+	if scream:
 		say(_pick(["MEDIC!", "I'm hit! Medic!", "Help me!", "Medic! Over here!", "Argh! I'm hit!", "Somebody help!"]), true)
 	if not carried_by.is_empty():
 		act = Act.CARRIED
 		return
-	pistol_t -= dt
-	if pistol_t <= 0.0:
-		pistol_t = world.rng.randf_range(0.9, 1.7)
+	var pistol := false
+	if native:
+		pistol = _wounded_step_native(2, dt)
+	else:
+		pistol_t -= dt
+		pistol = pistol_t <= 0.0
+		if pistol:
+			pistol_t = world.rng.randf_range(0.9, 1.7)
+	if pistol:
 		_pistol_fire()
 	if dragged_by:
 		act = Act.DRAGGED
@@ -2910,16 +4017,21 @@ func _downed(dt: float) -> void:
 		_move_tick(dt, 0.55)
 		return
 	act = Act.PISTOL if world.time - last_shot_t < 0.6 else Act.IDLE
-	crawl_t -= dt
-	if crawl_t <= 0.0:
-		crawl_t = 3.0
-		if bleed > bleed_max * 0.5:
-			var threats := _threats()
-			if world.combat.prot_at(position, threats, 0.3) < 0.99:
-				var res: Dictionary = world.combat.find_cover(self, position, 8.0, threats, true)
-				if not res.is_empty() and Defs.flat(res.pos - position).length() > 0.8:
-					go_to(res.pos, "crawl", 0)
-					world.stat("crawl_to_cover")
+	var crawl := false
+	if native:
+		crawl = _wounded_step_native(3, dt)
+	else:
+		crawl_t -= dt
+		if crawl_t <= 0.0:
+			crawl_t = 3.0
+			crawl = bleed > bleed_max * 0.5
+	if crawl:
+		var threats := _threats()
+		if world.combat.prot_at(position, threats, 0.3) < 0.99:
+			var res: Dictionary = world.combat.find_cover(self, position, 8.0, threats, true)
+			if not res.is_empty() and Defs.flat(res.pos - position).length() > 0.8:
+				go_to(res.pos, "crawl", 0)
+				world.stat("crawl_to_cover")
 
 
 func _pistol_fire() -> void:
@@ -2943,6 +4055,22 @@ func _pistol_fire() -> void:
 
 
 func _dead(_dt: float) -> void:
+	if world.settings.get("rust_infantry", false) and ClassDB.class_exists("InfantryVitalsCore"):
+		var state := _vitals_state()
+		var carrier_alive := false
+		for bearer in carried_by:
+			if is_instance_valid(bearer) and not bearer.gone and bearer.life == Life.ALIVE:
+				carrier_alive = true
+		var ground: float = _ground() if carried_by.is_empty() else position.y
+		var result: Array = _vitals_core.corpse_step(state, position.y, ground, world.time, not carried_by.is_empty(), carrier_alive, stretcher_claimed)
+		assert(result.size() == 4, "Invalid infantry corpse step")
+		position.y = float(result[0])
+		act = Act.CARRIED if result[1] else Act.IDLE
+		if result[2]:
+			carried_by.clear()
+		if result[3]:
+			world.despawn(self)
+		return
 	position.y = lerpf(position.y, _ground(), 0.2) if carried_by.is_empty() else position.y
 	if not carried_by.is_empty():
 		act = Act.CARRIED
@@ -2991,6 +4119,29 @@ func unhide(p: Vector3) -> void:
 
 
 func _hidden(dt: float) -> void:
+	if _native_control():
+		var reason := ["", "tunnel_wait", "vehicle", "tent", "tunnel_travel", "interrogation", "held"].find(hidden_reason)
+		var vehicle := PackedVector3Array()
+		if hidden_reason == "vehicle" and is_instance_valid(riding) and not riding.gone:
+			vehicle.append(riding.position)
+		var out: Array = _controls().hidden_step(maxi(0, reason), hidden_t, dt, vehicle)
+		assert(out.size() == 3, "Invalid hidden infantry")
+		hidden_t = out[0]
+		match int(out[1]):
+			1:
+				position = out[2]
+			2:
+				riding = null
+				unhide(position)
+			3:
+				_leave_tent()
+			4:
+				if is_instance_valid(hidden_in):
+					hidden_in.inside.erase(self)
+				unhide(task_pos)
+			5:
+				world.rules.prisoner_done(self)
+		return
 	if hidden_reason == "vehicle":
 		if riding != null and is_instance_valid(riding) and not riding.gone:
 			position = riding.position
@@ -3006,7 +4157,7 @@ func _hidden(dt: float) -> void:
 		"tent":
 			_leave_tent()
 		"tunnel_travel":
-			if hidden_in and is_instance_valid(hidden_in):
+			if is_instance_valid(hidden_in):
 				hidden_in.inside.erase(self)
 			unhide(task_pos)
 		"interrogation", "held":
@@ -3028,7 +4179,7 @@ func _leave_tent() -> void:
 	world.stat("out_of_tent")
 	life = Life.ALIVE
 	revive(true)
-	var p: Vector3 = tent.exit_pos() if tent and not tent.gone else position
+	var p: Vector3 = tent.exit_pos() if is_instance_valid(tent) and not tent.gone else position
 	unhide(p)
 	var f: Structure = world.rules.nearest_fob(team, position)
 	task = "limp"
@@ -3059,56 +4210,130 @@ func start_rescue(w: Soldier) -> void:
 	world.stat("rescue")
 
 
+var _medicine: RefCounted
+
+
+func _native_medicine() -> bool:
+	return world.settings.get("rust_infantry", false) and ClassDB.class_exists("InfantryMedicineCore")
+
+
+func _medicine_core() -> RefCounted:
+	if _medicine == null:
+		_medicine = ClassDB.instantiate("InfantryMedicineCore")
+	return _medicine
+
+
+func _medicine_state() -> PackedFloat64Array:
+	return PackedFloat64Array([task_phase, task_t])
+
+
+func _read_medicine(state: PackedFloat64Array) -> void:
+	task_phase = int(state[0])
+	task_t = state[1]
+
+
 func _rescue_tick(dt: float) -> void:
-	var w := task_ent as Soldier
-	if w == null or w.gone or w.life != Life.DOWNED or (w.dragged_by != null and w.dragged_by != self) or not w.carried_by.is_empty():
+	var w: Soldier = task_ent as Soldier if is_instance_valid(task_ent) else null
+	if not is_instance_valid(w) or w.gone or w.life != Life.DOWNED or (w.dragged_by != null and w.dragged_by != self) or not w.carried_by.is_empty():
 		_end_rescue()
+		return
+	if _native_medicine():
+		var result: PackedFloat64Array = _medicine_core().rescue(_medicine_state(), true, position, w.position, is_moving(), goal)
+		assert(result.size() == 4, "Invalid rescue decision")
+		_read_medicine(result)
+		match int(result[2]):
+			1: _rescue_approach(w, dt, result[3] != 0.0)
+			2: _rescue_claim(w)
+			3: _rescue_drag(w, dt)
+			4: _rescue_treat(w, dt)
 		return
 	match task_phase:
 		0:
-			posture = Post.STAND
 			if Defs.flat(w.position - position).length() < 1.2:
 				task_phase = 1
-				w.dragged_by = self
-				task_pos = _safe_spot(w)
-				world.stat("drag")
-				go_to(task_pos, "task", 0)
-				if path.is_empty():
-					task_phase = 2
-					task_t = heal_time()
-				say(_pick(["I've got you!", "Hang on, I've got you!", "Grab on!", "Moving him!"]), true)
-				return
-			if not is_moving() or w.position.distance_to(goal) > 1.5:
-				go_to(w.position, "task", 2)
-			_move_tick(dt, 4.8)
-			act = Act.RUN
-		1:
-			backwards = true
-			posture = Post.STAND
-			var moved := _move_tick(dt, 1.15)
-			var f := -_last_dir
-			_face(f, dt, 12.0)
-			w.position = position + Defs.dir_of(rotation.y) * 1.05
-			w.position.y = 0.0
-			w.rotation.y = rotation.y
-			act = Act.DRAG
-			if not moved:
-				task_phase = 2
-				task_t = heal_time()
-				backwards = false
-		2:
-			act = Act.HEAL
-			posture = Post.CROUCH
-			w.dragged_by = null
-			_face(Defs.flat(w.position - position), dt, 8.0)
-			task_t -= dt
-			if task_t <= 0.0:
-				w.revive()
-				world.stat("patched_up")
-				_end_rescue()
+				_rescue_claim(w)
+			else:
+				_rescue_approach(w, dt, not is_moving() or w.position.distance_to(goal) > 1.5)
+		1: _rescue_drag(w, dt)
+		2: _rescue_treat(w, dt)
+
+
+func _rescue_approach(w: Soldier, dt: float, repath: bool) -> void:
+	posture = Post.STAND
+	if repath:
+		go_to(w.position, "task", 2)
+	_move_tick(dt, 4.8)
+	act = Act.RUN
+
+
+func _rescue_claim(w: Soldier) -> void:
+	posture = Post.STAND
+	w.dragged_by = self
+	task_pos = _safe_spot(w)
+	world.stat("drag")
+	go_to(task_pos, "task", 0)
+	if path.is_empty():
+		_start_treatment()
+	say(_pick(["I've got you!", "Hang on, I've got you!", "Grab on!", "Moving him!"]), true)
+
+
+func _start_treatment() -> void:
+	task_phase = 2
+	var duration := heal_time()
+	if _native_medicine():
+		var result: PackedFloat64Array = _medicine_core().finish_drag(_medicine_state(), false, duration)
+		assert(result.size() == 3, "Invalid rescue treatment")
+		_read_medicine(result)
+	else:
+		task_t = duration
+
+
+func _rescue_drag(w: Soldier, dt: float) -> void:
+	backwards = true
+	posture = Post.STAND
+	var moved := _move_tick(dt, 1.15)
+	if _native_medicine():
+		var pose: Array = _medicine_core().drag_pose(position, rotation.y, _last_dir, dt, _mount_turn())
+		assert(pose.size() == 2, "Invalid dragging pose")
+		rotation.y = float(pose[0])
+		w.position = pose[1]
+	else:
+		_face(-_last_dir, dt, 12.0)
+		w.position = position + Defs.dir_of(rotation.y) * 1.05
+		w.position.y = 0.0
+	w.rotation.y = rotation.y
+	act = Act.DRAG
+	if not moved:
+		_start_treatment()
+		backwards = false
+
+
+func _treatment_tick(dt: float) -> bool:
+	if _native_medicine():
+		var result: PackedFloat64Array = _medicine_core().treat(_medicine_state(), dt)
+		assert(result.size() == 3, "Invalid treatment timer")
+		_read_medicine(result)
+		return result[2] != 0.0
+	task_t -= dt
+	return task_t <= 0.0
+
+
+func _rescue_treat(w: Soldier, dt: float) -> void:
+	act = Act.HEAL
+	posture = Post.CROUCH
+	w.dragged_by = null
+	_face(Defs.flat(w.position - position), dt, 8.0)
+	if _treatment_tick(dt):
+		w.revive()
+		world.stat("patched_up")
+		_end_rescue()
 
 
 func heal_time() -> float:
+	if _native_medicine():
+		var result: PackedFloat64Array = _medicine_core().duration(float(udef.get("heal", 1.0)), world.rules.has_upgrade(team, "medicine"))
+		assert(result.size() == 1, "Invalid medical training")
+		return result[0]
 	var t := 8.0 / float(udef.get("heal", 1.0))
 	if world.rules.has_upgrade(team, "medicine"):
 		t *= 0.67
@@ -3116,8 +4341,8 @@ func heal_time() -> float:
 
 
 func _end_rescue() -> void:
-	var w := task_ent as Soldier
-	if w:
+	var w: Soldier = task_ent as Soldier if is_instance_valid(task_ent) else null
+	if is_instance_valid(w):
 		if w.dragged_by == self:
 			w.dragged_by = null
 		if w.rescue_claimed == self:
@@ -3132,12 +4357,19 @@ func _end_rescue() -> void:
 func _safe_spot(w: Soldier) -> Vector3:
 	var threats := _threats()
 	var away := -_threat_dir(threats)
-	var anchor := w.position + away * 11.0
-	if squad and squad.members.size() > 0:
-		var c := squad.order_pos
-		if Defs.flat(c - w.position).length() < 22.0 and Defs.flat(c - w.position).dot(away) > 0.0:
-			anchor = c
-	anchor = world.nav.nearest_walkable(anchor)
+	var anchor: Vector3
+	if _native_medicine() and world.nav._planner:
+		var orders := PackedVector3Array([squad.order_pos]) if squad and squad.members.size() > 0 else PackedVector3Array()
+		var result: PackedVector3Array = _medicine_core().safe_anchor(w.position, away, orders, world.nav._planner)
+		assert(result.size() == 1, "Invalid casualty shelter anchor")
+		anchor = result[0]
+	else:
+		anchor = w.position + away * 11.0
+		if squad and squad.members.size() > 0:
+			var c := squad.order_pos
+			if Defs.flat(c - w.position).length() < 22.0 and Defs.flat(c - w.position).dot(away) > 0.0:
+				anchor = c
+		anchor = world.nav.nearest_walkable(anchor)
 	var res: Dictionary = world.combat.find_cover(self, anchor, 8.0, threats, true)
 	if not res.is_empty():
 		return res.pos
@@ -3153,15 +4385,25 @@ func start_escort(w: Soldier, rescuer: Soldier) -> void:
 
 
 func _escort_tick(dt: float) -> void:
-	var r := task_ent2 as Soldier
-	var w := task_ent as Soldier
-	if r == null or r.gone or r.life != Life.ALIVE or r.task != "rescue" or r.task_phase == 2 or w == null or w.gone:
+	var r: Soldier = task_ent2 as Soldier if is_instance_valid(task_ent2) else null
+	var w: Soldier = task_ent as Soldier if is_instance_valid(task_ent) else null
+	if not is_instance_valid(r) or r.gone or r.life != Life.ALIVE or r.task != "rescue" or r.task_phase == 2 or not is_instance_valid(w) or w.gone:
 		task = ""
 		backwards = false
 		at_cover = false
 		next_cover_eval = 0.0
 		return
 	var thr := _threat_dir(_threats())
+	if _native_medicine() and world.nav._planner:
+		var result: Array = _medicine_core().escort(position, rotation.y, r.position, thr, dt, _mount_turn(), world.nav._planner)
+		assert(result.size() == 4, "Invalid escort movement")
+		if result[0] != position:
+			position = result[0]
+		backwards = result[2]
+		rotation.y = float(result[1])
+		_weapon_tick(dt, false, "escort")
+		act = Act.SHOOT if world.time - last_shot_t < 0.35 else (Act.WALK if result[3] else Act.IDLE)
+		return
 	var side := thr.cross(Vector3.UP).normalized()
 	if side.dot(Defs.flat(position - r.position)) < 0.0:
 		side = -side
@@ -3189,9 +4431,27 @@ func start_heal(w: Soldier) -> void:
 
 
 func _heal_tick(dt: float) -> void:
-	var w := task_ent as Soldier
-	if w == null or w.gone or w.life != Life.ALIVE or w.hp >= w.max_hp:
+	var w: Soldier = task_ent as Soldier if is_instance_valid(task_ent) else null
+	if not is_instance_valid(w) or w.gone or w.life != Life.ALIVE or w.hp >= w.max_hp:
 		task = ""
+		return
+	if _native_medicine():
+		var state := _medicine_state()
+		var duration := 0.0
+		if task_phase == 0 and Defs.flat(w.position - position).length() < 1.4:
+			task_phase = 1
+			duration = heal_time()
+		var result: PackedFloat64Array = _medicine_core().heal(state, true, position, w.position, is_moving(), duration)
+		assert(result.size() == 4, "Invalid healing decision")
+		_read_medicine(result)
+		match int(result[2]):
+			1:
+				if result[3] != 0.0:
+					go_to(w.position, "task", 0)
+				_move_tick(dt, _speed())
+				_choose_act(true)
+			2: stop_moving()
+			3: _heal_treat(w, dt)
 		return
 	if task_phase == 0:
 		if Defs.flat(w.position - position).length() < 1.4:
@@ -3204,11 +4464,14 @@ func _heal_tick(dt: float) -> void:
 			_move_tick(dt, _speed())
 			_choose_act(true)
 		return
+	_heal_treat(w, dt)
+
+
+func _heal_treat(w: Soldier, dt: float) -> void:
 	act = Act.HEAL
 	posture = Post.CROUCH
 	_face(Defs.flat(w.position - position), dt, 8.0)
-	task_t -= dt
-	if task_t <= 0.0:
+	if _treatment_tick(dt):
 		w.hp = w.max_hp
 		task = ""
 
@@ -3237,36 +4500,86 @@ func _work_spot(st: Entity) -> Vector3:
 	return world.nav.nearest_walkable(st.position + d.normalized().rotated(Vector3.UP, world.rng.randf_range(-0.8, 0.8)) * r)
 
 
+var _duties: RefCounted
+
+
+func _native_duties() -> bool:
+	return world.settings.get("rust_infantry", false) and ClassDB.class_exists("InfantryDutiesCore") and world.nav != null and world.nav._planner != null
+
+
+func _duties_core() -> RefCounted:
+	if _duties == null:
+		_duties = ClassDB.instantiate("InfantryDutiesCore")
+	return _duties
+
+
+func _duty_state() -> PackedFloat64Array:
+	return PackedFloat64Array([task_phase, task_t, build_snd_t])
+
+
+func _read_duty(state: PackedFloat64Array) -> void:
+	task_phase = int(state[0])
+	task_t = state[1]
+	build_snd_t = state[2]
+
+
+func _build_decision(done: bool) -> int:
+	if _native_duties():
+		var contacts := PackedVector3Array()
+		if not done and suppression <= 55.0 and not is_moving() and Defs.flat(position - task_pos).length() <= 1.6 and is_instance_valid(target) and _target_valid(target):
+			contacts.append(target.position)
+		var decision: int = _duties_core().build(done, suppression, is_moving(), position, task_pos, contacts)
+		assert(decision >= 0, "Invalid construction decision")
+		return decision
+	if done:
+		return 0
+	if suppression > 55.0:
+		return 1
+	if is_moving():
+		return 2
+	if Defs.flat(position - task_pos).length() > 1.6:
+		return 3
+	if is_instance_valid(target) and _target_valid(target) and Defs.flat(target.position - position).length() < 18.0:
+		return 4
+	return 5
+
+
 func _build_tick(dt: float) -> void:
-	var st := task_ent
+	var st: Entity = task_ent if is_instance_valid(task_ent) else null
 	var done := st == null or st.gone
 	if not done:
 		if st is Structure:
 			done = not st.needs_work()
 		elif st is Vehicle:
 			done = not st.needs_repair()
-	if done:
+	var decision := _build_decision(done)
+	if decision == 0:
 		task = ""
 		if squad:
 			squad.on_build_done(st)
 		return
-	if suppression > 55.0:
+	if decision == 1:
 		posture = Post.CROUCH
 		act = Act.IDLE
 		_weapon_tick(dt, false, "normal")
 		return
-	if is_moving():
+	if decision == 2:
 		_move_tick(dt, _speed())
 		_choose_act(true)
 		return
-	if Defs.flat(position - task_pos).length() > 1.6:
+	if decision == 3:
 		go_to(task_pos, "task", 1)
 		return
-	if _target_valid(target) and Defs.flat(target.position - position).length() < 18.0:
+	if decision == 4:
 		_weapon_tick(dt, false, "normal")
 		_choose_act(false)
 		return
-	_face(Defs.flat(st.position - position), dt, 8.0)
+	if _native_duties():
+		var pose: PackedFloat64Array = _duties_core().build_pose(position, rotation.y, st.position, dt, _mount_turn())
+		assert(pose.size() == 1, "Invalid construction pose")
+		rotation.y = pose[0]
+	else:
+		_face(Defs.flat(st.position - position), dt, 8.0)
 	act = Act.BUILD
 	posture = Post.CROUCH
 	var rate := float(udef.get("build", 1.0))
@@ -3274,9 +4587,18 @@ func _build_tick(dt: float) -> void:
 		st.add_work(rate * dt)
 	elif st is Vehicle:
 		st.repair(rate * dt)
-	build_snd_t -= dt
-	if build_snd_t <= 0.0:
-		build_snd_t = world.rng.randf_range(0.5, 0.9)
+	var sound: bool
+	if _native_duties():
+		var result: PackedFloat64Array = _duties_core().finish_build(_duty_state(), dt, world.rng._backend)
+		assert(result.size() == 4, "Invalid construction timer")
+		_read_duty(result)
+		sound = result[3] != 0.0
+	else:
+		build_snd_t -= dt
+		sound = build_snd_t <= 0.0
+		if sound:
+			build_snd_t = world.rng.randf_range(0.5, 0.9)
+	if sound:
 		world.fx_event([Fx.SOUND, "build", position])
 
 
@@ -3304,13 +4626,30 @@ func _stretcher_valid(cas: Soldier) -> bool:
 
 
 func _stretcher_tick(dt: float) -> void:
-	var cas := task_ent as Soldier
-	var partner := task_ent2 as Soldier
+	var cas: Soldier = task_ent as Soldier if is_instance_valid(task_ent) else null
+	var partner: Soldier = task_ent2 as Soldier if is_instance_valid(task_ent2) else null
 	var partner_ok := partner != null and not partner.gone and partner.life == Life.ALIVE and partner.task == "stretcher" and partner.task_ent == cas
-	if home == null or home.gone or not _stretcher_valid(cas):
+	if not is_instance_valid(home) or home.gone or not _stretcher_valid(cas):
 		_end_stretcher(false)
 		return
 	posture = Post.STAND
+	if _native_duties():
+		var result: PackedFloat64Array = _duties_core().stretcher(_duty_state(), true, position, cas.position, is_moving(), partner.task_phase if partner_ok else -1, is_front, dt)
+		assert(result.size() == 4, "Invalid stretcher decision")
+		_read_duty(result)
+		match int(result[3]):
+			1:
+				_move_tick(dt, 4.4)
+				act = Act.RUN
+			2: go_to(cas.position, "task", 1)
+			4: act = Act.PICKUP
+			5:
+				act = Act.PICKUP
+				_stretcher_lift(cas, partner, partner_ok)
+			6: _stretcher_lead(cas, partner, partner_ok, dt)
+			7: _stretcher_takeover(cas)
+			8: _stretcher_follow(partner, dt)
+		return
 	match task_phase:
 		0:
 			if is_moving():
@@ -3330,53 +4669,77 @@ func _stretcher_tick(dt: float) -> void:
 			if task_t > 0.0:
 				return
 			if is_front or not partner_ok:
-				task_phase = 2
-				cas.carried_by = [self]
-				if partner_ok:
-					cas.carried_by.append(partner)
-					partner.task_phase = 3
-				go_to(home.exit_pos(), "task", 0)
-				say("Lift on three!" if partner_ok else "I've got him!", true)
+				_stretcher_lift(cas, partner, partner_ok)
 		2:
-			var solo := not partner_ok
-			var moved := _move_tick(dt, 0.95 if solo else 1.9)
-			if solo:
-				backwards = true
-				act = Act.DRAG
-				_face(-_last_dir, dt, 10.0)
-				cas.position = position + Defs.dir_of(rotation.y) * 1.5 + Vector3(0, -0.55, 0)
-				cas.rotation.y = rotation.y
-				if cas.carried_by.size() > 1:
-					cas.carried_by = [self]
-					say("Bearer down! I'll drag him!", true)
-			else:
-				backwards = false
-				act = Act.CARRY
-				cas.position = position - _last_dir * 1.15
-				cas.position.y = 0.0
-				cas.rotation.y = Defs.yaw_of(-_last_dir)
-			if not moved:
-				var c := cas
-				_end_stretcher(true)
-				if partner_ok:
-					partner._end_stretcher(true)
-				c.enter_tent(home)
+			_stretcher_lead(cas, partner, partner_ok, dt)
 		3:
 			if not partner_ok or partner.task_phase != 2:
-				task_phase = 2
-				cas.carried_by = [self]
-				go_to(home.exit_pos(), "task", 0)
+				_stretcher_takeover(cas)
 				return
-			var md := Defs.dir_of(partner.rotation.y)
-			var want := partner.position - md * 2.3
-			position = position.lerp(want, 1.0 - exp(-dt * 10.0))
-			position.y = 0.0
-			rotation.y = partner.rotation.y
-			act = Act.CARRY
+			_stretcher_follow(partner, dt)
+
+
+func _stretcher_lift(cas: Soldier, partner: Soldier, partner_ok: bool) -> void:
+	task_phase = 2
+	cas.carried_by = [self]
+	if partner_ok:
+		cas.carried_by.append(partner)
+		partner.task_phase = 3
+	go_to(home.exit_pos(), "task", 0)
+	say("Lift on three!" if partner_ok else "I've got him!", true)
+
+
+func _stretcher_lead(cas: Soldier, partner: Soldier, partner_ok: bool, dt: float) -> void:
+	var solo := not partner_ok
+	var moved := _move_tick(dt, 0.95 if solo else 1.9)
+	backwards = solo
+	act = Act.DRAG if solo else Act.CARRY
+	if _native_duties():
+		var pose: Array = _duties_core().carry_pose(position, rotation.y, _last_dir, dt, solo, _mount_turn())
+		assert(pose.size() == 3, "Invalid casualty carrying pose")
+		rotation.y = float(pose[0])
+		cas.position = pose[1]
+		cas.rotation.y = float(pose[2])
+	elif solo:
+		_face(-_last_dir, dt, 10.0)
+		cas.position = position + Defs.dir_of(rotation.y) * 1.5 + Vector3(0, -0.55, 0)
+		cas.rotation.y = rotation.y
+	else:
+		cas.position = position - _last_dir * 1.15
+		cas.position.y = 0.0
+		cas.rotation.y = Defs.yaw_of(-_last_dir)
+	if solo and cas.carried_by.size() > 1:
+		cas.carried_by = [self]
+		say("Bearer down! I'll drag him!", true)
+	if not moved:
+		_end_stretcher(true)
+		if partner_ok:
+			partner._end_stretcher(true)
+		cas.enter_tent(home)
+
+
+func _stretcher_takeover(cas: Soldier) -> void:
+	task_phase = 2
+	cas.carried_by = [self]
+	go_to(home.exit_pos(), "task", 0)
+
+
+func _stretcher_follow(partner: Soldier, dt: float) -> void:
+	if _native_duties():
+		var pose: PackedVector3Array = _duties_core().follow_bearer(position, partner.position, partner.rotation.y, dt)
+		assert(pose.size() == 1, "Invalid stretcher follower pose")
+		position = pose[0]
+	else:
+		var md := Defs.dir_of(partner.rotation.y)
+		var want := partner.position - md * 2.3
+		position = position.lerp(want, 1.0 - exp(-dt * 10.0))
+		position.y = 0.0
+	rotation.y = partner.rotation.y
+	act = Act.CARRY
 
 
 func _end_stretcher(delivered: bool) -> void:
-	var cas := task_ent as Soldier
+	var cas: Soldier = task_ent as Soldier if is_instance_valid(task_ent) else null
 	if cas and not cas.gone:
 		cas.carried_by.erase(self)
 		if cas.carried_by.is_empty() and not delivered:
@@ -3386,7 +4749,7 @@ func _end_stretcher(delivered: bool) -> void:
 	task_ent = null
 	task_ent2 = null
 	backwards = false
-	if home and not home.gone:
+	if is_instance_valid(home) and not home.gone:
 		go_to(home.exit_pos() + Vector3(world.rng.randf_range(-2, 2), 0, world.rng.randf_range(-2, 2)), "slot", 0)
 
 
@@ -3400,34 +4763,62 @@ func start_captor(p: Soldier) -> void:
 
 
 func _captor_tick(dt: float) -> void:
-	var p := task_ent as Soldier
+	var p: Soldier = task_ent as Soldier if is_instance_valid(task_ent) else null
 	if p == null or p.gone or (p.life != Life.SURRENDER and p.life != Life.CAPTIVE) or p.captor != self:
 		_return_to_hold()
 		return
 	posture = Post.STAND
+	if _native_duties():
+		var result: PackedFloat64Array = _duties_core().captor(_duty_state(), true, position, p.position, is_moving())
+		assert(result.size() == 5, "Invalid prisoner escort decision")
+		_read_duty(result)
+		match int(result[3]):
+			1: _captor_approach(p, dt, result[4] != 0.0)
+			2: _captor_claim(p)
+			3: _captor_guard(p, dt)
+		return
 	match task_phase:
 		0:
 			if Defs.flat(p.position - position).length() < 2.6:
-				task_phase = 1
-				world.rules.take_prisoner(p, self)
-				say(_pick(["Move! Hands where I can see them!", "On your feet! Walk!", "Easy... keep those hands up."]), true)
+				_captor_claim(p)
 				return
-			if not is_moving():
-				go_to(p.position, "task", 1)
-			_move_tick(dt, 4.0)
-			act = Act.RUN
+			_captor_approach(p, dt, not is_moving())
 		1:
-			var d := Defs.flat(p.position - position)
-			if d.length() > 2.3:
-				var np := position + d.normalized() * minf(d.length() - 2.0, 1.9 * dt)
-				if world.nav.walkable(np):
-					position = np
-				else:
-					position = position.lerp(p.position, 0.02)
-				act = Act.WALK
-			else:
-				act = Act.SHOOT if world.rng.randf() < 0.0 else Act.IDLE
-			_face(d, dt, 8.0)
+			_captor_guard(p, dt)
+
+
+func _captor_approach(p: Soldier, dt: float, repath: bool) -> void:
+	if repath:
+		go_to(p.position, "task", 1)
+	_move_tick(dt, 4.0)
+	act = Act.RUN
+
+
+func _captor_claim(p: Soldier) -> void:
+	task_phase = 1
+	world.rules.take_prisoner(p, self)
+	say(_pick(["Move! Hands where I can see them!", "On your feet! Walk!", "Easy... keep those hands up."]), true)
+
+
+func _captor_guard(p: Soldier, dt: float) -> void:
+	if _native_duties():
+		var pose: Array = _duties_core().guard(position, rotation.y, p.position, dt, _mount_turn(), world.nav._planner, world.rng._backend)
+		assert(pose.size() == 3, "Invalid prisoner guard pose")
+		position = pose[0]
+		rotation.y = float(pose[1])
+		act = Act.WALK if bool(pose[2]) else Act.IDLE
+		return
+	var d := Defs.flat(p.position - position)
+	if d.length() > 2.3:
+		var np := position + d.normalized() * minf(d.length() - 2.0, 1.9 * dt)
+		if world.nav.walkable(np):
+			position = np
+		else:
+			position = position.lerp(p.position, 0.02)
+		act = Act.WALK
+	else:
+		act = Act.SHOOT if world.rng.randf() < 0.0 else Act.IDLE
+	_face(d, dt, 8.0)
 
 
 func start_man(st: Structure) -> void:
@@ -3447,7 +4838,7 @@ func release_mount() -> void:
 	var st := mounted
 	mounted = null
 	gun_override = {}
-	if base_y > 0.0 and st:
+	if base_y > 0.0 and is_instance_valid(st):
 		position = world.nav.nearest_walkable(st.position + Vector3(2.0, 0, 0))
 	base_y = 0.0
 	position.y = 0.0
@@ -3459,41 +4850,26 @@ func release_mount() -> void:
 	next_cover_eval = 0.0
 
 
+var _mount_core: RefCounted
+
+
+func _native_mount() -> bool:
+	return world.settings.get("rust_infantry", false) and ClassDB.class_exists("InfantryMountCore")
+
+
+func _mounted_core() -> RefCounted:
+	if _mount_core == null:
+		_mount_core = ClassDB.instantiate("InfantryMountCore")
+	return _mount_core
+
+
 func _man_tick(dt: float) -> void:
-	var st := task_ent as Structure
+	var st: Structure = task_ent as Structure if is_instance_valid(task_ent) else null
 	if st == null or st.gone or not st.built:
 		release_mount()
 		return
-	match task_phase:
-		0:
-			if is_moving():
-				_move_tick(dt, _speed())
-				_choose_act(true)
-				return
-			if st.skind == "watchtower":
-				task_phase = 1
-				task_t = 1.6
-				position = Vector3(st.position.x, 0, st.position.z)
-			else:
-				task_phase = 2
-				position = st.mount_pos()
-				gun_override = st.mount_weapon()
-				match st.skind:
-					"mortar_pit":
-						say("On the mortar!", true)
-					"at_post":
-						say("AT post manned!", true)
-					_:
-						say("Manning the gun!", true)
-		1:
-			task_t -= dt
-			act = Act.CLIMB
-			position.y = lerpf(0.0, 4.25, clampf(1.0 - task_t / 1.6, 0.0, 1.0))
-			if task_t <= 0.0:
-				task_phase = 2
-				base_y = 4.25
-				position = st.mount_pos()
-	if task_phase != 2:
+	var ready := _man_approach_native(st, dt) if _native_mount() else _man_approach_reference(st, dt)
+	if not ready:
 		return
 	position = st.mount_pos()
 	match st.skind:
@@ -3517,6 +4893,63 @@ func _man_tick(dt: float) -> void:
 	_choose_act(false)
 
 
+func _man_approach_native(st: Structure, dt: float) -> bool:
+	var state: PackedFloat64Array = _mounted_core().station(task_phase, task_t, dt, st.skind == "watchtower", task_phase == 0 and is_moving())
+	assert(state.size() == 4, "Invalid mounted infantry approach")
+	task_phase = int(state[0])
+	task_t = state[1]
+	match int(state[2]):
+		0:
+			_move_tick(dt, _speed())
+			_choose_act(true)
+			return false
+		1:
+			position = Vector3(st.position.x, 0, st.position.z)
+		2, 3:
+			act = Act.CLIMB
+			position.y = state[3]
+			if int(state[2]) == 3:
+				base_y = 4.25
+				position = st.mount_pos()
+		4:
+			_man_claim(st)
+	return task_phase == 2
+
+
+func _man_claim(st: Structure) -> void:
+	position = st.mount_pos()
+	gun_override = st.mount_weapon()
+	match st.skind:
+		"mortar_pit": say("On the mortar!", true)
+		"at_post": say("AT post manned!", true)
+		_: say("Manning the gun!", true)
+
+
+func _man_approach_reference(st: Structure, dt: float) -> bool:
+	match task_phase:
+		0:
+			if is_moving():
+				_move_tick(dt, _speed())
+				_choose_act(true)
+				return false
+			if st.skind == "watchtower":
+				task_phase = 1
+				task_t = 1.6
+				position = Vector3(st.position.x, 0, st.position.z)
+			else:
+				task_phase = 2
+				_man_claim(st)
+		1:
+			task_t -= dt
+			act = Act.CLIMB
+			position.y = lerpf(0.0, 4.25, clampf(1.0 - task_t / 1.6, 0.0, 1.0))
+			if task_t <= 0.0:
+				task_phase = 2
+				base_y = 4.25
+				position = st.mount_pos()
+	return task_phase == 2
+
+
 func _mortar_pit_tick(dt: float, st: Structure) -> void:
 	posture = Post.CROUCH
 	act = Act.LAUNCH if world.time - last_shot_t < 0.7 else Act.IDLE
@@ -3535,10 +4968,17 @@ func _mortar_pit_tick(dt: float, st: Structure) -> void:
 			mortar_cd = world.time + 2.0
 			_face(st.front_dir(), dt, 3.0)
 			return
-	var dir := Defs.flat(_pit_aim - position)
-	_face(dir, dt)
-	if absf(wrapf(Defs.yaw_of(dir) - rotation.y, -PI, PI)) > 0.035:
-		return
+	if _native_mount():
+		var aimed: PackedFloat64Array = _mounted_core().gun_aim(position, rotation.y, dt, _mount_turn(), st.position, _pit_aim, false)
+		assert(aimed.size() == 5, "Invalid mounted mortar aim")
+		rotation.y = aimed[0]
+		if aimed[1] == 0.0:
+			return
+	else:
+		var dir := Defs.flat(_pit_aim - position)
+		_face(dir, dt)
+		if absf(wrapf(Defs.yaw_of(dir) - rotation.y, -PI, PI)) > 0.035:
+			return
 	mortar_cd = world.time + _pit_delay
 	last_shot_t = world.time
 	world.combat.fire_mortar(self, st.position + Vector3(0, 1.0, 0), _pit_aim, _pit_kind)
@@ -3549,24 +4989,34 @@ func _at_post_tick(dt: float, st: Structure) -> void:
 	posture = Post.CROUCH
 	act = Act.LAUNCH if world.time - last_shot_t < 1.0 else Act.IDLE
 	var eye := st.position + Vector3(0, 1.3, 0)
-	_mount_scan_t -= dt
-	if _mount_scan_t <= 0.0:
+	var scan_due: bool
+	if _native_mount():
+		var clock: PackedFloat64Array = _mounted_core().scan_due(_mount_scan_t, _mount_target.eid if is_instance_valid(_mount_target) else 0, dt)
+		assert(clock.size() == 2, "Invalid mounted scan clock")
+		_mount_scan_t = clock[0]
+		scan_due = clock[1] != 0.0
+	else:
+		_mount_scan_t -= dt
+		scan_due = _mount_scan_t <= 0.0
+	if scan_due:
 		_mount_scan_t = 0.7
 		_mount_target = null
-		var bd := 130.0
-		for v in world.vehicles:
-			if v.team == team or v.team < 0 or not v.visible_to_team(team):
-				continue
-			var d: float = Defs.flat(v.position - st.position).length()
-			if d > bd or not world.combat.can_see_from(eye, v, []):
-				continue
-			bd = d
-			_mount_target = v
+		_scan_at_post(st, eye)
 	if not is_instance_valid(_mount_target) or _mount_target.gone:
 		return
-	var dir := Defs.flat(_mount_target.position - st.position).normalized()
-	_face(dir, dt)
-	if world.time < rocket_cd or absf(wrapf(Defs.yaw_of(dir) - rotation.y, -PI, PI)) > 0.035:
+	var dir: Vector3
+	var aligned: bool
+	if _native_mount():
+		var aimed: PackedFloat64Array = _mounted_core().gun_aim(position, rotation.y, dt, _mount_turn(), st.position, _mount_target.position, true)
+		assert(aimed.size() == 5, "Invalid mounted anti-tank aim")
+		rotation.y = aimed[0]
+		aligned = aimed[1] != 0.0
+		dir = Vector3(aimed[2], aimed[3], aimed[4])
+	else:
+		dir = Defs.flat(_mount_target.position - st.position).normalized()
+		_face(dir, dt)
+		aligned = absf(wrapf(Defs.yaw_of(dir) - rotation.y, -PI, PI)) <= 0.035
+	if world.time < rocket_cd or not aligned:
 		return
 	if not world.combat.can_see_from(eye, _mount_target, []):
 		return
@@ -3576,10 +5026,41 @@ func _at_post_tick(dt: float, st: Structure) -> void:
 	say("Missile away!" if team == Defs.ARMY else "Recoilless, fire!")
 
 
+func _scan_at_post(st: Structure, eye: Vector3) -> void:
+	if _native_mount() and world.combat._collision and world.combat._visibility:
+		world.combat._sync_collision()
+		var rows := []
+		for v: Vehicle in world.vehicles:
+			if v.team == team or v.team < 0 or not v.visible_to_team(team):
+				continue
+			var excluded := PackedInt64Array()
+			for rid: RID in v.get_exclude():
+				if world.combat._rid_entities.has(rid):
+					excluded.append(int(world.combat._rid_entities[rid]))
+			rows.append([v.eid, v.team, true, v.position, PackedVector3Array(v.exposed_points()), excluded])
+		var scan: PackedInt64Array = _mounted_core().scan(world.combat._collision, world.combat._visibility, team, st.position, rows)
+		assert(scan.size() == 2, "Invalid mounted anti-tank scan")
+		_mount_target = world.entity(scan[0])
+		for i in scan[1]:
+			world.stat("perception_blocked_reused")
+		return
+	var bd := 130.0
+	for v in world.vehicles:
+		if v.team == team or v.team < 0 or not v.visible_to_team(team):
+			continue
+		var d: float = Defs.flat(v.position - st.position).length()
+		if d > bd or not world.combat.can_see_from(eye, v, []):
+			continue
+		bd = d
+		_mount_target = v
+
+
 ## Mobile mortar teams: fire missions first, otherwise shell spotted enemies.
 func _try_mortar() -> bool:
 	if mortar_rounds <= 0 or world.time < mortar_cd or is_moving() or squad == null:
 		return false
+	if _native_arsenal():
+		return _try_mortar_native()
 	var tp := Vector3.INF
 	var kind := "he"
 	if not squad.fire_queue.is_empty():
@@ -3598,14 +5079,58 @@ func _try_mortar() -> bool:
 			return false
 	mortar_rounds -= 1
 	mortar_cd = world.time + 3.5
+	return _mortar_action(tp, kind)
+
+
+func _mortar_action(tp: Vector3, kind: String) -> bool:
 	_begin_action("mortar", 1.0, {"pos": tp, "kind": kind})
 	if world.rng.randf() < 0.4:
 		say(_pick(["Rounds out!", "Firing for effect!", "Hang it!"]))
 	return true
 
 
+func _try_mortar_native() -> bool:
+	var state := _arsenal_state()
+	var queued := not squad.fire_queue.is_empty()
+	var tp := Vector3.INF
+	var kind := "he"
+	if queued:
+		var fm: Array = squad.fire_queue.pop_front()
+		tp = fm[0]
+		kind = fm[1]
+	else:
+		mortar_cd = world.time + 2.0
+		tp = world.rules.mortar_target(team, position, 30.0, 130.0)
+	var result: Array = _arsenal_core().mortar(state, world.time, position, false, true, queued, tp if tp != Vector3.INF else null)
+	assert(result.size() == 2, "Invalid mortar decision")
+	_read_arsenal_state(result[0])
+	if int(result[1]) == 1:
+		squad.fire_queue.clear()
+		say("Target's out of range!", true)
+		return false
+	return _mortar_action(tp, kind) if int(result[1]) == 2 else false
+
+
 ## Incoming mortar rounds whistle: duck, or dive if it's landing right here.
 func _react_shells(dive_only: bool) -> bool:
+	if SoldierBrain._native(self):
+		var rounds := []
+		for g: Projectile in world.projectiles:
+			if g.ptype == "mortar":
+				rounds.append([g.eid, g.target, g.shell_t, g.life_t])
+		var result: Array = SoldierBrain._core(self).incoming_shells(position, PackedInt64Array(seen_grenades.keys()), rounds, dive_only)
+		assert(result.size() == 2, "Invalid incoming shell query")
+		seen_grenades.clear()
+		for id: int in result[0]:
+			seen_grenades[id] = true
+		for warning: Array in result[1]:
+			say(_pick(["Incoming!", "INCOMING!", "Mortars! Get down!"]), bool(warning[2]))
+			suppression = minf(100.0, suppression + 20.0)
+			if bool(warning[3]):
+				_dive_from(warning[1])
+				return true
+			hit_dirt_t = 2.5
+		return false
 	for g in world.projectiles:
 		if g.ptype != "mortar" or seen_grenades.has(g.eid):
 			continue
@@ -3643,17 +5168,41 @@ func order_board(v: Vehicle) -> void:
 
 
 func _board_tick(dt: float) -> void:
-	var v := task_ent as Vehicle
-	if v == null or v.gone or v.seats_free() <= 0 or (v.is_heli() and v.position.y > 1.0):
+	var v: Vehicle = task_ent as Vehicle if is_instance_valid(task_ent) else null
+	if v == null or v.gone:
+		task = ""
+		return
+	var seats := v.seats_free()
+	if seats <= 0:
+		task = ""
+		return
+	var helicopter := v.is_heli()
+	if helicopter and v.position.y > 1.0:
 		task = ""
 		return
 	var d := Defs.flat(v.position - position).length()
 	var boat := v.is_boat()
-	if d < 3.6 or (boat and (d < 8.0 or (d < 18.0 and not is_moving()))):
+	var enter := d < 3.6 or (boat and (d < 8.0 or (d < 18.0 and not is_moving())))
+	if _native_duties():
+		var result: int = _duties_core().boarding(true, position, v.position, seats, helicopter, boat, is_moving())
+		assert(result in [1, 2], "Invalid boarding decision")
+		enter = result == 1
+	if enter:
 		task = ""
 		v.board(self)
 		return
 	var moving := _move_tick(dt, _speed())
+	if _native_duties():
+		var result: int = _duties_core().after_boarding_move(position, v.position, goal, boat, moving)
+		assert(result >= 0, "Invalid boarding arrival")
+		if result == 2:
+			task = ""
+			v.board(self)
+			return
+		if result == 1:
+			go_to(v.position, "task", 1)
+		_choose_act(true)
+		return
 	if boat and not moving and Defs.flat(v.position - position).length() < 18.0:
 		# waded out as far as he can: hauled over the side
 		task = ""
@@ -3674,14 +5223,21 @@ func order_tunnel(st: Structure) -> void:
 
 
 func _tunnel_tick(dt: float) -> void:
-	var st := task_ent as Structure
+	var st: Structure = task_ent as Structure if is_instance_valid(task_ent) else null
 	if st == null or st.gone or not st.built:
 		task = ""
 		return
-	if _move_tick(dt, _speed()):
+	var moved := _move_tick(dt, _speed())
+	var arrival: int
+	if _native_duties():
+		arrival = _duties_core().tunnel_arrival(position, st.position, moved)
+		assert(arrival >= 0, "Invalid tunnel arrival")
+	else:
+		arrival = 0 if moved else (1 if Defs.flat(st.position - position).length() > 2.5 else 2)
+	if arrival == 0:
 		_choose_act(true)
 		return
-	if Defs.flat(st.position - position).length() > 2.5:
+	if arrival == 1:
 		go_to(st.position, "task", 1)
 		return
 	task = ""
@@ -3694,7 +5250,19 @@ func _tunnel_tick(dt: float) -> void:
 func _pilot_tick(dt: float) -> void:
 	posture = Post.CROUCH
 	act = Act.LAUNCH
-	if drone_ctrl == null or drone_ctrl.gone or drone_ctrl.dead:
+	if _native_control():
+		var drone := PackedVector3Array()
+		if is_instance_valid(drone_ctrl) and not drone_ctrl.gone and not drone_ctrl.dead:
+			drone.append(drone_ctrl.position)
+		var out: Array = _controls().pilot(position, rotation.y, dt, drone, _mount_turn())
+		assert(out.size() == 2, "Invalid drone operator pose")
+		if out[0]:
+			rotation.y = out[1]
+		else:
+			drone_ctrl = null
+			task = ""
+		return
+	if not is_instance_valid(drone_ctrl) or drone_ctrl.gone or drone_ctrl.dead:
 		drone_ctrl = null
 		task = ""
 		return

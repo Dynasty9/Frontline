@@ -465,7 +465,17 @@ func paint_kinds() -> void:
 	_mbytes = PackedByteArray()
 	if world.has_view:
 		_mbytes.resize(n * n * 4)
-	var changed := _pass(1, false, _decks(1, 0.0), _decks(1, 0.6, true))
+	var changed := PackedInt32Array()
+	var native := _raster_core()
+	if native:
+		var output: Array = native.paint(tm.base, world.has_view)
+		assert(output.size() == 4, "Invalid water raster result")
+		tm.base = output[0]
+		deck = output[1]
+		_mbytes = output[2]
+		changed = output[3]
+	else:
+		changed = _pass(1, false, _decks(1, 0.0), _decks(1, 0.6, true))
 	# the cells whose kind changed: their cover and routes, from what they are now
 	tm.refresh_cells(changed)
 	if world.has_view:
@@ -479,7 +489,16 @@ func carve() -> void:
 	var tm = world.terrain
 	if tm == null or is_empty():
 		return
-	var changed := _pass(TerrainMap.DRES, true, _decks(TerrainMap.DRES, 0.6), PackedByteArray())
+	var changed := PackedInt32Array()
+	var native := _raster_core()
+	if native:
+		var output: Array = native.carve(tm.dh, tm.deform_img != null)
+		assert(output.size() == 2, "Invalid water carving result")
+		tm.dh = output[0]
+		changed = output[1]
+	else:
+		changed = _pass(TerrainMap.DRES, true, _decks(TerrainMap.DRES, 0.6), PackedByteArray())
+	tm.sync_deformation()
 	var img: Image = tm.deform_img
 	if img:
 		# (view) the heights' texture, where they were lowered
@@ -493,6 +512,46 @@ func carve() -> void:
 
 
 # --- queries -------------------------------------------------------------------------------
+
+func _raster_core() -> RefCounted:
+	if not Thread.is_main_thread() or not ClassDB.class_exists("WaterRaster") or world.settings.get("gdscript_water", false):
+		return null
+	var native: RefCounted = ClassDB.instantiate("WaterRaster")
+	var valid: bool = native.configure(MapDims.N, to_dict())
+	assert(valid, "Invalid water shapes")
+	return native if valid else null
+
+
+func begin_loading(joined: PackedByteArray) -> RefCounted:
+	var native := _raster_core()
+	if not native:
+		return null
+	var tm = world.terrain
+	var started: bool = native.start_loading([tm.base, tm.crater, tm.rubble, tm.woods, tm.cov, tm.cdir, tm.solid, tm.trench, tm.netted], tm.dh, joined, world.has_view)
+	return native if started else null
+
+
+func finish_loading(native: RefCounted) -> void:
+	var output: Array = native.finish_loading()
+	assert(output.size() == 6, "Water loading failed")
+	var tm = world.terrain
+	tm.base = output[0]
+	tm.cov = output[1]
+	tm.cdir = output[2]
+	tm.dh = output[3]
+	deck = output[4]
+	if not is_empty():
+		if world.has_view:
+			mask = Image.create_from_data(MapDims.N, MapDims.N, false, Image.FORMAT_RGBA8, output[5])
+		if tm.deform_img:
+			var heights: PackedFloat32Array = tm.dh
+			var img := Image.create_from_data(TerrainMap.DN, TerrainMap.DN, false, Image.FORMAT_RF, heights.to_byte_array())
+			img.convert(Image.FORMAT_RH)
+			tm.deform_img.copy_from(img)
+			tm.deform_dirty.clear()
+			tm.deform_dirty.append(Rect2i(0, 0, TerrainMap.DN, TerrainMap.DN))
+		version += 2
+
 
 ## Water a man would have to swim (a boat's water).
 func deep_at(p: Vector3) -> bool:

@@ -439,13 +439,13 @@ func _debris(p: Vector3, col: Color, n: int) -> void:
 		return
 	for i in n:
 		var b := MeshInstance3D.new()
-		var s := world.rng.randf_range(0.12, 0.4)
+		var s := randf_range(0.12, 0.4)
 		b.mesh = Res.box(Vector3(s, s * 0.6, s * 0.8))
-		b.material_override = Res.mat(col.darkened(world.rng.randf_range(0.0, 0.3)))
+		b.material_override = Res.mat(col.darkened(randf_range(0.0, 0.3)))
 		add_child(b)
-		b.global_position = p + Vector3(world.rng.randf_range(-0.5, 0.5), world.rng.randf_range(0, 0.8), world.rng.randf_range(-0.5, 0.5))
-		var v := Vector3(world.rng.randf_range(-5, 5), world.rng.randf_range(3, 9), world.rng.randf_range(-5, 5))
-		_movers.append([b, v, Vector3(world.rng.randf_range(-8, 8), world.rng.randf_range(-8, 8), 0), 0.0, world.rng.randf_range(4.0, 9.0), true])
+		b.global_position = p + Vector3(randf_range(-0.5, 0.5), randf_range(0, 0.8), randf_range(-0.5, 0.5))
+		var v := Vector3(randf_range(-5, 5), randf_range(3, 9), randf_range(-5, 5))
+		_movers.append([b, v, Vector3(randf_range(-8, 8), randf_range(-8, 8), 0), 0.0, randf_range(4.0, 9.0), true])
 	_puff("dust", p)
 
 

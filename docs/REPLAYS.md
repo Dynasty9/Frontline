@@ -84,6 +84,9 @@ simulation tick, plus the initial settings and checkpoint RNG states. They do
 `verified: false`. State checkpoints are observer checkpoints, not full simulation
 saves. A future verifier still needs full deterministic simulation coverage,
 version-pinned headless builds, a trusted command source, and state-hash comparison.
+The Rust migration and its full-state replay requirements are tracked in
+[RUST_SIMULATION.md](RUST_SIMULATION.md). Extracted Rust kernel tests do not
+constitute battle verification.
 
 ## Checks and local use
 

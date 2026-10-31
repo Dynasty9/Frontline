@@ -10,6 +10,7 @@ signal report_updated
 signal build_stage(text: String, frac: float)
 
 var settings: Dictionary = {}
+var _breach_queries: RefCounted
 var recording: BattleRecording
 var srv := false
 var has_view := true
@@ -19,6 +20,7 @@ var time := 0.0
 var _snapshot_time := 0.0
 var entities := {}
 var next_eid := 1
+var _entity_core: RefCounted
 var ready_peers: Array = []
 ## (server) What each player who has left commanded, by the peer id they had:
 ## {"squads": {sid: true}, "vehicles": {eid: true}}. Teammates or the AI
@@ -75,7 +77,9 @@ var _painted_roads: Array = [[], [], []]
 var _road_meshes: Array = [null, null, null]
 var pings: Array = []  # [pos, expire, kind]
 var winner := -1
-var rng := RandomNumberGenerator.new()
+var rng := SimulationRandom.new()
+var _deferred_effects: DeferredEffects
+var last_chat := [-99.0, -99.0]  # side-wide conversation cooldowns belong to this battle
 var focused := false
 var director: Director
 var structure_view: StructureView
@@ -196,6 +200,7 @@ func build() -> void:
 		_load_mark("navigation grids ready")
 		nav.terrain = terrain
 		combat = Combat.new(self)
+		combat.enable_native_collision()
 		rules = Rules.new(self)
 		battle = BattleStats.new(self)
 		fires = Fires.new(self)
@@ -354,17 +359,49 @@ func _make(kind: String) -> Entity:
 	return Entity.new()
 
 
+func _start_entity_registry() -> bool:
+	if _entity_core != null or settings.get("gdscript_entity_registry", false) or not ClassDB.class_exists("EntityRegistryCore"):
+		return true
+	var core: RefCounted = ClassDB.instantiate("EntityRegistryCore")
+	var ids := PackedInt64Array()
+	var kinds := PackedStringArray()
+	for existing: Entity in entities.values():
+		ids.append(existing.eid)
+		kinds.append(existing.ekind())
+	if not core.initialize(next_eid, ids, kinds):
+		push_error("Invalid initial entity registry")
+		return false
+	_entity_core = core
+	return true
+
+
 func spawn(kind: String, props: Dictionary) -> Entity:
+	if not _start_entity_registry():
+		return null
 	var e := _make(kind)
 	e.world = self
-	e.eid = next_eid
-	next_eid += 1
+	if _entity_core:
+		if next_eid != _entity_core.next_id():
+			push_error("Entity allocation cursor changed outside the simulation")
+			e.free()
+			return null
+		e.eid = _entity_core.spawn(kind)
+		if e.eid == 0:
+			push_error("Entity registry rejected spawn: " + kind)
+			e.free()
+			return null
+		next_eid = _entity_core.next_id()
+	else:
+		e.eid = next_eid
+		next_eid += 1
 	e.srv = true
 	e.apply_props(props)
 	e.name = "E%d" % e.eid
 	_register(e)
 	add_child(e)
 	e.on_spawned()
+	if combat and (e is Structure or e is Vehicle):
+		combat.dirty_collision(e.eid)
 	if e is Vehicle and battle:
 		battle.vehicle_fielded(e)
 	if e is Structure:
@@ -418,11 +455,18 @@ func refresh_smoke_projectile(e: Projectile) -> void:
 			smoke_projectiles.append(e)
 	else:
 		smoke_projectiles.erase(e)
+	if combat:
+		combat.update_smoke(e)
 
 
 func despawn(e: Entity) -> void:
 	if e == null or e.gone:
 		return
+	if _entity_core and not _entity_core.remove(e.eid):
+		push_error("Entity registry rejected removal: %d" % e.eid)
+		return
+	if combat and (e is Structure or e is Vehicle):
+		combat.retire_collision(e.eid)
 	e.gone = true
 	entities.erase(e.eid)
 	for pending: Dictionary in _unrevealed.values():
@@ -450,6 +494,8 @@ func despawn(e: Entity) -> void:
 	elif e is Projectile:
 		projectiles.erase(e)
 		smoke_projectiles.erase(e)
+		if combat:
+			combat.update_smoke(e)
 	elif e is Drone:
 		drones.erase(e)
 	e.on_despawn()
@@ -489,6 +535,7 @@ func _sweep_graveyard() -> void:
 
 
 func _exit_tree() -> void:
+	_ground_native = null
 	if _ground_task >= 0:
 		# (left while the ground was still being laid out: it works on this world's maps)
 		WorkerThreadPool.wait_for_task_completion(_ground_task)
@@ -505,6 +552,8 @@ func entity(id: int) -> Entity:
 
 ## Ground height at p: the duckboards, a metre down, inside a finished trench.
 func ground_y(p: Vector3) -> float:
+	if terrain and terrain._native:
+		return float(terrain._native.ground_y(p, water != null and not water.deck.is_empty() and water.on_deck(p)))
 	if water and not water.deck.is_empty() and water.on_deck(p):
 		return 0.06  # on a bridge deck, over the water
 	for st: Structure in _trenches_at(p):
@@ -542,6 +591,8 @@ func trench_mount_spot(pos: Vector3, yaw: float) -> Dictionary:
 
 
 func in_trench(p: Vector3) -> bool:
+	if terrain and terrain._native:
+		return bool(terrain._native.in_trench(p))
 	for st: Structure in _trenches_at(p):
 		if is_instance_valid(st) and not st.gone and st.built and TrenchNet.inside(st, p, 0.05):
 			return true
@@ -551,6 +602,8 @@ func in_trench(p: Vector3) -> bool:
 ## True when a shooter at `from` is looking along the trench bay that `p` is in
 ## (enfilade): the zig-zag keeps that to one short bay at a time.
 func trench_enfiladed(p: Vector3, from: Vector3) -> bool:
+	if terrain and terrain._native:
+		return bool(terrain._native.trench_enfiladed(p, from))
 	var to := Defs.flat(p - from)
 	if to.length() < 1.0:
 		return true
@@ -734,6 +787,8 @@ func _physics_process(dt: float) -> void:
 	if mission:
 		mission.tick(dt)
 	tp = _p("AI commanders", tp)
+	_run_deferred_effects()
+	tp = _p("deferred effects", tp)
 	if recording:
 		recording.after_tick()
 	tp = _p("replay recording", tp)
@@ -758,6 +813,7 @@ func _physics_process(dt: float) -> void:
 	if _reveal_t <= 0.0:
 		_reveal_t = 0.4
 		_reveal_pass()
+	combat.finish_tick()
 	tp = _p("team + reveal", tp)
 	tick_ms = lerpf(tick_ms, (Time.get_ticks_usec() - t0) / 1000.0, 0.05)
 	prof["TOTAL"] = tick_ms
@@ -769,6 +825,27 @@ func _physics_process(dt: float) -> void:
 			measured_worst_tick = {"time": time, "total_ms": elapsed, "systems_ms": _measured_tick_systems.duplicate()}
 	net_out_bps = lerpf(net_out_bps, _net_out / maxf(dt, 0.001), 0.05)
 	_net_out = 0.0
+
+
+func schedule_cache_cook_off(pos: Vector3, stock: float) -> void:
+	if _deferred_effects == null:
+		_deferred_effects = DeferredEffects.new()
+	_deferred_effects.cook_off(time, pos, stock, rng)
+
+
+func defer_rubble(pos: Vector3, yaw: float, size: Vector3) -> void:
+	if _deferred_effects == null:
+		_deferred_effects = DeferredEffects.new()
+	_deferred_effects.defer_rubble(pos, yaw, size)
+
+
+func _run_deferred_effects() -> void:
+	if _deferred_effects == null or combat == null:
+		return
+	for event: Array in _deferred_effects.advance_to(time):
+		combat.explode(event[0], event[1])
+	for rubble: Array in _deferred_effects.take_rubble():
+		spawn("structure", {"skind": "rubble", "pos": rubble[0], "yaw": rubble[1], "size": rubble[2]})
 
 
 ## Profiling helper: accumulates a smoothed per-tick cost for a named system.
@@ -1281,6 +1358,7 @@ var _load_t0 := 0
 var _load_marks: Array = []  # (FL_DEBUG_NET) when each stage was done
 var _ground_task := -1
 var _ground_water: WaterMap  # the water laid out off the main thread, then handed over
+var _ground_native: RefCounted
 
 
 ## One entity as the join stream carries it: [eid, its kind (ENT_KINDS), props].
@@ -1423,7 +1501,7 @@ func _load_tick() -> void:
 			_load_step = 2
 			_load_stage("Charting the water", 0.1)
 		2:
-			if _ground_task >= 0 and not WorkerThreadPool.is_task_completed(_ground_task):
+			if (_ground_native and not _ground_native.loading_ready()) or (_ground_task >= 0 and not WorkerThreadPool.is_task_completed(_ground_task)):
 				_load_stage("Charting the water", 0.1 + 0.08 * minf(1.0, (t0 - _load_t0) / 4000000.0))
 				return
 			_ground_done()
@@ -1444,7 +1522,7 @@ func _load_tick() -> void:
 				if _join_end:
 					if _load_cells == 0:
 						_load_mark("entities")
-					_load_cells = maxi(1, terrain._queue.size() - terrain._qhead)
+					_load_cells = maxi(1, terrain.pending_count())
 					_load_step = 4
 			_load_stage("Moving in", 0.2 + 0.7 * minf(1.0, float(_load_built) / maxf(1.0, _join_n)))
 		4:
@@ -1456,14 +1534,14 @@ func _load_tick() -> void:
 			# big batch may be shared out over the worker threads)
 			if _cover_min < 0:
 				_cover_min = int(terrain.get_script().get_script_constant_map().get("THREAD_CELLS", 0))
-			while terrain._qhead < terrain._queue.size() and Time.get_ticks_usec() - t0 < LOAD_SLICE_US:
+			while terrain.pending_count() > 0 and Time.get_ticks_usec() - t0 < LOAD_SLICE_US:
 				var c0 := Time.get_ticks_usec()
 				terrain.tick(maxi(_cover_batch, _cover_min))
 				var took := maxi(1, Time.get_ticks_usec() - c0)
 				_cover_batch = clampi(int(_cover_batch * (LOAD_SLICE_US / 3.0) / took), 128, 1 << 16)
-			var left: int = terrain._queue.size() - terrain._qhead
+			var left: int = terrain.pending_count()
 			_load_stage("Taking cover", 0.9 + 0.1 * (1.0 - float(left) / _load_cells))
-			if terrain._queue.is_empty():
+			if terrain.pending_count() == 0:
 				_load_done()
 
 
@@ -1497,6 +1575,10 @@ func _load_mark(what: String) -> void:
 func _lay_ground() -> void:
 	_ground_water = WaterMap.new(self)
 	_ground_water.from_dict(water.to_dict())
+	terrain.begin_ground_import()
+	_ground_native = _ground_water.begin_loading(_join_kinds)
+	if _ground_native:
+		return
 	_ground_task = WorkerThreadPool.add_task(_ground_job, false, "Laying out the ground")
 
 
@@ -1516,9 +1598,13 @@ func _ground_job() -> void:
 
 
 func _ground_done() -> void:
+	if _ground_native:
+		_ground_water.finish_loading(_ground_native)
+		_ground_native = null
 	if _ground_task >= 0:
 		WorkerThreadPool.wait_for_task_completion(_ground_task)
 		_ground_task = -1
+	terrain.end_ground_import()
 	var w := _ground_water
 	_ground_water = null
 	_join_kinds = PackedByteArray()
@@ -1850,9 +1936,13 @@ func _shash_add(e: Structure) -> void:
 			if not _trench_hash.has(k):
 				_trench_hash[k] = []
 			(_trench_hash[k] as Array).append(e)
+	if terrain:
+		terrain.sync_structure(e, true)
 
 
 func _shash_remove(e: Structure) -> void:
+	if terrain:
+		terrain.remove_structure(e.eid)
 	for k in e.hash_cells:
 		var a = _shash.get(k)
 		if a:
@@ -2019,6 +2109,8 @@ func execute_cmd(peer: int, d: Dictionary) -> void:
 	if not team in [0, 1] or winner >= 0:
 		return
 	var t: String = d.get("t", "")
+	if (t == "throw" or (t == "unit" and String(d.get("o", "move")) == "throw")) and not String(d.get("kind", "frag")) in ["frag", "smoke"]:
+		return
 	var sqs := _command_squads(peer, d.get("squads", []))
 	var vehs := _command_vehicles(peer, d.get("vehicles", []))
 	# a routed squad runs whatever it's told, until it has rallied
