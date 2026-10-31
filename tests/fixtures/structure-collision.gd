@@ -29,6 +29,11 @@ func _ready() -> void:
 		rounded.encode_float(at,0.000001); assert(not collision_equal(sample,rounded))
 	for at in [12,24,76]:
 		var changed := sample.duplicate(); changed[at] = 1; assert(not collision_equal(sample,changed))
+	# Linux's one-step root rotation difference moves an offset FOB box by one ULP.
+	var centered := sample.duplicate(); centered.encode_float(28,5.373835563660)
+	var rounded_center := centered.duplicate(); rounded_center.encode_float(28,5.373836040497)
+	assert(collision_equal(centered,rounded_center))
+	rounded_center.encode_float(28,5.37384); assert(not collision_equal(centered,rounded_center))
 	MapDims.N = 32; MapDims.SIZE = 32.0; MapDims.HALF = 16.0; MapDims.BIOME = 32
 	Nav.N = 32; Nav.H = 16.0; HNav.C = 16; HNav.NC = 2; HNav.NCC = 4; HNav._corner = HNav._corners()
 	TerrainMap.N = 32; TerrainMap.H = 16.0; TerrainMap.DN = 64

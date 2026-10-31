@@ -13,7 +13,9 @@ func collision_equal(expected: PackedByteArray, actual: PackedByteArray) -> bool
 			for component in range(1,13):
 				var at := cursor + component * 4
 				var a := expected.decode_float(at); var b := actual.decode_float(at)
-				if not is_finite(a) or not is_finite(b) or absf(a - b) > 0.00000024: return false
+				# Centers at larger coordinates have wider float steps than unit bases.
+				var scale := maxf(1.0,maxf(absf(a),absf(b))) if component < 4 else 1.0
+				if not is_finite(a) or not is_finite(b) or absf(a - b) > 0.00000024 * scale: return false
 				compared.encode_u32(at,actual.decode_u32(at))
 			cursor += 64
 	# Identity, topology and half-extents still compare byte for byte.

@@ -1908,8 +1908,9 @@ continuation and checkpoint resumes. The Godot reference fixture compares 1,024
 attempts (674 accepted), 1,280 complete geometry states and 24,576 ray hit identities.
 Godot's platform sine/cosine and portable libm can differ by one float step.
 Linux diagnostics measured differences of 5.96e-8 in composed rotation coefficients
-and transformed centers; cancellation can make this several steps near zero.
-Those reference-only fields allow 2.4e-7 absolute error. Identity, topology,
+and one float step (4.77e-7) in offset box centers near 5 m; cancellation can make
+this several steps near zero. Reference-only bases allow 2.4e-7 absolute error;
+centers scale that bound by their magnitude (at least one). Identity, topology,
 half-extents, actor state, random cursors and ray hit identities remain exact.
 The comparison has rejection checks for larger transforms, changed IDs and sizes.
 The existing double cover-coefficient tolerance is unchanged.
