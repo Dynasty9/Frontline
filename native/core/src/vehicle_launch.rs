@@ -29,6 +29,50 @@ fn direction(yaw: f64) -> Vector3 {
     Vector3::new(-libm::sin(yaw) as f32, 0.0, -libm::cos(yaw) as f32)
 }
 impl Actors {
+    pub fn launch_vehicle_rocket(
+        &mut self,
+        vehicle: u32,
+        target: u32,
+        index: u32,
+        rng: &mut SimulationRandom,
+    ) -> Result<Launch, &'static str> {
+        if index > 10000 {
+            return Err("invalid rocket index");
+        }
+        let v = self.vehicle(vehicle).ok_or("missing rocket carrier")?;
+        let aim = self.actor_center(target).ok_or("missing rocket target")?;
+        let forward = direction(v.yaw);
+        let side = forward.cross(Vector3::Y);
+        let position = v.position
+            + Vector3::Y * 1.2
+            + side * if index % 2 == 0 { 1.0 } else { -1.0 } * 1.1
+            + forward;
+        let mut random = rng.clone();
+        let aim = aim
+            + Vector3::new(
+                random.randf_range(-2.5, 2.5),
+                0.0,
+                random.randf_range(-2.5, 2.5),
+            );
+        let velocity = normalized(aim - position) * 75.0;
+        let projectile = Projectile::from_spawn(
+            1,
+            Spawn {
+                flight: ballistic(Kind::Rocket, position, velocity),
+                team: v.team,
+                thrower: vehicle,
+                called_by: 0,
+            },
+        )?;
+        // The caller handles this rocket's warning before the next rocket consumes scatter draws.
+        let id = self.spawn(Actor::Projectile(projectile))?;
+        *rng = random;
+        Ok(Launch {
+            id,
+            position,
+            velocity,
+        })
+    }
     fn actor_center(&self, id: u32) -> Option<Vector3> {
         Some(match self.get(id)? {
             Actor::Soldier(s) => {

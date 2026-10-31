@@ -321,6 +321,24 @@ coverage; the complete shared firing dispatcher remains unfinished. Five core
 tests cover creation, warning order, continuation and rejection without mutation.
 Numeric CI adds 773,648 exact launch transcript bytes.
 
+Artillery retains queued fire missions, automatic-target admission, laying and
+reload delays, aim gates and salvo progress. Each round creates owned shell state
+with its scatter, origin, destination and flight duration before the salvo advances.
+Gunship rockets allocate one round at a time, allowing warnings and smoke draws
+before the next round's spread. Reference fixtures compare 39,509 states, including
+queued versus automatic targets, stalled aiming, shell variants and interleaved
+smoke. Godot's stored laying angle differs from portable libm by at most
+1.78e-15 radians in this fixture; that reference angle allows 1e-12 radians, while
+Rust checkpoint continuation and cross-platform numeric transcripts remain exact.
+
+Gunship control preserves scan and rocket clocks, attack orbits, destination
+limits, target facing, damaged-aircraft altitude and salvo gates. A further 19,200
+reference steps compare lost targets, sparse infantry and all attack-helicopter
+variants. Weapon effects and crew reactions are checked separately from this
+guidance fixture. Nine core tests cover these artillery/rocket/gunship operations;
+numeric CI adds 6,184,235 exact transcript bytes. Target selection, shared combat
+effects and the whole vehicle/world dispatcher still need full integration.
+
 ## Retained squads
 
 `Squad` retains ordered membership, known/heard contacts, briefing and centroid
@@ -459,7 +477,7 @@ Component checkpoint headers contain a four-byte component tag, a little-endian
 rules rather than silently continuing with changed arithmetic. The separate
 integer RNG stream remains unchanged.
 
-`native/core/tests/numeric_contract.rs` compares 32,956,016 committed bytes without
+`native/core/tests/numeric_contract.rs` compares 39,140,251 committed bytes without
 tolerances: fixed-tick flight state, support events and RNG cursors, carved water,
 craters, rotated box hits, cover anchors, spherical interpolation and infantry
 movement, infantry cover fire, postures, ammunition, burst recovery, vitals, aiming,
@@ -683,7 +701,7 @@ flag until Rust owns the actors.
 
 The shock fixture compares 92,160 reference steps, including mounted turning,
 blocked terrain, carried casualties and task interruption. The full default suite
-passes 164 tests; 385 core tests pass in debug and release.
+passes 166 tests; 396 core tests pass in debug and release.
 
 ## Spatial query state
 

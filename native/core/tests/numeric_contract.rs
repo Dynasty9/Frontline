@@ -36,6 +36,152 @@ fn block(out: &mut Vec<u8>, bytes: &[u8]) {
 }
 
 #[test]
+fn gunship_attack_guidance_is_identical_across_platforms() {
+    use frontline_core::vehicle::Vehicle;
+    use frontline_core::vehicle_flight::FlightProfile;
+    let terrain = Terrain::blank(256).unwrap();
+    let p = FlightProfile {
+        speed: 23.0,
+        accel: 6.0,
+        brake: 6.0,
+        turn: 2.3,
+        turn_accel: 4.0,
+    };
+    let mut bytes = Vec::new();
+    for trial in 0..64 {
+        let mut v = Vehicle {
+            id: 7,
+            team: 0,
+            position: Vector3::new(1.3, 14.0, -2.7),
+            hp: if trial % 5 == 0 { 20.0 } else { 100.0 },
+            flight: Some([0.0; 3]),
+            yaw: trial as f64 * 0.37,
+            gunship_destination: (trial % 3 == 0).then_some(Vector3::new(51.7, 0.0, -75.3)),
+            ..Default::default()
+        };
+        for step in 0..360 {
+            let target = (step % 90 < 60).then_some(Vector3::new(13.7, 0.0, -50.9));
+            bytes.push(u8::from(v.gunship_begin(1.0 / 30.0).unwrap()));
+            v.gunship_guidance(1.0 / 30.0, target, p, &terrain, &[])
+                .unwrap();
+            v.turret_tick(target.map(|t| (2, t)), 1.0 / 30.0, true, 2.3, 4.0)
+                .unwrap();
+            bytes.push(u8::from(
+                v.gunship_rockets_due(target, trial % 3 != 1, if trial % 7 == 0 { 0 } else { 4 })
+                    .unwrap(),
+            ));
+            if step % 17 == 0 {
+                block(&mut bytes, &v.checkpoint().unwrap());
+                v = Vehicle::restore(&v.checkpoint().unwrap()).unwrap();
+            }
+        }
+    }
+    golden("vehicle_gunship", &bytes);
+}
+
+#[test]
+fn artillery_and_rocket_launches_are_identical_across_platforms() {
+    use frontline_core::actors::{Actor, Actors};
+    use frontline_core::vehicle::Vehicle;
+    use frontline_core::vehicle_artillery::{ArtilleryEvent, ArtilleryProfile};
+    use frontline_core::vehicle_launch::SmokeProfile;
+    let mut bytes = Vec::new();
+    for trial in 0..64 {
+        let mut actors = Actors::from_entries(
+            3,
+            vec![
+                Actor::Vehicle(Box::new(Vehicle {
+                    id: 1,
+                    team: 0,
+                    position: Vector3::new(1.3, 0.0, -2.7),
+                    yaw: trial as f64 * 0.37,
+                    fire_queue: if trial % 3 == 0 {
+                        vec![Vector3::new(41.3, 0.0, -79.7)]
+                    } else {
+                        vec![]
+                    },
+                    path_pending: trial % 7 == 0,
+                    ..Default::default()
+                })),
+                Actor::Vehicle(Box::new(Vehicle {
+                    id: 2,
+                    team: 1,
+                    position: Vector3::new(1.3, 0.0, -52.7),
+                    ..Default::default()
+                })),
+            ],
+        )
+        .unwrap();
+        let p = ArtilleryProfile {
+            shell: if trial % 2 == 0 {
+                Kind::Arty
+            } else {
+                Kind::Grad
+            },
+            gun_height: 2.2,
+            muzzle: 4.0,
+            scatter: 3.0,
+            salvo: 3 + trial % 5,
+            lay: 1.7,
+            gap: 0.3,
+            cooldown: 22.0,
+            traverse: 0.9,
+            traverse_accel: 1.8,
+        };
+        let mut rng = SimulationRandom::new(trial as u64 + 137);
+        let mut now = 5.0;
+        for step in 0..600 {
+            now += 0.1;
+            let target = if actors.artillery_needs_target(1, now).unwrap() {
+                rng.randi();
+                (trial % 5 != 0).then_some(Vector3::new(71.3, 0.0, -113.7))
+            } else {
+                None
+            };
+            let event = actors.artillery_tick(1, now, 0.1, p, target).unwrap();
+            bytes.push(match event {
+                ArtilleryEvent::None => 0,
+                ArtilleryEvent::Mission => 1,
+                ArtilleryEvent::Fire => 2,
+            });
+            if event == ArtilleryEvent::Fire {
+                let l = actors.launch_vehicle_shell(1, now, p, &mut rng).unwrap();
+                bytes.extend_from_slice(&l.id.to_le_bytes());
+                point(&mut bytes, l.forward);
+                block(&mut bytes, &l.flight.checkpoint());
+                actors.finish_artillery_round(1, p).unwrap();
+            }
+            if step % 31 == 0 {
+                block(&mut bytes, &actors.checkpoint().unwrap());
+                bytes.extend_from_slice(&rng.state().to_le_bytes());
+                actors = Actors::restore(&actors.checkpoint().unwrap()).unwrap();
+            }
+        }
+        for i in 0..8 {
+            let l = actors.launch_vehicle_rocket(1, 2, i, &mut rng).unwrap();
+            if let Some(target) = actors.projectile_warning_target(l.id).unwrap() {
+                actors
+                    .launch_vehicle_smoke(
+                        target,
+                        now,
+                        l.position,
+                        SmokeProfile {
+                            armor: 2,
+                            helicopter: false,
+                            gun_height: 2.2,
+                        },
+                        &mut rng,
+                    )
+                    .unwrap();
+            }
+            block(&mut bytes, &actors.checkpoint().unwrap());
+            bytes.extend_from_slice(&rng.state().to_le_bytes());
+        }
+    }
+    golden("vehicle_artillery", &bytes);
+}
+
+#[test]
 fn owned_vehicle_launches_are_identical_across_platforms() {
     use frontline_core::actors::{Actor, Actors};
     use frontline_core::vehicle::Vehicle;

@@ -44,9 +44,113 @@ fn sling_spec(a: &PackedInt32Array) -> Result<SlingSpec, &'static str> {
         cargo_automatic: a[5] != 0,
     })
 }
+fn artillery_profile(
+    a: &Array<Variant>,
+) -> Option<frontline_core::vehicle_artillery::ArtilleryProfile> {
+    if a.len() != 3 {
+        return None;
+    }
+    let kind = a.get(0)?.try_to::<GString>().ok()?;
+    let n = a.get(1)?.try_to::<PackedFloat64Array>().ok()?;
+    if n.len() != 8 {
+        return None;
+    }
+    Some(frontline_core::vehicle_artillery::ArtilleryProfile {
+        shell: frontline_core::projectile::Kind::parse(&kind.to_string())?,
+        gun_height: n[0],
+        muzzle: n[1],
+        scatter: n[2],
+        lay: n[3],
+        gap: n[4],
+        cooldown: n[5],
+        traverse: n[6],
+        traverse_accel: n[7],
+        salvo: a.get(2)?.try_to().ok()?,
+    })
+}
 
 #[godot_api]
 impl ActorStateCore {
+    #[func]
+    fn artillery_needs_target(&self, vehicle: u32, now: f64) -> i32 {
+        self.core
+            .artillery_needs_target(vehicle, now)
+            .map_or(-1, i32::from)
+    }
+    #[func]
+    fn artillery_tick(
+        &mut self,
+        vehicle: u32,
+        now: f64,
+        dt: f64,
+        profile: Array<Variant>,
+        target: PackedVector3Array,
+    ) -> i32 {
+        let Some(p) = artillery_profile(&profile) else {
+            return -1;
+        };
+        if target.len() > 1 {
+            return -1;
+        }
+        match self.core.artillery_tick(
+            vehicle,
+            now,
+            dt,
+            p,
+            target.as_slice().first().copied().map(crate::point),
+        ) {
+            Ok(frontline_core::vehicle_artillery::ArtilleryEvent::None) => 0,
+            Ok(frontline_core::vehicle_artillery::ArtilleryEvent::Mission) => 1,
+            Ok(frontline_core::vehicle_artillery::ArtilleryEvent::Fire) => 2,
+            Err(_) => -1,
+        }
+    }
+    #[func]
+    fn finish_artillery_round(&mut self, vehicle: u32, profile: Array<Variant>) -> bool {
+        artillery_profile(&profile)
+            .is_some_and(|p| self.core.finish_artillery_round(vehicle, p).is_ok())
+    }
+    #[func]
+    fn launch_vehicle_shell(
+        &mut self,
+        vehicle: u32,
+        now: f64,
+        profile: Array<Variant>,
+        mut rng: Gd<crate::simulation_random::SimulationRandomCore>,
+    ) -> Array<Variant> {
+        let Some(p) = artillery_profile(&profile) else {
+            return Array::new();
+        };
+        match self
+            .core
+            .launch_vehicle_shell(vehicle, now, p, &mut rng.bind_mut().core)
+        {
+            Ok(l) => varray![
+                l.id,
+                vector(l.flight.position),
+                vector(l.flight.target),
+                vector(l.forward),
+                l.flight.shell_duration
+            ],
+            Err(_) => Array::new(),
+        }
+    }
+    #[func]
+    fn launch_vehicle_rocket(
+        &mut self,
+        vehicle: u32,
+        target: u32,
+        index: u32,
+        mut rng: Gd<crate::simulation_random::SimulationRandomCore>,
+    ) -> Array<Variant> {
+        match self
+            .core
+            .launch_vehicle_rocket(vehicle, target, index, &mut rng.bind_mut().core)
+        {
+            Ok(l) => varray![l.id, vector(l.position), vector(l.velocity)],
+            Err(_) => Array::new(),
+        }
+    }
     #[func]
     fn launch_vehicle_missile(
         &mut self,

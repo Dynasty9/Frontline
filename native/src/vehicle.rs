@@ -769,6 +769,63 @@ impl VehicleStateCore {
         }
     }
     #[func]
+    fn gunship_begin(&mut self, dt: f64) -> i32 {
+        self.core
+            .as_mut()
+            .and_then(|v| v.gunship_begin(dt).ok())
+            .map_or(-1, i32::from)
+    }
+    #[func]
+    fn gunship_guidance(
+        &mut self,
+        dt: f64,
+        target: PackedVector3Array,
+        profile: PackedFloat64Array,
+        terrain: Gd<TerrainCore>,
+        deck: PackedByteArray,
+    ) -> bool {
+        let Some(p) = flight_profile(&profile) else {
+            return false;
+        };
+        if target.len() > 1 {
+            return false;
+        }
+        let terrain = terrain.bind();
+        let (Some(v), Some(terrain)) = (self.core.as_mut(), terrain.core.as_ref()) else {
+            return false;
+        };
+        v.gunship_guidance(
+            dt,
+            target.as_slice().first().copied().map(crate::point),
+            p,
+            terrain,
+            deck.as_slice(),
+        )
+        .is_ok()
+    }
+    #[func]
+    fn gunship_rockets_due(
+        &mut self,
+        target: PackedVector3Array,
+        worth: bool,
+        rockets: i32,
+    ) -> i32 {
+        if target.len() > 1 {
+            return -1;
+        }
+        self.core
+            .as_mut()
+            .and_then(|v| {
+                v.gunship_rockets_due(
+                    target.as_slice().first().copied().map(crate::point),
+                    worth,
+                    rockets,
+                )
+                .ok()
+            })
+            .map_or(-1, i32::from)
+    }
+    #[func]
     fn lift_guidance(
         &mut self,
         dt: f64,

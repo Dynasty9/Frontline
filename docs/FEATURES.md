@@ -1360,6 +1360,9 @@ Shared transport checks preserve passenger exits, boat landing gates and the
 exiting squad's next order request in retained Rust actor state.
 Vehicle missile and smoke launches now create retained Rust projectile state;
 reference checks preserve warning order, smoke ammunition and random continuation.
+Artillery checks preserve queued fire missions, aiming delays, salvos and shell
+scatter. Gunship checks preserve attack orbits, damaged-aircraft altitude, rocket
+firing gates and smoke responses between successive rocket launches.
 Construction, town income, capture and production transitions match the existing
 game; shared rule effects, destruction and the full building dispatcher still need
 migration before Rust owns the complete battle.
