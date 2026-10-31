@@ -1372,6 +1372,9 @@ same route and driving decisions.
 Support-vehicle checks now update retained recipients together, preserving repair
 progress, ammunition and missile refills, healing, medical revivals and the order
 of speech and random draws. Missing loadout data leaves the service step unchanged.
+Vehicle target checks now read retained infantry poses, vehicle positions and
+building visibility directly, preserving aircraft priorities, forced targets and
+squad reports. Unchanged obstacles reuse visibility results; smoke remains live.
 Construction, town income, capture and production transitions match the existing
 game; shared rule effects, destruction and the full building dispatcher still need
 migration before Rust owns the complete battle.

@@ -36,6 +36,150 @@ fn block(out: &mut Vec<u8>, bytes: &[u8]) {
 }
 
 #[test]
+fn owned_vehicle_acquisition_is_identical_across_platforms() {
+    use frontline_core::actors::{Actor, Actors};
+    use frontline_core::infantry::Infantry as Soldier;
+    use frontline_core::spatial::{SpatialIndex, STRUCTURE_CELL, UNIT_CELL};
+    use frontline_core::structure::Structure;
+    use frontline_core::vehicle::Vehicle;
+    use frontline_core::vehicle_scan::ScanProfile;
+    let mut bytes = Vec::new();
+    let mut rng = SimulationRandom::new(137);
+    for trial in 0..48 {
+        let mut entries = vec![Actor::Vehicle(Box::new(Vehicle {
+            id: 1,
+            team: 0,
+            yaw: trial as f64 * 0.17,
+            sam_left: trial % 3,
+            target: 2,
+            forced_target: if trial % 7 == 0 { 16 } else { 0 },
+            ..Default::default()
+        }))];
+        for id in 2..18 {
+            let mut s = Soldier::default();
+            s.identity.id = id;
+            s.identity.team = if id % 7 == 0 { -1 } else { (id % 2) as i8 };
+            s.identity.unit = "rifleman".into();
+            s.identity.weapon = "rifle".into();
+            s.identity.squad = 20 + id % 3;
+            s.motion.position = Vector3::new(
+                rng.randf_range(-65.0, 65.0),
+                -0.3,
+                rng.randf_range(-65.0, 65.0),
+            );
+            s.vitals.life = if id % 5 == 0 {
+                Life::Downed
+            } else {
+                Life::Alive
+            };
+            s.posture = Posture::try_from((id % 5) as u8).unwrap();
+            s.cover.at_cover = id % 3 == 0;
+            s.cover.kind = (id % 3) as u8;
+            s.cover.height = 0.8;
+            s.cover.normal = Vector3::Z;
+            s.cover.lean_direction = Vector3::X;
+            s.weapon.peek_up = trial % 2 == 0;
+            s.arsenal.rockets = (id % 2) as i32;
+            entries.push(Actor::Soldier(Box::new(s)));
+        }
+        for id in 18..24 {
+            entries.push(Actor::Vehicle(Box::new(Vehicle {
+                id,
+                team: 1,
+                kind: if id % 2 == 0 { "helicopter" } else { "tank" }.into(),
+                position: Vector3::new(
+                    rng.randf_range(-65.0, 65.0),
+                    if id % 2 == 0 { 14.0 } else { 0.0 },
+                    rng.randf_range(-65.0, 65.0),
+                ),
+                yaw: trial as f64 * 0.37,
+                ..Default::default()
+            })));
+        }
+        for id in 24..28 {
+            entries.push(Actor::Structure(Box::new(Structure {
+                id,
+                team: 1,
+                visible: (id % 2) as u8,
+                kind: "bunker".into(),
+                position: Vector3::new((id as f32 - 25.0) * 4.7, 0.0, -45.3),
+                ..Default::default()
+            })));
+        }
+        let mut a = Actors::from_entries(100, entries).unwrap();
+        let mut units = SpatialIndex::new(UNIT_CELL).unwrap();
+        a.rebuild_units(&mut units).unwrap();
+        let mut structures = SpatialIndex::new(STRUCTURE_CELL).unwrap();
+        for actor in a.iter() {
+            if let Actor::Structure(s) = actor {
+                structures.insert(s.id, s.position, s.radius).unwrap();
+            }
+        }
+        let mut collision = CollisionWorld::default();
+        let mut visibility = Visibility::default();
+        for step in 0..16 {
+            if step % 3 == 0 {
+                assert!(collision.replace(
+                    90,
+                    &[BoxShape {
+                        body: 90,
+                        shape: 0,
+                        center: Vector3::new(step as f32 * 0.7 - 10.3, 1.0, -13.7),
+                        half: Vector3::new(10.0, 3.0, 0.4),
+                        basis: Mat3::from_rotation_y(trial as f32 * 0.13)
+                    }]
+                ));
+            }
+            assert!(visibility.set_fires(&[Smoke {
+                center: Vector3::new(0.0, 1.0, -10.0),
+                radius: if step % 2 == 0 { 5.0 } else { 0.0 }
+            }]));
+            let p = ScanProfile {
+                sight: 50.0,
+                gun_height: if trial % 3 == 0 { 0.8 } else { 2.2 },
+                cannon: trial % 2 == 0,
+                gunship: trial % 3 == 0,
+                anti_air: trial % 5 == 0,
+                penetrating_mg: trial % 7 == 0,
+            };
+            let result = a
+                .scan_vehicle(
+                    1,
+                    p,
+                    &units,
+                    &structures,
+                    &mut collision,
+                    &mut visibility,
+                    |v| v.kind == "helicopter",
+                    |_| true,
+                )
+                .unwrap();
+            bytes.extend_from_slice(&result.target.to_le_bytes());
+            bytes.extend_from_slice(&result.reused_obstructions.to_le_bytes());
+            bytes.extend_from_slice(&(result.reports.len() as u32).to_le_bytes());
+            for id in result.reports {
+                bytes.extend_from_slice(&id.to_le_bytes());
+            }
+            if step % 5 == 0 {
+                for id in 2..18 {
+                    let pose = a.infantry_pose(id).unwrap();
+                    point(&mut bytes, pose.eye());
+                    point(&mut bytes, pose.scan_eye());
+                    for p in pose.exposed_points().as_slice() {
+                        point(&mut bytes, *p);
+                    }
+                }
+            }
+            if step == 7 {
+                a = Actors::restore(&a.checkpoint().unwrap()).unwrap();
+            }
+        }
+        block(&mut bytes, &a.vehicle(1).unwrap().checkpoint().unwrap());
+    }
+    golden("vehicle_scan", &bytes);
+}
+
+#[test]
 fn retained_vehicle_services_are_identical_across_platforms() {
     use frontline_core::actors::{Actor, Actors};
     use frontline_core::infantry::Infantry as Soldier;

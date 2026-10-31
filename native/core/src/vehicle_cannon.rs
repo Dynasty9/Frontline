@@ -87,10 +87,7 @@ impl Vehicle {
             }
             self.position + transform(pose, local)
         } else {
-            let mut turret = self.position + Vector3::Y * p.gun_height as f32;
-            if p.gunship {
-                turret += direction(self.yaw) * 2.3;
-            }
+            let turret = self.turret_position(p.gun_height, p.gunship);
             turret + direction(self.yaw + self.turret_yaw) * if main_gun { 4.2 } else { 1.0 }
         };
         if !point(result) {

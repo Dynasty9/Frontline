@@ -130,6 +130,80 @@ fn artillery_profile(
 #[godot_api]
 impl ActorStateCore {
     #[func]
+    fn scan_vehicle(
+        &mut self,
+        vehicle: u32,
+        profile: PackedFloat64Array,
+        units: Gd<crate::spatial::SpatialIndexCore>,
+        structures: Gd<crate::spatial::SpatialIndexCore>,
+        mut collision: Gd<crate::collision_index::CollisionIndexCore>,
+        mut visibility: Gd<crate::visibility::VisibilityCore>,
+        aircraft: PackedInt64Array,
+        buildings: PackedStringArray,
+    ) -> Array<Variant> {
+        use std::collections::HashSet;
+        if profile.len() != 6
+            || profile.as_slice()[2..]
+                .iter()
+                .any(|v| *v != 0.0 && *v != 1.0)
+            || aircraft.len() > 100_000
+            || buildings.len() > 4096
+        {
+            return Array::new();
+        }
+        let p = frontline_core::vehicle_scan::ScanProfile {
+            sight: profile[0],
+            gun_height: profile[1],
+            cannon: profile[2] != 0.0,
+            gunship: profile[3] != 0.0,
+            anti_air: profile[4] != 0.0,
+            penetrating_mg: profile[5] != 0.0,
+        };
+        let Some(aircraft) = aircraft
+            .as_slice()
+            .iter()
+            .map(|id| u32::try_from(*id).ok().filter(|id| *id != 0))
+            .collect::<Option<HashSet<_>>>()
+        else {
+            return Array::new();
+        };
+        let buildings: HashSet<String> =
+            buildings.as_slice().iter().map(|s| s.to_string()).collect();
+        if buildings
+            .iter()
+            .any(|s| s.is_empty() || s.len() > 128 || s.contains('\0'))
+        {
+            return Array::new();
+        }
+        let units = units.bind();
+        let structures = structures.bind();
+        let (Some(units), Some(structures)) = (units.core.as_ref(), structures.core.as_ref())
+        else {
+            return Array::new();
+        };
+        match self.core.scan_vehicle(
+            vehicle,
+            p,
+            units,
+            structures,
+            &mut collision.bind_mut().core,
+            &mut visibility.bind_mut().core,
+            |v| aircraft.contains(&v.id),
+            |kind| buildings.contains(kind),
+        ) {
+            Ok(scan) => varray![
+                scan.target,
+                &scan
+                    .reports
+                    .into_iter()
+                    .map(i64::from)
+                    .collect::<PackedInt64Array>(),
+                scan.reused_obstructions
+            ],
+            Err(_) => Array::new(),
+        }
+    }
+    #[func]
     fn fire_vehicle_cannon(
         &mut self,
         vehicle: u32,
