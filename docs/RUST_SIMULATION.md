@@ -59,7 +59,7 @@ graphics, network access or a wall clock.
 | Infantry arrival tasks | `frontline_core` | Boarding ranges, tunnel arrival, corpse/depot completion and ordered-throw inventory decisions extracted; Godot still applies boarding, tunnel membership, shared ammunition transfers and throws |
 | Mounted infantry | `frontline_core` | Approach/climbing stages, scan clocks, anti-tank target selection and gun traverse extracted; Godot still owns mount links, fire queues and weapon effects |
 | Infantry action state | `frontline_core` | Retained actors complete cooked throws, shared grenade handling, melee, door kicks, rockets, mortars and drones, including vehicle warning/smoke responses; the live world dispatcher still runs in Godot |
-| Infantry hidden duties and status | `frontline_core` | Hidden-duty deadlines, moving posture, status flags and drone-operator turns extracted; Godot still applies treatment, tunnel and prisoner callbacks |
+| Infantry hidden duties and status | `frontline_core` | Retained passengers, tunnel exits, treatment completion and prisoner departures update shared actors and squads; moving posture, flags and operator turns are extracted, while live dispatch and ledger/presentation callbacks remain in Godot |
 | Infantry downtime | `frontline_core` | Calm timers, idle choices, conversation partners, timed speech and laughter extracted with checkpoints and random cursor comparisons; Godot still applies the actor's speech effects |
 | Infantry scheduling | `frontline_core` | Activity/scan/think clocks, interruption priority, dive movement and order/duty gates extracted; Godot still dispatches task callbacks and the remaining decision loop |
 | Retained infantry state | `frontline_core` | A typed actor combines component state, stable links, pending tasks and orders in a validated checkpoint; the live world still owns its Godot soldiers |
@@ -537,7 +537,7 @@ Component checkpoint headers contain a four-byte component tag, a little-endian
 rules rather than silently continuing with changed arithmetic. The separate
 integer RNG stream remains unchanged.
 
-`native/core/tests/numeric_contract.rs` compares 99,049,732 committed bytes without
+`native/core/tests/numeric_contract.rs` compares 104,366,769 committed bytes without
 tolerances: fixed-tick flight state, support events and RNG cursors, carved water,
 craters, rotated box hits, cover anchors, spherical interpolation and infantry
 movement, infantry cover fire, postures, ammunition, burst recovery, vitals, aiming,
@@ -1681,5 +1681,21 @@ Eight core regressions cover these transitions, the late-partner deadline,
 restored state and invalid inputs. The Godot comparison checks 12,288 complete
 soldier states after successive bearer updates, plus squad membership, routes,
 speech and RNG. Numeric CI adds 2,376,159 exact bytes. These duties still await the
-complete Rust world dispatcher; treatment completion and the remaining hidden
-and wounded lifecycle are separate outstanding integrations.
+complete Rust world dispatcher. Hidden treatment completion has separate coverage;
+the wounded lifecycle remains an outstanding integration.
+
+## Hidden transport, tunnels and treatment completion
+
+Retained hidden soldiers now follow their current transport, exit missing vehicles,
+leave shared tunnel occupancy, finish tent treatment and depart when their prisoner
+timer expires. Treatment restores health and weapons before selecting a return
+base, retaining the existing penalty for wrecked FOBs, insertion-order ties and
+random scatter after the revival speech draw. Prisoner departure removes shared
+squad membership and actor storage without recycling an identity.
+
+Six core regressions and 3,584 Godot actor-state comparisons cover all seven hidden
+states, missing transports/shelters, base selection, deadlines and checkpoint
+resumes. The reference also compares squad state, tunnel occupants, speech,
+property changes, messages, movement requests and RNG. Numeric CI adds 5,317,037
+exact bytes. Ledger/observation callbacks, wounded behavior and the complete Rust
+world dispatcher remain unfinished.

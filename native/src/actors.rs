@@ -805,6 +805,70 @@ impl ActorStateCore {
     }
 
     #[func]
+    fn advance_infantry_hidden(
+        &mut self,
+        id: u32,
+        dt: f64,
+        restored_weapon: GString,
+        magazine: i32,
+        nav: Gd<crate::path_planner::PathPlannerCore>,
+        squads: Array<Gd<crate::squad::SquadStateCore>>,
+        mut rng: Gd<crate::simulation_random::SimulationRandomCore>,
+    ) -> Array<Variant> {
+        use frontline_core::infantry_hidden_owned::Event;
+        let Some(mut state) = read_squads(&squads) else {
+            return Array::new();
+        };
+        let nav = nav.bind();
+        let Some(nav) = &nav.core else {
+            return Array::new();
+        };
+        let weapon = restored_weapon.to_string();
+        if !(0..=1_000_000).contains(&magazine) {
+            return Array::new();
+        }
+        let out = self.core.advance_infantry_hidden(
+            id,
+            dt,
+            (!weapon.is_empty()).then_some((weapon.as_str(), magazine)),
+            nav,
+            &mut state,
+            &mut rng.bind_mut().core,
+        );
+        let Ok(out) = out else {
+            return Array::new();
+        };
+        let removed = match out.removed {
+            Some(s) => match s.checkpoint() {
+                Ok(bytes) => PackedByteArray::from(bytes.as_slice()),
+                Err(_) => return Array::new(),
+            },
+            None => PackedByteArray::new(),
+        };
+        write_squads(squads, state);
+        let events: Array<Variant> = out
+            .events
+            .into_iter()
+            .map(|e| {
+                match e {
+                    Event::Stat(s) => varray![0, s],
+                    Event::Revived(cue) => varray![1, cue as i32],
+                    Event::Route(r) => varray![
+                        2,
+                        r.revision as i64,
+                        r.job.id as i64,
+                        vector(r.job.destination),
+                        r.job.care
+                    ],
+                    Event::PatchedUp => varray![3],
+                }
+                .to_variant()
+            })
+            .collect();
+        varray![&events, &removed]
+    }
+
+    #[func]
     fn advance_infantry_stretcher(
         &mut self,
         id: u32,

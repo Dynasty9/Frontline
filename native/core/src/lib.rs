@@ -43,6 +43,7 @@ pub mod infantry_execution;
 pub mod infantry_fighting;
 pub mod infantry_fire;
 pub mod infantry_grenade_owned;
+pub mod infantry_hidden_owned;
 pub mod infantry_idle;
 pub mod infantry_logistics;
 pub mod infantry_medicine;

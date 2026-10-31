@@ -641,6 +641,122 @@ fn retained_infantry_blasts_are_identical_across_platforms() {
 }
 
 #[test]
+fn hidden_infantry_transitions_are_identical_across_platforms() {
+    use frontline_core::actors::{Actor, Actors};
+    use frontline_core::infantry::Infantry as Soldier;
+    use frontline_core::infantry_control::HiddenReason;
+    use frontline_core::infantry_hidden_owned::{Event, Update};
+    use frontline_core::squad::Squad;
+    use frontline_core::structure::Structure;
+    use frontline_core::vehicle::Vehicle;
+    let nav = PathPlanner::new(128).unwrap();
+    let mut bytes = Vec::new();
+    for reason in 0..7 {
+        for trial in 0..64 {
+            let mut s = Soldier::default();
+            s.identity.id = 1;
+            s.identity.squad = 9;
+            s.identity.unit = "rifleman".into();
+            s.identity.weapon = if trial % 3 == 0 { "" } else { "rifle" }.into();
+            s.vitals.life = Life::Hidden;
+            s.vitals.times_downed = (trial % 5) as u32;
+            s.control.hidden = HiddenReason::try_from(reason).unwrap();
+            s.control.hidden_timer = [-1.0, 0.0, 0.1, 0.2, 0.35, 1.0][trial % 6];
+            s.motion.position = Vector3::new((trial % 7) as f32, -0.4, 3.0);
+            s.links.hidden_in = 10;
+            s.links.vehicle = 20;
+            s.duty.position = Vector3::new(-11.0, 0.0, 4.0);
+            let mut entries = vec![Actor::Soldier(Box::new(s))];
+            if trial % 7 != 0 {
+                entries.push(Actor::Structure(Box::new(Structure {
+                    id: 10,
+                    kind: "medic_tent".into(),
+                    position: Vector3::X * 5.0,
+                    yaw: [0.0f32, 1.3, -2.5][trial % 3].into(),
+                    inside: vec![1, 2],
+                    ..Default::default()
+                })));
+            }
+            if trial % 3 != 0 {
+                entries.push(Actor::Vehicle(Box::new(Vehicle {
+                    id: 20,
+                    position: Vector3::new(10.0, 14.0, 3.0),
+                    ..Default::default()
+                })));
+            }
+            if trial % 5 != 0 {
+                for id in 30..=32 {
+                    entries.push(Actor::Structure(Box::new(Structure {
+                        id,
+                        team: 0,
+                        kind: "fob".into(),
+                        position: Vector3::X * (id as f32 - 29.0) * 12.0,
+                        wrecked: id == 30 && trial % 2 == 0,
+                        built: id != 31 || trial % 3 != 0,
+                        ..Default::default()
+                    })));
+                }
+            }
+            let mut a = Actors::from_entries(100, entries).unwrap();
+            let mut squads = vec![Squad {
+                id: 9,
+                members: vec![1],
+                centroid_at: 3.0,
+                ..Default::default()
+            }];
+            let mut rng = SimulationRandom::new(99371 + trial as u64);
+            for step in 0..4 {
+                let out = if a.soldier(1).is_some_and(|s| s.vitals.life == Life::Hidden) {
+                    a.advance_infantry_hidden(
+                        1,
+                        0.1,
+                        Some(("rifle", 30)),
+                        &nav,
+                        &mut squads,
+                        &mut rng,
+                    )
+                    .unwrap()
+                } else {
+                    Update::default()
+                };
+                bytes.extend_from_slice(&(out.events.len() as u32).to_le_bytes());
+                for event in out.events {
+                    match event {
+                        Event::Stat(s) => {
+                            bytes.push(0);
+                            block(&mut bytes, s.as_bytes());
+                        }
+                        Event::Revived(c) => bytes.extend_from_slice(&[1, c]),
+                        Event::Route(r) => {
+                            bytes.push(2);
+                            bytes.extend_from_slice(&r.revision.to_le_bytes());
+                            bytes.extend_from_slice(&r.job.id.to_le_bytes());
+                            point(&mut bytes, r.job.destination);
+                            bytes.extend_from_slice(&r.job.care.to_le_bytes());
+                        }
+                        Event::PatchedUp => bytes.push(3),
+                    }
+                }
+                if let Some(s) = out.removed {
+                    bytes.push(1);
+                    block(&mut bytes, &s.checkpoint().unwrap());
+                } else {
+                    bytes.push(0);
+                }
+                block(&mut bytes, &a.checkpoint().unwrap());
+                block(&mut bytes, &squads[0].checkpoint().unwrap());
+                bytes.extend_from_slice(&rng.state().to_le_bytes());
+                if step == 1 {
+                    a = Actors::restore(&a.checkpoint().unwrap()).unwrap();
+                    squads[0] = Squad::restore(&squads[0].checkpoint().unwrap()).unwrap();
+                }
+            }
+        }
+    }
+    golden("infantry_hidden_owned", &bytes);
+}
+
+#[test]
 fn shared_stretcher_delivery_is_identical_across_platforms() {
     use frontline_core::actors::{Actor, Actors};
     use frontline_core::infantry::Infantry as Soldier;

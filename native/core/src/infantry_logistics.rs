@@ -49,6 +49,29 @@ fn clock(now: f64) -> bool {
 }
 
 impl Actors {
+    pub(crate) fn nearest_fob(
+        &self,
+        team: i8,
+        position: Vector3,
+    ) -> Option<&crate::structure::Structure> {
+        let mut nearest = 1e9;
+        let mut best = None;
+        for actor in self.iter_kind(crate::entities::Kind::Structure) {
+            if let Actor::Structure(st) = actor {
+                if st.kind != "fob" || st.team != team || !st.built {
+                    continue;
+                }
+                let distance = f64::from(flat(st.position - position).length())
+                    + if st.wrecked { 60.0 } else { 0.0 };
+                if distance < nearest {
+                    nearest = distance;
+                    best = Some(st.as_ref());
+                }
+            }
+        }
+        best
+    }
+
     /// Movement has stopped; collect shared stock before returning to the hold position.
     pub fn arrive_infantry_supply(
         &mut self,
@@ -224,24 +247,10 @@ impl Actors {
                 self.soldier(id as u32).unwrap().motion.position,
             )),
             Search::Depots => {
-                let mut nearest = 1e9;
-                let mut fob = None;
-                for actor in self.iter_kind(crate::entities::Kind::Structure) {
-                    if let Actor::Structure(st) = actor {
-                        if st.kind != "fob" || st.team != team || !st.built {
-                            continue;
-                        }
-                        let distance = f64::from(flat(st.position - position).length())
-                            + if st.wrecked { 60.0 } else { 0.0 };
-                        if distance < nearest {
-                            nearest = distance;
-                            fob = Some(Depot {
-                                id: st.id.into(),
-                                position: st.position,
-                            });
-                        }
-                    }
-                }
+                let fob = self.nearest_fob(team, position).map(|st| Depot {
+                    id: st.id.into(),
+                    position: st.position,
+                });
                 let radius = fob.map_or(70.0, |f| {
                     f64::from(flat(f.position - position).length()).min(70.0)
                 });
