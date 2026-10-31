@@ -1908,10 +1908,13 @@ including the direction draw for an explosion directly underneath the object.
 Four regressions cover collision/navigation movement, rejected throws, random
 continuation and checkpoint resumes. The Godot reference fixture compares 1,024
 attempts (674 accepted), 1,280 complete geometry states and 24,576 ray hit identities.
-At yaw 9.59068653375644, Godot's platform cosine and portable libm differ by one
-float step (5.96e-8). Only the reference collision rotation coefficients allow one
-float step; actor state, random cursors, ray hit identities and other collision
-fields remain exact. The existing double cover-coefficient tolerance is unchanged.
+Godot's platform sine/cosine and portable libm can differ by one float step.
+Linux diagnostics measured differences of 5.96e-8 in composed rotation coefficients
+and transformed centers; cancellation can make this several steps near zero.
+Those reference-only fields allow 2.4e-7 absolute error. Identity, topology,
+half-extents, actor state, random cursors and ray hit identities remain exact.
+The comparison has rejection checks for larger transforms, changed IDs and sizes.
+The existing double cover-coefficient tolerance is unchanged.
 Rust continuation and the 11,562,980-byte numeric transcript use no tolerance.
 The full combat dispatcher still needs to call this operation between destruction
 and fire ignition; the live game still uses the Godot toss method.

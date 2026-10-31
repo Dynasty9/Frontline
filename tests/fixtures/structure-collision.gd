@@ -13,7 +13,7 @@ func compare_collision(w: World, core: RefCounted, st: Structure, label: String)
 	w.combat._sync_collision()
 	var actual: PackedByteArray = core.inspect()[2]
 	var expected: PackedByteArray = w.combat._collision.checkpoint()
-	assert(actual == expected, "structure collision geometry " + label + ": " + collision_difference(expected,actual))
+	assert(collision_equal(expected,actual), "structure collision geometry " + label + ": " + collision_difference(expected,actual))
 	for n in 24:
 		var a := st.position + Vector3(-12, float(n % 6) * 0.53, (n / 6) * 3 - 4)
 		var b := st.position + Vector3(12, float(n % 6) * 0.53, -(n / 6) * 3 + 4)
@@ -22,6 +22,13 @@ func compare_collision(w: World, core: RefCounted, st: Structure, label: String)
 	checks += 1
 
 func _ready() -> void:
+	# Keep the platform allowance out of identities, shape sizes and meaningful transforms.
+	var sample := PackedByteArray(); sample.resize(88); sample.encode_u32(8,1); sample.encode_u32(20,1)
+	for at in [28,40]:
+		var rounded := sample.duplicate(); rounded.encode_float(at,0.00000006); assert(collision_equal(sample,rounded))
+		rounded.encode_float(at,0.000001); assert(not collision_equal(sample,rounded))
+	for at in [12,24,76]:
+		var changed := sample.duplicate(); changed[at] = 1; assert(not collision_equal(sample,changed))
 	MapDims.N = 32; MapDims.SIZE = 32.0; MapDims.HALF = 16.0; MapDims.BIOME = 32
 	Nav.N = 32; Nav.H = 16.0; HNav.C = 16; HNav.NC = 2; HNav.NCC = 4; HNav._corner = HNav._corners()
 	TerrainMap.N = 32; TerrainMap.H = 16.0; TerrainMap.DN = 64

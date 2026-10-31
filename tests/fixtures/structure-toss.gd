@@ -5,22 +5,6 @@ class TossWorld extends World:
 		set_process(false); set_physics_process(false)
 	func fx_event(_event: Array) -> void: pass
 
-func collision_equal(expected: PackedByteArray, actual: PackedByteArray) -> bool:
-	if expected.size() != actual.size(): return false
-	var compared := expected.duplicate()
-	var cursor := 12
-	for body in expected.decode_u32(8):
-		var count := expected.decode_u32(cursor + 8); cursor += 12
-		for shape in count:
-			# Godot's platform cosf differs from pinned libm by one float bit at
-			# yaw 9.59068653375644. Only rotation coefficients get that allowance.
-			for component in 9:
-				var at := cursor + 16 + component * 4
-				if absi(expected.decode_u32(at) - actual.decode_u32(at)) > 1: return false
-				compared.encode_u32(at, actual.decode_u32(at))
-			cursor += 64
-	return compared == actual
-
 func check_geometry(w: World, core: RefCounted, where: String) -> void:
 	var expected := states(w); var actual: Array = core.inspect()
 	assert(terrain_equal(expected[0],actual[0]), "toss terrain " + where)

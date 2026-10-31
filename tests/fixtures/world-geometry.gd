@@ -2,6 +2,23 @@ extends Node
 
 var checks := 0
 
+func collision_equal(expected: PackedByteArray, actual: PackedByteArray) -> bool:
+	if expected.size() != actual.size() or expected.size() < 12: return false
+	var compared := expected.duplicate(); var cursor := 12
+	for body in expected.decode_u32(8):
+		var count := expected.decode_u32(cursor + 8); cursor += 12
+		for shape in count:
+			# Platform sinf/cosf differs from pinned libm; multiplying the local
+			# transform propagates that rounding into box centers and child bases.
+			for component in range(1,13):
+				var at := cursor + component * 4
+				var a := expected.decode_float(at); var b := actual.decode_float(at)
+				if not is_finite(a) or not is_finite(b) or absf(a - b) > 0.00000024: return false
+				compared.encode_u32(at,actual.decode_u32(at))
+			cursor += 64
+	# Identity, topology and half-extents still compare byte for byte.
+	return compared == actual
+
 func collision_difference(expected: PackedByteArray, actual: PackedByteArray) -> String:
 	if expected.size() != actual.size(): return "bytes %d / %d" % [expected.size(),actual.size()]
 	var differences := []; var cursor := 12
