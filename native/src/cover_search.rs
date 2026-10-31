@@ -137,59 +137,23 @@ impl CoverSearchCore {
             current_structure: id(input.get(9)?)?,
             current_anchor: input.get(10)?.try_to().ok()?,
         };
-        let buildings = structures(&buildings)?;
-        let mates = mates
-            .iter_shared()
-            .map(|v| {
-                let v = row(v, 4)?;
-                Some(SquadClaim {
-                    id: id(v.get(0)?)?,
-                    alive: v.get(1)?.try_to().ok()?,
-                    covering: v.get(2)?.try_to().ok()?,
-                    position: crate::point(v.get(3)?.try_to().ok()?),
-                })
-            })
-            .collect::<Option<Vec<_>>>()?;
-        let nearby = nearby
-            .iter_shared()
-            .map(|v| {
-                let v = row(v, 7)?;
-                let cell: Vector2i = v.get(6)?.try_to().ok()?;
-                Some(NearbyClaim {
-                    id: id(v.get(0)?)?,
-                    team: v.get(1)?.try_to().ok()?,
-                    alive: v.get(2)?.try_to().ok()?,
-                    gone: v.get(3)?.try_to().ok()?,
-                    position: crate::point(v.get(4)?.try_to().ok()?),
-                    cover_position: crate::point(v.get(5)?.try_to().ok()?),
-                    cell: [cell.x, cell.y],
-                })
-            })
-            .collect::<Option<Vec<_>>>()?;
         let threats: Vec<_> = threats
             .as_slice()
             .iter()
             .copied()
             .map(crate::point)
             .collect();
-        let terrain = terrain.bind();
-        let navigation = navigation.bind();
-        let mut collision = collision.bind_mut();
-        let result = cover_search::find(
-            input,
-            &threats,
-            &mut Scene {
-                terrain: terrain.core.as_ref()?,
-                navigation: navigation.core.as_ref()?,
-                collision: &mut collision.core,
-                heat: heat.as_slice(),
-                deck: deck.as_slice(),
-                structures: &buildings,
-                squad_claims: &mates,
-                nearby_claims: &nearby,
-            },
-        )
-        .ok()?;
+        let result = with_scene(
+            buildings,
+            mates,
+            nearby,
+            heat,
+            deck,
+            terrain,
+            navigation,
+            collision,
+            |scene| cover_search::find(input, &threats, scene).ok(),
+        )?;
         let p = |p: frontline_core::vector::Vector3| Vector3::new(p.x, p.y, p.z);
         let choice = result.choice.map_or_else(Array::new, |c| {
             varray![
@@ -212,4 +176,64 @@ impl CoverSearchCore {
             &choice
         ])
     }
+}
+
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn with_scene<T>(
+    buildings: Array<Variant>,
+    mates: Array<Variant>,
+    nearby: Array<Variant>,
+    heat: PackedByteArray,
+    deck: PackedByteArray,
+    terrain: Gd<TerrainCore>,
+    navigation: Gd<PathPlannerCore>,
+    collision: &mut Gd<CollisionIndexCore>,
+    apply: impl FnOnce(&mut Scene<'_>) -> Option<T>,
+) -> Option<T> {
+    if mates.len() > 100_000 || nearby.len() > 100_000 {
+        return None;
+    }
+    let buildings = structures(&buildings)?;
+    let mates = mates
+        .iter_shared()
+        .map(|v| {
+            let v = row(v, 4)?;
+            Some(SquadClaim {
+                id: id(v.get(0)?)?,
+                alive: v.get(1)?.try_to().ok()?,
+                covering: v.get(2)?.try_to().ok()?,
+                position: crate::point(v.get(3)?.try_to().ok()?),
+            })
+        })
+        .collect::<Option<Vec<_>>>()?;
+    let nearby = nearby
+        .iter_shared()
+        .map(|v| {
+            let v = row(v, 7)?;
+            let cell: Vector2i = v.get(6)?.try_to().ok()?;
+            Some(NearbyClaim {
+                id: id(v.get(0)?)?,
+                team: v.get(1)?.try_to().ok()?,
+                alive: v.get(2)?.try_to().ok()?,
+                gone: v.get(3)?.try_to().ok()?,
+                position: crate::point(v.get(4)?.try_to().ok()?),
+                cover_position: crate::point(v.get(5)?.try_to().ok()?),
+                cell: [cell.x, cell.y],
+            })
+        })
+        .collect::<Option<Vec<_>>>()?;
+
+    let terrain = terrain.bind();
+    let navigation = navigation.bind();
+    let mut collision = collision.bind_mut();
+    apply(&mut Scene {
+        terrain: terrain.core.as_ref()?,
+        navigation: navigation.core.as_ref()?,
+        collision: &mut collision.core,
+        heat: heat.as_slice(),
+        deck: deck.as_slice(),
+        structures: &buildings,
+        squad_claims: &mates,
+        nearby_claims: &nearby,
+    })
 }

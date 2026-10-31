@@ -36,6 +36,200 @@ fn block(out: &mut Vec<u8>, bytes: &[u8]) {
 }
 
 #[test]
+fn retained_infantry_tactics_are_identical_across_platforms() {
+    use frontline_core::cover::{Anchor, AnchorKind};
+    use frontline_core::cover_search::{Scene, Structure};
+    use frontline_core::infantry::{Goal, Identity, Infantry};
+    use frontline_core::infantry_tactics::{CoverRequest, Shelter};
+    let terrain = Terrain::blank(64).unwrap();
+    let nav = PathPlanner::new(64).unwrap();
+    let mut collision = CollisionWorld::default();
+    collision.replace(
+        10,
+        &[BoxShape {
+            body: 10,
+            shape: 0,
+            center: Vector3::new(0.0, 0.6, 1.0),
+            basis: Mat3::IDENTITY,
+            half: Vector3::new(8.0, 0.6, 0.2),
+        }],
+    );
+    let structures = [Structure {
+        id: 10,
+        built: true,
+        burn: 0.0,
+        material: 2,
+        positions: (-4..5)
+            .map(|i| Anchor {
+                position: Vector3::X * i as f32,
+                normal: Vector3::Z,
+                height: 1.2,
+                kind: AnchorKind::Over,
+            })
+            .collect(),
+    }];
+    let mut scene = Scene {
+        terrain: &terrain,
+        navigation: &nav,
+        collision: &mut collision,
+        heat: &[],
+        deck: &[],
+        structures: &structures,
+        squad_claims: &[],
+        nearby_claims: &[],
+    };
+    let mut bytes = Vec::new();
+    for trial in 0..256 {
+        let mut s = Infantry {
+            identity: Identity {
+                id: 17,
+                unit: ["rifleman", "pkm", "mg_gunner"][trial % 3].into(),
+                ..Default::default()
+            },
+            ..Default::default()
+        };
+        let mut rng = SimulationRandom::new(trial as u64 + 731);
+        s.motion.position = Vector3::new(
+            (trial % 11) as f32 * 0.73 - 3.15,
+            0.0,
+            (trial % 7) as f32 * 0.3,
+        );
+        s.orders.hold_position = Vector3::new(-1.7, 0.0, 2.9);
+        s.orders.hold_face = Vector3::new(0.31, 0.0, -0.93);
+        s.orders.purpose = Goal::try_from((trial % 6) as u8).unwrap();
+        s.orders.move_mode = (trial % 3) as u8;
+        s.orders.goal = s.motion.position + Vector3::X * [2.59, 2.6, 10.0][trial % 3];
+        s.motion.path = vec![s.orders.goal];
+        s.motion.path_index = trial % 2;
+        s.cover.height = [0.0, 0.6, 1.12, 2.1][trial % 4];
+        s.cover.shifting = trial % 3 == 0;
+        s.cover.at_cover = trial % 2 == 0;
+        s.cover.kind = (trial % 4) as u8;
+        s.cover.structure = if trial % 5 == 0 { 0 } else { 10 };
+        s.cover.anchor = [-1, 0, 1, 1000][trial % 4];
+        s.cover.threat = Vector3::Z;
+        s.cover.evaluate_at = [99.9, 100.0, 100.1][trial % 3];
+        s.vitals.suppression = [0.0, 35.0, 45.0, 70.0, 90.0][trial % 5];
+        s.vitals.stamina = [0.0, 0.349, 0.35, 1.0][trial % 4];
+        s.posture = Posture::try_from((trial % 5) as u8).unwrap();
+        if trial % 3 == 0 {
+            s.fight.visible_targets.push(13);
+        }
+        let threats = [Vector3::new(-3.7, 1.6, 20.9), Vector3::new(10.1, 1.7, 1.13)];
+        let threats = &threats[..trial % 3];
+        bytes.push(u8::from(s.crawling(trial % 2 == 0)));
+        bytes.extend_from_slice(&s.movement_speed(trial % 2 == 0).to_le_bytes());
+        point(
+            &mut bytes,
+            s.sector_direction(
+                threats,
+                Vector3::new(1.7, 0.0, 3.15),
+                trial % 10,
+                trial % 2 == 0,
+            )
+            .unwrap(),
+        );
+        let need = s
+            .reevaluate_cover(
+                100.0,
+                Some(Shelter {
+                    gone: trial % 7 == 0,
+                    burn: [0.0, 0.3, 0.31][trial % 3],
+                    anchors: &[Vector3::ZERO, Vector3::X],
+                }),
+                threats,
+            )
+            .unwrap();
+        bytes.push(u8::from(need));
+        let result = s
+            .seek_cover(
+                CoverRequest {
+                    time: 100.0,
+                    anchor: s.orders.hold_position,
+                    radius: [0.0, 3.0, 10.0][trial % 3],
+                    threats,
+                    grouped: trial % 3 == 0,
+                    unarmed: trial % 11 == 0,
+                    weapon_range: 50.0,
+                    danger: trial % 2 == 0,
+                },
+                &mut scene,
+                &mut rng,
+            )
+            .unwrap();
+        bytes.extend_from_slice(&(result.search.candidates as u32).to_le_bytes());
+        bytes.extend_from_slice(&(result.search.evaluations as u32).to_le_bytes());
+        bytes.push(u8::from(result.route.is_some()));
+        if let Some(order) = result.route {
+            bytes.extend_from_slice(&order.revision.to_le_bytes());
+            bytes.extend_from_slice(&order.job.care.to_le_bytes());
+        }
+        block(&mut bytes, &s.checkpoint().unwrap());
+        bytes.extend_from_slice(&rng.state().to_le_bytes());
+        assert_eq!(Infantry::restore(&s.checkpoint().unwrap()).unwrap(), s);
+    }
+    golden("infantry_tactics", &bytes);
+}
+
+#[test]
+fn retained_route_orders_are_identical_across_platforms() {
+    use frontline_core::infantry::{Goal, Identity, Infantry};
+    use frontline_core::infantry_controller::Task;
+    use frontline_core::infantry_orders::{Arrival, PathFinish};
+    let mut out = Vec::new();
+    for trial in 0..256 {
+        let mut s = Infantry {
+            identity: Identity {
+                id: 31,
+                unit: "rifleman".into(),
+                ..Default::default()
+            },
+            ..Default::default()
+        };
+        let mut rng = SimulationRandom::new(173 + trial);
+        s.vitals.life = Life::try_from((trial % 6) as u8).unwrap();
+        s.duty.kind = [Task::Fight, Task::Retreat, Task::Limp][trial as usize % 3];
+        s.cover.normal = Vector3::new(0.3, 0.0, -0.7);
+        s.cover.height = 1.2;
+        s.cover.shifting = true;
+        s.weapon.last_shot = [99.5, 99.4, 99.9][trial as usize % 3];
+        let destination = Vector3::X * [1.69, 1.7, 1.71, 12.0][trial as usize % 4];
+        let request = s
+            .go_to(
+                destination,
+                Goal::try_from((trial % 6) as u8).unwrap(),
+                (trial % 3) as u8,
+            )
+            .unwrap();
+        out.extend_from_slice(&request.job.care.to_le_bytes());
+        block(&mut out, &s.checkpoint().unwrap());
+        if trial % 7 == 0 {
+            s.stop_moving().unwrap();
+        }
+        let path = if trial % 4 == 0 {
+            vec![Vector3::Z, destination]
+        } else {
+            vec![]
+        };
+        let finish = s
+            .accept_path(request.revision, path, 100.0, &mut rng)
+            .unwrap();
+        out.push(match finish {
+            PathFinish::Ignored => 0,
+            PathFinish::Following => 1,
+            PathFinish::Arrived(Arrival::None) => 2,
+            PathFinish::Arrived(Arrival::Prison) => 3,
+            PathFinish::Unreachable => 4,
+        });
+        block(&mut out, &s.checkpoint().unwrap());
+        out.push(s.arrived(100.0, &mut rng).unwrap() as u8);
+        block(&mut out, &s.checkpoint().unwrap());
+        out.extend_from_slice(&rng.state().to_le_bytes());
+    }
+    golden("infantry_orders", &out);
+}
+
+#[test]
 fn retained_infantry_is_identical_across_platforms() {
     use frontline_core::infantry::{Identity, Infantry};
     use frontline_core::infantry_action::{Action, Round, Throw};

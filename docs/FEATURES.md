@@ -1314,6 +1314,10 @@ Infantry state can also be imported into a retained Rust actor, including pendin
 paths, timed actions, conversations, casualty links and mounted-weapon orders.
 Its checkpoint validates the complete soldier state; whole-battle saves still
 need the remaining world state and simulation ownership to move into Rust.
+Retained actor checks now cover issuing and replacing movement orders, rejecting
+late path results, applying arrivals, reviewing shelter and selecting new cover.
+Flank and rear sectors, crawling and fatigue-dependent speed retain their previous
+behavior. These operations still await the complete Rust world loop.
 The Rust core now allocates authoritative entity IDs and retains their lifecycle
 order. Retired IDs stay retired, and restored lifecycle checkpoints continue the
 same allocation sequence; clients use the server's IDs for their visual objects.

@@ -1,3 +1,4 @@
+use crate::simulation_random::SimulationRandomCore;
 use frontline_core::drone_reaction::DroneMemory;
 use frontline_core::grenade_attack::GrenadeAttack;
 use frontline_core::grenade_reaction::GrenadeMemory;
@@ -5,6 +6,8 @@ use frontline_core::infantry::*;
 use frontline_core::infantry_action::{Action, ActionState, Round, Throw};
 use frontline_core::infantry_aim::InfantryAim;
 use frontline_core::infantry_control::Control;
+use frontline_core::infantry_orders::{Arrival, PathFinish};
+use frontline_core::infantry_tactics::{CoverRequest, Shelter};
 use godot::prelude::*;
 
 #[derive(GodotClass)]
@@ -516,6 +519,224 @@ fn encode(s: &Infantry) -> Array<Variant> {
 
 #[godot_api]
 impl InfantryStateCore {
+    #[func]
+    fn movement_speed(&self, danger: bool) -> f64 {
+        self.core
+            .as_ref()
+            .map_or(-1.0, |s| s.movement_speed(danger))
+    }
+
+    #[func]
+    fn crawling(&self, danger: bool) -> bool {
+        self.core.as_ref().is_some_and(|s| s.crawling(danger))
+    }
+
+    #[func]
+    fn sector_direction(
+        &self,
+        threats: PackedVector3Array,
+        centroid: Vector3,
+        members: i64,
+        last: bool,
+    ) -> Variant {
+        let Some(s) = self.core.as_ref() else {
+            return Variant::nil();
+        };
+        if threats.len() > 4096 {
+            return Variant::nil();
+        }
+        let Ok(members) = usize::try_from(members) else {
+            return Variant::nil();
+        };
+        let threats: Vec<_> = threats
+            .as_slice()
+            .iter()
+            .copied()
+            .map(crate::point)
+            .collect();
+        s.sector_direction(&threats, crate::point(centroid), members, last)
+            .map_or_else(|_| Variant::nil(), |p| vector(p).to_variant())
+    }
+
+    #[func]
+    fn reevaluate_cover(
+        &mut self,
+        now: f64,
+        shelter: Array<Variant>,
+        threats: PackedVector3Array,
+    ) -> Variant {
+        let Some(s) = self.core.as_mut() else {
+            return Variant::nil();
+        };
+        if threats.len() > 4096 {
+            return Variant::nil();
+        }
+        let result = (|| {
+            let positions: PackedVector3Array = if shelter.is_empty() {
+                PackedVector3Array::new()
+            } else {
+                if shelter.len() != 3 {
+                    return None;
+                }
+                read(&shelter, 2)?
+            };
+            if positions.len() > 100_000 {
+                return None;
+            }
+            let positions: Vec<_> = positions
+                .as_slice()
+                .iter()
+                .copied()
+                .map(crate::point)
+                .collect();
+            let held = if shelter.is_empty() {
+                None
+            } else {
+                Some(Shelter {
+                    gone: read(&shelter, 0)?,
+                    burn: read(&shelter, 1)?,
+                    anchors: &positions,
+                })
+            };
+            let threats: Vec<_> = threats
+                .as_slice()
+                .iter()
+                .copied()
+                .map(crate::point)
+                .collect();
+            s.reevaluate_cover(now, held, &threats).ok()
+        })();
+        result.map_or_else(Variant::nil, |value| value.to_variant())
+    }
+
+    #[func]
+    #[allow(clippy::too_many_arguments)]
+    fn seek_cover(
+        &mut self,
+        input: Array<Variant>,
+        threats: PackedVector3Array,
+        buildings: Array<Variant>,
+        mates: Array<Variant>,
+        nearby: Array<Variant>,
+        heat: PackedByteArray,
+        deck: PackedByteArray,
+        terrain: Gd<crate::terrain::TerrainCore>,
+        navigation: Gd<crate::path_planner::PathPlannerCore>,
+        mut collision: Gd<crate::collision_index::CollisionIndexCore>,
+        mut rng: Gd<SimulationRandomCore>,
+    ) -> Array<Variant> {
+        let Some(s) = self.core.as_mut() else {
+            return Array::new();
+        };
+        if input.len() != 7 || threats.len() > 4096 {
+            return Array::new();
+        }
+        let result = (|| {
+            let threats: Vec<_> = threats
+                .as_slice()
+                .iter()
+                .copied()
+                .map(crate::point)
+                .collect();
+            let request = CoverRequest {
+                time: read(&input, 0)?,
+                anchor: point(&input, 1)?,
+                radius: read(&input, 2)?,
+                threats: &threats,
+                grouped: read(&input, 3)?,
+                unarmed: read(&input, 4)?,
+                weapon_range: read(&input, 5)?,
+                danger: read(&input, 6)?,
+            };
+            crate::cover_search::with_scene(
+                buildings,
+                mates,
+                nearby,
+                heat,
+                deck,
+                terrain,
+                navigation,
+                &mut collision,
+                |scene| s.seek_cover(request, scene, &mut rng.bind_mut().core).ok(),
+            )
+        })();
+        result.map_or_else(Array::new, |result| {
+            let route = result
+                .route
+                .map_or_else(Array::new, |r| varray![r.revision as i64, r.job.care]);
+            varray![
+                result.search.candidates as i64,
+                result.search.evaluations as i64,
+                &route
+            ]
+        })
+    }
+
+    #[func]
+    fn go_to(&mut self, destination: Vector3, purpose: i32, mode: i32) -> Array<Variant> {
+        let Some(s) = self.core.as_mut() else {
+            return Array::new();
+        };
+        let Some(purpose) = u8::try_from(purpose)
+            .ok()
+            .and_then(|p| Goal::try_from(p).ok())
+        else {
+            return Array::new();
+        };
+        let Ok(mode) = u8::try_from(mode) else {
+            return Array::new();
+        };
+        let Ok(order) = s.go_to(crate::point(destination), purpose, mode) else {
+            return Array::new();
+        };
+        varray![order.revision as i64, order.job.care]
+    }
+
+    #[func]
+    fn stop_moving(&mut self) -> bool {
+        self.core.as_mut().is_some_and(|s| s.stop_moving().is_ok())
+    }
+
+    #[func]
+    fn accept_path(
+        &mut self,
+        revision: i64,
+        path: PackedVector3Array,
+        now: f64,
+        mut rng: Gd<SimulationRandomCore>,
+    ) -> i32 {
+        let Some(s) = self.core.as_mut() else {
+            return -1;
+        };
+        let Ok(revision) = u64::try_from(revision) else {
+            return -1;
+        };
+        if path.len() > 1_000_000 {
+            return -1;
+        }
+        let path = path.as_slice().iter().copied().map(crate::point).collect();
+        match s.accept_path(revision, path, now, &mut rng.bind_mut().core) {
+            Ok(PathFinish::Ignored) => 0,
+            Ok(PathFinish::Following) => 1,
+            Ok(PathFinish::Arrived(Arrival::None)) => 2,
+            Ok(PathFinish::Arrived(Arrival::Prison)) => 3,
+            Ok(PathFinish::Unreachable) => 4,
+            Err(_) => -1,
+        }
+    }
+
+    #[func]
+    fn arrived(&mut self, now: f64, mut rng: Gd<SimulationRandomCore>) -> i32 {
+        let Some(s) = self.core.as_mut() else {
+            return -1;
+        };
+        match s.arrived(now, &mut rng.bind_mut().core) {
+            Ok(Arrival::None) => 0,
+            Ok(Arrival::Prison) => 1,
+            Err(_) => -1,
+        }
+    }
+
     #[func]
     fn load_state(&mut self, values: Array<Variant>) -> bool {
         let Some(s) = state(&values) else {

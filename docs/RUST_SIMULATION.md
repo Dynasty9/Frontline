@@ -55,6 +55,7 @@ graphics, network access or a wall clock.
 | Infantry downtime | `frontline_core` | Calm timers, idle choices, conversation partners, timed speech and laughter extracted with checkpoints and random cursor comparisons; Godot still applies the actor's speech effects |
 | Infantry scheduling | `frontline_core` | Activity/scan/think clocks, interruption priority, dive movement and order/duty gates extracted; Godot still dispatches task callbacks and the remaining decision loop |
 | Retained infantry state | `frontline_core` | A typed actor combines component state, stable links, pending tasks and orders in a validated checkpoint; the live world still owns its Godot soldiers |
+| Retained infantry orders and tactics | `frontline_core` | Actors issue and cancel routes, reject stale path completions, apply arrivals, review shelter, choose cover and derive movement speeds and sectors; the live world still dispatches its Godot soldiers |
 | Complete fighting-position search | `frontline_core` | Candidate enumeration, reachability, protection, occupancy and final scoring run in one call; Godot supplies nearby structure and soldier records |
 | House-entry task phases | `frontline_core` | Stack/door/grenade/entry transitions, deadlines, cooking and room targets extracted with component checkpoints; Godot still owns movement callbacks and squad entry effects |
 | House occupancy and breach selection | `frontline_core` | Floor containment, ordered openings, nearest walkable stack positions and competing squadmates extracted; Godot still supplies spatial candidates, squad contacts and decision timers |
@@ -244,7 +245,7 @@ Component checkpoint headers contain a four-byte component tag, a little-endian
 rules rather than silently continuing with changed arithmetic. The separate
 integer RNG stream remains unchanged.
 
-`native/core/tests/numeric_contract.rs` compares 6,425,557 committed bytes without
+`native/core/tests/numeric_contract.rs` compares 7,753,057 committed bytes without
 tolerances: fixed-tick flight state, support events and RNG cursors, carved water,
 craters, rotated box hits, cover anchors, spherical interpolation and infantry
 movement, infantry cover fire, postures, ammunition, burst recovery, vitals, aiming,
@@ -468,9 +469,27 @@ flag until Rust owns the actors.
 
 The shock fixture compares 92,160 reference steps, including mounted turning,
 blocked terrain, carried casualties and task interruption. The full default suite
-passes 142 tests; 225 core tests pass in debug and release.
+passes 144 tests; 237 core tests pass in debug and release.
 
 ## Infantry tasks and reflexes
+
+Retained actors apply route requests and completions directly. Each request has a
+revision, so a delayed result cannot replace a newer order. Unreachable cover,
+cancelled routes, arrival posture and prison arrivals retain their previous order
+and random draws. The world receives a typed route or prison event; there is no
+Godot callback inside the actor.
+
+Cover review, seeking, flank/rear sectors and movement speed also operate on the
+retained actor. The search uses the existing native terrain, navigation and
+collision world. Its choice changes cover state and issues the next route in one
+operation. Destroyed, moved or burning shelter, suppression, fatigue and crawling
+keep their existing thresholds. The bindings share the scene importer used by
+the live cover search. These actor operations are not yet the live world loop.
+
+Godot comparisons cover 4,096 route-order cases and 10,240 tactical checks, including
+the resulting actor state and random cursor. Core tests also reject invalid input
+without changing the actor or random stream. Exact cross-platform transcripts
+cover both operations and checkpoint continuation.
 
 `Infantry` combines the retained components with identity, catalogue keys, queued
 paths, fighting positions, duty phases, casualty links, house entry, mounted-gun
