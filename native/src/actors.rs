@@ -176,6 +176,101 @@ fn write_squads(
 #[godot_api]
 impl ActorStateCore {
     #[func]
+    fn decide_infantry_cover(
+        &mut self,
+        soldier: u32,
+        anchor: Vector3,
+        input: PackedFloat64Array,
+        mut squad: Option<Gd<crate::squad::SquadStateCore>>,
+        heat: PackedByteArray,
+        deck: PackedByteArray,
+        terrain: Gd<crate::terrain::TerrainCore>,
+        nav: Gd<crate::path_planner::PathPlannerCore>,
+        units: Gd<crate::spatial::SpatialIndexCore>,
+        structures: Gd<crate::spatial::SpatialIndexCore>,
+        mut collision: Gd<crate::collision_index::CollisionIndexCore>,
+        mut rng: Gd<crate::simulation_random::SimulationRandomCore>,
+    ) -> Array<Variant> {
+        use frontline_core::infantry_cover::{CoverIntent, CoverWorld};
+        if input.len() != 5 || ![0.0, 1.0].contains(&input[3]) || ![0.0, 1.0].contains(&input[4]) {
+            return Array::new();
+        }
+        let terrain = terrain.bind();
+        let nav = nav.bind();
+        let units = units.bind();
+        let structures = structures.bind();
+        let (Some(terrain), Some(nav), Some(units), Some(structures)) = (
+            terrain.core.as_ref(),
+            nav.core.as_ref(),
+            units.core.as_ref(),
+            structures.core.as_ref(),
+        ) else {
+            return Array::new();
+        };
+        let mut squad = squad.as_mut().map(Gd::bind_mut);
+        if squad.as_ref().is_some_and(|q| q.core.is_none()) {
+            return Array::new();
+        }
+        let squad = squad.as_mut().and_then(|q| q.core.as_mut());
+        let mut collision = collision.bind_mut();
+        let mut world = CoverWorld {
+            terrain,
+            nav,
+            units,
+            structures,
+            collision: &mut collision.core,
+            heat: heat.as_slice(),
+            deck: deck.as_slice(),
+        };
+        let mut rng = rng.bind_mut();
+        let out = if input[4] != 0.0 {
+            self.core.review_infantry_cover(
+                soldier,
+                input[0],
+                input[2],
+                input[3] != 0.0,
+                squad,
+                &mut world,
+                &mut rng.core,
+            )
+        } else {
+            self.core
+                .seek_infantry_cover(
+                    soldier,
+                    CoverIntent {
+                        now: input[0],
+                        anchor: crate::point(anchor),
+                        radius: input[1],
+                        weapon_range: input[2],
+                        unarmed: input[3] != 0.0,
+                    },
+                    squad,
+                    &mut world,
+                    &mut rng.core,
+                )
+                .map(Some)
+        };
+        match out {
+            Ok(out) => {
+                let route = out.and_then(|o| o.route).map_or_else(Array::new, |r| {
+                    varray![
+                        r.revision as i64,
+                        r.job.id as i64,
+                        vector(r.job.destination),
+                        r.job.care
+                    ]
+                });
+                varray![
+                    out.is_some(),
+                    out.map_or(0, |o| o.search.candidates as i64),
+                    out.map_or(0, |o| o.search.evaluations as i64),
+                    &route
+                ]
+            }
+            Err(_) => Array::new(),
+        }
+    }
+    #[func]
     fn damage_infantry(
         &mut self,
         soldier: u32,

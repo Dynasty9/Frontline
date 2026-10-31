@@ -198,7 +198,7 @@ fn ground_cover_keeps_crater_rubble_woods_and_heat_rules() {
             collision: &mut collision,
             heat: &[],
             deck: &[],
-            structures: &[],
+            structures: &[] as &[Structure],
             squad_claims: &[],
             nearby_claims: &[],
         };
@@ -237,7 +237,7 @@ fn malformed_cover_search_is_rejected_before_geometry_queries() {
         collision: &mut collision,
         heat: &[0; 10],
         deck: &[],
-        structures: &[],
+        structures: &[] as &[Structure],
         squad_claims: &[],
         nearby_claims: &[],
     };

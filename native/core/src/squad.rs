@@ -375,10 +375,17 @@ impl Squad {
         if self.combat_at == now {
             return self.combat;
         }
+        self.combat = self.combat_status(now);
         self.combat_at = now;
-        self.combat = self.known.iter().any(|k| now - k.report.time < 8.0)
-            || self.heard.last().is_some_and(|r| now - r.time < 6.0);
         self.combat
+    }
+    pub fn combat_status(&self, now: f64) -> bool {
+        if self.combat_at == now {
+            self.combat
+        } else {
+            self.known.iter().any(|k| now - k.report.time < 8.0)
+                || self.heard.last().is_some_and(|r| now - r.time < 6.0)
+        }
     }
     pub fn tactical(&self, now: f64) -> bool {
         self.plan != 0

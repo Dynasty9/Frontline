@@ -36,6 +36,156 @@ fn block(out: &mut Vec<u8>, bytes: &[u8]) {
 }
 
 #[test]
+fn retained_infantry_cover_is_identical_across_platforms() {
+    use frontline_core::actors::{Actor, Actors};
+    use frontline_core::cover::{Anchor, AnchorKind};
+    use frontline_core::infantry::Infantry as Soldier;
+    use frontline_core::infantry_cover::{CoverIntent, CoverWorld};
+    use frontline_core::spatial::{SpatialIndex, STRUCTURE_CELL, UNIT_CELL};
+    use frontline_core::squad::{Report, Squad};
+    use frontline_core::structure::Structure;
+    let mut bytes = Vec::new();
+    for trial in 0..96 {
+        let mut s = Soldier::default();
+        s.identity.id = 1;
+        s.identity.unit = "rifleman".into();
+        s.identity.squad = 9;
+        s.motion.position = Vector3::new((trial % 7) as f32 * 0.37 - 1.1, 0.0, -1.13);
+        s.orders.hold_face = Vector3::Z;
+        s.orders.detached = trial % 5 == 0;
+        s.vitals.suppression = (trial % 50) as f64;
+        let mut mate = s.clone();
+        mate.identity.id = 2;
+        mate.motion.position = Vector3::new(-2.0, 0.0, 0.0);
+        mate.cover.position = mate.motion.position;
+        mate.cover.at_cover = trial % 3 == 0;
+        let wall = Structure {
+            id: 10,
+            kind: "low_wall".into(),
+            variant: trial % 3,
+            built: trial % 11 != 0,
+            burn: if trial % 13 == 0 { 0.4 } else { 0.0 },
+            radius: 8.0,
+            anchors: (-4..5)
+                .map(|x| Anchor {
+                    position: Vector3::new(x as f32 * 0.83, 0.0, 0.0),
+                    normal: Vector3::Z,
+                    height: 1.2,
+                    kind: AnchorKind::Over,
+                })
+                .collect(),
+            ..Default::default()
+        };
+        let mut actors = Actors::from_entries(
+            100,
+            vec![
+                Actor::Soldier(Box::new(s)),
+                Actor::Soldier(Box::new(mate)),
+                Actor::Structure(Box::new(wall)),
+            ],
+        )
+        .unwrap();
+        let mut squad = Squad {
+            id: 9,
+            members: vec![1, 2],
+            heard: vec![Report {
+                position: Vector3::Z * 20.0,
+                time: 9.0,
+            }],
+            ..Default::default()
+        };
+        let mut units = SpatialIndex::new(UNIT_CELL).unwrap();
+        actors.rebuild_units(&mut units).unwrap();
+        if trial % 4 == 0 {
+            units.insert(2, Vector3::X * 100.0, 0.0).unwrap();
+        }
+        let mut structures = SpatialIndex::new(STRUCTURE_CELL).unwrap();
+        structures.insert(10, Vector3::ZERO, 8.0).unwrap();
+        let mut collision = CollisionWorld::default();
+        collision.replace(
+            10,
+            &[BoxShape {
+                body: 10,
+                shape: 0,
+                center: Vector3::new(0.0, 0.6, 1.0),
+                basis: Mat3::IDENTITY,
+                half: Vector3::new(8.0, 0.6, 0.2),
+            }],
+        );
+        let mut terrain = Terrain::blank(64).unwrap();
+        if trial % 7 == 0 {
+            for i in 1900..1950 {
+                terrain.layers[frontline_core::terrain::COVER][i] = 2;
+                terrain.layers[frontline_core::terrain::RUBBLE][i] = 1;
+            }
+        }
+        let nav = PathPlanner::new(64).unwrap();
+        let mut rng = SimulationRandom::new(trial as u64 + 37191);
+        for step in 0..8 {
+            let mut context = CoverWorld {
+                terrain: &terrain,
+                nav: &nav,
+                collision: &mut collision,
+                heat: &[],
+                deck: &[],
+                units: &units,
+                structures: &structures,
+            };
+            let now = 10.0 + step as f64 * 0.83;
+            let q = if trial % 3 != 0 {
+                Some(&mut squad)
+            } else {
+                None
+            };
+            let out = if step % 2 == 0 {
+                Some(
+                    actors
+                        .seek_infantry_cover(
+                            1,
+                            CoverIntent {
+                                now,
+                                anchor: Vector3::new(0.37, 0.0, -0.19),
+                                radius: (trial % 4) as f64 * 3.7,
+                                weapon_range: 50.0,
+                                unarmed: trial % 5 == 0,
+                            },
+                            q,
+                            &mut context,
+                            &mut rng,
+                        )
+                        .unwrap(),
+                )
+            } else {
+                actors
+                    .review_infantry_cover(1, now, 50.0, trial % 5 == 0, q, &mut context, &mut rng)
+                    .unwrap()
+            };
+            bytes.push(u8::from(out.is_some()));
+            if let Some(out) = out {
+                bytes.extend_from_slice(&(out.search.candidates as u32).to_le_bytes());
+                bytes.extend_from_slice(&(out.search.evaluations as u32).to_le_bytes());
+                if let Some(route) = out.route {
+                    point(&mut bytes, route.job.destination);
+                    bytes.extend_from_slice(&route.job.care.to_le_bytes());
+                }
+            }
+            bytes.extend_from_slice(&rng.state().to_le_bytes());
+            if step == 3 || step == 7 {
+                block(&mut bytes, &actors.checkpoint().unwrap());
+                block(&mut bytes, &squad.checkpoint().unwrap());
+                block(&mut bytes, &collision.checkpoint());
+            }
+            if step == 3 {
+                actors = Actors::restore(&actors.checkpoint().unwrap()).unwrap();
+                squad = Squad::restore(&squad.checkpoint().unwrap()).unwrap();
+                collision = CollisionWorld::restore(&collision.checkpoint()).unwrap();
+            }
+        }
+    }
+    golden("infantry_cover", &bytes);
+}
+
+#[test]
 fn retained_infantry_effects_are_identical_across_platforms() {
     use frontline_core::actors::{Actor, Actors};
     use frontline_core::infantry::Infantry as Soldier;
@@ -3460,7 +3610,7 @@ fn retained_infantry_tactics_are_identical_across_platforms() {
             half: Vector3::new(8.0, 0.6, 0.2),
         }],
     );
-    let structures = [Structure {
+    let structures: [Structure; 1] = [Structure {
         id: 10,
         built: true,
         burn: 0.0,
@@ -4253,7 +4403,7 @@ fn cover_search_is_identical_across_platforms() {
             *value = u8::from((i + case) % 17 == 0);
         }
         assert!(nav.load_cells(&kinds, &[0; 4096], &[0; 4096]));
-        let structures = [Structure {
+        let structures: [Structure; 1] = [Structure {
             id: 10,
             built: case % 13 != 0,
             burn: if case % 17 == 0 { 1.0 } else { 0.0 },

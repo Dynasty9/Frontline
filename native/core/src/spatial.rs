@@ -173,13 +173,20 @@ impl SpatialIndex {
         p: Vector3,
         r: f64,
     ) -> Result<impl Iterator<Item = u32> + '_, &'static str> {
+        Ok(self.candidate_cells(p, r)?.map(|(_, id)| id))
+    }
+    pub fn candidate_cells(
+        &self,
+        p: Vector3,
+        r: f64,
+    ) -> Result<impl Iterator<Item = ((i32, i32), u32)> + '_, &'static str> {
         let ((x0, z0), (x1, z1)) = self.bounds(p, r)?;
         // Visit occupied cells in the game's x-then-z order without scanning a huge empty rectangle.
         Ok(self
             .cells
             .range((x0, i32::MIN)..=(x1, i32::MAX))
             .filter(move |(&(.., z), _)| z >= z0 && z <= z1)
-            .flat_map(|(_, ids)| ids.iter().copied()))
+            .flat_map(|(&cell, ids)| ids.iter().map(move |&id| (cell, id))))
     }
     pub fn at(&self, p: Vector3) -> Result<&[u32], &'static str> {
         let (key, _) = self.bounds(p, 0.0)?;

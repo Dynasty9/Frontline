@@ -7,12 +7,12 @@ use crate::terrain::{Terrain, COVER, CRATER, RUBBLE, SOLID, TRENCH, WOODS};
 use crate::vector::{normalized, Vector3};
 
 #[derive(Clone, Debug)]
-pub struct Structure {
+pub struct Structure<A = Vec<Anchor>> {
     pub id: u64,
     pub built: bool,
     pub burn: f64,
     pub material: u8,
-    pub positions: Vec<Anchor>,
+    pub positions: A,
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -50,13 +50,13 @@ pub struct Input {
     pub current_anchor: i32,
 }
 
-pub struct Scene<'a> {
+pub struct Scene<'a, A = Vec<Anchor>> {
     pub terrain: &'a Terrain,
     pub navigation: &'a PathPlanner,
     pub collision: &'a mut CollisionWorld,
     pub heat: &'a [u8],
     pub deck: &'a [u8],
-    pub structures: &'a [Structure],
+    pub structures: &'a [Structure<A>],
     pub squad_claims: &'a [SquadClaim],
     pub nearby_claims: &'a [NearbyClaim],
 }
@@ -95,7 +95,7 @@ fn flat(p: Vector3) -> Vector3 {
     Vector3::new(p.x, 0.0, p.z)
 }
 
-impl Scene<'_> {
+impl<A: AsRef<[Anchor]>> Scene<'_, A> {
     fn valid(&self) -> bool {
         let heat_side = self.terrain.n.div_ceil(4) + 1;
         self.navigation.side() == self.terrain.n
@@ -105,15 +105,15 @@ impl Scene<'_> {
             && self
                 .structures
                 .iter()
-                .map(|s| s.positions.len())
+                .map(|s| s.positions.as_ref().len())
                 .sum::<usize>()
                 <= 1_000_000
             && self.structures.iter().all(|s| {
                 id(s.id)
                     && s.burn.is_finite()
                     && s.material <= 3
-                    && s.positions.len() <= 100_000
-                    && s.positions.iter().all(|p| {
+                    && s.positions.as_ref().len() <= 100_000
+                    && s.positions.as_ref().iter().all(|p| {
                         point(p.position)
                             && point(p.normal)
                             && p.height.is_finite()
@@ -181,10 +181,10 @@ impl Scene<'_> {
     }
 }
 
-pub fn find(
+pub fn find<A: AsRef<[Anchor]>>(
     input: Input,
     threats: &[Vector3],
-    scene: &mut Scene<'_>,
+    scene: &mut Scene<'_, A>,
 ) -> Result<SearchResult, &'static str> {
     if !id(input.id)
         || !(-1..=1).contains(&input.team)
@@ -217,7 +217,7 @@ pub fn find(
         if !s.built || s.burn > 0.0 {
             continue;
         }
-        for (ai, a) in s.positions.iter().enumerate() {
+        for (ai, a) in s.positions.as_ref().iter().enumerate() {
             let p = a.position;
             let distance = f64::from(flat(p - input.anchor).length_squared());
             if distance <= r2 && !scene.hot(p) {
@@ -270,7 +270,7 @@ pub fn find(
         }
         let c = candidates[index];
         let normal = c.structure.map_or(Vector3::ZERO, |(si, ai)| {
-            scene.structures[si].positions[ai].normal
+            scene.structures[si].positions.as_ref()[ai].normal
         });
         if input.grouped {
             let approach = c.position - normal * 0.8;
@@ -284,7 +284,7 @@ pub fn find(
         let ground = scene.ground(c.position);
         let (choice, stack) = if let Some((si, ai)) = c.structure {
             let s = &scene.structures[si];
-            let a = s.positions[ai];
+            let a = s.positions.as_ref()[ai];
             if scene.navigation.kind_at(c.position, false) == 3
                 && scene
                     .navigation

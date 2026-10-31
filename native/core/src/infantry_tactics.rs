@@ -171,10 +171,10 @@ impl Infantry {
         Ok(false)
     }
 
-    pub fn seek_cover(
+    pub fn seek_cover<A: AsRef<[crate::cover::Anchor]>>(
         &mut self,
         request: CoverRequest<'_>,
-        scene: &mut Scene<'_>,
+        scene: &mut Scene<'_, A>,
         rng: &mut SimulationRandom,
     ) -> Result<CoverOrder, &'static str> {
         if !self.valid()
