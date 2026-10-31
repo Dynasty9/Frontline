@@ -24,6 +24,18 @@ pub struct Weapon {
     pub airburst: bool,
 }
 
+impl Weapon {
+    pub(crate) fn valid(self) -> bool {
+        nonnegative(self.accuracy)
+            && nonnegative(self.range)
+            && self.range > 0.0
+            && nonnegative(self.damage)
+            && self.penetration <= 3
+            && nonnegative(self.drone_accuracy)
+            && self.explosive_radius.is_none_or(nonnegative)
+    }
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum TargetKind {
     Infantry,
@@ -219,13 +231,7 @@ impl Bullet {
             || !point(input.aim)
             || !nonnegative(input.accuracy_multiplier)
             || input.soldier_suppression.is_some_and(|v| !nonnegative(v))
-            || !nonnegative(w.accuracy)
-            || !nonnegative(w.range)
-            || w.range == 0.0
-            || !nonnegative(w.damage)
-            || w.penetration > 3
-            || !nonnegative(w.drone_accuracy)
-            || w.explosive_radius.is_some_and(|r| !nonnegative(r))
+            || !w.valid()
             || input.excluded.len() > 4096
             || input.excluded.iter().any(|id| *id < 0)
             || input

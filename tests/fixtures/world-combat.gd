@@ -11,9 +11,12 @@ class CombatDrone extends Drone:
 class ShotWorld extends FireWorld:
 	var bullet_fx: Array = []
 	var cries: Array = []
+	var spoken: Array = []
 	func say(entity: Entity, text: String) -> void:
 		var cue := ["MEDIC!", "I'm hit! Medic!", "Help me!", "Medic! Over here!", "Argh! I'm hit!", "Somebody help!"].find(text)
 		if cue >= 0: cries.append([entity.eid,cue])
+		if text != "Man down!" and not text.ends_with(" is hit!") and text != "We've got wounded!" and not (text.begins_with("Medic! ") and text.ends_with(" is down!")):
+			spoken.append([entity.eid,text])
 	func fx_event(event: Array) -> void:
 		if event[0] == Fx.SHOT: bullet_fx.append(["shot",event[1],event[2],event[3],event[4],event[5]])
 		elif event[0] == Fx.RICOCHET: bullet_fx.append(["ricochet",event[1],event[2]])
@@ -39,6 +42,7 @@ func blast_ledger_equal(expected: Array, actual: Array) -> bool:
 func run(mode: int) -> void:
 	var shoot := mode == 1
 	var wounded := mode == 2
+	var fighting := mode == 3
 	MapDims.N = 64; MapDims.SIZE = 64.0; MapDims.HALF = 32.0; MapDims.BIOME = 64; Defs.MAP_HALF = 32.0
 	Nav.N = 64; Nav.H = 32.0; HNav.C = 16; HNav.NC = 4; HNav.NCC = 16; HNav._corner = HNav._corners()
 	TerrainMap.N = 64; TerrainMap.H = 32.0; TerrainMap.DN = 128
@@ -59,6 +63,13 @@ func run(mode: int) -> void:
 	var infantry := preload("res://tests/fixtures/infantry-blast.gd").new()
 	var birth := preload("res://tests/fixtures/vehicle-loss.gd").new()
 	var actor_compare := preload("res://tests/fixtures/actors.gd").new()
+	var firing := preload("res://tests/fixtures/infantry-fire.gd").new()
+	var weapons := []
+	for key: String in Defs.WEAPONS:
+		var weapon: Dictionary = Defs.WEAPONS[key]
+		if not weapon.has("burst"): continue
+		var burst: Vector2i = weapon.burst
+		weapons.append([key,PackedFloat64Array([weapon.ammo,weapon.get("mag",30),weapon.get("reload",2.0),burst.x,burst.y,weapon.acc,weapon.range,weapon.dmg,int(weapon.get("aa",false)),Cover.pen_class(weapon),0.08 if weapon.snd == "hmg" else 0.045 if weapon.snd == "mg" else 0.03,weapon.get("he",-1.0),int(weapon.get("airburst",false)),weapon.interval,weapon.supp,int(weapon.get("ap",false))]),String(weapon.snd)])
 	var seen := {}
 	for trial in 64:
 		var w := ShotWorld.new(); w.srv = true; w.has_view = false; w.settings = {"rust_infantry":false}
@@ -66,6 +77,7 @@ func run(mode: int) -> void:
 		w.combat = Combat.new(w); w.combat.enable_native_collision(); w.fires = Fires.new(w)
 		w.rules = Rules.new(w); w.rules.upgrades = [{},{}]; w.battle = BattleStats.new(w); w._deferred_effects = DeferredEffects.new(false)
 		if shoot and trial % 3 == 0: w.rules.upgrades = [{"optics":true},{"optics":true}]
+		if fighting and trial % 3 == 0: w.rules.upgrades = [{"optics":true},{"optics":true}]
 		if wounded and trial % 3 < 2:
 			var key := "medicine" if trial % 3 == 0 else "optics"
 			w.rules.upgrades[0][key] = true; w.rules.upgrades[1][key] = true
@@ -90,6 +102,7 @@ func run(mode: int) -> void:
 			if shoot: v.hp = 2.0 if trial % 3 == 0 else 40.0
 			var passenger: Soldier = w.entities[index + 1]; passenger.riding = v; passenger.life = Soldier.Life.HIDDEN; v.passengers.append(passenger)
 		var kinds := ["depot","fob","fob","town","house_wall","ammo_cache","tree","car","crates","wire","camo_net","tunnel","mg_nest","barracks"]
+		if fighting and trial % 8 in [3,4]: kinds.append("low_wall")
 		for index in kinds.size():
 			var st := CombatBuilding.new(); st.world = w; st.srv = true; st.eid = 100 + index; st.skind = kinds[index]
 			st.team = 0 if index < 4 or index > 10 else -1; st.owner_peer = 7 if st.team == 0 else 0
@@ -97,6 +110,7 @@ func run(mode: int) -> void:
 			st.yaw = (trial % 7) * 0.137; st.rotation.y = st.yaw; st.sname = "Combat base %d" % index
 			st.completed_order = index; st.supply = 120.0; st.door_shut = index == 4; st.variant = 2 if index == 4 else trial % 2
 			if index == 4: st.size = Vector3(7.3,2.3,1.0)
+			if index == 14: st.position = Vector3(14,0,-18); st.yaw = 0.0; st.rotation.y = 0.0; st.size = Vector3(7.2,0.8,0.35)
 			w.add_child(st); w._register(st); st.on_spawned(); w._shash_add(st); w.terrain.structure_changed(st); w.combat.dirty_collision(st.eid)
 			if index > 0: st.hp = minf(st.hp,90.0 if trial % 2 else 500.0)
 			if index == 0: w.rules.depots[0] = st
@@ -118,10 +132,35 @@ func run(mode: int) -> void:
 				s.goal_kind = "crawl"; s.goal = s.position + Vector3(-2,0,3)
 				s.path = PackedVector3Array([s.position,s.goal]); s.path_i = 1
 			w._rebuild_uhash()
+		if fighting:
+			var s: Soldier = w.entities[3]
+			s.position = Vector3(14,0,-18); w.entities[4].position = Vector3(14,0,-8)
+			w.entities[5].position = Vector3(12,0,-19); w.entities[7].position = Vector3(12,0,-20)
+			s.target = w.entities[4]; s.vis_targets = [s.target]; s.last_shot_t = -10.0
+			s.wdef = Defs.WEAPONS[["rifle","smg","lmg","ak"][(trial >> 3) % 4]]
+			s.mag = trial % 9; s.reserve = 23; s.stamina = 0.2 + 0.1 * (trial % 8)
+			s.suppression = [0.0,24.0,65.0,91.0][trial % 4]
+			s._sep = Vector3(0.1,0,-0.2) if trial % 3 == 0 else Vector3.ZERO
+			if trial % 8 in [1,2]:
+				s.goal_kind = "slot"; s.goal = s.position + Vector3(-4,0,3)
+				s.path = PackedVector3Array([s.position,s.goal]); s.path_i = 1; s.move_mode = trial % 3
+			elif trial % 8 in [3,4]:
+				var wall: Structure = w.entities[114]
+				s.cover_st = wall; s.cover_ai = 0; s.position = wall.anc_p[0]; s.cover_pos = s.position
+				s.at_cover = true; s.cover_type = Soldier.Cov.LOW; s.cover_h = wall.anc_h[0]; s.cover_mat = Cover.anchor_mat(wall,0)
+				s.cover_n = wall.anc_n[0]; s.cover_threat = s.cover_n; s.target.position = s.position + s.cover_n * 9.0
+				s.suppression = 42.0; s.mag = 30; s.reserve = 0
+				s.peek_up = true; s.peek_t = 0.2; s._peek_from = 98.0; s._up_supp = 0.0
+			elif trial % 8 in [5,6]:
+				s.task = "escort"; s.task_ent = w.entities[7]; s.task_ent2 = w.entities[5]
+				s.task_ent2.task = "rescue" if trial % 8 == 5 else ""; s.task_ent2.task_ent = s.task_ent
+			elif trial % 8 == 7:
+				s.target = null; s.vis_targets.clear(); s.suppression = 0.0; s.calm_t = 12.0
+			w._rebuild_uhash()
 		var types := PackedByteArray(); var blocks := []; var vehicles := []; var men := []; var buildings := []
 		for e: Entity in w.entities.values():
 			if e is Soldier:
-				assert(soldier.load_state(InfantryState.capture(e))); types.append(0); blocks.append(soldier.checkpoint())
+				assert(soldier.load_state(InfantryState.capture(e)),"initial soldier %d/%d" % [trial,e.eid]); types.append(0); blocks.append(soldier.checkpoint())
 			elif e is Vehicle:
 				assert(vehicle.load_state(VehicleState.capture(e))); types.append(2); blocks.append(vehicle.checkpoint())
 				vehicles.append([e.eid,e.display_name(),e.base(),e.is_heli(),e.is_auto(),int(e.vdef.get("crew",-1)),float(e.vdef.get("cost",0)),false,false,e.weight(),e._hull_size(),int(e.vdef.armor),float(e._toss_class()[0]),e.hit_factor()])
@@ -141,13 +180,14 @@ func run(mode: int) -> void:
 		for q: Squad in w.squads.values():
 			var qc: SquadStateCore = ClassDB.instantiate("SquadStateCore"); assert(qc.load_state(SquadState.capture(q))); qs.append(qc)
 		var impacts := []
+		var chat := PackedFloat64Array(w.last_chat)
 		var next: int = w.next_sid
 		var initial: RefCounted = ClassDB.instantiate("VehicleLossWorldCore")
 		assert(combat.gunfire_restore(initial.gunfire_checkpoint()))
-		for step in (12 if shoot or wounded else 3):
+		for step in (12 if shoot or wounded or fighting else 3):
 			if wounded and w.entities[3].life != Soldier.Life.DOWNED: break
 			var dt: float = [0.05,0.1,0.25,0.5][trial % 4]
-			if wounded: w.time += dt
+			if wounded or fighting: w.time += dt
 			elif shoot: w.time += 0.17
 			elif step == 2: w.time += 1.6
 			var config := [next,w.time,w.town_rect,[PackedStringArray(Defs.NAMES[0]),PackedStringArray(Defs.NAMES[1])],[birth.loadout("crewman"),birth.loadout("r_crewman")],vehicles,men,buildings]
@@ -157,7 +197,23 @@ func run(mode: int) -> void:
 			if trial % 5: data.dmg = 180.0 if step == 0 else 1200.0
 			var input := [p,data.get("dmg"),data.radius,data.fling,data.size,data.at,0.3,data.top,null,1.0,1.0,InfantryState.entity_id(source),8,1]
 			var result: Array
-			if wounded:
+			if fighting:
+				var s: Soldier = w.entities[3]
+				result = combat.advance_fighting(actors,geometry,units,qs,fires,ledger,deferred,visibility,random._backend,config,[s.eid,dt,weapons,firing.gun_profile(s.mounted) if s.mounted else PackedFloat64Array(),chat,w.rules.has_upgrade(s.team,"optics")],network,impacts)
+				assert(result.size() == 7,"fighting result %d/%d" % [trial,step])
+				w.bullet_fx.clear(); w.spoken.clear()
+				if s.task == "escort": s._escort_tick(dt)
+				else: s._fight_tick_work(dt)
+				assert(result[4] == w.bullet_fx,"fighting bullet effects %d/%d" % [trial,step])
+				assert(result[5] == w.spoken,"fighting speech %d/%d: %s / %s" % [trial,step,result[5],w.spoken])
+				chat = result[6]; assert(chat == PackedFloat64Array(w.last_chat),"fighting chat %d/%d" % [trial,step])
+				assert(combat.gunfire_reveals() == w.combat._reveal,"fighting reveal %d/%d" % [trial,step])
+				assert(combat.gunfire_restore(combat.gunfire_checkpoint()))
+				if not w.bullet_fx.is_empty(): seen.shot = true
+				if s.reload_t > 0.0: seen.reload = true
+				if s.task == "escort": seen.escort = true
+				if s.idle_act != 0: seen.idle = true
+			elif wounded:
 				var s: Soldier = w.entities[3]
 				result = combat.advance_wounded(actors,geometry,units,qs,fires,ledger,deferred,visibility,random._backend,config,[s.eid,dt,w.rules.has_upgrade(s.team,"medicine"),w.rules.has_upgrade(s.team,"optics")],network,impacts)
 				assert(result.size() == 6,"wounded result %d/%d" % [trial,step])
@@ -183,7 +239,7 @@ func run(mode: int) -> void:
 			else:
 				result = combat.explode(actors,geometry,units,qs,fires,ledger,deferred,visibility,random._backend,config,input,network,impacts) if step < 2 else combat.flush_deferred(actors,geometry,units,qs,fires,ledger,deferred,visibility,random._backend,config,network,impacts)
 			var label := "blast %d/%d" % [trial,step]
-			assert(result.size() == (6 if wounded else 5 if shoot else 4),"combat result " + label)
+			assert(result.size() == (7 if fighting else 6 if wounded else 5 if shoot else 4),"combat result " + label)
 			if mode == 0:
 				if step < 2: w.combat.explode(p,data)
 				else: w._run_deferred_effects()
@@ -226,7 +282,7 @@ func run(mode: int) -> void:
 			for retained in [actors,geometry,units,ledger,deferred,visibility,fires,network]: assert(retained.restore(retained.checkpoint()))
 			w.combat.finish_tick(); geometry.finish_tick(); check_geometry(w,geometry,label + " end")
 		w.free()
-	for key in (["killed","pistol_while_down","crawl_to_cover"] if wounded else ["penetration","through_hit","ricochet","vehicle_destroyed","drone_shot_down"] if shoot else ["vehicle_destroyed","drone_shot_down","door_kicked","cache_cook_off","at_hit"]): assert(seen.has(key),"unexercised combat " + key)
-	compare.free(); infantry.free(); birth.free(); actor_compare.free()
-	print("WOUNDED_WORLD passed states=" if wounded else "BULLET_WORLD passed states=" if shoot else "WORLD_COMBAT passed states=",checks)
+	for key in (["shot","reload","escort","idle","shift_along"] if fighting else ["killed","pistol_while_down","crawl_to_cover"] if wounded else ["penetration","through_hit","ricochet","vehicle_destroyed","drone_shot_down"] if shoot else ["vehicle_destroyed","drone_shot_down","door_kicked","cache_cook_off","at_hit"]): assert(seen.has(key),"unexercised combat " + key)
+	compare.free(); infantry.free(); birth.free(); actor_compare.free(); firing.free()
+	print("FIGHTING_WORLD passed states=" if fighting else "WOUNDED_WORLD passed states=" if wounded else "BULLET_WORLD passed states=" if shoot else "WORLD_COMBAT passed states=",checks)
 	get_tree().quit()

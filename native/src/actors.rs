@@ -318,7 +318,7 @@ fn prison_events(events: Vec<frontline_core::infantry_prison_owned::Event>) -> A
         })
         .collect()
 }
-fn mounted_gun(
+pub(crate) fn mounted_gun(
     a: &PackedFloat64Array,
 ) -> Result<Option<frontline_core::infantry_fire::MountedGun>, ()> {
     if a.is_empty() {

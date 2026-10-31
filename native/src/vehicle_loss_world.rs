@@ -13,6 +13,8 @@ use frontline_core::actors::Actor;
 use frontline_core::bullet::Weapon;
 use frontline_core::bullet_world::{Gunfire, Shot};
 use frontline_core::fires::{BuildingProfile, ManProfile};
+use frontline_core::infantry_fight_world::{self as fighting, Profile as FightingProfile};
+use frontline_core::infantry_fire::FireProfile;
 use frontline_core::infantry_wounded_world::{self as wounded, Input as WoundedInput};
 use frontline_core::squad::Report;
 use frontline_core::squad_movement;
@@ -96,6 +98,7 @@ enum Operation {
     Deferred(Gd<SupplyNetworkCore>, Vec<Report>),
     Bullet(Array<Variant>, Gd<SupplyNetworkCore>, Vec<Report>),
     Wounded(u32, WoundedInput, Gd<SupplyNetworkCore>, Vec<Report>),
+    Fighting(Array<Variant>, Gd<SupplyNetworkCore>, Vec<Report>),
 }
 #[derive(GodotClass)]
 #[class(base=RefCounted, init)]
@@ -332,6 +335,40 @@ impl VehicleLossWorldCore {
         true
     }
     #[func]
+    fn advance_fighting(
+        &mut self,
+        actors: Gd<ActorStateCore>,
+        geometry: Gd<WorldGeometryCore>,
+        units: Gd<SpatialIndexCore>,
+        nodes: Array<Gd<SquadStateCore>>,
+        fires: Gd<FiresCore>,
+        battle: Gd<BattleStatsCore>,
+        deferred: Gd<DeferredEffectsCore>,
+        visibility: Gd<VisibilityCore>,
+        rng: Gd<SimulationRandomCore>,
+        config: Array<Variant>,
+        input: Array<Variant>,
+        network: Gd<SupplyNetworkCore>,
+        impacts: Array<Variant>,
+    ) -> Array<Variant> {
+        let Some(reports) = read_impacts(&impacts) else {
+            return Array::new();
+        };
+        self.run(
+            actors,
+            geometry,
+            units,
+            nodes,
+            fires,
+            battle,
+            deferred,
+            visibility,
+            rng,
+            config,
+            Operation::Fighting(input, network, reports),
+        )
+    }
+    #[func]
     fn gunfire_reveals(&self) -> VarDictionary {
         let mut out = VarDictionary::new();
         for (id, time) in self.gunfire.reveals() {
@@ -544,6 +581,7 @@ impl VehicleLossWorldCore {
         };
         let mut reports = None;
         let mut cries: Option<Array<Variant>> = None;
+        let mut chat_state: Option<PackedFloat64Array> = None;
         let armor = |v: &frontline_core::vehicle::Vehicle| {
             let p = &vehicles[&v.id];
             Armor {
@@ -555,6 +593,171 @@ impl VehicleLossWorldCore {
             }
         };
         let result = match operation {
+            Operation::Fighting(input, mut network, mut impacts) => {
+                let parse = || -> Option<_> {
+                    if input.len() != 6 {
+                        return None;
+                    }
+                    let id: u32 = read(&input, 0)?;
+                    let dt: f64 = read(&input, 1)?;
+                    let rows: Array<Variant> = read(&input, 2)?;
+                    if rows.len() > 1024 {
+                        return None;
+                    }
+                    let gun = crate::actors::mounted_gun(&read(&input, 3)?).ok()?;
+                    let chat: PackedFloat64Array = read(&input, 4)?;
+                    if chat.len() != 2 {
+                        return None;
+                    }
+                    let optics: bool = read(&input, 5)?;
+                    let mut profiles = BTreeMap::new();
+                    for value in rows.iter_shared() {
+                        let row: Array<Variant> = value.try_to().ok()?;
+                        if row.len() != 3 {
+                            return None;
+                        }
+                        let key: GString = read(&row, 0)?;
+                        let values: PackedFloat64Array = read(&row, 1)?;
+                        let sound: GString = read(&row, 2)?;
+                        let v = values.as_slice();
+                        if v.len() != 16
+                            || v.iter().any(|v| !v.is_finite())
+                            || [0, 1, 3, 4].into_iter().any(|i| {
+                                v[i].fract() != 0.0 || !(0.0..=1_000_000.0).contains(&v[i])
+                            })
+                            || [8, 12, 15].into_iter().any(|i| v[i] != 0.0 && v[i] != 1.0)
+                            || v[9].fract() != 0.0
+                            || !(0.0..=3.0).contains(&v[9])
+                        {
+                            return None;
+                        }
+                        let fire = FireProfile {
+                            weapon: frontline_core::infantry_weapon::Weapon {
+                                ammunition: v[0] as i32,
+                                magazine: v[1] as i32,
+                                reload_time: v[2],
+                            },
+                            burst_min: v[3] as i32,
+                            burst_max: v[4] as i32,
+                        };
+                        let bullet = Weapon {
+                            accuracy: v[5],
+                            range: v[6],
+                            damage: v[7],
+                            anti_air: v[8] != 0.0,
+                            penetration: v[9] as u8,
+                            drone_accuracy: v[10],
+                            explosive_radius: (v[11] != -1.0).then_some(v[11]),
+                            airburst: v[12] != 0.0,
+                        };
+                        let sound = sound.to_string();
+                        if !(FightingProfile {
+                            fire,
+                            bullet,
+                            interval: v[13],
+                            suppression: v[14],
+                            sound: &sound,
+                            optics,
+                            piercing: v[15] != 0.0,
+                        })
+                        .valid()
+                        {
+                            return None;
+                        }
+                        if profiles
+                            .insert(
+                                key.to_string(),
+                                (fire, bullet, v[13], v[14], sound, v[15] != 0.0),
+                            )
+                            .is_some()
+                        {
+                            return None;
+                        }
+                    }
+                    Some((id, dt, gun, [chat[0], chat[1]], optics, profiles))
+                };
+                let Some((id, dt, gun, mut chat, optics, profiles)) = parse() else {
+                    return Array::new();
+                };
+                let result = context.advance_fighting(
+                    id,
+                    dt,
+                    gun,
+                    &mut chat,
+                    &|s| {
+                        let key = if s.identity.mounted_weapon.is_empty() {
+                            &s.identity.weapon
+                        } else {
+                            &s.identity.mounted_weapon
+                        };
+                        profiles.get(key).map(|p| FightingProfile {
+                            fire: p.0,
+                            bullet: p.1,
+                            interval: p.2,
+                            suppression: p.3,
+                            sound: &p.4,
+                            optics,
+                            piercing: p.5,
+                        })
+                    },
+                    &mut self.gunfire,
+                    &mut network.bind_mut().core,
+                    &mut impacts,
+                    &armor,
+                    &|v| vehicles[&v.id].hit,
+                );
+                reports = Some(impacts);
+                chat_state = Some(PackedFloat64Array::from(chat.as_slice()));
+                result.map(|events| {
+                    cries = Some(
+                        events
+                            .iter()
+                            .filter_map(|e| match e {
+                                fighting::Event::Speech { id, text } => {
+                                    Some(varray![*id, &GString::from(text.as_str())].to_variant())
+                                }
+                                fighting::Event::World(world_combat::Event::InfantryHit {
+                                    id,
+                                    hit,
+                                }) => hit.speech.map(|cue| {
+                                    varray![
+                                        *id,
+                                        ["I'm hit!", "Argh!", "Took one!", "Hit! I'm hit!"]
+                                            [cue as usize]
+                                    ]
+                                    .to_variant()
+                                }),
+                                fighting::Event::World(world_combat::Event::Speech(speech)) => {
+                                    Some(
+                                        varray![
+                                            speech.soldier,
+                                            [
+                                                "I'm pinned!",
+                                                "Can't move!",
+                                                "Heads down!",
+                                                "They've got us pinned!"
+                                            ][speech.cue as usize]
+                                        ]
+                                        .to_variant(),
+                                    )
+                                }
+                                _ => None,
+                            })
+                            .collect(),
+                    );
+                    events
+                        .into_iter()
+                        .filter_map(|e| match e {
+                            fighting::Event::World(e) => Some(e),
+                            fighting::Event::Movement {
+                                event: frontline_core::infantry_travel_owned::Event::Stat(s),
+                                ..
+                            } => Some(world_combat::Event::Stat(s)),
+                            _ => None,
+                        })
+                        .collect()
+                })
+            }
             Operation::Wounded(id, input, mut network, mut impacts) => {
                 let result = context.advance_wounded(
                     id,
@@ -749,6 +952,9 @@ impl VehicleLossWorldCore {
         }
         if let Some(cries) = cries {
             out.push(&cries.to_variant());
+        }
+        if let Some(chat) = chat_state {
+            out.push(&chat.to_variant());
         }
         out
     }

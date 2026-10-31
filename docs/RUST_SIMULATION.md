@@ -39,7 +39,7 @@ graphics, network access or a wall clock.
 | Entity state and full actor updates | Rust | `world.gd`, `entity.gd` and entity scripts |
 | Infantry route movement | `frontline_core` | Route progress, vaulting, sliding, doors and ground caches extracted and reference-tested; the per-soldier adapter remains test-only because it is slower than GDScript |
 | Stationary infantry movement | `frontline_core` | Neighbor separation, terrain settling, cover alignment and watch-sector/mounted turns extracted; the adapter remains test-only pending actor ownership |
-| Infantry weapon cycles | `frontline_core` | Cover fire, postures, firing permissions, ammunition and burst recovery extracted with compatibility tests; adapters remain test-only until Rust owns the actor |
+| Infantry weapon cycles | `frontline_core` | Connected normal fighting and escort updates apply movement, cover shifts, aiming, bullet effects, reloads and downtime to retained state; the production dispatcher still runs in Godot |
 | Infantry health, suppression and fatigue | `frontline_core` | Retained damage updates attribution, casualty links and squad reactions together; the live world dispatcher still runs in Godot |
 | Infantry combat geometry | `frontline_core` | Eyes, exposed points, hit factors and cover postures extracted with reference tests; the adapter still supplies actor state |
 | Infantry aim selection and sight cache | `frontline_core` | Target, blind and area-fire aiming extracted and reference-tested; the test adapter supplies posed target points and last-known squad contacts |
@@ -55,7 +55,7 @@ graphics, network access or a wall clock.
 | Infantry decision loop | `frontline_core` | Owned reflex priority, scavenging, building-entry selection and claims, special attacks, supply/cover decisions and sector watching; scan/separation scheduling and the live world dispatcher remain in Godot |
 | Infantry special attacks | `frontline_core` | Owned actors select melee, rocket, mortar and drone targets and retain ammunition, cooldowns, pending actions and squad fire queues; the live dispatcher and completed weapon effects remain in Godot |
 | Infantry supply decisions | `frontline_core` | Scavenging, nearest-body/depot choices, search timers and refill arithmetic extracted; Godot supplies spatial candidates and applies shared-store transfers, reloads and movement |
-| Infantry medical tasks | `frontline_core` | Retained rescue/healing/limp duties update shared patient claims, shelter, movement and recovery; escort weapon effects, squad rejoining, ledger callbacks and the live dispatcher remain in Godot |
+| Infantry medical tasks | `frontline_core` | Retained rescue/healing/limp duties update shared patient claims, shelter, movement and recovery; escort movement and fire are connected to shared combat, while squad rejoining, ledger callbacks and the live dispatcher remain in Godot |
 | Construction, stretchers and prisoners | `frontline_core` | Retained stretchers update both bearers, tent admission and squad removal; captors update shared capture credit, prison routes, arrival and guard release; construction, prisoner intelligence and live dispatch remain in Godot |
 | Infantry arrival tasks | `frontline_core` | Boarding ranges, tunnel arrival, corpse/depot completion and ordered-throw inventory decisions extracted; Godot still applies boarding, tunnel membership, shared ammunition transfers and throws |
 | Mounted infantry | `frontline_core` | Approach/climbing stages, scan clocks, anti-tank target selection and gun traverse extracted; Godot still owns mount links, fire queues and weapon effects |
@@ -1668,7 +1668,8 @@ cursors across rescue, heal and limp duties. Shelter selection uses the GDScript
 reference search, including ground cover, occupied positions and burning ground.
 Numeric CI adds 2,316,391 exact bytes, including checkpoint continuation midway
 through each sequence. These operations return ledger and rejoining effects;
-escort firing, the rule callbacks and the live world dispatcher remain unfinished.
+the rule callbacks and the live world dispatcher remain unfinished. Escort firing
+now uses the connected fighting operation described below.
 
 ## Shared stretcher pickup and delivery
 
@@ -2081,3 +2082,22 @@ world geometry states across 64 cases, plus full actors, squads, effects, routes
 battle records and random cursors. The 5,701,213-byte numeric transcript includes
 resumed bleeding, stale links, pistol fire and crawl orders. The full production
 infantry dispatcher and standalone server still need integration.
+
+## Connected normal fighting and escort fire
+
+The retained fighting operation completes movement, door and route changes before
+stationary settling and the weapon cycle. A cover shift submits its route before
+stance and sight checks. A shot applies all bullet damage and speech before burst
+recovery; an automatic reload reads the current weapon after damage can release a
+mount. Activity selection and downtime follow the shot. Escorts retain their
+threat-facing movement, fire without the normal movement penalty and abandon an
+invalid rescue before any weapon or random update.
+
+Six regressions cover ammunition, damage, cadence, reloads, escort cancellation,
+invalid profiles and exact restored continuation. The Godot reference checks
+1,536 geometry states plus actors, squads, shots, speech, chat deadlines, routes,
+battle records and random cursors. Coverage requires actual fire, reloads, escorts,
+idle behavior and shifts along cover. The numeric transcript adds 2,137,679 exact
+bytes through resumed fights. Existing stationary and movement implementations are
+reused. Remaining duties, production tick dispatch, the socket server and complete
+battle verification are still unfinished.

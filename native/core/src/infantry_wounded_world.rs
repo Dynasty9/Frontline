@@ -278,25 +278,7 @@ impl Context<'_> {
                 &mut movement,
             )?;
             for event in movement {
-                match event {
-                    Movement::Route(route) => {
-                        self.geometry.navigation.submit_infantry(
-                            self.actors.soldier_mut(id).unwrap(),
-                            route,
-                            self.now,
-                            self.rng,
-                        )?;
-                    }
-                    Movement::CancelPath => self.geometry.navigation.planner.cancel(u64::from(id)),
-                    Movement::Door { id, .. } => {
-                        self.geometry.doors.remove(id);
-                        if let Some(st) = self.actors.structure(id) {
-                            self.geometry.sync_structure(st, false)?;
-                            self.geometry.refresh_structure_collision(st)?;
-                        }
-                    }
-                    _ => {}
-                }
+                self.apply_infantry_movement(id, event)?;
                 out.push(Event::Movement { id, event });
             }
             return Ok(out);

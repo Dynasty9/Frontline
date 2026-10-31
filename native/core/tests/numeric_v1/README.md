@@ -13,6 +13,8 @@ different byte rather than dumping the fixture.
   rounds, suppression, sound-report deadlines and shared checkpoints after shots.
 - `infantry_wounded_world.bin`: bleeding, carrier cleanup, cries, connected pistol
   damage, death credit and crawl routes against resumed world state.
+- `infantry_fight_world.bin`: movement, cover cycles, connected bullet damage,
+  burst recovery, escort fire and downtime through resumed world updates.
 - `world_routes.bin`: shared soldier/vehicle route completions, queued repairs,
   cancelled orders and retained navigation/actor state across resumed batches.
 - `structure_collision.bin`: structure collision boxes, rotated parts, construction,

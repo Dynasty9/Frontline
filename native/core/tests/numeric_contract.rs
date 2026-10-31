@@ -54,6 +54,14 @@ mod bullet_world;
 #[path = "fixtures/infantry_wounded_world.rs"]
 mod infantry_wounded_world;
 
+#[path = "fixtures/infantry_fight_world.rs"]
+mod infantry_fight_world;
+
+#[test]
+fn fighting_infantry_world_is_identical_across_platforms() {
+    golden("infantry_fight_world", &infantry_fight_world::transcript());
+}
+
 #[test]
 fn wounded_infantry_world_is_identical_across_platforms() {
     golden(

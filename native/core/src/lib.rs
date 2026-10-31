@@ -43,6 +43,7 @@ pub mod infantry_decision;
 pub mod infantry_duties;
 pub mod infantry_effects;
 pub mod infantry_execution;
+pub mod infantry_fight_world;
 pub mod infantry_fighting;
 pub mod infantry_fire;
 pub mod infantry_grenade_owned;
