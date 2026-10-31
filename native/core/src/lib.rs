@@ -16,6 +16,7 @@ pub mod drone;
 pub mod drone_actor;
 pub mod drone_reaction;
 pub mod entities;
+pub mod fire_escape;
 pub mod fire_targets;
 pub mod formation;
 mod godot_sort;

@@ -36,6 +36,70 @@ fn block(out: &mut Vec<u8>, bytes: &[u8]) {
 }
 
 #[test]
+fn fire_escape_is_identical_across_platforms() {
+    use frontline_core::infantry::Infantry as Soldier;
+    use frontline_core::infantry_controller::Task;
+    let mut bytes = vec![];
+    for mode in 0..12 {
+        for trial in 0..48 {
+            let mut s = Soldier::default();
+            s.identity.id = 1;
+            s.identity.unit = "rifleman".into();
+            s.identity.team = trial % 2;
+            s.motion.position =
+                Vector3::X * [0.0, 0.0999, 0.1, 0.1001, 3.0, 31.0][trial as usize % 6];
+            s.cover.at_cover = true;
+            s.cover.structure = 20;
+            s.cover.anchor = 3;
+            s.cover.kind = 2;
+            s.cover.height = 1.2;
+            s.cover.normal = Vector3::Z;
+            s.cover.material = 1;
+            s.cover.shifting = true;
+            s.weapon.peek_up = true;
+            s.weapon.blind = true;
+            s.fight.flee_fire_at = 10.0;
+            s.vitals.speech_cooldown = 3.0;
+            s.duty.kind = if trial % 2 == 0 {
+                Task::Heal
+            } else {
+                Task::Retreat
+            };
+            let mut nav = PathPlanner::new(64).unwrap();
+            match mode {
+                1 => s.vitals.life = Life::Downed,
+                2 => s.vitals.life = Life::Dead,
+                3 => s.vitals.life = Life::Surrender,
+                4 => s.emplacement.structure = 20,
+                5 => s.links.vehicle = 30,
+                6 => s.duty.kind = Task::Smother,
+                7 => s.duty.kind = Task::Stretcher,
+                8 => s.duty.kind = Task::Tunnel,
+                9 => s.activity = 15,
+                10 => s.vitals.life = Life::Hidden,
+                11 => {
+                    for x in 32..48 {
+                        for z in 26..38 {
+                            assert!(nav.set_cell(z * 64 + x, 3, 0, 0));
+                        }
+                    }
+                }
+                _ => {}
+            }
+            let mut rng = SimulationRandom::new(73241 + trial as u64);
+            for now in [9.99, 10.0, 12.499, 12.5] {
+                let out = s.flee_fire(Vector3::ZERO, now, &nav, &mut rng).unwrap();
+                block(&mut bytes, format!("{out:?}").as_bytes());
+                block(&mut bytes, &s.checkpoint().unwrap());
+                bytes.extend_from_slice(&rng.state().to_le_bytes());
+                s = Soldier::restore(&s.checkpoint().unwrap()).unwrap();
+            }
+        }
+    }
+    golden("fire_escape", &bytes);
+}
+
+#[test]
 fn prisoner_rules_and_intelligence_are_identical_across_platforms() {
     use frontline_core::actors::{Actor, Actors};
     use frontline_core::battle_stats::BattleStats;

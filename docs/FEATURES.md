@@ -1441,6 +1441,9 @@ integration.
 Retained corpse cleanup checks shared carrier state and ground caches before
 removing expired bodies; captive movement keeps the existing route speed and
 hands-up posture. Wounded behavior and the full world dispatcher remain unfinished.
+Retained fire escape preserves committed duties, strict cooldowns, cover reset,
+walkable retreat destinations and warnings. Shared burning and scorch damage still
+need to call it from the full Rust fire dispatcher.
 Retained captors update capture credit, prison selection and escort movement;
 arrival applies detention and the guard's return order before the next actor.
 Removed prisons are handled safely. Retained prisoner rules now handle guard

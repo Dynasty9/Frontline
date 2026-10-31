@@ -77,6 +77,7 @@ kind = "fixed"
 - Shared Rust downtime updates both conversation partners and the team's cooldown together, preserving speech, interruptions and random continuation.
 - Rust squad-rejoining checks preserve nearby squad selection, returning soldiers' ownership and battle records, including commanders who disconnected.
 - Rust prisoner-rule checks preserve rescue, guard claims, private intelligence reports and which facts each prisoner has already revealed through saved-state resumes.
+- Rust fire-escape checks preserve soldiers leaving burning cover, their committed duties, retreat routes and warnings.
 - Mission guards safely leave prisoners in place when no nearby prison is available, and prisoners recover safely after their captor is removed.
 - Scheduling checks preserve interruptions, dives, scanning and thinking deadlines, and which orders a busy soldier can accept.
 - Authoritative entity IDs now come from Rust, preserving creation order and keeping removed units' IDs from being reused as the server migration continues.

@@ -537,7 +537,7 @@ Component checkpoint headers contain a four-byte component tag, a little-endian
 rules rather than silently continuing with changed arithmetic. The separate
 integer RNG stream remains unchanged.
 
-`native/core/tests/numeric_contract.rs` compares 124,177,858 committed bytes without
+`native/core/tests/numeric_contract.rs` compares 127,187,546 committed bytes without
 tolerances: fixed-tick flight state, support events and RNG cursors, carved water,
 craters, rotated box hits, cover anchors, spherical interpolation and infantry
 movement, infantry cover fire, postures, ammunition, burst recovery, vitals, aiming,
@@ -1782,3 +1782,16 @@ exact bytes. The full authoritative world dispatcher remains unfinished.
 The complete local game suite passed 195 tests at `57afd00`. This prisoner update
 passes all 650 core tests, 107 affected/numeric release tests and five focused
 Godot fixtures. Other apps remained running throughout validation.
+
+## Escaping fire
+
+Retained soldiers clear burning shelter, defer cover reevaluation and route to a
+walkable point seven metres away. Transported soldiers, mounted gunners, casualties
+and committed grenade/stretcher/tunnel duties retain their existing restrictions.
+An overlapping fire does not repeatedly overwrite the route before the cooldown;
+random direction and forced warning draws remain in their original order.
+
+Four regressions and 3,072 complete Godot soldier-state comparisons cover the
+restrictions, exact deadlines, blocked ground, routes, speech and rejected input.
+Numeric CI adds 3,009,688 exact bytes with checkpoint resumes. The shared fire
+dispatcher still needs migration before these operations run without Godot.

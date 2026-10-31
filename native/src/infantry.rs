@@ -550,6 +550,33 @@ fn encode(s: &Infantry) -> Array<Variant> {
 #[godot_api]
 impl InfantryStateCore {
     #[func]
+    fn flee_fire(
+        &mut self,
+        from: Vector3,
+        now: f64,
+        nav: Gd<crate::path_planner::PathPlannerCore>,
+        mut rng: Gd<SimulationRandomCore>,
+    ) -> Array<Variant> {
+        let Some(s) = self.core.as_mut() else {
+            return Array::new();
+        };
+        let nav = nav.bind();
+        let Some(nav) = &nav.core else {
+            return Array::new();
+        };
+        match s.flee_fire(crate::point(from), now, nav, &mut rng.bind_mut().core) {
+            Ok(Some(out)) => varray![
+                true,
+                vector(out.route.job.destination),
+                out.route.job.care,
+                out.speech.map_or(-1, i32::from)
+            ],
+            Ok(None) => varray![false],
+            Err(_) => Array::new(),
+        }
+    }
+
+    #[func]
     fn release_all(&mut self) -> PackedInt64Array {
         self.core
             .as_mut()
