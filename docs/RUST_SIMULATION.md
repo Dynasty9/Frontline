@@ -45,7 +45,7 @@ graphics, network access or a wall clock.
 | Bullet resolution | `frontline_core` | Accuracy, scatter, penetration, hit damage, explosive-round placement and near-miss suppression extracted with ordered stages; Godot still applies actor damage and explosion effects |
 | Blast exposure | `frontline_core` | Retained infantry blasts apply shelter, damage, casualty links, squad responses, fling and flinch in victim order; vehicle/structure destruction, fire and world dispatch remain to be connected |
 | Blast knockback and disorientation | `frontline_core` | Fling trajectories, obstacle bounces, landings, flinching and dazed movement extracted with component checkpoints; Godot still applies task cleanup and speech |
-| Wounded infantry and corpse timers | `frontline_core` | Bleeding, rescue/medicine modifiers, speech/pistol/crawl schedules and corpse collection decisions extracted; rescuer links, targeting and task effects remain in Godot |
+| Wounded infantry and corpse timers | `frontline_core` | Retained corpse cleanup and captive movement preserve carriers, ground caches and shared squad removal; bleeding and speech/pistol/crawl schedules are extracted, while the connected wounded dispatcher remains unfinished |
 | Grenade reflex decisions | `frontline_core` | Owned actors retain notice memory, grenade claims, rescue/breach cleanup, task changes, shelter and dives; the live decision loop and task dispatcher remain in Godot |
 | Grenade task movement | `frontline_core` | Owned smother, pickup and kick duties update the shared soldier/projectile state, including holder links; completed strikes and the live dispatcher remain in Godot |
 | Automatic grenade attacks | `frontline_core` | Shared squad contacts and spatial groups drive retained throw/cook actions, ammunition and cooldowns; completed throws and the live dispatcher remain in Godot |
@@ -537,7 +537,7 @@ Component checkpoint headers contain a four-byte component tag, a little-endian
 rules rather than silently continuing with changed arithmetic. The separate
 integer RNG stream remains unchanged.
 
-`native/core/tests/numeric_contract.rs` compares 104,366,769 committed bytes without
+`native/core/tests/numeric_contract.rs` compares 106,564,781 committed bytes without
 tolerances: fixed-tick flight state, support events and RNG cursors, carved water,
 craters, rotated box hits, cover anchors, spherical interpolation and infantry
 movement, infantry cover fire, postures, ammunition, burst recovery, vitals, aiming,
@@ -1699,3 +1699,17 @@ resumes. The reference also compares squad state, tunnel occupants, speech,
 property changes, messages, movement requests and RNG. Numeric CI adds 5,317,037
 exact bytes. Ledger/observation callbacks, wounded behavior and the complete Rust
 world dispatcher remain unfinished.
+
+## Corpse cleanup and captive movement
+
+Retained inactive infantry now resolve living carrier links, settle uncarried
+bodies on cached ground and remove expired corpses from shared actors and squad
+membership. Carried bodies retain their pose, and losing the last carrier still
+defers cleanup until the following tick. Captives follow routes at the existing
+speed with hands raised; surrendering soldiers remain stationary.
+
+Six regressions and 1,536 Godot state comparisons cover the strict 300-second
+cleanup deadline, stretcher claims, missing carriers, ground-cache expiry,
+bridge/deformed ground and movement. Numeric CI adds 2,198,012 exact bytes with
+checkpoint continuation. Wounded pistol/crawl behavior and the complete world
+dispatcher remain unfinished.

@@ -1436,6 +1436,9 @@ from his squad before treatment. Hidden soldiers also follow transports, leave
 tunnels, complete treatment and depart after their prisoner timer, with shared
 occupancy and squad updates. Ledger callbacks and the full world loop still need
 integration.
+Retained corpse cleanup checks shared carrier state and ground caches before
+removing expired bodies; captive movement keeps the existing route speed and
+hands-up posture. Wounded behavior and the full world dispatcher remain unfinished.
 Construction, town income, capture and production transitions match the existing
 game; shared rule effects, destruction and the full building dispatcher still need
 migration before Rust owns the complete battle.

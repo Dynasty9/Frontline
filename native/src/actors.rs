@@ -805,6 +805,73 @@ impl ActorStateCore {
     }
 
     #[func]
+    fn advance_infantry_inactive(
+        &mut self,
+        id: u32,
+        dt: f64,
+        now: f64,
+        gun: PackedFloat64Array,
+        squads: Array<Gd<crate::squad::SquadStateCore>>,
+        deck: PackedByteArray,
+        terrain: Gd<crate::terrain::TerrainCore>,
+        nav: Gd<crate::path_planner::PathPlannerCore>,
+        units: Gd<crate::spatial::SpatialIndexCore>,
+        structures: Gd<crate::spatial::SpatialIndexCore>,
+        doors: Gd<crate::spatial::SpatialIndexCore>,
+        mut collision: Gd<crate::collision_index::CollisionIndexCore>,
+        mut rng: Gd<crate::simulation_random::SimulationRandomCore>,
+    ) -> Array<Variant> {
+        use frontline_core::infantry_cover::CoverWorld;
+        let (Ok(gun), Some(mut state)) = (mounted_gun(&gun), read_squads(&squads)) else {
+            return Array::new();
+        };
+        let terrain = terrain.bind();
+        let nav = nav.bind();
+        let units = units.bind();
+        let structures = structures.bind();
+        let doors = doors.bind();
+        let (Some(terrain), Some(nav), Some(units), Some(structures), Some(doors)) = (
+            &terrain.core,
+            &nav.core,
+            &units.core,
+            &structures.core,
+            &doors.core,
+        ) else {
+            return Array::new();
+        };
+        let result = self.core.advance_infantry_inactive(
+            id,
+            dt,
+            now,
+            gun,
+            &mut state,
+            &mut CoverWorld {
+                terrain,
+                nav,
+                units,
+                structures,
+                collision: &mut collision.bind_mut().core,
+                heat: &[],
+                deck: deck.as_slice(),
+            },
+            doors,
+            &mut rng.bind_mut().core,
+        );
+        let Ok(out) = result else {
+            return Array::new();
+        };
+        let removed = match out.removed {
+            Some(s) => match s.checkpoint() {
+                Ok(bytes) => PackedByteArray::from(bytes.as_slice()),
+                Err(_) => return Array::new(),
+            },
+            None => PackedByteArray::new(),
+        };
+        write_squads(squads, state);
+        varray![&travel_events(out.movement), &removed]
+    }
+
+    #[func]
     fn advance_infantry_hidden(
         &mut self,
         id: u32,

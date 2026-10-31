@@ -71,6 +71,7 @@ kind = "fixed"
 - Action checks preserve cooking, throws, grenade handling, door kicks and weapon launches. Pending actions safely handle targets or grenades removed before completion.
 - Lifecycle checks preserve hidden duties, treatment deadlines, drone operators, moving postures and status flags. Soldiers safely release removed tents, tunnels, vehicles and drones.
 - Shared Rust hidden-state checks preserve passengers, tunnel exits, completed treatment, routes back to base and prisoner departure.
+- Shared Rust lifecycle checks preserve carried bodies, corpse cleanup deadlines and prisoners moving with their hands raised.
 - Downtime checks preserve idle choices, conversations, laughter and interruptions. Removed conversation partners and targets no longer interrupt the soldier update with a stale-reference error.
 - Scheduling checks preserve interruptions, dives, scanning and thinking deadlines, and which orders a busy soldier can accept.
 - Authoritative entity IDs now come from Rust, preserving creation order and keeping removed units' IDs from being reused as the server migration continues.

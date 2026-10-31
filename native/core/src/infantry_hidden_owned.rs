@@ -87,16 +87,7 @@ impl Actors {
                 out.events.push(Event::PatchedUp);
             }
             Hidden::PrisonerDone => {
-                let qid = self.soldier(id).unwrap().identity.squad;
-                if let Some(q) = squads.iter_mut().find(|q| q.id == qid) {
-                    // World despawn removes membership without refreshing the cached centroid.
-                    q.members.retain(|&who| who != id);
-                }
-                let Some(Actor::Soldier(mut s)) = self.remove(id) else {
-                    unreachable!()
-                };
-                s.identity.gone = true;
-                out.removed = Some(s);
+                out.removed = self.remove_infantry(id, squads);
             }
         }
         Ok(out)

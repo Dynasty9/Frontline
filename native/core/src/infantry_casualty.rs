@@ -1,12 +1,18 @@
 //! Casualty transitions retain the actor and return shared links for the world to release.
+use crate::actors::{Actor, Actors};
 use crate::infantry::Infantry;
 use crate::infantry_action::Action;
 use crate::infantry_control::{Hidden, HiddenReason};
 use crate::infantry_controller::Task;
+use crate::infantry_cover::CoverWorld;
+use crate::infantry_fire::MountedGun;
 use crate::infantry_pose::Posture;
+use crate::infantry_travel_owned::Event as Movement;
 use crate::infantry_vitals::{DamageResult, Life};
 use crate::path_planner::PathPlanner;
 use crate::random::SimulationRandom;
+use crate::spatial::{SpatialIndex, DOOR_CELL, UNIT_CELL};
+use crate::squad::Squad;
 use crate::vector::{normalized, Vector3};
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -25,6 +31,98 @@ pub struct DeathPose {
 
 fn point(p: Vector3) -> bool {
     p.is_finite() && p.abs().max_element() <= 1_000_000.0
+}
+
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct Inactive {
+    pub movement: Vec<Movement>,
+    pub removed: Option<Box<Infantry>>,
+}
+
+impl Actors {
+    pub(crate) fn remove_infantry(
+        &mut self,
+        id: u32,
+        squads: &mut [Squad],
+    ) -> Option<Box<Infantry>> {
+        let qid = self.soldier(id)?.identity.squad;
+        if let Some(q) = squads.iter_mut().find(|q| q.id == qid) {
+            // Despawning removes membership without refreshing the cached centroid.
+            q.members.retain(|&who| who != id);
+        }
+        let Some(Actor::Soldier(mut s)) = self.remove(id) else {
+            unreachable!()
+        };
+        s.identity.gone = true;
+        Some(s)
+    }
+
+    pub fn advance_infantry_inactive(
+        &mut self,
+        id: u32,
+        dt: f64,
+        now: f64,
+        gun: Option<MountedGun>,
+        squads: &mut [Squad],
+        world: &mut CoverWorld<'_>,
+        doors: &SpatialIndex,
+        rng: &mut SimulationRandom,
+    ) -> Result<Inactive, &'static str> {
+        if !dt.is_finite()
+            || !(0.0..=10.0).contains(&dt)
+            || !now.is_finite()
+            || now.abs() > 1e12 - 100.0
+            || gun.is_some_and(|g| !g.valid())
+            || world.nav.side() != world.terrain.n
+            || world.units.cell_size() != UNIT_CELL
+            || doors.cell_size() != DOOR_CELL
+            || !world.deck.is_empty() && world.deck.len() != world.terrain.n * world.terrain.n
+        {
+            return Err("invalid inactive infantry context");
+        }
+        let s = self.soldier(id).ok_or("missing inactive infantry")?;
+        let mut out = Inactive::default();
+        match s.vitals.life {
+            Life::Dead => {
+                let carried = !s.links.carried_by.is_empty();
+                let carrier_alive = s.links.carried_by.iter().any(|&who| {
+                    self.soldier(who as u32)
+                        .is_some_and(|b| b.vitals.life == Life::Alive)
+                });
+                let s = self.soldier_mut(id).unwrap();
+                let ground = if carried {
+                    f64::from(s.motion.position.y)
+                } else {
+                    s.motion.cached_ground(now, world.terrain, world.deck)
+                };
+                if s.corpse_tick(ground, now, carrier_alive)? {
+                    out.removed = self.remove_infantry(id, squads);
+                }
+            }
+            Life::Surrender | Life::Captive => {
+                let moving = s.vitals.life == Life::Captive && s.is_moving();
+                let s = self.soldier_mut(id).unwrap();
+                s.activity = 20;
+                s.posture = Posture::Stand;
+                if moving {
+                    self.move_infantry(
+                        id,
+                        dt,
+                        now,
+                        1.7,
+                        gun,
+                        squads,
+                        world,
+                        doors,
+                        rng,
+                        &mut out.movement,
+                    )?;
+                }
+            }
+            _ => return Err("infantry is not dead or captive"),
+        }
+        Ok(out)
+    }
 }
 
 impl Infantry {

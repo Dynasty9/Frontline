@@ -347,14 +347,7 @@ impl InfantryMotion {
         self.position += direction * step as f32;
         let mut target_y = input.base_y + if self.vaulting { 0.5 } else { 0.0 };
         if input.base_y == 0.0 {
-            if input.time > self.ground_until {
-                self.ground_until = input.time + 0.3;
-                self.ground = terrain.ground_y(
-                    self.position,
-                    !decks.is_empty() && decks[terrain.index(self.position)] == 1,
-                );
-            }
-            target_y += self.ground;
+            target_y += self.cached_ground(input.time, terrain, decks);
         }
         self.position.y = (f64::from(self.position.y)
             + (target_y - f64::from(self.position.y)) * (1.0 - libm::exp(-input.dt * 12.0)))
@@ -429,13 +422,7 @@ impl InfantryMotion {
                 shuffle = f64::from(velocity.length()) > 0.3;
             }
         }
-        if input.time > self.ground_until {
-            self.ground_until = input.time + 0.3;
-            self.ground = terrain.ground_y(
-                self.position,
-                !decks.is_empty() && decks[terrain.index(self.position)] == 1,
-            );
-        }
+        self.cached_ground(input.time, terrain, decks);
         let height = f64::from(self.position.y);
         self.position.y = (height
             + (input.base_y + self.ground - height) * (1.0 - libm::exp(-input.dt * 8.0)))
@@ -479,6 +466,17 @@ impl InfantryMotion {
             );
         }
         Ok(shuffle)
+    }
+
+    pub(crate) fn cached_ground(&mut self, now: f64, terrain: &Terrain, decks: &[u8]) -> f64 {
+        if now > self.ground_until {
+            self.ground_until = now + 0.3;
+            self.ground = terrain.ground_y(
+                self.position,
+                !decks.is_empty() && decks[terrain.index(self.position)] == 1,
+            );
+        }
+        self.ground
     }
 
     pub fn checkpoint(&self) -> Vec<u8> {
