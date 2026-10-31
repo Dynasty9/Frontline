@@ -4,9 +4,9 @@ use godot::prelude::*;
 
 #[derive(GodotClass)]
 #[class(base=RefCounted, init)]
-struct SpatialIndexCore {
+pub(crate) struct SpatialIndexCore {
     base: Base<RefCounted>,
-    core: Option<SpatialIndex>,
+    pub(crate) core: Option<SpatialIndex>,
 }
 fn results(r: Result<Vec<u32>, &'static str>) -> Array<Variant> {
     r.map_or_else(

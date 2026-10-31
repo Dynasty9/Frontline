@@ -48,6 +48,48 @@ fn sling_spec(a: &PackedInt32Array) -> Result<SlingSpec, &'static str> {
 #[godot_api]
 impl ActorStateCore {
     #[func]
+    fn dismount(
+        &mut self,
+        vehicle: u32,
+        boat: bool,
+        planner: Gd<crate::path_planner::PathPlannerCore>,
+    ) -> Array<Variant> {
+        let planner = planner.bind();
+        let Some(nav) = planner.core.as_ref() else {
+            return Array::new();
+        };
+        match self.core.dismount(vehicle, boat, nav) {
+            Ok(None) => varray![false, 0, Vector3::ZERO, Vector3::ZERO, false],
+            Ok(Some(d)) => varray![
+                true,
+                d.squad,
+                vector(d.position),
+                vector(d.forward),
+                d.assault
+            ],
+            Err(_) => Array::new(),
+        }
+    }
+    #[func]
+    fn dismount_due(
+        &mut self,
+        vehicle: u32,
+        dt: f64,
+        lift: bool,
+        boat: bool,
+        planner: Gd<crate::path_planner::PathPlannerCore>,
+        units: Gd<crate::spatial::SpatialIndexCore>,
+    ) -> i32 {
+        let planner = planner.bind();
+        let units = units.bind();
+        let (Some(nav), Some(units)) = (planner.core.as_ref(), units.core.as_ref()) else {
+            return -1;
+        };
+        self.core
+            .dismount_due(vehicle, dt, lift, boat, nav, units)
+            .map_or(-1, i32::from)
+    }
+    #[func]
     fn can_sling(&self, helicopter: u32, cargo: u32, spec: PackedInt32Array) -> i32 {
         sling_spec(&spec)
             .and_then(|s| self.core.can_sling(helicopter, cargo, s))

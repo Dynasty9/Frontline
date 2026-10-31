@@ -298,6 +298,17 @@ controlled shared-effect draws expose sequencing mistakes without claiming full
 vehicle destruction coverage. Twelve core tests cover these rules and rejection
 without mutation. Numeric CI adds 1,627,548 exact transcript bytes.
 
+Dismounts update retained infantry and transport state together, preserving
+passenger order, skipped or removed passengers, boat shore placement and the last
+exiting squad's assault/defend request. Arrival, damage, visible-enemy and boat
+landing checks use owned actors and the retained spatial index. The complete
+squad dispatcher still needs to apply the resulting order and leader speech.
+Reference checks compare 640 vehicle states and 621 passenger states plus order
+requests. Five core tests cover exits, repeated passenger entries, retained orders,
+landing gates and invalid steps; numeric CI adds 4,823,547 exact transcript bytes.
+The existing bounded nearest-cell fallback is preserved, including its result
+when a boat's local search finds no bank.
+
 ## Retained squads
 
 `Squad` retains ordered membership, known/heard contacts, briefing and centroid
@@ -436,7 +447,7 @@ Component checkpoint headers contain a four-byte component tag, a little-endian
 rules rather than silently continuing with changed arithmetic. The separate
 integer RNG stream remains unchanged.
 
-`native/core/tests/numeric_contract.rs` compares 27,358,821 committed bytes without
+`native/core/tests/numeric_contract.rs` compares 32,182,368 committed bytes without
 tolerances: fixed-tick flight state, support events and RNG cursors, carved water,
 craters, rotated box hits, cover anchors, spherical interpolation and infantry
 movement, infantry cover fire, postures, ammunition, burst recovery, vitals, aiming,
@@ -660,7 +671,7 @@ flag until Rust owns the actors.
 
 The shock fixture compares 92,160 reference steps, including mounted turning,
 blocked terrain, carried casualties and task interruption. The full default suite
-passes 162 tests; 373 core tests pass in debug and release.
+passes 163 tests; 379 core tests pass in debug and release.
 
 ## Spatial query state
 

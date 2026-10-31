@@ -36,6 +36,101 @@ fn block(out: &mut Vec<u8>, bytes: &[u8]) {
 }
 
 #[test]
+fn shared_transport_exits_are_identical_across_platforms() {
+    use frontline_core::actors::{Actor, Actors};
+    use frontline_core::infantry::Infantry;
+    use frontline_core::infantry_control::HiddenReason;
+    use frontline_core::infantry_vitals::Life;
+    use frontline_core::spatial::{SpatialIndex, UNIT_CELL};
+    use frontline_core::vehicle::Vehicle;
+    let mut nav = PathPlanner::new(64).unwrap();
+    let mut units = SpatialIndex::new(UNIT_CELL).unwrap();
+    let mut bytes = Vec::new();
+    for trial in 0..128 {
+        let cells: Vec<u8> = (0..4096)
+            .map(|i| {
+                if trial % 3 == 2 || (trial % 3 == 1 && i % 64 < 40) {
+                    3
+                } else {
+                    0
+                }
+            })
+            .collect();
+        assert!(nav.load_cells(&cells, &[0; 4096], &[0; 4096]));
+        let mut members = vec![Actor::Vehicle(Box::new(Vehicle {
+            id: 1,
+            team: 0,
+            position: Vector3::new(0.3, 0.0, 1.7),
+            yaw: trial as f64 * 0.37,
+            hp: if trial % 7 == 0 { 30.0 } else { 100.0 },
+            max_hp: 100.0,
+            speed: if trial % 5 == 0 { 3.0 } else { 0.0 },
+            path: if trial % 6 == 0 {
+                vec![Vector3::X * 20.0]
+            } else {
+                vec![]
+            },
+            assault: trial % 2 == 0,
+            assault_destination: (trial % 3 != 0).then_some(Vector3::new(21.0, 0.0, 7.0)),
+            landing: trial % 3 == 0,
+            dismount_timer: 0.2,
+            passengers: vec![2, 3, 4, 5, 6],
+            ..Default::default()
+        }))];
+        for id in 2..=6 {
+            let mut s = Infantry::default();
+            s.identity.id = id;
+            s.identity.unit = "rifleman".into();
+            s.identity.weapon = "rifle".into();
+            s.identity.squad = if id == 6 && trial % 5 == 0 { 0 } else { 90 };
+            s.vitals.life = if id == 3 && trial % 3 == 1 {
+                Life::Alive
+            } else {
+                Life::Hidden
+            };
+            s.control.hidden = HiddenReason::Vehicle;
+            s.links.vehicle = 1;
+            members.push(Actor::Soldier(Box::new(s)));
+        }
+        members.push(Actor::Vehicle(Box::new(Vehicle {
+            id: 7,
+            team: 1,
+            position: Vector3::NEG_Z * 30.0,
+            visible: if trial % 2 == 0 { 1 } else { 0 },
+            ..Default::default()
+        })));
+        let mut actors = Actors::from_entries(8, members).unwrap();
+        if trial % 7 == 1 {
+            actors.remove(4);
+        }
+        actors.rebuild_units(&mut units).unwrap();
+        for step in 0..4 {
+            bytes.push(u8::from(
+                actors
+                    .dismount_due(1, 0.1, false, trial % 4 == 1, &nav, &units)
+                    .unwrap(),
+            ));
+            block(&mut bytes, &actors.checkpoint().unwrap());
+            if step == 1 {
+                actors = Actors::restore(&actors.checkpoint().unwrap()).unwrap();
+            }
+        }
+        match actors.dismount(1, trial % 4 == 1, &nav).unwrap() {
+            Some(order) => {
+                bytes.push(1);
+                bytes.extend_from_slice(&order.squad.to_le_bytes());
+                point(&mut bytes, order.position);
+                point(&mut bytes, order.forward);
+                bytes.push(u8::from(order.assault));
+            }
+            None => bytes.push(0),
+        }
+        block(&mut bytes, &actors.checkpoint().unwrap());
+    }
+    golden("vehicle_transport", &bytes);
+}
+
+#[test]
 fn vehicle_weapon_cycles_are_identical_across_platforms() {
     use frontline_core::vehicle::Vehicle;
     use frontline_core::vehicle_weapon::{Fire, FireProfile, Target, TargetKind};

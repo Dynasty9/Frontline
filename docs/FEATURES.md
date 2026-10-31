@@ -1356,6 +1356,8 @@ join the Rust world dispatcher.
 Vehicle combat checks preserve armour, blast shove, ricochets, track breaks,
 damage alerts, missile priority, cannon aim gates and machine-gun burst timing.
 Projectile creation and shared destruction effects still need full integration.
+Shared transport checks preserve passenger exits, boat landing gates and the
+exiting squad's next order request in retained Rust actor state.
 Construction, town income, capture and production transitions match the existing
 game; shared rule effects, destruction and the full building dispatcher still need
 migration before Rust owns the complete battle.
