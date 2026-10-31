@@ -1282,7 +1282,9 @@ and altitude-aware distance, with the same gameplay random draws.
 Special-attack checks preserve rocket and melee target priority, queued mortar
 orders, drone launch timing, ammunition, cooldowns and the following actions.
 Supply checks preserve scavenging, nearby-body priority, cache and FOB choices,
-refill rates, special-ammunition draws and reload order.
+refill rates, special-ammunition draws and reload order. Retained actors now also
+transfer shared corpse stock and own resupply searches, destinations and arrival
+orders, preserving stock contention and cooldowns across saved-state resumes.
 Complete cover searches run in Rust, including reachable candidates, protection,
 occupied positions and final scoring. Equal candidate scores retain their existing
 order and the same 20-position evaluation budget; 4,270 reference searches compare

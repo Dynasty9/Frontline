@@ -151,6 +151,108 @@ fn artillery_profile(
 #[godot_api]
 impl ActorStateCore {
     #[func]
+    fn arrive_infantry_supply(
+        &mut self,
+        soldier: u32,
+        capacity: i32,
+        nav: Gd<crate::path_planner::PathPlannerCore>,
+    ) -> Array<Variant> {
+        let nav = nav.bind();
+        let Some(nav) = nav.core.as_ref() else {
+            return Array::new();
+        };
+        match self.core.arrive_infantry_supply(soldier, capacity, nav) {
+            Ok(r) => {
+                let route = r.route.map_or_else(Array::new, |r| {
+                    varray![r.revision as i64, vector(r.job.destination), r.job.care]
+                });
+                varray![r.missing, r.spoke, r.returned, r.rounds, &route]
+            }
+            Err(_) => Array::new(),
+        }
+    }
+    #[func]
+    fn scavenge_infantry(
+        &mut self,
+        soldier: u32,
+        now: f64,
+        stock: PackedFloat64Array,
+        units: Gd<crate::spatial::SpatialIndexCore>,
+        mut rng: Gd<crate::simulation_random::SimulationRandomCore>,
+    ) -> Array<Variant> {
+        let stock = if stock.is_empty() {
+            None
+        } else {
+            if stock.len() != 4
+                || [0, 1, 2].into_iter().any(|i| {
+                    !stock[i].is_finite()
+                        || stock[i].fract() != 0.0
+                        || !(0.0..=1_000_000.0).contains(&stock[i])
+                })
+            {
+                return Array::new();
+            }
+            Some((
+                stock[0] as i32,
+                frontline_core::infantry_weapon::Weapon {
+                    ammunition: stock[1] as i32,
+                    magazine: stock[2] as i32,
+                    reload_time: stock[3],
+                },
+            ))
+        };
+        let units = units.bind();
+        let Some(units) = units.core.as_ref() else {
+            return Array::new();
+        };
+        match self
+            .core
+            .scavenge_infantry(soldier, now, stock, units, &mut rng.bind_mut().core)
+        {
+            Ok(Some(r)) => varray![
+                r.body as i64,
+                r.rounds,
+                r.speech.map_or(-1, i32::from),
+                r.reload_speech.map_or(-1, i32::from)
+            ],
+            Ok(None) => varray![0i64, 0, -1, -1],
+            Err(_) => Array::new(),
+        }
+    }
+    #[func]
+    fn seek_infantry_supply(
+        &mut self,
+        soldier: u32,
+        now: f64,
+        units: Gd<crate::spatial::SpatialIndexCore>,
+        structures: Gd<crate::spatial::SpatialIndexCore>,
+        mut rng: Gd<crate::simulation_random::SimulationRandomCore>,
+    ) -> Array<Variant> {
+        let units = units.bind();
+        let structures = structures.bind();
+        let (Some(units), Some(structures)) = (units.core.as_ref(), structures.core.as_ref())
+        else {
+            return Array::new();
+        };
+        match self.core.seek_infantry_supply(
+            soldier,
+            now,
+            units,
+            structures,
+            &mut rng.bind_mut().core,
+        ) {
+            Ok(Some(r)) => varray![
+                r.source as i32,
+                r.entity as i64,
+                r.route.revision as i64,
+                vector(r.route.job.destination),
+                r.route.job.care
+            ],
+            Ok(None) => varray![-1, 0i64, 0i64, Vector3::ZERO, 0.0],
+            Err(_) => Array::new(),
+        }
+    }
+    #[func]
     fn ready_infantry_weapon(
         &mut self,
         soldier: u32,

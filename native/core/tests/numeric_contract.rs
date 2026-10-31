@@ -36,6 +36,125 @@ fn block(out: &mut Vec<u8>, bytes: &[u8]) {
 }
 
 #[test]
+fn retained_infantry_logistics_is_identical_across_platforms() {
+    use frontline_core::actors::{Actor, Actors};
+    use frontline_core::infantry::Infantry as Soldier;
+    use frontline_core::infantry_controller::Task;
+    use frontline_core::spatial::{SpatialIndex, STRUCTURE_CELL, UNIT_CELL};
+    use frontline_core::structure::Structure;
+    let mut bytes = Vec::new();
+    let mut rng = SimulationRandom::new(19371);
+    let nav = PathPlanner::new(128).unwrap();
+    let stock = Some((
+        120,
+        Weapon {
+            ammunition: 120,
+            magazine: 30,
+            reload_time: 2.0,
+        },
+    ));
+    for trial in 0..192 {
+        let mut entries = Vec::new();
+        for id in 1..9 {
+            let mut s = Soldier::default();
+            s.identity.id = id;
+            s.identity.team = if id < 3 { 0 } else { (id % 2) as i8 };
+            s.identity.unit = "rifleman".into();
+            s.identity.weapon = "rifle".into();
+            s.motion.position = if id < 3 {
+                Vector3::ZERO
+            } else {
+                Vector3::new(
+                    rng.randf_range(-30.0, 30.0),
+                    0.0,
+                    rng.randf_range(-3.0, 3.0),
+                )
+            };
+            s.vitals.life = if id < 3 { Life::Alive } else { Life::Dead };
+            s.weapon.magazine = if id < 3 { trial % 11 } else { 0 };
+            s.weapon.reserve = trial % 23;
+            s.fight.loot = if trial % 3 == 0 { 0 } else { (id * 7) as i32 };
+            s.vitals.speech_cooldown = if trial % 2 == 0 { 4.0 } else { 0.0 };
+            s.duty.kind = if trial % 11 == 0 {
+                Task::Retreat
+            } else {
+                Task::Fight
+            };
+            s.orders.hold_position = Vector3::X * 20.0;
+            entries.push(Actor::Soldier(Box::new(s)));
+        }
+        for id in 9..13 {
+            entries.push(Actor::Structure(Box::new(Structure {
+                id,
+                kind: if id < 11 { "fob" } else { "ammo_cache" }.into(),
+                position: Vector3::new(rng.randf_range(-110.0, 110.0), 0.0, 10.0),
+                team: 0,
+                built: trial % 5 != 0,
+                wrecked: id == 9 && trial % 2 == 0,
+                radius: 3.0,
+                ..Default::default()
+            })));
+        }
+        let mut a = Actors::from_entries(100, entries).unwrap();
+        let mut units = SpatialIndex::new(UNIT_CELL).unwrap();
+        a.rebuild_units(&mut units).unwrap();
+        let mut structures = SpatialIndex::new(STRUCTURE_CELL).unwrap();
+        for e in a.iter() {
+            if let Actor::Structure(st) = e {
+                structures.insert(st.id, st.position, st.radius).unwrap();
+            }
+        }
+        for step in 0..8 {
+            for id in [1, 2] {
+                let now = 10.0 + step as f64 * 1.7;
+                if let Some(r) = a
+                    .scavenge_infantry(id, now, stock, &units, &mut rng)
+                    .unwrap()
+                {
+                    bytes.extend_from_slice(&r.body.to_le_bytes());
+                    bytes.extend_from_slice(&r.rounds.to_le_bytes());
+                    bytes.extend_from_slice(&[
+                        r.speech.unwrap_or(255),
+                        r.reload_speech.unwrap_or(255),
+                    ]);
+                } else {
+                    bytes.extend_from_slice(&0u32.to_le_bytes());
+                }
+                if let Some(r) = a
+                    .seek_infantry_supply(id, now, &units, &structures, &mut rng)
+                    .unwrap()
+                {
+                    bytes.push(r.source as u8);
+                    bytes.extend_from_slice(&r.entity.to_le_bytes());
+                    point(&mut bytes, r.route.job.destination);
+                    bytes.extend_from_slice(&r.route.revision.to_le_bytes());
+                    let r = a.arrive_infantry_supply(id, 120, &nav).unwrap();
+                    bytes.extend_from_slice(&[
+                        u8::from(r.missing),
+                        u8::from(r.spoke),
+                        u8::from(r.returned),
+                    ]);
+                    bytes.extend_from_slice(&r.rounds.to_le_bytes());
+                    if let Some(route) = r.route {
+                        point(&mut bytes, route.job.destination);
+                    }
+                } else {
+                    bytes.push(255);
+                }
+            }
+            if step == 3 || step == 7 {
+                block(&mut bytes, &a.checkpoint().unwrap());
+            }
+            bytes.extend_from_slice(&rng.state().to_le_bytes());
+            if step == 3 {
+                a = Actors::restore(&a.checkpoint().unwrap()).unwrap();
+            }
+        }
+    }
+    golden("infantry_logistics", &bytes);
+}
+
+#[test]
 fn retained_infantry_weapon_sequence_is_identical_across_platforms() {
     use frontline_core::actors::{Actor, Actors};
     use frontline_core::cover::{Anchor, AnchorKind};

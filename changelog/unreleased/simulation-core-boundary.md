@@ -49,6 +49,7 @@ kind = "fixed"
 - Drone-avoidance checks preserve which aircraft soldiers hear, their warnings and the chance to dive from a close attack.
 - Special-weapon checks preserve rocket and melee targets, mortar fire orders, drone launch timing, ammunition and cooldowns in Rust.
 - Supply checks preserve scavenging, nearby bodies, ammo-cache and FOB destinations, refill rates and reload order.
+- Shared supply checks preserve soldiers collecting from the same body, choosing depots and returning to their hold position as stock and orders move into Rust.
 - Complete cover searches now run in Rust, preserving preferred positions, squad spacing, burning ground and the existing search limit.
 - Stationary-movement checks preserve giving nearby troops room, settling onto terrain, moving into a cover position and watching a sector.
 - Medical-task checks preserve rescue, dragging, treatment timing and escorts. Soldiers also safely abandon these tasks when a patient or rescuer has been removed.

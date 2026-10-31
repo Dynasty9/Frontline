@@ -535,7 +535,7 @@ Component checkpoint headers contain a four-byte component tag, a little-endian
 rules rather than silently continuing with changed arithmetic. The separate
 integer RNG stream remains unchanged.
 
-`native/core/tests/numeric_contract.rs` compares 56,762,575 committed bytes without
+`native/core/tests/numeric_contract.rs` compares 61,280,041 committed bytes without
 tolerances: fixed-tick flight state, support events and RNG cursors, carved water,
 craters, rotated box hits, cover anchors, spherical interpolation and infantry
 movement, infantry cover fire, postures, ammunition, burst recovery, vitals, aiming,
@@ -759,7 +759,7 @@ flag until Rust owns the actors.
 
 The shock fixture compares 92,160 reference steps, including mounted turning,
 blocked terrain, carried casualties and task interruption. The full default suite
-passes 174 tests; 462 core tests pass in debug and release.
+passes 175 tests; 470 core tests pass in debug and release.
 
 ## Spatial query state
 
@@ -1215,6 +1215,15 @@ shared squad caches, speech, counters, route requests and shot state before and
 after effects. Ten core tests cover ordering, claims, reachability, pinning,
 traverse and invalid inputs. Numeric CI adds 5,641,041 exact bytes. These calls
 are ready for the Rust world loop; the live soldier loop remains in Godot.
+
+Retained resupply now transfers shared corpse stock, chooses nearby bodies,
+caches or FOBs, issues routes and returns to the hold position after collection.
+Search and speech cooldowns, wrecked-FOB ranking, mounted reload overrides and
+random draws keep their existing order. Seven core tests cover stock contention,
+cooldown boundaries, ties, missing targets and rejected-route atomicity. The
+Godot comparison checks 13,824 complete actor states and numeric CI adds
+4,517,466 exact bytes, including resumes from saved state. The live dispatcher
+still runs in Godot.
 
 ## Infantry target acquisition
 
