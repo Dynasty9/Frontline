@@ -49,6 +49,7 @@ kind = "fixed"
 - Drone-avoidance checks preserve which aircraft soldiers hear, their warnings and the chance to dive from a close attack.
 - Special-weapon checks preserve rocket and melee targets, mortar fire orders, drone launch timing, ammunition and cooldowns in Rust.
 - Rust-owned soldiers now choose those targets from the shared battlefield and retain their pending attacks and squad mortar queues, with reference checks for friendly clearance, visibility and interrupted actions.
+- Shared Rust reaction checks now preserve which soldier handles a grenade, released rescue and breach claims, incoming-shell warnings and drone avoidance through saved-state resumes.
 - Supply checks preserve scavenging, nearby bodies, ammo-cache and FOB destinations, refill rates and reload order.
 - Shared supply checks preserve soldiers collecting from the same body, choosing depots and returning to their hold position as stock and orders move into Rust.
 - Complete cover searches now run in Rust, preserving preferred positions, squad spacing, burning ground and the existing search limit.

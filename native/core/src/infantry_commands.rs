@@ -232,7 +232,7 @@ impl Infantry {
         }
     }
 
-    fn clear_duty(
+    pub(crate) fn clear_duty(
         &mut self,
         nav: &PathPlanner,
         mount_position: Option<Vector3>,

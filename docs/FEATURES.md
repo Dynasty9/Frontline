@@ -1279,6 +1279,9 @@ Incoming-round checks preserve warning order, shared grenade/mortar memory,
 suppression, ducking and dive priority, including busy soldiers.
 Drone-avoidance checks preserve hearing memory, warning choices, dive priority
 and altitude-aware distance, with the same gameplay random draws.
+Retained soldiers now apply grenade, shell and drone reactions from shared Rust
+actors, preserving contested grenade handlers, rescue/breach cleanup, warning
+memory and dives. The live decision loop still runs in Godot.
 Special-attack checks preserve rocket and melee target priority, queued mortar
 orders, drone launch timing, ammunition, cooldowns and the following actions.
 Retained actors now select these targets directly, preserving friendly mortar

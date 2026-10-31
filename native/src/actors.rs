@@ -189,6 +189,66 @@ fn write_squads(
 #[godot_api]
 impl ActorStateCore {
     #[func]
+    fn react_infantry(
+        &mut self,
+        id: u32,
+        kind: u8,
+        now: f64,
+        armed: bool,
+        mut squad: Option<Gd<crate::squad::SquadStateCore>>,
+        units: Gd<crate::spatial::SpatialIndexCore>,
+        nav: Gd<crate::path_planner::PathPlannerCore>,
+        mut collision: Gd<crate::collision_index::CollisionIndexCore>,
+        mut rng: Gd<crate::simulation_random::SimulationRandomCore>,
+    ) -> Array<Variant> {
+        use frontline_core::infantry_reflex::Reflex;
+        let kind = match kind {
+            0 => Reflex::Grenade,
+            1 => Reflex::BusyGrenade,
+            2 => Reflex::Shell,
+            3 => Reflex::BusyShell,
+            4 => Reflex::Drone,
+            _ => return Array::new(),
+        };
+        let units = units.bind();
+        let nav = nav.bind();
+        let (Some(units), Some(nav)) = (&units.core, &nav.core) else {
+            return Array::new();
+        };
+        let mut squad = squad.as_mut().map(Gd::bind_mut);
+        if squad.as_ref().is_some_and(|q| q.core.is_none()) {
+            return Array::new();
+        }
+        let squad = squad.as_mut().and_then(|q| q.core.as_mut());
+        self.core
+            .react_infantry(
+                id,
+                kind,
+                now,
+                armed,
+                squad,
+                units,
+                nav,
+                &mut collision.bind_mut().core,
+                &mut rng.bind_mut().core,
+            )
+            .map_or_else(
+                |_| Array::new(),
+                |out| {
+                    let speech = PackedByteArray::from(out.speech.as_slice());
+                    let stats: Array<GString> = out.stats.into_iter().map(GString::from).collect();
+                    varray![
+                        out.handled,
+                        out.cancel_path,
+                        i32::from(out.leaf),
+                        &speech,
+                        &stats
+                    ]
+                },
+            )
+    }
+
+    #[func]
     fn fire_targets(
         &self,
         team: i8,
