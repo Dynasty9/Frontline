@@ -1,12 +1,20 @@
 +++
 title = "Rejoin a battle you dropped out of"
-summary = "Lost your connection, crashed or left by mistake? The main menu now offers Rejoin for as long as the battle lasts, and you're back on your side with whatever of your force is still fighting."
+summary = "Return to your side and surviving force after a dropped connection, crash or accidental departure."
 kind = "new"
+
 
 [[screenshots]]
 file = "rejoin-card.jpg"
 caption = "Back on the main menu after dropping out: Rejoin gets you back into the battle"
+
+[layout_comparison]
+before = "layout-before.jpg"
+after = "layout-after.jpg"
+caption = "Changelog presentation comparison, not gameplay: the top 1,000 pixels of this entry at the same 900-pixel viewport width. Open either image to inspect it."
 +++
+
+Lost your connection, crashed or left by mistake? The main menu now offers Rejoin for as long as the battle lasts, and you're back on your side with whatever of your force is still fighting.
 
 - **Rejoin from the main menu:** after a lost connection, a crash or Leave Battle, a card in the corner says whose battle you left and when, with **Rejoin**. It's still there after you restart the game, and **Forget** clears it.
 - **Your own place back:** the same side and colour, and your squads and vehicles that are still fighting, including units you'd queued that came out while you were gone.

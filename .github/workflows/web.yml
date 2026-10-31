@@ -5,30 +5,14 @@ name: Website
 # Chromium (its play function, and an accessibility check) in another, which
 # also builds the Storybook and keeps it as an artifact to browse.
 #
-# Only runs when the website changes. Railway deploys it on its own.
+# Railway uses this same image after CI succeeds. The embedded Godot viewer
+# depends on game sources, so validate it on every main push and pull request.
 
 on:
   push:
     branches: [main]
-    paths:
-      - scripts/autoload/defs.gd
-      - scripts/game/vehicle_roster.gd
-      - scripts/ui/field_manual.gd
-      - web/**
-      - Dockerfile.web
-      - .dockerignore
-      - .github/scripts/viewer_manifest.py
-      - .github/workflows/web.yml
   pull_request:
-    paths:
-      - scripts/autoload/defs.gd
-      - scripts/game/vehicle_roster.gd
-      - scripts/ui/field_manual.gd
-      - web/**
-      - Dockerfile.web
-      - .dockerignore
-      - .github/scripts/viewer_manifest.py
-      - .github/workflows/web.yml
+  workflow_dispatch:
 
 # a newer push to a pull request replaces its older run
 concurrency:
@@ -62,6 +46,7 @@ jobs:
           grep -qi '^Content-Encoding: gzip' /tmp/viewer-headers
           curl --fail -H 'Accept-Encoding: identity' http://localhost:8080/game/index.wasm -o /tmp/plain.wasm
           cmp /tmp/compressed.wasm /tmp/plain.wasm
+          WEB_ORIGIN=http://localhost:8080 node .github/scripts/production_web_smoke.mjs
 
   check:
     name: Lint, types, unit tests, build
@@ -75,6 +60,10 @@ jobs:
           cache: npm
           cache-dependency-path: web/package-lock.json
       - run: npm ci
+
+      - name: Deployment smoke-check regressions
+        working-directory: .
+        run: node .github/scripts/production_web_smoke.test.mjs
 
       - name: Lint (oxlint)
         run: npm run lint

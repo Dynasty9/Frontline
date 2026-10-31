@@ -188,7 +188,7 @@ func _muzzle_of(ev: Array, idx: int, fallback: Vector3, main_gun: bool) -> Vecto
 		mp = src.muzzle_world(main_gun)
 	elif src is Soldier:
 		mp = src.muzzle_world()
-	if mp == Vector3.INF or mp.distance_to(fallback) > 4.0:
+	if mp == Vector3.INF:
 		return fallback
 	return mp
 

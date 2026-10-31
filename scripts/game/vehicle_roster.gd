@@ -243,22 +243,22 @@ static func table() -> Dictionary:
 	# draft: how deep the hull sits; seats: men it carries (they land on any shore);
 	# displacement: a deep hull that ploughs through the water rather than planing over it
 	# (slow to answer, a wide turning circle, heels out of a turn: see Vehicle._hull_k)
-	t["rhib"] = _v("RHIB", 0, 1, "naval", "NATO", "Rigid-hulled inflatable", "Centre-console RHIB", 90, 10.0, 260.0, 0, 15.5, 1.7, "boat",
+	t["rhib"] = _v("RHIB", 0, 1, "naval", "NATO", "Rigid-hulled inflatable", "Centre-console RHIB", 90, 10.0, 260.0, 0, 18.0, 1.7, "boat",
 		Vector3(2.6, 1.6, 7.8), 0, {"mg": "", "seats": 6, "cap": 1, "draft": 0.35,
 		"desc": "Fast, open and unarmed: six men up the river or along the coast, landed on any beach or bank."})
-	t["speedboat_minigun"] = _v("Speedboat Minigun", 0, 2, "naval", "NATO", "Armed patrol boat", "Small Unit Riverine Craft (SURC)", 210, 20.0, 560.0, 1, 13.0, 1.5, "boat",
+	t["speedboat_minigun"] = _v("Speedboat Minigun", 0, 2, "naval", "NATO", "Armed patrol boat", "Small Unit Riverine Craft (SURC)", 210, 20.0, 560.0, 1, 15.0, 1.5, "boat",
 		Vector3(3.0, 2.4, 11.8), 1, {"mg": "gmg", "seats": 6, "cap": 2, "draft": 0.5, "gun_h": 1.9,
 		"desc": "Armoured riverine craft: a 40 mm grenade machine gun in the bow and room for a squad - puts men ashore under its own fire."})
-	t["patrol_ship"] = _v("Patrol Ship", 0, 2, "naval", "US Navy", "Patrol boat", "Mk VI Patrol Boat", 340, 32.0, 1700.0, 1, 12.0, 0.9, "boat",
+	t["patrol_ship"] = _v("Patrol Ship", 0, 2, "naval", "US Navy", "Patrol boat", "Mk VI Patrol Boat", 340, 32.0, 1700.0, 1, 13.5, 0.9, "boat",
 		Vector3(6.0, 6.5, 25.0), 2, {"mg": "bushmaster", "cap": 4, "draft": 1.1, "gun_h": 3.0, "sight": 95.0,
 		"desc": "Twenty-five metres of aluminium hull and a stabilised 25 mm cannon: owns the coast, shoots up anything on the shore."})
-	t["motorboat"] = _v("Armed Motorboat", 1, 1, "naval", "FIA", "Speedboat", "Open runabout with a PKM", 70, 9.0, 200.0, 0, 14.5, 1.8, "boat",
+	t["motorboat"] = _v("Armed Motorboat", 1, 1, "naval", "FIA", "Speedboat", "Open runabout with a PKM", 70, 9.0, 200.0, 0, 16.0, 1.8, "boat",
 		Vector3(2.3, 1.5, 6.0), 0, {"mg": "lmg", "seats": 4, "cap": 1, "draft": 0.35, "gun_h": 1.3,
 		"desc": "A stolen pleasure boat with a PKM on the bow rail: four fighters across the river or along the coast."})
-	t["speedboat_hmg"] = _v("Speedboat HMG", 1, 2, "naval", "CSAT", "Armed patrol boat", "Small Unit Riverine Craft (SURC)", 200, 20.0, 560.0, 1, 13.0, 1.5, "boat",
+	t["speedboat_hmg"] = _v("Speedboat HMG", 1, 2, "naval", "CSAT", "Armed patrol boat", "Small Unit Riverine Craft (SURC)", 200, 20.0, 560.0, 1, 15.0, 1.5, "boat",
 		Vector3(3.0, 2.4, 11.8), 1, {"mg": "gmg", "seats": 6, "cap": 2, "draft": 0.5, "gun_h": 1.9,
 		"desc": "CSAT's riverine craft: 40 mm grenade launcher and a heavy machine gun, room for a squad."})
-	t["gun_trawler"] = _v("Gun Trawler", 1, 2, "naval", "FIA", "Armed trawler", "Converted fishing trawler, ZU-23-2", 260, 30.0, 1350.0, 0, 8.5, 0.75, "boat",
+	t["gun_trawler"] = _v("Gun Trawler", 1, 2, "naval", "FIA", "Armed trawler", "Converted fishing trawler, ZU-23-2", 260, 30.0, 1350.0, 0, 5.0, 0.75, "boat",
 		Vector3(5.5, 6.5, 18.0), 2, {"mg": "zu23", "aa": true, "cap": 3, "draft": 1.85, "displacement": true, "gun_h": 4.6, "sight": 85.0,
 		"desc": "A steel fishing boat with a twin 23 mm cannon welded on the foredeck: shreds helicopters, light boats and anything on the beach."})
 	return t

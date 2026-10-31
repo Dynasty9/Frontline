@@ -1,8 +1,9 @@
 +++
 title = "Gunfire that hits hard"
-summary = "Muzzle flashes, tracers, recoil and bullet impacts are rebuilt from scratch: every shot flashes and kicks, tracers glow in each side's colour, and what a round hits decides what flies off it."
+summary = "Read a firefight through muzzle flashes, recoil, tracers and impacts that respond to the surface they hit."
 kind = "improved"
 headline = true
+
 
 [[screenshots]]
 file = "night-armour.jpg"
@@ -19,7 +20,14 @@ caption = "Rounds landing in a field: earth spurting up, grit flying, dust hangi
 [[screenshots]]
 file = "before-after-night.jpg"
 caption = "The same moment before and after"
+
+[layout_comparison]
+before = "layout-before.jpg"
+after = "layout-after.jpg"
+caption = "Changelog presentation comparison, not gameplay: the top 1,000 pixels of this entry at the same 900-pixel viewport width. Open either image to inspect it."
 +++
+
+Muzzle flashes, tracers, recoil and bullet impacts are rebuilt from scratch: every shot flashes and kicks, tracers glow in each side's colour, and what a round hits decides what flies off it.
 
 - **Muzzle flashes:** a white-hot burst with a tongue of flame thrown out ahead, bigger for a machine gun and bigger
   again for a .50 or an autocannon. Each one lights up its surroundings for a moment, which is striking at night,

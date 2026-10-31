@@ -12,6 +12,7 @@ var burnt := false
 var turret: Node3D
 var mg_tip: Node3D  # the machine gun's muzzle (shots start here)
 var gun_tip: Node3D  # the main gun's muzzle
+var weapon_tips := {}  # named gunship weapons (ac25/ac40/ac105), not one shared point
 var rotor: Node3D
 var tail_rotor: Node3D
 var blur: MeshInstance3D

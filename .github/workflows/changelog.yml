@@ -24,6 +24,11 @@ jobs:
       - name: Test changelog publication
         run: python3 -m unittest discover -s .github/scripts -p 'test_changelog.py'
 
+      - name: Audit presentation coverage and evidence
+        run: |
+          python3 -m unittest discover -s tools/showcase -p test_audit.py
+          python3 tools/showcase/audit.py
+
       - name: Check the changelog entries
         env:
           BASE: ${{ github.base_ref }}

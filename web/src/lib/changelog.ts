@@ -12,6 +12,7 @@ export type Entry = {
   kind: Kind
   summary: string
   body: string
+  layoutComparison?: { before: string; after: string; caption: string } | null
   screenshots: { url: string; caption: string }[]
   videos?: { url: string; poster: string; caption: string }[]
 }

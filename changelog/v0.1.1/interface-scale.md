@@ -1,8 +1,9 @@
 +++
 title = "An interface that's big enough, and stays sharp"
-summary = "Interface scale now follows the size of your window, text and symbols stay crisp at any scale, and it goes much bigger without the panels overlapping."
+summary = "Make the interface larger without blurring text or pushing essential controls into one another."
 kind = "improved"
 headline = true
+
 
 [[screenshots]]
 file = "before-and-after.jpg"
@@ -11,7 +12,14 @@ caption = "Before and after, at 1080p"
 [[screenshots]]
 file = "largest.jpg"
 caption = "The largest scale, with Settings open"
+
+[layout_comparison]
+before = "layout-before.jpg"
+after = "layout-after.jpg"
+caption = "Changelog presentation comparison, not gameplay: the top 1,000 pixels of this entry at the same 900-pixel viewport width. Open either image to inspect it."
 +++
+
+Interface scale now follows the size of your window, text and symbols stay crisp at any scale, and it goes much bigger without the panels overlapping.
 
 - **Follows the window:** at 100% the interface takes the same share of the screen at any resolution, so it's bigger at 1440p and 4K than before.
 - **Sharp at any size:** text and map symbols are drawn at the scale they're shown, not stretched.

@@ -1,7 +1,8 @@
 +++
 title = "Inspect vehicles on the website"
-summary = "Explore vehicles directly on the website, with an interactive model preview using the Field Manual's models, lighting, rotation and zoom."
+summary = "Inspect vehicle models on the website with rotation and zoom controls."
 kind = "new"
+
 
 [[screenshots]]
 file = "desktop.jpg"
@@ -14,7 +15,14 @@ caption = "The in-game Field Manual shares the new slate survey bay and model li
 [[screenshots]]
 file = "gun-run.jpg"
 caption = "Watch the aircraft's actual attack sequence in a training range inside the page."
+
+[layout_comparison]
+before = "layout-before.jpg"
+after = "layout-after.jpg"
+caption = "Changelog presentation comparison, not gameplay: the top 1,000 pixels of this entry at the same 900-pixel viewport width. Open either image to inspect it."
 +++
+
+Explore vehicles directly on the website, with an interactive model preview using the Field Manual's models, lighting, rotation and zoom.
 
 - Search vehicles by name, faction or role and filter by availability.
 - Switch vehicles without restarting the 3D viewer. Compressed browser assets reduce the first download.

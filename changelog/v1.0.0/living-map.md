@@ -1,7 +1,8 @@
 +++
 title = "A living map behind the title and menu"
-summary = "The title screen, the main menu and the loading screen now sit on a living topographic map: its ground slowly shifts, its contour lines glow in changing colours, and it reacts to your cursor."
+summary = "A moving topographic map brings the title, menus and loading screen to life."
 kind = "new"
+
 
 [[screenshots]]
 file = "title.jpg"
@@ -14,7 +15,14 @@ caption = "The main menu, with a hill rising under the cursor"
 [[screenshots]]
 file = "loading.jpg"
 caption = "The loading screen, closing in on the ground"
+
+[layout_comparison]
+before = "layout-before.jpg"
+after = "layout-after.jpg"
+caption = "Changelog presentation comparison, not gameplay: the top 1,000 pixels of this entry at the same 900-pixel viewport width. Open either image to inspect it."
 +++
+
+The title screen, the main menu and the loading screen now sit on a living topographic map: its ground slowly shifts, its contour lines glow in changing colours, and it reacts to your cursor.
 
 - **The map moves:** hills slowly drift, merge and part, and the contour lines slide up and down the slopes.
 - **The colours change:** the lines turn through brass, ember, rose, violet, blue and jade over a minute and a half, blending across the screen.
