@@ -23,6 +23,7 @@ pub mod infantry_arsenal;
 pub mod infantry_duties;
 pub mod infantry_medicine;
 pub mod infantry_motion;
+pub mod infantry_mount;
 pub mod infantry_pose;
 pub mod infantry_shock;
 pub mod infantry_supply;

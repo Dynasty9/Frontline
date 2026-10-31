@@ -19,6 +19,7 @@ mod infantry_arsenal;
 mod infantry_duties;
 mod infantry_medicine;
 mod infantry_motion;
+mod infantry_mount;
 mod infantry_pose;
 mod infantry_shock;
 mod infantry_supply;

@@ -1296,6 +1296,8 @@ casualties, partners, tents, prisoners and work targets are handled safely.
 Arrival checks preserve boarding boats and helicopters, entering tunnels,
 collecting ammunition and ordered frag/smoke throws. Removed destinations are
 handled safely, and unknown grenade types are rejected before changing orders.
+Mounted-weapon checks preserve tower climbing, gun traverse, mortar aim and
+anti-tank target selection, including smoke, distance ties and removed mounts.
 The Rust core now allocates authoritative entity IDs and retains their lifecycle
 order. Retired IDs stay retired, and restored lifecycle checkpoints continue the
 same allocation sequence; clients use the server's IDs for their visual objects.

@@ -49,6 +49,7 @@ graphics, network access or a wall clock.
 | Infantry medical tasks | `frontline_core` | Rescue/healing stages, treatment deadlines, safe-anchor selection, dragging poses and escort movement extracted; Godot still owns patient links, movement requests and recovery effects |
 | Construction, stretchers and prisoners | `frontline_core` | Construction priorities/timers, paired carrying stages, bearer takeover and prisoner escort geometry extracted; Godot still applies work, shared casualty links, tent delivery and capture effects |
 | Infantry arrival tasks | `frontline_core` | Boarding ranges, tunnel arrival, corpse/depot completion and ordered-throw inventory decisions extracted; Godot still applies boarding, tunnel membership, shared ammunition transfers and throws |
+| Mounted infantry | `frontline_core` | Approach/climbing stages, scan clocks, anti-tank target selection and gun traverse extracted; Godot still owns mount links, fire queues and weapon effects |
 | Complete fighting-position search | `frontline_core` | Candidate enumeration, reachability, protection, occupancy and final scoring run in one call; Godot supplies nearby structure and soldier records |
 | House-entry task phases | `frontline_core` | Stack/door/grenade/entry transitions, deadlines, cooking and room targets extracted with component checkpoints; Godot still owns movement callbacks and squad entry effects |
 | House occupancy and breach selection | `frontline_core` | Floor containment, ordered openings, nearest walkable stack positions and competing squadmates extracted; Godot still supplies spatial candidates, squad contacts and decision timers |
@@ -238,14 +239,14 @@ Component checkpoint headers contain a four-byte component tag, a little-endian
 rules rather than silently continuing with changed arithmetic. The separate
 integer RNG stream remains unchanged.
 
-`native/core/tests/numeric_contract.rs` compares 2,990,282 committed bytes without
+`native/core/tests/numeric_contract.rs` compares 3,557,125 committed bytes without
 tolerances: fixed-tick flight state, support events and RNG cursors, carved water,
 craters, rotated box hits, cover anchors, spherical interpolation and infantry
 movement, infantry cover fire, postures, ammunition, burst recovery, vitals, aiming,
 combat poses, bullet resolution, blast exposure, knockback recovery and wounded
 infantry schedules, grenade reflexes, grenade task movement and house-entry
 phases, building selection, automatic grenade attacks, incoming shells and drone
-reactions, special attacks, infantry supply, medical/work duties, arrival tasks, complete cover searches and stationary
+reactions, special attacks, infantry supply, medical/work duties, arrival tasks, mounted weapons, complete cover searches and stationary
 infantry movement. CI runs
 the same fixtures in debug and release on Windows x64, Linux
 x64, Linux ARM64 and macOS ARM64. A mismatch reports the first different byte.
@@ -462,9 +463,21 @@ flag until Rust owns the actors.
 
 The shock fixture compares 92,160 reference steps, including mounted turning,
 blocked terrain, carried casualties and task interruption. The full default suite
-passes 133 tests; 188 core tests pass in debug and release.
+passes 134 tests; 194 core tests pass in debug and release.
 
 ## Infantry tasks and reflexes
+
+`Mount` retains climbing phases, the anti-tank scan timer and selected target.
+Gun laying uses the same traverse limits as infantry movement. Anti-tank scans
+preserve the 130 m range, last-contact distance ties, team visibility, exposed
+points, smoke and obstruction reuse. The adapter keeps mount claims, fire queues,
+cooldowns and shot effects in their existing order and remains test-only.
+
+A 15,360-step frozen-reference fixture covers watchtowers, both machine-gun nests,
+mortar pits and anti-tank posts, comparing state, shots, callback order and random
+cursors. Removed mounts are checked before casting or using their old references.
+The `FLMT` component checkpoint retains approach and scan state; it does not
+contain the whole soldier or fire mission. Numeric CI adds 566,843 exact bytes.
 
 `infantry_travel` preserves boarding ranges, helicopter height gates, boat pickup
 after reaching the water's edge, route refreshes, tunnel entry and ordered throws.

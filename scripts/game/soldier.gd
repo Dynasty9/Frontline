@@ -4495,7 +4495,7 @@ func release_mount() -> void:
 	var st := mounted
 	mounted = null
 	gun_override = {}
-	if base_y > 0.0 and st:
+	if base_y > 0.0 and is_instance_valid(st):
 		position = world.nav.nearest_walkable(st.position + Vector3(2.0, 0, 0))
 	base_y = 0.0
 	position.y = 0.0
@@ -4507,41 +4507,26 @@ func release_mount() -> void:
 	next_cover_eval = 0.0
 
 
+var _mount_core: RefCounted
+
+
+func _native_mount() -> bool:
+	return world.settings.get("rust_infantry", false) and ClassDB.class_exists("InfantryMountCore")
+
+
+func _mounted_core() -> RefCounted:
+	if _mount_core == null:
+		_mount_core = ClassDB.instantiate("InfantryMountCore")
+	return _mount_core
+
+
 func _man_tick(dt: float) -> void:
-	var st := task_ent as Structure
+	var st: Structure = task_ent as Structure if is_instance_valid(task_ent) else null
 	if st == null or st.gone or not st.built:
 		release_mount()
 		return
-	match task_phase:
-		0:
-			if is_moving():
-				_move_tick(dt, _speed())
-				_choose_act(true)
-				return
-			if st.skind == "watchtower":
-				task_phase = 1
-				task_t = 1.6
-				position = Vector3(st.position.x, 0, st.position.z)
-			else:
-				task_phase = 2
-				position = st.mount_pos()
-				gun_override = st.mount_weapon()
-				match st.skind:
-					"mortar_pit":
-						say("On the mortar!", true)
-					"at_post":
-						say("AT post manned!", true)
-					_:
-						say("Manning the gun!", true)
-		1:
-			task_t -= dt
-			act = Act.CLIMB
-			position.y = lerpf(0.0, 4.25, clampf(1.0 - task_t / 1.6, 0.0, 1.0))
-			if task_t <= 0.0:
-				task_phase = 2
-				base_y = 4.25
-				position = st.mount_pos()
-	if task_phase != 2:
+	var ready := _man_approach_native(st, dt) if _native_mount() else _man_approach_reference(st, dt)
+	if not ready:
 		return
 	position = st.mount_pos()
 	match st.skind:
@@ -4565,6 +4550,63 @@ func _man_tick(dt: float) -> void:
 	_choose_act(false)
 
 
+func _man_approach_native(st: Structure, dt: float) -> bool:
+	var state: PackedFloat64Array = _mounted_core().station(task_phase, task_t, dt, st.skind == "watchtower", task_phase == 0 and is_moving())
+	assert(state.size() == 4, "Invalid mounted infantry approach")
+	task_phase = int(state[0])
+	task_t = state[1]
+	match int(state[2]):
+		0:
+			_move_tick(dt, _speed())
+			_choose_act(true)
+			return false
+		1:
+			position = Vector3(st.position.x, 0, st.position.z)
+		2, 3:
+			act = Act.CLIMB
+			position.y = state[3]
+			if int(state[2]) == 3:
+				base_y = 4.25
+				position = st.mount_pos()
+		4:
+			_man_claim(st)
+	return task_phase == 2
+
+
+func _man_claim(st: Structure) -> void:
+	position = st.mount_pos()
+	gun_override = st.mount_weapon()
+	match st.skind:
+		"mortar_pit": say("On the mortar!", true)
+		"at_post": say("AT post manned!", true)
+		_: say("Manning the gun!", true)
+
+
+func _man_approach_reference(st: Structure, dt: float) -> bool:
+	match task_phase:
+		0:
+			if is_moving():
+				_move_tick(dt, _speed())
+				_choose_act(true)
+				return false
+			if st.skind == "watchtower":
+				task_phase = 1
+				task_t = 1.6
+				position = Vector3(st.position.x, 0, st.position.z)
+			else:
+				task_phase = 2
+				_man_claim(st)
+		1:
+			task_t -= dt
+			act = Act.CLIMB
+			position.y = lerpf(0.0, 4.25, clampf(1.0 - task_t / 1.6, 0.0, 1.0))
+			if task_t <= 0.0:
+				task_phase = 2
+				base_y = 4.25
+				position = st.mount_pos()
+	return task_phase == 2
+
+
 func _mortar_pit_tick(dt: float, st: Structure) -> void:
 	posture = Post.CROUCH
 	act = Act.LAUNCH if world.time - last_shot_t < 0.7 else Act.IDLE
@@ -4583,10 +4625,17 @@ func _mortar_pit_tick(dt: float, st: Structure) -> void:
 			mortar_cd = world.time + 2.0
 			_face(st.front_dir(), dt, 3.0)
 			return
-	var dir := Defs.flat(_pit_aim - position)
-	_face(dir, dt)
-	if absf(wrapf(Defs.yaw_of(dir) - rotation.y, -PI, PI)) > 0.035:
-		return
+	if _native_mount():
+		var aimed: PackedFloat64Array = _mounted_core().gun_aim(position, rotation.y, dt, _mount_turn(), st.position, _pit_aim, false)
+		assert(aimed.size() == 5, "Invalid mounted mortar aim")
+		rotation.y = aimed[0]
+		if aimed[1] == 0.0:
+			return
+	else:
+		var dir := Defs.flat(_pit_aim - position)
+		_face(dir, dt)
+		if absf(wrapf(Defs.yaw_of(dir) - rotation.y, -PI, PI)) > 0.035:
+			return
 	mortar_cd = world.time + _pit_delay
 	last_shot_t = world.time
 	world.combat.fire_mortar(self, st.position + Vector3(0, 1.0, 0), _pit_aim, _pit_kind)
@@ -4597,24 +4646,34 @@ func _at_post_tick(dt: float, st: Structure) -> void:
 	posture = Post.CROUCH
 	act = Act.LAUNCH if world.time - last_shot_t < 1.0 else Act.IDLE
 	var eye := st.position + Vector3(0, 1.3, 0)
-	_mount_scan_t -= dt
-	if _mount_scan_t <= 0.0:
+	var scan_due: bool
+	if _native_mount():
+		var clock: PackedFloat64Array = _mounted_core().scan_due(_mount_scan_t, _mount_target.eid if is_instance_valid(_mount_target) else 0, dt)
+		assert(clock.size() == 2, "Invalid mounted scan clock")
+		_mount_scan_t = clock[0]
+		scan_due = clock[1] != 0.0
+	else:
+		_mount_scan_t -= dt
+		scan_due = _mount_scan_t <= 0.0
+	if scan_due:
 		_mount_scan_t = 0.7
 		_mount_target = null
-		var bd := 130.0
-		for v in world.vehicles:
-			if v.team == team or v.team < 0 or not v.visible_to_team(team):
-				continue
-			var d: float = Defs.flat(v.position - st.position).length()
-			if d > bd or not world.combat.can_see_from(eye, v, []):
-				continue
-			bd = d
-			_mount_target = v
+		_scan_at_post(st, eye)
 	if not is_instance_valid(_mount_target) or _mount_target.gone:
 		return
-	var dir := Defs.flat(_mount_target.position - st.position).normalized()
-	_face(dir, dt)
-	if world.time < rocket_cd or absf(wrapf(Defs.yaw_of(dir) - rotation.y, -PI, PI)) > 0.035:
+	var dir: Vector3
+	var aligned: bool
+	if _native_mount():
+		var aimed: PackedFloat64Array = _mounted_core().gun_aim(position, rotation.y, dt, _mount_turn(), st.position, _mount_target.position, true)
+		assert(aimed.size() == 5, "Invalid mounted anti-tank aim")
+		rotation.y = aimed[0]
+		aligned = aimed[1] != 0.0
+		dir = Vector3(aimed[2], aimed[3], aimed[4])
+	else:
+		dir = Defs.flat(_mount_target.position - st.position).normalized()
+		_face(dir, dt)
+		aligned = absf(wrapf(Defs.yaw_of(dir) - rotation.y, -PI, PI)) <= 0.035
+	if world.time < rocket_cd or not aligned:
 		return
 	if not world.combat.can_see_from(eye, _mount_target, []):
 		return
@@ -4622,6 +4681,35 @@ func _at_post_tick(dt: float, st: Structure) -> void:
 	last_shot_t = world.time
 	world.combat.fire_at(self, eye + dir * 0.9, _mount_target, team == Defs.ARMY)
 	say("Missile away!" if team == Defs.ARMY else "Recoilless, fire!")
+
+
+func _scan_at_post(st: Structure, eye: Vector3) -> void:
+	if _native_mount() and world.combat._collision and world.combat._visibility:
+		world.combat._sync_collision()
+		var rows := []
+		for v: Vehicle in world.vehicles:
+			if v.team == team or v.team < 0 or not v.visible_to_team(team):
+				continue
+			var excluded := PackedInt64Array()
+			for rid: RID in v.get_exclude():
+				if world.combat._rid_entities.has(rid):
+					excluded.append(int(world.combat._rid_entities[rid]))
+			rows.append([v.eid, v.team, true, v.position, PackedVector3Array(v.exposed_points()), excluded])
+		var scan: PackedInt64Array = _mounted_core().scan(world.combat._collision, world.combat._visibility, team, st.position, rows)
+		assert(scan.size() == 2, "Invalid mounted anti-tank scan")
+		_mount_target = world.entity(scan[0])
+		for i in scan[1]:
+			world.stat("perception_blocked_reused")
+		return
+	var bd := 130.0
+	for v in world.vehicles:
+		if v.team == team or v.team < 0 or not v.visible_to_team(team):
+			continue
+		var d: float = Defs.flat(v.position - st.position).length()
+		if d > bd or not world.combat.can_see_from(eye, v, []):
+			continue
+		bd = d
+		_mount_target = v
 
 
 ## Mobile mortar teams: fire missions first, otherwise shell spotted enemies.

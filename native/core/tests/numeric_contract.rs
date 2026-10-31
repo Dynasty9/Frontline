@@ -36,6 +36,58 @@ fn block(out: &mut Vec<u8>, bytes: &[u8]) {
 }
 
 #[test]
+fn infantry_mount_is_identical_across_platforms() {
+    use frontline_core::infantry_mount::{self as crew, GunPose, Mount, Station};
+    let mut bytes = Vec::new();
+    for trial in 0..256 {
+        let mut state = Mount {
+            phase: (trial % 3) as u8,
+            timer: trial as f64 * 0.0031,
+            scan_timer: trial as f64 * 0.0017,
+            target: trial + 1,
+        };
+        let position = Vector3::new(trial as f32 * 0.11, 0.0, -3.7);
+        let mut yaw = trial as f64 * 0.11 - 10.0;
+        for tick in 0..32 {
+            let dt = [1.0 / 30.0, 0.017, 0.2, 1.7][(trial as usize + tick) % 4];
+            let station = state.station(dt, trial % 2 == 0, tick % 7 == 0).unwrap();
+            bytes.push(match station {
+                Station::Move => 0,
+                Station::StartClimb => 1,
+                Station::Climb { .. } => 2,
+                Station::Man => 3,
+                Station::Ready => 4,
+            });
+            if let Station::Climb { height, finished } = station {
+                bytes.extend_from_slice(&height.to_le_bytes());
+                bytes.push(u8::from(finished));
+            }
+            bytes.push(u8::from(state.scan_due(dt).unwrap()));
+            let pose = GunPose {
+                position,
+                yaw,
+                dt,
+                mount: (trial % 3 != 0).then_some((position, 0.20943951023931956)),
+            };
+            let target = Vector3::new(-17.1, tick as f32 * 0.1, trial as f32 * 0.07);
+            let aim = crew::mortar_aim(pose, target).unwrap();
+            bytes.extend_from_slice(&aim.yaw.to_le_bytes());
+            bytes.push(u8::from(aim.aligned));
+            let (aim, dir) = crew::antitank_aim(pose, position + Vector3::X * 0.1, target).unwrap();
+            bytes.extend_from_slice(&aim.yaw.to_le_bytes());
+            bytes.push(u8::from(aim.aligned));
+            point(&mut bytes, dir);
+            yaw = aim.yaw;
+            block(&mut bytes, &state.checkpoint());
+            if tick == 9 {
+                state = Mount::restore(&state.checkpoint()).unwrap();
+            }
+        }
+    }
+    golden("infantry_mount", &bytes);
+}
+
+#[test]
 fn infantry_travel_is_identical_across_platforms() {
     use frontline_core::infantry_travel::{self as travel, AfterBoarding, Throw};
     let mut out = Vec::new();
