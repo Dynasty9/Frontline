@@ -394,6 +394,21 @@ fn values(s: &Squad) -> Array<Variant> {
 #[godot_api]
 impl SquadStateCore {
     #[func]
+    fn create(&mut self, id: u32, team: i8, owner: i32, kind: GString) -> bool {
+        let Ok(q) = Squad::new(id, team, owner, kind.to_string()) else {
+            return false;
+        };
+        self.core = Some(q);
+        true
+    }
+    #[func]
+    fn add_member(&mut self, id: u32, mut actors: Gd<ActorStateCore>) -> bool {
+        self.core.as_mut().is_some_and(|q| {
+            q.add_member(id, &mut actors.bind_mut().core)
+                .unwrap_or(false)
+        })
+    }
+    #[func]
     fn load_state(&mut self, values: Array<Variant>) -> bool {
         let Some(s) = state(&values) else {
             return false;

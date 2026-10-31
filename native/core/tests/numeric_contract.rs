@@ -36,6 +36,65 @@ fn block(out: &mut Vec<u8>, bytes: &[u8]) {
 }
 
 #[test]
+fn retained_infantry_births_are_identical_across_platforms() {
+    use frontline_core::actors::Actors;
+    use frontline_core::infantry_spawn::{random_name, Loadout, Spawn};
+    use frontline_core::squad::Squad;
+    let mut bytes = vec![];
+    let names = ["Taylor", "Jones", "Perez", "Morgan"].map(String::from);
+    for trial in 0..32 {
+        let mut a = Actors::default();
+        let mut rng = SimulationRandom::new(8317 + trial);
+        let mut q = Squad::new(trial as u32 * 47 + 1, (trial % 2) as i8, 7, "crew".into()).unwrap();
+        for unit in 0..8 {
+            let loadout = Loadout {
+                unit: format!("unit_{unit}"),
+                weapon: if unit == 0 { "" } else { "rifle" }.into(),
+                hp: 80.0 + unit as f64 * 7.1,
+                magazine: if unit == 0 { 0 } else { 30 },
+                ammunition: if unit == 0 { 0 } else { 120 },
+                grenades: unit % 3,
+                smokes: unit % 2,
+                rockets: unit % 4,
+                mortar_rounds: if unit == 5 { 8 } else { 0 },
+                drones: if unit == 6 { 2 } else { 0 },
+                bearer: unit == 0,
+            };
+            let birth = Spawn {
+                team: q.team,
+                owner: q.owner,
+                position: Vector3::new(unit as f32 * 1.7, 0.15, trial as f32 * -0.73),
+                yaw: trial as f64 * 0.137 - 3.0,
+                name: if trial % 3 == 0 {
+                    "Fixed name".into()
+                } else {
+                    random_name(&names, &mut rng).unwrap()
+                },
+                squad: q.id,
+                life: (trial as u8 % 6).try_into().unwrap(),
+                posture: (trial as u8 % 5).try_into().unwrap(),
+                armor_upgrade: trial % 2 != 0,
+                grenade_upgrade: trial % 4 >= 2,
+            };
+            let id = a.spawn_infantry(birth, &loadout, &mut rng).unwrap();
+            q.add_member(id, &mut a).unwrap();
+            block(&mut bytes, &a.soldier(id).unwrap().checkpoint().unwrap());
+            block(&mut bytes, &q.checkpoint().unwrap());
+            bytes.extend_from_slice(&rng.state().to_le_bytes());
+            if unit == 3 {
+                a = Actors::restore(&a.checkpoint().unwrap()).unwrap();
+                q = Squad::restore(&q.checkpoint().unwrap()).unwrap();
+                let state = rng.state();
+                rng = SimulationRandom::new(rng.seed());
+                rng.set_state(state);
+            }
+        }
+        block(&mut bytes, &a.checkpoint().unwrap());
+    }
+    golden("infantry_spawn", &bytes);
+}
+
+#[test]
 fn retained_structure_damage_is_identical_across_platforms() {
     use frontline_core::actors::{Actor, Actors};
     use frontline_core::deferred_effects::DeferredEffects;

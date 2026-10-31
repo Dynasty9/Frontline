@@ -81,6 +81,7 @@ kind = "fixed"
 - Transport checks preserve sling pickup, swing, release and dropped cargo, plus pilots' landing, unloading, supply-destination and return-flight decisions.
 - Vehicle combat checks preserve armour, ricochets, blast shove, broken tracks, damage alerts and missile/cannon/machine-gun firing priorities and timing.
 - Passenger checks preserve dismount timing, exits onto shore and the section's next orders, including removed passengers.
+- Infantry birth checks preserve unit loadouts, upgrades, names, initial cooldowns and squad membership as entity creation moves into Rust.
 - Launch checks preserve vehicle missiles, defensive smoke, warning order and random choices across saved-state resumes.
 - Vehicle targeting checks preserve infantry exposure, aircraft priorities, fog-hidden buildings, forced targets and nearby squad reports as combat decisions move into Rust.
 - Infantry targeting checks preserve concealment, wounded firing, mounted-gun arcs, drone reactions and contact-report order as soldiers begin reading shared Rust actor state.

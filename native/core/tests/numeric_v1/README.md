@@ -17,6 +17,8 @@ different byte rather than dumping the fixture.
   squad reactions, knockback and flinching, including complete component resumes.
 - `structure_damage.bin`: damage and destruction events, remaining and removed
   actors, shared occupants, mount cleanup, ignition and deferred explosions/rubble.
+- `infantry_spawn.bin`: unit loadouts, upgrades, initial cooldowns, names, squad
+  recruitment and allocation order through resumed births.
 
 Rust 1.94.0, glam 0.32.1 with `libm`, and libm 0.2.16 with `force-soft-floats`
 define this contract. No fast-math is enabled. Existing component resume tests

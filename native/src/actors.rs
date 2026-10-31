@@ -334,6 +334,73 @@ fn write_squads(
 #[godot_api]
 impl ActorStateCore {
     #[func]
+    fn spawn_infantry(
+        &mut self,
+        birth: Array<Variant>,
+        loadout: Array<Variant>,
+        mut rng: Gd<crate::simulation_random::SimulationRandomCore>,
+    ) -> u32 {
+        use frontline_core::infantry_spawn::{Loadout, Spawn};
+        let parsed = || -> Option<(Spawn, Loadout)> {
+            if birth.len() != 10 || loadout.len() != 11 {
+                return None;
+            }
+            Some((
+                Spawn {
+                    team: birth.at(0).try_to().ok()?,
+                    owner: birth.at(1).try_to().ok()?,
+                    position: crate::point(birth.at(2).try_to().ok()?),
+                    yaw: birth.at(3).try_to().ok()?,
+                    name: birth.at(4).try_to::<GString>().ok()?.to_string(),
+                    squad: birth.at(5).try_to().ok()?,
+                    life: birth.at(6).try_to::<u8>().ok()?.try_into().ok()?,
+                    posture: birth.at(7).try_to::<u8>().ok()?.try_into().ok()?,
+                    armor_upgrade: birth.at(8).try_to().ok()?,
+                    grenade_upgrade: birth.at(9).try_to().ok()?,
+                },
+                Loadout {
+                    unit: loadout.at(0).try_to::<GString>().ok()?.to_string(),
+                    weapon: loadout.at(1).try_to::<GString>().ok()?.to_string(),
+                    hp: loadout.at(2).try_to().ok()?,
+                    magazine: loadout.at(3).try_to().ok()?,
+                    ammunition: loadout.at(4).try_to().ok()?,
+                    grenades: loadout.at(5).try_to().ok()?,
+                    smokes: loadout.at(6).try_to().ok()?,
+                    rockets: loadout.at(7).try_to().ok()?,
+                    mortar_rounds: loadout.at(8).try_to().ok()?,
+                    drones: loadout.at(9).try_to().ok()?,
+                    bearer: loadout.at(10).try_to().ok()?,
+                },
+            ))
+        };
+        let Some((birth, loadout)) = parsed() else {
+            return 0;
+        };
+        self.core
+            .spawn_infantry(birth, &loadout, &mut rng.bind_mut().core)
+            .unwrap_or(0)
+    }
+    #[func]
+    fn soldier_name(
+        &self,
+        names: PackedStringArray,
+        mut rng: Gd<crate::simulation_random::SimulationRandomCore>,
+    ) -> GString {
+        if names.len() > 4096 {
+            return GString::new();
+        }
+        frontline_core::infantry_spawn::random_name(
+            &names
+                .as_slice()
+                .iter()
+                .map(ToString::to_string)
+                .collect::<Vec<_>>(),
+            &mut rng.bind_mut().core,
+        )
+        .map(|s| GString::from(s.as_str()))
+        .unwrap_or_default()
+    }
+    #[func]
     fn damage_structure(
         &mut self,
         id: u32,

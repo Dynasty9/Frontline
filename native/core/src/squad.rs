@@ -206,6 +206,41 @@ fn valid_pairs(v: &[(u32, f64)]) -> bool {
 }
 
 impl Squad {
+    pub fn new(id: u32, team: i8, owner: i32, kind: String) -> Result<Self, &'static str> {
+        let q = Self {
+            id,
+            team,
+            owner,
+            kind,
+            think_timer: (f64::from(id) * 0.309016994) % 0.5,
+            ..Default::default()
+        };
+        if !q.valid() {
+            return Err("invalid squad birth");
+        }
+        Ok(q)
+    }
+
+    pub fn add_member(&mut self, id: u32, actors: &mut Actors) -> Result<bool, &'static str> {
+        if !self.valid() {
+            return Err("invalid squad");
+        }
+        if self.members.contains(&id) {
+            return Ok(false);
+        }
+        if self.members.len() == 4096 {
+            return Err("squad member limit exceeded");
+        }
+        let s = actors.soldier_mut(id).ok_or("missing squad recruit")?;
+        self.members.push(id);
+        self.centroid_at = -1.0;
+        s.identity.squad = self.id;
+        if self.order_position == Vector3::ZERO {
+            self.order_position = s.motion.position;
+        }
+        Ok(true)
+    }
+
     pub fn valid(&self) -> bool {
         self.id != 0
             && (-1..=1).contains(&self.team)

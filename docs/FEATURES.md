@@ -1420,6 +1420,9 @@ fire and whole-world explosion dispatch still need integration.
 Retained structure damage preserves doors, repairable wrecked FOBs, tunnel exits,
 gunner dismounts, car ignition and delayed cache explosions and rubble. The world
 still needs to apply their geometry, heat, battle-record and rule effects.
+Retained infantry births preserve every unit loadout, upgrades, initial cooldowns,
+names and squad recruitment. Live spawning and squad ledger callbacks remain in
+Godot until the shared world dispatcher owns them.
 Construction, town income, capture and production transitions match the existing
 game; shared rule effects, destruction and the full building dispatcher still need
 migration before Rust owns the complete battle.

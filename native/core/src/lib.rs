@@ -51,6 +51,7 @@ pub mod infantry_pose;
 pub mod infantry_reflex;
 pub mod infantry_scan;
 pub mod infantry_shock;
+pub mod infantry_spawn;
 pub mod infantry_special;
 pub mod infantry_supply;
 pub mod infantry_tactics;

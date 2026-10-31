@@ -1614,3 +1614,19 @@ delayed-explosion parameters, rubble and RNG. Numeric CI adds 3,219,786 exact
 bytes, including retained and removed actors, deferred effects and resumed random
 state. The world dispatcher still needs to consume those effects; fire heat,
 geometry refresh and battle-record updates are not completed by this operation.
+
+## Infantry births and squad recruitment
+
+`Actors.spawn_infantry` creates authoritative infantry directly from the match's
+loadout and spawn inputs, including upgrades, special ammunition, initial
+cooldowns and hold orders. Names use the existing one-integer draw before the
+initial AI delay. `Squad.new` preserves the ID-based planning cadence without a
+random draw; recruitment keeps member order, cached-center invalidation and
+soldier links. Rejected births leave both allocation and random cursors unchanged.
+
+Five core regressions cover these operations. The Godot comparison exercises all
+sixteen current unit definitions, both upgrades, all initial life/posture states,
+fixed and random names, duplicate recruitment and checkpoint resumes: 1,536
+complete actor-state checks plus squad state and RNG. The numeric contract adds
+760,644 exact bytes. Live spawning, squad ledger callbacks and whole-world
+dispatch still run in Godot while the migration continues.
