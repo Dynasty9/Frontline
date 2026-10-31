@@ -1,4 +1,4 @@
 extends "res://tests/fixtures/world-combat.gd"
 
 func _ready() -> void:
-	run(true)
+	run(1)

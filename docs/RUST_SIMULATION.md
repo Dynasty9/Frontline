@@ -46,7 +46,7 @@ graphics, network access or a wall clock.
 | Bullet resolution | `frontline_core` | Connected fire applies penetration, injuries, vehicle loss, blast effects, suppression, sound reports and battle records in order; the complete live world dispatcher remains unfinished |
 | Explosions | `frontline_core` | Connected blasts apply casualties, vehicle/structure destruction, supply reroutes, fire, terrain and delayed chain reactions in order; the complete live world dispatcher remains unfinished |
 | Blast knockback and disorientation | `frontline_core` | Fling trajectories, obstacle bounces, landings, flinching and dazed movement extracted with component checkpoints; Godot still applies task cleanup and speech |
-| Wounded infantry and corpse timers | `frontline_core` | Retained corpse cleanup and captive movement preserve carriers, ground caches and shared squad removal; bleeding and speech/pistol/crawl schedules are extracted, while the connected wounded dispatcher remains unfinished |
+| Wounded infantry and corpse timers | `frontline_core` | Connected wounded updates apply bleeding, carrier cleanup, pistol damage and crawl routes to shared world state; corpse cleanup and captive movement preserve ground caches and squad removal |
 | Grenade reflex decisions | `frontline_core` | Owned actors retain notice memory, grenade claims, rescue/breach cleanup, task changes, shelter and dives; the live decision loop and task dispatcher remain in Godot |
 | Grenade task movement | `frontline_core` | Owned smother, pickup and kick duties update the shared soldier/projectile state, including holder links; completed strikes and the live dispatcher remain in Godot |
 | Automatic grenade attacks | `frontline_core` | Shared squad contacts and spatial groups drive retained throw/cook actions, ammunition and cooldowns; completed throws and the live dispatcher remain in Godot |
@@ -1683,7 +1683,7 @@ restored state and invalid inputs. The Godot comparison checks 12,288 complete
 soldier states after successive bearer updates, plus squad membership, routes,
 speech and RNG. Numeric CI adds 2,376,159 exact bytes. These duties still await the
 complete Rust world dispatcher. Hidden treatment completion has separate coverage;
-the wounded lifecycle remains an outstanding integration.
+the connected wounded lifecycle is described below.
 
 ## Hidden transport, tunnels and treatment completion
 
@@ -1698,7 +1698,7 @@ Six core regressions and 3,584 Godot actor-state comparisons cover all seven hid
 states, missing transports/shelters, base selection, deadlines and checkpoint
 resumes. The reference also compares squad state, tunnel occupants, speech,
 property changes, messages, movement requests and RNG. Numeric CI adds 5,317,037
-exact bytes. Ledger/observation callbacks, wounded behavior and the complete Rust
+exact bytes. Ledger/observation callbacks and the complete Rust
 world dispatcher remain unfinished.
 
 ## Corpse cleanup and captive movement
@@ -2064,3 +2064,20 @@ exactly in debug/release and across the supported CI platforms.
 The reference binding remains an integration test adapter. Production actor ticks,
 the complete Rust server, socket transport and whole-battle verification remain
 unfinished; this component does not establish 60 FPS.
+
+## Connected wounded infantry
+
+Wounded updates now run against the retained world. Bleeding precedes stale carrier
+cleanup, preserving the existing rescue and medicine factors. Bleedout records
+credit before death, releases shared claims and cancels routes. Cries precede
+pistol fire, and a carried patient does neither pistol aiming nor crawling.
+Pistol hits use connected bullet resolution before the soldier settles on the
+ground or seeks cover. Crawl arrivals and replans update shared navigation before
+another actor runs. Immediate facing retains Godot's 32-bit angle assignment.
+
+Five core regressions cover bleedout credit, carried patients, invalid input and
+exact checkpoint continuation through firing. The Godot comparison checks 1,184
+world geometry states across 64 cases, plus full actors, squads, effects, routes,
+battle records and random cursors. The 5,701,213-byte numeric transcript includes
+resumed bleeding, stale links, pistol fire and crawl orders. The full production
+infantry dispatcher and standalone server still need integration.

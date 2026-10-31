@@ -36,6 +36,7 @@ kind = "fixed"
 - Rust travel-task checks preserve retreat, grenade orders, boarding, tunnels, drone operation and resupply, including shared seats, occupants and ammunition.
 - Rust blast checks preserve cover, injuries, carrier/patient links, squad reactions and knockback in the same victim order as the existing game.
 - Connected Rust gunfire checks preserve penetration, injuries, destroyed vehicles, explosive rounds, near misses and enemy reports through saved-state resumes.
+- Connected wounded-soldier checks preserve bleeding, rescue links, pistol hits, crawling to cover and death credit through saved-state resumes.
 - Rust destruction checks preserve repairable FOBs, tunnel evacuation, gunner dismounts, car fires and delayed ammunition-cache explosions as shared combat moves into Rust.
 - Fighting positions and their protection checks now use Rust, retaining low cover, leaning fire and second-row shelter while avoiding redundant firing-lane checks.
 - Ground edits, crater deformation and cover repairs now use Rust, preserving road speed, directional cover, camouflage and shell holes.

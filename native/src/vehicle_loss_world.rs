@@ -13,6 +13,7 @@ use frontline_core::actors::Actor;
 use frontline_core::bullet::Weapon;
 use frontline_core::bullet_world::{Gunfire, Shot};
 use frontline_core::fires::{BuildingProfile, ManProfile};
+use frontline_core::infantry_wounded_world::{self as wounded, Input as WoundedInput};
 use frontline_core::squad::Report;
 use frontline_core::squad_movement;
 use frontline_core::vehicle_damage::Armor;
@@ -94,6 +95,7 @@ enum Operation {
     Explosion(Explosion, Gd<SupplyNetworkCore>, Vec<Report>),
     Deferred(Gd<SupplyNetworkCore>, Vec<Report>),
     Bullet(Array<Variant>, Gd<SupplyNetworkCore>, Vec<Report>),
+    Wounded(u32, WoundedInput, Gd<SupplyNetworkCore>, Vec<Report>),
 }
 #[derive(GodotClass)]
 #[class(base=RefCounted, init)]
@@ -271,6 +273,55 @@ impl VehicleLossWorldCore {
     #[func]
     fn gunfire_checkpoint(&self) -> PackedByteArray {
         PackedByteArray::from(self.gunfire.checkpoint().as_slice())
+    }
+    #[func]
+    fn advance_wounded(
+        &mut self,
+        actors: Gd<ActorStateCore>,
+        geometry: Gd<WorldGeometryCore>,
+        units: Gd<SpatialIndexCore>,
+        nodes: Array<Gd<SquadStateCore>>,
+        fires: Gd<FiresCore>,
+        battle: Gd<BattleStatsCore>,
+        deferred: Gd<DeferredEffectsCore>,
+        visibility: Gd<VisibilityCore>,
+        rng: Gd<SimulationRandomCore>,
+        config: Array<Variant>,
+        input: Array<Variant>,
+        network: Gd<SupplyNetworkCore>,
+        impacts: Array<Variant>,
+    ) -> Array<Variant> {
+        let parse = || -> Option<_> {
+            if input.len() != 4 {
+                return None;
+            }
+            Some((
+                read::<u32>(&input, 0)?,
+                WoundedInput {
+                    dt: read(&input, 1)?,
+                    medicine: read(&input, 2)?,
+                    optics: read(&input, 3)?,
+                    gun: None,
+                },
+                read_impacts(&impacts)?,
+            ))
+        };
+        let Some((id, input, reports)) = parse() else {
+            return Array::new();
+        };
+        self.run(
+            actors,
+            geometry,
+            units,
+            nodes,
+            fires,
+            battle,
+            deferred,
+            visibility,
+            rng,
+            config,
+            Operation::Wounded(id, input, network, reports),
+        )
     }
     #[func]
     fn gunfire_restore(&mut self, bytes: PackedByteArray) -> bool {
@@ -492,6 +543,7 @@ impl VehicleLossWorldCore {
             player_building: &|k| buildings.get(k).is_some_and(|p| p.player),
         };
         let mut reports = None;
+        let mut cries: Option<Array<Variant>> = None;
         let armor = |v: &frontline_core::vehicle::Vehicle| {
             let p = &vehicles[&v.id];
             Armor {
@@ -503,6 +555,42 @@ impl VehicleLossWorldCore {
             }
         };
         let result = match operation {
+            Operation::Wounded(id, input, mut network, mut impacts) => {
+                let result = context.advance_wounded(
+                    id,
+                    input,
+                    &mut self.gunfire,
+                    &mut network.bind_mut().core,
+                    &mut impacts,
+                    &armor,
+                    &|v| vehicles[&v.id].hit,
+                );
+                reports = Some(impacts);
+                result.map(|events| {
+                    cries = Some(
+                        events
+                            .iter()
+                            .filter_map(|e| match e {
+                                wounded::Event::Cry { id, cue } => {
+                                    Some(varray![*id, i32::from(*cue)].to_variant())
+                                }
+                                _ => None,
+                            })
+                            .collect(),
+                    );
+                    events
+                        .into_iter()
+                        .filter_map(|e| match e {
+                            wounded::Event::World(e) => Some(e),
+                            wounded::Event::Movement {
+                                event: frontline_core::infantry_travel_owned::Event::Stat(s),
+                                ..
+                            } => Some(world_combat::Event::Stat(s)),
+                            _ => None,
+                        })
+                        .collect()
+                })
+            }
             Operation::Bullet(input, mut network, mut impacts) => {
                 let parse = || -> Option<_> {
                     if input.len() != 6 {
@@ -622,9 +710,10 @@ impl VehicleLossWorldCore {
                 .collect();
             out.push(&rows.to_variant());
         }
-        if events
-            .iter()
-            .any(|e| matches!(e, world_combat::Event::Shot { .. }))
+        if cries.is_some()
+            || events
+                .iter()
+                .any(|e| matches!(e, world_combat::Event::Shot { .. }))
         {
             let effects: Array<Variant> = events
                 .iter()
@@ -657,6 +746,9 @@ impl VehicleLossWorldCore {
                 })
                 .collect();
             out.push(&effects.to_variant());
+        }
+        if let Some(cries) = cries {
+            out.push(&cries.to_variant());
         }
         out
     }

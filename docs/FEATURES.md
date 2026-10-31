@@ -1452,7 +1452,9 @@ occupancy and squad updates. Ledger callbacks and the full world loop still need
 integration.
 Retained corpse cleanup checks shared carrier state and ground caches before
 removing expired bodies; captive movement keeps the existing route speed and
-hands-up posture. Wounded behavior and the full world dispatcher remain unfinished.
+hands-up posture. Connected wounded updates preserve bleeding, carrier cleanup,
+cries, pistol hits and crawl routes against retained world state, including death
+credit and shared casualty links. The full world dispatcher remains unfinished.
 Retained fires connect ignition, spreading, heat, smoke, casualties and escape
 orders to shared actors and navigation. Burned structures update the battle record
 and retire their geometry before later fire victims act. Checkpoints preserve

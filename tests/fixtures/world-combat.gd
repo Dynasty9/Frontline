@@ -10,12 +10,16 @@ class CombatDrone extends Drone:
 
 class ShotWorld extends FireWorld:
 	var bullet_fx: Array = []
+	var cries: Array = []
+	func say(entity: Entity, text: String) -> void:
+		var cue := ["MEDIC!", "I'm hit! Medic!", "Help me!", "Medic! Over here!", "Argh! I'm hit!", "Somebody help!"].find(text)
+		if cue >= 0: cries.append([entity.eid,cue])
 	func fx_event(event: Array) -> void:
 		if event[0] == Fx.SHOT: bullet_fx.append(["shot",event[1],event[2],event[3],event[4],event[5]])
 		elif event[0] == Fx.RICOCHET: bullet_fx.append(["ricochet",event[1],event[2]])
 
 func _ready() -> void:
-	run(false)
+	run(0)
 
 func blast_ledger_equal(expected: Array, actual: Array) -> bool:
 	if expected.size() != actual.size(): return false
@@ -32,7 +36,9 @@ func blast_ledger_equal(expected: Array, actual: Array) -> bool:
 			else: normalized[group][row] = a
 	return normalized == actual
 
-func run(shoot: bool) -> void:
+func run(mode: int) -> void:
+	var shoot := mode == 1
+	var wounded := mode == 2
 	MapDims.N = 64; MapDims.SIZE = 64.0; MapDims.HALF = 32.0; MapDims.BIOME = 64; Defs.MAP_HALF = 32.0
 	Nav.N = 64; Nav.H = 32.0; HNav.C = 16; HNav.NC = 4; HNav.NCC = 16; HNav._corner = HNav._corners()
 	TerrainMap.N = 64; TerrainMap.H = 32.0; TerrainMap.DN = 128
@@ -60,6 +66,9 @@ func run(shoot: bool) -> void:
 		w.combat = Combat.new(w); w.combat.enable_native_collision(); w.fires = Fires.new(w)
 		w.rules = Rules.new(w); w.rules.upgrades = [{},{}]; w.battle = BattleStats.new(w); w._deferred_effects = DeferredEffects.new(false)
 		if shoot and trial % 3 == 0: w.rules.upgrades = [{"optics":true},{"optics":true}]
+		if wounded and trial % 3 < 2:
+			var key := "medicine" if trial % 3 == 0 else "optics"
+			w.rules.upgrades[0][key] = true; w.rules.upgrades[1][key] = true
 		w.time = 100.0; w.next_eid = 1000; w.next_sid = 7; add_child(w)
 		for pair in [[ledger,"BattleStatsCore"],[deferred,"DeferredEffectsCore"]]:
 			var empty: RefCounted = ClassDB.instantiate(pair[1]); assert(pair[0].restore(empty.checkpoint()))
@@ -95,6 +104,20 @@ func run(shoot: bool) -> void:
 		var dr := CombatDrone.new(); dr.world = w; dr.srv = true; dr.eid = 60; dr.team = 1; dr.position = Vector3(1,1,0); dr.operator = w.entities[5]
 		w.add_child(dr); w._register(dr); dr.on_spawned()
 		w._rebuild_uhash(); w.terrain.tick(100000); w.nav.finalize(); w.combat._sync_collision()
+		if wounded:
+			var s: Soldier = w.entities[3]; var carrier: Soldier = w.entities[4]
+			s.life = Soldier.Life.DOWNED; s.hp = 0.0; s.posture = Soldier.Post.PRONE; s.downed_t = 90.0
+			s.bleed_max = 50.0; s.bleed = 0.001 if trial % 4 == 0 else 35.0
+			s.scream_t = 0.0; s.pistol_t = 0.0; s.crawl_t = 0.0
+			if trial % 8 in [1,5]:
+				s.carried_by = [carrier]
+				if trial % 8 == 5: carrier.life = Soldier.Life.DEAD; carrier.hp = 0.0
+			if trial % 8 in [2,6]:
+				s.dragged_by = carrier; carrier.task = "rescue" if trial % 8 == 2 else "fight"; carrier.task_ent = s
+			if trial % 8 == 3:
+				s.goal_kind = "crawl"; s.goal = s.position + Vector3(-2,0,3)
+				s.path = PackedVector3Array([s.position,s.goal]); s.path_i = 1
+			w._rebuild_uhash()
 		var types := PackedByteArray(); var blocks := []; var vehicles := []; var men := []; var buildings := []
 		for e: Entity in w.entities.values():
 			if e is Soldier:
@@ -121,8 +144,11 @@ func run(shoot: bool) -> void:
 		var next: int = w.next_sid
 		var initial: RefCounted = ClassDB.instantiate("VehicleLossWorldCore")
 		assert(combat.gunfire_restore(initial.gunfire_checkpoint()))
-		for step in (12 if shoot else 3):
-			if shoot: w.time += 0.17
+		for step in (12 if shoot or wounded else 3):
+			if wounded and w.entities[3].life != Soldier.Life.DOWNED: break
+			var dt: float = [0.05,0.1,0.25,0.5][trial % 4]
+			if wounded: w.time += dt
+			elif shoot: w.time += 0.17
 			elif step == 2: w.time += 1.6
 			var config := [next,w.time,w.town_rect,[PackedStringArray(Defs.NAMES[0]),PackedStringArray(Defs.NAMES[1])],[birth.loadout("crewman"),birth.loadout("r_crewman")],vehicles,men,buildings]
 			var p: Vector3 = [Vector3.ZERO,Vector3(-10,0,0),Vector3(9,0,0),Vector3(3,2,0)][trial % 4]
@@ -131,7 +157,16 @@ func run(shoot: bool) -> void:
 			if trial % 5: data.dmg = 180.0 if step == 0 else 1200.0
 			var input := [p,data.get("dmg"),data.radius,data.fling,data.size,data.at,0.3,data.top,null,1.0,1.0,InfantryState.entity_id(source),8,1]
 			var result: Array
-			if shoot:
+			if wounded:
+				var s: Soldier = w.entities[3]
+				result = combat.advance_wounded(actors,geometry,units,qs,fires,ledger,deferred,visibility,random._backend,config,[s.eid,dt,w.rules.has_upgrade(s.team,"medicine"),w.rules.has_upgrade(s.team,"optics")],network,impacts)
+				assert(result.size() == 6,"wounded result %d/%d" % [trial,step])
+				w.bullet_fx.clear(); w.cries.clear(); s._downed(dt)
+				assert(result[4] == w.bullet_fx,"wounded bullet effects %d/%d" % [trial,step])
+				assert(result[5] == w.cries,"wounded cries %d/%d" % [trial,step])
+				assert(combat.gunfire_reveals() == w.combat._reveal,"wounded reveal %d/%d" % [trial,step])
+				assert(combat.gunfire_restore(combat.gunfire_checkpoint()))
+			elif shoot:
 				var shooter: Entity = w.entity([5,40,104][step % 3]); shooter = shooter if shooter else w.entity(5)
 				var target: Entity = w.entity([6,3,40,41,60,104,105,0][(step + trial) % 8])
 				var weapon: Dictionary = Defs.WEAPONS[["rifle","m2","chaingun","zu23","bushmaster","gmg"][(trial + step) % 6]]
@@ -148,8 +183,8 @@ func run(shoot: bool) -> void:
 			else:
 				result = combat.explode(actors,geometry,units,qs,fires,ledger,deferred,visibility,random._backend,config,input,network,impacts) if step < 2 else combat.flush_deferred(actors,geometry,units,qs,fires,ledger,deferred,visibility,random._backend,config,network,impacts)
 			var label := "blast %d/%d" % [trial,step]
-			assert(result.size() == (5 if shoot else 4),"combat result " + label)
-			if not shoot:
+			assert(result.size() == (6 if wounded else 5 if shoot else 4),"combat result " + label)
+			if mode == 0:
 				if step < 2: w.combat.explode(p,data)
 				else: w._run_deferred_effects()
 			w.combat._sync_collision()
@@ -180,7 +215,7 @@ func run(shoot: bool) -> void:
 				assert(not blast_ledger_equal(compare.ledger(w.battle),wrong),"ledger must reject changed shot counts")
 			assert(fires.values() == fire_values(w.fires),"explosion fires " + label)
 			assert(network.values() == [PackedInt64Array([100,0]),PackedInt64Array([103]),w.rules.fob_order,w.roads,w._painted_roads],"explosion network " + label)
-			if not shoot and step == 2: assert(deferred.take_rubble() == w._deferred_effects.take_rubble(),"explosion rubble " + label)
+			if mode == 0 and step == 2: assert(deferred.take_rubble() == w._deferred_effects.take_rubble(),"explosion rubble " + label)
 			var pending: Array = deferred.pending(); assert(pending.size() == w._deferred_effects._pending.size(),"explosion deferred " + label)
 			for i in pending.size():
 				var e: Array = w._deferred_effects._pending[i]; var d: Dictionary = e[3]
@@ -191,7 +226,7 @@ func run(shoot: bool) -> void:
 			for retained in [actors,geometry,units,ledger,deferred,visibility,fires,network]: assert(retained.restore(retained.checkpoint()))
 			w.combat.finish_tick(); geometry.finish_tick(); check_geometry(w,geometry,label + " end")
 		w.free()
-	for key in (["penetration","through_hit","ricochet","vehicle_destroyed","drone_shot_down"] if shoot else ["vehicle_destroyed","drone_shot_down","door_kicked","cache_cook_off","at_hit"]): assert(seen.has(key),"unexercised combat " + key)
+	for key in (["killed","pistol_while_down","crawl_to_cover"] if wounded else ["penetration","through_hit","ricochet","vehicle_destroyed","drone_shot_down"] if shoot else ["vehicle_destroyed","drone_shot_down","door_kicked","cache_cook_off","at_hit"]): assert(seen.has(key),"unexercised combat " + key)
 	compare.free(); infantry.free(); birth.free(); actor_compare.free()
-	print("BULLET_WORLD passed states=" if shoot else "WORLD_COMBAT passed states=",checks)
+	print("WOUNDED_WORLD passed states=" if wounded else "BULLET_WORLD passed states=" if shoot else "WORLD_COMBAT passed states=",checks)
 	get_tree().quit()
