@@ -58,7 +58,7 @@ graphics, network access or a wall clock.
 | Infantry medical tasks | `frontline_core` | Retained rescue/healing/limp duties update shared patient claims, shelter, movement and recovery; escort movement and fire are connected to shared combat, while squad rejoining, ledger callbacks and the live dispatcher remain in Godot |
 | Construction, stretchers and prisoners | `frontline_core` | Connected builders apply work, cover/collision completion, repair, battle credit, supply roads and squad completion; retained stretchers and captors update shared patient/prisoner links. The production dispatcher still runs in Godot |
 | Infantry arrival tasks | `frontline_core` | Boarding ranges, tunnel arrival, corpse/depot completion and ordered-throw inventory decisions extracted; Godot still applies boarding, tunnel membership, shared ammunition transfers and throws |
-| Mounted infantry | `frontline_core` | Approach/climbing stages, scan clocks, anti-tank target selection and gun traverse extracted; Godot still owns mount links, fire queues and weapon effects |
+| Mounted infantry | `frontline_core` | Connected approach/climbing, gun claims, queued/autonomous mortar fire, anti-tank launches and defensive smoke use retained actors and geometry; production dispatch still runs in Godot |
 | Infantry action state | `frontline_core` | Retained actors complete cooked throws, shared grenade handling, melee, door kicks, rockets, mortars and drones, including vehicle warning/smoke responses; the live world dispatcher still runs in Godot |
 | Infantry hidden duties and status | `frontline_core` | Retained passengers, tunnel exits, treatment completion and prisoner departures update shared actors and squads; moving posture, flags and operator turns are extracted, while live dispatch and ledger/presentation callbacks remain in Godot |
 | Infantry downtime | `frontline_core` | Retained actors share conversation claims, interruptions, team cooldowns, timed speech and laughter; rendering the emitted speech remains in Godot, and live dispatch still needs migration |
@@ -2101,3 +2101,23 @@ idle behavior and shifts along cover. The numeric transcript adds 2,137,679 exac
 bytes through resumed fights. Existing stationary and movement implementations are
 reused. Remaining duties, production tick dispatch, the socket server and complete
 battle verification are still unfinished.
+
+## Connected mounted weapons
+
+Gun crews now advance against retained actors, geometry and navigation. Tower
+climbing finishes before the elevated firing position is set. Machine-gun claims
+set the mounted weapon before the shared weapon cycle; traverse retains Godot's
+half-turn endpoint convention. Mortars consume ordered fire missions or select
+an autonomous target, finish laying the weapon and create attributed rounds.
+Anti-tank crews scan exposed targets and finish traversing before firing. A
+vehicle's smoke and evasion response completes before the launch effect.
+
+The mounted operation reuses shared movement, bullet resolution and mortar launch
+calculations. Six core regressions cover climbing, claims, ordered fire, both
+anti-tank rounds, defensive smoke, rejected input and resumed state. A separate
+angle regression covers the half-turn rounding case. The numeric transcript adds
+5,842,831 exact bytes. The Godot comparison checks 1,448 geometry states across
+64 mixed worlds, plus complete actor/squad state, effects, routes, battle records
+and random cursors. It requires actual shots, climbing, mortar rounds, anti-tank
+launches and defensive smoke. The production soldier dispatcher, standalone socket server
+and whole-match replay verification remain unfinished.

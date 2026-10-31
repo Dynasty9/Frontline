@@ -163,9 +163,7 @@ pub fn aim(pose: GunPose, direction: Vector3, rate: f64) -> Result<Aim, &'static
         pose.mount,
     );
     let difference = libm::atan2(-f64::from(direction.x), -f64::from(direction.z)) - yaw;
-    let wrapped = difference
-        - std::f64::consts::TAU
-            * ((difference + std::f64::consts::PI) / std::f64::consts::TAU).floor();
+    let wrapped = crate::vector::wrap_yaw(difference);
     Ok(Aim {
         yaw,
         aligned: wrapped.abs() <= 0.035,

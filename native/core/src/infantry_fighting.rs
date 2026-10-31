@@ -437,10 +437,9 @@ impl Actors {
                     9.0,
                     mount,
                 );
-                use std::f64::consts::{PI, TAU};
                 let difference =
                     libm::atan2(-f64::from(direction.x), -f64::from(direction.z)) - s.motion.yaw;
-                let wrapped = difference - TAU * ((difference + PI) / TAU).floor();
+                let wrapped = crate::vector::wrap_yaw(difference);
                 if wrapped.abs() > 0.035 {
                     return Ok(blocked);
                 }

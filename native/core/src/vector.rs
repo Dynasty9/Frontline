@@ -1,6 +1,17 @@
 // Pinned glam/libm arithmetic without platform fast-math; checkpoint goldens guard the contract.
 pub use glam::Vec3 as Vector3;
 
+pub(crate) fn wrap_yaw(value: f64) -> f64 {
+    use std::f64::consts::{PI, TAU};
+    let wrapped = value - TAU * ((value + PI) / TAU).floor();
+    // Godot wrapf maps the approximate upper endpoint to -PI as well.
+    if (wrapped - PI).abs() < 0.00001 * wrapped.abs().max(1.0) {
+        -PI
+    } else {
+        wrapped
+    }
+}
+
 pub(crate) fn turn_yaw(
     yaw: f64,
     direction: Vector3,
@@ -9,7 +20,7 @@ pub(crate) fn turn_yaw(
     rate: f64,
     mount: Option<(Vector3, f64)>,
 ) -> f64 {
-    use std::f64::consts::{PI, TAU};
+    use std::f64::consts::TAU;
     if f64::from(direction.length_squared()) < 0.0001 {
         return yaw;
     }
@@ -18,8 +29,7 @@ pub(crate) fn turn_yaw(
         let delta = position - *p;
         f64::from(Vector3::new(delta.x, 0.0, delta.z).length()) < 0.8
     }) {
-        let difference = target - yaw;
-        let wrapped = difference - TAU * ((difference + PI) / TAU).floor();
+        let wrapped = wrap_yaw(target - yaw);
         yaw + wrapped.clamp(-speed * dt, speed * dt)
     } else {
         let difference = (target - yaw) % TAU;
@@ -27,6 +37,30 @@ pub(crate) fn turn_yaw(
         yaw + distance * (1.0 - libm::exp(-dt * rate))
     };
     f64::from(yaw as f32)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn mounted_half_turn_preserves_godots_upper_endpoint_choice() {
+        let yaw = f64::from(std::f32::consts::PI);
+        let speed = 35.0_f64.to_radians();
+        assert_eq!(
+            turn_yaw(
+                yaw,
+                Vector3::NEG_Z,
+                Vector3::ZERO,
+                0.05,
+                9.0,
+                Some((Vector3::ZERO, speed))
+            ),
+            f64::from((yaw - speed * 0.05) as f32)
+        );
+        assert_eq!(wrap_yaw(-yaw), -std::f64::consts::PI);
+        assert!(wrap_yaw(-yaw - 0.001) > 0.0);
+    }
 }
 
 pub fn normalized(value: Vector3) -> Vector3 {

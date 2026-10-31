@@ -125,9 +125,8 @@ impl Structure {
         position
     }
     pub fn mg_muzzle(&self, yaw: f64, gun: MountedGun) -> Vector3 {
-        use std::f64::consts::{PI, TAU};
         let difference = yaw - self.yaw;
-        let relative = (difference - TAU * ((difference + PI) / TAU).floor()).clamp(-1.2, 1.2);
+        let relative = crate::vector::wrap_yaw(difference).clamp(-1.2, 1.2);
         let pivot = self.position + transform(rotation(self.yaw), self.mg_pivot(gun));
         pivot
             + Vector3::new(0.0, gun.bore as f32, 0.0)

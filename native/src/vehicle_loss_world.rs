@@ -68,6 +68,9 @@ struct VehicleProfile {
     level: u8,
     toss: f64,
     hit: f64,
+    gun_height: f64,
+    artillery: bool,
+    tracked: bool,
 }
 impl VehicleProfile {
     fn view(&self) -> Profile<'_> {
@@ -437,6 +440,40 @@ impl VehicleLossWorldCore {
         )
     }
     #[func]
+    fn advance_mount(
+        &mut self,
+        actors: Gd<ActorStateCore>,
+        geometry: Gd<WorldGeometryCore>,
+        units: Gd<SpatialIndexCore>,
+        nodes: Array<Gd<SquadStateCore>>,
+        fires: Gd<FiresCore>,
+        battle: Gd<BattleStatsCore>,
+        deferred: Gd<DeferredEffectsCore>,
+        visibility: Gd<VisibilityCore>,
+        rng: Gd<SimulationRandomCore>,
+        config: Array<Variant>,
+        input: Array<Variant>,
+        network: Gd<SupplyNetworkCore>,
+        impacts: Array<Variant>,
+    ) -> Array<Variant> {
+        let Some(reports) = read_impacts(&impacts) else {
+            return Array::new();
+        };
+        self.run(
+            actors,
+            geometry,
+            units,
+            nodes,
+            fires,
+            battle,
+            deferred,
+            visibility,
+            rng,
+            config,
+            Operation::Infantry(3, input, network, reports),
+        )
+    }
+    #[func]
     fn gunfire_reveals(&self) -> VarDictionary {
         let mut out = VarDictionary::new();
         for (id, time) in self.gunfire.reveals() {
@@ -491,7 +528,7 @@ impl VehicleLossWorldCore {
             let mut vehicles = BTreeMap::new();
             for row in rows.iter_shared() {
                 let r: Array<Variant> = row.try_to().ok()?;
-                if ![11, 13, 14].contains(&r.len()) {
+                if ![11, 13, 14, 17].contains(&r.len()) {
                     return None;
                 }
                 let key: u32 = read(&r, 0)?;
@@ -512,9 +549,15 @@ impl VehicleLossWorldCore {
                     hull: crate::point(read(&r, 10)?),
                     level: if r.len() >= 13 { read(&r, 11)? } else { 0 },
                     toss: if r.len() >= 13 { read(&r, 12)? } else { 1.0 },
-                    hit: if r.len() == 14 { read(&r, 13)? } else { 2.0 },
+                    hit: if r.len() >= 14 { read(&r, 13)? } else { 2.0 },
+                    gun_height: if r.len() == 17 { read(&r, 14)? } else { 2.2 },
+                    artillery: if r.len() == 17 { read(&r, 15)? } else { false },
+                    tracked: if r.len() == 17 { read(&r, 16)? } else { false },
                 };
-                if vehicles.insert(key, p).is_some() {
+                if !p.gun_height.is_finite()
+                    || !(0.0..=1000.0).contains(&p.gun_height)
+                    || vehicles.insert(key, p).is_some()
+                {
                     return None;
                 }
             }
@@ -665,7 +708,13 @@ impl VehicleLossWorldCore {
         let result = match operation {
             Operation::Infantry(mode, input, mut network, mut impacts) => {
                 let parse = || -> Option<_> {
-                    if input.len() != if mode == 2 { 8 } else { 6 } {
+                    if input.len()
+                        != match mode {
+                            2 => 8,
+                            3 => 7,
+                            _ => 6,
+                        }
+                    {
                         return None;
                     }
                     let id: u32 = read(&input, 0)?;
@@ -765,7 +814,49 @@ impl VehicleLossWorldCore {
                         piercing: p.5,
                     })
                 };
-                let result = if mode == 2 {
+                let result = if mode == 3 {
+                    let Some(owned) = read::<PackedInt64Array>(&input, 6) else {
+                        return Array::new();
+                    };
+                    let Some(owned) = owned
+                        .as_slice()
+                        .iter()
+                        .map(|&id| u32::try_from(id).ok())
+                        .collect::<Option<Vec<_>>>()
+                    else {
+                        return Array::new();
+                    };
+                    context.advance_mount(
+                        id,
+                        dt,
+                        gun,
+                        &owned,
+                        &profile,
+                        &|v| {
+                            let p = &vehicles[&v.id];
+                            frontline_core::infantry_action_owned::Defense {
+                                smoke: frontline_core::vehicle_launch::SmokeProfile {
+                                    armor: p.level,
+                                    helicopter: p.helicopter,
+                                    gun_height: p.gun_height,
+                                },
+                                crew: frontline_core::vehicle_brain::CrewProfile {
+                                    base: &p.base,
+                                    helicopter: p.helicopter,
+                                    automatic: p.automatic,
+                                    artillery: p.artillery,
+                                    tracked: p.tracked,
+                                    armor: p.level,
+                                },
+                            }
+                        },
+                        &mut self.gunfire,
+                        &mut network.bind_mut().core,
+                        &mut impacts,
+                        &armor,
+                        &|v| vehicles[&v.id].hit,
+                    )
+                } else if mode == 2 {
                     let Some(rate) = read::<f64>(&input, 6) else {
                         return Array::new();
                     };
@@ -820,6 +911,14 @@ impl VehicleLossWorldCore {
                 reports = Some(impacts);
                 chat_state = Some(PackedFloat64Array::from(chat.as_slice()));
                 result.map(|events| {
+                    if mode == 3 {
+                        use frontline_core::infantry_action_owned::Event as Ordnance;
+                        construction = Some(events.iter().filter_map(|e| match e {
+                            fighting::Event::Ordnance(Ordnance::Mortar(p)) => Some(varray!["mortar", vector(*p)].to_variant()),
+                            fighting::Event::Ordnance(Ordnance::Launch { position, direction }) => Some(varray!["launch", vector(*position), vector(*direction)].to_variant()),
+                            _ => None,
+                        }).collect());
+                    }
                     if mode == 2 {
                         use frontline_core::infantry_build_world::Construction;
                         construction = Some(events.iter().filter_map(|e| {

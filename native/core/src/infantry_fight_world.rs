@@ -55,6 +55,7 @@ impl Profile<'_> {
 pub enum Event {
     World(world_combat::Event),
     Construction(crate::infantry_build_world::Construction),
+    Ordnance(crate::infantry_action_owned::Event),
     Speech { id: u32, text: String },
     Movement { id: u32, event: Movement },
 }

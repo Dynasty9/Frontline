@@ -83,7 +83,7 @@ impl Actors {
         }
         s.motion.position + direction(s.motion.yaw) * 18.0
     }
-    fn warn_infantry_rocket<'a>(
+    pub(crate) fn warn_infantry_rocket<'a>(
         &mut self,
         id: u32,
         now: f64,
@@ -260,36 +260,16 @@ impl Actors {
                 round,
             } => {
                 let from = position + Vector3::Y;
-                let distance = f64::from(flat(target - from).length());
-                let scatter = 1.2 + distance * 0.03;
-                let angle = f64::from(random.randf()) * std::f64::consts::TAU;
-                let radius = libm::sqrt(f64::from(random.randf())) * scatter;
-                let target = Vector3::new(
-                    (f64::from(target.x) + libm::cos(angle) * radius) as f32,
-                    0.05,
-                    (f64::from(target.z) + libm::sin(angle) * radius) as f32,
-                );
-                let mut f = ballistic(
-                    if round == Round::Smoke {
-                        Kind::MortarSmoke
-                    } else {
-                        Kind::Mortar
-                    },
-                    from,
-                    Vector3::ZERO,
-                );
-                f.origin = from;
-                f.target = target;
-                f.shell_duration = 2.4 + distance / 40.0;
-                spawn = Some(Actor::Projectile(Projectile::from_spawn(
-                    1,
-                    Spawn {
-                        flight: f,
+                spawn = Some(Actor::Projectile(
+                    crate::infantry_mount_world::mortar_round(
+                        id,
                         team,
-                        thrower: id,
-                        called_by: 0,
-                    },
-                )?));
+                        from,
+                        target,
+                        round,
+                        &mut random,
+                    )?,
+                ));
                 out.events.push(Event::Mortar(from));
                 out.stats.push("mortar_round");
             }

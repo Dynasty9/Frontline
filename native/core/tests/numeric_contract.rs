@@ -61,6 +61,8 @@ mod infantry_fight_world;
 mod infantry_breach_world;
 #[path = "fixtures/infantry_build_world.rs"]
 mod infantry_build_world;
+#[path = "fixtures/infantry_mount_world.rs"]
+mod infantry_mount_world;
 
 #[test]
 fn breaching_infantry_world_is_identical_across_platforms() {
@@ -73,6 +75,11 @@ fn breaching_infantry_world_is_identical_across_platforms() {
 #[test]
 fn building_infantry_world_is_identical_across_platforms() {
     golden("infantry_build_world", &infantry_build_world::transcript());
+}
+
+#[test]
+fn mounted_infantry_world_is_identical_across_platforms() {
+    golden("infantry_mount_world", &infantry_mount_world::transcript());
 }
 
 #[test]
