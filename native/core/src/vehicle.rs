@@ -783,13 +783,6 @@ fn wrap(v: f64) -> f64 {
     use std::f64::consts::{PI, TAU};
     v - TAU * libm::floor((v + PI) / TAU)
 }
-fn move_toward(from: f64, to: f64, amount: f64) -> f64 {
-    if (to - from).abs() <= amount {
-        to
-    } else {
-        from + (to - from).signum() * amount
-    }
-}
 impl Vehicle {
     pub fn center(&self) -> Vector3 {
         self.position + Vector3::new(0.0, 1.1, 0.0)
@@ -1063,22 +1056,16 @@ impl Vehicle {
             return Err("invalid turret step");
         }
         let rate = (rate * if returning { 0.5 } else { 1.0 } - self.stabilization_rate).max(0.0);
-        let error = if gunship {
-            wanted - self.turret_yaw
-        } else {
-            wrap(wanted - self.turret_yaw)
-        };
-        let sign = if error == 0.0 { 0.0 } else { error.signum() };
-        let demand = sign * rate.min((libm::sqrt(2.0 * accel * error.abs()) - accel * dt).max(0.0));
-        let mut velocity = move_toward(self.traverse, demand, accel * dt);
-        let mut step = velocity * dt;
-        if step.signum() == error.signum() && step.abs() >= error.abs() {
-            step = error;
-            velocity = 0.0;
-        }
         // VehicleMotion.slew returns a Godot Vector2, rounding both components to float32.
-        let mut angle = wrap(self.turret_yaw + step) as f32;
-        let mut velocity = velocity as f32;
+        let [mut angle, mut velocity] = crate::vehicle_motion::slew(
+            self.turret_yaw,
+            self.traverse,
+            wanted,
+            rate,
+            accel,
+            dt,
+            !gunship,
+        );
         if gunship {
             let limit = 110.0f64.to_radians();
             if f64::from(angle).abs() > limit {

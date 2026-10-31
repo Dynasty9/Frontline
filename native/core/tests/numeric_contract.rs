@@ -36,6 +36,114 @@ fn block(out: &mut Vec<u8>, bytes: &[u8]) {
 }
 
 #[test]
+fn vehicle_driving_and_recovery_are_identical_across_platforms() {
+    use frontline_core::vehicle::{Route, Vehicle};
+    use frontline_core::vehicle_motion::{GroundProfile, Traffic};
+    let mut bytes = Vec::new();
+    for trial in 0..40 {
+        let mut nav = PathPlanner::new(128).unwrap();
+        let mut terrain = Terrain::blank(128).unwrap();
+        let mut cells = vec![0; 128 * 128];
+        for z in 0..128 {
+            for x in 0..128 {
+                let i = z * 128 + x;
+                terrain.layers[BASE][i] = [0, 3, 1, 8][(z / 8) % 4];
+                cells[i] = if trial % 10 == 5 || (trial % 10 == 7 && (67..69).contains(&x)) {
+                    3
+                } else {
+                    0
+                };
+            }
+        }
+        assert!(nav.load_cells(&cells, &cells, &vec![0; 128 * 128]));
+        let profile = GroundProfile {
+            hull: Vector3::new(3.0, 2.0, 6.0),
+            tracked: trial % 2 == 0,
+            weight: 2,
+            supply: trial % 10 == 9,
+            tank: trial % 2 == 0,
+            cannon: true,
+            speed: 9.0,
+            turn: 0.6,
+            turn_accel: 0.9,
+            handling: [1.2, 4.0, 2.2, 0.32],
+        };
+        let mut v = Vehicle {
+            id: 7,
+            position: Vector3::new(0.3, 0.0, 1.7),
+            yaw: (trial % 7) as f64 * 0.37,
+            speed: if trial % 3 == 0 { 5.3 } else { 0.0 },
+            path: vec![Vector3::new(1.2, 0.0, -10.3), Vector3::new(9.7, 0.0, -39.1)],
+            ..Default::default()
+        };
+        if trial % 10 == 1 {
+            v.path = vec![Vector3::new(1.7, 0.0, 15.3)];
+        }
+        if trial % 10 == 2 {
+            v.path.clear();
+            v.face_yaw = Some(1.3);
+        }
+        v.route = vec![Vector3::new(1.2, 0.0, -10.3), Vector3::new(9.7, 0.0, -39.1)];
+        let mut traffic = if trial % 10 == 6 || trial % 10 == 7 {
+            vec![Traffic {
+                id: 20,
+                position: Vector3::new(-1.7, 0.0, -9.3),
+                yaw: 0.0,
+                speed: if trial % 10 == 6 { 1.7 } else { 0.0 },
+                hull: profile.hull,
+                air: false,
+            }]
+        } else {
+            vec![]
+        };
+        let mut rng = SimulationRandom::new(trial + 137);
+        for tick in 0..600 {
+            let dt = [1.0 / 30.0, 1.0 / 60.0, 0.1][trial as usize % 3];
+            if tick == 50 && trial % 10 == 3 {
+                v.track_broken = true;
+            }
+            if tick == 50 && trial % 10 == 4 {
+                v.brain_hold = true;
+            }
+            if profile.supply {
+                v.follow_truck_route(dt, profile, &nav, &terrain, &traffic)
+                    .unwrap();
+            } else {
+                let out = v
+                    .drive_ground(dt, profile, None, &nav, &terrain, &traffic, &mut rng)
+                    .unwrap();
+                bytes.extend_from_slice(&[u8::from(out.unstuck), u8::from(out.shove)]);
+                match out.route {
+                    Route::None => bytes.push(0),
+                    Route::Ground {
+                        destination,
+                        care,
+                        revision,
+                    } => {
+                        bytes.push(1);
+                        point(&mut bytes, destination);
+                        bytes.extend_from_slice(&care.to_le_bytes());
+                        bytes.extend_from_slice(&revision.to_le_bytes());
+                    }
+                    Route::Boat { .. } => panic!("ground driving requested a boat route"),
+                }
+            }
+            if tick % 13 == 0 {
+                block(&mut bytes, &v.checkpoint().unwrap());
+                bytes.extend_from_slice(&rng.state().to_le_bytes());
+            }
+            if tick == 117 {
+                v = Vehicle::restore(&v.checkpoint().unwrap()).unwrap();
+            }
+            for other in &mut traffic {
+                other.position.z -= (other.speed * dt) as f32;
+            }
+        }
+    }
+    golden("vehicle_motion", &bytes);
+}
+
+#[test]
 fn vehicle_orders_repairs_and_turret_state_are_identical_across_platforms() {
     use frontline_core::vehicle::{LastBlast, Resume, Vehicle};
     let mut bytes = Vec::new();

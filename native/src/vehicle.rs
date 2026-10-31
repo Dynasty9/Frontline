@@ -1,5 +1,9 @@
+use crate::path_planner::PathPlannerCore;
+use crate::simulation_random::SimulationRandomCore;
+use crate::terrain::TerrainCore;
 use frontline_core::infantry::Credit;
 use frontline_core::vehicle::{LastBlast, Resume, Route, Vehicle};
+use frontline_core::vehicle_motion::{GroundProfile, Traffic};
 use godot::prelude::*;
 #[derive(GodotClass)]
 #[class(base=RefCounted,init)]
@@ -434,8 +438,108 @@ fn route(r: Result<Route, &'static str>) -> Array<Variant> {
         Err(_) => Array::new(),
     }
 }
+fn ground_profile(a: &Array<Variant>) -> Option<GroundProfile> {
+    if a.len() != 4 {
+        return None;
+    }
+    let hull: Vector3 = read(a, 0)?;
+    let flags: PackedByteArray = read(a, 1)?;
+    let weight: u8 = read(a, 2)?;
+    let rates: PackedFloat64Array = read(a, 3)?;
+    if flags.len() != 4 || flags.as_slice().iter().any(|v| *v > 1) || rates.len() != 7 {
+        return None;
+    }
+    let f = flags.as_slice();
+    let r = rates.as_slice();
+    Some(GroundProfile {
+        hull: crate::point(hull),
+        tracked: f[0] != 0,
+        supply: f[1] != 0,
+        tank: f[2] != 0,
+        cannon: f[3] != 0,
+        weight,
+        speed: r[0],
+        turn: r[1],
+        turn_accel: r[2],
+        handling: [r[3], r[4], r[5], r[6]],
+    })
+}
+fn traffic(a: &Array<Variant>) -> Option<Vec<Traffic>> {
+    if a.len() > 100_000 {
+        return None;
+    }
+    a.iter_shared()
+        .map(|v| {
+            let row = v.try_to::<Array<Variant>>().ok()?;
+            if row.len() != 6 {
+                return None;
+            }
+            Some(Traffic {
+                id: read(&row, 0)?,
+                position: crate::point(read(&row, 1)?),
+                yaw: read(&row, 2)?,
+                speed: read(&row, 3)?,
+                hull: crate::point(read(&row, 4)?),
+                air: read(&row, 5)?,
+            })
+        })
+        .collect()
+}
 #[godot_api]
 impl VehicleStateCore {
+    #[func]
+    fn ground_tick(
+        &mut self,
+        dt: f64,
+        profile: Array<Variant>,
+        target: PackedVector3Array,
+        trench: bool,
+        planner: Gd<PathPlannerCore>,
+        terrain: Gd<TerrainCore>,
+        nearby: Array<Variant>,
+        mut random: Gd<SimulationRandomCore>,
+        truck_route: bool,
+    ) -> Array<Variant> {
+        if target.len() > 1 {
+            return Array::new();
+        }
+        let Some(p) = ground_profile(&profile) else {
+            return Array::new();
+        };
+        let Some(nearby) = traffic(&nearby) else {
+            return Array::new();
+        };
+        let nav = planner.bind();
+        let terrain = terrain.bind();
+        let (Some(v), Some(nav), Some(terrain)) =
+            (self.core.as_mut(), nav.core.as_ref(), terrain.core.as_ref())
+        else {
+            return Array::new();
+        };
+        if truck_route {
+            return if v.follow_truck_route(dt, p, nav, terrain, &nearby).is_ok() {
+                varray![&route(Ok(Route::None)), false, false]
+            } else {
+                Array::new()
+            };
+        }
+        let target = target
+            .as_slice()
+            .first()
+            .map(|&p| (crate::point(p), trench));
+        match v.drive_ground(
+            dt,
+            p,
+            target,
+            nav,
+            terrain,
+            &nearby,
+            &mut random.bind_mut().core,
+        ) {
+            Ok(out) => varray![&route(Ok(out.route)), out.unstuck, out.shove],
+            Err(_) => Array::new(),
+        }
+    }
     #[func]
     fn load_state(&mut self, a: Array<Variant>) -> bool {
         let Some(v) = state(&a) else {
