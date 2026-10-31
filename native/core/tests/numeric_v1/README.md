@@ -9,6 +9,8 @@ different byte rather than dumping the fixture.
   events and RNG cursors over fixed ticks.
 - `fires.bin`: connected ignition, spread, casualties, escape paths, smoke, building
   destruction and geometry checkpoints with random cursors across resumed updates.
+- `bullet_world.bin`: connected penetration, injuries, vehicle loss, explosive
+  rounds, suppression, sound-report deadlines and shared checkpoints after shots.
 - `world_routes.bin`: shared soldier/vehicle route completions, queued repairs,
   cancelled orders and retained navigation/actor state across resumed batches.
 - `structure_collision.bin`: structure collision boxes, rotated parts, construction,

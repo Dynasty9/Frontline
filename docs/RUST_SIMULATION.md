@@ -43,7 +43,7 @@ graphics, network access or a wall clock.
 | Infantry health, suppression and fatigue | `frontline_core` | Retained damage updates attribution, casualty links and squad reactions together; the live world dispatcher still runs in Godot |
 | Infantry combat geometry | `frontline_core` | Eyes, exposed points, hit factors and cover postures extracted with reference tests; the adapter still supplies actor state |
 | Infantry aim selection and sight cache | `frontline_core` | Target, blind and area-fire aiming extracted and reference-tested; the test adapter supplies posed target points and last-known squad contacts |
-| Bullet resolution | `frontline_core` | Accuracy, scatter, penetration, hit damage, explosive-round placement and near-miss suppression extracted with ordered stages; Godot still applies actor damage and explosion effects |
+| Bullet resolution | `frontline_core` | Connected fire applies penetration, injuries, vehicle loss, blast effects, suppression, sound reports and battle records in order; the complete live world dispatcher remains unfinished |
 | Explosions | `frontline_core` | Connected blasts apply casualties, vehicle/structure destruction, supply reroutes, fire, terrain and delayed chain reactions in order; the complete live world dispatcher remains unfinished |
 | Blast knockback and disorientation | `frontline_core` | Fling trajectories, obstacle bounces, landings, flinching and dazed movement extracted with component checkpoints; Godot still applies task cleanup and speech |
 | Wounded infantry and corpse timers | `frontline_core` | Retained corpse cleanup and captive movement preserve carriers, ground caches and shared squad removal; bleeding and speech/pistol/crawl schedules are extracted, while the connected wounded dispatcher remains unfinished |
@@ -350,8 +350,8 @@ The reference fixture compares 1,320 muzzle/shot states across the roster,
 including unmapped-model fallbacks, blocked rays, trench geometry and checkpoint
 resumes. Six core tests cover those cases, shared RNG continuation and invalid
 input without mutation. Numeric CI adds 772,224 exact transcript bytes. This
-retains the shot calculation; the shared blast/destruction dispatcher is still
-being connected to the owned world.
+retains the shot calculation; the connected blast/destruction operation is now
+available, while the full vehicle firing loop still needs integration.
 
 Boat navigation retains weighted water cells and derives connected-water labels
 on loading. Terrain import preserves shallow-water costs, impassable bridges and
@@ -734,8 +734,8 @@ drones, all four cover materials, smoke, optics, trenches, suppression, missed
 penetrating rounds and life/pose changes during damage. The native infantry
 battle comparisons also cover tank and grenade-drill scenarios, alongside attack,
 breach, trenches and fire. Numeric CI adds 38,470 bytes of bullet transcripts.
-Actor damage, vehicle armour responses, blast effects and spatial-query ownership
-still live in Godot, so this is neither a standalone server nor a full verifier.
+The connected bullet operation below now applies these stages directly to retained
+actors and geometry. The complete live world dispatcher and verifier remain unfinished.
 
 ## Blast exposure
 
@@ -1216,8 +1216,8 @@ Shot preparation retains ammunition, bursts, speech cooldown, activity and last
 shot time. Muzzles come from authoritative pose and catalog mount geometry,
 including trench guns, traverse limits and blind fire. Bullet effects run before
 shot recovery, so their random draws and changes to suppression or weapon affect
-the next burst exactly where they do in Godot. The shared bullet dispatcher and
-full soldier decision loop still need migration.
+the next burst exactly where they do in Godot. The connected bullet dispatcher
+below is now available; the full soldier decision loop still needs integration.
 
 The fixture compares 12,288 complete actor states, aim selection, speech, random
 cursors and state on both sides of the bullet-effect boundary. Muzzles use a
@@ -1256,7 +1256,8 @@ friendly, dead and directly hit soldiers. Muted speech still consumes the same
 random draws. The Godot comparison checks 18,432 complete actor states and squad
 states, speech, counters and damage credit. Seven core tests cover shared effects
 and atomic rejection; numeric CI adds 1,689,413 bytes with checkpoint resumes.
-Shared bullet dispatch and the complete live world loop remain unfinished.
+The connected bullet dispatcher below consumes these effects; the complete live
+world loop remains unfinished.
 
 Cover searches and reevaluation now use retained squad contacts, nearby soldiers
 and borrowed building anchors. They preserve stale spatial membership until its
@@ -2032,5 +2033,34 @@ pass each, checking 384 geometry states plus actors, squads, routes, fires, batt
 records, event deadlines, entity allocation and random cursors. It reuses the
 existing blast-health and platform-geometry reference allowances; Rust numeric
 checks remain exact. The new transcript adds 3,344,054 bytes across resumed blasts
-and chain reactions. Shared bullet dispatch, remaining actor/AI updates, the
+and chain reactions. Remaining actor/AI updates, the
 standalone server and whole-battle replay verification are still unfinished.
+
+## Connected bullet fire
+
+`Context::fire_bullet` runs the existing bullet stages against shared actors,
+collision and visibility. Penetration damages cover before a stray victim is
+considered. Vehicle damage finishes passenger injuries, crew escape and wreck
+creation before a heavy hull's ricochet draw. Heavy-armour AP damage retains the
+original absence of shooter credit. Target injury precedes the explosive round's
+placement, which uses the victim's updated body center. Explosions finish before
+near-miss suppression and enemy squads' sound reports.
+
+`Gunfire` retains each shooter's reveal deadline in a bounded, versioned checkpoint.
+Restoring the world therefore does not reveal gunfire earlier than uninterrupted
+play. Shot and ricochet events carry rendering data; scene objects and animation
+do not participate in hit decisions.
+
+Five regressions cover injury/shot ordering, reveal deadlines, destruction before
+ricochet, live/dead drone hits, rejected inputs and exact checkpoint continuation. The Godot comparison
+fires 768 mixed rounds and checks 1,536 geometry states, actor and squad state,
+effect endpoints/materials, supply routes, battle records, deferred effects and
+random cursors. Fractional damage totals allow 1e-10 error in this reference only:
+Godot's power function produced a measured 7.11e-15 difference after an HE round.
+Counts, identity and outcomes remain exact, and rejection checks cover changed
+damage and shot totals. Rust's 4,729,493-byte connected-fire transcript is compared
+exactly in debug/release and across the supported CI platforms.
+
+The reference binding remains an integration test adapter. Production actor ticks,
+the complete Rust server, socket transport and whole-battle verification remain
+unfinished; this component does not establish 60 FPS.

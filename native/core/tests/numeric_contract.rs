@@ -48,6 +48,14 @@ mod supply_network_world;
 #[path = "fixtures/world_combat_world.rs"]
 mod world_combat_world;
 
+#[path = "fixtures/bullet_world.rs"]
+mod bullet_world;
+
+#[test]
+fn connected_bullet_fire_is_identical_across_platforms() {
+    golden("bullet_world", &bullet_world::transcript());
+}
+
 #[test]
 fn connected_world_explosions_are_identical_across_platforms() {
     golden("world_combat", &world_combat_world::transcript());

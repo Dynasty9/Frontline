@@ -10,6 +10,8 @@ use crate::supply_network::SupplyNetworkCore;
 use crate::visibility::VisibilityCore;
 use crate::world_geometry::WorldGeometryCore;
 use frontline_core::actors::Actor;
+use frontline_core::bullet::Weapon;
+use frontline_core::bullet_world::{Gunfire, Shot};
 use frontline_core::fires::{BuildingProfile, ManProfile};
 use frontline_core::squad::Report;
 use frontline_core::squad_movement;
@@ -22,6 +24,9 @@ use std::collections::BTreeMap;
 
 fn read<T: FromGodot>(a: &Array<Variant>, i: usize) -> Option<T> {
     a.get(i)?.try_to().ok()
+}
+fn vector(p: frontline_core::vector::Vector3) -> Vector3 {
+    Vector3::new(p.x, p.y, p.z)
 }
 fn read_impacts(input: &Array<Variant>) -> Option<Vec<Report>> {
     if input.len() > 100_000 {
@@ -59,6 +64,7 @@ struct VehicleProfile {
     hull: frontline_core::vector::Vector3,
     level: u8,
     toss: f64,
+    hit: f64,
 }
 impl VehicleProfile {
     fn view(&self) -> Profile<'_> {
@@ -87,17 +93,19 @@ enum Operation {
     Damage(u32, f64, u32),
     Explosion(Explosion, Gd<SupplyNetworkCore>, Vec<Report>),
     Deferred(Gd<SupplyNetworkCore>, Vec<Report>),
+    Bullet(Array<Variant>, Gd<SupplyNetworkCore>, Vec<Report>),
 }
 #[derive(GodotClass)]
 #[class(base=RefCounted, init)]
 struct VehicleLossWorldCore {
     base: Base<RefCounted>,
+    gunfire: Gunfire,
 }
 #[godot_api]
 impl VehicleLossWorldCore {
     #[func]
     fn damage(
-        &self,
+        &mut self,
         actors: Gd<ActorStateCore>,
         geometry: Gd<WorldGeometryCore>,
         units: Gd<SpatialIndexCore>,
@@ -128,7 +136,7 @@ impl VehicleLossWorldCore {
     }
     #[func]
     fn explode(
-        &self,
+        &mut self,
         actors: Gd<ActorStateCore>,
         geometry: Gd<WorldGeometryCore>,
         units: Gd<SpatialIndexCore>,
@@ -195,7 +203,7 @@ impl VehicleLossWorldCore {
     }
     #[func]
     fn flush_deferred(
-        &self,
+        &mut self,
         actors: Gd<ActorStateCore>,
         geometry: Gd<WorldGeometryCore>,
         units: Gd<SpatialIndexCore>,
@@ -226,8 +234,62 @@ impl VehicleLossWorldCore {
             Operation::Deferred(network, reports),
         )
     }
+    #[func]
+    fn fire_bullet(
+        &mut self,
+        actors: Gd<ActorStateCore>,
+        geometry: Gd<WorldGeometryCore>,
+        units: Gd<SpatialIndexCore>,
+        nodes: Array<Gd<SquadStateCore>>,
+        fires: Gd<FiresCore>,
+        battle: Gd<BattleStatsCore>,
+        deferred: Gd<DeferredEffectsCore>,
+        visibility: Gd<VisibilityCore>,
+        rng: Gd<SimulationRandomCore>,
+        config: Array<Variant>,
+        input: Array<Variant>,
+        network: Gd<SupplyNetworkCore>,
+        impacts: Array<Variant>,
+    ) -> Array<Variant> {
+        let Some(reports) = read_impacts(&impacts) else {
+            return Array::new();
+        };
+        self.run(
+            actors,
+            geometry,
+            units,
+            nodes,
+            fires,
+            battle,
+            deferred,
+            visibility,
+            rng,
+            config,
+            Operation::Bullet(input, network, reports),
+        )
+    }
+    #[func]
+    fn gunfire_checkpoint(&self) -> PackedByteArray {
+        PackedByteArray::from(self.gunfire.checkpoint().as_slice())
+    }
+    #[func]
+    fn gunfire_restore(&mut self, bytes: PackedByteArray) -> bool {
+        let Ok(state) = Gunfire::restore(bytes.as_slice()) else {
+            return false;
+        };
+        self.gunfire = state;
+        true
+    }
+    #[func]
+    fn gunfire_reveals(&self) -> VarDictionary {
+        let mut out = VarDictionary::new();
+        for (id, time) in self.gunfire.reveals() {
+            out.set(*id, *time);
+        }
+        out
+    }
     fn run(
-        &self,
+        &mut self,
         mut actors: Gd<ActorStateCore>,
         mut geometry: Gd<WorldGeometryCore>,
         units: Gd<SpatialIndexCore>,
@@ -273,7 +335,7 @@ impl VehicleLossWorldCore {
             let mut vehicles = BTreeMap::new();
             for row in rows.iter_shared() {
                 let r: Array<Variant> = row.try_to().ok()?;
-                if ![11, 13].contains(&r.len()) {
+                if ![11, 13, 14].contains(&r.len()) {
                     return None;
                 }
                 let key: u32 = read(&r, 0)?;
@@ -292,8 +354,9 @@ impl VehicleLossWorldCore {
                     grenades: read(&r, 8)?,
                     weight: read(&r, 9)?,
                     hull: crate::point(read(&r, 10)?),
-                    level: if r.len() == 13 { read(&r, 11)? } else { 0 },
-                    toss: if r.len() == 13 { read(&r, 12)? } else { 1.0 },
+                    level: if r.len() >= 13 { read(&r, 11)? } else { 0 },
+                    toss: if r.len() >= 13 { read(&r, 12)? } else { 1.0 },
+                    hit: if r.len() == 14 { read(&r, 13)? } else { 2.0 },
                 };
                 if vehicles.insert(key, p).is_some() {
                     return None;
@@ -440,6 +503,63 @@ impl VehicleLossWorldCore {
             }
         };
         let result = match operation {
+            Operation::Bullet(input, mut network, mut impacts) => {
+                let parse = || -> Option<_> {
+                    if input.len() != 6 {
+                        return None;
+                    }
+                    let shooter: u32 = read(&input, 0)?;
+                    let target: u32 = read(&input, 1)?;
+                    let muzzle = crate::point(read(&input, 2)?);
+                    let aim = crate::point(read(&input, 3)?);
+                    let values: PackedFloat64Array = read(&input, 4)?;
+                    let sound = read::<GString>(&input, 5)?.to_string();
+                    Some((shooter, target, muzzle, aim, values, sound))
+                };
+                let Some((shooter, target, muzzle, aim, values, sound)) = parse() else {
+                    return Array::new();
+                };
+                let v = values.as_slice();
+                if v.len() != 12
+                    || v.iter().any(|v| !v.is_finite())
+                    || ![3, 7, 9, 10].iter().all(|i| v[*i] == 0.0 || v[*i] == 1.0)
+                    || v[4].fract() != 0.0
+                    || !(0.0..=3.0).contains(&v[4])
+                {
+                    return Array::new();
+                }
+                let shot = Shot {
+                    shooter,
+                    target,
+                    muzzle,
+                    aim,
+                    sound: &sound,
+                    weapon: Weapon {
+                        accuracy: v[0],
+                        range: v[1],
+                        damage: v[2],
+                        anti_air: v[3] != 0.0,
+                        penetration: v[4] as u8,
+                        drone_accuracy: v[5],
+                        explosive_radius: (v[6] != -1.0).then_some(v[6]),
+                        airburst: v[7] != 0.0,
+                    },
+                    accuracy: v[8],
+                    optics: v[9] != 0.0,
+                    piercing: v[10] != 0.0,
+                    suppression: v[11],
+                };
+                let result = context.fire_bullet(
+                    shot,
+                    &mut self.gunfire,
+                    &mut network.bind_mut().core,
+                    &mut impacts,
+                    &armor,
+                    &|v| vehicles[&v.id].hit,
+                );
+                reports = Some(impacts);
+                result
+            }
             Operation::Damage(id, amount, source) => {
                 context.damage(id, amount, source).map(|events| {
                     events
@@ -501,6 +621,42 @@ impl VehicleLossWorldCore {
                 })
                 .collect();
             out.push(&rows.to_variant());
+        }
+        if events
+            .iter()
+            .any(|e| matches!(e, world_combat::Event::Shot { .. }))
+        {
+            let effects: Array<Variant> = events
+                .iter()
+                .filter_map(|e| match e {
+                    world_combat::Event::Shot {
+                        shooter,
+                        muzzle,
+                        end,
+                        impact,
+                        sound,
+                        ..
+                    } => Some(
+                        varray![
+                            "shot",
+                            vector(*muzzle),
+                            vector(*end),
+                            i32::from(*impact),
+                            &GString::from(sound.as_str()),
+                            *shooter
+                        ]
+                        .to_variant(),
+                    ),
+                    world_combat::Event::Ricochet {
+                        position,
+                        direction,
+                    } => Some(
+                        varray!["ricochet", vector(*position), vector(*direction)].to_variant(),
+                    ),
+                    _ => None,
+                })
+                .collect();
+            out.push(&effects.to_variant());
         }
         out
     }

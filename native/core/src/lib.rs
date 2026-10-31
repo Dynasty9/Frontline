@@ -8,6 +8,7 @@ pub mod boat_navigation;
 pub mod breach;
 pub mod breach_selection;
 pub mod bullet;
+pub mod bullet_world;
 pub mod collision;
 pub mod cover;
 pub mod cover_search;

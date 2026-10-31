@@ -1458,6 +1458,10 @@ orders to shared actors and navigation. Burned structures update the battle reco
 and retire their geometry before later fire victims act. Checkpoints preserve
 burning lists, grass patches, heat counts and update timers. The live world still
 calls Godot's fire loop until the complete Rust dispatcher is ready.
+Connected Rust bullet fire applies cover penetration, injuries, vehicle losses,
+explosive rounds, near-miss suppression and squad reports in gameplay order.
+Checkpointed gunfire deadlines preserve when enemies hear the shooter. The complete
+world loop still needs to call this from infantry, vehicle and emplacement updates.
 Retained navigation owns each structure's overlapping obstacle cells together with
 the infantry and vehicle route hierarchies. Fire counts, bridge decks, terrain
 costs and obstacle removal preserve incremental repair order and pending routes

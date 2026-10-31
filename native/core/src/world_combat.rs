@@ -100,6 +100,25 @@ impl From<crate::projectile_actor::Explosion> for Explosion {
 #[derive(Clone, Debug, PartialEq)]
 pub enum Event {
     Infantry(BlastVictim),
+    InfantryHit {
+        id: u32,
+        hit: crate::infantry_effects::InfantryHit,
+    },
+    Speech(crate::squad::Speech),
+    Ricochet {
+        position: Vector3,
+        direction: Vector3,
+    },
+    Shot {
+        shooter: u32,
+        target: u32,
+        muzzle: Vector3,
+        end: Vector3,
+        hit: bool,
+        blocked: bool,
+        impact: u8,
+        sound: String,
+    },
     Vehicle(vehicle_loss_world::Event),
     VehicleBlast {
         id: u32,
@@ -244,7 +263,6 @@ impl Context<'_> {
         if !blast.valid()
             || !self.now.is_finite()
             || !(0.0..=1e12 - 100.0).contains(&self.now)
-            || !network.valid()
             || impacts.len() >= 100_000
             || self.squads.iter().any(|q| q.impacts.len() >= 100_000)
         {
