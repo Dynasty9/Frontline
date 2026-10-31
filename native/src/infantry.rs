@@ -8,6 +8,7 @@ use frontline_core::infantry_aim::InfantryAim;
 use frontline_core::infantry_control::Control;
 use frontline_core::infantry_orders::{Arrival, PathFinish};
 use frontline_core::infantry_tactics::{CoverRequest, Shelter};
+use frontline_core::infantry_update::{ActivityContext, Movement};
 use godot::prelude::*;
 
 #[derive(GodotClass)]
@@ -37,6 +38,22 @@ fn point(v: &Array<Variant>, i: usize) -> Option<frontline_core::vector::Vector3
 }
 fn vector(p: frontline_core::vector::Vector3) -> Vector3 {
     Vector3::new(p.x, p.y, p.z)
+}
+fn mount(
+    v: &Array<Variant>,
+    index: usize,
+) -> Option<Option<(frontline_core::vector::Vector3, f64)>> {
+    let m: PackedFloat64Array = read(v, index)?;
+    if m.is_empty() {
+        return Some(None);
+    }
+    if m.len() != 4 {
+        return None;
+    }
+    Some(Some((
+        frontline_core::vector::Vector3::new(m[0] as f32, m[1] as f32, m[2] as f32),
+        m[3],
+    )))
 }
 fn id(v: &Array<Variant>, i: usize) -> Option<u64> {
     Some(u64::from(read::<u32>(v, i)?))
@@ -519,6 +536,165 @@ fn encode(s: &Infantry) -> Array<Variant> {
 
 #[godot_api]
 impl InfantryStateCore {
+    #[func]
+    fn recover(&mut self, dt: f64, now: f64) -> bool {
+        self.core
+            .as_mut()
+            .is_some_and(|s| s.recover(dt, now).is_ok())
+    }
+
+    #[func]
+    fn fatigue(&mut self, dt: f64) -> bool {
+        self.core.as_mut().is_some_and(|s| s.fatigue(dt).is_ok())
+    }
+
+    #[func]
+    fn finish_tick(
+        &mut self,
+        dt: f64,
+        now: f64,
+        ammunition: PackedInt32Array,
+        leader: bool,
+    ) -> i32 {
+        if ammunition.len() > 1 {
+            return -1;
+        }
+        self.core
+            .as_mut()
+            .and_then(|s| {
+                s.finish_tick(dt, now, ammunition.as_slice().first().copied(), leader)
+                    .ok()
+            })
+            .map_or(-1, i32::from)
+    }
+
+    #[func]
+    fn update_activity(
+        &mut self,
+        task_target: bool,
+        mounted: bool,
+        chat_partner: bool,
+        ambush_target: bool,
+    ) -> bool {
+        let Some(s) = self.core.as_mut() else {
+            return false;
+        };
+        s.update_activity(ActivityContext {
+            task_target_exists: task_target,
+            mounted_exists: mounted,
+            chat_partner_exists: chat_partner,
+            ambush_target,
+        });
+        true
+    }
+
+    #[func]
+    fn compute_separation(
+        &mut self,
+        rows: Array<Variant>,
+        mut rng: Gd<SimulationRandomCore>,
+    ) -> bool {
+        let Some(s) = self.core.as_mut() else {
+            return false;
+        };
+        let Some(neighbors) = crate::infantry_motion::neighbor_rows(rows) else {
+            return false;
+        };
+        s.compute_separation(&neighbors, &mut rng.bind_mut().core)
+            .is_ok()
+    }
+
+    #[func]
+    fn stand(
+        &mut self,
+        input: Array<Variant>,
+        navigation: Gd<crate::path_planner::PathPlannerCore>,
+        terrain: Gd<crate::terrain::TerrainCore>,
+        deck: PackedByteArray,
+    ) -> bool {
+        let Some(s) = self.core.as_mut() else {
+            return false;
+        };
+        if input.len() != 4 {
+            return false;
+        }
+        (|| {
+            let navigation = navigation.bind();
+            let terrain = terrain.bind();
+            s.stand(
+                read(&input, 0)?,
+                read(&input, 1)?,
+                read(&input, 2)?,
+                mount(&input, 3)?,
+                navigation.core.as_ref()?,
+                terrain.core.as_ref()?,
+                deck.as_slice(),
+            )
+            .ok()
+        })()
+        .is_some()
+    }
+
+    #[func]
+    #[allow(clippy::too_many_arguments)]
+    fn move_route(
+        &mut self,
+        input: Array<Variant>,
+        doors: Array<Variant>,
+        navigation: Gd<crate::path_planner::PathPlannerCore>,
+        terrain: Gd<crate::terrain::TerrainCore>,
+        mut collision: Gd<crate::collision_index::CollisionIndexCore>,
+        mut rng: Gd<SimulationRandomCore>,
+        deck: PackedByteArray,
+    ) -> Array<Variant> {
+        let Some(s) = self.core.as_mut() else {
+            return Array::new();
+        };
+        if input.len() != 7 {
+            return Array::new();
+        }
+        let result = (|| {
+            let i = Movement {
+                dt: read(&input, 0)?,
+                time: read(&input, 1)?,
+                speed: read(&input, 2)?,
+                danger: read(&input, 3)?,
+                has_doors: read(&input, 4)?,
+                door_still_closed: read(&input, 5)?,
+                mount: mount(&input, 6)?,
+            };
+            let doors = crate::infantry_motion::doors(doors)?;
+            let navigation = navigation.bind();
+            let terrain = terrain.bind();
+            s.move_route(
+                i,
+                navigation.core.as_ref()?,
+                terrain.core.as_ref()?,
+                &mut collision.bind_mut().core,
+                &mut rng.bind_mut().core,
+                deck.as_slice(),
+                &doors,
+            )
+            .ok()
+        })();
+        result.map_or_else(Array::new, |result| {
+            let route = result.route.map_or_else(Array::new, |r| {
+                varray![r.revision as i64, vector(r.job.destination), r.job.care]
+            });
+            let door = result.opened_door.map_or_else(Array::new, |d| {
+                varray![d.id as i64, d.kicked, vector(d.by_position)]
+            });
+            varray![
+                result.moving,
+                &route,
+                i32::from(result.arrival == Arrival::Prison),
+                &door,
+                result.speech.map_or(-1, i32::from),
+                result.slid
+            ]
+        })
+    }
+
     #[func]
     fn movement_speed(&self, danger: bool) -> f64 {
         self.core

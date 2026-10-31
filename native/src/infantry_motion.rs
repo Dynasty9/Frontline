@@ -97,7 +97,7 @@ fn context(values: &[f64]) -> Option<MoveInput> {
     })
 }
 
-fn doors(rows: Array<Variant>) -> Option<Vec<Door>> {
+pub(crate) fn doors(rows: Array<Variant>) -> Option<Vec<Door>> {
     if rows.len() > 4096 {
         return None;
     }
@@ -158,26 +158,10 @@ impl InfantryMotionCore {
         neighbors: Array<Variant>,
         mut random: Gd<SimulationRandomCore>,
     ) -> PackedVector3Array {
-        let Some(neighbors) = (|| {
-            if id <= 0 || neighbors.len() > 100_000 {
-                return None;
-            }
-            neighbors
-                .iter_shared()
-                .map(|v| {
-                    let v: Array<Variant> = v.try_to().ok()?;
-                    if v.len() != 3 {
-                        return None;
-                    }
-                    Some(Neighbor {
-                        id: u64::try_from(v.get(0)?.try_to::<i64>().ok()?).ok()?,
-                        position: crate::point(v.get(1)?.try_to().ok()?),
-                        life: Life::try_from(u8::try_from(v.get(2)?.try_to::<i64>().ok()?).ok()?)
-                            .ok()?,
-                    })
-                })
-                .collect::<Option<Vec<_>>>()
-        })() else {
+        if id <= 0 {
+            return PackedVector3Array::new();
+        }
+        let Some(neighbors) = neighbor_rows(neighbors) else {
             return PackedVector3Array::new();
         };
         let Ok(result) = infantry_motion::separation(
@@ -322,4 +306,23 @@ fn stationary_input(v: &Array<Variant>) -> Option<StationaryInput> {
             )
         }),
     })
+}
+
+pub(crate) fn neighbor_rows(rows: Array<Variant>) -> Option<Vec<Neighbor>> {
+    if rows.len() > 100_000 {
+        return None;
+    }
+    rows.iter_shared()
+        .map(|v| {
+            let v: Array<Variant> = v.try_to().ok()?;
+            if v.len() != 3 {
+                return None;
+            }
+            Some(Neighbor {
+                id: u64::try_from(v.get(0)?.try_to::<i64>().ok()?).ok()?,
+                position: crate::point(v.get(1)?.try_to().ok()?),
+                life: Life::try_from(u8::try_from(v.get(2)?.try_to::<i64>().ok()?).ok()?).ok()?,
+            })
+        })
+        .collect()
 }

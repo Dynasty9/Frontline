@@ -9,6 +9,7 @@ kind = "fixed"
 - Starting a different-sized map with the same seed now rebuilds its terrain correctly instead of reusing the previous map's ground grid.
 - Infantry checkpoint checks now cover pending paths, actions, conversations, casualty links and weapon duties as the server migration continues. Whole-battle replay verification remains unfinished.
 - Retained Rust soldier checks preserve movement orders, late path results, cover arrivals, shelter changes, flank and rear watching, crawling and fatigue-dependent speed.
+- Connected Rust actor checks preserve recovery, fatigue, movement, replanning, arrivals and activity labels, including resumes from a saved soldier state.
 - Grenade, smoke, rocket, bomb and shell flight now use the shared simulation core, preserving flight behavior, pickup, kicking and rethrowing.
 - Battlefield raycasts now use the shared simulation core, updating when vehicles move, doors open and structures change.
 - Sight checks and smoke screens now run in Rust, retaining immediate smoke changes and reusing obstruction only while the blocking geometry stays unchanged.

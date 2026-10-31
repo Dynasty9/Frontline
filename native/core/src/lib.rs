@@ -35,6 +35,7 @@ pub mod infantry_shock;
 pub mod infantry_supply;
 pub mod infantry_tactics;
 pub mod infantry_travel;
+pub mod infantry_update;
 pub mod infantry_vitals;
 pub mod infantry_weapon;
 pub mod navigation_grid;

@@ -36,6 +36,106 @@ fn block(out: &mut Vec<u8>, bytes: &[u8]) {
 }
 
 #[test]
+fn retained_infantry_updates_are_identical_across_platforms() {
+    use frontline_core::infantry::{Goal, Identity, Infantry};
+    use frontline_core::infantry_controller::Task;
+    use frontline_core::infantry_motion::Neighbor;
+    use frontline_core::infantry_update::{ActivityContext, Movement};
+    let nav = PathPlanner::new(32).unwrap();
+    let terrain = Terrain::blank(32).unwrap();
+    let mut collision = CollisionWorld::default();
+    let mut bytes = Vec::new();
+    for trial in 0..72 {
+        let mut s = Infantry {
+            identity: Identity {
+                id: 1,
+                unit: "rifleman".into(),
+                ..Default::default()
+            },
+            ..Default::default()
+        };
+        s.motion.position = Vector3::new(-3.1, 0.2, 1.7);
+        s.motion.stuck_position = s.motion.position;
+        s.motion.path = vec![Vector3::new(-1.7, 0.0, 0.31), Vector3::new(3.7, 0.0, 7.1)];
+        s.orders.purpose = if trial % 2 == 0 {
+            Goal::Cover
+        } else {
+            Goal::Slot
+        };
+        s.orders.move_mode = (trial % 3) as u8;
+        s.cover.normal = Vector3::new(0.3, 0.0, -0.7);
+        s.cover.position = Vector3::new(3.7, 0.0, 7.1);
+        s.cover.kind = (trial % 4) as u8;
+        s.cover.material = (trial % 4) as i8;
+        s.cover.height = 0.8;
+        s.vitals.suppression = (trial % 5) as f64 * 20.0;
+        s.vitals.stamina = [0.1, 0.35, 0.6, 1.0][trial % 4];
+        s.vitals.life = Life::try_from((trial % 6) as u8).unwrap();
+        s.duty.kind = Task::try_from((trial % 20) as u8).unwrap();
+        s.duty.entity = 17;
+        let mut rng = SimulationRandom::new(trial as u64 + 179);
+        for tick in 0..120 {
+            let dt = [1.0 / 30.0, 1.0 / 60.0, 0.1][trial % 3];
+            let now = 100.0 + tick as f64 * dt;
+            s.recover(dt, now).unwrap();
+            s.fatigue(dt).unwrap();
+            s.compute_separation(
+                &[Neighbor {
+                    id: 2,
+                    position: s.motion.position
+                        + Vector3::X * if tick % 7 == 0 { 0.0 } else { 0.3 },
+                    life: Life::Alive,
+                }],
+                &mut rng,
+            )
+            .unwrap();
+            let result = s
+                .move_route(
+                    Movement {
+                        dt,
+                        time: now,
+                        speed: s.movement_speed(true),
+                        danger: true,
+                        has_doors: false,
+                        door_still_closed: false,
+                        mount: None,
+                    },
+                    &nav,
+                    &terrain,
+                    &mut collision,
+                    &mut rng,
+                    &[],
+                    &[],
+                )
+                .unwrap();
+            if !result.moving {
+                s.stand(dt, now, false, None, &nav, &terrain, &[]).unwrap();
+            }
+            let corrected = s.finish_tick(dt, now, Some(210), trial % 3 == 0).unwrap();
+            s.update_activity(ActivityContext {
+                task_target_exists: true,
+                mounted_exists: false,
+                chat_partner_exists: false,
+                ambush_target: trial % 7 == 0,
+            });
+            bytes.extend_from_slice(&[
+                u8::from(result.moving),
+                u8::from(result.slid),
+                corrected,
+                s.doing,
+                s.flags,
+            ]);
+            if tick % 15 == 0 || tick == 119 {
+                block(&mut bytes, &s.checkpoint().unwrap());
+                bytes.extend_from_slice(&rng.state().to_le_bytes());
+                s = Infantry::restore(&s.checkpoint().unwrap()).unwrap();
+            }
+        }
+    }
+    golden("infantry_update", &bytes);
+}
+
+#[test]
 fn retained_infantry_tactics_are_identical_across_platforms() {
     use frontline_core::cover::{Anchor, AnchorKind};
     use frontline_core::cover_search::{Scene, Structure};
