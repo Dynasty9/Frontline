@@ -45,6 +45,7 @@ mod route_graph;
 mod simulation_random;
 mod spatial;
 mod squad;
+mod squad_movement;
 mod structure;
 mod support_flight;
 mod terrain;

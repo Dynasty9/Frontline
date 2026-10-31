@@ -1346,6 +1346,13 @@ codes shown to players. Shared effects still await the Rust world implementation
 Retained squad-order checks preserve order gates, rescue and breach claims,
 mount release, formation route reuse and grenade-throw approaches. A breacher
 holding a cooked grenade still completes that commitment before moving on.
+Shared squad movement now consumes retained formations and applies member orders
+and direct route results in sequence. Travel keeps followers behind their leader,
+slows him for stragglers, and releases them into their final cover. Bounding teams,
+recon fire, leader succession and speech draws retain their existing rules.
+Crew return uses the same movement operation, respects manual orders and contact,
+and refunds supply once when surviving crewmen reach their friendly FOB. Wounded
+members remain in the world. The complete squad/world dispatcher is still pending.
 The Rust core now allocates authoritative entity IDs and retains their lifecycle
 order. Retired IDs stay retired, and restored lifecycle checkpoints continue the
 same allocation sequence; clients use the server's IDs for their visual objects.

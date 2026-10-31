@@ -1928,5 +1928,35 @@ Four regressions cover compact spacing, keeping formations on one side of a wall
 cover choice, invalid inputs and resumed geometry. The Godot reference compares
 1,536 formations with 8,064 positions and their complete cover metadata, using
 unfinished structures, queued terrain repairs, map edges and both formation widths.
-The comparison is exact. Numeric CI adds 126,976 exact placement bytes. Squad
-movement and crew-return dispatch still need to consume these retained placements.
+The comparison is exact. Numeric CI adds 126,976 exact placement bytes. Shared
+squad movement and crew return now consume these retained placements directly.
+
+## Shared squad movement and crew return
+
+Squad move orders now regroup retained soldiers, assign formation slots, choose
+travel or bounding overwatch, and apply each member's command before moving on to
+the next. Commands release rescue/breach claims and submit or replace routes in
+the same order as Godot. Busy followers retain their original order gates; a
+breacher already entering a house finishes that commitment. Travel slows the
+leader when the group falls behind and sends followers to their final cover on
+arrival. Bounds preserve fire-team ordering, urban leg lengths, threat direction,
+recon-fire safety checks and random draws, including speech suppressed by cooldown.
+
+Crew return shares this movement operation. The same cooldown, order ownership,
+nearest-FOB and combat gates decide when crews head home. Arrival refunds supplies
+once, removes living crewmen and leaves their wounded behind for rescue. Returned
+events identify speech, messages, despawns, counters and cancelled ambush plans.
+The world must apply the plan cancellation before later plan updates; complete
+plan, squad and world dispatch remain unfinished.
+
+The movement reference checks 2,304 successive orders/updates against Godot,
+including exact actor and squad state, route queues, speech and random cursors.
+Crew return adds 1,024 Godot comparisons of orders, removal, messages, supply and
+random continuation. Seven Rust regressions cover claims, committed breaches,
+leader loss, travel slowdown, friendly-fire avoidance, manual orders, combat gates,
+one-time refunds and an uninterrupted-versus-restored continuation. Numeric CI
+adds 4,958,595 movement bytes and 7,223,290 crew-return bytes. Navigation components
+record changed bytes separately to avoid repeating unchanged map grids; comparison
+remains exact and uses no hashes or floating-point tolerance.
+The live game still uses the Godot squad dispatcher; these comparisons establish
+compatibility of the retained operation, not a whole-battle performance result.

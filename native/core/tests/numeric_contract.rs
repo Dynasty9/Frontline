@@ -36,6 +36,19 @@ mod fires_world;
 #[path = "fixtures/structure_birth_world.rs"]
 mod structure_birth_world;
 
+#[path = "fixtures/squad_movement_world.rs"]
+mod squad_movement_world;
+
+#[test]
+fn shared_squad_movement_is_identical_across_platforms() {
+    golden("squad_movement", &squad_movement_world::transcript());
+}
+
+#[test]
+fn shared_crew_return_is_identical_across_platforms() {
+    golden("crew_return", &squad_movement_world::crew_transcript());
+}
+
 #[test]
 fn shared_formation_placements_are_identical_across_platforms() {
     use frontline_core::actors::Actors;
