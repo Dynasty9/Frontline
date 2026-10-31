@@ -74,6 +74,7 @@ pub mod infantry_travel_owned;
 pub mod infantry_update;
 pub mod infantry_vitals;
 pub mod infantry_weapon;
+pub mod infantry_world;
 pub mod infantry_wounded_world;
 pub mod navigation_grid;
 pub mod navigation_scene;

@@ -1477,6 +1477,11 @@ Connected construction preserves engineers stopping work under fire, approach
 routes, building completion, cover and collision changes, repairable FOBs, supply
 roads, vehicle tracks and squad completion calls. These operations still await
 the production Rust dispatcher.
+The complete retained soldier tick now connects those duties with recovery,
+interruptions, perception, decisions and final status in the existing gameplay
+order. Medical recovery, carrying, boarding, tunnels and prisoners update shared
+actors and squads. This dispatcher is checked against Godot; the production world,
+standalone server and complete battle replay verification remain unfinished.
 Retained navigation owns each structure's overlapping obstacle cells together with
 the infantry and vehicle route hierarchies. Fire counts, bridge decks, terrain
 costs and obstacle removal preserve incremental repair order and pending routes

@@ -63,6 +63,13 @@ mod infantry_breach_world;
 mod infantry_build_world;
 #[path = "fixtures/infantry_mount_world.rs"]
 mod infantry_mount_world;
+#[path = "fixtures/infantry_world.rs"]
+mod infantry_world;
+
+#[test]
+fn complete_infantry_world_is_identical_across_platforms() {
+    golden("infantry_world", &infantry_world::transcript());
+}
 
 #[test]
 fn breaching_infantry_world_is_identical_across_platforms() {

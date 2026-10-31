@@ -21,6 +21,8 @@ different byte rather than dumping the fixture.
   battle credit, squad orders and work sounds through resumed shared updates.
 - `infantry_mount_world.bin`: gun claims, tower climbing, mortar orders, anti-tank
   launches and defensive smoke through resumed shared updates.
+- `infantry_world.bin`: complete soldier ticks, including recovery, interruptions,
+  perception, decisions, combat, treatment and custody through resumed world state.
 - `world_routes.bin`: shared soldier/vehicle route completions, queued repairs,
   cancelled orders and retained navigation/actor state across resumed batches.
 - `structure_collision.bin`: structure collision boxes, rotated parts, construction,

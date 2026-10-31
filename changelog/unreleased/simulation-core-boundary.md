@@ -11,6 +11,7 @@ kind = "fixed"
 - Retained Rust soldier checks preserve movement orders, late path results, cover arrivals, shelter changes, flank and rear watching, crawling and fatigue-dependent speed.
 - Connected Rust AI checks preserve the priority of immediate danger, melee, scavenging, building entry, special weapons, supply, cover and sector watching, including shared squad claims and grenade state.
 - Connected Rust actor checks preserve recovery, fatigue, movement, replanning, arrivals and activity labels, including resumes from a saved soldier state.
+- Complete Rust soldier-tick checks preserve the order of recovery, interruptions, AI decisions, combat and support duties while updating shared soldiers, squads and battlefield state.
 - Rust squad-order checks preserve busy soldiers' order gates, rescue and breach commitments, leaving mounted guns, formation movement and grenade approaches.
 - Retained Rust actor checks now connect action interruptions, cooking and throws, diving, blast recovery, casualty links, death and revival, hidden transport and corpse cleanup.
 - Rust building-state checks preserve geometry, construction and repairs, town income, capture progress and production queues through saved-state resumes as the server migration continues.

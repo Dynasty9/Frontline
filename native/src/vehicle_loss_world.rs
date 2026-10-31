@@ -71,6 +71,7 @@ struct VehicleProfile {
     gun_height: f64,
     artillery: bool,
     tracked: bool,
+    seats: u32,
 }
 impl VehicleProfile {
     fn view(&self) -> Profile<'_> {
@@ -94,6 +95,14 @@ struct Man {
     profile: ManProfile,
     movement: squad_movement::ManProfile,
     role: String,
+    healing: f64,
+    building: f64,
+    weapon: String,
+}
+#[derive(Clone, Copy)]
+struct Building {
+    profile: BuildingProfile,
+    time: Option<f64>,
 }
 enum Operation {
     Damage(u32, f64, u32),
@@ -508,6 +517,40 @@ impl VehicleLossWorldCore {
         )
     }
     #[func]
+    fn advance_infantry(
+        &mut self,
+        actors: Gd<ActorStateCore>,
+        geometry: Gd<WorldGeometryCore>,
+        units: Gd<SpatialIndexCore>,
+        nodes: Array<Gd<SquadStateCore>>,
+        fires: Gd<FiresCore>,
+        battle: Gd<BattleStatsCore>,
+        deferred: Gd<DeferredEffectsCore>,
+        visibility: Gd<VisibilityCore>,
+        rng: Gd<SimulationRandomCore>,
+        config: Array<Variant>,
+        input: Array<Variant>,
+        network: Gd<SupplyNetworkCore>,
+        impacts: Array<Variant>,
+    ) -> Array<Variant> {
+        let Some(reports) = read_impacts(&impacts) else {
+            return Array::new();
+        };
+        self.run(
+            actors,
+            geometry,
+            units,
+            nodes,
+            fires,
+            battle,
+            deferred,
+            visibility,
+            rng,
+            config,
+            Operation::Infantry(5, input, network, reports),
+        )
+    }
+    #[func]
     fn gunfire_reveals(&self) -> VarDictionary {
         let mut out = VarDictionary::new();
         for (id, time) in self.gunfire.reveals() {
@@ -562,7 +605,7 @@ impl VehicleLossWorldCore {
             let mut vehicles = BTreeMap::new();
             for row in rows.iter_shared() {
                 let r: Array<Variant> = row.try_to().ok()?;
-                if ![11, 13, 14, 17].contains(&r.len()) {
+                if ![11, 13, 14, 17, 18].contains(&r.len()) {
                     return None;
                 }
                 let key: u32 = read(&r, 0)?;
@@ -584,11 +627,13 @@ impl VehicleLossWorldCore {
                     level: if r.len() >= 13 { read(&r, 11)? } else { 0 },
                     toss: if r.len() >= 13 { read(&r, 12)? } else { 1.0 },
                     hit: if r.len() >= 14 { read(&r, 13)? } else { 2.0 },
-                    gun_height: if r.len() == 17 { read(&r, 14)? } else { 2.2 },
-                    artillery: if r.len() == 17 { read(&r, 15)? } else { false },
-                    tracked: if r.len() == 17 { read(&r, 16)? } else { false },
+                    gun_height: if r.len() >= 17 { read(&r, 14)? } else { 2.2 },
+                    artillery: if r.len() >= 17 { read(&r, 15)? } else { false },
+                    tracked: if r.len() >= 17 { read(&r, 16)? } else { false },
+                    seats: if r.len() == 18 { read(&r, 17)? } else { 0 },
                 };
-                if !p.gun_height.is_finite()
+                if p.seats > 4096
+                    || !p.gun_height.is_finite()
                     || !(0.0..=1000.0).contains(&p.gun_height)
                     || vehicles.insert(key, p).is_some()
                 {
@@ -602,7 +647,7 @@ impl VehicleLossWorldCore {
             let mut men = BTreeMap::new();
             for row in rows.iter_shared() {
                 let r: Array<Variant> = row.try_to().ok()?;
-                if r.len() != 6 {
+                if r.len() != 6 && r.len() != 9 {
                     return None;
                 }
                 let key = read::<GString>(&r, 0)?.to_string();
@@ -629,7 +674,22 @@ impl VehicleLossWorldCore {
                         weapon_range: (range >= 0.0).then_some(range),
                     },
                     role: read::<GString>(&r, 5)?.to_string(),
+                    healing: if r.len() == 9 { read(&r, 6)? } else { 1.0 },
+                    building: if r.len() == 9 { read(&r, 7)? } else { 1.0 },
+                    weapon: if r.len() == 9 {
+                        read::<GString>(&r, 8)?.to_string()
+                    } else {
+                        String::new()
+                    },
                 };
+                if [p.healing, p.building]
+                    .iter()
+                    .any(|n| !n.is_finite() || !(0.0..=100_000.0).contains(n))
+                    || p.weapon.len() > 128
+                    || p.weapon.contains('\0')
+                {
+                    return None;
+                }
                 if men.insert(key, p).is_some() {
                     return None;
                 }
@@ -641,18 +701,29 @@ impl VehicleLossWorldCore {
             let mut buildings = BTreeMap::new();
             for row in rows.iter_shared() {
                 let r: Array<Variant> = row.try_to().ok()?;
-                if r.len() != 3 {
+                if r.len() != 3 && r.len() != 4 {
                     return None;
                 }
                 let value: f64 = read(&r, 2)?;
                 if !value.is_finite() || !(0.0..=1e15).contains(&value) {
                     return None;
                 }
+                let time: Option<f64> = if r.len() == 4 && !r.at(3).is_nil() {
+                    Some(read(&r, 3)?)
+                } else {
+                    None
+                };
+                if time.is_some_and(|t| !t.is_finite() || !(0.000001..=1e12).contains(&t)) {
+                    return None;
+                }
                 buildings.insert(
                     read::<GString>(&r, 0)?.to_string(),
-                    BuildingProfile {
-                        player: read(&r, 1)?,
-                        value,
+                    Building {
+                        time,
+                        profile: BuildingProfile {
+                            player: read(&r, 1)?,
+                            value,
+                        },
                     },
                 );
             }
@@ -715,14 +786,17 @@ impl VehicleLossWorldCore {
             man: &|s, _| men[&s.identity.unit].profile,
             movement: &|s| men[&s.identity.unit].movement,
             building: &|st| {
-                buildings.get(&st.kind).copied().unwrap_or(BuildingProfile {
-                    player: false,
-                    value: 0.0,
-                })
+                buildings
+                    .get(&st.kind)
+                    .map(|p| p.profile)
+                    .unwrap_or(BuildingProfile {
+                        player: false,
+                        value: 0.0,
+                    })
             },
             role: &|s| men[&s.identity.unit].role.clone(),
             automatic: &|k| automatic.iter().any(|v| v == k),
-            player_building: &|k| buildings.get(k).is_some_and(|p| p.player),
+            player_building: &|k| buildings.get(k).is_some_and(|p| p.profile.player),
         };
         let mut reports = None;
         let mut cries: Option<Array<Variant>> = None;
@@ -745,7 +819,7 @@ impl VehicleLossWorldCore {
                     if input.len()
                         != match mode {
                             2 => 8,
-                            3 | 4 => 7,
+                            3..=5 => 7,
                             _ => 6,
                         }
                     {
@@ -866,7 +940,167 @@ impl VehicleLossWorldCore {
                         },
                     }
                 };
-                let result = if mode == 4 {
+                let result = if mode == 5 {
+                    use frontline_core::infantry_world::{
+                        Event as InfantryEvent, Profiles, Tick, Unit,
+                    };
+                    let parse = || -> Option<_> {
+                        let data: Array<Variant> = read(&input, 6)?;
+                        if data.len() != 6 {
+                            return None;
+                        }
+                        let owned: PackedInt64Array = read(&data, 0)?;
+                        if owned.len() > 100_000 {
+                            return None;
+                        }
+                        let owned = owned
+                            .as_slice()
+                            .iter()
+                            .map(|&id| u32::try_from(id).ok().filter(|id| *id != 0))
+                            .collect::<Option<Vec<_>>>()?;
+                        let players: PackedInt32Array = read(&data, 1)?;
+                        if players.len() > 200_000 || players.len() % 2 != 0 {
+                            return None;
+                        }
+                        let mut seen = std::collections::HashSet::new();
+                        let mut peers = vec![];
+                        for p in players.as_slice().chunks_exact(2) {
+                            if p[0] <= 0 || !(-1..=1).contains(&p[1]) || !seen.insert(p[0]) {
+                                return None;
+                            }
+                            peers.push((p[0], p[1] as i8));
+                        }
+                        let depots: PackedInt64Array = read(&data, 2)?;
+                        let upgrades: PackedByteArray = read(&data, 3)?;
+                        let names: PackedStringArray = read(&data, 4)?;
+                        if depots.len() != 2
+                            || upgrades.len() != 6
+                            || names.len() != 2
+                            || upgrades.as_slice().iter().any(|&n| n > 1)
+                        {
+                            return None;
+                        }
+                        let depots = [
+                            u32::try_from(depots[0]).ok()?,
+                            u32::try_from(depots[1]).ok()?,
+                        ];
+                        let names = [names[0].to_string(), names[1].to_string()];
+                        if names.iter().any(|s| s.len() > 128 || s.contains('\0')) {
+                            return None;
+                        }
+                        let rows: Array<Variant> = read(&data, 5)?;
+                        if rows.len() > 100_000 {
+                            return None;
+                        }
+                        let mut guns = BTreeMap::new();
+                        for value in rows.iter_shared() {
+                            let row: Array<Variant> = value.try_to().ok()?;
+                            if row.len() != 2 {
+                                return None;
+                            }
+                            let id: u32 = read(&row, 0)?;
+                            if id == 0
+                                || guns
+                                    .insert(id, crate::actors::mounted_gun(&read(&row, 1)?).ok()?)
+                                    .is_some()
+                            {
+                                return None;
+                            }
+                        }
+                        Some((owned, peers, depots, upgrades, names, guns))
+                    };
+                    let Some((owned, players, depots, upgrades, names, guns)) = parse() else {
+                        return Array::new();
+                    };
+                    let mut search = frontline_core::perception::PerceptionSearch::default();
+                    if search
+                        .rebuild_actors(
+                            context.actors,
+                            &context.geometry.terrain,
+                            context.now,
+                            |v| vehicles[&v.id].helicopter,
+                        )
+                        .is_err()
+                    {
+                        return Array::new();
+                    }
+                    context
+                        .advance_infantry(
+                            id,
+                            dt,
+                            &Profiles {
+                                unit: &|s| {
+                                    let p = &men[&s.identity.unit];
+                                    Unit {
+                                        bearer: p.profile.bearer,
+                                        healing: p.healing,
+                                        building: p.building,
+                                        weapon: profiles
+                                            .get(&p.weapon)
+                                            .map(|w| (p.weapon.as_str(), w.0.weapon)),
+                                    }
+                                },
+                                weapon: &profile,
+                                gun: &|st| guns.get(&st.id).copied().flatten(),
+                                build_time: &|st| buildings.get(&st.kind).and_then(|p| p.time),
+                                defense: &defense,
+                                armor: &armor,
+                                vehicle_hit: &|v| vehicles[&v.id].hit,
+                                transport: &|v| {
+                                    let p = &vehicles[&v.id];
+                                    frontline_core::infantry_travel_owned::Transport {
+                                        seats: p.seats,
+                                        helicopter: p.helicopter,
+                                        boat: p.base == "boat",
+                                    }
+                                },
+                            },
+                            &mut Tick {
+                                search: &search,
+                                gunfire: &mut self.gunfire,
+                                network: &mut network.bind_mut().core,
+                                impacts: &mut impacts,
+                                chat: &mut chat,
+                                owned: &owned,
+                                players: &players,
+                                depots,
+                                medicine: [upgrades[0] != 0, upgrades[1] != 0],
+                                optics: [upgrades[2] != 0, upgrades[3] != 0],
+                                warheads: [upgrades[4] != 0, upgrades[5] != 0],
+                                squad_names: [&names[0], &names[1]],
+                            },
+                        )
+                        .map(|events| {
+                            events
+                                .into_iter()
+                                .filter_map(|e| match e {
+                                    InfantryEvent::Combat(e) => Some(e),
+                                    InfantryEvent::Prison(
+                                        frontline_core::infantry_prison_owned::Event::Taken {
+                                            ..
+                                        },
+                                    ) => Some(fighting::Event::World(world_combat::Event::Stat(
+                                        "prisoner_taken",
+                                    ))),
+                                    InfantryEvent::Prison(
+                                        frontline_core::infantry_prison_owned::Event::Speech {
+                                            captor,
+                                            cue,
+                                        },
+                                    ) => Some(fighting::Event::Speech {
+                                        id: captor,
+                                        text: [
+                                            "Move! Hands where I can see them!",
+                                            "On your feet! Walk!",
+                                            "Easy... keep those hands up.",
+                                        ][cue as usize]
+                                            .into(),
+                                    }),
+                                    _ => None,
+                                })
+                                .collect()
+                        })
+                } else if mode == 4 {
                     let Some(warhead) = read::<f64>(&input, 6) else {
                         return Array::new();
                     };
@@ -951,19 +1185,20 @@ impl VehicleLossWorldCore {
                 reports = Some(impacts);
                 chat_state = Some(PackedFloat64Array::from(chat.as_slice()));
                 result.map(|events| {
-                    if mode == 3 || mode == 4 {
+                    if (3..=5).contains(&mode) {
                         use frontline_core::infantry_action_owned::Event as Ordnance;
                         construction = Some(events.iter().filter_map(|e| match e {
                             fighting::Event::Ordnance(Ordnance::Mortar(p)) => Some(varray!["mortar", vector(*p)].to_variant()),
                             fighting::Event::Ordnance(Ordnance::Launch { position, direction }) => Some(varray!["launch", vector(*position), vector(*direction)].to_variant()),
                             fighting::Event::Ordnance(Ordnance::Door(id)) => context.actors.structure(*id).map(|st| varray!["door", vector(st.position + frontline_core::vector::Vector3::Y)].to_variant()),
                             fighting::Event::Ordnance(Ordnance::Melee { position, .. }) => Some(varray!["melee", vector(*position)].to_variant()),
+                            fighting::Event::Movement { event: frontline_core::infantry_travel_owned::Event::Door { id, kicked: true }, .. } => context.actors.structure(*id).map(|st| varray!["door", vector(st.position + frontline_core::vector::Vector3::Y)].to_variant()),
                             _ => None,
                         }).collect());
                     }
-                    if mode == 2 {
+                    if mode == 2 || mode == 5 {
                         use frontline_core::infantry_build_world::Construction;
-                        construction = Some(events.iter().filter_map(|e| {
+                        let work: Array<Variant> = events.iter().filter_map(|e| {
                             let fighting::Event::Construction(event) = e else { return None };
                             Some(match event {
                                 Construction::Completed { id, kind } => {
@@ -975,7 +1210,12 @@ impl VehicleLossWorldCore {
                                 Construction::TrackRepaired { id } => varray!["track", *id].to_variant(),
                                 Construction::Sound { position } => varray!["sound", vector(*position)].to_variant(),
                             })
-                        }).collect());
+                        }).collect();
+                        if let Some(events) = construction.as_mut() {
+                            events.extend_array(&work);
+                        } else {
+                            construction = Some(work);
+                        }
                     }
                     cries = Some(
                         events
@@ -987,6 +1227,10 @@ impl VehicleLossWorldCore {
                                 fighting::Event::Movement { id, event: frontline_core::infantry_travel_owned::Event::BreachSpeech(cue) } => Some(
                                     varray![*id, ["Breaching!", "Door!", "Kicking it in!"][*cue as usize]].to_variant()
                                 ),
+                                fighting::Event::Movement { id, event: frontline_core::infantry_travel_owned::Event::ThrowSpeech(round) } => Some(
+                                    varray![*id, if *round == frontline_core::infantry_action::Round::Smoke { "Smoke out!" } else { "Frag out!" }].to_variant()
+                                ),
+                                fighting::Event::Movement { id, event: frontline_core::infantry_travel_owned::Event::GotAmmo } => Some(varray![*id, "Got ammo."].to_variant()),
                                 fighting::Event::World(world_combat::Event::InfantryHit {
                                     id,
                                     hit,

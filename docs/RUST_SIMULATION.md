@@ -62,7 +62,7 @@ graphics, network access or a wall clock.
 | Infantry action state | `frontline_core` | Retained actors complete cooked throws, shared grenade handling, melee, door kicks, rockets, mortars and drones, including vehicle warning/smoke responses; the live world dispatcher still runs in Godot |
 | Infantry hidden duties and status | `frontline_core` | Retained passengers, tunnel exits, treatment completion and prisoner departures update shared actors and squads; moving posture, flags and operator turns are extracted, while live dispatch and ledger/presentation callbacks remain in Godot |
 | Infantry downtime | `frontline_core` | Retained actors share conversation claims, interruptions, team cooldowns, timed speech and laughter; rendering the emitted speech remains in Godot, and live dispatch still needs migration |
-| Infantry scheduling | `frontline_core` | Activity/scan/think clocks, interruption priority, dive movement and order/duty gates extracted; Godot still dispatches task callbacks and the remaining decision loop |
+| Infantry scheduling | `frontline_core` | The complete retained soldier tick connects activity, recovery, interruptions, perception, decisions, every duty and final status in gameplay order; production world dispatch still runs in Godot |
 | Retained infantry state | `frontline_core` | A typed actor combines component state, stable links, pending tasks and orders in a validated checkpoint; the live world still owns its Godot soldiers |
 | Retained infantry orders and tactics | `frontline_core` | Actors issue and cancel routes, reject stale path completions, apply arrivals, review shelter, choose cover and derive movement speeds and sectors; the live world still dispatches its Godot soldiers |
 | Retained infantry movement and observations | `frontline_core` | Actor updates connect recovery, fatigue, movement, automatic replanning, arrivals, separation, posture and status/activity codes; shared world effects and the remaining tick dispatch are still being migrated |
@@ -2136,3 +2136,28 @@ forms across 64 worlds and checks 384 geometry states, plus actors, squads,
 ordnance effects, routes, battle records and random cursors. It reuses the
 previously verified action implementation and numeric contract. Production tick
 dispatch, the standalone socket server and whole-match verifier remain unfinished.
+
+## Complete retained infantry tick
+
+`Context.advance_infantry` runs recovery and activity clocks before interruptions,
+then perception, decisions and the selected duty, and finally posture and status.
+It connects every soldier task to retained actors, shared combat, navigation,
+squads and battle records. Treatment and tent discharge update revival credit;
+limping soldiers rejoin squads and submit their new route. Carrying, boarding,
+tunnels and prisoner arrivals preserve their shared ownership changes. Definition
+lookups supply unit and weapon data without calling Godot.
+
+Seven reference cases run the complete tick against `Soldier.sim` across 448
+world setups, including fighting, house entry, construction, mounted weapons,
+actions, travel, carrying and custody. They compare shared actor/squad state,
+geometry, routes, effects, battle records and random cursors.
+Six core regressions cover fight continuation, interruption ordering, medical
+recovery, tent ammunition, every lifecycle/task dispatch and invalid time steps.
+The combined numeric transcript adds 11,539,973 exact bytes and compares uninterrupted
+updates against restored state, including actors, squads, geometry, pending paths,
+battle records, delayed effects, smoke, fire, gunfire, supply and random cursors.
+
+This completes the retained soldier dispatcher, not the production world loop.
+Vehicles, remaining shared systems, the standalone socket server and whole-match
+replay verification still require integration. The comparison adapter rebuilds
+perception for each call; the production world must share one snapshot per tick.
