@@ -55,6 +55,7 @@ kind = "fixed"
 - Scheduling checks preserve interruptions, dives, scanning and thinking deadlines, and which orders a busy soldier can accept.
 - Authoritative entity IDs now come from Rust, preserving creation order and keeping removed units' IDs from being reused as the server migration continues.
 - Shared actor checks preserve rescue and stretcher claims when a carrier falls, and FPV drones lose control when their operator is lost while retaining their last target position.
+- Squad checks preserve shared contact briefings, leader succession and casualty morale as squad state moves into Rust.
 - The extracted simulation uses pinned numeric rules, with exact checkpoint comparisons across platforms as replay verification work continues.
 - Guided missiles keep a consistent turn after overshooting their aim point, instead of letting rounding choose an erratic turn direction.
 - This is groundwork for the server migration. Battles still use the existing simulation, and recordings are not yet independently verified.

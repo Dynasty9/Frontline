@@ -190,6 +190,8 @@ func _answer(cmd: String, req: Dictionary) -> Variant:
 			return {"t": w.time, "hash": _hash(w), "entities": w.entities.size()}
 		"infantry_checkpoints":
 			return _infantry_checkpoints(w)
+		"squad_checkpoints":
+			return _squad_checkpoints(w)
 	return {"ok": false, "error": "unknown command: %s" % cmd}
 
 
@@ -394,3 +396,29 @@ func _infantry_checkpoints(w: World) -> Dictionary:
 		bytes += saved.size()
 	assert(w.rng.state == rng_before, "Capturing state must not consume gameplay randomness")
 	return {"actors": count, "bytes": bytes}
+
+
+func _squad_checkpoints(w: World) -> Dictionary:
+	var core: RefCounted = ClassDB.instantiate("SquadStateCore")
+	var restored: RefCounted = ClassDB.instantiate("SquadStateCore")
+	var plans := {}
+	for q: Squad in w.squads.values():
+		for plan in [q.plan, q.ambush_plan]:
+			if plan != null and not plans.has(plan):
+				plans[plan] = plans.size() + 1
+	var count := 0
+	var bytes := 0
+	var rng_before: int = w.rng.state
+	for q: Squad in w.squads.values():
+		var values := SquadState.capture(q, plans)
+		if not core.load_state(values):
+			return {"ok": false, "error": "Invalid squad state: %d (%s, order %s)" % [q.sid, q.kind, q.order]}
+		if core.values() != values:
+			return {"ok": false, "error": "Squad import lost fields: %d" % q.sid}
+		var saved: PackedByteArray = core.checkpoint()
+		if not restored.restore(saved) or restored.values() != values or restored.checkpoint() != saved:
+			return {"ok": false, "error": "Squad checkpoint lost fields: %d" % q.sid}
+		count += 1
+		bytes += saved.size()
+	assert(w.rng.state == rng_before, "Capturing squad state must not consume gameplay randomness")
+	return {"squads": count, "bytes": bytes, "plans": plans.size()}

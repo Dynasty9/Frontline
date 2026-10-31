@@ -50,6 +50,7 @@ pub mod projectile;
 pub mod projectile_actor;
 pub mod random;
 pub mod route_graph;
+pub mod squad;
 mod state_codec;
 pub mod support;
 pub mod targeting;

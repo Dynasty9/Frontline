@@ -1333,6 +1333,10 @@ Shared actor checks now keep rescue/stretcher cleanup and controlled FPV drones
 inside one Rust collection. Drones resolve their operator and target from retained
 actors, keeping their last aim point after losing the target. The live battle
 still uses Godot ownership while the other entity types and world loop migrate.
+Squad-state checks preserve shared contact reports, briefing timing, leader
+succession and casualty morale against the existing game. Squad checkpoints retain
+orders, formation slots, queued fire missions and plan links; the full squad
+decision loop still runs in Godot during migration.
 The full
 authoritative Rust server and deterministic
 battle verifier are still in progress; see [RUST_SIMULATION.md](RUST_SIMULATION.md).

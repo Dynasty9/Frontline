@@ -23,6 +23,7 @@ graphics, network access or a wall clock.
 | Grenade, smoke, rocket, bomb and shell flight | `frontline_core` | Rust retains and advances flight state and queries native geometry; the adapter supplies holders and applies impacts |
 | Retained projectile actors and impacts | `frontline_core` | Ballistic, guided and support actors retain ownership, holder/handler links and attribution with flight checkpoints; ordered impact, spawn, smoke, recon and sound effects still await the Rust world dispatcher |
 | Shared actor storage and FPV ownership | `frontline_core` | Ordered infantry/projectile/drone state, allocation and shared casualty links are retained together; drones resolve living targets and operators inside Rust. Structures, vehicles, squads and complete world dispatch remain unfinished |
+| Squad state and shared knowledge | `frontline_core` | Orders, contact caches, plan links and tactical state have retained checkpoints; centroid, contact reports, threats, succession and casualty morale operate on owned actors. Squad orders, drills and the full squad tick still run in Godot |
 | Weighted grid paths and cluster pair costs | `frontline_core` | Exact Godot route tie behavior; native cluster workers return costs in deterministic order |
 | Ground cells, crater heights and queued cover repairs | `frontline_core` | Rust retains terrain and ordered structure geometry, and performs edits, queries and cover repairs; Godot imports biome generation and forwards navigation notifications |
 | Water shapes, bridge decks and water terrain rasterization | `frontline_core` | Ordered numeric rasterization; a Rust worker also applies the joining host's ground overrides; Godot still generates the initial shapes |
@@ -200,6 +201,27 @@ shoot-downs and repeated checkpoint restores. Eight Rust tests cover allocation
 churn, shared cleanup, continuation, attribution and malformed input; numeric CI
 adds 751,072 exact bytes. This collection is not a standalone match server.
 
+## Retained squads
+
+`Squad` retains ordered membership, known/heard contacts, briefing and centroid
+caches, orders, formation slots, morale, drill/tactic deadlines, queued mortar
+missions, clearing assignments and links to attack/ambush plans. Plan identities
+must be supplied by the importer; the referenced plan state is not contained in
+the squad checkpoint. Diagnostic behavior-tree strings are excluded.
+
+Centroids, combat status, shared threat selection, leader succession and casualty
+morale now operate on owned actors. Equal-distance threats retain reporting order;
+new contacts invalidate the appropriate caches, while repeated contacts preserve
+the existing briefing cadence. Succession and casualty speech consume the same
+random draws and update the speaking soldier's cooldown.
+
+The fixture compares 1,024 complete squad/actor states and RNG cursors, including
+removed members, wounded/dead contacts, delayed briefings and checkpoint restores.
+Live captures also preserve squads in eleven battle scenarios at 0/10/30 seconds
+and on the 500-soldier, 2,048 m map. Seven core tests cover strict decoding,
+continuation and shared decisions; numeric CI adds 3,320,016 bytes. Full squad
+orders, tactics, morale upkeep and battle-drill dispatch still need migration.
+
 ## Deterministic replay contract
 
 A simulation replay needs all of the following, separate from Format 1 observer
@@ -272,7 +294,7 @@ Component checkpoint headers contain a four-byte component tag, a little-endian
 rules rather than silently continuing with changed arithmetic. The separate
 integer RNG stream remains unchanged.
 
-`native/core/tests/numeric_contract.rs` compares 15,116,378 committed bytes without
+`native/core/tests/numeric_contract.rs` compares 18,436,394 committed bytes without
 tolerances: fixed-tick flight state, support events and RNG cursors, carved water,
 craters, rotated box hits, cover anchors, spherical interpolation and infantry
 movement, infantry cover fire, postures, ammunition, burst recovery, vitals, aiming,
@@ -496,7 +518,7 @@ flag until Rust owns the actors.
 
 The shock fixture compares 92,160 reference steps, including mounted turning,
 blocked terrain, carried casualties and task interruption. The full default suite
-passes 150 tests; 285 core tests pass in debug and release.
+passes 151 tests; 293 core tests pass in debug and release.
 
 ## Retained projectiles and impacts
 

@@ -23,12 +23,16 @@ test("Rust actor checkpoints retain real battle state without changing the runni
         const checkpoint = await game.send("infantry_checkpoints");
         assert.ok(checkpoint.actors > 0, scenario);
         assert.ok(checkpoint.bytes > checkpoint.actors * 100, scenario);
+        const squads = await game.send("squad_checkpoints");
+        assert.ok(squads.squads > 0, scenario);
+        assert.ok(squads.bytes > squads.squads * 100, scenario);
         assert.equal(await game.hash(), before, `Capturing ${scenario} must not alter the battle`);
       }
     }
     await game.load({ scenario: "stress", map_size: 2048, units: 500, scenery: 200, seed: 3 });
     const before = await game.hash();
     assert.equal((await game.send("infantry_checkpoints")).actors, 500);
+    assert.ok((await game.send("squad_checkpoints")).squads > 0);
     assert.equal(await game.hash(), before);
     await game.load({ scenario: "attack", seed: 3, map_size: 1024 });
     assert.ok((await game.send("infantry_checkpoints")).actors > 0);

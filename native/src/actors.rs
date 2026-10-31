@@ -8,9 +8,9 @@ use godot::prelude::*;
 
 #[derive(GodotClass)]
 #[class(base=RefCounted, init)]
-struct ActorStateCore {
+pub(crate) struct ActorStateCore {
     base: Base<RefCounted>,
-    core: Actors,
+    pub(crate) core: Actors,
 }
 fn released(r: Released) -> PackedInt64Array {
     [r.patient, r.stretcher, r.squad, r.drone]

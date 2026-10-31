@@ -36,6 +36,85 @@ fn block(out: &mut Vec<u8>, bytes: &[u8]) {
 }
 
 #[test]
+fn squad_memory_and_shared_casualties_are_identical_across_platforms() {
+    use frontline_core::actors::{Actor, Actors};
+    use frontline_core::infantry::Infantry;
+    use frontline_core::squad::{Contact, Report, Squad};
+    let mut bytes = Vec::new();
+    for trial in 0..64 {
+        let mut entries = Vec::new();
+        let mut rng = SimulationRandom::new(trial + 137);
+        for id in 1..=10 {
+            let mut s = Infantry::default();
+            s.identity.id = id;
+            s.identity.squad = 17;
+            s.identity.unit = "rifleman".into();
+            s.motion.position = Vector3::new(
+                rng.randf_range(-37.3, 43.9),
+                rng.randf_range(-1.3, 0.7),
+                rng.randf_range(-37.3, 43.9),
+            );
+            s.vitals.life = if id == 1 { Life::Dead } else { Life::Alive };
+            entries.push(Actor::Soldier(Box::new(s)));
+        }
+        let mut actors = Actors::from_entries(11, entries).unwrap();
+        let mut q = Squad {
+            id: 17,
+            members: vec![1, 2, 3, 4, 5, 6],
+            leader: 1,
+            morale: 78.0,
+            ..Default::default()
+        };
+        for tick in 0..60 {
+            let now = 100.0 + tick as f64 * 0.13;
+            let id = 7 + tick % 4;
+            let position = actors.soldier(id).unwrap().motion.position;
+            q.report(Contact {
+                id,
+                report: Report {
+                    position,
+                    time: now,
+                },
+            })
+            .unwrap();
+            if tick % 7 == 0 {
+                q.report_position(
+                    Vector3::new(
+                        rng.randf_range(-31.7, 37.3),
+                        0.0,
+                        rng.randf_range(-31.7, 37.3),
+                    ),
+                    now,
+                )
+                .unwrap();
+            }
+            let (leader, speech) = q.get_leader(&mut actors, |s| s.identity.id == 2, &mut rng);
+            bytes.extend_from_slice(&leader.to_le_bytes());
+            bytes.push(speech.map_or(255, |s| s.cue));
+            for p in q.sector_threats(Vector3::new(-1.3, 0.3, -7.1), now, &actors) {
+                point(&mut bytes, p);
+            }
+            bytes.push(u8::from(q.in_combat(now)));
+            if tick == 12 || tick == 29 {
+                actors.go_down(3 + (tick == 29) as u32, now).unwrap();
+                let speech = q
+                    .casualty(3 + (tick == 29) as u32, now, &mut actors, &mut rng)
+                    .unwrap();
+                bytes.extend_from_slice(&speech.map_or(0, |s| s.soldier).to_le_bytes());
+                bytes.push(speech.map_or(255, |s| s.cue));
+            }
+            block(&mut bytes, &q.checkpoint().unwrap());
+            bytes.extend_from_slice(&rng.state().to_le_bytes());
+            if tick % 17 == 0 {
+                q = Squad::restore(&q.checkpoint().unwrap()).unwrap();
+            }
+        }
+        block(&mut bytes, &actors.checkpoint().unwrap());
+    }
+    golden("squad", &bytes);
+}
+
+#[test]
 fn shared_actor_lifecycles_and_drone_ownership_are_identical_across_platforms() {
     use frontline_core::actors::{Actor, Actors};
     use frontline_core::drone_actor::Drone;
