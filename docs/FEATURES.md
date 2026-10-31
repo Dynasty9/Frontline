@@ -1457,6 +1457,10 @@ Retained structure removal now connects terrain, navigation, spatial membership
 and doors. Collision bodies remain until tick end, preserving shielding for later
 shots in the same update. Tree cover changes immediately; other cover repairs keep
 their queue order. Pending collision removals survive geometry checkpoints.
+Rust also constructs structure collision directly from retained parts, including
+construction, movement, rotated pieces and opened doors. Cosmetic tilt leaves
+authoritative cover unchanged. Live collision lifecycle calls still come from
+Godot while the complete Rust world dispatcher is being assembled.
 Retained captors update capture credit, prison selection and escort movement;
 arrival applies detention and the guard's return order before the next actor.
 Removed prisons are handled safely. Retained prisoner rules now handle guard

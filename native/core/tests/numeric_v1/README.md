@@ -11,6 +11,8 @@ different byte rather than dumping the fixture.
   destruction and geometry checkpoints with random cursors across resumed updates.
 - `world_routes.bin`: shared soldier/vehicle route completions, queued repairs,
   cancelled orders and retained navigation/actor state across resumed batches.
+- `structure_collision.bin`: structure collision boxes, rotated parts, construction,
+  movement, door removal and ray results from retained structure state.
 - `geometry.bin`: water/carved terrain, craters, rotated geometry and ray hits,
   spherical interpolation, cover anchors and infantry movement checkpoints.
 - `infantry_weapon.bin`: cover-fire decisions, postures, ammunition and burst

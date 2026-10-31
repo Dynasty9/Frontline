@@ -1862,3 +1862,18 @@ checkpoint continuation and rejected inputs. The connected fire fixture now also
 processes hierarchy repairs and pending soldier/vehicle routes during its 4,608
 Godot comparisons. Numeric CI adds 3,445,891 exact bytes for shared completions.
 The complete world dispatcher remains unfinished.
+
+## Structure collision construction
+
+Rust constructs collision boxes from retained structure parts, with the same
+part ordering, world transforms and construction gates as Godot. Movement and
+opened doors replace the geometry immediately; cosmetic toss tilt does not change
+cover. Removing the final door preserves an existing body's empty shape list.
+Retired bodies cannot be refreshed before their deferred removal completes.
+
+Four regressions cover construction, movement, shape order, rejected edits and
+retirement resumes. A reference fixture compares 1,296 complete collision states
+and 31,104 rays across 36 structure kinds, including the actual generated parts,
+construction completion, moves and door removal. Numeric CI adds 432,704 exact
+bytes. Structure creation and shared combat still need to invoke this operation
+from the complete world dispatcher; the live game still imports scene collision.

@@ -34,6 +34,74 @@ use std::path::PathBuf;
 mod fires_world;
 
 #[test]
+fn structure_collision_shapes_are_identical_across_platforms() {
+    use frontline_core::structure::{Part as BuildingPart, Structure};
+    use frontline_core::world_geometry::WorldGeometry;
+    let mut world = WorldGeometry::new(Terrain::blank(32).unwrap(), vec![], 16).unwrap();
+    let mut bytes = vec![];
+    let mut rng = SimulationRandom::new(55317);
+    for trial in 0..192 {
+        let mut st = Structure {
+            id: 1,
+            kind: "house_wall".into(),
+            built: trial % 3 != 0,
+            position: Vector3::new(
+                rng.randf_range(-12.0, 12.0),
+                rng.randf_range(-1.0, 1.0),
+                rng.randf_range(-12.0, 12.0),
+            ),
+            yaw: f64::from(rng.randf_range(-3.14, 3.14)),
+            ..Default::default()
+        };
+        for part in 0..6 {
+            st.parts.push(BuildingPart {
+                position: Vector3::new(part as f32 * 1.3 - 4.0, 1.7, -part as f32 * 0.7),
+                size: Vector3::new(1.3, 2.7, 0.37),
+                yaw: part as f64 * 0.731,
+                infantry: 0,
+                vehicle: 0,
+                cover: true,
+                collision: part != 1,
+                door: part == 3,
+            });
+        }
+        for stage in 0..3 {
+            if stage == 1 {
+                st.built = true;
+                st.position += Vector3::new(0.71, 0.19, -0.37);
+                st.yaw += 0.571;
+                st.tilt = [0.31, 1.57];
+            }
+            if stage == 2 {
+                st.parts.retain(|p| !p.door);
+            }
+            world.refresh_structure_collision(&st).unwrap();
+            block(&mut bytes, &world.collision.checkpoint());
+            for n in 0..24 {
+                let y = (n % 6) as f32 * 0.53;
+                let z = (n / 6) as f32 * 3.0 - 4.0;
+                if let Some(hit) = world.collision.ray(
+                    st.position + Vector3::new(-12.0, y, z),
+                    st.position + Vector3::new(12.0, y, -z),
+                    &[],
+                ) {
+                    bytes.extend_from_slice(&hit.body.to_le_bytes());
+                    bytes.extend_from_slice(&hit.shape.to_le_bytes());
+                    point(&mut bytes, hit.position);
+                    point(&mut bytes, hit.normal);
+                    bytes.extend_from_slice(&hit.fraction.to_le_bytes());
+                } else {
+                    bytes.extend_from_slice(&0_i64.to_le_bytes());
+                }
+            }
+            world = WorldGeometry::restore(&world.checkpoint()).unwrap();
+        }
+        world.collision.remove(1);
+    }
+    golden("structure_collision", &bytes);
+}
+
+#[test]
 fn shared_route_completions_are_identical_across_platforms() {
     use frontline_core::actors::{Actor, Actors};
     use frontline_core::infantry::Goal;

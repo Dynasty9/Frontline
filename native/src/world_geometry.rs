@@ -11,6 +11,14 @@ pub(crate) struct WorldGeometryCore {
 #[godot_api]
 impl WorldGeometryCore {
     #[func]
+    fn refresh_structure_collision(&mut self, structure: Gd<StructureStateCore>) -> bool {
+        let st = structure.bind();
+        let (Some(g), Some(st)) = (&mut self.core, &st.core) else {
+            return false;
+        };
+        g.refresh_structure_collision(st).is_ok()
+    }
+    #[func]
     fn update_hierarchy(&mut self, clusters: i32) -> bool {
         clusters >= 0
             && self
