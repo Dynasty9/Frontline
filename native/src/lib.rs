@@ -38,6 +38,7 @@ mod projectile_actor;
 mod projectile_flight;
 mod route_graph;
 mod simulation_random;
+mod spatial;
 mod squad;
 mod structure;
 mod support_flight;

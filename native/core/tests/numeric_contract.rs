@@ -36,6 +36,109 @@ fn block(out: &mut Vec<u8>, bytes: &[u8]) {
 }
 
 #[test]
+fn spatial_membership_and_actor_queries_are_identical_across_platforms() {
+    use frontline_core::actors::{Actor, Actors};
+    use frontline_core::infantry::Infantry;
+    use frontline_core::spatial::*;
+    use frontline_core::structure::Structure;
+    let mut bytes = Vec::new();
+    for trial in 0..24 {
+        let mut rng = SimulationRandom::new(trial + 137);
+        let mut entries = Vec::new();
+        for id in 1..=64 {
+            let mut s = Infantry::default();
+            s.identity.id = id;
+            s.identity.team = (id % 3) as i8 - 1;
+            s.identity.unit = "rifleman".into();
+            s.motion.position = Vector3::new(
+                rng.randf_range(-60.0, 60.0),
+                rng.randf_range(-1.0, 1.0),
+                rng.randf_range(-60.0, 60.0),
+            );
+            if id % 6 == 0 {
+                s.vitals.life = Life::Hidden;
+            }
+            entries.push(Actor::Soldier(Box::new(s)));
+        }
+        let mut structures = SpatialIndex::new(STRUCTURE_CELL).unwrap();
+        let mut doors = SpatialIndex::new(DOOR_CELL).unwrap();
+        for id in 101..=124 {
+            let s = Structure {
+                id,
+                kind: if id % 3 == 0 { "floor" } else { "house_wall" }.into(),
+                position: Vector3::new(
+                    rng.randf_range(-40.0, 40.0),
+                    0.0,
+                    rng.randf_range(-40.0, 40.0),
+                ),
+                yaw: f64::from(rng.randf_range(-3.14, 3.14)),
+                radius: f64::from(rng.randf_range(0.5, 20.0)),
+                ..Default::default()
+            };
+            structures.insert(id, s.position, s.radius).unwrap();
+            doors.insert_door(id, s.position).unwrap();
+            entries.push(Actor::Structure(Box::new(s)));
+        }
+        let mut actors = Actors::from_entries(1000, entries.clone()).unwrap();
+        let mut units = SpatialIndex::new(UNIT_CELL).unwrap();
+        actors.rebuild_units(&mut units).unwrap();
+        for phase in 0..4 {
+            if phase == 1 {
+                for actor in &mut entries {
+                    if let Actor::Soldier(s) = actor {
+                        s.motion.position += Vector3::new(17.3, 0.0, -9.7);
+                    }
+                }
+                actors = Actors::from_entries(1000, entries.clone()).unwrap();
+            }
+            if phase == 2 {
+                actors.remove(7);
+                actors.remove(107);
+                structures.remove(107);
+                doors.remove(107);
+            }
+            if phase == 3 {
+                actors.rebuild_units(&mut units).unwrap();
+            }
+            for index in [&units, &structures, &doors] {
+                block(&mut bytes, &index.checkpoint());
+            }
+            for query in 0..32 {
+                let p = Vector3::new(
+                    rng.randf_range(-70.0, 70.0),
+                    0.0,
+                    rng.randf_range(-70.0, 70.0),
+                );
+                let r = [0.0, 1.0, 4.0, 12.0, 32.0, 100.0][query % 6];
+                for ids in [
+                    actors
+                        .units_near(&units, p, r, (query % 3) as i8 - 1)
+                        .unwrap(),
+                    actors.structures_near(&structures, p, r, false).unwrap(),
+                    actors.structures_near(&structures, p, r, true).unwrap(),
+                ] {
+                    bytes.extend_from_slice(&(ids.len() as u32).to_le_bytes());
+                    for id in ids {
+                        bytes.extend_from_slice(&id.to_le_bytes());
+                    }
+                }
+                bytes.extend_from_slice(
+                    &actors
+                        .door_in_way(&doors, p, Vector3::NEG_Z)
+                        .unwrap()
+                        .unwrap_or(0)
+                        .to_le_bytes(),
+                );
+            }
+            units = SpatialIndex::restore(&units.checkpoint()).unwrap();
+            structures = SpatialIndex::restore(&structures.checkpoint()).unwrap();
+            doors = SpatialIndex::restore(&doors.checkpoint()).unwrap();
+        }
+    }
+    golden("spatial", &bytes);
+}
+
+#[test]
 fn delayed_cache_explosions_are_identical_across_platforms() {
     use frontline_core::deferred_effects::{DeferredEffects, Rubble};
     let mut bytes = Vec::new();

@@ -26,6 +26,7 @@ graphics, network access or a wall clock.
 | Squad state and shared knowledge | `frontline_core` | Orders, contact caches, plan links and tactical state have retained checkpoints; centroid, contact reports, threats, succession and casualty morale operate on owned actors. Squad orders, drills and the full squad tick still run in Godot |
 | Retained buildings and economy transitions | `frontline_core` | Geometry, links, queues and timers have retained checkpoints; construction, capture, town income and production transitions match Godot. Shared rule effects, destruction, crews and the complete building dispatcher remain unfinished |
 | Deferred damage and rubble | `frontline_core` | The live world uses checkpointed explosion deadlines and pending rubble spawns, with an engine-only fallback. Godot still applies the resulting damage and creates structures |
+| Spatial bucket ownership | `frontline_core` | Infantry, building and closed-door queries use retained actor IDs and preserve cell/registration order through checkpoints; vehicle query ownership awaits the vehicle port |
 | Weighted grid paths and cluster pair costs | `frontline_core` | Exact Godot route tie behavior; native cluster workers return costs in deterministic order |
 | Ground cells, crater heights and queued cover repairs | `frontline_core` | Rust retains terrain and ordered structure geometry, and performs edits, queries and cover repairs; Godot imports biome generation and forwards navigation notifications |
 | Water shapes, bridge decks and water terrain rasterization | `frontline_core` | Ordered numeric rasterization; a Rust worker also applies the joining host's ground overrides; Godot still generates the initial shapes |
@@ -341,7 +342,7 @@ Component checkpoint headers contain a four-byte component tag, a little-endian
 rules rather than silently continuing with changed arithmetic. The separate
 integer RNG stream remains unchanged.
 
-`native/core/tests/numeric_contract.rs` compares 21,235,068 committed bytes without
+`native/core/tests/numeric_contract.rs` compares 21,900,964 committed bytes without
 tolerances: fixed-tick flight state, support events and RNG cursors, carved water,
 craters, rotated box hits, cover anchors, spherical interpolation and infantry
 movement, infantry cover fire, postures, ammunition, burst recovery, vitals, aiming,
@@ -565,7 +566,24 @@ flag until Rust owns the actors.
 
 The shock fixture compares 92,160 reference steps, including mounted turning,
 blocked terrain, carried casualties and task interruption. The full default suite
-passes 153 tests; 309 core tests pass in debug and release.
+passes 154 tests; 315 core tests pass in debug and release.
+
+## Spatial query state
+
+Spatial indexes retain bucket membership independently from current actor positions.
+The existing tick builds unit buckets before movement, then queries current positions
+inside those buckets. Checkpoints preserve both states, including bucket insertion
+order, so an intervening command cannot change which equally suitable unit is chosen.
+Building queries deduplicate overlapping cells in encounter order; door queries keep
+the first blocking door. Removed actor IDs are ignored. Wide queries visit occupied
+cells rather than enumerating an unbounded empty rectangle.
+
+The fixture compares 8,192 query cases across movement, removal and checkpoint
+restoration. Live snapshots compare infantry, building, floor and door queries in
+eleven battle scenarios and the 500-soldier, 2,048 m map. Vehicle actors are not yet
+retained, so live unit comparisons explicitly filter to soldiers. Numeric CI adds
+665,896 bytes of index state and ordered results. This is shared query ownership,
+not the complete Rust tick or a new live-game performance claim.
 
 ## Retained projectiles and impacts
 

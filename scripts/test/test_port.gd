@@ -194,6 +194,8 @@ func _answer(cmd: String, req: Dictionary) -> Variant:
 			return _squad_checkpoints(w)
 		"structure_checkpoints":
 			return _structure_checkpoints(w)
+		"spatial_checkpoints":
+			return _spatial_checkpoints(w)
 	return {"ok": false, "error": "unknown command: %s" % cmd}
 
 
@@ -445,3 +447,79 @@ func _structure_checkpoints(w: World) -> Dictionary:
 		bytes += saved.size()
 	assert(w.rng.state == rng_before, "Capturing structure state must not consume gameplay randomness")
 	return {"structures": count, "bytes": bytes}
+
+
+func _spatial_cells(cells: Dictionary) -> Array:
+	var rows := []
+	for key: Vector2i in cells:
+		var ids := InfantryState.entity_ids(cells[key])
+		if not ids.is_empty():
+			rows.append([key, ids])
+	return rows
+
+
+func _spatial_checkpoints(w: World) -> Dictionary:
+	var actors: RefCounted = ClassDB.instantiate("ActorStateCore")
+	var infantry: RefCounted = ClassDB.instantiate("InfantryStateCore")
+	var structure: RefCounted = ClassDB.instantiate("StructureStateCore")
+	var units: RefCounted = ClassDB.instantiate("SpatialIndexCore")
+	var structures: RefCounted = ClassDB.instantiate("SpatialIndexCore")
+	var doors: RefCounted = ClassDB.instantiate("SpatialIndexCore")
+	var kinds := PackedByteArray()
+	var blocks := []
+	var rng_before: int = w.rng.state
+	for e: Entity in w.entities.values():
+		if e.gone:
+			continue
+		var core: RefCounted = null
+		if e is Soldier:
+			core = infantry
+			if not core.load_state(InfantryState.capture(e)):
+				return {"ok": false, "error": "Invalid spatial infantry: %d" % e.eid}
+			kinds.append(0)
+		elif e is Structure:
+			core = structure
+			if not core.load_state(StructureState.capture(e)):
+				return {"ok": false, "error": "Invalid spatial structure: %d" % e.eid}
+			kinds.append(1)
+		if core != null:
+			blocks.append(core.checkpoint())
+	if not actors.load_state(w.next_eid, kinds, blocks):
+		return {"ok": false, "error": "Invalid spatial actor collection"}
+	# Membership predates movement in this step; rebuilding from positions would lose that state.
+	var bytes := 0
+	for spec: Array in [[units, 12.0, w._uhash], [structures, 16.0, w._shash], [doors, 1.5, w.door_cells]]:
+		var grid: RefCounted = spec[0]
+		if not grid.load_state(float(spec[1]), _spatial_cells(spec[2])):
+			return {"ok": false, "error": "Invalid spatial buckets"}
+		var saved: PackedByteArray = grid.checkpoint()
+		if not grid.restore(saved) or grid.checkpoint() != saved:
+			return {"ok": false, "error": "Spatial checkpoint changed buckets"}
+		bytes += saved.size()
+	var positions := PackedVector3Array([Vector3.ZERO, Vector3(MapDims.HALF * 0.5, 0, 0), Vector3(-MapDims.HALF * 0.5, 0, 0)])
+	for s: Soldier in w.soldiers:
+		if positions.size() >= 11:
+			break
+		positions.append(s.position)
+	var queries := 0
+	for p in positions:
+		for radius: float in [1.0, 16.0, 75.0, 200.0]:
+			for enemy in [-1, 0, 1]:
+				# Vehicle actors have not migrated yet; compare the retained infantry subset.
+				var expected := w.units_near(p, radius, enemy).filter(func(e): return e is Soldier)
+				var actual: Array = units.units_near(actors, p, radius, enemy)
+				if actual.size() != 1 or actual[0] != InfantryState.entity_ids(expected):
+					return {"ok": false, "error": "Spatial infantry query differs"}
+				queries += 1
+			for floors_only in [false, true]:
+				var expected := InfantryState.entity_ids(w.structures_near(p, radius, floors_only))
+				var actual: Array = structures.structures_near(actors, p, radius, floors_only)
+				if actual.size() != 1 or actual[0] != expected:
+					return {"ok": false, "error": "Spatial building query differs"}
+				queries += 1
+		for dir in [Vector3.FORWARD, Vector3.RIGHT]:
+			if doors.door_in_way(actors, p, dir) != InfantryState.entity_id(w.door_in_way(p, dir)):
+				return {"ok": false, "error": "Spatial door query differs"}
+			queries += 1
+	assert(w.rng.state == rng_before, "Spatial queries must not consume gameplay randomness")
+	return {"queries": queries, "bytes": bytes}
