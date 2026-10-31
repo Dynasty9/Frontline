@@ -29,6 +29,7 @@ graphics, network access or a wall clock.
 | Guided missiles and support aircraft | `frontline_core` | Flight, target-lock loss, bomb release, burst schedules, pending hits and random draws; Godot supplies contacts and applies events |
 | Entity registry, stable IDs, spawn/despawn | Rust | `world.gd`, `entity.gd` |
 | Infantry route movement | `frontline_core` | Route progress, vaulting, sliding, doors and ground caches extracted and reference-tested; the per-soldier adapter remains test-only because it is slower than GDScript |
+| Stationary infantry movement | `frontline_core` | Neighbor separation, terrain settling, cover alignment and watch-sector/mounted turns extracted; the adapter remains test-only pending actor ownership |
 | Infantry weapon cycles | `frontline_core` | Cover fire, postures, firing permissions, ammunition and burst recovery extracted with compatibility tests; adapters remain test-only until Rust owns the actor |
 | Infantry health, suppression and fatigue | `frontline_core` | Numeric recovery, damage outcomes and down/death/revive transitions extracted with component checkpoints; actor cleanup, squad reactions and damage attribution remain Godot effects |
 | Infantry combat geometry | `frontline_core` | Eyes, exposed points, hit factors and cover postures extracted with reference tests; the adapter still supplies actor state |
@@ -210,14 +211,15 @@ Component checkpoint headers contain a four-byte component tag, a little-endian
 rules rather than silently continuing with changed arithmetic. The separate
 integer RNG stream remains unchanged.
 
-`native/core/tests/numeric_contract.rs` compares 1,384,650 committed bytes without
+`native/core/tests/numeric_contract.rs` compares 1,712,330 committed bytes without
 tolerances: fixed-tick flight state, support events and RNG cursors, carved water,
 craters, rotated box hits, cover anchors, spherical interpolation and infantry
 movement, infantry cover fire, postures, ammunition, burst recovery, vitals, aiming,
 combat poses, bullet resolution, blast exposure, knockback recovery and wounded
 infantry schedules, grenade reflexes, grenade task movement and house-entry
 phases, building selection, automatic grenade attacks, incoming shells and drone
-reactions, special attacks, infantry supply and complete cover searches. CI runs
+reactions, special attacks, infantry supply, complete cover searches and stationary
+infantry movement. CI runs
 the same fixtures in debug and release on Windows x64, Linux
 x64, Linux ARM64 and macOS ARM64. A mismatch reports the first different byte.
 These fixtures guard the covered trajectories; they are not a proof for all
@@ -433,9 +435,19 @@ flag until Rust owns the actors.
 
 The shock fixture compares 92,160 reference steps, including mounted turning,
 blocked terrain, carried casualties and task interruption. The full default suite
-passes 128 tests; 161 core tests pass in debug and release.
+passes 129 tests; 166 core tests pass in debug and release.
 
-## Grenade and drone reflexes
+## Infantry tasks and reflexes
+
+`InfantryMotion::stationary` applies spacing, refreshes the ground cache, settles
+onto terrain/bridge decks, aligns the soldier with cover and turns toward cover
+or a watch sector while preserving firing and mounted-turn restrictions. The
+ordered separation query preserves overlap RNG draws and ignores hidden/dead
+neighbors. A 15,360-step reference fixture compares positions, orientation,
+ground-cache deadlines, shuffling and RNG cursors, with checkpoint resumes.
+Numeric CI adds 327,680 bytes of stationary movement and separation transcripts.
+These adapters remain test-only; actor ownership and the rest of the soldier
+controller still need migration before a standalone server can run them.
 
 `SupplyTimers` retains scavenge and destination-search deadlines. Scavenging
 preserves the ordered nearby-body query and the truncated 65-percent ammunition

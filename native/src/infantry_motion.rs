@@ -2,7 +2,10 @@ use crate::{
     collision_index::CollisionIndexCore, path_planner::PathPlannerCore,
     simulation_random::SimulationRandomCore, terrain::TerrainCore,
 };
-use frontline_core::infantry_motion::{Door, InfantryMotion, MoveInput};
+use frontline_core::infantry_motion::{
+    self, Door, InfantryMotion, MoveInput, Neighbor, StationaryInput,
+};
+use frontline_core::infantry_vitals::Life;
 use godot::prelude::*;
 
 #[derive(GodotClass)]
@@ -147,6 +150,80 @@ fn observation(s: &InfantryMotion) -> PackedFloat64Array {
 #[godot_api]
 impl InfantryMotionCore {
     #[func]
+    fn separation(
+        &self,
+        id: i64,
+        position: Vector3,
+        active: bool,
+        neighbors: Array<Variant>,
+        mut random: Gd<SimulationRandomCore>,
+    ) -> PackedVector3Array {
+        let Some(neighbors) = (|| {
+            if id <= 0 || neighbors.len() > 100_000 {
+                return None;
+            }
+            neighbors
+                .iter_shared()
+                .map(|v| {
+                    let v: Array<Variant> = v.try_to().ok()?;
+                    if v.len() != 3 {
+                        return None;
+                    }
+                    Some(Neighbor {
+                        id: u64::try_from(v.get(0)?.try_to::<i64>().ok()?).ok()?,
+                        position: crate::point(v.get(1)?.try_to().ok()?),
+                        life: Life::try_from(u8::try_from(v.get(2)?.try_to::<i64>().ok()?).ok()?)
+                            .ok()?,
+                    })
+                })
+                .collect::<Option<Vec<_>>>()
+        })() else {
+            return PackedVector3Array::new();
+        };
+        let Ok(result) = infantry_motion::separation(
+            id as u64,
+            crate::point(position),
+            active,
+            &neighbors,
+            &mut random.bind_mut().core,
+        ) else {
+            return PackedVector3Array::new();
+        };
+        [Vector3::new(result.x, result.y, result.z)]
+            .as_slice()
+            .into()
+    }
+
+    #[func]
+    fn stationary(
+        &mut self,
+        values: PackedFloat64Array,
+        path: PackedVector3Array,
+        door: i64,
+        inputs: Array<Variant>,
+        planner: Gd<PathPlannerCore>,
+        terrain: Gd<TerrainCore>,
+        decks: PackedByteArray,
+    ) -> Array<Variant> {
+        let Some(input) = stationary_input(&inputs) else {
+            return Array::new();
+        };
+        let Some(mut motion) = state(values.as_slice(), path, door) else {
+            return Array::new();
+        };
+        let planner = planner.bind();
+        let terrain = terrain.bind();
+        let (Some(planner), Some(terrain)) = (&planner.core, &terrain.core) else {
+            return Array::new();
+        };
+        let Ok(shuffle) = motion.stationary(input, planner, terrain, decks.as_slice()) else {
+            return Array::new();
+        };
+        self.core = motion;
+        varray![&observation(&self.core), shuffle]
+    }
+
+    #[func]
     fn checkpoint(&self) -> PackedByteArray {
         self.core.checkpoint().as_slice().into()
     }
@@ -210,4 +287,39 @@ impl InfantryMotionCore {
             result.slid
         ]
     }
+}
+
+fn stationary_input(v: &Array<Variant>) -> Option<StationaryInput> {
+    if v.len() != 14 {
+        return None;
+    }
+    let mount: PackedFloat64Array = v.get(13)?.try_to().ok()?;
+    if !mount.is_empty() && mount.len() != 4 {
+        return None;
+    }
+    Some(StationaryInput {
+        dt: v.get(0)?.try_to().ok()?,
+        time: v.get(1)?.try_to().ok()?,
+        base_y: v.get(2)?.try_to().ok()?,
+        separation: crate::point(v.get(3)?.try_to().ok()?),
+        prone: v.get(4)?.try_to().ok()?,
+        at_cover: v.get(5)?.try_to().ok()?,
+        cover_position: crate::point(v.get(6)?.try_to().ok()?),
+        cover_normal: crate::point(v.get(7)?.try_to().ok()?),
+        cover_kind: u8::try_from(v.get(8)?.try_to::<i64>().ok()?).ok()?,
+        last_shot: v.get(9)?.try_to().ok()?,
+        peek_up: v.get(10)?.try_to().ok()?,
+        target_valid: v.get(11)?.try_to().ok()?,
+        sector: crate::point(v.get(12)?.try_to().ok()?),
+        mount: (!mount.is_empty()).then(|| {
+            (
+                frontline_core::vector::Vector3::new(
+                    mount[0] as f32,
+                    mount[1] as f32,
+                    mount[2] as f32,
+                ),
+                mount[3],
+            )
+        }),
+    })
 }

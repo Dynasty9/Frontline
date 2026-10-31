@@ -36,6 +36,66 @@ fn block(out: &mut Vec<u8>, bytes: &[u8]) {
 }
 
 #[test]
+fn stationary_infantry_is_identical_across_platforms() {
+    use frontline_core::infantry_motion::{separation, Neighbor, StationaryInput};
+    let mut bytes = Vec::new();
+    for case in 0..64 {
+        let mut rng = SimulationRandom::new(case + 193);
+        let mut terrain = Terrain::blank(32).unwrap();
+        terrain.heights.fill(-0.03 * (case % 9) as f32);
+        let mut nav = PathPlanner::new(32).unwrap();
+        let kinds: Vec<_> = (0..1024)
+            .map(|i| if (i + case) % 13 == 0 { 3 } else { 0 })
+            .collect();
+        assert!(nav.load_cells(&kinds, &[0; 1024], &[0; 1024]));
+        let decks: Vec<_> = (0..1024).map(|i| u8::from((i + case) % 11 == 0)).collect();
+        let mut motion = InfantryMotion {
+            position: Vector3::new(0.17 * (case % 5) as f32, 0.7, -0.23),
+            yaw: case as f64 * 0.3,
+            ..Default::default()
+        };
+        for tick in 0..32 {
+            let neighbor = Neighbor {
+                id: 2,
+                position: if tick % 7 == 0 {
+                    motion.position
+                } else {
+                    Vector3::ZERO
+                },
+                life: Life::Alive,
+            };
+            let sep = separation(1, motion.position, case % 3 != 0, &[neighbor], &mut rng).unwrap();
+            let i = StationaryInput {
+                dt: 1.0 / 30.0,
+                time: tick as f64 / 30.0,
+                base_y: (case % 2) as f64 * 0.06,
+                separation: sep,
+                prone: case % 5 == 0,
+                at_cover: case % 3 == 0,
+                cover_position: Vector3::new(0.2, 0.0, -0.1),
+                cover_normal: Vector3::new(0.3, 0.0, 0.9),
+                cover_kind: (case % 4) as u8,
+                last_shot: -0.5 * (case % 5) as f64,
+                peek_up: case % 7 == 0,
+                target_valid: case % 2 == 0,
+                sector: Vector3::new(-0.7, 0.0, 0.3),
+                mount: (case % 3 == 0).then_some((Vector3::ZERO, 0.3)),
+            };
+            bytes.push(u8::from(
+                motion.stationary(i, &nav, &terrain, &decks).unwrap(),
+            ));
+            point(&mut bytes, sep);
+            block(&mut bytes, &motion.checkpoint());
+            bytes.extend_from_slice(&rng.state().to_le_bytes());
+            if tick == 15 {
+                motion = InfantryMotion::restore(&motion.checkpoint()).unwrap();
+            }
+        }
+    }
+    golden("infantry_stationary", &bytes);
+}
+
+#[test]
 fn cover_search_is_identical_across_platforms() {
     use frontline_core::cover::{Anchor, AnchorKind};
     use frontline_core::cover_search::{self, Input, NearbyClaim, Scene, SquadClaim, Structure};

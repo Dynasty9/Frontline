@@ -1285,6 +1285,8 @@ Complete cover searches run in Rust, including reachable candidates, protection,
 occupied positions and final scoring. Equal candidate scores retain their existing
 order and the same 20-position evaluation budget; 4,270 reference searches compare
 the result with GDScript.
+Stationary movement checks also preserve spacing, terrain settling, cover alignment
+and watch-sector or mounted turns, including overlap randomness and cache deadlines.
 The full
 authoritative Rust server and deterministic
 battle verifier are still in progress; see [RUST_SIMULATION.md](RUST_SIMULATION.md).

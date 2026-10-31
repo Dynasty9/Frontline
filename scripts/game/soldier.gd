@@ -1427,12 +1427,16 @@ func _move_tick_work(dt: float, speed: float) -> bool:
 var _motion_core: RefCounted
 
 
+func _motion_values() -> PackedFloat64Array:
+	return PackedFloat64Array([position.x, position.y, position.z, rotation.y, path_i,
+		_stuck_p.x, _stuck_p.y, _stuck_p.z, _stuck_t, slide_t, slide_cd, int(vaulting),
+		_last_dir.x, _last_dir.y, _last_dir.z, _bar_t, int(_bar), _gy_t, _gy, door_wait, _door_t, int(door_kick)])
+
+
 func _native_move_tick(dt: float, speed: float) -> bool:
 	if _motion_core == null:
 		_motion_core = ClassDB.instantiate("InfantryMotionCore")
-	var values := PackedFloat64Array([position.x, position.y, position.z, rotation.y, path_i,
-		_stuck_p.x, _stuck_p.y, _stuck_p.z, _stuck_t, slide_t, slide_cd, int(vaulting),
-		_last_dir.x, _last_dir.y, _last_dir.z, _bar_t, int(_bar), _gy_t, _gy, door_wait, _door_t, int(door_kick)])
+	var values := _motion_values()
 	var mount_point := Vector3.ZERO
 	var turn_rate := 0.0
 	if mounted != null and not mounted.gone and mounted.skind in ["mg_nest", "hmg_nest", "mortar_pit", "at_post"]:
@@ -1598,6 +1602,16 @@ func _compute_sep_work() -> void:
 	_sep = Vector3.ZERO
 	if life != Life.ALIVE or dragged_by or task in ["stretcher", "captor"]:
 		return
+	if world.settings.get("rust_infantry", false) and ClassDB.class_exists("InfantryMotionCore"):
+		if _motion_core == null:
+			_motion_core = ClassDB.instantiate("InfantryMotionCore")
+		var neighbors := []
+		for o in world.soldiers_near(position, 0.85):
+			neighbors.append([o.eid, o.position, o.life])
+		var result: PackedVector3Array = _motion_core.separation(eid, position, true, neighbors, world.rng._backend)
+		assert(result.size() == 1, "Invalid infantry separation")
+		_sep = result[0]
+		return
 	for o in world.soldiers_near(position, 0.85):
 		if o == self or o.life == Life.HIDDEN or o.life == Life.DEAD:
 			continue
@@ -1654,22 +1668,53 @@ func _fight_tick(dt: float) -> void:
 func _fight_tick_work(dt: float) -> void:
 	var moving := _move_tick(dt, _speed())
 	if not moving:
-		_apply_sep(dt)
-		_settle_y(dt)
-		if at_cover and cover_n != Vector3.ZERO:
-			# tight to the barrier on his spot, watching across it
-			var off := Defs.flat(cover_pos - position)
-			if off.length() > 0.02 and off.length() < 0.9:
-				position += off.limit_length(dt * 1.4)
-			if world.time - last_shot_t > 1.0 and not (peek_up and _target_valid(target)) and cover_type != Cov.LEAN:
-				_face(cover_n, dt, 5.0)
-		elif _sector != Vector3.ZERO and world.time - last_shot_t > 1.2 and not (at_cover and cover_type != Cov.NONE) and not _target_valid(target):
-			_face(_sector, dt, 3.0)
+		_stationary_tick(dt)
 	else:
 		_shuffle = false
 	_weapon_tick(dt, moving, "normal")
 	_choose_act(moving or _shuffle)
 	_idle_tick(dt, moving)
+
+
+func _stationary_tick(dt: float) -> void:
+	if world.settings.get("rust_infantry", false) and ClassDB.class_exists("InfantryMotionCore") and world.nav._planner and world.terrain._native:
+		if _motion_core == null:
+			_motion_core = ClassDB.instantiate("InfantryMotionCore")
+		var mount := PackedFloat64Array()
+		if mounted != null and not mounted.gone and mounted.skind in ["mg_nest", "hmg_nest", "mortar_pit", "at_post"]:
+			var p := mounted.mount_pos()
+			mount = PackedFloat64Array([p.x, p.y, p.z, deg_to_rad(float({"mg_nest": 55.0, "hmg_nest": 35.0, "mortar_pit": 12.0, "at_post": 20.0}[mounted.skind]))])
+		var input := [dt, world.time, base_y, _sep, posture == Post.PRONE, at_cover, cover_pos, cover_n,
+			cover_type, last_shot_t, peek_up, _target_valid(target), _sector, mount]
+		var deck: PackedByteArray = world.water.deck if world.water else PackedByteArray()
+		var result: Array = _motion_core.stationary(_motion_values(), path, door_st.eid if is_instance_valid(door_st) else 0,
+			input, world.nav._planner, world.terrain._native, deck)
+		assert(result.size() == 2, "Invalid stationary infantry")
+		var state: PackedFloat64Array = result[0]
+		var next := Vector3(state[0], state[1], state[2])
+		if next != position:
+			position = next
+		if state[3] != rotation.y:
+			rotation.y = state[3]
+		_gy_t = state[17]
+		_gy = state[18]
+		_shuffle = result[1]
+		return
+	_stationary_reference(dt)
+
+
+func _stationary_reference(dt: float) -> void:
+	_apply_sep(dt)
+	_settle_y(dt)
+	if at_cover and cover_n != Vector3.ZERO:
+		# tight to the barrier on his spot, watching across it
+		var off := Defs.flat(cover_pos - position)
+		if off.length() > 0.02 and off.length() < 0.9:
+			position += off.limit_length(dt * 1.4)
+		if world.time - last_shot_t > 1.0 and not (peek_up and _target_valid(target)) and cover_type != Cov.LEAN:
+			_face(cover_n, dt, 5.0)
+	elif _sector != Vector3.ZERO and world.time - last_shot_t > 1.2 and not (at_cover and cover_type != Cov.NONE) and not _target_valid(target):
+		_face(_sector, dt, 3.0)
 
 
 # --- downtime -------------------------------------------------------------------------
