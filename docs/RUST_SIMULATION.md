@@ -53,6 +53,7 @@ graphics, network access or a wall clock.
 | Infantry action state | `frontline_core` | Typed pending actions, queued cooked throws, poses and completion admission extracted; Godot still advances the actor controller and applies throws, strikes, launches and door effects |
 | Infantry hidden duties and status | `frontline_core` | Hidden-duty deadlines, moving posture, status flags and drone-operator turns extracted; Godot still applies treatment, tunnel and prisoner callbacks |
 | Infantry downtime | `frontline_core` | Calm timers, idle choices, conversation partners, timed speech and laughter extracted with checkpoints and random cursor comparisons; Godot still applies the actor's speech effects |
+| Infantry scheduling | `frontline_core` | Activity/scan/think clocks, interruption priority, dive movement and order/duty gates extracted; Godot still dispatches task callbacks and the remaining decision loop |
 | Complete fighting-position search | `frontline_core` | Candidate enumeration, reachability, protection, occupancy and final scoring run in one call; Godot supplies nearby structure and soldier records |
 | House-entry task phases | `frontline_core` | Stack/door/grenade/entry transitions, deadlines, cooking and room targets extracted with component checkpoints; Godot still owns movement callbacks and squad entry effects |
 | House occupancy and breach selection | `frontline_core` | Floor containment, ordered openings, nearest walkable stack positions and competing squadmates extracted; Godot still supplies spatial candidates, squad contacts and decision timers |
@@ -242,14 +243,14 @@ Component checkpoint headers contain a four-byte component tag, a little-endian
 rules rather than silently continuing with changed arithmetic. The separate
 integer RNG stream remains unchanged.
 
-`native/core/tests/numeric_contract.rs` compares 5,675,736 committed bytes without
+`native/core/tests/numeric_contract.rs` compares 6,259,237 committed bytes without
 tolerances: fixed-tick flight state, support events and RNG cursors, carved water,
 craters, rotated box hits, cover anchors, spherical interpolation and infantry
 movement, infantry cover fire, postures, ammunition, burst recovery, vitals, aiming,
 combat poses, bullet resolution, blast exposure, knockback recovery and wounded
 infantry schedules, grenade reflexes, grenade task movement and house-entry
 phases, building selection, automatic grenade attacks, incoming shells and drone
-reactions, special attacks, infantry supply, medical/work duties, arrival tasks, mounted weapons, action state, hidden duties, downtime, complete cover searches and stationary
+reactions, special attacks, infantry supply, medical/work duties, arrival tasks, mounted weapons, action state, hidden duties, downtime, scheduling, complete cover searches and stationary
 infantry movement. CI runs
 the same fixtures in debug and release on Windows x64, Linux
 x64, Linux ARM64 and macOS ARM64. A mismatch reports the first different byte.
@@ -466,9 +467,24 @@ flag until Rust owns the actors.
 
 The shock fixture compares 92,160 reference steps, including mounted turning,
 blocked terrain, carried casualties and task interruption. The full default suite
-passes 137 tests; 213 core tests pass in debug and release.
+passes 140 tests; 219 core tests pass in debug and release.
 
 ## Infantry tasks and reflexes
+
+`Controller` retains activity, scan, think and dive clocks in an `FLSC` checkpoint.
+Its update stages preserve dazed, dive, action and flinch priority before thinking
+or ordinary duties; inactive stages do not advance their timers or consume draws.
+An action completion or thought that starts a new interruption cannot also execute
+an ordinary task in that tick. Dive movement shares the native navigation grid.
+The order and busy-duty gates retain the distinction between rescuing a casualty
+and accepting a retreat. A 35,328-case fixture compares callbacks, timers, poses,
+navigation, state, order gates and RNG against the previous controller. Numeric
+CI adds 583,501 bytes. Task callbacks and the remaining decision loop still run
+in Godot; this scheduling adapter remains test-only.
+The compatibility suite also compares a generated battle with commanders for
+120 seconds and 500 soldiers fighting on a 2,048 m map for 30 seconds. State
+fingerprints and behavior counters match at each sample (30 and 10 seconds,
+respectively). These headless comparisons check behavior, not rendering speed.
 
 `Idle` retains calm time, activity, deadlines, the conversation partner, queued
 lines and laughter in an `FLID` checkpoint. Ordered partner selection, idle

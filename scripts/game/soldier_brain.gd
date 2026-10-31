@@ -76,6 +76,10 @@ static func _pick(s: Soldier, arr: Array) -> String:
 # --- busy / duty ----------------------------------------------------------------
 
 static func busy(s: Soldier) -> bool:
+	if s._native_controller():
+		var result: int = s._controller_core().busy(s._controller_task(), s.task_phase, s.is_bearer())
+		assert(result >= 0, "Invalid infantry duty gate")
+		return result != 0
 	return s.is_bearer() or s.task in ["stretcher", "limp", "tunnel", "retreat", "captor"] or (s.task == "rescue" and s.task_phase >= 1)
 
 

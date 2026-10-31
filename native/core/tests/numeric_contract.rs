@@ -1323,6 +1323,57 @@ fn infantry_idle_numeric_contract() {
     golden("infantry_idle", &bytes);
 }
 
+#[test]
+fn infantry_controller_numeric_contract() {
+    use frontline_core::infantry_action::ActionState;
+    use frontline_core::infantry_controller::{Controller, Stage};
+    use frontline_core::infantry_shock::InfantryShock;
+    let mut nav = PathPlanner::new(16).unwrap();
+    let cells: Vec<u8> = (0..256).map(|i| if i % 5 == 0 { 3 } else { 0 }).collect();
+    nav.load_cells(&cells, &cells, &vec![0; 256]);
+    let mut bytes = Vec::new();
+    for trial in 0..1024 {
+        let mut c = Controller {
+            think_timer: (trial % 7) as f64 * 0.03,
+            scan_number: trial,
+            activity_timer: (trial % 3) as f64 * 0.1,
+            dive_timer: if trial % 5 == 0 { 0.2 } else { 0.0 },
+            dive_direction: Vector3::new(0.3, 0.1, -0.7),
+        };
+        let mut shock = InfantryShock {
+            dazed_timer: if trial % 7 == 0 { 0.2 } else { 0.0 },
+            flinch_timer: (trial % 4) as f64 * 0.03,
+            ..Default::default()
+        };
+        let mut action = ActionState {
+            remaining: if trial % 3 == 0 { 0.1 } else { 0.0 },
+            ..Default::default()
+        };
+        let mut rng = SimulationRandom::new(313 + trial);
+        let mut position = Vector3::new(1.3, 0.7, -0.1);
+        let dt = [1.0 / 30.0, 0.1, 0.3, 1.0][trial as usize % 4];
+        for _ in 0..4 {
+            bytes.push(c.activity_due(dt).unwrap() as u8);
+            let out = c.advance(dt, &mut shock, &mut action, &mut rng).unwrap();
+            bytes.extend_from_slice(&[out.stage as u8, out.flinch_ended as u8]);
+            match out.stage {
+                Stage::Dazed => shock.dazed_timer -= dt,
+                Stage::Dive => position = c.dive(position, 0.0, dt, &nav).unwrap().position,
+                Stage::Think => {
+                    bytes.push(c.scan_due(trial % 3 != 0).unwrap() as u8);
+                }
+                _ => {}
+            }
+            block(&mut bytes, &c.checkpoint());
+            block(&mut bytes, &shock.checkpoint());
+            block(&mut bytes, &action.checkpoint());
+            point(&mut bytes, position);
+            bytes.extend_from_slice(&rng.state().to_le_bytes());
+        }
+    }
+    golden("infantry_controller", &bytes);
+}
+
 fn golden(name: &str, actual: &[u8]) {
     let path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("tests/numeric_v1")

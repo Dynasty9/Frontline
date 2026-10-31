@@ -1307,6 +1307,9 @@ vehicles and drones are safely released.
 Downtime checks preserve calm timers, idle choices, conversation partners,
 scheduled dialogue, laughter and interruptions, including gameplay random draws.
 Target validation also safely rejects a unit that has already been removed.
+Scheduling checks preserve interruption priority, dive movement, scanning and
+thinking deadlines, plus order and busy-duty gates. Dazed, diving and acting men
+retain the same pause in their ordinary tasks.
 The Rust core now allocates authoritative entity IDs and retains their lifecycle
 order. Retired IDs stay retired, and restored lifecycle checkpoints continue the
 same allocation sequence; clients use the server's IDs for their visual objects.

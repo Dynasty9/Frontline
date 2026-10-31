@@ -801,6 +801,52 @@ func _danger() -> bool:
 
 # --- main loop -------------------------------------------------------------------
 
+const CONTROLLER_TASKS := ["", "rescue", "escort", "heal", "build", "stretcher", "limp", "captor", "man", "tunnel",
+	"board", "resupply", "grenade_pickup", "smother", "gkick", "breach", "retreat", "throw", "pilot"]
+var _controller: RefCounted
+
+
+func _native_controller() -> bool:
+	return is_instance_valid(world) and world.settings.get("rust_infantry", false) and ClassDB.class_exists("InfantryControllerCore")
+
+
+func _controller_core() -> RefCounted:
+	if _controller == null:
+		_controller = ClassDB.instantiate("InfantryControllerCore")
+	return _controller
+
+
+func _controller_task() -> int:
+	var code := CONTROLLER_TASKS.find(task)
+	return code if code >= 0 else CONTROLLER_TASKS.size()
+
+
+func _controller_values() -> Array:
+	return [think_t, scan_n, _doing_t, dive_t, dive_dir]
+
+
+func _read_controller(state: Array) -> void:
+	assert(state.size() == 5, "Invalid infantry controller state")
+	think_t = state[0]
+	scan_n = state[1]
+	_doing_t = state[2]
+	dive_t = state[3]
+	dive_dir = state[4]
+
+
+func _activity_due(dt: float) -> bool:
+	if _native_controller():
+		var out: Array = _controller_core().activity(_controller_values(), dt)
+		assert(out.size() == 2, "Invalid activity clock")
+		_read_controller(out[0])
+		return out[1]
+	_doing_t -= dt
+	if _doing_t <= 0.0:
+		_doing_t = 0.25
+		return true
+	return false
+
+
 func sim(dt: float) -> void:
 	if not debug_pose.is_empty():
 		posture = int(debug_pose[0])
@@ -808,9 +854,7 @@ func sim(dt: float) -> void:
 		life = int(debug_pose[2])
 		flags = int(debug_pose[4]) if debug_pose.size() > 4 else 0
 		return
-	_doing_t -= dt
-	if _doing_t <= 0.0:
-		_doing_t = 0.25
+	if _activity_due(dt):
 		_update_doing()
 	_recover_tick(dt)
 	if flinging:
@@ -959,40 +1003,13 @@ func _fatigue_tick(dt: float) -> void:
 
 func _alive(dt: float) -> void:
 	_fatigue_tick(dt)
-	if dazed_t > 0.0:
-		_dazed_tick(dt)
+	var proceed: bool
+	if _native_controller() and world.nav != null and world.nav._planner != null:
+		proceed = _alive_timers_native(dt)
+	else:
+		proceed = _alive_timers_reference(dt)
+	if not proceed:
 		return
-	if dive_t > 0.0:
-		dive_t -= dt
-		act = Act.DIVE
-		var np := position + dive_dir * 5.5 * dt
-		if world.nav.walkable(np):
-			position = np
-		position.y = maxf(base_y, position.y - dt * 3.0)
-		if dive_t <= 0.0:
-			posture = Post.PRONE
-			act = Act.IDLE
-			at_cover = false
-			next_cover_eval = world.time + 0.8
-		return
-	if act_t > 0.0:
-		act_t -= dt
-		_action_tick(dt)
-		if act_t <= 0.0:
-			_action_done()
-		return
-	if flinch_t > 0.0:
-		flinch_t -= dt
-		act = Act.FLINCH
-		if flinch_t > 0.0:
-			return
-		act = Act.IDLE
-	think_t -= dt
-	if think_t <= 0.0:
-		think_t = 0.24 + world.rng.randf() * 0.1
-		_think()
-		if act_t > 0.0 or dive_t > 0.0 or life != Life.ALIVE:
-			return
 	match task:
 		"":
 			_fight_tick(dt)
@@ -1036,6 +1053,85 @@ func _alive(dt: float) -> void:
 			task = ""
 
 
+func _alive_timers_native(dt: float) -> bool:
+	var out: Array = _controller_core().advance(_controller_values(), dt, PackedFloat64Array([dazed_t, flinch_t, act_t]), world.rng._backend)
+	assert(out.size() == 4, "Invalid infantry update clock")
+	_read_controller(out[0])
+	dazed_t = out[1][0]
+	flinch_t = out[1][1]
+	act_t = out[1][2]
+	if out[3]:
+		act = Act.IDLE
+	match int(out[2]):
+		1:
+			_dazed_tick(dt)
+			return false
+		2:
+			out = _controller_core().dive(_controller_values(), position, base_y, dt, world.nav._planner)
+			assert(out.size() == 3, "Invalid infantry dive")
+			_read_controller(out[0])
+			act = Act.DIVE
+			position = out[1]
+			if out[2]:
+				posture = Post.PRONE
+				act = Act.IDLE
+				at_cover = false
+				next_cover_eval = world.time + 0.8
+			return false
+		3:
+			_action_tick(dt)
+			if act_t <= 0.0:
+				_action_done()
+			return false
+		4:
+			act = Act.FLINCH
+			return false
+		5:
+			_think()
+			var proceed: int = _controller_core().continue_after_think(life, act_t, dive_t)
+			assert(proceed >= 0, "Invalid thought completion")
+			return proceed != 0
+	return true
+
+
+func _alive_timers_reference(dt: float) -> bool:
+	if dazed_t > 0.0:
+		_dazed_tick(dt)
+		return false
+	if dive_t > 0.0:
+		dive_t -= dt
+		act = Act.DIVE
+		var np := position + dive_dir * 5.5 * dt
+		if world.nav.walkable(np):
+			position = np
+		position.y = maxf(base_y, position.y - dt * 3.0)
+		if dive_t <= 0.0:
+			posture = Post.PRONE
+			act = Act.IDLE
+			at_cover = false
+			next_cover_eval = world.time + 0.8
+		return false
+	if act_t > 0.0:
+		act_t -= dt
+		_action_tick(dt)
+		if act_t <= 0.0:
+			_action_done()
+		return false
+	if flinch_t > 0.0:
+		flinch_t -= dt
+		act = Act.FLINCH
+		if flinch_t > 0.0:
+			return false
+		act = Act.IDLE
+	think_t -= dt
+	if think_t <= 0.0:
+		think_t = 0.24 + world.rng.randf() * 0.1
+		_think()
+		if act_t > 0.0 or dive_t > 0.0 or life != Life.ALIVE:
+			return false
+	return true
+
+
 ## What he sees, then what he does about it: the reflexes and the fight are
 ## a behaviour tree (SoldierBrain).
 func _think() -> void:
@@ -1046,8 +1142,16 @@ func _think() -> void:
 
 
 func _think_work() -> void:
-	scan_n += 1
-	if scan_n % 2 == 0 or target == null:
+	var scan: bool
+	if _native_controller():
+		var out: Array = _controller_core().scan(_controller_values(), target != null)
+		assert(out.size() == 2, "Invalid infantry scan clock")
+		_read_controller(out[0])
+		scan = out[1]
+	else:
+		scan_n += 1
+		scan = scan_n % 2 == 0 or target == null
+	if scan:
 		_scan()
 	_compute_sep()
 	SoldierBrain.think(self)
@@ -3165,6 +3269,10 @@ func _return_to_hold() -> void:
 # --- orders (from Squad) ----------------------------------------------------------------
 
 func can_take_orders() -> bool:
+	if _native_controller():
+		var allowed: int = _controller_core().orders(life, _controller_task(), task_phase, false)
+		assert(allowed >= 0, "Invalid infantry order gate")
+		return allowed != 0
 	if life != Life.ALIVE:
 		return false
 	if task in ["stretcher", "captor", "limp", "tunnel"]:
@@ -3238,8 +3346,16 @@ func cmd_attack(t: Entity, slot: Vector3) -> void:
 	go_to(slot, "slot", 0)
 
 
+func _can_retreat() -> bool:
+	if _native_controller():
+		var allowed: int = _controller_core().orders(life, _controller_task(), task_phase, true)
+		assert(allowed >= 0, "Invalid retreat order gate")
+		return allowed != 0
+	return life == Life.ALIVE and not task in ["stretcher", "captor", "limp", "tunnel"]
+
+
 func cmd_retreat(p: Vector3) -> void:
-	if life != Life.ALIVE or task in ["stretcher", "captor", "limp", "tunnel"]:
+	if not _can_retreat():
 		return
 	_clear_task()
 	task = "retreat"
