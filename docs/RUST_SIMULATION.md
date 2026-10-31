@@ -25,6 +25,7 @@ graphics, network access or a wall clock.
 | Shared actor storage and FPV ownership | `frontline_core` | Ordered infantry/projectile/drone state, allocation and shared casualty links are retained together; drones resolve living targets and operators inside Rust. Structures, vehicles, squads and complete world dispatch remain unfinished |
 | Squad state and shared knowledge | `frontline_core` | Orders, contact caches, plan links and tactical state have retained checkpoints; centroid, contact reports, threats, succession and casualty morale operate on owned actors. Squad orders, drills and the full squad tick still run in Godot |
 | Retained buildings and economy transitions | `frontline_core` | Geometry, links, queues and timers have retained checkpoints; construction, capture, town income and production transitions match Godot. Shared rule effects, destruction, crews and the complete building dispatcher remain unfinished |
+| Deferred damage and rubble | `frontline_core` | The live world uses checkpointed explosion deadlines and pending rubble spawns, with an engine-only fallback. Godot still applies the resulting damage and creates structures |
 | Weighted grid paths and cluster pair costs | `frontline_core` | Exact Godot route tie behavior; native cluster workers return costs in deterministic order |
 | Ground cells, crater heights and queued cover repairs | `frontline_core` | Rust retains terrain and ordered structure geometry, and performs edits, queries and cover repairs; Godot imports biome generation and forwards navigation notifications |
 | Water shapes, bridge decks and water terrain rasterization | `frontline_core` | Ordered numeric rasterization; a Rust worker also applies the joining host's ground overrides; Godot still generates the initial shapes |
@@ -241,8 +242,32 @@ The fixture compares 1,152 complete structure states, including checkpoint
 restoration and actor registration. Live imports also preserve structures in
 eleven battle scenarios and the 500-soldier, 2,048 m map. Nine core tests cover
 state decoding, actor ownership and transition boundaries; numeric CI adds
-1,873,704 exact bytes. Destruction, shared economy effects, crew assignment,
-pending cache explosions and the full building dispatcher remain in progress.
+1,873,704 exact bytes. Destruction, shared economy effects, crew assignment
+and the full building dispatcher remain in progress.
+
+## Deferred damage and rubble
+
+Ammo-cache cook-offs now schedule explosions in an owned Rust queue. Deadlines
+use battle time; the world drains due events after commanders/mission updates
+and before recording the completed tick. Equal deadlines keep insertion order,
+and blasts caused by a chain reaction wait for a later step. Rubble creation
+follows those blasts, retaining request order and registering ruins before the
+next step. Leaving a match discards its queues. Engine-only checkouts use the
+same clock and ordering.
+
+This deliberately replaces scene-timer delivery with the first simulation step
+at or after each deadline. Damage, scatter, random draws and the existing
+five-to-nine-blast profiles are unchanged. Queue checkpoints preserve deadlines,
+sequence allocation, pending explosion data and pending rubble descriptors.
+Invalid schedules leave the queue and RNG untouched; restores reject overdue
+or duplicate events.
+
+The reference fixture compares 38,400 steps and 2,554 blasts, including checkpoint
+resumes, equal deadlines, unchanged battle time and the live world's delivery
+path after the cache is freed. Rubble checks cover checkpoint resumes, destroyed
+buildings and ruins created by a deferred blast. Five core tests cover delivery,
+continuation and invalid input; numeric CI adds 924,970 bytes. Scenario callbacks
+still need simulation-owned scheduling for whole-battle replays.
 
 ## Deterministic replay contract
 
@@ -316,7 +341,7 @@ Component checkpoint headers contain a four-byte component tag, a little-endian
 rules rather than silently continuing with changed arithmetic. The separate
 integer RNG stream remains unchanged.
 
-`native/core/tests/numeric_contract.rs` compares 20,310,098 committed bytes without
+`native/core/tests/numeric_contract.rs` compares 21,235,068 committed bytes without
 tolerances: fixed-tick flight state, support events and RNG cursors, carved water,
 craters, rotated box hits, cover anchors, spherical interpolation and infantry
 movement, infantry cover fire, postures, ammunition, burst recovery, vitals, aiming,
@@ -540,7 +565,7 @@ flag until Rust owns the actors.
 
 The shock fixture compares 92,160 reference steps, including mounted turning,
 blocked terrain, carried casualties and task interruption. The full default suite
-passes 152 tests; 303 core tests pass in debug and release.
+passes 153 tests; 309 core tests pass in debug and release.
 
 ## Retained projectiles and impacts
 

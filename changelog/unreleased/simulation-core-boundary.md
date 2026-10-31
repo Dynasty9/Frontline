@@ -13,6 +13,8 @@ kind = "fixed"
 - Rust squad-order checks preserve busy soldiers' order gates, rescue and breach commitments, leaving mounted guns, formation movement and grenade approaches.
 - Retained Rust actor checks now connect action interruptions, cooking and throws, diving, blast recovery, casualty links, death and revival, hidden transport and corpse cleanup.
 - Rust building-state checks preserve geometry, construction and repairs, town income, capture progress and production queues through saved-state resumes as the server migration continues.
+- Ammo-cache explosions now follow battle time instead of frame callbacks, keeping their damage and scatter while retaining pending blasts for the replay migration.
+- Destroyed buildings create rubble at a consistent point in the simulation, including ruins left by those delayed explosions.
 - Grenade, smoke, rocket, bomb and shell flight now use the shared simulation core, preserving flight behavior, pickup, kicking and rethrowing.
 - Rust projectile-actor checks preserve grenade holders and throwbacks, impact damage, smoke, guided-missile lock loss, recon and support-aircraft attribution through saved-state resumes.
 - Battlefield raycasts now use the shared simulation core, updating when vehicles move, doors open and structures change.

@@ -9,6 +9,7 @@ pub mod bullet;
 pub mod collision;
 pub mod cover;
 pub mod cover_search;
+pub mod deferred_effects;
 pub mod drone;
 pub mod drone_actor;
 pub mod drone_reaction;

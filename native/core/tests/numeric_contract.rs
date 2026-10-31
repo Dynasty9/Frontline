@@ -36,6 +36,52 @@ fn block(out: &mut Vec<u8>, bytes: &[u8]) {
 }
 
 #[test]
+fn delayed_cache_explosions_are_identical_across_platforms() {
+    use frontline_core::deferred_effects::{DeferredEffects, Rubble};
+    let mut bytes = Vec::new();
+    for trial in 0..64 {
+        let mut q = DeferredEffects::default();
+        let mut rng = SimulationRandom::new(trial + 137);
+        let supply = [0.0, 31.0, 77.3, 160.0, 200.0][trial as usize % 5];
+        for position in [Vector3::new(3.1, 0.7, -7.9), Vector3::new(-3.1, -0.7, 7.9)] {
+            q.cook_off(0.0, position, supply, &mut rng).unwrap();
+        }
+        for tick in 0..300 {
+            let now = f64::from(tick) / 30.0;
+            if tick % 17 == 0 {
+                q.defer_rubble(Rubble {
+                    position: Vector3::new(1.3, 0.0, tick as f32 * 0.13),
+                    yaw: f64::from(tick) * 0.37,
+                    size: Vector3::new(8.0, 0.0, 2.4),
+                })
+                .unwrap();
+            }
+            if tick == 71 {
+                q.cook_off(now, Vector3::ONE, 97.3, &mut rng).unwrap();
+            }
+            let due = q.advance_to(now).unwrap();
+            bytes.extend_from_slice(&(due.len() as u32).to_le_bytes());
+            for e in due {
+                point(&mut bytes, e.position);
+                bytes.extend_from_slice(&e.damage.to_le_bytes());
+            }
+            if tick % 17 == 0 {
+                let saved = q.checkpoint();
+                block(&mut bytes, &saved);
+                q = DeferredEffects::restore(&saved).unwrap();
+            }
+            for rubble in q.take_rubble() {
+                point(&mut bytes, rubble.position);
+                bytes.extend_from_slice(&rubble.yaw.to_le_bytes());
+                point(&mut bytes, rubble.size);
+            }
+            bytes.extend_from_slice(&rng.state().to_le_bytes());
+        }
+    }
+    golden("deferred_effects", &bytes);
+}
+
+#[test]
 fn structure_construction_capture_and_production_are_identical_across_platforms() {
     use frontline_core::structure::{Production, Structure, Tick, TownEconomy};
     let mut bytes = Vec::new();

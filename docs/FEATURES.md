@@ -1334,6 +1334,10 @@ inside one Rust collection. Drones resolve their operator and target from retain
 actors, keeping their last aim point after losing the target. The live battle
 still uses Godot ownership while the other entity types and world loop migrate.
 Building-state checks retain geometry, supply, queues, crew links and fire state.
+Ammo-cache cook-offs use a saved simulation-time explosion queue, so damage waits
+for the battle to advance and does not depend on render callbacks.
+Destroyed buildings queue their rubble in the same owned state; ruins register
+after deferred blasts and before the next simulation step.
 Construction, town income, capture and production transitions match the existing
 game; shared rule effects, destruction and the full building dispatcher still need
 migration before Rust owns the complete battle.

@@ -78,6 +78,7 @@ var _road_meshes: Array = [null, null, null]
 var pings: Array = []  # [pos, expire, kind]
 var winner := -1
 var rng := SimulationRandom.new()
+var _deferred_effects: DeferredEffects
 var last_chat := [-99.0, -99.0]  # side-wide conversation cooldowns belong to this battle
 var focused := false
 var director: Director
@@ -786,6 +787,8 @@ func _physics_process(dt: float) -> void:
 	if mission:
 		mission.tick(dt)
 	tp = _p("AI commanders", tp)
+	_run_deferred_effects()
+	tp = _p("deferred effects", tp)
 	if recording:
 		recording.after_tick()
 	tp = _p("replay recording", tp)
@@ -822,6 +825,27 @@ func _physics_process(dt: float) -> void:
 			measured_worst_tick = {"time": time, "total_ms": elapsed, "systems_ms": _measured_tick_systems.duplicate()}
 	net_out_bps = lerpf(net_out_bps, _net_out / maxf(dt, 0.001), 0.05)
 	_net_out = 0.0
+
+
+func schedule_cache_cook_off(pos: Vector3, stock: float) -> void:
+	if _deferred_effects == null:
+		_deferred_effects = DeferredEffects.new()
+	_deferred_effects.cook_off(time, pos, stock, rng)
+
+
+func defer_rubble(pos: Vector3, yaw: float, size: Vector3) -> void:
+	if _deferred_effects == null:
+		_deferred_effects = DeferredEffects.new()
+	_deferred_effects.defer_rubble(pos, yaw, size)
+
+
+func _run_deferred_effects() -> void:
+	if _deferred_effects == null or combat == null:
+		return
+	for event: Array in _deferred_effects.advance_to(time):
+		combat.explode(event[0], event[1])
+	for rubble: Array in _deferred_effects.take_rubble():
+		spawn("structure", {"skind": "rubble", "pos": rubble[0], "yaw": rubble[1], "size": rubble[2]})
 
 
 ## Profiling helper: accumulates a smoothed per-tick cost for a named system.
