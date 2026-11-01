@@ -858,7 +858,7 @@ terrain retains the fine deformation grid. Woodland bark and foliage can join th
 
 ### Alpine surface variation
 
-The ground shader combines warped 115 m mineral regions, 31 m vegetation patches and
+The ground shader combines broad warped mineral regions, smaller vegetation patches and
 height-oriented weathering bands. Albedo and layer coverage vary independently of the
 fine photographic relief, avoiding uniform rock and grass across the entire map.
 Standard-map trees switch toward conifers above 18% of peak elevation and stop at an
