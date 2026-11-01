@@ -28,7 +28,8 @@ jobs:
 
   check:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    # Building the native core and the expanded gameplay comparisons exceed 20 minutes.
+    timeout-minutes: 40
     env:
       GODOT_VERSION: 4.7.2
     steps:

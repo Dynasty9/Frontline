@@ -1547,8 +1547,11 @@ dispatcher still needs to own and schedule these plans in production.
 Ground vehicles now have a connected Rust update for movement, scans, crew decisions,
 unloading, combat, support and obstacle collisions. Unloading restores the squad's
 defense or deliberate attack; vehicles lost to their own blast stop before support work.
-The full
-authoritative Rust server and deterministic
+Connected Rust aircraft updates preserve shared targets and combat, rocket-warning
+order, cargo pickup and release, troop landings and supply deliveries. Vehicle
+recovery now respects the same map-edge clearance as its route graph; checkpoints
+use numeric contract 2 so older route rules cannot silently change during a resume.
+The full authoritative Rust server and deterministic
 battle verifier are still in progress; see [RUST_SIMULATION.md](RUST_SIMULATION.md).
 
 See [SIMULATION_SCALING.md](SIMULATION_SCALING.md) for the native perception

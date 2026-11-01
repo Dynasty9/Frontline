@@ -13,6 +13,19 @@ fn job(id: u64) -> PathJob {
 }
 
 #[test]
+fn vehicle_recovery_keeps_the_three_cell_rim_used_by_navigation() {
+    let nav = PathPlanner::new(64).unwrap();
+    let edge = Vector3::new(7.354009, 0.0, -29.74264);
+    assert_eq!(nav.nearest_walkable(edge), Some(edge));
+    assert_eq!(
+        nav.nearest_walkable_for(edge, true),
+        Some(Vector3::new(6.5, 0.0, -28.5))
+    );
+    let open = Vector3::new(7.354009, 0.0, -28.74264);
+    assert_eq!(nav.nearest_walkable_for(open, true), Some(open));
+}
+
+#[test]
 fn requests_replace_cancel_retry_and_resume_without_using_wall_time() {
     let mut planner = PathPlanner::new(64).unwrap();
     planner.request(job(1));

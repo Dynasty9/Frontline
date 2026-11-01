@@ -1304,6 +1304,8 @@ func _lift_tick(dt: float) -> void:
 	if _target_ok() and position.y > 3.0:
 		_turret_tick(dt)  # traverse before the door gunner can fire
 		_fire_tick()
+		if gone:
+			return
 	match lift_phase:
 		0:
 			_fly_to(Vector3(position.x, _flight_ground(position), position.z), dt)
@@ -2255,6 +2257,8 @@ func _gunship_tick(dt: float) -> void:
 	_fly_to(want, dt, face)
 	_turret_tick(dt)
 	_fire_tick()
+	if gone:
+		return
 	if has_t and rocket_t <= 0.0 and _aim_err() < 0.35:
 		var dist := Defs.flat(target.position - position).length()
 		var worth := target is Vehicle or target is Structure

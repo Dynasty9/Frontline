@@ -568,7 +568,7 @@ impl VehicleLossWorldCore {
         network: Gd<SupplyNetworkCore>,
         impacts: Array<Variant>,
     ) -> Array<Variant> {
-        if mode > 9 {
+        if mode > 10 {
             return Array::new();
         }
         let Some(reports) = read_impacts(&impacts) else {
@@ -981,6 +981,7 @@ impl VehicleLossWorldCore {
                 let mut vehicle_effects = Array::<Variant>::new();
                 let mut cannon_effects = Array::<Variant>::new();
                 let mut plan_state = None;
+                let mut income_state = None;
                 let result = if (13..=14).contains(&mode) {
                     use frontline_core::ordnance_world::Event as Ordnance;
                     let Some(data) = read::<Array<Variant>>(&input, 6) else {
@@ -1169,8 +1170,8 @@ impl VehicleLossWorldCore {
                         return Array::new();
                     };
                     let ground_data: Option<Array<Variant>> =
-                        if mode == 15 { read(&data, 1) } else { None };
-                    let data = if mode == 15 {
+                        if mode >= 15 { read(&data, 1) } else { None };
+                    let data = if mode >= 15 {
                         if data.len() != 2 {
                             return Array::new();
                         }
@@ -1181,7 +1182,7 @@ impl VehicleLossWorldCore {
                     } else {
                         data
                     };
-                    let result = if mode == 6 || mode == 15 {
+                    let result = if mode == 6 || mode >= 15 {
                         let parse = || -> Option<_> {
                             if data.len() != 4 {
                                 return None;
@@ -1227,7 +1228,59 @@ impl VehicleLossWorldCore {
                                 piercing: p.5,
                             }),
                         };
-                        if mode == 15 {
+                        if mode == 16 {
+                            let Some(mut p) = ground_data
+                                .as_ref()
+                                .and_then(crate::vehicle_world::parse_air)
+                            else {
+                                return Array::new();
+                            };
+                            let aircraft = frontline_core::aircraft_world::Profile {
+                                kind: p.kind,
+                                flight: p.flight,
+                                scan: p.scan,
+                                weapons,
+                                traverse: p.traverse,
+                            };
+                            let result = context.advance_aircraft(
+                                id,
+                                dt,
+                                aircraft,
+                                &mut self.gunfire,
+                                &mut network.bind_mut().core,
+                                &mut impacts,
+                                &mut p.plans,
+                                &mut p.next,
+                                &mut p.income,
+                                &armor,
+                                &|v| vehicles[&v.id].hit,
+                                &defense,
+                            );
+                            result.map(|events| {
+                                let events =
+                                    crate::vehicle_world::effects(events, &mut vehicle_effects);
+                                let plans: Array<Variant> = p
+                                    .plans
+                                    .iter()
+                                    .map(|p| {
+                                        PackedByteArray::from(p.checkpoint().unwrap().as_slice())
+                                            .to_variant()
+                                    })
+                                    .collect();
+                                plan_state =
+                                    Some(varray!["plans", &plans, p.next as i64].to_variant());
+                                let pack = |side: &[(f64, i32)]| {
+                                    side.iter()
+                                        .map(|&(t, n)| varray![t, n].to_variant())
+                                        .collect::<Array<Variant>>()
+                                };
+                                income_state = Some(
+                                    varray!["income", &pack(&p.income[0]), &pack(&p.income[1])]
+                                        .to_variant(),
+                                );
+                                events
+                            })
+                        } else if mode == 15 {
                             let Some(mut p) =
                                 ground_data.as_ref().and_then(crate::vehicle_world::parse)
                             else {
@@ -1671,6 +1724,7 @@ impl VehicleLossWorldCore {
                         }).collect());
                     }
                     if let Some(state) = plan_state { vehicle_effects.push(&state); }
+                    if let Some(state) = income_state { vehicle_effects.push(&state); }
                     if let Some(events) = construction.as_mut() { events.extend_array(&cannon_effects); events.extend_array(&vehicle_effects); }
                     if mode == 2 || mode == 5 {
                         use frontline_core::infantry_build_world::Construction;

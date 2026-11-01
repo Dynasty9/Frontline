@@ -58,8 +58,84 @@ pub enum Event {
     Combat(Combat),
     Attack(Attack),
     Loss(Loss),
+    Sling {
+        helicopter: u32,
+        cargo: u32,
+        released: bool,
+    },
+    Delivered {
+        team: i8,
+        position: Vector3,
+        amount: i32,
+    },
 }
 impl Context<'_> {
+    pub(crate) fn begin_vehicle(
+        &mut self,
+        id: u32,
+        dt: f64,
+    ) -> Result<Option<Vec<Event>>, &'static str> {
+        if !crate::infantry_fight_world::valid_step(dt, self.now, None) || dt > 10.0 {
+            return Err("invalid vehicle step");
+        }
+        let v = self.actors.vehicle(id).ok_or("missing vehicle")?;
+        let mut out = vec![];
+        if v.slung_by != 0 {
+            if self
+                .actors
+                .vehicle(v.slung_by)
+                .is_none_or(|carrier| carrier.sling_cargo != id)
+            {
+                out.extend(self.drop_vehicle_sling(id)?.into_iter().map(Event::Loss));
+            }
+            return Ok(Some(out));
+        }
+        let v = self.actors.vehicle_mut(id).unwrap();
+        v.cannon_timer -= dt;
+        v.mg_timer -= dt;
+        let knocked = f64::from(v.knock_velocity.length_squared()) > 0.0025;
+        if knocked {
+            let next = v.position + v.knock_velocity * dt as f32;
+            let half = self.geometry.terrain.half() - 4.0;
+            if self.geometry.navigation.planner.kind_at(next, false) != 3
+                && f64::from(next.x.abs()) < half
+                && f64::from(next.z.abs()) < half
+            {
+                v.position = next;
+            } else {
+                v.knock_velocity = Vector3::ZERO;
+            }
+            v.knock_velocity = move_toward(v.knock_velocity, Vector3::ZERO, 7.0 * dt);
+        }
+        v.stabilization_rate = 0.0;
+        if knocked {
+            self.geometry
+                .refresh_vehicle_collision(v, (self.vehicle)(v).hull)?;
+        }
+        Ok(None)
+    }
+    pub(crate) fn aim_vehicle(
+        &mut self,
+        id: u32,
+        dt: f64,
+        gunship: bool,
+        traverse: [f64; 2],
+    ) -> Result<(), &'static str> {
+        let v = self.actors.vehicle(id).ok_or("missing aiming vehicle")?;
+        let target = self
+            .actors
+            .get(v.target)
+            .filter(|a| self.actors.vehicle_target_valid(a.identity().id))
+            .map(|a| (a.identity().id, a.position()));
+        self.actors.vehicle_mut(id).unwrap().turret_tick(
+            target,
+            dt,
+            gunship,
+            traverse[0],
+            traverse[1],
+        )?;
+        Ok(())
+    }
     pub fn dismount_vehicle_world(
         &mut self,
         id: u32,
@@ -118,35 +194,11 @@ impl Context<'_> {
         {
             return Err("invalid ground vehicle step");
         }
-        let v = self.actors.vehicle(id).ok_or("missing ground vehicle")?;
-        let mut out = vec![];
-        if v.slung_by != 0 {
-            if self
-                .actors
-                .vehicle(v.slung_by)
-                .is_none_or(|carrier| carrier.sling_cargo != id)
-            {
-                out.extend(self.drop_vehicle_sling(id)?.into_iter().map(Event::Loss));
-            }
+        if let Some(out) = self.begin_vehicle(id, dt)? {
             return Ok(out);
         }
+        let mut out = vec![];
         let v = self.actors.vehicle_mut(id).unwrap();
-        v.cannon_timer -= dt;
-        v.mg_timer -= dt;
-        if f64::from(v.knock_velocity.length_squared()) > 0.0025 {
-            let next = v.position + v.knock_velocity * dt as f32;
-            let half = self.geometry.terrain.half() - 4.0;
-            if self.geometry.navigation.planner.kind_at(next, false) != 3
-                && f64::from(next.x.abs()) < half
-                && f64::from(next.z.abs()) < half
-            {
-                v.position = next;
-            } else {
-                v.knock_velocity = Vector3::ZERO;
-            }
-            v.knock_velocity = move_toward(v.knock_velocity, Vector3::ZERO, 7.0 * dt);
-        }
-        v.stabilization_rate = 0.0;
         v.scan_timer -= dt;
         if v.scan_timer <= 0.0 {
             v.scan_timer = 0.5;
@@ -194,18 +246,7 @@ impl Context<'_> {
         }
         let v = self.actors.vehicle(id).unwrap();
         if v.lay_yaw.is_none() || profile.artillery.is_none() {
-            let target = self
-                .actors
-                .get(v.target)
-                .filter(|a| self.actors.vehicle_target_valid(a.identity().id))
-                .map(|a| (a.identity().id, a.position()));
-            self.actors.vehicle_mut(id).unwrap().turret_tick(
-                target,
-                dt,
-                false,
-                profile.traverse[0],
-                profile.traverse[1],
-            )?;
+            self.aim_vehicle(id, dt, false, profile.traverse)?;
         }
         out.extend(
             self.advance_vehicle_fire(

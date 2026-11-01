@@ -128,12 +128,16 @@ impl PathPlanner {
         }
         let cell = self.cell(point);
         let kinds = &self.kinds[usize::from(vehicle)];
-        if kinds[self.index(cell)] != 3 {
+        // The vehicle graph reserves the outer three cells even when raw terrain is free.
+        let free = |p: [i32; 2]| {
+            p.into_iter().all(|v| {
+                v >= 0 && v < self.side as i32 && (!vehicle || (v >= 3 && v < self.side as i32 - 3))
+            }) && kinds[self.index(p)] != 3
+        };
+        if free(cell) {
             return Some(point);
         }
-        let free = nearest_free(cell, |p| {
-            p.into_iter().all(|v| v >= 0 && v < self.side as i32) && kinds[self.index(p)] != 3
-        });
+        let free = nearest_free(cell, free);
         Some(self.center(free))
     }
 

@@ -466,7 +466,7 @@ pub(crate) fn ground_profile(a: &Array<Variant>) -> Option<GroundProfile> {
         handling: [r[3], r[4], r[5], r[6]],
     })
 }
-fn flight_profile(a: &PackedFloat64Array) -> Option<FlightProfile> {
+pub(crate) fn flight_profile(a: &PackedFloat64Array) -> Option<FlightProfile> {
     if a.len() != 5 {
         return None;
     }

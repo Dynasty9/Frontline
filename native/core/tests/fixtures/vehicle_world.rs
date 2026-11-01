@@ -4,6 +4,8 @@ mod combat;
 #[allow(dead_code)]
 #[path = "vehicle_movement_world.rs"]
 mod movement;
+#[allow(unused_imports)]
+pub use combat::shared;
 pub use combat::{armor, defense, infantry, profile, vehicle, Field};
 use frontline_core::attack_plan::AttackPlan;
 use frontline_core::infantry_vitals::Life;
@@ -64,7 +66,7 @@ pub fn step(
 
 #[allow(dead_code)]
 #[path = "squad_movement_world.rs"]
-mod squad_fixture;
+pub mod squad_fixture;
 pub fn transcript() -> Vec<u8> {
     fn block(out: &mut Vec<u8>, data: &[u8]) {
         out.extend_from_slice(&(data.len() as u32).to_le_bytes());

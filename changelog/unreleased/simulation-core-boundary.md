@@ -111,6 +111,8 @@ kind = "fixed"
 - Vehicle combat checks preserve armour, ricochets, blast shove, broken tracks, damage alerts and missile/cannon/machine-gun firing priorities and timing.
 - Passenger checks preserve dismount timing, exits onto shore and the section's next orders, including removed passengers. Connected Rust exits now restore defensive cover or a complete deliberate attack, including leader replacement.
 - Complete Rust ground-vehicle updates preserve movement, shared scans, unloading, aiming, combat, support and obstacle destruction in their original order. Vehicles destroyed by their own shot stop before repairing nearby units.
+- Connected Rust aircraft updates preserve shared combat, rocket warnings, sling loads, troop landings and supply income. Aircraft destroyed by their own shot stop before continuing their flight duties.
+- Vehicle recovery respects the road grid's map-edge clearance. The simulation checkpoint version changes with this correction so older checkpoints cannot resume under different movement rules.
 - Infantry birth checks preserve unit loadouts, upgrades, names, initial cooldowns and squad membership as entity creation moves into Rust.
 - Vehicle-loss checks preserve passenger casualties, crew survival and final wreck positions, including random choices between each survivor's escape.
 - Connected vehicle-destruction checks preserve dropped sling cargo, battle credit, supply-truck replacement, crew return orders and burning wrecks in their original order.

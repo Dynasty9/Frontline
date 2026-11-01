@@ -80,6 +80,13 @@ fn deliberate_attacks_are_identical_across_platforms() {
     golden("attack_plan_world", &attack_plan_world::transcript());
 }
 
+#[path = "fixtures/aircraft_world.rs"]
+mod aircraft_world;
+#[test]
+fn complete_aircraft_are_identical_across_platforms() {
+    golden("aircraft_world", &aircraft_world::transcript());
+}
+
 #[path = "fixtures/vehicle_world.rs"]
 mod vehicle_world;
 #[test]
@@ -9144,7 +9151,10 @@ fn infantry_controller_numeric_contract() {
 
 fn golden(name: &str, actual: &[u8]) {
     let path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join("tests/numeric_v1")
+        .join(format!(
+            "tests/numeric_v{}",
+            frontline_core::NUMERIC_VERSION
+        ))
         .join(format!("{name}.bin"));
     if std::env::var_os("FL_WRITE_NUMERIC_GOLDENS").is_some() {
         assert!(
@@ -10295,7 +10305,12 @@ fn checkpoints_reject_previous_or_unknown_numeric_contracts() {
         &encoded[6..8],
         &frontline_core::NUMERIC_VERSION.to_le_bytes()
     );
-    for version in [0, frontline_core::NUMERIC_VERSION + 1, u16::MAX] {
+    for version in [
+        0,
+        frontline_core::NUMERIC_VERSION - 1,
+        frontline_core::NUMERIC_VERSION + 1,
+        u16::MAX,
+    ] {
         let mut incompatible = encoded.clone();
         incompatible[6..8].copy_from_slice(&version.to_le_bytes());
         assert!(InfantryMotion::restore(&incompatible).is_err());

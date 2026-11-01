@@ -35,27 +35,118 @@ fn ids(a: PackedInt64Array) -> Option<Vec<u32>> {
         .map(|&id| u32::try_from(id).ok().filter(|&id| id != 0))
         .collect()
 }
-pub(crate) fn parse(a: &Array<Variant>) -> Option<Input> {
-    if a.len() != 11 {
+fn scan_profile(scan: PackedFloat64Array) -> Option<ScanProfile> {
+    if scan.len() != 6 || scan.as_slice()[2..].iter().any(|v| *v != 0.0 && *v != 1.0) {
         return None;
     }
-    let movement = crate::vehicle::ground_profile(&read(a, 0)?)?;
-    let scan: PackedFloat64Array = read(a, 1)?;
-    let traverse: PackedFloat64Array = read(a, 2)?;
-    if scan.len() != 6
-        || traverse.len() != 2
-        || scan.as_slice()[2..].iter().any(|v| *v != 0.0 && *v != 1.0)
-    {
-        return None;
-    }
-    let scan = ScanProfile {
+    Some(ScanProfile {
         sight: scan[0],
         gun_height: scan[1],
         cannon: scan[2] != 0.0,
         gunship: scan[3] != 0.0,
         anti_air: scan[4] != 0.0,
         penetrating_mg: scan[5] != 0.0,
+    })
+}
+fn read_plans(rows: Array<Variant>) -> Option<Vec<AttackPlan>> {
+    if rows.len() > 100_000 {
+        return None;
+    }
+    let mut plans = vec![];
+    let mut seen = BTreeSet::new();
+    for row in rows.iter_shared() {
+        let bytes = row.try_to::<PackedByteArray>().ok()?;
+        let p = AttackPlan::restore(bytes.as_slice()).ok()?;
+        if !seen.insert(p.id) {
+            return None;
+        }
+        plans.push(p);
+    }
+    Some(plans)
+}
+pub(crate) struct AirInput {
+    pub kind: frontline_core::aircraft_world::Kind,
+    pub flight: frontline_core::vehicle_flight::FlightProfile,
+    pub scan: ScanProfile,
+    pub traverse: [f64; 2],
+    pub plans: Vec<AttackPlan>,
+    pub next: u64,
+    pub income: [Vec<(f64, i32)>; 2],
+}
+pub(crate) fn parse_air(a: &Array<Variant>) -> Option<AirInput> {
+    use frontline_core::aircraft_world::Kind;
+    if a.len() != 9 {
+        return None;
+    }
+    let flight = crate::vehicle::flight_profile(&read(a, 0)?)?;
+    let scan = scan_profile(read(a, 1)?)?;
+    let traverse: PackedFloat64Array = read(a, 2)?;
+    let values: PackedFloat64Array = read(a, 4)?;
+    if traverse.len() != 2 || values.len() != 2 || values.as_slice().iter().any(|n| !n.is_finite())
+    {
+        return None;
+    }
+    let kind = match read::<GString>(a, 3)?.to_string().as_str() {
+        "lift_heli" if values[0].fract() == 0.0 && (-1.0..=2.0).contains(&values[0]) => {
+            Kind::Lift {
+                capacity: values[0] as i8,
+            }
+        }
+        "supply" if values[0].fract() == 0.0 && (0.0..=1_000_000.0).contains(&values[0]) => {
+            Kind::Supply {
+                load: values[0] as i32,
+            }
+        }
+        "attack_heli" if values[0].fract() == 0.0 && (0.0..=10000.0).contains(&values[0]) => {
+            Kind::Gunship {
+                rockets: values[0] as u32,
+            }
+        }
+        "uav" => Kind::Uav {
+            altitude: values[0],
+            radius: values[1],
+        },
+        _ => return None,
     };
+    let mut income = [vec![], vec![]];
+    for (side, out) in income.iter_mut().enumerate() {
+        let rows: Array<Variant> = read(a, 7 + side)?;
+        if rows.len() >= 100_000 {
+            return None;
+        }
+        for row in rows.iter_shared() {
+            let r = row.try_to::<Array<Variant>>().ok()?;
+            if r.len() != 2 {
+                return None;
+            }
+            let t: f64 = read(&r, 0)?;
+            let n: i32 = read(&r, 1)?;
+            if !t.is_finite() || t.abs() > 1e12 || !(0..=1_000_000).contains(&n) {
+                return None;
+            }
+            out.push((t, n));
+        }
+    }
+    Some(AirInput {
+        kind,
+        flight,
+        scan,
+        traverse: [traverse[0], traverse[1]],
+        plans: read_plans(read(a, 5)?)?,
+        next: u64::try_from(read::<i64>(a, 6)?).ok()?,
+        income,
+    })
+}
+pub(crate) fn parse(a: &Array<Variant>) -> Option<Input> {
+    if a.len() != 11 {
+        return None;
+    }
+    let movement = crate::vehicle::ground_profile(&read(a, 0)?)?;
+    let scan = scan_profile(read(a, 1)?)?;
+    let traverse: PackedFloat64Array = read(a, 2)?;
+    if traverse.len() != 2 {
+        return None;
+    }
     let art: Array<Variant> = read(a, 3)?;
     let artillery = if art.is_empty() {
         None
@@ -99,20 +190,7 @@ pub(crate) fn parse(a: &Array<Variant>) -> Option<Input> {
         }
         Some(service)
     };
-    let rows: Array<Variant> = read(a, 8)?;
-    if rows.len() > 100_000 {
-        return None;
-    }
-    let mut plans = vec![];
-    let mut seen = BTreeSet::new();
-    for row in rows.iter_shared() {
-        let bytes = row.try_to::<PackedByteArray>().ok()?;
-        let plan = AttackPlan::restore(bytes.as_slice()).ok()?;
-        if !seen.insert(plan.id) {
-            return None;
-        }
-        plans.push(plan);
-    }
+    let plans = read_plans(read(a, 8)?)?;
     Some(Input {
         movement,
         scan,
@@ -145,6 +223,31 @@ pub(crate) fn effects(
         .filter_map(|e| {
             let world = match e {
                 Event::Combat(e) => return Some(e),
+                Event::Sling {
+                    helicopter,
+                    cargo,
+                    released,
+                } => {
+                    extra.push(&varray!["sling", helicopter, cargo, released].to_variant());
+                    return None;
+                }
+                Event::Delivered {
+                    team,
+                    position,
+                    amount,
+                } => {
+                    extra.push(
+                        &varray![
+                            "delivered",
+                            Vector3::new(position.x, position.y, position.z),
+                            amount,
+                            team
+                        ]
+                        .to_variant(),
+                    );
+                    return None;
+                }
+
                 Event::Loss(e) | Event::Movement(Motion::Loss(e)) => World::Vehicle(e),
                 Event::Movement(Motion::Stat(key))
                 | Event::Attack(Attack::Stat(key))

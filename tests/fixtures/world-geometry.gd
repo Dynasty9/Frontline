@@ -106,7 +106,7 @@ func block(data: PackedByteArray) -> PackedByteArray:
 	var bytes := u32(data.size()); bytes.append_array(data); return bytes
 
 func header(magic: String) -> PackedByteArray:
-	var bytes := magic.to_utf8_buffer(); bytes.append_array(PackedByteArray([1, 0, 1, 0])); return bytes
+	var bytes := magic.to_utf8_buffer(); bytes.append_array(PackedByteArray([1, 0, 2, 0])); return bytes
 
 func nav_save(nav: Nav) -> PackedByteArray:
 	var bytes := header("FLNS")

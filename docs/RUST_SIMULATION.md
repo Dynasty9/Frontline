@@ -526,7 +526,7 @@ These checks do not yet verify a complete battle.
 
 ### Numeric contract
 
-Numeric version 1 pins Rust 1.94.0, glam 0.32.1 with its `libm` feature and libm
+Numeric version 2 pins Rust 1.94.0, glam 0.32.1 with its `libm` feature and libm
 0.2.16 with `force-soft-floats`. Scalar transcendental functions use the same
 implementation on every platform instead of the host system's math library.
 Glam also prefers libm when Godot enables its `std` feature. Fast-math is disabled.
@@ -537,8 +537,13 @@ Component checkpoint headers contain a four-byte component tag, a little-endian
 16-bit schema version and a 16-bit numeric version. They reject earlier numeric
 rules rather than silently continuing with changed arithmetic. The separate
 integer RNG stream remains unchanged.
+Version 2 corrects vehicle nearest-walkable searches at the map's three-cell rim.
+The prior rules could let an evading crew choose a point its own route graph
+considered blocked. The connected aircraft fixture exposed the mismatch; a
+boundary regression reproduces Godot's exact choice. Version 1 checkpoints fail
+closed because this changes a mounted-missile evasion trajectory.
 
-`native/core/tests/numeric_contract.rs` compares 127,187,546 committed bytes without
+`native/core/tests/numeric_contract.rs` compares 238,502,483 committed bytes without
 tolerances: fixed-tick flight state, support events and RNG cursors, carved water,
 craters, rotated box hits, cover anchors, spherical interpolation and infantry
 movement, infantry cover fire, postures, ammunition, burst recovery, vitals, aiming,
@@ -2272,3 +2277,30 @@ numeric-contract cases and seven focused release tests. Godot passes the complet
 ground-vehicle roster comparison, 2,560 attack states including dismounts, and six
 connected weapons, artillery, service, destruction and ordnance regressions.
 The new exact transport and vehicle transcripts are 4,370,847 and 360,796 bytes.
+
+## Connected aircraft updates
+
+`advance_aircraft` connects the complete UAV, gunship, troop-lift and supply-flight
+updates to shared actors. Pilots scan and fire in the original order; each rocket's
+warning, smoke and evasive orders complete before the next rocket consumes scatter
+randomness. Lift aircraft move their cargo, find landing sites, hook or release
+loads and restore dismounting squads' orders. Supply flights update the destination
+and income once. Aircraft lost to their own fire stop before further duties.
+
+The reference comparison exposed a shared navigation error at the map edge:
+nearest-walkable recovery accepted the outer three cells even though the vehicle
+route graph excludes them. That lookup now matches Godot. Numeric contract 2 makes
+the changed route rule explicit and rejects contract 1 checkpoints; the prior
+corpus remains in Git history. The RNG stream itself has not changed.
+
+Six aircraft regressions cover landings, sling transitions, deliveries, rocket
+warnings, UAV flight and invalid input, including checkpoint continuation. All 834
+debug core tests pass, including 113 numeric-contract cases. The 132 release checks
+pass: 113 exact transcripts and 19 aircraft, navigation and structure regressions.
+Godot passes the complete aircraft roster comparison, ground vehicles, mounted
+combat, deliberate attacks/transport exits and geometry retirement. Import,
+formatting, changelog and presentation audits pass. The combined CI job now allows
+40 minutes: its prior run reached 20 minutes during the growing game suite, after
+the four-platform numeric jobs and scenario/mission smoke checks passed.
+Boats, the full world scheduler, standalone socket server and whole-match
+verification remain unfinished.

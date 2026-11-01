@@ -124,7 +124,12 @@ fn checkpoint_keeps_geometry_links_queues_and_private_timers() {
         let mut trailing = encoded.clone();
         trailing.push(0);
         assert!(Structure::restore(&trailing).is_err());
-        for version in [0u16, 2, u16::MAX] {
+        for version in [
+            0,
+            frontline_core::NUMERIC_VERSION - 1,
+            frontline_core::NUMERIC_VERSION + 1,
+            u16::MAX,
+        ] {
             let mut invalid = encoded.clone();
             invalid[6..8].copy_from_slice(&version.to_le_bytes());
             assert!(Structure::restore(&invalid).is_err());
