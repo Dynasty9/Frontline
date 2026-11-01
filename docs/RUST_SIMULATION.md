@@ -2178,3 +2178,21 @@ wounded-target rejection, artillery, medical credit and invalid profiles. A
 5,675,823-byte numeric transcript compares restored and uninterrupted world state.
 The full vehicle dispatcher, standalone socket server and whole-match replay
 verification remain unfinished.
+
+## Connected vehicle movement
+
+Vehicle scans now update opposing squad contacts directly. Crew decisions use
+shared threats, infantry support and supply bases; withdrawal and evasion submit
+their routes before the next vehicle acts. Drivers query retained terrain and
+traffic, refresh their collision and shove nearby soldiers in the original order.
+Smashing removes obstacle navigation immediately while retaining its collision
+until tick end. Unarmoured light vehicles take their original collision damage,
+including the complete destruction and crew sequence when it is fatal.
+
+Four Godot reference cases compare scans, crew decisions, driving and obstacle
+destruction across the roster. Driving uses the existing component comparison
+tolerances; other actor state and random cursors compare exactly. Five core
+regressions cover shared contacts, withdrawal routes, shoving, collision retirement
+and invalid time steps. A 1,396,679-byte exact numeric transcript checks restored
+and uninterrupted shared state. The complete vehicle and world dispatchers,
+standalone socket server and whole-match replay verifier remain unfinished.

@@ -1486,6 +1486,10 @@ interruptions, perception, decisions and final status in the existing gameplay
 order. Medical recovery, carrying, boarding, tunnels and prisoners update shared
 actors and squads. This dispatcher is checked against Godot; the production world,
 standalone server and complete battle replay verification remain unfinished.
+Retained vehicle movement now connects target reports, crew decisions, submitted
+routes, driving, infantry shoving and obstacle destruction to the same battlefield.
+Destroyed obstacles stop blocking navigation immediately and stop shielding shots
+at tick end, preserving the existing update order.
 Retained navigation owns each structure's overlapping obstacle cells together with
 the infantry and vehicle route hierarchies. Fire counts, bridge decks, terrain
 costs and obstacle removal preserve incremental repair order and pending routes

@@ -103,6 +103,7 @@ kind = "fixed"
 - Squad checks preserve shared contact briefings, leader succession and casualty morale as squad state moves into Rust.
 - Vehicle checks preserve crew order gates, repairs, turret aiming, passenger boarding and saved transport state as vehicle ownership moves into Rust.
 - Driving checks preserve tracked and wheeled steering, traffic gaps, reversing, truck lanes and getting unstuck through saved-state resumes.
+- Connected Rust movement checks preserve crews sharing contacts, withdrawing for repairs, pushing past infantry and smashing obstacles, including a light vehicle destroying itself in the collision.
 - Crew checks preserve withdrawing for repairs, evading missiles, waiting for infantry support and resuming saved orders.
 - Flight checks preserve helicopter momentum, hover braking, landing clearance, sling-load handling and UAV orbits across saved-state resumes.
 - Transport checks preserve sling pickup, swing, release and dropped cargo, plus pilots' landing, unloading, supply-destination and return-flight decisions.

@@ -440,7 +440,7 @@ pub(crate) fn route(r: Result<Route, &'static str>) -> Array<Variant> {
         Err(_) => Array::new(),
     }
 }
-fn ground_profile(a: &Array<Variant>) -> Option<GroundProfile> {
+pub(crate) fn ground_profile(a: &Array<Variant>) -> Option<GroundProfile> {
     if a.len() != 4 {
         return None;
     }

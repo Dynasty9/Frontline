@@ -25,6 +25,8 @@ different byte rather than dumping the fixture.
   perception, decisions, combat, treatment and custody through resumed world state.
 - `vehicle_combat_world.bin`: connected vehicle weapons, defensive smoke,
   artillery missions, resupply and treatment through resumed shared world state.
+- `vehicle_movement_world.bin`: shared target scans, crew withdrawal, driving,
+  infantry shoving and obstacle destruction through resumed world state.
 - `world_routes.bin`: shared soldier/vehicle route completions, queued repairs,
   cancelled orders and retained navigation/actor state across resumed batches.
 - `structure_collision.bin`: structure collision boxes, rotated parts, construction,

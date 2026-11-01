@@ -551,7 +551,7 @@ impl VehicleLossWorldCore {
         )
     }
     #[func]
-    fn advance_vehicle_combat(
+    fn advance_vehicle(
         &mut self,
         actors: Gd<ActorStateCore>,
         geometry: Gd<WorldGeometryCore>,
@@ -568,7 +568,7 @@ impl VehicleLossWorldCore {
         network: Gd<SupplyNetworkCore>,
         impacts: Array<Variant>,
     ) -> Array<Variant> {
-        if mode > 2 {
+        if mode > 6 {
             return Array::new();
         }
         let Some(reports) = read_impacts(&impacts) else {
@@ -857,7 +857,7 @@ impl VehicleLossWorldCore {
                     if input.len()
                         != match mode {
                             2 => 8,
-                            3..=8 => 7,
+                            3.. => 7,
                             _ => 6,
                         }
                     {
@@ -979,7 +979,103 @@ impl VehicleLossWorldCore {
                     }
                 };
                 let mut vehicle_effects = Array::<Variant>::new();
-                let result = if mode >= 6 {
+                let result = if mode >= 9 {
+                    use frontline_core::vehicle_movement_world::Event as Motion;
+                    let Some(data) = read::<Array<Variant>>(&input, 6) else {
+                        return Array::new();
+                    };
+                    let result = match mode {
+                        9 => {
+                            let Some(p) = read::<PackedFloat64Array>(&data, 0) else {
+                                return Array::new();
+                            };
+                            if data.len() != 1
+                                || p.len() != 6
+                                || p.as_slice()[2..].iter().any(|v| *v != 0.0 && *v != 1.0)
+                            {
+                                return Array::new();
+                            }
+                            context
+                                .scan_vehicle_world(
+                                    id,
+                                    frontline_core::vehicle_scan::ScanProfile {
+                                        sight: p[0],
+                                        gun_height: p[1],
+                                        cannon: p[2] != 0.0,
+                                        gunship: p[3] != 0.0,
+                                        anti_air: p[4] != 0.0,
+                                        penetrating_mg: p[5] != 0.0,
+                                    },
+                                )
+                                .map(|_| vec![])
+                        }
+                        10 => {
+                            let (Some(mission), Some(cannons)) =
+                                (read::<bool>(&data, 0), read::<PackedInt64Array>(&data, 1))
+                            else {
+                                return Array::new();
+                            };
+                            if data.len() != 2 || cannons.len() > 100_000 {
+                                return Array::new();
+                            }
+                            let Some(cannons) = cannons
+                                .as_slice()
+                                .iter()
+                                .map(|&id| u32::try_from(id).ok().filter(|id| *id != 0))
+                                .collect::<Option<std::collections::BTreeSet<_>>>()
+                            else {
+                                return Array::new();
+                            };
+                            let Some(v) = context.actors.vehicle(id) else {
+                                return Array::new();
+                            };
+                            context.think_vehicle_world(id, defense(v).crew, mission, &|v| {
+                                cannons.contains(&v.id)
+                            })
+                        }
+                        11 => {
+                            let Some(profile) = crate::vehicle::ground_profile(&data) else {
+                                return Array::new();
+                            };
+                            context.drive_vehicle_world(id, dt, profile)
+                        }
+                        12 => {
+                            let (Some(light), Some(armor)) =
+                                (read::<bool>(&data, 0), read::<u8>(&data, 1))
+                            else {
+                                return Array::new();
+                            };
+                            if data.len() != 2 {
+                                return Array::new();
+                            }
+                            context.smash_vehicle_world(id, light, armor)
+                        }
+                        _ => return Array::new(),
+                    };
+                    result.map(|events| {
+                        events
+                            .into_iter()
+                            .filter_map(|e| match e {
+                                Motion::Stat(key) => {
+                                    Some(fighting::Event::World(world_combat::Event::Stat(key)))
+                                }
+                                Motion::Loss(e) => {
+                                    Some(fighting::Event::World(world_combat::Event::Vehicle(e)))
+                                }
+                                Motion::Track(id) => {
+                                    vehicle_effects.push(&varray!["track", id].to_variant());
+                                    None
+                                }
+                                Motion::Smashed { structure, .. } => {
+                                    vehicle_effects
+                                        .push(&varray!["smash", structure.id].to_variant());
+                                    None
+                                }
+                                Motion::Crew { .. } => None,
+                            })
+                            .collect()
+                    })
+                } else if mode >= 6 {
                     use frontline_core::vehicle_combat_world::{
                         Event as VehicleEvent, MachineGun, Profile,
                     };
@@ -1392,7 +1488,7 @@ impl VehicleLossWorldCore {
                 reports = Some(impacts);
                 chat_state = Some(PackedFloat64Array::from(chat.as_slice()));
                 result.map(|events| {
-                    if (3..=8).contains(&mode) {
+                    if mode >= 3 {
                         use frontline_core::infantry_action_owned::Event as Ordnance;
                         construction = Some(events.iter().filter_map(|e| match e {
                             fighting::Event::Ordnance(Ordnance::Mortar(p)) => Some(varray!["mortar", vector(*p)].to_variant()),
@@ -1442,7 +1538,7 @@ impl VehicleLossWorldCore {
                                 fighting::Event::World(world_combat::Event::InfantryHit {
                                     id,
                                     hit,
-                                }) => hit.speech.map(|cue| {
+                                }) | fighting::Event::World(world_combat::Event::Vehicle(Event::Passenger { id, hit })) => hit.speech.map(|cue| {
                                     varray![
                                         *id,
                                         ["I'm hit!", "Argh!", "Took one!", "Hit! I'm hit!"]
@@ -1452,6 +1548,9 @@ impl VehicleLossWorldCore {
                                 }),
                                 fighting::Event::World(world_combat::Event::Infantry(victim)) => victim.hit.as_ref().and_then(|hit| hit.speech).map(|cue| {
                                     varray![victim.soldier, ["I'm hit!", "Argh!", "Took one!", "Hit! I'm hit!"][cue as usize]].to_variant()
+                                }),
+                                fighting::Event::World(world_combat::Event::Vehicle(Event::Bailout { vehicle, survivors, .. })) => survivors.first().map(|id| {
+                                    varray![*id, if vehicle.team == 0 { "Bail out! Bail out!" } else { "Out! Get out, it's burning!" }].to_variant()
                                 }),
                                 fighting::Event::World(world_combat::Event::Speech(speech)) => {
                                     Some(
