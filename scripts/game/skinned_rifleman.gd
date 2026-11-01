@@ -58,6 +58,7 @@ var recoil := ImpactResponse.new()
 var solve_contacts := true
 var hold_weapon := true
 var _activity_clip := ""
+var grenade_prop: Node3D
 var _sling_socket := Transform3D.IDENTITY
 var weapon_stowed := false
 var equip_time := 1.0
@@ -388,6 +389,7 @@ func kill(impulse: Vector3, kind := 1) -> void:
 	if dead:
 		return
 	dead = true
+	if grenade_prop != null: grenade_prop.hide()
 	ragdoll = SkinnedRagdoll.new()
 	get_parent().add_child(ragdoll)
 	ragdoll.build(self, last_velocity, impulse, kind)
@@ -485,6 +487,27 @@ func pose_procedural(model, dt: float, posture := -1) -> void:
 			skeleton.set_bone_pose_rotation(index, native_rifle_arms[index])
 	_apply_hit(dt)
 	_blend_pose(dt)
+	if model.last_act == Soldier.Act.CRAWL:
+		for side in ["Left", "Right"]:
+			var sign := -1.0 if side == "Left" else 1.0
+			var shoulder := joint(side + "Arm").origin
+			var swing := sin(model.phase) * sign
+			var goal := shoulder + global_basis * Vector3(sign * 0.16, 0, -0.25 - swing * 0.12)
+			goal.y = (ground_height.call(goal) if ground_height.is_valid() else ground_y) + 0.07
+			var weight := smoothstep(0.0, _transition_duration, _transition_time)
+			goal = joint(side + "Hand").origin.lerp(goal, weight)
+			solve_limb(side + "Arm", side + "ForeArm", side + "Hand", goal, global_basis * Vector3(sign, -0.2, 0.1))
+			var hand := joint(side + "Hand")
+			var finger := hand.basis.inverse() * (joint(side + "HandMiddle1").origin - hand.origin).normalized()
+			var thumb := hand.basis.inverse() * (joint(side + "HandThumb1").origin - hand.origin).normalized()
+			var palm := finger.cross(thumb).normalized() * -sign
+			var normal: Vector3 = ground_normal.call(goal) if ground_normal.is_valid() else Vector3.UP
+			var down := -normal
+			var forward := (global_basis * Vector3.FORWARD).slide(normal).normalized()
+			var planted := Basis(forward, down.cross(forward), down) * Basis(finger, palm.cross(finger), palm).inverse()
+			hand.basis = hand.basis.slerp(planted, weight)
+			set_world(int(bones[side + "Hand"]), hand)
+
 	if model.crew:
 		var spine := joint("Spine")
 		spine.basis = Basis(global_basis.x.normalized(), -0.22) * spine.basis
@@ -588,7 +611,7 @@ func fire_kick(strength: float) -> void:
 func _begin_pose(mode: int) -> void:
 	if shovel != null: shovel.visible = mode == 21
 	if mode == _pose_mode: return
-	_transition_from_prone = _pose_mode == 10
+	_transition_from_prone = _pose_mode in [5, 10]
 	foot_offsets = [Vector2.ZERO, Vector2.ZERO]
 	if _pose_mode >= 0:
 		# Lowering or lifting the whole body needs longer than an aiming crossfade.
@@ -664,15 +687,32 @@ func pose_native(dt: float, clip: String) -> void:
 	last_velocity = Vector3.ZERO
 
 
-func pose_activity(dt: float, clip: String) -> void:
-	_begin_pose(21 if clip.ends_with("Digging") else 20)
+func pose_activity(dt: float, clip: String, throw_time := -1.0, prone_throw := false) -> void:
+	_begin_pose(24 if throw_time >= 0.0 else (21 if clip.ends_with("Digging") else 20))
+	var lower: Array[Transform3D] = []
+	if throw_time >= 0.0:
+		for i in skeleton.get_bone_count(): lower.append(skeleton.get_bone_pose(i))
 	if _activity_clip != clip or native_player.current_animation != clip:
 		native_player.play(clip, 0.0)
 		_activity_clip = clip
-	native_player.advance(dt)
+	if throw_time >= 0.0:
+		native_player.seek(minf(throw_time / 0.6, 1.0) * native_player.get_animation(clip).length, true)
+	else:
+		native_player.advance(dt)
+	if throw_time >= 0.0:
+		var native_hips := skeleton.get_bone_pose(int(bones["Hips"])).basis
+		for name in bones:
+			if name == "Hips" or "Leg" in name or "Foot" in name or "Toe" in name or (prone_throw and ("Spine" in name or name in ["Neck", "Head"])):
+				var index: int = bones[name]
+				skeleton.set_bone_pose(index, lower[index])
+		if not prone_throw:
+			var spine_index: int = bones["Spine"]
+			var spine := skeleton.get_bone_pose(spine_index)
+			spine.basis = lower[int(bones["Hips"])].basis.inverse() * native_hips * spine.basis
+			skeleton.set_bone_pose(spine_index, spine)
 	_apply_hit(dt)
-	_blend_pose(dt)
-	_ground_feet(0.0, dt)
+	_blend_pose(0.0 if throw_time >= 0.0 else dt)
+	if throw_time < 0.0: _ground_feet(0.0, dt)
 	# The sling follows the captured torso, leaving both hands free.
 	weapon.global_transform = joint("Spine2") * _sling_socket
 	weapon.visible = true
@@ -722,3 +762,13 @@ func calibrate_native_weapon() -> void:
 	var forward := horizontal.normalized() * cos(pitch) + Vector3.UP * sin(pitch)
 	var orientation := Basis.looking_at(forward, Vector3.UP, true)
 	native_socket = hand_pose.affine_inverse() * Transform3D(orientation, right + orientation.y * 0.035)
+
+func sync_grenade(model: SoldierModel) -> void:
+	if model.nade.visible and grenade_prop == null:
+		grenade_prop = model.nade.duplicate() as Node3D
+		add_child(grenade_prop)
+	if grenade_prop == null: return
+	grenade_prop.visible = model.nade.visible and not dead
+	if grenade_prop.visible:
+		var hand := joint("RightHand")
+		grenade_prop.global_transform = Transform3D(hand.basis, hand.origin.lerp(joint("RightHandMiddle1").origin, 0.8))

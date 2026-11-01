@@ -490,7 +490,10 @@ func _contacts(speed: float, dt: float) -> void:
 		var stance := 1.0 - smoothstep(0.015, 0.12, lift)
 		var idle := 1.0 - smoothstep(0.05, 0.35, speed)
 		contact_weights[side] = lerpf(contact_weights[side], maxf(stance, idle * crouch_weight), follow)
-		if idle > 0.0:
+		if actor._transition_time < actor._transition_duration:
+			foot.locked = false
+			plant_ready[side] = true
+		elif idle > 0.0:
 			if not foot.locked: foot.point = support
 			foot.locked = true
 		elif support_lift > 0.065:
@@ -546,7 +549,10 @@ func _contacts(speed: float, dt: float) -> void:
 		var horizontal := Vector2(goal.x - hip.x, goal.z - hip.z).length_squared()
 		lower_pelvis = maxf(lower_pelvis, hip.y - goal.y - sqrt(maxf(0.01, length * length - horizontal)))
 		goals.append(goal)
-		poles.append(knee - hip)
+		var pole := knee - hip
+		if crouch_weight > 0.0:
+			pole = actor.global_basis * Vector3(-0.15 if side == 0 else 0.15, 0, -1)
+		poles.append(pole)
 	pelvis_drop = move_toward(pelvis_drop, minf(lower_pelvis, 0.25), dt * 0.4) if crouch_weight > 0.5 else lerpf(pelvis_drop, minf(lower_pelvis, 0.25), follow)
 	var pelvis := actor.joint("Hips")
 	pelvis.origin.y -= pelvis_drop
@@ -564,6 +570,9 @@ func _contacts(speed: float, dt: float) -> void:
 		var foot_basis := before.basis.slerp(actor.global_basis * actor.target_rest[int(actor.bones[prefix + "Foot"])].basis, flat_weight)
 		ankle.basis = Basis(tilt) * foot_basis
 		actor.set_world(int(actor.bones[prefix + "Foot"]), ankle)
+		var toe_index: int = actor.bones[prefix + "ToeBase"]
+		var toe_rotation := actor.skeleton.get_bone_pose_rotation(toe_index)
+		actor.skeleton.set_bone_pose_rotation(toe_index, toe_rotation.slerp(actor.skeleton.get_bone_rest(toe_index).basis.get_rotation_quaternion(), flat_weight))
 		var correction := ankle.origin - before.origin
 		if contacts_sampled and correction.distance_to(previous_corrections[side]) > max_contact_change:
 			max_contact_change = correction.distance_to(previous_corrections[side])
