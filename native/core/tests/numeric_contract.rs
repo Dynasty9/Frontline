@@ -70,6 +70,14 @@ mod vehicle_combat_world;
 #[path = "fixtures/vehicle_movement_world.rs"]
 mod vehicle_movement_world;
 
+#[path = "fixtures/ordnance_world.rs"]
+mod ordnance_world;
+
+#[test]
+fn connected_ordnance_is_identical_across_platforms() {
+    golden("ordnance_world", &ordnance_world::transcript());
+}
+
 #[test]
 fn connected_vehicle_movement_is_identical_across_platforms() {
     golden(

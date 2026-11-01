@@ -551,7 +551,7 @@ impl VehicleLossWorldCore {
         )
     }
     #[func]
-    fn advance_vehicle(
+    fn advance_actor(
         &mut self,
         actors: Gd<ActorStateCore>,
         geometry: Gd<WorldGeometryCore>,
@@ -568,7 +568,7 @@ impl VehicleLossWorldCore {
         network: Gd<SupplyNetworkCore>,
         impacts: Array<Variant>,
     ) -> Array<Variant> {
-        if mode > 6 {
+        if mode > 8 {
             return Array::new();
         }
         let Some(reports) = read_impacts(&impacts) else {
@@ -979,7 +979,91 @@ impl VehicleLossWorldCore {
                     }
                 };
                 let mut vehicle_effects = Array::<Variant>::new();
-                let result = if mode >= 9 {
+                let result = if mode >= 13 {
+                    use frontline_core::ordnance_world::Event as Ordnance;
+                    let Some(data) = read::<Array<Variant>>(&input, 6) else {
+                        return Array::new();
+                    };
+                    if data.len() != 2 {
+                        return Array::new();
+                    }
+                    let (Some(a), Some(b)) = (
+                        read::<PackedVector4Array>(&data, 0),
+                        read::<PackedVector4Array>(&data, 1),
+                    ) else {
+                        return Array::new();
+                    };
+                    if a.len() > 100_000 || b.len() > 100_000 {
+                        return Array::new();
+                    }
+                    let mut marks = [vec![], vec![]];
+                    for (side, values) in [a, b].iter().enumerate() {
+                        for p in values.as_slice() {
+                            if !p.is_finite()
+                                || p.x.abs() > 1_000_000.0
+                                || p.y.abs() > 1_000_000.0
+                                || !(0.0..=4096.0).contains(&p.z)
+                                || p.w.abs() > 1e12
+                            {
+                                return Array::new();
+                            }
+                            marks[side].push([p.x, p.y, p.z, p.w]);
+                        }
+                    }
+                    let result = if mode == 13 {
+                        context.advance_projectile_world(
+                            id,
+                            dt,
+                            &mut marks,
+                            &mut network.bind_mut().core,
+                            &mut impacts,
+                            &armor,
+                        )
+                    } else {
+                        context.advance_drone_world(
+                            id,
+                            dt,
+                            &mut network.bind_mut().core,
+                            &mut impacts,
+                            &armor,
+                        )
+                    };
+                    result.map(|events| {
+                        let events = events
+                            .into_iter()
+                            .filter_map(|e| match e {
+                                Ordnance::Combat(e) => Some(fighting::Event::World(e)),
+                                Ordnance::Sound {
+                                    name,
+                                    volume,
+                                    position,
+                                } => {
+                                    vehicle_effects.push(
+                                        &varray!["far_sound", name, volume, vector(position)]
+                                            .to_variant(),
+                                    );
+                                    None
+                                }
+                                Ordnance::Smothered { soldier, .. } => {
+                                    vehicle_effects
+                                        .push(&varray!["smother_notice", soldier].to_variant());
+                                    None
+                                }
+                                Ordnance::Spawn(_) => None,
+                            })
+                            .collect();
+                        let pack = |values: &[[f32; 4]]| {
+                            values
+                                .iter()
+                                .map(|p| Vector4::new(p[0], p[1], p[2], p[3]))
+                                .collect::<PackedVector4Array>()
+                        };
+                        vehicle_effects.push(
+                            &varray!["marks", &pack(&marks[0]), &pack(&marks[1])].to_variant(),
+                        );
+                        events
+                    })
+                } else if mode >= 9 {
                     use frontline_core::vehicle_movement_world::Event as Motion;
                     let Some(data) = read::<Array<Variant>>(&input, 6) else {
                         return Array::new();
@@ -1496,6 +1580,7 @@ impl VehicleLossWorldCore {
                             fighting::Event::Ordnance(Ordnance::Door(id)) => context.actors.structure(*id).map(|st| varray!["door", vector(st.position + frontline_core::vector::Vector3::Y)].to_variant()),
                             fighting::Event::Ordnance(Ordnance::Melee { position, .. }) => Some(varray!["melee", vector(*position)].to_variant()),
                             fighting::Event::Movement { event: frontline_core::infantry_travel_owned::Event::Door { id, kicked: true }, .. } => context.actors.structure(*id).map(|st| varray!["door", vector(st.position + frontline_core::vector::Vector3::Y)].to_variant()),
+                            fighting::Event::World(world_combat::Event::Structure { id, damage }) if damage.events.contains(&frontline_core::structure_damage::Event::Door) => damage.removed.as_deref().or_else(|| context.actors.structure(*id)).map(|st| varray!["door", vector(st.position + frontline_core::vector::Vector3::Y)].to_variant()),
                             _ => None,
                         }).collect());
                     }

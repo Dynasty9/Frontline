@@ -21,7 +21,7 @@ graphics, network access or a wall clock.
 | Infantry target acquisition | `frontline_core` | Retained actors build perception snapshots, schedule scans, resolve poses, visibility, mounted-gun arcs, weapon priorities, drones and forced targets, update shared squad reports and compute separation; the live dispatcher still runs in Godot |
 | Gameplay RNG, including commander streams | `frontline_core` | Seeded PCG stream matches Godot 4.7; cosmetic RNG stays in Godot |
 | Grenade, smoke, rocket, bomb and shell flight | `frontline_core` | Rust retains and advances flight state and queries native geometry; the adapter supplies holders and applies impacts |
-| Retained projectile actors and impacts | `frontline_core` | Ballistic, guided and support actors retain ownership, holder/handler links and attribution with flight checkpoints; ordered impact, spawn, smoke, recon and sound effects still await the Rust world dispatcher |
+| Retained projectile actors and impacts | `frontline_core` | Connected flight resolves shared holders, guided targets and support contacts, then applies impacts, spawns, smoke, recon and sound in order; the production world dispatcher remains unfinished |
 | Shared actor storage and FPV ownership | `frontline_core` | Infantry, buildings, vehicles, projectiles and drones retain identities, state and shared casualty/transport links together; drones resolve living targets and operators inside Rust. Squad integration and complete world dispatch remain unfinished |
 | Squad state and shared knowledge | `frontline_core` | Orders, contact caches, plan links and tactical state have retained checkpoints; centroid, contact reports, threats, succession and casualty morale operate on owned actors. Squad orders, drills and the full squad tick still run in Godot |
 | Retained buildings and economy transitions | `frontline_core` | Geometry, links, queues and timers have retained checkpoints; construction, capture, town income and production transitions match Godot. Shared rule effects, destruction, crews and the complete building dispatcher remain unfinished |
@@ -33,7 +33,7 @@ graphics, network access or a wall clock.
 | Ground cells, crater heights and queued cover repairs | `frontline_core` | Rust retains terrain and ordered structure geometry, and performs edits, queries and cover repairs; Godot imports biome generation and forwards navigation notifications |
 | Water shapes, bridge decks and water terrain rasterization | `frontline_core` | Ordered numeric rasterization; a Rust worker also applies the joining host's ground overrides; Godot still generates the initial shapes |
 | Hierarchical route assembly, repairs and danger weights | `frontline_core` | Rust owns graph slots, borders, cost tables, repair order and terrain/danger revisions |
-| FPV drone flight | `frontline_core` | Climb, cruise, dive, loss of control and collision; Godot supplies targets and applies damage |
+| FPV drone flight | `frontline_core` | Connected flight resolves retained operators and targets, applies shared blast damage and removes the drone afterward; production world dispatch remains in Godot |
 | Guided missiles and support aircraft | `frontline_core` | Flight, target-lock loss, bomb release, burst schedules, pending hits and random draws; Godot supplies contacts and applies events |
 | Entity identities and lifecycle order | `frontline_core` | Rust allocates authoritative IDs and retains ordered live identities through spawn/despawn; Godot still owns the corresponding actor state and scene objects |
 | Entity state and full actor updates | Rust | `world.gd`, `entity.gd` and entity scripts |
@@ -2196,3 +2196,27 @@ regressions cover shared contacts, withdrawal routes, shoving, collision retirem
 and invalid time steps. A 1,396,679-byte exact numeric transcript checks restored
 and uninterrupted shared state. The complete vehicle and world dispatchers,
 standalone socket server and whole-match replay verifier remain unfinished.
+
+## Connected projectile and FPV updates
+
+Projectile updates resolve grenade holders, smothering soldiers, guided targets,
+source exclusion bodies and gunship contacts from retained actors. Support aircraft
+retain the original infantry query order and double vehicle targeting weight.
+Flight emits its ordered actions before shared blast damage, spawns, smoke changes,
+reconnaissance marks and removal are applied. Grenade smothering damages the covering
+soldier before the reduced blast; bombs and gunship shells retain their original
+attribution. FPV updates resolve operator loss and living targets, mark the drone
+dead before applying its blast, then remove it.
+
+Recon marks are four float32 values (x, z, radius, expiration) in per-team insertion
+order, matching the existing game. Smoke volumes enter and leave the shared
+visibility state with their projectile. Native support snapshots preserve pending
+hits and firing schedules instead of resetting the aircraft between comparisons.
+
+Six core regressions cover casualties, smothering, missing holders, smoke expiry,
+missile lock loss, bomb attribution, recon, FPV impacts, invalid time steps and
+checkpoint continuation. A 1,653,080-byte numeric transcript records complete
+shared state and recon marks through resumed updates. Two Godot reference cases
+compare projectile/support and drone updates against the same mixed battlefield.
+The production dispatcher, standalone server and whole-match verifier remain
+unfinished.

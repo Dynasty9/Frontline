@@ -27,6 +27,8 @@ different byte rather than dumping the fixture.
   artillery missions, resupply and treatment through resumed shared world state.
 - `vehicle_movement_world.bin`: shared target scans, crew withdrawal, driving,
   infantry shoving and obstacle destruction through resumed world state.
+- `ordnance_world.bin`: shared grenade casualties, smothering, smoke expiry,
+  missile lock loss, support spawns, recon marks and FPV impacts through resumes.
 - `world_routes.bin`: shared soldier/vehicle route completions, queued repairs,
   cancelled orders and retained navigation/actor state across resumed batches.
 - `structure_collision.bin`: structure collision boxes, rotated parts, construction,

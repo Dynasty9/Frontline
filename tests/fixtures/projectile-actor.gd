@@ -45,6 +45,13 @@ func start(p: Projectile, core: RefCounted) -> int:
 	assert(core.load_state(metadata(p), kind, bytes))
 	return kind
 
+func snapshot(p: Projectile, core: RefCounted) -> void:
+	# Preserve support schedules and pending hits instead of restarting the aircraft.
+	if p._support: assert(core.load_state(metadata(p),2,p._support.checkpoint()))
+	elif p._guided: assert(core.load_state(metadata(p),1,p._guided.checkpoint()))
+	elif p._flight: assert(core.load_state(metadata(p),0,p._flight.checkpoint()))
+	else: start(p,core)
+
 func blast(pos: Vector3, data: Dictionary) -> Array:
 	return [0, pos, Array(PackedFloat64Array([data.get("dmg", 120.0), data.get("radius", 5.0), data.get("fling", 8.0), data.get("at", 0.0), data.get("track", 0.3), data.get("size", 1.0), data.get("struct_mult", 1.0)])),
 		[data.dir] if data.has("dir") else [], data.get("top", false), InfantryState.entity_id(data.get("src")), data.get("team", -1), data.get("by", 0)]

@@ -1490,6 +1490,11 @@ Retained vehicle movement now connects target reports, crew decisions, submitted
 routes, driving, infantry shoving and obstacle destruction to the same battlefield.
 Destroyed obstacles stop blocking navigation immediately and stop shielding shots
 at tick end, preserving the existing update order.
+Connected Rust projectiles resolve their holders, guided targets and gunship
+contacts from retained actors. Impacts apply shared casualties, blast effects,
+attribution and removal in order; smoke updates visibility and reconnaissance
+retains timed marks. FPV flight now connects operator loss, target movement and
+detonation to that same battlefield. Production world dispatch remains unfinished.
 Retained navigation owns each structure's overlapping obstacle cells together with
 the infantry and vehicle route hierarchies. Fire counts, bridge decks, terrain
 costs and obstacle removal preserve incremental repair order and pending routes

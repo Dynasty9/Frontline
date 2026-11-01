@@ -78,6 +78,7 @@ pub mod infantry_world;
 pub mod infantry_wounded_world;
 pub mod navigation_grid;
 pub mod navigation_scene;
+pub mod ordnance_world;
 pub mod path_planner;
 pub mod perception;
 pub mod prisoner_intelligence;
