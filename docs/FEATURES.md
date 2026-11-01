@@ -1539,6 +1539,11 @@ Squad-state checks preserve shared contact reports, briefing timing, leader
 succession and casualty morale against the existing game. Squad checkpoints retain
 orders, formation slots, queued fire missions and plan links; the full squad
 decision loop still runs in Godot during migration.
+Retained defense and assault orders now place members in cover and preserve
+pinning, alternating bounds and covering fire. Deliberate attacks retain their
+support/assault teams, covered flanks, smoke and grenade rushes, shifting fire,
+reinforcement, fallback and consolidation through checkpoints. The Rust world
+dispatcher still needs to own and schedule these plans in production.
 The full
 authoritative Rust server and deterministic
 battle verifier are still in progress; see [RUST_SIMULATION.md](RUST_SIMULATION.md).

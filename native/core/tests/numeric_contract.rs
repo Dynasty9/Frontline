@@ -70,8 +70,15 @@ mod vehicle_combat_world;
 #[path = "fixtures/vehicle_movement_world.rs"]
 mod vehicle_movement_world;
 
+#[path = "fixtures/attack_plan_world.rs"]
+mod attack_plan_world;
 #[path = "fixtures/ordnance_world.rs"]
 mod ordnance_world;
+
+#[test]
+fn deliberate_attacks_are_identical_across_platforms() {
+    golden("attack_plan_world", &attack_plan_world::transcript());
+}
 
 #[test]
 fn connected_ordnance_is_identical_across_platforms() {

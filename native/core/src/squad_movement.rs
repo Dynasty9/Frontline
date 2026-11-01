@@ -24,6 +24,10 @@ pub enum Call {
     Moving,
     Set,
     Recon,
+    Defend,
+    Assault,
+    AssaultBound,
+    Pinned,
 }
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Event {
@@ -53,13 +57,13 @@ pub struct Context<'a> {
     pub automatic: &'a dyn Fn(&str) -> bool,
     pub player_building: &'a dyn Fn(&str) -> bool,
 }
-fn flat(p: Vector3) -> Vector3 {
+pub(crate) fn flat(p: Vector3) -> Vector3 {
     Vector3::new(p.x, 0.0, p.z)
 }
-fn point(p: Vector3) -> bool {
+pub(crate) fn point(p: Vector3) -> bool {
     p.is_finite() && p.abs().max_element() <= 1_000_000.0
 }
-fn available(s: &Infantry) -> bool {
+pub(crate) fn available(s: &Infantry) -> bool {
     s.duty.kind.can_take_orders(s.vitals.life, s.duty.phase)
 }
 fn set_cooldown(q: &mut Squad, key: &str, value: f64) -> Result<(), &'static str> {
@@ -154,7 +158,7 @@ impl Context<'_> {
         }
         Ok(out)
     }
-    fn index(&self, id: u32) -> Result<usize, &'static str> {
+    pub(crate) fn index(&self, id: u32) -> Result<usize, &'static str> {
         if !self.now.is_finite()
             || self.now.abs() > 1e12 - 100.0
             || self
@@ -171,7 +175,7 @@ impl Context<'_> {
             .position(|q| q.id == id && q.valid())
             .ok_or("missing moving squad")
     }
-    fn command(&mut self, id: u32, order: Command) -> Result<(), &'static str> {
+    pub(crate) fn command(&mut self, id: u32, order: Command) -> Result<(), &'static str> {
         self.actors.command_infantry(
             id,
             order,
@@ -182,7 +186,7 @@ impl Context<'_> {
         )?;
         Ok(())
     }
-    fn leader(&mut self, i: usize, out: &mut Vec<Event>) -> u32 {
+    pub(crate) fn leader(&mut self, i: usize, out: &mut Vec<Event>) -> u32 {
         let (id, speech) =
             self.squads[i].get_leader(self.actors, |s| (self.man)(s).bearer, self.rng);
         if let Some(s) = speech {
@@ -219,7 +223,7 @@ impl Context<'_> {
             self.say(id, call, count, true, out);
         }
     }
-    fn formation(
+    pub(crate) fn formation(
         &self,
         center: Vector3,
         face: Vector3,
@@ -291,6 +295,233 @@ impl Context<'_> {
         }
         let mut out = vec![];
         self.move_inner(i, position, face, mode, tactical, &mut out)?;
+        Ok(out)
+    }
+    pub fn order_defend(
+        &mut self,
+        id: u32,
+        position: Vector3,
+        face: Vector3,
+        direct: bool,
+    ) -> Result<Vec<Event>, &'static str> {
+        let i = self.index(id)?;
+        if !point(position) || !point(face) {
+            return Err("invalid squad defense");
+        }
+        let mut out = vec![];
+        let q = &mut self.squads[i];
+        if !direct
+            && flat(position - q.centroid(self.now, self.actors)).length() > 45.0
+            && q.drill.is_empty()
+        {
+            self.move_inner(i, position, face, 0, true, &mut out)?;
+            self.squads[i].then_defend = Some([position, face]);
+            return Ok(out);
+        }
+        self.regroup(i, &mut out);
+        self.set_objective(i, "defend", position, face);
+        let members = self.squads[i]
+            .members
+            .iter()
+            .copied()
+            .filter(|&id| self.actors.soldier(id).is_some_and(available))
+            .collect::<Vec<_>>();
+        if members.is_empty() {
+            return Ok(out);
+        }
+        let face = self.squads[i].facing;
+        let slots = self.formation(position, face, &members, true)?;
+        for (&id, slot) in members.iter().zip(slots) {
+            self.command(
+                id,
+                Command::Move {
+                    slot,
+                    mode: 0,
+                    face,
+                },
+            )?;
+            self.actors.soldier_mut(id).unwrap().orders.leash = 7.0;
+        }
+        self.squads[i].ambush = !self.squads[i].in_combat(self.now);
+        self.say(members[0], Call::Defend, 5, true, &mut out);
+        Ok(out)
+    }
+    fn set_objective(&mut self, i: usize, order: &str, position: Vector3, face: Vector3) {
+        let q = &mut self.squads[i];
+        q.order = order.into();
+        q.order_position = position;
+        q.facing = if f64::from(face.length()) > 0.1 {
+            face
+        } else {
+            normalized(flat(position - q.centroid(self.now, self.actors)))
+        };
+        if f64::from(q.facing.length()) < 0.1 {
+            q.facing = Vector3::NEG_Z;
+        }
+        q.build_target = 0;
+    }
+    pub(crate) fn prepare_assault(
+        &mut self,
+        id: u32,
+        position: Vector3,
+        face: Vector3,
+        out: &mut Vec<Event>,
+    ) -> Result<usize, &'static str> {
+        let i = self.index(id)?;
+        if !point(position) || !point(face) {
+            return Err("invalid squad assault");
+        }
+        self.regroup(i, out);
+        self.set_objective(i, "assault", position, face);
+        let q = &mut self.squads[i];
+        q.bound_team = 0;
+        q.bound_time = 0.0;
+        q.contact_time = -99.0;
+        for &id in &q.members {
+            if let Some(s) = self.actors.soldier_mut(id).filter(|s| available(s)) {
+                s.fight.forced_target = 0;
+            }
+        }
+        Ok(i)
+    }
+    /// Small squads and reinforcements bound without creating a separate attack plan.
+    pub fn order_assault_bounds(
+        &mut self,
+        id: u32,
+        position: Vector3,
+        face: Vector3,
+    ) -> Result<Vec<Event>, &'static str> {
+        let mut out = vec![];
+        let i = self.prepare_assault(id, position, face, &mut out)?;
+        self.start_assault_bounds(i, &mut out)?;
+        Ok(out)
+    }
+    pub(crate) fn start_assault_bounds(
+        &mut self,
+        i: usize,
+        out: &mut Vec<Event>,
+    ) -> Result<(), &'static str> {
+        self.next_assault_bound(i, 14.0, out)?;
+        let leader = self.squads[i]
+            .alive(self.actors)
+            .next()
+            .map(|s| s.identity.id);
+        if let Some(id) = leader {
+            self.say(id, Call::Assault, 4, true, out);
+        }
+        Ok(())
+    }
+    fn next_assault_bound(
+        &mut self,
+        i: usize,
+        leg_max: f64,
+        out: &mut Vec<Event>,
+    ) -> Result<(), &'static str> {
+        let q = &mut self.squads[i];
+        let members = q
+            .members
+            .iter()
+            .copied()
+            .filter(|&id| {
+                self.actors
+                    .soldier(id)
+                    .is_some_and(|s| available(s) && !s.orders.detached)
+            })
+            .collect::<Vec<_>>();
+        if members.is_empty() {
+            return Ok(());
+        }
+        let center = q.centroid(self.now, self.actors);
+        let to = flat(q.order_position - center);
+        let leg = f64::from(to.length()).min(leg_max);
+        let dest = if to.length() > 0.5 {
+            center + normalized(to) * leg as f32
+        } else {
+            q.order_position
+        };
+        let group = members
+            .iter()
+            .copied()
+            .enumerate()
+            .filter_map(|(k, id)| {
+                (members.len() <= 2 || k % 2 == q.bound_team as usize).then_some(id)
+            })
+            .collect::<Vec<_>>();
+        let face = q.facing;
+        let slots = self.formation(dest, face, &group, false)?;
+        for (&id, slot) in group.iter().zip(slots) {
+            self.command(
+                id,
+                Command::Move {
+                    slot,
+                    mode: 1,
+                    face,
+                },
+            )?;
+        }
+        let q = &mut self.squads[i];
+        q.bound_team = 1 - q.bound_team;
+        q.bound_time = self.now + 12.0;
+        if !group.is_empty() && members.len() > 2 && f64::from(self.rng.randf()) < 0.35 {
+            self.say(group[0], Call::AssaultBound, 4, false, out);
+        }
+        Ok(())
+    }
+    pub fn assault_bounds_tick(&mut self, id: u32) -> Result<Vec<Event>, &'static str> {
+        let i = self.index(id)?;
+        let q = &mut self.squads[i];
+        let mut out = vec![];
+        if q.order != "assault" {
+            return Ok(out);
+        }
+        if q.plan != 0 {
+            return Err("planned assault requires its attack plan");
+        }
+        let alive = q
+            .alive(self.actors)
+            .map(|s| s.identity.id)
+            .collect::<Vec<_>>();
+        if alive.is_empty() {
+            return Ok(out);
+        }
+        let contact = q.in_combat(self.now);
+        if contact {
+            q.contact_time = self.now;
+        }
+        let supp = alive
+            .iter()
+            .map(|&id| self.actors.soldier(id).unwrap().vitals.suppression)
+            .sum::<f64>()
+            / alive.len() as f64;
+        if contact && (supp > 55.0 || alive.len() * 2 < q.members.len()) {
+            if self.now > q.bound_time {
+                q.bound_time = self.now + 5.0;
+                if f64::from(self.rng.randf()) < 0.3 {
+                    self.say(alive[0], Call::Pinned, 3, true, &mut out);
+                }
+            }
+            return Ok(out);
+        }
+        let center = q.centroid(self.now, self.actors);
+        if flat(q.order_position - center).length() < 7.0 {
+            let (position, face) = (q.order_position, q.facing);
+            return self.order_defend(id, position, face, false);
+        }
+        if self.now < q.bound_time
+            && alive.iter().any(|&id| {
+                let s = self.actors.soldier(id).unwrap();
+                !s.orders.detached && s.orders.purpose == Goal::Slot && s.is_moving()
+            })
+        {
+            return Ok(out);
+        }
+        if contact {
+            q.cover_fire_position = q
+                .last_known_near(self.actors, center, 90.0, 10.0, self.now)
+                .map_or(q.order_position, |c| c.report.position);
+            q.cover_fire_until = self.now + 6.0;
+        }
+        self.next_assault_bound(i, if contact { 9.0 } else { 14.0 }, &mut out)?;
         Ok(out)
     }
     fn move_inner(

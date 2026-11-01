@@ -99,8 +99,8 @@ fn block(out: &mut Vec<u8>, data: &[u8]) {
     out.extend_from_slice(&(data.len() as u32).to_le_bytes());
     out.extend_from_slice(data);
 }
-fn navigation_delta(out: &mut Vec<u8>, previous: &mut Vec<u8>, next: Vec<u8>) {
-    // Record every changed byte without repeating the same large navigation grid.
+pub fn checkpoint_delta(out: &mut Vec<u8>, previous: &mut Vec<u8>, next: Vec<u8>) {
+    // Record every changed byte without repeating unchanged checkpoint blocks.
     if previous.is_empty() {
         out.push(1);
         block(out, &next);
@@ -124,7 +124,7 @@ fn navigation(out: &mut Vec<u8>, previous: &mut [Vec<u8>; 3], scene: &Scene) {
         scene.geometry.navigation.infantry.checkpoint(),
         scene.geometry.navigation.vehicles.checkpoint(),
     ]) {
-        navigation_delta(out, before, after);
+        checkpoint_delta(out, before, after);
     }
 }
 pub fn transcript() -> Vec<u8> {

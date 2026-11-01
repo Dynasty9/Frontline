@@ -29,6 +29,9 @@ different byte rather than dumping the fixture.
   infantry shoving and obstacle destruction through resumed world state.
 - `ordnance_world.bin`: shared grenade casualties, smothering, smoke expiry,
   missile lock loss, support spawns, recon marks and FPV impacts through resumes.
+- `attack_plan_world.bin`: deliberate attacks, reinforcement, smoke and grenade
+  rushes, fallback and consolidation, including exact changes to plan, actor,
+  squad and navigation checkpoints through resumes.
 - `world_routes.bin`: shared soldier/vehicle route completions, queued repairs,
   cancelled orders and retained navigation/actor state across resumed batches.
 - `structure_collision.bin`: structure collision boxes, rotated parts, construction,

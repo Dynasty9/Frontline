@@ -101,6 +101,7 @@ kind = "fixed"
 - Shared actor checks preserve rescue and stretcher claims when a carrier falls, and FPV drones lose control when their operator is lost while retaining their last target position.
 - Shared combat checks preserve near-miss suppression, casualty claims, last-attacker credit, squad contacts and morale as these effects move into Rust.
 - Squad checks preserve shared contact briefings, leader succession and casualty morale as squad state moves into Rust.
+- Rust attack-plan checks preserve defensive cover, fire-team bounds, covered flanks, supporting fire, smoke, grenades, reinforcement and fallback across saved-state resumes.
 - Vehicle checks preserve crew order gates, repairs, turret aiming, passenger boarding and saved transport state as vehicle ownership moves into Rust.
 - Driving checks preserve tracked and wheeled steering, traffic gaps, reversing, truck lanes and getting unstuck through saved-state resumes.
 - Connected Rust movement checks preserve crews sharing contacts, withdrawing for repairs, pushing past infantry and smashing obstacles, including a light vehicle destroying itself in the collision.

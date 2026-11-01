@@ -31,9 +31,14 @@ func speech(q: Squad, call: int, variant: int) -> String:
 		3: return ["Moving!", "Going!", "On the move!", "Bounding!"][variant]
 		4: return ["Set!", "Set! Move up!", "In position, go!", "Covering!"][variant]
 		5: return (["Recon by fire!", "Putting rounds in that treeline!", "Spraying it - see if they bite!", "Rounds into that house!"] if q.team == 0 else ["Shoot it up, see who's there!", "Fire into it!"])[variant]
+		6: return ["Dig in here!", "Hold this line!", "Find cover, watch your front!", "We hold here.", "Nobody gets past us."][variant]
+		7: return ["Advance! Bounding, by teams!", "Move up, cover to cover!", "Let's push! Watch your sectors!", "Go, go! I'll cover!"][variant]
+		8: return ["Moving!", "Covering!", "Set! Move up!", "Go!"][variant]
+		9: return ["We're pinned!", "Can't move, too much fire!", "Hold here, return fire!"][variant]
 	assert(false); return ""
 
 func _ready() -> void:
+	var assault_test := "--squad-assault" in OS.get_cmdline_user_args()
 	MapDims.N = 128; MapDims.SIZE = 128.0; MapDims.HALF = 64.0; MapDims.BIOME = 128; Defs.MAP_HALF = 64.0
 	Nav.N = 128; Nav.H = 64.0; HNav.C = 16; HNav.NC = 8; HNav.NCC = 64; HNav._corner = HNav._corners()
 	TerrainMap.N = 128; TerrainMap.H = 64.0; TerrainMap.DN = 256
@@ -82,6 +87,9 @@ func _ready() -> void:
 		w.rng.seed = 1937 + trial; rng.seed = w.rng.seed
 		for step in 24:
 			w.time = 100.0 + step * 3.7
+			if assault_test and step % 3 == 0:
+				q.heard = [[Vector3(25,0,8),w.time]]
+				for s: Soldier in q.members: s.suppression = 80.0 if trial % 4 == 0 else 0.0
 			if step % 4 == 3:
 				for s: Soldier in q.members:
 					s.position.x += 2.7; s._last_dir = Vector3(0.7,0,0.3)
@@ -97,7 +105,15 @@ func _ready() -> void:
 			w.spoken.clear(); w.stats.clear()
 			var op := 0 if step % 8 == 0 else 1 if q.travel else 2
 			var args := []
-			if op == 0:
+			if assault_test and step % 8 == 0:
+				var dest := Vector3([30.7,4.3,-15.7,62.5][(trial + step / 8) % 4],0,step - 8.3)
+				var face := Vector3.ZERO if trial % 3 else Vector3(0.7,0,-0.3)
+				if step == 8:
+					op = 5; args = [dest,face]; q.order_assault(dest,face,false)
+				else:
+					op = 4; args = [dest,face,trial % 2 == 0]; q.order_defend(dest,face,trial % 2 == 0)
+			elif assault_test and q.order == "assault": op = 6; q._assault_logic()
+			elif op == 0:
 				var dest := Vector3([30.7,4.3,-15.7,62.5][(trial + step / 8) % 4],0,step - 8.3)
 				var face := Vector3.ZERO if trial % 3 else Vector3(0.7,0,-0.3)
 				var mode: int = trial / 3 % 3; var tactical := trial % 9 != 0
@@ -124,11 +140,12 @@ func _ready() -> void:
 			assert(geometry.inspect()[1] == helper.nav_save(w.nav))
 			if q.travel: seen.travel = true
 			if q.technique == "bound": seen.bound = true
+			if q.order in ["defend","assault"]: seen[q.order] = true
 			if step % 7 == 6:
 				assert(actors.restore(actors.checkpoint())); assert(core.restore(core.checkpoint())); assert(geometry.restore(geometry.checkpoint()))
 			checks += 1
 		w.free()
-	for key in ["travel","bound","bounding","recon_by_fire","leader_succession"]: assert(seen.has(key),"movement coverage " + key)
+	for key in (["defend","assault","travel"] if assault_test else ["travel","bound","bounding","recon_by_fire","leader_succession"]): assert(seen.has(key),"movement coverage " + key)
 	helper.free()
 	print("SQUAD_MOVEMENT passed states=",checks," coverage=",seen)
 	get_tree().quit()

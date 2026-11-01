@@ -23,7 +23,7 @@ graphics, network access or a wall clock.
 | Grenade, smoke, rocket, bomb and shell flight | `frontline_core` | Rust retains and advances flight state and queries native geometry; the adapter supplies holders and applies impacts |
 | Retained projectile actors and impacts | `frontline_core` | Connected flight resolves shared holders, guided targets and support contacts, then applies impacts, spawns, smoke, recon and sound in order; the production world dispatcher remains unfinished |
 | Shared actor storage and FPV ownership | `frontline_core` | Infantry, buildings, vehicles, projectiles and drones retain identities, state and shared casualty/transport links together; drones resolve living targets and operators inside Rust. Squad integration and complete world dispatch remain unfinished |
-| Squad state and shared knowledge | `frontline_core` | Orders, contact caches, plan links and tactical state have retained checkpoints; centroid, contact reports, threats, succession and casualty morale operate on owned actors. Squad orders, drills and the full squad tick still run in Godot |
+| Squad state and shared knowledge | `frontline_core` | Orders, contact caches, plan links and tactical state have retained checkpoints; travel, defense, assault bounds and deliberate attacks operate on owned actors. Drills and the complete production squad dispatcher still run in Godot |
 | Retained buildings and economy transitions | `frontline_core` | Geometry, links, queues and timers have retained checkpoints; construction, capture, town income and production transitions match Godot. Shared rule effects, destruction, crews and the complete building dispatcher remain unfinished |
 | Deferred damage and rubble | `frontline_core` | The live world uses checkpointed explosion deadlines and pending rubble spawns, with an engine-only fallback. Godot still applies the resulting damage and creates structures |
 | Fire, smoke and burning destruction | `frontline_core` | Retained fires apply ignition, spread, scorch damage, escape routes, battle records and geometry removal together; the live game still invokes Godot's fire loop |
@@ -2220,3 +2220,28 @@ shared state and recon marks through resumed updates. Two Godot reference cases
 compare projectile/support and drone updates against the same mixed battlefield.
 The production dispatcher, standalone server and whole-match verifier remain
 unfinished.
+
+## Retained defense and deliberate attacks
+
+Squad defense orders preserve distant travel before spreading into cover, direct
+defense, member leashes and ambush readiness. Assault bounds retain the original
+member order, alternating teams, pinning/casualty gates, contact reports and
+covering fire. A planned assault requires its plan; the unplanned-bound dispatcher
+rejects that case instead of silently discarding the tactic.
+
+`attack_plan.rs` creates either fire teams or whole-squad elements, chooses the
+support position and covered flank from retained terrain, visibility and contacts,
+and runs planning, movement, fixing fire, assault and fallback. Smoke, grenade
+rushes, fire shifting, reinforcement, support requests and defensive consolidation
+apply to the shared soldiers and route queues. The planning halt cancels movement
+without clearing duties. Plan checkpoints retain timers, membership, speech gates,
+smoke use and rush progress; they reject incompatible or malformed state.
+
+Eight core checks cover defense, small-squad bounds, planning halts, support fire,
+reinforcement, smoke, grenades, fallback, checkpoint continuation and invalid input.
+Godot reference fixtures compare 2,304 defense/bound states and 2,560 deliberate
+attack states: members, squads, complete plan checkpoints, speech, support messages,
+random cursors and route completions. A 6,540,815-byte numeric transcript records
+every changed checkpoint byte while omitting repeated unchanged blocks.
+The complete world dispatcher, standalone socket server and whole-match verifier
+remain unfinished.
