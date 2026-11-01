@@ -106,6 +106,7 @@ pub mod vehicle_artillery;
 pub mod vehicle_boat;
 pub mod vehicle_brain;
 pub mod vehicle_cannon;
+pub mod vehicle_combat_world;
 pub mod vehicle_damage;
 pub mod vehicle_flight;
 pub mod vehicle_gunship;

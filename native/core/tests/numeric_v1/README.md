@@ -23,6 +23,8 @@ different byte rather than dumping the fixture.
   launches and defensive smoke through resumed shared updates.
 - `infantry_world.bin`: complete soldier ticks, including recovery, interruptions,
   perception, decisions, combat, treatment and custody through resumed world state.
+- `vehicle_combat_world.bin`: connected vehicle weapons, defensive smoke,
+  artillery missions, resupply and treatment through resumed shared world state.
 - `world_routes.bin`: shared soldier/vehicle route completions, queued repairs,
   cancelled orders and retained navigation/actor state across resumed batches.
 - `structure_collision.bin`: structure collision boxes, rotated parts, construction,

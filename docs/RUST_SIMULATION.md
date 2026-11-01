@@ -2161,3 +2161,20 @@ This completes the retained soldier dispatcher, not the production world loop.
 Vehicles, remaining shared systems, the standalone socket server and whole-match
 replay verification still require integration. The comparison adapter rebuilds
 perception for each call; the production world must share one snapshot per tick.
+
+## Connected vehicle combat
+
+Vehicle firing now resolves shared actors, cannon blasts, machine-gun hits and
+missile countermeasures inside Rust. Smoke and crew evasion precede the launch
+effect; damage completes before weapon recovery consumes its random draw, even
+when an explosive round destroys its firing vehicle. Artillery launches retain
+attribution and advance the salvo afterward. Support vehicles update recipients,
+revival credit and speech together.
+
+Three Godot reference cases compare the vehicle roster, artillery and service
+updates, including actor/squad state, geometry, effects, battle records and random
+cursors. Nine core regressions cover shared damage, smoke ordering, air defense,
+wounded-target rejection, artillery, medical credit and invalid profiles. A
+5,675,823-byte numeric transcript compares restored and uninterrupted world state.
+The full vehicle dispatcher, standalone socket server and whole-match replay
+verification remain unfinished.

@@ -515,7 +515,7 @@ fn armor_profile(a: &Array<Variant>) -> Option<frontline_core::vehicle_damage::A
         toss: read(a, 1)?,
     })
 }
-fn fire_profile<'a>(
+pub(crate) fn fire_profile<'a>(
     a: &Array<Variant>,
     base: &'a str,
     gun: &'a str,

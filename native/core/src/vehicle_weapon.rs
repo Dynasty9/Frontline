@@ -18,7 +18,7 @@ pub struct FireProfile<'a> {
     pub atgm_range: f64,
 }
 impl FireProfile<'_> {
-    fn valid(self) -> bool {
+    pub(crate) fn valid(self) -> bool {
         self.base.len() <= 128
             && self.machine_gun.len() <= 128
             && self.armor <= 3

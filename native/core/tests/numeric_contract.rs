@@ -65,6 +65,13 @@ mod infantry_build_world;
 mod infantry_mount_world;
 #[path = "fixtures/infantry_world.rs"]
 mod infantry_world;
+#[path = "fixtures/vehicle_combat_world.rs"]
+mod vehicle_combat_world;
+
+#[test]
+fn connected_vehicle_combat_is_identical_across_platforms() {
+    golden("vehicle_combat_world", &vehicle_combat_world::transcript());
+}
 
 #[test]
 fn complete_infantry_world_is_identical_across_platforms() {

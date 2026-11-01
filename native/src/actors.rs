@@ -137,7 +137,7 @@ fn scan_values(scan: frontline_core::targeting::Scan) -> Array<Variant> {
             .collect::<PackedInt64Array>()
     ]
 }
-fn service_stock(rows: Array<Variant>) -> Option<ServiceStock> {
+pub(crate) fn service_stock(rows: Array<Variant>) -> Option<ServiceStock> {
     use frontline_core::infantry_supply::Loadout;
     use frontline_core::infantry_weapon::Weapon;
     if rows.len() > 100_000 {
@@ -353,7 +353,7 @@ fn sling_spec(a: &PackedInt32Array) -> Result<SlingSpec, &'static str> {
         cargo_automatic: a[5] != 0,
     })
 }
-fn artillery_profile(
+pub(crate) fn artillery_profile(
     a: &Array<Variant>,
 ) -> Option<frontline_core::vehicle_artillery::ArtilleryProfile> {
     if a.len() != 3 {

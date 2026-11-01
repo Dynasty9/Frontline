@@ -110,7 +110,7 @@ enum Operation {
     Deferred(Gd<SupplyNetworkCore>, Vec<Report>),
     Bullet(Array<Variant>, Gd<SupplyNetworkCore>, Vec<Report>),
     Wounded(u32, WoundedInput, Gd<SupplyNetworkCore>, Vec<Report>),
-    Infantry(u8, Array<Variant>, Gd<SupplyNetworkCore>, Vec<Report>),
+    Combat(u8, Array<Variant>, Gd<SupplyNetworkCore>, Vec<Report>),
 }
 #[derive(GodotClass)]
 #[class(base=RefCounted, init)]
@@ -377,7 +377,7 @@ impl VehicleLossWorldCore {
             visibility,
             rng,
             config,
-            Operation::Infantry(0, input, network, reports),
+            Operation::Combat(0, input, network, reports),
         )
     }
     #[func]
@@ -411,7 +411,7 @@ impl VehicleLossWorldCore {
             visibility,
             rng,
             config,
-            Operation::Infantry(1, input, network, reports),
+            Operation::Combat(1, input, network, reports),
         )
     }
     #[func]
@@ -445,7 +445,7 @@ impl VehicleLossWorldCore {
             visibility,
             rng,
             config,
-            Operation::Infantry(2, input, network, reports),
+            Operation::Combat(2, input, network, reports),
         )
     }
     #[func]
@@ -479,7 +479,7 @@ impl VehicleLossWorldCore {
             visibility,
             rng,
             config,
-            Operation::Infantry(3, input, network, reports),
+            Operation::Combat(3, input, network, reports),
         )
     }
     #[func]
@@ -513,7 +513,7 @@ impl VehicleLossWorldCore {
             visibility,
             rng,
             config,
-            Operation::Infantry(4, input, network, reports),
+            Operation::Combat(4, input, network, reports),
         )
     }
     #[func]
@@ -547,7 +547,45 @@ impl VehicleLossWorldCore {
             visibility,
             rng,
             config,
-            Operation::Infantry(5, input, network, reports),
+            Operation::Combat(5, input, network, reports),
+        )
+    }
+    #[func]
+    fn advance_vehicle_combat(
+        &mut self,
+        actors: Gd<ActorStateCore>,
+        geometry: Gd<WorldGeometryCore>,
+        units: Gd<SpatialIndexCore>,
+        nodes: Array<Gd<SquadStateCore>>,
+        fires: Gd<FiresCore>,
+        battle: Gd<BattleStatsCore>,
+        deferred: Gd<DeferredEffectsCore>,
+        visibility: Gd<VisibilityCore>,
+        rng: Gd<SimulationRandomCore>,
+        config: Array<Variant>,
+        mode: u8,
+        input: Array<Variant>,
+        network: Gd<SupplyNetworkCore>,
+        impacts: Array<Variant>,
+    ) -> Array<Variant> {
+        if mode > 2 {
+            return Array::new();
+        }
+        let Some(reports) = read_impacts(&impacts) else {
+            return Array::new();
+        };
+        self.run(
+            actors,
+            geometry,
+            units,
+            nodes,
+            fires,
+            battle,
+            deferred,
+            visibility,
+            rng,
+            config,
+            Operation::Combat(6 + mode, input, network, reports),
         )
     }
     #[func]
@@ -814,12 +852,12 @@ impl VehicleLossWorldCore {
             }
         };
         let result = match operation {
-            Operation::Infantry(mode, input, mut network, mut impacts) => {
+            Operation::Combat(mode, input, mut network, mut impacts) => {
                 let parse = || -> Option<_> {
                     if input.len()
                         != match mode {
                             2 => 8,
-                            3..=5 => 7,
+                            3..=8 => 7,
                             _ => 6,
                         }
                     {
@@ -940,7 +978,176 @@ impl VehicleLossWorldCore {
                         },
                     }
                 };
-                let result = if mode == 5 {
+                let mut vehicle_effects = Array::<Variant>::new();
+                let result = if mode >= 6 {
+                    use frontline_core::vehicle_combat_world::{
+                        Event as VehicleEvent, MachineGun, Profile,
+                    };
+                    let Some(data) = read::<Array<Variant>>(&input, 6) else {
+                        return Array::new();
+                    };
+                    let result = if mode == 6 {
+                        let parse = || -> Option<_> {
+                            if data.len() != 4 {
+                                return None;
+                            }
+                            let cycle: Array<Variant> = read(&data, 0)?;
+                            let base = read::<GString>(&cycle, 0)?.to_string();
+                            let gun = read::<GString>(&cycle, 3)?.to_string();
+                            let muzzle = crate::vehicle::muzzle_profile(&read(&data, 1)?)?;
+                            let cannon_muzzle = crate::vehicle::muzzle_profile(&read(&data, 2)?)?;
+                            let cannon: PackedFloat64Array = read(&data, 3)?;
+                            if cannon.len() != 4 {
+                                return None;
+                            }
+                            Some((
+                                cycle,
+                                base,
+                                gun,
+                                muzzle,
+                                frontline_core::vehicle_cannon::CannonProfile {
+                                    muzzle: cannon_muzzle,
+                                    damage: cannon[0],
+                                    radius: cannon[1],
+                                    anti_tank: cannon[2],
+                                    size: cannon[3],
+                                },
+                            ))
+                        };
+                        let Some((cycle, base, gun, muzzle, cannon)) = parse() else {
+                            return Array::new();
+                        };
+                        let Some(cycle) = crate::vehicle::fire_profile(&cycle, &base, &gun) else {
+                            return Array::new();
+                        };
+                        context.advance_vehicle_fire(
+                            id,
+                            Profile {
+                                cycle,
+                                muzzle,
+                                cannon: cycle.cannon.then_some(cannon),
+                                machine_gun: profiles.get(&gun).map(|p| MachineGun {
+                                    weapon: p.1,
+                                    sound: &p.4,
+                                    suppression: p.3,
+                                    optics,
+                                    piercing: p.5,
+                                }),
+                            },
+                            &mut self.gunfire,
+                            &mut network.bind_mut().core,
+                            &mut impacts,
+                            &armor,
+                            &|v| vehicles[&v.id].hit,
+                            &defense,
+                        )
+                    } else if mode == 7 {
+                        let parse = || -> Option<_> {
+                            if data.len() != 3 {
+                                return None;
+                            }
+                            let profile = crate::actors::artillery_profile(&read(&data, 0)?)?;
+                            let range: PackedFloat64Array = read(&data, 1)?;
+                            let owned: PackedInt64Array = read(&data, 2)?;
+                            if range.len() != 2 || owned.len() > 100_000 {
+                                return None;
+                            }
+                            let owned = owned
+                                .as_slice()
+                                .iter()
+                                .map(|&id| u32::try_from(id).ok())
+                                .collect::<Option<Vec<_>>>()?;
+                            Some((profile, [range[0], range[1]], owned))
+                        };
+                        let Some((profile, range, owned)) = parse() else {
+                            return Array::new();
+                        };
+                        context.advance_vehicle_artillery(id, dt, profile, range, &owned)
+                    } else {
+                        use frontline_core::vehicle_service::{Service, SoldierSupply};
+                        let parse = || -> Option<_> {
+                            if data.len() != 3 {
+                                return None;
+                            }
+                            let service = match read::<GString>(&data, 0)?.to_string().as_str() {
+                                "repair" => Service::Repair,
+                                "ammo" => Service::Ammo,
+                                "medical" => Service::Medical,
+                                _ => return None,
+                            };
+                            let stock = crate::actors::service_stock(read(&data, 1)?)?;
+                            let rows: Array<Variant> = read(&data, 2)?;
+                            if rows.len() > 100_000 {
+                                return None;
+                            }
+                            let mut missiles = BTreeMap::new();
+                            for row in rows.iter_shared() {
+                                let r = row.try_to::<PackedInt64Array>().ok()?;
+                                if r.len() != 3
+                                    || !(0..=1_000_000).contains(&r[1])
+                                    || !(0..=1_000_000).contains(&r[2])
+                                {
+                                    return None;
+                                }
+                                let id = u32::try_from(r[0]).ok()?;
+                                if id == 0
+                                    || missiles.insert(id, [r[1] as i32, r[2] as i32]).is_some()
+                                {
+                                    return None;
+                                }
+                            }
+                            Some((service, stock, missiles))
+                        };
+                        let Some((service, stock, missiles)) = parse() else {
+                            return Array::new();
+                        };
+                        context.advance_vehicle_service(
+                            id,
+                            dt,
+                            service,
+                            &|s| {
+                                stock
+                                    .get(&s.identity.id)
+                                    .map(|(loadout, key, magazine)| SoldierSupply {
+                                        loadout: *loadout,
+                                        restored_weapon: (!key.is_empty())
+                                            .then_some((key.as_str(), *magazine)),
+                                    })
+                                    .ok_or("missing service stock")
+                            },
+                            &|v| missiles.get(&v.id).copied().ok_or("missing missile stock"),
+                        )
+                    };
+                    result.map(|events| {
+                        events
+                            .into_iter()
+                            .filter_map(|e| match e {
+                                VehicleEvent::Combat(e) => Some(e),
+                                VehicleEvent::Cannon {
+                                    vehicle,
+                                    from,
+                                    impact,
+                                } => {
+                                    vehicle_effects.push(
+                                        &varray!["cannon", vector(from), vector(impact), vehicle]
+                                            .to_variant(),
+                                    );
+                                    None
+                                }
+                                VehicleEvent::Service(
+                                    frontline_core::vehicle_service::ServiceEffect::Repaired {
+                                        vehicle,
+                                        track: true,
+                                    },
+                                ) => {
+                                    vehicle_effects.push(&varray!["track", vehicle].to_variant());
+                                    None
+                                }
+                                _ => None,
+                            })
+                            .collect()
+                    })
+                } else if mode == 5 {
                     use frontline_core::infantry_world::{
                         Event as InfantryEvent, Profiles, Tick, Unit,
                     };
@@ -1185,7 +1392,7 @@ impl VehicleLossWorldCore {
                 reports = Some(impacts);
                 chat_state = Some(PackedFloat64Array::from(chat.as_slice()));
                 result.map(|events| {
-                    if (3..=5).contains(&mode) {
+                    if (3..=8).contains(&mode) {
                         use frontline_core::infantry_action_owned::Event as Ordnance;
                         construction = Some(events.iter().filter_map(|e| match e {
                             fighting::Event::Ordnance(Ordnance::Mortar(p)) => Some(varray!["mortar", vector(*p)].to_variant()),
@@ -1196,6 +1403,7 @@ impl VehicleLossWorldCore {
                             _ => None,
                         }).collect());
                     }
+                    if let Some(events) = construction.as_mut() { events.extend_array(&vehicle_effects); }
                     if mode == 2 || mode == 5 {
                         use frontline_core::infantry_build_world::Construction;
                         let work: Array<Variant> = events.iter().filter_map(|e| {
@@ -1241,6 +1449,9 @@ impl VehicleLossWorldCore {
                                             [cue as usize]
                                     ]
                                     .to_variant()
+                                }),
+                                fighting::Event::World(world_combat::Event::Infantry(victim)) => victim.hit.as_ref().and_then(|hit| hit.speech).map(|cue| {
+                                    varray![victim.soldier, ["I'm hit!", "Argh!", "Took one!", "Hit! I'm hit!"][cue as usize]].to_variant()
                                 }),
                                 fighting::Event::World(world_combat::Event::Speech(speech)) => {
                                     Some(

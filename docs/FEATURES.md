@@ -1382,7 +1382,11 @@ and return flights. Aircraft combat and shared delivery effects still need to
 join the Rust world dispatcher.
 Vehicle combat checks preserve armour, blast shove, ricochets, track breaks,
 damage alerts, missile priority, cannon aim gates and machine-gun burst timing.
-Projectile creation and shared destruction effects still need full integration.
+Connected vehicle firing now applies shared cannon and machine-gun damage,
+defensive smoke and crew evasion before launch effects, then weapon recovery.
+Artillery missions create attributed shells before advancing their salvos;
+service vehicles credit medical revivals and retain repair and reload effects.
+These operations still await the complete vehicle/world dispatcher.
 Shared transport checks preserve passenger exits, boat landing gates and the
 exiting squad's next order request in retained Rust actor state.
 Vehicle missile and smoke launches now create retained Rust projectile state;
