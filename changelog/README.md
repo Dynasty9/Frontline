@@ -83,3 +83,36 @@ again: it rebuilds the release and updates the pull request. It won't release wi
 
 A release gathers many entries, so several may set `headline` or `release_name`. The first of them (new before
 improved before fixed, then by file name) names the release, unless the person releasing gives it a name.
+
+## Choose the medium, then build the presentation
+
+Use the [changelog-presentation skill](../.agents/skills/changelog-presentation/SKILL.md)
+and [reusable showcase stages](../tools/showcase/README.md). The overview should
+answer “what will I notice?” in one short sentence, followed by one useful piece
+of evidence. Details and extra images belong in the expandable section.
+
+Stills suit layout and appearance; short WebM clips suit movement and interaction;
+sound needs an audible, user-started example; performance needs measured context.
+Invisible fixes often need only a clear explanation. Register the decision in
+`tools/showcase/catalog.json` and run `python3 tools/showcase/audit.py` with the
+usual changelog check. A clip must remain understandable when paused or when
+reduced motion prevents autoplay. Label current-build reenactments of old features.
+
+### Comparing changelog presentation
+
+For a requested presentation review, attach captures of the entry rendered through
+both layouts. Keep these separate from evidence of a gameplay change:
+
+```toml
+[layout_comparison]
+before = "layout-before.jpg"
+after = "layout-after.jpg"
+caption = "Changelog layout comparison, not gameplay. Top 1,000 pixels at a matched 900-pixel width."
+```
+
+Both files live beside the entry's other media. The website exposes them through
+**Compare changelog layouts**, independently of the gameplay notes. They remain
+collapsed and lazy-loaded until requested. Record the two source revisions and
+viewport in the presentation catalog; newly added entries must say when the old
+layout is a reconstruction using their new content. These captures are review
+artifacts, not substitutes for the entry's actual feature evidence.

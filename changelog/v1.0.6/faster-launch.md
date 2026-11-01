@@ -1,8 +1,15 @@
 +++
 title = "The game opens faster"
-summary = "The title and the menu come up seconds sooner after you launch the game. The rest of the game gets ready behind the title while it plays, instead of before anything shows."
+summary = "The title and menu appear sooner while the rest of the game prepares in the background."
 kind = "improved"
+
+[layout_comparison]
+before = "layout-before.jpg"
+after = "layout-after.jpg"
+caption = "Changelog presentation comparison, not gameplay: the top 1,000 pixels of this entry at the same 900-pixel viewport width. Open either image to inspect it."
 +++
+
+The title and the menu come up seconds sooner after you launch the game. The rest of the game gets ready behind the title while it plays, instead of before anything shows.
 
 - **The title shows sooner:** the game used to prepare everything it would need for a battle before showing
   anything at all. Now it shows the title and the menu as soon as they're ready, and prepares the battle behind

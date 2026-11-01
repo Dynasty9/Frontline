@@ -22,8 +22,10 @@ func step(v: Vehicle, goal: Vector3, dt: float, face := INF) -> void:
 
 func _integrate(v: Vehicle, goal: Vector3, dt: float, face: float) -> void:
 	var loaded := v.sling_cargo != null
-	var accel := 3.5 if loaded else 7.0
-	var brake := 5.0 if loaded else 8.0
+	var motion := v.motion_profile()
+	var handling: Array = motion.handling
+	var accel := float(handling[0]) * (0.55 if loaded else 1.0)
+	var brake := float(handling[1]) * (0.65 if loaded else 1.0)
 	var vmax := float(v.vdef.speed) * (0.65 if loaded else 1.0)
 	var to := Defs.flat(goal - v.position)
 	var distance := to.length()
@@ -60,11 +62,10 @@ func _integrate(v: Vehicle, goal: Vector3, dt: float, face: float) -> void:
 			heading = Defs.yaw_of(to)
 		else:
 			heading = v.rotation.y
-	var error := wrapf(heading - v.rotation.y, -PI, PI)
-	var max_turn := minf(float(v.vdef.turn), 1.8) * (0.75 if loaded else 1.0)
-	var wanted_rate := clampf(error * 3.0, -max_turn, max_turn)
-	yaw_rate = move_toward(yaw_rate, wanted_rate, 4.0 * dt)
-	v.rotation.y = wrapf(v.rotation.y + yaw_rate * dt, -PI, PI)
+	var max_turn := float(motion.hull_turn) * (0.75 if loaded else 1.0)
+	var turn := VehicleMotion.slew(v.rotation.y, yaw_rate, heading, max_turn, float(motion.hull_accel), dt)
+	yaw_rate = turn.y
+	v.rotation.y = turn.x
 	var forward := Defs.dir_of(v.rotation.y)
 	var right := forward.cross(Vector3.UP)
 	# Cyclic follows actual acceleration, including the nose-up braking flare.

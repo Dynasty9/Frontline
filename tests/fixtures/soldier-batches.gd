@@ -3,7 +3,7 @@ extends Node
 class TrackedSoldier extends Soldier:
 	var frames := {}
 	var elapsed := 0.0
-	func _view_process(dt: float) -> void:
+	func _view_process(dt: float, _blend := -1.0) -> void:
 		var frame := Engine.get_process_frames()
 		assert(not frames.has(frame), "A registered soldier must update only once per frame")
 		frames[frame] = true

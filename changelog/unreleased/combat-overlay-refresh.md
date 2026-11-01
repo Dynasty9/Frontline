@@ -6,6 +6,11 @@ kind = "improved"
 [[screenshots]]
 file = "after.jpg"
 caption = "Cover previews stay aligned at enlarged interface scale while updating independently of squad counters."
+
+[layout_comparison]
+before = "layout-before.jpg"
+after = "layout-after.jpg"
+caption = "Changelog presentation comparison, not gameplay: the top 1,000 pixels of this entry at the same 900-pixel viewport width. Open either image to inspect it."
 +++
 
 - Selection boxes, tooltips and order previews update immediately in their own drawing layer, without rebuilding every squad counter as the pointer moves.

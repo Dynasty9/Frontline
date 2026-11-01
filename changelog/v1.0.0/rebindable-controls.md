@@ -1,13 +1,21 @@
 +++
 title = "Change any key"
-summary = "Every key the game uses can now be changed in Settings > Controls: grouped by category, two keys per action, with a search box and a reset for each."
+summary = "Find and change any keyboard action, with two bindings per action and individual resets."
 kind = "new"
 headline = true
+
 
 [[screenshots]]
 file = "controls.jpg"
 caption = "Settings > Controls: every action by category, with two keys each"
+
+[layout_comparison]
+before = "layout-before.jpg"
+after = "layout-after.jpg"
+caption = "Changelog presentation comparison, not gameplay: the top 1,000 pixels of this entry at the same 900-pixel viewport width. Open either image to inspect it."
 +++
+
+Every key the game uses can now be changed in Settings > Controls: grouped by category, two keys per action, with a search box and a reset for each.
 
 - **Every action, by category:** camera, saved views, orders, abilities and fire support, building, control groups, co-commanders, interface, and the observer's controls. The mouse's own controls are listed at the end.
 - **Two keys for each**, including combinations with Ctrl, Shift or Alt, a modifier on its own, and the mouse's side buttons. Click a key and press the new one; Esc cancels, right-click clears it.

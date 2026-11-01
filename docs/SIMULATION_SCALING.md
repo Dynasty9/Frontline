@@ -361,3 +361,143 @@ physics is not retained. A per-slot transform cache for distant soldiers also fa
 to improve the alternating 500-soldier microbenchmark (1.34-1.52 ms/frame original,
 1.38-1.58 ms cached), so it was removed. The final code remains unchanged, and all
 checks passed on commit 449af9e. These experiments do not establish a 60 FPS result.
+
+
+### Working backward from the frame cost (28 October)
+
+Fresh source-build function profiles used the 3072 m generated battle, seed 3,
+480 starting infantry, 20 vehicles and commanders. Client and standalone headless
+server profiles ran sequentially, with other applications left running. Profiling
+started after the warm-up report. The first five profiler frames were discarded:
+the transition frame incorrectly attributed pre-profile elapsed time to one active
+function. Server costs are normalized by simulation ticks, not idle frames, which
+can contain several catch-up ticks. These debug timings rank work; they are not
+release-build capacity measurements.
+
+| Client work | Mean inclusive time per rendered frame |
+| --- | --- |
+| Shared soldier view update, including batches and smoothing | 4.93 ms |
+| Tactical status overlay | 3.00 ms |
+| Minimap | 1.57 ms |
+| Snapshot decode | 1.48 ms |
+
+The soldier batch loop alone has 2.48 ms self time. These are inclusive timings:
+child calls must not be added to their parent. The profile contains 481 frames.
+
+| Server work | Mean inclusive time per simulation tick |
+| --- | --- |
+| Complete world tick | 33.09 ms |
+| Soldier simulation | 23.03 ms |
+| Soldier movement helper | 4.05 ms |
+| Soldier weapon helper | 4.23 ms |
+| Sight queries | 2.81 ms |
+| Nearby-unit queries | 1.87 ms |
+
+The latter four rows are nested work, not disjoint slices of soldier simulation.
+The server profile contains 397 ticks. This standalone profile excludes peer
+snapshot transmission and replay recording present in the managed local server.
+
+Release-build alternating diagnostics then separated model drawing from update
+work. Hiding distant soldier meshes reduced roughly 400-500 draw calls but did
+not consistently improve FPS (visible 54.32/49.28/51.62; hidden 44.82/54.19).
+Freezing the entire soldier display update, with models still visible and the
+server still running, measured 54.04/61.16 FPS against 36.95/39.07/40.69 enabled.
+A narrower experiment retained per-soldier smoothing and froze only batch
+rebuilding/uploads: enabled 54.05/56.04/57.19 FPS, frozen 69.17/70.88 FPS.
+The frozen images are deliberately incorrect diagnostics, not a shippable change.
+The narrow result identifies batch rebuilding and its downstream render work as
+the first client optimization target; it does not justify deleting soldier models
+or establish that a real implementation sustains 60 FPS.
+
+
+A native bulk-buffer packing prototype preserved 200 rotated/scaled transforms
+in a focused check, but did not improve the real rendered comparison consistently:
+individual uploads 52.81/54.64/57.60 FPS; bulk uploads 53.75/54.20 FPS. Its headless
+500-soldier microbenchmark was also slower. The prototype was removed, including
+its native class. Merely translating the upload packing to Rust is not enough;
+the next change must eliminate repeated batch planning or move the complete
+working set across the native boundary, rather than add another conversion stage.
+
+
+### Progressive frame work (28 October follow-up)
+
+The retained minimap uses Godot's cached CanvasItem draw commands: map/intelligence,
+fighting, units/aircraft, and co-op/pings refresh on successive frames. Camera and
+pointer indicators refresh every frame. At 60 FPS, each of the four other layers
+refreshes at 15 Hz. Rotation and resizing invalidate all layers together so symbols
+cannot use different map coordinate systems. The two-second structure signature
+scan yields after small groups instead of scanning a large map in one redraw.
+This follows [Godot's retained custom-drawing model](https://docs.godotengine.org/en/stable/tutorials/2d/custom_drawing_in_2d.html).
+
+An exported 3072 m, seed 3, 480 infantry/20 vehicle local-server battle alternated
+120-frame samples, with eight settling frames between phases and other apps running.
+Both modes used the same sliced signature scan; the control redrew the whole map
+at 15 Hz, while the changed mode staggered layers. These short samples isolate the
+redraw mechanism, not sustained capacity:
+
+| Mode | FPS | Frame p95 | Adjacent-frame absolute difference p95 | Minimap maximum draw CPU |
+| --- | ---: | ---: | ---: | ---: |
+| Whole map | 39.70 | 46.40 ms | 21.86 ms | 5.96 ms |
+| Progressive | 51.91 | 28.94 ms | 15.35 ms | 1.83 ms |
+| Whole map | 55.81 | 27.77 ms | 14.64 ms | 3.53 ms |
+| Progressive | 55.54 | 28.00 ms | 14.13 ms | 1.54 ms |
+| Whole map | 49.28 | 30.83 ms | 16.12 ms | 4.96 ms |
+
+The consistent result is a smaller minimap redraw spike, not a demonstrated average
+FPS gain. Its mean CPU was 0.86-0.88 ms/frame in progressive mode versus 0.66-1.25 ms
+in the control: smooth camera feedback does additional work. These timings cover
+CPU command generation; they do not include the GPU's execution of those commands.
+`--perf-at` now reports `frame_changes` separately from frame-duration percentiles,
+preserving chronological samples when computing absolute adjacent differences.
+
+Soldier smoothing also reuses one exponential blend coefficient for the shared
+frame interval; the interpolation equation, teleport threshold and angle wrapping
+are unchanged. This is a small reduction in repeated arithmetic, not a claim of
+a major speedup. Snapshot interpolation remains as before; see the tradeoffs in
+[Gaffer's snapshot interpolation article](https://gafferongames.com/post/snapshot_interpolation/).
+
+A persistent dense-slot MultiMesh prototype was rejected. Although it avoided
+rebuilding membership, animation changes required slot migration and buffer reads.
+It measured 41.02/43.40 FPS against interleaved rebuilt batches at
+43.89/53.29/52.34 FPS; its headless microbenchmark also regressed. Only the shared
+smoothing coefficient remains. Spatial batching and capacity reuse already follow
+[Godot's MultiMesh guidance](https://docs.godotengine.org/en/stable/tutorials/performance/using_multimesh.html).
+
+The simulation inspection found existing Rust kernels for perception, route graphs
+and formation scoring. Movement and weapon ticks mix decisions with live Godot
+objects and physics queries, so a function-by-function Rust translation would still
+pay those crossings. The measured native upload-packing and persistent-slot trials
+do not justify such a port. A further native step should batch a complete numeric
+working set and preserve decision ordering, rather than claim that the language
+change itself fixes the remaining 60 FPS deficit.
+
+
+After rebasing onto main `fa56e4f`, the exact exported follow-up build ran the
+3072 m generated battle for a 30-second measurement after a 30-second warm-up,
+with commanders, seed 3, low preset, full HUD and the separate local server.
+It averaged **54.85 FPS**, frame p50 **17.06 ms**, p95 **26.55 ms**, p99 **32.07 ms**,
+and maximum **56.37 ms**. Adjacent-frame absolute differences were p50 **4.31 ms**,
+p95 **12.52 ms**, p99 **18.34 ms**. There were 452 living soldiers at the report;
+480 starting infantry plus 20 vehicles is not 500 surviving active units.
+The server's 874 measured ticks had p50 **27.20 ms**, p95 **56.06 ms** and
+maximum **85.82 ms**. Both the minimum-60-FPS and consistent-30-Hz simulation
+budgets remain unmet. Other applications stayed running throughout.
+
+Mean client script costs were 1.96 ms/frame for distant batch work, 1.19 ms for
+soldier view/smoothing, and 0.87 ms for minimap drawing. Renderer CPU p50 was
+4.15 ms and GPU p50 4.47 ms; these overlapping pipeline timings are not additive.
+The previous 50.93 FPS run used an older main and different background activity,
+so the difference is not an isolated percentage improvement.
+
+Validation: 88 broad-suite checks passed; a new timing fixture initially passed
+untyped arrays to a typed helper, was corrected, and passed in isolation. All seven
+focused checks passed after rebasing, including minimap lifecycle/scheduling,
+smoothing/timing equivalence, soldier batching and main's new tank-operation test.
+Import and release export had no script errors. Long full-mission playthroughs
+were not repeated for these client-only changes.
+
+Rendered verification passed 55/55 input assertions and 20/20 camera assertions.
+Before/after screenshots at 150% interface scale preserve the map appearance;
+a rotated-map screenshot also confirms aligned symbols, grid and camera wedge.
+The short visual runs retain the baseline two-resource shutdown warning, with no
+script errors. These screenshots and input tests are not FPS measurements.
