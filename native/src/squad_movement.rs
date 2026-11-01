@@ -141,7 +141,7 @@ impl SquadMovementCore {
                 context.order_assault_bounds(id, crate::point(p), crate::point(f))
             }
             6 if input.is_empty() => context.assault_bounds_tick(id),
-            7..=10 => {
+            7..=11 => {
                 let result = apply_attack(&mut context, id, operation, input);
                 write_squads(nodes, squads);
                 return match result {
@@ -212,6 +212,16 @@ fn apply_attack(
     op: i32,
     input: Array<Variant>,
 ) -> Result<(Option<AttackPlan>, Vec<AttackEvent>), &'static str> {
+    if op == 11 && input.len() == 3 {
+        let (Ok(boat), Ok(plan), Ok(visibility)) = (
+            input.at(0).try_to::<bool>(),
+            input.at(1).try_to::<u32>(),
+            input.at(2).try_to::<Gd<VisibilityCore>>(),
+        ) else {
+            return Err("invalid dismount order");
+        };
+        return ctx.dismount_vehicle(id, boat, plan, &visibility.bind().core);
+    }
     if matches!(op, 8 | 9) && input.len() == 1 {
         let bytes = input
             .at(0)

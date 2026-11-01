@@ -2245,3 +2245,30 @@ random cursors and route completions. A 6,540,815-byte numeric transcript record
 every changed checkpoint byte while omitting repeated unchanged blocks.
 The complete world dispatcher, standalone socket server and whole-match verifier
 remain unfinished.
+
+
+## Connected transport and ground-vehicle updates
+
+Passenger exits now update shared soldiers, clear transport links, replace a lost
+leader and issue the section's defensive or deliberate-attack orders in Rust.
+The same path handles exits onto shore. Newly created attack plans enter the
+retained plan registry with monotonic IDs; no plan ID is consumed for defense.
+
+`advance_ground_vehicle` connects weapon clocks, knockback, shared scans and crew
+decisions, driving, turret stabilization, dismounts, artillery, aiming, firing,
+service, obstacle collisions and flags. Slung cargo waits without advancing its
+weapon clocks and falls through shared damage if its carrier link is orphaned.
+Weapon profiles are validated before movement changes. A vehicle destroyed by its
+own blast stops before support work; the Godot reference now has the same guard.
+
+The ground dispatcher and dismount routines have checkpoint-continuation tests;
+exact numeric transcripts include shared actors, geometry, squads, plans, damage,
+supply, effects and random state. These are component integration checks. Aircraft,
+boats, the full world scheduler, standalone socket server and whole-match replay
+verification remain in progress.
+
+Validation for this integration: all 826 debug core tests pass, as do 112 release
+numeric-contract cases and seven focused release tests. Godot passes the complete
+ground-vehicle roster comparison, 2,560 attack states including dismounts, and six
+connected weapons, artillery, service, destruction and ordnance regressions.
+The new exact transport and vehicle transcripts are 4,370,847 and 360,796 bytes.

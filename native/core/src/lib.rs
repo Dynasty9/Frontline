@@ -122,6 +122,7 @@ pub mod vehicle_service;
 pub mod vehicle_sling;
 pub mod vehicle_transport;
 pub mod vehicle_weapon;
+pub mod vehicle_world;
 pub mod visibility;
 pub mod water;
 pub mod world_combat;

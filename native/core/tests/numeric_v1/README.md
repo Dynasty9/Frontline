@@ -42,6 +42,10 @@ different byte rather than dumping the fixture.
   actor/random state and shared geometry across resumed tosses and cover repairs.
 - `world_formation.bin`: compact/wide group placement, terrain/anchor cover choices,
   first-choice ties and occupancy against retained, resumed world geometry.
+- `transport_world.bin`: connected passenger exits, leader replacement and defense
+  or deliberate attacks, including shore landings and resumed routes.
+- `vehicle_world.bin`: complete ground-vehicle ticks, shared fire, service, artillery
+  and orphaned sling cargo, with exact resumed world state and random cursors.
 - `squad_movement.bin`: shared movement orders, travel, leader succession, fire-team
   bounds, recon fire, squad/member state and queued route continuations.
 - `crew_return.bin`: crew order ownership, return routes, survivor removal and FOB

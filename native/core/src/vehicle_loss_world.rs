@@ -114,6 +114,28 @@ pub enum Event {
     Stat(&'static str),
 }
 impl Context<'_> {
+    pub fn drop_vehicle_sling(&mut self, cargo: u32) -> Result<Vec<Event>, &'static str> {
+        if !self.now.is_finite() || self.now.abs() > 1e12 - 100.0 {
+            return Err("invalid sling drop time");
+        }
+        let drop = self
+            .actors
+            .drop_sling(cargo, &self.geometry.navigation.planner)?;
+        let actor = self.actors.vehicle(cargo).unwrap();
+        self.geometry
+            .refresh_vehicle_collision(actor, (self.vehicle)(actor).hull)?;
+        let mut out = vec![];
+        if drop.impact {
+            self.damage_inner(cargo, drop.damage, 0, &mut out)?;
+        }
+        out.push(Event::SlingDropped {
+            id: cargo,
+            position: drop.position,
+            impact: drop.impact,
+        });
+        out.push(Event::Stat("sling_dropped"));
+        Ok(out)
+    }
     pub fn damage(
         &mut self,
         id: u32,
@@ -199,21 +221,7 @@ impl Context<'_> {
         let cargo = self.actors.vehicle(id).unwrap().sling_cargo;
         if self.actors.vehicle(cargo).is_some_and(|v| !v.gone) {
             self.actors.vehicle_mut(id).unwrap().sling_cargo = 0;
-            let drop = self
-                .actors
-                .drop_sling(cargo, &self.geometry.navigation.planner)?;
-            let cargo_actor = self.actors.vehicle(cargo).unwrap();
-            self.geometry
-                .refresh_vehicle_collision(cargo_actor, (self.vehicle)(cargo_actor).hull)?;
-            if drop.impact {
-                self.damage_inner(cargo, drop.damage, 0, out)?;
-            }
-            out.push(Event::SlingDropped {
-                id: cargo,
-                position: drop.position,
-                impact: drop.impact,
-            });
-            out.push(Event::Stat("sling_dropped"));
+            out.extend(self.drop_vehicle_sling(cargo)?);
         }
         let parent = self.actors.vehicle(id).unwrap().slung_by;
         if let Some(v) = self.actors.vehicle_mut(parent) {

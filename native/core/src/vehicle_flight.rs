@@ -25,7 +25,7 @@ fn toward(a: f64, b: f64, delta: f64) -> f64 {
         a + (b - a).signum() * delta
     }
 }
-fn move_toward(a: Vector3, b: Vector3, delta: f64) -> Vector3 {
+pub(crate) fn move_toward(a: Vector3, b: Vector3, delta: f64) -> Vector3 {
     let v = b - a;
     let len = v.length();
     let delta = delta as f32;

@@ -20,6 +20,15 @@ pub struct Muzzle {
     pub gunship: bool,
     pub gun_height: f64,
 }
+impl Muzzle {
+    pub(crate) fn valid(self) -> bool {
+        self.gun_height.is_finite()
+            && (0.0..=1000.0).contains(&self.gun_height)
+            && self
+                .socket
+                .is_none_or(|s| point(s.point) && s.pivot.is_none_or(point))
+    }
+}
 #[derive(Clone, Copy, Debug)]
 pub struct CannonProfile {
     pub muzzle: Muzzle,
@@ -51,11 +60,7 @@ fn multiply(a: Mat3, b: Mat3) -> Mat3 {
 }
 impl Vehicle {
     pub fn weapon_muzzle(&self, p: Muzzle, main_gun: bool) -> Result<Vector3, &'static str> {
-        if !p.gun_height.is_finite()
-            || !(0.0..=1000.0).contains(&p.gun_height)
-            || p.socket
-                .is_some_and(|s| !point(s.point) || s.pivot.is_some_and(|v| !point(v)))
-        {
+        if !p.valid() {
             return Err("invalid weapon socket");
         }
         let result = if let Some(s) = p.socket {

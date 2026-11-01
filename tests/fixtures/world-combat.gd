@@ -76,7 +76,7 @@ func run(mode: int, complete_tick: bool = false) -> void:
 	var mounting := mode == 6
 	var acting := mode == 7
 	var whole := mode == 8 or complete_tick
-	var vehicle_ops := mode >= 10 and mode <= 16
+	var vehicle_ops := (mode >= 10 and mode <= 16) or mode == 19
 	var ordnance_ops := mode in [17,18]
 	var actor_ops := vehicle_ops or ordnance_ops
 	MapDims.N = 64; MapDims.SIZE = 64.0; MapDims.HALF = 32.0; MapDims.BIOME = 64; Defs.MAP_HALF = 32.0
@@ -109,7 +109,10 @@ func run(mode: int, complete_tick: bool = false) -> void:
 	var vehicle_service := preload("res://tests/fixtures/vehicle-service.gd").new()
 	var vehicle_scan := preload("res://tests/fixtures/vehicle-scan.gd").new()
 	var vehicle_driving := preload("res://tests/fixtures/vehicle-driving.gd").new()
+	var movement_speech := preload("res://tests/fixtures/squad-movement.gd").new()
+	var attack_helper := preload("res://tests/fixtures/attack-plan.gd").new()
 	var vehicle_kinds: Array = Defs.VEHICLES.keys()
+	if mode == 19: vehicle_kinds = vehicle_kinds.filter(func(key: String) -> bool: return not Defs.VEHICLES[key].get("air",false) and Defs.VEHICLES[key].get("base",key) not in ["supply","boat"])
 	var ground_kinds: Array = vehicle_kinds.filter(func(key: String) -> bool: return Defs.VEHICLES[key].get("base","tank") in ["tank","afv","car","spaa"])
 	var artillery_kinds: Array = vehicle_kinds.filter(func(key: String) -> bool: return Defs.VEHICLES[key].has("art"))
 	var weapons := []
@@ -396,10 +399,15 @@ func run(mode: int, complete_tick: bool = false) -> void:
 				v.brain_state = ["","withdraw","wait","evade"][trial % 4]
 				v.brain_resume = {"dest":Vector3(14,0,-14),"assault":true,"assault_dest":Vector3(14,0,-14)} if trial % 4 == 3 else {}
 				v.brain_t = w.time - 12.0
-			if mode == 15:
+			if mode in [15,19]:
 				v.path = PackedVector3Array([Vector3(14,0,-14)]); v.path_i = 0; v.speed = 4.0
 				v.rotation.y = 0.0; v.assault = false
 				w.entities[4].position = Vector3(14.4,0,12); w.entities[4].life = Soldier.Life.ALIVE
+			if mode == 19:
+				v.scan_t = 0.0; v.knock_v = Vector3(0.1,0,-0.2)
+				if trial % 3 == 0: v.path.clear(); v.speed = 0.0
+				if trial % 5 == 0: v.assault = true; v.assault_dest = Vector3(14,0,-14)
+				if v.vdef.has("art"): v.fire_queue = [Vector3(14,0,-14)]; v.arty_t = 0.0
 			if mode == 16:
 				v.position = Vector3.ZERO; v.speed = 2.0; v.rotation.y = trial * 0.137
 				if v.is_light() and int(v.vdef.armor) == 0: v.hp = 1.0
@@ -459,9 +467,10 @@ func run(mode: int, complete_tick: bool = false) -> void:
 		var impacts := []
 		var chat := PackedFloat64Array(w.last_chat)
 		var next: int = w.next_sid
+		var attack_plans := []; var next_plan := 17; var plan_ids := {}
 		var initial: RefCounted = ClassDB.instantiate("VehicleLossWorldCore")
 		assert(combat.gunfire_restore(initial.gunfire_checkpoint()))
-		for step in (12 if shoot or wounded or fighting or breaching or building or mounting or whole or ordnance_ops or mode == 11 else 3):
+		for step in (12 if shoot or wounded or fighting or breaching or building or mounting or whole or ordnance_ops or mode in [11,19] else 3):
 			if vehicle_ops and w.entity(40) == null: break
 			if ordnance_ops and w.entity(70 if mode == 17 else 60) == null: break
 			if whole and w.entity(3) == null: break
@@ -489,9 +498,18 @@ func run(mode: int, complete_tick: bool = false) -> void:
 					result = combat.advance_actor(actors,geometry,units,qs,fires,ledger,deferred,visibility,random._backend,config,mode - 10,fighting_input,network,impacts)
 				elif vehicle_ops:
 					var v: Vehicle = w.entities[40]; fighting_input[0] = v.eid; fighting_input[5] = w.rules.has_upgrade(v.team,"optics")
-					if mode == 10:
+					if mode in [10,19]:
 						var g: Dictionary = v.vdef.get("gun",{})
 						fighting_input.append([vehicle_weapons.fire_profile(v),vehicle_cannon.muzzle_profile(v,"mg"),vehicle_cannon.muzzle_profile(v,"gun"),PackedFloat64Array([g.get("dmg",160.0),g.get("radius",5.5),g.get("at",320.0),g.get("size",1.4)])])
+						if mode == 19:
+							var a: Dictionary = v.vdef.get("art",{})
+							var cannons := PackedInt64Array()
+							for other: Vehicle in w.vehicles:
+								if other.vdef.get("cannon",false): cannons.append(other.eid)
+							var service := [String(v.vdef.service),vehicle_service.supplies(w),vehicle_service.missiles(w)] if v.vdef.has("service") else []
+							var art := [vehicle_artillery.artillery_profile(v),PackedFloat64Array([a.get("min",40.0),a.get("max",230.0)])] if not a.is_empty() else []
+							var motion := v.motion_profile()
+							fighting_input[6] = [fighting_input[6],[vehicle_driving.profile(v),vehicle_scan.scan_profile(v),PackedFloat64Array([motion.traverse,motion.traverse_accel]),art,service,InfantryState.entity_ids(w.owned_structures),w.mission != null,cannons,attack_plans,next_plan,v.is_light()]]
 					elif mode == 11:
 						var a: Dictionary = v.vdef.art
 						fighting_input.append([vehicle_artillery.artillery_profile(v),PackedFloat64Array([a.get("min",40.0),a.get("max",230.0)]),InfantryState.entity_ids(w.owned_structures)])
@@ -533,7 +551,18 @@ func run(mode: int, complete_tick: bool = false) -> void:
 					w.work_events.append(["marks",PackedVector4Array(w.rules.marks[0]),PackedVector4Array(w.rules.marks[1])])
 				elif vehicle_ops:
 					var v: Vehicle = w.entities[40]
-					if mode == 10: v._fire_tick()
+					if mode == 19:
+						v.sim(dt)
+						attack_plans.clear(); plan_ids.clear(); next_plan = 17
+						for q: Squad in w.squads.values():
+							if q.plan != null and not plan_ids.has(q.plan):
+								plan_ids[q.plan] = next_plan; next_plan += 1; attack_plans.append(attack_helper.plan_bytes(q.plan))
+						w.work_events.append(["plans",attack_plans.duplicate(),next_plan])
+						for row: Array in result[5]:
+							if String(row[1]).begins_with("@squad:"):
+								var parts: PackedStringArray = row[1].split(":")
+								row[1] = movement_speech.speech(w.entities[row[0]].squad,int(parts[1]),int(parts[2]))
+					elif mode == 10: v._fire_tick()
 					elif mode == 11: v._arty_tick(dt)
 					elif mode == 12: v._service_tick(dt)
 					elif mode == 13:
@@ -612,13 +641,13 @@ func run(mode: int, complete_tick: bool = false) -> void:
 			assert(impacts == w.recent_impacts,"explosion impacts " + label)
 			for bytes: PackedByteArray in result[1]:
 				var qc: SquadStateCore = ClassDB.instantiate("SquadStateCore"); assert(qc.restore(bytes)); qs.append(qc)
-				assert(qc.values() == SquadState.capture(w.squads[qc.values()[0][0]]),"explosion squad " + label)
+				assert(qc.values() == SquadState.capture(w.squads[qc.values()[0][0]],plan_ids),"explosion squad " + label)
 			for e: Entity in w.entities.values():
 				if e is Soldier:
 					infantry.check_blast_actor(e,actors,label + "/%d" % e.eid)
 				elif e is Vehicle:
 					assert(vehicle.restore(actors.actor_state(e.eid)))
-					if mode == 15: vehicle_driving.compare_motion(e,vehicle,label)
+					if mode in [15,19]: vehicle_driving.compare_motion(e,vehicle,label)
 					else: assert(vehicle.values() == VehicleState.capture(e),"explosion vehicle " + label)
 				elif e is Drone: actor_compare.compare_drone(e,actors,label)
 				elif e is Projectile:
@@ -647,10 +676,12 @@ func run(mode: int, complete_tick: bool = false) -> void:
 			for key: String in result[2]: seen[key] = true
 			for retained in [actors,geometry,units,ledger,deferred,visibility,fires,network]: assert(retained.restore(retained.checkpoint()))
 			w.combat.finish_tick(); geometry.finish_tick(); check_geometry(w,geometry,label + " end")
+		for q: Squad in w.squads.values(): q.plan = null
+		plan_ids.clear()
 		w.free()
-	for key in (["smother_saved","recon_photo","far_sound"] if mode == 17 else ["drone_boom"] if mode == 18 else ["scanned"] if mode == 13 else ["veh_withdraw","veh_patched_up"] if mode == 14 else ["shove"] if mode == 15 else ["smash"] if mode == 16 else ["shot","cannon","veh_sam","veh_atgm","veh_smoke"] if mode == 10 else ["arty_mission","arty_round"] if mode == 11 else ["veh_repaired","revived","veh_medevac_revive"] if mode == 12 else ["smoke","into_tent","prisoner_taken","tunnel_in"] if mode == 9 else ["shot","revived","patched_up","dazed","pistol_while_down"] if mode == 8 else ["mortar","launch","melee","door","kicked","throwback","door_kicked","veh_smoke"] if acting else ["mortar","launch","climb","shot","mortar_round","at_launch","veh_smoke"] if mounting else ["completed","restored","track","sound","fob_built","shot"] if building else ["breach_door_kick","breach_frag_in","room_entry"] if breaching else ["shot","reload","escort","idle","shift_along"] if fighting else ["killed","pistol_while_down","crawl_to_cover"] if wounded else ["penetration","through_hit","ricochet","vehicle_destroyed","drone_shot_down"] if shoot else ["vehicle_destroyed","drone_shot_down","door_kicked","cache_cook_off","at_hit"]): assert(seen.has(key),"unexercised combat " + key)
+	for key in (["shot","cannon","dismount","plans"] if mode == 19 else ["smother_saved","recon_photo","far_sound"] if mode == 17 else ["drone_boom"] if mode == 18 else ["scanned"] if mode == 13 else ["veh_withdraw","veh_patched_up"] if mode == 14 else ["shove"] if mode == 15 else ["smash"] if mode == 16 else ["shot","cannon","veh_sam","veh_atgm","veh_smoke"] if mode == 10 else ["arty_mission","arty_round"] if mode == 11 else ["veh_repaired","revived","veh_medevac_revive"] if mode == 12 else ["smoke","into_tent","prisoner_taken","tunnel_in"] if mode == 9 else ["shot","revived","patched_up","dazed","pistol_while_down"] if mode == 8 else ["mortar","launch","melee","door","kicked","throwback","door_kicked","veh_smoke"] if acting else ["mortar","launch","climb","shot","mortar_round","at_launch","veh_smoke"] if mounting else ["completed","restored","track","sound","fob_built","shot"] if building else ["breach_door_kick","breach_frag_in","room_entry"] if breaching else ["shot","reload","escort","idle","shift_along"] if fighting else ["killed","pistol_while_down","crawl_to_cover"] if wounded else ["penetration","through_hit","ricochet","vehicle_destroyed","drone_shot_down"] if shoot else ["vehicle_destroyed","drone_shot_down","door_kicked","cache_cook_off","at_hit"]): assert(seen.has(key),"unexercised combat " + key)
 	compare.free(); infantry.free(); birth.free(); actor_compare.free(); firing.free(); launch_helper.free(); projectile_helper.free()
 	vehicle_weapons.free(); vehicle_cannon.free(); vehicle_artillery.free(); vehicle_service.free()
-	vehicle_scan.free(); vehicle_driving.free()
+	vehicle_scan.free(); vehicle_driving.free(); movement_speech.free(); attack_helper.free()
 	print("ORDNANCE_WORLD passed states=" if ordnance_ops else "VEHICLE_COMBAT_WORLD passed states=" if vehicle_ops else "INFANTRY_WORLD passed states=" if whole else "ACTION_WORLD passed states=" if acting else "MOUNT_WORLD passed states=" if mounting else "BUILD_WORLD passed states=" if building else "BREACH_WORLD passed states=" if breaching else "FIGHTING_WORLD passed states=" if fighting else "WOUNDED_WORLD passed states=" if wounded else "BULLET_WORLD passed states=" if shoot else "WORLD_COMBAT passed states=",checks)
 	get_tree().quit()

@@ -36,6 +36,43 @@ pub struct Profile<'a> {
     pub cannon: Option<CannonProfile>,
     pub machine_gun: Option<MachineGun<'a>>,
 }
+impl Profile<'_> {
+    pub(crate) fn valid(self) -> bool {
+        !(!self.cycle.valid()
+            || !self.muzzle.valid()
+            || self.cycle.cannon != self.cannon.is_some()
+            || !self.cycle.machine_gun.is_empty() != self.machine_gun.is_some()
+            || self.machine_gun.is_some_and(|gun| {
+                !gun.weapon.valid()
+                    || !gun.suppression.is_finite()
+                    || !(0.0..=1_000_000.0).contains(&gun.suppression)
+                    || gun.sound.len() > 128
+                    || gun.sound.contains('\0')
+                    || gun.weapon.explosive_radius.is_some_and(|radius| {
+                        !Explosion {
+                            damage: Some(gun.weapon.damage * 1.6),
+                            radius,
+                            structure_multiplier: 1.5,
+                            vehicle_multiplier: 0.1,
+                            ..Default::default()
+                        }
+                        .valid()
+                    })
+            })
+            || self.cannon.is_some_and(|gun| {
+                !gun.muzzle.valid()
+                    || !Explosion {
+                        damage: Some(gun.damage),
+                        radius: gun.radius,
+                        anti_tank: gun.anti_tank,
+                        size: gun.size,
+                        structure_multiplier: 2.5,
+                        ..Default::default()
+                    }
+                    .valid()
+            }))
+    }
+}
 #[derive(Clone, Debug, PartialEq)]
 pub enum Event {
     Combat(Combat),
@@ -76,39 +113,7 @@ impl Context<'_> {
         defense: &dyn Fn(&Vehicle) -> Defense<'a>,
     ) -> Result<Vec<Event>, &'static str> {
         let v = self.actors.vehicle(id).ok_or("missing firing vehicle")?;
-        if !crate::infantry_fight_world::valid_step(0.0, self.now, None)
-            || !profile.cycle.valid()
-            || profile.cycle.cannon != profile.cannon.is_some()
-            || !profile.cycle.machine_gun.is_empty() != profile.machine_gun.is_some()
-            || profile.machine_gun.is_some_and(|gun| {
-                !gun.weapon.valid()
-                    || !gun.suppression.is_finite()
-                    || !(0.0..=1_000_000.0).contains(&gun.suppression)
-                    || gun.sound.len() > 128
-                    || gun.sound.contains('\0')
-                    || gun.weapon.explosive_radius.is_some_and(|radius| {
-                        !Explosion {
-                            damage: Some(gun.weapon.damage * 1.6),
-                            radius,
-                            structure_multiplier: 1.5,
-                            vehicle_multiplier: 0.1,
-                            ..Default::default()
-                        }
-                        .valid()
-                    })
-            })
-            || profile.cannon.is_some_and(|gun| {
-                !Explosion {
-                    damage: Some(gun.damage),
-                    radius: gun.radius,
-                    anti_tank: gun.anti_tank,
-                    size: gun.size,
-                    structure_multiplier: 2.5,
-                    ..Default::default()
-                }
-                .valid()
-            })
-        {
+        if !crate::infantry_fight_world::valid_step(0.0, self.now, None) || !profile.valid() {
             return Err("invalid vehicle weapon profile");
         }
         let target = v.target;

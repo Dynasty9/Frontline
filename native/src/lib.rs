@@ -52,6 +52,7 @@ mod support_flight;
 mod terrain;
 mod vehicle;
 mod vehicle_loss_world;
+mod vehicle_world;
 mod visibility;
 mod water_raster;
 mod world_geometry;

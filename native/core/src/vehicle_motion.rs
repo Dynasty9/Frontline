@@ -89,7 +89,7 @@ pub fn slew(
     [wrap(angle + step) as f32, velocity as f32]
 }
 impl GroundProfile {
-    fn valid(self) -> bool {
+    pub(crate) fn valid(self) -> bool {
         point(self.hull)
             && self.hull.min_element() > 0.0
             && self.weight <= 2

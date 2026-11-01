@@ -194,3 +194,79 @@ pub fn transcript() -> Vec<u8> {
     }
     out
 }
+
+pub fn transport_transcript() -> Vec<u8> {
+    use frontline_core::infantry_control::HiddenReason;
+    use frontline_core::vehicle::Vehicle;
+    let mut out = vec![];
+    let mut previous = [vec![], vec![], vec![], vec![], vec![]];
+    for trial in 0..4 {
+        let mut s = movement::Scene::new(7121 + trial);
+        let id = s
+            .actors
+            .spawn(Actor::Vehicle(Box::new(Vehicle {
+                kind: "truck".into(),
+                team: 0,
+                passengers: (1..=6).collect(),
+                position: Vector3::new(-28.7, 0.0, 2.3),
+                yaw: trial as f64 * 0.37,
+                assault: trial % 2 == 1,
+                assault_destination: Some(Vector3::new(30.7, 0.0, -4.3)),
+                ..Default::default()
+            })))
+            .unwrap();
+        for sid in 1..=6 {
+            s.change(sid, |m| {
+                m.vitals.life = Life::Hidden;
+                m.links.vehicle = u64::from(id);
+                m.control.hidden = HiddenReason::Vehicle;
+                if trial == 3 && sid == 1 {
+                    m.vitals.life = Life::Downed;
+                    m.links.vehicle = 0;
+                }
+            });
+        }
+        s.resume();
+        let (mut plan, event) = s
+            .context()
+            .dismount_vehicle(id, trial >= 2, 17, &Visibility::default())
+            .unwrap();
+        events(&mut out, event);
+        for step in 0..6 {
+            s.now += 1.7;
+            if step == 1 {
+                let (again, event) = s
+                    .context()
+                    .dismount_vehicle(id, trial >= 2, 18, &Visibility::default())
+                    .unwrap();
+                assert!(again.is_none());
+                assert!(event.is_empty());
+            }
+            if let Some(p) = &mut plan {
+                events(&mut out, p.tick(&mut s.context()).unwrap());
+                block(&mut out, &p.checkpoint().unwrap());
+            } else {
+                block(&mut out, &[]);
+            }
+            s.geometry
+                .navigation
+                .process_paths(&mut s.actors, 3, s.now, &mut s.rng)
+                .unwrap();
+            for (previous, next) in previous.iter_mut().zip([
+                s.actors.checkpoint().unwrap(),
+                s.squads[0].checkpoint().unwrap(),
+                s.geometry.navigation.planner.checkpoint(),
+                s.geometry.navigation.infantry.checkpoint(),
+                s.geometry.navigation.vehicles.checkpoint(),
+            ]) {
+                movement::checkpoint_delta(&mut out, previous, next);
+            }
+            out.extend_from_slice(&s.rng.state().to_le_bytes());
+            s.resume();
+            if let Some(p) = &mut plan {
+                *p = AttackPlan::restore(&p.checkpoint().unwrap()).unwrap();
+            }
+        }
+    }
+    out
+}

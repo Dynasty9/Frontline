@@ -89,7 +89,7 @@ fn valid_units(units: &[Contact]) -> bool {
         })
 }
 impl CrewProfile<'_> {
-    fn valid(self) -> bool {
+    pub(crate) fn valid(self) -> bool {
         self.base.len() <= 128 && self.armor <= 16
     }
     pub fn applies(self, v: &Vehicle) -> bool {

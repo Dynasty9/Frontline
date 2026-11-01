@@ -4,7 +4,7 @@ import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { ROOT } from "./lib/game.mjs";
 
-for (const [mode, name] of [[13, "shared scans"], [14, "crew decisions"], [15, "driving and shoving"], [16, "smashing obstacles"]]) {
+for (const [mode, name] of [[13, "shared scans"], [14, "crew decisions"], [15, "driving and shoving"], [16, "smashing obstacles"], [19, "complete ground vehicle updates and troop dismounts"]]) {
   test(`Rust shared world preserves ${name}`, async () => {
     const { stdout, stderr } = await promisify(execFile)(process.env.GODOT || "godot", [
       "--headless", "--quit-after", "2", "--path", ROOT, "res://tests/fixtures/vehicle-movement-world.tscn", "--", `--case=${mode}`,

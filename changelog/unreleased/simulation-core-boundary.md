@@ -109,7 +109,8 @@ kind = "fixed"
 - Flight checks preserve helicopter momentum, hover braking, landing clearance, sling-load handling and UAV orbits across saved-state resumes.
 - Transport checks preserve sling pickup, swing, release and dropped cargo, plus pilots' landing, unloading, supply-destination and return-flight decisions.
 - Vehicle combat checks preserve armour, ricochets, blast shove, broken tracks, damage alerts and missile/cannon/machine-gun firing priorities and timing.
-- Passenger checks preserve dismount timing, exits onto shore and the section's next orders, including removed passengers.
+- Passenger checks preserve dismount timing, exits onto shore and the section's next orders, including removed passengers. Connected Rust exits now restore defensive cover or a complete deliberate attack, including leader replacement.
+- Complete Rust ground-vehicle updates preserve movement, shared scans, unloading, aiming, combat, support and obstacle destruction in their original order. Vehicles destroyed by their own shot stop before repairing nearby units.
 - Infantry birth checks preserve unit loadouts, upgrades, names, initial cooldowns and squad membership as entity creation moves into Rust.
 - Vehicle-loss checks preserve passenger casualties, crew survival and final wreck positions, including random choices between each survivor's escape.
 - Connected vehicle-destruction checks preserve dropped sling cargo, battle credit, supply-truck replacement, crew return orders and burning wrecks in their original order.

@@ -59,6 +59,14 @@ func _ready() -> void:
 		if trial % 5 == 0:
 			w.entities[3].task = "rescue"; w.entities[3].task_ent = w.entities[7]; w.entities[7].dragged_by = w.entities[3]; w.entities[7].rescue_claimed = w.entities[3]
 			w.entities[5].task = "breach"; w.entities[5].task_phase = 2
+		var transport: Vehicle = null
+		if trial % 4 == 3:
+			transport = Truck.new(); transport.world = w; transport.srv = true; transport.eid = 110; transport.team = qs[0].team
+			transport.vkind = "truck"; transport.vdef = Defs.VEHICLES.truck.duplicate(); transport.position = Vector3(-28.7,0,2.3); transport.rotation.y = trial * 0.17
+			if trial % 8 == 7: transport.vdef.base = "boat"
+			transport.assault = true; transport.assault_dest = Vector3(30.7,0,-4.3); w.add_child(transport); w._register(transport)
+			for s: Soldier in qs[0].members:
+				if s.life == Soldier.Life.ALIVE: s.life = Soldier.Life.HIDDEN; s.riding = transport; transport.passengers.append(s)
 		for index in 2:
 			var st := Structure.new(); st.world = w; st.srv = true; st.eid = 100 + index; st.team = -1
 			st.skind = "hesco"; st.size = Vector3(10,2,1); st.position = Vector3(6.7 + index * 10.13,0,-4.1)
@@ -95,7 +103,9 @@ func _ready() -> void:
 			w.spoken.clear(); w.stats.clear(); w.messages.clear()
 			var op := 8; var target := 7; var args := []
 			if step == 0:
-				if trial % 4 == 1:
+				if transport != null:
+					op = 11; target = transport.eid; args = [transport.is_boat(),17,visibility]; transport.dismount(); p = q.plan
+				elif trial % 4 == 1:
 					op = 10; target = 17; args = [objective,Vector3.ZERO,visibility,PackedInt64Array([7,8])]
 					p = AttackPlan.make(w,qs,objective,Vector3.ZERO)
 				else:
@@ -125,6 +135,10 @@ func _ready() -> void:
 				assert(false,"attack plan %d/%d byte %d %s" % [trial,step,first,p.info()])
 			for i in qs.size(): compare_squad(qs[i],cores[i],plans,"attack squad %d/%d/%d" % [trial,step,i])
 			for s: Soldier in w.soldiers: compare_actor(s,actors,"attack actor %d/%d/%d" % [trial,step,s.eid])
+			if transport != null:
+				var vehicle_core: RefCounted = ClassDB.instantiate("VehicleStateCore")
+				assert(vehicle_core.restore(actors.actor_state(transport.eid)))
+				assert(VehicleState.capture(transport) == vehicle_core.values(),"attack transport %d/%d" % [trial,step])
 			assert(w.rng.state == rng.state,"attack random %d/%d" % [trial,step])
 			assert(geometry.inspect()[1] == helper.nav_save(w.nav),"attack queue %d/%d" % [trial,step])
 			w.nav.process_paths(3); assert(geometry.process_paths(actors,3,w.time,rng._backend))

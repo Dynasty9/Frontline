@@ -1,9 +1,12 @@
 //! Passenger exits update both actor kinds before the squad receives its next order.
 use crate::actors::{Actor, Actors};
+use crate::attack_plan::{AttackPlan, Event};
 use crate::infantry_vitals::Life;
 use crate::path_planner::PathPlanner;
 use crate::spatial::SpatialIndex;
+use crate::squad_movement::Context;
 use crate::vector::{normalized, Vector3};
+use crate::visibility::Visibility;
 use std::collections::HashSet;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -22,6 +25,82 @@ fn direction(yaw: f64) -> Vector3 {
 fn shore(position: Vector3, nav: &PathPlanner) -> Option<Vector3> {
     nav.nearest_walkable(position)
         .filter(|p| flat(*p - position).length() < 15.0)
+}
+impl Context<'_> {
+    /// Exiting a transport immediately restores the section's defense or deliberate attack.
+    pub fn dismount_vehicle(
+        &mut self,
+        vehicle: u32,
+        boat: bool,
+        plan_id: u32,
+        visibility: &Visibility,
+    ) -> Result<(Option<AttackPlan>, Vec<Event>), &'static str> {
+        if plan_id == 0 || !self.now.is_finite() || self.now.abs() > 1e12 - 100.0 {
+            return Err("invalid transport squad context");
+        }
+        let team = self
+            .actors
+            .vehicle(vehicle)
+            .ok_or("missing transport")?
+            .team;
+        // Validate the destination squad before any passenger leaves the vehicle.
+        for &id in &self.actors.vehicle(vehicle).unwrap().passengers {
+            if let Some(s) = self.actors.soldier(id) {
+                if s.vitals.life == Life::Hidden && s.identity.squad != 0 {
+                    self.index(s.identity.squad)?;
+                }
+            }
+        }
+        let Some(order) = self
+            .actors
+            .dismount(vehicle, boat, &self.geometry.navigation.planner)?
+        else {
+            return Ok((None, vec![]));
+        };
+        let mut out = vec![Event::Stat("dismount")];
+        if order.squad == 0 {
+            return Ok((None, out));
+        }
+        let i = self.index(order.squad)?;
+        let mut movement = vec![];
+        let leader = self.leader(i, &mut movement);
+        out.extend(movement.into_iter().map(Event::Squad));
+        if leader != 0 {
+            self.actors
+                .soldier_mut(leader)
+                .unwrap()
+                .vitals
+                .speech_cooldown = 2.6;
+            out.push(Event::Speech {
+                soldier: leader,
+                text: if team == 0 {
+                    "Dismount! Go, go, go!"
+                } else {
+                    "Out! Everybody out!"
+                }
+                .into(),
+            });
+        }
+        let plan = if order.assault {
+            let (plan, events) = self.order_assault(
+                order.squad,
+                order.position,
+                order.forward,
+                plan_id,
+                visibility,
+            )?;
+            out.extend(events);
+            plan
+        } else {
+            out.extend(
+                self.order_defend(order.squad, order.position, order.forward, false)?
+                    .into_iter()
+                    .map(Event::Squad),
+            );
+            None
+        };
+        Ok((plan, out))
+    }
 }
 impl Actors {
     pub fn dismount(

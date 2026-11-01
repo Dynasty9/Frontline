@@ -80,6 +80,21 @@ fn deliberate_attacks_are_identical_across_platforms() {
     golden("attack_plan_world", &attack_plan_world::transcript());
 }
 
+#[path = "fixtures/vehicle_world.rs"]
+mod vehicle_world;
+#[test]
+fn complete_ground_vehicles_are_identical_across_platforms() {
+    golden("vehicle_world", &vehicle_world::transcript());
+}
+
+#[test]
+fn connected_transport_orders_are_identical_across_platforms() {
+    golden(
+        "transport_world",
+        &attack_plan_world::transport_transcript(),
+    );
+}
+
 #[test]
 fn connected_ordnance_is_identical_across_platforms() {
     golden("ordnance_world", &ordnance_world::transcript());

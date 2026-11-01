@@ -589,6 +589,8 @@ func sim(dt: float) -> void:
 		if _lay_yaw == INF or not vdef.has("art"):
 			_turret_tick(dt)
 		_fire_tick()
+		if gone:
+			return  # A vehicle lost to its own blast cannot repair or crush anything.
 		if vdef.has("service"):
 			_service_tick(dt)
 		smash_t -= dt

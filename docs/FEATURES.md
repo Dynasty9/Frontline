@@ -1544,6 +1544,9 @@ pinning, alternating bounds and covering fire. Deliberate attacks retain their
 support/assault teams, covered flanks, smoke and grenade rushes, shifting fire,
 reinforcement, fallback and consolidation through checkpoints. The Rust world
 dispatcher still needs to own and schedule these plans in production.
+Ground vehicles now have a connected Rust update for movement, scans, crew decisions,
+unloading, combat, support and obstacle collisions. Unloading restores the squad's
+defense or deliberate attack; vehicles lost to their own blast stop before support work.
 The full
 authoritative Rust server and deterministic
 battle verifier are still in progress; see [RUST_SIMULATION.md](RUST_SIMULATION.md).
