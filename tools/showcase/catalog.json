@@ -2688,6 +2688,36 @@
       "title": "Safer routes across hills and water",
       "version": "unreleased",
       "kind": "improved"
+    },
+    {
+      "entry": "changelog/unreleased/alpine-surface-detail.md",
+      "summary": "Mountain faces gain distinct rock masses, relief-aware moss and snow, and small conifer stands at their feet.",
+      "medium": "still",
+      "stage": "native-media",
+      "rationale": "Matched native screenshots show surface and terrain-form changes; they do not demonstrate movement or performance.",
+      "source_ref": "codex/alpine-battlefields",
+      "sources": [
+        {
+          "file": "changelog/unreleased/alpine-surface-detail/before.jpg",
+          "sha256": "d5542d97dd01903186f3b3ce1bfebd783cd457b2e997c40517cdf5bfdc8e5fa2",
+          "caption": "Before: immutable 915042f resource pack."
+        },
+        {
+          "file": "changelog/unreleased/alpine-surface-detail/after.jpg",
+          "sha256": "c2d2327aec64f09f41989c3545c5bdb155176005111c36b05e377765aabb4957",
+          "caption": "After: alpine material/form refinement on codex/alpine-battlefields."
+        }
+      ],
+      "output": null,
+      "title": "Rock faces with depth and greener foothills",
+      "version": "unreleased",
+      "kind": "improved",
+      "capture": {
+        "before_ref": "915042f",
+        "after_ref": "codex/alpine-battlefields",
+        "renderer": "Godot 4.7.2 Forward+, RTX 3090, 1600x900",
+        "command": "godot --main-pack PACK --resolution 1600x900 -- --aivai --seed=3 --offscreen --nohud --set=perf:0 --mood=golden --preset=high --focus=-100,0 --zoom=600 --pitch=-38 --cam-yaw=0.7 --perf-at=5 --perf-duration=10 --perf-shot=OUTPUT.png"
+      }
     }
   ],
   "layout_capture": {

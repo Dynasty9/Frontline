@@ -267,12 +267,12 @@ func _build_ground() -> void:
 	ground_mat.shader = sh
 	ground_mat.set_shader_parameter("biome_tex", biome_tex)
 	ground_mat.set_shader_parameter("detail_tex", detail_tex)
-	ground_mat.set_shader_parameter("cliff_color", preload("res://assets/terrain/aerial_rocks_02_diff_2k.jpg"))
-	ground_mat.set_shader_parameter("cliff_normal", preload("res://assets/terrain/aerial_rocks_02_nor_gl_2k.jpg"))
-	ground_mat.set_shader_parameter("rock_color", preload("res://assets/terrain/rock_face_03_diff_2k.jpg"))
-	ground_mat.set_shader_parameter("rock_normal", preload("res://assets/terrain/rock_face_03_nor_gl_2k.jpg"))
-	ground_mat.set_shader_parameter("moss_color", preload("res://assets/terrain/aerial_grass_rock_diff_2k.jpg"))
-	ground_mat.set_shader_parameter("moss_normal", preload("res://assets/terrain/aerial_grass_rock_nor_gl_2k.jpg"))
+	ground_mat.set_shader_parameter("cliff_color", preload("res://assets/terrain/aerial_rocks_02_color_height.png"))
+	ground_mat.set_shader_parameter("cliff_normal", preload("res://assets/terrain/aerial_rocks_02_surface.png"))
+	ground_mat.set_shader_parameter("rock_color", preload("res://assets/terrain/rock_face_03_color_height.png"))
+	ground_mat.set_shader_parameter("rock_normal", preload("res://assets/terrain/rock_face_03_surface.png"))
+	ground_mat.set_shader_parameter("moss_color", preload("res://assets/terrain/aerial_grass_rock_color_height.png"))
+	ground_mat.set_shader_parameter("moss_normal", preload("res://assets/terrain/aerial_grass_rock_surface.png"))
 	ground_mat.set_shader_parameter("cloud_strength", float(_d.clouds))
 	ground_mat.set_shader_parameter("sun_tint", _d.sun)
 	ground_mat.set_shader_parameter("air_color", _d.fog)
@@ -956,11 +956,11 @@ uniform vec3 sun_direction = vec3(0.0, 1.0, 0.0);
 uniform vec3 air_color : source_color = vec3(0.5, 0.6, 0.7);
 uniform sampler2D surface_bake : hint_default_white, filter_linear_mipmap, repeat_disable;
 uniform sampler2D cliff_color : source_color, filter_linear_mipmap_anisotropic, repeat_enable;
-uniform sampler2D cliff_normal : hint_normal, filter_linear_mipmap_anisotropic, repeat_enable;
+uniform sampler2D cliff_normal : filter_linear_mipmap_anisotropic, repeat_enable;
 uniform sampler2D rock_color : source_color, filter_linear_mipmap_anisotropic, repeat_enable;
 uniform sampler2D moss_color : source_color, filter_linear_mipmap_anisotropic, repeat_enable;
-uniform sampler2D rock_normal : hint_normal, filter_linear_mipmap_anisotropic, repeat_enable;
-uniform sampler2D moss_normal : hint_normal, filter_linear_mipmap_anisotropic, repeat_enable;
+uniform sampler2D rock_normal : filter_linear_mipmap_anisotropic, repeat_enable;
+uniform sampler2D moss_normal : filter_linear_mipmap_anisotropic, repeat_enable;
 uniform sampler2D biome_tex : filter_linear, repeat_enable;
 uniform sampler2D detail_tex : filter_linear_mipmap, repeat_enable;
 uniform vec3 grass_a : source_color = vec3(0.24, 0.29, 0.19);
@@ -1014,30 +1014,38 @@ float hgt(vec2 p) {
 	return texture(detail_tex, p / 9.0).r * 0.6 + texture(detail_tex, p / 2.3 + 0.31).r * 0.4;
 }
 
-vec3 surface_color(sampler2D tex, vec3 p, vec3 weights) {
-	vec3 x = texture(tex, p.zy).rgb;
-	vec3 y = texture(tex, p.xz).rgb;
-	vec3 z = texture(tex, p.xy).rgb;
-	// Compatibility samples photographs in sRGB; mineral masks need the same linear values.
+vec4 surface_color(sampler2D tex, vec3 p, vec3 weights) {
+	vec4 x = texture(tex, p.zy);
+	vec4 y = texture(tex, p.xz);
+	vec4 z = texture(tex, p.xy);
 	if (OUTPUT_IS_SRGB) {
-		x = mix(x / 12.92, pow((x + 0.055) / 1.055, vec3(2.4)), step(vec3(0.04045), x));
-		y = mix(y / 12.92, pow((y + 0.055) / 1.055, vec3(2.4)), step(vec3(0.04045), y));
-		z = mix(z / 12.92, pow((z + 0.055) / 1.055, vec3(2.4)), step(vec3(0.04045), z));
+		x.rgb = mix(x.rgb / 12.92, pow((x.rgb + 0.055) / 1.055, vec3(2.4)), step(vec3(0.04045), x.rgb));
+		y.rgb = mix(y.rgb / 12.92, pow((y.rgb + 0.055) / 1.055, vec3(2.4)), step(vec3(0.04045), y.rgb));
+		z.rgb = mix(z.rgb / 12.92, pow((z.rgb + 0.055) / 1.055, vec3(2.4)), step(vec3(0.04045), z.rgb));
 	}
 	return x * weights.x + y * weights.y + z * weights.z;
 }
 
-vec3 surface_normal(sampler2D tex, vec3 p, vec3 weights, vec3 geometric) {
-	vec3 x = texture(tex, p.zy).xyz * 2.0 - 1.0;
-	vec3 y = texture(tex, p.xz).xyz * 2.0 - 1.0;
-	vec3 z = texture(tex, p.xy).xyz * 2.0 - 1.0;
-	// BC5 normal maps retain XY only; reconstruct the upward component.
-	x.z = sqrt(max(0.0, 1.0 - dot(x.xy, x.xy)));
-	y.z = sqrt(max(0.0, 1.0 - dot(y.xy, y.xy)));
-	z.z = sqrt(max(0.0, 1.0 - dot(z.xy, z.xy)));
-	return normalize(vec3(x.z * sign(geometric.x), x.y, x.x) * weights.x
-		+ vec3(y.x, y.z, y.y) * weights.y
-		+ vec3(z.x, z.y, z.z * sign(geometric.z)) * weights.z);
+// Normal XY, baked crevice visibility and roughness share one linear-data texture.
+vec2 surface_data(sampler2D tex, vec3 p, vec3 weights, vec3 geometric, out vec3 mapped) {
+	vec4 x = texture(tex, p.zy);
+	vec4 y = texture(tex, p.xz);
+	vec4 z = texture(tex, p.xy);
+	vec2 nx = x.rg * 2.0 - 1.0;
+	vec2 ny = y.rg * 2.0 - 1.0;
+	vec2 nz = z.rg * 2.0 - 1.0;
+	// A flat detail map must preserve the terrain normal, including negative faces.
+	vec3 tx = vec3(geometric.x * sqrt(max(0.0, 1.0 - dot(nx, nx))), geometric.y + nx.y, geometric.z + nx.x);
+	vec3 ty = vec3(geometric.x + ny.x, geometric.y * sqrt(max(0.0, 1.0 - dot(ny, ny))), geometric.z + ny.y);
+	vec3 tz = vec3(geometric.x + nz.x, geometric.y + nz.y, geometric.z * sqrt(max(0.0, 1.0 - dot(nz, nz))));
+	mapped = normalize(tx * weights.x + ty * weights.y + tz * weights.z);
+	return x.ba * weights.x + y.ba * weights.y + z.ba * weights.z;
+}
+
+float height_blend(float bed, float deposit, float coverage) {
+	vec2 relief = vec2(bed * 0.36 + 1.0 - coverage, deposit * 0.36 + coverage);
+	vec2 weight = max(relief - max(relief.x, relief.y) + 0.18, vec2(0.0));
+	return weight.y / max(0.001, weight.x + weight.y);
 }
 
 void fragment() {
@@ -1095,20 +1103,28 @@ void fragment() {
 	vec3 geometric = normalize(vec3(-rx, 1.0, -rz));
 	vec3 weights = pow(abs(geometric), vec3(4.0));
 	weights /= weights.x + weights.y + weights.z;
-	// Large fractured slabs retain their relief at the battle camera; scree breaks up their feet.
-	vec3 rock = surface_color(rock_color, wpos / 90.0, weights);
-	vec3 rock_macro = surface_color(cliff_color, wpos / 38.0 + 0.37, weights);
-	float stone = dot(rock, vec3(0.2126, 0.7152, 0.0722));
-	float mineral = dot(rock_macro, vec3(0.2126, 0.7152, 0.0722));
-	float bed = wpos.y / 14.0 + p.x * 0.006 + p.y * 0.003;
-	float strata = smoothstep(0.04, 0.15, abs(fract(bed + (d1 - 0.5) * 0.35) - 0.5));
-	rock = mix(vec3(stone), rock, 0.18) * vec3(1.7, 1.67, 1.6);
-	rock = mix(rock, vec3(mineral) * vec3(0.95, 0.98, 1.0), (1.0 - smoothstep(0.25, 0.8, slope)) * 0.65);
-	rock *= mix(0.65, 1.25, smoothstep(0.06, 0.4, stone));
-	rock *= 0.85 + strata * 0.15;
-	vec3 moss = surface_color(moss_color, wpos / 24.0, weights);
-	float grass_detail = dot(moss, vec3(0.2126, 0.7152, 0.0722));
-	moss = mix(vec3(0.055, 0.092, 0.034), vec3(0.14, 0.18, 0.075), d1) * (0.65 + grass_detail * 1.1);
+	// Metre-scale scree and broad bedrock share a palette, rather than fading into grey noise.
+	vec3 rock_uv = wpos / 54.0;
+	vec3 scree_uv = wpos / 16.0 + 0.37;
+	vec3 moss_uv = wpos / 18.0;
+	vec4 rock_sample = surface_color(rock_color, rock_uv, weights);
+	vec4 scree_sample = surface_color(cliff_color, scree_uv, weights);
+	vec4 moss_sample = surface_color(moss_color, moss_uv, weights);
+	float macro = texture(detail_tex, p / 190.0 + 0.19).r;
+	float scree = 1.0 - smoothstep(0.3, 0.95, slope);
+	float stone = dot(rock_sample.rgb, vec3(0.2126, 0.7152, 0.0722));
+	vec3 rock = mix(vec3(stone), rock_sample.rgb, 0.58) * vec3(1.32, 1.34, 1.36);
+	rock = mix(rock, scree_sample.rgb * vec3(1.04, 1.06, 1.07), scree * 0.7);
+	rock *= mix(vec3(0.82, 0.87, 0.94), vec3(1.12, 1.08, 1.0), macro);
+	float rock_height = mix(rock_sample.a, scree_sample.a, scree * 0.7);
+	float grass_detail = dot(moss_sample.rgb, vec3(0.2126, 0.7152, 0.0722));
+	vec3 moss = mix(vec3(0.055, 0.086, 0.028), vec3(0.12, 0.155, 0.060), macro) * (0.65 + grass_detail * 1.3);
+	vec3 rock_n; vec3 scree_n; vec3 moss_n;
+	vec2 rock_data = surface_data(rock_normal, rock_uv, weights, geometric, rock_n);
+	vec2 scree_data = surface_data(cliff_normal, scree_uv, weights, geometric, scree_n);
+	vec2 moss_data = surface_data(moss_normal, moss_uv, weights, geometric, moss_n);
+	rock_data = mix(rock_data, scree_data, scree * 0.7);
+	rock_n = normalize(mix(rock_n, scree_n, scree * 0.7));
 	float elevation = smoothstep(0.0, snow_line, geology);
 	vec3 baked = texture(surface_bake, (p + __MAP_HALF__) / __MAP_SIZE__).rgb;
 	terrain_sun = baked.b;
@@ -1119,7 +1135,8 @@ void fragment() {
 		sky = 1.0 - max(cavity, 0.0) * 0.45;
 		terrain_sun = 1.0;
 	}
-	float exposed = smoothstep(0.28, 0.85, slope + elevation * 0.24 + (d1 - 0.5) * 0.12);
+	float cover = smoothstep(0.24, 0.95, slope + elevation * 0.20 + (macro - 0.5) * 0.22);
+	float exposed = height_blend(moss_sample.a, rock_height, cover);
 	vec3 alpine = mix(moss, rock, exposed);
 	float clean = (1.0 - wm.g) * (1.0 - wm.a) * (1.0 - clamp(bowl, 0.0, 1.0));
 	col = mix(col, alpine, clean);
@@ -1127,18 +1144,22 @@ void fragment() {
 	float local_snow_line = max(abs(p.x), abs(p.y)) >= __MAP_HALF__ ? max(150.0, snow_line * 1.5) : snow_line;
 	float snow_field = (geology - local_snow_line) / 35.0 + cavity * 0.8 - geometric.x * 0.25 + (d1 - 0.5) * 0.3;
 	snow_field -= min(3.0, max(0.0, slope - 0.75)) * 0.18;
-	snow_field += (mineral - 0.3) * 0.9;
-	float snow = smoothstep(-0.06, 0.12, snow_field) * (1.0 - smoothstep(0.9, 2.4, slope));
+	snow_field += (macro - 0.5) * 0.25;
+	float snow = height_blend(rock_height, 0.6, smoothstep(-0.16, 0.20, snow_field));
+	snow *= 1.0 - smoothstep(0.85, 2.1, slope);
 	snow *= clean;
 	col = mix(col, vec3(0.82, 0.87, 0.91) * (0.97 + d3 * 0.03), snow);
-	AO = sky;
+	vec2 material_data = mix(moss_data, rock_data, exposed);
+	AO = sky * mix(1.0, max(0.35, material_data.x), clean * (1.0 - snow));
 	AO_LIGHT_AFFECT = 0.25;
 	col *= mix(vec3(0.72, 0.80, 0.90), vec3(1.0), sky);
 
 	float aerial = smoothstep(__MAP_HALF__ + 80.0, __MAP_HALF__ + 1300.0, max(abs(p.x), abs(p.y))) * 0.35;
 	ALBEDO = col * (1.0 - aerial);
 	EMISSION = air_color * aerial * 0.22;
-	ROUGHNESS = mix(mix(0.96, 0.82, dirt_m), 0.55, wet * 0.5);
+	ROUGHNESS = mix(mix(0.96, 0.82, dirt_m), clamp(material_data.y, 0.55, 1.0), clean);
+	ROUGHNESS = mix(ROUGHNESS, 0.88, snow);
+	ROUGHNESS = mix(ROUGHNESS, 0.55, wet * 0.5);
 	ROUGHNESS = mix(ROUGHNESS, 0.45, max(wm.a * 0.8, wet_sand * 0.6));
 	ROUGHNESS = mix(ROUGHNESS, 0.16, puddle);
 	SPECULAR = mix(0.25, 0.38, wet);
@@ -1153,8 +1174,9 @@ void fragment() {
 	float gx = (dfm(p + vec2(de, 0.0)) - dfm(p - vec2(de, 0.0))) / (2.0 * de);
 	float gz = (dfm(p + vec2(0.0, de)) - dfm(p - vec2(0.0, de))) / (2.0 * de);
 	n = normalize(n + vec3(-gx, 0.0, -gz));
-	vec3 mapped = mix(surface_normal(moss_normal, wpos / 24.0, weights, geometric), normalize(mix(surface_normal(cliff_normal, wpos / 38.0 + 0.37, weights, geometric), surface_normal(rock_normal, wpos / 90.0, weights, geometric), 0.8)), exposed);
-	n = normalize(mix(n, mapped, 0.72 * (1.0 - snow) * (1.0 - wm.a)));
+	vec3 mapped = normalize(mix(moss_n, rock_n, exposed));
+	n = normalize(mix(n, mapped, 0.85 * clean * (1.0 - snow)));
+	n = normalize(mix(n, geometric, snow * 0.9));
 	n = normalize(mix(n, vec3(0.0, 1.0, 0.0), puddle * 0.9));
 	NORMAL = normalize((VIEW_MATRIX * vec4(n, 0.0)).xyz);
 }

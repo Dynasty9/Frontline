@@ -49,6 +49,25 @@ func _ready() -> void:
 	var invalid := geology.heights.duplicate()
 	invalid[0] = INF
 	assert(not Landform.valid(invalid, 64))
+	var forms_a := Landform.new(256)
+	forms_a.heights.resize(forms_a.n * forms_a.n)
+	forms_a.heights.fill(80.0)
+	var forms_b := Landform.new(256)
+	forms_b.heights = forms_a.heights.duplicate()
+	forms_a._place_forms(3)
+	forms_b._place_forms(3)
+	assert(forms_a.heights == forms_b.heights, "Baked rock forms place deterministically")
+	assert(Array(forms_a.heights).min() < 75.0 and Array(forms_a.heights).max() > 85.0, "Forms carve valleys and build rock masses, not just recolour ground")
+	assert(Landform.valid(forms_a.heights, 256))
+	for name in ["buttress", "cirque", "saddle"]:
+		var form: PackedFloat32Array = Landform.FORMS.get_meta(name)
+		assert(form.size() == 33 * 33 and Array(form).min() >= 0.0 and Array(form).max() <= 1.0)
+	for name in ["rock_face_03", "aerial_rocks_02", "aerial_grass_rock"]:
+		for suffix in ["color_height", "surface"]:
+			var tex: Texture2D = load("res://assets/terrain/%s_%s.png" % [name, suffix])
+			var img := tex.get_image()
+			assert(img.get_size() == Vector2i(1024, 1024) and img.has_mipmaps(), "Packed relief textures keep distance filtering")
+			assert(img.get_format() == Image.FORMAT_RGBA8, "Height and roughness alpha must survive import")
 	var corridor := Landform.new(256)
 	corridor.generate(3, [[PackedVector3Array([Vector3(-100, 0, 0), Vector3(100, 0, 0)])]], world.water, [[Vector3(0, 0, 60), 12.0]])
 	assert(corridor.peak > 5.0, "Reserved maps still contain hills")

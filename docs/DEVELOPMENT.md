@@ -820,6 +820,25 @@ both flat scenarios and generated mountains. Run the full scenario suite and the
 
 ### Alpine rendering options
 
+`python tools/bake_alpine_assets.py` rebuilds the bundled material pack (Pillow and
+NumPy). Downloads are checksum-verified against `assets/terrain/sources.json`.
+Colour/height stores sRGB diffuse in RGB and linear displacement in alpha; surface
+stores linear normal XY, ambient occlusion and roughness in RGBA. Keep lossless RGBA,
+mipmaps enabled and alpha-border correction disabled. The shader reconstructs normal Z,
+blends layers using displacement, and reuses the same 18 triplanar texture reads.
+
+The offline kit also bakes three 33-square heightfield forms: buttress, cirque and
+saddle. Standard generation rotates and scales them before erosion and road grading;
+collision, navigation and replication use the resulting terrain. These are analytic
+heightfield forms, not scanned meshes or overhangs. Foothill conifer stands have a
+fixed cap of 24 trees per stand and six stands per map; campaigns retain their layout.
+
+This adapts the reusable rock forms and baked detail described in Wargaming's
+[environment workflow](https://wargaming.com/en/news/creating_levels/) and the
+[height-based material layering](https://worldofwarships.eu/en/news/general-news/graphics-update-review/)
+notes. Existing sky visibility, sun occlusion and optional haze supply range separation.
+It does not reproduce their proprietary renderer or hand-authored cliff meshes.
+
 `alpine_haze` retains distant atmospheric depth on elevated maps (High/Ultra defaults),
 fading the extra haze as the camera tilts down to preserve command-view readability;
 Low/Medium keep the thinner command-camera haze. `terrain_reflections` is opt-in on all

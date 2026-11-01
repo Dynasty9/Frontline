@@ -140,6 +140,8 @@ func generate() -> void:
 		_woods(Vector3(rng.randf_range(-(H - 13.0), H - 13.0), 0, rng.randf_range(-(H - 28.0), H - 28.0)), rng.randi_range(6, 14) if String(world.settings.get("mission", "")) != "" else rng.randi_range(12, 26))
 	for i in int(40 * area * 0.75):
 		_try("tree", Vector3(rng.randf_range(-(H - 8.0), H - 8.0), 0, rng.randf_range(-(H - 10.0), H - 10.0)), 0.0, -1)
+	if String(world.settings.get("mission", "")) == "":
+		_foothill_woods(area)
 
 	world.terrain.release_nav()
 	await world._breathe("Mustering the forces", 0.53)
@@ -1137,6 +1139,31 @@ func _old_position(c: Vector3) -> void:
 		for i in rng.randi_range(2, 4):
 			_try("sandbags", c + dir * i * 4.2, yaw, -1)
 		_try("sandbags", c - dir * 2.5 + dir.cross(Vector3.UP) * 2.0, yaw + PI * 0.5, -1)
+
+
+## Connected conifer stands establish the scale of cliffs without filling the valley roads.
+func _foothill_woods(area: float) -> void:
+	var remaining := mini(6, ceili(area * 3.0))
+	var budget := remaining * 24
+	for attempt in int(80 * area):
+		if remaining <= 0 or budget <= 0:
+			break
+		var c := Vector3(rng.randf_range(-MapDims.HALF + 45, MapDims.HALF - 45), 0, rng.randf_range(-MapDims.HALF + 45, MapDims.HALF - 45))
+		var h := world.terrain.landform.height(c)
+		var slope := world.terrain.slope_at(c)
+		if h < 6.0 or h > world.terrain.landform.peak * 0.48 or slope < 0.12 or slope > 0.5:
+			continue
+		var planted := 0
+		for tree in mini(24, budget):
+			var angle := rng.randf() * TAU
+			var radius := sqrt(rng.randf()) * 24.0
+			var p := c + Vector3(cos(angle) * radius, 0, sin(angle) * radius * 0.7)
+			if _try("tree", p, 0.0, -1, {"variant": 2}) != null:
+				planted += 1
+				budget -= 1
+		if planted >= 12:
+			world.key_points.append({"pos": c, "kind": "woods"})
+			remaining -= 1
 
 
 func _woods(c: Vector3, n: int) -> void:

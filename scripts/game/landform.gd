@@ -4,6 +4,7 @@ extends RefCounted
 ## Roads and settlements occupy graded valley floors, with talus and ridges above.
 
 const STEP := 4.0
+const FORMS = preload("res://assets/terrain/alpine_forms.tres")
 var n: int
 var half: float
 var heights := PackedFloat32Array()
@@ -69,6 +70,8 @@ func generate(seed_value: int, roads: Array, water, settlements: Array, fracture
 				var bedding := h / 14.0 + wx * 0.006 + wz * 0.003 + fracture * 1.4
 				var shelf := (smoothstep(0.22, 0.78, fposmod(bedding, 1.0)) - fposmod(bedding, 1.0)) * 14.0
 				heights[i] = maxf(0.0, h + (shelf * 0.65 + fracture * 11.0) * smoothstep(12.0, 45.0, h))
+	if fractured:
+		_place_forms(seed_value)
 	# Thermal weathering moves loose material down the steepest face, conserving volume.
 	for iteration in 6:
 		var delta := PackedFloat32Array()
@@ -110,6 +113,42 @@ func generate(seed_value: int, roads: Array, water, settlements: Array, fracture
 	for h in heights:
 		peak = maxf(peak, h)
 	reserve = PackedFloat32Array()
+
+
+## Baked buttresses, cirques and saddles replace patches of noise with coherent rock masses.
+## They enter the authoritative heightfield before road grading and erosion, not a visual shell.
+func _place_forms(seed_value: int) -> void:
+	if half < 100.0:
+		return
+	var rng := RandomNumberGenerator.new()
+	rng.seed = seed_value + 2753
+	var original := heights.duplicate()
+	var names := ["buttress", "cirque", "saddle"]
+	var spacing := 224.0
+	for iz in ceili(half * 2.0 / spacing):
+		for ix in ceili(half * 2.0 / spacing):
+			var c := Vector2(-half + (ix + 0.5) * spacing, -half + (iz + 0.5) * spacing)
+			c += Vector2(rng.randf_range(-35, 35), rng.randf_range(-35, 35))
+			var cell := Vector2i((c + Vector2.ONE * half) / STEP).clamp(Vector2i.ZERO, Vector2i.ONE * (n - 1))
+			var base := original[cell.y * n + cell.x]
+			var radius := rng.randf_range(85.0, 145.0)
+			var angle := rng.randf_range(-PI, PI)
+			var form: PackedFloat32Array = FORMS.get_meta(names[rng.randi_range(0, 2)])
+			if base < 28.0:
+				continue
+			var cells := ceili(radius / STEP)
+			for z in range(maxi(0, cell.y - cells), mini(n, cell.y + cells + 1)):
+				for x in range(maxi(0, cell.x - cells), mini(n, cell.x + cells + 1)):
+					var q := (Vector2(x * STEP - half, z * STEP - half) - c).rotated(angle) / radius
+					var blend := 1.0 - smoothstep(0.55, 1.0, q.length())
+					if blend <= 0.0:
+						continue
+					var uv := (q * 0.5 + Vector2.ONE * 0.5) * 32.0
+					var a := Vector2i(uv).clamp(Vector2i.ZERO, Vector2i(31, 31))
+					var f := uv - Vector2(a)
+					var j := a.y * 33 + a.x
+					var h := lerpf(lerpf(form[j], form[j + 1], f.x), lerpf(form[j + 33], form[j + 34], f.x), f.y)
+					heights[z * n + x] = lerpf(heights[z * n + x], minf(490.0, base * (0.32 + h * 1.1)), blend)
 
 
 func _sample(p: Vector2) -> Vector3:
