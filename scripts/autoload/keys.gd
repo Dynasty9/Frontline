@@ -30,6 +30,7 @@ const CATEGORIES := ["Camera", "Saved views", "Orders", "Abilities & fire suppor
 
 ## [id, label, category, context, default, default (second), what it does]
 const ACTIONS := [
+	["motion_freelook", "Free look (motion lab)", "Observer", "motion", KEY_ALT, NONE, ""],
 	["motion_work", "Work (motion lab)", "Observer", "motion", KEY_F, NONE, ""],
 	["motion_prone", "Prone (motion lab)", "Observer", "motion", KEY_Z, NONE, ""],
 	["motion_grenade", "Throw grenade (motion lab)", "Observer", "motion", KEY_G, NONE, ""],

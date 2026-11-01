@@ -4,6 +4,14 @@ extends RefCounted
 const PRONE_CLIP := "mixamo_transition__Rifle_Kneel_To_Prone"
 var prone_time := 0.0
 const PACK := "mixamo_basic_shooter__"
+const CROUCH_PACK := "mixamo_rifle_locomotion__walk_crouching_"
+const CROUCH_DIRECTIONS := ["forward", "forward_right", "right", "backward_right", "backward", "backward_left", "left", "forward_left"]
+var has_crouch_pack := false
+var crouch_phase := 0.0
+var crouch_direction := 0.0
+var crouch_blends: Array[float] = [1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+var crouch_strides: Array[float] = []
+var crouch_offsets: Array[float] = []
 const LOCOMOTION := ["rifle_aiming_idle", "walking", "rifle_run", "walking_backwards", "run_backwards", "strafe_left", "strafe_right"]
 static var locomotion_graph: AnimationNodeBlendTree
 static var foot_path_cache := {}
@@ -82,6 +90,23 @@ func setup(character: SkinnedRifleman) -> void:
 			if height > peak_height:
 				peak_height = height
 				phase_offsets[clip] = float(frame) / 32.0
+	has_crouch_pack = CROUCH_DIRECTIONS.all(func(direction: String) -> bool: return actor.native_player.has_animation(CROUCH_PACK + direction))
+	if has_crouch_pack:
+		for direction in CROUCH_DIRECTIONS:
+			var clip: String = CROUCH_PACK + direction
+			var animation := actor.native_player.get_animation(clip)
+			var travel: Vector3 = animation.get_meta("root_travel", Vector3.ZERO)
+			crouch_strides.append(maxf(0.3, (actor.skeleton.global_basis * travel).length()))
+			var peak := -INF
+			var offset := 0.0
+			for frame in 32:
+				actor.native_player.play(clip, 0.0)
+				actor.native_player.seek(animation.length * frame / 32.0, true)
+				var height := actor.joint("LeftFoot").origin.y
+				if height > peak:
+					peak = height
+					offset = frame / 32.0
+			crouch_offsets.append(offset)
 	if locomotion_graph == null: locomotion_graph = _locomotion_graph()
 	locomotion_tree = AnimationTree.new()
 	actor.add_child(locomotion_tree)
@@ -170,6 +195,10 @@ func request_action(next: String) -> bool:
 	return true
 
 func reset() -> void:
+	crouch_phase = 0.0
+	crouch_direction = 0.0
+	crouch_blends.fill(0.0)
+	crouch_blends[0] = 1.0
 	_crouch_phase = INF
 	prone_time = 0.0
 	action = ""
@@ -253,18 +282,42 @@ func advance(dt: float, velocity: Vector3, crouching: bool, grounded: bool, relo
 		var hips: int = actor.bones["Hips"]
 		var spine: int = actor.bones["Spine"]
 		var aim_basis := poses[hips].basis * poses[spine].basis
-		# A stopped crouch keeps its captured phase; reuse only the pre-contact local pose.
-		if _crouch_phase != phase or _crouch_transform != actor.global_transform:
-			actor.source.player.play("crouch", 0.0)
-			actor.source._clip = "crouch"
-			var length := actor.source.player.get_animation("crouch").length
-			actor.source.player.seek(fmod(phase, 1.0) * length, true)
-			actor.source.advance(0.0, speed, "crouch")
-			actor._retarget_source(upper)
-			for i in poses.size():
-				if not upper[i]: _crouch_poses[i] = actor.skeleton.get_bone_pose(i)
-			_crouch_phase = phase
-			_crouch_transform = actor.global_transform
+		if has_crouch_pack:
+			# Adjacent clips share a gait phase; never turn a forward step sideways.
+			if speed > 0.05: crouch_direction = fposmod(atan2(blend_velocity.x, -blend_velocity.z), TAU) / (PI / 4.0)
+			var direction := crouch_direction
+			var first := int(direction) % 8
+			var second := (first + 1) % 8
+			var weight := direction - floorf(direction)
+			if speed > 0.05:
+				crouch_phase += dt * speed / lerpf(crouch_strides[first], crouch_strides[second], weight)
+			var total := 0.0
+			for index in 8:
+				var target := (1.0 - weight if index == first else (weight if index == second else 0.0))
+				crouch_blends[index] = lerpf(crouch_blends[index], target, 1.0 - exp(-6.0 * dt))
+				if crouch_blends[index] < 0.0001: continue
+				total += crouch_blends[index]
+				var clip: String = CROUCH_PACK + CROUCH_DIRECTIONS[index]
+				actor.native_player.play(clip, 0.0)
+				actor.native_player.seek(fposmod(crouch_phase + crouch_offsets[index], 1.0) * actor.native_player.get_animation(clip).length, true)
+				for i in poses.size():
+					if not upper[i]:
+						var sample := actor.skeleton.get_bone_pose(i)
+						_crouch_poses[i] = sample if total == crouch_blends[index] else _crouch_poses[i].interpolate_with(sample, crouch_blends[index] / total)
+		else:
+			# A stopped crouch keeps its captured phase; reuse only the pre-contact local pose.
+			if _crouch_phase != phase or _crouch_transform != actor.global_transform:
+				actor.source.player.play("crouch", 0.0)
+				actor.source._clip = "crouch"
+				var length := actor.source.player.get_animation("crouch").length
+				actor.source.player.seek(fmod(phase, 1.0) * length, true)
+				actor.source.advance(0.0, speed, "crouch")
+				actor._retarget_source(upper)
+				for i in poses.size():
+					if not upper[i]: _crouch_poses[i] = actor.skeleton.get_bone_pose(i)
+				_crouch_phase = phase
+				_crouch_transform = actor.global_transform
+
 		for i in poses.size():
 			if not upper[i]: poses[i] = poses[i].interpolate_with(_crouch_poses[i], crouch_weight)
 		# Local upper-body poses would otherwise inherit the unarmed pelvis lean.
@@ -317,12 +370,38 @@ func advance(dt: float, velocity: Vector3, crouching: bool, grounded: bool, relo
 		pelvis_drop = 0.0
 	actor._apply_hit(dt)
 	socket = socket.interpolate_with(target_socket, 1.0 - exp(-20.0 * dt))
+	if actor._transition_time < actor._transition_duration:
+		var right_hand := actor.joint("RightHand")
+		var weight := smoothstep(0.0, actor._transition_duration, actor._transition_time)
+		right_hand.basis = actor._transition_gun.slerp((right_hand * socket).basis, weight) * socket.basis.inverse()
+		actor.set_world(int(actor.bones["RightHand"]), right_hand)
 	actor.apply_native_recoil(dt, socket)
 	actor.weapon.global_transform = actor.joint("RightHand") * socket
+	var grip_weight := 1.0 - action_weight
+	# Rising from prone needs the supporting hand to leave the ground before regripping.
+	if actor._transition_from_prone: grip_weight *= smoothstep(0.0, actor._transition_duration, actor._transition_time)
+	var frame_grip := support_grip
+	var finger := actor.joint("LeftHand").affine_inverse() * actor.joint("LeftHandMiddle1").origin * 0.65
+	frame_grip.origin = Vector3(0, 0.055, 0.26) - frame_grip.basis * finger
+	# During recovery the blended shoulders can put the rifle beyond arm reach.
+	# Move the held assembly inward before solving either hand.
+	if grip_weight == 1.0:
+		var gun := actor.weapon.global_transform
+		for iteration in 3:
+			for side in ["Left", "Right"]:
+				var shoulder := actor.joint(side + "Arm").origin
+				var elbow := actor.joint(side + "ForeArm").origin
+				var wrist := actor.joint(side + "Hand").origin
+				var reach := shoulder.distance_to(elbow) + elbow.distance_to(wrist) - 0.008
+				var goal := (gun * frame_grip).origin if side == "Left" else (gun * socket.affine_inverse()).origin
+				var delta := goal - shoulder
+				if delta.length() > reach: gun.origin += shoulder + delta.normalized() * reach - goal
+		var hand_goal := gun * socket.affine_inverse()
+		actor.solve_limb("RightArm", "RightForeArm", "RightHand", hand_goal.origin, actor.global_basis * Vector3(1, -0.5, 0.2))
+		actor.weapon.global_transform = actor.joint("RightHand") * socket
 	# Keep the captured grip through locomotion blends; actions release it gradually.
 	var hand := actor.joint("LeftHand")
-	var grip_weight := (1.0 - action_weight) * smoothstep(0.0, actor._transition_duration, actor._transition_time)
-	var grip := hand.interpolate_with(actor.weapon.global_transform * support_grip, grip_weight)
+	var grip := hand.interpolate_with(actor.weapon.global_transform * frame_grip, grip_weight)
 	var pole := actor.joint("LeftForeArm").origin - actor.joint("LeftArm").origin
 	actor.solve_limb("LeftArm", "LeftForeArm", "LeftHand", grip.origin, pole)
 	hand = actor.joint("LeftHand")
@@ -400,7 +479,7 @@ func _contacts(speed: float, dt: float) -> void:
 		var forefoot := clampf((speed - 1.4) / 2.0, 0.0, 1.0)
 		var toe := actor.joint(prefix + "ToeBase").origin
 		# Preserve diagonal toe contact while the ankle rolls over it.
-		var support := ankle.origin.lerp(toe, lerpf(forefoot, 1.0, diagonal_weight))
+		var support := ankle.origin.lerp(toe, lerpf(forefoot, 1.0, diagonal_weight * (1.0 - crouch_weight)))
 		var support_speed := Vector2(support.x - previous_support[side].x, support.z - previous_support[side].z).length() / maxf(dt, 0.001) if contacts_sampled else 0.0
 		previous_support[side] = support
 		var foot: Dictionary = actor.feet[side]
@@ -427,6 +506,15 @@ func _contacts(speed: float, dt: float) -> void:
 		# Earlier diagonal toe contact needs more travel before stretch release.
 		var separation := Vector2(support.x - foot.point.x, support.z - foot.point.z).length()
 		if idle == 0.0 and separation > lerpf(0.28, 0.40, diagonal_weight): foot.locked = false
+		if crouch_weight > 0.5 and idle == 0.0 and foot.locked:
+			var hip := actor.joint(prefix + "UpLeg").origin
+			var knee := actor.joint(prefix + "Leg").origin
+			var reach := hip.distance_to(knee) + knee.distance_to(ankle.origin)
+			var anchor: Vector3 = foot.point
+			anchor.y = ankle.origin.y
+			# Lift off before the planted leg reaches full extension during a reversal.
+			if hip.distance_to(anchor) > reach * 0.94: foot.locked = false
+
 		plant_weights[side] = move_toward(plant_weights[side], 1.0 if foot.locked else 0.0, dt * 12.0)
 		var goal := ankle.origin
 		# Keep planted support fixed until release rather than sliding toward the next pose.
@@ -459,7 +547,7 @@ func _contacts(speed: float, dt: float) -> void:
 		lower_pelvis = maxf(lower_pelvis, hip.y - goal.y - sqrt(maxf(0.01, length * length - horizontal)))
 		goals.append(goal)
 		poles.append(knee - hip)
-	pelvis_drop = lerpf(pelvis_drop, minf(lower_pelvis, 0.25), follow)
+	pelvis_drop = move_toward(pelvis_drop, minf(lower_pelvis, 0.25), dt * 0.4) if crouch_weight > 0.5 else lerpf(pelvis_drop, minf(lower_pelvis, 0.25), follow)
 	var pelvis := actor.joint("Hips")
 	pelvis.origin.y -= pelvis_drop
 	actor.set_world(int(actor.bones["Hips"]), pelvis)

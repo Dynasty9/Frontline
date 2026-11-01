@@ -19,7 +19,7 @@ static func install(actor: SkinnedRifleman, gameplay := false) -> Dictionary:
 	var paths := files()
 	if gameplay:
 		for key in paths.keys():
-			if not key.begins_with("mixamo_basic_shooter__") and not key.begins_with("mixamo_activities__") and not key.begins_with("mixamo_transition__"): paths.erase(key)
+			if not key.begins_with("mixamo_basic_shooter__") and not key.begins_with("mixamo_activities__") and not key.begins_with("mixamo_transition__") and not key.begins_with("mixamo_rifle_locomotion__walk_crouching_"): paths.erase(key)
 	actor.native_player = AnimationPlayer.new()
 	actor.native_player.name = "MixamoClips"
 	actor.add_child(actor.native_player)

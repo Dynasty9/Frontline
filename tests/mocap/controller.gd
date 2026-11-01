@@ -205,12 +205,15 @@ func _test_input() -> Vector2:
 		checks.reload = true
 	return Vector2.ZERO
 
+func _camera_yaw() -> float:
+	return yaw
+
 func _update_camera() -> void:
 	if body == null:
 		super._update_camera()
 		return
 	var focus := body.global_position + Vector3(0, 1.0, 0)
-	camera.position = focus + Vector3(sin(yaw), elevation, -cos(yaw)).normalized() * distance
+	camera.position = focus + Vector3(sin(_camera_yaw()), elevation, -cos(_camera_yaw())).normalized() * distance
 	var query := PhysicsRayQueryParameters3D.create(focus, camera.position, 1)
 	var obstruction := get_world_3d().direct_space_state.intersect_ray(query)
 	if not obstruction.is_empty(): camera.position = obstruction.position + obstruction.normal * 0.2

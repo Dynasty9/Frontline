@@ -8,6 +8,7 @@ var activity := -1
 var activity_left := 0.0
 var actions: OptionButton
 var shot_delay := 0.0
+var look_offset := 0.0
 
 func _ready() -> void:
 	super._ready()
@@ -66,8 +67,16 @@ func _ready() -> void:
 	if "--playground-test" in OS.get_cmdline_user_args(): call_deferred("_playground_test")
 	print("PLAYGROUND ready")
 
+func _camera_yaw() -> float:
+	return yaw + look_offset
+
 func _input(event: InputEvent) -> void:
 	super._input(event)
+	if event is InputEventMouseMotion and Keys.held("motion_freelook"):
+		look_offset -= event.relative.x * 0.008
+		elevation = clampf(elevation + event.relative.y * 0.006, -0.1, 1.1)
+		_update_camera()
+		get_viewport().set_input_as_handled()
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and not event.pressed:
 		firing = false
 
@@ -108,6 +117,7 @@ func _automatic() -> void:
 	if actions != null: actions.select(0)
 
 func _reset_controller() -> void:
+	look_offset = 0.0
 	super._reset_controller()
 	prone = false
 	working = false
@@ -177,6 +187,20 @@ func _playground_test() -> void:
 	move.pressed = false
 	Input.parse_input_event(move)
 	await get_tree().create_timer(0.4).timeout
+	var heading := body.rotation.y
+	var before_camera := camera.position
+	var alt := InputEventKey.new()
+	alt.keycode = Keys.binds.motion_freelook[0]
+	alt.physical_keycode = alt.keycode
+	alt.pressed = true
+	Input.parse_input_event(alt)
+	var mouse := InputEventMouseMotion.new()
+	mouse.relative = Vector2(100, 0)
+	Input.parse_input_event(mouse)
+	await get_tree().create_timer(0.2).timeout
+	assert(absf(angle_difference(heading, body.rotation.y)) < 0.01 and camera.position.distance_to(before_camera) > 0.5, "Free look rotated the character or failed to orbit")
+	alt.pressed = false
+	Input.parse_input_event(alt)
 	_test_key("motion_jump")
 	await get_tree().create_timer(0.2).timeout
 	assert(not body.is_on_floor() and driver.action == "rifle_jump")
@@ -196,7 +220,7 @@ func _playground_test() -> void:
 	_reset_controller()
 	assert(not prone and not working and not soldier.dead)
 	assert(actions.item_count == Soldier.Act.size() + 1 and clip_keys.size() > 100)
-	print("PLAYGROUND PASS work, prone, reload, reset and complete action catalog")
+	print("PLAYGROUND PASS Alt free look, movement, work, prone, reload, reset and complete action catalog")
 	get_tree().quit()
 
 func _collision_height() -> float:
