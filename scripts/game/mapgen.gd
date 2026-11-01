@@ -121,7 +121,7 @@ func generate() -> void:
 	tg.roadside(int(rng.randi_range(3, 5) * k), int(rng.randi_range(2, 3) * k))
 	if String(world.settings.get("mission", "")) == "":
 		_towns(tg)  # (a mission's ground is fought for on the mission's terms)
-	tg.finish()
+	tg.finish(false)
 	# the ground worth fighting for, for the AI commanders
 	world.key_points.append({"pos": tg.center, "kind": "town"})
 	for hm in tg.hamlets:
@@ -142,6 +142,8 @@ func generate() -> void:
 		_try("tree", Vector3(rng.randf_range(-(H - 8.0), H - 8.0), 0, rng.randf_range(-(H - 10.0), H - 10.0)), 0.0, -1)
 	if String(world.settings.get("mission", "")) == "":
 		_foothill_woods(area)
+		_alpine_scatter(tg.decor, area)
+	world.set_decor(tg.decor, tg.rect)
 
 	world.terrain.release_nav()
 	await world._breathe("Mustering the forces", 0.53)
@@ -994,6 +996,13 @@ func _is_free(pos: Vector3, half: Vector2, yaw: float, margin := 0.6, use_clear 
 func _try(kind: String, pos: Vector3, yaw: float, team: int, extra := {}) -> Structure:
 	if kind == "tree" and world.terrain.landform.height(pos) > world.terrain.landform.peak * 0.58 and world.terrain.landform.peak > 1.0:
 		return null
+	if kind == "tree" and String(world.settings.get("mission", "")) == "":
+		var altitude := world.terrain.landform.height(pos) / maxf(1.0, world.terrain.landform.peak)
+		if altitude > 0.48 + sin(pos.x * 0.035) * cos(pos.z * 0.027) * 0.045:
+			return null
+		if altitude > 0.18 and int(extra.get("variant", 0)) != 1:
+			extra = extra.duplicate()
+			extra["variant"] = 2
 	var half := _foot_of(kind, extra)
 	if not _is_free(pos, half, yaw):
 		return null
@@ -1172,3 +1181,32 @@ func _woods(c: Vector3, n: int) -> void:
 	for i in n:
 		var p := c + Vector3(rng.randf_range(-11, 11), 0, rng.randf_range(-11, 11))
 		_try("tree", p, 0.0, -1)
+
+
+## Low, passable scrub and stones use the replicated, chunk-batched dressing list.
+static func alpine_dressing(altitude: float, slope: float, moisture: float) -> String:
+	if altitude > 0.7 or slope > 1.1:
+		return ""
+	if altitude > 0.46 or slope > 0.48 or moisture < 0.35:
+		return "alpine_stones"
+	return "alpine_scrub"
+
+
+func _alpine_scatter(entries: Array, area: float) -> void:
+	var scatter := RandomNumberGenerator.new()
+	scatter.seed = int(world.settings.get("seed", 1)) + 8317
+	var budget := mini(1200, int(area * 65))
+	for attempt in budget * 5:
+		if budget <= 0:
+			break
+		var p := Vector3(scatter.randf_range(-MapDims.HALF + 8, MapDims.HALF - 8), 0, scatter.randf_range(-MapDims.HALF + 8, MapDims.HALF - 8))
+		var h := world.terrain.landform.height(p)
+		var patch := (sin(p.x * 0.037 + sin(p.z * 0.019)) * cos(p.z * 0.043) + 1.0) * 0.5
+		if h < 2.0 or patch < 0.46 or not _is_free(p, Vector2(0.35, 0.35), 0.0, 1.8):
+			continue
+		var kind := alpine_dressing(h / maxf(1.0, world.terrain.landform.peak), world.terrain.slope_at(p), patch)
+		if kind == "":
+			continue
+		p.y = h - 0.08
+		entries.append([kind, p, scatter.randf() * TAU, scatter.randf_range(0.7, 1.4)])
+		budget -= 1

@@ -1104,21 +1104,28 @@ void fragment() {
 	vec3 weights = pow(abs(geometric), vec3(4.0));
 	weights /= weights.x + weights.y + weights.z;
 	// Metre-scale scree and broad bedrock share a palette, rather than fading into grey noise.
-	vec3 rock_uv = wpos / 54.0;
+	vec2 warp = vec2(texture(detail_tex, p / 5000.0).r, texture(detail_tex, p / 5000.0 + 0.43).r);
+	float region = smoothstep(0.25, 0.72, texture(detail_tex, p / 2300.0 + warp * 0.35).r);
+	float patch = smoothstep(0.30, 0.68, texture(detail_tex, p / 620.0 + warp * 0.18).r);
+	float seams = texture(detail_tex, vec2(p.x * 0.0005 + p.y * 0.00025, wpos.y * 0.0018) + warp * 0.12).r;
+	vec3 rock_uv = (wpos + vec3(warp.x, warp.y, warp.x) * 7.0) / 48.0;
 	vec3 scree_uv = wpos / 16.0 + 0.37;
 	vec3 moss_uv = wpos / 18.0;
 	vec4 rock_sample = surface_color(rock_color, rock_uv, weights);
 	vec4 scree_sample = surface_color(cliff_color, scree_uv, weights);
 	vec4 moss_sample = surface_color(moss_color, moss_uv, weights);
 	float macro = texture(detail_tex, p / 190.0 + 0.19).r;
-	float scree = 1.0 - smoothstep(0.3, 0.95, slope);
+	float scree = (1.0 - smoothstep(0.3, 0.95, slope)) * mix(0.15, 1.0, patch);
 	float stone = dot(rock_sample.rgb, vec3(0.2126, 0.7152, 0.0722));
 	vec3 rock = mix(vec3(stone), rock_sample.rgb, 0.58) * vec3(1.32, 1.34, 1.36);
 	rock = mix(rock, scree_sample.rgb * vec3(1.04, 1.06, 1.07), scree * 0.7);
-	rock *= mix(vec3(0.82, 0.87, 0.94), vec3(1.12, 1.08, 1.0), macro);
+	rock *= mix(vec3(0.72, 0.79, 0.88), vec3(1.16, 1.08, 0.94), region);
+	rock *= mix(0.80, 1.08, smoothstep(0.22, 0.72, seams));
 	float rock_height = mix(rock_sample.a, scree_sample.a, scree * 0.7);
 	float grass_detail = dot(moss_sample.rgb, vec3(0.2126, 0.7152, 0.0722));
-	vec3 moss = mix(vec3(0.055, 0.086, 0.028), vec3(0.12, 0.155, 0.060), macro) * (0.65 + grass_detail * 1.3);
+	float alpine_dry = smoothstep(0.33, 0.79, region * 0.58 + patch * 0.42 + slope * 0.12);
+	vec3 moss = mix(vec3(0.05, 0.078, 0.025), vec3(0.145, 0.135, 0.075), alpine_dry) * (0.60 + grass_detail * 1.6);
+	moss *= mix(0.78, 1.17, patch);
 	vec3 rock_n; vec3 scree_n; vec3 moss_n;
 	vec2 rock_data = surface_data(rock_normal, rock_uv, weights, geometric, rock_n);
 	vec2 scree_data = surface_data(cliff_normal, scree_uv, weights, geometric, scree_n);
@@ -1135,7 +1142,7 @@ void fragment() {
 		sky = 1.0 - max(cavity, 0.0) * 0.45;
 		terrain_sun = 1.0;
 	}
-	float cover = smoothstep(0.24, 0.95, slope + elevation * 0.20 + (macro - 0.5) * 0.22);
+	float cover = smoothstep(0.24, 0.95, slope + elevation * 0.20 + (region - 0.5) * 0.32 + (patch - 0.5) * 0.22);
 	float exposed = height_blend(moss_sample.a, rock_height, cover);
 	vec3 alpine = mix(moss, rock, exposed);
 	float clean = (1.0 - wm.g) * (1.0 - wm.a) * (1.0 - clamp(bowl, 0.0, 1.0));

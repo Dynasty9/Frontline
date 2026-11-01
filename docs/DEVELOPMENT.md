@@ -856,6 +856,20 @@ terrain retains the fine deformation grid. Woodland bark and foliage can join th
 64 m scenery batches, with destruction and fire restoring only the affected tree.
 
 
+### Alpine surface variation
+
+The ground shader combines warped 115 m mineral regions, 31 m vegetation patches and
+height-oriented weathering bands. Albedo and layer coverage vary independently of the
+fine photographic relief, avoiding uniform rock and grass across the entire map.
+Standard-map trees switch toward conifers above 18% of peak elevation and stop at an
+irregular 44-52% tree line. `MapGen.alpine_dressing` selects scrub or stones from relative
+height and slope; summits above 70% and cliff slopes above 1.1 receive neither.
+A separate seeded generator caps scatter at 1,200 clumps per map and keeps them off
+reserved roads, towns, water and structure footprints. Entries travel through existing
+decor replication and replay. Each low piece is grounded separately and merged into
+normal scenery chunks. These are passable cosmetic scrub/stones, not large cover boulders
+or simulated burnable vegetation. Campaign scatter and tree selection remain unchanged.
+
 ### Terrain traversal
 
 `Nav` keeps infantry, wheeled and tracked rasters and HPA graphs. The public vehicle flag defaults to

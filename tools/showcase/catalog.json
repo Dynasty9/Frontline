@@ -2718,6 +2718,41 @@
         "renderer": "Godot 4.7.2 Forward+, RTX 3090, 1600x900",
         "command": "godot --main-pack PACK --resolution 1600x900 -- --aivai --seed=3 --offscreen --nohud --set=perf:0 --mood=golden --preset=high --focus=-100,0 --zoom=600 --pitch=-38 --cam-yaw=0.7 --perf-at=5 --perf-duration=10 --perf-shot=OUTPUT.png"
       }
+    },
+    {
+      "entry": "changelog/unreleased/alpine-variation.md",
+      "summary": "Mineral bands, dry grass, scrub and scattered stones break up the alpine landscape, with vegetation changing as the ground rises.",
+      "medium": "still",
+      "stage": "native-media",
+      "rationale": "Matched in-game command views show broad surface variation and vegetation distribution. Small passable dressing is most visible at closer zoom.",
+      "source_ref": "codex/alpine-battlefields",
+      "sources": [
+        {
+          "file": "changelog/unreleased/alpine-variation/before.jpg",
+          "sha256": "c2d2327aec64f09f41989c3545c5bdb155176005111c36b05e377765aabb4957",
+          "caption": "Before: 306b762, previous material refinement."
+        },
+        {
+          "file": "changelog/unreleased/alpine-variation/after.jpg",
+          "sha256": "a75e4c3a7d4c2a198a0c8ee7a92f5d6bfb4d7f4b2f43f442345614be2e093c02",
+          "caption": "After: elevation-dependent vegetation and varied ground surfaces."
+        },
+        {
+          "file": "changelog/unreleased/alpine-variation/detail.jpg",
+          "sha256": "f15e34216c8bfb28ed9ed72e0fd714aade07e467929e7600fe8ca525b4d3691c",
+          "caption": "Closer daylight view of passable scrub and stones."
+        }
+      ],
+      "output": null,
+      "title": "More varied mountain surfaces and vegetation",
+      "version": "unreleased",
+      "kind": "improved",
+      "capture": {
+        "before_ref": "306b762",
+        "after_ref": "codex/alpine-battlefields",
+        "command": "godot --main-pack PACK --resolution 1600x900 -- --aivai --seed=3 --offscreen --nohud --set=perf:0 --mood=golden --preset=high --focus=-100,0 --zoom=600 --pitch=-38 --cam-yaw=0.7 --perf-at=5 --perf-duration=10 --perf-shot=OUTPUT.png",
+        "detail": "Same seed and pack; --mood=day --focus=-160,70 --zoom=140 --pitch=-35 --cam-yaw=0.7 --screenshot=OUTPUT --shot-at=2 --quit-after=3"
+      }
     }
   ],
   "layout_capture": {

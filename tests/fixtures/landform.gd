@@ -6,6 +6,11 @@ class ClearCombat extends Combat:
 
 
 func _ready() -> void:
+	assert(MapGen.alpine_dressing(0.15, 0.1, 0.8) == "alpine_scrub")
+	assert(MapGen.alpine_dressing(0.55, 0.1, 0.8) == "alpine_stones")
+	assert(MapGen.alpine_dressing(0.2, 0.6, 0.8) == "alpine_stones")
+	assert(MapGen.alpine_dressing(0.8, 0.1, 0.8) == "")
+	assert(MapGen.alpine_dressing(0.2, 1.2, 0.8) == "")
 	TerrainMap.N = 64
 	TerrainMap.H = 32.0
 	TerrainMap.DN = 128
@@ -17,6 +22,23 @@ func _ready() -> void:
 	world.settings = {"seed": 3}
 	world.terrain = TerrainMap.new(world)
 	world.water = WaterMap.new(world)
+	var previous_half := MapDims.HALF
+	MapDims.HALF = 32.0
+	world.terrain.landform.heights.resize(world.terrain.landform.n * world.terrain.landform.n)
+	world.terrain.landform.heights.fill(8.0)
+	world.terrain.landform.peak = 30.0
+	var scatter_a: Array = []
+	var scatter_b: Array = []
+	var gen := MapGen.new(world)
+	gen._alpine_scatter(scatter_a, 1.0)
+	gen._alpine_scatter(scatter_b, 1.0)
+	assert(not scatter_a.is_empty() and scatter_a.size() <= 65, "Dressing is bounded and populated")
+	assert(scatter_a == scatter_b, "Dressing placement is seeded independently of simulation RNG")
+	for entry in scatter_a:
+		assert(is_equal_approx(entry[1].y, 7.92), "Dressing follows the authoritative ground")
+	MapDims.HALF = previous_half
+	world.terrain.landform.heights = PackedFloat32Array()
+	world.terrain.landform.peak = 0.0
 	var atmosphere := Atmosphere.new()
 	atmosphere.world = world
 	atmosphere._surface_baked = true
