@@ -28,6 +28,46 @@ def source(name):
     return Image.open(path).resize((1024, 1024), Image.Resampling.LANCZOS)
 
 
+def fractured_rock(color, height, normal, ao, rough):
+    """Bake metre-scale joints over the photograph; all channels share the relief."""
+    size = color.width
+    columns, rows = 7, 3
+    y, x = np.mgrid[0:size, 0:size].astype(np.float32) / size
+    u = x * columns + .22 * np.sin(y * np.pi * 4) + .09 * np.sin(x * np.pi * 6)
+    v = y * rows + .18 * np.sin(x * np.pi * 4)
+    cells = np.random.default_rng(431).uniform(.15, .85, (rows, columns, 2))
+    ix, iy = np.floor(u).astype(int), np.floor(v).astype(int)
+    first = np.full(x.shape, 100.0)
+    second = first.copy()
+    for dz in [-1, 0, 1]:
+        for dx in [-1, 0, 1]:
+            offset = cells[(iy + dz) % rows, (ix + dx) % columns]
+            distance = (u - ix - dx - offset[..., 0]) ** 2 + (v - iy - dz - offset[..., 1]) ** 2
+            second = np.minimum(second, np.maximum(first, distance))
+            first = np.minimum(first, distance)
+    edge = np.sqrt(second) - np.sqrt(first)
+    joint = np.exp(-(edge * 13) ** 2)
+    # Broad irregular slabs meet at recessed joints, not painted dark lines alone.
+    relief = .20 * (1 - joint) + .10 * np.cos(np.sqrt(first) * 3.5)
+    texel_metres = 48.0 / size
+    dx = (np.roll(relief, -1, 1) - np.roll(relief, 1, 1)) / (2 * texel_metres)
+    dy = (np.roll(relief, -1, 0) - np.roll(relief, 1, 0)) / (2 * texel_metres)
+    n = np.asarray(normal, dtype=np.float32) / 127.5 - 1
+    xy = n[..., :2] / np.maximum(n[..., 2:3], .35) - np.stack([dx, dy], axis=-1)
+    nz = 1 / np.sqrt(1 + np.sum(xy * xy, axis=-1))
+    mapped = np.dstack([xy * nz[..., None], nz])
+    assert np.isfinite(mapped).all() and np.max(np.abs(np.linalg.norm(mapped, axis=-1) - 1)) < .0001
+    def gray(values):
+        return Image.fromarray(np.clip(values, 0, 255).astype(np.uint8), 'L')
+    color = Image.fromarray(np.clip(np.asarray(color) * (1 - joint[..., None] * .06), 0, 255).astype(np.uint8), 'RGB')
+    height = gray(np.asarray(height) * .72 + np.clip(relief / .30, 0, 1) * 255 * .28)
+    normal = Image.fromarray(np.clip((mapped + 1) * 127.5, 0, 255).astype(np.uint8), 'RGB')
+    ao = gray(np.asarray(ao) * (1 - joint * .25))
+    rough = gray(np.asarray(rough) * (1 - joint * .15) + joint * 255 * .15)
+    assert np.ptp(relief) > .20 and np.max(np.abs(dx)) > .2
+    return color, height, normal, ao, rough
+
+
 def materials():
     for name in ["rock_face_03", "aerial_rocks_02", "aerial_grass_rock"]:
         color = source(name + "_diff_2k.jpg").convert("RGB")
@@ -35,6 +75,8 @@ def materials():
         normal = source(name + "_nor_gl_2k.jpg").convert("RGB")
         ao = source(name + "_ao_2k.jpg").convert("L")
         rough = source(name + "_rough_2k.jpg").convert("L")
+        if name == "rock_face_03":
+            color, height, normal, ao, rough = fractured_rock(color, height, normal, ao, rough)
         # Colour RGB is sRGB; alpha and every channel of surface remain linear data.
         Image.merge("RGBA", (*color.split(), height)).save(ASSETS / (name + "_color_height.png"))
         Image.merge("RGBA", (*normal.split()[:2], ao, rough)).save(ASSETS / (name + "_surface.png"))

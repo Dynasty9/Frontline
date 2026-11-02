@@ -1115,9 +1115,9 @@ void fragment() {
 	vec4 scree_sample = surface_color(cliff_color, scree_uv, weights);
 	vec4 moss_sample = surface_color(moss_color, moss_uv, weights);
 	float macro = texture(detail_tex, p / 190.0 + 0.19).r;
-	float scree = (1.0 - smoothstep(0.3, 0.95, slope)) * mix(0.15, 1.0, patch);
+	float scree = mix(0.22, 1.0 - smoothstep(0.3, 0.95, slope), 0.78) * mix(0.4, 1.0, patch);
 	float stone = dot(rock_sample.rgb, vec3(0.2126, 0.7152, 0.0722));
-	vec3 rock = mix(vec3(stone), rock_sample.rgb, 0.58) * vec3(1.32, 1.34, 1.36);
+	vec3 rock = mix(vec3(stone), rock_sample.rgb, 0.45) * vec3(1.04, 1.10, 1.18);
 	rock = mix(rock, scree_sample.rgb * vec3(1.04, 1.06, 1.07), scree * 0.7);
 	rock *= mix(vec3(0.72, 0.79, 0.88), vec3(1.16, 1.08, 0.94), region);
 	rock *= mix(0.80, 1.08, smoothstep(0.22, 0.72, seams));

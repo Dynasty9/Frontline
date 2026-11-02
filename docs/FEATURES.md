@@ -545,7 +545,7 @@ Ambush Alley autoplay can call its existing mortar support against spotted, stop
 - Standard battlefields have seeded mountain belts, hills, valleys and rivers. Domain-warped ridged noise,
   jointed bedrock shelves, thermal weathering and seeded rainfall erosion shape the relief. Roads, bridges, starting bases and settlements
   occupy graded valley corridors; forests stay below the snow line and off steep faces.
-- Moss and soil blend into exposed stone on slopes, with layered rock detail and snow on high sheltered ground.
+- Moss and soil blend into exposed stone on slopes, with baked slab fractures, layered rock detail and snow on high sheltered ground.
   Photograph-derived height, normals, crevice shading and roughness give each material distinct relief;
   height-based transitions let rock emerge through moss and snow. Reusable buttress, bowl and saddle
   forms shape standard mountains before erosion, with small conifer stands along suitable foothills.

@@ -827,6 +827,13 @@ stores linear normal XY, ambient occlusion and roughness in RGBA. Keep lossless 
 mipmaps enabled and alpha-border correction disabled. The shader reconstructs normal Z,
 blends layers using displacement, and reuses the same 18 triplanar texture reads.
 
+Rock-face materials include deterministic, periodic elongated slab joints. Their
+normal derivatives use the 48-metre material scale, and all packed channels share
+the same relief. This changes shading only, not collision or the terrain silhouette.
+The baker checks finite unit normals and non-flat relief. NVIDIA GPU Gems 3
+[terrain texturing](https://developer.nvidia.com/gpugems/gpugems3/part-i-geometry/chapter-1-generating-complex-procedural-terrains-using-gpu)
+describes the triplanar projection and layered detail used as the basis here.
+
 The offline kit also bakes three 33-square heightfield forms: buttress, cirque and
 saddle. Standard generation rotates and scales them before erosion and road grading;
 collision, navigation and replication use the resulting terrain. These are analytic

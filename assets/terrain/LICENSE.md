@@ -17,6 +17,9 @@ only by the offline baker. Source URLs and checksums are recorded in sources.jso
 - `*_color_height.png`: sRGB diffuse RGB, linear displacement in alpha.
 - `*_surface.png`: linear OpenGL normal XY, ambient occlusion B, roughness A.
 
+The rock-face pair also includes original procedural slab joints baked into its
+height, normals, occlusion, colour and roughness. No additional source assets are used.
+
 Alpha is material data, not transparency. Import keeps all four channels, disables
 alpha-border repair and generates mipmaps. The runtime uses the same number of
 texture reads as the earlier colour/normal pair, with additional surface relief.
