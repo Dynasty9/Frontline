@@ -166,6 +166,10 @@ struct Building {
     time: Option<f64>,
 }
 enum Operation {
+    Production(
+        Array<Variant>,
+        Gd<crate::boat_navigation::BoatNavigationCore>,
+    ),
     Territory(Array<Variant>, Gd<SupplyNetworkCore>, Vec<Report>),
     Service(Array<Variant>),
     Recruit(Array<Variant>),
@@ -184,6 +188,36 @@ struct VehicleLossWorldCore {
 }
 #[godot_api]
 impl VehicleLossWorldCore {
+    #[func]
+    fn advance_production(
+        &mut self,
+        actors: Gd<ActorStateCore>,
+        geometry: Gd<WorldGeometryCore>,
+        units: Gd<SpatialIndexCore>,
+        nodes: Array<Gd<SquadStateCore>>,
+        fires: Gd<FiresCore>,
+        battle: Gd<BattleStatsCore>,
+        deferred: Gd<DeferredEffectsCore>,
+        visibility: Gd<VisibilityCore>,
+        rng: Gd<SimulationRandomCore>,
+        config: Array<Variant>,
+        input: Array<Variant>,
+        boats: Gd<crate::boat_navigation::BoatNavigationCore>,
+    ) -> Array<Variant> {
+        self.run(
+            actors,
+            geometry,
+            units,
+            nodes,
+            fires,
+            battle,
+            deferred,
+            visibility,
+            rng,
+            config,
+            Operation::Production(input, boats),
+        )
+    }
     #[func]
     fn advance_territory(
         &mut self,
@@ -1011,6 +1045,88 @@ impl VehicleLossWorldCore {
             }
         };
         let result = match operation {
+            Operation::Production(input, mut boats) => {
+                use crate::production;
+                use frontline_core::structure_production::{Event as E, Profiles};
+                let parse = || -> Option<_> {
+                    if input.len() != 7 {
+                        return None;
+                    }
+                    let id: u32 = read(&input, 0)?;
+                    let dt: f64 = read(&input, 1)?;
+                    let base: u32 = read(&input, 2)?;
+                    let per_fob: u32 = read(&input, 3)?;
+                    let row: Array<Variant> = read(&input, 4)?;
+                    let product = if row.is_empty() {
+                        None
+                    } else {
+                        Some(production::Item::parse(&row)?)
+                    };
+                    if product
+                        .as_ref()
+                        .is_some_and(|p| p.members().iter().any(|m| !men.contains_key(&m.unit)))
+                    {
+                        return None;
+                    }
+                    let values: PackedInt64Array = read(&input, 5)?;
+                    if values.len() % 2 != 0 || values.len() > 200_000 {
+                        return None;
+                    }
+                    let mut caps = BTreeMap::new();
+                    for v in values.as_slice().chunks_exact(2) {
+                        let id = u32::try_from(v[0]).ok()?;
+                        let cap = u32::try_from(v[1]).ok()?;
+                        if cap > 1_000_000 || caps.insert(id, cap).is_some() {
+                            return None;
+                        }
+                    }
+                    if context
+                        .actors
+                        .iter()
+                        .any(|a| matches!(a,Actor::Vehicle(v) if !caps.contains_key(&v.id)))
+                    {
+                        return None;
+                    }
+                    let (economy, owners) = production::state(&read(&input, 6)?)?;
+                    Some((id, dt, base, per_fob, product, caps, economy, owners))
+                };
+                let Some((id, dt, base, per_fob, product, caps, mut economy, mut owners)) = parse()
+                else {
+                    return Array::new();
+                };
+                let mut boats = boats.bind_mut();
+                let Some(boats) = boats.core.as_mut() else {
+                    return Array::new();
+                };
+                context
+                    .advance_production(
+                        id,
+                        dt,
+                        Profiles {
+                            product: product.as_ref().map(production::Item::view),
+                            base_cap: base,
+                            cap_per_fob: per_fob,
+                            vehicle_cap: &|v| caps[&v.id],
+                        },
+                        &mut economy,
+                        &mut owners,
+                        boats,
+                    )
+                    .map(|events| {
+                        let rows: Array<Variant> = events.iter().map(production::event).collect();
+                        let state = production::values(&economy, &owners);
+                        services = Some(varray![&rows, &state]);
+                        events
+                            .into_iter()
+                            .filter_map(|e| match e {
+                                E::Movement(e) => {
+                                    Some(world_combat::Event::Vehicle(Event::Squad(e)))
+                                }
+                                _ => None,
+                            })
+                            .collect()
+                    })
+            }
             Operation::Territory(input, mut network, mut impacts) => {
                 use frontline_core::structure::TownEconomy;
                 use frontline_core::structure_world::{Event as E, Profiles, Victory};

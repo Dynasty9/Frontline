@@ -10387,3 +10387,13 @@ mod structure_world;
 fn territory_and_mines_are_identical_across_platforms() {
     golden("structure_world", &structure_world::transcript());
 }
+
+#[path = "fixtures/structure_production_world.rs"]
+mod structure_production_world;
+#[test]
+fn production_world_is_identical_across_platforms() {
+    golden(
+        "structure_production_world",
+        &structure_production_world::transcript(),
+    );
+}

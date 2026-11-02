@@ -2493,3 +2493,31 @@ All 893 debug core checks pass. Release passes 134 checks, including all 123 exa
 numeric-contract cases plus the capture and service regressions. Import, changelog,
 presentation and diff checks pass. These are simulation correctness checks, not
 a rendered frame-rate result.
+
+## Connected production, research and command ownership
+
+The retained production update now checks current unit capacity, advances the
+queue, credits the acting commander and creates complete squads or vehicles.
+Recruitment applies current research, rally orders and transport links. Aircraft
+keep their home pad, UAVs receive their destination and boats use the water grid
+or the existing launch-position fallback. Research changes existing soldiers,
+including casualties, in the same update. Queued forces belonging to an absent
+commander remain recorded for reclaim, including a vehicle's passenger squads.
+Capacity counts wounded, tent and tunnel occupants while excluding bearers and
+passengers already counted through their vehicle. Supply spending preserves the
+nearest single affordable FOB, integer stock splitting and Godot's distance-tie
+ordering; refunds preserve the penalty for a wrecked base.
+
+The Godot comparison passes every squad, vehicle and research definition in four
+cases, each with three successive updates: current and absent commanders,
+human/AI succession, upgraded recruits, capacity stalls, rally paths, ships and
+aircraft. It compares all actors, queues, squads, ownership records, research,
+battle credit, speech, warnings, geometry, path completion and RNG continuation.
+Nine focused Rust regressions cover production, research, capacity, supply,
+checkpoint rejection and resumed ownership. The exact numeric transcript adds
+6,598,188 bytes across 336 uninterrupted/resumed updates, including complete
+actor, route, squad, boat, economy and ownership checkpoints. The full rules/world
+loop, standalone socket server and whole-match verification remain unfinished.
+All 903 debug core tests and 133 release checks pass, including all 124 exact
+numeric-contract cases. Import, formatting, changelog, presentation and diff
+checks pass. Other apps stayed running; rendered performance is not measured here.

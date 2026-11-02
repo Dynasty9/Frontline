@@ -24,6 +24,7 @@ kind = "fixed"
 - Rust recruitment checks preserve new squads' names, loadouts, upgrades, initial spacing, rally paths and transport passengers. Vehicle creation preserves health, ammunition, flight state and collision across the complete roster.
 - Connected Rust building services preserve stretcher-team replacement, casualty priority, gun-crew selection and ammunition-cache refills, including claims, movement and empty-cache removal.
 - Connected Rust capture checks preserve last-FOB victory, contested towns, warning messages, battle credit and immediate supply-road changes. Minefields retain infantry and vehicle damage through the shared combat state.
+- Connected Rust production checks preserve the full unit roster, research, unit-cap pauses, rally orders and embarked troops. Orders completed while a commander is away remain reclaimable when they return.
 - Rust blast-toss checks preserve how cars and crates carry their cover and obstacles to a new position, including blocked landings and random continuation.
 - Shared Rust formation checks preserve squad spacing and cover choices while reusing ground searches and keeping soldiers together on the same side of obstacles.
 - Connected Rust squad movement checks preserve travel spacing, leader slowdown, alternating fire teams and recon fire, including interrupted duties and saved route queues.
