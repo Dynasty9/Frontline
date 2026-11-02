@@ -2468,3 +2468,28 @@ At `6794da5`, the full game CI job and Linux x64/ARM/macOS numeric jobs passed.
 Windows passed the debug suite but reached the 20-minute limit while compiling
 release test binaries. The numeric job now allows 40 minutes and retains both
 complete debug and release suites; current-head CI must still complete.
+
+## Connected captures and minefields
+
+FOBs and towns now count retained soldiers, apply capture progress, credit the
+capturing commander and rebuild both sides' supply routes before the next actor.
+Last-FOB captures run the existing victory guard, including the opening delay and
+mission exclusion. Town stock accrues before the periodic house count, preserves
+the captured dump and supplies nearby soldiers. FOBs retain last-stand slowdown,
+queue cancellation and wrecked-base resupply restrictions. Minefields use shared
+blast, casualty, vehicle damage, terrain and removal code.
+
+Godot comparisons pass 611 building updates across 32 cases for each kind,
+including contested and neutral territory, ruined town income, warning messages,
+reload speech, supply routes, battle credit, infantry/vehicle mine triggers and
+checkpoint resumes. Blast health uses the existing 1e-9 Godot/libm comparison
+tolerance; Rust continuation remains exact. The related 1,242 building-service
+updates also pass. Six focused Rust tests cover captures, victory, mine triggers
+and shared-state resumes. The exact numeric transcript adds 3,830,430 bytes of
+state changes and events, including resumed supply networks and combat effects.
+Production, the full world dispatcher, socket server and whole-match verification
+remain completion work. Other applications stayed running.
+All 893 debug core checks pass. Release passes 134 checks, including all 123 exact
+numeric-contract cases plus the capture and service regressions. Import, changelog,
+presentation and diff checks pass. These are simulation correctness checks, not
+a rendered frame-rate result.

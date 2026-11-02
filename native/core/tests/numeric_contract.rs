@@ -10380,3 +10380,10 @@ fn building_services_are_identical_across_platforms() {
         &structure_services_world::transcript(),
     );
 }
+
+#[path = "fixtures/structure_world.rs"]
+mod structure_world;
+#[test]
+fn territory_and_mines_are_identical_across_platforms() {
+    golden("structure_world", &structure_world::transcript());
+}

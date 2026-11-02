@@ -9,7 +9,7 @@ use crate::squad::SquadStateCore;
 use crate::supply_network::SupplyNetworkCore;
 use crate::visibility::VisibilityCore;
 use crate::world_geometry::WorldGeometryCore;
-use frontline_core::actors::Actor;
+use frontline_core::actors::{Actor, Actors};
 use frontline_core::bullet::Weapon;
 use frontline_core::bullet_world::{Gunfire, Shot};
 use frontline_core::fires::{BuildingProfile, ManProfile};
@@ -30,6 +30,67 @@ fn read<T: FromGodot>(a: &Array<Variant>, i: usize) -> Option<T> {
 }
 fn vector(p: frontline_core::vector::Vector3) -> Vector3 {
     Vector3::new(p.x, p.y, p.z)
+}
+fn service_profiles(
+    stock: Array<Variant>,
+    rows: Array<Variant>,
+    actors: &Actors,
+) -> Option<BTreeMap<u32, frontline_core::structure_services::Supply>> {
+    use frontline_core::structure_services::Supply;
+    let stock = crate::actors::service_stock(stock)?;
+    if rows.len() > 100_000 {
+        return None;
+    }
+    let mut supply = BTreeMap::new();
+    for row in rows.iter_shared() {
+        let row: Array<Variant> = row.try_to().ok()?;
+        if row.len() != 3 {
+            return None;
+        }
+        let id: u32 = read(&row, 0)?;
+        let ammo: i32 = read(&row, 1)?;
+        if ammo < -1 {
+            return None;
+        }
+        let p = Supply {
+            ammunition: (ammo >= 0).then_some(ammo),
+            frags: read(&row, 2)?,
+            loadout: stock.get(&id)?.0,
+        };
+        if !p.valid() || supply.insert(id, p).is_some() {
+            return None;
+        }
+    }
+    if actors
+        .iter()
+        .any(|a| matches!(a,Actor::Soldier(s) if !supply.contains_key(&s.identity.id)))
+    {
+        return None;
+    }
+    Some(supply)
+}
+fn service_event(e: &frontline_core::structure_services::Event) -> Variant {
+    use frontline_core::structure_services::Event as E;
+    match e {
+        E::Born { tent, soldier } => varray![0, *tent, *soldier].to_variant(),
+        E::Reload { soldier, variant } => varray![1, *soldier, i32::from(*variant)].to_variant(),
+        E::CacheEmpty { id, team, position } => {
+            varray![2, *id, i32::from(*team), vector(*position)].to_variant()
+        }
+        E::Despawn(id) => varray![3, *id].to_variant(),
+        E::Stat(key) => varray![4, &GString::from(*key)].to_variant(),
+    }
+}
+fn place(p: &frontline_core::structure_world::Place) -> Variant {
+    varray![
+        p.id,
+        i32::from(p.team),
+        &GString::from(p.kind.as_str()),
+        &GString::from(p.name.as_str()),
+        vector(p.position),
+        p.variant
+    ]
+    .to_variant()
 }
 fn read_impacts(input: &Array<Variant>) -> Option<Vec<Report>> {
     if input.len() > 100_000 {
@@ -105,6 +166,7 @@ struct Building {
     time: Option<f64>,
 }
 enum Operation {
+    Territory(Array<Variant>, Gd<SupplyNetworkCore>, Vec<Report>),
     Service(Array<Variant>),
     Recruit(Array<Variant>),
     Damage(u32, f64, u32),
@@ -122,6 +184,40 @@ struct VehicleLossWorldCore {
 }
 #[godot_api]
 impl VehicleLossWorldCore {
+    #[func]
+    fn advance_territory(
+        &mut self,
+        actors: Gd<ActorStateCore>,
+        geometry: Gd<WorldGeometryCore>,
+        units: Gd<SpatialIndexCore>,
+        nodes: Array<Gd<SquadStateCore>>,
+        fires: Gd<FiresCore>,
+        battle: Gd<BattleStatsCore>,
+        deferred: Gd<DeferredEffectsCore>,
+        visibility: Gd<VisibilityCore>,
+        rng: Gd<SimulationRandomCore>,
+        config: Array<Variant>,
+        input: Array<Variant>,
+        network: Gd<SupplyNetworkCore>,
+        impacts: Array<Variant>,
+    ) -> Array<Variant> {
+        let Some(impacts) = read_impacts(&impacts) else {
+            return Array::new();
+        };
+        self.run(
+            actors,
+            geometry,
+            units,
+            nodes,
+            fires,
+            battle,
+            deferred,
+            visibility,
+            rng,
+            config,
+            Operation::Territory(input, network, impacts),
+        )
+    }
     #[func]
     fn advance_structure_service(
         &mut self,
@@ -903,6 +999,7 @@ impl VehicleLossWorldCore {
         let mut construction_stats = PackedStringArray::new();
         let mut recruitment: Option<Array<Variant>> = None;
         let mut services: Option<Array<Variant>> = None;
+        let mut territory: Option<Array<Variant>> = None;
         let armor = |v: &frontline_core::vehicle::Vehicle| {
             let p = &vehicles[&v.id];
             Armor {
@@ -914,44 +1011,112 @@ impl VehicleLossWorldCore {
             }
         };
         let result = match operation {
-            Operation::Service(input) => {
-                use frontline_core::structure_services::{Event as Service, Profiles, Supply};
+            Operation::Territory(input, mut network, mut impacts) => {
+                use frontline_core::structure::TownEconomy;
+                use frontline_core::structure_world::{Event as E, Profiles, Victory};
                 let parse = || -> Option<_> {
                     if input.len() != 8 {
                         return None;
                     }
                     let id: u32 = read(&input, 0)?;
                     let dt: f64 = read(&input, 1)?;
-                    let stock = crate::actors::service_stock(read(&input, 2)?)?;
-                    let rows: Array<Variant> = read(&input, 3)?;
-                    if rows.len() > 100_000 {
+                    let supply =
+                        service_profiles(read(&input, 2)?, read(&input, 3)?, context.actors)?;
+                    let economy: PackedFloat64Array = read(&input, 4)?;
+                    if economy.len() != 6
+                        || economy
+                            .as_slice()
+                            .iter()
+                            .any(|n| !n.is_finite() || !(0.0..=1_000_000.0).contains(n))
+                    {
                         return None;
                     }
-                    let mut supply = BTreeMap::new();
-                    for row in rows.iter_shared() {
-                        let row: Array<Variant> = row.try_to().ok()?;
-                        if row.len() != 3 {
-                            return None;
-                        }
-                        let id: u32 = read(&row, 0)?;
-                        let ammo: i32 = read(&row, 1)?;
-                        if ammo < -1 {
-                            return None;
-                        }
-                        let p = Supply {
-                            ammunition: (ammo >= 0).then_some(ammo),
-                            frags: read(&row, 2)?,
-                            loadout: stock.get(&id)?.0,
-                        };
-                        if !p.valid() || supply.insert(id, p).is_some() {
-                            return None;
-                        }
-                    }
-                    if context.actors.iter().any(
-                        |a| matches!(a,Actor::Soldier(s) if !supply.contains_key(&s.identity.id)),
-                    ) {
+                    let town = std::array::from_fn(|i| TownEconomy {
+                        stock: economy[i * 3],
+                        yield_per_minute: economy[i * 3 + 1],
+                        capture_pace: economy[i * 3 + 2],
+                    });
+                    let radius: f64 = read(&input, 5)?;
+                    let victory = Victory {
+                        winner: read(&input, 6)?,
+                        mission: read(&input, 7)?,
+                    };
+                    Some((id, dt, supply, town, radius, victory))
+                };
+                let Some((id, dt, supply, town, radius, mut victory)) = parse() else {
+                    return Array::new();
+                };
+                let mine = context
+                    .actors
+                    .structure(id)
+                    .is_some_and(|st| st.kind == "mines");
+                let result = if mine {
+                    context.advance_mine(id, dt, &mut network.bind_mut().core, &mut impacts, &armor)
+                } else {
+                    context.advance_territory(
+                        id,
+                        dt,
+                        &Profiles {
+                            fob_radius: radius,
+                            town,
+                            supply: &|s| supply[&s.identity.id],
+                        },
+                        &mut network.bind_mut().core,
+                        &mut victory,
+                    )
+                };
+                result.map(|events| {
+                    let rows: Array<Variant> = events
+                        .iter()
+                        .filter_map(|e| match e {
+                            E::Warning {
+                                place: p,
+                                last_stand,
+                            } => Some(varray![0, &place(p), *last_stand].to_variant()),
+                            E::Captured {
+                                place: p,
+                                old_team,
+                                supply,
+                                parent,
+                            } => Some(
+                                varray![1, &place(p), i32::from(*old_team), *supply, *parent]
+                                    .to_variant(),
+                            ),
+                            E::Winner(team) => Some(varray![2, i32::from(*team)].to_variant()),
+                            E::Service(e) => Some(varray![3, &service_event(e)].to_variant()),
+                            E::Despawn(id) => Some(varray![4, *id].to_variant()),
+                            E::Stat(key) => Some(varray![5, &GString::from(*key)].to_variant()),
+                            E::Combat(_) => None,
+                        })
+                        .collect();
+                    let impacts: Array<Variant> = impacts
+                        .into_iter()
+                        .map(|r| varray![vector(r.position), r.time].to_variant())
+                        .collect();
+                    territory = Some(varray![i32::from(victory.winner), &rows, &impacts]);
+                    events
+                        .into_iter()
+                        .filter_map(|e| match e {
+                            E::Combat(e) => Some(e),
+                            E::Stat(key)
+                            | E::Service(frontline_core::structure_services::Event::Stat(key)) => {
+                                Some(world_combat::Event::Stat(key))
+                            }
+                            _ => None,
+                        })
+                        .collect()
+                })
+            }
+            Operation::Service(input) => {
+                use frontline_core::structure_services::{Event as Service, Profiles};
+                let parse = || -> Option<_> {
+                    if input.len() != 8 {
                         return None;
                     }
+                    let id: u32 = read(&input, 0)?;
+                    let dt: f64 = read(&input, 1)?;
+                    let supply =
+                        service_profiles(read(&input, 2)?, read(&input, 3)?, context.actors)?;
                     let bearer = birth_loadout(&read(&input, 4)?)?;
                     if !men.contains_key(&bearer.unit) {
                         return None;
@@ -977,27 +1142,7 @@ impl VehicleLossWorldCore {
                         },
                     )
                     .map(|events| {
-                        services = Some(
-                            events
-                                .iter()
-                                .map(|e| match e {
-                                    Service::Born { tent, soldier } => {
-                                        varray![0, *tent, *soldier].to_variant()
-                                    }
-                                    Service::Reload { soldier, variant } => {
-                                        varray![1, *soldier, i32::from(*variant)].to_variant()
-                                    }
-                                    Service::CacheEmpty { id, team, position } => {
-                                        varray![2, *id, i32::from(*team), vector(*position)]
-                                            .to_variant()
-                                    }
-                                    Service::Despawn(id) => varray![3, *id].to_variant(),
-                                    Service::Stat(key) => {
-                                        varray![4, &GString::from(*key)].to_variant()
-                                    }
-                                })
-                                .collect(),
-                        );
+                        services = Some(events.iter().map(service_event).collect());
                         events
                             .into_iter()
                             .filter_map(|e| match e {
@@ -2320,6 +2465,9 @@ impl VehicleLossWorldCore {
         }
         if let Some(services) = services {
             out.push(&services.to_variant());
+        }
+        if let Some(territory) = territory {
+            out.push(&territory.to_variant());
         }
         out
     }

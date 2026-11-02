@@ -1552,7 +1552,10 @@ Construction, town income, capture and production transitions match the existing
 game. Tents now recruit and assign stretcher teams against retained casualties;
 gun positions select and route their crews; ammunition caches refill nearby men
 and retire their shared geometry when empty. These services preserve decision
-clocks, claims, random draws and route continuation. Remaining rule effects and
+clocks, claims, random draws and route continuation. FOB and town captures now
+change shared ownership, battle credit and supply roads immediately, including
+last-FOB victory, town income and nearby resupply. Minefields resolve shared
+casualties, vehicle damage and terrain effects. Remaining rule effects and
 the full building dispatcher still need migration before Rust owns the complete
 battle.
 Retained rejoining now selects or creates squads, transfers disconnected ownership
