@@ -102,6 +102,13 @@ func generate() -> void:
 	_lanes(tg)
 	await world._breathe("Laying out the town", 0.32)
 	_roads_meet_water(tg)
+	await world._breathe("Weathering the mountain ridges", 0.34)
+	var sites := [[tg.center, minf(85.0 * k, 130.0)], [d0.position, 60.0], [d1.position, 60.0], [f0.position, 55.0], [f1.position, 55.0]]
+	for hamlet in tg.hamlets:
+		sites.append([hamlet.c, 42.0])
+	# Campaign routes retain the geology and woodland density they were authored against.
+	world.terrain.landform.generate(int(world.settings.get("seed", 1)), world.roads, world.water, sites, String(world.settings.get("mission", "")) == "")
+	world.terrain.install_landform(world.terrain.landform.heights)
 	world._rebuild_roads()
 	await world._breathe("Laying out the town", 0.38)
 	tg.streetscape()
@@ -114,7 +121,7 @@ func generate() -> void:
 	tg.roadside(int(rng.randi_range(3, 5) * k), int(rng.randi_range(2, 3) * k))
 	if String(world.settings.get("mission", "")) == "":
 		_towns(tg)  # (a mission's ground is fought for on the mission's terms)
-	tg.finish()
+	tg.finish(false)
 	# the ground worth fighting for, for the AI commanders
 	world.key_points.append({"pos": tg.center, "kind": "town"})
 	for hm in tg.hamlets:
@@ -130,9 +137,17 @@ func generate() -> void:
 	for i in int(rng.randi_range(3, 5) * k):
 		_old_position(Vector3(rng.randf_range(-(H - 38.0), H - 38.0), 0, rng.randf_range(-35.0, 35.0) * k))
 	for i in int(rng.randi_range(7, 10) * area * 0.85):
-		_woods(Vector3(rng.randf_range(-(H - 13.0), H - 13.0), 0, rng.randf_range(-(H - 28.0), H - 28.0)), rng.randi_range(6, 14))
+		_woods(Vector3(rng.randf_range(-(H - 13.0), H - 13.0), 0, rng.randf_range(-(H - 28.0), H - 28.0)), rng.randi_range(6, 14) if String(world.settings.get("mission", "")) != "" else rng.randi_range(12, 26))
 	for i in int(40 * area * 0.75):
-		_try("tree", Vector3(rng.randf_range(-(H - 8.0), H - 8.0), 0, rng.randf_range(-(H - 10.0), H - 10.0)), 0.0, -1)
+		var p := Vector3(rng.randf_range(-(H - 8.0), H - 8.0), 0, rng.randf_range(-(H - 10.0), H - 10.0))
+		# Open valley ground stays meadow; isolated trees belong to sheltered mountain pockets.
+		if String(world.settings.get("mission", "")) == "" and (world.terrain.landform.height(p) < 6.0 or _habitat(p) < 0.6):
+			continue
+		_try("tree", p, 0.0, -1)
+	if String(world.settings.get("mission", "")) == "":
+		_foothill_woods(area)
+		_alpine_scatter(tg.decor, area)
+	world.set_decor(tg.decor, tg.rect)
 
 	world.terrain.release_nav()
 	await world._breathe("Mustering the forces", 0.53)
@@ -907,6 +922,7 @@ func _trench_line(a: Vector3, b: Vector3, team: int, zig := true) -> void:
 
 
 func _spawn(kind: String, pos: Vector3, yaw: float, team: int, extra := {}) -> Structure:
+	pos.y += world.terrain.landform.height(pos)
 	var props := {"skind": kind, "pos": pos, "yaw": yaw, "team": team}
 	props.merge(extra, true)
 	var st: Structure = world.spawn("structure", props)
@@ -933,8 +949,10 @@ func _foot_of(kind: String, extra: Dictionary) -> Vector2:
 	return Vector2(1, 1)
 
 
-func _is_free(pos: Vector3, half: Vector2, yaw: float, margin := 0.6, use_clear := true) -> bool:
+func _is_free(pos: Vector3, half: Vector2, yaw: float, margin := 0.6, use_clear := true, ground_tolerance := 0.35) -> bool:
 	if not Defs.in_map(pos, 6.0):
+		return false
+	if not world.terrain.landform.fits(pos, half, yaw, ground_tolerance):
 		return false
 	if not world.water.is_empty():
 		# not in the water, nor on a bridge
@@ -980,8 +998,20 @@ func _is_free(pos: Vector3, half: Vector2, yaw: float, margin := 0.6, use_clear 
 
 
 func _try(kind: String, pos: Vector3, yaw: float, team: int, extra := {}) -> Structure:
+	if kind == "tree" and world.terrain.landform.height(pos) > world.terrain.landform.peak * 0.58 and world.terrain.landform.peak > 1.0:
+		return null
+	if kind == "tree" and String(world.settings.get("mission", "")) == "":
+		var altitude := world.terrain.landform.height(pos) / maxf(1.0, world.terrain.landform.peak)
+		var slope := world.terrain.slope_at(pos)
+		var soil := _habitat(pos)
+		if altitude > lerpf(0.43, 0.57, soil) or slope > 0.95 or (slope > 0.5 and soil < 0.5):
+			return null
+		if (altitude > 0.18 or slope > 0.28) and int(extra.get("variant", 0)) != 1:
+			extra = extra.duplicate()
+			extra["variant"] = 2
 	var half := _foot_of(kind, extra)
-	if not _is_free(pos, half, yaw):
+	var tree_slope := kind == "tree" and String(world.settings.get("mission", "")) == ""
+	if not _is_free(pos, half, yaw, 0.6, true, 0.7 if tree_slope else 0.35):
 		return null
 	return _spawn(kind, pos, yaw, team, extra)
 
@@ -1127,9 +1157,93 @@ func _old_position(c: Vector3) -> void:
 		_try("sandbags", c - dir * 2.5 + dir.cross(Vector3.UP) * 2.0, yaw + PI * 0.5, -1)
 
 
+## Connected conifer stands establish the scale of cliffs without filling the valley roads.
+func _foothill_woods(area: float) -> void:
+	var remaining := mini(6, ceili(area * 3.0))
+	var budget := remaining * 32
+	for attempt in int(80 * area):
+		if remaining <= 0 or budget <= 0:
+			break
+		var c := Vector3(rng.randf_range(-MapDims.HALF + 45, MapDims.HALF - 45), 0, rng.randf_range(-MapDims.HALF + 45, MapDims.HALF - 45))
+		var h := world.terrain.landform.height(c)
+		var slope := world.terrain.slope_at(c)
+		if h < 6.0 or h > world.terrain.landform.peak * 0.54 or slope < 0.12 or slope > 0.85 or _habitat(c) < 0.45:
+			continue
+		var along := _contour(c)
+		var planted := 0
+		for tree in mini(32, budget):
+			var angle := rng.randf() * TAU
+			var radius := sqrt(rng.randf()) * 36.0
+			var p := c + along * cos(angle) * radius + along.cross(Vector3.UP) * sin(angle) * radius * 0.45
+			if _try("tree", p, 0.0, -1, {"variant": 2}) != null:
+				planted += 1
+				budget -= 1
+		if planted >= 12:
+			world.key_points.append({"pos": c, "kind": "woods"})
+			remaining -= 1
+
+
 func _woods(c: Vector3, n: int) -> void:
-	if n >= 9:
+	var alpine := String(world.settings.get("mission", "")) == "" and world.terrain.landform.peak > 1.0
+	if n >= 9 and not alpine:
 		world.key_points.append({"pos": c, "kind": "woods"})
+	var planted := 0
+	var along := _contour(c) if alpine else Vector3.RIGHT
 	for i in n:
-		var p := c + Vector3(rng.randf_range(-11, 11), 0, rng.randf_range(-11, 11))
-		_try("tree", p, 0.0, -1)
+		var p := c + along * rng.randf_range(-28 if alpine else -11, 28 if alpine else 11) + along.cross(Vector3.UP) * rng.randf_range(-11, 11)
+		if alpine and _habitat(p) < 0.38:
+			continue
+		if _try("tree", p, 0.0, -1) != null:
+			planted += 1
+	if alpine and planted >= 9:
+		world.key_points.append({"pos": c, "kind": "woods"})
+
+
+func _contour(p: Vector3) -> Vector3:
+	var land := world.terrain.landform
+	var along := Vector3(land.height(p + Vector3.FORWARD * 8) - land.height(p + Vector3.BACK * 8), 0, land.height(p + Vector3.RIGHT * 8) - land.height(p + Vector3.LEFT * 8))
+	return along.normalized() if along.length_squared() > 0.01 else Vector3.RIGHT
+
+
+## Bowls retain soil and moisture; exposed convex ribs support less vegetation.
+static func habitat(slope: float, concavity: float, aspect: float) -> float:
+	return clampf(0.52 + concavity * 0.045 + aspect * 0.18 - slope * 0.14, 0.0, 1.0)
+
+
+func _habitat(p: Vector3) -> float:
+	var land := world.terrain.landform
+	var north := land.height(p + Vector3(0, 0, -24))
+	var south := land.height(p + Vector3(0, 0, 24))
+	var east := land.height(p + Vector3(24, 0, 0))
+	var west := land.height(p + Vector3(-24, 0, 0))
+	var concavity := (north + south + east + west) * 0.25 - land.height(p)
+	return habitat(world.terrain.slope_at(p), concavity, clampf((north - south) / 48.0, -1.0, 1.0))
+
+
+## Low, passable scrub and stones use the replicated, chunk-batched dressing list.
+static func alpine_dressing(altitude: float, slope: float, moisture: float) -> String:
+	if altitude > 0.7 or slope > 1.1:
+		return ""
+	if altitude > 0.46 or slope > 0.48 or moisture < 0.35:
+		return "alpine_stones"
+	return "alpine_scrub"
+
+
+func _alpine_scatter(entries: Array, area: float) -> void:
+	var scatter := RandomNumberGenerator.new()
+	scatter.seed = int(world.settings.get("seed", 1)) + 8317
+	var budget := mini(1200, int(area * 65))
+	for attempt in budget * 5:
+		if budget <= 0:
+			break
+		var p := Vector3(scatter.randf_range(-MapDims.HALF + 8, MapDims.HALF - 8), 0, scatter.randf_range(-MapDims.HALF + 8, MapDims.HALF - 8))
+		var h := world.terrain.landform.height(p)
+		var patch := _habitat(p)
+		if h < 2.0 or scatter.randf() > 0.25 + patch * 0.65 or not _is_free(p, Vector2(0.35, 0.35), 0.0, 1.8):
+			continue
+		var kind := alpine_dressing(h / maxf(1.0, world.terrain.landform.peak), world.terrain.slope_at(p), patch)
+		if kind == "":
+			continue
+		p.y = h - 0.08
+		entries.append([kind, p, scatter.randf() * TAU, scatter.randf_range(0.7, 1.4)])
+		budget -= 1

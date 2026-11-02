@@ -6,10 +6,9 @@ extends Node3D
 ## business - Rules - and enemies out of sight are never sent; this only shows
 ## where the line runs.)
 ##
-## Every eye your side has (Vision.eyes, the same circles the host uses) is
-## drawn as a soft white disc into a small off-screen map of the battlefield
-## (and a margin round it, so sight near the edge runs on past it), about 5 m
-## to the pixel, fifteen times a second. A full-screen pass over the 3D
+## Each observer contributes a cached terrain horizon to a small off-screen
+## map, about 5 m per pixel at the default map size, refreshed four times a
+## second. Flat scenarios keep the cheaper soft discs at fifteen updates. A full-screen pass over the 3D
 ## view finds where each pixel lies on the ground (from the depth buffer) and
 ## darkens it if that ground is out of sight; aircraft high overhead are left
 ## alone. The minimap lays a dark copy of the same picture over its map.
@@ -31,6 +30,9 @@ var _disc: Texture2D
 var _mi: MeshInstance3D
 var _mat: ShaderMaterial
 var _list := PackedVector3Array()
+var _observers := PackedVector4Array()
+var _visibility_cache := {}
+var _terrain_version := -1
 var _t := 0.0
 var _own: Array = []  # your side's buildings (re-gathered every second, not every update)
 var _own_t := 0.0
@@ -73,12 +75,13 @@ func _ready() -> void:
 	# the pass over the 3D view
 	_mat = ShaderMaterial.new()
 	var sh := Shader.new()
-	sh.code = FOG_SHADER
+	sh.code = MapDims.shader(FOG_SHADER)
 	_mat.shader = sh
 	_mat.render_priority = Material.RENDER_PRIORITY_MAX  # after the smoke, water and particles: it darkens them too
 	_mat.set_shader_parameter("sight_tex", sight_tex)
 	_mat.set_shader_parameter("origin", -MapDims.HALF - MARGIN)
 	_mat.set_shader_parameter("span", span())
+	_mat.set_shader_parameter("deform_tex", world.atmo.deform_tex)
 	_mi = MeshInstance3D.new()
 	var qm := QuadMesh.new()
 	qm.size = Vector2(2, 2)
@@ -131,7 +134,7 @@ func _process(dt: float) -> void:
 	_t -= dt
 	if _t > 0.0:
 		return
-	_t = EVERY
+	_t = EVERY if world.terrain.landform.heights.is_empty() else 0.25
 	_own_t -= EVERY
 	if _own_t <= 0.0:
 		_own_t = 1.0
@@ -141,6 +144,7 @@ func _process(dt: float) -> void:
 				_own.append(st)
 	var marks: Array = (world.team_info[team] as Dictionary).get("marks", []) if team < world.team_info.size() else []
 	_list = Vision.eyes(world, team, marks, _own)
+	_observers = Vision.observers(world, team, marks, _own)
 	_eyes.queue_redraw()
 	_vp.render_target_update_mode = SubViewport.UPDATE_ONCE
 	_vp_dark.render_target_update_mode = SubViewport.UPDATE_ONCE
@@ -149,6 +153,47 @@ func _process(dt: float) -> void:
 func _draw_eyes() -> void:
 	var k := N / span()
 	var o := MapDims.HALF + MARGIN
+	if not world.terrain.landform.heights.is_empty():
+		if _terrain_version != world.terrain.version:
+			_terrain_version = world.terrain.version
+			_visibility_cache.clear()
+		var used := {}
+		var visible_cells := {}
+		for eye in _observers:
+			var key := Vector4i(roundi(eye.x * k), roundi(eye.z * k), roundi(eye.y), roundi(eye.w * k))
+			used[key] = true
+			if not _visibility_cache.has(key):
+				var pixels := {}
+				var center := Vector2((eye.x + o) * k, (eye.z + o) * k)
+				var radius := ceili(eye.w * k)
+				pixels[Vector2i(center)] = true
+				# Sweep the horizon once per bearing; testing every pixel with a
+				# full ray would repeat the same terrain thousands of times.
+				var bearings := maxi(32, ceili(TAU * radius))
+				for bearing in bearings:
+					var direction := Vector2.from_angle(bearing * TAU / bearings)
+					var horizon := -INF
+					for step in range(1, radius + 1):
+						var pixel := Vector2i(center + direction * step)
+						if pixel.x < 0 or pixel.y < 0 or pixel.x >= N or pixel.y >= N:
+							break
+						var target := Vector3((pixel.x + 0.5) / k - o, 0, (pixel.y + 0.5) / k - o)
+						var distance := Vector2(target.x - eye.x, target.z - eye.z).length()
+						if distance > eye.w or distance < 0.1:
+							continue
+						var height := world.terrain.deform_at(target) - eye.y
+						if (height + 1.5) / distance >= horizon:
+							pixels[pixel] = true
+						horizon = maxf(horizon, height / distance)
+				_visibility_cache[key] = pixels.keys()
+			for pixel in _visibility_cache[key]:
+				visible_cells[pixel] = true
+		for key in _visibility_cache.keys():
+			if not used.has(key):
+				_visibility_cache.erase(key)
+		for pixel in visible_cells:
+			_eyes.draw_rect(Rect2(Vector2(pixel), Vector2.ONE), Color.WHITE)
+		return
 	for e in _list:
 		var c := Vector2((e.x + o) * k, (e.y + o) * k)
 		var rr := e.z * k * EDGE
@@ -180,6 +225,8 @@ uniform sampler2D depth_tex : hint_depth_texture, filter_nearest;
 #define NDC_Z(d) (d)
 #endif
 uniform sampler2D sight_tex : hint_default_white, filter_linear, repeat_disable;
+uniform sampler2DArray deform_tex : filter_linear, repeat_disable;
+// TERRAIN_TEXTURE_HELPER
 uniform vec3 shade : source_color = vec3(0.6, 0.62, 0.68);
 uniform float origin = -500.0;  // the sight map's corner (m)
 uniform float span = 1000.0;  // and how much ground it covers
@@ -201,7 +248,8 @@ void fragment() {
 			seen = texture(sight_tex, uv).r;
 		}
 		// out of sight is darker; anything high in the air (aircraft) is left alone
-		float dark = (1.0 - smoothstep(0.1, 0.9, seen)) * (1.0 - smoothstep(16.0, 34.0, wp.y));
+		float ground = terrain_height(deform_tex, (wp.xz + __MAP_HALF__) / __MAP_SIZE__);
+		float dark = (1.0 - smoothstep(0.1, 0.9, seen)) * (1.0 - smoothstep(16.0, 34.0, wp.y - ground));
 		k = mix(vec3(1.0), shade, dark);
 	}
 #if CURRENT_RENDERER == RENDERER_COMPATIBILITY

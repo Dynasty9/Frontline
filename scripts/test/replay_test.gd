@@ -50,6 +50,7 @@ func _run() -> void:
 			await get_tree().process_frame
 		check(world.recording.uploaded == world.recording.sequence, "all chunks uploaded")
 		print("REPLAY UPLOADED " + world.recording.replay_id)
+	var saved_landform := world.terrain.landform.heights.duplicate()
 	var path: String = world.recording.folder
 	var player: Node = main.open_replay(path)
 	while player.busy:
@@ -66,6 +67,7 @@ func _run() -> void:
 		check(not player.failed, "seek succeeds at %s" % target)
 		check(MapDims.N == int(main.args.get("map-size", 1024)), "seek restores recorded map dimensions")
 		check(is_equal_approx(main.world.time, target), "seek restores the clock")
+		check(main.world.terrain.landform.heights == saved_landform, "seek restores exact terrain elevations")
 		var states: Array = [player.chunk.checkpoint]
 		for state in player.chunk.frames:
 			if float(state.time) <= target:

@@ -46,6 +46,7 @@ func _ready() -> void:
 	assert(tank._aim_time == 0.0)
 	var moving := TurningTank.new()
 	var world := World.new()
+	world.terrain = TerrainMap.new(world)
 	moving.world = world
 	moving.vdef = tank.vdef
 	moving.scan_t = 100.0

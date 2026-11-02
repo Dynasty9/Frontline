@@ -57,9 +57,10 @@ func _ready() -> void:
 	check(float(heavy.hull_turn) < float(light.hull_turn), "heavy lift yaw slower than a light helicopter")
 	var field := World.new()
 	field.has_view = false
+	field.terrain = TerrainMap.new(field)
 	field.set_process(false)
 	field.set_physics_process(false)
-	# Do not run World._ready/map generation; only its entity lookup is needed.
+	# Do not run World._ready/map generation; use a flat terrain and entity lookup without generating a map.
 	var vehicle := Vehicle.new()
 	vehicle.world = field
 	vehicle.vkind = "gunship"
