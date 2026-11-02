@@ -2791,21 +2791,26 @@
     },
     {
       "entry": "changelog/unreleased/alpine-rock-relief.md",
-      "summary": "Mountain faces gain broader slab fractures, cooler stone and more varied surface detail.",
+      "summary": "Mountain faces gain broken mineral layers, darker weathered seams and uneven pockets of loose stone.",
       "medium": "still",
       "stage": "native-media",
-      "rationale": "Matched native daylight captures show the material change without changing terrain geometry.",
+      "rationale": "Matched golden-hour command views show larger weathering patterns; a daylight detail shows the surface at closer range.",
       "source_ref": "codex/alpine-battlefields",
       "sources": [
         {
           "file": "changelog/unreleased/alpine-rock-relief/before.jpg",
-          "sha256": "1f2dd3f949b6cf692dba090f9d298a6788f518f46f9b96c74c235b047786da12",
+          "sha256": "4ea2e7e1d9da096e9e12148ee3520df1ec1b2b074e2fcd3c0fb0488b4e8c50eb",
           "caption": "before"
         },
         {
           "file": "changelog/unreleased/alpine-rock-relief/after.jpg",
-          "sha256": "4f52533c331e6bb5199a46a77d22150d04a8ab31c640f916650b7a74d483535c",
+          "sha256": "aab245fa3246a62c6cd5f881c708db3d77ac4eb78ad05dfa7f1238563cd47108",
           "caption": "after"
+        },
+        {
+          "file": "changelog/unreleased/alpine-rock-relief/detail.jpg",
+          "sha256": "94e68f65b6ef56cd394edcb9ecba4748c9eefd1b1e3b8cf9ae11be024ef84019",
+          "caption": "detail"
         }
       ],
       "output": null,
@@ -2813,9 +2818,10 @@
       "version": "unreleased",
       "kind": "improved",
       "capture": {
-        "before_ref": "587d957",
+        "before_ref": "f58f857",
         "after_ref": "codex/alpine-battlefields",
-        "command": "godot --main-pack PACK --resolution 1600x900 -- --aivai --seed=3 --offscreen --nohud --set=perf:0 --mood=day --preset=high --focus=-160,70 --zoom=140 --pitch=-35 --cam-yaw=0.7 --screenshot=OUTPUT --shot-at=2 --quit-after=3"
+        "detail": "godot --main-pack PACK --resolution 1600x900 -- --aivai --seed=3 --offscreen --nohud --set=perf:0 --mood=day --preset=high --focus=-160,70 --zoom=140 --pitch=-35 --cam-yaw=0.7 --screenshot=OUTPUT --shot-at=2 --quit-after=3",
+        "overview": "godot --main-pack PACK --resolution 1600x900 -- --aivai --seed=3 --offscreen --nohud --set=perf:0 --mood=golden --preset=high --focus=-100,0 --zoom=600 --pitch=-38 --cam-yaw=0.7 --perf-at=5 --perf-duration=10 --perf-shot=OUTPUT.png"
       }
     }
   ],

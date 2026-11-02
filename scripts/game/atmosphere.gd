@@ -1115,15 +1115,23 @@ void fragment() {
 	vec4 scree_sample = surface_color(cliff_color, scree_uv, weights);
 	vec4 moss_sample = surface_color(moss_color, moss_uv, weights);
 	float macro = texture(detail_tex, p / 190.0 + 0.19).r;
-	float scree = mix(0.22, 1.0 - smoothstep(0.3, 0.95, slope), 0.78) * mix(0.4, 1.0, patch);
+	vec3 habitat_bake = texture(surface_bake, (p + __MAP_HALF__) / __MAP_SIZE__).rgb;
+	// Tilted beds break across the face; sheltered seams weather darker than exposed ribs.
+	float bedding = sin(wpos.y * 0.32 + p.x * 0.045 + p.y * 0.025 + (seams - 0.5) * 12.0);
+	float mineral = smoothstep(0.2, 0.85, bedding) * smoothstep(0.28, 0.65, patch);
+	float shelter = smoothstep(0.48, 0.68, habitat_bake.g);
+	float weathered = smoothstep(0.32, 0.72, seams * 0.55 + patch * 0.25 + shelter * 0.20);
+	float scree = clamp((1.0 - smoothstep(0.3, 1.15, slope)) * mix(0.15, 0.95, patch)
+		+ shelter * patch * 0.35, 0.0, 1.0);
 	float stone = dot(rock_sample.rgb, vec3(0.2126, 0.7152, 0.0722));
 	vec3 rock = mix(vec3(stone), rock_sample.rgb, 0.45) * vec3(1.04, 1.10, 1.18);
 	rock = mix(rock, scree_sample.rgb * vec3(1.04, 1.06, 1.07), scree * 0.7);
-	rock *= mix(vec3(0.72, 0.79, 0.88), vec3(1.16, 1.08, 0.94), region);
-	rock *= mix(0.80, 1.08, smoothstep(0.22, 0.72, seams));
+	rock *= mix(vec3(0.58, 0.67, 0.78), vec3(1.28, 1.17, 0.98), region);
+	rock *= mix(1.12, 0.65, weathered);
+	rock = mix(rock, rock * vec3(1.45, 1.40, 1.29), mineral * 0.65);
+	rock *= mix(0.86, 1.14, smoothstep(0.25, 0.75, macro));
 	float rock_height = mix(rock_sample.a, scree_sample.a, scree * 0.7);
 	float grass_detail = dot(moss_sample.rgb, vec3(0.2126, 0.7152, 0.0722));
-	vec3 habitat_bake = texture(surface_bake, (p + __MAP_HALF__) / __MAP_SIZE__).rgb;
 	float alpine_soil = clamp(0.52 + (habitat_bake.g - 0.5) * 1.3 + geometric.z * 0.18 - slope * 0.14, 0.0, 1.0);
 	float alpine_dry = smoothstep(0.25, 0.85, 1.0 - alpine_soil + (patch - 0.5) * 0.12);
 	vec3 moss = mix(vec3(0.05, 0.078, 0.025), vec3(0.115, 0.12, 0.06), alpine_dry) * (0.60 + grass_detail * 1.6);
