@@ -252,7 +252,7 @@ impl InfantryArsenalCore {
                     reported: &reported,
                     forced,
                 },
-                &mut collision.bind_mut().core,
+                &mut *collision.bind_mut(),
                 &visibility.bind().core,
             )
             .ok()?;

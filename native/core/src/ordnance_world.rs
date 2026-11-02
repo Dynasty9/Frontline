@@ -132,7 +132,10 @@ impl Context<'_> {
                 candidates: &candidates,
                 excluded: &excluded,
             },
-            &mut self.geometry.collision,
+            &mut crate::collision::RayScene {
+                boxes: &mut self.geometry.collision,
+                ground: crate::traversal::Ground::new(&self.geometry.terrain, &self.geometry.deck),
+            },
             self.rng,
         )?;
         if let Motion::Ballistic(f) = &p.motion {
@@ -225,7 +228,10 @@ impl Context<'_> {
         let Some(blast) = self.actors.step_drone(
             id,
             dt,
-            &mut self.geometry.collision,
+            &mut crate::collision::RayScene {
+                boxes: &mut self.geometry.collision,
+                ground: crate::traversal::Ground::new(&self.geometry.terrain, &self.geometry.deck),
+            },
             self.geometry.terrain.n as f32 * 0.5,
         )?
         else {

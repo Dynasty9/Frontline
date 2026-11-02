@@ -1,5 +1,5 @@
 //! Special-weapon admission, target priority and ammunition between infantry actions.
-use crate::collision::CollisionWorld;
+use crate::collision::Raycast;
 use crate::infantry_vitals::Life;
 use crate::random::SimulationRandom;
 use crate::state_codec::{Reader, Writer};
@@ -103,7 +103,7 @@ impl InfantryArsenal {
     pub fn rocket(
         &mut self,
         i: RocketInput<'_>,
-        collision: &mut CollisionWorld,
+        collision: &mut dyn Raycast,
         visibility: &Visibility,
     ) -> Result<Option<u64>, &'static str> {
         if !self.valid()

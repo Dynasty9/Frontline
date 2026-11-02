@@ -273,6 +273,27 @@ impl SupportFlight {
         candidates: &[Vector3],
         rng: &mut SimulationRandom,
     ) -> Vec<Event> {
+        self.advance_in_world(
+            dt,
+            time,
+            team,
+            map_half,
+            candidates,
+            rng,
+            &crate::collision::CollisionWorld::default(),
+        )
+    }
+
+    pub fn advance_in_world(
+        &mut self,
+        dt: f64,
+        time: f64,
+        team: i32,
+        map_half: f64,
+        candidates: &[Vector3],
+        rng: &mut SimulationRandom,
+        ground: &dyn crate::collision::Raycast,
+    ) -> Vec<Event> {
         let mut events = Vec::new();
         if self.dead {
             return events;
@@ -281,6 +302,9 @@ impl SupportFlight {
         match self.kind {
             Kind::Jet => {
                 self.position += self.velocity * dt as f32;
+                self.position.y = f64::from(self.position.y)
+                    .max(ground.landform_height(self.position + flat(self.velocity)) + 60.0)
+                    as f32;
                 let direction = normalized(flat(self.velocity));
                 let along = f64::from(flat(self.position - self.target).dot(direction));
                 if self.bombs_initial < 0.0 {
@@ -313,7 +337,8 @@ impl SupportFlight {
                 let direction = normalized(flat(self.velocity));
                 self.position += direction * 58.0 * dt as f32;
                 let along = f64::from(flat(self.position - self.target).dot(direction));
-                self.position.y = gun_run_altitude(along) as f32;
+                self.position.y =
+                    (ground.landform_height(self.position) + gun_run_altitude(along)) as f32;
                 self.velocity = direction * 58.0
                     + Vector3::Y
                         * ((gun_run_altitude(along + 1.0) - gun_run_altitude(along)) * 58.0) as f32;
@@ -330,7 +355,7 @@ impl SupportFlight {
                             + direction * (-18.0 + 36.0 * progress) as f32
                             + side * rng.randf_range(-3.0, 3.0)
                             + direction * rng.randf_range(-2.0, 2.0);
-                        aim.y = 0.15;
+                        aim.y = (ground.ground_y(aim) + 0.15) as f32;
                         self.hits
                             .push((time + f64::from(self.position.distance(aim)) / 950.0, aim));
                     }
@@ -345,7 +370,11 @@ impl SupportFlight {
             }
             Kind::Orbit => {
                 self.position = self.orbit_position(self.life);
-                self.velocity = (self.orbit_position(self.life + 0.1) - self.position) / 0.1;
+                self.position.y =
+                    f64::from(self.position.y).max(ground.landform_peak() + 88.0) as f32;
+                let mut next = self.orbit_position(self.life + 0.1);
+                next.y = f64::from(next.y).max(ground.landform_peak() + 88.0) as f32;
+                self.velocity = (next - self.position) / 0.1;
                 if self.life >= 3.0 && self.life <= self.on_station() {
                     for (index, gun) in guns(self.gunset).iter().enumerate() {
                         let (at, fired) = self.next[index].unwrap_or_else(|| {
@@ -364,7 +393,7 @@ impl SupportFlight {
                             0.0,
                             rng.randf_range(-gun.spread, gun.spread),
                         );
-                        aim.y = 0.15;
+                        aim.y = (ground.ground_y(aim) + 0.15) as f32;
                         events.push(Event::Shell {
                             kind: gun.kind,
                             position: self.muzzle(index),

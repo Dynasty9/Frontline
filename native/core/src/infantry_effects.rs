@@ -1,7 +1,7 @@
 //! Hits and near misses update soldiers, their shared links and squad knowledge together.
 use crate::actors::{Actor, Actors};
 use crate::blast::{Blast, Infantry as Exposure, Protection as BlastProtection};
-use crate::collision::CollisionWorld;
+use crate::collision::Raycast;
 use crate::infantry::Credit;
 use crate::infantry::Infantry;
 use crate::infantry_casualty::Released;
@@ -98,7 +98,7 @@ impl Actors {
         blame: Option<&Credit>,
         terrain: &Terrain,
         units: &SpatialIndex,
-        collision: &mut CollisionWorld,
+        collision: &mut dyn Raycast,
         squads: &mut [Squad],
         ammunition: impl Fn(&Infantry) -> (Option<i32>, bool),
         rng: &mut SimulationRandom,
@@ -126,7 +126,7 @@ impl Actors {
         blame: Option<&Credit>,
         terrain: &Terrain,
         units: &SpatialIndex,
-        collision: &mut CollisionWorld,
+        collision: &mut dyn Raycast,
         squads: &mut [Squad],
         ammunition: impl Fn(&Infantry, &[Squad]) -> (Option<i32>, bool),
         mut after_hit: impl FnMut(&Actors, &[Squad], u32, &InfantryHit) -> Result<(), &'static str>,

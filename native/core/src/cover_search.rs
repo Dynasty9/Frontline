@@ -1,5 +1,5 @@
 //! A complete cover search over numeric scene, terrain, navigation and occupancy data.
-use crate::collision::CollisionWorld;
+use crate::collision::Raycast;
 use crate::cover::{self, Anchor, AnchorKind, CoverType, Evaluation};
 use crate::godot_sort::score_order;
 use crate::path_planner::PathPlanner;
@@ -53,7 +53,7 @@ pub struct Input {
 pub struct Scene<'a, A = Vec<Anchor>> {
     pub terrain: &'a Terrain,
     pub navigation: &'a PathPlanner,
-    pub collision: &'a mut CollisionWorld,
+    pub collision: &'a mut dyn Raycast,
     pub heat: &'a [u8],
     pub deck: &'a [u8],
     pub structures: &'a [Structure<A>],

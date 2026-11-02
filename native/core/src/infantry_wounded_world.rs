@@ -107,7 +107,13 @@ impl Context<'_> {
             }
             let points = self.actors.infantry_pose(who).unwrap().exposed_points();
             if self.visibility.can_see(
-                &mut self.geometry.collision,
+                &mut crate::collision::RayScene {
+                    boxes: &mut self.geometry.collision,
+                    ground: crate::traversal::Ground::new(
+                        &self.geometry.terrain,
+                        &self.geometry.deck,
+                    ),
+                },
                 eye,
                 u64::from(who),
                 points.as_slice(),
@@ -281,10 +287,19 @@ impl Context<'_> {
             let covered = threats
                 .iter()
                 .filter(|th| {
-                    self.geometry
-                        .collision
-                        .ray(eye, **th, &[])
-                        .is_some_and(|r| position.distance(r.position) < 3.5)
+                    crate::collision::Raycast::ray(
+                        &mut crate::collision::RayScene {
+                            boxes: &mut self.geometry.collision,
+                            ground: crate::traversal::Ground::new(
+                                &self.geometry.terrain,
+                                &self.geometry.deck,
+                            ),
+                        },
+                        eye,
+                        **th,
+                        &[],
+                    )
+                    .is_some_and(|r| position.distance(r.position) < 3.5)
                 })
                 .count();
             if threats.is_empty() || covered as f64 / (threats.len() as f64) < 0.99 {

@@ -1,5 +1,5 @@
 //! Infantry route progress, vaulting, doors and ground following without scene callbacks.
-use crate::collision::CollisionWorld;
+use crate::collision::Raycast;
 use crate::infantry_vitals::Life;
 use crate::path_planner::PathPlanner;
 use crate::random::SimulationRandom;
@@ -219,7 +219,7 @@ impl InfantryMotion {
         input: MoveInput,
         nav: &PathPlanner,
         terrain: &Terrain,
-        collision: &mut CollisionWorld,
+        collision: &mut dyn Raycast,
         rng: &mut SimulationRandom,
         decks: &[u8],
         doors: &[Door],

@@ -209,7 +209,10 @@ impl Context<'_> {
             step,
             weapon.map_or(0.0, |p| p.bullet.range),
             self.squads.iter().find(|q| q.id == squad_id),
-            &mut self.geometry.collision,
+            &mut crate::collision::RayScene {
+                boxes: &mut self.geometry.collision,
+                ground: crate::traversal::Ground::new(&self.geometry.terrain, &self.geometry.deck),
+            },
             self.visibility,
             self.rng,
         )?;

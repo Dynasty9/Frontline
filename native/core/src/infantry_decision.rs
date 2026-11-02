@@ -428,7 +428,10 @@ impl Actors {
                 squad.as_deref_mut(),
                 world.units,
                 world.nav,
-                world.collision,
+                &mut crate::collision::RayScene {
+                    boxes: world.collision,
+                    ground: crate::traversal::Ground::new(world.terrain, world.deck),
+                },
                 rng,
                 crate::traversal::Ground::new(world.terrain, world.deck),
             )?;
@@ -497,7 +500,10 @@ impl Actors {
                     squad.as_deref(),
                     world.terrain,
                     world.deck,
-                    world.collision,
+                    &mut crate::collision::RayScene {
+                        boxes: world.collision,
+                        ground: crate::traversal::Ground::new(world.terrain, world.deck),
+                    },
                     visibility,
                 )?;
                 out.speech.extend(r.speech.map(Speech::Special));

@@ -416,7 +416,16 @@ impl AttackPlan {
                     score += 1.0;
                 }
                 let (eye, target) = (p + Vector3::new(0.0, 1.4, 0.0), self.objective + Vector3::Y);
-                if ctx.geometry.collision.ray(eye, target, &[]).is_some()
+                if crate::collision::Raycast::ray(
+                    &mut crate::collision::RayScene {
+                        boxes: &mut ctx.geometry.collision,
+                        ground: crate::traversal::Ground::new(terrain, &ctx.geometry.deck),
+                    },
+                    eye,
+                    target,
+                    &[],
+                )
+                .is_some()
                     || visibility.smoke_blocks(eye, target)
                 {
                     score -= 2.5;

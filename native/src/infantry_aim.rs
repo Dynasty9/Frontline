@@ -162,7 +162,7 @@ impl InfantryAimCore {
         let result = core
             .choose(
                 input,
-                &mut collision.bind_mut().core,
+                &mut *collision.bind_mut(),
                 &mut visibility.bind_mut().core,
                 &mut rng.bind_mut().core,
             )

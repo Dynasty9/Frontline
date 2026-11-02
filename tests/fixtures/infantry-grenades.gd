@@ -28,6 +28,7 @@ func grenade_world(native: bool) -> GrenadeScene:
 	w.srv = true
 	w.has_view = false
 	w.settings = {"rust_infantry": native, "debug": true}
+	w.terrain = TerrainMap.new(w)
 	w.combat = Combat.new(w)
 	add_child(w)
 	w.combat.enable_native_collision()

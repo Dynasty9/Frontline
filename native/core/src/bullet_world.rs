@@ -247,7 +247,10 @@ impl Context<'_> {
                 optics: shot.optics,
                 excluded,
             },
-            &mut self.geometry.collision,
+            &mut crate::collision::RayScene {
+                boxes: &mut self.geometry.collision,
+                ground: crate::traversal::Ground::new(&self.geometry.terrain, &self.geometry.deck),
+            },
             self.visibility,
             self.rng,
         )?;

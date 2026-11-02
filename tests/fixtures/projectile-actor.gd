@@ -8,8 +8,8 @@ class ActorWorld extends SupportWorld:
 
 class ActorCombat extends SupportCombat:
 	var smoke := false
-	func ray(_a: Vector3, _b: Vector3, _exclude: Array = []) -> Dictionary:
-		return {}
+	func ray(a: Vector3, b: Vector3, _exclude: Array = []) -> Dictionary:
+		return world.terrain.ray_ground(a, b)
 	func smoke_blocks(_a: Vector3, _b: Vector3) -> bool:
 		return smoke
 
@@ -89,6 +89,11 @@ func native_events(events: Array, rng: SimulationRandom, stats: Dictionary) -> A
 	return result
 
 func _ready() -> void:
+	TerrainMap.N = 128; TerrainMap.H = 64.0; TerrainMap.DN = 256
+	var heights := PackedFloat32Array()
+	for z in 33:
+		for x in 33:
+			heights.append(12.0 + 4.0 * sin(x * 0.2) * cos(z * 0.2))
 	var cases := 0
 	var steps := 0
 	var setups := []
@@ -96,12 +101,17 @@ func _ready() -> void:
 		setups.append([kind, ""])
 	setups.append_array([["jet", ""], ["a10", ""], ["ac130", ""], ["ac130", "blackfish"], ["ac130", "xian"], ["ac130", "greyhawk"], ["ac130", "none"]])
 	for setup: Array in setups:
-		for trial in 8:
+		for case_index in 16:
+			var trial := case_index % 8
+			var elevated := case_index >= 8
 			var w := ActorWorld.new()
 			w.has_view = false
+			w.terrain = TerrainMap.new(w)
+			if elevated: w.terrain.install_landform(heights)
 			w.rng.seed = 8732 + trial
 			w.combat = ActorCombat.new(w)
 			w.combat.enable_native_collision()
+			w.combat._sync_collision()
 			w.rules = SupportRules.new(w)
 			var rng := SimulationRandom.new()
 			rng.seed = 8732 + trial
@@ -139,6 +149,11 @@ func _ready() -> void:
 				smotherer.life = Soldier.Life.DEAD if trial == 5 else Soldier.Life.ALIVE
 				smotherer.task = "" if trial == 6 else "smother"
 				smotherer.position.x = 2.0 if trial == 7 else 0.0
+			if elevated:
+				for entity: Entity in [p, holder, target, smotherer]:
+					entity.position.y += w.ground_y(entity.position)
+				p.origin.y += w.ground_y(p.origin)
+				p.target.y += w.ground_y(p.target)
 			var core: RefCounted = ClassDB.instantiate("ProjectileActorCore")
 			var motion := start(p, core)
 			var dt: float = [1.0 / 30.0, 1.0 / 60.0, 0.1][trial % 3]
@@ -176,7 +191,7 @@ func _ready() -> void:
 				assert(out.size() == 1)
 				var actual := native_events(out[0], rng, stats)
 				var expected := reference_events(w)
-				var label := "%s %d tick %d" % [setup, trial, tick]
+				var label := "%s %d elevated=%s tick %d" % [setup, trial, elevated, tick]
 				assert(same(expected, actual), "%s effects %s vs %s" % [label, expected, actual])
 				assert(stats == w.stats, label + " stats")
 				assert(rng.state == w.rng.state, label + " RNG")

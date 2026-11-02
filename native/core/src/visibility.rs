@@ -1,4 +1,4 @@
-use crate::collision::{BoxShape, CollisionWorld};
+use crate::collision::{BoxShape, Raycast};
 use crate::state_codec::{Reader, Writer};
 use crate::vector::Vector3;
 use std::collections::{BTreeMap, HashMap, VecDeque};
@@ -94,7 +94,7 @@ impl Visibility {
 
     pub fn can_see(
         &mut self,
-        collision: &mut CollisionWorld,
+        collision: &mut dyn Raycast,
         eye: Vector3,
         target: u64,
         points: &[Vector3],
@@ -138,7 +138,12 @@ impl Visibility {
                         .iter()
                         .any(|s: &BoxShape| s.body == hit.body && s.shape == hit.shape)
                 {
-                    blockers.push(collision.shape(hit.body, hit.shape).unwrap());
+                    if let Some(shape) = collision.shape(hit.body, hit.shape) {
+                        blockers.push(shape);
+                    } else {
+                        // A crater can remove terrain obstruction before the next sight test.
+                        cacheable = false;
+                    }
                 }
             } else {
                 if !self.smoke_blocks(eye, *point) {

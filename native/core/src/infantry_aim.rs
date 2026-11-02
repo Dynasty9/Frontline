@@ -1,5 +1,5 @@
 //! Infantry aim selection and its short-lived line-of-sight cache.
-use crate::collision::CollisionWorld;
+use crate::collision::Raycast;
 use crate::random::SimulationRandom;
 use crate::state_codec::{Reader, Writer};
 use crate::vector::Vector3;
@@ -105,7 +105,7 @@ impl InfantryAim {
     pub fn choose(
         &mut self,
         input: AimInput<'_>,
-        collision: &mut CollisionWorld,
+        collision: &mut dyn Raycast,
         visibility: &mut Visibility,
         rng: &mut SimulationRandom,
     ) -> Result<AimResult, &'static str> {

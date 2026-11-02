@@ -15,13 +15,17 @@ class DroneCombat extends Combat:
 
 
 func _ready() -> void:
-	TerrainMap.N = 32
-	TerrainMap.H = 16.0
-	TerrainMap.DN = 64
+	TerrainMap.N = 128
+	TerrainMap.H = 64.0
+	TerrainMap.DN = 256
+	var heights := PackedFloat32Array()
+	for z in 33:
+		for x in 33:
+			heights.append(12.0 + 8.0 * sin(x * 0.2) * cos(z * 0.2))
 	assert(ClassDB.class_exists("DroneFlightCore"))
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 9471
-	for trial in 72:
+	for trial in 144:
 		var operator := Soldier.new()
 		var target := Soldier.new()
 		target.position = Vector3(rng.randf_range(-120, 120), 0, rng.randf_range(-120, 120))
@@ -31,16 +35,19 @@ func _ready() -> void:
 		for i in 2:
 			worlds[i].has_view = false
 			worlds[i].terrain = TerrainMap.new(worlds[i])
+			if trial >= 72: worlds[i].terrain.install_landform(heights)
 			worlds[i].combat = DroneCombat.new(worlds[i])
 			worlds[i].combat.enable_native_collision()
 			pair[i].world = worlds[i]
 			pair[i].position = start
+			if trial >= 72: pair[i].position.y += worlds[i].ground_y(start)
 			pair[i].target_pos = start
 			pair[i].target = target
 			pair[i].operator = operator
 			pair[i].warhead = 1.5 if trial % 2 else 1.0
+		if trial >= 72: target.position.y = worlds[0].ground_y(target.position)
 		pair[1]._flight = ClassDB.instantiate("DroneFlightCore")
-		assert(pair[1]._flight.reset(start, 0.0))
+		assert(pair[1]._flight.reset(pair[1].position, 0.0))
 		var dt: float = [1.0 / 30.0, 1.0 / 60.0, 0.1][trial % 3]
 		for tick in 3100:
 			if tick == 20 and trial % 6 == 0:
@@ -87,5 +94,5 @@ func _ready() -> void:
 			world.free()
 		operator.free()
 		target.free()
-	print("DRONE_FLIGHT passed cases=72")
+	print("DRONE_FLIGHT passed cases=144")
 	get_tree().quit()

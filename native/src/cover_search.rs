@@ -229,7 +229,7 @@ pub(crate) fn with_scene<T>(
     apply(&mut Scene {
         terrain: terrain.core.as_ref()?,
         navigation: navigation.core.as_ref()?,
-        collision: &mut collision.core,
+        collision: &mut *collision,
         heat: heat.as_slice(),
         deck: deck.as_slice(),
         structures: &buildings,

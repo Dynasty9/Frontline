@@ -168,3 +168,5 @@ kind = "fixed"
 Cannon impacts now settle onto the actual terrain or bridge surface instead of a flat ground plane.
 
 The standalone Rust runtime now reads the game's baked roster and balance tables. Its first command replay runner records player joins, departures, rejoins and orders, and a separate executable checks the resulting battlefield and winner. This is still migration work: normal games have not switched to the standalone Rust host yet.
+
+Elevated battlefields now keep combat queries in Rust. Hills block sight and shots alongside buildings and vehicles, craters can reopen a line of sight, and projectile impacts and support-aircraft flight follow the terrain. These queries read the existing heightfield without copying the map.

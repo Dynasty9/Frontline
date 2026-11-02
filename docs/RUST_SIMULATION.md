@@ -3,10 +3,11 @@
 Status: **in progress; the game still requires Godot to simulate a battle.**
 The engine-independent crate retains actors, squads, geometry, terrain, economy,
 commands and the connected battlefield scheduler. Its checkpoints and exact-byte
-continuation tests cover these shared systems. Production content, commander and
-mission scheduling, the socket host and the live Godot client transition still
-need integration. It is not a complete server or battle verifier. Existing
-recordings remain unverified.
+continuation tests cover these shared systems. The standalone battlefield runner
+loads production definitions and verifies its command recordings without Godot.
+Commander/naval and mission scheduling, initial-map setup, the socket host and
+the live Godot client transition still need integration. Existing live-game
+observer recordings remain unverified; they are not the new command recordings.
 
 ## Ownership
 
@@ -2947,7 +2948,30 @@ scheduler regressions pass in release, and the dispatcher numeric transcript is
 unchanged. CI now runs standalone tests in both modes on all numeric platforms.
 
 This is not the complete game migration. Commander/naval/mission scheduling,
-initial-map setup, terrain-aware combat queries, private socket observations and
+initial-map setup, private socket observations and
 Godot's visual-client transition are unfinished. Mission checkpoints are rejected
 by this runner until a mission program is available. Live game recordings still
 use the existing observer format; they are not accepted by this verifier.
+
+## Terrain combat across the simulation boundary
+
+Combat queries borrow the current terrain and bridge deck alongside the box
+index. Soldiers, vehicle weapons, cover searches, blasts, bullets, guided rounds
+and drones use the same query interface. Ground intersections take priority when
+they precede a building or vehicle; exclusions apply to entity colliders. Only
+unchanged box obstructions can be cached, so craters can reopen sight immediately.
+
+Grenades settle relative to the surface; bombs and shells intercept hills before
+their planned impact. FPV cruising looks ahead over geology, and support aircraft
+use terrain-relative flight and weapon impacts. The Godot adapter retains the
+native combat service on elevated maps. Terrain and deck storage are borrowed;
+this does not copy the map on each ray or tick.
+
+Local comparisons cover 3,000 mixed terrain/box rays, collision lifecycle,
+visibility and 336 projectile/support cases over 91,224 steps. All 11 paired
+battle scenarios preserve reference fingerprints and events. The full release
+suite passes 915 core checks and eight standalone server checks. The later FPV
+altitude correction passes its 16 connected Rust checks. Expanded Godot adapters
+pass 144 drone cases and 84 support-aircraft cases, plus the projectile and battle
+comparisons above. All 140 numeric transcripts pass exactly in release; the
+debug rerun and cross-platform CI are pending.

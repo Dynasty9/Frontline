@@ -1,5 +1,5 @@
 //! Actor updates reuse the retained components without copying state through an engine binding.
-use crate::collision::CollisionWorld;
+use crate::collision::Raycast;
 use crate::infantry::{Goal, Infantry};
 use crate::infantry_control::{self, Status};
 use crate::infantry_controller::Task;
@@ -59,7 +59,7 @@ impl Infantry {
         i: Movement,
         nav: &PathPlanner,
         terrain: &Terrain,
-        collision: &mut CollisionWorld,
+        collision: &mut dyn Raycast,
         rng: &mut SimulationRandom,
         decks: &[u8],
         doors: &[Door],

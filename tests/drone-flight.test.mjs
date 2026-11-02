@@ -9,5 +9,5 @@ test("Rust drone behavior preserves flight, lost control, target loss and impact
     "--headless", "--path", ROOT, "res://tests/fixtures/drone-flight.tscn",
   ], { timeout: 120_000 });
   assert.doesNotMatch(stdout + stderr, /SCRIPT ERROR|Parse Error/);
-  assert.match(stdout, /DRONE_FLIGHT passed cases=72/);
+  assert.match(stdout, /DRONE_FLIGHT passed cases=144/);
 });

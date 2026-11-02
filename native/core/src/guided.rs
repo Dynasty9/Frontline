@@ -1,4 +1,4 @@
-use crate::collision::CollisionWorld;
+use crate::collision::Raycast;
 use crate::vector::{normalized, slerp, Vector3};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -35,7 +35,7 @@ impl GuidedFlight {
         dt: f64,
         target: Option<Vector3>,
         smoke: bool,
-        collision: &mut CollisionWorld,
+        collision: &mut dyn Raycast,
         excluded: &[i64],
     ) -> Option<Impact> {
         if self.dead {
@@ -91,8 +91,12 @@ impl GuidedFlight {
         let impact = if anti_tank {
             if let Some(hit) = collision.ray(self.position, next, excluded) {
                 Some(hit.position)
-            } else if next.y <= 0.05 {
-                Some(Vector3::new(next.x, 0.1, next.z))
+            } else if f64::from(next.y) <= collision.ground_y(next) + 0.05 {
+                Some(Vector3::new(
+                    next.x,
+                    (collision.ground_y(next) + 0.1) as f32,
+                    next.z,
+                ))
             } else if self.life > 7.0 || self.position.distance(self.target) < 0.8 {
                 Some(next)
             } else {
@@ -109,8 +113,17 @@ impl GuidedFlight {
             });
         }
         if !anti_tank {
-            let proximity = target.is_some() && self.locked && next.distance(self.target) < 3.2;
-            if proximity || self.life > 6.0 || next.y < 0.1 {
+            let ground = collision.ray_ground(self.position, next);
+            let next = ground.map_or(next, |hit| hit.position);
+            let proximity = ground.is_none()
+                && target.is_some()
+                && self.locked
+                && next.distance(self.target) < 3.2;
+            if ground.is_some()
+                || proximity
+                || self.life > 6.0
+                || f64::from(next.y) < collision.ground_y(next) + 0.1
+            {
                 self.dead = true;
                 return Some(Impact {
                     position: if proximity { self.target } else { next },

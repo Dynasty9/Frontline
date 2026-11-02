@@ -155,7 +155,10 @@ impl Actors {
             input,
             world.nav,
             world.terrain,
-            world.collision,
+            &mut crate::collision::RayScene {
+                boxes: world.collision,
+                ground: crate::traversal::Ground::new(world.terrain, world.deck),
+            },
             rng,
             world.deck,
             &candidates,

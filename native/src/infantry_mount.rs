@@ -133,7 +133,7 @@ impl InfantryMountCore {
             team,
             crate::point(position),
             &contacts,
-            &mut collision.bind_mut().core,
+            &mut *collision.bind_mut(),
             &mut visibility.bind_mut().core,
         ) else {
             return PackedInt64Array::new();

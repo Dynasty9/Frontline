@@ -339,7 +339,7 @@ impl Actors {
         &mut self,
         id: u32,
         dt: f64,
-        collision: &mut crate::collision::CollisionWorld,
+        collision: &mut dyn crate::collision::Raycast,
         map_half: f32,
     ) -> Result<Option<Explosion>, &'static str> {
         let Some(Actor::Drone(drone)) = self.get(id) else {

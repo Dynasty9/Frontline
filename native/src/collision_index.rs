@@ -1,4 +1,4 @@
-use frontline_core::collision::{BoxShape, CollisionWorld, Mat3};
+use frontline_core::collision::{BoxShape, CollisionWorld, Mat3, RayHit, RayScene, Raycast};
 use frontline_core::cover::{self, Anchor, AnchorKind};
 use godot::prelude::*;
 
@@ -7,10 +7,92 @@ use godot::prelude::*;
 pub(crate) struct CollisionIndexCore {
     base: Base<RefCounted>,
     pub(crate) core: CollisionWorld,
+    terrain: Option<Gd<crate::terrain::TerrainCore>>,
+    deck: PackedByteArray,
+}
+
+impl Raycast for CollisionIndexCore {
+    fn landform_height(&self, position: frontline_core::vector::Vector3) -> f64 {
+        self.terrain.as_ref().map_or(0.0, |t| {
+            t.bind()
+                .core
+                .as_ref()
+                .map_or(0.0, |t| t.landform.height(position))
+        })
+    }
+    fn landform_peak(&self) -> f64 {
+        self.terrain.as_ref().map_or(0.0, |t| {
+            t.bind().core.as_ref().map_or(0.0, |t| t.landform.peak())
+        })
+    }
+    fn ground_y(&self, position: frontline_core::vector::Vector3) -> f64 {
+        let terrain = self.terrain.as_ref().map(|t| t.bind());
+        frontline_core::traversal::Ground {
+            terrain: terrain.as_ref().and_then(|t| t.core.as_ref()),
+            deck: self.deck.as_slice(),
+        }
+        .height(position)
+    }
+
+    fn ray_ground(
+        &self,
+        from: frontline_core::vector::Vector3,
+        to: frontline_core::vector::Vector3,
+    ) -> Option<RayHit> {
+        self.terrain
+            .as_ref()?
+            .bind()
+            .core
+            .as_ref()?
+            .ray_ground(from, to, self.deck.as_slice())
+    }
+
+    fn ray(
+        &mut self,
+        from: frontline_core::vector::Vector3,
+        to: frontline_core::vector::Vector3,
+        excluded: &[i64],
+    ) -> Option<RayHit> {
+        let terrain = self.terrain.as_ref().map(|t| t.bind());
+        RayScene {
+            boxes: &mut self.core,
+            ground: frontline_core::traversal::Ground {
+                terrain: terrain.as_ref().and_then(|t| t.core.as_ref()),
+                deck: self.deck.as_slice(),
+            },
+        }
+        .ray(from, to, excluded)
+    }
+
+    fn shape(&self, body: i64, shape: i32) -> Option<BoxShape> {
+        self.core.shape(body, shape)
+    }
 }
 
 #[godot_api]
 impl CollisionIndexCore {
+    #[func]
+    fn set_ground(
+        &mut self,
+        terrain: Option<Gd<crate::terrain::TerrainCore>>,
+        deck: PackedByteArray,
+    ) -> bool {
+        if let Some(t) = &terrain {
+            let t = t.bind();
+            let Some(t) = &t.core else {
+                return false;
+            };
+            if !deck.is_empty() && deck.len() != t.n * t.n {
+                return false;
+            }
+        } else if !deck.is_empty() {
+            return false;
+        }
+        self.terrain = terrain;
+        self.deck = deck;
+        true
+    }
+
     #[func]
     fn checkpoint(&self) -> PackedByteArray {
         self.core.checkpoint().as_slice().into()
@@ -91,7 +173,7 @@ impl CollisionIndexCore {
             height,
             kind,
         };
-        match cover::evaluate(&mut self.core, anchor, ground, &threats, prone) {
+        match cover::evaluate(self, anchor, ground, &threats, prone) {
             Ok(Some(value)) => PackedFloat64Array::from(&[
                 value.kind as u8 as f64,
                 value.protection,
@@ -118,10 +200,12 @@ impl CollisionIndexCore {
         to: Vector3,
         excluded: PackedInt64Array,
     ) -> PackedFloat64Array {
-        let Some(hit) = self
-            .core
-            .ray(crate::point(from), crate::point(to), excluded.as_slice())
-        else {
+        let Some(hit) = Raycast::ray(
+            self,
+            crate::point(from),
+            crate::point(to),
+            excluded.as_slice(),
+        ) else {
             return PackedFloat64Array::new();
         };
         PackedFloat64Array::from(&[

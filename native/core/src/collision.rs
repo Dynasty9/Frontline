@@ -30,6 +30,76 @@ pub struct RayHit {
     pub normal: Vec3,
 }
 
+pub trait Raycast {
+    fn ray(&mut self, from: Vec3, to: Vec3, excluded: &[i64]) -> Option<RayHit>;
+    fn shape(&self, body: i64, shape: i32) -> Option<BoxShape>;
+    fn ground_y(&self, _position: Vec3) -> f64 {
+        0.0
+    }
+    fn ray_ground(&self, _from: Vec3, _to: Vec3) -> Option<RayHit> {
+        None
+    }
+    fn landform_height(&self, _position: Vec3) -> f64 {
+        0.0
+    }
+    fn landform_peak(&self) -> f64 {
+        0.0
+    }
+}
+
+/// Terrain is borrowed so craters affect the next shot without copying the heightfield.
+pub struct RayScene<'a> {
+    pub boxes: &'a mut CollisionWorld,
+    pub ground: crate::traversal::Ground<'a>,
+}
+
+impl Raycast for RayScene<'_> {
+    fn landform_height(&self, position: Vec3) -> f64 {
+        self.ground
+            .terrain
+            .map_or(0.0, |t| t.landform.height(position))
+    }
+    fn landform_peak(&self) -> f64 {
+        self.ground.terrain.map_or(0.0, |t| t.landform.peak())
+    }
+    fn ground_y(&self, position: Vec3) -> f64 {
+        self.ground.height(position)
+    }
+    fn ray_ground(&self, from: Vec3, to: Vec3) -> Option<RayHit> {
+        self.ground
+            .terrain
+            .and_then(|t| t.ray_ground(from, to, self.ground.deck))
+    }
+    fn ray(&mut self, from: Vec3, to: Vec3, excluded: &[i64]) -> Option<RayHit> {
+        let hit = self.boxes.ray(from, to, excluded);
+        let end = hit.map_or(to, |h| h.position);
+        if let Some(mut ground) = self
+            .ground
+            .terrain
+            .and_then(|t| t.ray_ground(from, end, self.ground.deck))
+        {
+            ground.fraction *= hit.map_or(1.0, |h| h.fraction);
+            Some(ground)
+        } else {
+            hit
+        }
+    }
+
+    fn shape(&self, body: i64, shape: i32) -> Option<BoxShape> {
+        self.boxes.shape(body, shape)
+    }
+}
+
+impl Raycast for CollisionWorld {
+    fn ray(&mut self, from: Vec3, to: Vec3, excluded: &[i64]) -> Option<RayHit> {
+        self.ray(from, to, excluded)
+    }
+
+    fn shape(&self, body: i64, shape: i32) -> Option<BoxShape> {
+        self.shape(body, shape)
+    }
+}
+
 #[derive(Default)]
 pub struct CollisionWorld {
     boxes: Vec<Option<IndexedBox>>,

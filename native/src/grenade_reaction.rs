@@ -292,7 +292,7 @@ impl GrenadeReactionCore {
             s,
             g,
             &mates,
-            &mut collision.bind_mut().core,
+            &mut *collision.bind_mut(),
             &mut rng.bind_mut().core,
         ) else {
             return PackedInt64Array::new();

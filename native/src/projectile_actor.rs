@@ -299,7 +299,7 @@ impl ProjectileActorCore {
             };
             self.core
                 .as_mut()?
-                .advance(i, &mut collision.bind_mut().core, &mut rng.bind_mut().core)
+                .advance(i, &mut *collision.bind_mut(), &mut rng.bind_mut().core)
                 .ok()
         })();
         result.map_or_else(Array::new, |out| varray![&events(out)])

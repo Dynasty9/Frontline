@@ -72,7 +72,7 @@ impl DroneFlightCore {
         let detonate = core.advance(
             dt,
             target_valid.then(|| crate::point(target)),
-            &mut collision.bind_mut().core,
+            &mut *collision.bind_mut(),
             map_half as f32,
         );
         let p = core.position;

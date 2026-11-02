@@ -1,6 +1,6 @@
 //! Special weapons select owned targets and retain their ammunition, action and speech.
 use crate::actors::Actors;
-use crate::collision::CollisionWorld;
+use crate::collision::Raycast;
 use crate::fire_targets;
 use crate::infantry::Infantry;
 use crate::infantry_action::{Action, Related, Round};
@@ -93,7 +93,7 @@ impl Actors {
         squad: Option<&Squad>,
         terrain: &Terrain,
         deck: &[u8],
-        collision: &mut CollisionWorld,
+        collision: &mut dyn Raycast,
         visibility: &Visibility,
     ) -> Result<Attempt, &'static str> {
         let s = self.soldier(id).ok_or("missing infantry")?;

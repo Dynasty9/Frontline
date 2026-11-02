@@ -1,5 +1,5 @@
 //! An FPV drone keeps its operator and target with the flight state.
-use crate::collision::CollisionWorld;
+use crate::collision::Raycast;
 use crate::drone::{DroneFlight, Phase};
 use crate::projectile_actor::Explosion;
 use crate::state_codec::{Reader, Writer};
@@ -85,7 +85,7 @@ impl Drone {
         dt: f64,
         operator_alive: bool,
         target: Option<Vector3>,
-        collision: &mut CollisionWorld,
+        collision: &mut dyn Raycast,
         map_half: f32,
     ) -> Result<Option<Explosion>, &'static str> {
         if !self.valid()

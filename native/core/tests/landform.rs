@@ -66,6 +66,83 @@ fn ridge_rays_stop_at_the_first_ground_hit_and_allow_clear_flight() {
 }
 
 #[test]
+fn mixed_collision_chooses_the_first_surface_and_honors_box_exclusions() {
+    use frontline_core::collision::{BoxShape, CollisionWorld, Mat3, RayScene, Raycast};
+    use frontline_core::traversal::Ground;
+    let t = ground(64, |x, _| 12. * (1. - x.abs() / 12.).max(0.));
+    let mut boxes = CollisionWorld::default();
+    let a = Vector3::new(-20., 1.5, 0.);
+    let b = Vector3::new(20., 1.5, 0.);
+    for x in [-15., 15.] {
+        assert!(boxes.replace(
+            7,
+            &[BoxShape {
+                body: 7,
+                shape: 0,
+                center: Vector3::new(x, 2., 0.),
+                basis: Mat3::IDENTITY,
+                half: Vector3::new(0.5, 3., 3.)
+            }]
+        ));
+        let mut scene = RayScene {
+            boxes: &mut boxes,
+            ground: Ground::new(&t, &[]),
+        };
+        let hit = scene.ray(a, b, &[]).unwrap();
+        assert_eq!(hit.body, if x < 0. { 7 } else { 0 });
+        assert!(hit.position.distance(a.lerp(b, hit.fraction)) < 0.00001);
+        assert_eq!(scene.ray(a, b, &[7]).unwrap().body, 0);
+        assert!(scene
+            .ray(a + Vector3::Y * 20., b + Vector3::Y * 20., &[])
+            .is_none());
+    }
+}
+
+#[test]
+fn terrain_sight_proofs_expire_when_a_crater_opens_the_view() {
+    use frontline_core::collision::{CollisionWorld, RayScene};
+    use frontline_core::traversal::Ground;
+    use frontline_core::visibility::{Sight, Visibility};
+    let mut t = ground(32, |_, _| 12.);
+    let mut boxes = CollisionWorld::default();
+    let mut sight = Visibility::default();
+    let a = Vector3::new(-0.2, 11.8, 0.);
+    let b = Vector3::new(0.2, 11.8, 0.);
+    for _ in 0..2 {
+        assert_eq!(
+            sight.can_see(
+                &mut RayScene {
+                    boxes: &mut boxes,
+                    ground: Ground::new(&t, &[])
+                },
+                a,
+                9,
+                &[b],
+                &[],
+                true
+            ),
+            Some(Sight::Hidden)
+        );
+    }
+    assert_eq!(sight.rays, 2);
+    t.crater(Vector3::Y * 12., 3.);
+    assert_eq!(
+        sight.can_see(
+            &mut RayScene {
+                boxes: &mut boxes,
+                ground: Ground::new(&t, &[])
+            },
+            a,
+            9,
+            &[b],
+            &[],
+            true
+        ),
+        Some(Sight::Visible)
+    );
+}
+
+#[test]
 fn craters_are_dug_relative_to_geology_and_resume_exactly() {
     let mut t = ground(32, |_, _| 12.);
     let p = Vector3::new(0., 12., 0.);

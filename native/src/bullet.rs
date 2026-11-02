@@ -85,7 +85,7 @@ impl BulletCore {
         };
         let Ok(core) = Bullet::fire(
             input,
-            &mut collision.bind_mut().core,
+            &mut *collision.bind_mut(),
             &visibility.bind().core,
             &mut rng.bind_mut().core,
         ) else {

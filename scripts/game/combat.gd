@@ -12,6 +12,8 @@ var _space_frame := -1
 var _reveal := {}  # eid -> time
 var _blocked_sight := {}
 var _collision: RefCounted
+var _collision_ground: RefCounted
+var _collision_water_version := -2
 var _visibility: RefCounted
 var _cover_search: RefCounted
 var _collision_dirty := {}
@@ -29,6 +31,8 @@ func _init(w: World) -> void:
 func enable_native_collision() -> void:
 	if ClassDB.class_exists("CollisionIndexCore") and not world.settings.get("gdscript_collision", false):
 		_collision = ClassDB.instantiate("CollisionIndexCore")
+		_collision_ground = null
+		_collision_water_version = -2
 		if ClassDB.class_exists("VisibilityCore"):
 			_visibility = ClassDB.instantiate("VisibilityCore")
 			for projectile: Projectile in world.smoke_projectiles:
@@ -97,11 +101,18 @@ func _use_godot_collision(reason: String) -> void:
 
 
 func _sync_collision() -> void:
-	# shortcut: elevated terrain needs the ground-aware query until Rust collision includes heightfields.
-	if _collision and world.terrain and not world.terrain.landform.heights.is_empty():
-		_collision = null
-		_visibility = null
-		_collision_dirty.clear()
+	if _collision and world.terrain:
+		if not world.terrain._native and not world.terrain.landform.heights.is_empty():
+			_collision = null
+			_visibility = null
+			_collision_dirty.clear()
+		else:
+			var water_version: int = world.water.version if world.water else -1
+			if _collision_ground != world.terrain._native or _collision_water_version != water_version:
+				var valid: bool = _collision.set_ground(world.terrain._native, world.water.deck if world.water else PackedByteArray())
+				assert(valid, "Invalid collision terrain")
+				_collision_ground = world.terrain._native
+				_collision_water_version = water_version
 	if _collision_dirty.is_empty():
 		return
 	var pending := _collision_dirty
@@ -162,6 +173,8 @@ func ray(from: Vector3, to: Vector3, ex: Array = []) -> Dictionary:
 			var hit: PackedFloat64Array = _collision.ray(from, to, _collision_excluded)
 			if hit.is_empty():
 				return {}
+			if int(hit[0]) == 0 and int(hit[1]) == -1:
+				return {"collider": null, "position": Vector3(hit[2],hit[3],hit[4]), "normal": Vector3(hit[5],hit[6],hit[7])}
 			var body: StaticBody3D = _collision_bodies[int(hit[0])]
 			return {"collider": body, "collider_id": body.get_instance_id(), "rid": body.get_rid(), "shape": int(hit[1]), "position": Vector3(hit[2],hit[3],hit[4]), "normal": Vector3(hit[5],hit[6],hit[7])}
 	# one query object reused for every ray (hundreds a tick)

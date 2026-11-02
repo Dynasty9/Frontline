@@ -166,7 +166,10 @@ impl Actors {
             &mut Scene {
                 terrain: world.terrain,
                 navigation: world.nav,
-                collision: world.collision,
+                collision: &mut crate::collision::RayScene {
+                    boxes: world.collision,
+                    ground: crate::traversal::Ground::new(world.terrain, world.deck),
+                },
                 heat: world.heat,
                 deck: world.deck,
                 structures: &structures,

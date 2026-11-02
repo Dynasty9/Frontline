@@ -64,7 +64,7 @@ impl VisibilityCore {
         self.points
             .extend(points.as_slice().iter().map(|p| crate::point(*p)));
         match self.core.can_see(
-            &mut collision.bind_mut().core,
+            &mut *collision.bind_mut(),
             crate::point(eye),
             target as u64,
             &self.points,
@@ -168,7 +168,7 @@ impl VisibilityCore {
             observer,
             &contacts,
             &drones,
-            &mut collision.bind_mut().core,
+            &mut *collision.bind_mut(),
             &mut self.core,
         ) else {
             return PackedInt64Array::new();

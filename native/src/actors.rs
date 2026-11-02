@@ -1785,7 +1785,7 @@ impl ActorStateCore {
                 squad,
                 units,
                 nav,
-                &mut collision.bind_mut().core,
+                &mut *collision.bind_mut(),
                 &mut rng.bind_mut().core,
                 ground,
             )
@@ -1910,7 +1910,7 @@ impl ActorStateCore {
                 squad.as_deref(),
                 terrain,
                 deck.as_slice(),
-                &mut collision.bind_mut().core,
+                &mut *collision.bind_mut(),
                 &visibility.bind().core,
             ),
             2 => self.core.try_infantry_drone(
@@ -2078,7 +2078,7 @@ impl ActorStateCore {
             blame.as_ref(),
             terrain,
             units,
-            &mut collision.bind_mut().core,
+            &mut *collision.bind_mut(),
             &mut state,
             |s| stock.get(&s.identity.id).copied().unwrap_or((None, false)),
             &mut rng.bind_mut().core,
@@ -2395,7 +2395,7 @@ impl ActorStateCore {
             squad.as_mut().and_then(|q| q.core.as_mut()),
             nav,
             units,
-            &mut collision.bind_mut().core,
+            &mut *collision.bind_mut(),
             &mut visibility.bind_mut().core,
             &mut rng.bind_mut().core,
             ground,
@@ -2455,7 +2455,7 @@ impl ActorStateCore {
             now,
             range,
             squad.as_ref().and_then(|q| q.core.as_ref()),
-            &mut collision.bind_mut().core,
+            &mut *collision.bind_mut(),
             &mut visibility.bind_mut().core,
             &mut rng.bind_mut().core,
         ) {
@@ -2614,7 +2614,7 @@ impl ActorStateCore {
             squad.as_mut().and_then(|q| q.core.as_mut()),
             units,
             &search.bind().core,
-            &mut collision.bind_mut().core,
+            &mut *collision.bind_mut(),
             &mut visibility.bind_mut().core,
             |v| *ratings.get(&v.id).unwrap_or(&1),
             &mut rng.bind_mut().core,
@@ -2655,7 +2655,7 @@ impl ActorStateCore {
             now,
             p,
             &search.bind().core,
-            &mut collision.bind_mut().core,
+            &mut *collision.bind_mut(),
             &mut visibility.bind_mut().core,
             |v| *ratings.get(&v.id).unwrap_or(&1),
         ) {
@@ -2720,7 +2720,7 @@ impl ActorStateCore {
             p,
             units,
             structures,
-            &mut collision.bind_mut().core,
+            &mut *collision.bind_mut(),
             &mut visibility.bind_mut().core,
             |v| aircraft.contains(&v.id),
             |kind| buildings.contains(kind),
@@ -2773,7 +2773,7 @@ impl ActorStateCore {
             now,
             p,
             terrain,
-            &mut collision.bind_mut().core,
+            &mut *collision.bind_mut(),
             &mut rng.bind_mut().core,
             deck.as_slice(),
         ) {
@@ -3322,7 +3322,7 @@ impl ActorStateCore {
     ) -> Array<Variant> {
         impact(
             self.core
-                .step_drone(id, dt, &mut collision.bind_mut().core, map_half as f32),
+                .step_drone(id, dt, &mut *collision.bind_mut(), map_half as f32),
         )
     }
     #[func]

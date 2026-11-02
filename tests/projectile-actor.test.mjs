@@ -9,5 +9,5 @@ test("retained Rust projectiles preserve handlers, flight, impact effects and at
     "--headless", "--quit-after", "2", "--path", ROOT, "res://tests/fixtures/projectile-actor.tscn",
   ], { timeout: 120_000 });
   assert.doesNotMatch(stdout + stderr, /SCRIPT ERROR|Parse Error|ERROR:|panicked/);
-  assert.match(stdout, /PROJECTILE_ACTOR passed cases=168 steps=46825/);
+  assert.match(stdout, /PROJECTILE_ACTOR passed cases=336 steps=91224/);
 });

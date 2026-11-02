@@ -1,5 +1,5 @@
 //! Projectiles retain ownership and handlers with their flight; impacts return ordered world effects.
-use crate::collision::CollisionWorld;
+use crate::collision::Raycast;
 use crate::guided::{GuidedFlight, Kind as GuidedKind};
 use crate::projectile::{Flight, Holder, Kind, Outcome};
 use crate::random::SimulationRandom;
@@ -477,7 +477,7 @@ impl Projectile {
     pub fn advance(
         &mut self,
         input: Step<'_>,
-        collision: &mut CollisionWorld,
+        collision: &mut dyn Raycast,
         rng: &mut SimulationRandom,
     ) -> Result<Vec<Event>, &'static str> {
         if !self.valid()
@@ -522,7 +522,7 @@ impl Projectile {
     fn advance_validated(
         &mut self,
         input: Step<'_>,
-        collision: &mut CollisionWorld,
+        collision: &mut dyn Raycast,
         rng: &mut SimulationRandom,
     ) -> Vec<Event> {
         let mut events = Vec::new();
@@ -592,13 +592,14 @@ impl Projectile {
                 }
             }
             Motion::Support(f) => {
-                let output = f.advance(
+                let output = f.advance_in_world(
                     input.dt,
                     input.time,
                     i32::from(self.team),
                     input.map_half,
                     input.candidates,
                     rng,
+                    collision,
                 );
                 let position = f.position;
                 let target = f.target;

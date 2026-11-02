@@ -89,6 +89,8 @@ impl SupportFlightCore {
         map_half: f64,
         candidates: PackedVector3Array,
         mut rng: Gd<crate::simulation_random::SimulationRandomCore>,
+        terrain: Option<Gd<crate::terrain::TerrainCore>>,
+        deck: PackedByteArray,
     ) -> VarDictionary {
         if !dt.is_finite()
             || !(0.0..=1.0).contains(&dt)
@@ -109,13 +111,27 @@ impl SupportFlightCore {
             .copied()
             .map(crate::point)
             .collect();
-        let events = core.advance(
+        let terrain = terrain.as_ref().map(|t| t.bind());
+        let ground = frontline_core::traversal::Ground {
+            terrain: terrain.as_ref().and_then(|t| t.core.as_ref()),
+            deck: deck.as_slice(),
+        };
+        if ground.terrain.is_some_and(|t| !ground.valid_for(t.n))
+            || ground.terrain.is_none() && !deck.is_empty()
+        {
+            return Dictionary::new();
+        }
+        let events = core.advance_in_world(
             dt,
             time,
             team,
             map_half,
             &candidates,
             &mut rng.bind_mut().core,
+            &frontline_core::collision::RayScene {
+                boxes: &mut frontline_core::collision::CollisionWorld::default(),
+                ground,
+            },
         );
         let mut output: Array<Variant> = Array::new();
         for event in events {

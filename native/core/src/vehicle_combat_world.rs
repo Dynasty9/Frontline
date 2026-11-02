@@ -217,7 +217,13 @@ impl Context<'_> {
                     self.now,
                     profile.cannon.unwrap(),
                     &self.geometry.terrain,
-                    &mut self.geometry.collision,
+                    &mut crate::collision::RayScene {
+                        boxes: &mut self.geometry.collision,
+                        ground: crate::traversal::Ground::new(
+                            &self.geometry.terrain,
+                            &self.geometry.deck,
+                        ),
+                    },
                     self.rng,
                     &self.geometry.deck,
                 )?;

@@ -52,6 +52,7 @@ func make_world() -> Scene:
 	w.srv = true
 	w.has_view = false
 	w.settings = {"rust_infantry": true, "debug": true}
+	w.terrain = TerrainMap.new(w)
 	add_child(w)
 	return w
 

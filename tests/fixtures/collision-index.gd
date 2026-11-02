@@ -46,4 +46,44 @@ func _ready() -> void:
 			assert(Vector3(actual[5],actual[6],actual[7]).dot(expected.normal) > 0.9999)
 	assert(hits > 100)
 	print("COLLISION_INDEX passed rays=3000 hits=", hits)
+	TerrainMap.N = 64
+	TerrainMap.H = 32.0
+	TerrainMap.DN = 128
+	var worlds: Array[World] = []
+	var heights := PackedFloat32Array()
+	for z in 17:
+		for x in 17:
+			heights.append(12.0 + 8.0 * sin(x * 0.4) + 3.0 * cos(z * 0.3))
+	for native in [false, true]:
+		var w := World.new()
+		w.settings = {"gdscript_terrain": not native}
+		w.terrain = TerrainMap.new(w)
+		w.terrain.install_landform(heights)
+		worlds.append(w)
+	assert(index.set_ground(worlds[1].terrain._native, PackedByteArray()))
+	var terrain_hits := 0
+	for i in 3000:
+		if i % 500 == 0:
+			var impact := Vector3(rng.randf_range(-20, 20), 0, rng.randf_range(-20, 20))
+			impact.y = worlds[0].terrain.landform.height(impact)
+			for w in worlds: w.terrain.add_crater(impact, 3.0)
+		q.from = Vector3(rng.randf_range(-32,32), rng.randf_range(0,35), rng.randf_range(-32,32))
+		q.to = Vector3(rng.randf_range(-32,32), rng.randf_range(0,35), rng.randf_range(-32,32))
+		var exclude := i % bodies.size()
+		q.exclude = [bodies[exclude].get_rid()]
+		var expected := space.intersect_ray(q)
+		var ground := worlds[0].terrain.ray_ground(q.from, expected.position if not expected.is_empty() else q.to)
+		if not ground.is_empty():
+			expected = ground
+			terrain_hits += 1
+		var actual: PackedFloat64Array = index.ray(q.from,q.to,PackedInt64Array([exclude]))
+		assert(expected.is_empty() == actual.is_empty(), "Mixed ray hit %d" % i)
+		if not expected.is_empty():
+			assert(Vector3(actual[2],actual[3],actual[4]).distance_to(expected.position) < 0.002, "Mixed ray surface %d" % i)
+			assert(Vector3(actual[5],actual[6],actual[7]).dot(expected.normal) > 0.9999, "Mixed ray normal %d" % i)
+			if not ground.is_empty(): assert(actual[0] == 0 and actual[1] == -1)
+			else: assert(int(actual[0]) == int(expected.collider.get_meta("eid")))
+	assert(terrain_hits > 500)
+	for w in worlds: w.free()
+	print("TERRAIN_COLLISION passed rays=3000 hits=", terrain_hits)
 	get_tree().quit()

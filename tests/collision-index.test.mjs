@@ -10,6 +10,7 @@ test("Rust collision queries match Godot against rotated battlefield boxes", asy
   ], { timeout: 120_000 });
   assert.doesNotMatch(stdout + stderr, /SCRIPT ERROR|Parse Error/);
   assert.match(stdout, /COLLISION_INDEX passed rays=3000/);
+  assert.match(stdout, /TERRAIN_COLLISION passed rays=3000/);
 });
 
 test("native collision follows movement, shape edits, removal and exclusions", async () => {

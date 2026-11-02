@@ -1658,6 +1658,10 @@ decks and water depth. Exact wall footprints let soldiers reach cover inside
 planning padding; swept steps prevent stale routes from crossing solid walls or
 newly blocked water. Dives, blast recovery, escorts and stretcher followers use
 the same terrain and clearance rules, including elevated casualty positions.
+Combat queries share the terrain and box index: hills block sight and fire,
+craters can reopen sight, and ordnance, FPV drones and support aircraft use the
+actual surface and terrain-relative flight. The heightfield is borrowed by
+these queries rather than copied between simulation phases.
 The standalone runtime now uses definitions baked from the same game tables.
 Its replay runner records initial state, player admissions and ordered commands;
 a separate Rust executable reruns them and checks the final state and winner.

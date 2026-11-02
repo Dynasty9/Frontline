@@ -1,6 +1,6 @@
 //! The firing sequence keeps cover changes ahead of stance, sight and barrel alignment.
 use crate::actors::Actors;
-use crate::collision::CollisionWorld;
+use crate::collision::Raycast;
 use crate::cover::{rotation, transform, AnchorKind};
 use crate::infantry::{Goal, Infantry};
 use crate::infantry_aim::AimResult;
@@ -87,7 +87,7 @@ impl Actors {
         mut squad: Option<&mut Squad>,
         nav: &PathPlanner,
         units: &SpatialIndex,
-        collision: &mut CollisionWorld,
+        collision: &mut dyn Raycast,
         visibility: &mut Visibility,
         rng: &mut SimulationRandom,
         ground: crate::traversal::Ground<'_>,
@@ -378,7 +378,7 @@ impl Actors {
         step: WeaponStep,
         range: f64,
         squad: Option<&Squad>,
-        collision: &mut CollisionWorld,
+        collision: &mut dyn Raycast,
         visibility: &mut Visibility,
         rng: &mut SimulationRandom,
     ) -> Result<AimResult, &'static str> {

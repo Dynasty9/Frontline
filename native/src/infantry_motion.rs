@@ -252,7 +252,7 @@ impl InfantryMotionCore {
             input,
             planner,
             terrain,
-            &mut collision.bind_mut().core,
+            &mut *collision.bind_mut(),
             &mut random.bind_mut().core,
             decks.as_slice(),
             &doors,

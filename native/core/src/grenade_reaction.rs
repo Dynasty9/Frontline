@@ -1,5 +1,5 @@
 //! Grenade reflex priority and random draws, using battlefield geometry rather than models.
-use crate::collision::CollisionWorld;
+use crate::collision::Raycast;
 use crate::infantry_pose::Posture;
 use crate::infantry_vitals::Life;
 use crate::random::SimulationRandom;
@@ -255,7 +255,7 @@ pub fn react(
     s: Soldier,
     g: Grenade,
     mates: &[Mate],
-    collision: &mut CollisionWorld,
+    collision: &mut dyn Raycast,
     rng: &mut SimulationRandom,
 ) -> Result<Reaction, &'static str> {
     if !s.valid() || !g.valid() || mates.len() > 100_000 || mates.iter().any(|m| !m.valid()) {

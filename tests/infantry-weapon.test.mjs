@@ -33,6 +33,6 @@ test("Rust infantry ports preserve battle fingerprints and events", async () => 
       assert.deepEqual(runs[1], runs[0], `${scenario}: Rust and GDScript infantry behavior`);
     }
   } finally {
-    assert.equal(await game.close(), 0);
+    assert.equal(await game.close(), 0, game.output.join("\n"));
   }
 });

@@ -1,5 +1,5 @@
 //! Fighting positions use the same collision world as sight and gunfire.
-use crate::collision::CollisionWorld;
+use crate::collision::Raycast;
 use crate::vector::{normalized, Vector3};
 use glam::{Mat3, Vec2};
 
@@ -293,7 +293,7 @@ pub struct Evaluation {
 }
 
 pub fn evaluate(
-    collision: &mut CollisionWorld,
+    collision: &mut dyn Raycast,
     anchor: Anchor,
     ground: f64,
     threats: &[Vector3],

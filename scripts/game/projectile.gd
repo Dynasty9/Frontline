@@ -107,16 +107,17 @@ func get_props() -> Dictionary:
 
 
 func on_spawned() -> void:
+	var native_ground: bool = world.terrain == null or world.terrain.landform.heights.is_empty() or world.terrain._native != null
 	if srv and is_shell():
 		target.y = maxf(target.y, world.ground_y(target))
-	if srv and (world.terrain == null or world.terrain.landform.heights.is_empty()) and ClassDB.class_exists("SupportFlightCore") and ptype in ["jet", "a10", "ac130"]:
+	if srv and native_ground and ClassDB.class_exists("SupportFlightCore") and ptype in ["jet", "a10", "ac130"]:
 		_support = ClassDB.instantiate("SupportFlightCore")
 		_reset_support()
-	if srv and (world.terrain == null or world.terrain.landform.heights.is_empty()) and ClassDB.class_exists("GuidedFlightCore") and ptype in ["atgm", "sam"]:
+	if srv and native_ground and ClassDB.class_exists("GuidedFlightCore") and ptype in ["atgm", "sam"]:
 		_guided = ClassDB.instantiate("GuidedFlightCore")
 		var valid: bool = _guided.reset(ptype == "atgm", position, vel, target, life_t, tgt_id != 0)
 		assert(valid, "Invalid guided missile initial state")
-	if srv and (world.terrain == null or world.terrain.landform.heights.is_empty()) and ClassDB.class_exists("ProjectileFlightCore") and ptype in ["frag", "smoke", "rocket", "recoilless", "mortar", "mortar_smoke", "grad", "arty", "ac105", "ac40", "ac25", "bomb"]:
+	if srv and native_ground and ClassDB.class_exists("ProjectileFlightCore") and ptype in ["frag", "smoke", "rocket", "recoilless", "mortar", "mortar_smoke", "grad", "arty", "ac105", "ac40", "ac25", "bomb"]:
 		_flight = ClassDB.instantiate("ProjectileFlightCore")
 	if ptype in ["grad", "arty", "ac105", "ac40", "ac25"]:
 		position = origin
@@ -188,7 +189,8 @@ func _reset_support() -> void:
 
 func _native_support(dt: float) -> void:
 	var candidates := _ac_candidates() if _support.needs_candidates(dt) else PackedVector3Array()
-	var result: Dictionary = _support.advance(dt, world.time, team, MapDims.HALF, candidates, world.rng._backend)
+	var result: Dictionary = _support.advance(dt, world.time, team, MapDims.HALF, candidates, world.rng._backend,
+		world.terrain._native if world.terrain else null, world.water.deck if world.water else PackedByteArray())
 	if result.is_empty():
 		push_error("Invalid support aircraft state passed to Rust")
 		return
@@ -258,7 +260,7 @@ func _native_guided(dt: float) -> bool:
 func _reset_flight() -> void:
 	if not _flight:
 		return
-	_shell_flight = is_shell()
+	_shell_flight = is_shell() and (world.terrain == null or world.terrain.landform.heights.is_empty())
 	var state := PackedFloat64Array([position.x, position.y, position.z, vel.x, vel.y, vel.z,
 		origin.x, origin.y, origin.z, target.x, target.y, target.z, fuse, 1.0 if flying else 0.0,
 		life_t, smoke_t, smoke_r, shell_t])
@@ -281,6 +283,9 @@ func _native_flight(dt: float) -> bool:
 	var result := PackedFloat64Array()
 	var combat := world.combat
 	combat._sync_collision()
+	if not combat._collision and world.terrain and not world.terrain.landform.heights.is_empty():
+		_flight = null
+		return false
 	if combat._collision:
 		var excluded := PackedInt64Array()
 		if ptype in ["rocket", "recoilless"]:
@@ -318,6 +323,7 @@ func _native_flight(dt: float) -> bool:
 	elif result[11] == 1.0:
 		var impact := Vector3(result[12], result[13], result[14])
 		if is_shell():
+			target = impact
 			_shell_impact()
 		elif ptype == "frag":
 			_frag_impact()

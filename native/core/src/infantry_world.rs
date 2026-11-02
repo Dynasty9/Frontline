@@ -213,7 +213,10 @@ impl Context<'_> {
             self.squads.iter_mut().find(|q| q.id == squad),
             self.units,
             tick.search,
-            &mut self.geometry.collision,
+            &mut crate::collision::RayScene {
+                boxes: &mut self.geometry.collision,
+                ground: crate::traversal::Ground::new(&self.geometry.terrain, &self.geometry.deck),
+            },
             self.visibility,
             |v| i32::from((profiles.armor)(v).level),
             self.rng,

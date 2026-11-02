@@ -1,6 +1,6 @@
 //! A retained soldier acquires contacts from the tick's perception snapshot.
 use crate::actors::{Actor, Actors};
-use crate::collision::CollisionWorld;
+use crate::collision::Raycast;
 use crate::infantry_controller::Task;
 use crate::infantry_motion::Neighbor;
 use crate::infantry_vitals::Life;
@@ -35,7 +35,7 @@ impl Actors {
         mut squad: Option<&mut Squad>,
         units: &SpatialIndex,
         search: &PerceptionSearch,
-        collision: &mut CollisionWorld,
+        collision: &mut dyn Raycast,
         visibility: &mut Visibility,
         armor: impl Fn(&Vehicle) -> i32,
         rng: &mut SimulationRandom,
@@ -99,7 +99,7 @@ impl Actors {
         now: f64,
         profile: ScanProfile,
         search: &PerceptionSearch,
-        collision: &mut CollisionWorld,
+        collision: &mut dyn Raycast,
         visibility: &mut Visibility,
         armor: impl Fn(&Vehicle) -> i32,
     ) -> Result<Scan, &'static str> {

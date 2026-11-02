@@ -54,11 +54,16 @@ func _ready() -> void:
 	TerrainMap.N = 32
 	TerrainMap.H = 16.0
 	TerrainMap.DN = 64
+	var heights := PackedFloat32Array()
+	for z in 9:
+		for x in 9:
+			heights.append(12.0 + 6.0 * sin(x * 0.3) * cos(z * 0.2))
 	assert(ClassDB.class_exists("SupportFlightCore"))
 	var setups := [["jet", ""], ["a10", ""], ["ac130", ""], ["ac130", "blackfish"], ["ac130", "xian"], ["ac130", "greyhawk"], ["ac130", "none"]]
 	var cases := 0
 	for setup in setups:
-		for trial in 6:
+		for case_index in 12:
+			var trial := case_index % 6
 			var worlds: Array[SupportWorld] = [SupportWorld.new(), SupportWorld.new()]
 			var pair: Array[Projectile] = [Projectile.new(), Projectile.new()]
 			var soldier := Soldier.new()
@@ -76,6 +81,7 @@ func _ready() -> void:
 				pair[i].eid = 29
 				worlds[i].has_view = false
 				worlds[i].terrain = TerrainMap.new(worlds[i])
+				if case_index >= 6: worlds[i].terrain.install_landform(heights)
 				worlds[i].rng.seed = 8972 + trial
 				worlds[i].combat = SupportCombat.new(worlds[i])
 				worlds[i].rules = SupportRules.new(worlds[i])

@@ -359,7 +359,10 @@ impl Context<'_> {
             blame.as_ref(),
             &self.geometry.terrain,
             self.units,
-            &mut self.geometry.collision,
+            &mut crate::collision::RayScene {
+                boxes: &mut self.geometry.collision,
+                ground: crate::traversal::Ground::new(&self.geometry.terrain, &self.geometry.deck),
+            },
             self.squads,
             |s, squads| {
                 let p = (self.man)(s, squads);

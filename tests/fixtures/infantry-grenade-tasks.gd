@@ -20,6 +20,9 @@ func compare_task(a: Soldier, b: Soldier, label: String) -> void:
 
 func _ready() -> void:
 	assert(ClassDB.class_exists("GrenadeReactionCore"))
+	TerrainMap.N = 64
+	TerrainMap.H = 32.0
+	TerrainMap.DN = 128
 	Nav.N = 64
 	Nav.H = 32.0
 	var worlds := [grenade_world(false), grenade_world(true)]

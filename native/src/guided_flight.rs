@@ -86,7 +86,7 @@ impl GuidedFlightCore {
             dt,
             target_valid.then(|| crate::point(target)),
             smoke,
-            &mut collision.bind_mut().core,
+            &mut *collision.bind_mut(),
             excluded.as_slice(),
         );
         let p = core.position;

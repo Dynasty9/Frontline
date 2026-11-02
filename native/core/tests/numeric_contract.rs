@@ -33,6 +33,14 @@ use std::path::PathBuf;
 #[path = "fixtures/landform.rs"]
 mod landform;
 
+#[path = "fixtures/terrain_combat.rs"]
+mod terrain_combat;
+
+#[test]
+fn terrain_combat_and_ordnance_are_identical_across_platforms() {
+    golden("terrain_combat", &terrain_combat::transcript());
+}
+
 #[path = "fixtures/traversal.rs"]
 mod traversal;
 

@@ -1,5 +1,5 @@
 //! Mounted infantry: climbing, gun laying and ordered anti-tank contact selection.
-use crate::collision::CollisionWorld;
+use crate::collision::Raycast;
 use crate::state_codec::{Reader, Writer};
 use crate::vector::{normalized, turn_yaw, Vector3};
 use crate::visibility::{Sight, Visibility};
@@ -193,7 +193,7 @@ pub fn scan(
     team: i32,
     position: Vector3,
     contacts: &[Contact],
-    collision: &mut CollisionWorld,
+    collision: &mut dyn Raycast,
     visibility: &mut Visibility,
 ) -> Result<Scan, &'static str> {
     if !(-1..=1).contains(&team)

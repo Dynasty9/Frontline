@@ -1127,7 +1127,7 @@ impl InfantryStateCore {
                 i,
                 navigation.core.as_ref()?,
                 terrain.core.as_ref()?,
-                &mut collision.bind_mut().core,
+                &mut *collision.bind_mut(),
                 &mut rng.bind_mut().core,
                 deck.as_slice(),
                 &doors,

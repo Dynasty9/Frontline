@@ -1,6 +1,6 @@
 //! Infantry aims and asks squadmates for covering fire using retained actor state.
 use crate::actors::{Actor, Actors};
-use crate::collision::CollisionWorld;
+use crate::collision::Raycast;
 use crate::cover::{rotation, transform};
 use crate::infantry::Infantry;
 use crate::infantry_aim::{AimInput, AimResult, Target, TargetKind};
@@ -301,7 +301,7 @@ impl Actors {
         now: f64,
         weapon_range: f64,
         squad: Option<&Squad>,
-        collision: &mut CollisionWorld,
+        collision: &mut dyn Raycast,
         visibility: &mut Visibility,
         rng: &mut SimulationRandom,
     ) -> Result<AimResult, &'static str> {

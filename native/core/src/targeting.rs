@@ -1,5 +1,5 @@
 //! Infantry contact evaluation. Candidate order and report order are gameplay state.
-use crate::collision::CollisionWorld;
+use crate::collision::Raycast;
 use crate::vector::{normalized, Vector3};
 use crate::visibility::{Sight, Visibility};
 
@@ -65,7 +65,7 @@ pub fn scan(
     observer: Observer,
     contacts: &[Contact],
     drones: &[DroneContact],
-    collision: &mut CollisionWorld,
+    collision: &mut dyn Raycast,
     sight: &mut Visibility,
 ) -> Result<Scan, &'static str> {
     if !valid_point(observer.position)

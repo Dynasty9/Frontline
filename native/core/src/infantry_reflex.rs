@@ -1,6 +1,6 @@
 //! Urgent infantry reactions read shared rounds, handlers and casualties in registration order.
 use crate::actors::{Actor, Actors};
-use crate::collision::CollisionWorld;
+use crate::collision::Raycast;
 use crate::drone_reaction;
 use crate::grenade_reaction::{self, Grenade, Mate, Reaction, Shell};
 use crate::infantry::Infantry;
@@ -126,7 +126,7 @@ impl Actors {
         mut squad: Option<&mut Squad>,
         units: &SpatialIndex,
         nav: &PathPlanner,
-        collision: &mut CollisionWorld,
+        collision: &mut dyn Raycast,
         rng: &mut SimulationRandom,
         ground: crate::traversal::Ground<'_>,
     ) -> Result<Response, &'static str> {

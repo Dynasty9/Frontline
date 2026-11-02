@@ -1,6 +1,6 @@
 //! Barrel geometry and cannon impacts use the same sockets as the rendered models.
 use crate::actors::{Actor, Actors};
-use crate::collision::{CollisionWorld, Mat3};
+use crate::collision::{Mat3, Raycast};
 use crate::cover::{rotation, transform};
 use crate::projectile_actor::Explosion;
 use crate::random::SimulationRandom;
@@ -109,7 +109,7 @@ impl Actors {
         now: f64,
         p: CannonProfile,
         terrain: &Terrain,
-        collision: &mut CollisionWorld,
+        collision: &mut dyn Raycast,
         rng: &mut SimulationRandom,
         deck: &[u8],
     ) -> Result<CannonShot, &'static str> {

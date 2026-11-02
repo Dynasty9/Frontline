@@ -153,7 +153,7 @@ impl Flight {
         &mut self,
         dt: f64,
         holder: Holder,
-        world: &mut crate::collision::CollisionWorld,
+        world: &mut dyn crate::collision::Raycast,
         excluded: &[i64],
     ) -> Outcome {
         let sweeps = match self.kind {
@@ -171,7 +171,7 @@ impl Flight {
         } else {
             None
         };
-        self.advance(dt, holder, hit)
+        self.advance_with_ground(dt, holder, hit, world)
     }
 
     pub fn sweep_end(&self, dt: f64) -> Vector3 {
@@ -195,17 +195,36 @@ impl Flight {
     }
 
     pub fn advance(&mut self, dt: f64, holder: Holder, hit: Option<Hit>) -> Outcome {
+        self.advance_with_ground(
+            dt,
+            holder,
+            hit,
+            &crate::collision::CollisionWorld::default(),
+        )
+    }
+
+    fn advance_with_ground(
+        &mut self,
+        dt: f64,
+        holder: Holder,
+        hit: Option<Hit>,
+        world: &dyn crate::collision::Raycast,
+    ) -> Outcome {
         self.life += dt;
         match self.kind {
-            Kind::Frag | Kind::Smoke => self.grenade(dt, holder, hit),
+            Kind::Frag | Kind::Smoke => self.grenade(dt, holder, hit, world),
             Kind::Rocket | Kind::Recoilless => {
                 self.velocity.y = (f64::from(self.velocity.y) - 1.5 * dt) as f32;
                 let next = self.position + self.velocity * dt as f32;
                 if let Some(hit) = hit {
                     return Outcome::Impact(hit.position);
                 }
-                if next.y <= 0.05 {
-                    return Outcome::Impact(Vector3::new(next.x, 0.1, next.z));
+                if f64::from(next.y) <= world.ground_y(next) + 0.05 {
+                    return Outcome::Impact(Vector3::new(
+                        next.x,
+                        (world.ground_y(next) + 0.1) as f32,
+                        next.z,
+                    ));
                 }
                 if self.life > 2.5 {
                     return Outcome::Impact(next);
@@ -218,9 +237,17 @@ impl Flight {
                 let drag = libm::exp(-1.25 * dt);
                 self.velocity.x = (f64::from(self.velocity.x) * drag) as f32;
                 self.velocity.z = (f64::from(self.velocity.z) * drag) as f32;
-                let next = self.position + self.velocity * dt as f32;
-                if next.y <= 0.3 {
-                    return Outcome::Impact(Vector3::new(next.x, 0.3, next.z));
+                let mut next = self.position + self.velocity * dt as f32;
+                let ground = world.ray_ground(self.position, next);
+                if let Some(hit) = ground {
+                    next = hit.position;
+                }
+                if ground.is_some() || f64::from(next.y) <= world.ground_y(next) + 0.3 {
+                    return Outcome::Impact(Vector3::new(
+                        next.x,
+                        (world.ground_y(next) + 0.3) as f32,
+                        next.z,
+                    ));
                 }
                 self.position = next;
                 Outcome::Flying
@@ -230,13 +257,24 @@ impl Flight {
                 if progress >= 1.0 {
                     return Outcome::Impact(self.target);
                 }
-                self.position = self.shell_position(progress);
+                let next = self.shell_position(progress);
+                if let Some(hit) = world.ray_ground(self.position, next) {
+                    self.target = hit.position;
+                    return Outcome::Impact(self.target);
+                }
+                self.position = next;
                 Outcome::Flying
             }
         }
     }
 
-    fn grenade(&mut self, dt: f64, holder: Holder, hit: Option<Hit>) -> Outcome {
+    fn grenade(
+        &mut self,
+        dt: f64,
+        holder: Holder,
+        hit: Option<Hit>,
+        world: &dyn crate::collision::Raycast,
+    ) -> Outcome {
         match holder {
             Holder::Alive(position) => self.position = position,
             Holder::Dropped => {
@@ -251,8 +289,9 @@ impl Flight {
                         (self.velocity - 2.0 * hit.normal * self.velocity.dot(hit.normal)) * 0.35;
                     next = hit.position + hit.normal * 0.06;
                 }
-                if next.y <= 0.06 {
-                    next.y = 0.06;
+                let floor = world.ground_y(next) + 0.06;
+                if f64::from(next.y) <= floor {
+                    next.y = floor as f32;
                     if self.velocity.y < 0.0 {
                         self.velocity.y *= -0.25;
                         self.velocity.x *= 0.5;

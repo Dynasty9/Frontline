@@ -1,4 +1,4 @@
-use crate::collision::CollisionWorld;
+use crate::collision::Raycast;
 use crate::vector::Vector3;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -47,7 +47,7 @@ impl DroneFlight {
         &mut self,
         dt: f64,
         target: Option<Vector3>,
-        collision: &mut CollisionWorld,
+        collision: &mut dyn Raycast,
         map_half: f32,
     ) -> bool {
         if self.dead {
@@ -65,13 +65,15 @@ impl DroneFlight {
                 self.velocity = self
                     .velocity
                     .lerp(want, (1.0 - libm::exp(-dt * 3.0)) as f32);
-                if self.position.y > 6.5 {
+                if f64::from(self.position.y) > collision.ground_y(self.position) + 6.5 {
                     self.phase = Phase::Cruise;
                 }
             }
             Phase::Cruise => {
                 let mut want = horizontal.normalize_or_zero() * 21.0;
-                want.y = ((7.5 - f64::from(self.position.y)) * 1.5) as f32;
+                want.y = ((collision.landform_height(self.position + want * 2.0) + 7.5
+                    - f64::from(self.position.y))
+                    * 1.5) as f32;
                 self.velocity = self
                     .velocity
                     .lerp(want, (1.0 - libm::exp(-dt * 2.5)) as f32);
@@ -109,7 +111,7 @@ impl DroneFlight {
                 f64::from(-horizontal_velocity.z),
             ) as f32;
         }
-        if self.position.y < 0.25
+        if f64::from(self.position.y) < collision.ground_y(self.position) + 0.25
             || self.life > 50.0
             || self.position.x.abs() >= map_half
             || self.position.z.abs() >= map_half

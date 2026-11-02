@@ -1,6 +1,6 @@
 //! Vehicle crews choose contacts from owned actors, collision and smoke in spatial order.
 use crate::actors::{Actor, Actors};
-use crate::collision::CollisionWorld;
+use crate::collision::Raycast;
 use crate::infantry_pose::InfantryPose;
 use crate::infantry_vitals::Life;
 use crate::spatial::{SpatialIndex, STRUCTURE_CELL, UNIT_CELL};
@@ -79,7 +79,7 @@ impl Actors {
         p: ScanProfile,
         units: &SpatialIndex,
         structures: &SpatialIndex,
-        collision: &mut CollisionWorld,
+        collision: &mut dyn Raycast,
         visibility: &mut Visibility,
         helicopter: impl Fn(&Vehicle) -> bool,
         player_building: impl Fn(&str) -> bool,

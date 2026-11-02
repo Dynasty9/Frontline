@@ -9,5 +9,5 @@ test("Rust support aircraft preserve attack schedules, recon and random draws", 
     "--headless", "--quit-after", "2", "--path", ROOT, "res://tests/fixtures/support-flight.tscn",
   ], { timeout: 120_000 });
   assert.doesNotMatch(stdout + stderr, /SCRIPT ERROR|Parse Error/);
-  assert.match(stdout, /SUPPORT_FLIGHT passed cases=42/);
+  assert.match(stdout, /SUPPORT_FLIGHT passed cases=84/);
 });

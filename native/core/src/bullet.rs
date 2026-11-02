@@ -1,5 +1,5 @@
 //! Bullet resolution is staged so damage can consume RNG before the next decision.
-use crate::collision::{CollisionWorld, RayHit};
+use crate::collision::{RayHit, Raycast};
 use crate::random::SimulationRandom;
 use crate::vector::{normalized, Vector3};
 use crate::visibility::Visibility;
@@ -222,7 +222,7 @@ pub fn suppression(
 impl Bullet {
     pub fn fire(
         input: ShotInput<'_>,
-        collision: &mut CollisionWorld,
+        collision: &mut dyn Raycast,
         visibility: &Visibility,
         rng: &mut SimulationRandom,
     ) -> Result<Self, &'static str> {

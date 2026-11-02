@@ -145,12 +145,8 @@ impl ProjectileFlightCore {
             2 => Holder::Dropped,
             _ => Holder::Free,
         };
-        let outcome = flight.advance_in_world(
-            dt,
-            held,
-            &mut collision.bind_mut().core,
-            excluded.as_slice(),
-        );
+        let outcome =
+            flight.advance_in_world(dt, held, &mut *collision.bind_mut(), excluded.as_slice());
         observation(flight, outcome)
     }
 }

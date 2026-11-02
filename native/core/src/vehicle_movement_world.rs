@@ -91,7 +91,10 @@ impl Context<'_> {
             profile,
             self.units,
             &self.geometry.structures,
-            &mut self.geometry.collision,
+            &mut crate::collision::RayScene {
+                boxes: &mut self.geometry.collision,
+                ground: crate::traversal::Ground::new(&self.geometry.terrain, &self.geometry.deck),
+            },
             self.visibility,
             |v| (self.vehicle)(v).crew.helicopter,
             self.player_building,

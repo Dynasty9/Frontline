@@ -256,7 +256,13 @@ impl Context<'_> {
                 team.into(),
                 st_position,
                 &contacts,
-                &mut self.geometry.collision,
+                &mut crate::collision::RayScene {
+                    boxes: &mut self.geometry.collision,
+                    ground: crate::traversal::Ground::new(
+                        &self.geometry.terrain,
+                        &self.geometry.deck,
+                    ),
+                },
                 self.visibility,
             )?;
             self.actors.soldier_mut(id).unwrap().emplacement.target = found.target;
@@ -289,7 +295,10 @@ impl Context<'_> {
             return Ok(());
         };
         match self.visibility.can_see(
-            &mut self.geometry.collision,
+            &mut crate::collision::RayScene {
+                boxes: &mut self.geometry.collision,
+                ground: crate::traversal::Ground::new(&self.geometry.terrain, &self.geometry.deck),
+            },
             eye,
             u64::from(target_id),
             &v.exposed_points(),

@@ -1078,13 +1078,11 @@ func _alive_timers_native(dt: float) -> bool:
 			_dazed_tick(dt)
 			return false
 		2:
-			var old_y := position.y
 			out = _controller_core().dive(_controller_values(), position, base_y, dt, world.nav._planner, world.nav._path_ground(), world.nav._path_deck())
 			assert(out.size() == 3, "Invalid infantry dive")
 			_read_controller(out[0])
 			act = Act.DIVE
 			position = out[1]
-			position.y = maxf(base_y + _ground(), old_y - dt * 3.0)
 			if out[2]:
 				posture = Post.PRONE
 				act = Act.IDLE
@@ -1117,7 +1115,7 @@ func _alive_timers_reference(dt: float) -> bool:
 		var np := position + dive_dir * 5.5 * dt
 		if world.nav.can_step(position, np) and (not world.water or world.water.depth_at(np) <= 0.15):
 			position = np
-		position.y = maxf(base_y + _ground(), position.y - dt * 3.0)
+		position.y = maxf(base_y + world.ground_y(position), position.y - dt * 3.0)
 		if dive_t <= 0.0:
 			posture = Post.PRONE
 			act = Act.IDLE
