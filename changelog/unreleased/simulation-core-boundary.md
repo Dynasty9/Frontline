@@ -24,6 +24,7 @@ kind = "fixed"
 - Rust blast-toss checks preserve how cars and crates carry their cover and obstacles to a new position, including blocked landings and random continuation.
 - Shared Rust formation checks preserve squad spacing and cover choices while reusing ground searches and keeping soldiers together on the same side of obstacles.
 - Connected Rust squad movement checks preserve travel spacing, leader slowdown, alternating fire teams and recon fire, including interrupted duties and saved route queues.
+- Connected Rust squad decisions preserve morale, routing and rallying, shellfire displacement, withdrawal, contact reactions, house clearing, ambush fire discipline and nearby ammunition sharing.
 - Crew-return checks preserve manual orders, waiting through contact and refunding supply once, while leaving wounded crewmen in the world for rescue.
 - Grenade, smoke, rocket, bomb and shell flight now use the shared simulation core, preserving flight behavior, pickup, kicking and rethrowing.
 - Rust grenade-duty checks preserve approach, smothering, pickup, kicking and diving away while keeping the soldier and shared projectile state together.

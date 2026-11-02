@@ -23,7 +23,7 @@ graphics, network access or a wall clock.
 | Grenade, smoke, rocket, bomb and shell flight | `frontline_core` | Rust retains and advances flight state and queries native geometry; the adapter supplies holders and applies impacts |
 | Retained projectile actors and impacts | `frontline_core` | Connected flight resolves shared holders, guided targets and support contacts, then applies impacts, spawns, smoke, recon and sound in order; the production world dispatcher remains unfinished |
 | Shared actor storage and FPV ownership | `frontline_core` | Infantry, buildings, vehicles, projectiles and drones retain identities, state and shared casualty/transport links together; drones resolve living targets and operators inside Rust. Squad integration and complete world dispatch remain unfinished |
-| Squad state and shared knowledge | `frontline_core` | Orders, contact caches, plan links and tactical state have retained checkpoints; travel, defense, assault bounds and deliberate attacks operate on owned actors. Drills and the complete production squad dispatcher still run in Godot |
+| Squad state and shared knowledge | `frontline_core` | Orders, contact caches, plans and tactical state have retained checkpoints. Travel, defense, assaults, morale, battle drills, house clearing and ammunition sharing operate on owned actors. Remaining duties and the complete production squad dispatcher still need integration |
 | Retained buildings and economy transitions | `frontline_core` | Geometry, links, queues and timers have retained checkpoints; construction, capture, town income and production transitions match Godot. Shared rule effects, destruction, crews and the complete building dispatcher remain unfinished |
 | Deferred damage and rubble | `frontline_core` | The live world uses checkpointed explosion deadlines and pending rubble spawns, with an engine-only fallback. Godot still applies the resulting damage and creates structures |
 | Fire, smoke and burning destruction | `frontline_core` | Retained fires apply ignition, spread, scorch damage, escape routes, battle records and geometry removal together; the live game still invokes Godot's fire loop |
@@ -2329,3 +2329,28 @@ changelog and presentation checks pass. The prior aircraft revision `214a6c6`
 passed full game CI and exact debug/release checks on all four platforms.
 The production world scheduler, standalone server and whole-match verifier still
 remain unfinished.
+
+## Connected squad battle drills
+
+Squad decisions now use retained actors, contacts, plans, spatial queries and
+navigation. Morale keeps cover, leadership, nearby armor, friendly squads and
+supporting fire in the same order. The priority tree preserves rout/rally,
+shellfire displacement, bounding withdrawal, contact reactions, resuming movement
+and house clearing. House entry shares the existing infantry breach operation.
+Ambush fire discipline and ammunition transfers retain their original deadlines,
+speech gates and random draws. These operations run when the squad dispatcher
+calls them; the remaining duties and complete dispatcher are still being moved.
+
+Seven focused core regressions cover priority, protection from shellfire, wounded
+contact reports, ammunition and reloads, invalid steps, busy clearing candidates
+and checkpoint continuation. All 852 debug core tests pass. The 123 release checks
+include 116 exact numeric-contract cases; the new 128-update squad transcript adds
+5,755,540 bytes. Its saved continuation compares actors, squads, complete geometry,
+routes and randomness; persisted byte comparisons separate navigation blocks to
+avoid duplicating unchanged geometry. Existing numeric transcripts are unchanged.
+
+Godot compares 1,536 squad operation states, including full actor and squad state,
+speech, messages, behavior counters, path queues and random continuation. Existing
+travel, defense/assault bounds and deliberate attack comparisons also pass. Import,
+formatting, changelog and presentation audits pass. Other apps stayed running.
+These checks do not establish a standalone Rust match or whole-match verification.

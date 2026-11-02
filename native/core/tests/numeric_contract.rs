@@ -36,8 +36,15 @@ mod fires_world;
 #[path = "fixtures/structure_birth_world.rs"]
 mod structure_birth_world;
 
+#[path = "fixtures/squad_brain_world.rs"]
+mod squad_brain_world;
 #[path = "fixtures/squad_movement_world.rs"]
 mod squad_movement_world;
+
+#[test]
+fn squad_battle_drills_are_identical_across_platforms() {
+    golden("squad_brain_world", &squad_brain_world::transcript());
+}
 
 #[path = "fixtures/vehicle_loss_world.rs"]
 mod vehicle_loss_world;

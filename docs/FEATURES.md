@@ -1523,6 +1523,11 @@ Formation placement now queries the retained Rust world directly. A squad shares
 one ground candidate search and reuses anchor approach and occupancy checks;
 cover scores, first-choice ties and the rule against splitting across a wall stay
 the same. The live squad-order dispatcher remains in Godot during migration.
+Squad battle drills now operate on retained Rust actors and routes: morale,
+routing and rallying, displacement under shellfire, bounding withdrawal, contact
+reactions, house clearing, ambush fire discipline and ammunition sharing. Decisions
+keep their existing priority, deadlines and random draws. The complete squad and
+world dispatchers still need integration before Rust owns the live battle.
 Retained captors update capture credit, prison selection and escort movement;
 arrival applies detention and the guard's return order before the next actor.
 Removed prisons are handled safely. Retained prisoner rules now handle guard

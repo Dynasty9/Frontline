@@ -58,7 +58,7 @@ impl Profile {
 fn flat(p: Vector3) -> Vector3 {
     Vector3::new(p.x, 0.0, p.z)
 }
-fn building(st: &Structure) -> Building {
+pub(crate) fn building(st: &Structure) -> Building {
     Building {
         id: st.id.into(),
         position: st.position,
@@ -210,20 +210,21 @@ impl Actors {
         }
         Ok(choice.is_some())
     }
-    fn begin_infantry_breach(
+    pub(crate) fn begin_infantry_breach(
         &mut self,
         id: u32,
         now: f64,
         q: &mut Squad,
-        world: &CoverWorld<'_>,
+        nav: &crate::path_planner::PathPlanner,
+        clear: bool,
         rng: &mut SimulationRandom,
         out: &mut Decision,
     ) -> Result<(), &'static str> {
         let mut s = self.soldier(id).unwrap().clone();
         let choice = s.entry.selected.ok_or("missing selected breach")?;
         let mut random = *rng;
-        s.clear_duty(world.nav, None);
-        s.entry.clear = false;
+        s.clear_duty(nav, None);
+        s.entry.clear = clear;
         s.entry.no_frag = false;
         s.entry.house = choice.house;
         s.entry.opening = Some(choice.opening);
@@ -235,8 +236,7 @@ impl Actors {
         s.duty.partner = choice.enemy;
         s.duty.phase = 0;
         s.duty.timer = now;
-        s.duty.position = world
-            .nav
+        s.duty.position = nav
             .nearest_walkable(crate::breach::stack_spot(
                 s.motion.position,
                 choice.opening.center,
@@ -249,8 +249,12 @@ impl Actors {
         let own_danger = s.vitals.suppression > 5.0 || !s.fight.visible_targets.is_empty();
         let danger = own_danger || q.combat_status(now);
         let route = s.go_to(s.duty.position, Goal::Task, if danger { 2 } else { 1 })?;
-        let cue = (random.randi() % 4) as u8;
-        s.vitals.speech_cooldown = 2.6;
+        if !clear {
+            let cue = (random.randi() % 4) as u8;
+            s.vitals.speech_cooldown = 2.6;
+            out.speech.push(Speech::Breach(cue));
+            out.stats.push("breach");
+        }
         *self.soldier_mut(id).unwrap() = s;
         q.breach_by = id;
         if !own_danger {
@@ -258,8 +262,6 @@ impl Actors {
         }
         *rng = random;
         out.route = Some(route);
-        out.speech.push(Speech::Breach(cue));
-        out.stats.push("breach");
         Ok(())
     }
     fn try_owned_grenade(
@@ -465,7 +467,8 @@ impl Actors {
                 id,
                 now,
                 squad.as_deref_mut().unwrap(),
-                world,
+                world.nav,
+                false,
                 rng,
                 &mut out,
             )?;

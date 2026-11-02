@@ -141,6 +141,20 @@ impl SquadMovementCore {
                 context.order_assault_bounds(id, crate::point(p), crate::point(f))
             }
             6 if input.is_empty() => context.assault_bounds_tick(id),
+            12..=16 => {
+                let result = apply_brain(&mut context, id, operation, input);
+                write_squads(nodes, squads);
+                return match result {
+                    Ok((handled, events)) => {
+                        let events: Array<Variant> = events.into_iter().map(brain_event).collect();
+                        varray![&events, handled]
+                    }
+                    Err(error) => {
+                        godot_error!("{error}");
+                        Array::new()
+                    }
+                };
+            }
             7..=11 => {
                 let result = apply_attack(&mut context, id, operation, input);
                 write_squads(nodes, squads);
@@ -205,6 +219,174 @@ fn event(e: Event) -> Variant {
         Event::Despawn(id) => varray![4, id].to_variant(),
         Event::Stat(name) => varray![2, &GString::from(name)].to_variant(),
     }
+}
+fn brain_event(e: frontline_core::squad_brain::Event) -> Variant {
+    use frontline_core::squad_brain::Event as E;
+    match e {
+        E::Movement(e) => event(e),
+        E::Stat(name) => varray![2, &GString::from(name)].to_variant(),
+        E::Speech {
+            soldier,
+            call,
+            variant,
+            target,
+        } => {
+            let at = target.map_or(Vector3::INF, |p| Vector3::new(p.x, p.y, p.z));
+            varray![7, soldier, call as u8, variant, at].to_variant()
+        }
+        E::Message {
+            squad,
+            message,
+            position,
+        } => varray![
+            8,
+            squad,
+            message as u8,
+            Vector3::new(position.x, position.y, position.z)
+        ]
+        .to_variant(),
+    }
+}
+fn apply_brain(
+    ctx: &mut Context<'_>,
+    id: u32,
+    op: i32,
+    input: Array<Variant>,
+) -> Result<(bool, Vec<frontline_core::squad_brain::Event>), &'static str> {
+    use frontline_core::{infantry_weapon::Weapon, squad::Report, squad_brain::Profile};
+    if input.len() != 4 {
+        return Err("invalid squad brain input");
+    }
+    let dt = input
+        .at(0)
+        .try_to::<f64>()
+        .map_err(|_| "invalid squad step")?;
+    let rows = input
+        .at(1)
+        .try_to::<Array<Variant>>()
+        .map_err(|_| "invalid squad profiles")?;
+    let saved = input
+        .at(2)
+        .try_to::<Array<PackedByteArray>>()
+        .map_err(|_| "invalid squad plans")?;
+    let impacts = input
+        .at(3)
+        .try_to::<Array<Variant>>()
+        .map_err(|_| "invalid squad impacts")?;
+    if rows.len() > 100_000 || saved.len() > 100_000 || impacts.len() > 100_000 {
+        return Err("squad brain input limit exceeded");
+    }
+    let mut weapons = BTreeMap::new();
+    let mut armor = BTreeMap::new();
+    for row in rows.iter_shared() {
+        let row = row
+            .try_to::<Array<Variant>>()
+            .map_err(|_| "invalid squad profile")?;
+        if row.len() != 5 {
+            return Err("invalid squad profile width");
+        }
+        let id = row
+            .at(0)
+            .try_to::<u32>()
+            .map_err(|_| "invalid profile actor")?;
+        let ammunition = row
+            .at(1)
+            .try_to::<i32>()
+            .map_err(|_| "invalid profile ammunition")?;
+        let magazine = row
+            .at(2)
+            .try_to::<i32>()
+            .map_err(|_| "invalid profile magazine")?;
+        let reload_time = row
+            .at(3)
+            .try_to::<f64>()
+            .map_err(|_| "invalid profile reload")?;
+        let protection = row
+            .at(4)
+            .try_to::<i32>()
+            .map_err(|_| "invalid profile armor")?;
+        if !(-1..=1_000_000).contains(&ammunition)
+            || !(0..=1_000_000).contains(&magazine)
+            || !reload_time.is_finite()
+            || !(0.0..=3600.0).contains(&reload_time)
+            || !(0..=100).contains(&protection)
+        {
+            return Err("invalid squad profile values");
+        }
+        match ctx.actors.get(id) {
+            Some(Actor::Soldier(_)) => {
+                weapons.insert(
+                    id,
+                    (ammunition >= 0).then_some(Weapon {
+                        ammunition,
+                        magazine,
+                        reload_time,
+                    }),
+                );
+            }
+            Some(Actor::Vehicle(v)) => {
+                armor.insert(v.kind.clone(), protection);
+            }
+            _ => return Err("missing squad profile actor"),
+        }
+    }
+    if ctx.actors.iter().any(|a| match a {
+        Actor::Soldier(s) => !weapons.contains_key(&s.identity.id),
+        Actor::Vehicle(v) => !armor.contains_key(&v.kind),
+        _ => false,
+    }) {
+        return Err("missing squad definition");
+    }
+    let plans = saved
+        .iter_shared()
+        .map(|b| AttackPlan::restore(b.as_slice()))
+        .collect::<Result<Vec<_>, _>>()?;
+    let mut reports = vec![];
+    for row in impacts.iter_shared() {
+        let row = row
+            .try_to::<Array<Variant>>()
+            .map_err(|_| "invalid impact")?;
+        if row.len() != 2 {
+            return Err("invalid impact width");
+        }
+        let at = row
+            .at(0)
+            .try_to::<Vector3>()
+            .map_err(|_| "invalid impact position")?;
+        let time = row
+            .at(1)
+            .try_to::<f64>()
+            .map_err(|_| "invalid impact time")?;
+        if !at.is_finite()
+            || at.abs().max_axis().is_none()
+            || at.x.abs().max(at.y.abs()).max(at.z.abs()) > 1e6
+            || !time.is_finite()
+            || time.abs() > 1e12
+        {
+            return Err("invalid impact values");
+        }
+        reports.push(Report {
+            position: crate::point(at),
+            time,
+        });
+    }
+    let p = Profile {
+        plans: &plans,
+        impacts: &reports,
+        armor: &|k| armor.get(k).copied().unwrap_or(0),
+        weapon: &|s| weapons[&s.identity.id],
+    };
+    Ok(match op {
+        12 => {
+            ctx.squad_morale_tick(id, dt, &p)?;
+            (true, vec![])
+        }
+        13 => ctx.squad_think(id, &p)?,
+        14 => (true, ctx.squad_ambush_tick(id)?),
+        15 => (true, ctx.squad_share_ammo(id, &p)?),
+        16 => (true, ctx.squad_retreat(id)?),
+        _ => unreachable!(),
+    })
 }
 fn apply_attack(
     ctx: &mut Context<'_>,

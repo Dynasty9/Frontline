@@ -66,7 +66,7 @@ pub(crate) fn point(p: Vector3) -> bool {
 pub(crate) fn available(s: &Infantry) -> bool {
     s.duty.kind.can_take_orders(s.vitals.life, s.duty.phase)
 }
-fn set_cooldown(q: &mut Squad, key: &str, value: f64) -> Result<(), &'static str> {
+pub(crate) fn set_cooldown(q: &mut Squad, key: &str, value: f64) -> Result<(), &'static str> {
     if let Some(pair) = q.cooldowns.iter_mut().find(|v| v.0 == key) {
         pair.1 = value;
     } else {
@@ -262,7 +262,7 @@ impl Context<'_> {
         }
         Ok(out)
     }
-    fn regroup(&mut self, i: usize, out: &mut Vec<Event>) {
+    pub(crate) fn regroup(&mut self, i: usize, out: &mut Vec<Event>) {
         let q = &mut self.squads[i];
         q.plan = 0;
         q.shown_order.clear();
@@ -411,7 +411,7 @@ impl Context<'_> {
         }
         Ok(())
     }
-    fn next_assault_bound(
+    pub(crate) fn next_assault_bound(
         &mut self,
         i: usize,
         leg_max: f64,
