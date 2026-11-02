@@ -10397,3 +10397,10 @@ fn production_world_is_identical_across_platforms() {
         &structure_production_world::transcript(),
     );
 }
+
+#[path = "fixtures/fog_world.rs"]
+mod fog_world;
+#[test]
+fn fog_and_route_danger_are_identical_across_platforms() {
+    golden("fog_world", &fog_world::transcript());
+}

@@ -26,6 +26,7 @@ pub mod entities;
 pub mod fire_escape;
 pub mod fire_targets;
 pub mod fires;
+pub mod fog;
 pub mod formation;
 mod godot_sort;
 pub mod grenade_attack;

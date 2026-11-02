@@ -14,6 +14,7 @@ mod drone_flight;
 mod drone_reaction;
 mod entities;
 mod fires;
+mod fog;
 mod formation_ground;
 mod grenade_attack;
 mod grenade_reaction;

@@ -2521,3 +2521,28 @@ loop, standalone socket server and whole-match verification remain unfinished.
 All 903 debug core tests and 133 release checks pass, including all 124 exact
 numeric-contract cases. Import, formatting, changelog, presentation and diff
 checks pass. Other apps stayed running; rendered performance is not measured here.
+
+## Retained fog and navigation danger
+
+Rust now collects observers from soldiers, vehicles, towers, towns, drones and
+support aircraft, then updates team visibility against shared actors and terrain.
+Photographs preserve float32 expiry, camouflage reduces ground detection and
+hidden soldiers and mines retain their owner-only visibility. Remembered contacts,
+seen buildings and drone masks survive checkpoints. A 16-metre observer grid
+bounds nearby checks while retaining original candidate and actor order. Both
+navigation hierarchies receive the existing capped enemy danger weights.
+
+Godot comparisons pass 48 successive states across 12 cases, including flight
+boundaries, camera expiry, camouflage, hidden soldiers, mines and remembered gun
+positions. They compare all changed IDs, retained actors, fog state, danger arrays
+and the complete navigation checkpoint. Seven focused Rust checks include a
+newborn drone's first visibility notification, exact resumes and rejection of
+invalid or excessive observer grids. The 5,156,587-byte numeric transcript covers
+64 uninterrupted/resumed updates. All 911 debug core checks and 132 release checks
+pass, including all 125 exact numeric-contract cases. The complete
+rules/world loop, socket server and whole-match verifier remain unfinished; these
+correctness checks do not establish rendered frame rate. Other apps stayed running.
+
+The complete Check workflow at `1f4382b` passed the game suite and debug/release
+numeric checks on Windows, macOS, Linux x64 and Linux ARM. Later heads require
+their own CI results.

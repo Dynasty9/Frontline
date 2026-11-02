@@ -1562,6 +1562,10 @@ current acting owner and remain reclaimable, including transport passengers.
 Remaining rule effects and
 the full building dispatcher still need migration before Rust owns the complete
 battle.
+Retained fog now combines observers, reconnaissance photographs, camouflage and
+remembered sightings in Rust. Hidden prisoners and mines retain their privacy;
+seen emplacements and visible enemies update both route danger maps. Observer
+cells bound nearby checks without changing actor order or visibility deadlines.
 Retained rejoining now selects or creates squads, transfers disconnected ownership
 and updates membership, battle records and return routes. Recovery and prisoner
 rule dispatch still need to call this from the complete Rust world loop.
