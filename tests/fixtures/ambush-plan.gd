@@ -59,7 +59,7 @@ func _ready() -> void:
 				if case_id in [0,3,4]: w.entities[7].position = Vector3.ZERO
 				if case_id == 0: w.entities[8].position = Vector3(1,0,3)
 				if case_id == 4: w.entities[7].life = Soldier.Life.DOWNED
-				if case_id in [5,6]: v.position = Vector3.ZERO
+				if case_id in [5,6]: v.position = Vector3(0,20 if case_id == 5 else 0,0)
 			if step >= 3 and case_id == 2: w.time += 300.0
 			if step == 3 and case_id == 4: w.entities[2].suppression = 60.0
 			if step == 3 and case_id == 5: w.entities[7].position = Vector3(-23,0,2)
@@ -72,7 +72,7 @@ func _ready() -> void:
 			if step == 0:
 				op = 24; args = [19,Vector3.ZERO,Vector3(0,0,1),Vector3(-1,0,0)]
 				p = AmbushPlan.make(w,q,args[1],args[2],args[3]); plans[p] = 19
-			else: args = [ambush_bytes(p),[[110,v.is_air()]]]; p.tick()
+			else: args = [ambush_bytes(p),[[110,v.is_heli()]]]; p.tick()
 			var result: Array = movement.apply(actors,geometry,units,cores,rng._backend,profiles,w.time,w.town_rect,7,op,args)
 			var label := "ambush %d/%d" % [trial,step]; assert(result.size() == 2,label+" result")
 			var said := []; var stats := {}; var messages := []

@@ -244,7 +244,7 @@ impl AmbushPlan {
     fn enemy(ctx: &Context<'_>, id: u32, air: &dyn Fn(&str) -> bool) -> bool {
         match ctx.actors.get(id) {
             Some(Actor::Soldier(s)) => !s.identity.gone && s.vitals.life == Life::Alive,
-            Some(Actor::Vehicle(v)) => !v.gone && !air(&v.kind),
+            Some(Actor::Vehicle(v)) => !v.gone && (!air(&v.kind) || v.position.y <= 3.0),
             _ => false,
         }
     }

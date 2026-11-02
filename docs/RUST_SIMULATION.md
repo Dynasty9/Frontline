@@ -72,7 +72,8 @@ graphics, network access or a wall clock.
 | House-entry task phases | `frontline_core` | Connected approach movement and fire, stack/door/grenade/entry transitions, deadlines, cooking, room targets and buddy orders update shared state; the production dispatcher still runs in Godot |
 | House occupancy and breach selection | `frontline_core` | Floor containment, ordered openings, nearest walkable stack positions and competing squadmates extracted; Godot still supplies spatial candidates, squad contacts and decision timers |
 | Injury behavior and special tasks | Rust | `soldier.gd`, `soldier_brain.gd`, `combat.gd` |
-| Squads, tactics, commander and naval decisions | Rust | Squad, tactics, commander and naval scripts |
+| Squad decisions and tactics | `frontline_core` | Complete retained squad updates connect upkeep, morale, plans, orders and support duties; production world dispatch remains in Godot |
+| Commander and naval decisions | Rust | Commander and naval scripts still require migration |
 | Vehicles and crews | `frontline_core` | Retained state, orders, repairs, boarding, ground/boat driving, flight, target acquisition, crew decisions and weapon operations are reference-tested; the live dispatcher and shared combat/economy effects still run in Godot |
 | Battlefield box raycasts | `frontline_core` | Spatial grid with deterministic hit ties; Godot supplies geometry updates |
 | Smoke volumes and geometric visibility | `frontline_core` | Rust checks exposed points against collision and smoke, retaining reusable obstruction proofs; Godot supplies target posture and scene changes |
@@ -2339,7 +2340,7 @@ shellfire displacement, bounding withdrawal, contact reactions, resuming movemen
 and house clearing. House entry shares the existing infantry breach operation.
 Ambush fire discipline and ammunition transfers retain their original deadlines,
 speech gates and random draws. These operations run when the squad dispatcher
-calls them; the remaining duties and complete dispatcher are still being moved.
+calls them; they now feed the complete retained squad update described below.
 
 Seven focused core regressions cover priority, protection from shellfire, wounded
 contact reports, ammunition and reloads, invalid steps, busy clearing candidates
@@ -2378,10 +2379,40 @@ Gameplay state remains exact, and the Rust numeric transcripts compare all saved
 bits exactly. The new transcripts add 3,389,982 bytes for duties and 15,276,227 for
 ambushes. Seven focused duty regressions and four ambush regressions cover shared
 claims, priority, transfers, abandonment, checkpoints and both withdrawal styles.
-The full squad dispatcher and standalone world integration remain unfinished.
+These operations now feed the complete retained squad update described below;
+standalone world integration remains unfinished.
 
 All 865 debug core tests pass at this revision. Godot also passes the existing
 1,536-state battle-drill comparison after smoke-screen reuse. Import, formatting,
 changelog and presentation checks pass. These checks do not establish a complete
 Rust match or a rendered frame-rate improvement; other apps stayed running.
 The 136 release checks also pass, including all 118 exact numeric-contract cases.
+
+## Complete retained squad update
+
+The Rust squad tick now connects pruning and retirement, contact expiry, leader
+succession, morale, deliberate or simple ambushes, priority decisions, crew return,
+stragglers, overwatch, follow-up defense, clearing calls, travel, rescue, surrender,
+medical work, construction, deliberate attacks and ammunition sharing. It keeps
+the existing half-second decision clock. Plan cancellation applies immediately,
+and the owner removes a retired squad before advancing the next one. Wiped-out
+squads clear bodies' old squad ID in both Rust and Godot.
+
+Four focused regressions cover skipped decision ticks, invalid steps, wounded
+squad survival, plan cancellation and retirement credit. Godot passes 32 mixed
+scenarios comparing whole ticks, both squads, actors, plans, battle records,
+messages, speech, path queues and random continuation. The numeric transcript
+compares 256 uninterrupted and checkpoint-resumed updates, including removal
+before another squad runs. A normal headless attack scenario reaches its 60-second
+final state without script errors. The production world loop, shared rules,
+commander/mission dispatch, socket server and whole-match verifier remain unfinished.
+
+The full debug suite passed 870 tests before the final landed-aircraft correction;
+all nine focused squad/ambush checks pass with that correction. Final release
+validation passes 128 checks, including all 119 exact numeric-contract cases.
+The complete-squad transcript adds 13,670,019 bytes. All six Godot comparisons pass:
+complete squad ticks, ambush plans, duties, battle drills, defense/assault bounds
+and deliberate attacks. A two-process host/client smoke test also passes; the
+client received 3,864 entities. Import, formatting, changelog and presentation
+checks pass. The earlier `8df79ce` revision is fully green in CI. Other apps stayed
+running; this is not a rendered frame-rate measurement.

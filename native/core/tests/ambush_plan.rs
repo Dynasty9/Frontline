@@ -155,3 +155,39 @@ fn checkpoint_rejects_invalid_data_and_restores_every_phase() {
     .is_err());
     assert_eq!(random, s.rng.state());
 }
+
+#[test]
+fn aircraft_above_the_road_are_ignored_but_landed_aircraft_spring_the_ambush() {
+    let mut s = Scene::new(43);
+    let mut p = start(&mut s);
+    p.phase = Phase::Wait;
+    let id = s
+        .actors
+        .spawn(frontline_core::actors::Actor::Vehicle(Box::new(
+            frontline_core::vehicle::Vehicle {
+                kind: "helicopter".into(),
+                team: 1,
+                position: Vector3::Y * 20.,
+                ..Default::default()
+            },
+        )))
+        .unwrap();
+    s.actors.rebuild_units(&mut s.units).unwrap();
+    p.tick(&mut s.context(), &|kind| kind == "helicopter")
+        .unwrap();
+    assert_eq!(p.phase, Phase::Wait);
+    let mut entries: Vec<_> = s.actors.iter().cloned().collect();
+    for a in &mut entries {
+        if let frontline_core::actors::Actor::Vehicle(v) = a {
+            if v.id == id {
+                v.position.y = 0.;
+            }
+        }
+    }
+    s.actors = frontline_core::actors::Actors::from_entries(s.actors.entities().next_id(), entries)
+        .unwrap();
+    p.tick(&mut s.context(), &|kind| kind == "helicopter")
+        .unwrap();
+    assert_eq!(p.phase, Phase::Spring);
+    assert_eq!(p.caught, 1);
+}

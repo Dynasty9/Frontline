@@ -141,6 +141,17 @@ impl SquadMovementCore {
                 context.order_assault_bounds(id, crate::point(p), crate::point(f))
             }
             6 if input.is_empty() => context.assault_bounds_tick(id),
+            26 => {
+                let result = apply_tick(&mut context, id, input);
+                write_squads(nodes, squads);
+                return match result {
+                    Ok(result) => result,
+                    Err(error) => {
+                        godot_error!("{error}");
+                        Array::new()
+                    }
+                };
+            }
             24 | 25 => {
                 let result = apply_ambush(&mut context, id, operation, input);
                 write_squads(nodes, squads);
@@ -179,29 +190,7 @@ impl SquadMovementCore {
                 write_squads(nodes, squads);
                 return match result {
                     Ok((plan, events)) => {
-                        let events: Array<Variant> = events
-                            .into_iter()
-                            .map(|e| match e {
-                                AttackEvent::Squad(e) => event(e),
-                                AttackEvent::Speech { soldier, text } => {
-                                    varray![5, soldier, &GString::from(&text)].to_variant()
-                                }
-                                AttackEvent::NeedsSupport {
-                                    team,
-                                    squad,
-                                    position,
-                                } => varray![
-                                    6,
-                                    team,
-                                    squad,
-                                    Vector3::new(position.x, position.y, position.z)
-                                ]
-                                .to_variant(),
-                                AttackEvent::Stat(name) => {
-                                    varray![2, &GString::from(name)].to_variant()
-                                }
-                            })
-                            .collect();
+                        let events: Array<Variant> = events.into_iter().map(attack_event).collect();
                         let bytes = plan.map_or_else(Vec::new, |p| p.checkpoint().unwrap());
                         varray![&events, &PackedByteArray::from(bytes.as_slice())]
                     }
@@ -298,7 +287,6 @@ fn apply_duties(
     op: i32,
     input: Array<Variant>,
 ) -> Result<(bool, Vec<frontline_core::squad_brain::Event>), &'static str> {
-    use frontline_core::squad_duties::Role;
     if input.len() != 2 {
         return Err("invalid squad duty input");
     }
@@ -310,41 +298,7 @@ fn apply_duties(
         .at(1)
         .try_to::<Gd<crate::battle_stats::BattleStatsCore>>()
         .map_err(|_| "invalid squad ledger")?;
-    if rows.len() > 100_000 {
-        return Err("squad role limit exceeded");
-    }
-    let mut roles = BTreeMap::new();
-    for row in rows.iter_shared() {
-        let row = row
-            .try_to::<Array<Variant>>()
-            .map_err(|_| "invalid squad role")?;
-        if row.len() != 3 {
-            return Err("invalid squad role width");
-        }
-        let id = row
-            .at(0)
-            .try_to::<u32>()
-            .map_err(|_| "invalid squad role actor")?;
-        let medic = row
-            .at(1)
-            .try_to::<bool>()
-            .map_err(|_| "invalid medic role")?;
-        let engineer = row
-            .at(2)
-            .try_to::<bool>()
-            .map_err(|_| "invalid engineer role")?;
-        if ctx.actors.soldier(id).is_none() || roles.insert(id, Role { medic, engineer }).is_some()
-        {
-            return Err("invalid squad role identity");
-        }
-    }
-    if ctx
-        .actors
-        .iter()
-        .any(|a| matches!(a,Actor::Soldier(s) if !roles.contains_key(&s.identity.id)))
-    {
-        return Err("missing squad role");
-    }
+    let roles = read_roles(ctx, rows)?;
     let role = |s: &frontline_core::infantry::Infantry| roles[&s.identity.id];
     let events = match op {
         17 => ctx.squad_rescue(id, &role)?,
@@ -370,123 +324,14 @@ fn apply_brain(
     op: i32,
     input: Array<Variant>,
 ) -> Result<(bool, Vec<frontline_core::squad_brain::Event>), &'static str> {
-    use frontline_core::{infantry_weapon::Weapon, squad::Report, squad_brain::Profile};
-    if input.len() != 4 {
-        return Err("invalid squad brain input");
-    }
-    let dt = input
-        .at(0)
-        .try_to::<f64>()
-        .map_err(|_| "invalid squad step")?;
-    let rows = input
-        .at(1)
-        .try_to::<Array<Variant>>()
-        .map_err(|_| "invalid squad profiles")?;
-    let saved = input
-        .at(2)
-        .try_to::<Array<PackedByteArray>>()
-        .map_err(|_| "invalid squad plans")?;
-    let impacts = input
-        .at(3)
-        .try_to::<Array<Variant>>()
-        .map_err(|_| "invalid squad impacts")?;
-    if rows.len() > 100_000 || saved.len() > 100_000 || impacts.len() > 100_000 {
-        return Err("squad brain input limit exceeded");
-    }
-    let mut weapons = BTreeMap::new();
-    let mut armor = BTreeMap::new();
-    for row in rows.iter_shared() {
-        let row = row
-            .try_to::<Array<Variant>>()
-            .map_err(|_| "invalid squad profile")?;
-        if row.len() != 5 {
-            return Err("invalid squad profile width");
-        }
-        let id = row
-            .at(0)
-            .try_to::<u32>()
-            .map_err(|_| "invalid profile actor")?;
-        let ammunition = row
-            .at(1)
-            .try_to::<i32>()
-            .map_err(|_| "invalid profile ammunition")?;
-        let magazine = row
-            .at(2)
-            .try_to::<i32>()
-            .map_err(|_| "invalid profile magazine")?;
-        let reload_time = row
-            .at(3)
-            .try_to::<f64>()
-            .map_err(|_| "invalid profile reload")?;
-        let protection = row
-            .at(4)
-            .try_to::<i32>()
-            .map_err(|_| "invalid profile armor")?;
-        if !(-1..=1_000_000).contains(&ammunition)
-            || !(0..=1_000_000).contains(&magazine)
-            || !reload_time.is_finite()
-            || !(0.0..=3600.0).contains(&reload_time)
-            || !(0..=100).contains(&protection)
-        {
-            return Err("invalid squad profile values");
-        }
-        match ctx.actors.get(id) {
-            Some(Actor::Soldier(_)) => {
-                weapons.insert(
-                    id,
-                    (ammunition >= 0).then_some(Weapon {
-                        ammunition,
-                        magazine,
-                        reload_time,
-                    }),
-                );
-            }
-            Some(Actor::Vehicle(v)) => {
-                armor.insert(v.kind.clone(), protection);
-            }
-            _ => return Err("missing squad profile actor"),
-        }
-    }
-    if ctx.actors.iter().any(|a| match a {
-        Actor::Soldier(s) => !weapons.contains_key(&s.identity.id),
-        Actor::Vehicle(v) => !armor.contains_key(&v.kind),
-        _ => false,
-    }) {
-        return Err("missing squad definition");
-    }
-    let plans = saved
-        .iter_shared()
-        .map(|b| AttackPlan::restore(b.as_slice()))
-        .collect::<Result<Vec<_>, _>>()?;
-    let mut reports = vec![];
-    for row in impacts.iter_shared() {
-        let row = row
-            .try_to::<Array<Variant>>()
-            .map_err(|_| "invalid impact")?;
-        if row.len() != 2 {
-            return Err("invalid impact width");
-        }
-        let at = row
-            .at(0)
-            .try_to::<Vector3>()
-            .map_err(|_| "invalid impact position")?;
-        let time = row
-            .at(1)
-            .try_to::<f64>()
-            .map_err(|_| "invalid impact time")?;
-        if !at.is_finite()
-            || at.abs().max_axis().is_none()
-            || at.x.abs().max(at.y.abs()).max(at.z.abs()) > 1e6
-            || !time.is_finite()
-            || time.abs() > 1e12
-        {
-            return Err("invalid impact values");
-        }
-        reports.push(Report {
-            position: crate::point(at),
-            time,
-        });
-    }
+    use frontline_core::squad_brain::Profile;
+    let BrainInput {
+        dt,
+        weapons,
+        armor,
+        plans,
+        reports,
+    } = read_brain(ctx, input)?;
     let p = Profile {
         plans: &plans,
         impacts: &reports,
@@ -609,38 +454,7 @@ fn apply_ambush(
         ) else {
             return Err("invalid ambush input");
         };
-        if rows.len() > 1_000_000 {
-            return Err("ambush profile limit exceeded");
-        }
-        let mut air = BTreeMap::new();
-        for row in rows.iter_shared() {
-            let row = row
-                .try_to::<Array<Variant>>()
-                .map_err(|_| "invalid ambush profile")?;
-            if row.len() != 2 {
-                return Err("invalid ambush profile");
-            }
-            let (Ok(id), Ok(value)) = (row.at(0).try_to::<u32>(), row.at(1).try_to::<bool>())
-            else {
-                return Err("invalid ambush profile");
-            };
-            let Some(Actor::Vehicle(v)) = ctx.actors.get(id) else {
-                return Err("unknown ambush vehicle");
-            };
-            if air
-                .insert(v.kind.clone(), value)
-                .is_some_and(|old| old != value)
-            {
-                return Err("inconsistent aircraft profile");
-            }
-        }
-        if ctx
-            .actors
-            .iter()
-            .any(|a| matches!(a,Actor::Vehicle(v) if !air.contains_key(&v.kind)))
-        {
-            return Err("missing ambush vehicle profile");
-        }
+        let air = read_air(ctx, rows)?;
         let mut p = AmbushPlan::restore(bytes.as_slice())?;
         if p.squad != id {
             return Err("wrong ambush squad");
@@ -649,4 +463,305 @@ fn apply_ambush(
         return Ok((p, out));
     }
     Err("invalid ambush operation")
+}
+
+fn read_roles(
+    ctx: &Context<'_>,
+    rows: Array<Variant>,
+) -> Result<BTreeMap<u32, frontline_core::squad_duties::Role>, &'static str> {
+    use frontline_core::squad_duties::Role;
+    if rows.len() > 100_000 {
+        return Err("squad role limit exceeded");
+    }
+    let mut roles = BTreeMap::new();
+    for row in rows.iter_shared() {
+        let row = row
+            .try_to::<Array<Variant>>()
+            .map_err(|_| "invalid squad role")?;
+        if row.len() != 3 {
+            return Err("invalid squad role width");
+        }
+        let id = row
+            .at(0)
+            .try_to::<u32>()
+            .map_err(|_| "invalid squad role actor")?;
+        let medic = row
+            .at(1)
+            .try_to::<bool>()
+            .map_err(|_| "invalid medic role")?;
+        let engineer = row
+            .at(2)
+            .try_to::<bool>()
+            .map_err(|_| "invalid engineer role")?;
+        if ctx.actors.soldier(id).is_none() || roles.insert(id, Role { medic, engineer }).is_some()
+        {
+            return Err("invalid squad role identity");
+        }
+    }
+    if ctx
+        .actors
+        .iter()
+        .any(|a| matches!(a,Actor::Soldier(s) if !roles.contains_key(&s.identity.id)))
+    {
+        return Err("missing squad role");
+    }
+    Ok(roles)
+}
+
+struct BrainInput {
+    dt: f64,
+    weapons: BTreeMap<u32, Option<frontline_core::infantry_weapon::Weapon>>,
+    armor: BTreeMap<String, i32>,
+    plans: Vec<AttackPlan>,
+    reports: Vec<frontline_core::squad::Report>,
+}
+fn read_brain(ctx: &Context<'_>, input: Array<Variant>) -> Result<BrainInput, &'static str> {
+    use frontline_core::{infantry_weapon::Weapon, squad::Report};
+    if input.len() != 4 {
+        return Err("invalid squad brain input");
+    }
+    let dt = input
+        .at(0)
+        .try_to::<f64>()
+        .map_err(|_| "invalid squad step")?;
+    let rows = input
+        .at(1)
+        .try_to::<Array<Variant>>()
+        .map_err(|_| "invalid squad profiles")?;
+    let saved = input
+        .at(2)
+        .try_to::<Array<PackedByteArray>>()
+        .map_err(|_| "invalid squad plans")?;
+    let impacts = input
+        .at(3)
+        .try_to::<Array<Variant>>()
+        .map_err(|_| "invalid squad impacts")?;
+    if rows.len() > 100_000 || saved.len() > 100_000 || impacts.len() > 100_000 {
+        return Err("squad brain input limit exceeded");
+    }
+    let mut weapons = BTreeMap::new();
+    let mut armor = BTreeMap::new();
+    for row in rows.iter_shared() {
+        let row = row
+            .try_to::<Array<Variant>>()
+            .map_err(|_| "invalid squad profile")?;
+        if row.len() != 5 {
+            return Err("invalid squad profile width");
+        }
+        let id = row
+            .at(0)
+            .try_to::<u32>()
+            .map_err(|_| "invalid profile actor")?;
+        let ammunition = row
+            .at(1)
+            .try_to::<i32>()
+            .map_err(|_| "invalid profile ammunition")?;
+        let magazine = row
+            .at(2)
+            .try_to::<i32>()
+            .map_err(|_| "invalid profile magazine")?;
+        let reload_time = row
+            .at(3)
+            .try_to::<f64>()
+            .map_err(|_| "invalid profile reload")?;
+        let protection = row
+            .at(4)
+            .try_to::<i32>()
+            .map_err(|_| "invalid profile armor")?;
+        if !(-1..=1_000_000).contains(&ammunition)
+            || !(0..=1_000_000).contains(&magazine)
+            || !reload_time.is_finite()
+            || !(0.0..=3600.0).contains(&reload_time)
+            || !(0..=100).contains(&protection)
+        {
+            return Err("invalid squad profile values");
+        }
+        match ctx.actors.get(id) {
+            Some(Actor::Soldier(_)) => {
+                weapons.insert(
+                    id,
+                    (ammunition >= 0).then_some(Weapon {
+                        ammunition,
+                        magazine,
+                        reload_time,
+                    }),
+                );
+            }
+            Some(Actor::Vehicle(v)) => {
+                armor.insert(v.kind.clone(), protection);
+            }
+            _ => return Err("missing squad profile actor"),
+        }
+    }
+    if ctx.actors.iter().any(|a| match a {
+        Actor::Soldier(s) => !weapons.contains_key(&s.identity.id),
+        Actor::Vehicle(v) => !armor.contains_key(&v.kind),
+        _ => false,
+    }) {
+        return Err("missing squad definition");
+    }
+    let plans = saved
+        .iter_shared()
+        .map(|b| AttackPlan::restore(b.as_slice()))
+        .collect::<Result<Vec<_>, _>>()?;
+    let mut reports = vec![];
+    for row in impacts.iter_shared() {
+        let row = row
+            .try_to::<Array<Variant>>()
+            .map_err(|_| "invalid impact")?;
+        if row.len() != 2 {
+            return Err("invalid impact width");
+        }
+        let at = row
+            .at(0)
+            .try_to::<Vector3>()
+            .map_err(|_| "invalid impact position")?;
+        let time = row
+            .at(1)
+            .try_to::<f64>()
+            .map_err(|_| "invalid impact time")?;
+        if !at.is_finite()
+            || at.abs().max_axis().is_none()
+            || at.x.abs().max(at.y.abs()).max(at.z.abs()) > 1e6
+            || !time.is_finite()
+            || time.abs() > 1e12
+        {
+            return Err("invalid impact values");
+        }
+        reports.push(Report {
+            position: crate::point(at),
+            time,
+        });
+    }
+    Ok(BrainInput {
+        dt,
+        weapons,
+        armor,
+        plans,
+        reports,
+    })
+}
+
+fn read_air(
+    ctx: &Context<'_>,
+    rows: Array<Variant>,
+) -> Result<BTreeMap<String, bool>, &'static str> {
+    if rows.len() > 1_000_000 {
+        return Err("ambush profile limit exceeded");
+    }
+    let mut air = BTreeMap::new();
+    for row in rows.iter_shared() {
+        let row = row
+            .try_to::<Array<Variant>>()
+            .map_err(|_| "invalid ambush profile")?;
+        if row.len() != 2 {
+            return Err("invalid ambush profile");
+        }
+        let (Ok(id), Ok(value)) = (row.at(0).try_to::<u32>(), row.at(1).try_to::<bool>()) else {
+            return Err("invalid ambush profile");
+        };
+        let Some(Actor::Vehicle(v)) = ctx.actors.get(id) else {
+            return Err("unknown ambush vehicle");
+        };
+        if air
+            .insert(v.kind.clone(), value)
+            .is_some_and(|old| old != value)
+        {
+            return Err("inconsistent aircraft profile");
+        }
+    }
+    if ctx
+        .actors
+        .iter()
+        .any(|a| matches!(a,Actor::Vehicle(v) if !air.contains_key(&v.kind)))
+    {
+        return Err("missing ambush vehicle profile");
+    }
+    Ok(air)
+}
+
+fn attack_event(e: AttackEvent) -> Variant {
+    match e {
+        AttackEvent::Squad(e) => event(e),
+        AttackEvent::Speech { soldier, text } => {
+            varray![5, soldier, &GString::from(&text)].to_variant()
+        }
+        AttackEvent::NeedsSupport {
+            team,
+            squad,
+            position,
+        } => varray![
+            6,
+            team,
+            squad,
+            Vector3::new(position.x, position.y, position.z)
+        ]
+        .to_variant(),
+        AttackEvent::Stat(name) => varray![2, &GString::from(name)].to_variant(),
+    }
+}
+
+fn apply_tick(
+    ctx: &mut Context<'_>,
+    id: u32,
+    input: Array<Variant>,
+) -> Result<Array<Variant>, &'static str> {
+    use frontline_core::ambush_plan::AmbushPlan;
+    use frontline_core::squad_world::{Event as E, Profiles, Tick};
+    if input.len() != 5 {
+        return Err("invalid squad tick input");
+    }
+    let (Ok(brain), Ok(roles), Ok(air), Ok(mut ledger), Ok(ambushes)) = (
+        input.at(0).try_to::<Array<Variant>>(),
+        input.at(1).try_to::<Array<Variant>>(),
+        input.at(2).try_to::<Array<Variant>>(),
+        input
+            .at(3)
+            .try_to::<Gd<crate::battle_stats::BattleStatsCore>>(),
+        input.at(4).try_to::<Array<PackedByteArray>>(),
+    ) else {
+        return Err("invalid squad tick inputs");
+    };
+    if ambushes.len() > 100_000 {
+        return Err("squad ambush limit exceeded");
+    }
+    let mut data = read_brain(ctx, brain)?;
+    let roles = read_roles(ctx, roles)?;
+    let air = read_air(ctx, air)?;
+    let mut ambushes = ambushes
+        .iter_shared()
+        .map(|b| AmbushPlan::restore(b.as_slice()))
+        .collect::<Result<Vec<_>, _>>()?;
+    let profiles = Profiles {
+        role: &|s| roles[&s.identity.id],
+        armor: &|k| data.armor.get(k).copied().unwrap_or(0),
+        weapon: &|s| data.weapons[&s.identity.id],
+        air: &|k| air.get(k).copied().unwrap_or(false),
+    };
+    let mut ledger = ledger.bind_mut();
+    let mut tick = Tick {
+        attacks: &mut data.plans,
+        ambushes: &mut ambushes,
+        battle: &mut ledger.core,
+        impacts: &data.reports,
+    };
+    let events: Array<Variant> = ctx
+        .squad_tick(id, data.dt, &mut tick, &profiles)?
+        .into_iter()
+        .map(|e| match e {
+            E::Brain(e) => brain_event(e),
+            E::Attack(e) => attack_event(e),
+            E::Removed(id) => varray![11, id].to_variant(),
+        })
+        .collect();
+    let attacks: Array<PackedByteArray> = data
+        .plans
+        .iter()
+        .map(|p| PackedByteArray::from(p.checkpoint().unwrap().as_slice()))
+        .collect();
+    let ambushes: Array<PackedByteArray> = ambushes
+        .iter()
+        .map(|p| PackedByteArray::from(p.checkpoint().unwrap().as_slice()))
+        .collect();
+    Ok(varray![&events, &attacks, &ambushes])
 }

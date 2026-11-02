@@ -1526,8 +1526,10 @@ the same. The live squad-order dispatcher remains in Godot during migration.
 Squad battle drills now operate on retained Rust actors and routes: morale,
 routing and rallying, displacement under shellfire, bounding withdrawal, contact
 reactions, house clearing, ambush fire discipline and ammunition sharing. Decisions
-keep their existing priority, deadlines and random draws. The complete squad and
-world dispatchers still need integration before Rust owns the live battle.
+keep their existing priority, deadlines and random draws. The complete retained
+squad tick now connects these decisions with upkeep, plans, movement and support
+duties in gameplay order. The production world dispatcher still needs migration
+before Rust owns the live battle.
 Squad care and construction assignments now share those retained actors, rescue
 claims and paths. Covering smoke, medic priority, repair selection, surrender,
 straggler transfers and their battle records keep their existing order and timing.

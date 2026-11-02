@@ -10349,3 +10349,10 @@ mod ambush_plan_world;
 fn road_ambushes_are_identical_across_platforms() {
     golden("ambush_plan_world", &ambush_plan_world::transcript());
 }
+
+#[path = "fixtures/squad_world.rs"]
+mod squad_world;
+#[test]
+fn complete_squad_ticks_are_identical_across_platforms() {
+    golden("squad_world", &squad_world::transcript());
+}
