@@ -1130,6 +1130,11 @@ void fragment() {
 	rock *= mix(1.12, 0.65, weathered);
 	rock = mix(rock, rock * vec3(1.45, 1.40, 1.29), mineral * 0.65);
 	rock *= mix(0.86, 1.14, smoothstep(0.25, 0.75, macro));
+	// Stretch the stain field vertically; ledges and material patches interrupt each streak.
+	vec2 runoff_uv = vec2((p.x + p.y * 0.73) / 135.0, wpos.y / 2100.0 + seams * 0.035);
+	float runoff = smoothstep(0.50, 0.68, texture(detail_tex, runoff_uv).r);
+	runoff *= smoothstep(0.55, 1.2, slope) * mix(0.25, 0.85, patch);
+	rock *= mix(vec3(1.0), vec3(0.56, 0.61, 0.63), runoff);
 	float rock_height = mix(rock_sample.a, scree_sample.a, scree * 0.7);
 	float grass_detail = dot(moss_sample.rgb, vec3(0.2126, 0.7152, 0.0722));
 	float alpine_soil = clamp(0.52 + (habitat_bake.g - 0.5) * 1.3 + geometric.z * 0.18 - slope * 0.14, 0.0, 1.0);
