@@ -2803,9 +2803,18 @@ The numeric contract also records 128 connected ticks across four seeds, restori
 all match state and rebuilding perception between comparison ticks.
 The full core debug suite passes 1,025 tests, including all 137 exact numeric
 cases. The connected-tick transcript contains 8,331,996 bytes; formatting,
-changelog and presentation checks also pass. Release checks are being rerun.
+changelog and presentation checks also pass. All 161 relevant release-mode checks pass.
 
 This is the connected battlefield scheduler, not a standalone running match yet.
 Versioned production content, commanders, missions, the socket host, Godot's live
 client transition and independent whole-match replay verification remain required.
 No rendered performance result is implied by these core tests.
+
+## Current-main terrain integration
+
+The alpine terrain merge preserves three movement classes, ground-relative actors,
+water depth checks and ridge obstruction. Elevated maps still use the existing
+Godot movement, collision and flight paths where the native ports do not yet
+represent those rules. Elevated client joins retain the geology-aware loading
+worker. Those compatibility paths must be removed as the corresponding Rust
+heightfield and traversal support lands; full standalone simulation is not complete.

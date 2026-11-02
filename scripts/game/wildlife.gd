@@ -530,7 +530,7 @@ func _feed(f: Flock, dt: float) -> void:
 			else:
 				_hop(f, i, dt)
 		var q := f.p[i]
-		q.y = f.gy
+		q.y = f.gy if f.duck else _gy(q)
 		var pitch := 0.0
 		var h := f.hop[i]
 		if h < 1.0:
@@ -619,6 +619,7 @@ func _fly(f: Flock, dt: float) -> void:
 	f.vy = clampf((f.gy + alt - f.c.y) * 1.3, -3.0, 4.0)
 	var fs := f.speed if f.leaving or dist > 14.0 else lerpf(2.2, f.speed, dist / 14.0)
 	f.c += Vector3(-sin(f.hd) * fs, f.vy, -cos(f.hd) * fs) * dt
+	f.c.y = maxf(f.c.y, _gy(f.c) + 0.5)
 	var k0 := f.mix
 	f.mix = minf(1.0, f.mix + dt / 1.1)
 	if not f.leaving and dist < 1.2 and f.c.y - f.gy < 0.7:
@@ -676,7 +677,7 @@ func _take_off(f: Flock, from_p: Vector3, fright := true) -> void:
 	f.alarm = 0.0
 	for i in f.n:
 		var q := f.p[i]
-		q.y = f.gy
+		q.y = f.gy if f.duck else _gy(q)
 		f.was[i] = q
 		f.lag[i] = rng.randf_range(0.0, 0.35)
 	var away := f.c - from_p

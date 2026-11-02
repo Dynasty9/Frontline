@@ -107,7 +107,7 @@ func blast(p: Vector3, size: float, r: float) -> void:
 		var chance := float(FUEL[fk][0]) * (0.15 + 0.85 * k) * (1.0 - d / r)
 		if world.rng.randf() < chance:
 			ignite(st, 0.2 + 0.4 * k)
-	if p.y < 1.6 and not wet and size >= 1.15:
+	if p.y < world.ground_y(p) + 1.6 and not wet and size >= 1.15:
 		var woods: bool = world.terrain.woods[world.terrain.idx_of(p)] > 0
 		if world.rng.randf() < 0.28 * k * (1.6 if woods else 1.0) and _grass_at(p):
 			start_patch(p, world.rng.randf_range(1.6, 2.4) + size * 0.5, world.rng.randf_range(14.0, 24.0), 0)
@@ -116,7 +116,7 @@ func blast(p: Vector3, size: float, r: float) -> void:
 
 ## A grass fire at p, r across, burning for `life` seconds.
 func start_patch(p: Vector3, r: float, life: float, gen: int) -> void:
-	var at := Vector3(p.x, 0.0, p.z)
+	var at := Vector3(p.x, world.ground_y(p), p.z)
 	patches.append([at, r, life, gen])
 	_stamp(at, r + 1.0, 1)
 	world.fx_event([Fx.FIRE, at, r, life])

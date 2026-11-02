@@ -8,7 +8,8 @@ extends RefCounted
 ## heights - and the view draws the water surface over it.
 
 const LEVEL := -0.45  # the water's surface
-const WADE := -1.0  # a bed above this is shallow enough to wade (a ford, the edge of a beach)
+const MAX_WADE_DEPTH := 0.55
+const WADE := LEVEL - MAX_WADE_DEPTH  # a bed above this is shallow enough to wade (a ford, the edge of a beach)
 const RIVER_FLOW := 0.45  # how fast a river runs in mid-stream (m/s)
 
 var world
@@ -504,10 +505,13 @@ func carve() -> void:
 		# (view) the heights' texture, where they were lowered
 		var dh: PackedFloat32Array = tm.dh
 		for i in changed:
-			img.set_pixel(i % TerrainMap.DN, i / TerrainMap.DN, Color(dh[i], 0, 0))
+			img.set_pixel(i % TerrainMap.DN, i / TerrainMap.DN, Color(dh[i], world.terrain.landform.height(Vector3((i % TerrainMap.DN + 0.5) / TerrainMap.DRES - MapDims.HALF, 0, (i / TerrainMap.DN + 0.5) / TerrainMap.DRES - MapDims.HALF)), 0))
 	if img:
 		tm.deform_dirty.clear()
 		tm.deform_dirty.append(Rect2i(0, 0, TerrainMap.DN, TerrainMap.DN))
+	for i in tm.base.size():
+		if tm.base[i] >= TerrainMap.WATER:
+			tm._nav_refresh(i)
 	version += 1
 
 
@@ -546,7 +550,7 @@ func finish_loading(native: RefCounted) -> void:
 		if tm.deform_img:
 			var heights: PackedFloat32Array = tm.dh
 			var img := Image.create_from_data(TerrainMap.DN, TerrainMap.DN, false, Image.FORMAT_RF, heights.to_byte_array())
-			img.convert(Image.FORMAT_RH)
+			img.convert(Image.FORMAT_RGH)
 			tm.deform_img.copy_from(img)
 			tm.deform_dirty.clear()
 			tm.deform_dirty.append(Rect2i(0, 0, TerrainMap.DN, TerrainMap.DN))
@@ -570,3 +574,31 @@ func on_deck(p: Vector3) -> bool:
 
 func on_deck_i(i: int) -> bool:
 	return not deck.is_empty() and deck[i] == 1
+
+
+## A dry bank or bridge is safe even where the underlying river is deep.
+func depth_at(p: Vector3) -> float:
+	if not wet_at(p) or on_deck(p):
+		return 0.0
+	return maxf(0.0, LEVEL - world.terrain.deform_at(p))
+
+
+func too_deep(p: Vector3) -> bool:
+	if on_deck(p):
+		return false
+	# Deep-labelled cells also stay blocked while a water layout is being carved.
+	return deep_at(p) or depth_at(p) > MAX_WADE_DEPTH + 0.001
+
+
+## Shore cells must be safe at their edges too, or a route can hug a submerged bank.
+func cell_too_deep(p: Vector3) -> bool:
+	if on_deck(p):
+		return false
+	if too_deep(p):
+		return true
+	if not wet_at(p):
+		return false
+	for offset in [Vector3(-0.45, 0, -0.45), Vector3(0.45, 0, -0.45), Vector3(-0.45, 0, 0.45), Vector3(0.45, 0, 0.45)]:
+		if too_deep(p + offset):
+			return true
+	return false

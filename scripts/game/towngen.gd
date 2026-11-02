@@ -860,7 +860,7 @@ func roadside(cars: int, wrecks: int) -> void:
 
 ## Keep the scattered scenery out of town and off the roads; hand the street
 ## furniture to the world.
-func finish() -> void:
+func finish(build_view := true) -> void:
 	mg._keep_clear([rect.get_center(), REACH + 4.0])
 	for hm in hamlets:
 		mg._keep_clear([Vector2(hm.c.x, hm.c.z), 24.0])
@@ -868,4 +868,5 @@ func finish() -> void:
 		var arr: PackedVector3Array = poly
 		for k in range(0, arr.size(), 2):
 			mg._keep_clear([Vector2(arr[k].x, arr[k].z), 3.6])
-	world.set_decor(decor, rect)
+	if build_view:
+		world.set_decor(decor, rect)

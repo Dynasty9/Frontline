@@ -2655,6 +2655,183 @@
         }
       ],
       "output": null
+    },
+    {
+      "entry": "changelog/unreleased/mountain-battlefields.md",
+      "summary": "Seeded snowy mountains, mossy hills and river valleys now surround the towns and roads of standard battles.",
+      "medium": "still",
+      "stage": "native-media",
+      "rationale": "Matched in-game captures show the generated geography and material refinement; screenshots do not claim traversal or frame-rate proof.",
+      "source_ref": "86448fa",
+      "sources": [
+        {
+          "file": "changelog/unreleased/mountain-battlefields/before.jpg",
+          "sha256": "72fe3e888174f88bfaffe6a6ff7c76b7bdfe0bd5b63f3cd93093116144e823e4",
+          "caption": "Before: the flat battlefield with the same seed and camera."
+        },
+        {
+          "file": "changelog/unreleased/mountain-battlefields/after.jpg",
+          "sha256": "ccc37b0106c6b928d682469022b3867b18799041fa2fba4b96d8b479d9eb3425",
+          "caption": "After: fractured mountain belts and denser woods around the town and river valley."
+        },
+        {
+          "file": "changelog/unreleased/mountain-battlefields/valley.jpg",
+          "sha256": "ccc81be693fd8784bd036d6bbb5608f5027275c1f3d01b0553d47e39005cf3ab",
+          "caption": "Looking inland through the coastal valley with Mountain reflections enabled."
+        }
+      ],
+      "output": null,
+      "title": "Mountain battlefields",
+      "version": "unreleased",
+      "kind": "new"
+    },
+    {
+      "entry": "changelog/unreleased/terrain-traversal.md",
+      "summary": "Tracks and wheels choose suitable slopes, and infantry wade through shallows instead of walking underwater.",
+      "medium": "text",
+      "stage": "text",
+      "rationale": "Traversal correctness is supported by deterministic route, depth and movement assertions plus campaign regressions. Text describes the safety rules without implying a recorded movement comparison.",
+      "source_ref": "fe07e0e",
+      "sources": [],
+      "output": null,
+      "title": "Safer routes across hills and water",
+      "version": "unreleased",
+      "kind": "improved"
+    },
+    {
+      "entry": "changelog/unreleased/alpine-surface-detail.md",
+      "summary": "Mountain faces gain distinct rock masses, relief-aware moss and snow, and small conifer stands at their feet.",
+      "medium": "still",
+      "stage": "native-media",
+      "rationale": "Matched native screenshots show surface and terrain-form changes; they do not demonstrate movement or performance.",
+      "source_ref": "codex/alpine-battlefields",
+      "sources": [
+        {
+          "file": "changelog/unreleased/alpine-surface-detail/before.jpg",
+          "sha256": "d5542d97dd01903186f3b3ce1bfebd783cd457b2e997c40517cdf5bfdc8e5fa2",
+          "caption": "Before: immutable 915042f resource pack."
+        },
+        {
+          "file": "changelog/unreleased/alpine-surface-detail/after.jpg",
+          "sha256": "c2d2327aec64f09f41989c3545c5bdb155176005111c36b05e377765aabb4957",
+          "caption": "After: alpine material/form refinement on codex/alpine-battlefields."
+        }
+      ],
+      "output": null,
+      "title": "Rock faces with depth and greener foothills",
+      "version": "unreleased",
+      "kind": "improved",
+      "capture": {
+        "before_ref": "915042f",
+        "after_ref": "codex/alpine-battlefields",
+        "renderer": "Godot 4.7.2 Forward+, RTX 3090, 1600x900",
+        "command": "godot --main-pack PACK --resolution 1600x900 -- --aivai --seed=3 --offscreen --nohud --set=perf:0 --mood=golden --preset=high --focus=-100,0 --zoom=600 --pitch=-38 --cam-yaw=0.7 --perf-at=5 --perf-duration=10 --perf-shot=OUTPUT.png"
+      }
+    },
+    {
+      "entry": "changelog/unreleased/alpine-variation.md",
+      "summary": "Mineral bands, dry grass, scrub and scattered stones break up the alpine landscape, with vegetation changing as the ground rises.",
+      "medium": "still",
+      "stage": "native-media",
+      "rationale": "Matched in-game command views show broad surface variation and vegetation distribution. Small passable dressing is most visible at closer zoom.",
+      "source_ref": "codex/alpine-battlefields",
+      "sources": [
+        {
+          "file": "changelog/unreleased/alpine-variation/before.jpg",
+          "sha256": "c2d2327aec64f09f41989c3545c5bdb155176005111c36b05e377765aabb4957",
+          "caption": "Before: 306b762, previous material refinement."
+        },
+        {
+          "file": "changelog/unreleased/alpine-variation/after.jpg",
+          "sha256": "a75e4c3a7d4c2a198a0c8ee7a92f5d6bfb4d7f4b2f43f442345614be2e093c02",
+          "caption": "After: elevation-dependent vegetation and varied ground surfaces."
+        },
+        {
+          "file": "changelog/unreleased/alpine-variation/detail.jpg",
+          "sha256": "f15e34216c8bfb28ed9ed72e0fd714aade07e467929e7600fe8ca525b4d3691c",
+          "caption": "Closer daylight view of passable scrub and stones."
+        }
+      ],
+      "output": null,
+      "title": "More varied mountain surfaces and vegetation",
+      "version": "unreleased",
+      "kind": "improved",
+      "capture": {
+        "before_ref": "306b762",
+        "after_ref": "codex/alpine-battlefields",
+        "command": "godot --main-pack PACK --resolution 1600x900 -- --aivai --seed=3 --offscreen --nohud --set=perf:0 --mood=golden --preset=high --focus=-100,0 --zoom=600 --pitch=-38 --cam-yaw=0.7 --perf-at=5 --perf-duration=10 --perf-shot=OUTPUT.png",
+        "detail": "Same seed and pack; --mood=day --focus=-160,70 --zoom=140 --pitch=-35 --cam-yaw=0.7 --screenshot=OUTPUT --shot-at=2 --quit-after=3"
+      }
+    },
+    {
+      "entry": "changelog/unreleased/alpine-habitats.md",
+      "summary": "Greener gullies, contour-following woods and vegetation on mountain ledges replace randomly scattered greenery.",
+      "medium": "still",
+      "stage": "native-media",
+      "rationale": "Matched native command-camera images show habitat-driven ground cover and woodland distribution; a closer view shows species and ledge placement.",
+      "source_ref": "codex/alpine-battlefields",
+      "sources": [
+        {
+          "file": "changelog/unreleased/alpine-habitats/before.jpg",
+          "sha256": "a75e4c3a7d4c2a198a0c8ee7a92f5d6bfb4d7f4b2f43f442345614be2e093c02",
+          "caption": "Before: 1e740f8 terrain variation."
+        },
+        {
+          "file": "changelog/unreleased/alpine-habitats/after.jpg",
+          "sha256": "a432630eddf5cd16fa1d7e62806d42fee31c74b4017bf182628705e7f4742dec",
+          "caption": "After: woodland and soil following mountain habitats."
+        },
+        {
+          "file": "changelog/unreleased/alpine-habitats/detail.jpg",
+          "sha256": "f04d80fb1d29def591a83ebe2de37a7d87c39468efd3564ee827ccf036306778",
+          "caption": "Closer daylight view of conifers on ledges."
+        }
+      ],
+      "output": null,
+      "title": "Woodland follows the mountain slopes",
+      "version": "unreleased",
+      "kind": "improved",
+      "capture": {
+        "before_ref": "1e740f8",
+        "after_ref": "codex/alpine-battlefields",
+        "overview": "godot --main-pack PACK --resolution 1600x900 -- --aivai --seed=3 --offscreen --nohud --set=perf:0 --mood=golden --preset=high --focus=-100,0 --zoom=600 --pitch=-38 --cam-yaw=0.7 --perf-at=5 --perf-duration=10 --perf-shot=OUTPUT.png",
+        "detail": "Same seed and pack; --mood=day --focus=-160,70 --zoom=140 --pitch=-35 --cam-yaw=0.7 --screenshot=OUTPUT --shot-at=2 --quit-after=3"
+      }
+    },
+    {
+      "entry": "changelog/unreleased/alpine-rock-relief.md",
+      "summary": "Mountain faces gain broken mineral layers, darker weathered seams and uneven pockets of loose stone.",
+      "medium": "still",
+      "stage": "native-media",
+      "rationale": "Matched golden-hour command views show larger weathering patterns; a daylight detail shows the surface at closer range.",
+      "source_ref": "codex/alpine-battlefields",
+      "sources": [
+        {
+          "file": "changelog/unreleased/alpine-rock-relief/before.jpg",
+          "sha256": "4ea2e7e1d9da096e9e12148ee3520df1ec1b2b074e2fcd3c0fb0488b4e8c50eb",
+          "caption": "before"
+        },
+        {
+          "file": "changelog/unreleased/alpine-rock-relief/after.jpg",
+          "sha256": "aab245fa3246a62c6cd5f881c708db3d77ac4eb78ad05dfa7f1238563cd47108",
+          "caption": "after"
+        },
+        {
+          "file": "changelog/unreleased/alpine-rock-relief/detail.jpg",
+          "sha256": "94e68f65b6ef56cd394edcb9ecba4748c9eefd1b1e3b8cf9ae11be024ef84019",
+          "caption": "detail"
+        }
+      ],
+      "output": null,
+      "title": "Broken stone across mountain faces",
+      "version": "unreleased",
+      "kind": "improved",
+      "capture": {
+        "before_ref": "f58f857",
+        "after_ref": "codex/alpine-battlefields",
+        "detail": "godot --main-pack PACK --resolution 1600x900 -- --aivai --seed=3 --offscreen --nohud --set=perf:0 --mood=day --preset=high --focus=-160,70 --zoom=140 --pitch=-35 --cam-yaw=0.7 --screenshot=OUTPUT --shot-at=2 --quit-after=3",
+        "overview": "godot --main-pack PACK --resolution 1600x900 -- --aivai --seed=3 --offscreen --nohud --set=perf:0 --mood=golden --preset=high --focus=-100,0 --zoom=600 --pitch=-38 --cam-yaw=0.7 --perf-at=5 --perf-duration=10 --perf-shot=OUTPUT.png"
+      }
     }
   ],
   "layout_capture": {

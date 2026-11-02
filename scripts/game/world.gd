@@ -396,6 +396,10 @@ func spawn(kind: String, props: Dictionary) -> Entity:
 		next_eid += 1
 	e.srv = true
 	e.apply_props(props)
+	if e is Structure and is_zero_approx(e.position.y) and e.skind != "bridge":
+		e.position.y = terrain.landform.height(e.position)
+	if e is Soldier or (e is Vehicle and not e.is_boat()):
+		e.position.y = maxf(e.position.y, ground_y(e.position))
 	e.name = "E%d" % e.eid
 	_register(e)
 	add_child(e)
@@ -552,13 +556,13 @@ func entity(id: int) -> Entity:
 
 ## Ground height at p: the duckboards, a metre down, inside a finished trench.
 func ground_y(p: Vector3) -> float:
-	if terrain and terrain._native:
+	if terrain and terrain._native and terrain.landform.heights.is_empty():
 		return float(terrain._native.ground_y(p, water != null and not water.deck.is_empty() and water.on_deck(p)))
 	if water and not water.deck.is_empty() and water.on_deck(p):
 		return 0.06  # on a bridge deck, over the water
 	for st: Structure in _trenches_at(p):
 		if is_instance_valid(st) and not st.gone and st.built and TrenchNet.inside(st, p, 0.05):
-			return TrenchNet.FLOOR_Y + 0.15
+			return terrain.landform.height(p) + TrenchNet.FLOOR_Y + 0.15
 	return terrain.deform_at(p) if terrain else 0.0
 
 
@@ -591,7 +595,7 @@ func trench_mount_spot(pos: Vector3, yaw: float) -> Dictionary:
 
 
 func in_trench(p: Vector3) -> bool:
-	if terrain and terrain._native:
+	if terrain and terrain._native and terrain.landform.heights.is_empty():
 		return bool(terrain._native.in_trench(p))
 	for st: Structure in _trenches_at(p):
 		if is_instance_valid(st) and not st.gone and st.built and TrenchNet.inside(st, p, 0.05):
@@ -602,7 +606,7 @@ func in_trench(p: Vector3) -> bool:
 ## True when a shooter at `from` is looking along the trench bay that `p` is in
 ## (enfilade): the zig-zag keeps that to one short bay at a time.
 func trench_enfiladed(p: Vector3, from: Vector3) -> bool:
-	if terrain and terrain._native:
+	if terrain and terrain._native and terrain.landform.heights.is_empty():
 		return bool(terrain._native.trench_enfiladed(p, from))
 	var to := Defs.flat(p - from)
 	if to.length() < 1.0:
@@ -628,6 +632,8 @@ func placement_error(team: int, kind: String, pos: Vector3, yaw: float) -> Strin
 	var half: Vector2 = def.size * 0.5
 	if kind == "trench":
 		half.x += TrenchNet.HALF_W
+	if not terrain.landform.fits(pos, half, yaw):
+		return "The ground is too steep or uneven to build here."
 	var c := Vector2(pos.x, pos.z)
 	if not water.is_empty():
 		var b := Basis(Vector3.UP, yaw)
@@ -1152,7 +1158,7 @@ func _client_ready() -> void:
 	# so the client lays its water out while the rest comes in, then everything
 	# on it, then word that that's all there is
 	var sent := 0
-	var pk := _pack({"n": recs.size(), "water": water.to_dict(), "roads": roads, "decor": decor, "town": town_rect, "kinds": terrain.base})
+	var pk := _pack({"n": recs.size(), "water": water.to_dict(), "roads": roads, "decor": decor, "town": town_rect, "kinds": terrain.base, "landform": terrain.landform.heights})
 	rpc_id(p, "_rpc_join_map", pk)
 	sent += (pk[1] as PackedByteArray).size()
 	for i in range(0, recs.size(), JOIN_PACK):
@@ -1345,6 +1351,7 @@ var load_frac := 0.0  # (client) how far it has got, 0..1
 var _join_n := 0  # how many entities the host is sending
 var _join_ground := false  # the ground has come
 var _join_end := false  # and everything else
+var _join_landform := PackedFloat32Array()
 var _join_kinds := PackedByteArray()  # the host's ground kinds, until laid
 var _load_q: Array = []  # [eid, kind ("" once gone), props], to build in the order they came
 var _load_i := 0
@@ -1406,6 +1413,11 @@ func _rpc_join_map(pk: Array) -> void:
 	if not d is Dictionary:
 		push_error("The host's map didn't unpack.")
 		return
+	var relief = d.get("landform", PackedFloat32Array())
+	if not Landform.valid(relief, MapDims.N):
+		push_error("The host terrain is invalid.")
+		return
+	_join_landform = relief
 	_join_n = int(d.get("n", 0))
 	water.from_dict(d.get("water", {}))
 	roads = d.get("roads", [[], [], []])
@@ -1576,13 +1588,15 @@ func _lay_ground() -> void:
 	_ground_water = WaterMap.new(self)
 	_ground_water.from_dict(water.to_dict())
 	terrain.begin_ground_import()
-	_ground_native = _ground_water.begin_loading(_join_kinds)
+	# shortcut: the native loading worker must import geology before it can handle elevated joins.
+	_ground_native = _ground_water.begin_loading(_join_kinds) if _join_landform.is_empty() else null
 	if _ground_native:
 		return
 	_ground_task = WorkerThreadPool.add_task(_ground_job, false, "Laying out the ground")
 
 
 func _ground_job() -> void:
+	terrain.install_landform(_join_landform)
 	var w := _ground_water
 	if not w.is_empty():
 		w.paint_kinds()
@@ -1608,6 +1622,7 @@ func _ground_done() -> void:
 	var w := _ground_water
 	_ground_water = null
 	_join_kinds = PackedByteArray()
+	_join_landform = PackedFloat32Array()
 	if w and not w.is_empty():
 		water.deck = w.deck
 		water.mask = w.mask

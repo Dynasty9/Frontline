@@ -607,7 +607,7 @@ func mount_pos() -> Vector3:
 			var lp := mg_pivot_local() + Vector3(0, 0, (g.grip_r as Vector3).z + (0.34 if variant == 1 else 0.5))
 			var mp := position + b * Vector3(lp.x, 0, lp.z)
 			if variant == 1:
-				mp.y = TrenchNet.FLOOR_Y + 0.15
+				mp.y = world.terrain.landform.height(mp) + TrenchNet.FLOOR_Y + 0.15
 			return mp
 	return position + b * Vector3(0, 0, -0.5)
 
@@ -1059,7 +1059,7 @@ static func preview_model(kind: String, side: int, v := 0, sz := Vector3.ZERO, s
 
 ## A tree. Its id decides the look, so every peer builds the same one and
 ## the tree that falls when it is felled is the one that stood: broadleaf
-## (a third are conifers); variant 1 is a small orchard tree. With 16 set the
+## (a third are conifers); variant 1 is an orchard tree, 2 an alpine conifer. With 16 set the
 ## fire has been through it: the same tree as a bare black snag. Every part
 ## of it is merged, so the parts go straight into the merged meshes (a
 ## battlefield has over a thousand trees, of twenty-odd parts each); `root`
@@ -1070,7 +1070,7 @@ static func tree_model(root: Node3D, id: int, v: int) -> void:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = id * 7919 + v
 	var bake := Mats.Bake.new()
-	if v != 1 and (id * 2654435761) % 100 < 34:
+	if v == 2 or (v != 1 and (id * 2654435761) % 100 < 34):
 		_conifer(bake, rng)
 	else:
 		_broadleaf(bake, rng, v == 1)

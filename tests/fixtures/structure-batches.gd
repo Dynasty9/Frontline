@@ -56,6 +56,23 @@ func _ready() -> void:
 	c.free()
 	view._build_draw_batch(Vector2i(1, 0))
 	assert(view._draw_batches.is_empty(), "A queued structure may despawn before its batch is built")
+	var trees: Array[Structure] = []
+	for id in [10, 11]:
+		var tree := wall(w, id, Vector3(id * 2, 12, 20))
+		tree.skind = "tree"
+		tree.model.get_child(0).free()
+		Structure.tree_model(tree.model, id, 0)
+		trees.append(tree)
+		view._queue_draw_batch(tree)
+	view._build_draw_batch(Vector2i.ZERO)
+	assert(view._draw_members.has(10) and view._draw_members.has(11), "Tree bark and foliage must share spatial batches")
+	for tree in trees:
+		for part in tree.model.get_children():
+			assert(not part.visible, "Batched foliage must not draw twice")
+	view.unbatch(trees[0])
+	assert(view._draw_members.has(11) and not view._draw_members.has(10), "Felling or burning one tree preserves its neighbour")
+	for part in trees[0].model.get_children():
+		assert(part.visible, "Changed trees regain individual foliage and bark")
 	w.free()
 	print("STRUCTURE_BATCHES passed")
 	Sfx._ensure()

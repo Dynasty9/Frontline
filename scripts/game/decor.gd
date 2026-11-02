@@ -292,6 +292,16 @@ func _beam(a: Vector3, b: Vector3, t: float, kind: String, col = null, shadow :=
 
 func _make(h: Node3D, kind: String, ex) -> void:
 	match kind:
+		"alpine_scrub", "alpine_stones":
+			var scale := float(ex)
+			for i in rng.randi_range(3, 6):
+				var p := Vector3(rng.randf_range(-1.0, 1.0), 0.0, rng.randf_range(-1.0, 1.0)) * scale
+				p.y = world.ground_y(_at * p) - _at.origin.y - 0.08
+				var r := rng.randf_range(0.22, 0.55) * scale
+				if kind == "alpine_scrub":
+					_leaf(r, p + Vector3(0, r * 0.35, 0), Res.vary(Color(0.19, 0.25, 0.10), 0.1, rng), false)
+				else:
+					_m(Res.sphere(1.0, 5), "stone", Vector3.ZERO, Res.vary(Color(0.44, 0.43, 0.39), 0.12, rng), Vector3.ZERO, false, false, Mats.place(p, Vector3(0.1, rng.randf() * TAU, 0.2), Vector3(r * 1.5, r * 0.45, r)))
 		"walk":
 			var s: Vector3 = ex
 			_m(Res.box(s), "concrete", Vector3(0, s.y * 0.5, 0), Color(0.6, 0.58, 0.54), Vector3.ZERO, false, true)

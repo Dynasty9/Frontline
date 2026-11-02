@@ -31,6 +31,25 @@ func _ready() -> void:
 	atmo._d = Atmosphere.MOODS.day
 	atmo._apply_haze(45.0)
 	check(is_equal_approx(atmo.env.volumetric_fog_density, 0.0011 * Atmosphere.VOLUME_STRENGTH * Atmosphere.haze_distance_factor(45.0)), "day volume density resets after another mood")
+	var w := World.new()
+	w.terrain = TerrainMap.new(w)
+	w.terrain.landform.peak = 100.0
+	atmo.world = w
+	Settings.v.alpine_haze = false
+	atmo._apply_haze(600.0)
+	var thin := atmo.env.fog_density
+	Settings.v.alpine_haze = true
+	atmo._apply_haze(600.0)
+	check(atmo.env.fog_density > thin, "Alpine haze can be enabled independently")
+	w.cam = RtsCamera.new()
+	w.add_child(w.cam)
+	w.cam.rotation.x = -PI * 0.5
+	atmo._apply_haze(600.0)
+	check(is_equal_approx(atmo.env.fog_density, thin), "Overhead command views do not gain a thick haze blanket")
+	Settings.v.alpine_haze = false
+	atmo._apply_haze(600.0)
+	check(is_equal_approx(atmo.env.fog_density, thin), "Disabling alpine haze restores command-camera clarity")
+	w.free()
 	atmo.free()
 	MapSymbols.build_atlas(self)
 	for friendly in [true, false]:

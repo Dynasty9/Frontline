@@ -142,7 +142,7 @@ func _draw_cell(st: Structure) -> Vector2i:
 
 
 func _batchable(st: Structure) -> bool:
-	return st.view_active and st.model != null and st.team < 0 and st.built and not st.burnt and st.burn <= 0.0 and st._char <= 0.0 and st.toss == null and st.skind in ["house_wall", "floor", "crates", "low_wall"]
+	return st.view_active and st.model != null and st.team < 0 and st.built and not st.burnt and st.burn <= 0.0 and st._char <= 0.0 and st.toss == null and st.skind in ["house_wall", "floor", "crates", "low_wall", "tree"]
 
 
 func _queue_draw_batch(st: Structure) -> void:
@@ -171,7 +171,7 @@ func _build_draw_batch(cell: Vector2i) -> void:
 		Mats._collect(st.model, Transform3D(Basis.IDENTITY, -origin) * st.transform * st.model.transform, own, parts, [], true, true, false)
 		var suitable := not own.is_empty()
 		for group: Dictionary in own.values():
-			if group.mat.get_shader_parameter("local_space") == true or group.mat.shader != Mats.shader():
+			if group.mat.get_shader_parameter("local_space") == true or group.mat.shader not in [Mats.shader(), Mats.foliage().shader]:
 				suitable = false
 		if not suitable:
 			continue

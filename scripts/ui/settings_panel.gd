@@ -102,6 +102,8 @@ func _ready() -> void:
 		["option", "ao_q", "Ambient occlusion quality", Settings.LABELS.ao_q, "More samples, less noise."],
 		["check", "ssil", "Indirect light", null, "Light bouncing off nearby surfaces (screen-space)."],
 		["check", "gi", "Global illumination", null, "SDFGI: full bounced lighting. Expensive."],
+		["check", "terrain_reflections", "Mountain reflections", null, "Cached distant terrain reflected in water. Does not reflect moving units; approximate near shorelines."],
+		["check", "alpine_haze", "Alpine distance haze", null, "Stronger atmospheric depth between mountain ranges."],
 		["check", "ssr", "Screen-space reflections", null, "Puddles and wet ground reflect fire, flares and the sky."],
 		["check", "vol_fog", "Volumetric fog & smoke", null, "Light shafts, haze and smoke screens you can't see through."],
 		["head", "", "Anti-aliasing & upscaling"],

@@ -3,10 +3,10 @@ extends Node
 ## It skips map generation and simulation, not the authority or ENet RPC path.
 
 class StraightNav extends Nav:
-	func nearest_walkable(p: Vector3, _vehicle := false) -> Vector3:
+	func nearest_walkable(p: Vector3, _vehicle := false, _tracks := false) -> Vector3:
 		return p
 
-	func find_path(from: Vector3, to: Vector3, _vehicle := false, _team := -1, _care := 0.0) -> PackedVector3Array:
+	func find_path(from: Vector3, to: Vector3, _vehicle := false, _team := -1, _care := 0.0, _tracks := false) -> PackedVector3Array:
 		return PackedVector3Array([from, to])
 
 
