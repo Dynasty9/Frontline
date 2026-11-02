@@ -466,6 +466,20 @@ pub(crate) fn ground_profile(a: &Array<Variant>) -> Option<GroundProfile> {
         handling: [r[3], r[4], r[5], r[6]],
     })
 }
+pub(crate) fn boat_profile(
+    a: &Array<Variant>,
+) -> Option<frontline_core::vehicle_boat::BoatProfile> {
+    if a.len() != 4 {
+        return None;
+    }
+    let response: PackedFloat64Array = read(a, 2)?;
+    Some(frontline_core::vehicle_boat::BoatProfile {
+        hull: crate::point(read(a, 0)?),
+        speed: read(a, 1)?,
+        response: response.as_slice().try_into().ok()?,
+        cannon: read(a, 3)?,
+    })
+}
 pub(crate) fn flight_profile(a: &PackedFloat64Array) -> Option<FlightProfile> {
     if a.len() != 5 {
         return None;
@@ -1115,25 +1129,11 @@ impl VehicleStateCore {
         water: Gd<crate::water_raster::WaterRaster>,
         nearby: Array<Variant>,
     ) -> PackedByteArray {
-        if profile.len() != 4 || target.len() > 1 {
+        if target.len() > 1 {
             return PackedByteArray::new();
         }
-        let (Some(hull), Some(speed), Some(response), Some(cannon)) = (
-            read::<Vector3>(&profile, 0),
-            read::<f64>(&profile, 1),
-            read::<PackedFloat64Array>(&profile, 2),
-            read::<bool>(&profile, 3),
-        ) else {
+        let Some(p) = boat_profile(&profile) else {
             return PackedByteArray::new();
-        };
-        let Ok(response) = response.as_slice().try_into() else {
-            return PackedByteArray::new();
-        };
-        let p = frontline_core::vehicle_boat::BoatProfile {
-            hull: crate::point(hull),
-            speed,
-            response,
-            cannon,
         };
         let Some(nearby) = traffic(&nearby) else {
             return PackedByteArray::new();

@@ -1551,6 +1551,9 @@ Connected Rust aircraft updates preserve shared targets and combat, rocket-warni
 order, cargo pickup and release, troop landings and supply deliveries. Vehicle
 recovery now respects the same map-edge clearance as its route graph; checkpoints
 use numeric contract 2 so older route rules cannot silently change during a resume.
+Connected boat updates combine steering, currents, combat and shore landings.
+Supply trucks now update shared deliveries, income, roadblock notices and replacement
+timers together, retaining those decisions across checkpoints.
 The full authoritative Rust server and deterministic
 battle verifier are still in progress; see [RUST_SIMULATION.md](RUST_SIMULATION.md).
 

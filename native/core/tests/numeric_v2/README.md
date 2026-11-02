@@ -53,6 +53,10 @@ different byte rather than dumping the fixture.
   or deliberate attacks, including shore landings and resumed routes.
 - `aircraft_world.bin`: connected rotorcraft and UAV updates, sling transitions,
   troop exits, rocket warnings and supply income across resumed shared state.
+- `boat_world.bin`: connected boat steering, shared combat, recovery and shore
+  unloading, including navigation and shared state through resumed ticks.
+- `truck_world.bin`: deliveries, battle credit, income, captured destinations,
+  blocked roads and replacement timers through resumed shared updates.
 - `vehicle_world.bin`: complete ground-vehicle ticks, shared fire, service, artillery
   and orphaned sling cargo, with exact resumed world state and random cursors.
 - `squad_movement.bin`: shared movement orders, travel, leader succession, fire-team

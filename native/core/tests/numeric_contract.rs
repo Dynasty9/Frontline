@@ -82,6 +82,18 @@ fn deliberate_attacks_are_identical_across_platforms() {
 
 #[path = "fixtures/aircraft_world.rs"]
 mod aircraft_world;
+#[path = "fixtures/boat_world.rs"]
+mod boat_world;
+#[path = "fixtures/truck_world.rs"]
+mod truck_world;
+#[test]
+fn complete_supply_trucks_are_identical_across_platforms() {
+    golden("truck_world", &truck_world::transcript());
+}
+#[test]
+fn complete_boats_are_identical_across_platforms() {
+    golden("boat_world", &boat_world::transcript());
+}
 #[test]
 fn complete_aircraft_are_identical_across_platforms() {
     golden("aircraft_world", &aircraft_world::transcript());

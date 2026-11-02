@@ -54,6 +54,14 @@ impl Ground<'_> {
 }
 #[derive(Clone, Debug, PartialEq)]
 pub enum Event {
+    RoadBlocked {
+        vehicle: u32,
+        destination: u32,
+        town: bool,
+        team: i8,
+        position: Vector3,
+        name: String,
+    },
     Movement(Movement),
     Combat(Combat),
     Attack(Attack),

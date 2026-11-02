@@ -543,7 +543,7 @@ considered blocked. The connected aircraft fixture exposed the mismatch; a
 boundary regression reproduces Godot's exact choice. Version 1 checkpoints fail
 closed because this changes a mounted-missile evasion trajectory.
 
-`native/core/tests/numeric_contract.rs` compares 238,502,483 committed bytes without
+`native/core/tests/numeric_contract.rs` compares 239,196,553 committed bytes without
 tolerances: fixed-tick flight state, support events and RNG cursors, carved water,
 craters, rotated box hits, cover anchors, spherical interpolation and infantry
 movement, infantry cover fire, postures, ammunition, burst recovery, vitals, aiming,
@@ -2304,3 +2304,28 @@ formatting, changelog and presentation audits pass. The combined CI job now allo
 the four-platform numeric jobs and scenario/mission smoke checks passed.
 Boats, the full world scheduler, standalone socket server and whole-match
 verification remain unfinished.
+
+## Connected boats and supply trucks
+
+Boat updates now connect their retained navigation, currents, shared scans,
+movement, shore unloading and combat in the original order. They retain recovery
+attempts and emit the existing grounding/rejoin notices. Ground vehicles and boats
+share the same registration-ordered traffic snapshot construction.
+
+Supply trucks now resolve roadblocks from retained actors, deliver cargo and battle
+credit once, update income and source status, reverse their route and retire on
+return. Homecoming restores the matching source's replacement timer; an enemy-held
+destination receives no supply. A blocked road produces one notice until its status
+changes. Collision retirement uses the same end-of-tick rule as other despawns.
+
+Eight focused core regressions cover these connected updates, including invalid
+input and checkpoint continuation. Their exact numeric transcripts add 694,070
+bytes. All 844 debug core tests and 127 release checks pass, including 115 exact
+numeric transcripts. Godot passes complete ground-vehicle, aircraft, boat and truck
+comparisons, plus boat navigation and handling regressions. Truck cases include
+enemy building/vehicle roadblocks, default cargo loads, captured or missing bases
+and a town whose replacement truck has already taken over. Import, formatting,
+changelog and presentation checks pass. The prior aircraft revision `214a6c6`
+passed full game CI and exact debug/release checks on all four platforms.
+The production world scheduler, standalone server and whole-match verifier still
+remain unfinished.

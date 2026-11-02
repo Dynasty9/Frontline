@@ -32,6 +32,10 @@ func setup_water(w: World, mode: int, native: RefCounted) -> RefCounted:
 	assert(w.terrain._native.configure(Nav.N, [w.terrain.base, w.terrain.crater, w.terrain.rubble, w.terrain.woods, w.terrain.cov, w.terrain.cdir, w.terrain.solid, w.terrain.trench, w.terrain.netted], w.terrain.dh))
 	w.nav.build_boat_grid(w.water)
 	assert(native.configure(w.terrain._native, w.water.deck))
+	reference_grid(w)
+	return w.water._raster_core()
+
+func reference_grid(w: World) -> void:
 	# The reference search uses Godot's own AStarGrid2D, not the shared Rust search.
 	var grid := AStarGrid2D.new()
 	grid.region = Rect2i(0, 0, w.nav.boat_n, w.nav.boat_n)
@@ -46,7 +50,6 @@ func setup_water(w: World, mode: int, native: RefCounted) -> RefCounted:
 			grid.set_point_solid(p, w.nav.boat.is_point_solid(p))
 			grid.set_point_weight_scale(p, w.nav.boat.get_point_weight_scale(p))
 	w.nav.boat = grid
-	return w.water._raster_core()
 
 func _ready() -> void:
 	dimensions()

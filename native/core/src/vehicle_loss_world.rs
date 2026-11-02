@@ -471,7 +471,7 @@ impl Context<'_> {
             cargo,
         });
     }
-    fn retire(&mut self, id: u32, out: &mut Vec<Event>) -> Result<(), &'static str> {
+    pub(crate) fn retire(&mut self, id: u32, out: &mut Vec<Event>) -> Result<(), &'static str> {
         self.geometry.retire_collision(id)?;
         self.actors.remove(id);
         out.push(Event::Despawn(id));

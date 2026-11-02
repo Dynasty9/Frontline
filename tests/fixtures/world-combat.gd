@@ -31,6 +31,14 @@ class CombatDrone extends Drone:
 	func _ready() -> void:
 		set_process(false); set_physics_process(false)
 
+class SupplyRules extends Rules:
+	func truck_blocked(v: Vehicle) -> void:
+		var destination: Structure = v.src_town if v.src_town else v.dest_fob
+		var before: String = destination.supply_status if destination and not destination.gone else ""
+		super(v)
+		if destination and not destination.gone and before != "Road blocked" and destination.supply_status == "Road blocked":
+			world.work_events.append(["road_blocked",v.eid,destination.eid,v.src_town != null,v.team,v.position,destination.sname])
+
 class ShotWorld extends FireWorld:
 	var bullet_fx: Array = []
 	var work_events: Array = []
@@ -59,6 +67,19 @@ class ShotWorld extends FireWorld:
 func _ready() -> void:
 	run(0)
 
+func boat_water(w: World, nav: RefCounted) -> RefCounted:
+	w.water.rivers = [{"pts":PackedVector3Array([Vector3(0,0,0),Vector3(4,0,32)]),"w":50.0}]
+	w.water.deck.resize(Nav.N * Nav.N); w.water.deck.fill(0)
+	for z in Nav.N:
+		for x in Nav.N:
+			w.terrain.base[z * Nav.N + x] = TerrainMap.WATER if z >= 32 and x >= 3 and x < Nav.N - 3 and z < Nav.N - 3 else TerrainMap.GROUND
+	assert(w.terrain._native.configure(Nav.N,[w.terrain.base,w.terrain.crater,w.terrain.rubble,w.terrain.woods,w.terrain.cov,w.terrain.cdir,w.terrain.solid,w.terrain.trench,w.terrain.netted],w.terrain.dh))
+	w.nav.build_boat_grid(w.water)
+	assert(nav.configure(w.terrain._native,w.water.deck))
+	var reference := preload("res://tests/fixtures/boat-navigation.gd").new()
+	reference.reference_grid(w); reference.free()
+	return w.water._raster_core()
+
 func blast_ledger_equal(expected: Array, actual: Array) -> bool:
 	if expected.size() != actual.size(): return false
 	var normalized := expected.duplicate(true)
@@ -83,7 +104,7 @@ func run(mode: int, complete_tick: bool = false) -> void:
 	var mounting := mode == 6
 	var acting := mode == 7
 	var whole := mode == 8 or complete_tick
-	var vehicle_ops := (mode >= 10 and mode <= 16) or mode in [19,20]
+	var vehicle_ops := (mode >= 10 and mode <= 16) or mode in [19,20,21,22]
 	var ordnance_ops := mode in [17,18]
 	var actor_ops := vehicle_ops or ordnance_ops
 	MapDims.N = 64; MapDims.SIZE = 64.0; MapDims.HALF = 32.0; MapDims.BIOME = 64; Defs.MAP_HALF = 32.0
@@ -101,6 +122,7 @@ func run(mode: int, complete_tick: bool = false) -> void:
 	var visibility: RefCounted = ClassDB.instantiate("VisibilityCore")
 	var fires: RefCounted = ClassDB.instantiate("FiresCore")
 	var network: RefCounted = ClassDB.instantiate("SupplyNetworkCore")
+	var boat_navigation: RefCounted = ClassDB.instantiate("BoatNavigationCore") if mode == 21 else null
 	var random := SimulationRandom.new()
 	var compare := preload("res://tests/fixtures/battle-stats.gd").new()
 	var infantry := preload("res://tests/fixtures/infantry-blast.gd").new()
@@ -122,6 +144,8 @@ func run(mode: int, complete_tick: bool = false) -> void:
 	var vehicle_kinds: Array = Defs.VEHICLES.keys()
 	if mode == 19: vehicle_kinds = vehicle_kinds.filter(func(key: String) -> bool: return not Defs.VEHICLES[key].get("air",false) and Defs.VEHICLES[key].get("base",key) not in ["supply","boat"])
 	if mode == 20: vehicle_kinds = vehicle_kinds.filter(func(key: String) -> bool: return Defs.VEHICLES[key].get("air",false))
+	if mode == 21: vehicle_kinds = vehicle_kinds.filter(func(key: String) -> bool: return Defs.VEHICLES[key].get("base",key) == "boat")
+	if mode == 22: vehicle_kinds = vehicle_kinds.filter(func(key: String) -> bool: return Defs.VEHICLES[key].get("base",key) == "supply")
 	var ground_kinds: Array = vehicle_kinds.filter(func(key: String) -> bool: return Defs.VEHICLES[key].get("base","tank") in ["tank","afv","car","spaa"])
 	var artillery_kinds: Array = vehicle_kinds.filter(func(key: String) -> bool: return Defs.VEHICLES[key].has("art"))
 	var weapons := []
@@ -131,17 +155,18 @@ func run(mode: int, complete_tick: bool = false) -> void:
 		var burst: Vector2i = weapon.burst
 		weapons.append([key,PackedFloat64Array([weapon.ammo,weapon.get("mag",30),weapon.get("reload",2.0),burst.x,burst.y,weapon.acc,weapon.range,weapon.dmg,int(weapon.get("aa",false)),Cover.pen_class(weapon),0.08 if weapon.snd == "hmg" else 0.045 if weapon.snd == "mg" else 0.03,weapon.get("he",-1.0),int(weapon.get("airburst",false)),weapon.interval,weapon.supp,int(weapon.get("ap",false))]),String(weapon.snd)])
 	var seen := {}
-	for trial in (vehicle_kinds.size() * 8 if mode == 20 else vehicle_kinds.size() if mode == 10 or (vehicle_ops and mode >= 13) else 64):
+	for trial in (vehicle_kinds.size() * 16 if mode == 22 else vehicle_kinds.size() * 8 if mode == 20 else vehicle_kinds.size() * 4 if mode == 21 else vehicle_kinds.size() if mode == 10 or (vehicle_ops and mode >= 13) else 64):
 		var w := ShotWorld.new(); w.srv = true; w.has_view = false; w.settings = {"rust_infantry":false}
 		w.terrain = TerrainMap.new(w); w.water = WaterMap.new(w); w.nav = Nav.new(); w.nav.terrain = w.terrain
 		w.combat = Combat.new(w); w.combat.enable_native_collision(); w.fires = Fires.new(w)
-		w.rules = Rules.new(w); w.rules.upgrades = [{},{}]; w.battle = BattleStats.new(w); w._deferred_effects = DeferredEffects.new(false)
+		w.rules = SupplyRules.new(w) if mode == 22 else Rules.new(w); w.rules.upgrades = [{},{}]; w.battle = BattleStats.new(w); w._deferred_effects = DeferredEffects.new(false)
 		if shoot and trial % 3 == 0: w.rules.upgrades = [{"optics":true},{"optics":true}]
 		if fighting and trial % 3 == 0: w.rules.upgrades = [{"optics":true},{"optics":true}]
 		if wounded and trial % 3 < 2:
 			var key := "medicine" if trial % 3 == 0 else "optics"
 			w.rules.upgrades[0][key] = true; w.rules.upgrades[1][key] = true
 		w.time = 100.0; w.next_eid = 1000; w.next_sid = 7; add_child(w)
+		var water_shapes: RefCounted = boat_water(w,boat_navigation) if mode == 21 else null
 		for pair in [[ledger,"BattleStatsCore"],[deferred,"DeferredEffectsCore"]]:
 			var empty: RefCounted = ClassDB.instantiate(pair[1]); assert(pair[0].restore(empty.checkpoint()))
 		for side in 2:
@@ -156,11 +181,12 @@ func run(mode: int, complete_tick: bool = false) -> void:
 		for index in 2:
 			var v := Repairable.new(); v.world = w; v.srv = true; v.eid = 40 + index; v.team = index; v.owner_peer = 7 + index
 			v.vkind = "humvee" if mode == 20 else ["truck","tank","rhib","heli"][(trial + index) % 4]
-			if index == 0 and vehicle_ops: v.vkind = vehicle_kinds[trial / 8] if mode == 20 else ground_kinds[trial % ground_kinds.size()] if mode == 15 else vehicle_kinds[trial] if mode == 10 or mode >= 13 else artillery_kinds[trial % artillery_kinds.size()] if mode == 11 else "tank"
+			if index == 0 and vehicle_ops: v.vkind = vehicle_kinds[trial / 16] if mode == 22 else vehicle_kinds[trial / 8] if mode == 20 else vehicle_kinds[trial / 4] if mode == 21 else ground_kinds[trial % ground_kinds.size()] if mode == 15 else vehicle_kinds[trial] if mode == 10 or mode >= 13 else artillery_kinds[trial % artillery_kinds.size()] if mode == 11 else "tank"
 			v.vdef = Defs.VEHICLES[v.vkind]; v.max_hp = v.vdef.hp; v.hp = v.max_hp
 			v.position = Vector3(-3 + index * 7,0,-3); v.rotation.y = trial * 0.137
 			w.add_child(v); w._register(v); v.on_spawned(); w.combat.dirty_collision(v.eid)
 			if shoot: v.hp = 2.0 if trial % 3 == 0 else 40.0
+			if mode == 22 and index == 0: continue
 			var passenger: Soldier = w.entities[index + 1]; passenger.riding = v; passenger.life = Soldier.Life.HIDDEN; v.passengers.append(passenger)
 		var kinds := ["depot","fob","fob","town","house_wall","ammo_cache","tree","car","crates","wire","camo_net","tunnel","mg_nest","barracks"]
 		if fighting and trial % 8 in [3,4]: kinds.append("low_wall")
@@ -175,6 +201,7 @@ func run(mode: int, complete_tick: bool = false) -> void:
 			st.yaw = (trial % 7) * 0.137; st.rotation.y = st.yaw; st.sname = "Combat base %d" % index
 			st.completed_order = index; st.supply = 120.0; st.door_shut = index == 4; st.variant = 2 if index == 4 else trial % 2
 			if index == 4: st.size = Vector3(7.3,2.3,1.0)
+			if mode == 22 and index == 5 and trial % 16 >= 8 and trial % 8 in [2,6]: st.team = 1; st.position = Vector3(14,0,10)
 			if fighting and index == 14: st.position = Vector3(14,0,-18); st.yaw = 0.0; st.rotation.y = 0.0; st.size = Vector3(7.2,0.8,0.35)
 			if breaching and index >= 14:
 				st.position = Vector3(16,0,-18 if index == 14 else -14); st.yaw = 0.0; st.rotation.y = 0.0
@@ -417,6 +444,25 @@ func run(mode: int, complete_tick: bool = false) -> void:
 				if trial % 3 == 0: v.path.clear(); v.speed = 0.0
 				if trial % 5 == 0: v.assault = true; v.assault_dest = Vector3(14,0,-14)
 				if v.vdef.has("art"): v.fire_queue = [Vector3(14,0,-14)]; v.arty_t = 0.0
+			if mode == 21:
+				v.position.y = WaterMap.LEVEL; v.scan_t = 0.0; v._aim_target = InfantryState.entity_id(v.target)
+				v.path = PackedVector3Array([Vector3(14,0,1)]); v.path_i = 0; v.speed = 3.0
+				if trial % 4 == 1: v.path.clear(); v._landing = true; v.speed = 0.0; v.position.z = 1.0
+				if trial % 4 == 2: v._stuck_t = 4.1; v._stuck_p = v.position
+				if trial % 4 == 3: v.position.z = 0.01; v.speed = 8.0; v.path = PackedVector3Array([Vector3(14,0,-14)])
+			if mode == 22:
+				v.route = PackedVector3Array([Vector3(14,0,30),Vector3(14,0,-14)]); v.route_i = 1
+				v.dest_fob = w.entities[101]; v.dest_fob.truck = v; v.cargo = 75; v.speed = 0.0
+				if trial % 8 >= 4: v.src_town = w.entities[103]; v.src_town.truck = v; v.src_town.supply_status = "Truck destroyed"
+				if trial % 8 in [0,1,3,4,5]: v.route_i = v.route.size()
+				if trial % 8 in [1,5]: v.returning = true
+				if trial % 8 in [2,6]: v.blocked_t = 4.95; enemy.position = Vector3(14,0,10)
+				if trial % 8 == 3: v.dest_fob.team = 1
+				if trial % 16 >= 8:
+					if trial % 8 in [0,4]: v.cargo = 0
+					if trial % 8 in [2,6]: enemy.team = 0
+					if trial % 8 == 3: v.dest_fob = null
+					if trial % 8 == 5: v.src_town.truck = enemy
 			if mode == 20:
 				v.position.y = 14.0; v.rocket_t = 0.0; v._aim_target = InfantryState.entity_id(v.target)
 				if v.base() == "uav": v.position.y = float(v.vdef.get("alt",20.0)); v.uav_dest = Vector3(14,0,-14)
@@ -496,7 +542,7 @@ func run(mode: int, complete_tick: bool = false) -> void:
 		var attack_plans := []; var next_plan := 17; var plan_ids := {}
 		var initial: RefCounted = ClassDB.instantiate("VehicleLossWorldCore")
 		assert(combat.gunfire_restore(initial.gunfire_checkpoint()))
-		for step in (12 if shoot or wounded or fighting or breaching or building or mounting or whole or ordnance_ops or mode in [11,19,20] else 3):
+		for step in (12 if shoot or wounded or fighting or breaching or building or mounting or whole or ordnance_ops or mode in [11,19,20,21,22] else 3):
 			if vehicle_ops and w.entity(40) == null: break
 			if ordnance_ops and w.entity(70 if mode == 17 else 60) == null: break
 			if whole and w.entity(3) == null: break
@@ -524,7 +570,9 @@ func run(mode: int, complete_tick: bool = false) -> void:
 					result = combat.advance_actor(actors,geometry,units,qs,fires,ledger,deferred,visibility,random._backend,config,mode - 10,fighting_input,network,impacts)
 				elif vehicle_ops:
 					var v: Vehicle = w.entities[40]; fighting_input[0] = v.eid; fighting_input[5] = w.rules.has_upgrade(v.team,"optics")
-					if mode in [10,19,20]:
+					if mode == 22:
+						fighting_input.append([vehicle_driving.profile(v),Defs.SUPPLY_PER_TRUCK[v.team],w.rules._income[0],w.rules._income[1]])
+					elif mode in [10,19,20,21]:
 						var g: Dictionary = v.vdef.get("gun",{})
 						fighting_input.append([vehicle_weapons.fire_profile(v),vehicle_cannon.muzzle_profile(v,"mg"),vehicle_cannon.muzzle_profile(v,"gun"),PackedFloat64Array([g.get("dmg",160.0),g.get("radius",5.5),g.get("at",320.0),g.get("size",1.4)])])
 						if mode == 19:
@@ -536,6 +584,9 @@ func run(mode: int, complete_tick: bool = false) -> void:
 							var art := [vehicle_artillery.artillery_profile(v),PackedFloat64Array([a.get("min",40.0),a.get("max",230.0)])] if not a.is_empty() else []
 							var motion := v.motion_profile()
 							fighting_input[6] = [fighting_input[6],[vehicle_driving.profile(v),vehicle_scan.scan_profile(v),PackedFloat64Array([motion.traverse,motion.traverse_accel]),art,service,InfantryState.entity_ids(w.owned_structures),w.mission != null,cannons,attack_plans,next_plan,v.is_light()]]
+						elif mode == 21:
+							var motion := v.motion_profile()
+							fighting_input[6] = [fighting_input[6],[[v._hull_size(),v.vdef.speed,PackedFloat64Array(v._hull_k()),v.vdef.cannon],vehicle_scan.scan_profile(v),PackedFloat64Array([motion.traverse,motion.traverse_accel]),attack_plans,next_plan,boat_navigation,water_shapes]]
 						elif mode == 20:
 							var motion := v.motion_profile(); var kind := "supply" if v.vdef.get("supply",false) else v.base()
 							var options := PackedFloat64Array([v.vdef.get("sling",-1),0])
@@ -584,7 +635,10 @@ func run(mode: int, complete_tick: bool = false) -> void:
 					w.work_events.append(["marks",PackedVector4Array(w.rules.marks[0]),PackedVector4Array(w.rules.marks[1])])
 				elif vehicle_ops:
 					var v: Vehicle = w.entities[40]
-					if mode in [19,20]:
+					if mode == 22:
+						v.sim(dt)
+						w.work_events.append(["income",w.rules._income[0].duplicate(),w.rules._income[1].duplicate()])
+					elif mode in [19,20,21]:
 						v.sim(dt)
 						attack_plans.clear(); plan_ids.clear(); next_plan = 17
 						for q: Squad in w.squads.values():
@@ -682,7 +736,7 @@ func run(mode: int, complete_tick: bool = false) -> void:
 				elif e is Vehicle:
 					assert(vehicle.restore(actors.actor_state(e.eid)))
 					if mode == 20: vehicle_flight.compare_flight(e,vehicle,label)
-					elif mode in [15,19]: vehicle_driving.compare_motion(e,vehicle,label)
+					elif mode in [15,19,21,22]: vehicle_driving.compare_motion(e,vehicle,label)
 					else: assert(vehicle.values() == VehicleState.capture(e),"explosion vehicle " + label)
 				elif e is Drone: actor_compare.compare_drone(e,actors,label)
 				elif e is Projectile:
@@ -710,11 +764,12 @@ func run(mode: int, complete_tick: bool = false) -> void:
 			check_geometry(w,geometry,label)
 			for key: String in result[2]: seen[key] = true
 			for retained in [actors,geometry,units,ledger,deferred,visibility,fires,network]: assert(retained.restore(retained.checkpoint()))
+			if mode == 21: assert(boat_navigation.restore(boat_navigation.checkpoint()))
 			w.combat.finish_tick(); geometry.finish_tick(); check_geometry(w,geometry,label + " end")
 		for q: Squad in w.squads.values(): q.plan = null
 		plan_ids.clear()
 		w.free()
-	for key in (["launch","dismount","sling","heli_delivered","income"] if mode == 20 else ["shot","cannon","dismount","plans"] if mode == 19 else ["smother_saved","recon_photo","far_sound"] if mode == 17 else ["drone_boom"] if mode == 18 else ["scanned"] if mode == 13 else ["veh_withdraw","veh_patched_up"] if mode == 14 else ["shove"] if mode == 15 else ["smash"] if mode == 16 else ["shot","cannon","veh_sam","veh_atgm","veh_smoke"] if mode == 10 else ["arty_mission","arty_round"] if mode == 11 else ["veh_repaired","revived","veh_medevac_revive"] if mode == 12 else ["smoke","into_tent","prisoner_taken","tunnel_in"] if mode == 9 else ["shot","revived","patched_up","dazed","pistol_while_down"] if mode == 8 else ["mortar","launch","melee","door","kicked","throwback","door_kicked","veh_smoke"] if acting else ["mortar","launch","climb","shot","mortar_round","at_launch","veh_smoke"] if mounting else ["completed","restored","track","sound","fob_built","shot"] if building else ["breach_door_kick","breach_frag_in","room_entry"] if breaching else ["shot","reload","escort","idle","shift_along"] if fighting else ["killed","pistol_while_down","crawl_to_cover"] if wounded else ["penetration","through_hit","ricochet","vehicle_destroyed","drone_shot_down"] if shoot else ["vehicle_destroyed","drone_shot_down","door_kicked","cache_cook_off","at_hit"]): assert(seen.has(key),"unexercised combat " + key)
+	for key in (["delivered","truck_delivered","town_truck_delivered","road_blocked","income"] if mode == 22 else ["shot","dismount","boat_unstick","plans"] if mode == 21 else ["launch","dismount","sling","heli_delivered","income"] if mode == 20 else ["shot","cannon","dismount","plans"] if mode == 19 else ["smother_saved","recon_photo","far_sound"] if mode == 17 else ["drone_boom"] if mode == 18 else ["scanned"] if mode == 13 else ["veh_withdraw","veh_patched_up"] if mode == 14 else ["shove"] if mode == 15 else ["smash"] if mode == 16 else ["shot","cannon","veh_sam","veh_atgm","veh_smoke"] if mode == 10 else ["arty_mission","arty_round"] if mode == 11 else ["veh_repaired","revived","veh_medevac_revive"] if mode == 12 else ["smoke","into_tent","prisoner_taken","tunnel_in"] if mode == 9 else ["shot","revived","patched_up","dazed","pistol_while_down"] if mode == 8 else ["mortar","launch","melee","door","kicked","throwback","door_kicked","veh_smoke"] if acting else ["mortar","launch","climb","shot","mortar_round","at_launch","veh_smoke"] if mounting else ["completed","restored","track","sound","fob_built","shot"] if building else ["breach_door_kick","breach_frag_in","room_entry"] if breaching else ["shot","reload","escort","idle","shift_along"] if fighting else ["killed","pistol_while_down","crawl_to_cover"] if wounded else ["penetration","through_hit","ricochet","vehicle_destroyed","drone_shot_down"] if shoot else ["vehicle_destroyed","drone_shot_down","door_kicked","cache_cook_off","at_hit"]): assert(seen.has(key),"unexercised combat " + key)
 	compare.free(); infantry.free(); birth.free(); actor_compare.free(); firing.free(); launch_helper.free(); projectile_helper.free()
 	vehicle_weapons.free(); vehicle_cannon.free(); vehicle_artillery.free(); vehicle_service.free()
 	vehicle_scan.free(); vehicle_driving.free(); vehicle_flight.free(); movement_speech.free(); attack_helper.free()

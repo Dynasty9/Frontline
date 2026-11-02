@@ -57,7 +57,7 @@ fn same(a: Vector3, b: Vector3) -> bool {
         .all(|(a, b)| a == b || (a - b).abs() < (0.00001 * a.abs()).max(0.00001))
 }
 impl BoatProfile {
-    fn valid(self) -> bool {
+    pub(crate) fn valid(self) -> bool {
         point(self.hull)
             && self.hull.min_element() > 0.0
             && self.hull.max_element() <= 1000.0

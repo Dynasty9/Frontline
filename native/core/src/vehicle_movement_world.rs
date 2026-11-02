@@ -50,6 +50,26 @@ fn overlaps(position: Vector3, half: Vec2, yaw: f64, st: &Structure) -> bool {
     })
 }
 impl Context<'_> {
+    pub(crate) fn vehicle_traffic(&self) -> Vec<Traffic> {
+        // Vehicles use registration order for traffic ties, independently of infantry buckets.
+        self.actors
+            .iter_kind(Kind::Vehicle)
+            .filter_map(|a| {
+                let Actor::Vehicle(v) = a else {
+                    return None;
+                };
+                let p = (self.vehicle)(v);
+                Some(Traffic {
+                    id: v.id,
+                    position: v.position,
+                    yaw: v.yaw,
+                    speed: v.speed,
+                    hull: p.hull,
+                    air: p.crew.helicopter && v.position.y > 3.0,
+                })
+            })
+            .collect()
+    }
     pub fn scan_vehicle_world(
         &mut self,
         id: u32,
@@ -241,25 +261,7 @@ impl Context<'_> {
                         > 0;
                 (p, trench)
             });
-        // Vehicles use registration order for traffic ties, independently of infantry buckets.
-        let traffic = self
-            .actors
-            .iter_kind(Kind::Vehicle)
-            .filter_map(|a| {
-                let Actor::Vehicle(v) = a else {
-                    return None;
-                };
-                let p = (self.vehicle)(v);
-                Some(Traffic {
-                    id: v.id,
-                    position: v.position,
-                    yaw: v.yaw,
-                    speed: v.speed,
-                    hull: p.hull,
-                    air: p.crew.helicopter && v.position.y > 3.0,
-                })
-            })
-            .collect::<Vec<_>>();
+        let traffic = self.vehicle_traffic();
         let result = self.actors.vehicle_mut(id).unwrap().drive_ground(
             dt,
             profile,

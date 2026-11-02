@@ -73,6 +73,63 @@ pub(crate) struct AirInput {
     pub next: u64,
     pub income: [Vec<(f64, i32)>; 2],
 }
+pub(crate) struct BoatInput {
+    pub movement: frontline_core::vehicle_boat::BoatProfile,
+    pub scan: ScanProfile,
+    pub traverse: [f64; 2],
+    pub plans: Vec<AttackPlan>,
+    pub next: u64,
+    pub navigation: Gd<crate::boat_navigation::BoatNavigationCore>,
+    pub water: Gd<crate::water_raster::WaterRaster>,
+}
+pub(crate) fn parse_boat(a: &Array<Variant>) -> Option<BoatInput> {
+    if a.len() != 7 {
+        return None;
+    }
+    let traverse: PackedFloat64Array = read(a, 2)?;
+    if traverse.len() != 2 {
+        return None;
+    }
+    Some(BoatInput {
+        movement: crate::vehicle::boat_profile(&read(a, 0)?)?,
+        scan: scan_profile(read(a, 1)?)?,
+        traverse: [traverse[0], traverse[1]],
+        plans: read_plans(read(a, 3)?)?,
+        next: u64::try_from(read::<i64>(a, 4)?).ok()?,
+        navigation: read(a, 5)?,
+        water: read(a, 6)?,
+    })
+}
+pub(crate) fn incomes(a: &Array<Variant>, offset: usize) -> Option<[Vec<(f64, i32)>; 2]> {
+    let mut income = [vec![], vec![]];
+    for (side, out) in income.iter_mut().enumerate() {
+        let rows: Array<Variant> = read(a, offset + side)?;
+        if rows.len() >= 100_000 {
+            return None;
+        }
+        for row in rows.iter_shared() {
+            let r = row.try_to::<Array<Variant>>().ok()?;
+            if r.len() != 2 {
+                return None;
+            }
+            let t: f64 = read(&r, 0)?;
+            let n: i32 = read(&r, 1)?;
+            if !t.is_finite() || t.abs() > 1e12 || !(0..=1_000_000).contains(&n) {
+                return None;
+            }
+            out.push((t, n));
+        }
+    }
+    Some(income)
+}
+pub(crate) fn income_state(income: &[Vec<(f64, i32)>; 2]) -> Variant {
+    let pack = |side: &[(f64, i32)]| {
+        side.iter()
+            .map(|&(t, n)| varray![t, n].to_variant())
+            .collect::<Array<Variant>>()
+    };
+    varray!["income", &pack(&income[0]), &pack(&income[1])].to_variant()
+}
 pub(crate) fn parse_air(a: &Array<Variant>) -> Option<AirInput> {
     use frontline_core::aircraft_world::Kind;
     if a.len() != 9 {
@@ -108,25 +165,6 @@ pub(crate) fn parse_air(a: &Array<Variant>) -> Option<AirInput> {
         },
         _ => return None,
     };
-    let mut income = [vec![], vec![]];
-    for (side, out) in income.iter_mut().enumerate() {
-        let rows: Array<Variant> = read(a, 7 + side)?;
-        if rows.len() >= 100_000 {
-            return None;
-        }
-        for row in rows.iter_shared() {
-            let r = row.try_to::<Array<Variant>>().ok()?;
-            if r.len() != 2 {
-                return None;
-            }
-            let t: f64 = read(&r, 0)?;
-            let n: i32 = read(&r, 1)?;
-            if !t.is_finite() || t.abs() > 1e12 || !(0..=1_000_000).contains(&n) {
-                return None;
-            }
-            out.push((t, n));
-        }
-    }
     Some(AirInput {
         kind,
         flight,
@@ -134,7 +172,7 @@ pub(crate) fn parse_air(a: &Array<Variant>) -> Option<AirInput> {
         traverse: [traverse[0], traverse[1]],
         plans: read_plans(read(a, 5)?)?,
         next: u64::try_from(read::<i64>(a, 6)?).ok()?,
-        income,
+        income: incomes(a, 7)?,
     })
 }
 pub(crate) fn parse(a: &Array<Variant>) -> Option<Input> {
@@ -222,6 +260,28 @@ pub(crate) fn effects(
         .into_iter()
         .filter_map(|e| {
             let world = match e {
+                Event::RoadBlocked {
+                    vehicle,
+                    destination,
+                    town,
+                    team,
+                    position,
+                    name,
+                } => {
+                    extra.push(
+                        &varray![
+                            "road_blocked",
+                            vehicle,
+                            destination,
+                            town,
+                            team,
+                            Vector3::new(position.x, position.y, position.z),
+                            name
+                        ]
+                        .to_variant(),
+                    );
+                    return None;
+                }
                 Event::Combat(e) => return Some(e),
                 Event::Sling {
                     helicopter,
