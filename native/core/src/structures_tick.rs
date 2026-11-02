@@ -1,8 +1,6 @@
 //! Buildings act in registration order, so earlier captures and births affect later decisions.
-use crate::actors::Actor;
 use crate::boat_navigation::BoatNavigation;
 use crate::command_ownership::Ownership;
-use crate::entities::Kind;
 use crate::infantry::Infantry;
 use crate::infantry_fire::MountedGun;
 use crate::infantry_spawn::Loadout;
@@ -48,104 +46,94 @@ impl Context<'_> {
         if !crate::infantry_fight_world::valid_step(dt, self.now, None) {
             return Err("invalid buildings update");
         }
-        let ids: Vec<_> = self
-            .actors
-            .iter_kind(Kind::Structure)
-            .filter_map(|a| match a {
-                Actor::Structure(s)
-                    if matches!(
-                        s.kind.as_str(),
-                        "fob"
-                            | "town"
-                            | "barracks"
-                            | "factory"
-                            | "research"
-                            | "helipad"
-                            | "dock"
-                            | "medic_tent"
-                            | "mg_nest"
-                            | "watchtower"
-                            | "hmg_nest"
-                            | "mortar_pit"
-                            | "at_post"
-                            | "mines"
-                            | "ammo_cache"
-                    ) =>
-                {
-                    Some(s.id)
-                }
-                _ => None,
-            })
-            .collect();
+        let ids = self.actors.simulated_structures().to_vec();
         let mut out = vec![];
         for id in ids {
-            let Some(st) = self
-                .actors
-                .structure(id)
-                .filter(|s| !s.gone && s.built && (s.team >= 0 || s.kind == "town"))
-            else {
-                continue;
-            };
-            match st.kind.as_str() {
-                "fob" | "town" => out.extend(
-                    self.advance_territory(
+            out.extend(self.advance_structure(id, dt, rules, owners, boats, victory, impacts, &p)?);
+        }
+        Ok(out)
+    }
+    pub fn advance_structure(
+        &mut self,
+        id: u32,
+        dt: f64,
+        rules: &mut Rules,
+        owners: &mut Ownership,
+        boats: &mut BoatNavigation,
+        victory: &mut Victory,
+        impacts: &mut Vec<Report>,
+        p: &Profiles<'_>,
+    ) -> Result<Vec<Event>, &'static str> {
+        if !crate::infantry_fight_world::valid_step(dt, self.now, None) {
+            return Err("invalid building update");
+        }
+        let mut out = vec![];
+        let Some(st) = self
+            .actors
+            .structure(id)
+            .filter(|s| !s.gone && s.built && (s.team >= 0 || s.kind == "town"))
+        else {
+            return Ok(vec![]);
+        };
+        match st.kind.as_str() {
+            "fob" | "town" => out.extend(
+                self.advance_territory(
+                    id,
+                    dt,
+                    &structure_world::Profiles {
+                        fob_radius: p.fob_radius,
+                        town: p.towns,
+                        supply: p.supply,
+                    },
+                    &mut rules.network,
+                    victory,
+                )?
+                .into_iter()
+                .map(Event::Territory),
+            ),
+            "barracks" | "factory" | "research" | "helipad" | "dock" => {
+                let product = (p.product)(st);
+                out.extend(
+                    self.advance_production(
                         id,
                         dt,
-                        &structure_world::Profiles {
-                            fob_radius: p.fob_radius,
-                            town: p.towns,
-                            supply: p.supply,
+                        structure_production::Profiles {
+                            product,
+                            base_cap: p.base_cap,
+                            cap_per_fob: p.cap_per_fob,
+                            vehicle_cap: p.vehicle_cap,
                         },
-                        &mut rules.network,
-                        victory,
+                        &mut rules.economy,
+                        owners,
+                        boats,
                     )?
                     .into_iter()
+                    .map(Event::Production),
+                );
+            }
+            "mines" => out.extend(
+                self.advance_mine(id, dt, &mut rules.network, impacts, p.armor)?
+                    .into_iter()
                     .map(Event::Territory),
-                ),
-                "barracks" | "factory" | "research" | "helipad" | "dock" => {
-                    let product = (p.product)(st);
-                    out.extend(
-                        self.advance_production(
-                            id,
-                            dt,
-                            structure_production::Profiles {
-                                product,
-                                base_cap: p.base_cap,
-                                cap_per_fob: p.cap_per_fob,
-                                vehicle_cap: p.vehicle_cap,
-                            },
-                            &mut rules.economy,
-                            owners,
-                            boats,
-                        )?
-                        .into_iter()
-                        .map(Event::Production),
-                    );
-                }
-                "mines" => out.extend(
-                    self.advance_mine(id, dt, &mut rules.network, impacts, p.armor)?
-                        .into_iter()
-                        .map(Event::Territory),
-                ),
-                _ => {
-                    let team = st.team;
-                    let gun = (p.gun)(st);
-                    out.extend(
-                        self.advance_structure_service(
-                            id,
-                            dt,
-                            &structure_services::Profiles {
-                                supply: p.supply,
-                                bearer: p.bearers[team as usize],
-                                armor_upgrade: rules.economy.has_upgrade(team, "armor"),
-                                grenade_upgrade: rules.economy.has_upgrade(team, "grenades"),
-                                gun,
-                            },
-                        )?
-                        .into_iter()
-                        .map(Event::Service),
-                    );
-                }
+            ),
+            _ => {
+                let team = st.team;
+                let gun = (p.gun)(st);
+                out.extend(
+                    self.advance_structure_service(
+                        id,
+                        dt,
+                        &structure_services::Profiles {
+                            supply: p.supply,
+                            bearer: p.bearers[team as usize],
+                            armor_upgrade: rules.economy.has_upgrade(team, "armor"),
+                            grenade_upgrade: rules.economy.has_upgrade(team, "grenades"),
+                            gun,
+                        },
+                    )?
+                    .into_iter()
+                    .map(Event::Service),
+                );
             }
         }
         Ok(out)

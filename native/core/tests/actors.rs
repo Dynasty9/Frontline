@@ -18,6 +18,110 @@ fn soldier(id: u32) -> Infantry {
     s.motion.position = Vector3::new(10.0, 0.0, 3.0);
     s
 }
+
+#[test]
+fn combatant_index_keeps_mixed_registration_order_without_scenery() {
+    use frontline_core::structure::Structure;
+    use frontline_core::vehicle::Vehicle;
+    let entries = vec![
+        Actor::Vehicle(Box::new(Vehicle {
+            id: 20,
+            kind: "tank".into(),
+            ..Default::default()
+        })),
+        Actor::Structure(Box::new(Structure {
+            id: 12,
+            kind: "tree".into(),
+            ..Default::default()
+        })),
+        Actor::Soldier(Box::new(soldier(8))),
+        Actor::Vehicle(Box::new(Vehicle {
+            id: 2,
+            kind: "tank".into(),
+            ..Default::default()
+        })),
+    ];
+    let mut a = Actors::from_entries(40, entries).unwrap();
+    let order = |a: &Actors| {
+        a.iter_combatants()
+            .map(|a| a.identity().id)
+            .collect::<Vec<_>>()
+    };
+    assert_eq!(order(&a), [20, 8, 2]);
+    a.remove(20);
+    a.remove(12);
+    let id = a.spawn(Actor::Soldier(Box::new(soldier(1)))).unwrap();
+    assert_eq!(id, 40);
+    let b = Actors::restore(&a.checkpoint().unwrap()).unwrap();
+    assert_eq!(order(&a), [8, 2, 40]);
+    assert_eq!(order(&a), order(&b));
+}
+
+#[test]
+fn active_building_index_preserves_registration_order_and_rebuilds_on_restore() {
+    use frontline_core::structure::Structure;
+    let active = [
+        "fob",
+        "town",
+        "barracks",
+        "factory",
+        "research",
+        "helipad",
+        "dock",
+        "medic_tent",
+        "mg_nest",
+        "watchtower",
+        "hmg_nest",
+        "mortar_pit",
+        "at_post",
+        "mines",
+        "ammo_cache",
+    ];
+    let mut entries = vec![Actor::Soldier(Box::new(soldier(1)))];
+    let mut expected = vec![];
+    for (i, kind) in active.into_iter().enumerate() {
+        let id = 100 - i as u32;
+        for (id, kind) in [(id, kind), (200 + i as u32, "tree")] {
+            entries.push(Actor::Structure(Box::new(Structure {
+                id,
+                kind: kind.into(),
+                ..Default::default()
+            })));
+        }
+        expected.push(id);
+    }
+    let mut actors = Actors::from_entries(300, entries).unwrap();
+    assert_eq!(actors.simulated_structures(), expected);
+    actors.remove(expected.remove(3)).unwrap();
+    actors.remove(200).unwrap();
+    let id = actors
+        .spawn(Actor::Structure(Box::new(Structure {
+            kind: "medic_tent".into(),
+            ..Default::default()
+        })))
+        .unwrap();
+    expected.push(id);
+    actors
+        .spawn(Actor::Structure(Box::new(Structure {
+            kind: "rubble".into(),
+            ..Default::default()
+        })))
+        .unwrap();
+    let before = actors.checkpoint().unwrap();
+    assert!(actors
+        .spawn(Actor::Structure(Box::new(Structure {
+            kind: "fob".into(),
+            hp: f64::NAN,
+            ..Default::default()
+        })))
+        .is_err());
+    assert_eq!(actors.checkpoint().unwrap(), before);
+    assert_eq!(actors.simulated_structures(), expected);
+    assert_eq!(
+        Actors::restore(&before).unwrap().simulated_structures(),
+        expected
+    );
+}
 fn drone(id: u32) -> Drone {
     Drone {
         id,

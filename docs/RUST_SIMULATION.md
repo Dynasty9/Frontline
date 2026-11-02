@@ -2774,3 +2774,38 @@ ownership, actors, squads, paths, attack/ambush plans and random state. All 1,01
 core debug tests pass at this revision. The transport, live runtime and independent
 whole-match verifier still require integration; these checks are not a claim of
 whole-battle verification or 60 FPS.
+
+## Retained battlefield scheduler
+
+`match_state` owns the connected battlefield, rules, ownership, water, plans,
+random stream, fire, gunfire and cadence clocks in one versioned checkpoint.
+Restore rejects incompatible formats, malformed blocks, inconsistent map sizes
+and reused group identities. `execute` routes decoded commands into this state.
+
+`match_tick` advances fixed 1/60-second battlefield phases with fixed terrain,
+hierarchy and path budgets. It preserves registration order, skips actors removed
+by earlier updates, and snapshots vehicles, projectiles and drones together before
+vehicle updates. Infantry throws can fly that tick; rounds launched by vehicles
+wait until the following tick. New recruits wait for the next infantry pass,
+while vehicles created during production update immediately. Research affects
+later recruitment, services, crews and weapons. Queued prisoner arrivals apply
+custody and guard-release effects before infantry updates. Deferred blasts and
+collision retirement form the final phase, after the pending commander/mission pass.
+
+Active buildings and combatants have derived registration-order indices. Scenery
+does not participate in either scan, and restoring these indices does not change
+actor checkpoint bytes or tie order. Tests cover spawn, removal and restoration.
+
+Seven scheduler regressions cover these phase boundaries, encoded player movement,
+clock exhaustion and a mixed battlefield resumed through 180 ticks. Three match
+checkpoint checks cover connected commands, continuation and malformed saves.
+The numeric contract also records 128 connected ticks across four seeds, restoring
+all match state and rebuilding perception between comparison ticks.
+The full core debug suite passes 1,025 tests, including all 137 exact numeric
+cases. The connected-tick transcript contains 8,331,996 bytes; formatting,
+changelog and presentation checks also pass. Release checks are being rerun.
+
+This is the connected battlefield scheduler, not a standalone running match yet.
+Versioned production content, commanders, missions, the socket host, Godot's live
+client transition and independent whole-match replay verification remain required.
+No rendered performance result is implied by these core tests.

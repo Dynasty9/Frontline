@@ -68,7 +68,7 @@ impl PerceptionSearch {
         for contacts in self.cells.values_mut() {
             contacts.clear();
         }
-        for actor in actors.iter() {
+        for actor in actors.iter_combatants() {
             let c = match actor {
                 Actor::Soldier(s)
                     if s.identity.team >= 0

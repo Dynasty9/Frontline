@@ -24,6 +24,7 @@ pub enum Event {
     },
     Movement(squad_movement::Event),
 }
+#[derive(Clone, Copy)]
 pub struct TruckProfile<'a> {
     pub vehicle: vehicle_birth::Definition<'a>,
     pub town_load: [i32; 2],

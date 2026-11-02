@@ -87,6 +87,8 @@ pub mod infantry_world;
 pub mod infantry_wounded_world;
 pub mod match_command_codec;
 pub mod match_commands;
+pub mod match_state;
+pub mod match_tick;
 pub mod navigation_grid;
 pub mod navigation_scene;
 pub mod ordnance_world;

@@ -90,6 +90,8 @@ pub struct Actors {
     values: HashMap<u32, Actor>,
     // Scenery must not enlarge every unit, vehicle or projectile scan.
     by_kind: [Vec<u32>; 5],
+    combatants: Vec<u32>,
+    simulated_structures: Vec<u32>,
 }
 
 fn kind_order(entities: &Entities) -> [Vec<u32>; 5] {
@@ -98,6 +100,36 @@ fn kind_order(entities: &Entities) -> [Vec<u32>; 5] {
         order[identity.kind as usize].push(identity.id);
     }
     order
+}
+fn combatant(a: &Actor) -> Option<u32> {
+    matches!(a, Actor::Soldier(_) | Actor::Vehicle(_)).then(|| a.identity().id)
+}
+fn simulated_structure(a: &Actor) -> Option<u32> {
+    match a {
+        Actor::Structure(s)
+            if matches!(
+                s.kind.as_str(),
+                "fob"
+                    | "town"
+                    | "barracks"
+                    | "factory"
+                    | "research"
+                    | "helipad"
+                    | "dock"
+                    | "medic_tent"
+                    | "mg_nest"
+                    | "watchtower"
+                    | "hmg_nest"
+                    | "mortar_pit"
+                    | "at_post"
+                    | "mines"
+                    | "ammo_cache"
+            ) =>
+        {
+            Some(s.id)
+        }
+        _ => None,
+    }
 }
 
 impl Actors {
@@ -109,6 +141,8 @@ impl Actors {
         let entities = Entities::from_entries(next_id, &identities)?;
         Ok(Self {
             by_kind: kind_order(&entities),
+            combatants: actors.iter().filter_map(combatant).collect(),
+            simulated_structures: actors.iter().filter_map(simulated_structure).collect(),
             entities,
             values: actors.into_iter().map(|a| (a.identity().id, a)).collect(),
         })
@@ -147,6 +181,12 @@ impl Actors {
         self.by_kind[kind as usize]
             .iter()
             .map(|id| &self.values[id])
+    }
+    pub fn simulated_structures(&self) -> &[u32] {
+        &self.simulated_structures
+    }
+    pub fn iter_combatants(&self) -> impl Iterator<Item = &Actor> {
+        self.combatants.iter().map(|id| &self.values[id])
     }
     pub fn vehicle(&self, id: u32) -> Option<&Vehicle> {
         match self.get(id)? {
@@ -199,6 +239,12 @@ impl Actors {
         }
         let id = self.entities.spawn(actor.identity().kind)?;
         self.by_kind[actor.identity().kind as usize].push(id);
+        if combatant(&actor).is_some() {
+            self.combatants.push(id);
+        }
+        if simulated_structure(&actor).is_some() {
+            self.simulated_structures.push(id);
+        }
         self.values.insert(id, actor);
         Ok(id)
     }
@@ -208,6 +254,12 @@ impl Actors {
         }
         let actor = self.values.remove(&id)?;
         self.by_kind[actor.identity().kind as usize].retain(|&entry| entry != id);
+        if combatant(&actor).is_some() {
+            self.combatants.retain(|&entry| entry != id);
+        }
+        if simulated_structure(&actor).is_some() {
+            self.simulated_structures.retain(|&entry| entry != id);
+        }
         Some(actor)
     }
 
@@ -352,6 +404,14 @@ impl Actors {
         input.finish()?;
         Ok(Self {
             by_kind: kind_order(&entities),
+            combatants: entities
+                .iter()
+                .filter_map(|entry| combatant(&values[&entry.id]))
+                .collect(),
+            simulated_structures: entities
+                .iter()
+                .filter_map(|e| simulated_structure(&values[&e.id]))
+                .collect(),
             entities,
             values,
         })

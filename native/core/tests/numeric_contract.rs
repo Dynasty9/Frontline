@@ -10484,3 +10484,11 @@ mod match_commands;
 fn authenticated_match_commands_are_identical_across_platforms() {
     golden("match_commands", &match_commands::transcript());
 }
+
+#[path = "fixtures/match_tick.rs"]
+#[allow(dead_code)]
+mod match_tick;
+#[test]
+fn connected_battlefield_ticks_are_identical_across_platforms() {
+    golden("match_tick", &match_tick::transcript());
+}

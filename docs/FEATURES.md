@@ -1620,6 +1620,10 @@ The Rust command dispatcher connects selection, permissions, formation spacing,
 combat, transport, construction, production, support and tunnel orders. Command
 packets carry player intent; the authenticated session supplies the commander.
 Observer demonstrations and private readiness warnings retain their existing behavior.
+The retained battlefield now advances infantry, buildings, fire, vehicles, rounds,
+drones, squads and rules in one fixed-step Rust scheduler. Births and destruction
+affect later phases in the same order as the game, and checkpoints retain their
+shared state. Scenery is excluded from the active-building and perception scans.
 The full authoritative Rust server and deterministic
 battle verifier are still in progress; see [RUST_SIMULATION.md](RUST_SIMULATION.md).
 

@@ -262,7 +262,7 @@ pub enum Event {
         major: bool,
     },
 }
-pub struct Dispatcher<'a, 'w> {
+pub struct Dispatcher<'a, 'w, 'p> {
     pub world: &'a mut vehicle_loss_world::Context<'w>,
     pub rules: &'a mut Rules,
     pub owners: &'a Ownership,
@@ -271,7 +271,7 @@ pub struct Dispatcher<'a, 'w> {
     pub plans: &'a mut Vec<AttackPlan>,
     pub ambushes: &'a mut [AmbushPlan],
     pub next_plan: &'a mut u64,
-    pub profiles: &'a Profiles<'a>,
+    pub profiles: &'a Profiles<'p>,
     pub winner: i8,
     pub host_peer: i32,
 }
@@ -323,7 +323,7 @@ fn warn(out: &mut Vec<Event>, peer: i32, text: &str) {
         );
     }
 }
-impl Dispatcher<'_, '_> {
+impl Dispatcher<'_, '_, '_> {
     fn take(
         &mut self,
         peer: i32,

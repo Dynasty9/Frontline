@@ -195,6 +195,9 @@ impl Fires {
     pub fn hot(&self) -> &[u8] {
         &self.hot
     }
+    pub fn side(&self) -> usize {
+        self.side
+    }
     pub fn smokes(&self) -> &[Smoke] {
         &self.smokes
     }

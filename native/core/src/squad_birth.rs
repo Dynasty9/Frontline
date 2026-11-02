@@ -11,6 +11,7 @@ use crate::squad_movement::{self, flat, point};
 use crate::vector::{normalized, Vector3};
 use crate::vehicle_loss_world::Context;
 
+#[derive(Clone, Copy)]
 pub struct Definition<'a> {
     pub kind: &'a str,
     pub name: &'a str,

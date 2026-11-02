@@ -23,14 +23,14 @@ use frontline_core::vehicle_brain::CrewProfile;
 use frontline_core::vehicle_damage::Armor;
 use frontline_core::vehicle_launch::SmokeProfile;
 
-fn weapon() -> Weapon {
+pub fn weapon() -> Weapon {
     Weapon {
         ammunition: 120,
         magazine: 30,
         reload_time: 2.2,
     }
 }
-fn profile(s: &Infantry) -> Option<Profile<'static>> {
+pub fn profile(s: &Infantry) -> Option<Profile<'static>> {
     (!s.identity.weapon.is_empty()).then_some(Profile {
         fire: FireProfile {
             weapon: weapon(),
