@@ -140,7 +140,7 @@ func _ready() -> void:
 			var mode: int = trial % 3
 			var moving := trial % 7 == 0
 			s._weapon_tick_work(1.0 / 30.0, moving, ["normal", "escort", "crew"][mode])
-			var ready: Array = actors.ready_infantry_weapon(1, PackedFloat64Array([1.0 / 30.0, w.time, int(moving), mode, weapon.range]), clocks, gun_profile(st), squad, w.nav._planner, units, w.combat._collision, visibility, random._backend)
+			var ready: Array = actors.ready_infantry_weapon(1, PackedFloat64Array([1.0 / 30.0, w.time, int(moving), mode, weapon.range]), clocks, gun_profile(st), squad, w.nav._planner, units, w.combat._collision, visibility, random._backend, w.nav._path_ground(), w.nav._path_deck())
 			assert(ready.size() == 8)
 			var spoken := []
 			var cycle: PackedInt32Array = ready[4]

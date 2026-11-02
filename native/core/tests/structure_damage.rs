@@ -40,6 +40,7 @@ fn hit(
         &PathPlanner::new(32).unwrap(),
         q,
         rng,
+        frontline_core::traversal::Ground::default(),
     )
     .unwrap()
 }
@@ -204,6 +205,7 @@ fn cache_cookoffs_and_rubble_survive_a_checkpoint_without_early_damage() {
                 &PathPlanner::new(32).unwrap(),
                 &mut q,
                 &mut rng,
+                frontline_core::traversal::Ground::default(),
             )
             .unwrap();
         assert_eq!(out.events.contains(&Event::Rubble), !quiet);
@@ -261,11 +263,24 @@ fn structure_credit_keeps_the_last_enemy_and_invalid_damage_is_rejected() {
         &nav,
         &mut q,
         &mut rng,
+        frontline_core::traversal::Ground::default(),
     )
     .unwrap();
     assert_eq!(a.structure(20).unwrap().hit_by, Some(credit.clone()));
-    a.damage_structure(20, 1.0, 20, None, 1.0, true, None, &nav, &mut q, &mut rng)
-        .unwrap();
+    a.damage_structure(
+        20,
+        1.0,
+        20,
+        None,
+        1.0,
+        true,
+        None,
+        &nav,
+        &mut q,
+        &mut rng,
+        frontline_core::traversal::Ground::default(),
+    )
+    .unwrap();
     assert_eq!(a.structure(20).unwrap().hit_by, Some(credit));
     let before = a.checkpoint().unwrap();
     let cursor = rng.state();
@@ -280,7 +295,8 @@ fn structure_credit_keeps_the_last_enemy_and_invalid_damage_is_rejected() {
             None,
             &nav,
             &mut q,
-            &mut rng
+            &mut rng,
+            frontline_core::traversal::Ground::default()
         )
         .is_err());
     assert_eq!(a.checkpoint().unwrap(), before);

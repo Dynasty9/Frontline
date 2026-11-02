@@ -43,6 +43,7 @@ fn coarse_flight_steps_use_the_same_fixed_substeps() {
     let terrain = Terrain::blank(128).unwrap();
     let goal = Vector3::new(31.7, 16.0, -21.3);
     let mut a = helicopter();
+    a.position.y = 16.0;
     let mut b = a.clone();
     for _ in 0..100 {
         a.fly_to(goal, 0.1, Some(1.2), profile(), &terrain, &[])
@@ -75,6 +76,7 @@ fn ground_and_bridge_clearance_prevent_descending_through_the_surface() {
 fn sling_cargo_reduces_acceleration_and_yaw_authority() {
     let terrain = Terrain::blank(128).unwrap();
     let mut light = helicopter();
+    light.position.y = 16.0;
     let mut loaded = light.clone();
     loaded.sling_cargo = 9;
     let goal = Vector3::new(40.0, 16.0, 20.0);
@@ -88,6 +90,32 @@ fn sling_cargo_reduces_acceleration_and_yaw_authority() {
     }
     assert!(light.speed > loaded.speed);
     assert!(light.yaw.abs() > loaded.yaw.abs());
+}
+
+#[test]
+fn rotorcraft_climb_before_crossing_a_high_plateau_and_uavs_keep_clearance() {
+    let mut terrain = Terrain::blank(64).unwrap();
+    assert!(terrain.set_landform(vec![20.0; 17 * 17]));
+    terrain.heights.fill(20.0);
+    let mut v = helicopter();
+    v.position.y = 20.15;
+    let goal = Vector3::new(24.0, 20.15, 0.0);
+    for _ in 0..30 {
+        assert!(!v
+            .fly_to(goal, 1.0 / 30.0, None, profile(), &terrain, &[])
+            .unwrap());
+        assert_eq!(v.position.x, 0.0);
+    }
+    assert!(v.position.y > 21.0);
+    v.position.y = 21.0;
+    v.fly_uav(1.0 / 30.0, 20.0, 16.0, profile(), &terrain, &[])
+        .unwrap();
+    assert!(v.position.y >= 24.0);
+    let before = v.clone();
+    assert!(v
+        .fly_uav(0.1, 20.0, 16.0, profile(), &terrain, &[1])
+        .is_err());
+    assert_eq!(v, before);
 }
 
 #[test]
@@ -125,18 +153,22 @@ fn flight_checkpoints_resume_momentum_and_cyclic_without_divergence() {
 
 #[test]
 fn uav_orbits_resume_the_same_position_and_heading() {
+    let terrain = Terrain::blank(128).unwrap();
     let mut a = Vehicle {
         id: 1,
         uav_destination: Some(Vector3::new(7.3, 0.0, -21.7)),
         ..Default::default()
     };
     for _ in 0..200 {
-        a.fly_uav(1.0 / 30.0, 25.0, 16.0, profile()).unwrap();
+        a.fly_uav(1.0 / 30.0, 25.0, 16.0, profile(), &terrain, &[])
+            .unwrap();
     }
     let mut b = Vehicle::restore(&a.checkpoint().unwrap()).unwrap();
     for _ in 0..500 {
-        a.fly_uav(1.0 / 30.0, 25.0, 16.0, profile()).unwrap();
-        b.fly_uav(1.0 / 30.0, 25.0, 16.0, profile()).unwrap();
+        a.fly_uav(1.0 / 30.0, 25.0, 16.0, profile(), &terrain, &[])
+            .unwrap();
+        b.fly_uav(1.0 / 30.0, 25.0, 16.0, profile(), &terrain, &[])
+            .unwrap();
         assert_eq!(a, b);
     }
     assert!((a.position.y - 25.0).abs() < 1e-5);

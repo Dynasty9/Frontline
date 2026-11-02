@@ -232,7 +232,13 @@ fn advance(f: &mut Field, tick: u32) -> Vec<Event> {
     }
     f.s.geometry
         .navigation
-        .process_paths(&mut f.s.actors, 3, f.s.now, &mut f.s.rng)
+        .process_paths(
+            &mut f.s.actors,
+            3,
+            f.s.now,
+            &mut f.s.rng,
+            frontline_core::traversal::Ground::new(&f.s.geometry.terrain, &f.s.geometry.deck),
+        )
         .unwrap();
     out
 }

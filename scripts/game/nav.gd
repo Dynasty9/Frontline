@@ -43,13 +43,13 @@ func request_path(unit: Entity, destination: Vector3, vehicle: bool, team: int, 
 	var id := unit.eid
 	var tracks: bool = vehicle and unit is Vehicle and unit.is_tracked()
 	if _planner:
-		var graph: HNav = hnav_v if vehicle else hnav_i
-		var direct: PackedVector3Array = _planner.direct_path(graph._core, unit.position, destination, vehicle, care)
+		var graph: HNav = hnav_t if tracks else (hnav_v if vehicle else hnav_i)
+		var direct: PackedVector3Array = _planner.direct_path(graph._core, unit.position, destination, vehicle, care, tracks, _path_ground(), _path_deck())
 		if not direct.is_empty():
 			cancel_path(id)
 			done.call(direct)
 			return
-		if not _planner.request(id, destination, vehicle, team, care):
+		if not _planner.request(id, destination, vehicle, team, care, tracks):
 			push_error("Invalid or excessive path request")
 			return
 		_path_jobs[id] = [weakref(unit), done, Time.get_ticks_msec()]
@@ -130,11 +130,11 @@ func _process_native_paths(max_jobs: int) -> void:
 		if unit == null or unit.gone:
 			continue
 		path_wait_max_ms = maxf(path_wait_max_ms, Time.get_ticks_msec() - int(observer[2]))
-		var result := find_path(unit.position, job[1], job[2], job[3], job[4])
+		var result := find_path(unit.position, job[1], job[2], job[3], job[4], job[5])
 		count += 1
-		var hierarchy: HNav = hnav_v if job[2] else hnav_i
+		var hierarchy: HNav = hnav_t if job[5] else (hnav_v if job[2] else hnav_i)
 		if result.is_empty() and hierarchy.has_work():
-			var accepted: bool = _planner.request(id, job[1], job[2], job[3], job[4])
+			var accepted: bool = _planner.request(id, job[1], job[2], job[3], job[4], job[5])
 			assert(accepted, "A pending path must retain its queue slot")
 			_path_jobs[id] = observer
 			continue
@@ -316,13 +316,19 @@ func finalize() -> void:
 	# Preliminary loading-tool routes cannot describe the finished battlefield.
 	_route_cache.clear()
 	path_cache_hits = 0
-	# shortcut: retain terrain-aware paths until the Rust planner accepts slope classes and water depth.
-	var flat: bool = terrain == null or (terrain.landform.heights.is_empty() and not terrain.base.has(TerrainMap.WATER) and not terrain.base.has(TerrainMap.SHALLOW))
-	if flat and _planner == null and _use_native and ClassDB.class_exists("PathPlannerCore") and hnav_i._core != null and hnav_v._core != null:
+	if (terrain == null or terrain._native != null) and _planner == null and _use_native and ClassDB.class_exists("PathPlannerCore") and hnav_i._core != null and hnav_v._core != null:
 		_planner = ClassDB.instantiate("PathPlannerCore")
 		var configured: bool = _planner.configure(N)
-		var loaded: bool = _planner.load_cells(ikind, vkind, heat)
+		var loaded: bool = _planner.load_cells(ikind, vkind, heat) and _planner.load_tracked(tkind)
 		assert(configured and loaded, "Invalid navigation surface")
+		var bodies := {}
+		for index: int in cell_objs:
+			_sync_path_obstacles(index)
+			for item: Array in cell_objs[index]: bodies[item[0]] = true
+		if terrain:
+			for id: int in bodies:
+				var st: Structure = terrain.world.entities.get(id)
+				if is_instance_valid(st): _sync_path_footprints(st)
 		# Loading tools may have queued orders before the map was finalized.
 		for id: int in _path_order:
 			if not _path_jobs.has(id):
@@ -330,7 +336,7 @@ func finalize() -> void:
 			var job: Array = _path_jobs[id]
 			if job.size() != 8:
 				continue
-			var accepted: bool = _planner.request(id, job[1], job[2], job[3], job[4])
+			var accepted: bool = _planner.request(id, job[1], job[2], job[3], job[4], job[7])
 			assert(accepted)
 			_path_jobs[id] = [job[0], job[5], job[6]]
 		var ordered: bool = _planner.restore_queue_order(PackedInt64Array(_path_order.slice(_path_head)))
@@ -383,11 +389,13 @@ func walkable(p: Vector3) -> bool:
 
 
 func add_structure(st: Structure) -> void:
+	_sync_path_footprints(st)
 	for part in st.nav_parts():
 		_raster(st, part)
 
 
 func remove_structure(st: Structure) -> void:
+	if _planner: _planner.remove_footprints(st.eid)
 	var touched := {}
 	for idx in st.nav_cells:
 		touched[idx] = true
@@ -400,6 +408,7 @@ func remove_structure(st: Structure) -> void:
 		if a.is_empty():
 			cell_objs.erase(idx)
 		_recompute(idx)
+		_sync_path_obstacles(idx)
 
 
 func _raster(st: Structure, part: Dictionary) -> void:
@@ -434,6 +443,7 @@ func _raster(st: Structure, part: Dictionary) -> void:
 			a.append([st.eid, ik if in_i else FREE, vk if in_v else FREE])
 			st.nav_cells.append(idx)
 			_recompute(idx)
+			_sync_path_obstacles(idx)
 
 
 func _recompute(idx: int) -> void:
@@ -503,9 +513,34 @@ func stamp_heat(p: Vector3, r: float, d: int) -> void:
 				_sync_path_cell(idx)
 
 
+func _path_ground() -> RefCounted:
+	return terrain._native if terrain else null
+
+
+func _path_deck() -> PackedByteArray:
+	return terrain.world.water.deck if terrain and terrain.world.water else PackedByteArray()
+
+
+func _sync_path_obstacles(idx: int) -> void:
+	if not _planner: return
+	var rows := PackedInt64Array()
+	for item: Array in cell_objs.get(idx, []): rows.append_array(PackedInt64Array(item))
+	var valid: bool = _planner.set_obstacles(idx, rows)
+	assert(valid, "Invalid navigation occupancy")
+
+
+func _sync_path_footprints(st: Structure) -> void:
+	if not _planner: return
+	var rows := PackedFloat64Array()
+	for part: Dictionary in st.nav_parts():
+		if part.i == SOLID: rows.append_array(PackedFloat64Array([part.c.x, part.c.y, part.h.x, part.h.y, part.yaw]))
+	var valid: bool = _planner.set_footprints(st.eid, rows)
+	assert(valid, "Invalid navigation footprint")
+
+
 func _sync_path_cell(idx: int) -> void:
 	if _planner:
-		var valid: bool = _planner.set_cell(idx, ikind[idx], vkind[idx], heat[idx])
+		var valid: bool = _planner.set_cell(idx, ikind[idx], vkind[idx], heat[idx]) and _planner.set_tracked(idx, tkind[idx])
 		assert(valid, "Invalid path smoothing cell")
 
 
@@ -523,6 +558,8 @@ func _nearest_free(g: NavRaster, c: Vector2i, radius := 9) -> Vector2i:
 
 
 func nearest_walkable(p: Vector3, vehicle := false, tracks := false) -> Vector3:
+	if _planner:
+		return _planner.nearest_walkable(p, vehicle, tracks, _path_ground(), _path_deck())
 	var g := tracked if tracks else (veh if vehicle else inf)
 	var c := cell_of(p)
 	if not g.is_point_solid(c) and (not terrain or not terrain.world.water or not terrain.world.water.too_deep(p)):
@@ -553,10 +590,9 @@ func find_path(from: Vector3, to: Vector3, vehicle := false, team := -1, care :=
 
 
 func _find_path(from: Vector3, to: Vector3, vehicle: bool, team: int, care: float, tracks: bool) -> PackedVector3Array:
-	# shortcut: padded goals need exact structure checks until the native planner owns those footprints.
-	if _planner and not (veh if vehicle else inf).is_point_solid(cell_of(to)):
-		var hierarchy: HNav = hnav_v if vehicle else hnav_i
-		var result: PackedVector3Array = _planner.find_path(hierarchy._core, from, to, vehicle, team, care)
+	if _planner:
+		var hierarchy: HNav = hnav_t if tracks else (hnav_v if vehicle else hnav_i)
+		var result: PackedVector3Array = _planner.find_path(hierarchy._core, from, to, vehicle, team, care, tracks, _path_ground(), _path_deck())
 		path_cache_hits = _planner.cache_hits()
 		return result
 	var g := tracked if tracks else (veh if vehicle else inf)
@@ -665,7 +701,7 @@ func _hier_path(h: HNav, g: NavRaster, a: Vector2i, b: Vector2i, team: int, care
 
 func _line_free(a: Vector3, b: Vector3, vehicle: bool, tracks := false) -> bool:
 	if _planner:
-		return _planner.line_free(a, b, vehicle)
+		return _planner.line_free(a, b, vehicle, tracks, _path_ground(), _path_deck())
 	var d := b - a
 	var steps := int(d.length() / 0.5) + 1
 	var arr := tkind if tracks else (vkind if vehicle else ikind)

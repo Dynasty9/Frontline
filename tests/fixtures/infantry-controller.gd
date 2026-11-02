@@ -97,9 +97,9 @@ class OriginalClockman extends Clockman:
 			dive_t -= dt
 			act = Act.DIVE
 			var np := position + dive_dir * 5.5 * dt
-			if world.nav.walkable(np):
+			if world.nav.can_step(position, np) and (not world.water or world.water.depth_at(np) <= 0.15):
 				position = np
-			position.y = maxf(base_y, position.y - dt * 3.0)
+			position.y = maxf(base_y + _ground(), position.y - dt * 3.0)
 			if dive_t <= 0.0:
 				posture = Post.PRONE
 				act = Act.IDLE

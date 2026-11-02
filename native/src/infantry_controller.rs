@@ -116,7 +116,15 @@ impl InfantryControllerCore {
         base: f64,
         dt: f64,
         nav: Gd<PathPlannerCore>,
+        terrain: Option<Gd<crate::terrain::TerrainCore>>,
+        deck: PackedByteArray,
     ) -> Array<Variant> {
+        let terrain = terrain.as_ref().map(|t| t.bind());
+        let ground = frontline_core::traversal::Ground {
+            terrain: terrain.as_ref().and_then(|t| t.core.as_ref()),
+            deck: deck.as_slice(),
+        };
+
         let Some(mut s) = state(&values) else {
             return Array::new();
         };
@@ -124,7 +132,7 @@ impl InfantryControllerCore {
         let Some(nav) = nav.core.as_ref() else {
             return Array::new();
         };
-        let Ok(out) = s.dive(crate::point(position), base, dt, nav) else {
+        let Ok(out) = s.dive(crate::point(position), base, dt, nav, ground) else {
             return Array::new();
         };
         self.core = s;

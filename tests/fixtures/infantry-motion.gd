@@ -27,6 +27,7 @@ func make_world() -> Scene:
 	w.settings = {"seed": 137, "rust_infantry_motion": true}
 	w.nav = Nav.new()
 	w.terrain = TerrainMap.new(w)
+	w.nav.terrain = w.terrain
 	w.water = WaterMap.new(w)
 	w.water.deck.resize(Nav.N * Nav.N)
 	w.combat = Combat.new(w)

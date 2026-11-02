@@ -211,6 +211,7 @@ impl Context<'_> {
             &self.geometry.navigation.planner,
             self.deferred,
             self.rng,
+            crate::traversal::Ground::new(&self.geometry.terrain, &self.geometry.deck),
         )?;
         let mut out = vec![];
         if damage.events.contains(&StructureEvent::Door) {

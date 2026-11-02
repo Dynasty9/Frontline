@@ -55,6 +55,11 @@ func _ready() -> void:
 	checks = 0
 	var observed := {}
 	for trial in 80:
+		if trial == 40:
+			var heights := PackedFloat32Array()
+			heights.resize(289)
+			for i in heights.size(): heights[i] = 20.0 + (i % 17) * 0.2
+			w.terrain.install_landform(heights)
 		var v := Aviator.new()
 		v.world = w
 		v.srv = true
@@ -90,7 +95,7 @@ func _ready() -> void:
 				var scan: float = v.scan_t - dt
 				state[2][11] = 0.5 if scan <= 0.0 else scan
 				assert(core.load_state(state))
-				assert(core.fly_uav(dt, float(v.vdef.get("alt", 20.0)), float(v.vdef.get("orbit", 16.0)), p))
+				assert(core.fly_uav(dt, float(v.vdef.get("alt", 20.0)), float(v.vdef.get("orbit", 16.0)), p, w.terrain._native, w.water.deck))
 				v._uav_tick(dt)
 				observed["uav"] = true
 			else:
@@ -108,7 +113,7 @@ func _ready() -> void:
 				assert(core.restore(saved) and core.checkpoint() == saved)
 		var saved: PackedByteArray = core.checkpoint()
 		assert(core.fly_to(goal, NAN, PackedFloat64Array(), p, w.terrain._native, w.water.deck) == -1)
-		assert(core.fly_uav(NAN, 20.0, 16.0, p) == false)
+		assert(core.fly_uav(NAN, 20.0, 16.0, p, w.terrain._native, w.water.deck) == false)
 		assert(core.checkpoint() == saved)
 		v.free()
 	for key in ["uav", "settled", "loaded"]:

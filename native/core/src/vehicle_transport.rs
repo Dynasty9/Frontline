@@ -22,8 +22,12 @@ fn flat(p: Vector3) -> Vector3 {
 fn direction(yaw: f64) -> Vector3 {
     Vector3::new(-libm::sin(yaw) as f32, 0.0, -libm::cos(yaw) as f32)
 }
-fn shore(position: Vector3, nav: &PathPlanner) -> Option<Vector3> {
-    nav.nearest_walkable(position)
+fn shore(
+    position: Vector3,
+    nav: &PathPlanner,
+    ground: crate::traversal::Ground<'_>,
+) -> Option<Vector3> {
+    nav.nearest_walkable(position, ground)
         .filter(|p| flat(*p - position).length() < 15.0)
 }
 impl Context<'_> {
@@ -51,9 +55,12 @@ impl Context<'_> {
                 }
             }
         }
-        let Some(order) = self
-            .actors
-            .dismount(vehicle, boat, &self.geometry.navigation.planner)?
+        let Some(order) = self.actors.dismount(
+            vehicle,
+            boat,
+            &self.geometry.navigation.planner,
+            crate::traversal::Ground::new(&self.geometry.terrain, &self.geometry.deck),
+        )?
         else {
             return Ok((None, vec![]));
         };
@@ -108,7 +115,12 @@ impl Actors {
         vehicle: u32,
         boat: bool,
         nav: &PathPlanner,
+        ground: crate::traversal::Ground<'_>,
     ) -> Result<Option<Dismount>, &'static str> {
+        if !ground.valid_for(nav.side()) {
+            return Err("invalid navigation ground");
+        }
+
         let v = self.vehicle(vehicle).ok_or("missing transport")?;
         if v.passengers.is_empty() {
             return Ok(None);
@@ -116,7 +128,7 @@ impl Actors {
         let forward = direction(v.yaw);
         let mut back = -forward;
         let bank = if boat {
-            let Some(bank) = shore(v.position, nav) else {
+            let Some(bank) = shore(v.position, nav, ground) else {
                 return Ok(None);
             };
             back = normalized(flat(bank - v.position));
@@ -137,7 +149,7 @@ impl Actors {
             }
             let offset = (exits.len() as f64 - 1.5) as f32;
             let at = if let Some(bank) = bank {
-                nav.nearest_walkable(bank + side * offset * 1.3)
+                nav.nearest_walkable(bank + side * offset * 1.3, ground)
                     .ok_or("invalid shore exit")?
             } else {
                 v.position + back * 3.6 + side * offset * 1.3
@@ -166,7 +178,7 @@ impl Actors {
             let s = self.soldier_mut(id).unwrap();
             s.links.vehicle = 0;
             // The preflight above makes each exit infallible before changing shared state.
-            s.unhide(at, nav)?;
+            s.unhide(at, nav, ground)?;
         }
         self.vehicle_mut(vehicle).unwrap().passengers.clear();
         Ok(Some(order))
@@ -179,7 +191,12 @@ impl Actors {
         boat: bool,
         nav: &PathPlanner,
         units: &SpatialIndex,
+        ground: crate::traversal::Ground<'_>,
     ) -> Result<bool, &'static str> {
+        if !ground.valid_for(nav.side()) {
+            return Err("invalid navigation ground");
+        }
+
         if !dt.is_finite() || !(0.0..=3600.0).contains(&dt) {
             return Err("invalid dismount step");
         }
@@ -196,7 +213,7 @@ impl Actors {
             v.landing
                 && v.path_index as usize >= v.path.len()
                 && v.speed.abs() < 0.8
-                && shore(v.position, nav).is_some()
+                && shore(v.position, nav, ground).is_some()
         } else {
             let mut close = false;
             if v.assault {

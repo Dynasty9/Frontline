@@ -141,6 +141,7 @@ func display_name() -> String:
 func apply_props(d: Dictionary) -> void:
 	if d.has("vkind"):
 		vkind = d.vkind
+		vdef = Defs.VEHICLES.get(vkind, {})
 	if d.has("team"):
 		team = d.team
 	if d.has("owner"):

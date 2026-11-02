@@ -114,7 +114,7 @@ func _ready() -> void:
 				var result := [[], PackedByteArray()]
 				if not s.gone and s.life == Soldier.Life.HIDDEN:
 					s._hidden(0.1)
-					result = actors.advance_infantry_hidden(1, 0.1, "rifle", Defs.WEAPONS.rifle.mag, w.nav._planner, cores, random._backend)
+					result = actors.advance_infantry_hidden(1, 0.1, "rifle", Defs.WEAPONS.rifle.mag, w.nav._planner, cores, random._backend, w.nav._path_ground(), w.nav._path_deck())
 				assert(result.size() == 2, "hidden %s/%d/%d" % [reason, trial, step])
 				if not result[1].is_empty(): retired = result[1]
 				assert(infantry.restore(retired if s.gone else actors.actor_state(1)))

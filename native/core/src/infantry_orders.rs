@@ -81,6 +81,7 @@ impl Infantry {
                 id: u64::from(self.identity.id),
                 destination,
                 vehicle: false,
+                tracked: false,
                 team: i32::from(self.identity.team),
                 care,
             },

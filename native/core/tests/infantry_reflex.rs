@@ -80,6 +80,7 @@ fn grenade_memory_and_busy_dives_preserve_the_order_of_random_draws() {
             &nav,
             &mut collision,
             &mut rng,
+            frontline_core::traversal::Ground::default(),
         )
         .unwrap();
     assert!(result.handled && result.cancel_path);
@@ -102,7 +103,8 @@ fn grenade_memory_and_busy_dives_preserve_the_order_of_random_draws() {
                 &units,
                 &nav,
                 &mut collision,
-                &mut rng
+                &mut rng,
+                frontline_core::traversal::Ground::default()
             )
             .unwrap()
             .handled
@@ -146,6 +148,7 @@ fn grenade_claims_and_task_cleanup_change_shared_state_in_the_existing_order() {
                 &nav,
                 &mut collision,
                 &mut rng,
+                frontline_core::traversal::Ground::default(),
             )
             .unwrap();
         seen.insert(out.leaf);
@@ -169,6 +172,7 @@ fn grenade_claims_and_task_cleanup_change_shared_state_in_the_existing_order() {
                     &nav,
                     &mut collision,
                     &mut rng,
+                    frontline_core::traversal::Ground::default(),
                 )
                 .unwrap();
             assert_eq!(second.leaf, 5);
@@ -217,6 +221,7 @@ fn shelter_requires_an_owned_structure_not_just_a_collision_body() {
                 &nav,
                 &mut collision,
                 &mut SimulationRandom::new(2),
+                frontline_core::traversal::Ground::default(),
             )
             .unwrap();
         assert_eq!(out.leaf, if owned { 4 } else { 5 });
@@ -252,6 +257,7 @@ fn shells_draw_muted_warnings_and_stop_at_the_first_close_dive() {
             &nav,
             &mut collision,
             &mut rng,
+            frontline_core::traversal::Ground::default(),
         )
         .unwrap();
     assert!(out.handled);
@@ -283,6 +289,7 @@ fn busy_shell_reactions_duck_without_cancelling_the_current_duty() {
             &nav,
             &mut collision,
             &mut SimulationRandom::new(1),
+            frontline_core::traversal::Ground::default(),
         )
         .unwrap();
     assert!(!out.handled && !out.cancel_path);
@@ -328,6 +335,7 @@ fn drone_warnings_skip_friendly_dead_and_high_aircraft_without_random_draws() {
             &nav,
             &mut collision,
             &mut rng,
+            frontline_core::traversal::Ground::default(),
         )
         .unwrap();
     assert!(!out.handled);
@@ -357,7 +365,8 @@ fn a_failed_dive_cannot_spend_randomness_or_remember_the_round() {
             &units,
             &nav,
             &mut collision,
-            &mut rng
+            &mut rng,
+            frontline_core::traversal::Ground::default()
         )
         .is_err());
     assert_eq!(actors.checkpoint().unwrap(), saved);

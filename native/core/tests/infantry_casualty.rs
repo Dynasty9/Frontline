@@ -154,7 +154,12 @@ fn hidden_transport_and_corpse_cleanup_keep_link_and_tick_boundaries() {
     assert_eq!(s.control.hidden_timer, 9.0);
     assert_eq!(s.hidden_tick(0.1, None).unwrap(), Hidden::BailOut);
     let nav = PathPlanner::new(32).unwrap();
-    s.unhide(Vector3::new(2.1, -2.0, 3.2), &nav).unwrap();
+    s.unhide(
+        Vector3::new(2.1, -2.0, 3.2),
+        &nav,
+        frontline_core::traversal::Ground::default(),
+    )
+    .unwrap();
     assert_eq!(s.vitals.life, Life::Alive);
     assert_eq!(s.motion.position.y, 0.0);
     assert_eq!(s.orders.hold_position, s.motion.position);

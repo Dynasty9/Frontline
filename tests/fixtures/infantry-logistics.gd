@@ -128,7 +128,7 @@ func _ready() -> void:
 						assert(w.nav.jobs.is_empty())
 				else:
 					s._resupply_tick(1.0 / 30.0)
-					var result: Array = actors.arrive_infantry_supply(1, int(s.wdef.ammo), w.nav._planner)
+					var result: Array = actors.arrive_infantry_supply(1, int(s.wdef.ammo), w.nav._planner, w.nav._path_ground(), w.nav._path_deck())
 					assert(result.size() == 5)
 					if result[1]: spoken.append([1, "Got ammo."])
 					seen["missing" if result[0] else "arrived"] = true

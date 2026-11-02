@@ -63,6 +63,7 @@ fn update(
                     hp: 500.,
                     hull: Vector3::new(2., 2., 4.),
                     missiles: [3, 4],
+                    tracked: false,
                 },
                 name: "Carrier",
                 cap: 3,
@@ -188,7 +189,16 @@ pub fn transcript() -> Vec<u8> {
                 for w in [&mut s.world, &mut r.world] {
                     w.geometry
                         .navigation
-                        .process_paths(&mut w.actors, 32, w.now, &mut w.rng)
+                        .process_paths(
+                            &mut w.actors,
+                            32,
+                            w.now,
+                            &mut w.rng,
+                            frontline_core::traversal::Ground::new(
+                                &w.geometry.terrain,
+                                &w.geometry.deck,
+                            ),
+                        )
                         .unwrap();
                 }
                 let bytes = state(&s, &e, &o, &b);

@@ -100,10 +100,10 @@ fn escorts_keep_their_side_and_walk_animation_when_ground_blocks_them() {
         dt: 1.0 / 30.0,
         mount: None,
     };
-    let moved = medicine::escort(i, &nav).unwrap();
+    let moved = medicine::escort(i, &nav, frontline_core::traversal::Ground::default()).unwrap();
     assert!(moved.backwards && moved.walking && moved.position.z < 5.0 && moved.position.x < 0.0);
     assert!(nav.load_cells(&[3; 1024], &[0; 1024], &[0; 1024]));
-    let blocked = medicine::escort(i, &nav).unwrap();
+    let blocked = medicine::escort(i, &nav, frontline_core::traversal::Ground::default()).unwrap();
     assert_eq!(blocked.position, i.position);
     assert!(blocked.backwards && blocked.walking);
     let drag =
@@ -117,16 +117,37 @@ fn casualty_shelter_uses_a_nearby_squad_order_only_when_it_is_away_from_fire() {
     let nav = PathPlanner::new(64).unwrap();
     let at = Vector3::ZERO;
     assert_eq!(
-        medicine::safe_anchor(at, Vector3::Z, None, &nav).unwrap(),
+        medicine::safe_anchor(
+            at,
+            Vector3::Z,
+            None,
+            &nav,
+            frontline_core::traversal::Ground::default()
+        )
+        .unwrap(),
         Vector3::Z * 11.0
     );
     assert_eq!(
-        medicine::safe_anchor(at, Vector3::Z, Some(Vector3::Z * 20.0), &nav).unwrap(),
+        medicine::safe_anchor(
+            at,
+            Vector3::Z,
+            Some(Vector3::Z * 20.0),
+            &nav,
+            frontline_core::traversal::Ground::default()
+        )
+        .unwrap(),
         Vector3::Z * 20.0
     );
     for order in [Vector3::Z * 22.0, -Vector3::Z, Vector3::X * 10.0] {
         assert_eq!(
-            medicine::safe_anchor(at, Vector3::Z, Some(order), &nav).unwrap(),
+            medicine::safe_anchor(
+                at,
+                Vector3::Z,
+                Some(order),
+                &nav,
+                frontline_core::traversal::Ground::default()
+            )
+            .unwrap(),
             Vector3::Z * 11.0
         );
     }

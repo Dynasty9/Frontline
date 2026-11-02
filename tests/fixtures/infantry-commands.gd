@@ -107,7 +107,7 @@ func _ready() -> void:
 		patient.dragged_by = before[0]
 		patient.rescue_claimed = before[1]
 		squad.breach_by = before[2]
-		var out: Array = core.command(input, w.nav._planner, mount_position)
+		var out: Array = core.command(input, w.nav._planner, mount_position, w.nav._path_ground(), w.nav._path_deck())
 		assert(out.size() == 4 and out[0] == allowed, "admission %d" % trial)
 		if not out[1].is_empty():
 			if out[1][0] == 1:
@@ -129,9 +129,9 @@ func _ready() -> void:
 		assert(core.restore(core.checkpoint()))
 		compare(s, core, rng, "restored command %d" % trial)
 		var saved: PackedByteArray = core.checkpoint()
-		assert(core.command([5, Vector3.ZERO, 2], w.nav._planner, PackedVector3Array()).is_empty())
-		assert(core.command([0, Vector3(NAN, 0, 0), 1, Vector3.ZERO], w.nav._planner, PackedVector3Array()).is_empty())
-		assert(core.command([3, -1, Vector3.ZERO, Vector3.ZERO], w.nav._planner, PackedVector3Array()).is_empty())
+		assert(core.command([5, Vector3.ZERO, 2], w.nav._planner, PackedVector3Array(), w.nav._path_ground(), w.nav._path_deck()).is_empty())
+		assert(core.command([0, Vector3(NAN, 0, 0), 1, Vector3.ZERO], w.nav._planner, PackedVector3Array(), w.nav._path_ground(), w.nav._path_deck()).is_empty())
+		assert(core.command([3, -1, Vector3.ZERO, Vector3.ZERO], w.nav._planner, PackedVector3Array(), w.nav._path_ground(), w.nav._path_deck()).is_empty())
 		assert(core.checkpoint() == saved)
 		w.nav.jobs.clear()
 		s.free()

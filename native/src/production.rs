@@ -126,6 +126,7 @@ pub(crate) enum Item {
         hp: f64,
         hull: frontline_core::vector::Vector3,
         missiles: [i32; 2],
+        tracked: bool,
         name: String,
         cap: u32,
         air: bool,
@@ -139,7 +140,7 @@ impl Item {
     pub(crate) fn parse(a: &Array<Variant>) -> Option<Self> {
         match read::<u8>(a, 0)? {
             0 if a.len() == 2 => Some(Self::Squad(Squad::parse(&read(a, 1)?)?)),
-            1 if a.len() == 13 => {
+            1 if a.len() == 14 => {
                 let rows: Array<Variant> = read(a, 12)?;
                 Some(Self::Vehicle {
                     key: read::<GString>(a, 1)?.to_string(),
@@ -147,6 +148,7 @@ impl Item {
                     hp: read(a, 3)?,
                     hull: crate::point(read(a, 4)?),
                     missiles: [read(a, 5)?, read(a, 6)?],
+                    tracked: read(a, 13)?,
                     name: read::<GString>(a, 7)?.to_string(),
                     cap: read(a, 8)?,
                     air: read(a, 9)?,
@@ -185,6 +187,7 @@ impl Item {
                 hp,
                 hull,
                 missiles,
+                tracked,
                 name,
                 cap,
                 air,
@@ -198,6 +201,7 @@ impl Item {
                     hp: *hp,
                     hull: *hull,
                     missiles: *missiles,
+                    tracked: *tracked,
                 },
                 name,
                 cap: *cap,

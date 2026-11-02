@@ -123,6 +123,7 @@ impl Context<'_> {
                 destination,
                 care,
                 revision,
+                crate::traversal::Ground::new(&self.geometry.terrain, &self.geometry.deck),
             )?;
         }
         Ok(())
@@ -229,6 +230,7 @@ impl Context<'_> {
                 mission,
             },
             &self.geometry.navigation.planner,
+            crate::traversal::Ground::new(&self.geometry.terrain, &self.geometry.deck),
         )?;
         self.vehicle_route(id, result.route)?;
         let mut out = vec![];
@@ -278,6 +280,7 @@ impl Context<'_> {
             &self.geometry.terrain,
             &traffic,
             self.rng,
+            &self.geometry.deck,
         )?;
         self.vehicle_route(id, result.route)?;
         let v = self.actors.vehicle(id).unwrap();

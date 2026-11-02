@@ -89,9 +89,13 @@ impl Context<'_> {
                     .actors
                     .vehicle_mut(vehicle)
                     .ok_or("missing evasive vehicle")?;
-                self.geometry
-                    .navigation
-                    .submit_vehicle(v, destination, care, revision)?;
+                self.geometry.navigation.submit_vehicle(
+                    v,
+                    destination,
+                    care,
+                    revision,
+                    crate::traversal::Ground::new(&self.geometry.terrain, &self.geometry.deck),
+                )?;
             }
             out.push(Event::Ordnance(event));
         }
@@ -371,6 +375,7 @@ impl Context<'_> {
             defense,
             self.rng,
             &mut warnings,
+            crate::traversal::Ground::new(&self.geometry.terrain, &self.geometry.deck),
         )?;
         self.apply_ordnance(warnings, out)?;
         out.push(Event::Ordnance(Ordnance::Launch {
@@ -423,8 +428,11 @@ impl Context<'_> {
             .structure(st_id)
             .filter(|st| st.built && !st.gone)
         else {
-            self.actors
-                .release_infantry_mount(id, &self.geometry.navigation.planner)?;
+            self.actors.release_infantry_mount(
+                id,
+                &self.geometry.navigation.planner,
+                crate::traversal::Ground::new(&self.geometry.terrain, &self.geometry.deck),
+            )?;
             return Ok(vec![]);
         };
         let kind = st.kind.clone();

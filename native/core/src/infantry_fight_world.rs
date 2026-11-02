@@ -121,6 +121,7 @@ impl Context<'_> {
                     route,
                     self.now,
                     self.rng,
+                    crate::traversal::Ground::new(&self.geometry.terrain, &self.geometry.deck),
                 )?;
             }
             Movement::CancelPath => self.geometry.navigation.planner.cancel(u64::from(id)),
@@ -192,12 +193,14 @@ impl Context<'_> {
                 self.squads.iter().find(|q| q.id == squad_id),
                 &self.geometry.navigation.planner,
                 self.units,
+                crate::traversal::Ground::new(&self.geometry.terrain, &self.geometry.deck),
             )? {
                 self.geometry.navigation.submit_infantry(
                     self.actors.soldier_mut(id).unwrap(),
                     route,
                     self.now,
                     self.rng,
+                    crate::traversal::Ground::new(&self.geometry.terrain, &self.geometry.deck),
                 )?;
                 out.push(Event::World(world_combat::Event::Stat("shift_along")));
             }
@@ -335,6 +338,7 @@ impl Context<'_> {
                     mount: self.actors.mount_turn(s, gun)?,
                 },
                 &self.geometry.navigation.planner,
+                crate::traversal::Ground::new(&self.geometry.terrain, &self.geometry.deck),
             )?;
             let s = self.actors.soldier_mut(id).unwrap();
             s.motion.position = pose.position;

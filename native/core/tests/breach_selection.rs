@@ -52,11 +52,29 @@ fn a_better_placed_mate_prevents_claiming_another_contact_and_ties_keep_the_firs
     let contacts = [first, contact(2)];
     let p = V::Z * 20.0;
     assert_eq!(
-        entry::choose(p, V::ZERO, None, &contacts, &[], &nav).unwrap(),
+        entry::choose(
+            p,
+            V::ZERO,
+            None,
+            &contacts,
+            &[],
+            &nav,
+            frontline_core::traversal::Ground::default()
+        )
+        .unwrap(),
         Some((0, 0))
     );
     assert_eq!(
-        entry::choose(p, V::ZERO, Some(1), &contacts, &[], &nav).unwrap(),
+        entry::choose(
+            p,
+            V::ZERO,
+            Some(1),
+            &contacts,
+            &[],
+            &nav,
+            frontline_core::traversal::Ground::default()
+        )
+        .unwrap(),
         Some((1, 0))
     );
     let mut mate = Mate {
@@ -68,12 +86,30 @@ fn a_better_placed_mate_prevents_claiming_another_contact_and_ties_keep_the_firs
         mounted: false,
     };
     assert_eq!(
-        entry::choose(p, V::ZERO, None, &contacts, &[mate], &nav).unwrap(),
+        entry::choose(
+            p,
+            V::ZERO,
+            None,
+            &contacts,
+            &[mate],
+            &nav,
+            frontline_core::traversal::Ground::default()
+        )
+        .unwrap(),
         None
     );
     mate.mounted = true;
     assert_eq!(
-        entry::choose(p, V::ZERO, None, &contacts, &[mate], &nav).unwrap(),
+        entry::choose(
+            p,
+            V::ZERO,
+            None,
+            &contacts,
+            &[mate],
+            &nav,
+            frontline_core::traversal::Ground::default()
+        )
+        .unwrap(),
         Some((0, 0))
     );
 }
@@ -81,11 +117,20 @@ fn a_better_placed_mate_prevents_claiming_another_contact_and_ties_keep_the_firs
 #[test]
 fn nearest_walkable_preserves_ring_order_and_keeps_unblocked_height() {
     let mut nav = PathPlanner::new(16).unwrap();
-    assert_eq!(nav.nearest_walkable(V::Y), Some(V::Y));
+    assert_eq!(
+        nav.nearest_walkable(V::Y, frontline_core::traversal::Ground::default()),
+        Some(V::Y)
+    );
     let mut cells = [3; 256];
     cells[7 * 16 + 7] = 0;
     cells[7 * 16 + 8] = 0;
     nav.load_cells(&cells, &cells, &[0; 256]);
-    assert_eq!(nav.nearest_walkable(V::Y), Some(V::new(-0.5, 0.0, -0.5)));
-    assert_eq!(nav.nearest_walkable(V::NAN), None);
+    assert_eq!(
+        nav.nearest_walkable(V::Y, frontline_core::traversal::Ground::default()),
+        Some(V::new(-0.5, 0.0, -0.5))
+    );
+    assert_eq!(
+        nav.nearest_walkable(V::NAN, frontline_core::traversal::Ground::default()),
+        None
+    );
 }

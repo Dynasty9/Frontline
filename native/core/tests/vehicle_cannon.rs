@@ -150,6 +150,7 @@ fn cannon_hits_obstructions_but_excludes_the_firing_vehicle() {
             &terrain,
             &mut collision,
             &mut SimulationRandom::new(137),
+            &[],
         )
         .unwrap();
     assert!((shot.blast.position.z + 19.5).abs() < 0.0001);
@@ -179,6 +180,7 @@ fn trench_lips_intercept_flat_shots_unless_the_gun_looks_down_the_bay() {
             &terrain,
             &mut collision,
             &mut SimulationRandom::new(137),
+            &[],
         )
         .unwrap();
     assert!(lip.blast.position.z > -28.5);
@@ -205,6 +207,7 @@ fn trench_lips_intercept_flat_shots_unless_the_gun_looks_down_the_bay() {
             &terrain,
             &mut collision,
             &mut SimulationRandom::new(137),
+            &[],
         )
         .unwrap();
     assert!(down_bay.blast.position.z < -29.5);
@@ -216,12 +219,30 @@ fn cannon_randomness_and_impact_resume_from_owned_actor_state() {
     let mut rng = SimulationRandom::new(137);
     let terrain = Terrain::blank(128).unwrap();
     let mut collision = CollisionWorld::default();
-    a.fire_vehicle_cannon(1, 2, 10.0, profile(), &terrain, &mut collision, &mut rng)
-        .unwrap();
+    a.fire_vehicle_cannon(
+        1,
+        2,
+        10.0,
+        profile(),
+        &terrain,
+        &mut collision,
+        &mut rng,
+        &[],
+    )
+    .unwrap();
     let mut b = Actors::restore(&a.checkpoint().unwrap()).unwrap();
     let mut resumed = rng.clone();
     assert_eq!(
-        a.fire_vehicle_cannon(1, 2, 10.1, profile(), &terrain, &mut collision, &mut rng),
+        a.fire_vehicle_cannon(
+            1,
+            2,
+            10.1,
+            profile(),
+            &terrain,
+            &mut collision,
+            &mut rng,
+            &[]
+        ),
         b.fire_vehicle_cannon(
             1,
             2,
@@ -229,7 +250,8 @@ fn cannon_randomness_and_impact_resume_from_owned_actor_state() {
             profile(),
             &terrain,
             &mut collision,
-            &mut resumed
+            &mut resumed,
+            &[]
         )
     );
     assert_eq!(a.checkpoint().unwrap(), b.checkpoint().unwrap());
@@ -245,7 +267,28 @@ fn invalid_cannon_requests_leave_state_and_randomness_unchanged() {
     let saved = a.checkpoint().unwrap();
     let cursor = rng.state();
     assert!(a
-        .fire_vehicle_cannon(1, 99, 10.1, profile(), &terrain, &mut collision, &mut rng)
+        .fire_vehicle_cannon(
+            1,
+            2,
+            10.1,
+            profile(),
+            &terrain,
+            &mut collision,
+            &mut rng,
+            &[1]
+        )
+        .is_err());
+    assert!(a
+        .fire_vehicle_cannon(
+            1,
+            99,
+            10.1,
+            profile(),
+            &terrain,
+            &mut collision,
+            &mut rng,
+            &[]
+        )
         .is_err());
     assert!(a
         .fire_vehicle_cannon(
@@ -255,7 +298,8 @@ fn invalid_cannon_requests_leave_state_and_randomness_unchanged() {
             profile(),
             &terrain,
             &mut collision,
-            &mut rng
+            &mut rng,
+            &[]
         )
         .is_err());
     let mut p = profile();
@@ -264,8 +308,47 @@ fn invalid_cannon_requests_leave_state_and_randomness_unchanged() {
         pivot: None,
     });
     assert!(a
-        .fire_vehicle_cannon(1, 2, 10.1, p, &terrain, &mut collision, &mut rng)
+        .fire_vehicle_cannon(1, 2, 10.1, p, &terrain, &mut collision, &mut rng, &[])
         .is_err());
     assert_eq!(a.checkpoint().unwrap(), saved);
     assert_eq!(rng.state(), cursor);
+}
+
+#[test]
+fn cannon_impacts_use_elevated_ground_and_bridge_surfaces() {
+    let mut terrain = Terrain::blank(128).unwrap();
+    assert!(terrain.set_landform(vec![20.0; 33 * 33]));
+    terrain.heights.fill(20.0);
+    let initial = actors(true);
+    let mut target = initial.soldier(2).unwrap().clone();
+    target.motion.position.y = -3.0;
+    let mut a = Actors::from_entries(
+        3,
+        vec![
+            initial.get(1).unwrap().clone(),
+            Actor::Soldier(Box::new(target)),
+        ],
+    )
+    .unwrap();
+    let mut collision = CollisionWorld::default();
+    let fire = |a: &mut Actors, collision: &mut CollisionWorld, deck: &[u8]| {
+        a.fire_vehicle_cannon(
+            1,
+            2,
+            1.0,
+            profile(),
+            &terrain,
+            collision,
+            &mut SimulationRandom::new(137),
+            deck,
+        )
+        .unwrap()
+        .blast
+        .position
+    };
+    assert_eq!(fire(&mut a, &mut collision, &[]).y, 20.1_f32);
+    assert_eq!(
+        fire(&mut a, &mut collision, &vec![1; 128 * 128]).y,
+        0.16_f32
+    );
 }

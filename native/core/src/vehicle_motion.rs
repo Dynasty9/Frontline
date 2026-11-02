@@ -2,6 +2,7 @@
 use crate::path_planner::PathPlanner;
 use crate::random::SimulationRandom;
 use crate::terrain::Terrain;
+use crate::traversal::Ground;
 use crate::vector::{normalized, Vector3};
 use crate::vehicle::{Route, Vehicle};
 use std::f64::consts::{PI, TAU};
@@ -231,28 +232,54 @@ impl Vehicle {
         }
         out
     }
-    fn move_ground(&mut self, velocity: Vector3, dt: f64, supply: bool, nav: &PathPlanner) {
+    fn move_ground(
+        &mut self,
+        velocity: Vector3,
+        dt: f64,
+        tracked: bool,
+        nav: &PathPlanner,
+        terrain: &Terrain,
+        deck: &[u8],
+    ) {
         self.velocity = velocity;
-        let next = self.position + velocity * dt as f32;
-        if supply || nav.kind_at(next, true) != 3 {
+        let mut next = self.position + velocity * dt as f32;
+        next.y = terrain.landform.height(next) as f32;
+        let ground = Ground::new(terrain, deck);
+        if nav.step_clear(self.position, next, true, tracked, ground) {
             self.position = next;
             return;
         }
         let x = self.position + Vector3::new((f64::from(velocity.x) * dt) as f32, 0.0, 0.0);
         let z = self.position + Vector3::new(0.0, 0.0, (f64::from(velocity.z) * dt) as f32);
-        if velocity.x.abs() > velocity.z.abs() && nav.kind_at(x, true) != 3 {
+        if velocity.x.abs() > velocity.z.abs()
+            && nav.step_clear(self.position, x, true, tracked, ground)
+        {
             self.position = x;
-        } else if nav.kind_at(z, true) != 3 {
+        } else if nav.step_clear(self.position, z, true, tracked, ground) {
             self.position = z;
-        } else if nav.kind_at(x, true) != 3 {
+        } else if nav.step_clear(self.position, x, true, tracked, ground) {
             self.position = x;
         }
         self.speed *= 0.6;
     }
-    fn coast(&mut self, dt: f64, p: GroundProfile, nav: &PathPlanner) {
+    fn coast(
+        &mut self,
+        dt: f64,
+        p: GroundProfile,
+        nav: &PathPlanner,
+        terrain: &Terrain,
+        deck: &[u8],
+    ) {
         self.speed = toward(self.speed, 0.0, p.handling[1] * dt);
         self.yaw_rate = toward(self.yaw_rate, 0.0, 2.0 * dt);
-        self.move_ground(direction(self.yaw) * self.speed as f32, dt, p.supply, nav);
+        self.move_ground(
+            direction(self.yaw) * self.speed as f32,
+            dt,
+            p.tracked,
+            nav,
+            terrain,
+            deck,
+        );
     }
     fn face(&mut self, dt: f64, p: GroundProfile) {
         let Some(wanted) = self.face_yaw else {
@@ -293,9 +320,10 @@ impl Vehicle {
         nav: &PathPlanner,
         terrain: &Terrain,
         traffic: &[Traffic],
+        deck: &[u8],
     ) -> usize {
         if index >= points.len() {
-            self.coast(dt, p, nav);
+            self.coast(dt, p, nav, terrain, deck);
             return index;
         }
         while index < points.len() - 1 {
@@ -312,7 +340,7 @@ impl Vehicle {
         }
         let end = f64::from(flat(*points.last().unwrap() - self.position).length());
         if index >= points.len() - 1 && end < 1.8 {
-            self.coast(dt, p, nav);
+            self.coast(dt, p, nav, terrain, deck);
             return if self.speed.abs() < 0.4 {
                 points.len()
             } else {
@@ -334,7 +362,7 @@ impl Vehicle {
                 at,
                 direction(self.yaw),
                 p.hull,
-                |at| nav.kind_at(at, true) != 3,
+                |at| nav.kind_for(at, true, p.tracked) != 3,
                 traffic,
             );
         }
@@ -406,7 +434,14 @@ impl Vehicle {
         };
         self.speed = toward(self.speed, wanted, rate * dt);
         self.yaw = f64::from((self.yaw + self.yaw_rate * dt) as f32);
-        self.move_ground(direction(self.yaw) * self.speed as f32, dt, p.supply, nav);
+        self.move_ground(
+            direction(self.yaw) * self.speed as f32,
+            dt,
+            p.tracked,
+            nav,
+            terrain,
+            deck,
+        );
         index
     }
     pub fn drive_ground(
@@ -418,9 +453,10 @@ impl Vehicle {
         terrain: &Terrain,
         traffic: &[Traffic],
         rng: &mut SimulationRandom,
+        deck: &[u8],
     ) -> Result<Drive, &'static str> {
         if !valid(dt, p, traffic)
-            || nav.side() as f64 * 0.5 != terrain.half()
+            || !Ground::new(terrain, deck).valid_for(nav.side())
             || target.is_some_and(|t| !point(t.0))
         {
             return Err("invalid vehicle ground step");
@@ -443,7 +479,7 @@ impl Vehicle {
             || (self.assault
                 && target.is_some_and(|t| f64::from(flat(t.0 - self.position).length()) < halt))
         {
-            self.coast(dt, p, nav);
+            self.coast(dt, p, nav, terrain, deck);
             self.stuck_timer = 0.0;
             self.face(dt, p);
             return Ok(out);
@@ -470,7 +506,13 @@ impl Vehicle {
             self.yaw = f64::from((self.yaw + self.yaw_rate * dt) as f32);
             self.velocity = direction(self.yaw) * self.speed as f32;
             let back = self.position + self.velocity * dt as f32;
-            if nav.kind_at(back, true) != 3 {
+            if nav.step_clear(
+                self.position,
+                back,
+                true,
+                p.tracked,
+                Ground::new(terrain, deck),
+            ) {
                 self.position = back;
             }
             if self.unstick_timer <= 0.0 {
@@ -504,6 +546,7 @@ impl Vehicle {
             nav,
             terrain,
             traffic,
+            deck,
         ) as u32;
         self.path = points;
         out.shove = true;
@@ -516,8 +559,10 @@ impl Vehicle {
         nav: &PathPlanner,
         terrain: &Terrain,
         traffic: &[Traffic],
+        deck: &[u8],
     ) -> Result<(), &'static str> {
-        if !valid(dt, p, traffic) || !p.supply || nav.side() as f64 * 0.5 != terrain.half() {
+        if !valid(dt, p, traffic) || !p.supply || !Ground::new(terrain, deck).valid_for(nav.side())
+        {
             return Err("invalid truck route step");
         }
         let points = std::mem::take(&mut self.route);
@@ -526,12 +571,13 @@ impl Vehicle {
             self.route_index as usize,
             dt,
             p.speed,
-            false,
-            1.6,
+            true,
+            0.0,
             p,
             nav,
             terrain,
             traffic,
+            deck,
         ) as u32;
         self.route = points;
         Ok(())

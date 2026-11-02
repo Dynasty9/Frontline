@@ -234,6 +234,7 @@ impl Actors {
                         .filter(|q| !q.members.is_empty())
                         .map(|q| q.order_position),
                     world.nav,
+                    crate::traversal::Ground::new(world.terrain, world.deck),
                 )?;
                 let search = self.find_infantry_cover(
                     s,
@@ -298,6 +299,8 @@ impl Actors {
                 }
                 let p = self.soldier_mut(target).unwrap();
                 p.motion.position = pose.patient;
+                p.motion.position.y = crate::traversal::Ground::new(world.terrain, world.deck)
+                    .height(p.motion.position) as f32;
                 p.motion.yaw = pose.yaw;
             }
             Rescue::Treat => {

@@ -532,7 +532,10 @@ pub fn update_danger(
         for v in &mut maps[t] {
             *v = v.min(4.);
         }
-        if !nav.infantry.set_danger(t, &maps[t]) || !nav.vehicles.set_danger(t, &maps[t]) {
+        if !nav.infantry.set_danger(t, &maps[t])
+            || !nav.vehicles.set_danger(t, &maps[t])
+            || !nav.tracked.set_danger(t, &maps[t])
+        {
             return Err("invalid danger map");
         }
     }

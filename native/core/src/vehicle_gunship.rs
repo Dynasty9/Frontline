@@ -56,11 +56,12 @@ impl Vehicle {
         } else if let Some(destination) = self.gunship_destination {
             goal = destination;
         }
-        goal.y = if self.hp > self.max_hp * 0.25 {
-            14.0
-        } else {
-            (14.0f64 * 0.7) as f32
-        };
+        goal.y = (crate::traversal::Ground::new(terrain, deck).height(goal)
+            + if self.hp > self.max_hp * 0.25 {
+                14.0
+            } else {
+                14.0 * 0.7
+            }) as f32;
         self.fly_to(goal, dt, face, p, terrain, deck)?;
         Ok(())
     }

@@ -11,6 +11,7 @@ fn definition(base: &str) -> Definition<'_> {
         hp: 500.,
         hull: Vector3::new(2.3, 2.6, 6.),
         missiles: [6, 8],
+        tracked: false,
     }
 }
 fn spawn() -> Spawn {
@@ -82,6 +83,7 @@ fn rejected_vehicle_birth_preserves_identity_and_geometry() {
         },
         Definition {
             missiles: [-1, 0],
+            tracked: false,
             ..definition("tank")
         },
     ] {
@@ -107,5 +109,43 @@ fn rejected_vehicle_birth_preserves_identity_and_geometry() {
         assert!(g.spawn_vehicle(&mut a, bad, definition("tank")).is_err());
         assert_eq!(a.entities().next_id(), 1);
         assert_eq!(g.checkpoint(), before);
+    }
+}
+
+#[test]
+fn births_keep_boats_on_water_and_ground_trucks_before_collision_registration() {
+    let mut terrain = Terrain::blank(32).unwrap();
+    assert!(terrain.set_landform(vec![12.; 81]));
+    terrain.heights.fill(12.);
+    let mut world = WorldGeometry::new(terrain, vec![], 16).unwrap();
+    let mut actors = Actors::default();
+    for (base, height, expected) in [
+        ("boat", -0.45, -0.45),
+        ("tank", 0., 12.),
+        ("attack_heli", 20., 20.),
+        ("supply", 20., 12.),
+    ] {
+        let id = world
+            .spawn_vehicle(
+                &mut actors,
+                Spawn {
+                    team: 0,
+                    owner: 1,
+                    position: Vector3::new(0., height, 0.),
+                    yaw: 0.,
+                },
+                Definition {
+                    kind: base,
+                    base,
+                    hp: 100.,
+                    hull: Vector3::new(2., 2., 4.),
+                    missiles: [0, 0],
+                    tracked: base == "tank",
+                },
+            )
+            .unwrap();
+        let v = actors.vehicle(id).unwrap();
+        assert_eq!(v.position.y, expected);
+        assert_eq!(v.tracked, base == "tank");
     }
 }

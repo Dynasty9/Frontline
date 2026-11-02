@@ -202,7 +202,15 @@ impl BreachCore {
         candidates: Array<Variant>,
         teammates: Array<Variant>,
         planner: Gd<PathPlannerCore>,
+        terrain: Option<Gd<crate::terrain::TerrainCore>>,
+        deck: PackedByteArray,
     ) -> PackedInt64Array {
+        let terrain = terrain.as_ref().map(|t| t.bind());
+        let ground = frontline_core::traversal::Ground {
+            terrain: terrain.as_ref().and_then(|t| t.core.as_ref()),
+            deck: deck.as_slice(),
+        };
+
         let (Some(contacts), Some(mates)) = (contacts(&candidates), mates(&teammates)) else {
             return PackedInt64Array::new();
         };
@@ -220,6 +228,7 @@ impl BreachCore {
             &contacts,
             &mates,
             nav,
+            ground,
         ) else {
             return PackedInt64Array::new();
         };

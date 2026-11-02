@@ -132,11 +132,18 @@ impl SupplyNetwork {
                 true,
                 -1,
                 0.0,
+                false,
+                crate::traversal::Ground::new(&geometry.terrain, &geometry.deck),
             );
             let mut line = vec![geometry
                 .navigation
                 .planner
-                .nearest_walkable_for(start, true)
+                .nearest_walkable_for(
+                    start,
+                    true,
+                    false,
+                    crate::traversal::Ground::new(&geometry.terrain, &geometry.deck),
+                )
                 .unwrap()];
             line.extend(path);
             let st = structure_mut(actors, id);
@@ -189,7 +196,12 @@ impl SupplyNetwork {
         let start = geometry
             .navigation
             .planner
-            .nearest_walkable_for(exit, true)
+            .nearest_walkable_for(
+                exit,
+                true,
+                false,
+                crate::traversal::Ground::new(&geometry.terrain, &geometry.deck),
+            )
             .unwrap();
         let path = geometry.navigation.planner.find_path(
             &mut geometry.navigation.vehicles,
@@ -198,6 +210,8 @@ impl SupplyNetwork {
             true,
             -1,
             0.0,
+            false,
+            crate::traversal::Ground::new(&geometry.terrain, &geometry.deck),
         );
         if path.is_empty() {
             structure_mut(actors, id).supply_status = "No road".into();

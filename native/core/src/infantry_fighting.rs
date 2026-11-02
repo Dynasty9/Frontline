@@ -90,13 +90,18 @@ impl Actors {
         collision: &mut CollisionWorld,
         visibility: &mut Visibility,
         rng: &mut SimulationRandom,
+        ground: crate::traversal::Ground<'_>,
     ) -> Result<WeaponReady, &'static str> {
+        if !ground.valid_for(nav.side()) {
+            return Err("invalid navigation ground");
+        }
+
         if !range.is_finite() || !(0.0..=1e6).contains(&range) || units.cell_size() != UNIT_CELL {
             return Err("invalid infantry firing context");
         }
         let step = self.begin_infantry_weapon(id, input, squad.as_deref_mut(), rng)?;
         let route = if step.cycle.shift_along {
-            self.shift_infantry_cover(id, squad.as_deref(), nav, units)?
+            self.shift_infantry_cover(id, squad.as_deref(), nav, units, ground)?
         } else {
             None
         };
@@ -116,7 +121,12 @@ impl Actors {
         squad: Option<&Squad>,
         nav: &PathPlanner,
         units: &SpatialIndex,
+        ground: crate::traversal::Ground<'_>,
     ) -> Result<Option<RouteOrder>, &'static str> {
+        if !ground.valid_for(nav.side()) {
+            return Err("invalid navigation ground");
+        }
+
         let s = self.soldier(id).ok_or("missing shifting soldier")?;
         if squad.is_some_and(|q| q.id != s.identity.squad) || units.cell_size() != UNIT_CELL {
             return Err("invalid infantry cover context");
@@ -145,7 +155,7 @@ impl Actors {
             }
             if nav.kind_at(anchor.position, false) == 3
                 && nav
-                    .nearest_walkable(anchor.position)
+                    .nearest_walkable(anchor.position, ground)
                     .is_none_or(|p| f64::from(flat(p - anchor.position).length()) >= 1.6)
             {
                 continue;

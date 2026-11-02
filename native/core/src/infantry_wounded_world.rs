@@ -324,6 +324,7 @@ impl Context<'_> {
                         route,
                         self.now,
                         self.rng,
+                        crate::traversal::Ground::new(&self.geometry.terrain, &self.geometry.deck),
                     )?;
                     out.push(Event::World(world_combat::Event::Stat("crawl_to_cover")));
                 }

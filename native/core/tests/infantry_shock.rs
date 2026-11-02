@@ -5,6 +5,65 @@ use frontline_core::random::SimulationRandom;
 use frontline_core::vector::Vector3 as V;
 
 #[test]
+fn knockback_lands_on_elevated_ground_and_bounces_off_deep_water() {
+    use frontline_core::{
+        terrain::{Terrain, BASE, WATER},
+        traversal::Ground,
+    };
+    let mut terrain = Terrain::blank(32).unwrap();
+    terrain.heights.fill(12.0);
+    assert!(terrain.set_landform(vec![12.; 81]));
+    let nav = PathPlanner::new(32).unwrap();
+    let mut rng = SimulationRandom::new(37);
+    let mut shock = InfantryShock {
+        flinging: true,
+        velocity: -V::Y * 4.0,
+        ..Default::default()
+    };
+    let out = shock
+        .fling_step(
+            V::Y * 12.1,
+            Life::Dead,
+            0.1,
+            &nav,
+            &mut rng,
+            Ground::new(&terrain, &[]),
+        )
+        .unwrap();
+    assert!(out.landed);
+    assert_eq!(out.position.y, 12.0);
+    terrain.layers[BASE].fill(WATER);
+    shock.flinging = true;
+    shock.velocity = V::new(8., 2., 0.);
+    let before = rng;
+    let out = shock
+        .fling_step(
+            V::Y * 20.,
+            Life::Dead,
+            0.1,
+            &nav,
+            &mut rng,
+            Ground::new(&terrain, &[]),
+        )
+        .unwrap();
+    assert_eq!(out.position.x, 0.);
+    assert_eq!(shock.velocity.x, -1.6);
+    assert_eq!(rng, before);
+    let snapshot = shock;
+    assert!(shock
+        .fling_step(
+            out.position,
+            Life::Alive,
+            0.1,
+            &nav,
+            &mut rng,
+            Ground::new(&terrain, &[0; 3])
+        )
+        .is_err());
+    assert_eq!((shock, rng), (snapshot, before));
+}
+
+#[test]
 fn fling_guards_preserve_randomness_and_low_obstacles_bounce_only_horizontal_motion() {
     let mut rng = SimulationRandom::new(17);
     for (life, power, carried, flinging) in [
@@ -31,19 +90,40 @@ fn fling_guards_preserve_randomness_and_low_obstacles_bounce_only_horizontal_mot
         .unwrap());
     assert_eq!(shock.velocity, V::new(8.0, 6.1, 0.0));
     let landed = shock
-        .fling_step(V::ZERO, Life::Dead, 0.1, &nav, &mut rng)
+        .fling_step(
+            V::ZERO,
+            Life::Dead,
+            0.1,
+            &nav,
+            &mut rng,
+            frontline_core::traversal::Ground::default(),
+        )
         .unwrap();
     assert_eq!(landed.position.x, 0.0);
     assert_eq!(shock.velocity.x, -1.6);
     assert!(!landed.landed);
     let landed = shock
-        .fling_step(V::Y * 3.0, Life::Dead, 0.1, &nav, &mut rng)
+        .fling_step(
+            V::Y * 3.0,
+            Life::Dead,
+            0.1,
+            &nav,
+            &mut rng,
+            frontline_core::traversal::Ground::default(),
+        )
         .unwrap();
     assert!(landed.position.x < 0.0);
     shock.velocity = -V::Y * 4.0;
     let before = rng;
     let landed = shock
-        .fling_step(V::ZERO, Life::Dead, 0.1, &nav, &mut rng)
+        .fling_step(
+            V::ZERO,
+            Life::Dead,
+            0.1,
+            &nav,
+            &mut rng,
+            frontline_core::traversal::Ground::default(),
+        )
         .unwrap();
     assert!(landed.landed && !landed.dazed && !landed.speak && !shock.flinging);
     assert_eq!(landed.position.y, 0.0);
@@ -84,12 +164,26 @@ fn shock_checkpoint_resumes_landing_stagger_and_random_draws() {
     let mut pos = V::ZERO;
     for _ in 0..240 {
         let next = shock
-            .fling_step(pos, Life::Alive, 1.0 / 30.0, &nav, &mut rng)
+            .fling_step(
+                pos,
+                Life::Alive,
+                1.0 / 30.0,
+                &nav,
+                &mut rng,
+                frontline_core::traversal::Ground::default(),
+            )
             .unwrap();
         assert_eq!(
             next,
             restored
-                .fling_step(pos, Life::Alive, 1.0 / 30.0, &nav, &mut replay_rng)
+                .fling_step(
+                    pos,
+                    Life::Alive,
+                    1.0 / 30.0,
+                    &nav,
+                    &mut replay_rng,
+                    frontline_core::traversal::Ground::default()
+                )
                 .unwrap()
         );
         assert_eq!(shock, restored);
@@ -108,12 +202,26 @@ fn shock_checkpoint_resumes_landing_stagger_and_random_draws() {
     };
     while shock.dazed_timer > 0.0 {
         let next = shock
-            .stagger(state, 1.0 / 30.0, None, &nav, &mut rng)
+            .stagger(
+                state,
+                1.0 / 30.0,
+                None,
+                &nav,
+                &mut rng,
+                frontline_core::traversal::Ground::default(),
+            )
             .unwrap();
         assert_eq!(
             next,
             restored
-                .stagger(state, 1.0 / 30.0, None, &nav, &mut replay_rng)
+                .stagger(
+                    state,
+                    1.0 / 30.0,
+                    None,
+                    &nav,
+                    &mut replay_rng,
+                    frontline_core::traversal::Ground::default()
+                )
                 .unwrap()
         );
         assert_eq!(shock.checkpoint(), restored.checkpoint());

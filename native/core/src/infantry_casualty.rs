@@ -120,7 +120,12 @@ impl Actors {
                     )?;
                     if out.movement.last() == Some(&Movement::PrisonArrival) {
                         out.movement.pop();
-                        out.prison = self.arrive_infantry_prison(id, now, world.nav)?;
+                        out.prison = self.arrive_infantry_prison(
+                            id,
+                            now,
+                            world.nav,
+                            crate::traversal::Ground::new(world.terrain, world.deck),
+                        )?;
                     }
                 }
             }
@@ -400,18 +405,27 @@ impl Infantry {
         Ok(())
     }
 
-    pub fn unhide(&mut self, position: Vector3, nav: &PathPlanner) -> Result<(), &'static str> {
+    pub fn unhide(
+        &mut self,
+        position: Vector3,
+        nav: &PathPlanner,
+        ground: crate::traversal::Ground<'_>,
+    ) -> Result<(), &'static str> {
+        if !ground.valid_for(nav.side()) {
+            return Err("invalid navigation ground");
+        }
+
         if !self.valid() || !point(position) {
             return Err("invalid infantry exit");
         }
         let position = nav
-            .nearest_walkable(position)
+            .nearest_walkable(position, ground)
             .ok_or("invalid exit position")?;
         self.vitals.life = Life::Alive;
         self.control.hidden = HiddenReason::Waiting;
         self.links.hidden_in = 0;
         self.motion.position = position;
-        self.motion.position.y = 0.0;
+        self.motion.position.y = ground.height(self.motion.position) as f32;
         self.activity = 0;
         self.cover.at_cover = false;
         self.cover.evaluate_at = 0.0;

@@ -37,7 +37,10 @@ fn exiting_updates_passengers_and_retains_the_last_squads_order() {
         passengers: vec![2, 2, 3, 4],
         ..carrier()
     });
-    let out = a.dismount(1, false, &nav).unwrap().unwrap();
+    let out = a
+        .dismount(1, false, &nav, frontline_core::traversal::Ground::default())
+        .unwrap()
+        .unwrap();
     assert_eq!(out.squad, 9);
     assert!(!out.assault);
     assert_eq!(out.position, Vector3::NEG_Z * 8.0);
@@ -53,7 +56,10 @@ fn exiting_updates_passengers_and_retains_the_last_squads_order() {
         );
         assert_eq!(s.orders.hold_position, s.motion.position);
     }
-    assert!(a.dismount(1, false, &nav).unwrap().is_none());
+    assert!(a
+        .dismount(1, false, &nav, frontline_core::traversal::Ground::default())
+        .unwrap()
+        .is_none());
 }
 
 #[test]
@@ -66,7 +72,10 @@ fn removed_passengers_do_not_leave_gaps_and_assault_orders_survive() {
         ..carrier()
     });
     a.remove(3);
-    let out = a.dismount(1, false, &nav).unwrap().unwrap();
+    let out = a
+        .dismount(1, false, &nav, frontline_core::traversal::Ground::default())
+        .unwrap()
+        .unwrap();
     assert!(out.assault);
     assert_eq!(out.position, goal);
     assert_eq!(
@@ -84,14 +93,20 @@ fn boats_preserve_bounded_shore_search_and_exit_spacing() {
     assert!(nav.load_cells(&cells, &vec![0; 128 * 128], &vec![0; 128 * 128]));
     let mut a = passengers(carrier());
     // Existing navigation falls back to the current cell when its nine-cell search finds no bank.
-    assert!(a.dismount(1, true, &nav).unwrap().is_some());
+    assert!(a
+        .dismount(1, true, &nav, frontline_core::traversal::Ground::default())
+        .unwrap()
+        .is_some());
     assert_eq!(nav.kind_at(a.soldier(2).unwrap().motion.position, false), 3);
     let mut a = passengers(Vehicle {
         position: Vector3::X * 12.0,
         assault_destination: Some(Vector3::X * 30.0),
         ..carrier()
     });
-    let out = a.dismount(1, true, &nav).unwrap().unwrap();
+    let out = a
+        .dismount(1, true, &nav, frontline_core::traversal::Ground::default())
+        .unwrap()
+        .unwrap();
     assert!(out.assault);
     for id in 2..=4 {
         assert!(a.soldier(id).unwrap().motion.position.x >= 20.0);
@@ -106,8 +121,28 @@ fn dismount_checks_preserve_arrival_damage_and_visible_enemy_gates() {
         dismount_timer: 0.1,
         ..carrier()
     });
-    assert!(!a.dismount_due(1, 0.05, false, false, &nav, &units).unwrap());
-    assert!(a.dismount_due(1, 0.05, false, false, &nav, &units).unwrap());
+    assert!(!a
+        .dismount_due(
+            1,
+            0.05,
+            false,
+            false,
+            &nav,
+            &units,
+            frontline_core::traversal::Ground::default()
+        )
+        .unwrap());
+    assert!(a
+        .dismount_due(
+            1,
+            0.05,
+            false,
+            false,
+            &nav,
+            &units,
+            frontline_core::traversal::Ground::default()
+        )
+        .unwrap());
     let mut a = passengers(Vehicle {
         path: vec![Vector3::NEG_Z * 30.0],
         speed: 3.0,
@@ -124,7 +159,17 @@ fn dismount_checks_preserve_arrival_damage_and_visible_enemy_gates() {
     };
     a.spawn(Actor::Vehicle(Box::new(foe))).unwrap();
     a.rebuild_units(&mut units).unwrap();
-    assert!(a.dismount_due(1, 0.1, false, false, &nav, &units).unwrap());
+    assert!(a
+        .dismount_due(
+            1,
+            0.1,
+            false,
+            false,
+            &nav,
+            &units,
+            frontline_core::traversal::Ground::default()
+        )
+        .unwrap());
     let mut a = passengers(Vehicle {
         path: vec![Vector3::NEG_Z * 30.0],
         speed: 3.0,
@@ -133,7 +178,17 @@ fn dismount_checks_preserve_arrival_damage_and_visible_enemy_gates() {
         max_hp: 100.0,
         ..carrier()
     });
-    assert!(a.dismount_due(1, 0.1, false, false, &nav, &units).unwrap());
+    assert!(a
+        .dismount_due(
+            1,
+            0.1,
+            false,
+            false,
+            &nav,
+            &units,
+            frontline_core::traversal::Ground::default()
+        )
+        .unwrap());
 }
 
 #[test]
@@ -146,14 +201,52 @@ fn boat_arrival_clears_landing_once_and_lifts_keep_their_own_schedule() {
         ..carrier()
     });
     let saved = a.checkpoint().unwrap();
-    assert!(!a.dismount_due(1, 0.1, true, false, &nav, &units).unwrap());
+    assert!(!a
+        .dismount_due(
+            1,
+            0.1,
+            true,
+            false,
+            &nav,
+            &units,
+            frontline_core::traversal::Ground::default()
+        )
+        .unwrap());
     assert_eq!(a.checkpoint().unwrap(), saved);
-    assert!(a.dismount_due(1, 0.1, false, true, &nav, &units).unwrap());
+    assert!(a
+        .dismount_due(
+            1,
+            0.1,
+            false,
+            true,
+            &nav,
+            &units,
+            frontline_core::traversal::Ground::default()
+        )
+        .unwrap());
     assert!(!a.vehicle(1).unwrap().landing);
-    assert!(!a.dismount_due(1, 1.0, false, true, &nav, &units).unwrap());
+    assert!(!a
+        .dismount_due(
+            1,
+            1.0,
+            false,
+            true,
+            &nav,
+            &units,
+            frontline_core::traversal::Ground::default()
+        )
+        .unwrap());
     let saved = a.checkpoint().unwrap();
     assert!(a
-        .dismount_due(1, f64::NAN, false, true, &nav, &units)
+        .dismount_due(
+            1,
+            f64::NAN,
+            false,
+            true,
+            &nav,
+            &units,
+            frontline_core::traversal::Ground::default()
+        )
         .is_err());
     assert_eq!(a.checkpoint().unwrap(), saved);
 }

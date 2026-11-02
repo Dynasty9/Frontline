@@ -150,7 +150,10 @@ impl Context<'_> {
                 .geometry
                 .navigation
                 .planner
-                .nearest_walkable(position + normalized(flat(center - position)) * 8.0)
+                .nearest_walkable(
+                    position + normalized(flat(center - position)) * 8.0,
+                    crate::traversal::Ground::new(&self.geometry.terrain, &self.geometry.deck),
+                )
                 .unwrap();
             self.move_inner(
                 i,
@@ -190,6 +193,7 @@ impl Context<'_> {
             self.squads,
             self.now,
             self.rng,
+            crate::traversal::Ground::new(&self.geometry.terrain, &self.geometry.deck),
         )?;
         Ok(())
     }
@@ -255,7 +259,13 @@ impl Context<'_> {
                     self.geometry
                         .navigation
                         .planner
-                        .nearest_walkable(slot.position)
+                        .nearest_walkable(
+                            slot.position,
+                            crate::traversal::Ground::new(
+                                &self.geometry.terrain,
+                                &self.geometry.deck,
+                            ),
+                        )
                         .unwrap()
                 }
             })
@@ -685,9 +695,18 @@ impl Context<'_> {
             };
             let nav = &self.geometry.navigation.planner;
             let mut target = nav
-                .nearest_walkable(position + side * offset[0] - head * offset[1])
+                .nearest_walkable(
+                    position + side * offset[0] - head * offset[1],
+                    crate::traversal::Ground::new(&self.geometry.terrain, &self.geometry.deck),
+                )
                 .unwrap();
-            if !nav.line_free(position, target, false) {
+            if !nav.line_free(
+                position,
+                target,
+                false,
+                false,
+                crate::traversal::Ground::new(&self.geometry.terrain, &self.geometry.deck),
+            ) {
                 target = position;
             }
             let distance = flat(target - self.actors.soldier(id).unwrap().motion.position).length();
@@ -872,7 +891,10 @@ impl Context<'_> {
             .geometry
             .navigation
             .planner
-            .nearest_walkable(cc + direction * leg as f32 + side)
+            .nearest_walkable(
+                cc + direction * leg as f32 + side,
+                crate::traversal::Ground::new(&self.geometry.terrain, &self.geometry.deck),
+            )
             .unwrap();
         let slots = self.formation(dest, face, mover, true)?;
         for (&id, slot) in mover.iter().zip(slots) {

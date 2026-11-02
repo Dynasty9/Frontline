@@ -291,7 +291,12 @@ impl Context<'_> {
         s.recover(dt, self.now)?;
         let mut out = vec![];
         if s.shock.flinging {
-            let (dazed, cue) = s.fling_tick(dt, &self.geometry.navigation.planner, self.rng)?;
+            let (dazed, cue) = s.fling_tick(
+                dt,
+                &self.geometry.navigation.planner,
+                self.rng,
+                crate::traversal::Ground::new(&self.geometry.terrain, &self.geometry.deck),
+            )?;
             if dazed {
                 stat("dazed", &mut out);
             }
@@ -305,6 +310,22 @@ impl Context<'_> {
         } else {
             match s.vitals.life {
                 Life::Alive => {
+                    let ground =
+                        crate::traversal::Ground::new(&self.geometry.terrain, &self.geometry.deck);
+                    if ground.too_deep(s.motion.position) {
+                        s.motion.position = self
+                            .geometry
+                            .navigation
+                            .planner
+                            .nearest_walkable(s.motion.position, ground)
+                            .ok_or("invalid swimming recovery")?;
+                        s.motion.position.y = ground.height(s.motion.position) as f32;
+                        s.motion.ground_until = -1.0;
+                    }
+                    if ground.depth(s.motion.position) > 0.15 {
+                        s.controller.dive_timer = 0.0;
+                        s.posture = crate::infantry_pose::Posture::Stand;
+                    }
                     let stage = s.alive_stage(dt, self.rng)?;
                     match stage {
                         Stage::Dazed => {
@@ -316,12 +337,20 @@ impl Context<'_> {
                                 mount,
                                 &self.geometry.navigation.planner,
                                 self.rng,
+                                crate::traversal::Ground::new(
+                                    &self.geometry.terrain,
+                                    &self.geometry.deck,
+                                ),
                             )?;
                         }
                         Stage::Dive => self.actors.soldier_mut(id).unwrap().dive_tick(
                             dt,
                             self.now,
                             &self.geometry.navigation.planner,
+                            crate::traversal::Ground::new(
+                                &self.geometry.terrain,
+                                &self.geometry.deck,
+                            ),
                         )?,
                         Stage::Action => {
                             let team = self.actors.soldier(id).unwrap().identity.team;
@@ -400,6 +429,7 @@ impl Context<'_> {
                         &self.geometry.navigation.planner,
                         self.squads,
                         self.rng,
+                        crate::traversal::Ground::new(&self.geometry.terrain, &self.geometry.deck),
                     )?;
                     for event in result.events {
                         match event {

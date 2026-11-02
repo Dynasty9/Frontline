@@ -4,24 +4,19 @@ use crate::hierarchy::{self, Hierarchy};
 use crate::path_planner::PathPlanner;
 use crate::state_codec::{Reader, Writer};
 use crate::structure::Structure;
-use crate::terrain::{Terrain, BASE, WATER};
+use crate::terrain::Terrain;
 use crate::vector::Vector3;
 use glam::Vec2;
 use std::collections::{BTreeMap, HashSet};
 
-const MAX_REFERENCES: usize = 10_000_000;
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct Obstacle {
-    pub id: u32,
-    pub infantry: u8,
-    pub vehicle: u8,
-}
+pub use crate::traversal::Obstacle;
+use crate::traversal::{Footprint, MAX_REFERENCES};
 pub struct NavigationScene {
     pub planner: PathPlanner,
     pub infantry: Hierarchy,
     pub vehicles: Hierarchy,
-    cells: BTreeMap<u32, Vec<Obstacle>>,
-    references: usize,
+    pub tracked: Hierarchy,
+    next_hierarchy: u8,
 }
 impl NavigationScene {
     pub fn new(terrain: &Terrain, deck: &[u8], cluster_side: usize) -> Result<Self, &'static str> {
@@ -34,8 +29,8 @@ impl NavigationScene {
             planner: PathPlanner::new(n).ok_or("invalid navigation size")?,
             infantry: Hierarchy::new(n, cluster_side).ok_or("invalid navigation size")?,
             vehicles: Hierarchy::new(n, cluster_side).ok_or("invalid navigation size")?,
-            cells: BTreeMap::new(),
-            references: 0,
+            tracked: Hierarchy::new(n, cluster_side).ok_or("invalid navigation size")?,
+            next_hierarchy: 0,
         };
         for index in 0..n * n {
             out.recompute(index, terrain, deck);
@@ -43,22 +38,34 @@ impl NavigationScene {
         Ok(out)
     }
     pub fn obstacles(&self) -> &BTreeMap<u32, Vec<Obstacle>> {
-        &self.cells
+        &self.planner.occupancy.cells
     }
     pub fn finalize(&mut self, workers: usize) -> bool {
-        hierarchy::build_all(&mut [&mut self.infantry, &mut self.vehicles], workers)
+        hierarchy::build_all(
+            &mut [&mut self.infantry, &mut self.vehicles, &mut self.tracked],
+            workers,
+        )
     }
     pub fn update_hierarchy(&mut self, clusters: usize) -> bool {
         for _ in 0..clusters {
-            let graph = if self.infantry.has_work() {
-                &mut self.infantry
-            } else if self.vehicles.has_work() {
-                &mut self.vehicles
-            } else {
+            let mut found = false;
+            for _ in 0..3 {
+                let graph = match self.next_hierarchy {
+                    0 => &mut self.infantry,
+                    1 => &mut self.vehicles,
+                    _ => &mut self.tracked,
+                };
+                self.next_hierarchy = (self.next_hierarchy + 1) % 3;
+                if graph.has_work() {
+                    if !graph.update(1) {
+                        return false;
+                    }
+                    found = true;
+                    break;
+                }
+            }
+            if !found {
                 return true;
-            };
-            if !graph.update(1) {
-                return false;
             }
         }
         true
@@ -68,16 +75,29 @@ impl NavigationScene {
     }
     fn recompute(&mut self, index: usize, terrain: &Terrain, deck: &[u8]) {
         let n = terrain.n;
-        let mut kinds = [0, 0];
-        for obstacle in self.cells.get(&(index as u32)).into_iter().flatten() {
+        let mut kinds = [
+            u8::from(terrain.landform.cell_slope(index) > 0.85) * 3,
+            u8::from(terrain.landform.vehicle_slope(index) > 0.48) * 3,
+            u8::from(terrain.landform.vehicle_slope(index) > 0.65) * 3,
+        ];
+        for obstacle in self
+            .planner
+            .occupancy
+            .cells
+            .get(&(index as u32))
+            .into_iter()
+            .flatten()
+        {
             kinds[0] = kinds[0].max(obstacle.infantry);
             kinds[1] = kinds[1].max(obstacle.vehicle);
+            kinds[2] = kinds[2].max(obstacle.vehicle);
         }
-        if terrain.layers[BASE][index] == WATER && deck.get(index) != Some(&1) {
-            kinds = [3, 3];
+        if terrain.cell_too_deep(terrain.center(index), deck) {
+            kinds = [3, 3, 3];
         }
         let heat = self.planner.cell_state(index).unwrap()[2];
         self.planner.set_cell(index, kinds[0], kinds[1], heat);
+        self.planner.set_tracked(index, kinds[2]);
         let mut infantry = terrain.nav_weight(index, false);
         let mut vehicle = terrain.nav_weight(index, true);
         if heat > 0 {
@@ -85,6 +105,7 @@ impl NavigationScene {
             vehicle *= 2.5;
         }
         infantry *= [1.0, 4.0, 7.0, 1.0][kinds[0] as usize];
+        let tracked = vehicle * if kinds[2] == 0 { 1.0 } else { 9.0 };
         vehicle *= if kinds[1] == 0 { 1.0 } else { 9.0 };
         let x = index % n;
         let z = index / n;
@@ -94,6 +115,11 @@ impl NavigationScene {
             cell,
             kinds[1] == 3 || x < 3 || z < 3 || x >= n - 3 || z >= n - 3,
             vehicle as f32,
+        );
+        self.tracked.set_cell(
+            cell,
+            kinds[2] == 3 || x < 3 || z < 3 || x >= n - 3 || z >= n - 3,
+            tracked as f32,
         );
     }
     pub fn terrain_changed(
@@ -166,7 +192,7 @@ impl NavigationScene {
                     if infantry == 0 && vehicle == 0 {
                         continue;
                     }
-                    if self.references + added.len() >= MAX_REFERENCES
+                    if self.planner.occupancy.references + added.len() >= MAX_REFERENCES
                         || st.nav_cells.len() + added.len() >= MAX_REFERENCES
                     {
                         return Err("navigation obstacle limit exceeded");
@@ -182,9 +208,30 @@ impl NavigationScene {
                 }
             }
         }
-        self.references += added.len();
+        let footprints = st
+            .parts
+            .iter()
+            .filter(|p| p.infantry == 3)
+            .map(|p| {
+                let center = st.position + transform(basis, p.position);
+                Footprint {
+                    center: Vec2::new(center.x, center.z),
+                    half: Vec2::new(p.size.x * 0.5, p.size.z * 0.5),
+                    yaw: st.yaw + p.yaw,
+                }
+            })
+            .collect();
+        if !self.planner.occupancy.set_footprints(st.id, footprints) {
+            return Err("invalid navigation footprints");
+        }
+        self.planner.occupancy.references += added.len();
         for (index, obstacle) in added {
-            self.cells.entry(index).or_default().push(obstacle);
+            self.planner
+                .occupancy
+                .cells
+                .entry(index)
+                .or_default()
+                .push(obstacle);
             st.nav_cells.push(index);
             self.recompute(index as usize, terrain, deck);
         }
@@ -204,17 +251,18 @@ impl NavigationScene {
         {
             return Err("invalid navigation removal");
         }
+        self.planner.occupancy.remove_footprints(st.id);
         let mut touched = HashSet::new();
         for index in st.nav_cells.drain(..) {
             if !touched.insert(index) {
                 continue;
             }
-            if let Some(obstacles) = self.cells.get_mut(&index) {
+            if let Some(obstacles) = self.planner.occupancy.cells.get_mut(&index) {
                 let count = obstacles.len();
                 obstacles.retain(|o| o.id != st.id);
-                self.references -= count - obstacles.len();
+                self.planner.occupancy.references -= count - obstacles.len();
                 if obstacles.is_empty() {
-                    self.cells.remove(&index);
+                    self.planner.occupancy.cells.remove(&index);
                 }
             }
             self.recompute(index as usize, terrain, deck);
@@ -264,73 +312,40 @@ impl NavigationScene {
         Ok(())
     }
     pub fn checkpoint(&self) -> Vec<u8> {
-        let mut w = Writer::new(b"FLNS\x01\0\0\0");
+        let mut w = Writer::new(b"FLNS\x02\0\0\0");
         w.bytes(&self.planner.checkpoint());
         w.bytes(&self.infantry.checkpoint());
         w.bytes(&self.vehicles.checkpoint());
-        w.u32(self.cells.len() as u32);
-        for (index, obstacles) in &self.cells {
-            w.u32(*index);
-            w.u32(obstacles.len() as u32);
-            for o in obstacles {
-                w.u32(o.id);
-                w.byte(o.infantry);
-                w.byte(o.vehicle);
-            }
-        }
+        w.bytes(&self.tracked.checkpoint());
+        w.byte(self.next_hierarchy);
         w.0
     }
     pub fn restore(bytes: &[u8]) -> Result<Self, &'static str> {
-        let mut r = Reader::new(bytes, b"FLNS\x01\0\0\0")?;
+        let mut r = Reader::new(bytes, b"FLNS\x02\0\0\0")?;
         let planner = PathPlanner::restore(r.bytes(512 * 1024 * 1024)?)?;
         let infantry = Hierarchy::restore(r.bytes(512 * 1024 * 1024)?)?;
         let vehicles = Hierarchy::restore(r.bytes(512 * 1024 * 1024)?)?;
+        let tracked = Hierarchy::restore(r.bytes(512 * 1024 * 1024)?)?;
+        let next_hierarchy = r.byte()?;
         let n = planner.side();
-        let count = r.u32()? as usize;
-        if n > 3072
+        if next_hierarchy > 2
+            || tracked.side() != n
+            || tracked.cluster_side() != infantry.cluster_side()
+            || n > 3072
             || n != infantry.side()
             || n != vehicles.side()
-            || count > n * n
             || !matches!(infantry.cluster_side(), 16 | 32)
             || infantry.cluster_side() != vehicles.cluster_side()
         {
             return Err("invalid navigation checkpoint dimensions");
-        }
-        let mut cells = BTreeMap::new();
-        let mut references = 0;
-        for _ in 0..count {
-            let index = r.u32()?;
-            let count = r.u32()? as usize;
-            if index as usize >= n * n
-                || count == 0
-                || count > MAX_REFERENCES - references
-                || cells.contains_key(&index)
-            {
-                return Err("invalid navigation occupancy");
-            }
-            let mut obstacles = vec![];
-            for _ in 0..count {
-                let o = Obstacle {
-                    id: r.u32()?,
-                    infantry: r.byte()?,
-                    vehicle: r.byte()?,
-                };
-                if o.id == 0 || o.infantry > 3 || o.vehicle > 3 || o.infantry == 0 && o.vehicle == 0
-                {
-                    return Err("invalid navigation obstacle");
-                }
-                obstacles.push(o);
-            }
-            references += count;
-            cells.insert(index, obstacles);
         }
         r.finish()?;
         Ok(Self {
             planner,
             infantry,
             vehicles,
-            cells,
-            references,
+            tracked,
+            next_hierarchy,
         })
     }
 }

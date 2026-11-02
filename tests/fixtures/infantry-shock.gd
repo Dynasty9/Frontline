@@ -19,11 +19,16 @@ func compare_shock(a: Soldier, b: Soldier, label: String) -> void:
 
 func _ready() -> void:
 	assert(ClassDB.class_exists("InfantryShockCore"))
+	MapDims.N = 128; MapDims.SIZE = 128.0; MapDims.HALF = 64.0
+	TerrainMap.N = 128; TerrainMap.H = 64.0; TerrainMap.DN = 256
 	Nav.N = 128
 	Nav.H = 64.0
+	HNav.C = 16; HNav.NC = 8; HNav.NCC = 64; HNav._corner = HNav._corners()
 	var worlds := [make_world(false), make_world(true)]
 	for w in worlds:
+		w.terrain = TerrainMap.new(w)
 		w.nav = Nav.new()
+		w.nav.terrain = w.terrain
 		for z in Nav.N:
 			for x in Nav.N:
 				w.nav.ikind[z * Nav.N + x] = Nav.SOLID if x % 7 == 0 else x % 3

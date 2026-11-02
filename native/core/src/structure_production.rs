@@ -222,7 +222,15 @@ impl Context<'_> {
                     self.geometry
                         .navigation
                         .planner
-                        .nearest_walkable_for(exit + front * 2., true)
+                        .nearest_walkable_for(
+                            exit + front * 2.,
+                            true,
+                            definition.tracked,
+                            crate::traversal::Ground::new(
+                                &self.geometry.terrain,
+                                &self.geometry.deck,
+                            ),
+                        )
                         .ok_or("invalid production exit")?
                 };
                 if definition.base == "boat" {
@@ -278,6 +286,10 @@ impl Context<'_> {
                                 destination,
                                 care,
                                 revision,
+                                crate::traversal::Ground::new(
+                                    &self.geometry.terrain,
+                                    &self.geometry.deck,
+                                ),
                             )?;
                         }
                     }

@@ -131,7 +131,12 @@ impl Actors {
         &mut self,
         helicopter: u32,
         nav: &PathPlanner,
+        ground: crate::traversal::Ground<'_>,
     ) -> Result<Option<u32>, &'static str> {
+        if !ground.valid_for(nav.side()) {
+            return Err("invalid navigation ground");
+        }
+
         let cargo = self
             .vehicle(helicopter)
             .ok_or("missing helicopter")?
@@ -144,9 +149,10 @@ impl Actors {
             .filter(|v| !v.gone)
             .map(|v| Vector3::new(v.position.x, 0.0, v.position.z));
         if let Some(position) = position {
-            let position = nav
-                .nearest_walkable_for(position, true)
+            let mut position = nav
+                .nearest_walkable_for(position, true, self.vehicle(cargo).unwrap().tracked, ground)
                 .ok_or("invalid cargo position")?;
+            position.y = ground.terrain.map_or(0.0, |t| t.landform.height(position)) as f32;
             let v = self.vehicle_mut(cargo).unwrap();
             v.slung_by = 0;
             v.position = position;
@@ -155,12 +161,27 @@ impl Actors {
         self.vehicle_mut(helicopter).unwrap().sling_cargo = 0;
         Ok(position.map(|_| cargo))
     }
-    pub fn drop_sling(&mut self, cargo: u32, nav: &PathPlanner) -> Result<SlingDrop, &'static str> {
+    pub fn drop_sling(
+        &mut self,
+        cargo: u32,
+        nav: &PathPlanner,
+        ground: crate::traversal::Ground<'_>,
+    ) -> Result<SlingDrop, &'static str> {
+        if !ground.valid_for(nav.side()) {
+            return Err("invalid navigation ground");
+        }
+
         let v = self.vehicle(cargo).ok_or("missing cargo")?;
-        let height = f64::from(v.position.y);
-        let position = nav
-            .nearest_walkable_for(Vector3::new(v.position.x, 0.0, v.position.z), true)
+        let height = f64::from(v.position.y) - ground.height(v.position);
+        let mut position = nav
+            .nearest_walkable_for(
+                Vector3::new(v.position.x, 0.0, v.position.z),
+                true,
+                self.vehicle(cargo).unwrap().tracked,
+                ground,
+            )
             .ok_or("invalid cargo position")?;
+        position.y = ground.terrain.map_or(0.0, |t| t.landform.height(position)) as f32;
         let damage = if height > 3.0 {
             v.max_hp * (height / 30.0).clamp(0.15, 0.9)
         } else {

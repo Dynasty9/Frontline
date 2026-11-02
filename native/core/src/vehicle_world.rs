@@ -238,6 +238,7 @@ impl Context<'_> {
             false,
             &self.geometry.navigation.planner,
             self.units,
+            crate::traversal::Ground::new(&self.geometry.terrain, &self.geometry.deck),
         )? {
             out.extend(
                 self.dismount_vehicle_world(id, false, plans, next_plan)?

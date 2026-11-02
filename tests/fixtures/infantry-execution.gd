@@ -31,8 +31,8 @@ func step(s: Soldier, core: RefCounted, rng: SimulationRandom, dt: float) -> voi
 	s._alive_timers_reference(dt)
 	assert(core.alive_stage(dt, rng._backend) == expected_stage)
 	match expected_stage:
-		1: assert(core.dazed_tick(dt, PackedFloat64Array(), s.world.nav._planner, rng._backend))
-		2: assert(core.dive_tick(dt, s.world.time, s.world.nav._planner))
+		1: assert(core.dazed_tick(dt, PackedFloat64Array(), s.world.nav._planner, rng._backend, s.world.nav._path_ground(), s.world.nav._path_deck()))
+		2: assert(core.dive_tick(dt, s.world.time, s.world.nav._planner, s.world.nav._path_ground(), s.world.nav._path_deck()))
 		3:
 			var effect: Array = core.action_tick(related, rng._backend)
 			assert(effect.size() == 3)
@@ -130,7 +130,7 @@ func _ready() -> void:
 			w.time = 200.0 + tick / 30.0
 			if s.flinging:
 				s._fling_tick(1.0 / 30.0)
-				var result: Array = core.fling_tick(1.0 / 30.0, w.nav._planner, rng._backend)
+				var result: Array = core.fling_tick(1.0 / 30.0, w.nav._planner, rng._backend, s.world.nav._path_ground(), s.world.nav._path_deck())
 				assert(result.size() == 2)
 			elif s.life == Soldier.Life.ALIVE:
 				step(s, core, rng, 1.0 / 30.0)

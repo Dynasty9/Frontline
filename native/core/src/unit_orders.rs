@@ -186,7 +186,10 @@ impl Context<'_> {
                     .geometry
                     .navigation
                     .planner
-                    .nearest_walkable(cover)
+                    .nearest_walkable(
+                        cover,
+                        crate::traversal::Ground::new(&self.geometry.terrain, &self.geometry.deck),
+                    )
                     .unwrap();
                 self.command(id, Command::Move { slot, mode, face })?;
                 self.actors.soldier_mut(id).unwrap().orders.leash = 5.;
@@ -216,7 +219,10 @@ impl Context<'_> {
                     .geometry
                     .navigation
                     .planner
-                    .nearest_walkable(slot)
+                    .nearest_walkable(
+                        slot,
+                        crate::traversal::Ground::new(&self.geometry.terrain, &self.geometry.deck),
+                    )
                     .unwrap();
                 self.command(
                     id,
@@ -254,7 +260,13 @@ impl Context<'_> {
                         .geometry
                         .navigation
                         .planner
-                        .nearest_walkable(dest)
+                        .nearest_walkable(
+                            dest,
+                            crate::traversal::Ground::new(
+                                &self.geometry.terrain,
+                                &self.geometry.deck,
+                            ),
+                        )
                         .unwrap();
                     self.command(id, Command::Retreat { position })?;
                 }

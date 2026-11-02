@@ -213,7 +213,12 @@ fn collecting_shared_ammunition_returns_to_hold_without_reloading_or_resetting_w
     s.activity = 2;
     let (mut a, _, _) = scene(vec![Actor::Soldier(Box::new(s)), body(2, Vector3::X, 50)]);
     let result = a
-        .arrive_infantry_supply(1, 120, &PathPlanner::new(64).unwrap())
+        .arrive_infantry_supply(
+            1,
+            120,
+            &PathPlanner::new(64).unwrap(),
+            frontline_core::traversal::Ground::default(),
+        )
         .unwrap();
     assert!(result.spoke && result.returned && !result.missing);
     assert_eq!(result.rounds, 50);
@@ -236,13 +241,19 @@ fn a_missing_depot_cancels_only_the_duty_and_failed_collection_keeps_both_stocks
     s.duty.entity = 8;
     s.activity = 2;
     let (mut a, _, _) = scene(vec![Actor::Soldier(Box::new(s.clone()))]);
-    assert!(a.arrive_infantry_supply(1, 120, &nav).unwrap().missing);
+    assert!(
+        a.arrive_infantry_supply(1, 120, &nav, frontline_core::traversal::Ground::default())
+            .unwrap()
+            .missing
+    );
     assert_eq!(a.soldier(1).unwrap().duty.entity, 8);
     assert_eq!(a.soldier(1).unwrap().activity, 2);
     s.duty.entity = 2;
     s.orders.path_revision = i64::MAX as u64;
     let (mut a, _, _) = scene(vec![Actor::Soldier(Box::new(s)), body(2, Vector3::X, 50)]);
     let before = a.checkpoint().unwrap();
-    assert!(a.arrive_infantry_supply(1, 120, &nav).is_err());
+    assert!(a
+        .arrive_infantry_supply(1, 120, &nav, frontline_core::traversal::Ground::default())
+        .is_err());
     assert_eq!(a.checkpoint().unwrap(), before);
 }

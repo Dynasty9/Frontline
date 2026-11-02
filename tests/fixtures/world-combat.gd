@@ -672,7 +672,7 @@ func run(mode: int, complete_tick: bool = false) -> void:
 				elif breaching: SoldierBrain.breach_tick(s,dt)
 				elif s.task == "escort": s._escort_tick(dt)
 				else: s._fight_tick_work(dt)
-				assert(result[4] == w.bullet_fx,"fighting bullet effects %d/%d" % [trial,step])
+				assert(result[4] == w.bullet_fx,"fighting bullet effects %d/%d: %s / %s" % [trial,step,result[4],w.bullet_fx])
 				assert(result[5] == w.spoken,"fighting speech %d/%d: %s / %s" % [trial,step,result[5],w.spoken])
 				if mounting or acting or whole or actor_ops:
 					var expected: Array = w.ordnance_fx + w.work_events if whole or actor_ops else w.ordnance_fx
@@ -745,7 +745,7 @@ func run(mode: int, complete_tick: bool = false) -> void:
 						assert(projectile.checkpoint() == actors.actor_state(e.eid),"ordnance flight " + label + "/%d" % e.eid)
 					else: launch_helper.compare_projectile(e,actors,projectile_helper)
 				else:
-					assert(structure.restore(actors.actor_state(e.eid))); assert(structure.values() == StructureState.capture(e),"explosion structure %s/%d" % [label,e.eid])
+					assert(structure.restore(actors.actor_state(e.eid))); assert(structure.values() == StructureState.capture(e),"explosion structure %s/%d: %s / %s" % [label,e.eid,structure.values(),StructureState.capture(e)])
 			assert(blast_ledger_equal(compare.ledger(w.battle),ledger.values()),"combat ledger " + label)
 			if trial == 0 and step == 0:
 				var wrong: Array = ledger.values(); var counters: PackedFloat64Array = wrong[1][0]

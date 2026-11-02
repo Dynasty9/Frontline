@@ -88,10 +88,13 @@ impl MatchState {
         if !f.geometry.navigation.update_hierarchy(1) {
             return Err("navigation update failed");
         }
-        let routes = f
-            .geometry
-            .navigation
-            .process_paths(&mut f.actors, 4, f.now, &mut f.rng)?;
+        let routes = f.geometry.navigation.process_paths(
+            &mut f.actors,
+            4,
+            f.now,
+            &mut f.rng,
+            crate::traversal::Ground::new(&f.geometry.terrain, &f.geometry.deck),
+        )?;
         let mut out = vec![];
         for route in routes {
             if let Completion::Infantry {
@@ -99,9 +102,12 @@ impl MatchState {
                 finish: PathFinish::Arrived(Arrival::Prison),
             } = route
             {
-                let events =
-                    f.actors
-                        .arrive_infantry_prison(id, f.now, &f.geometry.navigation.planner)?;
+                let events = f.actors.arrive_infantry_prison(
+                    id,
+                    f.now,
+                    &f.geometry.navigation.planner,
+                    crate::traversal::Ground::new(&f.geometry.terrain, &f.geometry.deck),
+                )?;
                 for e in events {
                     if let infantry_prison_owned::Event::Movement(id, movement) = &e {
                         f.with_context(&p.shared, Upgrades::from(&self.rules.economy), |w| {

@@ -20,7 +20,12 @@ impl Infantry {
         now: f64,
         nav: &PathPlanner,
         rng: &mut SimulationRandom,
+        ground: crate::traversal::Ground<'_>,
     ) -> Result<Option<Escape>, &'static str> {
+        if !ground.valid_for(nav.side()) {
+            return Err("invalid navigation ground");
+        }
+
         if !self.valid()
             || !from.is_finite()
             || from.abs().max_element() > 1_000_000.0
@@ -55,7 +60,7 @@ impl Infantry {
             Vector3::new(-libm::sin(yaw) as f32, 0.0, -libm::cos(yaw) as f32)
         };
         let destination = nav
-            .nearest_walkable(self.motion.position + away * 7.0)
+            .nearest_walkable(self.motion.position + away * 7.0, ground)
             .unwrap();
         next.fight.flee_fire_at = now + 2.5;
         next.cover.at_cover = false;

@@ -103,14 +103,63 @@ fn dives_preserve_blocked_motion_and_finish_on_the_expiry_tick() {
         dive_direction: Vector3::X,
         ..Default::default()
     };
-    let out = c.dive(Vector3::Y, 0.0, 0.1, &nav).unwrap();
+    let out = c
+        .dive(
+            Vector3::Y,
+            0.0,
+            0.1,
+            &nav,
+            frontline_core::traversal::Ground::default(),
+        )
+        .unwrap();
     assert_eq!(out.position, Vector3::new(0.0, 0.7, 0.0));
     assert!(out.finished);
     nav.load_cells(&vec![0; 256], &vec![0; 256], &vec![0; 256]);
     c.dive_timer = 0.1;
-    let out = c.dive(Vector3::ZERO, 0.2, 0.1, &nav).unwrap();
+    let out = c
+        .dive(
+            Vector3::ZERO,
+            0.2,
+            0.1,
+            &nav,
+            frontline_core::traversal::Ground::default(),
+        )
+        .unwrap();
     assert_eq!(out.position, Vector3::new(0.55, 0.2, 0.0));
     assert!(out.finished);
+}
+
+#[test]
+fn dives_use_relative_height_and_refuse_water_deeper_than_a_prone_soldier() {
+    use frontline_core::{
+        terrain::{Terrain, BASE, SHALLOW},
+        traversal::Ground,
+    };
+    let nav = PathPlanner::new(32).unwrap();
+    let mut terrain = Terrain::blank(32).unwrap();
+    terrain.heights.fill(12.);
+    assert!(terrain.set_landform(vec![12.; 81]));
+    let mut controller = Controller {
+        dive_timer: 0.1,
+        dive_direction: Vector3::X,
+        ..Default::default()
+    };
+    let out = controller
+        .dive(Vector3::Y * 12., 0.4, 0.1, &nav, Ground::new(&terrain, &[]))
+        .unwrap();
+    assert_eq!(out.position, Vector3::new(0.55, 12.4, 0.));
+    terrain.layers[BASE].fill(SHALLOW);
+    terrain.heights.fill(-0.8);
+    assert!(terrain.set_landform(vec![]));
+    let out = controller
+        .dive(Vector3::ZERO, 0.0, 0.1, &nav, Ground::new(&terrain, &[]))
+        .unwrap();
+    assert_eq!(out.position.x, 0.);
+    let deck = vec![1; 1024];
+    let out = controller
+        .dive(Vector3::ZERO, 0.0, 0.1, &nav, Ground::new(&terrain, &deck))
+        .unwrap();
+    assert_eq!(out.position, Vector3::new(0.55, 0.06, 0.));
 }
 
 #[test]

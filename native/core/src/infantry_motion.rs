@@ -344,11 +344,15 @@ impl InfantryMotion {
             }
         }
         self.last_direction = direction;
-        self.position += direction * step as f32;
-        let mut target_y = input.base_y + if self.vaulting { 0.5 } else { 0.0 };
-        if input.base_y == 0.0 {
-            target_y += self.cached_ground(input.time, terrain, decks);
+        let next = self.position + direction * step as f32;
+        if !nav.can_step(self.position, next, false, terrain, decks) {
+            result.progress = Progress::Repath;
+            return Ok(result);
         }
+        self.position = next;
+        let target_y = input.base_y
+            + if self.vaulting { 0.5 } else { 0.0 }
+            + self.cached_ground(input.time, terrain, decks);
         self.position.y = (f64::from(self.position.y)
             + (target_y - f64::from(self.position.y)) * (1.0 - libm::exp(-input.dt * 12.0)))
             as f32;
@@ -417,7 +421,7 @@ impl InfantryMotion {
                 velocity = normalized(velocity) * 1.4;
             }
             let next = self.position + velocity * input.dt as f32;
-            if nav.kind_at(next, false) != 3 {
+            if nav.can_step(self.position, next, false, terrain, decks) {
                 self.position = next;
                 shuffle = f64::from(velocity.length()) > 0.3;
             }
@@ -432,11 +436,15 @@ impl InfantryMotion {
             let length = offset.length();
             if f64::from(length) > 0.02 && f64::from(length) < 0.9 {
                 let limit = (input.dt * 1.4) as f32;
-                self.position += if length > limit {
-                    normalized(offset) * limit
-                } else {
-                    offset
-                };
+                let next = self.position
+                    + if length > limit {
+                        normalized(offset) * limit
+                    } else {
+                        offset
+                    };
+                if nav.can_step(self.position, next, false, terrain, decks) {
+                    self.position = next;
+                }
             }
             if input.time - input.last_shot > 1.0
                 && !(input.peek_up && input.target_valid)
@@ -469,7 +477,7 @@ impl InfantryMotion {
     }
 
     pub(crate) fn cached_ground(&mut self, now: f64, terrain: &Terrain, decks: &[u8]) -> f64 {
-        if now > self.ground_until {
+        if !terrain.landform.is_empty() || now > self.ground_until {
             self.ground_until = now + 0.3;
             self.ground = terrain.ground_y(
                 self.position,
@@ -480,7 +488,7 @@ impl InfantryMotion {
     }
 
     pub fn checkpoint(&self) -> Vec<u8> {
-        let mut out = Writer::new(b"FLIM\x01\0\0\0");
+        let mut out = Writer::new(b"FLIM\x02\0\0\0");
         out.point(self.position);
         out.f64(self.yaw);
         out.u32(self.path.len() as u32);
@@ -510,7 +518,7 @@ impl InfantryMotion {
     }
 
     pub fn restore(bytes: &[u8]) -> Result<Self, &'static str> {
-        let mut input = Reader::new(bytes, b"FLIM\x01\0\0\0")?;
+        let mut input = Reader::new(bytes, b"FLIM\x02\0\0\0")?;
         let position = input.point()?;
         let yaw = input.f64()?;
         let count = input.u32()? as usize;

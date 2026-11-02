@@ -362,7 +362,13 @@ fn shifting_preserves_anchor_ties_and_applies_the_new_height_before_stance() {
         .unwrap();
     assert!(step.cycle.shift_along);
     let route = a
-        .shift_infantry_cover(1, None, &nav, &units)
+        .shift_infantry_cover(
+            1,
+            None,
+            &nav,
+            &units,
+            frontline_core::traversal::Ground::default(),
+        )
         .unwrap()
         .unwrap();
     assert_eq!(route.job.destination, Vector3::X * 2.0);
@@ -399,7 +405,13 @@ fn shifting_avoids_squad_claims_even_when_the_claimant_is_far_away() {
         ..Default::default()
     };
     let route = a
-        .shift_infantry_cover(1, Some(&q), &nav, &units)
+        .shift_infantry_cover(
+            1,
+            Some(&q),
+            &nav,
+            &units,
+            frontline_core::traversal::Ground::default(),
+        )
         .unwrap()
         .unwrap();
     assert_eq!(route.job.destination, Vector3::NEG_X * 2.0);
@@ -419,7 +431,13 @@ fn blocked_or_occupied_anchors_leave_cover_and_routes_unchanged() {
     assert!(nav.load_cells(&blocked, &blocked, &vec![0; 4096]));
     let before = a.checkpoint().unwrap();
     assert!(a
-        .shift_infantry_cover(1, None, &nav, &units)
+        .shift_infantry_cover(
+            1,
+            None,
+            &nav,
+            &units,
+            frontline_core::traversal::Ground::default()
+        )
         .unwrap()
         .is_none());
     assert_eq!(a.checkpoint().unwrap(), before);
@@ -432,7 +450,13 @@ fn blocked_or_occupied_anchors_leave_cover_and_routes_unchanged() {
     a.rebuild_units(&mut units).unwrap();
     let before = a.checkpoint().unwrap();
     assert!(a
-        .shift_infantry_cover(1, None, &nav, &units)
+        .shift_infantry_cover(
+            1,
+            None,
+            &nav,
+            &units,
+            frontline_core::traversal::Ground::default()
+        )
         .unwrap()
         .is_none());
     assert_eq!(a.checkpoint().unwrap(), before);

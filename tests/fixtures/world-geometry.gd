@@ -109,14 +109,11 @@ func header(magic: String) -> PackedByteArray:
 	var bytes := magic.to_utf8_buffer(); bytes.append_array(PackedByteArray([1, 0, 2, 0])); return bytes
 
 func nav_save(nav: Nav) -> PackedByteArray:
-	var bytes := header("FLNS")
-	for state in [nav._planner.checkpoint(), nav.hnav_i._core.checkpoint(), nav.hnav_v._core.checkpoint()]: bytes.append_array(block(state))
-	var indices := nav.cell_objs.keys(); indices.sort(); bytes.append_array(u32(indices.size()))
-	for index: int in indices:
-		bytes.append_array(u32(index)); bytes.append_array(u32(nav.cell_objs[index].size()))
-		for item: Array in nav.cell_objs[index]:
-			bytes.append_array(u32(item[0])); bytes.append(item[1]); bytes.append(item[2])
+	var bytes := header("FLNS"); bytes[4] = 2
+	for state in [nav._planner.checkpoint(), nav.hnav_i._core.checkpoint(), nav.hnav_v._core.checkpoint(), nav.hnav_t._core.checkpoint()]: bytes.append_array(block(state))
+	bytes.append(nav._hier_next)
 	return bytes
+
 
 func spatial_save(grid: Dictionary, size: float) -> PackedByteArray:
 	var index: RefCounted = ClassDB.instantiate("SpatialIndexCore")

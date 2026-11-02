@@ -74,6 +74,11 @@ impl Context<'_> {
                 if f64::from(p.x.abs()) >= half
                     || f64::from(p.z.abs()) >= half
                     || self.geometry.navigation.planner.kind_at(p, true) != 0
+                    || !self
+                        .geometry
+                        .terrain
+                        .landform
+                        .fits(p, [5.0, 5.0].into(), 0.0, 0.35)
                 {
                     continue;
                 }
@@ -187,10 +192,14 @@ impl Context<'_> {
                 self.aircraft_collision(id)?;
             }
             Kind::Uav { altitude, radius } => {
-                self.actors
-                    .vehicle_mut(id)
-                    .unwrap()
-                    .fly_uav(dt, altitude, radius, p.flight)?;
+                self.actors.vehicle_mut(id).unwrap().fly_uav(
+                    dt,
+                    altitude,
+                    radius,
+                    p.flight,
+                    &self.geometry.terrain,
+                    &self.geometry.deck,
+                )?;
                 self.aircraft_collision(id)?;
             }
             _ => {}
@@ -272,6 +281,10 @@ impl Context<'_> {
                             defense,
                             self.rng,
                             &mut completed,
+                            crate::traversal::Ground::new(
+                                &self.geometry.terrain,
+                                &self.geometry.deck,
+                            ),
                         )?;
                         completed.events.push(Ordnance::Launch {
                             position: shot.position,
@@ -348,10 +361,14 @@ impl Context<'_> {
                         }
                     }
                     LiftEvent::Release => {
-                        if let Some(cargo) = self
-                            .actors
-                            .release_sling(id, &self.geometry.navigation.planner)?
-                        {
+                        if let Some(cargo) = self.actors.release_sling(
+                            id,
+                            &self.geometry.navigation.planner,
+                            crate::traversal::Ground::new(
+                                &self.geometry.terrain,
+                                &self.geometry.deck,
+                            ),
+                        )? {
                             self.aircraft_collision(cargo)?;
                             stat("sling_delivered", &mut out);
                             out.push(Event::Sling {

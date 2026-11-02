@@ -128,7 +128,12 @@ impl Actors {
         nav: &PathPlanner,
         collision: &mut CollisionWorld,
         rng: &mut SimulationRandom,
+        ground: crate::traversal::Ground<'_>,
     ) -> Result<Response, &'static str> {
+        if !ground.valid_for(nav.side()) {
+            return Err("invalid navigation ground");
+        }
+
         let s = self.soldier(id).ok_or("missing reacting infantry")?;
         if !now.is_finite()
             || now.abs() > 1e12 - 100.0
@@ -206,7 +211,7 @@ impl Actors {
                                 let mount = self
                                     .structure(s.emplacement.structure as u32)
                                     .map(|m| m.position);
-                                release = next.clear_duty(nav, mount);
+                                release = next.clear_duty(nav, mount, ground);
                                 next.duty.kind = if reaction == Reaction::Smother {
                                     Task::Smother
                                 } else {

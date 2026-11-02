@@ -167,7 +167,13 @@ pub fn transcript() -> Vec<u8> {
             events(&mut out, plan.tick(&mut s.context()).unwrap());
             s.geometry
                 .navigation
-                .process_paths(&mut s.actors, 3, s.now, &mut s.rng)
+                .process_paths(
+                    &mut s.actors,
+                    3,
+                    s.now,
+                    &mut s.rng,
+                    frontline_core::traversal::Ground::new(&s.geometry.terrain, &s.geometry.deck),
+                )
                 .unwrap();
             movement::checkpoint_delta(&mut out, &mut previous_plan, plan.checkpoint().unwrap());
             movement::checkpoint_delta(
@@ -250,7 +256,13 @@ pub fn transport_transcript() -> Vec<u8> {
             }
             s.geometry
                 .navigation
-                .process_paths(&mut s.actors, 3, s.now, &mut s.rng)
+                .process_paths(
+                    &mut s.actors,
+                    3,
+                    s.now,
+                    &mut s.rng,
+                    frontline_core::traversal::Ground::new(&s.geometry.terrain, &s.geometry.deck),
+                )
                 .unwrap();
             for (previous, next) in previous.iter_mut().zip([
                 s.actors.checkpoint().unwrap(),

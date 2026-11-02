@@ -155,7 +155,7 @@ func _ready() -> void:
 				w.spoken.clear(); w.stats.clear(); w.effects.clear(); w.nav.jobs.clear(); w.nav.cancelled.clear(); w.spawned.clear()
 				s._action_tick(0.0)
 				if s.act_t <= 0.0: s._action_done()
-				var result: Array = actors.complete_infantry_action(1, w.time, 1.0, stocks, defenses, cores, units, w.nav._planner, random._backend)
+				var result: Array = actors.complete_infantry_action(1, w.time, 1.0, stocks, defenses, cores, units, w.nav._planner, random._backend, w.nav._path_ground(), w.nav._path_deck())
 				assert(result.size() == 4, "action %d/%d/%d" % [mode, trial, step])
 				for other: Soldier in w.soldiers:
 					compare_actor(other, actors, "action %d/%d/%d/%d" % [mode, trial, step, other.eid]); checks += 1

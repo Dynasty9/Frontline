@@ -28,6 +28,24 @@ fn vehicle(to: Vector3) -> Vehicle {
 }
 
 #[test]
+fn supply_trucks_reverse_into_nearby_deliveries_without_a_lane_offset() {
+    let nav = PathPlanner::new(32).unwrap();
+    let terrain = Terrain::blank(32).unwrap();
+    let mut p = profile(false);
+    p.supply = true;
+    let mut truck = Vehicle {
+        route: vec![Vector3::Z * 10.],
+        ..Default::default()
+    };
+    truck
+        .follow_truck_route(0.1, p, &nav, &terrain, &[], &[])
+        .unwrap();
+    assert!(truck.reverse && truck.speed < 0. && truck.position.z > 0.);
+    assert_eq!(truck.position.x, 0.);
+    assert_eq!(truck.yaw_rate, 0.);
+}
+
+#[test]
 fn wheeled_hulls_need_forward_speed_to_turn_and_tracked_hulls_pivot() {
     let nav = PathPlanner::new(128).unwrap();
     let terrain = Terrain::blank(128).unwrap();
@@ -43,6 +61,7 @@ fn wheeled_hulls_need_forward_speed_to_turn_and_tracked_hulls_pivot() {
             &terrain,
             &[],
             &mut rng,
+            &[],
         )
         .unwrap();
     tracks
@@ -54,6 +73,7 @@ fn wheeled_hulls_need_forward_speed_to_turn_and_tracked_hulls_pivot() {
             &terrain,
             &[],
             &mut rng,
+            &[],
         )
         .unwrap();
     assert_eq!(wheels.yaw, 0.0);
@@ -70,6 +90,7 @@ fn wheeled_hulls_need_forward_speed_to_turn_and_tracked_hulls_pivot() {
             &terrain,
             &[],
             &mut rng,
+            &[],
         )
         .unwrap();
     assert!(wheels.yaw < 0.0);
@@ -90,6 +111,7 @@ fn checkpoint_resumes_ground_steering_and_final_braking() {
             &terrain,
             &[],
             &mut rng,
+            &[],
         )
         .unwrap();
     }
@@ -105,6 +127,7 @@ fn checkpoint_resumes_ground_steering_and_final_braking() {
                 &terrain,
                 &[],
                 &mut rng,
+                &[],
             )
             .unwrap();
         let right = b
@@ -116,6 +139,7 @@ fn checkpoint_resumes_ground_steering_and_final_braking() {
                 &terrain,
                 &[],
                 &mut brng,
+                &[],
             )
             .unwrap();
         assert_eq!(left, right);
@@ -151,6 +175,7 @@ fn obstructed_vehicles_back_out_then_issue_a_new_route() {
                 &terrain,
                 &[],
                 &mut rng,
+                &[],
             )
             .unwrap();
         unstuck += usize::from(out.unstuck);
@@ -190,6 +215,7 @@ fn attack_move_closes_to_trenches_but_stops_for_exposed_targets() {
         &terrain,
         &[],
         &mut rng,
+        &[],
     )
     .unwrap();
     b.drive_ground(
@@ -200,6 +226,7 @@ fn attack_move_closes_to_trenches_but_stops_for_exposed_targets() {
         &terrain,
         &[],
         &mut rng,
+        &[],
     )
     .unwrap();
     assert_eq!(a.position, Vector3::ZERO);
@@ -229,6 +256,7 @@ fn a_blocked_road_caps_approach_speed_and_invalid_inputs_do_not_advance() {
         &terrain,
         &traffic,
         &mut rng,
+        &[],
     )
     .unwrap();
     assert_eq!(v.avoid_cap, Some(3.0));
@@ -243,7 +271,8 @@ fn a_blocked_road_caps_approach_speed_and_invalid_inputs_do_not_advance() {
             &nav,
             &terrain,
             &traffic,
-            &mut rng
+            &mut rng,
+            &[]
         )
         .is_err());
     assert_eq!(v.checkpoint().unwrap(), saved);
@@ -268,9 +297,78 @@ fn exhausted_path_revisions_reject_recovery_before_moving() {
             &nav,
             &terrain,
             &[],
-            &mut rng
+            &mut rng,
+            &[]
         )
         .is_err());
     assert_eq!(v, saved);
     assert_eq!(rng.state(), random);
+}
+
+#[test]
+fn long_vehicle_steps_and_supply_routes_cannot_skip_deep_water() {
+    use frontline_core::navigation_scene::NavigationScene;
+    use frontline_core::terrain::{BASE, WATER};
+    let mut terrain = Terrain::blank(32).unwrap();
+    for z in 0..32 {
+        terrain.layers[BASE][z * 32 + 16] = WATER;
+    }
+    let nav = NavigationScene::new(&terrain, &[], 16).unwrap();
+    for supply in [false, true] {
+        let mut v = vehicle(Vector3::new(12., 0., 0.5));
+        v.position = Vector3::new(-2., 0., 0.5);
+        v.yaw = -std::f32::consts::FRAC_PI_2 as f64;
+        v.speed = 9.;
+        let mut p = profile(false);
+        p.supply = supply;
+        if supply {
+            v.route = v.path.clone();
+            v.follow_truck_route(1., p, &nav.planner, &terrain, &[], &[])
+                .unwrap();
+        } else {
+            v.drive_ground(
+                1.,
+                p,
+                None,
+                &nav.planner,
+                &terrain,
+                &[],
+                &mut SimulationRandom::new(1),
+                &[],
+            )
+            .unwrap();
+        }
+        assert!(v.position.x < 0., "supply={supply}");
+    }
+}
+
+#[test]
+fn hull_movement_uses_its_slope_class_and_sets_geological_height() {
+    use frontline_core::navigation_scene::NavigationScene;
+    let mut terrain = Terrain::blank(64).unwrap();
+    assert!(terrain.set_landform((0..289).map(|i| (i % 17) as f32 * 4. * 0.55).collect()));
+    let nav = NavigationScene::new(&terrain, &[], 16).unwrap();
+    for tracked in [false, true] {
+        let mut v = vehicle(Vector3::new(12., 0., 0.5));
+        v.position = Vector3::new(0., 17.6, 0.5);
+        v.yaw = -std::f32::consts::FRAC_PI_2 as f64;
+        v.speed = 5.;
+        v.drive_ground(
+            0.1,
+            profile(tracked),
+            None,
+            &nav.planner,
+            &terrain,
+            &[],
+            &mut SimulationRandom::new(1),
+            &[],
+        )
+        .unwrap();
+        if tracked {
+            assert!(v.position.x > 0.1);
+            assert_eq!(v.position.y, terrain.landform.height(v.position) as f32);
+        } else {
+            assert_eq!(v.position.x, 0.);
+        }
+    }
 }

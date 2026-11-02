@@ -1,5 +1,8 @@
 use crate::hierarchy::HierarchyCore;
+use crate::terrain::TerrainCore;
 use frontline_core::path_planner::{PathJob, PathPlanner};
+use frontline_core::traversal::Ground;
+use frontline_core::traversal::{Footprint, Obstacle};
 use frontline_core::vector::Vector3 as Point;
 use godot::prelude::*;
 
@@ -22,6 +25,91 @@ fn vectors(points: Vec<Point>) -> PackedVector3Array {
 
 #[godot_api]
 impl PathPlannerCore {
+    #[func]
+    fn nearest_walkable(
+        &self,
+        from: Vector3,
+        vehicle: bool,
+        tracked: bool,
+        terrain: Option<Gd<TerrainCore>>,
+        deck: PackedByteArray,
+    ) -> Vector3 {
+        let terrain = terrain.as_ref().map(|t| t.bind());
+        let ground = Ground {
+            terrain: terrain.as_ref().and_then(|t| t.core.as_ref()),
+            deck: deck.as_slice(),
+        };
+        self.core
+            .as_ref()
+            .and_then(|p| p.nearest_walkable_for(point(from), vehicle, tracked, ground))
+            .map_or(Vector3::INF, |p| Vector3::new(p.x, p.y, p.z))
+    }
+    #[func]
+    fn load_tracked(&mut self, cells: PackedByteArray) -> bool {
+        self.core
+            .as_mut()
+            .is_some_and(|p| p.load_tracked(cells.as_slice()))
+    }
+    #[func]
+    fn set_tracked(&mut self, index: i32, kind: i32) -> bool {
+        (0..=3).contains(&kind)
+            && self
+                .core
+                .as_mut()
+                .is_some_and(|p| p.set_tracked(index as usize, kind as u8))
+    }
+    #[func]
+    fn set_obstacles(&mut self, index: i32, rows: PackedInt64Array) -> bool {
+        let Some(planner) = &mut self.core else {
+            return false;
+        };
+        if index < 0 || index as usize >= planner.side() * planner.side() || rows.len() % 3 != 0 {
+            return false;
+        }
+        let mut items = Vec::new();
+        for row in rows.as_slice().chunks_exact(3) {
+            if row[0] <= 0
+                || row[0] > u32::MAX as i64
+                || !(0..=3).contains(&row[1])
+                || !(0..=3).contains(&row[2])
+            {
+                return false;
+            }
+            items.push(Obstacle {
+                id: row[0] as u32,
+                infantry: row[1] as u8,
+                vehicle: row[2] as u8,
+            });
+        }
+        planner.occupancy.set_cell(index as u32, items)
+    }
+    #[func]
+    fn set_footprints(&mut self, id: i64, rows: PackedFloat64Array) -> bool {
+        let Some(planner) = &mut self.core else {
+            return false;
+        };
+        if id <= 0 || id > u32::MAX as i64 || rows.len() % 5 != 0 || rows.len() > 4096 * 5 {
+            return false;
+        }
+        let parts = rows
+            .as_slice()
+            .chunks_exact(5)
+            .map(|p| Footprint {
+                center: [p[0] as f32, p[1] as f32].into(),
+                half: [p[2] as f32, p[3] as f32].into(),
+                yaw: p[4],
+            })
+            .collect();
+        planner.occupancy.set_footprints(id as u32, parts)
+    }
+    #[func]
+    fn remove_footprints(&mut self, id: i64) {
+        if id > 0 && id <= u32::MAX as i64 {
+            if let Some(planner) = &mut self.core {
+                planner.occupancy.remove_footprints(id as u32);
+            }
+        }
+    }
     #[func]
     fn configure(&mut self, side: i32) -> bool {
         let Some(core) = PathPlanner::new(side as usize) else {
@@ -52,10 +140,42 @@ impl PathPlannerCore {
             .is_some_and(|p| p.set_cell(index as usize, infantry as u8, vehicle as u8, heat as u8))
     }
     #[func]
-    fn line_free(&self, from: Vector3, to: Vector3, vehicle: bool) -> bool {
+    fn line_free(
+        &self,
+        from: Vector3,
+        to: Vector3,
+        vehicle: bool,
+        tracked: bool,
+        terrain: Option<Gd<TerrainCore>>,
+        deck: PackedByteArray,
+    ) -> bool {
+        let terrain = terrain.as_ref().map(|t| t.bind());
+        let ground = Ground {
+            terrain: terrain.as_ref().and_then(|t| t.core.as_ref()),
+            deck: deck.as_slice(),
+        };
         self.core
             .as_ref()
-            .is_some_and(|p| p.line_free(point(from), point(to), vehicle))
+            .is_some_and(|p| p.line_free(point(from), point(to), vehicle, tracked, ground))
+    }
+    #[func]
+    fn step_clear(
+        &self,
+        from: Vector3,
+        to: Vector3,
+        vehicle: bool,
+        tracked: bool,
+        terrain: Option<Gd<TerrainCore>>,
+        deck: PackedByteArray,
+    ) -> bool {
+        let terrain = terrain.as_ref().map(|t| t.bind());
+        let ground = Ground {
+            terrain: terrain.as_ref().and_then(|t| t.core.as_ref()),
+            deck: deck.as_slice(),
+        };
+        self.core
+            .as_ref()
+            .is_some_and(|p| p.step_clear(point(from), point(to), vehicle, tracked, ground))
     }
     #[func]
     fn direct_path(
@@ -65,10 +185,18 @@ impl PathPlannerCore {
         to: Vector3,
         vehicle: bool,
         care: f64,
+        tracked: bool,
+        terrain: Option<Gd<TerrainCore>>,
+        deck: PackedByteArray,
     ) -> PackedVector3Array {
         let graph = graph.bind();
         let (Some(planner), Some(graph)) = (&self.core, &graph.core) else {
             return PackedVector3Array::new();
+        };
+        let terrain = terrain.as_ref().map(|t| t.bind());
+        let ground = Ground {
+            terrain: terrain.as_ref().and_then(|t| t.core.as_ref()),
+            deck: deck.as_slice(),
         };
         vectors(
             planner
@@ -79,9 +207,11 @@ impl PathPlannerCore {
                         id: 1,
                         destination: point(to),
                         vehicle,
+                        tracked,
                         team: -1,
                         care,
                     },
+                    ground,
                 )
                 .unwrap_or_default(),
         )
@@ -95,20 +225,46 @@ impl PathPlannerCore {
         vehicle: bool,
         team: i32,
         care: f64,
+        tracked: bool,
+        terrain: Option<Gd<TerrainCore>>,
+        deck: PackedByteArray,
     ) -> PackedVector3Array {
         let mut graph = graph.bind_mut();
         let (Some(planner), Some(graph)) = (&mut self.core, &mut graph.core) else {
             return PackedVector3Array::new();
         };
-        vectors(planner.find_path(graph, point(from), point(to), vehicle, team, care))
+        let terrain = terrain.as_ref().map(|t| t.bind());
+        let ground = Ground {
+            terrain: terrain.as_ref().and_then(|t| t.core.as_ref()),
+            deck: deck.as_slice(),
+        };
+        vectors(planner.find_path(
+            graph,
+            point(from),
+            point(to),
+            vehicle,
+            team,
+            care,
+            tracked,
+            ground,
+        ))
     }
     #[func]
-    fn request(&mut self, id: i64, to: Vector3, vehicle: bool, team: i32, care: f64) -> bool {
+    fn request(
+        &mut self,
+        id: i64,
+        to: Vector3,
+        vehicle: bool,
+        team: i32,
+        care: f64,
+        tracked: bool,
+    ) -> bool {
         self.core.as_mut().is_some_and(|p| {
             p.request(PathJob {
                 id: id as u64,
                 destination: point(to),
                 vehicle,
+                tracked,
                 team,
                 care,
             })
@@ -145,6 +301,7 @@ impl PathPlannerCore {
             job.vehicle.to_variant(),
             job.team.to_variant(),
             job.care.to_variant(),
+            job.tracked.to_variant(),
         ])
     }
     #[func]

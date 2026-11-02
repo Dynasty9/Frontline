@@ -1,4 +1,5 @@
-//! Queue completions update retained actors without engine callbacks or wall-clock budgets.
+use crate::traversal::Ground;
+// Queue completions update retained actors without engine callbacks or wall-clock budgets.
 use crate::actors::{Actor, Actors};
 use crate::infantry::Infantry;
 use crate::infantry_orders::{PathFinish, RouteOrder};
@@ -22,11 +23,14 @@ impl NavigationScene {
         route: RouteOrder,
         now: f64,
         rng: &mut SimulationRandom,
+        ground: Ground<'_>,
     ) -> Result<Option<PathFinish>, &'static str> {
         if !clock(now)
             || soldier.identity.id == 0
             || route.job.id != u64::from(soldier.identity.id)
             || route.job.vehicle
+            || route.job.tracked
+            || !ground.valid_for(self.planner.side())
             || !route.job.destination.is_finite()
             || !route.job.care.is_finite()
         {
@@ -37,7 +41,7 @@ impl NavigationScene {
         }
         if let Some(path) =
             self.planner
-                .direct_path(&self.infantry, soldier.motion.position, route.job)
+                .direct_path(&self.infantry, soldier.motion.position, route.job, ground)
         {
             self.planner.cancel(route.job.id);
             return soldier
@@ -55,24 +59,37 @@ impl NavigationScene {
         destination: crate::vector::Vector3,
         care: f64,
         revision: u64,
+        ground: Ground<'_>,
     ) -> Result<Option<bool>, &'static str> {
-        if vehicle.id == 0 || !destination.is_finite() || !care.is_finite() {
+        if !ground.valid_for(self.planner.side())
+            || vehicle.id == 0
+            || !destination.is_finite()
+            || !care.is_finite()
+        {
             return Err("invalid vehicle path request");
         }
         if revision != vehicle.path_revision || !vehicle.path_pending {
             return Ok(Some(false));
         }
+        let tracked = vehicle.tracked;
         let job = PathJob {
             id: u64::from(vehicle.id),
             destination,
             vehicle: true,
+            tracked,
             team: i32::from(vehicle.team),
             care,
         };
-        if let Some(path) = self
-            .planner
-            .direct_path(&self.vehicles, vehicle.position, job)
-        {
+        if let Some(path) = self.planner.direct_path(
+            if tracked {
+                &self.tracked
+            } else {
+                &self.vehicles
+            },
+            vehicle.position,
+            job,
+            ground,
+        ) {
             self.planner.cancel(job.id);
             return vehicle.complete_path(revision, path).map(Some);
         }
@@ -87,8 +104,9 @@ impl NavigationScene {
         max_jobs: usize,
         now: f64,
         rng: &mut SimulationRandom,
+        ground: Ground<'_>,
     ) -> Result<Vec<Completion>, &'static str> {
-        if max_jobs > 131_072 || !clock(now) {
+        if !ground.valid_for(self.planner.side()) || max_jobs > 131_072 || !clock(now) {
             return Err("invalid path completion budget");
         }
         let mut finished = vec![];
@@ -110,7 +128,9 @@ impl NavigationScene {
                 }
                 _ => continue,
             };
-            let graph = if job.vehicle {
+            let graph = if job.tracked {
+                &mut self.tracked
+            } else if job.vehicle {
                 &mut self.vehicles
             } else {
                 &mut self.infantry
@@ -122,6 +142,8 @@ impl NavigationScene {
                 job.vehicle,
                 job.team,
                 job.care,
+                job.tracked,
+                ground,
             );
             count += 1;
             if path.is_empty() && graph.has_work() {

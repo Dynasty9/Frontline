@@ -276,7 +276,13 @@ pub fn find<A: AsRef<[Anchor]>>(
             let approach = c.position - normal * 0.8;
             if f64::from(flat(c.position - input.anchor).length_squared()) > r2
                 || scene.navigation.kind_at(approach, false) == 3
-                || !scene.navigation.line_free(input.anchor, approach, false)
+                || !scene.navigation.line_free(
+                    input.anchor,
+                    approach,
+                    false,
+                    false,
+                    crate::traversal::Ground::new(scene.terrain, scene.deck),
+                )
             {
                 continue;
             }
@@ -288,7 +294,10 @@ pub fn find<A: AsRef<[Anchor]>>(
             if scene.navigation.kind_at(c.position, false) == 3
                 && scene
                     .navigation
-                    .nearest_walkable(c.position)
+                    .nearest_walkable(
+                        c.position,
+                        crate::traversal::Ground::new(scene.terrain, scene.deck),
+                    )
                     .is_none_or(|p| f64::from(flat(p - c.position).length()) >= 1.6)
             {
                 continue;

@@ -556,7 +556,15 @@ impl InfantryStateCore {
         now: f64,
         nav: Gd<crate::path_planner::PathPlannerCore>,
         mut rng: Gd<SimulationRandomCore>,
+        terrain: Option<Gd<crate::terrain::TerrainCore>>,
+        deck: PackedByteArray,
     ) -> Array<Variant> {
+        let terrain = terrain.as_ref().map(|t| t.bind());
+        let ground = frontline_core::traversal::Ground {
+            terrain: terrain.as_ref().and_then(|t| t.core.as_ref()),
+            deck: deck.as_slice(),
+        };
+
         let Some(s) = self.core.as_mut() else {
             return Array::new();
         };
@@ -564,7 +572,13 @@ impl InfantryStateCore {
         let Some(nav) = &nav.core else {
             return Array::new();
         };
-        match s.flee_fire(crate::point(from), now, nav, &mut rng.bind_mut().core) {
+        match s.flee_fire(
+            crate::point(from),
+            now,
+            nav,
+            &mut rng.bind_mut().core,
+            ground,
+        ) {
             Ok(Some(out)) => varray![
                 true,
                 vector(out.route.job.destination),
@@ -720,12 +734,20 @@ impl InfantryStateCore {
         &mut self,
         position: Vector3,
         navigation: Gd<crate::path_planner::PathPlannerCore>,
+        terrain: Option<Gd<crate::terrain::TerrainCore>>,
+        deck: PackedByteArray,
     ) -> bool {
+        let terrain = terrain.as_ref().map(|t| t.bind());
+        let ground = frontline_core::traversal::Ground {
+            terrain: terrain.as_ref().and_then(|t| t.core.as_ref()),
+            deck: deck.as_slice(),
+        };
+
         let navigation = navigation.bind();
         (|| {
             self.core
                 .as_mut()?
-                .unhide(crate::point(position), navigation.core.as_ref()?)
+                .unhide(crate::point(position), navigation.core.as_ref()?, ground)
                 .ok()
         })()
         .is_some()
@@ -812,7 +834,15 @@ impl InfantryStateCore {
         dt: f64,
         now: f64,
         navigation: Gd<crate::path_planner::PathPlannerCore>,
+        terrain: Option<Gd<crate::terrain::TerrainCore>>,
+        deck: PackedByteArray,
     ) -> bool {
+        let terrain = terrain.as_ref().map(|t| t.bind());
+        let ground = frontline_core::traversal::Ground {
+            terrain: terrain.as_ref().and_then(|t| t.core.as_ref()),
+            deck: deck.as_slice(),
+        };
+
         let Some(s) = self.core.as_mut() else {
             return false;
         };
@@ -820,7 +850,7 @@ impl InfantryStateCore {
         navigation
             .core
             .as_ref()
-            .is_some_and(|nav| s.dive_tick(dt, now, nav).is_ok())
+            .is_some_and(|nav| s.dive_tick(dt, now, nav, ground).is_ok())
     }
 
     #[func]
@@ -830,7 +860,15 @@ impl InfantryStateCore {
         mounted: PackedFloat64Array,
         navigation: Gd<crate::path_planner::PathPlannerCore>,
         mut rng: Gd<SimulationRandomCore>,
+        terrain: Option<Gd<crate::terrain::TerrainCore>>,
+        deck: PackedByteArray,
     ) -> bool {
+        let terrain = terrain.as_ref().map(|t| t.bind());
+        let ground = frontline_core::traversal::Ground {
+            terrain: terrain.as_ref().and_then(|t| t.core.as_ref()),
+            deck: deck.as_slice(),
+        };
+
         let Some(s) = self.core.as_mut() else {
             return false;
         };
@@ -839,7 +877,7 @@ impl InfantryStateCore {
         };
         let navigation = navigation.bind();
         navigation.core.as_ref().is_some_and(|nav| {
-            s.dazed_tick(dt, mounted, nav, &mut rng.bind_mut().core)
+            s.dazed_tick(dt, mounted, nav, &mut rng.bind_mut().core, ground)
                 .is_ok()
         })
     }
@@ -850,12 +888,25 @@ impl InfantryStateCore {
         dt: f64,
         navigation: Gd<crate::path_planner::PathPlannerCore>,
         mut rng: Gd<SimulationRandomCore>,
+        terrain: Option<Gd<crate::terrain::TerrainCore>>,
+        deck: PackedByteArray,
     ) -> Array<Variant> {
+        let terrain = terrain.as_ref().map(|t| t.bind());
+        let ground = frontline_core::traversal::Ground {
+            terrain: terrain.as_ref().and_then(|t| t.core.as_ref()),
+            deck: deck.as_slice(),
+        };
+
         let result = (|| {
             let s = self.core.as_mut()?;
             let navigation = navigation.bind();
-            s.fling_tick(dt, navigation.core.as_ref()?, &mut rng.bind_mut().core)
-                .ok()
+            s.fling_tick(
+                dt,
+                navigation.core.as_ref()?,
+                &mut rng.bind_mut().core,
+                ground,
+            )
+            .ok()
         })();
         result.map_or_else(Array::new, |(dazed, speech)| {
             varray![dazed, speech.map_or(-1, i32::from)]
@@ -875,7 +926,15 @@ impl InfantryStateCore {
         input: Array<Variant>,
         navigation: Gd<crate::path_planner::PathPlannerCore>,
         mounted: PackedVector3Array,
+        terrain: Option<Gd<crate::terrain::TerrainCore>>,
+        deck: PackedByteArray,
     ) -> Array<Variant> {
+        let terrain = terrain.as_ref().map(|t| t.bind());
+        let ground = frontline_core::traversal::Ground {
+            terrain: terrain.as_ref().and_then(|t| t.core.as_ref()),
+            deck: deck.as_slice(),
+        };
+
         let Some(s) = self.core.as_mut() else {
             return Array::new();
         };
@@ -918,6 +977,7 @@ impl InfantryStateCore {
                 order,
                 navigation.core.as_ref()?,
                 mounted.as_slice().first().copied().map(crate::point),
+                ground,
             )
             .ok()
         })();

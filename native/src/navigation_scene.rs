@@ -102,11 +102,20 @@ impl NavigationSceneCore {
         vehicle: bool,
         team: i32,
         care: f64,
+        tracked: bool,
+        terrain: Gd<TerrainCore>,
+        deck: PackedByteArray,
     ) -> PackedVector3Array {
         let Some(nav) = &mut self.core else {
             return PackedVector3Array::new();
         };
-        let graph = if vehicle {
+        let terrain = terrain.bind();
+        let Some(terrain) = &terrain.core else {
+            return PackedVector3Array::new();
+        };
+        let graph = if tracked {
+            &mut nav.tracked
+        } else if vehicle {
             &mut nav.vehicles
         } else {
             &mut nav.infantry
@@ -119,6 +128,8 @@ impl NavigationSceneCore {
                 vehicle,
                 team,
                 care,
+                tracked,
+                frontline_core::traversal::Ground::new(terrain, deck.as_slice()),
             )
             .into_iter()
             .map(|p| Vector3::new(p.x, p.y, p.z))
@@ -140,7 +151,8 @@ impl NavigationSceneCore {
                 .collect();
             obstacles.set(&index.to_variant(), &values.to_variant());
         }
-        varray![&planner, &infantry, &vehicles, &obstacles]
+        let tracked: PackedByteArray = nav.tracked.checkpoint().as_slice().into();
+        varray![&planner, &infantry, &vehicles, &obstacles, &tracked]
     }
     #[func]
     fn checkpoint(&self) -> PackedByteArray {

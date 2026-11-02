@@ -21,7 +21,7 @@ func _ready() -> void:
 			var yaw_value := trial*0.317-1.3
 			v.apply_props({"vkind":kind,"team":trial % 3-1,"owner":trial-2,"pos":Vector3(index % 8*7.13-27,trial*0.2,index / 8*2.19-17),"yaw":yaw_value,"max_hp":41.0})
 			var spawn := [v.team,v.owner_peer,v.position,yaw_value]
-			var profile := [kind,String(def.get("base","tank")),float(def.hp),def.get("size",Vector3(2.3,2.6,6.0)),int(def.get("atgm",[0,0.0])[0]),int(def.get("sam",[0,0.0])[0])]
+			var profile := [kind,String(def.get("base","tank")),float(def.hp),def.get("size",Vector3(2.3,2.6,6.0)),int(def.get("atgm",[0,0.0])[0]),int(def.get("sam",[0,0.0])[0]),bool(def.get("tracked",false))]
 			assert(core.spawn_vehicle(actors,spawn,profile) == v.eid,"vehicle birth "+kind)
 			w._register(v); w.add_child(v); v.on_spawned(); w.combat.dirty_collision(v.eid); w.combat._sync_collision()
 			assert(state.restore(actors.actor_state(v.eid)))

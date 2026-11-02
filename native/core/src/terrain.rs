@@ -82,6 +82,32 @@ impl Terrain {
         true
     }
 
+    pub fn water_depth(&self, p: Vector3, deck: &[u8]) -> f64 {
+        let i = self.index(p);
+        if deck.get(i) == Some(&1) || !matches!(self.layers[BASE][i], WATER | SHALLOW) {
+            return 0.;
+        }
+        (crate::water::LEVEL - self.deform_at(p)).max(0.)
+    }
+    pub fn too_deep(&self, p: Vector3, deck: &[u8]) -> bool {
+        let i = self.index(p);
+        deck.get(i) != Some(&1)
+            && (self.layers[BASE][i] == WATER || self.water_depth(p, deck) > 0.551)
+    }
+    pub fn cell_too_deep(&self, p: Vector3, deck: &[u8]) -> bool {
+        let i = self.index(p);
+        if deck.get(i) == Some(&1) {
+            return false;
+        }
+        if self.too_deep(p, deck) {
+            return true;
+        }
+        matches!(self.layers[BASE][i], WATER | SHALLOW)
+            && [(-0.45, -0.45), (0.45, -0.45), (-0.45, 0.45), (0.45, 0.45)]
+                .into_iter()
+                .any(|(x, z)| self.too_deep(p + Vector3::new(x, 0., z), deck))
+    }
+
     pub fn index(&self, p: Vector3) -> usize {
         let x = (f64::from(p.x) + self.half())
             .floor()

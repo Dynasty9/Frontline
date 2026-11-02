@@ -62,7 +62,12 @@ impl Actors {
         squads: &mut [Squad],
         ammunition: impl Fn(&Infantry) -> (Option<i32>, bool),
         rng: &mut SimulationRandom,
+        ground: crate::traversal::Ground<'_>,
     ) -> Result<Vec<PassengerHit>, &'static str> {
+        if !ground.valid_for(nav.side()) {
+            return Err("invalid navigation ground");
+        }
+
         self.evacuate_destroyed_vehicle_with(
             id,
             boat,
@@ -74,6 +79,7 @@ impl Actors {
             |s, _| ammunition(s),
             |_, _, _| Ok(()),
             rng,
+            ground,
         )
     }
 
@@ -89,7 +95,12 @@ impl Actors {
         ammunition: impl Fn(&Infantry, &[Squad]) -> (Option<i32>, bool),
         mut after_hit: impl FnMut(&Actors, &[Squad], &PassengerHit) -> Result<(), &'static str>,
         rng: &mut SimulationRandom,
+        ground: crate::traversal::Ground<'_>,
     ) -> Result<Vec<PassengerHit>, &'static str> {
+        if !ground.valid_for(nav.side()) {
+            return Err("invalid navigation ground");
+        }
+
         if units.cell_size() != UNIT_CELL
             || !now.is_finite()
             || now.abs() > 1e12 - 10.0
@@ -111,7 +122,7 @@ impl Actors {
             v.hit_by.clone()
         };
         let shore = if boat {
-            nav.nearest_walkable(position)
+            nav.nearest_walkable(position, ground)
                 .ok_or("invalid sinking position")?
         } else {
             position
@@ -131,13 +142,14 @@ impl Actors {
                     rng.randf_range(-spread, spread),
                 );
             let exit = if boat {
-                nav.nearest_walkable(exit).ok_or("invalid swimming exit")?
+                nav.nearest_walkable(exit, ground)
+                    .ok_or("invalid swimming exit")?
             } else {
                 exit
             };
             let s = self.soldier_mut(who).unwrap();
             s.links.vehicle = 0;
-            s.unhide(exit, nav)?;
+            s.unhide(exit, nav, ground)?;
             let amount = if boat && !near {
                 999.0
             } else {
@@ -184,7 +196,12 @@ impl Actors {
         next_squad: &mut u64,
         nav: &PathPlanner,
         rng: &mut SimulationRandom,
+        ground: crate::traversal::Ground<'_>,
     ) -> Result<Bailout, &'static str> {
+        if !ground.valid_for(nav.side()) {
+            return Err("invalid navigation ground");
+        }
+
         if !loadout.valid()
             || !valid_names(names)
             || !overkill.is_finite()
@@ -236,7 +253,7 @@ impl Actors {
                 * if i % 2 == 0 { 1.7 } else { -1.7 }
                 + direction(yaw) * (i as f32 - 1.0) * 1.3;
             let exit = nav
-                .nearest_walkable(position + offset)
+                .nearest_walkable(position + offset, ground)
                 .ok_or("invalid crew exit")?;
             let mut s = Infantry::from_spawn(
                 (next_id + survivors.len() as u64) as u32,

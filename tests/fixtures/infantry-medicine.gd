@@ -148,7 +148,7 @@ class OriginalMedic extends Medic:
 		var to := Defs.flat(want - position)
 		var spd := 4.4 if to.length() > 3.0 else 1.3
 		var np := position + to.normalized() * minf(to.length(), spd * dt)
-		if to.length() > 0.2 and world.nav.walkable(np):
+		if to.length() > 0.2 and world.nav.can_step(position, np):
 			position = np
 		backwards = to.length() > 0.2 and to.normalized().dot(thr) < 0.0
 		_face(thr, dt, 8.0)

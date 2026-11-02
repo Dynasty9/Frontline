@@ -112,14 +112,28 @@ fn checkpoint_resumes_pending_repairs_routes_and_owned_cells() {
             assert!(nav.update_hierarchy(1) && resumed.update_hierarchy(1));
             let from = Vector3::new(-20.3 + tick as f32 * 0.1, 0.0, -25.7);
             let to = Vector3::new(22.7, 0.0, 20.3);
-            let expected = nav
-                .planner
-                .find_path(&mut nav.infantry, from, to, false, 0, 1.0);
+            let expected = nav.planner.find_path(
+                &mut nav.infantry,
+                from,
+                to,
+                false,
+                0,
+                1.0,
+                false,
+                frontline_core::traversal::Ground::new(&terrain, &[]),
+            );
             assert_eq!(
                 expected,
-                resumed
-                    .planner
-                    .find_path(&mut resumed.infantry, from, to, false, 0, 1.0)
+                resumed.planner.find_path(
+                    &mut resumed.infantry,
+                    from,
+                    to,
+                    false,
+                    0,
+                    1.0,
+                    false,
+                    frontline_core::traversal::Ground::new(&terrain, &[])
+                )
             );
             assert_eq!(nav.checkpoint(), resumed.checkpoint());
         }
@@ -158,8 +172,84 @@ fn invalid_edits_and_checkpoints_do_not_partly_change_the_scene() {
     bad.push(0);
     assert!(NavigationScene::restore(&bad).is_err());
     bad = before;
-    bad[4] = 2;
+    bad[4] = 3;
     assert!(NavigationScene::restore(&bad).is_err());
     assert!(NavigationScene::new(&terrain, &[0], 16).is_err());
     assert!(NavigationScene::new(&terrain, &[], 4).is_err());
+}
+
+#[test]
+fn feet_can_enter_planning_padding_but_not_a_wall_or_diagonal_corner() {
+    let terrain = Terrain::blank(32).unwrap();
+    let mut nav = NavigationScene::new(&terrain, &[], 16).unwrap();
+    let mut wall = obstacle(1, 3);
+    wall.parts[0].yaw = 0.;
+    wall.parts[0].size = Vector3::new(0.6, 2., 4.);
+    wall.position = Vector3::new(0.6, 0., 0.);
+    nav.add_structure(&mut wall, &terrain, &[]).unwrap();
+    let a = Vector3::new(-0.5, 0., 0.5);
+    let padding = Vector3::new(0.1, 0., 0.5);
+    assert_eq!(nav.planner.kind_at(padding, false), 3);
+    assert!(nav.planner.can_step(a, padding, false, &terrain, &[]));
+    assert!(!nav
+        .planner
+        .can_step(a, Vector3::new(1.5, 0., 0.5), false, &terrain, &[]));
+    let restored = NavigationScene::restore(&nav.checkpoint()).unwrap();
+    assert!(restored.planner.can_step(a, padding, false, &terrain, &[]));
+    assert!(!restored
+        .planner
+        .can_step(a, Vector3::new(1.5, 0., 0.5), false, &terrain, &[]));
+    nav.remove_structure(&mut wall, &terrain, &[]).unwrap();
+    assert!(nav
+        .planner
+        .can_step(a, Vector3::new(1.5, 0., 0.5), false, &terrain, &[]));
+    nav.planner.set_cell(16 * 32 + 17, 3, 3, 0);
+    assert!(!nav.planner.can_step(
+        Vector3::new(0.8, 0., 0.8),
+        Vector3::new(1.2, 0., 1.2),
+        false,
+        &terrain,
+        &[]
+    ));
+}
+
+#[test]
+fn shallow_labels_do_not_override_depth_and_decks_restore_crossings() {
+    let mut terrain = Terrain::blank(32).unwrap();
+    terrain.layers[BASE].fill(frontline_core::terrain::SHALLOW);
+    terrain.heights.fill(-2.);
+    let mut nav = NavigationScene::new(&terrain, &[], 16).unwrap();
+    let a = Vector3::new(-4., 0., 0.5);
+    let b = Vector3::new(4., 0., 0.5);
+    assert!(!nav.planner.can_step(a, b, false, &terrain, &[]));
+    assert_eq!(nav.planner.kind_at(b, false), 3);
+    let deck = vec![1; 32 * 32];
+    for i in 0..32 * 32 {
+        nav.terrain_changed(i, &terrain, &deck).unwrap();
+    }
+    assert!(nav.planner.can_step(a, b, false, &terrain, &deck));
+    terrain.heights.fill(-0.85);
+    for i in 0..32 * 32 {
+        nav.terrain_changed(i, &terrain, &[]).unwrap();
+    }
+    assert!(nav.planner.can_step(a, b, false, &terrain, &[]));
+}
+
+#[test]
+fn terrain_selects_three_movement_classes_and_repairs_rotate_fairly() {
+    let mut terrain = Terrain::blank(32).unwrap();
+    assert!(terrain.set_landform((0..81).map(|i| (i % 9) as f32 * 4. * 0.55).collect()));
+    let mut nav = NavigationScene::new(&terrain, &[], 16).unwrap();
+    assert!(!nav.infantry.is_solid([16, 16]));
+    assert!(nav.vehicles.is_solid([16, 16]));
+    assert!(!nav.tracked.is_solid([16, 16]));
+    assert!(nav.finalize(1));
+    let mut wall = obstacle(1, 3);
+    nav.add_structure(&mut wall, &terrain, &[]).unwrap();
+    assert!(nav.update_hierarchy(1));
+    let mut restored = NavigationScene::restore(&nav.checkpoint()).unwrap();
+    for _ in 0..8 {
+        assert!(nav.update_hierarchy(1) && restored.update_hierarchy(1));
+        assert_eq!(nav.checkpoint(), restored.checkpoint());
+    }
 }

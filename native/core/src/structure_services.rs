@@ -108,9 +108,13 @@ impl Context<'_> {
     fn service_route(&mut self, id: u32, position: Vector3) -> Result<(), &'static str> {
         let s = self.actors.soldier_mut(id).unwrap();
         let route = s.go_to(position, Goal::Task, 1)?;
-        self.geometry
-            .navigation
-            .submit_infantry(s, route, self.now, self.rng)?;
+        self.geometry.navigation.submit_infantry(
+            s,
+            route,
+            self.now,
+            self.rng,
+            crate::traversal::Ground::new(&self.geometry.terrain, &self.geometry.deck),
+        )?;
         Ok(())
     }
     fn tent_service(
@@ -213,6 +217,7 @@ impl Context<'_> {
                         soldier,
                         &self.geometry.navigation.planner,
                         self.squads,
+                        crate::traversal::Ground::new(&self.geometry.terrain, &self.geometry.deck),
                     )?;
                     let s = self.actors.soldier_mut(soldier).unwrap();
                     s.duty.kind = Task::Stretcher;
@@ -291,6 +296,7 @@ impl Context<'_> {
                     gunner,
                     &self.geometry.navigation.planner,
                     self.squads,
+                    crate::traversal::Ground::new(&self.geometry.terrain, &self.geometry.deck),
                 )?;
                 let s = self.actors.soldier_mut(gunner).unwrap();
                 s.duty.kind = Task::Man;

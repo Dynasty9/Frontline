@@ -545,6 +545,7 @@ impl Fires {
                 &c.geometry.navigation.planner,
                 c.deferred,
                 c.rng,
+                crate::traversal::Ground::new(&c.geometry.terrain, &c.geometry.deck),
             )?;
             for event in &damage.events {
                 if let Destruction::Unhidden(id) | Destruction::ReleasedGunner(id) = event {
@@ -766,11 +767,21 @@ impl Fires {
                 c.geometry.navigation.planner.cancel(u64::from(id));
             }
             let s = c.actors.soldier_mut(id).unwrap();
-            let escape = s.flee_fire(p, c.now, &c.geometry.navigation.planner, c.rng)?;
+            let escape = s.flee_fire(
+                p,
+                c.now,
+                &c.geometry.navigation.planner,
+                c.rng,
+                crate::traversal::Ground::new(&c.geometry.terrain, &c.geometry.deck),
+            )?;
             if let Some(escape) = escape {
-                c.geometry
-                    .navigation
-                    .submit_infantry(s, escape.route, c.now, c.rng)?;
+                c.geometry.navigation.submit_infantry(
+                    s,
+                    escape.route,
+                    c.now,
+                    c.rng,
+                    crate::traversal::Ground::new(&c.geometry.terrain, &c.geometry.deck),
+                )?;
             }
             out.push(Event::Scorched {
                 soldier: id,

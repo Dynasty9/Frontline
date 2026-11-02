@@ -32,7 +32,12 @@ impl Actors {
         nav: &PathPlanner,
         squads: &mut [Squad],
         rng: &mut SimulationRandom,
+        ground: crate::traversal::Ground<'_>,
     ) -> Result<Update, &'static str> {
+        if !ground.valid_for(nav.side()) {
+            return Err("invalid navigation ground");
+        }
+
         if !dt.is_finite()
             || !(0.0..=10.0).contains(&dt)
             || restored_weapon.is_some_and(|(k, n)| {
@@ -53,7 +58,7 @@ impl Actors {
             Hidden::BailOut => {
                 let s = self.soldier_mut(id).unwrap();
                 s.links.vehicle = 0;
-                s.unhide(s.motion.position, nav)?;
+                s.unhide(s.motion.position, nav, ground)?;
             }
             Hidden::LeaveTunnel => {
                 let s = self.soldier(id).unwrap();
@@ -62,7 +67,9 @@ impl Actors {
                 if let Some(Actor::Structure(st)) = self.get_mut(tunnel) {
                     st.inside.retain(|&who| who != id);
                 }
-                self.soldier_mut(id).unwrap().unhide(destination, nav)?;
+                self.soldier_mut(id)
+                    .unwrap()
+                    .unhide(destination, nav, ground)?;
             }
             Hidden::LeaveTent => {
                 let s = self.soldier(id).unwrap();
@@ -72,7 +79,7 @@ impl Actors {
                 s.vitals.life = Life::Alive;
                 let cue = s.revive(true, restored_weapon, rng)?;
                 out.events.push(Event::Revived(cue));
-                s.unhide(exit.unwrap_or(s.motion.position), nav)?;
+                s.unhide(exit.unwrap_or(s.motion.position), nav, ground)?;
                 let s = self.soldier(id).unwrap();
                 let destination = self
                     .nearest_fob(s.identity.team, s.motion.position)

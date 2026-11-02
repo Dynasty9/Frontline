@@ -196,7 +196,12 @@ impl Vehicle {
         profile: CrewProfile<'_>,
         s: Perception<'_>,
         nav: &PathPlanner,
+        ground: crate::traversal::Ground<'_>,
     ) -> Result<CrewResult, &'static str> {
+        if !ground.valid_for(nav.side()) {
+            return Err("invalid navigation ground");
+        }
+
         if !now.is_finite()
             || !(0.0..=1e12).contains(&now)
             || !profile.valid()
@@ -222,7 +227,7 @@ impl Vehicle {
             }) {
                 let wanted = fob + normalized(flat(self.position - fob)) * 12.0;
                 let p = nav
-                    .nearest_walkable_for(wanted, true)
+                    .nearest_walkable_for(wanted, true, self.tracked, ground)
                     .ok_or("invalid retreat point")?;
                 out.route = self.crew_move(p, profile)?;
                 self.brain_state = "withdraw".into();
@@ -292,7 +297,12 @@ impl Vehicle {
         profile: CrewProfile<'_>,
         nav: &PathPlanner,
         rng: &mut SimulationRandom,
+        ground: crate::traversal::Ground<'_>,
     ) -> Result<CrewResult, &'static str> {
+        if !ground.valid_for(nav.side()) {
+            return Err("invalid navigation ground");
+        }
+
         if !now.is_finite() || !(0.0..=1e12).contains(&now) || !point(from) || !profile.valid() {
             return Err("invalid crew threat");
         }
@@ -319,7 +329,12 @@ impl Vehicle {
         let away = normalized(flat(self.position - from));
         let side = away.cross(Vector3::Y) * if next_rng.randf() < 0.5 { 1.0 } else { -1.0 };
         let p = nav
-            .nearest_walkable_for(self.position + away * 16.0 + side * 6.0, true)
+            .nearest_walkable_for(
+                self.position + away * 16.0 + side * 6.0,
+                true,
+                self.tracked,
+                ground,
+            )
             .ok_or("invalid evasive point")?;
         out.route = self.crew_move(p, profile)?;
         *rng = next_rng;

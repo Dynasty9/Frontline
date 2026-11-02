@@ -36,7 +36,7 @@ fn flat(p: Vector3) -> Vector3 {
 }
 fn ground(p: Vector3, terrain: &Terrain, deck: &[u8]) -> f64 {
     terrain
-        .ground_y(p, !deck.is_empty() && deck[terrain.index(p)] != 0)
+        .ground_y(p, deck.get(terrain.index(p)) == Some(&1))
         .max(0.0)
         + 0.15
 }
@@ -90,7 +90,12 @@ impl Vehicle {
             }
             1 => {
                 if self.fly_to(
-                    Vector3::new(self.position.x, 16.0, self.position.z),
+                    Vector3::new(
+                        self.position.x,
+                        (crate::traversal::Ground::new(terrain, deck).height(self.position) + 16.0)
+                            as f32,
+                        self.position.z,
+                    ),
                     dt,
                     None,
                     p,
@@ -106,7 +111,18 @@ impl Vehicle {
             }
             2 => {
                 let d = self.lift_destination.unwrap();
-                if self.fly_to(Vector3::new(d.x, 16.0, d.z), dt, None, p, terrain, deck)? {
+                if self.fly_to(
+                    Vector3::new(
+                        d.x,
+                        (crate::traversal::Ground::new(terrain, deck).height(d) + 16.0) as f32,
+                        d.z,
+                    ),
+                    dt,
+                    None,
+                    p,
+                    terrain,
+                    deck,
+                )? {
                     self.lift_phase = 3;
                 }
             }
@@ -160,7 +176,11 @@ impl Vehicle {
                 };
                 if self.lift_phase == 5 {
                     if self.fly_to(
-                        Vector3::new(t.position.x, 16.0, t.position.z),
+                        Vector3::new(
+                            t.position.x,
+                            (f64::from(t.position.y) + 16.0) as f32,
+                            t.position.z,
+                        ),
                         dt,
                         None,
                         p,
@@ -240,7 +260,12 @@ impl Vehicle {
             }
             1 | 4 => {
                 if self.fly_to(
-                    Vector3::new(self.position.x, 15.0, self.position.z),
+                    Vector3::new(
+                        self.position.x,
+                        (crate::traversal::Ground::new(terrain, deck).height(self.position) + 15.0)
+                            as f32,
+                        self.position.z,
+                    ),
                     dt,
                     None,
                     p,
@@ -259,7 +284,7 @@ impl Vehicle {
                     };
                     goal = f.position + Vector3::X * 9.0;
                 }
-                goal.y = 15.0;
+                goal.y = (crate::traversal::Ground::new(terrain, deck).height(goal) + 15.0) as f32;
                 if self.fly_to(goal, dt, None, p, terrain, deck)? {
                     self.flight_hold = Some(Vector3::new(
                         goal.x,

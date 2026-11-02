@@ -86,7 +86,12 @@ impl Infantry {
         order: Command,
         nav: &PathPlanner,
         mount_position: Option<Vector3>,
+        ground: crate::traversal::Ground<'_>,
     ) -> Result<Ordered, &'static str> {
+        if !ground.valid_for(nav.side()) {
+            return Err("invalid navigation ground");
+        }
+
         if !self.valid()
             || !order.valid()
             || mount_position.is_some_and(|p| !point(p) || !point(p + Vector3::X * 2.0))
@@ -127,7 +132,7 @@ impl Infantry {
                     self.entry.reordered = true;
                     return Ok(out);
                 }
-                out.release = self.clear_duty(nav, mount_position);
+                out.release = self.clear_duty(nav, mount_position, ground);
                 self.orders.hold_position = slot;
                 self.hold_face(face);
                 self.orders.leash = 9.0;
@@ -141,7 +146,8 @@ impl Infantry {
             Command::Halt { face } => {
                 self.stop_moving()?;
                 out.cancel_path = true;
-                self.orders.hold_position = nav.nearest_walkable(self.motion.position).unwrap();
+                self.orders.hold_position =
+                    nav.nearest_walkable(self.motion.position, ground).unwrap();
                 self.hold_face(face);
                 self.orders.leash = 8.0;
                 self.cover.at_cover = false;
@@ -169,7 +175,7 @@ impl Infantry {
                 position,
                 slot,
             } => {
-                out.release = self.clear_duty(nav, mount_position);
+                out.release = self.clear_duty(nav, mount_position, ground);
                 self.fight.forced_target = u64::from(target);
                 self.orders.hold_position = slot;
                 self.orders.hold_face = normalized(flat(position - slot));
@@ -178,7 +184,7 @@ impl Infantry {
                 out.route = Some(self.go_to(slot, Goal::Slot, 0)?);
             }
             Command::Retreat { position } => {
-                out.release = self.clear_duty(nav, mount_position);
+                out.release = self.clear_duty(nav, mount_position, ground);
                 self.duty.kind = Task::Retreat;
                 self.fight.forced_target = 0;
                 self.orders.hold_position = position;
@@ -186,7 +192,7 @@ impl Infantry {
                 out.route = Some(self.go_to(position, Goal::Task, 2)?);
             }
             Command::Throw { position, round } => {
-                out.release = self.clear_duty(nav, mount_position);
+                out.release = self.clear_duty(nav, mount_position, ground);
                 self.duty.kind = Task::Throw;
                 self.duty.position = position;
                 self.duty.throw_kind = round;
@@ -201,7 +207,7 @@ impl Infantry {
                 }
             }
             Command::Stop => {
-                out.release = self.clear_duty(nav, mount_position);
+                out.release = self.clear_duty(nav, mount_position, ground);
                 self.fight.forced_target = 0;
                 self.stop_moving()?;
                 out.cancel_path = true;
@@ -236,12 +242,13 @@ impl Infantry {
         &mut self,
         nav: &PathPlanner,
         mount_position: Option<Vector3>,
+        ground: crate::traversal::Ground<'_>,
     ) -> Option<Release> {
         let release = match self.duty.kind {
             Task::Rescue if self.duty.entity != 0 => Some(Release::Rescue(self.duty.entity as u32)),
             Task::Breach if self.identity.squad != 0 => Some(Release::Breach(self.identity.squad)),
             Task::Man if self.emplacement.structure != 0 => {
-                self.release_mount(nav, mount_position).unwrap();
+                self.release_mount(nav, mount_position, ground).unwrap();
                 return None;
             }
             _ => None,
@@ -257,14 +264,19 @@ impl Infantry {
         &mut self,
         nav: &PathPlanner,
         mount_position: Option<Vector3>,
+        ground: crate::traversal::Ground<'_>,
     ) -> Result<(), &'static str> {
+        if !ground.valid_for(nav.side()) {
+            return Err("invalid navigation ground");
+        }
+
         if !self.valid() || mount_position.is_some_and(|p| !point(p)) {
             return Err("invalid infantry mount release");
         }
         let exit = if self.orders.base_y > 0.0 {
             match mount_position {
                 Some(position) => Some(
-                    nav.nearest_walkable(position + Vector3::X * 2.0)
+                    nav.nearest_walkable(position + Vector3::X * 2.0, ground)
                         .ok_or("invalid gunner exit")?,
                 ),
                 None => None,
@@ -281,7 +293,7 @@ impl Infantry {
             self.motion.position = position;
         }
         self.orders.base_y = 0.0;
-        self.motion.position.y = 0.0;
+        self.motion.position.y = ground.height(self.motion.position) as f32;
         self.duty.kind = Task::Fight;
         self.duty.entity = 0;
         self.cover.at_cover = false;

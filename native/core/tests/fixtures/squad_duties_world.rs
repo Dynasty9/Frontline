@@ -117,7 +117,13 @@ fn step(s: &mut Scene, battle: &mut BattleStats) -> Vec<Event> {
     s.context().squad_engineers(7, &role).unwrap();
     s.geometry
         .navigation
-        .process_paths(&mut s.actors, 3, s.now, &mut s.rng)
+        .process_paths(
+            &mut s.actors,
+            3,
+            s.now,
+            &mut s.rng,
+            frontline_core::traversal::Ground::new(&s.geometry.terrain, &s.geometry.deck),
+        )
         .unwrap();
     out
 }

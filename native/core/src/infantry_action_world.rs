@@ -37,6 +37,7 @@ impl Context<'_> {
             |_| victim.map_or((None, false), |p| (p.ammunition, p.bearer)),
             defense,
             self.rng,
+            crate::traversal::Ground::new(&self.geometry.terrain, &self.geometry.deck),
         )?;
         let mut out = vec![];
         if completed.cancel_path {

@@ -28,10 +28,12 @@ func _ready() -> void:
 			w.water.deck[i] = 2 if i % 17 == 0 else int(i % 5 == 0)
 			w.nav.terrain_changed(i)
 		assert(ground.configure(MapDims.N, layers(t), t.dh))
+		t._native = ground
 		assert(core.configure(ground, w.water.deck, HNav.C))
 		var walls: Array[Structure] = []
 		for id in range(1, 13):
 			var st := Structure.new()
+			st.world = w; w.entities[id] = st
 			st.eid = id; st.skind = "sandbags"; st.built = true
 			st.position = Vector3(rng.randf_range(-Nav.H, Nav.H), 0, rng.randf_range(-Nav.H, Nav.H))
 			st.yaw = rng.randf_range(-PI, PI)
@@ -71,13 +73,13 @@ func _ready() -> void:
 				var team := query % 3 - 1
 				var care := 0.0 if query == 3 else 1.0
 				var expected := w.nav.find_path(a, b, vehicle, team, care)
-				var actual: PackedVector3Array = core.find_path(a, b, vehicle, team, care)
+				var actual: PackedVector3Array = core.find_path(a, b, vehicle, team, care, false, ground, w.water.deck)
 				assert(expected == actual, "navigation route %d/%d/%d" % [trial, step, query])
 			check(w.nav, core, "%d/%d" % [trial, step])
 			if step % 8 == 0:
 				var saved: PackedByteArray = core.checkpoint()
 				assert(core.restore(saved)); assert(saved == core.checkpoint())
-				var bad := saved.duplicate(); bad[4] = 2
+				var bad := saved.duplicate(); bad[4] = 3
 				assert(not core.restore(bad)); assert(saved == core.checkpoint())
 		for st in walls: st.free()
 		w.free()
@@ -96,7 +98,7 @@ func change_structure(core: RefCounted, structure: RefCounted, ground: RefCounte
 
 func check(nav: Nav, core: RefCounted, where: String) -> void:
 	var actual: Array = core.inspect()
-	var expected := [nav._planner.checkpoint(), nav.hnav_i._core.checkpoint(), nav.hnav_v._core.checkpoint(), nav.cell_objs]
-	for i in 4:
+	var expected := [nav._planner.checkpoint(), nav.hnav_i._core.checkpoint(), nav.hnav_v._core.checkpoint(), nav.cell_objs, nav.hnav_t._core.checkpoint()]
+	for i in 5:
 		assert(actual[i] == expected[i], "navigation state %s part %d" % [where, i])
 	checks += 1

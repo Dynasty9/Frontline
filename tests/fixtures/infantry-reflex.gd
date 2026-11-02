@@ -178,7 +178,7 @@ func _ready() -> void:
 						s._react_drones()
 						expected = s.dive_t > 0.0
 						leaf = 7 if expected else 0
-				var result: Array = actors.react_infantry(s.eid, mode, w.time, not s.wdef.is_empty(), qcore if s.squad else null, units, w.nav._planner, w.combat._collision, random._backend)
+				var result: Array = actors.react_infantry(s.eid, mode, w.time, not s.wdef.is_empty(), qcore if s.squad else null, units, w.nav._planner, w.combat._collision, random._backend, w.nav._path_ground(), w.nav._path_deck())
 				assert(result.size() == 5 and result[0] == expected and result[2] == leaf, "reaction %d/%d/%d: %s / %s,%s" % [mode, trial, step, result, expected, leaf])
 				seen[leaf] = true
 				for other: Soldier in w.soldiers:

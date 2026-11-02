@@ -129,12 +129,12 @@ func _ready() -> void:
 			w._rebuild_uhash()
 			if mode == 2 and step == 2:
 				var from := Vector3(19.3, 0, -27.1)
-				var result: Array = core.crew_step(w.time, p, perception(v), [], w.mission != null, w.nav._planner, random, PackedVector3Array([from]))
+				var result: Array = core.crew_step(w.time, p, perception(v), [], w.mission != null, w.nav._planner, random, PackedVector3Array([from]), w.nav._path_ground(), w.nav._path_deck())
 				VehicleBrain.on_threat(v, from)
 				record_result(v, core, result, expected_stats, observed)
 			var near: Structure = w.rules.nearest_fob(v.team, v.position)
 			var fob_state := [near.eid, near.position] if near else []
-			var result: Array = core.crew_step(w.time, p, perception(v), fob_state, w.mission != null, w.nav._planner, random, PackedVector3Array())
+			var result: Array = core.crew_step(w.time, p, perception(v), fob_state, w.mission != null, w.nav._planner, random, PackedVector3Array(), w.nav._path_ground(), w.nav._path_deck())
 			if VehicleBrain.applies(v):
 				VehicleBrain.think(v)
 			record_result(v, core, result, expected_stats, observed)
@@ -142,7 +142,7 @@ func _ready() -> void:
 			assert(w.stats == expected_stats, "Crew event order %s / %s" % [w.stats, expected_stats])
 			assert(w.rng.state == random.get_state(), "Crew random cursor")
 		var saved: PackedByteArray = core.checkpoint()
-		assert(core.crew_step(NAN, p, [[], [], []], [], false, w.nav._planner, random, PackedVector3Array()).is_empty())
+		assert(core.crew_step(NAN, p, [[], [], []], [], false, w.nav._planner, random, PackedVector3Array(), w.nav._path_ground(), w.nav._path_deck()).is_empty())
 		assert(core.checkpoint() == saved)
 		w.vehicles.clear()
 		w.soldiers.clear()

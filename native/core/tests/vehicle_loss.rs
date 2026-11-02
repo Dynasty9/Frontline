@@ -80,6 +80,7 @@ fn each_survivors_name_delay_and_injury_precede_the_next_survival_roll() {
                 &mut next,
                 &PathPlanner::new(64).unwrap(),
                 &mut rng,
+                frontline_core::traversal::Ground::default(),
             )
             .unwrap();
         assert!(out.attempted);
@@ -134,6 +135,7 @@ fn helicopters_robots_and_supply_vehicles_never_create_crews_or_draw_randomness(
                 &mut next,
                 &PathPlanner::new(32).unwrap(),
                 &mut rng,
+                frontline_core::traversal::Ground::default(),
             )
             .unwrap();
         assert!(!out.attempted);
@@ -166,6 +168,7 @@ fn heavy_overkill_and_explicit_crew_counts_survive_checkpoint_continuation() {
                     &mut next,
                     &PathPlanner::new(32).unwrap(),
                     &mut rng,
+                    frontline_core::traversal::Ground::default(),
                 )
                 .unwrap();
             let second = b
@@ -178,6 +181,7 @@ fn heavy_overkill_and_explicit_crew_counts_survive_checkpoint_continuation() {
                     &mut resumed,
                     &PathPlanner::new(32).unwrap(),
                     &mut copy,
+                    frontline_core::traversal::Ground::default(),
                 )
                 .unwrap();
             assert_eq!(first, second);
@@ -203,7 +207,8 @@ fn failed_bailouts_keep_all_actor_and_random_cursors() {
             &["Jones".into()],
             &mut next,
             &PathPlanner::new(32).unwrap(),
-            &mut rng
+            &mut rng,
+            frontline_core::traversal::Ground::default()
         )
         .is_err());
     assert_eq!(a.checkpoint().unwrap(), before);
@@ -221,7 +226,8 @@ fn failed_bailouts_keep_all_actor_and_random_cursors() {
             &[],
             &mut next,
             &PathPlanner::new(32).unwrap(),
-            &mut rng
+            &mut rng,
+            frontline_core::traversal::Ground::default()
         )
         .is_err());
     assert_eq!(a.checkpoint().unwrap(), before);
@@ -280,7 +286,8 @@ fn evacuation_skips_missing_and_nonhidden_passengers_and_preserves_blame_scope()
                 &SpatialIndex::new(2.0).unwrap(),
                 &mut [],
                 |_| (Some(120), false),
-                &mut rng
+                &mut rng,
+                frontline_core::traversal::Ground::default()
             )
             .is_err());
         assert_eq!(a.checkpoint().unwrap(), saved);
@@ -298,6 +305,7 @@ fn evacuation_skips_missing_and_nonhidden_passengers_and_preserves_blame_scope()
                 &mut [],
                 |_| (Some(120), false),
                 &mut SimulationRandom::new(7),
+                frontline_core::traversal::Ground::default(),
             )
             .unwrap();
         assert_eq!(out.iter().map(|h| h.soldier).collect::<Vec<_>>(), [1, 2]);
@@ -331,8 +339,11 @@ fn distant_shore_kills_swimmers_without_a_survival_damage_draw() {
     let blocked = vec![3; 256 * 256];
     assert!(nav.load_cells(&blocked, &blocked, &vec![0; blocked.len()]));
     assert!(
-        (nav.nearest_walkable(a.vehicle(20).unwrap().position)
-            .unwrap()
+        (nav.nearest_walkable(
+            a.vehicle(20).unwrap().position,
+            frontline_core::traversal::Ground::default()
+        )
+        .unwrap()
             - a.vehicle(20).unwrap().position)
             .length()
             >= 60.0
@@ -354,6 +365,7 @@ fn distant_shore_kills_swimmers_without_a_survival_damage_draw() {
             &mut [],
             |_| (Some(120), false),
             &mut rng,
+            frontline_core::traversal::Ground::default(),
         )
         .unwrap();
     assert_eq!(out.len(), 2);

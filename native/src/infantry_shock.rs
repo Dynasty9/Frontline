@@ -92,7 +92,15 @@ impl InfantryShockCore {
         dt: f64,
         planner: Gd<PathPlannerCore>,
         mut random: Gd<SimulationRandomCore>,
+        terrain: Option<Gd<crate::terrain::TerrainCore>>,
+        deck: PackedByteArray,
     ) -> Array<Variant> {
+        let terrain = terrain.as_ref().map(|t| t.bind());
+        let ground = frontline_core::traversal::Ground {
+            terrain: terrain.as_ref().and_then(|t| t.core.as_ref()),
+            deck: deck.as_slice(),
+        };
+
         let (Some(mut state), Some(life)) = (decode(values.as_slice()), life(life_id)) else {
             return Array::new();
         };
@@ -106,6 +114,7 @@ impl InfantryShockCore {
             dt,
             nav,
             &mut random.bind_mut().core,
+            ground,
         ) else {
             return Array::new();
         };
@@ -146,7 +155,15 @@ impl InfantryShockCore {
         context: PackedFloat64Array,
         planner: Gd<PathPlannerCore>,
         mut random: Gd<SimulationRandomCore>,
+        terrain: Option<Gd<crate::terrain::TerrainCore>>,
+        deck: PackedByteArray,
     ) -> Array<Variant> {
+        let terrain = terrain.as_ref().map(|t| t.bind());
+        let ground = frontline_core::traversal::Ground {
+            terrain: terrain.as_ref().and_then(|t| t.core.as_ref()),
+            deck: deck.as_slice(),
+        };
+
         let Some(mut state) = decode(values.as_slice()) else {
             return Array::new();
         };
@@ -171,7 +188,9 @@ impl InfantryShockCore {
         let Some(nav) = planner.core.as_ref() else {
             return Array::new();
         };
-        let Ok(result) = state.stagger(input, v[8], mount, nav, &mut random.bind_mut().core) else {
+        let Ok(result) =
+            state.stagger(input, v[8], mount, nav, &mut random.bind_mut().core, ground)
+        else {
             return Array::new();
         };
         self.core = state;

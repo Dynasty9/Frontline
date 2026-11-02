@@ -7,6 +7,7 @@ use crate::infantry_shock::Stagger;
 use crate::infantry_vitals::Life;
 use crate::path_planner::PathPlanner;
 use crate::random::SimulationRandom;
+use crate::traversal::Ground;
 use crate::vector::Vector3;
 
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
@@ -162,14 +163,26 @@ impl Infantry {
         Ok(out)
     }
 
-    pub fn dive_tick(&mut self, dt: f64, now: f64, nav: &PathPlanner) -> Result<(), &'static str> {
+    pub fn dive_tick(
+        &mut self,
+        dt: f64,
+        now: f64,
+        nav: &PathPlanner,
+        ground: Ground<'_>,
+    ) -> Result<(), &'static str> {
         if !self.valid() || !now.is_finite() || now.abs() > 1e12 - 1.0 {
             return Err("invalid retained dive");
         }
+        let old_y = self.motion.position.y;
         let mut controller = self.controller;
-        let result = controller.dive(self.motion.position, self.orders.base_y, dt, nav)?;
+        let result = controller.dive(self.motion.position, self.orders.base_y, dt, nav, ground)?;
         self.controller = controller;
         self.motion.position = result.position;
+        if let Some(terrain) = ground.terrain {
+            let floor = self.motion.cached_ground(now, terrain, ground.deck);
+            self.motion.position.y =
+                (self.orders.base_y + floor).max(f64::from(old_y) - dt * 3.0) as f32;
+        }
         self.activity = 15;
         if result.finished {
             self.posture = Posture::Prone;
@@ -186,6 +199,7 @@ impl Infantry {
         mount: Option<(Vector3, f64)>,
         nav: &PathPlanner,
         rng: &mut SimulationRandom,
+        ground: Ground<'_>,
     ) -> Result<(), &'static str> {
         if !self.valid() {
             return Err("invalid retained dazed infantry");
@@ -201,6 +215,7 @@ impl Infantry {
             mount,
             nav,
             rng,
+            ground,
         )?;
         self.motion.position = next.position;
         self.motion.yaw = next.yaw;
@@ -221,13 +236,14 @@ impl Infantry {
         dt: f64,
         nav: &PathPlanner,
         rng: &mut SimulationRandom,
+        ground: Ground<'_>,
     ) -> Result<(bool, Option<u8>), &'static str> {
         if !self.valid() {
             return Err("invalid retained airborne infantry");
         }
-        let next = self
-            .shock
-            .fling_step(self.motion.position, self.vitals.life, dt, nav, rng)?;
+        let next =
+            self.shock
+                .fling_step(self.motion.position, self.vitals.life, dt, nav, rng, ground)?;
         self.motion.position = next.position;
         self.activity = if next.landed { 0 } else { 17 };
         if next.dazed {

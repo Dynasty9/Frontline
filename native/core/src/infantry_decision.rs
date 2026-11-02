@@ -200,6 +200,7 @@ impl Actors {
             &contacts,
             &mates,
             world.nav,
+            crate::traversal::Ground::new(world.terrain, world.deck),
         )?;
         if let Some((ci, oi)) = choice {
             self.soldier_mut(id).unwrap().entry.selected = Some(BreachChoice {
@@ -219,11 +220,12 @@ impl Actors {
         clear: bool,
         rng: &mut SimulationRandom,
         out: &mut Decision,
+        ground: crate::traversal::Ground<'_>,
     ) -> Result<(), &'static str> {
         let mut s = self.soldier(id).unwrap().clone();
         let choice = s.entry.selected.ok_or("missing selected breach")?;
         let mut random = *rng;
-        s.clear_duty(nav, None);
+        s.clear_duty(nav, None, ground);
         s.entry.clear = clear;
         s.entry.no_frag = false;
         s.entry.house = choice.house;
@@ -237,12 +239,15 @@ impl Actors {
         s.duty.phase = 0;
         s.duty.timer = now;
         s.duty.position = nav
-            .nearest_walkable(crate::breach::stack_spot(
-                s.motion.position,
-                choice.opening.center,
-                choice.opening.normal,
-                choice.opening.door,
-            )?)
+            .nearest_walkable(
+                crate::breach::stack_spot(
+                    s.motion.position,
+                    choice.opening.center,
+                    choice.opening.normal,
+                    choice.opening.door,
+                )?,
+                ground,
+            )
             .unwrap();
         s.cover.at_cover = false;
         s.weapon.peek_up = false;
@@ -425,6 +430,7 @@ impl Actors {
                 world.nav,
                 world.collision,
                 rng,
+                crate::traversal::Ground::new(world.terrain, world.deck),
             )?;
             out.speech
                 .extend(result.speech.into_iter().map(Speech::Reflex));
@@ -471,6 +477,7 @@ impl Actors {
                 false,
                 rng,
                 &mut out,
+                crate::traversal::Ground::new(world.terrain, world.deck),
             )?;
         } else {
             let mortar = self.try_infantry_mortar(

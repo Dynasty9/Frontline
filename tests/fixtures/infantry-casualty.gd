@@ -145,7 +145,7 @@ func _ready() -> void:
 					assert(core.hide_in(reason, 0.3, [9, mount.position] if trial % 2 else []))
 				6:
 					s.unhide(Vector3(4.2, -1.3, 2.7))
-					assert(core.unhide(Vector3(4.2, -1.3, 2.7), w.nav._planner))
+					assert(core.unhide(Vector3(4.2, -1.3, 2.7), w.nav._planner, w.nav._path_ground(), w.nav._path_deck()))
 				7:
 					s._dead(0.1)
 					assert(core.corpse_tick(-0.3, w.time, patient.life == Soldier.Life.ALIVE) == int(w.removed == 1))

@@ -60,7 +60,7 @@ fn state(a: &Array<Variant>) -> Option<Vehicle> {
     if meta.len() != 28
         || strings.len() != 2
         || floats.len() != 44
-        || flags.len() != 13
+        || flags.len() != 14
         || flags.as_slice().iter().any(|&v| v > 1)
         || points.len() != 7
         || optional.len() != 8
@@ -197,6 +197,7 @@ fn state(a: &Array<Variant>) -> Option<Vehicle> {
         grounded: b[10] != 0,
         astern: b[11] != 0,
         astern_stop: b[12] != 0,
+        tracked: b[13] != 0,
         position: crate::point(p[0]),
         velocity: crate::point(p[1]),
         knock_velocity: crate::point(p[2]),
@@ -397,7 +398,8 @@ fn values(v: &Vehicle) -> Array<Variant> {
                 u8::from(v.landing),
                 u8::from(v.grounded),
                 u8::from(v.astern),
-                u8::from(v.astern_stop)
+                u8::from(v.astern_stop),
+                u8::from(v.tracked)
             ][..]
         ),
         &vectors(&[
@@ -1012,13 +1014,20 @@ impl VehicleStateCore {
         altitude: f64,
         radius: f64,
         profile: PackedFloat64Array,
+        terrain: Gd<crate::terrain::TerrainCore>,
+        deck: PackedByteArray,
     ) -> bool {
+        let terrain = terrain.bind();
+        let Some(terrain) = terrain.core.as_ref() else {
+            return false;
+        };
         let Some(p) = flight_profile(&profile) else {
             return false;
         };
-        self.core
-            .as_mut()
-            .is_some_and(|v| v.fly_uav(dt, altitude, radius, p).is_ok())
+        self.core.as_mut().is_some_and(|v| {
+            v.fly_uav(dt, altitude, radius, p, terrain, deck.as_slice())
+                .is_ok()
+        })
     }
     #[func]
     fn crew_step(
@@ -1031,7 +1040,15 @@ impl VehicleStateCore {
         planner: Gd<PathPlannerCore>,
         mut random: Gd<SimulationRandomCore>,
         threat: PackedVector3Array,
+        terrain: Option<Gd<crate::terrain::TerrainCore>>,
+        deck: PackedByteArray,
     ) -> Array<Variant> {
+        let terrain = terrain.as_ref().map(|t| t.bind());
+        let ground = frontline_core::traversal::Ground {
+            terrain: terrain.as_ref().and_then(|t| t.core.as_ref()),
+            deck: deck.as_slice(),
+        };
+
         if profile.len() != 3
             || nearby.len() != 3
             || !matches!(fob.len(), 0 | 2)
@@ -1089,6 +1106,7 @@ impl VehicleStateCore {
                 profile,
                 nav,
                 &mut random.bind_mut().core,
+                ground,
             )
         } else {
             v.crew_think(
@@ -1102,6 +1120,7 @@ impl VehicleStateCore {
                     mission,
                 },
                 nav,
+                ground,
             )
         };
         match out {
@@ -1175,6 +1194,7 @@ impl VehicleStateCore {
         nearby: Array<Variant>,
         mut random: Gd<SimulationRandomCore>,
         truck_route: bool,
+        deck: PackedByteArray,
     ) -> Array<Variant> {
         if target.len() > 1 {
             return Array::new();
@@ -1193,7 +1213,10 @@ impl VehicleStateCore {
             return Array::new();
         };
         if truck_route {
-            return if v.follow_truck_route(dt, p, nav, terrain, &nearby).is_ok() {
+            return if v
+                .follow_truck_route(dt, p, nav, terrain, &nearby, deck.as_slice())
+                .is_ok()
+            {
                 varray![&route(Ok(Route::None)), false, false]
             } else {
                 Array::new()
@@ -1211,6 +1234,7 @@ impl VehicleStateCore {
             terrain,
             &nearby,
             &mut random.bind_mut().core,
+            deck.as_slice(),
         ) {
             Ok(out) => varray![&route(Ok(out.route)), out.unstuck, out.shove],
             Err(_) => Array::new(),

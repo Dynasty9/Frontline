@@ -41,6 +41,7 @@ fn move_orders_wait_for_a_stacked_breacher_without_discarding_his_cooked_throw()
             },
             &nav,
             None,
+            frontline_core::traversal::Ground::default(),
         )
         .unwrap();
     assert!(out.accepted && out.route.is_none() && out.release.is_none());
@@ -59,6 +60,7 @@ fn move_orders_wait_for_a_stacked_breacher_without_discarding_his_cooked_throw()
             },
             &nav,
             None,
+            frontline_core::traversal::Ground::default(),
         )
         .unwrap();
     assert_eq!(out.release, Some(Release::Breach(8)));
@@ -77,7 +79,16 @@ fn ordinary_orders_do_not_interrupt_carriers_but_retreat_can_release_a_rescuer()
     s.duty.phase = 1;
     s.orders.backwards = true;
     let before = s.clone();
-    assert!(!s.command(Command::Stop, &nav, None).unwrap().accepted);
+    assert!(
+        !s.command(
+            Command::Stop,
+            &nav,
+            None,
+            frontline_core::traversal::Ground::default()
+        )
+        .unwrap()
+        .accepted
+    );
     assert_eq!(s, before);
     let out = s
         .command(
@@ -86,6 +97,7 @@ fn ordinary_orders_do_not_interrupt_carriers_but_retreat_can_release_a_rescuer()
             },
             &nav,
             None,
+            frontline_core::traversal::Ground::default(),
         )
         .unwrap();
     assert_eq!(out.release, Some(Release::Rescue(7)));
@@ -102,7 +114,8 @@ fn ordinary_orders_do_not_interrupt_carriers_but_retreat_can_release_a_rescuer()
                     position: Vector3::ZERO
                 },
                 &nav,
-                None
+                None,
+                frontline_core::traversal::Ground::default()
             )
             .unwrap()
             .accepted
@@ -127,6 +140,7 @@ fn formation_adjustments_keep_a_nearby_route_and_halt_uses_walkable_ground() {
             },
             &nav,
             None,
+            frontline_core::traversal::Ground::default(),
         )
         .unwrap();
     assert!(out.route.is_none());
@@ -141,6 +155,7 @@ fn formation_adjustments_keep_a_nearby_route_and_halt_uses_walkable_ground() {
             },
             &nav,
             None,
+            frontline_core::traversal::Ground::default(),
         )
         .unwrap();
     assert!(out.route.is_some());
@@ -148,9 +163,19 @@ fn formation_adjustments_keep_a_nearby_route_and_halt_uses_walkable_ground() {
     let mut kinds = vec![0; 1024];
     kinds[16 * 32 + 16] = 3;
     assert!(nav.load_cells(&kinds, &[0; 1024], &[0; 1024]));
-    let hold = nav.nearest_walkable(s.motion.position).unwrap();
+    let hold = nav
+        .nearest_walkable(
+            s.motion.position,
+            frontline_core::traversal::Ground::default(),
+        )
+        .unwrap();
     let out = s
-        .command(Command::Halt { face: Vector3::Z }, &nav, None)
+        .command(
+            Command::Halt { face: Vector3::Z },
+            &nav,
+            None,
+            frontline_core::traversal::Ground::default(),
+        )
         .unwrap();
     assert!(out.cancel_path);
     assert_eq!(s.orders.hold_position, hold);
@@ -176,7 +201,12 @@ fn leaving_an_emplacement_resets_its_aim_and_places_the_gunner_beside_it() {
     s.cover.kind = 1;
     s.cover.structure = 10;
     let out = s
-        .command(Command::Stop, &nav, Some(Vector3::new(3.0, 0.0, 5.0)))
+        .command(
+            Command::Stop,
+            &nav,
+            Some(Vector3::new(3.0, 0.0, 5.0)),
+            frontline_core::traversal::Ground::default(),
+        )
         .unwrap();
     assert!(out.accepted && out.cancel_path);
     assert_eq!(s.motion.position, Vector3::new(5.0, 0.0, 5.0));
@@ -204,6 +234,7 @@ fn attack_and_throw_orders_preserve_approach_ranges_and_reject_invalid_input_ato
             },
             &nav,
             None,
+            frontline_core::traversal::Ground::default(),
         )
         .unwrap();
     assert!(out.accepted);
@@ -218,7 +249,8 @@ fn attack_and_throw_orders_preserve_approach_ranges_and_reject_invalid_input_ato
                 round: Round::HighExplosive
             },
             &nav,
-            None
+            None,
+            frontline_core::traversal::Ground::default()
         )
         .is_err());
     assert_eq!(s, before);
@@ -230,7 +262,8 @@ fn attack_and_throw_orders_preserve_approach_ranges_and_reject_invalid_input_ato
                 face: Vector3::ZERO
             },
             &nav,
-            None
+            None,
+            frontline_core::traversal::Ground::default()
         )
         .is_err());
     assert_eq!(s, before);
@@ -242,6 +275,7 @@ fn attack_and_throw_orders_preserve_approach_ranges_and_reject_invalid_input_ato
             },
             &nav,
             None,
+            frontline_core::traversal::Ground::default(),
         )
         .unwrap();
     assert!(out.route.is_none());
@@ -254,6 +288,7 @@ fn attack_and_throw_orders_preserve_approach_ranges_and_reject_invalid_input_ato
             },
             &nav,
             None,
+            frontline_core::traversal::Ground::default(),
         )
         .unwrap();
     assert_eq!(out.route.unwrap().job.destination, Vector3::Z * 8.0);
@@ -269,14 +304,26 @@ fn returning_to_hold_keeps_nearby_soldiers_in_place_and_rejoins_distant_ones() {
     s.orders.leash = 9.0;
     s.orders.hold_position = Vector3::Z * 9.0;
     assert!(s
-        .command(Command::ReturnToHold, &nav, None)
+        .command(
+            Command::ReturnToHold,
+            &nav,
+            None,
+            frontline_core::traversal::Ground::default()
+        )
         .unwrap()
         .route
         .is_none());
     assert_eq!(s.duty.kind, Task::Fight);
     assert_eq!(s.duty.entity, 0);
     s.orders.hold_position.z = 9.1;
-    let out = s.command(Command::ReturnToHold, &nav, None).unwrap();
+    let out = s
+        .command(
+            Command::ReturnToHold,
+            &nav,
+            None,
+            frontline_core::traversal::Ground::default(),
+        )
+        .unwrap();
     assert_eq!(out.route.unwrap().job.care, 0.35);
     s.vitals.life = Life::Downed;
     let before = s.clone();
@@ -288,7 +335,8 @@ fn returning_to_hold_keeps_nearby_soldiers_in_place_and_rejoins_distant_ones() {
                 slot: Vector3::ZERO
             },
             &nav,
-            None
+            None,
+            frontline_core::traversal::Ground::default()
         )
         .unwrap()
         .accepted

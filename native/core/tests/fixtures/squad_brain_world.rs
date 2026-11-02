@@ -181,7 +181,13 @@ fn step(s: &mut Scene) -> Vec<Event> {
     out.extend(s.context().squad_share_ammo(7, &profile()).unwrap());
     s.geometry
         .navigation
-        .process_paths(&mut s.actors, 3, s.now, &mut s.rng)
+        .process_paths(
+            &mut s.actors,
+            3,
+            s.now,
+            &mut s.rng,
+            frontline_core::traversal::Ground::new(&s.geometry.terrain, &s.geometry.deck),
+        )
         .unwrap();
     out
 }

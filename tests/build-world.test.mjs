@@ -9,5 +9,5 @@ test("Rust engineers preserve work, return fire, completed cover, supply roads a
     "--headless", "--quit-after", "2", "--path", ROOT, "res://tests/fixtures/build-world.tscn",
   ], { timeout: 120_000 });
   assert.doesNotMatch(stdout + stderr, /SCRIPT ERROR|Parse Error|ERROR:|panicked/);
-  assert.match(stdout, /BUILD_WORLD passed states=916/);
+  assert.match(stdout, /BUILD_WORLD passed states=940/);
 });

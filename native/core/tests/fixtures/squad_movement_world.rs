@@ -196,7 +196,13 @@ pub fn transcript() -> Vec<u8> {
             out.push(255);
             s.geometry
                 .navigation
-                .process_paths(&mut s.actors, 3, s.now, &mut s.rng)
+                .process_paths(
+                    &mut s.actors,
+                    3,
+                    s.now,
+                    &mut s.rng,
+                    frontline_core::traversal::Ground::new(&s.geometry.terrain, &s.geometry.deck),
+                )
                 .unwrap();
             block(&mut out, &s.actors.checkpoint().unwrap());
             block(&mut out, &s.squads[0].checkpoint().unwrap());
@@ -284,7 +290,13 @@ pub fn crew_transcript() -> Vec<u8> {
             out.push(255);
             s.geometry
                 .navigation
-                .process_paths(&mut s.actors, 3, s.now, &mut s.rng)
+                .process_paths(
+                    &mut s.actors,
+                    3,
+                    s.now,
+                    &mut s.rng,
+                    frontline_core::traversal::Ground::new(&s.geometry.terrain, &s.geometry.deck),
+                )
                 .unwrap();
             block(&mut out, &s.actors.checkpoint().unwrap());
             block(&mut out, &s.squads[0].checkpoint().unwrap());

@@ -277,3 +277,33 @@ fn removal_from_a_previous_squad_preserves_the_new_squad_link() {
     assert_eq!(f.squads[0].members, [2, 3]);
     assert_eq!(f.actors.soldier(1).unwrap().identity.squad, 10);
 }
+
+#[test]
+fn stretcher_followers_and_cancelled_casualties_stay_on_the_hillside() {
+    let mut a = bearer(1);
+    a.duty.phase = 2;
+    a.motion.position = Vector3::new(5., 12., 0.);
+    let mut b = bearer(2);
+    b.duty.phase = 3;
+    b.motion.position = Vector3::new(-2., 12., 0.);
+    let mut f = Field::new(a, b, patient());
+    f.terrain.heights.fill(12.);
+    assert!(f.terrain.set_landform(vec![12.; 1089]));
+    let mut cells = vec![0; 128 * 128];
+    for z in 0..128 {
+        cells[z * 128 + 64] = 3;
+    }
+    assert!(f.nav.load_cells(&cells, &cells, &vec![0; cells.len()]));
+    f.step(2, 1.).unwrap();
+    assert_eq!(
+        f.actors.soldier(2).unwrap().motion.position,
+        Vector3::new(-2., 12., 0.)
+    );
+    f.actors.remove(10).unwrap();
+    for id in [1, 2] {
+        f.step(id, 0.1).unwrap();
+    }
+    let p = f.actors.soldier(3).unwrap();
+    assert_eq!(p.motion.position.y, 12.);
+    assert!(p.links.carried_by.is_empty() && !p.links.stretcher_claimed);
+}

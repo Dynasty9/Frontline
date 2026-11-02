@@ -307,26 +307,48 @@ pub fn follow_bearer(
     partner: Vector3,
     partner_yaw: f64,
     delta: f64,
+    nav: &PathPlanner,
+    ground: crate::traversal::Ground<'_>,
 ) -> Result<Vector3, &'static str> {
-    if !point(position) || !point(partner) || !time(partner_yaw) || !dt(delta) {
+    if !ground.valid_for(nav.side()) {
+        return Err("invalid navigation ground");
+    }
+
+    if !point(position)
+        || !point(partner)
+        || !time(partner_yaw)
+        || !dt(delta)
+        || !ground.valid_for(nav.side())
+    {
         return Err("invalid stretcher follower pose");
     }
     let destination = partner - direction(partner_yaw) * 2.3;
-    Ok(flat(
-        position + (destination - position) * (1.0 - libm::exp(-delta * 10.0)) as f32,
-    ))
+    let next = position + (destination - position) * (1.0 - libm::exp(-delta * 10.0)) as f32;
+    let mut next = if nav.step_clear(position, next, false, false, ground) {
+        next
+    } else {
+        position
+    };
+    next.y = ground.height(next) as f32;
+    Ok(next)
 }
 
 pub fn guard(
     input: Guard,
     nav: &PathPlanner,
     rng: &mut SimulationRandom,
+    ground: crate::traversal::Ground<'_>,
 ) -> Result<GuardPose, &'static str> {
+    if !ground.valid_for(nav.side()) {
+        return Err("invalid navigation ground");
+    }
+
     if !point(input.position)
         || !point(input.prisoner)
         || !time(input.yaw)
         || !dt(input.dt)
         || !mount(input.mount)
+        || !ground.valid_for(nav.side())
     {
         return Err("invalid prisoner guard pose");
     }
@@ -336,11 +358,14 @@ pub fn guard(
     let mut position = input.position;
     if walking {
         let next = position + normalized(delta) * (distance - 2.0).min(1.9 * input.dt) as f32;
-        position = if nav.kind_at(next, false) != 3 {
-            next
+        if nav.step_clear(position, next, false, false, ground) {
+            position = next;
         } else {
-            position + (input.prisoner - position) * 0.02
-        };
+            let next = position + (input.prisoner - position) * 0.02;
+            if nav.step_clear(position, next, false, false, ground) {
+                position = next;
+            }
+        }
     } else {
         // The existing idle guard still draws once for its zero-chance firing choice.
         rng.randf();

@@ -102,7 +102,7 @@ func _ready() -> void:
 			assert(actors.checkpoint() == saved)
 			if trial % 3 == 0:
 				h._release_sling()
-				assert(actors.release_sling(1, w.nav._planner) == 2)
+				assert(actors.release_sling(1, w.nav._planner, w.nav._path_ground(), w.nav._path_deck()) == 2)
 				compare_owned(h, actors, core, "released helicopter %d" % trial)
 				compare_owned(v, actors, core, "released cargo %d" % trial)
 				observed["delivered"] = true
@@ -116,7 +116,7 @@ func _ready() -> void:
 			else:
 				h.gone = true
 				assert(actors.remove(1))
-				var dropped: Array = actors.drop_sling(2, w.nav._planner)
+				var dropped: Array = actors.drop_sling(2, w.nav._planner, w.nav._path_ground(), w.nav._path_deck())
 				assert(dropped.size() == 3)
 				v._drop_from_sling()
 				compare_owned(v, actors, core, "dropped cargo %d" % trial)

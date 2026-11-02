@@ -103,6 +103,7 @@ pub struct Vehicle {
     pub grounded: bool,
     pub astern: bool,
     pub astern_stop: bool,
+    pub tracked: bool,
     pub position: Vector3,
     pub velocity: Vector3,
     pub knock_velocity: Vector3,
@@ -222,6 +223,7 @@ impl Default for Vehicle {
             grounded: false,
             astern: false,
             astern_stop: false,
+            tracked: false,
             position: Vector3::ZERO,
             velocity: Vector3::ZERO,
             knock_velocity: Vector3::ZERO,
@@ -404,7 +406,7 @@ impl Vehicle {
         if !self.valid() {
             return Err("invalid vehicle state");
         }
-        let mut w = Writer::new(b"FLVE\x01\0\0\0");
+        let mut w = Writer::new(b"FLVE\x02\0\0\0");
         w.u32(self.id);
         w.u32(self.aim_target);
         w.u32(self.target);
@@ -490,6 +492,7 @@ impl Vehicle {
         w.byte(u8::from(self.grounded));
         w.byte(u8::from(self.astern));
         w.byte(u8::from(self.astern_stop));
+        w.byte(u8::from(self.tracked));
         w.point(self.position);
         w.point(self.velocity);
         w.point(self.knock_velocity);
@@ -563,7 +566,7 @@ impl Vehicle {
         if bytes.len() > 64 * 1024 * 1024 {
             return Err("vehicle checkpoint exceeds limit");
         }
-        let mut r = Reader::new(bytes, b"FLVE\x01\0\0\0")?;
+        let mut r = Reader::new(bytes, b"FLVE\x02\0\0\0")?;
         let v = Self {
             id: r.u32()?,
             aim_target: r.u32()?,
@@ -650,6 +653,7 @@ impl Vehicle {
             grounded: r.boolean()?,
             astern: r.boolean()?,
             astern_stop: r.boolean()?,
+            tracked: r.boolean()?,
             position: r.point()?,
             velocity: r.point()?,
             knock_velocity: r.point()?,

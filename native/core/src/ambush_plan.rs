@@ -49,7 +49,10 @@ impl AmbushPlan {
             .geometry
             .navigation
             .planner
-            .nearest_walkable(zone + side * 54.0)
+            .nearest_walkable(
+                zone + side * 54.0,
+                crate::traversal::Ground::new(&ctx.geometry.terrain, &ctx.geometry.deck),
+            )
             .unwrap();
         let mut gun_end = 1.0;
         let mut best = -1e9;
@@ -202,7 +205,10 @@ impl AmbushPlan {
             .geometry
             .navigation
             .planner
-            .nearest_walkable(self.zone + self.side * 24.0)
+            .nearest_walkable(
+                self.zone + self.side * 24.0,
+                crate::traversal::Ground::new(&ctx.geometry.terrain, &ctx.geometry.deck),
+            )
             .unwrap();
         let slots = ctx.formation(center, face, &line, true)?;
         for (&id, at) in line.iter().zip(slots) {
@@ -215,6 +221,7 @@ impl AmbushPlan {
                 .planner
                 .nearest_walkable(
                     self.zone + self.side * 24.0 * 0.75 + self.road * self.gun_end as f32 * 30.0,
+                    crate::traversal::Ground::new(&ctx.geometry.terrain, &ctx.geometry.deck),
                 )
                 .unwrap();
             Self::post(ctx, id, at, normalized(flat(self.zone - at)))?;
@@ -226,6 +233,7 @@ impl AmbushPlan {
                 .planner
                 .nearest_walkable(
                     self.zone + self.side * 30.0 - self.road * self.gun_end as f32 * 38.0,
+                    crate::traversal::Ground::new(&ctx.geometry.terrain, &ctx.geometry.deck),
                 )
                 .unwrap();
             Self::post(ctx, id, at, -self.road * self.gun_end as f32)?;

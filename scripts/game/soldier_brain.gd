@@ -715,7 +715,7 @@ static func _choose_breach_native(s: Soldier, mine: Structure) -> bool:
 	var mates := []
 	for m: Soldier in s.squad.members:
 		mates.append([m.position, m != s, m.life == Soldier.Life.ALIVE, m.task == "", m.frags, m.mounted != null])
-	var result: PackedInt64Array = _breach_core(s).choose(s.position, s.hold_pos, mine.eid if mine else 0, contacts, mates, s.world.nav._planner)
+	var result: PackedInt64Array = _breach_core(s).choose(s.position, s.hold_pos, mine.eid if mine else 0, contacts, mates, s.world.nav._planner, s.world.nav._path_ground(), s.world.nav._path_deck())
 	assert(result.size() == 2, "Invalid breach selection")
 	if result[0] < 0:
 		return false

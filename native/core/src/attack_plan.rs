@@ -340,7 +340,10 @@ impl AttackPlan {
         let mut best = -1e9;
         for side in [-1.0, 1.0] {
             let p = nav
-                .nearest_walkable(self.objective - self.axis * 16.0 + lateral * side as f32 * 22.0)
+                .nearest_walkable(
+                    self.objective - self.axis * 16.0 + lateral * side as f32 * 22.0,
+                    crate::traversal::Ground::new(&ctx.geometry.terrain, &ctx.geometry.deck),
+                )
                 .unwrap();
             let mut score = (spread * side / 6.0).clamp(-3.0, 3.0);
             if !inside(p, 8.0) {
@@ -369,7 +372,10 @@ impl AttackPlan {
             }
         }
         self.assault_position = nav
-            .nearest_walkable(self.objective - self.axis * 16.0 + lateral * self.side as f32 * 22.0)
+            .nearest_walkable(
+                self.objective - self.axis * 16.0 + lateral * self.side as f32 * 22.0,
+                crate::traversal::Ground::new(&ctx.geometry.terrain, &ctx.geometry.deck),
+            )
             .unwrap();
         let support = self.centroid(ctx, &self.members(ctx, &self.support));
         if self.contact(ctx) && flat(self.objective - support).length() < 80.0 {
@@ -383,6 +389,7 @@ impl AttackPlan {
                 self.objective
                     - self.axis * back as f32
                     - lateral * self.side as f32 * (back * 0.2).min(10.0) as f32,
+                crate::traversal::Ground::new(&ctx.geometry.terrain, &ctx.geometry.deck),
             )
             .unwrap();
         let mut best = -1e9;
@@ -393,7 +400,10 @@ impl AttackPlan {
             for degree in [0.0_f64, 12.0, 24.0, 36.0] {
                 let direction = transform(rotation(degree.to_radians() * -self.side), -self.axis);
                 let p = nav
-                    .nearest_walkable(self.objective + direction * r as f32)
+                    .nearest_walkable(
+                        self.objective + direction * r as f32,
+                        crate::traversal::Ground::new(&ctx.geometry.terrain, &ctx.geometry.deck),
+                    )
                     .unwrap();
                 if f64::from(p.x.abs()) >= terrain.half() - 6.0
                     || f64::from(p.z.abs()) >= terrain.half() - 6.0
@@ -974,7 +984,10 @@ impl AttackPlan {
             .geometry
             .navigation
             .planner
-            .nearest_walkable(at)
+            .nearest_walkable(
+                at,
+                crate::traversal::Ground::new(&ctx.geometry.terrain, &ctx.geometry.deck),
+            )
             .unwrap();
         Self::place(ctx, &members, at, self.axis, 1, true)?;
         self.say(

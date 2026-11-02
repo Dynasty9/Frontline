@@ -46,7 +46,7 @@ func _ready() -> void:
 			for now in [9.99, 10.0, 12.499, 12.5]:
 				w.time = now; w.nav.jobs.clear(); w.spoken.clear(); w.stats.clear()
 				s.flee_fire(Vector3.ZERO)
-				var result: Array = core.flee_fire(Vector3.ZERO, now, w.nav._planner, random._backend)
+				var result: Array = core.flee_fire(Vector3.ZERO, now, w.nav._planner, random._backend, w.nav._path_ground(), w.nav._path_deck())
 				assert(not result.is_empty())
 				helper.check_state(s, core, "fire escape %d/%d/%s" % [mode, trial, now]); checks += 1
 				assert(w.rng.state == random.state, "fire escape random")

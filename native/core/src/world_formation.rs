@@ -41,7 +41,10 @@ impl WorldGeometry {
             face = Vector3::NEG_Z;
         }
         center = nav
-            .nearest_walkable(center)
+            .nearest_walkable(
+                center,
+                crate::traversal::Ground::new(&self.terrain, &self.deck),
+            )
             .ok_or("invalid formation center")?;
         if nav.kind_at(center, false) != 0 {
             let clicked = center;
@@ -65,7 +68,13 @@ impl WorldGeometry {
             let approach = p - normal * 0.8;
             f64::from(flat(p - center).length_squared()) <= radius * radius
                 && nav.kind_at(approach, false) != 3
-                && nav.line_free(center, approach, false)
+                && nav.line_free(
+                    center,
+                    approach,
+                    false,
+                    false,
+                    crate::traversal::Ground::new(&self.terrain, &self.deck),
+                )
         };
         let mut ground = vec![];
         let mut scores = vec![];

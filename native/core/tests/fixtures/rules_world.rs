@@ -61,6 +61,7 @@ fn run(
                         hp: 240.,
                         hull: Vector3::new(2., 2., 5.),
                         missiles: [0, 0],
+                        tracked: false,
                     },
                     town_load: [50, 20],
                     town_stock: [100., 40.],
@@ -178,7 +179,16 @@ pub fn transcript() -> Vec<u8> {
             for w in [&mut s.world, &mut resumed.world] {
                 w.geometry
                     .navigation
-                    .process_paths(&mut w.actors, 32, w.now, &mut w.rng)
+                    .process_paths(
+                        &mut w.actors,
+                        32,
+                        w.now,
+                        &mut w.rng,
+                        frontline_core::traversal::Ground::new(
+                            &w.geometry.terrain,
+                            &w.geometry.deck,
+                        ),
+                    )
                     .unwrap();
             }
             let state = |s: &fixture::Scene, r: &Rules, v: Victory| {

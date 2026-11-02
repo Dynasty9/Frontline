@@ -12,12 +12,13 @@ impl Actors {
         id: u32,
         nav: &crate::path_planner::PathPlanner,
         squads: &mut [Squad],
+        ground: crate::traversal::Ground<'_>,
     ) -> Result<(), &'static str> {
         let s = self.soldier(id).ok_or("missing assigned soldier")?;
         let mount = self
             .structure(s.emplacement.structure as u32)
             .map(|st| st.position);
-        let release = self.soldier_mut(id).unwrap().clear_duty(nav, mount);
+        let release = self.soldier_mut(id).unwrap().clear_duty(nav, mount, ground);
         self.release_duty_claim(id, release, squads);
         Ok(())
     }
@@ -49,6 +50,7 @@ impl Actors {
         squads: &mut [Squad],
         now: f64,
         rng: &mut SimulationRandom,
+        ground: crate::traversal::Ground<'_>,
     ) -> Result<bool, &'static str> {
         if !now.is_finite() || now.abs() > 1e12 - 100.0 {
             return Err("invalid infantry command time");
@@ -57,16 +59,16 @@ impl Actors {
         let mount = self
             .structure(s.emplacement.structure as u32)
             .map(|st| st.position);
-        let ordered = self
-            .soldier_mut(id)
-            .unwrap()
-            .command(command, &navigation.planner, mount)?;
+        let ordered =
+            self.soldier_mut(id)
+                .unwrap()
+                .command(command, &navigation.planner, mount, ground)?;
         self.release_duty_claim(id, ordered.release, squads);
         if ordered.cancel_path {
             navigation.planner.cancel(u64::from(id));
         }
         if let Some(route) = ordered.route {
-            navigation.submit_infantry(self.soldier_mut(id).unwrap(), route, now, rng)?;
+            navigation.submit_infantry(self.soldier_mut(id).unwrap(), route, now, rng, ground)?;
         }
         Ok(ordered.accepted)
     }

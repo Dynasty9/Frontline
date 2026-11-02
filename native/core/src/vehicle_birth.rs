@@ -10,6 +10,7 @@ pub struct Definition<'a> {
     pub hp: f64,
     pub hull: Vector3,
     pub missiles: [i32; 2],
+    pub tracked: bool,
 }
 #[derive(Clone, Copy)]
 pub struct Spawn {
@@ -50,6 +51,7 @@ impl Vehicle {
             Self {
                 id,
                 kind: profile.kind.into(),
+                tracked: profile.tracked,
                 team: spawn.team,
                 owner: spawn.owner,
                 position: spawn.position,
@@ -81,7 +83,30 @@ impl WorldGeometry {
         }
         let id =
             u32::try_from(actors.entities().next_id()).map_err(|_| "entity registry exhausted")?;
-        let v = Vehicle::from_spawn(id, spawn, profile)?;
+        let mut v = Vehicle::from_spawn(id, spawn, profile)?;
+        if profile.base != "boat" {
+            let ground = self.terrain.ground_y(
+                v.position,
+                self.deck.get(self.terrain.index(v.position)) == Some(&1),
+            ) as f32;
+            v.position.y = v.position.y.max(ground);
+        }
+        if profile.base == "supply" {
+            v.position = self
+                .navigation
+                .planner
+                .nearest_walkable_for(
+                    v.position,
+                    true,
+                    false,
+                    crate::traversal::Ground::new(&self.terrain, &self.deck),
+                )
+                .ok_or("invalid truck spawn")?;
+            v.position.y = self.terrain.ground_y(
+                v.position,
+                self.deck.get(self.terrain.index(v.position)) == Some(&1),
+            ) as f32;
+        }
         if self.collision.contains(i64::from(id)) {
             return Err("vehicle identity already has collision");
         }

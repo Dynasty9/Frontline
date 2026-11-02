@@ -64,7 +64,16 @@ pub fn transcript() -> Vec<u8> {
             s.world
                 .geometry
                 .navigation
-                .process_paths(&mut s.world.actors, 2, s.world.now, &mut s.world.rng)
+                .process_paths(
+                    &mut s.world.actors,
+                    2,
+                    s.world.now,
+                    &mut s.world.rng,
+                    frontline_core::traversal::Ground::new(
+                        &s.world.geometry.terrain,
+                        &s.world.geometry.deck,
+                    ),
+                )
                 .unwrap();
             copy.world
                 .geometry
@@ -74,6 +83,10 @@ pub fn transcript() -> Vec<u8> {
                     2,
                     copy.world.now,
                     &mut copy.world.rng,
+                    frontline_core::traversal::Ground::new(
+                        &copy.world.geometry.terrain,
+                        &copy.world.geometry.deck,
+                    ),
                 )
                 .unwrap();
             let bytes = state(&s, &boats);

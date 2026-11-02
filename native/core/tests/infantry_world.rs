@@ -11,6 +11,45 @@ use frontline_core::infantry_world::Event;
 use frontline_core::world_combat;
 
 #[test]
+fn a_removed_crossing_recovers_living_infantry_and_wading_cancels_a_dive() {
+    use frontline_core::{
+        infantry_pose::Posture,
+        terrain::{BASE, SHALLOW},
+        traversal::Ground,
+    };
+    for deep in [false, true] {
+        let (mut man, enemy) = soldiers();
+        man.controller.dive_timer = 0.8;
+        man.posture = Posture::Prone;
+        man.shock.flinch_timer = 2.0;
+        let start = man.motion.position;
+        let mut field = Field::new(man, enemy);
+        let geometry = &mut field.scene.world.geometry;
+        let cell = geometry.terrain.index(start);
+        geometry.terrain.layers[BASE][cell] = SHALLOW;
+        geometry
+            .terrain
+            .heights
+            .fill(if deep { -2.0 } else { -0.8 });
+        let mut resumed = field.resume();
+        assert_eq!(field.step(0.05).unwrap(), resumed.step(0.05).unwrap());
+        field.compare(&resumed);
+        let s = field.scene.world.actors.soldier(1).unwrap();
+        let g = Ground::new(
+            &field.scene.world.geometry.terrain,
+            &field.scene.world.geometry.deck,
+        );
+        assert!(!g.too_deep(s.motion.position));
+        if deep {
+            assert_ne!(s.motion.position, start);
+        } else {
+            assert_eq!(s.controller.dive_timer, 0.0);
+            assert_eq!(s.posture, Posture::Stand);
+        }
+    }
+}
+
+#[test]
 fn a_complete_fight_resumes_decisions_bullets_and_status_exactly() {
     let (man, enemy) = soldiers();
     let mut field = Field::new(man, enemy);

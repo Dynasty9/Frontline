@@ -161,7 +161,13 @@ fn saved_formations_and_route_queues_repeat_the_same_continuation() {
         for s in [&mut uninterrupted, &mut resumed] {
             s.geometry
                 .navigation
-                .process_paths(&mut s.actors, 2, s.now, &mut s.rng)
+                .process_paths(
+                    &mut s.actors,
+                    2,
+                    s.now,
+                    &mut s.rng,
+                    frontline_core::traversal::Ground::new(&s.geometry.terrain, &s.geometry.deck),
+                )
                 .unwrap();
         }
         assert_eq!(

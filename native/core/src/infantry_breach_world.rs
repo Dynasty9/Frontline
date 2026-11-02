@@ -123,7 +123,10 @@ impl Context<'_> {
             .geometry
             .navigation
             .planner
-            .nearest_walkable(center - normal * 2.2)
+            .nearest_walkable(
+                center - normal * 2.2,
+                crate::traversal::Ground::new(&self.geometry.terrain, &self.geometry.deck),
+            )
             .ok_or("invalid room entry")?;
         self.breach_speech(
             id,
@@ -165,7 +168,10 @@ impl Context<'_> {
                 .geometry
                 .navigation
                 .planner
-                .nearest_walkable(center - normal * 2.0 + along * 1.4)
+                .nearest_walkable(
+                    center - normal * 2.0 + along * 1.4,
+                    crate::traversal::Ground::new(&self.geometry.terrain, &self.geometry.deck),
+                )
                 .ok_or("invalid room buddy entry")?;
             self.enter_room_order(buddy, position, normal)?;
             self.breach_speech(buddy, &["Right behind you!", "With you!", "Going in!"], out);
@@ -353,7 +359,10 @@ impl Context<'_> {
                     .geometry
                     .navigation
                     .planner
-                    .nearest_walkable(c + n * distance)
+                    .nearest_walkable(
+                        c + n * distance,
+                        crate::traversal::Ground::new(&self.geometry.terrain, &self.geometry.deck),
+                    )
                     .ok_or("invalid breach approach")?;
                 self.actors.soldier_mut(id).unwrap().duty.second_position = position;
                 self.breach_route(id, position, Goal::Task, 1)?;

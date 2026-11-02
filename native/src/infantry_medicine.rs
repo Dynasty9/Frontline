@@ -153,7 +153,15 @@ impl InfantryMedicineCore {
         dt: f64,
         mounted: PackedFloat64Array,
         planner: Gd<PathPlannerCore>,
+        terrain: Option<Gd<crate::terrain::TerrainCore>>,
+        deck: PackedByteArray,
     ) -> Array<Variant> {
+        let terrain = terrain.as_ref().map(|t| t.bind());
+        let ground = frontline_core::traversal::Ground {
+            terrain: terrain.as_ref().and_then(|t| t.core.as_ref()),
+            deck: deck.as_slice(),
+        };
+
         let Some(mount) = mount(&mounted) else {
             return Array::new();
         };
@@ -171,6 +179,7 @@ impl InfantryMedicineCore {
                 mount,
             },
             planner,
+            ground,
         ) else {
             return Array::new();
         };
@@ -216,7 +225,15 @@ impl InfantryMedicineCore {
         away: Vector3,
         orders: PackedVector3Array,
         planner: Gd<PathPlannerCore>,
+        terrain: Option<Gd<crate::terrain::TerrainCore>>,
+        deck: PackedByteArray,
     ) -> PackedVector3Array {
+        let terrain = terrain.as_ref().map(|t| t.bind());
+        let ground = frontline_core::traversal::Ground {
+            terrain: terrain.as_ref().and_then(|t| t.core.as_ref()),
+            deck: deck.as_slice(),
+        };
+
         if orders.len() > 1 {
             return PackedVector3Array::new();
         }
@@ -229,6 +246,7 @@ impl InfantryMedicineCore {
             crate::point(away),
             orders.as_slice().first().copied().map(crate::point),
             planner,
+            ground,
         ) else {
             return PackedVector3Array::new();
         };

@@ -104,6 +104,7 @@ impl Field {
             |_| (Some(210), false),
             defense,
             &mut self.rng,
+            frontline_core::traversal::Ground::default(),
         )
     }
     fn expire(&mut self) {

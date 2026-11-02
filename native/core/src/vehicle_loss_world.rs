@@ -118,9 +118,11 @@ impl Context<'_> {
         if !self.now.is_finite() || self.now.abs() > 1e12 - 100.0 {
             return Err("invalid sling drop time");
         }
-        let drop = self
-            .actors
-            .drop_sling(cargo, &self.geometry.navigation.planner)?;
+        let drop = self.actors.drop_sling(
+            cargo,
+            &self.geometry.navigation.planner,
+            crate::traversal::Ground::new(&self.geometry.terrain, &self.geometry.deck),
+        )?;
         let actor = self.actors.vehicle(cargo).unwrap();
         self.geometry
             .refresh_vehicle_collision(actor, (self.vehicle)(actor).hull)?;
@@ -252,6 +254,7 @@ impl Context<'_> {
                 )
             },
             self.rng,
+            crate::traversal::Ground::new(&self.geometry.terrain, &self.geometry.deck),
         )?;
         for victim in hits {
             // Evacuation only queries the static grid, so queued routes can be cancelled here.
@@ -345,6 +348,7 @@ impl Context<'_> {
             self.next_squad,
             &self.geometry.navigation.planner,
             self.rng,
+            crate::traversal::Ground::new(&self.geometry.terrain, &self.geometry.deck),
         )?;
         if let Some(q) = bailout.squad {
             let sid = q.id;

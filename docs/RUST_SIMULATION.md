@@ -1,12 +1,12 @@
 # Rust simulation migration
 
 Status: **in progress; the game still requires Godot to simulate a battle.**
-The engine-independent crate currently contains perception candidate selection,
-formation scoring, contracted route search, gameplay randomness and ballistic
-projectile flight state, drone and support-aircraft behavior, missile guidance,
-weighted navigation grids, route planning, smoke, geometric visibility, fighting
-positions, water geometry and terrain cell/deformation state. It is not a complete server, a
-full-state save format, or a battle verifier. Existing recordings remain unverified.
+The engine-independent crate retains actors, squads, geometry, terrain, economy,
+commands and the connected battlefield scheduler. Its checkpoints and exact-byte
+continuation tests cover these shared systems. Production content, commander and
+mission scheduling, the socket host and the live Godot client transition still
+need integration. It is not a complete server or battle verifier. Existing
+recordings remain unverified.
 
 ## Ownership
 
@@ -2819,9 +2819,10 @@ represent those rules. Elevated client joins retain the geology-aware loading
 worker. Those compatibility paths must be removed as the corresponding Rust
 heightfield and traversal support lands; full standalone simulation is not complete.
 
-The merged-map full Godot run found remaining movement/geometry mismatches in
-connected engineer and fire comparisons, and old navigation fixture assumptions on
-water maps. These remain open. Flat flight fixtures now initialize their terrain;
+The merged-map full Godot run found movement/geometry mismatches in connected
+engineer and fire comparisons, and old navigation fixture assumptions on water
+maps. The terrain-aware traversal work below fixes those comparisons; the broader
+batch still requires a passing rerun. Flat flight fixtures initialize their terrain;
 all five actor, drone, guided-missile, projectile and support-flight checks pass.
 
 Rust now retains immutable geology alongside deformed ground. It reproduces
@@ -2838,3 +2839,59 @@ the elevated numeric contract and additional trench/foundation regressions.
 All 138 numeric release cases pass; the new terrain continuation transcript adds
 7,673,897 exact bytes. Native traversal, terrain-aware combat and flight still need
 integration before the compatibility paths can be removed.
+
+## Terrain-aware routes and swept movement
+
+The retained planner now shares exact wall footprints and cell ownership with
+navigation. Infantry can enter planning padding to reach cover, while whole-step
+checks reject physical walls, diagonal corner cuts, map exits and deep water.
+Blocked route goals use that same clearance check. Route smoothing borrows the
+live terrain and bridge decks, so it does not duplicate the heightfield.
+
+Navigation retains separate foot, wheeled and tracked grids. Hull slopes use the
+eight-metre envelope; all three hierarchies receive danger changes and share the
+repair quota in round-robin order. Vehicle definitions retain their tracked flag,
+and queued routes, cached corridors and restored requests keep their movement
+class. Planner, navigation, infantry-motion and vehicle checkpoint schemas change
+with these rules; incompatible snapshots are rejected.
+
+Godot's native-planner gate no longer excludes water or elevated maps. The new
+reference fixture compares 720 routes, smoothing probes and swept steps across
+flat ground, a ramp, a ridge and bridged water, with walls, fire, removals and
+checkpoint restoration. Those comparisons pass, as do the existing path and
+navigation comparisons. Connected engineer checks now match through 940 states;
+fire, destruction and all 9,216 building-placement comparisons pass again.
+
+Walking and stationary infantry use swept clearance and refreshed elevated ground.
+Ground vehicles and supply routes use the correct slope class and swept steps;
+supply vehicles no longer bypass physical obstacles. Vehicle spawning preserves
+water height for boats and settles trucks onto ground before collision registration.
+Godot loads a vehicle's definition before checking its class during spawn.
+Driving, birth and production comparisons pass. Dives, blast knockback, dazed
+movement, escorts, prisoner guards and stretcher followers also borrow the live
+terrain for swept clearance, water depth and grounding. Retained medical tasks
+place carried, dragged and abandoned casualties on the actual surface. These
+special-movement comparisons pass across 2,880 interruptions in addition to the
+720 route/sweep comparisons. Seven existing soldier movement/care suites pass.
+
+Recovery borrows the live water state even before navigation repairs finish.
+Deep-water searches can reach shore across the map; ordinary blocked positions
+retain their nine-cell search. Retreats, casualty shelters, building exits,
+passenger dismounts, destroyed transports, production and supply roads use the
+same search and keep tracked hulls on their own grid. Living infantry recover
+when a bridge disappears, and wading cancels prone dives. Gunner and transport
+exits settle onto the actual ground.
+
+Rotorcraft guidance now anticipates elevated terrain before horizontal travel.
+Takeoff, cruise, sling pickup and gunship orbits use surface-relative targets;
+UAVs look ahead along their velocity and maintain a four-metre clearance.
+Landing-site searches reject uneven foundations. Released cargo rests on geology,
+and dropped cargo damage depends on its height above the surface.
+
+All 913 non-transcript core checks pass. Thirteen connected Godot movement,
+aircraft and transport suites pass, including 24,000 direct flight steps on flat
+and elevated terrain and complete ground, boat, aircraft and truck ticks. The
+21 connected caller checks and three helper suites also pass. Cannon impacts clamp to the actual terrain or bridge surface. All 139 numeric transcript checks pass exactly in debug and release; Linux and macOS results remain a CI gate.
+Terrain-aware combat, production content, commanders/missions, the standalone
+server and independent whole-match verifier remain unfinished. These correctness
+checks do not establish rendered performance.

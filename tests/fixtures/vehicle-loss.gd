@@ -96,7 +96,7 @@ func _ready() -> void:
 		var result: Array = actors.bail_out_vehicle(20, -v.hp,
 			[v.base(), v.is_heli(), v.is_auto(), int(v.vdef.get("crew", -1)), float(v.vdef.get("cost", 0)),
 			w.rules.has_upgrade(v.team, "armor"), w.rules.has_upgrade(v.team, "grenades")],
-			loadout("crewman" if v.team == 0 else "r_crewman"), PackedStringArray(Defs.NAMES[v.team]), w.next_sid, w.nav._planner, random._backend)
+			loadout("crewman" if v.team == 0 else "r_crewman"), PackedStringArray(Defs.NAMES[v.team]), w.next_sid, w.nav._planner, random._backend, w.nav._path_ground(), w.nav._path_deck())
 		assert(result.size() == 4)
 		v._bail_out(-v.hp)
 		assert(w.next_sid == result[2] and w.rng.state == random.state)
@@ -177,7 +177,7 @@ func _ready() -> void:
 		assert(units.load_state(12.0, cells))
 		var blame := [11, 1, "s5", 0] if trial % 3 else []
 		w.battle.blame_hit(blame)
-		var hits: Array = actors.evacuate_destroyed_vehicle(20, v.is_boat(), w.time, blame, stocks, w.nav._planner, units, qcores, random._backend)
+		var hits: Array = actors.evacuate_destroyed_vehicle(20, v.is_boat(), w.time, blame, stocks, w.nav._planner, units, qcores, random._backend, w.nav._path_ground(), w.nav._path_deck())
 		assert(hits.size() == 1 and hits[0].size() == 4)
 		v._destroyed()
 		assert(w.rng.state == random.state, "Evacuation random %d" % trial)

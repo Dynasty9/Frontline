@@ -37,7 +37,7 @@ pub(crate) fn move_toward(a: Vector3, b: Vector3, delta: f64) -> Vector3 {
 }
 fn ground(p: Vector3, terrain: &Terrain, deck: &[u8]) -> f64 {
     terrain
-        .ground_y(p, !deck.is_empty() && deck[terrain.index(p)] != 0)
+        .ground_y(p, deck.get(terrain.index(p)) == Some(&1))
         .max(0.0)
 }
 impl FlightProfile {
@@ -125,7 +125,7 @@ impl Vehicle {
     }
     pub fn fly_to(
         &mut self,
-        goal: Vector3,
+        mut goal: Vector3,
         dt: f64,
         face: Option<f64>,
         profile: FlightProfile,
@@ -142,6 +142,23 @@ impl Vehicle {
         {
             return Err("invalid helicopter step");
         }
+        let requested = goal;
+        let to = flat(goal - self.position);
+        let length = to.length();
+        let ahead = self.position
+            + if length > 40.0 {
+                to / length * 40.0
+            } else {
+                to
+            };
+        let clearance = terrain.ground_y(ahead, deck.get(terrain.index(ahead)) == Some(&1)) + 16.0;
+        if length > 8.0 {
+            goal.y = f64::from(goal.y).max(clearance) as f32;
+            if f64::from(self.position.y) < clearance - 3.0 {
+                goal.x = self.position.x;
+                goal.z = self.position.z;
+            }
+        }
         let mut left = dt;
         while left > 0.00001 {
             let h = left.min(1.0 / 30.0);
@@ -151,8 +168,10 @@ impl Vehicle {
         let state = self.flight.unwrap();
         self.flight_pitch = state[0];
         self.flight_roll = state[1];
-        Ok(f64::from(flat(self.position - goal).length()) < 0.7
-            && (f64::from(self.position.y) - f64::from(goal.y)).abs() < 0.12
+        self.position.y =
+            f64::from(self.position.y).max(ground(self.position, terrain, deck) + 0.15) as f32;
+        Ok(f64::from(flat(self.position - requested).length()) < 0.7
+            && (f64::from(self.position.y) - f64::from(requested.y)).abs() < 0.12
             && f64::from(flat(self.velocity).length()) < 0.65
             && f64::from(self.velocity.y).abs() < 0.35)
     }
@@ -162,6 +181,8 @@ impl Vehicle {
         altitude: f64,
         radius: f64,
         profile: FlightProfile,
+        terrain: &Terrain,
+        deck: &[u8],
     ) -> Result<(), &'static str> {
         if !dt.is_finite()
             || !(0.0..=3600.0).contains(&dt)
@@ -170,6 +191,7 @@ impl Vehicle {
             || !(0.0..=1_000_000.0).contains(&altitude)
             || !radius.is_finite()
             || !(0.0..=1_000_000.0).contains(&radius)
+            || (!deck.is_empty() && deck.len() != terrain.n * terrain.n)
         {
             return Err("invalid UAV step");
         }
@@ -192,7 +214,12 @@ impl Vehicle {
             6.0 * dt,
         );
         self.position += self.velocity * dt as f32;
-        self.position.y = toward(f64::from(self.position.y), altitude, 4.0 * dt) as f32;
+        let altitude = terrain.landform.height(self.position + self.velocity * 2.0) + altitude;
+        let floor = terrain.ground_y(
+            self.position,
+            deck.get(terrain.index(self.position)) == Some(&1),
+        ) + 4.0;
+        self.position.y = floor.max(toward(f64::from(self.position.y), altitude, 4.0 * dt)) as f32;
         if f64::from(self.velocity.length()) > 0.3 {
             let heading = libm::atan2(-f64::from(self.velocity.x), -f64::from(self.velocity.z));
             let next = slew(

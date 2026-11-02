@@ -36,12 +36,19 @@ impl Actors {
         &mut self,
         id: u32,
         nav: &PathPlanner,
+        ground: crate::traversal::Ground<'_>,
     ) -> Result<(), &'static str> {
+        if !ground.valid_for(nav.side()) {
+            return Err("invalid navigation ground");
+        }
+
         let s = self.soldier(id).ok_or("missing gunner")?;
         let position = self
             .structure(s.emplacement.structure as u32)
             .map(|st| st.position);
-        self.soldier_mut(id).unwrap().release_mount(nav, position)
+        self.soldier_mut(id)
+            .unwrap()
+            .release_mount(nav, position, ground)
     }
 
     pub fn damage_structure(
@@ -56,7 +63,12 @@ impl Actors {
         nav: &PathPlanner,
         deferred: &mut DeferredEffects,
         rng: &mut SimulationRandom,
+        ground: crate::traversal::Ground<'_>,
     ) -> Result<Damage, &'static str> {
+        if !ground.valid_for(nav.side()) {
+            return Err("invalid navigation ground");
+        }
+
         if !amount.is_finite()
             || !(0.0..=1e12).contains(&amount)
             || !now.is_finite()
@@ -122,8 +134,16 @@ impl Actors {
         }
         if st.hp <= 0.0 {
             st.hp = 0.0;
-            let destroyed =
-                self.destroy_structure(id, false, now, player_building, nav, deferred, rng)?;
+            let destroyed = self.destroy_structure(
+                id,
+                false,
+                now,
+                player_building,
+                nav,
+                deferred,
+                rng,
+                ground,
+            )?;
             out.events.extend(destroyed.events);
             out.removed = destroyed.removed;
         } else if st.kind == "car"
@@ -152,7 +172,12 @@ impl Actors {
         nav: &PathPlanner,
         deferred: &mut DeferredEffects,
         rng: &mut SimulationRandom,
+        ground: crate::traversal::Ground<'_>,
     ) -> Result<Damage, &'static str> {
+        if !ground.valid_for(nav.side()) {
+            return Err("invalid navigation ground");
+        }
+
         if !now.is_finite() || !(0.0..=1e12 - 30.0).contains(&now) {
             return Err("invalid structure destruction time");
         }
@@ -187,7 +212,7 @@ impl Actors {
                                 0.0,
                                 rng.randf_range(-2.0, 2.0),
                             );
-                        s.unhide(exit, nav)?;
+                        s.unhide(exit, nav, ground)?;
                         events.push(Event::Unhidden(who));
                     }
                 }
@@ -199,7 +224,7 @@ impl Actors {
             "mg_nest" | "watchtower" => {
                 let gunner = st.gunner;
                 if self.soldier(gunner).is_some() {
-                    self.release_infantry_mount(gunner, nav)?;
+                    self.release_infantry_mount(gunner, nav, ground)?;
                     events.push(Event::ReleasedGunner(gunner));
                 }
             }

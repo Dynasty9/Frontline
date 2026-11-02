@@ -78,7 +78,12 @@ impl Actors {
         id: u32,
         capacity: i32,
         nav: &PathPlanner,
+        ground: crate::traversal::Ground<'_>,
     ) -> Result<SupplyCollected, &'static str> {
+        if !ground.valid_for(nav.side()) {
+            return Err("invalid navigation ground");
+        }
+
         if !(0..=1_000_000).contains(&capacity) {
             return Err("invalid infantry supply capacity");
         }
@@ -112,7 +117,8 @@ impl Actors {
             next.vitals.speech_cooldown = 2.6;
         }
         let route = if arrived.return_to_hold {
-            next.command(Command::ReturnToHold, nav, None)?.route
+            next.command(Command::ReturnToHold, nav, None, ground)?
+                .route
         } else {
             None
         };

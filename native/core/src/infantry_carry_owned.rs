@@ -34,6 +34,7 @@ impl Actors {
         delivered: bool,
         rng: &mut SimulationRandom,
         out: &mut Vec<Event>,
+        ground: crate::traversal::Ground<'_>,
     ) -> Result<(), &'static str> {
         let s = self.soldier(id).unwrap();
         let patient = s.duty.entity as u32;
@@ -42,7 +43,7 @@ impl Actors {
             p.links.carried_by.retain(|&who| who != u64::from(id));
             if p.links.carried_by.is_empty() && !delivered {
                 p.links.stretcher_claimed = false;
-                p.motion.position.y = 0.0;
+                p.motion.position.y = ground.height(p.motion.position) as f32;
             }
         }
         let s = self.soldier_mut(id).unwrap();
@@ -101,7 +102,13 @@ impl Actors {
         });
         let mut out = Vec::new();
         let (Some(home), Some(patient)) = (home, patient) else {
-            self.end_infantry_stretcher(id, false, rng, &mut out)?;
+            self.end_infantry_stretcher(
+                id,
+                false,
+                rng,
+                &mut out,
+                crate::traversal::Ground::new(world.terrain, world.deck),
+            )?;
             return Ok(out);
         };
         let (home_id, home_position, exit) = (home.id, home.position, home.exit());
@@ -168,6 +175,8 @@ impl Actors {
                     partner.motion.position,
                     yaw,
                     dt,
+                    world.nav,
+                    crate::traversal::Ground::new(world.terrain, world.deck),
                 )?;
                 let s = self.soldier_mut(id).unwrap();
                 s.motion.position = next;
@@ -216,6 +225,10 @@ impl Actors {
                 s.motion.yaw = pose.yaw;
                 let p = self.soldier_mut(casualty).unwrap();
                 p.motion.position = pose.casualty;
+                if !solo {
+                    p.motion.position.y = crate::traversal::Ground::new(world.terrain, world.deck)
+                        .height(p.motion.position) as f32;
+                }
                 p.motion.yaw = pose.casualty_yaw;
                 if solo && p.links.carried_by.len() > 1 {
                     p.links.carried_by = vec![id.into()];
@@ -223,9 +236,21 @@ impl Actors {
                     out.push(Event::Speech(id, Speech::BearerDown));
                 }
                 if !moved {
-                    self.end_infantry_stretcher(id, true, rng, &mut out)?;
+                    self.end_infantry_stretcher(
+                        id,
+                        true,
+                        rng,
+                        &mut out,
+                        crate::traversal::Ground::new(world.terrain, world.deck),
+                    )?;
                     if partner_ok {
-                        self.end_infantry_stretcher(partner_id, true, rng, &mut out)?;
+                        self.end_infantry_stretcher(
+                            partner_id,
+                            true,
+                            rng,
+                            &mut out,
+                            crate::traversal::Ground::new(world.terrain, world.deck),
+                        )?;
                     }
                     let p = self.soldier_mut(casualty).unwrap();
                     p.links.tent_dead = p.vitals.life == Life::Dead;

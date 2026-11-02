@@ -55,6 +55,7 @@ fn run(s: &mut fixture::Scene, r: &mut Rules, v: &mut Victory, dt: f64) -> Vec<E
                         hp: 240.,
                         hull: Vector3::new(2., 2., 5.),
                         missiles: [0, 0],
+                        tracked: false,
                     },
                     town_load: [50, 20],
                     town_stock: [100., 40.],

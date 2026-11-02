@@ -203,9 +203,18 @@ pub fn drag_pose(
     })
 }
 
-pub fn escort(i: EscortInput, nav: &PathPlanner) -> Result<EscortPose, &'static str> {
+pub fn escort(
+    i: EscortInput,
+    nav: &PathPlanner,
+    ground: crate::traversal::Ground<'_>,
+) -> Result<EscortPose, &'static str> {
+    if !ground.valid_for(nav.side()) {
+        return Err("invalid navigation ground");
+    }
+
     if ![i.position, i.rescuer, i.threat].into_iter().all(point)
         || !scalar(i.yaw)
+        || !ground.valid_for(nav.side())
         || !i.dt.is_finite()
         || !(0.0..=10.0).contains(&i.dt)
         || i.mount.is_some_and(|(p, speed)| {
@@ -224,7 +233,7 @@ pub fn escort(i: EscortInput, nav: &PathPlanner) -> Result<EscortPose, &'static 
     let speed = if distance > 3.0 { 4.4 } else { 1.3 };
     let next = i.position + normalized(delta) * distance.min(speed * i.dt) as f32;
     let walking = distance > 0.2;
-    let position = if walking && nav.kind_at(next, false) != 3 {
+    let position = if walking && nav.step_clear(i.position, next, false, false, ground) {
         next
     } else {
         i.position
@@ -242,7 +251,12 @@ pub fn safe_anchor(
     away: Vector3,
     squad_order: Option<Vector3>,
     nav: &PathPlanner,
+    ground: crate::traversal::Ground<'_>,
 ) -> Result<Vector3, &'static str> {
+    if !ground.valid_for(nav.side()) {
+        return Err("invalid navigation ground");
+    }
+
     if !point(patient) || !point(away) || squad_order.is_some_and(|p| !point(p)) {
         return Err("invalid casualty shelter anchor");
     }
@@ -253,6 +267,6 @@ pub fn safe_anchor(
             anchor = order;
         }
     }
-    nav.nearest_walkable(anchor)
+    nav.nearest_walkable(anchor, ground)
         .ok_or("invalid casualty shelter ground")
 }

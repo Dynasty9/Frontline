@@ -1,5 +1,7 @@
 use crate::hierarchy::Hierarchy;
 use crate::state_codec::{Reader, Writer};
+use crate::terrain::Terrain;
+use crate::traversal::{Ground, Occupancy};
 use crate::vector::Vector3;
 use std::collections::{HashMap, VecDeque};
 
@@ -11,6 +13,7 @@ pub struct PathJob {
     pub id: u64,
     pub destination: Vector3,
     pub vehicle: bool,
+    pub tracked: bool,
     pub team: i32,
     pub care: f64,
 }
@@ -18,6 +21,7 @@ pub struct PathJob {
 #[derive(Clone, Debug, PartialEq, Eq)]
 struct CacheKey {
     vehicle: bool,
+    tracked: bool,
     policy: i32,
     terrain_revision: u64,
     danger_revision: u64,
@@ -28,7 +32,8 @@ struct CacheKey {
 /// Cached corridors affect later routes, so they are part of saved state.
 pub struct PathPlanner {
     side: usize,
-    kinds: [Vec<u8>; 2],
+    pub occupancy: Occupancy,
+    kinds: [Vec<u8>; 3],
     heat: Vec<u8>,
     cache: VecDeque<(CacheKey, Vec<Vector3>)>,
     jobs: HashMap<u64, PathJob>,
@@ -45,7 +50,12 @@ impl PathPlanner {
         }
         Some(Self {
             side,
-            kinds: [vec![0; side * side], vec![0; side * side]],
+            occupancy: Occupancy::default(),
+            kinds: [
+                vec![0; side * side],
+                vec![0; side * side],
+                vec![0; side * side],
+            ],
             heat: vec![0; side * side],
             cache: VecDeque::new(),
             jobs: HashMap::new(),
@@ -66,6 +76,7 @@ impl PathPlanner {
         }
         self.kinds[0].copy_from_slice(infantry);
         self.kinds[1].copy_from_slice(vehicle);
+        self.kinds[2].copy_from_slice(vehicle);
         self.heat.copy_from_slice(heat);
         true
     }
@@ -80,6 +91,20 @@ impl PathPlanner {
         true
     }
 
+    pub fn set_tracked(&mut self, index: usize, kind: u8) -> bool {
+        if kind > 3 || index >= self.heat.len() {
+            return false;
+        }
+        self.kinds[2][index] = kind;
+        true
+    }
+    pub fn load_tracked(&mut self, kinds: &[u8]) -> bool {
+        if kinds.len() != self.heat.len() || kinds.iter().any(|k| *k > 3) {
+            return false;
+        }
+        self.kinds[2].copy_from_slice(kinds);
+        true
+    }
     fn cell(&self, position: Vector3) -> [i32; 2] {
         let half = self.side as f64 * 0.5;
         [position.x, position.z].map(|v| {
@@ -118,31 +143,136 @@ impl PathPlanner {
         self.kinds[usize::from(vehicle)][self.index(self.cell(point))]
     }
 
-    pub fn nearest_walkable(&self, point: Vector3) -> Option<Vector3> {
-        self.nearest_walkable_for(point, false)
+    /// Route padding can contain a cover anchor, but the physical wall cannot.
+    fn foot_clear(&self, p: Vector3, ground: Ground<'_>) -> bool {
+        if ground.too_deep(p) {
+            return false;
+        }
+        if self.kind_at(p, false) != 3 {
+            return true;
+        }
+        let Some(terrain) = ground.terrain else {
+            return false;
+        };
+        if f64::from(terrain.landform.cell_slope(terrain.index(p))) > 0.85 {
+            return false;
+        }
+        self.occupancy.clear(self.index(self.cell(p)), p)
+    }
+    pub fn kind_for(&self, p: Vector3, vehicle: bool, tracked: bool) -> u8 {
+        self.kinds[if tracked { 2 } else { usize::from(vehicle) }][self.index(self.cell(p))]
+    }
+    pub fn can_step(
+        &self,
+        a: Vector3,
+        b: Vector3,
+        vehicle: bool,
+        terrain: &Terrain,
+        deck: &[u8],
+    ) -> bool {
+        self.step_clear(a, b, vehicle, false, Ground::new(terrain, deck))
+    }
+    pub fn step_clear(
+        &self,
+        a: Vector3,
+        b: Vector3,
+        vehicle: bool,
+        tracked: bool,
+        ground: Ground<'_>,
+    ) -> bool {
+        if !a.is_finite()
+            || !b.is_finite()
+            || !ground.valid_for(self.side)
+            || (tracked && !vehicle)
+            || b.x.abs() as f64 >= self.side as f64 * 0.5
+            || b.z.abs() as f64 >= self.side as f64 * 0.5
+        {
+            return false;
+        }
+        let distance = glam::Vec2::new(b.x - a.x, b.z - a.z).length() as f64;
+        if distance > self.side as f64 * 4.0 {
+            return false;
+        }
+        let steps = libm::ceil(distance * 2.0).max(1.0) as usize;
+        let mut previous = self.cell(a);
+        let mut previous_point = a;
+        for j in 1..=steps {
+            let p = a.lerp(b, (j as f64 / steps as f64) as f32);
+            let cell = self.cell(p);
+            if ground.too_deep(p)
+                || if vehicle {
+                    self.kind_for(p, true, tracked) == 3
+                } else {
+                    !self.foot_clear(p, ground)
+                }
+            {
+                return false;
+            }
+            if cell[0] != previous[0] && cell[1] != previous[1] {
+                if vehicle {
+                    if self.kind_for(self.center([cell[0], previous[1]]), true, tracked) == 3
+                        || self.kind_for(self.center([previous[0], cell[1]]), true, tracked) == 3
+                    {
+                        return false;
+                    }
+                } else if !self.foot_clear(Vector3::new(p.x, 0., previous_point.z), ground)
+                    || !self.foot_clear(Vector3::new(previous_point.x, 0., p.z), ground)
+                {
+                    return false;
+                }
+            }
+            previous = cell;
+            previous_point = p;
+        }
+        true
     }
 
-    pub fn nearest_walkable_for(&self, point: Vector3, vehicle: bool) -> Option<Vector3> {
-        if !point.is_finite() {
+    pub fn nearest_walkable(&self, point: Vector3, ground: Ground<'_>) -> Option<Vector3> {
+        self.nearest_walkable_for(point, false, false, ground)
+    }
+
+    pub fn nearest_walkable_for(
+        &self,
+        point: Vector3,
+        vehicle: bool,
+        tracked: bool,
+        ground: Ground<'_>,
+    ) -> Option<Vector3> {
+        if !point.is_finite() || !ground.valid_for(self.side) || (tracked && !vehicle) {
             return None;
         }
         let cell = self.cell(point);
-        let kinds = &self.kinds[usize::from(vehicle)];
+        let kinds = &self.kinds[if tracked { 2 } else { usize::from(vehicle) }];
         // The vehicle graph reserves the outer three cells even when raw terrain is free.
         let free = |p: [i32; 2]| {
             p.into_iter().all(|v| {
                 v >= 0 && v < self.side as i32 && (!vehicle || (v >= 3 && v < self.side as i32 - 3))
             }) && kinds[self.index(p)] != 3
         };
-        if free(cell) {
+        let deep = ground.too_deep(point);
+        if free(cell) && !deep {
             return Some(point);
         }
-        let free = nearest_free(cell, free);
+        // A swimmer must reach shore even when it lies beyond the normal recovery ring.
+        let free = nearest_free_within(cell, if deep { self.side as i32 } else { 9 }, |p| {
+            free(p) && !ground.too_deep(self.center(p))
+        });
         Some(self.center(free))
     }
 
-    pub fn line_free(&self, from: Vector3, to: Vector3, vehicle: bool) -> bool {
-        if !from.is_finite() || !to.is_finite() {
+    pub fn line_free(
+        &self,
+        from: Vector3,
+        to: Vector3,
+        vehicle: bool,
+        tracked: bool,
+        ground: Ground<'_>,
+    ) -> bool {
+        if !from.is_finite()
+            || !to.is_finite()
+            || !ground.valid_for(self.side)
+            || (tracked && !vehicle)
+        {
             return false;
         }
         let delta = to - from;
@@ -156,7 +286,10 @@ impl PathPlanner {
         for step in 1..steps {
             let p = from + delta * (step as f64 / steps as f64) as f32;
             let index = self.index(self.cell(p));
-            if self.kinds[usize::from(vehicle)][index] != 0 || (mind_fire && self.heat[index] > 0) {
+            if self.kinds[if tracked { 2 } else { usize::from(vehicle) }][index] != 0
+                || ground.too_deep(p)
+                || (mind_fire && self.heat[index] > 0)
+            {
                 return false;
             }
         }
@@ -168,6 +301,7 @@ impl PathPlanner {
         graph: &Hierarchy,
         from: Vector3,
         job: PathJob,
+        ground: Ground<'_>,
     ) -> Option<Vec<Vector3>> {
         if !self.valid(graph, from, job.destination, job.care) {
             return None;
@@ -178,7 +312,7 @@ impl PathPlanner {
             && from.distance_squared(job.destination) <= 256.0
             && !graph.is_solid(a)
             && !graph.is_solid(b)
-            && self.line_free(from, job.destination, job.vehicle)
+            && self.line_free(from, job.destination, job.vehicle, job.tracked, ground)
         {
             Some(vec![flat(job.destination)])
         } else {
@@ -203,23 +337,41 @@ impl PathPlanner {
         vehicle: bool,
         team: i32,
         care: f64,
+        tracked: bool,
+        ground: Ground<'_>,
     ) -> Vec<Vector3> {
-        if !self.valid(graph, from, to, care) {
+        if !self.valid(graph, from, to, care)
+            || !ground.valid_for(self.side)
+            || (tracked && !vehicle)
+        {
             return Vec::new();
         }
         let mut a = self.cell(from);
         let mut b = self.cell(to);
         if graph.is_solid(a) {
-            a = nearest_free(a, |p| !graph.is_solid(p));
+            a = nearest_free(a, |p| {
+                !graph.is_solid(p) && !ground.too_deep(self.center(p))
+            });
         }
         let end_exact = !graph.is_solid(b);
         if !end_exact {
-            b = nearest_free(b, |p| !graph.is_solid(p));
+            b = nearest_free(b, |p| {
+                !graph.is_solid(p) && !ground.too_deep(self.center(p))
+            });
+        }
+        if graph.is_solid(a) || graph.is_solid(b) {
+            return Vec::new();
         }
         let end = self.center(b);
         let near_end = f64::from(flat(end - to).length()) < 1.7;
         if a == b {
-            return vec![if end_exact || near_end { to } else { end }];
+            return vec![
+                if end_exact || self.step_clear(end, to, vehicle, tracked, ground) {
+                    to
+                } else {
+                    end
+                },
+            ];
         }
         let policy = if care > 0.0 && (0..2).contains(&team) {
             team
@@ -228,6 +380,7 @@ impl PathPlanner {
         };
         let key = CacheKey {
             vehicle,
+            tracked,
             policy,
             terrain_revision: graph.terrain_revision,
             danger_revision: if policy < 0 {
@@ -245,7 +398,8 @@ impl PathPlanner {
                     cached[cached.len() - 2]
                 };
                 let first_to = if cached.len() == 1 { to } else { cached[0] };
-                if self.line_free(from, first_to, vehicle) && self.line_free(last_from, to, vehicle)
+                if self.line_free(from, first_to, vehicle, tracked, ground)
+                    && self.line_free(last_from, to, vehicle, tracked, ground)
                 {
                     let mut out = cached.clone();
                     *out.last_mut().unwrap() = flat(to);
@@ -268,7 +422,7 @@ impl PathPlanner {
         if ids.last() == Some(&b) {
             if end_exact {
                 *points.last_mut().unwrap() = flat(to);
-            } else if near_end {
+            } else if near_end && self.step_clear(end, to, vehicle, tracked, ground) {
                 points.push(flat(to));
             }
         }
@@ -277,7 +431,7 @@ impl PathPlanner {
         let last = points.len() - 1;
         while i < last {
             let mut j = last.min(i + 14);
-            while j > i + 1 && !self.line_free(points[i], points[j], vehicle) {
+            while j > i + 1 && !self.line_free(points[i], points[j], vehicle, tracked, ground) {
                 j -= 1;
             }
             out.push(points[j]);
@@ -301,6 +455,7 @@ impl PathPlanner {
             || job.id > i64::MAX as u64
             || !job.destination.is_finite()
             || !job.care.is_finite()
+            || (job.tracked && !job.vehicle)
         {
             return false;
         }
@@ -345,7 +500,7 @@ impl PathPlanner {
     }
 
     pub fn checkpoint(&self) -> Vec<u8> {
-        let mut out = Writer::new(b"FLPP\x01\0\0\0");
+        let mut out = Writer::new(b"FLPP\x02\0\0\0");
         out.u32(self.side as u32);
         for cells in &self.kinds {
             out.bytes(cells);
@@ -354,6 +509,7 @@ impl PathPlanner {
         out.u32(self.cache.len() as u32);
         for (key, route) in &self.cache {
             out.byte(u8::from(key.vehicle));
+            out.byte(u8::from(key.tracked));
             out.u32(key.policy as u32);
             out.u64(key.terrain_revision);
             out.u64(key.danger_revision);
@@ -372,6 +528,7 @@ impl PathPlanner {
             out.u64(job.id);
             out.point(job.destination);
             out.byte(u8::from(job.vehicle));
+            out.byte(u8::from(job.tracked));
             out.u32(job.team as u32);
             out.f64(job.care);
         }
@@ -380,17 +537,19 @@ impl PathPlanner {
             out.u64(*id);
         }
         out.u32(self.batch_left as u32);
+        self.occupancy.write(&mut out);
         out.0
     }
 
     pub fn restore(bytes: &[u8]) -> Result<Self, &'static str> {
-        let mut input = Reader::new(bytes, b"FLPP\x01\0\0\0")?;
+        let mut input = Reader::new(bytes, b"FLPP\x02\0\0\0")?;
         let side = input.u32()? as usize;
         let mut planner = Self::new(side).ok_or("invalid planner dimensions")?;
         let infantry = input.bytes(side * side)?;
         let vehicle = input.bytes(side * side)?;
+        let tracked = input.bytes(side * side)?;
         let heat = input.bytes(side * side)?;
-        if !planner.load_cells(infantry, vehicle, heat) {
+        if !planner.load_cells(infantry, vehicle, heat) || !planner.load_tracked(tracked) {
             return Err("invalid planner terrain");
         }
         let count = input.u32()? as usize;
@@ -400,6 +559,7 @@ impl PathPlanner {
         for _ in 0..count {
             let key = CacheKey {
                 vehicle: input.boolean()?,
+                tracked: input.boolean()?,
                 policy: input.u32()? as i32,
                 terrain_revision: input.u64()?,
                 danger_revision: input.u64()?,
@@ -410,7 +570,8 @@ impl PathPlanner {
                     input.u32()? as i32,
                 ],
             };
-            if !(-1..=1).contains(&key.policy)
+            if (key.tracked && !key.vehicle)
+                || !(-1..=1).contains(&key.policy)
                 || key
                     .cells
                     .iter()
@@ -442,10 +603,14 @@ impl PathPlanner {
                 id: input.u64()?,
                 destination: input.point()?,
                 vehicle: input.boolean()?,
+                tracked: input.boolean()?,
                 team: input.u32()? as i32,
                 care: input.f64()?,
             };
-            if job.id == 0 || job.id > i64::MAX as u64 || planner.jobs.insert(job.id, job).is_some()
+            if job.id == 0
+                || job.id > i64::MAX as u64
+                || (job.tracked && !job.vehicle)
+                || planner.jobs.insert(job.id, job).is_some()
             {
                 return Err("invalid path job");
             }
@@ -470,6 +635,7 @@ impl PathPlanner {
         if planner.batch_left > planner.order.len() {
             return Err("invalid path batch");
         }
+        planner.occupancy = Occupancy::read(&mut input, side)?;
         input.finish()?;
         Ok(planner)
     }
@@ -481,7 +647,11 @@ fn flat(mut point: Vector3) -> Vector3 {
 }
 
 fn nearest_free(cell: [i32; 2], is_free: impl Fn([i32; 2]) -> bool) -> [i32; 2] {
-    for radius in 1..10 {
+    nearest_free_within(cell, 9, is_free)
+}
+
+fn nearest_free_within(cell: [i32; 2], limit: i32, is_free: impl Fn([i32; 2]) -> bool) -> [i32; 2] {
+    for radius in 1..=limit {
         for dx in -radius..=radius {
             for dz in [-radius, radius] {
                 for point in [[cell[0] + dx, cell[1] + dz], [cell[0] + dz, cell[1] + dx]] {

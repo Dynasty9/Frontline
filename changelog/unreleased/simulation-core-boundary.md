@@ -158,3 +158,11 @@ kind = "fixed"
 
 - The migration branch now preserves current alpine terrain, separate tracked and wheeled routes, and depth-limited water crossings. Native paths that still assume flat ground remain on the terrain-aware compatibility implementation while those Rust ports are completed.
 - Rust terrain now preserves elevated ground, slope costs, level building foundations, raised trench floors and ground impacts, including crater edits and saved-state continuation.
+- Rust routes now preserve separate tracked and wheeled terrain limits, water depth, bridge crossings and exact wall clearance. Moving units check the whole step, so an old route cannot skip across a newly blocked strip.
+- Vehicle spawning reads the vehicle's class before grounding it, keeping boats at water level and supply trucks on the surface.
+- Rust dives, blast recovery, prisoner escorts and stretcher movement preserve wall clearance and water limits, with casualties resting on the actual ground on elevated maps.
+
+- Rust recovery now finds shore after deep-water displacement or a lost crossing, and preserves tracked vehicle recovery, transport exits and casualty shelters.
+- Rust aircraft retain terrain-aware climbing, cruise and landing behavior; dropped sling loads take damage from their height above the surface.
+
+Cannon impacts now settle onto the actual terrain or bridge surface instead of a flat ground plane.

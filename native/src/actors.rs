@@ -495,7 +495,15 @@ impl ActorStateCore {
         next_squad: i64,
         nav: Gd<crate::path_planner::PathPlannerCore>,
         mut rng: Gd<crate::simulation_random::SimulationRandomCore>,
+        terrain: Option<Gd<crate::terrain::TerrainCore>>,
+        deck: PackedByteArray,
     ) -> Array<Variant> {
+        let terrain = terrain.as_ref().map(|t| t.bind());
+        let ground = frontline_core::traversal::Ground {
+            terrain: terrain.as_ref().and_then(|t| t.core.as_ref()),
+            deck: deck.as_slice(),
+        };
+
         use frontline_core::vehicle_loss::Crew;
         if values.len() != 7 || names.len() > 4096 || next_squad < 1 {
             return Array::new();
@@ -539,6 +547,7 @@ impl ActorStateCore {
             &mut next,
             nav,
             &mut rng.bind_mut().core,
+            ground,
         );
         let Ok(result) = result else {
             return Array::new();
@@ -565,7 +574,15 @@ impl ActorStateCore {
         units: Gd<crate::spatial::SpatialIndexCore>,
         squads: Array<Gd<crate::squad::SquadStateCore>>,
         mut rng: Gd<crate::simulation_random::SimulationRandomCore>,
+        terrain: Option<Gd<crate::terrain::TerrainCore>>,
+        deck: PackedByteArray,
     ) -> Array<Variant> {
+        let terrain = terrain.as_ref().map(|t| t.bind());
+        let ground = frontline_core::traversal::Ground {
+            terrain: terrain.as_ref().and_then(|t| t.core.as_ref()),
+            deck: deck.as_slice(),
+        };
+
         let (Ok(blame), Some(stock), Some(mut state)) = (
             damage_credit(&blame),
             damage_stock(&stocks),
@@ -588,6 +605,7 @@ impl ActorStateCore {
             &mut state,
             |s| stock.get(&s.identity.id).copied().unwrap_or((None, false)),
             &mut rng.bind_mut().core,
+            ground,
         );
         let Ok(hits) = result else {
             return Array::new();
@@ -609,7 +627,15 @@ impl ActorStateCore {
         nav: Gd<crate::path_planner::PathPlannerCore>,
         mut deferred: Gd<crate::deferred_effects::DeferredEffectsCore>,
         mut rng: Gd<crate::simulation_random::SimulationRandomCore>,
+        terrain: Option<Gd<crate::terrain::TerrainCore>>,
+        deck: PackedByteArray,
     ) -> Array<Variant> {
+        let terrain = terrain.as_ref().map(|t| t.bind());
+        let ground = frontline_core::traversal::Ground {
+            terrain: terrain.as_ref().and_then(|t| t.core.as_ref()),
+            deck: deck.as_slice(),
+        };
+
         if values.len() != 4
             || ![0.0, 1.0].contains(&values[2])
             || !values[3].is_finite()
@@ -635,6 +661,7 @@ impl ActorStateCore {
             nav,
             &mut deferred.bind_mut().core,
             &mut rng.bind_mut().core,
+            ground,
         ))
     }
     #[func]
@@ -647,7 +674,15 @@ impl ActorStateCore {
         nav: Gd<crate::path_planner::PathPlannerCore>,
         mut deferred: Gd<crate::deferred_effects::DeferredEffectsCore>,
         mut rng: Gd<crate::simulation_random::SimulationRandomCore>,
+        terrain: Option<Gd<crate::terrain::TerrainCore>>,
+        deck: PackedByteArray,
     ) -> Array<Variant> {
+        let terrain = terrain.as_ref().map(|t| t.bind());
+        let ground = frontline_core::traversal::Ground {
+            terrain: terrain.as_ref().and_then(|t| t.core.as_ref()),
+            deck: deck.as_slice(),
+        };
+
         let nav = nav.bind();
         let Some(nav) = nav.core.as_ref() else {
             return Array::new();
@@ -660,6 +695,7 @@ impl ActorStateCore {
             nav,
             &mut deferred.bind_mut().core,
             &mut rng.bind_mut().core,
+            ground,
         ))
     }
     #[func]
@@ -1221,7 +1257,15 @@ impl ActorStateCore {
         nav: Gd<crate::path_planner::PathPlannerCore>,
         squads: Array<Gd<crate::squad::SquadStateCore>>,
         mut rng: Gd<crate::simulation_random::SimulationRandomCore>,
+        terrain: Option<Gd<crate::terrain::TerrainCore>>,
+        deck: PackedByteArray,
     ) -> Array<Variant> {
+        let terrain = terrain.as_ref().map(|t| t.bind());
+        let ground = frontline_core::traversal::Ground {
+            terrain: terrain.as_ref().and_then(|t| t.core.as_ref()),
+            deck: deck.as_slice(),
+        };
+
         use frontline_core::infantry_hidden_owned::Event;
         let Some(mut state) = read_squads(&squads) else {
             return Array::new();
@@ -1241,6 +1285,7 @@ impl ActorStateCore {
             nav,
             &mut state,
             &mut rng.bind_mut().core,
+            ground,
         );
         let Ok(out) = out else {
             return Array::new();
@@ -1373,7 +1418,15 @@ impl ActorStateCore {
         units: Gd<crate::spatial::SpatialIndexCore>,
         nav: Gd<crate::path_planner::PathPlannerCore>,
         mut rng: Gd<crate::simulation_random::SimulationRandomCore>,
+        terrain: Option<Gd<crate::terrain::TerrainCore>>,
+        deck: PackedByteArray,
     ) -> Array<Variant> {
+        let terrain = terrain.as_ref().map(|t| t.bind());
+        let ground = frontline_core::traversal::Ground {
+            terrain: terrain.as_ref().and_then(|t| t.core.as_ref()),
+            deck: deck.as_slice(),
+        };
+
         use frontline_core::infantry_action_owned::{Defense, Event};
         use frontline_core::vehicle_brain::CrewProfile;
         use frontline_core::vehicle_launch::SmokeProfile;
@@ -1461,6 +1514,7 @@ impl ActorStateCore {
                 }
             },
             &mut rng.bind_mut().core,
+            ground,
         );
         match result {
             Ok(out) => {
@@ -1694,7 +1748,15 @@ impl ActorStateCore {
         nav: Gd<crate::path_planner::PathPlannerCore>,
         mut collision: Gd<crate::collision_index::CollisionIndexCore>,
         mut rng: Gd<crate::simulation_random::SimulationRandomCore>,
+        terrain: Option<Gd<crate::terrain::TerrainCore>>,
+        deck: PackedByteArray,
     ) -> Array<Variant> {
+        let terrain = terrain.as_ref().map(|t| t.bind());
+        let ground = frontline_core::traversal::Ground {
+            terrain: terrain.as_ref().and_then(|t| t.core.as_ref()),
+            deck: deck.as_slice(),
+        };
+
         use frontline_core::infantry_reflex::Reflex;
         let kind = match kind {
             0 => Reflex::Grenade,
@@ -1725,6 +1787,7 @@ impl ActorStateCore {
                 nav,
                 &mut collision.bind_mut().core,
                 &mut rng.bind_mut().core,
+                ground,
             )
             .map_or_else(
                 |_| Array::new(),
@@ -2166,12 +2229,23 @@ impl ActorStateCore {
         soldier: u32,
         capacity: i32,
         nav: Gd<crate::path_planner::PathPlannerCore>,
+        terrain: Option<Gd<crate::terrain::TerrainCore>>,
+        deck: PackedByteArray,
     ) -> Array<Variant> {
+        let terrain = terrain.as_ref().map(|t| t.bind());
+        let ground = frontline_core::traversal::Ground {
+            terrain: terrain.as_ref().and_then(|t| t.core.as_ref()),
+            deck: deck.as_slice(),
+        };
+
         let nav = nav.bind();
         let Some(nav) = nav.core.as_ref() else {
             return Array::new();
         };
-        match self.core.arrive_infantry_supply(soldier, capacity, nav) {
+        match self
+            .core
+            .arrive_infantry_supply(soldier, capacity, nav, ground)
+        {
             Ok(r) => {
                 let route = r.route.map_or_else(Array::new, |r| {
                     varray![r.revision as i64, vector(r.job.destination), r.job.care]
@@ -2257,7 +2331,15 @@ impl ActorStateCore {
         mut collision: Gd<crate::collision_index::CollisionIndexCore>,
         mut visibility: Gd<crate::visibility::VisibilityCore>,
         mut rng: Gd<crate::simulation_random::SimulationRandomCore>,
+        terrain: Option<Gd<crate::terrain::TerrainCore>>,
+        deck: PackedByteArray,
     ) -> Array<Variant> {
+        let terrain = terrain.as_ref().map(|t| t.bind());
+        let ground = frontline_core::traversal::Ground {
+            terrain: terrain.as_ref().and_then(|t| t.core.as_ref()),
+            deck: deck.as_slice(),
+        };
+
         use frontline_core::infantry_fighting::{Mode, WeaponInput};
         if input.len() != 5 || (input[2] != 0.0 && input[2] != 1.0) {
             return Array::new();
@@ -2316,6 +2398,7 @@ impl ActorStateCore {
             &mut collision.bind_mut().core,
             &mut visibility.bind_mut().core,
             &mut rng.bind_mut().core,
+            ground,
         ) {
             Ok(r) => {
                 let route = r.route.map_or_else(Array::new, |r| {
@@ -2665,6 +2748,7 @@ impl ActorStateCore {
         terrain: Gd<crate::terrain::TerrainCore>,
         mut collision: Gd<crate::collision_index::CollisionIndexCore>,
         mut rng: Gd<crate::simulation_random::SimulationRandomCore>,
+        deck: PackedByteArray,
     ) -> Array<Variant> {
         let Some(muzzle) = crate::vehicle::muzzle_profile(&muzzle) else {
             return Array::new();
@@ -2691,6 +2775,7 @@ impl ActorStateCore {
             terrain,
             &mut collision.bind_mut().core,
             &mut rng.bind_mut().core,
+            deck.as_slice(),
         ) {
             Ok(s) => varray![
                 vector(s.from),
@@ -2846,12 +2931,20 @@ impl ActorStateCore {
         vehicle: u32,
         boat: bool,
         planner: Gd<crate::path_planner::PathPlannerCore>,
+        terrain: Option<Gd<crate::terrain::TerrainCore>>,
+        deck: PackedByteArray,
     ) -> Array<Variant> {
+        let terrain = terrain.as_ref().map(|t| t.bind());
+        let ground = frontline_core::traversal::Ground {
+            terrain: terrain.as_ref().and_then(|t| t.core.as_ref()),
+            deck: deck.as_slice(),
+        };
+
         let planner = planner.bind();
         let Some(nav) = planner.core.as_ref() else {
             return Array::new();
         };
-        match self.core.dismount(vehicle, boat, nav) {
+        match self.core.dismount(vehicle, boat, nav, ground) {
             Ok(None) => varray![false, 0, Vector3::ZERO, Vector3::ZERO, false],
             Ok(Some(d)) => varray![
                 true,
@@ -2872,14 +2965,22 @@ impl ActorStateCore {
         boat: bool,
         planner: Gd<crate::path_planner::PathPlannerCore>,
         units: Gd<crate::spatial::SpatialIndexCore>,
+        terrain: Option<Gd<crate::terrain::TerrainCore>>,
+        deck: PackedByteArray,
     ) -> i32 {
+        let terrain = terrain.as_ref().map(|t| t.bind());
+        let ground = frontline_core::traversal::Ground {
+            terrain: terrain.as_ref().and_then(|t| t.core.as_ref()),
+            deck: deck.as_slice(),
+        };
+
         let planner = planner.bind();
         let units = units.bind();
         let (Some(nav), Some(units)) = (planner.core.as_ref(), units.core.as_ref()) else {
             return -1;
         };
         self.core
-            .dismount_due(vehicle, dt, lift, boat, nav, units)
+            .dismount_due(vehicle, dt, lift, boat, nav, units, ground)
             .map_or(-1, i32::from)
     }
     #[func]
@@ -2911,13 +3012,21 @@ impl ActorStateCore {
         &mut self,
         helicopter: u32,
         planner: Gd<crate::path_planner::PathPlannerCore>,
+        terrain: Option<Gd<crate::terrain::TerrainCore>>,
+        deck: PackedByteArray,
     ) -> i64 {
+        let terrain = terrain.as_ref().map(|t| t.bind());
+        let ground = frontline_core::traversal::Ground {
+            terrain: terrain.as_ref().and_then(|t| t.core.as_ref()),
+            deck: deck.as_slice(),
+        };
+
         let nav = planner.bind();
         let Some(nav) = nav.core.as_ref() else {
             return -1;
         };
         self.core
-            .release_sling(helicopter, nav)
+            .release_sling(helicopter, nav, ground)
             .map_or(-1, |v| i64::from(v.unwrap_or(0)))
     }
     #[func]
@@ -2925,12 +3034,20 @@ impl ActorStateCore {
         &mut self,
         cargo: u32,
         planner: Gd<crate::path_planner::PathPlannerCore>,
+        terrain: Option<Gd<crate::terrain::TerrainCore>>,
+        deck: PackedByteArray,
     ) -> Array<Variant> {
+        let terrain = terrain.as_ref().map(|t| t.bind());
+        let ground = frontline_core::traversal::Ground {
+            terrain: terrain.as_ref().and_then(|t| t.core.as_ref()),
+            deck: deck.as_slice(),
+        };
+
         let nav = planner.bind();
         let Some(nav) = nav.core.as_ref() else {
             return Array::new();
         };
-        match self.core.drop_sling(cargo, nav) {
+        match self.core.drop_sling(cargo, nav, ground) {
             Ok(drop) => varray![vector(drop.position), drop.damage, drop.impact],
             Err(_) => Array::new(),
         }

@@ -118,11 +118,23 @@ pub fn transcript() -> Vec<u8> {
             assert_eq!(events, bp.tick(&mut b.context(), &|_| false).unwrap());
             a.geometry
                 .navigation
-                .process_paths(&mut a.actors, 3, a.now, &mut a.rng)
+                .process_paths(
+                    &mut a.actors,
+                    3,
+                    a.now,
+                    &mut a.rng,
+                    frontline_core::traversal::Ground::new(&a.geometry.terrain, &a.geometry.deck),
+                )
                 .unwrap();
             b.geometry
                 .navigation
-                .process_paths(&mut b.actors, 3, b.now, &mut b.rng)
+                .process_paths(
+                    &mut b.actors,
+                    3,
+                    b.now,
+                    &mut b.rng,
+                    frontline_core::traversal::Ground::new(&b.geometry.terrain, &b.geometry.deck),
+                )
                 .unwrap();
             assert_eq!(ap, bp);
             assert_eq!(

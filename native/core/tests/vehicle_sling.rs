@@ -45,6 +45,49 @@ fn pair() -> Actors {
 }
 
 #[test]
+fn releasing_cargo_uses_elevation_and_fall_damage_uses_height_above_ground() {
+    use frontline_core::{terrain::Terrain, traversal::Ground};
+    let mut terrain = Terrain::blank(64).unwrap();
+    assert!(terrain.set_landform(vec![20.0; 17 * 17]));
+    terrain.heights.fill(20.0);
+    let nav = PathPlanner::new(64).unwrap();
+    for release in [false, true] {
+        let mut heli = pair().vehicle(1).unwrap().clone();
+        heli.sling_cargo = 2;
+        let mut cargo = pair().vehicle(2).unwrap().clone();
+        cargo.slung_by = 1;
+        cargo.position = Vector3::new(3.0, 25.0, 2.0);
+        let mut actors = Actors::from_entries(
+            3,
+            vec![
+                Actor::Vehicle(Box::new(heli)),
+                Actor::Vehicle(Box::new(cargo)),
+            ],
+        )
+        .unwrap();
+        if release {
+            assert_eq!(
+                actors
+                    .release_sling(1, &nav, Ground::new(&terrain, &[]))
+                    .unwrap(),
+                Some(2)
+            );
+        } else {
+            let fall = actors
+                .drop_sling(2, &nav, Ground::new(&terrain, &[]))
+                .unwrap();
+            assert!((fall.damage - 1000.0 / 6.0).abs() < 1e-10);
+            assert!(fall.impact);
+        }
+        assert_eq!(
+            actors.vehicle(2).unwrap().position,
+            Vector3::new(3.0, 20.0, 2.0)
+        );
+        assert_eq!(actors.vehicle(2).unwrap().slung_by, 0);
+    }
+}
+
+#[test]
 fn sling_orders_and_hooking_update_both_owned_vehicles() {
     let mut actors = pair();
     assert!(actors.order_sling(1, 2, spec()).unwrap());
@@ -119,13 +162,23 @@ fn release_grounds_cargo_and_clears_both_links() {
     let mut actors = pair();
     actors.hook_sling(1, 2, spec()).unwrap();
     actors.step_sling(1, 0.1, 2.2).unwrap();
-    assert_eq!(actors.release_sling(1, &nav).unwrap(), Some(2));
+    assert_eq!(
+        actors
+            .release_sling(1, &nav, frontline_core::traversal::Ground::default())
+            .unwrap(),
+        Some(2)
+    );
     assert_eq!(actors.vehicle(1).unwrap().sling_cargo, 0);
     let v = actors.vehicle(2).unwrap();
     assert_eq!(v.slung_by, 0);
     assert_eq!(v.position.y, 0.0);
     assert_eq!(v.velocity, Vector3::ZERO);
-    assert_eq!(actors.release_sling(1, &nav).unwrap(), None);
+    assert_eq!(
+        actors
+            .release_sling(1, &nav, frontline_core::traversal::Ground::default())
+            .unwrap(),
+        None
+    );
 }
 
 #[test]
@@ -139,12 +192,16 @@ fn destroyed_heli_and_missing_cargo_release_the_surviving_link() {
     assert!(!missing.step_sling(1, 0.1, 2.2).unwrap());
     assert_eq!(missing.vehicle(1).unwrap().sling_cargo, 0);
     actors.remove(1).unwrap();
-    let drop = actors.drop_sling(2, &nav).unwrap();
+    let drop = actors
+        .drop_sling(2, &nav, frontline_core::traversal::Ground::default())
+        .unwrap();
     assert!((drop.damage - 1000.0 * 6.8 / 30.0).abs() < 1e-4);
     assert!(drop.impact);
     assert_eq!(drop.position.y, 0.0);
     assert_eq!(actors.vehicle(2).unwrap().slung_by, 0);
-    let landed = actors.drop_sling(2, &nav).unwrap();
+    let landed = actors
+        .drop_sling(2, &nav, frontline_core::traversal::Ground::default())
+        .unwrap();
     assert!(!landed.impact);
     assert_eq!(landed.damage, 0.0);
 }

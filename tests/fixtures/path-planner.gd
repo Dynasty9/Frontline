@@ -38,7 +38,7 @@ func _ready() -> void:
 				# Performance counters are excluded from authoritative state.
 				reference.path_cache_hits -= hits
 				var bad := saved.duplicate()
-				bad[4] = 2
+				bad[4] = 3
 				assert(not actual._planner.restore(bad))
 				assert(actual._planner.checkpoint() == saved)
 			for query in 24:

@@ -147,7 +147,7 @@ class OriginalDutyman extends Dutyman:
 					backwards = false
 					act = Act.CARRY
 					cas.position = position - _last_dir * 1.15
-					cas.position.y = 0.0
+					cas.position.y = world.ground_y(cas.position)
 					cas.rotation.y = Defs.yaw_of(-_last_dir)
 				if not moved:
 					var c := cas
@@ -163,8 +163,10 @@ class OriginalDutyman extends Dutyman:
 					return
 				var md := Defs.dir_of(partner.rotation.y)
 				var want := partner.position - md * 2.3
-				position = position.lerp(want, 1.0 - exp(-dt * 10.0))
-				position.y = 0.0
+				var next := position.lerp(want, 1.0 - exp(-dt * 10.0))
+				if world.nav.can_step(position, next):
+					position = next
+				position.y = world.ground_y(position)
 				rotation.y = partner.rotation.y
 				act = Act.CARRY
 
@@ -189,10 +191,12 @@ class OriginalDutyman extends Dutyman:
 				var d := Defs.flat(p.position - position)
 				if d.length() > 2.3:
 					var np := position + d.normalized() * minf(d.length() - 2.0, 1.9 * dt)
-					if world.nav.walkable(np):
+					if world.nav.can_step(position, np):
 						position = np
 					else:
-						position = position.lerp(p.position, 0.02)
+						var next := position.lerp(p.position, 0.02)
+						if world.nav.can_step(position, next):
+							position = next
 					act = Act.WALK
 				else:
 					act = Act.SHOOT if world.rng.randf() < 0.0 else Act.IDLE

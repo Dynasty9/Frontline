@@ -134,7 +134,7 @@ func _ready() -> void:
 				var result: Array
 				if trial % 4 == 1 and step == 0:
 					st._destroyed(trial % 8 == 1)
-					result = actors.destroy_structure(20, trial % 8 == 1, w.time, st.is_player_building(), w.nav._planner, queue._native, random._backend)
+					result = actors.destroy_structure(20, trial % 8 == 1, w.time, st.is_player_building(), w.nav._planner, queue._native, random._backend, w.nav._path_ground(), w.nav._path_deck())
 				else:
 					var source: Entity = w.entities[[3, 2, 1][trial % 3]] if trial % 5 else null
 					var blame := [-2, 1, "v9", 0] if trial % 5 == 0 else []
@@ -142,7 +142,7 @@ func _ready() -> void:
 					var amount: float = [17.1, 31.7, 70.0, 300.0][step]
 					st.take_damage(amount, source)
 					result = actors.damage_structure(20, PackedFloat64Array([amount, w.time, int(st.is_player_building()), 55.0 if w.fires else -1.0]),
-						InfantryState.entity_id(source), blame, w.nav._planner, queue._native, random._backend)
+						InfantryState.entity_id(source), blame, w.nav._planner, queue._native, random._backend, w.nav._path_ground(), w.nav._path_deck())
 				assert(result.size() == 3, "Rejected structure damage")
 				var journal := []
 				for event: Array in result[1]:

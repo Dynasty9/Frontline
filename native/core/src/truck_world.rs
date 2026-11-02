@@ -193,6 +193,7 @@ impl Context<'_> {
                 &self.geometry.navigation.planner,
                 &self.geometry.terrain,
                 &traffic,
+                &self.geometry.deck,
             )?;
             self.geometry.refresh_vehicle_collision(v, profile.hull)?;
         }

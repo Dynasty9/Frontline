@@ -105,11 +105,11 @@ func _ready() -> void:
 		assert(units.rebuild_units(actors))
 		for step in 4:
 			var before := v.requests
-			var due: int = actors.dismount_due(1, 0.1, v.base() == "lift_heli", v.is_boat(), w.nav._planner, units)
+			var due: int = actors.dismount_due(1, 0.1, v.base() == "lift_heli", v.is_boat(), w.nav._planner, units, w.nav._path_ground(), w.nav._path_deck())
 			v._dismount_check(0.1)
 			assert(due == int(v.requests > before), "Dismount schedule %d/%d" % [trial, step])
 			compare_owned(v, actors, core, "schedule %d/%d" % [trial, step])
-		var result: Array = actors.dismount(1, v.is_boat(), w.nav._planner)
+		var result: Array = actors.dismount(1, v.is_boat(), w.nav._planner, w.nav._path_ground(), w.nav._path_deck())
 		assert(result.size() == 5)
 		v.exit_passengers()
 		assert(bool(result[0]) == w.stats.has("dismount"))

@@ -33,6 +33,14 @@ use std::path::PathBuf;
 #[path = "fixtures/landform.rs"]
 mod landform;
 
+#[path = "fixtures/traversal.rs"]
+mod traversal;
+
+#[test]
+fn terrain_aware_routes_and_interruptions_are_identical_across_platforms() {
+    golden("traversal", &traversal::transcript());
+}
+
 #[test]
 fn elevated_ground_queries_and_craters_are_identical_across_platforms() {
     golden("landform", &landform::transcript());
@@ -452,6 +460,7 @@ fn shared_route_completions_are_identical_across_platforms() {
                     id: u64::from(id),
                     destination,
                     vehicle: true,
+                    tracked: false,
                     team: -1,
                     care,
                 }
@@ -478,7 +487,13 @@ fn shared_route_completions_are_identical_across_platforms() {
             }
             assert!(nav.update_hierarchy((tick + trial as usize) % 3));
             let completed = nav
-                .process_paths(&mut actors, (tick % 4) + 1, tick as f64 * 0.17, &mut rng)
+                .process_paths(
+                    &mut actors,
+                    (tick % 4) + 1,
+                    tick as f64 * 0.17,
+                    &mut rng,
+                    frontline_core::traversal::Ground::new(&terrain, &[]),
+                )
                 .unwrap();
             bytes.extend_from_slice(&(completed.len() as u32).to_le_bytes());
             bytes.extend_from_slice(&rng.state().to_le_bytes());
@@ -886,6 +901,8 @@ fn shared_navigation_is_identical_across_platforms() {
                     vehicle,
                     query % 3 - 1,
                     if query == 3 { 0.0 } else { 1.0 },
+                    false,
+                    frontline_core::traversal::Ground::new(&terrain, &[]),
                 );
                 bytes.extend_from_slice(&(path.len() as u32).to_le_bytes());
                 for p in path {
@@ -955,7 +972,15 @@ fn fire_escape_is_identical_across_platforms() {
             }
             let mut rng = SimulationRandom::new(73241 + trial as u64);
             for now in [9.99, 10.0, 12.499, 12.5] {
-                let out = s.flee_fire(Vector3::ZERO, now, &nav, &mut rng).unwrap();
+                let out = s
+                    .flee_fire(
+                        Vector3::ZERO,
+                        now,
+                        &nav,
+                        &mut rng,
+                        frontline_core::traversal::Ground::default(),
+                    )
+                    .unwrap();
                 block(&mut bytes, format!("{out:?}").as_bytes());
                 block(&mut bytes, &s.checkpoint().unwrap());
                 bytes.extend_from_slice(&rng.state().to_le_bytes());
@@ -1477,7 +1502,16 @@ fn prisoner_capture_and_delivery_are_identical_across_platforms() {
                 a.remove(12);
                 a.remove(11);
             }
-            events(&mut bytes, a.arrive_infantry_prison(2, 11.0, &nav).unwrap());
+            events(
+                &mut bytes,
+                a.arrive_infantry_prison(
+                    2,
+                    11.0,
+                    &nav,
+                    frontline_core::traversal::Ground::default(),
+                )
+                .unwrap(),
+            );
             block(&mut bytes, &a.checkpoint().unwrap());
             bytes.extend_from_slice(&rng.state().to_le_bytes());
         }
@@ -1564,6 +1598,7 @@ fn retained_vehicle_losses_are_identical_across_platforms() {
                     &mut squads,
                     |_| (Some(120), false),
                     &mut rng,
+                    frontline_core::traversal::Ground::default(),
                 )
                 .unwrap();
             for h in hits {
@@ -1637,6 +1672,7 @@ fn retained_vehicle_losses_are_identical_across_platforms() {
                     &mut next,
                     &nav,
                     &mut rng,
+                    frontline_core::traversal::Ground::default(),
                 )
                 .unwrap();
             bytes.push(u8::from(crew.attempted));
@@ -1818,6 +1854,7 @@ fn retained_structure_damage_is_identical_across_platforms() {
                         &nav,
                         &mut queue,
                         &mut rng,
+                        frontline_core::traversal::Ground::default(),
                     )
                 } else {
                     actors.damage_structure(
@@ -1835,6 +1872,7 @@ fn retained_structure_damage_is_identical_across_platforms() {
                         &nav,
                         &mut queue,
                         &mut rng,
+                        frontline_core::traversal::Ground::default(),
                     )
                 }
                 .unwrap();
@@ -2290,6 +2328,7 @@ fn hidden_infantry_transitions_are_identical_across_platforms() {
                         &nav,
                         &mut squads,
                         &mut rng,
+                        frontline_core::traversal::Ground::default(),
                     )
                     .unwrap()
                 } else {
@@ -3035,6 +3074,7 @@ fn completed_infantry_actions_are_identical_across_platforms() {
                             },
                         },
                         &mut rng,
+                        frontline_core::traversal::Ground::default(),
                     )
                     .unwrap();
                 bytes.extend_from_slice(&[out.cancel_path as u8, out.speech.unwrap_or(255)]);
@@ -3632,6 +3672,7 @@ fn retained_infantry_reflexes_are_identical_across_platforms() {
                         &nav,
                         &mut collision,
                         &mut rng,
+                        frontline_core::traversal::Ground::default(),
                     )
                     .unwrap();
                 bytes.extend_from_slice(&[out.handled as u8, out.cancel_path as u8, out.leaf]);
@@ -4344,7 +4385,14 @@ fn retained_infantry_logistics_is_identical_across_platforms() {
                     bytes.extend_from_slice(&r.entity.to_le_bytes());
                     point(&mut bytes, r.route.job.destination);
                     bytes.extend_from_slice(&r.route.revision.to_le_bytes());
-                    let r = a.arrive_infantry_supply(id, 120, &nav).unwrap();
+                    let r = a
+                        .arrive_infantry_supply(
+                            id,
+                            120,
+                            &nav,
+                            frontline_core::traversal::Ground::default(),
+                        )
+                        .unwrap();
                     bytes.extend_from_slice(&[
                         u8::from(r.missing),
                         u8::from(r.spoke),
@@ -4509,6 +4557,7 @@ fn retained_infantry_weapon_sequence_is_identical_across_platforms() {
                     &mut collision,
                     &mut visibility,
                     &mut rng,
+                    frontline_core::traversal::Ground::default(),
                 )
                 .unwrap();
             bytes.extend_from_slice(&[
@@ -5437,7 +5486,16 @@ fn vehicle_cannon_geometry_and_impacts_are_identical_across_platforms() {
         let mut rng = SimulationRandom::new(trial as u64 + 137);
         for i in 0..3 {
             let shot = a
-                .fire_vehicle_cannon(1, 2, 7.1 + i as f64, p, &terrain, &mut collision, &mut rng)
+                .fire_vehicle_cannon(
+                    1,
+                    2,
+                    7.1 + i as f64,
+                    p,
+                    &terrain,
+                    &mut collision,
+                    &mut rng,
+                    &[],
+                )
                 .unwrap();
             point(&mut bytes, shot.from);
             point(&mut bytes, shot.blast.position);
@@ -5755,7 +5813,15 @@ fn shared_transport_exits_are_identical_across_platforms() {
         for step in 0..4 {
             bytes.push(u8::from(
                 actors
-                    .dismount_due(1, 0.1, false, trial % 4 == 1, &nav, &units)
+                    .dismount_due(
+                        1,
+                        0.1,
+                        false,
+                        trial % 4 == 1,
+                        &nav,
+                        &units,
+                        frontline_core::traversal::Ground::default(),
+                    )
                     .unwrap(),
             ));
             block(&mut bytes, &actors.checkpoint().unwrap());
@@ -5763,7 +5829,15 @@ fn shared_transport_exits_are_identical_across_platforms() {
                 actors = Actors::restore(&actors.checkpoint().unwrap()).unwrap();
             }
         }
-        match actors.dismount(1, trial % 4 == 1, &nav).unwrap() {
+        match actors
+            .dismount(
+                1,
+                trial % 4 == 1,
+                &nav,
+                frontline_core::traversal::Ground::default(),
+            )
+            .unwrap()
+        {
             Some(order) => {
                 bytes.push(1);
                 bytes.extend_from_slice(&order.squad.to_le_bytes());
@@ -6093,10 +6167,17 @@ fn paired_sling_motion_and_drops_are_identical_across_platforms() {
             }
         }
         if trial % 2 == 0 {
-            assert_eq!(actors.release_sling(1, &nav).unwrap(), Some(2));
+            assert_eq!(
+                actors
+                    .release_sling(1, &nav, frontline_core::traversal::Ground::default())
+                    .unwrap(),
+                Some(2)
+            );
         } else {
             actors.remove(1).unwrap();
-            let drop = actors.drop_sling(2, &nav).unwrap();
+            let drop = actors
+                .drop_sling(2, &nav, frontline_core::traversal::Ground::default())
+                .unwrap();
             point(&mut bytes, drop.position);
             bytes.extend_from_slice(&drop.damage.to_le_bytes());
             bytes.push(u8::from(drop.impact));
@@ -6155,7 +6236,7 @@ fn vehicle_flight_momentum_and_orbits_are_identical_across_platforms() {
                 v.uav_destination = Some(Vector3::new(-17.3, 0.0, 15.7));
             }
             if trial % 5 == 0 {
-                v.fly_uav(dt, 20.0, 16.0, p).unwrap();
+                v.fly_uav(dt, 20.0, 16.0, p, &terrain, &deck).unwrap();
             } else {
                 bytes.push(u8::from(
                     v.fly_to(
@@ -6252,8 +6333,15 @@ fn vehicle_crews_preserve_orders_and_random_choices_across_platforms() {
             let mut outputs = Vec::new();
             if trial % 8 == 2 && step == 2 {
                 outputs.push(
-                    v.crew_threat(now, Vector3::new(19.3, 0.0, -27.1), profile, &nav, &mut rng)
-                        .unwrap(),
+                    v.crew_threat(
+                        now,
+                        Vector3::new(19.3, 0.0, -27.1),
+                        profile,
+                        &nav,
+                        &mut rng,
+                        frontline_core::traversal::Ground::default(),
+                    )
+                    .unwrap(),
                 );
             }
             if step == 32 {
@@ -6267,7 +6355,16 @@ fn vehicle_crews_preserve_orders_and_random_choices_across_platforms() {
                 fob,
                 mission: trial % 3 == 0,
             };
-            outputs.push(v.crew_think(now, profile, perception, &nav).unwrap());
+            outputs.push(
+                v.crew_think(
+                    now,
+                    profile,
+                    perception,
+                    &nav,
+                    frontline_core::traversal::Ground::default(),
+                )
+                .unwrap(),
+            );
             for out in outputs {
                 match out.route {
                     Route::None => bytes.push(0),
@@ -6378,11 +6475,11 @@ fn vehicle_driving_and_recovery_are_identical_across_platforms() {
                 v.brain_hold = true;
             }
             if profile.supply {
-                v.follow_truck_route(dt, profile, &nav, &terrain, &traffic)
+                v.follow_truck_route(dt, profile, &nav, &terrain, &traffic, &[])
                     .unwrap();
             } else {
                 let out = v
-                    .drive_ground(dt, profile, None, &nav, &terrain, &traffic, &mut rng)
+                    .drive_ground(dt, profile, None, &nav, &terrain, &traffic, &mut rng, &[])
                     .unwrap();
                 bytes.extend_from_slice(&[u8::from(out.unstuck), u8::from(out.shove)]);
                 match out.route {
@@ -7233,7 +7330,12 @@ fn retained_infantry_casualties_are_identical_across_platforms() {
                         None
                     }
                     6 => {
-                        s.unhide(Vector3::new(4.2, -1.3, 2.7), &nav).unwrap();
+                        s.unhide(
+                            Vector3::new(4.2, -1.3, 2.7),
+                            &nav,
+                            frontline_core::traversal::Ground::default(),
+                        )
+                        .unwrap();
                         None
                     }
                     7 => {
@@ -7362,8 +7464,23 @@ fn retained_infantry_execution_is_identical_across_platforms() {
                 let stage = s.alive_stage(dt, random).unwrap();
                 let mut out = vec![stage as u8];
                 match stage {
-                    Stage::Dazed => s.dazed_tick(dt, None, &nav, random).unwrap(),
-                    Stage::Dive => s.dive_tick(dt, 100.0 + tick as f64 * dt, &nav).unwrap(),
+                    Stage::Dazed => s
+                        .dazed_tick(
+                            dt,
+                            None,
+                            &nav,
+                            random,
+                            frontline_core::traversal::Ground::default(),
+                        )
+                        .unwrap(),
+                    Stage::Dive => s
+                        .dive_tick(
+                            dt,
+                            100.0 + tick as f64 * dt,
+                            &nav,
+                            frontline_core::traversal::Ground::default(),
+                        )
+                        .unwrap(),
                     Stage::Action => {
                         let effect = s.action_tick(related, random).unwrap();
                         block(
@@ -7481,7 +7598,14 @@ fn retained_infantry_commands_are_identical_across_platforms() {
         };
         let mount = (s.emplacement.structure != 0).then_some(Vector3::new(2.1, 0.0, 3.7));
         let before = s.checkpoint().unwrap();
-        let result = s.command(order, &nav, mount).unwrap();
+        let result = s
+            .command(
+                order,
+                &nav,
+                mount,
+                frontline_core::traversal::Ground::default(),
+            )
+            .unwrap();
         bytes.extend_from_slice(&[u8::from(result.accepted), u8::from(result.cancel_path)]);
         match result.release {
             None => bytes.push(0),
@@ -7502,7 +7626,17 @@ fn retained_infantry_commands_are_identical_across_platforms() {
         }
         block(&mut bytes, &s.checkpoint().unwrap());
         let mut resumed = Infantry::restore(&before).unwrap();
-        assert_eq!(resumed.command(order, &nav, mount).unwrap(), result);
+        assert_eq!(
+            resumed
+                .command(
+                    order,
+                    &nav,
+                    mount,
+                    frontline_core::traversal::Ground::default()
+                )
+                .unwrap(),
+            result
+        );
         assert_eq!(resumed, s);
     }
     golden("infantry_commands", &bytes);
@@ -8189,7 +8323,15 @@ fn infantry_duties_are_identical_across_platforms() {
             out.extend_from_slice(&carried.casualty_yaw.to_le_bytes());
             point(
                 &mut out,
-                duties::follow_bearer(position, casualty, yaw, dt).unwrap(),
+                duties::follow_bearer(
+                    position,
+                    casualty,
+                    yaw,
+                    dt,
+                    &nav,
+                    frontline_core::traversal::Ground::default(),
+                )
+                .unwrap(),
             );
             let action = duty
                 .captor(case % 11 != 0, position, casualty, tick % 2 == 0)
@@ -8212,6 +8354,7 @@ fn infantry_duties_are_identical_across_platforms() {
                 },
                 &nav,
                 &mut rng,
+                frontline_core::traversal::Ground::default(),
             )
             .unwrap();
             position = guard.position;
@@ -8289,6 +8432,7 @@ fn infantry_medicine_is_identical_across_platforms() {
                     mount: (case % 3 == 0).then_some((patient, 0.3)),
                 },
                 &nav,
+                frontline_core::traversal::Ground::default(),
             )
             .unwrap();
             position = pose.position;
@@ -8313,6 +8457,7 @@ fn infantry_medicine_is_identical_across_platforms() {
                     Vector3::Z,
                     (case % 2 == 0).then_some(Vector3::Z * 19.0),
                     &nav,
+                    frontline_core::traversal::Ground::default(),
                 )
                 .unwrap(),
             );
@@ -8941,6 +9086,7 @@ fn house_and_opening_choices_are_identical_across_platforms() {
             &contacts,
             &[mate],
             &nav,
+            frontline_core::traversal::Ground::default(),
         )
         .unwrap();
         let indices = choice
@@ -8949,7 +9095,11 @@ fn house_and_opening_choices_are_identical_across_platforms() {
         for v in indices {
             out.extend_from_slice(&v.to_le_bytes());
         }
-        point(&mut out, nav.nearest_walkable(p).unwrap());
+        point(
+            &mut out,
+            nav.nearest_walkable(p, frontline_core::traversal::Ground::default())
+                .unwrap(),
+        );
     }
     golden("breach_selection", &out);
 }
@@ -9167,7 +9317,18 @@ fn infantry_controller_numeric_contract() {
             bytes.extend_from_slice(&[out.stage as u8, out.flinch_ended as u8]);
             match out.stage {
                 Stage::Dazed => shock.dazed_timer -= dt,
-                Stage::Dive => position = c.dive(position, 0.0, dt, &nav).unwrap().position,
+                Stage::Dive => {
+                    position = c
+                        .dive(
+                            position,
+                            0.0,
+                            dt,
+                            &nav,
+                            frontline_core::traversal::Ground::default(),
+                        )
+                        .unwrap()
+                        .position
+                }
                 Stage::Think => {
                     bytes.push(c.scan_due(trial % 3 != 0).unwrap() as u8);
                 }
@@ -9506,7 +9667,14 @@ fn infantry_shock_transcripts_are_identical_across_platforms() {
             }
             if shock.flinging {
                 let result = shock
-                    .fling_step(state.position, life, 1.0 / 30.0, &nav, &mut rng)
+                    .fling_step(
+                        state.position,
+                        life,
+                        1.0 / 30.0,
+                        &nav,
+                        &mut rng,
+                        frontline_core::traversal::Ground::default(),
+                    )
                     .unwrap();
                 state.position = result.position;
                 if result.dazed {
@@ -9518,7 +9686,14 @@ fn infantry_shock_transcripts_are_identical_across_platforms() {
             } else if shock.dazed_timer > 0.0 {
                 let mount = (seed % 2 == 0).then_some((Vector3::ZERO, 0.61));
                 state = shock
-                    .stagger(state, 1.0 / 30.0, mount, &nav, &mut rng)
+                    .stagger(
+                        state,
+                        1.0 / 30.0,
+                        mount,
+                        &nav,
+                        &mut rng,
+                        frontline_core::traversal::Ground::default(),
+                    )
                     .unwrap();
             }
             if tick == 100 {

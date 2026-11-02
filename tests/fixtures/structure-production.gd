@@ -15,7 +15,7 @@ func product(key: String, birth: Node) -> Array:
 	if Defs.SQUADS.has(key): return [0,squad_profile(key,birth)]
 	if Defs.UPGRADES.has(key): return [2,key,String(Defs.UPGRADES[key].name)]
 	var d: Dictionary = Defs.VEHICLES[key]; var base := String(d.get("base","tank")); var carry := String(d.get("carry",""))
-	return [1,key,base,float(d.hp),d.get("size",Vector3(2.3,2.6,6.0)),int(d.get("atgm",[0,0.0])[0]),int(d.get("sam",[0,0.0])[0]),String(d.name),int(d.cap),bool(d.get("air",false)),bool(d.get("supply",false)),bool(d.get("auto",false)),squad_profile(carry,birth) if Defs.SQUADS.has(carry) else []]
+	return [1,key,base,float(d.hp),d.get("size",Vector3(2.3,2.6,6.0)),int(d.get("atgm",[0,0.0])[0]),int(d.get("sam",[0,0.0])[0]),String(d.name),int(d.cap),bool(d.get("air",false)),bool(d.get("supply",false)),bool(d.get("auto",false)),squad_profile(carry,birth) if Defs.SQUADS.has(carry) else [],bool(d.get("tracked",false))]
 
 func rules_state(w: World) -> Array:
 	var peers := PackedInt64Array(); var away := []
@@ -94,7 +94,10 @@ func _ready() -> void:
 				for e: Entity in w.entities.values():
 					ids.append(e.eid); ids.append(0 if e is Soldier else 2 if e is Vehicle else 1)
 					if e is Soldier: movement.compare_actor(e,actors,label + "/%d" % e.eid)
-					elif e is Vehicle: assert(vehicle.restore(actors.actor_state(e.eid))); assert(vehicle.values() == VehicleState.capture(e),"vehicle " + label)
+					elif e is Vehicle:
+						assert(vehicle.restore(actors.actor_state(e.eid)))
+						var expected := VehicleState.capture(e); var actual: Array = vehicle.values()
+						for group in expected.size(): assert(expected[group] == actual[group], "vehicle %s group=%d expected=%s actual=%s" % [label, group, expected[group], actual[group]])
 					else: assert(structure_state.restore(actors.actor_state(e.eid))); assert(structure_state.values() == StructureState.capture(e),"building " + label)
 				assert(actors.identities() == ids,"registry " + label)
 				qs.clear()

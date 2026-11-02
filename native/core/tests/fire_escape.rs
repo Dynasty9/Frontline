@@ -24,7 +24,13 @@ fn fire_clears_shelter_and_routes_away_without_changing_the_task() {
     let mut rng = SimulationRandom::new(823);
     s.duty.kind = Task::Heal;
     let out = s
-        .flee_fire(Vector3::Z * 3.0, 10.0, &nav, &mut rng)
+        .flee_fire(
+            Vector3::Z * 3.0,
+            10.0,
+            &nav,
+            &mut rng,
+            frontline_core::traversal::Ground::default(),
+        )
         .unwrap()
         .unwrap();
     assert_eq!(out.route.job.destination, -Vector3::Z * 7.0);
@@ -37,11 +43,23 @@ fn fire_clears_shelter_and_routes_away_without_changing_the_task() {
     assert_eq!(s.fight.flee_fire_at, 12.5);
     assert_eq!(s.cover.evaluate_at, 12.0);
     assert!(s
-        .flee_fire(Vector3::ZERO, 12.499, &nav, &mut rng)
+        .flee_fire(
+            Vector3::ZERO,
+            12.499,
+            &nav,
+            &mut rng,
+            frontline_core::traversal::Ground::default()
+        )
         .unwrap()
         .is_none());
     assert!(s
-        .flee_fire(Vector3::ZERO, 12.5, &nav, &mut rng)
+        .flee_fire(
+            Vector3::ZERO,
+            12.5,
+            &nav,
+            &mut rng,
+            frontline_core::traversal::Ground::default()
+        )
         .unwrap()
         .is_some());
 }
@@ -66,7 +84,13 @@ fn casualty_transport_and_committed_duties_do_not_draw_or_change_state() {
         let mut rng = SimulationRandom::new(823);
         let cursor = rng.state();
         assert!(s
-            .flee_fire(Vector3::ZERO, 10.0, &nav, &mut rng)
+            .flee_fire(
+                Vector3::ZERO,
+                10.0,
+                &nav,
+                &mut rng,
+                frontline_core::traversal::Ground::default()
+            )
             .unwrap()
             .is_none());
         assert_eq!(s.checkpoint().unwrap(), before);
@@ -92,7 +116,13 @@ fn random_direction_and_forced_shouting_keep_their_draw_order() {
                 None
             };
             let out = s
-                .flee_fire(Vector3::X * distance, 10.0, &nav, &mut rng)
+                .flee_fire(
+                    Vector3::X * distance,
+                    10.0,
+                    &nav,
+                    &mut rng,
+                    frontline_core::traversal::Ground::default(),
+                )
                 .unwrap()
                 .unwrap();
             assert_eq!(out.speech, speech);
@@ -125,7 +155,8 @@ fn rejected_routes_do_not_consume_randomness_or_partly_clear_cover() {
                 Vector3::ZERO,
                 if mode == 2 { f64::NAN } else { 10.0 },
                 &nav,
-                &mut rng
+                &mut rng,
+                frontline_core::traversal::Ground::default()
             )
             .is_err());
         assert_eq!(s.checkpoint().unwrap(), before);

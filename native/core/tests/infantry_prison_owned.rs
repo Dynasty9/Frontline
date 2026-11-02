@@ -237,7 +237,13 @@ fn destroyed_destination_holds_prisoner_in_place_without_retasking_reassigned_gu
     f.a.remove(10);
     f.edit(1, |c| c.duty.kind = Task::Heal);
     let guard = f.a.soldier(1).unwrap().clone();
-    f.a.arrive_infantry_prison(2, 11.0, &f.nav).unwrap();
+    f.a.arrive_infantry_prison(
+        2,
+        11.0,
+        &f.nav,
+        frontline_core::traversal::Ground::default(),
+    )
+    .unwrap();
     let p = f.a.soldier(2).unwrap();
     assert_eq!(p.control.hidden, HiddenReason::Held);
     assert_eq!(p.control.hidden_timer, 38.0);
@@ -251,6 +257,14 @@ fn failed_arrival_does_not_release_guard_or_change_prisoner() {
     let mut f = Field::new(0);
     f.edit(1, |c| c.orders.path_revision = i64::MAX as u64);
     let before = f.a.checkpoint().unwrap();
-    assert!(f.a.arrive_infantry_prison(2, 10.0, &f.nav).is_err());
+    assert!(f
+        .a
+        .arrive_infantry_prison(
+            2,
+            10.0,
+            &f.nav,
+            frontline_core::traversal::Ground::default()
+        )
+        .is_err());
     assert_eq!(before, f.a.checkpoint().unwrap());
 }

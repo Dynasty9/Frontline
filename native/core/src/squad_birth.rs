@@ -81,7 +81,10 @@ impl Context<'_> {
                 .geometry
                 .navigation
                 .planner
-                .nearest_walkable(spawn.position + off)
+                .nearest_walkable(
+                    spawn.position + off,
+                    crate::traversal::Ground::new(&self.geometry.terrain, &self.geometry.deck),
+                )
                 .ok_or("invalid squad birth position")?;
             let soldier = Infantry::from_spawn(
                 (first + i as u64) as u32,

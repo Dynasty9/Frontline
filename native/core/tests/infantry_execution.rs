@@ -66,12 +66,25 @@ fn dazed_and_diving_stages_precede_actions_and_expired_flinches_allow_thought() 
     s.cover.at_cover = true;
     assert_eq!(s.alive_stage(0.1, &mut rng).unwrap(), Stage::Dazed);
     assert_eq!(s.action.remaining, 0.05);
-    s.dazed_tick(0.1, None, &nav, &mut rng).unwrap();
+    s.dazed_tick(
+        0.1,
+        None,
+        &nav,
+        &mut rng,
+        frontline_core::traversal::Ground::default(),
+    )
+    .unwrap();
     assert_eq!(s.activity, 0);
     assert!(!s.cover.at_cover);
     assert_eq!(s.cover.evaluate_at, 0.0);
     assert_eq!(s.alive_stage(0.1, &mut rng).unwrap(), Stage::Dive);
-    s.dive_tick(0.1, 100.0, &nav).unwrap();
+    s.dive_tick(
+        0.1,
+        100.0,
+        &nav,
+        frontline_core::traversal::Ground::default(),
+    )
+    .unwrap();
     assert_eq!(s.posture, Posture::Prone);
     assert_eq!(s.cover.evaluate_at, 100.8);
     assert_eq!(s.alive_stage(0.1, &mut rng).unwrap(), Stage::Action);
@@ -137,7 +150,14 @@ fn landing_and_flinching_apply_the_actor_pose_and_keep_busy_rescuers_working() {
     s.shock.velocity = Vector3::new(1.0, -1.0, 0.0);
     s.motion.position.y = 0.01;
     s.duty.timer = 3.0;
-    let (dazed, speech) = s.fling_tick(0.1, &nav, &mut rng).unwrap();
+    let (dazed, speech) = s
+        .fling_tick(
+            0.1,
+            &nav,
+            &mut rng,
+            frontline_core::traversal::Ground::default(),
+        )
+        .unwrap();
     assert!(dazed);
     assert_eq!(s.motion.position.y, 0.0);
     assert_eq!(s.duty.timer, 0.0);
@@ -215,12 +235,24 @@ fn interruption_stages_resume_identically_from_full_actor_checkpoints() {
             let stage = s.alive_stage(1.0 / 30.0, rng).unwrap();
             let effect = match stage {
                 Stage::Dazed => {
-                    s.dazed_tick(1.0 / 30.0, None, &nav, rng).unwrap();
+                    s.dazed_tick(
+                        1.0 / 30.0,
+                        None,
+                        &nav,
+                        rng,
+                        frontline_core::traversal::Ground::default(),
+                    )
+                    .unwrap();
                     None
                 }
                 Stage::Dive => {
-                    s.dive_tick(1.0 / 30.0, 100.0 + tick as f64 / 30.0, &nav)
-                        .unwrap();
+                    s.dive_tick(
+                        1.0 / 30.0,
+                        100.0 + tick as f64 / 30.0,
+                        &nav,
+                        frontline_core::traversal::Ground::default(),
+                    )
+                    .unwrap();
                     None
                 }
                 Stage::Action => Some(s.action_tick(None, rng).unwrap()),

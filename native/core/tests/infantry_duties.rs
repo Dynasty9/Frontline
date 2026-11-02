@@ -90,6 +90,7 @@ fn stretcher_waits_for_the_pair_and_surviving_bearer_takes_over() {
 
 #[test]
 fn carried_casualties_and_followers_keep_original_ground_offsets() {
+    let nav = PathPlanner::new(64).unwrap();
     let pose = duties::carry_pose(
         Vector3::new(4.0, 2.0, 3.0),
         0.0,
@@ -111,12 +112,27 @@ fn carried_casualties_and_followers_keep_original_ground_offsets() {
     )
     .unwrap();
     assert_eq!(pair.casualty, Vector3::new(4.0, 0.0, 4.15));
-    let following =
-        duties::follow_bearer(Vector3::new(1.0, 3.0, 1.0), Vector3::ZERO, 0.0, 0.1).unwrap();
+    let following = duties::follow_bearer(
+        Vector3::new(1.0, 3.0, 1.0),
+        Vector3::ZERO,
+        0.0,
+        0.1,
+        &nav,
+        frontline_core::traversal::Ground::default(),
+    )
+    .unwrap();
     assert_eq!(following.y, 0.0);
     assert!(following.z > 1.0 && following.z < 2.3);
     assert_eq!(
-        duties::follow_bearer(Vector3::new(1.0, 3.0, 1.0), Vector3::ZERO, 0.0, 0.0).unwrap(),
+        duties::follow_bearer(
+            Vector3::new(1.0, 3.0, 1.0),
+            Vector3::ZERO,
+            0.0,
+            0.0,
+            &nav,
+            frontline_core::traversal::Ground::default()
+        )
+        .unwrap(),
         Vector3::new(1.0, 0.0, 1.0)
     );
 }
@@ -150,17 +166,35 @@ fn captor_keeps_idle_rng_draw_and_blocked_ground_fallback() {
         dt: 0.1,
         mount: None,
     };
-    let idle = duties::guard(input, &nav, &mut rng).unwrap();
+    let idle = duties::guard(
+        input,
+        &nav,
+        &mut rng,
+        frontline_core::traversal::Ground::default(),
+    )
+    .unwrap();
     assert!(!idle.walking && idle.position == Vector3::ZERO);
     expected.randf();
     assert_eq!(rng, expected);
     input.prisoner = Vector3::X * 4.0;
-    let walking = duties::guard(input, &nav, &mut rng).unwrap();
+    let walking = duties::guard(
+        input,
+        &nav,
+        &mut rng,
+        frontline_core::traversal::Ground::default(),
+    )
+    .unwrap();
     assert!(walking.walking && walking.position.x > 0.0);
     assert_eq!(rng, expected);
     assert!(nav.load_cells(&[3; 4096], &[0; 4096], &[0; 4096]));
-    let blocked = duties::guard(input, &nav, &mut rng).unwrap();
-    assert_eq!(blocked.position, Vector3::X * 0.08);
+    let blocked = duties::guard(
+        input,
+        &nav,
+        &mut rng,
+        frontline_core::traversal::Ground::default(),
+    )
+    .unwrap();
+    assert_eq!(blocked.position, Vector3::ZERO);
     assert!(blocked.walking);
     assert_eq!(rng, expected);
 }

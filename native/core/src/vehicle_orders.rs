@@ -72,9 +72,13 @@ impl Context<'_> {
                 care,
                 revision,
             } => {
-                self.geometry
-                    .navigation
-                    .submit_vehicle(v, destination, care, revision)?;
+                self.geometry.navigation.submit_vehicle(
+                    v,
+                    destination,
+                    care,
+                    revision,
+                    crate::traversal::Ground::new(&self.geometry.terrain, &self.geometry.deck),
+                )?;
             }
         }
         Ok(())

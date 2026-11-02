@@ -284,7 +284,13 @@ fn saved_attack_continues_with_identical_orders_speech_routes_and_random_draws()
         for s in [&mut a, &mut b] {
             s.geometry
                 .navigation
-                .process_paths(&mut s.actors, 3, s.now, &mut s.rng)
+                .process_paths(
+                    &mut s.actors,
+                    3,
+                    s.now,
+                    &mut s.rng,
+                    frontline_core::traversal::Ground::new(&s.geometry.terrain, &s.geometry.deck),
+                )
                 .unwrap();
         }
         assert_eq!(pa, pb);

@@ -249,6 +249,10 @@ impl Context<'_> {
                                 route,
                                 self.now,
                                 self.rng,
+                                crate::traversal::Ground::new(
+                                    &self.geometry.terrain,
+                                    &self.geometry.deck,
+                                ),
                             )?;
                         }
                     }
@@ -259,6 +263,10 @@ impl Context<'_> {
                             route,
                             self.now,
                             self.rng,
+                            crate::traversal::Ground::new(
+                                &self.geometry.terrain,
+                                &self.geometry.deck,
+                            ),
                         )?;
                     }
                     Custody::Intelligence(mode) => {

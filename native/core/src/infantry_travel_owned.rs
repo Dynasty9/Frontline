@@ -463,7 +463,12 @@ impl Actors {
                 if moved {
                     self.choose_infantry_activity(id, true, now, squads);
                 } else {
-                    let result = self.arrive_infantry_supply(id, ammunition.unwrap(), world.nav)?;
+                    let result = self.arrive_infantry_supply(
+                        id,
+                        ammunition.unwrap(),
+                        world.nav,
+                        crate::traversal::Ground::new(world.terrain, world.deck),
+                    )?;
                     if result.spoke {
                         events.push(Event::GotAmmo);
                     }

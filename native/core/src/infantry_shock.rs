@@ -3,6 +3,7 @@ use crate::infantry_vitals::Life;
 use crate::path_planner::PathPlanner;
 use crate::random::SimulationRandom;
 use crate::state_codec::{Reader, Writer};
+use crate::traversal::Ground;
 use crate::vector::{normalized, turn_yaw, Vector3};
 
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
@@ -87,22 +88,27 @@ impl InfantryShock {
         dt: f64,
         nav: &PathPlanner,
         rng: &mut SimulationRandom,
+        ground: Ground<'_>,
     ) -> Result<Landing, &'static str> {
-        if !self.valid() || !point(position) || !step(dt) {
+        if !self.valid() || !point(position) || !step(dt) || !ground.valid_for(nav.side()) {
             return Err("invalid infantry fling step");
         }
         let mut next = position + self.velocity * dt as f32;
-        if nav.kind_at(next, false) == 3 && next.y < 1.5 {
+        if ground.too_deep(next)
+            || (!nav.step_clear(position, next, false, false, ground)
+                && f64::from(next.y) < ground.height(next) + 1.5)
+        {
             self.velocity.x = (-f64::from(self.velocity.x) * 0.2) as f32;
             self.velocity.z = (-f64::from(self.velocity.z) * 0.2) as f32;
             next = position + Vector3::new(0.0, (f64::from(self.velocity.y) * dt) as f32, 0.0);
         }
         self.velocity.y = (f64::from(self.velocity.y) - 20.0 * dt) as f32;
-        let landed = next.y <= 0.0 && self.velocity.y < 0.0;
+        let floor = ground.height(next);
+        let landed = f64::from(next.y) <= floor && self.velocity.y < 0.0;
         let dazed = landed && life == Life::Alive;
         let mut speak = false;
         if landed {
-            next.y = 0.0;
+            next.y = floor as f32;
             self.flinging = false;
             if dazed {
                 self.dazed_timer = f64::from(rng.randf_range(2.5, 5.0));
@@ -152,6 +158,7 @@ impl InfantryShock {
         mount: Option<(Vector3, f64)>,
         nav: &PathPlanner,
         rng: &mut SimulationRandom,
+        ground: Ground<'_>,
     ) -> Result<Stagger, &'static str> {
         if !self.valid()
             || !point(state.position)
@@ -159,6 +166,7 @@ impl InfantryShock {
             || !scalar(state.yaw)
             || !scalar(state.task_timer)
             || !step(dt)
+            || !ground.valid_for(nav.side())
             || mount.is_some_and(|(p, rate)| !point(p) || !scalar(rate) || rate < 0.0)
         {
             return Err("invalid dazed infantry step");
@@ -170,7 +178,7 @@ impl InfantryShock {
             state.direction = random_direction(rng);
         }
         let next = state.position + state.direction * 0.8 * dt as f32;
-        if nav.kind_at(next, false) != 3 {
+        if nav.step_clear(state.position, next, false, false, ground) {
             state.position = next;
         }
         state.yaw = turn_yaw(state.yaw, state.direction, state.position, dt, 2.0, mount);

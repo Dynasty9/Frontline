@@ -19,7 +19,12 @@ pub struct Role {
 impl Context<'_> {
     pub(crate) fn clear_squad_duty(&mut self, id: u32) {
         self.actors
-            .clear_infantry_duty(id, &self.geometry.navigation.planner, self.squads)
+            .clear_infantry_duty(
+                id,
+                &self.geometry.navigation.planner,
+                self.squads,
+                crate::traversal::Ground::new(&self.geometry.terrain, &self.geometry.deck),
+            )
             .unwrap();
     }
     pub(crate) fn duty_route(
@@ -31,9 +36,13 @@ impl Context<'_> {
     ) -> Result<(), &'static str> {
         let s = self.actors.soldier_mut(id).unwrap();
         let route = s.go_to(position, goal, mode)?;
-        self.geometry
-            .navigation
-            .submit_infantry(s, route, self.now, self.rng)?;
+        self.geometry.navigation.submit_infantry(
+            s,
+            route,
+            self.now,
+            self.rng,
+            crate::traversal::Ground::new(&self.geometry.terrain, &self.geometry.deck),
+        )?;
         Ok(())
     }
     pub fn squad_rescue(
@@ -276,7 +285,10 @@ impl Context<'_> {
         self.geometry
             .navigation
             .planner
-            .nearest_walkable(at + direction * radius as f32)
+            .nearest_walkable(
+                at + direction * radius as f32,
+                crate::traversal::Ground::new(&self.geometry.terrain, &self.geometry.deck),
+            )
             .unwrap()
     }
     pub fn squad_engineers(
@@ -488,7 +500,10 @@ impl Context<'_> {
             .geometry
             .navigation
             .planner
-            .nearest_walkable(at + normalized(flat(position - at)) * 3.0)
+            .nearest_walkable(
+                at + normalized(flat(position - at)) * 3.0,
+                crate::traversal::Ground::new(&self.geometry.terrain, &self.geometry.deck),
+            )
             .unwrap();
         let s = self.actors.soldier_mut(soldier).unwrap();
         s.orders.hold_position = at;

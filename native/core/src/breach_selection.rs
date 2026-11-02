@@ -123,7 +123,12 @@ pub fn choose(
     contacts: &[Contact],
     mates: &[Mate],
     nav: &PathPlanner,
+    ground: crate::traversal::Ground<'_>,
 ) -> Result<Option<(usize, usize)>, &'static str> {
+    if !ground.valid_for(nav.side()) {
+        return Err("invalid navigation ground");
+    }
+
     if !point(position)
         || !point(hold)
         || contacts.len() > 100_000
@@ -149,7 +154,7 @@ pub fn choose(
         let mut distance = 1e9;
         for (oi, o) in c.openings.iter().enumerate() {
             let stack = nav
-                .nearest_walkable(stack_spot(position, o.center, o.normal, o.door)?)
+                .nearest_walkable(stack_spot(position, o.center, o.normal, o.door)?, ground)
                 .unwrap();
             let d = f64::from(flat(stack - position).length()) + if o.door { 0.0 } else { 3.0 };
             if d < distance {

@@ -60,6 +60,7 @@ impl Field {
             &self.nav,
             &mut self.squads,
             &mut self.rng,
+            frontline_core::traversal::Ground::default(),
         )
     }
 }

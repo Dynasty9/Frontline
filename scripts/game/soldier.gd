@@ -1078,11 +1078,13 @@ func _alive_timers_native(dt: float) -> bool:
 			_dazed_tick(dt)
 			return false
 		2:
-			out = _controller_core().dive(_controller_values(), position, base_y, dt, world.nav._planner)
+			var old_y := position.y
+			out = _controller_core().dive(_controller_values(), position, base_y, dt, world.nav._planner, world.nav._path_ground(), world.nav._path_deck())
 			assert(out.size() == 3, "Invalid infantry dive")
 			_read_controller(out[0])
 			act = Act.DIVE
 			position = out[1]
+			position.y = maxf(base_y + _ground(), old_y - dt * 3.0)
 			if out[2]:
 				posture = Post.PRONE
 				act = Act.IDLE
@@ -3857,7 +3859,7 @@ func _fling_tick(dt: float) -> void:
 	act = Act.FLUNG
 	if world.settings.get("rust_infantry", false) and ClassDB.class_exists("InfantryShockCore") and world.nav._planner:
 		var state := _shock_state()
-		var result: Array = _shock_core.fling_step(state, position, life, dt, world.nav._planner, world.rng._backend)
+		var result: Array = _shock_core.fling_step(state, position, life, dt, world.nav._planner, world.rng._backend, world.nav._path_ground(), world.nav._path_deck())
 		assert(result.size() == 5, "Invalid infantry fling step")
 		_read_shock_state(result[0])
 		position = result[1]
@@ -3918,7 +3920,7 @@ func _dazed_tick(dt: float) -> void:
 			mount_pos = mounted.mount_pos()
 			mount_rate = deg_to_rad(float({"mg_nest": 55.0, "hmg_nest": 35.0, "mortar_pit": 12.0, "at_post": 20.0}[mounted.skind]))
 		var context := PackedFloat64Array([position.x, position.y, position.z, rotation.y, task_t, dive_dir.x, dive_dir.y, dive_dir.z, dt, mount_pos.x, mount_pos.y, mount_pos.z, mount_rate])
-		var result: Array = _shock_core.stagger(state, context, world.nav._planner, world.rng._backend)
+		var result: Array = _shock_core.stagger(state, context, world.nav._planner, world.rng._backend, world.nav._path_ground(), world.nav._path_deck())
 		assert(result.size() == 5, "Invalid dazed infantry step")
 		_read_shock_state(result[0])
 		position = result[1]
@@ -4379,7 +4381,7 @@ func _safe_spot(w: Soldier) -> Vector3:
 	var anchor: Vector3
 	if _native_medicine() and world.nav._planner:
 		var orders := PackedVector3Array([squad.order_pos]) if squad and squad.members.size() > 0 else PackedVector3Array()
-		var result: PackedVector3Array = _medicine_core().safe_anchor(w.position, away, orders, world.nav._planner)
+		var result: PackedVector3Array = _medicine_core().safe_anchor(w.position, away, orders, world.nav._planner, world.nav._path_ground(), world.nav._path_deck())
 		assert(result.size() == 1, "Invalid casualty shelter anchor")
 		anchor = result[0]
 	else:
@@ -4414,7 +4416,7 @@ func _escort_tick(dt: float) -> void:
 		return
 	var thr := _threat_dir(_threats())
 	if _native_medicine() and world.nav._planner:
-		var result: Array = _medicine_core().escort(position, rotation.y, r.position, thr, dt, _mount_turn(), world.nav._planner)
+		var result: Array = _medicine_core().escort(position, rotation.y, r.position, thr, dt, _mount_turn(), world.nav._planner, world.nav._path_ground(), world.nav._path_deck())
 		assert(result.size() == 4, "Invalid escort movement")
 		if result[0] != position:
 			position = result[0]
@@ -4718,6 +4720,7 @@ func _stretcher_lead(cas: Soldier, partner: Soldier, partner_ok: bool, dt: float
 		assert(pose.size() == 3, "Invalid casualty carrying pose")
 		rotation.y = float(pose[0])
 		cas.position = pose[1]
+		if not solo: cas.position.y = world.ground_y(cas.position)
 		cas.rotation.y = float(pose[2])
 	elif solo:
 		_face(-_last_dir, dt, 10.0)
@@ -4745,7 +4748,7 @@ func _stretcher_takeover(cas: Soldier) -> void:
 
 func _stretcher_follow(partner: Soldier, dt: float) -> void:
 	if _native_duties():
-		var pose: PackedVector3Array = _duties_core().follow_bearer(position, partner.position, partner.rotation.y, dt)
+		var pose: PackedVector3Array = _duties_core().follow_bearer(position, partner.position, partner.rotation.y, dt, world.nav._planner, world.nav._path_ground(), world.nav._path_deck())
 		assert(pose.size() == 1, "Invalid stretcher follower pose")
 		position = pose[0]
 	else:
@@ -4823,7 +4826,7 @@ func _captor_claim(p: Soldier) -> void:
 
 func _captor_guard(p: Soldier, dt: float) -> void:
 	if _native_duties():
-		var pose: Array = _duties_core().guard(position, rotation.y, p.position, dt, _mount_turn(), world.nav._planner, world.rng._backend)
+		var pose: Array = _duties_core().guard(position, rotation.y, p.position, dt, _mount_turn(), world.nav._planner, world.rng._backend, world.nav._path_ground(), world.nav._path_deck())
 		assert(pose.size() == 3, "Invalid prisoner guard pose")
 		position = pose[0]
 		rotation.y = float(pose[1])

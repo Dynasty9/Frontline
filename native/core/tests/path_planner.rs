@@ -7,6 +7,7 @@ fn job(id: u64) -> PathJob {
         id,
         destination: Vector3::new(20.0, 0.0, 20.0),
         vehicle: false,
+        tracked: false,
         team: -1,
         care: 0.0,
     }
@@ -16,13 +17,70 @@ fn job(id: u64) -> PathJob {
 fn vehicle_recovery_keeps_the_three_cell_rim_used_by_navigation() {
     let nav = PathPlanner::new(64).unwrap();
     let edge = Vector3::new(7.354009, 0.0, -29.74264);
-    assert_eq!(nav.nearest_walkable(edge), Some(edge));
     assert_eq!(
-        nav.nearest_walkable_for(edge, true),
+        nav.nearest_walkable(edge, frontline_core::traversal::Ground::default()),
+        Some(edge)
+    );
+    assert_eq!(
+        nav.nearest_walkable_for(
+            edge,
+            true,
+            false,
+            frontline_core::traversal::Ground::default()
+        ),
         Some(Vector3::new(6.5, 0.0, -28.5))
     );
     let open = Vector3::new(7.354009, 0.0, -28.74264);
-    assert_eq!(nav.nearest_walkable_for(open, true), Some(open));
+    assert_eq!(
+        nav.nearest_walkable_for(
+            open,
+            true,
+            false,
+            frontline_core::traversal::Ground::default()
+        ),
+        Some(open)
+    );
+}
+
+#[test]
+fn recovery_uses_live_water_and_reaches_shore_beyond_the_short_ring() {
+    use frontline_core::terrain::{Terrain, BASE, SHALLOW};
+    use frontline_core::traversal::Ground;
+    let mut terrain = Terrain::blank(64).unwrap();
+    terrain.heights.fill(-2.0);
+    for z in 0..64 {
+        for x in 8..56 {
+            terrain.layers[BASE][z * 64 + x] = SHALLOW;
+        }
+    }
+    // The water can change before the queued grid repair reaches this cell.
+    let mut nav = PathPlanner::new(64).unwrap();
+    let p = Vector3::new(0.5, 0.0, 0.5);
+    let ground = Ground::new(&terrain, &[]);
+    let shore = Vector3::new(24.5, 0.0, -23.5);
+    assert_eq!(nav.nearest_walkable(p, ground), Some(shore));
+    assert_eq!(
+        nav.nearest_walkable_for(p, true, false, ground),
+        Some(shore)
+    );
+    let mut deck = vec![0; 4096];
+    deck[terrain.index(p)] = 1;
+    assert_eq!(
+        nav.nearest_walkable(p, Ground::new(&terrain, &deck)),
+        Some(p)
+    );
+    nav.set_cell(terrain.index(p), 0, 3, 0);
+    deck[terrain.index(p) - 1] = 1;
+    assert_ne!(
+        nav.nearest_walkable_for(p, true, false, Ground::new(&terrain, &deck)),
+        Some(p)
+    );
+    assert_eq!(
+        nav.nearest_walkable_for(p, true, true, Ground::new(&terrain, &deck)),
+        Some(p)
+    );
+    assert_eq!(nav.nearest_walkable(p, Ground::new(&terrain, &[1])), None);
+    assert_eq!(nav.nearest_walkable_for(p, false, true, ground), None);
 }
 
 #[test]
@@ -76,7 +134,16 @@ fn corridors_resume_with_fire_and_terrain_edits_and_team_specific_danger() {
     build_all(&mut [&mut graph], 1);
     let a = Vector3::new(-20.0, 0.0, -20.0);
     let b = Vector3::new(20.0, 0.0, 20.0);
-    let initial = planner.find_path(&mut graph, a, b, false, -1, 0.0);
+    let initial = planner.find_path(
+        &mut graph,
+        a,
+        b,
+        false,
+        -1,
+        0.0,
+        false,
+        frontline_core::traversal::Ground::default(),
+    );
     assert_eq!(initial.last(), Some(&b));
     assert!(initial.len() < 10);
     let checkpoint = planner.checkpoint();
@@ -98,8 +165,26 @@ fn corridors_resume_with_fire_and_terrain_edits_and_team_specific_danger() {
         let target = b + Vector3::new((tick % 3) as f32, 0.0, 0.0);
         for team in [-1, 0, 1] {
             assert_eq!(
-                planner.find_path(&mut graph, a, target, false, team, 1.0),
-                resumed.find_path(&mut restored_graph, a, target, false, team, 1.0)
+                planner.find_path(
+                    &mut graph,
+                    a,
+                    target,
+                    false,
+                    team,
+                    1.0,
+                    false,
+                    frontline_core::traversal::Ground::default()
+                ),
+                resumed.find_path(
+                    &mut restored_graph,
+                    a,
+                    target,
+                    false,
+                    team,
+                    1.0,
+                    false,
+                    frontline_core::traversal::Ground::default()
+                )
             );
         }
         assert_eq!(planner.checkpoint(), resumed.checkpoint());
@@ -108,16 +193,40 @@ fn corridors_resume_with_fire_and_terrain_edits_and_team_specific_danger() {
     let start = Vector3::new(-30.0, 0.0, -30.0);
     let end = start + Vector3::new(4.0, 0.0, 0.0);
     planner.set_cell(2 * 64 + 4, 0, 0, 1);
-    assert!(!planner.line_free(start, end, false));
-    assert!(planner.line_free(start, end, true));
+    assert!(!planner.line_free(
+        start,
+        end,
+        false,
+        false,
+        frontline_core::traversal::Ground::default()
+    ));
+    assert!(planner.line_free(
+        start,
+        end,
+        true,
+        false,
+        frontline_core::traversal::Ground::default()
+    ));
     planner.set_cell(2 * 64 + 2, 0, 0, 1);
     assert!(
-        planner.line_free(start, end, false),
+        planner.line_free(
+            start,
+            end,
+            false,
+            false,
+            frontline_core::traversal::Ground::default()
+        ),
         "A soldier already in a fire can escape it"
     );
     planner.set_cell(2 * 64 + 4, 1, 0, 1);
     assert!(
-        !planner.line_free(start, end, false),
+        !planner.line_free(
+            start,
+            end,
+            false,
+            false,
+            frontline_core::traversal::Ground::default()
+        ),
         "Smoothing cannot skip a vaultable wall"
     );
 }
@@ -139,10 +248,75 @@ fn planner_rejects_malformed_checkpoint_and_unbounded_geometry() {
     let mut bad = bytes;
     bad.push(0);
     assert!(PathPlanner::restore(&bad).is_err());
-    assert!(!planner.line_free(Vector3::ZERO, Vector3::splat(f32::MAX), false));
-    assert!(!planner.line_free(Vector3::ZERO, Vector3::splat(f32::NAN), false));
+    assert!(!planner.line_free(
+        Vector3::ZERO,
+        Vector3::splat(f32::MAX),
+        false,
+        false,
+        frontline_core::traversal::Ground::default()
+    ));
+    assert!(!planner.line_free(
+        Vector3::ZERO,
+        Vector3::splat(f32::NAN),
+        false,
+        false,
+        frontline_core::traversal::Ground::default()
+    ));
     let mut graph = Hierarchy::new(32, 16).unwrap();
     assert!(planner
-        .find_path(&mut graph, Vector3::ZERO, Vector3::ONE, false, 0, 1.0)
+        .find_path(
+            &mut graph,
+            Vector3::ZERO,
+            Vector3::ONE,
+            false,
+            0,
+            1.0,
+            false,
+            frontline_core::traversal::Ground::default()
+        )
         .is_empty());
+}
+
+#[test]
+fn blocked_goals_require_exact_foot_clearance_and_cannot_cross_a_wall() {
+    use frontline_core::navigation_scene::NavigationScene;
+    use frontline_core::structure::{Part, Structure};
+    use frontline_core::terrain::Terrain;
+    use frontline_core::traversal::Ground;
+    let terrain = Terrain::blank(32).unwrap();
+    let mut nav = NavigationScene::new(&terrain, &[], 16).unwrap();
+    let mut wall = Structure {
+        id: 1,
+        kind: "house_wall".into(),
+        position: Vector3::new(0.6, 0., 0.),
+        parts: vec![Part {
+            position: Vector3::ZERO,
+            size: Vector3::new(0.6, 2., 4.),
+            yaw: 0.,
+            infantry: 3,
+            vehicle: 3,
+            cover: true,
+            collision: true,
+            door: false,
+        }],
+        ..Default::default()
+    };
+    nav.add_structure(&mut wall, &terrain, &[]).unwrap();
+    assert!(nav.finalize(1));
+    let ground = Ground::new(&terrain, &[]);
+    let a = Vector3::new(-0.5, 0., 0.5);
+    let padding = Vector3::new(0.1, 0., 0.5);
+    let inside = Vector3::new(0.6, 0., 0.5);
+    assert_eq!(
+        nav.planner
+            .find_path(&mut nav.infantry, a, padding, false, -1, 0., false, ground)
+            .last(),
+        Some(&padding)
+    );
+    assert_ne!(
+        nav.planner
+            .find_path(&mut nav.infantry, a, inside, false, -1, 0., false, ground)
+            .last(),
+        Some(&inside)
+    );
 }

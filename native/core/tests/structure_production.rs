@@ -195,6 +195,7 @@ fn vehicles_keep_their_passenger_squads_when_held_for_a_returning_commander() {
                     hp: 500.,
                     hull: Vector3::new(2., 2., 4.),
                     missiles: [3, 4],
+                    tracked: false,
                 },
                 name: "Carrier",
                 cap: 2,

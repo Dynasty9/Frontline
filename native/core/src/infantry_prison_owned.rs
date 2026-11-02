@@ -304,10 +304,12 @@ impl Actors {
         });
         let mut out = Vec::new();
         let Some(p) = p else {
-            let result =
-                self.soldier_mut(id)
-                    .unwrap()
-                    .command(Command::ReturnToHold, world.nav, None)?;
+            let result = self.soldier_mut(id).unwrap().command(
+                Command::ReturnToHold,
+                world.nav,
+                None,
+                crate::traversal::Ground::new(world.terrain, world.deck),
+            )?;
             if let Some(route) = result.route {
                 out.push(Event::Movement(id, Movement::Route(route)));
             }
@@ -396,6 +398,7 @@ impl Actors {
                     },
                     world.nav,
                     rng,
+                    crate::traversal::Ground::new(world.terrain, world.deck),
                 )?;
                 let s = self.soldier_mut(id).unwrap();
                 s.motion.position = pose.position;
@@ -411,7 +414,12 @@ impl Actors {
         id: u32,
         now: f64,
         nav: &PathPlanner,
+        ground: crate::traversal::Ground<'_>,
     ) -> Result<Vec<Event>, &'static str> {
+        if !ground.valid_for(nav.side()) {
+            return Err("invalid navigation ground");
+        }
+
         if !now.is_finite() || now.abs() > 1e12 - 100.0 {
             return Err("invalid prisoner arrival time");
         }
@@ -430,7 +438,7 @@ impl Actors {
             .cloned();
         p.links.captor = 0;
         if let Some(c) = &mut guard {
-            let result = c.command(Command::ReturnToHold, nav, None)?;
+            let result = c.command(Command::ReturnToHold, nav, None, ground)?;
             if let Some(route) = result.route {
                 out.push(Event::Movement(captor, Movement::Route(route)));
             }

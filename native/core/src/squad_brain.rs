@@ -294,7 +294,10 @@ impl Context<'_> {
                 .geometry
                 .navigation
                 .planner
-                .nearest_walkable(position + offset)
+                .nearest_walkable(
+                    position + offset,
+                    crate::traversal::Ground::new(&self.geometry.terrain, &self.geometry.deck),
+                )
                 .unwrap();
             self.command(id, Command::Retreat { position })?;
         }
@@ -350,7 +353,10 @@ impl Context<'_> {
                 .geometry
                 .navigation
                 .planner
-                .nearest_walkable(c + direction * 55.0)
+                .nearest_walkable(
+                    c + direction * 55.0,
+                    crate::traversal::Ground::new(&self.geometry.terrain, &self.geometry.deck),
+                )
                 .unwrap();
             let limit = self.geometry.terrain.half() - 10.0;
             if f64::from(p.x.abs()) >= limit || f64::from(p.z.abs()) >= limit {
@@ -486,7 +492,10 @@ impl Context<'_> {
             .geometry
             .navigation
             .planner
-            .nearest_walkable(rally)
+            .nearest_walkable(
+                rally,
+                crate::traversal::Ground::new(&self.geometry.terrain, &self.geometry.deck),
+            )
             .unwrap();
         let mut events = vec![];
         self.regroup(i, &mut events);
@@ -562,7 +571,10 @@ impl Context<'_> {
                 self.geometry
                     .navigation
                     .planner
-                    .nearest_walkable(c)
+                    .nearest_walkable(
+                        c,
+                        crate::traversal::Ground::new(&self.geometry.terrain, &self.geometry.deck),
+                    )
                     .unwrap()
             };
             movement(out, self.order_defend(id, at, ed, false)?);
@@ -645,7 +657,10 @@ impl Context<'_> {
                 .geometry
                 .navigation
                 .planner
-                .nearest_walkable(at)
+                .nearest_walkable(
+                    at,
+                    crate::traversal::Ground::new(&self.geometry.terrain, &self.geometry.deck),
+                )
                 .unwrap();
             // Facing uses the observed threat, before the destination snaps to the grid.
             let face = normalized(flat(near.unwrap() - c));
@@ -714,7 +729,10 @@ impl Context<'_> {
                     .geometry
                     .navigation
                     .planner
-                    .nearest_walkable(c)
+                    .nearest_walkable(
+                        c,
+                        crate::traversal::Ground::new(&self.geometry.terrain, &self.geometry.deck),
+                    )
                     .unwrap();
                 let ed = self.squad_enemy_direction(i);
                 movement(&mut out, self.order_defend(id, at, ed, false)?);
@@ -736,7 +754,10 @@ impl Context<'_> {
                     .geometry
                     .navigation
                     .planner
-                    .nearest_walkable(c - ed * 90.0)
+                    .nearest_walkable(
+                        c - ed * 90.0,
+                        crate::traversal::Ground::new(&self.geometry.terrain, &self.geometry.deck),
+                    )
                     .unwrap();
                 movement(&mut out, self.order_move(id, at, -ed, 2, true)?);
             }
@@ -963,6 +984,7 @@ impl Context<'_> {
                 true,
                 self.rng,
                 &mut decision,
+                crate::traversal::Ground::new(&self.geometry.terrain, &self.geometry.deck),
             )?;
             if let Some(route) = decision.route {
                 self.geometry.navigation.submit_infantry(
@@ -970,6 +992,7 @@ impl Context<'_> {
                     route,
                     self.now,
                     self.rng,
+                    crate::traversal::Ground::new(&self.geometry.terrain, &self.geometry.deck),
                 )?;
             }
             let cue = (self.rng.randi() % 4) as u8;
@@ -991,7 +1014,10 @@ impl Context<'_> {
                     .geometry
                     .navigation
                     .planner
-                    .nearest_walkable(at + along * (side * 0.9) + door.normal * 0.3)
+                    .nearest_walkable(
+                        at + along * (side * 0.9) + door.normal * 0.3,
+                        crate::traversal::Ground::new(&self.geometry.terrain, &self.geometry.deck),
+                    )
                     .unwrap();
                 let s = self.actors.soldier_mut(buddy).unwrap();
                 s.orders.hold_position = slot;
@@ -999,9 +1025,13 @@ impl Context<'_> {
                 s.orders.leash = 2.0;
                 s.cover.at_cover = false;
                 let route = s.go_to(slot, Goal::Slot, 1)?;
-                self.geometry
-                    .navigation
-                    .submit_infantry(s, route, self.now, self.rng)?;
+                self.geometry.navigation.submit_infantry(
+                    s,
+                    route,
+                    self.now,
+                    self.rng,
+                    crate::traversal::Ground::new(&self.geometry.terrain, &self.geometry.deck),
+                )?;
             }
             out.push(Event::Stat("clear_house"));
             return Ok(true);

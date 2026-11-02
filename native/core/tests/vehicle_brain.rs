@@ -58,7 +58,15 @@ fn withdrawal_prioritizes_damage_but_respects_player_and_mission_limits() {
     v.assault = true;
     let mut s = scene();
     s.fob = Some((9, Vector3::X * 80.0));
-    let out = v.crew_think(3.0, profile(), s, &nav).unwrap();
+    let out = v
+        .crew_think(
+            3.0,
+            profile(),
+            s,
+            &nav,
+            frontline_core::traversal::Ground::default(),
+        )
+        .unwrap();
     assert_eq!(out.event, Some(CrewEvent::Withdraw(9)));
     assert_eq!(v.brain_state, "withdraw");
     assert!(!v.assault && v.path_pending && !v.brain_order);
@@ -70,7 +78,18 @@ fn withdrawal_prioritizes_damage_but_respects_player_and_mission_limits() {
         v.brain_overruled = overruled;
         s.mission = !overruled;
         s.fob = Some((9, Vector3::X * 200.0));
-        assert_eq!(v.crew_think(3.0, profile(), s, &nav).unwrap().event, None);
+        assert_eq!(
+            v.crew_think(
+                3.0,
+                profile(),
+                s,
+                &nav,
+                frontline_core::traversal::Ground::default()
+            )
+            .unwrap()
+            .event,
+            None
+        );
         assert_eq!(v.brain_state, "");
     }
 }
@@ -90,7 +109,15 @@ fn crew_repairs_at_the_fob_and_turns_towards_the_nearest_visible_threat() {
         fob: Some((10, Vector3::X * 10.0)),
         ..scene()
     };
-    let out = v.crew_think(3.0, profile(), s, &nav).unwrap();
+    let out = v
+        .crew_think(
+            3.0,
+            profile(),
+            s,
+            &nav,
+            frontline_core::traversal::Ground::default(),
+        )
+        .unwrap();
     assert_eq!(out.event, Some(CrewEvent::PatchedUp));
     assert!(v.hp > 800.0);
     assert_eq!(v.brain_state, "");
@@ -109,26 +136,77 @@ fn waiting_for_infantry_has_a_deadline_and_player_orders_do_not_wait() {
     let mut v = vehicle();
     v.assault = true;
     assert_eq!(
-        v.crew_think(10.0, profile(), s, &nav).unwrap().event,
+        v.crew_think(
+            10.0,
+            profile(),
+            s,
+            &nav,
+            frontline_core::traversal::Ground::default()
+        )
+        .unwrap()
+        .event,
         Some(CrewEvent::WaitInfantry)
     );
     assert!(v.brain_hold);
-    v.crew_think(55.0, profile(), s, &nav).unwrap();
+    v.crew_think(
+        55.0,
+        profile(),
+        s,
+        &nav,
+        frontline_core::traversal::Ground::default(),
+    )
+    .unwrap();
     assert!(v.brain_hold);
-    v.crew_think(55.1, profile(), s, &nav).unwrap();
+    v.crew_think(
+        55.1,
+        profile(),
+        s,
+        &nav,
+        frontline_core::traversal::Ground::default(),
+    )
+    .unwrap();
     assert!(!v.brain_hold);
     assert_eq!(v.cooldowns, vec![("push_on".into(), 115.1)]);
-    v.crew_think(115.0, profile(), s, &nav).unwrap();
+    v.crew_think(
+        115.0,
+        profile(),
+        s,
+        &nav,
+        frontline_core::traversal::Ground::default(),
+    )
+    .unwrap();
     assert!(!v.brain_hold);
-    v.crew_think(115.1, profile(), s, &nav).unwrap();
+    v.crew_think(
+        115.1,
+        profile(),
+        s,
+        &nav,
+        frontline_core::traversal::Ground::default(),
+    )
+    .unwrap();
     assert!(v.brain_hold);
     v.owner = 3;
-    v.crew_think(116.0, profile(), s, &nav).unwrap();
+    v.crew_think(
+        116.0,
+        profile(),
+        s,
+        &nav,
+        frontline_core::traversal::Ground::default(),
+    )
+    .unwrap();
     assert!(!v.brain_hold);
     v.owner = -1;
     v.brain_state = "wait".into();
     let saved = v.clone();
-    assert!(v.crew_think(1e12, profile(), s, &nav).is_err());
+    assert!(v
+        .crew_think(
+            1e12,
+            profile(),
+            s,
+            &nav,
+            frontline_core::traversal::Ground::default()
+        )
+        .is_err());
     assert_eq!(v, saved);
 }
 
@@ -153,7 +231,14 @@ fn infantry_support_must_be_alive_and_out_of_its_vehicle() {
         };
         let mut v = vehicle();
         v.assault = true;
-        v.crew_think(10.0, profile(), s, &nav).unwrap();
+        v.crew_think(
+            10.0,
+            profile(),
+            s,
+            &nav,
+            frontline_core::traversal::Ground::default(),
+        )
+        .unwrap();
         assert_eq!(v.brain_hold, riding);
     }
 }
@@ -168,14 +253,28 @@ fn missile_evasion_preserves_pending_attack_orders_across_checkpoints() {
     v.assault = true;
     v.assault_destination = Some(Vector3::X * 42.0);
     let out = v
-        .crew_threat(5.0, Vector3::NEG_Z * 30.0, profile(), &nav, &mut rng)
+        .crew_threat(
+            5.0,
+            Vector3::NEG_Z * 30.0,
+            profile(),
+            &nav,
+            &mut rng,
+            frontline_core::traversal::Ground::default(),
+        )
         .unwrap();
     assert_eq!(out.event, Some(CrewEvent::Evade));
     assert_eq!(v.resume.unwrap().destination, Some(Vector3::X * 40.0));
     let mut restored = Vehicle::restore(&v.checkpoint().unwrap()).unwrap();
     // Pending paths have no points, so the original crew resumes on its next decision.
     for a in [&mut v, &mut restored] {
-        a.crew_think(5.5, profile(), scene(), &nav).unwrap();
+        a.crew_think(
+            5.5,
+            profile(),
+            scene(),
+            &nav,
+            frontline_core::traversal::Ground::default(),
+        )
+        .unwrap();
         assert_eq!(a.brain_state, "");
         assert!(a.assault && a.resume.is_none());
         assert_eq!(a.path_destination, Some(Vector3::X * 42.0));
@@ -192,11 +291,26 @@ fn invalid_or_exhausted_evasion_does_not_lose_the_order_or_random_cursor() {
     let saved = v.clone();
     let before = rng.state();
     assert!(v
-        .crew_threat(5.0, Vector3::NEG_Z * 30.0, profile(), &nav, &mut rng)
+        .crew_threat(
+            5.0,
+            Vector3::NEG_Z * 30.0,
+            profile(),
+            &nav,
+            &mut rng,
+            frontline_core::traversal::Ground::default()
+        )
         .is_err());
     assert_eq!(v, saved);
     assert_eq!(rng.state(), before);
-    assert!(v.crew_think(f64::NAN, profile(), scene(), &nav).is_err());
+    assert!(v
+        .crew_think(
+            f64::NAN,
+            profile(),
+            scene(),
+            &nav,
+            frontline_core::traversal::Ground::default()
+        )
+        .is_err());
     assert_eq!(v, saved);
 }
 
@@ -207,9 +321,17 @@ fn vehicle_recovery_uses_the_vehicle_grid_in_stable_nearest_order() {
     let mut vehicles = vec![0; 32 * 32];
     vehicles[16 * 32 + 16] = 3;
     assert!(nav.load_cells(&infantry, &vehicles, &infantry));
-    assert_eq!(nav.nearest_walkable(Vector3::ZERO), Some(Vector3::ZERO));
     assert_eq!(
-        nav.nearest_walkable_for(Vector3::ZERO, true),
+        nav.nearest_walkable(Vector3::ZERO, frontline_core::traversal::Ground::default()),
+        Some(Vector3::ZERO)
+    );
+    assert_eq!(
+        nav.nearest_walkable_for(
+            Vector3::ZERO,
+            true,
+            false,
+            frontline_core::traversal::Ground::default()
+        ),
         Some(Vector3::new(-0.5, 0.0, -0.5))
     );
 }

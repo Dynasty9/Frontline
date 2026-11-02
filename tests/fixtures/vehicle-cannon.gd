@@ -105,7 +105,7 @@ func _ready() -> void:
 			w.effects.clear()
 			w.combat.blasts.clear()
 			v._fire_cannon()
-			var result: Array = actors.fire_vehicle_cannon(1, 2, w.time, p, g, w.terrain._native, w.combat._collision, random)
+			var result: Array = actors.fire_vehicle_cannon(1, 2, w.time, p, g, w.terrain._native, w.combat._collision, random, w.nav._path_deck())
 			assert(result.size() == 2 and result[1].size() == 1)
 			assert((result[0] as Vector3).distance_to(w.effects[0][1]) < 0.00002)
 			var actual: Array = result[1][0]

@@ -115,9 +115,11 @@ fn recruits_wait_for_the_next_infantry_pass_but_new_vehicles_update_immediately(
     });
 }
 #[test]
-fn queued_empty_prison_route_finishes_custody_before_the_soldier_tick() {
+fn queued_prison_route_finishes_custody_before_the_soldier_tick() {
     fixture::with_profiles(|p| {
         let mut prisoner = soldier(1, 8., Life::Captive);
+        // The arrival point is outside the depot wall, where its entrance would be.
+        prisoner.motion.position.z = 1.5;
         prisoner.links.prison_destination = 30;
         let route = prisoner
             .go_to(prisoner.motion.position, Goal::Prison, 0)

@@ -72,6 +72,7 @@ func _ready() -> void:
 			for x in Nav.N:
 				var i := z * Nav.N + x
 				w.nav.vkind[i] = Nav.SOLID if mode == 5 or (mode == 7 and x in range(67, 69)) else Nav.FREE
+				w.nav.tkind[i] = w.nav.vkind[i]
 				w.terrain.base[i] = [TerrainMap.GROUND, TerrainMap.MUD, TerrainMap.ROAD, TerrainMap.SHALLOW][(z / 8) % 4]
 				w.terrain.trench[i] = int(mode == 8 and trial % 3 == 0)
 		assert(w.terrain._native.configure(Nav.N, [w.terrain.base, w.terrain.crater, w.terrain.rubble, w.terrain.woods, w.terrain.cov, w.terrain.cdir, w.terrain.solid, w.terrain.trench, w.terrain.netted], w.terrain.dh))
@@ -125,10 +126,10 @@ func _ready() -> void:
 				assert(core.load_state(state))
 			var before := int(w.stats.get("veh_unstick", 0))
 			var target := PackedVector3Array([foe.position]) if mode == 8 else PackedVector3Array()
-			var result: Array = core.ground_tick(dt, p, target, w.terrain.in_trench(foe.position), w.nav._planner, w.terrain._native, traffic(w), random, mode == 9)
+			var result: Array = core.ground_tick(dt, p, target, w.terrain.in_trench(foe.position), w.nav._planner, w.terrain._native, traffic(w), random, mode == 9, PackedByteArray())
 			assert(result.size() == 3, "Ground step %d/%d" % [trial, step])
 			if mode == 9:
-				v.route_i = v._follow(v.route, v.route_i, dt, float(v.vdef.speed), false, 1.6)
+				v.route_i = v._follow(v.route, v.route_i, dt, float(v.vdef.speed))
 			else:
 				v._drive(dt)
 			apply_route(v, core, result[0])
@@ -150,9 +151,9 @@ func _ready() -> void:
 				other.position += Defs.dir_of(other.rotation.y) * other.speed * dt
 		var saved: PackedByteArray = core.checkpoint()
 		var cursor: int = random.get_state()
-		assert(core.ground_tick(NAN, p, PackedVector3Array(), false, w.nav._planner, w.terrain._native, [], random, false).is_empty())
+		assert(core.ground_tick(NAN, p, PackedVector3Array(), false, w.nav._planner, w.terrain._native, [], random, false, PackedByteArray()).is_empty())
 		p[1][0] = 2
-		assert(core.ground_tick(0.1, p, PackedVector3Array(), false, w.nav._planner, w.terrain._native, [], random, false).is_empty())
+		assert(core.ground_tick(0.1, p, PackedVector3Array(), false, w.nav._planner, w.terrain._native, [], random, false, PackedByteArray()).is_empty())
 		assert(core.checkpoint() == saved and random.get_state() == cursor, "Rejected driving input must be atomic")
 		w.vehicles.clear()
 		for other in others:

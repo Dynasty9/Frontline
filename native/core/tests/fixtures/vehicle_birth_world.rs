@@ -41,6 +41,7 @@ pub fn transcript() -> Vec<u8> {
                 hp: 200. + i as f64 * 75.,
                 hull: Vector3::new(2.3 + i as f32 * 0.2, 2.6, 6.),
                 missiles: [i as i32, trial as i32],
+                tracked: false,
             };
             let id = geometry
                 .spawn_vehicle(&mut actors, spawn, definition)

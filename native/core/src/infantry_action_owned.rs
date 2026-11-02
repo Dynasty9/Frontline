@@ -91,7 +91,12 @@ impl Actors {
         profile: impl Fn(&Vehicle) -> Defense<'a>,
         rng: &mut SimulationRandom,
         out: &mut Completed,
+        ground: crate::traversal::Ground<'_>,
     ) -> Result<(), &'static str> {
+        if !ground.valid_for(nav.side()) {
+            return Err("invalid navigation ground");
+        }
+
         let Some(target) = self.projectile_warning_target(id)? else {
             return Ok(());
         };
@@ -103,10 +108,14 @@ impl Actors {
         }
         out.events
             .extend(smoke.into_iter().map(|p| Event::Spawn(p.id)));
-        let response =
-            self.vehicle_mut(target)
-                .unwrap()
-                .crew_threat(now, from, defense.crew, nav, rng)?;
+        let response = self.vehicle_mut(target).unwrap().crew_threat(
+            now,
+            from,
+            defense.crew,
+            nav,
+            rng,
+            ground,
+        )?;
         out.stats.push("veh_smoke");
         if response.event == Some(CrewEvent::Evade) {
             out.stats.push("veh_evade");
@@ -129,7 +138,12 @@ impl Actors {
         ammunition: impl Fn(&Infantry) -> (Option<i32>, bool),
         defense: impl Fn(&Vehicle) -> Defense<'a>,
         rng: &mut SimulationRandom,
+        ground: crate::traversal::Ground<'_>,
     ) -> Result<Completed, &'static str> {
+        if !ground.valid_for(nav.side()) {
+            return Err("invalid navigation ground");
+        }
+
         if !now.is_finite()
             || !(0.0..=1e12 - 100.0).contains(&now)
             || !warhead.is_finite()
@@ -353,7 +367,15 @@ impl Actors {
                 s.duty.kind = Task::Pilot;
             }
             if matches!(effect, Action::Launch { .. }) {
-                self.warn_infantry_rocket(spawned, now, nav, defense, &mut random, &mut out)?;
+                self.warn_infantry_rocket(
+                    spawned,
+                    now,
+                    nav,
+                    defense,
+                    &mut random,
+                    &mut out,
+                    ground,
+                )?;
             }
             out.events.extend(later);
         }

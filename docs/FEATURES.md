@@ -1653,6 +1653,11 @@ The retained battlefield now advances infantry, buildings, fire, vehicles, round
 drones, squads and rules in one fixed-step Rust scheduler. Births and destruction
 affect later phases in the same order as the game, and checkpoints retain their
 shared state. Scenery is excluded from the active-building and perception scans.
+Native routes retain separate foot, wheeled and tracked slope limits, bridge
+decks and water depth. Exact wall footprints let soldiers reach cover inside
+planning padding; swept steps prevent stale routes from crossing solid walls or
+newly blocked water. Dives, blast recovery, escorts and stretcher followers use
+the same terrain and clearance rules, including elevated casualty positions.
 The full authoritative Rust server and deterministic
 battle verifier are still in progress; see [RUST_SIMULATION.md](RUST_SIMULATION.md).
 

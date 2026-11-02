@@ -5,6 +5,7 @@ use crate::infantry_vitals::Life;
 use crate::path_planner::PathPlanner;
 use crate::random::SimulationRandom;
 use crate::state_codec::{Reader, Writer};
+use crate::traversal::Ground;
 use crate::vector::Vector3;
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -220,6 +221,7 @@ impl Controller {
         base: f64,
         dt: f64,
         nav: &PathPlanner,
+        ground: Ground<'_>,
     ) -> Result<Dive, &'static str> {
         if !self.valid()
             || !point(position)
@@ -227,6 +229,7 @@ impl Controller {
             || base.abs() > 1_000_000.0
             || !delta(dt)
             || !time(self.dive_timer - dt)
+            || !ground.valid_for(nav.side())
         {
             return Err("invalid infantry dive");
         }
@@ -235,12 +238,13 @@ impl Controller {
             return Err("invalid dive destination");
         }
         self.dive_timer -= dt;
-        let mut position = if nav.kind_at(next, false) != 3 {
-            next
-        } else {
-            position
-        };
-        position.y = base.max(f64::from(position.y) - dt * 3.0) as f32;
+        let mut position =
+            if nav.step_clear(position, next, false, false, ground) && ground.depth(next) <= 0.15 {
+                next
+            } else {
+                position
+            };
+        position.y = (base + ground.height(position)).max(f64::from(position.y) - dt * 3.0) as f32;
         Ok(Dive {
             position,
             finished: self.dive_timer <= 0.0,

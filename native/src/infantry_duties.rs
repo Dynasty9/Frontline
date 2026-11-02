@@ -329,10 +329,27 @@ impl InfantryDutiesCore {
         partner: Vector3,
         yaw: f64,
         dt: f64,
+        planner: Gd<PathPlannerCore>,
+        terrain: Option<Gd<crate::terrain::TerrainCore>>,
+        deck: PackedByteArray,
     ) -> PackedVector3Array {
-        let Ok(pose) =
-            duties::follow_bearer(crate::point(position), crate::point(partner), yaw, dt)
-        else {
+        let planner = planner.bind();
+        let Some(planner) = &planner.core else {
+            return PackedVector3Array::new();
+        };
+        let terrain = terrain.as_ref().map(|t| t.bind());
+        let ground = frontline_core::traversal::Ground {
+            terrain: terrain.as_ref().and_then(|t| t.core.as_ref()),
+            deck: deck.as_slice(),
+        };
+        let Ok(pose) = duties::follow_bearer(
+            crate::point(position),
+            crate::point(partner),
+            yaw,
+            dt,
+            planner,
+            ground,
+        ) else {
             return PackedVector3Array::new();
         };
         [vector(pose)].as_slice().into()
@@ -348,7 +365,15 @@ impl InfantryDutiesCore {
         mounted: PackedFloat64Array,
         planner: Gd<PathPlannerCore>,
         mut rng: Gd<SimulationRandomCore>,
+        terrain: Option<Gd<crate::terrain::TerrainCore>>,
+        deck: PackedByteArray,
     ) -> Array<Variant> {
+        let terrain = terrain.as_ref().map(|t| t.bind());
+        let ground = frontline_core::traversal::Ground {
+            terrain: terrain.as_ref().and_then(|t| t.core.as_ref()),
+            deck: deck.as_slice(),
+        };
+
         let Some(mount) = mount(&mounted) else {
             return Array::new();
         };
@@ -366,6 +391,7 @@ impl InfantryDutiesCore {
             },
             planner,
             &mut rng.bind_mut().core,
+            ground,
         ) else {
             return Array::new();
         };

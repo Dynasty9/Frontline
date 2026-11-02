@@ -195,6 +195,7 @@ impl Context<'_> {
                     defense,
                     self.rng,
                     &mut completed,
+                    crate::traversal::Ground::new(&self.geometry.terrain, &self.geometry.deck),
                 )?;
                 completed.events.push(Ordnance::Launch {
                     position: launch.position,
@@ -218,6 +219,7 @@ impl Context<'_> {
                     &self.geometry.terrain,
                     &mut self.geometry.collision,
                     self.rng,
+                    &self.geometry.deck,
                 )?;
                 out.push(Event::Cannon {
                     vehicle: id,

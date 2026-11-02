@@ -18,7 +18,7 @@ impl WorldGeometryCore {
         definition: Array<Variant>,
     ) -> i64 {
         use frontline_core::vehicle_birth::{Definition, Spawn};
-        if spawn.len() != 4 || definition.len() != 6 {
+        if spawn.len() != 4 || definition.len() != 7 {
             return 0;
         }
         let (
@@ -32,6 +32,7 @@ impl WorldGeometryCore {
             Ok(hull),
             Ok(atgm),
             Ok(sam),
+            Ok(tracked),
         ) = (
             spawn.at(0).try_to::<i8>(),
             spawn.at(1).try_to::<i32>(),
@@ -43,6 +44,7 @@ impl WorldGeometryCore {
             definition.at(3).try_to::<Vector3>(),
             definition.at(4).try_to::<i32>(),
             definition.at(5).try_to::<i32>(),
+            definition.at(6).try_to::<bool>(),
         )
         else {
             return 0;
@@ -64,6 +66,7 @@ impl WorldGeometryCore {
                 hp,
                 hull: crate::point(hull),
                 missiles: [atgm, sam],
+                tracked,
             },
         )
         .map_or(0, i64::from)
@@ -212,6 +215,7 @@ impl WorldGeometryCore {
                     max_jobs as usize,
                     now,
                     &mut rng.bind_mut().core,
+                    frontline_core::traversal::Ground::new(&g.terrain, &g.deck),
                 )
                 .is_ok()
         })

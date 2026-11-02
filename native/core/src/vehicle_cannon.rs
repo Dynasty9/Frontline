@@ -111,8 +111,10 @@ impl Actors {
         terrain: &Terrain,
         collision: &mut CollisionWorld,
         rng: &mut SimulationRandom,
+        deck: &[u8],
     ) -> Result<CannonShot, &'static str> {
-        if !now.is_finite()
+        if (!deck.is_empty() && deck.len() != terrain.n * terrain.n)
+            || !now.is_finite()
             || now.abs() > 1e12
             || [p.damage, p.radius, p.anti_tank, p.size]
                 .into_iter()
@@ -155,7 +157,10 @@ impl Actors {
         let mut position = collision
             .ray(from, end, &[i64::from(vehicle)])
             .map_or(aim, |hit| hit.position);
-        position.y = position.y.max(0.1);
+        let floor = terrain.ground_y(position, deck.get(terrain.index(position)) == Some(&1)) + 0.1;
+        if f64::from(position.y) < floor {
+            position.y = floor as f32;
+        }
         let blast = Explosion {
             position,
             damage: p.damage,

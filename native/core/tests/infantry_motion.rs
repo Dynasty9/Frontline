@@ -156,7 +156,7 @@ fn door_wait_kick_randomness_and_checkpoint_resume_keep_the_same_move() {
         assert!(InfantryMotion::restore(&saved[..n]).is_err());
     }
     let mut bad = saved;
-    bad[4] = 2;
+    bad[4] = 3;
     assert!(InfantryMotion::restore(&bad).is_err());
 }
 
@@ -218,4 +218,66 @@ fn vaulting_slides_and_ground_caches_share_numeric_navigation_and_geometry() {
         .is_err());
     assert_eq!(state, saved);
     assert_eq!(rng, saved_rng);
+}
+
+#[test]
+fn stale_routes_replan_before_crossing_a_blocked_strip() {
+    let mut terrain = Terrain::blank(32).unwrap();
+    for z in 0..32 {
+        terrain.layers[frontline_core::terrain::BASE][z * 32 + 16] = frontline_core::terrain::WATER;
+    }
+    let nav = frontline_core::navigation_scene::NavigationScene::new(&terrain, &[], 16).unwrap();
+    let mut state = InfantryMotion {
+        position: Vector3::new(-2., 0., 0.5),
+        path: vec![Vector3::new(3., 0., 0.5)],
+        ..Default::default()
+    };
+    let before = state.position;
+    let mut i = input();
+    i.dt = 1.;
+    i.speed = 8.;
+    let result = state
+        .step(
+            i,
+            &nav.planner,
+            &terrain,
+            &mut CollisionWorld::default(),
+            &mut SimulationRandom::new(1),
+            &[],
+            &[],
+        )
+        .unwrap();
+    assert_eq!(result.progress, Progress::Repath);
+    assert_eq!(state.position, before);
+    assert_eq!(state.last_direction, Vector3::X);
+}
+
+#[test]
+fn elevated_ground_is_refreshed_while_moving_with_a_relative_mount_height() {
+    let mut terrain = Terrain::blank(32).unwrap();
+    assert!(terrain.set_landform(vec![12.; 81]));
+    terrain.heights.fill(12.);
+    let nav = PathPlanner::new(32).unwrap();
+    let mut state = InfantryMotion {
+        position: Vector3::new(0., 12., 0.),
+        path: vec![Vector3::new(10., 0., 0.)],
+        ground_until: 100.,
+        ground: 0.,
+        ..Default::default()
+    };
+    let mut i = input();
+    i.base_y = 1.5;
+    state
+        .step(
+            i,
+            &nav,
+            &terrain,
+            &mut CollisionWorld::default(),
+            &mut SimulationRandom::new(1),
+            &[],
+            &[],
+        )
+        .unwrap();
+    assert_eq!(state.ground, 12.);
+    assert!(state.position.y > 12. && state.position.y < 13.5);
 }
