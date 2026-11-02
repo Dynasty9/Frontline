@@ -356,8 +356,7 @@ input without mutation. Numeric CI adds 772,224 exact transcript bytes. This
 retains the shot calculation; the connected blast/destruction operation is now
 available, while the full vehicle firing loop still needs integration.
 
-Boat navigation retains weighted water cells and derives connected-water labels
-on loading. Connected vehicle orders submit ground routes, complete water routes,
+Connected vehicle orders submit ground routes, complete water routes,
 search helicopter landing sites and cancel stale path completions. The reference
 fixture compares 384 ordered states across 12 vehicle profiles, including AI crew
 refusals and player overrides. Six core regressions and 500,836 exact transcript
@@ -2750,3 +2749,28 @@ Validation also passed all 976 core debug tests through the construction change,
 then 155 relevant release checks including all 134 exact numeric cases, construction,
 squad orders and individual orders. Import, formatting, changelog and presentation
 checks passed. Other apps stayed running; this is not a rendered FPS measurement.
+
+## Authoritative command dispatch
+
+`match_commands` connects all existing player-command families to retained Rust
+state. Authenticated ownership determines selection and AI handoff; command packets
+cannot supply a commander identity, weapon definition or price. Allied human
+attribution, routed-squad refusal, formation spacing, shared assault plans,
+individual orders, construction, production, fire missions, transport, support,
+tunnel travel and message audiences follow the existing command path. Regrouping
+cancels retained ambush plans before another tick.
+
+`match_command_codec` encodes the same typed intent for local and remote sockets
+and replay logs. Decoding rejects incompatible versions, unknown command tags,
+invalid flags, nonfinite values, excessive lengths, truncation and trailing data.
+Selection order and duplicate IDs survive decoding; authoritative selection
+deduplicates them while preserving order. The host will attach authenticated
+identity and admitted tick/sequence outside this payload.
+
+Sixteen dispatcher regressions and four packet checks pass, including all 28
+command and individual-order forms. Mixed-command continuation covers 112
+transitions with 18,756,930 exact transcript bytes, including restored rules,
+ownership, actors, squads, paths, attack/ambush plans and random state. All 1,012
+core debug tests pass at this revision. The transport, live runtime and independent
+whole-match verifier still require integration; these checks are not a claim of
+whole-battle verification or 60 FPS.

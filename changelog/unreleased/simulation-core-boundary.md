@@ -56,6 +56,7 @@ kind = "fixed"
 - Local navigation grids and boat routes now use Rust, preserving weighted paths and corner-blocking rules.
 - Retained Rust boat checks preserve shoreline clearance, currents, handling, traffic, seaward turns and recovery after grounding as naval simulation moves into the server.
 - Connected Rust vehicle-order checks preserve ground and boat routes, helicopter landing searches, crew refusal rules and cancelled movement orders.
+- The Rust command dispatcher preserves allied control, formation spacing, construction payments, support cooldowns and tunnel travel as the standalone server migration continues.
 - Retained Rust support-vehicle checks preserve repairs, ammunition and missile refills, healing and medical revivals, including carried casualties and saved-state resumes.
 - Connected Rust vehicle combat checks preserve cannon and machine-gun damage, defensive smoke before missile launches, artillery missions and medical battle credit in shared battlefield state.
 - Hierarchical routes, danger weighting and map repairs now run in Rust. Large-cluster route caches distinguish entrances that previously shared a truncated key.

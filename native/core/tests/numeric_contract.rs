@@ -10477,3 +10477,10 @@ mod vehicle_orders;
 fn connected_vehicle_orders_are_identical_across_platforms() {
     golden("vehicle_orders", &vehicle_orders::transcript());
 }
+
+#[path = "fixtures/match_commands.rs"]
+mod match_commands;
+#[test]
+fn authenticated_match_commands_are_identical_across_platforms() {
+    golden("match_commands", &match_commands::transcript());
+}

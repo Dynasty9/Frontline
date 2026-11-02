@@ -1616,6 +1616,9 @@ Individual orders also operate on retained soldiers, preserving cover selection,
 detachment, rescue claims, grenade availability, retreat and mounted-gun ownership.
 Vehicle commands use retained ground and water routes, helicopter landing searches,
 crew refusal rules and path cancellation, including saved-state continuation.
+The Rust command dispatcher connects selection, permissions, formation spacing,
+combat, transport, construction, production, support and tunnel orders. Command
+packets carry player intent; the authenticated session supplies the commander.
 Observer demonstrations and private readiness warnings retain their existing behavior.
 The full authoritative Rust server and deterministic
 battle verifier are still in progress; see [RUST_SIMULATION.md](RUST_SIMULATION.md).
