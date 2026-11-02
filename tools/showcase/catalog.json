@@ -2823,6 +2823,35 @@
         "detail": "godot --main-pack PACK --resolution 1600x900 -- --aivai --seed=3 --offscreen --nohud --set=perf:0 --mood=day --preset=high --focus=-160,70 --zoom=140 --pitch=-35 --cam-yaw=0.7 --screenshot=OUTPUT --shot-at=2 --quit-after=3",
         "overview": "godot --main-pack PACK --resolution 1600x900 -- --aivai --seed=3 --offscreen --nohud --set=perf:0 --mood=golden --preset=high --focus=-100,0 --zoom=600 --pitch=-38 --cam-yaw=0.7 --perf-at=5 --perf-duration=10 --perf-shot=OUTPUT.png"
       }
+    },
+    {
+      "entry": "changelog/unreleased/rock-warp.md",
+      "summary": "World-space texture warping breaks up repeated slab patterns without adding material samples.",
+      "medium": "still",
+      "stage": "native-media",
+      "rationale": "Matched native renders isolate this refinement against the shared terrain baseline.",
+      "source_ref": "codex/rock-warp",
+      "sources": [
+        {
+          "file": "changelog/unreleased/rock-warp/before.jpg",
+          "sha256": "f329ad746630d6675d333cc9915804de68180026896cd6bc86985841887fa1a3",
+          "caption": "before"
+        },
+        {
+          "file": "changelog/unreleased/rock-warp/after.jpg",
+          "sha256": "8b74290723444b4b43a97ec4bab295bbcc3e26273111889520853bba22303085",
+          "caption": "after"
+        }
+      ],
+      "output": null,
+      "title": "Break up repeating cliff textures",
+      "version": "unreleased",
+      "kind": "improved",
+      "capture": {
+        "before_ref": "322c5a4",
+        "after_ref": "codex/rock-warp",
+        "command": "godot --main-pack PACK --resolution 1600x900 -- --aivai --seed=3 --offscreen --nohud --set=perf:0 --mood=day --preset=high --focus=0,0 --zoom=900 --pitch=-22 --cam-yaw=0.7 --screenshot=OUTPUT --shot-at=2 --quit-after=3"
+      }
     }
   ],
   "layout_capture": {
