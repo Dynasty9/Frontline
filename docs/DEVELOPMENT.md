@@ -831,7 +831,7 @@ The offline kit also bakes three 33-square heightfield forms: buttress, cirque a
 saddle. Standard generation rotates and scales them before erosion and road grading;
 collision, navigation and replication use the resulting terrain. These are analytic
 heightfield forms, not scanned meshes or overhangs. Foothill conifer stands have a
-fixed cap of 24 trees per stand and six stands per map; campaigns retain their layout.
+fixed cap of 32 trees per stand and six stands per map; campaigns retain their layout.
 
 This adapts the reusable rock forms and baked detail described in Wargaming's
 [environment workflow](https://wargaming.com/en/news/creating_levels/) and the
@@ -859,10 +859,15 @@ terrain retains the fine deformation grid. Woodland bark and foliage can join th
 ### Alpine surface variation
 
 The ground shader combines broad warped mineral regions, smaller vegetation patches and
-height-oriented weathering bands. Albedo and layer coverage vary independently of the
+height-oriented weathering bands. Green soil follows baked concavity and slope aspect,
+with only subtle noise variation. MapGen samples a 24 m neighbourhood for the corresponding
+habitat preference: sheltered bowls favour growth, convex ribs favour exposed stone. Woodland
+patches follow local contours rather than fixed world axes. Tree root tolerances are separate
+from building foundation tolerances; only successfully planted stands become woodland objectives.
+Albedo and layer coverage vary independently of the
 fine photographic relief, avoiding uniform rock and grass across the entire map.
 Standard-map trees switch toward conifers above 18% of peak elevation and stop at an
-irregular 44-52% tree line. `MapGen.alpine_dressing` selects scrub or stones from relative
+habitat-dependent 43-57% tree line. `MapGen.alpine_dressing` selects scrub or stones from relative
 height and slope; summits above 70% and cliff slopes above 1.1 receive neither.
 A separate seeded generator caps scatter at 1,200 clumps per map and keeps them off
 reserved roads, towns, water and structure footprints. Entries travel through existing

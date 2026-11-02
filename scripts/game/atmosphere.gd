@@ -1123,9 +1123,11 @@ void fragment() {
 	rock *= mix(0.80, 1.08, smoothstep(0.22, 0.72, seams));
 	float rock_height = mix(rock_sample.a, scree_sample.a, scree * 0.7);
 	float grass_detail = dot(moss_sample.rgb, vec3(0.2126, 0.7152, 0.0722));
-	float alpine_dry = smoothstep(0.33, 0.79, region * 0.58 + patch * 0.42 + slope * 0.12);
-	vec3 moss = mix(vec3(0.05, 0.078, 0.025), vec3(0.145, 0.135, 0.075), alpine_dry) * (0.60 + grass_detail * 1.6);
-	moss *= mix(0.78, 1.17, patch);
+	vec3 habitat_bake = texture(surface_bake, (p + __MAP_HALF__) / __MAP_SIZE__).rgb;
+	float alpine_soil = clamp(0.52 + (habitat_bake.g - 0.5) * 1.3 + geometric.z * 0.18 - slope * 0.14, 0.0, 1.0);
+	float alpine_dry = smoothstep(0.25, 0.85, 1.0 - alpine_soil + (patch - 0.5) * 0.12);
+	vec3 moss = mix(vec3(0.05, 0.078, 0.025), vec3(0.115, 0.12, 0.06), alpine_dry) * (0.60 + grass_detail * 1.6);
+	moss *= mix(0.93, 1.07, patch);
 	vec3 rock_n; vec3 scree_n; vec3 moss_n;
 	vec2 rock_data = surface_data(rock_normal, rock_uv, weights, geometric, rock_n);
 	vec2 scree_data = surface_data(cliff_normal, scree_uv, weights, geometric, scree_n);
@@ -1133,7 +1135,7 @@ void fragment() {
 	rock_data = mix(rock_data, scree_data, scree * 0.7);
 	rock_n = normalize(mix(rock_n, scree_n, scree * 0.7));
 	float elevation = smoothstep(0.0, snow_line, geology);
-	vec3 baked = texture(surface_bake, (p + __MAP_HALF__) / __MAP_SIZE__).rgb;
+	vec3 baked = habitat_bake;
 	terrain_sun = baked.b;
 	float cavity = (baked.g - 0.5) * 2.0;
 	float sky = baked.r;
@@ -1142,7 +1144,7 @@ void fragment() {
 		sky = 1.0 - max(cavity, 0.0) * 0.45;
 		terrain_sun = 1.0;
 	}
-	float cover = smoothstep(0.24, 0.95, slope + elevation * 0.20 + (region - 0.5) * 0.32 + (patch - 0.5) * 0.22);
+	float cover = smoothstep(0.24, 0.95, slope + elevation * 0.20 + (0.5 - alpine_soil) * 0.32 + (patch - 0.5) * 0.08);
 	float exposed = height_blend(moss_sample.a, rock_height, cover);
 	vec3 alpine = mix(moss, rock, exposed);
 	float clean = (1.0 - wm.g) * (1.0 - wm.a) * (1.0 - clamp(bowl, 0.0, 1.0));

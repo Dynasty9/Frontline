@@ -551,7 +551,9 @@ Ambush Alley autoplay can call its existing mortar support against spotted, stop
   forms shape standard mountains before erosion, with small conifer stands along suitable foothills.
   Warped mineral bands, dry grass patches and broken scree vary the surfaces at several scales. Mixed
   lowland trees give way to conifers and an irregular tree line; passable scrub and small stones
-  cluster by altitude and slope below the snowy summits.
+  cluster by altitude and slope below the snowy summits. Sheltered bowls retain greener soil and scrub;
+  exposed ribs stay stony. Woodland stretches along contours, and tree roots can occupy steeper
+  mountain ledges without relaxing the level-ground requirement for buildings.
   Baked sky visibility and distant sun shadows deepen the gullies, rebuilding when the lighting mood changes.
   Optional alpine haze adds atmospheric depth; cached terrain reflections exclude moving units and refresh with lighting.
   Standard-battle woods are denser and share spatial bark and foliage batches; changed trees recover their individual models.

@@ -6,6 +6,9 @@ class ClearCombat extends Combat:
 
 
 func _ready() -> void:
+	assert(MapGen.habitat(0.4, 6.0, 0.2) > MapGen.habitat(0.4, -6.0, 0.2), "Sheltered bowls support more growth than exposed ribs")
+	assert(MapGen.habitat(0.3, 0.0, 0.8) > MapGen.habitat(0.3, 0.0, -0.8), "Aspect affects habitat")
+	assert(MapGen.habitat(0.2, 0.0, 0.0) > MapGen.habitat(0.9, 0.0, 0.0), "Gentler ledges retain more vegetation")
 	assert(MapGen.alpine_dressing(0.15, 0.1, 0.8) == "alpine_scrub")
 	assert(MapGen.alpine_dressing(0.55, 0.1, 0.8) == "alpine_stones")
 	assert(MapGen.alpine_dressing(0.2, 0.6, 0.8) == "alpine_stones")
@@ -36,6 +39,12 @@ func _ready() -> void:
 	assert(scatter_a == scatter_b, "Dressing placement is seeded independently of simulation RNG")
 	for entry in scatter_a:
 		assert(is_equal_approx(entry[1].y, 7.92), "Dressing follows the authoritative ground")
+	for z in world.terrain.landform.n:
+		for x in world.terrain.landform.n:
+			world.terrain.landform.heights[z * world.terrain.landform.n + x] = 8.0 + x * 2.4
+	assert(not gen._is_free(Vector3.ZERO, Vector2(0.6, 0.6), 0.0), "Building foundations still require level ground")
+	assert(gen._is_free(Vector3.ZERO, Vector2(0.6, 0.6), 0.0, 0.6, true, 0.7), "Tree roots can occupy a moderate slope")
+	assert(absf(gen._contour(Vector3.ZERO).x) < 0.01, "Woodland follows the contour rather than running straight uphill")
 	MapDims.HALF = previous_half
 	world.terrain.landform.heights = PackedFloat32Array()
 	world.terrain.landform.peak = 0.0

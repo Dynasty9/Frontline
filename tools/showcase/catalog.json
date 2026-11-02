@@ -2753,6 +2753,41 @@
         "command": "godot --main-pack PACK --resolution 1600x900 -- --aivai --seed=3 --offscreen --nohud --set=perf:0 --mood=golden --preset=high --focus=-100,0 --zoom=600 --pitch=-38 --cam-yaw=0.7 --perf-at=5 --perf-duration=10 --perf-shot=OUTPUT.png",
         "detail": "Same seed and pack; --mood=day --focus=-160,70 --zoom=140 --pitch=-35 --cam-yaw=0.7 --screenshot=OUTPUT --shot-at=2 --quit-after=3"
       }
+    },
+    {
+      "entry": "changelog/unreleased/alpine-habitats.md",
+      "summary": "Greener gullies, contour-following woods and vegetation on mountain ledges replace randomly scattered greenery.",
+      "medium": "still",
+      "stage": "native-media",
+      "rationale": "Matched native command-camera images show habitat-driven ground cover and woodland distribution; a closer view shows species and ledge placement.",
+      "source_ref": "codex/alpine-battlefields",
+      "sources": [
+        {
+          "file": "changelog/unreleased/alpine-habitats/before.jpg",
+          "sha256": "a75e4c3a7d4c2a198a0c8ee7a92f5d6bfb4d7f4b2f43f442345614be2e093c02",
+          "caption": "Before: 1e740f8 terrain variation."
+        },
+        {
+          "file": "changelog/unreleased/alpine-habitats/after.jpg",
+          "sha256": "8b0a0202b56460236597ace40f5d27759e986c36b563f49608feeca328ce47fd",
+          "caption": "After: woodland and soil following mountain habitats."
+        },
+        {
+          "file": "changelog/unreleased/alpine-habitats/detail.jpg",
+          "sha256": "cbf661cc29eede4eb7daff2d5ac1ac46ed42ccf9912cbc094ca3459b6e757061",
+          "caption": "Closer daylight view of conifers on ledges."
+        }
+      ],
+      "output": null,
+      "title": "Woodland follows the mountain slopes",
+      "version": "unreleased",
+      "kind": "improved",
+      "capture": {
+        "before_ref": "1e740f8",
+        "after_ref": "codex/alpine-battlefields",
+        "overview": "godot --main-pack PACK --resolution 1600x900 -- --aivai --seed=3 --offscreen --nohud --set=perf:0 --mood=golden --preset=high --focus=-100,0 --zoom=600 --pitch=-38 --cam-yaw=0.7 --screenshot=OUTPUT --shot-at=5 --quit-after=6",
+        "detail": "Same seed and pack; --mood=day --focus=-160,70 --zoom=140 --pitch=-35 --cam-yaw=0.7 --screenshot=OUTPUT --shot-at=2 --quit-after=3"
+      }
     }
   ],
   "layout_capture": {

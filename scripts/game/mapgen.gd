@@ -945,10 +945,10 @@ func _foot_of(kind: String, extra: Dictionary) -> Vector2:
 	return Vector2(1, 1)
 
 
-func _is_free(pos: Vector3, half: Vector2, yaw: float, margin := 0.6, use_clear := true) -> bool:
+func _is_free(pos: Vector3, half: Vector2, yaw: float, margin := 0.6, use_clear := true, ground_tolerance := 0.35) -> bool:
 	if not Defs.in_map(pos, 6.0):
 		return false
-	if not world.terrain.landform.fits(pos, half, yaw):
+	if not world.terrain.landform.fits(pos, half, yaw, ground_tolerance):
 		return false
 	if not world.water.is_empty():
 		# not in the water, nor on a bridge
@@ -998,13 +998,16 @@ func _try(kind: String, pos: Vector3, yaw: float, team: int, extra := {}) -> Str
 		return null
 	if kind == "tree" and String(world.settings.get("mission", "")) == "":
 		var altitude := world.terrain.landform.height(pos) / maxf(1.0, world.terrain.landform.peak)
-		if altitude > 0.48 + sin(pos.x * 0.035) * cos(pos.z * 0.027) * 0.045:
+		var slope := world.terrain.slope_at(pos)
+		var soil := _habitat(pos)
+		if altitude > lerpf(0.43, 0.57, soil) or slope > 0.95 or (slope > 0.5 and soil < 0.5):
 			return null
-		if altitude > 0.18 and int(extra.get("variant", 0)) != 1:
+		if (altitude > 0.18 or slope > 0.28) and int(extra.get("variant", 0)) != 1:
 			extra = extra.duplicate()
 			extra["variant"] = 2
 	var half := _foot_of(kind, extra)
-	if not _is_free(pos, half, yaw):
+	var tree_slope := kind == "tree" and String(world.settings.get("mission", "")) == ""
+	if not _is_free(pos, half, yaw, 0.6, true, 0.7 if tree_slope else 0.35):
 		return null
 	return _spawn(kind, pos, yaw, team, extra)
 
@@ -1153,20 +1156,21 @@ func _old_position(c: Vector3) -> void:
 ## Connected conifer stands establish the scale of cliffs without filling the valley roads.
 func _foothill_woods(area: float) -> void:
 	var remaining := mini(6, ceili(area * 3.0))
-	var budget := remaining * 24
+	var budget := remaining * 32
 	for attempt in int(80 * area):
 		if remaining <= 0 or budget <= 0:
 			break
 		var c := Vector3(rng.randf_range(-MapDims.HALF + 45, MapDims.HALF - 45), 0, rng.randf_range(-MapDims.HALF + 45, MapDims.HALF - 45))
 		var h := world.terrain.landform.height(c)
 		var slope := world.terrain.slope_at(c)
-		if h < 6.0 or h > world.terrain.landform.peak * 0.48 or slope < 0.12 or slope > 0.5:
+		if h < 6.0 or h > world.terrain.landform.peak * 0.54 or slope < 0.12 or slope > 0.85 or _habitat(c) < 0.45:
 			continue
+		var along := _contour(c)
 		var planted := 0
-		for tree in mini(24, budget):
+		for tree in mini(32, budget):
 			var angle := rng.randf() * TAU
-			var radius := sqrt(rng.randf()) * 24.0
-			var p := c + Vector3(cos(angle) * radius, 0, sin(angle) * radius * 0.7)
+			var radius := sqrt(rng.randf()) * 36.0
+			var p := c + along * cos(angle) * radius + along.cross(Vector3.UP) * sin(angle) * radius * 0.45
 			if _try("tree", p, 0.0, -1, {"variant": 2}) != null:
 				planted += 1
 				budget -= 1
@@ -1176,11 +1180,40 @@ func _foothill_woods(area: float) -> void:
 
 
 func _woods(c: Vector3, n: int) -> void:
-	if n >= 9:
+	var alpine := String(world.settings.get("mission", "")) == "" and world.terrain.landform.peak > 1.0
+	if n >= 9 and not alpine:
 		world.key_points.append({"pos": c, "kind": "woods"})
+	var planted := 0
+	var along := _contour(c) if alpine else Vector3.RIGHT
 	for i in n:
-		var p := c + Vector3(rng.randf_range(-11, 11), 0, rng.randf_range(-11, 11))
-		_try("tree", p, 0.0, -1)
+		var p := c + along * rng.randf_range(-28 if alpine else -11, 28 if alpine else 11) + along.cross(Vector3.UP) * rng.randf_range(-11, 11)
+		if alpine and _habitat(p) < 0.38:
+			continue
+		if _try("tree", p, 0.0, -1) != null:
+			planted += 1
+	if alpine and planted >= 9:
+		world.key_points.append({"pos": c, "kind": "woods"})
+
+
+func _contour(p: Vector3) -> Vector3:
+	var land := world.terrain.landform
+	var along := Vector3(land.height(p + Vector3.FORWARD * 8) - land.height(p + Vector3.BACK * 8), 0, land.height(p + Vector3.RIGHT * 8) - land.height(p + Vector3.LEFT * 8))
+	return along.normalized() if along.length_squared() > 0.01 else Vector3.RIGHT
+
+
+## Bowls retain soil and moisture; exposed convex ribs support less vegetation.
+static func habitat(slope: float, concavity: float, aspect: float) -> float:
+	return clampf(0.52 + concavity * 0.045 + aspect * 0.18 - slope * 0.14, 0.0, 1.0)
+
+
+func _habitat(p: Vector3) -> float:
+	var land := world.terrain.landform
+	var north := land.height(p + Vector3(0, 0, -24))
+	var south := land.height(p + Vector3(0, 0, 24))
+	var east := land.height(p + Vector3(24, 0, 0))
+	var west := land.height(p + Vector3(-24, 0, 0))
+	var concavity := (north + south + east + west) * 0.25 - land.height(p)
+	return habitat(world.terrain.slope_at(p), concavity, clampf((north - south) / 48.0, -1.0, 1.0))
 
 
 ## Low, passable scrub and stones use the replicated, chunk-batched dressing list.
@@ -1201,8 +1234,8 @@ func _alpine_scatter(entries: Array, area: float) -> void:
 			break
 		var p := Vector3(scatter.randf_range(-MapDims.HALF + 8, MapDims.HALF - 8), 0, scatter.randf_range(-MapDims.HALF + 8, MapDims.HALF - 8))
 		var h := world.terrain.landform.height(p)
-		var patch := (sin(p.x * 0.037 + sin(p.z * 0.019)) * cos(p.z * 0.043) + 1.0) * 0.5
-		if h < 2.0 or patch < 0.46 or not _is_free(p, Vector2(0.35, 0.35), 0.0, 1.8):
+		var patch := _habitat(p)
+		if h < 2.0 or scatter.randf() > 0.25 + patch * 0.65 or not _is_free(p, Vector2(0.35, 0.35), 0.0, 1.8):
 			continue
 		var kind := alpine_dressing(h / maxf(1.0, world.terrain.landform.peak), world.terrain.slope_at(p), patch)
 		if kind == "":
