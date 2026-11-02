@@ -21,6 +21,7 @@ kind = "fixed"
 - Shared Rust path checks preserve soldier and vehicle orders, cancellation and retries while navigation changes, including saved queues resumed during fires.
 - Rust collision-construction checks preserve buildings' cover through construction, movement and opened doors without depending on rendered scene objects.
 - Connected Rust creation checks preserve every structure kind's health, supplies, obstacles and fighting positions, including unfinished buildings and later destruction.
+- Rust recruitment checks preserve new squads' names, loadouts, upgrades, initial spacing, rally paths and transport passengers. Vehicle creation preserves health, ammunition, flight state and collision across the complete roster.
 - Rust blast-toss checks preserve how cars and crates carry their cover and obstacles to a new position, including blocked landings and random continuation.
 - Shared Rust formation checks preserve squad spacing and cover choices while reusing ground searches and keeping soldiers together on the same side of obstacles.
 - Connected Rust squad movement checks preserve travel spacing, leader slowdown, alternating fire teams and recon fire, including interrupted duties and saved route queues.

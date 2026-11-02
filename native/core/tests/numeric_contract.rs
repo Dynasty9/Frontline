@@ -10356,3 +10356,17 @@ mod squad_world;
 fn complete_squad_ticks_are_identical_across_platforms() {
     golden("squad_world", &squad_world::transcript());
 }
+
+#[path = "fixtures/vehicle_birth_world.rs"]
+mod vehicle_birth_world;
+#[test]
+fn vehicle_births_are_identical_across_platforms() {
+    golden("vehicle_birth_world", &vehicle_birth_world::transcript());
+}
+
+#[path = "fixtures/squad_birth_world.rs"]
+mod squad_birth_world;
+#[test]
+fn squad_recruitment_is_identical_across_platforms() {
+    golden("squad_birth_world", &squad_birth_world::transcript());
+}

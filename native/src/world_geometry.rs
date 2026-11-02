@@ -11,6 +11,64 @@ pub(crate) struct WorldGeometryCore {
 #[godot_api]
 impl WorldGeometryCore {
     #[func]
+    fn spawn_vehicle(
+        &mut self,
+        mut actors: Gd<ActorStateCore>,
+        spawn: Array<Variant>,
+        definition: Array<Variant>,
+    ) -> i64 {
+        use frontline_core::vehicle_birth::{Definition, Spawn};
+        if spawn.len() != 4 || definition.len() != 6 {
+            return 0;
+        }
+        let (
+            Ok(team),
+            Ok(owner),
+            Ok(position),
+            Ok(yaw),
+            Ok(kind),
+            Ok(base),
+            Ok(hp),
+            Ok(hull),
+            Ok(atgm),
+            Ok(sam),
+        ) = (
+            spawn.at(0).try_to::<i8>(),
+            spawn.at(1).try_to::<i32>(),
+            spawn.at(2).try_to::<Vector3>(),
+            spawn.at(3).try_to::<f64>(),
+            definition.at(0).try_to::<GString>(),
+            definition.at(1).try_to::<GString>(),
+            definition.at(2).try_to::<f64>(),
+            definition.at(3).try_to::<Vector3>(),
+            definition.at(4).try_to::<i32>(),
+            definition.at(5).try_to::<i32>(),
+        )
+        else {
+            return 0;
+        };
+        let Some(g) = &mut self.core else {
+            return 0;
+        };
+        g.spawn_vehicle(
+            &mut actors.bind_mut().core,
+            Spawn {
+                team,
+                owner,
+                position: crate::point(position),
+                yaw,
+            },
+            Definition {
+                kind: &kind.to_string(),
+                base: &base.to_string(),
+                hp,
+                hull: crate::point(hull),
+                missiles: [atgm, sam],
+            },
+        )
+        .map_or(0, i64::from)
+    }
+    #[func]
     fn formation_slots(
         &self,
         actors: Gd<ActorStateCore>,

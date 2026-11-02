@@ -2416,3 +2416,25 @@ and deliberate attacks. A two-process host/client smoke test also passes; the
 client received 3,864 entities. Import, formatting, changelog and presentation
 checks pass. The earlier `8df79ce` revision is fully green in CI. Other apps stayed
 running; this is not a rendered frame-rate measurement.
+
+## Retained squad and vehicle creation
+
+Vehicle creation now initializes the complete actor and collision directly from
+immutable definitions. Squad recruitment allocates identities, draws each name
+before that soldier's think delay, applies loadouts and upgrades, registers battle
+credit and issues the rally order against retained navigation. Transport recruitment
+links and hides passengers immediately. Invalid definitions reject before birth
+identities, randomness or ledger entries are committed.
+
+Godot comparisons pass 392 vehicle states across all 98 definitions and 140 squad
+and transport cases, including blocked spawn positions, both teams, upgrades,
+near and distant rally points, speech, path completion and shared battle records.
+The related structure-creation and vehicle-destruction comparisons also pass.
+Seven focused Rust regressions cover creation, collision, invalid input, upgrades,
+boarding and resumed recruitment. Exact numeric transcripts add 610,380 bytes for
+vehicle creation and 9,875,856 bytes for 128 squad recruitment operations.
+These are production primitives for the pending building/world dispatcher; they
+do not complete the standalone server or whole-match replay verifier.
+All 880 debug core tests and 128 release checks pass, including all 121 exact
+numeric-contract cases. Import, changelog, presentation and formatting checks pass.
+Other apps stayed running; no rendered frame-rate claim is made from these tests.

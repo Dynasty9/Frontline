@@ -1530,6 +1530,12 @@ keep their existing priority, deadlines and random draws. The complete retained
 squad tick now connects these decisions with upkeep, plans, movement and support
 duties in gameplay order. The production world dispatcher still needs migration
 before Rust owns the live battle.
+Rust recruitment now creates complete squads and transport passengers against the
+same actor registry, random stream, battle ledger and navigation. Unit definitions,
+upgrades, names, initial spacing and rally orders preserve their gameplay order.
+Vehicle creation also initializes health, ammunition, flight state and collision
+without a scene object. Production still needs to call these operations from the
+complete retained building update.
 Squad care and construction assignments now share those retained actors, rescue
 claims and paths. Covering smoke, medic priority, repair selection, surrender,
 straggler transfers and their battle records keep their existing order and timing.

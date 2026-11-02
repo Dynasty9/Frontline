@@ -215,7 +215,7 @@ impl SquadMovementCore {
         }
     }
 }
-fn event(e: Event) -> Variant {
+pub(crate) fn event(e: Event) -> Variant {
     match e {
         Event::Speech {
             soldier,

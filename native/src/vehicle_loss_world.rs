@@ -105,6 +105,7 @@ struct Building {
     time: Option<f64>,
 }
 enum Operation {
+    Recruit(Array<Variant>),
     Damage(u32, f64, u32),
     Explosion(Explosion, Gd<SupplyNetworkCore>, Vec<Report>),
     Deferred(Gd<SupplyNetworkCore>, Vec<Report>),
@@ -120,6 +121,35 @@ struct VehicleLossWorldCore {
 }
 #[godot_api]
 impl VehicleLossWorldCore {
+    #[func]
+    fn recruit(
+        &mut self,
+        actors: Gd<ActorStateCore>,
+        geometry: Gd<WorldGeometryCore>,
+        units: Gd<SpatialIndexCore>,
+        nodes: Array<Gd<SquadStateCore>>,
+        fires: Gd<FiresCore>,
+        battle: Gd<BattleStatsCore>,
+        deferred: Gd<DeferredEffectsCore>,
+        visibility: Gd<VisibilityCore>,
+        rng: Gd<SimulationRandomCore>,
+        config: Array<Variant>,
+        input: Array<Variant>,
+    ) -> Array<Variant> {
+        self.run(
+            actors,
+            geometry,
+            units,
+            nodes,
+            fires,
+            battle,
+            deferred,
+            visibility,
+            rng,
+            config,
+            Operation::Recruit(input),
+        )
+    }
     #[func]
     fn damage(
         &mut self,
@@ -841,6 +871,7 @@ impl VehicleLossWorldCore {
         let mut chat_state: Option<PackedFloat64Array> = None;
         let mut construction: Option<Array<Variant>> = None;
         let mut construction_stats = PackedStringArray::new();
+        let mut recruitment: Option<Array<Variant>> = None;
         let armor = |v: &frontline_core::vehicle::Vehicle| {
             let p = &vehicles[&v.id];
             Armor {
@@ -852,6 +883,80 @@ impl VehicleLossWorldCore {
             }
         };
         let result = match operation {
+            Operation::Recruit(input) => {
+                use frontline_core::squad_birth::{Definition, Spawn};
+                let parse = || -> Option<_> {
+                    if input.len() != 10 {
+                        return None;
+                    }
+                    let kind = read::<GString>(&input, 0)?.to_string();
+                    let name = read::<GString>(&input, 1)?.to_string();
+                    let rows: Array<Variant> = read(&input, 2)?;
+                    if rows.len() > 4096 {
+                        return None;
+                    }
+                    let members = rows
+                        .iter_shared()
+                        .map(|r| birth_loadout(&r.try_to::<Array<Variant>>().ok()?))
+                        .collect::<Option<Vec<_>>>()?;
+                    if members.iter().any(|l| !men.contains_key(&l.unit)) {
+                        return None;
+                    }
+                    let armor_upgrade: bool = read(&input, 3)?;
+                    let grenade_upgrade: bool = read(&input, 4)?;
+                    let spawn = Spawn {
+                        team: read(&input, 5)?,
+                        owner: read(&input, 6)?,
+                        position: crate::point(read(&input, 7)?),
+                        destination: if input.at(8).is_nil() {
+                            None
+                        } else {
+                            Some(crate::point(read(&input, 8)?))
+                        },
+                    };
+                    let transport: u32 = read(&input, 9)?;
+                    Some((
+                        kind,
+                        name,
+                        members,
+                        armor_upgrade,
+                        grenade_upgrade,
+                        spawn,
+                        transport,
+                    ))
+                };
+                let Some((kind, name, members, armor_upgrade, grenade_upgrade, spawn, transport)) =
+                    parse()
+                else {
+                    return Array::new();
+                };
+                let profile = Definition {
+                    kind: &kind,
+                    name: &name,
+                    members: &members,
+                    armor_upgrade,
+                    grenade_upgrade,
+                };
+                let born = if transport == 0 {
+                    context.spawn_squad(spawn, profile)
+                } else {
+                    context
+                        .embark_new_squad(transport, profile)
+                        .map(|id| (id, vec![]))
+                };
+                born.map(|(id, events)| {
+                    let rows: Array<Variant> = events
+                        .iter()
+                        .cloned()
+                        .map(crate::squad_movement::event)
+                        .collect();
+                    recruitment = Some(varray![id, &rows]);
+                    events
+                        .into_iter()
+                        .map(|e| world_combat::Event::Vehicle(Event::Squad(e)))
+                        .collect()
+                })
+            }
             Operation::Combat(mode, input, mut network, mut impacts) => {
                 let parse = || -> Option<_> {
                     if input.len()
@@ -2085,6 +2190,9 @@ impl VehicleLossWorldCore {
         }
         if let Some(construction) = construction {
             out.push(&construction.to_variant());
+        }
+        if let Some(recruitment) = recruitment {
+            out.push(&recruitment.to_variant());
         }
         out
     }
