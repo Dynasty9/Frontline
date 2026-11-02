@@ -33,6 +33,8 @@ pub enum Call {
     Board,
     Bunker,
     FireMission,
+    Individual,
+    OutOfAmmo,
 }
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Event {

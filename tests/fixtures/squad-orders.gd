@@ -1,5 +1,22 @@
 extends "res://tests/fixtures/squad-movement.gd"
 
+func order_position_equal(a: Vector3, b: Vector3) -> bool:
+	for axis in 3:
+		if not is_finite(a[axis]) or not is_finite(b[axis]) or absf(a[axis]-b[axis]) > 0.00000024*maxf(1.0,maxf(absf(a[axis]),absf(b[axis]))): return false
+	return true
+
+func compare_actor(s: Soldier, actors: RefCounted, label: String) -> void:
+	var state: RefCounted = ClassDB.instantiate("InfantryStateCore"); assert(state.restore(actors.actor_state(s.eid)))
+	var expected := InfantryState.capture(s); var actual: Array = state.values()
+	# Godot's platform sinf/cosf can round a rotated work spot differently from pinned libm.
+	# Only the task position and its delivered path allow relative float rounding; Rust transcripts stay exact.
+	var path: PackedVector3Array = expected[1][1][1]; var route: PackedVector3Array = actual[1][1][1]
+	assert(path.size() == route.size(),label+" path length")
+	for i in mini(path.size(),route.size()): assert(order_position_equal(path[i],route[i]),label+" path "+str(i))
+	assert(order_position_equal(expected[4][5],actual[4][5]),label+" task position")
+	expected[1][1][1] = route; expected[4][5] = actual[4][5]
+	for group in expected.size(): assert(expected[group] == actual[group],"%s group %d: %s / %s" % [label,group,expected[group],actual[group]])
+
 func order_speech(q: Squad, call: int, variant: int) -> String:
 	match call:
 		10: return ["Engaging!", "Target spotted, moving in!", "Light 'em up!"][variant]
@@ -10,6 +27,8 @@ func order_speech(q: Squad, call: int, variant: int) -> String:
 	return speech(q,call,variant)
 
 func _ready() -> void:
+	assert(order_position_equal(Vector3(16,0,4),Vector3(16.000002,0,4)))
+	assert(not order_position_equal(Vector3(16,0,4),Vector3(16.001,0,4)))
 	MapDims.N = 128; MapDims.SIZE = 128.0; MapDims.HALF = 64.0; MapDims.BIOME = 128; Defs.MAP_HALF = 64.0
 	Nav.N = 128; Nav.H = 64.0; HNav.C = 16; HNav.NC = 8; HNav.NCC = 64; HNav._corner = HNav._corners()
 	TerrainMap.N = 128; TerrainMap.H = 64.0; TerrainMap.DN = 256

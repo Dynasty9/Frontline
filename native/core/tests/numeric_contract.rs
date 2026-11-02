@@ -10456,3 +10456,17 @@ mod squad_orders;
 fn explicit_squad_orders_are_identical_across_platforms() {
     golden("squad_orders", &squad_orders::transcript());
 }
+
+#[path = "fixtures/placement_world.rs"]
+mod placement_world;
+#[test]
+fn building_creation_and_assignment_are_identical_across_platforms() {
+    golden("placement_world", &placement_world::transcript());
+}
+
+#[path = "fixtures/unit_orders.rs"]
+mod unit_orders;
+#[test]
+fn individual_orders_are_identical_across_platforms() {
+    golden("unit_orders", &unit_orders::transcript());
+}

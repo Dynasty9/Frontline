@@ -41,6 +41,7 @@ mod infantry_weapon;
 mod navigation_grid;
 mod navigation_scene;
 mod path_planner;
+mod placement_world;
 mod prisoner_intelligence;
 mod production;
 mod production_orders;

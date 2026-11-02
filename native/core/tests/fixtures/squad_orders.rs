@@ -114,7 +114,7 @@ pub fn state(s: &Scene) -> [Vec<u8>; 5] {
         s.rng.state().to_le_bytes().to_vec(),
     ]
 }
-fn delta(out: &mut Vec<u8>, previous: &mut Vec<u8>, next: Vec<u8>) {
+pub fn delta(out: &mut Vec<u8>, previous: &mut Vec<u8>, next: Vec<u8>) {
     // Queue lengths shift later blocks; retain equal ends instead of recording that shift byte by byte.
     let prefix = previous
         .iter()

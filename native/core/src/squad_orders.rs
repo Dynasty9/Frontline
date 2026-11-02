@@ -183,11 +183,9 @@ impl Context<'_> {
             kind.as_str(),
             "mg_nest" | "hmg_nest" | "mortar_pit" | "at_post" | "watchtower"
         );
-        let mount_at = if mount {
-            flat(st.mount_position(gun)?)
-        } else {
-            at
-        };
+        if mount {
+            st.mount_position(gun)?;
+        }
         let mut out = vec![];
         self.regroup(i, &mut out);
         if kind == "tunnel" {
@@ -245,24 +243,8 @@ impl Context<'_> {
             }
             out.extend(self.order_move(id, at - face * 2., face, 0, true)?);
             if let Some(id) = best {
-                self.clear_squad_duty(id);
-                let s = self.actors.soldier_mut(id).unwrap();
-                s.duty.kind = Task::Man;
-                s.duty.entity = target.into();
-                s.emplacement.structure = target.into();
-                s.duty.phase = 0;
-                let dest = mount_at
-                    + if kind == "watchtower" {
-                        normalized(flat(s.motion.position - at)) * 1.8
-                    } else {
-                        Vector3::ZERO
-                    };
+                self.assign_mount(id, target, gun)?;
                 out.push(Event::Stat("manned"));
-                self.duty_route(id, dest, Goal::Task, 1)?;
-                let Some(Actor::Structure(st)) = self.actors.get_mut(target) else {
-                    unreachable!()
-                };
-                st.gunner = id;
             }
         } else if work {
             out.extend(self.order_work(id, target)?);

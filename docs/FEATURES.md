@@ -1609,6 +1609,11 @@ queued reinforcements and battle credit when an authenticated commander returns.
 Explicit Rust squad orders also preserve attacks, construction, boarding, tunnel
 entry, garrisoning, specialist gun crews, mortar missions and grenade orders,
 including shared route queues and interrupted rescue claims.
+Building creation now connects placement validation, supply charges, base names,
+collision registration and engineer assignment in Rust. Allied players retain
+their attribution; giving orders to AI builders transfers their command.
+Individual orders also operate on retained soldiers, preserving cover selection,
+detachment, rescue claims, grenade availability, retreat and mounted-gun ownership.
 Observer demonstrations and private readiness warnings retain their existing behavior.
 The full authoritative Rust server and deterministic
 battle verifier are still in progress; see [RUST_SIMULATION.md](RUST_SIMULATION.md).

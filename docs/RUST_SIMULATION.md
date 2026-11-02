@@ -2704,3 +2704,42 @@ orders, movement and duty suites. Import, formatting, changelog and presentation
 checks pass. Other apps stayed running; rendering performance was not measured.
 This completes these squad methods; the complete server command dispatcher, world
 and independent battle verifier remain in progress.
+
+## Building creation and engineer assignment
+
+Construction now validates authority and placement, charges supply, records battle
+credit, creates the unfinished building and assigns commandable engineers against
+retained Rust state. New FOB names advance only on successful placement. Failed
+placement cannot consume supply; continued wall segments retain the first segment's
+builder order. Explicit and automatic engineer selections share squad order handling.
+
+All 384 Godot comparison states pass across all 24 building definitions, both teams,
+allied human and AI ownership, repeat placements, map edges, dock approaches and
+trench mounts. Actors, squads, route queues, supply, warnings, speech, battle records,
+base names and random continuation match. Seven focused Rust regressions cover
+admission, assignment and rejecting credit overflow before payment. The exact
+52,879,864-byte numeric transcript checks 60 continuations after restoring state.
+This operation is ready for the full server dispatcher; the standalone world,
+transport and independent whole-battle verifier still need integration.
+
+## Individual soldier commands
+
+Individual move, attack, throw, stop, retreat and man-gun orders now update retained
+soldiers and shared routes. They preserve unavailable soldiers' duties, friendly
+target rejection, individual cover and leash, current weapon range, empty-ammo
+speech, rescue-claim release and mounted-gun ownership. Gun assignment shares the
+same implementation with squad entry orders.
+
+All 432 Godot comparison states pass, as do seven focused Rust regressions.
+The 25,530,373-byte exact transcript covers 256 resumed command transitions.
+Related squad-order comparisons still cover all 768 states. Linux CI at the prior
+revision found a platform-math difference in a rotated construction work spot;
+the reference comparison now permits relative float rounding only in the task
+position and delivered path. The rest of the state, identities, route topology,
+random continuation and Rust numeric transcripts remain exact. All four platform
+numeric jobs passed at that revision; the adjusted Godot check needs fresh CI.
+The complete command dispatcher and standalone world are still in progress.
+Validation also passed all 976 core debug tests through the construction change,
+then 155 relevant release checks including all 134 exact numeric cases, construction,
+squad orders and individual orders. Import, formatting, changelog and presentation
+checks passed. Other apps stayed running; this is not a rendered FPS measurement.

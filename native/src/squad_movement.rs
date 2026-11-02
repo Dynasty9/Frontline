@@ -142,6 +142,18 @@ impl SquadMovementCore {
             }
             6 if input.is_empty() => context.assault_bounds_tick(id),
             27..=33 => apply_orders(&mut context, id, operation, &input),
+            35 => apply_unit(&mut context, id, &input),
+            34 => {
+                let result = crate::placement_world::apply(&mut context, &input);
+                write_squads(nodes, squads);
+                return match result {
+                    Ok(events) => varray![&events],
+                    Err(error) => {
+                        godot_error!("{error}");
+                        Array::new()
+                    }
+                };
+            }
             26 => {
                 let result = apply_tick(&mut context, id, input);
                 write_squads(nodes, squads);
@@ -216,18 +228,57 @@ impl SquadMovementCore {
         }
     }
 }
+fn read<T: FromGodot>(a: &Array<Variant>, i: usize) -> Result<T, &'static str> {
+    a.get(i)
+        .ok_or("missing order field")?
+        .try_to()
+        .map_err(|_| "invalid order field")
+}
+fn apply_unit(
+    ctx: &mut Context<'_>,
+    id: u32,
+    input: &Array<Variant>,
+) -> Result<Vec<Event>, &'static str> {
+    use frontline_core::{infantry_action::Round, unit_orders::Order};
+    if input.len() != 2 {
+        return Err("invalid individual order");
+    }
+    let a: Array<Variant> = read(input, 0)?;
+    let range: f64 = read(input, 1)?;
+    if !range.is_finite() || !(-1.0..=1_000_000.).contains(&range) {
+        return Err("invalid individual weapon range");
+    }
+    let order = match read::<u8>(&a, 0)? {
+        0 if a.len() == 4 => Order::Move {
+            position: crate::point(read(&a, 1)?),
+            face: crate::point(read(&a, 2)?),
+            mode: read(&a, 3)?,
+        },
+        1 if a.len() == 2 => Order::Attack(read(&a, 1)?),
+        2 if a.len() == 3 => Order::Throw {
+            position: crate::point(read(&a, 1)?),
+            round: if read::<bool>(&a, 2)? {
+                Round::Smoke
+            } else {
+                Round::Frag
+            },
+        },
+        3 if a.len() == 1 => Order::Stop,
+        4 if a.len() == 1 => Order::Retreat,
+        5 if a.len() == 3 => Order::Man {
+            target: read(&a, 1)?,
+            gun: crate::actors::mounted_gun(&read(&a, 2)?).map_err(|_| "invalid commanded gun")?,
+        },
+        _ => return Err("invalid individual order"),
+    };
+    ctx.unit_order(id, order, (range >= 0.).then_some(range))
+}
 fn apply_orders(
     ctx: &mut Context<'_>,
     id: u32,
     op: i32,
     a: &Array<Variant>,
 ) -> Result<Vec<Event>, &'static str> {
-    fn read<T: FromGodot>(a: &Array<Variant>, i: usize) -> Result<T, &'static str> {
-        a.get(i)
-            .ok_or("missing squad order field")?
-            .try_to()
-            .map_err(|_| "invalid squad order field")
-    }
     match op {
         27 if a.len() == 1 => ctx.order_attack(id, read(a, 0)?),
         28 if a.is_empty() => ctx.order_stop(id),

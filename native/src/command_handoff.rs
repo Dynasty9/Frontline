@@ -21,9 +21,9 @@ fn packed(a: &[u32]) -> PackedInt64Array {
 }
 #[derive(GodotClass)]
 #[class(base=RefCounted,init)]
-struct CommandOwnershipCore {
+pub(crate) struct CommandOwnershipCore {
     base: Base<RefCounted>,
-    core: Ownership,
+    pub(crate) core: Ownership,
 }
 #[godot_api]
 impl CommandOwnershipCore {

@@ -150,3 +150,5 @@ kind = "fixed"
 - Rust placement checks preserve trench gun positions, shoreline docks, overlapping footprints, supply-road clearance and expansion from friendly bases and towns.
 - Rust ownership checks preserve allied control, AI handovers and returning commanders' surviving forces, queued reinforcements and battle credit.
 - Rust squad-order checks preserve attacks, construction, boarding, garrisons, specialist gun crews, fire missions and grenade orders as command handling moves out of Godot.
+- Rust construction checks preserve supply charges, base names and allied engineer assignments, including rejected placements and continued wall segments.
+- Individual Rust order checks preserve a soldier leaving formation, choosing cover, attacking, throwing grenades, retreating and manning guns, including rescue claims and empty ammunition.

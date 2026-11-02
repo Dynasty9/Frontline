@@ -7,7 +7,7 @@ class Truck extends Vehicle:
 	func _ready() -> void:
 		set_process(false); set_physics_process(false)
 
-func import_actors(w: World, actors: RefCounted) -> Array:
+func import_actors(w: World, actors: RefCounted, next_id: int = 1000) -> Array:
 	var kinds := PackedByteArray(); var blocks := []; var profiles := []
 	var structure: RefCounted = ClassDB.instantiate("StructureStateCore")
 	var vehicle: RefCounted = ClassDB.instantiate("VehicleStateCore")
@@ -21,7 +21,7 @@ func import_actors(w: World, actors: RefCounted) -> Array:
 		else:
 			kinds.append(1); assert(structure.load_state(StructureState.capture(e))); blocks.append(structure.checkpoint())
 			profiles.append([e.eid,false,-1.0,false,e.is_player_building()])
-	assert(actors.load_state(1000,kinds,blocks)); return profiles
+	assert(actors.load_state(next_id,kinds,blocks)); return profiles
 
 func speech(q: Squad, call: int, variant: int) -> String:
 	match call:
