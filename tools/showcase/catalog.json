@@ -2823,6 +2823,35 @@
         "detail": "godot --main-pack PACK --resolution 1600x900 -- --aivai --seed=3 --offscreen --nohud --set=perf:0 --mood=day --preset=high --focus=-160,70 --zoom=140 --pitch=-35 --cam-yaw=0.7 --screenshot=OUTPUT --shot-at=2 --quit-after=3",
         "overview": "godot --main-pack PACK --resolution 1600x900 -- --aivai --seed=3 --offscreen --nohud --set=perf:0 --mood=golden --preset=high --focus=-100,0 --zoom=600 --pitch=-38 --cam-yaw=0.7 --perf-at=5 --perf-duration=10 --perf-shot=OUTPUT.png"
       }
+    },
+    {
+      "entry": "changelog/unreleased/cliff-runoff.md",
+      "summary": "Narrow mineral stains run down exposed cliffs, interrupted by ledges and changes in rock type.",
+      "medium": "still",
+      "stage": "native-media",
+      "rationale": "Matched native renders isolate this refinement against the shared terrain baseline.",
+      "source_ref": "codex/cliff-runoff",
+      "sources": [
+        {
+          "file": "changelog/unreleased/cliff-runoff/before.jpg",
+          "sha256": "f329ad746630d6675d333cc9915804de68180026896cd6bc86985841887fa1a3",
+          "caption": "before"
+        },
+        {
+          "file": "changelog/unreleased/cliff-runoff/after.jpg",
+          "sha256": "47e53c55493ca9361fd51822a60d168d0eb29d3e79cfa5211ae8e6f5b40df2a5",
+          "caption": "after"
+        }
+      ],
+      "output": null,
+      "title": "Add directional weathering to cliffs",
+      "version": "unreleased",
+      "kind": "improved",
+      "capture": {
+        "before_ref": "322c5a4",
+        "after_ref": "codex/cliff-runoff",
+        "command": "godot --main-pack PACK --resolution 1600x900 -- --aivai --seed=3 --offscreen --nohud --set=perf:0 --mood=day --preset=high --focus=0,0 --zoom=900 --pitch=-22 --cam-yaw=0.7 --screenshot=OUTPUT --shot-at=2 --quit-after=3"
+      }
     }
   ],
   "layout_capture": {
