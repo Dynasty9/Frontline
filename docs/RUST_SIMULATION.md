@@ -2973,5 +2973,32 @@ battle scenarios preserve reference fingerprints and events. The full release
 suite passes 915 core checks and eight standalone server checks. The later FPV
 altitude correction passes its 16 connected Rust checks. Expanded Godot adapters
 pass 144 drone cases and 84 support-aircraft cases, plus the projectile and battle
-comparisons above. All 140 numeric transcripts pass exactly in release; the
-debug rerun and cross-platform CI are pending.
+comparisons above. All 140 numeric transcripts pass exactly in debug and release
+locally. Linux x64/ARM64 and macOS ARM64 CI also pass; Windows CI is pending.
+
+## Standalone infantry scale measurement
+
+On November 2, 2026, the release server at `74d9fdd` ran 600 fixed ticks with 500
+soldiers, two depots and the production rifle/fighter loadouts. Other applications
+remained running. Each map produced 4,410 shots, 278 soldiers moving more than one
+metre and 417 survivors; the benchmark asserts movement and combat occurred.
+
+| Square map side | Mean tick | p95 | p99 | Maximum | Initial setup |
+| --- | --- | --- | --- | --- | --- |
+| 1,024 m | 3.228 ms | 4.833 ms | 5.504 ms | 6.933 ms | 71.77 ms |
+| 2,048 m | 2.787 ms | 4.073 ms | 4.732 ms | 6.348 ms | 303.02 ms |
+| 3,072 m | 2.813 ms | 3.602 ms | 4.961 ms | 6.643 ms | 626.79 ms |
+
+These are short simulation-only samples on flat, mostly empty maps, without
+strategic commanders, scenery, rendering or socket traffic. They are not a
+before/after comparison with the original Godot measurement or proof of 60 FPS.
+The smaller timing differences between map sizes are within uncontrolled desktop
+variation. Larger maps increase startup memory/work; the tick does not scan the
+entire map just because its dimensions increase.
+
+Run the ignored benchmark explicitly in release mode. `FL_BENCH_SIDE` accepts
+1024, 2048 or 3072:
+
+```powershell
+cargo +1.94.0 test --locked --release --manifest-path native/Cargo.toml -p frontline_server --test scale -- --ignored --nocapture --test-threads=1
+```
