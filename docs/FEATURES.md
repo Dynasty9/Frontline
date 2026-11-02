@@ -1592,6 +1592,10 @@ Rust now dispatches town lorries and FOB replacements in the same order, preserv
 stock thresholds, broken-route retries and existing convoys. HQ reserves use the
 opening delay, current surviving troop count, research and the first connected
 commander; scenario and mission exclusions remain unchanged.
+Support calls now retain supply charges, cooldowns and delayed salvos in Rust.
+Aircraft preserve their entry course, payload, reconnaissance camera and gun
+sockets; arriving shells preserve reverse queue order and the match random stream.
+Observer demonstrations and private readiness warnings retain their existing behavior.
 The full authoritative Rust server and deterministic
 battle verifier are still in progress; see [RUST_SIMULATION.md](RUST_SIMULATION.md).
 

@@ -10414,3 +10414,10 @@ fn reserves_and_truck_dispatch_are_identical_across_platforms() {
         &rules_logistics_world::transcript(),
     );
 }
+
+#[path = "fixtures/support_calls_world.rs"]
+mod support_calls_world;
+#[test]
+fn support_calls_and_salvos_are_identical_across_platforms() {
+    golden("support_calls_world", &support_calls_world::transcript());
+}

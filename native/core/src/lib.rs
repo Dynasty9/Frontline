@@ -111,6 +111,7 @@ pub mod structure_services;
 pub mod structure_world;
 pub mod supply_network;
 pub mod support;
+pub mod support_calls;
 pub mod targeting;
 pub mod terrain;
 pub mod terrain_cover;

@@ -24,7 +24,7 @@ graphics, network access or a wall clock.
 | Retained projectile actors and impacts | `frontline_core` | Connected flight resolves shared holders, guided targets and support contacts, then applies impacts, spawns, smoke, recon and sound in order; the production world dispatcher remains unfinished |
 | Shared actor storage and FPV ownership | `frontline_core` | Infantry, buildings, vehicles, projectiles and drones retain identities, state and shared casualty/transport links together; drones resolve living targets and operators inside Rust. Squad integration and complete world dispatch remain unfinished |
 | Squad state and shared knowledge | `frontline_core` | Orders, contact caches, plans and tactical state have retained checkpoints. Travel, defense, assaults, morale, battle drills, house clearing and ammunition sharing operate on owned actors. Remaining duties and the complete production squad dispatcher still need integration |
-| Retained buildings and economy transitions | `frontline_core` | Geometry, links, queues and timers have retained checkpoints; construction, capture, town income and production transitions match Godot. Shared rule effects, destruction, crews and the complete building dispatcher remain unfinished |
+| Retained buildings and economy transitions | `frontline_core` | Shared captures, destruction, crews, caches, tents, production, research, capacity and recruitment are reference-tested; the production world dispatcher remains unfinished |
 | Deferred damage and rubble | `frontline_core` | The live world uses checkpointed explosion deadlines and pending rubble spawns, with an engine-only fallback. Godot still applies the resulting damage and creates structures |
 | Fire, smoke and burning destruction | `frontline_core` | Retained fires apply ignition, spread, scorch damage, escape routes, battle records and geometry removal together; the live game still invokes Godot's fire loop |
 | Spatial bucket ownership | `frontline_core` | Infantry, vehicle, building and closed-door queries use retained actor IDs and preserve cell/registration order through checkpoints |
@@ -79,7 +79,9 @@ graphics, network access or a wall clock.
 | Smoke volumes and geometric visibility | `frontline_core` | Rust checks exposed points against collision and smoke, retaining reusable obstruction proofs; Godot supplies target posture and scene changes |
 | Route refinement, smoothing, corridor reuse and path requests | `frontline_core` | Native planner retains corridor history and request order; Godot supplies unit positions and delivers completed orders |
 | Cover anchors and fighting-position selection | Rust | Rust generates anchors and evaluates protection/firing lanes; candidate search, claims and soldier state remain in cover/combat scripts |
-| Supply, construction, upgrades, prisoners, victory | Rust | `rules.gd`, structures and battle scripts |
+| Supply, construction, upgrades, prisoners, victory | `frontline_core` | Retained supply payments, convoys, HQ reserves, research, prisoner custody/intelligence and capture victory are reference-tested; the complete rules/world loop is being connected |
+| Team fog and danger maps | `frontline_core` | Retained observers, camouflage, recon photographs, remembered contacts and both route danger maps match Godot through exact checkpoint resumes |
+| Support admission and delayed salvos | `frontline_core` | Retained payments, cooldowns, aircraft creation and delayed rounds match every support definition; complete world dispatch remains unfinished |
 | Battle ledger and report privacy | `frontline_core` | Retained credit, casualties, captures, commander rejoins, unit/hero history, timeline and team-filtered reports are reference-tested; the live game still updates its Godot ledger |
 | Missions, scripted events, initial map generation | Rust or immutable versioned input data | Map generators and mission director |
 | Models, animation, smoothing, particles, camera, minimap | Godot | Existing presentation code |
@@ -2568,3 +2570,26 @@ debug core checks and 132 release checks pass, including all 126 numeric cases.
 Import, formatting, changelog, presentation and diff checks pass. The complete rules/world
 loop, socket server and whole-match verifier remain unfinished. Other apps stayed
 running; these are correctness checks rather than rendered performance results.
+
+## Connected support requests and delayed salvos
+
+Rust now admits paid support against retained supply, cooldowns and battle credit.
+Aircraft begin with their existing course, payload, camera, gunset and muzzle
+sockets. Quiet recon and stealth strikes retain their warning rules; observer
+demonstrations remain neutral and free. Delayed artillery, rockets, mortars and
+smoke preserve reverse arrival order, scatter, sound decisions and random draws.
+Due rounds are extracted in one pass before reverse processing, avoiding repeated
+queue shifts. Cooldowns and pending rounds are included in exact checkpoints.
+
+Godot comparisons pass all 20 support definitions in four cases with ten updates
+each (800 states), comparing admission, ordered effects/messages, supply, complete
+projectile bytes, battle records, queue state and RNG continuation. Seven focused
+Rust checks cover payment, eligibility, warnings, reverse arrival order, every
+sortie, exact resumes and malformed requests, including rejection before payment
+when battle credit would overflow. The 1,495,196-byte numeric transcript covers
+720 uninterrupted/resumed updates. Related Godot prisoner and captor checks pass
+after sharing the unchanged grid-reference formatter. The complete world loop,
+socket server and whole-match verifier remain unfinished. Other apps stayed running.
+All 926 debug core checks and 143 release checks pass, including all 127 numeric
+cases and the affected prisoner-rule regressions. Import, formatting, changelog,
+presentation and diff checks pass. These checks do not measure rendered frame rate.

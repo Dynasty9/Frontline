@@ -11,6 +11,14 @@ use crate::structure::Structure;
 use crate::vector::Vector3;
 use std::collections::{BTreeMap, HashSet};
 
+pub(crate) fn grid_ref(position: Vector3, map_side: u32) -> String {
+    let half = f64::from(map_side) * 0.5;
+    let cell = f64::from(map_side) / 8.0;
+    let col = (((f64::from(position.x) + half) / cell) as i64).clamp(0, 7);
+    let row = (((f64::from(position.z) + half) / cell) as i64).clamp(0, 7);
+    format!("{}{}", char::from(b'A' + col as u8), row + 1)
+}
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct Fact {
     pub key: String,
@@ -108,13 +116,7 @@ impl PrisonerIntelligence {
             return Err("invalid prisoner intelligence context");
         }
         let about = p.identity.team;
-        let grid = |position: Vector3| {
-            let half = f64::from(map_side) * 0.5;
-            let cell = f64::from(map_side) / 8.0;
-            let col = (((f64::from(position.x) + half) / cell) as i64).clamp(0, 7);
-            let row = (((f64::from(position.z) + half) / cell) as i64).clamp(0, 7);
-            format!("{}{}", char::from(b'A' + col as u8), row + 1)
-        };
+        let grid = |position| grid_ref(position, map_side);
         let mut facts = vec![];
         let structures: Vec<_> = actors
             .iter_kind(Kind::Structure)

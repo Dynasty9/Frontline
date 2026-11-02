@@ -144,3 +144,4 @@ kind = "fixed"
 - This is groundwork for the server migration. Battles still use the existing simulation, and recordings are not yet independently verified.
 - Rust fog checks preserve reconnaissance photographs, camouflage, remembered contacts and safer route choices, including exact saved-state continuation.
 - Rust logistics checks preserve town stock, supply-truck replacement and emergency HQ reserves, including their owners, research and rally orders.
+- Rust support checks preserve aircraft strikes, reconnaissance, artillery arrival order, supply charges and cooldowns through saved-state resumes.
