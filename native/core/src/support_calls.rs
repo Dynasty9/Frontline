@@ -215,17 +215,7 @@ impl SupportCalls {
             ));
         }
         for (field, amount) in [(14, f64::from(p.cost)), (19, 1.)] {
-            let player = battle
-                .players
-                .iter()
-                .find(|p| p.owner == peer)
-                .map_or(0., |p| p.counters[field]);
-            if [battle.sides[team as usize][field] + amount, player + amount]
-                .into_iter()
-                .any(|v| !v.is_finite() || v.abs() > 1e15)
-            {
-                return Err("support battle credit overflow");
-            }
+            battle.check_add(peer, team, field, amount)?;
         }
         if !economy::spend(actors, team, at, p.cost)? {
             return Ok((

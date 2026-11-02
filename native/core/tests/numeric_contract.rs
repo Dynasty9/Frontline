@@ -10428,3 +10428,10 @@ mod rules_world;
 fn complete_rules_ticks_are_identical_across_platforms() {
     golden("rules_world", &rules_world::transcript());
 }
+
+#[path = "fixtures/production_orders.rs"]
+mod production_orders;
+#[test]
+fn production_orders_are_identical_across_platforms() {
+    golden("production_orders", &production_orders::transcript());
+}

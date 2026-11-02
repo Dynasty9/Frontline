@@ -237,8 +237,8 @@ impl BattleStats {
         }
         Ok(())
     }
-    pub fn add(
-        &mut self,
+    pub fn check_add(
+        &self,
         owner: i32,
         team: i8,
         field: usize,
@@ -260,9 +260,22 @@ impl BattleStats {
         if !number(next_side) || !number(next_player) {
             return Err("battle statistic overflow");
         }
-        self.sides[team as usize][field] = next_side;
+        Ok(())
+    }
+    pub fn add(
+        &mut self,
+        owner: i32,
+        team: i8,
+        field: usize,
+        amount: f64,
+    ) -> Result<(), &'static str> {
+        self.check_add(owner, team, field, amount)?;
+        if !side(team) {
+            return Ok(());
+        }
+        self.sides[team as usize][field] += amount;
         if owner != 0 {
-            self.player(owner, team).counters[field] = next_player;
+            self.player(owner, team).counters[field] += amount;
         }
         Ok(())
     }

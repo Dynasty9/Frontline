@@ -41,6 +41,7 @@ mod navigation_scene;
 mod path_planner;
 mod prisoner_intelligence;
 mod production;
+mod production_orders;
 mod projectile_actor;
 mod projectile_flight;
 mod route_graph;

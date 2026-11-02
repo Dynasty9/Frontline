@@ -1598,6 +1598,9 @@ sockets; arriving shells preserve reverse queue order and the match random strea
 The combined Rust rules update connects support, visibility, reserves, prisoners,
 victory, danger maps and logistics in their original order, including saved-state
 continuation and their existing update cadence.
+Training and research admission also run against retained supply and queues in
+Rust, preserving prerequisites, private warnings and cancellation credit. The
+building pass applies captures, production and services in registration order.
 Observer demonstrations and private readiness warnings retain their existing behavior.
 The full authoritative Rust server and deterministic
 battle verifier are still in progress; see [RUST_SIMULATION.md](RUST_SIMULATION.md).

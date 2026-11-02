@@ -2613,3 +2613,30 @@ The full 934-test debug core suite and 135 release checks pass, including all
 The complete world loop, standalone
 socket server and whole-match verifier remain unfinished; these checks do not
 measure rendered performance. Other apps stayed running.
+
+## Production admission and the building pass
+
+Training and research requests now enforce team eligibility, building readiness,
+queue limits, research prerequisites and supply payment against retained Rust
+state. Private warnings preserve the existing wording and remain silent for AI
+orders. Cancellation refunds the newest order to nearby supply and reverses the
+original buyer's spending. Ledger limits are checked before money or queues
+change, using the same check as support calls.
+
+The combined building pass preserves registration order across territory,
+production, tents, gun positions, mines and caches. Earlier births consume
+capacity before later buildings check it; completed research affects subsequent
+recruits; buildings destroyed by an earlier blast are skipped. Decorative and
+unfinished buildings retain their clocks.
+
+The Godot comparison passes 6,912 states across every buildable roster entry and upgrade on both
+teams, with six cases and nine successive commands each. It compares complete
+building state, queues, supply, warnings and battle records, including saved-state
+resumes. Six focused admission checks and four building-pass regressions pass.
+The exact numeric order transcript adds 415,066 bytes across 216 commands.
+All 945 debug core checks and 154 release checks pass, including all 129 exact
+numeric cases and the affected ledger and support regressions.
+Import, formatting, changelog, presentation and diff checks pass; Godot support
+and battle-record regressions also pass after sharing the ledger guard.
+The complete authoritative world, socket server and whole-match verifier remain
+unfinished. Other apps stayed running; rendered performance was not measured.
