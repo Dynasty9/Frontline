@@ -15,6 +15,9 @@ class DroneCombat extends Combat:
 
 
 func _ready() -> void:
+	TerrainMap.N = 32
+	TerrainMap.H = 16.0
+	TerrainMap.DN = 64
 	assert(ClassDB.class_exists("DroneFlightCore"))
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 9471
@@ -27,6 +30,7 @@ func _ready() -> void:
 		var start := Vector3(rng.randf_range(-40, 40), rng.randf_range(1, 10), rng.randf_range(-40, 40))
 		for i in 2:
 			worlds[i].has_view = false
+			worlds[i].terrain = TerrainMap.new(worlds[i])
 			worlds[i].combat = DroneCombat.new(worlds[i])
 			worlds[i].combat.enable_native_collision()
 			pair[i].world = worlds[i]

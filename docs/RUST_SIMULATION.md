@@ -2818,3 +2818,8 @@ Godot movement, collision and flight paths where the native ports do not yet
 represent those rules. Elevated client joins retain the geology-aware loading
 worker. Those compatibility paths must be removed as the corresponding Rust
 heightfield and traversal support lands; full standalone simulation is not complete.
+
+The merged-map full Godot run found remaining movement/geometry mismatches in
+connected engineer and fire comparisons, and old navigation fixture assumptions on
+water maps. These remain open. Flat flight fixtures now initialize their terrain;
+all five actor, drone, guided-missile, projectile and support-flight checks pass.

@@ -109,14 +109,14 @@ func get_props() -> Dictionary:
 func on_spawned() -> void:
 	if srv and is_shell():
 		target.y = maxf(target.y, world.ground_y(target))
-	if srv and world.terrain.landform.heights.is_empty() and ClassDB.class_exists("SupportFlightCore") and ptype in ["jet", "a10", "ac130"]:
+	if srv and (world.terrain == null or world.terrain.landform.heights.is_empty()) and ClassDB.class_exists("SupportFlightCore") and ptype in ["jet", "a10", "ac130"]:
 		_support = ClassDB.instantiate("SupportFlightCore")
 		_reset_support()
-	if srv and world.terrain.landform.heights.is_empty() and ClassDB.class_exists("GuidedFlightCore") and ptype in ["atgm", "sam"]:
+	if srv and (world.terrain == null or world.terrain.landform.heights.is_empty()) and ClassDB.class_exists("GuidedFlightCore") and ptype in ["atgm", "sam"]:
 		_guided = ClassDB.instantiate("GuidedFlightCore")
 		var valid: bool = _guided.reset(ptype == "atgm", position, vel, target, life_t, tgt_id != 0)
 		assert(valid, "Invalid guided missile initial state")
-	if srv and world.terrain.landform.heights.is_empty() and ClassDB.class_exists("ProjectileFlightCore") and ptype in ["frag", "smoke", "rocket", "recoilless", "mortar", "mortar_smoke", "grad", "arty", "ac105", "ac40", "ac25", "bomb"]:
+	if srv and (world.terrain == null or world.terrain.landform.heights.is_empty()) and ClassDB.class_exists("ProjectileFlightCore") and ptype in ["frag", "smoke", "rocket", "recoilless", "mortar", "mortar_smoke", "grad", "arty", "ac105", "ac40", "ac25", "bomb"]:
 		_flight = ClassDB.instantiate("ProjectileFlightCore")
 	if ptype in ["grad", "arty", "ac105", "ac40", "ac25"]:
 		position = origin

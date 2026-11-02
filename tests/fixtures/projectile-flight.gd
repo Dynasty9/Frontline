@@ -18,6 +18,9 @@ class FlightCombat extends Combat:
 
 
 func _ready() -> void:
+	TerrainMap.N = 32
+	TerrainMap.H = 16.0
+	TerrainMap.DN = 64
 	assert(ClassDB.class_exists("ProjectileFlightCore"))
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 8732
@@ -31,6 +34,7 @@ func _ready() -> void:
 			var props := {"ptype": kind, "pos": Vector3(-2, rng.randf_range(1, 30), 7), "vel": Vector3(rng.randf_range(-20, 20), rng.randf_range(-8, 8), 4), "origin": Vector3(10, 2, -7), "target": Vector3(87, 0, 21), "T": rng.randf_range(0.1, 4), "fuse": rng.randf_range(0.3, 3.4)}
 			for i in 2:
 				worlds[i].has_view = false
+				worlds[i].terrain = TerrainMap.new(worlds[i])
 				worlds[i].combat = FlightCombat.new(worlds[i])
 				pair[i].world = worlds[i]
 				pair[i].apply_props(props)

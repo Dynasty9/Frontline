@@ -51,7 +51,7 @@ func on_spawned() -> void:
 	net_init = true
 	if srv:
 		target_pos = position
-		if world.terrain.landform.heights.is_empty() and ClassDB.class_exists("DroneFlightCore"):
+		if (world.terrain == null or world.terrain.landform.heights.is_empty()) and ClassDB.class_exists("DroneFlightCore"):
 			_flight = ClassDB.instantiate("DroneFlightCore")
 			var valid: bool = _flight.reset(position, rotation.y)
 			assert(valid, "Invalid drone initial state")

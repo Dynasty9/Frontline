@@ -4877,7 +4877,7 @@ var _mount_core: RefCounted
 
 
 func _native_mount() -> bool:
-	return world.settings.get("rust_infantry", false) and ClassDB.class_exists("InfantryMountCore") and world.terrain.landform.heights.is_empty()
+	return world.settings.get("rust_infantry", false) and ClassDB.class_exists("InfantryMountCore") and (world.terrain == null or world.terrain.landform.heights.is_empty())
 
 
 func _mounted_core() -> RefCounted:

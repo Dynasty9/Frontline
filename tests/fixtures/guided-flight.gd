@@ -20,6 +20,9 @@ class MissileCombat extends Combat:
 
 
 func _ready() -> void:
+	TerrainMap.N = 32
+	TerrainMap.H = 16.0
+	TerrainMap.DN = 64
 	assert(ClassDB.class_exists("GuidedFlightCore"))
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 87392
@@ -36,6 +39,7 @@ func _ready() -> void:
 		var kind := "atgm" if trial < 48 else "sam"
 		for i in 2:
 			worlds[i].has_view = false
+			worlds[i].terrain = TerrainMap.new(worlds[i])
 			worlds[i].entities = {1: operator, 2: target}
 			worlds[i].combat = MissileCombat.new(worlds[i])
 			worlds[i].combat.enable_native_collision()

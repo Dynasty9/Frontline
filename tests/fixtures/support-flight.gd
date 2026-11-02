@@ -51,6 +51,9 @@ func same(a: Variant, b: Variant) -> bool:
 
 
 func _ready() -> void:
+	TerrainMap.N = 32
+	TerrainMap.H = 16.0
+	TerrainMap.DN = 64
 	assert(ClassDB.class_exists("SupportFlightCore"))
 	var setups := [["jet", ""], ["a10", ""], ["ac130", ""], ["ac130", "blackfish"], ["ac130", "xian"], ["ac130", "greyhawk"], ["ac130", "none"]]
 	var cases := 0
@@ -72,6 +75,7 @@ func _ready() -> void:
 			for i in 2:
 				pair[i].eid = 29
 				worlds[i].has_view = false
+				worlds[i].terrain = TerrainMap.new(worlds[i])
 				worlds[i].rng.seed = 8972 + trial
 				worlds[i].combat = SupportCombat.new(worlds[i])
 				worlds[i].rules = SupportRules.new(worlds[i])

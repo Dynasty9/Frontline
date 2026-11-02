@@ -47,6 +47,9 @@ func _ready() -> void:
 	MapDims.N = 32
 	MapDims.SIZE = 32.0
 	MapDims.HALF = 16.0
+	TerrainMap.N = 32
+	TerrainMap.H = 16.0
+	TerrainMap.DN = 64
 	Nav.N = 32
 	Nav.H = 16.0
 	HNav.C = 16
@@ -55,6 +58,7 @@ func _ready() -> void:
 	w.srv = true
 	w.has_view = false
 	w.settings = {"rust_infantry": false}
+	w.terrain = TerrainMap.new(w)
 	w.nav = Nav.new()
 	w.nav.finalize()
 	w.combat = ActorCombat.new(w)
