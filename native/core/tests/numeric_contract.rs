@@ -10421,3 +10421,10 @@ mod support_calls_world;
 fn support_calls_and_salvos_are_identical_across_platforms() {
     golden("support_calls_world", &support_calls_world::transcript());
 }
+
+#[path = "fixtures/rules_world.rs"]
+mod rules_world;
+#[test]
+fn complete_rules_ticks_are_identical_across_platforms() {
+    golden("rules_world", &rules_world::transcript());
+}

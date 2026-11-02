@@ -1595,6 +1595,9 @@ commander; scenario and mission exclusions remain unchanged.
 Support calls now retain supply charges, cooldowns and delayed salvos in Rust.
 Aircraft preserve their entry course, payload, reconnaissance camera and gun
 sockets; arriving shells preserve reverse queue order and the match random stream.
+The combined Rust rules update connects support, visibility, reserves, prisoners,
+victory, danger maps and logistics in their original order, including saved-state
+continuation and their existing update cadence.
 Observer demonstrations and private readiness warnings retain their existing behavior.
 The full authoritative Rust server and deterministic
 battle verifier are still in progress; see [RUST_SIMULATION.md](RUST_SIMULATION.md).

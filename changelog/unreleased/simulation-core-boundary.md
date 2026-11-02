@@ -145,3 +145,4 @@ kind = "fixed"
 - Rust fog checks preserve reconnaissance photographs, camouflage, remembered contacts and safer route choices, including exact saved-state continuation.
 - Rust logistics checks preserve town stock, supply-truck replacement and emergency HQ reserves, including their owners, research and rally orders.
 - Rust support checks preserve aircraft strikes, reconnaissance, artillery arrival order, supply charges and cooldowns through saved-state resumes.
+- Combined Rust rules checks preserve the timing and order of support, visibility, prisoners, reserves, victory and supply dispatch through saved-state resumes.

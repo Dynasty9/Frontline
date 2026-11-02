@@ -11,7 +11,7 @@ fn read<T: FromGodot>(a: &Array<Variant>, i: usize) -> Option<T> {
 fn vector(p: frontline_core::vector::Vector3) -> Vector3 {
     Vector3::new(p.x, p.y, p.z)
 }
-fn events(out: Vec<Event>) -> Array<Variant> {
+pub(crate) fn events(out: Vec<Event>) -> Array<Variant> {
     out.into_iter()
         .map(|e| match e {
             Event::Warn { peer, text } => varray![0, peer, &GString::from(&text)].to_variant(),

@@ -44,6 +44,7 @@ mod production;
 mod projectile_actor;
 mod projectile_flight;
 mod route_graph;
+mod rules_world;
 mod simulation_random;
 mod spatial;
 mod squad;

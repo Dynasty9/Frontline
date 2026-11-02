@@ -79,7 +79,7 @@ graphics, network access or a wall clock.
 | Smoke volumes and geometric visibility | `frontline_core` | Rust checks exposed points against collision and smoke, retaining reusable obstruction proofs; Godot supplies target posture and scene changes |
 | Route refinement, smoothing, corridor reuse and path requests | `frontline_core` | Native planner retains corridor history and request order; Godot supplies unit positions and delivers completed orders |
 | Cover anchors and fighting-position selection | Rust | Rust generates anchors and evaluates protection/firing lanes; candidate search, claims and soldier state remain in cover/combat scripts |
-| Supply, construction, upgrades, prisoners, victory | `frontline_core` | Retained supply payments, convoys, HQ reserves, research, prisoner custody/intelligence and capture victory are reference-tested; the complete rules/world loop is being connected |
+| Supply, construction, upgrades, prisoners, victory | `frontline_core` | The combined rules tick connects support, fog, reserves, prisoners, victory, danger maps and logistics in their original order; the complete world loop remains unfinished |
 | Team fog and danger maps | `frontline_core` | Retained observers, camouflage, recon photographs, remembered contacts and both route danger maps match Godot through exact checkpoint resumes |
 | Support admission and delayed salvos | `frontline_core` | Retained payments, cooldowns, aircraft creation and delayed rounds match every support definition; complete world dispatch remains unfinished |
 | Battle ledger and report privacy | `frontline_core` | Retained credit, casualties, captures, commander rejoins, unit/hero history, timeline and team-filtered reports are reference-tested; the live game still updates its Godot ledger |
@@ -2593,3 +2593,23 @@ socket server and whole-match verifier remain unfinished. Other apps stayed runn
 All 926 debug core checks and 143 release checks pass, including all 127 numeric
 cases and the affected prisoner-rule regressions. Import, formatting, changelog,
 presentation and diff checks pass. These checks do not measure rendered frame rate.
+
+## Combined match rules
+
+One Rust update now advances delayed support, team fog, headquarters reserves,
+prisoner rescue and interrogation, victory, route danger and supply dispatch in
+the same order as the existing match rules. Cadence timers retain their existing
+no-catchup behavior. A single rules checkpoint includes their clocks, retained
+subsystems, income history and base-name counters. Guard assignments also emit
+the original captor counter.
+
+The Godot comparison passes 160 updates across 32 scenarios, comparing actors,
+squads, projectiles, visibility, intelligence history, messages, sounds, counters,
+battle credit, geometry, completed routes and random continuation after each
+update and checkpoint resume. Seven focused Rust regressions pass. The exact
+numeric transcript adds 3,600,135 bytes across 192 uninterrupted/resumed updates.
+The full 934-test debug core suite and 135 release checks pass, including all
+128 numeric cases. Formatting, changelog, presentation and diff checks pass.
+The complete world loop, standalone
+socket server and whole-match verifier remain unfinished; these checks do not
+measure rendered performance. Other apps stayed running.

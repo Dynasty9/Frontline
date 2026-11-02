@@ -166,6 +166,7 @@ struct Building {
     time: Option<f64>,
 }
 enum Operation {
+    Rules(Array<Variant>, Gd<crate::rules_world::RulesWorldCore>),
     Logistics(Array<Variant>, Gd<SupplyNetworkCore>),
     Production(
         Array<Variant>,
@@ -189,6 +190,36 @@ struct VehicleLossWorldCore {
 }
 #[godot_api]
 impl VehicleLossWorldCore {
+    #[func]
+    fn advance_rules(
+        &mut self,
+        actors: Gd<ActorStateCore>,
+        geometry: Gd<WorldGeometryCore>,
+        units: Gd<SpatialIndexCore>,
+        nodes: Array<Gd<SquadStateCore>>,
+        fires: Gd<FiresCore>,
+        battle: Gd<BattleStatsCore>,
+        deferred: Gd<DeferredEffectsCore>,
+        visibility: Gd<VisibilityCore>,
+        rng: Gd<SimulationRandomCore>,
+        config: Array<Variant>,
+        input: Array<Variant>,
+        rules: Gd<crate::rules_world::RulesWorldCore>,
+    ) -> Array<Variant> {
+        self.run(
+            actors,
+            geometry,
+            units,
+            nodes,
+            fires,
+            battle,
+            deferred,
+            visibility,
+            rng,
+            config,
+            Operation::Rules(input, rules),
+        )
+    }
     #[func]
     fn advance_logistics(
         &mut self,
@@ -1076,6 +1107,35 @@ impl VehicleLossWorldCore {
             }
         };
         let result = match operation {
+            Operation::Rules(input, mut rules) => {
+                use frontline_core::rules_world::Event as R;
+                let Some((winner, events)) = crate::rules_world::advance(
+                    &mut context,
+                    input,
+                    &mut rules.bind_mut().core,
+                    |k| men.contains_key(k),
+                ) else {
+                    return Array::new();
+                };
+                let rows: Array<Variant> = events.iter().map(crate::rules_world::event).collect();
+                services = Some(varray![i32::from(winner), &rows]);
+                Ok(events
+                    .into_iter()
+                    .filter_map(|e| match e {
+                        R::Freed { .. } => Some(world_combat::Event::Stat("prisoner_freed")),
+                        R::Intelligence(_) => Some(world_combat::Event::Stat("intel")),
+                        R::Captor(_) => Some(world_combat::Event::Stat("captor")),
+                        R::Logistics(frontline_core::rules_logistics::Event::Truck {
+                            town,
+                            ..
+                        }) if town != 0 => Some(world_combat::Event::Stat("town_truck_sent")),
+                        R::Logistics(frontline_core::rules_logistics::Event::Movement(e)) => {
+                            Some(world_combat::Event::Vehicle(Event::Squad(e)))
+                        }
+                        _ => None,
+                    })
+                    .collect())
+            }
             Operation::Logistics(input, network) => {
                 use crate::production::{self, Item};
                 use frontline_core::rules_logistics::{Event as E, TruckProfile};

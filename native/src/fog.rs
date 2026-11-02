@@ -7,7 +7,10 @@ use std::collections::HashMap;
 fn read<T: FromGodot>(a: &Array<Variant>, i: usize) -> Option<T> {
     a.get(i)?.try_to().ok()
 }
-fn profiles(rows: Array<Variant>, actors: &Actors) -> Option<HashMap<u32, VehicleProfile>> {
+pub(crate) fn profiles(
+    rows: Array<Variant>,
+    actors: &Actors,
+) -> Option<HashMap<u32, VehicleProfile>> {
     if rows.len() > 100_000 {
         return None;
     }
