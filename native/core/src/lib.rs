@@ -102,6 +102,7 @@ pub mod structure;
 pub mod structure_birth;
 pub mod structure_collision;
 pub mod structure_damage;
+pub mod structure_services;
 pub mod supply_network;
 pub mod support;
 pub mod targeting;

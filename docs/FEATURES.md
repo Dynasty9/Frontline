@@ -1549,8 +1549,12 @@ claims, rescue and squad rejoining. Intelligence retains the original fact order
 private reports, deadlines and random draws, with report history saved for replay
 continuation. The full rules loop still needs integration.
 Construction, town income, capture and production transitions match the existing
-game; shared rule effects, destruction and the full building dispatcher still need
-migration before Rust owns the complete battle.
+game. Tents now recruit and assign stretcher teams against retained casualties;
+gun positions select and route their crews; ammunition caches refill nearby men
+and retire their shared geometry when empty. These services preserve decision
+clocks, claims, random draws and route continuation. Remaining rule effects and
+the full building dispatcher still need migration before Rust owns the complete
+battle.
 Retained rejoining now selects or creates squads, transfers disconnected ownership
 and updates membership, battle records and return routes. Recovery and prisoner
 rule dispatch still need to call this from the complete Rust world loop.

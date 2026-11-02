@@ -96,6 +96,22 @@ impl MountedGun {
     }
 }
 impl Structure {
+    pub fn mount_position(&self, gun: Option<MountedGun>) -> Result<Vector3, &'static str> {
+        Ok(match self.kind.as_str() {
+            "watchtower" => self.position + Vector3::Y * 4.25,
+            "mortar_pit" => {
+                self.position + transform(rotation(self.yaw), Vector3::new(0.0, 0.0, 0.75))
+            }
+            "at_post" => {
+                self.position + transform(rotation(self.yaw), Vector3::new(0.0, 0.0, -0.4))
+            }
+            "mg_nest" | "hmg_nest" => self.mg_mount_position(
+                gun.filter(|g| g.valid())
+                    .ok_or("missing mounted gun geometry")?,
+            ),
+            _ => self.position + transform(rotation(self.yaw), Vector3::new(0.0, 0.0, -0.5)),
+        })
+    }
     fn mg_pivot(&self, gun: MountedGun) -> Vector3 {
         let heavy = self.kind == "hmg_nest";
         if self.variant == 1 {

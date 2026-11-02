@@ -17,7 +17,8 @@ jobs:
       matrix:
         os: [ubuntu-latest, windows-latest, ubuntu-24.04-arm, macos-latest]
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 20
+    # Cold Windows linking of all release test binaries now exceeds 20 minutes.
+    timeout-minutes: 40
     steps:
       - uses: actions/checkout@v4
       - name: Check identical simulation bytes in debug and release

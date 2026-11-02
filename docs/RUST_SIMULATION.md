@@ -2438,3 +2438,33 @@ do not complete the standalone server or whole-match replay verifier.
 All 880 debug core tests and 128 release checks pass, including all 121 exact
 numeric-contract cases. Import, changelog, presentation and formatting checks pass.
 Other apps stayed running; no rendered frame-rate claim is made from these tests.
+
+## Connected building services
+
+Medic tents now recruit bearers and assign paired or lone stretcher jobs directly
+against retained soldiers. They preserve living surrendering bearers, replace
+dead or enemy bearers, wait for recent wounds and respect rescue/stretcher claims.
+Gun positions preserve specialist preference, distance ties, stale crew removal,
+watchtower manning and approach routes. Caches preserve ammunition and special
+stock refills, reload speech and the final complete set of refills before removal.
+Removal updates shared cover/navigation immediately and retires collision at the
+normal tick boundary. Shared duty-release and mount-position code is reused by
+squads, soldier commands and gun crews.
+
+Godot passes 1,242 building-service updates, comparing complete soldiers and
+structures, random continuation, speech, messages, counters, route queues and
+geometry, with checkpoint resumes. The infantry-command, squad-duty and connected
+gun-crew regressions pass after the shared helper changes. Five focused Rust tests
+cover recruitment, casualty priority, gun selection, cache depletion, clocks and
+checkpoint continuation. Capture, production and the complete world dispatcher
+remain separate completion work.
+All 886 debug core tests pass. The final release run passes 146 checks, including
+all 122 exact numeric-contract cases and the affected command, squad-duty and
+gun-crew tests. The new 9,216,159-byte service transcript records every changed
+checkpoint byte and compares uninterrupted and resumed updates. Import, changelog,
+presentation and formatting checks pass; other applications stayed running.
+
+At `6794da5`, the full game CI job and Linux x64/ARM/macOS numeric jobs passed.
+Windows passed the debug suite but reached the 20-minute limit while compiling
+release test binaries. The numeric job now allows 40 minutes and retains both
+complete debug and release suites; current-head CI must still complete.

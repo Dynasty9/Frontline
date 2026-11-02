@@ -22,6 +22,7 @@ kind = "fixed"
 - Rust collision-construction checks preserve buildings' cover through construction, movement and opened doors without depending on rendered scene objects.
 - Connected Rust creation checks preserve every structure kind's health, supplies, obstacles and fighting positions, including unfinished buildings and later destruction.
 - Rust recruitment checks preserve new squads' names, loadouts, upgrades, initial spacing, rally paths and transport passengers. Vehicle creation preserves health, ammunition, flight state and collision across the complete roster.
+- Connected Rust building services preserve stretcher-team replacement, casualty priority, gun-crew selection and ammunition-cache refills, including claims, movement and empty-cache removal.
 - Rust blast-toss checks preserve how cars and crates carry their cover and obstacles to a new position, including blocked landings and random continuation.
 - Shared Rust formation checks preserve squad spacing and cover choices while reusing ground searches and keeping soldiers together on the same side of obstacles.
 - Connected Rust squad movement checks preserve travel spacing, leader slowdown, alternating fire teams and recon fire, including interrupted duties and saved route queues.

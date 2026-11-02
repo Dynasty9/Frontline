@@ -1,7 +1,6 @@
 //! Gun crews use the same retained bullets, projectiles and warning responses as other troops.
 use crate::actors::Actor;
 use crate::bullet_world::Gunfire;
-use crate::cover::{rotation, transform};
 use crate::entities::{Kind as ActorKind, MAX_ENTITIES};
 use crate::fire_targets;
 use crate::guided::{GuidedFlight, Kind as GuidedKind};
@@ -430,15 +429,7 @@ impl Context<'_> {
         };
         let kind = st.kind.clone();
         let st_position = st.position;
-        let position = match kind.as_str() {
-            "watchtower" => st.position + Vector3::Y * 4.25,
-            "mortar_pit" => st.position + transform(rotation(st.yaw), Vector3::new(0.0, 0.0, 0.75)),
-            "at_post" => st.position + transform(rotation(st.yaw), Vector3::new(0.0, 0.0, -0.4)),
-            "mg_nest" | "hmg_nest" => {
-                st.mg_mount_position(gun.ok_or("missing mounted gun geometry")?)
-            }
-            _ => st.position + transform(rotation(st.yaw), Vector3::new(0.0, 0.0, -0.5)),
-        };
+        let position = st.mount_position(gun)?;
         let weapon = match kind.as_str() {
             "mg_nest" => "mmg",
             "hmg_nest" => "m2",

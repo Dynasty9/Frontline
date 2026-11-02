@@ -7,6 +7,40 @@ use crate::random::SimulationRandom;
 use crate::squad::Squad;
 
 impl Actors {
+    pub(crate) fn clear_infantry_duty(
+        &mut self,
+        id: u32,
+        nav: &crate::path_planner::PathPlanner,
+        squads: &mut [Squad],
+    ) -> Result<(), &'static str> {
+        let s = self.soldier(id).ok_or("missing assigned soldier")?;
+        let mount = self
+            .structure(s.emplacement.structure as u32)
+            .map(|st| st.position);
+        let release = self.soldier_mut(id).unwrap().clear_duty(nav, mount);
+        self.release_duty_claim(id, release, squads);
+        Ok(())
+    }
+    fn release_duty_claim(&mut self, id: u32, release: Option<Release>, squads: &mut [Squad]) {
+        match release {
+            Some(Release::Rescue(patient)) => self.release_links(
+                id,
+                Released {
+                    patient,
+                    ..Default::default()
+                },
+            ),
+            Some(Release::Breach(squad)) => {
+                if let Some(q) = squads
+                    .iter_mut()
+                    .find(|q| q.id == squad && q.breach_by == id)
+                {
+                    q.breach_by = 0;
+                }
+            }
+            None => (),
+        }
+    }
     pub fn command_infantry(
         &mut self,
         id: u32,
@@ -27,24 +61,7 @@ impl Actors {
             .soldier_mut(id)
             .unwrap()
             .command(command, &navigation.planner, mount)?;
-        match ordered.release {
-            Some(Release::Rescue(patient)) => self.release_links(
-                id,
-                Released {
-                    patient,
-                    ..Default::default()
-                },
-            ),
-            Some(Release::Breach(squad)) => {
-                if let Some(q) = squads
-                    .iter_mut()
-                    .find(|q| q.id == squad && q.breach_by == id)
-                {
-                    q.breach_by = 0;
-                }
-            }
-            None => (),
-        }
+        self.release_duty_claim(id, ordered.release, squads);
         if ordered.cancel_path {
             navigation.planner.cancel(u64::from(id));
         }

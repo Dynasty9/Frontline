@@ -3,8 +3,7 @@ use crate::actors::Actor;
 use crate::cover::{rotation, transform};
 use crate::infantry::{Goal, Infantry};
 use crate::infantry_action::Round;
-use crate::infantry_casualty::Released;
-use crate::infantry_commands::{Command, Release};
+use crate::infantry_commands::Command;
 use crate::infantry_controller::Task;
 use crate::infantry_pose::Posture;
 use crate::infantry_vitals::Life;
@@ -19,32 +18,9 @@ pub struct Role {
 }
 impl Context<'_> {
     fn clear_squad_duty(&mut self, id: u32) {
-        let mount = self.actors.soldier(id).unwrap().emplacement.structure;
-        let at = self.actors.structure(mount as u32).map(|s| s.position);
-        let release = self
-            .actors
-            .soldier_mut(id)
-            .unwrap()
-            .clear_duty(&self.geometry.navigation.planner, at);
-        match release {
-            Some(Release::Rescue(patient)) => self.actors.release_links(
-                id,
-                Released {
-                    patient,
-                    ..Default::default()
-                },
-            ),
-            Some(Release::Breach(squad)) => {
-                if let Some(q) = self
-                    .squads
-                    .iter_mut()
-                    .find(|q| q.id == squad && q.breach_by == id)
-                {
-                    q.breach_by = 0;
-                }
-            }
-            None => (),
-        }
+        self.actors
+            .clear_infantry_duty(id, &self.geometry.navigation.planner, self.squads)
+            .unwrap();
     }
     fn duty_route(
         &mut self,

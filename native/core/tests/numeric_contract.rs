@@ -10370,3 +10370,13 @@ mod squad_birth_world;
 fn squad_recruitment_is_identical_across_platforms() {
     golden("squad_birth_world", &squad_birth_world::transcript());
 }
+
+#[path = "fixtures/structure_services_world.rs"]
+mod structure_services_world;
+#[test]
+fn building_services_are_identical_across_platforms() {
+    golden(
+        "structure_services_world",
+        &structure_services_world::transcript(),
+    );
+}

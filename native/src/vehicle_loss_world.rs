@@ -105,6 +105,7 @@ struct Building {
     time: Option<f64>,
 }
 enum Operation {
+    Service(Array<Variant>),
     Recruit(Array<Variant>),
     Damage(u32, f64, u32),
     Explosion(Explosion, Gd<SupplyNetworkCore>, Vec<Report>),
@@ -121,6 +122,35 @@ struct VehicleLossWorldCore {
 }
 #[godot_api]
 impl VehicleLossWorldCore {
+    #[func]
+    fn advance_structure_service(
+        &mut self,
+        actors: Gd<ActorStateCore>,
+        geometry: Gd<WorldGeometryCore>,
+        units: Gd<SpatialIndexCore>,
+        nodes: Array<Gd<SquadStateCore>>,
+        fires: Gd<FiresCore>,
+        battle: Gd<BattleStatsCore>,
+        deferred: Gd<DeferredEffectsCore>,
+        visibility: Gd<VisibilityCore>,
+        rng: Gd<SimulationRandomCore>,
+        config: Array<Variant>,
+        input: Array<Variant>,
+    ) -> Array<Variant> {
+        self.run(
+            actors,
+            geometry,
+            units,
+            nodes,
+            fires,
+            battle,
+            deferred,
+            visibility,
+            rng,
+            config,
+            Operation::Service(input),
+        )
+    }
     #[func]
     fn recruit(
         &mut self,
@@ -872,6 +902,7 @@ impl VehicleLossWorldCore {
         let mut construction: Option<Array<Variant>> = None;
         let mut construction_stats = PackedStringArray::new();
         let mut recruitment: Option<Array<Variant>> = None;
+        let mut services: Option<Array<Variant>> = None;
         let armor = |v: &frontline_core::vehicle::Vehicle| {
             let p = &vehicles[&v.id];
             Armor {
@@ -883,6 +914,99 @@ impl VehicleLossWorldCore {
             }
         };
         let result = match operation {
+            Operation::Service(input) => {
+                use frontline_core::structure_services::{Event as Service, Profiles, Supply};
+                let parse = || -> Option<_> {
+                    if input.len() != 8 {
+                        return None;
+                    }
+                    let id: u32 = read(&input, 0)?;
+                    let dt: f64 = read(&input, 1)?;
+                    let stock = crate::actors::service_stock(read(&input, 2)?)?;
+                    let rows: Array<Variant> = read(&input, 3)?;
+                    if rows.len() > 100_000 {
+                        return None;
+                    }
+                    let mut supply = BTreeMap::new();
+                    for row in rows.iter_shared() {
+                        let row: Array<Variant> = row.try_to().ok()?;
+                        if row.len() != 3 {
+                            return None;
+                        }
+                        let id: u32 = read(&row, 0)?;
+                        let ammo: i32 = read(&row, 1)?;
+                        if ammo < -1 {
+                            return None;
+                        }
+                        let p = Supply {
+                            ammunition: (ammo >= 0).then_some(ammo),
+                            frags: read(&row, 2)?,
+                            loadout: stock.get(&id)?.0,
+                        };
+                        if !p.valid() || supply.insert(id, p).is_some() {
+                            return None;
+                        }
+                    }
+                    if context.actors.iter().any(
+                        |a| matches!(a,Actor::Soldier(s) if !supply.contains_key(&s.identity.id)),
+                    ) {
+                        return None;
+                    }
+                    let bearer = birth_loadout(&read(&input, 4)?)?;
+                    if !men.contains_key(&bearer.unit) {
+                        return None;
+                    }
+                    let armor: bool = read(&input, 5)?;
+                    let grenades: bool = read(&input, 6)?;
+                    let gun = crate::actors::mounted_gun(&read(&input, 7)?).ok()?;
+                    Some((id, dt, supply, bearer, armor, grenades, gun))
+                };
+                let Some((id, dt, supply, bearer, armor, grenades, gun)) = parse() else {
+                    return Array::new();
+                };
+                context
+                    .advance_structure_service(
+                        id,
+                        dt,
+                        &Profiles {
+                            supply: &|s| supply[&s.identity.id],
+                            bearer: &bearer,
+                            armor_upgrade: armor,
+                            grenade_upgrade: grenades,
+                            gun,
+                        },
+                    )
+                    .map(|events| {
+                        services = Some(
+                            events
+                                .iter()
+                                .map(|e| match e {
+                                    Service::Born { tent, soldier } => {
+                                        varray![0, *tent, *soldier].to_variant()
+                                    }
+                                    Service::Reload { soldier, variant } => {
+                                        varray![1, *soldier, i32::from(*variant)].to_variant()
+                                    }
+                                    Service::CacheEmpty { id, team, position } => {
+                                        varray![2, *id, i32::from(*team), vector(*position)]
+                                            .to_variant()
+                                    }
+                                    Service::Despawn(id) => varray![3, *id].to_variant(),
+                                    Service::Stat(key) => {
+                                        varray![4, &GString::from(*key)].to_variant()
+                                    }
+                                })
+                                .collect(),
+                        );
+                        events
+                            .into_iter()
+                            .filter_map(|e| match e {
+                                Service::Stat(key) => Some(world_combat::Event::Stat(key)),
+                                _ => None,
+                            })
+                            .collect()
+                    })
+            }
             Operation::Recruit(input) => {
                 use frontline_core::squad_birth::{Definition, Spawn};
                 let parse = || -> Option<_> {
@@ -2193,6 +2317,9 @@ impl VehicleLossWorldCore {
         }
         if let Some(recruitment) = recruitment {
             out.push(&recruitment.to_variant());
+        }
+        if let Some(services) = services {
+            out.push(&services.to_variant());
         }
         out
     }
