@@ -19,6 +19,8 @@ func _ready() -> void:
 		assert(soldier.joint("Head").origin.y > 0.1, "Prone head penetrated the ground")
 	assert(traveled > 0.05, "Crawl was frozen at a single pose")
 	proxy.move_yaw = PI
+	proxy.pose(1.0 / 60.0, 0, Soldier.Post.PRONE, Soldier.Act.CRAWL, 0.45, true, false)
+	assert(proxy.rifle_driver.prone_clip.ends_with("Prone_Backwards_Start"), "Backward crawl skipped its captured start")
 	for frame in 240: proxy.pose(1.0 / 60.0, 0, Soldier.Post.PRONE, Soldier.Act.CRAWL, 0.45, true, false)
 	assert(proxy.rifle_driver.prone_clip.ends_with("Moving_Backward_In_Prone_Position"), "Backward crawl used forward or procedural motion")
 	proxy.pose(1.0 / 60.0, 0, Soldier.Post.PRONE, Soldier.Act.IDLE, 0.0, false, false)

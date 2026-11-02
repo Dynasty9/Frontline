@@ -4,7 +4,7 @@ extends RefCounted
 const PRONE_CLIP := "mixamo_transition__Rifle_Kneel_To_Prone"
 var prone_time := 0.0
 const PRONE_PACK := "mixamo_prone__"
-const PRONE_MOTIONS := ["Prone_Idle", "Prone_Forward", "Moving_Backward_In_Prone_Position", "Prone_Forward_Stop", "Prone_Backwards_Stop", "Prone_Firing_Rifle", "Prone_Reloading"]
+const PRONE_MOTIONS := ["Prone_Idle", "Prone_Forward", "Moving_Backward_In_Prone_Position", "Prone_Forward_Stop", "Prone_Backwards_Stop", "Prone_Firing_Rifle", "Prone_Reloading", "Prone_Backwards_Start"]
 var prone_clip := ""
 var prone_clock := 0.0
 var prone_moving := false
@@ -436,6 +436,8 @@ func advance_prone(dt: float, velocity := Vector3.ZERO, act := Soldier.Act.IDLE,
 	var motion := "Prone_Idle"
 	if moving:
 		motion = "Moving_Backward_In_Prone_Position" if backwards else "Prone_Forward"
+		if backwards and (not prone_moving or (prone_clip.ends_with("Prone_Backwards_Start") and prone_clock < actor.native_player.get_animation(prone_clip).length)) and actor.native_player.has_animation(PRONE_PACK + "Prone_Backwards_Start"):
+			motion = "Prone_Backwards_Start"
 	elif prone_moving:
 		motion = "Prone_Backwards_Stop" if prone_backwards else "Prone_Forward_Stop"
 	elif prone_clip.ends_with("_Stop") and prone_clock < actor.native_player.get_animation(prone_clip).length:
@@ -488,7 +490,7 @@ func recover_prone(dt: float) -> bool:
 		prone_clip = ""
 		prone_recovery = 0.0
 		return false
-	actor._begin_pose(37)
+	actor._begin_pose(38)
 	prone_recovery += dt
 	actor.native_player.play(clip, 0.0)
 	actor.native_player.seek(minf(prone_recovery, animation.length), true)

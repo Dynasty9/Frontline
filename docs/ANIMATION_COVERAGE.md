@@ -62,7 +62,9 @@ Downloaded and locally installed prone family:
 - Prone Firing Rifle (full body), Prone Reloading, Throw Grenade (prone).
 - Existing Rifle Kneel To Prone and Rifle Prone To Kneel transitions.
 
-Requested exports still awaiting completed files: Prone Backwards Start, Prone Left Turn, Prone Right Turn, Prone Roll. These are not counted as installed.
+Prone Backwards Start, Prone Left Turn, Prone Right Turn and Prone Roll are now imported and available in the viewer. Backwards Start is wired before the backward crawl loop; turns and roll are inspection clips, not gameplay routes yet.
+
+Requested exports awaiting completed files: Crouch To Prone, Prone To Crouch Transition, Rifle Prone Hit Reaction, Prone Death, and Crawl Backwards In Prone. Only completed FBX files count as installed.
 
 Other visible candidates to preview before choosing:
 - Grenade Throw — kneeling, pulling pin with teeth.

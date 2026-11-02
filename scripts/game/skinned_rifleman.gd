@@ -611,7 +611,7 @@ func fire_kick(strength: float) -> void:
 func _begin_pose(mode: int) -> void:
 	if shovel != null: shovel.visible = mode == 21
 	if mode == _pose_mode: return
-	_transition_from_prone = _pose_mode in [5, 10] or (_pose_mode >= 30 and _pose_mode <= 37)
+	_transition_from_prone = _pose_mode in [5, 10] or (_pose_mode >= 30 and _pose_mode <= 38)
 	foot_offsets = [Vector2.ZERO, Vector2.ZERO]
 	if _pose_mode >= 0:
 		# Lowering or lifting the whole body needs longer than an aiming crossfade.
