@@ -9,7 +9,8 @@ func _ready() -> void:
 			for frame in 90: proxy.pose(1.0 / 60.0, 0, posture, Soldier.Act.IDLE, 0.0, false, false)
 			for frame in 60:
 				proxy.pose(1.0 / 60.0, 0, posture, Soldier.Act.THROW, speed, false, false)
-				assert(soldier._activity_clip.ends_with("toss_grenade"), "Throw did not use the installed toss")
+				var expected := "mixamo_prone__Throw_Grenade" if posture == Soldier.Post.PRONE and soldier.native_player.has_animation("mixamo_prone__Throw_Grenade") else "mixamo_basic_shooter__toss_grenade"
+				assert(soldier._activity_clip == expected, "Throw did not use the installed stance-specific toss")
 				assert(soldier.grenade_prop != null and soldier.grenade_prop.visible == proxy.nade.visible, "Grenade visibility disagrees with release timing")
 				for side in ["Left", "Right"]:
 					var foot := soldier.joint(side + "Foot").origin

@@ -2818,6 +2818,37 @@
         }
       ],
       "output": null
+    },
+    {
+      "entry": "changelog/unreleased/captured-prone.md",
+      "summary": "The optional imported rifleman uses captured crawling, stops and prone actions.",
+      "medium": "motion",
+      "stage": "controlled-character-preview",
+      "rationale": "Fixed-step shared actor: entry, forward/backward crawl and stops, firing, reload, throw and recovery. Local assets only; magazine timing and varied terrain remain unvalidated.",
+      "source_ref": "PR #98; tests/mocap/prone_sequence.tscn, captured_prone and native_grip regressions",
+      "sources": [
+        {
+          "file": "changelog/unreleased/captured-prone/prone.mp4",
+          "sha256": "85c5c3c386b8f5180f5baa9cd437093efe99b1de1994b309c4b19c9c37a15763",
+          "caption": "prone"
+        },
+        {
+          "file": "changelog/unreleased/captured-prone/prone.jpg",
+          "sha256": "89cb77b5b0be1a79c94f670bbe3e85160892ade31bbca7f13ecbefb740db1549",
+          "caption": "prone"
+        },
+        {
+          "file": "changelog/unreleased/captured-prone/actions.mp4",
+          "sha256": "0631336d0ea8d78676ed69a25f0390e937863d95bb945f335f44789eec2fb222",
+          "caption": "actions"
+        },
+        {
+          "file": "changelog/unreleased/captured-prone/actions.jpg",
+          "sha256": "6d39b0329e34ccef00241b2c30eccbd858a907c89bc288cf410e46981e5bc639",
+          "caption": "actions"
+        }
+      ],
+      "output": null
     }
   ],
   "layout_capture": {

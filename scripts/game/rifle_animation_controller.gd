@@ -3,6 +3,13 @@ extends RefCounted
 ## collision belong to the caller, so RTS units can use the same pose driver.
 const PRONE_CLIP := "mixamo_transition__Rifle_Kneel_To_Prone"
 var prone_time := 0.0
+const PRONE_PACK := "mixamo_prone__"
+const PRONE_MOTIONS := ["Prone_Idle", "Prone_Forward", "Moving_Backward_In_Prone_Position", "Prone_Forward_Stop", "Prone_Backwards_Stop", "Prone_Firing_Rifle", "Prone_Reloading"]
+var prone_clip := ""
+var prone_clock := 0.0
+var prone_moving := false
+var prone_backwards := false
+var prone_recovery := 0.0
 const PACK := "mixamo_basic_shooter__"
 const CROUCH_PACK := "mixamo_rifle_locomotion__walk_crouching_"
 const CROUCH_DIRECTIONS := ["forward", "forward_right", "right", "backward_right", "backward", "backward_left", "left", "forward_left"]
@@ -201,6 +208,11 @@ func reset() -> void:
 	crouch_blends[0] = 1.0
 	_crouch_phase = INF
 	prone_time = 0.0
+	prone_clip = ""
+	prone_recovery = 0.0
+	prone_clock = 0.0
+	prone_moving = false
+	prone_backwards = false
 	action = ""
 	phase = 0.0
 	blend_velocity = Vector3.ZERO
@@ -380,6 +392,12 @@ func advance(dt: float, velocity: Vector3, crouching: bool, grounded: bool, relo
 	var grip_weight := 1.0 - action_weight
 	# Rising from prone needs the supporting hand to leave the ground before regripping.
 	if actor._transition_from_prone: grip_weight *= smoothstep(0.0, actor._transition_duration, actor._transition_time)
+	_hold_rifle(grip_weight)
+	actor.weapon.visible = true
+	actor.magazine.update(action_time, action == "reloading")
+	actor.last_velocity = actor.global_basis * velocity
+
+func _hold_rifle(grip_weight: float) -> void:
 	var frame_grip := support_grip
 	var finger := actor.joint("LeftHand").affine_inverse() * actor.joint("LeftHandMiddle1").origin * 0.65
 	frame_grip.origin = Vector3(0, 0.055, 0.26) - frame_grip.basis * finger
@@ -407,11 +425,81 @@ func advance(dt: float, velocity: Vector3, crouching: bool, grounded: bool, relo
 	hand = actor.joint("LeftHand")
 	hand.basis = grip.basis
 	actor.set_world(int(actor.bones["LeftHand"]), hand)
-	actor.weapon.visible = true
-	actor.magazine.update(action_time, action == "reloading")
-	actor.last_velocity = actor.global_basis * velocity
 
-func advance_prone(dt: float) -> void:
+func advance_prone(dt: float, velocity := Vector3.ZERO, act := Soldier.Act.IDLE, progress := 0.0) -> void:
+	if not actor.native_player.has_animation(PRONE_PACK + "Prone_Idle"):
+		_legacy_prone(dt)
+		return
+	prone_time += dt
+	var moving := velocity.length() > 0.1
+	var backwards := velocity.z > 0.1
+	var motion := "Prone_Idle"
+	if moving:
+		motion = "Moving_Backward_In_Prone_Position" if backwards else "Prone_Forward"
+	elif prone_moving:
+		motion = "Prone_Backwards_Stop" if prone_backwards else "Prone_Forward_Stop"
+	elif prone_clip.ends_with("_Stop") and prone_clock < actor.native_player.get_animation(prone_clip).length:
+		motion = prone_clip.trim_prefix(PRONE_PACK)
+	elif act == Soldier.Act.RELOAD:
+		motion = "Prone_Reloading"
+	elif act == Soldier.Act.SHOOT:
+		motion = "Prone_Firing_Rifle"
+	if not actor.native_player.has_animation(PRONE_PACK + motion): motion = "Prone_Idle"
+	var clip := PRONE_PACK + motion
+	var entry_length := actor.native_player.get_animation(PRONE_CLIP).length
+	if prone_time < entry_length: clip = PRONE_CLIP
+	if clip != prone_clip:
+		actor._begin_pose(10 if clip == PRONE_CLIP else 30 + PRONE_MOTIONS.find(motion))
+		prone_clip = clip
+		prone_clock = 0.0
+	var animation := actor.native_player.get_animation(clip)
+	var rate := 1.0
+	if moving and clip != PRONE_CLIP:
+		var travel: Vector3 = animation.get_meta("root_travel", Vector3.ZERO)
+		if travel.length() > 0.01: rate = clampf(velocity.length() * animation.length / travel.length(), 0.2, 3.0)
+	prone_clock += dt * rate
+	var sample := fmod(prone_clock, animation.length) if animation.loop_mode != Animation.LOOP_NONE else minf(prone_clock, animation.length)
+	if clip == PRONE_CLIP: sample = minf(prone_time, entry_length)
+	elif motion == "Prone_Reloading": sample = clampf(progress, 0.0, 1.0) * animation.length
+	actor.native_player.play(clip, 0.0)
+	actor.native_player.seek(sample, true)
+	actor._blend_pose(dt)
+	actor._apply_hit(dt)
+	actor.apply_native_recoil(dt, actor.native_socket)
+	actor.weapon.global_transform = actor.joint("RightHand") * actor.native_socket
+	if clip != PRONE_CLIP and motion in ["Prone_Idle", "Prone_Firing_Rifle"]:
+		socket = actor.native_socket
+		_hold_rifle(smoothstep(0.0, actor._transition_duration, actor._transition_time))
+	actor.weapon.visible = true
+	# shortcut: prone magazine events reuse standing timing until the new reload is calibrated.
+	actor.magazine.update(progress * actor.native_player.get_animation(PACK + "reloading").length, motion == "Prone_Reloading")
+	actor.last_velocity = actor.global_basis * velocity
+	prone_moving = moving
+	prone_backwards = backwards if moving else prone_backwards
+	state = motion
+
+func recover_prone(dt: float) -> bool:
+	var clip := "mixamo_transition__Rifle_Prone_To_Kneel"
+	if not actor.native_player.has_animation(clip):
+		prone_clip = ""
+		return false
+	var animation := actor.native_player.get_animation(clip)
+	if prone_recovery >= animation.length:
+		prone_clip = ""
+		prone_recovery = 0.0
+		return false
+	actor._begin_pose(37)
+	prone_recovery += dt
+	actor.native_player.play(clip, 0.0)
+	actor.native_player.seek(minf(prone_recovery, animation.length), true)
+	actor._blend_pose(dt)
+	actor._apply_hit(dt)
+	actor.weapon.global_transform = actor.joint("RightHand") * actor.native_socket
+	actor.weapon.visible = true
+	state = "Prone recovery"
+	return true
+
+func _legacy_prone(dt: float) -> void:
 	action = ""
 	state = "Prone"
 	prone_time += dt

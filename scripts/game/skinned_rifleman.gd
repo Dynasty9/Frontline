@@ -611,7 +611,7 @@ func fire_kick(strength: float) -> void:
 func _begin_pose(mode: int) -> void:
 	if shovel != null: shovel.visible = mode == 21
 	if mode == _pose_mode: return
-	_transition_from_prone = _pose_mode in [5, 10]
+	_transition_from_prone = _pose_mode in [5, 10] or (_pose_mode >= 30 and _pose_mode <= 37)
 	foot_offsets = [Vector2.ZERO, Vector2.ZERO]
 	if _pose_mode >= 0:
 		# Lowering or lifting the whole body needs longer than an aiming crossfade.
@@ -689,6 +689,7 @@ func pose_native(dt: float, clip: String) -> void:
 
 func pose_activity(dt: float, clip: String, throw_time := -1.0, prone_throw := false) -> void:
 	_begin_pose(24 if throw_time >= 0.0 else (21 if clip.ends_with("Digging") else 20))
+	var full_body_throw := clip == "mixamo_prone__Throw_Grenade"
 	var lower: Array[Transform3D] = []
 	if throw_time >= 0.0:
 		for i in skeleton.get_bone_count(): lower.append(skeleton.get_bone_pose(i))
@@ -699,7 +700,7 @@ func pose_activity(dt: float, clip: String, throw_time := -1.0, prone_throw := f
 		native_player.seek(minf(throw_time / 0.6, 1.0) * native_player.get_animation(clip).length, true)
 	else:
 		native_player.advance(dt)
-	if throw_time >= 0.0:
+	if throw_time >= 0.0 and not full_body_throw:
 		var native_hips := skeleton.get_bone_pose(int(bones["Hips"])).basis
 		for name in bones:
 			if name == "Hips" or "Leg" in name or "Foot" in name or "Toe" in name or (prone_throw and ("Spine" in name or name in ["Neck", "Head"])):
@@ -711,7 +712,7 @@ func pose_activity(dt: float, clip: String, throw_time := -1.0, prone_throw := f
 			spine.basis = lower[int(bones["Hips"])].basis.inverse() * native_hips * spine.basis
 			skeleton.set_bone_pose(spine_index, spine)
 	_apply_hit(dt)
-	_blend_pose(0.0 if throw_time >= 0.0 else dt)
+	_blend_pose(0.0 if throw_time >= 0.0 and not full_body_throw else dt)
 	if throw_time < 0.0: _ground_feet(0.0, dt)
 	# The sling follows the captured torso, leaving both hands free.
 	weapon.global_transform = joint("Spine2") * _sling_socket
