@@ -1601,6 +1601,8 @@ continuation and their existing update cadence.
 Training and research admission also run against retained supply and queues in
 Rust, preserving prerequisites, private warnings and cancellation credit. The
 building pass applies captures, production and services in registration order.
+Rust placement validation preserves rotated footprints, trench gun positions,
+dock approaches, road clearance and expansion from existing bases and towns.
 Observer demonstrations and private readiness warnings retain their existing behavior.
 The full authoritative Rust server and deterministic
 battle verifier are still in progress; see [RUST_SIMULATION.md](RUST_SIMULATION.md).

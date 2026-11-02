@@ -32,7 +32,13 @@ fn flat(v: Vector3) -> Vector3 {
 fn direction(yaw: f64) -> Vector3 {
     Vector3::new(-libm::sin(yaw) as f32, 0.0, -libm::cos(yaw) as f32)
 }
-fn overlaps(position: Vector3, half: Vec2, yaw: f64, st: &Structure) -> bool {
+pub(crate) fn overlaps(
+    position: Vector3,
+    half: Vec2,
+    yaw: f64,
+    st: &Structure,
+    inset: f32,
+) -> bool {
     fn axes(yaw: f64) -> [Vec2; 2] {
         let c = libm::cos(yaw) as f32;
         let s = libm::sin(yaw) as f32;
@@ -40,12 +46,14 @@ fn overlaps(position: Vector3, half: Vec2, yaw: f64, st: &Structure) -> bool {
     }
     let a = axes(yaw);
     let b = axes(st.yaw);
+    let half = half - Vec2::splat(inset);
+    let other = Vec2::from_array(st.footprint) - Vec2::splat(inset);
     let d = Vec2::new(st.position.x - position.x, st.position.z - position.z);
     [a[0], a[1], b[0], b[1]].into_iter().all(|axis| {
         let p = f64::from(half.x) * f64::from(a[0].dot(axis)).abs()
             + f64::from(half.y) * f64::from(a[1].dot(axis)).abs();
-        let q = f64::from(st.footprint[0]) * f64::from(b[0].dot(axis)).abs()
-            + f64::from(st.footprint[1]) * f64::from(b[1].dot(axis)).abs();
+        let q = f64::from(other.x) * f64::from(b[0].dot(axis)).abs()
+            + f64::from(other.y) * f64::from(b[1].dot(axis)).abs();
         f64::from(d.dot(axis)).abs() <= p + q
     })
 }
@@ -337,7 +345,7 @@ impl Context<'_> {
                         st.kind.as_str(),
                         "tall_wall" | "house_wall" | "concrete_wall"
                     ))
-                || !overlaps(position, half, yaw, st)
+                || !overlaps(position, half, yaw, st, 0.0)
             {
                 continue;
             }

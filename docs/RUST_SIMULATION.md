@@ -2640,3 +2640,25 @@ Import, formatting, changelog, presentation and diff checks pass; Godot support
 and battle-record regressions also pass after sharing the ledger guard.
 The complete authoritative world, socket server and whole-match verifier remain
 unfinished. Other apps stayed running; rendered performance was not measured.
+
+## Building placement against retained geometry
+
+Rust placement validation now preserves faction eligibility, strict map margins,
+rotated footprints, trench gun positions, camouflage exceptions, bridge decks,
+dry dock footings and open-water approaches. Supply roads, working-FOB build
+radius, minimum FOB separation and expansion from friendly towns retain their
+existing rules and warning text. Rectangle overlap shares the existing vehicle
+collision calculation with a placement-only inset.
+
+The Godot comparison passes 9,216 queries across every building definition,
+both factions, rotated ground obstacles, water and damaged/unbuilt bases.
+Admission and warning text match exactly; trench snapping permits 1e-6 reference
+error for Godot's platform math. Five focused placement tests and five affected
+vehicle-movement tests pass. The 89,316-byte exact Rust transcript covers 2,304
+queries repeated after restoring actors, geometry, supply routes and water.
+All 951 debug core tests and 140 release checks pass, including all 130 exact
+numeric-contract cases. The eight affected Godot vehicle-world comparisons
+also pass, covering shared scans, crews, driving, destruction, ground vehicles,
+aircraft, boats and supply trucks after sharing the overlap calculation.
+Command admission, placement creation and the complete world/server integration
+remain in progress. No rendered performance result is claimed.

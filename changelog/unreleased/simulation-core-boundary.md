@@ -147,3 +147,4 @@ kind = "fixed"
 - Rust support checks preserve aircraft strikes, reconnaissance, artillery arrival order, supply charges and cooldowns through saved-state resumes.
 - Combined Rust rules checks preserve the timing and order of support, visibility, prisoners, reserves, victory and supply dispatch through saved-state resumes.
 - Rust building checks preserve training and research requirements, queue limits, supply charges, cancellation refunds and the effects of earlier buildings on later production.
+- Rust placement checks preserve trench gun positions, shoreline docks, overlapping footprints, supply-road clearance and expansion from friendly bases and towns.

@@ -10435,3 +10435,10 @@ mod production_orders;
 fn production_orders_are_identical_across_platforms() {
     golden("production_orders", &production_orders::transcript());
 }
+
+#[path = "fixtures/building_placement.rs"]
+mod building_placement;
+#[test]
+fn building_placement_is_identical_across_platforms() {
+    golden("building_placement", &building_placement::transcript());
+}

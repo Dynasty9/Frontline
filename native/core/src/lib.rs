@@ -11,6 +11,7 @@ pub mod boat_navigation;
 pub mod boat_world;
 pub mod breach;
 pub mod breach_selection;
+pub mod building_placement;
 pub mod bullet;
 pub mod bullet_world;
 pub mod collision;

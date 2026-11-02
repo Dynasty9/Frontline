@@ -5,6 +5,7 @@ mod battle_stats;
 mod blast;
 mod boat_navigation;
 mod breach;
+mod building_placement;
 mod bullet;
 mod collision_index;
 mod cover_geometry;
