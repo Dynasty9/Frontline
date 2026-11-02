@@ -28,6 +28,11 @@ pub enum Call {
     Assault,
     AssaultBound,
     Pinned,
+    Attack,
+    Work,
+    Board,
+    Bunker,
+    FireMission,
 }
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Event {
@@ -199,7 +204,14 @@ impl Context<'_> {
         }
         id
     }
-    fn say(&mut self, id: u32, call: Call, count: u32, force: bool, out: &mut Vec<Event>) {
+    pub(crate) fn say(
+        &mut self,
+        id: u32,
+        call: Call,
+        count: u32,
+        force: bool,
+        out: &mut Vec<Event>,
+    ) {
         let variant = (self.rng.randi() % count) as u8;
         let s = self.actors.soldier_mut(id).unwrap();
         if force || s.vitals.speech_cooldown <= 0.0 {

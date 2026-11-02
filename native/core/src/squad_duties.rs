@@ -17,12 +17,12 @@ pub struct Role {
     pub engineer: bool,
 }
 impl Context<'_> {
-    fn clear_squad_duty(&mut self, id: u32) {
+    pub(crate) fn clear_squad_duty(&mut self, id: u32) {
         self.actors
             .clear_infantry_duty(id, &self.geometry.navigation.planner, self.squads)
             .unwrap();
     }
-    fn duty_route(
+    pub(crate) fn duty_route(
         &mut self,
         id: u32,
         position: Vector3,
@@ -247,7 +247,7 @@ impl Context<'_> {
         }
         Ok(())
     }
-    fn squad_work_spot(&mut self, id: u32, target: u32) -> Vector3 {
+    pub(crate) fn squad_work_spot(&mut self, id: u32, target: u32) -> Vector3 {
         let position = self.actors.soldier(id).unwrap().motion.position;
         let a = self.actors.get(target).unwrap();
         let radius = if let Actor::Structure(st) = a {
@@ -337,16 +337,7 @@ impl Context<'_> {
                     });
             }
             if let Some(target) = best {
-                self.clear_squad_duty(id);
-                {
-                    let s = self.actors.soldier_mut(id).unwrap();
-                    s.duty.kind = Task::Build;
-                    s.duty.entity = target.into();
-                    s.duty.phase = 0;
-                }
-                let at = self.squad_work_spot(id, target);
-                self.actors.soldier_mut(id).unwrap().duty.position = at;
-                self.duty_route(id, at, Goal::Task, 1)?;
+                self.assign_build(id, target)?;
             }
         }
         Ok(())

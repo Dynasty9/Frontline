@@ -104,6 +104,7 @@ pub mod squad_birth;
 pub mod squad_brain;
 pub mod squad_duties;
 pub mod squad_movement;
+pub mod squad_orders;
 pub mod squad_world;
 mod state_codec;
 pub mod structure;

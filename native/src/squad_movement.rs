@@ -141,6 +141,7 @@ impl SquadMovementCore {
                 context.order_assault_bounds(id, crate::point(p), crate::point(f))
             }
             6 if input.is_empty() => context.assault_bounds_tick(id),
+            27..=33 => apply_orders(&mut context, id, operation, &input),
             26 => {
                 let result = apply_tick(&mut context, id, input);
                 write_squads(nodes, squads);
@@ -213,6 +214,58 @@ impl SquadMovementCore {
                 Array::new()
             }
         }
+    }
+}
+fn apply_orders(
+    ctx: &mut Context<'_>,
+    id: u32,
+    op: i32,
+    a: &Array<Variant>,
+) -> Result<Vec<Event>, &'static str> {
+    fn read<T: FromGodot>(a: &Array<Variant>, i: usize) -> Result<T, &'static str> {
+        a.get(i)
+            .ok_or("missing squad order field")?
+            .try_to()
+            .map_err(|_| "invalid squad order field")
+    }
+    match op {
+        27 if a.len() == 1 => ctx.order_attack(id, read(a, 0)?),
+        28 if a.is_empty() => ctx.order_stop(id),
+        29 if a.len() == 1 => ctx.order_work(id, read(a, 0)?),
+        30 if a.len() == 2 => ctx.order_board(id, read(a, 0)?, read(a, 1)?),
+        31 if a.len() == 2 => {
+            let gun =
+                crate::actors::mounted_gun(&read(a, 1)?).map_err(|_| "invalid mounted gun")?;
+            ctx.order_enter(id, read(a, 0)?, gun)
+        }
+        32 if a.len() == 3 => {
+            let p = crate::point(read(a, 0)?);
+            let smoke = read(a, 1)?;
+            let mortars: PackedInt64Array = read(a, 2)?;
+            if mortars.len() > 100_000 {
+                return Err("mortar role limit exceeded");
+            }
+            let ids: Result<HashSet<u32>, _> = mortars
+                .as_slice()
+                .iter()
+                .map(|&id| u32::try_from(id))
+                .collect();
+            let ids = ids.map_err(|_| "invalid mortar identity")?;
+            ctx.order_fire_mission(id, p, smoke, &|m| ids.contains(&m.identity.id))
+        }
+        33 if a.len() == 2 => {
+            use frontline_core::infantry_action::Round;
+            ctx.order_throw(
+                id,
+                crate::point(read(a, 0)?),
+                if read::<bool>(a, 1)? {
+                    Round::Smoke
+                } else {
+                    Round::Frag
+                },
+            )
+        }
+        _ => Err("invalid explicit squad order"),
     }
 }
 pub(crate) fn event(e: Event) -> Variant {

@@ -2683,3 +2683,24 @@ The 1,435,016-byte exact numeric transcript covers 120 transitions, replaying ea
 after checkpoint restoration. All 139 relevant debug and release checks pass, including all
 131 numeric cases. This is retained command state; the complete socket server and
 authoritative world still need integration.
+
+## Explicit squad orders
+
+Attack, stop, construction, boarding, tunnel entry, bunker garrisoning, mounted-gun
+assignment, mortar missions and grenade orders now operate on retained actors and
+the shared route planner. Construction reuses the same assignment as autonomous
+engineers. Orders preserve rescue-claim release, committed breach behavior,
+specialist gunner preferences, available seats, ammo checks and speech RNG draws.
+
+All 768 Godot comparison states pass across both sides and eight structure kinds.
+Soldiers, squads, building gunners, path queues, speech, counters and random state
+match, including route delivery and checkpoint restoration. The related squad
+movement and engineer-duty Godot comparisons also pass. Seven focused Rust
+regressions cover these transitions and invalid input without mutation. The exact
+43,054,826-byte transcript checks 384 command continuations. Its component deltas
+retain unchanged byte ranges so variable queue lengths do not duplicate map data.
+All 153 relevant release checks pass, including 132 numeric cases and the manual
+orders, movement and duty suites. Import, formatting, changelog and presentation
+checks pass. Other apps stayed running; rendering performance was not measured.
+This completes these squad methods; the complete server command dispatcher, world
+and independent battle verifier remain in progress.

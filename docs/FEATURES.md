@@ -1606,6 +1606,9 @@ dock approaches, road clearance and expansion from existing bases and towns.
 Rust command ownership preserves allied control without changing another human's
 attribution, transfers departing commanders' forces, and restores surviving units,
 queued reinforcements and battle credit when an authenticated commander returns.
+Explicit Rust squad orders also preserve attacks, construction, boarding, tunnel
+entry, garrisoning, specialist gun crews, mortar missions and grenade orders,
+including shared route queues and interrupted rescue claims.
 Observer demonstrations and private readiness warnings retain their existing behavior.
 The full authoritative Rust server and deterministic
 battle verifier are still in progress; see [RUST_SIMULATION.md](RUST_SIMULATION.md).

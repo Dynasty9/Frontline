@@ -10449,3 +10449,10 @@ mod command_handoff;
 fn command_handoffs_are_identical_across_platforms() {
     golden("command_handoff", &command_handoff::transcript());
 }
+
+#[path = "fixtures/squad_orders.rs"]
+mod squad_orders;
+#[test]
+fn explicit_squad_orders_are_identical_across_platforms() {
+    golden("squad_orders", &squad_orders::transcript());
+}
