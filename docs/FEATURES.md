@@ -1588,6 +1588,10 @@ use numeric contract 2 so older route rules cannot silently change during a resu
 Connected boat updates combine steering, currents, combat and shore landings.
 Supply trucks now update shared deliveries, income, roadblock notices and replacement
 timers together, retaining those decisions across checkpoints.
+Rust now dispatches town lorries and FOB replacements in the same order, preserving
+stock thresholds, broken-route retries and existing convoys. HQ reserves use the
+opening delay, current surviving troop count, research and the first connected
+commander; scenario and mission exclusions remain unchanged.
 The full authoritative Rust server and deterministic
 battle verifier are still in progress; see [RUST_SIMULATION.md](RUST_SIMULATION.md).
 

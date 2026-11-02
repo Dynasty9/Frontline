@@ -2546,3 +2546,25 @@ correctness checks do not establish rendered frame rate. Other apps stayed runni
 The complete Check workflow at `1f4382b` passed the game suite and debug/release
 numeric checks on Windows, macOS, Linux x64 and Linux ARM. Later heads require
 their own CI results.
+
+## Connected supply dispatch and headquarters reserves
+
+Rust now dispatches town lorries before FOB replacements against retained actors
+and supply routes. Towns preserve load thresholds, integer stock deductions and
+the distinction between waiting for stock and waiting for a route. Active trucks
+block duplicate dispatch; missing trucks are replaced with the next shared entity
+identity. Wrecked FOBs retain their existing replacement behavior. HQ reserves
+preserve the two-minute opening delay, 75-second cooldown, six-survivor threshold
+(including bearers), current research and the first connected commander's ownership.
+Scenarios and missions retain their existing exclusions.
+
+The Godot comparison passes 160 updates across 32 cases. It compares complete
+actors, squads, supply state, clocks, messages, battle credit, route completion,
+geometry and RNG continuation, including a checkpoint resume after every update.
+Six focused Rust regressions cover dispatch order, retry clocks, destroyed trucks,
+ownership, research, reserve eligibility and malformed inputs. The numeric
+transcript adds 3,932,846 bytes across 144 uninterrupted/resumed updates. All 918
+debug core checks and 132 release checks pass, including all 126 numeric cases.
+Import, formatting, changelog, presentation and diff checks pass. The complete rules/world
+loop, socket server and whole-match verifier remain unfinished. Other apps stayed
+running; these are correctness checks rather than rendered performance results.

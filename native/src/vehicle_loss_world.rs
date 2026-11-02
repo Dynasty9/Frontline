@@ -166,6 +166,7 @@ struct Building {
     time: Option<f64>,
 }
 enum Operation {
+    Logistics(Array<Variant>, Gd<SupplyNetworkCore>),
     Production(
         Array<Variant>,
         Gd<crate::boat_navigation::BoatNavigationCore>,
@@ -188,6 +189,36 @@ struct VehicleLossWorldCore {
 }
 #[godot_api]
 impl VehicleLossWorldCore {
+    #[func]
+    fn advance_logistics(
+        &mut self,
+        actors: Gd<ActorStateCore>,
+        geometry: Gd<WorldGeometryCore>,
+        units: Gd<SpatialIndexCore>,
+        nodes: Array<Gd<SquadStateCore>>,
+        fires: Gd<FiresCore>,
+        battle: Gd<BattleStatsCore>,
+        deferred: Gd<DeferredEffectsCore>,
+        visibility: Gd<VisibilityCore>,
+        rng: Gd<SimulationRandomCore>,
+        config: Array<Variant>,
+        input: Array<Variant>,
+        network: Gd<SupplyNetworkCore>,
+    ) -> Array<Variant> {
+        self.run(
+            actors,
+            geometry,
+            units,
+            nodes,
+            fires,
+            battle,
+            deferred,
+            visibility,
+            rng,
+            config,
+            Operation::Logistics(input, network),
+        )
+    }
     #[func]
     fn advance_production(
         &mut self,
@@ -1045,6 +1076,144 @@ impl VehicleLossWorldCore {
             }
         };
         let result = match operation {
+            Operation::Logistics(input, network) => {
+                use crate::production::{self, Item};
+                use frontline_core::rules_logistics::{Event as E, TruckProfile};
+                use frontline_core::structure_production::Product;
+                let parse = || -> Option<_> {
+                    if input.len() != 10 {
+                        return None;
+                    }
+                    let dt: f64 = read(&input, 0)?;
+                    let ready: PackedFloat64Array = read(&input, 1)?;
+                    let scenario: bool = read(&input, 2)?;
+                    let mission: bool = read(&input, 3)?;
+                    let defs: Array<Variant> = read(&input, 4)?;
+                    if defs.len() != 2 {
+                        return None;
+                    }
+                    let defs = [
+                        Item::parse(&read(&defs, 0)?)?,
+                        Item::parse(&read(&defs, 1)?)?,
+                    ];
+                    if defs.iter().any(|p| {
+                        !matches!(p, Item::Squad(_))
+                            || p.members().iter().any(|m| !men.contains_key(&m.unit))
+                    }) {
+                        return None;
+                    }
+                    let truck = Item::parse(&read(&input, 5)?)?;
+                    let loads: PackedInt64Array = read(&input, 6)?;
+                    let stocks: PackedFloat64Array = read(&input, 7)?;
+                    let supplies: PackedInt64Array = read(&input, 8)?;
+                    if [ready.len(), loads.len(), stocks.len(), supplies.len()]
+                        .into_iter()
+                        .any(|n| n != 2)
+                    {
+                        return None;
+                    }
+                    let loads = [i32::try_from(loads[0]).ok()?, i32::try_from(loads[1]).ok()?];
+                    let supplies = [
+                        i32::try_from(supplies[0]).ok()?,
+                        i32::try_from(supplies[1]).ok()?,
+                    ];
+                    let (economy, owners) = production::state(&read(&input, 9)?)?;
+                    Some((
+                        dt,
+                        [ready[0], ready[1]],
+                        scenario,
+                        mission,
+                        defs,
+                        truck,
+                        loads,
+                        [stocks[0], stocks[1]],
+                        supplies,
+                        economy,
+                        owners,
+                    ))
+                };
+                let Some((
+                    dt,
+                    mut ready,
+                    scenario,
+                    mission,
+                    defs,
+                    truck,
+                    loads,
+                    stocks,
+                    supplies,
+                    economy,
+                    owners,
+                )) = parse()
+                else {
+                    return Array::new();
+                };
+                let [Product::Squad(a), Product::Squad(b)] = defs.each_ref().map(Item::view) else {
+                    return Array::new();
+                };
+                let Product::Vehicle { definition, .. } = truck.view() else {
+                    return Array::new();
+                };
+                let network = network.bind();
+                context
+                    .reinforce(
+                        &mut ready,
+                        &network.core,
+                        &economy,
+                        &owners,
+                        [a, b],
+                        scenario,
+                        mission,
+                    )
+                    .and_then(|mut events| {
+                        if !mission {
+                            events.extend(context.dispatch_supply(
+                                dt,
+                                &network.core,
+                                TruckProfile {
+                                    vehicle: definition,
+                                    town_load: loads,
+                                    town_stock: stocks,
+                                    supply: supplies,
+                                },
+                            )?);
+                        }
+                        Ok(events)
+                    })
+                    .map(|events| {
+                        let rows: Array<Variant> = events
+                            .iter()
+                            .map(|e| match e {
+                                E::Truck { id, town } => varray![0, *id, *town].to_variant(),
+                                E::Reserves { squad, team, depot } => varray![
+                                    1,
+                                    *squad,
+                                    i32::from(*team),
+                                    Vector3::new(depot.x, depot.y, depot.z)
+                                ]
+                                .to_variant(),
+                                E::Movement(e) => {
+                                    varray![2, &crate::squad_movement::event(e.clone())]
+                                        .to_variant()
+                                }
+                            })
+                            .collect();
+                        services =
+                            Some(varray![&rows, &PackedFloat64Array::from(ready.as_slice())]);
+                        events
+                            .into_iter()
+                            .filter_map(|e| match e {
+                                E::Truck { town, .. } if town != 0 => {
+                                    Some(world_combat::Event::Stat("town_truck_sent"))
+                                }
+                                E::Movement(e) => {
+                                    Some(world_combat::Event::Vehicle(Event::Squad(e)))
+                                }
+                                _ => None,
+                            })
+                            .collect()
+                    })
+            }
             Operation::Production(input, mut boats) => {
                 use crate::production;
                 use frontline_core::structure_production::{Event as E, Profiles};

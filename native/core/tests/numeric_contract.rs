@@ -10404,3 +10404,13 @@ mod fog_world;
 fn fog_and_route_danger_are_identical_across_platforms() {
     golden("fog_world", &fog_world::transcript());
 }
+
+#[path = "fixtures/rules_logistics_world.rs"]
+mod rules_logistics_world;
+#[test]
+fn reserves_and_truck_dispatch_are_identical_across_platforms() {
+    golden(
+        "rules_logistics_world",
+        &rules_logistics_world::transcript(),
+    );
+}

@@ -93,6 +93,7 @@ pub mod projectile;
 pub mod projectile_actor;
 pub mod random;
 pub mod route_graph;
+pub mod rules_logistics;
 pub mod spatial;
 pub mod squad;
 pub mod squad_birth;
