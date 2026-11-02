@@ -141,8 +141,27 @@ impl SquadMovementCore {
                 context.order_assault_bounds(id, crate::point(p), crate::point(f))
             }
             6 if input.is_empty() => context.assault_bounds_tick(id),
-            12..=16 => {
-                let result = apply_brain(&mut context, id, operation, input);
+            24 | 25 => {
+                let result = apply_ambush(&mut context, id, operation, input);
+                write_squads(nodes, squads);
+                return match result {
+                    Ok((plan, events)) => {
+                        let events: Array<Variant> = events.into_iter().map(brain_event).collect();
+                        let bytes = plan.checkpoint().unwrap();
+                        varray![&events, &PackedByteArray::from(bytes.as_slice())]
+                    }
+                    Err(error) => {
+                        godot_error!("{error}");
+                        Array::new()
+                    }
+                };
+            }
+            12..=23 => {
+                let result = if operation <= 16 {
+                    apply_brain(&mut context, id, operation, input)
+                } else {
+                    apply_duties(&mut context, id, operation, input)
+                };
                 write_squads(nodes, squads);
                 return match result {
                     Ok((handled, events)) => {
@@ -245,7 +264,105 @@ fn brain_event(e: frontline_core::squad_brain::Event) -> Variant {
             Vector3::new(position.x, position.y, position.z)
         ]
         .to_variant(),
+        E::Joined {
+            from,
+            to,
+            soldier,
+            position,
+        } => varray![
+            9,
+            from,
+            to,
+            soldier,
+            Vector3::new(position.x, position.y, position.z)
+        ]
+        .to_variant(),
+        E::Surrendered {
+            soldier,
+            team,
+            position,
+            drop_direction,
+        } => varray![
+            10,
+            soldier,
+            team,
+            Vector3::new(position.x, position.y, position.z),
+            Vector3::new(drop_direction.x, drop_direction.y, drop_direction.z)
+        ]
+        .to_variant(),
     }
+}
+fn apply_duties(
+    ctx: &mut Context<'_>,
+    id: u32,
+    op: i32,
+    input: Array<Variant>,
+) -> Result<(bool, Vec<frontline_core::squad_brain::Event>), &'static str> {
+    use frontline_core::squad_duties::Role;
+    if input.len() != 2 {
+        return Err("invalid squad duty input");
+    }
+    let rows = input
+        .at(0)
+        .try_to::<Array<Variant>>()
+        .map_err(|_| "invalid squad roles")?;
+    let mut battle = input
+        .at(1)
+        .try_to::<Gd<crate::battle_stats::BattleStatsCore>>()
+        .map_err(|_| "invalid squad ledger")?;
+    if rows.len() > 100_000 {
+        return Err("squad role limit exceeded");
+    }
+    let mut roles = BTreeMap::new();
+    for row in rows.iter_shared() {
+        let row = row
+            .try_to::<Array<Variant>>()
+            .map_err(|_| "invalid squad role")?;
+        if row.len() != 3 {
+            return Err("invalid squad role width");
+        }
+        let id = row
+            .at(0)
+            .try_to::<u32>()
+            .map_err(|_| "invalid squad role actor")?;
+        let medic = row
+            .at(1)
+            .try_to::<bool>()
+            .map_err(|_| "invalid medic role")?;
+        let engineer = row
+            .at(2)
+            .try_to::<bool>()
+            .map_err(|_| "invalid engineer role")?;
+        if ctx.actors.soldier(id).is_none() || roles.insert(id, Role { medic, engineer }).is_some()
+        {
+            return Err("invalid squad role identity");
+        }
+    }
+    if ctx
+        .actors
+        .iter()
+        .any(|a| matches!(a,Actor::Soldier(s) if !roles.contains_key(&s.identity.id)))
+    {
+        return Err("missing squad role");
+    }
+    let role = |s: &frontline_core::infantry::Infantry| roles[&s.identity.id];
+    let events = match op {
+        17 => ctx.squad_rescue(id, &role)?,
+        18 => {
+            ctx.squad_medics(id, &role)?;
+            vec![]
+        }
+        19 => {
+            ctx.squad_engineers(id, &role)?;
+            vec![]
+        }
+        20 => ctx.squad_surrender(id)?,
+        21 => ctx.squad_straggler_tick(id, &mut battle.bind_mut().core)?,
+        22 => ctx.squad_then_defend_tick(id)?,
+        23 => ctx.squad_clear_call_tick(id)?,
+        _ => return Err("invalid squad duty operation"),
+    };
+    Ok((true, events))
 }
 fn apply_brain(
     ctx: &mut Context<'_>,
@@ -452,4 +569,84 @@ fn apply_attack(
         );
     }
     Err("invalid attack operation")
+}
+
+fn apply_ambush(
+    ctx: &mut Context<'_>,
+    id: u32,
+    op: i32,
+    input: Array<Variant>,
+) -> Result<
+    (
+        frontline_core::ambush_plan::AmbushPlan,
+        Vec<frontline_core::squad_brain::Event>,
+    ),
+    &'static str,
+> {
+    use frontline_core::ambush_plan::AmbushPlan;
+    if op == 24 && input.len() == 4 {
+        let (Ok(plan), Ok(zone), Ok(road), Ok(side)) = (
+            input.at(0).try_to::<u32>(),
+            input.at(1).try_to::<Vector3>(),
+            input.at(2).try_to::<Vector3>(),
+            input.at(3).try_to::<Vector3>(),
+        ) else {
+            return Err("invalid ambush order");
+        };
+        return AmbushPlan::make(
+            ctx,
+            plan,
+            id,
+            crate::point(zone),
+            crate::point(road),
+            crate::point(side),
+        );
+    }
+    if op == 25 && input.len() == 2 {
+        let (Ok(bytes), Ok(rows)) = (
+            input.at(0).try_to::<PackedByteArray>(),
+            input.at(1).try_to::<Array<Variant>>(),
+        ) else {
+            return Err("invalid ambush input");
+        };
+        if rows.len() > 1_000_000 {
+            return Err("ambush profile limit exceeded");
+        }
+        let mut air = BTreeMap::new();
+        for row in rows.iter_shared() {
+            let row = row
+                .try_to::<Array<Variant>>()
+                .map_err(|_| "invalid ambush profile")?;
+            if row.len() != 2 {
+                return Err("invalid ambush profile");
+            }
+            let (Ok(id), Ok(value)) = (row.at(0).try_to::<u32>(), row.at(1).try_to::<bool>())
+            else {
+                return Err("invalid ambush profile");
+            };
+            let Some(Actor::Vehicle(v)) = ctx.actors.get(id) else {
+                return Err("unknown ambush vehicle");
+            };
+            if air
+                .insert(v.kind.clone(), value)
+                .is_some_and(|old| old != value)
+            {
+                return Err("inconsistent aircraft profile");
+            }
+        }
+        if ctx
+            .actors
+            .iter()
+            .any(|a| matches!(a,Actor::Vehicle(v) if !air.contains_key(&v.kind)))
+        {
+            return Err("missing ambush vehicle profile");
+        }
+        let mut p = AmbushPlan::restore(bytes.as_slice())?;
+        if p.squad != id {
+            return Err("wrong ambush squad");
+        }
+        let out = p.tick(ctx, &|kind| air.get(kind).copied().unwrap_or(false))?;
+        return Ok((p, out));
+    }
+    Err("invalid ambush operation")
 }

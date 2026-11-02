@@ -38,6 +38,13 @@ mod structure_birth_world;
 
 #[path = "fixtures/squad_brain_world.rs"]
 mod squad_brain_world;
+#[path = "fixtures/squad_duties_world.rs"]
+mod squad_duties_world;
+
+#[test]
+fn squad_care_and_construction_are_identical_across_platforms() {
+    golden("squad_duties_world", &squad_duties_world::transcript());
+}
 #[path = "fixtures/squad_movement_world.rs"]
 mod squad_movement_world;
 
@@ -10334,4 +10341,11 @@ fn checkpoints_reject_previous_or_unknown_numeric_contracts() {
         incompatible[6..8].copy_from_slice(&version.to_le_bytes());
         assert!(InfantryMotion::restore(&incompatible).is_err());
     }
+}
+
+#[path = "fixtures/ambush_plan_world.rs"]
+mod ambush_plan_world;
+#[test]
+fn road_ambushes_are_identical_across_platforms() {
+    golden("ambush_plan_world", &ambush_plan_world::transcript());
 }

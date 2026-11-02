@@ -27,6 +27,14 @@ pub enum Call {
     GiveAmmo,
     Reload,
     Clear,
+    CoverRescue,
+    Straggler,
+    Welcome,
+    ClearDone,
+    Surrender,
+    AmbushSetOut,
+    AmbushSpring,
+    AmbushWithdraw,
 }
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Message {
@@ -35,6 +43,7 @@ pub enum Message {
     Displace,
     Withdraw,
     NearAmbush,
+    AmbushSprang,
 }
 #[derive(Clone, Debug, PartialEq)]
 pub enum Event {
@@ -51,6 +60,18 @@ pub enum Event {
         position: Vector3,
     },
     Stat(&'static str),
+    Joined {
+        from: u32,
+        to: u32,
+        soldier: u32,
+        position: Vector3,
+    },
+    Surrendered {
+        soldier: u32,
+        team: i8,
+        position: Vector3,
+        drop_direction: Vector3,
+    },
 }
 pub struct Profile<'a> {
     pub plans: &'a [AttackPlan],
@@ -82,7 +103,7 @@ impl Context<'_> {
             .nearest_fob(q.team, c)
             .is_some_and(|f| flat(f.position - c).length() < radius)
     }
-    fn squad_suppression(&self, i: usize) -> f64 {
+    pub(crate) fn squad_suppression(&self, i: usize) -> f64 {
         let mut sum = 0.0;
         let mut n = 0;
         for s in self.squads[i].alive(self.actors) {
@@ -115,7 +136,7 @@ impl Context<'_> {
             });
         }
     }
-    fn brain_call(
+    pub(crate) fn brain_call(
         &mut self,
         i: usize,
         call: Call,
@@ -446,7 +467,11 @@ impl Context<'_> {
                 .count()
                 >= alive * 2
     }
-    fn squad_start_withdraw(&mut self, i: usize, out: &mut Vec<Event>) -> Result<(), &'static str> {
+    pub(crate) fn squad_start_withdraw(
+        &mut self,
+        i: usize,
+        out: &mut Vec<Event>,
+    ) -> Result<(), &'static str> {
         let c = self.squads[i].centroid(self.now, self.actors);
         let ed = self.squad_enemy_direction(i);
         let mut rally = c - ed * 75.0;
@@ -475,9 +500,18 @@ impl Context<'_> {
         q.drill_time = self.now;
         q.bound_team = 0;
         q.bound_time = 0.0;
+        self.squad_smoke_screen(i, ed)?;
+        self.cover_squad(i, c, 150.0, 6.0);
+        self.brain_call(i, Call::Withdraw, 3, None, out);
+        self.brain_message(i, Message::Withdraw, c, out);
+        out.push(Event::Stat("break_contact"));
+        Ok(())
+    }
+    pub(crate) fn squad_smoke_screen(&mut self, i: usize, ed: Vector3) -> Result<(), &'static str> {
+        let c = self.squads[i].centroid(self.now, self.actors);
         let mut best = None;
         let mut distance = 1e9;
-        for m in q.alive(self.actors) {
+        for m in self.squads[i].alive(self.actors) {
             if m.fight.smokes <= 0 || !available(m) || m.duty.kind != Task::Fight {
                 continue;
             }
@@ -496,10 +530,6 @@ impl Context<'_> {
                 },
             )?;
         }
-        self.cover_squad(i, c, 150.0, 6.0);
-        self.brain_call(i, Call::Withdraw, 3, None, out);
-        self.brain_message(i, Message::Withdraw, c, out);
-        out.push(Event::Stat("break_contact"));
         Ok(())
     }
     fn cover_squad(&mut self, i: usize, c: Vector3, radius: f64, duration: f64) -> Option<Vector3> {

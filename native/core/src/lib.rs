@@ -3,6 +3,7 @@
 pub const NUMERIC_VERSION: u16 = 2;
 pub mod actors;
 pub mod aircraft_world;
+pub mod ambush_plan;
 pub mod attack_plan;
 pub mod battle_stats;
 pub mod blast;
@@ -92,6 +93,7 @@ pub mod route_graph;
 pub mod spatial;
 pub mod squad;
 pub mod squad_brain;
+pub mod squad_duties;
 pub mod squad_movement;
 mod state_codec;
 pub mod structure;

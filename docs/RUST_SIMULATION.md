@@ -2354,3 +2354,34 @@ speech, messages, behavior counters, path queues and random continuation. Existi
 travel, defense/assault bounds and deliberate attack comparisons also pass. Import,
 formatting, changelog and presentation audits pass. Other apps stayed running.
 These checks do not establish a standalone Rust match or whole-match verification.
+
+## Connected squad care and road ambushes
+
+Rescue, medical and engineer assignments now operate on the retained soldiers,
+rescue claims, routes and repair targets. Covering smoke keeps its existing delay,
+medics retain priority, and stragglers update their new squad's battle record
+immediately. Surrender releases duties, paths, weapon and squad membership in the
+same order. Follow-up defense and room-clear calls use the same deadlines.
+
+Road ambushes now retain their complete plan: rally, covered gun end, assault
+line, flank guard, hold-fire period, spring conditions and faction-specific
+withdrawal. Enemy aircraft and wounded soldiers do not spring the ambush. Contact
+on approach, losses, routing and timeouts preserve their existing cancellation
+rules. Plans have validated, versioned checkpoints and reuse the shared squad
+orders and smoke-screen operation.
+
+Godot compares 896 duty states and 384 ambush states, including actors, squads,
+paths, speech, messages, random continuation and duty battle records. The only
+nonexact reference comparison is the cosmetic rifle-drop direction: its tolerance
+is 1e-7 because Godot's platform cosine differs slightly from Rust's pinned math.
+Gameplay state remains exact, and the Rust numeric transcripts compare all saved
+bits exactly. The new transcripts add 3,389,982 bytes for duties and 15,276,227 for
+ambushes. Seven focused duty regressions and four ambush regressions cover shared
+claims, priority, transfers, abandonment, checkpoints and both withdrawal styles.
+The full squad dispatcher and standalone world integration remain unfinished.
+
+All 865 debug core tests pass at this revision. Godot also passes the existing
+1,536-state battle-drill comparison after smoke-screen reuse. Import, formatting,
+changelog and presentation checks pass. These checks do not establish a complete
+Rust match or a rendered frame-rate improvement; other apps stayed running.
+The 136 release checks also pass, including all 118 exact numeric-contract cases.

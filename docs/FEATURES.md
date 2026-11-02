@@ -1528,6 +1528,12 @@ routing and rallying, displacement under shellfire, bounding withdrawal, contact
 reactions, house clearing, ambush fire discipline and ammunition sharing. Decisions
 keep their existing priority, deadlines and random draws. The complete squad and
 world dispatchers still need integration before Rust owns the live battle.
+Squad care and construction assignments now share those retained actors, rescue
+claims and paths. Covering smoke, medic priority, repair selection, surrender,
+straggler transfers and their battle records keep their existing order and timing.
+Deliberate road ambushes also retain their rally, formation, fire discipline and
+withdrawal state in Rust, including checkpoint continuation and cancellation when
+the squad makes contact on approach or cannot hold its position.
 Retained captors update capture credit, prison selection and escort movement;
 arrival applies detention and the guard's return order before the next actor.
 Removed prisons are handled safely. Retained prisoner rules now handle guard
