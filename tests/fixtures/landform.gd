@@ -64,6 +64,21 @@ func _ready() -> void:
 	atmosphere._update_terrain_probe()
 	assert(atmosphere._terrain_probe == null, "Disabling reflections releases the probe")
 	Settings.v.terrain_reflections = reflections_before
+	var haze_before: bool = Settings.get_v("alpine_haze")
+	atmosphere.env = Environment.new()
+	atmosphere._d = {"fog_d": 0.002}
+	world.terrain.landform.peak = 80.0
+	Settings.v.alpine_haze = true
+	atmosphere._apply_haze(600.0)
+	assert(atmosphere.env.fog_aerial_perspective > 0.0 and atmosphere.env.fog_height_density > 0.0, "Alpine haze adds sky tint and a valley veil")
+	Settings.v.alpine_haze = false
+	atmosphere._apply_haze(600.0)
+	assert(atmosphere.env.fog_aerial_perspective == 0.0 and atmosphere.env.fog_height_density == 0.0, "Disabling alpine haze clears both additions")
+	Settings.v.alpine_haze = true
+	world.terrain.landform.peak = 0.0
+	atmosphere._apply_haze(600.0)
+	assert(atmosphere.env.fog_height_density == 0.0, "Flat scenarios retain their existing atmosphere")
+	Settings.v.alpine_haze = haze_before
 	atmosphere.free()
 	var geology := Landform.new(64)
 	geology.generate(3, [[], [], []], world.water, [])

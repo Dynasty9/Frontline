@@ -546,6 +546,7 @@ Ambush Alley autoplay can call its existing mortar support against spotted, stop
   jointed bedrock shelves, thermal weathering and seeded rainfall erosion shape the relief. Roads, bridges, starting bases and settlements
   occupy graded valley corridors; forests stay below the snow line and off steep faces.
 - Moss and soil blend into exposed stone on slopes, with baked slab fractures, broken mineral beds, sheltered weathering, loose-stone pockets and snow on high sheltered ground.
+- Optional alpine haze takes on the sky colour and settles lightly into lower valleys.
   Photograph-derived height, normals, crevice shading and roughness give each material distinct relief;
   height-based transitions let rock emerge through moss and snow. Reusable buttress, bowl and saddle
   forms shape standard mountains before erosion, with small conifer stands along suitable foothills.
@@ -1260,5 +1261,3 @@ to an area recreates the same vegetation from its seed.
 
 See [SIMULATION_SCALING.md](SIMULATION_SCALING.md) for the native perception
 boundary, measurement results and remaining limits.
-
-- Optional alpine haze takes on the sky colour and settles lightly into lower valleys.
