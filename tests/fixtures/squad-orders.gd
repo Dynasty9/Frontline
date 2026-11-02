@@ -9,12 +9,13 @@ func compare_actor(s: Soldier, actors: RefCounted, label: String) -> void:
 	var state: RefCounted = ClassDB.instantiate("InfantryStateCore"); assert(state.restore(actors.actor_state(s.eid)))
 	var expected := InfantryState.capture(s); var actual: Array = state.values()
 	# Godot's platform sinf/cosf can round a rotated work spot differently from pinned libm.
-	# Only the task position and its delivered path allow relative float rounding; Rust transcripts stay exact.
+	# Only the work destination, task position and delivered path allow rounding; Rust transcripts stay exact.
 	var path: PackedVector3Array = expected[1][1][1]; var route: PackedVector3Array = actual[1][1][1]
 	assert(path.size() == route.size(),label+" path length")
 	for i in mini(path.size(),route.size()): assert(order_position_equal(path[i],route[i]),label+" path "+str(i))
 	assert(order_position_equal(expected[4][5],actual[4][5]),label+" task position")
-	expected[1][1][1] = route; expected[4][5] = actual[4][5]
+	if expected[2][2] != actual[2][2]: assert(order_position_equal(expected[2][2],actual[2][2]),label+" destination")
+	expected[1][1][1] = route; expected[4][5] = actual[4][5]; expected[2][2] = actual[2][2]
 	for group in expected.size(): assert(expected[group] == actual[group],"%s group %d: %s / %s" % [label,group,expected[group],actual[group]])
 
 func order_speech(q: Squad, call: int, variant: int) -> String:

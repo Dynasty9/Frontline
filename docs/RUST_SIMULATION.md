@@ -2740,8 +2740,8 @@ All 432 Godot comparison states pass, as do seven focused Rust regressions.
 The 25,530,373-byte exact transcript covers 256 resumed command transitions.
 Related squad-order comparisons still cover all 768 states. Linux CI at the prior
 revision found a platform-math difference in a rotated construction work spot;
-the reference comparison now permits relative float rounding only in the task
-position and delivered path. The rest of the state, identities, route topology,
+the reference comparison now permits relative float rounding only in the work
+destination, task position and delivered path. The rest of the state, identities, route topology,
 random continuation and Rust numeric transcripts remain exact. All four platform
 numeric jobs passed at that revision; the adjusted Godot check needs fresh CI.
 The complete command dispatcher and standalone world are still in progress.
