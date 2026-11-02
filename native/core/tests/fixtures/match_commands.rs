@@ -245,7 +245,10 @@ impl Scene {
                 fob_spacing: 45.,
                 fob_expand: 130.,
             },
-            fob_names: &["Alpha".into(), "Bravo".into()],
+            fob_names: &[
+                vec!["Alpha".into(), "Bravo".into()],
+                vec!["Alpha".into(), "Bravo".into()],
+            ],
         };
         Dispatcher {
             world: &mut self.world.context(),

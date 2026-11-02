@@ -1658,8 +1658,12 @@ decks and water depth. Exact wall footprints let soldiers reach cover inside
 planning padding; swept steps prevent stale routes from crossing solid walls or
 newly blocked water. Dives, blast recovery, escorts and stretcher followers use
 the same terrain and clearance rules, including elevated casualty positions.
-The full authoritative Rust server and deterministic
-battle verifier are still in progress; see [RUST_SIMULATION.md](RUST_SIMULATION.md).
+The standalone runtime now uses definitions baked from the same game tables.
+Its replay runner records initial state, player admissions and ordered commands;
+a separate Rust executable reruns them and checks the final state and winner.
+It rejects incomplete, altered and incompatible recordings. Commander/mission
+migration and the live socket/visual-client transition remain in progress;
+see [RUST_SIMULATION.md](RUST_SIMULATION.md).
 
 See [SIMULATION_SCALING.md](SIMULATION_SCALING.md) for the native perception
 boundary, measurement results and remaining limits.

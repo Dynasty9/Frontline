@@ -6,7 +6,7 @@ pub(crate) fn header(schema: &[u8; 8]) -> [u8; 8] {
     header
 }
 
-pub(crate) struct Writer(pub Vec<u8>);
+pub struct Writer(pub Vec<u8>);
 
 impl Writer {
     pub fn new(schema: &[u8; 8]) -> Self {
@@ -38,7 +38,7 @@ impl Writer {
     }
 }
 
-pub(crate) struct Reader<'a>(&'a [u8]);
+pub struct Reader<'a>(&'a [u8]);
 
 impl<'a> Reader<'a> {
     pub fn new(bytes: &'a [u8], schema: &[u8; 8]) -> Result<Self, &'static str> {

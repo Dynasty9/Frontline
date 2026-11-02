@@ -286,7 +286,7 @@ pub fn with_commands<T>(f: impl FnOnce(&frontline_core::match_commands::Profiles
             fob_spacing: 45.,
             fob_expand: 130.,
         },
-        fob_names: &[],
+        fob_names: &[vec![], vec![]],
     })
 }
 

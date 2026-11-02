@@ -222,7 +222,7 @@ pub struct Profiles<'a> {
     pub structure_name: &'a dyn Fn(&Structure) -> String,
     pub squad_name: &'a dyn Fn(&Squad) -> String,
     pub distances: &'a Distances,
-    pub fob_names: &'a [String],
+    pub fob_names: &'a [Vec<String>; 2],
 }
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Audience {
@@ -422,7 +422,10 @@ impl Dispatcher<'_, '_, '_> {
             },
             def.as_ref(),
             self.profiles.distances,
-            self.profiles.fob_names,
+            self.profiles
+                .fob_names
+                .get(side as usize)
+                .map_or(&[], Vec::as_slice),
             self.profiles.engineer,
             self.profiles.structure_name,
         )?;

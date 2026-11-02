@@ -16,4 +16,4 @@ lto = "thin"
 codegen-units = 1
 
 [workspace]
-members = ["core"]
+members = ["core", "server"]

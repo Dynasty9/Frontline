@@ -87,7 +87,7 @@ graphics, network access or a wall clock.
 | Models, animation, smoothing, particles, camera, minimap | Godot | Existing presentation code |
 | Input, selection and order previews | Godot | Existing UI; server validates all commands |
 | Observation recordings | Godot viewer | Existing Format 1 recordings |
-| Authoritative checkpoints, command replay, verification | Rust | Not implemented |
+| Authoritative checkpoints, command replay, verification | Rust | Retained battlefield runner and standalone verifier implemented; commander/mission state and live socket recording remain unfinished |
 
 No authoritative stage may call back into Godot when the migration is complete.
 Passing scene objects through Rust, or putting a Rust supervisor around the
@@ -2895,3 +2895,59 @@ and elevated terrain and complete ground, boat, aircraft and truck ticks. The
 Terrain-aware combat, production content, commanders/missions, the standalone
 server and independent whole-match verifier remain unfinished. These correctness
 checks do not establish rendered performance.
+
+
+## Production content and standalone battlefield replay
+
+`native/server` is independent of Godot. Its immutable content is exported from
+Defs, VehicleRoster, VehicleMotion and the baked weapon sockets. The committed
+`native/content.json` retains all 98 vehicles, 16 unit types, 20 weapons,
+production, construction, research and support definitions. Generate it with:
+
+```powershell
+godot --headless --path . res://tools/export_simulation_content.tscn
+```
+
+The same command with `-- --check` detects drift; the Node test suite and CI run
+that check. Rust constructs production profiles from this content and advances
+all vehicle classes and infantry through the retained match tick. Per-side FOB
+names now reach the command dispatcher without sharing one faction's name list.
+
+`Simulation::step` is the shared entry point for replay and the forthcoming
+socket host. External inputs include authenticated player joins, departures,
+reclaims and commands; identity does not come from a client command's body.
+Checkpoints include the connected player registry. Loading rejects unknown
+content and incompatible numeric/build versions.
+
+The recorder stores the initial checkpoint and each tick's ordered admitted
+inputs. The verifier independently reruns those ticks, recomputes the final state
+and winner, and checks the transcript digest. It rejects truncation, extra bytes,
+malformed inputs, out-of-order ticks, altered conclusions and incompatible
+content/builds. A source/dependency fingerprint identifies the precise engine;
+line-ending normalization keeps it stable across platforms. Full-map checkpoints
+and state hashes are taken at recording boundaries, not periodically in the live
+tick. The format bounds input, state and record sizes and permits up to 24 hours
+of recorded simulation.
+
+```powershell
+cargo +1.94.0 run --locked --release --manifest-path native/Cargo.toml -p frontline_server --bin frontline-server -- verify recording.flr
+```
+
+The result identifies the initial-state hash, engine, final-state hash, tick and
+winner. `concluded=false` means a verified checkpoint recording, not a completed
+match. This proves continuation from the supplied initial state; an adjudicator
+must match its initial-state hash to the intended match. It is not a signature
+or proof that the supplied starting scenario was legitimate.
+
+Eight standalone checks cover the full roster, real infantry updates, 180 ticks
+of combat/orders/rejoin continuation, malformed admissions, tampered/truncated
+recordings, recomputed victory and verification in a separate executable. All
+eight cases pass in debug and release. The 16 dispatcher and seven battlefield
+scheduler regressions pass in release, and the dispatcher numeric transcript is
+unchanged. CI now runs standalone tests in both modes on all numeric platforms.
+
+This is not the complete game migration. Commander/naval/mission scheduling,
+initial-map setup, terrain-aware combat queries, private socket observations and
+Godot's visual-client transition are unfinished. Mission checkpoints are rejected
+by this runner until a mission program is available. Live game recordings still
+use the existing observer format; they are not accepted by this verifier.

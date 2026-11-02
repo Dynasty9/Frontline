@@ -112,7 +112,7 @@ pub mod squad_duties;
 pub mod squad_movement;
 pub mod squad_orders;
 pub mod squad_world;
-mod state_codec;
+pub mod state_codec;
 pub mod structure;
 pub mod structure_birth;
 pub mod structure_collision;

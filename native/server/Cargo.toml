@@ -1,0 +1,17 @@
+[package]
+name = "frontline_server"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.94"
+
+[[bin]]
+name = "frontline-server"
+path = "src/main.rs"
+
+[dependencies]
+frontline_core = { path = "../core" }
+serde_json = { version = "=1.0.154", features = ["float_roundtrip"] }
+blake3 = "=1.8.7"
+
+[build-dependencies]
+blake3 = "=1.8.7"

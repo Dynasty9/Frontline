@@ -26,6 +26,8 @@ jobs:
           rustup toolchain install 1.94.0 --profile minimal
           cargo +1.94.0 test --locked --manifest-path native/Cargo.toml -p frontline_core
           cargo +1.94.0 test --locked --release --manifest-path native/Cargo.toml -p frontline_core
+          cargo +1.94.0 test --locked --manifest-path native/Cargo.toml -p frontline_server
+          cargo +1.94.0 test --locked --release --manifest-path native/Cargo.toml -p frontline_server
 
   check:
     runs-on: ubuntu-latest

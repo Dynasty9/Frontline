@@ -166,3 +166,5 @@ kind = "fixed"
 - Rust aircraft retain terrain-aware climbing, cruise and landing behavior; dropped sling loads take damage from their height above the surface.
 
 Cannon impacts now settle onto the actual terrain or bridge surface instead of a flat ground plane.
+
+The standalone Rust runtime now reads the game's baked roster and balance tables. Its first command replay runner records player joins, departures, rejoins and orders, and a separate executable checks the resulting battlefield and winner. This is still migration work: normal games have not switched to the standalone Rust host yet.
