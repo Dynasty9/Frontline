@@ -724,9 +724,15 @@ func _update_terrain_probe(refresh := false) -> void:
 func _apply_haze(distance: float) -> void:
 	var k := haze_distance_factor(distance)
 	var volume_k := k
+	env.fog_aerial_perspective = 0.0
+	env.fog_height_density = 0.0
 	if bool(Settings.get_v("alpine_haze")) and world != null and world.terrain and world.terrain.landform.peak > 1.0:
 		var downward := absf(sin(world.cam.rotation.x)) if world.cam else 0.0
 		k = maxf(k, 0.45 * pow(1.0 - downward, 2.0))
+		# Sky tint separates distant ranges; keep the low valley veil out of the overhead view.
+		env.fog_aerial_perspective = 0.38 * (1.0 - downward)
+		env.fog_height = 18.0
+		env.fog_height_density = 0.0012 * pow(1.0 - downward, 2.0)
 	env.fog_density = float(_d.fog_d) * HAZE_STRENGTH * k
 	env.volumetric_fog_density = (0.0011 if mood != "hazy" else 0.003) * VOLUME_STRENGTH * volume_k
 
