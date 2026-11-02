@@ -1260,3 +1260,5 @@ to an area recreates the same vegetation from its seed.
 
 See [SIMULATION_SCALING.md](SIMULATION_SCALING.md) for the native perception
 boundary, measurement results and remaining limits.
+
+- World-space texture warping breaks up repeated slab patterns without adding material samples.
