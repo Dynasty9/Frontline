@@ -2646,6 +2646,209 @@
         }
       ],
       "output": null
+    },
+    {
+      "entry": "changelog/unreleased/animation-review.md",
+      "summary": "Review every locally installed character clip and the infantry gameplay pose set, with saved approval decisions and notes.",
+      "medium": "still",
+      "stage": "local-character-preview",
+      "rationale": "Stills document the UI or sampled pose/hand placement; continuity is checked by focused tests, not certified by stills alone.",
+      "source_ref": "PR #98; 969ba00",
+      "sources": [
+        {
+          "file": "changelog/unreleased/animation-review/review.jpg",
+          "sha256": "95f0b0a4c59da2b82fa44d580837eb4d9d0fb88e9dbf8bcc5dc3e0697aafeefa",
+          "caption": "Source clips and gameplay cases have separate saved approval decisions."
+        }
+      ],
+      "output": null
+    },
+    {
+      "entry": "changelog/unreleased/character-motion-grips.md",
+      "summary": "Keep rifle grips through action changes, use matching directional crouch clips, and orbit the character with Alt.",
+      "medium": "still",
+      "stage": "local-character-preview",
+      "rationale": "Stills document the UI or sampled pose/hand placement; continuity is checked by focused tests, not certified by stills alone.",
+      "source_ref": "PR #98; de6420a",
+      "sources": [
+        {
+          "file": "changelog/unreleased/character-motion-grips/winded-before.png",
+          "sha256": "db5805cc93df8c9f6f22cd3a241b0669ffc89659f51ac1a5143dcaef620b9d95",
+          "caption": "Before: support-hand placement breaks during winded recovery"
+        },
+        {
+          "file": "changelog/unreleased/character-motion-grips/winded-after.jpg",
+          "sha256": "246f30f9f41234808f586a6b81ebe4ba51013e1fe07ba7b0db41d6956fdaedf1",
+          "caption": "Walking, winded recovery and return to firing with the support hand seated on the rifle"
+        }
+      ],
+      "output": null
+    },
+    {
+      "entry": "changelog/unreleased/character-playground.md",
+      "summary": "Walk the SWAT preview over varied terrain, work, reload and inspect every available animation.",
+      "medium": "still",
+      "stage": "local-character-preview",
+      "rationale": "Stills document the UI or sampled pose/hand placement; continuity is checked by focused tests, not certified by stills alone.",
+      "source_ref": "PR #98; 969ba00",
+      "sources": [
+        {
+          "file": "changelog/unreleased/character-playground/playground.png",
+          "sha256": "5fdcb97048b180f3786f2bd1e9913d61a124736553a71dc0ae350bf1fe884380",
+          "caption": "Work with the rifle slung on the playable terrain course"
+        }
+      ],
+      "output": null
+    },
+    {
+      "entry": "changelog/unreleased/cover-firing-animation.md",
+      "summary": "Skinned infantry use the correct firing pose over barriers, keeping their rifles above the wall and both hands on the weapon.",
+      "medium": "still",
+      "stage": "gameplay-and-controlled-preview",
+      "rationale": "Stills document the UI or sampled pose/hand placement; continuity is checked by focused tests, not certified by stills alone.",
+      "source_ref": "PR #98; 969ba00",
+      "sources": [
+        {
+          "file": "changelog/unreleased/cover-firing-animation/before.jpg",
+          "sha256": "01e1f13bbf2fe1ad410f9b7e53d81ae5bedfd15795d6d4fdc45327f1b06a56d2",
+          "caption": "Before: the standing animation put the barrel inside a 1.5 metre wall."
+        },
+        {
+          "file": "changelog/unreleased/cover-firing-animation/after.jpg",
+          "sha256": "7b2f80b6e511e159932c0dafb1de96d659fa3e245b2b7f68356c76117cd264de",
+          "caption": "After: the cover pose lifts the barrel above the wall while retaining both hand grips."
+        }
+      ],
+      "output": null
+    },
+    {
+      "entry": "changelog/unreleased/infantry-animation-transitions.md",
+      "summary": "The optional SWAT preview keeps its rifle through free-hand actions and improves reloads, cover aim and low-wall crossings.",
+      "medium": "still",
+      "stage": "local-character-preview",
+      "rationale": "Stills document the UI or sampled pose/hand placement; continuity is checked by focused tests, not certified by stills alone.",
+      "source_ref": "PR #98; 969ba00",
+      "sources": [
+        {
+          "file": "changelog/unreleased/infantry-animation-transitions/before.jpg",
+          "sha256": "0cec45aef7d99f2e6247f5ab3317163a4ea0146ee36a63515b56dd49698b7a3c",
+          "caption": "Before: grenade handling carried the rifle with the throwing hand"
+        },
+        {
+          "file": "changelog/unreleased/infantry-animation-transitions/after.jpg",
+          "sha256": "2b4c05a0f4e432305e404eabb9270b6ff47ebd31fc56259273bd14ecb4b24fdf",
+          "caption": "After: grenade handling frees the working hand and returns to rifle aim"
+        },
+        {
+          "file": "changelog/unreleased/infantry-animation-transitions/vault.jpg",
+          "sha256": "94ea5f1f91c6ebc1adefa4be77953ec42d963e69b897be9f758b4fd91449d196",
+          "caption": "The actual soldier renderer keeps the knees tucked across a low wall"
+        }
+      ],
+      "output": null
+    },
+    {
+      "entry": "changelog/unreleased/infantry-animation.md",
+      "summary": "An optional skinned rifleman preview adds captured movement, grounded feet, rifle grips and physical hit reactions. Soldiers make room before going prone beside walls.",
+      "medium": "still",
+      "stage": "gameplay-and-controlled-preview",
+      "rationale": "Stills document the UI or sampled pose/hand placement; continuity is checked by focused tests, not certified by stills alone.",
+      "source_ref": "PR #98; 969ba00",
+      "sources": [
+        {
+          "file": "changelog/unreleased/infantry-animation/before.jpg",
+          "sha256": "f68e86456c9a8192e8cbd097a968477f1f14c79a79e3aceae751c11f1f0b789e",
+          "caption": "The earlier procedural rifleman"
+        },
+        {
+          "file": "changelog/unreleased/infantry-animation/after.jpg",
+          "sha256": "f0a91c6cd3ec2d0c265578be0f2f238554bc9195a003013cbf143dc417671b4b",
+          "caption": "The optional imported rifleman after stepping back to clear the wall"
+        },
+        {
+          "file": "changelog/unreleased/infantry-animation/movement.jpg",
+          "sha256": "a90464f655c1e9c00198053b14342b3269099170aa198740b79a717b928ac7d8",
+          "caption": "The optional riflemen moving into cover in an actual battle"
+        },
+        {
+          "file": "changelog/unreleased/infantry-animation/digging-game.jpg",
+          "sha256": "6bfd5126d9e7984a53a56f9fcb3fea984211d818ce43eeba97b0fd291877e8b1",
+          "caption": "A rifleman digs during a sandbag construction order"
+        },
+        {
+          "file": "changelog/unreleased/infantry-animation/smoking-game.jpg",
+          "sha256": "c513f36ede81a87aa10ddbd3c0ee88c718ca9fdf001eb93ed00e18659839ace1",
+          "caption": "A quiet-sector smoking idle, with the rifle slung"
+        },
+        {
+          "file": "changelog/unreleased/infantry-animation/ragdoll.jpg",
+          "sha256": "affd1b40673eec8dd6f963716cb72a62ea4ae7d4aee4db2e6e56a64c51c0e54a",
+          "caption": "A staged blast demonstrates physical falls and dropped weapons"
+        },
+        {
+          "file": "changelog/unreleased/infantry-animation/mixamo-crouch.png",
+          "sha256": "68115c72efd5ca142c706dc0362cecd2aa90893f087f0d05b6bc69190ca170ca",
+          "caption": "The SWAT rifleman settles into cover using the Mixamo crouch cycle and baked rifle"
+        }
+      ],
+      "output": null
+    },
+    {
+      "entry": "changelog/unreleased/crawl-throw-recovery.md",
+      "summary": "Reach forward while crawling, keep grenade throws grounded, and settle crouched feet without inverted toes.",
+      "medium": "motion",
+      "stage": "controlled-character-preview",
+      "rationale": "Fixed-step shared renderer capture with translation; focused regression checks cover stance recovery. Not a battle performance benchmark.",
+      "source_ref": "PR #98; recovery_states and controlled recovery sequence",
+      "sources": [
+        {
+          "file": "changelog/unreleased/crawl-throw-recovery/before.jpg",
+          "sha256": "6c7322b582d9126512ae79e5d58205922be62100536e3c11852c3d5fc40471b8",
+          "caption": "before"
+        },
+        {
+          "file": "changelog/unreleased/crawl-throw-recovery/after.jpg",
+          "sha256": "054eff20fad6921fec5da35979157ab44d6817e4a103ad626eb24c9d1361bd4d",
+          "caption": "after"
+        },
+        {
+          "file": "changelog/unreleased/crawl-throw-recovery/recovery.mp4",
+          "sha256": "63b238b1d24690b471caa3eeb54cc19956531e52a197ee3e8c5c7985d0e0f079",
+          "caption": "recovery"
+        }
+      ],
+      "output": null
+    },
+    {
+      "entry": "changelog/unreleased/captured-prone.md",
+      "summary": "The optional imported rifleman uses captured crawling, stops and prone actions.",
+      "medium": "motion",
+      "stage": "controlled-character-preview",
+      "rationale": "Fixed-step shared actor: entry, forward/backward crawl, backward start and stops, firing, reload, throw and recovery. Local assets only; magazine timing and varied terrain remain unvalidated.",
+      "source_ref": "PR #98; tests/mocap/prone_sequence.tscn, captured_prone and native_grip regressions",
+      "sources": [
+        {
+          "file": "changelog/unreleased/captured-prone/prone.mp4",
+          "sha256": "5e2204a5ed0b688e59e1b919996883b5cb724f0a35d9d7a3442d6c8d8cc3f972",
+          "caption": "prone"
+        },
+        {
+          "file": "changelog/unreleased/captured-prone/prone.jpg",
+          "sha256": "89cb77b5b0be1a79c94f670bbe3e85160892ade31bbca7f13ecbefb740db1549",
+          "caption": "prone"
+        },
+        {
+          "file": "changelog/unreleased/captured-prone/actions.mp4",
+          "sha256": "0631336d0ea8d78676ed69a25f0390e937863d95bb945f335f44789eec2fb222",
+          "caption": "actions"
+        },
+        {
+          "file": "changelog/unreleased/captured-prone/actions.jpg",
+          "sha256": "6d39b0329e34ccef00241b2c30eccbd858a907c89bc288cf410e46981e5bc639",
+          "caption": "actions"
+        }
+      ],
+      "output": null
     }
   ],
   "layout_capture": {

@@ -16,6 +16,8 @@ var has_view := true
 var local_peer := 1
 var local_team := 0
 var time := 0.0
+const SIMULATION_STEP := 1.0 / 30.0
+var _simulation_pending := 0.0
 var _snapshot_time := 0.0
 var entities := {}
 var next_eid := 1
@@ -669,6 +671,22 @@ func say(e: Entity, text: String) -> void:
 # --- server tick ------------------------------------------------------------------
 
 func _physics_process(dt: float) -> void:
+	# Physical contacts need smaller steps than the battle AI and replication.
+	var step := SIMULATION_STEP * Engine.time_scale
+	if step <= 0.0: return
+	_simulation_pending += dt
+	while _simulation_pending + 1e-9 >= step:
+		_simulation_pending = maxf(0.0, _simulation_pending - step)
+		_simulate(step)
+
+
+func simulation_fraction() -> float:
+	if Engine.time_scale <= 0.0: return 0.0
+	var between_ticks := Engine.get_physics_interpolation_fraction() * Engine.time_scale / Engine.physics_ticks_per_second
+	return clampf((_simulation_pending + between_ticks) / (SIMULATION_STEP * Engine.time_scale), 0.0, 1.0)
+
+
+func _simulate(dt: float) -> void:
 	var t0 := Time.get_ticks_usec()
 	# (a client loading works through the cover map under the loading screen
 	# instead, by the time it takes rather than by the tick: _load_tick)

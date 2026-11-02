@@ -92,6 +92,8 @@ func _run() -> void:
 	check(not player._valid_state({"time": 0}, true), "rejects malformed state")
 	check(not player._valid_props("soldier", {"pos": Vector3.ZERO, "utype": "missing-unit"}, true), "rejects unknown unit")
 	check(not player._valid_fx([0, "wrong"]), "rejects malformed effect")
+	check(player._valid_fx([Fx.UNIT_HIT, 1, Vector3.RIGHT, 0.5]), "accepts recorded hit reactions")
+	check(not player._valid_fx([Fx.UNIT_HIT, 1, "wrong", 0.5]), "rejects malformed hit direction")
 	check(not player._valid_map({"kinds": PackedByteArray()}), "rejects malformed map")
 	player.source = path
 	var live_manifest: Dictionary = player.manifest.duplicate(true)

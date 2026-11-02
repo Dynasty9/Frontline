@@ -770,6 +770,24 @@ jump: run at 1920x1080 with `--curtain --intro-at=0 --menu-shot=assets/splash.pn
 which keeps the PNG small).
 
 
+### Unit motion lab
+
+`godot --path . tests/unit_motion_lab.tscn -- --no-stun` runs a fourteen-second
+rifleman/tank animation and collision showcase without AI or networking. Add
+`--headless` for its wall/floor physics regression, or `--screenshot=build/lab.png
+--shot-at=6.25` for a rendered frame. See [UNIT_MOTION.md](UNIT_MOTION.md).
+
+The supplied MCO FBX sample has a separate 26-second comparison scene. Follow
+[tests/mocap/README.md](../tests/mocap/README.md) to extract the local assets, import,
+run, and record it. Source assets remain ignored by Git.
+
+The [skinned rifleman showcase](../tests/mocap/SKINNED.md) runs with
+`tests/mocap/skinned_demo.tscn`. For battlefield integration use
+`--scenario=motion --skinned-units --preset=ultra --set=ragdolls:true,dof:false`.
+The motion scenario includes scheduled infantry and tank damage to make visual
+regressions repeatable; other movement and fire use normal game simulation.
+
+Scenario launches also honor --seed=N. For repeatable motion-demo comparisons, use --scenario=motion --seed=3 with --fixed-fps 60 before the argument separator. The seed fixes simulation initialization; it does not promise identical rendered particles or cross-platform physics.
 
 ## Recording and replay tests
 

@@ -111,9 +111,9 @@ func visible_to_team(t: int) -> bool:
 
 
 # --- smooth motion on the host -------------------------------------------------------
-# The simulation steps 30 times a second; drawn as it is, anything moving
-# would jump in 30 Hz steps at 100+ fps. The host draws each unit between its
-# last two simulated transforms instead (clients smooth the network stream).
+# Battle updates run at 30 Hz independently of the smaller physics steps.
+# The host draws between its last two battle transforms, including physics
+# ticks between battle updates. Clients smooth the network stream instead.
 var _ip_a := Transform3D.IDENTITY
 var _ip_b := Transform3D.IDENTITY
 var _ip_moving := false
@@ -131,7 +131,7 @@ func ip_capture() -> void:
 func ip_offset() -> Transform3D:
 	if not _ip_moving:
 		return Transform3D.IDENTITY
-	var g := _ip_a.interpolate_with(_ip_b, Engine.get_physics_interpolation_fraction())
+	var g := _ip_a.interpolate_with(_ip_b, world.simulation_fraction())
 	return transform.affine_inverse() * g
 
 
