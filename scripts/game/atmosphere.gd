@@ -1161,11 +1161,14 @@ void fragment() {
 	float local_snow_line = max(abs(p.x), abs(p.y)) >= __MAP_HALF__ ? max(150.0, snow_line * 1.5) : snow_line;
 	float snow_field = (geology - local_snow_line) / 35.0 + cavity * 0.8 - geometric.x * 0.25 + (d1 - 0.5) * 0.3;
 	snow_field -= min(3.0, max(0.0, slope - 0.75)) * 0.18;
-	snow_field += (macro - 0.5) * 0.25;
+	// Snow catches behind ribs and in surface depressions; exposed faces retain bare rock.
+	float lee = clamp(dot(geometric.xz, normalize(vec2(0.8, 0.6))) + cavity, -1.0, 1.0);
+	snow_field += (macro - 0.5) * 0.45 + lee * 0.18 + (0.5 - rock_height) * 0.22;
 	float snow = height_blend(rock_height, 0.6, smoothstep(-0.16, 0.20, snow_field));
 	snow *= 1.0 - smoothstep(0.85, 2.1, slope);
 	snow *= clean;
-	col = mix(col, vec3(0.82, 0.87, 0.91) * (0.97 + d3 * 0.03), snow);
+	vec3 snow_color = mix(vec3(0.65, 0.75, 0.84), vec3(0.88, 0.90, 0.92), smoothstep(-0.3, 0.6, lee + macro));
+	col = mix(col, snow_color * (0.95 + d3 * 0.05), snow);
 	vec2 material_data = mix(moss_data, rock_data, exposed);
 	AO = sky * mix(1.0, max(0.35, material_data.x), clean * (1.0 - snow));
 	AO_LIGHT_AFFECT = 0.25;
@@ -1175,7 +1178,7 @@ void fragment() {
 	ALBEDO = col * (1.0 - aerial);
 	EMISSION = air_color * aerial * 0.22;
 	ROUGHNESS = mix(mix(0.96, 0.82, dirt_m), clamp(material_data.y, 0.55, 1.0), clean);
-	ROUGHNESS = mix(ROUGHNESS, 0.88, snow);
+	ROUGHNESS = mix(ROUGHNESS, mix(0.74, 0.94, macro), snow);
 	ROUGHNESS = mix(ROUGHNESS, 0.55, wet * 0.5);
 	ROUGHNESS = mix(ROUGHNESS, 0.45, max(wm.a * 0.8, wet_sand * 0.6));
 	ROUGHNESS = mix(ROUGHNESS, 0.16, puddle);

@@ -1260,3 +1260,5 @@ to an area recreates the same vegetation from its seed.
 
 See [SIMULATION_SCALING.md](SIMULATION_SCALING.md) for the native perception
 boundary, measurement results and remaining limits.
+
+- Wind exposure and rock relief break up snow edges, with cooler compacted snow in sheltered pockets.
