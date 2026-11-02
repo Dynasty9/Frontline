@@ -10470,3 +10470,10 @@ mod unit_orders;
 fn individual_orders_are_identical_across_platforms() {
     golden("unit_orders", &unit_orders::transcript());
 }
+
+#[path = "fixtures/vehicle_orders.rs"]
+mod vehicle_orders;
+#[test]
+fn connected_vehicle_orders_are_identical_across_platforms() {
+    golden("vehicle_orders", &vehicle_orders::transcript());
+}

@@ -357,6 +357,13 @@ retains the shot calculation; the connected blast/destruction operation is now
 available, while the full vehicle firing loop still needs integration.
 
 Boat navigation retains weighted water cells and derives connected-water labels
+on loading. Connected vehicle orders submit ground routes, complete water routes,
+search helicopter landing sites and cancel stale path completions. The reference
+fixture compares 384 ordered states across 12 vehicle profiles, including AI crew
+refusals and player overrides. Six core regressions and 500,836 exact transcript
+bytes cover route admission and saved-state continuation.
+
+Boat navigation retains weighted water cells and derives connected-water labels
 on loading. Terrain import preserves shallow-water costs, impassable bridges and
 partly dry cells. Shore searches, hull-width clearance and six-metre route
 waypoints retain the existing tie order. The reference fixture compares 3,072

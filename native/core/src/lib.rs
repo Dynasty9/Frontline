@@ -142,6 +142,7 @@ pub mod vehicle_loss;
 pub mod vehicle_loss_world;
 pub mod vehicle_motion;
 pub mod vehicle_movement_world;
+pub mod vehicle_orders;
 pub mod vehicle_scan;
 pub mod vehicle_service;
 pub mod vehicle_sling;

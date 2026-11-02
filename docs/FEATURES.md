@@ -1614,6 +1614,8 @@ collision registration and engineer assignment in Rust. Allied players retain
 their attribution; giving orders to AI builders transfers their command.
 Individual orders also operate on retained soldiers, preserving cover selection,
 detachment, rescue claims, grenade availability, retreat and mounted-gun ownership.
+Vehicle commands use retained ground and water routes, helicopter landing searches,
+crew refusal rules and path cancellation, including saved-state continuation.
 Observer demonstrations and private readiness warnings retain their existing behavior.
 The full authoritative Rust server and deterministic
 battle verifier are still in progress; see [RUST_SIMULATION.md](RUST_SIMULATION.md).

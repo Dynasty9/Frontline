@@ -166,6 +166,11 @@ struct Building {
     time: Option<f64>,
 }
 enum Operation {
+    Order(
+        u32,
+        frontline_core::vehicle_orders::Order,
+        Gd<crate::boat_navigation::BoatNavigationCore>,
+    ),
     Rules(Array<Variant>, Gd<crate::rules_world::RulesWorldCore>),
     Logistics(Array<Variant>, Gd<SupplyNetworkCore>),
     Production(
@@ -190,6 +195,54 @@ struct VehicleLossWorldCore {
 }
 #[godot_api]
 impl VehicleLossWorldCore {
+    #[func]
+    fn command_vehicle(
+        &mut self,
+        actors: Gd<ActorStateCore>,
+        geometry: Gd<WorldGeometryCore>,
+        units: Gd<SpatialIndexCore>,
+        nodes: Array<Gd<SquadStateCore>>,
+        fires: Gd<FiresCore>,
+        battle: Gd<BattleStatsCore>,
+        deferred: Gd<DeferredEffectsCore>,
+        visibility: Gd<VisibilityCore>,
+        rng: Gd<SimulationRandomCore>,
+        config: Array<Variant>,
+        input: Array<Variant>,
+        boats: Gd<crate::boat_navigation::BoatNavigationCore>,
+    ) -> Array<Variant> {
+        use frontline_core::vehicle_orders::Order;
+        let parse = || -> Option<_> {
+            if input.len() != 3 {
+                return None;
+            }
+            let id = read(&input, 0)?;
+            let order = match read::<u8>(&input, 1)? {
+                0 => Order::Move(crate::point(read(&input, 2)?)),
+                1 => Order::Assault(crate::point(read(&input, 2)?)),
+                2 => Order::Attack(read(&input, 2)?),
+                3 if input.at(2).is_nil() => Order::Stop,
+                _ => return None,
+            };
+            Some((id, order))
+        };
+        let Some((id, order)) = parse() else {
+            return Array::new();
+        };
+        self.run(
+            actors,
+            geometry,
+            units,
+            nodes,
+            fires,
+            battle,
+            deferred,
+            visibility,
+            rng,
+            config,
+            Operation::Order(id, order, boats),
+        )
+    }
     #[func]
     fn advance_rules(
         &mut self,
@@ -1107,6 +1160,13 @@ impl VehicleLossWorldCore {
             }
         };
         let result = match operation {
+            Operation::Order(id, order, mut boats) => {
+                let mut boats = boats.bind_mut();
+                let Some(boats) = &mut boats.core else {
+                    return Array::new();
+                };
+                context.order_vehicle(id, order, boats).map(|()| vec![])
+            }
             Operation::Rules(input, mut rules) => {
                 use frontline_core::rules_world::Event as R;
                 let Some((winner, events)) = crate::rules_world::advance(
