@@ -2823,6 +2823,35 @@
         "detail": "godot --main-pack PACK --resolution 1600x900 -- --aivai --seed=3 --offscreen --nohud --set=perf:0 --mood=day --preset=high --focus=-160,70 --zoom=140 --pitch=-35 --cam-yaw=0.7 --screenshot=OUTPUT --shot-at=2 --quit-after=3",
         "overview": "godot --main-pack PACK --resolution 1600x900 -- --aivai --seed=3 --offscreen --nohud --set=perf:0 --mood=golden --preset=high --focus=-100,0 --zoom=600 --pitch=-38 --cam-yaw=0.7 --perf-at=5 --perf-duration=10 --perf-shot=OUTPUT.png"
       }
+    },
+    {
+      "entry": "changelog/unreleased/snow-deposition.md",
+      "summary": "Wind exposure and rock relief break up snow edges, with cooler compacted snow in sheltered pockets.",
+      "medium": "still",
+      "stage": "native-media",
+      "rationale": "Matched native renders isolate this refinement against the shared terrain baseline.",
+      "source_ref": "codex/snow-deposition",
+      "sources": [
+        {
+          "file": "changelog/unreleased/snow-deposition/before.jpg",
+          "sha256": "f329ad746630d6675d333cc9915804de68180026896cd6bc86985841887fa1a3",
+          "caption": "before"
+        },
+        {
+          "file": "changelog/unreleased/snow-deposition/after.jpg",
+          "sha256": "407c871116230abe94d7bcea0f1afa9d6f05dd2bd1e24263a736eed52a4b1f31",
+          "caption": "after"
+        }
+      ],
+      "output": null,
+      "title": "Break up alpine snowfields",
+      "version": "unreleased",
+      "kind": "improved",
+      "capture": {
+        "before_ref": "322c5a4",
+        "after_ref": "codex/snow-deposition",
+        "command": "godot --main-pack PACK --resolution 1600x900 -- --aivai --seed=3 --offscreen --nohud --set=perf:0 --mood=day --preset=high --focus=0,0 --zoom=900 --pitch=-22 --cam-yaw=0.7 --screenshot=OUTPUT --shot-at=2 --quit-after=3"
+      }
     }
   ],
   "layout_capture": {
