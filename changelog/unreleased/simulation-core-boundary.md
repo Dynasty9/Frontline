@@ -148,3 +148,4 @@ kind = "fixed"
 - Combined Rust rules checks preserve the timing and order of support, visibility, prisoners, reserves, victory and supply dispatch through saved-state resumes.
 - Rust building checks preserve training and research requirements, queue limits, supply charges, cancellation refunds and the effects of earlier buildings on later production.
 - Rust placement checks preserve trench gun positions, shoreline docks, overlapping footprints, supply-road clearance and expansion from friendly bases and towns.
+- Rust ownership checks preserve allied control, AI handovers and returning commanders' surviving forces, queued reinforcements and battle credit.

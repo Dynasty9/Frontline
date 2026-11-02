@@ -8,6 +8,7 @@ mod breach;
 mod building_placement;
 mod bullet;
 mod collision_index;
+mod command_handoff;
 mod cover_geometry;
 mod cover_search;
 mod deferred_effects;

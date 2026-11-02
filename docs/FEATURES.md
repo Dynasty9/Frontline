@@ -1603,6 +1603,9 @@ Rust, preserving prerequisites, private warnings and cancellation credit. The
 building pass applies captures, production and services in registration order.
 Rust placement validation preserves rotated footprints, trench gun positions,
 dock approaches, road clearance and expansion from existing bases and towns.
+Rust command ownership preserves allied control without changing another human's
+attribution, transfers departing commanders' forces, and restores surviving units,
+queued reinforcements and battle credit when an authenticated commander returns.
 Observer demonstrations and private readiness warnings retain their existing behavior.
 The full authoritative Rust server and deterministic
 battle verifier are still in progress; see [RUST_SIMULATION.md](RUST_SIMULATION.md).

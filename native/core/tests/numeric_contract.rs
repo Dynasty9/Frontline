@@ -10442,3 +10442,10 @@ mod building_placement;
 fn building_placement_is_identical_across_platforms() {
     golden("building_placement", &building_placement::transcript());
 }
+
+#[path = "fixtures/command_handoff.rs"]
+mod command_handoff;
+#[test]
+fn command_handoffs_are_identical_across_platforms() {
+    golden("command_handoff", &command_handoff::transcript());
+}

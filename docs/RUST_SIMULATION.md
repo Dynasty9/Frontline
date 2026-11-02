@@ -2662,3 +2662,24 @@ also pass, covering shared scans, crews, driving, destruction, ground vehicles,
 aircraft, boats and supply trucks after sharing the overlap calculation.
 Command admission, placement creation and the complete world/server integration
 remain in progress. No rendered performance result is claimed.
+
+## Command ownership and returning players
+
+The retained commander registry now admits connections, selects commandable units
+in request order, deduplicates selections and transfers only AI attribution when
+a human gives an order. Allied humans keep their existing shared control; an AI,
+observer, enemy or unknown connection cannot use another commander's authority.
+Departures transfer all owned forces to the last connected teammate or the side's
+AI. Authenticated rejoins reclaim living squads and surviving vehicles, retarget
+queued reinforcements, merge battle credit and optionally stand down the temporary
+AI. Its extra automatic supply trucks stay automatic. Session authentication must
+establish the old identity before this operation is admitted to the command log.
+
+All 224 Godot comparison states pass across both sides, surviving and incapacitated
+squads, human heirs, AI handovers, repeated rejoins and observers. The full actor,
+squad, queue, commander registry and battle ledger match after every operation.
+Eight focused regressions also check rejection before mutation on credit overflow.
+The 1,435,016-byte exact numeric transcript covers 120 transitions, replaying each
+after checkpoint restoration. All 139 relevant debug and release checks pass, including all
+131 numeric cases. This is retained command state; the complete socket server and
+authoritative world still need integration.

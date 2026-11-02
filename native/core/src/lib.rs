@@ -15,6 +15,7 @@ pub mod building_placement;
 pub mod bullet;
 pub mod bullet_world;
 pub mod collision;
+pub mod command_handoff;
 pub mod command_ownership;
 pub mod cover;
 pub mod cover_search;
