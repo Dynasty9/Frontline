@@ -1260,3 +1260,5 @@ to an area recreates the same vegetation from its seed.
 
 See [SIMULATION_SCALING.md](SIMULATION_SCALING.md) for the native perception
 boundary, measurement results and remaining limits.
+
+- Sheltered rock crevices receive stronger ambient occlusion while exposed rock stays open to sky light.

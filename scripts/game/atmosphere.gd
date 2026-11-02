@@ -1167,7 +1167,10 @@ void fragment() {
 	snow *= clean;
 	col = mix(col, vec3(0.82, 0.87, 0.91) * (0.97 + d3 * 0.03), snow);
 	vec2 material_data = mix(moss_data, rock_data, exposed);
-	AO = sky * mix(1.0, max(0.35, material_data.x), clean * (1.0 - snow));
+	// Combine photographic crevices with broad shelter; do not bake a second direct-light shadow.
+	float crevice = clamp(rock_data.x * mix(1.0, 0.72, shelter), 0.25, 1.0);
+	float material_ao = mix(moss_data.x, crevice, exposed);
+	AO = sky * mix(1.0, max(0.25, material_ao), clean * (1.0 - snow));
 	AO_LIGHT_AFFECT = 0.25;
 	col *= mix(vec3(0.72, 0.80, 0.90), vec3(1.0), sky);
 
