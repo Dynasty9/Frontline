@@ -98,6 +98,19 @@ fn placement_requires_a_working_base_and_preserves_strict_map_edges() {
     );
 }
 #[test]
+fn foundations_reject_slopes_but_allow_level_high_ground() {
+    let (mut a, mut g, w, n) = scene();
+    add(&mut a, &mut g, "fob", 0, -40., 0.);
+    let ramp = (0..65 * 65).map(|i| (i % 65) as f32 * 0.4).collect();
+    assert!(g.terrain.set_landform(ramp));
+    assert_eq!(
+        check(&a, &g, &w, &n, 0, "barracks", 0., 0.),
+        "The ground is too steep or uneven to build here."
+    );
+    assert!(g.terrain.set_landform(vec![12.; 65 * 65]));
+    assert_eq!(check(&a, &g, &w, &n, 0, "barracks", 0., 0.), "");
+}
+#[test]
 fn footholds_include_friendly_towns_but_all_fobs_enforce_spacing() {
     let (mut a, mut g, w, n) = scene();
     add(&mut a, &mut g, "town", 0, 0., 0.);

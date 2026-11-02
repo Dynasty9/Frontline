@@ -30,6 +30,14 @@ use frontline_core::visibility::{Smoke, Visibility};
 use frontline_core::water::{Pond, River, Water};
 use std::path::PathBuf;
 
+#[path = "fixtures/landform.rs"]
+mod landform;
+
+#[test]
+fn elevated_ground_queries_and_craters_are_identical_across_platforms() {
+    golden("landform", &landform::transcript());
+}
+
 #[path = "fixtures/fires_world.rs"]
 mod fires_world;
 

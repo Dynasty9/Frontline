@@ -157,3 +157,4 @@ kind = "fixed"
 - Connected Rust battlefield checks preserve when new recruits act, when newly fired rounds start flying, research effects and prisoner arrivals. Scenery no longer enlarges Rust's active-building or perception scans.
 
 - The migration branch now preserves current alpine terrain, separate tracked and wheeled routes, and depth-limited water crossings. Native paths that still assume flat ground remain on the terrain-aware compatibility implementation while those Rust ports are completed.
+- Rust terrain now preserves elevated ground, slope costs, level building foundations, raised trench floors and ground impacts, including crater edits and saved-state continuation.

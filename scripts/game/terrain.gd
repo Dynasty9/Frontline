@@ -134,6 +134,8 @@ func end_ground_import() -> void:
 	if _native:
 		var valid: bool = _native.replace_ground([base, crater, rubble, woods, cov, cdir, solid, trench, netted], dh)
 		assert(valid, "Invalid loaded terrain state")
+		var geology_valid: bool = _native.set_landform(landform.heights)
+		assert(geology_valid, "Invalid loaded geology")
 
 
 func pending_count() -> int:
@@ -152,6 +154,9 @@ func queue_cells(cells: PackedInt32Array) -> void:
 
 
 func install_landform(samples: PackedFloat32Array) -> void:
+	if _native:
+		var valid: bool = _native.set_landform(samples)
+		assert(valid, "Invalid geology samples")
 	landform.heights = samples
 	landform.peak = 0.0
 	for h in samples:
@@ -199,6 +204,10 @@ func slope_at(p: Vector3) -> float:
 
 ## Server sight and ballistics use the same ground even without a renderer.
 func ray_ground(a: Vector3, b: Vector3) -> Dictionary:
+	if _native:
+		var deck: PackedByteArray = world.water.deck if world.water else PackedByteArray()
+		var hit: PackedVector3Array = _native.ray_ground(a, b, deck)
+		return {} if hit.is_empty() else {"position": hit[0], "normal": hit[1], "collider": null, "shape": -1}
 	if landform.heights.is_empty() or minf(a.y, b.y) > landform.peak + 0.6:
 		return {}
 	var count := maxi(1, ceili(Defs.flat(b - a).length() / 1.0))
@@ -329,12 +338,12 @@ static func ground_cover(cr: int, ru: int, wo: int, ba: int) -> int:
 
 
 func speed_mul(p: Vector3, vehicle: bool, tracked := true) -> float:
+	if _native:
+		return float(_native.query(p, Vector3.ZERO, 3, vehicle, tracked))
 	return _surface_speed(p, vehicle, tracked) / (1.0 + slope_at(p) * (2.4 if vehicle else 1.3))
 
 
 func _surface_speed(p: Vector3, vehicle: bool, tracked: bool) -> float:
-	if _native:
-		return float(_native.query(p, Vector3.ZERO, 3, vehicle, tracked))
 	match kind_at(p):
 		TRENCH:
 			# tracks claw across a trench; wheels drop in and stick
@@ -414,13 +423,13 @@ func net_cover(p: Vector3) -> float:
 
 
 func nav_weight(idx: int, vehicle: bool) -> float:
+	if _native:
+		return float(_native.nav_weight(idx, vehicle))
 	var slope := slopes[idx] if not slopes.is_empty() else 0.0
 	return _surface_weight(idx, vehicle) * (1.0 + slope * (3.0 if vehicle else 1.5))
 
 
 func _surface_weight(idx: int, vehicle: bool) -> float:
-	if _native:
-		return float(_native.nav_weight(idx, vehicle))
 	if trench[idx] > 0:
 		return 7.0 if vehicle else 0.7  # infantry move along the trenches: covered all the way
 	if crater[idx] > 0:
@@ -1105,8 +1114,7 @@ func release_nav() -> void:
 
 ## Explosions dig craters: light cover for infantry, rough going for vehicles.
 func add_crater(p: Vector3, size: float) -> void:
-	# shortcut: elevated craters use the reference until native stamping includes immutable geology.
-	if _native and landform.heights.is_empty():
+	if _native:
 		var result: Dictionary = _native.crater(p, size)
 		assert(not result.is_empty(), "Invalid crater request")
 		_native_changes(result.cells)
@@ -1118,10 +1126,10 @@ func add_crater(p: Vector3, size: float) -> void:
 					var height := samples[(z - rect.position.y) * rect.size.x + x - rect.position.x]
 					dh[z * DN + x] = height
 					if deform_img:
-						deform_img.set_pixel(x, z, Color(height, 0, 0))
+						deform_img.set_pixel(x, z, Color(height, landform.height(Vector3((x + 0.5) / DRES - H, 0, (z + 0.5) / DRES - H)), 0))
 			if deform_img:
 				deform_dirty.append(rect)
-		if size >= 0.9 and base[idx_of(p)] < WATER and p.y <= 1.6:
+		if size >= 0.9 and base[idx_of(p)] < WATER and p.y <= landform.height(p) + 1.6:
 			version += 1
 		return
 	if base[idx_of(p)] >= WATER:

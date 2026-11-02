@@ -72,6 +72,41 @@ impl TerrainCore {
     }
 
     #[func]
+    fn set_landform(&mut self, samples: PackedFloat32Array) -> bool {
+        self.core
+            .as_mut()
+            .is_some_and(|core| core.set_landform(samples.as_slice().to_vec()))
+    }
+
+    #[func]
+    fn landform_fits(&self, p: Vector3, footprint: Vector2, yaw: f64, tolerance: f64) -> bool {
+        valid_point(p)
+            && self.core.as_ref().is_some_and(|core| {
+                core.landform
+                    .fits(crate::point(p), glam_point(footprint), yaw, tolerance)
+            })
+    }
+
+    #[func]
+    fn ray_ground(&self, a: Vector3, b: Vector3, deck: PackedByteArray) -> PackedVector3Array {
+        let Some(core) = &self.core else {
+            return PackedVector3Array::new();
+        };
+        if !valid_point(a) || !valid_point(b) {
+            return PackedVector3Array::new();
+        }
+        core.ray_ground(crate::point(a), crate::point(b), deck.as_slice())
+            .map_or_else(PackedVector3Array::new, |hit| {
+                [
+                    Vector3::new(hit.position.x, hit.position.y, hit.position.z),
+                    Vector3::new(hit.normal.x, hit.normal.y, hit.normal.z),
+                ]
+                .into_iter()
+                .collect()
+            })
+    }
+
+    #[func]
     fn query(&self, p: Vector3, from: Vector3, kind: i32, vehicle: bool, tracked: bool) -> f64 {
         let Some(core) = &self.core else {
             return 0.0;
@@ -111,6 +146,10 @@ impl TerrainCore {
             }
             9 => core.nav_weight(core.index(p), vehicle),
             10 => core.deform_at(p),
+            11 => core.landform.height(p),
+            12 => core.landform.cell_slope(core.index(p)),
+            13 => core.landform.vehicle_slope(core.index(p)),
+            14 => core.landform.peak(),
             _ => 0.0,
         }
     }

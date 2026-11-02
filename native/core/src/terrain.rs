@@ -1,3 +1,4 @@
+use crate::landform::Landform;
 use crate::random::SimulationRandom;
 use crate::state_codec::{Reader, Writer};
 use crate::terrain_scene::CoverScene;
@@ -26,6 +27,7 @@ pub struct Terrain {
     pub n: usize,
     pub layers: [Vec<u8>; 9],
     pub heights: Vec<f32>,
+    pub landform: Landform,
     pub version: u64,
     pub fresh: bool,
     queue: Vec<u32>,
@@ -48,6 +50,7 @@ impl Terrain {
             n,
             layers,
             heights,
+            landform: Landform::new(n, Vec::new())?,
             version: 0,
             fresh: true,
             queue: Vec::new(),
@@ -68,6 +71,15 @@ impl Terrain {
 
     pub fn half(&self) -> f64 {
         self.n as f64 * 0.5
+    }
+
+    /// Heights already include geology; importing its immutable samples must not add it twice.
+    pub fn set_landform(&mut self, samples: Vec<f32>) -> bool {
+        let Some(landform) = Landform::new(self.n, samples) else {
+            return false;
+        };
+        self.landform = landform;
+        true
     }
 
     pub fn index(&self, p: Vector3) -> usize {
@@ -140,6 +152,11 @@ impl Terrain {
     }
 
     pub fn speed(&self, p: Vector3, vehicle: bool, tracked: bool) -> f64 {
+        self.surface_speed(p, vehicle, tracked)
+            / (1.0 + self.landform.cell_slope(self.index(p)) * if vehicle { 2.4 } else { 1.3 })
+    }
+
+    fn surface_speed(&self, p: Vector3, vehicle: bool, tracked: bool) -> f64 {
         match self.kind(p) {
             6 => {
                 if vehicle {
@@ -227,6 +244,11 @@ impl Terrain {
     }
 
     pub fn nav_weight(&self, i: usize, vehicle: bool) -> f64 {
+        self.surface_weight(i, vehicle)
+            * (1.0 + self.landform.cell_slope(i) * if vehicle { 3.0 } else { 1.5 })
+    }
+
+    fn surface_weight(&self, i: usize, vehicle: bool) -> f64 {
         let v = self.cell(i);
         if v[TRENCH] > 0 {
             return if vehicle { 7.0 } else { 0.7 };
@@ -507,14 +529,80 @@ impl Terrain {
         if on_deck {
             0.06
         } else if self.scene.in_trench(p, 0.05) {
-            -1.2 + 0.15
+            self.landform.height(p) - 1.2 + 0.15
         } else {
             self.deform_at(p)
         }
     }
 
+    pub fn ray_ground(
+        &self,
+        a: Vector3,
+        b: Vector3,
+        deck: &[u8],
+    ) -> Option<crate::collision::RayHit> {
+        if self.landform.is_empty()
+            || !a.is_finite()
+            || !b.is_finite()
+            || (!deck.is_empty() && deck.len() != self.n * self.n)
+            || f64::from(a.y.min(b.y)) > self.landform.peak() + 0.6
+        {
+            return None;
+        }
+        let delta = b - a;
+        let distance = f64::from(Vector3::new(delta.x, 0., delta.z).length());
+        if !distance.is_finite() || distance > self.n as f64 * 4.0 {
+            return None;
+        }
+        let count = distance.ceil().max(1.) as usize;
+        let height = |p| {
+            let i = self.index(p);
+            if self.layers[TRENCH][i] > 0 {
+                self.ground_y(p, deck.get(i).is_some_and(|v| *v != 0))
+            } else {
+                self.deform_at(p)
+            }
+        };
+        let mut previous = 0.;
+        for i in 1..=count {
+            let t = i as f64 / count as f64;
+            let p = a.lerp(b, t as f32);
+            if f64::from(p.x.abs()) <= self.half()
+                && f64::from(p.z.abs()) <= self.half()
+                && f64::from(p.y) < height(p)
+            {
+                let (mut lo, mut hi) = (previous, t);
+                for _ in 0..8 {
+                    let mid = (lo + hi) * 0.5;
+                    let q = a.lerp(b, mid as f32);
+                    if f64::from(q.y) < height(q) {
+                        hi = mid;
+                    } else {
+                        lo = mid;
+                    }
+                }
+                let p = a.lerp(b, hi as f32);
+                let dx =
+                    self.deform_at(p + Vector3::X * 0.5) - self.deform_at(p - Vector3::X * 0.5);
+                let dz =
+                    self.deform_at(p + Vector3::Z * 0.5) - self.deform_at(p - Vector3::Z * 0.5);
+                return Some(crate::collision::RayHit {
+                    body: 0,
+                    shape: -1,
+                    fraction: hi as f32,
+                    position: p,
+                    normal: crate::vector::normalized(Vector3::new(-dx as f32, 1., -dz as f32)),
+                });
+            }
+            previous = t;
+        }
+        None
+    }
+
     pub fn crater(&mut self, p: Vector3, size: f64) -> (Vec<u32>, Option<[i32; 4]>) {
-        if self.layers[BASE][self.index(p)] >= WATER || f64::from(p.y) > 1.6 {
+        if self.layers[BASE][self.index(p)] >= WATER
+            || f64::from(p.y) > self.landform.height(p) + 1.6
+        {
             return (Vec::new(), None);
         }
         let rect = if size >= 0.55 {
@@ -580,7 +668,12 @@ impl Terrain {
                             + amp * libm::sin(angle * k + phase1)
                             + amp * 0.5 * libm::sin(angle * (k + 2.0) + phase2)));
                 let i = z as usize * n + x as usize;
-                let old = f64::from(self.heights[i]);
+                let ground = self.landform.height(Vector3::new(
+                    ((x as f64 + 0.5) / DRES as f64 - self.half()) as f32,
+                    0.,
+                    ((z as f64 + 0.5) / DRES as f64 - self.half()) as f32,
+                ));
+                let old = f64::from(self.heights[i]) - ground;
                 let mut height = old;
                 if rr < 1.0 {
                     let bowl = -depth * libm::pow(1.0 - rr * rr, 1.25);
@@ -589,14 +682,19 @@ impl Terrain {
                 height += rim
                     * libm::exp(-libm::pow((rr - 1.02) / 0.3, 2.0))
                     * (1.0 + 0.35 * libm::sin(angle * 7.0 + phase2));
-                self.heights[i] = height.clamp(-1.4, 0.55) as f32;
+                self.heights[i] = (ground + height.clamp(-1.4, 0.55)) as f32;
             }
         }
         Some([x0, z0, x1 - x0 + 1, z1 - z0 + 1])
     }
 
     pub fn checkpoint(&self) -> Vec<u8> {
-        let mut out = Writer::new(b"FLTR\x02\0\0\0");
+        let elevated = !self.landform.is_empty();
+        let mut out = Writer::new(if elevated {
+            b"FLTR\x03\0\0\0"
+        } else {
+            b"FLTR\x02\0\0\0"
+        });
         out.u32(self.n as u32);
         out.u64(self.version);
         out.byte(u8::from(self.fresh));
@@ -606,6 +704,12 @@ impl Terrain {
         out.u32(self.heights.len() as u32);
         for &h in &self.heights {
             out.f32(h);
+        }
+        if elevated {
+            out.u32(self.landform.samples().len() as u32);
+            for &h in self.landform.samples() {
+                out.f32(h);
+            }
         }
         // Consumed queue slots do not affect later append order or decisions.
         out.u32((self.queue.len() - self.head) as u32);
@@ -617,7 +721,15 @@ impl Terrain {
     }
 
     pub fn restore(bytes: &[u8]) -> Result<Self, &'static str> {
-        let mut input = Reader::new(bytes, b"FLTR\x02\0\0\0")?;
+        let elevated = bytes.get(4) == Some(&3);
+        let mut input = Reader::new(
+            bytes,
+            if elevated {
+                b"FLTR\x03\0\0\0"
+            } else {
+                b"FLTR\x02\0\0\0"
+            },
+        )?;
         let n = input.u32()? as usize;
         if !(2..=3072).contains(&n) {
             return Err("invalid terrain dimensions");
@@ -646,6 +758,17 @@ impl Terrain {
         let mut state = Self::new(n, layers, heights).ok_or("invalid terrain data")?;
         state.version = version;
         state.fresh = fresh;
+        if elevated {
+            let count = input.u32()? as usize;
+            if count != (n / crate::landform::STEP + 1).pow(2) || count < 4 {
+                return Err("wrong geology height length");
+            }
+            let mut samples = Vec::new();
+            for _ in 0..count {
+                samples.push(input.f32()?);
+            }
+            state.landform = Landform::new(n, samples).ok_or("invalid geology heights")?;
+        }
         let count = input.u32()? as usize;
         if count > n * n {
             return Err("too many pending terrain cells");

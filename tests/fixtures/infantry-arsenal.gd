@@ -19,6 +19,7 @@ func arsenal_world(native: bool) -> ArsenalScene:
 	w.srv = true
 	w.has_view = false
 	w.settings = {"rust_infantry": native, "debug": true}
+	w.terrain = TerrainMap.new(w)
 	w.combat = Combat.new(w)
 	w.rules = ArsenalRules.new(w)
 	add_child(w)
@@ -44,6 +45,9 @@ func action_data(s: Soldier) -> Dictionary:
 
 func _ready() -> void:
 	assert(ClassDB.class_exists("InfantryArsenalCore"))
+	TerrainMap.N = 32
+	TerrainMap.H = 16.0
+	TerrainMap.DN = 64
 	var worlds := [arsenal_world(false), arsenal_world(true)]
 	var outcomes := {}
 	for trial in 2048:

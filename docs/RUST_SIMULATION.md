@@ -2823,3 +2823,18 @@ The merged-map full Godot run found remaining movement/geometry mismatches in
 connected engineer and fire comparisons, and old navigation fixture assumptions on
 water maps. These remain open. Flat flight fixtures now initialize their terrain;
 all five actor, drone, guided-missile, projectile and support-flight checks pass.
+
+Rust now retains immutable geology alongside deformed ground. It reproduces
+bilinear heights, foot and hull slopes, slope-dependent movement costs, foundation
+checks, raised trench floors, ground intersections and craters relative to the
+surface. Elevated terrain uses checkpoint version 3; flat version 2 bytes remain
+unchanged. Restoring validates sample dimensions and values and rebuilds slope
+caches. Godot's terrain queries, crater edits and ground contacts use this port,
+including worker imports and the two-channel deformation texture.
+
+Five Godot terrain suites pass, including 1,920 direct reference comparisons and
+texture-byte comparisons. The core debug suite passed 1,029 checks before adding
+the elevated numeric contract and additional trench/foundation regressions.
+All 138 numeric release cases pass; the new terrain continuation transcript adds
+7,673,897 exact bytes. Native traversal, terrain-aware combat and flight still need
+integration before the compatibility paths can be removed.

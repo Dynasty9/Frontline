@@ -155,6 +155,9 @@ impl WorldGeometry {
         if p.key == "trench" {
             half.x = (f64::from(half.x) + 0.72) as f32;
         }
+        if !self.terrain.landform.fits(at, half, yaw, 0.35) {
+            return Ok("The ground is too steep or uneven to build here.".into());
+        }
         let wet = |q| {
             matches!(
                 self.terrain.layers[BASE][self.terrain.index(q)],
