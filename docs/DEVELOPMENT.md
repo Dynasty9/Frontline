@@ -862,7 +862,8 @@ The ground shader combines broad warped mineral regions, smaller vegetation patc
 height-oriented weathering bands. Green soil follows baked concavity and slope aspect,
 with only subtle noise variation. MapGen samples a 24 m neighbourhood for the corresponding
 habitat preference: sheltered bowls favour growth, convex ribs favour exposed stone. Woodland
-patches follow local contours rather than fixed world axes. Tree root tolerances are separate
+patches follow local contours rather than fixed world axes. Isolated standard-map trees
+require elevated sheltered pockets; open valley ground retains grouped woodland and meadows. Tree root tolerances are separate
 from building foundation tolerances; only successfully planted stands become woodland objectives.
 Albedo and layer coverage vary independently of the
 fine photographic relief, avoiding uniform rock and grass across the entire map.

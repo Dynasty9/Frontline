@@ -16,5 +16,6 @@ caption = "Closer daylight view of conifers on suitable ledges and woodland foll
 +++
 
 - Soil cover responds to shelter, slope and aspect, with less arbitrary colour variation across the valleys.
+- Open valley ground has fewer isolated random trees; planting favours groves and sheltered mountain pockets.
 - Woods spread along contours, and conifers can root on suitable mountain ledges. Exposed ribs and high peaks remain largely bare.
 - Scrub favours sheltered bowls, while stones occupy drier and steeper ground. Tree limits do not relax building foundation checks.

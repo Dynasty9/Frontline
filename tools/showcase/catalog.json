@@ -2769,12 +2769,12 @@
         },
         {
           "file": "changelog/unreleased/alpine-habitats/after.jpg",
-          "sha256": "8b0a0202b56460236597ace40f5d27759e986c36b563f49608feeca328ce47fd",
+          "sha256": "a432630eddf5cd16fa1d7e62806d42fee31c74b4017bf182628705e7f4742dec",
           "caption": "After: woodland and soil following mountain habitats."
         },
         {
           "file": "changelog/unreleased/alpine-habitats/detail.jpg",
-          "sha256": "cbf661cc29eede4eb7daff2d5ac1ac46ed42ccf9912cbc094ca3459b6e757061",
+          "sha256": "f04d80fb1d29def591a83ebe2de37a7d87c39468efd3564ee827ccf036306778",
           "caption": "Closer daylight view of conifers on ledges."
         }
       ],
@@ -2785,7 +2785,7 @@
       "capture": {
         "before_ref": "1e740f8",
         "after_ref": "codex/alpine-battlefields",
-        "overview": "godot --main-pack PACK --resolution 1600x900 -- --aivai --seed=3 --offscreen --nohud --set=perf:0 --mood=golden --preset=high --focus=-100,0 --zoom=600 --pitch=-38 --cam-yaw=0.7 --screenshot=OUTPUT --shot-at=5 --quit-after=6",
+        "overview": "godot --main-pack PACK --resolution 1600x900 -- --aivai --seed=3 --offscreen --nohud --set=perf:0 --mood=golden --preset=high --focus=-100,0 --zoom=600 --pitch=-38 --cam-yaw=0.7 --perf-at=5 --perf-duration=10 --perf-shot=OUTPUT.png",
         "detail": "Same seed and pack; --mood=day --focus=-160,70 --zoom=140 --pitch=-35 --cam-yaw=0.7 --screenshot=OUTPUT --shot-at=2 --quit-after=3"
       }
     }

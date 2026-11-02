@@ -139,7 +139,11 @@ func generate() -> void:
 	for i in int(rng.randi_range(7, 10) * area * 0.85):
 		_woods(Vector3(rng.randf_range(-(H - 13.0), H - 13.0), 0, rng.randf_range(-(H - 28.0), H - 28.0)), rng.randi_range(6, 14) if String(world.settings.get("mission", "")) != "" else rng.randi_range(12, 26))
 	for i in int(40 * area * 0.75):
-		_try("tree", Vector3(rng.randf_range(-(H - 8.0), H - 8.0), 0, rng.randf_range(-(H - 10.0), H - 10.0)), 0.0, -1)
+		var p := Vector3(rng.randf_range(-(H - 8.0), H - 8.0), 0, rng.randf_range(-(H - 10.0), H - 10.0))
+		# Open valley ground stays meadow; isolated trees belong to sheltered mountain pockets.
+		if String(world.settings.get("mission", "")) == "" and (world.terrain.landform.height(p) < 6.0 or _habitat(p) < 0.6):
+			continue
+		_try("tree", p, 0.0, -1)
 	if String(world.settings.get("mission", "")) == "":
 		_foothill_woods(area)
 		_alpine_scatter(tg.decor, area)
