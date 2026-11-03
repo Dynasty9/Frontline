@@ -76,6 +76,7 @@ var tactical := false
 var orders := {}
 var orbat: HudOrbat
 var _slow_t := 0.0
+var _roster_pending := false
 var layers_ui: HudLayers
 var tint: ColorRect
 var root: Control
@@ -1483,7 +1484,6 @@ func _view_process(dt: float) -> void:
 		bs.queue_redraw()
 	if slow:
 		top.queue_redraw()
-		orbat.queue_redraw()
 		layers_ui.queue_redraw()
 		coop_roster.queue_redraw()
 	# keep notifications clear of the performance overlay
@@ -1526,10 +1526,21 @@ func _view_process(dt: float) -> void:
 			toasts.offset_bottom = tb
 	toasts.tick(rdt)
 	minimap.refresh_layers()
+	var overlay_changed := false
 	if world.cam:
-		overlay.refresh_for_view(rdt, world.cam.cam)
+		overlay_changed = overlay.refresh_for_view(rdt, world.cam.cam)
+	_refresh_roster(slow, overlay_changed)
 	pointer_overlay.queue_redraw()
 	coop.queue_redraw()
+
+
+func _refresh_roster(due: bool, overlay_changed: bool) -> void:
+	# Split routine HUD work across frames, with at most one frame of delay.
+	if _roster_pending or (due and not overlay_changed):
+		orbat.queue_redraw()
+		_roster_pending = false
+	else:
+		_roster_pending = due
 
 
 ## A fire mission's name, short: its designation and what it does

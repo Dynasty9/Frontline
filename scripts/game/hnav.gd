@@ -946,7 +946,7 @@ func route(a: Vector2i, b: Vector2i, team: int, care: float) -> Array[Vector2i]:
 		var c3 := _local_cost(la, a, b)
 		if c3 >= 0.0:
 			_link(s_id, g_id, c3, ca, temp)
-	var ids: PackedInt64Array = g.get_id_path(s_id, g_id)
+	var ids: PackedInt64Array = g.get_midpoint_path(s_id, g_id) if g.has_method("get_midpoint_path") else g.get_id_path(s_id, g_id)
 	for id in ids:
 		if id == s_id:
 			out.append(a)

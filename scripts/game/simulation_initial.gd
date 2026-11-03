@@ -1,7 +1,7 @@
 class_name SimulationInitial
 extends RefCounted
 ## Transfer a generated battlefield before its first tick. Rust owns every later change.
-const NUMERIC_VERSION := 3
+const NUMERIC_VERSION := 4
 
 static func header(magic: String, version := 1) -> PackedByteArray:
 	var data := magic.to_utf8_buffer()

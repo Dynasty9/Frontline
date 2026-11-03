@@ -94,7 +94,18 @@ verified after the input digest, final state hash and winner all match, includin
 when seeking directly to the end. It distinguishes unfinished battles from
 concluded games. Viewer commands and connections never enter the recorded world.
 
-Numeric version 3 pins Rust 1.94.0, glam 0.32.1 with `libm`, and libm 0.2.16 with
+Full seed-1 mission playthroughs use the normal mission autopilot, then independently
+verify the entire command recording. The November 3 numeric-4 run reached these
+unmodified conclusions: Bridgehead victory at tick 10,219; Beachhead victory at
+10,975; Ambush defeat at 8,278; Kingpin defeat at 14,106. Each final checkpoint and
+winner matched verification. Skyhook remained unfinished at tick 108,000 (30
+simulated minutes); its unfinished state also verified, but mission completion
+remains under investigation. These results do not claim every autopilot wins.
+The manual `natural_mission_reaches_and_verifies_its_conclusion` test accepts
+`FL_PLAYTHROUGH_INITIAL` and a new `FL_PLAYTHROUGH_RECORDING` path. Initial states
+are authored with `--mission=KEY --seed=1 --export-simulation=PATH --port=UNIQUE`.
+
+Numeric version 4 pins Rust 1.94.0, glam 0.32.1 with `libm`, and libm 0.2.16 with
 `force-soft-floats`. Gameplay iteration, tie-breaking and work quotas have explicit
 orders. Cosmetic randomness and wall-clock/network scheduling are outside state.
 Cross-platform tests compare committed numeric transcripts and complete mission/
@@ -166,7 +177,7 @@ silently losing state. Output recordings are created exclusively, never overwrit
 An optional `admissions` path accepts atomic updates containing `players` and a
 lobby revision. The server writes the applied revision beside it with an
 `.admitted` extension. Revoked connections close before replacements are admitted.
-The application protocol is `FLNP` version 3; the Godot lobby version is 13.
+The application protocol is `FLNP` version 3; the Godot lobby version is 14.
 
 ## Validation and remaining completion gates
 
@@ -261,8 +272,62 @@ the former 140 exact transcripts changed through route tie-breaking; the other
 134 matched before the deliberate version bump. The old corpus remains in Git
 history, and incompatible checkpoints are rejected. Current local release checks
 pass the complete core and server suites, all 140 new transcripts, and actual
-Godot/Rust socket interoperability. The new large-map measurement and current-head
-cross-platform checks remain pending.
+Godot/Rust socket interoperability at `fa99fe8`.
+
+That experiment's 3 km run measured 63.59 FPS, frame p99 32.79 ms, and Rust tick
+mean/p99 11.48/29.54 ms. Expanded route nodes increased to 4.32 million. Inspection
+of the actual starting graphs found infantry's minimum weight was 0.69998; the
+fixed 0.5 estimate had weakened it. Numeric contract 4 instead uses
+`(1 + minimum_weight) / 2`, retaining the valid bound without weakening an existing
+estimate. New checks cover both cheap midpoint edges and ordinary road weights.
+The corrected 3 km run examined 1.87 million route nodes, versus 2.83 million
+in the connectivity control, with route p99 7.98 ms instead of 10.09 ms. Overall
+performance still missed the target: 58.74 FPS, frame p99 34.56 ms, and Rust tick
+mean/p99 11.31/28.28 ms. Other applications remained running; these separate
+desktop runs establish reduced search work, not an overall FPS improvement.
+Reports are in `build/rust-socket-generated-3072-adaptive/`. Its exact server
+independently reproduced all 3,023 recorded ticks, with final state
+`375fff0b8448bcd05b549f3347adb96440780f63b6d292046586928e1bc5fa25`.
+The battle was unfinished. Local numeric checks pass; cross-platform checks of
+version 4 remain pending.
+
+Scenery now carries a noncanonical mutation revision. Observation generation
+reuses unchanged structure state until its periodic unreliable-state refresh;
+visibility filtering still runs every update. Restoring, cloning and replacing
+actors cannot reuse a stale revision. These cache stamps never enter gameplay
+state or recordings. The 140 core transcripts remain byte-identical after this
+cache change, and server observation tests cover supply changes, hidden state,
+replacement, spawn/removal order and periodic refresh.
+
+An alternating microbenchmark with 14,000 walls and 500 soldiers measured mean
+observation cost of 6.54/6.59 ms before and 4.45/4.30 ms after, about 33% lower.
+p99 fell from 9.32/9.69 ms to 7.02/6.04 ms. Each run emitted the same 132,933
+entity-state rows. No other task benchmark or build ran during those samples;
+the user's other applications stayed running. Full-game measurements are still
+needed because this isolates observation generation, not simulation or rendering.
+
+The subsequent generated 3 km run with scenery revisions and clipped order-line
+drawing measured 59.20 FPS, frame p95/p99 24.92/33.57 ms and maximum 61.62 ms.
+Adjacent-frame difference p95/p99 was 10.51/15.17 ms, compared with 12.83/17.69 ms
+in the adaptive-search control. Rust tick mean/p99 was 10.76/24.63 ms, with
+observation mean/p99 1.54/8.68 ms. The search examined the same 1,865,398 nodes.
+Order drawing p99 was 1.76 ms; in the fixed-camera replay control it was 2.83 ms.
+The dash regression checks perspective and orthographic clipping against original
+visible segments, preserving their order and spacing. Routine roster refreshes
+defer at most one frame when the battlefield overlay also refreshes.
+
+These runs still fail the frame and simulation budgets. Other applications remained
+running, and the figures are separate desktop samples. Reports and the inspected
+render are in `build/rust-socket-generated-3072-revisions/`. A retained-marker
+prototype only moved average FPS from 60.13 to 61.60 while frame p99 rose from
+31.21 to 31.62 ms in matched replay runs; it was removed.
+
+The version-3 run nevertheless confirms the first-use fixes: maximum snapshot
+processing was 2.04 ms and VFX 0.14 ms. Its exact server independently verified
+all 3,028 recorded ticks, final state
+`f1eef62b75131c4370ee20cfaa1056656cf07b8d4e33a9cced90b9a823eba124`.
+The battle was unfinished. Reports are in
+`build/rust-socket-generated-3072-heuristic/`; other applications stayed running.
 
 Presentation tests cover artillery recoil, rifle drops for visible surrendering
 enemies, and retained grass-fire state after loading and replay seek. Fire effects

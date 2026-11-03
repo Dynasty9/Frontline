@@ -10,6 +10,89 @@ use frontline_server::{
 };
 
 #[test]
+#[ignore = "manual full mission from an authored initial state, with independent replay verification"]
+fn natural_mission_reaches_and_verifies_its_conclusion() {
+    use std::{
+        fs::File,
+        io::{BufReader, BufWriter, Read, Write},
+    };
+    let initial = std::env::var("FL_PLAYTHROUGH_INITIAL").expect("authored mission initial path");
+    let output = std::env::var("FL_PLAYTHROUGH_RECORDING").expect("new recording path");
+    let mut bytes = vec![];
+    File::open(initial)
+        .unwrap()
+        .take(frontline_server::simulation::MAX_STATE as u64 + 1)
+        .read_to_end(&mut bytes)
+        .unwrap();
+    let content = Content::bundled().unwrap();
+    let mut simulation = frontline_server::initial::load(&bytes, &content).unwrap();
+    let mission = simulation
+        .mission
+        .as_ref()
+        .expect("initial state must enable a mission");
+    assert!(
+        mission.autopilot,
+        "The playthrough must use the real mission autopilot"
+    );
+    let key = mission.kind.key().to_owned();
+    let file = File::options()
+        .write(true)
+        .create_new(true)
+        .open(&output)
+        .unwrap();
+    let mut recording = Recorder::new(BufWriter::new(file), &simulation, &content).unwrap();
+    for _ in 0..108_000 {
+        if simulation.state.victory.winner >= 0 {
+            break;
+        }
+        recording.step(&mut simulation, &content, &[]).unwrap();
+        if simulation.state.tick % 3600 == 0 {
+            let objectives: Vec<_> = simulation
+                .mission
+                .as_ref()
+                .unwrap()
+                .objectives
+                .iter()
+                .map(|o| (&o.id, o.state))
+                .collect();
+            println!(
+                "MISSION_PROGRESS mission={key} seconds={} objectives={objectives:?}",
+                simulation.state.tick / 60
+            );
+        }
+    }
+    recording.finish(&simulation).unwrap().flush().unwrap();
+    let verified = verify(BufReader::new(File::open(output).unwrap()), &content).unwrap();
+    assert_eq!(
+        verified.simulation.checkpoint().unwrap(),
+        simulation.checkpoint().unwrap()
+    );
+    println!(
+        "MISSION_VERIFIED mission={key} tick={} winner={} state={}",
+        simulation.state.tick,
+        simulation.state.victory.winner,
+        blake3::Hash::from(verified.state_hash)
+    );
+    if simulation.state.victory.winner < 0 {
+        for objective in &simulation.mission.as_ref().unwrap().objectives {
+            println!("UNFINISHED_OBJECTIVE {objective:?}");
+        }
+        for actor in simulation.state.field.actors.iter() {
+            if let frontline_core::actors::Actor::Vehicle(v) = actor {
+                println!(
+                    "REMAINING_VEHICLE id={} kind={} hp={} position={:?} target={} ammo={} destination={:?} passengers={:?}",
+                    v.id, v.kind, v.hp, v.position, v.target, v.atgm_left, v.path_destination, v.passengers
+                );
+            }
+        }
+    }
+    assert!(
+        simulation.state.victory.winner >= 0,
+        "Mission did not conclude within 30 simulated minutes; recording retained"
+    );
+}
+
+#[test]
 fn mission_callbacks_reach_every_scripted_reinforcement_and_conclusion() {
     let content = Content::bundled().unwrap();
     for (key, chain) in [

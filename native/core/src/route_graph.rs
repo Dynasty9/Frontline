@@ -79,7 +79,7 @@ mod tests {
             for from in [0, 7, 25, 63] {
                 for to in [1, 28, 56, 10_000] {
                     let expected = shortest_cost(&graph, from, to);
-                    let path = graph.get_id_path_with_heuristic(from, to, 0.5);
+                    let path = graph.get_midpoint_path(from, to);
                     if !expected.is_finite() {
                         assert!(path.is_empty());
                         continue;
@@ -114,17 +114,23 @@ mod tests {
 
     #[test]
     fn midpoint_heuristic_explores_less_of_a_large_road_graph() {
-        let mut graph = road_grid(32, 0);
-        let from = 32 * 16;
-        let to = from + 31;
-        assert!(!graph.get_id_path(from, to).is_empty());
-        let original = graph.last_expanded;
-        assert!(!graph.get_id_path_with_heuristic(from, to, 0.5).is_empty());
-        assert!(
-            graph.last_expanded < original,
-            "{} >= {original}",
-            graph.last_expanded
-        );
+        for minimum in [0.05, 0.7, 1.0] {
+            let mut graph = road_grid(32, 0);
+            for point in graph.points.iter_mut().flatten() {
+                point.weight = point.weight.max(minimum);
+            }
+            graph.minimum_weight = minimum;
+            let from = 32 * 16;
+            let to = from + 31;
+            assert!(!graph.get_id_path(from, to).is_empty());
+            let original = graph.last_expanded;
+            assert!(!graph.get_midpoint_path(from, to).is_empty());
+            assert!(
+                graph.last_expanded <= original,
+                "minimum {minimum}: {} > {original}",
+                graph.last_expanded
+            );
+        }
     }
 }
 
@@ -470,12 +476,12 @@ impl RouteGraph {
         self.get_id_path_with_heuristic(from, to, self.minimum_weight)
     }
 
-    pub(crate) fn get_id_path_with_heuristic(
-        &mut self,
-        from: i64,
-        to: i64,
-        minimum_cost: f64,
-    ) -> Vec<i64> {
+    /// Hierarchy graphs have unit-weight entrances and weighted half-edge midpoints.
+    pub fn get_midpoint_path(&mut self, from: i64, to: i64) -> Vec<i64> {
+        self.get_id_path_with_heuristic(from, to, (1.0 + self.minimum_weight) * 0.5)
+    }
+
+    fn get_id_path_with_heuristic(&mut self, from: i64, to: i64, minimum_cost: f64) -> Vec<i64> {
         self.last_expanded = 0;
         let (Some(&start), Some(&goal)) = (self.ids.get(&from), self.ids.get(&to)) else {
             return Vec::new();

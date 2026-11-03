@@ -31,6 +31,11 @@ class HudStub extends Hud:
 	func _process(_dt: float) -> void:
 		pass
 
+class Roster extends HudOrbat:
+	var draws := 0
+	func _draw() -> void:
+		draws += 1
+
 func _ready() -> void:
 	var overlay := HudOverlay.new()
 	overlay._groups[7] = {}
@@ -178,6 +183,24 @@ func _ready() -> void:
 		await get_tree().process_frame
 		assert(pointer.hint_point == input.point, "Ability feedback must follow the pointer each frame")
 	assert(pointer.draws == pointer_before + 8 and cached.draws == before, "Pointer movement must not rebuild the cached army display")
+	var roster := Roster.new()
+	hud.orbat = roster
+	hud.root.add_child(roster)
+	await get_tree().process_frame
+	await get_tree().process_frame
+	before = roster.draws
+	hud._refresh_roster(true, true)
+	await get_tree().process_frame
+	await get_tree().process_frame
+	assert(roster.draws == before and hud._roster_pending, "A routine roster refresh must avoid the overlay's frame")
+	hud._refresh_roster(false, true)
+	await get_tree().process_frame
+	await get_tree().process_frame
+	assert(roster.draws == before + 1 and not hud._roster_pending, "Camera movement must not delay roster updates beyond one frame")
+	hud._refresh_roster(true, false)
+	await get_tree().process_frame
+	await get_tree().process_frame
+	assert(roster.draws == before + 2, "A free frame should refresh the roster immediately")
 	world.cam.free()
 	input.free()
 	world.free()

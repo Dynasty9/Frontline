@@ -11,6 +11,20 @@ use crate::structure::Structure;
 use crate::vector::Vector3;
 use crate::vehicle::Vehicle;
 use std::collections::HashMap;
+use std::sync::atomic::{AtomicU64, Ordering};
+
+// Render invalidation stays outside checkpoints; clones and restored worlds
+// need distinct stamps after a change even when their gameplay clocks agree.
+static NEXT_STRUCTURE_REVISION: AtomicU64 = AtomicU64::new(1);
+
+fn structure_revisions(entities: &Entities) -> HashMap<u32, u64> {
+    let revision = NEXT_STRUCTURE_REVISION.fetch_add(1, Ordering::Relaxed);
+    entities
+        .iter()
+        .filter(|e| e.kind == Kind::Structure)
+        .map(|e| (e.id, revision))
+        .collect()
+}
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Actor {
@@ -92,6 +106,7 @@ pub struct Actors {
     by_kind: [Vec<u32>; 5],
     combatants: Vec<u32>,
     simulated_structures: Vec<u32>,
+    structure_revisions: HashMap<u32, u64>,
 }
 
 fn kind_order(entities: &Entities) -> [Vec<u32>; 5] {
@@ -143,6 +158,7 @@ impl Actors {
             by_kind: kind_order(&entities),
             combatants: actors.iter().filter_map(combatant).collect(),
             simulated_structures: actors.iter().filter_map(simulated_structure).collect(),
+            structure_revisions: structure_revisions(&entities),
             entities,
             values: actors.into_iter().map(|a| (a.identity().id, a)).collect(),
         })
@@ -154,7 +170,15 @@ impl Actors {
         self.values.get(&id)
     }
     pub(crate) fn get_mut(&mut self, id: u32) -> Option<&mut Actor> {
-        self.values.get_mut(&id)
+        let actor = self.values.get_mut(&id)?;
+        if matches!(actor, Actor::Structure(_)) {
+            self.structure_revisions
+                .insert(id, NEXT_STRUCTURE_REVISION.fetch_add(1, Ordering::Relaxed));
+        }
+        Some(actor)
+    }
+    pub fn structure_revision(&self, id: u32) -> Option<u64> {
+        self.structure_revisions.get(&id).copied()
     }
     pub fn soldier(&self, id: u32) -> Option<&Infantry> {
         match self.get(id)? {
@@ -258,6 +282,10 @@ impl Actors {
         if simulated_structure(&actor).is_some() {
             self.simulated_structures.push(id);
         }
+        if matches!(actor, Actor::Structure(_)) {
+            self.structure_revisions
+                .insert(id, NEXT_STRUCTURE_REVISION.fetch_add(1, Ordering::Relaxed));
+        }
         self.values.insert(id, actor);
         Ok(id)
     }
@@ -266,6 +294,7 @@ impl Actors {
             return None;
         }
         let actor = self.values.remove(&id)?;
+        self.structure_revisions.remove(&id);
         self.by_kind[actor.identity().kind as usize].retain(|&entry| entry != id);
         if combatant(&actor).is_some() {
             self.combatants.retain(|&entry| entry != id);
@@ -417,6 +446,7 @@ impl Actors {
         input.finish()?;
         Ok(Self {
             by_kind: kind_order(&entities),
+            structure_revisions: structure_revisions(&entities),
             combatants: entities
                 .iter()
                 .filter_map(|entry| combatant(&values[&entry.id]))

@@ -25,26 +25,27 @@ func _input(event: InputEvent) -> void:
 		_refresh_left = 0.0
 
 
-func refresh_for_view(dt: float, camera: Camera3D) -> void:
+func refresh_for_view(dt: float, camera: Camera3D) -> bool:
 	# Blast shake should not rebuild every counter between status refreshes.
 	var view := camera.global_transform
 	if raster:
 		if not hud.root.is_visible_in_tree():
 			raster.render_target_update_mode = SubViewport.UPDATE_DISABLED
 			_refresh_left = 0.0
-			return
+			return false
 		var pixels := Vector2i(hud.get_viewport().get_visible_rect().size)
 		if raster.size != pixels:
 			raster.size = pixels
 			_refresh_left = 0.0
 	_refresh_left -= dt
 	if _refresh_left > 0.0 and view == _refresh_view:
-		return
+		return false
 	_refresh_left = maxf(0.0, _refresh_left + 1.0 / 15.0) if _refresh_left <= 0.0 else 1.0 / 15.0
 	_refresh_view = view
 	queue_redraw()
 	if raster:
 		raster.render_target_update_mode = SubViewport.UPDATE_ONCE
+	return true
 
 func _draw() -> void:
 	_label_epoch += 1
@@ -416,34 +417,23 @@ func _ground_path(a: Vector3, b: Vector3, col: Color, alpha: float, grow: float,
 	var end := start + dir * l
 	if cam.is_position_behind(start) or cam.is_position_behind(end):
 		return
-	var bounds := Rect2(cam.unproject_position(start), Vector2.ZERO).expand(cam.unproject_position(end))
+	var back := cam.unproject_position(start)
+	var tip := cam.unproject_position(end)
+	var bounds := Rect2(back, Vector2.ZERO).expand(tip)
 	if not bounds.grow(20.0).intersects(get_viewport_rect()):
 		return
-	# Solid orders are straight on the flat ground; only dashes need samples.
-	var n := maxi(2, int(l / 2.5)) if dashed else 1
-	var pts := PackedVector2Array()
-	for i in n + 1:
-		var p := a + dir * (l * i / n)
-		p.y = 0.3
-		if cam.is_position_behind(p):
-			return
-		pts.append(cam.unproject_position(p))
 	var c := Color(col.r, col.g, col.b, alpha)
 	var sh := Color(0, 0, 0, alpha * 0.45)
 	if dashed:
-		var segments := PackedVector2Array()
-		for i in range(0, pts.size() - 1, 2):
-			segments.append(pts[i])
-			segments.append(pts[i + 1])
-		draw_multiline(segments, sh, width + 2.0, true)
-		draw_multiline(segments, c, width, true)
+		var segments := _ground_dashes(cam, start, end, maxi(2, int(l / 2.5)), get_viewport_rect().grow(20.0))
+		if not segments.is_empty():
+			draw_multiline(segments, sh, width + 2.0, true)
+			draw_multiline(segments, c, width, true)
 	else:
-		draw_polyline(pts, sh, width + 2.0, true)
-		draw_polyline(pts, c, width, true)
+		draw_line(back, tip, sh, width + 2.0, true)
+		draw_line(back, tip, c, width, true)
 	if not arrow:
 		return
-	var tip := pts[pts.size() - 1]
-	var back := pts[0]
 	if (tip - back).length() < 4.0:
 		return
 	var dv := (tip - back).normalized()
@@ -451,6 +441,44 @@ func _ground_path(a: Vector3, b: Vector3, col: Color, alpha: float, grow: float,
 	var hs := 5.0 + width * 1.8
 	var head := PackedVector2Array([tip + dv * hs, tip - dv * hs * 0.5 + nv * hs * 0.8, tip - dv * hs * 0.5 - nv * hs * 0.8])
 	MapSymbols.poly(self, head, c)
+
+
+static func _screen_span(a: Vector2, b: Vector2, rect: Rect2) -> Vector2:
+	var span := Vector2(0, 1)
+	for axis in 2:
+		var delta := b[axis] - a[axis]
+		if is_zero_approx(delta):
+			if a[axis] < rect.position[axis] or a[axis] > rect.end[axis]:
+				return Vector2(1, 0)
+			continue
+		var lo := (rect.position[axis] - a[axis]) / delta
+		var hi := (rect.end[axis] - a[axis]) / delta
+		span.x = maxf(span.x, minf(lo, hi))
+		span.y = minf(span.y, maxf(lo, hi))
+	return span
+
+
+static func _ground_dashes(cam: Camera3D, a: Vector3, b: Vector3, n: int, rect: Rect2) -> PackedVector2Array:
+	var first := 0
+	var last := n
+	if n > 32:
+		var span := _screen_span(cam.unproject_position(a), cam.unproject_position(b), rect)
+		if span.x > span.y:
+			return PackedVector2Array()
+		# Perspective screen fractions need their endpoint depths before selecting
+		# world-space dashes. Keep the original dash phase at the screen edge.
+		if cam.projection != Camera3D.PROJECTION_ORTHOGONAL:
+			var z0 := -cam.global_basis.z.dot(a - cam.global_position)
+			var z1 := -cam.global_basis.z.dot(b - cam.global_position)
+			span = Vector2(span.x * z0 / lerpf(z1, z0, span.x), span.y * z0 / lerpf(z1, z0, span.y))
+		first = maxi(0, floori(span.x * n * 0.5) * 2)
+		last = mini(n, ceili(span.y * n) + 1)
+	var points := PackedVector2Array()
+	for i in range(first, last, 2):
+		points.append(cam.unproject_position(a.lerp(b, float(i) / n)))
+		points.append(cam.unproject_position(a.lerp(b, float(i + 1) / n)))
+	return points
+
 
 func _dashed_ring(c3: Vector3, r: float, col: Color, alpha: float) -> void:
 	if alpha <= 0.02:

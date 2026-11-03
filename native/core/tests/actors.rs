@@ -20,6 +20,34 @@ fn soldier(id: u32) -> Infantry {
 }
 
 #[test]
+fn structure_render_revisions_follow_mutation_restore_and_clone_without_entering_state() {
+    let mut a = Actors::default();
+    let id = a
+        .spawn(Actor::Structure(Box::new(
+            frontline_core::structure::Structure {
+                kind: "house_wall".into(),
+                ..Default::default()
+            },
+        )))
+        .unwrap();
+    let original = a.structure_revision(id).unwrap();
+    let checkpoint = a.checkpoint().unwrap();
+    let mut b = a.clone();
+    assert_eq!(b.structure_revision(id), Some(original));
+    a.set_structure_supply(id, 0.).unwrap();
+    assert_ne!(a.structure_revision(id), Some(original));
+    assert_eq!(a.checkpoint().unwrap(), checkpoint);
+    b.set_structure_supply(id, 10.).unwrap();
+    a.set_structure_supply(id, 20.).unwrap();
+    assert_ne!(a.structure_revision(id), b.structure_revision(id));
+    let c = Actors::restore(&a.checkpoint().unwrap()).unwrap();
+    assert_ne!(c.structure_revision(id), a.structure_revision(id));
+    assert_eq!(c.checkpoint().unwrap(), a.checkpoint().unwrap());
+    a.remove(id);
+    assert_eq!(a.structure_revision(id), None);
+}
+
+#[test]
 fn mission_supply_rejects_invalid_amounts_and_non_structures_without_changes() {
     let mut a = Actors::from_entries(
         10,

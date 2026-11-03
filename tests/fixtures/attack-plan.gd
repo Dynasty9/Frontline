@@ -10,7 +10,7 @@ func point_bytes(b: StreamPeerBuffer, p: Vector3) -> void:
 
 func plan_bytes(p: AttackPlan) -> PackedByteArray:
 	var b := StreamPeerBuffer.new()
-	b.put_data("FLAP01".to_utf8_buffer()); b.put_u16(2)
+	b.put_data("FLAP01".to_utf8_buffer()); b.put_u16(SimulationInitial.NUMERIC_VERSION)
 	b.put_u32(17); b.put_u8(p.team & 255); point_bytes(b,p.objective); point_bytes(b,p.axis); b.put_double(p.side)
 	for elements: Array in [p.support,p.assault]:
 		b.put_u32(elements.size())

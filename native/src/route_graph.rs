@@ -43,4 +43,8 @@ impl RouteGraph {
     fn get_id_path(&mut self, from: i64, to: i64) -> PackedInt64Array {
         self.core.get_id_path(from, to).into_iter().collect()
     }
+    #[func]
+    fn get_midpoint_path(&mut self, from: i64, to: i64) -> PackedInt64Array {
+        self.core.get_midpoint_path(from, to).into_iter().collect()
+    }
 }

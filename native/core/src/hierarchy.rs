@@ -1062,9 +1062,9 @@ impl Hierarchy {
         }
         // Keep anchor allocation and cleanup identical even when no route exists.
         let ids = if connected {
-            // A full midpoint crossing costs at least (0.05 + 1) / 2 of its length;
-            // the final half-edge from a midpoint costs at least its full length.
-            let ids = self.graphs[graph].get_id_path_with_heuristic(start, goal, 0.5);
+            // Average the cheapest midpoint with its >=1 entrance, rather than
+            // weakening infantry's existing road bound with a fixed coefficient.
+            let ids = self.graphs[graph].get_midpoint_path(start, goal);
             self.last_expanded = self.graphs[graph].last_expanded;
             ids
         } else {

@@ -1,7 +1,7 @@
 extends "res://tests/fixtures/squad-brain.gd"
 
 func ambush_bytes(p: AmbushPlan) -> PackedByteArray:
-	var b := StreamPeerBuffer.new(); b.put_data("FLAM01".to_utf8_buffer()); b.put_u16(2)
+	var b := StreamPeerBuffer.new(); b.put_data("FLAM01".to_utf8_buffer()); b.put_u16(SimulationInitial.NUMERIC_VERSION)
 	b.put_u32(19); b.put_u32(p.sq.sid)
 	for at: Vector3 in [p.kz,p.road,p.side,p.rally]: point_bytes(b,at)
 	b.put_double(p.mg_end); b.put_u8(["move","wait","spring"].find(p.phase))

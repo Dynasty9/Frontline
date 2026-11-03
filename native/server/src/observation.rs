@@ -343,6 +343,7 @@ pub struct Update {
 }
 struct Known {
     stamp: u64,
+    revision: Option<u64>,
     props: Value,
     state: Vec<u8>,
     refresh: u64,
@@ -371,6 +372,15 @@ impl View {
         for a in simulation.state.field.actors.iter() {
             let id = a.identity().id;
             let visible = can_know(simulation, a, self.team);
+            let revision = simulation.state.field.actors.structure_revision(id);
+            if visible
+                && revision.is_some()
+                && self.known.get(&id).is_some_and(|known| {
+                    known.revision == revision && self.sequence < known.refresh
+                })
+            {
+                continue;
+            }
             if !visible && !self.known.contains_key(&id) {
                 continue;
             }
@@ -395,6 +405,7 @@ impl View {
                     id,
                     Known {
                         stamp,
+                        revision,
                         props: p,
                         state: vec![],
                         refresh: 0,
@@ -402,6 +413,7 @@ impl View {
                 );
             }
             let known = self.known.get_mut(&id).unwrap();
+            known.revision = if visible { revision } else { None };
             if visible && known.stamp != stamp {
                 known.stamp = stamp;
                 // Position and per-tick fields travel in the compact state, not reliable property updates.

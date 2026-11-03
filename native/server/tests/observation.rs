@@ -60,6 +60,77 @@ fn records(packets: &[Vec<u8>]) -> Vec<(u32, Vec<u8>)> {
     }
     out
 }
+
+#[test]
+#[ignore = "manual observation scale measurement"]
+fn observation_scale() {
+    let c = Content::bundled().unwrap();
+    let mut s = map(&c, vec![]);
+    for i in 0..14_000 {
+        s.state
+            .field
+            .actors
+            .spawn(Actor::Structure(Box::new(Structure {
+                kind: "house_wall".into(),
+                position: Vector3::new((i % 128) as f32, 0., (i / 128) as f32),
+                ..Default::default()
+            })))
+            .unwrap();
+    }
+    for i in 0..500 {
+        s.state
+            .field
+            .actors
+            .spawn(soldier(i, (i % 2) as i8))
+            .unwrap();
+    }
+    let checkpoint = s.checkpoint().unwrap();
+    let mut view = View::new(-1).unwrap();
+    assert_eq!(view.update(&s, &c).births.len(), 14_500);
+    let mut times = vec![];
+    let mut rows = 0;
+    for _ in 0..180 {
+        let started = std::time::Instant::now();
+        let update = view.update(&s, &c);
+        times.push(started.elapsed().as_secs_f64() * 1000.);
+        assert!(
+            update.births.is_empty() && update.despawns.is_empty() && update.properties.is_empty()
+        );
+        rows += records(&update.snapshots).len();
+    }
+    assert!(
+        rows > 180 * 500,
+        "Stationary scenery still needs recovery refreshes"
+    );
+    assert_eq!(checkpoint, s.checkpoint().unwrap());
+    let mean = times.iter().sum::<f64>() / times.len() as f64;
+    times.sort_by(f64::total_cmp);
+    println!(
+        "OBSERVATION_SCALE mean={mean:.3} p99={:.3} max={:.3} rows={rows}",
+        times[178], times[179]
+    );
+}
+
+#[test]
+fn observation_cache_preserves_spawn_order_and_sorts_removals() {
+    let c = Content::bundled().unwrap();
+    let mut s = map(&c, vec![soldier(9, 0), soldier(1, 0), soldier(8, 0)]);
+    let mut view = View::new(0).unwrap();
+    assert_eq!(
+        view.update(&s, &c)
+            .births
+            .iter()
+            .map(|b| b.id)
+            .collect::<Vec<_>>(),
+        [9, 1, 8]
+    );
+    for id in [9, 1, 8] {
+        s.state.field.actors.remove(id);
+    }
+    assert_eq!(view.update(&s, &c).despawns, [1, 8, 9]);
+    assert!(view.update(&s, &c).despawns.is_empty());
+}
+
 #[test]
 fn reused_snapshot_storage_preserves_refreshes_changes_and_actor_layouts() {
     let c = Content::bundled().unwrap();
@@ -79,6 +150,9 @@ fn reused_snapshot_storage_preserves_refreshes_changes_and_actor_layouts() {
     assert_eq!(view.update(&s, &c).births.len(), 2);
     let mut refreshed = false;
     for tick in 0..65 {
+        if tick == 5 {
+            s.state.field.actors.set_structure_supply(3, 173.).unwrap();
+        }
         if tick == 10 {
             replace(&mut s, |a| {
                 if let Actor::Structure(b) = a {
@@ -95,7 +169,7 @@ fn reused_snapshot_storage_preserves_refreshes_changes_and_actor_layouts() {
                 observation::state(&s, s.state.field.actors.get(*id).unwrap(), 0, &c)
             );
         }
-        if tick == 10 {
+        if tick == 5 || tick == 10 {
             assert!(rows.iter().any(|(id, _)| *id == 3));
         }
         if tick > 10 && rows.iter().any(|(id, _)| *id == 3) {
