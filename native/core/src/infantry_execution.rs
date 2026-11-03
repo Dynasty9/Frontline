@@ -173,16 +173,10 @@ impl Infantry {
         if !self.valid() || !now.is_finite() || now.abs() > 1e12 - 1.0 {
             return Err("invalid retained dive");
         }
-        let old_y = self.motion.position.y;
         let mut controller = self.controller;
         let result = controller.dive(self.motion.position, self.orders.base_y, dt, nav, ground)?;
         self.controller = controller;
         self.motion.position = result.position;
-        if let Some(terrain) = ground.terrain {
-            let floor = self.motion.cached_ground(now, terrain, ground.deck);
-            self.motion.position.y =
-                (self.orders.base_y + floor).max(f64::from(old_y) - dt * 3.0) as f32;
-        }
         self.activity = 15;
         if result.finished {
             self.posture = Posture::Prone;

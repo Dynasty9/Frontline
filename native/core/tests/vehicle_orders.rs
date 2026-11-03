@@ -7,6 +7,32 @@ use frontline_core::vehicle_orders::Order;
 
 use fixture::scene;
 #[test]
+fn landing_objective_does_not_replace_the_safe_beach_route() {
+    let (mut s, mut boats) = scene("boat", false);
+    s.context()
+        .order_vehicle(20, Order::Move(Vector3::new(10., 0., 10.)), &mut boats)
+        .unwrap();
+    let before = s.world.actors.checkpoint().unwrap();
+    assert!(s
+        .world
+        .actors
+        .set_landing_objective(999, Vector3::ZERO)
+        .is_err());
+    assert!(s
+        .world
+        .actors
+        .set_landing_objective(20, Vector3::new(f32::NAN, 0., 0.))
+        .is_err());
+    assert_eq!(before, s.world.actors.checkpoint().unwrap());
+    let path = s.world.actors.vehicle(20).unwrap().path.clone();
+    let objective = Vector3::new(-12., 0., 5.);
+    s.world.actors.set_landing_objective(20, objective).unwrap();
+    let boat = s.world.actors.vehicle(20).unwrap();
+    assert_eq!(boat.assault_destination, Some(objective));
+    assert_eq!(boat.path, path);
+}
+
+#[test]
 fn movement_submits_routes_and_stop_rejects_old_completions() {
     let (mut s, mut boats) = scene("tank", false);
     s.context()

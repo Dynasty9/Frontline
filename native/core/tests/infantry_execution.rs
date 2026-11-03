@@ -95,6 +95,28 @@ fn dazed_and_diving_stages_precede_actions_and_expired_flinches_allow_thought() 
 }
 
 #[test]
+fn diving_uses_the_current_surface_without_overwriting_the_movement_cache() {
+    let nav = PathPlanner::new(32).unwrap();
+    let terrain = frontline_core::terrain::Terrain::blank(32).unwrap();
+    let mut s = soldier();
+    s.motion.position.y = 2.;
+    s.motion.ground = 50.;
+    s.motion.ground_until = 1000.;
+    s.controller.dive_timer = 0.5;
+    s.controller.dive_direction = Vector3::X;
+    s.dive_tick(
+        0.1,
+        100.,
+        &nav,
+        frontline_core::traversal::Ground::new(&terrain, &[]),
+    )
+    .unwrap();
+    assert_eq!(s.motion.position.y, 1.7_f32);
+    assert_eq!(s.motion.ground, 50.);
+    assert_eq!(s.motion.ground_until, 1000.);
+}
+
+#[test]
 fn vanished_action_targets_are_ignored_and_a_kicking_soldier_still_ducks() {
     let mut s = soldier();
     let mut rng = SimulationRandom::new(137);

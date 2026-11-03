@@ -2947,7 +2947,7 @@ eight cases pass in debug and release. The 16 dispatcher and seven battlefield
 scheduler regressions pass in release, and the dispatcher numeric transcript is
 unchanged. CI now runs standalone tests in both modes on all numeric platforms.
 
-This is not the complete game migration. Commander/naval/mission scheduling,
+This is not the complete game migration. Mission scheduling,
 initial-map setup, private socket observations and
 Godot's visual-client transition are unfinished. Mission checkpoints are rejected
 by this runner until a mission program is available. Live game recordings still
@@ -2974,20 +2974,44 @@ suite passes 915 core checks and eight standalone server checks. The later FPV
 altitude correction passes its 16 connected Rust checks. Expanded Godot adapters
 pass 144 drone cases and 84 support-aircraft cases, plus the projectile and battle
 comparisons above. All 140 numeric transcripts pass exactly in debug and release
-locally. Linux x64/ARM64 and macOS ARM64 CI also pass; Windows CI is pending.
+locally. All four CI platforms also pass at `74d9fdd`. The Godot comparison job
+reached its timeout with two infantry dive-state mismatches; the retained dive
+path now uses its controller's current surface result without overwriting it
+from the movement height cache. All eight connected Godot infantry comparisons
+now pass locally. The affected infantry-world numeric transcript is updated;
+all 140 transcripts pass in release with the other 139 unchanged.
+
+## Strategic commanders
+
+The standalone runner now schedules production, construction, research, defense,
+town capture, attack waves, road ambushes, support calls, naval patrols and troop
+landings. Vehicle sling operations and temporary AI control after a disconnect
+also run in Rust. Rejoining returns that temporary commander's force to the player.
+Permanent allied AI keeps its own units.
+
+Each side advances one strategic phase every half second, completing its cycle
+in two seconds. Support targeting examines a bounded rotating candidate set.
+Existing tactical squad and vehicle logic still executes the orders, including
+leaving active attack plans running. Strategic clocks, roles, naval missions and
+random state are checkpointed; replays recompute AI decisions from external inputs.
+All 13 standalone checks pass in debug and release, including complete boarding,
+transport and landing, checkpoint resumes, independent replay and disconnect/rejoin.
+Two committed commander state hashes also match in both modes locally; the same
+tests run on the four CI platforms.
+Map landmark outposts still need the initial-map handoff.
 
 ## Standalone infantry scale measurement
 
-On November 2, 2026, the release server at `74d9fdd` ran 600 fixed ticks with 500
+On November 2, 2026, the release server with initial navigation finalized ran 600 fixed ticks with 500
 soldiers, two depots and the production rifle/fighter loadouts. Other applications
-remained running. Each map produced 4,410 shots, 278 soldiers moving more than one
-metre and 417 survivors; the benchmark asserts movement and combat occurred.
+remained running. Each map produced 4,047 shots, 269 soldiers moving more than one
+metre and 423 survivors; the benchmark asserts movement and combat occurred.
 
 | Square map side | Mean tick | p95 | p99 | Maximum | Initial setup |
 | --- | --- | --- | --- | --- | --- |
-| 1,024 m | 3.228 ms | 4.833 ms | 5.504 ms | 6.933 ms | 71.77 ms |
-| 2,048 m | 2.787 ms | 4.073 ms | 4.732 ms | 6.348 ms | 303.02 ms |
-| 3,072 m | 2.813 ms | 3.602 ms | 4.961 ms | 6.643 ms | 626.79 ms |
+| 1,024 m | 3.202 ms | 4.527 ms | 5.723 ms | 7.945 ms | 616.19 ms |
+| 2,048 m | 2.775 ms | 3.695 ms | 4.671 ms | 8.231 ms | 2,675.80 ms |
+| 3,072 m | 2.823 ms | 3.776 ms | 5.285 ms | 9.758 ms | 6,600.55 ms |
 
 These are short simulation-only samples on flat, mostly empty maps, without
 strategic commanders, scenery, rendering or socket traffic. They are not a

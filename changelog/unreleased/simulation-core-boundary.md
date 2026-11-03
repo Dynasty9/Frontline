@@ -5,6 +5,9 @@ kind = "fixed"
 +++
 
 - Cosmetic debris no longer consumes gameplay randomness when cosmetic physics is unavailable.
+- Strategic AI production, defenses, attacks, support calls and naval landings now run in the standalone Rust simulation and resume from saved state. Its replay verifier recomputes those decisions from the starting state and player commands.
+- Standalone navigation now builds its initial hierarchy before admitting long routes; troops can cross navigation regions and reach transports instead of repeatedly waiting for a path.
+- Diving soldiers use the current ground height instead of a stale movement sample, avoiding a height jump during the dive.
 - Idle-conversation cooldowns reset with each battle, so replaying a seed is unaffected by the previous match.
 - Starting a different-sized map with the same seed now rebuilds its terrain correctly instead of reusing the previous map's ground grid.
 - Infantry checkpoint checks now cover pending paths, actions, conversations, casualty links and weapon duties as the server migration continues. Whole-battle replay verification remains unfinished.

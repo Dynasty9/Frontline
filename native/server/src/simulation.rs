@@ -119,10 +119,15 @@ pub struct Simulation {
     pub state: MatchState,
     pub host_peer: i32,
     pub names: BTreeMap<i32, String>,
+    pub commanders: Vec<crate::commander::Commander>,
     search: PerceptionSearch,
 }
 impl Simulation {
-    pub fn new(state: MatchState, host_peer: i32, content: &Content) -> Result<Self, &'static str> {
+    pub fn new(
+        mut state: MatchState,
+        host_peer: i32,
+        content: &Content,
+    ) -> Result<Self, &'static str> {
         if host_peer <= 0 {
             return Err("invalid host identity");
         }
@@ -130,6 +135,10 @@ impl Simulation {
             return Err("mission program required");
         }
         content.validate_state(&state)?;
+        let nav = &mut state.field.geometry.navigation;
+        if (!nav.infantry.built || !nav.vehicles.built || !nav.tracked.built) && !nav.finalize(2) {
+            return Err("initial navigation build failed");
+        }
         let names = state
             .owners
             .players
@@ -149,8 +158,21 @@ impl Simulation {
             state,
             host_peer,
             names,
+            commanders: vec![],
             search: PerceptionSearch::default(),
         })
+    }
+    pub fn enable_commander(&mut self, team: i8) -> Result<(), &'static str> {
+        if self.commanders.iter().any(|c| c.team == team) {
+            return Err("duplicate commander");
+        }
+        self.commanders.push(crate::commander::Commander::new(
+            team,
+            self.state.field.rng.seed(),
+            self.state.tick,
+        )?);
+        self.commanders.sort_by_key(|c| c.team);
+        Ok(())
     }
     pub fn checkpoint(&self) -> Result<Vec<u8>, &'static str> {
         if self.names.len() > 32
@@ -168,6 +190,13 @@ impl Simulation {
         for (&peer, name) in &self.names {
             w.u32(peer as u32);
             w.bytes(name.as_bytes());
+        }
+        if self.commanders.len() > 2 || self.commanders.windows(2).any(|c| c[0].team >= c[1].team) {
+            return Err("invalid commander registry");
+        }
+        w.byte(self.commanders.len() as u8);
+        for c in &self.commanders {
+            w.bytes(&c.checkpoint()?);
         }
         w.bytes(&self.state.checkpoint()?);
         if w.0.len() > MAX_STATE {
@@ -197,6 +226,19 @@ impl Simulation {
                 return Err("duplicate player identity");
             }
         }
+        let count = r.byte()?;
+        if count > 2 {
+            return Err("commander registry exceeds limit");
+        }
+        let mut commanders = Vec::with_capacity(count as usize);
+        for _ in 0..count {
+            commanders.push(crate::commander::Commander::restore(r.bytes(MAX_STATE)?)?);
+        }
+        if commanders.iter().any(|c| {
+            !c.next_vehicle.is_empty() && content.definitions["vehicles"][&c.next_vehicle].is_null()
+        }) {
+            return Err("commander references unknown vehicle");
+        }
         let state = MatchState::restore(r.bytes(MAX_STATE)?)?;
         r.finish()?;
         if names
@@ -208,6 +250,7 @@ impl Simulation {
         }
         let mut result = Self::new(state, host, content)?;
         result.names = names;
+        result.commanders = commanders;
         if result.checkpoint()? != bytes {
             return Err("noncanonical simulation checkpoint");
         }
@@ -250,7 +293,12 @@ impl Simulation {
                 _ => {}
             }
         }
-        content.with_profiles(&[], |p, commands| {
+        let targets: Vec<_> = self
+            .commanders
+            .iter()
+            .map(|c| (c.team, c.attack_target))
+            .collect();
+        content.with_profiles(&targets, |p, commands| {
             let mut out = Frame {
                 tick: self.state.tick + 1,
                 commands: vec![],
@@ -272,6 +320,10 @@ impl Simulation {
                         f.battle.joined(*peer, *team, name)?;
                         self.names.insert(*peer, name.clone());
                         if let Some(old) = reclaim {
+                            let stand_down = self
+                                .commanders
+                                .iter()
+                                .any(|c| c.team == *team && !c.permanent);
                             let (_, changed) = self.state.owners.reclaim(
                                 *peer,
                                 *old,
@@ -279,22 +331,39 @@ impl Simulation {
                                 &mut f.squads,
                                 &mut f.actors,
                                 &mut f.battle,
-                                false,
+                                stand_down,
                                 p.shared.automatic,
                             )?;
                             out.commands
                                 .push(sim::match_commands::Event::Ownership(changed));
+                            if stand_down {
+                                self.commanders.retain(|c| c.team != *team);
+                            }
                         }
                     }
                     Input::Leave { peer } => {
                         let f = &mut self.state.field;
-                        if let Some((_, _, changed)) =
+                        if let Some((team, heir, changed)) =
                             self.state
                                 .owners
                                 .depart(*peer, &mut f.squads, &mut f.actors)?
                         {
                             out.commands
                                 .push(sim::match_commands::Event::Ownership(changed));
+                            if team >= 0
+                                && heir < 0
+                                && !self.state.victory.mission
+                                && !self.commanders.iter().any(|c| c.team == team)
+                            {
+                                let mut commander = crate::commander::Commander::new(
+                                    team,
+                                    f.rng.seed(),
+                                    self.state.tick,
+                                )?;
+                                commander.permanent = false;
+                                self.commanders.push(commander);
+                                self.commanders.sort_by_key(|c| c.team);
+                            }
                         }
                         self.names.remove(peer);
                     }
@@ -316,6 +385,15 @@ impl Simulation {
             }
             out.events
                 .extend(self.state.advance_battlefield(p, &mut self.search)?);
+            for commander in &mut self.commanders {
+                out.commands.extend(commander.advance(
+                    &mut self.state,
+                    content,
+                    &p.shared,
+                    commands,
+                    self.host_peer,
+                )?);
+            }
             out.events.extend(self.state.finish_battlefield(p)?);
             Ok(out)
         })

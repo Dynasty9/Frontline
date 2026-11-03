@@ -12,6 +12,22 @@ pub enum Order {
     Attack(u32),
     Stop,
 }
+impl crate::actors::Actors {
+    /// A naval raid can land on a safe beach before its passengers assault an inland objective.
+    pub fn set_landing_objective(
+        &mut self,
+        id: u32,
+        objective: Vector3,
+    ) -> Result<(), &'static str> {
+        if !point(objective) {
+            return Err("invalid landing objective");
+        }
+        self.vehicle_mut(id)
+            .ok_or("missing landing transport")?
+            .assault_destination = Some(objective);
+        Ok(())
+    }
+}
 impl Context<'_> {
     pub fn order_vehicle(
         &mut self,

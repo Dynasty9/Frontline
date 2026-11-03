@@ -1665,8 +1665,10 @@ these queries rather than copied between simulation phases.
 The standalone runtime now uses definitions baked from the same game tables.
 Its replay runner records initial state, player admissions and ordered commands;
 a separate Rust executable reruns them and checks the final state and winner.
-It rejects incomplete, altered and incompatible recordings. Commander/mission
-migration and the live socket/visual-client transition remain in progress;
+It rejects incomplete, altered and incompatible recordings. Strategic commanders
+now advance production, construction, defenses, attacks, support and naval landings
+in Rust, retaining their phases and roles across replay. Mission migration and
+the live socket/visual-client transition remain in progress;
 see [RUST_SIMULATION.md](RUST_SIMULATION.md).
 
 See [SIMULATION_SCALING.md](SIMULATION_SCALING.md) for the native perception

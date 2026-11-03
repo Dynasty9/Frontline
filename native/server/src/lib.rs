@@ -1,3 +1,4 @@
+pub mod commander;
 pub mod content;
 pub mod replay;
 pub mod simulation;
