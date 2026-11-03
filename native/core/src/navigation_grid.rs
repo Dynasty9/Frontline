@@ -2,6 +2,10 @@
 //! Ordering and float precision preserve Godot 4.7 AStarGrid2D routes.
 //! Heap/search behavior adapted from Godot; see ../GODOT-LICENSE.txt.
 
+use std::collections::HashMap;
+
+const COST_CACHE_LIMIT: usize = 512;
+
 #[derive(Clone, Copy, Default)]
 struct SearchCell {
     cost: f32,
@@ -20,6 +24,7 @@ pub struct NavigationGrid {
     search: Vec<SearchCell>,
     open: Vec<usize>,
     generation: u64,
+    costs: HashMap<([i32; 2], [i32; 2]), f64>,
 }
 
 pub struct ClusterQuery {
@@ -181,6 +186,7 @@ impl NavigationGrid {
             search: vec![SearchCell::default(); count],
             open: Vec::new(),
             generation: 0,
+            costs: HashMap::new(),
         })
     }
 
@@ -213,7 +219,10 @@ impl NavigationGrid {
         let Some(i) = self.index(cell) else {
             return false;
         };
-        self.solid[i] = solid;
+        if self.solid[i] != solid {
+            self.costs.clear();
+            self.solid[i] = solid;
+        }
         true
     }
     pub fn set_weight(&mut self, cell: [i32; 2], weight: f32) -> bool {
@@ -223,7 +232,10 @@ impl NavigationGrid {
         if !weight.is_finite() || weight < 0.0 {
             return false;
         }
-        self.weight[i] = weight;
+        if self.weight[i].to_bits() != weight.to_bits() {
+            self.costs.clear();
+            self.weight[i] = weight;
+        }
         true
     }
     pub fn fill_solid(&mut self, origin: [i32; 2], size: [i32; 2], solid: bool) {
@@ -248,6 +260,7 @@ impl NavigationGrid {
         {
             return false;
         }
+        self.costs.clear();
         for (out, &value) in self.solid.iter_mut().zip(solid) {
             *out = value != 0;
         }
@@ -381,17 +394,27 @@ impl NavigationGrid {
         if from == to {
             return 0.0;
         }
-        let path = self.path(from, to);
-        if path.is_empty() {
-            return -1.0;
+        if let Some(&cost) = self.costs.get(&(from, to)) {
+            return cost;
         }
-        path.windows(2)
-            .map(|pair| {
-                let diagonal = pair[0][0] != pair[1][0] && pair[0][1] != pair[1][1];
-                // HNav has always used this rounded diagonal cost for its abstract links.
-                (if diagonal { 1.4142 } else { 1.0 }) * f64::from(self.weight(pair[1]).unwrap())
-            })
-            .sum()
+        let path = self.path(from, to);
+        let cost = if path.is_empty() {
+            -1.0
+        } else {
+            path.windows(2)
+                .map(|pair| {
+                    let diagonal = pair[0][0] != pair[1][0] && pair[0][1] != pair[1][1];
+                    // HNav has always used this rounded diagonal cost for its abstract links.
+                    (if diagonal { 1.4142 } else { 1.0 }) * f64::from(self.weight(pair[1]).unwrap())
+                })
+                .sum()
+        };
+        // Squad routes repeatedly attach the same cells to local entrances.
+        if self.costs.len() == COST_CACHE_LIMIT {
+            self.costs.clear();
+        }
+        self.costs.insert((from, to), cost);
+        cost
     }
 
     pub fn pair_costs(&mut self, cells: &[[i32; 2]]) -> Vec<f64> {
@@ -411,4 +434,63 @@ fn octile(a: [i32; 2], b: [i32; 2]) -> f32 {
     let y = (i64::from(a[1]) - i64::from(b[1])).unsigned_abs() as f32;
     let f = (std::f64::consts::SQRT_2 - 1.0) as f32;
     f * x.min(y) + x.max(y)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn cost_cache_reuses_searches_and_invalidates_on_ground_edits() {
+        let mut grid = NavigationGrid::new([0, 0], 32, 32).unwrap();
+        let (from, to) = ([1, 1], [9, 9]);
+        let first = grid.path_cost(from, to);
+        let generation = grid.generation;
+        assert_eq!(grid.path_cost(from, to).to_bits(), first.to_bits());
+        assert_eq!(grid.generation, generation);
+        grid.set_solid([2, 2], false);
+        grid.set_weight([2, 2], 1.0);
+        assert!(!grid.set_weight([2, 2], f32::NAN));
+        assert!(!grid.load_cells(&[0], &[1.0]));
+        assert_eq!(grid.path_cost(from, to), first);
+        assert_eq!(grid.generation, generation);
+
+        for cell in [[2, 1], [1, 2], [0, 1], [1, 0]] {
+            grid.set_solid(cell, true);
+        }
+        assert_eq!(grid.path_cost(from, to), -1.0);
+        let generation = grid.generation;
+        assert_eq!(grid.path_cost(from, to), -1.0);
+        assert_eq!(grid.generation, generation);
+        grid.set_solid([1, 2], false);
+        assert!(grid.path_cost(from, to) > first);
+        grid.fill_solid([0, 0], [32, 32], false);
+        assert_eq!(grid.path_cost(from, to), first);
+        grid.set_weight([2, 2], 40.0);
+        assert!(grid.path_cost(from, to) > first);
+        assert!(grid.load_cells(&[0; 1024], &[1.0; 1024]));
+        assert_eq!(grid.path_cost(from, to), first);
+
+        grid.set_weight(from, 0.3);
+        grid.set_weight(to, 4.0);
+        assert_ne!(grid.path_cost(from, to), grid.path_cost(to, from));
+        for y in 0..32 {
+            for x in 0..32 {
+                grid.path_cost(from, [x, y]);
+                assert!(grid.costs.len() <= COST_CACHE_LIMIT);
+            }
+        }
+        let saved = grid.checkpoint();
+        let mut restored = NavigationGrid::restore(&saved).unwrap();
+        assert!(restored.costs.is_empty());
+        for target in [to, from, [-1, 4], [31, 31]] {
+            assert_eq!(
+                grid.path_cost(from, target),
+                restored.path_cost(from, target)
+            );
+            assert_eq!(grid.path(from, target), restored.path(from, target));
+        }
+        assert_eq!(grid.checkpoint(), saved);
+        assert_eq!(restored.checkpoint(), saved);
+    }
 }

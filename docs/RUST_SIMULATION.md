@@ -725,3 +725,30 @@ After also indexing the commander census, a further diagnostic retained the same
 canonical hash and measured 5.538 ms total mean / 16.43 ms p99. Commander/mission
 time averaged 0.042 ms (p99 1.50 ms), versus 0.103 ms (p99 3.32 ms) in the first
 instrumented run. This is a separate follow-up, not a controlled overall speedup.
+
+The fresh packaged live battle at `2551a09` averaged 92.66 FPS, frame p95 15.95 ms,
+p99 19.63 ms and maximum 24.81 ms; adjacent-frame difference p99 was 8.63 ms.
+Rust ticks averaged 6.62 ms, p99 17.86 ms, with 22 of 1,200 ticks over 16.67 ms.
+Infantry averaged 2.73 ms (p99 4.95 ms), while navigation averaged 1.62 ms
+(p99 10.41 ms). The same 3 km / 500-unit / high-preset setup and other apps were
+retained, but changing background load means the difference from the earlier
+35.66 FPS run is not a controlled code speedup. Neither frame nor tick tails meet
+the target. The matching server independently verified all 3,014 ticks of this
+unfinished battle, final state
+`033718652d8d0bcf8622e511efa0b076a2dba5c97d7d5b6b69a323ce7a271f3c`.
+Evidence: `build/rust-release-generated-3072-owned/` and
+`build/ownership-release-replay-verification.log`.
+
+### Reusing local route costs
+
+Local grids cache up to 512 directed path costs, including unreachable results.
+Actual obstacle/weight edits and bulk loads invalidate them; checkpoint restore
+starts cold. Search ordering, route costs and canonical state remain unchanged.
+The cache unit test, grid/hierarchy/navigation/boat regressions and all 140 numeric
+contracts pass. In the same diagnostic ABBA workload described above, navigation
+means were 1.368/1.396 ms before and 1.266/1.151 ms after (about 13% less); medians
+were 0.470/0.451 ms before and 0.180/0.179 ms after (about 61% less).
+Total tick means were 4.768/4.802 ms before and 4.915/4.607 ms after, essentially
+unchanged. Navigation p99 was 7.87/8.29 ms before and 10.15/7.83 ms after, so this
+does not establish a tail improvement. All four canonical state hashes matched
+the earlier diagnostic. Evidence: `build/navigation-cache-comparison.json`.
