@@ -547,6 +547,7 @@ Ambush Alley autoplay can call its existing mortar support against spotted, stop
   occupy graded valley corridors; forests stay below the snow line and off steep faces.
 - Moss and soil blend into exposed stone on slopes, with baked slab fractures, broken mineral beds, sheltered weathering, loose-stone pockets and snow on high sheltered ground.
 - Sheltered rock crevices receive stronger ambient occlusion while exposed rock stays open to sky light.
+- World-space texture warping breaks up repeated slab patterns without adding material samples.
   Photograph-derived height, normals, crevice shading and roughness give each material distinct relief;
   height-based transitions let rock emerge through moss and snow. Reusable buttress, bowl and saddle
   forms shape standard mountains before erosion, with small conifer stands along suitable foothills.
