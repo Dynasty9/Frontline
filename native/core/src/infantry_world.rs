@@ -277,20 +277,21 @@ impl Context<'_> {
         if !infantry_fight_world::valid_step(dt, self.now, gun) {
             return Err("invalid infantry tick");
         }
-        let activity = ActivityContext {
-            task_target_exists: self.actors.get(s.duty.entity as u32).is_some(),
-            mounted_exists: self.actors.get(s.emplacement.structure as u32).is_some(),
-            chat_partner_exists: self.actors.get(s.idle.partner as u32).is_some(),
-            ambush_target: self
-                .squads
-                .iter()
-                .any(|q| q.id == s.identity.squad && q.ambush)
-                && self.actors.infantry_target_valid(s.fight.target as u32),
-        };
-        let s = self.actors.soldier_mut(id).unwrap();
-        if s.controller.activity_due(dt)? {
-            s.update_activity(activity);
+        if self.actors.soldier_mut(id).unwrap().controller.activity_due(dt)? {
+            let s = self.actors.soldier(id).unwrap();
+            let activity = ActivityContext {
+                task_target_exists: self.actors.get(s.duty.entity as u32).is_some(),
+                mounted_exists: self.actors.get(s.emplacement.structure as u32).is_some(),
+                chat_partner_exists: self.actors.get(s.idle.partner as u32).is_some(),
+                ambush_target: self
+                    .squads
+                    .iter()
+                    .any(|q| q.id == s.identity.squad && q.ambush)
+                    && self.actors.infantry_target_valid(s.fight.target as u32),
+            };
+            self.actors.soldier_mut(id).unwrap().update_activity(activity);
         }
+        let s = self.actors.soldier_mut(id).unwrap();
         s.recover(dt, self.now)?;
         let mut out = vec![];
         if s.shock.flinging {

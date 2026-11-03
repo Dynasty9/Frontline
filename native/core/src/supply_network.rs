@@ -1,6 +1,5 @@
 //! New supply routes clear obstacles in order; later routes see the cleared ground.
 use crate::actors::{Actor, Actors};
-use crate::entities::Kind;
 use crate::state_codec::{Reader, Writer};
 use crate::structure::Structure;
 use crate::vector::{normalized, Vector3};
@@ -24,15 +23,11 @@ fn flat(p: Vector3) -> Vector3 {
 }
 fn fobs(actors: &Actors, team: i8, wrecked: bool) -> Vec<u32> {
     actors
-        .iter_kind(Kind::Structure)
-        .filter_map(|a| match a {
-            Actor::Structure(st)
-                if st.kind == "fob" && st.team == team && st.built && (wrecked || !st.wrecked) =>
-            {
-                Some(st.id)
-            }
-            _ => None,
-        })
+        .simulated_structures()
+        .iter()
+        .filter_map(|&id| actors.structure(id))
+        .filter(|st| st.kind == "fob" && st.team == team && st.built && (wrecked || !st.wrecked))
+        .map(|st| st.id)
         .collect()
 }
 fn distance(p: Vector3, a: Vector3, b: Vector3) -> f64 {

@@ -55,11 +55,11 @@ impl Context<'_> {
         let mut out = vec![];
         let fobs: Vec<_> = self
             .actors
-            .iter_kind(Kind::Structure)
-            .filter_map(|a| match a {
-                Actor::Structure(s) if s.kind == "fob" && s.built && s.team >= 0 => Some(s.id),
-                _ => None,
-            })
+            .simulated_structures()
+            .iter()
+            .filter_map(|&id| self.actors.structure(id))
+            .filter(|s| s.kind == "fob" && s.built && s.team >= 0)
+            .map(|s| s.id)
             .collect();
         // Town lorries take their stock before FOB replacements get an identity.
         for (id, town) in network

@@ -36,6 +36,8 @@ class DrawLayer extends Control:
 		map._draw_layer(self, phase)
 
 var _layers: Array[DrawLayer] = []
+var _dots: RefCounted
+var _dot_batch: MultiMesh
 var _phase := 0
 var _layer_xf := Transform2D.IDENTITY
 var _layer_size := Vector2.ZERO
@@ -612,8 +614,16 @@ func _draw_fighting(w: World, sc: float) -> void:
 ## selected white), vehicles by their map symbols, drones as yellow points.
 func _draw_units(w: World, sc: float) -> void:
 	var r := 1.3 * sc
-	var edge := Color(0, 0, 0, 0.65)
-	for s in w.soldiers:
+	var to_canvas := _xf * Transform2D(Vector2(size.x / MapDims.SIZE, 0), Vector2(0, size.y / MapDims.SIZE), size * 0.5)
+	var team_colors: Array[Color] = []
+	for team in 2:
+		team_colors.append(Defs.TEAM_COLORS[team].lightened(0.4 if team == w.local_team else 0.12))
+	var points := PackedVector3Array()
+	var colors := PackedColorArray()
+	points.resize(w.soldiers.size())
+	colors.resize(w.soldiers.size())
+	var count := 0
+	for s: Soldier in w.soldiers:
 		if not s.visible or s.life == Soldier.Life.HIDDEN or s.life == Soldier.Life.DEAD:
 			continue
 		var c: Color
@@ -623,15 +633,31 @@ func _draw_units(w: World, sc: float) -> void:
 			rr = r * 1.3
 		elif s.team < 0:
 			c = Color(0.9, 0.9, 0.85)
-		elif s.team == w.local_team:
-			c = Defs.TEAM_COLORS[s.team].lightened(0.4)
 		else:
-			c = Defs.TEAM_COLORS[s.team].lightened(0.12)
+			c = team_colors[s.team]
 		if s.life == Soldier.Life.DOWNED:
 			c.a = 0.55
-		var p := _pt(s.position)
-		_ink.draw_rect(Rect2(p - Vector2(rr + 0.9, rr + 0.9), Vector2(rr * 2.0 + 1.8, rr * 2.0 + 1.8)), edge)
-		_ink.draw_rect(Rect2(p - Vector2(rr, rr), Vector2(rr * 2.0, rr * 2.0)), c)
+		var position_3d := s.position
+		var p := to_canvas * Vector2(position_3d.x, position_3d.z)
+		points[count] = Vector3(p.x, p.y, rr)
+		colors[count] = c
+		count += 1
+	points.resize(count)
+	colors.resize(count)
+	if _dots == null:
+		_dots = ClassDB.instantiate("MinimapDots")
+		_dot_batch = MultiMesh.new()
+		_dot_batch.transform_format = MultiMesh.TRANSFORM_2D
+		_dot_batch.use_colors = true
+		var quad := QuadMesh.new()
+		quad.size = Vector2(2, 2)
+		_dot_batch.mesh = quad
+	if count * 2 > _dot_batch.instance_count:
+		_dot_batch.instance_count = nearest_po2(count * 2)
+	_dot_batch.visible_instance_count = count * 2
+	if count > 0:
+		_dot_batch.buffer = _dots.encode(points, colors, _dot_batch.instance_count)
+		_ink.draw_multimesh(_dot_batch, null)
 	for v in w.vehicles:
 		if not v.visible or v.team < 0:
 			continue

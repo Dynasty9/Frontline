@@ -505,3 +505,22 @@ mean CPU time was 0.507 ms before and 0.485 ms after (p99 3.899/3.709 ms).
 Sampled draw calls fell from 4,295 to 3,672. Overall FPS was 79.38/78.13 and frame
 p99 was 25.08/25.55 ms; no overall frame-rate improvement is established by this
 small batching change. Reports: `build/strength-{rects,mesh}-replay.json`.
+
+Minimap soldier dots now share a MultiMesh draw; the map transform and team
+colors are prepared once per update. The existing progressive layer schedule
+and live camera wedge are unchanged. Vulkan and Compatibility comparisons match
+the original pixels for 500 overlapping, selected, wounded and clipped soldiers,
+including rotation, resizing and despawn. Focused dot-update CPU time fell by
+56–58%. In the full 3 km replay, total minimap CPU work averaged 0.867 ms before
+and 0.721 ms after (17% less), with p99 decreasing from 2.162 to 1.500 ms.
+FPS was 72.12/82.06, frame p99 26.457/25.481 ms, and adjacent-frame difference
+p99 15.054/13.995 ms. Other applications remained running, so the overall FPS
+change is not solely attributable to this optimization. Steady 60 FPS remains
+unproven. Reports: `build/minimap-{rects,batch}-replay.json`.
+
+Supply dispatch and FOB enumeration use the existing active-structure index,
+avoiding full scenery scans. Infantry build their activity context only when
+the existing status timer expires. All 140 numeric fixtures retain their exact
+expected state; focused regressions cover scenery, restored indices and status
+changes between refreshes. No new simulation performance claim is made for
+these changes until the generated-map benchmark is repeated.

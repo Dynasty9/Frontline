@@ -38,6 +38,7 @@ mod infantry_shock;
 mod infantry_supply;
 mod infantry_vitals;
 mod infantry_weapon;
+mod minimap_dots;
 mod navigation_grid;
 mod navigation_scene;
 mod path_planner;

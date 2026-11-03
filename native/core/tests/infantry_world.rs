@@ -11,6 +11,25 @@ use frontline_core::infantry_world::Event;
 use frontline_core::world_combat;
 
 #[test]
+fn activity_refresh_uses_current_targets_only_when_the_status_timer_expires() {
+    let (mut man, enemy) = soldiers();
+    man.controller.activity_timer = 0.1;
+    man.shock.flinch_timer = 10.0;
+    man.activity = 26;
+    man.idle.partner = 2;
+    man.doing = 35;
+    man.doing_entity = 2;
+    let mut field = Field::new(man, enemy);
+    field.scene.world.actors.remove(2);
+    field.step(0.05).unwrap();
+    assert_eq!(field.scene.world.actors.soldier(1).unwrap().doing_entity, 2);
+    let mut resumed = field.resume();
+    assert_eq!(field.step(0.05).unwrap(), resumed.step(0.05).unwrap());
+    field.compare(&resumed);
+    assert_eq!(field.scene.world.actors.soldier(1).unwrap().doing_entity, 0);
+}
+
+#[test]
 fn a_removed_crossing_recovers_living_infantry_and_wading_cancels_a_dive() {
     use frontline_core::{
         infantry_pose::Posture,

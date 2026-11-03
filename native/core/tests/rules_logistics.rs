@@ -78,6 +78,27 @@ fn members() -> Vec<Loadout> {
     ]
 }
 #[test]
+fn scenery_does_not_change_dispatch_order_or_restored_building_membership() {
+    let (mut s, n) = scene(130.7, true);
+    for _ in 0..2000 {
+        s.world.actors.spawn(actor(structure(0, "tree", 14.))).unwrap();
+    }
+    let mut fob = s.world.actors.structure(31).unwrap().clone();
+    let new_fob = s.world.actors.spawn(actor(fob.clone())).unwrap();
+    fob.built = false;
+    s.world.actors.spawn(actor(fob)).unwrap();
+    let discarded = s.world.actors.spawn(actor(structure(0, "fob", 10.))).unwrap();
+    s.world.actors.remove(discarded);
+    let mut resumed = s.resume();
+    let first = s.world.actors.entities().next_id() as u32;
+    let events = s.context().dispatch_supply(0.5, &n, truck()).unwrap();
+    assert_eq!(events, resumed.context().dispatch_supply(0.5, &n, truck()).unwrap());
+    assert_eq!(events, vec![Event::Truck { id: first, town: 32 }, Event::Truck { id: first + 1, town: 0 }, Event::Truck { id: first + 2, town: 0 }]);
+    assert!(s.context().dispatch_supply(0.5, &n, truck()).unwrap().is_empty());
+    assert_eq!(s.world.actors.vehicle(first + 2).unwrap().destination_fob, new_fob);
+}
+
+#[test]
 fn town_stock_dispatches_before_the_fob_and_active_lorries_do_not_duplicate() {
     let (mut s, n) = scene(130.7, true);
     let out = s.context().dispatch_supply(0.5, &n, truck()).unwrap();
