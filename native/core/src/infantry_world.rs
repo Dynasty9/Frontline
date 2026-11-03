@@ -196,6 +196,7 @@ impl Context<'_> {
         profiles: &Profiles<'_>,
         tick: &Tick<'_>,
         out: &mut Vec<Event>,
+        phase: &mut impl FnMut(&'static str),
     ) -> Result<(), &'static str> {
         let s = self.actors.soldier(id).unwrap();
         let squad = s.identity.squad;
@@ -226,6 +227,7 @@ impl Context<'_> {
                 stat("perception_blocked_reused", out);
             }
         }
+        phase("infantry_perception");
         let (mut world, _) = parts(self.geometry, self.units, self.fires);
         let decision = self.actors.think_infantry(
             id,
@@ -259,6 +261,7 @@ impl Context<'_> {
         for key in decision.stats {
             stat(key, out);
         }
+        phase("infantry_decisions");
         Ok(())
     }
 
@@ -269,6 +272,17 @@ impl Context<'_> {
         profiles: &Profiles<'_>,
         tick: &mut Tick<'_>,
     ) -> Result<Vec<Event>, &'static str> {
+        self.advance_infantry_profiled(id, dt, profiles, tick, &mut |_| {})
+    }
+
+    pub fn advance_infantry_profiled(
+        &mut self,
+        id: u32,
+        dt: f64,
+        profiles: &Profiles<'_>,
+        tick: &mut Tick<'_>,
+        phase: &mut impl FnMut(&'static str),
+    ) -> Result<Vec<Event>, &'static str> {
         let s = self.actors.soldier(id).ok_or("missing infantry update")?;
         let gun = self
             .actors
@@ -277,7 +291,13 @@ impl Context<'_> {
         if !infantry_fight_world::valid_step(dt, self.now, gun) {
             return Err("invalid infantry tick");
         }
-        if self.actors.soldier_mut(id).unwrap().controller.activity_due(dt)? {
+        if self
+            .actors
+            .soldier_mut(id)
+            .unwrap()
+            .controller
+            .activity_due(dt)?
+        {
             let s = self.actors.soldier(id).unwrap();
             let activity = ActivityContext {
                 task_target_exists: self.actors.get(s.duty.entity as u32).is_some(),
@@ -289,7 +309,10 @@ impl Context<'_> {
                     .any(|q| q.id == s.identity.squad && q.ambush)
                     && self.actors.infantry_target_valid(s.fight.target as u32),
             };
-            self.actors.soldier_mut(id).unwrap().update_activity(activity);
+            self.actors
+                .soldier_mut(id)
+                .unwrap()
+                .update_activity(activity);
         }
         let s = self.actors.soldier_mut(id).unwrap();
         s.recover(dt, self.now)?;
@@ -331,6 +354,7 @@ impl Context<'_> {
                         s.posture = crate::infantry_pose::Posture::Stand;
                     }
                     let stage = s.alive_stage(dt, self.rng)?;
+                    phase("infantry_status");
                     match stage {
                         Stage::Dazed => {
                             let mount = self
@@ -372,7 +396,7 @@ impl Context<'_> {
                         Stage::Flinch => {}
                         Stage::Think | Stage::Duty => {
                             if stage == Stage::Think {
-                                self.infantry_thought(id, profiles, tick, &mut out)?;
+                                self.infantry_thought(id, profiles, tick, &mut out, phase)?;
                             }
                             let s = self.actors.soldier(id).unwrap();
                             if s.vitals.life == Life::Alive
@@ -380,6 +404,7 @@ impl Context<'_> {
                                 && s.controller.dive_timer <= 0.0
                             {
                                 self.infantry_duty(id, dt, gun, profiles, tick, &mut out)?;
+                                phase("infantry_duties");
                             }
                         }
                     }
@@ -469,6 +494,7 @@ impl Context<'_> {
                 }
             }
         }
+        phase("infantry_status");
         if let Some(s) = self.actors.soldier_mut(id) {
             let ammunition = (profiles.weapon)(s).map(|p| p.fire.weapon.ammunition);
             let leader = self
@@ -477,6 +503,7 @@ impl Context<'_> {
                 .any(|q| q.id == s.identity.squad && q.leader == id);
             s.finish_tick(dt, self.now, ammunition, leader)?;
         }
+        phase("infantry_finish");
         Ok(out)
     }
 

@@ -26,6 +26,50 @@ fn structure_revisions(entities: &Entities) -> HashMap<u32, u64> {
         .collect()
 }
 
+#[cfg(test)]
+mod ownership_tests {
+    use super::*;
+
+    #[test]
+    fn owned_buildings_follow_registration_capture_spawn_removal_and_restore() {
+        let structure = |id, team| {
+            Actor::Structure(Box::new(Structure {
+                id,
+                team,
+                kind: "tree".into(),
+                ..Default::default()
+            }))
+        };
+        let mut a = Actors::from_entries(
+            30,
+            vec![structure(20, 0), structure(10, -1), structure(4, 1)],
+        )
+        .unwrap();
+        assert_eq!(a.owned_structures(), [20, 4]);
+        let original = a.clone();
+        a.set_structure_team(10, 1).unwrap();
+        assert_eq!(a.owned_structures(), [20, 10, 4]);
+        a.set_structure_team(20, 1).unwrap();
+        assert_eq!(a.owned_structures(), [20, 10, 4]);
+        a.set_structure_team(20, -1).unwrap();
+        assert_eq!(a.owned_structures(), [10, 4]);
+        assert_eq!(original.owned_structures(), [20, 4]);
+        let before = a.checkpoint().unwrap();
+        assert!(a.set_structure_team(10, 2).is_err());
+        assert!(a.set_structure_team(99, 0).is_err());
+        assert_eq!(a.checkpoint().unwrap(), before);
+        assert_eq!(a.owned_structures(), [10, 4]);
+        a.remove(10).unwrap();
+        let owned = a.spawn(structure(1, 0)).unwrap();
+        a.spawn(structure(1, -1)).unwrap();
+        assert_eq!(a.owned_structures(), [4, owned]);
+        let saved = a.checkpoint().unwrap();
+        let restored = Actors::restore(&saved).unwrap();
+        assert_eq!(restored.owned_structures(), [4, owned]);
+        assert_eq!(restored.checkpoint().unwrap(), saved);
+    }
+}
+
 #[derive(Clone, Debug, PartialEq)]
 pub enum Actor {
     Soldier(Box<Infantry>),
@@ -106,6 +150,7 @@ pub struct Actors {
     by_kind: [Vec<u32>; 5],
     combatants: Vec<u32>,
     simulated_structures: Vec<u32>,
+    owned_structures: Vec<u32>,
     structure_revisions: HashMap<u32, u64>,
 }
 
@@ -118,6 +163,12 @@ fn kind_order(entities: &Entities) -> [Vec<u32>; 5] {
 }
 fn combatant(a: &Actor) -> Option<u32> {
     matches!(a, Actor::Soldier(_) | Actor::Vehicle(_)).then(|| a.identity().id)
+}
+fn owned_structure(a: &Actor) -> Option<u32> {
+    match a {
+        Actor::Structure(s) if s.team >= 0 => Some(s.id),
+        _ => None,
+    }
 }
 fn simulated_structure(a: &Actor) -> Option<u32> {
     match a {
@@ -158,6 +209,7 @@ impl Actors {
             by_kind: kind_order(&entities),
             combatants: actors.iter().filter_map(combatant).collect(),
             simulated_structures: actors.iter().filter_map(simulated_structure).collect(),
+            owned_structures: actors.iter().filter_map(owned_structure).collect(),
             structure_revisions: structure_revisions(&entities),
             entities,
             values: actors.into_iter().map(|a| (a.identity().id, a)).collect(),
@@ -198,6 +250,24 @@ impl Actors {
             _ => None,
         }
     }
+    pub(crate) fn set_structure_team(&mut self, id: u32, team: i8) -> Result<(), &'static str> {
+        if !(-1..=1).contains(&team) {
+            return Err("invalid structure team");
+        }
+        let Some(Actor::Structure(s)) = self.get_mut(id) else {
+            return Err("missing structure");
+        };
+        let membership_changed = (s.team >= 0) != (team >= 0);
+        s.team = team;
+        if membership_changed {
+            // A capture is rare; preserve registration order without scanning scenery each tick.
+            self.owned_structures = self
+                .iter_kind(Kind::Structure)
+                .filter_map(owned_structure)
+                .collect();
+        }
+        Ok(())
+    }
     pub fn set_structure_supply(&mut self, id: u32, supply: f64) -> Result<(), &'static str> {
         if !supply.is_finite() || !(0. ..=1e12).contains(&supply) {
             return Err("invalid structure supply");
@@ -218,6 +288,9 @@ impl Actors {
     }
     pub fn simulated_structures(&self) -> &[u32] {
         &self.simulated_structures
+    }
+    pub fn owned_structures(&self) -> &[u32] {
+        &self.owned_structures
     }
     pub fn iter_combatants(&self) -> impl Iterator<Item = &Actor> {
         self.combatants.iter().map(|id| &self.values[id])
@@ -282,6 +355,9 @@ impl Actors {
         if simulated_structure(&actor).is_some() {
             self.simulated_structures.push(id);
         }
+        if owned_structure(&actor).is_some() {
+            self.owned_structures.push(id);
+        }
         if matches!(actor, Actor::Structure(_)) {
             self.structure_revisions
                 .insert(id, NEXT_STRUCTURE_REVISION.fetch_add(1, Ordering::Relaxed));
@@ -301,6 +377,9 @@ impl Actors {
         }
         if simulated_structure(&actor).is_some() {
             self.simulated_structures.retain(|&entry| entry != id);
+        }
+        if owned_structure(&actor).is_some() {
+            self.owned_structures.retain(|&entry| entry != id);
         }
         Some(actor)
     }
@@ -454,6 +533,10 @@ impl Actors {
             simulated_structures: entities
                 .iter()
                 .filter_map(|e| simulated_structure(&values[&e.id]))
+                .collect(),
+            owned_structures: entities
+                .iter()
+                .filter_map(|e| owned_structure(&values[&e.id]))
                 .collect(),
             entities,
             values,

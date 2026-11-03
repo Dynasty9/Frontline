@@ -1,5 +1,4 @@
 //! Fixed-work battlefield phases retain registration order and immediate shared effects.
-use crate::actors::Actor;
 use crate::aircraft_world;
 use crate::boat_world;
 use crate::entities::Kind;
@@ -135,14 +134,8 @@ impl MatchState {
             (p.shared.vehicle)(v).crew.helicopter
         })?;
         phase("perception_index");
-        let owned: Vec<_> = f
-            .actors
-            .iter_kind(Kind::Structure)
-            .filter_map(|a| match a {
-                Actor::Structure(s) if s.team >= 0 => Some(s.id),
-                _ => None,
-            })
-            .collect();
+        phase("infantry_begin");
+        let owned = f.actors.owned_structures().to_vec();
         let ids: Vec<_> = f
             .actors
             .iter_kind(Kind::Soldier)
@@ -171,6 +164,7 @@ impl MatchState {
             vehicle_hit: p.infantry.vehicle_hit,
             transport: p.infantry.transport,
         };
+        phase("infantry_setup");
         for id in ids {
             if f.actors.soldier(id).is_none() {
                 continue;
@@ -178,7 +172,7 @@ impl MatchState {
             let depots = self.rules.network.depots;
             out.extend(
                 f.with_context(&p.shared, upgrades, |w| {
-                    w.advance_infantry(
+                    w.advance_infantry_profiled(
                         id,
                         dt,
                         &infantry,
@@ -196,6 +190,7 @@ impl MatchState {
                             warheads: upgrades.warheads,
                             squad_names: p.squad_names,
                         },
+                        &mut phase,
                     )
                 })?
                 .into_iter()
@@ -285,13 +280,7 @@ impl MatchState {
         let owned: Vec<_> = if vehicles.is_empty() {
             vec![]
         } else {
-            f.actors
-                .iter_kind(Kind::Structure)
-                .filter_map(|a| match a {
-                    Actor::Structure(s) if s.team >= 0 => Some(s.id),
-                    _ => None,
-                })
-                .collect()
+            f.actors.owned_structures().to_vec()
         };
         let upgrades = Upgrades::from(&self.rules.economy);
         let cannon = |v: &Vehicle| match (p.vehicle)(v) {

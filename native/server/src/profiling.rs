@@ -11,12 +11,14 @@ use std::{
 
 pub struct TickProfile {
     at: Instant,
+    infantry_at: Option<Instant>,
     pub phases: BTreeMap<&'static str, f64>,
 }
 impl Default for TickProfile {
     fn default() -> Self {
         Self {
             at: Instant::now(),
+            infantry_at: None,
             phases: BTreeMap::new(),
         }
     }
@@ -24,12 +26,22 @@ impl Default for TickProfile {
 impl TickProfile {
     pub fn begin(&mut self) {
         self.phases.clear();
+        self.infantry_at = None;
         self.at = Instant::now();
     }
     pub fn mark(&mut self, phase: &'static str) {
         let now = Instant::now();
-        self.phases
-            .insert(phase, now.duration_since(self.at).as_secs_f64() * 1000.);
+        if phase == "infantry_begin" {
+            self.infantry_at = Some(now);
+            self.at = now;
+            return;
+        }
+        let start = if phase == "infantry" {
+            self.infantry_at.take().unwrap_or(self.at)
+        } else {
+            self.at
+        };
+        *self.phases.entry(phase).or_default() += now.duration_since(start).as_secs_f64() * 1000.;
         self.at = now;
     }
 }
@@ -168,6 +180,27 @@ fn samples(values: &[f64]) -> Value {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn repeated_infantry_phases_accumulate_inside_the_whole_pass() {
+        let mut timing = TickProfile::default();
+        timing.begin();
+        timing.mark("infantry_begin");
+        timing.at -= Duration::from_millis(1);
+        timing.infantry_at = Some(timing.at);
+        timing.mark("infantry_status");
+        let first = timing.phases["infantry_status"];
+        timing.mark("infantry_status");
+        assert!(timing.phases["infantry_status"] >= first);
+        timing.mark("infantry_finish");
+        timing.mark("infantry");
+        assert!(
+            timing.phases["infantry"]
+                >= timing.phases["infantry_status"] + timing.phases["infantry_finish"]
+        );
+        assert!(!timing.phases.contains_key("infantry_begin"));
+        timing.begin();
+        assert!(timing.phases.is_empty() && timing.infantry_at.is_none());
+    }
     #[test]
     fn bounded_profile_and_tail_measurements() {
         assert!(Profile::decode(&json!({"path":"x", "warmup":-1,"duration":10})).is_err());

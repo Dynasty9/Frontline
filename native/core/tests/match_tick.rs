@@ -156,10 +156,14 @@ fn mixed_battlefield_resumes_with_identical_events_and_state() {
         let mut b = MatchState::restore(&a.checkpoint().unwrap()).unwrap();
         let mut ac = PerceptionSearch::default();
         let mut bc = PerceptionSearch::default();
+        let mut phases = std::collections::BTreeSet::new();
         for tick in 0..180 {
             assert_eq!(
                 a.advance_battlefield(p, &mut ac).unwrap(),
-                b.advance_battlefield(p, &mut bc).unwrap(),
+                b.advance_battlefield_profiled(p, &mut bc, |name| {
+                    phases.insert(name);
+                })
+                .unwrap(),
                 "tick {tick}"
             );
             assert_eq!(
@@ -175,6 +179,17 @@ fn mixed_battlefield_resumes_with_identical_events_and_state() {
         }
         assert_eq!(a.tick, 6180);
         assert!(a.field.actors.entities().next_id() > 1001);
+        for name in [
+            "infantry_begin",
+            "infantry_status",
+            "infantry_perception",
+            "infantry_decisions",
+            "infantry_duties",
+            "infantry_finish",
+            "infantry",
+        ] {
+            assert!(phases.contains(name), "missing profile phase {name}");
+        }
     });
 }
 #[test]

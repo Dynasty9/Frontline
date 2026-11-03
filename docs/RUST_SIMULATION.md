@@ -212,6 +212,8 @@ RECORDING` starts the socket host. Its private JSON config contains `bind`, admi
 the server finishes its recording if that owner stops renewing it for 30 seconds.
 An optional `profile` (`path`, `warmup`, `duration`) measures wall-clock tick,
 observation and individual simulation-phase costs outside deterministic state.
+`infantry` includes its `infantry_*` breakdown (setup, status, perception, decisions,
+duties and finish); do not add those subphases to the inclusive total again.
 The clock never changes AI work quotas or enters a checkpoint. Keep admission tickets private. The initial importer
 rejects already-running Godot worlds with active ordnance/plans rather than
 silently losing state. Output recordings are created exclusively, never overwritten.
@@ -668,3 +670,58 @@ This excludes the engine's collision-shape update and is not an FPS measurement.
 The retained measurement is `build/collision-sampling-bench.log`; an earlier
 run overlapping numeric tests is explicitly excluded. The Windows release export
 also completes without import or export errors.
+
+The fresh packaged Windows 3 km / 500-soldier live battle at this revision failed
+the performance target: 35.66 FPS, frame p99 49.68 ms, maximum 56.67 ms and adjacent
+frame difference p99 22.96 ms. Rust ticks averaged 16.48 ms (p99 53.58 ms);
+infantry was the largest simulation phase at 9.27 ms on average. Cosmetic terrain
+sampling peaked at 0.019 ms. Other apps remained running. The saved server
+independently verified all 3,035 ticks, with final state hash
+`afe7833ff97407184d3ad7148b3d472958dc9567479e7d2746d7c604158de498`.
+Artifacts are in `build/rust-release-generated-3072-collision/` and
+`build/collision-release-replay-verification.log`.
+
+A subsequent paired playback of that recording measured 74.16 FPS in the release
+export and 63.00 FPS in the development runtime, with frame p99 30.77/36.98 ms and
+maximum 81.98/85.58 ms. This establishes neither a live-game speedup nor steady
+60 FPS; the different workload and changing background load limit comparisons.
+The valid runs are in `build/runtime-comparison.log`; an earlier attempt overlapping
+the browser test was stopped before measurement and excluded. Current browser
+simulation, observer playback and model rendering pass in real Chromium, and the
+Windows and web exports complete successfully.
+
+The roster texture-cache experiment was rejected. In an ABBA release playback,
+the original averaged 89.46/85.59 FPS (frame p99 20.16/27.48 ms) and the prototype
+76.36/91.20 FPS (p99 29.55/22.04 ms). It showed no consistent frame-time benefit
+and made small scaled text less legible. A separate GDScript text-width cache was
+also rejected: Godot's existing measurement path took 14,709 microseconds versus
+102,174 for the extra cache over 56,000 calls. Neither prototype is shipped.
+Artifacts are `build/roster-comparison.log` and `build/ui-width-benchmark.log`.
+
+### Indexed owned buildings and infantry timing
+
+The finer infantry breakdown identified a scenery-sized scan in target-list setup.
+The actor registry now retains owned buildings in registration order, updating the
+list on spawn, removal and capture and rebuilding it after restore. Infantry and
+vehicle phases copy that small list; commander censuses reuse it and the vehicle
+index. The diagnostic callbacks do not change commands, events or checkpoints.
+
+An ABBA simulation-only comparison imported the already verified generated 3 km /
+500-soldier starting battlefield into instrumented builds. Each ran 2,100 ticks
+without external commands and measured the last 1,200. This diagnostic import is
+not replay verification; the production verifier still rejects mismatched builds.
+All four final canonical state hashes were identical:
+`736d4bdbba47fa0e73ef63cc49ad58b2f359cbcc59890d746b1a27fba32e75fb`.
+
+Target setup averaged 0.869/0.815 ms before and 0.0088/0.0089 ms after, about 99%
+less. Infantry averaged 3.407/3.254 ms before and 2.424/2.484 ms after, about 26%
+less. Total tick means were 6.261/6.027 ms before and 5.131/6.139 ms after; p99 was
+18.37/16.71 ms before and 15.57/17.91 ms after. The second changed run includes a
+719 ms maximum, mostly inside navigation, and is retained rather than discarded.
+Other apps stayed running; these results do not establish rendered FPS or a hard
+frame-time bound. Evidence: `build/infantry-index-comparison.json`.
+
+After also indexing the commander census, a further diagnostic retained the same
+canonical hash and measured 5.538 ms total mean / 16.43 ms p99. Commander/mission
+time averaged 0.042 ms (p99 1.50 ms), versus 0.103 ms (p99 3.32 ms) in the first
+instrumented run. This is a separate follow-up, not a controlled overall speedup.

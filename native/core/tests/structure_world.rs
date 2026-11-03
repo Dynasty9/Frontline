@@ -49,11 +49,18 @@ fn victory_ignores_scenery_and_unfinished_fobs_after_restore_and_removal() {
     let mut unfinished = enemy.clone();
     unfinished.id = 32;
     unfinished.built = false;
-    let mut entries = vec![actor(structure(30, "fob", 0.)), actor(enemy), actor(unfinished)];
+    let mut entries = vec![
+        actor(structure(30, "fob", 0.)),
+        actor(enemy),
+        actor(unfinished),
+    ];
     entries.extend((100..164).map(|id| actor(structure(id, "tree", (id % 8) as f32))));
     let scene = fixture::Scene::new(entries, 7);
     let mut resumed = scene.resume();
-    let mut victory = Victory { winner: -1, mission: false };
+    let mut victory = Victory {
+        winner: -1,
+        mission: false,
+    };
     assert_eq!(resumed.world.actors.simulated_structures().len(), 3);
     assert_eq!(resumed.context().check_victory(&mut victory), None);
     resumed.world.actors.remove(31).unwrap();
@@ -144,6 +151,7 @@ fn neutral_town_capture_keeps_its_stock_and_queue_without_ending_the_match() {
     s.identity.team = 1;
     s.identity.owner = 8;
     let mut scene = fixture::Scene::new(vec![actor(town), Actor::Soldier(Box::new(s))], 3);
+    assert!(scene.world.actors.owned_structures().is_empty());
     let mut victory = Victory {
         winner: -1,
         mission: false,
@@ -156,6 +164,7 @@ fn neutral_town_capture_keeps_its_stock_and_queue_without_ending_the_match() {
     let st = scene.world.actors.structure(30).unwrap();
     assert_eq!(st.team, 1);
     assert_eq!(st.supply, 27.);
+    assert_eq!(scene.world.actors.owned_structures(), [30]);
     assert_eq!(st.queue, vec![queue()]);
     assert_eq!(scene.world.battle.sides[1][21], 1.);
     assert_eq!(victory.winner, -1);

@@ -229,8 +229,8 @@ impl Context<'_> {
         } else {
             "fob_captured"
         }));
+        self.actors.set_structure_team(id, team)?;
         let st = structure(self, id);
-        st.team = team;
         st.owner = -1 - i32::from(team);
         st.supply_parent = 0;
         st.road.clear();

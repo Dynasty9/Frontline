@@ -145,9 +145,15 @@ impl Context<'_, '_, '_> {
                 order: q.order.clone(),
             });
         }
-        for a in f.actors.iter() {
+        c.structures.extend(
+            f.actors
+                .owned_structures()
+                .iter()
+                .copied()
+                .filter(|&id| f.actors.structure(id).is_some_and(|s| s.team == team)),
+        );
+        for a in f.actors.iter_kind(sim::entities::Kind::Vehicle) {
             match a {
-                Actor::Structure(s) if s.team == team => c.structures.push(s.id),
                 Actor::Vehicle(v)
                     if v.team == team
                         && v.owner == -1 - i32::from(team)
