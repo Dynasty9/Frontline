@@ -1108,7 +1108,12 @@ void fragment() {
 	float region = smoothstep(0.25, 0.72, texture(detail_tex, p / 2300.0 + warp * 0.35).r);
 	float patch = smoothstep(0.30, 0.68, texture(detail_tex, p / 620.0 + warp * 0.18).r);
 	float seams = texture(detail_tex, vec2(p.x * 0.0005 + p.y * 0.00025, wpos.y * 0.0018) + warp * 0.12).r;
-	vec3 rock_uv = (wpos + vec3(warp.x, warp.y, warp.x) * 7.0) / 48.0;
+	// Warp the projection in three dimensions so the same slab does not repeat up every face.
+	vec3 fracture_warp = vec3(
+		texture(detail_tex, wpos.zy / 900.0 + 0.17).r,
+		texture(detail_tex, wpos.xz / 1100.0 + 0.53).r,
+		texture(detail_tex, wpos.xy / 800.0 + 0.81).r) - vec3(0.5);
+	vec3 rock_uv = (wpos + fracture_warp * 22.0) / 48.0;
 	vec3 scree_uv = wpos / 16.0 + 0.37;
 	vec3 moss_uv = wpos / 18.0;
 	vec4 rock_sample = surface_color(rock_color, rock_uv, weights);
@@ -1170,7 +1175,10 @@ void fragment() {
 	vec3 snow_color = mix(vec3(0.65, 0.75, 0.84), vec3(0.88, 0.90, 0.92), smoothstep(-0.3, 0.6, lee + macro));
 	col = mix(col, snow_color * (0.95 + d3 * 0.05), snow);
 	vec2 material_data = mix(moss_data, rock_data, exposed);
-	AO = sky * mix(1.0, max(0.35, material_data.x), clean * (1.0 - snow));
+	// Combine photographic crevices with broad shelter; do not bake a second direct-light shadow.
+	float crevice = clamp(rock_data.x * mix(1.0, 0.72, shelter), 0.25, 1.0);
+	float material_ao = mix(moss_data.x, crevice, exposed);
+	AO = sky * mix(1.0, max(0.25, material_ao), clean * (1.0 - snow));
 	AO_LIGHT_AFFECT = 0.25;
 	col *= mix(vec3(0.72, 0.80, 0.90), vec3(1.0), sky);
 

@@ -2895,6 +2895,150 @@
           "gif": "Same full native frames with separate label bar; common 256-colour palette; no resizing or contrast adjustment; two seconds per frame."
         }
       }
+    },
+    {
+      "entry": "changelog/unreleased/rock-occlusion.md",
+      "summary": "Sheltered rock crevices receive stronger ambient occlusion while exposed rock stays open to sky light.",
+      "medium": "still",
+      "stage": "native-media",
+      "rationale": "Matched wide and closer native renders; PR places the unaltered before and after images side by side. Subtle differences are explicitly identified.",
+      "source_ref": "codex/rock-occlusion",
+      "sources": [
+        {
+          "file": "changelog/unreleased/rock-occlusion/before.jpg",
+          "sha256": "f329ad746630d6675d333cc9915804de68180026896cd6bc86985841887fa1a3",
+          "caption": "before"
+        },
+        {
+          "file": "changelog/unreleased/rock-occlusion/after.jpg",
+          "sha256": "3a5a4c638e96cff490b83bcdfb29e5beecf9fe3411efe468c9afce4977d4d887",
+          "caption": "after"
+        },
+        {
+          "file": "changelog/unreleased/rock-occlusion/close-before.jpg",
+          "sha256": "aef5c10c118f85a5407e6689a3fae6e48f69b7d9c72f07f6e9c35ffddd2611a6",
+          "caption": "Matching closer camera: before"
+        },
+        {
+          "file": "changelog/unreleased/rock-occlusion/close-after.jpg",
+          "sha256": "414cb05025cce458dad1a1ffacabfe6af4b1fdca694de977a062ce108a55aef3",
+          "caption": "Matching closer camera: after"
+        },
+        {
+          "file": "changelog/unreleased/rock-occlusion/target-before.jpg",
+          "sha256": "31d465eda7f52a0015cc559843da8d5b80d4e213384d8cc45b64e49e28e11e0a",
+          "caption": "before - Watch the shaded recess beside the central rib under diffuse light."
+        },
+        {
+          "file": "changelog/unreleased/rock-occlusion/target-after.jpg",
+          "sha256": "144045e691872f0e5fcc1460864592f277aeb4cea3dc8e61761090a2f61ec8a3",
+          "caption": "after - Watch the shaded recess beside the central rib under diffuse light."
+        },
+        {
+          "file": "changelog/unreleased/rock-occlusion/compare.gif",
+          "sha256": "739cc9c034ddcc7e466d0f4bfafd28f70db925e4611107c3441c3c6199731a75",
+          "caption": "Two-second BEFORE/AFTER toggle; original rendered scene unchanged, label bar added above it."
+        }
+      ],
+      "output": null,
+      "title": "Give rock crevices more depth",
+      "version": "unreleased",
+      "kind": "improved",
+      "capture": {
+        "before_ref": "322c5a4",
+        "after_ref": "codex/rock-occlusion",
+        "command": "godot --main-pack PACK --resolution 1600x900 -- --aivai --seed=3 --offscreen --nohud --set=perf:0 --mood=day --preset=high --focus=0,0 --zoom=900 --pitch=-22 --cam-yaw=0.7 --screenshot=OUTPUT --shot-at=2 --quit-after=3",
+        "close": "godot --main-pack PACK --resolution 1600x900 -- --aivai --seed=3 --offscreen --nohud --set=perf:0 --mood=day --preset=high --focus=250,250 --zoom=350 --pitch=-28 --cam-yaw=0.7 --screenshot=OUTPUT --shot-at=2 --quit-after=3",
+        "targeted": {
+          "focus": "300,300",
+          "zoom": 100,
+          "pitch": -28,
+          "yaw": 0.7,
+          "mood": "overcast",
+          "cue": "Watch the shaded recess beside the central rib under diffuse light.",
+          "seed": 3,
+          "resolution": "1600x900",
+          "preset": "high",
+          "shot_at": 2,
+          "quit_after": 3,
+          "before_pack": "weathered.pck",
+          "after_pack": "rock-occlusion.pck",
+          "renderer": "Forward+",
+          "gif": "Same full native frames with separate label bar; common 256-colour palette; no resizing or contrast adjustment; two seconds per frame."
+        }
+      }
+    },
+    {
+      "entry": "changelog/unreleased/rock-warp.md",
+      "summary": "World-space texture warping breaks up repeated slab patterns without adding material samples.",
+      "medium": "still",
+      "stage": "native-media",
+      "rationale": "Matched wide and closer native renders; PR places the unaltered before and after images side by side. Subtle differences are explicitly identified.",
+      "source_ref": "codex/rock-warp",
+      "sources": [
+        {
+          "file": "changelog/unreleased/rock-warp/before.jpg",
+          "sha256": "f329ad746630d6675d333cc9915804de68180026896cd6bc86985841887fa1a3",
+          "caption": "before"
+        },
+        {
+          "file": "changelog/unreleased/rock-warp/after.jpg",
+          "sha256": "8b74290723444b4b43a97ec4bab295bbcc3e26273111889520853bba22303085",
+          "caption": "after"
+        },
+        {
+          "file": "changelog/unreleased/rock-warp/close-before.jpg",
+          "sha256": "aef5c10c118f85a5407e6689a3fae6e48f69b7d9c72f07f6e9c35ffddd2611a6",
+          "caption": "Matching closer camera: before"
+        },
+        {
+          "file": "changelog/unreleased/rock-warp/close-after.jpg",
+          "sha256": "ac6f823611e0ba8f3d73496bccbb4bb6c3a2e3ce74c1c3ba1f635eecb02957f4",
+          "caption": "Matching closer camera: after"
+        },
+        {
+          "file": "changelog/unreleased/rock-warp/target-before.jpg",
+          "sha256": "05110d1a4bc3075c37b837c4c772d3c9b1147c5fdd0de13fa292170f0c84d5d7",
+          "caption": "before - Watch the large fracture patterns on the bright central rock rib."
+        },
+        {
+          "file": "changelog/unreleased/rock-warp/target-after.jpg",
+          "sha256": "12619830bc2b8ab9fb35520aaac3c7f38c436bc0512af2dc3074cbdee85e9a9b",
+          "caption": "after - Watch the large fracture patterns on the bright central rock rib."
+        },
+        {
+          "file": "changelog/unreleased/rock-warp/compare.gif",
+          "sha256": "231fb46e61abaa886ddbe53b79830cbfe583071732e01a71a7c8275392cca83e",
+          "caption": "Two-second BEFORE/AFTER toggle; original rendered scene unchanged, label bar added above it."
+        }
+      ],
+      "output": null,
+      "title": "Break up repeating cliff textures",
+      "version": "unreleased",
+      "kind": "improved",
+      "capture": {
+        "before_ref": "322c5a4",
+        "after_ref": "codex/rock-warp",
+        "command": "godot --main-pack PACK --resolution 1600x900 -- --aivai --seed=3 --offscreen --nohud --set=perf:0 --mood=day --preset=high --focus=0,0 --zoom=900 --pitch=-22 --cam-yaw=0.7 --screenshot=OUTPUT --shot-at=2 --quit-after=3",
+        "close": "godot --main-pack PACK --resolution 1600x900 -- --aivai --seed=3 --offscreen --nohud --set=perf:0 --mood=day --preset=high --focus=250,250 --zoom=350 --pitch=-28 --cam-yaw=0.7 --screenshot=OUTPUT --shot-at=2 --quit-after=3",
+        "targeted": {
+          "focus": "300,300",
+          "zoom": 100,
+          "pitch": -28,
+          "yaw": 0.7,
+          "mood": "day",
+          "cue": "Watch the large fracture patterns on the bright central rock rib.",
+          "seed": 3,
+          "resolution": "1600x900",
+          "preset": "high",
+          "shot_at": 2,
+          "quit_after": 3,
+          "before_pack": "weathered.pck",
+          "after_pack": "rock-warp.pck",
+          "renderer": "Forward+",
+          "gif": "Same full native frames with separate label bar; common 256-colour palette; no resizing or contrast adjustment; two seconds per frame."
+        }
+      }
     }
   ],
   "layout_capture": {
