@@ -203,3 +203,43 @@ was 2,223 MiB for Godot and 621 MiB for Rust. Startup and warm-up are excluded.
 This sample exceeds 60 FPS on average but fails the tail-frame target. One Rust
 tick also exceeded 16.67 ms. It is a stress layout, not a fully generated 2–3 km
 battlefield, and is not directly comparable to the original 130 ms observation.
+
+## Generated 2 km battlefield and phase costs
+
+The November 3 follow-up used the generated 2,048 m map, seed 3, 500 infantry,
+commanders and 8,640 entities, with the high preset at 1280 by 720. Each sample
+measured 20 seconds after 15 seconds of warm-up. Other applications remained
+running. Both the control and optimized builds used the separate Rust server.
+
+| Measurement | Instrumented control | Optimized `cfad834` |
+| --- | ---: | ---: |
+| Rust tick mean, including observations | 9.569 ms | 7.405 ms |
+| Rust tick p95 / p99 | 16.321 / 20.313 ms | 13.128 / 16.308 ms |
+| Simulation and recording mean | 8.383 ms | 6.393 ms |
+| Infantry mean | 4.154 ms | 3.374 ms |
+| Rules and ledger mean | 1.272 ms | 0.770 ms |
+| Vehicle phase mean, with no vehicles | 0.663 ms | 0.001 ms |
+| Rendered average FPS | 73.64 | 74.98 |
+| Frame p95 / p99 | 21.128 / 25.877 ms | 20.722 / 25.907 ms |
+| Adjacent-frame difference p95 / p99 | 10.691 / 14.422 ms | 10.736 / 14.641 ms |
+
+Prepared weapon profiles, indexed supply/statistics scans, reused snapshot buffers
+and shared team observations reduce repeated work without changing AI cadence.
+Stationary minimap camera wedges cache their ground intersections. The optimized
+minimap cost was 0.763 ms/frame; distant soldier batches cost 2.118 ms/frame and
+soldier presentation 1.291 ms/frame. A transform-cache prototype did not improve
+rendered timings and was removed.
+
+The clean optimized run had no script/server errors and 482 surviving soldiers at
+server tick 2,102, with 6,310 shots. The earlier control ended at tick 2,101 with
+482 survivors and 6,303 shots. Fixed-state numeric/replay tests, rather than these
+wall-clock sampling boundaries, check unchanged gameplay. The first optimization
+run exposed wildlife reading ground while a loading worker replaced it; the
+repeat above includes the loading guard and its regression check.
+
+The roughly 23% reduction concerns server tick time, not FPS. Navigation still
+peaked at 18.30 ms, total ticks at 26.54 ms, and frames at 37.40 ms. Eleven of
+1,200 server samples exceeded 16.67 ms. This is progress toward the frame target,
+not proof of sustained minimum 60 FPS. Raw local reports are in
+`build/rust-socket-generated-2048-phases/` and
+`build/rust-socket-generated-2048-optimized/`.
