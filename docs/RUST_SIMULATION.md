@@ -752,3 +752,24 @@ Total tick means were 4.768/4.802 ms before and 4.915/4.607 ms after, essentiall
 unchanged. Navigation p99 was 7.87/8.29 ms before and 10.15/7.83 ms after, so this
 does not establish a tail improvement. All four canonical state hashes matched
 the earlier diagnostic. Evidence: `build/navigation-cache-comparison.json`.
+
+### Squad-summary preparation and minimap diagnostics
+
+Squad overview updates now group visible members first and calculate each group's
+status in typed locals, writing the public summary once. Member ordering, centroids,
+leader status, wounded/lost pips and immediate selection remain unchanged. Eight
+alternating warmed rounds over 500 soldiers measured 1.495 ms before and 1.218 ms
+after on average (about 19% less summary preparation). Each round preserved the
+public summary fields; the lifecycle tests additionally check leader removal and
+centroids after recovery. This microbenchmark is not a rendered FPS claim.
+Evidence: `build/squad-locals-bench.log`.
+
+Minimap profiling now reports ground, fighting, units, co-command and camera
+separately. A retained-background prototype passed headless and Vulkan/OpenGL
+pixel checks but was rejected: ABBA playback measured original frame p99
+18.21/17.39 ms versus 18.26/18.79 ms with the prototype, saving only about
+0.026 ms of average minimap work. The simpler progressive layers remain.
+An extra typed squad-summary object was also rejected after measuring slower
+than the original; the retained change uses locals without that allocation.
+Evidence: `build/minimap-background-comparison.json` and
+`build/squad-summary-bench.log`.

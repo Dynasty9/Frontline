@@ -28,6 +28,7 @@ const C_WRECK := Color(0.28, 0.26, 0.24)
 const C_FIGHT := Color(1.0, 0.6, 0.24)
 const C_INTEL := Color(1.0, 0.42, 0.36)
 const C_RECON := Color(0.5, 0.88, 1.0)
+const PHASE_NAMES := ["minimap ground", "minimap fighting", "minimap units", "minimap co-command", "minimap camera"]
 
 class DrawLayer extends Control:
 	var map: HudMinimap
@@ -475,7 +476,7 @@ func _draw_layer(canvas: CanvasItem, phase: int) -> void:
 	_draw_content(phase)
 	_ink = self
 	if hud and hud.world:
-		hud.world.vp("minimap drawing", started)
+		hud.world.vp(PHASE_NAMES[phase], started)
 
 
 func _draw_content(phase := -1) -> void:

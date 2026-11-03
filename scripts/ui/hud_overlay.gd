@@ -264,34 +264,44 @@ func _build_groups(inp, rebuild := true) -> void:
 	for s: Soldier in hud.world.soldiers:
 		if s.sid == 0 or not s.visible or s.life == Soldier.Life.HIDDEN:
 			continue
-		var g: Dictionary = _groups.get(s.sid, {})
-		if g.is_empty():
-			g = {"mem": [], "c": Vector3.ZERO, "n": 0, "team": s.team, "lead": null, "firing": 0, "supp": 0, "pips": []}
-			_groups[s.sid] = g
-		(g["mem"] as Array).append(s)
-		var pc := Color(0.92, 0.95, 0.9)
-		if s.life == Soldier.Life.DOWNED:
-			pc = Color(1, 0.32, 0.26)
-		elif s.life != Soldier.Life.ALIVE:
-			pc = Color(0.32, 0.32, 0.3)
-		g.pips.append(pc)
-		if s.life == Soldier.Life.ALIVE:
-			g["c"] = (g["c"] as Vector3) + s.position
-			g["n"] = int(g["n"]) + 1
-			if (s.flags & Soldier.F_SHOOTING) != 0:
-				g.firing += 1
-			if (s.flags & (Soldier.F_SUPP | Soldier.F_PINNED)) != 0:
-				g.supp += 1
-			if (s.flags & Soldier.F_LEADER) != 0:
-				g["lead"] = s
+		if not _groups.has(s.sid):
+			_groups[s.sid] = {"mem": [], "team": s.team}
+		(_groups[s.sid].mem as Array).append(s)
+	# Calculate each summary once; repeated dictionary arithmetic costs more for large armies.
 	for sid in _groups:
 		var g: Dictionary = _groups[sid]
+		var center := Vector3.ZERO
+		var alive := 0
+		var firing := 0
+		var suppressed := 0
+		var leader: Soldier = null
+		var pips := []
+		for s: Soldier in g.mem:
+			var pc := Color(0.92, 0.95, 0.9)
+			if s.life == Soldier.Life.DOWNED:
+				pc = Color(1, 0.32, 0.26)
+			elif s.life != Soldier.Life.ALIVE:
+				pc = Color(0.32, 0.32, 0.3)
+			pips.append(pc)
+			if s.life == Soldier.Life.ALIVE:
+				center += s.position
+				alive += 1
+				if (s.flags & Soldier.F_SHOOTING) != 0:
+					firing += 1
+				if (s.flags & (Soldier.F_SUPP | Soldier.F_PINNED)) != 0:
+					suppressed += 1
+				if (s.flags & Soldier.F_LEADER) != 0:
+					leader = s
+		g.c = center / float(alive) if alive > 0 else center
+		g.n = alive
+		g.firing = firing
+		g.supp = suppressed
+		g.lead = leader
+		g.pips = pips
 		var old: Dictionary = previous.get(sid, {})
 		g.pip_mesh = old.pip_mesh if old.get("pips", []) == g.pips else _strength_mesh(g.pips)
 		g.symbol = MapSymbols.squad_symbol(g.mem)
 		g.callsign = Squad.callsign_of(g.team, int(sid)).to_upper()
-		if int(g["n"]) > 0:
-			g["c"] = (g["c"] as Vector3) / float(g["n"])
 
 func _men_on_screen(cam: Camera3D, vs: Vector2) -> Array:
 	var out := []
