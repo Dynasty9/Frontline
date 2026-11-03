@@ -127,6 +127,8 @@ func _ready() -> void:
 		# a test run: script errors fail it (its exit code; see TestRun)
 		TestRun.watch()
 	if args.has("perf-at"):
+		# Collect the previous frame before any early packet or effect callbacks run.
+		process_priority = -1000
 		Engine.max_fps = 0
 		if DisplayServer.get_name() != "headless":
 			DisplayServer.window_set_vsync_mode(DisplayServer.VSYNC_DISABLED)
@@ -1103,6 +1105,10 @@ func _process(_dt: float) -> void:
 				"events_since_start": world.stats.duplicate()}
 			print("BENCHMARK ", JSON.stringify(report))
 			if args.has("perf-json"):
+				if OS.has_environment("FL_DEBUG_FRAME_TRACE"):
+					report["frame_samples_ms"] = {"total": _perf_frame_samples, "views": _perf_view_samples,
+						"render_cpu": _perf_render_cpu, "render_gpu": _perf_render_gpu,
+						"process": _perf_process, "physics": _perf_physics}
 				var report_file := FileAccess.open(String(args["perf-json"]), FileAccess.WRITE)
 				if report_file:
 					report_file.store_string(JSON.stringify(report, "\t"))

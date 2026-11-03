@@ -217,18 +217,25 @@ for ten seconds and more).
 
 ## Automated test modes
 
-`--perf-at=N` measures ten wall-clock seconds at normal speed after reaching N simulation
-seconds (use `--timescale=5` to fast-forward). It also works without fast-forwarding. The
+`--perf-at=N` warms up for N wall-clock seconds after loading, then measures at normal
+speed for `--perf-duration` seconds (ten by default). The
 report includes per-tick median, p95 and maximum, mean system costs, and land-path query
 counts, total time, maximum time and full-grid search count. Path time is nested inside
 the calling system's time; do not add it to the total. Headless FPS is zero because no
 frames are rendered. The overlay's game-logic bar is time per rendered frame, which can
 contain several simulation ticks; its system table is time per tick.
 
+With `--perf-json=ABSOLUTE_PATH`, `FL_DEBUG_FRAME_TRACE=1` also exports the samples
+already collected in `frame_samples_ms`: chronological frame, renderer, process,
+physics and per-view component times, all in milliseconds. This adds no sampling
+work inside the measurement window. The collector runs before early network and
+effect callbacks so each view sample belongs to the preceding complete frame.
+Component timings can overlap; do not sum nested phases as independent costs.
+
 Run `godot --headless --path . res://tests/structure_index_test.tscn` for building-index
 lifecycle checks and a same-process FOB lookup comparison with 1,000 scenery objects.
-See [simulation scaling](SIMULATION_SCALING.md) for the performance investigation and
-the proposed route to larger maps and a separate simulation process.
+See [Rust simulation](RUST_SIMULATION.md) for the current separate simulation process,
+performance measurements and remaining large-map gates.
 
 Pass these after `--` on the command line. Every run given switches is a test run: it exits with code 1 if a
 script error happened anywhere in it (or one of its own checks failed: `--cam-test`, `--keys-test`,
