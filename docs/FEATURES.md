@@ -546,6 +546,7 @@ Ambush Alley autoplay can call its existing mortar support against spotted, stop
   jointed bedrock shelves, thermal weathering and seeded rainfall erosion shape the relief. Roads, bridges, starting bases and settlements
   occupy graded valley corridors; forests stay below the snow line and off steep faces.
 - Distant scenery has seeded mountain groups and low passes, with floating-point heights and a finer indexed mesh at Medium/Far detail. Reusable cliff forms have uneven shoulders and irregular drainage cuts before erosion.
+- Distant mountain groups lose contrast into sky-coloured haze while nearby ground retains its detail.
 - Moss and soil blend into exposed stone on slopes, with baked slab fractures, broken mineral beds, sheltered weathering, loose-stone pockets and snow on high sheltered ground.
 - Optional alpine haze takes on the sky colour and settles lightly into lower valleys.
 - Narrow mineral stains run down exposed cliffs, interrupted by ledges and changes in rock type.

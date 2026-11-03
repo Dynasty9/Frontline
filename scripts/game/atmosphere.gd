@@ -750,6 +750,7 @@ func _update_terrain_probe(refresh := false) -> void:
 func _apply_haze(distance: float) -> void:
 	var k := haze_distance_factor(distance)
 	var volume_k := k
+	var terrain_air := 0.0
 	env.fog_aerial_perspective = 0.0
 	env.fog_height_density = 0.0
 	if bool(Settings.get_v("alpine_haze")) and world != null and world.terrain and world.terrain.landform.peak > 1.0:
@@ -757,8 +758,11 @@ func _apply_haze(distance: float) -> void:
 		k = maxf(k, 0.45 * pow(1.0 - downward, 2.0))
 		# Sky tint separates distant ranges; keep the low valley veil out of the overhead view.
 		env.fog_aerial_perspective = 0.38 * (1.0 - downward)
+		terrain_air = float(_d.fog_d) * 0.5 * pow(1.0 - downward, 2.0)
 		env.fog_height = 18.0
 		env.fog_height_density = 0.0012 * pow(1.0 - downward, 2.0)
+	if ground_mat:
+		ground_mat.set_shader_parameter("terrain_air", terrain_air)
 	env.fog_density = float(_d.fog_d) * HAZE_STRENGTH * k
 	env.volumetric_fog_density = (0.0011 if mood != "hazy" else 0.003) * VOLUME_STRENGTH * volume_k
 
@@ -988,6 +992,7 @@ render_mode specular_schlick_ggx;
 
 uniform vec3 sun_direction = vec3(0.0, 1.0, 0.0);
 uniform vec3 air_color : source_color = vec3(0.5, 0.6, 0.7);
+uniform float terrain_air = 0.0;
 uniform sampler2D surface_bake : hint_default_white, filter_linear_mipmap, repeat_disable;
 uniform sampler2D cliff_color : source_color, filter_linear_mipmap_anisotropic, repeat_enable;
 uniform sampler2D cliff_normal : filter_linear_mipmap_anisotropic, repeat_enable;
@@ -1227,9 +1232,12 @@ void fragment() {
 	AO_LIGHT_AFFECT = 0.25;
 	col *= mix(vec3(0.72, 0.80, 0.90), vec3(1.0), sky);
 
-	float aerial = smoothstep(__MAP_HALF__ + 80.0, __MAP_HALF__ + 1300.0, max(abs(p.x), abs(p.y))) * 0.35;
+	// Extinction depends on the air between the camera and rock, not the map boundary.
+	float optical_depth = max(0.0, distance(CAMERA_POSITION_WORLD, wpos) - 250.0) * terrain_air;
+	float aerial = min(0.75, 1.0 - exp(-optical_depth * exp(-max(wpos.y, 0.0) / 900.0)));
+	aerial *= smoothstep(__MAP_HALF__, __MAP_HALF__ + 200.0, edge);
 	ALBEDO = col * (1.0 - aerial);
-	EMISSION = air_color * aerial * 0.22;
+	EMISSION = air_color * aerial;
 	ROUGHNESS = mix(mix(0.96, 0.82, dirt_m), clamp(material_data.y, 0.55, 1.0), clean);
 	ROUGHNESS = mix(ROUGHNESS, mix(0.74, 0.94, macro), snow);
 	ROUGHNESS = mix(ROUGHNESS, 0.55, wet * 0.5);

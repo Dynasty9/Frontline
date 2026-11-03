@@ -80,13 +80,19 @@ func _ready() -> void:
 	Settings.v.terrain_reflections = reflections_before
 	var haze_before: bool = Settings.get_v("alpine_haze")
 	atmosphere.env = Environment.new()
+	atmosphere.ground_mat = ShaderMaterial.new()
+	var ground_shader := Shader.new()
+	ground_shader.code = MapDims.shader(Atmosphere.GROUND_SHADER)
+	atmosphere.ground_mat.shader = ground_shader
 	atmosphere._d = {"fog_d": 0.002}
 	world.terrain.landform.peak = 80.0
 	Settings.v.alpine_haze = true
 	atmosphere._apply_haze(600.0)
 	assert(atmosphere.env.fog_aerial_perspective > 0.0 and atmosphere.env.fog_height_density > 0.0, "Alpine haze adds sky tint and a valley veil")
+	assert(float(atmosphere.ground_mat.get_shader_parameter("terrain_air")) > 0.0)
 	Settings.v.alpine_haze = false
 	atmosphere._apply_haze(600.0)
+	assert(float(atmosphere.ground_mat.get_shader_parameter("terrain_air")) == 0.0)
 	assert(atmosphere.env.fog_aerial_perspective == 0.0 and atmosphere.env.fog_height_density == 0.0, "Disabling alpine haze clears both additions")
 	Settings.v.alpine_haze = true
 	world.terrain.landform.peak = 0.0

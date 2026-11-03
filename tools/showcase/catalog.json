@@ -3248,6 +3248,69 @@
         "detail": "Same controls with --focus=300,300 --zoom=100 --pitch=-28; camera height follows the changed terrain.",
         "compatibility": "Final wide view with --rendering-method gl_compatibility"
       }
+    },
+    {
+      "entry": "changelog/unreleased/realism-01-aerial.md",
+      "summary": "Distant mountain groups lose contrast into sky-coloured haze while nearby ground retains its detail.",
+      "medium": "still",
+      "stage": "native-media",
+      "rationale": "Isolate this refinement against its immediate parent, with a targeted view and a distant view.",
+      "source_ref": "codex/realism-01-aerial",
+      "sources": [
+        {
+          "file": "changelog/unreleased/realism-01-aerial/target-before.jpg",
+          "sha256": "52257b3e43de0cfc898b954135a6c4fde787565ad7dd6ed0579c88b4945b0d94",
+          "caption": "target before"
+        },
+        {
+          "file": "changelog/unreleased/realism-01-aerial/target-after.jpg",
+          "sha256": "c60a5b4b3532b5e696ad516c2ef02774a1750bc60ce4108f2eccb7b4b7060218",
+          "caption": "target after"
+        },
+        {
+          "file": "changelog/unreleased/realism-01-aerial/wide-before.jpg",
+          "sha256": "52257b3e43de0cfc898b954135a6c4fde787565ad7dd6ed0579c88b4945b0d94",
+          "caption": "wide before"
+        },
+        {
+          "file": "changelog/unreleased/realism-01-aerial/wide-after.jpg",
+          "sha256": "c60a5b4b3532b5e696ad516c2ef02774a1750bc60ce4108f2eccb7b4b7060218",
+          "caption": "wide after"
+        },
+        {
+          "file": "changelog/unreleased/realism-01-aerial/target-compat.jpg",
+          "sha256": "45f68275c6eff0f5d0e95d0bb9af2b53caecb847dc56838c91af6e8ca35fe7ec",
+          "caption": "target compat"
+        },
+        {
+          "file": "changelog/unreleased/realism-01-aerial/compare.gif",
+          "sha256": "8012e2b346bee5fb124efed92ab636193146c3849f1cc4bfc566e16e429e0575",
+          "caption": "Native frames, separate labels, shared palette, 2.5 seconds each."
+        }
+      ],
+      "output": null,
+      "title": "Separate ranges with distance-based scattering",
+      "version": "unreleased",
+      "kind": "improved",
+      "capture": {
+        "before_ref": "5589b7a547d9b8089976410a6abe496befb9fdd8",
+        "after_ref": "codex/realism-01-aerial",
+        "before_pack": "realism-00.pck",
+        "after_pack": "realism-01.pck",
+        "seed": 3,
+        "preset": "high",
+        "mood": "day",
+        "resolution": "1600x900",
+        "focus": "0,0",
+        "zoom": 900,
+        "pitch": -22,
+        "yaw": 0.7,
+        "shot_at": 2,
+        "quit_after": 3,
+        "wide": "focus 0,0; zoom 900; pitch -22; yaw 0.7",
+        "compatibility": "Target after with --rendering-method gl_compatibility",
+        "command": "godot --main-pack PACK --resolution 1600x900 -- --aivai --seed=3 --offscreen --nohud --set=perf:0 --preset=high --mood=MOOD --focus=FOCUS --zoom=ZOOM --pitch=PITCH --cam-yaw=0.7 --screenshot=OUTPUT --shot-at=2 --quit-after=3"
+      }
     }
   ],
   "layout_capture": {
